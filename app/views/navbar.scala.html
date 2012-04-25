@@ -1,0 +1,42 @@
+@(user:Option[model.User], barTitle: String="Bar Title")
+
+    <div class="navbar navbar-fixed-top">
+      <div class="navbar-inner">
+        <div class="container">
+          <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </a>
+          <a class="brand" href="#">@barTitle</a>
+          <div class="nav-collapse">
+            <ul class="nav">
+              <li class="active"><a href="/">Home</a></li>
+              <li><a href="/page/about">About</a></li>
+              <li><a href="/page/contact">Contact</a></li>
+            </ul>
+          </div><!--/.nav-collapse -->
+        
+            <ul class="nav pull-right">
+              <li class="divider-vertical"></li>
+@user match {
+  case None => { 
+    <li><a href="/page/join">Join</a></li>
+  }
+  
+  case Some(joe) => { 
+    <li class="dropdown">
+      <a href="#" class="dropdown-toggle" data-toggle="dropdown">@joe.ename<b class="caret"></b></a>
+      <ul class="dropdown-menu">
+        <li><a href="/page/profile">Profile</a></li>
+        <li><a href="/page/signout">Sign out</a></li>
+      </ul>
+    </li>
+  }
+} 
+            </ul>
+          
+        </div>
+        
+      </div>
+    </div>

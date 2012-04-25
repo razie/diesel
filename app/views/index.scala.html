@@ -1,0 +1,23 @@
+@(message: String, user:Option[model.User]=None)
+
+@joe() = @{
+  val names = Array("Joe", "Dianne", "Marty", "Jackal", "Tigger")
+  val i = new scala.util.Random().nextInt(names.length)
+  names(i)
+  }
+
+@salutation() = @{
+  val names = Array("Hi", "Hello", "Hey", "Howdy")
+  val i = new scala.util.Random().nextInt(names.length)
+  names(i)
+  }
+
+@user match {
+  case None => { 
+  @mainNoUser(salutation, joe)
+  }
+  
+  case Some(joe) => { @mainUser(salutation, joe) }
+  }
+ 
+  
