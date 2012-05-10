@@ -1,0 +1,25 @@
+@(msg:String, next:Option[String], user:Option[model.User])
+
+   @htmlHead()
+
+   @navbar(user)
+   
+    <div class="container">
+
+      <!-- Main hero unit for a primary marketing message or call to action -->
+      <div class="well">
+        <h2>@Html(model.Wikis.format("markdown", msg))</h2>
+        <br>
+@next.map { n=>
+        <a class="btn btn-primary btn-large" href="@n">Continue</a>
+}
+      </div>
+
+      <hr>
+
+      @htmlFooter()
+
+    </div> <!-- /container -->
+
+    @htmlBottom()
+    

@@ -1,0 +1,60 @@
+@(sForm:Form[_], user:Option[model.User])
+
+   @htmlHead()
+
+   @navbar(user)
+   
+    <div class="container">
+
+      <!-- Main hero unit for a primary marketing message or call to action -->
+      <div class="hero-unit">
+
+      <div class="row">
+        <div class="span8">
+<h2>Support request</h2>
+@import helper.twitterBootstrap._
+
+@helper.form(action=routes.Support.supportu, 'class->"well") {
+
+  @helper.inputText(
+    sForm("email"), 
+    '_label -> "Your Email",
+    '_showConstraints -> false)
+
+  @helper.inputText(
+    sForm("desc"), 
+    '_label -> "Description",
+    '_showConstraints -> false)
+    
+  @helper.textarea(
+    sForm("details"), 
+    '_label -> "Details", 
+    '_showConstraints -> false,
+    'class -> "span6",
+    'rows->15)
+
+  <button type="submit" class="btn btn-primary">Submit suppport request</button>
+
+  @if(sForm.globalError.isDefined) {
+     <br><br><b>@sForm.globalError.get.message</b>
+  } 
+  
+  <p><small>By using this form, you agree to the <a href="@routes.Application.show("terms")">Terms and Conditions</a></small><p>
+  }
+  
+  
+       </div>
+      </div>
+
+      </div>
+
+      <!-- Example row of columns -->
+
+      <hr>
+
+      @htmlFooter()
+
+    </div> <!-- /container -->
+
+    @htmlBottom()
+    

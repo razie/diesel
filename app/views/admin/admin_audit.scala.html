@@ -1,0 +1,25 @@
+@(user:Option[model.User])
+
+@fufu(db:com.mongodb.casbah.Imports.DBObject, k:String, v:String) = {
+  @if("cleared" == k) {
+    <a href="/admin/clearaudit/@db.get("_id").toString">clear</a>
+  } else{@v}
+}
+
+  @htmlHead()
+  @navbar(user)
+   
+  <div class="container">
+
+    <h2>Audit events</h2>
+
+    @util.utilTable("Audit", Seq("level"->"L", "when"->"When", "msg"->"What", "cleared"->"Done", "details"->"Details"),None,Some("when"), Some(fufu)))
+
+    <hr>
+      
+    @htmlFooter()
+
+  </div> <!-- /container -->
+
+  @htmlBottom()
+    

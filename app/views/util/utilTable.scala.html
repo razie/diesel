@@ -1,0 +1,47 @@
+@(name:String, cols:Seq[(String,String)], criteria:Option[Map[String,Any]]=None, sortby:Option[String]=None, func:Option[(com.mongodb.casbah.Imports.DBObject,String,String)=>Html] = None)
+
+@import com.mongodb.casbah.Imports._
+
+@*********
+FRAGMENT create a html table from a Mongo table 
+name = mongo collection name
+cols = (key,label)
+*********@
+
+@col() = @{
+  model.Mongo(name).m
+  }
+
+@ccol() = @{
+  val m = model.Mongo(name).m
+  if (criteria.isDefined)
+    (sortby.map(p=>m.find(criteria.get).sort(Map(p -> -1))).getOrElse(m.find(criteria.get)))
+  else
+    (sortby.map(p=>m.find.sort(Map(p -> -1))).getOrElse(m.find()))
+}
+
+<table class="table table-striped">
+<thead>
+   <tr>
+   @cols.map { case (k,l) =>
+     <th>@l</th>
+     }
+   </tr>
+</thead>
+@ccol.map { db =>
+   <tr>
+  @cols.map { case (k,l) =>
+     <td>@func.map(_.apply(db, k, (if(db.get(k)==null) null else db.get(k).toString))).getOrElse(db.get(k))</td>
+   }
+   </tr>
+   }
+</table>
+
+      <hr>
+      
+      @htmlFooter()
+
+    </div> <!-- /container -->
+
+    @htmlBottom()
+    

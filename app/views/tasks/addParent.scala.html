@@ -1,0 +1,51 @@
+@(pForm:Form[controllers.Profile.Email], userEname:String)
+
+   @htmlHead()
+
+   @navbar(None)
+   
+    <div class="container">
+
+      <!-- Main hero unit for a primary marketing message or call to action -->
+      <div class="hero-unit">
+
+      <div class="row">
+        <div class="span6">
+        <h2>@userEname - you need a parent to register as well!</h2>
+        <p>You need to add a parent to your account... please make sure they're around and enter their email here to continue.</p>
+        </div>
+
+        <div class="span4">
+
+@import helper.twitterBootstrap._
+
+@helper.form(action=routes.Profile.addParent2, 'class->"well") {
+
+  @helper.inputText(
+    pForm("parentEmail"), 
+    '_label -> "Parent's Email")
+
+  <button type="submit" class="btn btn-primary">Continue</button>
+
+  @if(pForm.globalError.isDefined) {
+     <br><br><b>@pForm.globalError.get.message</b>
+  } 
+  
+  <p><small>By registering or logging in, you agree to the <a href="@routes.Application.show("terms")">Terms and Conditions</a></small><p>
+  }
+  
+       </div>
+      </div>
+
+      </div>
+
+      <!-- Example row of columns -->
+
+      <hr>
+
+      @htmlFooter()
+
+    </div> <!-- /container -->
+
+    @htmlBottom()
+    

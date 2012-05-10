@@ -1,0 +1,69 @@
+@(category:String, name:String, myForm:Form[controllers.Wiki.EditWiki], user:Option[model.User])
+
+@v(name:String) = @{
+  myForm(name).value.getOrElse("?")
+}
+          
+   @htmlHead("Editing "+category +":"+ name)
+
+   @navbar(user)
+   
+    <div class="container">
+
+      <div class="well">
+          @wiki.wikiFrag(category,name)
+      </div>
+
+<div >
+@import helper.twitterBootstrap._
+
+@helper.form(action=routes.Wiki.save(category,name), 'class->"well form-inline") {
+<table valign="top">
+<tr><td>
+@******* 
+PROBLEM: many places use label as name... via Wikis.formatName
+**********@
+  @helper.inputText(
+    myForm("label"), 
+    '_label -> "Label (don't change)",
+    '_showConstraints -> false)
+  @helper.textarea(
+    myForm("content"), 
+    '_label -> "Content", 
+    '_showConstraints -> false,
+    'class -> "span6",
+    'rows->15)
+</td><td>
+    <div>
+  @helper.select(
+    myForm("markup"), 
+    Seq("markdown"->"markdown"), //model.Wikis.markups.map(x=>(x,x)),
+    '_label -> "Markup Language", 
+    'class -> "input-small",
+    '_showConstraints -> false)
+  </div>
+</td></tr></table>    
+    <div class="actions">
+      <button type="submit" class="btn btn-primary">Save</button>
+      <a href="@controllers.Wiki.w(category,name)" class="btn">Cancel</a>
+  </div>
+  
+  @if(myForm.globalError.isDefined) {
+     <br><br><b>@myForm.globalError.get.message</b>
+  } 
+  
+  <p><small>See the <a href="/wiki/Page/Modified_Markdown_Syntax">modified markdown syntax</a>.
+  <br><small>By updating this page, you agree to the <a href="@routes.Application.show("terms")">Terms and Conditions</a>
+  <br><small>Please do not replicate information already contained in other reference places like 
+      Wikipedia, just link to them. Use [[[Main_Page]]] to link to wikipedia.
+}
+</div>
+
+      <hr>
+
+      @htmlFooter()
+
+    </div> <!-- /container -->
+
+    @htmlBottom()
+    

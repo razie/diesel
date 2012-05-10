@@ -1,0 +1,25 @@
+@(msg:String, next:String, user:Option[model.User])
+
+   @htmlHead()
+
+   @navbar(user)
+   
+    <div class="container">
+
+      <!-- Main hero unit for a primary marketing message or call to action -->
+      <div class="well">
+        <h1>Opa!</h1>
+        <br>
+        <h2>@msg</h2>
+        <br>
+        <a class="btn btn-primary btn-large" href="@next">Continue</a>
+      </div>
+
+      <hr>
+
+      @htmlFooter()
+
+    </div> <!-- /container -->
+
+    @htmlBottom()
+    

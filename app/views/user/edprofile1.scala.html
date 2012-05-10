@@ -1,0 +1,73 @@
+@(myForm: Form[model.User], user:model.User)
+
+@salutation() = @{
+  val names = Array("Hi", "Hello", "Hey", "Howdy")
+  val i = new scala.util.Random().nextInt(names.length)
+  names(i)
+  }
+  
+  @htmlHead()
+
+  @navbar(Some(user))
+   
+  <div class="span2">
+    @leftmenu(user)
+  </div>
+
+    <div class="container span8">
+
+      <!-- Main hero unit for a primary marketing message or call to action -->
+      <div class="hero-unit">
+
+      <div class="row">
+        <div class="span4">
+        <h2>Basic profile</h2>
+
+@import helper.twitterBootstrap._
+
+@helper.form(action=routes.Profile.updateProfile(), 'class->"well") {
+  @helper.inputText(
+    myForm("firstName"), 
+    '_label -> "First name", 
+    '_showConstraints -> false)
+  @helper.inputText(
+    myForm("lastName"), 
+    '_label -> "Last name")          
+  @helper.select(
+    myForm("yob"), 
+     (Range(2005, 1912, -1) map (y=>(y.toString,y.toString))),
+    '_label -> "When you were born", 
+    'style -> "width: 100px", 
+    '_showConstraints -> false)
+  @helper.select(
+    myForm("userType"), 
+     model.Users.userTypes.map(x=>(x,x)),
+     '_label -> "What you are",
+    '_showConstraints -> false)
+  @helper.inputText(
+    myForm("email"), 
+    '_label -> "Email", 
+    '_showConstraints -> false)
+    
+  <button type="submit" class="btn btn-primary">Update account!</button>
+  
+  @if(myForm.globalError.isDefined) {
+     <br><br><b>@myForm.globalError.get.message</b>
+  } 
+  
+  <p><small>By maintaining a profile, you agree to the <a href="@routes.Application.show("terms")">Terms and Conditions</a></small><p>
+}
+
+       </div>
+      </div>
+
+      </div>
+
+      <hr>
+
+      @htmlFooter()
+
+    </div> <!-- /container -->
+
+    @htmlBottom()
+    

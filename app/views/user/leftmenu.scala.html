@@ -1,0 +1,13 @@
+@(user:model.User)
+
+      <div class="well" style="padding: 8px 0;">
+        <ul class="nav nav-list">
+          <li class="active"><a href="@routes.Profile.profile()">Basic profile</a></li>
+          <li>Children</li>
+<ul>
+@for(c <- user.rel("child")) {
+     <li><a href="@routes.Profile.profile2(c.id)">@c.ename</a></li>
+   }
+</ul>
+        </ul>
+      </div> <!-- /well -->

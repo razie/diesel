@@ -1,48 +1,50 @@
 package controllers
 
-import play.api._
-import play.api.mvc._
-import play.api.data._
-import play.api.data.Forms._
-import model.Api
-import model.User
 import admin.Audit
+import model.Api
+import model.Mongo
+import model.Registration
+import model.User
+import model.UserGroup
+import model.Users
+import model.WikiEntry
+import play.api.data.Forms._
+import play.api.mvc._
+import play.api._
+import admin.Init
+import admin.CipherCrypt
+import model.DoSec
 
-object Application extends Controller {
-
-  val regForm = Form {
-    mapping(
-      "email" -> text,
-      "password" -> text)(model.Registration.apply)(model.Registration.unapply)
-  }
-
-  def auth(implicit request: Request[_]): Option[User] = request.session.get("connected").flatMap (Api.findUser(_))
+/** main entry points */
+object Application extends RazController {
 
   def index = Action { implicit request =>
     Ok(views.html.index("", auth))
   }
 
-  def show(page: String) = { //}Action { request =>
+  def show(page: String) = {
     page match {
-      case "index" => index
-      case "logout" => Action {
-        Ok(views.html.join(regForm)).withNewSession
+      case "index"        => index
+      case "join"         => Profile.join
+      case "basicprofile" => Profile.basicprofile
+      case "profile"      => Profile.profile
+      case "logout" | "signout" => Action { implicit request =>
+        auth map (_.auditLogout)
+        Redirect ("/").withNewSession
       }
-      case "join" => Action {
-        Ok(views.html.join(regForm)).withNewSession
-      }
-      case _ => { Audit.missingPage(page); TODO }
+      case "terms" => Wiki.show("Page", "Terms_And_Conditions")
+      case "privacy" => Wiki.show("Page", "Privacy_Policy")
+      case _       => { Audit.missingPage(page); TODO }
     }
   }
 
-  def register = Action { implicit request =>
-    regForm.bindFromRequest.fold(
-      formWithErrors => BadRequest(views.html.join(formWithErrors)),
-      {
-        case reg @ model.Registration(e, p) =>
-          Api.createOrFindUser(reg.email) map (u =>
-            Ok(views.html.index("", Some(u))).withSession("connected" -> u.email)) getOrElse Unauthorized("WWWWWWWWWW")
-      })
+  def sec(whats: String) = Action { implicit request =>
+    println(whats)
+    (for (
+      ds <- DoSec.find(whats);
+      x <- if (ds.expiry.isAfterNow) Some(true) else None
+    ) yield Redirect(ds.link)
+    ) getOrElse Msg("Link is invalid/expired", "Page", "home")
   }
 
 }

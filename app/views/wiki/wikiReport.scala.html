@@ -1,0 +1,50 @@
+@(category:String, name:String, myForm:Form[controllers.Wiki.ReportWiki], user:Option[model.User])
+
+   @htmlHead()
+
+   @navbar(user)
+   
+    <div class="container">
+
+      <!-- Main hero unit for a primary marketing message or call to action -->
+      <div class="well">
+          <h2>Opa! Need to report @category @name!</h2>
+          <p>
+      </div>
+
+<div >
+@import helper.twitterBootstrap._
+
+@helper.form(action=routes.Wiki.reported(category,name), 'class->"well") {
+  @helper.textarea(
+    myForm("reason"), 
+    '_label -> "Reason", 
+    '_showConstraints -> false,
+    'cols->100,
+    'rows->10)
+    
+    <div class="actions">
+      <button type="submit" class="btn btn-primary">Report it!</button>
+      <a href="@controllers.Wiki.w(category,name)" class="btn">Nah</a>
+  </div>
+  
+  @if(myForm.globalError.isDefined) {
+     <br><br><b>@myForm.globalError.get.message</b>
+  } 
+  
+  <br><small>By updating this page, you agree to the <a href="@routes.Application.show("terms")">Terms and Conditions</a></small>
+}
+</div>
+
+      <div class="well">
+          @wiki.wikiFrag(category,name)
+      </div>
+          
+      <hr>
+
+      @htmlFooter()
+
+    </div> <!-- /container -->
+
+    @htmlBottom()
+    

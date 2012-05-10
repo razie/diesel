@@ -1,0 +1,19 @@
+@(user:Option[model.User])
+
+  @htmlHead()
+  @navbar(user)
+   
+  <div class="container">
+
+    <h2>Users</h2>
+
+    @util.utilTable("User", Seq("email"->"Email", "firstName"->"First Name", "lastName"->"Last Name", "yob"->"YOB"))
+
+    <hr>
+      
+    @htmlFooter()
+
+  </div> <!-- /container -->
+
+  @htmlBottom()
+    

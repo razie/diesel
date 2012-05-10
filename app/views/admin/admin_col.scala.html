@@ -1,0 +1,53 @@
+@(name:String, col:com.mongodb.casbah.MongoCollection)
+
+   @htmlHead()
+   @navbar(None)
+   
+    <div class="container">
+
+<h2>Records</h2>
+
+@col.map { db =>
+<ul>
+  @db.keySet.map { k =>
+   <li>@k : @db.get(k)</li>
+   }
+</ul>
+   }
+<hr>
+
+@col.map { db =>
+  @db.toString
+   }
+
+<hr>
+
+<table class="table table-striped">
+<thead>
+   <tr>
+   <td>Email</td>
+   <td>FirstName</td>
+   <td>LastName</td>
+   <td>Age</td>
+   </tr>
+</thead>
+@********
+@col.map { db =>
+   <tr>
+  @db.keySet { k =>
+   <td>@k</td>
+   <td>@db.get(k)</td>
+   }
+   </tr>
+   }
+******@
+</table>
+
+      <hr>
+      
+      @htmlFooter()
+
+    </div> <!-- /container -->
+
+    @htmlBottom()
+    

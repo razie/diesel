@@ -1,4 +1,4 @@
-@(salutation:String, joe:String)
+    @(joe:String)
 
    @htmlHead()
 
@@ -11,17 +11,18 @@
 
         <div class="row">
           <div class="span6">
-            <h1>@salutation, @joe! <small><a href="/do/join">not @joe?</a></small></h1>
-            <p>RacerKidz will soon be up and running - please <a href="/do/join">join</a> and we'll let you know as soon as features are coming online.</p>
-            <p><a class="btn btn-primary btn-large" href="/do/join">Join &raquo;</a>
-               <a class="btn btn-large" href="http://500px.com/editors">Nah, checkout some cool pix &raquo;</a></p>
+            <h1>Thank you, @joe!</h1>
+            <p>We'll let you know as soon as more RacerKidz features will be up and running.</p>
+            <p><a class="btn btn-large" href="http://500px.com/editors">Now, checkout some cool pix &raquo;</a></p>
           </div>
           <div class="span4">
             <img width="60%" height="60%" src="@routes.Assets.at("images/thumbs_olympic-sport-icons1.gif")"></img>
           </div>
         </div>
         
-      </div>  
+      </div>
+
+      <!-- Example row of columns -->
 
       <hr>
 

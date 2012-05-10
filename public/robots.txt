@@ -1,0 +1,6 @@
+
+User-agent: *
+Dissalow: /doe/
+Dissalow: /wikie/
+Dissalow: /admin/
+

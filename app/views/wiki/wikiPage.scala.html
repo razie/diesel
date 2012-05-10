@@ -1,0 +1,37 @@
+@(cat:String, name:String, page:Option[model.WikiEntry], user:Option[model.User])
+
+   @htmlHead(cat +":"+ name)
+
+   @navbar(user)
+   
+    <div class="container">
+
+      <!-- Main hero unit for a primary marketing message or call to action -->
+      <div class="well">
+          @wiki.wikiFrag(cat,name, page)
+      </div>
+
+    @if("Category" == cat) {
+    
+      @if(Range(1,100) contains model.Wikis.pageNames(name).size) {
+    <div class="well">
+        @name entries:
+        @model.Wikis.pageNames(name).map { p=>
+         <a href="/wiki/@name:@p">@model.Wikis.label(name,p)</a> |
+        } 
+    </div> 
+      } 
+      @helper.form(action=routes.Wiki.add(name), 'class->"well form-inline") {
+      <label>Add a new @name </label>
+        <input type="text" class="input-small" name="name" placeholder="Name">
+        <button type="submit" class="btn">Now</button>
+      }
+    } 
+
+      <hr>
+      @htmlFooter()
+
+    </div> <!-- /container -->
+
+    @htmlBottom()
+    

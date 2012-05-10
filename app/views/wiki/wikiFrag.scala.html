@@ -1,0 +1,100 @@
+@(cat:String, name:String, page:Option[model.WikiEntry]=None)
+
+@w(c:String) = @{
+  model.Wikis.find(c,name)
+}
+
+@ww() = @{
+  model.Wikis.findAny(name)
+}
+
+@one(c:String,page:Option[model.WikiEntry]) = {
+  @page match {
+    case Some(we) => { 
+        @cat match {
+          case "any" => {
+              <h2>@name</h2>
+            } 
+          case "Category" => {
+              <h2>@model.Wikis.label(cat, name) (Category)</h2>
+            } 
+          case _ => {
+              <h2>@model.Wikis.label(cat, name)</h2>
+           }
+           }
+      <p>@Html(model.Wikis.format(we.markup, we.content))</p> 
+      <p><small>Formatted using @we.markup. (
+      <a href="@routes.Wiki.edit(c,name)">Edit</a> |
+      <a href="@routes.Wiki.report(c,name)">Report</a> 
+      @if(!(Array("WikiLink", "Category") contains cat)) {
+        | <a href="@routes.Wiki.linkUser(c,name)">Like</a> 
+      }
+      ) this page.
+      @cat match {
+        case "WikiLink" if(name.startsWith("User:")) => {
+          <br>This link page connects you to 
+          <a href="/wiki/@model.Wikis.linkFromName(name).to.toString">@model.Wikis.linkFromName(name).to.name</a> 
+          : you can add some notes by <a href="@routes.Wiki.edit(c,name)">editing</a> it.
+        }
+      case "Category" => {
+          <br>You cannot edit categories.
+      }
+      case _ => {
+          <br>A wiki page describes something. You can add more information by 
+           <a href="@routes.Wiki.edit(c,name)">editing</a> it or 
+          <a href="@routes.Wiki.linkUser(c,name)">add to your profile</a>.
+      }
+      }
+      
+      @**********
+      @if(!(Array("WikiLink", "Category") contains cat)) {
+        <br>A wiki page describes something. You can add more information by editing it or 
+        <a href="@routes.Wiki.linkUser(c,name)">add to your profile</a>.
+        <br>Please do not replicate information already contained in other reference places like 
+        Wikipedia, just link to them. Use [[[Main_Page]]] to link to wikipedia.
+      } else {
+        @if("WikiLink" == cat && name.startsWith("User-")) {
+        }
+        <br>A wiki page describes something. You can add more information by editing it or 
+        <a href="@routes.Wiki.linkUser(c,name)">adding it to your profile</a>.
+        <br>Please do not replicate information already contained in other reference places like 
+        Wikipedia, just link to them. Use [[[Main_Page]]] to link to wikipedia.
+      }
+      *********@
+      </small></p>
+      }
+    case None => { 
+      <b>No entry matching @c and @name ... <a href="@routes.Wiki.edit(c,name)">create one</a></b> 
+      }
+  }
+} 
+
+@many() = {
+Multiple options:
+<ul>
+  @ww.map { we => 
+    <li><a href="/wiki/@we.category/@we.name">@we.category @we.name</a></li>
+  }
+</ul>
+} 
+
+@page match {
+  case Some(x) => {
+    @one(x.category, w(x.category))
+    }
+  case None => {
+  
+@cat match {
+  case "any" => { 
+    @if(ww.size > 1) {
+       many
+     } else {
+       @ww.map { x=>
+         @one(x.category, w(x.category))
+         }
+      }
+    }
+  case _ => { @one(cat,w(cat)) }
+}
+}
+}

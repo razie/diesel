@@ -1,4 +1,4 @@
-@(myForm:Form[model.Registration])
+@(registerForm:Form[model.Registration])
 
    @htmlHead()
 
@@ -12,45 +12,45 @@
       <div class="row">
         <div class="span6">
         <h1>Welcome!</h1>
-        <p>Register to create a profile and start uploading events, trophies and whatever.</p>
-        <p><a class="btn btn-primary btn-large">Learn more &raquo;</a></p>
+        <p>Register and we'll let you know as more features are being added.</p>
+        <p>If you enter a password as well, your account will be ready and waiting, when the time is right...</p>
+        <p>Please read our <a href="@routes.Application.show("terms")">Terms and Conditions</a> as well as our <a href="@routes.Application.show("privacy")">Privacy Policy</a><p>
         </div>
 
         <div class="span4">
 
 @import helper.twitterBootstrap._
 
-<form action="@routes.Application.register" method="POST">
-@**********
-@helper.form(action=routes.Application.register, 'method->"post") {
-***********@
-  @helper.inputText(myForm("email"), '_label -> "Email")          
-  @helper.inputPassword(myForm("password"), '_label -> "Password")          
-  <button type="submit" class="btn">Login/Register</button>
+@helper.form(action=routes.Profile.register, 'class->"well") {
 
+  @helper.inputText(
+    registerForm("email"), 
+    '_label -> "Email",
+    '_showConstraints -> false)
+  @helper.inputPassword(
+    registerForm("password"), 
+    '_label -> "Password", 
+    '_error->registerForm.error("password"))
+  @helper.inputPassword(
+    registerForm("repassword"), 
+    '_label -> "Verify password to register")
+
+  <button type="submit" class="btn btn-primary">Login/Register</button>
+
+  @if(registerForm.globalError.isDefined) {
+     <br><br><b>@registerForm.globalError.get.message</b>
+  } 
+  
+  <p><small>By registering or logging in, you agree to the <a href="@routes.Application.show("terms")">Terms and Conditions</a></small><p>
+  }
+  
+  
        </div>
       </div>
 
       </div>
 
       <!-- Example row of columns -->
-      <div class="row">
-        <div class="span4">
-          <h2>Events</h2>
-           <p>Find interesting events in your area for a variety of sports. Contribute events if you know about them.</p>
-          <p><a class="btn" href="#">View details &raquo;</a></p>
-        </div>
-        <div class="span4">
-          <h2>Sports/Leagues</h2>
-           <p>Find local and regional leagues worth racing in, for different sports and categories.</p>
-          <p><a class="btn" href="#">View details &raquo;</a></p>
-       </div>
-        <div class="span4">
-          <h2>HHrophies</h2>
-          <p>Donec sed odio dui. Cras justo odio, dapibus ac facilisis in, egestas eget quam. Vestibulum id ligula porta felis euismod semper. Fusce dapibus, tellus ac cursus commodo, tortor mauris condimentum nibh, ut fermentum massa justo sit amet risus.</p>
-          <p><a class="btn" href="#">View details &raquo;</a></p>
-        </div>
-      </div>
 
       <hr>
 

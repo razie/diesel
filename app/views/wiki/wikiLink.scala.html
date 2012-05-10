@@ -1,0 +1,62 @@
+@(from:model.WID, to:model.WID, myForm:Form[controllers.Wiki.LinkWiki], user:Option[model.User])
+
+   @htmlHead()
+
+   @navbar(user)
+   
+    <div class="container">
+
+      <!-- Main hero unit for a primary marketing message or call to action -->
+      <div class="hero-unit">
+      @if("User" == from.cat) {
+          <h2>Cool! So you want to link to @to.cat @to.name!</h2>
+          } else {
+          <h2>Cool! So you want to link @from.cat @from.name to @to.cat @to.name!</h2>
+          }
+          <p>
+      </div>
+
+<div >
+@import helper.twitterBootstrap._
+
+@helper.form(action=routes.Wiki.linked(from.cat,from.name,to.cat,to.name), 'class->"well") {
+  @helper.select(
+    myForm("how"), 
+     model.Wikis.pageNames("Link").map(x=>(x,x)).toList,
+    '_label -> "Link type", 
+    '_showConstraints -> false)
+  @helper.select(
+    myForm("markup"), 
+     model.Wikis.markups.map(x=>(x,x)),
+    '_label -> "Markkup language", 
+    '_showConstraints -> false)
+  @helper.textarea(
+    myForm("comment"), 
+    '_label -> "Comment", 
+    '_showConstraints -> false,
+    'cols->100,
+    'rows->10)
+    
+    <div class="actions">
+      <button type="submit" class="btn btn-primary">Link it!</button>
+      <a href="@controllers.Wiki.w(to.cat,to.name)" class="btn">Nah</a>
+  </div>
+  
+  @if(myForm.globalError.isDefined) {
+     <br><br><b>@myForm.globalError.get.message</b>
+  } 
+  
+  <br><small>By updating this page, you agree to the <a href="@routes.Application.show("terms")">Terms and Conditions</a></small>
+}
+</div>
+
+          @wiki.wikiFrag(from.cat,from.name)
+          
+      <hr>
+
+      @htmlFooter()
+
+    </div> <!-- /container -->
+
+    @htmlBottom()
+    

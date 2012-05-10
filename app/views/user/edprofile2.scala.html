@@ -1,0 +1,78 @@
+@(myForm: Form[_], child:String, user:model.User)
+
+@salutation() = @{
+  val names = Array("Hi", "Hello", "Hey", "Howdy")
+  val i = new scala.util.Random().nextInt(names.length)
+  names(i)
+  }
+  
+   @htmlHead()
+
+   @navbar(Some(user))
+   
+<div class="span2">
+    @leftmenu(user)
+    </div>
+
+    <div class="container span8">
+
+      <!-- Main hero unit for a primary marketing message or call to action -->
+      <div class="hero-unit">
+
+      <div class="row">
+        <div class="span4">
+        <h2>Privacy settings for @model.Users.findUserById(child).get.ename</h2>
+
+@import helper.twitterBootstrap._
+
+@helper.form(action=routes.Profile.profile2u(child), 'class->"well") {
+  @helper.select(
+    myForm("trust"), 
+     controllers.Profile.trusts.map(x=>(x,x)),
+     '_label -> "Trust level",
+    '_showConstraints -> false)
+    
+  @helper.select(
+    myForm("notify"), 
+     controllers.Profile.notifiers.map(x=>(x,x)),
+     '_label -> "Notify you on",
+    '_showConstraints -> false)
+    
+  <button type="submit" class="btn btn-primary">
+  Update!
+  </button>
+  
+  @if(myForm.globalError.isDefined) {
+     <br><br><b>@myForm.globalError.get.message</b>
+  } 
+  
+  <p><small>By maintaining a profile, you agree to the <a href="@routes.Application.show("terms")">Terms and Conditions</a></small><p>
+}
+
+<p>The trust levels are:
+<ul>
+<li><strong>Public</strong> - complete faith, all child's activity is public and he/she can modify any information without supervision</li>
+<li><strong>Moderated</strong> - child's activity is moderated - this is the default setting</li>
+<li><strong>ParentModerated</strong> - child's activity is moderated by you (nothing will change until you aprove)</li>
+<li><strong>Private</strong> - child's activity and information is completely private</li>
+</ul>
+
+<p>Notification levels are:
+<ul>
+<li><strong>Everything</strong> - notify you be email of any activity of the child</li>
+<li><strong>Content</strong> - notify you when the child modifies any actual content</li>
+<li><strong>None</strong> - no notifications of the child's activity</li>
+</ul>
+       </div>
+      </div>
+
+      </div>
+
+      <hr>
+
+      @htmlFooter()
+
+    </div> <!-- /container -->
+
+    @htmlBottom()
+    
