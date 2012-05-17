@@ -1,4 +1,4 @@
-@(cat:String, name:String, page:Option[model.WikiEntry]=None)
+@(cat:String, name:String, simple:Boolean = false, page:Option[model.WikiEntry]=None)
 
 @w(c:String) = @{
   model.Wikis.find(c,name)
@@ -11,6 +11,7 @@
 @one(c:String,page:Option[model.WikiEntry]) = {
   @page match {
     case Some(we) => { 
+      @if(!simple) {
         @cat match {
           case "any" => {
               <h2>@name</h2>
@@ -21,8 +22,12 @@
           case _ => {
               <h2>@model.Wikis.label(cat, name)</h2>
            }
-           }
+         }
+      }
+      
       <p>@Html(model.Wikis.format(we.markup, we.content))</p> 
+        
+        @if(!simple) {
       <p><small>Formatted using @we.markup. (
       <a href="@routes.Wiki.edit(c,name)">Edit</a> |
       <a href="@routes.Wiki.report(c,name)">Report</a> 
@@ -45,7 +50,8 @@
           <a href="@routes.Wiki.linkUser(c,name)">add to your profile</a>.
       }
       }
-      
+} <!-- /simple -->
+
       @**********
       @if(!(Array("WikiLink", "Category") contains cat)) {
         <br>A wiki page describes something. You can add more information by editing it or 
@@ -64,8 +70,22 @@
       </small></p>
       }
     case None => { 
+    @if("any" != cat) {
       <b>No entry matching @c and @name ... <a href="@routes.Wiki.edit(c,name)">create one</a></b> 
+    } else {
+      <b>No entry for @name ... you could create one:</b>
+      <form action="@routes.Wiki.edit2" method="GET" class="well form-inline">
+        <input type="text" name="name" id="name" value="@name"> 
+        <select id="cat" name="cat" class="input-small">
+          @model.Wikis.pageNames("Category").toList.map{x=>
+            <option value="@x" >@x</option>
+          }
+       </select>
+
+     <button type="submit" class="btn btn-primary">Create</button>
+     </form>
       }
+    }
   }
 } 
 
@@ -78,23 +98,17 @@ Multiple options:
 </ul>
 } 
 
-@page match {
-  case Some(x) => {
-    @one(x.category, w(x.category))
-    }
-  case None => {
-  
-@cat match {
-  case "any" => { 
-    @if(ww.size > 1) {
-       many
-     } else {
-       @ww.map { x=>
-         @one(x.category, w(x.category))
-         }
+@{
+page match {
+  case Some(x) => one(x.category, w(x.category))
+  case None => cat match {
+    case "any" => { 
+      if(ww.size >= 1) many
+      else if(ww.size == 1) ww.map ( x=> one(x.category, w(x.category)) )
+      else one("any", None)
       }
+    case _ => one(cat,w(cat)) 
     }
-  case _ => { @one(cat,w(cat)) }
+  }
 }
-}
-}
+

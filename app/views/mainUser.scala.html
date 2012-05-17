@@ -50,10 +50,10 @@
           </p>
         </div>
         <div class="span4">
-          <h2>Leagues</h2>
-            @if(user.pages("League").size>0) {
+          <h2>Series/leagues</h2>
+            @if(user.pages("Series").size>0) {
               <ul>
-              @for(t <- user.pages("League")) {
+              @for(t <- user.pages("Series")) {
                 <li><a href="/user/@user.id/wiki/@t.cat/@t.name">@model.Wikis.label(t.cat,t.name)</a></li>
               }
               </ul>
@@ -61,7 +61,7 @@
               <b>No leagues...</b>
             }
           <p>
-            <a class="btn" href="/wiki/League">Add &raquo;</a></p>
+            <a class="btn" href="/wiki/Series">Add &raquo;</a></p>
           </p>
        </div>
         <div class="span4">

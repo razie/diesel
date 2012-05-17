@@ -5,10 +5,13 @@
    @navbar(user)
    
     <div class="container">
+        <div class="row">
+
+    <div class="span9">
 
       <!-- Main hero unit for a primary marketing message or call to action -->
       <div class="well">
-          @wiki.wikiFrag(cat,name, page)
+          @wiki.wikiFrag(cat,name,false,page)
       </div>
 
     @if("Category" == cat) {
@@ -30,6 +33,14 @@
 
       <hr>
       @htmlFooter()
+
+    </div> <!-- /span9 -->
+
+      <div class="span3">
+          @wiki.wikiFrag("Page","Right",true, None)
+      </div>
+
+      </div> <!-- row -->
 
     </div> <!-- /container -->
 

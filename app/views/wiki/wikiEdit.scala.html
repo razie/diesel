@@ -3,7 +3,22 @@
 @v(name:String) = @{
   myForm(name).value.getOrElse("?")
 }
-          
+
+@reserved(page:Option[model.WikiEntry]) = {
+  @page match {
+    case Some(we) => { 
+      @if(we.isReserved) {
+        YES <a href="@routes.Wiki.reserve(category,name,false)">Unreserve it</a>
+      } else {
+        NO <a href="@routes.Wiki.reserve(category,name,true)">Reserve it</a>
+      } 
+    }
+    case None => { 
+      <b>new page</b>
+    }
+  }
+} 
+
    @htmlHead("Editing "+category +":"+ name)
 
    @navbar(user)
@@ -37,10 +52,16 @@ PROBLEM: many places use label as name... via Wikis.formatName
     <div>
   @helper.select(
     myForm("markup"), 
-    Seq("markdown"->"markdown"), //model.Wikis.markups.map(x=>(x,x)),
+    Seq("md"->"Markdown"), //model.Wikis.markups.map(x=>(x,x)),
     '_label -> "Markup Language", 
     'class -> "input-small",
     '_showConstraints -> false)
+
+  @if(user.get.hasPerm("adminDb")) {
+    <p>Reserved: @reserved(model.Wikis.find(category,name))
+      
+  }
+
   </div>
 </td></tr></table>    
     <div class="actions">

@@ -11,6 +11,7 @@ import play.api._
 import model.Users
 import admin.Base64Codec
 import razie.Logging
+import com.mongodb.WriteResult
 
 /** common razie controller utilities */
 class RazController extends Controller with Logging {
@@ -41,7 +42,11 @@ class RazController extends Controller with Logging {
   }
 
   final val cLogin = new Corr("Not logged in", "login")
-  
+  final val cExpired = new Corr("token expired", "get another token")
+  final val cNoProfile = InternalErr("can't load the user profile")
+
+  def dbop(r: WriteResult) = log("DB_RESULT: " + r.getError)
+
   object InternalErr {
     def apply(err: String) = Corr (err, Some("create a suppport request"))
   }
@@ -65,7 +70,13 @@ class RazController extends Controller with Logging {
 
   def noPerm(c: String, n: String, more:String="")(implicit request: Request[_]) = {
     Audit.auth("wiki user permission failed: %s:%s %s".format(c,n,more))
-    Unauthorized (views.html.util.utilMsg("Sorry, you don't have the permission! " + more, Some(controllers.Wiki.w(c, n).toString), auth))
+    Unauthorized (views.html.util.utilMsg(
+"""
+Sorry, you don't have the permission to do this! 
+
+You can describe the issue in a support request and we'll take care of it! Thanks!
+
+""" + more, Some(controllers.Wiki.w(c, n).toString), auth))
   }
 
   //========= utils

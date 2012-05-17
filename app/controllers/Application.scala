@@ -39,12 +39,13 @@ object Application extends RazController {
   }
 
   def sec(whats: String) = Action { implicit request =>
+    implicit val errCollector = new Error()
     println(whats)
     (for (
-      ds <- DoSec.find(whats);
-      x <- if (ds.expiry.isAfterNow) Some(true) else None
+      ds <- DoSec.find(whats) orErr "cantfindit";
+      x <- (if (ds.expiry.isAfterNow) Some(true) else None) orErr ("expired")
     ) yield Redirect(ds.link)
-    ) getOrElse Msg("Link is invalid/expired", "Page", "home")
+    ) getOrElse Msg("Link is invalid/expired... " + errCollector.mkString, "Page", "home")
   }
 
 }

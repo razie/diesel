@@ -17,8 +17,8 @@ package object RazSalatContext {
 object Mongo {
   lazy val conn = MongoConnection(System.getProperty("mongohost", "localhost"))
 
-  final val CURR_VER = 2
-  final val upgrades = Map (1 -> Upgrade1)
+  val CURR_VER = 4
+  val upgrades = Map (1 -> Upgrade1, 2 -> Upgrade2, 3 -> Upgrade3)
 
   lazy val db = {
     com.mongodb.casbah.commons.conversions.scala.RegisterConversionHelpers()
@@ -27,30 +27,34 @@ object Mongo {
     // authenticate
     val db = conn (System.getProperty("mongodb", "rk"))
     if (!db.authenticate(System.getProperty("mongouser", "r"), System.getProperty("mongopass", "r"))) {
-      razie.Log.info("ERR_MONGO_AUTHD")
+      Log.info("ERR_MONGO_AUTHD")
       throw new Exception("Cannot authenticate. Login failed.")
     }
 
     // upgrade if needed
-    val dbVer = db("Ver").findOne.map(_.as[Int]("ver"))
+    val dbVer = db("Ver").findOne.map(_.get("ver").toString).map(_.toInt)
     dbVer match {
-      case Some(v) => if (v < CURR_VER) {
-        upgrades.get(v).map { u =>
-          Log.audit ("UPGRADING DB from ver " + v)
-          u.upgrade
-          db("Ver").update(Map("ver" -> v), Map("ver" -> CURR_VER))
-          Log.audit ("UPGRADING DB... DONE")
-        } getOrElse { Log.error("NO UPGRADES FROM VER " + v) }
+      case Some(v) => {
+        var ver = v
+        while (ver < CURR_VER && upgrades.contains(ver)) {
+          upgrades.get(ver).map { u =>
+            Log.audit ("UPGRADING DB from ver " + ver)
+            u.upgrade(db)
+            db("Ver").update(Map("ver" -> ver), Map("ver" -> CURR_VER))
+            Log.audit ("UPGRADING DB... DONE")
+            ver += 1
+          } getOrElse { Log.error("NO UPGRADES FROM VER " + ver) }
+        }
       }
-      case None => db("Ver") += Map("ver" -> CURR_VER)
+      case None => db("Ver") += Map("ver" -> CURR_VER) // create a first ver entry
     }
 
     // that's it, db initialized?
     db
   }
 
-  def count (table:String) = db(table).count
-  
+  def count(table: String) = db(table).count
+
   def apply(table: String) = new Table(table)
 
   case class Table(table: String) {
@@ -76,10 +80,29 @@ object Mongo {
   }
 }
 
-abstract class UpgradeDb(val fromVer: Int) {
-  def upgrade: Boolean
+/** derive from here and list in upgrades above */
+abstract class UpgradeDb {
+  def upgrade(db: MongoDB): Unit
 }
 
-object Upgrade1 extends UpgradeDb(1) {
-  def upgrade = true
+object Upgrade1 extends UpgradeDb {
+  def upgrade(db: MongoDB) {}
+}
+
+// add roles to user
+object Upgrade2 extends UpgradeDb {
+  def upgrade(db: MongoDB) {
+    val t = db("User")
+    for (u <- t) {
+      u.put ("roles", Array(u.removeField("userType")))
+      t.save(u)
+    }
+  }
+}
+
+// drop the wiki old table - new structure
+object Upgrade3 extends UpgradeDb {
+  def upgrade(db: MongoDB) {
+    db.getCollection("WikiEntryOld").drop
+  }
 }

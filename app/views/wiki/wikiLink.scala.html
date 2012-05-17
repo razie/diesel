@@ -1,5 +1,17 @@
 @(from:model.WID, to:model.WID, myForm:Form[controllers.Wiki.LinkWiki], user:Option[model.User])
+@import model.Wikis
+@import helper.twitterBootstrap._
 
+@how() = @{
+  Wikis.find("Category", to.cat).flatMap(_.tags.get("roles:"+from.cat)) match {
+    case Some(s) => {
+      s.split(",").map(x=>(x,x)).toSeq
+    }
+    case None => {
+      Wikis.pageNames("Link").map(x=>(x,x)).toList
+    }
+  }
+}
    @htmlHead()
 
    @navbar(user)
@@ -17,13 +29,12 @@
       </div>
 
 <div >
-@import helper.twitterBootstrap._
 
 @helper.form(action=routes.Wiki.linked(from.cat,from.name,to.cat,to.name), 'class->"well") {
   @helper.select(
     myForm("how"), 
-     model.Wikis.pageNames("Link").map(x=>(x,x)).toList,
-    '_label -> "Link type", 
+     how(),
+    '_label -> "Enjoy it as a", 
     '_showConstraints -> false)
   @helper.select(
     myForm("markup"), 

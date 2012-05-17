@@ -20,28 +20,24 @@ cols = (key,label)
     (sortby.map(p=>m.find.sort(Map(p -> -1))).getOrElse(m.find()))
 }
 
+<hr>
+
 <table class="table table-striped">
 <thead>
-   <tr>
-   @cols.map { case (k,l) =>
-     <th>@l</th>
-     }
-   </tr>
+  <tr>
+    @cols.map { case (k,l) =>
+      <th>@l</th>
+    }
+  </tr>
 </thead>
 @ccol.map { db =>
-   <tr>
-  @cols.map { case (k,l) =>
+  <tr>
+    @cols.map { case (k,l) =>
      <td>@func.map(_.apply(db, k, (if(db.get(k)==null) null else db.get(k).toString))).getOrElse(db.get(k))</td>
-   }
-   </tr>
-   }
+    }
+  </tr>
+}
 </table>
 
-      <hr>
-      
-      @htmlFooter()
-
-    </div> <!-- /container -->
-
-    @htmlBottom()
+<hr>
     

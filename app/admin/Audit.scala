@@ -22,9 +22,13 @@ object Audit extends Logging {
 
   def many(m: Any*) = m.mkString(" ")
 
+  def security(what: String, details:Any*) =  logdb ("SECURITY_ISSUE", what, details)
+  
   def logdb(what: String, details:Any*) = {
     Audit("a", what, details.mkString(",")).create
-    what + " " + details.mkString(",")
+    val s = what + " " + details.mkString(",")
+    razie.Log.audit(s)
+    s
   }
 
   def clearAudit(id: String, userId: String) = {
@@ -38,13 +42,14 @@ object Audit extends Logging {
   }
   
   def create[T](entity: T): T = { audit(logdb(ENTITY_CREATE, entity.toString)); entity }
+  def createnoaudit[T](entity: T): T = { audit(ENTITY_CREATE + " " + entity.toString); entity }
   def update[T](entity: T): T = { audit(logdb(ENTITY_UPDATE, entity.toString)); entity }
   def delete[T](entity: T): T = { audit(logdb(ENTITY_DELETE, entity.toString)); entity }
   final val ENTITY_CREATE = "ENTITY_CREATE"
   final val ENTITY_UPDATE = "ENTITY_UPDATE"
   final val ENTITY_DELETE = "ENTITY_DELETE"
 
-  def missingPage(url: String) { error(many("ERR_MISSING_PAGE", url)) }
+  def missingPage(url: String) { error(many("WIKI_MISSING_PAGE", url)) }
 
   def regdemail(email: String) { audit(logdb(REGD_EMAIL, email)) }
   final val REGD_EMAIL = "INFO_REGD_EMAIL"

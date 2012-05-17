@@ -1,21 +1,5 @@
 @(pageTitle: String = "RacerKidz Nation")
-
 <!DOCTYPE html>
-
-@***********************
-<html>
-    <head>
-        <title>@pageTitle</title>
-        <link rel="stylesheet" media="screen" href="@routes.Assets.at("stylesheets/main.css")">
-        <link rel="shortcut icon" type="image/png" href="@routes.Assets.at("images/favicon.png")">
-    </head>
-    <body>
-        @content
-    </body>
-</html>
-*****************@
-
-
 <html lang="en">
   <head>
     <meta charset="utf-8">
@@ -54,6 +38,21 @@ img.rklogo
   }
 </style>
   
+@if(_root_.admin.Config.analytics) {
+  <script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-31808405-1']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+}
     </head>
 
   <body>

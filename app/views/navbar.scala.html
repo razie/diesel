@@ -13,15 +13,23 @@
           </a>
           <div class="nav-collapse">
             <ul class="nav">
+@*******
               <li class="active"><a href="/">Home</a></li>
-              <li><a href="/page/about">About</a></li>
-              <li><a href="/page/contact">Contact</a></li>
+******@
+              <li><a href="/">Home</a></li>
+              <li><a href="/doe/support">Support</a></li>
+              <li><a href="/page/About">About</a></li>
+              <li class="divider-vertical"></li>
               <li><a href="/wiki">Browse</a></li>
             </ul>
+
           </div><!--/.nav-collapse -->
         
             <ul class="nav pull-right">
               <li class="divider-vertical"></li>
+            <form class="navbar-search pull-left" action="/wiki/search" method="GET">
+              <input type="text" class="search-query" placeholder="Search" id="q" name="q" value="Search">
+            </form>
 @user match {
   case None => { 
     <li><a href="/do/join">Join</a></li>

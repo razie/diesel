@@ -27,6 +27,10 @@ case class UserGroup(
   name: String,
   can: Seq[String] = Seq("+uProfile"))
 
+case class Location (city:String, state:String, country:String) {
+  
+}
+  
 /** Minimal user info - loaded all the time for a user */
 case class User(
   userName: String,
@@ -35,7 +39,8 @@ case class User(
   yob: Int,
   email: String,
   pwd: String,
-  userType: String = "racer",
+  status:Char = 'a', // a-active, s-suspended, d-deleted
+  roles: Seq[String] = Seq("racer"),
   _id: ObjectId = new ObjectId()) {
 
   // TODO change id = it shows like everywhere
@@ -46,16 +51,16 @@ case class User(
   def tasks = Users.findTasks(_id)
 
   // TODO optimize
-  def perms: Seq[String] = profile.map(_.perms).getOrElse(Seq()) ++ group.map(_.can).getOrElse(Seq())
+  def perms: Seq[String] = profile.map(_.perms).getOrElse(Seq()) ++ groups.flatMap(_.can)
   def hasPerm(p: String) = perms.contains("+"+p) && !perms.contains("-"+p)
 
   def under12 = DateTime.now.year.get - yob <= 12
 
   // TODO cache groups
-  lazy val group = Mongo("UserGroup").findOne(Map("name" -> userType)) map (grater[UserGroup].asObject(_))
+  lazy val groups = roles flatMap { role => Mongo("UserGroup").findOne(Map("name" -> role)) map (grater[UserGroup].asObject(_))}
 
   /** make a default profile */
-  def mkProfile = Profile(this._id, Seq())
+  def mkProfile = Profile(this._id, None, Seq())
 
   def rel(r: String): List[User] = profile.map(p =>
     (for (t <- p.relationships if (t._2 == r))
@@ -106,6 +111,7 @@ case class User(
  */
 case class Profile(
   userId: ObjectId,
+  location:Option[Location]=None,
   tags: Seq[String] = Seq(),
   perms: Seq[String] = Seq(),
   aboutMe: Option[WikiEntry] = None,
@@ -115,7 +121,7 @@ case class Profile(
 //  def create = Mongo ("Profile") += grater[Profile].asDBObject(Audit.create(this))
   def update(p: Profile) = Mongo("Profile").m.update(Map("userId" -> userId), grater[Profile].asDBObject(Audit.update(p)))
 
-  def addRel(t: (String, String)) = model.Profile(userId, tags, perms, aboutMe, relationships ++ Map(t), _id)
+  def addRel(t: (String, String)) = model.Profile(userId, None, tags, perms, aboutMe, relationships ++ Map(t), _id)
 
   var createdDtm: DateTime = DateTime.now
   var lastUpdatedDtm: DateTime = DateTime.now
@@ -190,6 +196,7 @@ object Users {
   def findUser(email: String) = Mongo("User").findOne(Map("email" -> email)) map (grater[User].asObject(_))
   def findUserById(id: String) = Mongo("User").findOne(Map("_id" -> new ObjectId(id))) map (grater[User].asObject(_))
   def findUserById(id: ObjectId) = Mongo("User").findOne(Map("_id" -> id)) map (grater[User].asObject(_))
+  def findUserByUsername(uname: String) = Mongo("User").findOne(Map("userName" -> uname)) map (grater[User].asObject(_))
 
   def findTasks(id: ObjectId) = Mongo("UserTask").find(Map("userId" -> id)) map (grater[UserTask].asObject(_))
 

@@ -1,4 +1,4 @@
-@(myForm: Form[controllers.Profile.CrProfile], user:Option[model.User]=None)
+@(myForm: Form[model.User], user:model.User)
 
 @salutation() = @{
   val names = Array("Hi", "Hello", "Hey", "Howdy")
@@ -6,27 +6,26 @@
   names(i)
   }
   
-   @htmlHead()
+  @htmlHead()
 
-   @navbar(user)
+  @navbar(Some(user))
    
-    <div class="container">
+  <div class="span2">
+    @leftmenu(1, user)
+  </div>
+
+    <div class="container span8">
 
       <!-- Main hero unit for a primary marketing message or call to action -->
       <div class="hero-unit">
 
       <div class="row">
-        <div class="span6">
-        <h2>Basic profile</h2>
-        <p>Give us some basic info - it helps us be nice to you :)</p>
-        <p>Please enter your age properly, if you're under 13, we'll ask you to just get a parent to sign up as well, later - that's all!</p>
-        </div>
-
         <div class="span4">
+        <h2>Basic profile</h2>
 
 @import helper.twitterBootstrap._
 
-@helper.form(action=routes.Profile.createProfile(), 'class->"well") {
+@helper.form(action=routes.Profile.updateProfile(), 'class->"well") {
   @helper.inputText(
     myForm("firstName"), 
     '_label -> "First name", 
@@ -49,16 +48,8 @@
     myForm("email"), 
     '_label -> "Email", 
     '_showConstraints -> false)
-
-    @***** recaptcha ********@
-    <script type="text/javascript" src="http://www.google.com/recaptcha/api/challenge?k=6Ld9uNASAAAAAL_5jXRwtBAtiJy8XGwSzZOWW80s"></script>
-     <noscript>
-       <iframe src="http://www.google.com/recaptcha/api/noscript?k=6Ld9uNASAAAAAL_5jXRwtBAtiJy8XGwSzZOWW80s" height="300" width="500" frameborder="0"></iframe>
-       <br><textarea name="recaptcha_challenge_field" rows="3" cols="40"></textarea>
-       <input type="hidden" name="recaptcha_response_field" value="manual_challenge">
-     </noscript>
-<br>
-  <button type="submit" class="btn btn-primary">That's it - create account!</button>
+    
+  <button type="submit" class="btn btn-primary">Update account!</button>
   
   @if(myForm.globalError.isDefined) {
      <br><br><b>@myForm.globalError.get.message</b>

@@ -1,0 +1,62 @@
+@(myForm: Form[_], user:model.User)
+
+@salutation() = @{
+  val names = Array("Hi", "Hello", "Hey", "Howdy")
+  val i = new scala.util.Random().nextInt(names.length)
+  names(i)
+  }
+  
+  @htmlHead()
+
+  @navbar(Some(user))
+   
+  <div class="span2">
+    @leftmenu(3, user)
+  </div>
+
+    <div class="container span8">
+
+      <!-- Main hero unit for a primary marketing message or call to action -->
+      <div class="hero-unit">
+
+      <div class="row">
+        <div class="span6">
+        <h2>Changing the username</h2>
+<p>The username is displayed whenever other users see your activity. You should not really change this except to choose one the first time.</p>
+<p>If you're under 13, your parent may want you to choose an anonymous username</p>
+
+@import helper.twitterBootstrap._
+
+@helper.form(action=routes.EdUsername.step2, 'class->"well") {
+  @helper.inputText(
+    myForm("currusername"), 
+    '_label -> "Current username", 
+    '_showConstraints -> false)
+  @helper.inputText(
+    myForm("newusername"), 
+    '_label -> "New Username", 
+    '_showConstraints -> false,
+    '_error->myForm.error("newusername"))
+    
+  <button type="submit" class="btn btn-primary">Change !</button>
+  
+  @if(myForm.globalError.isDefined) {
+     <br><br><b>@myForm.globalError.get.message</b>
+  } 
+  
+  <p><small>By maintaining a profile, you agree to the <a href="@routes.Application.show("terms")">Terms and Conditions</a></small><p>
+}
+
+       </div>
+      </div>
+
+      </div>
+
+      <hr>
+
+      @htmlFooter()
+
+    </div> <!-- /container -->
+
+    @htmlBottom()
+    
