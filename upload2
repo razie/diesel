@@ -1,0 +1,11 @@
+
+rm rk.zip
+
+zip -r rk.zip * -x lib_managed/\* dist/\* data/\* 
+
+scp rk.zip demo@cloud2.razie.com:rk/app/run/up/
+rm rk.zip
+
+ssh demo@cloud2.razie.com "export PATH=\$PATH:/usr/java/jdk1.6.0_18/bin; cd ~/rk/app/run; . ./update"
+
+

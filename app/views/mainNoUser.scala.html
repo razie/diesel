@@ -1,4 +1,4 @@
-@(salutation:String, joe:String)
+@(salutation:String, joe:String, slogan:String)
 
    @htmlHead()
 
@@ -11,11 +11,11 @@
 
         <div class="row">
           <div class="span6">
-            <h1>@salutation, @joe! <small><a href="/do/join">not @joe?</a></small></h1>
+            <h1>@salutation, @joe! <small><a href="@routes.Profile.doeJoin">not @joe?</a></small></h1>
             <br>
-<p>Train. Plan. Race. Win!</p>
-<p>RacerKidz gets new features every week - please <a href="/do/join">join</a> to take it for a spin and/or keep up-to-date with the new features.</p>
-<p><a class="btn btn-primary btn-large" href="/do/join">Join &raquo;</a>
+<p>@slogan</p>
+<p>RacerKidz gets new features every week - please <a href="@routes.Profile.doeJoin">join</a> to take it for a spin and/or keep up-to-date with the new features.</p>
+<p><a class="btn btn-primary btn-large" href="@routes.Profile.doeJoin">Join &raquo;</a>
    <a class="btn btn-large" href="http://500px.com/editors">Nah, checkout some cool pix &raquo;</a></p>
           </div>
           <div class="span4">

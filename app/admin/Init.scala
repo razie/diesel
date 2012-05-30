@@ -29,16 +29,18 @@ object Init extends Logging {
           )
     ) Mongo.db.getCollection(t).drop
 
+    import model.Perm._
+    
     val groups = List(
-      UserGroup("admin", Seq("+uProfile", "+cCategory", "+uCategory", "+uReserved", "+uWiki", "+adminDb")),
-      UserGroup("racer", Seq("+uProfile", "+uWiki")),
-      UserGroup("parent", Seq("+uProfile", "+uWiki")))
+      UserGroup("admin", Set(uProfile.plus, cCategory.plus, uCategory.plus, uReserved.plus, uWiki.plus, adminDb.plus)),
+      UserGroup("racer", Set(uProfile.plus, uWiki.plus)),
+      UserGroup("parent", Set(uProfile.plus, uWiki.plus)))
     groups map (ug => Users.create(ug))
 
     val users = List(User ("andrei", "Andrei", "Cojocaru", 2000, e("a@racerkidz.com"), e("asdf")),
       User ("matei", "Matei", "Cojocaru", 2002, e("m@racerkidz.com"), e("asdf")),
-      User ("razie", "Razie", "Cojocaru", 1970, e("r@racerkidz.com"), e("asdf"), 'a', Seq("admin")),
-      User ("ileana", "Ileana", "Cojocaru", 1969, e("i@racerkidz.com"), e("asdf"), 'a', Seq("admin")))
+      User ("razie", "Razie", "Cojocaru", 1970, e("r@racerkidz.com"), e("asdf"), 'a', Set("admin")),
+      User ("ileana", "Ileana", "Cojocaru", 1969, e("i@racerkidz.com"), e("asdf"), 'a', Set("admin")))
     users map (ug => ug.create(ug.mkProfile))
 
     val tasks = List (
@@ -71,7 +73,7 @@ object Init extends Logging {
 
       wr("Page", "Nothing"),
       wr("Page", "home", "{{redirect:/}}"),
-      wr("Page", "Terms_And_Conditions", terms),
+      wr("Page", "Terms_of_Service", terms),
       wr("Page", "wiki", "Main wiki entry page - please follow a category: [[list:Category]]"))
     pages map (_.create)
 
@@ -113,7 +115,7 @@ object Init extends Logging {
 
   val terms =
     """
-<h2>Terms and conditions!</h2>
+<h2>Terms of Service!</h2>
 This service is not a critical service and is provided as is! No warranties expressed or implied.
 
 <h2>Privacy!</h2>

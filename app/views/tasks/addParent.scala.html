@@ -19,7 +19,7 @@
 
 @import helper.twitterBootstrap._
 
-@helper.form(action=routes.Profile.addParent2, 'class->"well") {
+@helper.form(action=routes.Tasks.addParent2, 'class->"well") {
 
   @helper.inputText(
     pForm("parentEmail"), 
@@ -31,7 +31,7 @@
      <br><br><b>@pForm.globalError.get.message</b>
   } 
   
-  <p><small>By registering or logging in, you agree to the <a href="@routes.Application.show("terms")">Terms and Conditions</a></small><p>
+  <p><small>By registering or logging in, you agree to the <a href="@controllers.Wiki.w("Terms of Service")">Terms of Service</a></small><p>
   }
   
        </div>

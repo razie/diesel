@@ -28,11 +28,11 @@
             <ul class="nav pull-right">
               <li class="divider-vertical"></li>
             <form class="navbar-search pull-left" action="/wiki/search" method="GET">
-              <input type="text" class="search-query" placeholder="Search" id="q" name="q" value="Search">
+              <input type="text" class="search-query" placeholder="Search" id="q" name="q" title="Search box"/>
             </form>
 @user match {
   case None => { 
-    <li><a href="/do/join">Join</a></li>
+    <li><a href="@routes.Profile.doeJoin">Join</a></li>
   }
   
   case Some(joe) => { 

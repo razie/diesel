@@ -6,7 +6,10 @@ object Config {
   lazy val safeMode = System.getProperty("safemode", "none")
   final val SUPPORT = "support@racerkidz.com"
   final val mongodb = System.getProperty("mongodb", "rk")
-  final val analytics = System.getProperty("analytics", "true").toBoolean
+  final val mongohost = System.getProperty("mongohost", "localhost")
+  final val mongouser = System.getProperty("mongouser", "r")
+  final val mongopass = System.getProperty("mongopass", "r")
+  final val analytics = System.getProperty("analytics", "false").toBoolean
   
 }
 

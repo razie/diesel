@@ -6,6 +6,7 @@ import model.RazSalatContext.ctx
 import model.Mongo
 import razie.Logging
 import com.mongodb.casbah.Imports._
+import razie.Log
 
 case class Audit(level: String, msg: String, details: String, when: DateTime = DateTime.now) {
   def create = {
@@ -44,6 +45,7 @@ object Audit extends Logging {
   def create[T](entity: T): T = { audit(logdb(ENTITY_CREATE, entity.toString)); entity }
   def createnoaudit[T](entity: T): T = { audit(ENTITY_CREATE + " " + entity.toString); entity }
   def update[T](entity: T): T = { audit(logdb(ENTITY_UPDATE, entity.toString)); entity }
+  def updatenoaudit[T](entity: T): T = { audit(ENTITY_UPDATE+" "+ entity.toString); entity }
   def delete[T](entity: T): T = { audit(logdb(ENTITY_DELETE, entity.toString)); entity }
   final val ENTITY_CREATE = "ENTITY_CREATE"
   final val ENTITY_UPDATE = "ENTITY_UPDATE"

@@ -11,18 +11,19 @@
   @navbar(Some(user))
    
   <div class="span2">
-    @leftmenu(3, user)
+    @leftmenu(4, user)
   </div>
 
     <div class="container span8">
 
       <!-- Main hero unit for a primary marketing message or call to action -->
-      <div class="hero-unit">
+      <div class="well">
 
       <div class="row">
         <div class="span6">
         <h2>Changing the username</h2>
 <p>The username is displayed whenever other users see your activity. You should not really change this except to choose one the first time.</p>
+<p>If you have sent anyone a link to your username, those links may not work anymore.</p>
 <p>If you're under 13, your parent may want you to choose an anonymous username</p>
 
 @import helper.twitterBootstrap._
@@ -31,6 +32,7 @@
   @helper.inputText(
     myForm("currusername"), 
     '_label -> "Current username", 
+    'readonly -> "yes",
     '_showConstraints -> false)
   @helper.inputText(
     myForm("newusername"), 
@@ -44,7 +46,7 @@
      <br><br><b>@myForm.globalError.get.message</b>
   } 
   
-  <p><small>By maintaining a profile, you agree to the <a href="@routes.Application.show("terms")">Terms and Conditions</a></small><p>
+  <p><small>By maintaining a profile, you agree to the <a href="@controllers.Wiki.w("Terms of Service")">Terms of Service</a></small><p>
 }
 
        </div>

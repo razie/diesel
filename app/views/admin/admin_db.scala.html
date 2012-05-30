@@ -8,7 +8,7 @@
 <h2>Collections</h2>
 
 <ul>
-@model.Mongo.db.collectionNames.toList.sort(_ < _).map { c =>
+@model.Mongo.db.collectionNames.toList.sortWith(_ < _).map { c =>
    <li><a href="@routes.Admin.col(c)">@c (@model.Mongo.db(c).count)</a></li>
 }
 </ul>

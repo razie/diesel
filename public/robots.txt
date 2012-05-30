@@ -1,6 +1,6 @@
 
 User-agent: *
-Dissalow: /doe/
-Dissalow: /wikie/
-Dissalow: /admin/
+Disallow: /doe/
+Disallow: /wikie/
+Disallow: /admin/
 

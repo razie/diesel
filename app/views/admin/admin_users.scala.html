@@ -1,5 +1,20 @@
 @(user:Option[model.User])
 
+@fufu(db:com.mongodb.casbah.Imports.DBObject, k:String, v:String) = {
+  @k match {
+    case "email" => {
+      @model.Enc.unapply(v)
+    }
+    case "userName" => {
+      <a href="/admin/user/@db.get("_id").toString">@v</a>
+    }
+    case _=> {
+      @v
+    }
+  }
+}
+
+
   @htmlHead()
   @navbar(user)
    
@@ -7,7 +22,7 @@
 
     <h2>Users</h2>
 
-    @util.utilTable("User", Seq("email"->"Email", "firstName"->"First Name", "lastName"->"Last Name", "yob"->"YOB"))
+    @util.utilTable("User", Seq("userName" -> "UserName", "_id"->"Id", "email"->"Email", "firstName"->"First Name", "lastName"->"Last Name", "yob"->"YOB"), None, None, Some(fufu))
 
     <hr>
       

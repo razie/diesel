@@ -1,18 +1,17 @@
 @(sForm:Form[_], user:Option[model.User])
 
-   @htmlHead()
+@import helper.twitterBootstrap._
 
-   @navbar(user)
+@htmlHead()
+
+@navbar(user)
    
-    <div class="container">
-
-      <!-- Main hero unit for a primary marketing message or call to action -->
-      <div class="hero-unit">
+  <div class="container">
+    <div class="hero-unit">
 
       <div class="row">
         <div class="span8">
-<h2>Support request</h2>
-@import helper.twitterBootstrap._
+          <h2>Support request</h2>
 
 @helper.form(action=routes.Support.supportu, 'class->"well") {
 
@@ -39,22 +38,19 @@
      <br><br><b>@sForm.globalError.get.message</b>
   } 
   
-  <p><small>By using this form, you agree to the <a href="@routes.Application.show("terms")">Terms and Conditions</a></small><p>
+  <p><small>By using this form, you agree to the <a href="@controllers.Wiki.w("Terms of Service")">Terms of Service</a></small><p>
   }
   
-  
-       </div>
+        </div>
       </div>
 
-      </div>
+    </div>
 
-      <!-- Example row of columns -->
+  <hr>
 
-      <hr>
+  @htmlFooter()
 
-      @htmlFooter()
+  </div> <!-- /container -->
 
-    </div> <!-- /container -->
-
-    @htmlBottom()
+@htmlBottom()
     

@@ -71,7 +71,6 @@
 	<classpathentry kind="lib" path="lib_managed/jars/org.seleniumhq.selenium/selenium-android-driver/selenium-android-driver-2.16.1.jar"/>
 	<classpathentry kind="lib" path="lib_managed/jars/org.seleniumhq.selenium/selenium-remote-driver/selenium-remote-driver-2.16.1.jar"/>
 	<classpathentry kind="lib" path="lib_managed/jars/cglib/cglib-nodep/cglib-nodep-2.1_3.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/org.json/json/json-20080701.jar"/>
 	<classpathentry kind="lib" path="lib_managed/jars/org.seleniumhq.selenium/selenium-api/selenium-api-2.16.1.jar"/>
 	<classpathentry kind="lib" path="lib_managed/jars/org.apache.httpcomponents/httpclient/httpclient-4.1.2.jar"/>
 	<classpathentry kind="lib" path="lib_managed/jars/org.apache.httpcomponents/httpcore/httpcore-4.1.3.jar"/>
@@ -106,5 +105,7 @@
 	<classpathentry kind="lib" path="lib_managed/jars/javax.mail/mail/mail-1.4.5.jar"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/razbase"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/snakked"/>
+	<classpathentry kind="lib" path="lib_managed/jars/org.scalatest/scalatest_2.9.1/scalatest_2.9.1-1.6.1.jar"/>
+	<classpathentry kind="lib" path="/snakked/lib_managed/jars/org.json/json/json-20090211.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

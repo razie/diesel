@@ -17,7 +17,7 @@
     <div class="container span8">
 
       <!-- Main hero unit for a primary marketing message or call to action -->
-      <div class="hero-unit">
+      <div class="well">
 
       <div class="row">
         <div class="span4">
@@ -25,7 +25,7 @@
 
 @import helper.twitterBootstrap._
 
-@helper.form(action=routes.Profile.updateProfile(), 'class->"well") {
+@helper.form(action=routes.Profile.doeUpdateProfile(), 'class->"well") {
   @helper.inputText(
     myForm("firstName"), 
     '_label -> "First name", 
@@ -38,15 +38,17 @@
      (Range(2005, 1912, -1) map (y=>(y.toString,y.toString))),
     '_label -> "When you were born", 
     'style -> "width: 100px", 
+    'readonly -> "yes",
     '_showConstraints -> false)
   @helper.select(
     myForm("userType"), 
      model.Users.userTypes.map(x=>(x,x)),
      '_label -> "What you are",
+    'readonly -> "yes",
     '_showConstraints -> false)
   @helper.inputText(
-    myForm("email"), 
-    '_label -> "Email", 
+    myForm("address"), 
+    '_label -> "City, Prov/State, Country", 
     '_showConstraints -> false)
     
   <button type="submit" class="btn btn-primary">Update account!</button>
@@ -55,7 +57,7 @@
      <br><br><b>@myForm.globalError.get.message</b>
   } 
   
-  <p><small>By maintaining a profile, you agree to the <a href="@routes.Application.show("terms")">Terms and Conditions</a></small><p>
+  <p><small>By maintaining a profile, you agree to the <a href="@controllers.Wiki.w("Terms of Service")">Terms of Service</a></small><p>
 }
 
        </div>

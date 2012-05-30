@@ -27,8 +27,8 @@ object Support extends RazController with Logging {
 
   val supportForm1 = Form {
     tuple (
-      "email" -> nonEmptyText.verifying("Wrong format!", _.matches("[^@]+@[^@]+\\.[^@]+")).verifying("Invalid characters", !spec(_)),
-      "desc" -> nonEmptyText.verifying("Too Long!", _.length < 80).verifying("Invalid characters", !spec(_)),
+      "email" -> nonEmptyText.verifying("Wrong format!", vldEmail(_)).verifying("Invalid characters", vldSpec(_)),
+      "desc" -> nonEmptyText.verifying("Too Long!", _.length < 80).verifying("Invalid characters", vldSpec(_)),
       "details" -> text)
   }
 
@@ -41,27 +41,10 @@ object Support extends RazController with Logging {
       formWithErrors => BadRequest(views.html.admin.support(formWithErrors, auth)),
       {
         case (e, desc, details) => {
-          sendSupport(e, desc, details)
+          Emailer.sendSupport(e, desc, details)
           Msg ("Ok - support request sent. We will look into it asap.", "Page", "home")
         }
       })
-  }
-
-    def sendSupport(e:String, desc:String, details:String) {
-      val html = """
-Support reuested:
-        <p>
-<table>
-<tr><td>email:</td><td>%s</td></tr>
-<tr><td>desc:</td><td>%s</td></tr>
-<tr><td>details:</td><td>%s</td></tr>
-</table>        
-<p>        
-Thank you,
-The RacerKidz
-""".format(e, desc, details)
-
-    admin.SendEmail.send (Config.SUPPORT, Config.SUPPORT, "Support request: "+desc, html)
   }
 
 }

@@ -17,16 +17,16 @@
 <p>If you enter a password, you'll be setup with an account as well...</p>
 <p>To login, simply enter your email and password.</p>
 <p>Please read our 
-  <a href="@routes.Application.show("terms")" style="color:red;font-weight:bold">Terms and Conditions</a> 
+  <a href="@controllers.Wiki.w("Terms of Service")" style="color:red;font-weight:bold">Terms of Service</a> 
  as well as our 
-<a href="@routes.Application.show("privacy")" style="color:red;font-weight:bold">Privacy Policy</a></p>
+<a href="@controllers.Wiki.w("Privacy Policy")" style="color:red;font-weight:bold">Privacy Policy</a></p>
         </div>
 
         <div class="span4">
 
 @import helper.twitterBootstrap._
 
-@helper.form(action=routes.Profile.register, 'class->"well") {
+@helper.form(action=routes.Profile.doeJoin2, 'class->"well") {
 
   @helper.inputText(
     registerForm("email"), 
@@ -46,7 +46,7 @@
      <br><br><b>@registerForm.globalError.get.message</b>
   } 
   
-  <p><small>By registering or logging in, you agree to the <a href="@routes.Application.show("terms")">Terms and Conditions</a></small><p>
+  <p><small>By registering or logging in, you agree to the <a href="@controllers.Wiki.w("Terms of Service")">Terms of Service</a></small><p>
   }
   
   

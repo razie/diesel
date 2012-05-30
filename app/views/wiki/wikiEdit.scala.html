@@ -25,6 +25,10 @@
    
     <div class="container">
 
+        <div class="row">
+
+    <div class="span9">
+
       <div class="well">
           @wiki.wikiFrag(category,name)
       </div>
@@ -57,7 +61,7 @@ PROBLEM: many places use label as name... via Wikis.formatName
     'class -> "input-small",
     '_showConstraints -> false)
 
-  @if(user.get.hasPerm("adminDb")) {
+  @if(user.get.hasPerm(model.Perm.adminDb)) {
     <p>Reserved: @reserved(model.Wikis.find(category,name))
       
   }
@@ -74,7 +78,7 @@ PROBLEM: many places use label as name... via Wikis.formatName
   } 
   
   <p><small>See the <a href="/wiki/Page/Modified_Markdown_Syntax">modified markdown syntax</a>.
-  <br><small>By updating this page, you agree to the <a href="@routes.Application.show("terms")">Terms and Conditions</a>
+  <br><small>By updating this page, you agree to the <a href="@controllers.Wiki.w("Terms of Service")">Terms of Service</a>
   <br><small>Please do not replicate information already contained in other reference places like 
       Wikipedia, just link to them. Use [[[Main_Page]]] to link to wikipedia.
 }
@@ -83,6 +87,14 @@ PROBLEM: many places use label as name... via Wikis.formatName
       <hr>
 
       @htmlFooter()
+
+    </div> <!-- /span9 -->
+
+      <div class="span3">
+          @wiki.wikiFrag("Page","Right",true, None)
+      </div>
+
+      </div> <!-- row -->
 
     </div> <!-- /container -->
 

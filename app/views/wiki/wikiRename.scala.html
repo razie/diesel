@@ -1,4 +1,4 @@
-@(category:String, name:String, myForm:Form[controllers.Wiki.ReportWiki], user:Option[model.User])
+@(category:String, name:String, myForm:Form[_], user:Option[model.User])
 
    @htmlHead()
 
@@ -8,23 +8,28 @@
 
       <!-- Main hero unit for a primary marketing message or call to action -->
       <div class="well">
-          <h2>Opa! Need to report @category @name!</h2>
-          <p>
+          <h2>Renaming a topic!</h2>
+          <p><strong>Warning</strong> - currently references are not renamed so if any other topic has a reference to this one, the reference will not work anymore! 
       </div>
 
 <div >
 @import helper.twitterBootstrap._
 
-@helper.form(action=routes.Wiki.reported(category,name), 'class->"well") {
-  @helper.textarea(
-    myForm("reason"), 
-    '_label -> "Reason", 
-    '_showConstraints -> false,
-    'cols->100,
-    'rows->10)
+@helper.form(action=routes.Wiki.wikieRename2(category,name), 'class->"well") {
+  @helper.inputText(
+    myForm("oldlabel"), 
+    '_class -> "input-xlarge disabled", 
+    '_label -> "Out with the old", 
+    'readonly -> "yes",
+    '_showConstraints -> false)
+  @helper.inputText(
+    myForm("newlabel"), 
+    '_class -> "input-xlarge", 
+    '_label -> "In with the new", 
+    '_showConstraints -> false)
     
     <div class="actions">
-      <button type="submit" class="btn btn-primary">Report it!</button>
+      <button type="submit" class="btn btn-primary">Rename it!</button>
       <a href="@controllers.Wiki.w(category,name)" class="btn">Nah</a>
   </div>
   

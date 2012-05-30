@@ -12,9 +12,16 @@
   names(i)
   }
 
+@slogan() = @{
+  val slogans = Array(
+      "Train. Plan. Race!", 
+      "For racers, by racers!")
+  val i = new scala.util.Random().nextInt(slogans.length)
+  slogans(i)
+  }
+
 @user match {
-  case None =>      { @mainNoUser(salutation, joe) }
+  case None =>      { @mainNoUser(salutation, joe, slogan) }
   case Some(joe) => { @mainUser(salutation, joe) }
 }
  
-  

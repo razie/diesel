@@ -1,0 +1,1 @@
+ssh demo@cloud3.apefsjdolj.ro "cd ~/rk/app/run; . ./dbr-restore-test"

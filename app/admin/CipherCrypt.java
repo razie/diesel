@@ -25,6 +25,7 @@ import javax.crypto.SecretKey;
  * @author $Author: alexeyk $
  * @since $Date: 2011/09/02 16:53:33 $
  * */
+@SuppressWarnings("rawtypes")
 public class CipherCrypt {
 
   private Cipher              ecipher;
@@ -120,6 +121,7 @@ public class CipherCrypt {
   }
 
   /** This method returns the available implementations for a service type */
+  @SuppressWarnings("unchecked")
   public static Set getCryptoImpls(String serviceType) {
     Set result = new HashSet();
     Provider[] providers = Security.getProviders();
@@ -139,9 +141,7 @@ public class CipherCrypt {
     return result;
   }
 
-  /**
-   * Generates a secret key and then serializes it into a string.
-   * */
+  @SuppressWarnings("unused")
   private static String generateSecretKey() {
     SecretKey key = CipherCrypt.generateKey();
     String s = null;
@@ -167,6 +167,7 @@ public class CipherCrypt {
   /**
    * Returns a built-in SecretKey
    * */
+  @SuppressWarnings("serial")
   public static SecretKey getSecretKey(final byte[] b) {
     return new SecretKey() {
       public byte[] getEncoded() {

@@ -10,6 +10,7 @@ import admin.CipherCrypt
 import java.net.URLEncoder
 import com.mongodb.util.JSON
 import razie.Log
+import controllers.UserStuff
 
 /** temporary registrtion/login form */
 case class Registration(email: String, password: String, repassword: String = "") {
@@ -25,12 +26,25 @@ case class RegdEmail(email: String, when: DateTime = DateTime.now) {
 /** permissions for a user group */
 case class UserGroup(
   name: String,
-  can: Seq[String] = Seq("+uProfile"))
+  can: Set[String] = Set(Perm.uProfile.plus))
 
-case class Location (city:String, state:String, country:String) {
+case class Location(city: String, state: String, country: String) {}
+
+case class Perm(s: String) {
+  def plus = "+"+this.s
+  def minus = "-"+this.s
+}
+
+object Perm {
+  val adminDb = Perm("adminDb")
+  val uWiki = Perm("uWiki")
+  val uCategory = Perm("uCategory")
+  val cCategory = Perm("cCategory")
+  val uProfile = Perm("uProfile")
+  val uReserved = Perm("uReserved")
   
 }
-  
+
 /** Minimal user info - loaded all the time for a user */
 case class User(
   userName: String,
@@ -39,8 +53,9 @@ case class User(
   yob: Int,
   email: String,
   pwd: String,
-  status:Char = 'a', // a-active, s-suspended, d-deleted
-  roles: Seq[String] = Seq("racer"),
+  status: Char = 'a', // a-active, s-suspended, d-deleted
+  roles: Set[String] = Set("racer"),
+  addr: Option[String] = None,   // address as typed in
   _id: ObjectId = new ObjectId()) {
 
   // TODO change id = it shows like everywhere
@@ -51,16 +66,18 @@ case class User(
   def tasks = Users.findTasks(_id)
 
   // TODO optimize
-  def perms: Seq[String] = profile.map(_.perms).getOrElse(Seq()) ++ groups.flatMap(_.can)
-  def hasPerm(p: String) = perms.contains("+"+p) && !perms.contains("-"+p)
+  def perms: Set[String] = profile.map(_.perms).getOrElse(Set()) ++ groups.flatMap(_.can).toSet
+  def hasPerm(p: Perm) = perms.contains("+" + p.s) && !perms.contains("-" + p.s)
 
   def under12 = DateTime.now.year.get - yob <= 12
+  
+  lazy val canHasProfile = (!under12) || Users.findParentOf(_id).map(_.trust == "Public").getOrElse(false)
 
   // TODO cache groups
-  lazy val groups = roles flatMap { role => Mongo("UserGroup").findOne(Map("name" -> role)) map (grater[UserGroup].asObject(_))}
+  lazy val groups = roles flatMap { role => Mongo("UserGroup").findOne(Map("name" -> role)) map (grater[UserGroup].asObject(_)) }
 
   /** make a default profile */
-  def mkProfile = Profile(this._id, None, Seq())
+  def mkProfile = Profile(this._id, None, Set())
 
   def rel(r: String): List[User] = profile.map(p =>
     (for (t <- p.relationships if (t._2 == r))
@@ -69,9 +86,11 @@ case class User(
   /** load my profile */
   lazy val profile = Mongo("Profile").findOne(Map("userId" -> _id)) map (grater[Profile].asObject(_))
 
+  /** the wikis I linked to */
   lazy val wikis =
     Mongo("UserWiki").find(Map("userId" -> _id)).map(grater[UserWiki].asObject(_)).toList
 
+  /** pages of category that I linked to */
   def pages(cat: String) = wikis.filter(_.cat == cat)
 
   def auditCreated { Log.audit(AUDT_USER_CREATED + email) }
@@ -102,7 +121,19 @@ case class User(
     UserEvent(_id, UserEvent.UPDATE).create
   }
 
+  lazy val events: List[(ILink, String, DateTime)] = UserStuff.events(this)
+
   def toJson = grater[User].asDBObject(this).toString
+
+  def shouldEmailParent(what: String) = {
+    if (under12) {
+      for (
+        pc <- Users.findParentOf(this._id) if (pc.notifys == what);
+        parent <- Users.findUserById(pc.parentId)
+      ) yield parent
+    } else None
+  }
+
 }
 
 /** detailed user profile
@@ -111,17 +142,19 @@ case class User(
  */
 case class Profile(
   userId: ObjectId,
-  location:Option[Location]=None,
-  tags: Seq[String] = Seq(),
-  perms: Seq[String] = Seq(),
+  loc: Option[Location] = None,  // address as refined with Google
+  tags: Set[String] = Set(),
+  perms: Set[String] = Set(),
   aboutMe: Option[WikiEntry] = None,
   relationships: Map[String, String] = Map(), // (who -> what)
   _id: ObjectId = new ObjectId()) {
 
-//  def create = Mongo ("Profile") += grater[Profile].asDBObject(Audit.create(this))
+  //  def create = Mongo ("Profile") += grater[Profile].asDBObject(Audit.create(this))
   def update(p: Profile) = Mongo("Profile").m.update(Map("userId" -> userId), grater[Profile].asDBObject(Audit.update(p)))
 
-  def addRel(t: (String, String)) = model.Profile(userId, None, tags, perms, aboutMe, relationships ++ Map(t), _id)
+  def addRel(t: (String, String)) = model.Profile(userId, loc, tags, perms, aboutMe, relationships ++ Map(t), _id)
+  def addPerm(t: String) = model.Profile(userId, loc, tags, perms + t, aboutMe, relationships, _id)
+  def addTag(t: String) = model.Profile(userId, loc, tags + t, perms, aboutMe, relationships, _id)
 
   var createdDtm: DateTime = DateTime.now
   var lastUpdatedDtm: DateTime = DateTime.now
@@ -132,15 +165,15 @@ case class Profile(
 case class ParentChild(
   parentId: ObjectId,
   childId: ObjectId,
-  trust: String = "Moderated",
-  notifys: String = "Content",
+  trust: String = "Private",
+  notifys: String = "Everything",
   _id: ObjectId = new ObjectId()) {
 
   def create = Mongo ("ParentChild") += grater[ParentChild].asDBObject(Audit.create(this))
   def update(p: ParentChild) = {
     Mongo("ParentChild").m.update(
-        Map("parentId" -> parentId, "childId" -> childId), 
-        grater[ParentChild].asDBObject(Audit.update(p)))
+      Map("parentId" -> parentId, "childId" -> childId),
+      grater[ParentChild].asDBObject(Audit.update(p)))
   }
   def delete = Mongo("ParentChild").m.remove(Map("parentId" -> parentId, "childId" -> childId))
 }
@@ -198,9 +231,13 @@ object Users {
   def findUserById(id: ObjectId) = Mongo("User").findOne(Map("_id" -> id)) map (grater[User].asObject(_))
   def findUserByUsername(uname: String) = Mongo("User").findOne(Map("userName" -> uname)) map (grater[User].asObject(_))
 
+  def nameOf(id: ObjectId):String = Mongo("User").findOne(Map("_id" -> id)).get("userName").toString
+  
   def findTasks(id: ObjectId) = Mongo("UserTask").find(Map("userId" -> id)) map (grater[UserTask].asObject(_))
 
   def findPC(pid: ObjectId, cid: ObjectId) = Mongo("ParentChild").findOne(Map("parentId" -> pid, "childId" -> cid)) map (grater[ParentChild].asObject(_))
+  def findParentOf(cid: ObjectId) = Mongo("ParentChild").findOne(Map("childId" -> cid)) map (grater[ParentChild].asObject(_))
+  def findChildOf(pid: ObjectId) = Mongo("ParentChild").findOne(Map("parentId" -> pid)) map (grater[ParentChild].asObject(_))
 
   def create(ug: UserGroup) = Mongo ("UserGroup") += grater[UserGroup].asDBObject(Audit.create(ug))
 

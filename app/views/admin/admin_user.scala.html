@@ -1,0 +1,49 @@
+@(user:Option[model.User], admin:Option[model.User])
+
+@pro(p:model.Profile) = {
+<br>userId: @p.userId
+<br>location: @p.loc
+<br>  tags: @p.tags
+<br>  perms: @p.perms
+<br>  aboutMe: @p.aboutMe
+<br>  relationships: @p.relationships.map { r =>
+      <a href="/admin/user/@r._1">@r._1</a> - @r._2 <br>
+    }
+<br>  _id: @p._id
+}
+    
+
+  @htmlHead()
+  @navbar(admin)
+   
+  <div class="container">
+
+    <h2>User</h2>
+
+@user.toString
+<p>
+@user match {
+  case Some(u) => {
+<br>userName:@u.userName
+<br>firstName:@u.firstName
+<br> lastName:@u.lastName
+<br> yob: @u.yob
+<br>  email: @model.Enc.unapply(u.email)
+<br>  pwd: @u.pwd
+<br>  status: @u.status
+<br>  roles: @u.roles
+<br>  _id: @u.id
+}
+}
+<p>
+@user.map(_.profile)
+<p>
+@user.flatMap(_.profile).map(pro(_))
+
+    <hr>
+      
+    @htmlFooter()
+
+  </div> <!-- /container -->
+
+  @htmlBottom()
