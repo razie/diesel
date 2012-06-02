@@ -32,8 +32,9 @@ import admin._
 import model.WID
 import model.CommentStream
 import org.bson.types.ObjectId
+import model.Comments
 
-object Comments extends RazController with Logging {
+object Comment extends RazController with Logging {
   case class Habibi(s: String)
   val commentForm = Form {
     mapping (
@@ -88,6 +89,45 @@ object Comments extends RazController with Logging {
           }) getOrElse {
             Unauthorized("Oops - cannot add comment... " + errCollector.mkString)
           }
+      })
+  }
+
+  /** is mine or i am amdin */
+  def canEdit (comm:model.Comment, auth:Option[User]) = {
+    auth.map(au=>comm.userId == au._id || au.hasPerm(Perm.adminDb)).getOrElse(false)
+  }
+  
+  def edit(cat:String, name:String, cid: String) = Action{ implicit request =>
+    implicit val errCollector = new VError()
+
+        (for (
+          au <- auth orCorr new Corr("not logged in", "Sorry - need to log in"); //cNoAuth;
+          comm <- Comments.findCommentById(cid) orErr ("bad comment id?");
+          can <- canEdit(comm, auth) orErr ("can only edit your comments")
+        ) yield {
+          Ok (views.html.comments.commEdit(cat, name, cid, commentForm.fill(Habibi(comm.content)), auth))
+        }) getOrElse
+          noPerm("?", "?", errCollector.mkString)
+  }
+
+  def save(cat:String, name:String, cid: String) = Action { implicit request =>
+    implicit val errCollector = new VError()
+    commentForm.bindFromRequest.fold(
+      formWithErrors => {
+        log(formWithErrors.toString)
+        BadRequest(views.html.comments.commEdit(cat, name, cid, formWithErrors, auth))
+      },
+      {
+        case h @ Habibi(newcontent) => 
+        (for (
+          au <- auth orCorr new Corr("not logged in", "Sorry - need to log in"); //cNoAuth;
+          comm <- Comments.findCommentById(cid) orErr ("bad comment id?");
+          can <- canEdit(comm, auth) orErr ("can only edit your comments")
+        ) yield {
+          comm.update(newcontent)
+          Redirect(controllers.Wiki.w(cat, name))
+        }) getOrElse
+          noPerm("?", "?", errCollector.mkString)
       })
   }
 

@@ -66,12 +66,12 @@
        <br><textarea name="recaptcha_challenge_field" rows="3" cols="40"></textarea>
        <input type="hidden" name="recaptcha_response_field" value="manual_challenge">
      </noscript>
-<br>
-  <button type="submit" class="btn btn-primary">That's it - create account!</button>
-  
+
   @if(myForm.globalError.isDefined) {
-     <br><br><b>@myForm.globalError.get.message</b>
-  } 
+     <p style="color:red;font-weight:bold">@myForm.globalError.get.message</p>
+  } else { <br> }
+
+  <button type="submit" class="btn btn-primary">That's it - create account!</button>
   
 }
 

@@ -1,3 +1,6 @@
+#
+# MAKE A backup in production dB and get it here
+#
 
 DT=`date | sed 's/ //g'`
 

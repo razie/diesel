@@ -61,7 +61,7 @@ object Profile extends RazController with Logging {
           }
         else true
       }) verifying
-      ("Email already registered!", { reg: Registration =>
+      ("Email already registered - if you are logging in, type the password once!", { reg: Registration =>
         if (reg.password.length > 0 && reg.repassword.length > 0)
           Api.findUser(Users.enc(reg.email)).map (u => false) getOrElse { true }
         else true
@@ -74,7 +74,8 @@ object Profile extends RazController with Logging {
 
   // create profile
   case class CrProfile(firstName: String, lastName: String, yob: Int, address: String, userType: String, accept: Boolean, recaptcha_challenge_field: String, recaptcha_response_field: String)
-  val crprofileForm = Form {
+
+  def crprofileForm(implicit request: Request[_]) = Form {
     mapping (
       "firstName" -> nonEmptyText.verifying("Obscenity filter", !Wikis.hasporn(_)).verifying("Invalid characters", vldSpec(_)),
       "lastName" -> text.verifying("Obscenity filter", !Wikis.hasporn(_)).verifying("Invalid characters", vldSpec(_)),
@@ -82,9 +83,11 @@ object Profile extends RazController with Logging {
       "address" -> text.verifying("Invalid characters", vldSpec(_)),
       "userType" -> nonEmptyText.verifying("Please select one", ut => Users.userTypes.contains(ut)),
       "accept" -> checked("").verifying("You must accept the Terms of Service to use this site", { x: Boolean => x }),
-      //      "accept" -> checked("I accept the"+TERMS).verifying("You must accept the "+TERMS+" to use this site", {x:Boolean => x}),
       "recaptcha_challenge_field" -> text,
-      "recaptcha_response_field" -> text) (CrProfile.apply)(CrProfile.unapply) 
+      "recaptcha_response_field" -> text) (CrProfile.apply)(CrProfile.unapply) verifying
+      ("CAPTCHA failed!", { cr: CrProfile =>
+        capthca(cr.recaptcha_challenge_field, cr.recaptcha_response_field, clientIp)
+      })
   }
 
   def capthca(challenge: String, response: String, clientIp: String) = {
@@ -107,11 +110,11 @@ object Profile extends RazController with Logging {
       "yob" -> number(min = 1900, max = 2012),
       "address" -> text.verifying("Invalid characters", vldSpec(_)))(
         //      "userType" -> nonEmptyText.verifying("Please select one", ut => Users.userTypes.contains(ut)))(
-        (f, l, y, a) => User("kuku", f, l, y, "noemail", "nopwd", 'a', Set(), (if (a != null && a.length>0) Some(a) else None)))(
+        (f, l, y, a) => User("kuku", f, l, y, "noemail", "nopwd", 'a', Set(), (if (a != null && a.length > 0) Some(a) else None)))(
           (u: User) => Some(u.firstName, u.lastName, u.yob, u.addr.map(identity).getOrElse("")))
   }
 
-  val trusts = Array("Public", "Friends", "Private")
+  val trusts = Array("Public", "Club", "Friends", "Private")
   val notifiers = Array("Everything", "FriendsOnly", "None")
 
   // profile
@@ -193,7 +196,7 @@ object Profile extends RazController with Logging {
         e <- flash.get("email");
         p <- flash.get("pwd")
       ) yield Ok(views.html.user.join3(crprofileForm.fill(
-        CrProfile("", "", 13, "", "racer", false, "", "")), auth)).withSession("pwd" -> p, "email"->e)
+        CrProfile("", "", 13, "", "racer", false, "", "")), auth)).withSession("pwd" -> p, "email" -> e)
     } getOrElse
       Unauthorized("Oops - how did you get here?").withNewSession
   }
@@ -210,24 +213,19 @@ object Profile extends RazController with Logging {
       {
         //  case class CrProfile (firstName:String, lastName:String, yob:Int, email:String, userType:String)
         case CrProfile(f, l, y, addr, ut, accept, challenge, response) =>
-          if (!capthca(challenge, response, clientIp)) {
-            warn("CAPTCHCA FAIL " + resp)
-            BadRequest(views.html.user.join3(resp, auth))
-          } else {
-            for (
-              p <- session.get("pwd") orErr ("psession corrupted");
-              e <- session.get("email") orErr ("esession corrupted");
-              u <- Some(User(System.currentTimeMillis.toString, f, l, y, Enc(e), Enc(p), 'a', Set(ut)));
-              res <- // finally created a new account/profile
-              if (u.under12) {
-                Some(Redirect(routes.Tasks.addParent1).withSession("ujson" -> u.toJson))
-              } else Api.createUser(u) map { x =>
-                UserTask(u._id, "verifyEmail").create
-                RegdEmail(u.email.dec).delete
-                Redirect("/").withSession("connected" -> u.email)
-              }
-            ) yield res
-          } getOrElse
+          (for (
+            p <- session.get("pwd") orErr ("psession corrupted");
+            e <- session.get("email") orErr ("esession corrupted");
+            u <- Some(User(System.currentTimeMillis.toString, f, l, y, Enc(e), Enc(p), 'a', Set(ut)));
+            res <- // finally created a new account/profile
+            if (u.under12) {
+              Some(Redirect(routes.Tasks.addParent1).withSession("ujson" -> u.toJson))
+            } else Api.createUser(u) map { x =>
+              UserTask(u._id, "verifyEmail").create
+              RegdEmail(u.email.dec).delete
+              Redirect("/").withSession("connected" -> u.email)
+            }
+          ) yield res) getOrElse
             {
               error("ERR_CANT_UPDATE_USER " + session.get("email"))
               Unauthorized("Oops - cannot update this user... " + errCollector.mkString).withNewSession
@@ -282,15 +280,16 @@ object Profile extends RazController with Logging {
   def doeUpdateProfile = Action { implicit request =>
     edprofileForm.bindFromRequest.fold(
       formWithErrors => BadRequest(views.html.user.edBasic(formWithErrors, auth.get)),
-      { case u: User =>
-        (for (
-          au <- auth orErr ("not authenticated")
-        ) yield {
-          au.update(User(au.userName, u.firstName, u.lastName, au.yob, au.email, au.pwd, au.status, au.roles, u.addr, au._id))
-          au.shouldEmailParent("Everything").map(parent => Emailer.sendEmailChildUpdatedProfile(parent, au))
-          Redirect("/")//.withSession("connected" -> u.email)
-        }) getOrElse 
-          Unauthorized("Oops - how did you get here?")
+      {
+        case u: User =>
+          (for (
+            au <- auth orErr ("not authenticated")
+          ) yield {
+            au.update(User(au.userName, u.firstName, u.lastName, au.yob, au.email, au.pwd, au.status, au.roles, u.addr, au._id))
+            au.shouldEmailParent("Everything").map(parent => Emailer.sendEmailChildUpdatedProfile(parent, au))
+            Redirect("/") //.withSession("connected" -> u.email)
+          }) getOrElse
+            Unauthorized("Oops - how did you get here?")
       })
   }
 

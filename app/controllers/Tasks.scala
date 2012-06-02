@@ -131,7 +131,7 @@ object Tasks extends RazController with Logging {
     log("ENC_DT=" + dt.enc)
     log("ENC_DT=" + dt.enc.dec)
     log("ENC_DT=" + EncUrl(dt))
-    val hc1 = """/doe/profile/addParent3?expiry=%s&parentEmail=%s&childEmail=%s&childId=%s""".format(EncUrl(dt), EncUrl(pe), Enc.toUrl(c.email), c.id)
+    val hc1 = """/doe/tasks/addParent3?expiry=%s&parentEmail=%s&childEmail=%s&childId=%s""".format(EncUrl(dt), EncUrl(pe), Enc.toUrl(c.email), c.id)
     log("ENC_LINK1=" + hc1)
     val ds = DoSec(hc1)
     log("ENC_LINK2=" + ds.secUrl)

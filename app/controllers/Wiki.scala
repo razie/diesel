@@ -242,8 +242,11 @@ object Wiki extends RazController with Logging {
       // normal request with cat and name
       Wikis.find(cat, name).map(
         w => {
-          if ("WikiLink" == w.category) Wikis.linkFromName(w.name).isPrivate // TODO so what?
-          Ok (views.html.wiki.wikiPage(cat, name, Some(iname), Some(w), auth))
+          // redirect a simple alias with no other content
+          w.alias.map { wid =>
+            Redirect(controllers.Wiki.w(wid.cat, wid.name))
+          } getOrElse
+            Ok (views.html.wiki.wikiPage(cat, name, Some(iname), Some(w), auth))
         }) getOrElse
         Ok (views.html.wiki.wikiPage(cat, name, Some(iname), None, auth))
     }
@@ -367,7 +370,7 @@ object Wiki extends RazController with Logging {
     implicit val errCollector = new VError()
     (for (
       au <- auth orCorr new Corr("not logged in", "Sorry - need to log in to edit a page"); //cNoAuth;
-      ok <- ("WikiLink" != cat && "User" != cat ) orErr ("can't rename this category");
+      ok <- ("WikiLink" != cat && "User" != cat) orErr ("can't rename this category");
       w <- Wikis.find(cat, name) orErr ("topic not found")
     ) yield {
       Ok (views.html.wiki.wikiRename(cat, name, renameForm.fill ((w.label, w.label)), auth))
@@ -383,7 +386,7 @@ object Wiki extends RazController with Logging {
         case (_, n) =>
           (for (
             au <- auth orCorr new Corr("not logged in", "Sorry - need to log in to edit a page"); //cNoAuth;
-            ok <- ("WikiLink" != cat && "User" != cat ) orErr ("can't rename this category");
+            ok <- ("WikiLink" != cat && "User" != cat) orErr ("can't rename this category");
             w <- Wikis.find(cat, name) orErr ("topic not found")
           ) yield {
             w.update(w.renamed(n))

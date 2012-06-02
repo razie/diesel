@@ -121,7 +121,8 @@ case class User(
     UserEvent(_id, UserEvent.UPDATE).create
   }
 
-  lazy val events: List[(ILink, String, DateTime)] = UserStuff.events(this)
+  //race, desc, date, venue
+  lazy val events: List[(ILink, String, DateTime, ILink)] = UserStuff.events(this)
 
   def toJson = grater[User].asDBObject(this).toString
 

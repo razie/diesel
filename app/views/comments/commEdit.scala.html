@@ -1,0 +1,41 @@
+@(category:String, name:String, cid:String, myForm:Form[controllers.Comment.Habibi], user:Option[model.User])
+
+   @htmlHead("Editing comment")
+
+   @navbar(user)
+   
+    <div class="container">
+
+        <div class="row">
+
+    <div class="span9">
+
+<div >
+@import helper.twitterBootstrap._
+
+        @helper.form(action=routes.Comment.save(category, name, cid), 'class->"well form-inline") {
+  @helper.textarea(
+    myForm("content"), 
+    '_label -> "Edit comment", 
+    '_showConstraints -> false,
+    'class -> "span6",
+    'rows->5)
+          <button type="submit" class="btn btn-primary" onclick="$(this).addClass('disabled');">Now</button>
+          }
+
+      <hr>
+
+      @htmlFooter()
+
+    </div> <!-- /span9 -->
+
+      <div class="span3">
+          @wiki.wikiFrag("Page","Right",true, None)
+      </div>
+
+      </div> <!-- row -->
+
+    </div> <!-- /container -->
+
+    @htmlBottom()
+    

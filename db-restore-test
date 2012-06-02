@@ -1,1 +1,5 @@
+#
+# RESET the test.racerkidz.com database to the latest production dump
+#
+
 ssh demo@cloud3.apefsjdolj.ro "cd ~/rk/app/run; . ./dbr-restore-test"

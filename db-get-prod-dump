@@ -1,3 +1,6 @@
+#
+# GET the latest production dump here - not a new dump
+#
 
 DT=`date | sed 's/ //g'`
 

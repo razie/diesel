@@ -53,8 +53,8 @@ case class Comment(
 
   def create = Mongo ("Comment") += grater[Comment].asDBObject(Audit.create(this))
 
+  // TODO keep track of older versions and who modifies them
   def update(newContent: String) = {
-    //    Mongo ("UserOld") += grater[User].asDBObject(Audit.create(this))
     val u = new Comment(streamId, userId, parentId, newContent, crDtm, DateTime.now, _id)
     Mongo("Comment").m.update(Map("_id" -> _id), grater[Comment].asDBObject(Audit.update(u)))
   }
@@ -64,4 +64,5 @@ case class Comment(
 object Comments {
   def findForWiki(id:ObjectId) = Mongo("CommentStream").findOne(Map("what" -> "Wiki", "topic" -> id)) map (grater[CommentStream].asObject(_))
   def findById(id: String) = Mongo("CommentStream").findOne(Map("_id" -> new ObjectId(id))) map (grater[CommentStream].asObject(_))
+  def findCommentById(id: String) = Mongo("Comment").findOne(Map("_id" -> new ObjectId(id))) map (grater[Comment].asObject(_))
 }

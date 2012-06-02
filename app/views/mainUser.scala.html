@@ -35,7 +35,11 @@
               <b>Recent events:</b>
               <ul>
               @for(t <- user.events.filter(_._3.isBefore(DateTime.now)).take(3)) {
-                <li>@Html(model.Wikis.formatWikiLink(t._1.cat,t._1.name,t._2,Some(t._1.label))._1)</li>
+                <li>@Html(model.Wikis.formatWikiLink(t._1.cat,t._1.name,t._2,Some(t._1.label))._1)
+                @if(t._4.name != null && t._4.name.length>0) {
+                  at @Html(t._4.format._1)
+                }
+                </li>
               }
               </ul>
             } else {
@@ -45,7 +49,11 @@
               <b>Coming up:</b>
               <ul>
               @for(t <- user.events.filter(_._3.isAfter(DateTime.now)).take(5)) {
-                <li>@Html(model.Wikis.formatWikiLink(t._1.cat,t._1.name,t._2,Some(t._1.label))._1)</li>
+                <li>@Html(model.Wikis.formatWikiLink(t._1.cat,t._1.name,t._2,Some(t._1.label))._1)
+                @if(t._4.name != null  && t._4.name.length>0) {
+                  at @Html(t._4.format._1)
+                }
+                </li>
               }
             @if(user.events.filter(_._3.isAfter(DateTime.now)).size>5) {
               <li>...</li>

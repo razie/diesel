@@ -8,10 +8,6 @@
   There's @stream.comments.size comment(s)...
   <p>
 
-@******
-TODO optimize this goddamit
-************@
-
   @stream.comments.map { c =>
     <div class="well">
       <b>By: <a href="/user/@model.Users.nameOf(c.userId)">@model.Users.nameOf(c.userId)</a></b>
@@ -19,6 +15,9 @@ TODO optimize this goddamit
 &nbsp;    <a href="/wikie" class="btn btn-mini">Reply</a>
 **********@
        &nbsp; <a href="" class="btn btn-mini btn-info">Report</a>
+@if(controllers.Comment.canEdit(c,user)) {
+       &nbsp; <a href="@routes.Comment.edit(cat,name,c._id.toString)" class="btn btn-mini btn-info">Edit</a>
+}
       <br>
       <br>
       @Html(model.Wikis.format("md", c.content))
@@ -45,7 +44,7 @@ TODO optimize this goddamit
     @if("Category" == cat && "User" != name && "WikiLink" != name) {
       <div class="well">
         @name entries:
-        @model.Wikis.pageNames(name).take(20).map { p=>
+        @model.Wikis.pageNames(name).take(80).map { p=>
           <a href="/wiki/@name:@p">@model.Wikis.label(name,p)</a> |
         } 
       </div> 
@@ -83,7 +82,7 @@ ain't working...
       @if(!user.get.canHasProfile) {
         You can't comment on public pages, sorry!
       } else {
-        @helper.form(action=routes.Comments.add(page.get._id.toString,"Wiki",{new com.mongodb.casbah.Imports.ObjectId().toString}), 'class->"well form-inline") {
+        @helper.form(action=routes.Comment.add(page.get._id.toString,"Wiki",{new com.mongodb.casbah.Imports.ObjectId().toString}), 'class->"well form-inline") {
           <label>Add a new comment </label><br>
           <textarea id="content" class="span6" name="content" placeholder="content" rows="5"></textarea>
           <button type="submit" class="btn btn-primary" onclick="$(this).addClass('disabled');">Now</button>
@@ -94,7 +93,6 @@ ain't working...
       You need to log in to post a comment, sorry!
   }
   
-
       <hr>
       @htmlFooter()
 
