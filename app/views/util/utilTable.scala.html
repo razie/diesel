@@ -1,11 +1,13 @@
 @(name:String, cols:Seq[(String,String)], criteria:Option[Map[String,Any]]=None, sortby:Option[String]=None, func:Option[(com.mongodb.casbah.Imports.DBObject,String,String)=>Html] = None)
 
 @import com.mongodb.casbah.Imports._
+@import org.joda.time.DateTime
 
 @*********
 FRAGMENT create a html table from a Mongo table 
 name = mongo collection name
 cols = (key,label)
+@func.map(_.apply(db, k, (if(db.get(k)==null) null else db.get(k).toString))).getOrElse(db.get(k))
 *********@
 
 @col() = @{
@@ -33,7 +35,15 @@ cols = (key,label)
 @ccol.map { db =>
   <tr>
     @cols.map { case (k,l) =>
-     <td>@func.map(_.apply(db, k, (if(db.get(k)==null) null else db.get(k).toString))).getOrElse(db.get(k))</td>
+     <td>
+@{
+db.get(k) match {
+  case null => func.map(_.apply(db, k, null)).getOrElse("")
+  case dtm:DateTime => func.map(_.apply(db, k, dtm.toLocalDateTime.toString)).getOrElse(dtm)
+  case x => func.map(_.apply(db, k, x.toString)).getOrElse(x)
+  }
+}
+</td>
     }
   </tr>
 }

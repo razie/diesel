@@ -82,7 +82,12 @@ case class WikiEntry(
 
   def auditFlagged(f: String) { Log.audit(Audit.logdb(f, category + ":" + name)) }
 
-  lazy val preprocessed = Wikis.preprocess(this.markup, this.content)
+  lazy val preprocessed = {
+    val s = Wikis.preprocess(this.markup, this.content)
+    // add hardcoded attributes
+    WikiParser.State(s.s, s.tags ++ Map("category" -> category, "name"->name, "label" -> label, "url" -> (category+":"+name)), s.ilinks)
+  }
+
   lazy val tags = preprocessed.tags
   lazy val ilinks = preprocessed.ilinks
 
@@ -230,9 +235,9 @@ object Wikis {
         "ERROR formatting wiki..."
       }
     }
-    
+
     // mark the external links
-    res.replaceAll ("""(<a +href="http:)([^>]*)>([^<]*)(</a>)""", """$1$2 title="External site"><i>$3</i><sup>&nbsp;<b style="color:darkred">●●</b></sup>$4""")
+    res.replaceAll ("""(<a +href="http:)([^>]*)>([^<]*)(</a>)""", """$1$2 title="External site"><i>$3</i><sup>&nbsp;<b style="color:darkred">^^</b></sup>$4""")
   }
 
   def noporn(s: String) = porn.foldLeft(s)((x, y) => x.replaceAll("""\b%s\b""".format(y), "BLIP"))
@@ -313,11 +318,11 @@ trait ParserCommons extends RegexParsers {
   type LS1 = List[String]
   type PS2 = Parser[List[List[String]]]
   type PS1 = Parser[List[String]]
-  
-  def CRLF1: P = CRLF2 <~ not ("""[^a-zA-Z]""".r) ^^ { case ho => ho + "<br>" }
-  def CRLF2: P = ("\r\n" | "\n") 
+
+  def CRLF1: P = CRLF2 <~ not ("""[^a-zA-Z0-9-]""".r) ^^ { case ho => ho + "<br>" }
+  def CRLF2: P = ("\r\n" | "\n")
   def CRLF3: P = CRLF2 ~ CRLF2 ^^ { case a ~ b => a + b }
-  def NADA:  P = "" 
+  def NADA: P = ""
 
   def static: P = (not("{{") ~> not("[[") ~> not("}}") ~> not("[http:") ~> """.""".r+) ^^ { case l => l.mkString }
 }
@@ -334,14 +339,14 @@ object WikiParser extends ParserCommons with CsvParser {
   /** use this to expand [[xxx]] on the spot */
   def parseW2(input: String) = parseAll(wiki2, input) getOrElse (State("[[CANNOT PARSE]]"))
 
-  def xCRLF1: PS = CRLF1 ^^ {case x=>x}
-  def xCRLF2: PS = CRLF2 ^^ {case x=>x}
-  def xCRLF3: PS = CRLF3 ^^ {case x=>x}
-  def xNADA: PS = NADA ^^ {case x=>x}
-  def xstatic: PS = static ^^ {case x=>x}
+  def xCRLF1: PS = CRLF1 ^^ { case x => x }
+  def xCRLF2: PS = CRLF2 ^^ { case x => x }
+  def xCRLF3: PS = CRLF3 ^^ { case x => x }
+  def xNADA: PS = NADA ^^ { case x => x }
+  def xstatic: PS = static ^^ { case x => x }
 
   //============================== wiki parsing
-  
+
   def wiki: PS = lines | line | xCRLF2 | xNADA
 
   def line: PS = opt(lists) ~ rep(badHtml | badHtml2 | wiki3 | wiki2 | link1 | wikiProps | xstatic) ^^ {
@@ -424,7 +429,7 @@ object WikiParser extends ParserCommons with CsvParser {
   def li3: PS = """^   \* """.r ^^ { case x => "            * " }
 
   //======================= forbidden html tags TODO it's easier to allow instead?
-  
+
   val hok = "abbr|acronym|address|b|blockquote|br|h1|h2|h3|h4|h5|h6|hr|i|li|p|pre|q|s|small|strike|strong|sub|sup|" +
     "table|tbody|td|tfoot|th|thead|tr|ul|u"
   val hnok = "applet|area|a|base|basefont|bdo|big|body|button|caption|center|cite|code|colgroup|col|" +
@@ -432,7 +437,7 @@ object WikiParser extends ParserCommons with CsvParser {
     "label|legend|link|map|menu|meta|noframes|noscript|object|ol|" +
     "optgroup|option|param|samp|script|select|span|style|textarea|title|tt|var"
 
-  val safeSites = Set("http://maps.google.ca", "http://maps.google.com", "http://www.everytrail.com")
+  val safeSites = Set("http://maps.google.ca", "http://maps.google.com", "http://www.everytrail.com", "http://www.youtube.com")
   //  def iframe: PS = "<iframe" ~> """[^>]*""".r ~ """src="""".r ~ """[^"]*""".r ~ """[^>]*""".r <~ ">" ^^ {
   def iframe: PS = "<iframe" ~> """[^>]*""".r <~ ">" ^^ {
     case a => {
@@ -491,11 +496,11 @@ object WikiParser extends ParserCommons with CsvParser {
   }
 
   def wikiPropBy: PS = ("\\{\\{[Bb]y[: ]+".r | "\\{\\{[Cc]lub[: ]+".r) ~> """[^}]*""".r <~ "}}" ^^ {
-    case place => State("{{by " + parseW2("""[[Club:%s]]""".format(place)).s + "}}", Map("club" -> place))
+    case place => State("{{by " + parseW2("""[[Club:%s]]""".format(place)).s + "}}", Map("club" -> place), ILink("Club", place, place) :: Nil)
   }
 
   def wikiPropWhere: PS = ("\\{\\{where[: ]".r | "\\{\\{[Aa]t[: ]+".r | "\\{\\{[Pp]lace[: ]+".r | "\\{\\{[Vv]enue[: ]+".r) ~> """[^}]*""".r <~ "}}" ^^ {
-    case place => State("{{at " + parseW2("""[[Venue:%s]]""".format(place)).s + "}}", Map("venue" -> place))
+    case place => State("{{at " + parseW2("""[[Venue:%s]]""".format(place)).s + "}}", Map("venue" -> place), ILink("Venue", place, place) :: Nil)
   }
 
   def wikiPropWhereName: PS = ("\\{\\{where[: ]".r | "\\{\\{[Aa]t[: ]+".r | "\\{\\{[Pp]lace[: ]+".r | "\\{\\{[Vv]enue[: ]+".r) ~> """[^}]*""".r <~ "}}" ^^ {
@@ -505,13 +510,13 @@ object WikiParser extends ParserCommons with CsvParser {
   def wikiPropLoc: PS = "{{loc:" ~> """[^:]*""".r ~ ":".r ~ """[^}]*""".r <~ "}}" ^^ {
     case what ~ _ ~ loc => {
       if ("ll" == what)
-        State("""{{[Location](http://maps.google.com/maps?ll=%s&z=15)}}""".format(loc), Map("loc:" + what -> loc))
+        State("""{{[Location](http://maps.google.com/maps?ll=%s&z=15)}}""".format(loc), Map("loc" -> (what + ":" + loc)))
       else if ("s" == what)
-        State("""{{[Location](http://www.google.com/maps?hl=en&q=%s)}}""".format(loc.replaceAll(" ", "+")), Map("loc:" + what -> loc))
+        State("""{{[Location](http://www.google.com/maps?hl=en&q=%s)}}""".format(loc.replaceAll(" ", "+")), Map("loc" -> (what + ":" + loc)))
       else if ("url" == what)
-        State("""{{[Location](%s)}}""".format(loc), Map("loc:" + what -> loc))
+        State("""{{[Location](%s)}}""".format(loc), Map("loc" -> (what + ":" + loc)))
       else
-        State("""{{Unknown location spec: %s value %s}}""".format(what, loc), Map("loc:" + what -> loc))
+        State("""{{Unknown location spec: %s value %s}}""".format(what, loc), Map("loc" -> (what + ":" + loc)))
     }
   }
 
@@ -546,68 +551,66 @@ object WikiParser extends ParserCommons with CsvParser {
   def wikiPropRoles: PS = "{{roles:" ~> """[^:]*""".r ~ ":".r ~ """[^}]*""".r <~ "}}" ^^ {
     case cat ~ colon ~ how => {
       if ("Child" == how)
-        State("{{Has " + parseW2("[[%s]]".format(cat)).s+"(s)}}", Map("roles:" + cat -> how))
+        State("{{Has " + parseW2("[[%s]]".format(cat)).s + "(s)}}", Map("roles:" + cat -> how))
       else if ("Parent" == how)
-        State("{{Owned by " + parseW2("[[%s]]".format(cat)).s+"(s)}}", Map("roles:" + cat -> how))
+        State("{{Owned by " + parseW2("[[%s]]".format(cat)).s + "(s)}}", Map("roles:" + cat -> how))
       else
         State("{{Can link from " + parseW2("[[%s]]".format(cat)).s + "(s) as %s}}".format(how), Map("roles:" + cat -> how))
     }
   }
 
   //======================= delimited imports and tables
-  
-  def wikiPropCsv: PS = "{{delimited:" ~> (wikiPropCsvStart >> {h:CsvHeading => csv(h.delim) ^^ {x => (h,x)}}) <~ "{{/delimited}}" ^^ {
+
+  def wikiPropCsv: PS = "{{delimited:" ~> (wikiPropCsvStart >> { h: CsvHeading => csv(h.delim) ^^ { x => (h, x) } }) <~ "{{/delimited}}" ^^ {
     case (a, body) => {
       val c = body
-      a.s + c.map( l=>
-        if(l.size>0)
-          ("\n* "+parseW2("[["+a.what+":"+l.zip(a.h).map( c=>
-            "{{"+c._2+" "+c._1+"}}"
-            ).mkString(", ")+"]]").s
-          ) else "").mkString + "\n"
+      a.s + c.map(l =>
+        if (l.size > 0)
+          ("\n* " + parseW2("[[" + a.what + ":" + l.zip(a.h).map(c =>
+          "{{" + c._2 + " " + c._1 + "}}").mkString(", ") + "]]").s)
+        else "").mkString + "\n"
     }
   }
 
-  def wikiPropTable: PS = "{{table:" ~> (wikiPropTableStart >> {h:CsvHeading => csv(h.delim) ^^ {x => (h,x)}}) <~ "{{/table}}" ^^ {
+  def wikiPropTable: PS = "{{table:" ~> (wikiPropTableStart >> { h: CsvHeading => csv(h.delim) ^^ { x => (h, x) } }) <~ "{{/table}}" ^^ {
     case (a, body) => {
       val c = body
-      a.s + c.map( l =>
-        if(l.size>0)("\n<tr>"+l.map( c =>
-          "<td>"+c+"</td>"
-          ).mkString+"</tr>"
-          ) else "").mkString + "\n</table>"
+      a.s + c.map(l =>
+        if (l.size > 0) ("\n<tr>" + l.map(c =>
+          "<td>" + c + "</td>").mkString + "</tr>")
+        else "").mkString + "\n</table>"
     }
   }
 
-  case class CsvHeading (what:String,s:String,delim:String=";",h:List[String]=Nil)
-  
+  case class CsvHeading(what: String, s: String, delim: String = ";", h: List[String] = Nil)
+
   def heading: P = (not("}}") ~> not(",") ~> """.""".r+) ^^ { case l => l.mkString }
-  
+
   def csvHeadings: Parser[CsvHeading] = heading ~ rep("," ~> heading) ^^ {
-    case ol ~ l => CsvHeading("","","",List(ol) ::: l)
+    case ol ~ l => CsvHeading("", "", "", List(ol) ::: l)
   }
 
   def wikiPropCsvStart: Parser[CsvHeading] = """.""".r ~ ":".r ~ """[^:]*""".r ~ opt(":".r ~ csvHeadings) <~ "}}" ^^ {
     case delim ~ _ ~ what ~ head => {
-      var s = what + "(s):"+"\n"
-        
-    CsvHeading(what, s, delim, head.map(_._2.h).getOrElse(List()))
+      var s = what + "(s):" + "\n"
+
+      CsvHeading(what, s, delim, head.map(_._2.h).getOrElse(List()))
     }
   }
 
   def wikiPropTableStart: Parser[CsvHeading] = """.""".r ~ ":".r ~ opt(csvHeadings) <~ "}}" ^^ {
     case delim ~ _ ~ head => {
       var s = """<table class="table table-striped">"""
-        
-      if(head.isDefined)
-        s += "\n<thead><tr>"+ head.get.h.map(e=>"<th>"+e+"</th>").mkString + "</tr></thead>"
-        
-    CsvHeading("", s, delim, head.map(_.h).getOrElse(List()))
+
+      if (head.isDefined)
+        s += "\n<thead><tr>" + head.get.h.map(e => "<th>" + e + "</th>").mkString + "</tr></thead>"
+
+      CsvHeading("", s, delim, head.map(_.h).getOrElse(List()))
     }
   }
 
   //======================= dates
-  
+
   val mth1 = "Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec"
   val mth2 = "January|February|March|April|May|June|July|August|September|October|November|December"
 
@@ -618,68 +621,67 @@ object WikiParser extends ParserCommons with CsvParser {
 
 /** delimited and table parser */
 trait CsvParser extends ParserCommons {
-  
-  def csv(implicit xdelim:String): Parser[List[List[String]]] = csvLines
+
+  def csv(implicit xdelim: String): Parser[List[List[String]]] = csvLines
 
   def csvCRLF2: PS2 = CRLF2 ^^ { case x => Nil }
   def csvNADA: PS2 = NADA ^^ { case x => Nil }
-  
-  def csvLine(implicit xdelim:String): PS1 = cell ~ rep(xdelim.r ~ (cell | NADA)) ^^ {
+
+  def csvLine(implicit xdelim: String): PS1 = cell ~ rep(xdelim.r ~ (cell | NADA)) ^^ {
     case ol ~ l => {
-    List(ol) ::: l.map(_._2)
+      List(ol) ::: l.map(_._2)
     }
   }
 
-  def csvLines(implicit xdelim:String): PS2 = rep(csvOptline ~ (CRLF1 | CRLF3 | CRLF2)) ~ opt(csvLine) ^^ {
+  def csvLines(implicit xdelim: String): PS2 = rep(csvOptline ~ (CRLF1 | CRLF3 | CRLF2)) ~ opt(csvLine) ^^ {
     case l ~ c => (l.map(_._1) ::: c.toList)
   }
-  
-  def plainLines (implicit end:String): P = rep(opt(plainLine) ~ (CRLF1 | CRLF3 | CRLF2)) ~ opt(plainLine) ^^ {
-    case l ~ c => l.flatMap(_._1.map(_+"\n")).mkString + c.getOrElse("")
+
+  def plainLines(implicit end: String): P = rep(opt(plainLine) ~ (CRLF1 | CRLF3 | CRLF2)) ~ opt(plainLine) ^^ {
+    case l ~ c => l.flatMap(_._1.map(_ + "\n")).mkString + c.getOrElse("")
   }
-  
-  def plainLine(implicit end:String): P = (not(end) ~> """.""".r+) ^^ { case l => l.mkString }
-  
-  def csvOptline(implicit xdelim:String): PS1 = opt(csvLine) ^^ { case o => o.map (identity).getOrElse (Nil) }
 
-  def cell(implicit xdelim:String): P = (not(xdelim) ~> not("{{") ~> not("[[") ~> not("}}") ~> """.""".r+) ^^ { case l => l.mkString }
+  def plainLine(implicit end: String): P = (not(end) ~> """.""".r+) ^^ { case l => l.mkString }
+
+  def csvOptline(implicit xdelim: String): PS1 = opt(csvLine) ^^ { case o => o.map (identity).getOrElse (Nil) }
+
+  def cell(implicit xdelim: String): P = (not(xdelim) ~> not("{{") ~> not("[[") ~> not("}}") ~> """.""".r+) ^^ { case l => l.mkString }
 }
-
 
 object Test extends App {
   import com.tristanhunt.knockoff.DefaultDiscounter._
 
-  val csv1 = 
-"""
+  val csv1 =
+    """
 {{delimited:,:Race}}
 a,b,c,d
 {{/delimited}}
 """
-    
-  val csv2 = 
-"""
+
+  val csv2 =
+    """
 {{delimited:,:Race:}}
 
 {{/delimited}}
 """
-    
-  val csv3 = 
-"""
+
+  val csv3 =
+    """
 {{delimited:;:Race:name,where,by,when}}
 a;b;c;d
 {{/delimited}}
 """
-    
-  val csv4 = 
-"""
+
+  val csv4 =
+    """
 {{delimited:,:Race:name,where,by,when}}
 a,b,c,d
 a,,c,d
 {{/delimited}}
 """
-    
-    println (WikiParser.applys(csv1))
-    println (WikiParser.applys(csv2))
-    println (WikiParser.applys(csv3))
-    println (WikiParser.applys(csv4))
+
+  println (WikiParser.applys(csv1))
+  println (WikiParser.applys(csv2))
+  println (WikiParser.applys(csv3))
+  println (WikiParser.applys(csv4))
 }

@@ -1,25 +1,24 @@
 package controllers
 
-import admin._
-import model.Api
-import model.Mongo
-import model.Registration
-import model.User
-import model.UserGroup
-import model.Users
-import model.WikiEntry
-import play.api.data.Forms._
-import play.api.mvc._
-import play.api._
-import admin.Init
-import admin.CipherCrypt
+import admin.Audit
+import admin.VError
 import model.DoSec
+import play.api.mvc.Action
 
 /** main entry points */
 object Application extends RazController {
 
-  def index = Action { implicit request =>
-    Ok(views.html.index("", auth))
+  def index = indexItem(1)
+
+  def indexItem (i:Int) = Action { implicit request =>
+    Ok(views.html.index("", auth, i, session.get("mobile").isDefined))
+  }
+
+  def mobile(m:Boolean) = Action { implicit request =>
+    Redirect ("/").withSession (
+        if(m) session + ("mobile" -> "yes")
+        else session - "mobile"
+        )
   }
 
   def show(page: String) = {

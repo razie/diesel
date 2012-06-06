@@ -1,17 +1,16 @@
 package model
 
-import com.mongodb.casbah.Imports._
-import org.joda.time.DateTime
-import admin.Audit
-import com.novus.salat._
-import com.novus.salat.annotations._
-import model.RazSalatContext._
-import admin.CipherCrypt
-import java.net.URLEncoder
-import com.mongodb.util.JSON
-import razie.Log
-import controllers.UserStuff
 import scala.collection.mutable.ListBuffer
+
+import org.joda.time.DateTime
+
+import com.mongodb.casbah.Imports.ObjectId
+import com.mongodb.casbah.Imports.map2MongoDBObject
+import com.mongodb.casbah.Imports.wrapDBObj
+import com.novus.salat.grater
+
+import admin.Audit
+import model.RazSalatContext.ctx
 
 /** a series of comments on something - like a forum topic */
 case class CommentStream(

@@ -1,6 +1,6 @@
-@(user:Option[model.User], barTitle: String="Bar Title")
+@(user:Option[model.User], mobile:Boolean = false, barTitle: String="Bar Title")
 
-    <div class="navbar navbar-fixed-top">
+   <div class="navbar navbar-fixed-top">
       <div class="navbar-inner">
         <div class="container">
           <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
@@ -16,11 +16,14 @@
 @*******
               <li class="active"><a href="/">Home</a></li>
 ******@
-              <li><a href="/">Home</a></li>
-              <li><a href="/doe/support">Support</a></li>
               <li><a href="/page/About">About</a></li>
-              <li class="divider-vertical"></li>
               <li><a href="/wiki">Browse</a></li>
+              <li class="divider-vertical"></li>
+@if(mobile) {
+              <li><a href="/mobile/0">NOT Mobile</a></li>
+} else {
+              <li><a href="/mobile/1">Mobile</a></li>
+}
             </ul>
 
           </div><!--/.nav-collapse -->
@@ -31,10 +34,6 @@
               <input type="text" class="search-query" placeholder="Search" id="q" name="q" title="Search box"/>
             </form>
 @user match {
-  case None => { 
-    <li><a href="@routes.Profile.doeJoin">Join</a></li>
-  }
-  
   case Some(joe) => { 
     <li class="dropdown">
       <a href="#" class="dropdown-toggle" data-toggle="dropdown">@joe.ename<b class="caret"></b></a>
@@ -43,6 +42,10 @@
         <li><a href="/do/signout">Sign out</a></li>
       </ul>
     </li>
+  }
+  
+  case None => { 
+    <li><a href="@routes.Profile.doeJoin">Join</a></li>
   }
 } 
             </ul>

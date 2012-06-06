@@ -11,5 +11,7 @@ object Config {
   final val mongopass = System.getProperty("mongopass", "r")
   final val analytics = System.getProperty("analytics", "false").toBoolean
   
+  final val forcePhone = System.getProperty("forcePhone", "false").toBoolean
+  
 }
 

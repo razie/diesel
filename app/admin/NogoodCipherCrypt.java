@@ -1,6 +1,7 @@
 package admin;
 
 import java.io.BufferedOutputStream;
+
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -18,8 +19,6 @@ import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 
-import org.apache.commons.codec.binary.Base64;
-
 /**
  * Standard Java Crypting/decrypting class using DES algorithm.
  * 
@@ -30,7 +29,7 @@ import org.apache.commons.codec.binary.Base64;
  * @since $Date: 2011/09/02 16:53:33 $
  * */
 @SuppressWarnings("rawtypes")
-public class CipherCrypt {
+public class NogoodCipherCrypt {
 
   private Cipher              ecipher;
   private Cipher              dcipher;
@@ -64,12 +63,12 @@ public class CipherCrypt {
   public static final SecretKey DEFAULT_KEY = getSecretKey(KEY);
 
   /** c-tor. 1 */
-  public CipherCrypt() {
+  public NogoodCipherCrypt() {
     this(DEFAULT_KEY);
   }
 
   /** c-tor. 2 */
-  public CipherCrypt(SecretKey key) {
+  public NogoodCipherCrypt(SecretKey key) {
     try {
       ecipher = Cipher.getInstance(key.getAlgorithm());
       dcipher = Cipher.getInstance(key.getAlgorithm());
@@ -89,7 +88,7 @@ public class CipherCrypt {
     try {
       byte[] utf8 = str.getBytes("UTF8"); // encode string using utf-8
       byte[] enc = ecipher.doFinal(utf8); // encrypt;
-      result = Base64.encodeBase64URLSafeString(enc); // encode bytes to base64
+      result = NogoodBase64Codec.encode(enc); // encode bytes to base64
     } catch (Exception e) {
       e.printStackTrace();
     }
@@ -102,7 +101,7 @@ public class CipherCrypt {
   public String decrypt(String str) {
     String result = null;
     try {
-      byte[] dec = Base64.decodeBase64(str); // decode base64
+      byte[] dec = NogoodBase64Codec.decode(str.toCharArray()); // decode base64
       byte[] utf8 = dcipher.doFinal(dec); // decrypt
       result = new String(utf8, "UTF8");
     } catch (Exception e) {
@@ -147,7 +146,7 @@ public class CipherCrypt {
 
   @SuppressWarnings("unused")
   private static String generateSecretKey() {
-    SecretKey key = CipherCrypt.generateKey();
+    SecretKey key = NogoodCipherCrypt.generateKey();
     String s = null;
     ByteArrayOutputStream baos = null;
     try {
@@ -165,7 +164,7 @@ public class CipherCrypt {
         } catch (Exception exc) {
         }
     }
-    return Base64.encodeBase64String(s.getBytes());
+    return NogoodBase64Codec.encode(s);
   }
 
   /**

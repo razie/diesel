@@ -12,11 +12,22 @@ import com.mongodb.util.JSON
 import razie.Log
 import admin.Config
 import java.net.URLDecoder
-import admin.Base64Codec
+
+object Sec {
+  //================ encription
+  case class EncryptedS(s: String) {
+    def enc = (new admin.CipherCrypt).encrypt(s)
+    def dec = (new admin.CipherCrypt).decrypt(s)
+    def encBase64 = model.Base64 enc s
+    def decBase64 = model.Base64 dec s
+  }
+  implicit def toENCR(o: String) = { EncryptedS(o) }
+}
 
 object Base64 {
-  def --> (s:String) = Base64Codec.encode(s)
-  def <-- (s:String) = Base64Codec.decode(s)
+  import org.apache.commons.codec.binary.Base64
+  def enc(s: String) = new Base64(true).encode(s)
+  def dec(s: String) = new Base64(true).decode(s)
 }
 
 /** utility to encrypt/decrypt stuff*/
@@ -33,9 +44,9 @@ object EncUrl {
   def unapply(encoded: String): Option[String] = Some(new CipherCrypt().decrypt(encoded))
 }
 
-/** secured link to be emailed for instance 
- * 
- * Note that this is persisted only if the secUrl is requested
+/** secured link to be emailed for instance
+ *
+ *  Note that this is persisted only if the secUrl is requested
  */
 case class DoSec(
   link: String,
@@ -57,9 +68,9 @@ case class DoSec(
 
 object DoSec {
   def find(id: String) = {
-   // play 20 workaround - remove this in play 2.1
+    // play 20 workaround - remove this in play 2.1
     val iid = id.replaceAll(" ", "+")
-    
+
     Mongo("DoSec").findOne(Map("_id" -> new ObjectId(iid))) map (grater[DoSec].asObject(_))
   }
 }

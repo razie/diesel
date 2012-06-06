@@ -1,0 +1,74 @@
+@(cat:String, name:String, iname:Option[String], page:Option[model.WikiEntry], user:Option[model.User])
+@import model._
+
+@comments(stream:Option[CommentStream]) = {
+  @stream match {
+    case None => {}
+    case Some(stream) => {
+  There's @stream.comments.size comment(s)...
+  <p>
+
+  @stream.comments.map { c =>
+    <div class="well">
+      <b>By: <a href="/user/@model.Users.nameOf(c.userId)">@model.Users.nameOf(c.userId)</a></b>
+@*********
+&nbsp;    <a href="/wikie" class="btn btn-mini">Reply</a>
+**********@
+       &nbsp; <a href="" class="btn btn-mini btn-info">Report</a>
+@if(controllers.Comment.canEdit(c,user)) {
+       &nbsp; <a href="@routes.Comment.edit(cat,name,c._id.toString)" class="btn btn-mini btn-info">Edit</a>
+}
+      <br>
+      <br>
+      @Html(model.Wikis.format("md", c.content))
+    </div>
+    }
+    }
+  }
+}
+
+   @htmlHead(cat +":"+ name)
+
+   @navbar(user)
+   
+    <div class="container">
+        <div class="row">
+
+    <div class="span9">
+
+      <div class="well">
+          @wiki.wikiFrag(cat,name,false,page, iname)
+      </div>
+
+    <!-- list of pages in category -->
+      <div class="well">
+        <ul>tags
+        @page.get.tags.map { p=>
+          <li>@p</li>
+        } 
+       </ul>
+      </div> 
+
+      <div class="well">
+        <ul>ilinks
+        @page.get.ilinks.map { p=>
+          <li>@p</li>
+        } 
+       </ul>
+      </div> 
+
+      <hr>
+      @htmlFooter()
+
+    </div> <!-- /span9 -->
+
+      <div class="span3">
+          @wiki.wikiFrag("Page","Right",true, None)
+      </div>
+
+      </div> <!-- row -->
+
+    </div> <!-- /container -->
+
+    @htmlBottom()
+    

@@ -1,7 +1,7 @@
 package admin;
 
 /***/
-public class Base64Codec {
+public class NogoodBase64Codec {
 
     // Mapping table from 6-bit nibbles to Base64 characters.
     private static char[] map1 = new char[64];
@@ -128,16 +128,16 @@ public class Base64Codec {
     /***/
     private void test() {
         String s;
-        s = Base64Codec.encode("Hello");
+        s = NogoodBase64Codec.encode("Hello");
         System.out.println("Hello -> " + s);
-        s = Base64Codec.decode(s);
+        s = NogoodBase64Codec.decode(s);
         if (!s.equals("Hello"))
             System.out.println("1: encoded string does not match decoded one!");
         final String c1 = "QWxhZGRpbjpvcGVuIHNlc2FtZQ=="; // example from RFC2617
-        s = Base64Codec.decode(c1);
+        s = NogoodBase64Codec.decode(c1);
         if (!s.equals("Aladdin:open sesame"))
             System.out.println("2: encoded string does not match decoded one!");
-        s = Base64Codec.encode(s);
+        s = NogoodBase64Codec.encode(s);
         if (!s.equals(c1))
             System.out.println("3: encoded string does not match decoded one!");
     }
@@ -145,7 +145,7 @@ public class Base64Codec {
     /***/
     public static void main(String[] args) throws Exception {
         System.out.println("TestBase64Codec started");
-        new Base64Codec().test();
+        new NogoodBase64Codec().test();
         System.out.println("TestBase64Codec completed");
     }
 

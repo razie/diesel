@@ -1,0 +1,62 @@
+@(myForm: Form[_], user:model.User)
+
+@salutation() = @{
+  val names = Array("Hi", "Hello", "Hey", "Howdy")
+  val i = new scala.util.Random().nextInt(names.length)
+  names(i)
+  }
+  
+  @htmlHead()
+
+  @navbar(Some(user))
+   
+  <div class="span2">
+    @leftmenu(5, user)
+  </div>
+
+    <div class="container span8">
+
+      <!-- Main hero unit for a primary marketing message or call to action -->
+      <div class="well">
+
+      <div class="row">
+        <div class="span6">
+        <h2>Changing the email</h2>
+<p>Take care when changing the email - this is your login as well.</p>
+
+@import helper.twitterBootstrap._
+
+@helper.form(action=routes.EdEmail.step2(user.id), 'class->"well") {
+  @helper.inputText(
+    myForm("curemail"), 
+    '_label -> "Current email", 
+    'readonly -> "yes",
+    '_showConstraints -> false)
+  @helper.inputText(
+    myForm("newemail"), 
+    '_label -> "New email", 
+    '_showConstraints -> false,
+    '_error->myForm.error("newemail"))
+    
+  <button type="submit" class="btn btn-primary">Change !</button>
+  
+  @if(myForm.globalError.isDefined) {
+     <br><br><b>@myForm.globalError.get.message</b>
+  } 
+  
+  <p><small>By maintaining a profile, you agree to the <a href="@controllers.Wiki.w("Terms of Service")">Terms of Service</a></small><p>
+}
+
+       </div>
+      </div>
+
+      </div>
+
+      <hr>
+
+      @htmlFooter()
+
+    </div> <!-- /container -->
+
+    @htmlBottom()
+    

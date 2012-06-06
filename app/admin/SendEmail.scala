@@ -94,9 +94,11 @@ class Gmail(val debug: Boolean = false) {
    *  when the SMTP server requires it.
    */
   class SMTPAuthenticator extends javax.mail.Authenticator {
+    import model.Sec._
+    
     override def getPasswordAuthentication() = {
       val username = SMTP_AUTH_USER;
-      val password = Users.dec(SMTP_AUTH_PWD);
+      val password = SMTP_AUTH_PWD.dec;
       new PasswordAuthentication(username, password);
     }
   }

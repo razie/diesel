@@ -1,4 +1,4 @@
-@(message: String, user:Option[model.User]=None)
+@(message: String, user:Option[model.User]=None, item:Int, mobile:Boolean)
 
 @joe() = @{
   val names = Array("Joe", "Dianne", "Marty", "Jackal", "Tigger")
@@ -22,6 +22,6 @@
 
 @user match {
   case None =>      { @mainNoUser(salutation, joe, slogan) }
-  case Some(joe) => { @mainUser(salutation, joe) }
+  case Some(joe) => { @mainUser(salutation, joe, item, mobile) }
 }
  

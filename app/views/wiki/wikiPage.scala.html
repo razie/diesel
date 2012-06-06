@@ -1,5 +1,5 @@
 @(cat:String, name:String, iname:Option[String], page:Option[model.WikiEntry], user:Option[model.User])
-@import model.CommentStream
+@import model._
 
 @comments(stream:Option[CommentStream]) = {
   @stream match {
@@ -36,12 +36,12 @@
 
     <div class="span9">
 
-      <!-- Main hero unit for a primary marketing message or call to action -->
       <div class="well">
           @wiki.wikiFrag(cat,name,false,page, iname)
       </div>
 
-    @if("Category" == cat && "User" != name && "WikiLink" != name) {
+    <!-- list of pages in category -->
+    @if("Category" == cat && "User" != name && "WikiLink" != name && ("Hidden" != name || user.map(_.hasPerm(Perm.adminDb)).getOrElse(false))) {
       <div class="well">
         @name entries:
         @model.Wikis.pageNames(name).take(80).map { p=>

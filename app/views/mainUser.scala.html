@@ -1,136 +1,16 @@
-@(salutation:String, user: model.User)
-
-@import org.joda.time.DateTime
+@(salutation:String, user: model.User, item:Int, mobile:Boolean=false)
 
    @htmlHead()
+   @navbar(Some(user), mobile)
 
-   @navbar(Some(user))
-   
     <div class="container">
 
-      <!-- Main hero unit for a primary marketing message or call to action -->
-      <div class="well">
-        <div class="row">
-          <div class="span6">
-          <h2>@salutation, @user.ename!</h2>
-          <p style="font-weight:bold">Add stuff to your profile with the buttons below.</p>
-<p>You can "Like" any topic and add it to your profile. Start by adding sports, clubs, series and seasons, then see the magic.</p>
-<p>If you can't find your sports, clubs or championships - add them! If you don't feel like it, tell us and we'll add them for you.</p>
-          <p><a class="btn btn-primary" href="/wiki/Help:Main Page">Learn more &raquo;</a></p>
-          </div>
-          <div class="span4">
-            <div class="well">
-            @if(user.tasks.size>0) {
-              <b>Stuff to do</b>
-              <ul>
-              @for(t <- user.tasks) {
-                <li><a href="/user/task/@t.name">@t.desc</a></li>
-              }
-              </ul>
-            } else {
-              <b>No tasks.</b>
-            }
-            <p>
-            @if(user.events.filter(_._3.isBefore(DateTime.now)).size>0) {
-              <b>Recent events:</b>
-              <ul>
-              @for(t <- user.events.filter(_._3.isBefore(DateTime.now)).take(3)) {
-                <li>@Html(model.Wikis.formatWikiLink(t._1.cat,t._1.name,t._2,Some(t._1.label))._1)
-                @if(t._4.name != null && t._4.name.length>0) {
-                  at @Html(t._4.format._1)
-                }
-                </li>
-              }
-              </ul>
-            } else {
-            }
-            <p>
-            @if(user.events.filter(_._3.isAfter(DateTime.now)).size>0) {
-              <b>Coming up:</b>
-              <ul>
-              @for(t <- user.events.filter(_._3.isAfter(DateTime.now)).take(5)) {
-                <li>@Html(model.Wikis.formatWikiLink(t._1.cat,t._1.name,t._2,Some(t._1.label))._1)
-                @if(t._4.name != null  && t._4.name.length>0) {
-                  at @Html(t._4.format._1)
-                }
-                </li>
-              }
-            @if(user.events.filter(_._3.isAfter(DateTime.now)).size>5) {
-              <li>...</li>
-            }
-              </ul>
-            } else {
-             <b>Nothing coming up...</b>
-            }
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Example row of columns -->
-      <div class="row">
-        <div class="span3">
-          <h2>Sports</h2>
-            @if(user.pages("Sport").size>0) {
-              <ul>
-              @for(t <- user.pages("Sport")) {
-                <li><a href="/user/@user.id/wiki/@t.cat/@t.name">@model.Wikis.label(t.cat,t.name)</a></li>
-              }
-              </ul>
-            } else {
-              <b style="color:red">No sports...</b><p>
-            }
-          <p>
-            <a class="btn btn-mini" href="/wiki/Sport">Add &raquo;</a></p>
-          </p>
-        </div>
-        <div class="span3">
-          <h2>Clubs</h2>
-            @if(user.pages("Club").size>0) {
-              <ul>
-              @for(t <- user.pages("Club")) {
-                <li><a href="/user/@user.id/wiki/@t.cat/@t.name">@model.Wikis.label(t.cat,t.name)</a></li>
-              }
-              </ul>
-            } else {
-              <b style="color:red">No clubs...</b><p>
-            }
-          <p>
-            <a class="btn btn-mini" href="/wiki/Club">Add &raquo;</a></p>
-          </p>
-        </div>
-        <div class="span3">
-          <h2>Championships</h2>
-            @if(user.pages("Series").size>0) {
-              <ul>
-              @for(t <- user.pages("Series")) {
-                <li><a href="/user/@user.id/wiki/@t.cat/@t.name">@model.Wikis.label(t.cat,t.name)</a></li>
-              }
-              </ul>
-            } else {
-              <b style="color:red">No championships...</b><p>
-            }
-          <p>
-            <a class="btn btn-mini" href="/wiki/Series">Add &raquo;</a></p>
-          </p>
-       </div>
-        <div class="span3">
-          <h2>Seasons</h2>
-            @if(user.pages("Season").size>0) {
-              <ul>
-              @for(t <- user.pages("Season")) {
-                <li><a href="/user/@user.id/wiki/@t.cat/@t.name">@model.Wikis.label(t.cat,t.name)</a></li>
-              }
-              </ul>
-            } else {
-              <b style="color:red">No seasons...</b><p>
-            }
-          <p>
-            <a class="btn btn-mini" href="/wiki/Season">Add &raquo;</a></p>
-          </p>
-       </div>
-      </div>
-
+@if(mobile) {
+  @tasks.mainUserM(salutation,user, item) 
+} else {
+  @tasks.mainUserC(salutation,user, item) 
+}
+   
       <hr>
 
       @htmlFooter()

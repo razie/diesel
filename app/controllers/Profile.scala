@@ -7,6 +7,7 @@ import admin.Config
 import admin.SendEmail
 import model.Api
 import model.DoSec
+import model.Sec._
 import model.Enc
 import model.EncUrl
 import model.ParentChild
@@ -30,6 +31,7 @@ import model.Base64
 import model.Perm
 import admin._
 import model.WID
+import model.UserTasks
 
 object Profile extends RazController with Logging {
   case class Email(s: String)
@@ -50,8 +52,8 @@ object Profile extends RazController with Logging {
       }) verifying
       ("Wrong username & password - please type again. (To register a new account, enter the password twice...)", { reg: Registration =>
         if (reg.password.length > 0 && reg.repassword.length <= 0)
-          Api.findUser(Users.enc(reg.email)).map (u =>
-            if (Users.enc(reg.password) == u.pwd) true
+          Api.findUser(reg.email.enc).map (u =>
+            if (reg.password.enc == u.pwd) true
             else {
               u.auditLoginFailed
               false
@@ -63,7 +65,7 @@ object Profile extends RazController with Logging {
       }) verifying
       ("Email already registered - if you are logging in, type the password once!", { reg: Registration =>
         if (reg.password.length > 0 && reg.repassword.length > 0)
-          Api.findUser(Users.enc(reg.email)).map (u => false) getOrElse { true }
+          Api.findUser(reg.email.enc).map (u => false) getOrElse { true }
         else true
       })
   }
@@ -221,7 +223,7 @@ object Profile extends RazController with Logging {
             if (u.under12) {
               Some(Redirect(routes.Tasks.addParent1).withSession("ujson" -> u.toJson))
             } else Api.createUser(u) map { x =>
-              UserTask(u._id, "verifyEmail").create
+              UserTasks.verifyEmail(u).create
               RegdEmail(u.email.dec).delete
               Redirect("/").withSession("connected" -> u.email)
             }
@@ -384,8 +386,7 @@ object EdUsername extends RazController {
         ) yield {
           // TODO transaction
           u.update(User(newusername, u.firstName, u.lastName, u.yob, u.email, u.pwd, u.status, u.roles, u.addr, u._id))
-          //          UserTask(user._id, "verifyEmail").create
-          this dbop UserTask(u._id, "userNameChgDenied").delete
+          this dbop UserTasks.userNameChgDenied(u).create
           Wikis.updateUserName (u.userName, newusername)
           Emailer.sendEmailUnameOk(newusername, u)
 
@@ -415,7 +416,7 @@ Ok, username changed.
           already <- !(user.userName == newusername) orErr "Already updated"
         ) yield {
           // TODO transaction
-          UserTask(u._id, "userNameChgDenied").create
+          this dbop UserTasks.userNameChgDenied(u).create
           Emailer.sendEmailUnameDenied(newusername, u)
           Msg("""
 Ok, username notified
@@ -429,6 +430,50 @@ Ok, username notified
     }
   }
 
+}
+
+object EdEmail extends RazController {
+  // profile
+  val chgemailform = Form {
+    tuple(
+      "curemail" -> text,
+      "newemail" -> text.verifying("Wrong format!", vldEmail(_)).verifying("Invalid characters", vldSpec(_))) verifying
+      ("Sorry - already in use", { t: (String, String) => !Api.findUser(t._2.enc).isDefined })
+  }
+
+  // authenticated means doing a task later
+  def step1(userId: String) = Action { implicit request =>
+    (for (
+      au <- auth orCorr cNoAuth;
+      u <- Users.findUserById(userId) orErr ("user account not found");
+      ok <- (if (au._id == u._id) Some(true) else None) orCorr Corr("Not correct user")
+    ) yield Ok(views.html.user.edEmail(chgemailform.fill(u.email.dec, ""), auth.get))) getOrElse
+      Unauthorized("Oops - how did you get here?")
+  }
+
+  def step2(userId: String) = Action { implicit request =>
+    implicit val errCollector = new VError()
+    chgemailform.bindFromRequest.fold(
+      formWithErrors => BadRequest(views.html.user.edEmail(formWithErrors, auth.get)),
+      {
+        case (o, n) =>
+          (for (
+            au <- auth orCorr cNoAuth;
+            u <- Users.findUserById(userId) orErr ("user account not found");
+            ok <- (if (au._id == u._id) Some(true) else None) orCorr Corr("Not correct user")
+          ) yield {
+            val newu = User(u.userName, u.firstName, u.lastName, u.yob, n.enc, u.pwd, u.status, u.roles, u.addr, u._id)
+            u.update(newu)
+            val pro = newu.profile.getOrElse(newu.mkProfile)
+            this dbop pro.update (pro.removePerm("+"+Perm.eVerified.s))
+            this dbop UserTasks.verifyEmail(newu).create
+            Tasks.sendEmailVerif(newu)
+          }) getOrElse {
+            error("ERR_CANT_UPDATE_USER_EMAIL ")
+            Unauthorized("Oops - cannot update this user... " + errCollector.mkString)
+          }
+      })
+  }
 }
 
 object TestCaphct extends App {

@@ -1,0 +1,133 @@
+@(user: model.User, item:Int)
+
+@import org.joda.time.DateTime
+@import razie.RString._
+
+@active(i:Int) = @{
+  if(i == item) "active" else ""
+}
+
+@locs() = @{
+  {controllers.UserStuff.xp(user, "Season") \ "Race" \ "Venue" \@ "loc"}.filter(! _.isEmpty).map(_.replaceFirst("ll:",""))
+}
+
+@locsj3() = @{
+  val t = ("loc", "label")
+  import controllers.XListWrapper
+  val x = (controllers.UserStuff.xp(user, "Season") \ "Race" \ "Venue")
+  val xx = (x.asInstanceOf[XListWrapper[_]] \@- t).filter(! _._1.isEmpty)
+  xx.map {venue =>
+    println(venue)
+    val ll = venue._1
+    val (what,coord) = ll.split2(":")
+    what match {
+      case "ll" => {
+        val (x,y) = coord.split2(",")
+        """new google.maps.Marker({
+        position: new google.maps.LatLng(%s,%s),
+        map: map,
+        title:'%s'
+      });""".format(x,y,venue._2)
+      }
+      case "s" => {
+        controllers.Maps.latlong(ll).map {case (x,y) =>
+        """new google.maps.Marker({
+        position: new google.maps.LatLng(%s,%s),
+        map: map,
+        title:'%s'
+      });""".format(x,y,venue._2)}.getOrElse("")
+      }
+      case _ => {
+        ""
+      }
+}
+}
+}
+
+@centerCalc() = @{
+  val (lat, long) = user.ll
+  """new google.maps.LatLng(%s,%s)""".format(lat,long)
+}
+
+          <div class="span6">
+            <div class="well">
+<ul class="nav nav-tabs">
+  <li class="@active(1)"><a href="/index/1">List</a></li>
+  <li class="@active(2)"><a href="/index/2">Map</a></li>
+</ul>
+@item match {
+  case 1 => {
+            @if(user.tasks.size>0) {
+              <b>Stuff to do</b>
+              <ul>
+              @for(t <- user.tasks) {
+                <li><a href="/user/task/@t.name">@t.desc</a></li>
+              }
+              </ul>
+            } else {
+              <b>No tasks.</b>
+            }
+            <p>
+            @if(user.events.filter(_._3.isBefore(DateTime.now)).size>0) {
+              <b>Recent events:</b>
+              <ul>
+              @for(t <- user.events.filter(_._3.isBefore(DateTime.now)).takeRight(3)) {
+                <li>@Html(model.Wikis.formatWikiLink(t._1.cat,t._1.name,t._2,Some(t._1.label))._1)
+                @if(t._4.name != null && t._4.name.length>0) {
+                  at @Html(t._4.format._1)
+                }
+                </li>
+              }
+              </ul>
+            } else {
+            }
+            <p>
+            @if(user.events.filter(_._3.isAfter(DateTime.now)).size>0) {
+              <b>Coming up:</b>
+              <ul>
+              @for(t <- user.events.filter(_._3.isAfter(DateTime.now)).take(5)) {
+                <li>@Html(model.Wikis.formatWikiLink(t._1.cat,t._1.name,t._2,Some(t._1.label))._1)
+                @if(t._4.name != null  && t._4.name.length>0) {
+                  at @Html(t._4.format._1)
+                }
+                </li>
+              }
+            @if(user.events.filter(_._3.isAfter(DateTime.now)).size>5) {
+              <li>...</li>
+            }
+              </ul>
+            } else {
+             <b>Nothing coming up...</b>
+            }
+            <a href="http://maps.googleapis.com/maps/api/staticmap?zoom=13&size=600x300&sensor=false&@locs().map(x=>"markers=color:red|%s".format(x, x)).mkString("&")">map</a>
+            <a href="http://maps.googleapis.com/maps/api/staticmap?zoom=13&size=600x300&@user.events.filter(_._3.isAfter(DateTime.now)).map(x=>(x._4, x._4.tags.get("loc"))).filter(_._2.isDefined).map(x=>"markers=color:red|label:%s|%s".format(x._1.label, x._1.tags.get("loc"))).mkString("&")">map</a>
+  }
+case 2 => {
+    <script type="text/javascript"      src="http://maps.googleapis.com/maps/api/js?key=AIzaSyCqHAGo3tWW6MaSudxErk_sDK15YQbO3ns&sensor=false">    </script>
+    <script type="text/javascript">
+      var map;
+
+      function initialize() {
+        var mapDiv = document.getElementById("map_canvas");
+        map = new google.maps.Map(mapDiv, {
+          center: @centerCalc(),
+          zoom: 7,
+          mapTypeId: google.maps.MapTypeId.ROADMAP
+        });
+
+      google.maps.event.addListenerOnce(map, 'tilesloaded', addMarkers);
+      }
+
+      function addMarkers() {
+        @locsj3()
+      }
+    </script>
+
+    <div id="map_canvas" style="width: 100%; height: 350px; "></div>
+
+    <script type="text/javascript">initialize();</script>
+  }
+}
+            </div>
+          </div>
+          

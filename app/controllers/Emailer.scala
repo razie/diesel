@@ -25,6 +25,7 @@ import model.WID
 
 /** all emails sent by site */
 object Emailer extends RazController with Logging {
+  import model.Sec._
 
     def sendSupport(e:String, desc:String, details:String) {
       val html = """
@@ -94,7 +95,7 @@ Changing username from %s -> %s <p>
 Thank you, <br>The RacerKidz
 """.format(u.ename, u.userName, newUsername)
 
-    SendEmail.send (Users.dec(u.email), SUPPORT, "RacerKidz - username change request", html2)
+    SendEmail.send (u.email.dec, SUPPORT, "RacerKidz - username change request", html2)
 
     Msg("Ok - we sent a request - we'll review it asap and let you know.",
       "Page", "home", Some(u))

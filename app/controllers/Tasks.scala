@@ -30,10 +30,12 @@ import model.Base64
 import model.Perm
 import admin._
 import model.WID
+import model.UserTasks
 
 object Tasks extends RazController with Logging {
   import Profile.Email
   import Profile.parentForm
+  import model.Sec._
 
   lazy val cNotParent = new Corr("you're not the parent", "login with the parent account and try again")
 
@@ -91,8 +93,8 @@ object Tasks extends RazController with Logging {
               c <- Users.fromJson(uj) orErr ("cannot parse ujson - bad request");
               res <- Api.createUser(c) orErr ("cannot create in db")
             ) yield {
-              UserTask(c._id, "addParent").create
-              UserTask(c._id, "verifyEmail").create
+              UserTasks.addParent(c).create
+              UserTasks.verifyEmail(c).create
 
               sendEmail (pe, c)
             }
@@ -156,7 +158,7 @@ Please follow these steps:
           
 Thank you,
 The RacerKidz
-""".format(childName, Users.dec(childEmail), Config.hostport, EncUrl(to), link);
+""".format(childName, childEmail.dec, Config.hostport, EncUrl(to), link);
 
     SendEmail.send (to, from, "Racer Kid parent - please activate your account", html)
   }
@@ -257,13 +259,13 @@ The RacerKidz
           date <- (try { Option(DateTime.parse(expiry)) } catch { case _ => (try { Option(DateTime.parse(expiry1.replaceAll(" ", "+").dec)) } catch { case _ => None }) }) orErr ("token faked or expired");
           notExpired <- date.isAfterNow orCorr cExpired;
           p <- auth orCorr cNoAuth;
-          a <- (if (p.email == ce) Some(true) else None) orErr "Not same user";
+          a <- (if (p.email == ce) Some(true) else None) logging ("ERR neq",p.email,ce) orErr "Not same user";
           pro <- p.profile orCorr cNoProfile;
-          already <- !(pro.perms.contains("+eVerified")) orErr "Already defined"
+          already <- !(p.hasPerm(Perm.eVerified)) orErr "Already defined"
         ) yield {
           // TODO transaction
-          this dbop pro.update (pro.addPerm("+eVerified"))
-          this dbop UserTask(p._id, "verifyEmail").delete
+          this dbop pro.update (pro.addPerm("+"+Perm.eVerified.s))
+          this dbop UserTasks.verifyEmail(p).delete
 
           Msg("""
 Ok, email verified. You can now edit topics.

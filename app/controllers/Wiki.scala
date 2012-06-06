@@ -135,7 +135,7 @@ object Wiki extends RazController with Logging {
         ) yield {
           Ok (views.html.wiki.wikiEdit(category, n, editForm.fill(EditWiki(w.label, w.markup, w.content)), auth))
         }) getOrElse
-          noPerm(category, name, errCollector.mkString)
+          noPerm(category, name, "EDIT "+errCollector.mkString)
       case None =>
         (for (
           can <- canEdit(category, name, auth);
@@ -153,7 +153,7 @@ object Wiki extends RazController with Logging {
 
           Ok (views.html.wiki.wikiEdit(category, n, editForm.fill(EditWiki(name.replaceAll("_", " "), Wikis.MD, contentFromTags + "Edit content here")), auth))
         }) getOrElse
-          noPerm(category, name, errCollector.mkString)
+          noPerm(category, name, "EDIT "+errCollector.mkString)
     }
   }
 
@@ -186,7 +186,7 @@ object Wiki extends RazController with Logging {
                 au.shouldEmailParent("Everything").map(parent => Emailer.sendEmailChildUpdatedWiki(parent, au, WID(w.category, w.name)))
                 Redirect(controllers.Wiki.w(category, name))
               }) getOrElse
-                noPerm(category, name, errCollector.mkString)
+                noPerm(category, name, "HACK_SAVEEDIT "+errCollector.mkString)
             case None =>
               (for (
                 au <- auth orCorr new Corr("not logged in", "Sorry - need to log in to create/edit a page"); //cNoAuth;
@@ -200,7 +200,7 @@ object Wiki extends RazController with Logging {
                 au.shouldEmailParent("Everything").map(parent => Emailer.sendEmailChildUpdatedWiki(parent, au, WID(category, name)))
                 Redirect(controllers.Wiki.w(category, name))
               }) getOrElse
-                noPerm(category, name, errCollector.mkString)
+                noPerm(category, name, "HACK_SAVEEDIT "+errCollector.mkString)
           }
         }
       })
@@ -219,7 +219,6 @@ object Wiki extends RazController with Logging {
 
   def call[A, B](value: A)(f: A => B) = f(value)
 
-  // TODO don't display private pages
   def show(category: String, iname: String) = Action { implicit request =>
     implicit val errCollector = new VError()
 
@@ -228,7 +227,7 @@ object Wiki extends RazController with Logging {
     val name = Wikis.formatName(WID(cat, iname))
 
     // special pages
-    if (!canSee(cat, name, auth).map(identity).getOrElse(false)) noPerm(cat, name, errCollector.mkString)
+    if (!canSee(cat, name, auth).map(identity).getOrElse(false)) noPerm(cat, name, "SHOW "+errCollector.mkString)
     else if ("Page" == cat && "home" == name) Redirect ("/")
     else if ("any" == cat) {
       val l = Wikis.findAny(name)
@@ -249,6 +248,29 @@ object Wiki extends RazController with Logging {
             Ok (views.html.wiki.wikiPage(cat, name, Some(iname), Some(w), auth))
         }) getOrElse
         Ok (views.html.wiki.wikiPage(cat, name, Some(iname), None, auth))
+    }
+  }
+
+  def debug(category: String, iname: String, c:String) = Action { implicit request =>
+    implicit val errCollector = new VError()
+
+    // TODO stupid routes - can't match without the :
+    val cat = if (category.endsWith(":")) category.substring(0, category.length - 1) else category
+    val name = Wikis.formatName(WID(cat, iname))
+
+    // special pages
+    if (!canSee(cat, name, auth).map(identity).getOrElse(false)) noPerm(cat, name, "DEBUG "+errCollector.mkString)
+    else {
+      // normal request with cat and name
+      Wikis.find(cat, name).map(
+        w => {
+          // redirect a simple alias with no other content
+          w.alias.map { wid =>
+            Redirect(controllers.Wiki.w(wid.cat, wid.name))
+          } getOrElse
+            Ok (views.html.wiki.wikiDebug(cat, name, Some(iname), Some(w), auth))
+        }) getOrElse
+        Ok (views.html.wiki.wikiDebug(cat, name, Some(iname), None, auth))
     }
   }
 
@@ -300,7 +322,7 @@ object Wiki extends RazController with Logging {
             Ok (views.html.wiki.wikiLink(WID("User", user.id), WID(cat, name),
               linkForm.fill (LinkWiki("Enjoy", Wikis.MD, """[[User:%s | You]] -> [[%s:%s]]""".format(user.id, cat, name))), auth))
         else
-          noPerm(cat, name)
+          noPerm(cat, name, "LINKUSER")
       case None => Ok (views.html.util.utilErr("You need to be logged in to link to a page!", controllers.Wiki.w(cat, name), auth))
     }
   }
@@ -363,7 +385,7 @@ object Wiki extends RazController with Logging {
       Notif.entityUpdateAfter(newVer, WikiEntry.UPD_TOGGLE_RESERVED)
       Redirect(controllers.Wiki.w(cat, name))
     }) getOrElse
-      noPerm(cat, name, errCollector.mkString)
+      noPerm(cat, name, "ADMIN_RESERVE "+errCollector.mkString)
   }
 
   def wikieRename1(cat: String, name: String) = Action { implicit request =>
@@ -375,7 +397,7 @@ object Wiki extends RazController with Logging {
     ) yield {
       Ok (views.html.wiki.wikiRename(cat, name, renameForm.fill ((w.label, w.label)), auth))
     }) getOrElse
-      noPerm(cat, name, errCollector.mkString)
+      noPerm(cat, name, "RENAME "+errCollector.mkString)
   }
 
   def wikieRename2(cat: String, name: String) = Action { implicit request =>
@@ -392,7 +414,7 @@ object Wiki extends RazController with Logging {
             w.update(w.renamed(n))
             Msg ("OK, renamed!", cat, Wikis.formatName(n))
           }) getOrElse
-            noPerm(cat, name, errCollector.mkString)
+            noPerm(cat, name, "RENAME2 "+errCollector.mkString)
       })
   }
 

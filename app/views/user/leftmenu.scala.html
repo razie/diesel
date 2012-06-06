@@ -10,7 +10,8 @@
           <li class="@active(2)"><a href="@routes.Profile.publicProfile">Public profile</a></li>
           <li class="@active(3)"><a href="@routes.Profile.doeChgPass">Password</a></li>
           <li class="@active(4)"><a href="@routes.EdUsername.step1">Username</a></li>
-          <li class="@active(5)">Children</li>
+          <li class="@active(5)"><a href="@routes.EdEmail.step1(user.id)">Email</a></li>
+          <li class="@active(6)">Children</li>
 <ul>
 @for(c <- user.rel("child")) {
      <li><a href="@routes.Profile.profile2(c.id)">@c.ename</a></li>

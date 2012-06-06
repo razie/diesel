@@ -11,6 +11,8 @@ import java.net.URLEncoder
 import com.mongodb.util.JSON
 import razie.Log
 import controllers.UserStuff
+import model.Sec._
+import controllers.Maps
 
 /** temporary registrtion/login form */
 case class Registration(email: String, password: String, repassword: String = "") {
@@ -42,7 +44,7 @@ object Perm {
   val cCategory = Perm("cCategory")
   val uProfile = Perm("uProfile")
   val uReserved = Perm("uReserved")
-  
+  val eVerified = Perm("eVerified")
 }
 
 /** Minimal user info - loaded all the time for a user */
@@ -61,7 +63,7 @@ case class User(
   // TODO change id = it shows like everywhere
   def id = _id.toString
 
-  def ename = if (firstName != null && firstName.size > 0) firstName else Users.dec(email).replaceAll("@.*", "")
+  def ename = if (firstName != null && firstName.size > 0) firstName else email.dec.replaceAll("@.*", "")
 
   def tasks = Users.findTasks(_id)
 
@@ -70,6 +72,9 @@ case class User(
   def hasPerm(p: Perm) = perms.contains("+" + p.s) && !perms.contains("-" + p.s)
 
   def under12 = DateTime.now.year.get - yob <= 12
+
+  // centered on Toronto by default
+  lazy val ll = addr.flatMap(Maps.latlong _).getOrElse ((43.664395,-79.376907))
   
   lazy val canHasProfile = (!under12) || Users.findParentOf(_id).map(_.trust == "Public").getOrElse(false)
 
@@ -155,6 +160,7 @@ case class Profile(
 
   def addRel(t: (String, String)) = model.Profile(userId, loc, tags, perms, aboutMe, relationships ++ Map(t), _id)
   def addPerm(t: String) = model.Profile(userId, loc, tags, perms + t, aboutMe, relationships, _id)
+  def removePerm(t: String) = model.Profile(userId, loc, tags, perms - t, aboutMe, relationships, _id)
   def addTag(t: String) = model.Profile(userId, loc, tags + t, perms, aboutMe, relationships, _id)
 
   var createdDtm: DateTime = DateTime.now
@@ -245,10 +251,6 @@ object Users {
   def group(name: String) = Mongo("UserGroup").findOne(Map("name" -> name)) map (grater[UserGroup].asObject(_))
 
   def create(r: Task) = (Mongo ("Task") += grater[Task].asDBObject(Audit.create(r)))
-
-  def enc(e: String) = (new admin.CipherCrypt).encrypt(e)
-  def dec(e: String) = (new admin.CipherCrypt).decrypt(e)
-
 }
 
 case class Task(name: String, desc: String)
@@ -262,3 +264,10 @@ case class UserTask(userId: ObjectId, name: String) {
     Mongo ("UserTask").m.remove(Map("userId" -> userId, "name" -> name))
   }
 }
+
+object UserTasks {
+  def userNameChgDenied(u:User) = UserTask(u._id, "userNameChgDenied")
+  def verifyEmail(u:User) = UserTask(u._id, "verifyEmail")
+  def addParent(u:User) = UserTask(u._id, "addParent")
+}
+

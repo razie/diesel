@@ -3,8 +3,11 @@ package model
 import com.mongodb.casbah.Imports._
 import admin.Audit
 import com.novus.salat._
+import com.novus.salat.annotations._
 import razie.Log
 import admin.Config
+import admin.NogoodBase64Codec
+import admin.NogoodCipherCrypt
 
 package object RazSalatContext {
 
@@ -19,8 +22,8 @@ object Mongo {
   lazy val conn = MongoConnection(Config.mongohost)
 
   val AGAIN = false
-  val CURR_VER = 6
-  val upgrades = Map (1 -> Upgrade1, 2 -> Upgrade2, 3 -> Upgrade3, 4 -> Upgrade4, 5 -> Upgrade5)
+  val CURR_VER = 7
+  val upgrades = Map (1 -> Upgrade1, 2 -> Upgrade2, 3 -> Upgrade3, 4 -> Upgrade4, 5 -> Upgrade5, 6 -> U6)
 
   lazy val db = {
     com.mongodb.casbah.commons.conversions.scala.RegisterConversionHelpers()
@@ -55,7 +58,7 @@ object Mongo {
         case None => db("Ver") += Map("ver" -> CURR_VER) // create a first ver entry
       }
     } catch {
-      case e: Throwable => Log.error ("Exception during DB migration - darn thing won't work at all probably", e)
+      case e: Throwable => Log.error ("Exception during DB migration - darn thing won't work at all probably\n" + e, e)
     }
 
     // that's it, db initialized?
@@ -157,6 +160,8 @@ object Upgrade5 extends UpgradeDb with razie.Logging {
   def name(u: DBObject) = u.get ("name").asInstanceOf[String]
   def nameo(u: DBObject) = u.get ("entry").asInstanceOf[DBObject].get("name").asInstanceOf[String]
 
+  import model.RazSalatContext._
+    
   def upgrade(db: MongoDB) {
     withDb(db("WikiEntry")) { t =>
       for (u <- t if ("WikiLink" != u.get("category") && Wikis.formatName(name(u)) != name(u))) {
@@ -172,7 +177,38 @@ object Upgrade5 extends UpgradeDb with razie.Logging {
         t.save(u)
       }
     }
+
+    withDb(db("Profile")) { t =>
+      for (
+      po <- t;
+      p <- Some(grater[Profile].asObject(po)) if (!p.perms.contains("+eVerified"))) {
+        db("UserTask") += grater[UserTask].asDBObject(UserTask(p.userId, "verifyEmail"))
+      }
+    }
+    
+//    withDb(db("User")) { t =>
+//      for ( u <- t if(!u.containsKey("email"))) {
+//        u.put("email", Enc("r@racerkidz.com"))
+//        t.save(u)
+//      }
+//    }
   }
-  
+
+}
+
+// change base64 encoding to url safe
+object U6 extends UpgradeDb with razie.Logging {
+  import model.RazSalatContext._
+    
+  def upgrade(db: MongoDB) {
+    withDb(db("User")) { t =>
+      for ( u <- t) {
+        u.put("email", Enc(new NogoodCipherCrypt().decrypt(u.as[String]("email"))))
+        u.put("pwd", Enc(new NogoodCipherCrypt().decrypt(u.as[String]("pwd"))))
+        t.save(u)
+      }
+    }
+  }
+
 }
 
