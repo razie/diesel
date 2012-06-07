@@ -29,6 +29,11 @@ class WikiWrapper(override val cat: String, val name: String) extends WWrapper(c
 case class IWikiWrapper(val ilink: ILink) extends WikiWrapper(ilink.cat, ilink.name) {
   override def mkLink = ilink
   override def tags = w.map(_.tags).getOrElse(ilink.tags)
+  
+  override lazy val ilinks = (w.map(_.ilinks.map(ilink => {
+    if (ilink.cat == "any") Wikis.findAnyOne(ilink.name).map(w => ILink(w.category, w.name, w.label))
+    else Some(ilink)
+  })).getOrElse(ilink.ilinks.map(x=>Some(x)))).flatMap(_.toList)
 }
 
 /** NOTE that JSON xpath must start with "/root/..."

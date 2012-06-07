@@ -60,7 +60,7 @@ case class WikiEntry(
       throw new IllegalStateException("page already exists: " + category + "/" + name)
     }
 
-    Audit.logdb(AUDT_WIKI_CREATED, category + ":" + name, " BY " + this.by + "\nCONTENT:\n" + this)
+    Audit.logdb(AUDT_WIKI_CREATED, "BY " + this.by + " " + category + ":" + name, "\nCONTENT:\n" + this)
     Wikis.table += grater[WikiEntry].asDBObject(Audit.createnoaudit(this))
     Wikis.shouldFlag(name, label, content).map(auditFlagged(_))
     Wikis.withIndex { _.put(name, category, _id) }
@@ -303,7 +303,7 @@ object ILink {
 }
 
 /** most information about a page */
-case class ILink(cat: String, name: String, label: String, tags: Map[String, String] = Map()) {
+case class ILink(cat: String, name: String, label: String, tags: Map[String, String] = Map(), ilinks:List[ILink]=Nil) {
   def href = "/wiki/%s:%s".format(cat, name)
   def format = Wikis.formatWikiLink(cat, name, label, None)
 }
@@ -324,7 +324,8 @@ trait ParserCommons extends RegexParsers {
   def CRLF3: P = CRLF2 ~ CRLF2 ^^ { case a ~ b => a + b }
   def NADA: P = ""
 
-  def static: P = (not("{{") ~> not("[[") ~> not("}}") ~> not("[http:") ~> """.""".r+) ^^ { case l => l.mkString }
+    // static must be stopped to not include too much - that's why the last expr
+  def static: P = not("{{") ~> not("[[") ~> not("}}") ~> not("[http:") ~> (""".""".r) ~ ("""[^{}\[\]`]""".r*) ^^ { case a~b => a+b.mkString }
 }
 
 /** wiki parser */
@@ -344,12 +345,13 @@ object WikiParser extends ParserCommons with CsvParser {
   def xCRLF3: PS = CRLF3 ^^ { case x => x }
   def xNADA: PS = NADA ^^ { case x => x }
   def xstatic: PS = static ^^ { case x => x }
+  def escaped: PS = "`" ~ opt(""".[^`]*""".r) ~ "`" ^^ { case a ~ b ~ c => a+b.getOrElse("")+c}
 
   //============================== wiki parsing
 
   def wiki: PS = lines | line | xCRLF2 | xNADA
 
-  def line: PS = opt(lists) ~ rep(badHtml | badHtml2 | wiki3 | wiki2 | link1 | wikiProps | xstatic) ^^ {
+  def line: PS = opt(lists) ~ rep(escaped | badHtml | badHtml2 |  wiki3 | wiki2 | link1 | wikiProps | xstatic ) ^^ {
     case ol ~ l => State(ol.getOrElse(State("")).s + l.map(_.s).mkString, l.flatMap(_.tags).toMap, l.flatMap(_.ilinks))
   }
 
@@ -373,7 +375,7 @@ object WikiParser extends ParserCommons with CsvParser {
       if (p.successful) {
         // this is an ilink with auto-props in the name/label
         // for now, reformat the link to allow props and collect them in the ILInk
-        SedWiki(wikip2a, expand2 _, identity, p.get.s).map(x => State(x._1, Map(), x._2.map(x => ILink(x.cat, x.name, x.label, p.get.tags)).toList)).get // TODO something with the props
+        SedWiki(wikip2a, expand2 _, identity, p.get.s).map(x => State(x._1, Map(), x._2.map(x => ILink(x.cat, x.name, x.label, p.get.tags, p.get.ilinks)).toList)).get // TODO something with the props
       } else {
         // this is a normal ilink
         SedWiki(wikip2a, expand2 _, Wikis.formatName _, name).map(x => State(x._1, Map(), x._2.toList)).get
@@ -407,7 +409,7 @@ object WikiParser extends ParserCommons with CsvParser {
       case "list:" => {
         val c = if (m.group(3) != null) nm else "?"
 
-        ((if (Wikis.pageNames(cat).size < 100)
+        ((if (Wikis.pageNames(c).size < 100)
           Wikis.pageNames(c).map { p =>
           hackmd(p, c, p)
         }.map(_._1).mkString(" ")
@@ -461,7 +463,7 @@ object WikiParser extends ParserCommons with CsvParser {
   //======================= {{name:value}}
 
   // this is used when matching a link/name
-  def wikiPropsRep: PS = rep(wikiPropMagicName | wikiPropByName | wikiPropWhenName | wikiPropWhereName | wikiPropLocName | wikiPropRoles | wikiProp | xstatic) ^^ { case l => State(l.map(_.s).mkString, l.flatMap(_.tags).toMap) }
+  def wikiPropsRep: PS = rep(wikiPropMagicName | wikiPropByName | wikiPropWhenName | wikiPropWhereName | wikiPropLocName | wikiPropRoles | wikiProp | xstatic) ^^ { case l => State(l.map(_.s).mkString, l.flatMap(_.tags).toMap, l.flatMap(_.ilinks)) }
 
   // this is used for contents of a topic
   def wikiProps: PS = wikiPropMagic | wikiPropBy | wikiPropWhen | wikiPropWhere | wikiPropLoc | wikiPropRoles | wikiPropCsv | wikiPropTable | wikiProp
@@ -476,7 +478,7 @@ object WikiParser extends ParserCommons with CsvParser {
       }
     }
   }
-  def wikiPropMagicName: PS = "{{{" ~> """[^}]*""".r <~ "}}}" ^^ {
+  def wikiPropMagicName: PS = """{{{""" ~> """[^}]*""".r <~ """}}}""" ^^ {
     case value => {
       val p = parseAll(dates, value)
       if (p.successful) {
@@ -487,8 +489,8 @@ object WikiParser extends ParserCommons with CsvParser {
     }
   }
 
-  def wikiProp: PS = "{{" ~> """[^:}]+""".r ~ ":" ~ """[^}]*""".r <~ "}}" ^^ {
-    case name ~ _ ~ value => State("""[Unknonw prop %s=%s]""".format(name, value), Map(name -> value))
+  def wikiProp: PS = "{{" ~> """[^}:]+""".r ~ ":" ~ """[^}]*""".r <~ "}}" ^^ {
+    case name ~ _ ~ value => State("""{{Unknown prop %s=%s}}""".format(name, value), Map(name -> value))
   }
 
   def wikiPropByName: PS = ("\\{\\{[Bb]y[: ]+".r | "\\{\\{[Cc]lub[: ]+".r) ~> """[^}]*""".r <~ "}}" ^^ {
@@ -504,10 +506,10 @@ object WikiParser extends ParserCommons with CsvParser {
   }
 
   def wikiPropWhereName: PS = ("\\{\\{where[: ]".r | "\\{\\{[Aa]t[: ]+".r | "\\{\\{[Pp]lace[: ]+".r | "\\{\\{[Vv]enue[: ]+".r) ~> """[^}]*""".r <~ "}}" ^^ {
-    case place => State("""{{at %s}}""".format(place), Map("venue" -> place))
+    case place => State("""{{at %s}}""".format(place), Map("venue" -> place), ILink("Venue", place, place) :: Nil)
   }
 
-  def wikiPropLoc: PS = "{{loc:" ~> """[^:]*""".r ~ ":".r ~ """[^}]*""".r <~ "}}" ^^ {
+  def wikiPropLoc: PS = "{{" ~> "loc:" ~> """[^}:]*""".r ~ ":".r ~ """[^}]*""".r <~ "}}" ^^ {
     case what ~ _ ~ loc => {
       if ("ll" == what)
         State("""{{[Location](http://maps.google.com/maps?ll=%s&z=15)}}""".format(loc), Map("loc" -> (what + ":" + loc)))
@@ -520,7 +522,7 @@ object WikiParser extends ParserCommons with CsvParser {
     }
   }
 
-  def wikiPropLocName: PS = "{{loc:" ~> """[^:]*""".r ~ ":".r ~ """[^}]*""".r <~ "}}" ^^ {
+  def wikiPropLocName: PS = "{{" ~> "loc:" ~> """[^:]*""".r ~ ":".r ~ """[^}]*""".r <~ "}}" ^^ {
     case what ~ _ ~ loc => {
       State("""{{at:%s:%s)}}""".format(what, loc), Map("loc:" + what -> loc))
     }
@@ -548,7 +550,7 @@ object WikiParser extends ParserCommons with CsvParser {
     }
   }
 
-  def wikiPropRoles: PS = "{{roles:" ~> """[^:]*""".r ~ ":".r ~ """[^}]*""".r <~ "}}" ^^ {
+  def wikiPropRoles: PS = "{{" ~> "roles:" ~> """[^:]*""".r ~ ":".r ~ """[^}]*""".r <~ "}}" ^^ {
     case cat ~ colon ~ how => {
       if ("Child" == how)
         State("{{Has " + parseW2("[[%s]]".format(cat)).s + "(s)}}", Map("roles:" + cat -> how))
@@ -561,7 +563,7 @@ object WikiParser extends ParserCommons with CsvParser {
 
   //======================= delimited imports and tables
 
-  def wikiPropCsv: PS = "{{delimited:" ~> (wikiPropCsvStart >> { h: CsvHeading => csv(h.delim) ^^ { x => (h, x) } }) <~ "{{/delimited}}" ^^ {
+  def wikiPropCsv: PS = "{{" ~> "delimited:" ~> (wikiPropCsvStart >> { h: CsvHeading => csv(h.delim) ^^ { x => (h, x) } }) <~ "{{/delimited}}" ^^ {
     case (a, body) => {
       val c = body
       a.s + c.map(l =>
@@ -572,7 +574,7 @@ object WikiParser extends ParserCommons with CsvParser {
     }
   }
 
-  def wikiPropTable: PS = "{{table:" ~> (wikiPropTableStart >> { h: CsvHeading => csv(h.delim) ^^ { x => (h, x) } }) <~ "{{/table}}" ^^ {
+  def wikiPropTable: PS = "{{" ~> "table:" ~> (wikiPropTableStart >> { h: CsvHeading => csv(h.delim) ^^ { x => (h, x) } }) <~ "{{/table}}" ^^ {
     case (a, body) => {
       val c = body
       a.s + c.map(l =>

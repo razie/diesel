@@ -74,7 +74,7 @@ case class User(
   def under12 = DateTime.now.year.get - yob <= 12
 
   // centered on Toronto by default
-  lazy val ll = addr.flatMap(Maps.latlong _).getOrElse ((43.664395,-79.376907))
+  lazy val ll = addr.flatMap(Maps.latlong _).getOrElse (("43.664395","-79.376907"))
   
   lazy val canHasProfile = (!under12) || Users.findParentOf(_id).map(_.trust == "Public").getOrElse(false)
 

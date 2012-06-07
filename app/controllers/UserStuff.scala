@@ -103,6 +103,8 @@ class XListWrapper[T](nodes: List[T], ctx: XpSolver[T]) extends ListWrapper[T](n
 
   /** the attributes with the respective names */
   def \@-(n: (String, String)): List[(String, String)] = (this \@ n._1) zip (this \@ n._2)
+  def \@-(n: (String, String, String)): List[(String, String, String)] = ((this \@ n._1) zip (this \@ n._2) zip (this \@ n._3)).map (x=>(x._1._1, x._1._2, x._2))
+  def \@-(n: (String, String, String, String)): List[(String, String, String, String)] = ((this \@ n._1) zip (this \@ n._2) zip (this \@ n._3)  zip (this \@ n._4)).map (x=>(x._1._1._1, x._1._1._2, x._1._2, x._2))
 }
 
 /** OO wrapper for self-solving XP elements */
@@ -113,6 +115,8 @@ class XWrapper[T](node: T, ctx: XpSolver[T]) extends Wrapper(node, ctx) {
 
   /** the attributes with the respective names */
   def \@-(n: (String, String)): (String, String) = (this \@ n._1, this \@ n._2)
+  def \@-(n: (String, String, String)): (String, String, String) = (this \@ n._1, this \@ n._2, this \@ n._3)
+  def \@-(n: (String, String, String, String)): (String, String, String, String) = (this \@ n._1, this \@ n._2, this \@ n._3, this \@ n._4)
 }
 
 object Maps extends razie.Logging {

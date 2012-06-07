@@ -2,6 +2,8 @@
 
 @import org.joda.time.DateTime
 @import razie.RString._
+@import controllers.XListWrapper
+@import controllers.Wiki
 
 @active(i:Int) = @{
   if(i == item) "active" else ""
@@ -12,9 +14,9 @@
 }
 
 @locsj3() = @{
-  val t = ("loc", "label")
-  import controllers.XListWrapper
+  val t = ("loc", "label", "name")
   val x = (controllers.UserStuff.xp(user, "Season") \ "Race" \ "Venue")
+  val (lat, long) = user.ll
   val xx = (x.asInstanceOf[XListWrapper[_]] \@- t).filter(! _._1.isEmpty)
   xx.map {venue =>
     println(venue)
@@ -23,19 +25,27 @@
     what match {
       case "ll" => {
         val (x,y) = coord.split2(",")
-        """new google.maps.Marker({
+        """marker = new google.maps.Marker({
         position: new google.maps.LatLng(%s,%s),
         map: map,
-        title:'%s'
-      });""".format(x,y,venue._2)
+        title:'%s',
+        url:'%s'
+      });
+      google.maps.event.addListener(marker, 'click', function() { 
+        window.location.href = this.url; 
+      });""".format(x,y,venue._2, Wiki.w("Venue", venue._3))
       }
       case "s" => {
         controllers.Maps.latlong(ll).map {case (x,y) =>
-        """new google.maps.Marker({
+        """marker = new google.maps.Marker({
         position: new google.maps.LatLng(%s,%s),
         map: map,
-        title:'%s'
-      });""".format(x,y,venue._2)}.getOrElse("")
+        title:'%s',
+        url:'%s'
+      });
+      google.maps.event.addListener(marker, 'click', function() { 
+        window.location.href = this.url; 
+      }); """.format(x,y,venue._2, Wiki.w("Venue", venue._3))}.getOrElse("")
       }
       case _ => {
         ""
@@ -44,10 +54,6 @@
 }
 }
 
-@centerCalc() = @{
-  val (lat, long) = user.ll
-  """new google.maps.LatLng(%s,%s)""".format(lat,long)
-}
 
           <div class="span6">
             <div class="well">
@@ -103,29 +109,11 @@
             <a href="http://maps.googleapis.com/maps/api/staticmap?zoom=13&size=600x300&@user.events.filter(_._3.isAfter(DateTime.now)).map(x=>(x._4, x._4.tags.get("loc"))).filter(_._2.isDefined).map(x=>"markers=color:red|label:%s|%s".format(x._1.label, x._1.tags.get("loc"))).mkString("&")">map</a>
   }
 case 2 => {
-    <script type="text/javascript"      src="http://maps.googleapis.com/maps/api/js?key=AIzaSyCqHAGo3tWW6MaSudxErk_sDK15YQbO3ns&sensor=false">    </script>
-    <script type="text/javascript">
-      var map;
-
-      function initialize() {
-        var mapDiv = document.getElementById("map_canvas");
-        map = new google.maps.Map(mapDiv, {
-          center: @centerCalc(),
-          zoom: 7,
-          mapTypeId: google.maps.MapTypeId.ROADMAP
-        });
-
-      google.maps.event.addListenerOnce(map, 'tilesloaded', addMarkers);
-      }
-
-      function addMarkers() {
-        @locsj3()
-      }
-    </script>
-
-    <div id="map_canvas" style="width: 100%; height: 350px; "></div>
-
-    <script type="text/javascript">initialize();</script>
+  
+  @util.utilMap(
+      (controllers.UserStuff.xp(user, "Season") \ "Race" \ "Venue").asInstanceOf[XListWrapper[_]],
+      user.ll
+      )
   }
 }
             </div>
