@@ -64,64 +64,48 @@ object Wiki extends RazController with Logging {
       })
   }
 
-  def checkEditPerm(c: String, n: String)(implicit request: Request[_]) =
-    ("Category" == c && hasPerm(Perm.uCategory) || hasPerm(Perm.uWiki))
-
-  //  def privateCheck (k:Option[WikiEntry], cat:String) =
-  //    k match {
-  //    case Some(w) => w.isPrivate
-  //  }
-
-  def xcall(other: Action[AnyContent])(implicit request: Request[AnyContent]) =
-    other.apply(request)
-
-  /** used when no pages foudn in any, cat i captured in a form */
+  /** when no pages found in 'any', i captured 'cat' in a form */
   def edit2 = Action{ implicit request =>
     implicit val errCollector = new VError()
-    val x = (for (
+    (for (
       cat <- request.queryString("cat").headOption;
       name <- request.queryString("name").headOption
-    ) yield xcall(edit(cat, name)))
-    x getOrElse {
+    ) yield edit(cat, name).apply(request)) getOrElse {
       error("ERR_CANT_UPDATE_USER " + session.get("email"))
       Unauthorized("Oops - cannot create this link... " + errCollector.mkString)
     }
   }
 
-  def notPrivateTo(cat: String, name: String, au: Option[User])(implicit errCollector: VError, request: Request[_]): Option[Boolean] = {
-    val isAdmin = au.map(_.hasPerm(Perm.adminDb)).getOrElse(false)
+  def canSee(cat: String, name: String, au: Option[User])(implicit errCollector: VError, request: Request[_]): Option[Boolean] = {
+    lazy val isAdmin = au.map(_.hasPerm(Perm.adminDb)).getOrElse(false)
     (for (
-      can1 <- ("User" != cat || Wikis.withIndex(_.get2(name, cat).isDefined) || au.map(name == _.userName).getOrElse(isAdmin)) orErr ("Sorry - profile not found or is private!");
-      mine2 <- ("WikiLink" != cat || au.map(x => name.split(":")(1) == x.id).getOrElse(isAdmin)) orErr ("Sorry - topic not foudn or is private!") // TODO report
+      hidden <- ("Hidden" != cat || au.map(_.hasPerm(Perm.adminDb)).getOrElse(false)) orErr ("can't see admin pages");
+      pubProfile <- ("User" != cat || Wikis.withIndex(_.get2(name, cat).isDefined) || au.map(name == _.userName).getOrElse(isAdmin)) orErr ("Sorry - profile not found or is private!");
+      mine <- ("WikiLink" != cat || au.map(x => name.split(":")(1) == x.id).getOrElse(isAdmin)) orErr ("Sorry - topic not foudn or is private!"); // TODO report
+      t <- true orErr ("can't")
     ) yield true)
     // TODO add user's personal pages
     // TODO parent can see child's profile
   }
 
-  def canSee(cat: String, name: String, au: Option[User])(implicit errCollector: VError, request: Request[_]): Option[Boolean] = {
-    (for (
-      can1 <- ("Hidden" != cat || au.map(_.hasPerm(Perm.adminDb)).getOrElse(false)) orErr ("can't see admin pages");
-      can2 <- notPrivateTo (cat, name, au);
-      t <- true orErr ("can't")
-    ) yield true)
-  }
+  final val corrVerified = new Corr("not verified", "Sorry - you need to verify your email address, to create or edit public topics.\n If you already did, please describe the issue in a support request below.");
 
   def canEdit(cat: String, name: String, u: Option[User])(implicit errCollector: VError, request: Request[_]) = {
     println("------------------" + cat)
     (for (
       cansee <- canSee(cat, name, u);
-      au <- u orCorr new Corr("not logged in", "Sorry - need to log in to create/edit a page"); //cNoAuth;
-      r1 <- ("Category" != cat || hasPerm(Perm.uCategory)) orErr ("no permission to edit a Category");
+      au <- u orCorr cNoAuth;
+      isA <- au.isActive orErr ("This account is not active");
+      r1 <- ("Category" != cat || au.hasPerm(Perm.uCategory)) orErr ("no permission to edit a Category");
       mine <- ("User" != cat || name == au.userName) orErr ("Can only edit your own public profile!");
       mine1 <- ("User" != cat || au.canHasProfile) orErr ("Sorry - you cannot have a public profile - either no parent added or parent does not allow it! \n If you think you should have one, please describe the issue in a support request below.");
       mine2 <- ("WikiLink" == cat || au.canHasProfile) orErr ("Sorry - you cannot create or edit public topics - either no parent added or parent does not allow it! \n If you think you should have one, please describe the issue in a support request below.");
       pro <- au.profile orCorr cNoProfile;
-      verif <- ("WikiLink" == cat || "User" == cat || pro.perms.contains("+eVerified")) orErr ("Sorry - you need to verify your email address, to create or edit public topics.\n If you already did, please describe the issue in a support request below.");
+      verif <- ("WikiLink" == cat || "User" == cat || au.hasPerm(Perm.eVerified)) orCorr corrVerified;
       t <- true orErr ("can't")
     ) yield true)
   }
 
-  // TODO don't display private pages
   def edit(category: String, name: String) = Action{ implicit request =>
     implicit val errCollector = new VError()
     val n = Wikis.formatName(WID(category, name))
@@ -129,20 +113,22 @@ object Wiki extends RazController with Logging {
     Wikis.find(category, n) match {
       case Some(w) =>
         (for (
-          can <- canEdit(category, name, auth);
-          res <- (!w.isReserved || hasPerm(Perm.uReserved)) orErr ("Category is reserved");
-          r1 <- (hasPerm(Perm.uWiki)) orErr ("no permission")
+          au <- auth orCorr cNoAuth;
+          can <- canEdit(category, name, Some(au));
+          res <- (!w.isReserved || au.hasPerm(Perm.uReserved)) orErr ("Category is reserved");
+          r1 <- au.hasPerm(Perm.uWiki) orCorr cNoPermission
         ) yield {
           Ok (views.html.wiki.wikiEdit(category, n, editForm.fill(EditWiki(w.label, w.markup, w.content)), auth))
         }) getOrElse
-          noPerm(category, name, "EDIT "+errCollector.mkString)
+          noPerm(category, name, "EDIT " + errCollector.mkString)
       case None =>
         (for (
-          can <- canEdit(category, name, auth);
+          au <- auth orCorr cNoAuth;
+          can <- canEdit(category, name, Some(au));
           r3 <- ("any" != category) orErr ("can't create in category any");
           w <- Wikis.find("Category", category) orErr ("cannot find the category " + category);
-          res <- (!w.isReserved || hasPerm(Perm.uReserved) || "User" == category) orErr ("Category is reserved");
-          r2 <- (hasPerm(Perm.uWiki)) orErr ("no permission")
+          res <- (!w.isReserved || au.hasPerm(Perm.uReserved) || "User" == category) orErr ("Category is reserved");
+          r1 <- au.hasPerm(Perm.uWiki) orCorr cNoPermission
         ) yield {
           Audit.missingPage("wiki " + category + ":" + name);
 
@@ -153,11 +139,10 @@ object Wiki extends RazController with Logging {
 
           Ok (views.html.wiki.wikiEdit(category, n, editForm.fill(EditWiki(name.replaceAll("_", " "), Wikis.MD, contentFromTags + "Edit content here")), auth))
         }) getOrElse
-          noPerm(category, name, "EDIT "+errCollector.mkString)
+          noPerm(category, name, "EDIT " + errCollector.mkString)
     }
   }
 
-  // TODO don't display private pages
   def save(category: String, name: String) = Action { implicit request =>
     implicit val errCollector = new VError()
     editForm.bindFromRequest.fold(
@@ -171,10 +156,10 @@ object Wiki extends RazController with Logging {
           Wikis.find(category, name) match {
             case Some(w) =>
               (for (
-                au <- auth orCorr new Corr("not logged in", "Sorry - need to log in to create/edit a page"); //cNoAuth;
+                au <- auth orCorr cNoAuth;
                 can <- canEdit(category, name, auth);
-                r1 <- (hasPerm(Perm.uWiki)) orErr ("no permission");
-                res <- (!w.isReserved || hasPerm(Perm.uReserved) || "User" == category) orErr ("Category is reserved");
+                r1 <- au.hasPerm(Perm.uWiki) orCorr cNoPermission;
+                res <- (!w.isReserved || au.hasPerm(Perm.uReserved) || "User" == category) orErr ("Category is reserved");
                 nochange <- (w.label != l || w.markup != m || w.content != co) orErr ("no change");
                 newlab <- Some(if ("WikiLink" == category || "User" == category) l else if (name == Wikis.formatName(l)) l else w.label);
                 newVer <- Some(w.newVer(newlab, m, co, auth.get.userName));
@@ -186,21 +171,21 @@ object Wiki extends RazController with Logging {
                 au.shouldEmailParent("Everything").map(parent => Emailer.sendEmailChildUpdatedWiki(parent, au, WID(w.category, w.name)))
                 Redirect(controllers.Wiki.w(category, name))
               }) getOrElse
-                noPerm(category, name, "HACK_SAVEEDIT "+errCollector.mkString)
+                noPerm(category, name, "HACK_SAVEEDIT " + errCollector.mkString)
             case None =>
               (for (
-                au <- auth orCorr new Corr("not logged in", "Sorry - need to log in to create/edit a page"); //cNoAuth;
+                au <- auth orCorr cNoAuth;
                 can <- canEdit(category, name, auth);
                 r3 <- ("any" != category) orErr ("can't create in category any");
                 w <- Wikis.find("Category", category) orErr ("cannot find the category " + category);
-                r1 <- (hasPerm(Perm.uWiki)) orErr ("no permission");
-                res <- (!w.isReserved || hasPerm(Perm.uReserved) || "User" == category) orErr ("Category is reserved")
+                r1 <- (au.hasPerm(Perm.uWiki)) orCorr cNoPermission;
+                res <- (!w.isReserved || au.hasPerm(Perm.uReserved) || "User" == category) orErr ("Category is reserved")
               ) yield {
                 model.WikiEntry(category, name, l, m, co, auth.get.userName).create
                 au.shouldEmailParent("Everything").map(parent => Emailer.sendEmailChildUpdatedWiki(parent, au, WID(category, name)))
                 Redirect(controllers.Wiki.w(category, name))
               }) getOrElse
-                noPerm(category, name, "HACK_SAVEEDIT "+errCollector.mkString)
+                noPerm(category, name, "HACK_SAVEEDIT " + errCollector.mkString)
           }
         }
       })
@@ -227,7 +212,7 @@ object Wiki extends RazController with Logging {
     val name = Wikis.formatName(WID(cat, iname))
 
     // special pages
-    if (!canSee(cat, name, auth).map(identity).getOrElse(false)) noPerm(cat, name, "SHOW "+errCollector.mkString)
+    if (!canSee(cat, name, auth).map(identity).getOrElse(false)) noPerm(cat, name, "SHOW " + errCollector.mkString)
     else if ("Page" == cat && "home" == name) Redirect ("/")
     else if ("any" == cat) {
       val l = Wikis.findAny(name)
@@ -251,7 +236,7 @@ object Wiki extends RazController with Logging {
     }
   }
 
-  def debug(category: String, iname: String, c:String) = Action { implicit request =>
+  def debug(category: String, iname: String, c: String) = Action { implicit request =>
     implicit val errCollector = new VError()
 
     // TODO stupid routes - can't match without the :
@@ -259,7 +244,7 @@ object Wiki extends RazController with Logging {
     val name = Wikis.formatName(WID(cat, iname))
 
     // special pages
-    if (!canSee(cat, name, auth).map(identity).getOrElse(false)) noPerm(cat, name, "DEBUG "+errCollector.mkString)
+    if (!canSee(cat, name, auth).map(identity).getOrElse(false)) noPerm(cat, name, "DEBUG " + errCollector.mkString)
     else {
       // normal request with cat and name
       Wikis.find(cat, name).map(
@@ -313,18 +298,19 @@ object Wiki extends RazController with Logging {
   }
 
   def linkUser(cat: String, name: String) = Action { implicit request =>
-    auth match {
-      case Some(user) =>
-        if (hasPerm(Perm.uProfile))
-          if (user.pages(cat).exists(_.name == name))
-            Redirect(routes.Wiki.edit("WikiLink", user.pages(cat).filter(_.name == name).head.wname))
-          else
-            Ok (views.html.wiki.wikiLink(WID("User", user.id), WID(cat, name),
-              linkForm.fill (LinkWiki("Enjoy", Wikis.MD, """[[User:%s | You]] -> [[%s:%s]]""".format(user.id, cat, name))), auth))
-        else
-          noPerm(cat, name, "LINKUSER")
-      case None => Ok (views.html.util.utilErr("You need to be logged in to link to a page!", controllers.Wiki.w(cat, name), auth))
-    }
+   implicit val errCollector = new VError()
+    (for (
+      au <- auth orCorr cNoAuth;
+      isA <- au.isActive orErr ("This account is not active");
+      r1 <- au.hasPerm(Perm.uProfile) orCorr cNoPermission
+    ) yield {
+      if (au.pages(cat).exists(_.name == name))
+        Redirect(routes.Wiki.edit("WikiLink", au.pages(cat).filter(_.name == name).head.wname))
+      else
+        Ok (views.html.wiki.wikiLink(WID("User", au.id), WID(cat, name),
+          linkForm.fill (LinkWiki("Enjoy", Wikis.MD, """[[User:%s | You]] -> [[%s:%s]]""".format(au.id, cat, name))), auth))
+    }) getOrElse
+      noPerm(cat, name, "LINKUSER " + errCollector.mkString)
   }
 
   def linked(fromCat: String, fromName: String, toCat: String, toName: String) = {
@@ -349,6 +335,7 @@ object Wiki extends RazController with Logging {
         case we @ LinkWiki(how, mark, comment) =>
           (for (
             user <- auth orCorr cNoAuth;
+            isA <- user.isActive orErr ("This account is not active");
             isMe <- (user.id equals userId) orErr {
               Audit.security("Another user tried to link...", userId, user.id)
               ("invalid user")
@@ -358,7 +345,7 @@ object Wiki extends RazController with Logging {
             val wl = model.WikiLink(WID("User", user.id), WID(cat, name), how)
             wl.create
             model.WikiEntry("WikiLink", wl.wname, "You like " + Wikis.label(cat, name), mark, comment, user.id).props(Map("owner" -> user.id)).create
-            model.UserWiki(user._id, cat, name).create
+            this dbop model.UserWiki(user._id, cat, name).create
             Msg2 ("OK, added!", Some("/"))
           }) getOrElse {
             error("ERR_CANT_UPDATE_USER " + session.get("email"))
@@ -372,10 +359,10 @@ object Wiki extends RazController with Logging {
 
     log("Wiki.reserve " + cat + ":" + name)
     (for (
-      au <- auth orCorr new Corr("not logged in", "Sorry - need to log in to edit a page"); //cNoAuth;
+      au <- auth orCorr cNoAuth;
       w <- Wikis.find(cat, name);
-      r1 <- ("Category" != cat || hasPerm(Perm.uCategory)) orErr ("no permission to edit a Category");
-      r1 <- (hasPerm(Perm.adminDb)) orErr ("no permission");
+      r1 <- ("Category" != cat || au.hasPerm(Perm.uCategory)) orErr ("no permission to edit a Category");
+      r1 <- au.hasPerm(Perm.adminDb) orCorr cNoPermission;
       nochange <- (w.isReserved != how) orErr ("no change");
       newVer <- Some(w.props(w.props + ("reserved" -> (if (how) "yes" else "no"))));
       upd <- Notif.entityUpdateBefore(newVer, WikiEntry.UPD_TOGGLE_RESERVED) orErr ("Not allowerd")
@@ -385,19 +372,19 @@ object Wiki extends RazController with Logging {
       Notif.entityUpdateAfter(newVer, WikiEntry.UPD_TOGGLE_RESERVED)
       Redirect(controllers.Wiki.w(cat, name))
     }) getOrElse
-      noPerm(cat, name, "ADMIN_RESERVE "+errCollector.mkString)
+      noPerm(cat, name, "ADMIN_RESERVE " + errCollector.mkString)
   }
 
   def wikieRename1(cat: String, name: String) = Action { implicit request =>
     implicit val errCollector = new VError()
     (for (
-      au <- auth orCorr new Corr("not logged in", "Sorry - need to log in to edit a page"); //cNoAuth;
+      au <- auth orCorr cNoAuth;
       ok <- ("WikiLink" != cat && "User" != cat) orErr ("can't rename this category");
       w <- Wikis.find(cat, name) orErr ("topic not found")
     ) yield {
       Ok (views.html.wiki.wikiRename(cat, name, renameForm.fill ((w.label, w.label)), auth))
     }) getOrElse
-      noPerm(cat, name, "RENAME "+errCollector.mkString)
+      noPerm(cat, name, "RENAME " + errCollector.mkString)
   }
 
   def wikieRename2(cat: String, name: String) = Action { implicit request =>
@@ -407,14 +394,14 @@ object Wiki extends RazController with Logging {
       {
         case (_, n) =>
           (for (
-            au <- auth orCorr new Corr("not logged in", "Sorry - need to log in to edit a page"); //cNoAuth;
+            au <- auth orCorr cNoAuth;
             ok <- ("WikiLink" != cat && "User" != cat) orErr ("can't rename this category");
             w <- Wikis.find(cat, name) orErr ("topic not found")
           ) yield {
             w.update(w.renamed(n))
             Msg ("OK, renamed!", cat, Wikis.formatName(n))
           }) getOrElse
-            noPerm(cat, name, "RENAME2 "+errCollector.mkString)
+            noPerm(cat, name, "RENAME2 " + errCollector.mkString)
       })
   }
 

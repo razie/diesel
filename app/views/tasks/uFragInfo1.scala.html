@@ -58,8 +58,8 @@
           <div class="span6">
             <div class="well">
 <ul class="nav nav-tabs">
-  <li class="@active(1)"><a href="/index/1">List</a></li>
-  <li class="@active(2)"><a href="/index/2">Map</a></li>
+  <li class="@active(1)"><a href="/doe/index/1">List</a></li>
+  <li class="@active(2)"><a href="/doe/index/2">Map</a></li>
 </ul>
 @item match {
   case 1 => {
@@ -105,8 +105,11 @@
             } else {
              <b>Nothing coming up...</b>
             }
+            
+@*********
             <a href="http://maps.googleapis.com/maps/api/staticmap?zoom=13&size=600x300&sensor=false&@locs().map(x=>"markers=color:red|%s".format(x, x)).mkString("&")">map</a>
             <a href="http://maps.googleapis.com/maps/api/staticmap?zoom=13&size=600x300&@user.events.filter(_._3.isAfter(DateTime.now)).map(x=>(x._4, x._4.tags.get("loc"))).filter(_._2.isDefined).map(x=>"markers=color:red|label:%s|%s".format(x._1.label, x._1.tags.get("loc"))).mkString("&")">map</a>
+********@
   }
 case 2 => {
   

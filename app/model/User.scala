@@ -13,6 +13,7 @@ import razie.Log
 import controllers.UserStuff
 import model.Sec._
 import controllers.Maps
+import controllers.RazController
 
 /** temporary registrtion/login form */
 case class Registration(email: String, password: String, repassword: String = "") {
@@ -66,6 +67,9 @@ case class User(
   def ename = if (firstName != null && firstName.size > 0) firstName else email.dec.replaceAll("@.*", "")
 
   def tasks = Users.findTasks(_id)
+  
+  def isActive = status == 'a'
+  def isSuspended = status == 's'
 
   // TODO optimize
   def perms: Set[String] = profile.map(_.perms).getOrElse(Set()) ++ groups.flatMap(_.can).toSet

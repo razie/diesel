@@ -13,8 +13,11 @@ import org.joda.time.DateTime
 import com.novus.salat._
 import com.novus.salat.annotations._
 import model.RazSalatContext._
+import model.Users
+import admin.VError
 
 object Admin extends RazController {
+  def hasPerm(p: Perm)(implicit request: Request[_]): Boolean = auth.map(_.hasPerm(p)) getOrElse false
 
   def show(page: String) = Action { implicit request =>
     page match {
@@ -59,6 +62,21 @@ object Admin extends RazController {
     } else noPerm("Page", "home")
   }
 
+  def ustatus(id: String, s: String) = Action { implicit request =>
+    implicit val errCollector = new VError()
+    (for (
+      can <- hasPerm(Perm.adminDb) orErr ("no permission");
+      goodS <- s.length==1 && ("as" contains s(0)) orErr ("bad status");
+      u <- Users.findUserById(id)
+    ) yield {
+      Profile.updateUser(u, User(u.userName, u.firstName, u.lastName, u.yob, u.email, u.pwd, s(0), u.roles, u.addr, u._id))
+      Redirect ("/admin/user/" + id)
+    }) getOrElse {
+      error("ERR_ADMIN_CANT_UPDATE_USER " + id)
+      Unauthorized("Oops - cannot update this user... " + errCollector.mkString)
+    }
+  }
+
   def col(name: String) = Action { implicit request =>
     if (hasPerm(Perm.adminDb)) {
       Ok(views.html.admin.admin_col(name, model.Mongo(name).m))
@@ -75,7 +93,7 @@ object Admin extends RazController {
 
 }
 
-case class OldStuff(table: String, by:ObjectId, entry: DBObject, date: DateTime = DateTime.now,
+case class OldStuff(table: String, by: ObjectId, entry: DBObject, date: DateTime = DateTime.now,
                     _id: ObjectId = new ObjectId()) {
   def create = {
     Mongo ("OldStuff") += grater[OldStuff].asDBObject(Audit.createnoaudit(this))

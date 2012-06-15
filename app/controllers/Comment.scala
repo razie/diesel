@@ -29,7 +29,7 @@ object Comment extends RazController with Logging {
   //      Unauthorized("Oops - how did you get here?")
   //  }
 
-  def add(topic:String, what:String, oid:String) = Action { implicit request =>
+  def add(topic: String, what: String, oid: String) = Action { implicit request =>
     implicit val errCollector = new VError()
     commentForm.bindFromRequest.fold(
       formWithErrors =>
@@ -38,6 +38,7 @@ object Comment extends RazController with Logging {
         case Habibi(content) =>
           (for (
             au <- auth orCorr cNoAuth;
+            isA <- au.isActive orErr ("This account is not active");
             w <- Wikis.findById(topic) orErr "Wiki topic not found"
           ) yield {
             val cs = model.Comments.findForWiki(new ObjectId(topic)).getOrElse(CommentStream(new ObjectId(topic), "Wiki").create)
@@ -53,7 +54,7 @@ object Comment extends RazController with Logging {
       })
   }
 
-  def reply(topic: String, what: String, replyId: String, oid:String) = Action { implicit request =>
+  def reply(topic: String, what: String, replyId: String, oid: String) = Action { implicit request =>
     implicit val errCollector = new VError()
     commentForm.bindFromRequest.fold(
       formWithErrors =>
@@ -61,11 +62,12 @@ object Comment extends RazController with Logging {
       {
         case Habibi(content) =>
           (for (
-            u <- auth orCorr cNoAuth;
+            au <- auth orCorr cNoAuth;
+            isA <- au.isActive orErr ("This account is not active");
             cs <- model.Comments.findForWiki(new ObjectId(topic)) orErr ("No comments for this page...");
             parent <- cs.comments.find(_._id.toString == replyId) orErr ("Can't find the comment to reply to...")
           ) yield {
-            cs.addComment(u, content, oid, Some(parent._id))
+            cs.addComment(au, content, oid, Some(parent._id))
             Redirect(routes.Wiki.showId(topic))
           }) getOrElse {
             Unauthorized("Oops - cannot add comment... " + errCollector.mkString)
@@ -74,24 +76,25 @@ object Comment extends RazController with Logging {
   }
 
   /** is mine or i am amdin */
-  def canEdit (comm:model.Comment, auth:Option[User]) = {
-    auth.map(au=>comm.userId == au._id || au.hasPerm(Perm.adminDb)).getOrElse(false)
+  def canEdit(comm: model.Comment, auth: Option[User]) = {
+    auth.map(au => comm.userId == au._id || au.hasPerm(Perm.adminDb)).getOrElse(false)
   }
-  
-  def edit(cat:String, name:String, cid: String) = Action{ implicit request =>
+
+  def edit(cat: String, name: String, cid: String) = Action{ implicit request =>
     implicit val errCollector = new VError()
 
-        (for (
-          au <- auth orCorr new Corr("not logged in", "Sorry - need to log in"); //cNoAuth;
-          comm <- Comments.findCommentById(cid) orErr ("bad comment id?");
-          can <- canEdit(comm, auth) orErr ("can only edit your comments")
-        ) yield {
-          Ok (views.html.comments.commEdit(cat, name, cid, commentForm.fill(Habibi(comm.content)), auth))
-        }) getOrElse
-          noPerm("?", "?", errCollector.mkString)
+    (for (
+      au <- auth orCorr new Corr("not logged in", "Sorry - need to log in"); //cNoAuth;
+      isA <- au.isActive orErr ("This account is not active");
+      comm <- Comments.findCommentById(cid) orErr ("bad comment id?");
+      can <- canEdit(comm, auth) orErr ("can only edit your comments")
+    ) yield {
+      Ok (views.html.comments.commEdit(cat, name, cid, commentForm.fill(Habibi(comm.content)), auth))
+    }) getOrElse
+      noPerm("?", "?", errCollector.mkString)
   }
 
-  def save(cat:String, name:String, cid: String) = Action { implicit request =>
+  def save(cat: String, name: String, cid: String) = Action { implicit request =>
     implicit val errCollector = new VError()
     commentForm.bindFromRequest.fold(
       formWithErrors => {
@@ -99,16 +102,17 @@ object Comment extends RazController with Logging {
         BadRequest(views.html.comments.commEdit(cat, name, cid, formWithErrors, auth))
       },
       {
-        case h @ Habibi(newcontent) => 
-        (for (
-          au <- auth orCorr new Corr("not logged in", "Sorry - need to log in"); //cNoAuth;
-          comm <- Comments.findCommentById(cid) orErr ("bad comment id?");
-          can <- canEdit(comm, auth) orErr ("can only edit your comments")
-        ) yield {
-          comm.update(newcontent)
-          Redirect(controllers.Wiki.w(cat, name))
-        }) getOrElse
-          noPerm("?", "?", errCollector.mkString)
+        case h @ Habibi(newcontent) =>
+          (for (
+            au <- auth orCorr new Corr("not logged in", "Sorry - need to log in"); //cNoAuth;
+            isA <- au.isActive orErr ("This account is not active");
+            comm <- Comments.findCommentById(cid) orErr ("bad comment id?");
+            can <- canEdit(comm, auth) orErr ("can only edit your comments")
+          ) yield {
+            comm.update(newcontent)
+            Redirect(controllers.Wiki.w(cat, name))
+          }) getOrElse
+            noPerm("?", "?", errCollector.mkString)
       })
   }
 

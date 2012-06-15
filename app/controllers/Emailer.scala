@@ -106,7 +106,7 @@ Thank you, <br>The RacerKidz
 Hello %s, <p>
 Your username has been approved and changed to %s. Use it carelesly... no...wait... carefully! <p>
 Thank you, <br>The RacerKidz
-""".format(u.ename, u.userName);
+""".format(u.ename, newUsername);
 
     SendEmail.send (u.email.dec, SUPPORT, "RacerKidz :) username change approved", html1)
   }

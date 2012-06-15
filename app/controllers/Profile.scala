@@ -170,6 +170,11 @@ object Profile extends RazController with Logging {
       })
   }
 
+  def updateUser(old: User, newU: User)(implicit request: Request[_]) {
+    old.update(newU)
+    RazController.cleanAuth (Some(newU))
+  }
+
   def registerEmailOnly(reg: Registration) = {
     Audit.regdemail (reg.email)
     RegdEmail(reg.email).create
@@ -218,7 +223,7 @@ object Profile extends RazController with Logging {
           (for (
             p <- session.get("pwd") orErr ("psession corrupted");
             e <- session.get("email") orErr ("esession corrupted");
-            u <- Some(User(System.currentTimeMillis.toString, f, l, y, Enc(e), Enc(p), 'a', Set(ut)));
+            u <- Some(User(System.currentTimeMillis.toString, f, l, y, Enc(e), Enc(p), 'a', Set(ut), (if (addr != null && addr.length>0) Some(addr) else None)));
             res <- // finally created a new account/profile
             if (u.under12) {
               Some(Redirect(routes.Tasks.addParent1).withSession("ujson" -> u.toJson))
@@ -236,13 +241,20 @@ object Profile extends RazController with Logging {
   }
 
   def profile = Action { implicit request =>
-    auth map { u => Ok(views.html.user.edBasic(edprofileForm.fill(u), u)) } getOrElse Unauthorized("Oops - how did you get here?")
+    implicit val errCollector = new VError()
+    (for (
+      u <- auth;
+      isA <- u.isActive orErr ("This account is not active")
+    ) yield {
+      Ok(views.html.user.edBasic(edprofileForm.fill(u), u))
+    }) getOrElse Msg2("CAN'T SEE PROFILE " + errCollector.mkString)
   }
 
   def profile2(child: String) = Action { implicit request =>
     implicit val errCollector = new VError()
     (for (
       u <- auth;
+      isA <- u.isActive orErr ("This account is not active");
       c <- Users.findUserById(child)
     ) yield {
       log ("PC " + u._id + "        " + c._id)
@@ -263,6 +275,7 @@ object Profile extends RazController with Logging {
         case (t, n) => {
           for (
             u <- auth orErr ("not authenticated");
+      isA <- u.isActive orErr ("This account is not active");
             c <- Users.findUserById(child)
           ) yield {
             Users.findPC(u._id, c._id) match {
@@ -285,9 +298,10 @@ object Profile extends RazController with Logging {
       {
         case u: User =>
           (for (
-            au <- auth orErr ("not authenticated")
+            au <- auth orErr ("not authenticated");
+            isA <- au.isActive orErr ("This account is not active")
           ) yield {
-            au.update(User(au.userName, u.firstName, u.lastName, au.yob, au.email, au.pwd, au.status, au.roles, u.addr, au._id))
+            updateUser(au, User(au.userName, u.firstName, u.lastName, au.yob, au.email, au.pwd, au.status, au.roles, u.addr, au._id))
             au.shouldEmailParent("Everything").map(parent => Emailer.sendEmailChildUpdatedProfile(parent, au))
             Redirect("/") //.withSession("connected" -> u.email)
           }) getOrElse
@@ -297,8 +311,10 @@ object Profile extends RazController with Logging {
 
   // authenticated means doing a task later
   def doeChgPass = Action { implicit request =>
-    (for (u <- auth)
-      yield Ok(views.html.user.edPassword(chgpassform, auth.get))) getOrElse
+    (for (
+        u <- auth;
+        isA <- u.isActive orErr ("This account is not active")
+        ) yield Ok(views.html.user.edPassword(chgpassform, auth.get))) getOrElse
       Unauthorized("Oops - how did you get here?")
   }
 
@@ -310,11 +326,12 @@ object Profile extends RazController with Logging {
         case (o, n, _) =>
           (for (
             au <- auth orErr ("not authenticated");
+      isA <- au.isActive orErr ("This account is not active");
             pwdCorrect <- {
               (if (Enc(o) == au.pwd) Some(true) else None) orErr ("Password incorrect!")
             }
           ) yield {
-            au.update(User(au.userName, au.firstName, au.lastName, au.yob, au.email, Enc(n), au.status, au.roles, au.addr, au._id))
+            updateUser(au, User(au.userName, au.firstName, au.lastName, au.yob, au.email, Enc(n), au.status, au.roles, au.addr, au._id))
             Msg2("Ok, password changed!")
           }) getOrElse {
             error("ERR_CANT_UPDATE_USER_PASSWORD ")
@@ -347,8 +364,10 @@ object EdUsername extends RazController {
 
   // authenticated means doing a task later
   def step1 = Action { implicit request =>
-    (for (u <- auth)
-      yield Ok(views.html.user.edUsername(chgusernameform.fill(u.userName, ""), auth.get))) getOrElse
+    (for (
+        u <- auth;
+        isA <- u.isActive orErr ("This account is not active")
+        ) yield Ok(views.html.user.edUsername(chgusernameform.fill(u.userName, ""), auth.get))) getOrElse
       Unauthorized("Oops - how did you get here?")
   }
 
@@ -360,6 +379,7 @@ object EdUsername extends RazController {
         case (o, n) =>
           (for (
             u <- auth orErr ("not authenticated");
+      isA <- u.isActive orErr ("This account is not active");
             ok <- (if (o == u.userName) Some(true) else None) orCorr Corr("Not correct old username")
           ) yield {
             Emailer.sendEmailUname(n, u)
@@ -380,13 +400,14 @@ object EdUsername extends RazController {
           date <- (try { Option(DateTime.parse(expiry)) } catch { case _ => (try { Option(DateTime.parse(expiry1.replaceAll(" ", "+").dec)) } catch { case _ => None }) }) orErr ("token faked or expired");
           notExpired <- date.isAfterNow orCorr cExpired;
           admin <- auth orCorr cNoAuth;
-          a <- (if (hasPerm(Perm.adminDb)) Some(true) else None) orCorr Corr("Not authorized");
+          a <- admin.hasPerm(Perm.adminDb) orCorr cNoPermission;
           u <- Users.findUserById(userId) orErr ("user account not found");
+      isA <- u.isActive orErr ("This account is not active");
           already <- !(u.userName == newusername) orErr "Already updated"
         ) yield {
           // TODO transaction
-          u.update(User(newusername, u.firstName, u.lastName, u.yob, u.email, u.pwd, u.status, u.roles, u.addr, u._id))
-          this dbop UserTasks.userNameChgDenied(u).create
+          Profile.updateUser(u, User(newusername, u.firstName, u.lastName, u.yob, u.email, u.pwd, u.status, u.roles, u.addr, u._id))
+          this dbop UserTasks.userNameChgDenied(u).delete
           Wikis.updateUserName (u.userName, newusername)
           Emailer.sendEmailUnameOk(newusername, u)
 
@@ -411,7 +432,7 @@ Ok, username changed.
           date <- (try { Option(DateTime.parse(expiry)) } catch { case _ => None }) orErr ("token faked: " + expiry);
           notExpired <- date.isAfterNow orCorr cExpired;
           u <- auth orCorr cNoAuth;
-          a <- (if (hasPerm(Perm.adminDb)) Some(true) else None) orCorr Corr("Not authorized");
+          a <- u.hasPerm(Perm.adminDb) orCorr Corr("Not authorized");
           user <- Users.findUserById(userId) orErr ("user account not found");
           already <- !(user.userName == newusername) orErr "Already updated"
         ) yield {
@@ -446,6 +467,7 @@ object EdEmail extends RazController {
     (for (
       au <- auth orCorr cNoAuth;
       u <- Users.findUserById(userId) orErr ("user account not found");
+      isA <- u.isActive orErr ("This account is not active");
       ok <- (if (au._id == u._id) Some(true) else None) orCorr Corr("Not correct user")
     ) yield Ok(views.html.user.edEmail(chgemailform.fill(u.email.dec, ""), auth.get))) getOrElse
       Unauthorized("Oops - how did you get here?")
@@ -460,12 +482,13 @@ object EdEmail extends RazController {
           (for (
             au <- auth orCorr cNoAuth;
             u <- Users.findUserById(userId) orErr ("user account not found");
+      isA <- u.isActive orErr ("This account is not active");
             ok <- (if (au._id == u._id) Some(true) else None) orCorr Corr("Not correct user")
           ) yield {
             val newu = User(u.userName, u.firstName, u.lastName, u.yob, n.enc, u.pwd, u.status, u.roles, u.addr, u._id)
-            u.update(newu)
+            Profile.updateUser(u, newu)
             val pro = newu.profile.getOrElse(newu.mkProfile)
-            this dbop pro.update (pro.removePerm("+"+Perm.eVerified.s))
+            this dbop pro.update (pro.removePerm("+" + Perm.eVerified.s))
             this dbop UserTasks.verifyEmail(newu).create
             Tasks.sendEmailVerif(newu)
           }) getOrElse {

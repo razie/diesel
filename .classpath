@@ -3,7 +3,7 @@
 	<classpathentry kind="src" output="target/scala-2.9.1/classes" path="app"/>
 	<classpathentry kind="src" output="target/scala-2.9.1/test-classes" path="test"/>
 	<classpathentry kind="lib" path="C:/bin/play-2.0/framework/sbt/boot/scala-2.9.1/lib/scala-library.jar" sourcepath="C:/bin/scala/src/scala-library-src.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/play/play_2.9.1/play_2.9.1-2.0.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/play/play_2.9.1/play_2.9.1-2.0.jar" sourcepath="C:/bin/play-2.0/framework/src/play/src"/>
 	<classpathentry kind="lib" path="lib_managed/jars/play/templates_2.9.1/templates_2.9.1-2.0.jar"/>
 	<classpathentry kind="lib" path="lib_managed/jars/com.github.scala-incubator.io/scala-io-file_2.9.1/scala-io-file_2.9.1-0.2.0.jar"/>
 	<classpathentry kind="lib" path="lib_managed/jars/com.github.scala-incubator.io/scala-io-core_2.9.1/scala-io-core_2.9.1-0.2.0.jar"/>

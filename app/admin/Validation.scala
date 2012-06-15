@@ -19,9 +19,10 @@ import razie.Logging
 /** common validation utilities */
 trait Validation extends Logging {
 
-  final val cNoAuth = new Corr("Not logged in", "login")
+  final val cNoAuth = new Corr("Not logged in", "Sorry - need to log in!"); //cNoAuth;
   final val cExpired = new Corr("token expired", "get another token")
   final val cNoProfile = InternalErr("can't load the user profile")
+  final val cNoPermission = InternalErr("No permission!")
 
   object InternalErr {
     def apply(err: String) = Corr (err, Some("create a suppport request"))

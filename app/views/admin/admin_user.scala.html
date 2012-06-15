@@ -52,7 +52,14 @@
 </ul>
     <hr>
 
-<a href="/admin/user/@user.get.id/delete1">DELETE</a>
+<a href="/admin/user/@user.get.id/delete1">DELETE</a> | 
+@if(user.isDefined) {
+@if('a' == user.get.status) {
+<a href="/admin/user/@user.get.id/status/s">SUSPEND</a>
+} else {
+<a href="/admin/user/@user.get.id/status/a">ACTIVATE</a>
+}
+}
 
     <hr>
     @htmlFooter()

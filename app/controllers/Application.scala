@@ -4,32 +4,43 @@ import admin.Audit
 import admin.VError
 import model.DoSec
 import play.api.mvc.Action
+import model.Users
 
 /** main entry points */
 object Application extends RazController {
 
-  def index = indexItem(1)
+  def index = doeIndexItem(1)
 
-  def indexItem (i:Int) = Action { implicit request =>
+  def doeIndexItem(i: Int) = Action { implicit request =>
     Ok(views.html.index("", auth, i, session.get("mobile").isDefined))
   }
 
-  def mobile(m:Boolean) = Action { implicit request =>
+  // login as harry p.
+  def doeHarry = Action { implicit request =>
+    (for (u <- Users.findUserById("4fdb5d410cf247dd26c2a784")) yield {
+      Redirect("/").withSession("connected" -> u.email)
+    }) getOrElse Msg2("Can't find Harry Potter - sorry!")
+  }
+
+  def doeSpin = Action { implicit request =>
+    Msg2("You can take me for a spin, pretending you are Harry Potter :) \n\n When you're done, if you want to create an account, just sign out first. \n\n Ready?", Some("/doe/harry"))
+  }
+
+  def mobile(m: Boolean) = Action { implicit request =>
     Redirect ("/").withSession (
-        if(m) session + ("mobile" -> "yes")
-        else session - "mobile"
-        )
+      if (m) session + ("mobile" -> "yes")
+      else session - "mobile")
   }
 
   def show(page: String) = {
     page match {
-      case "index"        => index
-      case "profile"      => Profile.profile
+      case "index"   => index
+      case "profile" => Profile.profile
       case "logout" | "signout" => Action { implicit request =>
         auth map (_.auditLogout)
         Redirect ("/").withNewSession
       }
-      case _         => { Audit.missingPage(page); TODO }
+      case _ => { Audit.missingPage(page); TODO }
     }
   }
 
