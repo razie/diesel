@@ -16,13 +16,14 @@ class TestWiki extends FlatSpec with ShouldMatchers {
     "</small>" === (WikiParser apply "</small>").s
   }
 
+  val wid = model.WID("?", "?")
   "WikiParser" should "recognize [[]] and [[[]]]" in {
-    "<a href=\"/wiki/any:Sport\">Sport</a>" === (Wikis.format(Wikis.MD, "[[Sport]]"))
-    "<a href=\"/wiki/any:Sport\">Curu</a>" === (Wikis.format(Wikis.MD, "[[Sport|Curu]]"))
-    "<a href=\"/wiki/any:Sport\">Curu</a>" === (Wikis.format(Wikis.MD, "[[Sport | Curu]]"))
-    "<a href=\"/wiki/Club:Offroad_Ontario\">Curu</a>" === (Wikis.format(Wikis.MD, "[[Club:Offroad Ontario | Curu]]"))
-    "<a href=\"/wiki/any:Sport\">Sport</a> <a href=\"/wiki/any:Club\">Club</a>" === (Wikis.format(Wikis.MD, "[[Sport]] [[Club]]"))
-    "<a href=\"/wiki/any:Sport\">Sport</a> haha: <a href=\"/wiki/any:Privacy_Policy\">Privacy Policy" === (Wikis.format(Wikis.MD, "[[Sport]] haha: [[Privacy Policy]]"))
+    "<a href=\"/wiki/any:Sport\">Sport</a>" === (Wikis.format(wid, Wikis.MD, "[[Sport]]"))
+    "<a href=\"/wiki/any:Sport\">Curu</a>" === (Wikis.format(wid, Wikis.MD, "[[Sport|Curu]]"))
+    "<a href=\"/wiki/any:Sport\">Curu</a>" === (Wikis.format(wid, Wikis.MD, "[[Sport | Curu]]"))
+    "<a href=\"/wiki/Club:Offroad_Ontario\">Curu</a>" === (Wikis.format(wid, Wikis.MD, "[[Club:Offroad Ontario | Curu]]"))
+    "<a href=\"/wiki/any:Sport\">Sport</a> <a href=\"/wiki/any:Club\">Club</a>" === (Wikis.format(wid, Wikis.MD, "[[Sport]] [[Club]]"))
+    "<a href=\"/wiki/any:Sport\">Sport</a> haha: <a href=\"/wiki/any:Privacy_Policy\">Privacy Policy" === (Wikis.format(wid, Wikis.MD, "[[Sport]] haha: [[Privacy Policy]]"))
   }
 
   "WikiParser" should "recognize these " in {

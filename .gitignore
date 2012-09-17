@@ -5,3 +5,6 @@ target
 tmp
 .history
 dist
+dump
+dump*
+data

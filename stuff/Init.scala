@@ -57,7 +57,7 @@ object Init extends Logging {
       wr("Category", "Category", "Reserved page for the category itself"),
       wr("Category", "Link", "Reserved page for the Link category"),
       wr("Category", "User", "Reserved page for users"),
-      wr("Category", "Page", "Reserved page"),
+      wr("Category", "", "Reserved page"),
       wr("Category", "Alias", "Reserved page for aliases"),
       wr("Category", "WikiLink", "Reserved page for links"),
 
