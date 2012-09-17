@@ -1,4 +1,4 @@
-@(cat:String, name:String, iname:Option[String], page:Option[model.WikiEntry], user:Option[model.User])
+@(wid:model.WID, iname:Option[String], page:Option[model.WikiEntry], user:Option[model.User])
 @import model._
 
 @comments(stream:Option[CommentStream]) = {
@@ -16,18 +16,18 @@
 **********@
        &nbsp; <a href="" class="btn btn-mini btn-info">Report</a>
 @if(controllers.Comment.canEdit(c,user)) {
-       &nbsp; <a href="@routes.Comment.edit(cat,name,c._id.toString)" class="btn btn-mini btn-info">Edit</a>
+       &nbsp; <a href="@routes.Comment.edit(wid,c._id.toString)" class="btn btn-mini btn-info">Edit</a>
 }
       <br>
       <br>
-      @Html(model.Wikis.format("md", c.content))
+      @Html(model.Wikis.format(page.map(_.wid).getOrElse(model.WID("?","?")), "md", c.content))
     </div>
     }
     }
   }
 }
 
-   @htmlHead(cat +":"+ name)
+   @htmlHead(wid.cat +": "+ page.map(_.label).getOrElse(model.Wikis.label(wid)))
 
    @navbar(user)
    
@@ -37,24 +37,54 @@
     <div class="span9">
 
       <div class="well">
-          @wiki.wikiFrag(cat,name,false,page, iname)
+          @wiki.wikiFrag(wid,user,false,page, iname)
       </div>
 
     <!-- list of pages in category -->
-    @if("Category" == cat && "User" != name && "WikiLink" != name && ("Hidden" != name || user.map(_.hasPerm(Perm.adminDb)).getOrElse(false))) {
-      <div class="well">
-        @name entries:
-        @model.Wikis.pageNames(name).take(80).map { p=>
-          <a href="/wiki/@name:@p">@model.Wikis.label(name,p)</a> |
-        } 
-      </div> 
-
-      @helper.form(action=routes.Wiki.add(name), 'class->"well form-inline") {
-        <label>Add a new @name </label>
+    @if("Category" == wid.cat && "User" != wid.name && "WikiLink" != wid.name && ("Hidden" != wid.name || user.map(_.hasPerm(Perm.adminDb)).getOrElse(false))) {
+      @helper.form(action=routes.Wiki.add(wid.name), 'class->"well form-inline") {
+        <label>Add a new <a href="/wiki/Category:@wid.name">@model.Wikis.label(WID("Category",wid.name))</a> </label>
         <input type="text" class="input-xlarge" name="name" placeholder="Name">
         <button type="submit" class="btn">Now</button>
       }
-    } 
+
+      @if(model.Wikis.pageNames(wid.name).size > 0) {
+      <div class="well">
+        @wid.name entries:
+        @for(p <- model.Wikis.pages(wid.name).take(50) if(controllers.Wiki.isVisible(user,p.props))) {
+          <a href="@controllers.Wiki.w(p.wid)">@p.label</a> |
+        } 
+        @if(model.Wikis.pageNames(wid.name).size > 50) {
+          <p><br>
+          ... <a href="@routes.Wiki.all(wid.name)">See <b>all</b> !</a> 
+      </p>
+        }
+      </div> 
+        } 
+    } else {
+      <!-- list of child pages -->
+      @model.WikiDomain.aEnds(wid.cat, "Child").map {child=>
+
+        @if(page.isDefined && controllers.Wiki.canEdit2(wid,user,page)) {
+          @helper.form(action=routes.Wiki.addLinked(child,wid,"Child"), 'class->"well form-inline") {
+            <label>Add a <i>child</i> <a href="/wiki/Category:@child">@model.Wikis.label(WID("Category",child))</a> </label>
+            <input type="text" class="input-xlarge" name="name" placeholder="Name">
+            <button type="submit" class="btn btn-mini btn-primary">Now</button> 
+            <a href="/wiki/Help:Adding_a_Child" class="btn btn-mini btn-info">?</a>
+          }
+        }
+  
+        @if(model.Wikis.linksTo(wid,"Child").filter(_.from.cat == child).size > 0) {
+        <div class="well">
+          <ul>@child links:
+          @model.Wikis.linksTo(wid,"Child").filter(_.from.cat == child).take(100).map(_.from).map { p=>
+            <li><a href="@controllers.Wiki.w(p)">@model.Wikis.label(p)</a>
+          } 
+         </ul>
+        </div> 
+        }
+      } 
+    }
 
 @comments(page.flatMap(p=>model.Comments.findForWiki(p._id)))
 
@@ -86,11 +116,12 @@ ain't working...
           <label>Add a new comment </label><br>
           <textarea id="content" class="span6" name="content" placeholder="content" rows="5"></textarea>
           <button type="submit" class="btn btn-primary" onclick="$(this).addClass('disabled');">Now</button>
+          <a href="/wiki/Help:Adding_a_Comment" class="btn btn-mini btn-info">?</a>
           }
         } 
       } 
     } else {
-      You need to log in to post a comment, sorry!
+      You need to <a href="/doe/join">log in</a> to post a comment, sorry!
   }
   
       <hr>
@@ -99,7 +130,9 @@ ain't working...
     </div> <!-- /span9 -->
 
       <div class="span3">
-          @wiki.wikiFrag("Page","Right",true, None)
+        @wiki.wikiFrag(WID("Admin","Right"),user,true, None)
+
+        @addRight()
       </div>
 
       </div> <!-- row -->

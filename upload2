@@ -1,7 +1,8 @@
 
 rm rk.zip
+rm RUNNING_PID
 
-zip -r rk.zip * -x lib_managed/\* dist/\* data/\* 
+zip -r rk.zip * -x lib_managed/\* dist/\* data/\* dump\/* dump* target/\*
 
 scp rk.zip demo@cloud2.razie.com:rk/app/run/up/
 rm rk.zip

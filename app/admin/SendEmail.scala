@@ -18,12 +18,12 @@ object SendEmail extends razie.Logging {
 
   /** send an email
    */
-  def send(to: String, from: String, subject: String, html: String) {
+  def send(to: String, from: String, subject: String, html: String) (implicit mailSession:Option[Session] = None) {
 
-    val session = new Gmail(false).session
+    val mysession = mailSession.getOrElse (new Gmail(false).session)
 
     try {
-      val message = new MimeMessage(session);
+      val message = new MimeMessage(mysession);
       message.setFrom(new InternetAddress(from));
       message.addRecipient(Message.RecipientType.TO, new InternetAddress(to));
 
@@ -68,10 +68,21 @@ object SendEmail extends razie.Logging {
       case mex: MessagingException => mex.printStackTrace();
     }
   }
+  
+  def withSession[C] (body: (Option[Session]) => C) : C = {
+    implicit val mailSession = new Gmail(false).session
+    body(Some(mailSession))
+  }
+
 }
 
 class Gmail(val debug: Boolean = false) {
 
+  def withSession (f: (Session) => Unit) {
+    implicit val session = this.session
+    f(session)
+  }
+  
   val SMTP_HOST_NAME = "smtp.gmail.com";
   val SMTP_AUTH_USER = "support@racerkidz.com";
   val SMTP_AUTH_PWD = "zlMMCe7HLnMYOvbjYpPp6w==";

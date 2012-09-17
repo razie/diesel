@@ -1,9 +1,12 @@
-@()
+@(isSite:Boolean=false)
 
 <footer>
-  <p>&copy; RacerKidz 2012 
-  | <a href="/doe/support">Support</a> 
-  | <a href="/page/Terms_of_Service">Terms of Service</a> 
-  | <a href="/page/Privacy_Policy">Privacy policy</a> 
+  <p>&copy; <a href="http://www.racerkidz.com">RacerKidz</a>, 2012 
+  | <a href="http://@_root_.admin.Config.hostport/doe/support">Support</a> 
+@if(isSite) {
+  | <a href="http://@_root_.admin.Config.hostport/page/Hosted_Terms_of_Service">Terms of Service</a> 
+} else {
+  | <a href="http://@_root_.admin.Config.hostport/page/Terms_of_Service">Terms of Service</a> 
+}
   | </p>
 </footer>

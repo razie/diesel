@@ -37,11 +37,14 @@ object Enc {
 
   def toUrl(orig: String) = URLEncoder.encode(orig, "UTF8")
   def fromUrl(orig: String) = URLDecoder.decode(orig, "UTF8")
+  
+  def toSession(orig: String) = orig.replaceAll("-", "RAZIEDASH")
+  def fromSession(orig: String) = orig.replaceAll("RAZIEDASH", "-")
 }
 
 object EncUrl {
   def apply(orig: String) = URLEncoder.encode(Enc(orig), "UTF8")
-  def unapply(encoded: String): Option[String] = Some(new CipherCrypt().decrypt(encoded))
+  def unapply(encoded: String): Option[String] = Some(URLDecoder.decode(encoded, "UTF8"))
 }
 
 /** secured link to be emailed for instance

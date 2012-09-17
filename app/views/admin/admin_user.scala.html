@@ -35,7 +35,7 @@
 <br>  status: @u.status
 <br>  roles: @u.roles
 <br>  _id: @u.id
-}
+  }
 }
 <p>
 @user.map(_.profile)
@@ -60,6 +60,20 @@
 <a href="/admin/user/@user.get.id/status/a">ACTIVATE</a>
 }
 }
+| 
+      @helper.form(action=routes.Admin.uperm(user.get.id), 'class->"well form-inline") {
+        <input type="text" class="input-xlarge" name="perm" placeholder="+Perm">
+        <button type="submit" class="btn">±Perm</button>
+      }
+
+    <hr>
+<ul>Events
+@user.map {u=>
+  @model.Mongo.db("UserEvent").find(Map("userId" -> new ObjectId(u.id))).map {ue=>
+    <li> @ue.toString
+  }
+}
+</ul>
 
     <hr>
     @htmlFooter()

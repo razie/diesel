@@ -4,18 +4,22 @@
   if(i == item) "active" else ""
 }
 
-      <div class="well" style="padding: 8px 0;">
-        <ul class="nav nav-list">
-          <li class="@active(1)"><a href="@routes.Profile.profile">Basic profile</a></li>
-          <li class="@active(2)"><a href="@routes.Profile.publicProfile">Public profile</a></li>
-          <li class="@active(3)"><a href="@routes.Profile.doeChgPass">Password</a></li>
-          <li class="@active(4)"><a href="@routes.EdUsername.step1">Username</a></li>
-          <li class="@active(5)"><a href="@routes.EdEmail.step1(user.id)">Email</a></li>
-          <li class="@active(6)">Children</li>
-<ul>
-@for(c <- user.rel("child")) {
-     <li><a href="@routes.Profile.profile2(c.id)">@c.ename</a></li>
-   }
-</ul>
-        </ul>
-      </div> <!-- /well -->
+<div class="well" style="padding: 8px 0;">
+  <ul class="nav nav-list">
+    <li class="@active(1)"><a href="@routes.Profile.profile">Basic profile</a></li>
+    <li class="@active(2)"><a href="@routes.Profile.publicProfile">Public profile</a></li>
+    <li class="@active(3)"><a href="@routes.Profile.doeChgPass">Password</a></li>
+    <li class="@active(4)"><a href="@routes.EdUsername.step1">Username</a></li>
+    <li class="@active(5)"><a href="@routes.EdEmail.step1(user.id)">Email</a></li>
+@if(user.isClub) {
+    <li class="@active(7)"><a href="@routes.Club.doeMembers1(user.id)">Members</a></li>
+} else {
+    <li class="@active(6)">Children</li>
+    <ul>
+      @for(c <- user.rel("child")) {
+       <li><a href="@routes.Profile.profile2(c.id)">@c.ename</a></li>
+      }
+    </ul>
+}
+  </ul>
+</div> <!-- /well -->

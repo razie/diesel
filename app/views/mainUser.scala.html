@@ -6,9 +6,9 @@
     <div class="container">
 
 @if(mobile) {
-  @tasks.mainUserM(salutation,user, item) 
+  @views.html.user.mainUserM(salutation,user, item) 
 } else {
-  @tasks.mainUserC(salutation,user, item) 
+  @views.html.user.mainUserC(salutation,user, item) 
 }
    
       <hr>

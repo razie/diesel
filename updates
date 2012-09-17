@@ -1,0 +1,39 @@
+## upgrade with what's in up
+
+## 1 stop
+
+echo "1 - stopping"
+SL=/home/demo/rk/app/run/lib
+cd $SL
+/home/demo/play/play-2.0/play stop 
+kill `cat $SL/../pid`
+sleep 1
+cd ..
+
+
+## move old to old new to new
+
+echo "2 - backup"
+DT=`date | sed 's/ //g'`
+cp -r lib lib.OLD.$DT
+
+echo "3 - update"
+cp up/rks.zip lib
+cd lib
+unzip -fo rks.zip
+cd ..
+
+## details
+
+echo "4 - unpack"
+cd /home/demo/rk/app/run/lib
+#rm -rf /home/demo/scripster/app/run/lib/public
+#jar xvf scripster-dist.jar public
+#jar xvf codewitter.jar public
+#cp -r public /home/demo/scripster/www
+cd /home/demo/rk/app/run
+
+## restart
+echo "5 - restart"
+. ./restart
+

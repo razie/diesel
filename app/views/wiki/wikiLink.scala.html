@@ -1,11 +1,11 @@
-@(from:model.WID, to:model.WID, myForm:Form[controllers.Wiki.LinkWiki], user:Option[model.User])
+@(from:model.WID, to:model.WID, myForm:Form[controllers.Wiki.LinkWiki], withComment:Boolean, user:Option[model.User])
 @import model.Wikis
 @import helper.twitterBootstrap._
 
 @how() = @{
-  Wikis.find("Category", to.cat).flatMap(_.tags.get("roles:"+from.cat)) match {
+  Wikis.category(to.cat).flatMap(_.tags.get("roles:"+from.cat)) match {
     case Some(s) => {
-      s.split(",").map(x=>(x,x)).toSeq
+      s.split(",").filter(x => ! Array("Owner","Admin").contains(x)).map(x=>(x,x)).toSeq
     }
     case None => {
       Wikis.pageNames("Link").map(x=>(x,x)).toList
@@ -26,16 +26,21 @@
           <h2>Cool! So you want to link @from.cat @from.name to @to.cat @to.name!</h2>
           }
           <p>
+@Wiki.moderator(to).map {mu=>
+  Note that the target is moderated by <a href="@controllers.Wiki.w("User", mu)">@mu</a> - we'll ask for permission!
+}
       </div>
 
 <div >
 
-@helper.form(action=routes.Wiki.linked(from.cat,from.name,to.cat,to.name), 'class->"well") {
+@helper.form(action=routes.Wiki.linked(from.cat,from.name,to.cat,to.name,withComment), 'class->"well") {
   @helper.select(
     myForm("how"), 
      how(),
     '_label -> "Enjoy it as a", 
     '_showConstraints -> false)
+    
+    @if(withComment) {
   @helper.select(
     myForm("markup"), 
      model.Wikis.markups.map(x=>(x,x)),
@@ -47,10 +52,25 @@
     '_showConstraints -> false,
     'cols->100,
     'rows->10)
-    
+    } else {
+     <input type="hidden" name="markup" value="md">
+     <input type="hidden" name="comment" value="">
+    }
+
+    @if(myForm.globalError.isDefined) {
+     <br><br><b>@myForm.globalError.get.message</b>
+  } 
+
     <div class="actions">
       <button type="submit" class="btn btn-primary">Link it!</button>
       <a href="@controllers.Wiki.w(to.cat,to.name)" class="btn">Nah</a>
+    @if(withComment) {
+      <a href="@routes.Wiki.linkUser(to,false)" class="btn">Remove the note!</a>
+    } else {
+      @if("Club" != to.cat) {
+        <a href="@routes.Wiki.linkUser(to,true)" class="btn">Add a note!</a>
+      }
+    }
   </div>
   
   @if(myForm.globalError.isDefined) {
@@ -61,8 +81,6 @@
 }
 </div>
 
-          @wiki.wikiFrag(from.cat,from.name)
-          
       <hr>
 
       @htmlFooter()

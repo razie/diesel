@@ -1,4 +1,4 @@
-@(category:String, name:String, myForm:Form[controllers.Wiki.EditWiki], user:Option[model.User])
+@(wid:model.WID, myForm:Form[controllers.Wiki.EditWiki], user:Option[model.User])
 
 @v(name:String) = @{
   myForm(name).value.getOrElse("?")
@@ -8,9 +8,9 @@
   @page match {
     case Some(we) => { 
       @if(we.isReserved) {
-        YES <a href="@routes.Wiki.reserve(category,name,false)">Unreserve it</a>
+        YES <a href="@routes.Wiki.reserve(wid,false)">Unreserve it</a>
       } else {
-        NO <a href="@routes.Wiki.reserve(category,name,true)">Reserve it</a>
+        NO <a href="@routes.Wiki.reserve(wid,true)">Reserve it</a>
       } 
     }
     case None => { 
@@ -19,7 +19,7 @@
   }
 } 
 
-   @htmlHead("Editing "+category +":"+ name)
+   @htmlHead("Editing "+wid.cat+":"+ wid.name)
 
    @navbar(user)
    
@@ -32,7 +32,7 @@
 <div >
 @import helper.twitterBootstrap._
 
-@helper.form(action=routes.Wiki.save(category,name), 'class->"well form-inline") {
+@helper.form(action=routes.Wiki.save(wid.formatted), 'class->"well form-inline") {
 <table valign="top">
 <tr><td>
 @******* 
@@ -46,8 +46,8 @@ PROBLEM: many places use label as name... via Wikis.formatName
     myForm("content"), 
     '_label -> "Content", 
     '_showConstraints -> false,
-    'class -> "span6",
-    'rows->15)
+    'class -> "span7",
+    'rows->20)
 </td><td>
     <div>
   @helper.select(
@@ -57,32 +57,43 @@ PROBLEM: many places use label as name... via Wikis.formatName
     'class -> "input-small",
     '_showConstraints -> false)
 
+  @helper.select(
+    myForm("visibility"), 
+    model.Wikis.visibilityFor(wid.cat).map(x=>(x,x)),
+    '_label -> "Visibility", 
+    'class -> "input-small",
+    '_showConstraints -> false)
+
   @if(user.get.hasPerm(model.Perm.adminDb)) {
-    <p>Reserved: @reserved(model.Wikis.find(category,name))
-      
+    <p>Reserved: @reserved(model.Wikis.find(wid.cat,wid.name))
+    @if(model.Wikis.find(wid.cat,wid.name).isDefined) {
+      <p><a href="@routes.Wiki.wikieDelete1(wid)">Delete it</a>
+    }
   }
 
   </div>
 </td></tr></table>    
     <div class="actions">
       <button type="submit" class="btn btn-primary">Save</button>
-      <a href="@controllers.Wiki.w(category,name)" class="btn">Cancel</a>
+      <a href="@controllers.Wiki.w(wid)" class="btn">Cancel</a>
   </div>
   
   @if(myForm.globalError.isDefined) {
      <br><br><b>@myForm.globalError.get.message</b>
   } 
   
-  <p><small>See the <a href="/wiki/Page/Modified_Markdown_Syntax">modified markdown syntax</a>.
+  <p><small>See the <a href="/wiki/Admin/Modified_Markdown_Syntax">modified markdown syntax</a>.
   <br><small>By updating this page, you agree to the <a href="@controllers.Wiki.w("Terms of Service")">Terms of Service</a>
   <br><small>Please do not replicate information already contained in other reference places like 
       Wikipedia, just link to them. Use [[[Main_Page]]] to link to wikipedia.
 }
 </div>
 
+@if(model.Wikis.find(wid).isDefined) {
       <div class="well">
-          @wiki.wikiFrag(category,name)
+          @wiki.wikiFrag(wid,user)
       </div>
+}
 
       <hr>
 
@@ -91,7 +102,9 @@ PROBLEM: many places use label as name... via Wikis.formatName
     </div> <!-- /span9 -->
 
       <div class="span3">
-          @wiki.wikiFrag("Page","Right",true, None)
+          @wiki.wikiFrag(model.WID("Admin","Right"),user,true)
+
+        @addRight()
       </div>
 
       </div> <!-- row -->

@@ -1,56 +1,59 @@
-@(user:Option[model.User], mobile:Boolean = false, barTitle: String="Bar Title")
+@(user:Option[model.User], mobile:Boolean = false, barTitle: String="Bar Title", logo:Option[String]=None, url:Option[String]=Some("/"), isSite:Boolean=false)
 
-   <div class="navbar navbar-fixed-top">
-      <div class="navbar-inner">
-        <div class="container">
-          <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
-            <span class="icon-bar"></span>
-            <span class="icon-bar"></span>
-            <span class="icon-bar"></span>
-          </a>
-          <a class="brand" href="/">
-            <img class="rklogo" src="@routes.Assets.at("images/racerKids-small.gif")"></img>
-          </a>
-          <div class="nav-collapse">
-            <ul class="nav">
-@*******
-              <li class="active"><a href="/">Home</a></li>
-******@
-@if(mobile) {
-              <li><a href="/mobile/0">NOT Mobile</a></li>
-} else {
-              <li><a href="/mobile/1">Mobile</a></li>
-}
-              <li class="divider-vertical"></li>
-              <li><a href="/page/About">About</a></li>
-              <li><a href="/wiki">Browse</a></li>
-            </ul>
+<div class="navbar navbar-fixed-top">
+  <div class="navbar-inner">
+    <div class="container">
 
-          </div><!--/.nav-collapse -->
-        
-            <ul class="nav pull-right">
-              <li class="divider-vertical"></li>
-            <form class="navbar-search pull-left" action="/wiki/search" method="GET">
-              <input type="text" class="search-query" placeholder="Search" id="q" name="q" title="Search box"/>
-            </form>
-@user match {
-  case Some(joe) => { 
-    <li class="dropdown">
-      <a href="#" class="dropdown-toggle" data-toggle="dropdown">@joe.ename<b class="caret"></b></a>
-      <ul class="dropdown-menu">
-        <li><a href="/do/profile">Profile</a></li>
-        <li><a href="/do/signout">Sign out</a></li>
+      <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </a>
+
+      <a class="brand" href="@url.getOrElse("/")">
+        <img class="rklogo" src="@logo.getOrElse(routes.Assets.at("images/racerKids-small.gif"))" height="32" width="152"></img>
+      </a>
+
+    <div class="nav-collapse">
+
+      <ul class="nav">
+        @if(!isSite) {
+          @if(mobile) {
+            <li><a href="/mobile/0">NOT Mobile</a></li>
+          } else {
+            <li><a href="/mobile/1">Mobile</a></li>
+          }
+        }
+        @if(!isSite) {
+          <li class="divider-vertical"></li>
+          <li><a href="http://@_root_.admin.Config.hostport/page/About">About</a></li>
+          <li><a href="http://@_root_.admin.Config.hostport/wiki">Browse</a></li>
+        }
       </ul>
-    </li>
-  }
+    </div><!--/.nav-collapse -->
+
+      <ul class="nav pull-right">
+        @user match {
+          case Some(joe) => { 
+            <li class="dropdown">
+              <a href="#" class="dropdown-toggle" data-toggle="dropdown">@joe.ename<b class="caret"></b></a>
+              <ul class="dropdown-menu">
+                <li><a href="/doe/profile">Profile</a></li>
+                <li><a href="/do/signout">Sign out</a></li>
+              </ul>
+            </li>
+          }
   
-  case None => { 
-    <li><a href="@routes.Profile.doeJoin">Join</a></li>
-  }
-} 
-            </ul>
+          case None => { 
+            <li><a href="@routes.Profile.doeJoin">Join</a></li>
+          }
+        } 
+      </ul>
           
-        </div>
-        
-      </div>
+      <form class="navbar-search pull-right" action="http://@_root_.admin.Config.hostport/wikie/search" method="GET">
+        <input type="text" class="search-query" placeholder="Search" id="q" name="q" title="Search box"/>
+      </form>
+
     </div>
+  </div>
+</div>

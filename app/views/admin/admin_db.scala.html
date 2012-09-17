@@ -1,7 +1,7 @@
-@()
+@(user:Option[model.User])
 
    @htmlHead("amdin db")
-   @navbar(None)
+   @navbar(user)
    
     <div class="container">
 

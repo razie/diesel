@@ -12,6 +12,7 @@ import razie.Log
 import scala.util.parsing.combinator.RegexParsers
 import razie.base.data.TripleIdx
 import admin.Notif
+import admin.Config
 
 /** a simple wiki-style entry: language (markdown, mediawiki wikidot etc) and the actual source */
 case class WikiEntry(
@@ -22,6 +23,7 @@ case class WikiEntry(
   content: String,
   by: String,
   ver: Int = 1,
+  parent: Option[ObjectId] = None,
   props: Map[String, String] = Map(),
   crDtm: DateTime = DateTime.now,
   updDtm: DateTime = DateTime.now,
@@ -29,24 +31,29 @@ case class WikiEntry(
 
   /** is this just an alias? */
   def alias: Option[WID] = {
-    val wikip2 = """\[\[alias:([^/:\]]*)[/:]([^|\]]+)\]\]"""
+    val wikip2 = """\[\[alias:([^\]]*)\]\]"""
     val wikip2r = wikip2.r
     if (content.matches(wikip2)) {
-      val wikip2r(c, n) = content
-      Some(new WID(c, n))
+      val wikip2r(wpath) = content
+      WID.fromPath(wpath)
     } else None
   }
 
-  def wid = new WID(category, name)
+  def wid = new WID(category, name, parent)
 
-  def renamed(newlabel: String) =
-    WikiEntry (category, Wikis.formatName(newlabel), newlabel, markup, content, by, ver + 1, props, crDtm, DateTime.now, _id)
+  def cloneRenamed(newlabel: String) = copy(name = Wikis.formatName(newlabel), label = newlabel, ver = ver + 1, updDtm = DateTime.now)
+  //    WikiEntry (category, Wikis.formatName(newlabel), newlabel, markup, content, by, ver + 1, parent, props, crDtm, DateTime.now, _id)
 
-  def newVer(label: String, markup: String, content: String, by: String, props: Map[String, String] = this.props) =
-    WikiEntry (category, name, label, markup, content, by, ver + 1, props, crDtm, DateTime.now, _id)
+  def cloneNewVer(label: String, markup: String, content: String, by: String, props: Map[String, String] = this.props) =
+    WikiEntry(category, name, label, markup, content, by, ver + 1, parent, props, crDtm, DateTime.now, _id)
 
-  def props(m: Map[String, String]) =
-    WikiEntry (category, name, label, markup, content, by, ver, m, crDtm, DateTime.now, _id)
+  def cloneParent(p: Option[ObjectId]) = copy(parent = p, updDtm = DateTime.now)
+  //    WikiEntry (category, name, label, markup, content, by, ver, p, props, crDtm, DateTime.now, _id)
+
+  def cloneProps(m: Map[String, String], sby: String) =
+    WikiEntry(category, name, label, markup, content, sby, ver, parent, m, crDtm, DateTime.now, _id)
+
+  def findParent = parent flatMap (p => Wikis.find(p))
 
   def isReserved = props.get("reserved").map(_ == "yes").getOrElse(false)
 
@@ -55,67 +62,111 @@ case class WikiEntry(
 
   def create = {
     // TODO optimize exists
-    if (Wikis.find(category, name).isDefined) {
-      Log.error("ERR_WIKI page exists " + category + ":" + name)
+    if (Wikis.find(wid).isDefined) {
+      Log.error("ERR_WIKI page exists " + wid)
       throw new IllegalStateException("page already exists: " + category + "/" + name)
     }
 
-    Audit.logdb(AUDT_WIKI_CREATED, "BY " + this.by + " " + category + ":" + name, "\nCONTENT:\n" + this)
+    Audit.logdb(AUDIT_WIKI_CREATED, "BY " + this.by + " " + category + ":" + name, "\nCONTENT:\n" + this)
     Wikis.table += grater[WikiEntry].asDBObject(Audit.createnoaudit(this))
     Wikis.shouldFlag(name, label, content).map(auditFlagged(_))
-    Wikis.withIndex { _.put(name, category, _id) }
+    Wikis.withIndex { _.put(name, wid, _id) }
   }
 
   def update(newVer: WikiEntry) = {
-    Audit.logdb(AUDT_WIKI_UPDATED, "BY " + newVer.by + " " + category + ":" + name, "\nCONTENT:\n" + this)
+    Audit.logdb(AUDIT_WIKI_UPDATED, "BY " + newVer.by + " " + category + ":" + name, "\nCONTENT:\n" + this)
     WikiEntryOld(this).create
-    val key = Map("category" -> category, "name" -> name)
+    val key = Map("category" -> category, "name" -> name, "parent" -> parent)
     Wikis.table.m.update(key, grater[WikiEntry].asDBObject(Audit.updatenoaudit(newVer)))
     Wikis.shouldFlag(name, label, content).map(auditFlagged(_))
     if (category != newVer.category || name != newVer.name) {
       Wikis.withIndex { idx =>
-        idx.put(newVer.name, newVer.category, _id)
-        idx.remove2(name, category)
+        idx.put(newVer.name, newVer.wid, _id)
+        idx.remove2(name, wid)
       }
+    }
+  }
+
+  def delete(sby: String) = {
+    Audit.logdb(AUDIT_WIKI_DELETED, "BY " + sby + " " + category + ":" + name, "\nCONTENT:\n" + this)
+    WikiEntryOld(this).create
+    val key = Map("category" -> category, "name" -> name, "parent" -> parent)
+    Wikis.table.m.remove(key)
+    Wikis.withIndex { idx =>
+      idx.remove2(name, wid)
     }
   }
 
   def auditFlagged(f: String) { Log.audit(Audit.logdb(f, category + ":" + name)) }
 
+  /** pre processed form - parsed and graphed */
   lazy val preprocessed = {
-    val s = Wikis.preprocess(this.markup, this.content)
+    val s = Wikis.preprocess(this.wid, this.markup, this.content)
     // add hardcoded attributes
-    WikiParser.State(s.s, s.tags ++ Map("category" -> category, "name"->name, "label" -> label, "url" -> (category+":"+name)), s.ilinks)
+    WikiParser.State(s.s, s.tags ++ Map("category" -> category, "name" -> name, "label" -> label, "url" -> (category + ":" + name)), s.ilinks)
   }
 
-  lazy val tags = preprocessed.tags
-  lazy val ilinks = preprocessed.ilinks
+  def grated = grater[WikiEntry].asDBObject(this)
 
-  final val AUDT_WIKI_CREATED = "WIKI_CREATED "
-  final val AUDT_WIKI_UPDATED = "WIKI_UPDATED "
+  override def toString: String =
+    grater[WikiEntry].asDBObject(this).toString
+
+  def tags = preprocessed.tags
+  def ilinks = preprocessed.ilinks
+
+  final val AUDIT_WIKI_CREATED = "WIKI_CREATED "
+  final val AUDIT_WIKI_UPDATED = "WIKI_UPDATED "
+  final val AUDIT_WIKI_DELETED = "WIKI_DELETED "
 }
 
 object WikiEntry {
   final val UPD_CONTENT = "UPD_CONTENT"
   final val UPD_TOGGLE_RESERVED = "UPD_TOGGLE_RESERVED"
+
+  def grated(o: DBObject) = grater[WikiEntry].asObject(o)
+
 }
 
 case class WikiEntryOld(
   entry: WikiEntry,
   _id: ObjectId = new ObjectId()) {
   def create = {
-    Mongo ("WikiEntryOld") += grater[WikiEntryOld].asDBObject(Audit.createnoaudit(this))
+    Mongo("WikiEntryOld") += grater[WikiEntryOld].asDBObject(Audit.createnoaudit(this))
   }
 }
 
 /** a wiki id, a pair of cat and name */
-case class WID(cat: String, name: String) {
-  override def toString = cat + "/" + name
+case class WID(cat: String, name: String, parent: Option[ObjectId] = None) {
+  override def toString = cat + ":" + name + parent.map(" of " + _.toString).getOrElse("")
+  def grated = grater[WID].asDBObject(this)
+  def findParent = parent flatMap (p => Wikis.find(p))
+  lazy val parentWid = parent flatMap (p => Wikis.withIndex { index => index.find { case (a, b, c) => c == p }.map(_._2) })
+  def findId = Wikis.find(this).map(_._id) // TODO optimize with cache lookup
+  def wpath: String = findParent.map(_.wid.wpath + "/").getOrElse("") + (if (cat != null && cat.length > 0) (cat + ":") else "") + name
+  def formatted = WID(cat, Wikis.formatName(this), parent)
+}
+
+object WID {
+  def fromPath(path: String): Option[WID] = {
+    val a = path.split("/")
+    val w = a.map { x =>
+      val regex = """([^/:\]]*[:])?([^|\]]+)""".r
+      val regex(c, n) = x
+      WID((if (c == null) "" else c).replaceFirst(":", ""), n)
+    }
+    //    debug ("wikieEdit "+w.mkString)
+    val res = w.foldLeft[Option[WID]](None)((x, y) => Some(WID(y.cat, y.name, x.flatMap(_.findId))))
+    //    debug ("wikieEdit "+res)
+    res
+  }
+
+  val NONE = WID("?", "?")
+  val UNKNOWN = WID("?", "?")
 }
 
 /** a link between two wikis */
 case class WikiLink(from: WID, to: WID, how: String) {
-  def create = Mongo ("WikiLink") += grater[WikiLink].asDBObject(Audit.create(this))
+  def create = Mongo("WikiLink") += grater[WikiLink].asDBObject(Audit.create(this))
 
   val wname = Array(from.cat, from.name, to.cat, to.name).mkString(":")
 
@@ -124,13 +175,39 @@ case class WikiLink(from: WID, to: WID, how: String) {
   def pageTo = Wikis.find(to.cat, to.name)
 
   def isPrivate = List(pageFrom, page).flatMap(_ map (_.isPrivate)).exists(identity)
+
+  def grated = grater[WikiLink].asDBObject(this)
 }
 
 //  lazy val stuff = Mongo("UserStuff").findOne(Map("email" -> email)) map (grater[UserStuff].asObject(_))
 
+class NewTripleIdx[A, B, C] extends TripleIdx[A, B, C] {
+  def find(f: (A, B, C) => Boolean): Option[(A, B, C)] = {
+    for (a <- idx; x <- a._2)
+      if (f(a._1, x._1, x._2))
+        return Some((a._1, x._1, x._2))
+    None
+  }
+
+  def foreach(f: (A, B, C) => Unit): Unit = {
+    for (a <- idx; x <- a._2)
+      f(a._1, x._1, x._2)
+  }
+
+  def map[R](f: (A, B, C) => R): Seq[R] = {
+    (for (a <- idx; x <- a._2)
+      yield f(a._1, x._1, x._2)).toList
+  }
+}
+
 /** wiki factory and utils */
 object Wikis {
   def table = Mongo("WikiEntry")
+
+  def fromGrated[T <: AnyRef](o: DBObject)(implicit m: Manifest[T]) = grater[T](ctx, m).asObject(o)
+
+  def pages(category: String) =
+    table.m.find(Map("category" -> category)) map (grater[WikiEntry].asObject(_))
 
   def pageNames(category: String) =
     table.m.find(Map("category" -> category)) map (_.apply("name").toString)
@@ -138,14 +215,22 @@ object Wikis {
   def pageLabels(category: String) =
     table.m.find(Map("category" -> category)) map (_.apply("label").toString)
 
-  def label(category: String, name: String) =
-    table.findOne(Map("category" -> category, "name" -> name)) map (_.apply("label")) getOrElse name
+  def label(wid: WID) = ifind(wid) map (_.apply("label")) getOrElse wid.name
 
-  def findById(id: String) =
-    table.findOne(Map("_id" -> new ObjectId(id))) map (grater[WikiEntry].asObject(_))
+  def findById(id: String) = find(new ObjectId(id))
 
-  def find(category: String, name: String) =
-    table.findOne(Map("category" -> category, "name" -> name)) map (grater[WikiEntry].asObject(_))
+  def find(id: ObjectId) =
+    table.findOne(Map("_id" -> id)) map (grater[WikiEntry].asObject(_))
+
+  private def ifind(wid: WID) =
+    if (wid.parent.isDefined)
+      table.findOne(Map("category" -> wid.cat, "name" -> wid.name, "parent" -> wid.parent.get))
+    else
+      table.findOne(Map("category" -> wid.cat, "name" -> Wikis.formatName(wid.name)))
+
+  def find(wid: WID): Option[WikiEntry] = ifind(wid) map (grater[WikiEntry].asObject(_))
+
+  def find(category: String, name: String): Option[WikiEntry] = find(WID(category, name))
 
   def findAny(name: String) =
     table.find(Map("name" -> name)) map (grater[WikiEntry].asObject(_))
@@ -158,17 +243,85 @@ object Wikis {
     WikiLink(WID(a(0), a(1)), WID(a(2), a(3)), "?")
   }
 
+  // modify external sites mapped to external URLs
+  def urlmap(u: String) = {
+    var res = u
+
+    for (has <- config(URLMAP); site <- has) {
+      res = res.replaceFirst("^%s".format(site._1), site._2)
+    }
+    res
+  }
+
+  // modify external sites mapped to external URLs
+  def urlfwd(u: String) = {
+
+    for (has <- config(URLFWD); site <- has.get(u))
+      yield site
+  }
+
+  // site cfg parms
+  def sitecfg(parm: String) = {
+    config(SITECFG).flatMap(_.get(parm))
+  }
+
+  def config(s: String) = {
+    if (xconfig.isEmpty) reloadUrlMap
+    xconfig.get(s)
+  }
+
+  private val xconfig = scala.collection.mutable.Map[String, Map[String, String]]()
+
+  final val URLMAP = "urlmap"
+  final val URLFWD = "urlfwd"
+  final val SITECFG = "sitecfg"
+  final val TOPICRED = "topicred"
+
+  def reloadUrlMap {
+    for (c <- Array(URLMAP, URLFWD, SITECFG, TOPICRED)) {
+      val urlmaps = Some(table.find(Map("category" -> "Admin", "name" -> c)) map (grater[WikiEntry].asObject(_)) map (_.content) flatMap (_.split("\r\n")) filter (!_.startsWith("#")) map (_.split("=")) filter (_.size == 2) map (x => (x(0), x(1))))
+      val xurlmap = urlmaps.map(_.toMap)
+      println("RELOADING URL MAP ==========================================" + c)
+      println(xurlmap)
+      xurlmap.map(xconfig.put(c, _))
+      println("-----------")
+      println(xconfig.get(c))
+    }
+    println("-----------")
+    println(xconfig)
+  }
+
+  // TODO cache
+  def categories =
+    table.find(Map("category" -> "Category")) map (grater[WikiEntry].asObject(_))
+
+  // TODO cache
+  def category(cat: String) =
+    table.findOne(Map("category" -> "Category", "name" -> cat)) map (grater[WikiEntry].asObject(_))
+
+  // TODO cache
+  def visibilityFor(cat: String): Seq[String] =
+    //    category(cat).map(_.props).get//.get("visibility")).map(_.split(",")).getOrElse (Array("Public"))
+    category(cat).flatMap(_.tags.get("visibility")).map(_.split(",").toSeq).getOrElse(Seq("Public"))
+
+  def linksFrom(from: WID, role: String) =
+    Mongo("WikiLink").find(Map("from" -> from.grated, "how" -> role)) map (grater[WikiLink].asObject(_))
+
+  def linksTo(to: WID, role: String) =
+    Mongo("WikiLink").find(Map("to" -> to.grated, "how" -> role)) map (grater[WikiLink].asObject(_))
+
   /** the index is (name, category, ID) */
-  def withIndex[A](f: TripleIdx[String, String, ObjectId] => A) = {
+  def withIndex[A](f: NewTripleIdx[String, WID, ObjectId] => A) = {
     synchronized {
       f(index)
     }
   }
   // TODO sync reader/writer for udpates
   private lazy val index = {
-    val t = new TripleIdx[String, String, ObjectId]()
+    val t = new NewTripleIdx[String, WID, ObjectId]()
     table.find(Map()).foreach { db =>
-      t.put(db.as[String]("name"), db.as[String]("category"), db.as[ObjectId]("_id"))
+      val w = WID(db.as[String]("category"), db.as[String]("name"), if (db.containsField("parent")) Some(db.as[ObjectId]("parent")) else None)
+      t.put(w.name, w, db.as[ObjectId]("_id"))
     }
     t
   }
@@ -185,21 +338,25 @@ object Wikis {
   def formatName(name: String): String = iformatName(name, """[ &?,;/:{}\[\]]""")
 
   /** format a complex name cat:name */
-  def formatName(wid: WID): String = if ("WikiLink" == wid.cat) iformatName (wid.name, """[ /{}\[\]]""") else formatName(wid.name)
+  def formatName(wid: WID): String = if ("WikiLink" == wid.cat) iformatName(wid.name, """[ /{}\[\]]""") else formatName(wid.name)
 
   /** format an even more complex name */
-  def formatWikiLink(cat: String, nicename: String, label: String, hover: Option[String] = None) = {
-    val name = Wikis.formatName(nicename)
+  def formatWikiLink(wid: WID, nicename: String, label: String, hover: Option[String] = None, rk:Boolean=false) = {
+    val name = Wikis.formatName(wid.name)
     val title = hover.map("title=\"" + _ + "\"") getOrElse ("")
 
-    Wikis.withIndex{ index =>
-      if (index.idx.contains(name) || cat.matches("User"))
-        ("""<a href="/wiki/%s:%s" %s>%s</a>""".format(cat, name, title, label),
-          Some(ILink(cat, nicename, label)))
-      else
+    Wikis.withIndex { index =>
+      if (index.idx.contains(name) || wid.cat.matches("User")) {
+        var u = Wikis.urlmap("/wiki/%s".format(wid.formatted.wpath))
+
+        if (rk && (u startsWith "/")) u = "http://"+Config.hostport+u
+
+        ("""<a href="%s" title="%s">%s</a>""".format(u, title, label),
+          Some(ILink(wid, label)))
+      } else
         // hide it from google
-        ("""<a href="/wikie/%s:%s" title="%s">%s<sup><b style="color:red">++</b></sup></a>""".format(cat, nicename, hover.getOrElse("Missing page"), label),
-          Some(ILink(cat, nicename, label)))
+        ("""<a href="/wikie/%s" title="%s">%s<sup><b style="color:red">++</b></sup></a>""".format(wid.wpath, hover.getOrElse("Missing page"), label),
+          Some(ILink(wid, label)))
     }
   }
 
@@ -212,22 +369,28 @@ object Wikis {
   }
 
   // TODO better escaping of all url chars in wiki name
-  def preprocess(markup: String, content: String) = markup match {
+  def preprocess(wid: WID, markup: String, content: String) = markup match {
     case MD =>
+      var c2 = content
+      if (c2 contains "[[./")
+        c2 = content.replaceAll("""\[\[\./""", """[[%s/""".format(wid.cat + ":" + wid.name)) // child topics
+      if (c2 contains "[[../")
+        c2 = c2.replaceAll("""\[\[\../""", """[[%s/""".format(wid.parentWid.map(wp => wp.cat + ":" + wp.name).getOrElse("?"))) // siblings topics
       (for (
-        s @ WikiParser.State(a0, tags, ilinks) <- Some(WikiParser (content))
+        s @ WikiParser.State(a0, tags, ilinks) <- Some(WikiParser(c2))
       ) yield s) getOrElse WikiParser.State("")
     case TEXT => WikiParser.State(content.replaceAll("""\[\[([^]]*)\]\]""", """[[\(1\)]]"""))
-    case _    => WikiParser.State("UNKNOWN MARKUP " + markup + " - " + content)
+    case _ => WikiParser.State("UNKNOWN MARKUP " + markup + " - " + content)
   }
 
-  def format(markup: String, icontent: String) = {
-    val res = try {
-      val content = preprocess(markup, noporn(icontent)).s
+  /** main formatting function */
+  def format(wid: WID, markup: String, icontent: String) = {
+    var res = try {
+      val content = preprocess(wid, markup, noporn(icontent)).s
       markup match {
-        case MD   => toXHTML(knockoff(content)).toString
+        case MD => toXHTML(knockoff(content)).toString
         case TEXT => content
-        case _    => "UNKNOWN MARKUP " + markup + " - " + content
+        case _ => "UNKNOWN MARKUP " + markup + " - " + content
       }
     } catch {
       case e @ _ => {
@@ -237,17 +400,23 @@ object Wikis {
     }
 
     // mark the external links
-    res.replaceAll ("""(<a +href="http:)([^>]*)>([^<]*)(</a>)""", """$1$2 title="External site"><i>$3</i><sup>&nbsp;<b style="color:darkred">^^</b></sup>$4""")
+    res = res.replaceAll("""(<a +href="http:)([^>]*)>([^<]*)(</a>)""", """$1$2 title="External site"><i>$3</i><sup>&nbsp;<b style="color:darkred">^^</b></sup>$4""")
+    //    // modify external sites mapped to external URLs
+    //    // TODO optimize - either this logic or a parent-based approach
+    //    for (site <- Wikis.urlmap)
+    //      res = res.replaceAll ("""<a +href="%s""".format(site._1), """<a href="%s""".format(site._2))
+
+    res
   }
 
   def noporn(s: String) = porn.foldLeft(s)((x, y) => x.replaceAll("""\b%s\b""".format(y), "BLIP"))
 
   def hasporn(s: String, what: Array[String] = porn): Boolean = s.toLowerCase.split("""\w""").exists(what.contains(_))
 
-  def flag(we: WikiEntry) { flag (we.category, we.name) }
+  def flag(we: WikiEntry) { flag(we.wid) }
 
-  def flag(c: String, n: String, reason: String = "?") {
-    Audit.logdb("WIKI_FLAGGED", reason, c, n)
+  def flag(wid: WID, reason: String = "?") {
+    Audit.logdb("WIKI_FLAGGED", reason, wid.toString)
   }
 
   final val porn = Array("porn", "fuck", "sex")
@@ -273,24 +442,73 @@ object Wikis {
 
 }
 
-/** sed like filter using Java regexp
+/**
+ * sed like filter using Java regexp
  *
  *  example: from US to normal: Sed ("""(\d\d)/(\d\d)/(\d\d)""", """\2/\1/\3""", "01/31/12")
  *
  *  Essentially useless since plain "sss".replaceAll(..., "$1 $2...") works almost the same way..
  */
 object SedWiki {
-  def apply(pat: String, rep: Match => (String, Option[ILink]), input: String): Option[(String, Option[ILink])] = apply(pat, rep, identity, input)
+  val SEARCH = """search:?([^]]*)""".r
+  val LIST = """list:?([^]]*)""".r
+  val ALIAS = """alias:([^\]]*)""".r
+  val NOALIAS = """(rk:)?([^|\]]*)([ ]*[|][ ]*)?([^]]*)?""".r
 
-  def apply(pat: String, rep: Match => (String, Option[ILink]), repf: (String => String), input: String): Option[(String, Option[ILink])] = {
+  def apply(repf: (String => String), input: String): Option[(String, Option[ILink])] = {
     var i: Option[ILink] = None
-    Some(
-      (pat.r replaceAllIn (input, (m: Match) => {
-        val x = rep(m)
-        i = x._2
-        patRep replaceAllIn (x._1, (m1: Match) =>
-          repf(m group (m1 group 1).toInt))
-      })), i)
+
+    input match {
+      case SEARCH(nm) =>
+        Some("""<a href="http://google.com/search?q=""" + Enc.toUrl(nm) + "\">" + nm + "</a>", None)
+
+      case LIST(cat) => {
+        Some(((if (Wikis.pageNames(cat).size < 100)
+          Wikis.pageNames(cat).toList.sortWith(_ < _).map { p =>
+          Wikis.formatWikiLink(WID(cat, p), p, p)
+        }.map(_._1).mkString(" ")
+        else "TOO MANY to list"), None))
+      }
+
+      case ALIAS(wpath) => {
+        val wid = WID.fromPath(wpath)
+        wid.map { w =>
+          val f = Wikis.formatWikiLink(w, w.name, w.name)
+          ("Alias for " + f._1, f._2)
+        }
+      }
+
+      case NOALIAS(rk, wpath, _, label) => {
+        val wid = WID.fromPath(wpath)
+        wid map (w => Wikis.formatWikiLink(w, w.name, (if (label != null && label.length > 1) label else w.name), None, rk != null && rk.length>0))
+      }
+
+      case _ => Some(ERR, i)
+    }
+  }
+
+  /** processing special categories */
+  def expand2(m: Match): (String, Option[ILink]) = {
+    def hackmd(s1: String, s2: String, s3: String) = {
+      val ss2 = s2.replace('/', ':')
+      val cat = ss2
+      val catnocolon = if (ss2.isEmpty || !ss2.endsWith(":")) ss2 else ss2.substring(0, ss2.length - 1)
+      val nicename = s3
+      val label = s1
+      Wikis.formatWikiLink(WID(catnocolon, nicename), nicename, label)
+    }
+
+    var cat = if (m.group(2) == null) "any:" else m.group(2)
+    val nm = if (m.group(3) != null) m.group(3).trim else "?"
+    var label = if (m.group(5) != null) m.group(5) else nm
+    if (label.length <= 0) label = nm
+
+    def res = if (m.group(3) != null) hackmd(label, cat, nm) else (SedWiki.ERR, None)
+
+    if (m.group(1) != null) m.group(1) match {
+      case _ => if (m.group(2) == null) { cat = m.group(1); res } else (SedWiki.ERR + res, None)
+    }
+    else res
   }
 
   val ERR = "[ERROR SYNTAX]"
@@ -299,13 +517,13 @@ object SedWiki {
 }
 
 object ILink {
-  def apply(cat: String, name: String) = new ILink(cat, name, name)
+  def apply(wid: WID) = new ILink(wid, wid.name)
 }
 
 /** most information about a page */
-case class ILink(cat: String, name: String, label: String, tags: Map[String, String] = Map(), ilinks:List[ILink]=Nil) {
-  def href = "/wiki/%s:%s".format(cat, name)
-  def format = Wikis.formatWikiLink(cat, name, label, None)
+case class ILink(wid: WID, label: String, tags: Map[String, String] = Map(), ilinks: List[ILink] = Nil) {
+  def href = Wikis.urlmap("/wiki/%s".format(wid.wpath))
+  def format = Wikis.formatWikiLink(wid, wid.name, label, None)
 }
 
 /** simple parsers */
@@ -319,13 +537,15 @@ trait ParserCommons extends RegexParsers {
   type PS2 = Parser[List[List[String]]]
   type PS1 = Parser[List[String]]
 
-  def CRLF1: P = CRLF2 <~ not ("""[^a-zA-Z0-9-]""".r) ^^ { case ho => ho + "<br>" }
-  def CRLF2: P = ("\r\n" | "\n")
-  def CRLF3: P = CRLF2 ~ CRLF2 ^^ { case a ~ b => a + b }
+  def CRLF1: P = CRLF2 <~ "RKHABIBIKU" <~ not("""[^a-zA-Z0-9-]""".r) ^^ { case ho => ho + "<br>" } // hack: eol followed by a line - DISABLED
+  def CRLF2: P = ("\r\n" | "\n") // normal eol
+  //  def CRLF2: P = ("\r\n" | "\n") ^^ {case a => "FIFI" } // normal eol
+  def CRLF3: P = CRLF2 ~ CRLF2 ^^ { case a ~ b => a + b } // an empty line = two eol
+  //  def CRLF3: P = CRLF2 ~ CRLF2 ~ rep(CRLF2) ^^ { case a ~ b ~ c => "\n<p></p>\n" } // an empty line = two eol
   def NADA: P = ""
 
-    // static must be stopped to not include too much - that's why the last expr
-  def static: P = not("{{") ~> not("[[") ~> not("}}") ~> not("[http:") ~> (""".""".r) ~ ("""[^{}\[\]`]""".r*) ^^ { case a~b => a+b.mkString }
+  // static must be stopped to not include too much - that's why the last expr
+  def static: P = not("{{") ~> not("[[") ~> not("}}") ~> not("[http:") ~> (""".""".r) ~ ("""[^{}\[\]`\r\n]""".r*) ^^ { case a ~ b => a + b.mkString }
 }
 
 /** wiki parser */
@@ -334,7 +554,7 @@ object WikiParser extends ParserCommons with CsvParser {
   implicit def toState(s: String) = State(s)
 
   type PS = Parser[State]
-  def apply(input: String) = parseAll(wiki, input) getOrElse (State("[[CANNOT PARSE]]"))
+  def apply(input: String) = parseAll(wiki, input) getOrElse (State("[[CANNOT PARSE]] - sorry, dumb program here! The content is not lost: try editing this topic... also, please open a support issue and copy/paste there the content."))
   def applys(input: String) = apply(input).s
 
   /** use this to expand [[xxx]] on the spot */
@@ -345,13 +565,13 @@ object WikiParser extends ParserCommons with CsvParser {
   def xCRLF3: PS = CRLF3 ^^ { case x => x }
   def xNADA: PS = NADA ^^ { case x => x }
   def xstatic: PS = static ^^ { case x => x }
-  def escaped: PS = "`" ~ opt(""".[^`]*""".r) ~ "`" ^^ { case a ~ b ~ c => a+b.getOrElse("")+c}
+  def escaped: PS = "`" ~ opt(""".[^`]*""".r) ~ "`" ^^ { case a ~ b ~ c => a + b.getOrElse("") + c }
 
   //============================== wiki parsing
 
   def wiki: PS = lines | line | xCRLF2 | xNADA
 
-  def line: PS = opt(lists) ~ rep(escaped | badHtml | badHtml2 |  wiki3 | wiki2 | link1 | wikiProps | xstatic ) ^^ {
+  def line: PS = opt(lists) ~ rep(escaped | badHtml | badHtml2 | wiki3 | wiki2 | link1 | wikiProps | xstatic) ^^ {
     case ol ~ l => State(ol.getOrElse(State("")).s + l.map(_.s).mkString, l.flatMap(_.tags).toMap, l.flatMap(_.ilinks))
   }
 
@@ -363,7 +583,7 @@ object WikiParser extends ParserCommons with CsvParser {
         l.flatMap(_._1.ilinks).toList ++ c.map(_.ilinks).getOrElse(Nil))
   }
 
-  def optline: PS = opt(line) ^^ { case o => o.map (identity).getOrElse (State("")) }
+  def optline: PS = opt(line) ^^ { case o => o.map(identity).getOrElse(State("")) }
 
   def wiki3: PS = "[[[" ~ """[^]]*""".r ~ "]]]" ^^ {
     case "[[[" ~ name ~ "]]]" => """<a href="http://en.wikipedia.org/wiki/%s"><i>%s</i></a>""".format(name, name)
@@ -375,10 +595,12 @@ object WikiParser extends ParserCommons with CsvParser {
       if (p.successful) {
         // this is an ilink with auto-props in the name/label
         // for now, reformat the link to allow props and collect them in the ILInk
-        SedWiki(wikip2a, expand2 _, identity, p.get.s).map(x => State(x._1, Map(), x._2.map(x => ILink(x.cat, x.name, x.label, p.get.tags, p.get.ilinks)).toList)).get // TODO something with the props
+        //        SedWiki(wikip2a, expand2 _, identity, p.get.s).map(x => State(x._1, Map(), x._2.map(x => ILink(x.cat, x.name, x.label, p.get.tags, p.get.ilinks)).toList)).get // TODO something with the props
+        SedWiki(identity, p.get.s).map(x => State(x._1, Map(), x._2.map(x => ILink(x.wid, x.label, p.get.tags, p.get.ilinks)).toList)).get // TODO something with the props
       } else {
         // this is a normal ilink
-        SedWiki(wikip2a, expand2 _, Wikis.formatName _, name).map(x => State(x._1, Map(), x._2.toList)).get
+        //        SedWiki(wikip2a, expand2 _, Wikis.formatName _, name).map(x => State(x._1, Map(), x._2.toList)).get
+        SedWiki(Wikis.formatName _, name).map(x => State(x._1, Map(), x._2.toList)).get
       }
     }
   }
@@ -388,24 +610,25 @@ object WikiParser extends ParserCommons with CsvParser {
 
   /** processing special categories */
   def expand2(m: Match): (String, Option[ILink]) = {
-      def hackmd(s1: String, s2: String, s3: String) = {
-        val ss2 = s2.replace('/', ':')
-        val cat = ss2
-        val catnocolon = if (ss2.isEmpty || !ss2.endsWith(":")) ss2 else ss2.substring(0, ss2.length - 1)
-        val nicename = s3
-        val label = s1
-        Wikis.formatWikiLink(catnocolon, nicename, label)
-      }
+    def hackmd(s1: String, s2: String, s3: String) = {
+      val ss2 = s2.replace('/', ':')
+      val cat = ss2
+      val catnocolon = if (ss2.isEmpty || !ss2.endsWith(":")) ss2 else ss2.substring(0, ss2.length - 1)
+      val nicename = s3
+      val label = s1
+      Wikis.formatWikiLink(WID(catnocolon, nicename), nicename, label)
+    }
 
     var cat = if (m.group(2) == null) "any:" else m.group(2)
     val nm = if (m.group(3) != null) m.group(3).trim else "?"
     var label = if (m.group(5) != null) m.group(5) else nm
     if (label.length <= 0) label = nm
 
-      def res = if (m.group(3) != null) hackmd(label, cat, nm) else (SedWiki.ERR, None)
+    def res = if (m.group(3) != null) hackmd(label, cat, nm) else (SedWiki.ERR, None)
 
     if (m.group(1) != null) m.group(1) match {
       case "alias:" => ("Alias for " + res._1, res._2)
+      case "search:" => ("""<a href="http://google.com/search?q=""" + Enc.toUrl(nm) + "\">" + nm + "</a>", None)
       case "list:" => {
         val c = if (m.group(3) != null) nm else "?"
 
@@ -422,7 +645,7 @@ object WikiParser extends ParserCommons with CsvParser {
 
   def link1: PS = "[" ~> """http://[^] ]*""".r ~ opt("[ ]+".r ~ """[^]]*""".r) <~ "]" ^^ {
     case url ~ Some(sp ~ text) => """[%s](%s)""".format(text, url)
-    case url ~ None            => """[%s](%s)""".format(url, url)
+    case url ~ None => """[%s](%s)""".format(url, url)
   }
 
   def lists = li1 | li2 | li3
@@ -432,19 +655,19 @@ object WikiParser extends ParserCommons with CsvParser {
 
   //======================= forbidden html tags TODO it's easier to allow instead?
 
-  val hok = "abbr|acronym|address|b|blockquote|br|h1|h2|h3|h4|h5|h6|hr|i|li|p|pre|q|s|small|strike|strong|sub|sup|" +
+  val hok = "abbr|acronym|address|b|blockquote|br|div|dd|dl|dt|font|h1|h2|h3|h4|h5|h6|hr|i|img|li|p|pre|q|s|small|strike|strong|span|sub|sup|" +
     "table|tbody|td|tfoot|th|thead|tr|ul|u"
   val hnok = "applet|area|a|base|basefont|bdo|big|body|button|caption|center|cite|code|colgroup|col|" +
-    "dd|del|dfn|dir|div|dl|dt|fieldset|font|form|frame|frameset|head|html|iframe|img|input|ins|isindex|kbd|" +
+    "del|dfn|dir|fieldset|form|frame|frameset|head|html|iframe|input|ins|isindex|kbd|" +
     "label|legend|link|map|menu|meta|noframes|noscript|object|ol|" +
-    "optgroup|option|param|samp|script|select|span|style|textarea|title|tt|var"
+    "optgroup|option|param|samp|script|select|style|textarea|title|tt|var"
 
   val safeSites = Set("http://maps.google.ca", "http://maps.google.com", "http://www.everytrail.com", "http://www.youtube.com")
   //  def iframe: PS = "<iframe" ~> """[^>]*""".r ~ """src="""".r ~ """[^"]*""".r ~ """[^>]*""".r <~ ">" ^^ {
   def iframe: PS = "<iframe" ~> """[^>]*""".r <~ ">" ^^ {
     case a => {
-      val url = a.replaceAll (""".*src="(.*)".*""", "$1")
-      if (safeSites.exists (x => url.startsWith(x))) "<iframe" + a + "></iframe>"
+      val url = a.replaceAll(""".*src="(.*)".*""", "$1")
+      if (safeSites.exists(x => url.startsWith(x))) "<iframe" + a + "></iframe>"
       else "&lt;iframe" + a + "&gt;"
     }
   }
@@ -453,7 +676,7 @@ object WikiParser extends ParserCommons with CsvParser {
 
   def badTags: PS = "<" ~> hnok.r ~ opt(" " ~ """[^>]*""".r) <~ ">" ^^ {
     case b ~ Some(c ~ d) => "&lt;" + b + c + d + "&gt;"
-    case b ~ None        => "&lt;" + b + "&gt;"
+    case b ~ None => "&lt;" + b + "&gt;"
   }
 
   def badHtml2: PS = "</" ~> hnok.r <~ ">" ^^ {
@@ -490,7 +713,11 @@ object WikiParser extends ParserCommons with CsvParser {
   }
 
   def wikiProp: PS = "{{" ~> """[^}:]+""".r ~ ":" ~ """[^}]*""".r <~ "}}" ^^ {
-    case name ~ _ ~ value => State("""{{Unknown prop %s=%s}}""".format(name, value), Map(name -> value))
+    case name ~ _ ~ value =>
+      if (name startsWith ".")
+        State("", Map(name.substring(1) -> value)) // hidden
+      else
+        State("""{{Property %s=%s}}""".format(name, value), Map(name -> value))
   }
 
   def wikiPropByName: PS = ("\\{\\{[Bb]y[: ]+".r | "\\{\\{[Cc]lub[: ]+".r) ~> """[^}]*""".r <~ "}}" ^^ {
@@ -498,15 +725,15 @@ object WikiParser extends ParserCommons with CsvParser {
   }
 
   def wikiPropBy: PS = ("\\{\\{[Bb]y[: ]+".r | "\\{\\{[Cc]lub[: ]+".r) ~> """[^}]*""".r <~ "}}" ^^ {
-    case place => State("{{by " + parseW2("""[[Club:%s]]""".format(place)).s + "}}", Map("club" -> place), ILink("Club", place, place) :: Nil)
+    case place => State("{{by " + parseW2("""[[Club:%s]]""".format(place)).s + "}}", Map("club" -> place), ILink(WID("Club", place), place) :: Nil)
   }
 
   def wikiPropWhere: PS = ("\\{\\{where[: ]".r | "\\{\\{[Aa]t[: ]+".r | "\\{\\{[Pp]lace[: ]+".r | "\\{\\{[Vv]enue[: ]+".r) ~> """[^}]*""".r <~ "}}" ^^ {
-    case place => State("{{at " + parseW2("""[[Venue:%s]]""".format(place)).s + "}}", Map("venue" -> place), ILink("Venue", place, place) :: Nil)
+    case place => State("{{at " + parseW2("""[[Venue:%s]]""".format(place)).s + "}}", Map("venue" -> place), ILink(WID("Venue", place), place) :: Nil)
   }
 
   def wikiPropWhereName: PS = ("\\{\\{where[: ]".r | "\\{\\{[Aa]t[: ]+".r | "\\{\\{[Pp]lace[: ]+".r | "\\{\\{[Vv]enue[: ]+".r) ~> """[^}]*""".r <~ "}}" ^^ {
-    case place => State("""{{at %s}}""".format(place), Map("venue" -> place), ILink("Venue", place, place) :: Nil)
+    case place => State("""{{at %s}}""".format(place), Map("venue" -> place), ILink(WID("Venue", place), place) :: Nil)
   }
 
   def wikiPropLoc: PS = "{{" ~> "loc:" ~> """[^}:]*""".r ~ ":".r ~ """[^}]*""".r <~ "}}" ^^ {
@@ -645,7 +872,7 @@ trait CsvParser extends ParserCommons {
 
   def plainLine(implicit end: String): P = (not(end) ~> """.""".r+) ^^ { case l => l.mkString }
 
-  def csvOptline(implicit xdelim: String): PS1 = opt(csvLine) ^^ { case o => o.map (identity).getOrElse (Nil) }
+  def csvOptline(implicit xdelim: String): PS1 = opt(csvLine) ^^ { case o => o.map(identity).getOrElse(Nil) }
 
   def cell(implicit xdelim: String): P = (not(xdelim) ~> not("{{") ~> not("[[") ~> not("}}") ~> """.""".r+) ^^ { case l => l.mkString }
 }
@@ -682,8 +909,48 @@ a,,c,d
 {{/delimited}}
 """
 
-  println (WikiParser.applys(csv1))
-  println (WikiParser.applys(csv2))
-  println (WikiParser.applys(csv3))
-  println (WikiParser.applys(csv4))
+  println(WikiParser.applys(csv1))
+  println(WikiParser.applys(csv2))
+  println(WikiParser.applys(csv3))
+  println(WikiParser.applys(csv4))
+
+  val tabsp = """<table><tr><td>
+1
+
+
+
+1
+</td><td></td></tr></table>"""
+
+  val tabsp1 = """
+Ontario (slalom and GS), within the following four age groups:
+
+- Nancy Greene League Racing (ages 7 to 10)
+- K1 League Racing (ages 11 and 12), 
+- K2 League Racing (ages 13 and 14) and 
+- J Alpine League Racing (ages 15 to 18)
+"""
+  //  println (WikiParser.applys(tabsp))
+  //  println (Wikis.format(WID.NONE, "md", tabsp))
+  val content = Wikis.preprocess(WID.NONE, "md", tabsp1).s
+  println(content)
+  println(toXHTML(knockoff(content)).toString)
+  //  println(knockoff(tabsp))
 }
+
+object WikiDomain {
+
+  def zEnds(aEnd: String, role: String) =
+    Wikis.categories.filter(_.tags.get("roles:" + aEnd).map(_.split(",")).map(_.contains(role)).getOrElse(false)).toList
+
+  def aEnds(zEnd: String, role: String) =
+    for (
+      c <- Wikis.category(zEnd).toList;
+      t <- c.tags if (t._2.split(",").contains(role))
+    ) yield t._1.split(":")(1)
+
+  def needsOwner(cat: String) =
+    model.Wikis.category(cat).flatMap(_.tags.get("roles:" + "User")).map(_.split(",").contains("Owner")).getOrElse(false)
+
+}
+

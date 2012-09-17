@@ -31,6 +31,7 @@ import model.Perm
 import admin._
 import model.WID
 import model.UserTasks
+import play.api.cache.Cache
 
 object Tasks extends RazController with Logging {
   import Profile.Email
@@ -70,6 +71,11 @@ object Tasks extends RazController with Logging {
       Ok(views.html.tasks.addParent(parentForm.fill(Email("")), u.ename)).withSession("ujson" -> uj)
     }) getOrElse
       Unauthorized("Oops - how did you get here?")
+  }
+
+  def userNameChgDenied = Action { implicit request =>
+    this dbop UserTasks.userNameChgDenied(auth.get).delete
+    Msg2("Your request to change username has been denied!")
   }
 
   // step 2 - filled parent email, now creating child user and send email to parent
@@ -142,7 +148,7 @@ object Tasks extends RazController with Logging {
     Msg("Ok - we sent an email - please ask your parent to follow the instructions in that email. " +
       "" +
       "They have to first register and then follow this [link](" +
-      ds.secUrl + ")", "Page", "home", Some(c)).withSession("connected" -> c.email)
+      ds.secUrl + ")", HOME, Some(c)).withSession("connected" -> Enc.toSession(c.email))
   }
 
   def sendToParentAdd(to: String, from: String, childEmail: String, childName: String, link: String) {
@@ -163,7 +169,7 @@ The RacerKidz
     SendEmail.send (to, from, "Racer Kid parent - please activate your account", html)
   }
 
-  // step 3 - parent clicked on email link to add child
+  /** step 3 - parent clicked on email link to add child */
   def addParent3(expiry1: String, parentEmail: String, childEmail: String, childId: String) = Action { implicit request =>
     implicit val errCollector = new VError()
     (expiry1, parentEmail, childEmail, childId) match {
@@ -189,7 +195,7 @@ The RacerKidz
 Ok child added. You can edit the privacy settings from your [profile page](/doe/profile).
 
 Please read our [[Terms of Service]] as well as our [[Privacy Policy]]
-""", "Page", "home")
+""", HOME)
         }
       } getOrElse
         {
@@ -199,7 +205,7 @@ Please read our [[Terms of Service]] as well as our [[Privacy Policy]]
     }
   }
 
-  // step 1 - send verification email
+  /** step 1 - send verification email */
   def verifyEmail1 = Action { implicit request =>
     implicit val errCollector = new VError()
       def ERR = {
@@ -214,8 +220,11 @@ Please read our [[Terms of Service]] as well as our [[Privacy Policy]]
     }
   }
 
-  def sendEmailVerif(c: User)(implicit request: Request[_]) = {
+  def sendEmailVerif(c: User)(implicit request: Request[_], mailSession:Option[javax.mail.Session] = None) = {
     val from = "support@racerkidz.com"
+    val MSG_EMAIL_VERIF = """
+Ok - we sent an email to your registered email address - please follow the instructions in that email to validate your email address and begin using the site.<br>
+Please check your spam/junk folders as well in the next few minutes - make sure you mark support@racerkidz.com as a safe sender!"""
 
     val dt = DateTime.now().plusHours(1).toString()
     log("ENC_DT=" + dt)
@@ -228,10 +237,10 @@ Please read our [[Terms of Service]] as well as our [[Privacy Policy]]
     log("ENC_LINK2=" + ds.secUrl)
 
     sendToVerif1(c.email.dec, from, c.ename, ds.secUrl)
-    Msg("Ok - we sent an email to your registered email address - please follow the instructions in that email. ", "Page", "home", Some(c)).withSession("connected" -> c.email)
+    Msg(MSG_EMAIL_VERIF, HOME, Some(c)).withSession("connected" -> Enc.toSession(c.email))
   }
 
-  def sendToVerif1(email: String, from: String, name: String, link: String) {
+  def sendToVerif1(email: String, from: String, name: String, link: String) (implicit mailSession:Option[javax.mail.Session] = None) = {
     val html = """
 Hey, %s,
 <p>You registered this email address (%s) at <a href="http://www.racerkidz.com">RacerKidz.com</a> and you need to verify it.
@@ -241,7 +250,14 @@ Please follow these steps:
 <li>Login with <em>your account</em>
 <li>Use <a href="%s">this link</a> to validate this email
 </ul>
-          
+
+<em>The most common problems:</em>
+<br> - trying to verify an email is using a different browser to open this link, one where you didn't log in first!
+<br> - closing the browser window and then clicking on this email      
+
+<p>
+Remember, you have to login first and then click the link - we will improve the process, but for now that's it :(
+
 Cheers,
 The RacerKidz
 """.format(name, email, link);
@@ -249,7 +265,7 @@ The RacerKidz
     SendEmail.send (email, from, "Racer Kid - please activate your account", html)
   }
 
-  // step 3 - parent clicked on email link to add child
+  /** step 2 - user clicked on email link to verify email */
   def verifyEmail2(expiry1: String, email: String, id: String) = Action { implicit request =>
     implicit val errCollector = new VError()
     (expiry1, email, id) match {
@@ -261,17 +277,23 @@ The RacerKidz
           p <- auth orCorr cNoAuth;
           a <- (if (p.email == ce) Some(true) else None) logging ("ERR neq",p.email,ce) orErr "Not same user";
           pro <- p.profile orCorr cNoProfile;
-          already <- !(p.hasPerm(Perm.eVerified)) orErr "Already defined"
+          already <- !(p.hasPerm(Perm.eVerified)) orErr "Already verified"
         ) yield {
           // TODO transaction
-          this dbop pro.update (pro.addPerm("+"+Perm.eVerified.s))
+          this dbop pro.update (pro.addPerm("+"+Perm.eVerified.s).addPerm("+"+Perm.uWiki.s))
           this dbop UserTasks.verifyEmail(p).delete
+          
+          // replace in cache
+          Users.findUserById(p._id).map { u =>
+            import play.api.Play.current
+            RazController.cleanAuth(Some(u))
+          }
 
           Msg("""
 Ok, email verified. You can now edit topics.
 
 Please read our [[Terms of Service]] as well as our [[Privacy Policy]]
-""", "Page", "home")
+""", HOME)
         }
       } getOrElse
         {

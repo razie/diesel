@@ -26,25 +26,29 @@ object UserStuff extends RazController {
 
   // serve public profile
   def pub(id: String) =
-    if (Wikis.withIndex(_.get2(id, "User").isDefined))
-      Wiki.show ("User", id)
+    if (Wikis.withIndex(_.get2(id, WID("User", id)).isDefined))
+      Wiki.show (WID("User", id))
     else
       Action { implicit request => NotFound ("User not found or profile is private!") }
 
   def wiki(email: String, cat: String, name: String) =
-    Wiki.show ("WikiLink", WikiLink(WID("User", email), WID(cat, name), "").wname)
+    WikiLink(WID("User", email), WID(cat, name), "").page.map(w =>
+        Wiki.show (WID("WikiLink", w.name))
+      ).getOrElse(
+        Action { implicit request => Redirect (Wiki.w (cat, name)) }
+      )
 
   //(what,when)
   def events(u: User): List[(ILink, String, DateTime, ILink)] = {
-    val dates = u.pages("Season").flatMap{ uw =>
-      val node = new WikiWrapper("Season", uw.name)
+    val dates = u.pages("Calendar").flatMap{ uw =>
+      val node = new WikiWrapper(WID("Calendar", uw.wid.name))
       val root = new razie.Snakk.Wrapper(node, WikiXpSolver)
 
       val races = (root \ "*" \ "Race")
       //      val gigi = (root \ "*" \ "Race" \@ "date")
       val dates = races.map(x => (x.mkLink,
         new Snakk.Wrapper(x, races.ctx) \@ "date",
-        ILink("Venue", new Snakk.Wrapper(x, races.ctx) \@ "venue"))).filter(_._2 != "")
+        ILink(WID("Venue", new Snakk.Wrapper(x, races.ctx) \@ "venue")))).filter(_._2 != "")
       //      val dates2 = dates.filter(s => DateParser.apply(s._2).successful)
       // filter those that parse successfuly
       dates.map(x => (x._1, x._2, DateParser.apply(x._2), x._3)).filter(_._3.successful).map(t => (t._1, t._2, t._3.get, t._4))
@@ -55,7 +59,7 @@ object UserStuff extends RazController {
 
   def xp(u: User, cat: String) = {
     new XListWrapper(
-      u.pages(cat).map { uw => new WikiWrapper(cat, uw.name) },
+      u.pages(cat).map { uw => new WikiWrapper(WID(cat, uw.wid.name)) },
       WikiXpSolver)
   }
 
@@ -65,6 +69,12 @@ object UserStuff extends RazController {
   def pastEvents(u: User) = {
     events(u).filter(_._3.isAfter(DateTime.now.minusDays(20)))
   }
+
+  // serve public profile
+  def doeCreateSomething = Action { implicit request => 
+    Ok (views.html.user.createSomething(auth))
+    }
+
 }
 
 /** parse dates into joda.DateTime */
@@ -103,8 +113,8 @@ class XListWrapper[T](nodes: List[T], ctx: XpSolver[T]) extends ListWrapper[T](n
 
   /** the attributes with the respective names */
   def \@-(n: (String, String)): List[(String, String)] = (this \@ n._1) zip (this \@ n._2)
-  def \@-(n: (String, String, String)): List[(String, String, String)] = ((this \@ n._1) zip (this \@ n._2) zip (this \@ n._3)).map (x=>(x._1._1, x._1._2, x._2))
-  def \@-(n: (String, String, String, String)): List[(String, String, String, String)] = ((this \@ n._1) zip (this \@ n._2) zip (this \@ n._3)  zip (this \@ n._4)).map (x=>(x._1._1._1, x._1._1._2, x._1._2, x._2))
+  def \@-(n: (String, String, String)): List[(String, String, String)] = ((this \@ n._1) zip (this \@ n._2) zip (this \@ n._3)).map (x => (x._1._1, x._1._2, x._2))
+  def \@-(n: (String, String, String, String)): List[(String, String, String, String)] = ((this \@ n._1) zip (this \@ n._2) zip (this \@ n._3) zip (this \@ n._4)).map (x => (x._1._1._1, x._1._1._2, x._1._2, x._2))
 }
 
 /** OO wrapper for self-solving XP elements */

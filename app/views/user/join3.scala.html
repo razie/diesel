@@ -24,6 +24,10 @@
   <a href="@controllers.Wiki.w("Terms of Service")" style="color:red;font-weight:bold">Terms of Service</a> 
  as well as our 
 <a href="@controllers.Wiki.w("Privacy Policy")" style="color:red;font-weight:bold">Privacy Policy</a></p>
+<hr>
+<h2>Organizations</h2>
+<p>If you are <font style="color:red;font-weight:bold">registering an organization</font> (club, association etc) please 
+set the <em>"What you are"</em> to <em>"Organization"</em> and use only the <i>First Name</i> .
         </div>
 
         <div class="span4">
@@ -31,6 +35,11 @@
 @import helper.twitterBootstrap._
 
 @helper.form(action=routes.Profile.doeCreateProfile(), 'class->"well") {
+  @helper.select(
+    myForm("userType"), 
+     model.UserType.values.toList.map(x=>(x.toString,x.toString)),
+     '_label -> "What you are",
+    '_showConstraints -> false)
   @helper.inputText(
     myForm("firstName"), 
     '_label -> "First name", 
@@ -44,11 +53,6 @@
     '_label -> "When you were born", 
     'style -> "width: 100px", 
     '_showConstraints -> false)
-  @helper.select(
-    myForm("userType"), 
-     model.Users.userTypes.map(x=>(x,x)),
-     '_label -> "What you are",
-    '_showConstraints -> false)
   @helper.inputText(
     myForm("address"), 
     '_label -> "City, province/state, country", 
@@ -60,12 +64,19 @@
     '_showConstraints -> false)
     
     @***** recaptcha ********@
+@if(!_root_.admin.Config.isLocalhost) {
     <script type="text/javascript" src="http://www.google.com/recaptcha/api/challenge?k=6Ld9uNASAAAAAL_5jXRwtBAtiJy8XGwSzZOWW80s"></script>
      <noscript>
        <iframe src="http://www.google.com/recaptcha/api/noscript?k=6Ld9uNASAAAAAL_5jXRwtBAtiJy8XGwSzZOWW80s" height="300" width="500" frameborder="0"></iframe>
        <br><textarea name="recaptcha_challenge_field" rows="3" cols="40"></textarea>
        <input type="hidden" name="recaptcha_response_field" value="manual_challenge">
      </noscript>
+} else {
+    @helper.inputText(
+    myForm("recaptcha_challenge_field"))          
+    @helper.inputText(
+    myForm("recaptcha_response_field"))          
+}
 
   @if(myForm.globalError.isDefined) {
      <p style="color:red;font-weight:bold">@myForm.globalError.get.message</p>

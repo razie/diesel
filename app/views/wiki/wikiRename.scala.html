@@ -1,4 +1,4 @@
-@(category:String, name:String, myForm:Form[_], user:Option[model.User])
+@(wid:model.WID, myForm:Form[_], user:Option[model.User])
 
    @htmlHead()
 
@@ -15,7 +15,7 @@
 <div >
 @import helper.twitterBootstrap._
 
-@helper.form(action=routes.Wiki.wikieRename2(category,name), 'class->"well") {
+@helper.form(action=routes.Wiki.wikieRename2(wid), 'class->"well") {
   @helper.inputText(
     myForm("oldlabel"), 
     '_class -> "input-xlarge disabled", 
@@ -30,7 +30,7 @@
     
     <div class="actions">
       <button type="submit" class="btn btn-primary">Rename it!</button>
-      <a href="@controllers.Wiki.w(category,name)" class="btn">Nah</a>
+      <a href="@controllers.Wiki.w(wid)" class="btn">Nah</a>
   </div>
   
   @if(myForm.globalError.isDefined) {
@@ -42,7 +42,7 @@
 </div>
 
       <div class="well">
-          @wiki.wikiFrag(category,name)
+          @wiki.wikiFrag(wid, user)
       </div>
           
       <hr>

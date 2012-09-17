@@ -8,7 +8,7 @@
 
       <!-- Main hero unit for a primary marketing message or call to action -->
       <div class="well">
-        <h2>@Html(model.Wikis.format(model.Wikis.MD, msg))</h2>
+        <h3>@Html(model.Wikis.format(model.WID("?","?"), model.Wikis.MD, msg))</h3>
         <br>
 @next.map { n=>
         <a class="btn btn-primary btn-large" href="@n">Continue</a>

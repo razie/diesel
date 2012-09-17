@@ -1,0 +1,41 @@
+@(user:Option[model.User])
+
+   @htmlHead("Creating something...")
+
+   @navbar(user)
+   
+    <div class="container">
+
+        <div class="row">
+
+    <div class="span9">
+
+<div >
+      <form action="@routes.Wiki.edit2" method="GET" class="well form-inline">
+        <input type="text" name="name" id="name"> 
+        <select id="cat" name="cat" class="input-small">
+          @model.WikiDomain.zEnds("User", "Owner").sortWith(_.name < _.name).map{x=>
+            <option value="@x.name" >@x.name</option>
+          }
+       </select>
+
+     <button type="submit" class="btn btn-primary">Create</button>
+     </form>
+</div>
+
+      <hr>
+
+      @htmlFooter()
+
+    </div> <!-- /span9 -->
+
+      <div class="span3">
+          @wiki.wikiFrag(model.WID("Admin","Right"),user,true)
+      </div>
+
+      </div> <!-- row -->
+
+    </div> <!-- /container -->
+
+    @htmlBottom()
+    

@@ -1,4 +1,4 @@
-@(category:String, name:String, cid:String, myForm:Form[controllers.Comment.Habibi], user:Option[model.User])
+@(wid:model.WID, cid:String, myForm:Form[controllers.Comment.Habibi], user:Option[model.User])
 
    @htmlHead("Editing comment")
 
@@ -13,13 +13,13 @@
 <div >
 @import helper.twitterBootstrap._
 
-        @helper.form(action=routes.Comment.save(category, name, cid), 'class->"well form-inline") {
+        @helper.form(action=routes.Comment.save(wid, cid), 'class->"well form-inline") {
   @helper.textarea(
     myForm("content"), 
     '_label -> "Edit comment", 
     '_showConstraints -> false,
     'class -> "span6",
-    'rows->5)
+    'rows->15)
           <button type="submit" class="btn btn-primary" onclick="$(this).addClass('disabled');">Now</button>
           }
 
@@ -30,7 +30,7 @@
     </div> <!-- /span9 -->
 
       <div class="span3">
-          @wiki.wikiFrag("Page","Right",true, None)
+          @wiki.wikiFrag(model.WID("Admin","Right"),user,true)
       </div>
 
       </div> <!-- row -->

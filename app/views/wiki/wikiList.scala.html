@@ -1,0 +1,41 @@
+@(title:String, pages:List[model.WikiEntry], user:Option[model.User])
+@import model._
+
+   @htmlHead("Results for: " + title)
+
+   @navbar(user)
+   
+    <div class="container">
+        <div class="row">
+
+    <div class="span9">
+
+        <div class="well">
+@if(pages.size>0) {
+          <ul>
+          @pages.map { p=>
+            <li><a href="@controllers.Wiki.w(p)">@p.label</a>
+          } 
+         </ul>
+} else {
+  <h3>No results found...</h3>
+}
+        </div> 
+
+      <hr>
+      @htmlFooter()
+
+    </div> <!-- /span9 -->
+
+      <div class="span3">
+        @wiki.wikiFrag(WID("Admin","Right"),user,true, None)
+
+        @addRight()
+      </div>
+
+      </div> <!-- row -->
+
+    </div> <!-- /container -->
+
+    @htmlBottom()
+    

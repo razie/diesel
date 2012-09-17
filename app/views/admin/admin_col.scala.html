@@ -1,9 +1,9 @@
 @(name:String, col:com.mongodb.casbah.MongoCollection)
 
-   @htmlHead()
-   @navbar(None)
+@htmlHead("admin db: "+name)
+@navbar(None)
    
-    <div class="container">
+<div class="container">
 
 <h2>Records</h2>
 
@@ -11,43 +11,23 @@
 <ul>
   @db.keySet.map { k =>
    <li>@k : @db.get(k)</li>
-   }
+}
+@if(!Array("User","Profile","WikiEntry","Ver","Audit").contains(name)) {
+<a class="btn btn-mini btn-danger" href="@routes.Admin.delcoldb(name,db.get("_id").toString)">DEL - no confirmation!</a>
+}
 </ul>
    }
 <hr>
 
 @col.map { db =>
-  @db.toString
+  <br>@db.toString
    }
 
 <hr>
 
-<table class="table table-striped">
-<thead>
-   <tr>
-   <td>Email</td>
-   <td>FirstName</td>
-   <td>LastName</td>
-   <td>Age</td>
-   </tr>
-</thead>
-@********
-@col.map { db =>
-   <tr>
-  @db.keySet { k =>
-   <td>@k</td>
-   <td>@db.get(k)</td>
-   }
-   </tr>
-   }
-******@
-</table>
+  @htmlFooter()
 
-      <hr>
-      
-      @htmlFooter()
+</div> <!-- /container -->
 
-    </div> <!-- /container -->
-
-    @htmlBottom()
+@htmlBottom()
     

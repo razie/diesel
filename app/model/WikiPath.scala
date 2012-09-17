@@ -11,27 +11,27 @@ abstract class WWrapper(val cat: String) {
   def mkLink: ILink
 }
 
-class WikiWrapper(override val cat: String, val name: String) extends WWrapper(cat) {
-  lazy val w = Wikis.find(cat, Wikis.formatName(name))
+class WikiWrapper(val wid:WID) extends WWrapper(wid.cat) {
+  lazy val w = Wikis.find(wid)
 
   lazy val ilinks = (w.map(_.ilinks.map(ilink => {
-    if (ilink.cat == "any") Wikis.findAnyOne(ilink.name).map(w => ILink(w.category, w.name, w.label))
+    if (ilink.wid.cat == "any") Wikis.findAnyOne(ilink.wid.name).map(w => ILink(w.wid, w.label))
     else Some(ilink)
   })).getOrElse(Nil)).flatMap(_.toList)
 
   def tags = w.map(_.tags).getOrElse(Map())
 
-  def mkLink = ILink (cat, name, w.map(_.label).getOrElse(name))
+  def mkLink = ILink (wid, w.map(_.label).getOrElse(wid.name))
 
-  override def toString = "WikiWrapper(" + cat + "," + name + ")"
+  override def toString = "WikiWrapper(" + wid + ")"
 }
 
-case class IWikiWrapper(val ilink: ILink) extends WikiWrapper(ilink.cat, ilink.name) {
+case class IWikiWrapper(val ilink: ILink) extends WikiWrapper(ilink.wid) {
   override def mkLink = ilink
   override def tags = w.map(_.tags).getOrElse(ilink.tags)
   
   override lazy val ilinks = (w.map(_.ilinks.map(ilink => {
-    if (ilink.cat == "any") Wikis.findAnyOne(ilink.name).map(w => ILink(w.category, w.name, w.label))
+    if (ilink.wid.cat == "any") Wikis.findAnyOne(ilink.wid.name).map(w => ILink(w.wid, w.label))
     else Some(ilink)
   })).getOrElse(ilink.ilinks.map(x=>Some(x)))).flatMap(_.toList)
 }
@@ -70,7 +70,7 @@ object WikiXpSolver extends XpSolver[WWrapper] {
   private def children2(node: WWrapper, tag: String): Seq[WWrapper] = {
     val x = node match {
       case b: WikiWrapper => {
-        b.ilinks filter ("*" == tag || tag == _.cat) map (n => Tuple2(n.cat, n)) flatMap (t => t match {
+        b.ilinks filter ("*" == tag || tag == _.wid.cat) map (n => Tuple2(n.wid.cat, n)) flatMap (t => t match {
           case (name: String, o: ILink) => IWikiWrapper(o) :: Nil
           case _ => Nil
         })
@@ -100,7 +100,7 @@ object WikiXpSolver extends XpSolver[WWrapper] {
 
 object TestSWA extends App {
   // val node = new WikiWrapper("Club", "Offroad_Ontario") 
-  val node = new WikiWrapper("Season", "OO_Enduro_2012")
+  val node = new WikiWrapper(WID("Calendar", "OO_Enduro_2012"))
   val root = new razie.Snakk.Wrapper(node, WikiXpSolver)
 
   // println (root)

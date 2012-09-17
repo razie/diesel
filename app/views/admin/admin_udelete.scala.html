@@ -23,19 +23,20 @@
 
 @user.toString
 <p>
-@user match {
-  case Some(u) => {
-<br>userName:@u.userName
-<br>firstName:@u.firstName
-<br> lastName:@u.lastName
-<br> yob: @u.yob
-<br>  email: @model.Enc.unapply(u.email)
-<br>  emailenc: @u.email
-<br>  pwd: @u.pwd
-<br>  status: @u.status
-<br>  roles: @u.roles
-<br>  _id: @u.id
-}
+@user match { 
+  case Some(u) => {        
+    <br>userName:@u.userName
+    <br>firstName:@u.firstName
+    <br> lastName:@u.lastName
+    <br> yob: @u.yob
+    <br>  email: @model.Enc.unapply(u.email)
+    <br>  emailenc: @u.email
+    <br>  pwd: @u.pwd
+    <br>  status: @u.status
+    <br>  roles: @u.roles
+    <br>  _id: @u.id
+  }
+  case None => {}
 }
 <p>
 @user.map(_.profile)

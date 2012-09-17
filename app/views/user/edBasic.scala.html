@@ -34,16 +34,16 @@
     myForm("lastName"), 
     '_label -> "Last name")          
   @helper.select(
+    myForm("userType"), 
+     model.UserType.values.toList.map(x=>(x.toString,x.toString)),
+     '_label -> "What you are",
+    'readonly -> "yes",
+    '_showConstraints -> false)
+  @helper.select(
     myForm("yob"), 
      (Range(2005, 1912, -1) map (y=>(y.toString,y.toString))),
     '_label -> "When you were born", 
     'style -> "width: 100px", 
-    'readonly -> "yes",
-    '_showConstraints -> false)
-  @helper.select(
-    myForm("userType"), 
-     model.Users.userTypes.map(x=>(x,x)),
-     '_label -> "What you are",
     'readonly -> "yes",
     '_showConstraints -> false)
   @helper.inputText(
@@ -54,7 +54,7 @@
   <button type="submit" class="btn btn-primary">Update account!</button>
   
   @if(myForm.globalError.isDefined) {
-     <br><br><b>@myForm.globalError.get.message</b>
+     <p style="color:red;font-weight:bold">@myForm.globalError.get.message</p>
   } 
   
   <p><small>By maintaining a profile, you agree to the <a href="@controllers.Wiki.w("Terms of Service")">Terms of Service</a></small><p>

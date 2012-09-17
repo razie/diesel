@@ -32,7 +32,7 @@ case class CommentStream(
   def addComment(user: User, content: String, oid:String, parentId: Option[ObjectId] = None) = {
     val c = Comment (_id, user._id, parentId, content, DateTime.now(), DateTime.now(), new ObjectId(oid))
     comments += c
-    c.create
+    c create user
   }
 
   def isDuplo (oid:String) = comments.exists(_.id equals oid)
@@ -50,12 +50,16 @@ case class Comment(
 
   def id = _id.toString
 
-  def create = Mongo ("Comment") += grater[Comment].asDBObject(Audit.create(this))
+  def create (user:User) = {
+    Audit.logdb(Comments.AUDIT_COMMENT_CREATED, "BY " + user.userName + " " + userId + " parent:" + parentId, "\nCONTENT:\n" + this)
+    Mongo ("Comment") += grater[Comment].asDBObject(this)
+  }
 
   // TODO keep track of older versions and who modifies them
-  def update(newContent: String) = {
+  def update(newContent: String, user:User) = {
     val u = new Comment(streamId, userId, parentId, newContent, crDtm, DateTime.now, _id)
-    Mongo("Comment").m.update(Map("_id" -> _id), grater[Comment].asDBObject(Audit.update(u)))
+    Audit.logdb(Comments.AUDIT_COMMENT_UPDATED, "BY " + user.userName + " " + userId + " parent:" + parentId, "\nCONTENT:\n" + u)
+    Mongo("Comment").m.update(Map("_id" -> _id), grater[Comment].asDBObject(u))
   }
 }
 
@@ -64,4 +68,7 @@ object Comments {
   def findForWiki(id:ObjectId) = Mongo("CommentStream").findOne(Map("what" -> "Wiki", "topic" -> id)) map (grater[CommentStream].asObject(_))
   def findById(id: String) = Mongo("CommentStream").findOne(Map("_id" -> new ObjectId(id))) map (grater[CommentStream].asObject(_))
   def findCommentById(id: String) = Mongo("Comment").findOne(Map("_id" -> new ObjectId(id))) map (grater[Comment].asObject(_))
+
+  final val AUDIT_COMMENT_CREATED = "COMMENT_CREATED "
+  final val AUDIT_COMMENT_UPDATED = "COMMENT_UPDATED "
 }

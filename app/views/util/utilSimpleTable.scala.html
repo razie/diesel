@@ -1,0 +1,39 @@
+@(col:Iterator[Map[String,String]], cols:Seq[(String,String)], func:Option[(Map[String,String],String,String)=>Html] = None)
+
+@import com.mongodb.casbah.Imports._
+@import org.joda.time.DateTime
+
+@*********
+FRAGMENT create a html table from a user collection
+cols = (key,label)
+@func.map(_.apply(row, k, (if(db.get(k)==null) null else db.get(k).toString))).getOrElse(db.get(k))
+*********@
+
+<hr>
+
+<table class="table table-striped">
+<thead>
+  <tr>
+    @cols.map { case (k,l) =>
+      <th>@l</th>
+    }
+  </tr>
+</thead>
+@col.map { db =>
+  <tr>
+    @cols.map { case (k,l) =>
+     <td>
+@{
+db.get(k) match {
+  case null => func.map(_.apply(db, k, null)).getOrElse("")
+  case x => func.map(_.apply(db, k, x.toString)).getOrElse(x)
+  }
+}
+</td>
+    }
+  </tr>
+}
+</table>
+
+<hr>
+    

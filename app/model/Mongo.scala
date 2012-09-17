@@ -22,8 +22,8 @@ object Mongo {
   lazy val conn = MongoConnection(Config.mongohost)
 
   val AGAIN = false
-  val CURR_VER = 7
-  val upgrades = Map (1 -> Upgrade1, 2 -> Upgrade2, 3 -> Upgrade3, 4 -> Upgrade4, 5 -> Upgrade5, 6 -> U6)
+  val CURR_VER = 10
+  val upgrades = Map (1 -> Upgrade1, 2 -> Upgrade2, 3 -> Upgrade3, 4 -> Upgrade4, 5 -> Upgrade5, 6 -> U6, 7 -> U7, 8->U8, 9->U9)
 
   lazy val db = {
     com.mongodb.casbah.commons.conversions.scala.RegisterConversionHelpers()
@@ -65,7 +65,7 @@ object Mongo {
     db
   }
 
-  def withDb(d: MongoCollection)(f: MongoCollection => Unit) { f(d) }
+  def withDb[B](d: MongoCollection)(f: MongoCollection => B) = { f(d) }
 
   def count(table: String) = db(table).count
 
@@ -209,6 +209,107 @@ object U6 extends UpgradeDb with razie.Logging {
       }
     }
   }
-
 }
 
+  // add "role" to UserWiki
+object U7 extends UpgradeDb with razie.Logging {
+  import model.RazSalatContext._
+    
+  def upgrade(db: MongoDB) {
+    withDb(db("UserWiki")) { t =>
+      for ( u <- t) {
+        u.put("role", "Racer")
+        t.save(u)
+      }
+    }
+  }
+}
+
+case class OldUserWiki8(userId: ObjectId, cat: String, name: String, role: String) { }
+
+// switch to WID
+object U8 extends UpgradeDb with razie.Logging {
+  import model.RazSalatContext._
+  
+  def upgrade(db: MongoDB) {
+    withDb(db("UserWiki")) { t =>
+      for ( u <- t) {
+        val old = grater[OldUserWiki8].asObject(u)
+        t.remove(u)
+        t += grater[UserWiki].asDBObject(UserWiki(old.userId, WID(old.cat, old.name), old.role: String))
+      }
+    }
+  }
+}
+
+// rename Season category to Calendar
+object U9 extends UpgradeDb with razie.Logging {
+  import model.RazSalatContext._
+
+  final val S = "Season"
+  final val C = "Calendar"
+    
+  def upgrade(db: MongoDB) {
+    
+    withDb(db("WikiEntry")) { t =>
+      for (u <- t if ("Category" == u.get("category") && S == u.get("name"))) {
+        log("UPGRADING " + u)
+        u.put("name", C)
+        t.save(u)
+      }
+    }
+    withDb(db("WikiEntry")) { t =>
+      for (u <- t if (S == u.get("category"))) {
+        log("UPGRADING " + u)
+        u.put("category", C)
+        t.save(u)
+      }
+    }
+    withDb(db("WikiEntryOld")) { t =>
+      for (u <- t if (C == u.get("category") && S == u.get("entry.name"))) {
+        log("UPGRADING " + u)
+        u.get("entry").asInstanceOf[DBObject].put("name", C)
+        t.save(u)
+      }
+    }
+    withDb(db("WikiEntryOld")) { t =>
+      for (u <- t if (S == u.get("category"))) {
+        log("UPGRADING " + u)
+        u.put("category", C)
+        u.get("entry").asInstanceOf[DBObject].put("category", C)
+        t.save(u)
+      }
+    }
+
+    withDb(db("UserWiki")) { t =>
+      for ( u <- t if(S == u.get("wid").asInstanceOf[DBObject].get("cat"))) {
+        log("UPGRADING " + u)
+        u.get("wid").asInstanceOf[DBObject].put("cat", C)
+        t.save(u)
+      }
+    }
+    
+    withDb(db("WikiLink")) { t =>
+      for ( u <- t if(S == u.get("from").asInstanceOf[DBObject].get("cat"))) {
+        log("UPGRADING " + u)
+        u.get("from").asInstanceOf[DBObject].put("cat", C)
+        t.save(u)
+      }
+    }
+    withDb(db("WikiLink")) { t =>
+      for ( u <- t if(S == u.get("to").asInstanceOf[DBObject].get("cat"))) {
+        log("UPGRADING " + u)
+        u.get("to").asInstanceOf[DBObject].put("cat", C)
+        t.save(u)
+      }
+    }
+    
+    log ("+++++++++++++ UPGRADE REPORT - list of wikis to update:")
+    withDb(db("WikiEntry")) { t =>
+      for (u <- t) {
+        if (u.get("content").asInstanceOf[String].contains("Season:"))
+          log("  " + u.get("name"))
+      }
+    }
+  }
+}

@@ -1,0 +1,85 @@
+@(wid:model.WID, iname:Option[String], page:Option[model.WikiEntry], user:Option[model.User])
+@import model._
+
+   @htmlHead(""+page.map(_.label).getOrElse(model.Wikis.label(wid)))
+
+   @if(page.isDefined && page.get.tags.get("logo").isDefined) {
+     @navbar(user, false, "Menu", page.get.tags.get("logo"), page.get.tags.get("siteurl"), true)
+   } else {
+     @navbar(user, false, "Menu", None, None, true)
+   }
+   
+    <div class="container">
+        <div class="row">
+
+    <div class="span12">
+
+      <div class="well">
+          @wiki.wikiFrag(wid,user,false,page, iname, true)
+      </div>
+
+    <!-- list of pages in category -->
+    @if("Category" == wid.cat && "User" != wid.name && "WikiLink" != wid.name && ("Hidden" != wid.name || user.map(_.hasPerm(Perm.adminDb)).getOrElse(false))) {
+      @helper.form(action=routes.Wiki.add(wid.name), 'class->"well form-inline") {
+        <label>Add a new <a href="/wiki/Category:@wid.name">@model.Wikis.label(WID("Category",wid.name))</a> </label>
+        <input type="text" class="input-xlarge" name="name" placeholder="Name">
+        <button type="submit" class="btn">Now</button>
+      }
+
+      @if(model.Wikis.pageNames(wid.name).size > 0) {
+      <div class="well">
+        @wid.name entries:
+        @for(p <- model.Wikis.pages(wid.name).take(50) if(controllers.Wiki.isVisible(user,p.props))) {
+          <a href="@controllers.Wiki.w(p.wid)">@p.label</a> |
+        } 
+        @if(model.Wikis.pageNames(wid.name).size > 50) {
+          <p><br>
+          ... <a href="@routes.Wiki.all(wid.name)">See <b>all</b> !</a> 
+      </p>
+        }
+      </div> 
+        } 
+    } else {
+      <!-- list of child pages -->
+      @model.WikiDomain.aEnds(wid.cat, "Child").map {child=>
+
+        @if(page.isDefined && controllers.Wiki.canEdit2(wid,user,page)) {
+          @helper.form(action=routes.Wiki.addLinked(child,wid,"Child"), 'class->"well form-inline") {
+            <label>Add a <i>child</i> <a href="/wiki/Category:@child">@model.Wikis.label(WID("Category",child))</a> </label>
+            <input type="text" class="input-xlarge" name="name" placeholder="Name">
+            <button type="submit" class="btn btn-mini btn-primary">Now</button> 
+            <a href="/wiki/Help:Adding_a_Child" class="btn btn-mini btn-info">?</a>
+          }
+        }
+  
+        @if(model.Wikis.linksTo(wid,"Child").filter(_.from.cat == child).size > 0) {
+        <div class="well">
+          <ul>@child links:
+          @model.Wikis.linksTo(wid,"Child").filter(_.from.cat == child).take(100).map(_.from).map { p=>
+            <li><a href="@controllers.Wiki.w(p)">@model.Wikis.label(p)</a>
+          } 
+         </ul>
+        </div> 
+        }
+      } 
+    }
+
+      <hr>
+      @htmlFooter(true)
+
+    </div> <!-- /span9 -->
+
+@************* 
+      <div class="span3">
+        @wiki.wikiFrag(WID("Admin","Right"),user,true, None)
+
+        @addRight()
+      </div>
+*************@
+
+      </div> <!-- row -->
+
+    </div> <!-- /container -->
+
+    @htmlBottom()
+    
