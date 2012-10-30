@@ -12,7 +12,7 @@
   @db.keySet.map { k =>
    <li>@k : @db.get(k)</li>
 }
-@if(!Array("User","Profile","WikiEntry","Ver","Audit").contains(name)) {
+@if(!Array("User","Profile","WikiEntry","Ver","Audit", "WikiAudit").contains(name)) {
 <a class="btn btn-mini btn-danger" href="@routes.Admin.delcoldb(name,db.get("_id").toString)">DEL - no confirmation!</a>
 }
 </ul>

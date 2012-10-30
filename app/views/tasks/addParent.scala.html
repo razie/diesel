@@ -27,8 +27,8 @@
 
   <button type="submit" class="btn btn-primary">Continue</button>
 
-  @if(pForm.globalError.isDefined) {
-     <br><br><b>@pForm.globalError.get.message</b>
+  @pForm.globalError.map {err=>
+     <p style="color:red;font-weight:bold">@err.message</p>
   } 
   
   <p><small>By registering or logging in, you agree to the <a href="@controllers.Wiki.w("Terms of Service")">Terms of Service</a></small><p>

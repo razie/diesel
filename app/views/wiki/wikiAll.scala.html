@@ -11,11 +11,11 @@
     <div class="span9">
 
     <!-- list of pages in category -->
-    @if("User" != name && "WikiLink" != name && ("Hidden" != name || user.map(_.hasPerm(Perm.adminDb)).getOrElse(false))) {
+    @if("User" != name || user.map(_.hasPerm(Perm.adminDb)).getOrElse(false)) {
       <div class="well">
         <b>All</b> @name entries:
         <ul>
-        @for(p <- model.Wikis.pages(name).take(50) if(controllers.Wiki.isVisible(user,p.props))) {
+        @for(p <- model.Wikis.pages(name) if(controllers.Wiki.isVisible(user,p.props))) {
           <li><a href="@controllers.Wiki.w(name,p.name)">@p.label</a> </li>
         } 
         </ul>
@@ -23,7 +23,7 @@
     } 
   
       <hr>
-      @htmlFooter()
+      @htmlFooter(ads=true)
 
     </div> <!-- /span9 -->
 

@@ -1,0 +1,69 @@
+@(wid:model.WID, page:Option[model.WikiEntry], user:Option[model.User])
+@import model._
+
+@comments(stream:Option[CommentStream]) = {
+  @stream match {
+    case None => {}
+    case Some(stream) => {
+  There's @stream.comments.size comment(s)...
+  <p>
+
+  @stream.comments.map { c =>
+    <div class="well">
+      <b>By: <a href="/user/@model.Users.nameOf(c.userId)">@model.Users.nameOf(c.userId)</a></b>
+@*********
+&nbsp;    <a href="/wikie" class="btn btn-mini">Reply</a>
+**********@
+       &nbsp; <a href="" class="btn btn-mini btn-info">Report</a>
+@if(controllers.Comment.canEdit(c,user)) {
+       &nbsp; <a href="@routes.Comment.edit(wid,c._id.toString)" class="btn btn-mini btn-info">Edit</a>
+}
+      <br>
+      <br>
+      @Html(model.Wikis.format(page.map(_.wid).getOrElse(model.WID("?","?")), "md", c.content))
+    </div>
+    }
+    }
+  }
+}
+
+@comments(page.flatMap(p=>model.Comments.findForWiki(p._id)))
+
+@*********
+ain't working...
+<div class="modal" id="modalReply">
+  <div class="modal-header">
+    <button class="close" data-dismiss="modal">x</button>
+    <h3>Modal header</h3>
+  </div>
+  <div class="modal-body">
+    <p>One fine body…</p>
+  </div>
+  <div class="modal-footer">
+    <a href="#" class="btn">Close</a>
+    <a href="#" class="btn btn-primary">Save changes</a>
+  </div>
+</div>
+**********@
+
+  @if(user.isDefined) {
+    @if(page.map(_.isReserved).getOrElse(true)) {
+      You can't comment on reserved pages, sorry!
+    } else {
+      @if(!user.get.canHasProfile) {
+        You can't comment on public pages, sorry!
+      } else {
+        @if(!page.flatMap(_.contentTags.get("nocomments")).isDefined) {
+          @helper.form(action=routes.Comment.add(page.get._id.toString,"Wiki",{new com.mongodb.casbah.Imports.ObjectId().toString}), 'class->"well form-inline") {
+            <label>Add a new comment </label><br>
+            <textarea id="content" class="span6" name="content" placeholder="content" rows="5"></textarea>
+            <button type="submit" class="btn btn-primary" onclick="$(this).addClass('disabled');">Now</button>
+            <a href="/wiki/Admin:Adding_a_Comment" class="btn btn-mini btn-info">?</a>
+            }
+          }
+        } 
+      } 
+    } else {
+      You need to <a href="/doe/join">log in</a> to post a comment, sorry!
+  }
+    

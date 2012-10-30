@@ -27,20 +27,19 @@ object Support extends RazController with Logging {
 
   def supportForm1 = {
     Form {
-      tuple (
+      tuple(
         "email" -> nonEmptyText.verifying("Wrong format!", vldEmail(_)).verifying("Invalid characters", vldSpec(_)),
         "desc" -> nonEmptyText.verifying("Too Long!", _.length < 80).verifying("Invalid characters", vldSpec(_)),
         "details" -> text)
     }
   }
 
-  def support(desc:String,details:String) = Action { implicit request =>
+  def support(desc: String, details: String) = Action { implicit request =>
     import model.Sec._
     Ok(views.html.admin.support(supportForm1.fill((
-        auth.map(_.email.dec).getOrElse(""), 
-        if (desc.length <=0) "Oops!" else desc, 
-        details
-        )), auth))
+      auth.map(_.email.dec).getOrElse(""),
+      if (desc.length <= 0) "Oops!" else desc,
+      details)), auth))
   }
 
   def supportu = Action { implicit request =>
@@ -48,8 +47,10 @@ object Support extends RazController with Logging {
       formWithErrors => BadRequest(views.html.admin.support(formWithErrors, auth)),
       {
         case (e, desc, details) => {
-          Emailer.sendSupport(e, desc, details)
-          Msg ("Ok - support request sent. We will look into it asap.", HOME)
+          Emailer.withSession { implicit mailSession =>
+            Emailer.sendSupport(e, desc, details)
+          }
+          Msg("Ok - support request sent. We will look into it asap.", HOME)
         }
       })
   }

@@ -6,11 +6,11 @@ DT=`date | sed 's/ //g'`
 
 mv dump dump.OLD.$DT
 
-ssh demo@cloud3.apefsjdolj.ro "cd ~/rk/app/run; . ./dbr-backup-prod"
+ssh demo@cloud3.razie.com "cd ~/rk/app/run; . ./dbr-backup-prod"
 
 rm dump.tar dump.tar.gz
 
-scp demo@cloud3.apefsjdolj.ro:rk/app/run/dump.tar.gz ./dump.tar.gz
+scp demo@cloud3.razie.com:rk/app/run/dump.tar.gz ./dump.tar.gz
 
 gunzip dump.tar.gz
 

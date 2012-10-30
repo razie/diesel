@@ -21,20 +21,56 @@ import admin.IgnoreErrors
 import model.Enc
 import play.api.mvc.CookieBaker
 import play.api.libs.Crypto
+import model.Base64
 
 object RazController extends Logging {
+  import admin.M._
+
   /** authentication - find the user currently logged in */
   def cleanAuth(u: Option[User] = None)(implicit request: Request[_]) {
     import play.api.Play.current
     request.session.get("connected").map { euid =>
       val uid = Enc.fromSession(euid)
-      debug ("AUTH connected=" + uid)
+      debug("AUTH connected=" + uid)
       (if (u.isDefined) u else Api.findUser(uid)).foreach { u =>
         Cache.set(u.email + ".connected", u, 120)
       }
     }
   }
+  /** authentication - find the user currently logged in */
+  def auth(connected: Option[String], authorization: Option[String]): Option[User] = {
+    import play.api.Play.current
+    debug("AUTH SESSION.connected=" + connected)
+    connected.flatMap { euid =>
+      val uid = Enc.fromSession(euid)
+      Cache.getAs[User](uid + ".connected").map(u => Some(u)).getOrElse {
+        debug("AUTH connecting=" + uid)
+        Api.findUser(uid).map { u =>
+          debug("AUTH connected=" + u)
+          Cache.set(u.email + ".connected", u, 120)
+          u
+        }
+      }
+    } orElse authorization.flatMap { euid =>
+      val e2 = euid.replaceFirst("Basic ", "")
+      val e3 = new String(Base64 dec e2) //new sun.misc.BASE64Decoder().decodeBuffer(e2)
+      println("xxxxxxxxxxxxxxxxxxxxxxxxxxx " + e3.toString)
+      val EP = """([^:]*):(.*)""".r
+
+      val EP(em, pa) = e3
+
+      Api.findUser(Enc(em)).flatMap { u =>
+        if (Enc(pa) == u.pwd) {
+          u.auditLogin
+          val uid = u.id
+          debug("AUTH BASIC connected=" + u)
+          Some(u)
+        } else None
+      }
+    }
+  }
 }
+
 /** common razie controller utilities */
 class RazController extends Controller with Logging with Validation {
 
@@ -44,43 +80,34 @@ class RazController extends Controller with Logging with Validation {
 
   def dbop(r: WriteResult) = log("DB_RESULT: " + r.getError)
 
-  //================= auth
-
   /** authentication - find the user currently logged in */
   def auth(implicit request: Request[_]): Option[User] = {
-    import play.api.Play.current
-    debug ("AUTH SESSION.connected=" + request.session.get("connected"))
-    request.session.get("connected").flatMap { euid =>
-      val uid = Enc.fromSession(euid)
-      Cache.getAs[User](uid + ".connected").map(u => Some(u)).getOrElse {
-        debug ("AUTH connecting=" + uid)
-        Api.findUser(uid).map { u =>
-          debug ("AUTH connected=" + u)
-          Cache.set(u.email + ".connected", u, 120)
-          u
-        }
-      }
-    }
+    val au = RazController.auth(request.session.get("connected"), request.headers.get("Authorization"))
+    val u: User = au.getOrElse(null)
+    razie.NoStaticS.put(u)
+    au
   }
+
+  //================= auth
 
   def noPerm(wid: WID, more: String = "")(implicit request: Request[_], errCollector: VError = IgnoreErrors) = {
     if (errCollector.hasCorrections) {
-      Audit.auth("BY %s - Permission fail: %s Page: %s HEADERS: %s".format((auth.map(_.userName).getOrElse("")), more + " " + errCollector.mkString, wid.toString, request.headers))
-      Unauthorized (views.html.util.utilMsg(
-"""
+      Audit.auth("BY %s - Permission fail Page: %s Info: %s HEADERS: %s".format((auth.map(_.userName).getOrElse("")), wid.toString, more + " " + errCollector.mkString, request.headers))
+      Unauthorized(views.html.util.utilMsg(
+        """
 Sorry, you don't have the permission to do this! 
 
 %s
 
 %s
 """.format(errCollector.mkString, more), Some(controllers.Wiki.w(wid).toString), auth))
-    } else noPermOLD (wid, more + " " +errCollector.mkString)
+    } else noPermOLD(wid, more + " " + errCollector.mkString)
   }
 
   private def noPermOLD(wid: WID, more: String = "")(implicit request: Request[_]) = {
-    Audit.auth("BY %s - Permission fail: %s Page: %s HEADERS: %s".format((auth.map(_.userName).getOrElse("")), more, wid.toString, request.headers))
-    Unauthorized (views.html.util.utilMsg(
-"""
+    Audit.auth("BY %s - Permission fail Page: %s Info: %s HEADERS: %s".format((auth.map(_.userName).getOrElse("")), wid.toString, more, request.headers))
+    Unauthorized(views.html.util.utilMsg(
+      """
 Sorry, you don't have the permission to do this! 
 
 <font style="color:red">
@@ -94,25 +121,36 @@ If you got this message in error, please describe the issue in a <a href="/doe/s
 
   //========= utils
 
+  def unauthorized(more: String = "")(implicit request: Request[_], errCollector: VError = IgnoreErrors) = {
+    Audit.unauthorized("BY %s - Info: %s HEADERS: %s".format((auth.map(_.userName).getOrElse("")), more + " " + errCollector.mkString, request.headers))
+    Unauthorized(views.html.util.utilMsg(
+      """
+%s
+
+%s
+
+""".format(more, errCollector.mkString), None, auth))
+  }
+
   def Oops(msg: String, wid: WID)(implicit request: Request[_]) = {
     error(msg)
-    Ok (views.html.util.utilErr(msg, controllers.Wiki.w(wid), auth))
+    Ok(views.html.util.utilErr(msg, controllers.Wiki.w(wid), auth))
   }
 
   def Msg(msg: String, wid: WID, u: Option[User] = None)(implicit request: Request[_]): play.api.mvc.SimpleResult[play.api.templates.Html] = {
-    Msg2(msg, Some(controllers.Wiki.w(wid)), if (u.isDefined) u else auth)(request)
+    Msg2(msg, Some(controllers.Wiki.w(wid, false)), if (u.isDefined) u else auth)(request)
   }
 
   def Msg2(msg: String)(implicit request: Request[_]): play.api.mvc.SimpleResult[play.api.templates.Html] = {
-    Ok (views.html.util.utilMsg(msg, None, auth))
+    Ok(views.html.util.utilMsg(msg, None, auth))
   }
 
   def Msg2(msg: String, page: Option[String], u: Option[User] = None)(implicit request: Request[_]): play.api.mvc.SimpleResult[play.api.templates.Html] = {
-    Ok (views.html.util.utilMsg(msg, page, if (u.isDefined) u else auth))
+    Ok(views.html.util.utilMsg(msg, page, if (u.isDefined) u else auth))
   }
 
   def Msg2C(msg: String, page: Option[Call], u: Option[User] = None)(implicit request: Request[_]): play.api.mvc.SimpleResult[play.api.templates.Html] = {
-    Ok (views.html.util.utilMsg(msg, page.map(_.toString), if (u.isDefined) u else auth))
+    Ok(views.html.util.utilMsg(msg, page.map(_.toString), if (u.isDefined) u else auth))
   }
 
   def vldSpec(s: String) = !(s.contains('<') || s.contains('>'))

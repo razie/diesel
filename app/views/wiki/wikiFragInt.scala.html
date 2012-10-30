@@ -1,0 +1,7 @@
+@(wid:String, user:Option[model.User])
+
+@**************
+Used for wiki fragments internal to the website - no title, ads, menus etc
+*************@
+
+@model.WID.fromPath(wid).map(wiki.wikiFrag(_,user,true,None))

@@ -1,5 +1,6 @@
 
-@model.Wikis.sitecfg("css").filter(_ == "dark").map {x=>
+@if(! _root_.admin.Config.noads) {
+@_root_.admin.Config.sitecfg("css").filter(_ == "dark").map {x=>
 <script type="text/javascript"><!--
 google_ad_client = "ca-pub-5622141672958561";
 /* RK-right-dark */
@@ -23,4 +24,5 @@ google_ad_height = 600;
 <script type="text/javascript"
 src="http://pagead2.googlesyndication.com/pagead/show_ads.js">
 </script>
+}
 }

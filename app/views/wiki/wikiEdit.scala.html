@@ -40,6 +40,7 @@ PROBLEM: many places use label as name... via Wikis.formatName
 **********@
   @helper.inputText(
     myForm("label"), 
+    'class -> "input-xxlarge",
     '_label -> "Label (don't change)",
     '_showConstraints -> false)
   @helper.textarea(
@@ -48,6 +49,11 @@ PROBLEM: many places use label as name... via Wikis.formatName
     '_showConstraints -> false,
     'class -> "span7",
     'rows->20)
+  @helper.inputText(
+    myForm("tags"), 
+    'class -> "input-xlarge",
+    '_label -> "Tags (separated with ,)",
+    '_showConstraints -> false)
 </td><td>
     <div>
   @helper.select(
@@ -64,6 +70,13 @@ PROBLEM: many places use label as name... via Wikis.formatName
     'class -> "input-small",
     '_showConstraints -> false)
 
+  @helper.select(
+    myForm("wvis"), 
+    model.Wikis.visibilityFor(wid.cat).map(x=>(x,x)),
+    '_label -> "EditBy", 
+    'class -> "input-small",
+    '_showConstraints -> false)
+
   @if(user.get.hasPerm(model.Perm.adminDb)) {
     <p>Reserved: @reserved(model.Wikis.find(wid.cat,wid.name))
     @if(model.Wikis.find(wid.cat,wid.name).isDefined) {
@@ -75,23 +88,23 @@ PROBLEM: many places use label as name... via Wikis.formatName
 </td></tr></table>    
     <div class="actions">
       <button type="submit" class="btn btn-primary">Save</button>
-      <a href="@controllers.Wiki.w(wid)" class="btn">Cancel</a>
+      <a href="@controllers.Wiki.w(wid, false)" class="btn">Cancel</a>
   </div>
   
-  @if(myForm.globalError.isDefined) {
-     <br><br><b>@myForm.globalError.get.message</b>
+  @myForm.globalError.map { err=>
+     <p style="color:red;font-weight:bold">@err.message</p>
   } 
   
-  <p><small>See the <a href="/wiki/Admin/Modified_Markdown_Syntax">modified markdown syntax</a>.
-  <br><small>By updating this page, you agree to the <a href="@controllers.Wiki.w("Terms of Service")">Terms of Service</a>
+  <p><small>See the <a href="/wiki/Admin/Quick Guide">quick guide</a>.</small>
+  <br><small>By updating this page, you agree to the <a href="@controllers.Wiki.w("Terms of Service")">Terms of Service</a></small>
   <br><small>Please do not replicate information already contained in other reference places like 
-      Wikipedia, just link to them. Use [[[Main_Page]]] to link to wikipedia.
+      Wikipedia, just link to them. Use [[[Main_Page]]] to link to wikipedia.</small>
 }
 </div>
 
-@if(model.Wikis.find(wid).isDefined) {
+@model.Wikis.find(wid).map{we=>
       <div class="well">
-          @wiki.wikiFrag(wid,user)
+          @wiki.wikiFrag(wid,user, false, Some(we))
       </div>
 }
 
@@ -104,7 +117,6 @@ PROBLEM: many places use label as name... via Wikis.formatName
       <div class="span3">
           @wiki.wikiFrag(model.WID("Admin","Right"),user,true)
 
-        @addRight()
       </div>
 
       </div> <!-- row -->

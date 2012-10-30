@@ -1,25 +1,23 @@
 @(title:String, pages:List[model.WikiEntry], user:Option[model.User])
 @import model._
 
-   @htmlHead("Results for: " + title)
+@htmlHead("Results for: " + title)
 
-   @navbar(user)
+@navbar(user)
    
-    <div class="container">
-        <div class="row">
-
+<div class="container">
+  <div class="row">
     <div class="span9">
-
-        <div class="well">
-@if(pages.size>0) {
+      <div class="well">
+        @if(pages.size>0) {
           <ul>
           @pages.map { p=>
-            <li><a href="@controllers.Wiki.w(p)">@p.label</a>
+            <li><a href="@controllers.Wiki.w(p.wid)">@p.label</a> <small>&nbsp;  @p.category</small>
           } 
          </ul>
-} else {
-  <h3>No results found...</h3>
-}
+        } else {
+          <h3>No results found...</h3>
+        }
         </div> 
 
       <hr>
@@ -27,15 +25,15 @@
 
     </div> <!-- /span9 -->
 
-      <div class="span3">
-        @wiki.wikiFrag(WID("Admin","Right"),user,true, None)
+    <div class="span3">
+      @wiki.wikiFrag(WID("Admin","Right"),user,true, None)
 
-        @addRight()
-      </div>
+      @addRight()
+    </div>
 
-      </div> <!-- row -->
+  </div> <!-- row -->
 
-    </div> <!-- /container -->
+</div> <!-- /container -->
 
-    @htmlBottom()
+@htmlBottom()
     

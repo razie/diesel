@@ -13,13 +13,7 @@
         <div class="span6">
         <h1>Welcome!</h1>
 <br>
-<p>Register to create and join clubs, create calendars etc.</p>
-<p>To login, simply enter your email and password.</p>
-<p>To <em>register a new account</em>, enter the password twice!</p>
-<p>Please read our 
-  <a href="@controllers.Wiki.w("Admin", "Terms of Service")" style="color:red;font-weight:bold">Terms of Service</a> 
- as well as our 
-<a href="@controllers.Wiki.w("Admin", "Privacy Policy")" style="color:red;font-weight:bold">Privacy Policy</a></p>
+            @wiki.wikiFragInt("Admin:page-join", None)
         </div>
 
         <div class="span4">
@@ -35,15 +29,17 @@
   @helper.inputPassword(
     registerForm("password"), 
     '_label -> "Password", 
+    '_showConstraints -> false,
     '_error->registerForm.error("password"))
+    
   @helper.inputPassword(
     registerForm("repassword"), 
     '_label -> "Verify password to register")
 
   <button type="submit" class="btn btn-primary">Login/Register</button>
-
-  @if(registerForm.globalError.isDefined) {
-     <br><br><b>@registerForm.globalError.get.message</b>
+    
+  @registerForm.globalError.map { err=>
+     <p style="color:red;font-weight:bold">@err.message</p>
   } 
   
   <p><small>By registering or logging in, you agree to the <a href="@controllers.Wiki.w("Admin", "Terms of Service")">Terms of Service</a></small><p>

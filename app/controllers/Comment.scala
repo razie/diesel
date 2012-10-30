@@ -16,17 +16,11 @@ import admin.Corr
 object Comment extends RazController with Logging {
   case class Habibi(s: String)
   val commentForm = Form {
-    mapping (
+    mapping(
       "content" -> nonEmptyText.verifying("Obscenity filter", !Wikis.hasporn(_)))(Habibi.apply)(Habibi.unapply)
   }
 
-  //  // authenticated means doing a task later
-  //  def wikiComment (cat:String,name:String) = Action { implicit request =>
-  //    (for (u <- auth)
-  //      yield Ok(views.html.user.edUsername(chgusernameform.fill(u.userName, ""), auth.get))) getOrElse
-  //      Unauthorized("Oops - how did you get here?")
-  //  }
-
+  /** add a comment **/
   def add(topic: String, what: String, oid: String) = Action { implicit request =>
     implicit val errCollector = new VError()
     commentForm.bindFromRequest.fold(
@@ -43,8 +37,17 @@ object Comment extends RazController with Logging {
             if (!cs.isDuplo(oid)) {
               cs.addComment(au, content, oid)
               // TODO send email to parent if kid
-              au.shouldEmailParent("Everything").map(parent => Emailer.sendEmailChildCommentWiki(parent, au, w.wid))
-            } else log ("ERR_DUPLO_COMMENT")
+
+              admin.SendEmail.withSession { implicit mailSession =>
+                au.shouldEmailParent("Everything").map(parent => Emailer.sendEmailChildCommentWiki(parent, au, w.wid))
+
+                // email creator and all other commenters
+                Wikis.findById(topic).map { w =>
+                  (Users.findUserById(w.by).map(_._id).toList ++ cs.comments.map(_.userId)).distinct.filter(_ != au._id).map(uid =>
+                    Users.findUserById(uid).map(u => Emailer.sendEmailNewComment(u, au, w.wid)))
+                }
+              }
+            } else log("ERR_DUPLO_COMMENT")
             Redirect(routes.Wiki.showId(topic))
           }) getOrElse {
             Unauthorized("Oops - cannot add comment... " + errCollector.mkString)
@@ -75,24 +78,24 @@ object Comment extends RazController with Logging {
 
   /** is mine or i am amdin */
   def canEdit(comm: model.Comment, auth: Option[User]) = {
-    auth.map(au => comm.userId == au._id || au.hasPerm(Perm.adminDb)).getOrElse(false)
+    auth.exists(au => comm.userId == au._id || au.hasPerm(Perm.adminDb))
   }
 
-  def edit(wid:WID, cid: String) = Action{ implicit request =>
+  def edit(wid: WID, cid: String) = Action { implicit request =>
     implicit val errCollector = new VError()
 
     (for (
-      au <- auth orCorr new Corr("not logged in", "Sorry - need to log in"); //cNoAuth;
+      au <- auth orCorr cNoAuth;
       isA <- checkActive(au);
       comm <- Comments.findCommentById(cid) orErr ("bad comment id?");
       can <- canEdit(comm, auth) orErr ("can only edit your comments")
     ) yield {
-      Ok (views.html.comments.commEdit(wid, cid, commentForm.fill(Habibi(comm.content)), auth))
+      Ok(views.html.comments.commEdit(wid, cid, commentForm.fill(Habibi(comm.content)), auth))
     }) getOrElse
       noPerm(WID("?", "?"))
   }
 
-  def save(wid:WID, cid: String) = Action { implicit request =>
+  def save(wid: WID, cid: String) = Action { implicit request =>
     implicit val errCollector = new VError()
     commentForm.bindFromRequest.fold(
       formWithErrors => {
@@ -102,13 +105,13 @@ object Comment extends RazController with Logging {
       {
         case h @ Habibi(newcontent) =>
           (for (
-            au <- auth orCorr new Corr("not logged in", "Sorry - need to log in"); //cNoAuth;
+            au <- auth orCorr cNoAuth;
             isA <- checkActive(au);
             comm <- Comments.findCommentById(cid) orErr ("bad comment id?");
             can <- canEdit(comm, auth) orErr ("can only edit your comments")
           ) yield {
             comm.update(newcontent, au)
-            Redirect(controllers.Wiki.w(wid))
+            Redirect(controllers.Wiki.w(wid, false))
           }) getOrElse
             noPerm(WID("?", "?"))
       })

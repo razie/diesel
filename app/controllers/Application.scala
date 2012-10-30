@@ -9,12 +9,22 @@ import java.io.File
 import model.Enc
 import play.api.mvc.Request
 import model.Wikis
+import admin.Config
 
 /** main entry points */
 object Application extends RazController {
 
+  // serve any URL other than routes matches - try the forward list...
+  def whatever (path:String) = Action { implicit request =>
+    log ("REDIRECTING? - " + path)
+    request.headers.get("X-FORWARDED-HOST").orElse(Some(Config.hostport)).flatMap(x=>Config.urlfwd(x+"/"+path)).map {host=>
+      log ("  REDIRECTED TO - " + host)
+      Redirect (host)
+      } getOrElse (NotFound("This is not the page you're looking for...!"))
+  }
+
   def root = Action { implicit request =>
-    request.headers.get("X-FORWARDED-HOST").flatMap(Wikis.urlfwd(_)).map {host=>
+    request.headers.get("X-FORWARDED-HOST").flatMap(Config.urlfwd(_)).map {host=>
       Redirect (host)
       } getOrElse idoeIndexItem(1)
   }

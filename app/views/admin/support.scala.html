@@ -34,8 +34,8 @@
 
   <button type="submit" class="btn btn-primary">Submit support request</button>
 
-  @if(sForm.globalError.isDefined) {
-     <br><br><b>@sForm.globalError.get.message</b>
+  @sForm.globalError.map { err=>
+     <p style="color:red;font-weight:bold">@err.message</p>
   } 
   
   <p><small>By using this form, you agree to the <a href="@controllers.Wiki.w("Terms of Service")">Terms of Service</a></small><p>

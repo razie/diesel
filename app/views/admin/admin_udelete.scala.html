@@ -14,12 +14,12 @@
 }
     
 
-  @htmlHead("admin user")
-  @navbar(admin)
+@htmlHead("admin user")
+@navbar(admin)
    
-  <div class="container">
+<div class="container">
 
-    <h2>User</h2>
+  <h2>User</h2>
 
 @user.toString
 <p>
@@ -51,13 +51,12 @@
 <li>  Comment count = @model.Mongo.db("Comment").count(Map("userId" -> u._id))
 }
 </ul>
-    <hr>
+  <hr>
+  <a href="/admin/user/@user.get.id/delete2">IF YOU PRESS THIS THE WORLD WILL END! YOU SURE?</a>
 
-<a href="/admin/user/@user.get.id/delete2">IF YOU PRESS THIS THE WORLD WILL END! YOU SURE?</a>
+  <hr>
+  @htmlFooter()
 
-    <hr>
-    @htmlFooter()
+</div> <!-- /container -->
 
-  </div> <!-- /container -->
-
-  @htmlBottom()
+@htmlBottom()

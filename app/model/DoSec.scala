@@ -12,6 +12,7 @@ import com.mongodb.util.JSON
 import razie.Log
 import admin.Config
 import java.net.URLDecoder
+import java.security.MessageDigest
 
 object Sec {
   //================ encription
@@ -40,6 +41,20 @@ object Enc {
   
   def toSession(orig: String) = orig.replaceAll("-", "RAZIEDASH")
   def fromSession(orig: String) = orig.replaceAll("RAZIEDASH", "-")
+
+       /** hash a string */
+   def hash (input:String ) : String = {
+      md() update input.getBytes()
+      val arr = md().digest
+      new org.apache.commons.codec.binary.Base64(true).encodeToString(arr)
+   }
+
+   // I hope this initializes later, when needed...heh
+   private object md {
+     val i = MessageDigest.getInstance("SHA")
+     def apply () = { i } 
+   }
+
 }
 
 object EncUrl {

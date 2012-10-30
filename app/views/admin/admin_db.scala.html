@@ -7,17 +7,31 @@
 
 <h2>Collections</h2>
 
+@lictab(c:String,cols:String) = {
+  <li><a href="@routes.Admin.col(c)">@c (@model.Mongo.db(c).count)</a>
+  | <a href="@routes.Admin.colTab(c,cols)">@c (@model.Mongo.db(c).count)</a></li>
+}
+
 <ul>
 @model.Mongo.db.collectionNames.toList.sortWith(_ < _).map { c =>
-   <li><a href="@routes.Admin.col(c)">@c (@model.Mongo.db(c).count)</a></li>
+  @c match {
+    case "WikiCount" => {
+      @lictab(c,"")
+      }
+    case "WikiAudit" => {
+      @lictab(c,"event,userId,crDtm,wpath")
+      }
+    case _ => {
+     <li><a href="@routes.Admin.col(c)">@c (@model.Mongo.db(c).count)</a></li>
+      }
+  }
 }
 </ul>
 
-      <hr>
-      
-      @htmlFooter()
+  <hr>
+  @htmlFooter()
 
-    </div> <!-- /container -->
+</div> <!-- /container -->
 
-    @htmlBottom()
+@htmlBottom()
     

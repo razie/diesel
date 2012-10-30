@@ -20,13 +20,14 @@ import model.Users
 import razie.XP
 import razie.XpSolver
 import razie.Snakk._
+import model.WikiIndex
 
 /** profile related control */
 object UserStuff extends RazController {
 
   // serve public profile
   def pub(id: String) =
-    if (Wikis.withIndex(_.get2(id, WID("User", id)).isDefined))
+    if (WikiIndex.withIndex(_.get2(id, WID("User", id)).isDefined))
       Wiki.show (WID("User", id))
     else
       Action { implicit request => NotFound ("User not found or profile is private!") }
@@ -38,14 +39,16 @@ object UserStuff extends RazController {
         Action { implicit request => Redirect (Wiki.w (cat, name)) }
       )
 
+  def Race = admin.Config.sitecfg("racecat").getOrElse("Race")
+
   //(what,when)
   def events(u: User): List[(ILink, String, DateTime, ILink)] = {
     val dates = u.pages("Calendar").flatMap{ uw =>
       val node = new WikiWrapper(WID("Calendar", uw.wid.name))
       val root = new razie.Snakk.Wrapper(node, WikiXpSolver)
 
-      val races = (root \ "*" \ "Race")
-      //      val gigi = (root \ "*" \ "Race" \@ "date")
+      val races = (root \ "*" \ Race)
+      //      val gigi = (root \ "*" \ Race \@ "date")
       val dates = races.map(x => (x.mkLink,
         new Snakk.Wrapper(x, races.ctx) \@ "date",
         ILink(WID("Venue", new Snakk.Wrapper(x, races.ctx) \@ "venue")))).filter(_._2 != "")

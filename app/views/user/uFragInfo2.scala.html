@@ -14,7 +14,7 @@ included in mainUserC as the right hand side info box
 }
 
 @locs() = @{
-  {controllers.UserStuff.xp(user, "Calendar") \ "Race" \ "Venue" \@ "loc"}.filter(! _.isEmpty).map(_.replaceFirst("ll:",""))
+  {controllers.UserStuff.xp(user, "Calendar") \ UserStuff.Race \ "Venue" \@ "loc"}.filter(! _.isEmpty).map(_.replaceFirst("ll:",""))
 }
 
 <div class="span6">
@@ -33,7 +33,7 @@ included in mainUserC as the right hand side info box
       <b>Stuff to do</b>
       <ul>
       @for(t <- user.tasks) {
-        <li><a href="/user/task/@t.name">@t.desc</a></li>
+        <li><a style="color:red;font-weight:bold" href="/user/task/@t.name">@t.desc</a></li>
       }
       </ul>
     } else {
@@ -74,14 +74,14 @@ included in mainUserC as the right hand side info box
             
 @*********
     <a href="http://maps.googleapis.com/maps/api/staticmap?zoom=13&size=600x300&sensor=false&@locs().map(x=>"markers=color:red|%s".format(x, x)).mkString("&")">map</a>
-    <a href="http://maps.googleapis.com/maps/api/staticmap?zoom=13&size=600x300&@user.events.filter(_._3.isAfter(DateTime.now)).map(x=>(x._4, x._4.tags.get("loc"))).filter(_._2.isDefined).map(x=>"markers=color:red|label:%s|%s".format(x._1.label, x._1.tags.get("loc"))).mkString("&")">map</a>
+    <a href="http://maps.googleapis.com/maps/api/staticmap?zoom=13&size=600x300&@user.events.filter(_._3.isAfter(DateTime.now)).map(x=>(x._4, x._4.contentTags.get("loc"))).filter(_._2.isDefined).map(x=>"markers=color:red|label:%s|%s".format(x._1.label, x._1.contentTags.get("loc"))).mkString("&")">map</a>
 ********@
   }
 
 case 2 => {
   
   @util.utilMap(
-      (controllers.UserStuff.xp(user, "Calendar") \ "Race" \ "Venue").asInstanceOf[XListWrapper[_]],
+      (controllers.UserStuff.xp(user, "Calendar") \ UserStuff.Race \ "Venue").asInstanceOf[XListWrapper[_]],
       user.ll
       )
   }
@@ -90,29 +90,30 @@ case 3 => {
 
   Owned: 
   @if(user.pages("Blog").filter(_.role == "Owner").size>0) {
-  <a class="btn btn-mini" href="/wiki/Blog">Add &raquo;</a></p>
-  <ul> 
-    @for(w <- user.pages("Blog").filter(_.role == "Owner")) {
-      <li><a href="@controllers.Wiki.w(w.wid)">@model.Wikis.label(w.wid)</a></li>
-    }
-  </ul>
-} else {
-  None
-  <a class="btn btn-mini" href="/wiki/Blog">Create one &raquo;</a></p>
-}
+    <a class="btn btn-mini" href="/wiki/Blog">Add more &raquo;</a></p>
+    <ul> 
+      @for(w <- user.pages("Blog").filter(_.role == "Owner")) {
+        <li><a href="@controllers.Wiki.w(w.wid)">@model.Wikis.label(w.wid)</a></li>
+      }
+    </ul>
+  } else {
+    None
+    <a class="btn btn-mini" href="/wiki/Blog">Create one &raquo;</a></p>
+  }
 <p>
   Followed:
   @if(user.pages("Blog").filter(_.role != "Owner").size>0) {
-  <ul> 
+    <a class="btn btn-mini" href="/wiki/Blog">Follow more &raquo;</a></p>
+    <ul> 
     @for(w <- user.pages("Blog").filter(_.role != "Owner")) {
       <li><a href="@controllers.Wiki.w(w.wid)">@model.Wikis.label(w.wid)</a></li>
     }
   </ul>
   } else {
     None
-    <a class="btn btn-mini" href="/wiki/Blog">Follow one &raquo;</a></p>
+    <a class="btn btn-mini" href="/wiki/Blog">Follow one now &raquo;</a></p>
   }
-  }
+}
 
 case 4 => { 
 

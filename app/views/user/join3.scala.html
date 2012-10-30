@@ -17,17 +17,9 @@
 
       <div class="row">
         <div class="span6">
-        <h2>Basic profile</h2>
-        <p>Give us some basic info - it helps us be nice to you :)</p>
-        <p>Please enter your age properly, if you're under 13, we'll ask you to just get a parent to sign up as well, later - that's all!</p>
-<p>Please read our 
-  <a href="@controllers.Wiki.w("Terms of Service")" style="color:red;font-weight:bold">Terms of Service</a> 
- as well as our 
-<a href="@controllers.Wiki.w("Privacy Policy")" style="color:red;font-weight:bold">Privacy Policy</a></p>
-<hr>
-<h2>Organizations</h2>
-<p>If you are <font style="color:red;font-weight:bold">registering an organization</font> (club, association etc) please 
-set the <em>"What you are"</em> to <em>"Organization"</em> and use only the <i>First Name</i> .
+
+        @wiki.wikiFragInt("Admin:page-join3", user)
+
         </div>
 
         <div class="span4">
@@ -37,7 +29,7 @@ set the <em>"What you are"</em> to <em>"Organization"</em> and use only the <i>F
 @helper.form(action=routes.Profile.doeCreateProfile(), 'class->"well") {
   @helper.select(
     myForm("userType"), 
-     model.UserType.values.toList.map(x=>(x.toString,x.toString)),
+     _root_.admin.Config.userTypes.map(x=>(x.toString,x.toString)),
      '_label -> "What you are",
     '_showConstraints -> false)
   @helper.inputText(
@@ -72,15 +64,14 @@ set the <em>"What you are"</em> to <em>"Organization"</em> and use only the <i>F
        <input type="hidden" name="recaptcha_response_field" value="manual_challenge">
      </noscript>
 } else {
-    @helper.inputText(
-    myForm("recaptcha_challenge_field"))          
-    @helper.inputText(
-    myForm("recaptcha_response_field"))          
+    @helper.inputText(myForm("recaptcha_challenge_field"))          
+    @helper.inputText(myForm("recaptcha_response_field"))          
 }
 
-  @if(myForm.globalError.isDefined) {
-     <p style="color:red;font-weight:bold">@myForm.globalError.get.message</p>
-  } else { <br> }
+  @myForm.globalError.map { err=>
+     <p style="color:red;font-weight:bold">@err.message</p>
+  } 
+<br> 
 
   <button type="submit" class="btn btn-primary">That's it - create account!</button>
   

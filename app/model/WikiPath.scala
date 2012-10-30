@@ -6,34 +6,53 @@ object WikiPath {
 
 import razie._
 
+/** base class - can have a topic wrapper or a link wrapper */
 abstract class WWrapper(val cat: String) {
   /** make the proper ILink for this element */
   def mkLink: ILink
+  
+  /** get the associated page, if any */
+  def page : Option[WikiEntry]
 }
 
 class WikiWrapper(val wid:WID) extends WWrapper(wid.cat) {
   lazy val w = Wikis.find(wid)
 
-  lazy val ilinks = (w.map(_.ilinks.map(ilink => {
+  /** links from page only, if defined */
+  protected lazy val wilinks = (w.map(realw=> realw.ilinks.map {ilink => 
     if (ilink.wid.cat == "any") Wikis.findAnyOne(ilink.wid.name).map(w => ILink(w.wid, w.label))
     else Some(ilink)
-  })).getOrElse(Nil)).flatMap(_.toList)
+  }.flatMap(_.toList) ++ lfrom ++ lto ++ BADlto))
 
-  def tags = w.map(_.tags).getOrElse(Map())
+  // TODO optimize
+  protected def lfrom = w.toList.flatMap(realw=>Wikis.linksFrom(realw.wid)).map(x=>new ILink(x.to, x.to.name))
+  protected def lto = w.toList.flatMap(realw=>Wikis.linksTo(realw.wid)).map(x=>new ILink(x.from, x.from.name))
+  
+  // TODO this is like extremely bad !!!
+  protected def BADallPages = Wikis.pageNames("Category").flatMap(cat=>Wikis.pageNames(cat).flatMap(name=>Wikis.find(cat, name).toList)).toList
+  
+  protected def BADlto = 
+    if (admin.Config.sitecfg("searchall").isDefined)
+    BADallPages.filter(_.ilinks.exists(_.wid.formatted.name == wid.name)).map(realw=>new ILink(realw.wid, realw.label))
+    else Nil
+//  protected def BADlto = BADallPages.map(realw=>new ILink(realw.wid, realw.label))
+  
+  lazy val ilinks = wilinks.toList.flatMap(_.toList)
+
+  def tags = w.map(_.contentTags).getOrElse(Map())
 
   def mkLink = ILink (wid, w.map(_.label).getOrElse(wid.name))
 
   override def toString = "WikiWrapper(" + wid + ")"
+  
+  override def page : Option[WikiEntry] = w
 }
 
 case class IWikiWrapper(val ilink: ILink) extends WikiWrapper(ilink.wid) {
   override def mkLink = ilink
-  override def tags = w.map(_.tags).getOrElse(ilink.tags)
+  override def tags = w.map(_.contentTags).getOrElse(ilink.tags)
   
-  override lazy val ilinks = (w.map(_.ilinks.map(ilink => {
-    if (ilink.wid.cat == "any") Wikis.findAnyOne(ilink.wid.name).map(w => ILink(w.wid, w.label))
-    else Some(ilink)
-  })).getOrElse(ilink.ilinks.map(x=>Some(x)))).flatMap(_.toList)
+  override lazy val ilinks = wilinks.getOrElse(ilink.ilinks)
 }
 
 /** NOTE that JSON xpath must start with "/root/..."
@@ -84,7 +103,7 @@ object WikiXpSolver extends XpSolver[WWrapper] {
   override def getAttr(o: T, attr: String): String = {
     val ret = o match {
       case o: IWikiWrapper => o.tags.get(attr).getOrElse("")
-      case o: WikiWrapper  => o.w.flatMap(_.tags.get(attr)).getOrElse("")
+      case o: WikiWrapper  => o.w.flatMap(_.contentTags.get(attr)).getOrElse("")
       case _               => null
     }
     ret.toString

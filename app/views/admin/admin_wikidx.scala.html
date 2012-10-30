@@ -1,25 +1,23 @@
 @(user:Option[model.User])
 
-   @htmlHead("amdin db")
-   @navbar(user)
+@htmlHead("amdin db")
+@navbar(user)
    
-    <div class="container">
+<div class="container">
 
-<h2>Wikis.index:</h2>
+  <h2>Wikis.index:</h2>
 
-<table>
-@model.Wikis.withIndex { index => 
-  @index.map { (a,b,c) => 
-   <tr><td>@a</td><td>@b.cat</td><td>@b.name</td><td>@b.parent</td><td>@c</td></tr>
+  <table>
+  @model.WikiIndex.withIndex { index => 
+    @index.map { (a,b,c) => 
+     <tr><td>@a</td><td>@b.cat</td><td>@b.name</td><td>@b.parent</td><td>@c</td></tr>
+    }
   }
-}
-</table>
+  </table>
 
-      <hr>
-      
-      @htmlFooter()
+  <hr>
+  @htmlFooter()
+</div> <!-- /container -->
 
-    </div> <!-- /container -->
-
-    @htmlBottom()
+@htmlBottom()
     

@@ -17,6 +17,8 @@ import model.Users
 import admin.VError
 import play.api.data.Forms._
 import play.api.data._
+import admin.Config
+import model.Enc
 
 object Admin extends RazController {
   def hasPerm(p: Perm)(implicit request: Request[_]): Boolean = auth.map(_.hasPerm(p)) getOrElse false
@@ -24,29 +26,29 @@ object Admin extends RazController {
   // routes do/:page
   def show(page: String) = Action { implicit request =>
     page match {
-      case "reloadurlmap"    => if (hasPerm(Perm.adminDb)) {
-        model.Wikis.reloadUrlMap
-        Ok(views.html.admin.admin_index("", auth)) 
-      }else noPerm(HOME)
-      
-      case "wikidx"    => if (hasPerm(Perm.adminDb)) Ok(views.html.admin.admin_wikidx(auth)) else noPerm(HOME)
-      
-      case "db"    => if (hasPerm(Perm.adminDb)) Ok(views.html.admin.admin_db(auth)) else noPerm(HOME)
+      case "reloadurlmap" => if (hasPerm(Perm.adminDb) || hasPerm(Perm.adminWiki)) {
+        Config.reloadUrlMap
+        Ok(views.html.admin.admin_index("", auth))
+      } else noPerm(HOME)
+
+      case "wikidx" => if (hasPerm(Perm.adminDb) || hasPerm(Perm.adminWiki)) Ok(views.html.admin.admin_wikidx(auth)) else noPerm(HOME)
+
+      case "db" => if (hasPerm(Perm.adminDb)) Ok(views.html.admin.admin_db(auth)) else noPerm(HOME)
 
       case "index" => if (hasPerm(Perm.adminDb)) Ok(views.html.admin.admin_index("", auth)) else noPerm(HOME)
 
       case "users" => if (hasPerm(Perm.adminDb)) Ok(views.html.admin.admin_users(auth)) else noPerm(HOME)
 
       case "audit" => if (hasPerm(Perm.adminDb)) Ok(views.html.admin.admin_audit(auth)) else noPerm(HOME)
-      
-      case "terms" => Redirect ("/page/Terms_of_Service")
-      
-      case "join" =>  Redirect ("/doe/join")
 
-      case "init" => {
+      case "terms" => Redirect("/page/Terms_of_Service")
+
+      case "join" => Redirect("/doe/join")
+
+      case "init.db.please" => {
         if (("yeah" == System.getProperty("devmode") && hasPerm(Perm.adminDb)) || !Mongo.db.collectionExists("User")) {
-          //          Init.initDb()
-          Redirect ("/")
+          admin.Init.initDb()
+          Redirect("/")
         } else Msg2("Nope - hehe")
       }
 
@@ -72,7 +74,7 @@ object Admin extends RazController {
         OldStuff("Profile", auth.get._id, u).create
         Mongo.db("Profile").remove(Map("userId" -> new ObjectId(id)))
       }
-      Redirect ("/admin")
+      Redirect("/admin")
     } else noPerm(HOME)
   }
 
@@ -80,14 +82,28 @@ object Admin extends RazController {
     implicit val errCollector = new VError()
     (for (
       can <- hasPerm(Perm.adminDb) orErr ("no permission");
-      goodS <- s.length==1 && ("as" contains s(0)) orErr ("bad status");
+      goodS <- s.length == 1 && ("as" contains s(0)) orErr ("bad status");
       u <- Users.findUserById(id)
     ) yield {
-      Profile.updateUser(u, User(u.userName, u.firstName, u.lastName, u.yob, u.email, u.pwd, s(0), u.roles, u.addr, u._id))
-      Redirect ("/admin/user/" + id)
+      Profile.updateUser(u, User(u.userName, u.firstName, u.lastName, u.yob, u.email, u.pwd, s(0), u.roles, u.addr, u.prefs, u._id))
+      Redirect("/admin/user/" + id)
     }) getOrElse {
       error("ERR_ADMIN_CANT_UPDATE_USER " + id)
-      Unauthorized("Oops - cannot update this user... " + errCollector.mkString)
+      unauthorized("Oops - cannot update this user... ")
+    }
+  }
+
+  def su(id: String) = Action { implicit request =>
+    implicit val errCollector = new VError()
+    (for (
+      can <- hasPerm(Perm.adminDb) orErr ("no permission");
+      u <- Users.findUserById(id)
+    ) yield {
+      log ("ADMIN_SU "+id)
+      Redirect("/").withSession("connected" -> Enc.toSession(u.email))
+    }) getOrElse {
+      error("ERR_ADMIN_CANT_UPDATE_USER " + id)
+      unauthorized("Oops - cannot update this user... ")
     }
   }
 
@@ -95,10 +111,9 @@ object Admin extends RazController {
   val permForm = Form {
     mapping(
       "perm" -> nonEmptyText.verifying(
-        "starts with +/-", a=> ("+-" contains a(0))).verifying (
-        "known perm", a=> Perm.all.contains(a.substring(1)))
-      ) (AddPerm.apply)(AddPerm.unapply) 
-        
+        "starts with +/-", a => ("+-" contains a(0))).verifying(
+          "known perm", a => Perm.all.contains(a.substring(1))))(AddPerm.apply)(AddPerm.unapply)
+
   }
 
   def uperm(id: String) = Action { implicit request =>
@@ -108,18 +123,25 @@ object Admin extends RazController {
         Msg2(formWithErrors.toString + "Oops, can't add that perm!"),
       {
         case we @ AddPerm(perm) =>
-      (for (
-      can <- hasPerm(Perm.adminDb) orErr ("no permission");
-      goodS <- ("+-" contains perm(0)) && Perm.all.contains(perm.substring(1)) orErr ("bad perm");
-      u <- Users.findUserById(id);
-      pro <- u.profile
-    ) yield {
-      this dbop pro.update (pro.addPerm(perm))
-      Redirect ("/admin/user/" + id)
-    }) getOrElse {
-      error("ERR_ADMIN_CANT_UPDATE_USER " + id)
-      Unauthorized("Oops - cannot update this user... " + errCollector.mkString)
-    }
+          (for (
+            can <- hasPerm(Perm.adminDb) orErr ("no permission");
+            goodS <- ("+-" contains perm(0)) && Perm.all.contains(perm.substring(1)) orErr ("bad perm");
+            u <- Users.findUserById(id);
+            pro <- u.profile
+          ) yield {
+            // remove/flip existing permission or add a new one?
+            this dbop pro.update(
+              if (perm(0) == '-' && (pro.perms.contains("+" + perm.substring(1)))) {
+                pro.removePerm("+" + perm.substring(1))
+              } else if (perm(0) == '+' && (pro.perms.contains("-" + perm.substring(1)))) {
+                pro.removePerm("-" + perm.substring(1))
+              } else pro.addPerm(perm)
+              )
+            Redirect("/admin/user/" + id)
+          }) getOrElse {
+            error("ERR_ADMIN_CANT_UPDATE_USER " + id)
+            Unauthorized("Oops - cannot update this user... " + errCollector.mkString)
+          }
       })
   }
 
@@ -129,10 +151,16 @@ object Admin extends RazController {
     } else noPerm(HOME)
   }
 
-  def delcoldb(table: String, id:String) = Action { implicit request =>
+  def colTab(name: String, cols: String) = Action { implicit request =>
+    if (hasPerm(Perm.adminDb)) {
+      Ok(views.html.admin.admin_col_tab(name, model.Mongo(name).m, cols.split(",")))
+    } else noPerm(HOME)
+  }
+
+  def delcoldb(table: String, id: String) = Action { implicit request =>
     if (hasPerm(Perm.adminDb)) {
       // TODO audit
-      Audit.logdb("ADMIN_DELETE", "Table:"+table+" json:"+model.Mongo(table).m.findOne(Map("_id" -> new ObjectId(id))))
+      Audit.logdb("ADMIN_DELETE", "Table:" + table + " json:" + model.Mongo(table).m.findOne(Map("_id" -> new ObjectId(id))))
       model.Mongo(table).m.remove(Map("_id" -> new ObjectId(id)))
       Ok(views.html.admin.admin_col(table, model.Mongo(table).m))
     } else noPerm(HOME)
@@ -146,11 +174,19 @@ object Admin extends RazController {
 
   }
 
+  def clearauditAll() = Action { implicit request =>
+    if (hasPerm(Perm.adminDb)) {
+      Mongo("Audit").m.find().map(_.get("_id").toString).toList.map(Audit.clearAudit(_, auth.get.id))
+      Ok(views.html.admin.admin_audit(auth))
+    } else noPerm(HOME)
+
+  }
+
 }
 
 case class OldStuff(table: String, by: ObjectId, entry: DBObject, date: DateTime = DateTime.now,
-                    _id: ObjectId = new ObjectId()) {
+  _id: ObjectId = new ObjectId()) {
   def create = {
-    Mongo ("OldStuff") += grater[OldStuff].asDBObject(Audit.createnoaudit(this))
+    Mongo("OldStuff") += grater[OldStuff].asDBObject(Audit.createnoaudit(this))
   }
 }

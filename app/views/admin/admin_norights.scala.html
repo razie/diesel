@@ -1,32 +1,24 @@
 @(user:Option[model.User])
 
-   @htmlHead()
+@htmlHead()
 
-   @navbar(user)
+@navbar(user)
    
-    <div class="container">
-
-      <!-- Main hero unit for a primary marketing message or call to action -->
-      <div class="hero-unit">
-
-        <div class="row">
-          <div class="span6">
-            <h1>Sorry, @user.map(_.ename).getOrElse("Anonymous")</h1>
-            <p>You are not authorized to access this URL.
-          </div>
-          <div class="span4">
-            <img width="60%" height="60%" src="@routes.Assets.at("images/thumbs_olympic-sport-icons1.gif")"></img>
-          </div>
-        </div>
-        
+<div class="container">
+  <div class="hero-unit">
+    <div class="row">
+      <div class="span6">
+        <h1>Sorry, @user.map(_.ename).getOrElse("Anonymous")</h1>
+        <p>You are not authorized to access this URL.
       </div>
+      <div class="span4">
+        <img width="60%" height="60%" src="@routes.Assets.at("images/thumbs_olympic-sport-icons1.gif")"></img>
+      </div>
+    </div>
+  </div>
 
-      <!-- Example row of columns -->
+  <hr>
+  @htmlFooter()
+</div> <!-- /container -->
 
-      <hr>
-
-      @htmlFooter()
-
-    </div> <!-- /container -->
-
-    @htmlBottom()
+@htmlBottom()

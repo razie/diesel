@@ -43,7 +43,7 @@
     <!-- list of pages in category -->
       <div class="well">
         <ul>tags
-        @page.get.tags.map { p=>
+        @page.get.contentTags.map { p=>
           <li>@p</li>
         } 
        </ul>
@@ -58,7 +58,45 @@
       </div> 
 
       <div class="well">
+        <ul>followers
+        @page.get.userWikis.map { uw=>
+          <li>@model.Users.findUserById(uw.userId).map(_.userName).getOrElse(uw.userId) , @uw.role</li>
+        } 
+       </ul>
+      </div> 
+
+      <div class="well">
+        <ul>props
+        @page.get.props.map { p=>
+          <li>@p</li>
+        } 
+       </ul>
+      </div> 
+
+      <div class="well">
+        <ul>sections
+        @page.get.sections.map { p=>
+          <li>@p</li>
+        } 
+       </ul>
+      </div> 
+
+      <div class="well">
+        <ul>cp
+@ClassLoader.getSystemClassLoader.asInstanceOf[java.net.URLClassLoader].getURLs.map { p=>
+  <br>
+@p.getFile
+} 
+       </ul>
+      </div> 
+
+      <div class="well">
         @page.map{ p=>@p.toString } 
+       </ul>
+      </div> 
+
+      <div class="well">
+      @model.Wikis.format1(wid, "md", page.get.content)
        </ul>
       </div> 
 

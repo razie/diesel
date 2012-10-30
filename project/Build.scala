@@ -17,7 +17,9 @@ object ApplicationBuild extends Build {
     "com.tristanhunt"    %% "knockoff"           % "0.8.0-16",
     "com.razie"          %% "base"               % "0.6.3-SNAPSHOT",
     "com.razie"          %% "snakked"            % "0.4.3-SNAPSHOT",
+    "com.razie"          %% "scripster"          % "0.8.1-SNAPSHOT",
     "ch.qos.logback"      % "logback-classic"    % "1.0.0",
+    "org.scalaz"          % "scalaz-core_2.9.2"  % "7.0.0-M3",
     "org.scalatest"       % "scalatest_2.9.1"    % "1.6.1"
     )
 

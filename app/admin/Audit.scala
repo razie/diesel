@@ -65,4 +65,7 @@ object Audit extends Logging {
   def auth(details:String) { audit(logdb(ERR_AUTHREQUIRED, many(details))) }
   final val ERR_AUTHREQUIRED = "ERR_AUTHREQUIRED"
 
+  def unauthorized(details:String) { audit(logdb(ERR_UNAUTHORIZED, many(details))) }
+  final val ERR_UNAUTHORIZED = "ERR_UNAUTHORIZED"
+
 }

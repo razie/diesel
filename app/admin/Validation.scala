@@ -20,7 +20,7 @@ case class Corr(err: String, action: Option[String] = None) {
 /** common validation utilities */
 trait Validation extends Logging {
 
-  final val cNoAuth = new Corr("Not logged in", """Sorry - need to <a href="/doe/join">log in</a>!"""); //cNoAuth;
+  final val cNoAuth = new Corr("Not logged in", """You need to <a href="/doe/join">log in or register</a>!"""); //cNoAuth;
   final val cExpired = new Corr("token expired", "get another token")
   final val cNoProfile = InternalErr("can't load the user profile")
   final val cNoPermission = InternalErr("No permission!")
@@ -50,12 +50,13 @@ trait Validation extends Logging {
   }
   implicit def toON[A](o: Option[A]) = { OptNope[A](o) }
   implicit def toON2(o: Boolean) = { OptNope(if (o) Some(o) else None) }
+  implicit def toC2 (t:(String,String)) = Corr(t._1, Some(t._2))
 
 }
 
 /** void error collector */
 object IgnoreErrors extends VError with Logging {
-  override def add(s: Corr) = { log ("IGNORING error: " + s); s }
-  override def add(s: String) = { log ("IGNORING error: " + s); s }
+  override def add(s: Corr) = { debug ("IGNORING error: " + s); s }
+  override def add(s: String) = { debug ("IGNORING error: " + s); s }
 }
 

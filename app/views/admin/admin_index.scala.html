@@ -1,53 +1,49 @@
 @(salutation:String, joe:Option[model.User])
 
-   @htmlHead("admin index")
+@htmlHead("admin index")
 
-   @navbar(joe)
+@navbar(joe)
    
-    <div class="container">
+<div class="container">
 
-      <!-- Main hero unit for a primary marketing message or call to action -->
-      <div class="hero-unit">
-
-        <div class="row">
-          <div class="span6">
-            <h1>@joe.get.ename - tread carefully! <small><a href="@routes.Profile.doeJoin">not @joe.get.ename?</a></small></h1>
-            <p>If you're not an admin of this site, please leave and report seeing this page with a brief support request at the bottom of the page</p>
-            <p>You can do a lot of damage with these admin pages....</p>
-          </div>
-          <div class="span4">
-<ul>
-<li><a href="/admin/db">admin db</a>
-<li><a href="/admin/users">admin users</a>
-<li><a href="/admin/wikidx">admin wikidx</a>
-<li><a href="/admin/reloadurlmap">admin reload urlmap</a>
-<li><a href="/admin/audit">admin audit</a>
-<ul>
-          </div>
-        </div>
-        
+  <!-- Main hero unit for a primary marketing message or call to action -->
+  <div class="hero-unit">
+    <div class="row">
+      <div class="span6">
+        <h1>@joe.get.ename - tread carefully! <small><a href="@routes.Profile.doeJoin">not @joe.get.ename?</a></small></h1>
+        <p>If you're not an admin of this site, please leave and report seeing this page with a brief support request at the bottom of the page</p>
+        <p>You can do a lot of damage with these admin pages....</p>
       </div>
+    <div class="span4">
+      <ul>
+      <li><a href="/admin/db">admin db</a>
+      <li><a href="/admin/users">admin users</a>
+      <li><a href="/admin/wikidx">admin wikidx</a>
+      <li><a href="/admin/reloadurlmap">admin reload urlmap</a>
+      <li><a href="/admin/audit">admin audit</a>
+      <ul>
+    </div>
+  </div>
+</div>
 
-      <div class="row">
-        <div class="span4">
-          <h2>Users</h2>
-          <p>There are @model.Mongo.count("User") users</p>
-          <p><a class="btn" href="/admin/calendars">View details &raquo;</a></p>
-        </div>
-        <div class="span4">
-          <h2>Pages</h2>
-          <p>There are @model.Mongo.count("WikiEntry") pages</p>
-          <p><a class="btn" href="/admin/calendars">View details &raquo;</a></p>
-       </div>
-        <div class="span4">
-        </div>
-      </div>
+  <div class="row">
+    <div class="span4">
+      <h2>Users</h2>
+      <p>There are @model.Mongo.count("User") users</p>
+      <p><a class="btn" href="/admin/calendars">View details &raquo;</a></p>
+    </div>
+    <div class="span4">
+      <h2>Pages</h2>
+      <p>There are @model.Mongo.count("WikiEntry") pages</p>
+      <p><a class="btn" href="/admin/calendars">View details &raquo;</a></p>
+   </div>
+    <div class="span4">
+    </div>
+  </div>
 
-      <hr>
+  <hr>
+  @htmlFooter()
+</div> <!-- /container -->
 
-      @htmlFooter()
-
-    </div> <!-- /container -->
-
-    @htmlBottom()
+@htmlBottom()
     

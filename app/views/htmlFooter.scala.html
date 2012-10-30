@@ -1,4 +1,4 @@
-@(isSite:Boolean=false)
+@(ads:Boolean=false, isSite:Boolean=false)
 
 <footer>
   <p>&copy; <a href="http://www.racerkidz.com">RacerKidz</a>, 2012 
@@ -9,4 +9,19 @@
   | <a href="http://@_root_.admin.Config.hostport/page/Terms_of_Service">Terms of Service</a> 
 }
   | </p>
+
+@if(ads && ! _root_.admin.Config.noads) {
+<script type="text/javascript"><!--
+google_ad_client = "ca-pub-5622141672958561";
+/* 728x90all */
+google_ad_slot = "3920300830";
+google_ad_width = 728;
+google_ad_height = 90;
+//-->
+</script>
+<script type="text/javascript"
+src="http://pagead2.googlesyndication.com/pagead/show_ads.js">
+</script>
+
+}
 </footer>

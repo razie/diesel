@@ -35,7 +35,7 @@
     '_label -> "Last name")          
   @helper.select(
     myForm("userType"), 
-     model.UserType.values.toList.map(x=>(x.toString,x.toString)),
+     _root_.admin.Config.userTypes.map(x=>(x.toString,x.toString)),
      '_label -> "What you are",
     'readonly -> "yes",
     '_showConstraints -> false)
@@ -53,8 +53,8 @@
     
   <button type="submit" class="btn btn-primary">Update account!</button>
   
-  @if(myForm.globalError.isDefined) {
-     <p style="color:red;font-weight:bold">@myForm.globalError.get.message</p>
+  @myForm.globalError.map { err=>
+     <p style="color:red;font-weight:bold">@err.message</p>
   } 
   
   <p><small>By maintaining a profile, you agree to the <a href="@controllers.Wiki.w("Terms of Service")">Terms of Service</a></small><p>

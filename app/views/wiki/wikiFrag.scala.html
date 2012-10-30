@@ -33,10 +33,24 @@
          }
       }
       
-      <p>@Html(model.Wikis.format(we.wid, we.markup, we.content))</p> 
+      <p>@Html(model.Wikis.format(we.wid, we.markup, we.content, page))</p> 
         
         @if(!simple) {
-      <p><hr><small>(
+
+          @if(page.isDefined && page.get.tags.size>0) {
+            <p><small><em>Tags</em>:  @page.get.tags.mkString(", ")</small>
+          }
+          
+      @wid.findParent.map {pwe=>
+        <hr>
+        Up to: <a href="@controllers.Wiki.w(pwe.wid)">@pwe.label</a> 
+      }
+
+      <hr>
+      @page.flatMap(x=>model.WikiCount.findOne(x._id)).map {pw=>
+        <p><small>Viewed <b>@pw.count</b> times</small>
+      }
+<small>(
       @if(controllers.Wiki.canEdit2(wid,user, page)) { 
         <a href="@routes.Wiki.wikieEdit(page.get.wid)">Edit</a> | 
       }
@@ -44,6 +58,9 @@
       @if(!(Array("WikiLink", "Category") contains cat)) {
         @if(controllers.Wiki.canEdit2(wid,user, page)) { 
           | <a href="@routes.Wiki.wikieRename1(wid)">Rename</a> 
+        }
+        @if(user.exists(_.hasPerm(model.Perm.adminDb))) { 
+          | <a href="@routes.Wiki.wikieDebug(wid)"><i>debug</i></a> 
         }
         @if(user.isDefined && user.get.isActive) { 
           @if(user.get.pages(wid.cat).find(_.wid.name == wid.name).isDefined) {
@@ -72,7 +89,7 @@
       </small></p>
       }
     case None => { 
-    @if("any" != cat) {
+    @if("any" != cat && !cat.isEmpty) {
       <b>No entry matching @cat and @wid.name ... <a href="@routes.Wiki.wikieEdit(model.WID(cat,nicename))">create one</a></b> 
     } else {
       <b>No entry for @wid.name ... you could create one:</b>

@@ -1,0 +1,45 @@
+@(name:String, col:com.mongodb.casbah.MongoCollection, fields:Array[String])
+
+@wikicount(db:com.mongodb.casbah.Imports.DBObject, k:String, v:String) = {
+  @k match {
+    case "wpath" => {
+      @model.Wikis.findById(db.get("pid").toString).map {wp=>
+        <a href="/wiki/@wp.wid.wpath">@wp.wid.wpath</a>
+      }
+    }
+    case _=> {
+      @v
+    }
+  }
+}
+
+@htmlHead("admin db: "+name)
+@navbar(None)
+   
+<div class="container">
+
+<h2>Records</h2>
+
+
+@name match {
+  case "WikiCount" => {
+    @util.utilTable("WikiCount", List("pid","count","wpath").map(c=>c->c), None, Some("count"), Some(wikicount))
+  }
+  case _ => {
+	@util.utilTable(name, fields.map(c=>c->c), None, None, None)
+  }
+}
+
+
+@*************
+@if(!Array("User","Profile","WikiEntry","Ver","Audit", "WikiAudit").contains(name)) {
+<a class="btn btn-mini btn-danger" href="@routes.Admin.delcoldb(name,db.get("_id").toString)">DEL - no confirmation!</a>
+*************@
+  
+  <hr>
+  @htmlFooter()
+
+</div> <!-- /container -->
+
+@htmlBottom()
+    

@@ -22,8 +22,8 @@ object Mongo {
   lazy val conn = MongoConnection(Config.mongohost)
 
   val AGAIN = false
-  val CURR_VER = 10
-  val upgrades = Map (1 -> Upgrade1, 2 -> Upgrade2, 3 -> Upgrade3, 4 -> Upgrade4, 5 -> Upgrade5, 6 -> U6, 7 -> U7, 8->U8, 9->U9)
+  val CURR_VER = 11
+  val upgrades = Map (1 -> Upgrade1, 2 -> Upgrade2, 3 -> Upgrade3, 4 -> Upgrade4, 5 -> Upgrade5, 6 -> U6, 7 -> U7, 8->U8, 9->U9, 10->U10)
 
   lazy val db = {
     com.mongodb.casbah.commons.conversions.scala.RegisterConversionHelpers()
@@ -58,7 +58,10 @@ object Mongo {
         case None => db("Ver") += Map("ver" -> CURR_VER) // create a first ver entry
       }
     } catch {
-      case e: Throwable => Log.error ("Exception during DB migration - darn thing won't work at all probably\n" + e, e)
+      case e: Throwable => {
+        Log.error ("Exception during DB migration - darn thing won't work at all probably\n" + e, e)
+        e.printStackTrace()
+      }
     }
 
     // that's it, db initialized?
@@ -313,3 +316,45 @@ object U9 extends UpgradeDb with razie.Logging {
     }
   }
 }
+
+// rename all topics with bad names
+object U10 extends UpgradeDb with razie.Logging {
+
+  def name(u: DBObject) = u.get ("name").asInstanceOf[String]
+  def nameo(u: DBObject) = u.get ("entry").asInstanceOf[DBObject].get("name").asInstanceOf[String]
+  
+  def uid (uname:String) = users.get(uname) orElse users.get("Razie")
+  val users = scala.collection.mutable.Map[String, ObjectId]()
+    
+  import model.RazSalatContext._
+    
+  def upgrade(db: MongoDB) {
+    
+     withDb(db("User")) { t =>
+      for ( u <- t) {
+        users.put(u.as[String]("userName"), u._id.get)
+        users.put(u._id.get.toString, u._id.get)
+      }
+    }
+
+    withDb(db("WikiEntry")) { t =>
+      for (u <- t) {
+        log("UPGRADING " + name(u))
+        val userid = uid(u.as[Any]("by").toString)
+        u.remove("by")
+        u.put("by", userid)
+        t.save(u)
+      }
+    }
+    withDb(db("WikiEntryOld")) { t =>
+      for (u <- t) {
+        log("UPGRADING " + nameo(u))
+        val userid = uid(u.get("entry").asInstanceOf[DBObject].as[Any]("by").toString)
+        u.get("entry").asInstanceOf[DBObject].remove("by")
+        u.get("entry").asInstanceOf[DBObject].put("by", userid)
+        t.save(u)
+      }
+    }
+  }
+}
+

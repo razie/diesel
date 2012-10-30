@@ -40,14 +40,6 @@ object Tasks extends RazController with Logging {
 
   lazy val cNotParent = new Corr("you're not the parent", "login with the parent account and try again")
 
-  val parentForm3 = Form {
-    tuple (
-      "parentEmail" -> text.verifying("Wrong format!", vldEmail(_)).verifying("Invalid characters", vldSpec(_)),
-      "childEmail" -> text.verifying("Wrong format!", vldEmail(_)).verifying("Invalid characters", vldSpec(_)),
-      "childId" -> text,
-      "expiry" -> nonEmptyText)
-  }
-
   import play.api.data._
   import play.api.data.Forms._
   import play.api.data.validation.Constraints._
@@ -81,10 +73,10 @@ object Tasks extends RazController with Logging {
   // step 2 - filled parent email, now creating child user and send email to parent
   def addParent2 = Action { implicit request =>
     implicit val errCollector = new VError()
-      def ERR = {
-        error("ERR_CANT_UPDATE_USER " + session.get("email"))
-        Unauthorized("Oops - cannot update this user... " + errCollector.mkString)
-      }
+    def ERR = {
+      error("ERR_CANT_UPDATE_USER " + session.get("email"))
+      Unauthorized("Oops - cannot update this user... " + errCollector.mkString)
+    }
 
     if (session.get("ujson").isDefined) {
       parentForm.bindFromRequest.fold(
@@ -102,7 +94,9 @@ object Tasks extends RazController with Logging {
               UserTasks.addParent(c).create
               UserTasks.verifyEmail(c).create
 
-              sendEmail (pe, c)
+              Emailer.withSession { implicit mailSession =>
+                sendEmail(pe, c)
+              }
             }
           } getOrElse {
             ERR
@@ -119,7 +113,9 @@ object Tasks extends RazController with Logging {
             for (
               c <- auth orErr ("not authenticated")
             ) yield {
-              sendEmail (pe, c)
+              Emailer.withSession { implicit mailSession =>
+                sendEmail(pe, c)
+              }
             }
           } getOrElse {
             ERR
@@ -131,7 +127,7 @@ object Tasks extends RazController with Logging {
     }
   }
 
-  def sendEmail(pe: String, c: User)(implicit request: Request[_]) = {
+  def sendEmail(pe: String, c: User)(implicit request: Request[_], mailSession: MailSession) = {
     val from = "admin@razie.com"
 
     val dt = DateTime.now().plusHours(1).toString()
@@ -151,22 +147,10 @@ object Tasks extends RazController with Logging {
       ds.secUrl + ")", HOME, Some(c)).withSession("connected" -> Enc.toSession(c.email))
   }
 
-  def sendToParentAdd(to: String, from: String, childEmail: String, childName: String, link: String) {
-    val html = """
-Your child %s (%s) would like to use <a href="http://www.racerkidz.com">RacerKidz.com</a> but he/she is 12 years or younger.
+  def sendToParentAdd(to: String, from: String, childEmail: String, childName: String, link: String)(implicit mailSession: MailSession) {
+    val html = Emailer.text("parentadd").format(childName, childEmail.dec, EncUrl(to), EncUrl(to), link);
 
-Please follow these steps:
-<ul>
-<li>Register a parent account at <a href="http://%s/doe/profile/joinWith?e=%s">racerkidz.com</a>
-<li>Login with <em>your account</em>
-<li>Use <a href="%s">this link</a> to add the child account
-</ul>
-          
-Thank you,
-The RacerKidz
-""".format(childName, childEmail.dec, Config.hostport, EncUrl(to), link);
-
-    SendEmail.send (to, from, "Racer Kid parent - please activate your account", html)
+    SendEmail.send(to, from, "Racer Kid parent - please activate your account", html)
   }
 
   /** step 3 - parent clicked on email link to add child */
@@ -186,10 +170,10 @@ The RacerKidz
           already <- !(Users.findPC(p._id, child._id).isDefined) orErr "Already defined"
         ) yield {
           // TODO transaction
-          this dbop pro.update (pro.addRel(cid -> "child"))
+          this dbop pro.update(pro.addRel(cid -> "child"))
           this dbop cpro.update(cpro.addRel(p.id -> "parent"))
           this dbop UserTask(child._id, "addParent").delete
-          this dbop ParentChild (p._id, child._id).create
+          this dbop ParentChild(p._id, child._id).create
 
           Msg("""
 Ok child added. You can edit the privacy settings from your [profile page](/doe/profile).
@@ -208,23 +192,25 @@ Please read our [[Terms of Service]] as well as our [[Privacy Policy]]
   /** step 1 - send verification email */
   def verifyEmail1 = Action { implicit request =>
     implicit val errCollector = new VError()
-      def ERR = {
-        error("ERR_CANT_UPDATE_USER " + session.get("email"))
-        Unauthorized("Oops - cannot update this user... " + errCollector.mkString)
-      }
+    def ERR = {
+      error("ERR_CANT_UPDATE_USER " + session.get("email"))
+      Unauthorized("Oops - cannot update this user... " + errCollector.mkString)
+    }
 
     (for (
       c <- auth orCorr cNoAuth
-    ) yield sendEmailVerif (c)) getOrElse {
+    ) yield Emailer.withSession { implicit mailSession =>
+      sendEmailVerif(c)
+    }) getOrElse {
       ERR
     }
   }
 
-  def sendEmailVerif(c: User)(implicit request: Request[_], mailSession:Option[javax.mail.Session] = None) = {
-    val from = "support@racerkidz.com"
+  def sendEmailVerif(c: User)(implicit request: Request[_], mailSession: MailSession) = {
+    val from = Config.SUPPORT
     val MSG_EMAIL_VERIF = """
 Ok - we sent an email to your registered email address - please follow the instructions in that email to validate your email address and begin using the site.<br>
-Please check your spam/junk folders as well in the next few minutes - make sure you mark support@racerkidz.com as a safe sender!"""
+Please check your spam/junk folders as well in the next few minutes - make sure you mark """ + Config.SUPPORT + """ as a safe sender!"""
 
     val dt = DateTime.now().plusHours(1).toString()
     log("ENC_DT=" + dt)
@@ -240,33 +226,45 @@ Please check your spam/junk folders as well in the next few minutes - make sure 
     Msg(MSG_EMAIL_VERIF, HOME, Some(c)).withSession("connected" -> Enc.toSession(c.email))
   }
 
-  def sendToVerif1(email: String, from: String, name: String, link: String) (implicit mailSession:Option[javax.mail.Session] = None) = {
-    val html = """
-Hey, %s,
-<p>You registered this email address (%s) at <a href="http://www.racerkidz.com">RacerKidz.com</a> and you need to verify it.
+  def sendToVerif1(email: String, from: String, name: String, link: String)(implicit mailSession: MailSession) = {
+    val html = Emailer.text("emailverif").format(name, email, link);
 
-Please follow these steps:
-<ul>
-<li>Login with <em>your account</em>
-<li>Use <a href="%s">this link</a> to validate this email
-</ul>
-
-<em>The most common problems:</em>
-<br> - trying to verify an email is using a different browser to open this link, one where you didn't log in first!
-<br> - closing the browser window and then clicking on this email      
-
-<p>
-Remember, you have to login first and then click the link - we will improve the process, but for now that's it :(
-
-Cheers,
-The RacerKidz
-""".format(name, email, link);
-
-    SendEmail.send (email, from, "Racer Kid - please activate your account", html)
+    SendEmail.send(email, from, "Racer Kid - please activate your account", html)
   }
 
   /** step 2 - user clicked on email link to verify email */
   def verifyEmail2(expiry1: String, email: String, id: String) = Action { implicit request =>
+    val odate = (try { Option(DateTime.parse(expiry1.dec)) } catch { case _ => (try { Option(DateTime.parse(expiry1.replaceAll(" ", "+").dec)) } catch { case _ => None }) }) orErr ("token faked or expired")
+    if (odate.isDefined && odate.get.isAfterNow && !auth.isDefined)
+      Ok(views.html.tasks.verifEmail3(parentForm.fill(Email("")), expiry1, email, id))
+    else
+      verifyEmail3a(expiry1, email, id)
+  }
+
+  /** step 2A - user clicked on email link to verify email but it's not logged in, then he provided email again */
+  def verifyEmail3(expiry1: String, email: String, id: String) = Action { implicit request =>
+    parentForm.bindFromRequest.fold(
+      formWithErrors => {
+        error("FORM ERR " + formWithErrors)
+        BadRequest(views.html.tasks.verifEmail3(formWithErrors, expiry1, email, id))
+      },
+      {
+        case Email(pe) => {
+          if (pe.toLowerCase() == email.dec.toLowerCase())
+            verifiedEmail(expiry1, email, id, Users.findUser(email))
+          else
+            Msg2("Email doesn't match - could not verify email!")
+        }
+      })
+  }
+
+  /** doing it */
+  private def verifyEmail3a(expiry1: String, email: String, id: String)(implicit request: Request[_]) = {
+    verifiedEmail(expiry1, email, id, auth)
+  }
+
+  /** step 2 - user clicked on email link to verify email */
+  private def verifiedEmail(expiry1: String, email: String, id: String, user: Option[User])(implicit request: Request[_]) = {
     implicit val errCollector = new VError()
     (expiry1, email, id) match {
       case (Enc(expiry), ce, cid) => {
@@ -274,15 +272,16 @@ The RacerKidz
           // play 2.0 workaround - remove in play 2.1
           date <- (try { Option(DateTime.parse(expiry)) } catch { case _ => (try { Option(DateTime.parse(expiry1.replaceAll(" ", "+").dec)) } catch { case _ => None }) }) orErr ("token faked or expired");
           notExpired <- date.isAfterNow orCorr cExpired;
-          p <- auth orCorr cNoAuth;
-          a <- (if (p.email == ce) Some(true) else None) logging ("ERR neq",p.email,ce) orErr "Not same user";
+          p <- user orCorr cNoAuth;
+          a <- (if (p.email == ce) Some(true) else None) logging ("ERR neq", p.email, ce) orErr "Not same user";
           pro <- p.profile orCorr cNoProfile;
           already <- !(p.hasPerm(Perm.eVerified)) orErr "Already verified"
         ) yield {
           // TODO transaction
-          this dbop pro.update (pro.addPerm("+"+Perm.eVerified.s).addPerm("+"+Perm.uWiki.s))
+          val ppp = pro.addPerm("+" + Perm.eVerified.s).addPerm("+" + Perm.uWiki.s)
+          this dbop pro.update(if (p.under12) pro else pro.addPerm("+" + Perm.uProfile.s))
           this dbop UserTasks.verifyEmail(p).delete
-          
+
           // replace in cache
           Users.findUserById(p._id).map { u =>
             import play.api.Play.current

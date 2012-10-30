@@ -42,8 +42,8 @@
   Update!
   </button>
   
-  @if(myForm.globalError.isDefined) {
-     <br><br><b>@myForm.globalError.get.message</b>
+  @myForm.globalError.map {err=>
+     <p style="color:red;font-weight:bold">@err.message</p>
   } 
   
   <p><small>By maintaining a profile, you agree to the <a href="@controllers.Wiki.w("Terms of Service")">Terms of Service</a></small><p>

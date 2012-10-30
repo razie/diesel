@@ -1,0 +1,51 @@
+@(pForm:Form[controllers.Profile.Email], exp:String, e:String, u:String)
+
+   @htmlHead()
+
+   @navbar(None)
+   
+    <div class="container">
+
+      <!-- Main hero unit for a primary marketing message or call to action -->
+      <div class="hero-unit">
+
+      <div class="row">
+        <div class="span6">
+        <h2>Email verification!</h2>
+        <p>You are not logged in - please type your email again for verification!
+        </div>
+
+        <div class="span4">
+
+@import helper.twitterBootstrap._
+
+@helper.form(action=routes.Tasks.verifyEmail3(exp, e, u), 'class->"well") {
+
+  @helper.inputText(
+    pForm("parentEmail"), 
+    '_label -> "Email")
+
+  <button type="submit" class="btn btn-primary">Continue</button>
+
+  @pForm.globalError.map {err=>
+     <p style="color:red;font-weight:bold">@err.message</p>
+  } 
+  
+  <p><small>By registering or logging in, you agree to the <a href="@controllers.Wiki.w("Terms of Service")">Terms of Service</a></small><p>
+  }
+  
+       </div>
+      </div>
+
+      </div>
+
+      <!-- Example row of columns -->
+
+      <hr>
+
+      @htmlFooter()
+
+    </div> <!-- /container -->
+
+    @htmlBottom()
+    

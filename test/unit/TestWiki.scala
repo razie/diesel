@@ -1,5 +1,7 @@
 
 
+package unit
+
 import model.WikiParser
 import model.Wikis
 import org.scalatest.FlatSpec

@@ -8,28 +8,8 @@ included in mainUserC as the left hand side info box
 <h2>@salutation, @user.ename!</h2>
 
 @item match {
-  case 2 => {
-    <p style="font-weight:bold">The map of the events you're interested in.</p>
-    <p>The map is built automatically from the calendars you like. Each event has a location and it is shown on the map.</p>
-<p>Map not centered correctly? Please update your location in your <a href="/doe/profile">profile</a>!</p>
-    <p>If you want to see just the locations for one calendar, go there and each calendar has a "Show Map" link (or will have soon).</p>
-  }
-  case 3 => {
-    <p style="font-weight:bold">Your blogs or forums.</p>
-    <p>Blogs or forums - you can create as many as you want and make them public or club members-only.</p>
-    <p>Blogs are especially important for folks that have something to share. If you're a coach, share a drill, or a tip or something.
-    If you just want to share your opinion on things or give updates on your progress with racing, that's super!</p>
-  }
-  case 4 => {
-    <p style="font-weight:bold">Everyone takes notes - these are online.</p>
-    <p>Notes are personal - you can also make them public. A note could be "To Watch Tonight"...</p>
-  }
-  case _ => {
-    <p style="font-weight:bold">Add stuff to your profile with the buttons below.</p>
-<p>You can "Like" any topic and add it to your profile. Start by adding sports, clubs, series and calendars, then see the magic.</p>
-<p>If you can't find your sports, clubs or championships - add them! If you don't feel like it, 
-<a class="btn btn-mini btn-inverse" href="/doe/support">tell us</a> and and we'll add them for you.</p>
-  }
+  case 2|3|4 => { @wiki.wikiFragInt("Admin:page-doeindex"+item, Some(user)) }
+  case _     => { @wiki.wikiFragInt("Admin:page-doeindex1", Some(user)) }
 }
 
   <hr>

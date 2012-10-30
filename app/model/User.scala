@@ -16,12 +16,8 @@ import controllers.Maps
 import controllers.RazController
 import play.api.cache.Cache
 
-object UserType extends Enumeration {
-  type UserType = Value
-  
-  val Racer = Value("Racer")
-  val Parent = Value("Parent")
-  val Organization = Value("Organization")
+object UserType {
+  val Organization = "Organization"
 }
 
 /** temporary registrtion/login form */
@@ -31,8 +27,8 @@ case class Registration(email: String, password: String, repassword: String = ""
 
 /** register an email for news */
 case class RegdEmail(email: String, when: DateTime = DateTime.now) {
-  def create = Mongo ("RegdEmail") += grater[RegdEmail].asDBObject(Audit.create(this))
-  def delete = Mongo ("RegdEmail").m.remove(Map("email" -> email))
+  def create = Mongo("RegdEmail") += grater[RegdEmail].asDBObject(Audit.create(this))
+  def delete = Mongo("RegdEmail").m.remove(Map("email" -> email))
 }
 
 /** permissions for a user group */
@@ -48,18 +44,18 @@ case class Perm(s: String) {
 }
 
 object Perm {
-  val adminDb = Perm("adminDb")
-  val uWiki = Perm("uWiki")
-  val uCategory = Perm("uCategory")
-  val cCategory = Perm("cCategory")
-  val uProfile = Perm("uProfile")
-  val uReserved = Perm("uReserved")
+  val adminDb = Perm("adminDb")         // god - can fix users etc
+  val adminWiki = Perm("adminWiki")     // can administer wiki - edit categories/reserved pages etc
+  val uWiki = Perm("uWiki")             // can update wiki
+  val uProfile = Perm("uProfile")       
   val eVerified = Perm("eVerified")
+  val apiCall = Perm("apiCall")         // special users that can make api calls
 
   implicit def tos(p: Perm): String = p.s
 
   // TODO - how to do this better with enum support
-  val all: Seq[String] = Seq (adminDb, uWiki, uCategory, cCategory, uProfile, uReserved, eVerified)
+  // TODO - remove the old perms from this list at some point
+  val all: Seq[String] = Seq(adminDb, adminWiki, uWiki, uProfile, eVerified, apiCall, "cCategory", "uCategory", "uReserved")
 }
 
 /** Minimal user info - loaded all the time for a user */
@@ -71,8 +67,9 @@ case class User(
   email: String,
   pwd: String,
   status: Char = 'a', // a-active, s-suspended, d-deleted
-  roles: Set[String],// = Set("Racer"),
+  roles: Set[String], // = Set("Racer"),
   addr: Option[String] = None, // address as typed in
+  prefs: Map[String, String] = Map(), // = Set("Racer"),
   _id: ObjectId = new ObjectId()) {
 
   // TODO change id = it shows like everywhere
@@ -93,9 +90,9 @@ case class User(
   def under12 = DateTime.now.year.get - yob <= 12
 
   // centered on Toronto by default
-  lazy val ll = addr.flatMap(Maps.latlong _).getOrElse (("43.664395", "-79.376907"))
+  lazy val ll = addr.flatMap(Maps.latlong _).getOrElse(("43.664395", "-79.376907"))
 
-  lazy val canHasProfile = (!under12) || Users.findParentOf(_id).map(_.trust == "Public").getOrElse(false)
+  lazy val canHasProfile = (!under12) || Users.findParentOf(_id).exists(_.trust == "Public")
 
   // TODO cache groups
   lazy val groups = roles flatMap { role => Mongo("UserGroup").findOne(Map("name" -> role)) map (grater[UserGroup].asObject(_)) }
@@ -130,17 +127,17 @@ case class User(
   lazy val key = Map("email" -> email)
 
   def create(p: Profile) {
-    var res = Mongo ("User") += grater[User].asDBObject(Audit.create(this))
+    var res = Mongo("User") += grater[User].asDBObject(Audit.create(this))
 
     p.createdDtm = DateTime.now()
     p.lastUpdatedDtm = DateTime.now()
-    res = Mongo ("Profile") += grater[Profile].asDBObject(Audit.create(p))
+    res = Mongo("Profile") += grater[Profile].asDBObject(Audit.create(p))
 
     UserEvent(_id, UserEvent.CREATE).create
   }
 
   def update(u: User) = {
-    Mongo ("UserOld") += grater[User].asDBObject(Audit.create(this))
+    Mongo("UserOld") += grater[User].asDBObject(Audit.create(this))
     Mongo("User").m.update(key, grater[User].asDBObject(Audit.update(u)))
     UserEvent(_id, UserEvent.UPDATE).create
   }
@@ -161,7 +158,8 @@ case class User(
 
 }
 
-/** detailed user profile
+/**
+ * detailed user profile
  *
  *  perms are permissions
  */
@@ -188,7 +186,8 @@ case class Profile(
   var lastUpdatedDtm: DateTime = DateTime.now
 }
 
-/** a parent/child relationship with additional permissions
+/**
+ * a parent/child relationship with additional permissions
  */
 case class ParentChild(
   parentId: ObjectId,
@@ -197,7 +196,7 @@ case class ParentChild(
   notifys: String = "Everything",
   _id: ObjectId = new ObjectId()) {
 
-  def create = Mongo ("ParentChild") += grater[ParentChild].asDBObject(Audit.create(this))
+  def create = Mongo("ParentChild") += grater[ParentChild].asDBObject(Audit.create(this))
   def update(p: ParentChild) = {
     Mongo("ParentChild").m.update(
       Map("parentId" -> parentId, "childId" -> childId),
@@ -208,14 +207,18 @@ case class ParentChild(
 
 /** a link between a user and a wiki */
 case class UserWiki(userId: ObjectId, wid: WID, role: String, _id: ObjectId = new ObjectId()) {
-  def create = Mongo ("UserWiki") += grater[UserWiki].asDBObject(Audit.create(this))
-  def delete = Mongo ("UserWiki").m.remove(Map("_id"->_id))
+  def create = Mongo("UserWiki") += grater[UserWiki].asDBObject(Audit.create(this))
+  def delete = { Audit.delete(this); Mongo("UserWiki").m.remove(Map("_id" -> _id)) }
 
   def wlink = WikiLink(WID("User", userId.toString), wid, "")
   def wname = wlink.wname
+
+  def user = model.Users.findUserById(userId)
+
 }
 
-/** detailed user profile
+/**
+ * detailed user profile
  *
  *  perms are permissions
  */
@@ -239,7 +242,7 @@ case class UserEvent(
   what: String,
   when: DateTime = DateTime.now()) {
 
-  def create = Mongo ("UserEvent") += grater[UserEvent].asDBObject(Audit.create(this))
+  def create = Mongo("UserEvent") += grater[UserEvent].asDBObject(Audit.create(this))
 
 }
 
@@ -255,6 +258,12 @@ object Users {
 
   def fromJson(j: String) = Option(grater[User].asObject(JSON.parse(j).asInstanceOf[DBObject]))
 
+  // TOD optimize somwhow
+  def findUserNoCase(uncEmail: String) = {
+    val tl = uncEmail.toLowerCase()
+    Mongo("User") find (Map()) find (_.as[String]("email").dec.toLowerCase == tl) map (grater[User].asObject(_))
+  }
+
   def findUser(email: String) = Mongo("User").findOne(Map("email" -> email)) map (grater[User].asObject(_))
   def findUserById(id: String) = Mongo("User").findOne(Map("_id" -> new ObjectId(id))) map (grater[User].asObject(_))
   def findUserById(id: ObjectId) = Mongo("User").findOne(Map("_id" -> id)) map (grater[User].asObject(_))
@@ -268,25 +277,25 @@ object Users {
   def findParentOf(cid: ObjectId) = Mongo("ParentChild").findOne(Map("childId" -> cid)) map (grater[ParentChild].asObject(_))
   def findChildOf(pid: ObjectId) = Mongo("ParentChild").findOne(Map("parentId" -> pid)) map (grater[ParentChild].asObject(_))
 
-  def findUserLinksTo (wid:WID) = Mongo("UserWiki").find (Map("wid.name" -> wid.name, "wid.cat" -> wid.cat)).map (grater[UserWiki].asObject(_))
-  def findUserLinksToCat (cat:String) = Mongo("UserWiki").find (Map("wid.cat" -> cat)).map (grater[UserWiki].asObject(_))
-  
-  def create(ug: UserGroup) = Mongo ("UserGroup") += grater[UserGroup].asDBObject(Audit.create(ug))
+  def findUserLinksTo(wid: WID) = Mongo("UserWiki").find(Map("wid.name" -> wid.name, "wid.cat" -> wid.cat)).map(grater[UserWiki].asObject(_))
+  def findUserLinksToCat(cat: String) = Mongo("UserWiki").find(Map("wid.cat" -> cat)).map(grater[UserWiki].asObject(_))
+
+  def create(ug: UserGroup) = Mongo("UserGroup") += grater[UserGroup].asDBObject(Audit.create(ug))
 
   def group(name: String) = Mongo("UserGroup").findOne(Map("name" -> name)) map (grater[UserGroup].asObject(_))
 
-  def create(r: Task) = (Mongo ("Task") += grater[Task].asDBObject(Audit.create(r)))
+  def create(r: Task) = (Mongo("Task") += grater[Task].asDBObject(Audit.create(r)))
 }
 
 case class Task(name: String, desc: String)
 
 case class UserTask(userId: ObjectId, name: String) {
   def desc = Mongo("Task").findOne(Map("name" -> name)) map (grater[Task].asObject(_)) map (_.desc) getOrElse "?"
-  def create = Mongo ("UserTask") += grater[UserTask].asDBObject(Audit.create(this))
+  def create = Mongo("UserTask") += grater[UserTask].asDBObject(Audit.create(this))
 
   def delete = {
     Audit.delete(this);
-    Mongo ("UserTask").m.remove(Map("userId" -> userId, "name" -> name))
+    Mongo("UserTask").m.remove(Map("userId" -> userId, "name" -> name))
   }
 }
 

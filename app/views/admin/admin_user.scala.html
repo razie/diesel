@@ -23,8 +23,7 @@
 
 @user.toString
 <p>
-@user match {
-  case Some(u) => {
+@user.map {u=>
 <br>userName:@u.userName
 <br>firstName:@u.firstName
 <br> lastName:@u.lastName
@@ -35,7 +34,6 @@
 <br>  status: @u.status
 <br>  roles: @u.roles
 <br>  _id: @u.id
-  }
 }
 <p>
 @user.map(_.profile)
@@ -52,6 +50,7 @@
 </ul>
     <hr>
 
+<a href="/admin/user/@user.get.id/su">SU</a> | 
 <a href="/admin/user/@user.get.id/delete1">DELETE</a> | 
 @if(user.isDefined) {
 @if('a' == user.get.status) {
@@ -63,7 +62,7 @@
 | 
       @helper.form(action=routes.Admin.uperm(user.get.id), 'class->"well form-inline") {
         <input type="text" class="input-xlarge" name="perm" placeholder="+Perm">
-        <button type="submit" class="btn">±Perm</button>
+        <button type="submit" class="btn">+/-Perm</button>
       }
 
     <hr>

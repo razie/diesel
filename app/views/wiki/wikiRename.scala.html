@@ -33,8 +33,8 @@
       <a href="@controllers.Wiki.w(wid)" class="btn">Nah</a>
   </div>
   
-  @if(myForm.globalError.isDefined) {
-     <br><br><b>@myForm.globalError.get.message</b>
+  @myForm.globalError.map { err=>
+     <p style="color:red;font-weight:bold">@err.message</p>
   } 
   
   <br><small>By updating this page, you agree to the <a href="@controllers.Wiki.w("Terms of Service")Wiki.w("Terms of Service")">Terms of Service</a></small>

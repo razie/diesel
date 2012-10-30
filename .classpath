@@ -105,5 +105,8 @@
 	<classpathentry kind="lib" path="lib_managed/jars/org.scala-tools/scala-stm_2.9.1/scala-stm_2.9.1-0.5.jar"/>
 	<classpathentry kind="lib" path="lib_managed/jars/org.specs2/specs2_2.9.1/specs2_2.9.1-1.9.jar"/>
 	<classpathentry kind="lib" path="lib_managed/jars/play/templates_2.9.1/templates_2.9.1-2.0.3.jar"/>
+	<classpathentry kind="lib" path="lib_managed/bundles/org.scalaz/scalaz-core_2.9.2/scalaz-core_2.9.2-7.0.0-M3.jar"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/scripster"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/lightsoa"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

@@ -10,7 +10,7 @@
         <span class="icon-bar"></span>
       </a>
 
-      <a class="brand" href="@url.getOrElse("/")">
+      <a class="rkbrand" href="@url.getOrElse("/")">
         <img class="rklogo" src="@logo.getOrElse(routes.Assets.at("images/racerKids-small.gif"))" height="32" width="152"></img>
       </a>
 
@@ -45,7 +45,11 @@
           }
   
           case None => { 
-            <li><a href="@routes.Profile.doeJoin">Join</a></li>
+            @if(!isSite) {
+              <li><a href="http://@_root_.admin.Config.hostport/doe/join">Join</a></li>
+            } else {
+              <li><a href="http://@_root_.admin.Config.hostport/wiki/Admin:Join_A_Club">Join</a></li>
+            }
           }
         } 
       </ul>

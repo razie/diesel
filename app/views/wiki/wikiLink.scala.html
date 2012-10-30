@@ -3,7 +3,7 @@
 @import helper.twitterBootstrap._
 
 @how() = @{
-  Wikis.category(to.cat).flatMap(_.tags.get("roles:"+from.cat)) match {
+  Wikis.category(to.cat).flatMap(_.contentTags.get("roles:"+from.cat)) match {
     case Some(s) => {
       s.split(",").filter(x => ! Array("Owner","Admin").contains(x)).map(x=>(x,x)).toSeq
     }
@@ -57,8 +57,8 @@
      <input type="hidden" name="comment" value="">
     }
 
-    @if(myForm.globalError.isDefined) {
-     <br><br><b>@myForm.globalError.get.message</b>
+    @myForm.globalError.map { err=>
+     <p style="color:red;font-weight:bold">@err.message</p>
   } 
 
     <div class="actions">
@@ -73,8 +73,8 @@
     }
   </div>
   
-  @if(myForm.globalError.isDefined) {
-     <br><br><b>@myForm.globalError.get.message</b>
+  @myForm.globalError.map { err=>
+     <p style="color:red;font-weight:bold">@err.message</p>
   } 
   
   <br><small>By updating this page, you agree to the <a href="@controllers.Wiki.w("Terms of Service")">Terms of Service</a></small>

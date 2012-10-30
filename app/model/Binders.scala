@@ -21,12 +21,13 @@ object Binders {
       for {
         cat  <- sBinder.bind(key + ".cat", params)
         name <- sBinder.bind(key + ".name", params)
+        section <- sBinder.bind(key + ".section", params)
       } yield {
         val p = sBinder.bind(key + ".p", params)
         (cat, name) match {
           case (Right(c), Right(n)) => p match {
-            case Some(Right(pp)) => Right(WID(c, n, Some(new ObjectId(pp))))
-            case _ => Right(WID(c, n))
+            case Some(Right(pp)) => Right(WID(c, n, Some(new ObjectId(pp)), section.fold((x=>None), Some(_))))
+            case _ => Right(WID(c, n, None, section.fold((x=>None), Some(_))))
           }
           case _ => Left("Unable to bind bounds")
         }
@@ -36,6 +37,7 @@ object Binders {
     def unbind(key: String, wid: model.WID) =
       key+".cat=" + wid.cat + "&" + 
       key+".name=" + wid.name + "&" + 
+      key+".section=" + wid.section + "&" + 
       wid.parent.map(pp=>key+".p=" + pp.toString).getOrElse("")
    }
 

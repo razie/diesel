@@ -1184,7 +1184,8 @@ select:focus:required:invalid:focus {
 }
 .help-block,
 .help-inline {
-  color: #9da2a7;
+  #color: #9da2a7;
+  color: red;
 }
 .help-block {
   display: block;
