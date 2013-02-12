@@ -1,4 +1,4 @@
-@(user:Option[model.User], mobile:Boolean = false, barTitle: String="Bar Title", logo:Option[String]=None, url:Option[String]=Some("/"), isSite:Boolean=false)
+@(user:Option[model.User], mobile:Boolean = false, barTitle: String="Bar Title", logo:Option[String]=None, url:Option[String]=Some("/"), isSite:Boolean=false, club:String="")
 
 <div class="navbar navbar-fixed-top">
   <div class="navbar-inner">
@@ -48,7 +48,7 @@
             @if(!isSite) {
               <li><a href="http://@_root_.admin.Config.hostport/doe/join">Join</a></li>
             } else {
-              <li><a href="http://@_root_.admin.Config.hostport/wiki/Admin:Join_A_Club">Join</a></li>
+              <li><a href="http://@_root_.admin.Config.hostport/wiki/Admin:Join_A_Club@club">Join</a></li>
             }
           }
         } 

@@ -1,3 +1,7 @@
+@**************
+debug a wiki page
+**************@
+
 @(wid:model.WID, iname:Option[String], page:Option[model.WikiEntry], user:Option[model.User])
 @import model._
 
@@ -109,9 +113,8 @@
           @wiki.wikiFrag(WID("Admin","Right"),user,true)
       </div>
 
-      </div> <!-- row -->
+  </div> <!-- row -->
+</div> <!-- /container -->
 
-    </div> <!-- /container -->
-
-    @htmlBottom()
+@htmlBottom()
     

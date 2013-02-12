@@ -160,5 +160,12 @@ If you got this message in error, please describe the issue in a <a href="/doe/s
   def clientIp(implicit request: Request[_]) =
     request.headers.get("X-Forwarded-For").getOrElse(request.headers.get("RemoteIP").getOrElse("x.x.x.x"))
 
+  protected def forActiveUser[T](body: model.User => play.api.mvc.SimpleResult[_])(implicit request: Request[_]) = {
+    (for (
+      au <- auth;
+      isA <- checkActive(au)
+    ) yield body(au)) getOrElse unauthorized("Oops - how did you get here?")
+  }
+
   val HOME = WID("Admin", "home")
 }

@@ -43,6 +43,16 @@ object Profile extends RazController with Logging {
       "parentEmail" -> text.verifying("Wrong format!", vldEmail(_)).verifying("Invalid characters", vldSpec(_)))(Email.apply)(Email.unapply)
   }
 
+  val prefsForm = Form {
+    tuple(
+      "css" -> nonEmptyText.verifying("Wrong value!", Array("dark", "light").contains(_)).verifying("Invalid characters", vldSpec(_)),
+      "favQuote" -> text.verifying("Invalid characters", vldSpec(_))) verifying
+      ("Password mismatch - please type again", { t: (String, String) =>
+        val (css, favQuote) = t
+        true
+      })
+  }
+
   val registerForm = Form {
     mapping(
       "email" -> nonEmptyText.verifying("Wrong format!", vldEmail(_)).verifying("Invalid characters", vldSpec(_)),
@@ -152,7 +162,11 @@ object Profile extends RazController with Logging {
   }
 
   // join step 1
-  def doeJoin = Action { Ok(views.html.join(registerForm)).withSession("gaga" -> System.currentTimeMillis.toString) } // continue with register()
+  def doeJoin(club: String, role: String, next: String) = Action {
+    Ok(views.html.join(registerForm)).withSession(
+      "gaga" -> System.currentTimeMillis.toString,
+      "extra" -> "%s,%s,%s".format(club, role, next))
+  } // continue with register()
 
   def doeJoinWith(email: String) = Action {
     log("joinWith email=" + email)
@@ -162,7 +176,8 @@ object Profile extends RazController with Logging {
   // join step 2 - submited email/pass form
   def doeJoin2 = Action { implicit request =>
     registerForm.bindFromRequest.fold(
-      formWithErrors => BadRequest(views.html.join(formWithErrors)).withSession("gaga" -> System.currentTimeMillis.toString),
+      formWithErrors => BadRequest(views.html.join(formWithErrors)).withSession("gaga" -> System.currentTimeMillis.toString,
+        "extra" -> session.apply("extra")),
       {
         case reg @ model.Registration(e, p, r) => {
           val g = try {
@@ -176,7 +191,7 @@ object Profile extends RazController with Logging {
               // this is de-activated, password is now required
               registerEmailOnly(reg)
             else
-              login(reg)
+              login(reg, session.apply("extra"))
           } else {
             Msg2("Session expired - You could try again", Some("/doe/join")).withNewSession
           }
@@ -184,9 +199,10 @@ object Profile extends RazController with Logging {
       })
   }
 
-  def updateUser(old: User, newU: User)(implicit request: Request[_]) {
+  def updateUser(old: User, newU: User)(implicit request: Request[_]) = {
     old.update(newU)
     RazController.cleanAuth(Some(newU))
+    newU
   }
 
   def registerEmailOnly(reg: Registration) = {
@@ -196,8 +212,8 @@ object Profile extends RazController with Logging {
   }
 
   /** login or start registration */
-  def login(reg: model.Registration) = {
-          // TODO optimize - we lookup users twice on login
+  def login(reg: model.Registration, extra: String) = {
+    // TODO optimize - we lookup users twice on login
     Users.findUser(Enc(reg.email)) orElse (Users.findUserNoCase(reg.email)) match {
       case Some(u) =>
         if (Enc(reg.password) == u.pwd) {
@@ -206,10 +222,10 @@ object Profile extends RazController with Logging {
           Redirect("/").withSession("connected" -> Enc.toSession(u.email))
         } else {
           u.auditLoginFailed
-          Redirect(routes.Profile.doeJoin).withNewSession
+          Redirect(routes.Profile.doeJoin()).withNewSession
         }
       case None => // capture basic profile and create profile
-        Redirect(routes.Profile.doeJoin3).flashing("email" -> reg.email, "pwd" -> reg.password)
+        Redirect(routes.Profile.doeJoin3).flashing("email" -> reg.email, "pwd" -> reg.password, "extra" -> extra)
       //getOrElse InternalServerError("Oops - cannot create this user...")
     }
   }
@@ -221,7 +237,7 @@ object Profile extends RazController with Logging {
         e <- flash.get("email");
         p <- flash.get("pwd")
       ) yield Ok(views.html.user.join3(crProfileForm.fill(
-        CrProfile("", "", 13, "", "racer", false, "", "")), auth)).withSession("pwd" -> p, "email" -> e)
+        CrProfile("", "", 13, "", "racer", false, "", "")), auth)).withSession("pwd" -> p, "email" -> e, "extra" -> flash.apply("extra"))
     } getOrElse
       unauthorized("Oops - how did you get here?").withNewSession
   }
@@ -233,7 +249,7 @@ object Profile extends RazController with Logging {
     resp.fold(
       formWithErrors => {
         warn("FORM ERR " + formWithErrors)
-        BadRequest(views.html.user.join3(formWithErrors, auth))
+        BadRequest(views.html.user.join3(formWithErrors, auth)).withSession("pwd" -> session.apply("pwd"), "email" -> session.apply("email"), "extra" -> session.apply("extra"))
       },
       {
         //  case class CrProfile (firstName:String, lastName:String, yob:Int, email:String, userType:String)
@@ -242,27 +258,37 @@ object Profile extends RazController with Logging {
             p <- session.get("pwd") orErr ("psession corrupted");
             e <- session.get("email") orErr ("esession corrupted");
             already <- (!Users.findUser(Enc(e)).isDefined) orCorr ("User already created" -> "patience, patience...");
-            u <- Some(User(System.currentTimeMillis.toString, f.trim, l.trim, y, Enc(e), Enc(p), 'a', Set(ut), (if (addr != null && addr.length > 0) Some(addr) else None)));
-            res <- // finally created a new account/profile
+            u <- Some(User(System.currentTimeMillis.toString, f.trim, l.trim, y, Enc(e), Enc(p), 'a', Set(ut), (if (addr != null && addr.length > 0) Some(addr) else None)))
+          ) yield {
+            // finally created a new account/profile
             if (u.under12) {
-              Some(Redirect(routes.Tasks.addParent1).withSession("ujson" -> u.toJson))
-            } else Api.createUser(u) map { x =>
+              Redirect(routes.Tasks.addParent1).withSession("ujson" -> u.toJson, "extra" -> session.apply("extra"))
+            } else {
+              Api.createUser(u)
+              val extra = session.get("extra")
               UserTasks.verifyEmail(u).create
               RegdEmail(u.email.dec).delete
+              // TODO why the heck am i sleeping?
               Thread.sleep(5000)
               SendEmail.withSession { implicit mailSession =>
-                val ret = Tasks.sendEmailVerif(u)
-                val uname = (u.firstName + (if(u.lastName.length>0)("." + u.lastName) else "")).replaceAll("[^a-zA-Z0-9\\.]",".").replaceAll("[\\.\\.]",".")
+                Tasks.sendEmailVerif(u)
+                val uname = (u.firstName + (if (u.lastName.length > 0) ("." + u.lastName) else "")).replaceAll("[^a-zA-Z0-9\\.]", ".").replaceAll("[\\.\\.]", ".")
                 Emailer.sendEmailUname(uname, u)
-                ret
               }
+
+              extra.map { x =>
+                val s = x split ","
+                if (s.size > 0 && s(0).length > 0) {
+                  Tasks.msgVerif(u, Some("/wikie/linkuser/Club:" + s(0) + "?wc=0"))
+                } else
+                  Tasks.msgVerif(u, Some("/"))
+              } getOrElse Tasks.msgVerif(u, Some("/"))
             }
-          ) yield res) getOrElse
-            {
-              error("ERR_CANT_UPDATE_USER " + session.get("email"))
-              unauthorized("Oops - cannot update this user - Please try again or send a suport request!").withNewSession
-            }
-      })
+          }) getOrElse {
+            error("ERR_CANT_UPDATE_USER " + session.get("email"))
+            unauthorized("Oops - cannot update this user - Please try again or send a suport request!").withNewSession
+          }
+      }) //fold
   }
 
   /** show profile **/
@@ -320,33 +346,62 @@ object Profile extends RazController with Logging {
       })
   }
 
+  def doeUpdPrefs = Action { implicit request =>
+    prefsForm.bindFromRequest.fold(
+      formWithErrors => BadRequest(views.html.user.userPreferences(formWithErrors, auth.get)),
+      {
+        case (css, favQuote) => forActiveUser { au =>
+          val u = updateUser(au, User(au.userName, au.firstName, au.lastName, au.yob, au.email, au.pwd, au.status, au.roles, au.addr, au.prefs ++
+            Seq("css" -> css, "favQuote" -> favQuote),
+            au._id))
+          Emailer.withSession { implicit mailSession =>
+            au.shouldEmailParent("Everything").map(parent => Emailer.sendEmailChildUpdatedProfile(parent, au))
+          }
+          Ok(views.html.user.userPreferences(prefsForm.fill((u.pref("css")("dark"), u.pref("favQuote")(""))), u))
+        }
+      })
+  }
+
+  def doePreferences = Action { implicit request =>
+    forActiveUser { au =>
+      Ok(views.html.user.userPreferences(prefsForm.fill((au.pref("css")("dark"), au.pref("favQuote")(""))), au))
+    }
+  }
+
+  // TODO
+  def doeUpdPref(name: String) = Action { implicit request =>
+    forActiveUser { au =>
+      Ok(views.html.user.profileHelp(au))
+    }
+  }
+
+  def doeHelp = Action { implicit request =>
+    forActiveUser { au =>
+      Ok(views.html.user.profileHelp(au))
+    }
+  }
+
   def doeUpdateProfile = Action { implicit request =>
     edProfileForm.bindFromRequest.fold(
       formWithErrors => BadRequest(views.html.user.edBasic(formWithErrors, auth.get)),
       {
         case u: User =>
-          (for (
-            au <- auth orErr ("not authenticated");
-            isA <- checkActive(au)
-          ) yield {
+          forActiveUser { au =>
             updateUser(au, User(au.userName, u.firstName, u.lastName, au.yob, au.email, au.pwd, au.status, au.roles, u.addr, au.prefs, au._id))
-            Emailer.withSession { implicit mailSession=>
+            Emailer.withSession { implicit mailSession =>
               au.shouldEmailParent("Everything").map(parent => Emailer.sendEmailChildUpdatedProfile(parent, au))
             }
             RazController.cleanAuth(Some(au))
             Redirect("/")
-          }) getOrElse
-            unauthorized("Oops - how did you get here?")
+          }
       })
   }
 
   // authenticated means doing a task later
   def doeChgPass = Action { implicit request =>
-    (for (
-      au <- auth;
-      isA <- checkActive(au)
-    ) yield Ok(views.html.user.edPassword(chgpassform, au))) getOrElse
-      unauthorized("Oops - how did you get here?")
+    forActiveUser { au =>
+    Ok(views.html.user.edPassword(chgpassform, au))
+  }
   }
 
   def doeChgPass2 = Action { implicit request =>
@@ -359,7 +414,7 @@ object Profile extends RazController with Logging {
             au <- auth orErr ("not authenticated");
             isA <- checkActive(au);
             pwdCorrect <- {
-              (if (Enc(o) == au.pwd || ("ADMIN"+au.pwd == o)) Some(true) else None) orErr ("Password incorrect!")
+              (if (Enc(o) == au.pwd || ("ADMIN" + au.pwd == o)) Some(true) else None) orErr ("Password incorrect!")
               // the second form is hack to allow me to reset it
             }
           ) yield {
@@ -375,7 +430,7 @@ object Profile extends RazController with Logging {
   def publicProfile = Action { implicit request =>
     (for (au <- auth) yield {
       if (WikiIndex.withIndex(_.get2(au.userName, WID("User", au.userName)).isDefined))
-        Redirect(routes.Wiki.show1("User", au.userName))
+        Redirect(controllers.Wiki.w(WID("User", au.userName)))
       else
         Redirect(routes.Wiki.wikieEdit(WID("User", au.userName)))
     }) getOrElse
@@ -396,11 +451,9 @@ object EdUsername extends RazController {
 
   // authenticated means doing a task later
   def step1 = Action { implicit request =>
-    (for (
-      au <- auth;
-      isA <- checkActive(au)
-    ) yield Ok(views.html.user.edUsername(chgusernameform.fill(au.userName, ""), au))) getOrElse
-      unauthorized("Oops - how did you get here?")
+    forActiveUser { au =>
+    Ok(views.html.user.edUsername(chgusernameform.fill(au.userName, ""), au))
+    }
   }
 
   def step2 = Action { implicit request =>
@@ -444,12 +497,12 @@ object EdUsername extends RazController {
           Profile.updateUser(u, User(newusername, u.firstName, u.lastName, u.yob, u.email, u.pwd, u.status, u.roles, u.addr, u.prefs, u._id))
           this dbop UserTasks.userNameChgDenied(u).delete
           Wikis.updateUserName(u.userName, newusername)
-            Emailer.withSession { implicit mailSession=>
+          Emailer.withSession { implicit mailSession =>
           }
-            Emailer.withSession { implicit mailSession=>
-          Emailer.sendEmailUnameOk(newusername, u)
-            }
-            RazController.cleanAuth(Some(u))
+          Emailer.withSession { implicit mailSession =>
+            Emailer.sendEmailUnameOk(newusername, u)
+          }
+          RazController.cleanAuth(Some(u))
 
           Msg("""
 Ok, username changed.
@@ -478,8 +531,8 @@ Ok, username changed.
         ) yield {
           // TODO transaction
           this dbop UserTasks.userNameChgDenied(u).create
-            Emailer.withSession { implicit mailSession=>
-          Emailer.sendEmailUnameDenied(newusername, u)
+          Emailer.withSession { implicit mailSession =>
+            Emailer.sendEmailUnameDenied(newusername, u)
           }
           Msg("""
 Ok, username notified
@@ -523,8 +576,8 @@ object EdEmail extends RazController {
         case (o, n) =>
           (for (
             au <- auth orCorr cNoAuth;
-            u <- Users.findUserById(userId) orErr ("user account not found");
             isA <- checkActive(au);
+            u <- Users.findUserById(userId) orErr ("user account not found");
             ok <- (au._id == u._id) orErr ("Not correct user")
           ) yield {
             val newu = User(u.userName, u.firstName, u.lastName, u.yob, n.enc, u.pwd, u.status, u.roles, u.addr, u.prefs, u._id)
@@ -532,10 +585,11 @@ object EdEmail extends RazController {
             val pro = newu.profile.getOrElse(newu.mkProfile)
             this dbop pro.update(pro.removePerm("+" + Perm.eVerified.s))
             this dbop UserTasks.verifyEmail(newu).create
-            Emailer.withSession { implicit mailSession=>
-            Tasks.sendEmailVerif(newu)
+            Emailer.withSession { implicit mailSession =>
+              Tasks.sendEmailVerif(newu)
+              Tasks.msgVerif(newu, None)
             }
-            }) getOrElse {
+          }) getOrElse {
             error("ERR_CANT_UPDATE_USER_EMAIL ")
             unauthorized("Oops - cannot update this user... ")
           }

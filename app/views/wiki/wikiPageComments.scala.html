@@ -23,11 +23,64 @@
       @Html(model.Wikis.format(page.map(_.wid).getOrElse(model.WID("?","?")), "md", c.content))
     </div>
     }
+@commentBar
     }
   }
 }
 
+
+@commentBar() = {
+  @if(user.isDefined) {
+    @if(page.map(_.isReserved).getOrElse(true)) {
+    } else {
+      @if(!user.get.canHasProfile) {
+      } else {
+        @if(!page.flatMap(_.contentTags.get("nocomments")).isDefined) {
+
+    <a href="@routes.Comment.vComment1(page.get._id.toString, "Wiki", {new com.mongodb.casbah.Imports.ObjectId().toString}, "text")" class="btn"><font style="color:orange">+</font>Comment</a>
+    <a href="@routes.Comment.vComment1(page.get._id.toString, "Wiki", {new com.mongodb.casbah.Imports.ObjectId().toString}, "video")" class="btn"><font style="color:orange">+</font>Video</a>
+    <a href="@routes.Comment.vComment1(page.get._id.toString, "Wiki", {new com.mongodb.casbah.Imports.ObjectId().toString}, "photo")" class="btn"><font style="color:orange">+</font>Photo</a>
+    <a href="@routes.Comment.vComment1(page.get._id.toString, "Wiki", {new com.mongodb.casbah.Imports.ObjectId().toString}, "slideshow")" class="btn"><font style="color:orange">+</font>Slideshow</a>
+    
+    &nbsp;&nbsp;
+    
+          }
+        } 
+      } 
+    } else {
+  }
+}
+
+
+  @if(user.isDefined) {
+    @if(page.map(_.isReserved).getOrElse(true)) {
+      You can't comment on reserved pages, sorry!
+    } else {
+      @if(!user.get.canHasProfile) {
+        You can't comment on public pages, sorry!
+      } else {
+        @if(!page.flatMap(_.contentTags.get("nocomments")).isDefined) {
+
+@commentBar
+
+@*************
+          @helper.form(action=routes.Comment.add(page.get._id.toString,"Wiki",{new com.mongodb.casbah.Imports.ObjectId().toString}), 'class->"well form-inline") {
+            <label>Add a new comment </label><br>
+            <textarea id="content" class="span6" name="content" placeholder="content" rows="5"></textarea>
+            <button type="submit" class="btn btn-primary" onclick="$(this).addClass('disabled');">Now</button>
+            <a href="/wiki/Admin:Adding_a_Comment" class="btn btn-mini btn-info">?</a>
+            }
+**********@
+
+          }
+        } 
+      } 
+    } else {
+      You need to <a href="/doe/join">log in</a> to post a comment, sorry!
+  }
+    
 @comments(page.flatMap(p=>model.Comments.findForWiki(p._id)))
+
 
 @*********
 ain't working...
@@ -45,25 +98,3 @@ ain't working...
   </div>
 </div>
 **********@
-
-  @if(user.isDefined) {
-    @if(page.map(_.isReserved).getOrElse(true)) {
-      You can't comment on reserved pages, sorry!
-    } else {
-      @if(!user.get.canHasProfile) {
-        You can't comment on public pages, sorry!
-      } else {
-        @if(!page.flatMap(_.contentTags.get("nocomments")).isDefined) {
-          @helper.form(action=routes.Comment.add(page.get._id.toString,"Wiki",{new com.mongodb.casbah.Imports.ObjectId().toString}), 'class->"well form-inline") {
-            <label>Add a new comment </label><br>
-            <textarea id="content" class="span6" name="content" placeholder="content" rows="5"></textarea>
-            <button type="submit" class="btn btn-primary" onclick="$(this).addClass('disabled');">Now</button>
-            <a href="/wiki/Admin:Adding_a_Comment" class="btn btn-mini btn-info">?</a>
-            }
-          }
-        } 
-      } 
-    } else {
-      You need to <a href="/doe/join">log in</a> to post a comment, sorry!
-  }
-    

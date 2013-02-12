@@ -1,14 +1,14 @@
-@(name:String, cols:Seq[(String,String)], criteria:Option[Map[String,Any]]=None, sortby:Option[String]=None, func:Option[(com.mongodb.casbah.Imports.DBObject,String,String)=>Html] = None)
-
-@import com.mongodb.casbah.Imports._
-@import org.joda.time.DateTime
-
 @*********
 FRAGMENT create a html table from a Mongo table 
 name = mongo collection name
 cols = (key,label)
 @func.map(_.apply(db, k, (if(db.get(k)==null) null else db.get(k).toString))).getOrElse(db.get(k))
 *********@
+
+@(name:String, cols:Seq[(String,String)], criteria:Option[Map[String,Any]]=None, sortby:Option[String]=None, func:Option[(com.mongodb.casbah.Imports.DBObject,String,String)=>Html] = None)
+
+@import com.mongodb.casbah.Imports._
+@import org.joda.time.DateTime
 
 @col() = @{
   model.Mongo(name).m

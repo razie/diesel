@@ -36,7 +36,9 @@ object Enc {
   def apply(orig: String) = new CipherCrypt().encrypt(orig)
   def unapply(encoded: String): Option[String] = Some(new CipherCrypt().decrypt(encoded))
 
+  /** url encode */
   def toUrl(orig: String) = URLEncoder.encode(orig, "UTF8")
+  /** url decode */
   def fromUrl(orig: String) = URLDecoder.decode(orig, "UTF8")
   
   def toSession(orig: String) = orig.replaceAll("-", "RAZIEDASH")

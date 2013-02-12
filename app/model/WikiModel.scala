@@ -167,8 +167,8 @@ case class WikiEntryOld(
 }
 
 /** a wiki id, a pair of cat and name */
-case class WID(cat: String, name: String, parent: Option[ObjectId] = None, section:Option[String]=None) {
-  override def toString = cat + ":" + name + (section.map("#"+_).getOrElse("")) + parent.map(" of " + _.toString).getOrElse("")
+case class WID(cat: String, name: String, parent: Option[ObjectId] = None, section: Option[String] = None) {
+  override def toString = "[[" + wpath + "]]" //cat + ":" + name + (section.map("#"+_).getOrElse("")) + parent.map(" of " + _.toString).getOrElse("")
   def grated = grater[WID].asDBObject(this)
   def findParent = parent flatMap (p => Wikis.find(p))
 
@@ -176,28 +176,57 @@ case class WID(cat: String, name: String, parent: Option[ObjectId] = None, secti
 
   def page = Wikis.find(this)
   def findId = Wikis.find(this).map(_._id) // TODO optimize with cache lookup
-  
+
   /** format into nice url */
-  def wpath: String = findParent.map(_.wid.wpath + "/").getOrElse("") + (if (cat != null && cat.length > 0) (cat + ":") else "") + name + (section.map("#"+_).getOrElse("")) 
+  def wpath: String = findParent.map(_.wid.wpath + "/").getOrElse("") + (if (cat != null && cat.length > 0) (cat + ":") else "") + name + (section.map("#" + _).getOrElse(""))
   def formatted = WID(cat, Wikis.formatName(this), parent, section)
+  
+  /** helper to get a label, if defined or the default provided */
+  def label (id:String, alt:String) = WikiDomain.labelFor(this, id).getOrElse(alt)
+  def label (id:String) = WikiDomain.labelFor(this, id).getOrElse(id)
 }
+
+/** a special command wid, contains a command, what and wid - used in routes */
+case class CMDWID(wpath:Option[String], wid:Option[WID], cmd: String, rest:String)
 
 object WID {
   private val REGEX = """([^/:\]]*[:])?([^#|\]]+)(#[^|\]]+)?""".r
+
+//  def apply (cat: String, name: String, parent: Option[ObjectId] = None, section: Option[String] = None) = 
+//    new WID(cat, name, parent, section)
+    
+    private def widFromSeg(a: Array[String]) = {
+      val w = a.map { x =>
+        x match {
+          case REGEX(c, n, s) => WID((if (c == null) "" else c).replaceFirst(":", ""), n, None, Option(s).filter(_.length > 1).map(_.substring(1)))
+          case _ => UNKNOWN
+        }
+      }
+      val res = w.foldLeft[Option[WID]](None)((x, y) => Some(WID(y.cat, y.name, x.flatMap(_.findId), y.section)))
+      res
+    }
 
   def fromPath(path: String): Option[WID] = {
     if (path == null || path.length() == 0)
       None
     else {
       val a = path.split("/")
-      val w = a.map { x =>
-        x match {
-          case REGEX(c, n, s) => WID((if (c == null) "" else c).replaceFirst(":", ""), n, None, Option(s).filter(_.length>1).map(_.substring(1)))
-          case _ => UNKNOWN
-        }
+      widFromSeg(a)
+    }
+  }
+  
+  def cmdfromPath(path: String): Option[CMDWID] = {
+    if (path == null || path.length() == 0)
+      None
+    else {
+      if (path contains "/xp/") {
+        val b = path split "/xp/"
+        val a = b.head split "/"
+        Some(CMDWID(b.headOption, widFromSeg(a), "xp", b.tail.headOption.getOrElse ("")))
+      } else {
+        val a = path split "/"
+        Some(CMDWID(Some(path), widFromSeg(a), "", ""))
       }
-      val res = w.foldLeft[Option[WID]](None)((x, y) => Some(WID(y.cat, y.name, x.flatMap(_.findId), y.section)))
-      res
     }
   }
 
@@ -373,7 +402,15 @@ object Wikis {
 
       val INCLUDE = """(?<!`)\[\[include:([^\]]*)\]\]""".r
       c2 = INCLUDE.replaceAllIn(c2, { m =>
-        WID.fromPath(m.group(1)).flatMap(_.page).map(_.content).getOrElse("[ERR Can't include $1]")
+        (for (
+            wid <- WID.fromPath(m.group(1));
+            p <- wid.page) yield {
+          if(wid.section.isDefined) {
+            println(p.sections)
+            wid.section.flatMap(p.section("section", _)).map(_.content).getOrElse("[ERR section %s not found]".format(wid.wpath))
+          } else
+            p.content
+        }).getOrElse("[ERR Can't include $1]")
       })
 
       (for (
@@ -389,7 +426,7 @@ object Wikis {
       var content = preprocess(wid, markup, noporn(icontent)).s
 
       // run scripts
-//      val S_PAT = """<code>\{\{(call):([^#}]*)#([^}]*)\}\}</code>""".r
+      //      val S_PAT = """<code>\{\{(call):([^#}]*)#([^}]*)\}\}</code>""".r
       val S_PAT = """`\{\{(call):([^#}]*)#([^}]*)\}\}`""".r
 
       content = S_PAT replaceSomeIn (content, { m =>
@@ -436,22 +473,24 @@ object Wikis {
 
     // run scripts
 
-//    val S_PAT = """<code>\{\{(call):([^#}]*)#([^}]*)\}\}</code>""".r
-//
-//    res = S_PAT replaceSomeIn (res, { m =>
-//      try {
-//        val pageWithScripts = WID.fromPath(m group 2).flatMap(x => model.Wikis.find(x)).orElse(we)
-//        pageWithScripts.flatMap(_.scripts.find(_.name == (m group 3))).filter(_.checkSignature).map(s => runScript(s.content, we))
-//        //        Some("xx")
-//      } catch { case _ => Some("!?!") }
-//    })
+    //    val S_PAT = """<code>\{\{(call):([^#}]*)#([^}]*)\}\}</code>""".r
+    //
+    //    res = S_PAT replaceSomeIn (res, { m =>
+    //      try {
+    //        val pageWithScripts = WID.fromPath(m group 2).flatMap(x => model.Wikis.find(x)).orElse(we)
+    //        pageWithScripts.flatMap(_.scripts.find(_.name == (m group 3))).filter(_.checkSignature).map(s => runScript(s.content, we))
+    //        //        Some("xx")
+    //      } catch { case _ => Some("!?!") }
+    //    })
 
     res
   }
 
+  
   private def runScript(s: String, page: Option[WikiEntry]) = {
     val up = razie.NoStaticS.get[model.User]
-    WikiScripster.runScript(s, page, up)
+    val q  = razie.NoStaticS.get[model.QueryParms]
+    WikiScripster.runScript(s, page, up, q.map(_.q.map(t=>(t._1, t._2.mkString))).getOrElse(Map()))
   }
 
   def noporn(s: String) = porn.foldLeft(s)((x, y) => x.replaceAll("""\b%s\b""".format(y), "BLIP"))
@@ -566,6 +605,9 @@ object WikiDomain {
     model.Wikis.category(cat).exists(_.contentTags.exists { t =>
       t._1.startsWith("roles:") && t._2.split(",").contains("Parent")
     })
+
+  def labelFor(wid: WID, action: String) = Wikis.category(wid.cat) flatMap (_.contentTags.get("label." + action))
+
 }
 
 object WikiScripster {
@@ -578,12 +620,13 @@ object WikiScripster {
     wikiCtx.get
   }
 
-  def runScript(s: String, page: Option[WikiEntry], user: Option[User]) = synchronized {
+  def runScript(s: String, page: Option[WikiEntry], user: Option[User], query:Map[String,String]) = synchronized {
     import razie.base.scriptingx.ScalaScriptContext;
     import razie.base.scriptingx._
 
-    api.wix.page = page
-    api.wix.user = user
+    api.wix.page  = page
+    api.wix.user  = user
+    api.wix.query = query
 
     try {
       val res = (ScalaScript(s).interactive(ctx) getOrElse "?").toString
@@ -597,3 +640,5 @@ object WikiScripster {
     }
   }
 }
+
+case class QueryParms (q:Map[String,Seq[String]])

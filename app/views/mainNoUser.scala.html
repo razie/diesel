@@ -11,12 +11,12 @@
 
         <div class="row">
           <div class="span6">
-            <h1>@salutation, @joe! <small><a href="@routes.Profile.doeJoin">not @joe?</a></small></h1>
+            <h1>@salutation, @joe! <small><a href="@routes.Profile.doeJoin()">not @joe?</a></small></h1>
             <br>
 
             @wiki.wikiFragInt("Admin:page-index", None)
 
-<p><a class="btn btn-primary btn-large" href="@routes.Profile.doeJoin">Join &raquo;</a>
+<p><a class="btn btn-primary btn-large" href="@routes.Profile.doeJoin()">Join &raquo;</a>
 <p><a class="btn btn-inverse btn-large" href="@routes.Application.doeSpin">Take me for a spin &raquo;</a>
    <a class="btn btn-danger btn-large" href="http://500px.com/editors">Nah, checkout some cool pix &raquo;</a></p>
           </div>

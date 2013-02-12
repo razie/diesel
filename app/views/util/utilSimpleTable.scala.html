@@ -1,13 +1,13 @@
-@(col:Iterator[Map[String,String]], cols:Seq[(String,String)], func:Option[(Map[String,String],String,String)=>Html] = None)
-
-@import com.mongodb.casbah.Imports._
-@import org.joda.time.DateTime
-
 @*********
 FRAGMENT create a html table from a user collection
 cols = (key,label)
 @func.map(_.apply(row, k, (if(db.get(k)==null) null else db.get(k).toString))).getOrElse(db.get(k))
 *********@
+
+@(col:Iterator[Map[String,String]], cols:Seq[(String,String)], func:Option[(Map[String,String],String,String)=>Html] = None)
+
+@import com.mongodb.casbah.Imports._
+@import org.joda.time.DateTime
 
 <hr>
 

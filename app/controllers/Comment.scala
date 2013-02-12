@@ -7,69 +7,75 @@ import model.User
 import model.Wikis
 import model._
 import play.api.data.Form
-import play.api.data.Forms.mapping
-import play.api.data.Forms.nonEmptyText
+import play.api.data.Forms._
 import play.api.mvc.Action
 import razie.Logging
 import admin.Corr
 
 object Comment extends RazController with Logging {
-  case class Habibi(s: String)
   val commentForm = Form {
-    mapping(
-      "content" -> nonEmptyText.verifying("Obscenity filter", !Wikis.hasporn(_)))(Habibi.apply)(Habibi.unapply)
+    tuple(
+      "link" -> text.verifying("Obscenity filter", !Wikis.hasporn(_)),
+      "content" -> text.verifying("Obscenity filter", !Wikis.hasporn(_)))
   }
 
   /** add a comment **/
-  def add(topic: String, what: String, oid: String) = Action { implicit request =>
+  def add(topicId: String, what: String, oid: String) = Action { implicit request =>
     implicit val errCollector = new VError()
     commentForm.bindFromRequest.fold(
       formWithErrors =>
-        Msg2(formWithErrors.toString + "Hein?", Some("/wiki/id/" + topic)),
+        Msg2(formWithErrors.toString + "Hein?", Some("/wiki/id/" + topicId)),
       {
-        case Habibi(content) =>
-          (for (
-            au <- auth orCorr cNoAuth;
-            isA <- checkActive(au);
-            w <- Wikis.findById(topic) orErr "Wiki topic not found"
-          ) yield {
-            val cs = model.Comments.findForWiki(new ObjectId(topic)).getOrElse(CommentStream(new ObjectId(topic), "Wiki").create)
-            if (!cs.isDuplo(oid)) {
-              cs.addComment(au, content, oid)
-              // TODO send email to parent if kid
-
-              admin.SendEmail.withSession { implicit mailSession =>
-                au.shouldEmailParent("Everything").map(parent => Emailer.sendEmailChildCommentWiki(parent, au, w.wid))
-
-                // email creator and all other commenters
-                Wikis.findById(topic).map { w =>
-                  (Users.findUserById(w.by).map(_._id).toList ++ cs.comments.map(_.userId)).distinct.filter(_ != au._id).map(uid =>
-                    Users.findUserById(uid).map(u => Emailer.sendEmailNewComment(u, au, w.wid)))
-                }
-              }
-            } else log("ERR_DUPLO_COMMENT")
-            Redirect(routes.Wiki.showId(topic))
-          }) getOrElse {
-            Unauthorized("Oops - cannot add comment... " + errCollector.mkString)
-          }
+        case (link, content) => iadd(topicId, what, oid, None, content).apply(request)
       })
   }
 
-  def reply(topic: String, what: String, replyId: String, oid: String) = Action { implicit request =>
+  def kopt (kind:String) = if(Array ("video","photo","slideshow") contains kind) Some(kind) else None 
+  
+  /** add a comment **/
+  private def iadd(topicId: String, kind: String, oid: String, link:Option[String], content: String) = Action { implicit request =>
+    implicit val errCollector = new VError()
+    (for (
+      au <- auth orCorr cNoAuth;
+      isA <- checkActive(au);
+      w <- Wikis.findById(topicId) orErr "Wiki topic not found"
+    ) yield {
+      val cs = model.Comments.findForWiki(new ObjectId(topicId)).getOrElse(CommentStream(new ObjectId(topicId), "Wiki").create)
+      if (!cs.isDuplo(oid)) {
+        cs.addComment(au, content, oid, link, kopt(kind))
+        // TODO send email to parent if kid
+
+        admin.SendEmail.withSession { implicit mailSession =>
+          au.shouldEmailParent("Everything").map(parent => Emailer.sendEmailChildCommentWiki(parent, au, w.wid))
+
+          // email creator and all other commenters
+          Wikis.findById(topicId).map { w =>
+            (Users.findUserById(w.by).map(_._id).toList ++ cs.comments.map(_.userId)).distinct.filter(_ != au._id).map(uid =>
+              Users.findUserById(uid).map(u => Emailer.sendEmailNewComment(u, au, w.wid)))
+          }
+        }
+      } else log("ERR_DUPLO_COMMENT")
+      Redirect(routes.Wiki.showId(topicId))
+    }) getOrElse {
+      Unauthorized("Oops - cannot add comment... " + errCollector.mkString)
+    }
+  }
+
+  def reply(topicId: String, what: String, replyId: String, oid: String) = Action { implicit request =>
     implicit val errCollector = new VError()
     commentForm.bindFromRequest.fold(
       formWithErrors =>
-        Msg2(formWithErrors.toString + "Hein?", Some("/wiki/id/" + topic)),
+        Msg2(formWithErrors.toString + "Hein?", Some("/wiki/id/" + topicId)),
       {
-        case Habibi(content) =>
+        case (link, content) =>
           (for (
             au <- auth orCorr cNoAuth;
             isA <- checkActive(au);
-            cs <- model.Comments.findForWiki(new ObjectId(topic)) orErr ("No comments for this page...");
+            cs <- model.Comments.findForWiki(new ObjectId(topicId)) orErr ("No comments for this page...");
             parent <- cs.comments.find(_._id.toString == replyId) orErr ("Can't find the comment to reply to...")
           ) yield {
-            cs.addComment(au, content, oid, Some(parent._id))
-            Redirect(routes.Wiki.showId(topic))
+            cs.addComment(au, content, oid, None, None, Some(parent._id))
+            Redirect(routes.Wiki.showId(topicId))
           }) getOrElse {
             Unauthorized("Oops - cannot add comment... " + errCollector.mkString)
           }
@@ -81,6 +87,15 @@ object Comment extends RazController with Logging {
     auth.exists(au => comm.userId == au._id || au.hasPerm(Perm.adminDb))
   }
 
+  private def split(content: String, kind: String) = {
+    if (content startsWith ("{{" + kind)) {
+      val pat = ("(?s)\\{\\{"+kind+" ([^}]*)\\}\\}(.*)").r
+      val pat(l,c) = content
+      (l,c)
+    } else 
+      ("", content)
+  }
+
   def edit(wid: WID, cid: String) = Action { implicit request =>
     implicit val errCollector = new VError()
 
@@ -90,31 +105,66 @@ object Comment extends RazController with Logging {
       comm <- Comments.findCommentById(cid) orErr ("bad comment id?");
       can <- canEdit(comm, auth) orErr ("can only edit your comments")
     ) yield {
-      Ok(views.html.comments.commEdit(wid, cid, commentForm.fill(Habibi(comm.content)), auth))
+      val (link, content) = split (comm.content, comm.kind.getOrElse("text"))
+      Ok(views.html.comments.commEdit(wid, cid, comm.kind.getOrElse("text"), commentForm.fill(link, content.trim), auth))
     }) getOrElse
       noPerm(WID("?", "?"))
   }
 
-  def save(wid: WID, cid: String) = Action { implicit request =>
+  def save(wid: WID, cid: String, kind: String) = Action { implicit request =>
     implicit val errCollector = new VError()
     commentForm.bindFromRequest.fold(
       formWithErrors => {
         log(formWithErrors.toString)
-        BadRequest(views.html.comments.commEdit(wid, cid, formWithErrors, auth))
+        BadRequest(views.html.comments.commEdit(wid, cid, kind, formWithErrors, auth))
       },
       {
-        case h @ Habibi(newcontent) =>
-          (for (
-            au <- auth orCorr cNoAuth;
-            isA <- checkActive(au);
-            comm <- Comments.findCommentById(cid) orErr ("bad comment id?");
-            can <- canEdit(comm, auth) orErr ("can only edit your comments")
-          ) yield {
-            comm.update(newcontent, au)
-            Redirect(controllers.Wiki.w(wid, false))
-          }) getOrElse
-            noPerm(WID("?", "?"))
+        case (newlink, newcontent) =>
+          val con = if (newlink.length <= 0) newcontent else {
+          (kind match {
+            case "video" => 
+              if ((newlink contains "<a href") || (newlink contains "<iframe")) newlink
+              else "{{video " + newlink + "}}"
+            case "photo" => 
+              if ((newlink contains "<a href") || (newlink contains "<img")) newlink
+              else "{{photo " + newlink + "}}"
+            case "slideshow" => 
+              if ((newlink contains "<a href") || (newlink contains "<iframe") || (newlink contains "<embed")) newlink
+              else "{{slideshow " + newlink + "}}"
+            case _ => ""
+          }) + (if(newcontent.trim.length > 0) ("\n\n"+newcontent.trim) else "")
+          }
+
+          Comments.findCommentById(cid) map { comm =>
+            (for (
+              au <- auth orCorr cNoAuth;
+              isA <- checkActive(au);
+              can <- canEdit(comm, auth) orErr ("can only edit your comments")
+            ) yield {
+              if (con.length > 0) comm.update(con, None, au)
+              Redirect(controllers.Wiki.w(wid, false))
+            }) getOrElse
+              noPerm(WID("?", "?"))
+          } getOrElse {
+            if (con.length > 0) iadd(wid.findId.get.toString, kind, cid, kopt(newlink), con).apply(request)
+            else  Redirect(controllers.Wiki.w(wid, false))
+          }
       })
+  }
+
+  /** start to add a video/photo comment **/
+  def vComment1(topic: String, what: String, oid: String, kind: String) = Action { implicit request =>
+    implicit val errCollector = new VError()
+    (for (
+      au <- auth orCorr cNoAuth;
+      isA <- checkActive(au);
+      w <- Wikis.findById(topic) orErr "Wiki topic not found"
+    //      comm <- Comments.findCommentById(cid) orErr ("bad comment id?");
+    //      can <- canEdit(comm, auth) orErr ("can only edit your comments")
+    ) yield {
+      Ok(views.html.comments.commEdit(w.wid, oid, kind, commentForm.fill("", ""), auth))
+    }) getOrElse
+      noPerm(WID("?", "?"))
   }
 
 }

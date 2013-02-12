@@ -1,25 +1,27 @@
+@***************
+display a message with navigation (next)
+***************@
+
 @(msg:String, next:Option[String], user:Option[model.User])
 
-   @htmlHead()
-
-   @navbar(user)
+@htmlHead()
+@navbar(user)
    
-    <div class="container">
+<div class="container">
+  <div class="well">
+  
+    <h3>@Html(model.Wikis.format(model.WID("?","?"), model.Wikis.MD, msg))</h3>
+    <br>
+    
+    @next.map { n=>
+      <a class="btn btn-primary btn-large" href="@n">Continue</a>
+     }
+  </div>
 
-      <!-- Main hero unit for a primary marketing message or call to action -->
-      <div class="well">
-        <h3>@Html(model.Wikis.format(model.WID("?","?"), model.Wikis.MD, msg))</h3>
-        <br>
-@next.map { n=>
-        <a class="btn btn-primary btn-large" href="@n">Continue</a>
-}
-      </div>
+  <hr>
+  @htmlFooter()
 
-      <hr>
+</div> <!-- /container -->
 
-      @htmlFooter()
-
-    </div> <!-- /container -->
-
-    @htmlBottom()
+@htmlBottom()
     

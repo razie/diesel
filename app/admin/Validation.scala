@@ -1,6 +1,7 @@
 package admin
 
 import razie.Logging
+import play.api.mvc.Request
 
 //=================== collecting errors 
 class VError(var err: List[Corr] = Nil) {
@@ -28,6 +29,11 @@ trait Validation extends Logging {
   def cNotMember (oname:String) = new Corr(
       "This is a club-members only topic and you are not a club member", 
       """You need to request membership in this club <a href="/wikie/linkuser/Club:%s?wc=0">%s</a>!""".format(oname,oname))
+  
+
+  def cNoQuotaUpdates = new Corr(
+      "You have exceeded your quota for now - awaiting review.", 
+      """You will be notified when your quota has been restored. If you think something is not right, please send a support request!""".format())
   
 
   def checkActive(au: model.User)(implicit errCollector: VError = IgnoreErrors) = toON2(au.isActive) orCorr (

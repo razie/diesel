@@ -48,4 +48,5 @@ class TestWiki extends FlatSpec with ShouldMatchers {
     "2012-October-14" === WikiParser.parseAll(WikiParser.date2, "October 14, 2012").get
   }
 
+  scala.math.min(3,5)
 }

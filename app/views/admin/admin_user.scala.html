@@ -33,6 +33,7 @@
 <br>  pwd: @u.pwd
 <br>  status: @u.status
 <br>  roles: @u.roles
+<br>  prefs: @u.prefs
 <br>  _id: @u.id
 }
 <p>
@@ -43,8 +44,8 @@
     <hr>
 <ul>Counts
 @user.map {u=>
-<li>  WikiEntry    count = @model.Mongo.db("WikiEntry").count(Map("by" -> u.id))
-<li>  WikiEntryOld count = @model.Mongo.db("WikiEntryOld").count(Map("entry.by" -> u.id))
+<li>  WikiEntry    count = @model.Mongo.db("WikiEntry").count(Map("by" -> u._id))
+<li>  WikiEntryOld count = @model.Mongo.db("WikiEntryOld").count(Map("entry.by" -> u._id))
 <li>  Comment count = @model.Mongo.db("Comment").count(Map("userId" -> u._id))
 }
 </ul>
@@ -65,18 +66,35 @@
         <button type="submit" class="btn">+/-Perm</button>
       }
 
-    <hr>
-<ul>Events
-@user.map {u=>
-  @model.Mongo.db("UserEvent").find(Map("userId" -> new ObjectId(u.id))).map {ue=>
-    <li> @ue.toString
+  <hr>
+  
+  <ul>Events
+  @user.map {u=>
+    @model.Mongo.db("UserEvent").find(Map("userId" -> new ObjectId(u.id))).map {ue=>
+      <li> @ue.toString
+    }
   }
-}
-</ul>
+  </ul>
 
-    <hr>
-    @htmlFooter()
+  <hr>
+    
+  <ul>Links
+  @user.map {u=>
+    @model.Mongo.db("UserWiki").find(Map("userId" -> new ObjectId(u.id))).map {ue=>
+      <li> @ue.toString
+    }
+  }
+  </ul>
 
-  </div> <!-- /container -->
+  <hr>
+    
+  Quota
+  <p>
+  @user.map(_.quota)
 
-  @htmlBottom()
+  <hr>
+  @htmlFooter()
+
+</div> <!-- /container -->
+
+@htmlBottom()

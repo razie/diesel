@@ -23,6 +23,7 @@ import admin.SendEmail
 import model.DoSec
 import model.WID
 import admin.MailSession
+import model.WikiEntry
 
 /** all emails sent by site */
 object Emailer extends RazController with Logging {
@@ -128,10 +129,16 @@ object Emailer extends RazController with Logging {
     SendEmail.send (to.email.dec, SUPPORT, RK+" - new comment posted", html1)
   }
 
-  def sendEmailNewTopic(to: User, commenter: User, wiki: WID)(implicit mailSession:MailSession ) = {
-    val html1 = text("newtopic").format(to.ename, commenter.userName, "http://" + Config.hostport + "/wiki/"+wiki.cat+":"+wiki.name, wiki.cat, wiki.name);
+  def sendEmailNewTopic(to: User, commenter: User, wiki: WID, wpost:WikiEntry)(implicit mailSession:MailSession ) = {
+    val html1 = text("newtopic").format(to.ename, commenter.userName, "http://" + Config.hostport + "/wiki/"+wiki.cat+":"+wiki.name, wiki.cat, wiki.name, wpost.label);
 
     SendEmail.send (to.email.dec, SUPPORT, RK+" - new "+wiki.cat+" created", html1)
+  }
+
+  def sendEmailNeedQuota(uId: String)(implicit mailSession:MailSession ) = {
+    val html1 = text("needquota").format(uId, "http://" + Config.hostport + "/admin/user/"+uId);
+
+    SendEmail.send (SUPPORT, SUPPORT, RK+" - NEEDS QUOTA", html1)
   }
 
   /** see SendEmail.withSession */

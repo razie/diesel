@@ -17,6 +17,14 @@ included in mainUserC as the right hand side info box
   {controllers.UserStuff.xp(user, "Calendar") \ UserStuff.Race \ "Venue" \@ "loc"}.filter(! _.isEmpty).map(_.replaceFirst("ll:",""))
 }
 
+@evBefore() = @{
+    user.events.filter(_._3.isBefore(DateTime.now))
+}
+  
+@evAfter() = @{
+    user.events.filter(_._3.isAfter(DateTime.now))
+}
+  
 <div class="span6">
     <div class="well">
 
@@ -40,10 +48,10 @@ included in mainUserC as the right hand side info box
       <b>No tasks.</b>
     }
     <p>
-    @if(user.events.filter(_._3.isBefore(DateTime.now)).size>0) {
+    @if(evBefore.size>0) {
       <b>Recent events:</b>
       <ul>
-      @for(t <- user.events.filter(_._3.isBefore(DateTime.now)).takeRight(3)) {
+      @for(t <- evBefore.takeRight(scala.math.max(3, 10-evAfter().size))) {
         <li>@Html(model.Wikis.formatWikiLink(t._1.wid,t._1.wid.name, t._2,Some(t._1.label))._1)
         @if(t._4.wid.name != null && t._4.wid.name.length>0) {
           at @Html(t._4.format._1)
@@ -54,17 +62,17 @@ included in mainUserC as the right hand side info box
     } else {
     }
     <p>
-    @if(user.events.filter(_._3.isAfter(DateTime.now)).size>0) {
+    @if(evAfter.size>0) {
       <b>Coming up:</b>
       <ul>
-      @for(t <- user.events.filter(_._3.isAfter(DateTime.now)).take(5)) {
+      @for(t <- evAfter.take(math.max(7, 10-evBefore().size))) {
         <li>@Html(model.Wikis.formatWikiLink(t._1.wid,t._1.wid.name,t._2,Some(t._1.label))._1)
         @if(t._4.wid.name != null  && t._4.wid.name.length>0) {
           at @Html(t._4.format._1)
         }
         </li>
       }
-    @if(user.events.filter(_._3.isAfter(DateTime.now)).size>5) {
+    @if(evAfter.size>7) {
       <li>...</li>
     }
       </ul>

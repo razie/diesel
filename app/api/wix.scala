@@ -13,6 +13,7 @@ object wix {
   // TODO don't use the actual classes but some dumbed-down read-only data-strippers
   var page: Option[WikiEntry] = None
   var user: Option[User] = None
+  var query: Map[String,String] = Map()
   
   def isUserRegistered = user exists (u=> page >>> (_.userWikis) exists (_.userId == u._id))
     

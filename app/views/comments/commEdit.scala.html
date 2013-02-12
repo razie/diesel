@@ -1,41 +1,90 @@
-@(wid:model.WID, cid:String, myForm:Form[controllers.Comment.Habibi], user:Option[model.User])
+@(wid:model.WID, cid:String, kind:String, myForm:Form[_], user:Option[model.User])
 
-   @htmlHead("Editing comment")
+@htmlHead("Editing comment")
 
-   @navbar(user)
-   
-    <div class="container">
+@navbar(user)
 
-        <div class="row">
-
+<div class="container">
+  <div class="row">
     <div class="span9">
 
-<div >
 @import helper.twitterBootstrap._
 
-        @helper.form(action=routes.Comment.save(wid, cid), 'class->"well form-inline") {
-  @helper.textarea(
-    myForm("content"), 
-    '_label -> "Edit comment", 
-    '_showConstraints -> false,
-    'class -> "span6",
-    'rows->15)
-          <button type="submit" class="btn btn-primary" onclick="$(this).addClass('disabled');">Now</button>
-          }
+@helper.form(action=routes.Comment.save(wid, cid, kind), 'class->"well form-inline") {
 
-      <hr>
+  @if(Array("video","photo","slideshow").contains(kind)) {
+  
+    @kind match {
+      case "video" => { Video: paste the link to the youtube video below }
+      case "photo" => { Photo: paste the link to the photo below }
+      case "slideshow" => { Slideshow: paste the link to the slideshow below }
+      }
+      
+    @helper.textarea(
+      myForm("link"), 
+      '_label -> "Edit link", 
+      '_showConstraints -> false,
+      'class -> "span6",
+      'rows->5)
+      
+    @helper.textarea(
+      myForm("content"), 
+      '_label -> "Edit comment", 
+      '_showConstraints -> false,
+      'class -> "span6",
+      'rows-> 5)
+      
+  } else {
+     <input type="hidden" name="link" value="">
 
-      @htmlFooter()
+    @helper.textarea(
+      myForm("content"), 
+      '_label -> "Edit comment", 
+      '_showConstraints -> false,
+      'class -> "span6",
+      'rows-> 15)
+  }
 
-    </div> <!-- /span9 -->
+  @myForm.globalError.map {err=>
+     <p style="color:red;font-weight:bold">@err.message</p>
+  } 
+  
+  <button type="submit" class="btn btn-primary" onclick="$(this).addClass('disabled');">Now</button>
+<p>  
+    @kind match {
+      case "video" => { 
+You have to upload the video to youtube and then find the link and paste it above. 
+Some of the advantages of youtube include converting between different formats, lower and higher resolutions, availability on many devices, rating system, integration with facebook etc...
+}
+      case "photo" => { 
+Find and paste here the link to the photo - make sure it is NOT a link to any page (should end in .jpg or like that). 
+It's best if the respective site has a "share" menu which can give you a link or a share code - just paste that here.
+You cannot share photos from facebook unfortunately, they don't allow that.
+}
+      case "slideshow" => { 
+Find and paste here the link to the slideshow.
+It's best if the respective site has a "share" menu which can give you a link or a share code - just paste that here.
+You cannot share photos from facebook unfortunately, they don't allow that.
+}
 
-      <div class="span3">
-          @wiki.wikiFrag(model.WID("Admin","Right"),user,true)
-      </div>
+      case _ => { 
+}
+      }
+      
+}
 
-      </div> <!-- row -->
+    <hr>
+    @htmlFooter(ads=true)
 
-    </div> <!-- /container -->
+  </div> <!-- /span9 -->
 
-    @htmlBottom()
+  <div class="span3">
+    @wiki.wikiFrag(model.WID("Admin","Right"),user,true)
+    @addRight()
+  </div>
+
+  </div> <!-- row -->
+</div> <!-- /container -->
+
+@htmlBottom()
     

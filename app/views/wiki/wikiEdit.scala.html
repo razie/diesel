@@ -1,3 +1,7 @@
+@**************
+edit a wiki page
+**************@
+
 @(wid:model.WID, myForm:Form[controllers.Wiki.EditWiki], user:Option[model.User])
 
 @v(name:String) = @{
@@ -19,14 +23,11 @@
   }
 } 
 
-   @htmlHead("Editing "+wid.cat+":"+ wid.name)
-
-   @navbar(user)
+@htmlHead("Editing "+wid.cat+":"+ wid.name)
+@navbar(user)
    
-    <div class="container">
-
-        <div class="row">
-
+<div class="container">
+  <div class="row">
     <div class="span9">
 
 <div >
@@ -103,25 +104,20 @@ PROBLEM: many places use label as name... via Wikis.formatName
 </div>
 
 @model.Wikis.find(wid).map{we=>
-      <div class="well">
-          @wiki.wikiFrag(wid,user, false, Some(we))
-      </div>
+  <div class="well">
+    @wiki.wikiFrag(wid,user, false, Some(we))
+  </div>
 }
 
-      <hr>
-
-      @htmlFooter()
-
+    <hr>
+    @htmlFooter()
     </div> <!-- /span9 -->
 
-      <div class="span3">
-          @wiki.wikiFrag(model.WID("Admin","Right"),user,true)
+    <div class="span3">
+      @wiki.wikiFrag(model.WID("Admin","Right"),user,true)
+    </div>
+  </div> <!-- row -->
+</div> <!-- /container -->
 
-      </div>
-
-      </div> <!-- row -->
-
-    </div> <!-- /container -->
-
-    @htmlBottom()
+@htmlBottom()
     

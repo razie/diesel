@@ -4,7 +4,7 @@
 @htmlHead(""+page.map(_.label).getOrElse(model.Wikis.label(wid)))
 
 @if(page.isDefined && page.get.contentTags.get("logo").isDefined) {
-  @navbar(user, false, "Menu", page.get.contentTags.get("logo"), page.get.contentTags.get("siteurl"), true)
+  @navbar(user, false, "Menu", page.get.contentTags.get("logo"), page.get.contentTags.get("siteurl"), true, page.get.contentTags.get("club").map("?club="+_).getOrElse(""))
 } else {
   @navbar(user, false, "Menu", None, None, true)
 }

@@ -15,6 +15,8 @@ import model.Sec._
 import controllers.Maps
 import controllers.RazController
 import play.api.cache.Cache
+import admin.MailSession
+import controllers.Emailer
 
 object UserType {
   val Organization = "Organization"
@@ -82,6 +84,7 @@ case class User(
   def isActive = status == 'a'
   def isSuspended = status == 's'
   def isClub = roles contains UserType.Organization.toString
+  def isAdmin = hasPerm (Perm.adminDb) || hasPerm (Perm.adminWiki)
 
   // TODO optimize
   def perms: Set[String] = profile.map(_.perms).getOrElse(Set()) ++ groups.flatMap(_.can).toSet
@@ -142,6 +145,12 @@ case class User(
     UserEvent(_id, UserEvent.UPDATE).create
   }
 
+  def usedSlot(u: User) = {
+    Mongo("UserOld") += grater[User].asDBObject(Audit.create(this))
+    Mongo("User").m.update(key, grater[User].asDBObject(Audit.update(u)))
+    UserEvent(_id, UserEvent.UPDATE).create
+  }
+
   //race, desc, date, venue
   lazy val events: List[(ILink, String, DateTime, ILink)] = UserStuff.events(this)
 
@@ -156,6 +165,12 @@ case class User(
     } else None
   }
 
+  def pref (name:String) (default: => String) = prefs.get(name).getOrElse (default)
+  
+  // TODO optimize
+  def quota = {
+    (Mongo("UserQuota").findOne(Map("userId" -> _id)) map (grater[UserQuota].asObject(_)) ) getOrElse UserQuota (_id)
+  }
 }
 
 /**
@@ -184,6 +199,37 @@ case class Profile(
 
   var createdDtm: DateTime = DateTime.now
   var lastUpdatedDtm: DateTime = DateTime.now
+}
+
+/**
+ * high churn table - user edit slots
+ */
+case class UserQuota (
+  userId: ObjectId,
+  updates: Option[Int] = Some(5), // number of wikis updated
+  _id: ObjectId = new ObjectId()) {
+
+  //  def create = Mongo ("Profile") += grater[Profile].asDBObject(Audit.create(this))
+  def update (q:UserQuota) = 
+    Mongo("UserQuota").findOne(Map("userId" -> userId)) map {p=>
+      Mongo("UserQuota").m.update(Map("userId" -> userId), grater[UserQuota].asDBObject(q))
+      q
+    } getOrElse {
+      Mongo("UserQuota") += grater[UserQuota].asDBObject(q)
+      q
+    }
+    
+  def canUpdate = {
+    this.updates.exists (_ > 0) || this.updates.isEmpty
+  }
+  
+  def incUpdates (implicit mailSession: MailSession) = {
+    val q = UserQuota (userId, updates.map (_ - 1) orElse Some(5), _id)
+    update (q)
+
+    if (! q.canUpdate) Emailer.sendEmailNeedQuota(userId.toString)
+  }
+ 
 }
 
 /**

@@ -201,17 +201,22 @@ Please read our [[Terms of Service]] as well as our [[Privacy Policy]]
       c <- auth orCorr cNoAuth
     ) yield Emailer.withSession { implicit mailSession =>
       sendEmailVerif(c)
+      msgVerif (c)
     }) getOrElse {
       ERR
     }
   }
 
-  def sendEmailVerif(c: User)(implicit request: Request[_], mailSession: MailSession) = {
-    val from = Config.SUPPORT
+  def msgVerif (c:User, next:Option[String]=None)(implicit request: Request[_])  = {
     val MSG_EMAIL_VERIF = """
 Ok - we sent an email to your registered email address - please follow the instructions in that email to validate your email address and begin using the site.<br>
 Please check your spam/junk folders as well in the next few minutes - make sure you mark """ + Config.SUPPORT + """ as a safe sender!"""
 
+    Msg2(MSG_EMAIL_VERIF, next, Some(c)).withSession("connected" -> Enc.toSession(c.email))
+  }
+    
+  def sendEmailVerif(c: User)(implicit request: Request[_], mailSession: MailSession) = {
+    val from = Config.SUPPORT
     val dt = DateTime.now().plusHours(1).toString()
     log("ENC_DT=" + dt)
     log("ENC_DT=" + dt.enc)
@@ -223,7 +228,6 @@ Please check your spam/junk folders as well in the next few minutes - make sure 
     log("ENC_LINK2=" + ds.secUrl)
 
     sendToVerif1(c.email.dec, from, c.ename, ds.secUrl)
-    Msg(MSG_EMAIL_VERIF, HOME, Some(c)).withSession("connected" -> Enc.toSession(c.email))
   }
 
   def sendToVerif1(email: String, from: String, name: String, link: String)(implicit mailSession: MailSession) = {
@@ -279,7 +283,7 @@ Please check your spam/junk folders as well in the next few minutes - make sure 
         ) yield {
           // TODO transaction
           val ppp = pro.addPerm("+" + Perm.eVerified.s).addPerm("+" + Perm.uWiki.s)
-          this dbop pro.update(if (p.under12) pro else pro.addPerm("+" + Perm.uProfile.s))
+          this dbop pro.update(if (p.under12) ppp else ppp.addPerm("+" + Perm.uProfile.s))
           this dbop UserTasks.verifyEmail(p).delete
 
           // replace in cache

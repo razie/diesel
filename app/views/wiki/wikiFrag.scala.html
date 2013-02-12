@@ -1,3 +1,7 @@
+@**************
+wiki fragment, used in another page
+**************@
+
 @(wid:model.WID, user:Option[model.User], simple:Boolean = false, page:Option[model.WikiEntry]=None, iname:Option[String]=None, noTitle:Boolean=false)
 
 @nicename() = @{
@@ -55,18 +59,18 @@
         <a href="@routes.Wiki.wikieEdit(page.get.wid)">Edit</a> | 
       }
       <a href="@routes.Wiki.report(wid)">Report</a> 
+      @if(user.exists(_.hasPerm(model.Perm.adminDb))) { 
+        | <a href="@routes.Wiki.wikieDebug(wid)"><i>debug</i></a> 
+      }
       @if(!(Array("WikiLink", "Category") contains cat)) {
         @if(controllers.Wiki.canEdit2(wid,user, page)) { 
           | <a href="@routes.Wiki.wikieRename1(wid)">Rename</a> 
         }
-        @if(user.exists(_.hasPerm(model.Perm.adminDb))) { 
-          | <a href="@routes.Wiki.wikieDebug(wid)"><i>debug</i></a> 
-        }
         @if(user.isDefined && user.get.isActive) { 
           @if(user.get.pages(wid.cat).find(_.wid.name == wid.name).isDefined) {
-          | <a href="@routes.Wiki.unlinkUser(wid)">Unlike</a> 
+          | <a href="@routes.Wiki.unlinkUser(wid)">@wid.label("Unlike", "Unlike")</a> 
           } else {
-          | <a href="@routes.Wiki.linkUser(wid,false)">Like</a> 
+          | <a href="@routes.Wiki.linkUser(wid,false)">@wid.label("Like")</a> 
         }
         }
       }
@@ -88,21 +92,23 @@
 
       </small></p>
       }
-    case None => { 
-    @if("any" != cat && !cat.isEmpty) {
-      <b>No entry matching @cat and @wid.name ... <a href="@routes.Wiki.wikieEdit(model.WID(cat,nicename))">create one</a></b> 
-    } else {
-      <b>No entry for @wid.name ... you could create one:</b>
-      <form action="@routes.Wiki.edit2" method="GET" class="well form-inline">
-        <input type="text" name="name" id="name" value="@nicename"> 
-        <select id="cat" name="cat" class="input-small">
-          @model.Wikis.pageNames("Category").toList.sortWith(_ < _).map{x=>
-            <option value="@x" >@x</option>
-          }
-       </select>
 
-     <button type="submit" class="btn btn-primary">Create</button>
-     </form>
+    case None => { 
+      @if("any" != cat && !cat.isEmpty) {
+        <b>No entry matching @cat and @wid.name ... <a href="@routes.Wiki.wikieEdit(model.WID(cat,nicename))">create one</a></b> 
+      } else {
+        <b>No entry for @wid.name ... you could create one:</b>
+        
+        <form action="@routes.Wiki.edit2" method="GET" class="well form-inline">
+          <input type="text" name="name" id="name" value="@nicename"> 
+          <select id="cat" name="cat" class="input-small">
+            @model.Wikis.pageNames("Category").toList.sortWith(_ < _).map{x=>
+              <option value="@x" >@x</option>
+            }
+          </select>
+
+          <button type="submit" class="btn btn-primary">Create</button>
+        </form>
       }
     }
   }

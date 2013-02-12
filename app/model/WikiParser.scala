@@ -121,7 +121,7 @@ trait ParserCommons extends RegexParsers {
   def NADA: P = ""
 
   // static must be stopped to not include too much - that's why the last expr
-  def static: P = not("{{") ~> not("[[") ~> not("}}") ~> not("[http:") ~> (""".""".r) ~ ("""[^{}\[\]`\r\n]""".r*) ^^ { case a ~ b => a + b.mkString }
+  def static: P = not("{{") ~> not("[[") ~> not("}}") ~> not("[http") ~> (""".""".r) ~ ("""[^{}\[\]`\r\n]""".r*) ^^ { case a ~ b => a + b.mkString }
 }
 
 /** wiki parser */
@@ -225,7 +225,7 @@ object WikiParser extends ParserCommons with CsvParser {
     else res
   }
 
-  def link1: PS = "[" ~> """http://[^] ]*""".r ~ opt("[ ]+".r ~ """[^]]*""".r) <~ "]" ^^ {
+  def link1: PS = "[" ~> """http[s]?://[^] ]*""".r ~ opt("[ ]+".r ~ """[^]]*""".r) <~ "]" ^^ {
     case url ~ Some(sp ~ text) => """[%s](%s)""".format(text, url)
     case url ~ None => """[%s](%s)""".format(url, url)
   }
@@ -237,9 +237,9 @@ object WikiParser extends ParserCommons with CsvParser {
 
   //======================= forbidden html tags TODO it's easier to allow instead?
 
-  val hok = "abbr|acronym|address|b|blockquote|br|div|dd|dl|dt|font|h1|h2|h3|h4|h5|h6|hr|i|img|li|p|pre|q|s|small|strike|strong|span|sub|sup|" +
+  val hok = "abbr|acronym|address|a|b|blockquote|br|div|dd|dl|dt|font|h1|h2|h3|h4|h5|h6|hr|i|img|li|p|pre|q|s|small|strike|strong|span|sub|sup|" +
     "table|tbody|td|tfoot|th|thead|tr|ul|u"
-  val hnok = "applet|area|a|base|basefont|bdo|big|body|button|caption|center|cite|code|colgroup|col|" +
+  val hnok = "applet|area|base|basefont|bdo|big|body|button|caption|center|cite|code|colgroup|col|" +
     "del|dfn|dir|fieldset|form|frame|frameset|head|html|iframe|input|ins|isindex|kbd|" +
     "label|legend|link|map|menu|meta|noframes|noscript|object|ol|" +
     "optgroup|option|param|samp|script|select|style|textarea|title|tt|var"
@@ -272,7 +272,7 @@ object WikiParser extends ParserCommons with CsvParser {
   // this is used for contents of a topic
   private def wikiProps: PS = wikiPropMagic | wikiPropBy | wikiPropWhen | wikiPropWhere | wikiPropLoc | wikiPropRoles |
     wikiPropAds | wikiPropWidgets | wikiPropCsv | wikiPropCsv2 | wikiPropTable | wikiPropSection | wikiPropSectionEnd |
-    wikiPropImg | wikiPropScript | wikiPropCall | wikiProp
+    wikiPropImg | wikiPropVideo | wikiPropScript | wikiPropCall | wikiProp
 
   private def wikiPropMagic: PS = "{{{" ~> """[^}]*""".r <~ "}}}" ^^ {
     case value => {
@@ -295,7 +295,7 @@ object WikiParser extends ParserCommons with CsvParser {
     }
   }
 
-  def wikiProp: PS = "{{" ~> """[^}:]+""".r ~ ":" ~ """[^}]*""".r <~ "}}" ^^ {
+  def wikiProp: PS = "{{" ~> """[^}:]+""".r ~ """[: ]""".r ~ """[^}]*""".r <~ "}}" ^^ {
     case name ~ _ ~ value =>
       if (name startsWith ".")
         State("", Map(name.substring(1) -> value)) // hidden
@@ -319,7 +319,7 @@ object WikiParser extends ParserCommons with CsvParser {
     case place => State("""{{at %s}}""".format(place), Map("venue" -> place), ILink(WID("Venue", place), place) :: Nil)
   }
 
-  private def wikiPropLoc: PS = "{{" ~> "loc:" ~> """[^}:]*""".r ~ ":".r ~ """[^}]*""".r <~ "}}" ^^ {
+  private def wikiPropLoc: PS = "{{" ~> "loc" ~> """[: ]""".r ~> """[^}:]*""".r ~ ":".r ~ """[^}]*""".r <~ "}}" ^^ {
     case what ~ _ ~ loc => {
       if ("ll" == what)
         State("""{{[Location](http://maps.google.com/maps?ll=%s&z=15)}}""".format(loc), Map("loc" -> (what + ":" + loc)))
@@ -332,7 +332,7 @@ object WikiParser extends ParserCommons with CsvParser {
     }
   }
 
-  private def wikiPropLocName: PS = "{{" ~> "loc:" ~> """[^:]*""".r ~ ":".r ~ """[^}]*""".r <~ "}}" ^^ {
+  private def wikiPropLocName: PS = "{{" ~> "loc" ~> """[: ]""".r ~> """[^:]*""".r ~ ":".r ~ """[^}]*""".r <~ "}}" ^^ {
     case what ~ _ ~ loc => {
       State("""{{at:%s:%s)}}""".format(what, loc), Map("loc:" + what -> loc))
     }
@@ -360,7 +360,7 @@ object WikiParser extends ParserCommons with CsvParser {
     }
   }
 
-  private def wikiPropRoles: PS = "{{" ~> "roles:" ~> """[^:]*""".r ~ ":".r ~ """[^}]*""".r <~ "}}" ^^ {
+  private def wikiPropRoles: PS = "{{" ~> "roles" ~> """[: ]""".r ~> """[^:]*""".r ~ ":".r ~ """[^}]*""".r <~ "}}" ^^ {
     case cat ~ coloAdoAdsn ~ how => {
       if ("Child" == how)
         State("{{Has " + parseW2("[[%s]]".format(cat)).s + "(s)}}", Map("roles:" + cat -> how))
@@ -371,7 +371,7 @@ object WikiParser extends ParserCommons with CsvParser {
     }
   }
 
-  private def wikiPropAds: PS = "{{" ~> "ad:" ~> """[^}]*""".r <~ "}}" ^^ {
+  private def wikiPropAds: PS = "{{" ~> "ad[: ]".r ~> """[^}]*""".r <~ "}}" ^^ {
     case what => {
       what match {
         case "lederboard" => State(Ads.lederboard)
@@ -398,7 +398,7 @@ object WikiParser extends ParserCommons with CsvParser {
       val c = body
       State(a.s) + c.filter(_.size > 0).map(l =>
         State("\n* ") + parseW2("[[" + a.what + ":" + l.zip(a.h).filter(c => c._1.length > 0).map(c =>
-          "{{" + c._2 + " " + c._1 + "}}").mkString(", ") + "]]")).reduce(_ + _) + "\n"
+          if ("_" == c._2) c._1 else ("{{" + c._2 + " " + c._1 + "}}")).mkString(" ") + "]]")).reduce(_ + _) + "\n"
     }
   }
 
@@ -439,14 +439,47 @@ object WikiParser extends ParserCommons with CsvParser {
     }
   }
 
-  def wikiPropImg: PS = "{{img" ~> opt("""\.icon|\.small|\.medium""".r) ~ ":" ~ """[^}]*""".r <~ "}}" ^^ {
+  def wikiPropImg: PS = "{{img" ~> opt("""\.icon|\.small|\.medium""".r) ~ """[: ]""".r ~ """[^}]*""".r <~ "}}" ^^ {
     case stype ~ size ~ name => {
       // TODO use the size element
       State("""<img src="%s" />""".format(name))
     }
   }
 
-  def wikiPropScript: PS = "{{" ~> """def|lambda""".r ~ ":" ~ """[^:}]*""".r ~ ":" ~ """[^}]*""".r ~ "}}" ~ lines <~ ("{{/def}}" | "{{/lambda}}") ^^ {
+  private def wikiPropVideo: PS = "{{" ~> ("video" | "photo" | "slideshow") ~ """[: ]""".r ~ """[^}]*""".r <~ "}}" ^^ {
+    case what ~ _ ~ url => {
+      what match {
+        case "video" => {
+          val yt1 = """http://youtu.be/(.*)""".r
+          val yt2 = """http[s]?://www.youtube.com/watch?.*v=([^?&]+).*""".r
+          def xt(id: String) = """<iframe width="560" height="315" src="http://www.youtube.com/embed/%s" frameborder="0" allowfullscreen></iframe>""".format(id)
+          url match {
+            case yt1(a) => State(xt(a))
+            case yt2(a) => State(xt(a))
+            case _ => State("""{{Unknown video url type - please report to support: %s}}""".format(url))
+          }
+        }
+        case "photo" => {
+          val yt2 = """(.*)""".r
+          def xt2(id: String) = """<a href="%s"><img src="%s"></a>""".format(id,id)
+          url match {
+            case yt2(a) => State(xt2(a))
+            case _ => State("""{{Unknown photo url type - please report to support: %s}}""".format(url))
+          }
+        }
+        case "slideshow" => {
+          val yt1 = """(.*)""".r
+          def xt(id: String) = """<a href="%s">Slideshow</a>""".format(id)
+          url match {
+            case yt1(a) => State(xt(a))
+            case _ => State("""{{Unknown slideshow url type - please report to support: %s}}""".format(url))
+          }
+        }
+      }
+    }
+  }
+
+  def wikiPropScript: PS = "{{" ~> """def|lambda""".r ~ "[: ]".r ~ """[^:}]*""".r ~ ":" ~ """[^}]*""".r ~ "}}" ~ lines <~ ("{{/def}}" | "{{/lambda}}") ^^ {
     case stype ~ _ ~ name ~ _ ~ sign ~ _ ~ lines => {
       if ("lambda" == stype)
         State("`{{call:#" + name + "}}`") // lambdas are executed right there...
@@ -455,16 +488,7 @@ object WikiParser extends ParserCommons with CsvParser {
     }
   }
 
-//  def wikiPropScript: PS = "{{" ~> """def|lambda""".r ~ ":" ~ """[^:}]*""".r ~ ":" ~ """[^}]*""".r ~ "}}" ~ not("{{/def}}" | "{{/lambda}}") ~ rep(""".""".r) <~ ("{{/def}}" | "{{/lambda}}") ^^ {
-//    case stype ~ _ ~ name ~ _ ~ sign ~ _ ~ lines => {
-//      if ("lambda" == stype)
-//        State("`{{call:#" + name + "}}`") // lambdas are executed right there...
-//      else
-//        State("`{{" + stype + ":" + name + "}}`")
-//    }
-//  }
-
-  def wikiPropCall: PS = "{{" ~> """call""".r ~ ":" ~ opt("""[^#}]*""".r) ~ "#" ~ """[^}]*""".r <~ "}}" ^^ {
+  def wikiPropCall: PS = "{{" ~> """call""".r ~ "[: ]".r ~ opt("""[^#}]*""".r) ~ "#" ~ """[^}]*""".r <~ "}}" ^^ {
     case stype ~ _ ~ page ~ _ ~ name => {
       State("`{{" + stype + ":" + (page getOrElse "") + "#" + name + "}}`")
     }
@@ -657,8 +681,8 @@ Thank you,<br>The RacerKidz
 
   }
 
-//  Wikis.find(WID("Note", "adfasdf")).foreach { we =>
-//    println(Wikis.format(we.wid, we.markup, we.content, Some(we)))
-//  }
+  //  Wikis.find(WID("Note", "adfasdf")).foreach { we =>
+  //    println(Wikis.format(we.wid, we.markup, we.content, Some(we)))
+  //  }
 
 }

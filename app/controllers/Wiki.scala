@@ -1,18 +1,23 @@
 package controllers
 
 import scala.Array.canBuildFrom
+
 import org.joda.time.DateTime
+
 import com.mongodb.DBObject
 import com.mongodb.casbah.Imports.map2MongoDBObject
 import com.mongodb.casbah.Imports.wrapDBObj
 import com.novus.salat.grater
+
 import admin.Audit
 import admin.Config
 import admin.Corr
 import admin.IgnoreErrors
+import admin.MailSession
 import admin.Notif
 import admin.SendEmail
 import admin.VError
+import model.CMDWID
 import model.Enc
 import model.Mongo
 import model.Perm
@@ -42,7 +47,6 @@ import play.api.libs.json.Json
 import play.api.mvc.Action
 import play.api.mvc.Request
 import razie.Logging
-import admin.MailSession
 
 /** wiki controller */
 object Wiki extends RazController with Logging {
@@ -106,26 +110,38 @@ object Wiki extends RazController with Logging {
       cat <- request.queryString("cat").headOption;
       name <- request.queryString("name").headOption
     ) yield wikieEdit(WID(cat, name)).apply(request)) getOrElse {
-      error("ERR_CANT_UPDATE_USER " + session.get("email"))
+      error("ERR_HACK Wiki.email2")
       Unauthorized("Oops - cannot create this link... " + errCollector.mkString)
     }
   }
 
-  def isInSameClub(member: User, owner: User)(implicit errCollector: VError = IgnoreErrors) = {
+  def isInSameClub(member: User, owner: User) = {//}(implicit errCollector: VError = IgnoreErrors) = {
     // all clubs where member
     val m1 = member.wikis.filter(x => x.wid.cat == "Club" && x.role != "Fan").toList
 
-    // owner is the club
-    (owner.roles.contains(UserType.Organization.toString) && m1.exists(_.wid.name == owner.userName))
+    println (member)
+    println (owner)
+    
+    (
+      // owner is the club
+      (owner.roles.contains(UserType.Organization.toString) && m1.exists(_.wid.name == owner.userName)) ||
+      // owner is someone else => club lists intersect?
+      (! owner.roles.contains(UserType.Organization.toString) && {
+        val m2 = member.wikis.filter(x => x.wid.cat == "Club" && x.role != "Fan").toList
+        m1.exists(x1 => m2.exists (_.wid.name == x1.wid.name))
+      }) 
+    )
   }
 
   def isVisible(u: Option[User], props: Map[String, String], visibility: String = "visibility")(implicit errCollector: VError = IgnoreErrors) = {
     // TODO optimize
     def uname(id: Option[String]) = id.flatMap(Users.findUserById(_)).map(_.userName).getOrElse(id.getOrElse(""))
 
-    (!props.get(visibility).isDefined) ||
+    (!props.get(visibility).isDefined) || u.exists(_.hasPerm(Perm.adminDb)) ||
       (props(visibility) == "Public") || // if changing while edit, it will have a value even when public
-      (props(visibility) == "Private" && u.isDefined && props.get("owner") == Some(u.get.id) ||
+      (u.isDefined orCorr cNoAuth).exists(_ == true) && // anything other than public needs logged in
+      (
+          props(visibility) == "Private" && u.isDefined && props.get("owner") == Some(u.get.id) ||
         (
           props(visibility) == "Club" && u.isDefined && (
             props.get("owner") == Some(u.get.id) || props.get("owner").flatMap(Users.findUserById(_)).exists(c => isInSameClub(u.get, c))) orCorr (
@@ -162,7 +178,7 @@ object Wiki extends RazController with Logging {
     val name = wid.name
     lazy val we = if (w.isDefined) w else Wikis.find(cat, name)
     lazy val wprops = if (we.isDefined) we.map(_.props) else props
-    if (u.isDefined && u.exists(_.hasPerm(Perm.adminDb))) 
+    if (u.isDefined && u.exists(_.hasPerm(Perm.adminDb)))
       Some(true)
     else (for (
       cansee <- canSee(wid, u, w);
@@ -186,8 +202,9 @@ object Wiki extends RazController with Logging {
     ) yield true)
   }
 
-  def widFromPath(path: String): Option[WID] = WID fromPath path
+  //  def widFromPath(path: String): Option[WID] = WID fromPath path
 
+  /** serve page for edit */
   def wikieEdit(wid: WID) = Action { implicit request =>
     implicit val errCollector = new VError()
     val n = Wikis.formatName(wid)
@@ -199,6 +216,7 @@ object Wiki extends RazController with Logging {
         (for (
           au <- auth orCorr cNoAuth;
           can <- canEdit(wid, Some(au), Some(w));
+          hasQuota <- (au.isAdmin || au.quota.canUpdate) orCorr cNoQuotaUpdates;
           r1 <- au.hasPerm(Perm.uWiki) orCorr cNoPermission
         ) yield {
           Ok(views.html.wiki.wikiEdit(w.wid, editForm.fill(
@@ -260,6 +278,7 @@ object Wiki extends RazController with Logging {
                 au <- auth orCorr cNoAuth;
                 can <- canEdit(wid, auth, Some(w));
                 r1 <- au.hasPerm(Perm.uWiki) orCorr cNoPermission;
+                hasQuota <- (au.isAdmin || au.quota.canUpdate) orCorr cNoQuotaUpdates;
                 nochange <- (w.label != l || w.markup != m || w.content != co || (
                   w.props.get("visibility").map(_ != vis).getOrElse(vis != "Public") ||
                   w.props.get("wvis").map(_ != wvis).getOrElse(wvis != "Public")) ||
@@ -303,6 +322,7 @@ object Wiki extends RazController with Logging {
                   w.update(we)
                   Notif.entityUpdateAfter(we, WikiEntry.UPD_CONTENT)
                   Emailer.withSession { implicit mailSession =>
+                    au.quota.incUpdates
                     au.shouldEmailParent("Everything").map(parent => Emailer.sendEmailChildUpdatedWiki(parent, au, WID(w.category, w.name)))
                   }
                   WikiAudit("EDIT", w.wid.wpath, Some(au._id)).create
@@ -316,6 +336,7 @@ object Wiki extends RazController with Logging {
               (for (
                 au <- auth orCorr cNoAuth;
                 can <- canEdit(wid, auth, None, parentProps);
+                hasQuota <- (au.isAdmin || au.quota.canUpdate) orCorr cNoQuotaUpdates;
                 r3 <- ("any" != wid.cat) orErr ("can't create in category any");
                 w <- Wikis.category(wid.cat) orErr ("cannot find the category " + wid.cat);
                 r1 <- (au.hasPerm(Perm.uWiki)) orCorr cNoPermission
@@ -357,6 +378,7 @@ object Wiki extends RazController with Logging {
                 WikiAudit("CREATE", we.wid.wpath, Some(au._id)).create
 
                 admin.SendEmail.withSession { implicit mailSession =>
+                  au.quota.incUpdates
                   au.shouldEmailParent("Everything").map(parent => Emailer.sendEmailChildUpdatedWiki(parent, au, wid)) // ::: notifyFollowers (we)
                   notifyFollowersCreate(we, au)
                 }
@@ -369,12 +391,12 @@ object Wiki extends RazController with Logging {
       })
   }
 
-  private def notifyFollowersCreate(w: WikiEntry, au: User)(implicit mailSession: MailSession) = {
+  private def notifyFollowersCreate(wpost: WikiEntry, au: User)(implicit mailSession: MailSession) = {
     // 1. followers of this topic or followers of parent
 
-    w.parent flatMap (Wikis.find(_)) map { w =>
+    wpost.parent flatMap (Wikis.find(_)) map { w =>
       (Users.findUserById(w.by).map(_._id).toList ++ w.userWikis.map(_.userId)).distinct.filter(_ != au._id).map(uid =>
-        Users.findUserById(uid).map(u => Emailer.sendEmailNewTopic(u, au, w.wid)))
+        Users.findUserById(uid).map(u => Emailer.sendEmailNewTopic(u, au, w.wid, wpost)))
     }
   }
 
@@ -399,23 +421,40 @@ object Wiki extends RazController with Logging {
       None
   }
 
-  def show2c(cat: String, name: String, colon: String = ":", cat1: String, name1: String, c1: String, count: Int) = Action { implicit request =>
-    debug("show2c")
-    val parent = Wikis.find(cat, name)
-    val redWpath = cat + ":" + name + "/" + cat1 + ":" + name1
-    parent.map { p =>
-      val wid = WID(cat1, name1, Some(p._id))
-      Wikis.find(wid).map(w => {
-        showPage(w, count)
-      }) getOrElse {
-        topicred(redWpath) getOrElse Msg2("Child %s:%s Not found!".format(cat1, name1))
+  def showWid(cw: CMDWID, count: Int) = {
+    if (cw.cmd == "xp") xp(cw.wid.get, cw.rest)
+    else Action { implicit request =>
+      // must check if page is WITHIN site, otherwise redirect to main site
+      val fhost = request.headers.get("X-FORWARDED-HOST")
+//      val fhost=Some("glacierskiclub.com")    // for testing locally
+      val redir = fhost flatMap (Config.urlfwd(_))
+
+      if (fhost.exists(_ != Config.hostport) &&
+          redir.isDefined &&
+          !cw.wpath.get.startsWith(redir.get.replaceFirst(".*/wiki/", ""))) {
+        log("  REDIRECTED FROM - " + fhost)
+        log("    TO http://" + Config.hostport + "/wiki/" + cw.wpath.get)
+        Redirect("http://" + Config.hostport + "/wiki/" + cw.wpath.get)
+      } else {
+        // normal - continue showing the page
+        show(cw.wid.get, count).apply(request)
       }
-    } getOrElse {
-      topicred(redWpath) getOrElse Msg2("Parent %s:%s Not found!".format(cat, name))
     }
   }
 
-  def show2(cat: String, name: String, colon: String = ":", count: Int) = show(WID(cat, name), count)
+  //  def show2c(cat: String, name: String, colon: String = ":", cat1: String, name1: String, c1: String, count: Int) = Action { implicit request =>
+  //    val redWpath = cat + ":" + name + "/" + cat1 + ":" + name1
+  //    log("show2c " + redWpath)
+  //    val topic = WID.fromPath(redWpath).flatMap(Wikis.find)
+  //    topic.map { w =>
+  //      showPage(w, count)
+  //    } getOrElse {
+  //      topicred(redWpath) getOrElse Msg2("Topic %s Not found!".format(redWpath))
+  //    }
+  //  }
+
+  //  def show2(cat: String, name: String, colon: String = ":", count: Int) = show(WID(cat, name), count)
+
   def show1(cat: String, name: String) = show(WID(cat, name))
   def showId(id: String) = Action { implicit request =>
     (for (w <- Wikis.findById(id)) yield Redirect(controllers.Wiki.w(w.category, w.name))) getOrElse Msg2("Oops - id not found")
@@ -444,6 +483,8 @@ object Wiki extends RazController with Logging {
     val name = Wikis.formatName(WID(cat, iwid.name))
 
     val wid = WID(cat, name, iwid.parent)
+
+    razie.NoStaticS.put(model.QueryParms(request.queryString))
 
     // special pages
     if ("Page" == cat && "home" == name) Redirect("/")
@@ -474,15 +515,16 @@ object Wiki extends RazController with Logging {
         if (!canSee(wid, auth, w).getOrElse(false))
           noPerm(wid, "SHOW")
         else
-          w.map(w => {
+          w.map { w =>
             // redirect a simple alias with no other content
-            if (w.alias.isDefined)
-              Redirect(controllers.Wiki.w(w.alias.get.formatted))
-            else if (w.findParent.isDefined)
-              Redirect(controllers.Wiki.w(w.wid))
-            else
+            w.alias.map { wid =>
+              Redirect(controllers.Wiki.w(wid.formatted))
+            } getOrElse
+              //            else if (w.findParent.isDefined)
+              //              Redirect(controllers.Wiki.w(w.wid))
+              //            else
               wikiPage(wid, Some(iwid.name), Some(w), auth, shouldCount)
-          }) getOrElse
+          } getOrElse
             wikiPage(wid, Some(iwid.name), None, auth, shouldCount)
       }
     }
@@ -500,21 +542,6 @@ object Wiki extends RazController with Logging {
       Ok(views.html.wiki.wikiPage(wid, iname, page, user))
   }
 
-  private def showPage(w: WikiEntry, count: Int)(implicit request: Request[_]) = {
-    implicit val errCollector = new VError()
-
-    val shouldCount = !(request.flash.get("count").exists("0" == _) || (count == 0))
-
-    if (!canSee(w.wid, auth, Some(w)).getOrElse(false))
-      noPerm(w.wid, "SHOW")
-    else
-      // redirect a simple alias with no other content
-      w.alias.map { wid =>
-        Redirect(controllers.Wiki.w(wid.cat, Wikis.formatName(wid)))
-      } getOrElse
-        wikiPage(w.wid, None, Some(w), auth, shouldCount)
-  }
-
   def wikieDebug(iwid: WID) = Action { implicit request =>
     implicit val errCollector = new VError()
 
@@ -524,9 +551,11 @@ object Wiki extends RazController with Logging {
 
     val wid = WID(cat, name)
 
+    razie.NoStaticS.put(model.QueryParms(request.queryString))
+
     Wikis.find(cat, name) match {
-      case x@Some(w) if (!canSee(wid, auth, x).getOrElse(false)) => noPerm(wid, "DEBUG")
-      case y@_ => Ok(views.html.wiki.wikiDebug(wid, Some(iwid.name), y, auth))
+      case x @ Some(w) if (!canSee(wid, auth, x).getOrElse(false)) => noPerm(wid, "DEBUG")
+      case y @ _ => Ok(views.html.wiki.wikiDebug(wid, Some(iwid.name), y, auth))
     }
   }
 
@@ -558,20 +587,19 @@ object Wiki extends RazController with Logging {
     Msg("OK, reported!", wid)
   }
 
+  // from category - add a ... 
   def add(cat: String) = Action { implicit request =>
     addForm.bindFromRequest.fold(
-      formWithErrors =>
-        Msg2(formWithErrors.toString + "Oops, can't add that name!", Some("/wiki/" + cat)),
+      formWithErrors => Msg2("Oops, can't add that name!", Some("/wiki/" + cat)),
       {
-        case we @ AddWiki(name) =>
-          Redirect(routes.Wiki.wikieEdit(WID(cat, name)))
+        case we @ AddWiki(name) => Redirect(routes.Wiki.wikieEdit(WID(cat, name)))
       })
   }
 
+  // add a child/related to another topic
   def addLinked(cat: String, pwid: WID, role: String) = Action { implicit request =>
     addForm.bindFromRequest.fold(
-      formWithErrors =>
-        Msg2(formWithErrors.toString + "Oops, can't add that name!", Some("/wiki/" + cat)),
+      formWithErrors => Msg2("Oops, can't add that name!", Some("/wiki/" + pwid.wpath)),
       {
         case we @ AddWiki(name) => {
           val n = Wikis.formatName(WID(cat, name))
@@ -581,7 +609,7 @@ object Wiki extends RazController with Logging {
           else
             Redirect(routes.Wiki.wikieEdit(WID(cat, name, pwid.findId)))
         }
-      })
+     })
   }
 
   def link(fromCat: String, fromName: String, toCat: String, toName: String) = {
@@ -621,6 +649,7 @@ object Wiki extends RazController with Logging {
     (for (
       au <- auth orCorr cNoAuth;
       isA <- checkActive(au);
+      exists <- wid.page.isDefined orErr ("Cannot link to " + wid.name);
       r1 <- au.hasPerm(Perm.uProfile) orCorr cNoPermission
     ) yield {
       def content = """[[User:%s | You]] -> [[%s:%s]]""".format(au.id, wid.cat, wid.name)
@@ -908,14 +937,14 @@ object Wiki extends RazController with Logging {
       // default to category
       val res = try {
         val sec = wid.name
-        val script = w.scripts.find(sec == _.name).orElse (model.Wikis.category(widp.cat) flatMap (_.scripts.find(sec == _.name)))
+        val script = w.scripts.find(sec == _.name).orElse(model.Wikis.category(widp.cat) flatMap (_.scripts.find(sec == _.name)))
         val res: String = script.filter(_.checkSignature).map(s => {
           val up = razie.NoStaticS.get[model.User]
-          model.WikiScripster.runScript(s.content, Some(w), up)
+          model.WikiScripster.runScript(s.content, Some(w), up, request.queryString.map(t=>(t._1, t._2.mkString)))
         }) getOrElse ""
         Audit.logdb("SCRIPT_RESULT", res)
         res
-        } catch { case _ => "?" }
+      } catch { case _ => "?" }
       Ok(res)
     }) getOrElse
       Unauthorized("You don't have permission to do this...")

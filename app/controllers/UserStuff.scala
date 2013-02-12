@@ -41,21 +41,20 @@ object UserStuff extends RazController {
 
   def Race = admin.Config.sitecfg("racecat").getOrElse("Race")
 
-  //(what,when)
+  /** user / Calendar / Race / Venue
+   * @return (what,when)
+   */
   def events(u: User): List[(ILink, String, DateTime, ILink)] = {
     val dates = u.pages("Calendar").flatMap{ uw =>
       val node = new WikiWrapper(WID("Calendar", uw.wid.name))
       val root = new razie.Snakk.Wrapper(node, WikiXpSolver)
 
       val races = (root \ "*" \ Race)
-      //      val gigi = (root \ "*" \ Race \@ "date")
-      val dates = races.map(x => (x.mkLink,
-        new Snakk.Wrapper(x, races.ctx) \@ "date",
-        ILink(WID("Venue", new Snakk.Wrapper(x, races.ctx) \@ "venue")))).filter(_._2 != "")
-      //      val dates2 = dates.filter(s => DateParser.apply(s._2).successful)
+      val dates = races.map(race => (race.mkLink,
+        new Snakk.Wrapper(race, races.ctx) \@ "date",
+        ILink(WID("Venue", new Snakk.Wrapper(race, races.ctx) \@ "venue")))).filter(_._2 != "")
       // filter those that parse successfuly
       dates.map(x => (x._1, x._2, DateParser.apply(x._2), x._3)).filter(_._3.successful).map(t => (t._1, t._2, t._3.get, t._4))
-      //      dates2.map(x => (x._1, x._2, DateParser.apply(x._2).get))
     }
     dates.sortWith((a, b) => a._3 isBefore b._3)
   }
