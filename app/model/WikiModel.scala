@@ -443,7 +443,7 @@ object Wikis {
         case _ => "UNKNOWN MARKUP " + markup + " - " + content
       }
     } catch {
-      case e @ _ => {
+      case e @ (_ : Throwable) => {
         log("[[ERROR FORMATTING]]: " + e)
         "[[ERROR FORMATTING]] - sorry, dumb program here! The content is not lost: try editing this topic... also, please report this topic with the error and we'll fix it for you!"
       }
@@ -633,7 +633,7 @@ object WikiScripster {
       ctx.clear // make sure there's nothing for hackers
       res
     } catch {
-      case _ => { // any exceptions, get a new parser
+      case _:Throwable => { // any exceptions, get a new parser
         wikiCtx = None
         "?"
       }

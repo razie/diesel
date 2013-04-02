@@ -146,7 +146,7 @@ object Maps extends razie.Logging {
         resp \ "results" \ "geometry" \ "location" \@@ "lat",
         resp \ "results" \ "geometry" \ "location" \@@ "lng"))
     } catch {
-      case e @ _ => {
+      case e @ (_ :Throwable) => {
         error ("ERR_COMMS can't geocode address", e)
         None
       }

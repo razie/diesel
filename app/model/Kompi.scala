@@ -107,7 +107,9 @@ object KOMPI {
       val stringWriter = new StringWriter
       val output = new PrintWriter(stringWriter)
       val intp = new IMain(settings, output)
-      if (intp.global == null) sys.error("unable to create a Scala interpreter: " + stringWriter.toString)
+      
+      // TODO this worked in 2.9 but not 2.10
+//      if (intp.global == null) sys.error("unable to create a Scala interpreter: " + stringWriter.toString)
 
       // To return a value from the interpreted code, we pass in a mutable cell.
       val holder = new Holder(null)

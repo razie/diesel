@@ -49,7 +49,7 @@ object SedWiki {
               Wikis.formatWikiLink(p.wid, Wikis.label(p.wid).toString, Wikis.label(p.wid).toString)
             }.map(_._1).map(x => "<li>" + x + "</li>").mkString(" ") + "</ul>"
           } catch {
-            case e => {
+            case e @ (_:Throwable) => {
               println(e.toString);
               "ERR Can't list userlist"
             }
