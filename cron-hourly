@@ -1,0 +1,54 @@
+#!/bin/bash
+
+. /home/demo/.bashrc
+
+PROBLEM=
+APPNAME=Racerkidz
+APPHOME=/home/demo/rk/app/run
+APPURL=www.racerkidz.com
+EMAIL=razie@razie.com
+
+cd $APPHOME
+out=hourly.out
+echo "$APPNAME hourly news" >$out
+date >>$out
+
+wget $APPURL 2>&1 | grep 'HTTP request sent' | sed 's/HTTP request sent, awaiting response... //' >hourly.out.temp
+rm index.html.*
+
+if grep -q "200 OK" hourly.out.temp
+then
+  echo "http test OK..." | tee -a $out
+else 
+  echo "PROBLEM: html error" >>$out
+  cat hourly.out.temp >>$out
+  PROBLEM="$PROBLEM AND html error"
+fi
+
+
+if grep -q "OutOfMemoryError" nohup.out
+then
+   echo "PROBLEM: OutOfMemoryError found" | tee -a $out
+   PROBLEM="$PROBLEM AND OutOfMemoryError"
+else
+  echo "OutOfMemory test OK..."
+fi
+
+echo $SHELL | tee -a $out
+
+if [[ -z $PROBLEM ]]
+then
+  echo "All OK..." | tee -a $out
+else
+  echo "PROBLEMS ARE: $PROBLEM" >>$out
+  echo "." >> $out
+  echo "RESTARTING..." >>$out
+  . ${APPHOME}/restart >>$out
+  cat $out | mailx -s "$APPNAME PROBLEM" $EMAIL
+
+  DT=`date +%F-%T | sed 's/ //g'`
+  cp $out OOPS.${out}.$DT
+fi
+
+rm $out
+

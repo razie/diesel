@@ -1,0 +1,14 @@
+
+rm rk.zip
+rm RUNNING_PID
+
+#zip -r rk.zip * -x bin/\* lib_managed/\* rk-backups/\* dist/\* data/\* dump\/* dump* target/\*
+zip -r rk.zip app conf modules project public test *.properties key -x \*dist/*
+#-x \*target/*
+
+scp rk.zip cloud2a.razie.com:rk/up/
+rm rk.zip
+
+ssh cloud2a.razie.com "export PATH=\$PATH:/usr/java/jdk1.6.0_18/bin; cd ~/rk; . ./update"
+
+

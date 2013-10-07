@@ -1,0 +1,8 @@
+
+ssh demo@cloud3.apefsjdolj.ro "cd ~/rk/app/run/logs; gzip -c log.log >log.log.gz"
+
+scp demo@cloud3.apefsjdolj.ro:rk/app/run/logs/log.log.gz log.log.gz
+
+gunzip -f log.log.gz
+
+less log.log
