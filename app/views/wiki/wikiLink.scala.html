@@ -15,32 +15,32 @@
 
 @htmlHead()
 @navbar(user)
+
+   @import model.UW
    
 <div class="container">
-
   <div class="hero-unit">
       @if("User" == from.cat) {
           <h2>Cool! So you want to @to.label("LinkTo", "link to") @to.cat @to.name!</h2>
-          <b>@to.label("LinkTo.Desc", "You may be notified of new activity.") !</b>
+          <b>@to.label("LinkTo.Desc", "You will be notified of new activity.") !</b>
           } else {
           <h2>Cool! So you want to link @from.cat @from.name to @to.cat @to.name!</h2>
           }
           <p>
-@********
-      <div class="hero-unit">
-      </div>
-********@
-@Wiki.moderator(to).map {mu=>
-  Note that the @to.cat.toLowerCase is moderated by <a href="@controllers.Wiki.w("User", mu)">@mu</a> - we'll ask for permission!
-}
-
-<div >
+    <div class="row">
+      <div class="span4">
 
 @helper.form(action=routes.Wiki.linked(from.cat,from.name,to.cat,to.name,withComment), 'class->"well") {
   @helper.select(
     myForm("how"), 
      how(),
     '_label -> "Select a role", 
+    '_showConstraints -> false)
+    
+  @helper.select(
+    myForm("notif"), 
+     Seq(UW.EMAIL_EACH -> "email each", UW.NOEMAIL->"no email"),
+    '_label -> "Notification of new activity", 
     '_showConstraints -> false)
     
     @if(withComment) {
@@ -74,20 +74,39 @@
         <a href="@routes.Wiki.linkUser(to,true)" class="btn">Add a note!</a>
       }
     }
-  </div>
-  
-  @myForm.globalError.map { err=>
-     <p style="color:red;font-weight:bold">@err.message</p>
-  } 
-  
-  <br><small>By updating this page, you agree to the <a href="@controllers.Wiki.w("Terms of Service")">Terms of Service</a></small>
+    </div>
 }
   </div>
+      <div class="span6">
+      @if("User" == from.cat && "Club" == to.cat) {
+      <p>Select the role that best describes you.
+      <ul><small>
+      <li><b>Racer</b> - you are a racer in this club's programs
+      <li><b>Member</b> - member/parent/volunteer
+      <li><b>Coach</b> - you will coach for this club
+      <li><b>Fan</b> - for former members or anyone who wants to keep tabs on this club
+      </li>
+      </small></ul>
+       }
+      <p>Notification options: 
+      <ul><small>
+      <li><b>email each</b> - if you want to be notified by email for every new post
+      <li><b>no email</b> - no notifications for new activity - you can always check what's new later...
+      </li>
+      </small></ul>
+      </div>
+  </div>
+
+@Wiki.moderator(to).map {mu=>
+  <div class="alert alert-warn">
+  <strong>Note</strong>
+    that the @to.cat.toLowerCase is moderated by <a href="@controllers.Wiki.w("User", mu)">@mu</a> - we'll ask for permission!
+  </div>
+}
+      </div>
 
   <hr>
   @htmlFooter()
-
 </div> <!-- /container -->
-
 @htmlBottom()
     

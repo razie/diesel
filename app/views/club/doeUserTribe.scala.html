@@ -1,0 +1,25 @@
+@*********** 
+  user manages registrations
+***********@
+@(user:model.User, tribe:model.Tribe)
+@import model.RegStatus._
+@import model.FormStatus._
+
+@htmlHead("Tribe for " + user.userName)
+@navbar(Some(user))
+
+<div class="span2">
+  @views.html.user.leftmenu(10, user)
+</div>
+   
+<div class="container span8">
+
+<div class="alert alert-danger"><strong>Men at work!</strong> This page is not finished! </div>
+
+  <hr>
+  
+  @htmlFooter()
+  </div> <!-- /container -->
+
+@htmlBottom()
+    

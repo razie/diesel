@@ -4,21 +4,22 @@ import play.api.mvc.PathBindable
 import play.api.mvc.QueryStringBindable
 import com.mongodb.casbah.Imports._
 import razie.Log
+import model._
 
 /** binders for codec pah objects in play */
 object Binders {
   
   implicit def widPathBindable =
-    new PathBindable[model.WID] {
-      def bind(key: String, value: String): Either[String, model.WID] = {Log.log ("BINDER"+value)
+    new PathBindable[WID] {
+      def bind(key: String, value: String): Either[String, WID] = {Log.log ("BINDER"+value)
         WID.fromPath(Enc.fromUrl(value)).map(Right(_)).getOrElse(Left("Oh-Uh"))
       }
-      def unbind(key: String, wid: model.WID): String =
+      def unbind(key: String, wid: WID): String =
         wid.wpath
     }
 
-  implicit def widQueryStringBindable(implicit sBinder: QueryStringBindable[String]) = new QueryStringBindable[model.WID] {
-    def bind(key: String, params: Map[String, Seq[String]]): Option[Either[String, model.WID]] = {
+  implicit def widQueryStringBindable(implicit sBinder: QueryStringBindable[String]) = new QueryStringBindable[WID] {
+    def bind(key: String, params: Map[String, Seq[String]]): Option[Either[String, WID]] = {
       for {
         w  <- sBinder.bind(key, params)
       } yield {
@@ -29,21 +30,21 @@ object Binders {
       }
     }
 
-    def unbind(key: String, wid: model.WID) =
+    def unbind(key: String, wid: WID) =
       key+"=" +Enc.toUrl(wid.wpath)
    }
 
   implicit def cmwidPathBindable =
-    new PathBindable[model.CMDWID] {
-      def bind(key: String, value: String): Either[String, model.CMDWID] = {Log.log ("BINDER"+value)
+    new PathBindable[CMDWID] {
+      def bind(key: String, value: String): Either[String, CMDWID] = {Log.log ("BINDER"+value)
         WID.cmdfromPath(Enc.fromUrl(value)).map(Right(_)).getOrElse(Left("Oh-Uh"))
       }
-      def unbind(key: String, wid: model.CMDWID): String =
+      def unbind(key: String, wid: CMDWID): String =
         wid.wid.get.wpath
     }
 
-  implicit def cmwidQueryStringBindable(implicit sBinder: QueryStringBindable[String]) = new QueryStringBindable[model.CMDWID] {
-    def bind(key: String, params: Map[String, Seq[String]]): Option[Either[String, model.CMDWID]] = {
+  implicit def cmwidQueryStringBindable(implicit sBinder: QueryStringBindable[String]) = new QueryStringBindable[CMDWID] {
+    def bind(key: String, params: Map[String, Seq[String]]): Option[Either[String, CMDWID]] = {
       for {
         w  <- sBinder.bind(key, params)
       } yield {
@@ -54,7 +55,7 @@ object Binders {
       }
     }
 
-    def unbind(key: String, wid: model.CMDWID) =
+    def unbind(key: String, wid: CMDWID) =
       key+"=" +Enc.toUrl(wid.wid.get.wpath)
    }
 

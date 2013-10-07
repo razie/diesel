@@ -6,7 +6,7 @@
       @model.Enc.unapply(v)
     }
     case "userName" => {
-      <a href="/admin/user/@db.get("_id").toString">@v</a>
+      <a href="/razadmin/user/@db.get("_id").toString">@v</a>
     }
     case _=> {
       @v

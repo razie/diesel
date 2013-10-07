@@ -77,6 +77,12 @@ PROBLEM: many places use label as name... via Wikis.formatName
     '_label -> "EditBy", 
     'class -> "input-small",
     '_showConstraints -> false)
+  @helper.select(
+    myForm("notif"), 
+    Seq("y"->"Yes", "n" -> "No"), 
+    '_label -> "Notify followers", 
+    'class -> "input-small",
+    '_showConstraints -> false)
 
   @if(user.get.hasPerm(model.Perm.adminDb)) {
     <p>Reserved: @reserved(model.Wikis.find(wid.cat,wid.name))

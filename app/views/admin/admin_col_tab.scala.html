@@ -13,6 +13,24 @@
   }
 }
 
+@rka(db:com.mongodb.casbah.Imports.DBObject, k:String, v:String) = {
+  @k match {
+    case "from" | "owner" => {
+      @model.Users.findUserById(v).map {u=>
+        <a href="/razadmin/user/@u._id.toString">@u.userName</a>
+      }
+    }
+    case "to" => {
+      @model.RacerKidz.findByIds(v).map {rk=>
+        <a href="/razadmin/rk/@rk._id.toString">@rk.info.ename</a>
+      }
+    }
+    case _=> {
+      @v
+    }
+  }
+}
+
 @htmlHead("admin db: "+name)
 @navbar(None)
    
@@ -24,6 +42,9 @@
 @name match {
   case "WikiCount" => {
     @util.utilTable("WikiCount", List("pid","count","wpath").map(c=>c->c), None, Some("count"), Some(wikicount))
+  }
+  case "RacerKidAssoc" => {
+    @util.utilTable("RacerKidAssoc", fields.map(c=>c->c), None, None, Some(rka))
   }
   case _ => {
 	@util.utilTable(name, fields.map(c=>c->c), None, None, None)

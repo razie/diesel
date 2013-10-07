@@ -7,9 +7,11 @@ import scala.tools.nsc.Settings
 import java.io.File
 import java.net.URL
 import scala.collection.JavaConverters._
-import scala.tools.{ nsc => nsc }
-import scala.tools.nsc.{ InterpreterResults => IR }
+//import scala.tools.nsc.{ InterpreterResults => IR }
 import scala.tools.nsc.reporters.ConsoleReporter
+import scala.tools.nsc 
+import scala.tools.nsc.interpreter.IR 
+
 import scala.tools.nsc.interpreter.IMain
 import scala.tools.nsc.interpreter.ReplReporter
 import razie.base.scripting._

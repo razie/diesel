@@ -2,10 +2,12 @@
 
 package unit
 
-import model.WikiParser
-import model.Wikis
 import org.scalatest.FlatSpec
 import org.scalatest.matchers.ShouldMatchers
+import model.Wikis
+import model.WikiParser
+import model.WID
+import model.WikiParser
 
 class TestWiki extends FlatSpec with ShouldMatchers {
 
@@ -18,7 +20,7 @@ class TestWiki extends FlatSpec with ShouldMatchers {
     "</small>" === (WikiParser apply "</small>").s
   }
 
-  val wid = model.WID("?", "?")
+  val wid = WID("?", "?")
   "WikiParser" should "recognize [[]] and [[[]]]" in {
     "<a href=\"/wiki/any:Sport\">Sport</a>" === (Wikis.format(wid, Wikis.MD, "[[Sport]]"))
     "<a href=\"/wiki/any:Sport\">Curu</a>" === (Wikis.format(wid, Wikis.MD, "[[Sport|Curu]]"))

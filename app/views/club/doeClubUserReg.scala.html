@@ -1,0 +1,93 @@
+@*********** 
+  user manages registrations
+***********@
+@(au:model.User, reg:model.Reg)
+@import model.RegStatus._
+@import model.FormStatus._
+@import model.RK._
+
+@htmlHeadBar("Reg for " + au.userName, Option(au))
+
+<div class="container"> <div class="row">
+@views.html.user.leftmenu(10, au)
+   
+<div class="span9">
+
+<h2>@model.Users.findUserById(reg.userId).map(_.userName).mkString Registration for @reg.clubName (as @reg.role)</h2>
+
+<p>  Status: @regStatusColored(reg.regStatus)
+  @reg.regStatus match {
+  	case PENDING => {Need to complete all the forms below - please follow the simple steps below.}
+  	case CURRENT => {Registration current}
+  	case CURRENT => {Forms completed, pending payment/review}
+  	case EXPIRED => {Membership expired - ask for and complete the new forms}
+  	case FAMILY  => {Another member of the family is handling it}
+  	case _ => {???}
+  }
+
+<div class="well">
+<h3>Step 1. Make sure all <em>your</em> family members are listed below:</h3>
+<br>If the list in this box is empty or a racer not listed - add one as a: 
+
+@model.RK.RELATIONSHIPS.map{r=>
+  <a href="@routes.Kidz.doeKid(au._id.toString, "11", r, "-", reg._id.toString)" class="btn btn-mini btn-info">@r</a>
+}
+
+@rkidz=@{
+  model.RacerKidz.findForUser(reg.userId).map(t=>
+    Map("fname"->t.info.firstName, 
+    	"role" -> t.info.role, 
+    	"button" -> t._id.toString, 
+    	"id"->t._id.toString))
+}
+
+@addlink(row:Map[String,String],k:String,v:String)={
+  @k match {
+  	case "button" => {
+      <a href="@routes.Kidz.doeKid(au._id.toString, v, "-", "-", reg._id.toString)" class="btn btn-mini">...</a>
+ 	  }
+  	case "id" => {
+      @if(reg.kids.exists(_.rkId.toString == v)) {
+  	    <span class="label">Included</span> 
+        as @reg.kids.filter(_.rkId.toString == v).map(_.role).mkString
+        <a href="@routes.Club.doeClubUwRMFormKid(reg._id.toString,v,au._id.toString, "x")" class="btn btn-mini btn-danger" title="remove from registration"> x </a>
+      } else {
+        <a href="@routes.Club.doeClubUserRegAdd(reg._id.toString,v,au._id.toString, "x")" class="btn btn-mini" title="also adds neccessary forms">Register</a>
+ 	  }
+ 	}
+    case _ => {@v}
+  }
+}
+
+@util.utilSimpleTable(rkidz, 
+	Seq("fname" -> "Name", 
+		"role" -> "Relationship", 
+		"button" -> "Details", 
+		"id"->"Included in registration"), 
+	Some(addlink))
+
+<h3>Step 2. Make sure they are included in this registration</h3>
+<p>Use the "register" buttons in the table above, to add to the current registration. Please include anyone that is a parent/guardian and/or will race, volunteer or coach for the club.
+<p>If you make a mistake, use the red <span class="label label-important"> x </span> button with care: it will delete completed forms if it has to...
+<p>Making sure this list is correct <b>before</b> you start completing the forms can save you having to re-fill some forms!
+
+</div>
+
+<div class="well">
+<h3>Step 3. Complete the forms</h3>
+<p>After adding all the members/racers in your family, these are the forms you need to complete...
+@club.userFormList(reg.wids, true)
+  
+</div>
+
+  <hr>  
+  @club.formStatusLegend()
+  
+  </div> <!-- /container -->
+  </div> <!-- /container -->
+  <hr>  
+  @htmlFooter()
+  </div> <!-- /container -->
+
+@htmlBottom()
+    

@@ -4,17 +4,10 @@ fragment: add more stuff to the current topic, including children, sub-topics et
 
 @(wid:model.WID, page:Option[model.WikiEntry], user:Option[model.User])
 @import model._
+@import _root_.admin.IgnoreErrors
 
     <!-- list of pages in category -->
     @if("Category" == wid.cat && "User" != wid.name && ("WikiLink" != wid.name || user.exists(_.hasPerm(Perm.adminDb)))) {
-
-      @if(!model.WikiDomain.needsParent(wid.name)) {
-        @helper.form(action=routes.Wiki.add(wid.name), 'class->"well form-inline") {
-          <label>Add a new <a href="/wiki/Category:@wid.name">@model.Wikis.label(WID("Category",wid.name))</a> </label>
-          <input type="text" class="input-xlarge" name="name" placeholder="Name">
-          <button type="submit" class="btn">Now</button>
-        }
-      }
 
       @if(model.Wikis.pageNames(wid.name).size > 0) {
       <div class="well">
@@ -30,14 +23,22 @@ fragment: add more stuff to the current topic, including children, sub-topics et
       </p>
         }
       </div> 
-        } 
+
+      @if(!model.WikiDomain.needsParent(wid.name)) {
+        @helper.form(action=routes.Wiki.add(wid.name), 'class->"well form-inline") {
+          <label>Create a new <a href="/wiki/Category:@wid.name">@model.Wikis.label(WID("Category",wid.name))</a> </label>
+          <input type="text" class="input-xlarge" name="name" placeholder="Name">
+          <button type="submit" class="btn">Now</button>
+        }
+      }
+      } 
     } else {
       <!-- list of child pages -->
       @model.WikiDomain.aEnds(wid.cat, "Child").map {child=>
 
-        @if(page.isDefined && controllers.Wiki.canEdit2(wid,user,page)) {
+        @if(page.isDefined && controllers.Wiki.canEdit(wid,user,page)(IgnoreErrors)) {
           @helper.form(action=routes.Wiki.addLinked(child,wid,"Child"), 'class->"form-inline") {
-            <label>Add a <a href="/wiki/Category:@child">@model.Wikis.label(WID("Category",child))</a> </label>
+            <label>Create a <a href="/wiki/Category:@child">@model.Wikis.label(WID("Category",child))</a> </label>
             <input type="text" class="input-xlarge" name="name" placeholder="Name">
             <button type="submit" class="btn btn-mini btn-primary">Now</button> 
             <a href="/wiki/Admin:Adding_a_Child" class="btn btn-mini btn-info">?</a>
@@ -48,7 +49,7 @@ fragment: add more stuff to the current topic, including children, sub-topics et
         <div class="well">
           @child (s) :
           <ul>
-          @model.Wikis.linksTo(wid,"Child").filter(_.from.cat == child).toList.reverse.take(100).map(_.from).map { p=>
+          @model.Wikis.linksTo(wid,"Child").filter(_.from.cat == child).toList.reverse.take(200).sortWith((a,b)=>b.crDtm.isBefore(a.crDtm)).map(_.from).map { p=>
             <li><a href="@controllers.Wiki.w(p)">@model.Wikis.label(p)</a>
           } 
          </ul>

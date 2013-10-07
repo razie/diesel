@@ -4,7 +4,6 @@ import org.bson.types.ObjectId
 import admin.VError
 import model.Perm
 import model.User
-import model.Wikis
 import model._
 import play.api.data.Form
 import play.api.data.Forms._
@@ -36,8 +35,7 @@ object Comment extends RazController with Logging {
   private def iadd(topicId: String, kind: String, oid: String, link:Option[String], content: String) = Action { implicit request =>
     implicit val errCollector = new VError()
     (for (
-      au <- auth orCorr cNoAuth;
-      isA <- checkActive(au);
+      au <- activeUser;
       w <- Wikis.findById(topicId) orErr "Wiki topic not found"
     ) yield {
       val cs = model.Comments.findForWiki(new ObjectId(topicId)).getOrElse(CommentStream(new ObjectId(topicId), "Wiki").create)
@@ -69,8 +67,7 @@ object Comment extends RazController with Logging {
       {
         case (link, content) =>
           (for (
-            au <- auth orCorr cNoAuth;
-            isA <- checkActive(au);
+            au <- activeUser;
             cs <- model.Comments.findForWiki(new ObjectId(topicId)) orErr ("No comments for this page...");
             parent <- cs.comments.find(_._id.toString == replyId) orErr ("Can't find the comment to reply to...")
           ) yield {
@@ -100,8 +97,7 @@ object Comment extends RazController with Logging {
     implicit val errCollector = new VError()
 
     (for (
-      au <- auth orCorr cNoAuth;
-      isA <- checkActive(au);
+      au <- activeUser;
       comm <- Comments.findCommentById(cid) orErr ("bad comment id?");
       can <- canEdit(comm, auth) orErr ("can only edit your comments")
     ) yield {
@@ -137,8 +133,7 @@ object Comment extends RazController with Logging {
 
           Comments.findCommentById(cid) map { comm =>
             (for (
-              au <- auth orCorr cNoAuth;
-              isA <- checkActive(au);
+              au <- activeUser;
               can <- canEdit(comm, auth) orErr ("can only edit your comments")
             ) yield {
               if (con.length > 0) comm.update(con, None, au)
@@ -156,8 +151,7 @@ object Comment extends RazController with Logging {
   def vComment1(topic: String, what: String, oid: String, kind: String) = Action { implicit request =>
     implicit val errCollector = new VError()
     (for (
-      au <- auth orCorr cNoAuth;
-      isA <- checkActive(au);
+      au <- activeUser;
       w <- Wikis.findById(topic) orErr "Wiki topic not found"
     //      comm <- Comments.findCommentById(cid) orErr ("bad comment id?");
     //      can <- canEdit(comm, auth) orErr ("can only edit your comments")
@@ -166,5 +160,4 @@ object Comment extends RazController with Logging {
     }) getOrElse
       noPerm(WID("?", "?"))
   }
-
 }

@@ -1,0 +1,21 @@
+@(regStatus:String, link:Option[String]=None)
+
+@import model.RegStatus._
+
+@button(color:String) = {
+  @link.map {v=>
+      <a href="@v" class="btn btn-mini @color">@regStatus</a>
+    }.getOrElse {
+      <a class="btn btn-mini @color">@regStatus</a>
+  }
+}
+
+@regStatus match {
+   case PENDING => { @button("btn-warning") }
+   case CURRENT => { @button("btn-success") }
+   case FAMILY => { @button("btn-info") }
+   case EXPIRED => { @button("btn-warning") }
+   case ACCEPTED => { @button("btn-info") }
+   case "n/a" => { @button("") }
+   case _ => { @button("") }
+}

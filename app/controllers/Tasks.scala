@@ -32,6 +32,9 @@ import admin._
 import model.WID
 import model.UserTasks
 import play.api.cache.Cache
+import model.RacerKidAssoc
+import model.RacerKidz
+import model.RK
 
 object Tasks extends RazController with Logging {
   import Profile.Email
@@ -49,7 +52,7 @@ object Tasks extends RazController with Logging {
     (for (
       u <- auth
     ) yield Ok(views.html.tasks.addParent(parentForm.fill(Email("")), u.ename))) getOrElse
-      Unauthorized("Oops - how did you get here?")
+      Unauthorized("Oops - how did you get here? [addParent]")
   }
 
   // step 1b - when creating user
@@ -62,11 +65,11 @@ object Tasks extends RazController with Logging {
       debug("ujson=" + uj)
       Ok(views.html.tasks.addParent(parentForm.fill(Email("")), u.ename)).withSession("ujson" -> uj)
     }) getOrElse
-      Unauthorized("Oops - how did you get here?")
+      Unauthorized("Oops - how did you get here? [addParent1]")
   }
 
   def userNameChgDenied = Action { implicit request =>
-    this dbop UserTasks.userNameChgDenied(auth.get).delete
+    UserTasks.userNameChgDenied(auth.get).delete
     Msg2("Your request to change username has been denied!")
   }
 
@@ -79,6 +82,7 @@ object Tasks extends RazController with Logging {
     }
 
     if (session.get("ujson").isDefined) {
+      // during createing new user - user not created yet
       parentForm.bindFromRequest.fold(
         formWithErrors => {
           error("FORM ERR " + formWithErrors)
@@ -88,11 +92,12 @@ object Tasks extends RazController with Logging {
           case Email(pe) => {
             for (
               uj <- session.get("ujson") orErr ("missing ujson - bad request");
-              c <- Users.fromJson(uj) orErr ("cannot parse ujson - bad request");
-              res <- Api.createUser(c) orErr ("cannot create in db")
+              c <- Users.fromJson(uj) orErr ("cannot parse ujson - bad request")
             ) yield {
+              // TODO bad code - reconcile and reuse createion sequence from Profile.doCreateProfiles
+              val created = Profile.createUser(c)
+
               UserTasks.addParent(c).create
-              UserTasks.verifyEmail(c).create
 
               Emailer.withSession { implicit mailSession =>
                 sendEmail(pe, c)
@@ -103,6 +108,7 @@ object Tasks extends RazController with Logging {
           }
         })
     } else if (auth.isDefined) {
+      // done later, user already created
       parentForm.bindFromRequest.fold(
         formWithErrors => {
           error("FORM ERR " + formWithErrors)
@@ -127,6 +133,7 @@ object Tasks extends RazController with Logging {
     }
   }
 
+  /** send email to parrent to accep tkid */
   def sendEmail(pe: String, c: User)(implicit request: Request[_], mailSession: MailSession) = {
     val from = "admin@razie.com"
 
@@ -175,6 +182,12 @@ object Tasks extends RazController with Logging {
           this dbop UserTask(child._id, "addParent").delete
           this dbop ParentChild(p._id, child._id).create
 
+          // TODO manual reconcile
+          RacerKidAssoc(
+            p._id, RacerKidz.myself(child._id)._id, RK.ASSOC_CHILD,
+            RK.ROLE_KID,
+            p._id).create
+
           Msg("""
 Ok child added. You can edit the privacy settings from your [profile page](/doe/profile).
 
@@ -201,20 +214,21 @@ Please read our [[Terms of Service]] as well as our [[Privacy Policy]]
       c <- auth orCorr cNoAuth
     ) yield Emailer.withSession { implicit mailSession =>
       sendEmailVerif(c)
-      msgVerif (c)
+      msgVerif(c)
     }) getOrElse {
       ERR
     }
   }
 
-  def msgVerif (c:User, next:Option[String]=None)(implicit request: Request[_])  = {
-    val MSG_EMAIL_VERIF = """
-Ok - we sent an email to your registered email address - please follow the instructions in that email to validate your email address and begin using the site.<br>
-Please check your spam/junk folders as well in the next few minutes - make sure you mark """ + Config.SUPPORT + """ as a safe sender!"""
+  def msgVerif(c: User, extra: String = "", next: Option[String] = None)(implicit request: Request[_]) = {
+    val MSG_EMAIL_VERIF = s"""
+Ok - we sent an email to your registered email address <font style="color:red">${c.email.dec}</font> - please follow the instructions in that email to validate your email address.
+<p>You can't really <font style="color:red">begin using the site</font> until you verify your email, sorry...
+<p>Please check your spam/junk folders as well in the next few minutes - make sure you mark """ + Config.SUPPORT + """ as a safe sender!""" + extra
 
     Msg2(MSG_EMAIL_VERIF, next, Some(c)).withSession("connected" -> Enc.toSession(c.email))
   }
-    
+
   def sendEmailVerif(c: User)(implicit request: Request[_], mailSession: MailSession) = {
     val from = Config.SUPPORT
     val dt = DateTime.now().plusHours(1).toString()
@@ -268,7 +282,7 @@ Please check your spam/junk folders as well in the next few minutes - make sure 
   }
 
   /** step 2 - user clicked on email link to verify email */
-  private def verifiedEmail(expiry1: String, email: String, id: String, user: Option[User])(implicit request: Request[_]) = {
+  def verifiedEmail(expiry1: String, email: String, id: String, user: Option[User])(implicit request: Request[_]) = {
     implicit val errCollector = new VError()
     (expiry1, email, id) match {
       case (Enc(expiry), ce, cid) => {
@@ -283,13 +297,13 @@ Please check your spam/junk folders as well in the next few minutes - make sure 
         ) yield {
           // TODO transaction
           val ppp = pro.addPerm("+" + Perm.eVerified.s).addPerm("+" + Perm.uWiki.s)
-          this dbop pro.update(if (p.under12) ppp else ppp.addPerm("+" + Perm.uProfile.s))
+          this dbop pro.update(if (p.isUnder13) ppp else ppp.addPerm("+" + Perm.uProfile.s))
           this dbop UserTasks.verifyEmail(p).delete
 
           // replace in cache
           Users.findUserById(p._id).map { u =>
             import play.api.Play.current
-            RazController.cleanAuth(Some(u))
+            cleanAuth(Some(u))
           }
 
           Msg("""
@@ -304,6 +318,28 @@ Please read our [[Terms of Service]] as well as our [[Privacy Policy]]
           Unauthorized("Oops - cannot update this user... " + errCollector.mkString)
         }
     }
+  }
+
+  def some(what: String) = Action { implicit request =>
+    val t = UserTasks.some(auth.get, what)
+
+    what match {
+      case "setupRegistration" => {
+        Msg2("Setting up registration is a bit complicated right now, but we'll do it for you. <p>Please create a support request from the link at the bottom and tell us if you'd like registration and if you want to see the default forms or with your own forms.", Some("/"))
+      }
+      case "setupCalendars" => {
+        Msg2("Setting up calendars is a bit complicated right now, but we'll do it for you. <p>Please create a support request from the link at the bottom and describe what calendar this is (club calendar probably) and the events in it: what, when, where.", Some("/"))
+      }
+      case _ => {
+        Msg2("?")
+      }
+    }
+  }
+
+  def someok(what: String) = Action { implicit request =>
+    val t = UserTasks.some(auth.get, what)
+    t.delete
+    Msg2(t.desc + " Completed!")
   }
 
 }

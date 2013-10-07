@@ -31,17 +31,29 @@ included in mainUserC as the right hand side info box
 <ul class="nav nav-tabs">
   <li class="@active(1)"><a href="/doe/index/1">Calendar</a></li>
   <li class="@active(2)"><a href="/doe/index/2">Map</a></li>
-  <li class="@active(3)"><a href="/doe/index/3">Blogs</a></li>
+  <li class="@active(3)"><a href="/doe/index/3">Blogs/Forums</a></li>
   <li class="@active(4)"><a href="/doe/index/4">Notes</a></li>
 </ul>
 
+@regs=@{
+  val clubs = user.wikis.filter(_.wid.cat=="Club").flatMap(w=>model.Users.findUserByUsername(w.wid.name).toList)
+  clubs.flatMap(c=>model.Regs.findClubUser(c, user._id)).filter(_.regStatus == model.RegStatus.PENDING)
+}
+
+@blogs=@{
+  user.pages("Blog", "Forum")
+}
+
 @item match {
   case 1 => {
-    @if(user.tasks.size>0) {
+    @if(user.tasks.size + regs.size > 0) {
       <b>Stuff to do</b>
       <ul>
       @for(t <- user.tasks) {
         <li><a style="color:red;font-weight:bold" href="/user/task/@t.name">@t.desc</a></li>
+      }
+      @for(t <- regs) {
+        <li><a style="color:red;font-weight:bold" href="@routes.Club.doeClubUserReg(t._id.toString)">Pending registration forms for @t.clubName</a></li>
       }
       </ul>
     } else {
@@ -97,29 +109,29 @@ case 2 => {
 case 3 => { 
 
   Owned: 
-  @if(user.pages("Blog").filter(_.role == "Owner").size>0) {
-    <a class="btn btn-mini" href="/wiki/Blog">Add more &raquo;</a></p>
+  @if(blogs.filter(_.role == "Owner").size>0) {
+    <a class="btn btn-mini" href="/wikie/create/Blog">Add more &raquo;</a></p>
     <ul> 
-      @for(w <- user.pages("Blog").filter(_.role == "Owner")) {
+      @for(w <- blogs.filter(_.role == "Owner")) {
         <li><a href="@controllers.Wiki.w(w.wid)">@model.Wikis.label(w.wid)</a></li>
       }
     </ul>
   } else {
     None
-    <a class="btn btn-mini" href="/wiki/Blog">Create one &raquo;</a></p>
+    <a class="btn btn-mini" href="/wikie/create/Blog">Create one &raquo;</a></p>
   }
 <p>
   Followed:
-  @if(user.pages("Blog").filter(_.role != "Owner").size>0) {
-    <a class="btn btn-mini" href="/wiki/Blog">Follow more &raquo;</a></p>
+  @if(blogs.filter(_.role != "Owner").size>0) {
+    <a class="btn btn-mini" href="/wikie/add/Blog">Follow more &raquo;</a></p>
     <ul> 
-    @for(w <- user.pages("Blog").filter(_.role != "Owner")) {
+    @for(w <- blogs.filter(_.role != "Owner")) {
       <li><a href="@controllers.Wiki.w(w.wid)">@model.Wikis.label(w.wid)</a></li>
     }
   </ul>
   } else {
     None
-    <a class="btn btn-mini" href="/wiki/Blog">Follow one now &raquo;</a></p>
+    <a class="btn btn-mini" href="/wikie/add/Blog">Follow one now &raquo;</a></p>
   }
 }
 
@@ -127,7 +139,7 @@ case 4 => {
 
   Owned: 
   @if(user.pages("Note").filter(_.role == "Owner").size>0) {
-  <a class="btn btn-mini" href="/wiki/Note">Add &raquo;</a></p>
+  <a class="btn btn-mini" href="/wikie/create/Note">Add &raquo;</a></p>
   <ul> 
     @for(w <- user.pages("Note").filter(_.role == "Owner")) {
       <li><a href="@controllers.Wiki.w(w.wid)">@model.Wikis.label(w.wid)</a></li>
@@ -135,7 +147,7 @@ case 4 => {
   </ul>
   } else {
     None
-    <a class="btn btn-mini" href="/wiki/Note">Create one &raquo;</a></p>
+    <a class="btn btn-mini" href="/wikie/create/Note">Create one &raquo;</a></p>
   }
   }
 

@@ -1,0 +1,148 @@
+@******
+club admin manages list of users and registrations
+******@
+@(club:model.User, members:List[(Option[model.User], model.UserWiki, Option[model.Reg])])
+@import _root_.admin.Config
+
+@htmlHead("Registrations for club " + club.userName)
+@navbar(Some(club))
+   
+<div class="container ">
+  <div class="row">
+  @views.html.user.leftmenu(7, club)
+
+<div class="span9">
+
+@tab=@{
+  members.filter(_._1.isDefined).map(t=>
+    Map("userName"->t._1.get.userName, 
+    	"firstName"->t._1.get.firstName, 
+    	"lastName"->t._1.get.lastName, 
+    	"role"->t._2.role, 
+    	"regStatus" -> t._3.map(_.regStatus).getOrElse("n/a"), 
+    	"uwId"->t._2._id.toString))
+}
+
+@tabMissing=@{
+  members.filter(_._1.isEmpty).map(t=>
+    Map("userId"->t._2.userId.toString, "role"->t._2.role))
+}
+
+@id(row:Map[String,String])=@{row.get("uwId").get}
+
+@import model.RegStatus._
+
+@mnglink(row:Map[String,String],k:String,v:String)={
+  @k match {
+  	case "regStatus" => {
+  		@regStatusColored(v, Some(routes.Club.doeClubReg(id(row)).toString))
+  		}
+  	case "rowClass" => { 
+  		@row.get("regStatus") match {
+  		   case Some(PENDING) => { class="error" }
+  		   case Some(CURRENT) => { class="success" }
+  		   case Some(ACCEPTED) => { class="warning" }
+  		   case _ => { }
+  		}
+  		}
+    case _ => { @v }
+  } 
+}
+
+<h2>Registration management panel for @club.firstName</h2>
+
+<p>These are the members with accounts on the website. Click on the colorful statuses to manage that user/registration. (See the bottom for a legend).
+<b>Summary:</b> @tab.filter(_.apply("role") != "Fan").size members and @tab.filter(_.apply("role") == "Fan").size fans.
+
+@util.utilSimpleTable(tab.filter(_.apply("role") != "Fan").iterator, 
+	Seq("userName" -> "", 
+		"firstName"->"First", 
+		"lastName"->"Last", 
+		"role"->"Role", 
+		"regStatus" -> "Registration", 
+		"uwId"->""), Some(mnglink))
+
+<p>Send invitation to join club on RacerKidz for new members - copy this link and email it <br>
+<strong>http://@Config.hostport/wiki/Admin:Join_A_Club?club=@club.userName</strong>
+
+<br>
+<br>
+
+@***
+<div class="well">  
+<strong>Members not registered</strong> do not have accounts on the site and/or are not included in a registration.
+
+@model.RacerKidz.checkMyself(club._id)
+  
+@rks=@{
+  model.RacerKidz.findAssocForUser(club._id).filter(_.assoc == ASSOC_PARENT).map(x=>(x,x.rk.get)).map(t=>
+    Map("fname"->t._2.info.firstName, 
+    	"lname"->t._2.info.lastName, 
+    	"role" -> t._2.info.role, 
+    	"button"->t._2._id.toString, 
+    	"associd"->t._1._id.toString, 
+    	"id" -> t._2._id.toString))
+}
+
+@kidlink(row:Map[String,String],k:String,v:String)={
+  @k match {
+  	case "button" => {
+      <a href="@routes.Kidz.doeKid(club._id.toString, v, "-", row("associd"), "Club")" class="btn btn-mini">More...</a>
+      } 
+    case _ => {@v}
+  }
+}
+
+@util.utilSimpleTable(rks, 
+	Seq("fname" -> "First Name", 
+		"lname"->"Last Name", 
+		"role" -> "Role", 
+		"button"->"Details"), Some(kidlink))
+
+Add more from <a href="@routes.Club.doeClubKids">here</a>
+
+</div> 
+
+***@
+
+<hr>
+@views.html.club.regStatusLegend()
+
+  <br>Reporting per form
+  <ul>
+  @controllers.Club.findForUser(club).map { c =>
+    @c.regForms.map { t =>
+    <li>
+      <a href="@routes.Club.doeClubRegsCsv(t.role)" class="btn btn-mini">Report CSV</a> - 
+      <a href="@routes.Club.doeClubRegsJson(t.role)" class="btn btn-mini">Report Json</a> - @t.role
+    }
+  }
+  </ul>
+
+<hr>
+<h4>Fomer members and fans (should not register)</h4>
+
+@util.utilSimpleTable(tab.filter(_.apply("role") == "Fan").iterator, 
+	Seq("userName" -> "", 
+		"firstName"->"First", 
+		"lastName"->"Last", 
+		"role"->"Role", 
+		"regStatus" -> "Registration", 
+		"uwId"->""), Some(mnglink))
+
+@*** TODO show members that don't like the club anymore - ex memebers with old regs ***@
+
+@if(tabMissing.size>0) {
+  <h4>Members with deleted accounts - please submit a support request, if any: </h3>
+
+  @util.utilSimpleTable(tabMissing.iterator, Seq("userId" -> "userId", "role"->"Role"), None)
+}
+
+</div> <!-- /container -->
+</div> <!-- /container -->
+  <hr>
+  @htmlFooter(ads=true)
+</div> <!-- /container -->
+
+@htmlBottom()
+    

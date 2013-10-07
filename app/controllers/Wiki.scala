@@ -1,14 +1,17 @@
+/**
+ *   ____    __    ____  ____  ____,,___     ____  __  __  ____
+ *  (  _ \  /__\  (_   )(_  _)( ___)/ __)   (  _ \(  )(  )(  _ \           Read
+ *   )   / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <     README.txt
+ *  (_)\_)(__)(__)(____)(____)(____)(___/   (__)  (______)(____/    LICENSE.txt
+ */
 package controllers
 
 import scala.Array.canBuildFrom
-
 import org.joda.time.DateTime
-
 import com.mongodb.DBObject
 import com.mongodb.casbah.Imports.map2MongoDBObject
 import com.mongodb.casbah.Imports.wrapDBObj
 import com.novus.salat.grater
-
 import admin.Audit
 import admin.Config
 import admin.Corr
@@ -17,27 +20,16 @@ import admin.MailSession
 import admin.Notif
 import admin.SendEmail
 import admin.VError
-import model.CMDWID
 import model.Enc
-import model.Mongo
+import db.Mongo
 import model.Perm
-import model.RazSalatContext.ctx
-import model.Sec.toENCR
+import db.RazSalatContext.ctx
+import model.Sec.EncryptedS
 import model.Stage
 import model.User
 import model.UserType
 import model.UserWiki
 import model.Users
-import model.WID
-import model.WikiAudit
-import model.WikiCount
-import model.WikiDomain
-import model.WikiEntry
-import model.WikiIndex
-import model.WikiLink
-import model.WikiWrapper
-import model.WikiXpSolver
-import model.Wikis
 import play.api.data.Form
 import play.api.data.Forms.mapping
 import play.api.data.Forms.nonEmptyText
@@ -47,20 +39,50 @@ import play.api.libs.json.Json
 import play.api.mvc.Action
 import play.api.mvc.Request
 import razie.Logging
+import razie.cout
+import db.ROne
+import model.WikiCount
+import model.WikiIndex
+import model.Wikis
+import model.CMDWID
+import model.WikiAudit
+import model.WikiEntry
+import model.WikiEntryOld
+import model.WID
+import model.WikiLink
+import model.WikiDomain
+import model.WikiWrapper
+import model.WikiXpSolver
+import model.WikiUser
+import razie.clog
 
-/** wiki controller */
-object Wiki extends RazController with Logging {
+/** reused in other controllers */
+class WikiBase1 extends RazController with Logging with WikiAuthorization {
+  var authImpl: WikiAuthorization = new NoWikiAuthorization
 
-  case class EditWiki(label: String, markup: String, content: String, visibility: String, edit: String, tags: String)
+  def isVisible(u: Option[WikiUser], props: Map[String, String], visibility: String = "visibility")(implicit errCollector: VError = IgnoreErrors): Boolean =
+    authImpl.isVisible(u, props, visibility)(errCollector)
+
+  def canSee(wid: WID, au: Option[WikiUser], w: Option[WikiEntry])(implicit errCollector: VError): Option[Boolean] =
+    authImpl.canSee(wid, au, w)(errCollector)
+
+  def canEdit(wid: WID, u: Option[WikiUser], w: Option[WikiEntry], props: Option[Map[String, String]] = None)(implicit errCollector: VError): Option[Boolean] =
+    authImpl.canEdit(wid, u, w, props)(errCollector)
+}
+
+class WikiBase extends WikiBase1 {
+
+  case class EditWiki(label: String, markup: String, content: String, visibility: String, edit: String, tags: String, notif: String)
 
   val editForm = Form {
     mapping(
-      "label" -> nonEmptyText.verifying("Obscenity filter", !Wikis.hasporn(_)).verifying("Invalid characters", vldSpec(_)),
+      "label" -> nonEmptyText.verifying(vPorn, vSpec),
       "markup" -> nonEmptyText.verifying("Unknown!", Wikis.markups.contains(_)),
       "content" -> nonEmptyText,
       "visibility" -> nonEmptyText,
       "wvis" -> nonEmptyText,
-      "tags" -> text.verifying("Obscenity filter", !Wikis.hasporn(_)))(EditWiki.apply)(EditWiki.unapply) verifying (
+      "tags" -> text.verifying(vPorn, vSpec),
+      "notif" -> text.verifying(vPorn, vSpec))(EditWiki.apply)(EditWiki.unapply) verifying (
         "Your entry failed the obscenity filter", { ew: EditWiki => !Wikis.hasporn(ew.content)
         })
   }
@@ -78,20 +100,32 @@ object Wiki extends RazController with Logging {
 
   val addForm = Form {
     mapping(
-      "name" -> nonEmptyText)(AddWiki.apply)(AddWiki.unapply) verifying (
-        "Your entry failed the obscenity filter", { ew: AddWiki => !Wikis.hasporn(ew.name)
-        })
+      "name" -> nonEmptyText.verifying(vPorn, vSpec))(AddWiki.apply)(AddWiki.unapply)
   }
 
-  case class LinkWiki(how: String, markup: String, comment: String)
+  case class LinkWiki(how: String, notif: String, markup: String, comment: String)
 
   def linkForm(implicit request: Request[_]) = Form {
     mapping(
       "how" -> nonEmptyText,
+      "notif" -> nonEmptyText,
       "markup" -> text.verifying("Unknown!", request.queryString("wc").headOption.exists(_ == "0") || Wikis.markups.contains(_)),
       "comment" -> text)(LinkWiki.apply)(LinkWiki.unapply) verifying (
         "Your entry failed the obscenity filter", { ew: LinkWiki => !Wikis.hasporn(ew.comment)
         })
+  }
+
+  case class FollowerLinkWiki(email1: String, email2: String, comment: String)
+
+  def followerLinkForm(implicit request: Request[_]) = Form {
+    mapping(
+      "email1" -> nonEmptyText.verifying("Wrong format!", vldEmail(_)).verifying("Invalid characters", vldSpec(_)),
+      "email2" -> nonEmptyText.verifying("Wrong format!", vldEmail(_)).verifying("Invalid characters", vldSpec(_)),
+      "comment" -> text)(FollowerLinkWiki.apply)(FollowerLinkWiki.unapply) verifying
+      ("Email mismatch - please type again", { reg: FollowerLinkWiki =>
+        if (reg.email1.length > 0 && reg.email2.length > 0 && reg.email1 != reg.email2) false
+        else true
+      })
   }
 
   // profile
@@ -102,6 +136,18 @@ object Wiki extends RazController with Logging {
       ("Name already in use", { t: (String, String) => WikiIndex.withIndex { index => !index.idx.contains(Wikis.formatName(t._2)) }
       })
   }
+}
+
+object Visibility {
+  final val PUBLIC = "Public"
+  final val PRIVATE = "Private"
+  final val CLUB = "Club"
+  final val CLUB_ADMIN = "ClubAdmin"
+}
+
+/** wiki controller */
+object Wiki extends WikiBase {
+  import Visibility._
 
   /** when no pages found in 'any', i captured 'cat' in a form */
   def edit2 = Action { implicit request =>
@@ -115,97 +161,8 @@ object Wiki extends RazController with Logging {
     }
   }
 
-  def isInSameClub(member: User, owner: User) = {//}(implicit errCollector: VError = IgnoreErrors) = {
-    // all clubs where member
-    val m1 = member.wikis.filter(x => x.wid.cat == "Club" && x.role != "Fan").toList
-
-    println (member)
-    println (owner)
-    
-    (
-      // owner is the club
-      (owner.roles.contains(UserType.Organization.toString) && m1.exists(_.wid.name == owner.userName)) ||
-      // owner is someone else => club lists intersect?
-      (! owner.roles.contains(UserType.Organization.toString) && {
-        val m2 = member.wikis.filter(x => x.wid.cat == "Club" && x.role != "Fan").toList
-        m1.exists(x1 => m2.exists (_.wid.name == x1.wid.name))
-      }) 
-    )
-  }
-
-  def isVisible(u: Option[User], props: Map[String, String], visibility: String = "visibility")(implicit errCollector: VError = IgnoreErrors) = {
-    // TODO optimize
-    def uname(id: Option[String]) = id.flatMap(Users.findUserById(_)).map(_.userName).getOrElse(id.getOrElse(""))
-
-    (!props.get(visibility).isDefined) || u.exists(_.hasPerm(Perm.adminDb)) ||
-      (props(visibility) == "Public") || // if changing while edit, it will have a value even when public
-      (u.isDefined orCorr cNoAuth).exists(_ == true) && // anything other than public needs logged in
-      (
-          props(visibility) == "Private" && u.isDefined && props.get("owner") == Some(u.get.id) ||
-        (
-          props(visibility) == "Club" && u.isDefined && (
-            props.get("owner") == Some(u.get.id) || props.get("owner").flatMap(Users.findUserById(_)).exists(c => isInSameClub(u.get, c))) orCorr (
-              cNotMember(uname(props.get("owner"))))).getOrElse(
-                u.exists(_.hasPerm(Perm.adminDb))))
-  }
-
-  def canSee(wid: WID, au: Option[User], w: Option[WikiEntry])(implicit errCollector: VError) = {
-    lazy val isAdmin = au.exists(_.hasPerm(Perm.adminDb))
-    lazy val we = if (w.isDefined) w else Wikis.find(wid)
-    val cat = wid.cat
-    val name = wid.name
-    (for (
-      pubProfile <- ("User" != cat || WikiIndex.withIndex(_.get2(name, wid).isDefined) || au.map(name == _.userName).getOrElse(isAdmin)) orErr ("Sorry - profile not found or is private! %s : %s".format(cat, name));
-      mine2 <- (!we.isDefined || isVisible(au, we.get.props)) orErr ("Sorry - topic is not visible!"); // TODO report
-      t <- true orErr ("just can't, eh")
-    ) yield true)
-    // TODO parent can see child's profile
-  }
-
-  final val corrVerified = new Corr("not verified", """Sorry - you need to <a href="/user/task/verifyEmail">verify your email address</a>, to create or edit public topics.\n If you already did, please describe the issue in a  <a href="/doe/support?desc=email+already+verified">support request</a> below.""");
-
-  /** call canEdit ignoring errors */
-  def canEdit2(wid: WID, u: Option[User], w: Option[WikiEntry]) = {
-    implicit val errCollector = IgnoreErrors
-    canEdit(wid, u, w)
-  }
-
-  private def wvis(props: Option[Map[String, String]]): Option[String] =
-    props.flatMap(p => p.get("wvis").orElse(p.get("visibility"))).map(_.asInstanceOf[String])
-
-  def canEdit(wid: WID, u: Option[User], w: Option[WikiEntry], props: Option[Map[String, String]] = None)(implicit errCollector: VError) = {
-    val cat = wid.cat
-    val name = wid.name
-    lazy val we = if (w.isDefined) w else Wikis.find(cat, name)
-    lazy val wprops = if (we.isDefined) we.map(_.props) else props
-    if (u.isDefined && u.exists(_.hasPerm(Perm.adminDb)))
-      Some(true)
-    else (for (
-      cansee <- canSee(wid, u, w);
-      au <- u orCorr cNoAuth;
-      isA <- checkActive(au);
-      r1 <- ("Category" != cat || au.hasPerm(Perm.adminWiki)) orErr ("no permission to edit a Category");
-      r2 <- ("Admin" != cat || au.hasPerm(Perm.adminWiki)) orErr ("no permission to edit an Admin entry");
-      mine <- ("User" != cat || name == au.userName) orErr ("Can only edit your own public profile!");
-      mine1 <- ("User" != cat || au.canHasProfile) orErr ("Sorry - you cannot have a public profile - either no parent added or parent does not allow it! \n If you think you should have one, please describe the issue in a  <a href=\"/doe/support?desc=parent+should+allow\">support request</a> below.");
-      mine2 <- ("WikiLink" == cat || au.canHasProfile) orErr ("Sorry - you cannot create or edit public topics - either no parent added or parent does not allow it! \n If you think you should have one, please describe the issue in a  <a href=\"/doe/support?desc=cannot+have+public+profile\">support request</a> below.");
-      pro <- au.profile orCorr cNoProfile;
-      verif <- ("WikiLink" == cat || "User" == cat || au.hasPerm(Perm.eVerified)) orCorr corrVerified;
-      res <- (!w.exists(_.isReserved) || au.hasPerm(Perm.adminWiki) || "User" == wid.cat) orErr ("Category is reserved");
-      owner <- !(WikiDomain.needsOwner(cat)) ||
-        we.exists(_.isOwner(au.id)) ||
-        (wprops.flatMap(_.get("wvis")).isDefined && isVisible(u, wprops.get, "wvis")) ||
-        wprops.flatMap(_.get("visibility")).exists(_ == "Club" && isVisible(u, wprops.get, "visibility")) ||
-        !wvis(wprops).isDefined orErr ("Sorry - you are not the owner of this topic");
-      memod <- (w.flatMap(_.contentTags.get("moderator")).map(_ == au.userName).getOrElse(true)) orErr ("Sorry - this is moderated and you are not the moderator, are you?");
-      t <- true orErr ("can't")
-    ) yield true)
-  }
-
-  //  def widFromPath(path: String): Option[WID] = WID fromPath path
-
   /** serve page for edit */
-  def wikieEdit(wid: WID) = Action { implicit request =>
+  def wikieEdit(wid: WID, icontent: String = "") = Action { implicit request =>
     implicit val errCollector = new VError()
     val n = Wikis.formatName(wid)
 
@@ -223,9 +180,9 @@ object Wiki extends RazController with Logging {
             EditWiki(w.label,
               w.markup,
               w.content,
-              (w.props.get("visibility").getOrElse("Public")),
-              wvis(Some(w.props)).getOrElse("Public"),
-              w.tags.mkString(","))),
+              (w.props.get("visibility").getOrElse(PUBLIC)),
+              wvis(Some(w.props)).getOrElse(PUBLIC),
+              w.tags.mkString(","), "y")),
             auth))
         }) getOrElse
           noPerm(wid, "EDIT")
@@ -245,22 +202,23 @@ object Wiki extends RazController with Logging {
           val tags = preprocessed.tags
           val contentFromTags = tags.foldLeft("") { (x, t) => x + "{{" + t._1 + ":" + t._2 + "}}\n\n" }
 
-          val visibility = wid.findParent.flatMap(_.props.get("visibility")).getOrElse(Wikis.visibilityFor(wid.cat).headOption.getOrElse("Public"))
-          val wwvis = wvis(wid.findParent.map(_.props)).getOrElse(Wikis.visibilityFor(wid.cat).headOption.getOrElse("Public"))
+          val visibility = wid.findParent.flatMap(_.props.get("visibility")).getOrElse(Wikis.visibilityFor(wid.cat).headOption.getOrElse(PUBLIC))
+          val wwvis = wvis(wid.findParent.map(_.props)).getOrElse(Wikis.visibilityFor(wid.cat).headOption.getOrElse(PUBLIC))
 
           Ok(views.html.wiki.wikiEdit(wid, editForm.fill(
             EditWiki(wid.name.replaceAll("_", " "),
               Wikis.MD,
-              contentFromTags + "Edit content here",
+              contentFromTags + icontent + "\nEdit content here",
               visibility,
               wwvis,
-              (if ("Topic" == wid.cat) "" else wid.cat.toLowerCase))),
+              (if ("Topic" == wid.cat) "" else wid.cat.toLowerCase), "y")),
             auth))
         }) getOrElse
           noPerm(wid, "EDIT")
     }
   }
 
+  /** save an edited wiki - either new or updated */
   def save(wid: WID) = Action { implicit request =>
     implicit val errCollector = new VError()
 
@@ -270,7 +228,7 @@ object Wiki extends RazController with Logging {
         BadRequest(views.html.wiki.wikiEdit(wid, formWithErrors, auth))
       },
       {
-        case we @ EditWiki(l, m, co, vis, wvis, tags) => {
+        case we @ EditWiki(l, m, co, vis, wvis, tags, notif) => {
           log("Wiki.save " + wid)
           Wikis.find(wid) match {
             case Some(w) =>
@@ -280,8 +238,8 @@ object Wiki extends RazController with Logging {
                 r1 <- au.hasPerm(Perm.uWiki) orCorr cNoPermission;
                 hasQuota <- (au.isAdmin || au.quota.canUpdate) orCorr cNoQuotaUpdates;
                 nochange <- (w.label != l || w.markup != m || w.content != co || (
-                  w.props.get("visibility").map(_ != vis).getOrElse(vis != "Public") ||
-                  w.props.get("wvis").map(_ != wvis).getOrElse(wvis != "Public")) ||
+                  w.props.get("visibility").map(_ != vis).getOrElse(vis != PUBLIC) ||
+                  w.props.get("wvis").map(_ != wvis).getOrElse(wvis != PUBLIC)) ||
                   w.tags.mkString(",") != tags) orErr ("no change");
                 newlab <- Some(if ("WikiLink" == wid.cat || "User" == wid.cat) l else if (wid.name == Wikis.formatName(l)) l else w.label);
                 newVer <- Some(w.cloneNewVer(newlab, m, co, au._id));
@@ -290,9 +248,9 @@ object Wiki extends RazController with Logging {
                 var we = newVer
 
                 // visibility?
-                if (we.props.get("visibility").map(_ != vis).getOrElse(vis != "Public"))
+                if (we.props.get("visibility").map(_ != vis).getOrElse(vis != PUBLIC))
                   we = we.cloneProps(we.props ++ Map("visibility" -> vis), au._id)
-                if (we.props.get("wvis").map(_ != wvis).getOrElse(wvis != "Public"))
+                if (we.props.get("wvis").map(_ != wvis).getOrElse(wvis != PUBLIC))
                   we = we.cloneProps(we.props ++ Map("wvis" -> wvis), au._id)
 
                 if (we.tags.mkString(",") != tags)
@@ -300,12 +258,13 @@ object Wiki extends RazController with Logging {
 
                 // signing scripts
                 if (au.hasPerm(Perm.adminDb)) {
-                  if (!we.scripts.filter(_.signature == "REVIEW").isEmpty) {
+                  if (!we.scripts.filter(_.signature startsWith "REVIEW").isEmpty) {
                     var c2 = we.content
-                    for (s <- we.scripts.filter(_.signature == "REVIEW")) {
+                    for (s <- we.scripts.filter(_.signature startsWith "REVIEW")) {
                       def sign(s: String) = Enc apply Enc.hash(s)
 
                       c2 = we.PATTSIGN.replaceSomeIn(c2, { m =>
+                        clog << "SIGNING:" << m << m.groupNames.mkString
                         if (s.name == (m group 2)) Some("{{%s:%s:%s}}%s{{/%s}}".format(
                           m group 1, m group 2, sign(s.content), s.content.replaceAll("""\\""", """\\\\"""), m group 1))
                         else None
@@ -315,21 +274,21 @@ object Wiki extends RazController with Logging {
                   }
                 }
 
-                if (!we.scripts.filter(_.signature == "ADMIN").isEmpty && !au.hasPerm(Perm.adminDb)) {
+                if (!we.scripts.filter(_.signature == "ADMIN").isEmpty && !(au.hasPerm(Perm.adminDb) || Config.isLocalhost)) {
                   noPerm(wid, "HACK_SCRIPTS1")
                 } else {
                   // can only change label of links OR if the formatted name doesn't change
                   w.update(we)
                   Notif.entityUpdateAfter(we, WikiEntry.UPD_CONTENT)
-                  Emailer.withSession { implicit mailSession =>
+                  Emailer.laterSession { implicit mailSession =>
                     au.quota.incUpdates
                     au.shouldEmailParent("Everything").map(parent => Emailer.sendEmailChildUpdatedWiki(parent, au, WID(w.category, w.name)))
                   }
-                  WikiAudit("EDIT", w.wid.wpath, Some(au._id)).create
+                  Audit ! WikiAudit("EDIT", w.wid.wpath, Some(au._id))
                   Redirect(controllers.Wiki.w(we.wid, true)).flashing("count" -> "0")
                 }
               }) getOrElse
-                noPerm(wid, "HACK_SAVEEDIT")
+                Redirect(controllers.Wiki.w(wid, false)) // no change
             case None =>
               // create a new topic
               val parentProps = wid.findParent.map(_.props)
@@ -347,18 +306,17 @@ object Wiki extends RazController with Logging {
                   we = we.withTags(tags.split(",").map(_.trim).toSeq, au._id)
 
                 // needs owner?
-                if (model.Wikis.category(wid.cat).flatMap(_.contentTags.get("roles:" + "User")).map(_.split(",")).exists(_.contains("Owner"))) {
+                if (WikiDomain.needsOwner(wid.cat)) {
                   we = we.cloneProps(we.props ++ Map("owner" -> au.id), au._id)
-                  //                  val wl = model.WikiLink(WID("User", au.id), we.wid, "Owner")
-                  //                  wl.create
                   this dbop model.UserWiki(au._id, wid, "Owner").create
-
-                  RazController.cleanAuth()
+                  cleanAuth()
                 }
 
                 // visibility?
-                if (vis != "Public")
+                if (vis != PUBLIC)
                   we = we.cloneProps(we.props ++ Map("visibility" -> vis), au._id)
+                if (wvis != "Public")
+                  we = we.cloneProps(we.props ++ Map("wvis" -> wvis), au._id)
 
                 // anything staged for this?
                 for (s <- model.Staged.find("WikiLink").filter(x => x.content.get("from").asInstanceOf[DBObject].get("cat") == wid.cat && x.content.get("from").asInstanceOf[DBObject].get("name") == wid.name)) {
@@ -375,12 +333,13 @@ object Wiki extends RazController with Logging {
                 }
 
                 we.create
-                WikiAudit("CREATE", we.wid.wpath, Some(au._id)).create
+                Audit ! WikiAudit("CREATE", we.wid.wpath, Some(au._id))
 
                 admin.SendEmail.withSession { implicit mailSession =>
                   au.quota.incUpdates
                   au.shouldEmailParent("Everything").map(parent => Emailer.sendEmailChildUpdatedWiki(parent, au, wid)) // ::: notifyFollowers (we)
-                  notifyFollowersCreate(we, au)
+                  if (notif == "y") notifyFollowersCreate(we, au)
+                  Emailer.tellRaz("New Wiki", au.userName, wid.ahref)
                 }
 
                 Redirect(controllers.Wiki.w(we.wid, true)).flashing("count" -> "0")
@@ -391,26 +350,41 @@ object Wiki extends RazController with Logging {
       })
   }
 
+  /** notify all followers of new topic/post */
   private def notifyFollowersCreate(wpost: WikiEntry, au: User)(implicit mailSession: MailSession) = {
     // 1. followers of this topic or followers of parent
 
     wpost.parent flatMap (Wikis.find(_)) map { w =>
-      (Users.findUserById(w.by).map(_._id).toList ++ w.userWikis.map(_.userId)).distinct.filter(_ != au._id).map(uid =>
+      // user wikis
+      (Users.findUserById(w.by).map(_._id).toList ++ model.Users.findUserLinksTo(w.wid).filter(_.notif == model.UW.EMAIL_EACH).toList.map(_.userId)).distinct.filter(_ != au._id).map(uid =>
         Users.findUserById(uid).map(u => Emailer.sendEmailNewTopic(u, au, w.wid, wpost)))
+
+      // followers by email
+      model.Users.findFollowerLinksTo(w.wid).toList.groupBy(_.followerId).values.map(_.head).map(flink =>
+        flink.follower.map(follower => {
+          Emailer.sendEmailFollowerNewTopic(follower.email.dec, au, w.wid, wpost, flink.comment)
+        }))
     }
   }
 
   def search(q: String) = Action { implicit request =>
-    // TODO make case-insensitive
     // TODO limit the number of searches - is this performance critical?
+    val qi = q.toLowerCase()
     val wikis = Mongo.withDb(Mongo.db("WikiEntry")) { t =>
-      for (u <- t if ((q.length > 1 && u.get("name").asInstanceOf[String].contains(q)) || (q.length() > 3 && u.get("content").asInstanceOf[String].contains(q)))) yield u
+      for (
+        u <- t if (
+          (q.length > 1 && u.get("name").asInstanceOf[String].toLowerCase.contains(qi)) ||
+          (q.length > 1 && u.get("label").asInstanceOf[String].toLowerCase.contains(qi)) ||
+          (q.length() > 3 && u.get("content").asInstanceOf[String].toLowerCase.contains(qi)))
+      ) yield u
     }.toList
+
+    Audit.logdb("QUERY", q, "Results: " + wikis.size)
 
     if (wikis.count(x => true) == 1)
       Redirect(controllers.Wiki.w(WikiEntry.grated(wikis.head).wid))
     else
-      Ok(views.html.wiki.wikiList(q, wikis.map(WikiEntry.grated _).toList, auth))
+      Ok(views.html.wiki.wikiList(q, wikis.map(WikiEntry.grated _).toList.map(w => (w.wid, w.label)), auth))
   }
 
   private def topicred(wpath: String) = {
@@ -421,17 +395,61 @@ object Wiki extends RazController with Logging {
       None
   }
 
+  /**
+   * show an older version of a page
+   *  TODO is this authorized?
+   */
+  def showWidVer(cw: CMDWID, ver: Int) = Action { implicit request =>
+    val wid = cw.wid.get
+    ROne[WikiEntryOld]("entry.category" -> wid.cat, "entry.name" -> wid.name, "entry.ver" -> ver).map { p =>
+      wikiPage(wid, Some(wid.name), Some(p.entry), auth, false)
+    } getOrElse {
+      Oops("Version " + ver + " of " + wid + " NOT FOUND...", wid)
+    }
+  }
+
+  /**
+   * show conetnt of current version
+   *  TODO is this authorized?
+   */
+  def showWidContent(cw: CMDWID) = Action { implicit request =>
+    val wid = cw.wid.get
+    wid.page.map { p =>
+      Ok(p.content)
+    } getOrElse {
+      Oops("" + wid + " NOT FOUND...", wid)
+    }
+  }
+
+  /**
+   * show conetnt of current version
+   *  TODO is this authorized?
+   */
+  def showWidContentVer(cw: CMDWID, ver: Int) = Action { implicit request =>
+    val wid = cw.wid.get
+    ROne[WikiEntryOld]("entry.category" -> wid.cat, "entry.name" -> wid.name, "entry.ver" -> ver).map { p =>
+      Ok(p.entry.content)
+    } getOrElse {
+      Oops("Version " + ver + " of " + wid + " NOT FOUND...", wid)
+    }
+  }
+
+  def headWid(cw: CMDWID) = showWid(cw, 0)
+
+  /** show a page */
   def showWid(cw: CMDWID, count: Int) = {
     if (cw.cmd == "xp") xp(cw.wid.get, cw.rest)
+    else if (cw.cmd == "xpl") xpl(cw.wid.get, cw.rest)
+    else if (cw.cmd == "tag") xpl(cw.wid.get, "Post[" + cw.rest.split(",").map(x => s"tags~='.*$x.*'").mkString(" && ") + "]")
     else Action { implicit request =>
       // must check if page is WITHIN site, otherwise redirect to main site
       val fhost = request.headers.get("X-FORWARDED-HOST")
-//      val fhost=Some("glacierskiclub.com")    // for testing locally
+      //      val fhost=Some("glacierskiclub.com")    // for testing locally
       val redir = fhost flatMap (Config.urlfwd(_))
 
       if (fhost.exists(_ != Config.hostport) &&
-          redir.isDefined &&
-          !cw.wpath.get.startsWith(redir.get.replaceFirst(".*/wiki/", ""))) {
+        redir.isDefined &&
+        !cw.wpath.get.startsWith(redir.get.replaceFirst(".*/wiki/", ""))) {
         log("  REDIRECTED FROM - " + fhost)
         log("    TO http://" + Config.hostport + "/wiki/" + cw.wpath.get)
         Redirect("http://" + Config.hostport + "/wiki/" + cw.wpath.get)
@@ -442,25 +460,23 @@ object Wiki extends RazController with Logging {
     }
   }
 
-  //  def show2c(cat: String, name: String, colon: String = ":", cat1: String, name1: String, c1: String, count: Int) = Action { implicit request =>
-  //    val redWpath = cat + ":" + name + "/" + cat1 + ":" + name1
-  //    log("show2c " + redWpath)
-  //    val topic = WID.fromPath(redWpath).flatMap(Wikis.find)
-  //    topic.map { w =>
-  //      showPage(w, count)
-  //    } getOrElse {
-  //      topicred(redWpath) getOrElse Msg2("Topic %s Not found!".format(redWpath))
-  //    }
-  //  }
-
-  //  def show2(cat: String, name: String, colon: String = ":", count: Int) = show(WID(cat, name), count)
+  /** POST against a page - perhaps a trackback */
+  def postWid(wp: String) = Action { implicit request =>
+    //    if (model.BannedIps isBanned request.headers.get("X-FORWARDED-HOST")) {
+    //      admin.Audit.logdb("POST-BANNED", List("request:" + request.toString, "headers:" + request.headers, "body:" + request.body).mkString("<br>"))
+    //      Ok("")
+    //    } else {
+    //      admin.Audit.logdb("POST", List("request:" + request.toString, "headers:" + request.headers, "body:" + request.body).mkString("<br>"))
+    unauthorized("Oops - can't POST here")
+    //    }
+  }
 
   def show1(cat: String, name: String) = show(WID(cat, name))
   def showId(id: String) = Action { implicit request =>
     (for (w <- Wikis.findById(id)) yield Redirect(controllers.Wiki.w(w.category, w.name))) getOrElse Msg2("Oops - id not found")
   }
 
-  def w(we: WID, shouldCount: Boolean = true) = Config.urlmap("/wiki/" + we.wpath + (if (!shouldCount) "?count=0" else ""))
+  def w(we: WID, shouldCount: Boolean = true) = Config.urlmap(we.urlRelative + (if (!shouldCount) "?count=0" else ""))
 
   def w(cat: String, name: String) = Config.urlmap("/wiki/%s:%s".format(cat, name))
   def w(name: String) = Config.urlmap("/wiki/" + name)
@@ -475,7 +491,8 @@ object Wiki extends RazController with Logging {
   def show(iwid: WID, count: Int = 0) = Action { implicit request =>
     implicit val errCollector = new VError()
 
-    val shouldCount = !(request.flash.get("count").exists("0" == _) || (count == 0))
+    val shouldNotCount = (request.flash.get("count").exists("0" == _) || (count == 0) ||
+      isFromRobot(request) || auth.exists("Razie" == _.userName))
 
     debug("show2 " + iwid.wpath)
     // TODO stupid routes - can't match without the :
@@ -484,21 +501,22 @@ object Wiki extends RazController with Logging {
 
     val wid = WID(cat, name, iwid.parent)
 
+    // so they are available to scripts
     razie.NoStaticS.put(model.QueryParms(request.queryString))
 
     // special pages
     if ("Page" == cat && "home" == name) Redirect("/")
     else if ("Admin" == cat && "home" == name) Redirect("/")
     else if ("any" == cat || cat.isEmpty) {
+
       val wl = Wikis.findAny(name).filter(page => canSee(page.wid, auth, Some(page)).getOrElse(false)).toList
       if (wl.size == 1)
         // redirect to use the proper Category display
-        // TODO this is fucked up
         Redirect(controllers.Wiki.w(wl.head.wid))
       else if (wl.size > 0)
-        Ok(views.html.wiki.wikiList("category any", wl, auth))
+        Ok(views.html.wiki.wikiList("category any", wl.map(x => (x.wid, x.label)), auth))
       else
-        wikiPage(wid, Some(iwid.name), None, auth, shouldCount)
+        wikiPage(wid, Some(iwid.name), None, auth, !shouldNotCount)
     } else {
       // normal request with cat and name
       val w = Wikis.find(cat, name)
@@ -512,41 +530,60 @@ object Wiki extends RazController with Logging {
         Redirect(controllers.Wiki.w(WID.fromPath(Config.config(Config.TOPICRED).get.apply(iwid.wpath)).get))
       } else {
         // finally there!!
-        if (!canSee(wid, auth, w).getOrElse(false))
-          noPerm(wid, "SHOW")
-        else
+        if (!canSee(wid, auth, w).getOrElse(false)) {
+          if (isFromRobot(request)) {
+            Audit.logdb("ROBOT", wid.wpath)
+            noPerm(wid, "SHOW", false)
+          } else
+            noPerm(wid, "SHOW")
+        } else
           w.map { w =>
             // redirect a simple alias with no other content
             w.alias.map { wid =>
               Redirect(controllers.Wiki.w(wid.formatted))
             } getOrElse
-              //            else if (w.findParent.isDefined)
-              //              Redirect(controllers.Wiki.w(w.wid))
-              //            else
-              wikiPage(wid, Some(iwid.name), Some(w), auth, shouldCount)
+              wikiPage(wid, Some(iwid.name), Some(w), auth, !shouldNotCount)
           } getOrElse
-            wikiPage(wid, Some(iwid.name), None, auth, shouldCount)
+            wikiPage(wid, Some(iwid.name), None, auth, !shouldNotCount)
       }
     }
   }
 
   private def wikiPage(wid: model.WID, iname: Option[String], page: Option[model.WikiEntry], user: Option[model.User], shouldCount: Boolean) = {
     if (shouldCount) page.foreach { p =>
-      WikiAudit("SHOW", p.wid.wpath, user.map(_._id)).create
-      WikiCount(p._id).inc
+      Audit ! WikiAudit("SHOW", p.wid.wpath, user.map(_._id))
+      Audit ! WikiCount(p._id)
     }
+
+    page.map(_.preprocessed) // just make sure it's processed
 
     if (Array("Site", "Page").contains(wid.cat) && page.isDefined)
       Ok(views.html.wiki.wikiSite(wid, iname, page, user))
-    else
+    else if (page.exists(!_.fields.isEmpty)) {
+      showForm(wid, iname, page, user, shouldCount, Map.empty)
+    } else
       Ok(views.html.wiki.wikiPage(wid, iname, page, user))
+  }
+
+  def showForm(wid: model.WID, iname: Option[String], page: Option[model.WikiEntry], user: Option[model.User], shouldCount: Boolean, errors: Map[String, String]) = {
+    // form design
+    page.flatMap(_.section("section", "formData")).foreach { s =>
+      // parse form data
+      val data = razie.Snakk.jsonParsed(s.content)
+      razie.MOLD(data.keys).map(_.toString).map { name =>
+        val x = data.getString(name)
+        //          cout << "FIELD " + name + "="+x
+        page.get.fields.get(name).foreach(f => page.get.fields.put(f.name, f.withValue(x)))
+        //          cout << "FIELDs " + page.get.fields.toString
+      }
+    }
+    Ok(views.html.wiki.wikiForm(wid, iname, page, user, errors))
   }
 
   def wikieDebug(iwid: WID) = Action { implicit request =>
     implicit val errCollector = new VError()
 
-    // TODO stupid routes - can't match without the :
-    val cat = iwid.cat //if (iwid.cat.endsWith(":")) iwid.cat.substring(0, iwid.cat.length - 1) else iwid.cat
+    val cat = iwid.cat
     val name = Wikis.formatName(iwid)
 
     val wid = WID(cat, name)
@@ -579,18 +616,19 @@ object Wiki extends RazController with Logging {
       formWithErrors => BadRequest(views.html.wiki.wikiReport(wid, formWithErrors, auth)),
       {
         case we @ ReportWiki(reason) =>
-          Wikis.flag(wid, "reported by user: " + auth + " BECAUSE " + reason)
+          Wikis.flag(wid, "reported by user: " + auth.map(_.ename) + " BECAUSE " + reason)
           SendEmail.withSession { implicit session =>
-            SendEmail.send(SUPPORT, SUPPORT, "WIKI_FLAGGED", "link: <a href=\"" + w(wid) + "\">here</a> reported by user " + reason)
+            SendEmail.send(SUPPORT, SUPPORT, "WIKI_FLAGGED",
+              "link: <a href=\"http://" + Config.hostport + w(wid) + "\">" + wid.wpath + "</a> " + "reported by user: " + auth.map(_.ename) + " BECAUSE " + reason)
           }
       })
-    Msg("OK, reported!", wid)
+    Msg("OK, page " + wid.wpath + " reported!", wid)
   }
 
   // from category - add a ... 
   def add(cat: String) = Action { implicit request =>
     addForm.bindFromRequest.fold(
-      formWithErrors => Msg2("Oops, can't add that name!", Some("/wiki/" + cat)),
+      formWithErrors => Msg2("Oops, can't add that name!" + formWithErrors, Some("/wiki/" + cat)),
       {
         case we @ AddWiki(name) => Redirect(routes.Wiki.wikieEdit(WID(cat, name)))
       })
@@ -599,7 +637,7 @@ object Wiki extends RazController with Logging {
   // add a child/related to another topic
   def addLinked(cat: String, pwid: WID, role: String) = Action { implicit request =>
     addForm.bindFromRequest.fold(
-      formWithErrors => Msg2("Oops, can't add that name!", Some("/wiki/" + pwid.wpath)),
+      formWithErrors => Msg2("Oops, can't add that name!", Some(pwid.urlRelative)),
       {
         case we @ AddWiki(name) => {
           val n = Wikis.formatName(WID(cat, name))
@@ -609,7 +647,7 @@ object Wiki extends RazController with Logging {
           else
             Redirect(routes.Wiki.wikieEdit(WID(cat, name, pwid.findId)))
         }
-     })
+      })
   }
 
   def link(fromCat: String, fromName: String, toCat: String, toName: String) = {
@@ -619,25 +657,28 @@ object Wiki extends RazController with Logging {
   }
 
   /** user unlikes page */
-  def unlinkUser(wid: WID) = Action { implicit request =>
+  def unlinkUser(wid: WID, really: String="n") = Action { implicit request =>
     implicit val errCollector = new VError()
     (for (
-      au <- auth orCorr cNoAuth;
-      isA <- checkActive(au);
+      au <- activeUser;
       r1 <- au.hasPerm(Perm.uProfile) orCorr cNoPermission
     ) yield {
-      // if he was already, just say it
-      au.pages(wid.cat).find(_.wid.name == wid.name).map { wl =>
-        // TODO remove the comments page as well if any
-        //        wl.wlink.page.map { wlp =>
-        //          Redirect(routes.Wiki.wikieEdit(WID("WikiLink", wl.wname)))
-        //        } 
-        this dbop wl.delete
-        RazController.cleanAuth()
-        Msg2("OK, removed link!", Some("/"))
-      } getOrElse {
-        // need to link now
-        Msg2("OOPS - you don't like this, nothing to unlike!", Some("/"))
+      if (wid.cat == "Club" && really != "y") {
+          Msg3("Are you certain you want to leave club", Some(s"/wikie/unlinkuser/${wid.wpath}?really=y"), Some(wid.ahref))
+      } else {
+        // if he was already, just say it
+        au.pages(wid.cat).find(_.wid.name == wid.name).map { wl =>
+          // TODO remove the comments page as well if any
+          //        wl.wlink.page.map { wlp =>
+          //          Redirect(routes.Wiki.wikieEdit(WID("WikiLink", wl.wname)))
+          //        } 
+          wl.delete
+          cleanAuth()
+          Msg2("OK, removed link!", Some("/"))
+        } getOrElse {
+          // need to link now
+          Msg2("OOPS - you don't like this, nothing to unlike!", Some("/"))
+        }
       }
     }) getOrElse
       noPerm(wid, "UNLINKUSER")
@@ -647,10 +688,10 @@ object Wiki extends RazController with Logging {
   def linkUser(wid: WID, withComment: Boolean = false) = Action { implicit request =>
     implicit val errCollector = new VError()
     (for (
-      au <- auth orCorr cNoAuth;
-      isA <- checkActive(au);
+      au <- activeUser;
       exists <- wid.page.isDefined orErr ("Cannot link to " + wid.name);
-      r1 <- au.hasPerm(Perm.uProfile) orCorr cNoPermission
+      // even new users that didn't verify their email can register for club
+      r1 <- (au.hasPerm(Perm.uProfile) || "Club" == wid.cat) orCorr cNoPermission
     ) yield {
       def content = """[[User:%s | You]] -> [[%s:%s]]""".format(au.id, wid.cat, wid.name)
 
@@ -664,10 +705,110 @@ object Wiki extends RazController with Logging {
       } getOrElse {
         // need to link now
         Ok(views.html.wiki.wikiLink(WID("User", au.id), wid,
-          linkForm.fill(LinkWiki("Enjoy", Wikis.MD, content)), withComment, auth))
+          linkForm.fill(LinkWiki("Enjoy", model.UW.EMAIL_EACH, Wikis.MD, content)), withComment, auth))
       }
     }) getOrElse
       noPerm(wid, "LINKUSER")
+  }
+
+  /** NEW user 'likes' page - link the current user to the page */
+  def linkFollower1(wid: WID) = Action { implicit request =>
+    implicit val errCollector = new VError()
+    if (auth.isDefined) Redirect(routes.Wiki.linkUser(wid, false))
+    else {
+      (for (
+        exists <- wid.page.isDefined orErr ("Cannot link to " + wid.name);
+        r1 <- canSee(wid, None, wid.page)
+      ) yield {
+        Ok(views.html.wiki.wikiFollowerLink1(wid, followerLinkForm.fill(FollowerLinkWiki("", "", ""))))
+      }) getOrElse
+        noPerm(wid, "LINKUSER")
+    }
+  }
+
+  /** send email to confirm following */
+  def linkFollower2(wid: WID) = Action { implicit request =>
+
+    implicit val errCollector = new VError()
+
+    followerLinkForm.bindFromRequest.fold(
+      formWithErrors => BadRequest(views.html.wiki.wikiFollowerLink1(wid, formWithErrors)),
+      {
+        case we @ FollowerLinkWiki(email1, email2, comment) =>
+          (for (
+            exists <- wid.page.isDefined orErr ("Cannot link to non-existent page: " + wid.name);
+            r1 <- canSee(wid, None, wid.page)
+          ) yield {
+            val es = email1.enc
+            if (model.Users.findFollowerLinksTo(wid).toList.flatMap(_.follower).exists(_.email == es)) {
+              Msg2("You already subscribed with that email... Enjoy!", Some(wid.urlRelative))
+            } else {
+              Emailer.laterSession { implicit mailSession =>
+                Emailer.sendEmailFollowerLink(email1, wid, comment)
+                Emailer.tellRaz("Subscribed", email1, wid.ahref, comment)
+              }
+              Msg2("You got an email with a link, to activate your subscription. Enjoy!", Some(wid.urlRelative))
+            }
+          }) getOrElse {
+            error("ERR_CANT_UPDATE_USER " + session.get("email"))
+            unauthorized("Oops - cannot create this link... ")
+          }
+      })
+  }
+
+  /** clicked confirm in the email -> so follow */
+  def linkFollower3(expiry: String, email: String, comment: String, wid: WID) = Action { implicit request =>
+    implicit val errCollector = new VError()
+
+    (for (
+      exists <- wid.page.isDefined orErr ("Cannot link to " + wid.name);
+      r1 <- canSee(wid, None, wid.page)
+    ) yield {
+
+      // TODO should I notify or ask the moderator?
+      //            val mod = moderator(wid).flatMap(mid => { println(mid); Users.findUserByUsername(mid) })
+
+      if (model.Users.findFollowerLinksTo(wid).toList.flatMap(_.follower).exists(_.email == email)) {
+        Msg2("You already subscribed with that email... Enjoy!", Some(wid.urlRelative))
+      } else {
+        val f = model.Users.findFollowerByEmail(email).getOrElse {
+          val newf = model.Follower(email, "")
+          this dbop db.RCreate(newf)
+          newf
+        }
+        this dbop db.RCreate(model.FollowerWiki(f._id, comment.decUrl, wid))
+
+        Emailer.withSession { implicit mailSession =>
+          Emailer.tellRaz("Subscription confirmed", email.dec, wid.ahref, comment.decUrl)
+        }
+
+        Msg2("Ok - you are subscribed to %s via email!".format(wid.page.map(_.label).getOrElse(wid.name)), Some(wid.urlRelative))
+      }
+    }) getOrElse {
+      error("ERR_CANT_UPDATE_USER " + session.get("email"))
+      unauthorized("Oops - cannot create this link... ")
+    }
+  }
+
+  def unlinkFollower4(expiry: String, email: String, wid: WID) = Action { implicit request =>
+    implicit val errCollector = new VError()
+
+    (for (
+      exists <- wid.page.isDefined orErr ("Cannot link to " + wid.name);
+      r1 <- canSee(wid, None, wid.page)
+    ) yield {
+      //            val mod = moderator(wid).flatMap(mid => { println(mid); Users.findUserByUsername(mid) })
+      //
+      //            val f = model.Follower(email1, "??")
+      //            this dbop f.create
+      //            this dbop model.FollowerWiki(f._id, wid).create
+      //            
+      // TODO remove follower, possibly notify owner of topic or moderator
+      Msg2("Sorry - please submit a support request...", Some(wid.urlRelative))
+    }) getOrElse {
+      error("ERR_CANT_UPDATE_USER " + session.get("email"))
+      unauthorized("Oops - cannot create this link... ")
+    }
   }
 
   def moderator(wid: WID) = Wikis.find(wid).flatMap(_.contentTags.get("moderator"))
@@ -686,11 +827,17 @@ object Wiki extends RazController with Logging {
       wl.create
       model.WikiEntry("WikiLink", wl.wname, "You like " + Wikis.label(wid), mark, comment, au._id).cloneProps(Map("owner" -> au.id), au._id).create
     }
-    RazController.cleanAuth(Some(au))
+
+    if (wid.cat == "Club")
+      Club.linkUser(au, wid.name, how)
+
+    cleanAuth(Some(au))
   }
 
+  // link a user for moderated club was approved
   def linkedUserAccept(expiry: String, userId: String, club: String, how: String) = Action { implicit request =>
     implicit val errCollector = new VError()
+
     def hows = {
       Wikis.category("Club").flatMap(_.contentTags.get("roles:" + "User")) match {
         case Some(s) => s.split(",").toList
@@ -702,18 +849,28 @@ object Wiki extends RazController with Logging {
 
     (for (
       // play 2.0 workaround - remove in play 2.1
-      date <- (try { Option(DateTime.parse(expiry.dec)) } catch { case _ => (try { Option(DateTime.parse(expiry.replaceAll(" ", "+").dec)) } catch { case _ => None }) }) orErr ("token faked or expired");
+      date <- (try { Option(DateTime.parse(expiry.dec)) } catch { case _: Throwable => (try { Option(DateTime.parse(expiry.replaceAll(" ", "+").dec)) } catch { case _: Throwable => None }) }) orErr ("token faked or expired");
       notExpired <- date.isAfterNow orCorr cExpired;
-      au <- Users.findUserById(userId);
+      user <- Users.findUserById(userId);
+      isA <- checkActive(user);
       admin <- auth orCorr cNoAuth;
       modUname <- moderator(WID("Club", club));
       isMod <- (admin.hasPerm(Perm.adminDb) || admin.userName == modUname) orErr ("You do not have permission!!!");
-      isA <- checkActive(au);
       ok <- hows.contains(how) orErr ("invalid role")
     ) yield {
-      createLinkedUser(au, WID("Club", club), false, how, "", "")
+      Club(club) foreach { c =>
+        // only if there is a club/user entry for that Club page
+        val rk = model.RacerKidz.myself(user._id)
+        model.RacerKidAssoc(c.userId, rk._id, model.RK.ASSOC_LINK, user.role, c.userId).create
+      }
+
+      createLinkedUser(user, WID("Club", club), false, how, "", "")
+
+      if (!user.quota.updates.exists(_ > 10))
+        user.quota.reset(50)
+
       Emailer.withSession { implicit mailSession =>
-        Emailer.sendEmailLinkOk(au, club)
+        Emailer.sendEmailLinkOk(user, club)
       }
       Msg2("OK, added!", Some("/"))
     }) getOrElse {
@@ -731,6 +888,8 @@ object Wiki extends RazController with Logging {
 
   def linkedUser(userId: String, wid: WID, withComment: Boolean) = Action { implicit request =>
 
+    razie.clog << s"METHOD linkedUser($userId, $wid, $withComment)"
+
     def hows = {
       Wikis.category(wid.cat).flatMap(_.contentTags.get("roles:" + "User")) match {
         case Some(s) => s.split(",").toList
@@ -743,32 +902,32 @@ object Wiki extends RazController with Logging {
     linkForm.bindFromRequest.fold(
       formWithErrors => BadRequest(views.html.wiki.wikiLink(WID("User", auth.get.id), wid, formWithErrors, withComment, auth)),
       {
-        case we @ LinkWiki(how, mark, comment) =>
+        case we @ LinkWiki(how, notif, mark, comment) =>
           (for (
-            au <- auth orCorr cNoAuth;
-            isA <- checkActive(au);
+            au <- activeUser;
             isMe <- (au.id equals userId) orErr {
               Audit.security("Another user tried to link...", userId, au.id)
               ("invalid user")
             };
+            page <- wid.page orErr (s"Page $wid not found");
             ok <- hows.contains(how) orErr ("invalid role")
           ) yield {
-            println("=====")
             val mod = moderator(wid).flatMap(mid => { println(mid); Users.findUserByUsername(mid) })
 
             if ("Club" == wid.cat && mod.isDefined) {
               Emailer.withSession { implicit mailSession =>
                 Emailer.sendEmailLink(mod.get, au, wid.name, how)
               }
-              Msg2("An email has been sent to the moderator, you will receive an email when they're done!", Some("/"))
+              Msg2(s"An email has been sent to the moderator of <strong>${page.label}</strong>, you will receive an email when they're done!",
+                Some("/"))
             } else {
-              this dbop model.UserWiki(au._id, wid, how).create
+              model.UserWiki(au._id, wid, how).create
               if (withComment) {
                 val wl = model.WikiLink(WID("User", au.id), wid, how)
                 wl.create
                 model.WikiEntry("WikiLink", wl.wname, "You like " + Wikis.label(wid), mark, comment, au._id).cloneProps(Map("owner" -> au.id), au._id).create
               }
-              RazController.cleanAuth()
+              cleanAuth()
               Msg2("OK, added!", Some("/"))
             }
           }) getOrElse {
@@ -778,12 +937,13 @@ object Wiki extends RazController with Logging {
       })
   }
 
+  /** mark a wiki as reserved - only admin can edit */
   def reserve(wid: WID, how: Boolean) = Action { implicit request =>
     implicit val errCollector = new VError()
 
     log("Wiki.reserve " + wid)
     (for (
-      au <- auth orCorr cNoAuth;
+      au <- activeUser;
       w <- Wikis.find(wid);
       ok1 <- au.hasPerm(Perm.adminDb) orCorr cNoPermission;
       ok2 <- canEdit(wid, Some(au), Some(w));
@@ -801,7 +961,7 @@ object Wiki extends RazController with Logging {
 
   private def canDelete(wid: WID)(implicit errCollector: VError, request: Request[_]) = {
     for (
-      au <- auth orCorr cNoAuth;
+      au <- activeUser;
       w <- Wikis.find(wid) orErr ("topic not found");
       ok2 <- canEdit(wid, Some(au), Some(w));
       ok1 <- au.hasPerm(Perm.adminDb) orCorr cNoPermission
@@ -846,7 +1006,7 @@ object Wiki extends RazController with Logging {
             wl.delete
             done = true
           })
-          if (done) RazController.cleanAuth() // it probably belongs to the current user, cached...
+          if (done) cleanAuth() // it probably belongs to the current user, cached...
         }
         Msg2("DELETED forever - no way back!")
     } getOrElse
@@ -855,7 +1015,7 @@ object Wiki extends RazController with Logging {
 
   private def canRename(wid: WID)(implicit errCollector: VError, request: Request[_]) = {
     for (
-      au <- auth orCorr cNoAuth;
+      au <- activeUser;
       ok <- ("WikiLink" != wid.cat && "User" != wid.cat) orErr ("can't rename this category");
       w <- Wikis.find(wid) orErr ("topic not found");
       ok2 <- canEdit(wid, Some(au), Some(w))
@@ -901,7 +1061,7 @@ object Wiki extends RazController with Logging {
                   UserWiki(wl.userId, newp.wid, wl.role).create
                   done = true
                 })
-                if (done) RazController.cleanAuth() // it probably belongs to the current user, cached...
+                if (done) cleanAuth() // it probably belongs to the current user, cached...
               }
               Msg("OK, renamed!", WID(wid.cat, Wikis.formatName(n)))
           } getOrElse
@@ -913,23 +1073,48 @@ object Wiki extends RazController with Logging {
 
   def xpold(cat: String, name: String, c: String, path: String) = xp(WID(cat, name), path)
 
-  def xp(wid: WID, path: String) = Action { implicit request =>
+  def xp(wid: WID, path: String, page: Option[WikiEntry] = None) = Action { implicit request =>
     (for (
-      w <- Wikis.find(wid)
+      worig <- page orElse Wikis.find(wid);
+      w <- worig.alias.flatMap(x => Wikis.find(x)).orElse(Some(worig)) // TODO cascading aliases?
     ) yield {
       val node = new WikiWrapper(wid)
       val root = new razie.Snakk.Wrapper(node, WikiXpSolver)
 
-      val res: List[String] = if (razie.GPath(path).isAttr) (root \\@ path) else (root \ path).nodes.map(_.toString)
+      Audit.logdb("XP", wid.wpath + "/xp/" + path)
+
+      val xpath = "*/" + path
+      val res: List[String] = if (razie.GPath(xpath).isAttr) (root xpla xpath) else (root xpl xpath).collect { case we: WikiWrapper => we.wid.wpath }
+
       Ok(Json.toJson(res))
+    }) getOrElse
+      Ok("Nothing... for " + wid + " XP " + path)
+  }
+
+  def xpl(wid: WID, path: String, page: Option[WikiEntry] = None) = Action { implicit request =>
+    (for (
+      worig <- page orElse Wikis.find(wid);
+      w <- worig.alias.flatMap(x => Wikis.find(x)).orElse(Some(worig)) // TODO cascading aliases?
+    ) yield {
+      val node = new WikiWrapper(wid)
+      val root = new razie.Snakk.Wrapper(node, WikiXpSolver)
+
+      Audit.logdb("XP-L", wid.wpath + "/xpl/" + path)
+
+      val xpath = "*/" + path
+      // TODO use label not name
+      val res = (root xpl xpath).collect { case we: WikiWrapper => (we.wid, we.wid.name) }
+
+      Ok(views.html.wiki.wikiList(path, res, auth))
     }) getOrElse
       Ok("Nothing... for " + wid + " XP " + path)
   }
 
   /** wid is the script name,his parent is the actual topic */
   def wikieApiCall(wid: WID) = Action { implicit request =>
+    implicit val errCollector = new VError()
     (for (
-      au <- auth orCorr cNoAuth;
+      au <- activeUser;
       r1 <- (au.hasPerm(Perm.apiCall) || au.hasPerm(Perm.adminDb)) orErr ("no permission, eh? ");
       widp <- wid.parentWid;
       w <- Wikis.find(widp)
@@ -939,14 +1124,48 @@ object Wiki extends RazController with Logging {
         val sec = wid.name
         val script = w.scripts.find(sec == _.name).orElse(model.Wikis.category(widp.cat) flatMap (_.scripts.find(sec == _.name)))
         val res: String = script.filter(_.checkSignature).map(s => {
-          val up = razie.NoStaticS.get[model.User]
-          model.WikiScripster.runScript(s.content, Some(w), up, request.queryString.map(t=>(t._1, t._2.mkString)))
+          val up = Config.currUser
+          model.WikiScripster.impl.runScript(s.content, Some(w), up, request.queryString.map(t => (t._1, t._2.mkString)))
         }) getOrElse ""
         Audit.logdb("SCRIPT_RESULT", res)
         res
-      } catch { case _ => "?" }
+      } catch { case _: Throwable => "?" }
       Ok(res)
-    }) getOrElse
-      Unauthorized("You don't have permission to do this...")
+    }) getOrElse unauthorized()
+  }
+
+  /** wid is the script name,his parent is the actual topic */
+  def wikieNextStep(id: String) = Action { implicit request =>
+    implicit val errCollector = new VError()
+    (for (
+      au <- activeUser
+    ) yield {
+      // default to category
+      Audit.logdb("WF_NEXT_STEP", id)
+      act.WikiWf.event("WF_NEXT_STEP", Map("id" -> id))
+      Ok("next step...")
+    }) getOrElse unauthorized()
+  }
+
+  /** try to link to something - find it */
+  def wikieAdd(cat: String) = Action { implicit request =>
+    implicit val errCollector = new VError()
+    (for (
+      au <- activeUser;
+      w <- Wikis.category(cat)
+    ) yield {
+      Ok(views.html.wiki.wikieAdd(w.wid, Some(w), auth))
+    }) getOrElse unauthorized()
+  }
+
+  /** try to link to something - find it */
+  def wikieCreate(cat: String) = Action { implicit request =>
+    implicit val errCollector = new VError()
+    (for (
+      au <- activeUser;
+      w <- Wikis.category(cat)
+    ) yield {
+      Ok(views.html.wiki.wikieCreate(w.wid, Some(w), auth))
+    }) getOrElse unauthorized()
   }
 }

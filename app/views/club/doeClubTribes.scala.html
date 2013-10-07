@@ -1,0 +1,71 @@
+@******
+club admin manages list of users and registrations
+******@
+@(user:model.User, club:Club)
+
+@htmlHead("Tribes of club " + user.userName)
+@navbar(Some(user))
+   
+<div class="container">
+<div class="row">
+  @views.html.user.leftmenu(13, user)
+
+<div class="span9">
+
+@tribes=@{
+  model.Tribes.findByClub(club).map(t=>
+    Map("name"->t.name, 
+    	"role"->t.role, 
+    	"year"->t.year, 
+    	"button"->t.page._id.toString, 
+    	"wpath" -> t.wid.wpath))
+}
+
+@mnglink(row:Map[String,String],k:String,v:String)={
+  @k match {
+  	case "button" => {
+      <a href="@routes.Tribe.doeClubTribe(v)" class="btn btn-mini">More...</a>
+      } 
+  	case "name" => {
+      <a href="@controllers.Wiki.w(model.WID.fromPath(row.get("wpath").get).get)">@v</a>
+      } 
+    case _ => {@v}
+  }
+}
+
+<div class="alert alert-danger"><strong>Men at work!</strong> This page is not finished! Please don't play with it!</div>
+
+<h2>Tribe management panel for @user.firstName</h2>
+<br>
+<p>Tribes are groups of people - coaches, the board, teams etc
+<p>Click on the ... to manage that tribe. (See the bottom for more info).
+
+@util.utilSimpleTable(tribes, Seq("name" -> "Name", "role"->"Role", "year"->"Year", "button"->"Manage"), Some(mnglink))
+
+<p> Add more
+<p>This is per season, so please include the year in the name, like "2013-U12-A" and "2013-U12-B". Use the label field to give it a nice name like "U12 A" or "Aviators".
+
+<div class="well">
+@helper.form(action=routes.Tribe.doeClubTribeAdd(club.userId.toString), 'class->"form-inline") {
+  <label>Name</label>
+  <input type="text" class="input-xlarge" name="name" placeholder="Name">
+  <label>Label</label>
+  <p><input type="text input-large" class="input-xlarge" name="label" placeholder="Label">
+  <label>Description</label>
+  <input type="text input-xlarge" class="input-xlarge" name="desc" placeholder="Description">
+  <p><label>Role</label>
+  <input type="text" class="input-xlarge" name="role" placeholder="Description">
+  <button type="submit" class="btn btn-mini btn-primary">Now</button> 
+  <a href="/wiki/Admin:Adding_a_Tribe" class="btn btn-mini btn-info">?</a>
+}
+</div> 
+@helper.form(action=routes.Wiki.addLinked("Tribe",club.wid,"Child"), 'class->"form-inline") {
+}
+
+</div> 
+</div> <!-- /row -->
+  <hr>
+  @htmlFooter(ads=true)
+</div> <!-- /container -->
+@htmlBottom()
+    

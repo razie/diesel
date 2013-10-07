@@ -1,0 +1,37 @@
+@*********** 
+  add a member to a registration
+***********@
+@(kid:model.RacerKid, next:String, user:model.User, reg:model.Reg)
+@import model.RegStatus._
+@import model.FormStatus._
+@import model.RK._
+
+@htmlHead("Reg for " + user.userName)
+@navbar(Some(user))
+
+<div class="container">
+<div class="row">
+  @views.html.user.leftmenu(10, user)
+   
+<div class="span9">
+
+<h2>Adding @kid.info.firstName to club @reg.clubName</h2>
+
+<hr>
+<p>Will <b>@kid.info.firstName</b> be a:
+
+@model.RK.ROLES.map{r=>
+  <a href="@routes.Club.doeClubUwAddFormKid(reg._id.toString,kid._id.toString, next, r)" class="btn btn-large btn-info">@r</a>
+}
+
+<hr>
+<p>Some of these roles will automatically add more forms to complete for this registration, while some will not... 
+
+  <hr>  
+  @htmlFooter()
+  </div> <!-- /container -->
+  </div> <!-- /container -->
+  </div> <!-- /container -->
+
+@htmlBottom()
+    

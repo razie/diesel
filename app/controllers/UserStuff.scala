@@ -11,16 +11,17 @@ import play.api.mvc._
 import play.api._
 import model.WikiXpSolver
 import razie.Snakk
-import model.ILink
 import scala.util.parsing.combinator.RegexParsers
-import model.WikiParser
 import org.joda.time.DateTime
 import model.Wikis
 import model.Users
 import razie.XP
 import razie.XpSolver
 import razie.Snakk._
+import model.WikiParser
 import model.WikiIndex
+import model.ILink
+import model.WikiParser
 
 /** profile related control */
 object UserStuff extends RazController {
@@ -30,7 +31,8 @@ object UserStuff extends RazController {
     if (WikiIndex.withIndex(_.get2(id, WID("User", id)).isDefined))
       Wiki.show (WID("User", id))
     else
-      Action { implicit request => NotFound ("User not found or profile is private!") }
+      Action { implicit request => Msg2 ("This user does not have a public profile!") }
+//      Action { implicit request => NotFound ("User not found or profile is private!") }
 
   def wiki(email: String, cat: String, name: String) =
     WikiLink(WID("User", email), WID(cat, name), "").page.map(w =>
@@ -73,8 +75,8 @@ object UserStuff extends RazController {
   }
 
   // serve public profile
-  def doeCreateSomething = Action { implicit request => 
-    Ok (views.html.user.createSomething(auth))
+  def doeUserCreateSomething = Action { implicit request => 
+    Ok (views.html.user.doeUserCreateSomething(auth))
     }
 
 }
@@ -138,8 +140,8 @@ object Maps extends razie.Logging {
       val resp = Snakk.json (
         Snakk.url(
           "http://maps.googleapis.com/maps/api/geocode/json?address=" + addr.toUrl + "&sensor=false",
-          razie.AA(),
-          //        razie.AA("privatekey", "6Ld9uNASAAAAADEg15VTEoHjbLmpGTkI-3BE3Eax", "remoteip", "kk", "challenge", challenge, "response", response),
+          Map.empty,
+          //        Map("privatekey" -> "6Ld9uNASAAAAADEg15VTEoHjbLmpGTkI-3BE3Eax", "remoteip" -> "kk", "challenge" -> challenge, "response" -> response),
           "GET"))
 
       Some((

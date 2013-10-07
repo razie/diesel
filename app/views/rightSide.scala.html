@@ -1,0 +1,14 @@
+@**************
+the right side with ads etc
+
+put this after the span9 before row end
+**************@
+@(implicit au:Option[model.User])
+@import model._
+
+<div class="span2">
+  @wiki.wikiFrag(WID("Admin","Right"), au, true)
+
+  @addRight(au)
+</div>
+    

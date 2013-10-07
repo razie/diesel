@@ -1,0 +1,30 @@
+@(user:Option[model.User]=None)
+
+@htmlHead("Take for a spin")
+@navbar(user)
+   
+<div class="container">
+  <div class="well">
+    <h2>Taking me for a spin</h2>
+<p class="lead">You can take me for a spin, pretending you are Harry Potter :)
+<p>When you're done, if you want to create an account, just sign out first.
+<p>Please choose how you would like to experience the site: <strong>light</strong> or <strong>dark</strong>, to proceed:
+<p>
+&nbsp;&nbsp;&nbsp;
+<p>
+<a href="/doe/harry?css=dark">
+  <img src="@routes.Assets.at("images/rk-dark.jpg")" class="img-rounded" /></a>
+&nbsp;&nbsp;&nbsp;
+<a href="/doe/harry?css=light">
+  <img src="@routes.Assets.at("images/rk-light.jpg")" class="img-rounded" /></a>
+<p>
+To get back to this screen, simply sign-out by clicking on your name on the top-right.
+<p>
+Have fun!
+    </div>
+  </div>
+  <hr>
+  @htmlFooter()
+</div> <!-- /container -->
+@htmlBottom()
+    

@@ -1,0 +1,53 @@
+@*********** 
+  user manages registrations
+***********@
+@(au:model.User)
+@import model.RegStatus._
+
+@htmlHeadBar("Registrations for " + au.userName, Option(au))
+
+<div class="container"> <div class="row">
+@user.leftmenu(10, au)
+   
+<div class="span9">
+
+@regs=@{
+  val clubs = au.wikis.filter(_.wid.cat=="Club").flatMap(w=>model.Users.findUserByUsername(w.wid.name).toList)
+  clubs.flatMap(c=>model.Regs.findClubUser(c, au._id))
+}
+
+@tab=@{
+  regs.iterator.map(r=>
+    Map("club"->r.clubName, "year"->r.year, "role"->r.role, "regStatus"->r.regStatus, "id" -> r._id.toString))
+}
+
+@mnglink(row:Map[String,String],k:String,v:String)={
+  @k match {
+  	case "regStatus" => {
+  		@regStatusColored(v, Some(routes.Club.doeClubUserReg(row.get("id").get).toString))
+  		}
+    case _ => {@v}
+  }
+}
+
+<h2>Registration management panel</h2>
+<br>
+<p>@au.ename, this is the list of clubs you have registrations for. Some registrations may be old, current or pending - see the bottom of the page for a legend.
+<p>Click on the status of each, to manage the forms required to complete that registration.
+
+  @util.utilSimpleTable(tab, 
+  	Seq("club" -> "Club", 
+  		"year"->"Year", 
+  		"role"->"Role", 
+  		"regStatus" -> "Status"), 
+    Some(mnglink))
+
+  @club.regStatusLegend()
+
+  </div> 
+  </div> <!-- /row -->
+  @user.agree()
+  <hr>
+  @htmlFooter(ads=true)
+</div> <!-- /container -->
+@htmlBottom()

@@ -1,4 +1,8 @@
-@(title:String, pages:List[model.WikiEntry], user:Option[model.User])
+@**************
+list of pages, with links etc - result of a query of some kind
+**************@
+
+@(title:String, pages:List[(model.WID, String)], user:Option[model.User])
 @import model._
 
 @htmlHead("Results for: " + title)
@@ -12,7 +16,7 @@
         @if(pages.size>0) {
           <ul>
           @pages.map { p=>
-            <li><a href="@controllers.Wiki.w(p.wid)">@p.label</a> <small>&nbsp;  @p.category</small>
+            <li><a href="@controllers.Wiki.w(p._1)">@p._2</a> <small>&nbsp;  @p._1.cat</small>
           } 
          </ul>
         } else {

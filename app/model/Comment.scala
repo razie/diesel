@@ -1,18 +1,22 @@
 package model
 
 import scala.collection.mutable.ListBuffer
-
 import org.joda.time.DateTime
-
 import com.mongodb.casbah.Imports.ObjectId
 import com.mongodb.casbah.Imports.map2MongoDBObject
 import com.mongodb.casbah.Imports.wrapDBObj
 import com.novus.salat.grater
-
 import admin.Audit
-import model.RazSalatContext.ctx
+import db.RazSalatContext.ctx
+import db.RCreate
+import db.RTable
+import db.RMongo
+import db.ROne
+import db.RMany
+import db.Mongo
 
 /** a series of comments on something - like a forum topic */
+@RTable
 case class CommentStream(
   topic: ObjectId, // for wiki, this is the WID
   what: String = "Wiki", // "wiki" vs?
@@ -22,7 +26,7 @@ case class CommentStream(
   def id = _id.toString
 
   def create = {
-    Mongo ("CommentStream") += grater[CommentStream].asDBObject(Audit.create(this))
+    RCreate[CommentStream](this)//Mongo ("CommentStream") += grater[CommentStream].asDBObject(Audit.create(this))
     this
   }
 
@@ -39,6 +43,7 @@ case class CommentStream(
 }
 
 /** a series of comments on something - like a forum topic */
+@RTable
 case class Comment(
   streamId: ObjectId, // for wiki, this is the WID
   userId: ObjectId, // user that made the comment
@@ -54,7 +59,7 @@ case class Comment(
 
   def create (user:User) = {
     Audit.logdb(Comments.AUDIT_COMMENT_CREATED, "BY " + user.userName + " " + userId + " parent:" + parentId, "\nCONTENT:\n" + this)
-    Mongo ("Comment") += grater[Comment].asDBObject(this)
+    RCreate[Comment](this)
   }
 
   // TODO keep track of older versions and who modifies them
@@ -67,9 +72,9 @@ case class Comment(
 
 /** user factory and utils */
 object Comments {
-  def findForWiki(id:ObjectId) = Mongo("CommentStream").findOne(Map("what" -> "Wiki", "topic" -> id)) map (grater[CommentStream].asObject(_))
-  def findById(id: String) = Mongo("CommentStream").findOne(Map("_id" -> new ObjectId(id))) map (grater[CommentStream].asObject(_))
-  def findCommentById(id: String) = Mongo("Comment").findOne(Map("_id" -> new ObjectId(id))) map (grater[Comment].asObject(_))
+  def findForWiki(id:ObjectId) = ROne[CommentStream]("what" -> "Wiki", "topic" -> id)
+  def findById(id: String) = ROne[CommentStream](new ObjectId(id))
+  def findCommentById(id: String) = ROne[Comment](new ObjectId(id))
 
   final val AUDIT_COMMENT_CREATED = "COMMENT_CREATED "
   final val AUDIT_COMMENT_UPDATED = "COMMENT_UPDATED "

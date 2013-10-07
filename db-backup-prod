@@ -4,7 +4,8 @@
 
 DT=`date | sed 's/ //g'`
 
-mv dump dump.OLD.$DT
+mv dump.tar.gz rk-backups/dump.OLD.$DT.tar.gz
+mv dump rk-backups/dump.OLD.$DT
 
 ssh demo@cloud3.razie.com "cd ~/rk/app/run; . ./dbr-backup-prod"
 
@@ -12,7 +13,11 @@ rm dump.tar dump.tar.gz
 
 scp demo@cloud3.razie.com:rk/app/run/dump.tar.gz ./dump.tar.gz
 
+sleep 2
+
 gunzip dump.tar.gz
 
 tar xvf dump.tar
+
+gzip dump.tar
 

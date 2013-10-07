@@ -1,4 +1,8 @@
+@**************
+the footer of every page...
+**************@
 @(ads:Boolean=false, isSite:Boolean=false)
+@import _root_.admin.Config
 
 <footer>
   <p>&copy; <a href="http://www.racerkidz.com">RacerKidz</a>, 2012 
@@ -6,22 +10,39 @@
 @if(isSite) {
   | <a href="http://@_root_.admin.Config.hostport/page/Hosted_Terms_of_Service">Terms of Service</a> 
 } else {
-  | <a href="http://@_root_.admin.Config.hostport/page/Terms_of_Service">Terms of Service</a> 
+  | <a href="http://@_root_.admin.Config.hostport/wiki/Admin:Terms_of_Service">Terms of Service</a> 
+
+@*** 
+      | <small>(<a href="/mobile/1">Mobile</a>
+      | <a href="/mobile/0">Desktop</a>
+      )</small>
+***@      
+
+@*** 
+      | <small>(<a href="javascript:cssref(dark)">Dark</a>
+      | <a href="javascript:cssref(light)">Light</a>
+      )</small>
+***@      
+
 }
-  | </p>
+  </p>
 
-@if(ads && ! _root_.admin.Config.noads) {
-<script type="text/javascript"><!--
-google_ad_client = "ca-pub-5622141672958561";
-/* 728x90all */
-google_ad_slot = "3920300830";
-google_ad_width = 728;
-google_ad_height = 90;
-//-->
-</script>
-<script type="text/javascript"
-src="http://pagead2.googlesyndication.com/pagead/show_ads.js">
-</script>
-
+@if(ads && ! (Config.noads || Config.currUser.exists(_.isUnder13))) {
+	
+  @if(Config.theme.contains("light")) {
+    <script type="text/javascript"><!--
+    google_ad_client = "ca-pub-5622141672958561";
+    /* RK-bottom-light */
+    google_ad_slot = "6461721220";
+    google_ad_width = 728;
+    google_ad_height = 90;
+    //-->
+    </script>
+    <script type="text/javascript"
+    src="http://pagead2.googlesyndication.com/pagead/show_ads.js">
+    </script>
+  } else {
+    @Html(model.Ads.lederboard)
+  }
 }
 </footer>

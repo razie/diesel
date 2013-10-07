@@ -11,15 +11,15 @@ cols = (key,label)
 @import org.joda.time.DateTime
 
 @col() = @{
-  model.Mongo(name).m
+  db.Mongo(name).m
   }
 
 @ccol() = @{
-  val m = model.Mongo(name).m
+  val m = db.Mongo(name).m
   if (criteria.isDefined)
-    (sortby.map(p=>m.find(criteria.get).sort(Map(p -> -1))).getOrElse(m.find(criteria.get)))
+    (sortby.map(p=>m.find(criteria.get).sort(Map(p -> -1)).take(1000)).getOrElse(m.find(criteria.get).take(1000)))
   else
-    (sortby.map(p=>m.find.sort(Map(p -> -1))).getOrElse(m.find()))
+    (sortby.map(p=>m.find.sort(Map(p -> -1)).take(1000)).getOrElse(m.find()))
 }
 
 <hr>

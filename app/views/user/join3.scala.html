@@ -56,16 +56,16 @@
     '_showConstraints -> false)
     
     @***** recaptcha ********@
-@if(!_root_.admin.Config.isLocalhost) {
+@if(Profile.RE_localhost && _root_.admin.Config.isLocalhost) {
+    @helper.inputText(myForm("recaptcha_challenge_field"))          
+    @helper.inputText(myForm("recaptcha_response_field"))          
+} else {
     <script type="text/javascript" src="http://www.google.com/recaptcha/api/challenge?k=6Ld9uNASAAAAAL_5jXRwtBAtiJy8XGwSzZOWW80s"></script>
      <noscript>
        <iframe src="http://www.google.com/recaptcha/api/noscript?k=6Ld9uNASAAAAAL_5jXRwtBAtiJy8XGwSzZOWW80s" height="300" width="500" frameborder="0"></iframe>
        <br><textarea name="recaptcha_challenge_field" rows="3" cols="40"></textarea>
        <input type="hidden" name="recaptcha_response_field" value="manual_challenge">
      </noscript>
-} else {
-    @helper.inputText(myForm("recaptcha_challenge_field"))          
-    @helper.inputText(myForm("recaptcha_response_field"))          
 }
 
   @myForm.globalError.map { err=>

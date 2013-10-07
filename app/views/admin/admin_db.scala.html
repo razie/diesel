@@ -1,19 +1,18 @@
-@(user:Option[model.User])
+@(au:Option[model.User])
 
-   @htmlHead("amdin db")
-   @navbar(user)
+@htmlHeadBar("amdin db", au)
    
-    <div class="container">
+<div class="container">
 
 <h2>Collections</h2>
 
 @lictab(c:String,cols:String) = {
-  <li><a href="@routes.Admin.col(c)">@c (@model.Mongo.db(c).count)</a>
-  | <a href="@routes.Admin.colTab(c,cols)">@c (@model.Mongo.db(c).count)</a></li>
+  <li><a href="@routes.Admin.col(c)">@c (@db.Mongo.db(c).size)</a>
+  | <a href="@routes.Admin.colTab(c,cols)">@c (@db.Mongo.db(c).size)</a></li>
 }
 
 <ul>
-@model.Mongo.db.collectionNames.toList.sortWith(_ < _).map { c =>
+@db.Mongo.db.collectionNames.toList.sortWith(_ < _).map { c =>
   @c match {
     case "WikiCount" => {
       @lictab(c,"")
@@ -21,8 +20,11 @@
     case "WikiAudit" => {
       @lictab(c,"event,userId,crDtm,wpath")
       }
+    case "RacerKidAssoc" => {
+      @lictab(c,"from,to,assoc,role,owner,year,crDtm")
+      }
     case _ => {
-     <li><a href="@routes.Admin.col(c)">@c (@model.Mongo.db(c).count)</a></li>
+     <li><a href="@routes.Admin.col(c)">@c (@db.Mongo.db(c).size)</a></li>
       }
   }
 }

@@ -1,12 +1,17 @@
+@**************
+render a regular wiki page - site pages are rendered with wikiSite.scala.html
+**************@
+
 @(wid:model.WID, iname:Option[String], page:Option[model.WikiEntry], user:Option[model.User])
 @import model._
 
-@htmlHead(wid.cat +": "+ page.map(_.label).getOrElse(model.Wikis.label(wid)))
+@htmlHead(page.flatMap(_.contentTags.get("title")).getOrElse(wid.cat +": "+ page.map(_.label).getOrElse(model.Wikis.label(wid))))
 
 @navbar(user)
    
 <div class="container">
   <div class="row">
+  
     <div class="span9">
 
       <div class="well">
@@ -18,7 +23,7 @@
       @wiki.wikiPageComments(wid, page, user)
 
       <hr>
-      @htmlFooter(ads=true)
+      @htmlFooter(ads = !page.exists(_.content.matches("""(?s).*\{\{ad[:}].*\{\{ad[:}].*""")))
 
     </div> <!-- /span9 -->
 

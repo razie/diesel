@@ -1,0 +1,15 @@
+TODO
+- forms: next/previous don't save so he'd loose changes
+
+
+
+URL testing
+
+/doe/profile/email
+  - wrong email format
+  - use existing email
+
+
+
+Use case testing
+

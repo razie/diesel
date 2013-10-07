@@ -1,0 +1,61 @@
+@*****************
+from user home page - create something
+*****************@
+@(user:Option[model.User])
+
+@htmlHead("Creating something...")
+@navbar(user)
+
+@import model.WikiDomain
+
+@noParent(x:model.WikiEntry)=@{
+  !WikiDomain.needsParent(x.name)
+}
+   
+<div class="container">
+  <div class="row">
+    <div class="span9">
+
+<h2>Create something</h2>
+
+<div class="well">
+<p>These are the things users can own:
+<p>
+      <form action="@routes.Wiki.edit2" method="GET" class="well form-inline">
+        <input type="text" name="name" id="name" class="input-xlarge"  placeholder="enter a name"> 
+        <select id="cat" name="cat" class="input-small">
+          @WikiDomain.zEnds("User", "Owner").filter(noParent).filter(_.name != "Form").sortWith(_.name < _.name).map{x=>
+            <option value="@x.name" >@x.name</option>
+          }
+        </select>
+
+        <button type="submit" class="btn btn-primary">Create</button>
+      </form>
+      </div>
+
+<div class="well">
+<p>To create a public, generic purpose topic:
+<p>
+      <form action="@routes.Wiki.edit2" method="GET" class="well form-inline">
+        <input type="text" name="name" id="name" class="input-xlarge"  placeholder="enter a name"> 
+        <select id="cat" name="cat" class="input-small">
+            <option value="Topic" >Topic</option>
+        </select>
+
+        <button type="submit" class="btn btn-primary">Create</button>
+      </form>
+      </div>
+
+      <hr>
+      @htmlFooter()
+
+    </div> <!-- /span9 -->
+
+    <div class="span3">
+      @wiki.wikiFrag(model.WID("Admin","Right"),user,true)
+    </div>
+  </div> <!-- row -->
+</div> <!-- /container -->
+
+@htmlBottom()
+    

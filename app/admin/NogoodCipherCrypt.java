@@ -23,10 +23,6 @@ import javax.crypto.SecretKey;
  * Standard Java Crypting/decrypting class using DES algorithm.
  * 
  *  NOTE modified to encode with URL friendly Base64
- * 
- * @version $Revision: 1.10 $
- * @author $Author: alexeyk $
- * @since $Date: 2011/09/02 16:53:33 $
  * */
 @SuppressWarnings("rawtypes")
 public class NogoodCipherCrypt {

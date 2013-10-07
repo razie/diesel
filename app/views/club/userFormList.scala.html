@@ -1,0 +1,33 @@
+@***
+the list of forms and statuses for the current registration.
+
+reused in several screens to show the list of forms 
+***@
+@(wids:Seq[model.WID], links:Boolean, current:Option[model.WID]=None)
+
+<p>  
+<table style="width:auto" class="table table-hover table-condensed">
+<caption>All the forms in this set:</caption>
+<tr><th>No</th><th>Form</th><th>Status</th></tr>
+
+@wids.zipWithIndex.map { t=>
+  <tr><td>
+  	
+  @if(current.exists(wid=>t._2 == wids.indexOf(wid))) {
+    <span class="badge badge-inverse">@{t._2+1}</span>	
+  } else {
+    <span class="badge">@{t._2+1}</span>	
+  }
+  	
+  @if(links) {
+    </td><td><a href="@controllers.Wiki.w(t._1)">@t._1.page.map(_.label).getOrElse(t._1.name)</a> 
+  } else {
+	</td><td>@t._1.page.map(_.label).getOrElse(t._1.name)
+  }
+
+  </td><td>
+  @club.formStatusColored(t._1.page.flatMap(_.form.formState).getOrElse("n/a"))
+  </td></tr>
+  }
+</table>
+  

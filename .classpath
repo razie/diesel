@@ -1,112 +1,116 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
-	<classpathentry kind="src" output="target/scala-2.9.1/classes" path="app"/>
-	<classpathentry kind="src" output="target/scala-2.9.1/test-classes" path="test"/>
-	<classpathentry kind="lib" path="lib_managed/jars/org.slf4j/slf4j-api/slf4j-api-1.6.4.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/org.slf4j/jul-to-slf4j/jul-to-slf4j-1.6.4.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/org.slf4j/jcl-over-slf4j/jcl-over-slf4j-1.6.4.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/ch.qos.logback/logback-core/logback-core-1.0.0.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/ch.qos.logback/logback-classic/logback-classic-1.0.0.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/com.google.guava/guava/guava-10.0.1.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/com.google.code.findbugs/jsr305/jsr305-1.3.9.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/org.avaje/ebean/ebean-2.7.3.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/org.hibernate.javax.persistence/hibernate-jpa-2.0-api/hibernate-jpa-2.0-api-1.0.1.Final.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/com.h2database/h2/h2-1.3.158.jar"/>
-	<classpathentry kind="lib" path="lib_managed/bundles/com.jolbox/bonecp/bonecp-0.7.1.RELEASE.jar"/>
-	<classpathentry kind="lib" path="lib_managed/bundles/org.yaml/snakeyaml/snakeyaml-1.9.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/org.hibernate/hibernate-validator/hibernate-validator-4.2.0.Final.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/javax.validation/validation-api/validation-api-1.0.0.GA.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/org.springframework/spring-context/spring-context-3.0.7.RELEASE.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/org.springframework/spring-core/spring-core-3.0.7.RELEASE.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/org.springframework/spring-beans/spring-beans-3.0.7.RELEASE.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/joda-time/joda-time/joda-time-2.0.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/org.joda/joda-convert/joda-convert-1.1.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/javassist/javassist/javassist-3.12.1.GA.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/commons-lang/commons-lang/commons-lang-2.6.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/com.ning/async-http-client/async-http-client-1.7.0.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/oauth.signpost/signpost-core/signpost-core-1.2.1.1.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/com.codahale/jerkson_2.9.1/jerkson_2.9.1-0.5.0.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/org.reflections/reflections/reflections-0.9.6.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/javax.servlet/javax.servlet-api/javax.servlet-api-3.0.1.jar"/>
+	<classpathentry kind="src" output=".target" path="app"/>
+	<classpathentry kind="src" output=".target" path="test"/>
+	<classpathentry kind="con" path="org.scala-ide.sdt.launching.SCALA_CONTAINER"/>
+	<classpathentry kind="lib" path="lib_managed/jars/org.javassist/javassist/javassist-3.16.1-GA.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/com.github.scala-incubator.io/scala-io-file_2.10/scala-io-file_2.10-0.4.2.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/com.github.scala-incubator.io/scala-io-core_2.10/scala-io-core_2.10-0.4.2.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/com.jsuereth/scala-arm_2.10/scala-arm_2.10-1.3.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/org.scala-stm/scala-stm_2.10.0/scala-stm_2.10.0-0.6.jar"/>
+	<classpathentry kind="lib" path="lib_managed/bundles/com.typesafe/config/config-1.0.0.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/org.slf4j/jul-to-slf4j/jul-to-slf4j-1.6.6.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/org.slf4j/jcl-over-slf4j/jcl-over-slf4j-1.6.6.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/ch.qos.logback/logback-core/logback-core-1.0.7.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/ch.qos.logback/logback-classic/logback-classic-1.0.7.jar"/>
+	<classpathentry kind="lib" path="lib_managed/bundles/com.typesafe.akka/akka-actor_2.10/akka-actor_2.10-2.1.0.jar"/>
+	<classpathentry kind="lib" path="lib_managed/bundles/com.typesafe.akka/akka-slf4j_2.10/akka-slf4j_2.10-2.1.0.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/org.slf4j/slf4j-api/slf4j-api-1.7.2.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/joda-time/joda-time/joda-time-2.1.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/org.joda/joda-convert/joda-convert-1.2.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/org.apache.commons/commons-lang3/commons-lang3-3.1.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/com.ning/async-http-client/async-http-client-1.7.6.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/oauth.signpost/signpost-core/signpost-core-1.2.1.2.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/commons-codec/commons-codec/commons-codec-1.4.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/oauth.signpost/signpost-commonshttp4/signpost-commonshttp4-1.2.1.2.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/org.apache.httpcomponents/httpcore/httpcore-4.0.1.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/org.apache.httpcomponents/httpclient/httpclient-4.0.1.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/commons-logging/commons-logging/commons-logging-1.1.1.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/org.codehaus.jackson/jackson-core-asl/jackson-core-asl-1.9.10.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/org.codehaus.jackson/jackson-mapper-asl/jackson-mapper-asl-1.9.10.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/net.sf.ehcache/ehcache-core/ehcache-core-2.6.0.jar"/>
 	<classpathentry kind="lib" path="lib_managed/jars/javax.transaction/jta/jta-1.1.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/tyrex/tyrex/tyrex-1.0.1.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/jaxen/jaxen/jaxen-1.1.3.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/net.sf.ehcache/ehcache-core/ehcache-core-2.5.0.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/com.mongodb.casbah/casbah-query_2.9.1/casbah-query_2.9.1-2.1.5-1.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/com.mongodb.casbah/casbah-commons_2.9.1/casbah-commons_2.9.1-2.1.5-1.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/org.scala-tools.time/time_2.9.1/time_2.9.1-0.5.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/org.scalaj/scalaj-collection_2.9.1/scalaj-collection_2.9.1-1.2.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/com.mongodb.casbah/casbah-core_2.9.1/casbah-core_2.9.1-2.1.5-1.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/com.mongodb.casbah/casbah-gridfs_2.9.1/casbah-gridfs_2.9.1-2.1.5-1.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/org.scala-lang/scalap/scalap-2.9.1.jar"/>
-	<classpathentry kind="lib" path="C:/bin/play-2.0/framework/sbt/boot/scala-2.9.1/lib/scala-compiler.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/org.mongodb/mongo-java-driver/mongo-java-driver-2.7.3.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/net.liftweb/lift-json_2.9.1/lift-json_2.9.1-2.4.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/com.thoughtworks.paranamer/paranamer/paranamer-2.3.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/org.specs2/specs2-scalaz-core_2.9.1/specs2-scalaz-core_2.9.1-6.0.1.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/com.novocode/junit-interface/junit-interface-0.8.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/junit/junit/junit-4.8.2.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/org.scala-lang/scala-reflect/scala-reflect-2.10.0.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/javax.mail/mail/mail-1.4.5.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/javax.activation/activation/activation-1.1.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/com.github.nscala-time/nscala-time_2.10/nscala-time_2.10-0.2.0.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/org.specs2/specs2_2.10/specs2_2.10-1.13.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/org.specs2/scalaz-core_2.10/scalaz-core_2.10-7.0.0.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/org.specs2/scalaz-concurrent_2.10/scalaz-concurrent_2.10-7.0.0.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/org.specs2/scalaz-effect_2.10/scalaz-effect_2.10-7.0.0.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/org.mongodb/casbah-gridfs_2.10/casbah-gridfs_2.10-2.5.0.jar"/>
+	<classpathentry kind="con" path="org.scala-ide.sdt.launching.SCALA_COMPILER_CONTAINER"/>
+	<classpathentry kind="lib" path="lib_managed/jars/org.json4s/json4s-native_2.10/json4s-native_2.10-3.1.0.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/org.json4s/json4s-core_2.10/json4s-core_2.10-3.1.0.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/org.json4s/json4s-ast_2.10/json4s-ast_2.10-3.1.0.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/com.thoughtworks.paranamer/paranamer/paranamer-2.5.2.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/com.tristanhunt/knockoff_2.10/knockoff_2.10-0.8.1.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/junit/junit/junit-4.5.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/org.json/json/json-20090211.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/commons-jxpath/commons-jxpath/commons-jxpath-1.3.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/junit/junit-dep/junit-dep-4.10.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/org.hamcrest/hamcrest-core/hamcrest-core-1.1.jar"/>
 	<classpathentry kind="lib" path="lib_managed/jars/org.scala-tools.testing/test-interface/test-interface-0.5.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/org.fluentlenium/fluentlenium-festassert/fluentlenium-festassert-0.5.6.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/org.fluentlenium/fluentlenium-core/fluentlenium-core-0.5.6.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/org.seleniumhq.selenium/selenium-java/selenium-java-2.16.1.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/org.seleniumhq.selenium/selenium-android-driver/selenium-android-driver-2.16.1.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/org.seleniumhq.selenium/selenium-remote-driver/selenium-remote-driver-2.16.1.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/org.fluentlenium/fluentlenium-festassert/fluentlenium-festassert-0.7.3.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/org.fluentlenium/fluentlenium-core/fluentlenium-core-0.7.3.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/org.seleniumhq.selenium/selenium-java/selenium-java-2.25.0.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/org.seleniumhq.selenium/selenium-android-driver/selenium-android-driver-2.25.0.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/org.seleniumhq.selenium/selenium-remote-driver/selenium-remote-driver-2.25.0.jar"/>
 	<classpathentry kind="lib" path="lib_managed/jars/cglib/cglib-nodep/cglib-nodep-2.1_3.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/org.seleniumhq.selenium/selenium-api/selenium-api-2.16.1.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/org.seleniumhq.selenium/selenium-api/selenium-api-2.25.0.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/com.google.guava/guava/guava-12.0.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/com.google.code.findbugs/jsr305/jsr305-1.3.9.jar"/>
 	<classpathentry kind="lib" path="lib_managed/jars/org.apache.httpcomponents/httpclient/httpclient-4.1.2.jar"/>
 	<classpathentry kind="lib" path="lib_managed/jars/org.apache.httpcomponents/httpcore/httpcore-4.1.3.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/commons-logging/commons-logging/commons-logging-1.1.1.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/commons-codec/commons-codec/commons-codec-1.4.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/commons-codec/commons-codec/commons-codec-1.6.jar"/>
 	<classpathentry kind="lib" path="lib_managed/jars/org.apache.commons/commons-exec/commons-exec-1.1.jar"/>
 	<classpathentry kind="lib" path="lib_managed/jars/net.java.dev.jna/jna/jna-3.4.0.jar"/>
 	<classpathentry kind="lib" path="lib_managed/jars/net.java.dev.jna/platform/platform-3.4.0.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/org.seleniumhq.selenium/selenium-chrome-driver/selenium-chrome-driver-2.16.1.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/org.seleniumhq.selenium/selenium-htmlunit-driver/selenium-htmlunit-driver-2.16.1.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/org.seleniumhq.selenium/selenium-chrome-driver/selenium-chrome-driver-2.25.0.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/org.seleniumhq.selenium/selenium-htmlunit-driver/selenium-htmlunit-driver-2.25.0.jar"/>
 	<classpathentry kind="lib" path="lib_managed/jars/net.sourceforge.htmlunit/htmlunit/htmlunit-2.9.jar"/>
 	<classpathentry kind="lib" path="lib_managed/jars/xalan/xalan/xalan-2.7.1.jar"/>
 	<classpathentry kind="lib" path="lib_managed/jars/xalan/serializer/serializer-2.7.1.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/xml-apis/xml-apis/xml-apis-1.3.04.jar"/>
 	<classpathentry kind="lib" path="lib_managed/jars/commons-collections/commons-collections/commons-collections-3.2.1.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/commons-lang/commons-lang/commons-lang-2.6.jar"/>
 	<classpathentry kind="lib" path="lib_managed/jars/org.apache.httpcomponents/httpmime/httpmime-4.1.2.jar"/>
 	<classpathentry kind="lib" path="lib_managed/jars/net.sourceforge.htmlunit/htmlunit-core-js/htmlunit-core-js-2.9.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/xerces/xercesImpl/xercesImpl-2.9.1.jar"/>
 	<classpathentry kind="lib" path="lib_managed/jars/net.sourceforge.nekohtml/nekohtml/nekohtml-1.9.15.jar"/>
 	<classpathentry kind="lib" path="lib_managed/jars/net.sourceforge.cssparser/cssparser/cssparser-0.9.5.jar"/>
 	<classpathentry kind="lib" path="lib_managed/jars/org.w3c.css/sac/sac-1.3.jar"/>
 	<classpathentry kind="lib" path="lib_managed/jars/commons-io/commons-io/commons-io-2.0.1.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/org.seleniumhq.selenium/selenium-firefox-driver/selenium-firefox-driver-2.16.1.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/org.seleniumhq.selenium/selenium-ie-driver/selenium-ie-driver-2.16.1.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/org.seleniumhq.selenium/selenium-iphone-driver/selenium-iphone-driver-2.16.1.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/org.seleniumhq.selenium/selenium-support/selenium-support-2.16.1.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/org.seleniumhq.selenium/selenium-firefox-driver/selenium-firefox-driver-2.25.0.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/org.seleniumhq.selenium/selenium-ie-driver/selenium-ie-driver-2.25.0.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/org.seleniumhq.selenium/selenium-iphone-driver/selenium-iphone-driver-2.25.0.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/org.seleniumhq.selenium/selenium-safari-driver/selenium-safari-driver-2.25.0.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/org.webbitserver/webbit/webbit-0.4.6.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/org.seleniumhq.selenium/selenium-support/selenium-support-2.25.0.jar"/>
 	<classpathentry kind="lib" path="lib_managed/jars/org.easytesting/fest-assert/fest-assert-1.4.jar"/>
 	<classpathentry kind="lib" path="lib_managed/jars/org.easytesting/fest-util/fest-util-1.1.6.jar"/>
-	<classpathentry kind="con" path="org.scala-ide.sdt.launching.SCALA_CONTAINER"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
-	<classpathentry kind="lib" path="lib_managed/jars/com.tristanhunt/knockoff_2.9.1/knockoff_2.9.1-0.8.0-16.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/javax.mail/mail/mail-1.4.5.jar"/>
+	<classpathentry kind="src" path="target/scala-2.10/src_managed/main"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/razbase"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/snakked"/>
-	<classpathentry kind="lib" path="lib_managed/jars/org.scalatest/scalatest_2.9.1/scalatest_2.9.1-1.6.1.jar"/>
-	<classpathentry kind="lib" path="/snakked/lib_managed/jars/org.json/json/json-20090211.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/com.typesafe.akka/akka-actor/akka-actor-2.0.2.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/com.typesafe.akka/akka-slf4j/akka-slf4j-2.0.2.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/play/anorm_2.9.1/anorm_2.9.1-2.0.3.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/org.codehaus.jackson/jackson-core-asl/jackson-core-asl-1.9.9.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/org.codehaus.jackson/jackson-mapper-asl/jackson-mapper-asl-1.9.9.jar"/>
-	<classpathentry kind="lib" path="lib_managed/bundles/io.netty/netty/netty-3.5.0.Final.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/play/play_2.9.1/play_2.9.1-2.0.3.jar" sourcepath="C:/bin/play-2.0.3/framework/src"/>
-	<classpathentry kind="lib" path="lib_managed/jars/play/play-test_2.9.1/play-test_2.9.1-2.0.3.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/com.github.jsuereth.scala-arm/scala-arm_2.9.1/scala-arm_2.9.1-1.1.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/com.github.scala-incubator.io/scala-io-core_2.9.1/scala-io-core_2.9.1-0.4.0.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/com.github.scala-incubator.io/scala-io-file_2.9.1/scala-io-file_2.9.1-0.4.0.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/com.novus/salat-core_2.9.1/salat-core_2.9.1-0.0.8.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/com.novus/salat-util_2.9.1/salat-util_2.9.1-0.0.8.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/org.scala-tools/scala-stm_2.9.1/scala-stm_2.9.1-0.5.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/org.specs2/specs2_2.9.1/specs2_2.9.1-1.9.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/play/templates_2.9.1/templates_2.9.1-2.0.3.jar"/>
-	<classpathentry kind="lib" path="lib_managed/bundles/org.scalaz/scalaz-core_2.9.2/scalaz-core_2.9.2-7.0.0-M3.jar"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/scripster"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/lightsoa"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/gremlins"/>
+	<classpathentry kind="lib" path="lib_managed/jars/org.mongodb/casbah-commons_2.10/casbah-commons_2.10-2.6.2.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/org.mongodb/casbah-core_2.10/casbah-core_2.10-2.6.2.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/org.mongodb/mongo-java-driver/mongo-java-driver-2.11.2.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/org.mongodb/casbah-query_2.10/casbah-query_2.10-2.6.2.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/com.novus/salat-core_2.10/salat-core_2.10-1.9.2.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/com.novus/salat-util_2.10/salat-util_2.10-1.9.2.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/org.scala-lang/scalap/scalap-2.10.2.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/org.scalatest/scalatest_2.10/scalatest_2.10-1.9.2.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/com.novocode/junit-interface/junit-interface-0.10.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/com.razie/lightsoa-core_2.10/lightsoa-core_2.10-0.6.5-SNAPSHOT.jar"/>
+	<classpathentry kind="lib" path="lib_managed/bundles/io.netty/netty/netty-3.6.3.Final.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/play/play_2.10/play_2.10-2.1.5.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/play/play-exceptions/play-exceptions-2.1.5.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/play/play-iteratees_2.10/play-iteratees_2.10-2.1.5.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/play/play-test_2.10/play-test_2.10-2.1.5.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/play/sbt-link/sbt-link-2.1.5.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/play/templates_2.10/templates_2.10-2.1.5.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/xerces/xercesImpl/xercesImpl-2.11.0.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/xml-apis/xml-apis/xml-apis-1.4.01.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

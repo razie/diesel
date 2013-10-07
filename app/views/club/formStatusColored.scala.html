@@ -1,0 +1,22 @@
+@****
+only used in one place - probably remove and move it there
+***@
+@(formStatus:String, link:Option[String]=None)
+
+@import model.FormStatus._
+
+@button(color:String) = {
+  @link.map {v=>
+      <a href="@v" class="btn btn-mini @color">@formStatus</a>
+    }.getOrElse {
+      <a class="btn btn-mini @color">@formStatus</a>
+  }
+}
+
+@formStatus match {
+  case CREATED => { @button("btn-warning") }
+  case EDITING => { @button("btn-warning") }
+  case SUBMITTED => { @button("btn-info") }
+  case APPROVED => { @button("btn-success") }
+  case _ => { @button("") }
+}

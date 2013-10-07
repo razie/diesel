@@ -1,34 +1,61 @@
 @(pageTitle: String = "")
+@import _root_.admin.Config
 
 @title() = @{
-  if(pageTitle.length==0) _root_.admin.Config.sitecfg("RacerKidz") getOrElse ("RacerKidz")
+  if(pageTitle.length==0) Config.sitecfg("RacerKidz") getOrElse ("RacerKidz")
   else pageTitle
-}
-
-@user() = @{
-  razie.NoStaticS.get[model.User]
-}
-
-@theme() = @{
-  user().flatMap(_.prefs.get("css")).orElse (_root_.admin.Config.sitecfg("css")) getOrElse ("dark")
 }
 
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="utf-8">
+    
     <title>@title</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="">
     <meta name="author" content="">
 
+  @Html(_root_.admin.Config.metas)
+  
     <!-- Le styles -->
-    <link href="@routes.Assets.at("bootstrap/css/bootstrap-"+theme()+".css")" rel="stylesheet">
+    <link href="@routes.Assets.at("bootstrap/css/bootstrap-"+_root_.admin.Config.theme+".css")" rel="stylesheet">
 
 @*******
     <script src="@routes.Assets.at("bootstrap/js/bootstrap-modal.js")" type="text/javascript"></script>
     <script src="@routes.Assets.at("bootstrap/js/bootstrap-transition.js")" type="text/javascript"></script>
 ********@
+
+@if(Config.hostport.startsWith("test") || Config.hostport.startsWith("localhost")) {
+  @if(Config.theme.contains("light")) {
+    <style type="text/css">
+      .navbar-inner {
+        background-color: red;
+  background-image: -moz-linear-gradient(top, #8a0808, #b40404);
+  background-image: -ms-linear-gradient(top, #8a0808, #b40404);
+  background-image: -webkit-gradient(linear, 0 0, 0 100%, from(#8a0808), to(#b40404));
+  background-image: -webkit-linear-gradient(top, #8a0808, #b40404);
+  background-image: -o-linear-gradient(top, #8a0808, #b40404);
+  background-image: linear-gradient(#8a0808, #b40404 70%, #b40404);
+  background-repeat: repeat-x;
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#8a0808', endColorstr='#b40404', GradientType=0);
+        }
+    </style>
+    } else {
+    <style type="text/css">
+.navbar .navbar-inner {
+  background-color: #b40404;
+  background-image: -webkit-gradient(linear, 0 0, 0 100%, from(#8a0808), color-stop(70%, #b40404), to(#b40404));
+  background-image: -webkit-linear-gradient(#8a0808, #b40404 70%, #b40404);
+  background-image: -moz-linear-gradient(top, #8a0808, #b40404 70%, #b40404);
+  background-image: -o-linear-gradient(#8a0808, #b40404 70%, #b40404);
+  background-image: linear-gradient(#8a0808, #b40404 70%, #b40404);
+  background-repeat: no-repeat;
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#ff8a0808', endColorstr='#ffb40404', GradientType=0);
+}
+    </style>
+    }
+}
 
     <style type="text/css">
       body {
@@ -46,10 +73,14 @@
     <![endif]-->
 
     <!-- Le fav and touch icons -->
+    
+    @****
     <link rel="shortcut icon" href="../assets/ico/favicon.ico">
     <link rel="apple-touch-icon-precomposed" sizes="114x114" href="../assets/ico/apple-touch-icon-114-precomposed.png">
     <link rel="apple-touch-icon-precomposed" sizes="72x72" href="../assets/ico/apple-touch-icon-72-precomposed.png">
     <link rel="apple-touch-icon-precomposed" href="../assets/ico/apple-touch-icon-57-precomposed.png">
+    ****@
+    
 <style type="text/css">
 img.rklogo
   {
@@ -64,6 +95,26 @@ img.rklogo
   #padding: 11px 20px 11px;
   margin-left: -20px;
   font-size: 20px;
+}
+
+ul.like-buttons{
+  float: left;
+  list-style: none;
+  margin: 5px 0 20px 0;
+  padding: 0;
+  width: 100%;
+}
+ul.like-buttons li{
+  display: block;
+  float: left;
+  margin-right: 0px;
+}
+li.twitter-like{
+  margin-top: 3px;
+  margin-left: 0px;
+}
+li.g-like{
+  margin-top: 3px;
 }
 </style>
   

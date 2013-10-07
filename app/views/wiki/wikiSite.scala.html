@@ -1,7 +1,15 @@
+@**************
+render a page in a site rather than a normal page - some missing stuff
+**************@
+
 @(wid:model.WID, iname:Option[String], page:Option[model.WikiEntry], user:Option[model.User])
 @import model._
 
-@htmlHead(""+page.map(_.label).getOrElse(model.Wikis.label(wid)))
+@htmlHead(""+page.flatMap(_.contentTags.get("sitelabel")).getOrElse(page.map(_.label).getOrElse(model.Wikis.label(wid))))
+
+@showads() = @{
+  page.isDefined && page.get.contentTags.get("showads").isDefined
+}
 
 @if(page.isDefined && page.get.contentTags.get("logo").isDefined) {
   @navbar(user, false, "Menu", page.get.contentTags.get("logo"), page.get.contentTags.get("siteurl"), true, page.get.contentTags.get("club").map("?club="+_).getOrElse(""))
@@ -11,26 +19,32 @@
    
 <div class="container">
   <div class="row">
+  
+  @if(showads()) {
+    <div class="span9">
+  } else {
     <div class="span12">
-
+  }
       <div class="well">
-        @wiki.wikiFrag(wid,user,false,page, iname, true)
+        @wiki.wikiFrag(wid,user,false,page, iname, true, false)
       </div>
 
       @wiki.wikiAddMore(wid, page, user)
 
       <hr>
-      @htmlFooter(ads=false, isSite=true)
+      @htmlFooter(ads=showads(), isSite=true)
 
     </div> <!-- /span9 -->
 
-@************* 
+    @if(showads()) {
       <div class="span3">
+@************* 
         @wiki.wikiFrag(WID("Admin","Right"),user,true, None)
+*************@
 
         @addRight()
       </div>
-*************@
+      }
 
   </div> <!-- row -->
 </div> <!-- /container -->

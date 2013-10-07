@@ -5,17 +5,21 @@ import model.WikiEntry
 import controllers.{XWrapper,XListWrapper}
 import model.{WikiWrapper, WikiXpSolver}
 import model.WID
+import admin.Config
+import db.Mongo
 
 /** this is available to scripts inside the wikis */
 object wix {
   import admin.M._
+  
+  lazy val hostport:String = Config.hostport
   
   // TODO don't use the actual classes but some dumbed-down read-only data-strippers
   var page: Option[WikiEntry] = None
   var user: Option[User] = None
   var query: Map[String,String] = Map()
   
-  def isUserRegistered = user exists (u=> page >>> (_.userWikis) exists (_.userId == u._id))
+  def isUserRegistered = user exists (u=> page >>> (x=>model.Users.findUserLinksTo(x.wid).toList) exists (_.userId == u._id))
     
   /** start xp from the current page */
   def xp = 
@@ -28,6 +32,7 @@ object wix {
     new XListWrapper(
       user.toList.flatMap(_.pages(cat)).map { uw => new WikiWrapper(WID(cat, uw.wid.name)) },
       WikiXpSolver)
-    
+
+  def countForms = Mongo.db("weForm").size
 //  {controllers.UserStuff.xp(user, "Calendar") \ UserStuff.Race \ "Venue" \@ "loc"}.filter(! _.isEmpty).map(_.replaceFirst("ll:",""))
 }

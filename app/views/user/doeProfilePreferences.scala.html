@@ -1,0 +1,66 @@
+@(myForm: Form[_], au:model.User)
+
+@salutation() = @{
+  val names = Array("Hi", "Hello", "Hey", "Howdy")
+  val i = new scala.util.Random().nextInt(names.length)
+  names(i)
+  }
+  
+@htmlHead("Preferences")
+
+@navbar(Some(au))
+   
+<div class="container">
+    <div class="row">
+  @leftmenu(8, au)
+
+      <div class="span4">
+
+@import helper.twitterBootstrap._
+@helper.form(action=routes.Profile.doeUpdPrefs, 'class->"well") {
+  @helper.select(
+    myForm("css"), 
+     Seq("dark"->"dark", "light"->"light"),
+    '_label -> "Site appearance", 
+    '_error->myForm.error("css"),
+    '_showConstraints -> false)
+  @helper.inputText(
+    myForm("favQuote"), 
+    '_label -> "Favorite quote", 
+    '_error->myForm.error("favQuote"),
+    '_showConstraints -> false,
+    '_showConstraints -> false)
+    
+  @helper.inputText(
+    myForm("weatherCode"), 
+    '_label -> "Weather code", 
+    '_error->myForm.error("weatherCode"),
+    '_showConstraints -> false,
+    '_showConstraints -> false)
+    
+  <button type="submit" class="btn btn-primary">Update preferences !</button>
+  
+  @myForm.globalError.map {err=>
+     <p style="color:red;font-weight:bold">@err.message</p>
+  } 
+  
+  <p><small>By maintaining a profile, you agree to the <a href="@controllers.Wiki.w("Terms of Service")">Terms of Service</a></small><p>
+}
+
+      </div>
+      <div class="span4">
+      
+      <h2 align="center">Changing the preferences</h2>
+      <p>These preferences do all kinds of things - check it out!</p>
+      <p><b>Site appearance</b> controls the basic appearance of the site - "dark" is new and cool while "light" is... well, if you're used to that.
+      <p><b>Favorite quote</b> is just that - your favorite quote
+      <p><b>Weather code</b> is the weather code you want displayed in your main page - obtained from theweathernetwork.com - for instance Toronto is caon0696
+      
+      </div>
+
+  </div> <!-- /row -->
+  <hr>
+  @htmlFooter(ads=true)
+</div> <!-- /container -->
+@htmlBottom()
+            

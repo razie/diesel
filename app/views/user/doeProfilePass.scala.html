@@ -1,0 +1,56 @@
+@(myForm: Form[_], au:model.User)
+
+@salutation() = @{
+  val names = Array("Hi", "Hello", "Hey", "Howdy")
+  val i = new scala.util.Random().nextInt(names.length)
+  names(i)
+  }
+  
+@htmlHead("Password reset")
+@navbar(Some(au))
+   
+<div class="container">
+  <div class="row">
+  @leftmenu(3, au)
+
+   <div class="span4">
+
+@import helper.twitterBootstrap._
+
+@helper.form(action=routes.Profile.doeProfilePass2(), 'class->"well") {
+  @helper.inputPassword( myForm("currpass"), '_label -> "Current Password", 
+    '_showConstraints -> false)
+  @helper.inputPassword(
+    myForm("newpass"), 
+    '_label -> "New Password", 
+    '_showConstraints -> false,
+    '_error->myForm.error("newpass"))
+  @helper.inputPassword(
+    myForm("repass"), 
+    '_label -> "New Password, again", 
+    '_showConstraints -> false,
+    '_error->myForm.error("repass"))
+    
+  <button type="submit" class="btn btn-primary">Change !</button>
+
+  @user.agree()
+    
+  @myForm.globalError.map {err=>
+     <p style="color:red;font-weight:bold">@err.message</p>
+  } 
+}
+     </div>
+     
+      <div class="span4">
+<h2>Password change</h2>
+<p>
+<p>Should you forget the password, the current password reset mechanmism is pretty screwy - try to remember it... We won't enforce stupid rules or anything - your password is your own, so it should be easy to remember.
+<p>We take good care of it: in our database, which is firewalled, the password is stored encrypted as well... which is why we can't tell what it is - we can only reset it if you forget it!
+    </div>
+
+  </div> <!-- /row -->
+  <hr>
+  @htmlFooter(ads=true)
+</div> <!-- /container -->
+@htmlBottom()
+    

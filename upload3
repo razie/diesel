@@ -2,11 +2,10 @@
 rm rk.zip
 rm RUNNING_PID
 
-zip -r rk.zip * -x lib_managed/\* dist/\* data/\* dump/\* dump* target/\*
+zip -r rk.zip * -x bin/\* lib_managed/\* rk-backups/\* \*dist/\* data/\* dump/\* dump* target/\* log dump.tar
 
 scp rk.zip demo@cloud3.apefsjdolj.ro:rk/app/run/up/
 rm rk.zip
 
 ssh demo@cloud3.apefsjdolj.ro "export PATH=\$PATH:/usr/java/jdk1.6.0_18/bin; cd ~/rk/app/run; . ./update"
-
 

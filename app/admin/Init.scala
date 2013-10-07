@@ -1,7 +1,7 @@
 package admin
 
 import model.Enc
-import model.Mongo
+import db.Mongo
 import model.User
 import model.UserGroup
 import model.Users
@@ -13,6 +13,7 @@ import com.novus.salat._
 import com.novus.salat.annotations._
 import razie.Log
 
+/** not really used anymore - used in the beginning to reset the database */
 object Init extends Logging {
 
   def e(s: String) = Enc(s)
@@ -51,7 +52,7 @@ object Init extends Logging {
 
     import model.Perm._
 
-    Mongo.db("Ver") += Map("ver" -> Mongo.CURR_VER) // create a first ver entry
+    Mongo.db("Ver") += Map("ver" -> Services.mongoDbVer) // create a first ver entry
 
     val groups = List(
       UserGroup("admin", Set(uProfile.plus, adminWiki.plus, uWiki.plus, adminDb.plus)),

@@ -11,10 +11,9 @@ import java.io._
 import model.Enc
 import model.Users
 import model.EncUrl
-import com.avaje.ebean.annotation.Encrypted
 
 /** a prepared email to send - either send now, later, backup etc */
-case class EmailMsg(to: String, from: String, subject: String, html: String) {}
+case class EmailMsg(to: String, from: String, subject: String, html: String, isNotification:Boolean=true) {}
 
 /**
  * a mail session that doesn't have to connect to the server if there's nothing to send...
@@ -27,6 +26,7 @@ class MailSession(implicit mailSession: Option[Session] = None) {
 }
 
 object SendEmail extends razie.Logging {
+  val NO_EMAILS = true // this is set to false for normal testing - set to true for quick testing and stress/perf testing
 
   /**
    * send an email
@@ -34,7 +34,10 @@ object SendEmail extends razie.Logging {
   private def isend(e: EmailMsg, mailSession: MailSession) {
 
     val mysession = mailSession.session
-
+      
+    if (Config.isLocalhost && (e.isNotification || NO_EMAILS)) {
+      Audit.logdb("EMAIL_SENT_NOT", Seq("to:" + e.to, "from:" + e.from, "subject:" + e.subject).mkString("\n"))
+    } else
     try {
       val message = new MimeMessage(mysession);
       message.setFrom(new InternetAddress(e.from));
@@ -89,7 +92,14 @@ object SendEmail extends razie.Logging {
    * send an email
    */
   def send(to: String, from: String, subject: String, html: String)(implicit mailSession: MailSession) {
-    mailSession.emails = new EmailMsg(to, from, subject, html) :: mailSession.emails
+    mailSession.emails = new EmailMsg(to, from, subject, html, false) :: mailSession.emails
+  }
+
+  /**
+   * send an email
+   */
+  def notif(to: String, from: String, subject: String, html: String)(implicit mailSession: MailSession) {
+    mailSession.emails = new EmailMsg(to, from, subject, html, true) :: mailSession.emails
   }
 
   /**

@@ -1,0 +1,61 @@
+@******
+add a member to a tribe
+******@
+@(how:String, tribe:model.Tribe, club:model.User)
+@import model.RegStatus._
+@import model.FormStatus._
+@import com.mongodb.casbah.Imports._
+
+@htmlHead()
+@navbar(Some(club))
+   
+<div class="container">
+  <div class="row">
+  @views.html.user.leftmenu(13, club)
+
+<div class="span9">
+
+<h2>Adding members to @tribe.name</h2>
+
+<h2>You're adding a: <font style="color:red">@how</font></h2>
+<br>
+<strong>Select:</strong>
+
+@rkidzout=@{
+ val c = controllers.Club(club)
+  model.RacerKidz.findByClub(c).filter{x=> !tribe.has(x._id)}.map(t=>
+    Map("fname"->t.info.firstName, 
+    	"role" -> c.roleOf(t._id), 
+    	"id"->t._id.toString))
+}
+
+@addlink(row:Map[String,String],k:String,v:String)={
+  @k match {
+  	case "id" => {
+      @if(tribe.has(new ObjectId(v))) {
+        <a href="@routes.Tribe.doeClubRemoveKid(tribe.page._id.toString,v,v)" class="btn btn-mini btn-warn">Remove</a>
+      } else {
+        @if(row("role") == how) {
+          <a href="@routes.Tribe.doeClubAddKid(tribe.page._id.toString,v,v,how)" class="btn btn-mini btn-info">Add to tribe</a>
+        } else {
+          <a href="@routes.Tribe.doeClubAddKid(tribe.page._id.toString,v,v,how)" class="btn btn-mini btn-danger">You sure?</a>
+        }
+ 	  }
+ 	}
+    case _ => {@v}
+  }
+}
+
+@util.utilSimpleTable(rkidzout, 
+	Seq("fname" -> "Name", 
+		"role" -> "Role", 
+		"id"->"Included?"), Some(addlink))
+
+  <hr>
+  @htmlFooter()
+</div> <!-- /container -->
+</div> <!-- /container -->
+</div> <!-- /container -->
+
+@htmlBottom()
+    

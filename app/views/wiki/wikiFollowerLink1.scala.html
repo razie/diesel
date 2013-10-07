@@ -1,0 +1,72 @@
+@(to:model.WID, myForm:Form[controllers.Wiki.FollowerLinkWiki])
+@import model.Wikis
+@import helper.twitterBootstrap._
+
+@htmlHead()
+@navbar(None)
+   
+<div class="container">
+  <div class="hero-unit">
+      <div class="row">
+        <div class="span6">
+          <h2>Cool! So you want to @to.label("LinkTo", "follow") @to.cat @to.name!</h2>
+          <b>@to.label("LinkTo.Desc", "You will be notified of new posts.") !</b>
+          <p>
+          <p>
+          We strongly recommend you <a href="@routes.Profile.doeJoin()">join</a>
+           (with a free account) and follow it from your account, to access the full potential of this website.
+          <p>
+          Got <b>too many accounts</b>? Yeah, me too - simply enter your email here and you will be notified via email of every new post. 
+          <br><small>The emails will also include instructions on how to unsubscribe, should the posts get boring.</small>
+        </div>
+        <div class="span4">
+
+@Wiki.moderator(to).map {mu=>
+  Note that the @to.cat.toLowerCase is moderated by <a href="@controllers.Wiki.w("User", mu)">@mu</a> - we'll ask for permission!
+}
+
+<div >
+
+@helper.form(action=routes.Wiki.linkFollower2(to), 'class->"well") {
+  @helper.inputText(
+    myForm("email1"), 
+    '_label -> "Email", 
+    '_showConstraints -> false,
+    '_error->myForm.error("email1"))
+
+  @helper.inputText(
+    myForm("email2"), 
+    '_label -> "Verify email", 
+    '_showConstraints -> false,
+    '_error->myForm.error("email2"))
+
+  @helper.textarea(
+    myForm("comment"), 
+    '_label -> "Comment for self", 
+    '_showConstraints -> false,
+    'cols->120,
+    'rows->3)
+
+    @myForm.globalError.map { err=>
+     <p style="color:red;font-weight:bold">@err.message</p>
+  } 
+
+    <div class="actions">
+      <button type="submit" class="btn btn-primary">Ok, subscribe!</button>
+      <a href="@controllers.Wiki.w(to.cat,to.name)" class="btn">Nah</a>
+    </div>
+  
+        </div>
+  
+  <br><small>By sending this form, you agree to the <a href="@controllers.Wiki.w("Terms of Service")">Terms of Service</a></small>
+}
+  </div>
+  </div>
+
+  <hr>
+  @htmlFooter()
+
+</div> <!-- /container -->
+
+@htmlBottom()
+    

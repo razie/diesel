@@ -1,10 +1,15 @@
-@(sForm:Form[_], user:Option[model.User])
+@(sForm:Form[_], v2:Int, user:Option[model.User])
 
 @import helper.twitterBootstrap._
 
 @htmlHead("RacerKidz Support")
 
 @navbar(user)
+
+@divi() = @{
+  val x = (math.random * (v2-3)).toInt
+  s"$x + ${v2-x}"
+}
    
   <div class="container">
     <div class="hero-unit">
@@ -23,6 +28,7 @@
   @helper.inputText(
     sForm("desc"), 
     '_label -> "Description",
+    'class -> "span6",
     '_showConstraints -> false)
     
   @helper.textarea(
@@ -32,6 +38,16 @@
     'class -> "span6",
     'rows->15)
 
+<div class="well">
+Help weed out some spam - please answer this question...
+  @helper.inputText(
+    sForm("v1"), 
+    '_label -> ("Result of " + divi() + " = "),
+    '_showConstraints -> false)
+</div>
+
+  <input type="hidden" name="v2" value="@sForm("v2").value" />
+  
   <button type="submit" class="btn btn-primary">Submit support request</button>
 
   @sForm.globalError.map { err=>
@@ -43,7 +59,6 @@
   
         </div>
       </div>
-
     </div>
 
   <hr>

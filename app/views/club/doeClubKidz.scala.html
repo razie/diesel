@@ -1,0 +1,79 @@
+@******
+manage the list of kidz and/or their accounts
+******@
+@(user:model.User)
+@import model.RK._
+@import model.RacerKid
+
+@htmlHead("RacerKidz for " + user.userName)
+@navbar(Some(user))
+   
+@rks=@{
+  (for (a <- model.RacerKidz.findAssocForUser(user._id);
+  	   k <- model.RacerKidz.findById(a.to)) yield (k,a)).toList.sortBy(x=>x._1.info.lastName+x._1.info.firstName)
+}
+  	   
+@rksactive = @{rksmap(_.info.status != STATUS_FORMER)}
+@rksformer = @{rksmap(_.info.status == STATUS_FORMER)}
+
+@rksmap(f:RacerKid =>Boolean) = @{
+  for ((t,a) <- rks if(f(t))) yield
+    Map("fname"->t.info.firstName, 
+    	"lname"->t.info.lastName, 
+    	"role" -> a.role, 
+    	"source" -> a.assoc,
+    	"associd" -> a._id.toString,
+    	"button"->t._id.toString)
+}
+
+@mnglink(row:Map[String,String],k:String,v:String)={
+  @k match {
+  	case "button" => {
+      <a href="@routes.Kidz.doeKid(user._id.toString, v, "-", row("associd"), "clubkidz")" class="btn btn-mini">More...</a>
+      } 
+    case _ => { @v }
+  }
+}
+
+<div class="container">
+<div class="row">
+@views.html.user.leftmenu(6, user)
+
+<div class="span9">
+
+<h2>Members of @user.firstName</h2>
+
+<p>Some records are created by the parents (see the "Source"). For those that did not register online, you can create records here, for team management etc. See at the bottom for correlations.
+
+<p><b>Summary:</b>
+  @rks.filter(_._1.info.status != STATUS_FORMER).toList.groupBy(_._2.role).map {x=>
+  	@x._2.size <small>x</small> @x._1  ;  
+}
+
+@util.utilSimpleTable(rksactive.iterator, 
+	Seq("fname" -> "F.Name", "lname"->"L.Name", "role" -> "Role", "source" -> "Source", "button"->"Details"), Some(mnglink))
+
+Add a: @Array(ROLE_RACER, ROLE_COACH, ROLE_MEMBER).map{v=>
+  <a href="@routes.Kidz.doeKid(user._id.toString, "11", v, "-", "clubkidz")" class="btn btn-mini btn-info">@v</a>
+}
+
+<hr>
+Source is 
+<ul>
+<li>Myself - well, automatically created for you
+<li>Registered - was included in a registration, by parents
+<li>Parent - record was created here... we are the "parent"
+<li>Link - record was created when the user (having an account on this website) "liked" this club
+</ul>
+<hr>
+<strong>Former members</strong>
+@util.utilSimpleTable(rksformer.iterator, 
+	Seq("fname" -> "F.Name", "lname"->"L.Name", "role" -> "Role", "source" -> "Source", "button"->"Details"), Some(mnglink))
+</div>
+</div>
+  <hr>
+  @htmlFooter(ads=true)
+</div> <!-- /container -->
+
+@htmlBottom()
+    

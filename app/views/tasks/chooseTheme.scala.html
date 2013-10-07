@@ -1,0 +1,58 @@
+@(pForm:Form[controllers.Profile.Email], au:model.User)
+
+@htmlHeadBar("Choosing theme", Some(au))
+   
+<div class="container"> <div class="hero-unit">
+
+      <div class="row">
+        <div class="span6">
+
+<p>Please choose how you would like to experience the site: <strong>light</strong> or <strong>dark</strong>, to proceed:
+<p>
+&nbsp;&nbsp;&nbsp;
+<p>
+<a href="/doe/harry?css=dark">
+  <img src="@routes.Assets.at("images/rk-dark.jpg")" class="img-rounded" /></a>
+&nbsp;&nbsp;&nbsp;
+<a href="/doe/harry?css=light">
+  <img src="@routes.Assets.at("images/rk-light.jpg")" class="img-rounded" /></a>
+<p>
+To get back to this screen, simply sign-out by clicking on your name on the top-right.
+
+
+        </div>
+
+        <div class="span4">
+
+@import helper.twitterBootstrap._
+
+@helper.form(action=routes.Tasks.addParent2, 'class->"well") {
+
+  @helper.inputText(
+    pForm("parentEmail"), 
+    '_label -> "Parent's Email")
+
+  <button type="submit" class="btn btn-primary">Continue</button>
+
+  @pForm.globalError.map {err=>
+     <p style="color:red;font-weight:bold">@err.message</p>
+  } 
+  
+  <p><small>By registering or logging in, you agree to the <a href="@controllers.Wiki.w("Terms of Service")">Terms of Service</a></small><p>
+  }
+  
+       </div>
+      </div>
+
+      </div>
+
+      <!-- Example row of columns -->
+
+      <hr>
+
+      @htmlFooter()
+
+    </div> <!-- /container -->
+
+    @htmlBottom()
+    
