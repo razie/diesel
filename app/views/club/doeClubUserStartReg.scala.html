@@ -1,0 +1,46 @@
+@******
+manage the list of kidz and/or their accounts
+******@
+@(user:model.User, clubName:String)
+@import model.RK._
+@import model.RacerKid
+
+@htmlHead("Start registration for " + user.userName)
+@navbar(Some(user))
+
+<div class="container">
+<div class="row">
+<div class="span9">
+
+<h1>Starting registration for @clubName</h1>
+
+<p>You can start the registration process: choose one of the two options below. Note that you can only choose one option per year per club.
+
+<h2>Option 1: family registration</h2>
+
+<p>If you are registering a family with kids, use this option. Even if you're a parent coach, you should use this option rather than the individual option.
+<p><a href="@routes.Club.doeStartReg(clubName, "Family")" class="btn btn-large btn-success">Start Family Registration!</a>
+
+<hr>
+
+<h2>Option 2: individual registration</h2>
+
+<p>If you are NOT registering any kids, you are an individual such as a coach, official etc - start below:
+<p><a href="@routes.Club.doeStartReg(clubName, "individual")" class="btn btn-large btn-warning">Start Individual Registration!</a>
+
+<hr>
+
+<h2>Option 3: no registration needed</h2>
+
+<p>If you don't need a registration (your parents will do it etc), just click below to remove this task:
+<p><a href="@routes.Club.doeStartReg(clubName, "None")" class="btn btn-large btn-info">No registration for me!</a>
+
+<hr>
+</div>
+</div>
+  <hr>
+  @htmlFooter(ads=true)
+</div> <!-- /container -->
+
+@htmlBottom()
+    

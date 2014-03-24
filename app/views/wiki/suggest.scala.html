@@ -1,0 +1,81 @@
+@(sForm:Form[_], v2:Int, page:String, user:Option[model.User])
+
+@import helper.twitterBootstrap._
+
+@htmlHead("Suggest something")
+
+@navbar(user)
+
+@divi() = @{
+  val x = (math.random * (v2-3)).toInt
+  s"$x + ${v2-x}"
+}
+   
+<div class="container">
+      <div class="row">
+        <div class="span8">
+          <h2>Questions / suggestions</h2>
+
+@helper.form(action=routes.Support.suggested(page), 'class->"well") {
+
+@if(user.isDefined) {
+  <input type="hidden" name="name" value="@user.get.ename" />
+  <input type="hidden" name="email" value="@model.Enc.unapply(user.get.email)" />
+} else {
+  @helper.inputText(
+    sForm("name"), 
+    '_label -> "Your name",
+    '_showConstraints -> false)
+  @helper.inputText(
+    sForm("email"), 
+    '_label -> "Your Email",
+    '_showConstraints -> false)
+}
+
+  @helper.inputText(
+    sForm("desc"), 
+    '_label -> "Description",
+    'class -> "span6",
+    '_showConstraints -> false)
+    
+  @helper.textarea(
+    sForm("details"), 
+    '_label -> "Details", 
+    '_showConstraints -> false,
+    'class -> "span6",
+    'rows->15)
+
+@if(user.isDefined) {
+  <input type="hidden" name="v1" value="@sForm("v2").value" />
+} else {
+  <div class="well">
+  Help weed out some spam - please answer this question...
+    @helper.inputText(
+      sForm("v1"), 
+      '_label -> ("Result of " + divi() + " = "),
+      '_showConstraints -> false)
+  </div>
+}
+
+  <input type="hidden" name="v2" value="@sForm("v2").value" />
+  
+  <button type="submit" class="btn btn-primary">Submit!</button>
+
+  @sForm.globalError.map { err=>
+     <p style="color:red;font-weight:bold">@err.message</p>
+  } 
+  
+  <p><small>By using this form, you agree to the <a href="@controllers.Wiki.w("Terms of Service")">Terms of Service</a></small><p>
+  }
+  
+        </div>
+      </div>
+
+  <hr>
+
+  @htmlFooter()
+
+  </div> <!-- /container -->
+
+@htmlBottom()
+    

@@ -1,0 +1,17 @@
+@(item:Int, id:String)
+
+@active(i:Int) = @{
+  if(i == item) "active" else ""
+}
+
+<div class="well span3"> 
+  <ul class="nav nav-list">
+    <li class="@active(1)"><a href="@routes.OmpCtrl.show("step", 1, id)"><i class="icon-question-sign"></i>1.BSS</a></li>
+    <li class="@active(2)"><a href="@routes.OmpCtrl.show("step", 2, id)"><i class="icon-question-sign"></i>2.Order</a></li>
+    <li class="@active(3)"><a href="@routes.OmpCtrl.show("step", 3, id)"><i class="icon-question-sign"></i>3.Fullfilment</a></li>
+    <li class="@active(4)"><a href="@routes.OmpCtrl.show("step", 4, id)"><i class="icon-question-sign"></i>4.SOI</a></li>
+    <li class="@active(5)"><a href="@routes.OmpCtrl.show("step", 5, id)"><i class="icon-question-sign"></i>5.ExecPlan</a></li>
+    <li class="@active(6)"><a href="@routes.OmpCtrl.show("step", 6, id)"><i class="icon-question-sign"></i>6.Results</a></li>
+    <li class="@active(7)"><a href="@routes.OmpCtrl.show("step", 7, id)"><i class="icon-question-sign"></i>7.Context</a></li>
+   </ul>
+</div> <!-- /well -->

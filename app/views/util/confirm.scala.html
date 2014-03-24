@@ -1,0 +1,25 @@
+@******
+simple popul modal confirmation for freaky stuff
+******@
+@(what:String, details:String, href:String, btnClass:String="btn btn-error")
+
+@modal(title:String, body:String, button:String, href:String, btnClass:String="btn btn-info") = {
+<script src="@routes.Assets.at("bootstrap/js/bootstrap-modal.js")" type="text/javascript"></script>
+<a href="#myModal" role="button" class="@btnClass" data-toggle="modal">@button</a>
+<div id="myModal" class="modal hide fade">
+  <div class="modal-header">
+    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+    <h3>@title</h3>
+  </div>
+  <div class="modal-body">
+    <p>@body</p>
+  </div>
+  <div class="modal-footer">
+    <a href="#" class="btn" data-dismiss="modal">Nah!</a>
+    <a href="@href" class="@btnClass">@button</a>
+  </div>
+</div>
+}
+
+
+@modal("Are you sure?", details, what, href, btnClass)
