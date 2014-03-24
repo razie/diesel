@@ -1,0 +1,20 @@
+. ./settings
+LOGDIR=$APP/logs
+#LOGDIR=/home/demo/rk/logs
+
+## 1 stop
+
+echo "1 - stopping"
+cd $SL
+$PLAYDIR/play stop 
+sleep 1
+kill `cat $APP/pid`
+rm $SL/RUNNING_PID
+kill -9 `ps -u $RKUSER | grep java | sed 's/^ //' | cut -f 1 -d " " | tr '\n' " " `
+
+mv nohup.out nohup.out.$DT
+mv $LOGDIR/log.log $LOGDIR/log.log.$DT
+
+cd $APP
+echo "1 - STOPPED"
+
