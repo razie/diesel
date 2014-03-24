@@ -14,8 +14,8 @@ import admin.Corr
 object Comment extends RazController with Logging {
   val commentForm = Form {
     tuple(
-      "link" -> text.verifying("Obscenity filter", !Wikis.hasporn(_)),
-      "content" -> text.verifying("Obscenity filter", !Wikis.hasporn(_)))
+      "link" -> text.verifying(vSpec, vPorn),
+      "content" -> text.verifying(vSpec, vPorn))
   }
 
   /** add a comment **/
@@ -23,7 +23,7 @@ object Comment extends RazController with Logging {
     implicit val errCollector = new VError()
     commentForm.bindFromRequest.fold(
       formWithErrors =>
-        Msg2(formWithErrors.toString + "Hein?", Some("/wiki/id/" + topicId)),
+        Msg2(formWithErrors.toString + "Hein?", Some(routes.Wiki.showId(topicId).url)),
       {
         case (link, content) => iadd(topicId, what, oid, None, content).apply(request)
       })
@@ -104,7 +104,7 @@ object Comment extends RazController with Logging {
       val (link, content) = split (comm.content, comm.kind.getOrElse("text"))
       Ok(views.html.comments.commEdit(wid, cid, comm.kind.getOrElse("text"), commentForm.fill(link, content.trim), auth))
     }) getOrElse
-      noPerm(WID("?", "?"))
+      noPerm(wid)
   }
 
   def save(wid: WID, cid: String, kind: String) = Action { implicit request =>
@@ -139,7 +139,7 @@ object Comment extends RazController with Logging {
               if (con.length > 0) comm.update(con, None, au)
               Redirect(controllers.Wiki.w(wid, false))
             }) getOrElse
-              noPerm(WID("?", "?"))
+              noPerm(wid)
           } getOrElse {
             if (con.length > 0) iadd(wid.findId.get.toString, kind, cid, kopt(newlink), con).apply(request)
             else  Redirect(controllers.Wiki.w(wid, false))
@@ -148,11 +148,11 @@ object Comment extends RazController with Logging {
   }
 
   /** start to add a video/photo comment **/
-  def vComment1(topic: String, what: String, oid: String, kind: String) = Action { implicit request =>
+  def vComment1(cat:String, topic: String, what: String, oid: String, kind: String) = Action { implicit request =>
     implicit val errCollector = new VError()
     (for (
       au <- activeUser;
-      w <- Wikis.findById(topic) orErr "Wiki topic not found"
+      w <- Wikis.findById(cat,topic) orErr "Wiki topic not found"
     //      comm <- Comments.findCommentById(cid) orErr ("bad comment id?");
     //      can <- canEdit(comm, auth) orErr ("can only edit your comments")
     ) yield {

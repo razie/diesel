@@ -11,21 +11,7 @@ import db.RMany
 import db.RMongo.as
 import db.ROne
 import db.RTable
-import model.FormStatus
-import model.RK
-import model.RacerKid
-import model.RacerKidAssoc
-import model.RacerKidz
-import model.Reg
-import model.RegKid
-import model.RegStatus
-import model.Regs
-import model.Sec.EncryptedS
-import model.User
-import model.Users
-import model.VolunteerH
-import model.WID
-import model.Wikis
+import model._
 import play.api.data.Form
 import play.api.data.Forms.nonEmptyText
 import play.api.data.Forms.number
@@ -37,6 +23,8 @@ import play.api.mvc.Request
 import razie.Logging
 import razie.cout
 import admin.Config
+import scala.util.Properties
+import scala.util.Properties
 
 case class RoleWid(role: String, wid: WID)
 
@@ -50,6 +38,7 @@ case class Club(
   regAdmin: String = "",
   regForms: Seq[RoleWid] = Seq.empty,
   newFollows: Seq[RoleWid] = Seq.empty,
+  dsl: String = "",
   _id: ObjectId = new ObjectId) extends REntity[Club] {
 
   // optimize access to User object
@@ -57,8 +46,18 @@ case class Club(
   private var oUser: Option[User] = None
   def setU(u: User) = { oUser = Some(u); this }
 
+  lazy val props = (Config parsep dsl).toMap
+
+  lazy val newTasks = props filter (_._1 startsWith "Task.") map { t =>
+    val PAT1 = "([^,]*),(.*)".r
+    val PAT1(name, args) = t._2
+    (name, args.split(",").map(x => x.split(":")(0) -> x.split(":")(1)).toMap)
+  }
+
+  lazy val msgFormsAccepted = (props filter (_._1 startsWith "Msg.formsAccepted")).toSeq.sortBy (_._1) map (_._2) mkString ("<p>")
+    
   def regForm(role: String) = regForms.find(_.role == role)
-  def uregAdmin = Users.findUser(regAdmin.enc)
+  def uregAdmin = Users.findUser(Enc(regAdmin))
 
   def reg(u: User) = model.Regs.findClubUserYear(user, u._id, curYear)
   def reg(wid: WID) = model.Regs.findWid(wid)
@@ -75,11 +74,10 @@ case class Club(
   def wid = WID("Club", user.userName)
 
   def rkAssocs = RMany[RacerKidAssoc]("from" -> userId, "year" -> curYear)
-
 }
 
+// just some helpers
 case class RKU(user: User) {
-
   def rkAssocs = if (user.isClub) RMany[RacerKidAssoc]("from" -> user._id, "year" -> Club(user).curYear) else RMany[RacerKidAssoc]("from" -> user._id)
 
   /** identify merge candidates for an assoc */
@@ -119,6 +117,8 @@ object Club extends RazController with Logging {
 
   def findForUser(u: User) = ROne[Club]("userId" -> u._id).map(_.setU(u))
   def findForName(n: String) = RMany[Club]().find(_.user.userName == n) // TODO optimize
+
+  def findForReviewer(u: User) = Some(apply(u)) // TODO allow many reviewers per club
 
   // manage user screen
   def membersData(au: User, what: String, cols: String): (List[String], List[List[String]]) = {
@@ -176,10 +176,11 @@ object Club extends RazController with Logging {
     tuple(
       "regType" -> nonEmptyText.verifying("Obscenity filter", !Wikis.hasporn(_)).verifying("Invalid characters", vldSpec(_)),
       "curYear" -> number(min = 2012, max = 2015),
-      "regAdmin" -> text.verifying("Invalid user", { x => Users.findUser(x.enc).isDefined }),
+      "regAdmin" -> text.verifying("Invalid user", { x => Users.findUser(Enc(x)).isDefined }),
       "regForms" -> text.verifying("Invalid wiki", { x => x.length <= 0 || WID.fromPath(x).isDefined }),
-      "newFollows" -> text.verifying("Invalid wiki", { x => x.length <= 0 || WID.fromPath(x).isDefined })) verifying
-      ("Can't use last name for organizations!", { t: (String, Int, String, String, String) =>
+      "newFollows" -> text.verifying("Invalid wiki", { x => x.length <= 0 || WID.fromPath(x).isDefined }),
+      "dsl" -> text) verifying
+      ("Can't use last name for organizations!", { t: (String, Int, String, String, String, String) =>
         true
       })
   }
@@ -195,7 +196,8 @@ object Club extends RazController with Logging {
       Ok(views.html.club.doeClubRegSettings(edRegForm.fill(
         (c.regType, c.curYear.toInt, c.regAdmin,
           c.regForms.map(t => t.role + "=" + t.wid.wpath).mkString("\n"),
-          c.newFollows.map(t => t.role + "=" + t.wid.wpath).mkString("\n"))),
+          c.newFollows.map(t => t.role + "=" + t.wid.wpath).mkString("\n"),
+          c.dsl)),
         au))
     }) getOrElse Msg2("CAN'T SEE PROFILE " + errCollector.mkString)
   }
@@ -204,7 +206,7 @@ object Club extends RazController with Logging {
     edRegForm.bindFromRequest.fold(
       formWithErrors => BadRequest(views.html.club.doeClubRegSettings(formWithErrors, auth.get)),
       {
-        case (t, y, a, k, n) => forActiveUser { au =>
+        case (t, y, a, k, n, d) => forActiveUser { au =>
           val c1 = Club.findForUser(au).get.copy(
             regType = t,
             curYear = y.toString,
@@ -216,7 +218,8 @@ object Club extends RazController with Logging {
             newFollows =
               if (n.trim.length <= 0) Seq.empty
               else n.trim.split("\n").map(x => x.split("=")).map(t =>
-                RoleWid(t(0).trim, WID.fromPath(t(1).trim).get)))
+                RoleWid(t(0).trim, WID.fromPath(t(1).trim).get)),
+            dsl = d)
           c1.update
           Redirect(routes.Club.doeClubRegSettings)
         }
@@ -228,7 +231,8 @@ object Club extends RazController with Logging {
   def mngUserForm(implicit request: Request[_]) = Form {
     tuple(
       "role" -> nonEmptyText.verifying("Obscenity filter", !Wikis.hasporn(_)).verifying("Invalid characters", vldSpec(_)),
-      "regStatus" -> text)
+      "regStatus" -> text,
+      "paid" -> text)
   }
 
   // manage user screen
@@ -240,8 +244,9 @@ object Club extends RazController with Logging {
       uw <- model.Users.findUserLinksTo(model.WID("Club", au.userName)).find(_._id.toString == uwid);
       u <- uw.user
     ) yield {
+      val reg = Club(au).reg(u)
       Ok(views.html.club.doeClubReg(mngUserForm.fill(
-        (uw.role, Club(au).reg(u).map(_.regStatus).getOrElse("n/a"))), uw, au))
+        (uw.role, reg.map(_.regStatus).getOrElse("n/a"), reg.map(_.paid).mkString)), uw, au))
     }) getOrElse Msg2("CAN'T SEE PROFILE " + errCollector.mkString)
   }
 
@@ -263,6 +268,7 @@ object Club extends RazController with Logging {
   // manage user screen
   def doeClubRegsCsv(what: String, cols: String) = Action { implicit request =>
     implicit val errCollector = new VError()
+    val DELIM = ","
     (for (
       au <- activeUser;
       isClub <- au.isClub orErr ("registration only for a club")
@@ -270,9 +276,9 @@ object Club extends RazController with Logging {
       val (headers, data) = membersData(au, what, cols)
 
       Ok(
-        headers.mkString("|") +
+        headers.mkString(DELIM) +
           "\n" +
-          data.map(_.mkString("|")).mkString("\n"))
+          data.map(_.mkString(DELIM)).mkString("\n")).as("text/csv")
     }) getOrElse Msg2("CAN'T SEE PROFILE " + errCollector.mkString)
   }
 
@@ -288,7 +294,7 @@ object Club extends RazController with Logging {
       mngUserForm.bindFromRequest.fold(
         formWithErrors => BadRequest(views.html.club.doeClubReg(formWithErrors, olduw, au)),
         {
-          case (r, s) =>
+          case (r, s, p) =>
             olduw.updateRole(r)
             val uw = model.Users.findUserLinksTo(model.WID("Club", au.userName)).find(_._id.toString == uwid).get
 
@@ -298,10 +304,36 @@ object Club extends RazController with Logging {
               rka <- ROne[RacerKidAssoc]("from" -> au._id, "to" -> rk._id, "year" -> Club(au).curYear)
             ) if (rka.role != r) rka.copy(role = r).update
 
+            var reg = Club(au).reg(u)
+            if (reg.exists(_.paid != p)) {
+              reg = Some(reg.get.copy(paid = p))
+              reg.get.update
+            }
+
             Ok(views.html.club.doeClubReg(mngUserForm.fill(
-              (uw.role, Club(au).reg(u).map(_.regStatus).getOrElse("n/a"))), uw, au))
+              (uw.role, reg.map(_.regStatus).getOrElse("n/a"), reg.map(_.paid).mkString)), uw, au))
         })
     }) getOrElse Msg2("CAN'T SEE PROFILE " + errCollector.mkString)
+  }
+
+  /** send a help message */
+  def doeClubRegMsg(uwid: String) = Action { implicit request =>
+    implicit val errCollector = new VError()
+    (for (
+      au <- activeUser;
+      isClub <- au.isClub orErr ("registration only for a club");
+      club <- Some(Club(au));
+      uw <- model.Users.findUserLinksTo(model.WID("Club", au.userName)).find(_._id.toString == uwid) orErr ("user is not a member");
+      u <- uw.user;
+      msg <- request.queryString.get("msg") orErr ("no message");
+      reg <- club.reg(u) orErr ("no registration record for year... ?")
+    ) yield {
+      SendEmail.withSession { implicit mailSession =>
+        // notify user
+        Emailer.sendEmailClubRegHelp(u, au.userName, routes.Club.doeClubUserReg(reg._id.toString).toString, msg.mkString)
+      }
+      Redirect(routes.Club.doeClubReg(uwid))
+    }) getOrElse Msg2("CAN'T find registration " + errCollector.mkString)
   }
 
   /** change registration status */
@@ -362,20 +394,26 @@ object Club extends RazController with Logging {
       u <- uw.user orErr ("oops - missing user?");
       reg <- Club(au).reg(u) orCorr ("no registration record for year... ?" -> "did you expire it first?")
     ) yield {
-      val newfwid = WID("Form", s"${form.wid.name}-${form.role}-${u._id}-${reg.year}-${reg.wids.size}")
-      var label = s"${form.wid.name.replaceAll("_", " ")}"
-      if (!label.contains(reg.year)) label = label + s" for season ${reg.year}"
-
-      val newSt = if (Array(RegStatus.EXPIRED, RegStatus.PENDING) contains reg.regStatus) reg.regStatus else RegStatus.PENDING
-      reg.copy(wids = reg.wids ++ Seq(newfwid), regStatus = newSt).update
-
-      // have to create form ?
-      if (!Wikis.find(newfwid).isDefined) {
-        controllers.Forms.crForm(u, form.wid, newfwid, label, regAdmin, Some(role))
-      }
-
+      addForm(u, c, reg, regAdmin, role)
       Redirect(routes.Club.doeClubReg(uwid))
     }) getOrElse Msg2("CAN'T find registration " + errCollector.mkString)
+  }
+
+  /** add a kid to current registration */
+  private def addForm(u: User, c: Club, reg: Reg, regAdmin: User, role: String) {
+    val form = c.regForm(role).get
+    val newfwid = WID("Form", s"${form.wid.name}-${form.role}-${u._id}-${reg.year}-${reg.wids.size}")
+    var label = s"${form.wid.name.replaceAll("_", " ")}"
+    if (!label.contains(reg.year))
+      label = label + s" for season ${reg.year}"
+
+    val newSt = if (Array(RegStatus.EXPIRED, RegStatus.PENDING) contains reg.regStatus) reg.regStatus else RegStatus.PENDING
+    reg.copy(wids = reg.wids ++ Seq(newfwid), regStatus = newSt).update
+
+    // have to create form ?
+    if (!Wikis.find(newfwid).isDefined) {
+      controllers.Forms.crForm(u, form.wid, newfwid, label, regAdmin, Some(role))
+    }
   }
 
   /** add a kid to current registration */
@@ -399,8 +437,9 @@ object Club extends RazController with Logging {
       if (!before.isDefined) {
         var r = reg
         val fwids = (for (form <- c.regForms.filter(_.role.startsWith(role))) yield {
-          val newfwid = WID("Form", s"${form.wid.name}-${form.role}-${u._id}-${rk.info.firstName}-${reg.year}-${reg.wids.size}")
-          var label = s"${form.wid.name.replaceAll("_", " ")}-${rk.info.firstName}"
+          val fn = rk.info.firstName.replaceAll (" ", "-")
+          val newfwid = WID("Form", s"${form.wid.name}-${form.role}-${u._id}-${fn}-${reg.year}-${reg.wids.size}")
+          var label = s"${form.wid.name.replaceAll("_", " ")}-${fn}"
           if (!label.contains(reg.year)) label = label + s" for season ${reg.year}"
 
           val newSt = if (Array(RegStatus.EXPIRED, RegStatus.PENDING) contains reg.regStatus) reg.regStatus else RegStatus.PENDING
@@ -419,13 +458,35 @@ object Club extends RazController with Logging {
         assoc(c, rk, model.RK.ASSOC_REGD, role, au, c.curYear)
         Redirect(nextPage)
       } else
-        Msg2(s"""${rk.info.firstName} was already added as <em>${before.get.role}</em> - please click continue, then remove her/him from the registration with the red <span class="label label-important">x</span> button and then re-add with the different role. <p>Note that any forms filled for his role will be <em>removed</em>!""", 
-            Some(nextPage.url))
+        Msg2(s"""${rk.info.firstName} was already added as <em>${before.get.role}</em> - please click continue, then remove her/him from the registration with the red <span class="label label-important">x</span> button and then re-add with the different role. <p>Note that any forms filled for his role will be <em>removed</em>!""",
+          Some(nextPage.url))
     }) getOrElse Msg2("CAN'T find registration " + errCollector.mkString)
   }
 
   /** add a kid to current registration */
   def doeClubUwRMFormKid(regId: String, rkId: String, uwid: String, role: String) = Action { implicit request =>
+    implicit val errCollector = new VError()
+    (for (
+      au <- activeUser;
+      rk <- RacerKidz.findById(new ObjectId(rkId));
+      reg <- Regs.findId(regId) orCorr ("no registration found... ?" -> "did you start the registration?");
+      club <- if (au.isClub) Some(au) else Users.findUserByUsername(reg.clubName) orErr ("Club not found");
+      c <- Club.findForUser(club);
+      regAdmin <- c.uregAdmin orErr ("no regadmin");
+      regkid <- ROne[RegKid]("regId" -> reg._id, "rkId" -> rk._id) orErr ("can't find regkid");
+      notCompleted <- (!regkid.wids.flatMap(x => Wikis.find(x).flatMap(_.form.formState).toList).exists(_ == FormStatus.APPROVED)) orErr
+        ("some forms have been approved for this person")
+    ) yield {
+      def sex1 = if (rk.info.gender.toLowerCase startsWith "m") "his" else "her"
+      def sex2 = if (rk.info.gender.toLowerCase startsWith "m") "him" else "her"
+      Msg2(s"""This will remove ${rk.info.firstName} from this registration. 
+    <p>Note that any forms filled for $sex1 role will be <em>removed</em>! You can then re-add $sex2 back, with the same or different role.
+    <p>If you don't want to remove $sex2, just go back... otherwise click Continue below.""",
+        Some(routes.Club.doeClubUwRMFormKid1(regId, rkId, uwid, role).url))
+    }) getOrElse Msg2("CAN'T find registration " + errCollector.mkString)
+  }
+
+  def doeClubUwRMFormKid1(regId: String, rkId: String, uwid: String, role: String) = Action { implicit request =>
     implicit val errCollector = new VError()
     val next = if (auth.exists(_.isClub))
       routes.Club.doeClubReg(uwid)
@@ -504,7 +565,10 @@ object Club extends RazController with Logging {
     (for (
       au <- auth orCorr cNoAuth
     ) yield {
-      Ok(views.html.club.doeClubUserRegs(au))
+      if(au.isClub)
+        Redirect("/doe/club/regs")
+      else
+        Ok(views.html.club.doeClubUserRegs(au))
     }) getOrElse Msg2("CAN'T SEE PROFILE " + errCollector.mkString)
   }
 
@@ -515,7 +579,7 @@ object Club extends RazController with Logging {
       au <- auth orCorr cNoAuth;
       reg <- model.Regs.findId(regid) orErr ("no reg found")
     ) yield {
-      Ok(views.html.club.doeClubUserReg(au, reg))
+      Ok(views.html.club.doeClubUserReg(au, reg, RacerKidz.findForUser(reg.userId).toList))
     }) getOrElse Msg2("CAN'T SEE PROFILE " + errCollector.mkString)
   }
 
@@ -653,13 +717,60 @@ object Club extends RazController with Logging {
   }
 
   // new user linked to club - give it access to forums
-  def linkUser(u: User, cname: String, how: String) = {
+  def linkUser(u: User, cname: String, how: String)(implicit txn: db.Txn) = {
     Club(cname) foreach { club =>
       club.newFollows.foreach { rw =>
         val role = if (how == "Fan") "Fan" else rw.role
-        this dbop model.UserWiki(u._id, rw.wid, role).create
+        model.UserWiki(u._id, rw.wid, role).create
+      }
+      club.newTasks.foreach { t => //(name, args)
+        razie.clog << "Creating user Task " + t
+        UserTask(u._id, t._1, t._2.toMap).create
       }
     }
+  }
+
+  /** called by user not the club */
+  def doeStartReg(clubName: String, how: String) = Action { implicit request =>
+    implicit val errCollector = new VError()
+    (for (
+      au <- activeUser;
+      c <- Club(clubName);
+      regAdmin <- c.uregAdmin orErr ("no regadmin");
+      uclub <- Users.findUserByUsername(clubName)
+    ) yield {
+      // current registration?
+      db.tx("userStartReg") { implicit txn =>
+        if ("None" == how) {
+          UserTask(au._id, UserTasks.START_REGISTRATION).delete
+          Redirect("/")
+        } else if (Regs.findClubUserYear(uclub, au._id, c.curYear).isDefined) {
+          Msg2("Registration already in progress for club " + clubName)
+        } else {
+          // 1. expire
+          var reg = Reg(au._id, clubName, c.curYear, RK.ROLE_MEMBER, Seq(), RegStatus.PENDING)
+          reg.create
+
+          // 2. add family
+          cout << "3 " + c.regForms.filter(_.role startsWith how).mkString
+          if (how == "Family")
+            c.regForms.filter(_.role startsWith how).foreach { rw =>
+              addForm(au, c, reg, regAdmin, rw.role)
+              reg = Regs.findClubUserYear(uclub, au._id, c.curYear).get
+            }
+
+          // 3. start - notify user
+          SendEmail.withSession { implicit mailSession =>
+            Emailer.sendEmailClubRegStart(au, au.userName, routes.Club.doeClubUserReg(reg._id.toString).toString)
+            Emailer.tellRaz("Started registration", "user: " + au.userName, "club: " + clubName, "how: "+how)
+            // TODO tell regAdmin so they know...
+
+            UserTask(au._id, UserTasks.START_REGISTRATION).delete
+            Redirect(routes.Club.doeClubUserReg(reg._id.toString))
+          }
+        }
+      }
+    }) getOrElse Msg2("CAN'T START REGISTRATION " + errCollector.mkString)
   }
 
   // stuff to do 

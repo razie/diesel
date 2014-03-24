@@ -11,14 +11,19 @@
 
 <div class="span4">
 
-@import helper.twitterBootstrap._
+@if(role=="-") {
+  <h2>Edit a person</h2>
+} else {
+  <h2>Add a person as @role</h2>
+}
 
 @relationships = @{
-	if(user.isClub) Array(RK.ROLE_KID, RK.ROLE_COACH, RK.ROLE_SPOUSE, RK.ROLE_MEMBER)
+	if(user.isClub) Array(RK.ROLE_KID, RK.ROLE_COACH, RK.ROLE_SPOUSE, RK.ROLE_PARENT, RK.ROLE_MEMBER)
 	else RK.RELATIONSHIPS
 }
 
 
+@import helper.twitterBootstrap._
 @helper.form(action=routes.Kidz.doeKidUpdate(userId, rkid, role, associd, next), 'class->"well") {
   @razText(myForm, "fname",  "First Name")
   @razText(myForm, "lname",  "Last Name")

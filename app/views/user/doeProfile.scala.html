@@ -18,14 +18,14 @@
     myForm("userType"), 
      _root_.admin.Config.userTypes.map(x=>(x.toString,x.toString)),
      '_label -> "What you are",
-    'readonly -> "yes",
+    'readonly -> "no",
     '_showConstraints -> false)
   @helper.select(
     myForm("yob"), 
      (Range(2005, 1912, -1) map (y=>(y.toString,y.toString))),
     '_label -> "When you were born", 
     'style -> "width: 100px", 
-    'readonly -> "yes",
+    'readonly -> "no",
     '_showConstraints -> false)
   @util.razText(myForm,"address", "City, Prov/State, Country")
     

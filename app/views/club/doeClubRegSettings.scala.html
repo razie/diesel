@@ -1,4 +1,4 @@
-@(myForm: Form[(String, Int, String, String, String)], user:model.User)
+@(myForm: Form[(String, Int, String, String, String, String)], user:model.User)
 
 @htmlHead()
 @navbar(Some(user))
@@ -42,9 +42,15 @@
     '_showConstraints -> false)
   @helper.textarea(
     myForm("newFollows"), 
-    '_label -> "New members follow these forums (role=WID)", 
+    '_label -> "newFollows (role=WID)", 
     'class -> "span4",
     'rows -> 5,
+    '_showConstraints -> false)
+  @helper.textarea(
+    myForm("dsl"), 
+    '_label -> "Settings (role=WID)", 
+    'class -> "span6",
+    'rows -> 20,
     '_showConstraints -> false)
 
   <button type="submit" class="btn btn-primary">Update account!</button>

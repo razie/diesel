@@ -23,7 +23,6 @@ import db.ROne
 import db.RMany
 import db.RCreate
 import db.RDelete
-import db.Mongo
 import db.REntity
 
 /** registration set for a family */
@@ -35,6 +34,7 @@ case class Reg(
   role: String,
   wids: Seq[WID],
   regStatus: String,
+  paid: String = "", // amount paid
   crDtm: DateTime = DateTime.now,
   _id: ObjectId = new ObjectId()) extends REntity[Reg] {
 

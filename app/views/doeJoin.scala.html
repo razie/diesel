@@ -1,27 +1,22 @@
 @(registerForm:Form[model.Registration])
 
 @htmlHead()
-
 @navbar(None)
    
 <div class="container">
-
-  <!-- Main hero unit for a primary marketing message or call to action -->
   <div class="hero-unit">
-
     <div class="row">
       <div class="span6">
         <h1>Welcome!</h1>
-<br>
-            @wiki.wikiFragInt("Admin:page-join", None)
-        </div>
+        <br>
+        @wiki.wikiFragInt("Admin:page-join", None)
+      </div>
 
-        <div class="span4">
+      <div class="span4">
 
 @import helper.twitterBootstrap._
 
 @helper.form(action=routes.Profile.doeJoin2, 'class->"well") {
-
   @helper.inputText(
     registerForm("email"), 
     '_label -> "Email",
@@ -33,7 +28,7 @@
     '_error->registerForm.error("password"))
     
   <button type="submit" class="btn btn-primary">Login</button>
-<p>  
+  <p>  
   @helper.inputPassword(
     registerForm("repassword"), 
     '_label -> "Retype password to register")
@@ -47,15 +42,11 @@
   <p><small>By registering or logging in, you agree to the <a href="@controllers.Wiki.w("Admin", "Terms of Service")">Terms of Service</a></small><p>
   }
   
-  
        </div>
       </div>
     </div>
-
   <hr>
   @htmlFooter()
-
 </div> <!-- /container -->
-
 @htmlBottom()
     

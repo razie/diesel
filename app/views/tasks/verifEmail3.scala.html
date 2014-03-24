@@ -1,4 +1,4 @@
-@(pForm:Form[controllers.Profile.Email], exp:String, e:String, u:String)
+@(pForm:Form[(String,String)], exp:String, e:String, u:String)
 
    @htmlHead()
 
@@ -12,7 +12,7 @@
       <div class="row">
         <div class="span6">
         <h2>Email verification!</h2>
-        <p>You are not logged in - please type your email again for verification!
+        <p>You are not logged in - please type your email and password again for verification!
         </div>
 
         <div class="span4">
@@ -22,8 +22,14 @@
 @helper.form(action=routes.Tasks.verifyEmail3(exp, e, u), 'class->"well") {
 
   @helper.inputText(
-    pForm("parentEmail"), 
-    '_label -> "Email")
+    pForm("email"), 
+    '_label -> "Email",
+    '_error->pForm.error("email"))
+
+  @helper.inputPassword(
+    pForm("password"), 
+    '_label -> "Password",
+    '_error->pForm.error("password"))
 
   <button type="submit" class="btn btn-primary">Continue</button>
 

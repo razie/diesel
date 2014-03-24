@@ -6,7 +6,7 @@ import controllers.{XWrapper,XListWrapper}
 import model.{WikiWrapper, WikiXpSolver}
 import model.WID
 import admin.Config
-import db.Mongo
+import db.RazMongo
 
 /** this is available to scripts inside the wikis */
 object wix {
@@ -33,6 +33,6 @@ object wix {
       user.toList.flatMap(_.pages(cat)).map { uw => new WikiWrapper(WID(cat, uw.wid.name)) },
       WikiXpSolver)
 
-  def countForms = Mongo.db("weForm").size
+  def countForms = RazMongo("weForm").size
 //  {controllers.UserStuff.xp(user, "Calendar") \ UserStuff.Race \ "Venue" \@ "loc"}.filter(! _.isEmpty).map(_.replaceFirst("ll:",""))
 }

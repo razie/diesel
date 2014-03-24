@@ -8,6 +8,10 @@ edit a wiki page
   myForm(name).value.getOrElse("?")
 }
 
+@wvis() = @{
+  model.Wikis.visibilityFor(wid.cat) ++ (if(user.exists(_.isAdmin)) Seq("Private") else Nil)
+}
+
 @reserved(page:Option[model.WikiEntry]) = {
   @page match {
     case Some(we) => { 
@@ -73,17 +77,18 @@ PROBLEM: many places use label as name... via Wikis.formatName
 
   @helper.select(
     myForm("wvis"), 
-    model.Wikis.visibilityFor(wid.cat).map(x=>(x,x)),
+    wvis().map(x=>(x,x)),
     '_label -> "EditBy", 
     'class -> "input-small",
     '_showConstraints -> false)
+    
   @helper.select(
-    myForm("notif"), 
-    Seq("y"->"Yes", "n" -> "No"), 
-    '_label -> "Notify followers", 
+    myForm("draft"), 
+    Seq("Notify"->"Notify", "Draft" -> "Draft", "Silent" -> "Silent"), 
     'class -> "input-small",
+    '_label -> "Notify followers", 
     '_showConstraints -> false)
-
+            
   @if(user.get.hasPerm(model.Perm.adminDb)) {
     <p>Reserved: @reserved(model.Wikis.find(wid.cat,wid.name))
     @if(model.Wikis.find(wid.cat,wid.name).isDefined) {

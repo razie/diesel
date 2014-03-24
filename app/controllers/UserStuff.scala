@@ -22,6 +22,23 @@ import model.WikiParser
 import model.WikiIndex
 import model.ILink
 import model.WikiParser
+import model.WWrapper
+
+class UserStuff (val user:User) {
+  lazy val events = UserStuff.events(user)
+  private lazy val alocs = events flatMap (_._5 \ "Venue" \@ "loc") 
+  lazy val locs = alocs.filter (! _.isEmpty).map(_.replaceFirst("ll:",""))
+    //xp(user, "Calendar") \ UserStuff.Race \ "Venue" \@ "loc"}.filter(! _.isEmpty).map(_.replaceFirst("ll:",""))
+
+  def comingUp = {
+    events.filter(_._3.isAfter(DateTime.now))
+  }
+  
+  def pastEvents = {
+    events.filter(_._3.isAfter(DateTime.now.minusDays(20)))
+  }
+
+}
 
 /** profile related control */
 object UserStuff extends RazController {
@@ -46,17 +63,24 @@ object UserStuff extends RazController {
   /** user / Calendar / Race / Venue
    * @return (what,when)
    */
-  def events(u: User): List[(ILink, String, DateTime, ILink)] = {
+  def events(u: User): List[(ILink, String, DateTime, ILink, Snakk.Wrapper[WWrapper])] = {
     val dates = u.pages("Calendar").flatMap{ uw =>
       val node = new WikiWrapper(WID("Calendar", uw.wid.name))
       val root = new razie.Snakk.Wrapper(node, WikiXpSolver)
 
-      val races = (root \ "*" \ Race)
-      val dates = races.map(race => (race.mkLink,
-        new Snakk.Wrapper(race, races.ctx) \@ "date",
-        ILink(WID("Venue", new Snakk.Wrapper(race, races.ctx) \@ "venue")))).filter(_._2 != "")
+      // TODO optimize this - lots of lookups...
+      val races = (root \ "*" \ Race) ++ (root \ "*" \ "Event") ++ (root \ "*" \ "Training")
+      val dates = races.map { race => 
+        val wr = new Snakk.Wrapper(race, races.ctx)
+        (race.mkLink,
+        wr \@ "date",
+        ILink(WID("Venue", wr \@ "venue")),
+        wr 
+        )
+      }.filter(_._2 != "")
       // filter those that parse successfuly
-      dates.map(x => (x._1, x._2, DateParser.apply(x._2), x._3)).filter(_._3.successful).map(t => (t._1, t._2, t._3.get, t._4))
+      dates.map(x => (x._1, x._2, DateParser.apply(x._2), x._3, x._4)).filter(_._3.successful).map(t => (t._1, t._2, t._3.get, t._4, t._5)
+          )
     }
     dates.sortWith((a, b) => a._3 isBefore b._3)
   }
@@ -67,18 +91,10 @@ object UserStuff extends RazController {
       WikiXpSolver)
   }
 
-  def comingUp(u: User) = {
-    events(u).filter(_._3.isAfter(DateTime.now))
-  }
-  def pastEvents(u: User) = {
-    events(u).filter(_._3.isAfter(DateTime.now.minusDays(20)))
-  }
-
   // serve public profile
   def doeUserCreateSomething = Action { implicit request => 
     Ok (views.html.user.doeUserCreateSomething(auth))
     }
-
 }
 
 /** parse dates into joda.DateTime */
@@ -105,7 +121,7 @@ object DateParser extends RegexParsers {
 object DateParserTA extends App {
   //  def main (argv:Array[String]) {
   val u = Users.findUserByUsername("Razie")
-  println(UserStuff.pastEvents(u.get).mkString("\n"))
+  println(new UserStuff(u.get).pastEvents.mkString("\n"))
   //  }
 }
 

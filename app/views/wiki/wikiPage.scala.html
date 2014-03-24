@@ -2,12 +2,13 @@
 render a regular wiki page - site pages are rendered with wikiSite.scala.html
 **************@
 
-@(wid:model.WID, iname:Option[String], page:Option[model.WikiEntry], user:Option[model.User])
+@(wid:model.WID, iname:Option[String], page:Option[model.WikiEntry], user:Option[model.User], canEdit:Boolean, print:Boolean=false)
 @import model._
 
-@htmlHead(page.flatMap(_.contentTags.get("title")).getOrElse(wid.cat +": "+ page.map(_.label).getOrElse(model.Wikis.label(wid))))
+@label()=@{ page.map(_.label).getOrElse(model.Wikis.label(wid)) }
 
-@navbar(user)
+@htmlHead(page.flatMap(_.contentTags.get("title")).getOrElse(wid.cat +": "+ label))
+@if(!print) {@navbar(user)}
    
 <div class="container">
   <div class="row">
@@ -15,7 +16,7 @@ render a regular wiki page - site pages are rendered with wikiSite.scala.html
     <div class="span9">
 
       <div class="well">
-        @wiki.wikiFrag(wid,user,false,page, iname)
+        @wiki.wikiFrag(wid,user,false,page, iname, false, true, canEdit)
       </div>
 
       @wiki.wikiAddMore(wid, page, user)

@@ -1,11 +1,15 @@
 @********
 special handlng of forms
 *********@
-@(wid:model.WID, iname:Option[String], page:Option[model.WikiEntry], user:Option[model.User], errors:Map[String,String])
+@(wid:model.WID, iname:Option[String], page:Option[model.WikiEntry], user:Option[model.User], errors:Map[String,String], canEdit:Boolean, print:Boolean=false)
 @import model._
 
-@htmlHead(page.flatMap(_.contentTags.get("title")).getOrElse(wid.cat +": "+ page.map(_.label).getOrElse(model.Wikis.label(wid))))
-@navbar(user)
+@if(!print) {
+  @htmlHead(page.flatMap(_.contentTags.get("title")).getOrElse(wid.cat +": "+ page.map(_.label).getOrElse(model.Wikis.label(wid))))
+  @navbar(user)
+} else {
+  @htmlHead(page.flatMap(_.contentTags.get("title")).getOrElse(wid.cat +": "+ page.map(_.label).getOrElse(model.Wikis.label(wid))), Some("light"))
+}
 
 @isClubAdmin(u: User) = @{
 	page.flatMap(_.owner).exists(controllers.RazWikiAuthorization.isClubAdmin(u, _))
@@ -45,13 +49,15 @@ special handlng of forms
 
 <form action="/doe/form/submit/@wid.wpath" method="POST">
 
+@if(!print) {
 @regs.headOption.map(_.wids).map {wids=>
 <div class="alert alert-info">
 <strong>Registration forms:</strong>  @prevNext(wids)
 </div>
 }  
+} @*** print ***@
 
-        @wiki.wikiFrag(wid,user,false,page, iname, false, false)
+@wiki.wikiFrag(wid,user,false,page, iname, false, false, canEdit, false, print)
 
 @if(!errors.isEmpty) {
   <hr>
@@ -66,6 +72,15 @@ special handlng of forms
 }
 
         <hr>
+@*********        
+for registration sequences - show prev/next
+*********@
+@regs=@{
+  val clubs = user.toList.flatMap(_.wikis).filter(_.wid.cat=="Club").flatMap(w=>model.Users.findUserByUsername(w.wid.name).toList)
+  clubs.flatMap(c=>model.Regs.findClubUser(c, user.get._id)).filter(_.wids.contains(wid))
+}
+
+@if(!print) {
 
 @if(page.exists(_.form.canEdit) ||
   user.exists(isClubAdmin(_)) &&
@@ -86,13 +101,6 @@ special handlng of forms
         <textarea name="formRejected" value="Reject reason" rows="3" placeholder="reason for rejection" class="input-xxlarge"></textarea>
         }
 
-@*********        
-for registration sequences - show prev/next
-*********@
-@regs=@{
-  val clubs = user.toList.flatMap(_.wikis).filter(_.wid.cat=="Club").flatMap(w=>model.Users.findUserByUsername(w.wid.name).toList)
-  clubs.flatMap(c=>model.Regs.findClubUser(c, user.get._id)).filter(_.wids.contains(wid))
-}
 @regs.headOption.map(_.wids).map {wids=>
 	<hr>
   <p><div class="alert alert-info">
@@ -106,22 +114,27 @@ for registration sequences - show prev/next
     }
     </div>
   }
+} @*** print ***@
+
       </form>
       </div>
 
+@if(!print) {
       @wiki.wikiAddMore(wid, page, user)
 
       @wiki.wikiPageComments(wid, page, user)
 
       <hr>
       @htmlFooter(ads=true)
-
+}
     </div> <!-- /span9 -->
 
     <div class="span3">
+@if(!print) {
     @wiki.wikiFrag(WID("Admin","Right"),user,true)
 
     @addRight()
+}
     </div>
 
   </div> <!-- row -->

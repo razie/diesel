@@ -12,8 +12,8 @@ import razie.Perf
 
 /** test the basic test utils */
 class TestClubs extends FlatSpec with ShouldMatchers with RkTester {
-  implicit val hostport = "http://localhost:9000"
-//  implicit val hostport = "http://test.racerkidz.com"
+//  implicit val hostport = "http://localhost:9000"
+  implicit val hostport = "http://test.racerkidz.com"
   val (joe, pjoe) = ("H-joe@razie.com", "H-321mm321mm")
 
   import T._
@@ -22,10 +22,10 @@ class TestClubs extends FlatSpec with ShouldMatchers with RkTester {
 
   var (noClubs, noUsers, noKidz) = (0, 0, 0)
 
-  (s"/razadmin/config/noemails", joe, pjoe) eok "true" // can't send emails in perf testing
+  ("/razadmin/config/noemailstesting", joe, pjoe) eok "true" // can't send emails in perf testing
 
   /////////////////////////////////////////////////
-    val clubs = doClubs(milis, 1, 10, false, 20)  
+    val clubs = doClubs(milis, 80, 80, false, 20)  
     cout << "Clubs: " + clubs.mkString
   /////////////////////////////////////////////////
 
@@ -33,13 +33,15 @@ class TestClubs extends FlatSpec with ShouldMatchers with RkTester {
 //    val clubs = doClubs(s"$milis$t$l", 1, 10, false, 1)
 //  }
 
+  ("/razadmin/config/okemailstesting", joe, pjoe) eok "false" // can't send emails in perf testing
+    
   cout << s"$noClubs clubs $noUsers families ${noUsers+noKidz} members"
   cout << "------------DONE"
 
   /** create clubs with users and registrations */
   def doClubs(testId:String, clubs: Int, members: Int, doReg: Boolean, threads: Int) = {
     val c = (for (i <- 0 until clubs) yield {
-      doClub(members, testId.toString+i, doReg, threads)
+      doClub(members, testId.toString+"x"+i.toString, doReg, threads)
     }).toList
 
     cout << "Clubs: " + c.mkString
@@ -47,8 +49,8 @@ class TestClubs extends FlatSpec with ShouldMatchers with RkTester {
   }
 
   /** create a club with members and kids and registrations */
-  def doClub(members: Int, testId: String, doReg: Boolean, threads: Int) = {
-    val (club, clubId) = crUser(testId + "org", "Organization")
+  def doClub(members: Int, clubEname: String, doReg: Boolean, threads: Int) = {
+    val (club, clubId) = crUser(clubEname + "org", "Organization")
     val wcId = crWiki(None, "Club", clubId, "haha", club)
     (s"/testingRaz/wikiSetOwnerById/$wcId,$clubId/$TESTCODE", club, p) eok "ok"
 
@@ -85,15 +87,16 @@ Birth date(dd/mm/yyyy): {{f:birthDate:type=date}}
       "curYear" -> "2013",
       "regAdmin" -> "ileana@razie.com",
       "regForms" -> s"Racer=Note:$clubId-RacerForm\nRacer.Medical=Note:$clubId-RacerMed",
-      "newFollows" -> "")).basic(club, p) eok ""
+      "newFollows" -> "",
+      "dsl" -> "")).basic(club, p) eok ""
     (s"/doe/club/regsettings", club, p) eok "Racer=Note" // check
 
     val users = MT.slicejoin(threads, (0 until members).toList) { i =>
-      val (u, userId) = crUser(testId + i + "coach", "Coach")
+      val (u, userId) = crUser(clubEname + "x"+i.toString + "coach", "Coach")
       val kids =
-        crKid(userId, u, "a-kid" + testId+i, testId, "Kid") ::
-          crKid(userId, u, "b-kid" + testId+i, testId, "Kid") ::
-          crKid(userId, u, "c-kid" + testId+i, testId, "Spouse") :: Nil
+        crKid(userId, u, "a-kid" + clubEname+"x"+i, clubEname, "Kid") ::
+          crKid(userId, u, "b-kid" + clubEname+"x"+i, clubEname, "Kid") ::
+          crKid(userId, u, "c-kid" + clubEname+"x"+i, clubEname, "Spouse") :: Nil
       (u, userId, kids)
     }.flatMap(_.toList).toList
 

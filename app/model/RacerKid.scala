@@ -154,6 +154,7 @@ object RK {
   // relationships
   final val ROLE_KID = "Kid"
   final val ROLE_SPOUSE = "Spouse"
+  final val ROLE_PARENT = "Parent"
 
   // roles in assoc
   final val ROLE_RACER = "Racer"
@@ -162,7 +163,7 @@ object RK {
   final val ROLE_VOLUNTEER = "Volunteer"
   final val ROLE_MEMBER = "Member"
 
-  final val RELATIONSHIPS = Array(ROLE_KID, ROLE_SPOUSE, ROLE_MEMBER)
+  final val RELATIONSHIPS = Array(ROLE_KID, ROLE_SPOUSE, ROLE_PARENT, ROLE_MEMBER)
   final val ROLES = Array(ROLE_RACER, ROLE_COACH, ROLE_MEMBER)
 
   final val KIND_NORMAL = "Norm"

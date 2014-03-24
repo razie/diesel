@@ -41,7 +41,7 @@
     '_label -> "Last name")          
   @helper.select(
     myForm("yob"), 
-     (Range(2005, 1912, -1) map (y=>(y.toString,y.toString))),
+     Seq("" -> "") ++ (Range(2005, 1912, -1) map (y=>(y.toString,y.toString))),
     '_label -> "When you were born", 
     'style -> "width: 100px", 
     '_showConstraints -> false)

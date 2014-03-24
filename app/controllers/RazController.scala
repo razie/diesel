@@ -41,6 +41,8 @@ class RazController extends RazControllerBase with Logging {
 
   //================ stuff
 
+  override def error (message: => String) = Audit.logdb("ERR_?", message)
+    
   def dbop(r: WriteResult) = {}//log("DB_RESULT: " + r.getError)
 
   /** clean the cache for current user - probably a profile change */
@@ -154,11 +156,11 @@ If you got this message in error, please describe the issue in a <a href="/doe/s
   }
 
   protected def isFromRobot(request: Request[_]) = {
-    val robots = Array("http://ahrefs.com/robot", "http://www.bing.com/bingbot.htm", "360Spider",
-      "http://www.proximic.com/info/spider.php", "Mediapartners-Google", "http://awcheck.com/en/about",
-      "http://www.netseer.com/crawler.html", "http://www.searchmetrics.com/en/searchmetrics-bot/",
-      "http://www.baidu.com/search/spider.html", "http://www.google.com/bot.html",
-      "http://www.aboundex.com/crawler")
+    val robots = Array("http://www.bing.com/bingbot.htm", "360Spider",
+      "Mediapartners-Google", "http://awcheck.com/en/about",
+      "http://www.searchmetrics.com/en/searchmetrics-bot/",
+      "http://www.google.com/bot.html", "www.admantx.com",
+      "crawler", "robot", "spider")
     (request.headers.get("User-Agent").exists(ua => robots.exists(ua.contains(_))))
   }
 
@@ -169,6 +171,6 @@ If you got this message in error, please describe the issue in a <a href="/doe/s
 }
 
 object RkViewService extends RazController with ViewService {
-  def utilMsg (msg:String, link:Option[String], user:Option[WikiUser])(implicit request: Request[_]): play.api.mvc.SimpleResult[play.api.templates.Html] =
-    Ok(views.html.util.utilMsg(msg, link, user.map(_.asInstanceOf[User]) orElse auth))
+  def utilMsg (msg:String, link:Option[String], user:Option[WikiUser], linkNO:Option[(String,String)]=None)(implicit request: Request[_]): play.api.mvc.SimpleResult[play.api.templates.Html] =
+    Ok(views.html.util.utilMsg(msg, link, user.map(_.asInstanceOf[User]) orElse auth, linkNO))
 }

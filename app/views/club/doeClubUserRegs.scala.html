@@ -35,6 +35,14 @@
 <p>@au.ename, this is the list of clubs you have registrations for. Some registrations may be old, current or pending - see the bottom of the page for a legend.
 <p>Click on the status of each, to manage the forms required to complete that registration.
 
+@if(regs.isEmpty) {
+  <div class="alert alert-danger">
+  <strong>No registrations!</strong> 
+  You have no registrations in progress - if you were looking for a specific club, then please follow this link to join it: 
+  <b><a href="/wikie/add/Club">Join a club</a></b>
+  <p>Find your club there and if they have registrations open, you will see a red link to "start registration" right after joining the club.
+  </div>
+} else {
   @util.utilSimpleTable(tab, 
   	Seq("club" -> "Club", 
   		"year"->"Year", 
@@ -42,7 +50,9 @@
   		"regStatus" -> "Status"), 
     Some(mnglink))
 
+
   @club.regStatusLegend()
+}
 
   </div> 
   </div> <!-- /row -->

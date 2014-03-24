@@ -2,10 +2,16 @@
 rm rk.zip
 rm RUNNING_PID
 
-zip -r rk.zip * -x bin/\* lib_managed/\* rk-backups/\* \*dist/\* data/\* dump/\* dump* target/\* log dump.tar
+#zip -r rk.zip * -x bin/\* lib_managed/\* rk-backups/\* \*dist/\* data/\* dump/\* dump* target/\* log dump.tar
+#scp rk.zip demo@cloud3.apefsjdolj.ro:rk/app/run/up/
 
-scp rk.zip demo@cloud3.apefsjdolj.ro:rk/app/run/up/
-rm rk.zip
+#scp dist/racerkidz-0.1.2-SNAPSHOT/lib/racerkidz_2.10-0.1.2-SNAPSHOT.jar demo@cloud3.apefsjdolj.ro:rk/up
+#rm rk.zip
 
-ssh demo@cloud3.apefsjdolj.ro "export PATH=\$PATH:/usr/java/jdk1.6.0_18/bin; cd ~/rk/app/run; . ./update"
+#ssh demo@cloud3.apefsjdolj.ro "export PATH=\$PATH:/usr/lib/java/jdk1.6.0_45/bin; cd ~/rk/app/run; . ./update"
+
+cmd /C "play package"
+scp target/scala-2.10/racerkidz_2.10-0.1.2-SNAPSHOT.jar cloud3a.razie.com:rk/up/
+
+ssh cloud3a.razie.com ". ~/.bashrc; cd ~/rk; . ./update"
 

@@ -46,9 +46,9 @@
     <hr>
 <ul>Counts
 @user.map {u=>
-<li>  WikiEntry    count = @db.Mongo.db("WikiEntry").count(Map("by" -> u.id))
-<li>  WikiEntryOld count = @db.Mongo.db("WikiEntryOld").count(Map("entry.by" -> u.id))
-<li>  Comment count = @db.Mongo.db("Comment").count(Map("userId" -> u._id))
+<li>  WikiEntry    count = @db.RazMongo("WikiEntry").count(Map("by" -> u.id))
+<li>  WikiEntryOld count = @db.RazMongo("WikiEntryOld").count(Map("entry.by" -> u.id))
+<li>  Comment count = @db.RazMongo("Comment").count(Map("userId" -> u._id))
 }
 </ul>
   <hr>

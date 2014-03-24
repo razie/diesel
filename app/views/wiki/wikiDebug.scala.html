@@ -92,7 +92,13 @@ debug a wiki page
         } 
        </ul>
       </div> 
-
+      
+      <div class="well">
+      @helper.form(action=routes.Wiki.uowner(page.get.wid), 'class->"well form-inline") {
+        <input type="text" class="input-large" name="newowner" placeholder="@page.map(_.owner)">
+        <button type="submit" class="btn">Update Owner</button>
+      }
+      </div> 
       <div class="well">
         <ul>sections
         @page.get.sections.map { p=>
@@ -107,6 +113,10 @@ debug a wiki page
           <li>@p</li>
         } 
        </ul>
+       <p>
+@page.get.fields.map { p=>
+@p._1,
+} 
       </div> 
 
       <div class="well">

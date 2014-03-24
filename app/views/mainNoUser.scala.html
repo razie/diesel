@@ -1,31 +1,33 @@
 @(salutation:String, joe:String)
 
-@buttons={
-<p><a class="btn btn-primary btn-large" href="@routes.Profile.doeJoin()">Join &raquo;</a>
-<a class="btn btn-inverse btn-large" href="@routes.Application.doeSpin">Take me for a spin &raquo;</a>
-   <a class="btn btn-danger btn-large" href="http://500px.com/editors">Nah, checkout some cool pix &raquo;</a></p>
-}
-   
 @htmlHead()
 @navbar(None)
+
+@pic = @{
+  val names = Array("askia.jpg", "Kyle-GS-a-DE-2012.jpg", "Shane-GS-a-DE-2012.jpg")
+  val i = new scala.util.Random().nextInt(names.length)
+  names(i)
+  }
    
 <div class="container">
   <div class="hero-unit">
-        <div class="row">
-          <div class="span6">
-            <h1>@salutation, @joe! <br><small><a href="@routes.Profile.doeJoin()">not @joe?</a></small></h1>
-            <br>
-            @wiki.wikiFragInt("Admin:page-index", None)
-          </div>
-          <div class="span4">
-          <br>
+    <div class="row">
+      <div class="span6">
+        <h2>@salutation, @joe! <small><a href="@routes.Profile.doeJoin()">not @joe?</a></small></h2>
+
+        @wiki.wikiFragInt("Admin:page-index", None)
+
+      </div>
+
+      <div class="span4">
+        <br>
 @_root_.admin.Config.sitecfg("css").filter(_ == "dark").map {x=>
 @***
   <img width="60%" height="60%" style="opacity:0.7;filter:alpha(opacity=70);" src="@routes.Assets.at("images/local-sport-club-2.gif")"></img>
 ***@
-  <img class="img-rounded" style="opacity:0.8;filter:alpha(opacity=80);" src="@routes.Assets.at("images/askia.jpg")"></img>
+  <img class="img-rounded" style="opacity:0.8;filter:alpha(opacity=80);" src="@routes.Assets.at("images/"+pic)"></img>
 }.getOrElse {
-  <img class="img-rounded" src="@routes.Assets.at("images/askia.jpg")"></img>
+  <img class="img-rounded" src="@routes.Assets.at("images/"+pic)"></img>
 @***
   <img width="60%" height="60%" src="@routes.Assets.at("images/local-sport-club-1.gif")"></img>
 ***@
@@ -35,7 +37,14 @@
 
     <div class="row">
 <div class="span10">
-<br>@buttons
+<br>
+<p><a class="btn btn-primary btn-large" href="@routes.Profile.doeJoin()">Join &raquo;</a>
+<a class="btn btn-inverse btn-large" href="@routes.Application.doeSpin">Take it for a spin &raquo;</a>
+   <a class="btn btn-danger btn-large" href="http://500px.com/editors">Nah, checkout some cool pix &raquo;</a></p>
+<br>
+
+@wiki.wikiFragInt("Admin:page-index-bottom", None)
+
      </div>  
     </div>  
 

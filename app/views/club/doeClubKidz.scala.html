@@ -53,7 +53,7 @@ manage the list of kidz and/or their accounts
 @util.utilSimpleTable(rksactive.iterator, 
 	Seq("fname" -> "F.Name", "lname"->"L.Name", "role" -> "Role", "source" -> "Source", "button"->"Details"), Some(mnglink))
 
-Add a: @Array(ROLE_RACER, ROLE_COACH, ROLE_MEMBER).map{v=>
+Add a: @model.RK.ROLES.map{v=>
   <a href="@routes.Kidz.doeKid(user._id.toString, "11", v, "-", "clubkidz")" class="btn btn-mini btn-info">@v</a>
 }
 

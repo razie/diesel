@@ -17,7 +17,7 @@ import model.WikiUser
 trait WikiAuthorization {
   
   /** can user see a topic with the given properties? */
-  def isVisible(u: Option[WikiUser], props: Map[String, String], visibility: String = "visibility")(implicit errCollector: VError = IgnoreErrors): Boolean
+  def isVisible(u: Option[WikiUser], props: Map[String, String], visibility: String = "visibility", we: Option[WikiEntry]=None)(implicit errCollector: VError = IgnoreErrors): Boolean
 
   /**
    * can the user see the topic - a little more checks than isVisibile - this is the one to use
@@ -42,7 +42,7 @@ class NoWikiAuthorization extends WikiAuthorization {
   import Visibility._
 
   /** can user see a topic with the given properties? */
-  def isVisible(u: Option[WikiUser], props: Map[String, String], visibility: String = "visibility")(implicit errCollector: VError = IgnoreErrors): Boolean = {
+  def isVisible(u: Option[WikiUser], props: Map[String, String], visibility: String = "visibility", we: Option[WikiEntry]=None)(implicit errCollector: VError = IgnoreErrors): Boolean = {
     true
   }
 

@@ -6,10 +6,9 @@ fragment: add more stuff to the current topic, including children, sub-topics et
 @import model._
 @import _root_.admin.IgnoreErrors
 
-    <!-- list of pages in category -->
-    @if("Category" == wid.cat && "User" != wid.name && ("WikiLink" != wid.name || user.exists(_.hasPerm(Perm.adminDb)))) {
-
-      @if(model.Wikis.pageNames(wid.name).size > 0) {
+<!-- list of pages in category -->
+@if("Category" == wid.cat && "User" != wid.name && ("WikiLink" != wid.name || user.exists(_.hasPerm(Perm.adminDb)))) {
+   @if(model.Wikis.pageNames(wid.name).size > 0) {
       <div class="well">
         @wid.name entries:
 
@@ -32,14 +31,13 @@ fragment: add more stuff to the current topic, including children, sub-topics et
         }
       }
       } 
-    } else {
+} else {
       <!-- list of child pages -->
-      @model.WikiDomain.aEnds(wid.cat, "Child").map {child=>
-
-        @if(page.isDefined && controllers.Wiki.canEdit(wid,user,page)(IgnoreErrors)) {
-          @helper.form(action=routes.Wiki.addLinked(child,wid,"Child"), 'class->"form-inline") {
-            <label>Create a <a href="/wiki/Category:@child">@model.Wikis.label(WID("Category",child))</a> </label>
-            <input type="text" class="input-xlarge" name="name" placeholder="Name">
+  @model.WikiDomain.aEnds(wid.cat, "Child").map {child=>
+    @if(page.isDefined && controllers.Wiki.canEdit(wid,user,page)(IgnoreErrors)) {
+      @helper.form(action=routes.Wiki.addLinked(child,wid,"Child"), 'class->"form-inline") {
+        <label>Create a <a href="/wiki/Category:@child">@model.Wikis.category(child).map(_.label).mkString</a> </label>
+        <input type="text" class="input-xlarge" name="name" placeholder="Name">
             <button type="submit" class="btn btn-mini btn-primary">Now</button> 
             <a href="/wiki/Admin:Adding_a_Child" class="btn btn-mini btn-info">?</a>
           }
@@ -47,7 +45,7 @@ fragment: add more stuff to the current topic, including children, sub-topics et
   
         @if(model.Wikis.linksTo(wid,"Child").filter(_.from.cat == child).size > 0) {
         <div class="well">
-          @child (s) :
+          @child (ren) :
           <ul>
           @model.Wikis.linksTo(wid,"Child").filter(_.from.cat == child).toList.reverse.take(200).sortWith((a,b)=>b.crDtm.isBefore(a.crDtm)).map(_.from).map { p=>
             <li><a href="@controllers.Wiki.w(p)">@model.Wikis.label(p)</a>

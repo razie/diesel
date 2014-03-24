@@ -11,11 +11,8 @@
 	<classpathentry kind="lib" path="lib_managed/bundles/com.typesafe/config/config-1.0.0.jar"/>
 	<classpathentry kind="lib" path="lib_managed/jars/org.slf4j/jul-to-slf4j/jul-to-slf4j-1.6.6.jar"/>
 	<classpathentry kind="lib" path="lib_managed/jars/org.slf4j/jcl-over-slf4j/jcl-over-slf4j-1.6.6.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/ch.qos.logback/logback-core/logback-core-1.0.7.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/ch.qos.logback/logback-classic/logback-classic-1.0.7.jar"/>
 	<classpathentry kind="lib" path="lib_managed/bundles/com.typesafe.akka/akka-actor_2.10/akka-actor_2.10-2.1.0.jar"/>
 	<classpathentry kind="lib" path="lib_managed/bundles/com.typesafe.akka/akka-slf4j_2.10/akka-slf4j_2.10-2.1.0.jar"/>
-	<classpathentry kind="lib" path="lib_managed/jars/org.slf4j/slf4j-api/slf4j-api-1.7.2.jar"/>
 	<classpathentry kind="lib" path="lib_managed/jars/joda-time/joda-time/joda-time-2.1.jar"/>
 	<classpathentry kind="lib" path="lib_managed/jars/org.joda/joda-convert/joda-convert-1.2.jar"/>
 	<classpathentry kind="lib" path="lib_managed/jars/org.apache.commons/commons-lang3/commons-lang3-3.1.jar"/>
@@ -112,5 +109,8 @@
 	<classpathentry kind="lib" path="lib_managed/jars/play/templates_2.10/templates_2.10-2.1.5.jar"/>
 	<classpathentry kind="lib" path="lib_managed/jars/xerces/xercesImpl/xercesImpl-2.11.0.jar"/>
 	<classpathentry kind="lib" path="lib_managed/jars/xml-apis/xml-apis/xml-apis-1.4.01.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/ch.qos.logback/logback-classic/logback-classic-1.0.13.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/ch.qos.logback/logback-core/logback-core-1.0.13.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/org.slf4j/slf4j-api/slf4j-api-1.7.5.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

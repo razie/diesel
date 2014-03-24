@@ -19,6 +19,7 @@ club admin manages list of users and registrations
     	"firstName"->t._1.get.firstName, 
     	"lastName"->t._1.get.lastName, 
     	"role"->t._2.role, 
+    	"paid"->t._3.map(_.paid).getOrElse(""),
     	"regStatus" -> t._3.map(_.regStatus).getOrElse("n/a"), 
     	"uwId"->t._2._id.toString))
 }
@@ -40,8 +41,7 @@ club admin manages list of users and registrations
   	case "rowClass" => { 
   		@row.get("regStatus") match {
   		   case Some(PENDING) => { class="error" }
-  		   case Some(CURRENT) => { class="success" }
-  		   case Some(ACCEPTED) => { class="warning" }
+  		   case Some(ACCEPTED) => { class="success" }
   		   case _ => { }
   		}
   		}
@@ -52,13 +52,14 @@ club admin manages list of users and registrations
 <h2>Registration management panel for @club.firstName</h2>
 
 <p>These are the members with accounts on the website. Click on the colorful statuses to manage that user/registration. (See the bottom for a legend).
-<b>Summary:</b> @tab.filter(_.apply("role") != "Fan").size members and @tab.filter(_.apply("role") == "Fan").size fans.
+<b>Summary: @members.size</b> total: @members.filter(_._2.role != "Fan").groupBy(_._3.map(_.regStatus)).map{x=><b>@x._2.size</b> @x._1.getOrElse("n/a") , }
 
 @util.utilSimpleTable(tab.filter(_.apply("role") != "Fan").iterator, 
 	Seq("userName" -> "", 
 		"firstName"->"First", 
 		"lastName"->"Last", 
 		"role"->"Role", 
+		"paid" -> "Paid", 
 		"regStatus" -> "Registration", 
 		"uwId"->""), Some(mnglink))
 
@@ -113,8 +114,11 @@ Add more from <a href="@routes.Club.doeClubKids">here</a>
   @controllers.Club.findForUser(club).map { c =>
     @c.regForms.map { t =>
     <li>
-      <a href="@routes.Club.doeClubRegsCsv(t.role)" class="btn btn-mini">Report CSV</a> - 
+      <a href="@routes.Club.doeClubRegsCsv(t.role, "")" class="btn btn-mini">Report CSV</a> - 
       <a href="@routes.Club.doeClubRegsJson(t.role)" class="btn btn-mini">Report Json</a> - @t.role
+      @c.props.filter(_._1 startsWith ("Report."+t.role)).map {tt=>
+      | <a href="@routes.Club.doeClubRegsCsv(t.role, tt._2)" class="btn btn-mini">@tt._1.replaceFirst("Report."+t.role+".", "")</a>
+      }
     }
   }
   </ul>

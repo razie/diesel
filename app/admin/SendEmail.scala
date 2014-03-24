@@ -13,7 +13,7 @@ import model.Users
 import model.EncUrl
 
 /** a prepared email to send - either send now, later, backup etc */
-case class EmailMsg(to: String, from: String, subject: String, html: String, isNotification:Boolean=true) {}
+case class EmailMsg(to: String, from: String, subject: String, html: String, isNotification:Boolean=true, bcc:Seq[String] = Seq.empty) {}
 
 /**
  * a mail session that doesn't have to connect to the server if there's nothing to send...
@@ -27,6 +27,7 @@ class MailSession(implicit mailSession: Option[Session] = None) {
 
 object SendEmail extends razie.Logging {
   val NO_EMAILS = true // this is set to false for normal testing - set to true for quick testing and stress/perf testing
+  var NOEMAILSTESTING = false // this is set to false for normal testing - set to true for quick testing and stress/perf testing
 
   /**
    * send an email
@@ -35,13 +36,17 @@ object SendEmail extends razie.Logging {
 
     val mysession = mailSession.session
       
-    if (Config.isLocalhost && (e.isNotification || NO_EMAILS)) {
-      Audit.logdb("EMAIL_SENT_NOT", Seq("to:" + e.to, "from:" + e.from, "subject:" + e.subject).mkString("\n"))
+    if (Config.hostport.startsWith("test") && NOEMAILSTESTING || 
+        Config.isLocalhost && (e.isNotification || NO_EMAILS)) {
+      Audit.logdb("EMAIL_SENT_NOT", Seq("to:" + e.to, "from:" + e.from, "subject:" + e.subject, "body:" + e.html).mkString("\n"))
     } else
     try {
       val message = new MimeMessage(mysession);
       message.setFrom(new InternetAddress(e.from));
       message.addRecipient(Message.RecipientType.TO, new InternetAddress(e.to));
+      e.bcc.foreach { b=>
+        message.addRecipient(Message.RecipientType.BCC, new InternetAddress(b));
+      }
 
       message.setSubject(e.subject)
 
@@ -91,15 +96,15 @@ object SendEmail extends razie.Logging {
   /**
    * send an email
    */
-  def send(to: String, from: String, subject: String, html: String)(implicit mailSession: MailSession) {
-    mailSession.emails = new EmailMsg(to, from, subject, html, false) :: mailSession.emails
+  def send(to: String, from: String, subject: String, html: String, bcc:Seq[String] = Seq.empty)(implicit mailSession: MailSession) {
+    mailSession.emails = new EmailMsg(to, from, subject, html, false, bcc) :: mailSession.emails
   }
 
   /**
    * send an email
    */
-  def notif(to: String, from: String, subject: String, html: String)(implicit mailSession: MailSession) {
-    mailSession.emails = new EmailMsg(to, from, subject, html, true) :: mailSession.emails
+  def notif(to: String, from: String, subject: String, html: String, bcc:Seq[String] = Seq.empty)(implicit mailSession: MailSession) {
+    mailSession.emails = new EmailMsg(to, from, subject, html, true, bcc) :: mailSession.emails
   }
 
   /**

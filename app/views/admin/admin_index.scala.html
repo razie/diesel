@@ -1,5 +1,5 @@
 @(salutation:String, joe:Option[model.User])
-
+@import db.RazMongo
 @htmlHead("admin index")
 
 @navbar(joe)
@@ -9,17 +9,17 @@
   <!-- Main hero unit for a primary marketing message or call to action -->
   <div class="hero-unit">
     <div class="row">
-      <div class="span6">
-        <h1>@joe.get.ename - tread carefully! <small><a href="@routes.Profile.doeJoin()">not @joe.get.ename?</a></small></h1>
+      <div class="span4">
+        <b><a href="@routes.Profile.doeJoin()">Not @joe.get.ename?</a></b>
         <p>If you're not an admin of this site, please leave and report seeing this page with a brief support request at the bottom of the page</p>
-        <p>You can do a lot of damage with these admin pages....</p>
         See the content of a page: /wikie/content/Page:X
+      <p><a href="@routes.Admin.system("x")" class="btn btn-large">system</a>
+      <p><a href="/razadmin/reloadurlmap" class="btn btn-large">admin reload urlmap</a>
       </div>
-    <div class="span4">
+    <div class="span6">
       <p><a href="/razadmin/db" class="btn btn-large">admin db</a>
       <a href="/razadmin/users" class="btn btn-large">admin users</a>
       <p><a href="/razadmin/wikidx" class="btn btn-large">admin wikidx</a>
-      <p><a href="/razadmin/reloadurlmap" class="btn btn-large">admin reload urlmap</a>
       <p><a href="/razadmin/audit/purge1" class="btn btn-large">audit purge1</a>
       <p><a href="/razadmin/audit" class="btn btn-large">admin audit</a>
       <a href="/razadmin/auditreport/d/1" class="btn btn-large">day</a>
@@ -33,22 +33,22 @@
   <div class="row">
     <div class="span3">
       <h2>Pages</h2>
-      <p>There are @db.Mongo.count("WikiEntry") pages</p>
+      <p>There are @RazMongo("WikiEntry").size pages</p>
       <p><a class="btn" href="/razadmin/calendars">View details &raquo;</a></p>
     </div>
     <div class="span3">
       <h2>Users</h2>
-      <p>@db.Mongo.count("User") users and @db.Mongo.count("RacerKid") RacerKidz</p>
+      <p>@RazMongo("User").size users and @RazMongo("RacerKid").size RacerKidz</p>
       <p><a class="btn" href="/razadmin/calendars">View details &raquo;</a></p>
     </div>
     <div class="span3">
       <h2>Registrations</h2>
-      <p>@db.Mongo.count("Reg") and @db.Mongo.count("RegKid") kidz</p>
+      <p>@RazMongo("Reg").size and @RazMongo("RegKid").size kidz</p>
       <p><a class="btn" href="/razadmin/calendars">View details &raquo;</a></p>
    </div>
     <div class="span3">
       <h2>Forms</h2>
-      <p>@db.Mongo.count("weForm") forms</p>
+      <p>@RazMongo("weForm").size forms</p>
       <p><a class="btn" href="/razadmin/calendars">View details &raquo;</a></p>
    </div>
   </div>

@@ -11,11 +11,11 @@ cols = (key,label)
 @import org.joda.time.DateTime
 
 @col() = @{
-  db.Mongo(name).m
+  db.RazMongo(name).m
   }
 
 @ccol() = @{
-  val m = db.Mongo(name).m
+  val m = db.RazMongo(name).m
   if (criteria.isDefined)
     (sortby.map(p=>m.find(criteria.get).sort(Map(p -> -1)).take(1000)).getOrElse(m.find(criteria.get).take(1000)))
   else

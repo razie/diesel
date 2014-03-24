@@ -55,7 +55,6 @@ import db.ROne
 import db.RMany
 import db.RCreate
 import db.RDelete
-import db.Mongo
 import model.Tribes
 import model.Stage
 import model.WikiLink

@@ -18,6 +18,7 @@ import model.WikiLink
 import model.UserWiki
 import model.WID
 import controllers.Club
+import model.Users
 
 object Upgrade1 extends UpgradeDb {
   def upgrade(db: MongoDB) {}
@@ -365,7 +366,7 @@ object U11 extends UpgradeDb with razie.Logging {
   }
 
   // add crDtm to WikiLinks
-  def upgradeGlacierForums(db: MongoDB) {
+  def upgradeGlacierForums() {
     var removed = RMany[UserWiki]().toList.filter(uw => uw.role != "Owner" && uw.wid.cat == "Blog" && uw.wid.name.startsWith("Glacier")).map { uw =>
       cout << " 1 DB remove " + uw.toString
       uw.delete
@@ -386,6 +387,34 @@ object U11 extends UpgradeDb with razie.Logging {
       }
       cout << "=======================DB creating " + cnt
     }
+  }
+
+  // add crDtm to WikiLinks
+  private def clubFollowsWid(cname: String, wpath: String, role: String) {
+    val wid = WID.fromPath(wpath).get
+    var cnt = 0
+    var all = 0
+    Club(cname).foreach { club =>
+      club.userLinks.toList.filter(uw => uw.role != "Owner").map { uw =>
+        all = all + 1
+        Users.findUserById(uw.userId).filter(! _.wikis.exists(_.wid== wid)).foreach { rw =>
+          val newuw = model.UserWiki(uw.userId, wid, role)
+          newuw.create
+          cout << " 1 DB creating " + "   ===>>>   " + newuw.toString
+          cnt = cnt + 1
+        }
+      }
+    }
+    cout << s"=======================DB created $cnt of $all"
+  }
+
+  // add crDtm to WikiLinks
+  def upgradeGlacierForums2() {
+    val cname = "Glacier_Ski_Club"
+    val wpath = "Club:Glacier_Ski_Club/Forum:Glacier_Rides_and_Stuff"
+    val role = "Contributor" // "Fan"
+
+    clubFollowsWid(cname, wpath, role)
   }
 
 }

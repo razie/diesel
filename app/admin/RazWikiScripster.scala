@@ -14,34 +14,18 @@ import model.WikiUser
 import razie.base.scriptingx.ScalaScript
 
 /** run scripts in the RK specific context */
-object RazWikiScripster extends WikiScripster {
-  var wikiCtx: Option[razie.base.scriptingx.NoBindSbtScalaContext] = None
+class RazWikiScripster extends WikiScripster.CWikiScripster {
 
-  private def ctx = {
-    if (!wikiCtx.isDefined) {
-      wikiCtx = Some(new razie.base.scriptingx.NoBindSbtScalaContext())
-    }
-    wikiCtx.get
-  }
-
+  override def mk = new RazWikiScripster
+  
   /** run the given script in the context of the given page and user as well as the query map */
-  def runScript(s: String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, String]) = synchronized {
-    import razie.base.scriptingx.ScalaScriptContext;
+  override def runScript(s: String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, String]) = synchronized {
     import razie.base.scriptingx._
 
     api.wix.page = page
     api.wix.user = user.map(_.asInstanceOf[User])
     api.wix.query = query
 
-    try {
-      val res = (ScalaScript(s).interactive(ctx) getOrElse "?").toString
-      ctx.clear // make sure there's nothing for hackers
-      res
-    } catch {
-      case _: Throwable => { // any exceptions, get a new parser
-        wikiCtx = None
-        "?"
-      }
-    }
+    super.runScript(s, page, user, query)
   }
 }

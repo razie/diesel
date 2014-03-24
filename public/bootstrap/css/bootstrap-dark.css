@@ -1444,7 +1444,7 @@ input[readonly],
 select[readonly],
 textarea[readonly] {
   cursor: not-allowed;
-  background-color: #D3D3D4;
+  background-color: #434344;
 }
 
 input[type="radio"][disabled],
@@ -2242,12 +2242,11 @@ table th[class*="span"],
 }
 
 .table tbody tr.success > td {
-  background-color: #dff0d8;
+  background-color: #0B4B34;
 }
 
 .table tbody tr.error > td {
-  background-color: #f2dede;
-  color: blue;
+  background-color: #4B0B17;
 }
 
 .table tbody tr.warning > td {
@@ -5205,7 +5204,7 @@ input[type="submit"].btn.btn-mini {
   z-index: 1050;
   width: 560px;
   margin-left: -280px;
-  background-color: #ffffff;
+  background-color: #444444;
   border: 1px solid #999;
   border: 1px solid rgba(0, 0, 0, 0.3);
   *border: 1px solid #999;
@@ -5245,6 +5244,7 @@ input[type="submit"].btn.btn-mini {
 .modal-header h3 {
   margin: 0;
   line-height: 30px;
+  background-color: #333333;
 }
 
 .modal-body {
@@ -5262,7 +5262,7 @@ input[type="submit"].btn.btn-mini {
   padding: 14px 15px 15px;
   margin-bottom: 0;
   text-align: right;
-  background-color: #f5f5f5;
+  background-color: #232323;
   border-top: 1px solid #ddd;
   -webkit-border-radius: 0 0 6px 6px;
      -moz-border-radius: 0 0 6px 6px;

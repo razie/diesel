@@ -1,12 +1,14 @@
 #!/bin/bash
 
 . /home/demo/.bashrc
+. /home/demo/rk/app/run/settings
 
 PROBLEM=
-APPNAME=Racerkidz
-APPHOME=/home/demo/rk/app/run
-APPURL=www.racerkidz.com
-EMAIL=razie@razie.com
+
+if [ -e $APP/updating ] 
+then
+  exit
+fi
 
 cd $APPHOME
 out=hourly.out
@@ -26,7 +28,7 @@ else
 fi
 
 
-if grep -q "OutOfMemoryError" nohup.out
+if grep -q "OutOfMemoryError" $APPHOME/logs/log.log
 then
    echo "PROBLEM: OutOfMemoryError found" | tee -a $out
    PROBLEM="$PROBLEM AND OutOfMemoryError"
@@ -43,10 +45,28 @@ else
   echo "PROBLEMS ARE: $PROBLEM" >>$out
   echo "." >> $out
   echo "RESTARTING..." >>$out
+  DT=`date +%F-%T | sed 's/ //g'`
+
+  mv ${APPHOME}/logs/log.log ${APPHOME}/logs/log.log.PROBLEM.$DT
   . ${APPHOME}/restart >>$out
+
+  JPC=`ps -u $RKUSER | grep java`
+  JPCNT=`ps -u $RKUSER | grep java | wc -l`
+  echo $JPCNT
+
+  if [[ $JPCNT != "1" ]]
+  then
+    echo "Did not restart properly... $JPC" >>$out
+    echo "Did not restart properly... $JPC" | mailx -s "$APPNAME BIG PROBLEM" $EMAIL
+    kill -9 `ps -u $RKUSER | grep java | sed 's/^ //' | cut -f 1 -d " " | tr '\n' " " `
+    cd ${APPHOME}
+    . ${APPHOME}/restart >>$out
+  else
+    echo "Restarted properly" >>$out
+  fi
+
   cat $out | mailx -s "$APPNAME PROBLEM" $EMAIL
 
-  DT=`date +%F-%T | sed 's/ //g'`
   cp $out OOPS.${out}.$DT
 fi
 

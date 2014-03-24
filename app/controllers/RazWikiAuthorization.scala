@@ -15,7 +15,6 @@ import admin.Notif
 import admin.SendEmail
 import admin.VError
 import model.Enc
-import db.Mongo
 import model.Perm
 import db.RazSalatContext.ctx
 import model.Sec.EncryptedS
@@ -74,20 +73,28 @@ object RazWikiAuthorization extends RazController with Logging with WikiAuthoriz
   /** if user is admin of club where owner member */
   def isClubAdmin(admin: WikiUser, owner: WikiUser) = { //}(implicit errCollector: VError = IgnoreErrors) = {
     // all clubs where member
-    val m1 = owner.wikis.filter(x => x.wid.cat == "Club" && x.role != "Fan").toList
+    val clubs = owner.wikis.filter(x => x.wid.cat == "Club" && x.role != "Fan").toList
 
     (
       // owner is same as member
-      (admin.roles.contains(UserType.Organization) && (admin.userName == owner.userName)) ||
+      (admin.isClub && (admin.userName == owner.userName)) ||
       // admin is the club
-      (admin.roles.contains(UserType.Organization) && m1.exists(_.wid.name == admin.userName)) ||
+      (admin.isClub && clubs.exists(_.wid.name == admin.userName)) ||
+      // admin is god
+      (!admin.isClub && admin.hasPerm(Perm.adminDb)) ||
       // admin is club admin
-      (!admin.roles.contains(UserType.Organization) && { m1.exists(x1 => Users.findUserByUsername(x1.wid.name).flatMap(_.prefs.get("regAdmin")).exists(_ == admin.email.dec)) }) // TODO this is expensive - at least optimize as a Mongo query?
+      (!admin.isClub && { 
+        val aemail = admin.email.dec
+        clubs.exists(x1 => Users.findUserByUsername(x1.wid.name).exists(
+          u => u.prefs.get("regAdmin").exists(_ == aemail) ||
+          Club(u).props.filter(_._1 startsWith "admin").exists(_._2 == aemail)
+          )) 
+        }) // TODO this is expensive - at least optimize as a Mongo query?
       )
   }
 
   /** can user see a topic with the given properties? */
-  def isVisible(u: Option[WikiUser], props: Map[String, String], visibility: String = "visibility")(implicit errCollector: VError = IgnoreErrors): Boolean = {
+  def isVisible(u: Option[WikiUser], props: Map[String, String], visibility: String = "visibility", we: Option[WikiEntry]=None)(implicit errCollector: VError = IgnoreErrors): Boolean = {
     // TODO optimize
     def uname(id: Option[String]) = id.flatMap(Users.findUserById(_)).map(_.userName).getOrElse(id.getOrElse(""))
 
@@ -100,7 +107,14 @@ object RazWikiAuthorization extends RazController with Logging with WikiAuthoriz
           props(visibility).startsWith(Visibility.CLUB) && (
             props.get("owner").flatMap(Users.findUserById(_)).exists(owner =>
               // hoping it's more likely members read blogs than register...
-              props(visibility) == Visibility.CLUB && isInSameClub(u.get, owner) || props(visibility) == Visibility.CLUB_ADMIN && isClubAdmin(u.get, owner))) orCorr (
+              props(visibility) == Visibility.CLUB && isInSameClub(u.get, owner) || 
+              props(visibility) == Visibility.CLUB_ADMIN && isClubAdmin(u.get, owner) ||
+              // maybe the club created the parent topic (like forum/blog etc)?
+              props(visibility) == Visibility.CLUB && 
+                props.get("parentOwner").flatMap(Users.findUserById(_)).exists(parentOwner => isInSameClub(u.get, parentOwner)) ||
+              props(visibility) == Visibility.CLUB && 
+                we.flatMap(_.wid.findParent.flatMap(_.props.get("owner"))).flatMap(Users.findUserById(_)).exists(parentOwner => isInSameClub(u.get, parentOwner))
+              )) orCorr (
               cNotMember(uname(props.get("owner"))))).getOrElse(
                 false))
   }
@@ -117,7 +131,7 @@ object RazWikiAuthorization extends RazController with Logging with WikiAuthoriz
     val name = wid.name
     (for (
       pubProfile <- ("User" != cat || WikiIndex.withIndex(_.get2(name, wid).isDefined) || au.map(name == _.userName).getOrElse(isAdmin)) orErr ("Sorry - profile not found or is private! %s : %s".format(cat, name));
-      mine2 <- (!we.isDefined || isVisible(au, we.get.props)) orErr ("Sorry - topic is not visible!"); // TODO report
+      mine2 <- (!we.isDefined || isVisible(au, we.get.props, "visibility", we)) orErr ("Sorry - topic is not visible!"); // TODO report
       t <- true orErr ("just can't, eh")
     ) yield true)
     // TODO parent can see child's profile

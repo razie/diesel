@@ -1,9 +1,13 @@
-@(pageTitle: String = "")
+@(pageTitle: String = "", cssr:Option[String]=None)
 @import _root_.admin.Config
 
 @title() = @{
   if(pageTitle.length==0) Config.sitecfg("RacerKidz") getOrElse ("RacerKidz")
   else pageTitle
+}
+
+@css() = @{
+  cssr.getOrElse(_root_.admin.Config.theme)
 }
 
 <!DOCTYPE html>
@@ -19,7 +23,7 @@
   @Html(_root_.admin.Config.metas)
   
     <!-- Le styles -->
-    <link href="@routes.Assets.at("bootstrap/css/bootstrap-"+_root_.admin.Config.theme+".css")" rel="stylesheet">
+    <link href="@routes.Assets.at("bootstrap/css/bootstrap-"+css+".css")" rel="stylesheet">
 
 @*******
     <script src="@routes.Assets.at("bootstrap/js/bootstrap-modal.js")" type="text/javascript"></script>

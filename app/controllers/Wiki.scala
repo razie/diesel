@@ -21,7 +21,7 @@ import admin.Notif
 import admin.SendEmail
 import admin.VError
 import model.Enc
-import db.Mongo
+import db.RazMongo
 import model.Perm
 import db.RazSalatContext.ctx
 import model.Sec.EncryptedS
@@ -41,6 +41,7 @@ import play.api.mvc.Request
 import razie.Logging
 import razie.cout
 import db.ROne
+import db.RMany
 import model.WikiCount
 import model.WikiIndex
 import model.Wikis
@@ -58,9 +59,10 @@ import razie.clog
 
 /** reused in other controllers */
 class WikiBase1 extends RazController with Logging with WikiAuthorization {
+  /** yeah, I hate myself - happy? */
   var authImpl: WikiAuthorization = new NoWikiAuthorization
 
-  def isVisible(u: Option[WikiUser], props: Map[String, String], visibility: String = "visibility")(implicit errCollector: VError = IgnoreErrors): Boolean =
+  def isVisible(u: Option[WikiUser], props: Map[String, String], visibility: String = "visibility", we: Option[WikiEntry]=None)(implicit errCollector: VError = IgnoreErrors): Boolean =
     authImpl.isVisible(u, props, visibility)(errCollector)
 
   def canSee(wid: WID, au: Option[WikiUser], w: Option[WikiEntry])(implicit errCollector: VError): Option[Boolean] =
@@ -68,6 +70,7 @@ class WikiBase1 extends RazController with Logging with WikiAuthorization {
 
   def canEdit(wid: WID, u: Option[WikiUser], w: Option[WikiEntry], props: Option[Map[String, String]] = None)(implicit errCollector: VError): Option[Boolean] =
     authImpl.canEdit(wid, u, w, props)(errCollector)
+
 }
 
 class WikiBase extends WikiBase1 {
@@ -82,7 +85,7 @@ class WikiBase extends WikiBase1 {
       "visibility" -> nonEmptyText,
       "wvis" -> nonEmptyText,
       "tags" -> text.verifying(vPorn, vSpec),
-      "notif" -> text.verifying(vPorn, vSpec))(EditWiki.apply)(EditWiki.unapply) verifying (
+      "draft" -> text.verifying(vPorn, vSpec))(EditWiki.apply)(EditWiki.unapply) verifying (
         "Your entry failed the obscenity filter", { ew: EditWiki => !Wikis.hasporn(ew.content)
         })
   }
@@ -96,12 +99,8 @@ class WikiBase extends WikiBase1 {
         })
   }
 
-  case class AddWiki(name: String)
-
-  val addForm = Form {
-    mapping(
-      "name" -> nonEmptyText.verifying(vPorn, vSpec))(AddWiki.apply)(AddWiki.unapply)
-  }
+  val addForm = Form(
+    "name" -> nonEmptyText.verifying(vPorn, vSpec))
 
   case class LinkWiki(how: String, notif: String, markup: String, comment: String)
 
@@ -115,13 +114,15 @@ class WikiBase extends WikiBase1 {
         })
   }
 
-  case class FollowerLinkWiki(email1: String, email2: String, comment: String)
+  case class FollowerLinkWiki(email1: String, email2: String, v1:Int, v2:Int, comment: String)
 
   def followerLinkForm(implicit request: Request[_]) = Form {
     mapping(
       "email1" -> nonEmptyText.verifying("Wrong format!", vldEmail(_)).verifying("Invalid characters", vldSpec(_)),
       "email2" -> nonEmptyText.verifying("Wrong format!", vldEmail(_)).verifying("Invalid characters", vldSpec(_)),
-      "comment" -> text)(FollowerLinkWiki.apply)(FollowerLinkWiki.unapply) verifying
+      "v1" -> play.api.data.Forms.number,
+      "v2" -> play.api.data.Forms.number,
+      "comment" -> play.api.data.Forms.text)(FollowerLinkWiki.apply)(FollowerLinkWiki.unapply) verifying
       ("Email mismatch - please type again", { reg: FollowerLinkWiki =>
         if (reg.email1.length > 0 && reg.email2.length > 0 && reg.email1 != reg.email2) false
         else true
@@ -149,6 +150,8 @@ object Visibility {
 object Wiki extends WikiBase {
   import Visibility._
 
+  implicit def obtob(o: Option[Boolean]): Boolean = o.exists(_ == true)
+
   /** when no pages found in 'any', i captured 'cat' in a form */
   def edit2 = Action { implicit request =>
     implicit val errCollector = new VError()
@@ -174,7 +177,7 @@ object Wiki extends WikiBase {
           au <- auth orCorr cNoAuth;
           can <- canEdit(wid, Some(au), Some(w));
           hasQuota <- (au.isAdmin || au.quota.canUpdate) orCorr cNoQuotaUpdates;
-          r1 <- au.hasPerm(Perm.uWiki) orCorr cNoPermission
+          r1 <- au.hasPerm(Perm.uWiki) orCorr cNoPermission("uWiki")
         ) yield {
           Ok(views.html.wiki.wikiEdit(w.wid, editForm.fill(
             EditWiki(w.label,
@@ -182,8 +185,9 @@ object Wiki extends WikiBase {
               w.content,
               (w.props.get("visibility").getOrElse(PUBLIC)),
               wvis(Some(w.props)).getOrElse(PUBLIC),
-              w.tags.mkString(","), "y")),
-            auth))
+              w.tags.mkString(","),
+              w.props.get("draft").getOrElse("Notify"))),
+            Some(au)))
         }) getOrElse
           noPerm(wid, "EDIT")
       case None =>
@@ -193,7 +197,7 @@ object Wiki extends WikiBase {
           can <- canEdit(wid, Some(au), None, parentProps);
           r3 <- ("any" != wid.cat) orErr ("can't create in category any");
           w <- Wikis.category(wid.cat) orErr ("cannot find the category " + wid.cat);
-          r1 <- au.hasPerm(Perm.uWiki) orCorr cNoPermission
+          r1 <- au.hasPerm(Perm.uWiki) orCorr cNoPermission("uWiki")
         ) yield {
           Audit.missingPage("wiki " + wid);
 
@@ -211,7 +215,8 @@ object Wiki extends WikiBase {
               contentFromTags + icontent + "\nEdit content here",
               visibility,
               wwvis,
-              (if ("Topic" == wid.cat) "" else wid.cat.toLowerCase), "y")),
+              (if ("Topic" == wid.cat) "" else wid.cat.toLowerCase),
+              "Notify")),
             auth))
         }) getOrElse
           noPerm(wid, "EDIT")
@@ -235,11 +240,12 @@ object Wiki extends WikiBase {
               (for (
                 au <- auth orCorr cNoAuth;
                 can <- canEdit(wid, auth, Some(w));
-                r1 <- au.hasPerm(Perm.uWiki) orCorr cNoPermission;
+                r1 <- au.hasPerm(Perm.uWiki) orCorr cNoPermission("uWiki");
                 hasQuota <- (au.isAdmin || au.quota.canUpdate) orCorr cNoQuotaUpdates;
                 nochange <- (w.label != l || w.markup != m || w.content != co || (
                   w.props.get("visibility").map(_ != vis).getOrElse(vis != PUBLIC) ||
                   w.props.get("wvis").map(_ != wvis).getOrElse(wvis != PUBLIC)) ||
+                  w.props.get("draft").map(_ != notif).getOrElse(false) ||
                   w.tags.mkString(",") != tags) orErr ("no change");
                 newlab <- Some(if ("WikiLink" == wid.cat || "User" == wid.cat) l else if (wid.name == Wikis.formatName(l)) l else w.label);
                 newVer <- Some(w.cloneNewVer(newlab, m, co, au._id));
@@ -252,6 +258,12 @@ object Wiki extends WikiBase {
                   we = we.cloneProps(we.props ++ Map("visibility" -> vis), au._id)
                 if (we.props.get("wvis").map(_ != wvis).getOrElse(wvis != PUBLIC))
                   we = we.cloneProps(we.props ++ Map("wvis" -> wvis), au._id)
+
+                val shouldPublish =
+                  if (notif != "Draft" && we.props.contains("draft")) {
+                    we = we.copy(props = we.props - "draft")
+                    notif == "Notify" // Silent means no notif
+                  } else false
 
                 if (we.tags.mkString(",") != tags)
                   we = we.withTags(tags.split(",").map(_.trim).toSeq, au._id)
@@ -277,14 +289,18 @@ object Wiki extends WikiBase {
                 if (!we.scripts.filter(_.signature == "ADMIN").isEmpty && !(au.hasPerm(Perm.adminDb) || Config.isLocalhost)) {
                   noPerm(wid, "HACK_SCRIPTS1")
                 } else {
-                  // can only change label of links OR if the formatted name doesn't change
-                  w.update(we)
-                  Notif.entityUpdateAfter(we, WikiEntry.UPD_CONTENT)
-                  Emailer.laterSession { implicit mailSession =>
-                    au.quota.incUpdates
-                    au.shouldEmailParent("Everything").map(parent => Emailer.sendEmailChildUpdatedWiki(parent, au, WID(w.category, w.name)))
+                  db.tx("Wiki.Save") { implicit txn =>
+                    // can only change label of links OR if the formatted name doesn't change
+                    w.update(we)
+                    Notif.entityUpdateAfter(we, WikiEntry.UPD_CONTENT)
+                    Emailer.laterSession { implicit mailSession =>
+                      au.quota.incUpdates
+                      if (shouldPublish) notifyFollowersCreate(we, au)
+                      au.shouldEmailParent("Everything").map(parent => Emailer.sendEmailChildUpdatedWiki(parent, au, WID(w.category, w.name)))
+                    }
                   }
                   Audit ! WikiAudit("EDIT", w.wid.wpath, Some(au._id))
+
                   Redirect(controllers.Wiki.w(we.wid, true)).flashing("count" -> "0")
                 }
               }) getOrElse
@@ -298,48 +314,60 @@ object Wiki extends WikiBase {
                 hasQuota <- (au.isAdmin || au.quota.canUpdate) orCorr cNoQuotaUpdates;
                 r3 <- ("any" != wid.cat) orErr ("can't create in category any");
                 w <- Wikis.category(wid.cat) orErr ("cannot find the category " + wid.cat);
-                r1 <- (au.hasPerm(Perm.uWiki)) orCorr cNoPermission
+                r1 <- (au.hasPerm(Perm.uWiki)) orCorr cNoPermission("uWiki")
               ) yield {
                 var we = model.WikiEntry(wid.cat, wid.name, l, m, co, au._id, 1, wid.parent)
 
-                if (we.tags.mkString(",") != tags)
-                  we = we.withTags(tags.split(",").map(_.trim).toSeq, au._id)
+                db.tx("wiki.create") { implicit txn =>
+                  if (we.tags.mkString(",") != tags)
+                    we = we.withTags(tags.split(",").map(_.trim).toSeq, au._id)
 
-                // needs owner?
-                if (WikiDomain.needsOwner(wid.cat)) {
-                  we = we.cloneProps(we.props ++ Map("owner" -> au.id), au._id)
-                  this dbop model.UserWiki(au._id, wid, "Owner").create
-                  cleanAuth()
-                }
+                  // needs owner?
+                  if (WikiDomain.needsOwner(wid.cat)) {
+                    we = we.cloneProps(we.props ++ Map("owner" -> au.id), au._id)
+                    this dbop model.UserWiki(au._id, wid, "Owner").create
+                    cleanAuth()
+                  }
 
-                // visibility?
-                if (vis != PUBLIC)
-                  we = we.cloneProps(we.props ++ Map("visibility" -> vis), au._id)
-                if (wvis != "Public")
-                  we = we.cloneProps(we.props ++ Map("wvis" -> wvis), au._id)
+                  // visibility?
+                  if (vis != PUBLIC)
+                    we = we.cloneProps(we.props ++ Map("visibility" -> vis), au._id)
+                  if (wvis != "Public")
+                    we = we.cloneProps(we.props ++ Map("wvis" -> wvis), au._id)
+                  if (notif == "Draft")
+                    we = we.cloneProps(we.props ++ Map("draft" -> notif), au._id)
 
-                // anything staged for this?
-                for (s <- model.Staged.find("WikiLink").filter(x => x.content.get("from").asInstanceOf[DBObject].get("cat") == wid.cat && x.content.get("from").asInstanceOf[DBObject].get("name") == wid.name)) {
-                  val wl = Wikis.fromGrated[WikiLink](s.content)
-                  wl.create
-                  we = we.cloneParent(Wikis.find(wl.to).map(_._id)) // should still change
-                  s.delete
-                }
+                  // anything staged for this?
+                  for (s <- model.Staged.find("WikiLink").filter(x => x.content.get("from").asInstanceOf[DBObject].get("cat") == wid.cat && x.content.get("from").asInstanceOf[DBObject].get("name") == wid.name)) {
+                    val wl = Wikis.fromGrated[WikiLink](s.content)
+                    wl.create
+                    we = we.cloneParent(Wikis.find(wl.to).map(_._id)) // should still change
+                    s.delete
+                  }
 
-                // needs parent?
-                we.wid.parentWid.foreach { pwid =>
-                  if (Mongo("WikiLink").findOne(Map("from" -> we.wid.grated, "to" -> pwid.grated, "how" -> "Child")).isEmpty)
-                    WikiLink(we.wid, pwid, "Child").create
-                }
+                  // needs parent?
+                  we.wid.parentWid.foreach { pwid =>
+                    if (ROne[WikiLink]("from" -> we.wid.grated, "to" -> pwid.grated, "how" -> "Child").isEmpty)
+                      WikiLink(we.wid, pwid, "Child").create
+                  }
 
-                we.create
-                Audit ! WikiAudit("CREATE", we.wid.wpath, Some(au._id))
+                  we = we.cloneProps(we.props ++ Map("titi" -> "t"), au._id)
+                  
+                  // needs parent owner? // the context of the page
+                  we.findParent.flatMap(_.props.get("owner")).foreach {po=>
+                    if (! we.props.get("owner").exists (_ == po))
+                      we = we.cloneProps(we.props ++ Map("parentOwner" -> po), au._id)
+                  }
 
-                admin.SendEmail.withSession { implicit mailSession =>
-                  au.quota.incUpdates
-                  au.shouldEmailParent("Everything").map(parent => Emailer.sendEmailChildUpdatedWiki(parent, au, wid)) // ::: notifyFollowers (we)
-                  if (notif == "y") notifyFollowersCreate(we, au)
-                  Emailer.tellRaz("New Wiki", au.userName, wid.ahref)
+                  we.create
+                  Audit ! WikiAudit("CREATE", we.wid.wpath, Some(au._id))
+
+                  admin.SendEmail.withSession { implicit mailSession =>
+                    au.quota.incUpdates
+                    au.shouldEmailParent("Everything").map(parent => Emailer.sendEmailChildUpdatedWiki(parent, au, wid)) // ::: notifyFollowers (we)
+                    if (notif == "Notify") notifyFollowersCreate(we, au)
+                    Emailer.tellRaz("New Wiki", au.userName, wid.ahref)
+                  }
                 }
 
                 Redirect(controllers.Wiki.w(we.wid, true)).flashing("count" -> "0")
@@ -367,10 +395,11 @@ object Wiki extends WikiBase {
     }
   }
 
+  // TODO optimize
   def search(q: String) = Action { implicit request =>
     // TODO limit the number of searches - is this performance critical?
     val qi = q.toLowerCase()
-    val wikis = Mongo.withDb(Mongo.db("WikiEntry")) { t =>
+    val wikis = RazMongo.withDb(RazMongo("WikiEntry").m) { t =>
       for (
         u <- t if (
           (q.length > 1 && u.get("name").asInstanceOf[String].toLowerCase.contains(qi)) ||
@@ -402,7 +431,7 @@ object Wiki extends WikiBase {
   def showWidVer(cw: CMDWID, ver: Int) = Action { implicit request =>
     val wid = cw.wid.get
     ROne[WikiEntryOld]("entry.category" -> wid.cat, "entry.name" -> wid.name, "entry.ver" -> ver).map { p =>
-      wikiPage(wid, Some(wid.name), Some(p.entry), auth, false)
+      wikiPage(wid, Some(wid.name), Some(p.entry), auth, false, false)
     } getOrElse {
       Oops("Version " + ver + " of " + wid + " NOT FOUND...", wid)
     }
@@ -460,6 +489,9 @@ object Wiki extends WikiBase {
     }
   }
 
+  /** show a page */
+  def printWid(cw: CMDWID) = show(cw.wid.get, 0, true)
+
   /** POST against a page - perhaps a trackback */
   def postWid(wp: String) = Action { implicit request =>
     //    if (model.BannedIps isBanned request.headers.get("X-FORWARDED-HOST")) {
@@ -488,18 +520,20 @@ object Wiki extends WikiBase {
 
   def wikieShow(iwid: WID, count: Int = 0) = show(iwid, count)
 
-  def show(iwid: WID, count: Int = 0) = Action { implicit request =>
+  def show(iwid: WID, count: Int = 0, print:Boolean=false) = Action { implicit request =>
     implicit val errCollector = new VError()
+    val au = auth
 
     val shouldNotCount = (request.flash.get("count").exists("0" == _) || (count == 0) ||
-      isFromRobot(request) || auth.exists("Razie" == _.userName))
+      isFromRobot(request) || au.exists("Razie" == _.userName))
 
     debug("show2 " + iwid.wpath)
     // TODO stupid routes - can't match without the :
     val cat = if (iwid.cat.endsWith(":")) iwid.cat.substring(0, iwid.cat.length - 1) else iwid.cat
     val name = Wikis.formatName(WID(cat, iwid.name))
 
-    val wid = WID(cat, name, iwid.parent)
+    // optimize - don't reload some crap already in the iwid
+    val wid = if (cat == iwid.cat && name == iwid.name) iwid else WID(cat, name, iwid.parent)
 
     // so they are available to scripts
     razie.NoStaticS.put(model.QueryParms(request.queryString))
@@ -509,17 +543,17 @@ object Wiki extends WikiBase {
     else if ("Admin" == cat && "home" == name) Redirect("/")
     else if ("any" == cat || cat.isEmpty) {
 
-      val wl = Wikis.findAny(name).filter(page => canSee(page.wid, auth, Some(page)).getOrElse(false)).toList
+      val wl = Wikis.findAny(name).filter(page => canSee(page.wid, au, Some(page)).getOrElse(false)).toList
       if (wl.size == 1)
         // redirect to use the proper Category display
         Redirect(controllers.Wiki.w(wl.head.wid))
       else if (wl.size > 0)
         Ok(views.html.wiki.wikiList("category any", wl.map(x => (x.wid, x.label)), auth))
       else
-        wikiPage(wid, Some(iwid.name), None, auth, !shouldNotCount)
+        wikiPage(wid, Some(iwid.name), None, au, !shouldNotCount, au.isDefined && canEdit(wid, au, None).get)
     } else {
       // normal request with cat and name
-      val w = Wikis.find(cat, name)
+      val w = wid.page
 
       if (!w.isDefined && Config.config(Config.TOPICRED).exists(_.contains(wid.wpath))) {
         log("- redirecting " + wid.wpath)
@@ -530,26 +564,28 @@ object Wiki extends WikiBase {
         Redirect(controllers.Wiki.w(WID.fromPath(Config.config(Config.TOPICRED).get.apply(iwid.wpath)).get))
       } else {
         // finally there!!
-        if (!canSee(wid, auth, w).getOrElse(false)) {
+        //        cout << "1"
+        if (!canSee(wid, au, w).getOrElse(false)) {
           if (isFromRobot(request)) {
             Audit.logdb("ROBOT", wid.wpath)
             noPerm(wid, "SHOW", false)
           } else
             noPerm(wid, "SHOW")
         } else
+          //        cout << "2"
           w.map { w =>
             // redirect a simple alias with no other content
             w.alias.map { wid =>
               Redirect(controllers.Wiki.w(wid.formatted))
             } getOrElse
-              wikiPage(wid, Some(iwid.name), Some(w), auth, !shouldNotCount)
+              wikiPage(wid, Some(iwid.name), Some(w), au, !shouldNotCount, au.isDefined && canEdit(wid, au, Some(w)), print)
           } getOrElse
-            wikiPage(wid, Some(iwid.name), None, auth, !shouldNotCount)
+            wikiPage(wid, Some(iwid.name), None, au, !shouldNotCount, au.isDefined && canEdit(wid, au, None), print)
       }
     }
   }
 
-  private def wikiPage(wid: model.WID, iname: Option[String], page: Option[model.WikiEntry], user: Option[model.User], shouldCount: Boolean) = {
+  private def wikiPage(wid: model.WID, iname: Option[String], page: Option[model.WikiEntry], user: Option[model.User], shouldCount: Boolean, canEdit: Boolean, print:Boolean=false) = {
     if (shouldCount) page.foreach { p =>
       Audit ! WikiAudit("SHOW", p.wid.wpath, user.map(_._id))
       Audit ! WikiCount(p._id)
@@ -560,12 +596,12 @@ object Wiki extends WikiBase {
     if (Array("Site", "Page").contains(wid.cat) && page.isDefined)
       Ok(views.html.wiki.wikiSite(wid, iname, page, user))
     else if (page.exists(!_.fields.isEmpty)) {
-      showForm(wid, iname, page, user, shouldCount, Map.empty)
+      showForm(wid, iname, page, user, shouldCount, Map.empty, canEdit, print)
     } else
-      Ok(views.html.wiki.wikiPage(wid, iname, page, user))
+      Ok(views.html.wiki.wikiPage(wid, iname, page, user, canEdit, print))
   }
 
-  def showForm(wid: model.WID, iname: Option[String], page: Option[model.WikiEntry], user: Option[model.User], shouldCount: Boolean, errors: Map[String, String]) = {
+  def showForm(wid: model.WID, iname: Option[String], page: Option[model.WikiEntry], user: Option[model.User], shouldCount: Boolean, errors: Map[String, String], canEdit: Boolean, print:Boolean=false) = {
     // form design
     page.flatMap(_.section("section", "formData")).foreach { s =>
       // parse form data
@@ -577,7 +613,7 @@ object Wiki extends WikiBase {
         //          cout << "FIELDs " + page.get.fields.toString
       }
     }
-    Ok(views.html.wiki.wikiForm(wid, iname, page, user, errors))
+    Ok(views.html.wiki.wikiForm(wid, iname, page, user, errors, canEdit, print))
   }
 
   def wikieDebug(iwid: WID) = Action { implicit request =>
@@ -630,7 +666,7 @@ object Wiki extends WikiBase {
     addForm.bindFromRequest.fold(
       formWithErrors => Msg2("Oops, can't add that name!" + formWithErrors, Some("/wiki/" + cat)),
       {
-        case we @ AddWiki(name) => Redirect(routes.Wiki.wikieEdit(WID(cat, name)))
+        case name: String => Redirect(routes.Wiki.wikieEdit(WID(cat, name)))
       })
   }
 
@@ -639,7 +675,7 @@ object Wiki extends WikiBase {
     addForm.bindFromRequest.fold(
       formWithErrors => Msg2("Oops, can't add that name!", Some(pwid.urlRelative)),
       {
-        case we @ AddWiki(name) => {
+        case name: String => {
           val n = Wikis.formatName(WID(cat, name))
           Stage("WikiLink", WikiLink(WID(cat, n, pwid.findId), pwid, role).grated, auth.get.userName).create
           if (pwid.name.length == 0)
@@ -657,14 +693,16 @@ object Wiki extends WikiBase {
   }
 
   /** user unlikes page */
-  def unlinkUser(wid: WID, really: String="n") = Action { implicit request =>
+  def unlinkUser(wid: WID, really: String = "n") = Action { implicit request =>
     implicit val errCollector = new VError()
     (for (
       au <- activeUser;
-      r1 <- au.hasPerm(Perm.uProfile) orCorr cNoPermission
+      r1 <- au.hasPerm(Perm.uProfile) orCorr cNoPermission("uProfile")
     ) yield {
       if (wid.cat == "Club" && really != "y") {
-          Msg3("Are you certain you want to leave club", Some(s"/wikie/unlinkuser/${wid.wpath}?really=y"), Some(wid.ahref))
+        Msg3(really + "Are you certain you want to leave club? You will not be able to follow calendars, register or see any of the forums etc...<p>Choose Leave only if certain.",
+          Some(w(wid)),
+          Some("Leave" -> s"/wikie/unlinkuser/${wid.wpath}?really=y"))
       } else {
         // if he was already, just say it
         au.pages(wid.cat).find(_.wid.name == wid.name).map { wl =>
@@ -691,7 +729,7 @@ object Wiki extends WikiBase {
       au <- activeUser;
       exists <- wid.page.isDefined orErr ("Cannot link to " + wid.name);
       // even new users that didn't verify their email can register for club
-      r1 <- (au.hasPerm(Perm.uProfile) || "Club" == wid.cat) orCorr cNoPermission
+      r1 <- (au.hasPerm(Perm.uProfile) || "Club" == wid.cat) orCorr cNoPermission("uProfile")
     ) yield {
       def content = """[[User:%s | You]] -> [[%s:%s]]""".format(au.id, wid.cat, wid.name)
 
@@ -720,7 +758,8 @@ object Wiki extends WikiBase {
         exists <- wid.page.isDefined orErr ("Cannot link to " + wid.name);
         r1 <- canSee(wid, None, wid.page)
       ) yield {
-        Ok(views.html.wiki.wikiFollowerLink1(wid, followerLinkForm.fill(FollowerLinkWiki("", "", ""))))
+    val v2 = (10 + math.random * 11).toInt
+        Ok(views.html.wiki.wikiFollowerLink1(wid, v2, followerLinkForm.fill(FollowerLinkWiki("", "", 0, v2, ""))))
       }) getOrElse
         noPerm(wid, "LINKUSER")
     }
@@ -732,11 +771,12 @@ object Wiki extends WikiBase {
     implicit val errCollector = new VError()
 
     followerLinkForm.bindFromRequest.fold(
-      formWithErrors => BadRequest(views.html.wiki.wikiFollowerLink1(wid, formWithErrors)),
+      formWithErrors => BadRequest(views.html.wiki.wikiFollowerLink1(wid, 21, formWithErrors)),
       {
-        case we @ FollowerLinkWiki(email1, email2, comment) =>
+        case we @ FollowerLinkWiki(email1, email2, v1, v2, comment) =>
           (for (
             exists <- wid.page.isDefined orErr ("Cannot link to non-existent page: " + wid.name);
+            goodMath <- (v1 == v2 && v2 > 1 || v1 == 21) orErr ("Bad math");
             r1 <- canSee(wid, None, wid.page)
           ) yield {
             val es = email1.enc
@@ -745,7 +785,7 @@ object Wiki extends WikiBase {
             } else {
               Emailer.laterSession { implicit mailSession =>
                 Emailer.sendEmailFollowerLink(email1, wid, comment)
-                Emailer.tellRaz("Subscribed", email1, wid.ahref, comment)
+//                Emailer.tellRaz("Subscribed", email1 + " ip="+request.h, wid.ahref, comment)
               }
               Msg2("You got an email with a link, to activate your subscription. Enjoy!", Some(wid.urlRelative))
             }
@@ -820,7 +860,7 @@ object Wiki extends WikiBase {
   }
 
   // link a user for moderated club was approved
-  private def createLinkedUser(au: User, wid: WID, withComment: Boolean, how: String, mark: String, comment: String)(implicit request: Request[_]) = {
+  private def createLinkedUser(au: User, wid: WID, withComment: Boolean, how: String, mark: String, comment: String)(implicit request: Request[_], txn: db.Txn) = {
     this dbop model.UserWiki(au._id, wid, how).create
     if (withComment) {
       val wl = model.WikiLink(WID("User", au.id), wid, how)
@@ -835,7 +875,7 @@ object Wiki extends WikiBase {
   }
 
   // link a user for moderated club was approved
-  def linkedUserAccept(expiry: String, userId: String, club: String, how: String) = Action { implicit request =>
+  def linkAccept(expiry: String, userId: String, club: String, how: String) = Action { implicit request =>
     implicit val errCollector = new VError()
 
     def hows = {
@@ -846,6 +886,7 @@ object Wiki extends WikiBase {
     }
 
     import model.Sec._
+    val wid = WID("Club", club)
 
     (for (
       // play 2.0 workaround - remove in play 2.1
@@ -856,21 +897,12 @@ object Wiki extends WikiBase {
       admin <- auth orCorr cNoAuth;
       modUname <- moderator(WID("Club", club));
       isMod <- (admin.hasPerm(Perm.adminDb) || admin.userName == modUname) orErr ("You do not have permission!!!");
-      ok <- hows.contains(how) orErr ("invalid role")
+      ok <- hows.contains(how) orErr ("invalid role");
+      again <- (!user.wikis.exists(_.wid == wid)) orErr ("Aldready associated to club");
+      c <- Club(club)
     ) yield {
-      Club(club) foreach { c =>
-        // only if there is a club/user entry for that Club page
-        val rk = model.RacerKidz.myself(user._id)
-        model.RacerKidAssoc(c.userId, rk._id, model.RK.ASSOC_LINK, user.role, c.userId).create
-      }
-
-      createLinkedUser(user, WID("Club", club), false, how, "", "")
-
-      if (!user.quota.updates.exists(_ > 10))
-        user.quota.reset(50)
-
-      Emailer.withSession { implicit mailSession =>
-        Emailer.sendEmailLinkOk(user, club)
+      db.tx("linkUser.toWiki") { implicit txn =>
+        ilinkAccept(user, c, how)
       }
       Msg2("OK, added!", Some("/"))
     }) getOrElse {
@@ -879,13 +911,34 @@ object Wiki extends WikiBase {
     }
   }
 
-  def linkedUserDeny(userId: String, club: String, how: String) = Action { implicit request =>
+  // link a user for moderated club was approved
+  private def ilinkAccept(user: User, club: Club, how: String)(implicit request: Request[_], txn: db.Txn) {
+    // only if there is a club/user entry for that Club page
+    val rk = model.RacerKidz.myself(user._id)
+    model.RacerKidAssoc(club.userId, rk._id, model.RK.ASSOC_LINK, user.role, club.userId).create
+
+    createLinkedUser(user, WID("Club", club.userName), false, how, "", "")
+
+    if (!user.quota.updates.exists(_ > 10))
+      user.quota.reset(50)
+
+    Emailer.withSession { implicit mailSession =>
+      Emailer.sendEmailLinkOk(user, club.userName)
+      Emailer.tellRaz("User joined club", "Club: " + club.userName, "Role: " + how, s"User: ${user.firstName} ${user.lastName} (${user.userName} ${user.email.dec}")
+      club.props.filter(_._1.startsWith("link.notify.")).foreach { t =>
+        Emailer.tell(t._2, "User joined club", "Club: " + club.userName, "Role: " + how, s"User: ${user.firstName} ${user.lastName} (${user.userName} ${user.email.dec}")
+      }
+    }
+  }
+
+  def linkDeny(userId: String, club: String, how: String) = Action { implicit request =>
     Emailer.withSession { implicit mailSession =>
       Emailer.sendEmailLinkDenied(Users.findUserById(userId).get, club)
     }
     Msg2("OK, denied!", Some("/"))
   }
 
+  /** a user linked to a WID */
   def linkedUser(userId: String, wid: WID, withComment: Boolean) = Action { implicit request =>
 
     razie.clog << s"METHOD linkedUser($userId, $wid, $withComment)"
@@ -910,30 +963,70 @@ object Wiki extends WikiBase {
               ("invalid user")
             };
             page <- wid.page orErr (s"Page $wid not found");
-            ok <- hows.contains(how) orErr ("invalid role")
+            ok <- hows.contains(how) orErr ("invalid role");
+            xxx <- Some("")
           ) yield {
-            val mod = moderator(wid).flatMap(mid => { println(mid); Users.findUserByUsername(mid) })
+            db.tx("wiki.linkeduser") { implicit txn =>
+              val mod = moderator(wid).flatMap(mid => { println(mid); Users.findUserByUsername(mid) })
 
-            if ("Club" == wid.cat && mod.isDefined) {
-              Emailer.withSession { implicit mailSession =>
-                Emailer.sendEmailLink(mod.get, au, wid.name, how)
+              if ("Club" == wid.cat && mod.isDefined) {
+                if (Club(wid.name).exists(_.props.get("link.auto").mkString == "yes")) {
+                  ilinkAccept(au, Club(wid.name).get, how)
+                  Msg2("OK, added!", Some("/"))
+                } else {
+                  Emailer.withSession { implicit mailSession =>
+                    Emailer.sendEmailLink(mod.get, au, wid.name, how)
+                  }
+                  Msg2(s"An email has been sent to the moderator of <strong>${page.label}</strong>, you will receive an email when they're done!",
+                    Some("/"))
+                }
+              } else {
+                model.UserWiki(au._id, wid, how).create
+                if (withComment) {
+                  val wl = model.WikiLink(WID("User", au.id), wid, how)
+                  wl.create
+                  model.WikiEntry("WikiLink", wl.wname, "You like " + Wikis.label(wid), mark, comment, au._id).cloneProps(Map("owner" -> au.id), au._id).create
+                }
+                cleanAuth()
+                Msg2("OK, added!", Some("/"))
               }
-              Msg2(s"An email has been sent to the moderator of <strong>${page.label}</strong>, you will receive an email when they're done!",
-                Some("/"))
-            } else {
-              model.UserWiki(au._id, wid, how).create
-              if (withComment) {
-                val wl = model.WikiLink(WID("User", au.id), wid, how)
-                wl.create
-                model.WikiEntry("WikiLink", wl.wname, "You like " + Wikis.label(wid), mark, comment, au._id).cloneProps(Map("owner" -> au.id), au._id).create
-              }
-              cleanAuth()
-              Msg2("OK, added!", Some("/"))
             }
           }) getOrElse {
             error("ERR_CANT_UPDATE_USER " + session.get("email"))
             unauthorized("Oops - cannot create this link... ")
           }
+      })
+  }
+
+  /** change owner */
+  def uowner(wid: WID) = Action { implicit request =>
+    implicit val errCollector = new VError()
+
+    val uownerForm = Form("newowner" -> nonEmptyText)
+
+    uownerForm.bindFromRequest.fold(
+      formWithErrors =>
+        Msg2(formWithErrors.toString + "Oops, can't add that quota!"),
+      {
+        case newowner =>
+    log("Wiki.uowner " + wid + ", "+newowner)
+    (for (
+      au <- activeUser;
+      ok1 <- au.hasPerm(Perm.adminDb) orCorr cNoPermission;
+      w <- Wikis.find(wid);
+      newu <- model.WikiUsers.impl.findUserByUsername(newowner) orErr (newowner + " User not found");
+      nochange <- (!w.owner.exists(_.userName == newowner)) orErr ("no change");
+      newVer <- Some(w.cloneProps(w.props + ("owner" -> newu._id.toString), au._id));
+      upd <- Notif.entityUpdateBefore(newVer, WikiEntry.UPD_UOWNER) orErr ("Not allowerd")
+    ) yield {
+      // can only change label of links OR if the formatted name doesn't change
+      db.tx("Wiki.uowner") { implicit txn =>
+        w.update(newVer)
+      }
+      Notif.entityUpdateAfter(newVer, WikiEntry.UPD_UOWNER)
+      Redirect(controllers.Wiki.w(wid))
+    }) getOrElse
+      noPerm(wid, "ADMIN_UOWNER")
       })
   }
 
@@ -952,7 +1045,9 @@ object Wiki extends WikiBase {
       upd <- Notif.entityUpdateBefore(newVer, WikiEntry.UPD_TOGGLE_RESERVED) orErr ("Not allowerd")
     ) yield {
       // can only change label of links OR if the formatted name doesn't change
-      w.update(newVer)
+      db.tx("Wiki.Reserve") { implicit txn =>
+        w.update(newVer)
+      }
       Notif.entityUpdateAfter(newVer, WikiEntry.UPD_TOGGLE_RESERVED)
       Redirect(controllers.Wiki.w(wid))
     }) getOrElse
@@ -987,30 +1082,28 @@ object Wiki extends WikiBase {
     implicit val errCollector = new VError()
 
     log("Wiki.delete2 " + wid)
-    canDelete(wid).collect {
+    if (wid.cat != "Club") canDelete(wid).collect {
       case (au, w) =>
-        // can only change label of links OR if the formatted name doesn't change
-        w.delete(au.userName)
-        Mongo.withDb(Mongo.db("WikiLink")) { m =>
-          m.find(Map("to" -> wid.grated)).map(grater[WikiLink].asObject(_)).toList.map(wl => {
-            wl.delete
-          })
-
-          m.find(Map("from" -> wid.grated)).map(grater[WikiLink].asObject(_)).toList.map(wl => {
-            wl.delete
-          })
-        }
-        Mongo.withDb(Mongo.db("UserWiki")) { m =>
+        db.tx("Wiki.delete") { implicit txn =>
+          RMany[WikiLink]("to" -> wid.grated).toList.foreach(_.delete)
+          RMany[WikiLink]("from" -> wid.grated).toList.foreach(_.delete)
           var done = false
-          m.find(Map("wid" -> wid.grated)).map(grater[UserWiki].asObject(_)).toList.map(wl => {
+          RMany[UserWiki]("wid" -> wid.grated).toList.foreach(wl => {
             wl.delete
             done = true
           })
+
+          // can only change label of links OR if the formatted name doesn't change
+          // delete at last, so if any links fail, the thing stays there
+          w.delete(au.userName)
+
           if (done) cleanAuth() // it probably belongs to the current user, cached...
         }
         Msg2("DELETED forever - no way back!")
     } getOrElse
       noPerm(wid, "ADMIN_DELETE2")
+    else
+      Msg2("Can't delete a " + wid.cat)
   }
 
   private def canRename(wid: WID)(implicit errCollector: VError, request: Request[_]) = {
@@ -1042,27 +1135,29 @@ object Wiki extends WikiBase {
           canRename(wid).collect {
             case (au, w) =>
               val newp = (w.cloneRenamed(n))
-              w.update(newp)
-              Mongo.withDb(Mongo.db("WikiLink")) { m =>
-                m.find(Map("to" -> wid.grated)).map(grater[WikiLink].asObject(_)).toList.map(wl => {
+              db.tx("Wiki.Rename") { implicit txn =>
+                w.update(newp)
+
+                RMany[WikiLink]("to" -> wid.grated).toList.map(wl => {
                   wl.delete
                   WikiLink(wl.from, newp.wid, wl.how).create
                 })
 
-                m.find(Map("from" -> wid.grated)).map(grater[WikiLink].asObject(_)).toList.map(wl => {
+                RMany[WikiLink]("from" -> wid.grated).toList.map(wl => {
                   wl.delete
                   WikiLink(newp.wid, wl.to, wl.how).create
                 })
-              }
-              Mongo.withDb(Mongo.db("UserWiki")) { m =>
+
                 var done = false
-                m.find(Map("wid" -> wid.grated)).map(grater[UserWiki].asObject(_)).toList.map(wl => {
+                RMany[UserWiki]("wid" -> wid.grated).toList.map(wl => {
                   wl.delete
                   UserWiki(wl.userId, newp.wid, wl.role).create
                   done = true
                 })
+
                 if (done) cleanAuth() // it probably belongs to the current user, cached...
               }
+
               Msg("OK, renamed!", WID(wid.cat, Wikis.formatName(n)))
           } getOrElse
             noPerm(wid, "RENAME2")

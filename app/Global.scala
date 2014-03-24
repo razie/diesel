@@ -38,9 +38,11 @@ import model.RacerKidz
 import controllers.Emailer
 import controllers.RazController
 import java.io.File
+import scala.concurrent.ExecutionContext
+import admin.GlobalData
 
 /** customize some global handling errors */
-object Global extends GlobalSettings {
+object Global extends WithFilters(LoggingFilter) {
   // EMAIL BACKOFF stuff
   val ERR_DELTA1 = 5 * 60 * 1000 // 5 min
   val ERR_DELTA2 = 6 * 60 * 60 * 1000 // 6 hours
@@ -52,6 +54,7 @@ object Global extends GlobalSettings {
 
   // TODO per throwable, eh?
   override def onError(request: RequestHeader, ex: Throwable) = {
+    clog << "ERR_onError - trying to log/audit in DB... " + "request:" + request.toString + "headers:" + request.headers + "ex:" + ex.toString
     Audit.logdb("ERR_onError", "request:" + request.toString, "headers:" + request.headers, "ex:" + ex.toString)
     val m = ("ERR_onError", "Current count: " + lastErrorCount + " Request:" + request.toString, "headers:" + request.headers, "ex:" + ex.toString).toString
     if (System.currentTimeMillis - lastErrorTime >= ERR_DELTA1) {
@@ -81,21 +84,26 @@ object Global extends GlobalSettings {
   }
 
   override def onHandlerNotFound(request: RequestHeader): Result = {
-     Audit.logdb("ERR_onHandlerNotFound", "request:" + request.toString, "headers:" + request.headers)
+    cout << "ERR_onHandlerNotFound " + "request:" + request.toString + "headers:" + request.headers
+    Audit.logdb("ERR_onHandlerNotFound", "request:" + request.toString, "headers:" + request.headers)
     super.onHandlerNotFound(request)
   }
 
   override def onBadRequest(request: RequestHeader, error: String): Result = {
+    cout << ("ERR_onBadRequest " + "request:" + request.toString + "headers:" + request.headers + "error:" + error)
     Audit.logdb("ERR_onBadRequest", "request:" + request.toString, "headers:" + request.headers, "error:" + error)
     super.onBadRequest(request, error)
   }
 
   override def onRouteRequest(request: RequestHeader): Option[Handler] = {
-    clog << ("ROUTE_REQ: " + request.toString)
-    super.onRouteRequest(request)
+    clog << ("ROUTE_REQ.START: " + request.toString)
+    val res = super.onRouteRequest(request)
+    clog << ("ROUTE_REQ.STOP: " + request.toString)
+    res
   }
 
   override def onStart(app: Application) = {
+    // automated restart / patch / update handling
     try { new File("../updating").delete() }
     super.onStart(app)
   }
@@ -133,33 +141,86 @@ object Global extends GlobalSettings {
     ViewService.impl = RkViewService
     Wiki.authImpl = RazWikiAuthorization
 
-    WikiScripster.impl = RazWikiScripster
+    WikiScripster.impl = new RazWikiScripster
 
-    //    U11.upgradeWL(Mongo.db)
-    //    U11.upgradeRaz(Mongo.db)
-    //    U11.upgradeRk(Mongo.db)
-    //    U11.upgradeGlacierForums(Mongo.db)
+    //    U11.upgradeWL(RazMongo.db)
+    //    U11.upgradeRaz(RazMongo.db)
+    //    U11.upgradeRk(RazMongo.db)
+    //    U11.upgradeGlacierForums(RazMongo.db)
+    //        U11.upgradeGlacierForums2()
 
     Services.audit = RazAuditService
-    Services.alli = MyAlligator
+    Services.alli = RazAlligator
   }
 
-  object MyAlligator extends Alligator {
+  object RazAlligator extends Alligator {
     lazy val auditor = Akka.system.actorOf(Props[WikiAuditor], name = "Alligator")
 
     def !(a: Any) {
-      auditor ! a
+      this receive a
+      // TODO enable async audits
+      //      auditor ! a
     }
 
-  }
+    def !?(a: Any) {
+      this receive a
+    }
 
-  class WikiAuditor extends Actor {
-    def receive = {
+    def receive: PartialFunction[Any, Unit] = {
       case wa: WikiAudit => wa.create
       case a: Audit => a.create
       case wc: WikiCount => wc.inc
       case e: Emailing => e.send
       case x @ _ => Audit("a", "ERR_ALLIGATOR", x.getClass.getName).create
+    }
+
+    class WikiAuditor extends Actor {
+      def receive = RazAlligator.receive
+    }
+  }
+}
+
+object LoggingFilter extends Filter {
+  import ExecutionContext.Implicits.global
+
+  def apply(next: (RequestHeader) => Result)(rh: RequestHeader) = {
+    val start = System.currentTimeMillis
+    clog << s"LF.START ${rh.method} ${rh.uri}"
+    GlobalData.synchronized {
+      GlobalData.serving = GlobalData.serving + 1
+    }
+
+    def served {
+      GlobalData.synchronized {
+        GlobalData.served = GlobalData.served + 1
+        GlobalData.serving = GlobalData.serving - 1
+      }
+    }
+
+    def logTime(what: String)(result: PlainResult): Result = {
+      val time = System.currentTimeMillis - start
+      clog << s"LF.STOP $what ${rh.method} ${rh.uri} took ${time}ms and returned ${result.header.status}"
+      served
+      result.withHeaders("Request-Time" -> time.toString)
+    }
+
+    try {
+      next(rh) match {
+        case plain: PlainResult => logTime("plain")(plain)
+        // TODO enable this
+        case async: AsyncResult => async.transform(logTime("async"))
+        case res @ _ => {
+          clog << s"LF.STOP.WHAT? ${rh.method} ${rh.uri} returned ${res}"
+          served
+          res
+        }
+      }
+    } catch {
+      case t: Throwable => {
+        clog << s"LF.STOP.EXCEPTION ${rh.method} ${rh.uri} threw ${t.toString} \n ${com.razie.pub.base.log.Log.getStackTraceAsString(t)}"
+        served
+        throw t
+      }
     }
   }
 }

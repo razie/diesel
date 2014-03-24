@@ -5,7 +5,7 @@ render a page in a site rather than a normal page - some missing stuff
 @(wid:model.WID, iname:Option[String], page:Option[model.WikiEntry], user:Option[model.User])
 @import model._
 
-@htmlHead(""+page.flatMap(_.contentTags.get("sitelabel")).getOrElse(page.map(_.label).getOrElse(model.Wikis.label(wid))))
+@htmlHead(""+page.flatMap(_.contentTags.get("sitelabel")).getOrElse(page.map(_.label).getOrElse(model.Wikis.label(wid))), page.flatMap(_.contentTags.get("css")))
 
 @showads() = @{
   page.isDefined && page.get.contentTags.get("showads").isDefined
@@ -26,7 +26,7 @@ render a page in a site rather than a normal page - some missing stuff
     <div class="span12">
   }
       <div class="well">
-        @wiki.wikiFrag(wid,user,false,page, iname, true, false)
+        @wiki.wikiFrag(wid,user,false,page, iname, true, false, true)
       </div>
 
       @wiki.wikiAddMore(wid, page, user)

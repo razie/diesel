@@ -27,7 +27,7 @@ object ApplicationBuild extends Build {
     "com.razie"          %% "snakked"            % "0.6.5-SNAPSHOT",
     "com.razie"          %% "scripster"          % "0.8.5-SNAPSHOT",
 //    "com.razie"          %% "gremlins"           % "0.6.4-SNAPSHOT",
-    "ch.qos.logback"      % "logback-classic"    % "1.0.0",
+    "ch.qos.logback"      % "logback-classic"    % "1.0.13",
     //"org.scalaz"         %% "scalaz-core"        % "7.0-SNAPSHOT",
     "org.scalaz"         %% "scalaz-core"        % "7.0.3",
     "org.scalatest"      %% "scalatest"          % "1.9.2"
@@ -35,6 +35,13 @@ object ApplicationBuild extends Build {
 
     val repos = Seq("snapshots" at "http://oss.sonatype.org/content/repositories/snapshots",
                     "releases"  at "http://oss.sonatype.org/content/repositories/releases")
+
+  val main = play.Project(appName, appVersion, appDependencies).settings(
+      routesImport  += "model.Binders._",
+      resolvers    ++= repos,
+      scalaVersion := V.scalaVersion,
+      sources in doc in Compile := List()
+    )
 
 /*
   val wcommon = play.Project("wcommon", appVersion, appDependencies, path = file("modules/wcommon")).settings(
@@ -63,12 +70,6 @@ object ApplicationBuild extends Build {
        wcommon, wiki
     )
 */
-
-  val main = play.Project(appName, appVersion, appDependencies).settings(
-      routesImport  += "model.Binders._",
-      resolvers    ++= repos,
-      sources in doc in Compile := List()
-    )
 
 }
 

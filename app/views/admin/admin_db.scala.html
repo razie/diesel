@@ -1,4 +1,5 @@
 @(au:Option[model.User])
+@import db.RazMongo
 
 @htmlHeadBar("amdin db", au)
    
@@ -7,12 +8,12 @@
 <h2>Collections</h2>
 
 @lictab(c:String,cols:String) = {
-  <li><a href="@routes.Admin.col(c)">@c (@db.Mongo.db(c).size)</a>
-  | <a href="@routes.Admin.colTab(c,cols)">@c (@db.Mongo.db(c).size)</a></li>
+  <li><a href="@routes.Admin.col(c)">@c (@RazMongo(c).size)</a>
+  | <a href="@routes.Admin.colTab(c,cols)">@c (@RazMongo(c).size)</a></li>
 }
 
 <ul>
-@db.Mongo.db.collectionNames.toList.sortWith(_ < _).map { c =>
+@RazMongo.collectionNames.toList.sortWith(_ < _).map { c =>
   @c match {
     case "WikiCount" => {
       @lictab(c,"")
@@ -24,7 +25,7 @@
       @lictab(c,"from,to,assoc,role,owner,year,crDtm")
       }
     case _ => {
-     <li><a href="@routes.Admin.col(c)">@c (@db.Mongo.db(c).size)</a></li>
+     <li><a href="@routes.Admin.col(c)">@c (@RazMongo(c).size)</a></li>
       }
   }
 }

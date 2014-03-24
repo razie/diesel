@@ -34,10 +34,10 @@ object Emailer extends RazController with Logging {
 
   def text(name: String) = Wikis.find("Admin", "template-emails").flatMap(_.section("template", name)).map(_.content).getOrElse("[ERROR] can't find Admin template-emails: " + name)
 
-  def sendSupport(e: String, desc: String, details: String)(implicit mailSession: MailSession) {
-    val html = text("supportrequested").format(e, desc, details)
+  def sendSupport(subj:String, name:String, e: String, desc: String, details: String, page:String)(implicit mailSession: MailSession) {
+    val html = text("supportrequested").format(name, e, desc, details, page)
 
-    admin.SendEmail.send(SUPPORT, SUPPORT, "Support request: " + desc, html)
+    admin.SendEmail.send(SUPPORT, SUPPORT, subj+": " + desc, html)
   }
 
   def sendEmailChildUpdatedProfile(parent: User, child: User)(implicit mailSession: MailSession) = {
@@ -54,8 +54,8 @@ object Emailer extends RazController with Logging {
 
   def sendEmailRequest(to: String, validDays: Int, task: String, description: String, userNotif: Option[String], acceptUrl: String, denyUrl: String, u: User)(implicit mailSession: MailSession) = {
     val dt = DateTime.now().plusDays(validDays)
-    val ds1 = DoSec(acceptUrl, dt)
-    val ds2 = DoSec(denyUrl, dt)
+    val ds1 = DoSec(acceptUrl, true, dt)
+    val ds2 = DoSec(denyUrl, true, dt)
 
     val html1 = text("emailrequest").format(description, ds1.secUrl, ds2.secUrl);
 
@@ -64,7 +64,7 @@ object Emailer extends RazController with Logging {
     userNotif.map(uhtml => SendEmail.send(u.email.dec, SUPPORT, RK + " - " + task, uhtml))
   }
 
-  def sendEmailUname(newUsername: String, u: User)(implicit mailSession: MailSession) = {
+  def sendEmailUname(newUsername: String, u: User, notifyUser:Boolean = true)(implicit mailSession: MailSession) = {
     val dt = DateTime.now().plusDays(3)
     val hc1 = """/doe/profile/unameAccept?expiry=%s&userId=%s&newusername=%s""".format(EncUrl(dt.toString), u.id, Enc.toUrl(newUsername))
     val hc2 = """/doe/profile/unameDeny?expiry=%s&userId=%s&newusername=%s""".format(EncUrl(dt.toString), u.id, Enc.toUrl(newUsername))
@@ -73,7 +73,7 @@ object Emailer extends RazController with Logging {
 
     val html2 = text("usernamechangerequest2").format(u.ename, u.userName, newUsername)
 
-    sendEmailRequest(SUPPORT, 1, "username change request", html1, Some(html2), hc1, hc2, u)
+    sendEmailRequest(SUPPORT, 1, "username change request", html1, (if(notifyUser) Some(html2) else None), hc1, hc2, u)
   }
 
   def sendEmailUnameOk(newUsername: String, u: User)(implicit mailSession: MailSession) = {
@@ -103,20 +103,20 @@ object Emailer extends RazController with Logging {
   def sendEmailFollowerLink(to: String, topic: WID, comment: String)(implicit mailSession: MailSession) = {
     val dt = DateTime.now().plusDays(10)
     val hc1 = """/wikie/linkFollower3/%s/%s/%s/%s""".format(EncUrl(dt.toString), to.enc, (if (comment.length > 0) comment else "Enjoy!").encUrl, topic.wpath)
-    val ds1 = DoSec(hc1, dt)
+    val ds1 = DoSec(hc1, true, dt)
 
     val html1 = text("followerlinkrequest").format(topic.name, ds1.secUrl, comment);
 
     SendEmail.notif(to, SUPPORT, RK + " - activate subscription", html1)
   }
 
-  def sendEmailFollowerNewTopic(to: String, commenter: User, wiki: WID, wpost: WikiEntry, comment: String)(implicit mailSession: MailSession) = {
+  def sendEmailFollowerNewTopic(to: String, commenter: User, parent: WID, wpost: WikiEntry, comment: String)(implicit mailSession: MailSession) = {
     val dt = DateTime.now().plusDays(30)
-    val hc2 = "http://" + Config.hostport + """/wikie/unlinkFollower4/%s/%s/%s""".format(EncUrl(dt.toString), to.enc, wiki.wpath)
+    val hc2 = "http://" + Config.hostport + """/wikie/unlinkFollower4/%s/%s/%s""".format(EncUrl(dt.toString), to.enc, parent.wpath)
 
-    val html1 = text("followernewtopic").format(commenter.userName, wiki.url, wiki.cat, wiki.name, wpost.label, hc2, comment);
+    val html1 = text("followernewtopic").format(commenter.userName, parent.url, parent.cat, parent.name, wpost.label, hc2, comment);
 
-    SendEmail.notif(to, SUPPORT, RK + " - new " + wpost.wid.cat + " created", html1)
+    SendEmail.notif(to, SUPPORT, RK + " - new " + wpost.wid.cat + " : " + wpost.label, html1)
   }
 
   def sendEmailLinkOk(u: User, club: String)(implicit mailSession: MailSession) = {
@@ -152,11 +152,11 @@ object Emailer extends RazController with Logging {
   def sendEmailNewTopic(to: User, commenter: User, wiki: WID, wpost: WikiEntry)(implicit mailSession: MailSession) = {
     val html1 = text("newtopic").format(to.ename, commenter.userName, wiki.url, wiki.cat, wiki.name, wpost.label);
 
-    SendEmail.notif(to.email.dec, SUPPORT, RK + " - new " + wiki.cat + " created", html1)
+    SendEmail.notif(to.email.dec, SUPPORT, RK + " - new " + wpost.wid.cat + " : " + wpost.label, html1)
   }
 
   def sendEmailNeedQuota(uName: String, uId: String)(implicit mailSession: MailSession) = {
-    val html1 = text("needquota").format(uName + " - " + uId, "http://" + Config.hostport + "/admin/user/" + uId);
+    val html1 = text("needquota").format(uName + " - " + uId, "http://" + Config.hostport + "/razadmin/user/" + uId);
 
     SendEmail.send(SUPPORT, SUPPORT, RK + " - NEEDS QUOTA", html1)
   }
@@ -164,6 +164,11 @@ object Emailer extends RazController with Logging {
   def sendEmailClubRegStart(u: User, club: String, link: String)(implicit mailSession: MailSession) = {
     val html1 = text("regstart").format(u.ename, club, "http://" + Config.hostport + link);
     SendEmail.send(u.email.dec, SUPPORT, club + " - registration forms", html1)
+  }
+
+  def sendEmailClubRegHelp(u: User, club: String, link: String, msg:String)(implicit mailSession: MailSession) = {
+    val html1 = text("reghelp").format(u.ename, club, msg, "http://" + Config.hostport + link);
+    SendEmail.send(u.email.dec, SUPPORT, club + " - registration help", html1)
   }
 
   def sendEmailFormSubmitted(reviewer: String, owner: User, link: String)(implicit mailSession: MailSession) = {
@@ -176,8 +181,17 @@ object Emailer extends RazController with Logging {
     SendEmail.send(owner.email.dec, SUPPORT, cname + " - form rejected ", html1)
   }
 
+  def sendEmailFormsAccepted(reviewer: User, owner: User, cname: String, msg: String)(implicit mailSession: MailSession) = {
+    val html1 = text("formsAccepted").format(owner.ename, msg);
+    SendEmail.send(owner.email.dec, SUPPORT, cname + " - all forms accepted", html1)
+  }
+
   def tellRaz(what: String, args: Any*)(implicit mailSession: MailSession) = {
-    SendEmail.send("razie@razie.com", SUPPORT, RK + " - " + what, args.mkString("\n"))
+    tell("razie@razie.com", what, args:_*)
+  }
+
+  def tell(who:String, what: String, args: Any*)(implicit mailSession: MailSession) = {
+    SendEmail.notif(who, SUPPORT, RK + " - " + what, args.mkString("\n"))
   }
 
   /** see SendEmail.withSession - email is sent in a background thread */

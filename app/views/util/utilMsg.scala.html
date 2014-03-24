@@ -1,7 +1,7 @@
 @***************
 display a message with navigation (next)
 ***************@
-@(msg:String, next:Option[String], user:Option[model.WikiUser], cancel:Option[String]=None)
+@(msg:String, next:Option[String], user:Option[model.WikiUser], cancel:Option[(String,String)]=None)
 
 @htmlHead()
 @navbar(user)
@@ -16,7 +16,7 @@ display a message with navigation (next)
       <a class="btn btn-primary btn-large" href="@n">Continue</a>
      }
     @cancel.map { n=>
-      <a class="btn btn-primary btn-fatal" href="@n">Cancel</a>
+      <a class="btn btn-large btn-danger" href="@n._2">@n._1</a>
      }
   </div>
 

@@ -48,7 +48,7 @@ import db.RDelete
 case class ModRkReg(
   wid: WID,
   curYear: String = Config.curYear) {
-  lazy val kids = RMany[ModRkEntry]("curYear" -> curYear, "wpath" -> wid.wpath)
+  lazy val kids = RMany[ModRkEntry]("curYear" -> curYear, "wpath" -> wid.wpath).toList
 }
 
 /** per topic reg */
@@ -74,18 +74,16 @@ object ModRk extends RazController with Logging {
   import play.api.data.Forms._
   import play.api.data.validation.Constraints._
 
-  type F1 = (User, VError, Request[AnyContent]) => Result
-
-  def FAU(f: (User, VError, Request[AnyContent]) => Result) = Action { implicit request =>
+  def FAU(f: User=>VError=>Request[AnyContent]=> Result) = Action { implicit request =>
     implicit val errCollector = new VError()
     (for (
       au <- activeUser
     ) yield {
-      f(au, errCollector, request)
+      f(au)(errCollector)(request)
     }) getOrElse unauthorized("CAN'T SEE PROFILE ")
   }
 
-  def t1 = FAU { (au, errCollector, request) =>
+  def t1 = FAU { implicit au => implicit errCollector => implicit request =>
     val members =
       model.Users.findUserLinksTo(model.WID("Club", au.userName)).map(uw =>
         (model.Users.findUserById(uw.userId),

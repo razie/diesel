@@ -13,7 +13,7 @@ import db.RTable
 import db.RMongo
 import db.ROne
 import db.RMany
-import db.Mongo
+import db.RUpdate
 
 /** a series of comments on something - like a forum topic */
 @RTable
@@ -31,7 +31,7 @@ case class CommentStream(
   }
 
   lazy val comments = new ListBuffer[Comment]() ++
-    Mongo("Comment").find(Map("streamId" -> _id)).sort(Map("crDtm" -> 1)).map(grater[Comment].asObject(_)).toList
+    RMany.raw[Comment] ("streamId" -> _id).sort(Map("crDtm" -> 1)).map(grater[Comment].asObject(_)).toList
 
   def addComment(user: User, content: String, oid:String, link:Option[String], kind:Option[String], parentId: Option[ObjectId] = None) = {
     val c = Comment (_id, user._id, parentId, content, link, kind, DateTime.now(), DateTime.now(), new ObjectId(oid))
@@ -66,7 +66,7 @@ case class Comment(
   def update(newContent: String, newLink:Option[String], user:User) = {
     val u = new Comment(streamId, userId, parentId, newContent, newLink, this.kind, crDtm, DateTime.now, _id)
     Audit.logdb(Comments.AUDIT_COMMENT_UPDATED, "BY " + user.userName + " " + userId + " parent:" + parentId, "\nCONTENT:\n" + u)
-    Mongo("Comment").m.update(Map("_id" -> _id), grater[Comment].asDBObject(u))
+    RUpdate[Comment](Map("_id" -> _id), u)
   }
 }
 

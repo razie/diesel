@@ -3,12 +3,14 @@ rm rk.zip
 rm RUNNING_PID
 
 #zip -r rk.zip * -x bin/\* lib_managed/\* rk-backups/\* dist/\* data/\* dump\/* dump* target/\*
-zip -r rk.zip app conf modules project public test *.properties key -x \*dist/*
+#zip -r rk.zip app conf modules project public scripts test *.properties key -x \*dist/*
 #-x \*target/*
 
-scp rk.zip demo@cloud2.razie.com:rk/app/run/up/
-rm rk.zip
+#scp rk.zip cloud2a.razie.com:rk/up/
+#rm rk.zip
 
-ssh demo@cloud2.razie.com "export PATH=\$PATH:/usr/java/jdk1.6.0_18/bin; cd ~/rk/app/run; . ./update"
+cmd /C "play package"
+scp target/scala-2.10/racerkidz_2.10-0.1.2-SNAPSHOT.jar cloud2a.razie.com:rk/up/
 
+ssh cloud2a.razie.com ". ~/.bashrc; cd ~/rk; . ./update"
 

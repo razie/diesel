@@ -4,9 +4,7 @@ rm RUNNING_PID
 
 zip -r rks.zip app/* conf/* public/bootstrap/* public/images/*
 
-scp rks.zip demo@cloud2.razie.com:rk/app/run/up/
+scp rks.zip cloud2a.razie.com:rk/lib/
 rm rks.zip
-
-ssh demo@cloud2.razie.com "export PATH=\$PATH:/usr/java/jdk1.6.0_18/bin; cd ~/rk/app/run; . ./updates"
-
+ssh cloud2a.razie.com "export PATH=\$PATH:/usr/lib/jvm/jdk1.6.0_45/bin; cd ~/rk; . ./updates"
 

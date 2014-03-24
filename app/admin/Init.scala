@@ -1,7 +1,7 @@
 package admin
 
 import model.Enc
-import db.Mongo
+import db.RazMongo
 import model.User
 import model.UserGroup
 import model.Users
@@ -48,11 +48,11 @@ object Init extends Logging {
         "WikiEntry",
         "WikiEntryOld",
         "WikiLink")
-    ) Mongo.db.getCollection(t).drop
+    ) RazMongo(t).drop
 
     import model.Perm._
 
-    Mongo.db("Ver") += Map("ver" -> Services.mongoDbVer) // create a first ver entry
+    RazMongo("Ver") += Map("ver" -> Services.mongoDbVer) // create a first ver entry
 
     val groups = List(
       UserGroup("admin", Set(uProfile.plus, adminWiki.plus, uWiki.plus, adminDb.plus)),

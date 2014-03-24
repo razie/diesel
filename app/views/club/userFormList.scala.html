@@ -26,7 +26,7 @@ reused in several screens to show the list of forms
   }
 
   </td><td>
-  @club.formStatusColored(t._1.page.flatMap(_.form.formState).getOrElse("n/a"))
+  @club.formStatusColored(t._1.page.flatMap(_.form.formState).getOrElse("n/a"), if(links) Some(controllers.Wiki.w(t._1)) else None)
   </td></tr>
   }
 </table>

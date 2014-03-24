@@ -1,4 +1,4 @@
-@(user: model.User, item:Int)
+@(user: model.User, item:Int, ui:controllers.UserStuff)
 
 @*******
 included in mainUserC as the right hand side info box 
@@ -14,7 +14,8 @@ included in mainUserC as the right hand side info box
 }
 
 @locs() = @{
-  {controllers.UserStuff.xp(user, "Calendar") \ UserStuff.Race \ "Venue" \@ "loc"}.filter(! _.isEmpty).map(_.replaceFirst("ll:",""))
+  {user.events flatMap { _._5 \ "Venue" \@ "loc"}}.filter(! _.isEmpty).map(_.replaceFirst("ll:",""))
+//  {controllers.UserStuff.xp(user, "Calendar") \ UserStuff.Race \ "Venue" \@ "loc"}.filter(! _.isEmpty).map(_.replaceFirst("ll:",""))
 }
 
 @evBefore() = @{
@@ -108,30 +109,32 @@ case 2 => {
 
 case 3 => { 
 
-  Owned: 
-  @if(blogs.filter(_.role == "Owner").size>0) {
-    <a class="btn btn-mini" href="/wikie/create/Blog">Add more &raquo;</a></p>
-    <ul> 
-      @for(w <- blogs.filter(_.role == "Owner")) {
-        <li><a href="@controllers.Wiki.w(w.wid)">@model.Wikis.label(w.wid)</a></li>
-      }
-    </ul>
-  } else {
-    None
-    <a class="btn btn-mini" href="/wikie/create/Blog">Create one &raquo;</a></p>
-  }
-<p>
   Followed:
   @if(blogs.filter(_.role != "Owner").size>0) {
-    <a class="btn btn-mini" href="/wikie/add/Blog">Follow more &raquo;</a></p>
+    (follow more <a class="btn btn-mini" href="/wikie/add/Forums">Forums &raquo;</a>
+    <a class="btn btn-mini" href="/wikie/add/Blogs">Blogs &raquo;</a>)</p>
     <ul> 
     @for(w <- blogs.filter(_.role != "Owner")) {
       <li><a href="@controllers.Wiki.w(w.wid)">@model.Wikis.label(w.wid)</a></li>
     }
   </ul>
   } else {
-    None
-    <a class="btn btn-mini" href="/wikie/add/Blog">Follow one now &raquo;</a></p>
+    (follow one now <a class="btn btn-mini" href="/wikie/add/Forum">Forum &raquo;</a>
+    <a class="btn btn-mini" href="/wikie/add/Blog">Blog &raquo;</a>)</p>
+  }
+<p>
+  Owned: 
+  @if(blogs.filter(_.role == "Owner").size>0) {
+    (create more <a class="btn btn-mini" href="/wikie/create/Forum">Forums &raquo;</a>
+    <a class="btn btn-mini" href="/wikie/create/Blog">Blogs &raquo;</a>)</p>
+    <ul> 
+      @for(w <- blogs.filter(_.role == "Owner")) {
+        <li><a href="@controllers.Wiki.w(w.wid)">@model.Wikis.label(w.wid)</a></li>
+      }
+    </ul>
+  } else {
+    (create a <a class="btn btn-mini" href="/wikie/create/Forum">Forum &raquo;</a>
+    <a class="btn btn-mini" href="/wikie/create/Blog">Blog &raquo;</a>)</p>
   }
 }
 

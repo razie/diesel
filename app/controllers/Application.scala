@@ -24,12 +24,25 @@ object Application extends RazController {
   // serve any URL other than routes matches - try the forward list...
   def whatever(path: String) = Action { implicit request =>
     log("REDIRECTING? - " + path)
-    request.headers.get("X-FORWARDED-HOST").orElse(Some(Config.hostport)).flatMap(x => Config.urlfwd(x + "/" + path)).map { host =>
+    request.headers.get("X-FORWARDED-HOST").orElse(Some(Config.hostport)).flatMap(x =>
+      Config.urlfwd(x + "/" + path)).map { host =>
       log("  REDIRECTED TO - " + host)
       Redirect(host)
     } getOrElse {
-      Audit.missingPage(" NO ROUTE FOR: " + path)
-      (NotFound("This is not the page you're looking for...! (no route)"))
+      val c = Config.config(Config.BANURLS)
+      if (c.exists(_.contains(path))) {
+        val ip = request.headers.get("X-Forwarded-For")
+
+        if (ip.isDefined && BannedIps.isBanned(ip)) {
+          Audit.logdb("BANNED_IP", List("request:" + request.toString, "headers:" + request.headers, "body:" + request.body).mkString("<br>"))
+          BannedIps.ban(ip.get, request.method + " " + path)
+        }
+        // TODO emulate some well known wiki error response to throw them off
+        NotFound("")
+      } else {
+        Audit.missingPage(" NO ROUTE FOR: " + path)
+        NotFound("This is not the page you're looking for...!")
+      }
     }
   }
 
@@ -53,10 +66,6 @@ object Application extends RazController {
     idoeIndexItem(i)
   }
 
-  def ski = Action { implicit request =>
-    Redirect(Wiki.w("Admin", "Hosted_Services_for_Ski_Clubs"))
-  }
-
   def skiwho(who: String) = Action { implicit request =>
     Audit.logdb("ADD_SKI", "who: " + who)
     Redirect(Wiki.w("Admin", "Hosted_Services_for_Ski_Clubs"))
@@ -66,16 +75,19 @@ object Application extends RazController {
   def doeHarry(css: String) = Action { implicit request =>
     if (css != null && css.length > 0 && !Array("light", "dark").contains(css)) {
       Audit.logdb("DOE_HARRY_HACK", css + " - " + request.toString)
-      Unauthorized("unauthorized")
+      Unauthorized("")
     } else {
       Audit.logdb("DOE_HARRY", css)
 
       (for (u <- Users.findUserById("4fdb5d410cf247dd26c2a784")) yield {
         if (css != null && css.length > 0)
-          Redirect("/").withSession("connected" -> Enc.toSession(u.email), "css" -> css)
+          Redirect("/").withSession(Config.CONNECTED -> Enc.toSession(u.email), "css" -> css)
         else
-          Redirect("/").withSession("connected" -> Enc.toSession(u.email))
-      }) getOrElse Msg2("Can't find Harry Potter - sorry!")
+          Redirect("/").withSession(Config.CONNECTED -> Enc.toSession(u.email))
+      }) getOrElse {
+        Audit.logdb("ERR_HARRY", "account is missing???")
+        Msg2("Can't find Harry Potter - sorry!")
+      }
     }
   }
 
@@ -83,21 +95,11 @@ object Application extends RazController {
     Ok(views.html.user.doeSpin(auth))
   }
 
+  // TODO better mobile display
   def mobile(m: Boolean) = Action { implicit request =>
     Redirect("/").withSession(
       if (m) session + ("mobile" -> "yes")
       else session - "mobile")
-  }
-
-  def banIp(reason: String) = Action { implicit request =>
-    val ip = request.headers.get("X-Forwarded-For")
-
-    if (ip.isDefined && BannedIps.isBanned(ip)) {
-      Audit.logdb("BANNED IP", List("request:" + request.toString, "headers:" + request.headers, "body:" + request.body).mkString("<br>"))
-      BannedIps.ban(ip.get, reason)
-    }
-    // TODO emulate some well known wiki error response to throw them off
-    Ok("")
   }
 
   var razSu = "nothing" // if I su, this is the email of who I su'd as
@@ -113,16 +115,14 @@ object Application extends RazController {
         val au = auth
         auth map (_.auditLogout)
         cleanAuth(auth)
-        cout << au.get.email << razSuTime << System.currentTimeMillis() << request.session.get("extra")
         if (au.isDefined &&
-          System.currentTimeMillis - razSuTime < 5 * 60 * 1000 &&
+          System.currentTimeMillis - razSuTime < 15 * 60 * 1000 &&
           request.session.get("extra").exists(_ == razSu)) {
           val me = razSu
           razSu = "no"
           Audit.logdb("ADMIN_SU_RAZIE", "sure?")
-          Redirect("/").withSession("connected" -> Enc.toSession(me))
-        }
-        else
+          Redirect("/").withSession(Config.CONNECTED -> Enc.toSession(me))
+        } else
           Redirect("/").withNewSession
       }
       case _ => { Audit.missingPage(page); TODO }
@@ -138,12 +138,13 @@ object Application extends RazController {
     Msg2("Assets are: \n" + new File("public/hosted/").list().map(link(_)).mkString("<br>"))
   }
 
+  // testing specific stuff - needs a code sent over but any user account
   def test(what: String, data: String, code: String) = Action { implicit request =>
     implicit class SSO(s: String) {
       def aso = new ObjectId(s)
     }
 
-    cout << s"TESTING what=$what, data=$data, code=$code" << request.headers
+    razie.clog << s"TESTING what=$what, data=$data, code=$code" << request.headers
     (for (
       u <- auth orErr "no user";
       isok <- (code == T.TESTCODE) orErr "no code"
@@ -153,7 +154,9 @@ object Application extends RazController {
       case "wikiSetOwnerById" =>
         val Array(wId, uId) = data.split(",")
         val w = ROne[model.WikiEntry]("_id" -> wId.aso).get
-        w.update(w.cloneProps(w.props ++ Map("owner" -> uId), uId.aso))
+        db.tx("test") { implicit txn =>
+          w.update(w.cloneProps(w.props ++ Map("owner" -> uId), uId.aso))
+        }
         "ok"
       case "wikiIdByName" =>
         ROne[model.WikiEntry]("name" -> data).map(_._id.toString).mkString

@@ -1,7 +1,7 @@
 @******
 club admin manages user: membership, regsitration etc
 ******@
-@(myForm: Form[(String, String)], uw:model.UserWiki, club:model.User)
+@(myForm: Form[(String, String, String)], uw:model.UserWiki, club:model.User)
 @import model.RegStatus._
 @import model.FormStatus._
 @import model.RK._
@@ -47,8 +47,12 @@ club admin manages user: membership, regsitration etc
     '_showConstraints -> false)
   @helper.inputText(
     myForm("regStatus"), 
-    '_label -> "Registration status - use buttons to change", 
+    '_label -> "Registration status", 
     'readOnly -> true,
+    '_showConstraints -> false)
+  @helper.inputText(
+    myForm("paid"), 
+    '_label -> "Amount paid", 
     '_showConstraints -> false)
 
   <button type="submit" class="btn btn-primary">Update membership!</button>
@@ -57,27 +61,32 @@ club admin manages user: membership, regsitration etc
      <p style="color:red;font-weight:bold">@err.message</p>
   } 
 }
+
+
 </td><td>
   <strong>Registration</strong>
   <p> Status: @regStatusColored(reg.map(_.regStatus).getOrElse("n/a"))
-  <p> <strong>Expire</strong> the current registration, then <strong>Add</strong> the required forms below, then <strong>start</strong>, which
+  <p> To start a registration for a member, then <strong>1-Expire</strong> the current registration, then <strong>Add Family</strong> the required Family forms below, then <strong>2-Start</strong>, which
   will also send an email to the member.
-<p>  
+  <p>  
+  <a href="@routes.Club.doeClubUwRegstatusupd(uw._id.toString, EXPIRED)" class="btn btn-warning">1 - Expired</a>
+  <a href="@routes.Club.doeClubUwRegstatusupd(uw._id.toString, PENDING)" class="btn btn-warning">2 - Start</a>
+  <p>
+  These buttons are used to change the status of the registration - see the legend of statuses at the bottom of this page.
+  <p>
   <a href="@routes.Club.doeClubUwRegstatusupd(uw._id.toString, FAMILY)"  class="btn btn-info">Reg - Family</a>
+  <a href="@routes.Club.doeClubUwRegstatusupd(uw._id.toString, ACCEPTED)" class="btn btn-success">Reg - Accepted</a>
   <a href="@routes.Club.doeClubUwRegstatusupd(uw._id.toString, CURRENT)" class="btn btn-success">Reg - Current</a>
-  <a href="@routes.Club.doeClubUwRegstatusupd(uw._id.toString, EXPIRED)" class="btn btn-warning">Reg - Expired</a>
-  <a href="@routes.Club.doeClubUwRegstatusupd(uw._id.toString, PENDING)" class="btn btn-warning">Reg - Start</a>
-  <p><br>Careful: 
-  <a href="@routes.Club.doeClubUwRegstatusupd(uw._id.toString, "delete")" class="btn btn-mini btn-danger">Reg - DELETE</a>
-
+  <p><p><br>Careful: 
+  @util.confirm(
+  	"Delete Registration", 
+  	"This will delete this registration, all its kids and all related forms, completed or not", 
+  	routes.Club.doeClubUwRegstatusupd(uw._id.toString, "delete").toString,
+  	"btn btn-danger"
+  	)
+  
 </td></tr></table>
 </div> <!-- /well -->
-<hr>
-
-  @reg.map { r =>
-    @views.html.club.userFormList(r.wids, true)  
-    }
-
 <div class="well">  
   <strong>Racers not registered</strong>
 
@@ -131,6 +140,15 @@ Add a: @model.RK.RELATIONSHIPS.map{r=>
 
 </div> @*** reg ***@
   
+<hr>
+
+  @reg.map { r =>
+    @views.html.club.userFormList(r.wids, true)  
+    }
+
+<hr>
+
+<table><tr><td width="30%">
   <br>Additional forms:<br>
   @controllers.Club.findForUser(club).map { c =>
     @c.regForms.map { t =>
@@ -138,6 +156,22 @@ Add a: @model.RK.RELATIONSHIPS.map{r=>
     }
   }
   </ul>
+</td><td>
+You should only add the Family forms from here. 
+<p>
+For all other forms, you should use the "family members not registered table" because otherwise we loose the connection between a medical form and the racer it is for, for example.
+<p>So, when the racer is assigned to a team, we cannot show the coach his or her medical form...
+</td></tr></table>
+
+<hr>
+
+<div class="well">
+@helper.form(action=routes.Club.doeClubRegMsg(uw._id.toString), 'class->"form-inline") {
+  <label>Help message</label>
+  <br><textarea rows="5" class="span4" name="msg" placeholder="Message"></textarea>
+  <button type="submit" class="btn btn-mini btn-primary">Send now!</button> 
+}
+</div> 
 <hr>
   @views.html.club.regStatusLegend()
   @views.html.club.formStatusLegend()

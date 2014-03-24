@@ -1,7 +1,6 @@
 @**************
-render a regular wiki page - site pages are rendered with wikiSite.scala.html
+select or create from categoyr
 **************@
-
 @(wid:model.WID, page:Option[model.WikiEntry], user:Option[model.User])
 @import model._
 
@@ -15,6 +14,17 @@ render a regular wiki page - site pages are rendered with wikiSite.scala.html
 
 <b>Find an existing <em>@wid.name</em> or create a new one.</b>
 <hr>
+
+@import _root_.admin.Config
+@import model.Wikis
+
+@if(wid.name == "Club") {
+  <div class="alert alert-info">
+  <strong>Clubs with registration open:</strong> 
+ @Html(Config.sitecfg("regClubs.list").toList.flatMap(_.split(",")).map(x=>Wikis.sformat(s"<b>[[Club:$x]]</b>")).mkString(" | "))
+  </div>
+<hr>	
+}
 
       @wiki.wikiAddMore(wid, page, user)
       

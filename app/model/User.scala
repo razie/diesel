@@ -23,8 +23,10 @@ import db.ROne
 import db.RMany
 import db.RCreate
 import db.RDelete
-import db.Mongo
+import db.RazMongo
 import db.REntity
+import db.RUpdate
+import razie.Snakk
 
 object UserType {
   val Organization = "Organization"
@@ -38,7 +40,7 @@ case class Registration(email: String, password: String, repassword: String = ""
 /** register an email for news */
 @db.RTable
 case class RegdEmail(email: String, when: DateTime = DateTime.now) {
-  def delete = Mongo("RegdEmail").m.remove(Map("email" -> email))
+  def delete (implicit txn:db.Txn) = RDelete[RegdEmail]("email" -> email)
 }
 
 /** temporary user for following stuff */
@@ -113,7 +115,7 @@ case class User(
   def isSuspended = status == 's'
   def isAdmin = hasPerm(Perm.adminDb) || hasPerm(Perm.adminWiki)
   def isClub = roles contains UserType.Organization.toString
-  def isClubAdmin = isClub // TODO allow users to manage clubs somehow - SU
+//  def isClubAdmin = isClub // TODO allow users to manage clubs somehow - SU
   def isUnder13 = DateTime.now.year.get - yob <= 12
 
   // TODO optimize
@@ -126,7 +128,9 @@ case class User(
   lazy val canHasProfile = (!isUnder13) || Users.findParentOf(_id).exists(_.trust == "Public")
 
   // TODO cache groups
-  lazy val groups = roles flatMap { role => Mongo("UserGroup").findOne(Map("name" -> role)) map (grater[UserGroup].asObject(_)) }
+  lazy val groups = roles flatMap { 
+    role => db.ROne[UserGroup]("name" -> role)
+    }
 
   /** make a default profile */
   def mkProfile = Profile(this._id, None, Set())
@@ -136,11 +140,13 @@ case class User(
       yield t._1).flatMap(Users.findUserById(_)).toList) getOrElse List()
 
   /** load my profile */
-  lazy val profile = Mongo("Profile").findOne(Map("userId" -> _id)) map (grater[Profile].asObject(_))
+  lazy val profile = ROne[Profile]("userId" -> _id) 
 
   /** the wikis I linked to */
   lazy val wikis = RMany[UserWiki]("userId" -> _id).toList
 
+  def isLinkedTo(wid:WID) = ROne[UserWiki]("userId" -> _id, "wid" -> wid.grated).toList
+  
   /** pages of category that I linked to */
   def pages(cat: String*) = wikis.filter(w=>cat.contains(w.wid.cat))
   def myPages(cat: String) = pages (cat)
@@ -168,19 +174,19 @@ case class User(
   }
 
   def update(u: User) = {
-    Mongo("UserOld") += grater[User].asDBObject(Audit.create(this))
-    Mongo("User").m.update(key, grater[User].asDBObject(Audit.update(u)))
+    RazMongo("UserOld") += grater[User].asDBObject(Audit.create(this))
+    RazMongo("User").update(key, grater[User].asDBObject(Audit.update(u)))
     UserEvent(_id, UserEvent.UPDATE).create
   }
 
   def usedSlot(u: User) = {
-    Mongo("UserOld") += grater[User].asDBObject(Audit.create(this))
-    Mongo("User").m.update(key, grater[User].asDBObject(Audit.update(u)))
+    RazMongo("UserOld") += grater[User].asDBObject(Audit.create(this))
+    RazMongo("User").update(key, grater[User].asDBObject(Audit.update(u)))
     UserEvent(_id, UserEvent.UPDATE).create
   }
 
   //race, desc, date, venue
-  lazy val events: List[(ILink, String, DateTime, ILink)] = UserStuff.events(this)
+  lazy val events: List[(ILink, String, DateTime, ILink, Snakk.Wrapper[WWrapper])] = UserStuff.events(this)
 
   def toJson = grater[User].asDBObject(this).toString
 
@@ -219,7 +225,7 @@ case class Profile(
   _id: ObjectId = new ObjectId()) {
 
   def update(p: Profile) = {
-    Mongo("Profile").m.update(Map("userId" -> userId), grater[Profile].asDBObject(Audit.update(p)))
+    db.RUpdate[Profile](Map("userId" -> userId), p)
   }
 
   def addRel(t: (String, String)) = this.copy(relationships = relationships ++ Map(t))
@@ -243,8 +249,8 @@ case class UserQuota(
 
   //  def create = Mongo ("Profile") += grater[Profile].asDBObject(Audit.create(this))
   def update(q: UserQuota) =
-    Mongo("UserQuota").findOne(Map("userId" -> userId)) map { p =>
-      Mongo("UserQuota").m.update(Map("userId" -> userId), grater[UserQuota].asDBObject(q))
+    ROne[UserQuota]("userId" -> userId) map { p =>
+      RUpdate[UserQuota](Map("userId" -> userId), q)
       q
     } getOrElse {
       RCreate.noAudit[UserQuota](q)
@@ -282,13 +288,13 @@ case class ParentChild(
   notifys: String = "Everything",
   _id: ObjectId = new ObjectId()) {
 
-  def create = Mongo("ParentChild") += grater[ParentChild].asDBObject(Audit.create(this))
+  def create = RCreate[ParentChild] (this)
   def update(p: ParentChild) = {
-    Mongo("ParentChild").m.update(
+    RUpdate[ParentChild](
       Map("parentId" -> parentId, "childId" -> childId),
-      grater[ParentChild].asDBObject(Audit.update(p)))
+      p)
   }
-  def delete = Mongo("ParentChild").m.remove(Map("parentId" -> parentId, "childId" -> childId))
+  def delete = RDelete[ParentChild]("parentId" -> parentId, "childId" -> childId)
 }
 
 object UW {
@@ -368,7 +374,7 @@ object Users {
   // TOD optimize somwhow
   def findUserNoCase(uncEmail: String) = {
     val tl = uncEmail.toLowerCase()
-    Mongo("User") find (Map()) find (_.as[String]("email").dec.toLowerCase == tl) map (grater[User].asObject(_))
+    RazMongo("User") findAll () find (_.as[String]("email").dec.toLowerCase == tl) map (grater[User].asObject(_))
   }
 
   def findUser(email: String) = ROne[User]("email" -> email)
@@ -379,7 +385,7 @@ object Users {
   //  def nameOf(id: ObjectId): String = /* leave it */ Mongo("User").findOne(Map("_id" -> id)).get("userName").toString
   def nameOf(id: ObjectId): String = /* leave it */ ROne.raw[User]("_id" -> id).get("userName").toString
 
-  def findTasks(id: ObjectId) = Mongo("UserTask").find(Map("userId" -> id)) map (grater[UserTask].asObject(_))
+  def findTasks(id: ObjectId) = RMany[UserTask]("userId" -> id)
 
   def findPC(pid: ObjectId, cid: ObjectId) = ROne[ParentChild]("parentId" -> pid, "childId" -> cid)
   def findParentOf(cid: ObjectId) = ROne[ParentChild]("childId" -> cid)
@@ -402,23 +408,31 @@ object Users {
 object WikiUsersImpl extends WikiUsers {
   def findUserById(id: String) = Users.findUserById (id)
   def findUserById(id: ObjectId) = Users.findUserById (id)
+  def findUserByUsername(uname: String) = Users.findUserByUsername(uname)
 }
 
 @RTable
 case class Task(name: String, desc: String)
 
 @RTable
-case class UserTask(userId: ObjectId, name: String) {
-  def desc = ROne[Task]("name" -> name) map (_.desc) orElse UserTasks.MORE.get(name) getOrElse "?"
-  def create = RCreate[UserTask](this)
+case class UserTask(
+    userId: ObjectId, 
+    name: String,
+    args:Map[String,String] = Map(),
+    crDtm:DateTime = DateTime.now) {
+  
+  def desc = ROne[Task]("name" -> name) map (_.desc) getOrElse UserTasks.labelFor(this) 
+  def create (implicit txn:db.Txn) = RCreate[UserTask](this)
 
-  def delete = {
-    Audit.delete(this);
-    Mongo("UserTask").m.remove(Map("userId" -> userId, "name" -> name))
+  def delete (implicit txn:db.Txn) = {
+    Audit.delete(this); // should delete more than one
+    RDelete[UserTask]("userId" -> userId, "name" -> name)
   }
 }
 
 object UserTasks {
+  final val START_REGISTRATION = "startRegistration"
+  
   def userNameChgDenied(u: User) = UserTask(u._id, "userNameChgDenied")
   def verifyEmail(u: User) = UserTask(u._id, "verifyEmail")
   def addParent(u: User) = UserTask(u._id, "addParent")
@@ -427,10 +441,15 @@ object UserTasks {
   def setupCalendars(u: User) = UserTask(u._id, "setupCalendars")
   
   def some(u: User, what:String) = UserTask(u._id, what)
-
-  final val MORE = Map(
-      "setupRegistration" -> "Setup registration and forms",
-      "setupCalendars" -> "Setup club calendars")
   
+  def labelFor (ut:UserTask) = {
+    ut.name match {
+      case START_REGISTRATION => "Start registration for "+ut.args.get("club").mkString
+      case "setupRegistration" => "Setup registration and forms"
+      case "setupCalendars" => "Setup club calendars"
+      case _ => "?"
+    }
+  }
+
 }
 

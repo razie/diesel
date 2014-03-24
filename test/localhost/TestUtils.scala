@@ -48,7 +48,7 @@ trait RkTester extends UrlTester { self: FlatSpec with ShouldMatchers =>
       "content" -> content,
       "visibility" -> "Public",
       "wvis" -> "Club",
-      "notif" -> "n",
+      "draft" -> "Silent",
       "tags" -> cat.toLowerCase)
     if (parent.isDefined)
       s"/wikie/edited/${parent.get}/$cat:$name".url.basic(u, p).form(form).wget // first create, no check

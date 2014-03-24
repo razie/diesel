@@ -18,6 +18,8 @@ object Config extends WikiConfig {
   final val mongouser = props.getProperty("rk.mongouser")
   final val mongopass = props.getProperty("rk.mongopass")
 
+  final val CONNECTED = props.getProperty("rk.connected", "connected")
+  
   final val curYear = "2013"
   
   def darkLight = { razie.NoStaticS.get[controllers.DarkLight] }
@@ -26,10 +28,13 @@ object Config extends WikiConfig {
     darkLight.map(_.css).orElse(currUser.flatMap(_.css).orElse(sitecfg("css"))) getOrElse ("dark")
   }
 
+  // parse a properties looking thing
+  def parsep (content:String) = (content.split("\r\n")) filter (!_.startsWith("#")) map (_.split("=")) filter (_.size == 2) map (x => (x(0), x(1)))
+
   def reloadUrlMap {
     println("========================== RELOADING URL MAP ==============================")
-    for (c <- Array(URLMAP, URLFWD, SITECFG, TOPICRED, SAFESITES, USERTYPES)) {
-      val urlmaps = Some(Wikis.find(WID("Admin", c)).toSeq map (_.content) flatMap (_.split("\r\n")) filter (!_.startsWith("#")) map (_.split("=")) filter (_.size == 2) map (x => (x(0), x(1))))
+    for (c <- Array(URLMAP, URLFWD, SITECFG, TOPICRED, SAFESITES, USERTYPES, BANURLS)) {
+      val urlmaps = Some(Wikis.find(WID("Admin", c)).toSeq map (_.content) flatMap parsep)
       val xurlmap = urlmaps.map(_.toMap)
       println("========================== RELOADING URL MAP ==============================")
       xurlmap.map(xconfig.put(c, _))

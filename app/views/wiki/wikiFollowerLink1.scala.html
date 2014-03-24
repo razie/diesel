@@ -1,4 +1,4 @@
-@(to:model.WID, myForm:Form[controllers.Wiki.FollowerLinkWiki])
+@(to:model.WID, v2:Int, myForm:Form[controllers.Wiki.FollowerLinkWiki])
 @import model.Wikis
 @import helper.twitterBootstrap._
 
@@ -46,6 +46,15 @@
     '_showConstraints -> false,
     'cols->120,
     'rows->3)
+
+  <div class="well">
+  Help weed out some spam - please answer this question...
+    @helper.inputText(
+      myForm("v1"), 
+      '_label -> ("Result of " + controllers.Support.divi(v2) + " = "),
+      '_showConstraints -> false)
+  </div>
+  <input type="hidden" name="v2" value="@myForm("v2").value" />
 
     @myForm.globalError.map { err=>
      <p style="color:red;font-weight:bold">@err.message</p>

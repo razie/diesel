@@ -18,9 +18,12 @@ profile - edit contact info
 <div class="span4">
 @helper.form(action=routes.Profile.doeContactUpdate(), 'class->"well") {
   @util.razText(myForm, "streetAndNo", "Street & Number")
-  @util.razText(myForm, "aptNo",         "Apt no")
+  @util.razText(myForm, "aptNo",       "Apt no")
   @util.razText(myForm, "city",        "City")
   @util.razText(myForm, "postalCode",  "Postal/Zip code")
+  @util.razText(myForm, "state",       "Province / State")
+  @util.razText(myForm, "country",     "Country")
+@***
   @helper.select(
     myForm("state"), 
      Seq(""->"") ++ controllers.Profile.prov.map(x=>(x.toString,x.toString)),
@@ -31,6 +34,7 @@ profile - edit contact info
      Seq(""->"") ++ controllers.Profile.countries.map(x=>(x.toString,x.toString)),
      '_label -> "Country",
     '_showConstraints -> false)
+***@
   @util.razText(myForm, "cellPhone", "Cell Phone")
   @util.razText(myForm, "homePhone", "Home Phone")
   @util.razText(myForm, "workPhone", "Work Phone")
