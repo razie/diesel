@@ -1,0 +1,14 @@
+@***
+a set of characteristics sourced from one single entity
+***@
+@(e:x.FulfillmentOrderItem, m:Map[Html,Html])
+
+@a(n:String) = @{e.entity.parms(n)}
+
+@m.foreach { t=>
+			<cbecore:item>
+				<cbecore:value xsi:type="xs:string">a(t._2)</cbecore:value>
+				<cbecore:characteristic>t._1</cbecore:characteristic>
+			</cbecore:item>
+}
+			

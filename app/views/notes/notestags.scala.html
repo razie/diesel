@@ -1,0 +1,31 @@
+@**************
+show/edit/capture a note
+
+msg types are msg, err
+**************@
+@(current:String, tags:controllers.NotesLocker.Tags, au:Option[model.User])
+
+@tagpath(s:String) = @{ if(current=="") s else (current+"/"+s) }
+   
+@if(au.isDefined) {
+    <div class="span3">
+    <a href="/notes" class="btn btn-large btn-info">New note...</a>
+    <p>
+    <p>
+    Contemplate:
+    <ul>
+         <li><a href="@routes.NotesLocker.tag("all")">[All notes]</a></li>
+         <li><a href="@routes.NotesLocker.tag("none")">[Not tagged]</a></li>
+    </ul>
+    <ul>
+      @tags.take(20).map {x=>
+         <li><a href="@routes.NotesLocker.tag(tagpath(x._1))">@x._1 <small>(@x._2)</small></a></li>
+      }
+      @if(tags.size > 20) {
+         <li><a href="@routes.NotesLocker.alltags">... more</a></li>
+         }
+    </ul>
+    </div>
+} else {
+You can tag your notes with keywords or topics of interest and later organize them.
+}

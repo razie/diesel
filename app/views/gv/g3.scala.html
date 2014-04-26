@@ -1,0 +1,77 @@
+@**************
+render a regular wiki page - site pages are rendered with wikiSite.scala.html
+**************@
+
+@(url:String, user:Option[model.User])
+@import model._
+
+@*** http://bl.ocks.org/mbostock/4063550 ***@
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html;charset=utf-8"/>
+
+    <link type="text/css" rel="stylesheet" href="@routes.Assets.at("clones/d3/style.css")"/>
+
+    <script type="text/javascript" src="@routes.Assets.at("clones/d3/d3.v3.js")"></script>
+
+@***
+    <script type="text/javascript" src="@routes.Assets.at("clones/d3/d3.layout.js")"></script>
+    <link type="text/css" rel="stylesheet" href="http://mbostock.github.io/d3/talk/20111018/style.css"/>
+    <script type="text/javascript" src="http://mbostock.github.io/d3/d3.js"></script>
+    <script type="text/javascript" src="http://mbostock.github.io/d3/talk/20111018/d3/d3.layout.js"></script>
+***@
+    <style type="text/css">
+
+.overlay {
+  fill: none;
+  pointer-events: all;
+}
+
+body {
+    background-color:black;
+    }
+    
+.node text {
+  fill: red;
+}
+
+.node circle {
+  fill: #fff;
+  stroke: steelblue;
+  stroke-width: 1.5px;
+}
+
+.xx circle {
+  fill: #000;
+  stroke: steelblue;
+  stroke-width: 1.5px;
+}
+
+.node {
+  font: 10px sans-serif;
+}
+
+.link {
+  fill: none;
+  stroke: #ccc;
+  stroke-width: 1.5px;
+}
+
+    </style>
+  </head>
+  <body>
+    <div id="body">
+      <div id="footer">
+        WikiBrainz
+        <div class="hint">click to browse related topics
+        </br>alt+click to browse to wikipedia</div>
+      </div>
+    </div>
+    <script type="text/javascript">
+var razUrl = "@url"
+    </script>
+    <script type="text/javascript" src="@routes.Assets.at("clones/d3/g4.js")"></script>
+  </body>
+</html>

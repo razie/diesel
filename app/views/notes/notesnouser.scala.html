@@ -1,0 +1,39 @@
+@**************
+show/edit/capture a note
+
+msg types are msg, err
+**************@
+@()
+@import _root_.controllers.NotesLocker
+
+@htmlHead("No Folders", None, None)
+@notesnavbar(None)
+
+<div class="container">
+  <div class="row">
+    <div class="span9">
+
+<h2>
+@if(!_root_.admin.Config.isLocalhost) {
+   Note Locker <small>(preview edition)</small> 
+   }
+</h2>
+
+<div class="well">
+You cannot save notes without an account... either 
+<a href="/doe/join"><strong>join in</strong></a> and play or browse around a demo: 
+<a href="/doe/spin"><strong>as Harry</strong></a>.
+
+<p>Sorry for the inconvenience - but I'm sure you'll love this simplest of powerful notes apps.
+</div>
+
+      <hr>
+      @htmlFooter(ads = true)
+    </div> <!-- /span9 -->
+
+@notestags("", Seq(), None)
+
+  </div> <!-- row -->
+</div> <!-- /container -->
+    
+@htmlBottom()

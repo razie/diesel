@@ -1,0 +1,18 @@
+@***
+translating a few parms 
+***@
+@(implicit item:x.FulfillmentOrderItem, parentKey: String)
+
+@eDefaultItem(
+  item, 
+  item.entity,
+  Map(
+    "allow_calling_to_entertainment_numbers"          -> "AllowCallingToPayPerUseEntertainmentNunbers",
+    "allow_calling_to_info_numbers"                   -> "AllowCallingToPayPerUseInfoNumbers",
+    "allow_calls_to_abroad"                           -> "AllowCallsToAbroad",
+    "allow_incoming_calls"                            -> "AllowIncomingCalls",
+    "allow_outgoing_calls"                            -> "AllowOutgoingCalls",
+    "roaming_allow_incoming_calls"                    -> "RoamingAllowIncomingCalls",
+    "roaming_allow_outgoing_calls"                    -> "RoamingAllowOugoingCalls",
+    "roaming_allow_outgoing_calls_to_other_countries" -> "RoamingAllowOutgoingCallsToOtherCountries"
+))

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?> 
+<TheBrainSimpleXML>
+  <Tht id="13" name="Basic off-road skills" icon="" color="" hint="Post" pbv="1538818255172212"
+    modificationDate="4-Apr-2014 4:29 PM"
+    authorName="Razie"
+    authorEmail="razie@razie.com" />
+  <Tht id="18" name="Accelerating" icon="" color="" hint="Post" /> 
+  <Tht id="17" name="Braking" icon="" color="" hint="Post" /> 
+  <Tht id="23" name="Crossing small logs and obstacles" icon="" color="" hint="Post" /> 
+  <Tht id="14" name="Standing position" icon="" color="" hint="Post" /> 
+  <Tht id="22" name="Steering" icon="" color="" hint="" /> 
+  <Tht id="19" name="Throttle clutch control" icon="" color="" hint="Post" /> 
+  <Tht id="16" name="Traction" icon="" color="" hint="Post" /> 
+  <Tht id="15" name="Weight Transfer" icon="" color="" hint="Post" /> 
+
+  <Tht id="33" name="Basic" icon="" color="" hint="" /> 
+
+
+  <Tht id="25" name="Basic abilities" icon="" color="" hint="Post" /> 
+
+  <Link idA="13" idB="14" type="CHILD" /> 
+  <Link idA="13" idB="15" type="CHILD" /> 
+  <Link idA="13" idB="16" type="CHILD" /> 
+  <Link idA="13" idB="17" type="CHILD" /> 
+  <Link idA="13" idB="18" type="CHILD" /> 
+  <Link idA="13" idB="19" type="CHILD" /> 
+  <Link idA="13" idB="22" type="CHILD" /> 
+  <Link idA="13" idB="23" type="CHILD" /> 
+  <Link idA="33" idB="25" type="CHILD" /> 
+  <Link idA="33" idB="13" type="PARENT" /> 
+
+  <Content href="http://www.racerkidz.com/wiki/Blog:Razie_Enduro_School/Post:Basic_off-road_skills" />
+</TheBrainSimpleXML>

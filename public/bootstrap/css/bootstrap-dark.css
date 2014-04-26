@@ -224,8 +224,8 @@ textarea {
 body {
   margin: 0;
   font-family: "Verdana", Verdana, Arial, sans-serif;
-  font-size: 14px;
-  line-height: 20px;
+  font-size: 16px; /* 14px; */
+  line-height: 24px; /* 20px; */
   color: #DDDDDD;
   background-color: #272b30;
 }
@@ -823,7 +823,7 @@ ol ul {
 }
 
 li {
-  line-height: 20px;
+  line-height: 24px; /* 20px; */
 }
 
 ul.unstyled,
@@ -974,7 +974,7 @@ pre {
   padding: 0 3px 2px;
   font-family: Monaco, Menlo, Consolas, "Courier New", monospace;
   font-size: 12px;
-  color: #3a3f44;
+  color: #eeeeee;
   -webkit-border-radius: 3px;
      -moz-border-radius: 3px;
           border-radius: 3px;
@@ -982,9 +982,9 @@ pre {
 
 code {
   padding: 2px 4px;
-  color: #d14;
+  color: #FFCC00; /* #f22; */
   white-space: nowrap;
-  background-color: #f7f7f9;
+  background-color: #191919;
   border: 1px solid #1c1e22;
 }
 
@@ -998,7 +998,7 @@ pre {
   word-wrap: break-word;
   white-space: pre;
   white-space: pre-wrap;
-  background-color: #f5f5f5;
+  background-color: #191919;
   border: 1px solid #ccc;
   border: 1px solid rgba(0, 0, 0, 0.15);
   -webkit-border-radius: 4px;

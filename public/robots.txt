@@ -1,6 +1,7 @@
 User-Agent: Mediapartners-Google
 Allow: /wikie/search
 Allow: /doe/index
+Allow: /doe/social
 Disallow: /doe/
 Disallow: /wikie/
 Disallow: /admin/

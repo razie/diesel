@@ -1,0 +1,17 @@
+@**************
+show one tip
+**************@
+@()
+
+<small>
+<div class="alert alert-info">
+  <strong>Tip (<a href="/notes/alltips">see all</a>) </strong>
+  @Html(tipone)
+</div>
+</small>
+
+@tipone = @{
+  val t = _root_.controllers.NotesLocker.tips((math.random * NotesLocker.tips.size).toInt)
+  val m = model.Wikis.format(model.WID("?","?"), "md", t)
+  m.replaceFirst("^\\s*<p>", "").replaceFirst("</p>\\s*$", "")
+}

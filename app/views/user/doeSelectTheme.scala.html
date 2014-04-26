@@ -1,0 +1,30 @@
+@(user:Option[model.User]=None)(implicit request:Request[_])
+
+@htmlHead("Select a theme")
+@navbar(user, _root_.admin.Config.realm)
+   
+<div class="container">
+  <div class="well">
+    <h2>Select a theme</h2>
+<p class="lead">While we are convinced that it's a matter of time until the web will be dark, i.e. light-colored fonts on dark backgrounds, 
+we are big fans of "browsing the web the way you want".
+<p>So go ahead, turn this entire site <strong>light</strong> or <strong>dark</strong>, as you wish...
+<p>
+&nbsp;&nbsp;&nbsp;
+<p>
+<a href="/doe/theme?css=dark">
+  <img src="@routes.Assets.at("images/rk-dark.jpg")" class="img-rounded" /></a>
+&nbsp;&nbsp;&nbsp;
+<a href="/doe/theme?css=light">
+  <img src="@routes.Assets.at("images/rk-light.jpg")" class="img-rounded" /></a>
+<p>
+Note that this setting is temporary. If you want to make it permanent, get an account and set your preferences there!
+<p>
+Have fun!
+    </div>
+  </div>
+  <hr>
+  @htmlFooter()
+</div> <!-- /container -->
+@htmlBottom()
+    

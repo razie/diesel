@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?> 
+<TheBrainSimpleXML>
+  <Tht id="26" name="Advanced off-road skills" icon="" color="" hint="" pbv="3137178742452100"
+    modificationDate="4-Apr-2014 4:34 PM"
+    authorName="Razie"
+    authorEmail="razie@razie.com" />
+  <Tht id="28" name="Crossing logs and rocks" icon="" color="" hint="Post" /> 
+  <Tht id="27" name="Dirt bike Cornering" icon="" color="" hint="" /> 
+
+  <Tht id="34" name="Advanced" icon="" color="" hint="" /> 
+
+
+
+  <Link idA="26" idB="27" type="CHILD" /> 
+  <Link idA="26" idB="28" type="CHILD" /> 
+  <Link idA="34" idB="26" type="PARENT" /> 
+
+  <Content href="thoughtData/26.html" />
+</TheBrainSimpleXML>

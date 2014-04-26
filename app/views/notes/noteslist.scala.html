@@ -1,0 +1,76 @@
+@**************
+show/edit/capture a note
+
+msg types are msg, err
+**************@
+@(tag:String, notes:List[model.WikiEntry], tags:controllers.NotesLocker.Tags, msg:Seq[(String,String)], au:Option[model.User], isSearch:Boolean=false)
+
+@htmlHead("Note Locker", None, None)
+@notesnavbar(au)
+
+@id = @{1}
+
+<div class="container">
+  <div class="row">
+    <div class="span9">
+
+<h3>
+@tag match {
+   case "all" => {All notes...}
+   case "none" => {Notes without a tag...}
+   case _ if isSearch => {Search results for '@tag'... }
+   case _ => {Tagged <small>@tag.replaceAll("/", " | ")</small> }
+}
+
+@notesmsg(msg, au)
+
+@tagpath(s:String) = @{ if(tag=="" || isSearch) s else (tag+"/"+s) }
+
+<script>
+var msgidx=0; // TODO more than one message
+</script>
+
+</h3>
+
+<div class="well">
+
+@notes.map {we=>
+   <div class="well">
+   <small><a href="@routes.NotesLocker.noteById(we._id.toString)">@we.crDtm <strong>[Edit]</strong></a></small>
+   <p>@Html(model.Wikis.format(we.wid, we.markup, we.content, Some(we)))</p> 
+   <small>Tags: <strong>
+        @we.tags.map {x=> 
+           @if(tags find (_._1 == x) isEmpty ) {
+             @x | 
+           } else {
+             <a href="@routes.NotesLocker.tag(tagpath(x))">@x</a> | 
+           }
+        }
+     </strong></small>
+   </div>
+}
+
+</div>
+
+@notesonetip()
+
+@***
+<p><small>Assistant says:</small><br>
+
+<div style="display:inline-block; width:100%; height:130px; overflow-y:auto;">
+  <pre id="pre3b_@id" style="display:inline-block; width:92%; height:129px; margin-bottom:0"><code id="codeb_@id">
+  </code></pre>
+</div>
+***@
+
+
+      <hr>
+      @htmlFooter(ads = true)
+    </div> <!-- /span9 -->
+
+@notestags(if(isSearch) "" else tag, tags, au)
+
+  </div> <!-- row -->
+</div> <!-- /container -->
+    
+@htmlBottom()

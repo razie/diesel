@@ -1,0 +1,54 @@
+@**************
+show/edit/capture a note
+
+msg types are msg, err
+**************@
+@(msg:Seq[(String,String)], au:Option[model.User])
+
+@htmlHead("Note Locker", None, None)
+@notesnavbar(au)
+
+@id = @{1}
+
+<div class="container">
+  <div class="row">
+    <div class="span9">
+
+<h2>Tags... 
+
+@notesmsg(msg, au)
+
+</h2>
+
+<div class="well">
+
+@if(au.isDefined) {
+    <p>
+    Your tags:
+    <ul>
+         <li><a href="@routes.NotesLocker.tag("all")">all</a></li>
+         <li><a href="@routes.NotesLocker.tag("none")">no tag</a></li>
+      @Lockers.tagsForUser(au.get._id).map {x=>
+         <li><a href="@routes.NotesLocker.tag(x._1)">@x._1 <small>(@x._2)</small></a></li>
+      }
+    </ul>
+} else {
+You can tag your notes with keywords or topics of interest and later organize them.
+}
+</div>
+
+@notesonetip()
+
+
+      <hr>
+      @htmlFooter(ads = true)
+    </div> <!-- /span9 -->
+
+    <div class="span3">
+    <a href="/notes" class="btn btn-large btn-info">Create note</a>
+    </div>
+
+  </div> <!-- row -->
+</div> <!-- /container -->
+    
+@htmlBottom()

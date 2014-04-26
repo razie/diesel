@@ -9,3 +9,8 @@ dump
 dump*
 data
 modules
+/.target
+/bin
+/lib_managed
+/rk-backups
+/temp

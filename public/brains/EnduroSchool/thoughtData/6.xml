@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?> 
+<TheBrainSimpleXML>
+  <Tht id="6" name="Dirt Bike Setup" icon="" color="" hint="" pbv="562483764977542"
+    modificationDate="4-Apr-2014 4:27 PM"
+    authorName="Razie"
+    authorEmail="razie@razie.com" />
+  <Tht id="11" name="Adjusting the air gap for the front suspension" icon="" color="" hint="Post" /> 
+  <Tht id="10" name="Adjusting the levers for a dirt bike" icon="" color="" hint="Post" /> 
+  <Tht id="12" name="Dirt bike tire setup" icon="" color="" hint="Post" /> 
+  <Tht id="32" name="Handlebars" icon="" color="" hint="" /> 
+
+  <Tht id="1" name="EnduroSchool" icon="" color="" hint="" /> 
+
+
+  <Tht id="34" name="Advanced" icon="" color="" hint="" /> 
+  <Tht id="33" name="Basic" icon="" color="" hint="" /> 
+  <Tht id="3" name="Choosing a Dirt Bike" icon="" color="" hint="Post" /> 
+  <Tht id="29" name="Other Resources" icon="" color="" hint="" /> 
+
+  <Link idA="6" idB="10" type="CHILD" /> 
+  <Link idA="6" idB="11" type="CHILD" /> 
+  <Link idA="6" idB="12" type="CHILD" /> 
+  <Link idA="6" idB="32" type="CHILD" /> 
+  <Link idA="1" idB="3" type="CHILD" /> 
+  <Link idA="1" idB="29" type="CHILD" /> 
+  <Link idA="1" idB="33" type="CHILD" /> 
+  <Link idA="1" idB="34" type="CHILD" /> 
+  <Link idA="1" idB="6" type="PARENT" /> 
+
+  <Content href="http://www.racerkidz.com/wiki/Blog:Razie_Enduro_School/Post:Dirt_Bike_Setup" />
+</TheBrainSimpleXML>
