@@ -62,7 +62,7 @@ class WikiBase1 extends RazController with Logging with WikiAuthorization {
   /** yeah, I hate myself - happy? */
   var authImpl: WikiAuthorization = new NoWikiAuthorization
 
-  def isVisible(u: Option[WikiUser], props: Map[String, String], visibility: String = "visibility", we: Option[WikiEntry]=None)(implicit errCollector: VError = IgnoreErrors): Boolean =
+  def isVisible(u: Option[WikiUser], props: Map[String, String], visibility: String = "visibility", we: Option[WikiEntry] = None)(implicit errCollector: VError = IgnoreErrors): Boolean =
     authImpl.isVisible(u, props, visibility)(errCollector)
 
   def canSee(wid: WID, au: Option[WikiUser], w: Option[WikiEntry])(implicit errCollector: VError): Option[Boolean] =
@@ -114,7 +114,7 @@ class WikiBase extends WikiBase1 {
         })
   }
 
-  case class FollowerLinkWiki(email1: String, email2: String, v1:Int, v2:Int, comment: String)
+  case class FollowerLinkWiki(email1: String, email2: String, v1: Int, v2: Int, comment: String)
 
   def followerLinkForm(implicit request: Request[_]) = Form {
     mapping(
@@ -158,7 +158,7 @@ object Wiki extends WikiBase {
     (for (
       cat <- request.queryString("cat").headOption;
       name <- request.queryString("name").headOption
-    ) yield wikieEdit(WID(cat, name)).apply(request)) getOrElse {
+    ) yield wikieEdit(WID(cat, name)).apply(request).value.get.get) getOrElse {
       error("ERR_HACK Wiki.email2")
       Unauthorized("Oops - cannot create this link... " + errCollector.mkString)
     }
@@ -316,7 +316,7 @@ object Wiki extends WikiBase {
                 w <- Wikis.category(wid.cat) orErr ("cannot find the category " + wid.cat);
                 r1 <- (au.hasPerm(Perm.uWiki)) orCorr cNoPermission("uWiki")
               ) yield {
-                var we = model.WikiEntry(wid.cat, wid.name, l, m, co, au._id, 1, wid.parent)
+                var we = model.WikiEntry(wid.cat, wid.name, l, m, co, au._id, Seq(), "rk", 1, wid.parent)
 
                 db.tx("wiki.create") { implicit txn =>
                   if (we.tags.mkString(",") != tags)
@@ -352,10 +352,10 @@ object Wiki extends WikiBase {
                   }
 
                   we = we.cloneProps(we.props ++ Map("titi" -> "t"), au._id)
-                  
+
                   // needs parent owner? // the context of the page
-                  we.findParent.flatMap(_.props.get("owner")).foreach {po=>
-                    if (! we.props.get("owner").exists (_ == po))
+                  we.findParent.flatMap(_.props.get("owner")).foreach { po =>
+                    if (!we.props.get("owner").exists(_ == po))
                       we = we.cloneProps(we.props ++ Map("parentOwner" -> po), au._id)
                   }
 
@@ -473,18 +473,22 @@ object Wiki extends WikiBase {
     else Action { implicit request =>
       // must check if page is WITHIN site, otherwise redirect to main site
       val fhost = request.headers.get("X-FORWARDED-HOST")
-      //      val fhost=Some("glacierskiclub.com")    // for testing locally
+//            val fhost=Some("glacierskiclub.com")    // for testing locally
+//            val fhost=Some("enduroschool.com")    // for testing locally
       val redir = fhost flatMap (Config.urlfwd(_))
+      val canon = fhost flatMap (fh=> Config.urlcanon(cw.wpath.get).map(_.startsWith("http://"+fh)))
 
-      if (fhost.exists(_ != Config.hostport) &&
+      // if not me, no redirection and not the redirected path, THEN redirect
+      if (fhost.exists(_ != Config.hostport) && 
         redir.isDefined &&
-        !cw.wpath.get.startsWith(redir.get.replaceFirst(".*/wiki/", ""))) {
+        !cw.wpath.get.startsWith(redir.get.replaceFirst(".*/wiki/", "")) &&
+        !canon.exists(identity)) {
         log("  REDIRECTED FROM - " + fhost)
         log("    TO http://" + Config.hostport + "/wiki/" + cw.wpath.get)
         Redirect("http://" + Config.hostport + "/wiki/" + cw.wpath.get)
       } else {
         // normal - continue showing the page
-        show(cw.wid.get, count).apply(request)
+        show(cw.wid.get, count).apply(request).value.get.get
       }
     }
   }
@@ -520,7 +524,7 @@ object Wiki extends WikiBase {
 
   def wikieShow(iwid: WID, count: Int = 0) = show(iwid, count)
 
-  def show(iwid: WID, count: Int = 0, print:Boolean=false) = Action { implicit request =>
+  def show(iwid: WID, count: Int = 0, print: Boolean = false) = Action { implicit request =>
     implicit val errCollector = new VError()
     val au = auth
 
@@ -585,7 +589,7 @@ object Wiki extends WikiBase {
     }
   }
 
-  private def wikiPage(wid: model.WID, iname: Option[String], page: Option[model.WikiEntry], user: Option[model.User], shouldCount: Boolean, canEdit: Boolean, print:Boolean=false) = {
+  private def wikiPage(wid: model.WID, iname: Option[String], page: Option[model.WikiEntry], user: Option[model.User], shouldCount: Boolean, canEdit: Boolean, print: Boolean = false)(implicit request:Request[_]) = {
     if (shouldCount) page.foreach { p =>
       Audit ! WikiAudit("SHOW", p.wid.wpath, user.map(_._id))
       Audit ! WikiCount(p._id)
@@ -601,7 +605,7 @@ object Wiki extends WikiBase {
       Ok(views.html.wiki.wikiPage(wid, iname, page, user, canEdit, print))
   }
 
-  def showForm(wid: model.WID, iname: Option[String], page: Option[model.WikiEntry], user: Option[model.User], shouldCount: Boolean, errors: Map[String, String], canEdit: Boolean, print:Boolean=false) = {
+  def showForm(wid: model.WID, iname: Option[String], page: Option[model.WikiEntry], user: Option[model.User], shouldCount: Boolean, errors: Map[String, String], canEdit: Boolean, print: Boolean = false) = {
     // form design
     page.flatMap(_.section("section", "formData")).foreach { s =>
       // parse form data
@@ -642,7 +646,9 @@ object Wiki extends WikiBase {
         Ok(views.html.wiki.wikiReport(wid, reportForm.fill(ReportWiki("")), auth))
       case None => {
         Audit.auth("need logged in to report a wiki")
-        Oops("You need to be logged in to report a page! If you really must, please create a support request at the bottom of this page...", wid)
+        val msg = "You need to be logged in to report a page! If you really must, please create a support request at the bottom of this page..."
+        //would audit again ERR_? Oops("You need to be logged in to report a page! If you really must, please create a support request at the bottom of this page...", wid)
+        Ok(views.html.util.utilErr(msg, controllers.Wiki.w(wid), auth))
       }
     }
   }
@@ -758,7 +764,7 @@ object Wiki extends WikiBase {
         exists <- wid.page.isDefined orErr ("Cannot link to " + wid.name);
         r1 <- canSee(wid, None, wid.page)
       ) yield {
-    val v2 = (10 + math.random * 11).toInt
+        val v2 = (10 + math.random * 11).toInt
         Ok(views.html.wiki.wikiFollowerLink1(wid, v2, followerLinkForm.fill(FollowerLinkWiki("", "", 0, v2, ""))))
       }) getOrElse
         noPerm(wid, "LINKUSER")
@@ -776,7 +782,10 @@ object Wiki extends WikiBase {
         case we @ FollowerLinkWiki(email1, email2, v1, v2, comment) =>
           (for (
             exists <- wid.page.isDefined orErr ("Cannot link to non-existent page: " + wid.name);
-            goodMath <- (v1 == v2 && v2 > 1 || v1 == 21) orErr ("Bad math");
+            goodMath <- (v1 == v2 && v2 > 1 || v1 == 21) orErr {
+              Audit.logdb("BAD_MATH", List("request:" + request.toString, "headers:" + request.headers, "body:" + request.body).mkString("<br>"))
+              ("Bad math")
+            };
             r1 <- canSee(wid, None, wid.page)
           ) yield {
             val es = email1.enc
@@ -785,7 +794,7 @@ object Wiki extends WikiBase {
             } else {
               Emailer.laterSession { implicit mailSession =>
                 Emailer.sendEmailFollowerLink(email1, wid, comment)
-//                Emailer.tellRaz("Subscribed", email1 + " ip="+request.h, wid.ahref, comment)
+                Emailer.tellRaz("Subscribed", email1 + " ip=" + request.headers.get("X-Forwarded-For"), wid.ahref, comment)
               }
               Msg2("You got an email with a link, to activate your subscription. Enjoy!", Some(wid.urlRelative))
             }
@@ -1009,24 +1018,24 @@ object Wiki extends WikiBase {
         Msg2(formWithErrors.toString + "Oops, can't add that quota!"),
       {
         case newowner =>
-    log("Wiki.uowner " + wid + ", "+newowner)
-    (for (
-      au <- activeUser;
-      ok1 <- au.hasPerm(Perm.adminDb) orCorr cNoPermission;
-      w <- Wikis.find(wid);
-      newu <- model.WikiUsers.impl.findUserByUsername(newowner) orErr (newowner + " User not found");
-      nochange <- (!w.owner.exists(_.userName == newowner)) orErr ("no change");
-      newVer <- Some(w.cloneProps(w.props + ("owner" -> newu._id.toString), au._id));
-      upd <- Notif.entityUpdateBefore(newVer, WikiEntry.UPD_UOWNER) orErr ("Not allowerd")
-    ) yield {
-      // can only change label of links OR if the formatted name doesn't change
-      db.tx("Wiki.uowner") { implicit txn =>
-        w.update(newVer)
-      }
-      Notif.entityUpdateAfter(newVer, WikiEntry.UPD_UOWNER)
-      Redirect(controllers.Wiki.w(wid))
-    }) getOrElse
-      noPerm(wid, "ADMIN_UOWNER")
+          log("Wiki.uowner " + wid + ", " + newowner)
+          (for (
+            au <- activeUser;
+            ok1 <- au.hasPerm(Perm.adminDb) orCorr cNoPermission;
+            w <- Wikis.find(wid);
+            newu <- model.WikiUsers.impl.findUserByUsername(newowner) orErr (newowner + " User not found");
+            nochange <- (!w.owner.exists(_.userName == newowner)) orErr ("no change");
+            newVer <- Some(w.cloneProps(w.props + ("owner" -> newu._id.toString), au._id));
+            upd <- Notif.entityUpdateBefore(newVer, WikiEntry.UPD_UOWNER) orErr ("Not allowerd")
+          ) yield {
+            // can only change label of links OR if the formatted name doesn't change
+            db.tx("Wiki.uowner") { implicit txn =>
+              w.update(newVer)
+            }
+            Notif.entityUpdateAfter(newVer, WikiEntry.UPD_UOWNER)
+            Redirect(controllers.Wiki.w(wid))
+          }) getOrElse
+            noPerm(wid, "ADMIN_UOWNER")
       })
   }
 
@@ -1179,7 +1188,11 @@ object Wiki extends WikiBase {
       Audit.logdb("XP", wid.wpath + "/xp/" + path)
 
       val xpath = "*/" + path
-      val res: List[String] = if (razie.GPath(xpath).isAttr) (root xpla xpath) else (root xpl xpath).collect { case we: WikiWrapper => we.wid.wpath }
+      val res: List[String] =
+        if (razie.GPath(xpath).isAttr) (root xpla xpath)
+        else (root xpl xpath).collect {
+          case we: WikiWrapper => we.wid.wpath
+        }
 
       Ok(Json.toJson(res))
     }) getOrElse
@@ -1198,7 +1211,9 @@ object Wiki extends WikiBase {
 
       val xpath = "*/" + path
       // TODO use label not name
-      val res = (root xpl xpath).collect { case we: WikiWrapper => (we.wid, we.wid.name) }
+      val res = (root xpl xpath).collect { 
+        case we: WikiWrapper => (we.wid, we.wid.name) 
+        }
 
       Ok(views.html.wiki.wikiList(path, res, auth))
     }) getOrElse
@@ -1262,5 +1277,10 @@ object Wiki extends WikiBase {
     ) yield {
       Ok(views.html.wiki.wikieCreate(w.wid, Some(w), auth))
     }) getOrElse unauthorized()
+  }
+
+  /** try to link to something - find it */
+  def social(label:String, url:String) = Action { implicit request =>
+    Ok(views.html.wiki.social(label, url, auth))
   }
 }

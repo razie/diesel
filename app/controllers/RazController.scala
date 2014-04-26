@@ -14,7 +14,6 @@ import com.mongodb.WriteResult
 import model.Perm
 import admin.Validation
 import admin.Config
-import play.api.cache.Cache
 import model.WID
 import admin.VError
 import admin.IgnoreErrors
@@ -117,11 +116,11 @@ If you got this message in error, please describe the issue in a <a href="/doe/s
     Ok(views.html.util.utilErr(msg, controllers.Wiki.w(wid), auth))
   }
 
-  def Msg(msg: String, wid: WID, u: Option[User] = None)(implicit request: Request[_]): play.api.mvc.SimpleResult[play.api.templates.Html] = {
+  def Msg(msg: String, wid: WID, u: Option[User] = None)(implicit request: Request[_]): play.api.mvc.SimpleResult = {
     Msg2(msg, Some(controllers.Wiki.w(wid, false)), if (u.isDefined) u else auth)(request)
   }
 
-  def Msg2(msg: String)(implicit request: Request[_]): play.api.mvc.SimpleResult[play.api.templates.Html] = {
+  def Msg2(msg: String)(implicit request: Request[_]): play.api.mvc.SimpleResult = {
     Ok(views.html.util.utilMsg(msg, None, auth))
   }
 
@@ -129,7 +128,7 @@ If you got this message in error, please describe the issue in a <a href="/doe/s
 //    Ok(views.html.util.utilMsg(msg, page, if (u.isDefined) u else auth))
 //  }
 
-  def Msg2C(msg: String, page: Option[Call], u: Option[User] = None)(implicit request: Request[_]): play.api.mvc.SimpleResult[play.api.templates.Html] = {
+  def Msg2C(msg: String, page: Option[Call], u: Option[User] = None)(implicit request: Request[_]): play.api.mvc.SimpleResult = {
     Ok(views.html.util.utilMsg(msg, page.map(_.toString), if (u.isDefined) u else auth))
   }
 
@@ -142,14 +141,14 @@ If you got this message in error, please describe the issue in a <a href="/doe/s
   def clientIp(implicit request: Request[_]) =
     request.headers.get("X-Forwarded-For").getOrElse(request.headers.get("RemoteIP").getOrElse("x.x.x.x"))
 
-  protected def forActiveUser[T](body: model.User => play.api.mvc.SimpleResult[_])(implicit request: Request[_]) = {
+  protected def forActiveUser[T](body: model.User => play.api.mvc.SimpleResult)(implicit request: Request[_]) = {
     (for (
       au <- auth;
       isA <- checkActive(au)
     ) yield body(au)) getOrElse unauthorized("Oops - how did you get here? [no user or user suspended]")
   }
 
-  protected def forUser[T](body: model.User => play.api.mvc.SimpleResult[_])(implicit request: Request[_]) = {
+  protected def forUser[T](body: model.User => play.api.mvc.SimpleResult)(implicit request: Request[_]) = {
     (for (
       au <- auth
     ) yield body(au)) getOrElse unauthorized("Oops - how did you get here? [no user]")
@@ -171,6 +170,6 @@ If you got this message in error, please describe the issue in a <a href="/doe/s
 }
 
 object RkViewService extends RazController with ViewService {
-  def utilMsg (msg:String, link:Option[String], user:Option[WikiUser], linkNO:Option[(String,String)]=None)(implicit request: Request[_]): play.api.mvc.SimpleResult[play.api.templates.Html] =
+  def utilMsg (msg:String, link:Option[String], user:Option[WikiUser], linkNO:Option[(String,String)]=None)(implicit request: Request[_]): play.api.mvc.SimpleResult =
     Ok(views.html.util.utilMsg(msg, link, user.map(_.asInstanceOf[User]) orElse auth, linkNO))
 }

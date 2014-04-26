@@ -12,9 +12,9 @@ render a page in a site rather than a normal page - some missing stuff
 }
 
 @if(page.isDefined && page.get.contentTags.get("logo").isDefined) {
-  @navbar(user, false, "Menu", page.get.contentTags.get("logo"), page.get.contentTags.get("siteurl"), true, page.get.contentTags.get("club").map("?club="+_).getOrElse(""))
+  @navbar(user, "rk", false, "Menu", page.get.contentTags.get("logo"), page.get.contentTags.get("siteurl"), true, page.get.contentTags.get("club").map("?club="+_).getOrElse(""))
 } else {
-  @navbar(user, false, "Menu", None, None, true)
+  @navbar(user, "rk", false, "Menu", None, None, true)
 }
    
 <div class="container">

@@ -54,8 +54,8 @@ object Emailer extends RazController with Logging {
 
   def sendEmailRequest(to: String, validDays: Int, task: String, description: String, userNotif: Option[String], acceptUrl: String, denyUrl: String, u: User)(implicit mailSession: MailSession) = {
     val dt = DateTime.now().plusDays(validDays)
-    val ds1 = DoSec(acceptUrl, true, dt)
-    val ds2 = DoSec(denyUrl, true, dt)
+    val ds1 = DoSec(acceptUrl, None, true, dt)
+    val ds2 = DoSec(denyUrl, None, true, dt)
 
     val html1 = text("emailrequest").format(description, ds1.secUrl, ds2.secUrl);
 
@@ -103,7 +103,7 @@ object Emailer extends RazController with Logging {
   def sendEmailFollowerLink(to: String, topic: WID, comment: String)(implicit mailSession: MailSession) = {
     val dt = DateTime.now().plusDays(10)
     val hc1 = """/wikie/linkFollower3/%s/%s/%s/%s""".format(EncUrl(dt.toString), to.enc, (if (comment.length > 0) comment else "Enjoy!").encUrl, topic.wpath)
-    val ds1 = DoSec(hc1, true, dt)
+    val ds1 = DoSec(hc1, None, true, dt)
 
     val html1 = text("followerlinkrequest").format(topic.name, ds1.secUrl, comment);
 

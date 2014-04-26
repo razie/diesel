@@ -4,6 +4,8 @@ import java.util.Properties
 import scala.Option.option2Iterable
 import model.WID
 import model.Wikis
+import scala.collection.mutable.HashMap
+import play.api.mvc.Request
 
 /** extended config */
 object Config extends WikiConfig {
@@ -19,9 +21,9 @@ object Config extends WikiConfig {
   final val mongopass = props.getProperty("rk.mongopass")
 
   final val CONNECTED = props.getProperty("rk.connected", "connected")
-  
+
   final val curYear = "2013"
-  
+
   def darkLight = { razie.NoStaticS.get[controllers.DarkLight] }
 
   def theme = {
@@ -29,21 +31,40 @@ object Config extends WikiConfig {
   }
 
   // parse a properties looking thing
-  def parsep (content:String) = (content.split("\r\n")) filter (!_.startsWith("#")) map (_.split("=")) filter (_.size == 2) map (x => (x(0), x(1)))
+  def parsep(content: String) = (content.split("\r\n")) filter (!_.startsWith("#")) map (_.split("=")) filter (_.size == 2) map (x => (x(0), x(1)))
 
   def reloadUrlMap {
     println("========================== RELOADING URL MAP ==============================")
-    for (c <- Array(URLMAP, URLFWD, SITECFG, TOPICRED, SAFESITES, USERTYPES, BANURLS)) {
+    for (c <- Array(URLCANON, URLMAP, URLFWD, SITECFG, TOPICRED, SAFESITES, USERTYPES, BANURLS)) {
       val urlmaps = Some(Wikis.find(WID("Admin", c)).toSeq map (_.content) flatMap parsep)
-      val xurlmap = urlmaps.map(_.toMap)
+      val xurlmap = (urlmaps.map(se => HashMap[String, String](se: _*)))
       println("========================== RELOADING URL MAP ==============================")
       xurlmap.map(xconfig.put(c, _))
     }
+
+    for (u <- Wikis.find(WID("Admin", URLCFG)).toSeq map (_.content) flatMap parsep) {
+      val RE = """([^.]+)\.(.*)""".r
+      val RE(pre, prop) = u._1
+
+      if (!xconfig.contains(pre))
+        xconfig.put(pre, HashMap[String, String](prop -> u._2))
+      else
+        xconfig.get(pre).map(_.put(prop, u._2))
+    }
+
     xconfig.keys.foreach(x => {
       println("============= config topic: " + x)
       xconfig.get(x).foreach(y => println(y.mkString("\n  ")))
     })
   }
 
+  def realm(implicit request: Request[_]) = {
+    Config.config("realm").map { m =>
+      request.headers.get("X-FORWARDED-HOST") match {
+        case Some(x) if m contains x => m(x)
+        case _ => "rk"
+      }
+    } getOrElse "rk"
+  }
 }
 

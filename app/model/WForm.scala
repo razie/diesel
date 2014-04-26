@@ -31,7 +31,10 @@ class WForm(val we: WikiEntry) {
 
           f.flatMap(_.attributes.get("type")) match {
             case Some("select") => {
-              val choices = (f.flatMap(_.attributes.get("choices"))).toList.flatMap(_.split("\\|")).map(v => "<option " + (if (f.get.value == v) "selected>" else ">") + v + "</option>").mkString
+              val choices = (f.flatMap(_.attributes.get("choices"))).toList.flatMap(_.split("\\|")).map(
+                  v=>if(v.contains(";")) v.split(";") else Array(v,v)
+                  ).map(
+                  a => "<option value=\"" +a(0) + "\" " + (if (f.get.value == a(0)) "selected>" else ">") + a(1) + "</option>").mkString
               s"<select $ro name=$name $other>$choices</select>"
             }
             case _ => {

@@ -34,6 +34,8 @@ case class WikiEntry(
   markup: String,
   content: String,
   by: ObjectId,
+  tags: Seq[String] = Seq(),
+  realm:String = "rk",
   ver: Int = 1,
   parent: Option[ObjectId] = None,
   props: Map[String, String] = Map.empty,
@@ -58,15 +60,16 @@ case class WikiEntry(
   def cloneContent(newcontent: String) = copy(content = newcontent)
 
   def cloneNewVer(label: String, markup: String, content: String, by: ObjectId, props: Map[String, String] = this.props) =
-    WikiEntry(category, name, label, markup, content, by, ver + 1, parent, props, crDtm, DateTime.now, _id)
+    WikiEntry(category, name, label, markup, content, by, tags, realm, ver + 1, parent, props, crDtm, DateTime.now, _id)
 
   def cloneParent(p: Option[ObjectId]) = copy(parent = p, updDtm = DateTime.now)
 
   def cloneProps(m: Map[String, String], sby: ObjectId) =
-    WikiEntry(category, name, label, markup, content, sby, ver, parent, this.props ++ m, crDtm, DateTime.now, _id)
+    WikiEntry(category, name, label, markup, content, sby, tags, realm, ver, parent, this.props ++ m, crDtm, DateTime.now, _id)
 
   def withTags(s: Seq[String], sby: ObjectId) =
-    WikiEntry(category, name, label, markup, content, sby, ver, parent, this.props + ("tags" -> s.mkString(",")), crDtm, DateTime.now, _id)
+    copy(tags=s)
+//    WikiEntry(category, name, label, markup, content, sby, ver, parent, this.props + ("tags" -> s.mkString(",")), crDtm, DateTime.now, _id)
 
   def findParent = parent flatMap (p => Wikis.find(p))
 
@@ -149,7 +152,7 @@ case class WikiEntry(
     // add hardcoded attributes
     WikiParser.State(s.s, s.tags ++
       Map("category" -> category, "name" -> name, "label" -> label, "url" -> (category + ":" + name),
-        "tags" -> props.get("tags").getOrElse("")),
+        "tags" -> tags.mkString(",")),
       s.ilinks, s.decs)
   }
 
@@ -165,7 +168,7 @@ case class WikiEntry(
   def ilinks = preprocessed.ilinks
 
   /** tags of the page, nothing to do with parsing */
-  def tags = props.get("tags").map(_.split(",").toSeq).getOrElse(Seq())
+//  def tags = props.get("tags").map(_.split(",").toSeq).getOrElse(Seq())
 
   final val AUDIT_WIKI_CREATED = "WIKI_CREATED "
   final val AUDIT_WIKI_UPDATED = "WIKI_UPDATED "

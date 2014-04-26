@@ -1,8 +1,8 @@
 @**************
 edit a wiki page
 **************@
-
-@(wid:model.WID, myForm:Form[controllers.Wiki.EditWiki], user:Option[model.User])
+@(wid:model.WID, myForm:Form[controllers.Wiki.EditWiki], user:Option[model.User])(implicit request:Request[_])
+@import _root_.admin.Config.realm
 
 @v(name:String) = @{
   myForm(name).value.getOrElse("?")
@@ -28,7 +28,7 @@ edit a wiki page
 } 
 
 @htmlHead("Editing "+wid.cat+":"+ wid.name)
-@navbar(user)
+@navbar(user, realm)
    
 <div class="container">
   <div class="row">
@@ -121,7 +121,7 @@ PROBLEM: many places use label as name... via Wikis.formatName
 }
 
     <hr>
-    @htmlFooter()
+    @htmlFooter(false, false, realm)
     </div> <!-- /span9 -->
 
     <div class="span3">

@@ -171,13 +171,13 @@ object Profile extends RazController with Logging {
   }
 
   // join step 1
-  def doeJoin(club: String, role: String, next: String) = Action {
+  def doeJoin(club: String, role: String, next: String) = Action {implicit request=>
     Ok(views.html.doeJoin(registerForm)).withSession(
       "gaga" -> System.currentTimeMillis.toString,
       "extra" -> "%s,%s,%s".format(club, role, next))
   } // continue with register()
 
-  def doeJoinWith(email: String) = Action {
+  def doeJoinWith(email: String) = Action {implicit request=>
     log("joinWith email=" + email)
     Ok(views.html.doeJoin(registerForm.fill(Registration(email.dec, "", "")))).withSession("gaga" -> System.currentTimeMillis.toString)
   } // continue with register()

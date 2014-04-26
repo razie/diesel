@@ -397,7 +397,7 @@ object U11 extends UpgradeDb with razie.Logging {
     Club(cname).foreach { club =>
       club.userLinks.toList.filter(uw => uw.role != "Owner").map { uw =>
         all = all + 1
-        Users.findUserById(uw.userId).filter(! _.wikis.exists(_.wid== wid)).foreach { rw =>
+        Users.findUserById(uw.userId).filter(!_.wikis.exists(_.wid == wid)).foreach { rw =>
           val newuw = model.UserWiki(uw.userId, wid, role)
           newuw.create
           cout << " 1 DB creating " + "   ===>>>   " + newuw.toString
@@ -418,3 +418,38 @@ object U11 extends UpgradeDb with razie.Logging {
   }
 
 }
+
+// add tags, realm
+object U12 extends UpgradeDb with razie.Logging {
+  import db.RazSalatContext._
+
+  def upgrade(db: MongoDB) {
+
+    var i = 0;
+
+    for (tableName <- "WikiEntry" :: model.Wikis.PERSISTED.map("we" + _).toList)
+      withDb(db(tableName)) { t =>
+        for (u <- t) {
+          clog < "UPGRADING " + u
+          u.put("realm", (if(tableName=="weLocker") "note" else "rk"))
+          val p = u.get("props")
+          if (p != null) {
+            val t = p.asInstanceOf[DBObject].get("tags")
+            if (t != null && t.isInstanceOf[String]) {
+              val ts = t.asInstanceOf[String].split(",").toSeq
+
+              cout << p << p.getClass() << t << "RES " << ts
+              u.put("tags", ts)
+              p.asInstanceOf[DBObject].remove("tags")
+            }
+          }
+          clog < "UPGRADED " + u
+          i = i + 1
+          //          if (i == 200) throw new RuntimeException("haha")
+                    t.save(u)
+        }
+        clog < s"UPGRADED $i entries"
+      }
+  }
+}
+

@@ -31,7 +31,6 @@ import model.Perm
 import admin._
 import model.WID
 import model.UserTasks
-import play.api.cache.Cache
 import model.RacerKidAssoc
 import model.RacerKidz
 import model.RK
@@ -241,16 +240,18 @@ Ok - we sent an email to your registered email address <font style="color:red">$
     log("ENC_DT=" + dt.enc)
     log("ENC_DT=" + dt.enc.dec)
     log("ENC_DT=" + EncUrl(dt))
+    val header = request.headers.get("X-Forwarded-Host")
     val hc1 = """/user/task/verifyEmail2?expiry=%s&email=%s&id=%s""".format(EncUrl(dt), Enc.toUrl(c.email), c.id)
     log("ENC_LINK1=" + hc1)
-    val ds = DoSec(hc1)
+    val ds = DoSec(hc1, header)
     log("ENC_LINK2=" + ds.secUrl)
 
-    sendToVerif1(c.email.dec, from, c.ename, ds.secUrl)
+    val h = header.getOrElse ("www.racerkidz.com")
+    sendToVerif1(c.email.dec, from, c.ename, h, ds.secUrl)
   }
 
-  def sendToVerif1(email: String, from: String, name: String, link: String)(implicit mailSession: MailSession) = {
-    val html = Emailer.text("emailverif").format(name, email, link);
+  def sendToVerif1(email: String, from: String, name: String, h:String, link: String)(implicit mailSession: MailSession) = {
+    val html = Emailer.text("emailverif").format(name, email, h, h, link);
 
     SendEmail.send(email, from, "Racer Kid - please activate your account", html)
   }
@@ -323,11 +324,11 @@ Ok - we sent an email to your registered email address <font style="color:red">$
             UserTasks.verifyEmail(p).delete
           }
 
-          Msg("""
+          Msg2("""
 Ok, email verified. You can now edit topics.
 
 Please read our [[Terms of Service]] as well as our [[Privacy Policy]]
-""", HOME).withSession(Config.CONNECTED -> Enc.toSession(email))
+""", Some("/")).withSession(Config.CONNECTED -> Enc.toSession(email))
         }
       } getOrElse
         {

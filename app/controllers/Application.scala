@@ -17,6 +17,7 @@ import db._
 import razie.cout
 import org.joda.time.DateTime
 import model.Sec._
+import model.WikiIndex
 
 /** main entry points */
 object Application extends RazController {
@@ -71,6 +72,28 @@ object Application extends RazController {
     Redirect(Wiki.w("Admin", "Hosted_Services_for_Ski_Clubs"))
   }
 
+  /** randomly redirect to a topic */
+  def lucky = Action { implicit request =>
+
+    var w: Option[model.WID] = None
+    var i = 0
+    do {
+      w = WikiIndex.random
+      i = i + 1
+    } while (w.isEmpty && i < 100)
+
+    w.map { wid =>
+      Audit.logdb("LUCKY", "wpath", wid.wpath)
+      Config.urlcanon(wid.wpath).map { canon =>
+        Redirect(canon)
+      } getOrElse {
+        Redirect(Wiki.w(wid))
+      }
+    } getOrElse {
+      Redirect("/")
+    }
+  }
+
   // login as harry p.
   def doeHarry(css: String) = Action { implicit request =>
     if (css != null && css.length > 0 && !Array("light", "dark").contains(css)) {
@@ -80,10 +103,7 @@ object Application extends RazController {
       Audit.logdb("DOE_HARRY", css)
 
       (for (u <- Users.findUserById("4fdb5d410cf247dd26c2a784")) yield {
-        if (css != null && css.length > 0)
           Redirect("/").withSession(Config.CONNECTED -> Enc.toSession(u.email), "css" -> css)
-        else
-          Redirect("/").withSession(Config.CONNECTED -> Enc.toSession(u.email))
       }) getOrElse {
         Audit.logdb("ERR_HARRY", "account is missing???")
         Msg2("Can't find Harry Potter - sorry!")
@@ -91,8 +111,28 @@ object Application extends RazController {
     }
   }
 
+  // login as harry p.
+  def doeTheme(css: String) = Action { implicit request =>
+    if (css != null && css.length > 0 && !Array("light", "dark").contains(css)) {
+      Audit.logdb("SET_THEME_HACK", css + " - " + request.toString)
+      Unauthorized("")
+    } else {
+      Audit.logdb("SET_THEME", "X-FORWARDED-HOST = " + request.headers.get("X-FORWARDED-HOST"), css)
+
+      (for (au <- auth) 
+        yield 
+          Redirect("/").withSession(Config.CONNECTED -> Enc.toSession(au.email), "css" -> css)
+      ) getOrElse
+          Redirect("/").withSession("css" -> css)
+    }
+  }
+
   def doeSpin = Action { implicit request =>
     Ok(views.html.user.doeSpin(auth))
+  }
+
+  def doeSelectTheme = Action { implicit request =>
+    Ok(views.html.user.doeSelectTheme(auth))
   }
 
   // TODO better mobile display

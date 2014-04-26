@@ -14,7 +14,6 @@ import controllers.UserStuff
 import model.Sec._
 import controllers.Maps
 import controllers.RazController
-import play.api.cache.Cache
 import admin.MailSession
 import controllers.Emailer
 import db.RTable

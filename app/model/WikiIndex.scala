@@ -47,17 +47,16 @@ object WikiIndex {
     }
   }
 
-  val lower = HashMap[String, String]() // for lowercase
-  val labels = HashMap[String, String]() // quick label lookup
-    
+  private val lower = HashMap[String, String]() // for lowercase
+  private val labels = HashMap[String, String]() // quick label lookup
+
   private lazy val actualIndex = {
     val t = new NewTripleIdx[String, WID, ObjectId]()
     Wikis.table.find(Map()).foreach { db =>
       val w = WID(
-          db.as[String]("category"), 
-          db.as[String]("name"), 
-          if (db.containsField("parent")) Some(db.as[ObjectId]("parent")) else None
-          )
+        db.as[String]("category"),
+        db.as[String]("name"),
+        if (db.containsField("parent")) Some(db.as[ObjectId]("parent")) else None)
       t.put(w.name, w, db.as[ObjectId]("_id"))
       lower.put(w.name.toLowerCase(), w.name)
       labels.put(w.name, db.as[String]("label"))
@@ -68,7 +67,7 @@ object WikiIndex {
   private def up(we: WikiEntry) {
     parsed.put(we._id, PEntry(we.ilinks))
     if (we.wid.cat == "Category")
-      Wikis.cats.put (we.wid.name, we)
+      Wikis.cats.put(we.wid.name, we)
   }
 
   def graph(oid: ObjectId) = synchronized {
@@ -100,21 +99,30 @@ object WikiIndex {
     labels.remove(we.name)
     parsed.remove(we._id)
   }
-  
-  def containsName (name:String) = withIndex { idx =>
+
+  def containsName(name: String) = withIndex { idx =>
     idx.idx.contains(name)
-    }
+  }
 
-  def containsLower (name:String) = withIndex { idx =>
+  def containsLower(name: String) = withIndex { idx =>
     lower.contains(name)
-    }
-  
-  // TODO stupidest name this month
-  def getForLower (name:String) = withIndex { idx =>
-    lower.get(name)
-    }
+  }
 
-  def label (name:String) = withIndex { idx =>
+  // TODO stupidest name this month
+  def getForLower(name: String) = withIndex { idx =>
+    lower.get(name)
+  }
+
+  def label(name: String) = withIndex { idx =>
     labels.get(name)
-    }
+  }
+
+  /** returns a random WID from index - keep calling until isDefined */
+  def random: Option[WID] = withIndex { idx =>
+    val k = labels.keySet.toSeq
+    val r = (math.random * k.size).toInt
+    if (k.isDefinedAt(r)) {
+      idx.get1k(k(r)).headOption
+    } else None
+  }
 }

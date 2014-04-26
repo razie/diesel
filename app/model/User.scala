@@ -14,7 +14,6 @@ import controllers.UserStuff
 import model.Sec._
 import controllers.Maps
 import controllers.RazController
-import play.api.cache.Cache
 import admin.MailSession
 import controllers.Emailer
 import db.RTable
@@ -117,6 +116,7 @@ case class User(
   def isClub = roles contains UserType.Organization.toString
 //  def isClubAdmin = isClub // TODO allow users to manage clubs somehow - SU
   def isUnder13 = DateTime.now.year.get - yob <= 12
+  def isHarry = id == "4fdb5d410cf247dd26c2a784"
 
   // TODO optimize
   def perms: Set[String] = profile.map(_.perms).getOrElse(Set()) ++ groups.flatMap(_.can).toSet

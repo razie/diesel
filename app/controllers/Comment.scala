@@ -25,7 +25,7 @@ object Comment extends RazController with Logging {
       formWithErrors =>
         Msg2(formWithErrors.toString + "Hein?", Some(routes.Wiki.showId(topicId).url)),
       {
-        case (link, content) => iadd(topicId, what, oid, None, content).apply(request)
+        case (link, content) => iadd(topicId, what, oid, None, content).apply(request).value.get.get
       })
   }
 
@@ -141,7 +141,7 @@ object Comment extends RazController with Logging {
             }) getOrElse
               noPerm(wid)
           } getOrElse {
-            if (con.length > 0) iadd(wid.findId.get.toString, kind, cid, kopt(newlink), con).apply(request)
+            if (con.length > 0) iadd(wid.findId.get.toString, kind, cid, kopt(newlink), con).apply(request).value.get.get
             else  Redirect(controllers.Wiki.w(wid, false))
           }
       })

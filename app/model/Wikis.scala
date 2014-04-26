@@ -27,7 +27,7 @@ import db.RazMongo
 
 /** wiki factory and utils */
 object Wikis extends Logging with Validation {
-  final val PERSISTED = Array("Item", "Event", "Training", "Form", "Entry")
+  final val PERSISTED = Array("Item", "Event", "Training", "Form", "Entry", "Locker")
   
   lazy val TABLE_NAME = "WikiEntry"
   
@@ -182,7 +182,10 @@ object Wikis extends Logging with Validation {
   def preprocess(wid: WID, markup: String, content: String) = markup match {
     case MD =>
       implicit val errCollector = new VError()
-      var c2 = content
+      
+      // replace urls with MD markup:
+      var c2 = content.replaceAll("""( |^)(https?://[^ \n]+)""", "$1[$2]")
+      
       if (c2 contains "[[./")
         c2 = content.replaceAll("""\[\[\./""", """[[%s/""".format(wid.cat + ":" + wid.name)) // child topics
       if (c2 contains "[[../")
@@ -284,7 +287,7 @@ object Wikis extends Logging with Validation {
     // mark the external links
     val A_PAT = """(<a +href="http://)([^>]*)>([^<]*)(</a>)""".r
     res = A_PAT replaceSomeIn (res, { m =>
-      if (Option(m group 2) exists (!_.startsWith(Services.config.hostport)))
+      if (Option(m group 2) exists (s=> !s.startsWith(Services.config.hostport) && !s.startsWith("www.racerkidz.com")))
         Some("""$1$2 title="External site"><i>$3</i><sup>&nbsp;<b style="color:darkred">^^</b></sup>$4""")
       else None
     })
@@ -339,13 +342,30 @@ object Wikis extends Logging with Validation {
 /** encapsulates the knowledge to use the wiki-defined domain model */
 object WikiDomain {
 
+  // get all zends as List (to, role)
+  def gzEnds(aEnd: String) =
+    (for (
+      c <- Wikis.categories if (c.contentTags.get("roles:" + aEnd).isDefined);
+      t <- c.contentTags.get("roles:" + aEnd).toList;
+      r <- t.split(",")
+    ) yield (c.name, r)).toList
+
+//    Wikis.categories.filter(_.contentTags.get("roles:" + aEnd).isDefined).flatMap(c=>c.contentTags.get("roles:" + aEnd).get.split(",").toList.map(x=>(c,x)))
+
+  def gaEnds(zEnd: String) =
+    for (
+      c <- Wikis.category(zEnd).toList;
+      t <- c.contentTags if (t._1 startsWith "roles:");
+      r <- t._2.split(",")
+    ) yield (t._1.split(":")(1), r)
+
   def zEnds(aEnd: String, role: String) =
-    Wikis.categories.filter(_.contentTags.get("roles:" + aEnd).map(_.split(",")).exists(_.contains(role))).toList
+    Wikis.categories.filter(_.contentTags.get("roles:" + aEnd).map(_.split(",")).exists(_.contains(role) || role=="")).toList
 
   def aEnds(zEnd: String, role: String) =
     for (
       c <- Wikis.category(zEnd).toList;
-      t <- c.contentTags if (t._2.split(",").contains(role))
+      t <- c.contentTags if (t._2.split(",").contains(role) || role=="")
     ) yield t._1.split(":")(1)
 
   def needsOwner(cat: String) =

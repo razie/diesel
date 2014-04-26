@@ -7,11 +7,13 @@
 package admin
 
 import java.util.Properties
+import collection.mutable
 import scala.Option.option2Iterable
 import java.io.FileInputStream
 import db.RTable
 import razie.cout
 import razie.clog
+import play.api.mvc.Request
 
 /**
  * configuration for the core wiki engine - some come from a property file and some from special admin pages
@@ -30,7 +32,7 @@ abstract class WikiConfig {
   final val rk = System.getProperty("rk.home", props.getProperty("rk.home"))
   final val hostport = props.getProperty("rk.hostport")
   final val safeMode = props.getProperty("rk.safemode")
-  final val analytics = props.getProperty("rk.analytics").toBoolean
+  final val analytics = true; //props.getProperty("rk.analytics").toBoolean
   final val noads = props.getProperty("rk.noads").toBoolean
   final val forcephone = props.getProperty("rk.forcephone").toBoolean
 
@@ -39,6 +41,16 @@ abstract class WikiConfig {
   def isLocalhost = "localhost:9000" == hostport
 
   //-------------- special admin/configuration pages
+
+  /** if there is an external favorite canonical URL for this WPATH */
+  def urlcanon(wpath: String) = {
+    var res: Option[String] = None
+
+    for (has <- config(URLCANON); site <- has if (wpath.startsWith(site._1))) {
+      res = Some(wpath.replaceFirst("^%s".format(site._1), site._2))
+    }
+    res
+  }
 
   /** modify external sites mapped to external URLs */
   def urlmap(u: String) = {
@@ -72,8 +84,10 @@ abstract class WikiConfig {
   }
 
   /** holds the entire wiki-based configuration, can reset to reload */
-  protected val xconfig = scala.collection.mutable.Map[String, Map[String, String]]()
+  protected val xconfig = mutable.Map[String, mutable.Map[String, String]]()
 
+  final val URLCFG = "urlcfg"
+  final val URLCANON = "urlcanon"
   final val URLMAP = "urlmap"
   final val URLFWD = "urlfwd"
   final val SITECFG = "sitecfg"
@@ -83,4 +97,5 @@ abstract class WikiConfig {
   final val BANURLS = "banurls"
 
   def reloadUrlMap: Unit
+
 }

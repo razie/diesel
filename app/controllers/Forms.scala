@@ -92,6 +92,8 @@ object Forms extends WikiBase1 with Logging {
       "md",
       content,
       u._id,
+      Seq(),
+      "rk",
       1,
       None,
       Map("visibility" -> "ClubAdmin",

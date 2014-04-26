@@ -1,4 +1,4 @@
-@(pageTitle: String = "", cssr:Option[String]=None)
+@(pageTitle: String = "", cssr:Option[String]=None, page:Option[model.WikiEntry]=None, options:Map[String,String]=Map())
 @import _root_.admin.Config
 
 @title() = @{
@@ -7,13 +7,20 @@
 }
 
 @css() = @{
-  cssr.getOrElse(_root_.admin.Config.theme)
+val ret = cssr.getOrElse(_root_.admin.Config.theme)
+razie.cdebug << "HEHE css="+ret
+ret
 }
 
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="utf-8">
+
+    @*** keep google happy using Admin:urlcanon ***@
+    @page.flatMap(p=> Config.urlcanon(p.wid.wpath)).map {canon =>
+      <link rel="canonical" href="@canon" />
+    }
     
     <title>@title</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -124,9 +131,18 @@ li.g-like{
   
 @if(_root_.admin.Config.analytics) {
   <script type="text/javascript">
-
+  var xrazprop = (function() {
+    var xp = {};
+    
+    @Config.config("analytics").toList.flatMap(_.toSeq).map {t=>
+      xp['@t._1'] = '@t._2';
+    }
+    
+    return xp[document.location.hostname] || 'UA-31808405-1';
+})();
+    
   var _gaq = _gaq || [];
-  _gaq.push(['_setAccount', 'UA-31808405-1']);
+  _gaq.push(['_setAccount', xrazprop]);
   _gaq.push(['_trackPageview']);
 
   (function() {
@@ -137,6 +153,60 @@ li.g-like{
 
 </script>
 }
+
+@*** for hijs code frags ***@
+@if(page.exists(p=>"""\{\{code[:}]""".r.findFirstIn(p.content).isDefined)) {
+
+  @if(Config.theme.contains("light")) {
+  
+<style type="text/css">
+p code {
+  font-size: 16px;
+  line-height: 16px;
+}
+
+pre {
+  background-color: #e5e5e5;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  color: #000000; 
+}
+code .keyword              { font-weight: bold; color: #993300 }
+code .string, code .regexp { color: #669933 }
+code .class                { color: #CC6600 }
+code .special              { color: #dd7522 }
+code .number               { color: #eddd3d }
+code .comment              { color: gray }
+</style>
+
+} else {              @*** dark theme ***@
+
+<style type="text/css">
+p code {
+  font-size: 16px;
+  line-height: 16px;
+}
+
+pre {
+  background-color: #191919;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  color: #DDDDDD 
+}
+code .keyword              { font-weight: bold; color: #FFCC00 }
+code .string, code .regexp { color: #669933 }
+code .class                { color: #C39A5E }
+code .special              { color: #dd7522 }
+code .number               { color: #eddd3d }
+code .comment              { color: gray }
+</style>
+}
+}
+          
     </head>
 
+@options.get("onload").map{f=>
+  <body onload="@f">
+}.getOrElse{
   <body>
+}

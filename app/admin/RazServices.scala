@@ -13,6 +13,8 @@ import model.WikiUser
 import model.Users
 import org.bson.types.ObjectId
 import model.Perm
+import razie.cdebug
+import controllers.DarkLight
 
 /** statics and utilities for authentication cache */
 object RazAuthService extends AuthService[User] with Logging {
@@ -41,7 +43,15 @@ object RazAuthService extends AuthService[User] with Logging {
 
     import play.api.Play.current
     debug("AUTH SESSION.connected=" + connected)
-    
+
+    // this is set even if no users logged in
+    // TODO must get rid of this stupid statics... why can't play do this?
+    razie.NoStaticS.remove[DarkLight]
+    request.session.get("css").foreach { v =>
+      razie.NoStaticS.put(DarkLight(v)) 
+      cdebug << "HAHA HAHA css="+v
+    } 
+
     synchronized {
       // from session
       val au = connected.flatMap { euid =>
@@ -79,10 +89,10 @@ object RazAuthService extends AuthService[User] with Logging {
       // allow theme to be overriten per request / session
       request.session.get("css").foreach { v =>
         au.foreach(_.css = Some(v));
-        razie.NoStaticS.put(DarkLight(v))
+//        razie.NoStaticS.put(DarkLight(v))
       }
-      val u: User = au.getOrElse(null)
-      razie.NoStaticS.put[WikiUser](u)
+
+      razie.NoStaticS.put[WikiUser](au.getOrElse(null))
       au.foreach(u => razie.NoStaticS.put(DarkLight(u.css.getOrElse("dark"))))
 
       au

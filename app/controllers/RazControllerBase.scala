@@ -31,19 +31,19 @@ class RazControllerBase extends Controller with Logging with Validation {
   }
 
   /** result a page to display this message and optionally continue to a page */
-  def Msg2(msg: String, page: Option[String], u: Option[WikiUser] = None)(implicit request: Request[_]): play.api.mvc.SimpleResult[play.api.templates.Html] = {
+  def Msg2(msg: String, page: Option[String], u: Option[WikiUser] = None)(implicit request: Request[_]): play.api.mvc.SimpleResult = {
     ViewService.impl.utilMsg(msg, page, if (u.isDefined) u else wauth)
   }
   
   /** result a page to display this message and optionally continue to a page */
-  def Msg3(msg: String, page: Option[String], pageNO:Option[(String,String)], u: Option[WikiUser] = None)(implicit request: Request[_]): play.api.mvc.SimpleResult[play.api.templates.Html] = {
+  def Msg3(msg: String, page: Option[String], pageNO:Option[(String,String)], u: Option[WikiUser] = None)(implicit request: Request[_]): play.api.mvc.SimpleResult = {
     ViewService.impl.utilMsg(msg, page, if (u.isDefined) u else wauth, pageNO)
   }
 }
 
 /** some views you have to provide for the flow */
 trait ViewService {
-  def utilMsg (msg:String, link:Option[String], user:Option[WikiUser], link2:Option[(String,String)]=None)(implicit request: Request[_]): play.api.mvc.SimpleResult[play.api.templates.Html]
+  def utilMsg (msg:String, link:Option[String], user:Option[WikiUser], link2:Option[(String,String)]=None)(implicit request: Request[_]): play.api.mvc.SimpleResult
 }
 
 object ViewService {

@@ -36,7 +36,7 @@ import admin.GlobalData
 object Admin extends RazController {
   protected def hasPerm(p: Perm)(implicit request: Request[_]): Boolean = auth.map(_.hasPerm(p)) getOrElse false
 
-  protected def forAdmin[T](body: => play.api.mvc.SimpleResult[_])(implicit request: Request[_]) = {
+  protected def forAdmin[T](body: => play.api.mvc.SimpleResult)(implicit request: Request[_]) = {
     if (hasPerm(Perm.adminDb)) body
     else noPerm(HOME)
   }

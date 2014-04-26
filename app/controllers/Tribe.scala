@@ -47,7 +47,6 @@ import java.net.URLEncoder
 import com.mongodb.util.JSON
 import razie.Log
 import model.Sec._
-import play.api.cache.Cache
 import admin.MailSession
 import db.RTable
 import scala.annotation.StaticAnnotation
@@ -166,7 +165,7 @@ object Tribe extends RazController with Logging {
           Stage("WikiLink", WikiLink(WID(cat, n, club.wid.findId), club.wid, role).grated, auth.get.userName).create
           controllers.Wiki.wikieEdit(WID(cat, name, club.wid.findId), 
               s"{{label:$label}}\n{{desc:$desc}}\n{{role:$role}}\n{{year:${club.curYear}}}\n"
-            ).apply(request)
+            ).apply(request).value.get.get
           }) getOrElse Msg2("CAN'T SEE PROFILE " + errCollector.mkString)
         }
       })

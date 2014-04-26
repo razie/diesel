@@ -87,8 +87,11 @@ object SendEmail extends razie.Logging {
       Audit.logdb("EMAIL_SENT", Seq("to:" + e.to, "from:" + e.from, "subject:" + e.subject).mkString("\n"))
     } catch {
       case mex: MessagingException => {
-        Audit.logdb("ERR_EMAIL", Seq("to:" + e.to, "from:" + e.from, "subject:" + e.subject, "html="+e.html).mkString("\n"))
-        mex.printStackTrace();
+        Audit.logdb("ERR_EMAIL", 
+            Seq("to:" + e.to, "from:" + e.from, 
+                "subject:" + e.subject, "html="+e.html, 
+                "EXCEPTION = "+mex.toString()).mkString("\n"))
+        error("ERR_EMAIL", mex)
       }
     }
   }

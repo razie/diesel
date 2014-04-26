@@ -50,7 +50,7 @@ object SedWiki {
         Some((
           try {
             val up = razie.NoStaticS.get[model.WikiUser]
-            val upp = up.toList.flatMap(_.myPages(cat)).map(_.asInstanceOf[{def wid:WID}])
+            val upp = up.toList.flatMap(_.myPages(cat)).map(_.asInstanceOf[{ def wid: WID }])
             "<ul>" + upp.sortWith(_.wid.name < _.wid.name).take(20).map(_.wid).map { wid =>
               Wikis.formatWikiLink(wid, Wikis.label(wid).toString, Wikis.label(wid).toString)
             }.map(_._1).map(x => "<li>" + x + "</li>").mkString(" ") + "</ul>"
@@ -145,6 +145,9 @@ object WikiParser extends ParserCommons with CsvParser {
   /** use this to expand [[xxx]] on the spot */
   def parseW2(input: String) = parseAll(wiki2, input) getOrElse (State("[[CANNOT PARSE]]"))
 
+  /** use this to parse wiki markdown on the spot - it is meant for short strings within like a cell or something */
+  def parseLine(input: String) = parseAll(line, input) getOrElse (State("[[CANNOT PARSE]]"))
+
   def xCRLF1: PS = CRLF1 ^^ { case x => x }
   def xCRLF2: PS = CRLF2 ^^ { case x => x }
   def xCRLF3: PS = CRLF3 ^^ { case x => x }
@@ -162,7 +165,7 @@ object WikiParser extends ParserCommons with CsvParser {
   }
 
   def optline: PS = opt(line) ^^ { case o => o.map(identity).getOrElse(State("")) }
-  
+
   def lines: PS = rep(optline ~ (CRLF1 | CRLF3 | CRLF2)) ~ opt(line) ^^ {
     case l ~ c =>
       State(
@@ -176,16 +179,16 @@ object WikiParser extends ParserCommons with CsvParser {
   def lastLine: PS = ("""^[\s]+$""".r) ^^ { case a => "\n" }
 
   // ======================== static lines - not parsed
-  
+
   def escbq: PS = "``" ^^ { case a => State("`") }
-  
+
   def sstatic: PS = not("{{/code}}") ~> (""".""".r) ~ ("""[^{}\[\]`\r\n]""".r*) ^^ { case a ~ b => State(a + b.mkString) }
   def sline: PS = rep(lastLine | sstatic) ^^ {
     case l => State(l.map(_.s).mkString, l.flatMap(_.tags).toMap, l.flatMap(_.ilinks), l.flatMap(_.decs))
   }
 
   def soptline: PS = opt(sline) ^^ { case o => o.map(identity).getOrElse(State("")) }
-  
+
   def slines: PS = rep(soptline ~ (CRLF1 | CRLF3 | CRLF2)) ~ opt(sline) ^^ {
     case l ~ c =>
       State(
@@ -194,7 +197,6 @@ object WikiParser extends ParserCommons with CsvParser {
         l.flatMap(_._1.ilinks).toList ++ c.map(_.ilinks).getOrElse(Nil),
         l.flatMap(_._1.decs).toList ++ c.map(_.decs).getOrElse(Nil))
   }
-
 
   def wiki3: PS = "[[[" ~ """[^]]*""".r ~ "]]]" ^^ {
     case "[[[" ~ name ~ "]]]" => """<a href="http://en.wikipedia.org/wiki/%s"><i>%s</i></a>""".format(name, name)
@@ -259,6 +261,7 @@ object WikiParser extends ParserCommons with CsvParser {
     case url ~ None => """[%s](%s)""".format(url, url)
   }
 
+  /** quick list element */
   def lists = li1 | li2 | li3
   def li1: PS = """^ \* """.r ^^ { case x => "    * " }
   def li2: PS = """^  \* """.r ^^ { case x => "        * " }
@@ -296,17 +299,17 @@ object WikiParser extends ParserCommons with CsvParser {
   //======================= {{name:value}}
 
   // this is used when matching a link/name
-  private def wikiPropsRep: PS = rep(wikiPropMagicName | wikiPropByName | wikiPropWhenName | 
-      wikiPropWhereName | wikiPropLocName | wikiPropRoles | wikiProp | 
-      xstatic) ^^ { 
-    case l => State(l.map(_.s).mkString, l.flatMap(_.tags).toMap, l.flatMap(_.ilinks)) 
-    }
+  private def wikiPropsRep: PS = rep(wikiPropMagicName | wikiPropByName | wikiPropWhenName |
+    wikiPropWhereName | wikiPropLocName | wikiPropRoles | wikiProp |
+    xstatic) ^^ {
+    case l => State(l.map(_.s).mkString, l.flatMap(_.tags).toMap, l.flatMap(_.ilinks))
+  }
 
   // this is used for contents of a topic
-  private def wikiProps: PS = wikiPropMagic | wikiPropBy | wikiPropWhen | wikiPropXp | wikiPropWhere | 
-    wikiPropLoc | wikiPropRoles | wikiPropAds | wikiPropWidgets | wikiPropCsv | wikiPropCsv2 | 
-    wikiPropTable | wikiPropSection | wikiPropImg | wikiPropVideo | wikiPropScript | wikiPropCall | 
-    wikiPropCode | wikiPropField | wikiPropRk | wikiProp //| wikiPropNV
+  private def wikiProps: PS = wikiPropMagic | wikiPropBy | wikiPropWhen | wikiPropXp | wikiPropWhere |
+    wikiPropLoc | wikiPropRoles | wikiPropAds | wikiPropWidgets | wikiPropCsv | wikiPropCsv2 |
+    wikiPropTable | wikiPropSection | wikiPropImg | wikiPropVideo | wikiPropScript | wikiPropCall |
+    wikiPropFiddle | wikiPropCode | wikiPropField | wikiPropRk | wikiProp //| wikiPropNV
 
   private def wikiPropMagic: PS = "{{{" ~> """[^}]*""".r <~ "}}}" ^^ {
     case value => {
@@ -330,15 +333,15 @@ object WikiParser extends ParserCommons with CsvParser {
   }
 
   // TODO this opt() not working - could remove the propS
-//  def wikiProp: PS = "{{" ~> """[^}:]+""".r ~ opt("""[: ]""".r ~> """[^}:]*""".r) <~ "}}" ^^ {
-//      case name ~ value =>
-//      if (name startsWith ".")
-//        State("", Map(name.substring(1) -> value.getOrElse(""))) // hidden
-//      else
-//        State("""{{Property %s=%s}}""".format(name, value), Map(name -> value.getOrElse("")))
-//  }
+  //  def wikiProp: PS = "{{" ~> """[^}:]+""".r ~ opt("""[: ]""".r ~> """[^}:]*""".r) <~ "}}" ^^ {
+  //      case name ~ value =>
+  //      if (name startsWith ".")
+  //        State("", Map(name.substring(1) -> value.getOrElse(""))) // hidden
+  //      else
+  //        State("""{{Property %s=%s}}""".format(name, value), Map(name -> value.getOrElse("")))
+  //  }
   def wikiProp: PS = "{{" ~> """[^}:]+""".r ~ """[: ]""".r ~ """[^}]*""".r <~ "}}" ^^ {
-      case name ~ _ ~ value =>
+    case name ~ _ ~ value =>
       if (name startsWith ".")
         State("", Map(name.substring(1) -> value)) // hidden
       else
@@ -346,13 +349,13 @@ object WikiParser extends ParserCommons with CsvParser {
   }
 
   // TODO this opt() not working - could remove the propS
-//  def wikiPropNV: PS = "{{" ~> """[^}:]+""".r <~ "}}" ^^ {
-//      case name =>
-//      if (name startsWith ".")
-//        State("", Map(name.substring(1) -> "")) // hidden
-//      else
-//        State("""{{Property %s=%s}}""".format(name, ""), Map(name -> ""))
-//  }
+  //  def wikiPropNV: PS = "{{" ~> """[^}:]+""".r <~ "}}" ^^ {
+  //      case name =>
+  //      if (name startsWith ".")
+  //        State("", Map(name.substring(1) -> "")) // hidden
+  //      else
+  //        State("""{{Property %s=%s}}""".format(name, ""), Map(name -> ""))
+  //  }
 
   private def wikiPropByName: PS = ("\\{\\{[Bb]y[: ]+".r | "\\{\\{[Cc]lub[: ]+".r) ~> """[^}]*""".r <~ "}}" ^^ {
     case place => State("""{{by %s}}""".format(place), Map("by" -> place))
@@ -432,8 +435,9 @@ object WikiParser extends ParserCommons with CsvParser {
     case what => {
       what match {
         case Some("lederboard") => State(Ads.lederboard)
-        case Some("square") => State(Ads.square)
-        case Some("squarenofloat") => State(Ads.squarenofloat)
+        case Some("square") | Some("squaretop") => State(Ads.squaretop)
+        case Some("squareright") => State(Ads.squareright)
+        case Some("squarenofloat") | Some("squareinline") => State(Ads.squareinline)
         case _ => State(Ads.lederboard)
       }
     }
@@ -442,18 +446,18 @@ object WikiParser extends ParserCommons with CsvParser {
   private def wikiPropRk: PS = "{{" ~> "rk" ~> opt("[: ]".r ~> """[^}]*""".r) <~ "}}" ^^ {
     case what => {
       what match {
-        case Some("member") => 
+        case Some("member") =>
           State("""<a class="badge badge-warning" href="http://www.racerkidz.com/wiki/Admin:Member_Benefits">RacerKidz</a>""")
-        case Some("club") => 
+        case Some("club") =>
           State("""<a class="badge badge-warning" href="http://www.racerkidz.com/wiki/Admin:Club_Hosting">RacerKidz</a>""")
-        case _ => 
+        case _ =>
           State("""<a class="badge badge-warning" href="http://www.racerkidz.com">RacerKidz</a>""")
       }
     }
   }
 
-  private def arg  = "[^=,}]*".r ~ "=" ~ "[^},]*".r ^^ { case n ~ x ~ v => (n, v) }
-  private def arg2 = "[^=,}]*".r ~ "=\"" ~ "[^\"]*".r <~ "\""^^ { case n ~ x ~ v => (n, v) } // if contains comma, use ""
+  private def arg = "[^=,}]*".r ~ "=" ~ "[^},]*".r ^^ { case n ~ _ ~ v => (n, v) }
+  private def arg2 = "[^=,}]*".r ~ "=\"" ~ "[^\"]*".r <~ "\"" ^^ { case n ~ _ ~ v => (n, v) } // if contains comma, use ""
 
   private def wikiPropWidgets: PS = "{{" ~> "widget:" ~> "[^:]+".r ~ ":" ~ rep((arg2 | arg) <~ opt(",")) <~ "}}" ^^ {
     case name ~ _ ~ args => {
@@ -502,8 +506,7 @@ object WikiParser extends ParserCommons with CsvParser {
       def ecell(cat: String, p: String, a: String, b: String) =
         parseW2("[[" + cat + ":" + p + " " + a + " " + b + "]]").s
 
-      val c = body
-      a.s + c.map(l =>
+      a.s + body.map(l =>
         if (l.size > 0) ("\n<tr>" + l.map(c =>
           "<td>" + c + "</td>" + a.h.tail.map(b =>
             "<td>" + ecell(cat, prefix, c, b) + "</td>").mkString).mkString + "</tr>")
@@ -513,18 +516,17 @@ object WikiParser extends ParserCommons with CsvParser {
 
   def wikiPropTable: PS = "{{" ~> "r1.table:" ~> (wikiPropTableStart >> { h: CsvHeading => csv(h.delim) ^^ { x => (h, x) } }) <~ "{{/r1.table}}" ^^ {
     case (a, body) => {
-      val c = body
-      a.s + c.map(l =>
+      a.s + body.map(l =>
         if (l.size > 0) ("\n<tr>" + l.map(c =>
-          "<td>" + c + "</td>").mkString + "</tr>")
+          "<td>" + parseLine(c).s + "</td>").mkString + "</tr>")
         else "").mkString + "\n</table>"
     }
   }
 
   // to not parse the content, use slines instead of lines
-  def wikiPropSection: PS = "{{" ~> opt(".") ~ """section|template""".r ~ ":" ~ """[^}]*""".r ~ "}}" ~ lines <~ ("{{/section}}" | "{{/template}}")  ^^ {
+  def wikiPropSection: PS = "{{" ~> opt(".") ~ """section|template""".r ~ ":" ~ """[^}]*""".r ~ "}}" ~ lines <~ ("{{/section}}" | "{{/template}}") ^^ {
     case hidden ~ stype ~ _ ~ name ~ _ ~ lines => {
-      hidden.map(x=>State("")) getOrElse State("`SECTION START {{" + stype + ":" + name + "}}`") + lines + State("`SECTION END`")
+      hidden.map(x => State("")) getOrElse State("`SECTION START {{" + stype + ":" + name + "}}`") + lines + State("`SECTION END`")
     }
   }
 
@@ -571,9 +573,42 @@ object WikiParser extends ParserCommons with CsvParser {
     }
   }
 
+  def wikiPropFiddle: PS = "{{" ~> """fiddle""".r ~ "[: ]".r ~ """[^:}]*""".r ~ opt(":" ~ rep(arg <~ opt(","))) ~ "}}" ~ lines <~ "{{/fiddle}}" ^^ {
+    case stype ~ _ ~ lang ~ xargs ~ _ ~ lines => {
+      val args = (if(xargs.isDefined) xargs.get._2 else List()).toMap
+      val name = args.get("name").getOrElse("")
+      lang match {
+        case "js" => {
+          // TODO can't get this oneliner to work
+//          val re = """(?s)(<html>.*</html>).*(<style>.*</style>).*(<script>.*</script>).*""".r
+//          val  re(h, c, j) = lines.s
+          val rehh = """(?s).*<head>(.*)</head>.*""".r
+          val reh = """(?s).*<html>(.*)</html>.*""".r
+          val rec = """(?s).*<style>(.*)</style>.*""".r
+          val rej = """(?s).*<script>(.*)</script>.*""".r
+          val ss = lines.s.replaceAll("&lt;", "<").replaceAll("&gt;", ">") // bad html was escaped while parsing
+
+          val hh = (if(ss contains "<head>") rehh.findFirstMatchIn(ss).get.group(1) else "").replaceAll("<script", "<scrRAZipt").replaceAll("</script", "</scrRAZipt")
+          val reh(h) = ss
+          val rec(c) = ss
+          val rej(j) = ss
+
+          // remove empty lines from parsing
+          def trim (s:String) = s.replaceAll("\r", "").replaceAll("^\n|\n$","")//.replaceAll("\n", "\\\\n'\n+'")
+
+          State(views.html.fiddle.jsfiddle(name, args, (trim(hh), trim(h), trim(c), trim(j)), None).body)
+        }
+        case "scala" => {
+          State(views.html.fiddle.scalafiddle(name, args, lines.s, None).body)
+        }
+      }
+    }
+  }
+
   def wikiPropCode: PS = "{{" ~> """code""".r ~ "[: ]".r ~ """[^:}]*""".r ~ "}}" ~ opt(CRLF1 | CRLF3 | CRLF2) ~ slines <~ "{{/code}}" ^^ {
     case stype ~ _ ~ name ~ _ ~ crlf ~ lines => {
-      lines.copy(s = ((lines.s split "\n") map ("    " + _)).mkString("\n"))
+      //      lines.copy(s = ((lines.s split "\n") map ("    " + _)).mkString("\n"))
+      lines.copy(s = "<pre><code>" + lines.s + "</code></pre>")
     }
   }
 
@@ -640,7 +675,7 @@ trait CsvParser extends ParserCommons {
 
   def csvLine(implicit xdelim: String): PS1 = (cell | xdelim) ~ rep(xdelim ~ (cell | NADA)) ^^ {
     case ol ~ l => {
-      if(ol == xdelim) List("") ::: l.map(_._2)
+      if (ol == xdelim) List("") ::: l.map(_._2)
       else List(ol) ::: l.map(_._2)
     }
   }
@@ -680,8 +715,7 @@ google_ad_height = 90;
 src="http://pagead2.googlesyndication.com/pagead/show_ads.js">
 </script><p>
 """
-  val squarenofloat = """
-<div style="float:right;margin: 10px 5px 0px 5px">
+  val squarebase = """
 <script type="text/javascript"><!--
 google_ad_client = "ca-pub-5622141672958561";
 /* square */
@@ -695,8 +729,10 @@ src="http://pagead2.googlesyndication.com/pagead/show_ads.js">
 </script>
 </div>
 """
-  val square = """<div style="float:right">""" + squarenofloat + """</div>"""
-
+  val squareinline = """<div style="margin: 10px 5px 0px 5px">""" + squarebase
+  val squaretopx = """ <div style="float:right;margin: -40px 5px 0px 5px"> """ + squarebase
+  val squareright = """<div style="float:right">""" + squareinline + """</div>"""
+  val squaretop = """<div style="float:right">""" + squaretopx + """</div>"""
 }
 
 object Widgets {
@@ -768,11 +804,11 @@ Ontario (slalom and GS), within the following four age groups:
  """
   //  println(toXHTML(knockoff(content)).toString)
   //  println(Wikis.format (WID("1","2"), "md", content))
-//  println(Wikis.format(WID("1", "2"), "md", content))
+  //  println(Wikis.format(WID("1", "2"), "md", content))
 
   //---------------------
 
-//  println(f())
+  //  println(f())
 
   def f() = {
     val ccc = """
@@ -789,13 +825,13 @@ Thank you,<br>The RacerKidz
 
 """
 
-      //    val PATT1s = """.*\{\{section:.*\}\}.*\{\{/section\}\}.*""".r
+    //    val PATT1s = """.*\{\{section:.*\}\}.*\{\{/section\}\}.*""".r
     val PATT1s = """(?s)\{\{section:.*""".r
     val PATT1 = """(?s)\{\{(section):(.*)\}\}(.*)\{\{/(section)\}\}""".r
     val PATT2 = PATT1
     //    val PATT2 = """{{(section|template):([^}]*)}}([^{]*){{/(section|template)}}""".r
 
-//    PATT1.findAllIn(ccc).toList
+    //    PATT1.findAllIn(ccc).toList
 
   }
 
@@ -803,13 +839,13 @@ Thank you,<br>The RacerKidz
   //    println(Wikis.format(we.wid, we.markup, we.content, Some(we)))
   //  }
 
-val r1tabbug = """
+  val r1tabbug = """
 {{r1.table:|:POSITION,VOLUNTEER HOURS,FILLED BY}}
 1|2|3
 a|b|c
 {{/r1.table}}
-"""      
-val xr1tabbug = """
+"""
+  val xr1tabbug = """
 President|10|Karen Whitney
 Vice President - Operations|10|Karen Lawson
 Past President|10|Position Vacant
@@ -828,7 +864,7 @@ Managers|10|Varia
 .|[4 hours per week if race/ 1 hr./wk otherwise]|.
 Board of Directors|2 hours per meeting - +20|Positions Available
 .|.|Secretary for this season and Treasurer for next season (can transition with existing Treasurer this year)
-"""      
-    println(WikiParser.applys(r1tabbug))
-      
+"""
+  println(WikiParser.applys(r1tabbug))
+
 }

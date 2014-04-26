@@ -4,6 +4,7 @@ wiki fragment, used in another page
 @(wid:model.WID, user:Option[model.User], simple:Boolean = false, page:Option[model.WikiEntry]=None, iname:Option[String]=None, noTitle:Boolean=false, ads:Boolean=true, canEdit:Boolean=false, isSite:Boolean=false, print:Boolean=false)
 @import _root_.admin.Config
 @import _root_.admin.IgnoreErrors
+@import _root_.controllers.NotesLocker
 
 @nicename() = @{ iname.getOrElse(wid.name) }
 
@@ -16,6 +17,8 @@ wiki fragment, used in another page
 @ww() = @{ model.Wikis.findAny(wid.name) }
 
 @label()=@{ page.map(_.label).getOrElse(model.Wikis.label(wid)) }
+
+@url() = @{s"http://${Config.hostport}${controllers.Wiki.w(wid)}"}
 
 @one(page:Option[model.WikiEntry]) = {
   @page match {
@@ -41,15 +44,22 @@ wiki fragment, used in another page
 
               @if(!(Seq("WikiLink", "Form").contains(wid.cat) || page.exists(_.contentTags.contains("noSocial")))) { 
 
+@***
 &nbsp;&nbsp;
 <ul class="like-buttons">
 <li class="twitter-like"><a href="https://twitter.com/share" class="twitter-share-button" data-via="racerkid">Tweet</a></li>
 <li class="g-like"><div class="g-plusone" data-size="medium"></div></li>
 <li class="fb-like" data-href="http://@Config.hostport@controllers.Wiki.w(wid)" data-send="true" data-layout="button_count" data-width="450" data-show-faces="true"></li>
 </ul>
+***@
+
+<br>
+<a class="btn btn-small btn-info" href="@routes.Wiki.social(label().toString, url())">Share <i class="icon-thumbs-up icon-white"></i></a>
+
 }
               
               </h2>
+@***
 <script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0];if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src="//platform.twitter.com/widgets.js";fjs.parentNode.insertBefore(js,fjs);}}(document,"script","twitter-wjs");</script>
 <div id="fb-root"></div>
 <script>(function(d, s, id) {
@@ -68,7 +78,7 @@ wiki fragment, used in another page
     var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
   })();
 </script>
-
+***@
            }
          }
       }
@@ -84,6 +94,27 @@ wiki fragment, used in another page
     }.getOrElse {
     <p> @alert("blue"){<strong>Registration: </strong>you need to <strong>log in</strong> to register to this event }
     }
+}
+
+@if(page.exists(_.contentTags.contains("module.tma"))) {
+  @user.map {u=>
+    @views.html.tma.doeModTma(u, we)
+    }.getOrElse {
+    <p> @alert("blue"){<strong>TMA: </strong>you need to <strong>log in</strong> to get TMA benefits}
+    }
+}
+
+@if(page.exists(_.contentTags.contains("module.note"))) {
+  @views.html.notes.doeModNote(NotesLocker.lform.fill(NotesLocker.IDOS, "", ""), we, user)
+}
+
+@*** the styles required are also included in header ***@
+@if(page.exists(p=>"""\{\{code:scala""".r.findFirstIn(p.content).isDefined)) {
+   <script src="@routes.Assets.at("vendor/hiscala.js")"></script>
+} else {
+@if(page.exists(p=>"""\{\{code:js""".r.findFirstIn(p.content).isDefined)) {
+   <script src="@routes.Assets.at("vendor/hijs.js")"></script>
+}
 }
           
         @if(!simple && !print) {

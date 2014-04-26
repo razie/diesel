@@ -26,24 +26,28 @@ import db.REntity
  *  Note that this is persisted only if the secUrl is requested
  */
 @db.RTable
-case class DoSec (
+case class DoSec(
   link: String,
-  onlyOnce:Boolean = true, // TODO use this somehow - not certain they're done though...
+  host: Option[String]=None,
+  onlyOnce: Boolean = true, // TODO use this somehow - not certain they're done though...
   expiry: DateTime = DateTime.now.plusHours(8),
-  isDone:Boolean = false,
+  isDone: Boolean = false,
   lastDoneDtm: DateTime = DateTime.now,
   _id: ObjectId = new ObjectId()) extends REntity[DoSec] {
 
   def id = _id.toString
 
-  private def create = RCreate[DoSec] (this)
+  private def create = RCreate[DoSec](this)
 
-  def done = this.copy (isDone=true, lastDoneDtm=DateTime.now).update
-  
+  def done = this.copy(isDone = true, lastDoneDtm = DateTime.now).update
+
   // this must be a def - otherwise it keeps creating it, eh?
   def secUrl = {
     create
-    "http://" + Services.config.hostport + "/doe/sec/" + id
+    if (host.isDefined)
+      "http://" + host.get + "/doe/sec/" + id
+    else
+      "http://" + Services.config.hostport + "/doe/sec/" + id
   }
 }
 
@@ -73,7 +77,7 @@ object NoEncryptService extends EncryptService {
 
 /** set this in your Global::beforeStart() */
 object EncryptService {
-  var impl : EncryptService = NoEncryptService
+  var impl: EncryptService = NoEncryptService
 }
 
 object Sec {

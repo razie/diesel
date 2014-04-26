@@ -23,7 +23,7 @@ object Sec extends RazControllerBase {
     ) yield {
       ds.done
       Redirect(ds.link)
-      }) getOrElse 
+    }) getOrElse
       Msg2("Link is invalid/expired... " + errCollector.mkString, Some("/"))
   }
 }

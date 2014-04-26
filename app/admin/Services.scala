@@ -14,8 +14,6 @@ import org.bson.types.ObjectId
 import com.mongodb.casbah.MongoDB
 import com.mongodb.casbah.MongoConnection
 
-case class DarkLight(css: String)
-
 // yeah, I hate myself...
 object Services {
   var auth: AuthService[WikiUser] = NoAuthService

@@ -83,13 +83,13 @@ object Global extends WithFilters(LoggingFilter) {
     super.onError(request, ex)
   }
 
-  override def onHandlerNotFound(request: RequestHeader): Result = {
+  override def onHandlerNotFound(request: RequestHeader)= {
     cout << "ERR_onHandlerNotFound " + "request:" + request.toString + "headers:" + request.headers
     Audit.logdb("ERR_onHandlerNotFound", "request:" + request.toString, "headers:" + request.headers)
     super.onHandlerNotFound(request)
   }
 
-  override def onBadRequest(request: RequestHeader, error: String): Result = {
+  override def onBadRequest(request: RequestHeader, error: String)= {
     cout << ("ERR_onBadRequest " + "request:" + request.toString + "headers:" + request.headers + "error:" + error)
     Audit.logdb("ERR_onBadRequest", "request:" + request.toString, "headers:" + request.headers, "error:" + error)
     super.onBadRequest(request, error)
@@ -115,8 +115,8 @@ object Global extends WithFilters(LoggingFilter) {
     Services.auth = RazAuthService
     Services.config = Config
 
-    Services.mongoDbVer = 12 // one higher than the last one
-    Services.mongoUpgrades = Map(1 -> Upgrade1, 2 -> Upgrade2, 3 -> Upgrade3, 4 -> Upgrade4, 5 -> Upgrade5, 6 -> U6, 7 -> U7, 8 -> U8, 9 -> U9, 10 -> U10, 11 -> U11)
+    Services.mongoDbVer = 13 // normal is one higher than the last one
+    Services.mongoUpgrades = Map(1 -> Upgrade1, 2 -> Upgrade2, 3 -> Upgrade3, 4 -> Upgrade4, 5 -> Upgrade5, 6 -> U6, 7 -> U7, 8 -> U8, 9 -> U9, 10 -> U10, 11 -> U11, 12 ->U12)
 
     Services.mkDb = () => {
       lazy val conn = MongoConnection(admin.Config.mongohost)
@@ -183,7 +183,7 @@ object Global extends WithFilters(LoggingFilter) {
 object LoggingFilter extends Filter {
   import ExecutionContext.Implicits.global
 
-  def apply(next: (RequestHeader) => Result)(rh: RequestHeader) = {
+  def apply(next: (RequestHeader) => scala.concurrent.Future[SimpleResult])(rh: RequestHeader) = {
     val start = System.currentTimeMillis
     clog << s"LF.START ${rh.method} ${rh.uri}"
     GlobalData.synchronized {
@@ -206,9 +206,10 @@ object LoggingFilter extends Filter {
 
     try {
       next(rh) match {
-        case plain: PlainResult => logTime("plain")(plain)
+        //TODO restore these
+//        case plain: Future[SimpleResult] => logTime("plain")(plain)
         // TODO enable this
-        case async: AsyncResult => async.transform(logTime("async"))
+//        case async: AsyncResult => async.transform(logTime("async"))
         case res @ _ => {
           clog << s"LF.STOP.WHAT? ${rh.method} ${rh.uri} returned ${res}"
           served

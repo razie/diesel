@@ -1,10 +1,11 @@
 @***************
 display a message with navigation (next)
 ***************@
-@(msg:String, next:Option[String], user:Option[model.WikiUser], cancel:Option[(String,String)]=None)
+@(msg:String, next:Option[String], user:Option[model.WikiUser], cancel:Option[(String,String)]=None)(implicit request:Request[_])
+@import _root_.admin.Config.realm
 
 @htmlHead()
-@navbar(user)
+@navbar(user, realm)
    
 <div class="container">
   <div class="well">
@@ -21,7 +22,7 @@ display a message with navigation (next)
   </div>
 
   <hr>
-  @htmlFooter()
+  @htmlFooter(false, false, realm)
 
 </div> <!-- /container -->
 

@@ -91,6 +91,7 @@ object Support extends RazController with Logging {
             }
             Msg("Ok - support request sent. We will look into it asap.", HOME)
           } else
+            Audit.logdb("BAD_MATH", List("request:" + request.toString, "headers:" + request.headers, "body:" + request.body).mkString("<br>"))
             Msg("Either your math is bad or you're a robot...", HOME)
         }
       })
