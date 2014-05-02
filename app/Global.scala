@@ -1,6 +1,6 @@
 /**
- * ____    __    ____  ____  ____,,___     ____  __  __  ____
- *  (  _ \  /__\  (_   )(_  _)( ___)/ __)   (  _ \(  )(  )(  _ \           Read
+ *    ____    __    ____  ____  ____,,___     ____  __  __  ____
+ *   (  _ \  /__\  (_   )(_  _)( ___)/ __)   (  _ \(  )(  )(  _ \           Read
  *   )   / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <     README.txt
  *  (_)\_)(__)(__)(____)(____)(____)(___/   (__)  (______)(____/    LICENSE.txt
  */
@@ -23,8 +23,7 @@ import controllers.Wiki
 import controllers.RazWikiAuthorization
 import model.WikiScripster
 import admin.RazWikiScripster
-import razie.clog
-import razie.cout
+import razie.{cdebug, clog, cout}
 import play.libs.Akka
 import akka.actor.Props
 import admin.Alligator
@@ -84,21 +83,21 @@ object Global extends WithFilters(LoggingFilter) {
   }
 
   override def onHandlerNotFound(request: RequestHeader)= {
-    cout << "ERR_onHandlerNotFound " + "request:" + request.toString + "headers:" + request.headers
+    clog << "ERR_onHandlerNotFound " + "request:" + request.toString + "headers:" + request.headers
     Audit.logdb("ERR_onHandlerNotFound", "request:" + request.toString, "headers:" + request.headers)
     super.onHandlerNotFound(request)
   }
 
   override def onBadRequest(request: RequestHeader, error: String)= {
-    cout << ("ERR_onBadRequest " + "request:" + request.toString + "headers:" + request.headers + "error:" + error)
+    clog << ("ERR_onBadRequest " + "request:" + request.toString + "headers:" + request.headers + "error:" + error)
     Audit.logdb("ERR_onBadRequest", "request:" + request.toString, "headers:" + request.headers, "error:" + error)
     super.onBadRequest(request, error)
   }
 
   override def onRouteRequest(request: RequestHeader): Option[Handler] = {
-    clog << ("ROUTE_REQ.START: " + request.toString)
+    cdebug << ("ROUTE_REQ.START: " + request.toString)
     val res = super.onRouteRequest(request)
-    clog << ("ROUTE_REQ.STOP: " + request.toString)
+    cdebug << ("ROUTE_REQ.STOP: " + request.toString)
     res
   }
 
@@ -185,7 +184,7 @@ object LoggingFilter extends Filter {
 
   def apply(next: (RequestHeader) => scala.concurrent.Future[SimpleResult])(rh: RequestHeader) = {
     val start = System.currentTimeMillis
-    clog << s"LF.START ${rh.method} ${rh.uri}"
+    cdebug << s"LF.START ${rh.method} ${rh.uri}"
     GlobalData.synchronized {
       GlobalData.serving = GlobalData.serving + 1
     }

@@ -8,7 +8,6 @@ render a regular wiki page - site pages are rendered with wikiSite.scala.html
 
 @label()=@{ page.map(_.label).getOrElse(model.Wikis.label(wid)) }
 
-
 @htmlHead(page.flatMap(_.contentTags.get("title")).getOrElse(wid.cat +": "+ label), None, page)
 @if(!print) {@navbar(user, realm)}
    
@@ -26,7 +25,7 @@ render a regular wiki page - site pages are rendered with wikiSite.scala.html
       @wiki.wikiPageComments(wid, page, user)
 
       <hr>
-      @htmlFooter(ads = !page.exists(_.content.matches("""(?s).*\{\{ad[:}].*\{\{ad[:}].*""")), false, realm)
+      @htmlFooter(ads = !page.exists(_.content.matches("""(?s).*\{\{ad[:}].*\{\{ad[:}].*""")) && !user.exists(_.isUnder13), false, realm)
 
     </div> <!-- /span9 -->
 

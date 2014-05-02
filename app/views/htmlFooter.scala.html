@@ -2,10 +2,9 @@
 the footer of every page...
 **************@
 @(ads:Boolean=false, isSite:Boolean=false, realm:String="rk")
-@import _root_.admin.Config
 
 @realm match {
-   case "note" => {
+   case "notes" => {
       @notes.htmlFooterNotes(ads, isSite)
       }
    case _ => {

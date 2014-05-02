@@ -1,0 +1,1193 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module type="JAVA_MODULE" version="4">
+  <component name="EclipseModuleManager">
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/com.typesafe.play/play_2.10/play_2.10-2.2.2.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/com.typesafe.play/sbt-link/sbt-link-2.2.2.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/bundles/org.javassist/javassist/javassist-3.18.0-GA.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/com.typesafe.play/play-exceptions/play-exceptions-2.2.2.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/com.typesafe.play/templates_2.10/templates_2.10-2.2.2.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/com.github.scala-incubator.io/scala-io-file_2.10/scala-io-file_2.10-0.4.2.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/com.github.scala-incubator.io/scala-io-core_2.10/scala-io-core_2.10-0.4.2.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/com.jsuereth/scala-arm_2.10/scala-arm_2.10-1.3.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/com.typesafe.play/play-iteratees_2.10/play-iteratees_2.10-2.2.2.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/org.scala-stm/scala-stm_2.10/scala-stm_2.10-0.7.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/bundles/com.typesafe/config/config-1.0.2.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/com.typesafe.play/play-json_2.10/play-json_2.10-2.2.2.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/com.typesafe.play/play-functional_2.10/play-functional_2.10-2.2.2.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/com.typesafe.play/play-datacommons_2.10/play-datacommons_2.10-2.2.2.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/joda-time/joda-time/joda-time-2.2.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/org.joda/joda-convert/joda-convert-1.3.1.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/com.fasterxml.jackson.core/jackson-annotations/jackson-annotations-2.2.2.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/com.fasterxml.jackson.core/jackson-core/jackson-core-2.2.2.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/com.fasterxml.jackson.core/jackson-databind/jackson-databind-2.2.2.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/bundles/io.netty/netty/netty-3.7.0.Final.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/com.typesafe.netty/netty-http-pipelining/netty-http-pipelining-1.1.2.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/org.slf4j/slf4j-api/slf4j-api-1.7.5.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/org.slf4j/jul-to-slf4j/jul-to-slf4j-1.7.5.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/org.slf4j/jcl-over-slf4j/jcl-over-slf4j-1.7.5.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/ch.qos.logback/logback-core/logback-core-1.0.13.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/ch.qos.logback/logback-classic/logback-classic-1.0.13.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/com.typesafe.akka/akka-actor_2.10/akka-actor_2.10-2.2.0.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/bundles/com.typesafe.akka/akka-slf4j_2.10/akka-slf4j_2.10-2.2.0.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/org.apache.commons/commons-lang3/commons-lang3-3.1.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/com.ning/async-http-client/async-http-client-1.7.18.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/oauth.signpost/signpost-core/signpost-core-1.2.1.2.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/oauth.signpost/signpost-commonshttp4/signpost-commonshttp4-1.2.1.2.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/commons-logging/commons-logging/commons-logging-1.1.1.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/xerces/xercesImpl/xercesImpl-2.11.0.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/xml-apis/xml-apis/xml-apis-1.4.01.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/javax.transaction/jta/jta-1.1.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/com.typesafe.play/play-cache_2.10/play-cache_2.10-2.2.2.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/net.sf.ehcache/ehcache-core/ehcache-core-2.6.6.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/javax.mail/mail/mail-1.4.5.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/javax.activation/activation/activation-1.1.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/org.mongodb/casbah-commons_2.10/casbah-commons_2.10-2.6.5.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/com.github.nscala-time/nscala-time_2.10/nscala-time_2.10-0.2.0.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/org.mongodb/mongo-java-driver/mongo-java-driver-2.11.4.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/org.mongodb/casbah-core_2.10/casbah-core_2.10-2.6.5.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/org.mongodb/casbah-query_2.10/casbah-query_2.10-2.6.5.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/org.mongodb/casbah-gridfs_2.10/casbah-gridfs_2.10-2.6.5.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/com.novus/salat-core_2.10/salat-core_2.10-1.9.2.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/com.novus/salat-util_2.10/salat-util_2.10-1.9.2.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/org.scala-lang/scalap/scalap-2.10.2.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/org.json4s/json4s-native_2.10/json4s-native_2.10-3.1.0.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/org.json4s/json4s-core_2.10/json4s-core_2.10-3.1.0.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/org.json4s/json4s-ast_2.10/json4s-ast_2.10-3.1.0.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/com.thoughtworks.paranamer/paranamer/paranamer-2.5.2.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/com.tristanhunt/knockoff_2.10/knockoff_2.10-0.8.1.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/bundles/org.scalaz/scalaz-core_2.10/scalaz-core_2.10-7.0.3.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/org.scalatest/scalatest_2.10/scalatest_2.10-1.9.2.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/com.razie/base_2.10/base_2.10-0.6.6-SNAPSHOT.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/org.json/json/json-20090211.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/com.razie/snakked_2.10/snakked_2.10-0.6.6-SNAPSHOT.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/com.razie/snakk-core_2.10/snakk-core_2.10-0.6.6-SNAPSHOT.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/commons-jxpath/commons-jxpath/commons-jxpath-1.3.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/com.razie/razweb_2.10/razweb_2.10-0.6.6-SNAPSHOT.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/com.razie/s20widgets_2.10/s20widgets_2.10-0.6.6-SNAPSHOT.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/com.razie/scripster_2.10/scripster_2.10-0.8.6-SNAPSHOT.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/org.scala-lang/scala-swing/scala-swing-2.10.3.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/com.razie/razbase_2.10/razbase_2.10-0.6.6-SNAPSHOT.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/com.razie/s20swing_2.10/s20swing_2.10-0.6.6-SNAPSHOT.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/com.razie/lightsoa-core_2.10/lightsoa-core_2.10-0.6.6-SNAPSHOT.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/com.typesafe.play/play-test_2.10/play-test_2.10-2.2.2.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/junit/junit/junit-4.11.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/org.hamcrest/hamcrest-core/hamcrest-core-1.3.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/org.specs2/specs2_2.10/specs2_2.10-2.1.1.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/bundles/org.scalaz/scalaz-concurrent_2.10/scalaz-concurrent_2.10-7.0.2.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/bundles/org.scalaz/scalaz-effect_2.10/scalaz-effect_2.10-7.0.2.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/com.novocode/junit-interface/junit-interface-0.10.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/org.scala-tools.testing/test-interface/test-interface-0.5.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/bundles/com.google.guava/guava/guava-14.0.1.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/com.google.code.findbugs/jsr305/jsr305-2.0.1.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/org.fluentlenium/fluentlenium-festassert/fluentlenium-festassert-0.8.0.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/org.fluentlenium/fluentlenium-core/fluentlenium-core-0.8.0.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/org.seleniumhq.selenium/selenium-java/selenium-java-2.32.0.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/org.seleniumhq.selenium/selenium-android-driver/selenium-android-driver-2.32.0.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/org.seleniumhq.selenium/selenium-remote-driver/selenium-remote-driver-2.32.0.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/cglib/cglib-nodep/cglib-nodep-2.1_3.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/org.seleniumhq.selenium/selenium-api/selenium-api-2.32.0.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/org.apache.httpcomponents/httpclient/httpclient-4.2.1.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/org.apache.httpcomponents/httpcore/httpcore-4.2.1.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/commons-codec/commons-codec/commons-codec-1.6.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/org.apache.commons/commons-exec/commons-exec-1.1.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/net.java.dev.jna/jna/jna-3.4.0.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/net.java.dev.jna/platform/platform-3.4.0.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/org.seleniumhq.selenium/selenium-chrome-driver/selenium-chrome-driver-2.32.0.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/org.seleniumhq.selenium/selenium-htmlunit-driver/selenium-htmlunit-driver-2.32.0.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/net.sourceforge.htmlunit/htmlunit/htmlunit-2.12.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/xalan/xalan/xalan-2.7.1.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/xalan/serializer/serializer-2.7.1.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/commons-collections/commons-collections/commons-collections-3.2.1.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/org.apache.httpcomponents/httpmime/httpmime-4.2.3.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/net.sourceforge.htmlunit/htmlunit-core-js/htmlunit-core-js-2.12.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/net.sourceforge.nekohtml/nekohtml/nekohtml-1.9.18.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/net.sourceforge.cssparser/cssparser/cssparser-0.9.9.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/org.w3c.css/sac/sac-1.3.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/commons-io/commons-io/commons-io-2.2.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/org.eclipse.jetty/jetty-websocket/jetty-websocket-8.1.9.v20130131.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/org.eclipse.jetty/jetty-util/jetty-util-8.1.9.v20130131.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/org.eclipse.jetty/jetty-io/jetty-io-8.1.9.v20130131.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/org.eclipse.jetty/jetty-http/jetty-http-8.1.9.v20130131.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/org.seleniumhq.selenium/selenium-firefox-driver/selenium-firefox-driver-2.32.0.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/org.seleniumhq.selenium/selenium-ie-driver/selenium-ie-driver-2.32.0.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/org.seleniumhq.selenium/selenium-iphone-driver/selenium-iphone-driver-2.32.0.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/org.seleniumhq.selenium/selenium-safari-driver/selenium-safari-driver-2.32.0.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/org.webbitserver/webbit/webbit-0.4.14.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/org.seleniumhq.selenium/selenium-support/selenium-support-2.32.0.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/org.easytesting/fest-assert/fest-assert-1.4.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/lib_managed/jars/org.easytesting/fest-util/fest-util-1.1.6.jar!/" />
+    <conelement value="org.scala-ide.sdt.launching.SCALA_CONTAINER" />
+    <conelement value="org.scala-ide.sdt.launching.SCALA_COMPILER_CONTAINER" />
+    <src_description expected_position="118">
+      <src_folder value="file://$MODULE_DIR$/app" expected_position="0" />
+      <src_folder value="file://$MODULE_DIR$/test" expected_position="1" />
+      <src_folder value="file://$MODULE_DIR$/target\scala-2.10\src_managed\main" expected_position="121" />
+    </src_description>
+  </component>
+  <component name="FacetManager">
+    <facet type="scala" name="Scala">
+      <configuration>
+        <option name="compilerLibraryLevel" value="Project" />
+        <option name="compilerLibraryName" value="scala-compiler" />
+      </configuration>
+    </facet>
+  </component>
+  <component name="NewModuleRootManager" inherit-compiler-output="false">
+    <output url="file://$MODULE_DIR$/bin" />
+    <content url="file://$MODULE_DIR$">
+      <sourceFolder url="file://$MODULE_DIR$/app" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/test" isTestSource="false" />
+      <excludeFolder url="file://$MODULE_DIR$/.target" />
+      <excludeFolder url="file://$MODULE_DIR$/application.home_IS_UNDEFINED" />
+      <excludeFolder url="file://$MODULE_DIR$/bin" />
+      <excludeFolder url="file://$MODULE_DIR$/data" />
+      <excludeFolder url="file://$MODULE_DIR$/db" />
+      <excludeFolder url="file://$MODULE_DIR$/logs" />
+      <excludeFolder url="file://$MODULE_DIR$/rk-backups" />
+      <excludeFolder url="file://$MODULE_DIR$/saved" />
+      <excludeFolder url="file://$MODULE_DIR$/target" />
+      <excludeFolder url="file://$MODULE_DIR$/temp" />
+    </content>
+    <orderEntry type="library" name="org.scala-ide.sdt.launching.SCALA_CONTAINER" level="application" />
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\com.typesafe.play\play_2.10\play_2.10-2.2.2.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/com.typesafe.play/play_2.10/play_2.10-2.2.2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\com.typesafe.play\sbt-link\sbt-link-2.2.2.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/com.typesafe.play/sbt-link/sbt-link-2.2.2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\bundles\org.javassist\javassist\javassist-3.18.0-GA.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/bundles/org.javassist/javassist/javassist-3.18.0-GA.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\com.typesafe.play\play-exceptions\play-exceptions-2.2.2.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/com.typesafe.play/play-exceptions/play-exceptions-2.2.2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\com.typesafe.play\templates_2.10\templates_2.10-2.2.2.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/com.typesafe.play/templates_2.10/templates_2.10-2.2.2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\com.github.scala-incubator.io\scala-io-file_2.10\scala-io-file_2.10-0.4.2.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/com.github.scala-incubator.io/scala-io-file_2.10/scala-io-file_2.10-0.4.2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\com.github.scala-incubator.io\scala-io-core_2.10\scala-io-core_2.10-0.4.2.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/com.github.scala-incubator.io/scala-io-core_2.10/scala-io-core_2.10-0.4.2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\com.jsuereth\scala-arm_2.10\scala-arm_2.10-1.3.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/com.jsuereth/scala-arm_2.10/scala-arm_2.10-1.3.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\com.typesafe.play\play-iteratees_2.10\play-iteratees_2.10-2.2.2.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/com.typesafe.play/play-iteratees_2.10/play-iteratees_2.10-2.2.2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\org.scala-stm\scala-stm_2.10\scala-stm_2.10-0.7.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/org.scala-stm/scala-stm_2.10/scala-stm_2.10-0.7.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\bundles\com.typesafe\config\config-1.0.2.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/bundles/com.typesafe/config/config-1.0.2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\com.typesafe.play\play-json_2.10\play-json_2.10-2.2.2.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/com.typesafe.play/play-json_2.10/play-json_2.10-2.2.2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\com.typesafe.play\play-functional_2.10\play-functional_2.10-2.2.2.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/com.typesafe.play/play-functional_2.10/play-functional_2.10-2.2.2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\com.typesafe.play\play-datacommons_2.10\play-datacommons_2.10-2.2.2.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/com.typesafe.play/play-datacommons_2.10/play-datacommons_2.10-2.2.2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\joda-time\joda-time\joda-time-2.2.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/joda-time/joda-time/joda-time-2.2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\org.joda\joda-convert\joda-convert-1.3.1.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/org.joda/joda-convert/joda-convert-1.3.1.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\com.fasterxml.jackson.core\jackson-annotations\jackson-annotations-2.2.2.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/com.fasterxml.jackson.core/jackson-annotations/jackson-annotations-2.2.2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\com.fasterxml.jackson.core\jackson-core\jackson-core-2.2.2.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/com.fasterxml.jackson.core/jackson-core/jackson-core-2.2.2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\com.fasterxml.jackson.core\jackson-databind\jackson-databind-2.2.2.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/com.fasterxml.jackson.core/jackson-databind/jackson-databind-2.2.2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\bundles\io.netty\netty\netty-3.7.0.Final.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/bundles/io.netty/netty/netty-3.7.0.Final.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\com.typesafe.netty\netty-http-pipelining\netty-http-pipelining-1.1.2.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/com.typesafe.netty/netty-http-pipelining/netty-http-pipelining-1.1.2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\org.slf4j\slf4j-api\slf4j-api-1.7.5.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/org.slf4j/slf4j-api/slf4j-api-1.7.5.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\org.slf4j\jul-to-slf4j\jul-to-slf4j-1.7.5.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/org.slf4j/jul-to-slf4j/jul-to-slf4j-1.7.5.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\org.slf4j\jcl-over-slf4j\jcl-over-slf4j-1.7.5.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/org.slf4j/jcl-over-slf4j/jcl-over-slf4j-1.7.5.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\ch.qos.logback\logback-core\logback-core-1.0.13.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/ch.qos.logback/logback-core/logback-core-1.0.13.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\ch.qos.logback\logback-classic\logback-classic-1.0.13.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/ch.qos.logback/logback-classic/logback-classic-1.0.13.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\com.typesafe.akka\akka-actor_2.10\akka-actor_2.10-2.2.0.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/com.typesafe.akka/akka-actor_2.10/akka-actor_2.10-2.2.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\bundles\com.typesafe.akka\akka-slf4j_2.10\akka-slf4j_2.10-2.2.0.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/bundles/com.typesafe.akka/akka-slf4j_2.10/akka-slf4j_2.10-2.2.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\org.apache.commons\commons-lang3\commons-lang3-3.1.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/org.apache.commons/commons-lang3/commons-lang3-3.1.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\com.ning\async-http-client\async-http-client-1.7.18.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/com.ning/async-http-client/async-http-client-1.7.18.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\oauth.signpost\signpost-core\signpost-core-1.2.1.2.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/oauth.signpost/signpost-core/signpost-core-1.2.1.2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\oauth.signpost\signpost-commonshttp4\signpost-commonshttp4-1.2.1.2.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/oauth.signpost/signpost-commonshttp4/signpost-commonshttp4-1.2.1.2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\commons-logging\commons-logging\commons-logging-1.1.1.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/commons-logging/commons-logging/commons-logging-1.1.1.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\xerces\xercesImpl\xercesImpl-2.11.0.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/xerces/xercesImpl/xercesImpl-2.11.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\xml-apis\xml-apis\xml-apis-1.4.01.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/xml-apis/xml-apis/xml-apis-1.4.01.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\javax.transaction\jta\jta-1.1.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/javax.transaction/jta/jta-1.1.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\com.typesafe.play\play-cache_2.10\play-cache_2.10-2.2.2.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/com.typesafe.play/play-cache_2.10/play-cache_2.10-2.2.2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\net.sf.ehcache\ehcache-core\ehcache-core-2.6.6.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/net.sf.ehcache/ehcache-core/ehcache-core-2.6.6.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\javax.mail\mail\mail-1.4.5.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/javax.mail/mail/mail-1.4.5.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\javax.activation\activation\activation-1.1.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/javax.activation/activation/activation-1.1.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\org.mongodb\casbah-commons_2.10\casbah-commons_2.10-2.6.5.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/org.mongodb/casbah-commons_2.10/casbah-commons_2.10-2.6.5.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\com.github.nscala-time\nscala-time_2.10\nscala-time_2.10-0.2.0.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/com.github.nscala-time/nscala-time_2.10/nscala-time_2.10-0.2.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\org.mongodb\mongo-java-driver\mongo-java-driver-2.11.4.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/org.mongodb/mongo-java-driver/mongo-java-driver-2.11.4.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\org.mongodb\casbah-core_2.10\casbah-core_2.10-2.6.5.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/org.mongodb/casbah-core_2.10/casbah-core_2.10-2.6.5.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\org.mongodb\casbah-query_2.10\casbah-query_2.10-2.6.5.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/org.mongodb/casbah-query_2.10/casbah-query_2.10-2.6.5.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\org.mongodb\casbah-gridfs_2.10\casbah-gridfs_2.10-2.6.5.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/org.mongodb/casbah-gridfs_2.10/casbah-gridfs_2.10-2.6.5.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\com.novus\salat-core_2.10\salat-core_2.10-1.9.2.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/com.novus/salat-core_2.10/salat-core_2.10-1.9.2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\com.novus\salat-util_2.10\salat-util_2.10-1.9.2.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/com.novus/salat-util_2.10/salat-util_2.10-1.9.2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\org.scala-lang\scalap\scalap-2.10.2.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/org.scala-lang/scalap/scalap-2.10.2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\org.json4s\json4s-native_2.10\json4s-native_2.10-3.1.0.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/org.json4s/json4s-native_2.10/json4s-native_2.10-3.1.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\org.json4s\json4s-core_2.10\json4s-core_2.10-3.1.0.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/org.json4s/json4s-core_2.10/json4s-core_2.10-3.1.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\org.json4s\json4s-ast_2.10\json4s-ast_2.10-3.1.0.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/org.json4s/json4s-ast_2.10/json4s-ast_2.10-3.1.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\com.thoughtworks.paranamer\paranamer\paranamer-2.5.2.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/com.thoughtworks.paranamer/paranamer/paranamer-2.5.2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\com.tristanhunt\knockoff_2.10\knockoff_2.10-0.8.1.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/com.tristanhunt/knockoff_2.10/knockoff_2.10-0.8.1.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\bundles\org.scalaz\scalaz-core_2.10\scalaz-core_2.10-7.0.3.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/bundles/org.scalaz/scalaz-core_2.10/scalaz-core_2.10-7.0.3.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\org.scalatest\scalatest_2.10\scalatest_2.10-1.9.2.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/org.scalatest/scalatest_2.10/scalatest_2.10-1.9.2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\com.razie\base_2.10\base_2.10-0.6.6-SNAPSHOT.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/com.razie/base_2.10/base_2.10-0.6.6-SNAPSHOT.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\org.json\json\json-20090211.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/org.json/json/json-20090211.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\com.razie\snakked_2.10\snakked_2.10-0.6.6-SNAPSHOT.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/com.razie/snakked_2.10/snakked_2.10-0.6.6-SNAPSHOT.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\com.razie\snakk-core_2.10\snakk-core_2.10-0.6.6-SNAPSHOT.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/com.razie/snakk-core_2.10/snakk-core_2.10-0.6.6-SNAPSHOT.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\commons-jxpath\commons-jxpath\commons-jxpath-1.3.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/commons-jxpath/commons-jxpath/commons-jxpath-1.3.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\com.razie\razweb_2.10\razweb_2.10-0.6.6-SNAPSHOT.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/com.razie/razweb_2.10/razweb_2.10-0.6.6-SNAPSHOT.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\com.razie\s20widgets_2.10\s20widgets_2.10-0.6.6-SNAPSHOT.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/com.razie/s20widgets_2.10/s20widgets_2.10-0.6.6-SNAPSHOT.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\com.razie\scripster_2.10\scripster_2.10-0.8.6-SNAPSHOT.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/com.razie/scripster_2.10/scripster_2.10-0.8.6-SNAPSHOT.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="library" name="org.scala-ide.sdt.launching.SCALA_COMPILER_CONTAINER" level="application" />
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\org.scala-lang\scala-swing\scala-swing-2.10.3.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/org.scala-lang/scala-swing/scala-swing-2.10.3.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\com.razie\razbase_2.10\razbase_2.10-0.6.6-SNAPSHOT.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/com.razie/razbase_2.10/razbase_2.10-0.6.6-SNAPSHOT.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\com.razie\s20swing_2.10\s20swing_2.10-0.6.6-SNAPSHOT.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/com.razie/s20swing_2.10/s20swing_2.10-0.6.6-SNAPSHOT.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\com.razie\lightsoa-core_2.10\lightsoa-core_2.10-0.6.6-SNAPSHOT.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/com.razie/lightsoa-core_2.10/lightsoa-core_2.10-0.6.6-SNAPSHOT.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\com.typesafe.play\play-test_2.10\play-test_2.10-2.2.2.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/com.typesafe.play/play-test_2.10/play-test_2.10-2.2.2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\junit\junit\junit-4.11.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/junit/junit/junit-4.11.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\org.hamcrest\hamcrest-core\hamcrest-core-1.3.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/org.hamcrest/hamcrest-core/hamcrest-core-1.3.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\org.specs2\specs2_2.10\specs2_2.10-2.1.1.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/org.specs2/specs2_2.10/specs2_2.10-2.1.1.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\bundles\org.scalaz\scalaz-concurrent_2.10\scalaz-concurrent_2.10-7.0.2.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/bundles/org.scalaz/scalaz-concurrent_2.10/scalaz-concurrent_2.10-7.0.2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\bundles\org.scalaz\scalaz-effect_2.10\scalaz-effect_2.10-7.0.2.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/bundles/org.scalaz/scalaz-effect_2.10/scalaz-effect_2.10-7.0.2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\com.novocode\junit-interface\junit-interface-0.10.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/com.novocode/junit-interface/junit-interface-0.10.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\org.scala-tools.testing\test-interface\test-interface-0.5.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/org.scala-tools.testing/test-interface/test-interface-0.5.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\bundles\com.google.guava\guava\guava-14.0.1.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/bundles/com.google.guava/guava/guava-14.0.1.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\com.google.code.findbugs\jsr305\jsr305-2.0.1.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/com.google.code.findbugs/jsr305/jsr305-2.0.1.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\org.fluentlenium\fluentlenium-festassert\fluentlenium-festassert-0.8.0.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/org.fluentlenium/fluentlenium-festassert/fluentlenium-festassert-0.8.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\org.fluentlenium\fluentlenium-core\fluentlenium-core-0.8.0.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/org.fluentlenium/fluentlenium-core/fluentlenium-core-0.8.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\org.seleniumhq.selenium\selenium-java\selenium-java-2.32.0.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/org.seleniumhq.selenium/selenium-java/selenium-java-2.32.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\org.seleniumhq.selenium\selenium-android-driver\selenium-android-driver-2.32.0.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/org.seleniumhq.selenium/selenium-android-driver/selenium-android-driver-2.32.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\org.seleniumhq.selenium\selenium-remote-driver\selenium-remote-driver-2.32.0.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/org.seleniumhq.selenium/selenium-remote-driver/selenium-remote-driver-2.32.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\cglib\cglib-nodep\cglib-nodep-2.1_3.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/cglib/cglib-nodep/cglib-nodep-2.1_3.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\org.seleniumhq.selenium\selenium-api\selenium-api-2.32.0.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/org.seleniumhq.selenium/selenium-api/selenium-api-2.32.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\org.apache.httpcomponents\httpclient\httpclient-4.2.1.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/org.apache.httpcomponents/httpclient/httpclient-4.2.1.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\org.apache.httpcomponents\httpcore\httpcore-4.2.1.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/org.apache.httpcomponents/httpcore/httpcore-4.2.1.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\commons-codec\commons-codec\commons-codec-1.6.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/commons-codec/commons-codec/commons-codec-1.6.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\org.apache.commons\commons-exec\commons-exec-1.1.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/org.apache.commons/commons-exec/commons-exec-1.1.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\net.java.dev.jna\jna\jna-3.4.0.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/net.java.dev.jna/jna/jna-3.4.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\net.java.dev.jna\platform\platform-3.4.0.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/net.java.dev.jna/platform/platform-3.4.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\org.seleniumhq.selenium\selenium-chrome-driver\selenium-chrome-driver-2.32.0.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/org.seleniumhq.selenium/selenium-chrome-driver/selenium-chrome-driver-2.32.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\org.seleniumhq.selenium\selenium-htmlunit-driver\selenium-htmlunit-driver-2.32.0.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/org.seleniumhq.selenium/selenium-htmlunit-driver/selenium-htmlunit-driver-2.32.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\net.sourceforge.htmlunit\htmlunit\htmlunit-2.12.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/net.sourceforge.htmlunit/htmlunit/htmlunit-2.12.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\xalan\xalan\xalan-2.7.1.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/xalan/xalan/xalan-2.7.1.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\xalan\serializer\serializer-2.7.1.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/xalan/serializer/serializer-2.7.1.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\commons-collections\commons-collections\commons-collections-3.2.1.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/commons-collections/commons-collections/commons-collections-3.2.1.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\org.apache.httpcomponents\httpmime\httpmime-4.2.3.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/org.apache.httpcomponents/httpmime/httpmime-4.2.3.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\net.sourceforge.htmlunit\htmlunit-core-js\htmlunit-core-js-2.12.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/net.sourceforge.htmlunit/htmlunit-core-js/htmlunit-core-js-2.12.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\net.sourceforge.nekohtml\nekohtml\nekohtml-1.9.18.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/net.sourceforge.nekohtml/nekohtml/nekohtml-1.9.18.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\net.sourceforge.cssparser\cssparser\cssparser-0.9.9.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/net.sourceforge.cssparser/cssparser/cssparser-0.9.9.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\org.w3c.css\sac\sac-1.3.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/org.w3c.css/sac/sac-1.3.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\commons-io\commons-io\commons-io-2.2.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/commons-io/commons-io/commons-io-2.2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\org.eclipse.jetty\jetty-websocket\jetty-websocket-8.1.9.v20130131.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/org.eclipse.jetty/jetty-websocket/jetty-websocket-8.1.9.v20130131.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\org.eclipse.jetty\jetty-util\jetty-util-8.1.9.v20130131.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/org.eclipse.jetty/jetty-util/jetty-util-8.1.9.v20130131.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\org.eclipse.jetty\jetty-io\jetty-io-8.1.9.v20130131.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/org.eclipse.jetty/jetty-io/jetty-io-8.1.9.v20130131.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\org.eclipse.jetty\jetty-http\jetty-http-8.1.9.v20130131.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/org.eclipse.jetty/jetty-http/jetty-http-8.1.9.v20130131.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\org.seleniumhq.selenium\selenium-firefox-driver\selenium-firefox-driver-2.32.0.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/org.seleniumhq.selenium/selenium-firefox-driver/selenium-firefox-driver-2.32.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\org.seleniumhq.selenium\selenium-ie-driver\selenium-ie-driver-2.32.0.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/org.seleniumhq.selenium/selenium-ie-driver/selenium-ie-driver-2.32.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\org.seleniumhq.selenium\selenium-iphone-driver\selenium-iphone-driver-2.32.0.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/org.seleniumhq.selenium/selenium-iphone-driver/selenium-iphone-driver-2.32.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\org.seleniumhq.selenium\selenium-safari-driver\selenium-safari-driver-2.32.0.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/org.seleniumhq.selenium/selenium-safari-driver/selenium-safari-driver-2.32.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\org.webbitserver\webbit\webbit-0.4.14.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/org.webbitserver/webbit/webbit-0.4.14.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\org.seleniumhq.selenium\selenium-support\selenium-support-2.32.0.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/org.seleniumhq.selenium/selenium-support/selenium-support-2.32.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\org.easytesting\fest-assert\fest-assert-1.4.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/org.easytesting/fest-assert/fest-assert-1.4.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name=".\lib_managed\jars\org.easytesting\fest-util\fest-util-1.1.6.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/jars/org.easytesting/fest-util/fest-util-1.1.6.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="inheritedJdk" />
+    <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="library" name="scala-library" level="project" />
+  </component>
+</module>
+

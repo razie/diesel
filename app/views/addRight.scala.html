@@ -7,28 +7,24 @@ The add on the right hand side
 @if(! (Config.noads || au.orElse(Config.currUser).exists(_.isUnder13))) {
 	
   @if(Config.theme.contains("light")) {
-    <script type="text/javascript"><!--
-    google_ad_client = "ca-pub-5622141672958561";
-    /* RK-right-dark */
-    google_ad_slot = "9704195992";
-    google_ad_width = 160;
-    google_ad_height = 600;
-    //-->
-    </script>
-    <script type="text/javascript"
-    src="http://pagead2.googlesyndication.com/pagead/show_ads.js">
+    <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+    <!-- RK-right-light -->
+    <ins class="adsbygoogle"
+    style="display:inline-block;width:160px;height:600px"
+    data-ad-client="ca-pub-5622141672958561"
+    data-ad-slot="9704195992"></ins>
+    <script>
+    (adsbygoogle = window.adsbygoogle || []).push({});
     </script>
   } else {
-    <script type="text/javascript"><!--
-    google_ad_client = "ca-pub-5622141672958561";
-    /* RK-right */
-    google_ad_slot = "6640009738";
-    google_ad_width = 160;
-    google_ad_height = 600;
-    //-->
+    <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+    <!-- RK-right-dark -->
+    <ins class="adsbygoogle"
+    style="display:inline-block;width:160px;height:600px"
+    data-ad-client="ca-pub-5622141672958561"
+    data-ad-slot="6640009738"></ins>
+    <script>
+    (adsbygoogle = window.adsbygoogle || []).push({});
     </script>
-    <script type="text/javascript"
-    src="http://pagead2.googlesyndication.com/pagead/show_ads.js">
-    </script>
-  }
+    }
 }

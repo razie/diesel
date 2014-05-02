@@ -1,0 +1,50 @@
+@**************
+list of contacts
+
+msg types are msg, err
+**************@
+@(tag:String, notes:List[model.WikiEntry], tags:controllers.NotesLocker.Tags, msg:Seq[(String,String)], au:Option[model.User], isSearch:Boolean=false)
+
+@frup(au)
+
+@ccc(we:model.WikiEntry)= @{
+    val x = model.Wikis.format(we.wid, we.markup, we.content, Some(we))
+    if(x contains "CANNOT PARSE") {
+      """<div style="color:red;font-weight:bold;" title="You misspelled some of the advanced features"><small>[[CANNOT PARSE]]</small></div><p></p>""" + we.content
+    } else x
+  }
+
+<h3>
+  Contacts <small>preview</small>
+  @notesmsg(msg, au)
+</h3>
+
+@tagpath(s:String) = @{ if(tag=="" || isSearch || Seq("none", "recent", "all").contains(tag)) s else (tag+"/"+s) }
+
+  <table class="table">
+    <thead>
+      <td>Name</td> <td>Email</td><td>Actions</td>
+    </thead>
+
+@name(we:model.WikiEntry) = @{
+  we.contentTags.get("name").filter(_ != we._id.toString).orElse(we.contentTags.get("email").map(_.replaceAll("@.*$", ""))).mkString
+}
+@email(we:model.WikiEntry) = @{
+  we.contentTags.get("email").mkString
+}
+
+@notes.map {we=>
+        <tr>
+          <td>@name(we)</td>
+          <td>@email(we)</td>
+         <td>
+           <small>[<a href="@routes.NotesLocker.noteById(we._id.toString)">Edit</a>]</small>
+           <small>[<a href="@routes.NotesLocker.invite(email(we), name(we))">Invite</a>]</small>
+         </td>
+        </tr>
+}
+  </table>
+
+<p></p>
+
+@frdown(if(isSearch) "" else tag, tags, au)

@@ -150,9 +150,9 @@ case class WikiEntry(
     // apply transformations
     s.decs.map(x => x(this))
     // add hardcoded attributes
-    WikiParser.State(s.s, s.tags ++
+    WikiParser.State(s.s,
       Map("category" -> category, "name" -> name, "label" -> label, "url" -> (category + ":" + name),
-        "tags" -> tags.mkString(",")),
+        "tags" -> tags.mkString(",")) ++ s.tags,
       s.ilinks, s.decs)
   }
 

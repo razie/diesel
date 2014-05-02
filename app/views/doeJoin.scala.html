@@ -10,7 +10,7 @@
       <div class="span6">
         <h1>Welcome!</h1>
         <br>
-        @wiki.wikiFragInt("Admin:page-join", None)
+        @wiki.wikiFragInt("Admin:page-join-"+realm, None)
       </div>
 
       <div class="span4">
@@ -40,7 +40,7 @@
      <p style="color:red;font-weight:bold">@err.message</p>
   } 
   
-  <p><small>By registering or logging in, you agree to the <a href="@controllers.Wiki.w("Admin", "Terms of Service")">Terms of Service</a></small><p>
+  <p><small>By registering or logging in, you agree to the <a href="@controllers.Wiki.w("Admin", "Terms of Service-"+realm)">Terms of Service</a></small><p>
   }
   
        </div>

@@ -1,0 +1,17 @@
+@**************
+bottom frame ends
+**************@
+@(current:String, tags:controllers.NotesLocker.Tags, au:Option[model.User])
+
+@notesonetip()
+
+      <hr>
+      @htmlFooterNotes(ads = true)
+    </div> <!-- /span9 -->
+
+  @notestags(current, tags, au)
+
+  </div> <!-- row -->
+</div> <!-- /container -->
+    
+@htmlBottom()

@@ -1,0 +1,31 @@
+@**************
+list of contacts
+
+msg types are msg, err
+**************@
+@(email:String, name:String, msg:Seq[(String,String)])(implicit au:model.User)
+
+@frup(Some(au))
+
+<h3>
+  Invite <small>contact</small>
+  @notesmsg(msg, Some(au))
+</h3>
+
+@esc(s:String) = @{(model.Enc toUrl s).replaceAll("\\+", "%20")}
+
+@subj = @{"""Need ya... """}
+@body = @{s"""
+This new internet service I found lets us work creatively without distractions.
+You can join at https://www.nofolders.net/login
+
+Cheers,
+${au.ename}
+""".stripMargin}
+
+<a href="mailto:@email?subject=@esc(subj)&body=@esc(body)">
+Send Invite Email
+</a>
+<br><br>
+
+@frdown("", Seq(), Some(au))

@@ -224,8 +224,8 @@ textarea {
 body {
   margin: 0;
   font-family: "Verdana", Verdana, Arial, sans-serif;
-  font-size: 14px;
-  line-height: 20px;
+    font-size: 16px; /* 14px; */
+    line-height: 24px; /* 20px; */
   color: #333333;
   background-color: #ffffff;
 }
@@ -649,7 +649,7 @@ a:focus {
 }
 
 p {
-  margin: 0 0 10px;
+  margin: 0 0 15px;
 }
 
 .lead {

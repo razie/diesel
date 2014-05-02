@@ -15,6 +15,7 @@ import org.bson.types.ObjectId
 import model.Perm
 import razie.cdebug
 import controllers.DarkLight
+import razie.clog
 
 /** statics and utilities for authentication cache */
 object RazAuthService extends AuthService[User] with Logging {
@@ -49,7 +50,6 @@ object RazAuthService extends AuthService[User] with Logging {
     razie.NoStaticS.remove[DarkLight]
     request.session.get("css").foreach { v =>
       razie.NoStaticS.put(DarkLight(v)) 
-      cdebug << "HAHA HAHA css="+v
     } 
 
     synchronized {
@@ -72,6 +72,7 @@ object RazAuthService extends AuthService[User] with Logging {
 
         e3 match {
           case EP(em, pa) =>
+//            cdebug << "AUTH BASIC attempt "+e3
             Api.findUser(Enc(em)).flatMap { u =>
               if (Enc(pa) == u.pwd) {
                 u.auditLogin

@@ -9,6 +9,7 @@ import razie.SnakkUrl
 import razie.cout
 import scala.collection.mutable.ListBuffer
 import razie.Perf
+import controllers.T
 
 /** test the basic test utils */
 class TestClubs extends FlatSpec with ShouldMatchers with RkTester {
@@ -17,7 +18,7 @@ class TestClubs extends FlatSpec with ShouldMatchers with RkTester {
   val (joe, pjoe) = ("H-joe@razie.com", "H-321mm321mm")
 
   import T._
-
+  
   def milis = System.currentTimeMillis.toString
 
   var (noClubs, noUsers, noKidz) = (0, 0, 0)

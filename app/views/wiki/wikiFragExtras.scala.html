@@ -1,0 +1,43 @@
+@**************
+extra html for wiki fragments, used in another page
+**************@
+@(user:Option[model.User], page:Option[model.WikiEntry]=None)
+@import _root_.admin.Config
+@import _root_.admin.IgnoreErrors
+@import _root_.controllers.NotesLocker
+
+@page.map {we=>
+   
+@if(page.exists(_.contentTags.contains("module.reg"))) {
+  @user.map {u=>
+    @views.html.modules.doeModRkRegs(u, we,
+      controllers.ModRkReg(we.wid), 
+      controllers.ModRk.regd(u, we.wid),
+      controllers.ModRk.rks(u, we.wid))
+    }.getOrElse {
+    <p> @alert("blue"){<strong>Registration: </strong>you need to <strong>log in</strong> to register to this event }
+    }
+}
+
+@if(page.exists(_.contentTags.contains("module.tma"))) {
+  @user.map {u=>
+    @views.html.tma.doeModTma(u, page.get)
+    }.getOrElse {
+    <p> @alert("blue"){<strong>TMA: </strong>you need to <strong>log in</strong> to get TMA benefits}
+    }
+}
+
+@if(page.exists(_.contentTags.contains("module.note"))) {
+  @views.html.notes.doeModNote(NotesLocker.NEWNOTE, we, user)
+}
+
+@*** the styles required are also included in header ***@
+@if(page.exists(p=>"""\{\{code:scala""".r.findFirstIn(p.content).isDefined)) {
+   <script src="@routes.Assets.at("vendor/hiscala.js")"></script>
+} else {
+@if(page.exists(p=>"""\{\{code:js""".r.findFirstIn(p.content).isDefined)) {
+   <script src="@routes.Assets.at("vendor/hijs.js")"></script>
+}
+}
+}
+

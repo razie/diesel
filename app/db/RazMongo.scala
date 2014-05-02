@@ -1,4 +1,5 @@
-/**  ____    __    ____  ____  ____,,___     ____  __  __  ____
+/**
+ * ____    __    ____  ____  ____,,___     ____  __  __  ____
  *  (  _ \  /__\  (_   )(_  _)( ___)/ __)   (  _ \(  )(  )(  _ \           Read
  *   )   / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <     README.txt
  *  (_)\_)(__)(__)(____)(____)(____)(___/   (__)  (______)(____/    LICENSE.txt
@@ -48,21 +49,21 @@ object RazMongo {
           var ver = v
           while (ver < Services.mongoDbVer && Services.mongoUpgrades.contains(ver)) {
             Services.mongoUpgrades.get(ver).map { u =>
-              cout << "1 "+Thread.currentThread().getName()
+              cout << "1 " + Thread.currentThread().getName()
               Log audit s"UPGRADING DB from ver $ver to ${Services.mongoDbVer}"
               Thread.sleep(2000) // often screw up and goes in  a loop...
               u.upgrade(db)
               db("Ver").update(Map("ver" -> ver), Map("ver" -> Services.mongoDbVer))
-              Log.audit ("UPGRADING DB... DONE")
+              Log.audit("UPGRADING DB... DONE")
             } getOrElse { Log.error("NO UPGRADES FROM VER " + ver) }
-            ver = ver+1
+            ver = ver + 1
           }
         }
         case None => db("Ver") += Map("ver" -> Services.mongoDbVer) // create a first ver entry
       }
     } catch {
       case e: Throwable => {
-        Log.error ("Exception during DB migration - darn thing won't work at all probably\n" + e, e)
+        Log.error("Exception during DB migration - darn thing won't work at all probably\n" + e, e)
         e.printStackTrace()
       }
     }
@@ -72,10 +73,13 @@ object RazMongo {
   }
 
   /** important during the upgrades themselves - you can't recursively use db */
-  def withDb[B](d: MongoCollection)(f: MongoCollection => B) = { f(d) }
+  def withDb[B](d: MongoCollection, reason:String="?")(f: MongoCollection => B) = 
+    dbop(s"withDb ${d.name} reason=$reason") {
+      f(d);
+    }
 
-  def collectionNames = db.collectionNames filter (! _.startsWith("system."))
-  
+  def collectionNames = db.collectionNames filter (!_.startsWith("system."))
+
   def apply(table: String) = new Table(table)
 
   /** wrap all access tothe DB object */
@@ -85,7 +89,6 @@ object RazMongo {
     def exists = db.collectionExists(table)
     def drop = db.getCollection(table).drop
     def size = {
-      razie.clog << "mongo.table.size: "+table
       m.size
     }
     def count(pairs: Map[String, Any]) = m.count(pairs)
@@ -94,39 +97,39 @@ object RazMongo {
       m += o
     }
 
-    def +=(pairs: Map[String, Any]) = dbop ("create "+table+" "+pairs.mkString(",")) {
+    def +=(pairs: Map[String, Any]) = dbop("create " + table + " " + pairs.mkString(",")) {
       val x: DBObject = pairs
       m += x
     }
 
-    def findAll() = dbop ("findAll "+table){
+    def findAll() = dbop("findAll " + table) {
       m.find()
     }
 
-    def find(pairs: Map[String, Any]) = dbop ("find "+table+" "+pairs.mkString(",")){
+    def find(pairs: Map[String, Any]) = dbop("find " + table + " " + pairs.mkString(",")) {
       val x: DBObject = pairs
       m.find(x)
     }
 
-    def findOne(pairs: Map[String, Any]) = dbop ("findOne "+table+" "+pairs.mkString(",")) {
+    def findOne(pairs: Map[String, Any]) = dbop("findOne " + table + " " + pairs.mkString(",")) {
       val x: DBObject = pairs
       m.findOne(x)
     }
-    
-    def remove(pairs: Map[String, Any]) = dbop ("remove "+table+" "+pairs.mkString(",")){
+
+    def remove(pairs: Map[String, Any]) = dbop("remove " + table + " " + pairs.mkString(",")) {
       m.remove(pairs)
     }
-    
-    def update(pairs: Map[String, Any], o:DBObject) = dbop ("update "+table+" "+pairs.mkString(",")){
+
+    def update(pairs: Map[String, Any], o: DBObject) = dbop("update " + table + " " + pairs.mkString(",")) {
       m.update(pairs, o)
     }
-    
+
   }
 }
 
 /** derive from here and list in upgrades above */
 abstract class UpgradeDb {
-  def upgrade (db: MongoDB): Unit
-  def withDb (d: MongoCollection)(f: MongoCollection => Unit) { f(d) }
+  def upgrade(db: MongoDB): Unit
+  def withDb(d: MongoCollection)(f: MongoCollection => Unit) { f(d) }
 }
 

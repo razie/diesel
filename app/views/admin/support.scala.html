@@ -1,10 +1,10 @@
-@(sForm:Form[_], v2:Int, page:String, user:Option[model.User])
+@(sForm:Form[_], v2:Int, page:String, user:Option[model.User])(implicit request:Request[_])
 
 @import helper.twitterBootstrap._
 
-@htmlHead("RacerKidz Support")
+@htmlHead("Support")
 
-@navbar(user)
+@navbar(user, _root_.admin.Config.realm)
 
   <div class="container">
     <div class="hero-unit">
@@ -70,7 +70,7 @@
 
   <hr>
 
-  @htmlFooter()
+  @htmlFooter(true, false, _root_.admin.Config.realm)
 
   </div> <!-- /container -->
 

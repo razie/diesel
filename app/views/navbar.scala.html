@@ -6,7 +6,7 @@ creates the navigation bar
 @import _root_.admin.Config
 
 @realm match {
-   case "note" => {
+   case "notes" => {
       @notes.notesnavbar(user, mobile, barTitle, logo, url, isSite, club)
       }
    case _ => {

@@ -153,7 +153,7 @@ object Profile extends RazController with Logging {
       "userType" -> nonEmptyText.verifying("Please select one", ut => Config.userTypes.contains(ut)),
       "yob" -> number(min = 1900, max = 2012),
       "address" -> text.verifying("Invalid characters", vldSpec(_)))(
-        (f, l, t, y, a) => User("kuku", f, l, y, "noemail", "nopwd", 'a', Set(t), (if (a != null && a.length > 0) Some(a) else None)))(
+        (f, l, t, y, a) => User("kuku", f, l, y, "noemail", "nopwd", 'a', Set(t), Set(), (if (a != null && a.length > 0) Some(a) else None)))(
           (u: User) => Some(u.firstName, u.lastName, u.roles.head, u.yob, u.addr.map(identity).getOrElse(""))) verifying
           ("Can't use last name for organizations!", { u: User =>
             (!(auth.get.isClub)) || u.lastName.length <= 0
@@ -172,18 +172,21 @@ object Profile extends RazController with Logging {
 
   // join step 1
   def doeJoin(club: String, role: String, next: String) = Action {implicit request=>
+    auth // clean theme
     Ok(views.html.doeJoin(registerForm)).withSession(
       "gaga" -> System.currentTimeMillis.toString,
       "extra" -> "%s,%s,%s".format(club, role, next))
   } // continue with register()
 
   def doeJoinWith(email: String) = Action {implicit request=>
+    auth // clean theme
     log("joinWith email=" + email)
     Ok(views.html.doeJoin(registerForm.fill(Registration(email.dec, "", "")))).withSession("gaga" -> System.currentTimeMillis.toString)
   } // continue with register()
 
   // join step 2 - submited email/pass form
   def doeJoin2 = Action { implicit request =>
+    auth // clean theme
     registerForm.bindFromRequest.fold(
       formWithErrors => BadRequest(views.html.doeJoin(formWithErrors)).withSession("gaga" -> System.currentTimeMillis.toString,
         "extra" -> session.get("extra").mkString),
@@ -195,11 +198,12 @@ object Profile extends RazController with Logging {
             case _: Throwable => 1
           }
 
+          // allow this only for some minutes
           if (System.currentTimeMillis - g <= 120000) {
-            if (p == null || p.size <= 0)
-              // this is de-activated, password is now required
-              registerEmailOnly(reg)
-            else
+//            if (p == null || p.size <= 0)
+//              // this is de-activated, password is now required
+//              registerEmailOnly(reg)
+//            else
               login(reg, session.get("extra").mkString)
           } else {
             Msg2("Session expired - please try again. <p>Please make sure your browser allows cookies for this website, thank you!", Some("/doe/join")).withNewSession
@@ -208,17 +212,18 @@ object Profile extends RazController with Logging {
       })
   }
 
+  // TODO this shoud be private
   def updateUser(old: User, newU: User)(implicit request: Request[_]) = {
     old.update(newU)
     cleanAuth(Some(newU))
     newU
   }
 
-  def registerEmailOnly(reg: Registration) = {
-    Audit.regdemail(reg.email)
-    RCreate(RegdEmail(reg.email))
-    Ok(views.html.thankyou(reg.ename)).withNewSession
-  }
+//  def registerEmailOnly(reg: Registration) = {
+//    Audit.regdemail(reg.email)
+//    RCreate(RegdEmail(reg.email))
+//    Ok(views.html.thankyou(reg.ename)).withNewSession
+//  }
 
   /** login or start registration */
   def login(reg: model.Registration, extra: String) = {
@@ -241,6 +246,7 @@ object Profile extends RazController with Logging {
 
   /** start registration long form - submit is doeCreateProfile */
   def doeJoin3 = Action { implicit request =>
+    auth // clean theme
     (for (
       e <- flash.get("email");
       p <- flash.get("pwd")
@@ -267,6 +273,7 @@ object Profile extends RazController with Logging {
         System.currentTimeMillis.toString
       else unameF(f.trim,l.trim)
 
+    auth // clean theme
       
     val resp = crProfileForm.bindFromRequest
     resp.fold(
@@ -285,6 +292,7 @@ object Profile extends RazController with Logging {
             u <- Some(User(
               uname(f, l, y), f.trim, l.trim, y, Enc(e),
               Enc(p), 'a', Set(ut),
+              Set(Config.realm),
               (if (addr != null && addr.length > 0) Some(addr) else None),
               Map("css" -> dfltCss, "favQuote" -> "Do one thing every day that scares you - Eleanor Roosevelt", "weatherCode" -> "caon0696")))
           ) yield {
@@ -403,9 +411,11 @@ object Profile extends RazController with Logging {
       formWithErrors => BadRequest(views.html.user.doeProfilePreferences(formWithErrors, auth.get)),
       {
         case (css, favQuote, weatherCode) => forActiveUser { au =>
-          val u = updateUser(au, User(au.userName, au.firstName, au.lastName, au.yob, au.email, au.pwd, au.status, au.roles, au.addr, au.prefs ++
-            Seq("css" -> css, "favQuote" -> favQuote, "weatherCode" -> weatherCode),
-            au._id))
+          val u = updateUser(au, au.copy(prefs=au.prefs ++
+            Seq("css" -> css, "favQuote" -> favQuote, "weatherCode" -> weatherCode)))
+//          val u = updateUser(au, User(au.userName, au.firstName, au.lastName, au.yob, au.email, au.pwd, au.status, au.roles, au.addr, au.prefs ++
+//            Seq("css" -> css, "favQuote" -> favQuote, "weatherCode" -> weatherCode),
+//            au._id))
           Emailer.withSession { implicit mailSession =>
             au.shouldEmailParent("Everything").map(parent => Emailer.sendEmailChildUpdatedProfile(parent, au))
           }
@@ -425,7 +435,7 @@ object Profile extends RazController with Logging {
   }
 
   def doeHelp = Action { implicit request =>
-    forUser { au =>
+    forActiveUser { au =>
       Ok(views.html.user.doeProfileHelp(au))
     }
   }
@@ -436,7 +446,7 @@ object Profile extends RazController with Logging {
       {
         case u: User =>
           forActiveUser { au =>
-            updateUser(au, User(au.userName, u.firstName, u.lastName, u.yob, au.email, au.pwd, au.status, u.roles, u.addr, au.prefs, au._id))
+            updateUser(au, au.copy(au.userName, u.firstName, u.lastName, u.yob, au.email, au.pwd, au.status, u.roles, au.realms, u.addr, au.prefs, au._id))
             Emailer.withSession { implicit mailSession =>
               au.shouldEmailParent("Everything").map(parent => Emailer.sendEmailChildUpdatedProfile(parent, au))
             }
@@ -479,7 +489,8 @@ object Profile extends RazController with Logging {
               // the second form is hack to allow me to reset it
             }
           ) yield {
-            updateUser(au, User(au.userName, au.firstName, au.lastName, au.yob, au.email, Enc(n), au.status, au.roles, au.addr, au.prefs, au._id))
+//            updateUser(au, User(au.userName, au.firstName, au.lastName, au.yob, au.email, Enc(n), au.status, au.roles, au.addr, au.prefs, au._id))
+            updateUser(au, au.copy(pwd=Enc(n)))
             Msg2("Ok, password changed!")
           }) getOrElse {
             error("ERR_CANT_UPDATE_USER_PASSWORD ")
@@ -622,7 +633,8 @@ object EdUsername extends RazController {
         ) yield {
           // TODO transaction
           db.tx("accept.user") { implicit txn =>
-            Profile.updateUser(u, User(newusername, u.firstName, u.lastName, u.yob, u.email, u.pwd, u.status, u.roles, u.addr, u.prefs, u._id))
+//            Profile.updateUser(u, User(newusername, u.firstName, u.lastName, u.yob, u.email, u.pwd, u.status, u.roles, u.addr, u.prefs, u._id))
+            Profile.updateUser(u, u.copy(userName=newusername))
             this dbop UserTasks.userNameChgDenied(u).delete
             Wikis.updateUserName(u.userName, newusername)
             Emailer.withSession { implicit mailSession =>

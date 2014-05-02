@@ -96,6 +96,7 @@ case class User(
   pwd: String,
   status: Char = 'a', // a-active, s-suspended, d-deleted
   roles: Set[String], // = Set("Racer"),
+  realms: Set[String]=Set(), // = RK modules (notes, rk, clubadmin etc)
   addr: Option[String] = None, // address as typed in
   prefs: Map[String, String] = Map(), // = Set("Racer"),
   _id: ObjectId = new ObjectId()) extends WikiUser with TRacerKidInfo {
@@ -200,6 +201,8 @@ case class User(
   }
 
   def pref(name: String)(default: => String) = prefs.get(name).getOrElse(default)
+
+  def hasRealm(m:String) = realms.contains(m) || (realms.isEmpty && "rk" == m)
 
   def quota = ROne[UserQuota]("userId" -> _id) getOrElse UserQuota(_id)
 

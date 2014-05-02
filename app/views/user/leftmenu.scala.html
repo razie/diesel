@@ -21,7 +21,9 @@
     <li class="@active(6)"><a href="@routes.Club.doeClubKids"><i class="icon-user"></i>Members</a></li>
     <li class="@active(12)"><a href="@routes.Tribe.doeClubTribes"><i class="icon-list"></i>Tribes</a></li>
     <li class="@active(15)"><a href="@routes.Club.doeVol"><i class="icon-user"></i>Volunteers</a></li>
-} else {
+} 
+
+@if(! user.isClub && user.hasRealm("rk")) {
     <hr>
     <li class="@active(10)"><a href="@routes.Club.doeClubUserRegs"><i class="icon-list"></i>Registrations</a></li>
     <li class="@active(14)"><a href="@routes.Tribe.doeUserTribes"><i class="icon-list"></i>Tribes</a></li>
@@ -31,6 +33,11 @@
        <li><a href="@routes.Profile.profile2(c.id)">@c.ename</a></li>
       }
     </ul>
+} 
+
+@if(! user.isClub && user.hasRealm("notes")) {
 }
+
   </ul>
 </div> <!-- /well -->
+

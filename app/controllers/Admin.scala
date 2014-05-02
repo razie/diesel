@@ -112,7 +112,8 @@ object Admin extends RazController {
       goodS <- s.length == 1 && ("as" contains s(0)) orErr ("bad status");
       u <- Users.findUserById(id)
     ) yield {
-      Profile.updateUser(u, User(u.userName, u.firstName, u.lastName, u.yob, u.email, u.pwd, s(0), u.roles, u.addr, u.prefs, u._id))
+//      Profile.updateUser(u, User(u.userName, u.firstName, u.lastName, u.yob, u.email, u.pwd, s(0), u.roles, u.addr, u.prefs, u._id))
+      Profile.updateUser(u, u.copy(status=s(0)))
       Redirect("/razadmin/user/" + id)
     }) getOrElse {
       error("ERR_ADMIN_CANT_UPDATE_USER ustatus " + id+" "+ errCollector.mkString)
@@ -202,15 +203,15 @@ object Admin extends RazController {
       })
   }
 
-  def uname(id: String) = Action { implicit request =>
-    implicit val errCollector = new VError()
-    OneForm.bindFromRequest.fold(
+  def uname(id: String) = FAD { implicit au => 
+    implicit errCollector => implicit request =>
+
+      OneForm.bindFromRequest.fold(
       formWithErrors =>
         Msg2(formWithErrors.toString + "Oops, can't add that quota!"),
       {
         case uname =>
           (for (
-            can <- hasPerm(Perm.adminDb) orErr ("no permission");
             u <- Users.findUserById(id);
             pro <- u.profile;
             already <- !(u.userName == uname) orErr "Already updated"
@@ -225,6 +226,31 @@ object Admin extends RazController {
           }) getOrElse {
             error("ERR_ADMIN_CANT_UPDATE_USER.uname " + id+" "+ errCollector.mkString)
             Unauthorized("ERR_ADMIN_CANT_UPDATE_USER.uname " + id+" " + errCollector.mkString)
+          }
+      })
+  }
+
+  def urealms(id: String) = FAD { implicit au => 
+    implicit errCollector => implicit request =>
+
+      OneForm.bindFromRequest.fold(
+      formWithErrors =>
+        Msg2(formWithErrors.toString + "Oops, can't !"),
+      {
+        case uname =>
+          (for (
+            u <- Users.findUserById(id);
+            pro <- u.profile
+          ) yield {
+            // TODO transaction
+            db.tx("urealms") { implicit txn =>
+              Profile.updateUser(u, u.copy(realms = uname.split("[, ]").toSet))
+              cleanAuth(Some(u))
+            }
+            Redirect("/razadmin/user/" + id)
+          }) getOrElse {
+            error("ERR_ADMIN_CANT_UPDATE_USER.urealms " + id+" "+ errCollector.mkString)
+            Unauthorized("ERR_ADMIN_CANT_UPDATE_USER.urealms " + id+" " + errCollector.mkString)
           }
       })
   }
@@ -365,6 +391,7 @@ object Admin extends RazController {
 scriptsRun=${WikiScripster.count}\n
 Global.serving=${GlobalData.serving}\n
 Global.served=${GlobalData.served}\n
+NotesLocker.autosaved=${NotesLocker.autosaved}\n
 Global.startedDtm=${GlobalData.startedDtm}\n
 """
   }

@@ -7,10 +7,7 @@ import razie.Snakk
 import razie.UrlTester
 import razie.SnakkUrl
 import razie.cout
-
-object T {
-  final val TESTCODE = "RazTesting"
-}
+import controllers.T
 
 trait RkTester extends UrlTester { self: FlatSpec with ShouldMatchers =>
   import T._
@@ -28,16 +25,29 @@ trait RkTester extends UrlTester { self: FlatSpec with ShouldMatchers =>
       "accept" -> "true",
       "recaptcha_challenge_field" -> TESTCODE,
       "recaptcha_response_field" -> TESTCODE)
-    ("/doe/profile/create?testcode=" + TESTCODE).url.form(user(n)).wget // sok "we sent an emai" 
-    //    Thread.sleep(1000)
+
     val email = "H-" + n + "@k.com"
-    val userId = (s"/testingRaz/userIdByFirstName/$n/$TESTCODE", email, p).wget
-    userId should have length (24)
-    (s"/testingRaz/auth/x/$TESTCODE", email, p).wget.length should be > 5
-    cout << (s"/testingRaz/verifyUserById/$userId/$TESTCODE", email, p).wget
-    cout << (s"/testingRaz/setuserUsernameById/$userId/$TESTCODE", email, p).wget
-    cout << "User created: " << ("H-" + n, userId, p)
-    (email, userId)
+
+    var userId = try {
+      // maybe user already created, be nice - this is for testing
+      (s"/testingRaz/userIdByFirstName/$n/$TESTCODE", email, p).wget
+    } catch {
+      case _: Throwable => ""
+    }
+    
+    if (userId != "") {
+      (email, userId)
+    } else {
+      ("/doe/profile/create?testcode=" + TESTCODE).url.form(user(n)).wget // sok "we sent an emai" 
+      //    Thread.sleep(1000)
+      userId = (s"/testingRaz/userIdByFirstName/$n/$TESTCODE", email, p).wget
+      userId should have length (24)
+      (s"/testingRaz/auth/x/$TESTCODE", email, p).wget.length should be > 5
+      cout << (s"/testingRaz/verifyUserById/$userId/$TESTCODE", email, p).wget
+      cout << (s"/testingRaz/setuserUsernameById/$userId/$TESTCODE", email, p).wget
+      cout << "User created: " << ("H-" + n, userId, p)
+      (email, userId)
+    }
   }
 
   /** create a wiki page */
@@ -62,18 +72,18 @@ trait RkTester extends UrlTester { self: FlatSpec with ShouldMatchers =>
   }
 
   /** create a racerkid for a user */
-  def crKid(userId: String, u: String, f: String, l:String, role: String)(implicit hostport: String) = {
+  def crKid(userId: String, u: String, f: String, l: String, role: String)(implicit hostport: String) = {
     def kid = Map(
       "fname" -> f,
       "lname" -> l,
-      "email" -> (f+l + "@k.com"),
+      "email" -> (f + l + "@k.com"),
       "dob" -> "2000-01-01",
       "gender" -> "M",
       "role" -> role,
       "status" -> "a",
       "assocRole" -> "Racer",
       "notifyParent" -> "y")
-    cout << "Kid created: " << (userId, f+"."+l, role, u)
+    cout << "Kid created: " << (userId, f + "." + l, role, u)
     (s"/doe/user/kidupd/$userId/11/$role/-/Club").url.form(kid).basic(u, p).wget // sok "Kidz" // first create, no check
     val rkId = (s"/testingRaz/kidByName/$f,$l/$TESTCODE", u, p).wget
     rkId should have length (24)

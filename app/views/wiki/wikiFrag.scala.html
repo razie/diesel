@@ -16,7 +16,7 @@ wiki fragment, used in another page
 
 @ww() = @{ model.Wikis.findAny(wid.name) }
 
-@label()=@{ page.map(_.label).getOrElse(model.Wikis.label(wid)) }
+@label()=@{ page.flatMap(_.contentTags.get("label")).orElse(page.map(_.label)).getOrElse(model.Wikis.label(wid)) }
 
 @url() = @{s"http://${Config.hostport}${controllers.Wiki.w(wid)}"}
 
@@ -33,7 +33,7 @@ wiki fragment, used in another page
                (Category)</h2>
             } 
           case _ => {
-              <h2>@label
+              <h2>@label()
               @if(user.isEmpty && "Blog" == wid.cat) {
                 <a class="btn btn-info" title="Subscribe to updates via email" href="@routes.Wiki.linkFollower1(wid)"><i class="icon-envelope icon-white"></i> Subscribe</a>
               } else {
@@ -44,78 +44,19 @@ wiki fragment, used in another page
 
               @if(!(Seq("WikiLink", "Form").contains(wid.cat) || page.exists(_.contentTags.contains("noSocial")))) { 
 
-@***
-&nbsp;&nbsp;
-<ul class="like-buttons">
-<li class="twitter-like"><a href="https://twitter.com/share" class="twitter-share-button" data-via="racerkid">Tweet</a></li>
-<li class="g-like"><div class="g-plusone" data-size="medium"></div></li>
-<li class="fb-like" data-href="http://@Config.hostport@controllers.Wiki.w(wid)" data-send="true" data-layout="button_count" data-width="450" data-show-faces="true"></li>
-</ul>
-***@
-
 <br>
 <a class="btn btn-small btn-info" href="@routes.Wiki.social(label().toString, url())">Share <i class="icon-thumbs-up icon-white"></i></a>
 
 }
               
               </h2>
-@***
-<script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0];if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src="//platform.twitter.com/widgets.js";fjs.parentNode.insertBefore(js,fjs);}}(document,"script","twitter-wjs");</script>
-<div id="fb-root"></div>
-<script>(function(d, s, id) {
-  var js, fjs = d.getElementsByTagName(s)[0];
-  if (d.getElementById(id)) return;
-  js = d.createElement(s); js.id = id;
-  js.src = "//connect.facebook.net/en_US/all.js#xfbml=1";
-  fjs.parentNode.insertBefore(js, fjs);
-}(document, 'script', 'facebook-jssdk'));</script>
-
-<!-- Place this tag after the last +1 button tag. -->
-<script type="text/javascript">
-  (function() {
-    var po = document.createElement('script'); po.type = 'text/javascript'; po.async = true;
-    po.src = 'https://apis.google.com/js/plusone.js';
-    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
-  })();
-</script>
-***@
            }
          }
       }
       
-      <p>@Html(model.Wikis.format(we.wid, we.markup, we.content, page))</p> 
+<p>@Html(model.Wikis.format(we.wid, we.markup, we.content, page))</p>
         
-@if(page.exists(_.contentTags.contains("module.reg"))) {
-  @user.map {u=>
-    @views.html.modules.doeModRkRegs(u, we,
-      controllers.ModRkReg(we.wid), 
-      controllers.ModRk.regd(u, we.wid),
-      controllers.ModRk.rks(u, we.wid))
-    }.getOrElse {
-    <p> @alert("blue"){<strong>Registration: </strong>you need to <strong>log in</strong> to register to this event }
-    }
-}
-
-@if(page.exists(_.contentTags.contains("module.tma"))) {
-  @user.map {u=>
-    @views.html.tma.doeModTma(u, we)
-    }.getOrElse {
-    <p> @alert("blue"){<strong>TMA: </strong>you need to <strong>log in</strong> to get TMA benefits}
-    }
-}
-
-@if(page.exists(_.contentTags.contains("module.note"))) {
-  @views.html.notes.doeModNote(NotesLocker.lform.fill(NotesLocker.IDOS, "", ""), we, user)
-}
-
-@*** the styles required are also included in header ***@
-@if(page.exists(p=>"""\{\{code:scala""".r.findFirstIn(p.content).isDefined)) {
-   <script src="@routes.Assets.at("vendor/hiscala.js")"></script>
-} else {
-@if(page.exists(p=>"""\{\{code:js""".r.findFirstIn(p.content).isDefined)) {
-   <script src="@routes.Assets.at("vendor/hijs.js")"></script>
-}
-}
+@wikiFragExtras(user,page)
           
         @if(!simple && !print) {
 

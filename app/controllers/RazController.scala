@@ -142,10 +142,11 @@ If you got this message in error, please describe the issue in a <a href="/doe/s
     request.headers.get("X-Forwarded-For").getOrElse(request.headers.get("RemoteIP").getOrElse("x.x.x.x"))
 
   protected def forActiveUser[T](body: model.User => play.api.mvc.SimpleResult)(implicit request: Request[_]) = {
+    implicit val errCollector = new VError()
     (for (
       au <- auth;
       isA <- checkActive(au)
-    ) yield body(au)) getOrElse unauthorized("Oops - how did you get here? [no user or user suspended]")
+    ) yield body(au)) getOrElse unauthorized("Can't...")
   }
 
   protected def forUser[T](body: model.User => play.api.mvc.SimpleResult)(implicit request: Request[_]) = {
@@ -154,7 +155,7 @@ If you got this message in error, please describe the issue in a <a href="/doe/s
     ) yield body(au)) getOrElse unauthorized("Oops - how did you get here? [no user]")
   }
 
-  protected def isFromRobot(request: Request[_]) = {
+  protected def isFromRobot(implicit request: Request[_]) = {
     val robots = Array("http://www.bing.com/bingbot.htm", "360Spider",
       "Mediapartners-Google", "http://awcheck.com/en/about",
       "http://www.searchmetrics.com/en/searchmetrics-bot/",

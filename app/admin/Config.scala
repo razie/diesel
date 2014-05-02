@@ -30,6 +30,12 @@ object Config extends WikiConfig {
     darkLight.map(_.css).orElse(currUser.flatMap(_.css).orElse(sitecfg("css"))) getOrElse ("dark")
   }
 
+  val cbacks =  new collection.mutable.ListBuffer[() => Unit]()
+
+  def callback (f:() => Unit) = {
+    cbacks append f
+  }
+  
   // parse a properties looking thing
   def parsep(content: String) = (content.split("\r\n")) filter (!_.startsWith("#")) map (_.split("=")) filter (_.size == 2) map (x => (x(0), x(1)))
 
@@ -56,6 +62,8 @@ object Config extends WikiConfig {
       println("============= config topic: " + x)
       xconfig.get(x).foreach(y => println(y.mkString("\n  ")))
     })
+    
+    cbacks foreach (_())
   }
 
   def realm(implicit request: Request[_]) = {

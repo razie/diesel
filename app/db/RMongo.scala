@@ -12,10 +12,9 @@ import com.novus.salat._
 import com.novus.salat.annotations._
 import db.RazSalatContext._
 import com.mongodb.util.JSON
-import razie.Log
+import razie.{cdebug, Log, clog}
 import admin.Services
 import admin.Audit
-import razie.clog
 
 /**
  * Razie's simple mongo entity persistence framework
@@ -188,7 +187,7 @@ object dbop {
 
   def apply[A](name: String)(f: => A): A = {
     val ba = new RBeforeAft(name)
-    clog << s"dbop.BEFORE for ${ba.name}"
+    cdebug << s"dbop.BEFORE for ${ba.name}"
     val res = f
     val t2 = System.currentTimeMillis
     clog << s"dbop.AFTER ${t2 - ba.t1} millis for ${ba.name}"

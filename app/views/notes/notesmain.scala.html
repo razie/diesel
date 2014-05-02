@@ -3,36 +3,27 @@ show/edit/capture a note
 
 msg types are msg, err
 **************@
-@(myForm:Form[_], tags:controllers.NotesLocker.Tags, msg:Seq[(String,String)], au:Option[model.User])
+@(myForm:Form[_], tags:controllers.NotesLocker.Tags, msg:Seq[(String,String)], isAuto:Boolean=false)(implicit au:Option[model.User])
 @import _root_.controllers.NotesLocker
 
-@htmlHead("No Folders", None, None)
-@notesnavbar(au)
-
 @id = @{1}
+
+@nid = @{myForm("id").value}
+@ver = @{myForm("ver").value}
 
 @rows = @{
    val line = myForm("content").value.getOrElse("")
    if(line.length() - line.replace("\n", "").length() > 5) 10 else 5
 }
 
-<div class="container">
-  <div class="row">
-    <div class="span9">
+@frup(au)
 
-<h2>
-@if(!_root_.admin.Config.isLocalhost) {
-   Note Locker <small>(preview edition)</small> 
-   }
-   
-@notesmsg(msg, au)
+<h3>Creative <small>preview</small> @notesmsg(msg, au) </h3>
 
-</h2>
-
-<div class="well">
+<div class="well" style="padding-bottom:0px">
 @import helper.twitterBootstrap._
 
-@helper.form(action=routes.NotesLocker.save(), 'class->"form-inline") {
+@helper.form(action=routes.NotesLocker.save(), 'class->"form-inline", 'style->"margin-bottom:0px") {
 
 @**
   <div id="lock1" style="display:inline-block; width:100%; height:120px;"> </div>
@@ -40,37 +31,54 @@ msg types are msg, err
 
   @helper.textarea(
     myForm("content"), 
-    '_label -> (NotesLocker.html("main")),
+    '_label -> (Html(NotesLocker.xhtml("admin,page,main", au))),
     '_showConstraints -> false,
-    'class -> "span7",
+    'class -> "span8",
     'rows->rows)
   
   @helper.inputText(
     myForm("tags"), 
     '_label -> Html("""
-       <div class="span7" style="margin-left:0px">
+       <div class="span8" style="margin-left:0px">
        Tags <small>i.e. note,todo,forjohn,phone,email,contact,project1</small>
   <div style="float:right">
-      <a class="btn btn-mini" onclick="enlarge()" title="This is not twitter, eh?">+ Larger</a>
+      <a class="btn btn-mini" onclick="larger()" title="This is not twitter, eh?">+ Larger</a>
   </div> 
        </div>
        """),
-    'class -> "span7",
+    'class -> "span8",
     'autocomplete -> "off",
     '_showConstraints -> false)
 
   @myForm.globalError.map { err=>
      <p style="color:red;font-weight:bold">@err.message</p>
-  } 
+  }
 
-  <input type="hidden" name="id" value="@myForm("id").value" />
+  <input id="id" type="hidden" name="id" value="@nid" />
+  <input id="ver" type="hidden" name="ver" value="@ver" />
 
-    <div class="actions">
-      <button type="submit" class="btn btn-info">Save</button>
+  <div class="actions span8" style="margin-left:0px; display:inline-block;">
+    <button id="submit" type="submit" class="btn btn-info">Save it</button>
+
+    @if(isAuto) {
+      <a id="discard" href="/notes/discard/@nid" class="btn btn-warn" title="This note was auto-saved...">Discard it</a>
+    }
+
+    <div style="float:right">
+@**      <a class="btn" onclick="preview()" title="Preview formatted">Preview it</a>
+**@
+      @if(_root_.admin.Config.theme.contains("light")) {
+        <i id="iconsave" class="icon-briefcase"  title="Autosaving ok..."></i>
+      } else {
+        <i id="iconsave" class="icon-briefcase icon-white" title="Autosaving ok..."></i>
+      }
+      <a class="btn" onclick="archive()" title="Archive notes">Archive it</a>
+    </div>
   </div>
-  
-  <p><small>You are typing markdown - see the <a href="/wiki/Blog:Note_Locker/Post:Notes_Quick_Guide">quick guide</a>.</small>
-  <br><small>By updating this page, you agree to the <a href="@controllers.Wiki.w("Terms of Service")">Terms of Service</a></small>
+
+<div style="display:inline-block">  
+  <p><small>You are typing markdown - see the <a href="/wiki/Blog:No_Folders/Post:Notes_Quick_Guide">quick guide</a>.</small>
+</div>
 }
 
 @*** site todos - registration etc ***@
@@ -83,22 +91,16 @@ msg types are msg, err
       }
       </ul>
       </div>
-    } else {
-    
-    @if(!au.isDefined || au.get.isHarry) {
-       <div class="alert alert-block">
-      <strong>Need account</strong>
-      You need to <a href="/doe/join">create an account</a> to actually create and save notes...
-      </div>
     }
-    }
-
-@notesonetip()
 
 </div>
 
-<p>Take notes now and worry about organizing them later! No folders needed...
-
+@if(!au.isDefined || au.get.isHarry) {
+    <div class="alert alert-block alert-error">
+        <strong>Need account</strong>
+        You need to <a href="/doe/join">create an account</a> to actually create and save notes.
+    </div>
+}
 
 @***
 <p><small>Assistant says:</small><br>
@@ -113,9 +115,24 @@ msg types are msg, err
 <script>
 $('#content')[0].focus();
 
-var enlarge = function(s) {
+@if(au.isEmpty || !au.get.isActive) {
+  $('#submit')[0].disabled=true;
+  $('#content')[0].disabled=true;
+  $('#tags')[0].disabled=true;
+  $('#content')[0].title='You need an account to save notes, sorry!';
+  $('#tags')[0].title='You need an account to save notes, sorry!';
+}
+
+var larger = function(s) {
   var r = $('#content')[0].rows;
   $('#content')[0].rows = r+5;
+  $('#content')[0].focus();
+}
+   
+var archive = function(s) {
+  var r = $('#tags')[0].value;
+  r = r.length > 0 ? r+',' : r
+  $('#tags')[0].value = r+'archive';
 }
    
 var saveit = function() {
@@ -123,6 +140,8 @@ var saveit = function() {
 }
 
 </script>
+
+@frdown("", tags, au)
 
 @**
 <script src="@routes.Assets.at("ace-builds/src/ace.js")" type="text/javascript" charset="utf-8"></script>
@@ -162,14 +181,93 @@ setInterval(function(){
 </script>
 **@
 
+<form id="autosave" action="@routes.NotesLocker.autosave()" method="post" >
+  <input type="hidden" id="aid" name="id" />
+  <textarea style="display:none" id="acontent" name="content"></textarea>
+  <input type="hidden" id="atags" name="tags" />
+  <input type="hidden" id="aver" name="ver" />
+</form>
 
-      <hr>
-      @htmlFooter(ads = true)
-    </div> <!-- /span9 -->
+@**
+<xscript src="@routes.Assets.at("bootstrap/js/bootstrap-typeahead.js")"></xscript>
+<xscript>
+//from http://stackoverflow.com/questions/12662824/twitter-bootstrap-typeahead-multiple-values
 
-@notestags("", tags, au)
+var $myTextarea = $('#content');
 
-  </div> <!-- row -->
-</div> <!-- /container -->
-    
-@htmlBottom()
+function extractor(query) {
+  var result = /^(\.\w*)$/m.exec(query);
+  if(result && result[1]) return result[1].trim();
+  return '';
+}
+
+  $('#content').typeahead({
+    source: dotTags,
+    updater: function(item) {
+    return this.$element.val().replace(/\.\w*$/,'.')+item.replace(/(\w)[: ].*/, '\$1') +' ';
+  },
+    matcher: function (item) {
+      var tquery = extractor(this.query);
+      if(!tquery) return false;
+      tquery=tquery.substring(1)
+      return item.toLowerCase().indexOf(tquery.toLowerCase()) == 0;
+    },
+    highlighter: function (item) {
+    var query = extractor(this.query).replace(/[\-\[\]{}()*+?.,\\\^$|#\s]/g, '\\$&')
+    if(query.lentgh>1)
+      return item.replace(new RegExp('(^' + query.substr(1) + ')', 'ig'), function ($1, match) {
+        return '<strong>' + match + '</strong>'
+      })
+    else return item;
+  }
+});
+</xscript>
+**@
+
+
+<script src="@routes.Assets.at("vendor/jquery.textcomplete.min.js")"></script>
+<script src="@routes.Assets.at("javascripts/rk-contentassist.js")"></script>
+
+<script>
+  $('#iconsave' ).fadeOut();
+
+  $('#atags')[0].value = $('#tags')[0].value;
+  $('#acontent')[0].value = $('#content')[0].value;
+
+  setInterval(function(){
+    var t = $('#tags')[0].value;
+    var i = $('#id')[0].value;
+    var v = $('#ver')[0].value;
+    var c = $('#content')[0].value;
+
+    if(t != $('#atags')[0].value || c != $('#acontent')[0].value) {
+      $('#atags')[0].value = t;
+      $('#aid')[0].value = i;
+      $('#aver')[0].value = v;
+      $('#acontent')[0].value = c;
+
+      var $form = $('#autosave');
+
+      $.post($form.attr('action'), $form.serialize(), function(response) {
+       console.log(response);
+        if(response.indexOf("msg") == 1) {
+          $('#iconsave').css("background-color","")
+          $('#iconsave' ).fadeIn(1500);
+          $('#iconsave' ).fadeOut(1500);
+        } else {
+          $('#iconsave').css("background-color","red")
+          $('#iconsave')[0].title = response;
+          $('#iconsave' ).show();
+
+          if(response.indexOf("Old auto") > 0) {
+            $('#submit')[0].disabled=true;
+            $('#submit').removeClass('btn-info').addClass('btn-danger');
+            $('#submit')[0].title="This note was completed in a different window!";
+          }
+        }
+      });
+    }
+
+  },5000);
+</script>
+

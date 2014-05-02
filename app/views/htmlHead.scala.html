@@ -8,8 +8,7 @@
 
 @css() = @{
 val ret = cssr.getOrElse(_root_.admin.Config.theme)
-razie.cdebug << "HEHE css="+ret
-ret
+if(ret == null || ret.length <=0) "light" else ret
 }
 
 <!DOCTYPE html>
@@ -155,15 +154,18 @@ li.g-like{
 }
 
 @*** for hijs code frags ***@
-@if(page.exists(p=>"""\{\{code[:}]""".r.findFirstIn(p.content).isDefined)) {
+
+@** nots needs without this if
+ @if(page.exists(p=>"""\{\{code[:}]""".r.findFirstIn(p.content).isDefined)) { **@
 
   @if(Config.theme.contains("light")) {
   
 <style type="text/css">
-p code {
-  font-size: 16px;
-  line-height: 16px;
-}
+# this makes all look big, even `something`
+#p code {
+#  font-size: 16px;
+# line-height: 16px;
+#}#
 
 pre {
   background-color: #e5e5e5;
@@ -182,10 +184,11 @@ code .comment              { color: gray }
 } else {              @*** dark theme ***@
 
 <style type="text/css">
-p code {
-  font-size: 16px;
-  line-height: 16px;
-}
+# this makes all look big, even `something`
+#p code {
+#  font-size: 16px;
+#  line-height: 16px;
+#}
 
 pre {
   background-color: #191919;
@@ -201,7 +204,8 @@ code .number               { color: #eddd3d }
 code .comment              { color: gray }
 </style>
 }
-}
+
+@**}**@
           
     </head>
 

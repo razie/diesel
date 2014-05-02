@@ -10,8 +10,10 @@ import scala.util.matching.Regex.Match
 import scala.util.parsing.combinator.RegexParsers
 import scala.Option.option2Iterable
 import admin.Services
-import db.RTable
-import scala.Array.canBuildFrom
+import scala.collection.mutable
+
+//import db.RTable
+//import scala.Array.canBuildFrom
 
 /**
  * sed like filter using Java regexp
@@ -164,9 +166,9 @@ object WikiParser extends ParserCommons with CsvParser {
     case ol ~ l => State(ol.getOrElse(State("")).s + l.map(_.s).mkString, l.flatMap(_.tags).toMap, l.flatMap(_.ilinks), l.flatMap(_.decs))
   }
 
-  def optline: PS = opt(line) ^^ { case o => o.map(identity).getOrElse(State("")) }
+  def optline: PS = opt(dotProps | line) ^^ { case o => o.map(identity).getOrElse(State("")) }
 
-  def lines: PS = rep(optline ~ (CRLF1 | CRLF3 | CRLF2)) ~ opt(line) ^^ {
+  def lines: PS = rep(optline ~ (CRLF1 | CRLF3 | CRLF2)) ~ opt(dotProps | line) ^^ {
     case l ~ c =>
       State(
         l.map(t => t._1.s + t._2.s).mkString + c.map(_.s).getOrElse(""),
@@ -311,6 +313,7 @@ object WikiParser extends ParserCommons with CsvParser {
     wikiPropTable | wikiPropSection | wikiPropImg | wikiPropVideo | wikiPropScript | wikiPropCall |
     wikiPropFiddle | wikiPropCode | wikiPropField | wikiPropRk | wikiProp //| wikiPropNV
 
+
   private def wikiPropMagic: PS = "{{{" ~> """[^}]*""".r <~ "}}}" ^^ {
     case value => {
       val p = parseAll(dates, value)
@@ -346,6 +349,28 @@ object WikiParser extends ParserCommons with CsvParser {
         State("", Map(name.substring(1) -> value)) // hidden
       else
         State("""{{Property %s=%s}}""".format(name, value), Map(name -> value))
+  }
+
+  private def dotProps: PS = dotPropAct | dotPropTags | dotPropEmail | dotProp
+
+  def dotProp: PS = """^\.""".r ~> """[.]?[^.: ]+""".r ~ """[: ]""".r ~ """[^\r\n]*""".r ^^ {
+    case name ~ _ ~ value =>
+      if (name startsWith ".")
+        State("", Map(name.substring(1) -> value)) // hidden
+      else
+        State(s"""<font style="font-weight:bold;">{{.Property $name=$value}}</font><br>""", Map(name -> value))
+  }
+
+  def dotPropTags: PS = """^\.t """.r ~> """[^\n\r]*""".r  ^^ {
+    case value => State("", Map("inlinetags" -> value)) // hidden
+  }
+
+  def dotPropAct: PS = """^\.a """.r ~> """[^\n\r]*""".r  ^^ {
+    case value => State(s"""<font style="color:red;font-weight:bold;">{{Action $value}}</font><br>""", Map("action" -> value))
+  }
+
+  def dotPropEmail: PS = """^\.email """.r ~> """[^\n\r]*""".r  ^^ {
+    case value => State(s"""<font style="font-weight:bold;">{{email $value}}</font><br>""", Map("email" -> value))
   }
 
   // TODO this opt() not working - could remove the propS
@@ -575,10 +600,13 @@ object WikiParser extends ParserCommons with CsvParser {
 
   def wikiPropFiddle: PS = "{{" ~> """fiddle""".r ~ "[: ]".r ~ """[^:}]*""".r ~ opt(":" ~ rep(arg <~ opt(","))) ~ "}}" ~ lines <~ "{{/fiddle}}" ^^ {
     case stype ~ _ ~ lang ~ xargs ~ _ ~ lines => {
-      val args = (if(xargs.isDefined) xargs.get._2 else List()).toMap
+      var args = (if(xargs.isDefined) xargs.get._2 else List()).toMap
       val name = args.get("name").getOrElse("")
+      def trim (s:String) = s.replaceAll("\r", "").replaceAll("^\n|\n$","")//.replaceAll("\n", "\\\\n'\n+'")
+      lazy val ss = lines.s.replaceAll("&lt;", "<").replaceAll("&gt;", ">") // bad html was escaped while parsing
+
       lang match {
-        case "js" => {
+        case "js" | "html" | "css" => {
           // TODO can't get this oneliner to work
 //          val re = """(?s)(<html>.*</html>).*(<style>.*</style>).*(<script>.*</script>).*""".r
 //          val  re(h, c, j) = lines.s
@@ -586,19 +614,26 @@ object WikiParser extends ParserCommons with CsvParser {
           val reh = """(?s).*<html>(.*)</html>.*""".r
           val rec = """(?s).*<style>(.*)</style>.*""".r
           val rej = """(?s).*<script>(.*)</script>.*""".r
-          val ss = lines.s.replaceAll("&lt;", "<").replaceAll("&gt;", ">") // bad html was escaped while parsing
 
           val hh = (if(ss contains "<head>") rehh.findFirstMatchIn(ss).get.group(1) else "").replaceAll("<script", "<scrRAZipt").replaceAll("</script", "</scrRAZipt")
-          val reh(h) = ss
-          val rec(c) = ss
-          val rej(j) = ss
+          val h = (if(ss contains "<html>") reh.findFirstMatchIn(ss).get.group(1) else if(lang == "html") ss else "")
+          val c = (if(ss contains "<style>") rec.findFirstMatchIn(ss).get.group(1) else if(lang == "css") ss else "")
+          val j = (if(ss contains "<script>") rej.findFirstMatchIn(ss).get.group(1) else if(lang == "js") ss else "")
+
+          if(!(args contains "tab"))
+            args = args + ("tab" -> lang)
 
           // remove empty lines from parsing
-          def trim (s:String) = s.replaceAll("\r", "").replaceAll("^\n|\n$","")//.replaceAll("\n", "\\\\n'\n+'")
 
           State(views.html.fiddle.jsfiddle(name, args, (trim(hh), trim(h), trim(c), trim(j)), None).body)
         }
+        case "javascript" => {
+          State(views.html.fiddle.jsfiddle(name, args, ("", "", "", trim("document.write(function(){"+ss+"}())")), None).body)
+        }
         case "scala" => {
+          State(views.html.fiddle.scalafiddle(name, args, lines.s, None).body)
+        }
+        case _ => {
           State(views.html.fiddle.scalafiddle(name, args, lines.s, None).body)
         }
       }
@@ -703,30 +738,28 @@ object Ads {
   case object None extends Type
 
   val lederboard = """
-<script type="text/javascript"><!--
-google_ad_client = "ca-pub-5622141672958561";
-/* 728x90all */
-google_ad_slot = "3920300830";
-google_ad_width = 728;
-google_ad_height = 90;
-//-->
-</script>
-<script type="text/javascript"
-src="http://pagead2.googlesyndication.com/pagead/show_ads.js">
-</script><p>
+  <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+    <!-- 728x90all -->
+    <ins class="adsbygoogle"
+         style="display:inline-block;width:728px;height:90px"
+         data-ad-client="ca-pub-5622141672958561"
+         data-ad-slot="3920300830"></ins>
+    <script>
+      (adsbygoogle = window.adsbygoogle || []).push({});
+    </script>
+<p>
 """
+
   val squarebase = """
-<script type="text/javascript"><!--
-google_ad_client = "ca-pub-5622141672958561";
-/* square */
-google_ad_slot = "4940326420";
-google_ad_width = 336;
-google_ad_height = 280;
-//-->
-</script>
-<script type="text/javascript"
-src="http://pagead2.googlesyndication.com/pagead/show_ads.js">
-</script>
+  <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+    <!-- square -->
+    <ins class="adsbygoogle"
+         style="display:inline-block;width:336px;height:280px"
+         data-ad-client="ca-pub-5622141672958561"
+         data-ad-slot="4940326420"></ins>
+    <script>
+      (adsbygoogle = window.adsbygoogle || []).push({});
+    </script>
 </div>
 """
   val squareinline = """<div style="margin: 10px 5px 0px 5px">""" + squarebase

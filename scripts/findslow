@@ -1,0 +1,1 @@
+grep "dbop.AFTER" log.log | sed "s/^.*dbop.AFTER //" | sort -n
