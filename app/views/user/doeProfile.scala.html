@@ -1,7 +1,6 @@
-@(myForm: Form[model.User], au:model.User)
+@(myForm: Form[model.User], au:model.User)(implicit request: Request[_])
 
-@htmlHead("Profile")
-@navbar(Some(au))
+@htmlHeadBar("Profile", Some(au))
    
 <div class="container">
   <div class="row">

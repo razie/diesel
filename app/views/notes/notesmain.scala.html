@@ -3,11 +3,12 @@ show/edit/capture a note
 
 msg types are msg, err
 **************@
-@(myForm:Form[_], tags:controllers.NotesLocker.Tags, msg:Seq[(String,String)], isAuto:Boolean=false)(implicit au:Option[model.User])
+@(myForm:Form[_], tags:controllers.NotesLocker.Tags, msg:Seq[(String,String)], isAuto:Boolean=false, isReadOnly:Boolean=false)(implicit au:Option[model.User])
 @import _root_.controllers.NotesLocker
 
 @id = @{1}
 
+@next = @{myForm("next").value}
 @nid = @{myForm("id").value}
 @ver = @{myForm("ver").value}
 
@@ -56,13 +57,12 @@ msg types are msg, err
 
   <input id="id" type="hidden" name="id" value="@nid" />
   <input id="ver" type="hidden" name="ver" value="@ver" />
+  <input type="hidden" id="next" name="next" value="@next"/>
 
   <div class="actions span8" style="margin-left:0px; display:inline-block;">
     <button id="submit" type="submit" class="btn btn-info">Save it</button>
 
-    @if(isAuto) {
       <a id="discard" href="/notes/discard/@nid" class="btn btn-warn" title="This note was auto-saved...">Discard it</a>
-    }
 
     <div style="float:right">
 @**      <a class="btn" onclick="preview()" title="Preview formatted">Preview it</a>
@@ -77,7 +77,7 @@ msg types are msg, err
   </div>
 
 <div style="display:inline-block">  
-  <p><small>You are typing markdown - see the <a href="/wiki/Blog:No_Folders/Post:Notes_Quick_Guide">quick guide</a>.</small>
+  <p><small>You are typing markdown - see the <a href="/wiki/No_Folders/Notes_Quick_Guide">quick guide</a>.</small>
 </div>
 }
 
@@ -111,6 +111,19 @@ msg types are msg, err
 </div>
 ***@
 
+<script>
+// CA options for .
+var dotTags =[
+'share to:who',
+'n name of this note',
+  @if(au.exists(_.hasPerm(model.Perm.codeMaster))) {
+    'sfiddle path',
+  }
+//  'a to:who by:date description',
+'email john@@whodunnit.com',
+'name name of contact'
+];
+</script>
 
 <script>
 $('#content')[0].focus();
@@ -122,6 +135,11 @@ $('#content')[0].focus();
   $('#content')[0].title='You need an account to save notes, sorry!';
   $('#tags')[0].title='You need an account to save notes, sorry!';
 }
+
+  @if(isReadOnly) {
+    $ ( '#submit' )[ 0 ].disabled = true ;
+    $ ( '#submit' )[ 0 ].title = "Read only!" ;
+  }
 
 var larger = function(s) {
   var r = $('#content')[0].rows;
@@ -186,49 +204,52 @@ setInterval(function(){
   <textarea style="display:none" id="acontent" name="content"></textarea>
   <input type="hidden" id="atags" name="tags" />
   <input type="hidden" id="aver" name="ver" />
+  <input type="hidden" id="anext" name="next" />
 </form>
 
-@**
-<xscript src="@routes.Assets.at("bootstrap/js/bootstrap-typeahead.js")"></xscript>
-<xscript>
+<script src="@routes.Assets.at("bootstrap/js/bootstrap-typeahead.js")"></script>
+<script>
 //from http://stackoverflow.com/questions/12662824/twitter-bootstrap-typeahead-multiple-values
 
-var $myTextarea = $('#content');
+var $tagsInput = $('#tags');
 
 function extractor(query) {
-  var result = /^(\.\w*)$/m.exec(query);
-  if(result && result[1]) return result[1].trim();
+  var result = /([^,]+)$/.exec(query);
+  if(result && result[1]) return result[1].replace(/.*,/,'').trim();
   return '';
 }
 
-  $('#content').typeahead({
-    source: dotTags,
+  $('#tags').typeahead({
+    source: userTags,
     updater: function(item) {
-    return this.$element.val().replace(/\.\w*$/,'.')+item.replace(/(\w)[: ].*/, '\$1') +' ';
+    return this.$element.val().replace(/([^,]+)\w*$/,item);
   },
     matcher: function (item) {
       var tquery = extractor(this.query);
       if(!tquery) return false;
-      tquery=tquery.substring(1)
-      return item.toLowerCase().indexOf(tquery.toLowerCase()) == 0;
+      return ~item.toLowerCase().indexOf(tquery.toLowerCase())
     },
     highlighter: function (item) {
-    var query = extractor(this.query).replace(/[\-\[\]{}()*+?.,\\\^$|#\s]/g, '\\$&')
-    if(query.lentgh>1)
-      return item.replace(new RegExp('(^' + query.substr(1) + ')', 'ig'), function ($1, match) {
+    var query = extractor(this.query);
+    console.log('q '+query)
+    if(query.length>0)
+      return item.replace(new RegExp('(' + query + ')', 'ig'), function ($1, match) {
         return '<strong>' + match + '</strong>'
       })
-    else return item;
+    else return item+'s';
   }
 });
-</xscript>
-**@
+</script>
 
 
 <script src="@routes.Assets.at("vendor/jquery.textcomplete.min.js")"></script>
 <script src="@routes.Assets.at("javascripts/rk-contentassist.js")"></script>
 
 <script>
+  @if(!isAuto) {
+    $ ( '#discard' ).fadeOut ( ) ;
+  }
+
   $('#iconsave' ).fadeOut();
 
   $('#atags')[0].value = $('#tags')[0].value;
@@ -244,6 +265,7 @@ function extractor(query) {
       $('#atags')[0].value = t;
       $('#aid')[0].value = i;
       $('#aver')[0].value = v;
+      $('#anext')[0].value = "";
       $('#acontent')[0].value = c;
 
       var $form = $('#autosave');
@@ -261,6 +283,7 @@ function extractor(query) {
 
           if(response.indexOf("Old auto") > 0) {
             $('#submit')[0].disabled=true;
+            $('#discard')[0].fadeIn();
             $('#submit').removeClass('btn-info').addClass('btn-danger');
             $('#submit')[0].title="This note was completed in a different window!";
           }
@@ -270,4 +293,40 @@ function extractor(query) {
 
   },5000);
 </script>
+
+@** typeahead in the main box - not needed
+<script src="@routes.Assets.at("bootstrap/js/bootstrap-typeahead.js")"></script>
+<script>
+//from http://stackoverflow.com/questions/12662824/twitter-bootstrap-typeahead-multiple-values
+
+var $myTextarea = $('#content');
+
+function extractor(query) {
+var result = /^(\.\w*)$/m.exec(query);
+if(result && result[1]) return result[1].trim();
+return '';
+}
+
+$('#content').typeahead({
+source: dotTags,
+updater: function(item) {
+return this.$element.val().replace(/\.\w*$/,'.')+item.replace(/(\w)[: ].*/, '\$1') +' ';
+},
+matcher: function (item) {
+var tquery = extractor(this.query);
+if(!tquery) return false;
+tquery=tquery.substring(1)
+return item.toLowerCase().indexOf(tquery.toLowerCase()) == 0;
+},
+highlighter: function (item) {
+var query = extractor(this.query).replace(/[\-\[\]{}()*+?.,\\\^$|#\s]/g, '\\$&')
+if(query.lentgh>1)
+return item.replace(new RegExp('(^' + query.substr(1) + ')', 'ig'), function ($1, match) {
+return '<strong>' + match + '</strong>'
+})
+else return item;
+}
+});
+</script>
+**@
 

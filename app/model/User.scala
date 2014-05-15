@@ -76,12 +76,13 @@ object Perm {
   val uProfile = Perm("uProfile")
   val eVerified = Perm("eVerified")
   val apiCall = Perm("apiCall") // special users that can make api calls
+  val codeMaster = Perm("codeMaster") // can create services in eithe scala or JS
 
   implicit def tos(p: Perm): String = p.s
 
   // TODO - how to do this better with enum support
   // TODO - remove the old perms from this list at some point
-  val all: Seq[String] = Seq(adminDb, adminWiki, uWiki, uProfile, eVerified, apiCall, "cCategory", "uCategory", "uReserved")
+  val all: Seq[String] = Seq(adminDb, adminWiki, uWiki, uProfile, eVerified, apiCall, codeMaster, "cCategory", "uCategory", "uReserved")
 }
 
 
@@ -99,6 +100,7 @@ case class User(
   realms: Set[String]=Set(), // = RK modules (notes, rk, clubadmin etc)
   addr: Option[String] = None, // address as typed in
   prefs: Map[String, String] = Map(), // = Set("Racer"),
+  gid: Option[String] = None, // google id
   _id: ObjectId = new ObjectId()) extends WikiUser with TRacerKidInfo {
 
   // TODO change id = it shows like everywhere

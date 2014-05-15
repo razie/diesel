@@ -1,14 +1,14 @@
 @********
 special handlng of forms
 *********@
-@(wid:model.WID, iname:Option[String], page:Option[model.WikiEntry], user:Option[model.User], errors:Map[String,String], canEdit:Boolean, print:Boolean=false)
+@(wid:model.WID, iname:Option[String], page:Option[model.WikiEntry], au:Option[model.User], errors:Map[String,String], canEdit:Boolean, print:Boolean=false)
 @import model._
 
 @if(!print) {
-  @htmlHead(page.flatMap(_.contentTags.get("title")).getOrElse(wid.cat +": "+ page.map(_.label).getOrElse(model.Wikis.label(wid))))
-  @navbar(user)
+  @htmlHeadBar(page.flatMap(_.contentTags.get("title")).getOrElse(wid.cat +": "+ page.map(_.label).getOrElse(model.Wikis.label(wid))), au)
 } else {
-  @htmlHead(page.flatMap(_.contentTags.get("title")).getOrElse(wid.cat +": "+ page.map(_.label).getOrElse(model.Wikis.label(wid))), Some("light"))
+  //no bar
+  @htmlHead(page.flatMap(_.contentTags.get("title")).getOrElse(wid.cat +": "+ page.map(_.label).getOrElse(model.Wikis.label(wid))), Some("light"))(Map.empty, au)
 }
 
 @isClubAdmin(u: User) = @{
@@ -57,7 +57,7 @@ special handlng of forms
 }  
 } @*** print ***@
 
-@wiki.wikiFrag(wid,user,false,page, iname, false, false, canEdit, false, print)
+@wiki.wikiFrag(wid,au,false,page, iname, false, false, canEdit, false, print)
 
 @if(!errors.isEmpty) {
   <hr>
@@ -76,14 +76,14 @@ special handlng of forms
 for registration sequences - show prev/next
 *********@
 @regs=@{
-  val clubs = user.toList.flatMap(_.wikis).filter(_.wid.cat=="Club").flatMap(w=>model.Users.findUserByUsername(w.wid.name).toList)
-  clubs.flatMap(c=>model.Regs.findClubUser(c, user.get._id)).filter(_.wids.contains(wid))
+  val clubs = au.toList.flatMap(_.wikis).filter(_.wid.cat=="Club").flatMap(w=>model.Users.findUserByUsername(w.wid.name).toList)
+  clubs.flatMap(c=>model.Regs.findClubUser(c, au.get._id)).filter(_.wids.contains(wid))
 }
 
 @if(!print) {
 
 @if(page.exists(_.form.canEdit) ||
-  user.exists(isClubAdmin(_)) &&
+  au.exists(isClubAdmin(_)) &&
   (page.get.form.canBeApproved || page.get.form.canBeRejected)) {
 }
 
@@ -92,10 +92,10 @@ for registration sequences - show prev/next
         <input type="submit" name="submit_button" value="Submit for approval" class="btn btn-success">
   	<strong>Please <font style="color:red">save or submit</font> before leaving this page!</strong>
         }
-@if(user.exists(isClubAdmin(_)) && page.get.form.canBeApproved) {
+@if(au.exists(isClubAdmin(_)) && page.get.form.canBeApproved) {
         <input type="submit" name="approve_button" value="Approve" class="btn btn-success">
         }
-@if(user.exists(isClubAdmin(_)) && (page.get.form.canBeApproved || page.get.form.canBeRejected)) {
+@if(au.exists(isClubAdmin(_)) && (page.get.form.canBeApproved || page.get.form.canBeRejected)) {
         <input type="submit" name="reject_button" value="Reject" class="btn btn-danger">
         <p>
         <textarea name="formRejected" value="Reject reason" rows="3" placeholder="reason for rejection" class="input-xxlarge"></textarea>
@@ -120,9 +120,9 @@ for registration sequences - show prev/next
       </div>
 
 @if(!print) {
-      @wiki.wikiAddMore(wid, page, user)
+      @wiki.wikiAddMore(wid, page, au)
 
-      @wiki.wikiPageComments(wid, page, user)
+      @wiki.wikiPageComments(wid, page, au)
 
       <hr>
       @htmlFooter(ads=true)
@@ -131,7 +131,7 @@ for registration sequences - show prev/next
 
     <div class="span3">
 @if(!print) {
-    @wiki.wikiFrag(WID("Admin","Right"),user,true)
+    @wiki.wikiFrag(WID("Admin","Right"),au,true)
 
     @addRight()
 }

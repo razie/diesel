@@ -7,38 +7,35 @@ msg types are msg, err
 
 @tagpath(s:String) = @{ if(current=="" || Seq("none", "recent", "all", "archive").contains(current)) s else (current+"/"+s) }
    
-@if(au.isDefined) {
-    <div class="span3">
-    <a href="/notes" class="btn btn-large btn-info">New thought...</a>
-    <p>
-    </p>
-    Organize:
-    <ul>
-         <li><a href="@routes.NotesLocker.tag("recent")">[Recent]</a>
-         <li><a href="@routes.NotesLocker.tag("none")">[Not tagged]</a>
-         <li><a href="@routes.NotesLocker.tag("archive")">[Archive]</a>
-@**         <li><a href="@routes.NotesLocker.tag("all")">[All notes]</a> 
-**@
-    </ul>
-    @if(!tags.isEmpty) {
+<div class="span3">
+  <a href="/notes" class="btn btn-large btn-info">New thought...</a>
+  <p>
+  </p>
+  Organize:
+  <ul>
+    <li><a href="@routes.NotesLocker.tag("recent")">[Recent]</a>
+    <li><a href="@routes.NotesLocker.tag("none")">[Not tagged]</a>
+    @au.map {u=>
+      <li><a href="@routes.NotesLocker.tag("inbox")">[Inbox](@controllers.Inbox.count(u._id))</a>
+    }
+    <li><a href="@routes.NotesLocker.tag("archive")">[Archive]</a>
+  </ul>
+  @if(!tags.isEmpty) {
    
-  <input id="typeahead" xonkeypress="keyp(event)" autocomplete="off" type="text" 
-    class="typeahead search-query span2" data-provide="typeahead" style="display:block; margin-bottom:10px">
+    <input id="typeahead" xonkeypress="keyp(event)" autocomplete="off" type="text"
+    class="typeahead search-query span2" placeholder="Search Tags" data-provide="typeahead" style="display:block; margin-bottom:10px">
 
     Contemplate:
+  }
+  <ul>
+    @tags.take(15).map {x=>
+      <li><a href="@routes.NotesLocker.tag(tagpath(x._1))">@x._1 <small>(@x._2)</small></a></li>
     }
-    <ul>
-      @tags.take(15).map {x=>
-         <li><a href="@routes.NotesLocker.tag(tagpath(x._1))">@x._1 <small>(@x._2)</small></a></li>
-      }
-      @if(tags.size > 15) {
-         <li><a href="@routes.NotesLocker.alltags">... more</a></li>
-         }
-    </ul>
-    </div>
-} else {
-  You can tag your notes with keywords or topics of interest and later organize them.
-}
+    @if(tags.size > 15) {
+      <li><a href="@routes.NotesLocker.alltags">... more</a></li>
+    }
+  </ul>
+</div>
 
 <script src="@routes.Assets.at("bootstrap/js/bootstrap-typeahead.js")"></script>
 
@@ -46,33 +43,33 @@ msg types are msg, err
 function keyp(e){
 var key=e.keyCode || e.which;
 if (key==13){
-  document.location='/notes/tag/'+$('#typeahead')[0].value;
+document.location='/notes/tag/'+$('#typeahead')[0].value;
 }
 }
 var selected = function(){
-  document.location='/notes/tag/'+$('#typeahead')[0].value;
+document.location='/notes/tag/'+$('#typeahead')[0].value;
 }
 
 var hardct = ['recent','all','none','archive', '']
 var t = function (tag) {
-  return hardct.lastIndexOf('@current') >= 0 ? tag : '@current' + '/'+tag;
+return hardct.lastIndexOf('@current') >= 0 ? tag : '@current' + '/'+tag;
 }
    
 //var items = [@Html(tags.map(x=>"\""+x._1+"\":\"/notes/tag/"+tagpath(x._1)+"\"").mkString(","))];
-var items = [@Html(tags.map(x=>"\""+x._1+"\"").mkString(","))];
+var userTags = [@Html(tags.map(x=>"\""+x._1+"\"").mkString(","))];
 
 $('.typeahead').typeahead({
-  source: items,
-  updater: function (item) {
-     window.location.href = '/notes/tag/'+t(item);
-    }
+source: userTags,
+updater: function (item) {
+window.location.href = '/notes/tag/'+t(item);
+}
 })
 
 </script>
 
 <style>
 body {
-  padding-top: 50px;    
+padding-top: 50px;
   }
-  </style>
+</style>
    

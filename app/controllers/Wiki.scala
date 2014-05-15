@@ -12,14 +12,7 @@ import com.mongodb.DBObject
 import com.mongodb.casbah.Imports.map2MongoDBObject
 import com.mongodb.casbah.Imports.wrapDBObj
 import com.novus.salat.grater
-import admin.Audit
-import admin.Config
-import admin.Corr
-import admin.IgnoreErrors
-import admin.MailSession
-import admin.Notif
-import admin.SendEmail
-import admin.VError
+import admin._
 import model.Enc
 import db.RazMongo
 import model.Perm
@@ -36,8 +29,7 @@ import play.api.data.Forms.nonEmptyText
 import play.api.data.Forms.text
 import play.api.data.Forms.tuple
 import play.api.libs.json.Json
-import play.api.mvc.Action
-import play.api.mvc.Request
+import play.api.mvc.{AnyContent, Action, Request}
 import razie.Logging
 import razie.cout
 import db.ROne
@@ -56,6 +48,14 @@ import model.WikiWrapper
 import model.WikiXpSolver
 import model.WikiUser
 import razie.clog
+import scala.Some
+import model.WikiAudit
+import model.WikiEntryOld
+import model.WikiLink
+import model.CMDWID
+import model.UserWiki
+import model.User
+import model.Stage
 
 /** reused in other controllers */
 class WikiBase1 extends RazController with Logging with WikiAuthorization {
@@ -134,7 +134,7 @@ class WikiBase extends WikiBase1 {
     tuple(
       "oldlabel" -> text.verifying("Obscenity filter", !Wikis.hasporn(_)).verifying("Invalid characters", vldSpec(_)),
       "newlabel" -> text.verifying("Obscenity filter", !Wikis.hasporn(_)).verifying("Invalid characters", vldSpec(_))) verifying
-      ("Name already in use", { t: (String, String) => WikiIndex.withIndex { index => !index.idx.contains(Wikis.formatName(t._2)) }
+      ("Name already in use", { t: (String, String) => !WikiIndex.containsName(Wikis.formatName(t._2))
       })
   }
 }
@@ -307,7 +307,8 @@ object Wiki extends WikiBase {
                 Redirect(controllers.Wiki.w(wid, false)) // no change
             case None =>
               // create a new topic
-              val parentProps = wid.findParent.map(_.props)
+              val parent= wid.findParent
+              val parentProps = parent.map(_.props)
               (for (
                 au <- auth orCorr cNoAuth;
                 can <- canEdit(wid, auth, None, parentProps);
@@ -316,27 +317,35 @@ object Wiki extends WikiBase {
                 w <- Wikis.category(wid.cat) orErr ("cannot find the category " + wid.cat);
                 r1 <- (au.hasPerm(Perm.uWiki)) orCorr cNoPermission("uWiki")
               ) yield {
-                var we = model.WikiEntry(wid.cat, wid.name, l, m, co, au._id, Seq(), "rk", 1, wid.parent)
+                //todo find the right realm from the url or something like Config.realm
+                import razie.OR._
+                var we = model.WikiEntry(wid.cat, wid.name, l, m, co, au._id, Seq(), parent.map(_.realm) OR "rk", 1, wid.parent)
+
+                if (we.tags.mkString(",") != tags)
+                  we = we.withTags(tags.split(",").map(_.trim).toSeq, au._id)
+
+                // special properties
+                val wep = preprocess(we,false)
+                //todo verify permissiont o create in realm
+                if (wep.props.get("realm").exists(_ != we.realm))
+                  we = we.copy(realm=wep.props("realm"))
+
+                // needs owner?
+                if (WikiDomain.needsOwner(wid.cat)) {
+                  we = we.cloneProps(we.props ++ Map("owner" -> au.id), au._id)
+                  this dbop model.UserWiki(au._id, wid, "Owner").create
+                  cleanAuth()
+                }
+
+                // visibility?
+                if (vis != PUBLIC)
+                  we = we.cloneProps(we.props ++ Map("visibility" -> vis), au._id)
+                if (wvis != "Public")
+                  we = we.cloneProps(we.props ++ Map("wvis" -> wvis), au._id)
+                if (notif == "Draft")
+                  we = we.cloneProps(we.props ++ Map("draft" -> notif), au._id)
 
                 db.tx("wiki.create") { implicit txn =>
-                  if (we.tags.mkString(",") != tags)
-                    we = we.withTags(tags.split(",").map(_.trim).toSeq, au._id)
-
-                  // needs owner?
-                  if (WikiDomain.needsOwner(wid.cat)) {
-                    we = we.cloneProps(we.props ++ Map("owner" -> au.id), au._id)
-                    this dbop model.UserWiki(au._id, wid, "Owner").create
-                    cleanAuth()
-                  }
-
-                  // visibility?
-                  if (vis != PUBLIC)
-                    we = we.cloneProps(we.props ++ Map("visibility" -> vis), au._id)
-                  if (wvis != "Public")
-                    we = we.cloneProps(we.props ++ Map("wvis" -> wvis), au._id)
-                  if (notif == "Draft")
-                    we = we.cloneProps(we.props ++ Map("draft" -> notif), au._id)
-
                   // anything staged for this?
                   for (s <- model.Staged.find("WikiLink").filter(x => x.content.get("from").asInstanceOf[DBObject].get("cat") == wid.cat && x.content.get("from").asInstanceOf[DBObject].get("name") == wid.name)) {
                     val wl = Wikis.fromGrated[WikiLink](s.content)
@@ -376,6 +385,22 @@ object Wiki extends WikiBase {
           }
         }
       })
+  }
+
+  private def preprocess(iwe:WikiEntry, isNew:Boolean):WikiEntry = {
+    var we = iwe
+    val wep = we.preprocessed
+    var moreTags = ""
+
+    // apply content tags
+//    if(wep.tags("name") != we.name) we = we.copy(name=wep.tags("name"))
+
+    //todo add tags from content
+//    val atags = alltags(moreTags)
+//    if (we.tags != atags)
+//      we = we.withTags(atags, au._id)
+
+    we
   }
 
   /** notify all followers of new topic/post */
@@ -431,7 +456,7 @@ object Wiki extends WikiBase {
   def showWidVer(cw: CMDWID, ver: Int) = Action { implicit request =>
     val wid = cw.wid.get
     ROne[WikiEntryOld]("entry.category" -> wid.cat, "entry.name" -> wid.name, "entry.ver" -> ver).map { p =>
-      wikiPage(wid, Some(wid.name), Some(p.entry), auth, false, false)
+      wikiPage(wid, Some(wid.name), Some(p.entry), false, false)(auth, request)
     } getOrElse {
       Oops("Version " + ver + " of " + wid + " NOT FOUND...", wid)
     }
@@ -463,10 +488,15 @@ object Wiki extends WikiBase {
     }
   }
 
-  def headWid(cw: CMDWID) = showWid(cw, 0)
+  def headWid(cw: CMDWID, realm:String) = showWid(cw, 0, realm)
+
+  // show wid prefixed with parent
+  def showWidUnder(parent:String, cw: CMDWID, count: Int, realm:String) = {
+    showWid(CMDWID(cw.wpath.map(x=>parent+"/"+x), cw.wid.flatMap(x=>WID.fromPath(parent+"/"+x.wpath)), cw.cmd, cw.rest), count, realm)
+  }
 
   /** show a page */
-  def showWid(cw: CMDWID, count: Int) = {
+  def showWid(cw: CMDWID, count: Int, realm:String) = {
     if (cw.cmd == "xp") xp(cw.wid.get, cw.rest)
     else if (cw.cmd == "xpl") xpl(cw.wid.get, cw.rest)
     else if (cw.cmd == "tag") xpl(cw.wid.get, "Post[" + cw.rest.split(",").map(x => s"tags~='.*$x.*'").mkString(" && ") + "]")
@@ -503,7 +533,8 @@ object Wiki extends WikiBase {
     //      Ok("")
     //    } else {
     //      admin.Audit.logdb("POST", List("request:" + request.toString, "headers:" + request.headers, "body:" + request.body).mkString("<br>"))
-    unauthorized("Oops - can't POST here")
+//    Services.audit.unauthorized(s"POST Referer=${request.headers.get("Referer")} - X-Forwarde-For: ${request.headers.get("X-Forwarded-For")}")
+    unauthorized("Oops - can't POST here", false)
     //    }
   }
 
@@ -514,7 +545,9 @@ object Wiki extends WikiBase {
 
   def w(we: WID, shouldCount: Boolean = true) = Config.urlmap(we.urlRelative + (if (!shouldCount) "?count=0" else ""))
 
-  def w(cat: String, name: String) = Config.urlmap("/wiki/%s:%s".format(cat, name))
+  def w(cat: String, name: String) =
+//    if("Blog" == cat) Config.urlmap("/blog/%s:%s".format(cat, name))
+    Config.urlmap("/wiki/%s:%s".format(cat, name))
   def w(name: String) = Config.urlmap("/wiki/" + name)
 
   def call[A, B](value: A)(f: A => B) = f(value)
@@ -524,9 +557,9 @@ object Wiki extends WikiBase {
 
   def wikieShow(iwid: WID, count: Int = 0) = show(iwid, count)
 
-  def show(iwid: WID, count: Int = 0, print: Boolean = false) = Action { implicit request =>
+  def show(iwid: WID, count: Int = 0, print: Boolean = false): Action[AnyContent] = Action { implicit request =>
     implicit val errCollector = new VError()
-    val au = auth
+    implicit val au = auth
 
     val shouldNotCount = (request.flash.get("count").exists("0" == _) || (count == 0) ||
       isFromRobot(request) || au.exists("Razie" == _.userName))
@@ -547,14 +580,20 @@ object Wiki extends WikiBase {
     else if ("Admin" == cat && "home" == name) Redirect("/")
     else if ("any" == cat || cat.isEmpty) {
 
+      // TODO optimize to load just the WID - i'm redirecting anyways
       val wl = Wikis.findAny(name).filter(page => canSee(page.wid, au, Some(page)).getOrElse(false)).toList
-      if (wl.size == 1)
+      if (wl.size == 1) {
+        if (Array("Blog", "Post") contains wl.head.wid.cat) {
+          // Blogs and other topics are allowed nicer URLs, without category
+          // search engines don't like URLs with colons etc
+          show(wl.head.wid, count, print).apply(request).value.get.get
+        } else
         // redirect to use the proper Category display
         Redirect(controllers.Wiki.w(wl.head.wid))
-      else if (wl.size > 0)
+      } else if (wl.size > 0)
         Ok(views.html.wiki.wikiList("category any", wl.map(x => (x.wid, x.label)), auth))
       else
-        wikiPage(wid, Some(iwid.name), None, au, !shouldNotCount, au.isDefined && canEdit(wid, au, None).get)
+        wikiPage(wid, Some(iwid.name), None, !shouldNotCount, au.isDefined && canEdit(wid, au, None).get)
     } else {
       // normal request with cat and name
       val w = wid.page
@@ -582,27 +621,27 @@ object Wiki extends WikiBase {
             w.alias.map { wid =>
               Redirect(controllers.Wiki.w(wid.formatted))
             } getOrElse
-              wikiPage(wid, Some(iwid.name), Some(w), au, !shouldNotCount, au.isDefined && canEdit(wid, au, Some(w)), print)
+              wikiPage(wid, Some(iwid.name), Some(w), !shouldNotCount, au.isDefined && canEdit(wid, au, Some(w)), print)
           } getOrElse
-            wikiPage(wid, Some(iwid.name), None, au, !shouldNotCount, au.isDefined && canEdit(wid, au, None), print)
+            wikiPage(wid, Some(iwid.name), None, !shouldNotCount, au.isDefined && canEdit(wid, au, None), print)
       }
     }
   }
 
-  private def wikiPage(wid: model.WID, iname: Option[String], page: Option[model.WikiEntry], user: Option[model.User], shouldCount: Boolean, canEdit: Boolean, print: Boolean = false)(implicit request:Request[_]) = {
+  private def wikiPage(wid: model.WID, iname: Option[String], page: Option[model.WikiEntry], shouldCount: Boolean, canEdit: Boolean, print: Boolean = false)(implicit au: Option[model.User], request:Request[_]) = {
     if (shouldCount) page.foreach { p =>
-      Audit ! WikiAudit("SHOW", p.wid.wpath, user.map(_._id))
+      Audit ! WikiAudit("SHOW", p.wid.wpath, au.map(_._id))
       Audit ! WikiCount(p._id)
     }
 
     page.map(_.preprocessed) // just make sure it's processed
 
     if (Array("Site", "Page").contains(wid.cat) && page.isDefined)
-      Ok(views.html.wiki.wikiSite(wid, iname, page, user))
+      Ok(views.html.wiki.wikiSite(wid, iname, page))
     else if (page.exists(!_.fields.isEmpty)) {
-      showForm(wid, iname, page, user, shouldCount, Map.empty, canEdit, print)
+      showForm(wid, iname, page, au, shouldCount, Map.empty, canEdit, print)
     } else
-      Ok(views.html.wiki.wikiPage(wid, iname, page, user, canEdit, print))
+      Ok(views.html.wiki.wikiPage(wid, iname, page, canEdit, print))
   }
 
   def showForm(wid: model.WID, iname: Option[String], page: Option[model.WikiEntry], user: Option[model.User], shouldCount: Boolean, errors: Map[String, String], canEdit: Boolean, print: Boolean = false) = {

@@ -2,26 +2,24 @@
 render a regular wiki page - site pages are rendered with wikiSite.scala.html
 **************@
 
-@(wid:model.WID, page:Option[model.WikiEntry], user:Option[model.User])
+@(wid:model.WID, page:Option[model.WikiEntry], au:Option[model.User])
 @import model._
 
-@htmlHead(page.flatMap(_.contentTags.get("title")).getOrElse(wid.cat +": "+ page.map(_.label).getOrElse(model.Wikis.label(wid))))
+@htmlHeadBar(page.flatMap(_.contentTags.get("title")).getOrElse(wid.cat +": "+ page.map(_.label).getOrElse(model.Wikis.label(wid))), au)
 
-@navbar(user)
-   
 <div class="container">
   <div class="row">
     <div class="span9">
 
-      @wiki.wikiAddMore(wid, page, user)
+      @wiki.wikiAddMore(wid, page, au)
 
       <div class="well">
-        @wiki.wikiFrag(wid,user,false,page, None)
+        @wiki.wikiFrag(wid,au,false,page, None)
       </div>
 
       <hr>
      
-      @wiki.wikiPageComments(wid, page, user)
+      @wiki.wikiPageComments(wid, page, au)
       
       @********** if already two adds in page put none at the bottom, there's also one on the left **********@
       @htmlFooter(ads = !page.exists(_.content.matches("""(?s).*\{\{ad[:}].*\{\{ad[:}].*""")))
@@ -29,7 +27,7 @@ render a regular wiki page - site pages are rendered with wikiSite.scala.html
     </div> <!-- /span9 -->
 
     <div class="span3">
-    @wiki.wikiFrag(WID("Admin","Right"),user,true)
+    @wiki.wikiFrag(WID("Admin","Right"),au,true)
 
     @addRight()
     </div>

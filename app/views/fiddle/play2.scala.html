@@ -1,0 +1,140 @@
+@**************
+a JS/HTML fiddle
+**************@
+
+@(l:String,
+  content:String,
+  q:Map[String,String],
+  au:Option[model.User],
+  id:String = java.lang.System.currentTimeMillis().toString())
+
+@htmlHeadBar("Fiddle, fiddle", au)
+
+<div class="well">
+
+<h2>Fiddle with @l code...</h2>
+
+@tos(s:String) = @{
+  s.replaceAll("\n", "\\\\n'\n+'")
+}
+
+@encscr(s:String) = @{
+  s.replaceAll("'","%27").replaceAll("script","scrRAZipt")
+  //.replace(/'/g,'%27')););
+}
+
+<script>
+var razuri = function(s) {
+   return encodeURI(s.replace(/;/g,'%3B').replace(/\+/g,'%2B').replace(/script/g,'scrRAZipt'));
+}
+
+var encscr = function(s) {
+   return s.replace(/'/g,'%27'); }
+
+var decscr = function (s) {
+  return s.replace(/%27/g,'\'');
+}
+</script>
+
+  <ul class="nav nav-tabs" style="margin-bottom:0">
+    <li id="run_@id" > <a title="Works only on Chrome and Firefox" href="javascript:runpill_@{id}('@{id}')">Run &raquo;</a> </li>
+  </ul>
+
+  <table style="width:100%">
+    <tr><td width="50%">
+    <div style="display:inline-block; width:100%; height:250px; overflow-y:auto;">
+      <pre id="pre3_@id" style="display:inline-block; width:92%; height:228px; margin-bottom:0"><code id="code_@id">@content</code></pre>
+    </div>
+    </td><td width="50%">
+    @if(_root_.admin.Config.theme.contains("light")) {
+      <iframe id="iframe_@id" name="iframe_@id" style="width:100%; height:249px; border:0;"></iframe>
+    } else {
+      <iframe id="iframe_@id" name="iframe_@id" style="width:100%; height:249px; border:0; background-color:gray;"></iframe>
+    }
+  </td></tr></table>
+
+<small>Errors in code:</small><br>
+
+<div style="display:inline-block; width:100%; height:130px; overflow-y:auto;">
+  <pre id="pre3b_@id" style="display:inline-block; width:92%; height:119px; margin-bottom:0; padding:0px; border:0;"><code id="codeb_@id">
+  </code></pre>
+</div>
+
+<b>When done, click the browser's BACK button to go back.</b>
+
+<div id="sform_@id">
+<form id="ssform_@id" name="ssform_@id" method="post" target="iframe_@id">
+<textarea id="l_@id" name="l"></textarea>
+<textarea id="j_@id" name="j" ></textarea>
+</form>
+</div>
+
+<script>
+$('#sform_'+@id).hide();
+
+var runpill_@id = function(id) {
+  $('#l_'+id)[0].value= "@l";
+  $('#j_'+id)[0].value= editor.getValue();
+  $('#ssform_'+id)[0].target = 'iframe_'+id;
+  $('#ssform_'+id)[0].action = "/sfiddle/sfiddle2/"+id+"?@controllers.SFiddles.qtourl(q)";
+  $('#ssform_'+id)[0].submit();
+}
+
+</script>
+
+<script type="text/javascript" src="@routes.Assets.at("vendor/jshint.js")"></script>
+<script>
+var jsh = function(code) {
+  JSHINT(code);
+  var ret = JSHINT.data();
+
+  var er = 'Line\tReason\n';
+
+  document.getElementById('pre3b_@id').innerText = "";
+
+  if(JSHINT.data().errors) {
+    JSHINT.data().errors.forEach(function(e){
+      er = er+e.line + '\t\t'+e.reason+'\n';
+    })
+  }
+
+  document.getElementById('pre3b_@id').innerText = er;
+}
+</script>
+
+<script src="@routes.Assets.at("ace-builds/src/ace.js")" type="text/javascript" charset="utf-8"></script>
+<script>
+  var editor = ace.edit("pre3_@id");
+  @if(_root_.admin.Config.theme.contains("light")) {
+  editor.setTheme ( "ace/theme/crimson_editor" ) ;
+} else {
+  editor.setTheme ( "ace/theme/twilight" ) ;
+}
+  editor.getSession().setMode("ace/mode/javascript");
+
+  //jsh(editor.getValue());
+
+  var razChanged=true;
+  
+  editor.getSession().on('change', function(e) {
+    razChanged=true;
+    //var j=editor.getValue();
+    //jsh(j);
+  });
+
+setInterval(function(){
+   if(razChanged) {
+     var j=editor.getValue();
+     jsh(j);
+     razChanged=false;
+     }
+},500);
+   
+</script>
+
+      </div>
+
+      <hr>
+      @htmlFooter(ads = true)
+    
+@htmlBottom()

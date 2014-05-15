@@ -141,7 +141,11 @@ object WikiParser extends ParserCommons with CsvParser {
   implicit def toState(s: String) = State(s)
 
   type PS = Parser[State]
-  def apply(input: String) = parseAll(wiki, input) getOrElse (State("[[CANNOT PARSE]] - sorry, dumb program here! The content is not lost: try editing this topic... also, please open a support issue and copy/paste there the content."))
+  def apply(input: String) = parseAll(wiki, input) match {
+    case Success(value, _) => value
+      // don't change this format
+    case NoSuccess(msg, next) => (State(s"[[CANNOT PARSE]] [${next.pos.toString}] : ${msg}"))
+  }
   def applys(input: String) = apply(input).s
 
   /** use this to expand [[xxx]] on the spot */
@@ -343,7 +347,7 @@ object WikiParser extends ParserCommons with CsvParser {
   //      else
   //        State("""{{Property %s=%s}}""".format(name, value), Map(name -> value.getOrElse("")))
   //  }
-  def wikiProp: PS = "{{" ~> """[^}:]+""".r ~ """[: ]""".r ~ """[^}]*""".r <~ "}}" ^^ {
+  def wikiProp: PS = "{{" ~> """[^}: ]+""".r ~ """[: ]""".r ~ """[^}]*""".r <~ "}}" ^^ {
     case name ~ _ ~ value =>
       if (name startsWith ".")
         State("", Map(name.substring(1) -> value)) // hidden
@@ -351,9 +355,9 @@ object WikiParser extends ParserCommons with CsvParser {
         State("""{{Property %s=%s}}""".format(name, value), Map(name -> value))
   }
 
-  private def dotProps: PS = dotPropAct | dotPropTags | dotPropEmail | dotProp
+  private def dotProps: PS = dotPropShare | dotPropAct | dotPropTags | dotPropEmail | dotPropName | dotProp
 
-  def dotProp: PS = """^\.""".r ~> """[.]?[^.: ]+""".r ~ """[: ]""".r ~ """[^\r\n]*""".r ^^ {
+  def dotProp: PS = """^\.""".r ~> """[.]?[^: ]+""".r ~ """[: ]""".r ~ """[^\r\n]*""".r ^^ {
     case name ~ _ ~ value =>
       if (name startsWith ".")
         State("", Map(name.substring(1) -> value)) // hidden
@@ -365,12 +369,20 @@ object WikiParser extends ParserCommons with CsvParser {
     case value => State("", Map("inlinetags" -> value)) // hidden
   }
 
-  def dotPropAct: PS = """^\.a """.r ~> """[^\n\r]*""".r  ^^ {
-    case value => State(s"""<font style="color:red;font-weight:bold;">{{Action $value}}</font><br>""", Map("action" -> value))
+  def dotPropShare: PS = """^\.share """.r ~> """[^\n\r]*""".r  ^^ {
+    case value => State(s"""<small><font style="color:red;font-weight:bold;">{{Share $value}}</font></small><br>""", Map("share" -> value))
   }
 
-  def dotPropEmail: PS = """^\.email """.r ~> """[^\n\r]*""".r  ^^ {
-    case value => State(s"""<font style="font-weight:bold;">{{email $value}}</font><br>""", Map("email" -> value))
+  def dotPropAct: PS = """^\.a """.r ~> """[^\n\r]*""".r  ^^ {
+    case value => State(s"""<small><font style="color:red;font-weight:bold;">{{Action $value}}</font></small><br>""", Map("action" -> value))
+  }
+
+  def dotPropEmail: PS = """^\.email """.r ~> """[^ \n\r]*""".r  ^^ {
+    case value => State(s"""<small><font style="font-weight:bold;">{{email $value}}</font></small><br>""", Map("email" -> value))
+  }
+
+  def dotPropName: PS = """^\.n """.r ~> """[^\n\r]*""".r  ^^ {
+    case value => State(s"""<small><font style="font-weight:bold;">$value</font></small><br>""", Map("name" -> value))
   }
 
   // TODO this opt() not working - could remove the propS
@@ -481,11 +493,18 @@ object WikiParser extends ParserCommons with CsvParser {
     }
   }
 
-  private def arg = "[^=,}]*".r ~ "=" ~ "[^},]*".r ^^ { case n ~ _ ~ v => (n, v) }
-  private def arg2 = "[^=,}]*".r ~ "=\"" ~ "[^\"]*".r <~ "\"" ^^ { case n ~ _ ~ v => (n, v) } // if contains comma, use ""
+  // simple x=y
+  private def arg = "[^:=,}]*".r ~ "=" ~ "[^},]*".r ^^ { case n ~ _ ~ v => (n, v) }
+  // if contains comma, use ""
+  private def arg2 = "[^:=,}]*".r ~ "=\"" ~ "[^\"]*".r <~ "\"" ^^ { case n ~ _ ~ v => (n, v) }
 
-  private def wikiPropWidgets: PS = "{{" ~> "widget:" ~> "[^:]+".r ~ ":" ~ rep((arg2 | arg) <~ opt(",")) <~ "}}" ^^ {
-    case name ~ _ ~ args => {
+  private def optargs : Parser[List[(String,String)]] = opt("[: ]".r ~ rep((arg2 | arg) <~ opt(","))) ^^ {
+    case Some(_ ~ l) => l
+    case None => List()
+  }
+
+  private def wikiPropWidgets: PS = "{{" ~> "widget:" ~> "[^:]+".r ~ optargs <~ "}}" ^^ {
+    case name ~ args => {
       State(
         Wikis.find(WID("Admin", "widget_" + name)).map(_.content).map { c =>
           args.foldLeft(c)((c, a) => c.replaceAll(a._1, a._2))
@@ -495,8 +514,8 @@ object WikiParser extends ParserCommons with CsvParser {
 
   //======================= forms
 
-  private def wikiPropField: PS = "{{" ~> "f:" ~> "[^:]+".r ~ ":" ~ rep(arg <~ opt(",")) <~ "}}" ^^ {
-    case name ~ _ ~ args => {
+  private def wikiPropField: PS = "{{" ~> "f:" ~> "[^:]+".r ~ optargs <~ "}}" ^^ {
+    case name ~ args => {
       State(
         "`{{{f:%s}}}`".format(name), Map(), List(), List({ w =>
           w.fields = w.fields ++ Map(name -> FieldDef(name, "", args.map(t => t).toMap))
@@ -505,8 +524,8 @@ object WikiParser extends ParserCommons with CsvParser {
     }
   }
 
-  private def wikiPropFieldVal: PS = "{{" ~> "fval:" ~> "[^:]+".r ~ ":" ~ rep(arg <~ opt(",")) <~ "}}" ^^ {
-    case name ~ _ ~ args => {
+  private def wikiPropFieldVal: PS = "{{" ~> "fval:" ~> "[^:]+".r ~ optargs <~ "}}" ^^ {
+    case name ~ args => {
       State(
         Wikis.find(WID("Admin", "widget_" + name)).map(_.content).map { c =>
           args.foldLeft(c)((c, a) => c.replaceAll(a._1, a._2))
@@ -555,10 +574,10 @@ object WikiParser extends ParserCommons with CsvParser {
     }
   }
 
-  def wikiPropImg: PS = "{{img" ~> opt("""\.icon|\.small|\.medium""".r) ~ """[: ]""".r ~ """[^}]*""".r <~ "}}" ^^ {
-    case stype ~ size ~ name => {
-      // TODO use the size element
-      State("""<img src="%s" />""".format(name))
+  def wikiPropImg: PS = "{{img" ~> opt("""\.icon|\.small|\.medium""".r) ~ """[: ]""".r ~ """[^} ]*""".r ~ optargs <~ "}}" ^^ {
+    case stype ~ _ ~ name ~ args => {
+      val sargs = args.foldLeft(""){(c, a) => s""" $c ${a._1}="${a._2}" """}
+      State(s"""<img src="$name" $sargs />""")
     }
   }
 
@@ -605,37 +624,43 @@ object WikiParser extends ParserCommons with CsvParser {
       def trim (s:String) = s.replaceAll("\r", "").replaceAll("^\n|\n$","")//.replaceAll("\n", "\\\\n'\n+'")
       lazy val ss = lines.s.replaceAll("&lt;", "<").replaceAll("&gt;", ">") // bad html was escaped while parsing
 
-      lang match {
-        case "js" | "html" | "css" => {
-          // TODO can't get this oneliner to work
-//          val re = """(?s)(<html>.*</html>).*(<style>.*</style>).*(<script>.*</script>).*""".r
-//          val  re(h, c, j) = lines.s
-          val rehh = """(?s).*<head>(.*)</head>.*""".r
-          val reh = """(?s).*<html>(.*)</html>.*""".r
-          val rec = """(?s).*<style>(.*)</style>.*""".r
-          val rej = """(?s).*<script>(.*)</script>.*""".r
+      try {
+        lang match {
+          case "js" | "html" | "css" => {
+            // TODO can't get this oneliner to work
+            //          val re = """(?s)(<html>.*</html>).*(<style>.*</style>).*(<script>.*</script>).*""".r
+            //          val  re(h, c, j) = lines.s
+            val rehh = """(?s).*<head>(.*)</head>.*""".r
+            val reh = """(?s).*<html>(.*)</html>.*""".r
+            val rec = """(?s).*<style>(.*)</style>.*""".r
+            val rej = """(?s).*<script>(.*)</script>.*""".r
 
-          val hh = (if(ss contains "<head>") rehh.findFirstMatchIn(ss).get.group(1) else "").replaceAll("<script", "<scrRAZipt").replaceAll("</script", "</scrRAZipt")
-          val h = (if(ss contains "<html>") reh.findFirstMatchIn(ss).get.group(1) else if(lang == "html") ss else "")
-          val c = (if(ss contains "<style>") rec.findFirstMatchIn(ss).get.group(1) else if(lang == "css") ss else "")
-          val j = (if(ss contains "<script>") rej.findFirstMatchIn(ss).get.group(1) else if(lang == "js") ss else "")
+            val hh = (if (ss contains "<head>") rehh.findFirstMatchIn(ss).get.group(1) else "").replaceAll("<script", "<scrRAZipt").replaceAll("</script", "</scrRAZipt")
+            val h = (if (ss contains "<html>") reh.findFirstMatchIn(ss).get.group(1) else if (lang == "html") ss else "")
+            val c = (if (ss contains "<style>") rec.findFirstMatchIn(ss).get.group(1) else if (lang == "css") ss else "")
+            val j = (if (ss contains "<script>") rej.findFirstMatchIn(ss).get.group(1) else if (lang == "js") ss else "")
 
-          if(!(args contains "tab"))
-            args = args + ("tab" -> lang)
+            if (!(args contains "tab"))
+              args = args + ("tab" -> lang)
 
-          // remove empty lines from parsing
+            // remove empty lines from parsing
 
-          State(views.html.fiddle.jsfiddle(name, args, (trim(hh), trim(h), trim(c), trim(j)), None).body)
+            State(views.html.fiddle.jsfiddle(name, args, (trim(hh), trim(h), trim(c), trim(j)), None).body)
+          }
+          case "javascript" => {
+            State(views.html.fiddle.jsfiddle(name, args, ("", "", "", trim("document.write(function(){ return " + ss.replaceFirst("\n", "") + "}())")), None).body)
+          }
+          case "scala" => {
+            State(views.html.fiddle.scalafiddle(name, args, lines.s, None).body)
+          }
+          case _ => {
+            State(views.html.fiddle.scalafiddle(name, args, lines.s, None).body)
+          }
         }
-        case "javascript" => {
-          State(views.html.fiddle.jsfiddle(name, args, ("", "", "", trim("document.write(function(){"+ss+"}())")), None).body)
-        }
-        case "scala" => {
-          State(views.html.fiddle.scalafiddle(name, args, lines.s, None).body)
-        }
-        case _ => {
-          State(views.html.fiddle.scalafiddle(name, args, lines.s, None).body)
-        }
+      }
+      catch  {
+        case _ : Throwable =>
+          State("""<font style="color:red">[[BAD FIDDLE - check syntax]]</font>""")
       }
     }
   }

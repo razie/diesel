@@ -1,7 +1,7 @@
 @***
 purge audit tables
 ***@
-@(implicit user:Option[model.User])
+@(implicit au:Option[model.User])
 
 @fufu(db:com.mongodb.casbah.Imports.DBObject, k:String, v:String) = {
   @k match {
@@ -15,9 +15,8 @@ purge audit tables
     }
 }
 
-  @htmlHead("admin audit")
-  @navbar(user)
-   
+@htmlHeadBar("admin audit", au)
+
   <div class="container">
 
     <h2>Audit events</h2>

@@ -5,8 +5,7 @@
 @import model.RegStatus._
 @import model.FormStatus._
 
-@htmlHead("Tribe for " + user.userName)
-@navbar(Some(user))
+@htmlHeadBar("Tribe for " + user.userName, Some(user))
 
 <div class="span2">
   @views.html.user.leftmenu(10, user)

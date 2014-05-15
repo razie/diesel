@@ -1,4 +1,4 @@
-@(user:Option[model.User])
+@(au:Option[model.User])
 
 @fufu(db:com.mongodb.casbah.Imports.DBObject, k:String, v:String) = {
   @k match {
@@ -15,9 +15,8 @@
 }
 
 
-  @htmlHead("admin users")
-  @navbar(user)
-   
+  @htmlHeadBar("admin users", au)
+
   <div class="container">
 
     <h2>Users</h2>

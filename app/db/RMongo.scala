@@ -81,6 +81,14 @@ object RMany {
     RazMongo(tbl(m)).find(t.toMap)
 }
 
+/* count/find many mongo items */
+object RCount {
+  import RMongo._
+
+  def apply[A <: AnyRef](t: (String, Any)*)(implicit m: Manifest[A]) =
+    RazMongo(tbl(m)).count(t.toMap)
+}
+
 /** create a record */
 object RCreate {
   import RMongo._

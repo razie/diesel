@@ -1,4 +1,4 @@
-@(pageTitle: String = "", au:Option[model.User])
+@(pageTitle: String = "", au:Option[model.WikiUser]=None, realm:String="rk")
 
-@htmlHead(pageTitle)
-@navbar(au)
+@htmlHead(pageTitle)(Map.empty, au.asInstanceOf[Option[model.User]])
+@navbar(au, realm)

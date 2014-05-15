@@ -1,9 +1,7 @@
-@(wid:model.WID, myForm:Form[controllers.Wiki.ReportWiki], user:Option[model.User])
+@(wid:model.WID, myForm:Form[controllers.Wiki.ReportWiki], au:Option[model.User])
 
-   @htmlHead()
+@htmlHeadBar("", au)
 
-   @navbar(user)
-   
     <div class="container">
 
       <!-- Main hero unit for a primary marketing message or call to action -->
@@ -37,7 +35,7 @@
 </div>
 
       <div class="well">
-          @wiki.wikiFrag(wid,user)
+          @wiki.wikiFrag(wid,au)
       </div>
           
       <hr>

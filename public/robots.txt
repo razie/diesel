@@ -5,8 +5,10 @@ Allow: /doe/social
 Disallow: /doe/
 Disallow: /wikie/
 Disallow: /admin/
+Disallow: /sfiddle/
 
 User-agent: *
 Disallow: /doe/
 Disallow: /wikie/
 Disallow: /admin/
+Disallow: /sfiddle/

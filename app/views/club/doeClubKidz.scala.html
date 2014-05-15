@@ -5,9 +5,8 @@ manage the list of kidz and/or their accounts
 @import model.RK._
 @import model.RacerKid
 
-@htmlHead("RacerKidz for " + user.userName)
-@navbar(Some(user))
-   
+@htmlHeadBar("RacerKidz for " + user.userName, Some(user))
+
 @rks=@{
   (for (a <- model.RacerKidz.findAssocForUser(user._id);
   	   k <- model.RacerKidz.findById(a.to)) yield (k,a)).toList.sortBy(x=>x._1.info.lastName+x._1.info.firstName)

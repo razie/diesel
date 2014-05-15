@@ -1,14 +1,12 @@
-@(user:Option[model.User])
+@(au:Option[model.User])
 
-@htmlHead()
+@htmlHeadBar("", au)
 
-@navbar(user)
-   
 <div class="container">
   <div class="hero-unit">
     <div class="row">
       <div class="span6">
-        <h1>Sorry, @user.map(_.ename).getOrElse("Anonymous")</h1>
+        <h1>Sorry, @au.map(_.ename).getOrElse("Anonymous")</h1>
         <p>You are not authorized to access this URL.
       </div>
       <div class="span4">

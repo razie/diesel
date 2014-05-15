@@ -3,8 +3,7 @@
 ***********@
 @(user:model.User)
 
-@htmlHead("Tribes for " + user.userName)
-@navbar(Some(user))
+@htmlHeadBar("Tribes for " + user.userName, Some(user))
 
 <div class="container">
 <div class="row">

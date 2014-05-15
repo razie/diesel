@@ -72,43 +72,45 @@ class RazController extends RazControllerBase with Logging {
 
   def noPerm(wid: WID, more: String = "", shouldAudit: Boolean = true)(implicit request: Request[_], errCollector: VError = IgnoreErrors) = {
     if (errCollector.hasCorrections) {
+      val uname = auth.map(_.userName).getOrElse(if(isFromRobot) "ROBOT" else "")
       if (shouldAudit)
-        Services.audit.auth("BY %s - Permission fail Page: %s Info: %s HEADERS: %s".format((auth.map(_.userName).getOrElse("")), wid.toString, more + " " + errCollector.mkString, request.headers))
+        Services.audit.auth("BY %s - Permission fail Page: %s Info: %s HEADERS: %s".format(uname, wid.toString, more + " " + errCollector.mkString, request.headers))
       Unauthorized(views.html.util.utilMsg(
-        """
+        s"""
 Sorry, you don't have the permission to do this! 
 
-%s
+${errCollector.mkString}
 
-%s
-""".format(errCollector.mkString, more), Some(controllers.Wiki.w(wid).toString), auth))
+$more
+""", Some(controllers.Wiki.w(wid).toString), auth))
     } else noPermOLD(wid, more + " " + errCollector.mkString)
   }
 
   private def noPermOLD(wid: WID, more: String = "")(implicit request: Request[_]) = {
     Services.audit.auth("BY %s - Permission fail Page: %s Info: %s HEADERS: %s".format((auth.map(_.userName).getOrElse("")), wid.toString, more, request.headers))
     Unauthorized(views.html.util.utilMsg(
-      """
+      s"""
 Sorry, you don't have the permission to do this! 
 
 <font style="color:red">
->> %s
+>> $more
 </font>
 
 If you got this message in error, please describe the issue in a <a href="/doe/support">support request</a> and we'll take care of it! Thanks!
 
-""".format(more), Some(controllers.Wiki.w(wid).toString), auth))
+""", Some(controllers.Wiki.w(wid).toString), auth))
   }
 
-  def unauthorized(more: String = "")(implicit request: Request[_], errCollector: VError = IgnoreErrors) = {
+  def unauthorized(more: String = "", shouldAudit:Boolean=true)(implicit request: Request[_], errCollector: VError = IgnoreErrors) = {
+    if(shouldAudit)
     Services.audit.unauthorized("BY %s - Info: %s HEADERS: %s".format((auth.map(_.userName).getOrElse("")), more + " " + errCollector.mkString, request.headers))
     Unauthorized(views.html.util.utilMsg(
-      """
-%s
+      s"""
+$more
 
-%s
+${errCollector.mkString}
 
-""".format(more, errCollector.mkString), None, auth))
+""", None, auth))
   }
 
   def Oops(msg: String, wid: WID)(implicit request: Request[_]) = {

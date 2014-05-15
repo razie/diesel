@@ -73,9 +73,24 @@ abstract class WikiConfig {
     config(SITECFG).flatMap(_.get(parm))
   }
 
+  def realm(implicit request: Request[_]) = {
+    if(request.host contains "localhost") "notes" else {
+      Config.config("realm").map { m =>
+        request.headers.get("X-FORWARDED-HOST") match {
+          case Some(x) if m contains x => m(x)
+          case _ => "rk"
+        }
+      } getOrElse "rk"
+    }
+  }
+
   /** pre-configured user types */
-  def userTypes() = {
-    config(USERTYPES).toList.flatMap(_.keys.toList)
+  def userTypes(implicit request: Request[_])  = {
+    if(realm == "notes")
+      // TODO configure these
+      List("Individual", "Organization")
+    else
+      config(USERTYPES).toList.flatMap(_.keys.toList)
   }
 
   def config(s: String) = {

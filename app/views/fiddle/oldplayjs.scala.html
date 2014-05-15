@@ -5,12 +5,11 @@ a JS/HTML fiddle
 @(name:String, 
    args:Map[String,String],
    content:(String, String, String, String), 
-   user:Option[model.User],
+   au:Option[model.User],
    id:String = java.lang.System.currentTimeMillis().toString())
 
-@htmlHead("Learn Javascript and html", None, None, Map("onload"->"main()"))
-@if(true) {@navbar(user)}
-   
+@htmlHead("Learn Javascript and html", None, None, Map("onload"->"main()"))(Map.empty, au)
+@navbar(au)
 
   <link rel=stylesheet href="@routes.Assets.at("vendor/jshint.index.min.css")">
 

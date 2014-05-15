@@ -1,0 +1,40 @@
+@**************
+list of contacts
+
+msg types are msg, err
+**************@
+@(tag:String, notes:List[model.WikiEntry], tags:controllers.NotesLocker.Tags, msg:Seq[(String,String)], au:Option[model.User], isSearch:Boolean=false)(ncs:List[controllers.Inbox])
+
+@frup(au)
+
+<h3>
+  Inbox <small>preview</small>
+  @notesmsg(msg, au)
+</h3>
+
+  <table class="table">
+    <thead>
+      <td>From</td> <td>What</td><td>Description</td><td>Actions</td>
+    </thead>
+
+@ncs.map {nc=>
+  <tr>
+    <td>@nc.from</td>
+    <td>
+    @nc.what
+    @if(nc.noteId.isDefined) {
+      [<a href="@routes.NotesLocker.noteById(nc.noteId.get.toString)">Edit</a>]
+      [<a href="@routes.NotesLocker.viewNoteById(nc.noteId.get.toString)">View</a>]
+    }
+    </td>
+    <td>@nc.content</td>
+    <td>
+        <small>[<a href="@routes.NotesLocker.tag("inbox")">Thanks</a>]</small>
+    </td>
+  </tr>
+}
+  </table>
+
+<p></p>
+
+@frdown(if(isSearch) "" else tag, tags, au)

@@ -52,6 +52,19 @@ object Emailer extends RazController with Logging {
     SendEmail.send(parent.email.dec, SUPPORT, RK + " - child updated their profile", html1)
   }
 
+  def noteShared(from:String, toEmail:String, toName:String, url:String)(implicit mailSession: MailSession) = {
+    val html1 = text("noteShared").format(toName, from, url);
+
+    SendEmail.send(toEmail, SUPPORT, "No Folders - note shared with you", html1)
+  }
+
+  /** invite to join on notes */
+  def makeNotesInvite(toName:String, validDays: Int, acceptUrl: String, u: User) = {
+    val dt = DateTime.now().plusDays(validDays)
+    val ds1 = DoSec(acceptUrl, Some("www.nofolders.net"), true, dt)
+    text("notesInvite").format(toName, ds1.secUrl, u.ename)
+  }
+
   def sendEmailRequest(to: String, validDays: Int, task: String, description: String, userNotif: Option[String], acceptUrl: String, denyUrl: String, u: User)(implicit mailSession: MailSession) = {
     val dt = DateTime.now().plusDays(validDays)
     val ds1 = DoSec(acceptUrl, None, true, dt)

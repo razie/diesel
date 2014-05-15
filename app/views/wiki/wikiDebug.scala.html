@@ -2,7 +2,7 @@
 debug a wiki page
 **************@
 
-@(wid:model.WID, iname:Option[String], page:Option[model.WikiEntry], user:Option[model.User])
+@(wid:model.WID, iname:Option[String], page:Option[model.WikiEntry], au:Option[model.User])
 @import model._
 
 @comments(stream:Option[CommentStream]) = {
@@ -19,7 +19,7 @@ debug a wiki page
 &nbsp;    <a href="/wikie" class="btn btn-mini">Reply</a>
 **********@
        &nbsp; <a href="" class="btn btn-mini btn-info">Report</a>
-@if(controllers.Comment.canEdit(c,user)) {
+@if(controllers.Comment.canEdit(c,au)) {
        &nbsp; <a href="@routes.Comment.edit(wid,c._id.toString)" class="btn btn-mini btn-info">Edit</a>
 }
       <br>
@@ -31,17 +31,15 @@ debug a wiki page
   }
 }
 
-   @htmlHead(wid.cat +":"+ wid.name)
+@htmlHeadBar(wid.cat +":"+ wid.name, au)
 
-   @navbar(user)
-   
     <div class="container">
         <div class="row">
 
     <div class="span9">
 
       <div class="well">
-          @wiki.wikiFrag(wid,user,false,page, iname)
+          @wiki.wikiFrag(wid,au,false,page, iname)
       </div>
 
     <!-- list of pages in category -->
@@ -159,7 +157,7 @@ debug a wiki page
     </div> <!-- /span9 -->
 
       <div class="span3">
-          @wiki.wikiFrag(WID("Admin","Right"),user,true)
+          @wiki.wikiFrag(WID("Admin","Right"),au,true)
       </div>
 
   </div> <!-- row -->

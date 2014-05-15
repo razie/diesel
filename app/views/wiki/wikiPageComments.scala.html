@@ -37,10 +37,10 @@
       } else {
         @if(!page.flatMap(_.contentTags.get("nocomments")).isDefined) {
 
-    <a href="@routes.Comment.vComment1(wid.cat, page.get._id.toString, "Wiki", {new com.mongodb.casbah.Imports.ObjectId().toString}, "text")" class="btn"><font style="color:orange">+</font>Comment</a>
-    <a href="@routes.Comment.vComment1(wid.cat, page.get._id.toString, "Wiki", {new com.mongodb.casbah.Imports.ObjectId().toString}, "video")" class="btn"><font style="color:orange">+</font>Video</a>
-    <a href="@routes.Comment.vComment1(wid.cat, page.get._id.toString, "Wiki", {new com.mongodb.casbah.Imports.ObjectId().toString}, "photo")" class="btn"><font style="color:orange">+</font>Photo</a>
-    <a href="@routes.Comment.vComment1(wid.cat, page.get._id.toString, "Wiki", {new com.mongodb.casbah.Imports.ObjectId().toString}, "slideshow")" class="btn"><font style="color:orange">+</font>Slideshow</a>
+    <a href="@routes.Comment.vComment1(wid.cat, page.get._id.toString, "Wiki", {new com.mongodb.casbah.Imports.ObjectId().toString}, "text")" class="btn"><span style="color:orange">+</span>Comment</a>
+    <a href="@routes.Comment.vComment1(wid.cat, page.get._id.toString, "Wiki", {new com.mongodb.casbah.Imports.ObjectId().toString}, "video")" class="btn"><span style="color:orange">+</span>Video</a>
+    <a href="@routes.Comment.vComment1(wid.cat, page.get._id.toString, "Wiki", {new com.mongodb.casbah.Imports.ObjectId().toString}, "photo")" class="btn"><span style="color:orange">+</span>Photo</a>
+    <a href="@routes.Comment.vComment1(wid.cat, page.get._id.toString, "Wiki", {new com.mongodb.casbah.Imports.ObjectId().toString}, "slideshow")" class="btn"><span style="color:orange">+</span>Slideshow</a>
     
     &nbsp;&nbsp;
     
@@ -90,7 +90,7 @@ ain't working...
     <h3>Modal header</h3>
   </div>
   <div class="modal-body">
-    <p>One fine body…</p>
+    <p>One fine bodyï¿½</p>
   </div>
   <div class="modal-footer">
     <a href="#" class="btn">Close</a>

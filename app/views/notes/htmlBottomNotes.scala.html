@@ -1,10 +1,4 @@
-@** botom of html,
-**@
-@(isSite:Boolean=false)
-
-@if(!isSite) {
 <p></p>
-
 @if(_root_.admin.Config.isLight) {
   <div style="background-color:#4E4D4D">
   } else {
@@ -12,26 +6,23 @@
   }
 <div align="center">
   <table>
-    <tr>
-      <td style="width:200px;vertical-align: top">
+    <tr style="margin: 0 auto;">
+      <td style="width:200px; vertical-align: top">
         <strong class="razbots">More</strong> <br>
-        <a class="razbot" href="/">Home</a> <br>
-        <a class="razbot" href="/wiki/RacerKidz_Site_News">Blog</a> <br>
-        <a class="razbot" href="/page/About">About</a> <br>
+        <a class="razbot" href="/">Home</a><br>
+        <a class="razbot" href="/wiki/Blog:No_Folders">Blog</a><br>
+        <a class="razbot" href="/page/About-notes">About</a><br>
       </td>
-      <td style="width:200px;vertical-align: top">
-        <strong class="razbots">Support</strong> <br>
+      <td style="width:200px; vertical-align: top">
+        <strong class="razbots">Support</strong><br>
         <a class="razbot" href="/doe/support">Support</a> <br>
-        <a class="razbot" href="/wiki/Terms_of_Service-rk">Terms of Service</a> <br>
-        <a class="razbot" href="/wiki/Privacy_Policy">Privacy Policy</a> <br>
+        <a class="razbot" href="/wiki/Terms_of_Service-notes">Terms of Service</a> <br>
+        <a class="razbot" href="/wiki/Privacy_Policy-notes">Privacy Policy</a> <br>
       </td>
-      <td style="width:200px;vertical-align: top">
+      <td style="width:200px; vertical-align: top">
         <strong class="razbots">Social</strong><br>
-        <a class="razbot" href="http://twitter.com/racerkid">Twitter</a><br>
-        <a class="razbot" href="/wiki/RacerKidz_Site_News">Blog</a><br>
-        @* @if() {*@
-          @*<a class="razbot" href="http://google.com/+Enduroschoolrazie">Google+</a><br>*@
-        @*}*@
+        <a class="razbot" href="http://twitter.com/nofolders">Twitter</a><br>
+        <a class="razbot" href="/wiki/Blog:No_Folders">Blog</a><br>
       </td>
     </tr>
   </table>
@@ -39,7 +30,6 @@
 </div>
 </div>
 
-}
 
     <!-- Le javascript
     ================================================== -->
@@ -65,16 +55,6 @@
     <script src="@routes.Assets.at("bootstrap/js/bootstrap-typeahead.js")"></script>
 ****************@
 
-@** google sign-in
-    <!-- Place this asynchronous JavaScript just before your </body> tag -->
-**@
-    <script type="text/javascript">
-      (function() {
-       var po = document.createElement('script'); po.type = 'text/javascript'; po.async = true;
-       po.src = 'https://apis.google.com/js/client:plusone.js';
-       var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
-     })();
-    </script>
 
   </body>
 </html>

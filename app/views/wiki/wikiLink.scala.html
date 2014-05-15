@@ -1,6 +1,7 @@
-@(from:model.WID, to:model.WID, myForm:Form[controllers.Wiki.LinkWiki], withComment:Boolean, user:Option[model.User])
+@(from:model.WID, to:model.WID, myForm:Form[controllers.Wiki.LinkWiki], withComment:Boolean, au:Option[model.User])
 @import model.Wikis
 @import helper.twitterBootstrap._
+@import model.UW
 
 @how() = @{
   Wikis.category(to.cat).flatMap(_.contentTags.get("roles:"+from.cat)) match {
@@ -13,11 +14,8 @@
   }
 }
 
-@htmlHead()
-@navbar(user)
+@htmlHeadBar("", au)
 
-   @import model.UW
-   
 <div class="container">
   <div class="hero-unit">
       @if("User" == from.cat) {

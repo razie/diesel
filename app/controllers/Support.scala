@@ -17,11 +17,10 @@ import play.api.data.Forms._
 import play.api.data._
 import play.api.mvc._
 import play.api._
-import razie.Logging
+import razie.{cdebug, Logging, cout}
 import model.ParentChild
 import admin.SendEmail
 import model.DoSec
-import razie.cout
 import org.joda.time.DateTime
 import com.novus.salat.grater
 import admin.Audit
@@ -67,6 +66,7 @@ object Support extends RazController with Logging {
       "details" -> text)
   }
 
+  // display the form
   def support(page: String, desc: String, details: String) = Action { implicit request =>
     import model.Sec._
     val v2 = (10 + math.random * 11).toInt
@@ -79,20 +79,22 @@ object Support extends RazController with Logging {
       details)), v2, page, auth))
   }
 
+  // user submitted form
   def supportu(page: String) = Action { implicit request =>
     supportForm1.bindFromRequest.fold(
       formWithErrors => BadRequest(views.html.admin.support(formWithErrors, 21, page, auth)),
       {
         case t @ (e, n, desc, v1, v2, details) => {
-          cout << t
+          cdebug << t
           if (v1 == v2 && v2 > 1 || v1 == 21 || auth.exists(_.isActive)) {
             Emailer.withSession { implicit mailSession =>
               Emailer.sendSupport("Support request", n, e, (auth.map("Username: " + _.userName + " ").mkString) + desc, details, page)
             }
             Msg("Ok - support request sent. We will look into it asap.", HOME)
-          } else
+          } else {
             Audit.logdb("BAD_MATH", List("request:" + request.toString, "headers:" + request.headers, "body:" + request.body).mkString("<br>"))
             Msg("Either your math is bad or you're a robot...", HOME)
+          }
         }
       })
   }

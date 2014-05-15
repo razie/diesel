@@ -23,10 +23,8 @@ import play.api.data.Forms.number
 import play.api.data.Forms._
 import play.api.data.Forms.tuple
 import play.api.data.Form
-import play.api.mvc.Request
-import play.api.mvc.Action
-import razie.Logging
-import razie.Snakk
+import play.api.mvc.{AnyContent, Request, Action}
+import razie.{cdebug, cout, Logging, Snakk}
 import model.Base64
 import model.Perm
 import admin._
@@ -51,6 +49,10 @@ import model.RacerKid
 import model.RacerKidAssoc
 import model.TRacerKidInfo
 import razie.OR._
+import java.io.IOException
+import org.json.JSONObject
+import java.math.BigInteger
+import java.security.SecureRandom
 
 object Profile extends RazController with Logging {
 
@@ -178,18 +180,55 @@ object Profile extends RazController with Logging {
       "extra" -> "%s,%s,%s".format(club, role, next))
   } // continue with register()
 
+  // when joining with google first time and have account - enter password
+  def doeJoin1Google = Action {implicit request=>
+    auth // clean theme
+    Ok(views.html.doeJoinGoogle(registerForm)).withSession("gaga" -> session.get("gaga").mkString, "extra" -> session.get("extra").mkString,  "gid" -> session.get("gid").mkString)
+  } // continue with register()
+
   def doeJoinWith(email: String) = Action {implicit request=>
     auth // clean theme
     log("joinWith email=" + email)
-    Ok(views.html.doeJoin(registerForm.fill(Registration(email.dec, "", "")))).withSession("gaga" -> System.currentTimeMillis.toString)
+    Ok(views.html.doeJoin(registerForm.fill(Registration(email.dec, "", "")))).withSession(
+      "gaga" -> System.currentTimeMillis.toString
+    )
   } // continue with register()
 
   // join step 2 - submited email/pass form
   def doeJoin2 = Action { implicit request =>
     auth // clean theme
     registerForm.bindFromRequest.fold(
-      formWithErrors => BadRequest(views.html.doeJoin(formWithErrors)).withSession("gaga" -> System.currentTimeMillis.toString,
-        "extra" -> session.get("extra").mkString),
+    formWithErrors => BadRequest(views.html.doeJoin(formWithErrors)).withSession("gaga" -> System.currentTimeMillis.toString,
+      "extra" -> session.get("extra").mkString),
+    {
+      case reg @ model.Registration(e, p, r) => {
+        val g = try {
+          (session.get("gaga").map(identity).getOrElse("1")).toLong
+        } catch {
+          case _: Throwable => 1
+        }
+
+        // allow this only for some minutes
+        if (System.currentTimeMillis - g <= 120000) {
+          login(reg.email, reg.password, session.get("extra").mkString)
+        } else {
+          Msg2(
+            """Session expired - please <a href="/doe/join">start again</a>.
+              |<p>Please make sure your browser allows cookies for this website, thank you!""".stripMargin, Some("/doe/join")).withNewSession
+        }
+      }
+    })
+  }
+
+  // join step 2 with google - link to existing account
+  def doeJoin2Google = Action { implicit request =>
+    auth // clean theme
+    registerForm.bindFromRequest.fold(
+      formWithErrors => {
+        cout << formWithErrors
+        BadRequest(views.html.doeJoinGoogle(formWithErrors)).withSession("gaga" -> session.get("gaga").mkString,
+          "extra" -> session.get("extra").mkString, "gid" -> session.get("gid").mkString)
+      },
       {
         case reg @ model.Registration(e, p, r) => {
           val g = try {
@@ -199,14 +238,16 @@ object Profile extends RazController with Logging {
           }
 
           // allow this only for some minutes
-          if (System.currentTimeMillis - g <= 120000) {
-//            if (p == null || p.size <= 0)
-//              // this is de-activated, password is now required
-//              registerEmailOnly(reg)
-//            else
-              login(reg, session.get("extra").mkString)
+          if (System.currentTimeMillis - g <= 120000 && session.get("gid").isDefined) {
+            // associate user to google id and login
+            Users.findUser(Enc(reg.email)) orElse (Users.findUserNoCase(reg.email)) foreach {u =>
+              u.update(u.copy(gid = session.get("gid")))
+            }
+            login(reg.email, reg.password, session.get("extra").mkString, session.get("gid").mkString)
           } else {
-            Msg2("Session expired - please try again. <p>Please make sure your browser allows cookies for this website, thank you!", Some("/doe/join")).withNewSession
+            Msg2(
+              """Session expired - please <a href="/doe/join">start again</a>.
+                |<p>Please make sure your browser allows cookies for this website, thank you!""".stripMargin, Some("/doe/join")).withNewSession
           }
         }
       })
@@ -219,18 +260,12 @@ object Profile extends RazController with Logging {
     newU
   }
 
-//  def registerEmailOnly(reg: Registration) = {
-//    Audit.regdemail(reg.email)
-//    RCreate(RegdEmail(reg.email))
-//    Ok(views.html.thankyou(reg.ename)).withNewSession
-//  }
-
   /** login or start registration */
-  def login(reg: model.Registration, extra: String) = {
+  def login(email: String, pass:String, extra: String, gid:String="") = {
     // TODO optimize - we lookup users twice on login
-    Users.findUser(Enc(reg.email)) orElse (Users.findUserNoCase(reg.email)) match {
+    Users.findUser(Enc(email)) orElse (Users.findUserNoCase(email)) match {
       case Some(u) =>
-        if (Enc(reg.password) == u.pwd) {
+        if (Enc(pass) == u.pwd || u.gid.exists(_ == gid)) {
           Audit.logdb("USER_LOGIN", u.userName, u.firstName + " " + u.lastName)
           u.auditLogin
           debug("SEss.conn=" + (Config.CONNECTED -> Enc.toSession(u.email)))
@@ -240,7 +275,7 @@ object Profile extends RazController with Logging {
           Redirect(routes.Profile.doeJoin()).withNewSession
         }
       case None => // capture basic profile and create profile
-        Redirect(routes.Profile.doeJoin3).flashing("email" -> reg.email, "pwd" -> reg.password, "extra" -> extra)
+        Redirect(routes.Profile.doeJoin3).flashing("email" -> email, "pwd" -> pass, "gid"->gid, "extra" -> extra)
     }
   }
 
@@ -249,9 +284,9 @@ object Profile extends RazController with Logging {
     auth // clean theme
     (for (
       e <- flash.get("email");
-      p <- flash.get("pwd")
-    ) yield Ok(views.html.user.join3(crProfileForm.fill(
-      CrProfile("", "", 13, "", "racer", false, "", "")), auth)).withSession("pwd" -> p, "email" -> e, "extra" -> flash.get("extra").mkString)) getOrElse
+      p <- flash.get("pwd") orElse flash.get("gid")
+    ) yield Ok(views.html.user.doeJoin3(crProfileForm.fill(
+        CrProfile("", "", 13, "", "racer", false, "", "")), auth)).withSession("pwd" -> p, "email" -> e, "extra" -> flash.get("extra").mkString, "gid" -> flash.get("gid").mkString)) getOrElse
       unauthorized("Oops - how did you get here? [join3]").withNewSession
   }
 
@@ -279,7 +314,7 @@ object Profile extends RazController with Logging {
     resp.fold(
       formWithErrors => {
         warn("FORM ERR " + formWithErrors)
-        BadRequest(views.html.user.join3(formWithErrors, auth)).withSession("pwd" -> getFromSession("pwd", T.TESTCODE).get, "email" -> getFromSession("email", "@k.com").get, "extra" -> getFromSession("extra", "extra").mkString)
+        BadRequest(views.html.user.doeJoin3(formWithErrors, auth)).withSession("pwd" -> getFromSession("pwd", T.TESTCODE).get, "email" -> getFromSession("email", "@k.com").get, "extra" -> getFromSession("extra", "extra").mkString, "gid" -> session.get("gid").mkString)
       },
       {
         //  case class CrProfile (firstName:String, lastName:String, yob:Int, email:String, userType:String)
@@ -294,11 +329,12 @@ object Profile extends RazController with Logging {
               Enc(p), 'a', Set(ut),
               Set(Config.realm),
               (if (addr != null && addr.length > 0) Some(addr) else None),
-              Map("css" -> dfltCss, "favQuote" -> "Do one thing every day that scares you - Eleanor Roosevelt", "weatherCode" -> "caon0696")))
+              Map("css" -> dfltCss, "favQuote" -> "Do one thing every day that scares you - Eleanor Roosevelt", "weatherCode" -> "caon0696"),
+              flash.get("gid") orElse session.get("gid")))
           ) yield {
             // finally created a new account/profile
             if (u.isUnder13 && !u.isClub) {
-              Redirect(routes.Tasks.addParent1).withSession("ujson" -> u.toJson, "extra" -> session.get("extra").mkString)
+              Redirect(routes.Tasks.addParent1).withSession("ujson" -> u.toJson, "extra" -> session.get("extra").mkString, "gid" -> flash.get("gid").mkString)
             } else {
               db.tx("doeCreateProfile") { implicit txn =>
                 // TODO bad code - update and reuse account creation code in Tasks.addParent
@@ -317,7 +353,7 @@ object Profile extends RazController with Logging {
                   Tasks.sendEmailVerif(u)
                   if (!unameauto(u.yob))
                     Emailer.sendEmailUname(unameF(u.firstName, u.lastName), u)
-                  Emailer.tellRaz("New user", u.userName, u.email.dec)
+                  Emailer.tellRaz("New user", u.userName, u.email.dec, "realm: "+Config.realm)
                 }
               }
 
@@ -408,23 +444,73 @@ object Profile extends RazController with Logging {
 
   def doeUpdPrefs = Action { implicit request =>
     prefsForm.bindFromRequest.fold(
-      formWithErrors => BadRequest(views.html.user.doeProfilePreferences(formWithErrors, auth.get)),
-      {
-        case (css, favQuote, weatherCode) => forActiveUser { au =>
-          val u = updateUser(au, au.copy(prefs=au.prefs ++
-            Seq("css" -> css, "favQuote" -> favQuote, "weatherCode" -> weatherCode)))
-//          val u = updateUser(au, User(au.userName, au.firstName, au.lastName, au.yob, au.email, au.pwd, au.status, au.roles, au.addr, au.prefs ++
-//            Seq("css" -> css, "favQuote" -> favQuote, "weatherCode" -> weatherCode),
-//            au._id))
-          Emailer.withSession { implicit mailSession =>
-            au.shouldEmailParent("Everything").map(parent => Emailer.sendEmailChildUpdatedProfile(parent, au))
-          }
-          Redirect(routes.Profile.doeProfilePreferences)
+    formWithErrors => BadRequest(views.html.user.doeProfilePreferences(formWithErrors, auth.get)),
+    {
+      case (css, favQuote, weatherCode) => forActiveUser { au =>
+        val u = updateUser(au, au.copy(prefs=au.prefs ++
+          Seq("css" -> css, "favQuote" -> favQuote, "weatherCode" -> weatherCode)))
+        //          val u = updateUser(au, User(au.userName, au.firstName, au.lastName, au.yob, au.email, au.pwd, au.status, au.roles, au.addr, au.prefs ++
+        //            Seq("css" -> css, "favQuote" -> favQuote, "weatherCode" -> weatherCode),
+        //            au._id))
+        Emailer.withSession { implicit mailSession =>
+          au.shouldEmailParent("Everything").map(parent => Emailer.sendEmailChildUpdatedProfile(parent, au))
         }
-      })
+        Redirect(routes.Profile.doeProfilePreferences)
+      }
+    })
   }
 
-  def doeProfilePreferences = Action { implicit request =>
+  // user chose to login with google
+  def doeJoinGtoken = Action { implicit request =>
+    val b = request.body.asFormUrlEncoded.get
+    cdebug << "Google login request : " << b
+
+    //todo better security - use random security token
+    val g = try {
+      (session.get("gaga").map(identity).getOrElse("1")).toLong
+    } catch {
+      case _: Throwable => 1
+    }
+
+    // allow this only for some minutes
+    if (System.currentTimeMillis - g <= 120000) {
+      val code = b("code").head
+      val email = b("email").head
+      val name = b("name").head
+      val access_token = b("access_token").head
+      val id = b("id").head
+
+      // verifying the token
+      val bres = Snakk.body(Snakk.url("https://www.googleapis.com/oauth2/v1/tokeninfo").form(Map("access_token"->access_token)))
+      cdebug << "Google api response: " << bres
+      val res = new JSONObject(bres)
+
+      val CLIENT_ID="980280495626-7llkvk4o02anpu6qv1sseucc07f8f3gs.apps.googleusercontent.com"  // mine
+
+      Audit.logdb("LOGIN_WITH_GOOGLE", email, name)
+
+      if(id == res.getString("user_id") &&
+        CLIENT_ID == res.getString("audience") ) {
+        Users.findUser(Enc(email)) orElse (Users.findUserNoCase(email)) match {
+          case Some(u) if (u.gid.exists(_.length > 0)) =>
+            login(email, "", "", id)
+          case Some(u) if (!u.gid.isDefined) =>
+            Redirect(routes.Profile.doeJoin1Google).withSession("gaga" -> session.get("gaga").mkString, "extra" -> session.get("extra").mkString,  "gid" -> id)
+          case None =>
+            login(email, "", "", id)
+        }
+      } else {
+        Audit.logdb("ERR_LOGIN_WITH_GOOGLE", "gaga expired")
+        Unauthorized("")
+      }
+    } else {
+      Msg2(
+        """Session expired - please <a href="/doe/join">start again</a>.
+          |<p>Please make sure your browser allows cookies for this website, thank you!""".stripMargin, Some("/doe/join")).withNewSession
+    }
+  }
+
+    def doeProfilePreferences = Action { implicit request =>
     forUser { au =>
       Ok(views.html.user.doeProfilePreferences(prefsForm.fill((
         au.pref("css")(dfltCss),
@@ -446,7 +532,7 @@ object Profile extends RazController with Logging {
       {
         case u: User =>
           forActiveUser { au =>
-            updateUser(au, au.copy(au.userName, u.firstName, u.lastName, u.yob, au.email, au.pwd, au.status, u.roles, au.realms, u.addr, au.prefs, au._id))
+            updateUser(au, au.copy(au.userName, u.firstName, u.lastName, u.yob, au.email, au.pwd, au.status, u.roles, au.realms, u.addr, au.prefs, au.gid, au._id))
             Emailer.withSession { implicit mailSession =>
               au.shouldEmailParent("Everything").map(parent => Emailer.sendEmailChildUpdatedProfile(parent, au))
             }

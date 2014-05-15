@@ -1,12 +1,12 @@
 @**************
 social buttons for web pages
 **************@
-@(label:String, url:String, user:Option[model.User])
+@(label:String, url:String, au:Option[model.User])
 @import _root_.admin.Config
 @import _root_.admin.IgnoreErrors
 
-@htmlHead("Social for "+label, None, None)
-@navbar(user)
+@htmlHead("Social for "+label, None, None)(Map("description"->"Share a page on social networks."), au)
+@navbar(au)
 
 <div class="container">
   <div class="row">
@@ -53,7 +53,7 @@ social buttons for web pages
     </div> <!-- /span9 -->
 
     <div class="span3">
-    @wiki.wikiFrag(model.WID("Admin","Right"),user,true)
+    @wiki.wikiFrag(model.WID("Admin","Right"),au,true)
 
     @addRight()
     </div>

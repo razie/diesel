@@ -3,8 +3,7 @@ club admin manages list of users and registrations
 ******@
 @(user:model.User, club:Club)
 
-@htmlHead("Tribes of club " + user.userName)
-@navbar(Some(user))
+@htmlHeadBar("Tribes of club " + user.userName, Some(user))
    
 <div class="container">
 <div class="row">

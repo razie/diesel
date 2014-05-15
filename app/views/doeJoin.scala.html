@@ -1,9 +1,8 @@
 @(registerForm:Form[model.Registration])(implicit request:Request[_])
 @import _root_.admin.Config.realm
 
-@htmlHead()
-@navbar(None, realm)
-   
+@htmlHeadBar("Login/register", None, realm)
+
 <div class="container">
   <div class="hero-unit">
     <div class="row">
@@ -11,6 +10,22 @@
         <h1>Welcome!</h1>
         <br>
         @wiki.wikiFragInt("Admin:page-join-"+realm, None)
+
+        @** the google button*@
+          @if(realm == "notes") {
+            <p align="right">
+              <span id="signinButton">
+                <span
+                class="g-signin"
+                data-callback="signInCallback"
+                data-clientid="980280495626-7llkvk4o02anpu6qv1sseucc07f8f3gs.apps.googleusercontent.com"
+                data-cookiepolicy="single_host_origin"
+                data-scope="profile email">
+                </span>
+              </span>
+            </p>
+          }
+
       </div>
 
       <div class="span4">
@@ -44,10 +59,72 @@
   }
   
        </div>
+
       </div>
     </div>
   <hr>
-  @htmlFooter()
+
+  <form action="/doe/join/gtoken" id="gform" method="POST">
+    <input type="hidden" type="text" name="code" id="gcode">
+    <input type="hidden" type="text" name="email" id="gemail">
+    <input type="hidden" type="text" name="name" id="gname">
+    <input type="hidden" type="text" name="access_token" id="gaccess_token">
+    <input type="hidden" type="text" name="id" id="gid">
+  </form>
+
+    <!-- Last part of BODY element in file index.html -->
+<script type="text/javascript">
+  var gauthResult="";
+
+  function loadProfile(){
+     var request = gapi.client.plus.people.get( {'userId' : 'me'} );
+     request.execute(loadProfileCallback);
+   }
+
+  function loadProfileCallback(obj) {
+  profile = obj ;
+
+  // Filter the emails object to find the user's primary account, which might
+  // not always be the first in the array. The filter() method supports IE9+.
+  email = obj[ 'emails' ].filter ( function ( v ) {
+  return v.type === 'account' ; // Filter out the primary email
+  } )[ 0 ].value ; // get the email from the filtered results, should always be defined.
+
+  console.log ( gauthResult ) ;
+
+  $ ( '#gcode' )[ 0 ].value = gauthResult[ 'code' ] ;
+  $ ( '#gemail' )[ 0 ].value = email ;
+  $ ( '#gname' )[ 0 ].value = profile.displayName ;
+  $ ( '#gaccess_token' )[ 0 ].value = gauthResult.access_token ;
+  $ ( '#gid' )[ 0 ].value = profile.id ;
+
+  var $form = $ ( '#gform' ) ;
+
+  $form[0].submit();
+  }
+
+    function signInCallback(authResult) {
+      if (authResult['code']) {
+
+        // Hide the sign-in button now that the user is authorized, for example:
+        $('#signinButton').attr('style', 'display: none');
+
+      gauthResult = authResult;
+
+      gapi.client.load('plus','v1', loadProfile);  // Trigger request to get the email address.
+
+      } else if (gauthResult['error']) {
+      // There was an error.
+      // Possible error codes:
+      //   "access_denied" - User denied access to your app
+      //   "immediate_failed" - Could not automatially log in the user
+      console.log('There was an error: ' + gauthResult['error']);
+      }
+
+    }
+    </script>
+
+  @htmlFooter(false, false, realm)
 </div> <!-- /container -->
 @htmlBottom()
     

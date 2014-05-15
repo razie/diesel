@@ -26,6 +26,7 @@ object ApplicationBuild extends Build {
     "com.tristanhunt"    %% "knockoff"           % "0.8.1",
     "org.scalaz"         %% "scalaz-core"        % "7.0.3",
     "org.scalatest"      %% "scalatest"          % "1.9.2",
+
     "com.razie"          %% "base"               % "0.6.6-SNAPSHOT",
     "com.razie"          %% "snakked"            % "0.6.6-SNAPSHOT",
     "com.razie"          %% "scripster"          % "0.8.6-SNAPSHOT"

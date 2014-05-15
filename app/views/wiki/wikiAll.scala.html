@@ -2,22 +2,21 @@
 list all topics in category
 **************@
 
-@(name:String, user:Option[model.User])
+@(name:String, au:Option[model.User])
 @import model._
 
-@htmlHead("All topics in category: " +name)
-@navbar(user)
-   
+@htmlHeadBar("All topics in category: " +name, au)
+
 <div class="container">
   <div class="row">
     <div class="span9">
 
     <!-- list of pages in category -->
-    @if("User" != name || user.map(_.hasPerm(Perm.adminDb)).getOrElse(false)) {
+    @if("User" != name || au.map(_.hasPerm(Perm.adminDb)).getOrElse(false)) {
       <div class="well">
         <b>All</b> @name entries:
         <ul>
-        @for(p <- model.Wikis.pages(name) if(controllers.Wiki.isVisible(user,p.props))) {
+        @for(p <- model.Wikis.pages(name) if(controllers.Wiki.isVisible(au,p.props))) {
           <li><a href="@controllers.Wiki.w(name,p.name)">@p.label</a> </li>
         } 
         </ul>
@@ -30,7 +29,7 @@ list all topics in category
     </div> <!-- /span9 -->
 
       <div class="span3">
-          @wiki.wikiFrag(WID("Admin","Right"),user,true, None)
+          @wiki.wikiFrag(WID("Admin","Right"),au,true, None)
       </div>
 
   </div> <!-- row -->

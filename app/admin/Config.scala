@@ -27,8 +27,12 @@ object Config extends WikiConfig {
   def darkLight = { razie.NoStaticS.get[controllers.DarkLight] }
 
   def theme = {
-    darkLight.map(_.css).orElse(currUser.flatMap(_.css).orElse(sitecfg("css"))) getOrElse ("dark")
+    darkLight.map(_.css).orElse(currUser.flatMap(_.css).orElse(
+      sitecfg("css"))) getOrElse ("dark")
   }
+
+  def isLight = theme contains "light"
+  def isDark = ! isLight
 
   val cbacks =  new collection.mutable.ListBuffer[() => Unit]()
 
@@ -41,7 +45,7 @@ object Config extends WikiConfig {
 
   def reloadUrlMap {
     println("========================== RELOADING URL MAP ==============================")
-    for (c <- Array(URLCANON, URLMAP, URLFWD, SITECFG, TOPICRED, SAFESITES, USERTYPES, BANURLS)) {
+    for (c <- Array(SITECFG, TOPICRED, SAFESITES, USERTYPES, BANURLS)) {
       val urlmaps = Some(Wikis.find(WID("Admin", c)).toSeq map (_.content) flatMap parsep)
       val xurlmap = (urlmaps.map(se => HashMap[String, String](se: _*)))
       println("========================== RELOADING URL MAP ==============================")
@@ -66,13 +70,5 @@ object Config extends WikiConfig {
     cbacks foreach (_())
   }
 
-  def realm(implicit request: Request[_]) = {
-    Config.config("realm").map { m =>
-      request.headers.get("X-FORWARDED-HOST") match {
-        case Some(x) if m contains x => m(x)
-        case _ => "rk"
-      }
-    } getOrElse "rk"
-  }
 }
 

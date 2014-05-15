@@ -67,11 +67,21 @@ var j_@id  ='@Html(tos(encscr(content._4)))'
   <table style="width:100%">
     <tr><td width="50%">
     <div style="display:inline-block; width:100%; height:@{h1._1}px; overflow-y:auto;">
-      <pre id="pre_@id" style="display:inline-block; width:90%; height:@{h1._2}px; margin-bottom:0"><code id="code_@id">@content._2</code></pre>
+      <pre id="pre_@id" style="display:inline-block; width:90%; height:@{h1._2}px; margin-bottom:0; border:0;"><code id="code_@id">@content._2</code></pre>
     </div>
-    </td><td width="50%">
+    </td>
+      <td width="50%">
+        <iframe id="iframe_@id" name="iframe_@id" style="border:0; width:100%; height:@{h1._1}px; background-color:gray;"></iframe>
+      </td></tr></table>
+
+  @** the stupidest thing on earth **@
+@ifr = {
+  @if(_root_.admin.Config.theme.contains("light")) {
     <iframe id="iframe_@id" name="iframe_@id" style="border:0; width:100%; height:@{h1._1}px;"></iframe>
-  </td></tr></table>
+  } else {
+    <iframe id="iframe_@id" name="iframe_@id" style="border:0; width:100%; height:@{h1._1}px; background-color:gray;"></iframe>
+  }
+}
 
 
 <div id="sform_@id">

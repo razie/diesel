@@ -15,15 +15,13 @@ creates the navigation bar
         <span class="icon-bar"></span>
       </a>
 
-      <a class="brand" href="#">No Folders</a>
+      <a class="brand" style="color:#3F91AA;font-weight:bold;" href="/">No Folders</a>
 
     <div class="nav-collapse">
 
       <ul class="nav">
         @if(!isSite) {
           <li class="divider-vertical"></li>
-          <li><a href="/">Home</a></li>
-          <li><a href="/wiki/Blog:Note_Locker">Blog</a></li>
           <li><a href="/doe/selecttheme">Theme</a></li>
         }
       </ul>
@@ -42,7 +40,7 @@ creates the navigation bar
               @joe.ename<b class="caret"></b></a>
               <ul class="dropdown-menu">
                 <li><a href="@routes.Profile.doeHelp"><i class="icon-edit"></i> Preferences</a></li>
-                <li><a href="/do/signout"><i class="icon-off"></i> Sign out</a></li>
+                <li><a href="/login"><i class="icon-off"></i> Sign out</a></li>
               </ul>
             </li>
           }

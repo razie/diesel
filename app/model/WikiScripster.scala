@@ -32,7 +32,7 @@ trait WikiScripster {
   def mk: WikiScripster
 }
 
-/** simple scripts runner - I do customize it firther only to setup some context available tothe scripts... */
+/** simple scripts runner - I do customize it further only to setup some context available tothe scripts... */
 object WikiScripster {
   var count = 0
   var impl: WikiScripster = new CWikiScripster
@@ -55,6 +55,7 @@ object WikiScripster {
       import razie.base.scriptingx.ScalaScriptContext;
       import razie.base.scriptingx._
 
+      Audit.logdb("WIKI_SCRIPSTER", "exec", s)
       try {
         val c = new CSTimer("script", "?")
         c.start()

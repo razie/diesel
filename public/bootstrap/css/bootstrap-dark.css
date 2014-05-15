@@ -3876,7 +3876,7 @@ input[type="submit"].btn.btn-mini {
 .alert {
   padding: 8px 35px 8px 14px;
   margin-bottom: 20px;
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.50);
   background-color: #fcf8e3;
   border: 1px solid #fbeed5;
   -webkit-border-radius: 4px;
@@ -3922,10 +3922,20 @@ input[type="submit"].btn.btn-mini {
   color: #b94a48;
 }
 
+.alert-cool {
+    color: #34caee;
+    background-color: #0c0c0c;
+    border-color: #353535;
+}
+
+.alert-cool h4 {
+    color: #3a87ad;
+}
+
 .alert-info {
-  color: #3a87ad;
-  background-color: #d9edf7;
-  border-color: #bce8f1;
+  color: #34caee;
+  background-color: #142531;
+  border-color: #153c57;
 }
 
 .alert-info h4 {

@@ -1,7 +1,9 @@
-@(user:Option[model.User]=None)(implicit request:Request[_])
+@** select a theme for this session
+**@
+@(au:Option[model.User]=None)(implicit request:Request[_])
 
-@htmlHead("Select a theme")
-@navbar(user, _root_.admin.Config.realm)
+@htmlHead("Select a theme")(Map("description"->"Select a dark or light theme to browse this website."), au)
+@navbar(au, _root_.admin.Config.realm)
    
 <div class="container">
   <div class="well">
@@ -12,16 +14,15 @@ we are big fans of "browsing the web the way you want".
 <p>
 &nbsp;&nbsp;&nbsp;
 <p>
-<a href="/doe/theme?css=dark">
-  <img src="@routes.Assets.at("images/rk-dark.jpg")" class="img-rounded" /></a>
+<a href="/doe/theme?css=dark" title="browse website with a dark theme">
+  <img src="@routes.Assets.at("images/rk-dark.jpg")" class="img-rounded" alt="dark theme"/></a>
 &nbsp;&nbsp;&nbsp;
-<a href="/doe/theme?css=light">
-  <img src="@routes.Assets.at("images/rk-light.jpg")" class="img-rounded" /></a>
+<a href="/doe/theme?css=light" title="browse website with a dark theme">
+  <img src="@routes.Assets.at("images/rk-light.jpg")" class="img-rounded" alt="light theme"/></a>
 <p>
 Note that this setting is temporary. If you want to make it permanent, get an account and set your preferences there!
 <p>
 Have fun!
-    </div>
   </div>
   <hr>
   @htmlFooter()

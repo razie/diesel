@@ -1,8 +1,7 @@
-@(msg:String, next:String, user:Option[model.User])
+@(msg:String, next:String, au:Option[model.User])
 
-@htmlHead()
-@navbar(user)
-   
+@htmlHeadBar("", au)
+
 <div class="container">
   <div class="well">
     <h1 >Hopa!</h1>

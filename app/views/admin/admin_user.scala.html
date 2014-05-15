@@ -18,9 +18,8 @@ screen to admin one user
 }
     
 
-  @htmlHead("admin user")
-  @navbar(admin)
-   
+  @htmlHeadBar("admin user", admin)
+
   <div class="container">
 
     <h2>User</h2>
@@ -37,6 +36,7 @@ screen to admin one user
 <br>  pwd: @u.pwd
 <br>  status: @u.status
 <br>  roles: @u.roles
+<br>  realms: @u.realms
 <br>  prefs: @u.prefs
 <br>  _id: @u.id
 }
@@ -51,7 +51,7 @@ screen to admin one user
 <li>  WikiEntry    count = @db.RazMongo("WikiEntry").count(Map("by" -> u._id))
 <li>  WikiEntryOld count = @db.RazMongo("WikiEntryOld").count(Map("entry.by" -> u._id))
 <li>  Comment count = @db.RazMongo("Comment").count(Map("userId" -> u._id))
-<li>  Notes    count = @db.RazMongo("weLocker").count(Map("by" -> u._id))
+<li>  Notes    count = @db.RazMongo("weNote").count(Map("by" -> u._id))
 <li>  Quota =  @user.flatMap(_.quota.updates)
 }
 </ul>

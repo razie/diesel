@@ -12,12 +12,11 @@ creates the navigation bar
       <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
         <span class="icon-bar"></span>
         <span class="icon-bar"></span>
-        <span class="icon-bar"></span>
       </a>
 
       @if(!Config.isLocalhost) {
       <a class="rkbrand" href="@url.getOrElse("http://@Config.hostport")">
-        <img class="rklogo" src="@logo.getOrElse(routes.Assets.at("images/racerKids-small.gif"))" height="32" width="152"></img>
+        <img class="rklogo" src="@logo.getOrElse(routes.Assets.at("images/racerKids-small.gif"))" height="32" width="152" alt="RacerKidz logo"/>
       </a>
       }
 
@@ -26,9 +25,7 @@ creates the navigation bar
       <ul class="nav">
         @if(!isSite) {
           <li class="divider-vertical"></li>
-          <li><a href="/">Home</a></li>
           <li><a href="http://@Config.hostport/wiki">Browse</a></li>
-          <li><a href="http://@Config.hostport/page/About">About</a></li>
           <li><a href="http://@Config.hostport/doe/lucky">Lucky</a></li>
           <li><a href="/doe/selecttheme">Theme</a></li>
         }

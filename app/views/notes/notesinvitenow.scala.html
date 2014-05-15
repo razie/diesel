@@ -14,18 +14,16 @@ msg types are msg, err
 
 @esc(s:String) = @{(model.Enc toUrl s).replaceAll("\\+", "%20")}
 
-@subj = @{"""Need ya... """}
-@body = @{s"""
-This new internet service I found lets us work creatively without distractions.
-You can join at https://www.nofolders.net/login
-
-Cheers,
-${au.ename}
-""".stripMargin}
-
+@subj = @{"""The power of simplicity... """}
+@body = @{
+  controllers.Emailer.makeNotesInvite(name, 5, s"/notes/connect/accept/${au._id.toString}", au)
+}
+<p>
 <a href="mailto:@email?subject=@esc(subj)&body=@esc(body)">
 Send Invite Email
 </a>
 <br><br>
+<p>
+<p>
 
 @frdown("", Seq(), Some(au))

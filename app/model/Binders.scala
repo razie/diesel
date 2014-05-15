@@ -16,7 +16,7 @@ object Binders {
         WID.fromPath(Enc.fromUrl(value)).map(Right(_)).getOrElse(Left("Oh-Uh"))
       }
       def unbind(key: String, wid: WID): String =
-        wid.wpath
+        wid.wpathFull
     }
 
   implicit def widQueryStringBindable(implicit sBinder: QueryStringBindable[String]) = new QueryStringBindable[WID] {
@@ -32,7 +32,7 @@ object Binders {
     }
 
     def unbind(key: String, wid: WID) =
-      key+"=" +Enc.toUrl(wid.wpath)
+      key+"=" +Enc.toUrl(wid.wpathFull)
    }
 
   implicit def cmwidPathBindable =
@@ -42,7 +42,7 @@ object Binders {
         WID.cmdfromPath(Enc.fromUrl(value)).map(Right(_)).getOrElse(Left("Oh-Uh"))
       }
       def unbind(key: String, wid: CMDWID): String =
-        wid.wid.get.wpath
+        wid.wid.get.wpathFull
     }
 
   implicit def cmwidQueryStringBindable(implicit sBinder: QueryStringBindable[String]) = new QueryStringBindable[CMDWID] {
@@ -58,7 +58,7 @@ object Binders {
     }
 
     def unbind(key: String, wid: CMDWID) =
-      key+"=" +Enc.toUrl(wid.wid.get.wpath)
+      key+"=" +Enc.toUrl(wid.wid.get.wpathFull)
    }
 
 //  implicit def widQueryStringBindable(implicit sBinder: QueryStringBindable[String]) = new QueryStringBindable[model.WID] {

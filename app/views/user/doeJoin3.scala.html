@@ -1,4 +1,8 @@
-@(myForm: Form[controllers.Profile.CrProfile], user:Option[model.User]=None)
+@**
+create account
+**@
+@(myForm: Form[controllers.Profile.CrProfile], au:Option[model.User]=None)(implicit request:Request[_])
+@import _root_.admin.Config.realm
 
 @salutation() = @{
   val names = Array("Hi", "Hello", "Hey", "Howdy")
@@ -6,10 +10,8 @@
   names(i)
   }
   
-   @htmlHead()
+@htmlHeadBar("Create an account / Register", au, realm)
 
-   @navbar(user)
-   
     <div class="container">
 
       <!-- Main hero unit for a primary marketing message or call to action -->
@@ -17,9 +19,7 @@
 
       <div class="row">
         <div class="span6">
-
-        @wiki.wikiFragInt("Admin:page-join3", user)
-
+          @wiki.wikiFragInt("Admin:page-join3-"+realm, au)
         </div>
 
         <div class="span4">
@@ -28,9 +28,11 @@
 
 @helper.form(action=routes.Profile.doeCreateProfile(), 'class->"well") {
   @helper.select(
-    myForm("userType"), 
-     _root_.admin.Config.userTypes.map(x=>(x.toString,x.toString)),
-     '_label -> "What you are",
+    myForm("userType"),
+    _root_.admin.Config.userTypes.map(x=>(x.toString,x.toString)),
+     '_label ->
+             (if (realm=="notes") "Account type"
+  else "What you are"),
     '_showConstraints -> false)
   @helper.inputText(
     myForm("firstName"), 
@@ -51,7 +53,12 @@
     '_showConstraints -> false)
   @helper.checkbox(
     myForm("accept"),
-    '_text -> Html("""I accept the <a href="/wiki/Terms of Service">Terms of Service</a>"""),
+    '_text -> Html(
+    if (realm=="notes")
+      """I accept the <a href="/wiki/Terms of Service-notes">Terms of Service</a>"""
+    else
+      """I accept the <a href="/wiki/Terms of Service">Terms of Service</a>"""
+    ),
     '_label -> "", 
     '_showConstraints -> false)
     
@@ -60,9 +67,9 @@
     @helper.inputText(myForm("recaptcha_challenge_field"))          
     @helper.inputText(myForm("recaptcha_response_field"))          
 } else {
-    <script type="text/javascript" src="http://www.google.com/recaptcha/api/challenge?k=6Ld9uNASAAAAAL_5jXRwtBAtiJy8XGwSzZOWW80s"></script>
+    <script type="text/javascript" src="//www.google.com/recaptcha/api/challenge?k=6Ld9uNASAAAAAL_5jXRwtBAtiJy8XGwSzZOWW80s"></script>
      <noscript>
-       <iframe src="http://www.google.com/recaptcha/api/noscript?k=6Ld9uNASAAAAAL_5jXRwtBAtiJy8XGwSzZOWW80s" height="300" width="500" frameborder="0"></iframe>
+       <iframe src="//www.google.com/recaptcha/api/noscript?k=6Ld9uNASAAAAAL_5jXRwtBAtiJy8XGwSzZOWW80s" height="300" width="500" frameborder="0"></iframe>
        <br><textarea name="recaptcha_challenge_field" rows="3" cols="40"></textarea>
        <input type="hidden" name="recaptcha_response_field" value="manual_challenge">
      </noscript>
@@ -84,7 +91,7 @@
 
       <hr>
 
-      @htmlFooter()
+      @htmlFooter(false, false, realm)
 
     </div> <!-- /container -->
 

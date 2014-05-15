@@ -1,7 +1,7 @@
 @**************
 edit a wiki page
 **************@
-@(wid:model.WID, myForm:Form[controllers.Wiki.EditWiki], user:Option[model.User])(implicit request:Request[_])
+@(wid:model.WID, myForm:Form[controllers.Wiki.EditWiki], au:Option[model.User])(implicit request:Request[_])
 @import _root_.admin.Config.realm
 
 @v(name:String) = @{
@@ -9,7 +9,7 @@ edit a wiki page
 }
 
 @wvis() = @{
-  model.Wikis.visibilityFor(wid.cat) ++ (if(user.exists(_.isAdmin)) Seq("Private") else Nil)
+  model.Wikis.visibilityFor(wid.cat) ++ (if(au.exists(_.isAdmin)) Seq("Private") else Nil)
 }
 
 @reserved(page:Option[model.WikiEntry]) = {
@@ -27,8 +27,7 @@ edit a wiki page
   }
 } 
 
-@htmlHead("Editing "+wid.cat+":"+ wid.name)
-@navbar(user, realm)
+@htmlHeadBar("Editing "+wid.cat+":"+ wid.name, au, realm)
    
 <div class="container">
   <div class="row">
@@ -89,7 +88,7 @@ PROBLEM: many places use label as name... via Wikis.formatName
     '_label -> "Notify followers", 
     '_showConstraints -> false)
             
-  @if(user.get.hasPerm(model.Perm.adminDb)) {
+  @if(au.get.hasPerm(model.Perm.adminDb)) {
     <p>Reserved: @reserved(model.Wikis.find(wid.cat,wid.name))
     @if(model.Wikis.find(wid.cat,wid.name).isDefined) {
       <p><a href="@routes.Wiki.wikieDelete1(wid)">Delete it</a>
@@ -116,7 +115,7 @@ PROBLEM: many places use label as name... via Wikis.formatName
 
 @model.Wikis.find(wid).map{we=>
   <div class="well">
-    @wiki.wikiFrag(wid,user, false, Some(we))
+    @wiki.wikiFrag(wid,au, false, Some(we))
   </div>
 }
 
@@ -125,7 +124,7 @@ PROBLEM: many places use label as name... via Wikis.formatName
     </div> <!-- /span9 -->
 
     <div class="span3">
-      @wiki.wikiFrag(model.WID("Admin","Right"),user,true)
+      @wiki.wikiFrag(model.WID("Admin","Right"),au,true)
     </div>
   </div> <!-- row -->
 </div> <!-- /container -->

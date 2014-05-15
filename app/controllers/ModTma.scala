@@ -104,7 +104,7 @@ object ModTma extends RazController with Logging {
 
   //============= scripting stuff
 
-  private object razscr {
+ object razscr {
     def dec(s: String) = {
       s.replaceAll("scrRAZipt", "script").replaceAll("%3B", ";").replaceAll("%2B", "+").replaceAll("%27", "'")
     }
@@ -179,8 +179,8 @@ $hx
     // stupid security disallow XSS by requiring a referer 
     // TODO better security - 
     if (request.headers.get("Referer").exists(r =>
-      (r startsWith "http://" + Config.hostport) ||
-        (r startsWith "http://" + request.headers.get("X-Forwarded-Host").getOrElse(""))))
+      (r matches s"""^http[s]?://${Config.hostport}.*""") ||
+        (r matches s"""^http[s]?://${request.headers.get("X-Forwarded-Host").getOrElse("NOPE")}.*""")))
       Ok(res).as("text/html")
     else {
       Audit.logdb("ERR_BUILDHTML", "Referer", request.headers.get("Referer"), "Host", request.host)
@@ -194,20 +194,13 @@ $hx
 
   def playjs(id: String) = Action { implicit request =>
     lform.bindFromRequest.fold(
-      formWithErrors =>
-        Msg2(formWithErrors.toString + "Oops! some error"),
-      {
-        case (hh, h, c, j) =>
-          Ok(views.html.fiddle.playjs("", Map(), (hh, h, c, j), auth))
-      })
+    formWithErrors =>
+      Msg2(formWithErrors.toString + "Oops! some error"),
+    {
+      case (hh, h, c, j) =>
+        Ok(views.html.fiddle.playjs("", Map(), (hh, h, c, j), auth))
+    })
   }
-
-  //  def playjs(hh:String, h: String, c: String, j: String) = Action { implicit request =>
-  //    val hhx = hh
-  //    val hx = razscr dec h
-  //    val cx = razscr dec c
-  //    val jx = razscr dec j
-  //  }
 
 }
 

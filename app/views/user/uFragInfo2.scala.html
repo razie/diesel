@@ -33,7 +33,7 @@ included in mainUserC as the right hand side info box
   <li class="@active(1)"><a href="/doe/index/1">Calendar</a></li>
   <li class="@active(2)"><a href="/doe/index/2">Map</a></li>
   <li class="@active(3)"><a href="/doe/index/3">Blogs/Forums</a></li>
-  <li class="@active(4)"><a href="/doe/index/4">Notes</a></li>
+  <li class="@active(4)"><a href="/doe/index/4">Forms</a></li>
 </ul>
 
 @regs=@{
@@ -141,10 +141,10 @@ case 3 => {
 case 4 => { 
 
   Owned: 
-  @if(user.pages("Note").filter(_.role == "Owner").size>0) {
+  @if(user.pages("FormDesign").filter(_.role == "Owner").size>0) {
   <a class="btn btn-mini" href="/wikie/create/Note">Add &raquo;</a></p>
   <ul> 
-    @for(w <- user.pages("Note").filter(_.role == "Owner")) {
+    @for(w <- user.pages("FormDesign").filter(_.role == "Owner")) {
       <li><a href="@controllers.Wiki.w(w.wid)">@model.Wikis.label(w.wid)</a></li>
     }
   </ul>

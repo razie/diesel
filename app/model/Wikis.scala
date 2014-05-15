@@ -27,7 +27,7 @@ import db.RazMongo
 
 /** wiki factory and utils */
 object Wikis extends Logging with Validation {
-  final val PERSISTED = Array("Item", "Event", "Training", "Form", "Entry", "Locker")
+  final val PERSISTED = Array("Item", "Event", "Training", "Note", "Entry", "Form")
   
   lazy val TABLE_NAME = "WikiEntry"
   
@@ -70,8 +70,20 @@ object Wikis extends Logging with Validation {
 
   def find(category: String, name: String): Option[WikiEntry] = find(WID(category, name))
 
-  def findAny(name: String) =
-    table.find(Map("name" -> name)) map (grater[WikiEntry].asObject(_))
+  /** find any topic with name - will look in PERSISTED tables as well until at least one found */
+  def findAny(name: String) = {
+    val w1 = table.find(Map("name" -> name)) map (grater[WikiEntry].asObject(_))
+    if(w1.hasNext) w1
+    else {
+      var found:Option[DBObject]=None
+      PERSISTED.find {cat=>
+        if(found.isEmpty)
+          found= weTable(cat).findOne(Map("name" -> name))
+        found.isDefined
+      }
+      found map (grater[WikiEntry].asObject(_)) toIterator
+    }
+  }
 
   def findAnyOne(name: String) =
     table.findOne(Map("name" -> name)) map (grater[WikiEntry].asObject(_))
@@ -184,7 +196,7 @@ object Wikis extends Logging with Validation {
       implicit val errCollector = new VError()
       
       // replace urls with MD markup:
-      var c2 = content.replaceAll("""( |^)(https?://[^ \n]+)""", "$1[$2]")
+      var c2 = content.replaceAll("""(\s|^)(https?://[^\s]+)""", "$1[$2]")
       
       if (c2 contains "[[./")
         c2 = content.replaceAll("""\[\[\./""", """[[%s/""".format(wid.cat + ":" + wid.name)) // child topics
@@ -287,7 +299,13 @@ object Wikis extends Logging with Validation {
     // mark the external links
     val A_PAT = """(<a +href="http://)([^>]*)>([^<]*)(</a>)""".r
     res = A_PAT replaceSomeIn (res, { m =>
-      if (Option(m group 2) exists (s=> !s.startsWith(Services.config.hostport) && !s.startsWith("www.racerkidz.com")))
+      if (Option(m group 2) exists (s=> !s.startsWith(Services.config.hostport)  &&
+        //todo make these configurable
+        !s.startsWith("www.racerkidz.com") &&
+        !s.startsWith("www.enduroschool.com") &&
+        !s.startsWith("www.nofolders.net") &&
+        !s.startsWith("www.askicoach.com")
+        ))
         Some("""$1$2 title="External site"><i>$3</i><sup>&nbsp;<b style="color:darkred">^^</b></sup>$4""")
       else None
     })

@@ -446,10 +446,111 @@ object U12 extends UpgradeDb with razie.Logging {
           clog < "UPGRADED " + u
           i = i + 1
           //          if (i == 200) throw new RuntimeException("haha")
-                    t.save(u)
+          t.save(u)
         }
         clog < s"UPGRADED $i entries"
       }
   }
 }
+
+// Notes become Old notes
+object U13 extends UpgradeDb with razie.Logging {
+  import db.RazSalatContext._
+
+  def upgrade(db: MongoDB) {
+
+    var i = 0;
+
+    withDb(db("weForm")) { t =>
+      for (u <- t) {
+        clog < "UPGRADING " + u
+        u.put("content", u.get("content").asInstanceOf[String].replaceAll("include:Note", "include:FormDesign"))
+        i = i + 1
+        t.save(u)
+      }
+    }
+    withDb(db("weLocker")) { t =>
+      for (u <- t) {
+        log("UPGRADING " + u)
+        u.put("category", "Note")
+        t.save(u)
+      }
+      t.rename("weNote")
+    }
+    RenameCat.upgrade(db, "Note", "FormDesign")
+    clog < s"UPGRADED $i entries"
+  }
+}
+
+// rename Season category to Calendar
+object RenameCat extends UpgradeDb with razie.Logging {
+  import db.RazSalatContext._
+
+  def upgrade(db: MongoDB) {throw new IllegalArgumentException(); }
+
+  def upgrade(db: MongoDB, from:String, to:String) {
+
+    withDb(db("WikiEntry")) { t =>
+      for (u <- t if ("Category" == u.get("category") && from == u.get("name"))) {
+        log("UPGRADING " + u)
+        u.put("name", to)
+        t.save(u)
+      }
+    }
+    withDb(db("WikiEntry")) { t =>
+      for (u <- t if (from == u.get("category"))) {
+        log("UPGRADING " + u)
+        u.put("category", to)
+        t.save(u)
+      }
+    }
+    withDb(db("WikiEntryOld")) { t =>
+      for (u <- t if (to == u.get("entry.category") && from == u.get("entry.name"))) {
+        log("UPGRADING " + u)
+        u.get("entry").asInstanceOf[DBObject].put("name", to)
+        t.save(u)
+      }
+    }
+    withDb(db("WikiEntryOld")) { t =>
+      for (u <- t if (from == u.get("entry.category"))) {
+        log("UPGRADING " + u)
+//        u.put("category", to)
+        u.get("entry").asInstanceOf[DBObject].put("category", to)
+        t.save(u)
+      }
+    }
+
+    withDb(db("UserWiki")) { t =>
+      for (u <- t if (from == u.get("wid").asInstanceOf[DBObject].get("cat"))) {
+        log("UPGRADING " + u)
+        u.get("wid").asInstanceOf[DBObject].put("cat", to)
+        t.save(u)
+      }
+    }
+
+    withDb(db("WikiLink")) { t =>
+      for (u <- t if (from == u.get("from").asInstanceOf[DBObject].get("cat"))) {
+        log("UPGRADING " + u)
+        u.get("from").asInstanceOf[DBObject].put("cat", to)
+        t.save(u)
+      }
+    }
+    withDb(db("WikiLink")) { t =>
+      for (u <- t if (from == u.get("to").asInstanceOf[DBObject].get("cat"))) {
+        log("UPGRADING " + u)
+        u.get("to").asInstanceOf[DBObject].put("cat", to)
+        t.save(u)
+      }
+    }
+
+    log("+++++++++++++ UPGRADE REPORT - list of wikis to update:")
+    withDb(db("WikiEntry")) { t =>
+      for (u <- t) {
+        if (u.get("content").asInstanceOf[String].contains(from+":"))
+          log("  " + u.get("name"))
+      }
+    }
+  }
+}
+
 

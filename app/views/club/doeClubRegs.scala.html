@@ -4,8 +4,7 @@ club admin manages list of users and registrations
 @(club:model.User, members:List[(Option[model.User], model.UserWiki, Option[model.Reg])])
 @import _root_.admin.Config
 
-@htmlHead("Registrations for club " + club.userName)
-@navbar(Some(club))
+@htmlHeadBar("Registrations for club " + club.userName, Some(club))
    
 <div class="container ">
   <div class="row">

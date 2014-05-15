@@ -21,8 +21,7 @@ club admin manages user: membership, regsitration etc
 
 @uname() = @{uw.user.map(u=>s"${u.userName} (${u.lastName}, ${u.firstName})").getOrElse("")}
 
-@htmlHead("Member " + uname())
-@navbar(Some(club))
+@htmlHeadBar("Member " + uname(), Some(club))
    
 <div class="container">
   <div class="row">

@@ -5,11 +5,10 @@ a JS/HTML fiddle
 @(name:String, 
    args:Map[String,String],
    content:(String, String, String, String), 
-   user:Option[model.User],
+   au:Option[model.User],
    id:String = java.lang.System.currentTimeMillis().toString())
 
-@htmlHead("Learn Javascript and html", None, None)
-@if(true) {@navbar(user)}
+@htmlHeadBar("Learn Javascript and html", au)
 
 <div class="well">
 
@@ -70,13 +69,18 @@ var decscr = function (s) {
       <pre id="pre3_@id" style="display:inline-block; width:92%; height:228px; margin-bottom:0"><code id="code_@id">@content._4</code></pre>
     </div>
     </td><td width="50%">
-    <iframe id="iframe_@id" name="iframe_@id" style="width:100%; height:249px; border:0;"></iframe>
+      @if(_root_.admin.Config.theme.contains("light")) {
+        <iframe id="iframe_@id" name="iframe_@id" style="width:100%; height:249px; border:0;"></iframe>
+      } else {
+        <iframe id="iframe_@id" name="iframe_@id" style="width:100%; height:249px; border:0; background-color:gray;"></iframe>
+      }
   </td></tr></table>
 
 <small>Errors in code:</small><br>
 
 <div style="display:inline-block; width:100%; height:130px; overflow-y:auto;">
-  <pre id="pre3b_@id" style="display:inline-block; width:92%; height:129px; margin-bottom:0"><code id="codeb_@id">
+  <pre id="pre3b_@id" style="display:inline-block; width:92%; height:119px; margin-bottom:0; padding:0px; border:0;"><code id="codeb_@id">
+
   </code></pre>
 </div>
 
@@ -135,15 +139,27 @@ var jsh = function(code) {
 <script src="@routes.Assets.at("ace-builds/src/ace.js")" type="text/javascript" charset="utf-8"></script>
 <script>
   var editor1 = ace.edit("pre1_@id");
-  editor1.setTheme("ace/theme/twilight");
+  @if(_root_.admin.Config.theme.contains("light")) {
+  editor1.setTheme ( "ace/theme/crimson_editor" ) ;
+} else {
+  editor1.setTheme ( "ace/theme/twilight" ) ;
+}
   editor1.getSession().setMode("ace/mode/html");
 
   var editor2 = ace.edit("pre2_@id");
-  editor2.setTheme("ace/theme/twilight");
+  @if(_root_.admin.Config.theme.contains("light")) {
+  editor2.setTheme ( "ace/theme/crimson_editor" ) ;
+} else {
+  editor2.setTheme ( "ace/theme/twilight" ) ;
+}
   editor2.getSession().setMode("ace/mode/css");
 
   var editor = ace.edit("pre3_@id");
-  editor.setTheme("ace/theme/twilight");
+  @if(_root_.admin.Config.theme.contains("light")) {
+  editor.setTheme ( "ace/theme/crimson_editor" ) ;
+} else {
+  editor.setTheme ( "ace/theme/twilight" ) ;
+}
   editor.getSession().setMode("ace/mode/javascript");
 
   //jsh(editor.getValue());

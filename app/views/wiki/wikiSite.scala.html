@@ -1,8 +1,7 @@
 @**************
 render a page in a site rather than a normal page - some missing stuff
 **************@
-
-@(wid:model.WID, iname:Option[String], page:Option[model.WikiEntry], user:Option[model.User])
+@(wid:model.WID, iname:Option[String], page:Option[model.WikiEntry])(implicit au:Option[model.User], request:Request[_])
 @import model._
 
 @htmlHead(""+page.flatMap(_.contentTags.get("sitelabel")).getOrElse(page.map(_.label).getOrElse(model.Wikis.label(wid))), page.flatMap(_.contentTags.get("css")))
@@ -12,9 +11,9 @@ render a page in a site rather than a normal page - some missing stuff
 }
 
 @if(page.isDefined && page.get.contentTags.get("logo").isDefined) {
-  @navbar(user, "rk", false, "Menu", page.get.contentTags.get("logo"), page.get.contentTags.get("siteurl"), true, page.get.contentTags.get("club").map("?club="+_).getOrElse(""))
+  @navbar(au, "rk", false, "Menu", page.get.contentTags.get("logo"), page.get.contentTags.get("siteurl"), true, page.get.contentTags.get("club").map("?club="+_).getOrElse(""))
 } else {
-  @navbar(user, "rk", false, "Menu", None, None, true)
+  @navbar(au, "rk", false, "Menu", None, None, true)
 }
    
 <div class="container">
@@ -26,10 +25,10 @@ render a page in a site rather than a normal page - some missing stuff
     <div class="span12">
   }
       <div class="well">
-        @wiki.wikiFrag(wid,user,false,page, iname, true, false, true)
+        @wiki.wikiFrag(wid,au,false,page, iname, true, false, true)
       </div>
 
-      @wiki.wikiAddMore(wid, page, user)
+      @wiki.wikiAddMore(wid, page, au)
 
       <hr>
       @htmlFooter(ads=showads(), isSite=true)
@@ -39,7 +38,7 @@ render a page in a site rather than a normal page - some missing stuff
     @if(showads()) {
       <div class="span3">
 @************* 
-        @wiki.wikiFrag(WID("Admin","Right"),user,true, None)
+        @wiki.wikiFrag(WID("Admin","Right"),au,true, None)
 *************@
 
         @addRight()
@@ -49,5 +48,5 @@ render a page in a site rather than a normal page - some missing stuff
   </div> <!-- row -->
 </div> <!-- /container -->
 
-@htmlBottom()
+@htmlBottom(true)
     

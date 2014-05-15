@@ -2,14 +2,14 @@
 render a regular wiki page - site pages are rendered with wikiSite.scala.html
 **************@
 
-@(wid:model.WID, iname:Option[String], page:Option[model.WikiEntry], user:Option[model.User], canEdit:Boolean, print:Boolean=false)(implicit request:Request[_])
+@(wid:model.WID, iname:Option[String], page:Option[model.WikiEntry], canEdit:Boolean, print:Boolean=false)(implicit au:Option[model.User], request:Request[_])
 @import model._
 @import _root_.admin.Config.realm
 
 @label()=@{ page.map(_.label).getOrElse(model.Wikis.label(wid)) }
 
 @htmlHead(page.flatMap(_.contentTags.get("title")).getOrElse(wid.cat +": "+ label), None, page)
-@if(!print) {@navbar(user, realm)}
+@if(!print) {@navbar(au, realm)}
    
 <div class="container">
   <div class="row">
@@ -17,20 +17,20 @@ render a regular wiki page - site pages are rendered with wikiSite.scala.html
     <div class="span9">
 
       <div class="well">
-        @wiki.wikiFrag(wid,user,false,page, iname, false, true, canEdit)
+        @wiki.wikiFrag(wid,au,false,page, iname, false, true, canEdit)
       </div>
 
-      @wiki.wikiAddMore(wid, page, user)
+      @wiki.wikiAddMore(wid, page, au)
 
-      @wiki.wikiPageComments(wid, page, user)
+      @wiki.wikiPageComments(wid, page, au)
 
       <hr>
-      @htmlFooter(ads = !page.exists(_.content.matches("""(?s).*\{\{ad[:}].*\{\{ad[:}].*""")) && !user.exists(_.isUnder13), false, realm)
+      @htmlFooter(ads = !page.exists(_.content.matches("""(?s).*\{\{ad[:}].*\{\{ad[:}].*""")) && !au.exists(_.isUnder13), false, realm)
 
     </div> <!-- /span9 -->
 
     <div class="span3">
-    @wiki.wikiFrag(WID("Admin","Right"),user,true)
+    @wiki.wikiFrag(WID("Admin","Right"),au,true)
 
     @addRight()
     </div>
@@ -38,5 +38,8 @@ render a regular wiki page - site pages are rendered with wikiSite.scala.html
   </div> <!-- row -->
 </div> <!-- /container -->
 
-@htmlBottom()
-    
+  @if(_root_.admin.Config.realm == "notes") {
+    @notes.htmlBottomNotes()
+  } else {
+    @htmlBottom()
+  }

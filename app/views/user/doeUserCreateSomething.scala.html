@@ -1,10 +1,9 @@
 @*****************
 from user home page - create something
 *****************@
-@(user:Option[model.User])
+@(au:Option[model.User])
 
-@htmlHead("Creating something...")
-@navbar(user)
+@htmlHeadBar("Creating something...", au)
 
 @import model.WikiDomain
 
@@ -52,7 +51,7 @@ from user home page - create something
     </div> <!-- /span9 -->
 
     <div class="span3">
-      @wiki.wikiFrag(model.WID("Admin","Right"),user,true)
+      @wiki.wikiFrag(model.WID("Admin","Right"),au,true)
     </div>
   </div> <!-- row -->
 </div> <!-- /container -->

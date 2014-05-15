@@ -1,10 +1,8 @@
-@(sForm:Form[_], v2:Int, page:String, user:Option[model.User])
+@(sForm:Form[_], v2:Int, page:String, au:Option[model.User])
 
 @import helper.twitterBootstrap._
 
-@htmlHead("Suggest something")
-
-@navbar(user)
+@htmlHeadBar("Suggest something", au)
 
 @divi() = @{
   val x = (math.random * (v2-3)).toInt
@@ -18,9 +16,9 @@
 
 @helper.form(action=routes.Support.suggested(page), 'class->"well") {
 
-@if(user.isDefined) {
-  <input type="hidden" name="name" value="@user.get.ename" />
-  <input type="hidden" name="email" value="@model.Enc.unapply(user.get.email)" />
+@if(au.isDefined) {
+  <input type="hidden" name="name" value="@au.get.ename" />
+  <input type="hidden" name="email" value="@model.Enc.unapply(au.get.email)" />
 } else {
   @helper.inputText(
     sForm("name"), 
@@ -45,7 +43,7 @@
     'class -> "span6",
     'rows->15)
 
-@if(user.isDefined) {
+@if(au.isDefined) {
   <input type="hidden" name="v1" value="@sForm("v2").value" />
 } else {
   <div class="well">

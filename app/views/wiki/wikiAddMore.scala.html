@@ -43,7 +43,7 @@ fragment: add more stuff to the current topic, including children, sub-topics et
           }
         }
   
-        @if(model.Wikis.linksTo(wid,"Child").filter(_.from.cat == child).size > 0) {
+        @if(!page.exists(_.contentTags.contains("nochildposts")) && model.Wikis.linksTo(wid,"Child").filter(_.from.cat == child).size > 0) {
         <div class="well">
           @child (ren) :
           <ul>

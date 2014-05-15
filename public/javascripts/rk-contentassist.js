@@ -4,14 +4,7 @@
 
 //https://github.com/yuku-t/jquery-textcomplete
 
-// CA options for .
-var dotTags =[
-  't tag1 tag2',
-  'n name of this note',
-  'a to:who by:date description',
-  'email john@@whodunnit.com',
-  'name name of contact'
-];
+// CA options for . come from notesmain
 
 // CA options for {{
 var braTags =[

@@ -72,7 +72,7 @@ msg types are msg, err
   </div>
 
 <div style="display:inline-block">  
-  <p><small>You are typing markdown - see the <a href="/wiki/Blog:Note_Locker/Post:Notes_Quick_Guide">quick guide</a>.</small>
+  <p><small>You are typing markdown - see the <a href="/wiki/No_Folders/Notes_Quick_Guide">quick guide</a>.</small>
 </div>
 }
 </div>
@@ -82,9 +82,11 @@ msg types are msg, err
         <strong>Need account</strong>
 @**      You need to <a href="/doe/join">create an account</a> to actually create and save notes.
    **@
-      <p>Sorry - this site is in preview mode to a restricted audience.
-      <p>If you are interested in participating in the preview, please submit a support request below and let us know.
-      <p>Thank you and see you soon!</p>
+      - this site is in preview mode for a small audience.
+      <small>
+      <p>If you are interested in joining in the preview, please <a href="/login">create an account</a>.
+      <br>Thank you!
+      </small>
     </div>
 }
 
@@ -142,7 +144,7 @@ d.css({position:"absolute", display: "none"})
 var razFlash = function (){
   if(0 == razOn) {
     var pos = c.position();
-    $(d[0]).parent().find("#xflash").css({top: pos.top+15, left: pos.left});
+    $(d[0]).parent().find("#xflash").css({top: pos.top+10, left: pos.left});
     $(d[0]).parent().find("#xflash").css({height: c.height(), width: c.width()});
 //    d.css("display","block")
     razOn=1;
@@ -171,6 +173,6 @@ setInterval(razFlash,4000);
 
 </script>
 
-@frdown("", tags, au)
+@frdown("", tags, au, false)
 
 

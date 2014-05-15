@@ -10,20 +10,12 @@ import com.novus.salat._
 import com.novus.salat.annotations._
 import com.mongodb.casbah.Imports._
 import org.joda.time.DateTime
-import scala.util.parsing.combinator.RegexParsers
 import admin.Audit
-import scala.util.matching.Regex.Match
-import scala.util.matching.Regex
 import razie.Log
-import razie.base.data.TripleIdx
-import admin.Notif
-import admin.WikiConfig
-import play.mvc.Http.Request
-import razie.base.ActionContext
 import db.RazSalatContext._
 import db.{ RTable, RCreate, RDelete }
 import admin.Services
-import admin.WikiConfig
+//import admin.WikiConfig
 
 /** a simple wiki-style entry: language (markdown, mediawiki wikidot etc) and the actual source */
 @RTable
@@ -60,12 +52,14 @@ case class WikiEntry(
   def cloneContent(newcontent: String) = copy(content = newcontent)
 
   def cloneNewVer(label: String, markup: String, content: String, by: ObjectId, props: Map[String, String] = this.props) =
-    WikiEntry(category, name, label, markup, content, by, tags, realm, ver + 1, parent, props, crDtm, DateTime.now, _id)
+    copy(label=label, markup=markup, content=content, by=by, ver=ver + 1, props=props, updDtm=DateTime.now)
+//    WikiEntry(category, name, label, markup, content, by, tags, ver + 1, parent, props, crDtm, DateTime.now, _id)
 
   def cloneParent(p: Option[ObjectId]) = copy(parent = p, updDtm = DateTime.now)
 
   def cloneProps(m: Map[String, String], sby: ObjectId) =
-    WikiEntry(category, name, label, markup, content, sby, tags, realm, ver, parent, this.props ++ m, crDtm, DateTime.now, _id)
+    copy(props = this.props ++ m)
+//    WikiEntry(category, name, label, markup, content, sby, tags, ver, parent, this.props ++ m, crDtm, DateTime.now, _id)
 
   def withTags(s: Seq[String], sby: ObjectId) =
     copy(tags=s)
@@ -87,7 +81,7 @@ case class WikiEntry(
     }
 
     Audit.logdbWithLink(
-      AUDIT_WIKI_CREATED,
+      if(wid.cat=="Note") AUDIT_NOTE_CREATED else AUDIT_WIKI_CREATED,
       s"/wiki/${wid.wpath}",
       "BY " + (WikiUsers.impl.findUserById(this.by).map(_.userName).getOrElse(this.by.toString)) +
         " " + category + ":" + name)
@@ -98,14 +92,13 @@ case class WikiEntry(
 
   def update(newVer: WikiEntry)(implicit txn:db.Txn) = {
     Audit.logdbWithLink(
-      AUDIT_WIKI_UPDATED,
+      if(wid.cat=="Note") AUDIT_NOTE_UPDATED else AUDIT_WIKI_UPDATED,
       s"/wiki/${newVer.wid.wpath}",
       s"""BY ${(WikiUsers.impl.findUserById(newVer.by).map(_.userName).getOrElse(newVer.by.toString))} - $category : $name ver ${newVer.ver}""")
     WikiEntryOld(this).create
-    // TODO why am I using these instead of the _id ?
-    val key = Map("category" -> category, "name" -> name, "parent" -> parent)
-    db.RUpdate.noAudit[WikiEntry](Wikis.weTables(wid.cat), key, newVer)
-//    Wikis.weTable(wid.cat).m.update(key, grater[WikiEntry].asDBObject(Audit.updatenoaudit(newVer)))
+    // TODO why WAS I using these instead of the _id ?
+//    val key = Map("category" -> category, "name" -> name, "parent" -> parent)
+    db.RUpdate.noAudit[WikiEntry](Wikis.weTables(wid.cat), Map("_id" -> newVer._id), newVer)
     Wikis.shouldFlag(name, label, content).map(auditFlagged(_))
 
     if (shouldIndex) WikiIndex.update(this, newVer)
@@ -149,7 +142,7 @@ case class WikiEntry(
     val s = Wikis.preprocess(this.wid, this.markup, Wikis.noporn(this.content))
     // apply transformations
     s.decs.map(x => x(this))
-    // add hardcoded attributes
+    // add hardcoded attribute - these can be overriden by tags in content
     WikiParser.State(s.s,
       Map("category" -> category, "name" -> name, "label" -> label, "url" -> (category + ":" + name),
         "tags" -> tags.mkString(",")) ++ s.tags,
@@ -167,12 +160,11 @@ case class WikiEntry(
   /** all the links from this page to others, based on parsed content */
   def ilinks = preprocessed.ilinks
 
-  /** tags of the page, nothing to do with parsing */
-//  def tags = props.get("tags").map(_.split(",").toSeq).getOrElse(Seq())
-
   final val AUDIT_WIKI_CREATED = "WIKI_CREATED "
   final val AUDIT_WIKI_UPDATED = "WIKI_UPDATED "
   final val AUDIT_WIKI_DELETED = "WIKI_DELETED "
+  final val AUDIT_NOTE_CREATED = "NOTE_CREATED "
+  final val AUDIT_NOTE_UPDATED = "NOTE_UPDATED "
 
   /** field definitions contained - added to during parsing */
   var fields = new scala.collection.mutable.HashMap[String, FieldDef]()
@@ -209,7 +201,7 @@ case class WikiEntryOld(entry: WikiEntry, _id: ObjectId = new ObjectId()) {
 }
 
 /** a wiki id, a pair of cat and name - can reference a wiki entry or a section of an entry */
-case class WID(cat: String, name: String, parent: Option[ObjectId] = None, section: Option[String] = None) {
+case class WID(cat: String, name: String, parent: Option[ObjectId] = None, section: Option[String] = None, realm:Option[String]=None) {
   override def toString = "[[" + wpath + "]]" //cat + ":" + name + (section.map("#"+_).getOrElse("")) + parent.map(" of " + _.toString).getOrElse("")
 
   lazy val grated     = grater[WID].asDBObject(this)
@@ -225,8 +217,13 @@ case class WID(cat: String, name: String, parent: Option[ObjectId] = None, secti
 
   /** format into nice url */
 //  def wpath: String = findParent.map(_.wid.wpath + "/").getOrElse("") + (if (cat != null && cat.length > 0) (cat + ":") else "") + name + (section.map("#" + _).getOrElse(""))
-  def wpath: String = parentWid.map(_.wpath + "/").getOrElse("") + (if (cat != null && cat.length > 0) (cat + ":") else "") + name + (section.map("#" + _).getOrElse(""))
-  def formatted = WID(cat, Wikis.formatName(this), parent, section)
+  def wpath: String = parentWid.map(_.wpath + "/").getOrElse("") + (
+    if (cat != null && cat.length > 0 && !WID.NOCATS.contains(cat)) (cat + ":") else "") + name + (section.map("#" + _).getOrElse(""))
+
+  /** full categories allways */
+  def wpathFull: String = parentWid.map(_.wpath + "/").getOrElse("") + (
+    if (cat != null && cat.length > 0 ) (cat + ":") else "") + name + (section.map("#" + _).getOrElse(""))
+  def formatted = this.copy(name=Wikis.formatName(this))
   def url: String = "http://" + Services.config.hostport + "/wiki/" + wpath
   def urlRelative: String = "/wiki/" + wpath
   def ahref: String = "<a href=\"" + url + "\">" + toString + "</a>"
@@ -240,6 +237,9 @@ case class WID(cat: String, name: String, parent: Option[ObjectId] = None, secti
 case class CMDWID(wpath: Option[String], wid: Option[WID], cmd: String, rest: String)
 
 object WID {
+  /** do not require the category */
+  private final val NOCATS = Array("Blog", "Post", "Site")
+
   private val REGEX = """([^/:\]]*[:])?([^#|\]]+)(#[^|\]]+)?""".r
 
   private def widFromSeg(a: Array[String]) = {

@@ -1,7 +1,6 @@
-@(user:Option[model.User]=None)(implicit request:Request[_])
+@(au:Option[model.User]=None)(implicit request:Request[_])
 
-@htmlHead("Take for a spin")
-@navbar(user, _root_.admin.Config.realm)
+@htmlHeadBar("Take for a spin", au, _root_.admin.Config.realm)
    
 <div class="container">
   <div class="well">

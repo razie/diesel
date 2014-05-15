@@ -2,13 +2,11 @@
 list of pages, with links etc - result of a query of some kind
 **************@
 
-@(title:String, pages:List[(model.WID, String)], user:Option[model.User])
+@(title:String, pages:List[(model.WID, String)], au:Option[model.User])
 @import model._
 
-@htmlHead("Results for: " + title)
+@htmlHeadBar("Results for: " + title, au)
 
-@navbar(user)
-   
 <div class="container">
   <div class="row">
     <div class="span9">
@@ -30,7 +28,7 @@ list of pages, with links etc - result of a query of some kind
     </div> <!-- /span9 -->
 
     <div class="span3">
-      @wiki.wikiFrag(WID("Admin","Right"),user,true, None)
+      @wiki.wikiFrag(WID("Admin","Right"),au,true, None)
 
       @addRight()
     </div>

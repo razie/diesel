@@ -52,11 +52,14 @@ object WikiIndex {
 
   private lazy val actualIndex = {
     val t = new NewTripleIdx[String, WID, ObjectId]()
+    // load it the first time
     Wikis.table.find(Map()).foreach { db =>
       val w = WID(
         db.as[String]("category"),
         db.as[String]("name"),
-        if (db.containsField("parent")) Some(db.as[ObjectId]("parent")) else None)
+        if (db.containsField("parent")) Some(db.as[ObjectId]("parent")) else None,
+        None,
+        Option(db.as[String]("realm")))
       t.put(w.name, w, db.as[ObjectId]("_id"))
       lower.put(w.name.toLowerCase(), w.name)
       labels.put(w.name, db.as[String]("label"))
@@ -64,6 +67,7 @@ object WikiIndex {
     t
   }
 
+  /** update an entry */
   private def up(we: WikiEntry) {
     parsed.put(we._id, PEntry(we.ilinks))
     if (we.wid.cat == "Category")
@@ -75,7 +79,7 @@ object WikiIndex {
   }
 
   def update(oldVer: WikiEntry, newVer: WikiEntry) = withIndex { idx =>
-    if (oldVer.category != newVer.category || oldVer.name != newVer.name) {
+    if (oldVer.category != newVer.category || oldVer.name != newVer.name || oldVer.realm != newVer.realm) {
       idx.put(newVer.name, newVer.wid, oldVer._id)
       idx.remove2(oldVer.name, oldVer.wid)
       lower.put(newVer.name.toLowerCase(), newVer.name)

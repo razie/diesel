@@ -1,10 +1,8 @@
-@(title:String, pages:List[model.WikiEntry], user:Option[model.User])
+@(title:String, pages:List[model.WikiEntry], au:Option[model.User])
 @import model._
 
-@htmlHead("Results for: " + title)
+@htmlHeadBar("Results for: " + title, au)
 
-@navbar(user)
-   
 <div class="container">
   <div class="row">
     <div class="span9">
@@ -26,7 +24,7 @@
     </div> <!-- /span9 -->
 
     <div class="span3">
-      @wiki.wikiFrag(WID("Admin","Right"),user,true, None)
+      @wiki.wikiFrag(WID("Admin","Right"),au,true, None)
 
       @addRight()
     </div>

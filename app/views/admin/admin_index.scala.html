@@ -1,16 +1,15 @@
-@(salutation:String, joe:Option[model.User])
+@(salutation:String, au:Option[model.User])
 @import db.RazMongo
-@htmlHead("admin index")
 
-@navbar(joe)
-   
+@htmlHeadBar("admin index", au)
+
 <div class="container">
 
   <!-- Main hero unit for a primary marketing message or call to action -->
   <div class="hero-unit">
     <div class="row">
       <div class="span4">
-        <b><a href="@routes.Profile.doeJoin()">Not @joe.get.ename?</a></b>
+        <b><a href="@routes.Profile.doeJoin()">Not @au.get.ename?</a></b>
         <p>If you're not an admin of this site, please leave and report seeing this page with a brief support request at the bottom of the page</p>
         See the content of a page: /wikie/content/Page:X
       <p><a href="@routes.Admin.system("x")" class="btn btn-large">system</a>
@@ -34,7 +33,7 @@
     <div class="span3">
       <h2>Pages</h2>
       <p>There are @RazMongo("WikiEntry").size pages</p>
-      <p>There are @RazMongo("weLocker").size notes</p>
+      <p>There are @RazMongo("weNote").size notes</p>
       <p><a class="btn" href="/razadmin/calendars">View details &raquo;</a></p>
     </div>
     <div class="span3">
