@@ -6,56 +6,12 @@
  */
 package controllers
 
-import scala.Array.canBuildFrom
-import org.joda.time.DateTime
-import com.mongodb.DBObject
-import com.mongodb.casbah.Imports.map2MongoDBObject
-import com.mongodb.casbah.Imports.wrapDBObj
-import com.novus.salat.grater
-import admin.Audit
-import admin.Config
-import admin.Corr
-import admin.IgnoreErrors
-import admin.MailSession
-import admin.Notif
-import admin.SendEmail
-import admin.VError
-import model.Enc
-import db.RazMongo
-import model.Perm
-import db.RazSalatContext.ctx
 import model.Sec.EncryptedS
-import model.Stage
-import model.User
-import model.UserType
-import model.UserWiki
-import model.Users
-import play.api.data.Form
-import play.api.data.Forms.mapping
-import play.api.data.Forms.nonEmptyText
-import play.api.data.Forms.text
-import play.api.data.Forms.tuple
-import play.api.libs.json.Json
 import play.api.mvc.Action
-import play.api.mvc.Request
 import razie.Logging
-import razie.cout
-import db.ROne
-import db.RMany
-import model.WikiCount
-import model.WikiIndex
 import model.Wikis
-import model.CMDWID
-import model.WikiAudit
 import model.WikiEntry
-import model.WikiEntryOld
-import model.WID
-import model.WikiLink
 import model.WikiDomain
-import model.WikiWrapper
-import model.WikiXpSolver
-import model.WikiUser
-import razie.clog
 import razie.gg
 import org.json.JSONArray
 import scala.collection.mutable.ListBuffer
@@ -72,7 +28,7 @@ object js extends Logging {
   /** turn a map of name,value into json */
   def tojson(x: Map[_, _]): JSONObject = {
     val o = new JSONObject()
-    x.foreach { t =>
+    x foreach {t:(_,_) =>
       t._2 match {
         case m: Map[_, _] => o.put(t._1.toString, tojson(m))
         case s: String => o.put(t._1.toString, s)
@@ -86,7 +42,7 @@ object js extends Logging {
   /** turn a list into json */
   def tojson(x: List[_]): JSONArray = {
     val o = new JSONArray()
-    x.foreach { t =>
+    x.foreach { t:Any =>
       t match {
         case s: Map[_, _] => o.put(tojson(s))
         case l: List[_] => o.put(tojson(l))
@@ -99,8 +55,8 @@ object js extends Logging {
   /** recursively transform a name,value map */
   def jt(map: Map[_, _], path: String = "/")(f: PartialFunction[(String, String, Any), (String, Any)]): Map[String, Any] = {
     val o = new HashMap[String, Any]()
-    map.foreach { t =>
-      var ts = t._1.toString
+    map.foreach { t:(_,_) =>
+      val ts = t._1.toString
       val r = if (f.isDefinedAt(path, ts, t._2)) f(path, ts, t._2) else (ts, t._2)
       if (r._1 != null && r._1.length() > 0)
         r._2 match {
@@ -117,7 +73,7 @@ object js extends Logging {
   /** recursively transform a name,value map */
   def jt(x: List[_], path: String)(f: PartialFunction[(String, String, Any), (String, Any)]): List[_] = {
     val o = new ListBuffer[Any]()
-    x.foreach { t =>
+    x.foreach { t:Any =>
       t match {
         case m: Map[_, _] => o.append(jt(m, path)(f))
         case l: List[_] => o.append(jt(l, path)(f))
