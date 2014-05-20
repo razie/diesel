@@ -50,7 +50,11 @@ case class Follower(email: String, name: String, when: DateTime = DateTime.now, 
 
 /** temporary user for following stuff */
 @db.RTable
-case class FollowerWiki(followerId: ObjectId, comment: String, wid: WID, _id: ObjectId = new ObjectId()) {
+case class FollowerWiki(
+  followerId: ObjectId,
+  comment: String,
+  uwid: UWID,
+  _id: ObjectId = new ObjectId()) {
   def delete = { Audit.delete(this); RDelete[FollowerWiki]("_id" -> _id) }
 
   def follower = ROne[Follower](followerId)
@@ -148,10 +152,10 @@ case class User(
   /** the wikis I linked to */
   lazy val wikis = RMany[UserWiki]("userId" -> _id).toList
 
-  def isLinkedTo(wid:WID) = ROne[UserWiki]("userId" -> _id, "wid" -> wid.grated).toList
-  
+  def isLinkedTo(uwid:UWID) = ROne[UserWiki]("userId" -> _id, "uwid" -> uwid.grated).toList
+
   /** pages of category that I linked to */
-  def pages(cat: String*) = wikis.filter(w=>cat.contains(w.wid.cat))
+  def pages(cat: String*) = wikis.filter(w=>cat.contains(w.uwid.cat))
   def myPages(cat: String) = pages (cat)
 
   def auditCreated { Log.audit(AUDT_USER_CREATED + email) }
@@ -316,23 +320,20 @@ object UW {
 @RTable
 case class UserWiki(
     userId: ObjectId, 
-    wid: WID, 
+    uwid: UWID,
     role: String, 
     notif:String = UW.EMAIL_EACH,
     _id: ObjectId = new ObjectId()) extends REntity[UserWiki] {
-//  def create = Mongo("UserWiki") += grater[UserWiki].asDBObject(Audit.create(this))
-//  def delete = { Audit.delete(this); Mongo("UserWiki").m.remove(Map("_id" -> _id)) }
 
   def updateRole(newRole: String) = {
-//    Mongo("UserWiki").m.update(Map("_id" -> _id), grater[UserWiki].asDBObject(Audit.update(
-//      this.copy(role=newRole))))
       this.copy(role=newRole).update
   }
 
-  def wlink = WikiLink(WID("User", userId.toString), wid, "")
+  def wlink = WikiLink(UWID("User", userId), uwid, "")
   def wname = wlink.wname
 
   def user = ROne[User](userId)
+  def wid = uwid.wid.get
 }
 
 /**
@@ -396,7 +397,7 @@ object Users {
   def findParentOf(cid: ObjectId) = ROne[ParentChild]("childId" -> cid)
   def findChildOf(pid: ObjectId) = ROne[ParentChild]("parentId" -> pid)
 
-  def findUserLinksTo(wid: WID) = RMany[UserWiki]("wid.name" -> wid.name, "wid.cat" -> wid.cat)
+  def findUserLinksTo(u: UWID) = RMany[UserWiki]("uwid" -> u.grated)
   def findUserLinksToCat(cat: String) = RMany[UserWiki]("wid.cat" -> cat)
 
   def create(ug: UserGroup) = RCreate[UserGroup](ug)
@@ -406,7 +407,8 @@ object Users {
   def create(r: Task) = RCreate[Task](r)
 
   def findFollowerByEmail(email: String) = ROne[Follower]("email" -> email)
-  def findFollowerLinksTo(wid: WID) = RMany[FollowerWiki]("wid.name" -> wid.name, "wid.cat" -> wid.cat)
+//  def findFollowerLinksTo(wid: WID) = RMany[FollowerWiki]("wid.name" -> wid.name, "wid.cat" -> wid.cat)
+  def findFollowerLinksTo(uwid: UWID) = RMany[FollowerWiki]("uwid" -> uwid.grated)
 }
 
 /** user factory and utils */

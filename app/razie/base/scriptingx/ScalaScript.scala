@@ -8,14 +8,9 @@ package razie.base.scriptingx
 
 import razie.base.ActionContext
 import razie.base.scripting.RazieInterpreter
-//import razie.base.scriptingx.ReplClassloader
-//import razie.base.scripting.SBTScalaScriptContext
-//import razie.base.scripting.ScalaScript
-//import razie.base.scripting.ScalaScriptContext
 import razie.base.scripting.ScriptContextImpl
 import scala.tools.{ nsc => nsc }
-//import scala.tools.nsc.{ InterpreterResults => IR }
-import scala.tools.nsc.interpreter.IR 
+import scala.tools.nsc.interpreter.IR
 import java.net.URL
 import java.io.File
 import java.net.URLClassLoader
@@ -146,7 +141,7 @@ class SBTScalaScriptContext(parent: ActionContext = null) extends ScalaScriptCon
 }
 
 /**
- * optimization for wikis: no binding
+ * optimization for wikis: no binding so that scripts in one page can't interact with scripts in another page
  */
 class NoBindSbtScalaContext extends SBTScalaScriptContext(null) {
   override def bind(ctx: ActionContext, p: nsc.Interpreter) {}

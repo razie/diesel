@@ -3,22 +3,18 @@ package db
 import com.mongodb.casbah.Imports._
 import com.novus.salat._
 import com.novus.salat.annotations._
-import model.Wikis
-import model.Profile
-import model.UserTask
-import model.Enc
+import model._
 import admin.NogoodCipherCrypt
 import admin.Config
-import model.RacerKidz
-import razie.clog
-import razie.cout
-import model.RacerKidAssoc
-import model.RK
-import model.WikiLink
-import model.UserWiki
-import model.WID
+import razie.{cdebug, clog, cout}
 import controllers.Club
-import model.Users
+import scala.collection.mutable.ListBuffer
+import model.UserTask
+import scala.Some
+import model.UserWiki
+import model.WikiLink
+import model.Profile
+import model.RacerKidAssoc
 
 object Upgrade1 extends UpgradeDb {
   def upgrade(db: MongoDB) {}
@@ -157,7 +153,7 @@ object U8 extends UpgradeDb with razie.Logging {
       for (u <- t) {
         val old = grater[OldUserWiki8].asObject(u)
         t.remove(u)
-        t += grater[model.UserWiki].asDBObject(model.UserWiki(old.userId, model.WID(old.cat, old.name), old.role: String))
+//        t += grater[model.UserWiki].asDBObject(model.UserWiki(old.userId, model.WID(old.cat, old.name), old.role: String))
       }
     }
   }
@@ -326,14 +322,14 @@ object U11 extends UpgradeDb with razie.Logging {
         }
       }
 
-      RMany[model.UserWiki]().filter(_.wid.cat == "Club").foreach { uw =>
-        val rk = model.RacerKidz.myself(uw.userId)
-        cout << uw
-        val c = controllers.Club(uw.wid.name)
-        c.foreach { c =>
-          model.RacerKidAssoc(c.userId, rk._id, model.RK.ASSOC_LINK, uw.role, c.userId).create
-        }
-      }
+//      RMany[model.UserWiki]().filter(_.wid.cat == "Club").foreach { uw =>
+//        val rk = model.RacerKidz.myself(uw.userId)
+//        cout << uw
+//        val c = controllers.Club(uw.wid.name)
+//        c.foreach { c =>
+//          model.RacerKidAssoc(c.userId, rk._id, model.RK.ASSOC_LINK, uw.role, c.userId).create
+//        }
+//      }
 
       ran = false // make sure it's not run in this jvm anymore - ever, basically
     }
@@ -367,26 +363,26 @@ object U11 extends UpgradeDb with razie.Logging {
 
   // add crDtm to WikiLinks
   def upgradeGlacierForums() {
-    var removed = RMany[UserWiki]().toList.filter(uw => uw.role != "Owner" && uw.wid.cat == "Blog" && uw.wid.name.startsWith("Glacier")).map { uw =>
-      cout << " 1 DB remove " + uw.toString
-      uw.delete
-    }.size
-    cout << "=======================DB removing " + removed
-    if (removed > 1) {
-      var cnt = 0
-      Club("Glacier_Ski_Club").foreach { club =>
-        club.userLinks.toList.filter(uw => uw.role != "Owner").map { uw =>
-          club.newFollows.foreach { rw =>
-            val role = rw.role
-            val newuw = model.UserWiki(uw.userId, rw.wid, role)
-            newuw.create
-            cout << " 1 DB creating " + "   ===>>>   " + newuw.toString
-            cnt = cnt + 1
-          }
-        }
-      }
-      cout << "=======================DB creating " + cnt
-    }
+//    var removed = RMany[UserWiki]().toList.filter(uw => uw.role != "Owner" && uw.wid.cat == "Blog" && uw.wid.name.startsWith("Glacier")).map { uw =>
+//      cout << " 1 DB remove " + uw.toString
+//      uw.delete
+//    }.size
+//    cout << "=======================DB removing " + removed
+//    if (removed > 1) {
+//      var cnt = 0
+//      Club("Glacier_Ski_Club").foreach { club =>
+//        club.userLinks.toList.filter(uw => uw.role != "Owner").map { uw =>
+//          club.newFollows.foreach { rw =>
+//            val role = rw.role
+//            val newuw = model.UserWiki(uw.userId, rw.wid, role)
+//            newuw.create
+//            cout << " 1 DB creating " + "   ===>>>   " + newuw.toString
+//            cnt = cnt + 1
+//          }
+//        }
+//      }
+//      cout << "=======================DB creating " + cnt
+//    }
   }
 
   // add crDtm to WikiLinks
@@ -397,12 +393,12 @@ object U11 extends UpgradeDb with razie.Logging {
     Club(cname).foreach { club =>
       club.userLinks.toList.filter(uw => uw.role != "Owner").map { uw =>
         all = all + 1
-        Users.findUserById(uw.userId).filter(!_.wikis.exists(_.wid == wid)).foreach { rw =>
-          val newuw = model.UserWiki(uw.userId, wid, role)
-          newuw.create
-          cout << " 1 DB creating " + "   ===>>>   " + newuw.toString
-          cnt = cnt + 1
-        }
+//        Users.findUserById(uw.userId).filter(!_.wikis.exists(_.wid == wid)).foreach { rw =>
+//          val newuw = model.UserWiki(uw.userId, wid, role)
+//          newuw.create
+//          cout << " 1 DB creating " + "   ===>>>   " + newuw.toString
+//          cnt = cnt + 1
+//        }
       }
     }
     cout << s"=======================DB created $cnt of $all"
@@ -550,6 +546,70 @@ object RenameCat extends UpgradeDb with razie.Logging {
           log("  " + u.get("name"))
       }
     }
+  }
+}
+
+// WID replaced wiht UWID
+object U14 extends UpgradeDb with razie.Logging {
+  import db.RazSalatContext._
+
+  val missed = ListBuffer[String]()
+
+  def upgrade(db: MongoDB) {
+
+    def getuwid (wid:WID)(implicit t:MongoCollection) = {
+      val td = db(Wikis.weTables(wid.cat))
+      val res = if (wid.parent.isDefined)
+        td.findOne(Map("category" -> wid.cat, "name" -> wid.name, "parent" -> wid.parent.get))
+      else
+        td.findOne(Map("category" -> wid.cat, "name" -> Wikis.formatName(wid.name)))
+
+      res.map(r=>UWID(wid.cat, r.as[ObjectId]("_id"))) getOrElse {
+        missed append (s"${t.name} for ${wid.cat} ${wid.name}")
+        UWID("?", new ObjectId())
+      }
+    }
+
+    var i = 0;
+
+    withDb(db("FollowerWiki")) { implicit t =>
+      for (u <- t if(u.contains("wid"))) {
+        cdebug << "UPGRADING " + t.name + u
+        val uwid = getuwid (grater[WID].asObject(u.as[BasicDBObject]("wid")))
+        u.remove("wid")
+        u.put("uwid", uwid.grated)
+        t.save(u)
+        i = i+1
+      }
+    }
+
+    withDb(db("WikiLink")) { implicit t =>
+      for (u <- t) {
+        cdebug << "UPGRADING " + t.name + u
+        val uf = getuwid (grater[WID].asObject(u.as[DBObject]("from")))
+        val ut = getuwid (grater[WID].asObject(u.as[DBObject]("to")))
+        u.remove("from")
+        u.remove("to")
+        u.put("from", uf.grated)
+        u.put("to", ut.grated)
+        t.save(u)
+        i = i+1
+      }
+    }
+
+    withDb(db("UserWiki")) { implicit t =>
+      for (u <- t if(u.contains("wid"))) {
+        cdebug << "UPGRADING " + t.name + u
+        val uwid = getuwid (grater[WID].asObject(u.as[DBObject]("wid")))
+        u.remove("wid")
+        u.put("uwid", uwid.grated)
+        t.save(u)
+        i = i+1
+      }
+    }
+
+    clog < s"""MISSED ${missed.size} : \n${missed.mkString("\n")} """
+    clog < s"UPGRADED $i entries"
   }
 }
 

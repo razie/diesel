@@ -42,21 +42,29 @@ object RazMongo {
     var dbVer = db("Ver").findOne.map(_.get("ver").toString).map(_.toInt)
     if (AGAIN) dbVer = dbVer.map(_ - 1)
 
+    var upgradingLoop = false // simple recursive protection
+
     // if i don't catch - there's no ending since it's a lazy val init...
     try {
       dbVer match {
         case Some(v) => {
           var ver = v
           while (ver < Services.mongoDbVer && Services.mongoUpgrades.contains(ver)) {
-            Services.mongoUpgrades.get(ver).map { u =>
+            if(upgradingLoop)
+              throw new IllegalStateException("already looping to update - recursive DB usage while upgrading, check code")
+            upgradingLoop = true
+            Services.mongoUpgrades.get(ver).fold (
+              Log.error("NO UPGRADES FROM VER " + ver)
+            ) { u =>
               cout << "1 " + Thread.currentThread().getName()
               Log audit s"UPGRADING DB from ver $ver to ${Services.mongoDbVer}"
               Thread.sleep(2000) // often screw up and goes in  a loop...
               u.upgrade(db)
               db("Ver").update(Map("ver" -> ver), Map("ver" -> Services.mongoDbVer))
               Log.audit("UPGRADING DB... DONE")
-            } getOrElse { Log.error("NO UPGRADES FROM VER " + ver) }
+            }
             ver = ver + 1
+            upgradingLoop = false
           }
         }
         case None => db("Ver") += Map("ver" -> Services.mongoDbVer) // create a first ver entry

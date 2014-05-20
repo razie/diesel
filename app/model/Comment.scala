@@ -18,6 +18,7 @@ import db.RUpdate
 /** a series of comments on something - like a forum topic */
 @RTable
 case class CommentStream(
+//todo there are a few records with WID instead of ID here...
   topic: ObjectId, // for wiki, this is the WID
   what: String = "Wiki", // "wiki" vs?
   crDtm: DateTime = DateTime.now(),

@@ -15,7 +15,6 @@ import razie.Log
 import db.RazSalatContext._
 import db.{ RTable, RCreate, RDelete }
 import admin.Services
-//import admin.WikiConfig
 
 /** a simple wiki-style entry: language (markdown, mediawiki wikidot etc) and the actual source */
 @RTable
@@ -45,7 +44,8 @@ case class WikiEntry(
     } else None
   }
 
-  def wid = new WID(category, name, parent)
+  def wid  = WID(category, name, parent)
+  def uwid = UWID(category, _id)
 
   def cloneRenamed(newlabel: String) = copy(name = Wikis.formatName(newlabel), label = newlabel, ver = ver + 1, updDtm = DateTime.now)
 
@@ -200,6 +200,22 @@ case class WikiEntryOld(entry: WikiEntry, _id: ObjectId = new ObjectId()) {
   def create (implicit txn:db.Txn) = RCreate.noAudit[WikiEntryOld](this)
 }
 
+/** a unique ID - it is less verbose than the WID - used in data modelling.
+  *
+  * also, having a wid means a page exists or existed
+*/
+case class UWID(cat: String, id:ObjectId) {
+  def findWid = {
+    WikiIndex.withIndex { idx =>
+      idx.find((_,_,x)=>x == id).map(_._2)
+    } orElse Wikis.findById(cat, id).map(_.wid)
+  }
+  def wid = findWid
+  def nameOrId = wid.map(_.name).getOrElse(id.toString)
+  lazy val grated     = grater[UWID].asDBObject(this)
+  lazy val page = Wikis.find(this)
+}
+
 /** a wiki id, a pair of cat and name - can reference a wiki entry or a section of an entry */
 case class WID(cat: String, name: String, parent: Option[ObjectId] = None, section: Option[String] = None, realm:Option[String]=None) {
   override def toString = "[[" + wpath + "]]" //cat + ":" + name + (section.map("#"+_).getOrElse("")) + parent.map(" of " + _.toString).getOrElse("")
@@ -214,6 +230,8 @@ case class WID(cat: String, name: String, parent: Option[ObjectId] = None, secti
       idx.get2(name, this)
     } orElse Wikis.find(this).map(_._id) 
   }
+
+  def uwid = findId map {x=>UWID(cat, x)}
 
   /** format into nice url */
 //  def wpath: String = findParent.map(_.wid.wpath + "/").getOrElse("") + (if (cat != null && cat.length > 0) (cat + ":") else "") + name + (section.map("#" + _).getOrElse(""))
@@ -292,17 +310,27 @@ object WID {
 
 /** a link between two wikis */
 @RTable
+case class WikiLinkStaged(
+                     from: WID,
+                     to: WID,
+                     how: String,
+                     crDtm: DateTime = DateTime.now(),
+                     _id: ObjectId = new ObjectId()) {
+  def grated = grater[WikiLinkStaged].asDBObject(this)
+}
+
+/** a link between two wikis */
+@RTable
 case class WikiLink(
-  from: WID,
-  to: WID,
+  from: UWID,
+  to: UWID,
   how: String,
   crDtm: DateTime = DateTime.now(),
   _id: ObjectId = new ObjectId()) {
-  import admin.M._
 
   def create (implicit txn:db.Txn) = RCreate[WikiLink](this)
 
-  val wname = Array(from.cat, from.name, to.cat, to.name).mkString(":")
+  val wname = Array(from.cat, from.nameOrId, to.cat, to.nameOrId).mkString(":")
 
   def page = Wikis.find("WikiLink", wname)
   def pageFrom = Wikis.find(from)

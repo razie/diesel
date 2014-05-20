@@ -56,36 +56,36 @@ object RazWikiAuthorization extends RazController with Logging with WikiAuthoriz
 
   def isInSameClub(member: WikiUser, owner: WikiUser) = { //}(implicit errCollector: VError = IgnoreErrors) = {
     // all clubs where member
-    val m1 = member.asInstanceOf[User].wikis.filter(x => x.wid.cat == "Club" && x.role != "Fan").toList
+    val m1 = member.asInstanceOf[User].wikis.filter(x => x.uwid.cat == "Club" && x.role != "Fan").toList
 
     (
       // owner is same as member
       (owner.roles.contains(UserType.Organization) && (member.userName == owner.userName)) ||
       // owner is the club 
-      (owner.roles.contains(UserType.Organization) && m1.exists(_.wid.name == owner.userName)) ||
+      (owner.roles.contains(UserType.Organization) && m1.exists(_.uwid.nameOrId == owner.userName)) ||
       // owner is someone else => club lists intersect?
       (!owner.roles.contains(UserType.Organization) && {
-        val m2 = owner.wikis.filter(x => x.wid.cat == "Club" && x.role != "Fan").toList
-        m1.exists(x1 => m2.exists(_.wid.name == x1.wid.name))
+        val m2 = owner.wikis.filter(x => x.uwid.cat == "Club" && x.role != "Fan").toList
+        m1.exists(x1 => m2.exists(_.uwid.id == x1.uwid.id))
       }))
   }
 
   /** if user is admin of club where owner member */
   def isClubAdmin(admin: WikiUser, owner: WikiUser) = { //}(implicit errCollector: VError = IgnoreErrors) = {
     // all clubs where member
-    val clubs = owner.wikis.filter(x => x.wid.cat == "Club" && x.role != "Fan").toList
+    val clubs = owner.wikis.filter(x => x.uwid.cat == "Club" && x.role != "Fan").toList
 
     (
       // owner is same as member
       (admin.isClub && (admin.userName == owner.userName)) ||
       // admin is the club
-      (admin.isClub && clubs.exists(_.wid.name == admin.userName)) ||
+      (admin.isClub && clubs.exists(_.uwid.nameOrId == admin.userName)) ||
       // admin is god
       (!admin.isClub && admin.hasPerm(Perm.adminDb)) ||
       // admin is club admin
       (!admin.isClub && { 
         val aemail = admin.email.dec
-        clubs.exists(x1 => Users.findUserByUsername(x1.wid.name).exists(
+        clubs.exists(x1 => Users.findUserByUsername(x1.uwid.nameOrId).exists(
           u => u.prefs.get("regAdmin").exists(_ == aemail) ||
           Club(u).props.filter(_._1 startsWith "admin").exists(_._2 == aemail)
           )) 
@@ -104,19 +104,19 @@ object RazWikiAuthorization extends RazController with Logging with WikiAuthoriz
       (
         props.get("owner") == Some(u.get.id) || // can see anything I am owner of - no need to check Visibility.PRIVATE
         (
-          props(visibility).startsWith(Visibility.CLUB) && (
+          props(visibility).startsWith(Visibility.CLUB) &&
             props.get("owner").flatMap(Users.findUserById(_)).exists(owner =>
               // hoping it's more likely members read blogs than register...
               props(visibility) == Visibility.CLUB && isInSameClub(u.get, owner) || 
-              props(visibility) == Visibility.CLUB_ADMIN && isClubAdmin(u.get, owner) ||
-              // maybe the club created the parent topic (like forum/blog etc)?
-              props(visibility) == Visibility.CLUB && 
-                props.get("parentOwner").flatMap(Users.findUserById(_)).exists(parentOwner => isInSameClub(u.get, parentOwner)) ||
-              props(visibility) == Visibility.CLUB && 
-                we.flatMap(_.wid.findParent.flatMap(_.props.get("owner"))).flatMap(Users.findUserById(_)).exists(parentOwner => isInSameClub(u.get, parentOwner))
-              )) orCorr (
-              cNotMember(uname(props.get("owner"))))).getOrElse(
-                false))
+                props(visibility) == Visibility.CLUB_ADMIN && isClubAdmin(u.get, owner) ||
+                // maybe the club created the parent topic (like forum/blog etc)?
+                props(visibility) == Visibility.CLUB &&
+                  props.get("parentOwner").flatMap(Users.findUserById(_)).exists(parentOwner => isInSameClub(u.get, parentOwner)) ||
+                props(visibility) == Visibility.CLUB &&
+                  we.flatMap(_.wid.findParent.flatMap(_.props.get("owner"))).flatMap(Users.findUserById(_)).exists(parentOwner => isInSameClub(u.get, parentOwner))
+            ) orCorr
+            cNotMember(uname(props.get("owner")))).getOrElse(
+            false))
   }
 
   /**

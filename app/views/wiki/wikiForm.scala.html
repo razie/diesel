@@ -76,7 +76,7 @@ special handlng of forms
 for registration sequences - show prev/next
 *********@
 @regs=@{
-  val clubs = au.toList.flatMap(_.wikis).filter(_.wid.cat=="Club").flatMap(w=>model.Users.findUserByUsername(w.wid.name).toList)
+  val clubs = au.toList.flatMap(_.wikis).filter(_.uwid.cat=="Club").flatMap(w=>model.Users.findUserByUsername(w.uwid.nameOrId).toList)
   clubs.flatMap(c=>model.Regs.findClubUser(c, au.get._id)).filter(_.wids.contains(wid))
 }
 

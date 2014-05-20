@@ -85,7 +85,7 @@ object ModRk extends RazController with Logging {
 
   def t1 = FAU { implicit au => implicit errCollector => implicit request =>
     val members =
-      model.Users.findUserLinksTo(model.WID("Club", au.userName)).map(uw =>
+      model.Users.findUserLinksTo(model.WID("Club", au.userName).uwid.get).map(uw =>
         (model.Users.findUserById(uw.userId),
           uw,
           model.Regs.findClubUserYear(au, uw.userId, controllers.Club(au).curYear))).toList.sortBy(x => x._1.map(y => y.lastName + y.firstName).mkString)

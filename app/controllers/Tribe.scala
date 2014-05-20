@@ -5,18 +5,8 @@ import com.mongodb.WriteResult
 import admin.Audit
 import admin.Config
 import admin.SendEmail
-import model.Api
-import model.DoSec
+import model._
 import model.Sec._
-import model.Enc
-import model.EncUrl
-import model.ParentChild
-import model.RegdEmail
-import model.Registration
-import model.User
-import model.UserTask
-import model.Users
-import model.Wikis
 import play.api.data.Forms.mapping
 import play.api.data.Forms.nonEmptyText
 import play.api.data.Forms.number
@@ -27,15 +17,8 @@ import play.api.mvc.Request
 import play.api.mvc.Action
 import razie.Logging
 import razie.Snakk
-import model.Base64
-import model.Perm
 import admin._
-import model.WID
-import model.UserTasks
-import model.RegStatus
-import model.UserWiki
 import org.bson.types.ObjectId
-import model.Reg
 import com.mongodb.casbah.Imports._
 import org.joda.time.DateTime
 import admin.Audit
@@ -54,10 +37,8 @@ import db.ROne
 import db.RMany
 import db.RCreate
 import db.RDelete
-import model.Tribes
-import model.Stage
-import model.WikiLink
 import razie.clog
+import model.Stage
 
 /** controller for tribes management */
 object Tribe extends RazController with Logging {
@@ -162,7 +143,7 @@ object Tribe extends RazController with Logging {
           ) yield {
             val cat = "Tribe"
           val n = Wikis.formatName(WID(cat, name))
-          Stage("WikiLink", WikiLink(WID(cat, n, club.wid.findId), club.wid, role).grated, auth.get.userName).create
+          Stage("WikiLinkStaged", WikiLinkStaged(WID(cat, n, club.wid.findId), club.wid, role).grated, auth.get.userName).create
           controllers.Wiki.wikieEdit(WID(cat, name, club.wid.findId), 
               s"{{label:$label}}\n{{desc:$desc}}\n{{role:$role}}\n{{year:${club.curYear}}}\n"
             ).apply(request).value.get.get

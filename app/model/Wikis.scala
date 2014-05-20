@@ -47,12 +47,16 @@ object Wikis extends Logging with Validation {
     table.m.find(Map("category" -> category)) map (_.apply("label").toString)
 
   // TODO optimize - cache labels...
-  def label(wid: WID) = /*wid.page map (_.label) orElse*/ 
-    WikiIndex.label(wid.name) orElse (ifind(wid) map (_.apply("label"))) getOrElse wid.name
+  def label(wid: WID):String = /*wid.page map (_.label) orElse*/
+    WikiIndex.label(wid.name) orElse (ifind(wid) flatMap (_.getAs[String]("label"))) getOrElse wid.name
+  def label(wid: UWID):String = /*wid.page map (_.label) orElse*/
+    wid.wid.map(x=>label(x)).getOrElse(wid.nameOrId)
 
   def findById(id: String) = find(new ObjectId(id))
-  def findById(cat:String, id: String) = 
+  def findById(cat:String, id: String) =
     weTable(cat).findOne(Map("_id" -> new ObjectId(id))) map (grater[WikiEntry].asObject(_))
+  def findById(cat:String, id: ObjectId) =
+    weTable(cat).findOne(Map("_id" -> id)) map (grater[WikiEntry].asObject(_))
 
   // TODO optimize
   def find(id: ObjectId) =
@@ -67,6 +71,7 @@ object Wikis extends Logging with Validation {
       weTable(wid.cat).findOne(Map("category" -> wid.cat, "name" -> Wikis.formatName(wid.name)))
 
   def find(wid: WID): Option[WikiEntry] = ifind(wid) map (grater[WikiEntry].asObject(_))
+  def find(uwid: UWID): Option[WikiEntry] = findById(uwid.cat, uwid.id)
 
   def find(category: String, name: String): Option[WikiEntry] = find(WID(category, name))
 
@@ -88,10 +93,10 @@ object Wikis extends Logging with Validation {
   def findAnyOne(name: String) =
     table.findOne(Map("name" -> name)) map (grater[WikiEntry].asObject(_))
 
-  def linkFromName(s: String) = {
-    val a = s.split(":")
-    WikiLink(WID(a(0), a(1)), WID(a(2), a(3)), "?")
-  }
+//  def linkFromName(s: String) = {
+//    val a = s.split(":")
+//    WikiLink(WID(a(0), a(1)), WID(a(2), a(3)), "?")
+//  }
 
   /** cache of categories - updated by the WikiIndex */
   lazy val cats = new collection.mutable.HashMap[String,WikiEntry]() ++
@@ -104,14 +109,14 @@ object Wikis extends Logging with Validation {
   def visibilityFor(cat: String): Seq[String] =
     cats.get(cat).flatMap(_.contentTags.get("visibility")).map(_.split(",").toSeq).getOrElse(Seq("Public"))
 
-  def linksFrom(from: WID) = RMany[WikiLink]("from" -> from.grated)
+  def linksFrom(from: UWID) = RMany[WikiLink]("from" -> from.grated)
 
-  def linksTo(to: WID) = RMany[WikiLink]("to" -> to.grated)
+  def linksTo(to: UWID) = RMany[WikiLink]("to" -> to.grated)
 
-  def linksFrom(from: WID, role: String) =
+  def linksFrom(from: UWID, role: String) =
     RMany[WikiLink]("from" -> from.grated, "how" -> role)
 
-  def linksTo(to: WID, role: String) =
+  def linksTo(to: UWID, role: String) =
     RMany[WikiLink]("to" -> to.grated, "how" -> role)
 
   val MD = "md"

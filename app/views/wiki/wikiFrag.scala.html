@@ -132,7 +132,7 @@ wiki fragment, used in another page
                 | <a href="@routes.Wiki.wikieRename1(wid)">Rename</a>
               }
               @if(au.isDefined && au.get.isActive) {
-                @if(au.get.isLinkedTo(wid)) {
+                @if(au.get.isLinkedTo(we.uwid)) {
                   | <a href="@routes.Wiki.unlinkUser(wid)">@wid.label("Unlike", "Unlike")</a>
                 } else {
                   | <a href="@routes.Wiki.linkUser(wid,false)">@wid.label("Like")</a>
@@ -146,9 +146,11 @@ wiki fragment, used in another page
 
             @wid.cat match {
               case "WikiLink" if(wid.name.startsWith("User:")) => {
-                <br>This link page connects you to
+                <br>This link page connects you to ??? TODO ???
+@**
                 <a href="/wiki/@model.Wikis.linkFromName(wid.name).to.toString">@model.Wikis.linkFromName(wid.name).to.name</a>
                 : you can add some notes by <a href="@routes.Wiki.wikieEdit(page.get.wid)">editing</a> it.
+**@
               }
               case "Category" => {
                 <br>You cannot edit categories.

@@ -37,7 +37,7 @@ included in mainUserC as the right hand side info box
 </ul>
 
 @regs=@{
-  val clubs = user.wikis.filter(_.wid.cat=="Club").flatMap(w=>model.Users.findUserByUsername(w.wid.name).toList)
+  val clubs = user.wikis.filter(_.uwid.cat=="Club").flatMap(w=>model.Users.findUserByUsername(w.uwid.nameOrId).toList)
   clubs.flatMap(c=>model.Regs.findClubUser(c, user._id)).filter(_.regStatus == model.RegStatus.PENDING)
 }
 

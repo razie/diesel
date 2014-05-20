@@ -32,8 +32,8 @@ class WikiWrapper(val wid:WID) extends WWrapper(wid.cat) {
   }.flatMap(_.toList) ++ lfrom ++ lto ++ BADlto))
 
   // TODO optimize
-  protected def lfrom = w.toList.flatMap(realw=>Wikis.linksFrom(realw.wid)).map(x=>new ILink(x.to, x.to.name))
-  protected def lto = w.toList.flatMap(realw=>Wikis.linksTo(realw.wid)).map(x=>new ILink(x.from, x.from.name))
+  protected def lfrom = w.toList.flatMap(realw=>Wikis.linksFrom(realw.uwid)).map(x=>new ILink(x.to.wid.get, x.to.nameOrId))
+  protected def lto = w.toList.flatMap(realw=>Wikis.linksTo(realw.uwid)).map(x=>new ILink(x.from.wid.get, x.from.nameOrId))
   
   // TODO this is like extremely bad !!!
   protected def BADallPages = Wikis.pageNames("Category").flatMap(cat=>Wikis.pageNames(cat).flatMap(name=>Wikis.find(cat, name).toList)).toList

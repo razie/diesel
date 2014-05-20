@@ -41,6 +41,8 @@ case class Club(
   dsl: String = "",
   _id: ObjectId = new ObjectId) extends REntity[Club] {
 
+  def uwid = Wikis.find("Club", userName).get.uwid //todo ensure all clubs have a wiki topic
+
   // optimize access to User object
   lazy val user = oUser.getOrElse(Users.findUserById(userId).get)
   private var oUser: Option[User] = None
@@ -61,7 +63,7 @@ case class Club(
 
   def reg(u: User) = model.Regs.findClubUserYear(user, u._id, curYear)
   def reg(wid: WID) = model.Regs.findWid(wid)
-  def userLinks = model.Users.findUserLinksTo(model.WID("Club", user.userName))
+  def userLinks = model.Users.findUserLinksTo(uwid)
 
   // TODO filter by year as well
   def roleOf(rkId: ObjectId) =
@@ -159,11 +161,12 @@ object Club extends RazController with Logging {
     implicit val errCollector = new VError()
     (for (
       au <- activeUser;
+      uuwid <- WID("Club", au.userName).uwid orErr ("no uwid");
       isClub <- au.isClub orErr ("registrations possible only for a club")
     ) yield {
 
       val members =
-        model.Users.findUserLinksTo(model.WID("Club", au.userName)).map(uw =>
+        model.Users.findUserLinksTo(uuwid).map(uw =>
           (model.Users.findUserById(uw.userId),
             uw,
             model.Regs.findClubUserYear(au, uw.userId, controllers.Club(au).curYear))).toList.sortBy(x => x._1.map(y => y.lastName + y.firstName).mkString)
@@ -241,7 +244,8 @@ object Club extends RazController with Logging {
     (for (
       au <- activeUser;
       isClub <- au.isClub orErr ("registration only for a club");
-      uw <- model.Users.findUserLinksTo(model.WID("Club", au.userName)).find(_._id.toString == uwid);
+      uuwid <- WID("Club", au.userName).uwid orErr ("no uwid");
+      uw <- model.Users.findUserLinksTo(uuwid).find(_._id.toString == uwid);
       u <- uw.user
     ) yield {
       val reg = Club(au).reg(u)
@@ -288,7 +292,8 @@ object Club extends RazController with Logging {
     (for (
       au <- activeUser;
       isClub <- au.isClub orErr ("registration only for a club");
-      olduw <- model.Users.findUserLinksTo(model.WID("Club", au.userName)).find(_._id.toString == uwid);
+      uwid <- WID("Club", au.userName).uwid orErr ("no uwid");
+      olduw <- model.Users.findUserLinksTo(uwid).find(_._id.toString == uwid);
       u <- olduw.user
     ) yield {
       mngUserForm.bindFromRequest.fold(
@@ -296,7 +301,7 @@ object Club extends RazController with Logging {
         {
           case (r, s, p) =>
             olduw.updateRole(r)
-            val uw = model.Users.findUserLinksTo(model.WID("Club", au.userName)).find(_._id.toString == uwid).get
+            val uw = model.Users.findUserLinksTo(uwid).find(_._id.toString == uwid).get
 
             // update the role of the assoc as well
             for (
@@ -323,7 +328,8 @@ object Club extends RazController with Logging {
       au <- activeUser;
       isClub <- au.isClub orErr ("registration only for a club");
       club <- Some(Club(au));
-      uw <- model.Users.findUserLinksTo(model.WID("Club", au.userName)).find(_._id.toString == uwid) orErr ("user is not a member");
+      uuwid <- WID("Club", au.userName).uwid orErr ("no uwid");
+      uw <- model.Users.findUserLinksTo(uuwid).find(_._id.toString == uwid) orErr ("user is not a member");
       u <- uw.user;
       msg <- request.queryString.get("msg") orErr ("no message");
       reg <- club.reg(u) orErr ("no registration record for year... ?")
@@ -343,7 +349,8 @@ object Club extends RazController with Logging {
       au <- activeUser;
       isClub <- au.isClub orErr ("registration only for a club");
       club <- Some(Club(au));
-      uw <- model.Users.findUserLinksTo(model.WID("Club", au.userName)).find(_._id.toString == uwid) orErr ("user is not a member");
+      uuwid <- WID("Club", au.userName).uwid orErr ("no uwid");
+      uw <- model.Users.findUserLinksTo(uuwid).find(_._id.toString == uwid) orErr ("user is not a member");
       u <- uw.user
     ) yield {
       val ooldreg = club.reg(u) //orErr ("no registration record for year... ?")
@@ -390,7 +397,8 @@ object Club extends RazController with Logging {
       c <- Club.findForUser(au);
       form <- c.regForm(role) orErr ("no reg form for role " + role);
       regAdmin <- c.uregAdmin orErr ("no regadmin");
-      uw <- model.Users.findUserLinksTo(model.WID("Club", au.userName)).find(_._id.toString == uwid) orErr ("no uw");
+      uuwid <- WID("Club", au.userName).uwid orErr ("no uwid");
+      uw <- model.Users.findUserLinksTo(uuwid).find(_._id.toString == uwid) orErr ("no uw");
       u <- uw.user orErr ("oops - missing user?");
       reg <- Club(au).reg(u) orCorr ("no registration record for year... ?" -> "did you expire it first?")
     ) yield {
@@ -721,7 +729,9 @@ object Club extends RazController with Logging {
     Club(cname) foreach { club =>
       club.newFollows.foreach { rw =>
         val role = if (how == "Fan") "Fan" else rw.role
-        model.UserWiki(u._id, rw.wid, role).create
+        rw.wid.uwid.foreach {uwid=>
+          model.UserWiki(u._id, rw.wid.uwid.get, role).create
+        }
       }
       club.newTasks.foreach { t => //(name, args)
         razie.clog << "Creating user Task " + t
@@ -776,10 +786,10 @@ object Club extends RazController with Logging {
   // stuff to do 
   def tempChangeYUear {
     // 1. for each user member, create a rka
-    RMany[model.UserWiki]().filter(_.wid.cat == "Club").foreach { uw =>
+    RMany[model.UserWiki]().filter(_.uwid.cat == "Club").foreach { uw =>
       val rk = model.RacerKidz.myself(uw.userId)
       cout << uw
-      val c = controllers.Club(uw.wid.name)
+      val c = controllers.Club(uw.uwid.wid.get.name)
       c.foreach { c =>
         model.RacerKidAssoc(c.userId, rk._id, model.RK.ASSOC_LINK, uw.role, c.userId).create
       }

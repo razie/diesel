@@ -19,7 +19,7 @@ object wix {
   var user: Option[User] = None
   var query: Map[String,String] = Map()
   
-  def isUserRegistered = user exists (u=> page >>> (x=>model.Users.findUserLinksTo(x.wid).toList) exists (_.userId == u._id))
+  def isUserRegistered = user exists (u=> page >>> (x=>model.Users.findUserLinksTo(x.uwid).toList) exists (_.userId == u._id))
     
   /** start xp from the current page */
   def xp = 
@@ -30,7 +30,7 @@ object wix {
   /** start xp from user's pages of given category, i.e. the races he subscribed to */
   def uxp (cat:String) =  
     new XListWrapper(
-      user.toList.flatMap(_.pages(cat)).map { uw => new WikiWrapper(WID(cat, uw.wid.name)) },
+      user.toList.flatMap(_.pages(cat)).map { uw => new WikiWrapper(WID(cat, uw.uwid.nameOrId)) },
       WikiXpSolver)
 
   def countForms = RazMongo("weForm").size

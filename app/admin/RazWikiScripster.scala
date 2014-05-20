@@ -6,7 +6,6 @@
  */
 package admin
 
-import db.RTable
 import model.User
 import model.WikiEntry
 import model.WikiScripster

@@ -101,7 +101,7 @@ object Forms extends WikiBase1 with Logging {
 
     if (WikiDomain.needsOwner(wid.cat)) {
       we = we.cloneProps(we.props ++ Map("owner" -> u.id), u._id)
-      model.UserWiki(u._id, wid, "Owner").create
+      model.UserWiki(u._id, we.uwid, "Owner").create
       //      RazController.cleanAuth()
     }
 

@@ -32,7 +32,7 @@ trait WikiScripster {
   def mk: WikiScripster
 }
 
-/** simple scripts runner - I do customize it further only to setup some context available tothe scripts... */
+/** simple scripts runner - I do customize it further only to setup some context available to the scripts... */
 object WikiScripster {
   var count = 0
   var impl: WikiScripster = new CWikiScripster
@@ -52,7 +52,6 @@ object WikiScripster {
 
     /** run the given script in the context of the given page and user as well as the query map */
     def runScript(s: String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, String]): String = synchronized {
-      import razie.base.scriptingx.ScalaScriptContext;
       import razie.base.scriptingx._
 
       Audit.logdb("WIKI_SCRIPSTER", "exec", s)

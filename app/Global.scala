@@ -95,9 +95,11 @@ object Global extends WithFilters(LoggingFilter) {
   }
 
   override def onRouteRequest(request: RequestHeader): Option[Handler] = {
-    cdebug << ("ROUTE_REQ.START: " + request.toString)
+    if (! request.path.startsWith( "/assets/"))
+      cdebug << ("ROUTE_REQ.START: " + request.toString)
     val res = super.onRouteRequest(request)
-    cdebug << ("ROUTE_REQ.STOP: " + request.toString)
+    if (! request.path.startsWith( "/assets/"))
+      cdebug << ("ROUTE_REQ.STOP: " + request.toString)
     res
   }
 
@@ -114,8 +116,11 @@ object Global extends WithFilters(LoggingFilter) {
     Services.auth = RazAuthService
     Services.config = Config
 
-    Services.mongoDbVer = 14 // normal is one higher than the last one
-    Services.mongoUpgrades = Map(1 -> Upgrade1, 2 -> Upgrade2, 3 -> Upgrade3, 4 -> Upgrade4, 5 -> Upgrade5, 6 -> U6, 7 -> U7, 8 -> U8, 9 -> U9, 10 -> U10, 11 -> U11, 12 ->U12, 13 ->U13)
+    Services.mongoDbVer = 15 // normal is one higher than the last one
+    Services.mongoUpgrades = Map(
+      1 -> Upgrade1, 2 -> Upgrade2, 3 -> Upgrade3, 4 -> Upgrade4, 5 -> Upgrade5,
+      6 -> U6, 7 -> U7, 8 -> U8, 9 -> U9, 10 -> U10, 11 -> U11, 12 -> U12, 13 -> U13,
+      14 -> U14)
 
     Services.mkDb = () => {
       lazy val conn = MongoConnection(admin.Config.mongohost)
@@ -184,7 +189,8 @@ object LoggingFilter extends Filter {
 
   def apply(next: (RequestHeader) => scala.concurrent.Future[SimpleResult])(rh: RequestHeader) = {
     val start = System.currentTimeMillis
-    cdebug << s"LF.START ${rh.method} ${rh.uri}"
+    if (! rh.uri.startsWith( "/assets/"))
+      cdebug << s"LF.START ${rh.method} ${rh.uri}"
     GlobalData.synchronized {
       GlobalData.serving = GlobalData.serving + 1
     }
@@ -198,7 +204,8 @@ object LoggingFilter extends Filter {
 
     def logTime(what: String)(result: PlainResult): Result = {
       val time = System.currentTimeMillis - start
-      clog << s"LF.STOP $what ${rh.method} ${rh.uri} took ${time}ms and returned ${result.header.status}"
+      if (! rh.uri.startsWith( "/assets/"))
+        clog << s"LF.STOP $what ${rh.method} ${rh.uri} took ${time}ms and returned ${result.header.status}"
       served
       result.withHeaders("Request-Time" -> time.toString)
     }

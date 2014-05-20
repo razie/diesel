@@ -31,7 +31,7 @@ import razie.cdebug
 /** a tribe - or user group */
 @db.RTable
 case class Tribe (
-    wid:WID,
+    uwid:UWID,
     wl:WikiLink,
     clubId:ObjectId) {
   cdebug << "TRIBE "+this.toString
@@ -47,6 +47,8 @@ case class Tribe (
     
     def kidz = RMany[RacerWiki]("wid" -> wid.grated)
     def has (rkId:ObjectId) = kidz.exists(_.rkId == rkId)
+
+  def wid = uwid.wid.get
 }
 
 /** tribes */
@@ -60,15 +62,6 @@ object Tribes {
   final val TROLE_EXEC = "Exec"
 
   def findByName(name:String) = RMany[Tribe]("name" -> name)
-  def findByClub(club:Club) = Wikis.linksTo(club.wid,"Child").filter(_.from.cat == "Tribe").map(wl=> new Tribe(wl.from, wl, club.userId))
-
-    //RMany[Tribe]("clubId" -> clubId)
-  def findById(id:ObjectId) = Wikis.findById(id.toString).map(w=> Tribe(w.wid, Wikis.linksFrom(w.wid, "Child").next, id))
-  
-//  def findByUser(userId:String) = RMany[TribeUser]("userId" -> userId)
-//  def findTribesByKid(rkId:String) = RMany[TribeKid]("rkId" -> rkId).flatMap(x=>ROne[Tribe]("_id" -> x.tribeId)).toList.distinct
-
-//  def findClubYear(club:User, year:String) = RMany[Reg]("clubName" -> club.userName, "year" -> year)
-//  def findClubUserYear(club:User, userId:ObjectId, year:String) = ROne[Reg]("clubName" -> club.userName, "userId" -> userId, "year" -> year)
-//  def findClub(club:User) = RMany[Reg]("clubName" -> club.userName)
+  def findByClub(club:Club) = Wikis.linksTo(club.uwid,"Child").filter(_.from.cat == "Tribe").map(wl=> new Tribe(wl.from, wl, club.userId))
+  def findById(id:ObjectId) = Wikis.findById(id.toString).map(w=> Tribe(w.uwid, Wikis.linksFrom(w.uwid, "Child").next, id))
 }

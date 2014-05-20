@@ -29,10 +29,10 @@ msg types are msg, err
 
 <h3>
 @tag match {
-   case "recent" => {Organize <small>recent notes</small>}
-   case "none" => {Organize <small>missing tags</small>}
+   case "recent" => {Organize <small>| recent notes</small>}
+   case "none" => {Organize <small>| missing tags</small>}
    case "all" => {All notes...}
-   case _ if isSearch => {Search results for '@tag'... }
+   case _ if isSearch => {Search <small>| @tag </small> }
    case _ => {
      Tagged <small>@tag.split("/").map {t=>
 |  <a class="h3 small" style="color:#757c82;" href="@routes.NotesLocker.tag(t)">@t</a>

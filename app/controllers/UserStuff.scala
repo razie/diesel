@@ -2,27 +2,20 @@ package controllers
 
 import razie.RString._
 import admin.Audit
-import model.User
-import model.WID
-import model.WikiLink
-import model.WikiWrapper
+import model._
 import play.api.data.Forms._
 import play.api.mvc._
 import play.api._
-import model.WikiXpSolver
 import razie.Snakk
 import scala.util.parsing.combinator.RegexParsers
 import org.joda.time.DateTime
-import model.Wikis
-import model.Users
 import razie.XP
 import razie.XpSolver
 import razie.Snakk._
-import model.WikiParser
-import model.WikiIndex
-import model.ILink
-import model.WikiParser
-import model.WWrapper
+import org.bson.types.ObjectId
+import scala.Some
+import model.WikiLink
+import model.User
 
 class UserStuff (val user:User) {
   lazy val events = UserStuff.events(user)
@@ -51,8 +44,8 @@ object UserStuff extends RazController {
       Action { implicit request => Msg2 ("This user does not have a public profile!") }
 //      Action { implicit request => NotFound ("User not found or profile is private!") }
 
-  def wiki(email: String, cat: String, name: String) =
-    WikiLink(WID("User", email), WID(cat, name), "").page.map(w =>
+  def wiki(id: String, cat: String, name: String) =
+    WikiLink(UWID("User", new ObjectId(id)), WID(cat, name).uwid.get, "").page.map(w =>
         Wiki.show (WID("WikiLink", w.name))
       ).getOrElse(
         Action { implicit request => Redirect (Wiki.w (cat, name)) }
@@ -65,7 +58,7 @@ object UserStuff extends RazController {
    */
   def events(u: User): List[(ILink, String, DateTime, ILink, Snakk.Wrapper[WWrapper])] = {
     val dates = u.pages("Calendar").flatMap{ uw =>
-      val node = new WikiWrapper(WID("Calendar", uw.wid.name))
+      val node = new WikiWrapper(WID("Calendar", uw.uwid.nameOrId))
       val root = new razie.Snakk.Wrapper(node, WikiXpSolver)
 
       // TODO optimize this - lots of lookups...
@@ -87,7 +80,7 @@ object UserStuff extends RazController {
 
   def xp(u: User, cat: String) = {
     new XListWrapper(
-      u.pages(cat).map { uw => new WikiWrapper(WID(cat, uw.wid.name)) },
+      u.pages(cat).map { uw => new WikiWrapper(WID(cat, uw.uwid.nameOrId)) },
       WikiXpSolver)
   }
 
