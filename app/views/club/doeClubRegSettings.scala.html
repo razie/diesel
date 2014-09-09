@@ -1,4 +1,4 @@
-@(myForm: Form[(String, Int, String, String, String, String)], user:model.User)
+@(myForm: Form[(String, Int, String, String)], user:model.User)
 
 @htmlHeadBar("", Some(user))
    
@@ -25,25 +25,13 @@
     '_showConstraints -> false)
   @helper.select(
     myForm("curYear"), 
-     (Range(2014, 2012, -1) map (y=>(y.toString,y.toString))),
+     Range(2021, 2012, -1) map (y=>(y.toString,y.toString)),
     '_label -> "Year for current registration process", 
     'style -> "width: 100px", 
     '_showConstraints -> false)
   @helper.inputText(
     myForm("regAdmin"), 
     '_label -> "Registration moderator's email", 
-    '_showConstraints -> false)
-  @helper.textarea(
-    myForm("regForms"), 
-    '_label -> "Registration Forms (role=WID)", 
-    'class -> "span4",
-    'rows -> 5,
-    '_showConstraints -> false)
-  @helper.textarea(
-    myForm("newFollows"), 
-    '_label -> "newFollows (role=WID)", 
-    'class -> "span4",
-    'rows -> 5,
     '_showConstraints -> false)
   @helper.textarea(
     myForm("dsl"), 

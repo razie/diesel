@@ -103,19 +103,27 @@ debug a wiki page
           <li>@p</li>
         } 
        </ul>
-      </div> 
+      </div>
 
       <div class="well">
         <ul>fields
+          @page.get.fields.map { p=>
+            <li>@p</li>
+          }
+        </ul>
+        <p>
         @page.get.fields.map { p=>
-          <li>@p</li>
+          @p._1,
+        }
+      </div>
+
+      <div class="well">
+        <ul>cache
+        @page.get.cache.map { p=>
+          <li>@p.toString</li>
         } 
        </ul>
-       <p>
-@page.get.fields.map { p=>
-@p._1,
-} 
-      </div> 
+      </div>
 
       <div class="well">
         <ul>cp

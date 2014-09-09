@@ -137,6 +137,10 @@ wiki fragment, used in another page
                 } else {
                   | <a href="@routes.Wiki.linkUser(wid,false)">@wid.label("Like")</a>
                 }
+
+                @if(au.get.isLinkedTo(we.uwid) && we.parent.isDefined) {
+                  | <a href="@routes.Wiki.wikieMove1(we._id.toString)">@wid.label("Move", "Move")</a>
+                }
               }
               @if(au.isEmpty && "Blog" == wid.cat) {
                 | <a href="@routes.Wiki.linkFollower1(wid)"><span style="color:red">Subscribe</span></a>

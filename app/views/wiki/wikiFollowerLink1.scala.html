@@ -22,7 +22,7 @@
 
       <div class="span4">
 
-        @Wiki.moderator(to).map {mu=>
+        @Wiki.moderatorOf(to).map {mu=>
           Note that the @to.cat.toLowerCase is moderated by <a href="@controllers.Wiki.w("User", mu)">@mu</a> - we'll ask for permission!
         }
 

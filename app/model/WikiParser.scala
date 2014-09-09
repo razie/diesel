@@ -6,11 +6,14 @@
  */
 package model
 
+import scala.collection.mutable.ListBuffer
+import scala.util.Try
 import scala.util.matching.Regex.Match
 import scala.util.parsing.combinator.RegexParsers
 import scala.Option.option2Iterable
 import admin.Services
 import scala.collection.mutable
+import model.dom.WikiDomainParser
 
 //import db.RTable
 //import scala.Array.canBuildFrom
@@ -124,7 +127,7 @@ trait ParserCommons extends RegexParsers {
   def CRLF1: P = CRLF2 <~ "RKHABIBIKU" <~ not("""[^a-zA-Z0-9-]""".r) ^^ { case ho => ho + "<br>" } // hack: eol followed by a line - DISABLED
   def CRLF2: P = ("\r\n" | "\n") // normal eol
   //  def CRLF2: P = ("\r\n" | "\n") ^^ {case a => "FIFI" } // normal eol
-  def CRLF3: P = CRLF2 ~ CRLF2 ^^ { case a ~ b => a + b } // an empty line = two eol
+  def CRLF3: P = CRLF2 ~ """[ \t]*""".r ~ CRLF2 ^^ { case a ~ _ ~ b => a + b } // an empty line = two eol
   //  def CRLF3: P = CRLF2 ~ CRLF2 ~ rep(CRLF2) ^^ { case a ~ b ~ c => "\n<p></p>\n" } // an empty line = two eol
   def NADA: P = ""
 
@@ -132,21 +135,68 @@ trait ParserCommons extends RegexParsers {
   def static: P = not("{{") ~> not("[[") ~> not("}}") ~> not("[http") ~> (""".""".r) ~ ("""[^{}\[\]`\r\n]""".r*) ^^ { case a ~ b => a + b.mkString }
 }
 
-/** wiki parser */
-object WikiParser extends ParserCommons with CsvParser {
+/** wiki parser base definitions shared by different wiki parser */
+trait WikiParserBase extends ParserCommons {
+
+  /** collects the result of a parser rule
+    *
+    * @param s the string representation of this section
+    * @param tags the tags collected from this section, will be added to the page's tags
+    * @param ilinks the links to other pages collected in this rule
+    * @param decs other modifiers - allow you to add custom logic
+    */
   case class State(s: String, tags: Map[String, String] = Map(), ilinks: List[ILink] = List(), decs: List[WikiEntry => WikiEntry] = List()) {
     def this(s: String, ilinks: List[ILink]) = this(s, Map(), ilinks)
+
+    // todo make the string lazy to allow composition
     def +(other: State) = State(this.s + other.s, this.tags ++ other.tags, this.ilinks ++ other.ilinks, this.decs ++ other.decs)
   }
+
   implicit def toState(s: String) = State(s)
 
   type PS = Parser[State]
+
+  val moreDotProps = new ListBuffer[PS]()
+  val moreWikiProps = new ListBuffer[PS]()
+
+  // todo half combinators to allow user modules to define new rules
+  def withDotProp  (p:PS) : WikiParserBase = {moreDotProps append p; this }
+  def withWikiProp (p:PS) : WikiParserBase = {moreWikiProps append p; this}
+}
+
+/** the big parser aggregates all little section parsers
+  *
+  * the major patterns recognized are:
+  *
+  * - markdown extensions
+  * - escape most html tags
+  * \[\[link to other wiki page\]\]
+  * \[\[\[link to wikipedia page\]\]\]
+  * {{markup and properties}}
+  * {{{magic markup and properties}}}
+  * .keyword markup   // dot first char
+  * {{xxx multiline markup}}
+  * ...
+  * {{/xxx}}
+  * ::beg multiline markup
+  * ...
+  * ::end
+  *
+  *
+  * Each parsing rule creates a State, which are flattened at the end to both update the WikiEntry as well as create the
+  * String representation of it - so you can be lazy in the State.
+  *
+  * */
+object WikiParser extends WikiParserCls {
+}
+
+class WikiParserCls extends WikiParserBase with CsvParser with WikiDomainParser {
   def apply(input: String) = parseAll(wiki, input) match {
     case Success(value, _) => value
       // don't change this format
     case NoSuccess(msg, next) => (State(s"[[CANNOT PARSE]] [${next.pos.toString}] : ${msg}"))
   }
-  def applys(input: String) = apply(input).s
+//  def applys(input: String) = apply(input).s
 
   /** use this to expand [[xxx]] on the spot */
   def parseW2(input: String) = parseAll(wiki2, input) getOrElse (State("[[CANNOT PARSE]]"))
@@ -172,7 +222,7 @@ object WikiParser extends ParserCommons with CsvParser {
 
   def optline: PS = opt(dotProps | line) ^^ { case o => o.map(identity).getOrElse(State("")) }
 
-  def lines: PS = rep(optline ~ (CRLF1 | CRLF3 | CRLF2)) ~ opt(dotProps | line) ^^ {
+  def lines: PS = rep((domainBlock ~ CRLF2) | (optline ~ (CRLF1 | CRLF3 | CRLF2))) ~ opt(dotProps | line) ^^ {
     case l ~ c =>
       State(
         l.map(t => t._1.s + t._2.s).mkString + c.map(_.s).getOrElse(""),
@@ -180,9 +230,6 @@ object WikiParser extends ParserCommons with CsvParser {
         l.flatMap(_._1.ilinks).toList ++ c.map(_.ilinks).getOrElse(Nil),
         l.flatMap(_._1.decs).toList ++ c.map(_.decs).getOrElse(Nil))
   }
-
-  // knockoff has an issue with lines containing just a space but no line ending
-  def lastLine: PS = ("""^[\s]+$""".r) ^^ { case a => "\n" }
 
   // ======================== static lines - not parsed
 
@@ -312,11 +359,13 @@ object WikiParser extends ParserCommons with CsvParser {
   }
 
   // this is used for contents of a topic
-  private def wikiProps: PS = wikiPropMagic | wikiPropBy | wikiPropWhen | wikiPropXp | wikiPropWhere |
+  private def wikiProps: PS =
+    moreWikiProps.foldLeft(
+    wikiPropMagic | wikiPropBy | wikiPropWhen | wikiPropXp | wikiPropWhere |
     wikiPropLoc | wikiPropRoles | wikiPropAds | wikiPropWidgets | wikiPropCsv | wikiPropCsv2 |
     wikiPropTable | wikiPropSection | wikiPropImg | wikiPropVideo | wikiPropScript | wikiPropCall |
-    wikiPropFiddle | wikiPropCode | wikiPropField | wikiPropRk | wikiProp //| wikiPropNV
-
+    wikiPropFiddle | wikiPropCode | wikiPropField | wikiPropRk | wikiPropLinkImg | wikiPropFeedRss
+    )((x,y) => x | y) | wikiProp
 
   private def wikiPropMagic: PS = "{{{" ~> """[^}]*""".r <~ "}}}" ^^ {
     case value => {
@@ -355,9 +404,10 @@ object WikiParser extends ParserCommons with CsvParser {
         State("""{{Property %s=%s}}""".format(name, value), Map(name -> value))
   }
 
-  private def dotProps: PS = dotPropShare | dotPropAct | dotPropTags | dotPropEmail | dotPropName | dotProp
+  private def dotProps: PS =
+    moreDotProps.foldLeft(dotPropShare | dotPropAct | dotPropTags | dotPropEmail | dotPropName)((x,y) => x | y) | dotProp
 
-  def dotProp: PS = """^\.""".r ~> """[.]?[^: ]+""".r ~ """[: ]""".r ~ """[^\r\n]*""".r ^^ {
+  def dotProp: PS = """^\.""".r ~> """[.]?[^.: ][^: ]+""".r ~ """[: ]""".r ~ """[^\r\n]*""".r ^^ {
     case name ~ _ ~ value =>
       if (name startsWith ".")
         State("", Map(name.substring(1) -> value)) // hidden
@@ -369,7 +419,7 @@ object WikiParser extends ParserCommons with CsvParser {
     case value => State("", Map("inlinetags" -> value)) // hidden
   }
 
-  def dotPropShare: PS = """^\.share """.r ~> """[^\n\r]*""".r  ^^ {
+  def dotPropShare: PS = """^\.shared """.r ~> """[^\n\r]*""".r  ^^ {
     case value => State(s"""<small><font style="color:red;font-weight:bold;">{{Share $value}}</font></small><br>""", Map("share" -> value))
   }
 
@@ -568,7 +618,7 @@ object WikiParser extends ParserCommons with CsvParser {
   }
 
   // to not parse the content, use slines instead of lines
-  def wikiPropSection: PS = "{{" ~> opt(".") ~ """section|template""".r ~ ":" ~ """[^}]*""".r ~ "}}" ~ lines <~ ("{{/section}}" | "{{/template}}") ^^ {
+  def wikiPropSection: PS = "{{" ~> opt(".") ~ """section|template|properties""".r ~ ":" ~ """[^}]*""".r ~ "}}" ~ lines <~ ("{{/section}}" | "{{/template}}" | "{{/properties}}") ^^ {
     case hidden ~ stype ~ _ ~ name ~ _ ~ lines => {
       hidden.map(x => State("")) getOrElse State("`SECTION START {{" + stype + ":" + name + "}}`") + lines + State("`SECTION END`")
     }
@@ -714,6 +764,37 @@ object WikiParser extends ParserCommons with CsvParser {
       CsvHeading("", s, delim, head.map(_.h).getOrElse(List()))
     }
   }
+
+  // todo more humane name
+  def wikiPropLinkImg: PS = "{{link.img" ~ "[: ;]".r ~> """[^ ;}]*""".r ~ "[: ;]".r ~ """[^ ;}]*""".r <~ "}}" ^^ {
+    case url ~ _ ~ link => {
+      s"""<a href="$link"><img src="$url" /></a>"""
+    }
+  }
+
+  // todo more humane name
+  def wikiPropFeedRss: PS = "{{feed.rss" ~ "[: ;]".r ~> """[^ ;}]*""".r <~ "}}" ^^ {
+    case xurl => {
+      import razie.Snakk._
+      val rss  = url (xurl)
+      Try {
+        (for (xn <- xml(scala.xml.XML.loadString(body(rss))) \ "channel" \ "item") yield {
+          val n = xml(xn)
+          // insulate external strings - sometimes the handling of underscore is bad
+          // replace urls with MD markup:
+          def ext(s: String) = s //.replaceAll("""(\s|^)(https?://[^\s]+)""", "$1[$2]")
+
+          val link = ext(n \@ "link")
+          val title = ext(n \@ "title")
+          val desc = ext(n \@ "description")
+          s"""<h3><a href="$link">$title</a></h3><pre>$desc</pre> """
+        }).mkString
+      }
+    }.recover{
+      case e:Throwable => s"Error reading RSS: ${e.getClass.getSimpleName} : ${e.getLocalizedMessage}"
+    }.get
+  }
+
 
   //======================= dates
 
@@ -923,6 +1004,6 @@ Managers|10|Varia
 Board of Directors|2 hours per meeting - +20|Positions Available
 .|.|Secretary for this season and Treasurer for next season (can transition with existing Treasurer this year)
 """
-  println(WikiParser.applys(r1tabbug))
+  println(WikiParser.apply(r1tabbug).s)
 
 }

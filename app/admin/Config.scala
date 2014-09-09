@@ -2,8 +2,7 @@ package admin
 
 import java.util.Properties
 import scala.Option.option2Iterable
-import model.WID
-import model.Wikis
+import model.{WikiConfig, WID, Wikis}
 import scala.collection.mutable.HashMap
 import play.api.mvc.Request
 
@@ -25,6 +24,9 @@ object Config extends WikiConfig {
   final val curYear = "2013"
 
   def darkLight = { razie.NoStaticS.get[controllers.DarkLight] }
+
+  // used in RazAuth
+  val BLACKS = Array("enduroschool.com", "nofolders.net", "coolscala.com", "askicoach.com", "toymakersacademy.com", "racerkidz.com")
 
   def theme = {
     darkLight.map(_.css).orElse(currUser.flatMap(_.css).orElse(

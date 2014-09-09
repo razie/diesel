@@ -61,6 +61,9 @@ club admin manages user: membership, regsitration etc
   } 
 }
 
+@prevReg=@{
+  Club(club.userName).flatMap(c=>model.Regs.findClubUser(c.user, uw.userId).filter(_.regStatus != model.RegStatus.FAMILY).toList.sortBy(_.year).headOption)
+}
 
 </td><td>
   <strong>Registration</strong>
@@ -68,8 +71,17 @@ club admin manages user: membership, regsitration etc
   <p> To start a registration for a member, then <strong>1-Expire</strong> the current registration, then <strong>Add Family</strong> the required Family forms below, then <strong>2-Start</strong>, which
   will also send an email to the member.
   <p>  
-  <a href="@routes.Club.doeClubUwRegstatusupd(uw._id.toString, EXPIRED)" class="btn btn-warning">1 - Expired</a>
-  <a href="@routes.Club.doeClubUwRegstatusupd(uw._id.toString, PENDING)" class="btn btn-warning">2 - Start</a>
+  @prevReg.map{reg=>
+    <a href="@routes.Club.doeClubUwRegstatusupd(uw._id.toString, EXPIRED)" class="btn btn-danger" title="START new registration from scratch!">
+    1 - Expired (NEW)</a>
+    <a href="@routes.Club.doeStartRegCopy(club.userName, reg._id.toString)" class="btn btn-warning" title="COPY previous year's registration!">
+    1 - Expired (COPY)</a>
+  }.getOrElse{
+    <a href="@routes.Club.doeClubUwRegstatusupd(uw._id.toString, EXPIRED)" class="btn btn-warning" title="START new registration from scratch!">
+    1 - Expired (NEW)</a>
+  }
+  <a href="@routes.Club.doeClubUwRegstatusupd(uw._id.toString, PENDING)" class="btn btn-warning" title="send email for member to start the forms">
+    2 - Start</a>
   <p>
   These buttons are used to change the status of the registration - see the legend of statuses at the bottom of this page.
   <p>

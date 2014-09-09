@@ -613,4 +613,25 @@ object U14 extends UpgradeDb with razie.Logging {
   }
 }
 
+// share tag to shared
+object U15 extends UpgradeDb with razie.Logging {
+  import db.RazSalatContext._
+
+  def upgrade(db: MongoDB) {
+    var i = 0;
+
+    withDb(db("weNote")) { implicit t =>
+      for (u <- t;
+           c <- u.getAs[String]("content") if (c.contains(".share "))) {
+        cdebug << "UPGRADING " + t.name + u
+        u.put("content", c.replaceAll(".share ", ".shared "))
+        t.save(u)
+        i = i+1
+      }
+    }
+
+    clog < s"UPGRADED $i entries"
+  }
+}
+
 

@@ -6,44 +6,19 @@
  */
 package model
 
-import com.novus.salat._
-import com.novus.salat.annotations._
 import com.mongodb.casbah.Imports._
-import org.joda.time.DateTime
-import scala.util.parsing.combinator.RegexParsers
-import db.RTable
 import razie.base.data.TripleIdx
 import scala.collection.mutable.HashMap
 
-/** 3 tuple indexed map */
-class NewTripleIdx[A, B, C] extends TripleIdx[A, B, C] {
-  def find(f: (A, B, C) => Boolean): Option[(A, B, C)] = {
-    for (a <- idx; x <- a._2)
-      if (f(a._1, x._1, x._2))
-        return Some((a._1, x._1, x._2))
-    None
-  }
-
-  def foreach(f: (A, B, C) => Unit): Unit = {
-    for (a <- idx; x <- a._2)
-      f(a._1, x._1, x._2)
-  }
-
-  def map[R](f: (A, B, C) => R): Seq[R] = {
-    (for (a <- idx; x <- a._2)
-      yield f(a._1, x._1, x._2)).toList
-  }
-}
-
 /** the index is (name, WID, ID) */
-object WikiIndex {
+class WikiIndex (val realm:String) {
   case class PEntry(ilinks: List[ILink])
   private val parsed = scala.collection.mutable.Map[ObjectId, PEntry]()
 
   /** the index is (name, WID, ID) */
-  def withIndex[A](f: NewTripleIdx[String, WID, ObjectId] => A) = {
+  def withIndex[A](f: TripleIdx[String, WID, ObjectId] => A) = {
     synchronized {
-      f(WikiIndex.actualIndex)
+      f(actualIndex)
     }
   }
 
@@ -51,9 +26,9 @@ object WikiIndex {
   private val labels = HashMap[String, String]() // quick label lookup
 
   private lazy val actualIndex = {
-    val t = new NewTripleIdx[String, WID, ObjectId]()
+    val t = new TripleIdx[String, WID, ObjectId]()
     // load it the first time
-    Wikis.table.find(Map()).foreach { db =>
+    Wikis(realm).foreach { db =>
       val w = WID(
         db.as[String]("category"),
         db.as[String]("name"),
@@ -129,4 +104,14 @@ object WikiIndex {
       idx.get1k(k(r)).headOption
     } else None
   }
+}
+/** the index is (name, WID, ID) */
+object WikiIndex {
+  /** the index is (name, WID, ID) */
+  def withIndex[A](realm:String=Wikis.DFLT)(f: TripleIdx[String, WID, ObjectId] => A) =
+    Wikis(realm).index.withIndex(f)
+
+  /** @deprecated the index is (name, WID, ID) */
+  def withIndex[A](f: TripleIdx[String, WID, ObjectId] => A) =
+    Wikis(Wikis.DFLT).index.withIndex(f)
 }

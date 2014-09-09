@@ -96,7 +96,7 @@ object WG extends Logging {
     lazy val tosg = new gg.SGraphLike[WNode, String](this)
 
     def tojmap = {
-      var s = new ListBuffer[Any]()
+      val s = new ListBuffer[Any]()
       tosg.dag.foreachNode(
         (x: gg.SNode[WNode, String], v: Int) => {
           s append Map(

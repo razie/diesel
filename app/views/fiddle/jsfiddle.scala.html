@@ -98,7 +98,9 @@ $('#sform_'+@id).hide();
 
 @hh() = @{
    args.get("libs").toList.flatMap(_.split(";")).map {
-      case ("raphael") => """<scrRAZipt src="/assets/vendor/raphael.js"></scrRAZipt>"""
+      case ("raphael") =>
+        """<scrRAZipt src="/assets/vendor/raphael.js"></scrRAZipt><scrRAZipt src="/assets/vendor/axis.js"></scrRAZipt>""".stripMargin
+
    }.mkString("\n")
 
 }

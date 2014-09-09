@@ -14,11 +14,11 @@ import db.RazSalatContext._
 import db.RTable
 import com.tristanhunt.knockoff.DefaultDiscounter.knockoff
 import com.tristanhunt.knockoff.DefaultDiscounter.toXHTML
+import model.WikiConfig
 import razie.base.scriptingx.ScalaScript
-import admin.WikiConfig
 import razie.cout
 import razie.Logging
-import admin.VError
+import admin.VErrors
 import admin.Validation
 import admin.Audit
 import admin.Services

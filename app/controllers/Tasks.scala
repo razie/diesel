@@ -75,7 +75,7 @@ object Tasks extends RazController with Logging {
 
   // step 2 - filled parent email, now creating child user and send email to parent
   def addParent2 = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
     def ERR = {
       error("ERR_CANT_UPDATE_USER.addParent2 " + session.get("email"))
       Unauthorized("Oops - cannot update this user [addParent2]... " + errCollector.mkString)
@@ -165,7 +165,7 @@ object Tasks extends RazController with Logging {
 
   /** step 3 - parent clicked on email link to add child */
   def addParent3(expiry1: String, parentEmail: String, childEmail: String, childId: String) = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
     (expiry1, parentEmail, childEmail, childId) match {
       case (Enc(expiry), pe, ce, cid) => {
         for (
@@ -208,7 +208,7 @@ Please read our [[Terms of Service]] as well as our [[Privacy Policy]]
 
   /** step 1 - send verification email */
   def verifyEmail1 = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
     def ERR = {
       error("ERR_CANT_UPDATE_USER.verifyEmail1 " + session.get("email"))
       Unauthorized("Oops - cannot update this user....verifyEmail1 " + errCollector.mkString)
@@ -298,7 +298,7 @@ Ok - we sent an email to your registered email address <font style="color:red">$
 
   /** step 2 - user clicked on email link to verify email */
   def verifiedEmail(expiry1: String, email: String, id: String, user: Option[User])(implicit request: Request[_]) = {
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
     (expiry1, email, id) match {
       case (Enc(expiry), ce, cid) => {
         for (

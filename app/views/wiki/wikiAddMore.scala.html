@@ -43,15 +43,19 @@ fragment: add more stuff to the current topic, including children, sub-topics et
           }
         }
 
-        @if(!page.exists(_.contentTags.contains("nochildposts")) && model.Wikis.linksTo(page.get.uwid,"Child").filter(_.from.cat == child).size > 0) {
-        <div class="well">
-          @child (ren) :
-          <ul>
-          @model.Wikis.linksTo(page.get.uwid,"Child").filter(_.from.cat == child).toList.reverse.take(200).sortWith((a,b)=>b.crDtm.isBefore(a.crDtm)).map(_.from).map { p=>
-            <li><a href="@controllers.Wiki.w(p)">@model.Wikis.label(p)</a>
-          } 
-         </ul>
-        </div> 
+    @if(!page.exists(_.contentTags.contains("nochildposts"))) {
+      @defining(model.Wikis.linksTo(page.get.uwid,"Child").filter(_.from.cat == child).toList) { kids =>
+        @if(kids.size > 0) {
+          <div class="well">
+            @child (s) :
+            <ul>
+            @kids.reverse.take(200).sortWith((a,b)=>b.crDtm.isBefore(a.crDtm)).map(_.from).map { p=>
+              <li><a href="@controllers.Wiki.w(p)">@model.Wikis.label(p)</a>
+            }
+            </ul>
+          </div>
         }
-      } 
+      }
     }
+  }
+}

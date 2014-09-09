@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<module external.linked.project.path="C:\cygwin\home\razvanc\w\racerkidz" external.root.project.path="$MODULE_DIR$" external.system.id="SBT" type="JAVA_MODULE" version="4">
+<module type="JAVA_MODULE" version="4">
   <component name="EclipseModuleManager">
     <libelement value="jar://$MODULE_DIR$/lib_managed/jars/com.typesafe.play/play_2.10/play_2.10-2.2.2.jar!/" />
     <libelement value="jar://$MODULE_DIR$/lib_managed/jars/com.typesafe.play/sbt-link/sbt-link-2.2.2.jar!/" />
@@ -147,6 +147,23 @@
       <sourceFolder url="file://$MODULE_DIR$/target/scala-2.10/resource_managed/main" type="java-resource" />
       <sourceFolder url="file://$MODULE_DIR$/target/scala-2.10/resource_managed/test" type="java-test-resource" />
       <sourceFolder url="file://$MODULE_DIR$/test/resources" type="java-test-resource" />
+      <sourceFolder url="file://$MODULE_DIR$/modules/wiki/app" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/modules/wcommon/app" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/public" type="java-resource" />
+      <excludeFolder url="file://$MODULE_DIR$/.settings" />
+      <excludeFolder url="file://$MODULE_DIR$/.target" />
+      <excludeFolder url="file://$MODULE_DIR$/application.home_IS_UNDEFINED" />
+      <excludeFolder url="file://$MODULE_DIR$/bin" />
+      <excludeFolder url="file://$MODULE_DIR$/data" />
+      <excludeFolder url="file://$MODULE_DIR$/db" />
+      <excludeFolder url="file://$MODULE_DIR$/ilp1" />
+      <excludeFolder url="file://$MODULE_DIR$/logs" />
+      <excludeFolder url="file://$MODULE_DIR$/modules/wcommon/target" />
+      <excludeFolder url="file://$MODULE_DIR$/project/target" />
+      <excludeFolder url="file://$MODULE_DIR$/rk-backups" />
+      <excludeFolder url="file://$MODULE_DIR$/saved" />
+      <excludeFolder url="file://$MODULE_DIR$/target" />
+      <excludeFolder url="file://$MODULE_DIR$/temp" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />

@@ -1,7 +1,7 @@
 package controllers
 
 import org.bson.types.ObjectId
-import admin.VError
+import admin.VErrors
 import model.Perm
 import model.User
 import model._
@@ -20,7 +20,7 @@ object Comment extends RazController with Logging {
 
   /** add a comment **/
   def add(topicId: String, what: String, oid: String) = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
     commentForm.bindFromRequest.fold(
       formWithErrors =>
         Msg2(formWithErrors.toString + "Hein?", Some(routes.Wiki.showId(topicId).url)),
@@ -33,7 +33,7 @@ object Comment extends RazController with Logging {
   
   /** add a comment **/
   private def iadd(topicId: String, kind: String, oid: String, link:Option[String], content: String) = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
     (for (
       au <- activeUser;
       w <- Wikis.findById(topicId) orErr "Wiki topic not found"
@@ -60,7 +60,7 @@ object Comment extends RazController with Logging {
   }
 
   def reply(topicId: String, what: String, replyId: String, oid: String) = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
     commentForm.bindFromRequest.fold(
       formWithErrors =>
         Msg2(formWithErrors.toString + "Hein?", Some("/wiki/id/" + topicId)),
@@ -94,7 +94,7 @@ object Comment extends RazController with Logging {
   }
 
   def edit(wid: WID, cid: String) = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
 
     (for (
       au <- activeUser;
@@ -108,7 +108,7 @@ object Comment extends RazController with Logging {
   }
 
   def save(wid: WID, cid: String, kind: String) = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
     commentForm.bindFromRequest.fold(
       formWithErrors => {
         log(formWithErrors.toString)
@@ -149,7 +149,7 @@ object Comment extends RazController with Logging {
 
   /** start to add a video/photo comment **/
   def vComment1(cat:String, topic: String, what: String, oid: String, kind: String) = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
     (for (
       au <- activeUser;
       w <- Wikis.findById(cat,topic) orErr "Wiki topic not found"

@@ -1,0 +1,46 @@
+@**************
+show/edit/capture a note
+
+msg types are msg, err
+**************@
+@(tag:String, we:model.WikiEntry, tags:controllers.NotesLocker.Tags, msg:Seq[(String,String)], au:Option[model.User], isSearch:Boolean=false)(implicit request:Request[_])
+@import model.dom.DOM
+
+@frup(au)
+
+<h3>
+Domain <small>| playground</small>
+@notesmsg(msg, au)
+</h3>
+
+  <div class="well well-small" style="border-radius:9px; margin-bottom:10px;">
+
+   <p><a href="@routes.DomC.domj(we._id.toString)">json</a></p>
+
+  @DOM(we).fold(Html("no DOMain...?")) {d =>
+    <ul>
+      classes: @d.classes.map{c=>
+      <li>@c._1 <small>@c._2.toString</small></li>
+      }
+    </ul>
+    <ul>
+      objects: @d.objects.map{c=>
+        <li>@c._1 <small>@c._2.toString</small></li>
+      }
+    </ul>
+  }
+
+  <p>@Html(model.Wikis.format(we.wid, we.markup, we.content, Some(we)))</p>
+
+    <p>
+    @if(au.exists(_.hasPerm(model.Perm.adminDb))) {
+      | <a href="@routes.Wiki.wikieDebug(we.wid)"><em>debug</em></a>
+    }
+    </p>
+
+  @wiki.wikiFragExtras(au,Some(we))
+
+   </div>
+
+@frdown(if(isSearch) "" else tag, tags, au)
+

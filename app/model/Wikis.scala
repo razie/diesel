@@ -7,32 +7,58 @@
 package model
 
 import com.mongodb.casbah.Imports._
-import admin.Audit
+//import admin.Audit
 import com.novus.salat._
 import com.novus.salat.annotations._
 import db.RazSalatContext._
-import db.RTable
-import com.tristanhunt.knockoff.DefaultDiscounter.knockoff
-import com.tristanhunt.knockoff.DefaultDiscounter.toXHTML
-import razie.base.scriptingx.ScalaScript
-import admin.WikiConfig
-import razie.cout
+//import db.RTable
+//import com.tristanhunt.knockoff.DefaultDiscounter.knockoff
+//import com.tristanhunt.knockoff.DefaultDiscounter.toXHTML
+//import razie.base.scriptingx.ScalaScript
+//import razie.cout
 import razie.Logging
-import admin.VError
+import admin.VErrors
 import admin.Validation
 import db.RMany
 import admin.Audit
 import admin.Services
 import db.RazMongo
 
+/** a wiki */
+class WikiInst (val realm:String) {
+  val domain : WikiDomain = new WikiDomain (realm)
+  val index : WikiIndex = new WikiIndex (realm)
+
+  /** cache of categories - updated by the WikiIndex */
+  lazy val cats = new collection.mutable.HashMap[String,WikiEntry]() ++
+    (RMany[WikiEntry]("category" -> "Category") map (w=>(w.name,w)))
+
+  def table = RazMongo(Wikis.TABLE_NAME)
+
+  def foreach (f:DBObject => Unit) {table find(Map()) foreach f}
+}
+
 /** wiki factory and utils */
 object Wikis extends Logging with Validation {
   final val PERSISTED = Array("Item", "Event", "Training", "Note", "Entry", "Form")
-  
+
   lazy val TABLE_NAME = "WikiEntry"
+
+  lazy val DFLT = "rk"
+
+  // all wiki instances
+  lazy val wikis = {
+    val res = new collection.mutable.HashMap[String,WikiInst]()
+    res.put (DFLT, new WikiInst(DFLT))
+    res
+  }
+
+  def apply (realm:String = DFLT) = wikis(realm)
+  def apply (wid:WID) = wikis(wid.getRealm)
   
   def weTable(cat: String) = if (PERSISTED contains cat) RazMongo("we"+cat) else table
   def weTables(cat: String) = if (PERSISTED contains cat) ("we"+cat) else TABLE_NAME
+  def table (realm:String) = RazMongo(TABLE_NAME)
   def table = RazMongo(TABLE_NAME)
 
   def fromGrated[T <: AnyRef](o: DBObject)(implicit m: Manifest[T]) = grater[T](ctx, m).asObject(o)
@@ -48,13 +74,15 @@ object Wikis extends Logging with Validation {
 
   // TODO optimize - cache labels...
   def label(wid: WID):String = /*wid.page map (_.label) orElse*/
-    WikiIndex.label(wid.name) orElse (ifind(wid) flatMap (_.getAs[String]("label"))) getOrElse wid.name
+    apply(DFLT).index.label(wid.name) orElse (ifind(wid) flatMap (_.getAs[String]("label"))) getOrElse wid.name
+
   def label(wid: UWID):String = /*wid.page map (_.label) orElse*/
     wid.wid.map(x=>label(x)).getOrElse(wid.nameOrId)
 
   def findById(id: String) = find(new ObjectId(id))
   def findById(cat:String, id: String) =
     weTable(cat).findOne(Map("_id" -> new ObjectId(id))) map (grater[WikiEntry].asObject(_))
+
   def findById(cat:String, id: ObjectId) =
     weTable(cat).findOne(Map("_id" -> id)) map (grater[WikiEntry].asObject(_))
 
@@ -146,7 +174,7 @@ object Wikis extends Logging with Validation {
     val name = Wikis.formatName(wid.name)
     val title = hover.map("title=\"" + _ + "\"") getOrElse ("")
 
-    val bigName = WikiIndex.getForLower(name.toLowerCase())
+    val bigName = apply(wid.getRealm).index.getForLower(name.toLowerCase())
     if (bigName.isDefined || wid.cat.matches("User")) {
       var newwid = wid.copy(name=bigName.get)
       var u = Services.config.urlmap("/wiki/%s".format(newwid.formatted.wpath))
@@ -172,7 +200,7 @@ object Wikis extends Logging with Validation {
     else None
   }
 
-  private def include(c2: String)(implicit errCollector: VError): Option[String] = {
+  private def include(c2: String)(implicit errCollector: VErrors): Option[String] = {
     var done = false
     val res = try {
       val INCLUDE = """(?<!`)\[\[include:([^\]]*)\]\]""".r
@@ -195,10 +223,13 @@ object Wikis extends Logging with Validation {
     if (done) Some(res) else None
   }
 
+  /** this is the actual parser to use - combine your own and set it here in Global */
+  var wparser : String => WikiParser.State = WikiParser.apply
+
   // TODO better escaping of all url chars in wiki name
   def preprocess(wid: WID, markup: String, content: String) = markup match {
     case MD =>
-      implicit val errCollector = new VError()
+      implicit val errCollector = new VErrors()
       
       // replace urls with MD markup:
       var c2 = content.replaceAll("""(\s|^)(https?://[^\s]+)""", "$1[$2]")
@@ -216,7 +247,7 @@ object Wikis extends Logging with Validation {
       }
 
       (for (
-        s @ WikiParser.State(a0, tags, ilinks, decs) <- Some(WikiParser(c2))
+        s @ WikiParser.State(a0, tags, ilinks, decs) <- Some(wparser(c2))
       ) yield s) getOrElse WikiParser.State("")
     case TEXT => WikiParser.State(content.replaceAll("""\[\[([^]]*)\]\]""", """[[\(1\)]]"""))
     case _ => WikiParser.State("UNKNOWN MARKUP " + markup + " - " + content)
@@ -224,7 +255,7 @@ object Wikis extends Logging with Validation {
 
   /** main formatting function */
   private def format1(wid: WID, markup: String, icontent: String, we: Option[WikiEntry] = None) = {
-    var res = try {
+    val res = try {
       var content = we.map(_.preprocessed).getOrElse(preprocess(wid, markup, noporn(icontent))).s
       // TODO index noporn when saving/loading page, in the WikiIndex
       // TODO have a pre-processed and formatted page index I can use - for non-scripted pages, refreshed on save
@@ -309,7 +340,8 @@ object Wikis extends Logging with Validation {
         !s.startsWith("www.racerkidz.com") &&
         !s.startsWith("www.enduroschool.com") &&
         !s.startsWith("www.nofolders.net") &&
-        !s.startsWith("www.askicoach.com")
+        !s.startsWith("www.askicoach.com") &&
+        !s.startsWith("www.coolscala.com")
         ))
         Some("""$1$2 title="External site"><i>$3</i><sup>&nbsp;<b style="color:darkred">^^</b></sup>$4""")
       else None
@@ -363,7 +395,9 @@ object Wikis extends Logging with Validation {
 }
 
 /** encapsulates the knowledge to use the wiki-defined domain model */
-object WikiDomain {
+class WikiDomain (realm:String) {
+
+  //todo load it
 
   // get all zends as List (to, role)
   def gzEnds(aEnd: String) =
@@ -404,3 +438,8 @@ object WikiDomain {
 
   def labelFor(wid: WID, action: String) = Wikis.category(wid.cat) flatMap (_.contentTags.get("label." + action))
 }
+
+object WikiDomain extends WikiDomain ("rk") {
+
+}
+

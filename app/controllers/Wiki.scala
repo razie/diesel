@@ -9,9 +9,6 @@ package controllers
 import scala.Array.canBuildFrom
 import org.joda.time.DateTime
 import com.mongodb.DBObject
-import com.mongodb.casbah.Imports.map2MongoDBObject
-import com.mongodb.casbah.Imports.wrapDBObj
-import com.novus.salat.grater
 import admin._
 import model._
 import db.RazMongo
@@ -22,35 +19,27 @@ import play.api.data.Forms.mapping
 import play.api.data.Forms.nonEmptyText
 import play.api.data.Forms.text
 import play.api.data.Forms.tuple
-import play.api.libs.json.Json
 import play.api.mvc.{AnyContent, Action, Request}
-import razie.Logging
-import razie.cout
+import razie.{cout, Logging, clog}
 import db.ROne
 import db.RMany
-import razie.clog
-import scala.Some
-import scala.Some
 import model.WikiAudit
 import model.WikiEntryOld
 import model.WikiLink
 import model.CMDWID
-import model.UserWiki
-import model.User
-import model.Stage
 
 /** reused in other controllers */
 class WikiBase1 extends RazController with Logging with WikiAuthorization {
   /** yeah, I hate myself - happy? */
   var authImpl: WikiAuthorization = new NoWikiAuthorization
 
-  def isVisible(u: Option[WikiUser], props: Map[String, String], visibility: String = "visibility", we: Option[WikiEntry] = None)(implicit errCollector: VError = IgnoreErrors): Boolean =
+  def isVisible(u: Option[WikiUser], props: Map[String, String], visibility: String = "visibility", we: Option[WikiEntry] = None)(implicit errCollector: VErrors = IgnoreErrors): Boolean =
     authImpl.isVisible(u, props, visibility)(errCollector)
 
-  def canSee(wid: WID, au: Option[WikiUser], w: Option[WikiEntry])(implicit errCollector: VError): Option[Boolean] =
+  def canSee(wid: WID, au: Option[WikiUser], w: Option[WikiEntry])(implicit errCollector: VErrors): Option[Boolean] =
     authImpl.canSee(wid, au, w)(errCollector)
 
-  def canEdit(wid: WID, u: Option[WikiUser], w: Option[WikiEntry], props: Option[Map[String, String]] = None)(implicit errCollector: VError): Option[Boolean] =
+  def canEdit(wid: WID, u: Option[WikiUser], w: Option[WikiEntry], props: Option[Map[String, String]] = None)(implicit errCollector: VErrors): Option[Boolean] =
     authImpl.canEdit(wid, u, w, props)(errCollector)
 
 }
@@ -112,11 +101,11 @@ class WikiBase extends WikiBase1 {
   }
 
   // profile
-  val renameForm = Form {
+  def renameForm(realm:String) = Form {
     tuple(
       "oldlabel" -> text.verifying("Obscenity filter", !Wikis.hasporn(_)).verifying("Invalid characters", vldSpec(_)),
       "newlabel" -> text.verifying("Obscenity filter", !Wikis.hasporn(_)).verifying("Invalid characters", vldSpec(_))) verifying
-      ("Name already in use", { t: (String, String) => !WikiIndex.containsName(Wikis.formatName(t._2))
+      ("Name already in use", { t: (String, String) => !Wikis(realm).index.containsName(Wikis.formatName(t._2))
       })
   }
 }
@@ -136,7 +125,7 @@ object Wiki extends WikiBase {
 
   /** when no pages found in 'any', i captured 'cat' in a form */
   def edit2 = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
     (for (
       cat <- request.queryString("cat").headOption;
       name <- request.queryString("name").headOption
@@ -148,7 +137,8 @@ object Wiki extends WikiBase {
 
   /** serve page for edit */
   def wikieEdit(wid: WID, icontent: String = "") = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
+
     val n = Wikis.formatName(wid)
 
     debug("wikieEdit " + wid)
@@ -207,7 +197,7 @@ object Wiki extends WikiBase {
 
   /** save an edited wiki - either new or updated */
   def save(wid: WID) = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
 
     editForm.bindFromRequest.fold(
       formWithErrors => {
@@ -439,7 +429,7 @@ object Wiki extends WikiBase {
    * show an older version of a page
    *  TODO is this authorized?
    */
-  def showWidVer(cw: CMDWID, ver: Int) = Action { implicit request =>
+  def showWidVer(cw: CMDWID, ver: Int, realm:String="rk") = Action { implicit request =>
     val wid = cw.wid.get
     ROne[WikiEntryOld]("entry.category" -> wid.cat, "entry.name" -> wid.name, "entry.ver" -> ver).map { p =>
       wikiPage(wid, Some(wid.name), Some(p.entry), false, false)(auth, request)
@@ -452,7 +442,7 @@ object Wiki extends WikiBase {
    * show conetnt of current version
    *  TODO is this authorized?
    */
-  def showWidContent(cw: CMDWID) = Action { implicit request =>
+  def showWidContent(cw: CMDWID, realm:String="rk") = Action { implicit request =>
     val wid = cw.wid.get
     wid.page.map { p =>
       Ok(p.content)
@@ -465,7 +455,7 @@ object Wiki extends WikiBase {
    * show conetnt of current version
    *  TODO is this authorized?
    */
-  def showWidContentVer(cw: CMDWID, ver: Int) = Action { implicit request =>
+  def showWidContentVer(cw: CMDWID, ver: Int, realm:String="rk") = Action { implicit request =>
     val wid = cw.wid.get
     ROne[WikiEntryOld]("entry.category" -> wid.cat, "entry.name" -> wid.name, "entry.ver" -> ver).map { p =>
       Ok(p.entry.content)
@@ -510,10 +500,10 @@ object Wiki extends WikiBase {
   }
 
   /** show a page */
-  def printWid(cw: CMDWID) = show(cw.wid.get, 0, true)
+  def printWid(cw: CMDWID, realm:String="rk") = show(cw.wid.get, 0, true)
 
   /** POST against a page - perhaps a trackback */
-  def postWid(wp: String) = Action { implicit request =>
+  def postWid(wp: String, realm:String) = Action { implicit request =>
     //    if (model.BannedIps isBanned request.headers.get("X-FORWARDED-HOST")) {
     //      admin.Audit.logdb("POST-BANNED", List("request:" + request.toString, "headers:" + request.headers, "body:" + request.body).mkString("<br>"))
     //      Ok("")
@@ -524,12 +514,12 @@ object Wiki extends WikiBase {
     //    }
   }
 
-  def show1(cat: String, name: String) = show(WID(cat, name))
-  def showId(id: String) = Action { implicit request =>
+  def show1(cat: String, name: String, realm:String) = show(WID(cat, name))
+  def showId(id: String, realm:String) = Action { implicit request =>
     (for (w <- Wikis.findById(id)) yield Redirect(controllers.Wiki.w(w.category, w.name))) getOrElse Msg2("Oops - id not found")
   }
 
-  def w(we: UWID):String = w(we.wid.get)
+  def w(we: UWID):String = we.wid.map(wid=>w(wid)).getOrElse("ERR_NO_URL_FOR_"+we.toString)
   def w(we: WID, shouldCount: Boolean = true):String = Config.urlmap(we.urlRelative + (if (!shouldCount) "?count=0" else ""))
 
   def w(cat: String, name: String) =
@@ -545,7 +535,7 @@ object Wiki extends WikiBase {
   def wikieShow(iwid: WID, count: Int = 0) = show(iwid, count)
 
   def show(iwid: WID, count: Int = 0, print: Boolean = false): Action[AnyContent] = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
     implicit val au = auth
 
     val shouldNotCount = (request.flash.get("count").exists("0" == _) || (count == 0) ||
@@ -647,7 +637,7 @@ object Wiki extends WikiBase {
   }
 
   def wikieDebug(iwid: WID) = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
 
     val cat = iwid.cat
     val name = Wikis.formatName(iwid)
@@ -657,12 +647,12 @@ object Wiki extends WikiBase {
     razie.NoStaticS.put(model.QueryParms(request.queryString))
 
     Wikis.find(cat, name) match {
-      case x @ Some(w) if (!canSee(wid, auth, x).getOrElse(false)) => noPerm(wid, "DEBUG")
+      case x @ Some(w) if !canSee(wid, auth, x).getOrElse(false) => noPerm(wid, "DEBUG")
       case y @ _ => Ok(views.html.wiki.wikiDebug(wid, Some(iwid.name), y, auth))
     }
   }
 
-  def all(cat: String) = Action { implicit request =>
+  def all(cat: String, realm:String="rk") = Action { implicit request =>
     Ok(views.html.wiki.wikiAll(cat, auth))
   }
 
@@ -671,9 +661,8 @@ object Wiki extends WikiBase {
       case Some(user) =>
         Ok(views.html.wiki.wikiReport(wid, reportForm.fill(ReportWiki("")), auth))
       case None => {
-        Audit.auth("need logged in to report a wiki")
+        clog << "need logged in to report a wiki"
         val msg = "You need to be logged in to report a page! If you really must, please create a support request at the bottom of this page..."
-        //would audit again ERR_? Oops("You need to be logged in to report a page! If you really must, please create a support request at the bottom of this page...", wid)
         Ok(views.html.util.utilErr(msg, controllers.Wiki.w(wid), auth))
       }
     }
@@ -726,7 +715,7 @@ object Wiki extends WikiBase {
 
   /** user unlikes page */
   def unlinkUser(wid: WID, really: String = "n") = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
     (for (
       au <- activeUser;
       uwid <- wid.uwid orErr ("can't find uwid");
@@ -757,7 +746,7 @@ object Wiki extends WikiBase {
 
   /** user 'likes' page - link the current user to the page */
   def linkUser(wid: WID, withComment: Boolean = false) = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
     (for (
       au <- activeUser;
     hasuwid <- wid.uwid.isDefined orErr ("can't find uwid");
@@ -786,7 +775,7 @@ object Wiki extends WikiBase {
 
   /** NEW user 'likes' page - link the current user to the page */
   def linkFollower1(wid: WID) = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
     if (auth.isDefined) Redirect(routes.Wiki.linkUser(wid, false))
     else {
       (for (
@@ -803,7 +792,7 @@ object Wiki extends WikiBase {
   /** send email to confirm following */
   def linkFollower2(wid: WID) = Action { implicit request =>
 
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
 
     followerLinkForm.bindFromRequest.fold(
       formWithErrors => BadRequest(views.html.wiki.wikiFollowerLink1(wid, 21, formWithErrors)),
@@ -837,7 +826,7 @@ object Wiki extends WikiBase {
 
   /** clicked confirm in the email -> so follow */
   def linkFollower3(expiry: String, email: String, comment: String, wid: WID) = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
 
     (for (
       exists <- wid.page.isDefined orErr ("Cannot link to " + wid.name);
@@ -871,7 +860,7 @@ object Wiki extends WikiBase {
   }
 
   def unlinkFollower4(expiry: String, email: String, wid: WID) = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
 
     (for (
       exists <- wid.page.isDefined orErr ("Cannot link to " + wid.name);
@@ -891,7 +880,7 @@ object Wiki extends WikiBase {
     }
   }
 
-  def moderator(wid: WID) = Wikis.find(wid).flatMap(_.contentTags.get("moderator"))
+  def moderatorOf(wid: WID) = Wikis.find(wid).flatMap(_.contentTags.get("moderator"))
 
   def linked(fromCat: String, fromName: String, toCat: String, toName: String, withComment: Boolean) = {
     if ("User" == fromCat) linkedUser(fromName, WID(toCat, toName), withComment)
@@ -914,9 +903,9 @@ object Wiki extends WikiBase {
     cleanAuth(Some(au))
   }
 
-  // link a user for moderated club was approved
-  def linkAccept(expiry: String, userId: String, club: String, how: String) = Action { implicit request =>
-    implicit val errCollector = new VError()
+  // link a user for moderated club was approved by moderator
+  def linkAccept (expiry: String, userId: String, club: String, how: String) = Action { implicit request =>
+    implicit val errCollector = new VErrors()
 
     def hows = {
       Wikis.category("Club").flatMap(_.contentTags.get("roles:" + "User")) match {
@@ -935,7 +924,7 @@ object Wiki extends WikiBase {
       user <- Users.findUserById(userId);
       isA <- checkActive(user);
       admin <- auth orCorr cNoAuth;
-      modUname <- moderator(WID("Club", club));
+      modUname <- moderatorOf(WID("Club", club));
       isMod <- (admin.hasPerm(Perm.adminDb) || admin.userName == modUname) orErr ("You do not have permission!!!");
       ok <- hows.contains(how) orErr ("invalid role");
     uwid <- wid.uwid orErr ("can't find uwid");
@@ -943,7 +932,7 @@ object Wiki extends WikiBase {
       c <- Club(club)
     ) yield {
       db.tx("linkUser.toWiki") { implicit txn =>
-        ilinkAccept(user, c, how)
+        ilinkAccept(user, c, uwid, how)
       }
       Msg2("OK, added!", Some("/"))
     }) getOrElse {
@@ -953,12 +942,13 @@ object Wiki extends WikiBase {
   }
 
   // link a user for moderated club was approved
-  private def ilinkAccept(user: User, club: Club, how: String)(implicit request: Request[_], txn: db.Txn) {
+  private def ilinkAccept(user: User, club: Club, pageUwid:UWID, how: String)(implicit request: Request[_], txn: db.Txn) {
     // only if there is a club/user entry for that Club page
     val rk = model.RacerKidz.myself(user._id)
     model.RacerKidAssoc(club.userId, rk._id, model.RK.ASSOC_LINK, user.role, club.userId).create
 
-    createLinkedUser(user, WID("Club", club.userName), UWID("Club", club._id), false, how, "", "")
+//    createLinkedUser(user, WID("Club", club.userName), UWID("Club", club._id), false, how, "", "")
+    createLinkedUser(user, WID("Club", club.userName), pageUwid, false, how, "", "")
 
     if (!user.quota.updates.exists(_ > 10))
       user.quota.reset(50)
@@ -991,7 +981,7 @@ object Wiki extends WikiBase {
       }
     }
 
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
 
     linkForm.bindFromRequest.fold(
       formWithErrors => BadRequest(views.html.wiki.wikiLink(WID("User", auth.get.id), wid, formWithErrors, withComment, auth)),
@@ -999,22 +989,22 @@ object Wiki extends WikiBase {
         case we @ LinkWiki(how, notif, mark, comment) =>
           (for (
             au <- activeUser;
-            hasuwid <- wid.uwid.isDefined orErr ("cannot find a uwid");
+            hasuwid <- wid.uwid.isDefined orErr "cannot find a uwid";
             uwid <- wid.uwid;
             isMe <- (au.id equals userId) orErr {
               Audit.security("Another user tried to link...", userId, au.id)
-              ("invalid user")
+              "invalid user"
             };
-            page <- wid.page orErr (s"Page $wid not found");
-            ok <- hows.contains(how) orErr ("invalid role");
+            page <- wid.page orErr s"Page $wid not found";
+            ok <- hows.contains(how) orErr "invalid role";
             xxx <- Some("")
           ) yield {
             db.tx("wiki.linkeduser") { implicit txn =>
-              val mod = moderator(wid).flatMap(mid => { println(mid); Users.findUserByUsername(mid) })
+              val mod = moderatorOf(wid).flatMap(mid => { println(mid); Users.findUserByUsername(mid) })
 
               if ("Club" == wid.cat && mod.isDefined) {
                 if (Club(wid.name).exists(_.props.get("link.auto").mkString == "yes")) {
-                  ilinkAccept(au, Club(wid.name).get, how)
+                  ilinkAccept(au, Club(wid.name).get, uwid, how)
                   Msg2("OK, added!", Some("/"))
                 } else {
                   Emailer.withSession { implicit mailSession =>
@@ -1043,7 +1033,7 @@ object Wiki extends WikiBase {
 
   /** change owner */
   def uowner(wid: WID) = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
 
     val uownerForm = Form("newowner" -> nonEmptyText)
 
@@ -1075,7 +1065,7 @@ object Wiki extends WikiBase {
 
   /** mark a wiki as reserved - only admin can edit */
   def reserve(wid: WID, how: Boolean) = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
 
     log("Wiki.reserve " + wid)
     (for (
@@ -1097,7 +1087,7 @@ object Wiki extends WikiBase {
       noPerm(wid, "ADMIN_RESERVE")
   }
 
-  private def canDelete(wid: WID)(implicit errCollector: VError, request: Request[_]) = {
+  private def canDelete(wid: WID)(implicit errCollector: VErrors, request: Request[_]) = {
     for (
       au <- activeUser;
       w <- Wikis.find(wid) orErr ("topic not found");
@@ -1108,7 +1098,7 @@ object Wiki extends WikiBase {
 
   /** delete step 1: confirm */
   def wikieDelete1(wid: WID) = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
 
     log("Wiki.delete1 " + wid)
     canDelete(wid).collect {
@@ -1122,16 +1112,16 @@ object Wiki extends WikiBase {
 
   /** delete step 2: do it */
   def wikieDelete2(wid: WID) = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
 
     log("Wiki.delete2 " + wid)
     if (wid.cat != "Club") canDelete(wid).collect {
       case (au, w) =>
         db.tx("Wiki.delete") { implicit txn =>
-          RMany[WikiLink]("to" -> wid.grated).toList.foreach(_.delete)
-          RMany[WikiLink]("from" -> wid.grated).toList.foreach(_.delete)
+          RMany[WikiLink]("to" -> w.uwid.grated).toList.foreach(_.delete)
+          RMany[WikiLink]("from" -> w.uwid.grated).toList.foreach(_.delete)
           var done = false
-          RMany[UserWiki]("wid" -> wid.grated).toList.foreach(wl => {
+          RMany[UserWiki]("uwid" -> w.uwid.grated).toList.foreach(wl => {
             wl.delete
             done = true
           })
@@ -1149,7 +1139,7 @@ object Wiki extends WikiBase {
       Msg2("Can't delete a " + wid.cat)
   }
 
-  private def canRename(wid: WID)(implicit errCollector: VError, request: Request[_]) = {
+  private def canRename(wid: WID)(implicit errCollector: VErrors, request: Request[_]) = {
     for (
       au <- activeUser;
       ok <- ("WikiLink" != wid.cat && "User" != wid.cat) orErr ("can't rename this category");
@@ -1160,18 +1150,18 @@ object Wiki extends WikiBase {
 
   /** rename step 1: form for new name */
   def wikieRename1(wid: WID) = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
     canRename(wid).collect {
       case (au, w) =>
-        Ok(views.html.wiki.wikiRename(wid, renameForm.fill((w.label, w.label)), auth))
+        Ok(views.html.wiki.wikiRename(wid, renameForm(wid.getRealm).fill((w.label, w.label)), auth))
     } getOrElse
       noPerm(wid, "RENAME")
   }
 
   /** rename step 2: do it */
   def wikieRename2(wid: WID) = Action { implicit request =>
-    implicit val errCollector = new VError()
-    renameForm.bindFromRequest.fold(
+    implicit val errCollector = new VErrors()
+    renameForm(wid.getRealm).bindFromRequest.fold(
       formWithErrors => BadRequest(views.html.wiki.wikiRename(wid, formWithErrors, auth)),
       {
         case (_, n) =>
@@ -1256,7 +1246,7 @@ object Wiki extends WikiBase {
 
   /** wid is the script name,his parent is the actual topic */
   def wikieApiCall(wid: WID) = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
     (for (
       au <- activeUser;
       r1 <- (au.hasPerm(Perm.apiCall) || au.hasPerm(Perm.adminDb)) orErr ("no permission, eh? ");
@@ -1280,7 +1270,7 @@ object Wiki extends WikiBase {
 
   /** wid is the script name,his parent is the actual topic */
   def wikieNextStep(id: String) = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
     (for (
       au <- activeUser
     ) yield {
@@ -1291,9 +1281,46 @@ object Wiki extends WikiBase {
     }) getOrElse unauthorized()
   }
 
+  /** move to new parent */
+  def wikieMove1(id:String, realm:String="rk") = Action { implicit request =>
+    implicit val errCollector = new VErrors()
+    (for (
+      au <- activeUser;
+      w <- Wikis.findById(id)
+    ) yield {
+      val parentCats1 = Wikis(realm).domain.aEnds(w.wid.cat, "Parent")
+      val parentCats2 = Wikis(realm).domain.zEnds(w.wid.cat, "Parent").map(_.wid.cat)
+      val parents = parentCats1.flatMap {c=>
+        Wikis.pages(c).filter(w=>canEdit(w.wid, auth, Some(w)).exists(_ == true)).map(w=>(w.uwid, w.label))
+      }
+      Ok(views.html.wiki.wikiMove(w.wid, w, parents, auth))
+    }) getOrElse unauthorized()
+  }
+
+  /** move to new parent */
+  def wikieMove2(page:String, from:String, to:String, realm:String="rk") = Action { implicit request =>
+    implicit val errCollector = new VErrors()
+    (for (
+      au <- activeUser;
+      pageW <- Wikis.findById(page);
+      fromW <- Wikis.findById(from);
+      toW <- Wikis.findById(to);
+      hasP <- pageW.parent.exists(_.toString == from) orErr "does not have a parent"
+    ) yield {
+      db.tx("Wiki.Move") { implicit txn =>
+        pageW.update(pageW.copy(parent=Some(toW._id)))
+        RMany[WikiLink]("from" -> pageW.uwid.grated, "to" -> fromW.uwid.grated, "how"->"Child").toList.foreach{ link=>
+          link.delete
+          link.copy(to = toW.uwid).create
+        }
+      }
+      Redirect(controllers.Wiki.w(pageW.wid, false)).flashing("count" -> "0")
+    }) getOrElse unauthorized()
+  }
+
   /** try to link to something - find it */
-  def wikieAdd(cat: String) = Action { implicit request =>
-    implicit val errCollector = new VError()
+  def wikieAdd(cat: String, realm:String="rk") = Action { implicit request =>
+    implicit val errCollector = new VErrors()
     (for (
       au <- activeUser;
       w <- Wikis.category(cat)
@@ -1303,8 +1330,8 @@ object Wiki extends WikiBase {
   }
 
   /** try to link to something - find it */
-  def wikieCreate(cat: String) = Action { implicit request =>
-    implicit val errCollector = new VError()
+  def wikieCreate(cat: String, realm:String="rk") = Action { implicit request =>
+    implicit val errCollector = new VErrors()
     (for (
       au <- activeUser;
       w <- Wikis.category(cat)

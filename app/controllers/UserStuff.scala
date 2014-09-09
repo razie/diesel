@@ -38,11 +38,10 @@ object UserStuff extends RazController {
 
   // serve public profile
   def pub(id: String) =
-    if (WikiIndex.withIndex(_.get2(id, WID("User", id)).isDefined))
+    if (Wikis.find(WID("User", id)).isDefined)
       Wiki.show (WID("User", id))
     else
       Action { implicit request => Msg2 ("This user does not have a public profile!") }
-//      Action { implicit request => NotFound ("User not found or profile is private!") }
 
   def wiki(id: String, cat: String, name: String) =
     WikiLink(UWID("User", new ObjectId(id)), WID(cat, name).uwid.get, "").page.map(w =>

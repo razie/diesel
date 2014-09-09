@@ -58,6 +58,7 @@ case class RegKid(
   _id: ObjectId = new ObjectId()) extends REntity[RegKid] {
 
   def reg = Regs.findId(regId.toString)
+  def rk = ROne[RacerKid]("_id" -> rkId)
 }
 
 /**

@@ -69,6 +69,9 @@ msg types are msg, err
 
 @**  <p>@Html(model.Wikis.format(we.wid, we.markup, we.content, Some(we)))</p>
 **@
+   @if(we.tags.contains("r.domain")) {
+     <p><a href="@routes.DomC.domPlay(we._id.toString)">domain playground</a></p>
+   }
   <p>@Html(ccc(we))</p>
 
   @wiki.wikiFragExtras(au,Some(we))

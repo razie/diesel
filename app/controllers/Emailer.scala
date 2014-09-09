@@ -58,6 +58,12 @@ object Emailer extends RazController with Logging {
     SendEmail.send(toEmail, SUPPORT, "No Folders - note shared with you", html1)
   }
 
+  def circled(from:String, toEmail:String, toName:String, url:String)(implicit mailSession: MailSession) = {
+    val html1 = text("circled").format(toName, from, url);
+
+    SendEmail.send(toEmail, SUPPORT, "No Folders - added to circle", html1)
+  }
+
   /** invite to join on notes */
   def makeNotesInvite(toName:String, validDays: Int, acceptUrl: String, u: User) = {
     val dt = DateTime.now().plusDays(validDays)

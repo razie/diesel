@@ -127,8 +127,23 @@ class SBTScalaScriptContext(parent: ActionContext = null) extends ScalaScriptCon
       val settings = new nsc.Settings(errLogger)
       settings embeddedDefaults getClass.getClassLoader
       settings.Yreplsync.value = true
+
       val myLoader = new ReplClassloader(getClass.getClassLoader)
       settings.embeddedDefaults(myLoader)
+
+//      val cl = this.getClass.getClassLoader // or getClassLoader.getParent, or one more getParent...
+//
+//      val urls = cl match {
+//        case cl: java.net.URLClassLoader => cl.getURLs.toList
+//        case a => sys.error("oops: I was expecting an URLClassLoader, foud a " + a.getClass)
+//      }
+//      val classpath = urls map {_.toString}
+//
+//      razie.cout << "=================CLASSPATH: "+classpath
+//
+//      settings.classpath.value = classpath.distinct.mkString(java.io.File.pathSeparator)
+//      settings.embeddedDefaults(cl) // or getClass.getClassLoader
+
       settings
     }
 

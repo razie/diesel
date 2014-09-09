@@ -4,11 +4,13 @@ Allow: /doe/index
 Allow: /doe/social
 Disallow: /doe/
 Disallow: /wikie/
+Disallow: /we/
 Disallow: /admin/
 Disallow: /sfiddle/
 
 User-agent: *
 Disallow: /doe/
 Disallow: /wikie/
+Disallow: /we/
 Disallow: /admin/
 Disallow: /sfiddle/

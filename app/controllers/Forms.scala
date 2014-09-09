@@ -15,7 +15,7 @@ import admin.IgnoreErrors
 import admin.MailSession
 import admin.Notif
 import admin.SendEmail
-import admin.VError
+import admin.VErrors
 import model.Enc
 import model.Perm
 import db.RazSalatContext.ctx
@@ -72,10 +72,9 @@ object Forms extends WikiBase1 with Logging {
     // build the defaults - cross check with formSpec
     var defaultStr = ""
     val spec = formSpec.page.get
-    defaults.foreach { t =>
+    defaults.filter(x=> spec.form.fields.contains(x._1)).map { t =>
       val (k, v) = t
-      if (spec.form.fields.contains(k))
-        defaultStr = defaultStr + s""", "$k":"$v" """
+      defaultStr = defaultStr + s""", "$k":"$v" """
     }
 
     val content = s"""
@@ -114,6 +113,55 @@ object Forms extends WikiBase1 with Logging {
     Redirect(controllers.Wiki.w(we.wid, true)).flashing("count" -> "0")
   }
 
+    /** copy an old form data for new formSpec */
+  def copyForm(u: User, oldW:WikiEntry, newName:String, label:String, newFormSpec: RoleWid)(implicit txn: Txn = tx.auto) = {
+
+    val oldfw = new WForm(oldW)
+    
+    // build the 
+    var defaultStr = ""
+    val spec = newFormSpec.wid.page.get
+   
+    val m = oldW.form.fields.map(t=>(t._1, t._2.value))
+    m.put("formState", "created")
+
+    // don't make the string by hand - some newline values get messed up.
+    val content = oldfw.mkContent(json(Map()++m, false), s"""
+[[include:${newFormSpec.wid.wpath}]]
+{{.title:${newFormSpec.wid.name} for ${u.ename}}}
+{{.section:formData}}
+{"formState":"created" }
+{{/section}}
+""")
+
+    var we = model.WikiEntry(
+      oldW.category,
+      newName,
+      label, 
+      "md",
+      content,
+      u._id,
+      Seq(),
+      "rk",
+      1,
+      None,
+      Map("visibility" -> "ClubAdmin",
+        "wvis" -> "ClubAdmin"))
+
+    if (WikiDomain.needsOwner(oldW.category)) {
+      we = we.cloneProps(we.props ++ Map("owner" -> u.id), u._id)
+      model.UserWiki(u._id, we.uwid, "Owner").create
+      //      RazController.cleanAuth()
+    }
+
+    we = we.cloneProps(Map(FormStatus.FORM_ROLE -> newFormSpec.role), u._id)
+
+    we.create
+    WikiAudit("CREATE", we.wid.wpath, Some(u._id)).create
+
+    we
+  }
+
   def fdate(d: DateTime) = {
     f"${d.getYear()}%4d-${d.getMonthOfYear()}%02d-${d.getDayOfMonth()}%02d"
   }
@@ -137,11 +185,7 @@ object Forms extends WikiBase1 with Logging {
     "approve_button",
     "reject_button")
 
-  /** save the form and possibly change status: submit/reject/accept */
-  def doeSubmit(iwid: WID) = Action { implicit request =>
-    implicit val errCollector = new VError()
-
-    def json(d: Map[String, String], errors: Boolean) = {
+    private def json(d: Map[String, String], errors: Boolean) = {
       val j = new org.json.JSONObject()
 
       d.filter(t => !buttons.contains(t._1)).foreach(t => j.put(t._1, t._2))
@@ -162,6 +206,10 @@ object Forms extends WikiBase1 with Logging {
       cdebug << "form.jsondata " + j.toString
       j
     }
+
+  /** save the form and possibly change status: submit/reject/accept */
+  def doeSubmit(iwid: WID) = Action { implicit request =>
+    implicit val errCollector = new VErrors()
 
     val cat = iwid.cat
     val name = Wikis.formatName(iwid)

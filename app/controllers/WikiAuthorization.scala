@@ -7,7 +7,7 @@
 package controllers
 
 import admin.IgnoreErrors
-import admin.VError
+import admin.VErrors
 import db.RTable
 import model.WID
 import model.WikiEntry
@@ -17,21 +17,21 @@ import model.WikiUser
 trait WikiAuthorization {
   
   /** can user see a topic with the given properties? */
-  def isVisible(u: Option[WikiUser], props: Map[String, String], visibility: String = "visibility", we: Option[WikiEntry]=None)(implicit errCollector: VError = IgnoreErrors): Boolean
+  def isVisible(u: Option[WikiUser], props: Map[String, String], visibility: String = "visibility", we: Option[WikiEntry]=None)(implicit errCollector: VErrors = IgnoreErrors): Boolean
 
   /**
    * can the user see the topic - a little more checks than isVisibile - this is the one to use
    *
    * can pass admin.IgnoreErrors as an errCollector
    */
-  def canSee(wid: WID, au: Option[WikiUser], w: Option[WikiEntry])(implicit errCollector: VError): Option[Boolean]
+  def canSee(wid: WID, au: Option[WikiUser], w: Option[WikiEntry])(implicit errCollector: VErrors): Option[Boolean]
 
   /**
    * can the user edit the topic
    *
    *  can pass admin.IgnoreErrors as an errCollector
    */
-  def canEdit(wid: WID, u: Option[WikiUser], w: Option[WikiEntry], props: Option[Map[String, String]] = None)(implicit errCollector: VError): Option[Boolean]
+  def canEdit(wid: WID, u: Option[WikiUser], w: Option[WikiEntry], props: Option[Map[String, String]] = None)(implicit errCollector: VErrors): Option[Boolean]
 
   protected def wvis(props: Option[Map[String, String]]): Option[String] =
     props.flatMap(p => p.get("wvis").orElse(p.get("visibility"))).map(_.asInstanceOf[String])
@@ -42,7 +42,7 @@ class NoWikiAuthorization extends WikiAuthorization {
   import Visibility._
 
   /** can user see a topic with the given properties? */
-  def isVisible(u: Option[WikiUser], props: Map[String, String], visibility: String = "visibility", we: Option[WikiEntry]=None)(implicit errCollector: VError = IgnoreErrors): Boolean = {
+  def isVisible(u: Option[WikiUser], props: Map[String, String], visibility: String = "visibility", we: Option[WikiEntry]=None)(implicit errCollector: VErrors = IgnoreErrors): Boolean = {
     true
   }
 
@@ -51,7 +51,7 @@ class NoWikiAuthorization extends WikiAuthorization {
    *
    * can pass admin.IgnoreErrors as an errCollector
    */
-  def canSee(wid: WID, au: Option[WikiUser], w: Option[WikiEntry])(implicit errCollector: VError): Option[Boolean] = {
+  def canSee(wid: WID, au: Option[WikiUser], w: Option[WikiEntry])(implicit errCollector: VErrors): Option[Boolean] = {
     Some(true)
   }
 
@@ -60,7 +60,7 @@ class NoWikiAuthorization extends WikiAuthorization {
    *
    *  can pass admin.IgnoreErrors as an errCollector
    */
-  def canEdit(wid: WID, u: Option[WikiUser], w: Option[WikiEntry], props: Option[Map[String, String]] = None)(implicit errCollector: VError): Option[Boolean] = {
+  def canEdit(wid: WID, u: Option[WikiUser], w: Option[WikiEntry], props: Option[Map[String, String]] = None)(implicit errCollector: VErrors): Option[Boolean] = {
     Some(true)
   }
 }

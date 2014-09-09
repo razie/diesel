@@ -56,7 +56,11 @@ class TestLocalhost extends FlatSpec with ShouldMatchers with UrlTester {
     "/wiki/all/Note" snok "Private Note"
     
     "/wikie/search?q=Glacier" sok "Glacier"
-    
+
+  //public vs private profiles
+  "/user/Razie" sok "Razvan"
+  "/user/Matei" snok "not visible"
+
     // new notes include cat as tag
 //    ("/wikie/edit/Venue:Some New Note", u, p) sok "venue"
 }

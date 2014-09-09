@@ -1,3 +1,4 @@
+@(au:Option[model.User]=None)
 <p></p>
 @if(_root_.admin.Config.isLight) {
   <div style="background-color:#4E4D4D">
@@ -55,6 +56,16 @@
     <script src="@routes.Assets.at("bootstrap/js/bootstrap-typeahead.js")"></script>
 ****************@
 
+@if(!au.isDefined || au.get.isHarry) {
+    <!-- Place this asynchronous JavaScript just before your </body> tag -->
+  <script type="text/javascript">
+  (function() {
+  var po = document.createElement('script'); po.type = 'text/javascript'; po.async = true;
+  po.src = 'https://apis.google.com/js/client:plusone.js';
+  var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
+  })();
+  </script>
+}
 
   </body>
 </html>

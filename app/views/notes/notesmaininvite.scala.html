@@ -16,9 +16,9 @@ msg types are msg, err
    if(line.length() - line.replace("\n", "").length() > 5) 10 else 5
 }
 
-@frup(au)
+@notes.frup(au)
 
-<h3>Creative <small>preview</small> @notesmsg(msg, au) </h3>
+<h3>Creative <small>| preview</small> @notes.notesmsg(msg, au) </h3>
 
 <div class="well" style="padding-bottom:0px">
 @import helper.twitterBootstrap._
@@ -78,13 +78,19 @@ msg types are msg, err
 </div>
 
 @if(!au.isDefined || au.get.isHarry) {
+  </span>
     <div class="alert alert-block alert-error">
-        <strong>Need account</strong>
-@**      You need to <a href="/doe/join">create an account</a> to actually create and save notes.
-   **@
-      - this site is in preview mode for a small audience.
-      <small>
-      <p>If you are interested in joining in the preview, please <a href="/login">create an account</a>.
+      <strong>Need account</strong> - this is a demo account, please sign in with google or <a href="/login">create an account</a>.
+        @** the google button*@
+        <span id="signinButton">
+          <span
+          class="g-signin"
+          data-callback="signInCallback"
+          data-clientid="980280495626-7llkvk4o02anpu6qv1sseucc07f8f3gs.apps.googleusercontent.com"
+          data-cookiepolicy="single_host_origin"
+          data-scope="profile email">
+          </span>
+          <small>
       <br>Thank you!
       </small>
     </div>
@@ -173,6 +179,66 @@ setInterval(razFlash,4000);
 
 </script>
 
-@frdown("", tags, au, false)
+<form action="/doe/join/gtoken" id="gform" method="POST">
+  <input type="hidden" type="text" name="code" id="gcode">
+  <input type="hidden" type="text" name="email" id="gemail">
+  <input type="hidden" type="text" name="name" id="gname">
+  <input type="hidden" type="text" name="access_token" id="gaccess_token">
+  <input type="hidden" type="text" name="id" id="gid">
+</form>
+
+  <!-- Last part of BODY element in file index.html -->
+<script type="text/javascript">
+var gauthResult="";
+
+function loadProfile(){
+   var request = gapi.client.plus.people.get( {'userId' : 'me'} );
+   request.execute(loadProfileCallback);
+ }
+
+function loadProfileCallback(obj) {
+profile = obj ;
+
+//Filter the emails object to find the user's primary account, which might
+//not always be the first in the array. The filter() method supports IE9+.
+email = obj[ 'emails' ].filter ( function ( v ) {
+return v.type === 'account' ; // Filter out the primary email
+} )[ 0 ].value ; // get the email from the filtered results, should always be defined.
+
+console.log ( gauthResult ) ;
+
+$ ( '#gcode' )[ 0 ].value = gauthResult[ 'code' ] ;
+$ ( '#gemail' )[ 0 ].value = email ;
+$ ( '#gname' )[ 0 ].value = profile.displayName ;
+$ ( '#gaccess_token' )[ 0 ].value = gauthResult.access_token ;
+$ ( '#gid' )[ 0 ].value = profile.id ;
+
+var $form = $ ( '#gform' ) ;
+
+$form[0].submit();
+}
+
+  function signInCallback(authResult) {
+    if (authResult['code']) {
+
+      // Hide the sign-in button now that the user is authorized, for example:
+      $('#signinButton').attr('style', 'display: none');
+
+    gauthResult = authResult;
+
+    gapi.client.load('plus','v1', loadProfile);  // Trigger request to get the email address.
+
+    } else if (gauthResult['error']) {
+    // There was an error.
+    // Possible error codes:
+    //   "access_denied" - User denied access to your app
+    //   "immediate_failed" - Could not automatially log in the user
+    console.log('There was an error: ' + gauthResult['error']);
+    }
+
+  }
+  </script>
+
+@notes.frdown("", tags, au, false)
 
 

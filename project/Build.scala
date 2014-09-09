@@ -32,19 +32,20 @@ object ApplicationBuild extends Build {
     "com.razie"          %% "scripster"          % "0.8.6-SNAPSHOT"
     )
 
-    val repos = Seq("snapshots" at "http://oss.sonatype.org/content/repositories/snapshots",
-                    "releases"  at "http://oss.sonatype.org/content/repositories/releases")
+    val repos = Seq("snapshots" at "https://oss.sonatype.org/content/repositories/snapshots",
+                    "releases"  at "https://oss.sonatype.org/content/repositories/releases")
 
+/*
   val main = play.Project(appName, appVersion, appDependencies).settings(
       routesImport  += "model.Binders._",
       resolvers    ++= repos,
       scalaVersion := V.scalaVersion,
       sources in doc in Compile := List()
     )
+*/
 
   override def rootProject = Some(main)
 
-/*
   val wcommon = play.Project("wcommon", appVersion, appDependencies, path = file("modules/wcommon")).settings(
       routesImport  += "model.Binders._",
       resolvers    ++= repos,
@@ -70,7 +71,6 @@ object ApplicationBuild extends Build {
     ).aggregate (
        wcommon, wiki
     )
-*/
 
 }
 

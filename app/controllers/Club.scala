@@ -5,7 +5,7 @@ import scala.Array.fallbackCanBuildFrom
 import scala.Option.option2Iterable
 import org.bson.types.ObjectId
 import admin.SendEmail
-import admin.VError
+import admin.VErrors
 import db.REntity
 import db.RMany
 import db.RMongo.as
@@ -25,6 +25,7 @@ import razie.cout
 import admin.Config
 import scala.util.Properties
 import scala.util.Properties
+import org.joda.time.DateTime
 
 case class RoleWid(role: String, wid: WID)
 
@@ -36,8 +37,6 @@ case class Club(
   regType: String = "",
   curYear: String = Config.curYear,
   regAdmin: String = "",
-  regForms: Seq[RoleWid] = Seq.empty,
-  newFollows: Seq[RoleWid] = Seq.empty,
   dsl: String = "",
   _id: ObjectId = new ObjectId) extends REntity[Club] {
 
@@ -48,16 +47,24 @@ case class Club(
   private var oUser: Option[User] = None
   def setU(u: User) = { oUser = Some(u); this }
 
-  lazy val props = (Config parsep dsl).toMap
+  /** props like Follows.Fan will be rolled up and killed in a map so you can find them in this here seq */
+  lazy val propSeq = Config parsep dsl
+  lazy val props = propSeq.toMap
 
-  lazy val newTasks = props filter (_._1 startsWith "Task.") map { t =>
+  def isRegOpen = propSeq.exists(x => "reg.open" == x._1 && "yes" == x._2)
+  lazy val regForms = propSeq.filter(_._1 startsWith "Reg.").map(t =>
+    RoleWid(t._1.replaceFirst("Reg.", ""), WID.fromPath(t._2).get))
+  lazy val newFollows = propSeq.filter(_._1 startsWith "Follows.").map(t =>
+    RoleWid(t._1.replaceFirst("Follows.", ""), WID.fromPath(t._2).get))
+
+  lazy val newTasks = propSeq filter (_._1 startsWith "Task.") map { t =>
     val PAT1 = "([^,]*),(.*)".r
     val PAT1(name, args) = t._2
     (name, args.split(",").map(x => x.split(":")(0) -> x.split(":")(1)).toMap)
   }
 
   lazy val msgFormsAccepted = (props filter (_._1 startsWith "Msg.formsAccepted")).toSeq.sortBy (_._1) map (_._2) mkString ("<p>")
-    
+
   def regForm(role: String) = regForms.find(_.role == role)
   def uregAdmin = Users.findUser(Enc(regAdmin))
 
@@ -158,7 +165,7 @@ object Club extends RazController with Logging {
 
   /** list members */
   def doeClubRegs = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
     (for (
       au <- activeUser;
       uuwid <- WID("Club", au.userName).uwid orErr ("no uwid");
@@ -178,29 +185,24 @@ object Club extends RazController with Logging {
   def edRegForm(implicit request: Request[_]) = Form {
     tuple(
       "regType" -> nonEmptyText.verifying("Obscenity filter", !Wikis.hasporn(_)).verifying("Invalid characters", vldSpec(_)),
-      "curYear" -> number(min = 2012, max = 2015),
+      "curYear" -> number(min = 2012, max = 2025),
       "regAdmin" -> text.verifying("Invalid user", { x => Users.findUser(Enc(x)).isDefined }),
-      "regForms" -> text.verifying("Invalid wiki", { x => x.length <= 0 || WID.fromPath(x).isDefined }),
-      "newFollows" -> text.verifying("Invalid wiki", { x => x.length <= 0 || WID.fromPath(x).isDefined }),
       "dsl" -> text) verifying
-      ("Can't use last name for organizations!", { t: (String, Int, String, String, String, String) =>
+      ("Can't use last name for organizations!", { t: (String, Int, String, String) =>
         true
       })
   }
 
   /** registration settings */
   def doeClubRegSettings = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
     (for (
       au <- activeUser;
       isClub <- au.isClub orErr ("registrations possible only for a club");
       c <- Club.findForUser(au).orElse({ val x = Club(au); x.create; Some(x) })
     ) yield {
       Ok(views.html.club.doeClubRegSettings(edRegForm.fill(
-        (c.regType, c.curYear.toInt, c.regAdmin,
-          c.regForms.map(t => t.role + "=" + t.wid.wpath).mkString("\n"),
-          c.newFollows.map(t => t.role + "=" + t.wid.wpath).mkString("\n"),
-          c.dsl)),
+        (c.regType, c.curYear.toInt, c.regAdmin, c.dsl)),
         au))
     }) getOrElse Msg2("CAN'T SEE PROFILE " + errCollector.mkString)
   }
@@ -209,19 +211,11 @@ object Club extends RazController with Logging {
     edRegForm.bindFromRequest.fold(
       formWithErrors => BadRequest(views.html.club.doeClubRegSettings(formWithErrors, auth.get)),
       {
-        case (t, y, a, k, n, d) => forActiveUser { au =>
+        case (t, y, a, d) => forActiveUser { au =>
           val c1 = Club.findForUser(au).get.copy(
             regType = t,
             curYear = y.toString,
             regAdmin = a,
-            regForms =
-              if (k.trim.length <= 0) Seq.empty
-              else k.trim.split("\n").map(x => x.split("=")).map(t =>
-                RoleWid(t(0).trim, WID.fromPath(t(1).trim).get)),
-            newFollows =
-              if (n.trim.length <= 0) Seq.empty
-              else n.trim.split("\n").map(x => x.split("=")).map(t =>
-                RoleWid(t(0).trim, WID.fromPath(t(1).trim).get)),
             dsl = d)
           c1.update
           Redirect(routes.Club.doeClubRegSettings)
@@ -240,7 +234,7 @@ object Club extends RazController with Logging {
 
   // manage user screen
   def doeClubReg(uwid: String) = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
     (for (
       au <- activeUser;
       isClub <- au.isClub orErr ("registration only for a club");
@@ -258,7 +252,7 @@ object Club extends RazController with Logging {
 
   // manage user screen
   def doeClubRegsJson(what: String, cols: String) = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
     (for (
       au <- activeUser;
       isClub <- au.isClub orErr ("registration only for a club")
@@ -271,7 +265,7 @@ object Club extends RazController with Logging {
 
   // manage user screen
   def doeClubRegsCsv(what: String, cols: String) = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
     val DELIM = ","
     (for (
       au <- activeUser;
@@ -288,7 +282,7 @@ object Club extends RazController with Logging {
 
   // update user role
   def doeClubMemberUpdate(uwid: String) = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
     (for (
       au <- activeUser;
       isClub <- au.isClub orErr ("registration only for a club");
@@ -323,7 +317,7 @@ object Club extends RazController with Logging {
 
   /** send a help message */
   def doeClubRegMsg(uwid: String) = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
     (for (
       au <- activeUser;
       isClub <- au.isClub orErr ("registration only for a club");
@@ -344,7 +338,7 @@ object Club extends RazController with Logging {
 
   /** change registration status */
   def doeClubUwRegstatusupd(uwid: String, how: String) = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
     (for (
       au <- activeUser;
       isClub <- au.isClub orErr ("registration only for a club");
@@ -390,7 +384,7 @@ object Club extends RazController with Logging {
 
   /** add a kid to current registration */
   def doeClubUwAddForm(uwid: String, role: String) = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
     (for (
       au <- activeUser;
       isClub <- au.isClub orErr ("registration only for a club");
@@ -426,7 +420,7 @@ object Club extends RazController with Logging {
 
   /** add a kid to current registration */
   def doeClubUwAddFormKid(regId: String, rkId: String, next: String, role: String) = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
     (for (
       au <- activeUser;
       rk <- RacerKidz.findById(new ObjectId(rkId));
@@ -473,7 +467,7 @@ object Club extends RazController with Logging {
 
   /** add a kid to current registration */
   def doeClubUwRMFormKid(regId: String, rkId: String, uwid: String, role: String) = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
     (for (
       au <- activeUser;
       rk <- RacerKidz.findById(new ObjectId(rkId));
@@ -495,7 +489,7 @@ object Club extends RazController with Logging {
   }
 
   def doeClubUwRMFormKid1(regId: String, rkId: String, uwid: String, role: String) = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
     val next = if (auth.exists(_.isClub))
       routes.Club.doeClubReg(uwid)
     else
@@ -547,13 +541,13 @@ object Club extends RazController with Logging {
       //      val rka = RMany[RacerKidAssoc]("from" -> c.userId, "year" -> year).map(
       //          x=>(x,x.to.as[RacerKid]).filter(t=>t._.2.)
 
-      RacerKidAssoc(c.userId, rk._id, model.RK.ASSOC_REGD, role, owner._id).create
+      RacerKidAssoc(c.userId, rk._id, model.RK.ASSOC_REGD, role, owner._id, year.toInt).create
     }
   }
 
   /** add a kid to current registration */
   def doeClubUserRegAdd(regId: String, rkId: String, uid: String, next: String) = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
     (for (
       au <- activeUser;
       rk <- RacerKidz.findById(new ObjectId(rkId));
@@ -569,11 +563,11 @@ object Club extends RazController with Logging {
 
   /** list members */
   def doeClubUserRegs = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
     (for (
       au <- auth orCorr cNoAuth
     ) yield {
-      if(au.isClub)
+      if (au.isClub)
         Redirect("/doe/club/regs")
       else
         Ok(views.html.club.doeClubUserRegs(au))
@@ -582,7 +576,7 @@ object Club extends RazController with Logging {
 
   /** */
   def doeClubUserReg(regid: String) = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
     (for (
       au <- auth orCorr cNoAuth;
       reg <- model.Regs.findId(regid) orErr ("no reg found")
@@ -619,7 +613,7 @@ object Club extends RazController with Logging {
 
   /** capture volunteer hour record */
   def doeVolAdd(rkaId: String) = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
     (for (
       au <- activeUser;
       isClub <- au.isClub orErr ("registration only for a club");
@@ -631,7 +625,7 @@ object Club extends RazController with Logging {
 
   /** create volunteer hour record */
   def doeVolAdded(rkaId: String) = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
     (for (
       au <- activeUser;
       isClub <- au.isClub orErr ("registration only for a club");
@@ -650,7 +644,7 @@ object Club extends RazController with Logging {
 
   /** delete volunteer hour record */
   def doeVolDelete(rkaId: String, vhid: String) = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
     (for (
       au <- activeUser;
       isClub <- au.isClub orErr ("registration only for a club");
@@ -676,7 +670,7 @@ object Club extends RazController with Logging {
   }
 
   def doeMergeKid(todie: String, tolive: String) = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
     (for (
       au <- activeUser;
       // works for users too
@@ -691,7 +685,7 @@ object Club extends RazController with Logging {
       // also copy the individual records
       RMany[VolunteerH]("rkaId" -> dies._id) map (_.copy(rkaId = lives._id).update)
 
-      // gets a record - has gender, better birth date etc
+      // gets a record - has gender, better birth date etc 
       if (!lives.rk.get.rkiId.isDefined && dies.rk.get.rkiId.isDefined)
         liverk = liverk.copy(rkiId = dies.rk.get.rkiId)
 
@@ -729,24 +723,115 @@ object Club extends RazController with Logging {
     Club(cname) foreach { club =>
       club.newFollows.foreach { rw =>
         val role = if (how == "Fan") "Fan" else rw.role
-        rw.wid.uwid.foreach {uwid=>
-          model.UserWiki(u._id, rw.wid.uwid.get, role).create
+        rw.wid.uwid.foreach { uwid =>
+          if (u.isLinkedTo(uwid).isEmpty)
+            model.UserWiki(u._id, uwid, role).create
         }
       }
       club.newTasks.foreach { t => //(name, args)
         razie.clog << "Creating user Task " + t
+        //todo if not already
         UserTask(u._id, t._1, t._2.toMap).create
       }
     }
   }
 
-  /** called by user not the club */
-  def doeStartReg(clubName: String, how: String) = Action { implicit request =>
-    implicit val errCollector = new VError()
+  /** called by user not the club - copy previous registratrion forms and then continue */
+  def doeStartRegCopy(clubName: String, prevRegId: String) = Action { implicit request =>
+    implicit val errCollector = new VErrors()
     (for (
       au <- activeUser;
       c <- Club(clubName);
-      regAdmin <- c.uregAdmin orErr ("no regadmin");
+      regAdmin <- c.uregAdmin orErr ("Registration is not open yet! [no regadmin]");
+      isOpen <- c.propSeq.exists(x => "reg.open" == x._1 && "yes" == x._2) orErr ("Registration is not open yet!");
+      uclub <- Users.findUserByUsername(clubName);
+      prevReg <- model.Regs.findId(prevRegId);
+      // either mine or i'm the club
+      isMine <- (prevReg.userId == au._id && prevReg.clubName == clubName || prevReg.clubName == au.userName) orErr ("Not your registration: " + prevRegId);
+      isSame <- (prevReg.year != c.curYear) orErr ("Can't copy this year's registration: " + prevRegId)
+    ) yield {
+      // 1. expire
+      db.tx("userStartRegCopy") { implicit txn =>
+        cout << "OLD REG: " << prevReg
+        var reg = prevReg.copy(_id = new ObjectId(), year = c.curYear, regStatus = RegStatus.PENDING)
+
+        cout << "REG: " << reg
+
+       val widNameMap = new collection.mutable.HashMap[String,String]() 
+        
+        val newWids = reg.wids.map { wid =>
+          cout << "  proc " << wid
+          val oldW = Wikis.find(wid).get
+
+          // find and upgrade the year
+          val PAT = "([^-]+)-([^-]+)-([^-]+)(-[^-]+)?-([^-]+)-([^-]+)".r
+          val PAT(name, role, id, kkid, y, num) = oldW.wid.name
+          val kid = Option(kkid) getOrElse ""
+
+          // new form spec
+          val newForm = c.regForms.find(_.wid.name == name).getOrElse {
+            val newname = name.replaceFirst(prevReg.year, reg.year)
+            c.regForms.find(_.wid.name == newname).get // todo kaboom
+          }
+          cout << "  new form: " << newForm
+
+          val newfwid = WID("Form", s"${newForm.wid.name}-${role}-${id + kid}-${reg.year}-${num}")
+          cout << "  old  wid: " << oldW.wid
+          cout << "  new fwid: " << newfwid
+
+          widNameMap put (oldW.wid.name, newfwid.name)
+          
+          //    // have to create form ?
+          if (!Wikis.find(newfwid).isDefined) {
+            var label = s"${newForm.wid.name.replaceAll("_", " ")}"
+            if (!label.contains(reg.year))
+              label = label + s" for $kid season ${reg.year}"
+            val newW = controllers.Forms.copyForm (au, oldW, newfwid.name, label, newForm)
+
+            cout << "  old form: " << oldW
+            cout << "  new form: " << newW
+          }
+
+          newfwid
+        }
+
+        reg = reg.copy (wids = newWids)
+        cout << "  NEW REG: " << reg
+
+        reg.create
+
+        // copy kid regs with new form names as well
+        prevReg.kids.toList.map{ ork =>
+          val rk = ork.copy(_id = new ObjectId(), regId = reg._id, wids=ork.wids.map(ow => WID(ow.cat, widNameMap(ow.name))), crDtm=DateTime.now())
+          cout << "   NEW REGKID" << rk
+          rk.create
+          assoc(c, rk.rk.get, model.RK.ASSOC_REGD, rk.role, au, c.curYear)
+        }
+        
+        
+        //      3. start - notify user
+              SendEmail.withSession { implicit mailSession =>
+        //        Emailer.sendEmailClubRegStart(au, au.userName, routes.Club.doeClubUserReg(reg._id.toString).toString)
+        //        Emailer.tellRaz("Started registration", "user: " + au.userName, "club: " + clubName, "how: "+how)
+        ////        TODO tell regAdmin so they know...
+        //
+        //        UserTask(au._id, UserTasks.START_REGISTRATION).delete
+        //      }
+//        Ok("xxxxxxxxxxxxxxxxxxxx ")
+            Redirect(routes.Club.doeClubUserReg(reg._id.toString))
+      }
+      }
+    }) getOrElse Msg2("CAN'T START REGISTRATION " + errCollector.mkString)
+  }
+
+  /** called by user not the club */
+  def doeStartReg(clubName: String, how: String) = Action { implicit request =>
+    implicit val errCollector = new VErrors()
+    (for (
+      au <- activeUser;
+      c <- Club(clubName);
+      regAdmin <- c.uregAdmin orErr ("Registration is not open yet! [no regadmin]");
+      isOpen <- c.propSeq.exists(x => "reg.open" == x._1 && "yes" == x._2) orErr ("Registration is not open yet!");
       uclub <- Users.findUserByUsername(clubName)
     ) yield {
       // current registration?
@@ -772,7 +857,7 @@ object Club extends RazController with Logging {
           // 3. start - notify user
           SendEmail.withSession { implicit mailSession =>
             Emailer.sendEmailClubRegStart(au, au.userName, routes.Club.doeClubUserReg(reg._id.toString).toString)
-            Emailer.tellRaz("Started registration", "user: " + au.userName, "club: " + clubName, "how: "+how)
+            Emailer.tellRaz("Started registration", "user: " + au.userName, "club: " + clubName, "how: " + how)
             // TODO tell regAdmin so they know...
 
             UserTask(au._id, UserTasks.START_REGISTRATION).delete

@@ -12,32 +12,15 @@ import admin._
 import model._
 import db._
 import db.RazSalatContext.ctx
-//import play.api.data.Form
-//import play.api.data.Forms.mapping
-//import play.api.libs.json.Json
-//import play.api.mvc.Action
-//import play.api.mvc.Request
-//import razie.Logging
-//import razie.cout
-//import razie.clog
 import model.Sec.EncryptedS
-//import play.api.data.Forms.nonEmptyText
-//import play.api.data.Forms.number
-//import play.api.data.Forms.text
-//import play.api.data.Forms.tuple
-import play.api.mvc.Action
-import play.api.mvc.AnyContent
-import play.api.mvc.Request
-import play.api.mvc.Result
+import play.api.mvc._
 import razie.{cout, Logging}
-//import scala.Some
-//import model.WikiAudit
-//import model.User
 import javax.script.{ScriptEngineManager, ScriptEngine}
 import scala.Some
 import model.WikiAudit
-//import controllers.AutosavedNote
 import model.User
+import scala.util.parsing.input.{CharArrayReader, Positional}
+import model.dom.DOM
 
 /** a contact connection between two users */
 @db.RTable
@@ -73,18 +56,7 @@ case class AutosavedNote(
   override def delete(implicit txn: db.Txn) = RDelete.noAudit[AutosavedNote](this)
 }
 
-///** notes shared to a circle */
-//@db.RTable
-//case class CircleShare (
-//                       noteId: ObjectId, // the note it's about
-//                       to: String,
-//                       ownerId: ObjectId,
-//                       how: String="", // "" - read/write, "ro" - readonly
-//                       crDtm:DateTime = DateTime.now,
-//                       _id: ObjectId = new ObjectId()) extends REntity[NoteShare] {
-//}
-
-/** shared notes */
+/** share a note with another user */
 @db.RTable
 case class NoteShare (
   noteId: ObjectId, // the note it's about
@@ -92,7 +64,7 @@ case class NoteShare (
   ownerId: ObjectId,
   how: String="", // "" - read/write, "ro" - readonly
   crDtm:DateTime = DateTime.now,
-                  _id: ObjectId = new ObjectId()) extends REntity[NoteShare] {
+  _id: ObjectId = new ObjectId()) extends REntity[NoteShare] {
   def note = Wikis.find(noteId)
 }
 
@@ -121,26 +93,37 @@ object Inbox {
     RMany[Inbox]("toId"->uid) filter (_.state != "d")
 }
 
-object Notes {
-  //  def notesForUser (uid:ObjectId) = RMany[Locker]("by"->uid)
-  //  def tagsForUser (uid:ObjectId) = notesForUser(uid).toList.flatMap(_.tags).distinct
-  //  def notesForTag (uid:ObjectId, tag:String) = notesForUser(uid).filter(_.tags.contains(tag))
-
-  final val cat = "Note"
-  final val ENC = "encrypted"
-
-  def dec(au:User)(w:WikiEntry) = if(w.by == au._id && w.tags.contains(ENC))w.copy(content=w.content.dec) else w
-
-  def notesById(id: ObjectId) =
-    Wikis.weTable(cat).findOne(Map("_id" -> id)) map (grater[WikiEntry].asObject(_))
-  def notesForUser(uid: ObjectId, archived: Boolean = false) =
-    Wikis.weTable(cat).find(Map("by" -> uid)) map (grater[WikiEntry].asObject(_)) filter (n => !n.tags.contains(ARCHIVE) || archived)
+/** special tags */
+object Tags {
   final val ARCHIVE = "archive"
   final val ALL = "all"
   final val NONE = "none"
+  final val RECENT = "recent"
+  final val INBOX = "inbox"
 
+  final val ENC = "encrypted"
+  final val SHARED = "shared"
+  final val NAME = "name"
+  final val CONTACT = "contact"
+  final val EMAIL = "email"
+  final val SFIDDLE = "sfiddle"
+  final val FIDDLE = "fiddle"
+  final val CIRCLE = "circle"
+}
+
+object Notes {
+  import Tags._
+
+  final val CAT = "Note"
+
+  def dec(au:User)(w:WikiEntry) = if(w.by == au._id && w.tags.contains(Tags.ENC))w.copy(content=w.content.dec) else w
+
+  def notesById(id: ObjectId) =
+    Wikis.weTable(CAT).findOne(Map("_id" -> id)) map (grater[WikiEntry].asObject(_))
+  def notesForUser(uid: ObjectId, archived: Boolean = false) =
+    Wikis.weTable(CAT).find(Map("by" -> uid)) map (grater[WikiEntry].asObject(_)) filter (n => !n.tags.contains(Tags.ARCHIVE) || archived)
   def tagsForUser(uid: ObjectId) = {
-    notesForUser(uid).toList.flatMap(_.tags).filter(_ != ARCHIVE).filter(_ != "").groupBy(identity).map(t => (t._1, t._2.size)).toSeq.sortBy(_._2).reverse
+    notesForUser(uid).toList.flatMap(_.tags).filter(_ != Tags.ARCHIVE).filter(_ != "").groupBy(identity).map(t => (t._1, t._2.size)).toSeq.sortBy(_._2).reverse
     // TODO somehow i can get empty tags...
   }
 
@@ -155,42 +138,48 @@ object Notes {
   }
 
   def sharedNotesByTag (uid:ObjectId, tag:String) = {
-    RMany[NoteShare]("toId"->uid).flatMap(_.note).filter(n => n.tags.contains(tag) || (tag == Notes.ALL) || (tag == Notes.NONE && n.tags.isEmpty))
+    RMany[NoteShare]("toId"->uid).flatMap(_.note).filter(n => n.tags.contains(tag) || (tag == ALL) || (tag == NONE && n.tags.isEmpty))
   }
 }
 
 /** controller for club management */
 object NotesLocker extends RazController with Logging {
+  import Tags._
+  import Notes.CAT
 
   import play.api.data._
   import play.api.data.Forms._
-  import play.api.data.validation.Constraints._
 
   var autosaved = 0L;
+  lazy val HARRY = Users.findUserById("4fdb5d410cf247dd26c2a784")
 
   /** for active user */
-  def FUH(f: User => VError => Request[AnyContent] => Result) = Action { implicit request =>
-    implicit val errCollector = new VError()
+  def FUH(f: User => VErrors => Request[AnyContent] => SimpleResult) = Action { implicit request =>
+    implicit val errCollector = new VErrors()
+
+    def auditIt =
+      if(! isFromRobot)
+        Audit.logdb("NOTES_AS_HARRY", request.toString, s"Referer=${request.headers.get("Referer")} - X-Forwarde-For: ${request.headers.get("X-Forwarded-For")}  User-Agent: ${request.headers.get("User-Agent")}")
+
     (for (
       au <- auth
     ) yield {
       f(au)(errCollector)(request)
     }) getOrElse {
-      val harry = Users.findUserById("4fdb5d410cf247dd26c2a784")
       if ("no allow public" == "allow public" || request.queryString.contains("please")) {
-        if(! isFromRobot) Audit.logdb("NOTES_AS_HARRY", request.toString, s"Referer=${request.headers.get("Referer")} - X-Forwarde-For: ${request.headers.get("X-Forwarded-For")}")
-        ((for (u <- harry) yield {
+        auditIt
+        (for (u <- HARRY) yield {
           Redirect(request.path).withSession(Config.CONNECTED -> Enc.toSession(u.email), "css" -> "light")
         }) getOrElse {
           Audit.logdb("ERR_HARRY", "account is missing???")
           unauthorized("CAN'T SEE PROFILE ")
-        })
+        }
       } else if ("invite page" == "invite page") {
-        if(! isFromRobot) Audit.logdb("NOTES_AS_HARRY", request.toString, s"Referer=${request.headers.get("Referer")} - X-Forwarde-For: ${request.headers.get("X-Forwarded-For")}")
+        auditIt
         if(request.path == "/notes")
-          Ok(views.html.notes.notesmaininvite(NEWNOTE, autags(harry.get), Seq())(harry))
+          Ok(views.html.notes.notesmaininvite(NEWNOTE, autags(HARRY.get), Seq())(HARRY))
         else if(request.path startsWith "/notes/tag/")// && isFromRobot)
-          f(harry.get)(errCollector)(request)
+          f(HARRY.get)(errCollector)(request)
         else
           Redirect("/notes")
       } else {
@@ -200,8 +189,8 @@ object NotesLocker extends RazController with Logging {
   }
 
   /** for active user */
-  def FAU(f: User => VError => Request[AnyContent] => Result) = Action { implicit request =>
-    implicit val errCollector = new VError()
+  def FAU(f: User => VErrors => Request[AnyContent] => SimpleResult) = Action { implicit request =>
+    implicit val errCollector = new VErrors()
     (for (
       au <- activeUser
     ) yield {
@@ -243,8 +232,8 @@ object NotesLocker extends RazController with Logging {
   }
 
   /** for active user */
-  def saveFAU(f: User => VError => Request[AnyContent] => Result) = Action { implicit request =>
-    implicit val errCollector = new VError()
+  def saveFAU(f: User => VErrors => Request[AnyContent] => SimpleResult) = Action { implicit request =>
+    implicit val errCollector = new VErrors()
     (for (
       au <- activeUser
     ) yield {
@@ -261,7 +250,7 @@ object NotesLocker extends RazController with Logging {
           import Visibility._
 
           val id = if (ids.length > 0) new ObjectId(ids) else new ObjectId()
-          val wid = WID("Note", id.toString)
+          val wid = WID(CAT, id.toString)
 
           var msg = ("msg" -> "[Saved in locker]")
 
@@ -277,14 +266,15 @@ object NotesLocker extends RazController with Logging {
             var moreTags = ""
 
             // apply content tags
-            if(wep.tags("name") != we.name) we = we.copy(name=wep.tags("name"))
-            if(wep.tags.contains("share")) moreTags = moreTags + ",shared"
+            if(wep.tags.contains(SHARED)) moreTags = moreTags + ","+SHARED
+            //todo if i do this then two users can't have a note wiht teh same name
+            //            if(wep.tags(NAME) != we.name) we = we.copy(name=wep.tags(NAME))
 
             val atags = alltags(moreTags)
             if (we.tags != atags)
               we = we.withTags(atags, au._id)
 
-            if(we.tags.contains(Notes.ENC))
+            if(we.tags.contains(ENC))
               we = we.copy(content=we.content.enc)
 
             we
@@ -318,7 +308,7 @@ object NotesLocker extends RazController with Logging {
                   //            }
                 }
                 Audit ! WikiAudit("EDIT_NOTE", w.wid.wpath, Some(au._id))
-                process(we, au)
+                process(we)
               }
             }
 
@@ -326,7 +316,7 @@ object NotesLocker extends RazController with Logging {
               if (content.trim.isEmpty)
                 msg = ("err" -> "[Empty note...]")
               else {
-                var we = model.WikiEntry("Note", wid.name, "", "md", content, au._id, Seq(), "notes", 1, wid.parent)
+                var we = model.WikiEntry(CAT, wid.name, "", "md", content, au._id, Seq(), "notes", 1, wid.parent)
                 we = we.copy(_id = id)
                 we = preprocess(we, false)
 
@@ -344,7 +334,7 @@ object NotesLocker extends RazController with Logging {
                   we.create
                   Audit ! WikiAudit("CREATE_NOTE", we.wid.wpath, Some(au._id))
 
-                  process(we, au)
+                  process(we)
                   admin.SendEmail.withSession { implicit mailSession =>
                     au.quota.incUpdates
                     au.shouldEmailParent("Everything").map(parent => Emailer.sendEmailChildUpdatedWiki(parent, au, wid)) // ::: notifyFollowers (we)
@@ -364,15 +354,11 @@ object NotesLocker extends RazController with Logging {
       })
   }
 
-  private def process (we:WikiEntry, au:User) {
+  private def process (we:WikiEntry)(implicit au:User) {
     object NotesParser extends ParserCommons {
-      case class State(s: String, tags: Map[String, String] = Map(), ilinks: List[ILink] = List(), decs: List[WikiEntry => WikiEntry] = List()) {
-        def this(s: String, ilinks: List[ILink]) = this(s, Map(), ilinks)
-        def +(other: State) = State(this.s + other.s, this.tags ++ other.tags, this.ilinks ++ other.ilinks, this.decs ++ other.decs)
-      }
-      implicit def toState(s: String) = State(s)
+      case class State (s:String) extends Positional
 
-      def apply(input: String) = parseAll(line, input) match {
+      def apply(input: String) = parseAll(line, new scala.util.parsing.input.CharArrayReader(input.toArray)) match {
         case Success(value, _) => value
         // don't change this format
         case NoSuccess(msg, next) => (s"[[CANNOT PARSE]] [${next.pos.toString}] : ${msg}")
@@ -380,25 +366,66 @@ object NotesLocker extends RazController with Logging {
 
       type PS = Parser[State]
 
-      def line: P = dpShare | dpAct
+      def line: PS = dpShare | pdpAct
 
-      def nco(s: String) =
-        (ROne[NotesContact]("oId"->au._id, "nick" -> s) orElse Notes.notesForTag(au._id, "contact").filter(we=>name(we) == s).toList.headOption.flatMap(we=>ROne[NotesContact]("oId"->au._id, "email" -> we.contentTags.get("email").getOrElse(""))))
+      import razie.|>
 
-      def name(we:model.WikiEntry) = {
-        we.contentTags.get("name").filter(_ != we._id.toString).orElse(we.contentTags.get("email").map(_.replaceAll("@.*$", ""))).mkString
+      //todo optimize - this loads all contacts to find, flatmapped per circle, cache per user somehow
+      def wecs = Notes.notesForTag(au._id, "contact")
+
+      /** find contact for MY name
+        *
+        * contacts may have either his prefered nick name or whatever i call him/her */
+      def mycontact(n:String) =
+        wecs.filter(we=>name(we) == n).toList.headOption.flatMap(
+          we=>ROne[NotesContact]("oId"->au._id, "email" -> we.contentTags.get("email").getOrElse("")))
+
+      /** find contact for name */
+      private def nco(s: String) =
+        ROne[NotesContact]("oId"->au._id, "nick" -> s) orElse mycontact(s)
+
+      /** find members of circle with name */
+      private def cco(s: String) =
+        ROne[FriendCircle]("ownerId"->au._id, "name" -> s).toList flatMap (_.members) flatMap nco
+
+      private def name(we:model.WikiEntry) = {
+        we.contentTags.get(NAME).filter(_ != we._id.toString).orElse(we.contentTags.get("email").map(_.replaceAll("@.*$", ""))).mkString
       }
 
-      val c2 = RMany[NotesContact]("oId"->au._id).map(_.nick).toList
+      private val c2 = RMany[NotesContact]("oId"->au._id).map(_.nick).toList
 
-      def dpShare: P = """^\.share """.r ~> rep("to:" ~ "[^ \n\r]+".r <~ opt(" ")) ^^ {
+      def dpShare: PS = positioned("""^\.shared """.r ~> rep("to:" ~ "[^ \n\r]+".r <~ opt(" ")) ^^ {
         case tos => {
-          tos.collect {
+          if(we.tags contains CIRCLE) {
+            val circle = Circles.createOrFind(we)
+            val members = tos.collect {
+              case _ ~ to => {
+                //todo handle when the NotesContact was not accepted or invited even, so you can have circles of friends that did
+                //not join yet
+                nco(to).toList
+              }
+            }.flatten
+
+            // notify new members
+            members.foreach {nc =>
+              if(! circle.members.contains(nc.nick)) {
+                nc.uId.map {uid=>
+                  Inbox(uid, au._id, "Circle", Some(we._id), "Added to a circle", "", "u").create(db.tx.local("notes.inbox"))
+                }
+                admin.SendEmail.withSession { implicit mailSession =>
+                  Emailer.circled(au.ename, nc.email, nc.nick, s"/note/id/${we._id}")
+                }
+              }
+            }
+
+            circle.copy(members=members.map(_.nick).toSeq).update(db.tx.local("notes.inbox"))
+
+          } else tos.collect {
             case _ ~ to => {
-              nco(to).filter(_.uId.isDefined).foreach {nc=>
+              nco(to).toList ::: cco(to) filter (_.uId.isDefined) foreach {nc=>
                 if(ROne[NoteShare]("noteId"->we._id, "toId"->nc.uId.get).isEmpty) db.tx("notes.inbox") {implicit txn=>
                   NoteShare(we._id, nc.uId.get, au._id).create
-                  Inbox(nc.uId.get, au._id, "Share", Some(we._id), "", "", "u").create(db.tx.local("notes.inbox"))
+                  Inbox(nc.uId.get, au._id, "Share", Some(we._id), "Note shared with you", "", "u").create(db.tx.local("notes.inbox"))
                   admin.SendEmail.withSession { implicit mailSession =>
                     Emailer.noteShared(au.ename, nc.email, nc.nick, s"/note/id/${we._id}")
                   }
@@ -406,20 +433,32 @@ object NotesLocker extends RazController with Logging {
               }
             }
           }
-          ""
+          State("")
         }
-      }
+      })
 
-      def dpAct: P = """^\.a """.r ~> rep("to:" ~ "[^ \n\r]+".r) ~ """[^\n\r]*""".r  ^^ {
-        case tos ~ value=> {
+
+      def posline = positioned("""[^\n\r]*""".r  ^^ {
+        case x => State(x)
+      })
+
+      def dpAct: PS = positioned("""^\.a """.r ~> rep("to:" ~ "[^ \n\r]+".r) ~ """[^\n\r]*""".r ^^ {
+        case tos ~ value => {
           tos.collect {
             case _ ~ to => {
-              def uid(s:String) = new ObjectId()
-              Inbox(uid(to), au._id, "Action", Some(we._id), "", "", "u" ).create(db.tx.local("notes.inbox"))
-              ""
+              nco(to).filter(_.uId.isDefined).foreach { nc =>
+                Inbox(nc.uId.get, au._id, "Action", Some(we._id), value, "", "u").create(db.tx.local("notes.inbox"))
+              }
             }
           }
-          ""
+          State("")
+        }
+      })
+
+      def pdpAct: PS = dpAct ^^ {
+        case a => {
+          cout << ".............................. POS " + a.pos
+          a
         }
       }
     }
@@ -490,10 +529,13 @@ object NotesLocker extends RazController with Logging {
       }
   }
 
+  def next (implicit request : Request[AnyContent]) = {
+    import razie.|>._
+    request.headers.get("Referer").mkString |> {x => if(x.contains(Config.hostport) || x.contains("/notes"))x else ""}
+  }
+
   def viewNoteById(nid: String) = FAU { implicit au =>
     implicit errCollector => implicit request =>
-      import razie.|>._
-      val next = request.headers.get("Referer").mkString |> {x => if(x.contains(Config.hostport) || x.contains("/notes"))x else ""}
       Notes.notesById(new ObjectId(nid)).map { n =>
         if (n.by == au._id || Notes.isShared(n, au._id))
           Ok(views.html.notes.notesview("", Notes.dec(au)(n), autags, Seq("msg" -> s"[view]"), Some(au)))
@@ -504,20 +546,42 @@ object NotesLocker extends RazController with Logging {
       }
   }
 
-  /** edit a note */
-  def noteById(nid: String) = FAU { implicit au =>
+  def domPlay(nid: String) = FAU { implicit au =>
     implicit errCollector => implicit request =>
       import razie.|>._
       val next = request.headers.get("Referer").mkString |> {x => if(x.contains(Config.hostport) || x.contains("/notes"))x else ""}
-      Notes.notesById(new ObjectId(nid)).map(Notes.dec(au)).map { n =>
-        if (n.by == au._id)
-          Ok(views.html.notes.notesmain(lform.fill(next, n._id.toString, n.ver, n.content, n.tags.mkString(",")), autags, Seq())(Some(au)))
-        else if(Notes.isShared(n, au._id))
-          Ok(views.html.notes.notesmain(lform.fill(next, n._id.toString, n.ver, n.content, n.tags.mkString(",")), autags, Seq("msg"->"Shared note..."), false, true)(Some(au)))
+      Notes.notesById(new ObjectId(nid)).map { n =>
+        if (n.by == au._id || Notes.isShared(n, au._id))
+          Ok(views.html.notes.domPlay("", Notes.dec(au)(n), autags, Seq("msg" -> s"[view]"), Some(au)))
         else
           Ok(views.html.notes.notesmain(NEWNOTE, autags, Seq("err" -> "[Not your note...]"))(Some(au)))
       } getOrElse {
         Ok(views.html.notes.notesmain(NEWNOTE, autags, Seq("err" -> "[Note not found]"))(Some(au)))
+      }
+  }
+
+  private def OkNewNote(msg:Seq[(String,String)]=Seq())(implicit request:Request[AnyContent], au:User) = {
+    Ok(views.html.notes.notesmain(NEWNOTE, autags, msg)(Some(au)))
+  }
+
+  /** edit a note */
+  def noteById(nid: String) = FAU { implicit au =>
+    implicit errCollector => implicit request =>
+      val onid = new ObjectId(nid)
+
+      ROne[AutosavedNote]("uid"->au._id, "nid"->onid) map {as=>
+        Ok(views.html.notes.notesmain(lform.fill("", as.nid.toString, as.ver, as.content, as.tags), autags, Seq("msg"->"[Autosaved note found]"), true)(Some(au)))
+      } orElse
+        Notes.notesById(onid).map(Notes.dec(au)).map { n =>
+          if (n.by == au._id)
+            Ok(views.html.notes.notesmain(lform.fill(next, n._id.toString, n.ver, n.content, n.tags.mkString(",")), autags, Seq())(Some(au)))
+          else if(Notes.isShared(n, au._id))
+            Ok(views.html.notes.notesmain(lform.fill(next, n._id.toString, n.ver, n.content, n.tags.mkString(",")), autags, Seq("msg"->"Shared note..."), false, true)(Some(au)))
+          else
+//            Ok(views.html.notes.notesmain(NEWNOTE, autags, Seq("err" -> "[Not your note...]"))(Some(au)))
+            OkNewNote(Seq("err" -> "[Not your note...]"))
+        } getOrElse {
+        OkNewNote(Seq("err" -> "[Note not found]"))
       }
   }
 
@@ -547,7 +611,7 @@ object NotesLocker extends RazController with Logging {
 
   type Tags = Seq[(String, Int)]
 
-  private def autags(implicit au: User) = Notes.tagsForUser(au._id)
+  def autags(implicit au: User) = Notes.tagsForUser(au._id)
 
   def tag(tag: String) = FUH { implicit au =>
     implicit errCollector => implicit request =>
@@ -555,9 +619,9 @@ object NotesLocker extends RazController with Logging {
 
       //todo this loads everything...
       val res = tag match {
-        case "recent" => Notes.notesForTag(au._id, "all").toList.sortWith { (a, b) => a.updDtm isAfter b.updDtm }
-        case "none" => Notes.notesForTag(au._id, "none").toList.sortWith { (a, b) => a.updDtm isAfter b.updDtm }
-        case "archive" => Notes.notesForTag(au._id, "archive").toList.sortWith { (a, b) => a.updDtm isAfter b.updDtm }
+        case RECENT => Notes.notesForTag(au._id, ALL).toList.sortWith { (a, b) => a.updDtm isAfter b.updDtm }
+        case NONE => Notes.notesForTag(au._id, NONE).toList.sortWith { (a, b) => a.updDtm isAfter b.updDtm }
+        case ARCHIVE => Notes.notesForTag(au._id, ARCHIVE).toList.sortWith { (a, b) => a.updDtm isAfter b.updDtm }
         case _ => Notes.notesForTags(au._id, ltag).toList.sortWith { (a, b) => a.updDtm isAfter b.updDtm }
       }
 
@@ -569,12 +633,12 @@ object NotesLocker extends RazController with Logging {
       val notes = res.filter(_.by == au._id).take(20).toList // TOOD optimize - inbox doesn't need etc
 
       tag match {
-        case "inbox" => {
+        case INBOX => {
           val inb = Inbox.find(au._id).toList
           Ok(views.html.notes.notestaginbox(tag, notes, counted,
             Seq("msg" -> s"[Found ${notes.size} notes]"), Some(au))(inb))
         }
-        case "contact" => Ok(views.html.notes.notestagcontact(tag, notes, counted,
+        case CONTACT => Ok(views.html.notes.notestagcontact(tag, notes, counted,
           Seq("msg" -> s"[Found ${notes.size} notes]"), Some(au))(RMany[NotesContact]("oId"->au._id).toList))
         case _ if(!res.isEmpty) => Ok(views.html.notes.noteslist(tag, notes, counted,
           Seq("msg" -> s"[Found ${notes.size} notes]"), Some(au)))
@@ -662,7 +726,7 @@ object NotesLocker extends RazController with Logging {
           (q.length > 1 && u.getAs[String]("name").exists(_.toLowerCase.contains(qi))) ||
             (q.length > 1 && u.getAs[String]("label").exists(_.toLowerCase.contains(qi)) ||
             (q.length() > 2 && (
-                if(u.getAs[Seq[String]]("tags").exists(_ contains Notes.ENC))
+                if(u.getAs[Seq[String]]("tags").exists(_ contains ENC))
                   u.as[String]("content").dec else u.as[String]("content")
                 ).toLowerCase.contains(qi))
               )
@@ -686,17 +750,19 @@ object NotesLocker extends RazController with Logging {
   }
 
   // TODO optimize
+  /** called for content asist when assigning to contacts */
   def contacts = FUH { implicit au =>
     implicit errCollector => implicit request =>
 
       def name(we:model.WikiEntry) = {
-        we.contentTags.get("name").filter(_ != we._id.toString).orElse(we.contentTags.get("email").map(_.replaceAll("@.*$", ""))).mkString
+        we.contentTags.get(NAME).filter(_ != we._id.toString).orElse(we.contentTags.get(EMAIL).map(_.replaceAll("@.*$", ""))).mkString
       }
 
-      val c1 = Notes.notesForTag(au._id, "contact").map(we=>name(we)).toList
+      val c1 = Notes.notesForTag(au._id, CONTACT).map(we=>name(we)).toList
       val c2 = RMany[NotesContact]("oId"->au._id).map(_.nick).toList
+      val c3 = RMany[FriendCircle]("ownerId"->au._id).map(_.name).toList
 
-      Ok("["+(c1 ::: c2).map(s=>s""" "$s" """).mkString(",")+"]").as("text/json")
+      Ok("["+(c1 ::: c2 ::: c3).map(s=>s""" "$s" """).mkString(",")+"]").as("text/json")
   }
 
   // when configuration changes, call this to udpate mine
@@ -729,13 +795,12 @@ object NotesLocker extends RazController with Logging {
 
 /** controller for server side fiddles / services */
 object SFiddles extends RazController with Logging {
-
+  import Tags._
   import NotesLocker.FAU
 
   def qtojson (q:Map[String,String]) = "{" + q.map(t=>s"""${t._1} : "${t._2}" """).mkString(",") + "}"
   def qtourl (q:Map[String,String]) = q.map(t=>s"""${t._1}=${t._2}""").mkString("&")
 
-  final val SFIDDLE = "sfiddle"
 
   /** run sfiddles by name, as REST services */
   def sfiddle(path: String) = FAU { implicit au =>
@@ -815,5 +880,82 @@ object SFiddles extends RazController with Logging {
         Ok(views.html.fiddle.play2(lang, j, q, Some(au)))
       }
   }
+}
+
+// -------------- circles
+
+/** a circle of friends / team etc */
+@db.RTable
+case class FriendCircle (
+                          name: String,
+                          ownerId: ObjectId, // user
+                          members:Seq[String] = Seq(), // users
+                          role: String="", // work, ski, enduro etc
+                          crDtm:DateTime = DateTime.now,
+                          _id: ObjectId = new ObjectId()) extends REntity[FriendCircle] {
+
+  def owner = ownerId.as[User]
+}
+
+/** notes shared to a circle */
+@db.RTable
+case class CircleShare (
+                         noteId: ObjectId, // the note it's about
+                         to: ObjectId,
+                         ownerId: ObjectId,
+                         how: String="", // "" - read/write, "ro" - readonly
+                         crDtm:DateTime = DateTime.now,
+                         _id: ObjectId = new ObjectId()) extends REntity[CircleShare] {
+
+  def owner = ownerId.as[User]
+}
+
+object Circles {
+  import Tags._
+
+  def get (name:String)(implicit au:User) = ROne[FriendCircle]("ownerId"->au._id,"name"->name)
+  def createOrFind (we:WikiEntry)(implicit au:User) = get(we.contentTags(NAME)) getOrElse {
+    val ret = FriendCircle(we.contentTags(NAME), au._id)
+    ret.create
+    ret
+  }
+}
+
+/** dom graph controller */
+object DomC extends RazController with Logging {
+
+  object retj {
+    def <<(x: List[Any]) = Ok(js.tojson(x).toString).as("application/json")
+    def <<(x: Map[String, Any]) = Ok(js.tojson(x).toString).as("application/json")
+  }
+
+  def domj(nid: String) = NotesLocker.FAU { implicit au =>
+    implicit errCollector => implicit request =>
+      Notes.notesById(new ObjectId(nid)).map { n =>
+        if (n.by == au._id || Notes.isShared(n, au._id))
+          retj << DOM(n).get.tojmap
+        else
+          NotFound("[Not your note...]")
+      } getOrElse {
+        NotFound("[Note not found...]")
+      }
+  }
+
+  def dom(cat: String) = Action { implicit request =>
+    retj << WG.dom1(cat).tojmap
+  }
+
+  def domPlay(nid: String) = NotesLocker.FAU { implicit au =>
+    implicit errCollector => implicit request =>
+      Notes.notesById(new ObjectId(nid)).map { n =>
+        if (n.by == au._id || Notes.isShared(n, au._id))
+          Ok(views.html.notes.domPlay("", Notes.dec(au)(n), NotesLocker.autags, Seq("msg" -> s"[view]"), Some(au)))
+        else
+          NotFound("[Not your note...]")
+      } getOrElse {
+        NotFound("[Note not found...]")
+      }
+  }
+
 }
 

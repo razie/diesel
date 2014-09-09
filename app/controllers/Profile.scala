@@ -294,7 +294,7 @@ object Profile extends RazController with Logging {
 
   /** join step 4 - after captcha: create profile and send emails */
   def doeCreateProfile(testcode: String) = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
 
     def getFromSession(s: String, d: String) =
       if (testcode != T.TESTCODE) session.get(s)
@@ -392,7 +392,7 @@ object Profile extends RazController with Logging {
 
   /** show profile **/
   def doeProfile = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
     (for (
       au <- auth orCorr cNoAuth
     ) yield {
@@ -402,7 +402,7 @@ object Profile extends RazController with Logging {
 
   /** show children in profile **/
   def profile2(child: String) = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
     (for (
       au <- activeUser;
       c <- Users.findUserById(child)
@@ -416,7 +416,7 @@ object Profile extends RazController with Logging {
 
   /** edited children in profile **/
   def profile2u(child: String) = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
     edprofileForm2.bindFromRequest.fold(
       formWithErrors => {
         warn("FORM ERR " + formWithErrors)
@@ -562,7 +562,7 @@ object Profile extends RazController with Logging {
   }
 
   def doeProfilePass2 = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
     chgpassform.bindFromRequest.fold(
       formWithErrors => BadRequest(views.html.user.doeProfilePass(formWithErrors, auth.get)),
       {
@@ -681,7 +681,7 @@ object EdUsername extends RazController {
   }
 
   def doeProfileUname2 = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
     chgusernameform.bindFromRequest.fold(
       formWithErrors => BadRequest(views.html.user.doeProfileUname(formWithErrors, auth.get)),
       {
@@ -705,7 +705,7 @@ object EdUsername extends RazController {
 
   // logged in as ADMIN
   def accept(expiry1: String, userId: String, newusername: String) = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
     (expiry1, userId, newusername) match {
       case (Enc(expiry), _, _) => {
         for (
@@ -744,7 +744,7 @@ Ok, username changed.
 
   // logged in as ADMIN
   def deny(expiry: String, userId: String, newusername: String) = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
     (expiry, userId, newusername) match {
       case (Enc(expiry), _, _) => {
         for (
@@ -792,7 +792,7 @@ object EdEmail extends RazController {
   }
 
   def doeProfileEmail2() = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
     emailForm.bindFromRequest.fold(
       formWithErrors => BadRequest(views.html.user.doeProfileEmail(formWithErrors, auth.get)),
       {
@@ -888,7 +888,7 @@ object Kidz extends RazController {
   }
 
   def doeKidUpdate(userId: String, rkId: String, role: String, associd: String, next: String) = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
     form(auth.get).bindFromRequest.fold(
       formWithErrors => BadRequest(views.html.user.doeKid(userId, rkId, role, associd, next, formWithErrors, auth.get)),
       {
@@ -948,7 +948,7 @@ object Kidz extends RazController {
   }
 
   def doeKidOverride(userId: String, rkId: String, role: String, associd: String, next: String) = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
     (for (
       au <- activeUser;
       rk <- RacerKidz.findById(new ObjectId(rkId));

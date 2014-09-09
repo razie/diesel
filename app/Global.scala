@@ -8,6 +8,7 @@ import admin.Audit
 import admin.Config
 import admin.RazAuthService
 import admin.Services
+import controllers.{Wiki, RazWikiAuthorization, ViewService, RkViewService}
 import db._
 import model.EncryptService
 import model.WikiUsers
@@ -116,11 +117,11 @@ object Global extends WithFilters(LoggingFilter) {
     Services.auth = RazAuthService
     Services.config = Config
 
-    Services.mongoDbVer = 15 // normal is one higher than the last one
+    Services.mongoDbVer = 16 // normal is one higher than the last one
     Services.mongoUpgrades = Map(
       1 -> Upgrade1, 2 -> Upgrade2, 3 -> Upgrade3, 4 -> Upgrade4, 5 -> Upgrade5,
       6 -> U6, 7 -> U7, 8 -> U8, 9 -> U9, 10 -> U10, 11 -> U11, 12 -> U12, 13 -> U13,
-      14 -> U14)
+      14 -> U14, 15 -> U15)
 
     Services.mkDb = () => {
       lazy val conn = MongoConnection(admin.Config.mongohost)
@@ -202,7 +203,7 @@ object LoggingFilter extends Filter {
       }
     }
 
-    def logTime(what: String)(result: PlainResult): Result = {
+    def logTime(what: String)(result: SimpleResult): Result = {
       val time = System.currentTimeMillis - start
       if (! rh.uri.startsWith( "/assets/"))
         clog << s"LF.STOP $what ${rh.method} ${rh.uri} took ${time}ms and returned ${result.header.status}"

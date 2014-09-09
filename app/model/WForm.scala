@@ -1,14 +1,14 @@
 package model
 
-import admin.VError
+import admin.VErrors
 import db.RTable
 
 /** wraper with form utils */
 class WForm(val we: WikiEntry) {
   def isFormSpec = false
 
-  def mkContent(j: org.json.JSONObject) = {
-    val co = we.content.replaceFirst("(?s)\\]\\].*", "]]") +
+  def mkContent(j: org.json.JSONObject, content:String = we.content) = {
+    val co = content.replaceFirst("(?s)\\]\\].*", "]]") +
       "\n" +
       "{{.section:formData}}\n" +
       j.toString +
@@ -16,6 +16,7 @@ class WForm(val we: WikiEntry) {
     co
   }
 
+  /** replace the fields in content with the respective html code */
   def formatFields(content: String) = {
     val FIELDS = """`\{\{\{(f):([^}]*)\}\}\}`""".r
 
@@ -58,7 +59,7 @@ class WForm(val we: WikiEntry) {
   }
 
   def validate(data: Map[String, String]) = {
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
     val errors = collection.mutable.Map[String, String]()
     val newData = collection.mutable.Map[String, String]()
 

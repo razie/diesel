@@ -2,7 +2,7 @@ package controllers
 
 import com.mongodb.casbah.Imports._
 import admin.Audit
-import admin.VError
+import admin.VErrors
 import model.DoSec
 import play.api.mvc.Action
 import model.Users
@@ -78,7 +78,7 @@ object Application extends RazController {
     var w: Option[model.WID] = None
     var i = 0
     do {
-      w = WikiIndex.random
+      w = Wikis(Wikis.DFLT).index.random
       i = i + 1
     } while (w.isEmpty && i < 100)
 

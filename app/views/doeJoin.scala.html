@@ -7,13 +7,11 @@
   <div class="hero-unit">
     <div class="row">
       <div class="span6">
-        <h1>Welcome!</h1>
-        <br>
-        @wiki.wikiFragInt("Admin:page-join-"+realm, None)
-
-        @** the google button*@
+        <h1>
+          Welcome!
+          @** the google button*@
           @if(realm == "notes") {
-            <p align="right">
+            <span align="right">
               <span id="signinButton">
                 <span
                 class="g-signin"
@@ -23,8 +21,11 @@
                 data-scope="profile email">
                 </span>
               </span>
-            </p>
+            </span>
           }
+        </h1>
+        <br>
+        @wiki.wikiFragInt("Admin:page-join-"+realm, None)
 
       </div>
 

@@ -5,7 +5,7 @@ msg types are msg, err
 **************@
 @(tag:String, notes:List[model.WikiEntry], tags:controllers.NotesLocker.Tags, msg:Seq[(String,String)], au:Option[model.User], isSearch:Boolean=false)(implicit request:Request[_])
 
-@frup(au)
+@frup(au, None, s"Tagged $tag")
 
 @ccc(we:model.WikiEntry)= @{
     val x = controllers.NotesLocker.format(we.wid, we.markup, we.content, Some(we), au)

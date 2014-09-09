@@ -51,7 +51,7 @@ function cont(value){
 var contacts=[];
 
 $('#content').textcomplete([
-  { // beaTags
+  { // braTags
     match: /(\{\{)(\w*)$/,
     search: function (term, callback) {
       callback(braTags.filter(function(value){

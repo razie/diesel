@@ -13,13 +13,14 @@ msg types are msg, err
 @ver = @{myForm("ver").value}
 
 @rows = @{
-   val line = myForm("content").value.getOrElse("")
-   if(line.length() - line.replace("\n", "").length() > 5) 10 else 5
+  val line = myForm("content").value.getOrElse("")
+  val k = line.length() - line.replace("\n", "").length()
+  if(k > 10) 15 else if(k > 5) 10 else 5
 }
 
 @frup(au)
 
-<h3>Creative <small>preview</small> @notesmsg(msg, au) </h3>
+<h3>Creative <small>| preview</small> @notesmsg(msg, au) </h3>
 
 <div class="well" style="padding-bottom:0px">
 @import helper.twitterBootstrap._
@@ -114,7 +115,7 @@ msg types are msg, err
 <script>
 // CA options for .
 var dotTags =[
-'share to:who',
+'shared to:who',
 'n name of this note',
   @if(au.exists(_.hasPerm(model.Perm.codeMaster))) {
     'sfiddle path',

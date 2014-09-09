@@ -16,7 +16,10 @@ import db.RazSalatContext._
 import db.{ RTable, RCreate, RDelete }
 import admin.Services
 
-/** a simple wiki-style entry: language (markdown, mediawiki wikidot etc) and the actual source */
+/** a simple wiki-style entry: language (markdown, mediawiki wikidot etc) and the actual source
+  *
+  * There is an "owner" property - owner is supposed to have special privileges
+  */
 @RTable
 case class WikiEntry(
   category: String,
@@ -34,7 +37,10 @@ case class WikiEntry(
   updDtm: DateTime = DateTime.now,
   _id: ObjectId = new ObjectId()) {
 
-  /** is this just an alias? */
+  /** is this just an alias?
+    *
+    * an alias is a topic that only contains the alias markup: [[alias:xxx]]
+    */
   def alias: Option[WID] = {
     val wikip2 = """\[\[alias:([^\]]*)\]\]"""
     val wikip2r = wikip2.r
@@ -53,25 +59,22 @@ case class WikiEntry(
 
   def cloneNewVer(label: String, markup: String, content: String, by: ObjectId, props: Map[String, String] = this.props) =
     copy(label=label, markup=markup, content=content, by=by, ver=ver + 1, props=props, updDtm=DateTime.now)
-//    WikiEntry(category, name, label, markup, content, by, tags, ver + 1, parent, props, crDtm, DateTime.now, _id)
 
   def cloneParent(p: Option[ObjectId]) = copy(parent = p, updDtm = DateTime.now)
 
-  def cloneProps(m: Map[String, String], sby: ObjectId) =
-    copy(props = this.props ++ m)
-//    WikiEntry(category, name, label, markup, content, sby, tags, ver, parent, this.props ++ m, crDtm, DateTime.now, _id)
+  def cloneProps(m: Map[String, String], sby: ObjectId) = copy(props = this.props ++ m)
 
-  def withTags(s: Seq[String], sby: ObjectId) =
-    copy(tags=s)
-//    WikiEntry(category, name, label, markup, content, sby, ver, parent, this.props + ("tags" -> s.mkString(",")), crDtm, DateTime.now, _id)
+  def withTags(s: Seq[String], sby: ObjectId) = copy(tags=s)
 
   def findParent = parent flatMap (p => Wikis.find(p))
 
   def isReserved = props.get("reserved").exists(_ == "yes")
 
-  def isPrivate = "User" == category || (props.exists(e => "owner" == e._1))
-  def isOwner(id: String) = ("User" == category && name == id) || (props.exists(e => "owner" == e._1 && id == e._2))
-  def owner = props.get("owner").flatMap(s => WikiUsers.impl.findUserById(new ObjectId(s)))
+  val PROP_OWNER: String = "owner"
+
+  def isPrivate = "User" == category || (props.exists(e => PROP_OWNER == e._1))
+  def isOwner(id: String) = ("User" == category && name == id) || (props.exists(e => PROP_OWNER == e._1 && id == e._2))
+  def owner = props.get(PROP_OWNER).flatMap(s => WikiUsers.impl.findUserById(new ObjectId(s)))
 
   def create = {
     // TODO optimize exists
@@ -87,7 +90,7 @@ case class WikiEntry(
         " " + category + ":" + name)
     Wikis.weTable(wid.cat) += grater[WikiEntry].asDBObject(Audit.createnoaudit(this))
     Wikis.shouldFlag(name, label, content).map(auditFlagged(_))
-    WikiIndex.create(this)
+    Wikis(wid).index.create(this)
   }
 
   def update(newVer: WikiEntry)(implicit txn:db.Txn) = {
@@ -96,14 +99,13 @@ case class WikiEntry(
       s"/wiki/${newVer.wid.wpath}",
       s"""BY ${(WikiUsers.impl.findUserById(newVer.by).map(_.userName).getOrElse(newVer.by.toString))} - $category : $name ver ${newVer.ver}""")
     WikiEntryOld(this).create
-    // TODO why WAS I using these instead of the _id ?
-//    val key = Map("category" -> category, "name" -> name, "parent" -> parent)
     db.RUpdate.noAudit[WikiEntry](Wikis.weTables(wid.cat), Map("_id" -> newVer._id), newVer)
     Wikis.shouldFlag(name, label, content).map(auditFlagged(_))
 
-    if (shouldIndex) WikiIndex.update(this, newVer)
+    if (shouldIndex) Wikis(wid).index.update(this, newVer)
   }
 
+  /** should this entry be indexed in memory */
   def shouldIndex = !(Wikis.PERSISTED contains wid.cat)
 
   def delete(sby: String) (implicit txn:db.Txn) = {
@@ -111,7 +113,7 @@ case class WikiEntry(
     WikiEntryOld(this).create
     val key = Map("category" -> category, "name" -> name, "parent" -> parent)
     db.RDelete.apply (Wikis.weTables(wid.cat), key)
-    if (shouldIndex) WikiIndex.delete(this)
+    if (shouldIndex) Wikis(wid).index.delete(this)
   }
 
   def auditFlagged(f: String) { Log.audit(Audit.logdb(f, category + ":" + name)) }
@@ -135,7 +137,7 @@ case class WikiEntry(
   def section(stype: String, name: String) = sections.find(x => x.stype == stype && x.name == name)
 
   /** scripts are just a special section */
-  lazy val scripts = sections.filter(x => Array("def", "lambda").contains(x.stype))
+  lazy val scripts = sections.filter(x => "def" == x.stype || "lambda" == x.stype)
 
   /** pre processed form - parsed and graphed */
   lazy val preprocessed = {
@@ -170,6 +172,10 @@ case class WikiEntry(
   var fields = new scala.collection.mutable.HashMap[String, FieldDef]()
   lazy val form = new WikiForm(this)
   def formRole = this.props.get(FormStatus.FORM_ROLE)
+
+  /** other parsing artifacts to be used by knowledgeable modules */
+  //todo move the fields and form stuff here
+  val cache = new scala.collection.mutable.HashMap[String, Any]()
 }
 
 /** a form field definition */
@@ -210,13 +216,18 @@ case class UWID(cat: String, id:ObjectId) {
       idx.find((_,_,x)=>x == id).map(_._2)
     } orElse Wikis.findById(cat, id).map(_.wid)
   }
-  def wid = findWid
+  def wid = findWid orElse Some(WID(cat, id.toString)) // used in too many places to refactor properly
   def nameOrId = wid.map(_.name).getOrElse(id.toString)
   lazy val grated     = grater[UWID].asDBObject(this)
   lazy val page = Wikis.find(this)
 }
 
-/** a wiki id, a pair of cat and name - can reference a wiki entry or a section of an entry */
+/** a wiki id, a pair of cat and name - can reference a wiki entry or a section of an entry
+  *
+  * format is parent/cat:name#section
+  *
+  * assumption is that when we link between wikis, we'll have wiki/parent/cat:name#section -
+  */
 case class WID(cat: String, name: String, parent: Option[ObjectId] = None, section: Option[String] = None, realm:Option[String]=None) {
   override def toString = "[[" + wpath + "]]" //cat + ":" + name + (section.map("#"+_).getOrElse("")) + parent.map(" of " + _.toString).getOrElse("")
 
@@ -234,7 +245,6 @@ case class WID(cat: String, name: String, parent: Option[ObjectId] = None, secti
   def uwid = findId map {x=>UWID(cat, x)}
 
   /** format into nice url */
-//  def wpath: String = findParent.map(_.wid.wpath + "/").getOrElse("") + (if (cat != null && cat.length > 0) (cat + ":") else "") + name + (section.map("#" + _).getOrElse(""))
   def wpath: String = parentWid.map(_.wpath + "/").getOrElse("") + (
     if (cat != null && cat.length > 0 && !WID.NOCATS.contains(cat)) (cat + ":") else "") + name + (section.map("#" + _).getOrElse(""))
 
@@ -249,6 +259,9 @@ case class WID(cat: String, name: String, parent: Option[ObjectId] = None, secti
   /** helper to get a label, if defined or the default provided */
   def label(id: String, alt: String) = WikiDomain.labelFor(this, id).getOrElse(alt)
   def label(id: String) = WikiDomain.labelFor(this, id).getOrElse(id)
+
+  /** get the realm or the default */
+  def getRealm = realm.getOrElse(Wikis.DFLT)
 }
 
 /** a special command wid, contains a command, what and wid - used in routes */

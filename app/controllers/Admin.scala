@@ -8,7 +8,7 @@ import com.mongodb.casbah.Imports.map2MongoDBObject
 import com.novus.salat.grater
 import admin.Audit
 import admin.Config
-import admin.VError
+import admin.VErrors
 import db.RazMongo
 import db.RazSalatContext.ctx
 import model.Enc
@@ -41,8 +41,8 @@ object Admin extends RazController {
     else noPerm(HOME)
   }
 
-  def FAD(f: User => VError => Request[AnyContent] => Result) = Action { implicit request =>
-    implicit val errCollector = new VError()
+  def FAD(f: User => VErrors => Request[AnyContent] => Result) = Action { implicit request =>
+    implicit val errCollector = new VErrors()
     (for (
       au <- activeUser;
       can <- au.hasPerm(Perm.adminDb) orErr "no permission"
@@ -106,7 +106,7 @@ object Admin extends RazController {
   }
 
   def ustatus(id: String, s: String) = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
     (for (
       can <- hasPerm(Perm.adminDb) orErr ("no permission");
       goodS <- s.length == 1 && ("as" contains s(0)) orErr ("bad status");
@@ -122,7 +122,7 @@ object Admin extends RazController {
   }
 
   def su(id: String) = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
     (for (
       au <- auth;
       can <- hasPerm(Perm.adminDb) orErr ("no permission");
@@ -151,7 +151,7 @@ object Admin extends RazController {
   }
 
   def uperm(id: String) = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
     permForm.bindFromRequest.fold(
       formWithErrors =>
         Msg2(formWithErrors.toString + "Oops, can't add that perm!"),
@@ -182,7 +182,7 @@ object Admin extends RazController {
     "quota" -> number(-1, 1000, true))
 
   def uquota(id: String) = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
     quotaForm.bindFromRequest.fold(
       formWithErrors =>
         Msg2(formWithErrors.toString + "Oops, can't add that quota!"),

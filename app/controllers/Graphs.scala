@@ -85,7 +85,7 @@ trait GraphLike[N <: GNode[N, L], L <: GLink[N]] {
 
   /** paint a graph old school - tree style: you better give me a DAG :) */
   def mkString: String = {
-    var s = new StringBuffer()
+    val s = new StringBuffer()
     s.append("Graph: \n")
     s.append(pt(" ", 0) + root.toString + "\n")
     foreach(
@@ -96,7 +96,7 @@ trait GraphLike[N <: GNode[N, L], L <: GLink[N]] {
 
   /** paint a graph old school - tree style: you better give me a DAG :) */
   def mkString2: String = {
-    var s = new StringBuffer()
+    val s = new StringBuffer()
     s.append("Graph: \n")
     foreach(
       (x: N, v: Int) => { s.append(pt(" ", v) + x.toString + "\n") },
@@ -154,6 +154,7 @@ class NoCyclesGraphLike[N <: GNode[N, L], L <: GLink[N]](target: GraphLike[N, L]
 
   val index = new mutable.HashMap[Any, mutable.ListBuffer[L]]()
 
+  /** a node was traversed, collect in index to avoid second time */
   def collect(n: N, from: Option[L]) =
     if (index contains n)
       index(n) += from.get
@@ -161,13 +162,16 @@ class NoCyclesGraphLike[N <: GNode[N, L], L <: GLink[N]](target: GraphLike[N, L]
       index put (n,
         from.map(mutable.ListBuffer[L](_)) getOrElse mutable.ListBuffer[L]())
 
+  /** was this node traversed? */
   def isNodeCollected(n: N) = index.get(n).isDefined
 
+  /** was this node traversed from the direction? */
   def isCollected(n: N, from: Option[L]) =
     from.isDefined &&
       index.get(n).isDefined &&
       index(n).filter(ll => ll == from.get).headOption.isDefined
 
+  /** safe traversal - only traverse each node once, they are collected and remembered */
   override protected def iforeach(n: N, from: Option[L], fn: (N, Int) => Unit, fl: (L, Int) => Unit, level: Int) {
     if (Graphs.maxDebugDepth > 0 && level >= Graphs.maxDebugDepth)
       throw new IllegalStateException("Maximum depth reached in graph: " + Graphs.maxDebugDepth + " reset Graphs.maxDebugDepth...")
@@ -191,6 +195,7 @@ class DepthGraphLike[N <: GNode[N, L], L <: GLink[N]](max: Int)(target: GraphLik
   def root: N = target.root
   def colored: N => Boolean = target.colored
 
+  /** traverse but with a limited number of levels */
   override protected def iforeach(n: N, from: Option[L], fn: (N, Int) => Unit, fl: (L, Int) => Unit, level: Int) {
     if (level >= max)
       throw new IllegalStateException("Maximum depth reached in graph: " + max)

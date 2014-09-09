@@ -95,7 +95,7 @@
       </div>
   </div>
 
-@Wiki.moderator(to).map {mu=>
+@Wiki.moderatorOf(to).map {mu=>
   <div class="alert alert-warn">
   <strong>Note</strong>
     that the @to.cat.toLowerCase is moderated by <a href="@controllers.Wiki.w("User", mu)">@mu</a> - we'll ask for permission!

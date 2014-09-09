@@ -2,7 +2,7 @@ package controllers
 
 import admin.Audit
 import admin.Config
-import admin.VError
+import admin.VErrors
 import model.Enc
 import model.Perm
 import model.User
@@ -50,7 +50,7 @@ object OmpCtrl extends RazController {
   }
 
   def uperm(id: String) = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
     permForm.bindFromRequest.fold(
       formWithErrors =>
         Msg2(formWithErrors.toString + "Oops, can't add that perm!"),

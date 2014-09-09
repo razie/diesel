@@ -6,7 +6,7 @@
  */
 package controllers
 
-import admin.VError
+import admin.VErrors
 import model.DoSec
 import play.api.mvc.Action
 import razie.cdebug
@@ -15,7 +15,7 @@ import razie.cdebug
 object Sec extends RazControllerBase {
 
   def doeSec(whats: String) = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
     cdebug << "doeSec " + whats
     (for (
       ds <- DoSec.find(whats) orErr "cantfindit";

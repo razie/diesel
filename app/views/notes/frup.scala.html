@@ -3,9 +3,9 @@ show all the tags the user has
 
 msg types are msg, err
 **************@
-@(implicit au:Option[model.User], page:Option[model.WikiEntry]=None)
+@(implicit au:Option[model.User], page:Option[model.WikiEntry]=None, title:String="No Folders")
 
-@htmlHead("No Folders", None, page)
+@htmlHead(title, None, page)
 @notesnavbar(au)
 
 <div class="container">

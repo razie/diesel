@@ -78,7 +78,7 @@ object Tribe extends RazController with Logging {
 
   // manage tribe screen
   def doeClubTribe(id: String) = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
     (for (
       au <- activeUser;
       isClub <- au.isClub orErr ("tribes only for a club");
@@ -91,7 +91,7 @@ object Tribe extends RazController with Logging {
 
   // manage tribe screen
   def doeClubAddKid(tid: String, kid:String, x:String, role:String) = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
     (for (
       au <- activeUser;
       isClub <- au.isClub orErr ("tribes only for a club");
@@ -106,7 +106,7 @@ object Tribe extends RazController with Logging {
 
   // manage tribe screen
   def doeTribeAddHow(tid: String, role:String) = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
     (for (
       au <- activeUser;
       isClub <- au.isClub orErr ("tribes only for a club");
@@ -118,7 +118,7 @@ object Tribe extends RazController with Logging {
 
   // manage tribe screen
   def doeClubRemoveKid(tid: String, kid:String, x:String) = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
     (for (
       au <- activeUser;
       isClub <- au.isClub orErr ("tribes only for a club");
@@ -131,7 +131,7 @@ object Tribe extends RazController with Logging {
 
   // manage tribe screen
   def doeClubTribeAdd(cid: String) = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
     addForm.bindFromRequest.fold(
       formWithErrors => {clog << formWithErrors.errors.toString; Msg2("Oops, can't add that name!")},
       {
@@ -153,7 +153,7 @@ object Tribe extends RazController with Logging {
   }
 
   def doeClubTribeUpdate(tid: String) = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
     (for (
       au <- activeUser;
       isClub <- au.isClub orErr ("tribe management only for a club")
@@ -213,7 +213,7 @@ object Tribe extends RazController with Logging {
 
   /** */
   def doeUserTribe(id: String) = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
     (for (
       au <- activeUser;
       tribe <- Tribes.findById(new ObjectId(id)) orErr ("no tribe found")

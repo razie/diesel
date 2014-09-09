@@ -7,7 +7,7 @@ DT=`date | sed 's/ //g'`
 mv db/dump.tar.gz rk-backups/dump.OLD.$DT.tar.gz
 mv db/dump rk-backups/dump.OLD.$DT
 
-ssh razvanc@cloud3a.razie.com "cd ~/rk; . ./dbr-backup-prod"
+echo NOT BACKING UP ssh razvanc@cloud3a.razie.com "cd ~/rk; . ./dbr-backup-prod"
 
 rm db/dump.tar db/dump.tar.gz
 

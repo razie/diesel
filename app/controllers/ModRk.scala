@@ -8,7 +8,7 @@ import scala.Array.fallbackCanBuildFrom
 import scala.Option.option2Iterable
 import org.bson.types.ObjectId
 import admin.SendEmail
-import admin.VError
+import admin.VErrors
 import db.REntity
 import db.RMany
 import db.ROne
@@ -74,8 +74,8 @@ object ModRk extends RazController with Logging {
   import play.api.data.Forms._
   import play.api.data.validation.Constraints._
 
-  def FAU(f: User=>VError=>Request[AnyContent]=> Result) = Action { implicit request =>
-    implicit val errCollector = new VError()
+  def FAU(f: User=>VErrors=>Request[AnyContent]=> Result) = Action { implicit request =>
+    implicit val errCollector = new VErrors()
     (for (
       au <- activeUser
     ) yield {
@@ -98,7 +98,7 @@ object ModRk extends RazController with Logging {
   def rks (au:User, wid:WID) = model.RacerKidz.findAssocForUser(au._id).map(x => (x, x.rk.get)).toList
 
   def doeModRkRegs(wid: WID) = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
     (for (
       au <- activeUser;
       page <- wid.page
@@ -111,7 +111,7 @@ object ModRk extends RazController with Logging {
   }
 
   def doeModRkAdd(wid: WID, rkid: String, role: String) = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
     (for (
       au <- activeUser
     ) yield {
@@ -122,7 +122,7 @@ object ModRk extends RazController with Logging {
   }
 
   def doeModRkRemove(wid: WID, rkid: String) = Action { implicit request =>
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
     (for (
       au <- activeUser
     ) yield {

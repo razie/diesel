@@ -49,8 +49,7 @@ object RazAuthService extends AuthService[User] with Logging {
     // TODO must get rid of this stupid statics... why can't play do this?
     razie.NoStaticS.remove[DarkLight]
     request.session.get("css").fold {
-    val BLACKS = Array("enduroschool.com", "nofolders.net", "coolscala.com")
-    if(request.headers.get("X-FORWARDED-HOST").exists(x=> BLACKS.exists(x contains _)))
+    if(request.headers.get("X-FORWARDED-HOST").exists(x=> Config.BLACKS.exists(x contains _)))
       razie.NoStaticS.put(DarkLight("dark"))
     } { v =>
       razie.NoStaticS.put(DarkLight(v)) 
@@ -106,7 +105,7 @@ object RazAuthService extends AuthService[User] with Logging {
   }
 
   /** check that the user is active and can thus use basic functionality */
-  def checkActive(au: WikiUser)(implicit errCollector: VError = IgnoreErrors) =
+  def checkActive(au: WikiUser)(implicit errCollector: VErrors = IgnoreErrors) =
     controllers.Admin.toON2(au.isActive) orCorr (
       if (au.userName == "HarryPotter")
         Admin.cDemoAccount

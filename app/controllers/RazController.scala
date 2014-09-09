@@ -1,36 +1,27 @@
 package controllers
 
 import admin.Audit
-import model.Api
-import model.User
-import model.Wikis
+import model._
 import play.api.data.Forms._
 import play.api.data._
 import play.api.mvc._
 import play.api._
-import model.Users
 import razie.Logging
 import com.mongodb.WriteResult
-import model.Perm
 import admin.Validation
 import admin.Config
-import model.WID
-import admin.VError
+import admin.VErrors
 import admin.IgnoreErrors
-import model.Enc
 import play.api.mvc.CookieBaker
 import play.api.libs.Crypto
-import model.Base64
 import play.api.data.validation.Constraint
 import play.api.data.validation.Invalid
 import play.api.data.validation.ValidationError
 import play.api.data.validation.Valid
 import razie.NoStaticS
-import admin.WikiConfig
 import db.UpgradeDb
 import admin.RazAuthService
 import admin.Services
-import model.WikiUser
 
 
 /** common razie controller utilities */
@@ -56,12 +47,12 @@ class RazController extends RazControllerBase with Logging {
   }
 
   /** authentication - find the user currently logged in AND active */
-  def activeUser(implicit request: Request[_], errCollector: VError = IgnoreErrors): Option[User] = {
+  def activeUser(implicit request: Request[_], errCollector: VErrors = IgnoreErrors): Option[User] = {
     val au = auth(request) orCorr cNoAuth
     (au flatMap checkActive) map (_ => au.get)
   }
 
-  def checkActive(au: User)(implicit errCollector: VError = IgnoreErrors) =
+  def checkActive(au: User)(implicit errCollector: VErrors = IgnoreErrors) =
     toON2(au.isActive) orCorr (
       if (au.userName == "HarryPotter")
         cDemoAccount
@@ -70,7 +61,7 @@ class RazController extends RazControllerBase with Logging {
 
   //================= RESPONSES
 
-  def noPerm(wid: WID, more: String = "", shouldAudit: Boolean = true)(implicit request: Request[_], errCollector: VError = IgnoreErrors) = {
+  def noPerm(wid: WID, more: String = "", shouldAudit: Boolean = true)(implicit request: Request[_], errCollector: VErrors = IgnoreErrors) = {
     if (errCollector.hasCorrections) {
       val uname = auth.map(_.userName).getOrElse(if(isFromRobot) "ROBOT" else "")
       if (shouldAudit)
@@ -101,7 +92,7 @@ If you got this message in error, please describe the issue in a <a href="/doe/s
 """, Some(controllers.Wiki.w(wid).toString), auth))
   }
 
-  def unauthorized(more: String = "", shouldAudit:Boolean=true)(implicit request: Request[_], errCollector: VError = IgnoreErrors) = {
+  def unauthorized(more: String = "", shouldAudit:Boolean=true)(implicit request: Request[_], errCollector: VErrors = IgnoreErrors) = {
     if(shouldAudit)
     Services.audit.unauthorized("BY %s - Info: %s HEADERS: %s".format((auth.map(_.userName).getOrElse("")), more + " " + errCollector.mkString, request.headers))
     Unauthorized(views.html.util.utilMsg(
@@ -144,7 +135,7 @@ ${errCollector.mkString}
     request.headers.get("X-Forwarded-For").getOrElse(request.headers.get("RemoteIP").getOrElse("x.x.x.x"))
 
   protected def forActiveUser[T](body: model.User => play.api.mvc.SimpleResult)(implicit request: Request[_]) = {
-    implicit val errCollector = new VError()
+    implicit val errCollector = new VErrors()
     (for (
       au <- auth;
       isA <- checkActive(au)
@@ -161,7 +152,7 @@ ${errCollector.mkString}
     val robots = Array("http://www.bing.com/bingbot.htm", "360Spider",
       "Mediapartners-Google", "http://awcheck.com/en/about",
       "http://www.searchmetrics.com/en/searchmetrics-bot/",
-      "http://www.google.com/bot.html", "www.admantx.com",
+      "http://www.google.com/bot.html", "www.admantx.com", "http://yandex.com/bots",
       "crawler", "robot", "spider")
     (request.headers.get("User-Agent").exists(ua => robots.exists(ua.contains(_))))
   }

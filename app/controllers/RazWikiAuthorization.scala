@@ -13,7 +13,7 @@ import admin.IgnoreErrors
 import admin.MailSession
 import admin.Notif
 import admin.SendEmail
-import admin.VError
+import admin.VErrors
 import model.Enc
 import model.Perm
 import db.RazSalatContext.ctx
@@ -94,7 +94,7 @@ object RazWikiAuthorization extends RazController with Logging with WikiAuthoriz
   }
 
   /** can user see a topic with the given properties? */
-  def isVisible(u: Option[WikiUser], props: Map[String, String], visibility: String = "visibility", we: Option[WikiEntry]=None)(implicit errCollector: VError = IgnoreErrors): Boolean = {
+  def isVisible(u: Option[WikiUser], props: Map[String, String], visibility: String = "visibility", we: Option[WikiEntry]=None)(implicit errCollector: VErrors = IgnoreErrors): Boolean = {
     // TODO optimize
     def uname(id: Option[String]) = id.flatMap(Users.findUserById(_)).map(_.userName).getOrElse(id.getOrElse(""))
 
@@ -124,13 +124,13 @@ object RazWikiAuthorization extends RazController with Logging with WikiAuthoriz
    *
    * can pass admin.IgnoreErrors as an errCollector
    */
-  def canSee(wid: WID, au: Option[WikiUser], w: Option[WikiEntry])(implicit errCollector: VError): Option[Boolean] = {
+  def canSee(wid: WID, au: Option[WikiUser], w: Option[WikiEntry])(implicit errCollector: VErrors): Option[Boolean] = {
     lazy val isAdmin = au.exists(_.hasPerm(Perm.adminDb))
     lazy val we = if (w.isDefined) w else Wikis.find(wid)
     val cat = wid.cat
     val name = wid.name
     (for (
-      pubProfile <- ("User" != cat || WikiIndex.withIndex(_.get2(name, wid).isDefined) || au.map(name == _.userName).getOrElse(isAdmin)) orErr ("Sorry - profile not found or is private! %s : %s".format(cat, name));
+      pubProfile <- ("User" != cat || WikiIndex.withIndex(_.get1k(name).exists(_.cat == cat)) || au.map(name == _.userName).getOrElse(isAdmin)) orErr ("Sorry - profile not found or is private! %s : %s".format(cat, name));
       mine2 <- (!we.isDefined || isVisible(au, we.get.props, "visibility", we)) orErr ("Sorry - topic is not visible!"); // TODO report
       t <- true orErr ("just can't, eh")
     ) yield true)
@@ -144,7 +144,7 @@ object RazWikiAuthorization extends RazController with Logging with WikiAuthoriz
    *
    *  can pass admin.IgnoreErrors as an errCollector
    */
-  def canEdit(wid: WID, u: Option[WikiUser], w: Option[WikiEntry], props: Option[Map[String, String]] = None)(implicit errCollector: VError): Option[Boolean] = {
+  def canEdit(wid: WID, u: Option[WikiUser], w: Option[WikiEntry], props: Option[Map[String, String]] = None)(implicit errCollector: VErrors): Option[Boolean] = {
     val cat = wid.cat
     val name = wid.name
     lazy val we = if (w.isDefined) w else Wikis.find(cat, name)
