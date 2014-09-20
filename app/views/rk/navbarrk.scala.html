@@ -1,9 +1,11 @@
 @***
 creates the navigation bar
 ***@
-@(user:Option[model.WikiUser], mobile:Boolean = false, barTitle: String="Bar Title", logo:Option[String]=None, url:Option[String]=Some("/"), isSite:Boolean=false, club:String="")
+@(user:Option[model.WikiUser], mobile:Boolean = false, barTitle: String="Bar Title", logo:Option[String]=None, url:Option[String]=Some("/"), isSite:Boolean=false, club:String="")(implicit au:Option[model.User], request:Option[Request[_]])
 
 @import _root_.admin.Config
+
+@web()=@{request.flatMap(x=>model.Website.apply(x)) getOrElse model.Website.dflt}
 
 <div class="navbar navbar-fixed-top">
   <div class="navbar-inner">
@@ -15,7 +17,7 @@ creates the navigation bar
       </a>
 
       @if(!Config.isLocalhost) {
-      <a class="rkbrand" href="@url.getOrElse("http://@Config.hostport")">
+      <a class="rkbrand" href="@url.getOrElse("http://"+Config.hostport)">
         <img class="rklogo" src="@logo.getOrElse(routes.Assets.at("images/racerKids-small.gif"))" height="32" width="152" alt="RacerKidz logo"/>
       </a>
       }
@@ -51,11 +53,7 @@ creates the navigation bar
           }
   
           case None => { 
-            @if(!isSite) {
-              <li><a href="http://@Config.hostport/doe/join">Join</a></li>
-            } else {
-              <li><a href="http://@Config.hostport/wiki/Admin:Join_A_Club@club">Join</a></li>
-            }
+            <li><a href="@web().join">Join</a></li>
           }
         } 
       </ul>
@@ -67,3 +65,4 @@ creates the navigation bar
     </div>
   </div>
 </div>
+

@@ -92,7 +92,7 @@ debug a wiki page
       </div> 
       
       <div class="well">
-      @helper.form(action=routes.Wiki.uowner(page.get.wid), 'class->"well form-inline") {
+      @helper.form(action=routes.Wikie.uowner(page.get.wid), 'class->"well form-inline") {
         <input type="text" class="input-large" name="newowner" placeholder="@page.map(_.owner)">
         <button type="submit" class="btn">Update Owner</button>
       }

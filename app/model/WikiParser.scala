@@ -212,6 +212,7 @@ class WikiParserCls extends WikiParserBase with CsvParser with WikiDomainParser 
   def escaped: PS = "`" ~ opt(""".[^`]*""".r) ~ "`" ^^ { case a ~ b ~ c => a + b.mkString + c }
   def escaped1: PS = "``" ~ opt(""".*""".r) ~ "``" ^^ { case a ~ b ~ c => a + b.mkString + c }
 
+
   //============================== wiki parsing
 
   def wiki: PS = lines | line | xCRLF2 | xNADA
@@ -364,7 +365,8 @@ class WikiParserCls extends WikiParserBase with CsvParser with WikiDomainParser 
     wikiPropMagic | wikiPropBy | wikiPropWhen | wikiPropXp | wikiPropWhere |
     wikiPropLoc | wikiPropRoles | wikiPropAds | wikiPropWidgets | wikiPropCsv | wikiPropCsv2 |
     wikiPropTable | wikiPropSection | wikiPropImg | wikiPropVideo | wikiPropScript | wikiPropCall |
-    wikiPropFiddle | wikiPropCode | wikiPropField | wikiPropRk | wikiPropLinkImg | wikiPropFeedRss
+    wikiPropFiddle | wikiPropCode | wikiPropField | wikiPropRk | wikiPropLinkImg | wikiPropFeedRss |
+    wikiPropRed
     )((x,y) => x | y) | wikiProp
 
   private def wikiPropMagic: PS = "{{{" ~> """[^}]*""".r <~ "}}}" ^^ {
@@ -541,6 +543,10 @@ class WikiParserCls extends WikiParserBase with CsvParser with WikiDomainParser 
           State("""<a class="badge badge-warning" href="http://www.racerkidz.com">RacerKidz</a>""")
       }
     }
+  }
+
+  private def wikiPropRed: PS = "{{" ~> "red" ~> opt("[: ]".r ~> """[^}]*""".r) <~ "}}" ^^ {
+    case what => State(s"""<span style="color:red;font-weight:bold;">${what.mkString}</span>""")
   }
 
   // simple x=y

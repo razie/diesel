@@ -3,7 +3,7 @@ show/edit/capture a note
 
 msg types are msg, err
 **************@
-@(myForm:Form[_], tags:controllers.NotesLocker.Tags, msg:Seq[(String,String)], isAuto:Boolean=false)(implicit au:Option[model.User])
+@(myForm:Form[_], tags:model.Tags.Tags, msg:Seq[(String,String)], isAuto:Boolean=false)(implicit au:Option[model.User])
 @import _root_.controllers.NotesLocker
 
 @id = @{1}

@@ -18,7 +18,7 @@ select a destination parent
            @if(t._2.size>0) {
              <ul>
              @t._2.map { p=>
-               <li><a href="@routes.Wiki.wikieMove2(page._id.toString, page.parent.get.toString, p._1.id.toString)">@p._2</a>
+               <li><a href="@routes.Wikie.wikieMove2(page._id.toString, page.parent.get.toString, p._1.id.toString)">@p._2</a>
              }
             </ul>
            } else {

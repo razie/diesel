@@ -3,10 +3,12 @@ show/edit/capture a note
 
 msg types are msg, err
 **************@
-@(current:String, tags:controllers.NotesLocker.Tags, au:Option[model.User])
+@(current:String, tags:model.Tags.Tags, au:Option[model.User])
 
 @tagpath(s:String) = @{ if(current=="" || Seq("none", "recent", "all", "archive").contains(current)) s else (current+"/"+s) }
-   
+@browseTag(t:String)={@routes.NotesLocker.tag(tagpath(t))}
+@browseAllTags()={@routes.NotesLocker.alltags}
+
 <div class="span3">
   <a href="/notes" class="btn btn-large btn-info">New thought...</a>
   <p>
@@ -29,10 +31,10 @@ msg types are msg, err
   }
   <ul>
     @tags.take(15).map {x=>
-      <li><a href="@routes.NotesLocker.tag(tagpath(x._1))">@x._1 <small>(@x._2)</small></a></li>
+      <li><a href="@browseTag(x._1))">@x._1 <small>(@x._2)</small></a></li>
     }
     @if(tags.size > 15) {
-      <li><a href="@routes.NotesLocker.alltags">... more</a></li>
+      <li><a href="@browseAllTags()">... more</a></li>
     }
   </ul>
 </div>

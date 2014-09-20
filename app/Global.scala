@@ -8,20 +8,14 @@ import admin.Audit
 import admin.Config
 import admin.RazAuthService
 import admin.Services
-import controllers.{Wiki, RazWikiAuthorization, ViewService, RkViewService}
+import controllers._
 import db._
 import model.EncryptService
 import model.WikiUsers
 import model.WikiUsersImpl
+import play.api.Application
 import play.api._
 import play.api.mvc._
-import play.api.mvc.Results._
-import controllers.ViewService
-import controllers.RkViewService
-import controllers.WikiBase1
-import controllers.WikiBase1
-import controllers.Wiki
-import controllers.RazWikiAuthorization
 import model.WikiScripster
 import admin.RazWikiScripster
 import razie.{cdebug, clog, cout}
@@ -31,12 +25,8 @@ import admin.Alligator
 import akka.actor.Actor
 import model.WikiAudit
 import model.WikiCount
-import controllers.Emailing
 import admin.RazAuditService
 import com.mongodb.casbah.MongoConnection
-import model.RacerKidz
-import controllers.Emailer
-import controllers.RazController
 import java.io.File
 import scala.concurrent.ExecutionContext
 import admin.GlobalData
@@ -52,7 +42,6 @@ object Global extends WithFilters(LoggingFilter) {
   var firstErrorTime = System.currentTimeMillis - ERR_DELTA2 // time first error email went out - just one every 5 min, eh
   var lastErrorCount = 0 // time last error email went out - just one every 5 min, eh
 
-  // TODO per throwable, eh?
   override def onError(request: RequestHeader, ex: Throwable) = {
     clog << "ERR_onError - trying to log/audit in DB... " + "request:" + request.toString + "headers:" + request.headers + "ex:" + ex.toString
     Audit.logdb("ERR_onError", "request:" + request.toString, "headers:" + request.headers, "ex:" + ex.toString)
@@ -203,13 +192,23 @@ object LoggingFilter extends Filter {
       }
     }
 
+    def servedPage {
+      GlobalData.synchronized {
+        GlobalData.servedPages = GlobalData.servedPages + 1
+      }
+    }
+
     def logTime(what: String)(result: SimpleResult): Result = {
       val time = System.currentTimeMillis - start
-      if (! rh.uri.startsWith( "/assets/"))
+      if (!isAsset) {
         clog << s"LF.STOP $what ${rh.method} ${rh.uri} took ${time}ms and returned ${result.header.status}"
+        servedPage
+      }
       served
       result.withHeaders("Request-Time" -> time.toString)
     }
+
+    def isAsset = rh.uri.startsWith( "/assets/") || rh.uri.startsWith("/favicon")
 
     try {
       next(rh) match {
@@ -219,6 +218,7 @@ object LoggingFilter extends Filter {
 //        case async: AsyncResult => async.transform(logTime("async"))
         case res @ _ => {
           clog << s"LF.STOP.WHAT? ${rh.method} ${rh.uri} returned ${res}"
+          if (! isAsset) servedPage
           served
           res
         }

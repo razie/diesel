@@ -20,7 +20,7 @@ from user home page - create something
 <div class="well">
 <p>These are the things users can own:
 <p>
-      <form action="@routes.Wiki.edit2" method="GET" class="well form-inline">
+      <form action="@routes.Wikie.edit2" method="GET" class="well form-inline">
         <input type="text" name="name" id="name" class="input-xlarge"  placeholder="enter a name"> 
         <select id="cat" name="cat" class="input-small">
           @WikiDomain.zEnds("User", "Owner").filter(noParent).filter(_.name != "Form").sortWith(_.name < _.name).map{x=>
@@ -35,7 +35,7 @@ from user home page - create something
 <div class="well">
 <p>To create a public, generic purpose topic:
 <p>
-      <form action="@routes.Wiki.edit2" method="GET" class="well form-inline">
+      <form action="@routes.Wikie.edit2" method="GET" class="well form-inline">
         <input type="text" name="name" id="name" class="input-xlarge"  placeholder="enter a name"> 
         <select id="cat" name="cat" class="input-small">
             <option value="Topic" >Topic</option>

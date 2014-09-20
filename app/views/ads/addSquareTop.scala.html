@@ -1,0 +1,9 @@
+@***
+The add on the right hand side
+***@
+@(implicit au:Option[model.User] = None)
+@import _root_.admin.Config
+
+@if(! (Config.noads || au.orElse(Config.currUser).exists(_.isUnder13))) {
+  @Html(model.Ads.squareright)
+}

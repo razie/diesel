@@ -1,4 +1,4 @@
-@(to:model.WID, v2:Int, myForm:Form[controllers.Wiki.FollowerLinkWiki])
+@(to:model.WID, v2:Int, myForm:Form[controllers.Wikil.FollowerLinkWiki])
   @import helper.twitterBootstrap._
 
   @htmlHead()(Map("description"->"Follow a page or topic or a blog."), None)
@@ -22,11 +22,11 @@
 
       <div class="span4">
 
-        @Wiki.moderatorOf(to).map {mu=>
+        @Wikil.moderatorOf(to).map {mu=>
           Note that the @to.cat.toLowerCase is moderated by <a href="@controllers.Wiki.w("User", mu)">@mu</a> - we'll ask for permission!
         }
 
-        @helper.form(action=routes.Wiki.linkFollower2(to), 'class->"well") {
+        @helper.form(action=routes.Wikil.linkFollower2(to), 'class->"well") {
           @helper.inputText(
             myForm("email1"),
             '_label -> "Email",

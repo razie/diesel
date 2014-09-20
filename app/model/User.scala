@@ -36,11 +36,11 @@ case class Registration(email: String, password: String, repassword: String = ""
   def ename = email.replaceAll("@.*", "")
 }
 
-/** register an email for news */
-@db.RTable
-case class RegdEmail(email: String, when: DateTime = DateTime.now) {
-  def delete (implicit txn:db.Txn) = RDelete[RegdEmail]("email" -> email)
-}
+///** register an email for news */
+//@db.RTable
+//case class RegdEmail(email: String, when: DateTime = DateTime.now) {
+//  def delete (implicit txn:db.Txn) = RDelete[RegdEmail]("email" -> email)
+//}
 
 /** temporary user for following stuff */
 @db.RTable
@@ -231,6 +231,7 @@ case class Profile(
   aboutMe: Option[WikiEntry] = None,
   relationships: Map[String, String] = Map(), // (who -> what)
   contact: Option[Contact] = None,
+  consent:Option[String] = None,
   _id: ObjectId = new ObjectId()) {
 
   def update(p: Profile) = {
@@ -242,6 +243,8 @@ case class Profile(
   def removePerm(t: String) = this.copy(perms = perms - t)
   def addTag(t: String) = this.copy(tags = tags + t)
   def setContact(c: Contact) = this.copy(contact = Some(c))
+
+  def consented(ver: String) = this.copy(consent = Some(ver + " on " +DateTime.now().toString()))
 
   var createdDtm: DateTime = DateTime.now
   var lastUpdatedDtm: DateTime = DateTime.now

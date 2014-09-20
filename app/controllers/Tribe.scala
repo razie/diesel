@@ -144,7 +144,7 @@ object Tribe extends RazController with Logging {
             val cat = "Tribe"
           val n = Wikis.formatName(WID(cat, name))
           Stage("WikiLinkStaged", WikiLinkStaged(WID(cat, n, club.wid.findId), club.wid, role).grated, auth.get.userName).create
-          controllers.Wiki.wikieEdit(WID(cat, name, club.wid.findId), 
+          controllers.Wikie.wikieEdit(WID(cat, name, club.wid.findId),
               s"{{label:$label}}\n{{desc:$desc}}\n{{role:$role}}\n{{year:${club.curYear}}}\n"
             ).apply(request).value.get.get
           }) getOrElse Msg2("CAN'T SEE PROFILE " + errCollector.mkString)

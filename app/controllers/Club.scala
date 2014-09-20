@@ -1,31 +1,17 @@
 package controllers
 
-import scala.Array.canBuildFrom
-import scala.Array.fallbackCanBuildFrom
-import scala.Option.option2Iterable
-import org.bson.types.ObjectId
-import admin.SendEmail
-import admin.VErrors
-import db.REntity
-import db.RMany
+import admin.{Corr, Config, SendEmail, VErrors}
+import controllers.Profile._
 import db.RMongo.as
-import db.ROne
-import db.RTable
+import db.{REntity, RMany, ROne}
 import model._
-import play.api.data.Form
-import play.api.data.Forms.nonEmptyText
-import play.api.data.Forms.number
-import play.api.data.Forms.text
-import play.api.data.Forms.tuple
-import play.api.libs.json.Json
-import play.api.mvc.Action
-import play.api.mvc.Request
-import razie.Logging
-import razie.cout
-import admin.Config
-import scala.util.Properties
-import scala.util.Properties
+import org.bson.types.ObjectId
 import org.joda.time.DateTime
+import play.api.mvc.{Action, Request}
+import razie.{Logging, cout}
+
+import scala.Array.canBuildFrom
+import scala.Option.option2Iterable
 
 case class RoleWid(role: String, wid: WID)
 
@@ -76,9 +62,6 @@ case class Club(
   def roleOf(rkId: ObjectId) =
     // registered or owned
     ROne[RacerKidAssoc]("from" -> userId, "to" -> rkId).map(_.role).mkString
-  //    ROne[RegKid]("rkId" -> rkId).map(_.role).orElse(
-  //        RacerKidz.findForUser(userId).find(_._id == rkId).map(_.info.role)
-  //        ).mkString
 
   def wid = WID("Club", user.userName)
 
@@ -117,7 +100,6 @@ case class RKU(user: User) {
 object Club extends RazController with Logging {
 
   def apply(club: User) = findForUser(club).getOrElse(new Club(club._id, club.userName).setU(club))
-
   def apply(name: String) = findForName(name) orElse {
     Users.findUserByUsername(name).map { u =>
       new Club(u._id, u.userName).setU(u)
@@ -125,7 +107,7 @@ object Club extends RazController with Logging {
   }
 
   def findForUser(u: User) = ROne[Club]("userId" -> u._id).map(_.setU(u))
-  def findForName(n: String) = RMany[Club]().find(_.user.userName == n) // TODO optimize
+  def findForName(n: String) = ROne[Club]("userName"->n)//.find(_.user.userName == n) // TODO optimize
 
   def findForReviewer(u: User) = Some(apply(u)) // TODO allow many reviewers per club
 
@@ -149,9 +131,8 @@ object Club extends RazController with Logging {
     (fields, res)
   }
 
-  import play.api.data._
   import play.api.data.Forms._
-  import play.api.data.validation.Constraints._
+  import play.api.data._
 
   // create profile
   case class Member(
@@ -565,7 +546,8 @@ object Club extends RazController with Logging {
   def doeClubUserRegs = Action { implicit request =>
     implicit val errCollector = new VErrors()
     (for (
-      au <- auth orCorr cNoAuth
+      au <- auth orCorr cNoAuth;
+      isConsent <- au.profile.flatMap(_.consent).isDefined orCorr cNoConsent
     ) yield {
       if (au.isClub)
         Redirect("/doe/club/regs")
@@ -579,10 +561,11 @@ object Club extends RazController with Logging {
     implicit val errCollector = new VErrors()
     (for (
       au <- auth orCorr cNoAuth;
+      isConsent <- au.profile.flatMap(_.consent).isDefined orCorr cNoConsent;
       reg <- model.Regs.findId(regid) orErr ("no reg found")
     ) yield {
       Ok(views.html.club.doeClubUserReg(au, reg, RacerKidz.findForUser(reg.userId).toList))
-    }) getOrElse Msg2("CAN'T SEE PROFILE " + errCollector.mkString)
+    }) getOrElse Msg2("CAN'T use registration " + errCollector.mkString)
   }
 
   def doeClubKids = Action { implicit request =>
@@ -678,7 +661,7 @@ object Club extends RazController with Logging {
       dies <- ROne[RacerKidAssoc]("_id" -> new ObjectId(todie));
       lives <- ROne[RacerKidAssoc]("_id" -> new ObjectId(tolive))
     ) yield {
-      var liverka = lives.copy(hours = lives.hours + dies.hours)
+      val liverka = lives.copy(hours = lives.hours + dies.hours)
       var liverk = lives.rk.get
       var dierk = dies.rk.get
 
@@ -742,12 +725,13 @@ object Club extends RazController with Logging {
     (for (
       au <- activeUser;
       c <- Club(clubName);
-      regAdmin <- c.uregAdmin orErr ("Registration is not open yet! [no regadmin]");
-      isOpen <- c.propSeq.exists(x => "reg.open" == x._1 && "yes" == x._2) orErr ("Registration is not open yet!");
+      regAdmin <- c.uregAdmin orErr "Registration is not open yet! [no regadmin]";
+      isOpen <- c.propSeq.exists(x => "reg.open" == x._1 && "yes" == x._2) orErr "Registration is not open yet!";
       uclub <- Users.findUserByUsername(clubName);
       prevReg <- model.Regs.findId(prevRegId);
       // either mine or i'm the club
       isMine <- (prevReg.userId == au._id && prevReg.clubName == clubName || prevReg.clubName == au.userName) orErr ("Not your registration: " + prevRegId);
+      isConsent <- au.profile.flatMap(_.consent).isDefined orCorr cNoConsent;
       isSame <- (prevReg.year != c.curYear) orErr ("Can't copy this year's registration: " + prevRegId)
     ) yield {
       // 1. expire
@@ -821,7 +805,12 @@ object Club extends RazController with Logging {
             Redirect(routes.Club.doeClubUserReg(reg._id.toString))
       }
       }
-    }) getOrElse Msg2("CAN'T START REGISTRATION " + errCollector.mkString)
+    }) getOrElse  {
+      if(activeUser.isDefined && !activeUser.get.profile.flatMap(_.consent).isDefined)
+        Ok(views.html.user.doeConsent(activeUser.get))
+      else
+        Msg2("CAN'T START REGISTRATION " + errCollector.mkString)
+      }
   }
 
   /** called by user not the club */
@@ -832,6 +821,7 @@ object Club extends RazController with Logging {
       c <- Club(clubName);
       regAdmin <- c.uregAdmin orErr ("Registration is not open yet! [no regadmin]");
       isOpen <- c.propSeq.exists(x => "reg.open" == x._1 && "yes" == x._2) orErr ("Registration is not open yet!");
+      isConsent <- au.profile.flatMap(_.consent).isDefined orCorr cNoConsent;
       uclub <- Users.findUserByUsername(clubName)
     ) yield {
       // current registration?
@@ -865,7 +855,12 @@ object Club extends RazController with Logging {
           }
         }
       }
-    }) getOrElse Msg2("CAN'T START REGISTRATION " + errCollector.mkString)
+    }) getOrElse  {
+      if(activeUser.isDefined && !activeUser.get.profile.flatMap(_.consent).isDefined)
+        Ok(views.html.user.doeConsent(activeUser.get))
+      else
+        Msg2("CAN'T START REGISTRATION " + errCollector.mkString)
+      }
   }
 
   // stuff to do 

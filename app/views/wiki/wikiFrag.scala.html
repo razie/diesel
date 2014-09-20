@@ -22,6 +22,18 @@ wiki fragment, used in another page
     if(u startsWith "http") u else  s"http://${Config.hostport}$u"
   }
 
+  @showTag(t:String) = {
+  @if("Blog" == wid.cat) {
+    <a href="@controllers.Wiki.w(wid)/tag/@t">@t</a>
+  } else {
+    @if(wid.parentWid.exists(_.cat == "Blog")) {
+      <a href="@controllers.Wiki.w(wid.parentWid.get)/tag/@t">@t</a>
+    } else {
+      <a href="@routes.Wiki.showTag(t)">@t</a>
+    }
+  }
+  }
+
   @ccc(we:model.WikiEntry)= @{
     val x = model.Wikis.format(we.wid, we.markup, we.content, Some(we))
     try {
@@ -56,10 +68,10 @@ wiki fragment, used in another page
           case _ => {
             <h2>@label()
               @if(au.isEmpty && "Blog" == wid.cat) {
-                <a class="btn btn-info" title="Subscribe to updates via email" href="@routes.Wiki.linkFollower1(wid)"><i class="icon-envelope icon-white"></i> Subscribe</a>
+                <a class="btn btn-info" title="Subscribe to updates via email" href="@routes.Wikil.linkFollower1(wid)"><i class="icon-envelope icon-white"></i> Subscribe</a>
               } else {
                 @if(au.isEmpty && wid.parentWid.exists(_.cat == "Blog")) {
-                  <a class="btn btn-info" title="Subscribe to updates via email" href="@routes.Wiki.linkFollower1(wid.parentWid.get)"><i class="icon-envelope icon-white"></i> Subscribe</a>
+                  <a class="btn btn-info" title="Subscribe to updates via email" href="@routes.Wikil.linkFollower1(wid.parentWid.get)"><i class="icon-envelope icon-white"></i> Subscribe</a>
                 } 
               } 
 
@@ -97,9 +109,21 @@ wiki fragment, used in another page
             <a href="/user/@model.Users.nameOf(page.get.by)">@model.Users.nameOf(page.get.by)</a>
             | @page.get.crDtm.toLocalDate().toString
           }
-          
+
+          @** todo tag-based browsing **@
           @if(page.isDefined && page.get.tags.size>0) {
-            | <em>Tags</em>:  @page.get.tags.mkString(", ")
+            | <em>Tags</em>:
+            @page.get.tags.map { t =>
+@**              @if(wid.cat == "Blog") {
+                <a href="@wid.urlRelative/tag/@t">@t</a>,
+              } else {
+              @page.get.wid.parentWid.map { parentW=>
+                <a href="@parentW.urlRelative/tag/@t">@t</a>,
+                }.getOrElse {
+**@                @showTag(t),
+@**                }
+              }
+**@              }
           }
         </small></p>
  
@@ -107,7 +131,7 @@ wiki fragment, used in another page
           <hr>
         See more in: <strong><a href="@controllers.Wiki.w(pwe.wid)">@pwe.label</a> </strong>
         @if(au.isEmpty && pwe.wid.cat == "Blog") {
-          <a class="btn btn-info" title="Subscribe to updates via email" href="@routes.Wiki.linkFollower1(pwe.wid)"><i class="icon-envelope icon-white"></i> Subscribe</a>
+          <a class="btn btn-info" title="Subscribe to updates via email" href="@routes.Wikil.linkFollower1(pwe.wid)"><i class="icon-envelope icon-white"></i> Subscribe</a>
         }
         }
 
@@ -118,10 +142,10 @@ wiki fragment, used in another page
         <small>
           (
           @if(canEdit && wid.cat != "Form" || au.exists(_.hasPerm(model.Perm.adminDb))) {
-            <a href="@routes.Wiki.wikieEdit(page.get.wid)">Edit</a> |
+            <a href="@routes.Wikie.wikieEdit(page.get.wid)">Edit</a> |
           }
             @au.map {u =>
-              <a href="@routes.Wiki.report(wid)">Report</a> |
+              <a href="@routes.Wikie.report(wid)">Report</a> |
             }
             <a href="@routes.Wiki.printWid(model.WID.cmdfromPath(wid.wpath).get)">Print</a>
             @if(au.exists(_.hasPerm(model.Perm.adminDb))) {
@@ -129,21 +153,21 @@ wiki fragment, used in another page
             }
             @if(!(Array("WikiLink", "Category", "Form") contains wid.cat)) {
               @if(canEdit) {
-                | <a href="@routes.Wiki.wikieRename1(wid)">Rename</a>
+                | <a href="@routes.Wikie.wikieRename1(wid)">Rename</a>
               }
               @if(au.isDefined && au.get.isActive) {
                 @if(au.get.isLinkedTo(we.uwid)) {
-                  | <a href="@routes.Wiki.unlinkUser(wid)">@wid.label("Unlike", "Unlike")</a>
+                  | <a href="@routes.Wikil.unlinkUser(wid)">@wid.label("Unlike", "Unlike")</a>
                 } else {
-                  | <a href="@routes.Wiki.linkUser(wid,false)">@wid.label("Like")</a>
+                  | <a href="@routes.Wikil.linkUser(wid,false)">@wid.label("Like")</a>
                 }
 
                 @if(au.get.isLinkedTo(we.uwid) && we.parent.isDefined) {
-                  | <a href="@routes.Wiki.wikieMove1(we._id.toString)">@wid.label("Move", "Move")</a>
+                  | <a href="@routes.Wikie.wikieMove1(we._id.toString)">@wid.label("Move", "Move")</a>
                 }
               }
               @if(au.isEmpty && "Blog" == wid.cat) {
-                | <a href="@routes.Wiki.linkFollower1(wid)"><span style="color:red">Subscribe</span></a>
+                | <a href="@routes.Wikil.linkFollower1(wid)"><span style="color:red">Subscribe</span></a>
                 }
             }
             ) this page.
@@ -153,7 +177,7 @@ wiki fragment, used in another page
                 <br>This link page connects you to ??? TODO ???
 @**
                 <a href="/wiki/@model.Wikis.linkFromName(wid.name).to.toString">@model.Wikis.linkFromName(wid.name).to.name</a>
-                : you can add some notes by <a href="@routes.Wiki.wikieEdit(page.get.wid)">editing</a> it.
+                : you can add some notes by <a href="@routes.Wikie.wikieEdit(page.get.wid)">editing</a> it.
 **@
               }
               case "Category" => {
@@ -173,11 +197,11 @@ wiki fragment, used in another page
           <p><strong><font style="color:red">Note: </font></strong>A <strong>@wid.cat</strong> doesn't need its own page unless there you have some specific information about it... so, if you have some photos, videos or comments about it, create it below and share it with your mates!
         <hr>
         }
-        No entry for a <strong>@wid.cat</strong> named <strong>@nicename</strong> ... <a href="@routes.Wiki.wikieEdit(model.WID(wid.cat,nicename))">create one</a></b> 
+        No entry for a <strong>@wid.cat</strong> named <strong>@nicename</strong> ... <a href="@routes.Wikie.wikieEdit(model.WID(wid.cat,nicename))">create one</a></b>
       } else {
         <strong>No entry for @wid.name ... you could create one:</strong>
         
-        <form action="@routes.Wiki.edit2" method="GET" class="well form-inline">
+        <form action="@routes.Wikie.edit2" method="GET" class="well form-inline">
           <input type="text" name="name" id="name" value="@nicename"> 
           <select id="cat" name="cat" class="input-small">
           @prepend(model.Wikis.pageNames("Category").toList.filter(_ != "Topic").sortWith(_ < _), "Topic").map{x=>

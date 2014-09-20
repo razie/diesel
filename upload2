@@ -1,16 +1,7 @@
 
-rm rk.zip
-rm RUNNING_PID
-
-#zip -r rk.zip * -x bin/\* lib_managed/\* rk-backups/\* dist/\* data/\* dump\/* dump* target/\*
-#zip -r rk.zip app conf modules project public scripts test *.properties key -x \*dist/*
-#-x \*target/*
-
-#scp rk.zip cloud2a.razie.com:rk/up/
-#rm rk.zip
-
 cmd /C "play package"
-scp target/scala-2.10/racerkidz_2.10-0.1.2-SNAPSHOT.jar cloud2a.razie.com:rk/up/
+
+scp target/scala-2.10/racerkidz_2.10-0.1.3-SNAPSHOT.jar modules/wcommon/target/scala-2.10/wcommon_2.10-0.1.3-SNAPSHOT.jar modules/wiki/target/scala-2.10/wiki_2.10-0.1.3-SNAPSHOT.jar cloud2a.razie.com:rk/up/
 
 ssh cloud2a.razie.com ". ~/.bashrc; cd ~/rk; . ./update"
 

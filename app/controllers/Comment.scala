@@ -1,15 +1,12 @@
 package controllers
 
-import org.bson.types.ObjectId
 import admin.VErrors
-import model.Perm
-import model.User
-import model._
+import model.{Perm, User, _}
+import org.bson.types.ObjectId
 import play.api.data.Form
 import play.api.data.Forms._
 import play.api.mvc.Action
 import razie.Logging
-import admin.Corr
 
 object Comment extends RazController with Logging {
   val commentForm = Form {

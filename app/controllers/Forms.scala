@@ -63,7 +63,7 @@ import model.RacerKid
  *  form fields are formatted in WForm
  *
  */
-object Forms extends WikiBase1 with Logging {
+object Forms extends WikiBase with Logging {
 
   /** create a new form instance for a user */
   def crForm(u: User, formSpec: WID, formData: WID, label: String, reviewer: User, formRole: Option[String], defaults: Map[String, String] = Map.empty)(implicit txn: Txn = tx.auto) = {
@@ -336,7 +336,7 @@ object Forms extends WikiBase1 with Logging {
 }
 
 /** wiki controller */
-object FormReg extends WikiBase1 with Logging {
+object FormReg extends WikiBase with Logging {
 
   def doeAccept(iwid: WID) = Action { implicit request =>
     Ok("next step...")

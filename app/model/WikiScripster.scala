@@ -6,24 +6,8 @@
  */
 package model
 
-import com.mongodb.casbah.Imports._
 import admin.Audit
-import com.novus.salat._
-import com.novus.salat.annotations._
-import db.RazSalatContext._
-import db.RTable
-import com.tristanhunt.knockoff.DefaultDiscounter.knockoff
-import com.tristanhunt.knockoff.DefaultDiscounter.toXHTML
-import model.WikiConfig
-import razie.base.scriptingx.ScalaScript
-import razie.cout
-import razie.Logging
-import admin.VErrors
-import admin.Validation
-import admin.Audit
-import admin.Services
-import razie.csys
-import razie.CSTimer
+import razie.{CSTimer, csys}
 
 /** execute wiki scala scripts */
 trait WikiScripster {

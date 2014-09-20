@@ -5,7 +5,7 @@
 @htmlHeadBar("", None)
 
 @pic = @{
-  val names = Array("askia.jpg", "Kyle-GS-a-DE-2012.jpg", "Shane-GS-a-DE-2012.jpg")
+  val names = _root_.admin.Config.sitecfg("main.images").toList.flatMap(s=>s.split("[;,]"))
   val i = new scala.util.Random().nextInt(names.length)
   names(i)
   }

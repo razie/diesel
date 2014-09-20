@@ -269,7 +269,7 @@ case class CMDWID(wpath: Option[String], wid: Option[WID], cmd: String, rest: St
 
 object WID {
   /** do not require the category */
-  private final val NOCATS = Array("Blog", "Post", "Site")
+  private final val NOCATS = Array("Blog", "Post", "xSite")
 
   private val REGEX = """([^/:\]]*[:])?([^#|\]]+)(#[^|\]]+)?""".r
 

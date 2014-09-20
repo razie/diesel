@@ -94,7 +94,7 @@ object Inbox {
 }
 
 /** special tags */
-object Tags {
+object NotesTags {
   final val ARCHIVE = "archive"
   final val ALL = "all"
   final val NONE = "none"
@@ -112,25 +112,25 @@ object Tags {
 }
 
 object Notes {
-  import Tags._
+  import NotesTags._
 
   final val CAT = "Note"
 
-  def dec(au:User)(w:WikiEntry) = if(w.by == au._id && w.tags.contains(Tags.ENC))w.copy(content=w.content.dec) else w
+  def dec(au:User)(w:WikiEntry) = if(w.by == au._id && w.tags.contains(NotesTags.ENC))w.copy(content=w.content.dec) else w
 
   def notesById(id: ObjectId) =
     Wikis.weTable(CAT).findOne(Map("_id" -> id)) map (grater[WikiEntry].asObject(_))
   def notesForUser(uid: ObjectId, archived: Boolean = false) =
-    Wikis.weTable(CAT).find(Map("by" -> uid)) map (grater[WikiEntry].asObject(_)) filter (n => !n.tags.contains(Tags.ARCHIVE) || archived)
+    Wikis.weTable(CAT).find(Map("by" -> uid)) map (grater[WikiEntry].asObject(_)) filter (n => !n.tags.contains(NotesTags.ARCHIVE) || archived)
   def tagsForUser(uid: ObjectId) = {
-    notesForUser(uid).toList.flatMap(_.tags).filter(_ != Tags.ARCHIVE).filter(_ != "").groupBy(identity).map(t => (t._1, t._2.size)).toSeq.sortBy(_._2).reverse
+    notesForUser(uid).toList.flatMap(_.tags).filter(_ != NotesTags.ARCHIVE).filter(_ != "").groupBy(identity).map(t => (t._1, t._2.size)).toSeq.sortBy(_._2).reverse
     // TODO somehow i can get empty tags...
   }
 
   def notesForTag(uid: ObjectId, tag: String) =
     notesForUser(uid, ARCHIVE == tag).filter(n => n.tags.contains(tag) || (tag == ALL) || (tag == NONE && n.tags.isEmpty))
 
-  def notesForTags(uid: ObjectId, tags: Seq[String]) =
+  def notesForNotesTags(uid: ObjectId, tags: Seq[String]) =
     notesForUser(uid).filter(n => tags.foldLeft(true)((b, t) => b && n.tags.contains(t)))
 
   def isShared (we:WikiEntry, uid:ObjectId) = {
@@ -144,7 +144,7 @@ object Notes {
 
 /** controller for club management */
 object NotesLocker extends RazController with Logging {
-  import Tags._
+  import NotesTags._
   import Notes.CAT
 
   import play.api.data._
@@ -188,8 +188,7 @@ object NotesLocker extends RazController with Logging {
     }
   }
 
-  /** for active user */
-  def FAU(f: User => VErrors => Request[AnyContent] => SimpleResult) = Action { implicit request =>
+  override def FAU(f: User => VErrors => Request[AnyContent] => SimpleResult) = Action { implicit request =>
     implicit val errCollector = new VErrors()
     (for (
       au <- activeUser
@@ -263,14 +262,14 @@ object NotesLocker extends RazController with Logging {
           def preprocess(iwe:WikiEntry, isNew:Boolean):WikiEntry = {
             var we = iwe
             val wep = we.preprocessed
-            var moreTags = ""
+            var moreNotesTags = ""
 
             // apply content tags
-            if(wep.tags.contains(SHARED)) moreTags = moreTags + ","+SHARED
+            if(wep.tags.contains(SHARED)) moreNotesTags = moreNotesTags + ","+SHARED
             //todo if i do this then two users can't have a note wiht teh same name
             //            if(wep.tags(NAME) != we.name) we = we.copy(name=wep.tags(NAME))
 
-            val atags = alltags(moreTags)
+            val atags = alltags(moreNotesTags)
             if (we.tags != atags)
               we = we.withTags(atags, au._id)
 
@@ -609,8 +608,6 @@ object NotesLocker extends RazController with Logging {
       Ok(views.html.notes.notesalltags(autags, Some(au)))
   }
 
-  type Tags = Seq[(String, Int)]
-
   def autags(implicit au: User) = Notes.tagsForUser(au._id)
 
   def tag(tag: String) = FUH { implicit au =>
@@ -622,12 +619,12 @@ object NotesLocker extends RazController with Logging {
         case RECENT => Notes.notesForTag(au._id, ALL).toList.sortWith { (a, b) => a.updDtm isAfter b.updDtm }
         case NONE => Notes.notesForTag(au._id, NONE).toList.sortWith { (a, b) => a.updDtm isAfter b.updDtm }
         case ARCHIVE => Notes.notesForTag(au._id, ARCHIVE).toList.sortWith { (a, b) => a.updDtm isAfter b.updDtm }
-        case _ => Notes.notesForTags(au._id, ltag).toList.sortWith { (a, b) => a.updDtm isAfter b.updDtm }
+        case _ => Notes.notesForNotesTags(au._id, ltag).toList.sortWith { (a, b) => a.updDtm isAfter b.updDtm }
       }
 
       //todo this is stupid
-      val outTags = res.flatMap(_.tags).distinct.filterNot(ltag contains _)
-      val counted = outTags.map(t => (t, res.count(_.tags contains t))).sortBy(_._2).reverse
+      val outNotesTags = res.flatMap(_.tags).distinct.filterNot(ltag contains _)
+      val counted = outNotesTags.map(t => (t, res.count(_.tags contains t))).sortBy(_._2).reverse
 
       // last chance filtering - any moron can come through here and the Notes may fuck up
       val notes = res.filter(_.by == au._id).take(20).toList // TOOD optimize - inbox doesn't need etc
@@ -786,7 +783,7 @@ object NotesLocker extends RazController with Logging {
 
   def xhtml(tags: String, au: Option[User]) = {
     au.flatMap { u =>
-      val w = Notes.notesForTags(u._id, tags.split(",").toSeq).take(1).find(x => true)
+      val w = Notes.notesForNotesTags(u._id, tags.split(",").toSeq).take(1).find(x => true)
       w.map(x =>
         Wikis.format(x.wid, x.markup, x.content).replaceFirst("^\\s*<p>", "").replaceFirst("</p>\\s*$", ""))
     }.getOrElse(sitehtml(tags))
@@ -795,7 +792,7 @@ object NotesLocker extends RazController with Logging {
 
 /** controller for server side fiddles / services */
 object SFiddles extends RazController with Logging {
-  import Tags._
+  import NotesTags._
   import NotesLocker.FAU
 
   def qtojson (q:Map[String,String]) = "{" + q.map(t=>s"""${t._1} : "${t._2}" """).mkString(",") + "}"
@@ -911,7 +908,7 @@ case class CircleShare (
 }
 
 object Circles {
-  import Tags._
+  import NotesTags._
 
   def get (name:String)(implicit au:User) = ROne[FriendCircle]("ownerId"->au._id,"name"->name)
   def createOrFind (we:WikiEntry)(implicit au:User) = get(we.contentTags(NAME)) getOrElse {

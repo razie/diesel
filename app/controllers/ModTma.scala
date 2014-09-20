@@ -72,17 +72,6 @@ object ModTma extends RazController with Logging {
   import play.api.data.Forms._
   import play.api.data.validation.Constraints._
 
-  def FAU(f: User => VErrors => Request[AnyContent] => Result) = Action { implicit request =>
-    implicit val errCollector = new VErrors()
-    (for (
-      au <- activeUser
-    ) yield {
-      f(au)(errCollector)(request)
-    }) getOrElse unauthorized("CAN'T SEE PROFILE ")
-  }
-
-  import db.RMongo.as
-
   /** TODO find all badges, sorted for current user */
   def doeGetBadges = FAU { implicit au =>
     implicit errCollector => implicit request =>

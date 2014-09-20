@@ -1,15 +1,15 @@
 . ./settings
-LOGDIR=$APP/logs
-#LOGDIR=/home/demo/rk/logs
 
 ## 1 stop
-
 echo "1 - stopping"
-cd $SL
+
+cd $DIST
 $PLAYDIR/play stop 
 sleep 1
-kill `cat $APP/pid`
-rm $SL/RUNNING_PID
+
+kill `cat $DIST/pid`
+rm $DIST/RUNNING_PID
+
 kill -9 `ps -u $RKUSER | grep java | sed 's/^ //' | cut -f 1 -d " " | tr '\n' " " `
 
 mv nohup.out nohup.out.$DT

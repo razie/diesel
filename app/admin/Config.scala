@@ -21,12 +21,9 @@ object Config extends WikiConfig {
 
   final val CONNECTED = props.getProperty("rk.connected", "connected")
 
-  final val curYear = "2013"
+  final val curYear = "2014"
 
   def darkLight = { razie.NoStaticS.get[controllers.DarkLight] }
-
-  // used in RazAuth
-  val BLACKS = Array("enduroschool.com", "nofolders.net", "coolscala.com", "askicoach.com", "toymakersacademy.com", "racerkidz.com")
 
   def theme = {
     darkLight.map(_.css).orElse(currUser.flatMap(_.css).orElse(
@@ -36,14 +33,16 @@ object Config extends WikiConfig {
   def isLight = theme contains "light"
   def isDark = ! isLight
 
+  // called when configuration is reloaded - use them to refresh your caches
   val cbacks =  new collection.mutable.ListBuffer[() => Unit]()
 
+  /** add a callback to be called when the configuration is refreshed - use it to regresh your own configuration and/or caches */
   def callback (f:() => Unit) = {
     cbacks append f
   }
   
   // parse a properties looking thing
-  def parsep(content: String) = (content.split("\r\n")) filter (!_.startsWith("#")) map (_.split("=")) filter (_.size == 2) map (x => (x(0), x(1)))
+  def parsep(content: String) = (content.split("\r\n")) filter (!_.startsWith("#")) map (_.split("=", 2)) filter (_.size == 2) map (x => (x(0), x(1)))
 
   def reloadUrlMap {
     println("========================== RELOADING URL MAP ==============================")

@@ -1,60 +1,21 @@
 package controllers
 
+import admin.{Audit, Config, SendEmail, _}
 import db.RMongo._
-import org.joda.time.DateTime
-import com.mongodb.WriteResult
-import admin.Audit
-import admin.Config
-import admin.SendEmail
-import model.Api
-import model.DoSec
 import model.Sec._
-import model.Enc
-import model.EncUrl
-import model.ParentChild
-import model.RegdEmail
-import model.Registration
-import model.User
-import model.UserTask
-import model.Users
-import play.api.data.Forms.mapping
-import play.api.data.Forms.nonEmptyText
-import play.api.data.Forms.number
-import play.api.data.Forms._
-import play.api.data.Forms.tuple
-import play.api.data.Form
-import play.api.mvc.{AnyContent, Request, Action}
-import razie.{cdebug, cout, Logging, Snakk}
-import model.Base64
-import model.Perm
-import admin._
-import model.WID
-import model.UserTasks
-import model.UserType
-import model.WikiIndex
-import db.RCreate
-import model.WikiIndex
-import model.Wikis
-import play.api.data.validation.Constraint
-import play.api.data.validation.ValidationResult
-import model.Contact
-import play.api.data.validation.Invalid
-import play.api.data.validation.ValidationError
-import play.api.data.validation.Valid
+import model._
 import org.bson.types.ObjectId
-import model.RacerKidInfo
-import model.RK
-import model.RacerKidz
-import model.RacerKid
-import model.RacerKidAssoc
-import model.TRacerKidInfo
-import razie.OR._
-import java.io.IOException
+import org.joda.time.DateTime
 import org.json.JSONObject
-import java.math.BigInteger
-import java.security.SecureRandom
+import play.api.data.Form
+import play.api.data.Forms.{mapping, nonEmptyText, tuple, _}
+import play.api.mvc.{Action, Request}
+import razie.OR._
+import razie.{Logging, Snakk, cdebug, cout}
 
 object Profile extends RazController with Logging {
+
+  final val cNoConsent = new Corr("Need consent!", """You need to <a href="/doe/profile/help">give your consent</a>!""");
 
   val parentForm = Form(
     "parentEmail" -> text.verifying("Wrong format!", vldEmail(_)).verifying("Invalid characters", vldSpec(_)))
@@ -103,9 +64,8 @@ object Profile extends RazController with Logging {
       })
   }
 
-  import play.api.data._
   import play.api.data.Forms._
-  import play.api.data.validation.Constraints._
+  import play.api.data._
 
   // create profile
   case class CrProfile(firstName: String, lastName: String, yob: Int, address: String, userType: String, accept: Boolean, recaptcha_challenge_field: String, recaptcha_response_field: String)
@@ -269,13 +229,29 @@ object Profile extends RazController with Logging {
           Audit.logdb("USER_LOGIN", u.userName, u.firstName + " " + u.lastName)
           u.auditLogin
           debug("SEss.conn=" + (Config.CONNECTED -> Enc.toSession(u.email)))
-          Redirect("/").withSession(Config.CONNECTED -> Enc.toSession(u.email))
+          if(u.profile.flatMap(_.consent).isDefined)
+            Redirect("/").withSession(Config.CONNECTED -> Enc.toSession(u.email))
+          else
+            Ok(views.html.user.doeConsent(u)).withSession(Config.CONNECTED -> Enc.toSession(u.email))
         } else {
           u.auditLoginFailed
           Redirect(routes.Profile.doeJoin()).withNewSession
         }
       case None => // capture basic profile and create profile
         Redirect(routes.Profile.doeJoin3).flashing("email" -> email, "pwd" -> pass, "gid"->gid, "extra" -> extra)
+    }
+  }
+
+  def doeConsent (next:String) = Action { implicit request =>
+    Ok(views.html.user.doeConsent(activeUser.get))
+  }
+
+  def doeConsent2 (ver:String, next:String) = Action { implicit request =>
+    forActiveUser { au =>
+      au.profile.map(p => p.update(p.consented(ver)))
+      UserEvent(au._id, "CONSENTED").create
+      cleanAuth()
+      Msg2("Thank you!", Some(next))
     }
   }
 
@@ -346,7 +322,6 @@ object Profile extends RazController with Logging {
                   UserTasks.setupRegistration(u).create
                 }
 
-                RegdEmail(u.email.dec).delete
                 // TODO why the heck am i sleeping?
                 //              Thread.sleep(1000)
                 SendEmail.withSession { implicit mailSession =>
@@ -357,14 +332,14 @@ object Profile extends RazController with Logging {
                 }
               }
 
-              val extra = session.get("extra")
-              extra.map { x =>
+              // process extra parms to determine what next
+              session.get("extra") map { x =>
                 val s = x split ","
                 if (s.size > 0 && s(0).length > 0) {
                   Tasks.msgVerif(u, s"""\n<p><font style="color:red">Click below to continue joining the ${s(0)}.</font>""", Some("/wikie/linkuser/Club:" + s(0) + "?wc=0"))
                 } else
-                  Tasks.msgVerif(u, "", Some("/"))
-              } getOrElse Tasks.msgVerif(u, "", Some("/"))
+                  Tasks.msgVerif(u, "", Some(routes.Profile.doeConsent().url))
+              } getOrElse Tasks.msgVerif(u, "", Some(routes.Profile.doeConsent().url))
             }
           }) getOrElse {
             error("ERR_CANT_UPDATE_USER.doeCreateProfile " + getFromSession("email", f + l + "@k.com"))
@@ -378,7 +353,6 @@ object Profile extends RazController with Logging {
     val created = Api.createUser(u)
     created.foreach { x => RacerKidz.myself(x._id) }
     UserTasks.verifyEmail(u).create
-    RegdEmail(u.email.dec).delete
     // TODO why the heck am i sleeping?
     //              Thread.sleep(1000)
     SendEmail.withSession { implicit mailSession =>
@@ -590,7 +564,7 @@ object Profile extends RazController with Logging {
       if (WikiIndex.withIndex(_.get2(au.userName, WID("User", au.userName)).isDefined))
         Redirect(controllers.Wiki.w(WID("User", au.userName)))
       else
-        Redirect(routes.Wiki.wikieEdit(WID("User", au.userName)))
+        Redirect(routes.Wikie.wikieEdit(WID("User", au.userName)))
     }
   }
 

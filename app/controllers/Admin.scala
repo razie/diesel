@@ -1,37 +1,19 @@
 package controllers
 
-import org.bson.types.ObjectId
-import org.joda.time.DateTime
-import com.mongodb.casbah.Imports.DBObject
-import com.mongodb.casbah.Imports.IntOk
-import com.mongodb.casbah.Imports.map2MongoDBObject
+import java.lang.management.{ManagementFactory, OperatingSystemMXBean}
+import java.lang.reflect.Modifier
+
+import admin.{Audit, Config, GlobalData, RazAuditService, SendEmail, VErrors}
+import com.mongodb.casbah.Imports.{DBObject, IntOk}
 import com.novus.salat.grater
-import admin.Audit
-import admin.Config
-import admin.VErrors
 import db.RazMongo
 import db.RazSalatContext.ctx
-import model.Enc
-import model.Perm
-import model.User
-import model.Users
+import model.{Enc, Perm, User, Users, WikiScripster, Wikis}
+import org.bson.types.ObjectId
+import org.joda.time.DateTime
 import play.api.data.Form
-import play.api.data.Forms.mapping
-import play.api.data.Forms.nonEmptyText
-import play.api.data.Forms.number
-import play.api.mvc.Action
-import play.api.mvc.Request
-import razie.cout
-import admin.RazAuditService
-import admin.SendEmail
-import model.Wikis
-import play.api.mvc.AnyContent
-import play.api.mvc.Result
-import java.lang.management.OperatingSystemMXBean
-import java.lang.management.ManagementFactory
-import java.lang.reflect.Modifier
-import model.WikiScripster
-import admin.GlobalData
+import play.api.data.Forms.{mapping, nonEmptyText, number}
+import play.api.mvc.{Action, AnyContent, Request, Result}
 
 object Admin extends RazController {
   protected def hasPerm(p: Perm)(implicit request: Request[_]): Boolean = auth.map(_.hasPerm(p)) getOrElse false
@@ -392,6 +374,7 @@ scriptsRun=${WikiScripster.count}\n
 Global.serving=${GlobalData.serving}\n
 Global.served=${GlobalData.served}\n
 NotesLocker.autosaved=${NotesLocker.autosaved}\n
+Global.servedPages=${GlobalData.servedPages}\n
 Global.startedDtm=${GlobalData.startedDtm}\n
 """
   }

@@ -3,24 +3,31 @@ render a regular wiki page - site pages are rendered with wikiSite.scala.html
 **************@
 
 @(wid:model.WID, iname:Option[String], page:Option[model.WikiEntry], canEdit:Boolean, print:Boolean=false)(implicit au:Option[model.User], request:Request[_])
-@import model._
 @import _root_.admin.Config.realm
 
 @label()=@{ page.map(_.label).getOrElse(model.Wikis.label(wid)) }
+@web()=@{model.Website(request) getOrElse model.Website.dflt}
+@isSite()=@{Array("Site", "Page").contains(wid.cat) && page.isDefined}
+
 
 @htmlHead(page.flatMap(_.contentTags.get("title")).getOrElse(wid.cat +": "+ label), None, page)
-@if(!print) {@navbar(au, realm)}
-   
+
+@if(!print) {@navbar(au, realm)(au,Some(request))}
+
 <div class="container">
   <div class="row">
   
-    <div class="span9">
-
-      @if(page.flatMap(_.props.get("draft")).exists(_.toLowerCase == "draft")) {
-        <div class="alert">
-          <strong>Draft!</strong> This page is a draft - a work in progress!
-        </div>
+    @if(web().divMain == "9") {
+      <div class="span9">
+      } else {
+      <div class="span12">
       }
+
+    @if(page.flatMap(_.props.get("draft")).exists(_.toLowerCase == "draft")) {
+      <div class="alert">
+        <strong>Draft!</strong> This page is a draft - a work in progress!
+      </div>
+    }
 
       <div class="well">
         @wiki.wikiFrag(wid,au,false,page, iname, false, true, canEdit)
@@ -32,21 +39,30 @@ render a regular wiki page - site pages are rendered with wikiSite.scala.html
       }
 
       <hr>
-      @htmlFooter(ads = !page.exists(_.content.matches("""(?s).*\{\{ad[:}].*\{\{ad[:}].*""")) && !au.exists(_.isUnder13), false, realm)
+      @htmlFooter(ads = web().showAds == "yes" && !page.exists(_.content.matches("""(?s).*\{\{ad[:}].*\{\{ad[:}].*""")) && !au.exists(_.isUnder13), false, realm)
 
     </div> <!-- /span9 -->
 
-    <div class="span3">
-    @wiki.wikiFrag(WID("Admin","Right"),au,simple=true)
+    @* is there room for the right stuff **@
+    @if(web().divMain == "9") {
+      <div class="span3">
+        @web().rightTop.map { rt =>
+          @wiki.wikiFrag(rt, au, simple = true)
+        }
 
-    @addRight()
-    </div>
+        @if(web().showAds == "yes") {
+          @addRight()
+        }
+
+        @web().rightBottom.map { rt =>
+          @wiki.wikiFrag(rt, au, simple = true)
+        }
+
+      </div>
+    }
 
   </div> <!-- row -->
 </div> <!-- /container -->
 
-  @if(_root_.admin.Config.realm == "notes") {
-    @notes.htmlBottomNotes()
-  } else {
-    @htmlBottom()
-  }
+@htmlBottom(false, Some(request))
+

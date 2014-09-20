@@ -1,23 +1,14 @@
 package controllers
 
-import com.mongodb.casbah.Imports._
-import admin.Audit
-import admin.VErrors
-import model.DoSec
-import play.api.mvc.Action
-import model.Users
 import java.io.File
-import model.Enc
-import play.api.mvc.Request
-import model.Wikis
-import admin.Config
-import model.BannedIps
-import admin.Audit
+
+import admin.{Audit, Config}
+import com.mongodb.casbah.Imports._
 import db._
-import razie.cout
-import org.joda.time.DateTime
 import model.Sec._
-import model.WikiIndex
+import model._
+import org.joda.time.DateTime
+import play.api.mvc.{Action, Request}
 
 /** main entry points */
 object Application extends RazController {
@@ -25,7 +16,7 @@ object Application extends RazController {
   // serve any URL other than routes matches - try the forward list...
   def whatever(path: String) = Action { implicit request =>
     log("REDIRECTING? - " + path)
-    request.headers.get("X-FORWARDED-HOST").orElse(Some(Config.hostport)).flatMap(x =>
+    Website.getHost.orElse(Some(Config.hostport)).flatMap(x =>
       Config.urlfwd(x + "/" + path)).map { host =>
       log("  REDIRECTED TO - " + host)
       Redirect(host)
@@ -51,10 +42,14 @@ object Application extends RazController {
     Status(400) // bad request
   }
 
+  /** serve the root of a website - figure out which and serve the main page */
   def root = Action { implicit request =>
-    request.headers.get("X-FORWARDED-HOST").flatMap(Config.urlfwd(_)).map { host =>
+    Website.getHost.flatMap(Config.urlfwd(_)).map { host =>
       Redirect(host)
-    } getOrElse idoeIndexItem(1)
+    } orElse Website.getHost.flatMap(Website.apply).flatMap(_.homePage).map{ home=>
+        Wiki.show(home, 1).apply(request).value.get.get
+    } getOrElse Application.idoeIndexItem(1) // RK main home screen
+    //todo un-hardcode that
   }
 
   def index = doeIndexItem(1)

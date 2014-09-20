@@ -117,10 +117,6 @@ ${errCollector.mkString}
     Ok(views.html.util.utilMsg(msg, None, auth))
   }
 
-//  def Msg2(msg: String, page: Option[String], u: Option[User] = None)(implicit request: Request[_]): play.api.mvc.SimpleResult[play.api.templates.Html] = {
-//    Ok(views.html.util.utilMsg(msg, page, if (u.isDefined) u else auth))
-//  }
-
   def Msg2C(msg: String, page: Option[Call], u: Option[User] = None)(implicit request: Request[_]): play.api.mvc.SimpleResult = {
     Ok(views.html.util.utilMsg(msg, page.map(_.toString), if (u.isDefined) u else auth))
   }
@@ -134,7 +130,7 @@ ${errCollector.mkString}
   def clientIp(implicit request: Request[_]) =
     request.headers.get("X-Forwarded-For").getOrElse(request.headers.get("RemoteIP").getOrElse("x.x.x.x"))
 
-  protected def forActiveUser[T](body: model.User => play.api.mvc.SimpleResult)(implicit request: Request[_]) = {
+  protected def forActiveUser[T](body: User => SimpleResult)(implicit request: Request[_]) = {
     implicit val errCollector = new VErrors()
     (for (
       au <- auth;
@@ -142,10 +138,19 @@ ${errCollector.mkString}
     ) yield body(au)) getOrElse unauthorized("Can't...")
   }
 
-  protected def forUser[T](body: model.User => play.api.mvc.SimpleResult)(implicit request: Request[_]) = {
+  protected def forUser[T](body: User => SimpleResult)(implicit request: Request[_]) = {
     (for (
       au <- auth
     ) yield body(au)) getOrElse unauthorized("Oops - how did you get here? [no user]")
+  }
+
+  def FAU(f: User => VErrors => Request[AnyContent] => SimpleResult) = Action { implicit request =>
+    implicit val errCollector = new VErrors()
+    (for (
+      au <- activeUser;
+      isA <- checkActive(au)
+    ) yield f(au)(errCollector)(request)
+    ) getOrElse unauthorized("CAN'T")
   }
 
   protected def isFromRobot(implicit request: Request[_]) = {

@@ -1,8 +1,9 @@
 @** botom of html,
 **@
-@(isSite:Boolean=false)
+@(isSite:Boolean=false, orequest:Option[Request[_]] = None, site:Option[model.Website] = None)
 
-@if(!isSite) {
+@web()=@{(site orElse orequest.flatMap(r=>model.Website(r))) getOrElse model.Website.dflt}
+
 <p></p>
 
 @if(_root_.admin.Config.isLight) {
@@ -16,22 +17,30 @@
       <td style="width:200px;vertical-align: top">
         <strong class="razbots">More</strong> <br>
         <a class="razbot" href="/">Home</a> <br>
-        <a class="razbot" href="/wiki/RacerKidz_Site_News">Blog</a> <br>
-        <a class="razbot" href="/page/About">About</a> <br>
+        <a class="razbot" href="@web().about.map(_.url).getOrElse("/page/About")">About</a> <br>
+        @web().bottomMenu("More").map{t=>
+          <a class="razbot" href="@t._2">@t._1</a><br>
+        }
       </td>
       <td style="width:200px;vertical-align: top">
         <strong class="razbots">Support</strong> <br>
         <a class="razbot" href="/doe/support">Support</a> <br>
-        <a class="razbot" href="/wiki/Terms_of_Service-rk">Terms of Service</a> <br>
-        <a class="razbot" href="/wiki/Privacy_Policy">Privacy Policy</a> <br>
+        <a class="razbot" href="@web().tos">Terms of Service</a> <br>
+        <a class="razbot" href="@web().privacy">Privacy Policy</a> <br>
+        @web().bottomMenu("Support").map{t=>
+          <a class="razbot" href="@t._2">@t._1</a><br>
+        }
       </td>
       <td style="width:200px;vertical-align: top">
         <strong class="razbots">Social</strong><br>
-        <a class="razbot" href="http://twitter.com/racerkid">Twitter</a><br>
-        <a class="razbot" href="/wiki/RacerKidz_Site_News">Blog</a><br>
-        @* @if() {*@
-          @*<a class="razbot" href="http://google.com/+Enduroschoolrazie">Google+</a><br>*@
-        @*}*@
+        <a class="razbot" href="http://twitter.com/@web().twitter">Twitter</a><br>
+        <a class="razbot" href="@web().blog.urlRelative">Blog</a> <br>
+        @web().gplus.map{g=>
+          <a class="razbot" href="@g">Google+</a><br>
+        }
+        @web().bottomMenu("Social").map{t=>
+          <a class="razbot" href="@t._2">@t._1</a><br>
+        }
       </td>
     </tr>
   </table>
@@ -39,7 +48,6 @@
 </div>
 </div>
 
-}
 
     <!-- Le javascript
     ================================================== -->

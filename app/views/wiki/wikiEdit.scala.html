@@ -1,7 +1,7 @@
 @**************
 edit a wiki page
 **************@
-@(wid:model.WID, myForm:Form[controllers.Wiki.EditWiki], au:Option[model.User])(implicit request:Request[_])
+@(wid:model.WID, myForm:Form[controllers.Wikie.EditWiki], au:Option[model.User])(implicit request:Request[_])
 @import _root_.admin.Config.realm
 
 @v(name:String) = @{
@@ -16,9 +16,9 @@ edit a wiki page
   @page match {
     case Some(we) => { 
       @if(we.isReserved) {
-        YES <a href="@routes.Wiki.reserve(wid,false)">Unreserve it</a>
+        YES <a href="@routes.Wikie.reserve(wid,false)">Unreserve it</a>
       } else {
-        NO <a href="@routes.Wiki.reserve(wid,true)">Reserve it</a>
+        NO <a href="@routes.Wikie.reserve(wid,true)">Reserve it</a>
       } 
     }
     case None => { 
@@ -36,7 +36,7 @@ edit a wiki page
 <div >
 @import helper.twitterBootstrap._
 
-@helper.form(action=routes.Wiki.save(wid.formatted), 'class->"well form-inline") {
+@helper.form(action=routes.Wikie.save(wid.formatted), 'class->"well form-inline") {
 <table valign="top">
 <tr><td>
 @******* 
@@ -91,7 +91,7 @@ PROBLEM: many places use label as name... via Wikis.formatName
   @if(au.get.hasPerm(model.Perm.adminDb)) {
     <p>Reserved: @reserved(model.Wikis.find(wid.cat,wid.name))
     @if(model.Wikis.find(wid.cat,wid.name).isDefined) {
-      <p><a href="@routes.Wiki.wikieDelete1(wid)">Delete it</a>
+      <p><a href="@routes.Wikie.wikieDelete1(wid)">Delete it</a>
     }
   }
 

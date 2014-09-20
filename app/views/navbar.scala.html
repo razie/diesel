@@ -1,15 +1,13 @@
 @***
 creates the navigation bar
 ***@
-@(user:Option[model.WikiUser], realm:String="rk", mobile:Boolean = false, barTitle: String="Bar Title", logo:Option[String]=None, url:Option[String]=Some("/"), isSite:Boolean=false, club:String="")
-
-@import _root_.admin.Config
+@(user:Option[model.WikiUser], realm:String="rk", mobile:Boolean = false, barTitle: String="Bar Title", logo:Option[String]=None, url:Option[String]=Some("/"), isSite:Boolean=false, club:String="")(implicit au:Option[model.User]=None, request:Option[Request[_]]=None)
 
 @realm match {
    case "notes" => {
       @notes.notesnavbar(user, mobile, barTitle, logo, url, isSite, club)
       }
    case _ => {
-      @rk.navbarrk(user, mobile, barTitle, logo, url, isSite, club)
+      @rk.navbarrk(user, mobile, barTitle, logo, url, isSite, club)(au,request)
       }
 }

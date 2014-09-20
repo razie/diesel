@@ -7,15 +7,8 @@
 package model
 
 import com.mongodb.casbah.Imports._
-//import admin.Audit
 import com.novus.salat._
-import com.novus.salat.annotations._
 import db.RazSalatContext._
-//import db.RTable
-//import com.tristanhunt.knockoff.DefaultDiscounter.knockoff
-//import com.tristanhunt.knockoff.DefaultDiscounter.toXHTML
-//import razie.base.scriptingx.ScalaScript
-//import razie.cout
 import razie.Logging
 import admin.VErrors
 import admin.Validation
@@ -93,9 +86,9 @@ object Wikis extends Logging with Validation {
   } flatMap {s:String=>weTable(s).findOne(Map("_id" -> id))})) map (grater[WikiEntry].asObject(_))
 
   private def ifind(wid: WID) =
-    if (wid.parent.isDefined)
-      weTable(wid.cat).findOne(Map("category" -> wid.cat, "name" -> wid.name, "parent" -> wid.parent.get))
-    else
+    wid.parent.map {p=>
+      weTable(wid.cat).findOne(Map("category" -> wid.cat, "name" -> wid.name, "parent" -> p))
+    } getOrElse
       weTable(wid.cat).findOne(Map("category" -> wid.cat, "name" -> Wikis.formatName(wid.name)))
 
   def find(wid: WID): Option[WikiEntry] = ifind(wid) map (grater[WikiEntry].asObject(_))

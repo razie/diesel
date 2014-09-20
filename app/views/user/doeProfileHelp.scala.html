@@ -24,6 +24,9 @@
 } else {
   <a href="@routes.Kidz.doeUserKids" class="btn btn-large btn-info">People/Racerz</a>
   <a href="@routes.Club.doeClubUserRegs" class="btn btn-large btn-info">Registrations</a>
+  @if(!au.profile.flatMap(_.consent).isDefined) {
+    <a href="@routes.Profile.doeConsent()" class="btn btn-large btn-danger">Need Consent!</a>
+  }
 }
 
 <p>&nbsp;<p>

@@ -1,18 +1,12 @@
 package admin
 
 import controllers.Admin
-import model.Api
-import model.Base64
-import model.Enc
-import model.User
+import model._
 import play.api.Play.current
 import play.api.cache.Cache
 import play.api.mvc.Request
 import razie.Logging
-import model.WikiUser
-import model.Users
 import org.bson.types.ObjectId
-import model.Perm
 import razie.cdebug
 import controllers.DarkLight
 import razie.clog
@@ -49,9 +43,11 @@ object RazAuthService extends AuthService[User] with Logging {
     // TODO must get rid of this stupid statics... why can't play do this?
     razie.NoStaticS.remove[DarkLight]
     request.session.get("css").fold {
-    if(request.headers.get("X-FORWARDED-HOST").exists(x=> Config.BLACKS.exists(x contains _)))
-      razie.NoStaticS.put(DarkLight("dark"))
+      Website(request).flatMap(_.css).foreach{x=>
+        razie.NoStaticS.put(DarkLight(x))
+      }
     } { v =>
+      // session settings override everything
       razie.NoStaticS.put(DarkLight(v)) 
     }
     //todo configure per realm
@@ -93,8 +89,7 @@ object RazAuthService extends AuthService[User] with Logging {
 
       // allow theme to be overriten per request / session
       request.session.get("css").foreach { v =>
-        au.foreach(_.css = Some(v));
-//        razie.NoStaticS.put(DarkLight(v))
+        au.foreach(_.css = Some(v)); // will be set statically later
       }
 
       razie.NoStaticS.put[WikiUser](au.getOrElse(null))

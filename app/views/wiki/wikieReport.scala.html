@@ -1,4 +1,4 @@
-@(wid:model.WID, myForm:Form[controllers.Wiki.ReportWiki], au:Option[model.User])
+@(wid:model.WID, myForm:Form[controllers.Wikie.ReportWiki], au:Option[model.User])
 
 @htmlHeadBar("", au)
 
@@ -13,7 +13,7 @@
 <div >
 @import helper.twitterBootstrap._
 
-@helper.form(action=routes.Wiki.reported(wid), 'class->"well") {
+@helper.form(action=routes.Wikie.reported(wid), 'class->"well") {
   @helper.textarea(
     myForm("reason"), 
     '_label -> "Reason", 

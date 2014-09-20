@@ -2,18 +2,19 @@
 render a page in a site rather than a normal page - some missing stuff
 **************@
 @(wid:model.WID, iname:Option[String], page:Option[model.WikiEntry])(implicit au:Option[model.User], request:Request[_])
-@import model._
 
-@htmlHead(""+page.flatMap(_.contentTags.get("sitelabel")).getOrElse(page.map(_.label).getOrElse(model.Wikis.label(wid))), page.flatMap(_.contentTags.get("css")))
+@htmlHead(""+page.flatMap(_.contentTags.get("sitelabel")).getOrElse(page.map(_.label).getOrElse(model.Wikis.label(wid))), page.flatMap(_.contentTags.get("css")).orElse(web().css))
 
 @showads() = @{
   page.isDefined && page.get.contentTags.get("showads").isDefined
 }
 
+@web()=@{model.Website(request) getOrElse model.Website.dflt}
+
 @if(page.isDefined && page.get.contentTags.get("logo").isDefined) {
-  @navbar(au, "rk", false, "Menu", page.get.contentTags.get("logo"), page.get.contentTags.get("siteurl"), true, page.get.contentTags.get("club").map("?club="+_).getOrElse(""))
+  @navbar(au, "rk", false, "Menu", page.get.contentTags.get("logo"), page.get.contentTags.get("siteurl"), true, page.get.contentTags.get("club").map("?club="+_).getOrElse(""))(au,Some(request))
 } else {
-  @navbar(au, "rk", false, "Menu", None, None, true)
+  @navbar(au, "rk", false, "Menu", None, None, true)(au,Some(request))
 }
    
 <div class="container">
@@ -48,5 +49,5 @@ render a page in a site rather than a normal page - some missing stuff
   </div> <!-- row -->
 </div> <!-- /container -->
 
-@htmlBottom(true)
+@htmlBottom(false, Some(request))
     

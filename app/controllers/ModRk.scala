@@ -74,15 +74,6 @@ object ModRk extends RazController with Logging {
   import play.api.data.Forms._
   import play.api.data.validation.Constraints._
 
-  def FAU(f: User=>VErrors=>Request[AnyContent]=> Result) = Action { implicit request =>
-    implicit val errCollector = new VErrors()
-    (for (
-      au <- activeUser
-    ) yield {
-      f(au)(errCollector)(request)
-    }) getOrElse unauthorized("CAN'T SEE PROFILE ")
-  }
-
   def t1 = FAU { implicit au => implicit errCollector => implicit request =>
     val members =
       model.Users.findUserLinksTo(model.WID("Club", au.userName).uwid.get).map(uw =>
@@ -92,6 +83,7 @@ object ModRk extends RazController with Logging {
 
     Ok(views.html.club.doeClubRegs(au, members))
   }
+
   import db.RMongo.as
 
   def regd (au:User, wid:WID) = ModRkReg(wid).kids.map(x => (x, x.rkId.as[model.RacerKid].get)).toList
