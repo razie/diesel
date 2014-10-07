@@ -7,3 +7,6 @@ resolvers += "Typesafe repository" at "http://repo.typesafe.com/typesafe/release
 // Use the Play sbt plugin for Play projects
 addSbtPlugin("com.typesafe.play" % "sbt-plugin" % "2.2.2")
 
+// auto refresh
+addSbtPlugin("com.jamesward" %% "play-auto-refresh" % "0.0.11")
+

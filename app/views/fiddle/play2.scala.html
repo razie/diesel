@@ -1,5 +1,5 @@
 @**************
-a JS/HTML fiddle
+a JS/SCALA server side fiddle
 **************@
 
 @(l:String,
@@ -15,7 +15,7 @@ a JS/HTML fiddle
 <h2>Fiddle with @l code...</h2>
 
 @tos(s:String) = @{
-  s.replaceAll("\n", "\\\\n'\n+'")
+  s.replaceAll("\r", "").replaceAll("\n", "\\\\n'\n+'")
 }
 
 @encscr(s:String) = @{
@@ -41,11 +41,11 @@ var decscr = function (s) {
   </ul>
 
   <table style="width:100%">
-    <tr><td width="50%">
+    <tr><td width="70%">
     <div style="display:inline-block; width:100%; height:250px; overflow-y:auto;">
       <pre id="pre3_@id" style="display:inline-block; width:92%; height:228px; margin-bottom:0"><code id="code_@id">@content</code></pre>
     </div>
-    </td><td width="50%">
+    </td><td width="30%">
     @if(_root_.admin.Config.theme.contains("light")) {
       <iframe id="iframe_@id" name="iframe_@id" style="width:100%; height:249px; border:0;"></iframe>
     } else {
@@ -76,7 +76,7 @@ var runpill_@id = function(id) {
   $('#l_'+id)[0].value= "@l";
   $('#j_'+id)[0].value= editor.getValue();
   $('#ssform_'+id)[0].target = 'iframe_'+id;
-  $('#ssform_'+id)[0].action = "/sfiddle/sfiddle2/"+id+"?@controllers.SFiddles.qtourl(q)";
+  $('#ssform_'+id)[0].action = "/sfiddle/sfiddle2/"+id+"?@diesel.controllers.SFiddles.qtourl(q)";
   $('#ssform_'+id)[0].submit();
 }
 

@@ -43,12 +43,25 @@ abstract class WikiConfig {
   //-------------- special admin/configuration pages
 
   /** if there is an external favorite canonical URL for this WPATH */
-  def urlcanon(wpath: String) = {
+  def urlcanon(wpath: String, page:Option[WikiEntry]) = {
     var res: Option[String] = None
 
-    for (has <- config(URLCANON); site <- has if (wpath.startsWith(site._1))) {
+    //todo make unit test for urlcfg based canon for enduroschool
+    // todo optimize this somehow wiht just some lookups based on parent
+    // look for configured entry points (parents) and topics
+    config(URLCANON).flatMap(_.filterKeys(k=>wpath.startsWith(k)).headOption).map { site=>
       res = Some(wpath.replaceFirst("^%s".format(site._1), site._2))
     }
+
+    //todo make unit test for tag based canon for enduroschool
+    // todo optimize this somehow wiht just some lookups based on tags
+    if(res.isEmpty) {
+      // look for configured tags
+     page.flatMap(p=>config(URLCANON).flatMap(_.filterKeys(k=>p.tags.contains(k)).headOption)).map { site=>
+        res = Some(site._2 + "/" + wpath)
+      }
+    }
+
     res
   }
 
@@ -63,19 +76,14 @@ abstract class WikiConfig {
   }
 
   /** modify external sites mapped to external URLs */
-  def urlfwd(u: String) = {
-    for (has <- config(URLFWD); site <- has.get(u))
-      yield site
-  }
+  def urlfwd(u: String) = config(URLFWD) flatMap (_.get(u))
 
   /** generic site configuration */
-  def sitecfg(parm: String) = {
-    config(SITECFG).flatMap(_.get(parm))
-  }
+  def sitecfg(parm: String) = config(SITECFG) flatMap (_.get(parm))
 
   /** find the realm from the request parameters - hostport or forwarded-for or something */
   def realm(implicit request: Request[_]) = {
-    if(request.host contains "localhost") "notes" else {
+    if(request.host contains "localhost") "rk" else {
       config("realm").map { m =>
 //        request.headers.get("X-FORWARDED-HOST") match {
         Website.getHost match {

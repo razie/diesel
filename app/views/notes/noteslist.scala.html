@@ -1,5 +1,5 @@
 @**************
-show/edit/capture a note
+list of notes
 
 msg types are msg, err
 **************@
@@ -48,7 +48,7 @@ msg types are msg, err
 @tagpath(s:String) = @{ if(tag=="" || isSearch || Seq("none", "recent", "all").contains(tag)) s else (tag+"/"+s) }
 
 @au.map {user=>
-@notes.map(controllers.Notes.dec(user)).map {we=>
+ @notes.map(controllers.Notes.dec(user)).map {we=>
    <div class="well well-small" style="border-radius:9px; margin-bottom:10px;">
    <small>
      <a href="@routes.NotesLocker.noteById(we._id.toString)">@we.crDtm.toString("YYYY-MM-dd hh:mm a").toLowerCase()

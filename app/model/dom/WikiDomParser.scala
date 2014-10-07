@@ -22,11 +22,17 @@ trait WikiDomainParser extends WikiParserBase {
 
   def domainBlock = pobject | pclass
 
-
-  def pclass: PS = """.class """ ~> ident ~ opt(" extends " ~> repsep(ident, ",")) ~ opt(" " ~> ident) ~ opt(CRLF2 ~> rep1sep(attrline, CRLF2)) ^^ {
+  /**
+   * .class X [extends A,B]
+   * @return
+   */
+  def pclass: PS = """.class """ ~> ident ~ opt(" extends " ~> repsep(ident, ",")) ~
+    opt(" " ~> ident) ~ opt(CRLF2 ~> rep1sep(attrline, CRLF2)) ^^ {
     case name ~ e ~ a ~ l => {
-      val c = C(name, a.mkString, e.toList.flatMap(identity), l.toList.flatMap(identity))
-      State(
+      val c = C(name, a.mkString, e.toList.flatMap(identity),
+        l.toList.flatMap(identity).collect{case x:DOM.P =>x},
+        l.toList.flatMap(identity).collect{case x:DOM.F =>x} )
+      SState(
         """<div class="well">""" +
           s"class $name  (" + l.mkString(", ") +
           ")" + e.mkString + a.map(" <" + _ + ">").mkString +
@@ -41,7 +47,7 @@ trait WikiDomainParser extends WikiParserBase {
   def pobject: PS = """.object """ ~> ident ~ " *".r ~ ident ~ opt(CRLF2 ~> rep1sep(vattrline, CRLF2)) ^^ {
     case name ~ _ ~ c ~ l => {
       val o = O(name, c, l.toList.flatMap(identity))
-      State(
+      SState(
         """<div class="well">""" +
           s"object $name (" + l.mkString(", ") +
           ")" +
@@ -53,7 +59,38 @@ trait WikiDomainParser extends WikiParserBase {
     }
   }
 
-  def attrline: Parser[DOM.P] = " +".r ~> ident ~ opt(" *: *".r ~ ident) ~ opt("*") ~ opt(" *= *".r ~> any) ^^ {
+  /**
+  //todo not used yet
+    // simple x=y
+  private def varg = "[^:=,}]*".r ~ "=" ~ "[^},]*".r ^^ { case n ~ _ ~ v => (n, v) }
+  // if contains comma, use ""
+  private def varg2 = "[^:=,}]*".r ~ "=\"" ~ "[^\"]*".r <~ "\"" ^^ { case n ~ _ ~ v => (n, v) }
+
+  private def voptargs : Parser[List[(String,String)]] = opt("[: ]".r ~ rep((varg2 | varg) <~ opt(","))) ^^ {
+    case Some(_ ~ l) => l
+    case None => List()
+  }
+**/
+
+//  private def identif:Parser[String] = "[^:=,}]*".r ^^ { case s => s }
+
+  // simple x=y
+  private def pspec: Parser[DOM.P] = ident ~ opt(" *: *".r ~ ident) ~ opt("*") ~ opt(" *= *".r ~> any) ^^ {
+    case name ~ t ~ multi ~ e => P(name, t.map(_._2).mkString, multi.mkString, "", e.mkString)
+  }
+
+  private def optpspecs : Parser[List[DOM.P]] = opt("[: ]".r ~ rep((pspec) <~ opt(","))) ^^ {
+    case Some(_ ~ l) => l
+    case None => List()
+  }
+
+  def attrline: Parser[_ >: DOM.CM] = /*fattrline |*/ pattrline
+
+//  def fattrline: Parser[DOM.F] = " +def +".r ~> ident ~ opt(" *: *".r ~ ident) ~ opt("*") ~ opt(" *= *".r ~> any) ^^ {
+//    case name ~ parms ~ multi ~ e => F(name, t.map(_._2).mkString)
+//  }
+
+  def pattrline: Parser[DOM.P] = " +".r ~> ident ~ opt(" *: *".r ~ ident) ~ opt("*") ~ opt(" *= *".r ~> any) ^^ {
     case name ~ t ~ multi ~ e => P(name, t.map(_._2).mkString, multi.mkString, "", e.mkString)
   }
 
@@ -61,15 +98,17 @@ trait WikiDomainParser extends WikiParserBase {
     case name ~ _ ~ v => V(name, v)
   }
 
-  // knockoff has an issue with lines containing just a space but no line ending
-  def lastLine: PS = ("""^[\s]+$""".r) ^^ { case a => "\n"}
 }
 
 object DOM {
+  class CM // class member
   case class P (name:String, t:String, multi:String, dflt:String, expr:String)
+  case class F (name:String, parms:List[P])
   case class V (name:String, value:String)
-  case class C (name:String, archetype:String, base:List[String], parms:List[P])
-  case class O (name:String, base:String, parms:List[V])
+  case class C (name:String, archetype:String, base:List[String], parms:List[P], methods:List[F])
+  case class O (name:String, base:String, parms:List[V]) {
+    def toJson = parms.map{p=> p.name -> p.value}.toMap
+  }
 
   case class D (name:String, classes:Map[String,C], objects:Map[String,O]) {
     def tojmap = {

@@ -114,7 +114,7 @@ object Emailer extends RazController with Logging {
 
     val html1 = text("followernewtopic").format(commenter.userName, parent.url, parent.cat, parent.name, wpost.label, hc2, comment);
 
-    SendEmail.notif(to, SUPPORT, RK + " - new " + wpost.wid.cat + " : " + wpost.label, html1)
+    SendEmail.notif(to, SUPPORT, RK + " - new " + wpost.wid.cat + " in " + parent.name + " : " + wpost.label, html1)
   }
 
   def sendEmailLinkOk(u: User, club: String)(implicit mailSession: MailSession) = {
@@ -150,7 +150,7 @@ object Emailer extends RazController with Logging {
   def sendEmailNewTopic(to: User, commenter: User, wiki: WID, wpost: WikiEntry)(implicit mailSession: MailSession) = {
     val html1 = text("newtopic").format(to.ename, commenter.userName, wiki.url, wiki.cat, wiki.name, wpost.label);
 
-    SendEmail.notif(to.email.dec, SUPPORT, RK + " - new " + wpost.wid.cat + " : " + wpost.label, html1)
+    SendEmail.notif(to.email.dec, SUPPORT, RK + " - new " + wpost.wid.cat + " in " + wiki.name + " : " + wpost.label, html1)
   }
 
   def sendEmailNeedQuota(uName: String, uId: String)(implicit mailSession: MailSession) = {
@@ -205,3 +205,4 @@ class Emailing(body: (MailSession) => Unit) {
     Emailer.withSession (body)
   }
 }
+

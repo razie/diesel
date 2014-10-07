@@ -11,9 +11,18 @@
    
 <div class="span9">
 
+@missingRegs=@{
+  // clubs with open regs that I'm not reg'd for
+  val clubs = au.wikis.filter(_.wid.cat=="Club").flatMap(w=>model.Users.findUserByUsername(w.wid.name).toList)
+  clubs.map{c=> (c, Club(c))}.collect {
+    case (c, club) if club.isRegOpen && model.Regs.findClubUserYear(c, au._id, club.curYear).isEmpty =>
+      club
+  }
+}
+
 @regs=@{
   val clubs = au.wikis.filter(_.wid.cat=="Club").flatMap(w=>model.Users.findUserByUsername(w.wid.name).toList)
-  clubs.flatMap(c=>model.Regs.findClubUser(c, au._id))
+  clubs.flatMap(c=>model.Regs.findClubUser(c, au._id)).sortWith(_.year >= _.year)
 }
 
 @tab=@{
@@ -50,6 +59,10 @@
   		"regStatus" -> "Status"), 
     Some(mnglink))
 
+  @missingRegs.map {club=>
+    <p>No registrations for the current year - @club.userName, @club.curYear</p>
+    <a href="views.html.club.doeClubUserStartRegSimple()">Start</a>
+  }
 
   @club.regStatusLegend()
 }

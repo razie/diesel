@@ -5,6 +5,7 @@ import java.lang.reflect.Modifier
 
 import admin.{Audit, Config, GlobalData, RazAuditService, SendEmail, VErrors}
 import com.mongodb.casbah.Imports.{DBObject, IntOk}
+import com.mongodb.casbah.commons.MongoDBObject
 import com.novus.salat.grater
 import db.RazMongo
 import db.RazSalatContext.ctx
@@ -21,6 +22,12 @@ object Admin extends RazController {
   protected def forAdmin[T](body: => play.api.mvc.SimpleResult)(implicit request: Request[_]) = {
     if (hasPerm(Perm.adminDb)) body
     else noPerm(HOME)
+  }
+
+  protected def FA[T](body: Request[_] => play.api.mvc.SimpleResult) = Action { implicit request =>
+    forAdmin {
+      body(request)
+    }
   }
 
   def FAD(f: User => VErrors => Request[AnyContent] => Result) = Action { implicit request =>
@@ -42,11 +49,20 @@ object Admin extends RazController {
           Ok(views.html.admin.admin_index("", auth))
         }
 
+        case "resendEmails" => {
+          SendEmail.sender ! SendEmail.CMD_RESEND
+          Ok(views.html.admin.admin_index("", auth))
+        }
+
+        case "tickEmails" => {
+          SendEmail.sender ! SendEmail.CMD_TICK
+          Ok(views.html.admin.admin_index("", auth))
+        }
+
         case "wikidx" => Ok(views.html.admin.admin_wikidx(auth))
         case "db" => Ok(views.html.admin.admin_db(auth))
         case "index" => Ok(views.html.admin.admin_index("", auth))
         case "users" => Ok(views.html.admin.admin_users(auth))
-        case "audit" => Ok(views.html.admin.admin_audit(auth))
 
         case "init.db.please" => {
           if ("yeah" == System.getProperty("devmode") || !RazMongo("User").exists) {
@@ -243,45 +259,48 @@ object Admin extends RazController {
     }
   }
 
-  def colTab(name: String, cols: String) = Action { implicit request =>
-    forAdmin {
-      Ok(views.html.admin.admin_col_tab(name, RazMongo(name).m, cols.split(",")))
-    }
+  def colTab(name: String, cols: String) = FA { implicit request =>
+    Ok(views.html.admin.admin_col_tab(name, RazMongo(name).m, cols.split(",")))
   }
 
-  def delcoldb(table: String, id: String) = Action { implicit request =>
-    forAdmin {
-      // TODO audit
-      Audit.logdb("ADMIN_DELETE", "Table:" + table + " json:" + RazMongo(table).findOne(Map("_id" -> new ObjectId(id))))
-      RazMongo(table).remove(Map("_id" -> new ObjectId(id)))
-      Ok(views.html.admin.admin_col(table, RazMongo(table).m))
-    }
+  def delcoldb(table: String, id: String) = FA { implicit request =>
+    // TODO audit
+    Audit.logdb("ADMIN_DELETE", "Table:" + table + " json:" + RazMongo(table).findOne(Map("_id" -> new ObjectId(id))))
+    RazMongo(table).remove(Map("_id" -> new ObjectId(id)))
+    Ok(views.html.admin.admin_col(table, RazMongo(table).m))
   }
 
-  def clearaudit(id: String) = Action { implicit request =>
-    forAdmin {
-      RazAuditService.clearAudit(id, auth.get.id)
-      Redirect("/razadmin/audit")
-    }
+  def showAudit(msg: String) = FA { implicit request =>
+    Ok(views.html.admin.admin_audit(if(msg.length>0)Some(msg) else None)(auth))
   }
 
-  def clearauditAll() = Action { implicit request =>
-    forAdmin {
-      RazMongo("Audit").findAll().map(_.get("_id").toString).toList.foreach(RazAuditService.clearAudit(_, auth.get.id))
-      Redirect("/razadmin/audit")
-    }
+  def clearaudit(id: String) = FA { implicit request =>
+    RazAuditService.clearAudit(id, auth.get.id)
+    Redirect("/razadmin/audit")
   }
 
-  def auditPurge1 = Action { implicit request =>
-    forAdmin {
-      val map = new scala.collection.mutable.HashMap[(String, String), Int]
-      def count(t: String, s: String) = if (map.contains((s, t))) map.update((s, t), map((s, t)) + 1) else map.put((s, t), 1)
+  def clearauditSome(howMany:Int) = FA { implicit request =>
+    RazMongo("Audit").findAll().sort(MongoDBObject("when" -> -1)).take(howMany).map(_.get("_id").toString).toList.foreach(RazAuditService.clearAudit(_, auth.get.id))
+    Redirect(routes.Admin.showAudit(""))
+  }
 
-      RazMongo("AuditCleared").findAll().map(j => new DateTime(j.get("when"))).map(d => s"${d.getYear}-${d.getMonthOfYear}").foreach(count("ac", _))
-      RazMongo("WikiAudit").findAll().map(j => new DateTime(j.get("crDtm"))).map(d => s"${d.getYear}-${d.getMonthOfYear}").foreach(count("w", _))
-      RazMongo("UserEvent").findAll().map(j => new DateTime(j.get("when"))).map(d => s"${d.getYear}-${d.getMonthOfYear}").foreach(count("u", _))
-      Ok(views.html.admin.admin_audit_purge1(map, auth))
-    }
+  def clearauditAll(msg:String) = FA { implicit request =>
+    //filter or all
+    if (msg.length > 0)
+      RazMongo("Audit").find(Map("msg" -> msg)).sort(MongoDBObject("when" -> -1)).take(1000).map(_.get("_id").toString).toList.foreach(RazAuditService.clearAudit(_, auth.get.id))
+    else
+      RazMongo("Audit").findAll().sort(MongoDBObject("when" -> -1)).take(1000).map(_.get("_id").toString).toList.foreach(RazAuditService.clearAudit(_, auth.get.id))
+    Redirect("/razadmin/audit")
+  }
+
+  def auditPurge1 = FA { implicit request =>
+    val map = new scala.collection.mutable.HashMap[(String, String), Int]
+    def count(t: String, s: String) = if (map.contains((s, t))) map.update((s, t), map((s, t)) + 1) else map.put((s, t), 1)
+
+    RazMongo("AuditCleared").findAll().map(j => new DateTime(j.get("when"))).map(d => s"${d.getYear}-${d.getMonthOfYear}").foreach(count("ac", _))
+    RazMongo("WikiAudit").findAll().map(j => new DateTime(j.get("crDtm"))).map(d => s"${d.getYear}-${d.getMonthOfYear}").foreach(count("w", _))
+    RazMongo("UserEvent").findAll().map(j => new DateTime(j.get("when"))).map(d => s"${d.getYear}-${d.getMonthOfYear}").foreach(count("u", _))
+    Ok(views.html.admin.admin_audit_purge1(map, auth))
   }
 
   final val auditCols = Map("AuditCleared" -> "when", "WikiAudit" -> "crDtm", "UserEvent" -> "when")
@@ -376,6 +395,9 @@ Global.served=${GlobalData.served}\n
 NotesLocker.autosaved=${NotesLocker.autosaved}\n
 Global.servedPages=${GlobalData.servedPages}\n
 Global.startedDtm=${GlobalData.startedDtm}\n
+\n
+SendEmail.curCount=${SendEmail.curCount}\n
+SendEmail.state=${SendEmail.state}\n
 """
   }
 

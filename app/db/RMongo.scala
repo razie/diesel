@@ -143,9 +143,13 @@ class REntity[T <: { def _id: ObjectId }](implicit m: Manifest[T]) { this: T =>
   implicit def toroa(id: ObjectId) = new RMongo.as(id)
 
   def toJson = grater[T].asDBObject(this).toString
+  def grated = grater[T].asDBObject(this)
+
   def create(implicit txn: Txn = tx.auto) = RCreate[T](this)
   def delete(implicit txn: Txn = tx.auto) = RDelete[T](this)
   def update(implicit txn: Txn = tx.auto) = RUpdate[T](this)
+  def createNoAudit(implicit txn: Txn = tx.auto) = RCreate.noAudit[T](this)
+  def deleteNoAudit(implicit txn: Txn = tx.auto) = RDelete.noAudit[T](this)
 }
 
 

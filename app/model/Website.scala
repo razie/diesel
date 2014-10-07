@@ -37,7 +37,9 @@ class Website (we:WikiEntry) extends DslProps(we) {
   def gplus:Option[String] = this prop "gplus"
   def tos:String = this prop "tos" OR "/page/Terms_of_Service"
   def privacy:String = this prop "privacy" OR "/page/Privacy_Policy"
+
   def join:String = this prop "join" OR "/doe/join"
+  def navBrowse:String = this prop "nav.browse" OR s"http://${Config.hostport}/wiki"
 
   def parent:Option[WID] = this wprop "parent"
   def skipParent:Option[WID] = this wprop "skipParent"
@@ -77,7 +79,8 @@ object Website {
 
   def getHost (implicit request: Request[_]) =
     if(Config.isLocalhost)
-      Some("www.enduroschool.com")    // for testing locally
+      Some("www.racerkidz.com")    // for testing locally
+//      Some("www.enduroschool.com")    // for testing locally
 //      Some("www.glacierskiclub.com")    // for testing locally
 //      Some("www.nofolders.net")    // for testing locally
     else

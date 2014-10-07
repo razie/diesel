@@ -161,9 +161,10 @@ object RK {
   final val ROLE_COACH = "Coach"
   final val ROLE_VOLUNTEER = "Volunteer"
   final val ROLE_MEMBER = "Member"
+  final val ROLE_FAN = "Fan" // for former members and others
 
   final val RELATIONSHIPS = Array(ROLE_KID, ROLE_SPOUSE, ROLE_PARENT, ROLE_MEMBER)
-  final val ROLES = Array(ROLE_RACER, ROLE_COACH, ROLE_MEMBER)
+  final val ROLES = Array(ROLE_RACER, ROLE_COACH, ROLE_MEMBER, ROLE_FAN)
 
   final val KIND_NORMAL = "Norm"
   final val KIND_MYSELF = "Myself"
@@ -211,7 +212,7 @@ object RacerKidz {
     findAssocForUser(id) map (_.to) flatMap (findById)
 
   def findAssocByClub(club: Club) = {
-    RMany[RacerKidAssoc]("from" -> club.userId) //, "what" -> RK.ASSOC_REGD)
+    RMany[RacerKidAssoc]("from" -> club.userId, "year" -> club.curYear) //, "what" -> RK.ASSOC_REGD)
   }
 
   def findByClub(club: Club) = {

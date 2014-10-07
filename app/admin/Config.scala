@@ -21,7 +21,7 @@ object Config extends WikiConfig {
 
   final val CONNECTED = props.getProperty("rk.connected", "connected")
 
-  final val curYear = "2014"
+  final val curYear = "2015"
 
   def darkLight = { razie.NoStaticS.get[controllers.DarkLight] }
 
@@ -43,6 +43,8 @@ object Config extends WikiConfig {
   
   // parse a properties looking thing
   def parsep(content: String) = (content.split("\r\n")) filter (!_.startsWith("#")) map (_.split("=", 2)) filter (_.size == 2) map (x => (x(0), x(1)))
+
+  var robotUserAgents = List[String]()
 
   def reloadUrlMap {
     println("========================== RELOADING URL MAP ==============================")
@@ -69,6 +71,8 @@ object Config extends WikiConfig {
     })
     
     cbacks foreach (_())
+
+    robotUserAgents = sitecfg("robots.useragents").toList.flatMap(s=>s.split("[;,]"))
   }
 
 }

@@ -1,19 +1,42 @@
 package admin
 
-import java.util.Date
-import javax.mail._
-import javax.mail.internet._
-import javax.activation._
+import java.util.concurrent.TimeUnit
 import javax.mail._
 import javax.mail.internet._
 import java.util._
-import java.io._
-import model.Enc
-import model.Users
-import model.EncUrl
+import akka.actor.{Actor, Props}
+import org.bson.types.ObjectId
+import org.joda.time.DateTime
+import play.libs.Akka
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration._
+import razie.clog
 
 /** a prepared email to send - either send now, later, backup etc */
-case class EmailMsg(to: String, from: String, subject: String, html: String, isNotification:Boolean=true, bcc:Seq[String] = Seq.empty) {}
+case class EmailMsg(
+  to: String,
+  from: String,
+  subject: String,
+  html: String,
+  isNotification:Boolean=true,
+  bcc:Seq[String] = Seq.empty,
+  status:String=EmailMsg.STATUS_READY,
+  lastError:String="",
+  sendCount:Integer=0,
+  lastDtm:DateTime=DateTime.now(),
+  _id:ObjectId = new ObjectId()) extends db.REntity[EmailMsg] {
+  def shouldResend = EmailMsg.RESEND contains status
+}
+
+object EmailMsg {
+  val STATUS_READY="ready"
+  val STATUS_SENDING="sending"
+  val STATUS_OOPS="oops"
+  val STATUS_FAILED="failed"
+  val STATUS_SKIPPED="skipped"
+
+  val RESEND = Array (STATUS_READY, STATUS_OOPS)
+}
 
 /**
  * a mail session that doesn't have to connect to the server if there's nothing to send...
@@ -29,85 +52,24 @@ object SendEmail extends razie.Logging {
   val NO_EMAILS = true // this is set to false for normal testing - set to true for quick testing and stress/perf testing
   var NOEMAILSTESTING = false // this is set to false for normal testing - set to true for quick testing and stress/perf testing
 
-  /**
-   * send an email
-   */
-  private def isend(e: EmailMsg, mailSession: MailSession) {
-
-    val mysession = mailSession.session
-      
-    if (Config.hostport.startsWith("test") && NOEMAILSTESTING || 
-        Config.isLocalhost && (e.isNotification || NO_EMAILS)) {
-      Audit.logdb("EMAIL_SENT_NOT", Seq("to:" + e.to, "from:" + e.from, "subject:" + e.subject, "body:" + e.html).mkString("\n"))
-    } else
-    try {
-      val message = new MimeMessage(mysession);
-      message.setFrom(new InternetAddress(e.from));
-      message.addRecipient(Message.RecipientType.TO, new InternetAddress(e.to));
-      e.bcc.foreach { b=>
-        message.addRecipient(Message.RecipientType.BCC, new InternetAddress(b));
-      }
-
-      message.setSubject(e.subject)
-
-      // Prepare a multipart HTML
-      val multipart = new MimeMultipart();
-      // Prepare the HTML
-      val htmlPart = new MimeBodyPart();
-      htmlPart.setContent(e.html, "text/html");
-      htmlPart.setDisposition("inline"); //BodyPart.INLINE);
-
-      // PREPARE THE IMAGE
-      //      val imgPart = new MimeBodyPart();
-      //
-      //      val fileName = "public/racerkidz-small.png";
-      //
-      //      var classLoader = Thread.currentThread().getContextClassLoader();
-      //      if (classLoader == null) {
-      //        classLoader = this.getClass().getClassLoader();
-      //        if (classLoader == null) {
-      //          throw new IllegalStateException("IT IS NULL AGAIN!!!!");
-      //        }
-      //      }
-      //
-      //      val ds = new URLDataSource(classLoader.getResource(fileName));
-      //
-      //      imgPart.setDataHandler(new DataHandler(ds));
-      //      imgPart.setHeader("Content-ID", "<logoimg_cid>");
-      //      imgPart.setDisposition("inline"); //MimeBodyPart.INLINE);
-      //      imgPart.setFileName("logomailtemplate.png");
-
-      multipart.addBodyPart(htmlPart);
-      //      multipart.addBodyPart(imgPart);
-      // Set the message content!
-      message.setContent(multipart);
-
-      // Send message
-      Transport.send(message);
-      Audit.logdb("EMAIL_SENT", Seq("to:" + e.to, "from:" + e.from, "subject:" + e.subject).mkString("\n"))
-    } catch {
-      case mex: MessagingException => {
-        Audit.logdb("ERR_EMAIL", 
-            Seq("to:" + e.to, "from:" + e.from, 
-                "subject:" + e.subject, "html="+e.html, 
-                "EXCEPTION = "+mex.toString()).mkString("\n"))
-        error("ERR_EMAIL", mex)
-      }
-    }
-  }
+  lazy val sender = Akka.system.actorOf(Props[EmailSender], name = "EmailSender")
 
   /**
    * send an email
    */
   def send(to: String, from: String, subject: String, html: String, bcc:Seq[String] = Seq.empty)(implicit mailSession: MailSession) {
-    mailSession.emails = new EmailMsg(to, from, subject, html, false, bcc) :: mailSession.emails
+    val e = new EmailMsg(to, from, subject, html, false, bcc)
+    mailSession.emails = e :: mailSession.emails
+    e.createNoAudit
   }
 
   /**
    * send an email
    */
   def notif(to: String, from: String, subject: String, html: String, bcc:Seq[String] = Seq.empty)(implicit mailSession: MailSession) {
-    mailSession.emails = new EmailMsg(to, from, subject, html, true, bcc) :: mailSession.emails
+    val e = new EmailMsg(to, from, subject, html, true, bcc)
+    mailSession.emails = e :: mailSession.emails
+    e.createNoAudit
   }
 
   /**
@@ -119,29 +81,147 @@ object SendEmail extends razie.Logging {
     implicit val mailSession = new MailSession
     val res = body(mailSession)
 
-    // spawn sender 
-    razie.Threads.fork {
-      mailSession.emails.reverse.map(e => isend(e, mailSession))
-    }
+    // spawn sender
+//    razie.Threads.fork {
+      sender ! mailSession
+//    }
 
     res
+  }
+
+  val STATE_OK="ok"               // all ok
+  val STATE_MAXED = "maxed"       // last sending resulted in too many emails - should wait a bit
+
+  val CMD_TICK = "tick"
+  val CMD_RESEND = "resend"
+
+  var curCount = 0;
+  var state = STATE_OK
+
+  class EmailSender extends Actor {
+    def receive = {
+      case id:ObjectId => db.ROne[EmailMsg](id).map(e=> isend(e, new MailSession))
+      case e:EmailMsg => isend(e, new MailSession)
+      case mailSession : MailSession => {
+        curCount += mailSession.emails.size
+        if (state == STATE_OK)
+          mailSession.emails.reverse.map(e => isend(e, mailSession))
+        else {
+          clog << "EmailSender received messages while maxed, scheduling just one"
+          mailSession.emails.lastOption.foreach (e=> sender ! e._id)
+        }
+      }
+      case CMD_TICK => {
+        // check for messages to retry
+        if(state == STATE_MAXED)
+          db.ROne[EmailMsg]("state" -> EmailMsg.STATUS_OOPS).foreach(e=> {self ! e._id; curCount += 1})
+      }
+
+      case CMD_RESEND => {
+        // check for messages to retry
+        db.RMany[EmailMsg]().filter(_.shouldResend).foreach(e=> {self ! e._id; curCount += 1})
+      }
+    }
+
+    // reload ALL messages to send - whatever was not sent last time
+    override def preStart() : Unit = {
+      db.RMany[EmailMsg]().filter(_.shouldResend).foreach(e=> {this.sender ! e._id; curCount += 1})
+
+      Akka.system.scheduler.schedule(
+        Duration.create(0, TimeUnit.MILLISECONDS),
+        Duration.create(30, TimeUnit.MINUTES),
+        this.self,
+        CMD_TICK
+      )
+    }
+
+    /** send an email */
+    private def isend(ie: EmailMsg, mailSession: MailSession) {
+      val e = ie.copy(status=EmailMsg.STATUS_SENDING, sendCount = ie.sendCount+1, lastDtm=DateTime.now())
+      e.update
+
+      val mysession = mailSession.session
+
+      if (Config.hostport.startsWith("test") && NOEMAILSTESTING ||
+        Config.isLocalhost && (e.isNotification || NO_EMAILS)) {
+        Audit.logdb("EMAIL_SENT_NOT", Seq("to:" + e.to, "from:" + e.from, "subject:" + e.subject, "body:" + e.html).mkString("\n"))
+        e.copy(status=EmailMsg.STATUS_SKIPPED, lastDtm=DateTime.now()).update
+      } else
+        try {
+          val message = new MimeMessage(mysession);
+          message.setFrom(new InternetAddress(e.from));
+          message.addRecipient(Message.RecipientType.TO, new InternetAddress(e.to));
+          e.bcc.foreach { b=>
+            message.addRecipient(Message.RecipientType.BCC, new InternetAddress(b));
+          }
+
+          message.setSubject(e.subject)
+
+          val multipart = new MimeMultipart();
+          val htmlPart = new MimeBodyPart();
+          htmlPart.setContent(e.html, "text/html");
+          htmlPart.setDisposition("inline"); //BodyPart.INLINE);
+
+          // PREPARE THE IMAGE
+          //      val imgPart = new MimeBodyPart();
+          //
+          //      val fileName = "public/racerkidz-small.png";
+          //
+          //      var classLoader = Thread.currentThread().getContextClassLoader();
+          //      if (classLoader == null) {
+          //        classLoader = this.getClass().getClassLoader();
+          //        if (classLoader == null) {
+          //          throw new IllegalStateException("IT IS NULL AGAIN!!!!");
+          //        }
+          //      }
+          //
+          //      val ds = new URLDataSource(classLoader.getResource(fileName));
+          //
+          //      imgPart.setDataHandler(new DataHandler(ds));
+          //      imgPart.setHeader("Content-ID", "<logoimg_cid>");
+          //      imgPart.setDisposition("inline"); //MimeBodyPart.INLINE);
+          //      imgPart.setFileName("logomailtemplate.png");
+
+          multipart.addBodyPart(htmlPart);
+          //      multipart.addBodyPart(imgPart);
+          message.setContent(multipart);
+
+          Transport.send(message);
+          Audit.logdb("EMAIL_SENT", Seq("to:" + e.to, "from:" + e.from, "subject:" + e.subject).mkString("\n"))
+          e.delete
+          if(state == STATE_MAXED) {
+            // reload all messages
+            db.RMany[EmailMsg]("state" -> EmailMsg.STATUS_OOPS).foreach(e=> {sender ! e._id; curCount += 1})
+          }
+          state = STATE_OK
+        } catch {
+          case mex: MessagingException => {
+            e.copy(status=EmailMsg.STATUS_OOPS, lastDtm=DateTime.now(), lastError = mex.toString).update
+            Audit.logdb("ERR_EMAIL",
+              Seq("to:" + e.to, "from:" + e.from,
+                "subject:" + e.subject, "html="+e.html,
+                "EXCEPTION = "+mex.toString()).mkString("\n"))
+            if(mex.toString contains("Daily sending quota exceeded"))
+              state = STATE_MAXED
+            error("ERR_EMAIL", mex)
+          }
+        }
+
+      synchronized {
+        curCount -= 1
+      }
+    }
+
   }
 
 }
 
 class Gmail(val debug: Boolean = false) {
-
-  //  def withSession(f: (Session) => Unit) {
-  //    implicit val session = this.session
-  //    f(session)
-  //  }
-
   val SMTP_HOST_NAME = "smtp.gmail.com";
   val SMTP_AUTH_USER = Config.SUPPORT
   val SMTP_AUTH_PWD = "zlMMCe7HLnMYOvbjYpPp6w==";
 
   def session = {
-    //Set the host smtp address
     val props = new Properties();
     props.put("mail.smtp.auth", "true");
     props.put("mail.smtp.starttls.enable", "true");
@@ -167,4 +247,6 @@ class Gmail(val debug: Boolean = false) {
       new PasswordAuthentication(username, password);
     }
   }
+
 }
+

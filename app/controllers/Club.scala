@@ -2,6 +2,7 @@ package controllers
 
 import admin.{Corr, Config, SendEmail, VErrors}
 import controllers.Profile._
+import controllers.Tasks._
 import db.RMongo.as
 import db.{REntity, RMany, ROne}
 import model._
@@ -42,6 +43,7 @@ case class Club(
     RoleWid(t._1.replaceFirst("Reg.", ""), WID.fromPath(t._2).get))
   lazy val newFollows = propSeq.filter(_._1 startsWith "Follows.").map(t =>
     RoleWid(t._1.replaceFirst("Follows.", ""), WID.fromPath(t._2).get))
+  lazy val filterRegFields = props.get("FilterFields").getOrElse("") split ","
 
   lazy val newTasks = propSeq filter (_._1 startsWith "Task.") map { t =>
     val PAT1 = "([^,]*),(.*)".r
@@ -144,7 +146,6 @@ object Club extends RazController with Logging {
     yob: Int,
     address: String)
 
-  /** list members */
   def doeClubRegs = Action { implicit request =>
     implicit val errCollector = new VErrors()
     (for (
@@ -266,17 +267,18 @@ object Club extends RazController with Logging {
     implicit val errCollector = new VErrors()
     (for (
       au <- activeUser;
-      isClub <- au.isClub orErr ("registration only for a club");
-      uwid <- WID("Club", au.userName).uwid orErr ("no uwid");
-      olduw <- model.Users.findUserLinksTo(uwid).find(_._id.toString == uwid);
-      u <- olduw.user
+      isClub <- au.isClub orErr "registration only for a club";
+      cuwid <- WID("Club", au.userName).uwid orErr "no uwid";
+      olduw <- model.Users.findUserLinksTo(cuwid).find(_._id.toString == uwid) orErr "user is not a member";
+      u <- olduw.user orErr "no olduw user"
     ) yield {
       mngUserForm.bindFromRequest.fold(
         formWithErrors => BadRequest(views.html.club.doeClubReg(formWithErrors, olduw, au)),
         {
           case (r, s, p) =>
             olduw.updateRole(r)
-            val uw = model.Users.findUserLinksTo(uwid).find(_._id.toString == uwid).get
+            //reload
+            val uw = model.Users.findUserLinksTo(cuwid).find(_._id.toString == uwid).get
 
             // update the role of the assoc as well
             for (
@@ -301,13 +303,13 @@ object Club extends RazController with Logging {
     implicit val errCollector = new VErrors()
     (for (
       au <- activeUser;
-      isClub <- au.isClub orErr ("registration only for a club");
+      isClub <- au.isClub orErr "registration only for a club";
       club <- Some(Club(au));
-      uuwid <- WID("Club", au.userName).uwid orErr ("no uwid");
-      uw <- model.Users.findUserLinksTo(uuwid).find(_._id.toString == uwid) orErr ("user is not a member");
+      cuwid <- WID("Club", au.userName).uwid orErr "no uwid";
+      uw <- model.Users.findUserLinksTo(cuwid).find(_._id.toString == uwid) orErr "user is not a member";
       u <- uw.user;
-      msg <- request.queryString.get("msg") orErr ("no message");
-      reg <- club.reg(u) orErr ("no registration record for year... ?")
+      msg <- request.queryString.get("msg") orErr "no message";
+      reg <- club.reg(u) orErr "no registration record for year... ?"
     ) yield {
       SendEmail.withSession { implicit mailSession =>
         // notify user
@@ -322,10 +324,10 @@ object Club extends RazController with Logging {
     implicit val errCollector = new VErrors()
     (for (
       au <- activeUser;
-      isClub <- au.isClub orErr ("registration only for a club");
+      isClub <- au.isClub orErr "registration only for a club";
       club <- Some(Club(au));
-      uuwid <- WID("Club", au.userName).uwid orErr ("no uwid");
-      uw <- model.Users.findUserLinksTo(uuwid).find(_._id.toString == uwid) orErr ("user is not a member");
+      cuwid <- WID("Club", au.userName).uwid orErr ("no uwid");
+      uw <- model.Users.findUserLinksTo(cuwid).find(_._id.toString == uwid) orErr ("user is not a member");
       u <- uw.user
     ) yield {
       val ooldreg = club.reg(u) //orErr ("no registration record for year... ?")
@@ -518,11 +520,7 @@ object Club extends RazController with Logging {
       rka.foreach(_.copy(role = role, assoc = RK.ASSOC_REGD).update)
     else {
       // TODO other use cases will be manual - should I notify?
-
-      //      val rka = RMany[RacerKidAssoc]("from" -> c.userId, "year" -> year).map(
-      //          x=>(x,x.to.as[RacerKid]).filter(t=>t._.2.)
-
-      RacerKidAssoc(c.userId, rk._id, model.RK.ASSOC_REGD, role, owner._id, year.toInt).create
+      RacerKidAssoc(c.userId, rk._id, model.RK.ASSOC_REGD, role, owner._id, 0, year).create
     }
   }
 
@@ -731,13 +729,14 @@ object Club extends RazController with Logging {
       prevReg <- model.Regs.findId(prevRegId);
       // either mine or i'm the club
       isMine <- (prevReg.userId == au._id && prevReg.clubName == clubName || prevReg.clubName == au.userName) orErr ("Not your registration: " + prevRegId);
+      user <- Users.findUserById(prevReg.userId) orErr ("Cant find user: " + prevReg.userId);
       isConsent <- au.profile.flatMap(_.consent).isDefined orCorr cNoConsent;
       isSame <- (prevReg.year != c.curYear) orErr ("Can't copy this year's registration: " + prevRegId)
     ) yield {
       // 1. expire
       db.tx("userStartRegCopy") { implicit txn =>
         cout << "OLD REG: " << prevReg
-        var reg = prevReg.copy(_id = new ObjectId(), year = c.curYear, regStatus = RegStatus.PENDING)
+        var reg = prevReg.copy(_id = new ObjectId(), year = c.curYear, regStatus = RegStatus.EXPIRED, paid="")
 
         cout << "REG: " << reg
 
@@ -748,9 +747,10 @@ object Club extends RazController with Logging {
           val oldW = Wikis.find(wid).get
 
           // find and upgrade the year
-          val PAT = "([^-]+)-([^-]+)-([^-]+)(-[^-]+)?-([^-]+)-([^-]+)".r
+          val PAT = "([^-]+)-([^-]+)-([^-]+)(-.*)?-([^-]+)-([^-]+)".r
           val PAT(name, role, id, kkid, y, num) = oldW.wid.name
           val kid = Option(kkid) getOrElse ""
+          val kidName = if(kid startsWith "-") kid.substring(1) else kid
 
           // new form spec
           val newForm = c.regForms.find(_.wid.name == name).getOrElse {
@@ -769,8 +769,8 @@ object Club extends RazController with Logging {
           if (!Wikis.find(newfwid).isDefined) {
             var label = s"${newForm.wid.name.replaceAll("_", " ")}"
             if (!label.contains(reg.year))
-              label = label + s" for $kid season ${reg.year}"
-            val newW = controllers.Forms.copyForm (au, oldW, newfwid.name, label, newForm)
+              label = label + s" for $kidName season ${reg.year}"
+            val newW = controllers.Forms.copyForm (user, oldW, newfwid.name, label, newForm, c.filterRegFields)
 
             cout << "  old form: " << oldW
             cout << "  new form: " << newW
@@ -814,6 +814,26 @@ object Club extends RazController with Logging {
   }
 
   /** called by user not the club */
+  def doeStartRegSimple(clubName: String) = Action { implicit request =>
+    implicit val errCollector = new VErrors()
+    (for (
+      au <- activeUser;
+      c <- Club(clubName);
+      regAdmin <- c.uregAdmin orErr ("Registration is not open yet! [no regadmin]");
+      isOpen <- c.propSeq.exists(x => "reg.open" == x._1 && "yes" == x._2) orErr ("Registration is not open yet!");
+      isConsent <- au.profile.flatMap(_.consent).isDefined orCorr cNoConsent;
+      uclub <- Users.findUserByUsername(clubName)
+    ) yield {
+      Ok(views.html.club.doeClubUserStartReg(au, clubName))
+    }) getOrElse  {
+      if(activeUser.isDefined && !activeUser.get.profile.flatMap(_.consent).isDefined)
+        Ok(views.html.user.doeConsent(activeUser.get, routes.Club.doeStartRegSimple(clubName).url))
+      else
+        Msg2("CAN'T START REGISTRATION " + errCollector.mkString)
+    }
+  }
+
+  /** called by user not the club */
   def doeStartReg(clubName: String, how: String) = Action { implicit request =>
     implicit val errCollector = new VErrors()
     (for (
@@ -829,9 +849,9 @@ object Club extends RazController with Logging {
         if ("None" == how) {
           UserTask(au._id, UserTasks.START_REGISTRATION).delete
           Redirect("/")
-        } else if (Regs.findClubUserYear(uclub, au._id, c.curYear).isDefined) {
-          Msg2("Registration already in progress for club " + clubName)
-        } else {
+        } else Regs.findClubUserYear(uclub, au._id, c.curYear).map {reg=>
+          Msg2("Registration already in progress for club " + clubName, Some(routes.Club.doeClubUserReg(reg._id.toString).url))
+        } getOrElse {
           // 1. expire
           var reg = Reg(au._id, clubName, c.curYear, RK.ROLE_MEMBER, Seq(), RegStatus.PENDING)
           reg.create
@@ -849,7 +869,6 @@ object Club extends RazController with Logging {
             Emailer.sendEmailClubRegStart(au, au.userName, routes.Club.doeClubUserReg(reg._id.toString).toString)
             Emailer.tellRaz("Started registration", "user: " + au.userName, "club: " + clubName, "how: " + how)
             // TODO tell regAdmin so they know...
-
             UserTask(au._id, UserTasks.START_REGISTRATION).delete
             Redirect(routes.Club.doeClubUserReg(reg._id.toString))
           }

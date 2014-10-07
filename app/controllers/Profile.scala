@@ -1,5 +1,6 @@
 package controllers
 
+import admin.Audit
 import admin.{Audit, Config, SendEmail, _}
 import db.RMongo._
 import model.Sec._
@@ -11,11 +12,11 @@ import play.api.data.Form
 import play.api.data.Forms.{mapping, nonEmptyText, tuple, _}
 import play.api.mvc.{Action, Request}
 import razie.OR._
-import razie.{Logging, Snakk, cdebug, cout}
+import razie._
 
 object Profile extends RazController with Logging {
 
-  final val cNoConsent = new Corr("Need consent!", """You need to <a href="/doe/profile/help">give your consent</a>!""");
+  final val cNoConsent = new Corr("Need consent!", """You need to <a href="/doe/consent">give your consent</a>!""");
 
   val parentForm = Form(
     "parentEmail" -> text.verifying("Wrong format!", vldEmail(_)).verifying("Invalid characters", vldSpec(_)))
@@ -132,6 +133,9 @@ object Profile extends RazController with Logging {
       "notify" -> nonEmptyText.verifying("Please select one", ut => notifiers.contains(ut)))
   }
 
+  // todo stop fucking with the routes again
+  def doeJoinAlso = doeJoin("", "", "")
+
   // join step 1
   def doeJoin(club: String, role: String, next: String) = Action {implicit request=>
     auth // clean theme
@@ -243,7 +247,9 @@ object Profile extends RazController with Logging {
   }
 
   def doeConsent (next:String) = Action { implicit request =>
-    Ok(views.html.user.doeConsent(activeUser.get))
+    forActiveUser { au =>
+      Ok(views.html.user.doeConsent(au))
+    }
   }
 
   def doeConsent2 (ver:String, next:String) = Action { implicit request =>
@@ -809,7 +815,7 @@ object Kidz extends RazController {
       "dob" -> jodaDate,
       "gender" -> text.verifying(vSpec).verifying(x => x == "M" || x == "F"),
       "role" -> nonEmptyText.verifying(vSpec, vPorn),
-      "status" -> text.verifying(vSpec).verifying("bad status", x => "asf" contains x),
+      "status" -> text.verifying(vSpec),//.verifying("bad status", x => "asf" contains x),
       "assocRole" -> nonEmptyText.verifying(vSpec, vPorn),
       "notifyParent" -> text.verifying(vSpec).verifying(x => x == "y" || x == "n")) verifying (
         "Must notify parent if there's no email...", {
@@ -849,7 +855,7 @@ object Kidz extends RazController {
 
       val arole = if (associd.length > 3) new ObjectId(associd).as[RacerKidAssoc].get.role else ""
 
-      Ok(views.html.user.doeKid(pId, rkId, role, associd, next, form(au).fill((
+      Ok(views.html.user.doeUserKid(pId, rkId, role, associd, next, form(au).fill((
         k.firstName, k.lastName, k.email.dec,
         rk flatMap (_.rki) map (_.dob) getOrElse rk.map(rk => new DateTime(rk.info.yob, 1, 1, 1, 1)).getOrElse(RacerKidz.empty.dob),
         rki.gender,
@@ -864,15 +870,16 @@ object Kidz extends RazController {
   def doeKidUpdate(userId: String, rkId: String, role: String, associd: String, next: String) = Action { implicit request =>
     implicit val errCollector = new VErrors()
     form(auth.get).bindFromRequest.fold(
-      formWithErrors => BadRequest(views.html.user.doeKid(userId, rkId, role, associd, next, formWithErrors, auth.get)),
+      formWithErrors => BadRequest(views.html.user.doeUserKid(userId, rkId, role, associd, next, formWithErrors, auth.get)),
       {
-        case (xf, xl, xe, d, g, r, ar, s, n) =>
+        case (xf, xl, xe, d, g, r, s, ar, n) =>
           (for (
             au <- activeUser
           ) yield {
             val f = xf.trim
             val l = xl.trim
             val e = xe.trim
+            val status=if(s.length > 1) s else "a"
 
             def res = if (next == "Club" && au.isClub)
               Redirect(routes.Club.doeClubReg(Club(au).userLinks.filter(_.userId.toString == userId).next._id.toString))
@@ -885,16 +892,30 @@ object Kidz extends RazController {
             else
               Redirect(routes.Club.doeClubUserReg(next))
 
-            if (rkId.length > 2) {
+            // just update the association type - for former members, to make them fans
+            var assocOnly = false
+            if (rkId.length > 2 && associd.length > 2) {
+              new ObjectId(associd).as[RacerKidAssoc].foreach { rka =>
+                if (ar != rka.role) {
+                  rka.copy(role = ar).update
+                  //todo update the userlink as well
+                  assocOnly = true
+                }
+              }
+            }
+
+             if (assocOnly) {
+             res
+            } else if (rkId.length > 2) {
               // update
               val rk = RacerKidz.findById(new ObjectId(rkId)).get
               val rki = rk.rki.get
-              rki.copy(firstName = f, lastName = l, email = e.enc, dob = d, status = s charAt 0, roles = Set(r)).update
+              rki.copy(firstName = f, lastName = l, email = e.enc, dob = d, status = status charAt 0, roles = Set(r)).update
               (rk, rki)
-              if (associd.length > 2) new ObjectId(associd).as[RacerKidAssoc].foreach { rka =>
-                if (ar != rka.role)
-                  rka.copy(role = ar).update
-              }
+//              if (associd.length > 2) new ObjectId(associd).as[RacerKidAssoc].foreach { rka =>
+//                if (ar != rka.role)
+//                  rka.copy(role = ar).update
+//              }
               res
             } else {
               // create
@@ -903,7 +924,7 @@ object Kidz extends RazController {
                 Msg2("Kid with same first name or email already added", Some("/doe/user/kidz"))
               else {
                 val rk = new RacerKid(au._id)
-                val rki = new RacerKidInfo(f, l, e.enc, d, g, Set(r), s.charAt(0), n == "y", rk._id, au._id)
+                val rki = new RacerKidInfo(f, l, e.enc, d, g, Set(r), status charAt 0, n == "y", rk._id, au._id)
                 rk.copy(rkiId = Some(rki._id)).create
                 rki.create
                 RacerKidAssoc(

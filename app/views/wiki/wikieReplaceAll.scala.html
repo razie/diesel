@@ -1,0 +1,61 @@
+@(myForm:Form[_], au:Option[model.User])
+
+@htmlHeadBar("", au)
+
+    <div class="container">
+
+      <!-- Main hero unit for a primary marketing message or call to action -->
+      <div class="well">
+          <h2>Replace text!</h2>
+          <p><strong>Warning</strong> - it's a regexp, so escape special chars?
+      </div>
+<div >
+@import helper.twitterBootstrap._
+
+
+@helper.form(action=routes.Wikie.replaceAll3(), 'class->"well") {
+  @helper.inputText(
+    myForm("old"),
+    '_class -> "input-xlarge disabled",
+    '_label -> "Out with the old",
+    '_showConstraints -> false)
+  @helper.inputText(
+    myForm("new"),
+    '_class -> "input-xlarge",
+    '_label -> "In with the new",
+    '_showConstraints -> false)
+
+  <div class="actions">
+    <button type="submit" class="btn btn-primary" name="action" value="preview">Preview</button>
+    <button type="submit" class="btn btn-primary" name="action" value="replace">Replace it!</button>
+ALERT: you can't undo this!  </div>
+
+  @myForm.globalError.map { err=>
+     <p style="color:red;font-weight:bold">@err.message</p>
+  }
+
+  <br><small>By updating this page, you agree to the <a href="@controllers.Wiki.w("Terms of Service")Wiki.w("Terms of Service")">Terms of Service</a></small>
+}
+</div>
+
+      <div class="well">
+
+       <table class="table table-striped">
+         @controllers.Wikie.search(myForm("old").value.mkString).map { t =>
+           <tr>
+             <td>@Html(t._1.wid.ahref)</td><td>@t._2<span style="color:red;font-weight:bold">@t._3</span>@t._4</td>
+             <td>@t._2<span style="color:red;font-weight:bold">@myForm("new").value.mkString</span>@t._4</td>
+           </tr>
+         }
+       </table>
+
+      </div>
+
+      <hr>
+
+      @htmlFooter()
+
+    </div> <!-- /container -->
+
+    @htmlBottom()
+    

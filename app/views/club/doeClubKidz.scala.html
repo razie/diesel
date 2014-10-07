@@ -4,19 +4,20 @@ manage the list of kidz and/or their accounts
 @(user:model.User)
 @import model.RK._
 @import model.RacerKid
+@import model.RacerKidAssoc
 
 @htmlHeadBar("RacerKidz for " + user.userName, Some(user))
 
 @rks=@{
-  (for (a <- model.RacerKidz.findAssocForUser(user._id);
+  (for (a <- model.RacerKidz.findAssocByClub(controllers.Club(user));
   	   k <- model.RacerKidz.findById(a.to)) yield (k,a)).toList.sortBy(x=>x._1.info.lastName+x._1.info.firstName)
 }
   	   
-@rksactive = @{rksmap(_.info.status != STATUS_FORMER)}
-@rksformer = @{rksmap(_.info.status == STATUS_FORMER)}
+@rksactive = @{rksmap((k,a)=> k.info.status != STATUS_FORMER && a.role != ROLE_FAN)}
+@rksformer = @{rksmap((k,a)=> k.info.status == STATUS_FORMER || a.role == ROLE_FAN)}
 
-@rksmap(f:RacerKid =>Boolean) = @{
-  for ((t,a) <- rks if(f(t))) yield
+@rksmap(f:(RacerKid, RacerKidAssoc) =>Boolean) = @{
+  for ((t,a) <- rks if(f(t, a))) yield
     Map("fname"->t.info.firstName, 
     	"lname"->t.info.lastName, 
     	"role" -> a.role, 
@@ -45,7 +46,7 @@ manage the list of kidz and/or their accounts
 <p>Some records are created by the parents (see the "Source"). For those that did not register online, you can create records here, for team management etc. See at the bottom for correlations.
 
 <p><b>Summary:</b>
-  @rks.filter(_._1.info.status != STATUS_FORMER).toList.groupBy(_._2.role).map {x=>
+  @rks.filter(t=> t._1.info.status != STATUS_FORMER && t._2.role != ROLE_FAN).toList.groupBy(_._2.role).map {x=>
   	@x._2.size <small>x</small> @x._1  ;  
 }
 
@@ -67,7 +68,11 @@ Source is
 <hr>
 <strong>Former members</strong>
 @util.utilSimpleTable(rksformer.iterator, 
-	Seq("fname" -> "F.Name", "lname"->"L.Name", "role" -> "Role", "source" -> "Source", "button"->"Details"), Some(mnglink))
+	Seq("fname" -> "F.Name",
+    "lname"->"L.Name",
+    "role" -> "Role",
+    "source" -> "Source",
+    "button"->"Details"), Some(mnglink))
 </div>
 </div>
   <hr>

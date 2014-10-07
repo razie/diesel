@@ -2,7 +2,7 @@ package controllers
 
 import java.io.File
 
-import admin.{Audit, Config}
+import admin.{IgnoreErrors, Audit, Config}
 import com.mongodb.casbah.Imports._
 import db._
 import model.Sec._
@@ -33,7 +33,8 @@ object Application extends RazController {
         NotFound("")
       } else {
         Audit.missingPage(" NO ROUTE FOR: " + path)
-        NotFound("This is not the page you're looking for...!")
+//        NotFound("This is not the page you're looking for...!")
+        Redirect ("/")
       }
     }
   }
@@ -70,16 +71,19 @@ object Application extends RazController {
   /** randomly redirect to a topic */
   def lucky = Action { implicit request =>
 
+    val au = auth
     var w: Option[model.WID] = None
+    var wpage: Option[model.WikiEntry] = None
     var i = 0
     do {
       w = Wikis(Wikis.DFLT).index.random
       i = i + 1
-    } while (w.isEmpty && i < 100)
+      wpage = w flatMap(_.page)
+    } while ((w.isEmpty || !Wiki.canSee(w.get, au, wpage)(IgnoreErrors).exists(identity)) && i < 100)
 
     w.map { wid =>
       Audit.logdb("LUCKY", "wpath", wid.wpath)
-      Config.urlcanon(wid.wpath).map { canon =>
+      Config.urlcanon(wid.wpath, wid.page).map { canon =>
         Redirect(canon)
       } getOrElse {
         Redirect(Wiki.w(wid))

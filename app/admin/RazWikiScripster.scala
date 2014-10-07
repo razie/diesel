@@ -18,13 +18,13 @@ class RazWikiScripster extends WikiScripster.CWikiScripster {
   override def mk = new RazWikiScripster
   
   /** run the given script in the context of the given page and user as well as the query map */
-  override def runScript(s: String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, String]) = synchronized {
+  override def runScript(s: String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, String], devMode:Boolean=false) = synchronized {
     import razie.base.scriptingx._
 
     api.wix.page = page
     api.wix.user = user.map(_.asInstanceOf[User])
     api.wix.query = query
 
-    super.runScript(s, page, user, query)
+    super.runScript(s, page, user, query, devMode)
   }
 }

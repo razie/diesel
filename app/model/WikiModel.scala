@@ -13,7 +13,7 @@ import org.joda.time.DateTime
 import admin.Audit
 import razie.Log
 import db.RazSalatContext._
-import db.{ RTable, RCreate, RDelete }
+import db._
 import admin.Services
 
 /** a simple wiki-style entry: language (markdown, mediawiki wikidot etc) and the actual source
@@ -121,17 +121,18 @@ case class WikiEntry(
   /** wiki sections are delimited by {{section:name}} */
   lazy val sections = {
     // this ((?>.*?(?=\{\{/))) means non-greedy lookahead
-    val PATT1 = """(?s)\{\{\.*(section|template|def|lambda):([^:}]*)(:)?([^}]*)?\}\}((?>.*?(?=\{\{/)))\{\{/\.*(section|template|def|lambda)\}\}""".r //?s means DOTALL - multiline
+    //todo use the wiki parser later modifiers to load the sections, not a separate parser here
+    val PATT1 = """(?s)\{\{\.*(section|template|def|lambda|dsl\.\w*)(:)?([^:}]*)?(:)?([^}]*)?\}\}((?>.*?(?=\{\{/)))\{\{/\.*(section|template|def|lambda|dsl\.\w*)\}\}""".r //?s means DOTALL - multiline
     val PATT2 = PATT1
 
     (for (m <- PATT1.findAllIn(content)) yield {
       val mm = PATT2.findFirstMatchIn(m).get
-      WikiSection(this, mm.group(1), mm.group(2), mm.group(4), mm.group(5))
+      WikiSection(this, mm.group(1), mm.group(3), mm.group(5), mm.group(6))
     }).toList
   }
 
   /** pattern for all sections requiring signing - (?s) means multi-line */
-  val PATTSIGN = """(?s)\{\{(template|def|lambda):([^:}]*)(:REVIEW[^}]*)\}\}((?>.*?(?=\{\{/)))\{\{/(section|template|def|lambda)\}\}""".r //?s means DOTALL - multiline
+  val PATTSIGN = """(?s)\{\{(template|def|lambda):([^:}]*)(:REVIEW[^}]*)\}\}((?>.*?(?=\{\{/)))\{\{/(template|def|lambda)\}\}""".r //?s means DOTALL - multiline
 
   /** find a section */
   def section(stype: String, name: String) = sections.find(x => x.stype == stype && x.name == name)
@@ -145,7 +146,7 @@ case class WikiEntry(
     // apply transformations
     s.decs.map(x => x(this))
     // add hardcoded attribute - these can be overriden by tags in content
-    WikiParser.State(s.s,
+    WikiParser.SState(s.s,
       Map("category" -> category, "name" -> name, "label" -> label, "url" -> (category + ":" + name),
         "tags" -> tags.mkString(",")) ++ s.tags,
       s.ilinks, s.decs)
@@ -162,18 +163,19 @@ case class WikiEntry(
   /** all the links from this page to others, based on parsed content */
   def ilinks = preprocessed.ilinks
 
-  final val AUDIT_WIKI_CREATED = "WIKI_CREATED "
-  final val AUDIT_WIKI_UPDATED = "WIKI_UPDATED "
-  final val AUDIT_WIKI_DELETED = "WIKI_DELETED "
-  final val AUDIT_NOTE_CREATED = "NOTE_CREATED "
-  final val AUDIT_NOTE_UPDATED = "NOTE_UPDATED "
+  final val AUDIT_WIKI_CREATED = "WIKI_CREATED"
+  final val AUDIT_WIKI_UPDATED = "WIKI_UPDATED"
+  final val AUDIT_WIKI_DELETED = "WIKI_DELETED"
+  final val AUDIT_NOTE_CREATED = "NOTE_CREATED"
+  final val AUDIT_NOTE_UPDATED = "NOTE_UPDATED"
 
   /** field definitions contained - added to during parsing */
   var fields = new scala.collection.mutable.HashMap[String, FieldDef]()
   lazy val form = new WikiForm(this)
   def formRole = this.props.get(FormStatus.FORM_ROLE)
 
-  /** other parsing artifacts to be used by knowledgeable modules */
+  /** other parsing artifacts to be used by knowledgeable modules.
+    * Parsers can put stuff in here. */
   //todo move the fields and form stuff here
   val cache = new scala.collection.mutable.HashMap[String, Any]()
 }
@@ -265,7 +267,9 @@ case class WID(cat: String, name: String, parent: Option[ObjectId] = None, secti
 }
 
 /** a special command wid, contains a command, what and wid - used in routes */
-case class CMDWID(wpath: Option[String], wid: Option[WID], cmd: String, rest: String)
+case class CMDWID(wpath: Option[String], wid: Option[WID], cmd: String, rest: String) {
+  def hasGoodWid = wid.exists(w=>WID.UNKNOWN.cat != w.cat && WID.UNKNOWN.name != w.name )
+}
 
 object WID {
   /** do not require the category */
@@ -324,12 +328,11 @@ object WID {
 /** a link between two wikis */
 @RTable
 case class WikiLinkStaged(
-                     from: WID,
-                     to: WID,
-                     how: String,
-                     crDtm: DateTime = DateTime.now(),
-                     _id: ObjectId = new ObjectId()) {
-  def grated = grater[WikiLinkStaged].asDBObject(this)
+  from: WID,
+  to: WID,
+  how: String,
+  crDtm: DateTime = DateTime.now(),
+  _id: ObjectId = new ObjectId()) extends REntity[WikiLinkStaged] {
 }
 
 /** a link between two wikis */
@@ -339,9 +342,7 @@ case class WikiLink(
   to: UWID,
   how: String,
   crDtm: DateTime = DateTime.now(),
-  _id: ObjectId = new ObjectId()) {
-
-  def create (implicit txn:db.Txn) = RCreate[WikiLink](this)
+  _id: ObjectId = new ObjectId()) extends REntity[WikiLink] {
 
   val wname = Array(from.cat, from.nameOrId, to.cat, to.nameOrId).mkString(":")
 
@@ -350,10 +351,6 @@ case class WikiLink(
   def pageTo = Wikis.find(to)
 
   def isPrivate = List(pageFrom, page).flatMap(_ map (_.isPrivate)).exists(identity)
-
-  def grated = grater[WikiLink].asDBObject(this)
-
-  def delete = RDelete[WikiLink](this)
 }
 
 object ILink {

@@ -9,6 +9,7 @@ package razie.base.scriptingx
 import razie.base.ActionContext
 import razie.base.scripting.RazieInterpreter
 import razie.base.scripting.ScriptContextImpl
+import razie.cdebug
 import scala.tools.{ nsc => nsc }
 import scala.tools.nsc.interpreter.IR
 import java.net.URL
@@ -45,7 +46,7 @@ class ScalaScriptContext(parent: ActionContext = null) extends ScriptContextImpl
     val newscr2 = newscr1.trim
     val newpos = pos - (scr.length - newscr1.length)
     val output = comp.completer().complete(newscr2, newpos)
-import scala.collection.JavaConversions._
+    import scala.collection.JavaConversions._
     l.addAll(output.candidates)
     l
   }
@@ -125,24 +126,33 @@ class SBTScalaScriptContext(parent: ActionContext = null) extends ScalaScriptCon
     // TODO make this work for any managed classloader - it's hardcoded for sbt
     val env = {
       val settings = new nsc.Settings(errLogger)
-      settings embeddedDefaults getClass.getClassLoader
+      // the repl uses the same thread
       settings.Yreplsync.value = true
 
-      val myLoader = new ReplClassloader(getClass.getClassLoader)
-      settings.embeddedDefaults(myLoader)
+      if(admin.Config.isLocalhost) {
+        val myLoader = new ReplClassloader(getClass.getClassLoader)
+        settings.embeddedDefaults(myLoader)
+        settings.bootclasspath.append("C:/cygwin/home/razvanc/w/racerkidz/lib_managed/jars/org.scala-lang/scala-library/scala-library-2.10.3.jar")
 
-//      val cl = this.getClass.getClassLoader // or getClassLoader.getParent, or one more getParent...
+//        val cl = this.getClass.getClassLoader // or getClassLoader.getParent, or one more getParent...
 //
-//      val urls = cl match {
-//        case cl: java.net.URLClassLoader => cl.getURLs.toList
-//        case a => sys.error("oops: I was expecting an URLClassLoader, foud a " + a.getClass)
-//      }
-//      val classpath = urls map {_.toString}
+//        val urls = cl match {
+//          case cl: java.net.URLClassLoader => cl.getURLs.toList
+//          case a => sys.error("oops: I was expecting an URLClassLoader, foud a " + a.getClass)
+//        }
+//        val classpath = (urls map { _.toString })
 //
-//      razie.cout << "=================CLASSPATH: "+classpath
+//        razie.cout << "=================CLASSPATH: " + classpath
 //
-//      settings.classpath.value = classpath.distinct.mkString(java.io.File.pathSeparator)
-//      settings.embeddedDefaults(cl) // or getClass.getClassLoader
+//        settings.bootclasspath.value = classpath.distinct.mkString(java.io.File.pathSeparator)
+//        settings.classpath.value = classpath.distinct.mkString(java.io.File.pathSeparator)
+//        settings.bootclasspath.append("C:/cygwin/home/razvanc/w/racerkidz/lib_managed/jars/org.scala-lang/scala-library/scala-library-2.10.3.jar")
+//        settings.embeddedDefaults(cl) // or getClass.getClassLoader
+      } else {
+        // production - javacp is enough
+        settings.usejavacp.value = true
+        settings embeddedDefaults getClass.getClassLoader
+      }
 
       settings
     }

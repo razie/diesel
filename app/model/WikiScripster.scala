@@ -12,7 +12,7 @@ import razie.{CSTimer, csys}
 /** execute wiki scala scripts */
 trait WikiScripster {
   /** run the given script in the context of the given page and user as well as the query map */
-  def runScript(s: String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, String]): String
+  def runScript(s: String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, String], devMode:Boolean=false): String
   def mk: WikiScripster
 }
 
@@ -35,7 +35,7 @@ object WikiScripster {
     def mk = new CWikiScripster
 
     /** run the given script in the context of the given page and user as well as the query map */
-    def runScript(s: String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, String]): String = synchronized {
+    def runScript(s: String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, String], devMode:Boolean=false): String = synchronized {
       import razie.base.scriptingx._
 
       Audit.logdb("WIKI_SCRIPSTER", "exec", s)
@@ -54,9 +54,10 @@ object WikiScripster {
         }
         res
       } catch {
-        case _: Throwable => { // any exceptions, get a new parser
+        case ex: Throwable => { // any exceptions, get a new parser
           wikiCtx = None
-          "?"
+          if(devMode) throw ex
+          else "?"
         }
       }
     }

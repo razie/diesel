@@ -1,140 +1,16 @@
 
-Why DSL as Configuration
+- in nofolders
 
-DSLs are the best configuration option ever! Let's take a look at some alternatives, to understand why:
+creativity
 
-- JSON
-- XML
-- GUI
-- text
-- DSL
-
-Let's look at a classic example: a catalog of products.
-
-## JSON configuration files
-
-JSON is a short and sweet notation for text representation of objects (structures, attributes):
-
-{{code:json}}
-{
-  "products" : [
-  {
-    "name" : "iphone",
-    "sku" : "1234",
-    "attributes" : [
-      {
-        "name" : "color",
-        "type" : "string"
-      }
-      {
-        "name" : "phoneNo",
-        "type" : "string"
-      }
-    ]
-  }
-  ]
-}
-{{/code}}
-
-As you type JSON, there is no help or validation, until you actually try to load it.
-
-## XML
-
-Here's the same catalog of products as an XML. Note that I made it more compact out of boredom, it doesn't mean you would type or parse less, though.
-
-{{code:xml}}
-<products>
-  <product
-    name="iphone",
-    sku="1234">
-    <attributes>
-      <attr name="color", type="string"/>
-      <attr name="phoneNo", type="string"/>
-    </attributes>
-  </product>
-</products>
-{{/code}}
-
-This is uglier than the JSON - although you can use some XML techniques to modularize it and include sub-documents etc.
-
-It's hard to decide between these two, yes - JSON is easier to type and faster to parse, but XML has certain features and a lot of tools (transformations etc).
-
-## GUI
-
-Hardcoded GUI to represent the domain model.
-
-???
-
-## Internal DSL
-
-An internal DSL is a DSL described in and thus internal to another language. We'll look at internal DSLs in much more detail soon.
-
-See more details on [[Internal vs External DSL]].
-
-This is a simple internal DSL in scala, assumes a domain model for these classes has been created...
-
-{{code:dsl}}
-new product (
-    name = "iphone",
-    sku = "1234",
-    attributes = Seq(
-      attr("color", Type.STRING),
-      attr("phoneNo", Type.STRING)
-      )
-    )
-{{/code}}
-
-See this discussion on [[Internal DSL Languages]] to see why we chose scala.
-
-## External DSL
-
-An external DSL is basically a language you defined yourself. It is a free-format text document backed up by your own grammar:
-
-See more details on [[Internal vs External DSL]].
-
-{{code:dsl}}
-products are {
-  product iphone (
-    sku is "1234",
-    attr color:string
-    attr phoneNo:string
-    )
-  }
-{{/code}}
-
-You can certainly prefer one over the other, but all else equal, the last two forms are the most interesting.
-
-
-----------
-
-DSL part two
-
-Let's look at an interesting problem: the available colors are certainly driven by an availability in some inventory.
-
-The way you would represent this in a JSON or XML is via a textual reference to a function, possibly:
-
-{{code:json}}
-{
-  "name" : "color",
-  "type" : "enum",
-  "source" : 'availabilityFromInventory("anInventory", "1234", "color")'
-}
-{{/code}}
-
-There is no help in typing the function name, its arguments or anything else. In XML you could have a sub-fragment with an XSD to help with a part of this, perhaps.
-
-Here's the same in a scala internal DSL:
-
-attr("color", Type.STRING) from Inv.Warehouse1
-
-Or as an external DSL:
-
-attr color:string from Inv.Warehouse1
-
----------
-
-categorixzin DSL
-
-typesafe vs non-typesafe
+capture ideas on the fly / on the road
+- simple domains
+0 associations
+functionality
+behavior
+rules
+thoughts
+code fragments
+etc
 
 

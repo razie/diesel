@@ -87,7 +87,7 @@ club admin manages list of users and registrations
 @kidlink(row:Map[String,String],k:String,v:String)={
   @k match {
   	case "button" => {
-      <a href="@routes.Kidz.doeKid(club._id.toString, v, "-", row("associd"), "Club")" class="btn btn-mini">More...</a>
+      <a href="@routes.Kidz.doeUserKid(club._id.toString, v, "-", row("associd"), "Club")" class="btn btn-mini">More...</a>
       } 
     case _ => {@v}
   }

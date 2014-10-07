@@ -15,7 +15,7 @@ Need consent
     @wiki.wikiFrag(we.wid,Some(au),true,Some(we), None, true, true)
 
   <p><a href="@routes.Profile.doeConsent2(we.wid.wpath + " ver "+we.ver, next)" class="btn btn-large btn-success">Consent and continue!</a>
-    <p>If you do not wish to consent, you cannot use this website or start registration, since all that relies on automated emails, sorry.</p>
+    <p>If you do not wish to consent, you cannot start registration, since all that relies on automated emails, sorry.</p>
   }.getOrElse{
     <p>No consent required.
     <p><a href="@routes.Profile.doeConsent2("none")" class="btn btn-large btn-success">Continue!</a>

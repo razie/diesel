@@ -85,7 +85,11 @@ class WForm(val we: WikiEntry) {
           val f = we.form.fields.get(n)
 
           val t = f.flatMap(_.attributes.get("type")).getOrElse("text")
-          val other = f.map(_.attributes.filter(t => t._1 != "type" && t._1 != "choices").foldLeft("")((s, t) => s + " " + t._1 + "=\"" + t._2 + "\"")).getOrElse("")
+          val req = f.flatMap(_.attributes.get("req")).exists(_ == "yes")
+          val other = f.map(_.attributes.filter(t => !Array("type","choices","req").contains(t._1)).foldLeft("")((s, t) => s + " " + t._1 + "=\"" + t._2 + "\"")).getOrElse("")
+
+          if(req && v.isEmpty)
+            errors += n -> "Is required! Please fill in this field."
 
           t match {
             case "date" => {

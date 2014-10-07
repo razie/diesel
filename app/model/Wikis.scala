@@ -33,11 +33,13 @@ class WikiInst (val realm:String) {
 
 /** wiki factory and utils */
 object Wikis extends Logging with Validation {
-  final val PERSISTED = Array("Item", "Event", "Training", "Note", "Entry", "Form")
+  final val PERSISTED = Array("Item", "Event", "Training", "Note", "Entry", "Form",
+    "DRReactor", "DRElement", "DRDomain")
 
-  lazy val TABLE_NAME = "WikiEntry"
+  final val TABLE_NAME = "WikiEntry"
+  final val TABLE_NAMES = Map("DRReactor" -> "weDR", "DRElement" -> "weDR", "DRDomain" -> "weDR")
 
-  lazy val DFLT = "rk"
+  final val DFLT = "rk"
 
   // all wiki instances
   lazy val wikis = {
@@ -49,18 +51,18 @@ object Wikis extends Logging with Validation {
   def apply (realm:String = DFLT) = wikis(realm)
   def apply (wid:WID) = wikis(wid.getRealm)
   
-  def weTable(cat: String) = if (PERSISTED contains cat) RazMongo("we"+cat) else table
-  def weTables(cat: String) = if (PERSISTED contains cat) ("we"+cat) else TABLE_NAME
+  def weTable(cat: String) = TABLE_NAMES.get(cat).map(x=>RazMongo(x)).getOrElse(if (PERSISTED contains cat) RazMongo("we"+cat) else table)
+  def weTables(cat: String) = TABLE_NAMES.getOrElse(cat, if (PERSISTED contains cat) ("we"+cat) else TABLE_NAME)
   def table (realm:String) = RazMongo(TABLE_NAME)
   def table = RazMongo(TABLE_NAME)
 
   def fromGrated[T <: AnyRef](o: DBObject)(implicit m: Manifest[T]) = grater[T](ctx, m).asObject(o)
 
   def pages(category: String) =
-    table.m.find(Map("category" -> category)) map (grater[WikiEntry].asObject(_))
+    weTable(category).m.find(Map("category" -> category)) map (grater[WikiEntry].asObject(_))
 
   def pageNames(category: String) =
-    table.m.find(Map("category" -> category)) map (_.apply("name").toString)
+    weTable(category).find(Map("category" -> category)) map (_.apply("name").toString)
 
   def pageLabels(category: String) =
     table.m.find(Map("category" -> category)) map (_.apply("label").toString)
@@ -133,6 +135,9 @@ object Wikis extends Logging with Validation {
   def linksFrom(from: UWID) = RMany[WikiLink]("from" -> from.grated)
 
   def linksTo(to: UWID) = RMany[WikiLink]("to" -> to.grated)
+
+  def childrenOf(parent: UWID) =
+    RMany[WikiLink]("to" -> parent.grated, "how" -> "Child").map(_.from)
 
   def linksFrom(from: UWID, role: String) =
     RMany[WikiLink]("from" -> from.grated, "how" -> role)
@@ -217,7 +222,7 @@ object Wikis extends Logging with Validation {
   }
 
   /** this is the actual parser to use - combine your own and set it here in Global */
-  var wparser : String => WikiParser.State = WikiParser.apply
+  var wparser : String => WikiParser.PState = WikiParser.apply
 
   // TODO better escaping of all url chars in wiki name
   def preprocess(wid: WID, markup: String, content: String) = markup match {
@@ -240,10 +245,10 @@ object Wikis extends Logging with Validation {
       }
 
       (for (
-        s @ WikiParser.State(a0, tags, ilinks, decs) <- Some(wparser(c2))
-      ) yield s) getOrElse WikiParser.State("")
-    case TEXT => WikiParser.State(content.replaceAll("""\[\[([^]]*)\]\]""", """[[\(1\)]]"""))
-    case _ => WikiParser.State("UNKNOWN MARKUP " + markup + " - " + content)
+        s @ WikiParser.SState(a0, tags, ilinks, decs) <- Some(wparser(c2))
+      ) yield s) getOrElse WikiParser.SState("")
+    case TEXT => WikiParser.SState(content.replaceAll("""\[\[([^]]*)\]\]""", """[[\(1\)]]"""))
+    case _ => WikiParser.SState("UNKNOWN MARKUP " + markup + " - " + content)
   }
 
   /** main formatting function */
@@ -263,11 +268,20 @@ object Wikis extends Logging with Validation {
         } catch { case _: Throwable => Some("!?!") }
       })
 
+      // todo move to an AST approach of states that are folded here instead of sequential replaces
       val XP_PAT = """`\{\{\{(xp[l]*):([^}]*)\}\}\}`""".r
 
       content = XP_PAT replaceSomeIn (content, { m =>
         try {
           we.map(x => runXp(m group 1, x, m group 2))
+        } catch { case _: Throwable => Some("!?!") }
+      })
+
+      val TAG_PAT = """`\{\{(tag)[: ]([^}]*)\}\}`""".r
+
+      content = TAG_PAT replaceSomeIn (content, { m =>
+        try {
+          Some(controllers.Wiki.hrefTag(wid, m group 2, m group 2))
         } catch { case _: Throwable => Some("!?!") }
       })
 
@@ -280,9 +294,10 @@ object Wikis extends Logging with Validation {
         case _ => "UNKNOWN MARKUP " + markup + " - " + content
       }
     } catch {
-      case e @ (_: Throwable) => {
+      case e : Throwable => {
         Audit.logdbWithLink("ERR_FORMATTING", wid.ahref, "[[ERROR FORMATTING]]: " + e.toString)
         log("[[ERROR FORMATTING]]: " + icontent.length + e.toString + "\n"+e.getStackTraceString)
+        if(admin.Config.isLocalhost) throw e
         "[[ERROR FORMATTING]] - sorry, dumb program here! The content is not lost: try editing this topic... also, please report this topic with the error and we'll fix it for you!"
       }
     }
@@ -334,6 +349,7 @@ object Wikis extends Logging with Validation {
         !s.startsWith("www.enduroschool.com") &&
         !s.startsWith("www.nofolders.net") &&
         !s.startsWith("www.askicoach.com") &&
+        !s.startsWith("www.dieselreactor.net") &&
         !s.startsWith("www.coolscala.com")
         ))
         Some("""$1$2 title="External site"><i>$3</i><sup>&nbsp;<b style="color:darkred">^^</b></sup>$4""")
@@ -392,7 +408,7 @@ class WikiDomain (realm:String) {
 
   //todo load it
 
-  // get all zends as List (to, role)
+  /** get all zends as List (to, role) */
   def gzEnds(aEnd: String) =
     (for (
       c <- Wikis.categories if (c.contentTags.get("roles:" + aEnd).isDefined);
@@ -409,9 +425,11 @@ class WikiDomain (realm:String) {
       r <- t._2.split(",")
     ) yield (t._1.split(":")(1), r)
 
+  /** zEnds that link to ME as role */
   def zEnds(aEnd: String, role: String) =
     Wikis.categories.filter(_.contentTags.get("roles:" + aEnd).map(_.split(",")).exists(_.contains(role) || role=="")).toList
 
+  /** aEnds that I link TO as role */
   def aEnds(zEnd: String, role: String) =
     for (
       c <- Wikis.category(zEnd).toList;

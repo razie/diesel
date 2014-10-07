@@ -135,7 +135,7 @@ ${errCollector.mkString}
     (for (
       au <- auth;
       isA <- checkActive(au)
-    ) yield body(au)) getOrElse unauthorized("Can't...")
+    ) yield body(au)) getOrElse unauthorized("Can't... (not an active user)")
   }
 
   protected def forUser[T](body: User => SimpleResult)(implicit request: Request[_]) = {
@@ -153,13 +153,9 @@ ${errCollector.mkString}
     ) getOrElse unauthorized("CAN'T")
   }
 
+  // todo enhance this - collect robot suspicions and store them in a proposal table
   protected def isFromRobot(implicit request: Request[_]) = {
-    val robots = Array("http://www.bing.com/bingbot.htm", "360Spider",
-      "Mediapartners-Google", "http://awcheck.com/en/about",
-      "http://www.searchmetrics.com/en/searchmetrics-bot/",
-      "http://www.google.com/bot.html", "www.admantx.com", "http://yandex.com/bots",
-      "crawler", "robot", "spider")
-    (request.headers.get("User-Agent").exists(ua => robots.exists(ua.contains(_))))
+    (request.headers.get("User-Agent").exists(ua => Config.robotUserAgents.exists(ua.contains(_))))
   }
 
   import razie.cout

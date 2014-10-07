@@ -114,7 +114,7 @@ object Forms extends WikiBase with Logging {
   }
 
     /** copy an old form data for new formSpec */
-  def copyForm(u: User, oldW:WikiEntry, newName:String, label:String, newFormSpec: RoleWid)(implicit txn: Txn = tx.auto) = {
+  def copyForm(u: User, oldW:WikiEntry, newName:String, label:String, newFormSpec: RoleWid, filterFields:Seq[String])(implicit txn: Txn = tx.auto) = {
 
     val oldfw = new WForm(oldW)
     
@@ -122,7 +122,7 @@ object Forms extends WikiBase with Logging {
     var defaultStr = ""
     val spec = newFormSpec.wid.page.get
    
-    val m = oldW.form.fields.map(t=>(t._1, t._2.value))
+    val m = oldW.form.fields.filter(t=> !filterFields.contains(t._1)).map(t=>(t._1, t._2.value))
     m.put("formState", "created")
 
     // don't make the string by hand - some newline values get messed up.

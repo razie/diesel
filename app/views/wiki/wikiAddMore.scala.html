@@ -6,31 +6,31 @@ fragment: add more stuff to the current topic, including children, sub-topics et
 @import model._
 @import _root_.admin.IgnoreErrors
 
-<!-- list of pages in category -->
 @if("Category" == wid.cat && "User" != wid.name && ("WikiLink" != wid.name || user.exists(_.hasPerm(Perm.adminDb)))) {
-   @if(model.Wikis.pageNames(wid.name).size > 0) {
-      <div class="well">
-        @wid.name entries:
+  <!-- list of pages in category -->
+  @if(model.Wikis.pageNames(wid.name).size > 0) {
+    <div class="well">
+      @wid.name entries:
 
-        @for(p <- model.Wikis.pages(wid.name).take(50) if(controllers.Wiki.isVisible(user,p.props))) {
-          <a href="@controllers.Wiki.w(p.wid)">@p.label</a> |
-        } 
-
-        @if(model.Wikis.pageNames(wid.name).size > 50) {
-          <p><br>
-          ... <a href="@routes.Wiki.all(wid.name)">See <b>all</b> !</a> 
-      </p>
-        }
-      </div> 
-
-      @if(!model.WikiDomain.needsParent(wid.name)) {
-        @helper.form(action=routes.Wikie.add(wid.name), 'class->"well form-inline") {
-          <label>Create a new <a href="/wiki/Category:@wid.name">@model.Wikis.label(WID("Category",wid.name))</a> </label>
-          <input type="text" class="input-xlarge" name="name" placeholder="Name">
-          <button type="submit" class="btn">Now</button>
-        }
+      @for(p <- model.Wikis.pages(wid.name).take(50) if(controllers.Wiki.isVisible(user,p.props))) {
+        <a href="@controllers.Wiki.w(p.wid)">@p.label</a> |
       }
-      } 
+
+      @if(model.Wikis.pageNames(wid.name).size > 50) {
+        <p><br>
+          ... <a href="@routes.Wiki.all(wid.name)">See <b>all</b> !</a> 
+        </p>
+      }
+    </div>
+  }
+
+    @if(!model.WikiDomain.needsParent(wid.name)) {
+      @helper.form(action=routes.Wikie.add(wid.name), 'class->"well form-inline") {
+        <label>Create a new <a href="/wiki/Category:@wid.name">@model.Wikis.label(WID("Category",wid.name))</a> </label>
+        <input type="text" class="input-xlarge" name="name" placeholder="Name">
+        <button type="submit" class="btn">Now</button>
+      }
+    }
 } else {
       <!-- list of child pages -->
   @model.WikiDomain.aEnds(wid.cat, "Child").map {child=>

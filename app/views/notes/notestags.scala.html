@@ -31,7 +31,7 @@ msg types are msg, err
   }
   <ul>
     @tags.take(15).map {x=>
-      <li><a href="@browseTag(x._1))">@x._1 <small>(@x._2)</small></a></li>
+      <li><a href="@browseTag(x._1)">@x._1</a> <small>(@x._2)</small></li>
     }
     @if(tags.size > 15) {
       <li><a href="@browseAllTags()">... more</a></li>

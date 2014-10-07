@@ -6,12 +6,14 @@
  */
 package controllers
 
+import com.mongodb.casbah.Imports._
+import org.bson.types.ObjectId
+
 import scala.Array.canBuildFrom
-import org.joda.time.DateTime
 import com.mongodb.DBObject
 import admin._
 import model._
-import db.RazMongo
+import db.{REntity, RazMongo, ROne, RMany}
 import db.RazSalatContext.ctx
 import model.Sec.EncryptedS
 import play.api.data.Form
@@ -21,12 +23,8 @@ import play.api.data.Forms.text
 import play.api.data.Forms.tuple
 import play.api.mvc.{SimpleResult, AnyContent, Action, Request}
 import razie.{cout, Logging, clog}
-import db.ROne
-import db.RMany
 import model.WikiAudit
-import model.WikiEntryOld
 import model.WikiLink
-import model.CMDWID
 
 class WikieBase extends WikiBase {
 
@@ -92,6 +90,14 @@ class WikieBase extends WikiBase {
       })
   }
 
+  def replaceAllForm = Form {
+    tuple(
+      "old" -> text.verifying("Obscenity filter", !Wikis.hasporn(_)).verifying("Invalid characters", vldSpec(_)),
+      "new" -> text.verifying("Obscenity filter", !Wikis.hasporn(_)).verifying("Invalid characters", vldSpec(_)),
+      "action" -> text.verifying("Obscenity filter", !Wikis.hasporn(_)).verifying("Invalid characters", vldSpec(_))) verifying
+      ("haha", { t: (String, String, String) => true
+      })
+  }
 }
 
 /** wiki controller */
@@ -537,6 +543,57 @@ object Wikie extends WikieBase {
     }) getOrElse unauthorized()
   }
 
+  /** move the posts of another blof to another or just one post if this is it */
+  def movePosts(sourceWid: WID) = FAU {
+    implicit au => implicit errCollector => implicit request =>
+
+      val form = Form("newWid" -> nonEmptyText)
+
+      form.bindFromRequest.fold(
+      formWithErrors =>
+        Msg2(formWithErrors.toString + "Oops - the form is errored out, man!"),
+      {
+        case newWid =>
+          log("Wiki.movePosts " + sourceWid + ", " + newWid)
+          (for (
+            au <- activeUser;
+            ok1 <- au.hasPerm(Perm.adminDb) orCorr cNoPermission;
+            sourceW <- Wikis.find(sourceWid);
+            destWid <- WID.fromPath(newWid) orErr "no source";
+            destW <- Wikis.find(destWid) orErr "no destination";
+//            isFromPost <- ArWikiDomain.aEnds(sourceW.wid.cat, "Child").contains("Post") orErr "source has no child Posts/Items";
+//            isToPost <- WikiDomain.aEnds(destW.wid.cat, "Child").contains("Post") orErr "dest has no child Posts/Items"
+//            upd <- Notif.entityUpdateBefore(newVer, WikiEntry.UPD_UOWNER) orErr ("Not allowerd")
+            nochange <- (sourceW.wid != destW.wid) orErr "no change"
+          ) yield {
+//            val links = RMany[WikiLink]("to" -> sourceW.uwid.grated, "how" -> "Child", "from.cat" -> "Post").toList
+//            val pages = RMany[WikiEntry]("parent" -> Some(sourceW.uwid.id), "category"->"Post").toList
+
+            val links =
+              if(sourceWid.cat == "Post")
+                ROne[WikiLink]("from" -> sourceW.uwid.grated, "how" -> "Child").orElse (
+                  Some(WikiLink(sourceW.uwid, destW.uwid, "Child")).map(x=>{x.create; x})).toList
+              else
+                RMany[WikiLink]("to" -> sourceW.uwid.grated, "how" -> "Child").toList
+
+            val pages =
+              if(sourceWid.cat == "Post")
+                List(sourceW)
+              else
+                RMany[WikiEntry]("parent" -> Some(sourceW.uwid.id)).toList
+            db.tx("Wiki.movePosts") { implicit txn =>
+              links.foreach { _.copy(to = destW.uwid).update }
+              pages.foreach(w=>w.update(w.copy(parent=Some(destW.uwid.id))))
+            }
+            val m = s" ${links.size} WikiLinks and ${pages.size} WikiEntry /posts from ${sourceW.wid.wpath} to ${destW.wid.wpath}"
+            Audit ! WikiAudit("MOVE_POSTS", sourceW.wid.wpath, Some(au._id), Some(m))
+//            Notif.entityUpdateAfter(newVer, WikiEntry.UPD_UOWNER)
+            Msg2(s"Moved $m", Some(controllers.Wiki.w(sourceWid)))
+          }) getOrElse
+            noPerm(sourceWid, "ADMIN_MOVEPOSTS")
+      })
+  }
+
   /** change owner */
   def uowner(wid: WID) = FAU {
     implicit au => implicit errCollector => implicit request =>
@@ -554,9 +611,9 @@ object Wikie extends WikieBase {
           ok1 <- au.hasPerm(Perm.adminDb) orCorr cNoPermission;
           w <- Wikis.find(wid);
           newu <- model.WikiUsers.impl.findUserByUsername(newowner) orErr (newowner + " User not found");
-          nochange <- (!w.owner.exists(_.userName == newowner)) orErr ("no change");
+          nochange <- (!w.owner.exists(_.userName == newowner)) orErr "no change";
           newVer <- Some(w.cloneProps(w.props + ("owner" -> newu._id.toString), au._id));
-          upd <- Notif.entityUpdateBefore(newVer, WikiEntry.UPD_UOWNER) orErr ("Not allowerd")
+          upd <- Notif.entityUpdateBefore(newVer, WikiEntry.UPD_UOWNER) orErr "Not allowerd"
         ) yield {
           // can only change label of links OR if the formatted name doesn't change
           db.tx("Wiki.uowner") { implicit txn =>
@@ -579,7 +636,7 @@ object Wikie extends WikieBase {
       w <- Wikis.find(wid);
       ok1 <- au.hasPerm(Perm.adminDb) orCorr cNoPermission;
       ok2 <- canEdit(wid, Some(au), Some(w));
-      nochange <- (w.isReserved != how) orErr ("no change");
+      nochange <- (w.isReserved != how) orErr "no change";
       newVer <- Some(w.cloneProps(w.props + ("reserved" -> (if (how) "yes" else "no")), au._id));
       upd <- Notif.entityUpdateBefore(newVer, WikiEntry.UPD_TOGGLE_RESERVED) orErr ("Not allowerd")
     ) yield {
@@ -611,21 +668,93 @@ object Wikie extends WikieBase {
   /** move to new parent */
   def wikieMove2(page:String, from:String, to:String, realm:String="rk") = FAU {
     implicit au => implicit errCollector => implicit request =>
-    (for (
-      pageW <- Wikis.findById(page);
-      fromW <- Wikis.findById(from);
-      toW <- Wikis.findById(to);
-      hasP <- pageW.parent.exists(_.toString == from) orErr "does not have a parent"
-    ) yield {
-      db.tx("Wiki.Move") { implicit txn =>
-        pageW.update(pageW.copy(parent=Some(toW._id)))
-        RMany[WikiLink]("from" -> pageW.uwid.grated, "to" -> fromW.uwid.grated, "how"->"Child").toList.foreach{ link=>
-          link.delete
-          link.copy(to = toW.uwid).create
+      (for (
+        pageW <- Wikis.findById(page);
+        fromW <- Wikis.findById(from);
+        toW <- Wikis.findById(to);
+        hasP <- pageW.parent.exists(_.toString == from) orErr "does not have a parent"
+      ) yield {
+        db.tx("Wiki.Move") { implicit txn =>
+          pageW.update(pageW.copy(parent=Some(toW._id)))
+          RMany[WikiLink]("from" -> pageW.uwid.grated, "to" -> fromW.uwid.grated, "how"->"Child").toList.foreach{ link=>
+            link.delete
+            link.copy(to = toW.uwid).create
+          }
+        }
+        Redirect(controllers.Wiki.w(pageW.wid, false)).flashing("count" -> "0")
+      }) getOrElse unauthorized()
+  }
+
+  /** rename a list of pages */
+  def replaceAll1() = FAU {
+    implicit au => implicit errCollector => implicit request =>
+    Ok(views.html.wiki.wikieReplaceAll(replaceAllForm.fill("", "", ""), auth))
+  }
+
+  /** rename a list of pages */
+  def replaceAll3() = FAU {
+    implicit au => implicit errCollector => implicit request =>
+      replaceAllForm.bindFromRequest.fold(
+        formWithErrors => Msg2(formWithErrors.toString + "Oops, can't !"),
+      {
+        case (q, news, action) =>
+          log("replace all " + q + " -> " + news)
+
+          def update (u:DBObject):DBObject = {
+            Audit.logdb("replace ", ""+u.get("name"))
+            u.put("content", u.get("content").asInstanceOf[String].replaceAll(q, news))
+            u
+          }
+
+          if("replace" == action && au.isAdmin) {
+            for (
+              (u, m) <- isearch(q, Some(update))
+            ) {
+//              db.tx("Wiki.replaceAll") { implicit txn =>
+//                Audit.logdb("replace ", ""+u.get("name"))
+//              }
+            }
+          }
+          Ok(views.html.wiki.wikieReplaceAll(replaceAllForm.fill(q, news, ""), auth))
+      })
+  }
+
+  private def isearch(qi: String, update:Option[DBObject=>DBObject]=None) = {
+    def filter (u:DBObject) = {
+      (qi.length() > 3 && u.get("content").asInstanceOf[String].toLowerCase.contains(qi))
+    }
+
+    val PAT = qi.r
+    val wikis =
+      RazMongo.withDb(RazMongo("WikiEntry").m) { t =>
+        for (
+          u <- t if qi.length > 3;
+          m <- PAT.findAllMatchIn(u.get("content").asInstanceOf[String].toLowerCase)
+        ) yield {
+          if(update.isDefined) {
+            t.save(update.get.apply(u))
+          }
+          (u, m)
         }
       }
-      Redirect(controllers.Wiki.w(pageW.wid, false)).flashing("count" -> "0")
-    }) getOrElse unauthorized()
+    wikis
+  }
+
+  def search(qi: String) = {
+    val PAT = qi.r
+    def min(a:Int, b:Int) = if(a>b)b else a
+    def max(a:Int, b:Int) = if(a>b)a else b
+
+    val wikis = isearch(qi).map{t=>
+      val (u,m) = t
+      (WikiEntry grated u,
+        m.before.subSequence(max(0,m.before.length()-5), m.before.length()),
+        m.matched,
+        m.after.subSequence(0,min(5,m.after.length)))
+    }
+
+    val wl = wikis.take(500).toList
+    wl
   }
 }
 

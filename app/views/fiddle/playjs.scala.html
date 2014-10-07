@@ -1,5 +1,5 @@
 @**************
-a JS/HTML fiddle
+a JS with HTML and CSS fiddle
 **************@
 
 @(name:String, 
@@ -15,7 +15,7 @@ a JS/HTML fiddle
 <h2>Learn HTML, CSS style sheets and Javascript</h2>
 
 @tos(s:String) = @{
-  s.replaceAll("\n", "\\\\n'\n+'")
+  s.replaceAll("\r", "").replaceAll("\n", "\\\\n'\n+'")
 }
 
 @encscr(s:String) = @{

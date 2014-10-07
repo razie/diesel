@@ -22,18 +22,6 @@ wiki fragment, used in another page
     if(u startsWith "http") u else  s"http://${Config.hostport}$u"
   }
 
-  @showTag(t:String) = {
-  @if("Blog" == wid.cat) {
-    <a href="@controllers.Wiki.w(wid)/tag/@t">@t</a>
-  } else {
-    @if(wid.parentWid.exists(_.cat == "Blog")) {
-      <a href="@controllers.Wiki.w(wid.parentWid.get)/tag/@t">@t</a>
-    } else {
-      <a href="@routes.Wiki.showTag(t)">@t</a>
-    }
-  }
-  }
-
   @ccc(we:model.WikiEntry)= @{
     val x = model.Wikis.format(we.wid, we.markup, we.content, Some(we))
     try {
@@ -106,6 +94,7 @@ wiki fragment, used in another page
         <p><small>
           @if(!isSite) {
             <em>By</em>:
+            @**todo use separate page for missing users **@
             <a href="/user/@model.Users.nameOf(page.get.by)">@model.Users.nameOf(page.get.by)</a>
             | @page.get.crDtm.toLocalDate().toString
           }
@@ -114,16 +103,8 @@ wiki fragment, used in another page
           @if(page.isDefined && page.get.tags.size>0) {
             | <em>Tags</em>:
             @page.get.tags.map { t =>
-@**              @if(wid.cat == "Blog") {
-                <a href="@wid.urlRelative/tag/@t">@t</a>,
-              } else {
-              @page.get.wid.parentWid.map { parentW=>
-                <a href="@parentW.urlRelative/tag/@t">@t</a>,
-                }.getOrElse {
-**@                @showTag(t),
-@**                }
-              }
-**@              }
+               @Html(controllers.Wiki.hrefTag(wid, t, t))@if(t != page.get.tags.last){,}
+             }
           }
         </small></p>
  

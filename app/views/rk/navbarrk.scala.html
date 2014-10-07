@@ -27,7 +27,7 @@ creates the navigation bar
       <ul class="nav">
         @if(!isSite) {
           <li class="divider-vertical"></li>
-          <li><a href="http://@Config.hostport/wiki">Browse</a></li>
+          <li><a href="@web().navBrowse">Browse</a></li>
           <li><a href="http://@Config.hostport/doe/lucky">Lucky</a></li>
           <li><a href="/doe/selecttheme">Theme</a></li>
         }

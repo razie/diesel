@@ -158,6 +158,9 @@ case class User(
   def pages(cat: String*) = wikis.filter(w=>cat.contains(w.uwid.cat))
   def myPages(cat: String) = pages (cat)
 
+  def ownedPages(cat: String) =
+    Wikis.weTable(cat).find(Map("props.owner" -> id )) map (o=> UWID(cat, o._id.get))
+
   def auditCreated { Log.audit(AUDT_USER_CREATED + email) }
   def auditLogout { Log.audit(AUDT_USER_LOGOUT + email) }
   def auditLogin { Log.audit(AUDT_USER_LOGIN + email) }
@@ -391,8 +394,8 @@ object Users {
   def findUserById(id: ObjectId) = ROne[User](id)
   def findUserByUsername(uname: String) = ROne[User]("userName" -> uname)
 
-  //  def nameOf(id: ObjectId): String = /* leave it */ Mongo("User").findOne(Map("_id" -> id)).get("userName").toString
-  def nameOf(id: ObjectId): String = /* leave it */ ROne.raw[User]("_id" -> id).get("userName").toString
+  def nameOf(id: ObjectId): String = /* leave it */
+    ROne.raw[User]("_id" -> id).fold("???")(_.apply("userName").toString)
 
   def findTasks(id: ObjectId) = RMany[UserTask]("userId" -> id)
 

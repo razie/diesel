@@ -4,10 +4,7 @@
  *   )   / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <     README.txt
  *  (_)\_)(__)(__)(____)(____)(____)(___/   (__)  (______)(____/    LICENSE.txt
  */
-import admin.Audit
-import admin.Config
-import admin.RazAuthService
-import admin.Services
+import admin._
 import controllers._
 import db._
 import model.EncryptService
@@ -17,19 +14,15 @@ import play.api.Application
 import play.api._
 import play.api.mvc._
 import model.WikiScripster
-import admin.RazWikiScripster
 import razie.{cdebug, clog, cout}
 import play.libs.Akka
 import akka.actor.Props
-import admin.Alligator
 import akka.actor.Actor
 import model.WikiAudit
 import model.WikiCount
-import admin.RazAuditService
 import com.mongodb.casbah.MongoConnection
 import java.io.File
 import scala.concurrent.ExecutionContext
-import admin.GlobalData
 
 /** customize some global handling errors */
 object Global extends WithFilters(LoggingFilter) {
@@ -97,6 +90,8 @@ object Global extends WithFilters(LoggingFilter) {
     // automated restart / patch / update handling
     try { new File("../updating").delete() }
     super.onStart(app)
+
+    // todo  SendEmail.initialize
   }
 
   override def beforeStart(app: Application) {
@@ -151,9 +146,9 @@ object Global extends WithFilters(LoggingFilter) {
     lazy val auditor = Akka.system.actorOf(Props[WikiAuditor], name = "Alligator")
 
     def !(a: Any) {
-      this receive a
+//      this receive a
       // TODO enable async audits
-      //      auditor ! a
+      auditor ! a
     }
 
     def !?(a: Any) {

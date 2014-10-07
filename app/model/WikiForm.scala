@@ -25,7 +25,6 @@ object FormStatus {
 
 /** form utilities */
 case class WikiForm(we: WikiEntry) {
-  import WikiForm._
 
   we.preprocessed // make sure it is parsed
 

@@ -34,6 +34,7 @@ class WikiBase extends RazController with Logging with WikiAuthorization {
 
 }
 
+/** visibility settings of topics */
 object Visibility {
   final val PUBLIC = "Public"
   final val PRIVATE = "Private"
@@ -45,31 +46,59 @@ object Visibility {
 object Wiki extends WikiBase {
   implicit def obtob(o: Option[Boolean]): Boolean = o.exists(_ == true)
 
-  // TODO optimize
+  /** make a relative href for the given tag. give more tags with 1/2/3 */
+  def hrefTag(wid:WID, t:String,label:String) = {
+    if(Array("Blog","Forum") contains wid.cat) {
+      s"""<b><a href="${w(wid)}/tag/$t">$label</a></b>"""
+    } else {
+      if(wid.parentWid.isDefined) {
+        s"""<b><a href="${w(wid.parentWid.get)}/tag/$t">$label</a></b>"""
+      } else {
+        s"""<b><a href="${routes.Wiki.showTag(t)}">$label</a></b>"""
+      }
+    }
+  }
+
+  /** show a tag */
+  def showTag(tag: String, realm:String) = Action { implicit request=>
+    // redirect all sites to RK for root tags
+    if (Website.getHost.exists(_ != Config.hostport) && !Config.isLocalhost)
+      Redirect("http://" + Config.hostport + "/wiki/tag/" + tag)
+    else
+      search ("", "", Enc.fromUrl(tag)).apply(request).value.get.get
+  }
+
+  //TODO optimize - index or whatever
+  /** search all topics  provide either q or curTags */
   def search(q: String, scope:String, curTags:String="") = Action { implicit request =>
-    // TODO limit the number of searches - is this performance critical?
+    //TODO limit the number of searches - is this performance critical?
     val qi = q.toLowerCase()
     val qt = curTags.split("/").filter(_ != "tag") //todo only filter if first is tag ?
 
-    def filter (u:DBObject) =
+    def filter (u:DBObject) = {
       if (q.length <= 0)
-        qt.size > 0 && u.containsField("tags") && qt.foldLeft(true)((a,b)=>a && u.get("tags").toString.toLowerCase.contains(b))
+        qt.size > 0 && u.containsField("tags") && qt.foldLeft(true)((a, b) => a && u.get("tags").toString.toLowerCase.contains(b))
       else
         (q.length > 1 && u.get("name").asInstanceOf[String].toLowerCase.contains(qi)) ||
-        (q.length > 1 && u.get("label").asInstanceOf[String].toLowerCase.contains(qi)) ||
-        (q.length() > 3 && u.get("content").asInstanceOf[String].toLowerCase.contains(qi))
-
-    lazy val pa = WID.fromPath(scope).flatMap(x=>Wikis.find(x).orElse(Wikis.findAnyOne(x.name)))
+          (q.length > 1 && u.get("label").asInstanceOf[String].toLowerCase.contains(qi)) ||
+          (q.length() > 3 && u.get("content").asInstanceOf[String].toLowerCase.contains(qi))
+    }
+    lazy val parent = WID.fromPath(scope).flatMap(x=>Wikis.find(x).orElse(Wikis.findAnyOne(x.name)))
 
     val wikis =
-      if(scope.length>0 && pa.isDefined) {
-        val p = pa.get
+      if(scope.length > 0 && parent.isDefined) {
+        val p = parent.get
 
-        RazMongo.withDb(RazMongo("WikiEntry").m) { t =>
+        def src (t:MongoCollection) = {
           for (
             u <- t.find(Map("parent" -> p._id)) if filter(u)
           ) yield u
         }.toList
+
+        if(WikiDomain.aEnds(p.category, "Child").contains("Item"))
+          RazMongo.withDb(RazMongo("weItem").m) (src)
+        else
+          RazMongo.withDb(RazMongo("WikiEntry").m) (src)
       } else {
         RazMongo.withDb(RazMongo("WikiEntry").m) { t =>
           for (
@@ -78,18 +107,23 @@ object Wiki extends WikiBase {
         }.toList
       }
 
-  Audit.logdb("QUERY", q, "Results: " + wikis.size)
+    if(!isFromRobot) {
+      if(q.length > 0) Audit.logdb("QUERY", q, s"Scope: $scope", "Results: " + wikis.size, "User-Agent: "+request.headers.get("User-Agent").mkString)
+      else Audit.logdb("QUERY_TAG", curTags, "Scope: "+parent.map(_.wid.wpath).getOrElse(s"??? $scope"), "Results: " + wikis.size, "User-Agent: "+request.headers.get("User-Agent").mkString)
+    }
 
-    if (wikis.count(x => true) == 1)
+    if (wikis.size == 1)
       Redirect(controllers.Wiki.w(WikiEntry.grated(wikis.head).wid))
     else {
       val wl = wikis.map(WikiEntry.grated _).take(500).toList
       val tags = wl.flatMap(_.tags).filter(_ != Tags.ARCHIVE).filter(_ != "").filter(x=> !qt.contains(x)).groupBy(identity).map(t => (t._1, t._2.size)).toSeq.sortBy(_._2).reverse
       Ok(views.html.wiki.wikiList(
-        q, q, curTags, wl.map(w => (w.wid, w.label)), tags, auth,
-        (if(q.length>1) "/wikie/search/tag/" else "/wiki/tag/"),
-        (if(q.length>1) "?q="+q else "")
-      ))
+        q, q, curTags, wl.map(w => (w.wid, w.label)), tags,
+        (if(q.length>1) "/wikie/search/tag/"
+        else if(scope.length > 0) s"/wiki/$scope/tag/"
+         else "/wiki/tag/"),
+        (if(q.length>1) "?q="+q else ""))(auth,request)
+      )
     }
   }
 
@@ -169,25 +203,18 @@ object Wiki extends WikiBase {
     }
   }
 
-  /** show a tag */
-  def showTag(tag: String, realm:String) = {
-    Audit.logdb("showTag", tag)
-    search ("", "", tag)
-  }
-
   /** show a page */
   def showWid(cw: CMDWID, count: Int, realm:String) = {
     if (cw.cmd == "xp") xp(cw.wid.get, cw.rest)
     else if (cw.cmd == "xpl") xpl(cw.wid.get, cw.rest)
     else if (cw.cmd == "tag") {
-//      xpl(cw.wid.get, "Post[" + cw.rest.split(",").map(x => s"tags~='.*$x.*'").mkString(" && ") + "]")
-      search("", cw.wid.get.wpath, cw.rest)
+      search("", cw.wpath getOrElse "", cw.rest)
     }
     else Action { implicit request =>
       // must check if page is WITHIN site, otherwise redirect to main site
-      val fhost=Website.getHost
+      val fhost = Website.getHost
       val redir = fhost flatMap (Config.urlfwd(_))
-      val canon = fhost flatMap (fh=> Config.urlcanon(cw.wpath.get).map(_.startsWith("http://"+fh)))
+      val canon = fhost flatMap (fh=> Config.urlcanon(cw.wpath.get, None).map(_.startsWith("http://"+fh)))
 
       // if not me, no redirection and not the redirected path, THEN redirect
       if (fhost.exists(_ != Config.hostport) &&
@@ -198,7 +225,6 @@ object Wiki extends WikiBase {
         log("    TO http://" + Config.hostport + "/wiki/" + cw.wpath.get)
         Redirect("http://" + Config.hostport + "/wiki/" + cw.wpath.get)
       } else fhost.flatMap(x=>Website(x)).map { web=>
-        //        show(web.homePage, count).apply(request).value.get.get
         show(cw.wid.get, count).apply(request).value.get.get
       } getOrElse {
         // normal - continue showing the page
@@ -246,8 +272,8 @@ object Wiki extends WikiBase {
     implicit val errCollector = new VErrors()
     implicit val au = auth
 
-    val shouldNotCount = (request.flash.get("count").exists("0" == _) || (count == 0) ||
-      isFromRobot(request) || au.exists("Razie" == _.userName))
+    val shouldNotCount = request.flash.get("count").exists("0" == _) || (count == 0) ||
+      isFromRobot(request) || au.exists("Razie" == _.userName)
 
     debug("show2 " + iwid.wpath)
     // TODO stupid routes - can't match without the :
@@ -277,7 +303,7 @@ object Wiki extends WikiBase {
           Redirect(controllers.Wiki.w(wl.head.wid))
       } else if (wl.size > 0) {
         val tags = wl.flatMap(_.tags).filter(_ != Tags.ARCHIVE).filter(_ != "").groupBy(identity).map(t => (t._1, t._2.size)).toSeq.sortBy(_._2).reverse
-        Ok(views.html.wiki.wikiList("category any", "", "", wl.map(x => (x.wid, x.label)), tags, auth))
+        Ok(views.html.wiki.wikiList("category any", "", "", wl.map(x => (x.wid, x.label)), tags))
       }
       else
         wikiPage(wid, Some(iwid.name), None, !shouldNotCount, au.isDefined && canEdit(wid, au, None).get)
@@ -410,7 +436,7 @@ object Wiki extends WikiBase {
       }
 
       val tags = res.flatMap(_._3).filter(_ != Tags.ARCHIVE).filter(_ != "").groupBy(identity).map(t => (t._1, t._2.size)).toSeq.sortBy(_._2).reverse
-      Ok(views.html.wiki.wikiList(path, "", "", res.map(t=>(t._1, t._2)), tags, auth))
+      Ok(views.html.wiki.wikiList(path, "", "", res.map(t=>(t._1, t._2)), tags)(auth, request))
     }) getOrElse
       Ok("Nothing... for " + wid + " XP " + path)
   }

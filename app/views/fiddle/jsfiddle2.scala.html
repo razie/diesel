@@ -1,5 +1,5 @@
 @**************
-a JS/HTML fiddle
+a JS fiddle only, no html/css
 **************@
 
 @( lang:String,
@@ -9,7 +9,7 @@ a JS/HTML fiddle
 
 @** to JS multiline string - make generated JS code look nice **@
 @tos(s:String) = @{
-  s.replaceAll("\n", "\\\\n'\n+'")
+  s.replaceAll("\r", "").replaceAll("\n", "\\\\n'\n+'")
 }
 
 @encscr(s:String) = @{
@@ -49,17 +49,17 @@ var j_@id  ='@Html(tos(encscr(content)))'
 </script>
 
 <ul class="nav nav-tabs" style="margin-bottom:0">
-  <li id="js_@id" > <a href="#">JS </a></li>
+  <li id="js_@id" > <a href="#">@if(lang=="scala") {Scala} else {JS} </a></li>
   <li id="run_@id" > <a title="Works only on Chrome and Firefox" href="javascript:runpill_@{id}('@{id}')">Run &raquo;</a> </li>
   <li id="play_@id" > <a href="javascript:playpill_@{id}('@{id}')">Play...</a> </li>
 </ul>
 
 <table style="width:100%">
-    <tr><td width="50%">
+    <tr><td width="70%">
     <div style="display:inline-block; width:100%; height:@{h1._1}px; overflow-y:auto;">
       <pre id="pre_@id" style="display:inline-block; width:90%; height:@{h1._2}px; margin-bottom:0; border:0"><code id="code_@id">@content</code></pre>
     </div>
-    </td><td width="50%">
+    </td><td width="30%">
       @if(_root_.admin.Config.theme.contains("light")) {
         <iframe id="iframe_@id" name="iframe_@id" style="border:0; width:100%; height:@{h1._1}px;"></iframe>
       } else {
