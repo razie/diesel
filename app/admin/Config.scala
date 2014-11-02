@@ -34,7 +34,7 @@ object Config extends WikiConfig {
   def isDark = ! isLight
 
   // called when configuration is reloaded - use them to refresh your caches
-  val cbacks =  new collection.mutable.ListBuffer[() => Unit]()
+  val cbacks = new collection.mutable.ListBuffer[() => Unit]()
 
   /** add a callback to be called when the configuration is refreshed - use it to regresh your own configuration and/or caches */
   def callback (f:() => Unit) = {

@@ -21,6 +21,10 @@ club admin manages user: membership, regsitration etc
 
 @uname() = @{uw.user.map(u=>s"${u.userName} (${u.lastName}, ${u.firstName})").getOrElse("")}
 
+@formActions(w:model.WID, seq:Integer) = {
+  <a href="@routes.Club.doeClubUwRMFormSeq(reg.map(_._id).mkString,"x",uw._id.toString, seq)" class="btn btn-mini btn-danger" title="remove from registration"> x </a>
+}
+
 @htmlHeadBar("Member " + uname(), Some(club))
    
 <div class="container">
@@ -99,7 +103,7 @@ club admin manages user: membership, regsitration etc
 </td></tr></table>
 </div> <!-- /well -->
 <div class="well">  
-  <strong>Racers not registered</strong>
+  <strong>List of Racers/members </strong>
 
 @model.RacerKidz.checkMyself(uw.userId)
 
@@ -154,7 +158,7 @@ Add a: @model.RK.RELATIONSHIPS.map{r=>
 <hr>
 
   @reg.map { r =>
-    @views.html.club.userFormList(r.wids, true)  
+    @views.html.club.userFormList(r.wids, true, None, Some(formActions))
     }
 
 <hr>

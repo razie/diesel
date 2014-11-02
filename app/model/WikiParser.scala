@@ -6,20 +6,18 @@
  */
 package model
 
+import diesel.model.Reactors
 import org.bson.types.ObjectId
-import razie.clog
+import razie.{cdebug, cout, clog}
 
 import scala.collection.mutable.ListBuffer
 import scala.util.Try
 import scala.util.matching.Regex.Match
 import scala.util.parsing.combinator.RegexParsers
 import scala.Option.option2Iterable
-import admin.Services
+import admin.{Config, Services}
 import scala.collection.mutable
 import model.dom.WikiDomainParser
-
-//import db.RTable
-//import scala.Array.canBuildFrom
 
 /**
  * sed like filter using Java regexp
@@ -129,13 +127,20 @@ trait ParserCommons extends RegexParsers {
 
   def CRLF1: P = CRLF2 <~ "RKHABIBIKU" <~ not("""[^a-zA-Z0-9-]""".r) ^^ { case ho => ho + "<br>" } // hack: eol followed by a line - DISABLED
   def CRLF2: P = ("\r\n" | "\n") // normal eol
-  //  def CRLF2: P = ("\r\n" | "\n") ^^ {case a => "FIFI" } // normal eol
   def CRLF3: P = CRLF2 ~ """[ \t]*""".r ~ CRLF2 ^^ { case a ~ _ ~ b => a + b } // an empty line = two eol
-  //  def CRLF3: P = CRLF2 ~ CRLF2 ~ rep(CRLF2) ^^ { case a ~ b ~ c => "\n<p></p>\n" } // an empty line = two eol
   def NADA: P = ""
 
   // static must be stopped to not include too much - that's why the last expr
   def static: P = not("{{") ~> not("[[") ~> not("}}") ~> not("[http") ~> (""".""".r) ~ ("""[^{}\[\]`\r\n]""".r*) ^^ { case a ~ b => a + b.mkString }
+}
+
+object ParserSettings {
+  /** debug the buildig of AST while pasing */
+  var debugStates = false
+
+  Config.callback {() => Config.sitecfg("ParserSettings.debugStates").foreach{s=>
+    debugStates = s.toBoolean
+  }}
 }
 
 /** wiki parser base definitions shared by different wiki parser */
@@ -154,8 +159,26 @@ trait WikiParserBase extends ParserCommons {
     def ilinks: List[ILink]
     def decs: List[WikiEntry => WikiEntry]
 
-    // todo make the string lazy to allow composition
-    def +(other: PState) : PState
+    /** composing AST elements */
+    def + (other: PState) : PState = LState (this, other)
+
+    /** lazy unfolding of AST tree */
+    def fold(we:Option[WikiEntry]) : SState = {
+      if(ParserSettings.debugStates) {
+        cdebug << "======================= F O L D ========================="
+        cdebug << print (1)
+        cdebug << "======================= F O L D I N G ========================="
+      }
+      ifold (SState.EMPTY, we)
+    }
+    def ifold(current:SState, we:Option[WikiEntry]) : SState
+
+    def print (level:Int) : String = ("  " * level) + this.toString
+  }
+
+  object SState {
+    // todo why can't this be a final val ?
+    def EMPTY = SState("")
   }
 
   /** collects the result of a parser rule
@@ -166,13 +189,77 @@ trait WikiParserBase extends ParserCommons {
     * @param decs other modifiers - allow you to add custom logic
     */
   case class SState(s: String, tags: Map[String, String] = Map.empty, ilinks: List[ILink] = List.empty, decs: List[WikiEntry => WikiEntry] = List.empty) extends PState {
+    if (ParserSettings.debugStates) cdebug << this.toString
     def this(s: String, ilinks: List[ILink]) = this(s, Map.empty, ilinks)
 
-    // todo make the string lazy to allow composition
-    def +(other: PState) = SState(this.s + other.s, this.tags ++ other.tags, this.ilinks ++ other.ilinks, this.decs ++ other.decs)
+    override def ifold(current:SState, we:Option[WikiEntry]) : SState = this
+    override def toString = s"SSTATE ($s)"
+  }
+
+  /** a set of nodes */
+  case class LState(states:PState*) extends PState {
+    def this(l:List[PState]) = this ()
+
+    if (ParserSettings.debugStates) cdebug << this.toString
+
+    override def s: String = ???
+    override def tags: Map[String, String] = ???
+    override def ilinks: List[ILink] = ???
+    override def decs: List[WikiEntry => WikiEntry] = ???
+
+    /** optimize composiiotn of lists */
+    override def +(other: PState) : PState = other match {
+      case ls:LState => LState(states ++ ls.states)
+      case ps:PState => LState(states ++ Seq(ps))
+    }
+    
+    override def ifold(current:SState, we:Option[WikiEntry]) : SState = {
+      states.foldLeft(SState.EMPTY) {(a,b)=>
+        val c = b.ifold(a, we)
+        SState(a.s + c.s, a.tags ++ c.tags, a.ilinks ++ c.ilinks, a.decs ++ c.decs)
+      }
+    }
+    override def toString = s"LSTATE (${states.mkString})"
+    override def print (level:Int):String = ("  " * level) + "LState" + states.map (_.print(level+1)).mkString
+  }
+
+  /** collects the result of a parser rule */
+  case class RState(prefix:String, mid:PState, suffix:String)  extends PState {
+    if (ParserSettings.debugStates) cdebug << this.toString
+
+    override def s: String = ???
+    override def tags: Map[String, String] = ???
+    override def ilinks: List[ILink] = ???
+    override def decs: List[WikiEntry => WikiEntry] = ???
+
+    override def ifold(current:SState, we:Option[WikiEntry]) : SState = {
+      val c = mid.ifold(current, we)
+      SState(prefix + c.s + suffix, c.tags, c.ilinks, c.decs)
+    }
+    override def toString = s"RSTATE ($prefix, $mid, $suffix)"
+    override def print (level:Int):String = ("  " * level) + s"RSTATE ($prefix, $suffix)" +  mid.print(level+1)
+  }
+
+  /** collects the result of a parser rule */
+  case class LazyState(f:(SState, Option[WikiEntry]) => SState)  extends PState {
+    if (ParserSettings.debugStates) cdebug << this.toString
+
+    override def s: String = ???
+    override def tags: Map[String, String] = ???
+    override def ilinks: List[ILink] = ???
+    override def decs: List[WikiEntry => WikiEntry] = ???
+
+    override def ifold(current:SState, we:Option[WikiEntry]) : SState = f(current, we)
+    override def toString =  s"LazySTATE ($this)"
   }
 
   implicit def toSState(s: String) : PState = SState(s)
+  implicit def toLState(s: Seq[PState]) : PState = s match {
+    // optimixze empty lists away
+    case x :: Nil if (x.isInstanceOf[LState]) => x.asInstanceOf[LState]
+    case x :: Nil  => x
+    case _ => LState (s: _*)
+  }
 
   type PS = Parser[PState]
 
@@ -208,24 +295,27 @@ trait WikiParserBase extends ParserCommons {
 
   def escbq: PS = "``" ^^ { case a => SState("`") }
 
+  // knockoff has an issue with lines containing just a space but no line ending
+  def lastLine: PS = ("""^[\s]+$""".r) ^^ { case a => "\n"}
+
   def sstatic: PS = not("{{/" | """^\./""".r ) ~> (""".""".r) ~ ("""[^{}\[\]`\r\n]""".r*) ^^ { case a ~ b => SState(a + b.mkString) }
   def sline: PS = rep(lastLine | sstatic) ^^ {
+    // leave as SState for DSL parser
     case l => SState(l.map(_.s).mkString, l.flatMap(_.tags).toMap, l.flatMap(_.ilinks), l.flatMap(_.decs))
   }
 
-  def soptline: PS = opt(sline) ^^ { case o => o.map(identity).getOrElse(SState("")) }
+  def soptline: PS = opt(sline) ^^ { case o => o.map(identity).getOrElse(SState.EMPTY) }
 
   def slines: PS = rep(soptline ~ (CRLF1 | CRLF3 | CRLF2)) ~ opt(sline) ^^ {
     case l ~ c =>
+      // leave as SState for DSL parser
       SState(
         l.map(t => t._1.s + t._2.s).mkString + c.map(_.s).getOrElse(""),
         l.flatMap(_._1.tags).toMap ++ c.map(_.tags).getOrElse(Map()),
         l.flatMap(_._1.ilinks).toList ++ c.map(_.ilinks).getOrElse(Nil),
         l.flatMap(_._1.decs).toList ++ c.map(_.decs).getOrElse(Nil))
+//      LState(l.map(t => RState("", t._1, t._2)) ::: c.toList)
   }
-
-  // knockoff has an issue with lines containing just a space but no line ending
-  def lastLine: PS = ("""^[\s]+$""".r) ^^ { case a => "\n"}
 
   // ======================== args
 
@@ -238,7 +328,6 @@ trait WikiParserBase extends ParserCommons {
     case Some(_ ~ l) => l
     case None => List()
   }
-
 }
 
 /** the big parser aggregates all little section parsers
@@ -286,18 +375,14 @@ class WikiParserCls extends WikiParserBase with CsvParser with WikiDomainParser 
   def wiki: PS = lines | line | xCRLF2 | xNADA
 
   def line: PS = opt(lists) ~ rep(escaped1 | escaped | badHtml | badHtml2 | wiki3 | wiki2 | link1 | wikiProps | lastLine | xstatic) ^^ {
-    case ol ~ l => SState(ol.getOrElse(SState("")).s + l.map(_.s).mkString, l.flatMap(_.tags).toMap, l.flatMap(_.ilinks), l.flatMap(_.decs))
+    case ol ~ l => ol.toList ::: l
   }
 
-  def optline: PS = opt(dotProps | line) ^^ { case o => o.map(identity).getOrElse(SState("")) }
+  def optline: PS = opt(dotProps | line) ^^ { case o => o.map(identity).getOrElse(SState.EMPTY) }
 
   def lines: PS = rep((domainBlock ~ CRLF2) | (optline ~ (CRLF1 | CRLF3 | CRLF2))) ~ opt(dotProps | line) ^^ {
     case l ~ c =>
-      SState(
-        l.map(t => t._1.s + t._2.s).mkString + c.map(_.s).getOrElse(""),
-        l.flatMap(_._1.tags).toMap ++ c.map(_.tags).getOrElse(Map()),
-        l.flatMap(_._1.ilinks).toList ++ c.map(_.ilinks).getOrElse(Nil),
-        l.flatMap(_._1.decs).toList ++ c.map(_.decs).getOrElse(Nil))
+      l.map(t => RState("", t._1, t._2)) ::: c.toList
   }
 
   def wiki3: PS = "[[[" ~ """[^]]*""".r ~ "]]]" ^^ {
@@ -404,6 +489,7 @@ class WikiParserCls extends WikiParserBase with CsvParser with WikiDomainParser 
   private def wikiPropsRep: PS = rep(wikiPropMagicName | wikiPropByName | wikiPropWhenName |
     wikiPropWhereName | wikiPropLocName | wikiPropRoles | wikiProp |
     xstatic) ^^ {
+    // LEAVE this as a SState - don't make it a LState or you will have da broblem
     case l => SState(l.map(_.s).mkString, l.flatMap(_.tags).toMap, l.flatMap(_.ilinks))
   }
 
@@ -438,14 +524,6 @@ class WikiParserCls extends WikiParserBase with CsvParser with WikiDomainParser 
     }
   }
 
-  // TODO this opt() not working - could remove the propS
-  //  def wikiProp: PS = "{{" ~> """[^}:]+""".r ~ opt("""[: ]""".r ~> """[^}:]*""".r) <~ "}}" ^^ {
-  //      case name ~ value =>
-  //      if (name startsWith ".")
-  //        SState("", Map(name.substring(1) -> value.getOrElse(""))) // hidden
-  //      else
-  //        SState("""{{Property %s=%s}}""".format(name, value), Map(name -> value.getOrElse("")))
-  //  }
   def wikiProp: PS = "{{" ~> """[^}: ]+""".r ~ """[: ]""".r ~ """[^}]*""".r <~ "}}" ^^ {
     case name ~ _ ~ value =>
       if (name startsWith ".")
@@ -489,15 +567,6 @@ class WikiParserCls extends WikiParserBase with CsvParser with WikiDomainParser 
   def dotPropName: PS = """^\.n """.r ~> """[^\n\r]*""".r  ^^ {
     case value => SState(s"""<small><span style="font-weight:bold;">$value</span></small><br>""", Map("name" -> value))
   }
-
-  // TODO this opt() not working - could remove the propS
-  //  def wikiPropNV: PS = "{{" ~> """[^}:]+""".r <~ "}}" ^^ {
-  //      case name =>
-  //      if (name startsWith ".")
-  //        SState("", Map(name.substring(1) -> "")) // hidden
-  //      else
-  //        SState("""{{Property %s=%s}}""".format(name, ""), Map(name -> ""))
-  //  }
 
   private def wikiPropByName: PS = ("\\{\\{[Bb]y[: ]+".r | "\\{\\{[Cc]lub[: ]+".r) ~> """[^}]*""".r <~ "}}" ^^ {
     case place => SState("""{{by %s}}""".format(place), Map("by" -> place))
@@ -637,11 +706,21 @@ class WikiParserCls extends WikiParserBase with CsvParser with WikiDomainParser 
   def wikiPropCsv: PS = "{{" ~> "r1.delimited:" ~> (wikiPropCsvStart >> { h: CsvHeading => csv(h.delim) ^^ { x => (h, x) } }) <~ "{{/r1.delimited}}" ^^ {
     case (a, body) => {
       val c = body
-      SState(a.s) + c.filter(_.size > 0).map { l =>
-        SState("\n* ") + parseW2("[[" + a.what + ":" + l.zip(a.h).filter(c => c._1.length > 0).map {c =>
-          if ("_" == c._2) c._1 else "{{" + c._2 + " " + c._1 + "}}"
-        }.mkString(" ") + "]]")
-      }.reduce(_ + _) + "\n"
+//      SState(a.s) + c.filter(_.size > 0).map { l =>
+//        SState("\n* ") + parseW2("[[" + a.what + ":" + l.zip(a.h).filter(c => c._1.length > 0).map {c =>
+//          if ("_" == c._2) c._1 else "{{" + c._2 + " " + c._1 + "}}"
+//        }.mkString(" ") + "]]")
+//      }.reduce(_ + _) + "\n"
+      RState(a.s,
+        c.filter(_.size > 0).map { l =>
+          RState(
+            "\n* ",
+            parseW2("[[" + a.what + ":" + l.zip(a.h).filter(c => c._1.length > 0).map {c =>
+              if ("_" == c._2) c._1 else "{{" + c._2 + " " + c._1 + "}}"
+            }.mkString(" ") + "]]"),
+            "")
+        },
+        "\n")
     }
   }
 
@@ -649,22 +728,32 @@ class WikiParserCls extends WikiParserBase with CsvParser with WikiDomainParser 
     case prefix ~ _ ~ cat ~ _ ~ Tuple2(a, body) => {
 
       def ecell(cat: String, p: String, a: String, b: String) =
-        parseW2("[[" + cat + ":" + p + " " + a + " " + b + "]]").s
+        parseW2("[[" + cat + ":" + p + " " + a + " " + b + "]]")
 
-      a.s + body.map(l =>
-        if (l.size > 0) ("\n<tr>" + l.map(c =>
-          "<td>" + c + "</td>" + a.h.tail.map(b =>
-            "<td>" + ecell(cat, prefix, c, b) + "</td>").mkString).mkString + "</tr>")
-        else "").mkString + "\n</table>"
+      RState(a.s,
+        body.map(l =>
+          if (l.size > 0) RState(
+            "\n<tr>",
+            l.map{c => RState(
+              "<td>" + c + "</td>",
+              a.h.tail.map(b => RState("<td>", ecell(cat, prefix, c, b), "</td>")),
+              "")},
+            "</tr>")
+          else SState.EMPTY),
+        "\n</table>")
     }
   }
 
   def wikiPropTable: PS = "{{" ~> "r1.table:" ~> (wikiPropTableStart >> { h: CsvHeading => csv(h.delim) ^^ { x => (h, x) } }) <~ "{{/r1.table}}" ^^ {
     case (a, body) => {
-      a.s + body.map(l =>
-        if (l.size > 0) ("\n<tr>" + l.map(c =>
-          "<td>" + parseLine(c).s + "</td>").mkString + "</tr>")
-        else "").mkString + "\n</table>"
+      RState(a.s,
+        body.map(l =>
+          if (l.size > 0) RState(
+            "\n<tr>",
+            l.map(c => RState("<td>", parseLine(c), "</td>")),
+            "</tr>")
+          else SState.EMPTY),
+        "\n</table>")
     }
   }
 
@@ -672,7 +761,7 @@ class WikiParserCls extends WikiParserBase with CsvParser with WikiDomainParser 
   /** {{section:name}}...{{/section}} */
   def wikiPropSection: PS = "{{" ~> opt(".") ~ """section|template|properties""".r ~ ":" ~ """[^}]*""".r ~ "}}" ~ lines <~ ("{{/" ~ """section|template|properties""".r ~ "}}") ^^ {
     case hidden ~ stype ~ _ ~ name ~ _ ~ lines => {
-      hidden.map(x => SState("")) getOrElse SState("`SECTION START {{" + stype + ":" + name + "}}`") + lines + SState("`SECTION END`")
+      hidden.map(x => SState.EMPTY) getOrElse SState("`SECTION START {{" + stype + ":" + name + "}}`") + lines + SState("`SECTION END`")
     }
   }
 
@@ -731,7 +820,7 @@ class WikiParserCls extends WikiParserBase with CsvParser with WikiDomainParser 
   def wikiPropCode: PS = "{{" ~> """code""".r ~ "[: ]".r ~ """[^:}]*""".r ~ "}}" ~ opt(CRLF1 | CRLF3 | CRLF2) ~ slines <~ "{{/code}}" ^^ {
     case stype ~ _ ~ name ~ _ ~ crlf ~ lines => {
 //      lines.copy(s = "<pre><code>" + lines.s + "</code></pre>")
-      SState("<pre><code>") + lines + SState("</code></pre>")
+      RState("<pre><code>", lines, "</code></pre>")
     }
   }
 
@@ -822,8 +911,8 @@ class WikiParserCls extends WikiParserBase with CsvParser with WikiDomainParser 
 /** parse dsl, fiddles and code specific fragments */
 trait DslParser extends WikiParserBase {
 
-  def wikiPropFiddle: PS = "{{" ~> """fiddle""".r ~ "[: ]".r ~ """[^:}]*""".r ~ opt(":" ~ rep(arg <~ opt(","))) ~ "}}" ~ lines <~ "{{/fiddle}}" ^^ {
-    case stype ~ _ ~ lang ~ xargs ~ _ ~ lines =>
+  def wikiPropFiddle: PS = "{{" ~> """fiddle""".r ~ "[: ]".r ~ """[^:}]*""".r ~ opt(":" ~ rep(arg <~ opt(","))) ~ "}}" ~ opt(CRLF1 | CRLF3 | CRLF2) ~ slines <~ "{{/fiddle}}" ^^ {
+    case stype ~ _ ~ lang ~ xargs ~ _ ~ _ ~ lines =>
       var args = (if(xargs.isDefined) xargs.get._2 else List()).toMap
       val name = args.getOrElse("name", "")
       def trim (s:String) = s.replaceAll("\r", "").replaceAll("^\n|\n$","")//.replaceAll("\n", "\\\\n'\n+'")
@@ -875,14 +964,13 @@ trait DslParser extends WikiParserBase {
   //  }
 
   def wikiPropDsl: PS = "{{" ~> opt(".") ~ """dsl\.\w*""".r ~ opt("[: ]".r ~ """[^:}]*""".r) ~ "}}" ~ opt(CRLF1 | CRLF3 | CRLF2) ~ slines <~ ("{{/" ~ """dsl\.\w*""".r ~ "}}") ^^ {
-    case hidden ~ stype ~ opt ~ _ ~ crlf ~ lines => {
+    case hidden ~ stype ~ opt ~ _ ~ _ ~ lines => {
       val name = opt.map(_._2) getOrElse ""
       val id = new ObjectId().toString
 
-      def ffiddle() = {
+      def ffiddle(lang:String) = {
         // todo check perm for displaying the play button
         val script = lines.s.trim.replaceAll("\r", "")
-        val lang="js"
         try {
           if(lang contains "js") {
             views.html.fiddle.jsfiddle2("js", script, None).body
@@ -898,7 +986,12 @@ trait DslParser extends WikiParserBase {
       }
 
       if(hidden.isDefined) SState("")
-      else SState(s"""<div><b><small>DSL ${stype.replaceFirst("dsl.","")}</b> ($name):</small><br>${ffiddle()}</div>""")//, Map.empty, List.empty, List(wffiddle))
+      else LazyState {(current, we) =>
+        // try to figure out the language from the content parsed so far
+        val lang = Reactors.findLang(current.tags, we)
+        val fid = ffiddle(lang)
+        SState(s"""<div><b><small>DSL ${stype.replaceFirst("dsl.","")}</b> ($name):</small><br>$fid}</div>""")//, Map.empty, List.empty, List(wffiddle))
+      }
     }
   }
 }

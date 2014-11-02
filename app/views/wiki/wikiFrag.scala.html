@@ -96,7 +96,10 @@ wiki fragment, used in another page
             <em>By</em>:
             @**todo use separate page for missing users **@
             <a href="/user/@model.Users.nameOf(page.get.by)">@model.Users.nameOf(page.get.by)</a>
-            | @page.get.crDtm.toLocalDate().toString
+            | <small>
+              @page.get.crDtm.toLocalDate().toString
+              @if(page.get.updDtm.toLocalDate != page.get.crDtm.toLocalDate) { .. @page.get.updDtm.toLocalDate().toString }
+              </small>
           }
 
           @** todo tag-based browsing **@

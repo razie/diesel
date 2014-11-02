@@ -867,77 +867,69 @@ object Kidz extends RazController {
       unauthorized("Oops - how did you get here? [step1]")
   }
 
-  def doeKidUpdate(userId: String, rkId: String, role: String, associd: String, next: String) = Action { implicit request =>
-    implicit val errCollector = new VErrors()
+  def doeKidUpdate(userId: String, rkId: String, role: String, associd: String, next: String) = FAU { implicit au => implicit errCollector => implicit request =>
     form(auth.get).bindFromRequest.fold(
       formWithErrors => BadRequest(views.html.user.doeUserKid(userId, rkId, role, associd, next, formWithErrors, auth.get)),
       {
         case (xf, xl, xe, d, g, r, s, ar, n) =>
-          (for (
-            au <- activeUser
-          ) yield {
-            val f = xf.trim
-            val l = xl.trim
-            val e = xe.trim
-            val status=if(s.length > 1) s else "a"
+          val f = xf.trim
+          val l = xl.trim
+          val e = xe.trim
+          val status=if(s.length > 1) s else "a"
 
-            def res = if (next == "Club" && au.isClub)
-              Redirect(routes.Club.doeClubReg(Club(au).userLinks.filter(_.userId.toString == userId).next._id.toString))
-            else if (next == "ClubMem" && au.isClub)
-              Redirect(routes.Club.doeClubRegs())
-            else if (next == "clubkidz")
-              Redirect(routes.Club.doeClubKids)
-            else if (next == "kidz")
-              Redirect(routes.Kidz.doeUserKids)
-            else
-              Redirect(routes.Club.doeClubUserReg(next))
+          def res = if (next == "Club" && au.isClub)
+            Redirect(routes.Club.doeClubReg(Club(au).userLinks.filter(_.userId.toString == userId).next._id.toString))
+          else if (next == "ClubMem" && au.isClub)
+            Redirect(routes.Club.doeClubRegs())
+          else if (next == "clubkidz")
+            Redirect(routes.Club.doeClubKids)
+          else if (next == "kidz")
+            Redirect(routes.Kidz.doeUserKids)
+          else
+            Redirect(routes.Club.doeClubUserReg(next))
 
-            // just update the association type - for former members, to make them fans
-            var assocOnly = false
-            if (rkId.length > 2 && associd.length > 2) {
-              new ObjectId(associd).as[RacerKidAssoc].foreach { rka =>
-                if (ar != rka.role) {
-                  rka.copy(role = ar).update
-                  //todo update the userlink as well
-                  assocOnly = true
-                }
+          // just update the association type - for former members, to make them fans
+          var assocOnly = false
+          if (rkId.length > 2 && associd.length > 2) {
+            new ObjectId(associd).as[RacerKidAssoc].foreach { rka =>
+              if (ar != rka.role) {
+                rka.copy(role = ar).update
+                //todo update the userlink as well
+                assocOnly = true
               }
             }
+          }
 
-             if (assocOnly) {
-             res
-            } else if (rkId.length > 2) {
-              // update
-              val rk = RacerKidz.findById(new ObjectId(rkId)).get
-              val rki = rk.rki.get
-              rki.copy(firstName = f, lastName = l, email = e.enc, dob = d, status = status charAt 0, roles = Set(r)).update
-              (rk, rki)
+          if (assocOnly) {
+            res
+          } else if (rkId.length > 2) {
+            // update
+            val rk = RacerKidz.findById(new ObjectId(rkId)).get
+            val rki = rk.rki.get
+            rki.copy(firstName = f, lastName = l, email = e.enc, dob = d,
+              gender = g, status = status charAt 0, roles = Set(r)).update
 //              if (associd.length > 2) new ObjectId(associd).as[RacerKidAssoc].foreach { rka =>
 //                if (ar != rka.role)
 //                  rka.copy(role = ar).update
 //              }
+            res
+          } else {
+            // create
+            if (RacerKidz.findByParentUser(new ObjectId(userId)).exists(x => x.info.firstName == f || (x.info.email.dec == e && e.length > 1)))
+            // is there already one with same name or email?
+              Msg2("Kid with same first name or email already added", Some("/doe/user/kidz"))
+            else {
+              val rk = new RacerKid(au._id)
+              val rki = new RacerKidInfo(f, l, e.enc, d, g, Set(r), status charAt 0, n == "y", rk._id, au._id)
+              rk.copy(rkiId = Some(rki._id)).create
+              rki.create
+              RacerKidAssoc(
+                new ObjectId(userId), rk._id, RK.ASSOC_PARENT,
+                role OR r,
+                au._id).create
+              (rk, rki)
               res
-            } else {
-              // create
-              if (RacerKidz.findByParentUser(new ObjectId(userId)).exists(x => x.info.firstName == f || (x.info.email.dec == e && e.length > 1)))
-                // is there already one with same name or email?
-                Msg2("Kid with same first name or email already added", Some("/doe/user/kidz"))
-              else {
-                val rk = new RacerKid(au._id)
-                val rki = new RacerKidInfo(f, l, e.enc, d, g, Set(r), status charAt 0, n == "y", rk._id, au._id)
-                rk.copy(rkiId = Some(rki._id)).create
-                rki.create
-                RacerKidAssoc(
-                  new ObjectId(userId), rk._id, RK.ASSOC_PARENT,
-                  role OR r,
-                  au._id).create
-                (rk, rki)
-                res
-              }
             }
-          }) getOrElse {
-            error("ERR_CANT_CREATE_KID ")
-            unauthorized("Oops - cannot create this entry... ")
           }
       })
   }

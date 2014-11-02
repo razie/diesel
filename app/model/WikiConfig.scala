@@ -65,11 +65,12 @@ abstract class WikiConfig {
     res
   }
 
-  /** modify external sites mapped to external URLs */
+  /** modify external sites mapped to external URLs - NOT when on localhost:9000 though */
   def urlmap(u: String) = {
     var res = u
 
-    for (has <- config(URLMAP); site <- has) {
+    //todo this looks stupid - use startsWith like in canon above
+    for (has <- config(URLMAP) if(! isLocalhost); site <- has) {
       res = res.replaceFirst("^%s".format(site._1), site._2)
     }
     res
@@ -85,7 +86,6 @@ abstract class WikiConfig {
   def realm(implicit request: Request[_]) = {
     if(request.host contains "localhost") "rk" else {
       config("realm").map { m =>
-//        request.headers.get("X-FORWARDED-HOST") match {
         Website.getHost match {
           case Some(x) if m contains x => m(x)
           case _ => "rk"

@@ -82,7 +82,8 @@ object Website {
       Some("www.racerkidz.com")    // for testing locally
 //      Some("www.enduroschool.com")    // for testing locally
 //      Some("www.glacierskiclub.com")    // for testing locally
-//      Some("www.nofolders.net")    // for testing locally
+    //      Some("www.nofolders.net")    // for testing locally
+//      Some("www.dieselreactor.net")    // for testing locally
     else
       request.headers.get("X-FORWARDED-HOST")
 

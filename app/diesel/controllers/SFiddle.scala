@@ -86,6 +86,21 @@ object SFiddles extends RazController with Logging {
           (false, jscript + "\n\n" + t)
         }
       }
+    } else if(lang == "ruby") {
+      val qj = qtojson(q)
+      val jscript = ""//s"""var queryParms = $qj;\n$script"""
+      try {
+        val factory = new ScriptEngineManager()
+        val engine = factory.getEngineByName("rb")
+        val res = engine.eval(jscript)
+        Audit.logdb("SFIDDLE_EXEC", "ruby", jscript)
+        (true, res.toString)
+      } catch {
+        case t: Throwable => {
+          log(s"while executing script\n$jscript",t)
+          (false, jscript + "\n\n" + t)
+        }
+      }
     } else if(lang == "scala") {
       try {
         val res = WikiScripster.impl.runScript(script, we, Some(au), q, true)

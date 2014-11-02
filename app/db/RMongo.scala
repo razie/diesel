@@ -115,6 +115,10 @@ object RUpdate {
   /** update matched on _id */
   def apply[A <: { def _id: ObjectId }](a: A)(implicit m: Manifest[A], txn: Txn = tx.auto) =
     RazMongo(tbl(m)).update(Map("_id" -> a._id), grater[A].asDBObject(Services.audit.update(a)))
+
+  /** update matched on _id */
+  def noAudit[A <: { def _id: ObjectId }](a: A)(implicit m: Manifest[A], txn: Txn = tx.auto) =
+    RazMongo(tbl(m)).update(Map("_id" -> a._id), grater[A].asDBObject(a))
 }
 
 /** delete a record */
@@ -150,6 +154,7 @@ class REntity[T <: { def _id: ObjectId }](implicit m: Manifest[T]) { this: T =>
   def update(implicit txn: Txn = tx.auto) = RUpdate[T](this)
   def createNoAudit(implicit txn: Txn = tx.auto) = RCreate.noAudit[T](this)
   def deleteNoAudit(implicit txn: Txn = tx.auto) = RDelete.noAudit[T](this)
+  def updateNoAudit(implicit txn: Txn = tx.auto) = RUpdate.noAudit[T](this)
 }
 
 

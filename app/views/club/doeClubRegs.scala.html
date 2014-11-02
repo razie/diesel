@@ -1,7 +1,7 @@
 @******
 club admin manages list of users and registrations
 ******@
-@(club:model.User, members:List[(Option[model.User], model.UserWiki, Option[model.Reg])])
+@(club:model.User, details:Boolean, members:List[(Option[model.User], model.UserWiki, Option[model.Reg])])
 @import _root_.admin.Config
 
 @htmlHeadBar("Registrations for club " + club.userName, Some(club))
@@ -12,15 +12,19 @@ club admin manages list of users and registrations
 
 <div class="span9">
 
-@tab=@{
-  members.filter(_._1.isDefined).map(t=>
-    Map("userName"->t._1.get.userName, 
-    	"firstName"->t._1.get.firstName, 
-    	"lastName"->t._1.get.lastName, 
-    	"role"->t._2.role, 
-    	"paid"->t._3.map(_.paid).getOrElse(""),
-    	"regStatus" -> t._3.map(_.regStatus).getOrElse("n/a"), 
-    	"uwId"->t._2._id.toString))
+  @tab=@{
+    members.filter(_._1.isDefined).map(t=>
+      Map("userName"->t._1.get.userName,
+        "firstName"->t._1.get.firstName,
+        "lastName"->t._1.get.lastName,
+        "role"->t._2.role,
+        "paid"->t._3.map(_.paid).getOrElse(""),
+        "regStatus" -> t._3.map(_.regStatus).getOrElse("n/a"),
+        "uwId"->t._2._id.toString))
+  }
+
+@allforms=@{
+  Some(members.flatMap(_._3).flatMap(_.wids).flatMap(w=>model.Wikis.find(w).map(we=>(w, we.formRole, we.form.formState))))
 }
 
 @tabMissing=@{
@@ -51,7 +55,15 @@ club admin manages list of users and registrations
 <h2>Registration management panel for @club.firstName</h2>
 
 <p>These are the members with accounts on the website. Click on the colorful statuses to manage that user/registration. (See the bottom for a legend).
-<b>Summary: @members.size</b> total: @members.filter(_._2.role != "Fan").groupBy(_._3.map(_.regStatus)).map{x=><b>@x._2.size</b> @x._1.getOrElse("n/a") , }
+<br><b>Summary: @members.size</b> total: @members.filter(_._2.role != "Fan").groupBy(_._3.map(_.regStatus)).map{x=><b>@x._2.size</b> @x._1.getOrElse("n/a") , }
+@if(details) {
+  @allforms.map{forms=>
+    <br><b>Forms: @forms.size</b> total: @forms.groupBy(_._3).map{x=><b>@x._2.size</b> @x._1.getOrElse("n/a") , }
+    <br><b>Forms: @forms.size</b> total: @forms.groupBy(_._2).map{x=><b>@x._2.size</b> @x._1.getOrElse("n/a") , }
+  }
+} else {
+  <small><a href="/doe/club/regs?details=1">More stats (slow)</a></small>
+}
 
 @util.utilSimpleTable(tab.filter(_.apply("role") != "Fan").iterator, 
 	Seq("userName" -> "", 
@@ -113,17 +125,17 @@ Add more from <a href="@routes.Club.doeClubKids">here</a>
   @controllers.Club.findForUser(club).map { c =>
     @c.regForms.map { t =>
     <li>
-      <a href="@routes.Club.doeClubRegsCsv(t.role, "")" class="btn btn-mini">Report CSV</a> - 
-      <a href="@routes.Club.doeClubRegsJson(t.role)" class="btn btn-mini">Report Json</a> - @t.role
+      <a href="@routes.Club.doeClubRegsReportCsv(t.role)" class="btn btn-mini">Report CSV</a> -
+      <a href="@routes.Club.doeClubRegsReportJson(t.role)" class="btn btn-mini">Report Json</a> - @t.role
       @c.props.filter(_._1 startsWith ("Report."+t.role)).map {tt=>
-      | <a href="@routes.Club.doeClubRegsCsv(t.role, tt._2)" class="btn btn-mini">@tt._1.replaceFirst("Report."+t.role+".", "")</a>
+      | <a href="@routes.Club.doeClubRegsReportCsv(t.role, tt._2)" class="btn btn-mini">@tt._1.replaceFirst("Report."+t.role+".", "")</a>
       }
     }
   }
   </ul>
 
 <hr>
-<h4>Fomer members and fans (should not register)</h4>
+<h4>Former members and fans (should not register)</h4>
 
 @util.utilSimpleTable(tab.filter(_.apply("role") == "Fan").iterator, 
 	Seq("userName" -> "", 

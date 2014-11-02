@@ -16,13 +16,17 @@
 @rka(db:com.mongodb.casbah.Imports.DBObject, k:String, v:String) = {
   @k match {
     case "from" | "owner" => {
-      @model.Users.findUserById(v).map {u=>
+      @if(v == null || v.length <= 1) {<span style="color:#ff0000">???</span>} else {
+        @model.Users.findUserById(v).map {u=>
         <a href="/razadmin/user/@u._id.toString">@u.userName</a>
+        }
       }
     }
     case "to" => {
-      @model.RacerKidz.findByIds(v).map {rk=>
-        <a href="/razadmin/rk/@rk._id.toString">@rk.info.ename</a>
+      @if(v == null || v.length <= 1) {<span style="color:#ff0000">???</span>} else {
+        @model.RacerKidz.findByIds(v).map {rk=>
+          <a href="/razadmin/rk/@rk._id.toString">@rk.info.ename</a>
+        }
       }
     }
     case _=> {

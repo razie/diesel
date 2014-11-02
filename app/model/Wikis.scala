@@ -17,6 +17,26 @@ import admin.Audit
 import admin.Services
 import db.RazMongo
 
+abstract class Reactor (val name:String) {
+  val wiki : WikiInst
+}
+
+/** the default reactor, the main wiki */
+class DfltReactor extends Reactor (Wikis.DFLT) {
+  val wiki : WikiInst = Wikis.apply(name)
+}
+
+object Reactor {
+  // all realms currently loaded in this node
+  lazy val reactors = {
+    val res = new collection.mutable.HashMap[String,Reactor]()
+    res.put (Wikis.DFLT, new DfltReactor)
+    res
+  }
+
+  def apply (realm:String = Wikis.DFLT) = reactors(realm)
+}
+
 /** a wiki */
 class WikiInst (val realm:String) {
   val domain : WikiDomain = new WikiDomain (realm)
@@ -47,6 +67,9 @@ object Wikis extends Logging with Validation {
     res.put (DFLT, new WikiInst(DFLT))
     res
   }
+
+  /** this is the actual parser to use - combine your own and set it here in Global */
+  var wparser : String => WikiParser.PState = WikiParser.apply
 
   def apply (realm:String = DFLT) = wikis(realm)
   def apply (wid:WID) = wikis(wid.getRealm)
@@ -221,9 +244,6 @@ object Wikis extends Logging with Validation {
     if (done) Some(res) else None
   }
 
-  /** this is the actual parser to use - combine your own and set it here in Global */
-  var wparser : String => WikiParser.PState = WikiParser.apply
-
   // TODO better escaping of all url chars in wiki name
   def preprocess(wid: WID, markup: String, content: String) = markup match {
     case MD =>
@@ -244,9 +264,10 @@ object Wikis extends Logging with Validation {
         }
       }
 
-      (for (
-        s @ WikiParser.SState(a0, tags, ilinks, decs) <- Some(wparser(c2))
-      ) yield s) getOrElse WikiParser.SState("")
+      wparser(c2)
+//      (for (
+//        s @ WikiParser.SState(a0, tags, ilinks, decs) <- Some(wparser(c2))
+//      ) yield s) getOrElse WikiParser.SState("")
     case TEXT => WikiParser.SState(content.replaceAll("""\[\[([^]]*)\]\]""", """[[\(1\)]]"""))
     case _ => WikiParser.SState("UNKNOWN MARKUP " + markup + " - " + content)
   }
@@ -254,7 +275,7 @@ object Wikis extends Logging with Validation {
   /** main formatting function */
   private def format1(wid: WID, markup: String, icontent: String, we: Option[WikiEntry] = None) = {
     val res = try {
-      var content = we.map(_.preprocessed).getOrElse(preprocess(wid, markup, noporn(icontent))).s
+      var content = we.map(_.preprocessed).getOrElse(preprocess(wid, markup, noporn(icontent))).fold(we).s
       // TODO index noporn when saving/loading page, in the WikiIndex
       // TODO have a pre-processed and formatted page index I can use - for non-scripted pages, refreshed on save
       // run scripts
@@ -451,6 +472,6 @@ class WikiDomain (realm:String) {
 }
 
 object WikiDomain extends WikiDomain ("rk") {
-
+  def apply (realm:String) = this
 }
 

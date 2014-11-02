@@ -20,7 +20,7 @@ object Reactors {
   final val KIND_WIKI="wiki"
 
   // known languages
-  final val LANGS=Array("scala", "js", "json", "xml")
+  final val LANGS=Array("scala", "js", "ruby", "json", "xml")
 
   def listByUser (u:User) = u.ownedPages(CAT_REACTOR)
   def find (u:String, r:String) =
@@ -28,6 +28,17 @@ object Reactors {
 
   def apply (we:WikiEntry) =
     new DReactor(we.owner.get._id, we.name, we.contentTags.getOrElse("kind", KIND_WIKI), we.uwid, Wikis.childrenOf(we.uwid).toSeq)
+
+  def findLang (tags:Map[String,String], we:Option[WikiEntry]) = {
+    def fromk (k:String) = k.replaceFirst("wiki", "").replaceAll("\\.", "") match {
+      case "jsc1" => "js"
+      case "jss1" => "js"
+      case "scala1" => "scala"
+      case "ruby1" => "ruby"
+    }
+    val lang = tags.getOrElse("lang", tags.get("kind").map(fromk).getOrElse("js"))
+    lang
+  }
 }
 
 /** a reactor wiki model, from the wiki */
@@ -43,10 +54,10 @@ class DReactor (
 
   /** create and load the reactor from the model */
   def load : DieselReactor = kind.replaceFirst("wiki", "").replaceAll("\\.", "") match {
-
     case "jsc1" => new JSSCReactor1 (this)
     case "jss1" => new JSSReactor1 (this)
     case "scala1" => new ScalaReactor1 (this)
+    case "ruby1" => new RubyReactor1 (this)
   }
 }
 
@@ -114,6 +125,13 @@ class JSSReactor1 (reactor:DReactor) extends DieselReactor (reactor:DReactor) {
 class ScalaReactor1 (reactor:DReactor) extends DieselReactor (reactor:DReactor) {
   override def supportedLang : String = "scala"
   def allData = sections.filter(x=>x.cat == Reactors.CAT_DATA && (x.lang == "scala")).map(s=>if(s.name.length>0)s"val ${s.name} = ${s.script}" else s.script) mkString "\n\n"
+  override def addImports (dom:String, body:String) : String = dom + "\n\n" + allData + "\n\n" + body
+}
+
+/** Ruby Simple 1 reactor */
+class RubyReactor1 (reactor:DReactor) extends DieselReactor (reactor:DReactor) {
+  override def supportedLang : String = "ruby"
+  def allData = sections.filter(x=>x.cat == Reactors.CAT_DATA && (x.lang == "ruby")).map(s=>if(s.name.length>0)s"val ${s.name} = ${s.script}" else s.script) mkString "\n\n"
   override def addImports (dom:String, body:String) : String = dom + "\n\n" + allData + "\n\n" + body
 }
 

@@ -146,7 +146,7 @@ object Club extends RazController with Logging {
     yob: Int,
     address: String)
 
-  def doeClubRegs = Action { implicit request =>
+  def doeClubRegs (details:String="") = Action { implicit request =>
     implicit val errCollector = new VErrors()
     (for (
       au <- activeUser;
@@ -160,7 +160,7 @@ object Club extends RazController with Logging {
             uw,
             model.Regs.findClubUserYear(au, uw.userId, controllers.Club(au).curYear))).toList.sortBy(x => x._1.map(y => y.lastName + y.firstName).mkString)
 
-      Ok(views.html.club.doeClubRegs(au, members))
+      Ok(views.html.club.doeClubRegs(au,!details.isEmpty, members))
     }) getOrElse Msg2("CAN'T SEE PROFILE " + errCollector.mkString)
   }
 
@@ -215,10 +215,8 @@ object Club extends RazController with Logging {
   }
 
   // manage user screen
-  def doeClubReg(uwid: String) = Action { implicit request =>
-    implicit val errCollector = new VErrors()
+  def doeClubReg(uwid: String) = FAU { implicit au => implicit errCollector => implicit request =>
     (for (
-      au <- activeUser;
       isClub <- au.isClub orErr ("registration only for a club");
       uuwid <- WID("Club", au.userName).uwid orErr ("no uwid");
       uw <- model.Users.findUserLinksTo(uuwid).find(_._id.toString == uwid);
@@ -232,41 +230,28 @@ object Club extends RazController with Logging {
 
   import play.api.libs.json._
 
-  // manage user screen
-  def doeClubRegsJson(what: String, cols: String) = Action { implicit request =>
-    implicit val errCollector = new VErrors()
-    (for (
-      au <- activeUser;
-      isClub <- au.isClub orErr ("registration only for a club")
-    ) yield {
-      val (headers, data) = membersData(au, what, cols)
-
-      Ok(Json.toJson(headers :: data))
-    }) getOrElse Msg2("CAN'T SEE PROFILE " + errCollector.mkString)
-  }
-
-  // manage user screen
-  def doeClubRegsCsv(what: String, cols: String) = Action { implicit request =>
-    implicit val errCollector = new VErrors()
+  def doeClubRegsReportJson(what: String, cols: String) = doeClubRegsReport(what, cols, "json")
+  def doeClubRegsReportCsv(what: String, cols: String) = doeClubRegsReport(what, cols, "csv")
+  def doeClubRegsReport(what: String, cols: String, format:String) = FAU { implicit au => implicit errCollector => implicit request =>
     val DELIM = ","
     (for (
-      au <- activeUser;
       isClub <- au.isClub orErr ("registration only for a club")
     ) yield {
       val (headers, data) = membersData(au, what, cols)
 
-      Ok(
-        headers.mkString(DELIM) +
-          "\n" +
-          data.map(_.mkString(DELIM)).mkString("\n")).as("text/csv")
-    }) getOrElse Msg2("CAN'T SEE PROFILE " + errCollector.mkString)
+      if("csv" == format)
+        Ok(
+          headers.mkString(DELIM) +
+            "\n" +
+            data.map(_.mkString(DELIM)).mkString("\n")).as("text/csv")
+      else
+        Ok(Json.toJson(headers :: data))
+    }) getOrElse Msg2("CAN'T : " + errCollector.mkString)
   }
 
   // update user role
-  def doeClubMemberUpdate(uwid: String) = Action { implicit request =>
-    implicit val errCollector = new VErrors()
+  def doeClubMemberUpdate(uwid: String) = FAU { implicit au => implicit errCollector => implicit request =>
     (for (
-      au <- activeUser;
       isClub <- au.isClub orErr "registration only for a club";
       cuwid <- WID("Club", au.userName).uwid orErr "no uwid";
       olduw <- model.Users.findUserLinksTo(cuwid).find(_._id.toString == uwid) orErr "user is not a member";
@@ -299,10 +284,8 @@ object Club extends RazController with Logging {
   }
 
   /** send a help message */
-  def doeClubRegMsg(uwid: String) = Action { implicit request =>
-    implicit val errCollector = new VErrors()
+  def doeClubRegMsg(uwid: String) = FAU { implicit au => implicit errCollector => implicit request =>
     (for (
-      au <- activeUser;
       isClub <- au.isClub orErr "registration only for a club";
       club <- Some(Club(au));
       cuwid <- WID("Club", au.userName).uwid orErr "no uwid";
@@ -320,10 +303,8 @@ object Club extends RazController with Logging {
   }
 
   /** change registration status */
-  def doeClubUwRegstatusupd(uwid: String, how: String) = Action { implicit request =>
-    implicit val errCollector = new VErrors()
+  def doeClubUwRegstatusupd(uwid: String, how: String) = FAU { implicit au => implicit errCollector => implicit request =>
     (for (
-      au <- activeUser;
       isClub <- au.isClub orErr "registration only for a club";
       club <- Some(Club(au));
       cuwid <- WID("Club", au.userName).uwid orErr ("no uwid");
@@ -366,10 +347,8 @@ object Club extends RazController with Logging {
   }
 
   /** add a kid to current registration */
-  def doeClubUwAddForm(uwid: String, role: String) = Action { implicit request =>
-    implicit val errCollector = new VErrors()
+  def doeClubUwAddForm(uwid: String, role: String) = FAU { implicit au => implicit errCollector => implicit request =>
     (for (
-      au <- activeUser;
       isClub <- au.isClub orErr ("registration only for a club");
       c <- Club.findForUser(au);
       form <- c.regForm(role) orErr ("no reg form for role " + role);
@@ -402,10 +381,9 @@ object Club extends RazController with Logging {
   }
 
   /** add a kid to current registration */
-  def doeClubUwAddFormKid(regId: String, rkId: String, next: String, role: String) = Action { implicit request =>
-    implicit val errCollector = new VErrors()
+  def doeClubUwAddFormKid(regId: String, rkId: String, next: String, role: String) = FAU { implicit au =>
+    implicit errCollector => implicit request =>
     (for (
-      au <- activeUser;
       rk <- RacerKidz.findById(new ObjectId(rkId));
       reg <- Regs.findId(regId) orCorr ("no registration found... ?" -> "did you start the registration?");
       club <- if (au.isClub) Some(au) else Users.findUserByUsername(reg.clubName) orErr ("Club not found");
@@ -448,11 +426,10 @@ object Club extends RazController with Logging {
     }) getOrElse Msg2("CAN'T find registration " + errCollector.mkString)
   }
 
-  /** add a kid to current registration */
-  def doeClubUwRMFormKid(regId: String, rkId: String, uwid: String, role: String) = Action { implicit request =>
-    implicit val errCollector = new VErrors()
+  /** remove a kid from the current registration */
+  def doeClubUwRMFormKid(regId: String, rkId: String, uwid: String, role: String) =  FAU { implicit au =>
+    implicit errCollector => implicit request =>
     (for (
-      au <- activeUser;
       rk <- RacerKidz.findById(new ObjectId(rkId));
       reg <- Regs.findId(regId) orCorr ("no registration found... ?" -> "did you start the registration?");
       club <- if (au.isClub) Some(au) else Users.findUserByUsername(reg.clubName) orErr ("Club not found");
@@ -464,21 +441,20 @@ object Club extends RazController with Logging {
     ) yield {
       def sex1 = if (rk.info.gender.toLowerCase startsWith "m") "his" else "her"
       def sex2 = if (rk.info.gender.toLowerCase startsWith "m") "him" else "her"
-      Msg2(s"""This will remove ${rk.info.firstName} from this registration. 
+      Msg2(s"""This will remove ${rk.info.firstName} from this registration.
     <p>Note that any forms filled for $sex1 role will be <em>removed</em>! You can then re-add $sex2 back, with the same or different role.
     <p>If you don't want to remove $sex2, just go back... otherwise click Continue below.""",
         Some(routes.Club.doeClubUwRMFormKid1(regId, rkId, uwid, role).url))
     }) getOrElse Msg2("CAN'T find registration " + errCollector.mkString)
   }
 
-  def doeClubUwRMFormKid1(regId: String, rkId: String, uwid: String, role: String) = Action { implicit request =>
-    implicit val errCollector = new VErrors()
+  def doeClubUwRMFormKid1(regId: String, rkId: String, uwid: String, role: String) = FAU { implicit au =>
+    implicit errCollector => implicit request =>
     val next = if (auth.exists(_.isClub))
       routes.Club.doeClubReg(uwid)
     else
       routes.Club.doeClubUserReg(regId)
     (for (
-      au <- activeUser;
       rk <- RacerKidz.findById(new ObjectId(rkId));
       reg <- Regs.findId(regId) orCorr ("no registration found... ?" -> "did you start the registration?");
       club <- if (au.isClub) Some(au) else Users.findUserByUsername(reg.clubName) orErr ("Club not found");
@@ -508,7 +484,57 @@ object Club extends RazController with Logging {
       Redirect(next)
     }) getOrElse Msg2("CAN'T remove registration: " + errCollector.mkString,
       Some(next.toString))
+  }
 
+  /** remove a single form from the current registration */
+  def doeClubUwRMFormSeq(regId: String, rkId: String, uwid: String, seq: Integer) =  FAU { implicit au =>
+    implicit errCollector => implicit request =>
+    (for (
+      reg <- Regs.findId(regId) orCorr ("no registration found... ?" -> "did you start the registration?");
+      club <- if (au.isClub) Some(au) else Users.findUserByUsername(reg.clubName) orErr ("Club not found");
+      c <- Club.findForUser(club);
+      regAdmin <- c.uregAdmin orErr ("no regadmin");
+      isValid <- seq >= 0 && seq < reg.wids.size orErr "bad form seq";
+      formWid <- Some(reg.wids(seq));
+      form <- Wikis.find(formWid) orErr "can't find form";
+      regkid <- RMany[RegKid]("regId" -> reg._id).find(_.wids.exists(_.name == formWid.name)).isEmpty orErr "this form belongs to a regKid: remove the kid from the list of Racers";
+      notCompleted <- form.form.formState != FormStatus.APPROVED orErr "form has been approved !"
+    ) yield {
+      Msg2(s"""This will remove Form: ${formWid.name} from this registration.
+    <p>If you don't want to remove Form: ${formWid.name}, just go back... otherwise click Continue below.""",
+        Some(routes.Club.doeClubUwRMFormSeq1(regId, rkId, uwid, seq).url))
+    }) getOrElse Msg2("CAN'T find registration " + errCollector.mkString)
+  }
+
+  /** remove a single form from the current registration */
+  def doeClubUwRMFormSeq1(regId: String, rkId: String, uwid: String, seq: Integer) = FAU { implicit au =>
+    implicit errCollector => implicit request =>
+    val next = if (auth.exists(_.isClub))
+      routes.Club.doeClubReg(uwid)
+    else
+      routes.Club.doeClubUserReg(regId)
+    (for (
+      reg <- Regs.findId(regId) orCorr ("no registration found... ?" -> "did you start the registration?");
+      club <- if (au.isClub) Some(au) else Users.findUserByUsername(reg.clubName) orErr ("Club not found");
+      u <- if (!au.isClub) Some(au) else Users.findUserById(reg.userId) orErr ("User not found!");
+      c <- Club.findForUser(club);
+      regAdmin <- c.uregAdmin orErr ("no regadmin");
+      isValid <- seq >= 0 && seq < reg.wids.size orErr "bad form seq";
+      formWid <- Some(reg.wids.apply(seq));
+      form <- Wikis.find(formWid) orErr "can't find form";
+      regkid <- RMany[RegKid]("regId" -> reg._id).find(_.wids.exists(_.name == formWid.name)).isEmpty orErr "this form belongs to a regKid";
+      notCompleted <- form.form.formState != FormStatus.APPROVED orErr "form has been approved !"
+    ) yield {
+      var r = reg
+      razie.clog << "drop form " + formWid
+      r = r.copy(wids = (r.wids.filter(_.name != formWid.name)))
+
+      // have to delete form ?
+      // controllers.Forms.crFormKid(u, form.wid, newfwid, label, regAdmin, Some(form.role), rk)
+      r.update
+      Redirect(next)
+    }) getOrElse Msg2("CAN'T remove form: " + errCollector.mkString,
+      Some(next.toString))
   }
 
   /** build or update an association... there's a few possibilities */
@@ -525,10 +551,9 @@ object Club extends RazController with Logging {
   }
 
   /** add a kid to current registration */
-  def doeClubUserRegAdd(regId: String, rkId: String, uid: String, next: String) = Action { implicit request =>
-    implicit val errCollector = new VErrors()
+  def doeClubUserRegAdd(regId: String, rkId: String, uid: String, next: String) = FAU { implicit au =>
+    implicit errCollector => implicit request =>
     (for (
-      au <- activeUser;
       rk <- RacerKidz.findById(new ObjectId(rkId));
       reg <- Regs.findId(regId) orCorr ("no registration found... ?" -> "did you start the registration?");
       club <- if (au.isClub) Some(au) else Users.findUserByUsername(reg.clubName) orErr ("Club not found");
@@ -566,10 +591,8 @@ object Club extends RazController with Logging {
     }) getOrElse Msg2("CAN'T use registration " + errCollector.mkString)
   }
 
-  def doeClubKids = Action { implicit request =>
-    forActiveUser { au =>
-      Ok(views.html.club.doeClubKidz(au))
-    }
+  def doeClubKids = FAU { implicit au => implicit errCollector => implicit request =>
+    Ok(views.html.club.doeClubKidz(au))
   }
 
   def doeVol = Action { implicit request =>

@@ -265,7 +265,7 @@ case class UserQuota(
   //  def create = Mongo ("Profile") += grater[Profile].asDBObject(Audit.create(this))
   def update(q: UserQuota) =
     ROne[UserQuota]("userId" -> userId) map { p =>
-      RUpdate[UserQuota](Map("userId" -> userId), q)
+      RUpdate.noAudit[UserQuota](Map("userId" -> userId), q)
       q
     } getOrElse {
       RCreate.noAudit[UserQuota](q)

@@ -113,11 +113,13 @@ object SendEmail extends razie.Logging {
       }
       case CMD_TICK => {
         // check for messages to retry
+        clog << s"EmailSender CMD_TICK state=$state"
         if(state == STATE_MAXED)
           db.ROne[EmailMsg]("state" -> EmailMsg.STATUS_OOPS).foreach(e=> {self ! e._id; curCount += 1})
       }
 
       case CMD_RESEND => {
+        clog << s"EmailSender CMD_RESEND state=$state"
         // check for messages to retry
         db.RMany[EmailMsg]().filter(_.shouldResend).foreach(e=> {self ! e._id; curCount += 1})
       }
@@ -138,14 +140,14 @@ object SendEmail extends razie.Logging {
     /** send an email */
     private def isend(ie: EmailMsg, mailSession: MailSession) {
       val e = ie.copy(status=EmailMsg.STATUS_SENDING, sendCount = ie.sendCount+1, lastDtm=DateTime.now())
-      e.update
+      e.updateNoAudit
 
       val mysession = mailSession.session
 
       if (Config.hostport.startsWith("test") && NOEMAILSTESTING ||
         Config.isLocalhost && (e.isNotification || NO_EMAILS)) {
         Audit.logdb("EMAIL_SENT_NOT", Seq("to:" + e.to, "from:" + e.from, "subject:" + e.subject, "body:" + e.html).mkString("\n"))
-        e.copy(status=EmailMsg.STATUS_SKIPPED, lastDtm=DateTime.now()).update
+        e.copy(status=EmailMsg.STATUS_SKIPPED, lastDtm=DateTime.now()).updateNoAudit
       } else
         try {
           val message = new MimeMessage(mysession);
@@ -188,7 +190,7 @@ object SendEmail extends razie.Logging {
 
           Transport.send(message);
           Audit.logdb("EMAIL_SENT", Seq("to:" + e.to, "from:" + e.from, "subject:" + e.subject).mkString("\n"))
-          e.delete
+          e.deleteNoAudit
           if(state == STATE_MAXED) {
             // reload all messages
             db.RMany[EmailMsg]("state" -> EmailMsg.STATUS_OOPS).foreach(e=> {sender ! e._id; curCount += 1})

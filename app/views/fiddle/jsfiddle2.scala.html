@@ -49,7 +49,12 @@ var j_@id  ='@Html(tos(encscr(content)))'
 </script>
 
 <ul class="nav nav-tabs" style="margin-bottom:0">
-  <li id="js_@id" > <a href="#">@if(lang=="scala") {Scala} else {JS} </a></li>
+  <li id="js_@id" > <a href="#">
+  @lang match {
+    case "scala" => {Scala}
+    case "ruby" => {Ruby}
+    case _ => {JS}
+  } </a></li>
   <li id="run_@id" > <a title="Works only on Chrome and Firefox" href="javascript:runpill_@{id}('@{id}')">Run &raquo;</a> </li>
   <li id="play_@id" > <a href="javascript:playpill_@{id}('@{id}')">Play...</a> </li>
 </ul>

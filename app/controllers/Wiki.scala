@@ -276,7 +276,6 @@ object Wiki extends WikiBase {
       isFromRobot(request) || au.exists("Razie" == _.userName)
 
     debug("show2 " + iwid.wpath)
-    // TODO stupid routes - can't match without the :
     val cat = if (iwid.cat.endsWith(":")) iwid.cat.substring(0, iwid.cat.length - 1) else iwid.cat
     val name = Wikis.formatName(WID(cat, iwid.name))
 
@@ -289,7 +288,8 @@ object Wiki extends WikiBase {
     // special pages
     if ("Page" == cat && "home" == name) Redirect("/")
     else if ("Admin" == cat && "home" == name) Redirect("/")
-    else if ("any" == cat || cat.isEmpty) {
+    else if ("any" == cat || (cat.isEmpty && wid.parent.isEmpty)) {
+      // search for any name only if cat is missing OR there is no parent
 
       // TODO optimize to load just the WID - i'm redirecting anyways
       val wl = Wikis.findAny(name).filter(page => canSee(page.wid, au, Some(page)).getOrElse(false)).toList

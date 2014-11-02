@@ -309,42 +309,13 @@ object Forms extends WikiBase with Logging {
     }
   }
 
-  def doeAccept(iwid: WID) = Action { implicit request =>
-    Ok("next step...")
-  }
-
-  def doeReject(iwid: WID) = Action { implicit request =>
-    Ok("next step...")
-  }
-
   def doeCreateReg(iwid: WID) = Action { implicit request =>
     Ok("next step...")
   }
-
-  //  /** wid is the script name,his parent is the actual topic */
-  //  def wikieNextStep(id:String) = Action { implicit request =>
-  //    (for (
-  //      au <- auth orCorr cNoAuth
-  //    ) yield {
-  //      // default to category
-  //      Audit.logdb("WF_NEXT_STEP", id)
-  //      act.WikiWf.event("WF_NEXT_STEP", Map("id"->id))
-  //      Ok("next step...")
-  //    }) getOrElse
-  //      Unauthorized("You don't have permission to do this...")
-  //  }
 }
 
 /** wiki controller */
 object FormReg extends WikiBase with Logging {
-
-  def doeAccept(iwid: WID) = Action { implicit request =>
-    Ok("next step...")
-  }
-
-  def doeReject(iwid: WID) = Action { implicit request =>
-    Ok("next step...")
-  }
 
   def doeCreateReg(iwid: WID) = Action { implicit request =>
     Ok("next step...")

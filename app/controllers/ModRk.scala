@@ -70,29 +70,14 @@ case class ModRkEntry(
 /** controller for club management */
 object ModRk extends RazController with Logging {
 
-  import play.api.data._
-  import play.api.data.Forms._
-  import play.api.data.validation.Constraints._
-
-  def t1 = FAU { implicit au => implicit errCollector => implicit request =>
-    val members =
-      model.Users.findUserLinksTo(model.WID("Club", au.userName).uwid.get).map(uw =>
-        (model.Users.findUserById(uw.userId),
-          uw,
-          model.Regs.findClubUserYear(au, uw.userId, controllers.Club(au).curYear))).toList.sortBy(x => x._1.map(y => y.lastName + y.firstName).mkString)
-
-    Ok(views.html.club.doeClubRegs(au, members))
-  }
-
   import db.RMongo.as
 
   def regd (au:User, wid:WID) = ModRkReg(wid).kids.map(x => (x, x.rkId.as[model.RacerKid].get)).toList
   def rks (au:User, wid:WID) = model.RacerKidz.findAssocForUser(au._id).map(x => (x, x.rk.get)).toList
 
-  def doeModRkRegs(wid: WID) = Action { implicit request =>
+  def doeModRkRegs(wid: WID) = FAU { implicit au => implicit errCollector => implicit request =>
     implicit val errCollector = new VErrors()
     (for (
-      au <- activeUser;
       page <- wid.page
     ) yield {
       val regd = ModRkReg(page.wid).kids.map(x => (x, x.rkId.as[model.RacerKid].get)).toList
@@ -102,25 +87,14 @@ object ModRk extends RazController with Logging {
     }) getOrElse Msg2("CAN'T SEE PROFILE " + errCollector.mkString)
   }
 
-  def doeModRkAdd(wid: WID, rkid: String, role: String) = Action { implicit request =>
-    implicit val errCollector = new VErrors()
-    (for (
-      au <- activeUser
-    ) yield {
-      ModRkEntry(new ObjectId(rkid), wid.wpath, role).create
-
-      Redirect(Wiki.w(wid))
-    }) getOrElse Msg2("CAN'T SEE PROFILE " + errCollector.mkString)
+  def doeModRkAdd(wid: WID, rkid: String, role: String) = FAU { implicit au => implicit errCollector => implicit request =>
+    ModRkEntry(new ObjectId(rkid), wid.wpath, role).create
+    Redirect(Wiki.w(wid))
   }
 
-  def doeModRkRemove(wid: WID, rkid: String) = Action { implicit request =>
-    implicit val errCollector = new VErrors()
-    (for (
-      au <- activeUser
-    ) yield {
-      ROne[ModRkEntry]("rkId" -> new ObjectId(rkid), "wpath" -> wid.wpath).foreach(_.delete)
-      Redirect(Wiki.w(wid))
-    }) getOrElse Msg2("CAN'T SEE PROFILE " + errCollector.mkString)
+  def doeModRkRemove(wid: WID, rkid: String) = FAU { implicit au => implicit errCollector => implicit request =>
+    ROne[ModRkEntry]("rkId" -> new ObjectId(rkid), "wpath" -> wid.wpath).foreach(_.delete)
+    Redirect(Wiki.w(wid))
   }
 }
 

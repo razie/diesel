@@ -3,12 +3,14 @@ the list of forms and statuses for the current registration.
 
 reused in several screens to show the list of forms 
 ***@
-@(wids:Seq[model.WID], links:Boolean, current:Option[model.WID]=None)
+@(wids:Seq[model.WID], links:Boolean, current:Option[model.WID]=None, buttons:Option[(model.WID, Integer)=>Html]=None)
 
 <p>  
 <table style="width:auto" class="table table-hover table-condensed">
 <caption>All the forms in this set:</caption>
-<tr><th>No</th><th>Form</th><th>Status</th></tr>
+<tr><th>No</th><th>Form</th><th>Status</th>
+@if(buttons.isDefined) { <th>Actions</th> }
+</tr>
 
 @wids.zipWithIndex.map { t=>
   <tr><td>
@@ -27,7 +29,9 @@ reused in several screens to show the list of forms
 
   </td><td>
   @club.formStatusColored(t._1.page.flatMap(_.form.formState).getOrElse("n/a"), if(links) Some(controllers.Wiki.w(t._1)) else None)
-  </td></tr>
+  </td>
+  @buttons.map {f=> <td align="right">@f(t._1, t._2)</td> }
+  </tr>
   }
 </table>
   

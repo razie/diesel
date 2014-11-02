@@ -78,9 +78,9 @@ object Wikil extends WikieBase {
       au <- activeUser;
       hasuwid <- wid.uwid.isDefined orErr ("can't find uwid");
       uwid <- wid.uwid;
-      isConsent <- au.profile.flatMap(_.consent).isDefined orCorr Profile.cNoConsent;
       exists <- wid.page.isDefined orErr ("Cannot link to " + wid.name);
       // even new users that didn't verify their email can register for club
+      //      isConsent <- au.profile.flatMap(_.consent).isDefined orCorr Profile.cNoConsent;
       r1 <- (au.hasPerm(Perm.uProfile) || "Club" == wid.cat) orCorr cNoPermission("uProfile")
     ) yield {
       def content = """[[User:%s | You]] -> [[%s:%s]]""".format(au.id, wid.cat, wid.name)

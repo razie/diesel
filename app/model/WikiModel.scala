@@ -118,7 +118,7 @@ case class WikiEntry(
 
   def auditFlagged(f: String) { Log.audit(Audit.logdb(f, category + ":" + name)) }
 
-  /** wiki sections are delimited by {{section:name}} */
+  /** reparsing the content - wiki sections are delimited by {{section:name}} */
   lazy val sections = {
     // this ((?>.*?(?=\{\{/))) means non-greedy lookahead
     //todo use the wiki parser later modifiers to load the sections, not a separate parser here
@@ -142,7 +142,8 @@ case class WikiEntry(
 
   /** pre processed form - parsed and graphed */
   lazy val preprocessed = {
-    val s = Wikis.preprocess(this.wid, this.markup, Wikis.noporn(this.content))
+    val ss = Wikis.preprocess(this.wid, this.markup, Wikis.noporn(this.content))
+    val s = ss.fold(Some(this)) // fold the AST
     // apply transformations
     s.decs.map(x => x(this))
     // add hardcoded attribute - these can be overriden by tags in content
@@ -237,11 +238,23 @@ case class WID(cat: String, name: String, parent: Option[ObjectId] = None, secti
   lazy val findParent = parent flatMap (p => Wikis.find(p))
   lazy val parentWid  = parent flatMap (p => WikiIndex.withIndex { index => index.find { case (a, b, c) => c == p }.map(_._2) }) orElse (findParent map(_.wid))
 
-  lazy val page = Wikis.find(this)
+  /** find the page for this, if any - respects the NOCATS */
+  lazy val page = {
+    if(! cat.isEmpty) Wikis.find(this)
+    else findId flatMap Wikis.find // special for NOCATS
+   }
+
+  /** find the ID for this page, if any - respects the NOCATS */
   def findId = {
     WikiIndex.withIndex { idx =>
-      idx.get2(name, this)
-    } orElse Wikis.find(this).map(_._id) 
+      if(! cat.isEmpty)
+        idx.get2(name, this)
+      else {
+        // try the nocats
+        idx.get1k(name).filter(x=>WID.NOCATS.contains(x.cat)).headOption.flatMap(x=>idx.get2(name, x))
+        //todo maybe forget this branch and enhance equals to look at nocats ?
+      }
+    } orElse Wikis.find(this).map(_._id)
   }
 
   def uwid = findId map {x=>UWID(cat, x)}
