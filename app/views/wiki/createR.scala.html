@@ -1,0 +1,39 @@
+@**************
+render a regular wiki page - site pages are rendered with wikiSite.scala.html
+**************@
+
+@(template:String, au:Option[model.User])
+@import model._
+
+@htmlHeadBar("Create new reactor", au)
+
+<div class="container">
+  <div class="row">
+    <div class="span9">
+
+      <h1>Creating new Reactor</h1>
+
+      @helper.form(action=routes.Wikie.createR2(template), 'class->"well form-inline") {
+        Name: <input type="text" class="input-large" name="name" placeholder="Name">
+<p>
+        <textarea name="realmDescription" value="realmDescription" rows="3" placeholder="Brief description..." class="input-xxlarge"></textarea>
+        <button type="submit" class="btn">Continue</button>
+      }
+
+      <hr>
+
+      @********** if already two adds in page put none at the bottom, there's also one on the left **********@
+      @htmlFooter(true)
+
+    </div> <!-- /span9 -->
+
+    <div class="span3">
+    @wiki.wikiFrag(WID("Admin","Right"),au,true)
+
+    @addRight()
+    </div>
+
+  </div> <!-- row -->
+</div> <!-- /container -->
+
+@htmlBottom()

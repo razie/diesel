@@ -4,7 +4,7 @@ import java.util.concurrent.TimeUnit
 import javax.mail._
 import javax.mail.internet._
 import java.util._
-import akka.actor.{Actor, Props}
+import akka.actor.{ Actor, Props }
 import org.bson.types.ObjectId
 import org.joda.time.DateTime
 import play.libs.Akka
@@ -18,24 +18,26 @@ case class EmailMsg(
   from: String,
   subject: String,
   html: String,
-  isNotification:Boolean=true,
-  bcc:Seq[String] = Seq.empty,
-  status:String=EmailMsg.STATUS_READY,
-  lastError:String="",
-  sendCount:Integer=0,
-  lastDtm:DateTime=DateTime.now(),
-  _id:ObjectId = new ObjectId()) extends db.REntity[EmailMsg] {
-  def shouldResend = EmailMsg.RESEND contains status
+  isNotification: Boolean = true,
+  bcc: Seq[String] = Seq.empty,
+  status: String = EmailMsg.STATUS_READY,
+  lastError: String = "",
+  sendCount: Integer = 0,
+  lastDtm: DateTime = DateTime.now(),
+  _id: ObjectId = new ObjectId()) extends db.REntity[EmailMsg] {
+  def shouldResend = (EmailMsg.RESEND contains status) && (sendCount < EmailMsg.MAX_RETRY_COUNT)
 }
 
 object EmailMsg {
-  val STATUS_READY="ready"
-  val STATUS_SENDING="sending"
-  val STATUS_OOPS="oops"
-  val STATUS_FAILED="failed"
-  val STATUS_SKIPPED="skipped"
+  val STATUS_READY = "ready"
+  val STATUS_SENDING = "sending"
+  val STATUS_OOPS = "oops"
+  val STATUS_FAILED = "failed"
+  val STATUS_SKIPPED = "skipped"
 
   val RESEND = Array (STATUS_READY, STATUS_OOPS)
+
+  val MAX_RETRY_COUNT = 3
 }
 
 /**
@@ -57,7 +59,7 @@ object SendEmail extends razie.Logging {
   /**
    * send an email
    */
-  def send(to: String, from: String, subject: String, html: String, bcc:Seq[String] = Seq.empty)(implicit mailSession: MailSession) {
+  def send(to: String, from: String, subject: String, html: String, bcc: Seq[String] = Seq.empty)(implicit mailSession: MailSession) {
     val e = new EmailMsg(to, from, subject, html, false, bcc)
     mailSession.emails = e :: mailSession.emails
     e.createNoAudit
@@ -66,7 +68,7 @@ object SendEmail extends razie.Logging {
   /**
    * send an email
    */
-  def notif(to: String, from: String, subject: String, html: String, bcc:Seq[String] = Seq.empty)(implicit mailSession: MailSession) {
+  def notif(to: String, from: String, subject: String, html: String, bcc: Seq[String] = Seq.empty)(implicit mailSession: MailSession) {
     val e = new EmailMsg(to, from, subject, html, true, bcc)
     mailSession.emails = e :: mailSession.emails
     e.createNoAudit
@@ -81,16 +83,13 @@ object SendEmail extends razie.Logging {
     implicit val mailSession = new MailSession
     val res = body(mailSession)
 
-    // spawn sender
-//    razie.Threads.fork {
-      sender ! mailSession
-//    }
+    sender ! mailSession // spawn sender
 
     res
   }
 
-  val STATE_OK="ok"               // all ok
-  val STATE_MAXED = "maxed"       // last sending resulted in too many emails - should wait a bit
+  val STATE_OK = "ok" // all ok
+  val STATE_MAXED = "maxed" // last sending resulted in too many emails - should wait a bit
 
   val CMD_TICK = "tick"
   val CMD_RESEND = "resend"
@@ -100,46 +99,46 @@ object SendEmail extends razie.Logging {
 
   class EmailSender extends Actor {
     def receive = {
-      case id:ObjectId => db.ROne[EmailMsg](id).map(e=> isend(e, new MailSession))
-      case e:EmailMsg => isend(e, new MailSession)
-      case mailSession : MailSession => {
+      case id: ObjectId => db.ROne[EmailMsg](id).map(e => isend(e, new MailSession))
+      case e: EmailMsg => isend(e, new MailSession)
+      case mailSession: MailSession => {
         curCount += mailSession.emails.size
         if (state == STATE_OK)
           mailSession.emails.reverse.map(e => isend(e, mailSession))
         else {
           clog << "EmailSender received messages while maxed, scheduling just one"
-          mailSession.emails.lastOption.foreach (e=> sender ! e._id)
+          mailSession.emails.lastOption.foreach (e => sender ! e._id)
         }
       }
       case CMD_TICK => {
         // check for messages to retry
         clog << s"EmailSender CMD_TICK state=$state"
-        if(state == STATE_MAXED)
-          db.ROne[EmailMsg]("state" -> EmailMsg.STATUS_OOPS).foreach(e=> {self ! e._id; curCount += 1})
+        //        if(state == STATE_MAXED)
+        //         db.ROne[EmailMsg]("state" -> EmailMsg.STATUS_OOPS).foreach(e=> {self ! e._id; curCount += 1})
+        db.RMany[EmailMsg]().filter(_.shouldResend).foreach(e => { self ! e._id; curCount += 1 })
       }
 
       case CMD_RESEND => {
         clog << s"EmailSender CMD_RESEND state=$state"
         // check for messages to retry
-        db.RMany[EmailMsg]().filter(_.shouldResend).foreach(e=> {self ! e._id; curCount += 1})
+        db.RMany[EmailMsg]().filter(_.shouldResend).foreach(e => { self ! e._id; curCount += 1 })
       }
     }
 
     // reload ALL messages to send - whatever was not sent last time
-    override def preStart() : Unit = {
-      db.RMany[EmailMsg]().filter(_.shouldResend).foreach(e=> {this.sender ! e._id; curCount += 1})
+    override def preStart(): Unit = {
+      db.RMany[EmailMsg]().filter(_.shouldResend).foreach(e => { this.sender ! e._id; curCount += 1 })
 
       Akka.system.scheduler.schedule(
         Duration.create(0, TimeUnit.MILLISECONDS),
         Duration.create(30, TimeUnit.MINUTES),
         this.self,
-        CMD_TICK
-      )
+        CMD_TICK)
     }
 
     /** send an email */
     private def isend(ie: EmailMsg, mailSession: MailSession) {
-      val e = ie.copy(status=EmailMsg.STATUS_SENDING, sendCount = ie.sendCount+1, lastDtm=DateTime.now())
+      val e = ie.copy(status = EmailMsg.STATUS_SENDING, sendCount = ie.sendCount + 1, lastDtm = DateTime.now())
       e.updateNoAudit
 
       val mysession = mailSession.session
@@ -147,13 +146,13 @@ object SendEmail extends razie.Logging {
       if (Config.hostport.startsWith("test") && NOEMAILSTESTING ||
         Config.isLocalhost && (e.isNotification || NO_EMAILS)) {
         Audit.logdb("EMAIL_SENT_NOT", Seq("to:" + e.to, "from:" + e.from, "subject:" + e.subject, "body:" + e.html).mkString("\n"))
-        e.copy(status=EmailMsg.STATUS_SKIPPED, lastDtm=DateTime.now()).updateNoAudit
+        e.copy(status = EmailMsg.STATUS_SKIPPED, lastDtm = DateTime.now()).updateNoAudit
       } else
         try {
           val message = new MimeMessage(mysession);
           message.setFrom(new InternetAddress(e.from));
           message.addRecipient(Message.RecipientType.TO, new InternetAddress(e.to));
-          e.bcc.foreach { b=>
+          e.bcc.foreach { b =>
             message.addRecipient(Message.RecipientType.BCC, new InternetAddress(b));
           }
 
@@ -191,31 +190,31 @@ object SendEmail extends razie.Logging {
           Transport.send(message);
           Audit.logdb("EMAIL_SENT", Seq("to:" + e.to, "from:" + e.from, "subject:" + e.subject).mkString("\n"))
           e.deleteNoAudit
-          if(state == STATE_MAXED) {
-            // reload all messages
-            db.RMany[EmailMsg]("state" -> EmailMsg.STATUS_OOPS).foreach(e=> {sender ! e._id; curCount += 1})
+
+          if (state == STATE_MAXED) {
+            // reload all messages that were waiting
+            db.RMany[EmailMsg]("state" -> EmailMsg.STATUS_OOPS).foreach(e => { sender ! e._id; curCount += 1 })
           }
-          state = STATE_OK
+
+          state = STATE_OK // reset state if it was bad
         } catch {
           case mex: MessagingException => {
-            e.copy(status=EmailMsg.STATUS_OOPS, lastDtm=DateTime.now(), lastError = mex.toString).update
+            e.copy(status = EmailMsg.STATUS_OOPS, lastDtm = DateTime.now(), lastError = mex.toString).update
             Audit.logdb("ERR_EMAIL",
               Seq("to:" + e.to, "from:" + e.from,
-                "subject:" + e.subject, "html="+e.html,
-                "EXCEPTION = "+mex.toString()).mkString("\n"))
-            if(mex.toString contains("Daily sending quota exceeded"))
+                "subject:" + e.subject, "html=" + e.html,
+                "EXCEPTION = " + mex.toString()).mkString("\n"))
+            if (mex.toString contains ("Daily sending quota exceeded"))
               state = STATE_MAXED
             error("ERR_EMAIL", mex)
           }
+        } finally {
+          synchronized {
+            curCount -= 1
+          }
         }
-
-      synchronized {
-        curCount -= 1
-      }
     }
-
   }
-
 }
 
 class Gmail(val debug: Boolean = false) {
@@ -223,7 +222,7 @@ class Gmail(val debug: Boolean = false) {
   val SMTP_AUTH_USER = Config.SUPPORT
   val SMTP_AUTH_PWD = "zlMMCe7HLnMYOvbjYpPp6w==";
 
-  def session = {
+  lazy val session = {
     val props = new Properties();
     props.put("mail.smtp.auth", "true");
     props.put("mail.smtp.starttls.enable", "true");

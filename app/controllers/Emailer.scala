@@ -11,7 +11,7 @@ object Emailer extends RazController with Logging {
 
   def RK = admin.Config.sitecfg("RacerKidz").getOrElse("RacerKidz")
 
-  def text(name: String) = Wikis.find("Admin", "template-emails").flatMap(_.section("template", name)).map(_.content).getOrElse("[ERROR] can't find Admin template-emails: " + name)
+  def text(name: String) = Wikis.rk.find("Admin", "template-emails").flatMap(_.section("template", name)).map(_.content).getOrElse("[ERROR] can't find Admin template-emails: " + name)
 
   def sendSupport(subj:String, name:String, e: String, desc: String, details: String, page:String)(implicit mailSession: MailSession) {
     val html = text("supportrequested").format(name, e, desc, details, page)

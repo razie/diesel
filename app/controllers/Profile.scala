@@ -567,7 +567,7 @@ object Profile extends RazController with Logging {
 
   def publicProfile = Action { implicit request =>
     forUser { au =>
-      if (WikiIndex.withIndex(_.get2(au.userName, WID("User", au.userName)).isDefined))
+      if (WikiIndex.withIndex(Wikis.RK)(_.get2(au.userName, WID("User", au.userName)).isDefined))
         Redirect(controllers.Wiki.w(WID("User", au.userName)))
       else
         Redirect(routes.Wikie.wikieEdit(WID("User", au.userName)))

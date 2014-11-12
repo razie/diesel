@@ -1,11 +1,16 @@
 @***
 creates the navigation bar
 ***@
-@(user:Option[model.WikiUser], mobile:Boolean = false, barTitle: String="Bar Title", logo:Option[String]=None, url:Option[String]=Some("/"), isSite:Boolean=false, club:String="")(implicit au:Option[model.User], request:Option[Request[_]])
+@(user:Option[model.WikiUser], mobile:Boolean = false, barTitle: String="Bar Title", logo:Option[String]=None, url:Option[String]=Some("/"), isSite:Boolean=false, club:String="", realm:String=model.Wikis.RK)(implicit au:Option[model.User], request:Option[Request[_]])
 
 @import _root_.admin.Config
 
 @web()=@{request.flatMap(x=>model.Website.apply(x)) getOrElse model.Website.dflt}
+
+@searchUrl()=@{ 
+   if(model.Wikis.RK == realm) s"http://${Config.hostport}/wikie/search" 
+   else s"http://${Config.hostport}/we/$realm/search"
+   }
 
 <div class="navbar navbar-fixed-top">
   <div class="navbar-inner">
@@ -27,7 +32,7 @@ creates the navigation bar
       <ul class="nav">
         @if(!isSite) {
           <li class="divider-vertical"></li>
-          <li><a href="@web().navBrowse">Browse</a></li>
+          <li><a href="@web().navBrowse(realm)">Browse</a></li>
           <li><a href="http://@Config.hostport/doe/lucky">Lucky</a></li>
           <li><a href="/doe/selecttheme">Theme</a></li>
         }
@@ -58,7 +63,7 @@ creates the navigation bar
         } 
       </ul>
           
-      <form class="navbar-search pull-right" action="http://@Config.hostport/wikie/search" method="GET">
+      <form class="navbar-search pull-right" action="@searchUrl()" method="GET">
         <input type="text" class="search-query" placeholder="Search" id="q" name="q" title="Search box"/>
       </form>
 

@@ -9,7 +9,7 @@ Need consent
 <div class="row">
 <div class="span9">
 
-  @model.Wikis.find("Admin", "Consent").map{we =>
+  @model.Wikis.rk.find("Admin", "Consent").map{we =>
       <h1>@au.ename - Consent Required!</h1>
 
     @wiki.wikiFrag(we.wid,Some(au),true,Some(we), None, true, true)

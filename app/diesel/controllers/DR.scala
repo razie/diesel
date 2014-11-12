@@ -27,7 +27,7 @@ object DR extends RazController with Logging {
 
   /** load and initialize a reactor */
   private def iload(uname:String, rname: String) = {
-    if(dbr.isEmpty) dbr = Reactors.find(uname, rname).flatMap(_.page) map Reactors.apply
+    if(dbr.isEmpty) dbr = DReactors.find(uname, rname).flatMap(_.page) map DReactors.apply
     if(re.isEmpty) re = dbr map (_.load)
     re
   }

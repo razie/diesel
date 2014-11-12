@@ -5,7 +5,7 @@ render a regular wiki page - site pages are rendered with wikiSite.scala.html
 @(wid:model.WID, page:Option[model.WikiEntry], au:Option[model.User])
 @import model._
 
-@htmlHeadBar(page.flatMap(_.contentTags.get("title")).getOrElse(wid.cat +": "+ page.map(_.label).getOrElse(model.Wikis.label(wid))), au)
+@htmlHeadBar(page.flatMap(_.contentTags.get("title")).getOrElse(wid.cat +": "+ page.map(_.label).getOrElse(model.Wikis(wid.getRealm).label(wid))), au)
 
 <div class="container">
   <div class="row">

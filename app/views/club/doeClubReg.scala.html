@@ -12,7 +12,7 @@ club admin manages user: membership, regsitration etc
       s.split(",").filter(x => ! Array("Owner","Admin").contains(x)).map(x=>(x,x)).toSeq
     }
     case None => {
-      model.Wikis.pageNames("Link").map(x=>(x,x)).toList
+      model.Wikis.rk.pageNames("Link").map(x=>(x,x)).toList
     }
   }
 }
@@ -99,7 +99,13 @@ club admin manages user: membership, regsitration etc
   	routes.Club.doeClubUwRegstatusupd(uw._id.toString, "delete").toString,
   	"btn btn-danger"
   	)
-  
+  @if(uw.user.exists(_.tasks.exists(_.name == model.UserTasks.START_REGISTRATION))) {
+    <a href="@routes.Club.doeCreateRegTask(uw._id.toString)" class="btn btn-success disabled" title="Create a task for the user to start registration!">Create Reg Task</a>
+  } else {
+    <a href="@routes.Club.doeCreateRegTask(uw._id.toString)" class="btn btn-success" title="Create a task for the user to start registration!">Create Reg Task</a>
+  }
+
+
 </td></tr></table>
 </div> <!-- /well -->
 <div class="well">  

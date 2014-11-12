@@ -2,7 +2,7 @@
 list all topics in category
 **************@
 
-@(name:String, au:Option[model.User])
+@(realm:String, name:String, au:Option[model.User])
 @import model._
 
 @htmlHeadBar("All topics in category: " +name, au)
@@ -16,8 +16,8 @@ list all topics in category
       <div class="well">
         <b>All</b> @name entries:
         <ul>
-        @for(p <- model.Wikis.pages(name) if(controllers.Wiki.isVisible(au,p.props))) {
-          <li><a href="@controllers.Wiki.w(name,p.name)">@p.label</a> </li>
+        @for(p <- model.Wikis(realm).pages(name) if(controllers.Wiki.isVisible(au,p.props))) {
+          <li><a href="@controllers.Wiki.w(name, p.name, realm)">@p.label</a> </li>
         } 
         </ul>
       </div> 
@@ -29,7 +29,7 @@ list all topics in category
     </div> <!-- /span9 -->
 
       <div class="span3">
-          @wiki.wikiFrag(WID("Admin","Right"),au,true, None)
+          @wiki.wikiFrag(WID("Admin","Right").r(realm),au,true, None)
       </div>
 
   </div> <!-- row -->

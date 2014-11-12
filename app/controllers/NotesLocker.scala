@@ -62,7 +62,7 @@ case class NoteShare (
   how: String="", // "" - read/write, "ro" - readonly
   crDtm:DateTime = DateTime.now,
   _id: ObjectId = new ObjectId()) extends REntity[NoteShare] {
-  def note = Wikis.find(noteId)
+  def note = Notes.wiki.find(noteId)
 }
 
 /** inbox */
@@ -108,17 +108,22 @@ object NotesTags {
   final val CIRCLE = "circle"
 }
 
+//todo Notes should be a module, working per realm
 object Notes {
   import NotesTags._
 
   final val CAT = "Note"
 
+  final val REALM = "note"
+
+  final val wiki = Wikis(REALM)
+
   def dec(au:User)(w:WikiEntry) = if(w.by == au._id && w.tags.contains(NotesTags.ENC))w.copy(content=w.content.dec) else w
 
   def notesById(id: ObjectId) =
-    Wikis.weTable(CAT).findOne(Map("_id" -> id)) map (grater[WikiEntry].asObject(_))
+    wiki.weTable(CAT).findOne(Map("_id" -> id)) map (grater[WikiEntry].asObject(_))
   def notesForUser(uid: ObjectId, archived: Boolean = false) =
-    Wikis.weTable(CAT).find(Map("by" -> uid)) map (grater[WikiEntry].asObject(_)) filter (n => !n.tags.contains(NotesTags.ARCHIVE) || archived)
+    wiki.weTable(CAT).find(Map("by" -> uid)) map (grater[WikiEntry].asObject(_)) filter (n => !n.tags.contains(NotesTags.ARCHIVE) || archived)
   def tagsForUser(uid: ObjectId) = {
     notesForUser(uid).toList.flatMap(_.tags).filter(_ != NotesTags.ARCHIVE).filter(_ != "").groupBy(identity).map(t => (t._1, t._2.size)).toSeq.sortBy(_._2).reverse
     // TODO somehow i can get empty tags...
@@ -276,7 +281,7 @@ object NotesLocker extends RazController with Logging {
             we
           }
 
-          Wikis.find(id) match {
+          Notes.wiki.find(id) match {
             case Some(w) => {
               msg = ("msg" -> "[Updated]")
               for (
@@ -312,7 +317,7 @@ object NotesLocker extends RazController with Logging {
               if (content.trim.isEmpty)
                 msg = ("err" -> "[Empty note...]")
               else {
-                var we = model.WikiEntry(CAT, wid.name, "", "md", content, au._id, Seq(), "notes", 1, wid.parent)
+                var we = model.WikiEntry(CAT, wid.name, "", "md", content, au._id, Seq(), Reactors.NOTES, 1, wid.parent)
                 we = we.copy(_id = id)
                 we = preprocess(we, false)
 
@@ -761,10 +766,10 @@ object NotesLocker extends RazController with Logging {
 
   // when configuration changes, call this to udpate mine
   Config callback { () =>
-    inw = Wikis.find("Admin", "notes-tips").toList
+    inw = Wikis.rk.find("Admin", "notes-tips").toList
   }
 
-  private var inw = Wikis.find("Admin", "notes-tips").toList
+  private var inw = Wikis.rk.find("Admin", "notes-tips").toList
 
   def notesWiki = inw
 

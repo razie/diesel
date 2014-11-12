@@ -31,7 +31,7 @@ create account
     myForm("userType"),
     _root_.admin.Config.userTypes.map(x=>(x.toString,x.toString)),
      '_label ->
-             (if (realm=="notes") "Account type"
+             (if (realm==model.Reactors.NOTES) "Account type"
   else "What you are"),
     '_showConstraints -> false)
   @helper.inputText(
@@ -54,7 +54,7 @@ create account
   @helper.checkbox(
     myForm("accept"),
     '_text -> Html(
-    if (realm=="notes")
+    if (realm==model.Reactors.NOTES)
       """I accept the <a href="/wiki/Terms of Service-notes">Terms of Service</a>"""
     else
       """I accept the <a href="/wiki/Terms of Service">Terms of Service</a>"""

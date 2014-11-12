@@ -152,6 +152,7 @@
       <sourceFolder url="file://$MODULE_DIR$/public" type="java-resource" />
       <excludeFolder url="file://$MODULE_DIR$/.settings" />
       <excludeFolder url="file://$MODULE_DIR$/.target" />
+      <excludeFolder url="file://$MODULE_DIR$/BACKUP" />
       <excludeFolder url="file://$MODULE_DIR$/application.home_IS_UNDEFINED" />
       <excludeFolder url="file://$MODULE_DIR$/bin" />
       <excludeFolder url="file://$MODULE_DIR$/data" />

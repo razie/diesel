@@ -89,8 +89,8 @@ PROBLEM: many places use label as name... via Wikis.formatName
     '_showConstraints -> false)
             
   @if(au.get.hasPerm(model.Perm.adminDb)) {
-    <p>Reserved: @reserved(model.Wikis.find(wid.cat,wid.name))
-    @if(model.Wikis.find(wid.cat,wid.name).isDefined) {
+    <p>Reserved: @reserved(model.Wikis(wid.getRealm).find(wid.cat,wid.name))
+    @if(model.Wikis(wid.getRealm).find(wid.cat,wid.name).isDefined) {
       <p><a href="@routes.Wikie.wikieDelete1(wid)">Delete it</a>
     }
   }
@@ -113,7 +113,7 @@ PROBLEM: many places use label as name... via Wikis.formatName
 }
 </div>
 
-@model.Wikis.find(wid).map{we=>
+@model.Wikis(wid.getRealm).find(wid).map{we=>
   <div class="well">
     @wiki.wikiFrag(wid,au, false, Some(we))
   </div>

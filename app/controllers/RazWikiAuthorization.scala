@@ -130,7 +130,7 @@ object RazWikiAuthorization extends RazController with Logging with WikiAuthoriz
     val cat = wid.cat
     val name = wid.name
     (for (
-      pubProfile <- ("User" != cat || WikiIndex.withIndex(_.get1k(name).exists(_.cat == cat)) || au.map(name == _.userName).getOrElse(isAdmin)) orErr ("Sorry - profile not found or is private! %s : %s".format(cat, name));
+      pubProfile <- ("User" != cat || WikiIndex.withIndex(wid.getRealm)(_.get1k(name).exists(_.cat == cat)) || au.map(name == _.userName).getOrElse(isAdmin)) orErr ("Sorry - profile not found or is private! %s : %s".format(cat, name));
       mine2 <- (!we.isDefined || isVisible(au, we.get.props, "visibility", we)) orErr ("Sorry - topic is not visible!"); // TODO report
       t <- true orErr ("just can't, eh")
     ) yield true)
@@ -147,7 +147,7 @@ object RazWikiAuthorization extends RazController with Logging with WikiAuthoriz
   def canEdit(wid: WID, u: Option[WikiUser], w: Option[WikiEntry], props: Option[Map[String, String]] = None)(implicit errCollector: VErrors): Option[Boolean] = {
     val cat = wid.cat
     val name = wid.name
-    lazy val we = if (w.isDefined) w else Wikis.find(cat, name)
+    lazy val we = if (w.isDefined) w else Wikis(wid.getRealm).find(cat, name)
     lazy val wprops = if (we.isDefined) we.map(_.props) else props
     if (u.isDefined && u.exists(_.hasPerm(Perm.adminDb)))
       Some(true)

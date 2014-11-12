@@ -274,7 +274,7 @@ object Wikie extends WikieBase {
             ) yield {
               //todo find the right realm from the url or something like Config.realm
               import razie.OR._
-              var we = model.WikiEntry(wid.cat, wid.name, l, m, co, au._id, Seq(), parent.map(_.realm) OR "rk", 1, wid.parent)
+              var we = model.WikiEntry(wid.cat, wid.name, l, m, co, au._id, Seq(), parent.map(_.realm) OR wid.getRealm, 1, wid.parent)
 
               if (we.tags.mkString(",") != tags)
                 we = we.withTags(tags.split(",").map(_.trim).toSeq, au._id)
@@ -350,7 +350,7 @@ object Wikie extends WikieBase {
   private def notifyFollowersCreate(wpost: WikiEntry, au: User)(implicit mailSession: MailSession) = {
     // 1. followers of this topic or followers of parent
 
-    wpost.parent flatMap (Wikis.find(_)) map { w =>
+    wpost.parent flatMap (Wikis(wpost.realm).find) map { w =>
       // user wikis
       (Users.findUserById(w.by).map(_._id).toList ++ model.Users.findUserLinksTo(w.uwid).filter(_.notif == model.UW.EMAIL_EACH).toList.map(_.userId)).distinct.filter(_ != au._id).map(uid =>
         Users.findUserById(uid).map(u => Emailer.sendEmailNewTopic(u, au, w.wid, wpost)))
@@ -390,11 +390,11 @@ object Wikie extends WikieBase {
   }
 
   // from category - add a ...
-  def add(cat: String) = Action { implicit request =>
+  def add(cat: String, realm:String) = Action { implicit request =>
     addForm.bindFromRequest.fold(
     formWithErrors => Msg2("Oops, can't add that name!" + formWithErrors, Some("/wiki/" + cat)),
     {
-      case name: String => Redirect(routes.Wikie.wikieEdit(WID(cat, name)))
+      case name: String => Redirect(routes.Wikie.wikieEdit(WID(cat, name).r(realm)))
     })
   }
 
@@ -525,7 +525,7 @@ object Wikie extends WikieBase {
     })
   }
 
-  def wikieAdd(cat: String, realm:String="rk") = FAU {
+  def wikieAdd(cat: String, realm:String=Wikis.RK) = FAU {
     implicit au => implicit errCollector => implicit request =>
     (for (
       w <- Wikis.category(cat)
@@ -534,7 +534,7 @@ object Wikie extends WikieBase {
     }) getOrElse unauthorized()
   }
 
-  def wikieCreate(cat: String, realm:String="rk") = FAU {
+  def wikieCreate(cat: String, realm:String=Wikis.RK) = FAU {
     implicit au => implicit errCollector => implicit request =>
     (for (
       w <- Wikis.category(cat)
@@ -651,27 +651,27 @@ object Wikie extends WikieBase {
   }
 
   /** move to new parent */
-  def wikieMove1(id:String, realm:String="rk") =  FAU {
+  def wikieMove1(id:String, realm:String=Wikis.RK) =  FAU {
     implicit au => implicit errCollector => implicit request =>
     (for (
-      w <- Wikis.findById(id)
+      w <- Wikis(realm).findById(id)
     ) yield {
       val parentCats1 = Wikis(realm).domain.aEnds(w.wid.cat, "Parent")
       val parentCats2 = Wikis(realm).domain.zEnds(w.wid.cat, "Parent").map(_.wid.cat)
       val parents = parentCats1.flatMap {c=>
-        Wikis.pages(c).filter(w=>canEdit(w.wid, auth, Some(w)).exists(_ == true)).map(w=>(w.uwid, w.label))
+        Wikis(realm).pages(c).filter(w=>canEdit(w.wid, auth, Some(w)).exists(_ == true)).map(w=>(w.uwid, w.label))
       }
       Ok(views.html.wiki.wikiMove(w.wid, w, parents, auth))
     }) getOrElse unauthorized()
   }
 
   /** move to new parent */
-  def wikieMove2(page:String, from:String, to:String, realm:String="rk") = FAU {
+  def wikieMove2(page:String, from:String, to:String, realm:String=Wikis.RK) = FAU {
     implicit au => implicit errCollector => implicit request =>
       (for (
-        pageW <- Wikis.findById(page);
-        fromW <- Wikis.findById(from);
-        toW <- Wikis.findById(to);
+        pageW <- Wikis(realm).findById(page);
+        fromW <- Wikis(realm).findById(from);
+        toW <- Wikis(realm).findById(to);
         hasP <- pageW.parent.exists(_.toString == from) orErr "does not have a parent"
       ) yield {
         db.tx("Wiki.Move") { implicit txn =>
@@ -756,6 +756,91 @@ object Wikie extends WikieBase {
     val wl = wikis.take(500).toList
     wl
   }
+
+  /** start creatinga new reactor */
+  def createR(template: String) = Action { implicit request =>
+    Ok(views.html.wiki.createR(template, auth))
+  }
+
+  /** start creatinga new reactor */
+  def createR2(template: String) = Action { implicit request =>
+    implicit val errCollector = new VErrors()
+
+    val data = request.body.asFormUrlEncoded
+    val data2 = data.map(_.collect { case (k, v :: r) => (k, v) }).get // somehow i get list of values?
+    val realm = data2("name")
+
+    val wid = WID("Realm", realm)
+
+    (for (
+      au <- activeUser;
+//      can <- canEdit(wid, auth, Some(w));
+//      r1 <- au.hasPerm(Perm.uWiki) orCorr cNoPermission;
+      hasQuota <- (au.isAdmin || au.quota.canUpdate) orCorr cNoQuotaUpdates
+    ) yield {
+
+      val co =
+        s"""A new reactor/realm: $realm
+           |
+           |Browse: <a href="/w/$realm/wiki">/w/$realm/wiki</a>
+         """.stripMargin
+      var we = model.WikiEntry(wid.cat, wid.name, s"Reactor $realm", "md", co, au._id, Seq(), wid.getRealm, 1, wid.parent)
+
+      val wikiCo =
+        s"""admin:wiki for $realm
+           |${data2.getOrElse("realmDescription","no description")}
+           |
+           |To continue browsing, please follow a category: [[list:Category]]
+           |
+         """.stripMargin
+
+      val catCo =
+        s"""Catgoryies for $realm
+           |To continue browsing, please follow a category: [[list:Category]]
+           |
+         """.stripMargin
+
+      // neccessary pages
+      var pages = template match {
+        case "default" =>
+          model.WikiEntry("Admin", "wiki", "Browse Wiki", "md", wikiCo, au._id, Seq(), realm, 1, None) ::
+          model.WikiEntry("Category", "Category", "Category", "md", catCo, au._id, Seq(), realm, 1, None) ::
+          Nil
+        case "website" => // todo add all other pages - implement a template system
+          model.WikiEntry("Admin", "wiki", "Browse Wiki", "md", wikiCo, au._id, Seq(), realm, 1, None) ::
+          model.WikiEntry("Admin", "About", s"About $realm", "md", s"admin:about $realm", au._id, Seq(), realm, 1, None) ::
+          Nil
+      }
+
+      // needs owner?
+//                    if (WikiDomain.needsOwner(wid.cat)) {
+      we = we.cloneProps(we.props ++ Map("owner" -> au.id), au._id)
+      this dbop model.UserWiki(au._id, we.uwid, "Owner").create
+      cleanAuth()
+//                    }
+      pages = pages.map(_.cloneProps(we.props ++ Map("owner" -> au.id), au._id))
+
+      // todo visibility? public unless you pay 20$ account
+
+      db.tx("realm.create") { implicit txn =>
+        we.create
+        Reactors add realm
+        pages.foreach(_.create)
+        Audit ! WikiAudit("CREATE_R", we.wid.wpath, Some(au._id))
+
+        admin.SendEmail.withSession { implicit mailSession =>
+          au.quota.incUpdates
+          au.shouldEmailParent("Everything").map(parent => Emailer.sendEmailChildUpdatedWiki(parent, au, wid)) // ::: notifyFollowers (we)
+
+          Emailer.tellRaz("New REALM", au.userName, wid.ahref)
+        }
+      }
+
+      Redirect(controllers.Wiki.w(we.wid, true)).flashing("count" -> "0")
+    }) getOrElse
+      noPerm(wid, "ADMIN_CREATE_R")
+  }
+
 }
 
 

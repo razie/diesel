@@ -6,7 +6,7 @@
  */
 package model
 
-import diesel.model.Reactors
+import diesel.model.{DReactors}
 import org.bson.types.ObjectId
 import razie.{cdebug, cout, clog}
 
@@ -34,7 +34,7 @@ object SedWiki {
   val ALIAS = """alias:([^\]]*)""".r
   val NOALIAS = """(rk:)?([^|\]]*)([ ]*[|][ ]*)?([^]]*)?""".r
 
-  def apply(repf: (String => String), input: String): Option[(String, Option[ILink])] = {
+  def apply(realm:String, repf: (String => String), input: String): Option[(String, Option[ILink])] = {
     var i: Option[ILink] = None
 
     input match {
@@ -43,13 +43,13 @@ object SedWiki {
       case SEARCH2(nm) =>
         Some("""<a href="http://google.com/search?q=""" + Enc.toUrl(nm) + "\">" + nm + "</a>", None)
 
-      case LIST(cat) => {
-        Some(((if (Wikis.pageNames(cat).size < 100)
-          Wikis.pageNames(cat).toList.sortWith(_ < _).map { p =>
-          Wikis.formatWikiLink(WID(cat, p), p, p)
-        }.map(_._1).mkString(" ")
-        else "TOO MANY to list"), None))
-      }
+      case LIST(cat) => Some(
+          (if (Wikis(realm).pageNames(cat).size < 100)
+            Wikis(realm).pageNames(cat).toList.sortWith(_ < _).map { p =>
+              Wikis.formatWikiLink(WID(cat, p).r(realm), p, p)
+            }.map(_._1).mkString(" ")
+          else "TOO MANY to list"),
+          None)
 
       case USERLIST(cat) => {
         // TODO can't see more than 20-
@@ -58,7 +58,7 @@ object SedWiki {
             val up = razie.NoStaticS.get[model.WikiUser]
             val upp = up.toList.flatMap(_.myPages(cat)).map(_.asInstanceOf[{ def wid: WID }])
             "<ul>" + upp.sortWith(_.wid.name < _.wid.name).take(20).map(_.wid).map { wid =>
-              Wikis.formatWikiLink(wid, Wikis.label(wid).toString, Wikis.label(wid).toString)
+              Wikis.formatWikiLink(wid, Wikis(realm).label(wid).toString, Wikis(realm).label(wid).toString)
             }.map(_._1).map(x => "<li>" + x + "</li>").mkString(" ") + "</ul>"
           } catch {
             case e @ (_: Throwable) => {
@@ -114,6 +114,10 @@ object SedWiki {
   val patRep = """\\([0-9])""".r
 }
 
+// todo remove this and refactor static access
+object WikiParser extends  WikiParserCls(Wikis.RK) {
+}
+
 /** simple parsers */
 trait ParserCommons extends RegexParsers {
   override def skipWhitespace = false
@@ -141,6 +145,15 @@ object ParserSettings {
   Config.callback {() => Config.sitecfg("ParserSettings.debugStates").foreach{s=>
     debugStates = s.toBoolean
   }}
+
+  //======================= forbidden html tags TODO it's easier to allow instead?
+
+  final val hok = "abbr|acronym|address|a|b|blockquote|br|div|dd|dl|dt|font|h1|h2|h3|h4|h5|h6|hr|i|img|li|p|pre|q|s|small|strike|strong|span|sub|sup|" +
+    "table|tbody|td|tfoot|th|thead|tr|ul|u"
+  final val hnok = "applet|area|base|basefont|bdo|big|body|button|caption|center|cite|code|colgroup|col|" +
+    "del|dfn|dir|fieldset|form|frame|frameset|head|html|iframe|input|ins|isindex|kbd|" +
+    "label|legend|link|map|menu|meta|noframes|noscript|object|ol|" +
+    "optgroup|option|param|samp|script|select|style|textarea|title|tt|var"
 }
 
 /** wiki parser base definitions shared by different wiki parser */
@@ -173,7 +186,8 @@ trait WikiParserBase extends ParserCommons {
     }
     def ifold(current:SState, we:Option[WikiEntry]) : SState
 
-    def print (level:Int) : String = ("  " * level) + this.toString
+    def print (level:Int) : String = ("--" * level) + this.toString
+    def printHtml (level:Int) : String = "<ul>"+this.toString+"</ul>"
   }
 
   object SState {
@@ -220,7 +234,8 @@ trait WikiParserBase extends ParserCommons {
       }
     }
     override def toString = s"LSTATE (${states.mkString})"
-    override def print (level:Int):String = ("  " * level) + "LState" + states.map (_.print(level+1)).mkString
+    override def print (level:Int):String = ("--" * level) + "LState" + states.map (_.print(level+1)).mkString
+    override def printHtml (level:Int):String = "LState" + "<ul>"+states.map (x=>"<li>"+x.printHtml(level+1)).mkString + "</ul>"
   }
 
   /** collects the result of a parser rule */
@@ -237,7 +252,8 @@ trait WikiParserBase extends ParserCommons {
       SState(prefix + c.s + suffix, c.tags, c.ilinks, c.decs)
     }
     override def toString = s"RSTATE ($prefix, $mid, $suffix)"
-    override def print (level:Int):String = ("  " * level) + s"RSTATE ($prefix, $suffix)" +  mid.print(level+1)
+    override def print (level:Int):String = ("--" * level) + s"RSTATE ($prefix, $suffix)" +  mid.print(level+1)
+    override def printHtml (level:Int):String = s"RSTATE ($prefix, $suffix)" +  "<ul><li>"+mid.printHtml(level+1)+"</ul>"
   }
 
   /** collects the result of a parser rule */
@@ -330,6 +346,10 @@ trait WikiParserBase extends ParserCommons {
   }
 }
 
+trait WikiParserFactory {
+  def mk (realm:String = Wikis.RK) : WikiParserCls
+}
+
 /** the big parser aggregates all little section parsers
   *
   * the major patterns recognized are:
@@ -353,10 +373,11 @@ trait WikiParserBase extends ParserCommons {
   * String representation of it - so you can be lazy in the SState.
   *
   * */
-object WikiParser extends WikiParserCls {
+object TheWikiParserFactory extends WikiParserFactory {
+  def mk (realm:String = Wikis.RK) = new WikiParserCls (realm)
 }
 
-class WikiParserCls extends WikiParserBase with CsvParser with WikiDomainParser with DslParser {
+class WikiParserCls (realm:String = Wikis.RK) extends WikiParserBase with CsvParser with WikiDomainParser with DslParser {
   def apply(input: String) = parseAll(wiki, input) match {
     case Success(value, _) => value
       // don't change this format
@@ -396,17 +417,17 @@ class WikiParserCls extends WikiParserBase with CsvParser with WikiDomainParser 
         // this is an ilink with auto-props in the name/label
         // for now, reformat the link to allow props and collect them in the ILInk
         //        SedWiki(wikip2a, expand2 _, identity, p.get.s).map(x => SState(x._1, Map(), x._2.map(x => ILink(x.cat, x.name, x.label, p.get.tags, p.get.ilinks)).toList)).get // TODO something with the props
-        SedWiki(identity, p.get.s).map(x => SState(x._1, Map(), x._2.map(x => ILink(x.wid, x.label, p.get.tags, p.get.ilinks)).toList)).get // TODO something with the props
+        SedWiki(realm, identity, p.get.s).map(x => SState(x._1, Map(), x._2.map(x => ILink(x.wid, x.label, p.get.tags, p.get.ilinks)).toList)).get // TODO something with the props
       } else {
         // this is a normal ilink
         //        SedWiki(wikip2a, expand2 _, Wikis.formatName _, name).map(x => SState(x._1, Map(), x._2.toList)).get
-        SedWiki(Wikis.formatName _, name).map(x => SState(x._1, Map(), x._2.toList)).get
+        SedWiki(realm, Wikis.formatName _, name).map(x => SState(x._1, Map(), x._2.toList)).get
       }
     }
   }
 
-  val wikip2 = """\[\[([^:\]]*:)?([^/:\]]*[/:])?([^|\]]+)([ ]*[|][ ]*)?([^]]*)?\]\]"""
-  val wikip2a = """([^:|\]]*:)?([^/:|\]]*[/:])?([^|\]]+)([ ]*[|][ ]*)?([^]]*)?"""
+  final val wikip2 = """\[\[([^:\]]*:)?([^/:\]]*[/:])?([^|\]]+)([ ]*[|][ ]*)?([^]]*)?\]\]"""
+  final val wikip2a = """([^:|\]]*:)?([^/:|\]]*[/:])?([^|\]]+)([ ]*[|][ ]*)?([^]]*)?"""
 
   /** processing special categories */
   def expand2(m: Match): (String, Option[ILink]) = {
@@ -432,8 +453,8 @@ class WikiParserCls extends WikiParserBase with CsvParser with WikiDomainParser 
       case "list:" => {
         val c = if (m.group(3) != null) nm else "?"
 
-        ((if (Wikis.pageNames(c).size < 100)
-          Wikis.pageNames(c).map { p =>
+        ((if (Wikis(realm).pageNames(c).size < 100)
+          Wikis(realm).pageNames(c).map { p =>
           hackmd(p, c, p)
         }.map(_._1).mkString(" ")
         else "TOO MANY to list"), None)
@@ -454,15 +475,6 @@ class WikiParserCls extends WikiParserBase with CsvParser with WikiDomainParser 
   def li2: PS = """^  \* """.r ^^ { case x => "        * " }
   def li3: PS = """^   \* """.r ^^ { case x => "            * " }
 
-  //======================= forbidden html tags TODO it's easier to allow instead?
-
-  val hok = "abbr|acronym|address|a|b|blockquote|br|div|dd|dl|dt|font|h1|h2|h3|h4|h5|h6|hr|i|img|li|p|pre|q|s|small|strike|strong|span|sub|sup|" +
-    "table|tbody|td|tfoot|th|thead|tr|ul|u"
-  val hnok = "applet|area|base|basefont|bdo|big|body|button|caption|center|cite|code|colgroup|col|" +
-    "del|dfn|dir|fieldset|form|frame|frameset|head|html|iframe|input|ins|isindex|kbd|" +
-    "label|legend|link|map|menu|meta|noframes|noscript|object|ol|" +
-    "optgroup|option|param|samp|script|select|style|textarea|title|tt|var"
-
   //  def iframe: PS = "<iframe" ~> """[^>]*""".r ~ """src="""".r ~ """[^"]*""".r ~ """[^>]*""".r <~ ">" ^^ {
   def iframe: PS = "<iframe" ~> """[^>]*""".r <~ ">" ^^ {
     case a => {
@@ -474,12 +486,12 @@ class WikiParserCls extends WikiParserBase with CsvParser with WikiDomainParser 
 
   private def badHtml: PS = iframe | badTags
 
-  private def badTags: PS = "<" ~> hnok.r ~ opt(" " ~ """[^>]*""".r) <~ ">" ^^ {
+  private def badTags: PS = "<" ~> ParserSettings.hnok.r ~ opt(" " ~ """[^>]*""".r) <~ ">" ^^ {
     case b ~ Some(c ~ d) => "&lt;" + b + c + d + "&gt;"
     case b ~ None => "&lt;" + b + "&gt;"
   }
 
-  private def badHtml2: PS = "</" ~> hnok.r <~ ">" ^^ {
+  private def badHtml2: PS = "</" ~> ParserSettings.hnok.r <~ ">" ^^ {
     case b => "&lt;/" + b + "&gt;"
   }
 
@@ -497,7 +509,7 @@ class WikiParserCls extends WikiParserBase with CsvParser with WikiDomainParser 
   private def wikiProps: PS =
     moreWikiProps.foldLeft(
     wikiPropMagic | wikiPropBy | wikiPropWhen | wikiPropXp | wikiPropWhere |
-    wikiPropLoc | wikiPropRoles | wikiPropAds | wikiPropWidgets | wikiPropCsv | wikiPropCsv2 |
+    wikiPropLoc | wikiPropRoles | wikiPropAttrs | wikiPropAttr | wikiPropAds | wikiPropWidgets | wikiPropCsv | wikiPropCsv2 |
     wikiPropTable | wikiPropSection | wikiPropImg | wikiPropVideo | wikiPropScript | wikiPropCall |
     wikiPropFiddle | wikiPropCode | wikiPropField | wikiPropRk | wikiPropLinkImg | wikiPropFeedRss |
     wikiPropDsl | wikiPropTag | wikiPropRed
@@ -631,14 +643,36 @@ class WikiParserCls extends WikiParserBase with CsvParser with WikiDomainParser 
     }
   }
 
-  private def wikiPropRoles: PS = "{{" ~> "roles" ~> """[: ]""".r ~> """[^:]*""".r ~ ":".r ~ """[^}]*""".r <~ "}}" ^^ {
-    case cat ~ coloAdoAdsn ~ how => {
-      if ("Child" == how)
-        SState("{{Has " + parseW2("[[%s]]".format(cat)).s + "(s)}}", Map("roles:" + cat -> how))
-      else if ("Parent" == how)
-        SState("{{Owned by " + parseW2("[[%s]]".format(cat)).s + "(s)}}", Map("roles:" + cat -> how))
-      else
-        SState("{{Can link from " + parseW2("[[%s]]".format(cat)).s + "(s) as %s}}".format(how), Map("roles:" + cat -> how))
+  private def a(name:String, kind:String,d:String="") = 
+    SState(s"Attr: <b>$name</b>", Map("attr:" + name -> kind))
+    
+  private def wikiPropAttrs: PS = "{{attrs" ~> """[: ]""".r ~> """[^:}]*""".r <~ "}}" ^^ {
+    case names => {
+      LState(SState("Attrs:") :: names.split(",").map(name=>a(name, "")).toList )
+    }
+  }
+
+  private def wikiPropAttr: PS = "{{attr" ~> """[: ]""".r ~> """[^:}]*""".r ~ opt(":".r ~> """[^}]*""".r) <~ "}}" ^^ {
+    case name ~ kind => {
+      a (name, kind.getOrElse(""))
+    }
+  }
+
+  private def wikiPropRoles: PS = "{{roles" ~> """[: ]""".r ~> """[^:]*""".r ~ ":".r ~ """[^}]*""".r <~ "}}" ^^ {
+    case cat ~ _ ~ how => {
+      val r = if(Wikis.RK == realm) "Category" else realm+".Category"
+      val cats = "<b>"+parseW2(s"[[$r:$cat | $cat]]").s+"</b>"
+      
+      SState(
+        how match {
+          case "Child"     =>  s"{{Has $cats(s)}}"
+          case "Parent"    =>  s"{{Owned by $cats(s)}}"
+          case "Spec"      =>  s"{{Specified by $cats(s)}}"
+          case "SpecFor"   =>  s"{{Specification for $cats(s)}}"
+          case "Assoc"     =>  s"{{Associated to $cats(s) as $how}}"
+          case _           =>  s"{{Can link from $cats(s) as $how}}"
+        },
+        Map("roles:" + cat -> how))
     }
   }
 
@@ -674,7 +708,7 @@ class WikiParserCls extends WikiParserBase with CsvParser with WikiDomainParser 
   private def wikiPropWidgets: PS = "{{" ~> "widget:" ~> "[^:]+".r ~ optargs <~ "}}" ^^ {
     case name ~ args => {
       SState(
-        Wikis.find(WID("Admin", "widget_" + name)).map(_.content).map { c =>
+        Wikis(realm).find(WID("Admin", "widget_" + name)).map(_.content).map { c =>
           args.foldLeft(c)((c, a) => c.replaceAll(a._1, a._2))
         } getOrElse "")
     }
@@ -695,7 +729,7 @@ class WikiParserCls extends WikiParserBase with CsvParser with WikiDomainParser 
   private def wikiPropFieldVal: PS = "{{" ~> "fval:" ~> "[^:]+".r ~ optargs <~ "}}" ^^ {
     case name ~ args => {
       SState(
-        Wikis.find(WID("Admin", "widget_" + name)).map(_.content).map { c =>
+        Wikis(realm).find(WID("Admin", "widget_" + name)).map(_.content).map { c =>
           args.foldLeft(c)((c, a) => c.replaceAll(a._1, a._2))
         } getOrElse "")
     }
@@ -988,7 +1022,7 @@ trait DslParser extends WikiParserBase {
       if(hidden.isDefined) SState("")
       else LazyState {(current, we) =>
         // try to figure out the language from the content parsed so far
-        val lang = Reactors.findLang(current.tags, we)
+        val lang = DReactors.findLang(current.tags, we)
         val fid = ffiddle(lang)
         SState(s"""<div><b><small>DSL ${stype.replaceFirst("dsl.","")}</b> ($name):</small><br>$fid}</div>""")//, Map.empty, List.empty, List(wffiddle))
       }
@@ -1194,6 +1228,6 @@ Managers|10|Varia
 Board of Directors|2 hours per meeting - +20|Positions Available
 .|.|Secretary for this season and Treasurer for next season (can transition with existing Treasurer this year)
 """
-  println(WikiParser.apply(r1tabbug).s)
+  println(TheWikiParserFactory.mk().apply(r1tabbug).s)
 
 }

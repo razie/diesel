@@ -11,8 +11,8 @@ import razie.OR._
 /**
  * dsl processing - entries with a props section
  */
-class DslProps (val we:WikiEntry) {
-  lazy val propSeq = (we.section("section", "website").toArray flatMap (ws=>admin.Config.parsep(ws.content)))
+class DslProps (val we:WikiEntry, section:String) {
+  lazy val propSeq = (we.section("section", section).toArray flatMap (ws=>admin.Config.parsep(ws.content)))
   lazy val props = propSeq.toMap[String,String]
 
   def prop (s:String) = props get s
@@ -25,7 +25,7 @@ class DslProps (val we:WikiEntry) {
 /**
  * website settings
  */
-class Website (we:WikiEntry) extends DslProps(we) {
+class Website (we:WikiEntry) extends DslProps(we, "website") {
   def name:String = this prop "name" OR "?"
   def url:String = this prop "url" OR "?"
   def css:Option[String] = this prop "css" // dark vs light
@@ -39,7 +39,7 @@ class Website (we:WikiEntry) extends DslProps(we) {
   def privacy:String = this prop "privacy" OR "/page/Privacy_Policy"
 
   def join:String = this prop "join" OR "/doe/join"
-  def navBrowse:String = this prop "nav.browse" OR s"http://${Config.hostport}/wiki"
+  def navBrowse(realm:String):String = this prop "nav.browse" OR (if(Wikis.RK == realm) s"http://${Config.hostport}/wiki" else s"http://${Config.hostport}/w/$realm/wiki")
 
   def parent:Option[WID] = this wprop "parent"
   def skipParent:Option[WID] = this wprop "skipParent"
@@ -65,7 +65,7 @@ object Website {
   def apply (s:String):Option[Website] = {
     val ce = cache.get(s)
     if (ce.isEmpty || System.currentTimeMillis > ce.get.millis) {
-      val w = Wikis.find("Site", s) map (new Website(_))
+      val w = Wikis.rk.find("Site", s) map (new Website(_))
       if (w.isDefined)
         cache.put(s, CacheEntry(w.get, System.currentTimeMillis()+w.get.ttl))
       w
@@ -80,12 +80,53 @@ object Website {
   def getHost (implicit request: Request[_]) =
     if(Config.isLocalhost)
       Some("www.racerkidz.com")    // for testing locally
-//      Some("www.enduroschool.com")    // for testing locally
-//      Some("www.glacierskiclub.com")    // for testing locally
+    //      Some("www.enduroschool.com")    // for testing locally
+    //      Some("www.glacierskiclub.com")    // for testing locally
     //      Some("www.nofolders.net")    // for testing locally
-//      Some("www.dieselreactor.net")    // for testing locally
+    //      Some("www.dieselreactor.net")    // for testing locally
     else
       request.headers.get("X-FORWARDED-HOST")
+}
+
+/**
+ * website settings
+ */
+class Realm (we:WikiEntry) extends DslProps(we, "realm") {
+  def name:String = this prop "name" OR "?"
+  def domain:String = this prop "domain" OR "?"
+//  def css:Option[String] = this prop "css" // dark vs light
+  def ttl:Int = (this prop "ttl" OR "60000").toInt
+
+  //sections should be "More" "Support" "Social"
+  def bottomMenu (section:String) = {
+    propSeq.filter(_._1 startsWith (s"bottom.$section")).map(t=>(t._1.replaceFirst(s"bottom.$section.", ""), t._2))
+  }
+}
+
+object Realms {
+  case class CacheEntry (w:Realm, millis:Long)
+  val cache = new collection.mutable.HashMap[String,CacheEntry]()
+
+  def apply (s:String):Option[Realm] = {
+    val ce = cache.get(s)
+    if (ce.isEmpty || System.currentTimeMillis > ce.get.millis) {
+      val w = Wikis.rk.find("Realm", s) map (new Realm(_))
+      if (w.isDefined)
+        cache.put(s, CacheEntry(w.get, System.currentTimeMillis()+w.get.ttl))
+      w
+    } else
+      ce.map(_.w)
+  }
+
+  def apply (implicit request: Request[_]):Option[Realm] = getRealm flatMap Realms.apply
+
+  def dflt = new Realm(Wikis.categories.head) //todo this is stupid - find better default
+
+  def getRealm (implicit request: Request[_]) = {
+    val h = Website.getHost(request)
+    //todo optimize
+    cache.values.find(_.w.domain.split(",") contains h).map(_.w.name) orElse Some(Wikis.RK)
+  }
 
 }
 

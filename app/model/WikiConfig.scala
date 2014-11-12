@@ -82,21 +82,21 @@ abstract class WikiConfig {
   /** generic site configuration */
   def sitecfg(parm: String) = config(SITECFG) flatMap (_.get(parm))
 
-  /** find the realm from the request parameters - hostport or forwarded-for or something */
+  /** @obsolete find the realm from the request parameters - hostport or forwarded-for or something */
   def realm(implicit request: Request[_]) = {
-    if(request.host contains "localhost") "rk" else {
+    if(request.host contains "localhost") Wikis.RK else {
       config("realm").map { m =>
         Website.getHost match {
           case Some(x) if m contains x => m(x)
-          case _ => "rk"
+          case _ => Wikis.RK
         }
-      } getOrElse "rk"
+      } getOrElse Wikis.RK
     }
   }
 
   /** pre-configured user types */
   def userTypes(implicit request: Request[_])  = {
-    if(realm == "notes")
+    if(realm == Reactors.NOTES)
       // TODO configure these
       List("Individual", "Organization")
     else

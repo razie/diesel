@@ -238,7 +238,7 @@ object Wikil extends WikieBase {
     def hows = {
       Wikis.category("Club").flatMap(_.contentTags.get("roles:" + "User")) match {
         case Some(s) => s.split(",").toList
-        case None => Wikis.pageNames("Link").toList
+        case None => Wikis.rk.pageNames("Link").toList
       }
     }
 
@@ -305,7 +305,7 @@ object Wikil extends WikieBase {
     def hows = {
       Wikis.category(wid.cat).flatMap(_.contentTags.get("roles:" + "User")) match {
         case Some(s) => s.split(",").toList
-        case None => Wikis.pageNames("Link").toList
+        case None => Wikis.rk.pageNames("Link").toList
       }
     }
 

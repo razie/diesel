@@ -122,6 +122,5 @@
 	<classpathentry kind="lib" path="lib_managed/jars/org.easytesting/fest-assert/fest-assert-1.4.jar"/>
 	<classpathentry kind="lib" path="lib_managed/jars/org.easytesting/fest-util/fest-util-1.1.6.jar"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
-	<classpathentry kind="src" path="target/scala-2.10/src_managed/main"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

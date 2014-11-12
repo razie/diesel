@@ -211,7 +211,7 @@ case class User(
 
   def pref(name: String)(default: => String) = prefs.get(name).getOrElse(default)
 
-  def hasRealm(m:String) = realms.contains(m) || (realms.isEmpty && "rk" == m)
+  def hasRealm(m:String) = realms.contains(m) || (realms.isEmpty && Wikis.RK == m)
 
   def quota = ROne[UserQuota]("userId" -> _id) getOrElse UserQuota(_id)
 
@@ -397,6 +397,7 @@ object Users {
   def nameOf(id: ObjectId): String = /* leave it */
     ROne.raw[User]("_id" -> id).fold("???")(_.apply("userName").toString)
 
+  /** find tasks for user */
   def findTasks(id: ObjectId) = RMany[UserTask]("userId" -> id)
 
   def findPC(pid: ObjectId, cid: ObjectId) = ROne[ParentChild]("parentId" -> pid, "childId" -> cid)
@@ -424,6 +425,7 @@ object WikiUsersImpl extends WikiUsers {
   def findUserByUsername(uname: String) = Users.findUserByUsername(uname)
 }
 
+/** the static tasks - reference table */
 @RTable
 case class Task(name: String, desc: String)
 

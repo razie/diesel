@@ -11,13 +11,11 @@
   @stream.comments.map { c =>
     <div class="well">
       <b>By: <a href="/user/@model.Users.nameOf(c.userId)">@model.Users.nameOf(c.userId)</a></b>
-@*********
-&nbsp;    <a href="/wikie" class="btn btn-mini">Reply</a>
-**********@
-       &nbsp; <a href="" class="btn btn-mini btn-info">Report</a>
-@if(controllers.Comment.canEdit(c,user)) {
-       &nbsp; <a href="@routes.Comment.edit(wid,c._id.toString)" class="btn btn-mini btn-info">Edit</a>
-}
+        &nbsp;    <a href="@routes.Comment.vComment1(wid.cat, page.get._id.toString, "Wiki", {new com.mongodb.casbah.Imports.ObjectId().toString}, "text")" class="btn btn-mini btn-success">Reply</a>
+        &nbsp; <a href="" class="btn btn-mini btn-warning">Report</a>
+        @if(controllers.Comment.canEdit(c,user)) {
+          &nbsp; <a href="@routes.Comment.edit(wid,c._id.toString)" class="btn btn-mini btn-info">Edit</a>
+        }
       <br>
       <br>
       @Html(model.Wikis.format(page.map(_.wid).getOrElse(model.WID("?","?")), "md", c.content))

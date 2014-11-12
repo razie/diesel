@@ -17,24 +17,9 @@ import admin.Audit
 import admin.Services
 import db.RazMongo
 
-abstract class Reactor (val name:String) {
-  val wiki : WikiInst
-}
-
-/** the default reactor, the main wiki */
-class DfltReactor extends Reactor (Wikis.DFLT) {
-  val wiki : WikiInst = Wikis.apply(name)
-}
-
-object Reactor {
-  // all realms currently loaded in this node
-  lazy val reactors = {
-    val res = new collection.mutable.HashMap[String,Reactor]()
-    res.put (Wikis.DFLT, new DfltReactor)
-    res
-  }
-
-  def apply (realm:String = Wikis.DFLT) = reactors(realm)
+/** the basic element of reaction: an app or module */
+class Reactor (val realm:String) {
+  val wiki : WikiInst = new WikiInst(realm)
 }
 
 /** a wiki */
@@ -42,13 +27,113 @@ class WikiInst (val realm:String) {
   val domain : WikiDomain = new WikiDomain (realm)
   val index : WikiIndex = new WikiIndex (realm)
 
+  val REALM = "realm" -> realm
+
   /** cache of categories - updated by the WikiIndex */
   lazy val cats = new collection.mutable.HashMap[String,WikiEntry]() ++
-    (RMany[WikiEntry]("category" -> "Category") map (w=>(w.name,w)))
+    (RMany[WikiEntry]("realm" -> realm, "category" -> "Category") map (w=>(w.name,w)))
 
+  def weTable(cat: String) = Wikis.TABLE_NAMES.get(cat).map(x=>RazMongo(x)).getOrElse(if (Wikis.PERSISTED contains cat) RazMongo("we"+cat) else table)
+  def weTables(cat: String) = Wikis.TABLE_NAMES.getOrElse(cat, if (Wikis.PERSISTED contains cat) ("we"+cat) else Wikis.TABLE_NAME)
+  def table (realm:String) = RazMongo(Wikis.TABLE_NAME)
   def table = RazMongo(Wikis.TABLE_NAME)
 
-  def foreach (f:DBObject => Unit) {table find(Map()) foreach f}
+  def foreach (f:DBObject => Unit) {table find(Map(REALM)) foreach f} // todo test
+
+  // ================== methods from Wikis
+
+  def pages(category: String) =
+    weTable(category).m.find(Map(REALM, "category" -> category)) map (grater[WikiEntry].asObject(_))
+
+  def pageNames(category: String) =
+    weTable(category).find(Map(REALM, "category" -> category)) map (_.apply("name").toString)
+
+  def pageLabels(category: String) =
+    table.m.find(Map(REALM, "category" -> category)) map (_.apply("label").toString)
+
+  // TODO optimize - cache labels...
+  def label(wid: WID):String = /*wid.page map (_.label) orElse*/
+    index.label(wid.name) orElse (ifind(wid) flatMap (_.getAs[String]("label"))) getOrElse wid.name
+
+  def label(wid: UWID):String = /*wid.page map (_.label) orElse*/
+    wid.wid.map(x=>label(x)).getOrElse(wid.nameOrId)
+
+  private def ifind(wid: WID) =
+    wid.parent.map {p=>
+      weTable(wid.cat).findOne(Map(REALM, "category" -> wid.cat, "name" -> wid.name, "parent" -> p))
+    } getOrElse
+      weTable(wid.cat).findOne(Map(REALM, "category" -> wid.cat, "name" -> Wikis.formatName(wid.name)))
+
+
+  // TODO find by ID is bad, no - how to make it work across wikis ?
+  def findById(id: String) = find(new ObjectId(id))
+  // TODO optimize
+  def find(id: ObjectId) =
+    (table.findOne(Map("_id" -> id)) orElse (Wikis.PERSISTED.find {cat=>
+      weTable(cat).findOne(Map("_id" -> id)).isDefined
+    } flatMap {s:String=>weTable(s).findOne(Map("_id" -> id))})) map (grater[WikiEntry].asObject(_))
+
+  def findById(cat:String, id: String):Option[WikiEntry] = findById(cat, new ObjectId(id))
+
+  def findById(cat:String, id: ObjectId): Option[WikiEntry] =
+    weTable(cat).findOne(Map("_id" -> id)) map (grater[WikiEntry].asObject(_))
+
+  def find(wid: WID): Option[WikiEntry] = ifind(wid) map (grater[WikiEntry].asObject(_))
+  def find(uwid: UWID): Option[WikiEntry] = findById(uwid.cat, uwid.id)
+
+  def find(category: String, name: String): Option[WikiEntry] = find(WID(category, name))
+
+  /** find any topic with name - will look in PERSISTED tables as well until at least one found */
+  def findAny(name: String) = {
+    val w1 = table.find(Map(REALM, "name" -> name)) map (grater[WikiEntry].asObject(_))
+    if(w1.hasNext) w1
+    else {
+      var found:Option[DBObject]=None
+      Wikis.PERSISTED.find {cat=>
+        if(found.isEmpty)
+          found= weTable(cat).findOne(Map(REALM, "name" -> name))
+        found.isDefined
+      }
+      found map (grater[WikiEntry].asObject(_)) toIterator
+    }
+  }
+
+  def findAnyOne(name: String) =
+    table.findOne(Map(REALM, "name" -> name)) map (grater[WikiEntry].asObject(_))
+
+}
+
+/** the default reactor, the main wiki */
+object RkReactor extends model.Reactor (Wikis.RK) {
+  override val wiki : WikiInst = RkWikiInst
+}
+
+/** a wiki */
+object RkWikiInst extends model.WikiInst(Wikis.RK) {
+}
+
+object Reactors {
+  final val RK = Wikis.RK
+  final val NOTES = "note"
+  
+  // all realms currently loaded in this node
+  lazy val reactors = {
+    val res = new collection.mutable.HashMap[String,Reactor]()
+    res.put (Wikis.RK, RkReactor)
+    res.put (NOTES, new Reactor(NOTES))
+    RkReactor.wiki.pages("Realm").filter(x=> !(Array(RK, NOTES) contains x.name)).foreach {w=>
+      res.put (w.name, new Reactor(w.name))
+    }
+
+    res
+  }
+
+  def add (realm:String): Unit = {
+    assert(! reactors.contains(realm))
+    reactors.put(realm, new Reactor(realm))
+  }
+
+  def apply (realm:String = Wikis.RK) = reactors(realm) // todo implement realms
 }
 
 /** wiki factory and utils */
@@ -59,20 +144,15 @@ object Wikis extends Logging with Validation {
   final val TABLE_NAME = "WikiEntry"
   final val TABLE_NAMES = Map("DRReactor" -> "weDR", "DRElement" -> "weDR", "DRDomain" -> "weDR")
 
-  final val DFLT = "rk"
-
-  // all wiki instances
-  lazy val wikis = {
-    val res = new collection.mutable.HashMap[String,WikiInst]()
-    res.put (DFLT, new WikiInst(DFLT))
-    res
-  }
+  final val RK = "rk"
+  final val DFLT = RK // todo replace with RK
 
   /** this is the actual parser to use - combine your own and set it here in Global */
-  var wparser : String => WikiParser.PState = WikiParser.apply
+  var wparserFactory : WikiParserFactory = TheWikiParserFactory
 
-  def apply (realm:String = DFLT) = wikis(realm)
-  def apply (wid:WID) = wikis(wid.getRealm)
+  def apply (realm:String = RK) = Reactors(realm).wiki
+  def rk = Reactors(RK).wiki
+//  def apply (wid:WID) = Reactors(wid.getRealm).wiki
   
   def weTable(cat: String) = TABLE_NAMES.get(cat).map(x=>RazMongo(x)).getOrElse(if (PERSISTED contains cat) RazMongo("we"+cat) else table)
   def weTables(cat: String) = TABLE_NAMES.getOrElse(cat, if (PERSISTED contains cat) ("we"+cat) else TABLE_NAME)
@@ -81,68 +161,26 @@ object Wikis extends Logging with Validation {
 
   def fromGrated[T <: AnyRef](o: DBObject)(implicit m: Manifest[T]) = grater[T](ctx, m).asObject(o)
 
-  def pages(category: String) =
-    weTable(category).m.find(Map("category" -> category)) map (grater[WikiEntry].asObject(_))
-
-  def pageNames(category: String) =
-    weTable(category).find(Map("category" -> category)) map (_.apply("name").toString)
-
-  def pageLabels(category: String) =
-    table.m.find(Map("category" -> category)) map (_.apply("label").toString)
-
-  // TODO optimize - cache labels...
-  def label(wid: WID):String = /*wid.page map (_.label) orElse*/
-    apply(DFLT).index.label(wid.name) orElse (ifind(wid) flatMap (_.getAs[String]("label"))) getOrElse wid.name
-
-  def label(wid: UWID):String = /*wid.page map (_.label) orElse*/
-    wid.wid.map(x=>label(x)).getOrElse(wid.nameOrId)
-
-  def findById(id: String) = find(new ObjectId(id))
-  def findById(cat:String, id: String) =
-    weTable(cat).findOne(Map("_id" -> new ObjectId(id))) map (grater[WikiEntry].asObject(_))
-
-  def findById(cat:String, id: ObjectId) =
-    weTable(cat).findOne(Map("_id" -> id)) map (grater[WikiEntry].asObject(_))
-
-  // TODO optimize
-  def find(id: ObjectId) =
-    (table.findOne(Map("_id" -> id)) orElse (PERSISTED.find {cat=>
-      weTable(cat).findOne(Map("_id" -> id)).isDefined
-  } flatMap {s:String=>weTable(s).findOne(Map("_id" -> id))})) map (grater[WikiEntry].asObject(_))
-
-  private def ifind(wid: WID) =
-    wid.parent.map {p=>
-      weTable(wid.cat).findOne(Map("category" -> wid.cat, "name" -> wid.name, "parent" -> p))
-    } getOrElse
-      weTable(wid.cat).findOne(Map("category" -> wid.cat, "name" -> Wikis.formatName(wid.name)))
-
-  def find(wid: WID): Option[WikiEntry] = ifind(wid) map (grater[WikiEntry].asObject(_))
-  def find(uwid: UWID): Option[WikiEntry] = findById(uwid.cat, uwid.id)
-
-  def find(category: String, name: String): Option[WikiEntry] = find(WID(category, name))
-
-  /** find any topic with name - will look in PERSISTED tables as well until at least one found */
-  def findAny(name: String) = {
-    val w1 = table.find(Map("name" -> name)) map (grater[WikiEntry].asObject(_))
-    if(w1.hasNext) w1
-    else {
-      var found:Option[DBObject]=None
-      PERSISTED.find {cat=>
-        if(found.isEmpty)
-          found= weTable(cat).findOne(Map("name" -> name))
-        found.isDefined
-      }
-      found map (grater[WikiEntry].asObject(_)) toIterator
-    }
-  }
-
-  def findAnyOne(name: String) =
-    table.findOne(Map("name" -> name)) map (grater[WikiEntry].asObject(_))
-
 //  def linkFromName(s: String) = {
 //    val a = s.split(":")
 //    WikiLink(WID(a(0), a(1)), WID(a(2), a(3)), "?")
 //  }
+
+  // TODO refactor convenience
+  def find(wid: WID): Option[WikiEntry] = apply(wid.getRealm).find(wid)
+  
+  // TODO find by ID is bad, no - how to make it work across wikis ?
+  /** @deprecated optimize with realm */
+  def findById(id: String) = find(new ObjectId(id))
+  /** @deprecated optimize with realm */
+  def find(id: ObjectId) = 
+    Reactors.reactors.foldLeft(None.asInstanceOf[Option[WikiEntry]])((a,b) => a orElse b._2.wiki.find(id))
+  /** @deprecated optimize with realm */
+  def findById(cat:String, id: String):Option[WikiEntry] = findById(cat, new ObjectId(id))
+  /** @deprecated optimize with realm */
+  def findById(cat:String, id: ObjectId): Option[WikiEntry] = 
+    Reactors.reactors.foldLeft(None.asInstanceOf[Option[WikiEntry]])((a,b) => a orElse b._2.wiki.findById(cat, id))
+
 
   /** cache of categories - updated by the WikiIndex */
   lazy val cats = new collection.mutable.HashMap[String,WikiEntry]() ++
@@ -167,6 +205,17 @@ object Wikis extends Logging with Validation {
 
   def linksTo(to: UWID, role: String) =
     RMany[WikiLink]("to" -> to.grated, "how" -> role)
+
+
+  // leave these vvvvvvvvvvvvvvvvvvvvvvvvvv
+
+  def label(wid: WID):String = /*wid.page map (_.label) orElse*/
+    apply(wid.getRealm).label(wid)
+
+  def label(wid: UWID):String = /*wid.page map (_.label) orElse*/
+    wid.wid.map(x=>label(x)).getOrElse(wid.nameOrId)
+
+  // leave these ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
   val MD = "md"
   val TEXT = "text"
@@ -216,7 +265,7 @@ object Wikis extends Logging with Validation {
   def shouldFlag(name: String, label: String, content: String): Option[String] = {
     val a = Array(name, label, content)
 
-    if (a.exists(_.matches("(?i)^.*<(" + WikiParser.hnok + ")([^>]*)>"))) Some("WIKI_FORBIDDEN_HTML")
+    if (a.exists(_.matches("(?i)^.*<(" + ParserSettings.hnok + ")([^>]*)>"))) Some("WIKI_FORBIDDEN_HTML")
     else if (hasporn(content, softporn)) Some("WIKI_HAS_SOFTPO")
     else None
   }
@@ -264,7 +313,7 @@ object Wikis extends Logging with Validation {
         }
       }
 
-      wparser(c2)
+      wparserFactory.mk(wid.getRealm) apply c2
 //      (for (
 //        s @ WikiParser.SState(a0, tags, ilinks, decs) <- Some(wparser(c2))
 //      ) yield s) getOrElse WikiParser.SState("")
@@ -283,7 +332,7 @@ object Wikis extends Logging with Validation {
 
       content = S_PAT replaceSomeIn (content, { m =>
         try {
-          val pageWithScripts = WID.fromPath(m group 2).flatMap(x => Wikis.find(x)).orElse(we)
+          val pageWithScripts = WID.fromPath(m group 2).flatMap(x => Wikis(wid.getRealm).find(x)).orElse(we)
           pageWithScripts.flatMap(_.scripts.find(_.name == (m group 3))).filter(_.checkSignature).map(s => runScript(s.content, we))
           //        Some("xx")
         } catch { case _: Throwable => Some("!?!") }
@@ -471,7 +520,7 @@ class WikiDomain (realm:String) {
   def labelFor(wid: WID, action: String) = Wikis.category(wid.cat) flatMap (_.contentTags.get("label." + action))
 }
 
-object WikiDomain extends WikiDomain ("rk") {
+object WikiDomain extends WikiDomain (Wikis.RK) {
   def apply (realm:String) = this
 }
 

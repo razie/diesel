@@ -19,8 +19,8 @@ object Comment extends RazController with Logging {
   def add(topicId: String, what: String, oid: String) = Action { implicit request =>
     implicit val errCollector = new VErrors()
     commentForm.bindFromRequest.fold(
-      formWithErrors =>
-        Msg2(formWithErrors.toString + "Hein?", Some(routes.Wiki.showId(topicId).url)),
+      formWithErrors => //todo fix realm
+        Msg2(formWithErrors.toString + "Hein?", Some(routes.Wiki.showId(topicId, Wikis.RK).url)),
       {
         case (link, content) => iadd(topicId, what, oid, None, content).apply(request).value.get.get
       })
@@ -50,7 +50,7 @@ object Comment extends RazController with Logging {
           }
         }
       } else log("ERR_DUPLO_COMMENT")
-      Redirect(routes.Wiki.showId(topicId))
+      Redirect(routes.Wiki.showId(topicId, Wikis.RK)) //todo fix realm
     }) getOrElse {
       Unauthorized("Oops - cannot add comment... " + errCollector.mkString)
     }
@@ -69,7 +69,7 @@ object Comment extends RazController with Logging {
             parent <- cs.comments.find(_._id.toString == replyId) orErr ("Can't find the comment to reply to...")
           ) yield {
             cs.addComment(au, content, oid, None, None, Some(parent._id))
-            Redirect(routes.Wiki.showId(topicId))
+            Redirect(routes.Wiki.showId(topicId, Wikis.RK)) //todo fix realm
           }) getOrElse {
             Unauthorized("Oops - cannot add comment... " + errCollector.mkString)
           }

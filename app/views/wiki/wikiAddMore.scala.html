@@ -8,25 +8,25 @@ fragment: add more stuff to the current topic, including children, sub-topics et
 
 @if("Category" == wid.cat && "User" != wid.name && ("WikiLink" != wid.name || user.exists(_.hasPerm(Perm.adminDb)))) {
   <!-- list of pages in category -->
-  @if(model.Wikis.pageNames(wid.name).size > 0) {
+  @if(model.Wikis(wid.getRealm).pageNames(wid.name).size > 0) {
     <div class="well">
       @wid.name entries:
 
-      @for(p <- model.Wikis.pages(wid.name).take(50) if(controllers.Wiki.isVisible(user,p.props))) {
+      @for(p <- model.Wikis(wid.getRealm).pages(wid.name).take(50) if(controllers.Wiki.isVisible(user,p.props))) {
         <a href="@controllers.Wiki.w(p.wid)">@p.label</a> |
       }
 
-      @if(model.Wikis.pageNames(wid.name).size > 50) {
+      @if(model.Wikis(wid.getRealm).pageNames(wid.name).size > 50) {
         <p><br>
-          ... <a href="@routes.Wiki.all(wid.name)">See <b>all</b> !</a> 
+          ... <a href="@routes.Wiki.all(wid.name, wid.getRealm)">See <b>all</b> !</a>
         </p>
       }
     </div>
   }
 
     @if(!model.WikiDomain.needsParent(wid.name)) {
-      @helper.form(action=routes.Wikie.add(wid.name), 'class->"well form-inline") {
-        <label>Create a new <a href="/wiki/Category:@wid.name">@model.Wikis.label(WID("Category",wid.name))</a> </label>
+      @helper.form(action=routes.Wikie.add(wid.name, wid.getRealm), 'class->"well form-inline") {
+        <label>Create a new <a href="@wid.url">@model.Wikis(wid.getRealm).label(WID("Category",wid.name))</a> </label>
         <input type="text" class="input-xlarge" name="name" placeholder="Name">
         <button type="submit" class="btn">Now</button>
       }

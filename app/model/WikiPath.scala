@@ -27,7 +27,7 @@ class WikiWrapper(val wid:WID) extends WWrapper(wid.cat) {
 
   /** links from page only, if defined */
   protected lazy val wilinks = (w.map(realw=> realw.ilinks.map {ilink => 
-    if (ilink.wid.cat == "any") Wikis.findAnyOne(ilink.wid.name).map(w => ILink(w.wid, w.label))
+    if (ilink.wid.cat == "any") Wikis(wid.getRealm).findAnyOne(ilink.wid.name).map(w => ILink(w.wid, w.label))
     else Some(ilink)
   }.flatMap(_.toList) ++ lfrom ++ lto ++ BADlto))
 
@@ -36,7 +36,7 @@ class WikiWrapper(val wid:WID) extends WWrapper(wid.cat) {
   protected def lto = w.toList.flatMap(realw=>Wikis.linksTo(realw.uwid)).map(x=>new ILink(x.from.wid.get, x.from.nameOrId))
   
   // TODO this is like extremely bad !!!
-  protected def BADallPages = Wikis.pageNames("Category").flatMap(cat=>Wikis.pageNames(cat).flatMap(name=>Wikis.find(cat, name).toList)).toList
+  protected def BADallPages = Wikis(wid.getRealm).pageNames("Category").flatMap(cat=>Wikis(wid.getRealm).pageNames(cat).flatMap(name=>Wikis(wid.getRealm).find(cat, name).toList)).toList
   
   protected def BADlto = 
     if (Services.config.sitecfg("searchall").isDefined)

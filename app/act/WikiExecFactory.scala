@@ -91,4 +91,4 @@ import razie.base.ActionContext
 //  val cmds = Array("crWiki", "email")
 //}
 //
-////  Executables.reg("rk", SampleExecutables)
+////  Executables.reg(model.Wikis.RK, SampleExecutables)

@@ -44,7 +44,7 @@ club admin manages list of users and registrations
   	case "rowClass" => { 
   		@row.get("regStatus") match {
   		   case Some(PENDING) => { class="error" }
-  		   case Some(ACCEPTED) => { class="success" }
+  		   case Some(ACCEPTED) | Some(CURRENT) | Some(FAMILY) => { class="success" }
   		   case _ => { }
   		}
   		}
@@ -55,7 +55,7 @@ club admin manages list of users and registrations
 <h2>Registration management panel for @club.firstName</h2>
 
 <p>These are the members with accounts on the website. Click on the colorful statuses to manage that user/registration. (See the bottom for a legend).
-<br><b>Summary: @members.size</b> total: @members.filter(_._2.role != "Fan").groupBy(_._3.map(_.regStatus)).map{x=><b>@x._2.size</b> @x._1.getOrElse("n/a") , }
+<br><b>Summary: @members.filter(_._2.role != "Fan").size</b> total: @members.filter(_._2.role != "Fan").groupBy(_._3.map(_.regStatus)).map{x=><b>@x._2.size</b> @x._1.getOrElse("n/a") , }
 @if(details) {
   @allforms.map{forms=>
     <br><b>Forms: @forms.size</b> total: @forms.groupBy(_._3).map{x=><b>@x._2.size</b> @x._1.getOrElse("n/a") , }

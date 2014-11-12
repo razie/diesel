@@ -5,7 +5,7 @@ import model._
 import org.bson.types.ObjectId
 
 /** reactor helpers */
-object Reactors {
+object DReactors {
   final val CAT_REACTOR = "DRReactor"
   final val CAT_DOMAIN = "DRDomain"
   final val CAT_ELEMENT = "DRElement"
@@ -65,7 +65,7 @@ class DReactor (
 abstract class DieselReactor (
   reactor: DReactor
   ){
-  import Reactors._
+  import DReactors._
 
   lazy val sections:Seq[Diesel.Section] =
     reactor.page.toSeq.flatMap(_.sections).map(fromSection(_, reactor.page.get)) ++ (reactor.pages map fromPage)
@@ -97,7 +97,7 @@ abstract class DieselReactor (
   private def fromPage (we:WikiEntry) =
     new Diesel.Section(we.category, we.name, determineLang(we), cleanContent(we.content), we)
   private def fromSection (sec:WikiSection, we:WikiEntry) =
-    new Diesel.Section(Reactors.DSL_CAT(sec.stype), sec.name, determineLang(sec, we), cleanContent(sec.content), we)
+    new Diesel.Section(DReactors.DSL_CAT(sec.stype), sec.name, determineLang(sec, we), cleanContent(sec.content), we)
   private def cleanContent (s:String) =
     s.lines.filterNot(s=>s.startsWith(".") || s.stripMargin.isEmpty).mkString("\n")
   private def determineLang (we:WikiEntry):String =
@@ -117,21 +117,21 @@ class JSSCReactor1 (reactor:DReactor) extends DieselReactor (reactor:DReactor) {
 /** JavaScript Simple Server side 1 reactor */
 class JSSReactor1 (reactor:DReactor) extends DieselReactor (reactor:DReactor) {
   override def supportedLang : String = "js"
-  def allData = sections.filter(x=>x.cat == Reactors.CAT_DATA && (x.lang == "json" || x.lang == "js")).map(s=>if(s.name.length>0)s"var ${s.name} = ${s.script};" else s.script) mkString "\n\n"
+  def allData = sections.filter(x=>x.cat == DReactors.CAT_DATA && (x.lang == "json" || x.lang == "js")).map(s=>if(s.name.length>0)s"var ${s.name} = ${s.script};" else s.script) mkString "\n\n"
   override def addImports (dom:String, body:String) : String = dom + "\n\n" + allData + "\n\n" + body
 }
 
 /** Scala Simple 1 reactor */
 class ScalaReactor1 (reactor:DReactor) extends DieselReactor (reactor:DReactor) {
   override def supportedLang : String = "scala"
-  def allData = sections.filter(x=>x.cat == Reactors.CAT_DATA && (x.lang == "scala")).map(s=>if(s.name.length>0)s"val ${s.name} = ${s.script}" else s.script) mkString "\n\n"
+  def allData = sections.filter(x=>x.cat == DReactors.CAT_DATA && (x.lang == "scala")).map(s=>if(s.name.length>0)s"val ${s.name} = ${s.script}" else s.script) mkString "\n\n"
   override def addImports (dom:String, body:String) : String = dom + "\n\n" + allData + "\n\n" + body
 }
 
 /** Ruby Simple 1 reactor */
 class RubyReactor1 (reactor:DReactor) extends DieselReactor (reactor:DReactor) {
   override def supportedLang : String = "ruby"
-  def allData = sections.filter(x=>x.cat == Reactors.CAT_DATA && (x.lang == "ruby")).map(s=>if(s.name.length>0)s"val ${s.name} = ${s.script}" else s.script) mkString "\n\n"
+  def allData = sections.filter(x=>x.cat == DReactors.CAT_DATA && (x.lang == "ruby")).map(s=>if(s.name.length>0)s"val ${s.name} = ${s.script}" else s.script) mkString "\n\n"
   override def addImports (dom:String, body:String) : String = dom + "\n\n" + allData + "\n\n" + body
 }
 

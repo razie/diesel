@@ -1,5 +1,6 @@
 User-Agent: Mediapartners-Google
 Allow: /wikie/search
+Allow: /we/*/search
 Allow: /doe/index
 Allow: /doe/social
 Disallow: /doe/

@@ -204,13 +204,21 @@ debug a wiki page
        </table>
       </div> 
 
+Json:
       <div class="well">
         @page.map{ p=>@p.toString } 
        </ul>
       </div> 
 
+Html:
       <div class="well">
       @model.Wikis.format(wid, "md", page.get.content)
+       </ul>
+      </div> 
+
+AST:
+      <div class="well">
+      @Html(model.Wikis.preprocess(wid, page.get.markup, Wikis.noporn(page.get.content)).printHtml(1))
        </ul>
       </div> 
 

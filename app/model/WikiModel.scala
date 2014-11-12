@@ -7,7 +7,6 @@
 package model
 
 import com.novus.salat._
-import com.novus.salat.annotations._
 import com.mongodb.casbah.Imports._
 import org.joda.time.DateTime
 import admin.Audit
@@ -29,7 +28,7 @@ case class WikiEntry(
   content: String,
   by: ObjectId,
   tags: Seq[String] = Seq(),
-  realm:String = "rk",
+  realm:String = Wikis.RK,
   ver: Int = 1,
   parent: Option[ObjectId] = None,
   props: Map[String, String] = Map.empty,
@@ -50,8 +49,8 @@ case class WikiEntry(
     } else None
   }
 
-  def wid  = WID(category, name, parent)
-  def uwid = UWID(category, _id)
+  def wid  = WID(category, name, parent, None, if(realm == Wikis.RK) None else Some(realm))
+  def uwid = UWID(category, _id, if(realm == Wikis.RK) None else Some(realm))
 
   def cloneRenamed(newlabel: String) = copy(name = Wikis.formatName(newlabel), label = newlabel, ver = ver + 1, updDtm = DateTime.now)
 
@@ -66,7 +65,7 @@ case class WikiEntry(
 
   def withTags(s: Seq[String], sby: ObjectId) = copy(tags=s)
 
-  def findParent = parent flatMap (p => Wikis.find(p))
+  def findParent = parent flatMap (p => Wikis(realm).find(p))
 
   def isReserved = props.get("reserved").exists(_ == "yes")
 
@@ -90,7 +89,7 @@ case class WikiEntry(
         " " + category + ":" + name)
     Wikis.weTable(wid.cat) += grater[WikiEntry].asDBObject(Audit.createnoaudit(this))
     Wikis.shouldFlag(name, label, content).map(auditFlagged(_))
-    Wikis(wid).index.create(this)
+    Wikis(realm).index.create(this)
   }
 
   def update(newVer: WikiEntry)(implicit txn:db.Txn) = {
@@ -102,7 +101,7 @@ case class WikiEntry(
     db.RUpdate.noAudit[WikiEntry](Wikis.weTables(wid.cat), Map("_id" -> newVer._id), newVer)
     Wikis.shouldFlag(name, label, content).map(auditFlagged(_))
 
-    if (shouldIndex) Wikis(wid).index.update(this, newVer)
+    if (shouldIndex) Wikis(realm).index.update(this, newVer)
   }
 
   /** should this entry be indexed in memory */
@@ -112,8 +111,8 @@ case class WikiEntry(
     Audit.logdb(AUDIT_WIKI_DELETED, "BY " + sby + " " + category + ":" + name, "\nCONTENT:\n" + this)
     WikiEntryOld(this).create
     val key = Map("category" -> category, "name" -> name, "parent" -> parent)
-    db.RDelete.apply (Wikis.weTables(wid.cat), key)
-    if (shouldIndex) Wikis(wid).index.delete(this)
+    db.RDelete.apply (Wikis(realm).weTables(wid.cat), key)
+    if (shouldIndex) Wikis(realm).index.delete(this)
   }
 
   def auditFlagged(f: String) { Log.audit(Audit.logdb(f, category + ":" + name)) }
@@ -213,16 +212,19 @@ case class WikiEntryOld(entry: WikiEntry, _id: ObjectId = new ObjectId()) {
   *
   * also, having a wid means a page exists or existed
 */
-case class UWID(cat: String, id:ObjectId) {
+case class UWID(cat: String, id:ObjectId, realm:Option[String]=None) {
   def findWid = {
-    WikiIndex.withIndex { idx =>
+    WikiIndex.withIndex(getRealm) { idx =>
       idx.find((_,_,x)=>x == id).map(_._2)
-    } orElse Wikis.findById(cat, id).map(_.wid)
+    } orElse Wikis(getRealm).findById(cat, id).map(_.wid)
   }
   def wid = findWid orElse Some(WID(cat, id.toString)) // used in too many places to refactor properly
   def nameOrId = wid.map(_.name).getOrElse(id.toString)
   lazy val grated     = grater[UWID].asDBObject(this)
-  lazy val page = Wikis.find(this)
+  lazy val page = Wikis(getRealm).find(this)
+  
+  /** get the realm or the default */
+  def getRealm = realm.getOrElse(Wikis.DFLT)
 }
 
 /** a wiki id, a pair of cat and name - can reference a wiki entry or a section of an entry
@@ -235,18 +237,21 @@ case class WID(cat: String, name: String, parent: Option[ObjectId] = None, secti
   override def toString = "[[" + wpath + "]]" //cat + ":" + name + (section.map("#"+_).getOrElse("")) + parent.map(" of " + _.toString).getOrElse("")
 
   lazy val grated     = grater[WID].asDBObject(this)
-  lazy val findParent = parent flatMap (p => Wikis.find(p))
-  lazy val parentWid  = parent flatMap (p => WikiIndex.withIndex { index => index.find { case (a, b, c) => c == p }.map(_._2) }) orElse (findParent map(_.wid))
+  lazy val findParent = parent flatMap (p => Wikis(getRealm).find(p))
+  lazy val parentWid  = parent flatMap (p => WikiIndex.withIndex(getRealm) { index => index.find { case (a, b, c) => c == p }.map(_._2) }) orElse (findParent map(_.wid))
 
   /** find the page for this, if any - respects the NOCATS */
   lazy val page = {
-    if(! cat.isEmpty) Wikis.find(this)
-    else findId flatMap Wikis.find // special for NOCATS
+    if(cat.isEmpty) findId flatMap Wikis(getRealm).find // special for NOCATS
+    else Wikis.find(this)
    }
+
+  /** convienience builder */
+  def r(r:String) = if(Wikis.RK == r) this else this.copy(realm=Some(r))
 
   /** find the ID for this page, if any - respects the NOCATS */
   def findId = {
-    WikiIndex.withIndex { idx =>
+    WikiIndex.withIndex(getRealm) { idx =>
       if(! cat.isEmpty)
         idx.get2(name, this)
       else {
@@ -259,13 +264,15 @@ case class WID(cat: String, name: String, parent: Option[ObjectId] = None, secti
 
   def uwid = findId map {x=>UWID(cat, x)}
 
+  def cats = if(realm.exists(_ != Wikis.RK)) (realm.get + "." + cat) else cat
+
   /** format into nice url */
   def wpath: String = parentWid.map(_.wpath + "/").getOrElse("") + (
-    if (cat != null && cat.length > 0 && !WID.NOCATS.contains(cat)) (cat + ":") else "") + name + (section.map("#" + _).getOrElse(""))
+    if (cat != null && cat.length > 0 && !WID.NOCATS.contains(cat)) (cats + ":") else "") + name + (section.map("#" + _).getOrElse(""))
 
   /** full categories allways */
   def wpathFull: String = parentWid.map(_.wpath + "/").getOrElse("") + (
-    if (cat != null && cat.length > 0 ) (cat + ":") else "") + name + (section.map("#" + _).getOrElse(""))
+    if (cat != null && cat.length > 0 ) (cats + ":") else "") + name + (section.map("#" + _).getOrElse(""))
   def formatted = this.copy(name=Wikis.formatName(this))
   def url: String = "http://" + Services.config.hostport + "/wiki/" + wpath
   def urlRelative: String = "/wiki/" + wpath
@@ -288,16 +295,23 @@ object WID {
   /** do not require the category */
   private final val NOCATS = Array("Blog", "Post", "xSite")
 
+  //cat:name#section$realm
   private val REGEX = """([^/:\]]*[:])?([^#|\]]+)(#[^|\]]+)?""".r
 
+  /** @param a the list of wids from a path, parent to child */
   private def widFromSeg(a: Array[String]) = {
     val w = a.map { x =>
       x match {
-        case REGEX(c, n, s) => WID((if (c == null) "" else c).replaceFirst(":", ""), n, None, Option(s).filter(_.length > 1).map(_.substring(1)))
+        case REGEX(c, n, s) => WID(
+          (if (c == null) "" else c.replaceFirst("[^.]+\\.", "")).replaceFirst(":", ""),
+          n,
+          None,
+          Option(s).filter(_.length > 1).map(_.substring(1)),
+          if(c != null && c.contains(".")) Some(c.replaceFirst("\\..*", "")) else None)
         case _ => UNKNOWN
       }
     }
-    val res = w.foldLeft[Option[WID]](None)((x, y) => Some(WID(y.cat, y.name, x.flatMap(_.findId), y.section)))
+    val res = w.foldLeft[Option[WID]](None)((x, y) => Some(WID(y.cat, y.name, x.flatMap(_.findId), y.section, y.realm)))
     res
   }
 
@@ -359,9 +373,9 @@ case class WikiLink(
 
   val wname = Array(from.cat, from.nameOrId, to.cat, to.nameOrId).mkString(":")
 
-  def page = Wikis.find("WikiLink", wname)
-  def pageFrom = Wikis.find(from)
-  def pageTo = Wikis.find(to)
+  def page = Wikis(from.getRealm).find("WikiLink", wname)
+  def pageFrom = Wikis(from.getRealm).find(from)
+  def pageTo = Wikis(to.getRealm).find(to)
 
   def isPrivate = List(pageFrom, page).flatMap(_ map (_.isPrivate)).exists(identity)
 }

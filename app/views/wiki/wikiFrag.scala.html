@@ -13,9 +13,9 @@ wiki fragment, used in another page
 
   @prepend(l:List[String], c:String) = @{ c :: l }
 
-  @ww() = @{ model.Wikis.findAny(wid.name) }
+  @ww() = @{ model.Wikis(wid.getRealm).findAny(wid.name) }
 
-  @label()=@{ page.flatMap(_.contentTags.get("label")).orElse(page.map(_.label)).getOrElse(model.Wikis.label(wid)) }
+  @label()=@{ page.flatMap(_.contentTags.get("label")).orElse(page.map(_.label)).getOrElse(model.Wikis(wid.getRealm).label(wid)) }
 
   @url() = @{
     val u = controllers.Wiki.w(wid)
@@ -131,7 +131,7 @@ wiki fragment, used in another page
             @au.map {u =>
               <a href="@routes.Wikie.report(wid)">Report</a> |
             }
-            <a href="@routes.Wiki.printWid(model.WID.cmdfromPath(wid.wpath).get)">Print</a>
+            <a href="@routes.Wiki.printWid(model.WID.cmdfromPath(wid.wpath).get, wid.getRealm)">Print</a>
             @if(au.exists(_.hasPerm(model.Perm.adminDb))) {
               | <a href="@routes.Wiki.wikieDebug(wid)"><em>debug</em></a>
             }
@@ -181,14 +181,14 @@ wiki fragment, used in another page
           <p><strong><font style="color:red">Note: </font></strong>A <strong>@wid.cat</strong> doesn't need its own page unless there you have some specific information about it... so, if you have some photos, videos or comments about it, create it below and share it with your mates!
         <hr>
         }
-        No entry for a <strong>@wid.cat</strong> named <strong>@nicename</strong> ... <a href="@routes.Wikie.wikieEdit(model.WID(wid.cat,nicename))">create one</a></b>
+        No entry for a <strong>@wid.cat</strong> named <strong>@nicename</strong> ... <a href="@routes.Wikie.wikieEdit(wid.copy(name=nicename))">create one</a></b>
       } else {
         <strong>No entry for @wid.name ... you could create one:</strong>
         
         <form action="@routes.Wikie.edit2" method="GET" class="well form-inline">
           <input type="text" name="name" id="name" value="@nicename"> 
           <select id="cat" name="cat" class="input-small">
-          @prepend(model.Wikis.pageNames("Category").toList.filter(_ != "Topic").sortWith(_ < _), "Topic").map{x=>
+          @prepend(model.Wikis(wid.getRealm).pageNames("Category").toList.filter(_ != "Topic").sortWith(_ < _), "Topic").map{x=>
             <option value="@x" >@x</option>
           }
           </select>

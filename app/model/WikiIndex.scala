@@ -50,7 +50,7 @@ class WikiIndex (val realm:String) {
   }
 
   def graph(oid: ObjectId) = synchronized {
-    parsed.getOrElseUpdate(oid, PEntry(Wikis.find(oid).toList.flatMap(_.ilinks)))
+    parsed.getOrElseUpdate(oid, PEntry(Wikis(realm).find(oid).toList.flatMap(_.ilinks)))
   }
 
   def update(oldVer: WikiEntry, newVer: WikiEntry) = withIndex { idx =>
@@ -112,6 +112,6 @@ object WikiIndex {
     Wikis(realm).index.withIndex(f)
 
   /** @deprecated the index is (name, WID, ID) */
-  def withIndex[A](f: TripleIdx[String, WID, ObjectId] => A) =
-    Wikis(Wikis.DFLT).index.withIndex(f)
+//  def withIndex[A](f: TripleIdx[String, WID, ObjectId] => A) =
+//    Wikis(Wikis.DFLT).index.withIndex(f)
 }

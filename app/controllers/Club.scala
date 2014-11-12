@@ -27,7 +27,7 @@ case class Club(
   dsl: String = "",
   _id: ObjectId = new ObjectId) extends REntity[Club] {
 
-  def uwid = Wikis.find("Club", userName).get.uwid //todo ensure all clubs have a wiki topic
+  def uwid = Wikis.rk.find("Club", userName).get.uwid //todo ensure all clubs have a wiki topic
 
   // optimize access to User object
   lazy val user = oUser.getOrElse(Users.findUserById(userId).get)
@@ -824,7 +824,6 @@ object Club extends RazController with Logging {
         //
         //        UserTask(au._id, UserTasks.START_REGISTRATION).delete
         //      }
-//        Ok("xxxxxxxxxxxxxxxxxxxx ")
             Redirect(routes.Club.doeClubUserReg(reg._id.toString))
       }
       }
@@ -916,7 +915,28 @@ object Club extends RazController with Logging {
         model.RacerKidAssoc(c.userId, rk._id, model.RK.ASSOC_LINK, uw.role, c.userId).create
       }
     }
+  }
 
+  /** called by club */
+  def doeCreateRegTask(uwid: String) = FAU { implicit au => implicit errCollector => implicit request =>
+    (for (
+      isClub <- au.isClub orErr "registration only for a club";
+      club <- Some(Club(au));
+      regAdmin <- club.uregAdmin orErr ("Registration is not open yet! [no regadmin]");
+      isOpen <- club.propSeq.exists(x => "reg.open" == x._1 && "yes" == x._2) orErr ("Registration is not open yet!");
+      cuwid <- WID("Club", au.userName).uwid orErr ("no uwid");
+      uw <- model.Users.findUserLinksTo(cuwid).find(_._id.toString == uwid) orErr ("user is not a member");
+      u <- uw.user
+    ) yield {
+      // current registration?
+      db.tx("userStartReg") { implicit txn =>
+        if(! u.tasks.exists(_.name == UserTasks.START_REGISTRATION))
+          UserTask(u._id, UserTasks.START_REGISTRATION, Map("club" -> au.userName)).create
+        }
+      Redirect(routes.Club.doeClubReg(uwid))
+    }) getOrElse  {
+      Msg2("CAN'T " + errCollector.mkString)
+    }
   }
 
 }

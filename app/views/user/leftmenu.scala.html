@@ -23,7 +23,7 @@
     <li class="@active(15)"><a href="@routes.Club.doeVol"><i class="icon-user"></i>Volunteers</a></li>
 } 
 
-@if(! user.isClub && user.hasRealm("rk")) {
+@if(! user.isClub && user.hasRealm(model.Wikis.RK)) {
     <hr>
     <li class="@active(10)"><a href="@routes.Club.doeClubUserRegs"><i class="icon-list"></i>Registrations</a></li>
     <li class="@active(14)"><a href="@routes.Tribe.doeUserTribes"><i class="icon-list"></i>Tribes</a></li>
@@ -35,7 +35,7 @@
     </ul>
 } 
 
-@if(! user.isClub && user.hasRealm("notes")) {
+@if(! user.isClub && user.hasRealm(model.Reactors.NOTES)) {
 }
 
   </ul>

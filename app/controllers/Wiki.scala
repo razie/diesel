@@ -54,7 +54,7 @@ object Wiki extends WikiBase {
       if(wid.parentWid.isDefined) {
         s"""<b><a href="${w(wid.parentWid.get)}/tag/$t">$label</a></b>"""
       } else {
-        s"""<b><a href="${routes.Wiki.showTag(t)}">$label</a></b>"""
+        s"""<b><a href="${routes.Wiki.showTag(t, wid.getRealm)}">$label</a></b>"""
       }
     }
   }
@@ -65,12 +65,12 @@ object Wiki extends WikiBase {
     if (Website.getHost.exists(_ != Config.hostport) && !Config.isLocalhost)
       Redirect("http://" + Config.hostport + "/wiki/tag/" + tag)
     else
-      search ("", "", Enc.fromUrl(tag)).apply(request).value.get.get
+      search (realm, "", "", Enc.fromUrl(tag)).apply(request).value.get.get
   }
 
   //TODO optimize - index or whatever
   /** search all topics  provide either q or curTags */
-  def search(q: String, scope:String, curTags:String="") = Action { implicit request =>
+  def search(realm:String, q: String, scope:String, curTags:String="") = Action { implicit request =>
     //TODO limit the number of searches - is this performance critical?
     val qi = q.toLowerCase()
     val qt = curTags.split("/").filter(_ != "tag") //todo only filter if first is tag ?
@@ -83,7 +83,7 @@ object Wiki extends WikiBase {
           (q.length > 1 && u.get("label").asInstanceOf[String].toLowerCase.contains(qi)) ||
           (q.length() > 3 && u.get("content").asInstanceOf[String].toLowerCase.contains(qi))
     }
-    lazy val parent = WID.fromPath(scope).flatMap(x=>Wikis.find(x).orElse(Wikis.findAnyOne(x.name)))
+    lazy val parent = WID.fromPath(scope).flatMap(x=>Wikis.find(x).orElse(Wikis(realm).findAnyOne(x.name)))
 
     val wikis =
       if(scope.length > 0 && parent.isDefined) {
@@ -91,7 +91,7 @@ object Wiki extends WikiBase {
 
         def src (t:MongoCollection) = {
           for (
-            u <- t.find(Map("parent" -> p._id)) if filter(u)
+            u <- t.find(Map("realm"->realm, "parent" -> p._id)) if filter(u)
           ) yield u
         }.toList
 
@@ -135,11 +135,13 @@ object Wiki extends WikiBase {
       None
   }
 
+  val RK: String = Wikis.RK
+
   /**
    * show an older version of a page
    *  TODO this is authorized against the old permissions fro the version - should it be against the new perms?
    */
-  def showWidVer(cw: CMDWID, ver: Int, realm:String="rk") = Action { implicit request =>
+  def showWidVer(cw: CMDWID, ver: Int, realm:String=RK) = Action { implicit request =>
     implicit val errCollector = new VErrors()
     (for (
       wid <- cw.wid;
@@ -156,7 +158,7 @@ object Wiki extends WikiBase {
    * show conetnt of current version
    *  TODO is this authorized?
    */
-  def showWidContent(cw: CMDWID, realm:String="rk") = Action { implicit request =>
+  def showWidContent(cw: CMDWID, realm:String=RK) = Action { implicit request =>
     implicit val errCollector = new VErrors()
     (for (
       wid <- cw.wid;
@@ -173,7 +175,7 @@ object Wiki extends WikiBase {
    * show conetnt of current version
    *  TODO is this authorized?
    */
-  def showWidContentVer(cw: CMDWID, ver: Int, realm:String="rk") = Action { implicit request =>
+  def showWidContentVer(cw: CMDWID, ver: Int, realm:String=RK) = Action { implicit request =>
     implicit val errCollector = new VErrors()
     (for (
       wid <- cw.wid;
@@ -208,7 +210,7 @@ object Wiki extends WikiBase {
     if (cw.cmd == "xp") xp(cw.wid.get, cw.rest)
     else if (cw.cmd == "xpl") xpl(cw.wid.get, cw.rest)
     else if (cw.cmd == "tag") {
-      search("", cw.wpath getOrElse "", cw.rest)
+      search(realm, "", cw.wpath getOrElse "", cw.rest)
     }
     else Action { implicit request =>
       // must check if page is WITHIN site, otherwise redirect to main site
@@ -234,7 +236,7 @@ object Wiki extends WikiBase {
   }
 
   /** show a page */
-  def printWid(cw: CMDWID, realm:String="rk") = show(cw.wid.get, 0, true)
+  def printWid(cw: CMDWID, realm:String=RK) = show(cw.wid.get, 0, true)
 
   /** POST against a page - perhaps a trackback */
   def postWid(wp: String, realm:String) = Action { implicit request =>
@@ -248,18 +250,23 @@ object Wiki extends WikiBase {
     //    }
   }
 
-  def show1(cat: String, name: String, realm:String) = show(WID(cat, name))
+  def show1(cat: String, name: String, realm:String) = show(WID(cat, name).r(realm))
   def showId(id: String, realm:String) = Action { implicit request =>
-    (for (w <- Wikis.findById(id)) yield Redirect(controllers.Wiki.w(w.category, w.name))) getOrElse Msg2("Oops - id not found")
+    (for (w <- Wikis(realm).findById(id)) yield Redirect(controllers.Wiki.w(w.category, w.name))) getOrElse Msg2("Oops - id not found")
   }
 
   def w(we: UWID):String = we.wid.map(wid=>w(wid)).getOrElse("ERR_NO_URL_FOR_"+we.toString)
   def w(we: WID, shouldCount: Boolean = true):String = Config.urlmap(we.urlRelative + (if (!shouldCount) "?count=0" else ""))
 
+  /** @deprecated use the realm version */
   def w(cat: String, name: String) =
-  //    if("Blog" == cat) Config.urlmap("/blog/%s:%s".format(cat, name))
-    Config.urlmap("/wiki/%s:%s".format(cat, name))
-  def w(name: String) = Config.urlmap("/wiki/" + name)
+    if(cat.length <= 0) Config.urlmap(s"/wiki/$name")
+    else Config.urlmap(s"/wiki/$cat:$name")
+  def w(cat: String, name: String, realm:String) =
+    if(cat.length <= 0) Config.urlmap(s"w/$realm/wiki/$name")
+    else Config.urlmap(s"w/$realm/wiki/$cat:$name")
+  /** @deprecated use the realm version */
+  def w(name: String) = Config.urlmap(s"/wiki/$name") //todo remove
 
   def call[A, B](value: A)(f: A => B) = f(value)
 
@@ -280,7 +287,7 @@ object Wiki extends WikiBase {
     val name = Wikis.formatName(WID(cat, iwid.name))
 
     // optimize - don't reload some crap already in the iwid
-    val wid = if (cat == iwid.cat && name == iwid.name) iwid else WID(cat, name, iwid.parent)
+    val wid = if (cat == iwid.cat && name == iwid.name) iwid else WID(cat, name, iwid.parent, iwid.section, iwid.realm)
 
     // so they are available to scripts
     razie.NoStaticS.put(model.QueryParms(request.queryString))
@@ -292,7 +299,7 @@ object Wiki extends WikiBase {
       // search for any name only if cat is missing OR there is no parent
 
       // TODO optimize to load just the WID - i'm redirecting anyways
-      val wl = Wikis.findAny(name).filter(page => canSee(page.wid, au, Some(page)).getOrElse(false)).toList
+      val wl = Wikis(wid.getRealm).findAny(name).filter(page => canSee(page.wid, au, Some(page)).getOrElse(false)).toList
       if (wl.size == 1) {
         if (Array("Blog", "Post") contains wl.head.wid.cat) {
           // Blogs and other topics are allowed nicer URLs, without category
@@ -383,14 +390,14 @@ object Wiki extends WikiBase {
 
     razie.NoStaticS.put(model.QueryParms(request.queryString))
 
-    Wikis.find(cat, name) match {
+    Wikis(iwid.getRealm).find(cat, name) match {
       case x @ Some(w) if !canSee(wid, auth, x).getOrElse(false) => noPerm(wid, "DEBUG")
       case y @ _ => Ok(views.html.wiki.wikiDebug(wid, Some(iwid.name), y, auth))
     }
   }
 
-  def all(cat: String, realm:String="rk") = Action { implicit request =>
-    Ok(views.html.wiki.wikiAll(cat, auth))
+  def all(cat: String, realm:String=RK) = Action { implicit request =>
+    Ok(views.html.wiki.wikiAll(realm, cat, auth))
   }
 
   import play.api.libs.json._
@@ -399,8 +406,8 @@ object Wiki extends WikiBase {
 
   def xp(wid: WID, path: String, page: Option[WikiEntry] = None) = Action { implicit request =>
     (for (
-      worig <- page orElse Wikis.find(wid);
-      w <- worig.alias.flatMap(x => Wikis.find(x)).orElse(Some(worig)) // TODO cascading aliases?
+      worig <- page orElse Wikis(wid.getRealm).find(wid);
+      w <- worig.alias.flatMap(x => Wikis(wid.getRealm).find(x)).orElse(Some(worig)) // TODO cascading aliases?
     ) yield {
       val node = new WikiWrapper(wid)
       val root = new razie.Snakk.Wrapper(node, WikiXpSolver)
@@ -421,8 +428,8 @@ object Wiki extends WikiBase {
 
   def xpl(wid: WID, path: String, page: Option[WikiEntry] = None) = Action { implicit request =>
     (for (
-      worig <- page orElse Wikis.find(wid);
-      w <- worig.alias.flatMap(x => Wikis.find(x)).orElse(Some(worig)) // TODO cascading aliases?
+      worig <- page orElse Wikis(wid.getRealm).find(wid);
+      w <- worig.alias.flatMap(x => Wikis(wid.getRealm).find(x)).orElse(Some(worig)) // TODO cascading aliases?
     ) yield {
       val node = new WikiWrapper(wid)
       val root = new razie.Snakk.Wrapper(node, WikiXpSolver)
@@ -448,7 +455,7 @@ object Wiki extends WikiBase {
       au <- activeUser;
       r1 <- (au.hasPerm(Perm.apiCall) || au.hasPerm(Perm.adminDb)) orErr ("no permission, eh? ");
       widp <- wid.parentWid;
-      w <- Wikis.find(widp)
+      w <- Wikis(wid.getRealm).find(widp)
     ) yield {
       // default to category
       val res = try {
