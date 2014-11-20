@@ -1,7 +1,7 @@
 /**
  *   ____    __    ____  ____  ____,,___     ____  __  __  ____
- *  (  _ \  /__\  (_   )(_  _)( ___)/ __)   (  _ \(  )(  )(  _ \           Read
- *   )   / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <     README.txt
+ *  (  _ \  /__\  (_   )(_  _)( ___)/ __)   (  _ \(  )(  )(  _ \	   Read
+ *   )	 / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <     README.txt
  *  (_)\_)(__)(__)(____)(____)(____)(___/   (__)  (______)(____/    LICENSE.txt
  */
 package model
@@ -82,7 +82,7 @@ class WikiDomain (realm:String, wi:WikiInst) {
   def wikid(): DOM.D = {
     val classes = for (cat <- wi.categories) yield {
       val assocs = for (t <- cat.contentTags if t._1 startsWith "roles:") yield {
-        A(cat.name, t._1.split(":")(1), "", t._2)
+	A(cat.name, t._1.split(":")(1), "", t._2)
       }
       C(cat.name, "?", Nil, Nil, assocs.toList)
     }
@@ -127,34 +127,34 @@ object DOM {
     /** simple json like representation of domain for browsing */
     def tojmap = {
       Map("name"->name,
-        "classes" -> classes.values.toList.map{c=>
-          Map(
-            "name"->c.name,
-            "parms" -> c.parms.map{p=>
-              Map(
-                "name"->p.name,
-                "t" -> p.ttype
-              )
-            },
-            "assocs" -> c.assocs.map{a=>
-              Map(
-                "aname"->a.a,
-                "zname"->a.z,
-                "aRole"->a.aRole,
-                "zRole"->a.zRole
-              )
-            }
-          )},
-        "objects" -> objects.values.toList.map{c=>
-          Map(
-            "name"->c.name,
-            "parms" -> c.parms.toList.map{p=>
-              Map(
-                "name"->p.name,
-                "value" -> p.value
-              )
-            }
-          )}
+	"classes" -> classes.values.toList.map{c=>
+	  Map(
+	    "name"->c.name,
+	    "parms" -> c.parms.map{p=>
+	      Map(
+		"name"->p.name,
+		"t" -> p.ttype
+	      )
+	    },
+	    "assocs" -> c.assocs.map{a=>
+	      Map(
+		"aname"->a.a,
+		"zname"->a.z,
+		"aRole"->a.aRole,
+		"zRole"->a.zRole
+	      )
+	    }
+	  )},
+	"objects" -> objects.values.toList.map{c=>
+	  Map(
+	    "name"->c.name,
+	    "parms" -> c.parms.toList.map{p=>
+	      Map(
+		"name"->p.name,
+		"value" -> p.value
+	      )
+	    }
+	  )}
       )
     }
 

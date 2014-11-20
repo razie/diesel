@@ -1,7 +1,7 @@
 /**
  *   ____    __    ____  ____  ____,,___     ____  __  __  ____
- *  (  _ \  /__\  (_   )(_  _)( ___)/ __)   (  _ \(  )(  )(  _ \           Read
- *   )   / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <     README.txt
+ *  (  _ \  /__\  (_   )(_  _)( ___)/ __)   (  _ \(  )(  )(  _ \	   Read
+ *   )	 / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <     README.txt
  *  (_)\_)(__)(__)(____)(____)(____)(___/   (__)  (______)(____/    LICENSE.txt
  */
 package model
@@ -27,6 +27,9 @@ class Reactor (val realm:String) {
 /** a wiki */
 class WikiInst (val realm:String) {
   val index : WikiIndex = new WikiIndex (realm)
+
+  /** this is the actual parser to use - combine your own and set it here in Global */
+  var wparserFactory : WikiParserFactory = TheWikiParserFactory
 
   val REALM = "realm" -> realm
 
@@ -64,9 +67,9 @@ class WikiInst (val realm:String) {
       weTable(wid.cat).findOne(Map(REALM, "category" -> wid.cat, "name" -> wid.name, "parent" -> p))
     } getOrElse {
       if("Reactor" == wid.cat) // reactors can be accessed both from their realm and main
-        weTable(wid.cat).findOne(Map("realm"->"rk", "category" -> wid.cat, "name" -> Wikis.formatName(wid.name)))
+	weTable(wid.cat).findOne(Map("realm"->"rk", "category" -> wid.cat, "name" -> Wikis.formatName(wid.name)))
      else
-        weTable(wid.cat).findOne(Map(REALM, "category" -> wid.cat, "name" -> Wikis.formatName(wid.name)))
+	weTable(wid.cat).findOne(Map(REALM, "category" -> wid.cat, "name" -> Wikis.formatName(wid.name)))
     }
   }
 
@@ -89,10 +92,10 @@ class WikiInst (val realm:String) {
       val wl = findAny(wid.name).filter(we=>Array("Blog", "Post").contains(we.wid.cat)).toList
       if(wl.size == 1) Some(wl.head)
       else {
-        val wll = wl.filter(_.wid.getRealm == "rk")
-        if(wll.size == 1) Some(wll.head)
-        else None // don't want to randomly find what others define with same name...
-        //todo if someone else defines a blog/forum with same name, it will not find mine anymore - so MUST use REALMS
+	val wll = wl.filter(_.wid.getRealm == "rk")
+	if(wll.size == 1) Some(wll.head)
+	else None // don't want to randomly find what others define with same name...
+	//todo if someone else defines a blog/forum with same name, it will not find mine anymore - so MUST use REALMS
       }
     } else
       ifind(wid) map (grater[WikiEntry].asObject(_))
@@ -108,9 +111,9 @@ class WikiInst (val realm:String) {
     else {
       var found:Option[DBObject]=None
       Wikis.PERSISTED.find {cat=>
-        if(found.isEmpty)
-          found= weTable(cat).findOne(Map(REALM, "name" -> name))
-        found.isDefined
+	if(found.isEmpty)
+	  found= weTable(cat).findOne(Map(REALM, "name" -> name))
+	found.isDefined
       }
       found map (grater[WikiEntry].asObject(_)) toIterator
     }
@@ -138,7 +141,7 @@ object RkWikiInst extends model.WikiInst(Wikis.RK) {
 object Reactors {
   final val RK = WikiConfig.RK
   final val NOTES = WikiConfig.NOTES
-  
+
   //todo - scale... now all realms currently loaded in this node
   lazy val reactors = {
     val res = new collection.mutable.HashMap[String,Reactor]()
@@ -170,13 +173,10 @@ object Wikis extends Logging with Validation {
   final val RK = "rk"
   final val DFLT = RK // todo replace with RK
 
-  /** this is the actual parser to use - combine your own and set it here in Global */
-  var wparserFactory : WikiParserFactory = TheWikiParserFactory
-
   def apply (realm:String = RK) = Reactors(realm).wiki
   def rk = Reactors(RK).wiki
 //  def apply (wid:WID) = Reactors(wid.getRealm).wiki
-  
+
   def weTable(cat: String) = TABLE_NAMES.get(cat).map(x=>RazMongo(x)).getOrElse(if (PERSISTED contains cat) RazMongo("we"+cat) else table)
   def weTables(cat: String) = TABLE_NAMES.getOrElse(cat, if (PERSISTED contains cat) ("we"+cat) else TABLE_NAME)
   def table (realm:String) = RazMongo(TABLE_NAME)
@@ -191,17 +191,17 @@ object Wikis extends Logging with Validation {
 
   // TODO refactor convenience
   def find(wid: WID): Option[WikiEntry] = apply(wid.getRealm).find(wid)
-  
+
   // TODO find by ID is bad, no - how to make it work across wikis ?
   /** @deprecated optimize with realm */
   def findById(id: String) = find(new ObjectId(id))
   /** @deprecated optimize with realm */
-  def find(id: ObjectId) = 
+  def find(id: ObjectId) =
     Reactors.reactors.foldLeft(None.asInstanceOf[Option[WikiEntry]])((a,b) => a orElse b._2.wiki.find(id))
   /** @deprecated optimize with realm */
   def findById(cat:String, id: String):Option[WikiEntry] = findById(cat, new ObjectId(id))
   /** @deprecated optimize with realm */
-  def findById(cat:String, id: ObjectId): Option[WikiEntry] = 
+  def findById(cat:String, id: ObjectId): Option[WikiEntry] =
     Reactors.reactors.foldLeft(None.asInstanceOf[Option[WikiEntry]])((a,b) => a orElse b._2.wiki.findById(cat, id))
 
   /** @deprecated use realm */
@@ -255,10 +255,10 @@ object Wikis extends Logging with Validation {
   def formatName(name: String): String = iformatName(name, SAFECHARS, "") // DO NOT TOUCH THIS PATTERN!
 
   /** format a complex name cat:name */
-  def formatName(wid: WID): String = 
-    if ("WikiLink" == wid.cat) 
-      iformatName(wid.name, """[ /{}\[\]]""") 
-    else 
+  def formatName(wid: WID): String =
+    if ("WikiLink" == wid.cat)
+      iformatName(wid.name, """[ /{}\[\]]""")
+    else
       formatName(wid.name)
 
   /** format an even more complex name
@@ -276,15 +276,15 @@ object Wikis extends Logging with Validation {
       if (rk && (u startsWith "/")) u = "http://" + Services.config.rk + u
 
       ("""<a href="%s" title="%s">%s</a>""".format(u, title, label),
-        Some(ILink(newwid, label)))
+	Some(ILink(newwid, label)))
     } else if (rk)
       // hide it from google
       (s"""<a href="http://${Services.config.rk}${wid.formatted.urlRelative}" title="$title">$label<sup><b style="color:red">^</b></sup></a>""" ,
-        Some(ILink(wid, label)))
+	Some(ILink(wid, label)))
     else
       (s"""<a href="/we/${wid.getRealm}/show/${wid.wpath}" title="%s">$label<sup><b style="color:red">++</b></sup></a>""".format
-        (hover.getOrElse("Missing page")),
-        Some(ILink(wid, label)))
+	(hover.getOrElse("Missing page")),
+	Some(ILink(wid, label)))
   }
 
   def shouldFlag(name: String, label: String, content: String): Option[String] = {
@@ -300,24 +300,24 @@ object Wikis extends Logging with Validation {
     val res = try {
       val INCLUDE = """(?<!`)\[\[include:([^\]]*)\]\]""".r
       val res1 = INCLUDE.replaceAllIn(c2, { m =>
-        val content = for (
-          wid <- WID.fromPath(m.group(1)) orErr ("bad format for page");
-          c <- wid.content orErr s"content for ${wid.wpath} not found"
-        ) yield c
+	val content = for (
+	  wid <- WID.fromPath(m.group(1)) orErr ("bad format for page");
+	  c <- wid.content orErr s"content for ${wid.wpath} not found"
+	) yield c
 
-        done = true
-        //regexp uses $ as a substitution
-        content.map(_.replaceAll("\\$", "\\\\\\$")).getOrElse("`[ERR Can't include $1 " + errCollector.mkString + "]`")
+	done = true
+	//regexp uses $ as a substitution
+	content.map(_.replaceAll("\\$", "\\\\\\$")).getOrElse("`[ERR Can't include $1 " + errCollector.mkString + "]`")
       })
 
       val TEMPLATE = """(?<!`)\[\[template:([^\]]*)\]\]""".r
       TEMPLATE.replaceAllIn(res1, { m =>
-        done = true
-        //todo this is parse-ahead, maybe i can make it lazy?
-        val parms = WikiForm.parseFormData(c2)
-        val content = template (m.group(1), Map()++parms)
-        //regexp uses $ as a substitution
-        content.replaceAll("\\$", "\\\\\\$")
+	done = true
+	//todo this is parse-ahead, maybe i can make it lazy?
+	val parms = WikiForm.parseFormData(c2)
+	val content = template (m.group(1), Map()++parms)
+	//regexp uses $ as a substitution
+	content.replaceAll("\\$", "\\\\\\$")
       })
     } catch {
       case s: Throwable => log("Error: ", s); "`[ERR Can't process an include]`"
@@ -329,26 +329,26 @@ object Wikis extends Logging with Validation {
   def preprocess(wid: WID, markup: String, content: String) = markup match {
     case MD =>
       implicit val errCollector = new VErrors()
-      
+
       // replace urls with MD markup:
       var c2 = content.replaceAll("""(\s|^)(https?://[^\s]+)""", "$1[$2]")
-      
+
       if (c2 contains "[[./")
-        c2 = content.replaceAll("""\[\[\./""", """[[%s/""".format(wid.cat + ":" + wid.name)) // child topics
+	c2 = content.replaceAll("""\[\[\./""", """[[%s/""".format(wid.cat + ":" + wid.name)) // child topics
       if (c2 contains "[[../")
-        c2 = c2.replaceAll("""\[\[\../""", """[[%s/""".format(wid.parentWid.map(wp => wp.cat + ":" + wp.name).getOrElse("?"))) // siblings topics
+	c2 = c2.replaceAll("""\[\[\../""", """[[%s/""".format(wid.parentWid.map(wp => wp.cat + ":" + wp.name).getOrElse("?"))) // siblings topics
 
       // TODO stupid - 3 levels of include...
       include(c2).map { c2 = _ }.flatMap { x =>
-        include(c2).map { c2 = _ }.flatMap { x =>
-          include(c2).map { c2 = _ }
-        }
+	include(c2).map { c2 = _ }.flatMap { x =>
+	  include(c2).map { c2 = _ }
+	}
       }
 
-      wparserFactory.mk(wid.getRealm) apply c2
-//      (for (
-//        s @ WikiParser.SState(a0, tags, ilinks, decs) <- Some(wparser(c2))
-//      ) yield s) getOrElse WikiParser.SState("")
+      apply(wid.getRealm).wparserFactory.mk(wid.getRealm) apply c2
+//	(for (
+//	  s @ WikiParser.SState(a0, tags, ilinks, decs) <- Some(wparser(c2))
+//	) yield s) getOrElse WikiParser.SState("")
     case TEXT => WikiParser.SState(content.replaceAll("""\[\[([^]]*)\]\]""", """[[\(1\)]]"""))
     case _ => WikiParser.SState("UNKNOWN MARKUP " + markup + " - " + content)
   }
@@ -360,10 +360,10 @@ object Wikis extends Logging with Validation {
   private def format1(wid: WID, markup: String, icontent: String, we: Option[WikiEntry] = None) = {
     val res = try {
       var content =
-        if(icontent == null || icontent.isEmpty)
-          we.map(_.preprocessed).getOrElse(preprocess(wid, markup, noporn(icontent))).fold(we).s
-        else
-          preprocess(wid, markup, noporn(icontent)).fold(we).s
+	if(icontent == null || icontent.isEmpty)
+	  we.map(_.preprocessed).getOrElse(preprocess(wid, markup, noporn(icontent))).fold(we).s
+	else
+	  preprocess(wid, markup, noporn(icontent)).fold(we).s
 
       // TODO index noporn when saving/loading page, in the WikiIndex
       // TODO have a pre-processed and formatted page index I can use - for non-scripted pages, refreshed on save
@@ -371,44 +371,44 @@ object Wikis extends Logging with Validation {
       val S_PAT = """`\{\{(call):([^#}]*)#([^}]*)\}\}`""".r
 
       content = S_PAT replaceSomeIn (content, { m =>
-        try {
-          val pageWithScripts = WID.fromPath(m group 2).flatMap(x => Wikis(wid.getRealm).find(x)).orElse(we)
-          pageWithScripts.flatMap(_.scripts.find(_.name == (m group 3))).filter(_.checkSignature).map(s => runScript(s.content, we))
-          //        Some("xx")
-        } catch { case _: Throwable => Some("!?!") }
+	try {
+	  val pageWithScripts = WID.fromPath(m group 2).flatMap(x => Wikis(wid.getRealm).find(x)).orElse(we)
+	  pageWithScripts.flatMap(_.scripts.find(_.name == (m group 3))).filter(_.checkSignature).map(s => runScript(s.content, we))
+	  //	    Some("xx")
+	} catch { case _: Throwable => Some("!?!") }
       })
 
       // todo move to an AST approach of states that are folded here instead of sequential replaces
       val XP_PAT = """`\{\{\{(xp[l]*):([^}]*)\}\}\}`""".r
 
       content = XP_PAT replaceSomeIn (content, { m =>
-        try {
-          we.map(x => runXp(m group 1, x, m group 2))
-        } catch { case _: Throwable => Some("!?!") }
+	try {
+	  we.map(x => runXp(m group 1, x, m group 2))
+	} catch { case _: Throwable => Some("!?!") }
       })
 
       val TAG_PAT = """`\{\{(tag)[: ]([^}]*)\}\}`""".r
 
       content = TAG_PAT replaceSomeIn (content, { m =>
-        try {
-          Some(controllers.Wiki.hrefTag(wid, m group 2, m group 2))
-        } catch { case _: Throwable => Some("!?!") }
+	try {
+	  Some(controllers.Wiki.hrefTag(wid, m group 2, m group 2))
+	} catch { case _: Throwable => Some("!?!") }
       })
 
       // for forms
       we.map { x => content = new WForm(x).formatFields(content) }
 
       markup match {
-        case MD => toXHTML(knockoff(content)).toString
-        case TEXT => content
-        case _ => "UNKNOWN MARKUP " + markup + " - " + content
+	case MD => toXHTML(knockoff(content)).toString
+	case TEXT => content
+	case _ => "UNKNOWN MARKUP " + markup + " - " + content
       }
     } catch {
       case e : Throwable => {
-        Audit.logdbWithLink("ERR_FORMATTING", wid.ahref, "[[ERROR FORMATTING]]: " + e.toString)
-        log("[[ERROR FORMATTING]]: " + icontent.length + e.toString + "\n"+e.getStackTraceString)
-        if(admin.Config.isLocalhost) throw e
-        "[[ERROR FORMATTING]] - sorry, dumb program here! The content is not lost: try editing this topic... also, please report this topic with the error and we'll fix it for you!"
+	Audit.logdbWithLink("ERR_FORMATTING", wid.ahref, "[[ERROR FORMATTING]]: " + e.toString)
+	log("[[ERROR FORMATTING]]: " + icontent.length + e.toString + "\n"+e.getStackTraceString)
+	if(admin.Config.isLocalhost) throw e
+	"[[ERROR FORMATTING]] - sorry, dumb program here! The content is not lost: try editing this topic... also, please report this topic with the error and we'll fix it for you!"
       }
     }
     res
@@ -428,9 +428,9 @@ object Wikis extends Logging with Validation {
     val res: List[_] =
       if (razie.GPath(xpath).isAttr) (root xpla xpath).filter(_.length > 0) // sometimes attributes come as zero value?
       else {
-        (root xpl xpath).collect {
-          case ww: WikiWrapper => Wikis.formatWikiLink(ww.wid, ww.wid.name, ww.page.map(_.label).getOrElse(ww.wid.name))._1
-        }
+	(root xpl xpath).collect {
+	  case ww: WikiWrapper => Wikis.formatWikiLink(ww.wid, ww.wid.name, ww.page.map(_.label).getOrElse(ww.wid.name))._1
+	}
       }
 
     println("XP:" + res.mkString)
@@ -439,13 +439,13 @@ object Wikis extends Logging with Validation {
       case "xp" => res.headOption.getOrElse("?").toString
       case "xpl" => "<ul>" + res.map { x: Any => "<li>" + x.toString + "</li>" }.mkString + "</ul>"
     }
-    //        else "TOO MANY to list"), None))
+    //	      else "TOO MANY to list"), None))
   }
 
-  // scaled down formatting of jsut some content 
-  def sformat(content: String, markup:String="md") = 
+  // scaled down formatting of jsut some content
+  def sformat(content: String, markup:String="md") =
     format (WID("1","2"), markup, content)
-    
+
   /** main formatting function */
   def format(wid: WID, markup: String, icontent: String, we: Option[WikiEntry] = None) = {
     var res = format1(wid, markup, icontent, we)
@@ -454,22 +454,22 @@ object Wikis extends Logging with Validation {
     val A_PAT = """(<a +href="http://)([^>]*)>([^<]*)(</a>)""".r
     res = A_PAT replaceSomeIn (res, { m =>
       if (Option(m group 2) exists (s=> !s.startsWith(Services.config.hostport)  &&
-        //todo make these configurable
-        !s.startsWith("www.racerkidz.com") &&
-        !s.startsWith("www.enduroschool.com") &&
-        !s.startsWith("www.nofolders.net") &&
-        !s.startsWith("www.askicoach.com") &&
-        !s.startsWith("www.dieselreactor.net") &&
-        !s.startsWith("www.coolscala.com")
-        ))
-        Some("""$1$2 title="External site"><i>$3</i><sup>&nbsp;<b style="color:darkred">^^</b></sup>$4""")
+	//todo make these configurable
+	!s.startsWith("www.racerkidz.com") &&
+	!s.startsWith("www.enduroschool.com") &&
+	!s.startsWith("www.nofolders.net") &&
+	!s.startsWith("www.askicoach.com") &&
+	!s.startsWith("www.dieselreactor.net") &&
+	!s.startsWith("www.coolscala.com")
+	))
+	Some("""$1$2 title="External site"><i>$3</i><sup>&nbsp;<b style="color:darkred">^^</b></sup>$4""")
       else None
     })
 
-    //    // modify external sites mapped to external URLs
-    //    // TODO optimize - either this logic or a parent-based approach
-    //    for (site <- Wikis.urlmap)
-    //      res = res.replaceAll ("""<a +href="%s""".format(site._1), """<a href="%s""".format(site._2))
+    //	  // modify external sites mapped to external URLs
+    //	  // TODO optimize - either this logic or a parent-based approach
+    //	  for (site <- Wikis.urlmap)
+    //	    res = res.replaceAll ("""<a +href="%s""".format(site._1), """<a href="%s""".format(site._2))
 
     res
   }
@@ -483,7 +483,7 @@ object Wikis extends Logging with Validation {
   /** format content from a template, given some parms */
   def template(wpath: String, parms:Map[String,String]) = {
     (for (wid <- WID.fromPath(wpath);
-          c <- wid.content
+	  c <- wid.content
     ) yield {
       parms.foldLeft(c)((a,b)=>a.replaceAll("\\$\\{"+b._1+"\\}", b._2))
     }) getOrElse (
@@ -510,14 +510,14 @@ object Wikis extends Logging with Validation {
     // tODO2 rename references
     RazMongo.withDb(RazMongo("WikiEntry").m) { t =>
       for (u <- t if ("User" == u.get("category") && uold == u.get("name"))) {
-        u.put("name", unew)
-        t.save(u)
+	u.put("name", unew)
+	t.save(u)
       }
     }
     RazMongo.withDb(RazMongo("WikiEntryOld").m) { t =>
       for (u <- t if ("User" == u.get("category") && uold == u.get("name"))) {
-        u.put("name", unew)
-        t.save(u)
+	u.put("name", unew)
+	t.save(u)
       }
     }
   }

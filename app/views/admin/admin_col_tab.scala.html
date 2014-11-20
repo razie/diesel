@@ -4,7 +4,7 @@
   @k match {
     case "wpath" => {
       @model.Wikis.findById(db.get("pid").toString).map {wp=>
-        <a href="/wiki/@wp.wid.wpath">@wp.wid.wpath</a>
+	<a href="/wiki/@wp.wid.wpath">@wp.wid.wpath</a>
       }
     }
     case _=> {
@@ -17,16 +17,16 @@
   @k match {
     case "from" | "owner" => {
       @if(v == null || v.length <= 1) {<span style="color:#ff0000">???</span>} else {
-        @model.Users.findUserById(v).map {u=>
-        <a href="/razadmin/user/@u._id.toString">@u.userName</a>
-        }
+	@model.Users.findUserById(v).map {u=>
+	<a href="/razadmin/user/@u._id.toString">@u.userName</a>
+	}
       }
     }
     case "to" => {
       @if(v == null || v.length <= 1) {<span style="color:#ff0000">???</span>} else {
-        @model.RacerKidz.findByIds(v).map {rk=>
-          <a href="/razadmin/rk/@rk._id.toString">@rk.info.ename</a>
-        }
+	@model.RacerKidz.findByIds(v).map {rk=>
+	  <a href="/razadmin/rk/@rk._id.toString">@rk.info.ename</a>
+	}
       }
     }
     case _=> {
@@ -59,11 +59,10 @@
 @if(!Array("User","Profile","WikiEntry","Ver","Audit", "WikiAudit").contains(name)) {
 <a class="btn btn-mini btn-danger" href="@routes.Admin.delcoldb(name,db.get("_id").toString)">DEL - no confirmation!</a>
 *************@
-  
+
   <hr>
   @htmlFooter()
 
 </div> <!-- /container -->
 
 @htmlBottom()
-    

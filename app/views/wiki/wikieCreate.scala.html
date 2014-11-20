@@ -11,9 +11,9 @@ render a regular wiki page - site pages are rendered with wikiSite.scala.html
     <div class="span9">
 
       @helper.form(action=routes.Wikie.addWithName(cat, realm), 'class->"well form-inline") {
-        Name: <input type="text" class="input-xlarge" name="name" placeholder="Name">
+	Name: <input type="text" class="input-xlarge" name="name" placeholder="Name">
 
-        <button type="submit" class="btn">Create Now!</button>
+	<button type="submit" class="btn">Create Now!</button>
       }
 
       <hr>
@@ -29,4 +29,3 @@ render a regular wiki page - site pages are rendered with wikiSite.scala.html
 </div> <!-- /container -->
 
 @htmlBottom()
-    

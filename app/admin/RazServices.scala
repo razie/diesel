@@ -25,15 +25,15 @@ object RazAuthService extends AuthService[User] with Logging {
     import play.api.Play.current
     request.session.get(Config.CONNECTED).map { euid =>
       synchronized {
-        val uid = Enc.fromSession(euid)
-        (u orElse Api.findUser(uid)).foreach { u =>
-          debug("AUTH CLEAN =" + u._id)
-          Cache.remove(u.email + ".connected")
-        }
+	val uid = Enc.fromSession(euid)
+	(u orElse Users.findUser(uid)).foreach { u =>
+	  debug("AUTH CLEAN =" + u._id)
+	  Cache.remove(u.email + ".connected")
+	}
       }
     }
   }
-  
+
   /** authentication - find the user currently logged in, from either the session or http basic auth */
   def authUser(implicit request: Request[_]): Option[User] = {
     val connected = request.session.get(Config.CONNECTED)
@@ -47,52 +47,52 @@ object RazAuthService extends AuthService[User] with Logging {
     razie.NoStaticS.remove[DarkLight]
     request.session.get("css").fold {
       Website(request).flatMap(_.css).foreach{x=>
-        razie.NoStaticS.put(DarkLight(x))
+	razie.NoStaticS.put(DarkLight(x))
       }
     } { v =>
       // session settings override everything
-      razie.NoStaticS.put(DarkLight(v)) 
+      razie.NoStaticS.put(DarkLight(v))
     }
     //todo configure per realm
 
     synchronized {
       // from session
       val au = connected.flatMap { euid =>
-        val uid = Enc.fromSession(euid)
-        Cache.getAs[User](uid + ".connected").map(u => Some(u)).getOrElse {
-          debug("AUTH connecting=" + uid)
-          Api.findUser(uid).map { u =>
-            debug("AUTH connected=" + u)
-            Cache.set(u.email + ".connected", u, 120)
-            u
-          }
-        }
+	val uid = Enc.fromSession(euid)
+	Cache.getAs[User](uid + ".connected").map(u => Some(u)).getOrElse {
+	  debug("AUTH connecting=" + uid)
+	  Users.findUser(uid).map { u =>
+	    debug("AUTH connected=" + u)
+	    Cache.set(u.email + ".connected", u, 120)
+	    u
+	  }
+	}
       } orElse authorization.flatMap { euid =>
-        // from basic http auth headers, for testing and API
-        val e2 = euid.replaceFirst("Basic ", "")
-        val e3 = new String(Base64 dec e2) //new sun.misc.BASE64Decoder().decodeBuffer(e2)
-        val EP = """H-([^:]*):H-(.*)""".r
+	// from basic http auth headers, for testing and API
+	val e2 = euid.replaceFirst("Basic ", "")
+	val e3 = new String(Base64 dec e2) //new sun.misc.BASE64Decoder().decodeBuffer(e2)
+	val EP = """H-([^:]*):H-(.*)""".r
 
-        e3 match {
-          case EP(em, pa) =>
-//            cdebug << "AUTH BASIC attempt "+e3
-            Api.findUser(Enc(em)).flatMap { u =>
-              if (Enc(pa) == u.pwd) {
-                u.auditLogin
-                val uid = u.id
-                debug("AUTH BASIC connected=" + u)
-                Cache.set(u.email + ".connected", u, 120)
-                Some(u)
-              } else None
-            }
+	e3 match {
+	  case EP(em, pa) =>
+//	      cdebug << "AUTH BASIC attempt "+e3
+	    Users.findUser(Enc(em)).flatMap { u =>
+	      if (Enc(pa) == u.pwd) {
+		u.auditLogin
+		val uid = u.id
+		debug("AUTH BASIC connected=" + u)
+		Cache.set(u.email + ".connected", u, 120)
+		Some(u)
+	      } else None
+	    }
 
-          case _ => println("ERR_AUTH wrong Basic auth encoding..."); None
-        }
+	  case _ => println("ERR_AUTH wrong Basic auth encoding..."); None
+	}
       }
 
       // allow theme to be overriten per request / session
       request.session.get("css").foreach { v =>
-        au.foreach(_.css = Some(v)); // will be set statically later
+	au.foreach(_.css = Some(v)); // will be set statically later
       }
 
       razie.NoStaticS.put[WikiUser](au.getOrElse(null))
@@ -106,9 +106,9 @@ object RazAuthService extends AuthService[User] with Logging {
   def checkActive(au: WikiUser)(implicit errCollector: VErrors = IgnoreErrors) =
     controllers.Admin.toON2(au.isActive) orCorr (
       if (au.userName == "HarryPotter")
-        Admin.cDemoAccount
+	Admin.cDemoAccount
       else
-        Admin.cAccountNotActive)
+	Admin.cAccountNotActive)
 
   /** sign this content, using a server-specific key */
   def sign(content: String): String = Enc apply Enc.hash(content)
@@ -117,7 +117,7 @@ object RazAuthService extends AuthService[User] with Logging {
   def checkSignature(sign: String, signature: String): Boolean =
     sign == signature ||
       ("ADMIN" == signature &&
-        (razie.NoStaticS.get[WikiUser].map(_.asInstanceOf[User]).exists(_.hasPerm(Perm.adminDb)) || Services.config.isLocalhost))
+	(razie.NoStaticS.get[WikiUser].map(_.asInstanceOf[User]).exists(_.hasPerm(Perm.adminDb)) || Services.config.isLocalhost))
 }
 
 /**

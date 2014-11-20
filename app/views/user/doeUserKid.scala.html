@@ -5,7 +5,7 @@
 @import model.RK
 
 @htmlHeadBar("Racer Kid", Some(user))
-   
+
 <div class="container"> <div class="row">
 @leftmenu(6, user)
 
@@ -30,36 +30,36 @@
   @razText(myForm, "email",  "Email")
 
 @helper.inputDate(
-    myForm("dob"), 
-    '_label -> "Date of Birth", 
+    myForm("dob"),
+    '_label -> "Date of Birth",
     '_error->myForm.error("role"),
     '_showConstraints -> false)
 
   @helper.select(
-    myForm("gender"), 
+    myForm("gender"),
      Seq( "M"->"Male", "F"->"Female"),
-    '_label -> "Gender", 
+    '_label -> "Gender",
     '_error->myForm.error("gender"),
     '_showConstraints -> false)
 
   @helper.select(
-    myForm("role"), 
+    myForm("role"),
      relationships.map(x=> (x,x)),
-    '_label -> "Relationship", 
+    '_label -> "Relationship",
     '_showConstraints -> false)
 
   @helper.select(
-    myForm("notifyParent"), 
+    myForm("notifyParent"),
      Seq( "y"->"Yes", "n"->"No"),
-    '_label -> "Notify parent", 
+    '_label -> "Notify parent",
     '_error->myForm.error("notifyParent"),
     '_showConstraints -> false)
 
 @if(associd.length > 3) {
   @helper.select(
-    myForm("assocRole"), 
+    myForm("assocRole"),
      model.RK.ROLES.map{r=>(r,r)},
-    '_label -> "ROLE", 
+    '_label -> "ROLE",
     '_error->myForm.error("assocRole"),
     '_showConstraints -> false)
 } else {
@@ -68,9 +68,9 @@
 
 @***
   @helper.select(
-    myForm("status"), 
+    myForm("status"),
      Seq("a"->"Active", "s"->"Suspended", "f" -> "Former"),
-    '_label -> "Status", 
+    '_label -> "Status",
     '_error->myForm.error("status"),
     '_showConstraints -> false)
 ***@
@@ -79,7 +79,7 @@
   <p>
 @if(rkid.length > 2){
   @if(model.RacerKidz.findById(new ObjectId(rkid)).exists(_.rkiId.isDefined)) {
-  	@*** no update for myself or RK for Users ***@
+	@*** no update for myself or RK for Users ***@
     <button type="submit" class="btn btn-primary">Update Info</button>
   } else {
   Can't update this info right now... click here if you need to overwrite it:
@@ -96,7 +96,7 @@
 @myForm.globalError.map{err=>
      <p style="color:red;font-weight:bold">@err.message</p>
 }
-  
+
   <div class="alert alert-warning"><strong>Privacy!</strong> This information will be shared with the clubs you are a member of! </div>
   <p><small>By maintaining a profile, you agree to the <a href="@controllers.Wiki.w("Terms of Service")">Terms of Service</a></small><p>
 }
@@ -104,7 +104,7 @@
       </div>
 
 <div class="span4">
-      
+
 <h2>Create / update a RacerKid</h2>
 <p>The racers associated to you.
 <p>This information about your racers is shared with the clubs you belong to. The club administrators can help you kepe this up to date as well, by editing it... it may even have been created by the club administrator the first time you registered the racer.</p>
@@ -122,23 +122,23 @@
 
 @mc=@{
   for ((a,k) <- RKU(user).mergeCandidates(rka.get)) yield
-    Map("fname"->k.info.firstName, 
-    	"lname"->k.info.lastName, 
-    	"role" -> a.role, 
-    	"source" -> a.assoc,
-    	"associd" -> a._id.toString,
-    	"button"->k._id.toString,
-    	"merge"->a._id.toString)
+    Map("fname"->k.info.firstName,
+	"lname"->k.info.lastName,
+	"role" -> a.role,
+	"source" -> a.assoc,
+	"associd" -> a._id.toString,
+	"button"->k._id.toString,
+	"merge"->a._id.toString)
 }
 
 @mnglink(row:Map[String,String],k:String,v:String)={
   @k match {
-  	case "button" => {
+	case "button" => {
       <a href="@routes.Kidz.doeKid(user._id.toString, v, "-", row("associd"), "clubkidz")" class="btn btn-mini">More...</a>
-      } 
-  	case "merge" => {
+      }
+	case "merge" => {
       <a href="@routes.Club.doeMergeKid(row("associd"), associd)" class="btn btn-mini btn-info">MERGE</a>
-      } 
+      }
     case _ => { @v }
   }
 }
@@ -147,7 +147,7 @@
   </div>
 
 @if(associd.length > 3 && !RKU(user).mergeCandidates(rka.get).isEmpty) {
-There are merge candidates:	
+There are merge candidates:
 @util.utilSimpleTable(mc,
 	Seq("fname" -> "F.Name", "lname"->"L.Name", "role" -> "Role", "source" -> "Source", "button"->"Details", "merge" -> "Merge"), Some(mnglink))
 }

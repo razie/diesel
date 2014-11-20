@@ -1,7 +1,7 @@
 /**
  *   ____    __    ____  ____  ____,,___     ____  __  __  ____
- *  (  _ \  /__\  (_   )(_  _)( ___)/ __)   (  _ \(  )(  )(  _ \           Read
- *   )   / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <     README.txt
+ *  (  _ \  /__\  (_   )(_  _)( ___)/ __)   (  _ \(  )(  )(  _ \	   Read
+ *   )	 / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <     README.txt
  *  (_)\_)(__)(__)(____)(____)(____)(___/   (__)  (______)(____/    LICENSE.txt
  */
 package razie.base.scriptingx
@@ -63,18 +63,18 @@ class ScalaScriptContext(parent: ActionContext = null) extends ScriptContextImpl
     // TODO make this work for any managed classloader - it's hardcoded for sbt
     val env = {
       if (ScalaScript.getClass.getClassLoader.getResource("app.class.path") != null) {
-        razie.Debug("Scripster using app.class.path and boot.class.path")
-        // see http://gist.github.com/404272
-        val settings = new nsc.Settings(errLogger)
-        settings embeddedDefaults getClass.getClassLoader
-        razie.Debug("Scripster using classpath: " + settings.classpath.value)
-        razie.Debug("Scripster using boot classpath: " + settings.bootclasspath.value)
-        settings
+	razie.Debug("Scripster using app.class.path and boot.class.path")
+	// see http://gist.github.com/404272
+	val settings = new nsc.Settings(errLogger)
+	settings embeddedDefaults getClass.getClassLoader
+	razie.Debug("Scripster using classpath: " + settings.classpath.value)
+	razie.Debug("Scripster using boot classpath: " + settings.bootclasspath.value)
+	settings
       } else {
-        razie.Debug("Scripster using java classpath")
-        val env = new nsc.Settings(errLogger)
-        env.usejavacp.value = true
-        env
+	razie.Debug("Scripster using java classpath")
+	val env = new nsc.Settings(errLogger)
+	env.usejavacp.value = true
+	env
       }
     }
 
@@ -95,19 +95,19 @@ class ScalaScriptContext(parent: ActionContext = null) extends ScriptContextImpl
 
     ctx.foreach { (name, value) =>
       if ("ctx" != name && "parent" != name) {
-        razie.Debug("binding " + name + ":" + value.getClass.getName) // obj.toString causes a mess...
+	razie.Debug("binding " + name + ":" + value.getClass.getName) // obj.toString causes a mess...
 
-        // this here reveals a screwed up handling of $$ class names in scala
-        //        razie.Debug ("binding " + name + ":"+value.getClass.getSimpleName) // obj.toString causes a mess...
-        //      p.bind(name, value.getClass.getCanonicalName, value)
+	// this here reveals a screwed up handling of $$ class names in scala
+	//	  razie.Debug ("binding " + name + ":"+value.getClass.getSimpleName) // obj.toString causes a mess...
+	//	p.bind(name, value.getClass.getCanonicalName, value)
 
-        try {
-          p.bind(name, value.getClass.getName, value)
-        } catch {
-          case e: Exception => {
-            razie.Alarm("While binding variable: " + name + ":" + value.getClass.getName, e)
-          }
-        }
+	try {
+	  p.bind(name, value.getClass.getName, value)
+	} catch {
+	  case e: Exception => {
+	    razie.Alarm("While binding variable: " + name + ":" + value.getClass.getName, e)
+	  }
+	}
       }
     }
   }
@@ -130,30 +130,30 @@ class SBTScalaScriptContext(parent: ActionContext = null) extends ScalaScriptCon
       settings.Yreplsync.value = true
 
       if(admin.Config.isLocalhost) {
-        val myLoader = new ReplClassloader(getClass.getClassLoader)
-        settings.embeddedDefaults(myLoader)
-//        settings.bootclasspath.append("C:/cygwin/home/razvanc/w/racerkidz/lib_managed/jars/org.scala-lang/scala-library/scala-library-2.10.3.jar")
-        settings.bootclasspath.append("/Users/raz/w/racerkidz/lib_managed/jars/org.scala-lang/scala-library/scala-library-2.10.4.jar")
-        //todo figure out why the heck and remove this hardcoded bs
+	val myLoader = new ReplClassloader(getClass.getClassLoader)
+	settings.embeddedDefaults(myLoader)
+//	  settings.bootclasspath.append("C:/cygwin/home/razvanc/w/racerkidz/lib_managed/jars/org.scala-lang/scala-library/scala-library-2.10.3.jar")
+	settings.bootclasspath.append("/Users/raz/w/racerkidz/lib_managed/jars/org.scala-lang/scala-library/scala-library-2.10.4.jar")
+	//todo figure out why the heck and remove this hardcoded bs
 
-//        val cl = this.getClass.getClassLoader // or getClassLoader.getParent, or one more getParent...
+//	  val cl = this.getClass.getClassLoader // or getClassLoader.getParent, or one more getParent...
 //
-//        val urls = cl match {
-//          case cl: java.net.URLClassLoader => cl.getURLs.toList
-//          case a => sys.error("oops: I was expecting an URLClassLoader, foud a " + a.getClass)
-//        }
-//        val classpath = (urls map { _.toString })
+//	  val urls = cl match {
+//	    case cl: java.net.URLClassLoader => cl.getURLs.toList
+//	    case a => sys.error("oops: I was expecting an URLClassLoader, foud a " + a.getClass)
+//	  }
+//	  val classpath = (urls map { _.toString })
 //
-//        razie.cout << "=================CLASSPATH: " + classpath
+//	  razie.cout << "=================CLASSPATH: " + classpath
 //
-//        settings.bootclasspath.value = classpath.distinct.mkString(java.io.File.pathSeparator)
-//        settings.classpath.value = classpath.distinct.mkString(java.io.File.pathSeparator)
-//        settings.bootclasspath.append("C:/cygwin/home/razvanc/w/racerkidz/lib_managed/jars/org.scala-lang/scala-library/scala-library-2.10.3.jar")
-//        settings.embeddedDefaults(cl) // or getClass.getClassLoader
+//	  settings.bootclasspath.value = classpath.distinct.mkString(java.io.File.pathSeparator)
+//	  settings.classpath.value = classpath.distinct.mkString(java.io.File.pathSeparator)
+//	  settings.bootclasspath.append("C:/cygwin/home/razvanc/w/racerkidz/lib_managed/jars/org.scala-lang/scala-library/scala-library-2.10.3.jar")
+//	  settings.embeddedDefaults(cl) // or getClass.getClassLoader
       } else {
-        // production - javacp is enough
-        settings.usejavacp.value = true
-        settings embeddedDefaults getClass.getClassLoader
+	// production - javacp is enough
+	settings.usejavacp.value = true
+	settings embeddedDefaults getClass.getClassLoader
       }
 
       settings
@@ -189,29 +189,29 @@ final class ReplClassloader(parent: ClassLoader) extends ClassLoader(parent) wit
     // from our classloader to a temporary file, and return that as the resource.
     if (name == "app.class.path") {
       def writeTemp(content: String): File = {
-        val f = File.createTempFile("classpath", ".txt")
-        //          IO.writeFile(f, content)
-        val p = new java.io.PrintWriter(f)
-        p.print(content)
-        p.close
-        f
+	val f = File.createTempFile("classpath", ".txt")
+	//	    IO.writeFile(f, content)
+	val p = new java.io.PrintWriter(f)
+	p.print(content)
+	p.close
+	f
       }
       info("Attempting to configure Scala classpath based on classloader: " + getClass.getClassLoader)
       val superResource = super.getResource(name)
       if (superResource != null) superResource // In SBT, let it do it's thing
       else getClass.getClassLoader match {
-        case u: URLClassLoader =>
-          // Rather pass `settings.usejavacp.value = true` (which doesn't work
-          // under SBT) we do the same as SBT and respond to a resource request
-          // by the compiler for the magic name "app.classpath"
-          info("yay...")
-          val files = u.getURLs.map(x => new java.io.File(x.toURI))
-          val f = writeTemp(files.mkString(File.pathSeparator))
-          f.toURI.toURL
-        case _ =>
-          // We're hosed here.
-          info("uh-oh")
-          null
+	case u: URLClassLoader =>
+	  // Rather pass `settings.usejavacp.value = true` (which doesn't work
+	  // under SBT) we do the same as SBT and respond to a resource request
+	  // by the compiler for the magic name "app.classpath"
+	  info("yay...")
+	  val files = u.getURLs.map(x => new java.io.File(x.toURI))
+	  val f = writeTemp(files.mkString(File.pathSeparator))
+	  f.toURI.toURL
+	case _ =>
+	  // We're hosed here.
+	  info("uh-oh")
+	  null
       }
     } else super.getResource(name)
   }
@@ -261,7 +261,7 @@ class ScalaScript(val script: String) extends RazScript with razie.Logging {
     // specific scala contexts can cache a parser
     val sctx: Option[ScalaScriptContext] =
       if (ctx.isInstanceOf[ScalaScriptContext])
-        Some(ctx.asInstanceOf[ScalaScriptContext])
+	Some(ctx.asInstanceOf[ScalaScriptContext])
       else None
 
     val p = sctx.map(_.parser) getOrElse (sctx.get mkParser println)
@@ -286,11 +286,11 @@ class ScalaScript(val script: String) extends RazScript with razie.Logging {
       RazScript.RSSucc(result)
     } catch {
       case e: Exception => {
-        razie.Warn("While processing script: " + this.script, e)
-        val r = "ERROR: " + e.getMessage + " : " +
-          (sctx.map(_.lastError) getOrElse "Unknown")
-        sctx.map(_.lastError = "")
-        RazScript.RSError(r)
+	razie.Warn("While processing script: " + this.script, e)
+	val r = "ERROR: " + e.getMessage + " : " +
+	  (sctx.map(_.lastError) getOrElse "Unknown")
+	sctx.map(_.lastError = "")
+	RazScript.RSError(r)
       }
     }
   }
@@ -303,7 +303,7 @@ class ScalaScript(val script: String) extends RazScript with razie.Logging {
   def interactive(ctx: ActionContext): RazScript.RSResult[Any] = {
     val sctx: Option[ScalaScriptContext] =
       if (ctx.isInstanceOf[ScalaScriptContext])
-        Some(ctx.asInstanceOf[ScalaScriptContext])
+	Some(ctx.asInstanceOf[ScalaScriptContext])
       else None
 
     val p = sctx.map(_.parser) getOrElse (sctx.get mkParser println)
@@ -319,8 +319,8 @@ class ScalaScript(val script: String) extends RazScript with razie.Logging {
       ret
     } catch {
       case e: Exception => {
-        log("While processing script: " + this.script, e)
-        throw e
+	log("While processing script: " + this.script, e)
+	throw e
       }
     }
   }

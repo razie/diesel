@@ -98,9 +98,9 @@ case class RacerKid(
   /** pages of category that I linked to */
   def pages(cat: String) = wikis.filter(_.wid.cat == cat)
   def myPages(cat: String) = pages(cat)
-  
+
   // for email, user account overrides record
-  def email = user orElse rki map (_.email) 
+  def email = user orElse rki map (_.email)
 
   //TODO unique
   lazy val all:List[RacerKid] = (this :: RMany[RacerKid]("newRkId"->_id).toList ::: oldRkId.toList.flatMap(_.as[RacerKid].toList))
@@ -132,7 +132,7 @@ case class RacerKidAssoc(
   year: String = Config.curYear, // relevant for club memberships only
   crDtm: DateTime = DateTime.now,
   _id: ObjectId = new ObjectId()) extends REntity[RacerKidAssoc] {
-  
+
   def user = from.as[User]
   def rk = to.as[RacerKid]
 }
@@ -195,7 +195,7 @@ object RacerKidz {
 
   def findByParentUser(id: ObjectId) = {
     val mine = RMany[RacerKidAssoc]("from" -> id, "assoc" -> RK.ASSOC_PARENT) map (_.to) flatMap (findById)
-    //    val fromOthers = RMany[RacerKid]("userId" -> id) flatMap (x=> RMany[RacerKidAssoc]("from" -> x._id, "what" -> RK.ASSOC_PARENT)) map (_.to) flatMap (findById)
+    //	  val fromOthers = RMany[RacerKid]("userId" -> id) flatMap (x=> RMany[RacerKidAssoc]("from" -> x._id, "what" -> RK.ASSOC_PARENT)) map (_.to) flatMap (findById)
     mine //::: fromOthers
   }
   def findByParentRK(id: ObjectId) = RMany[RacerKidAssoc]("from" -> id, "assoc" -> RK.ASSOC_PARENT) map (_.to) flatMap (findById)
@@ -203,7 +203,7 @@ object RacerKidz {
   /** find all RK associated to user */
   def findAssocForUser(id: ObjectId) = {
     val mine = RMany[RacerKidAssoc]("from" -> id)
-    //    val fromOthers = RMany[RacerKid]("userId" -> id) flatMap (x=> RMany[RacerKidAssoc]("from" -> x._id, "what" -> RK.ASSOC_PARENT)) map (_.to) flatMap (findById)
+    //	  val fromOthers = RMany[RacerKid]("userId" -> id) flatMap (x=> RMany[RacerKidAssoc]("from" -> x._id, "what" -> RK.ASSOC_PARENT)) map (_.to) flatMap (findById)
     mine //::: fromOthers
   }
 
@@ -217,7 +217,7 @@ object RacerKidz {
 
   def findByClub(club: Club) = {
     val mine = findAssocByClub(club) map (_.to) flatMap (findById)
-    //    val fromOthers = RMany[RacerKid]("userId" -> id) flatMap (x=> RMany[RacerKidAssoc]("from" -> x._id, "what" -> RK.ASSOC_PARENT)) map (_.to) flatMap (findById)
+    //	  val fromOthers = RMany[RacerKid]("userId" -> id) flatMap (x=> RMany[RacerKidAssoc]("from" -> x._id, "what" -> RK.ASSOC_PARENT)) map (_.to) flatMap (findById)
     mine //::: fromOthers
   }
 

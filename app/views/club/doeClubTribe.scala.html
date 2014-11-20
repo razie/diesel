@@ -9,10 +9,10 @@ club admin manages user: membership, regsitration etc
 @how() = @{
 //  model.Wikis.category("Club").flatMap(_.contentTags.get("roles:"+"User")) match {
 //    case Some(s) => {
-//      s.split(",").filter(x => ! Array("Owner","Admin").contains(x)).map(x=>(x,x)).toSeq
+//	s.split(",").filter(x => ! Array("Owner","Admin").contains(x)).map(x=>(x,x)).toSeq
 //    }
 //    case None => {
-//      model.Wikis.pageNames("Link").map(x=>(x,x)).toList
+//	model.Wikis.pageNames("Link").map(x=>(x,x)).toList
 //    }
 //  }
 
@@ -20,7 +20,7 @@ club admin manages user: membership, regsitration etc
 }
 
 @htmlHeadBar("Tribe "+tribe.name, Option(club))
-   
+
 <div class="container"> <div class="row">
 @views.html.user.leftmenu(13, club)
 
@@ -32,19 +32,19 @@ club admin manages user: membership, regsitration etc
 
 @rkidzin=@{
   model.RacerKidz.findByClub(controllers.Club(club)).filter{x=> tribe.has(x._id)}.map(t=>
-    Map("fname"->t.info.firstName, 
-    	"role" -> tribe.kidz.find(_.rkId==t._id).map(_.role).mkString, 
-    	"id"->t._id.toString))
+    Map("fname"->t.info.firstName,
+	"role" -> tribe.kidz.find(_.rkId==t._id).map(_.role).mkString,
+	"id"->t._id.toString))
 }
-  
+
   @rmlink(row:Map[String,String],k:String,v:String)={
   @k match {
-  	case "id" => {
+	case "id" => {
       @if(tribe.has(new ObjectId(v))) {
-        <a href="@routes.Tribe.doeClubRemoveKid(tribe.page._id.toString,v,v)" class="btn btn-mini btn-warn">Remove</a>
+	<a href="@routes.Tribe.doeClubRemoveKid(tribe.page._id.toString,v,v)" class="btn btn-mini btn-warn">Remove</a>
       } else {
- 	  }
- 	}
+	  }
+	}
     case _ => {@v}
   }
 }
@@ -60,38 +60,38 @@ club admin manages user: membership, regsitration etc
 
 @helper.form(action=routes.Tribe.doeClubTribeUpdate(tribe.wid.wpath), 'class->"well") {
   @helper.inputText(
-    myForm("name"), 
-    '_label -> "A simple internal code/name", 
+    myForm("name"),
+    '_label -> "A simple internal code/name",
     '_showConstraints -> false)
 
   @helper.inputText(
-    myForm("label"), 
-    '_label -> "Fancy name for display", 
+    myForm("label"),
+    '_label -> "Fancy name for display",
     '_showConstraints -> false)
 
   @helper.inputText(
-    myForm("year"), 
-    '_label -> "Year", 
+    myForm("year"),
+    '_label -> "Year",
     '_showConstraints -> false)
 
   @helper.inputText(
-    myForm("desc"), 
-    '_label -> "Description", 
+    myForm("desc"),
+    '_label -> "Description",
     '_showConstraints -> false)
 
   @helper.select(
-    myForm("role"), 
+    myForm("role"),
      how(),
      '_label -> "Change role here",
     '_showConstraints -> false)
 
   <button type="submit" class="btn btn-primary">Update tribe!</button>
-  
+
 <hr>
 
   @myForm.globalError.map { err=>
      <p style="color:red;font-weight:bold">@err.message</p>
-  } 
+  }
 }
   </div>
 ***@
@@ -104,10 +104,9 @@ club admin manages user: membership, regsitration etc
 <a href="@routes.Tribe.doeTribeAddHow(tribe.page._id.toString,h)" class="btn btn-large btn-info">@h</a>
 }
 
-</div> 
+</div>
 </div> <!-- /row -->
   <hr>
   @htmlFooter(ads=true)
 </div> <!-- /container -->
 @htmlBottom()
-    

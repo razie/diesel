@@ -1,7 +1,7 @@
 /**
  *   ____    __    ____  ____  ____,,___     ____  __  __  ____
- *  (  _ \  /__\  (_   )(_  _)( ___)/ __)   (  _ \(  )(  )(  _ \           Read
- *   )   / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <     README.txt
+ *  (  _ \  /__\  (_   )(_  _)( ___)/ __)   (  _ \(  )(  )(  _ \	   Read
+ *   )	 / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <     README.txt
  *  (_)\_)(__)(__)(____)(____)(____)(___/   (__)  (______)(____/    LICENSE.txt
  */
 package model
@@ -27,7 +27,7 @@ object WikiScripster {
     var wikiCtx: Option[razie.base.scriptingx.NoBindSbtScalaContext] = None
     private def ctx = {
       if (!wikiCtx.isDefined) {
-        wikiCtx = Some(new razie.base.scriptingx.NoBindSbtScalaContext())
+	wikiCtx = Some(new razie.base.scriptingx.NoBindSbtScalaContext())
       }
       wikiCtx.get
     }
@@ -40,25 +40,25 @@ object WikiScripster {
 
       Audit.logdb("WIKI_SCRIPSTER", "exec", s)
       try {
-        val c = new CSTimer("script", "?")
-        c.start()
-        val res = (ScalaScript(s).interactive(ctx) getOrElse "?").toString
-        ctx.clear // make sure there's nothing for hackers
-        c.stop()
+	val c = new CSTimer("script", "?")
+	c.start()
+	val res = (ScalaScript(s).interactive(ctx) getOrElse "?").toString
+	ctx.clear // make sure there's nothing for hackers
+	c.stop()
 
-        // must get new parser every 50 times
-        count = count + 1
-        if (count % 20 == 0) {
-          impl = mk // separate promise will create in background
-          csys << "newParser"
-        }
-        res
+	// must get new parser every 50 times
+	count = count + 1
+	if (count % 20 == 0) {
+	  impl = mk // separate promise will create in background
+	  csys << "newParser"
+	}
+	res
       } catch {
-        case ex: Throwable => { // any exceptions, get a new parser
-          wikiCtx = None
-          if(devMode) throw ex
-          else "?"
-        }
+	case ex: Throwable => { // any exceptions, get a new parser
+	  wikiCtx = None
+	  if(devMode) throw ex
+	  else "?"
+	}
       }
     }
   }

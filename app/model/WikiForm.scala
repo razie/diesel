@@ -1,7 +1,7 @@
 /**
  *   ____    __    ____  ____  ____,,___     ____  __  __  ____
- *  (  _ \  /__\  (_   )(_  _)( ___)/ __)   (  _ \(  )(  )(  _ \           Read
- *   )   / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <     README.txt
+ *  (  _ \  /__\  (_   )(_  _)( ___)/ __)   (  _ \(  )(  )(  _ \	   Read
+ *   )	 / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <     README.txt
  *  (_)\_)(__)(__)(____)(____)(____)(___/   (__)  (______)(____/    LICENSE.txt
  */
 package model
@@ -18,7 +18,7 @@ object FormStatus {
   final val EDITING = "editing"
   final val SUBMITTED = "submitted"
   final val APPROVED = "approved"
-    
+
   final val FORM_ROLE = "formRole"
   final val FORM_STATE = "formState"
 }
@@ -34,11 +34,11 @@ case class WikiForm(we: WikiEntry) {
       // parse form data
       val data = razie.Snakk.jsonParsed(s.content)
       razie.MOLD(data.keys).map(_.toString).map { name =>
-        val x = data.getString(name)
-        we.fields.get(name) match {
-          case Some(f) => we.fields.put(f.name, f.withValue(x))
-          case None => we.fields.put(name, new FieldDef(name, x, Map.empty))
-        }
+	val x = data.getString(name)
+	we.fields.get(name) match {
+	  case Some(f) => we.fields.put(f.name, f.withValue(x))
+	  case None => we.fields.put(name, new FieldDef(name, x, Map.empty))
+	}
       }
     }
   }
@@ -47,7 +47,7 @@ case class WikiForm(we: WikiEntry) {
   def formState = we.fields.get(FormStatus.FORM_STATE).map(_.value)
   def canEdit = we.fields.get(FormStatus.FORM_STATE).exists(Array(FormStatus.EDITING, FormStatus.CREATED) contains _.value)
   def canBeApproved = we.fields.get(FormStatus.FORM_STATE).exists(_.value == FormStatus.SUBMITTED)
-  def canBeRejected = we.fields.get(FormStatus.FORM_STATE).exists(_.value == FormStatus.APPROVED) 
+  def canBeRejected = we.fields.get(FormStatus.FORM_STATE).exists(_.value == FormStatus.APPROVED)
   def formData = we.section("section", "formData")
   def formDataJson = we.section("section", "formData").map(s => razie.Snakk.jsonParsed(s.content))
   def fields = we.fields
@@ -55,7 +55,7 @@ case class WikiForm(we: WikiEntry) {
 
 /** form utilities */
 object WikiForm {
-  
+
   /** try to find and parse a random formData */
   def parseFormData(c: String) = {
     val parms = new scala.collection.mutable.HashMap[String, String]()
@@ -63,8 +63,8 @@ object WikiForm {
     PAT.findFirstMatchIn(c).foreach { m =>
       val data = razie.Snakk.jsonParsed(m.group(1))
       razie.MOLD(data.keys).map(_.toString).map { name =>
-        val x = data.getString(name)
-        parms.put(name, x)
+	val x = data.getString(name)
+	parms.put(name, x)
       }
     }
   parms

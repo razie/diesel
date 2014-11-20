@@ -5,7 +5,7 @@ manage the list of kidz and/or their accounts
 @import model.RK._
 
 @htmlHeadBar("RacerKidz for " + au.userName, Option(au))
-   
+
 <div class="container"> <div class="row">
 @views.html.user.leftmenu(6, au)
 
@@ -20,28 +20,28 @@ manage the list of kidz and/or their accounts
 
 @rks=@{
   (for (a <- model.RacerKidz.findAssocForUser(au._id);
-  	   k <- model.RacerKidz.findById(a.to)) yield (k,a)).map(t=>
-    Map("fname"->t._1.info.firstName, 
-    	"lname"->t._1.info.lastName, 
-    	"role" -> t._2.role, 
-    	"associd" -> t._2._id.toString, 
-    	"button"->t._1._id.toString))
+	   k <- model.RacerKidz.findById(a.to)) yield (k,a)).map(t=>
+    Map("fname"->t._1.info.firstName,
+	"lname"->t._1.info.lastName,
+	"role" -> t._2.role,
+	"associd" -> t._2._id.toString,
+	"button"->t._1._id.toString))
 }
 
 @mnglink(row:Map[String,String],k:String,v:String)={
   @k match {
-  	case "button" => {
+	case "button" => {
       <a href="@routes.Kidz.doeKid(au._id.toString, v, "-", row("associd"), "kidz")" class="btn btn-mini">More...</a>
-      } 
+      }
     case _ => { @v }
   }
 }
 
 @util.utilSimpleTable(rks, Seq(
-	"fname" -> "First Name", 
-	"lname"->"Last Name", 
-	"role" -> "Relationship", 
-	"button"->"Details"), 
+	"fname" -> "First Name",
+	"lname"->"Last Name",
+	"role" -> "Relationship",
+	"button"->"Details"),
 	Some(mnglink))
 
 Add a: @model.RK.RELATIONSHIPS.map{r=>
@@ -61,4 +61,3 @@ Add a: @model.RK.RELATIONSHIPS.map{r=>
 </div> <!-- /container -->
 
 @htmlBottom()
-    

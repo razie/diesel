@@ -1,5 +1,5 @@
 @*********
-FRAGMENT create a html table from a Mongo table 
+FRAGMENT create a html table from a Mongo table
 name = mongo collection name
 cols = (key,label)
 @func.map(_.apply(db, k, (if(db.get(k)==null) null else db.get(k).toString))).getOrElse(db.get(k))
@@ -50,4 +50,3 @@ db.get(k) match {
 </table>
 
 <hr>
-    

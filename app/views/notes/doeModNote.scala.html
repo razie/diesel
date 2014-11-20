@@ -19,14 +19,14 @@ msg types are msg, err
 **@
 
   @helper.textarea(
-    myForm("content"), 
+    myForm("content"),
     '_label -> Html("""Type a note below, give it some tags and throw it in the note locker."""),
     '_showConstraints -> false,
     'class -> "span7",
     'rows->5)
 
   @helper.inputText(
-    myForm("tags"), 
+    myForm("tags"),
     '_label -> Html("""Tags <small>i.e. note,todo,forjohn,phone,email,contact,project1</small>"""),
     'class -> "span7",
     'autocomplete -> "off",
@@ -38,11 +38,11 @@ msg types are msg, err
     <div class="actions">
       <button type="submit" class="btn btn-info">Save</button>
   </div>
-  
+
   @myForm.globalError.map { err=>
      <p style="color:red;font-weight:bold">@err.message</p>
-  } 
-  
+  }
+
   <p><small>See the <a href="/wiki/Blog:Note_Locker/Post:Notes_Quick_Guide">quick guide</a>.</small>
   <br><small>By updating this page, you agree to the <a href="@controllers.Wiki.w("Terms of Service")">Terms of Service</a></small>
 }

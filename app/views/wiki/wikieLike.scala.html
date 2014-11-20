@@ -18,16 +18,16 @@ link(like) a wiki: select or create from categoyr
 
 @if(wid.name == "Club") {
   <div class="alert alert-info">
-  <strong>Clubs with registration open:</strong> 
+  <strong>Clubs with registration open:</strong>
  @Html(Config.sitecfg("regClubs.list").toList.flatMap(_.split(",")).map(x=>Wikis.sformat(s"<b>[[Club:$x]]</b>")).mkString(" | "))
   </div>
-<hr>	
+<hr>
 }
 
       @wiki.wikiAddMore(wid, page, au)
-      
+
       <div class="well">
-        @wiki.wikiFrag(wid,au,false,page, None)
+	@wiki.wikiFrag(wid,au,false,page, None)
       </div>
 
       <hr>
@@ -46,4 +46,3 @@ link(like) a wiki: select or create from categoyr
 </div> <!-- /container -->
 
 @htmlBottom()
-    

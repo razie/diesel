@@ -13,7 +13,6 @@
   }
 
 @user match {
-  case None =>      { @mainNoUser(salutation, joe) }
+  case None =>	    { @mainNoUser(salutation, joe) }
   case Some(joe) => { @mainUser(salutation, joe, item, mobile) }
 }
- 

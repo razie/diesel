@@ -9,14 +9,14 @@ import razie.{cdebug, Logging}
 
 
 /** common razie controller utilities */
-class RazController extends RazControllerBase with Logging { 
+class RazController extends RazControllerBase with Logging {
 
   def SUPPORT = Config.SUPPORT
 
   //================ stuff
 
   override def error (message: => String) = Audit.logdb("ERR_?", message)
-    
+
   def dbop(r: WriteResult) = {}//log("DB_RESULT: " + r.getError)
 
   /** clean the cache for current user - probably a profile change */
@@ -39,9 +39,9 @@ class RazController extends RazControllerBase with Logging {
   def checkActive(au: User)(implicit errCollector: VErrors = IgnoreErrors) =
     toON2(au.isActive) orCorr (
       if (au.userName == "HarryPotter")
-        cDemoAccount
+	cDemoAccount
       else
-        cAccountNotActive)
+	cAccountNotActive)
 
   //================= RESPONSES
 
@@ -49,10 +49,10 @@ class RazController extends RazControllerBase with Logging {
     if (errCollector.hasCorrections) {
       val uname = auth.map(_.userName).getOrElse(if(isFromRobot) "ROBOT" else "")
       if (shouldAudit)
-        Services.audit.auth("BY %s - Permission fail Page: %s Info: %s HEADERS: %s".format(uname, wid.toString, more + " " + errCollector.mkString, request.headers))
+	Services.audit.auth("BY %s - Permission fail Page: %s Info: %s HEADERS: %s".format(uname, wid.toString, more + " " + errCollector.mkString, request.headers))
       Unauthorized(views.html.util.utilMsg(
-        s"""
-Sorry, you don't have the permission to do this! 
+	s"""
+Sorry, you don't have the permission to do this!
 
 ${errCollector.mkString}
 
@@ -65,7 +65,7 @@ $more
     Services.audit.auth("BY %s - Permission fail Page: %s Info: %s HEADERS: %s".format((auth.map(_.userName).getOrElse("")), wid.toString, more, request.headers))
     Unauthorized(views.html.util.utilMsg(
       s"""
-Sorry, you don't have the permission to do this! 
+Sorry, you don't have the permission to do this!
 
 <font style="color:red">
 >> $more

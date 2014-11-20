@@ -10,7 +10,7 @@ from user home page - create something
 @noParent(x:model.WikiEntry)=@{
   !WikiDomain.rk.needsParent(x.name)
 }
-   
+
 <div class="container">
   <div class="row">
     <div class="span9">
@@ -21,14 +21,14 @@ from user home page - create something
 <p>These are the things users can own:
 <p>
       <form action="@routes.Wikie.edit2" method="GET" class="well form-inline">
-        <input type="text" name="name" id="name" class="input-xlarge"  placeholder="enter a name"> 
-        <select id="cat" name="cat" class="input-small">
-          @WikiDomain.rk.zEnds("User", "Owner").filter(noParent).filter(_.name != "Form").sortWith(_.name < _.name).map{x=>
-            <option value="@x.name" >@x.name</option>
-          }
-        </select>
+	<input type="text" name="name" id="name" class="input-xlarge"  placeholder="enter a name">
+	<select id="cat" name="cat" class="input-small">
+	  @WikiDomain.rk.zEnds("User", "Owner").filter(noParent).filter(_.name != "Form").sortWith(_.name < _.name).map{x=>
+	    <option value="@x.name" >@x.name</option>
+	  }
+	</select>
 
-        <button type="submit" class="btn btn-primary">Create</button>
+	<button type="submit" class="btn btn-primary">Create</button>
       </form>
       </div>
 
@@ -36,12 +36,12 @@ from user home page - create something
 <p>To create a public, generic purpose topic:
 <p>
       <form action="@routes.Wikie.edit2" method="GET" class="well form-inline">
-        <input type="text" name="name" id="name" class="input-xlarge"  placeholder="enter a name"> 
-        <select id="cat" name="cat" class="input-small">
-            <option value="Topic" >Topic</option>
-        </select>
+	<input type="text" name="name" id="name" class="input-xlarge"  placeholder="enter a name">
+	<select id="cat" name="cat" class="input-small">
+	    <option value="Topic" >Topic</option>
+	</select>
 
-        <button type="submit" class="btn btn-primary">Create</button>
+	<button type="submit" class="btn btn-primary">Create</button>
       </form>
       </div>
 
@@ -57,4 +57,3 @@ from user home page - create something
 </div> <!-- /container -->
 
 @htmlBottom()
-    

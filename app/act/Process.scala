@@ -112,20 +112,20 @@ class WikiFlows {
 
   def form(user:String, reviewer:String, formWpath: String, content: String) = {
 //    import razie.wfs._
-    
+
     val i1 = System.currentTimeMillis().toString
-    
+
     val wf =
 """
-if (1==1) 
-then act:simple:pipe(cmd="pwd") 
-else act:simple:telnet(host="pwd",port="",cmd="") 
+if (1==1)
+then act:simple:pipe(cmd="pwd")
+else act:simple:telnet(host="pwd",port="",cmd="")
 """
 
-//      val w1 = seq {
-      
+//	val w1 = seq {
+
 //    }
-      
+
 //    email (user, "please click /wikie/wf/step/" + i1) ::
 //    wait ("nextStep", Map("id"->i1)) ::
 //    crWiki (formWpath, content) ::

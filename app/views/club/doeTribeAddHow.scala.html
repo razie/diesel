@@ -7,7 +7,7 @@ add a member to a tribe
 @import com.mongodb.casbah.Imports._
 
 @htmlHeadBar("", Some(club))
-   
+
 <div class="container">
   <div class="row">
   @views.html.user.leftmenu(13, club)
@@ -23,31 +23,31 @@ add a member to a tribe
 @rkidzout=@{
  val c = controllers.Club(club)
   model.RacerKidz.findByClub(c).filter{x=> !tribe.has(x._id)}.map(t=>
-    Map("fname"->t.info.firstName, 
-    	"role" -> c.roleOf(t._id), 
-    	"id"->t._id.toString))
+    Map("fname"->t.info.firstName,
+	"role" -> c.roleOf(t._id),
+	"id"->t._id.toString))
 }
 
 @addlink(row:Map[String,String],k:String,v:String)={
   @k match {
-  	case "id" => {
+	case "id" => {
       @if(tribe.has(new ObjectId(v))) {
-        <a href="@routes.Tribe.doeClubRemoveKid(tribe.page._id.toString,v,v)" class="btn btn-mini btn-warn">Remove</a>
+	<a href="@routes.Tribe.doeClubRemoveKid(tribe.page._id.toString,v,v)" class="btn btn-mini btn-warn">Remove</a>
       } else {
-        @if(row("role") == how || ("Manager" == how && !Array("Racer", "Coach").contains(row("role")))) {
-          <a href="@routes.Tribe.doeClubAddKid(tribe.page._id.toString,v,v,how)" class="btn btn-mini btn-info">Add to tribe</a>
-        } else {
-          <a href="@routes.Tribe.doeClubAddKid(tribe.page._id.toString,v,v,how)" class="btn btn-mini btn-danger">You sure?</a>
-        }
- 	  }
- 	}
+	@if(row("role") == how || ("Manager" == how && !Array("Racer", "Coach").contains(row("role")))) {
+	  <a href="@routes.Tribe.doeClubAddKid(tribe.page._id.toString,v,v,how)" class="btn btn-mini btn-info">Add to tribe</a>
+	} else {
+	  <a href="@routes.Tribe.doeClubAddKid(tribe.page._id.toString,v,v,how)" class="btn btn-mini btn-danger">You sure?</a>
+	}
+	  }
+	}
     case _ => {@v}
   }
 }
 
-@util.utilSimpleTable(rkidzout, 
-	Seq("fname" -> "Name", 
-		"role" -> "Role", 
+@util.utilSimpleTable(rkidzout,
+	Seq("fname" -> "Name",
+		"role" -> "Role",
 		"id"->"Included?"), Some(addlink))
 
   <hr>
@@ -57,4 +57,3 @@ add a member to a tribe
 </div> <!-- /container -->
 
 @htmlBottom()
-    

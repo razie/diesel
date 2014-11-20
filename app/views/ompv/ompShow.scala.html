@@ -9,58 +9,58 @@
   @ompLeftmenu(step, id)
 
   <div class="span8">
-        
+
 @step match {
   case 1 => {
 <h2>Bss ready to send</h2>
 @context.bssOrder.getClass().getName()
 <p>
 @Html(json[Order[OPEntity]](context.bssOrder))
-  }	
+  }
   case 2 => {
 <h2>Incoming order</h2>
 @context.incomingOrder.getClass().getName()
 <p>
-@Html(json[Order[OPEntity]](context.incomingOrder))        
-  }	
+@Html(json[Order[OPEntity]](context.incomingOrder))
+  }
   case 3 => {
 <h2>Fullfilment order</h2>
 @context.fulfilmentOrder.getClass().getName()
 <p>
-@Html(json[Order[OREntity]](context.fulfilmentOrder))        
-  }	
+@Html(json[Order[OREntity]](context.fulfilmentOrder))
+  }
   case 4 => {
-        <h2>SOI decomposed</h2>
+	<h2>SOI decomposed</h2>
 @context.soi.getClass().getName()
 <p>
 @Html(json[Flow](context.soi))
-  }	
+  }
   case 5 => {
-        <h2>Execution plan</h2>
+	<h2>Execution plan</h2>
 @context.executionPlan.getClass().getName()
 <p>
-@Html(json[Flow](context.executionPlan))        
-  }	
+@Html(json[Flow](context.executionPlan))
+  }
   case 6 => {
-        <h2>Results</h2>
+	<h2>Results</h2>
 @context.results.getClass().getName()
 <p>
-@Html(json[List[String]](context.results))        
-  }	
-  
+@Html(json[List[String]](context.results))
+  }
+
   case 7 => {
-        <h2>Context</h2>
+	<h2>Context</h2>
 @context.getClass().getName()
 <p>
-@Html(json[OrderContext](context))        
-  }	
-  
+@Html(json[OrderContext](context))
+  }
+
   case 9 => {
     <a href="" class="btn btn-large btn-info">Registrations</a>
-  }	
+  }
 }
 
-</div> 
+</div>
 
 
   </div> <!-- /row -->
@@ -68,4 +68,3 @@
 </div> <!-- /container -->
 
 @htmlBottom()
-    

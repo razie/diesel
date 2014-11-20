@@ -5,17 +5,17 @@
   val i = new scala.util.Random().nextInt(names.length)
   names(i)
   }
-  
+
 @htmlHeadBar("", Some(au))
-   
+
 <div class="container">
   <div class="row">
   @leftmenu(0, au)
 
   <div class="span9">
-        <h2>Profile and preferences</h2>
-        
-<p>&nbsp;<p>        
+	<h2>Profile and preferences</h2>
+
+<p>&nbsp;<p>
 
 @if(au.isClub) {
   <a href="@routes.Club.doeClubRegs()" class="btn btn-large btn-info">Registrations</a>
@@ -40,10 +40,10 @@
 <p><b>Email</b> - use to change email
 <p><b>Preferences</b> - use to change Preferences
 <p><b>Registrations</b> - manage registrations and forms for club mbberships
-<p><b>Tribes</b> - use to manage team memberships 
+<p><b>Tribes</b> - use to manage team memberships
 <p><b>Racerz</b> - household and children accounts on this website
 
-</div> 
+</div>
 
 
   </div> <!-- /row -->
@@ -53,4 +53,3 @@
 </div> <!-- /container -->
 
 @htmlBottom()
-    

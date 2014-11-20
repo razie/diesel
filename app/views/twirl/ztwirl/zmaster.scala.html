@@ -31,18 +31,18 @@
 
 @reqItems.map{item=>
   @item.entity.spec match {
-  	  case x.SmpResources.MobileSIM       => { @zmobile_sim_card }
-  	  case x.SmpServices.MobileTelephony  => { @zmobile_telephony @zmobile_telephony_composed} 
-  	  case x.SmpServices.MobileDataCommon => { @zmobile_data_common }
-  	  
-  	  case _ => { @eDefaultItem(item, item.entity) } 
-  	}	
+	  case x.SmpResources.MobileSIM       => { @zmobile_sim_card }
+	  case x.SmpServices.MobileTelephony  => { @zmobile_telephony @zmobile_telephony_composed}
+	  case x.SmpServices.MobileDataCommon => { @zmobile_data_common }
+
+	  case _ => { @eDefaultItem(item, item.entity) }
+	}
 }
 @*** default case is flow through the PSR FO item to SMP item ***@
 
 @*** probably complicate it a bit to support multiple FO items becoming one SMP item ***@
 
-		
+
     </smpom:entityOrderItems>
 	</om:requestValue>
 </om:createAndStartRequestByValueRequest>

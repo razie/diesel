@@ -1,17 +1,17 @@
-@*** 
+@***
 default item generation: FO item PSR entity flows through to SMP
 
 adic = optional dictionary to translate the attr names
 suppParms = supplemental parms for entity
 ***@
-@(implicit item:x.FulfillmentOrderItem, 
+@(implicit item:x.FulfillmentOrderItem,
 	entity : x.SEntity,
-	adic:String=>String = identity, 
+	adic:String=>String = identity,
 	suppParms:Map[String,String]=Map(),
 	parentKey:x.FulfillmentOrderItem=>String = x.y.empty
 	)
 
-@eva(n:String) = { @item.entity.parms(n) } //getManagedEntity().getAttributeValue(n) 
+@eva(n:String) = { @item.entity.parms(n) } //getManagedEntity().getAttributeValue(n)
 
 <smpom:item>
 	@eItemKey
@@ -24,21 +24,21 @@ http://www.sigma-systems.com/smp/43/xsd/SubscriberEntity/jsr144/v1-5#SubscriberS
 			<cmn:primaryKey keyType="ExternalKey">@x.y.ssvextkey</cmn:primaryKey>
 		</cmn:key>
 		<cbecore:describedBy>
-		 
+
 		@item.entity.parms.map @{t=>(adic(t._1), t._2)}.filter(! _._1.isEmpty).map{t=>
 			<cbecore:item>
 				<cbecore:value xsi:type="xs:string">@t._2</cbecore:value>
 				<cbecore:characteristic>@adic(t._1)</cbecore:characteristic>
 			</cbecore:item>
 		}
-		
+
 		@suppParms.map{t=>
 			<cbecore:item>
 				<cbecore:value xsi:type="xs:string">@t._2</cbecore:value>
 				<cbecore:characteristic>@t._1</cbecore:characteristic>
 			</cbecore:item>
 		}
-		
+
 		</cbecore:describedBy>
 		<cbecore:describingSpecificationKey
 			xsi:type="smpcbe:SubscriberServiceSpecificationKey">
@@ -48,7 +48,7 @@ http://www.sigma-systems.com/smp/43/xsd/SubscriberEntity/jsr144/v1-5#SubscriberS
 			<cmn:primaryKey>SubSvcSpec:@item.entity.spec</cmn:primaryKey>
 		</cbecore:describingSpecificationKey>
 		<smpcbe:externalKey>@x.y.ssvextkey</smpcbe:externalKey>
-		
+
 @if(parentKey(item).isEmpty) {
 		<smpcbe:parentKey>
 			<cmn:type>
@@ -57,6 +57,6 @@ http://www.sigma-systems.com/smp/43/xsd/SubscriberEntity/jsr144/v1-5#SubscriberS
 			<cmn:primaryKey keyType="ExternalKey">@parentKey(item)</cmn:primaryKey>
 		</smpcbe:parentKey>
 }
-		
+
 	</smpom:entity>
 </smpom:item>

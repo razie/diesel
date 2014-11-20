@@ -23,7 +23,7 @@ msg types are msg, err
     <li><a href="@routes.NotesLocker.tag("archive")">[Archive]</a>
   </ul>
   @if(!tags.isEmpty) {
-   
+
     <input id="typeahead" xonkeypress="keyp(event)" autocomplete="off" type="text"
     class="typeahead search-query span2" placeholder="Search Tags" data-provide="typeahead" style="display:block; margin-bottom:10px">
 
@@ -56,7 +56,7 @@ var hardct = ['recent','all','none','archive', '']
 var t = function (tag) {
 return hardct.lastIndexOf('@current') >= 0 ? tag : '@current' + '/'+tag;
 }
-   
+
 //var items = [@Html(tags.map(x=>"\""+x._1+"\":\"/notes/tag/"+tagpath(x._1)+"\"").mkString(","))];
 var userTags = [@Html(tags.map(x=>"\""+x._1+"\"").mkString(","))];
 
@@ -74,4 +74,3 @@ body {
 padding-top: 50px;
   }
 </style>
-   

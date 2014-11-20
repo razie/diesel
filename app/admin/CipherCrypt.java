@@ -22,19 +22,19 @@ import org.apache.commons.codec.binary.Base64;
 
 /**
  * Standard Java Crypting/decrypting class using DES algorithm.
- * 
+ *
  *  NOTE modified to encode with URL friendly Base64
- * 
+ *
  * */
 @SuppressWarnings("rawtypes")
 public class CipherCrypt {
 
-  private Cipher              ecipher;
-  private Cipher              dcipher;
-  
+  private Cipher	      ecipher;
+  private Cipher	      dcipher;
+
   private static final String CRYPT_IMPLEMENTATION = "DES";
   // private static final byte[] KEY = new byte[] {-128, 110, 91, 97, -50, -92, 8, 4};
-  private static final byte[] KEY                  = loadKey();
+  private static final byte[] KEY		   = loadKey();
 
   private static byte[] loadKey() {
     byte[] k = new byte[8];
@@ -42,7 +42,7 @@ public class CipherCrypt {
       FileInputStream f = new FileInputStream(new File("key"));
       f.skip(100);
       if (f.read(new byte[8], 0, 8) != 8) {
-        throw new IllegalStateException("cannot load the key file");
+	throw new IllegalStateException("cannot load the key file");
       }
     } catch (FileNotFoundException e) {
       e.printStackTrace();
@@ -130,13 +130,13 @@ public class CipherCrypt {
       // Get services provided by each provider
       Set keys = providers[i].keySet();
       for (Iterator it = keys.iterator(); it.hasNext();) {
-        String key = (String) it.next();
-        key = key.split(" ")[0];
-        if (key.startsWith(serviceType + ".")) {
-          result.add(key.substring(serviceType.length() + 1));
-        } else if (key.startsWith("Alg.Alias." + serviceType + ".")) {
-          result.add(key.substring(serviceType.length() + 11));
-        }
+	String key = (String) it.next();
+	key = key.split(" ")[0];
+	if (key.startsWith(serviceType + ".")) {
+	  result.add(key.substring(serviceType.length() + 1));
+	} else if (key.startsWith("Alg.Alias." + serviceType + ".")) {
+	  result.add(key.substring(serviceType.length() + 11));
+	}
       }
     }
     return result;
@@ -157,10 +157,10 @@ public class CipherCrypt {
       // logger.log("Cannot serialize SecretKey object.", e);
     } finally {
       if (baos != null)
-        try {
-          baos.close();
-        } catch (Exception exc) {
-        }
+	try {
+	  baos.close();
+	} catch (Exception exc) {
+	}
     }
     return Base64.encodeBase64String(s.getBytes());
   }
@@ -172,15 +172,15 @@ public class CipherCrypt {
   public static SecretKey getSecretKey(final byte[] b) {
     return new SecretKey() {
       public byte[] getEncoded() {
-        return (byte[]) b.clone();
+	return (byte[]) b.clone();
       }
 
       public String getAlgorithm() {
-        return CRYPT_IMPLEMENTATION;
+	return CRYPT_IMPLEMENTATION;
       }
 
       public String getFormat() {
-        return "RAW";
+	return "RAW";
       }
     };
   }

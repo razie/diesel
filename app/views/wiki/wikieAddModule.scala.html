@@ -11,37 +11,37 @@ select module to add to reactor
 
 <div class="container">
     <div class="row">
-        <div class="span9">
+	<div class="span9">
 
-            <h3>Select mod to add</h3>
-            <hr>
+	    <h3>Select mod to add</h3>
+	    <hr>
 
-           @defining(model.Wikis.rk.pages(cat).filter(x=> !model.Wikis(realm).pages(catInst).contains(x))) {list=>
-                   @if(list.isEmpty) {
-                       No more mods available... <a href="@controllers.Wiki.w("Admin", "Creating Reactor Mods")">create one!</a>
-                   }
-           @list.map {we =>
-               <a href="@routes.Realm.addModule2(we.wid.wpath, realm)" style="text-decoration:none">
-                   <div class="alert alert-cool">
-                       <h2><span style="color:#FF7519">@we.label</span>
-                       @we.contentTags.get("title").map{t=><small>| @t</small>}
-                       </h2>
-                       <p>@we.contentTags.getOrElse("description", "Needs description>")</p>
-                   </div>
-               </a>
-           }
-           }
+	   @defining(model.Wikis.rk.pages(cat).filter(x=> !model.Wikis(realm).pages(catInst).contains(x))) {list=>
+		   @if(list.isEmpty) {
+		       No more mods available... <a href="@controllers.Wiki.w("Admin", "Creating Reactor Mods")">create one!</a>
+		   }
+	   @list.map {we =>
+	       <a href="@routes.Realm.addModule2(we.wid.wpath, realm)" style="text-decoration:none">
+		   <div class="alert alert-cool">
+		       <h2><span style="color:#FF7519">@we.label</span>
+		       @we.contentTags.get("title").map{t=><small>| @t</small>}
+		       </h2>
+		       <p>@we.contentTags.getOrElse("description", "Needs description>")</p>
+		   </div>
+	       </a>
+	   }
+	   }
 
-            <hr>
-            @htmlFooter(ads = true)
+	    <hr>
+	    @htmlFooter(ads = true)
 
-        </div> <!-- /span9 -->
+	</div> <!-- /span9 -->
 
-        <div class="span3">
-            @wiki.wikiFrag(WID("Admin","Right"),au,true)
+	<div class="span3">
+	    @wiki.wikiFrag(WID("Admin","Right"),au,true)
 
-            @addRight()
-        </div>
+	    @addRight()
+	</div>
 
     </div> <!-- row -->
 </div> <!-- /container -->

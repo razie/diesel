@@ -8,30 +8,30 @@
       <div class="hero-unit">
 
       <div class="row">
-        <div class="span6">
-        <h2>@userEname - you need a parent to register as well!</h2>
-        <p>You need to add a parent to your account... please make sure they're around and enter their email here to continue.</p>
-        </div>
+	<div class="span6">
+	<h2>@userEname - you need a parent to register as well!</h2>
+	<p>You need to add a parent to your account... please make sure they're around and enter their email here to continue.</p>
+	</div>
 
-        <div class="span4">
+	<div class="span4">
 
 @import helper.twitterBootstrap._
 
 @helper.form(action=routes.Tasks.addParent2, 'class->"well") {
 
   @helper.inputText(
-    pForm("parentEmail"), 
+    pForm("parentEmail"),
     '_label -> "Parent's Email")
 
   <button type="submit" class="btn btn-primary">Continue</button>
 
   @pForm.globalError.map {err=>
      <p style="color:red;font-weight:bold">@err.message</p>
-  } 
-  
+  }
+
   <p><small>By registering or logging in, you agree to the <a href="@controllers.Wiki.w("Terms of Service")">Terms of Service</a></small><p>
   }
-  
+
        </div>
       </div>
 
@@ -46,4 +46,3 @@
     </div> <!-- /container -->
 
     @htmlBottom()
-    

@@ -4,6 +4,7 @@ show/edit/capture a note
 msg types are msg, err
 **************@
 @(tag:String, we:model.WikiEntry, tags:model.Tags.Tags, msg:Seq[(String,String)], au:Option[model.User], isSearch:Boolean=false)(implicit request:Request[_])
+@import model.Tags
 @import model.dom.DOM
 
 @frup(au)
@@ -25,7 +26,7 @@ Domain <small>| playground</small>
     </ul>
     <ul>
       objects: @d.objects.map{c=>
-        <li>@c._1 <small>@c._2.toString</small></li>
+	<li>@c._1 <small>@c._2.toString</small></li>
       }
     </ul>
   }
@@ -34,7 +35,7 @@ Domain <small>| playground</small>
 
     <p>
     @if(au.exists(_.hasPerm(model.Perm.adminDb))) {
-      | <a href="@routes.Wiki.wikieDebug(we.wid)"><em>debug</em></a>
+      | <a href="@controllers.Wiki.w(we.wid)/debug"><em>debug</em></a>
     }
     </p>
 

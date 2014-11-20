@@ -16,17 +16,17 @@ render a page in a site rather than a normal page - some missing stuff
 } else {
   @navbar(au, model.Wikis.RK, false, "Menu", None, None, true)(au,Some(request))
 }
-   
+
 <div class="container">
   <div class="row">
-  
+
   @if(showads()) {
     <div class="span9">
   } else {
     <div class="span12">
   }
       <div class="well">
-        @wiki.wikiFrag(wid,au,false,page, iname, true, false, true)
+	@wiki.wikiFrag(wid,au,false,page, iname, true, false, true)
       </div>
 
       @wiki.wikiAddMore(wid, page, au)
@@ -38,11 +38,11 @@ render a page in a site rather than a normal page - some missing stuff
 
     @if(showads()) {
       <div class="span3">
-@************* 
-        @wiki.wikiFrag(WID("Admin","Right"),au,true, None)
+@*************
+	@wiki.wikiFrag(WID("Admin","Right"),au,true, None)
 *************@
 
-        @addRight()
+	@addRight()
       </div>
       }
 
@@ -50,4 +50,3 @@ render a page in a site rather than a normal page - some missing stuff
 </div> <!-- /container -->
 
 @htmlBottom(false, Some(request))
-    

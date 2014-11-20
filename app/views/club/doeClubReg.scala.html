@@ -26,12 +26,12 @@ club admin manages user: membership, regsitration etc
 }
 
 @htmlHeadBar("Member " + uname(), Some(club))
-   
+
 <div class="container">
   <div class="row">
   @views.html.user.leftmenu(7, club)
 
-<div class="span9"> 
+<div class="span9">
 
   <h2>Manage user @uname()</h2>
   <p>Membership, registration, tribes etc
@@ -44,25 +44,25 @@ club admin manages user: membership, regsitration etc
 
 @helper.form(action=routes.Club.doeClubMemberUpdate(uw._id.toString), 'class->"well") {
   @helper.select(
-    myForm("role"), 
+    myForm("role"),
      how(),
      '_label -> "Change role here",
     '_showConstraints -> false)
   @helper.inputText(
-    myForm("regStatus"), 
-    '_label -> "Registration status", 
+    myForm("regStatus"),
+    '_label -> "Registration status",
     'readOnly -> true,
     '_showConstraints -> false)
   @helper.inputText(
-    myForm("paid"), 
-    '_label -> "Amount paid", 
+    myForm("paid"),
+    '_label -> "Amount paid",
     '_showConstraints -> false)
 
   <button type="submit" class="btn btn-primary">Update membership!</button>
-  
+
   @myForm.globalError.map { err=>
      <p style="color:red;font-weight:bold">@err.message</p>
-  } 
+  }
 }
 
 @prevReg=@{
@@ -74,7 +74,7 @@ club admin manages user: membership, regsitration etc
   <p> Status: @regStatusColored(reg.map(_.regStatus).getOrElse("n/a"))
   <p> To start a registration for a member, then <strong>1-Expire</strong> the current registration, then <strong>Add Family</strong> the required Family forms below, then <strong>2-Start</strong>, which
   will also send an email to the member.
-  <p>  
+  <p>
   @prevReg.map{reg=>
     <a href="@routes.Club.doeClubUwRegstatusupd(uw._id.toString, EXPIRED)" class="btn btn-danger" title="START new registration from scratch!">
     1 - Expired (NEW)</a>
@@ -92,13 +92,13 @@ club admin manages user: membership, regsitration etc
   <a href="@routes.Club.doeClubUwRegstatusupd(uw._id.toString, FAMILY)"  class="btn btn-info">Reg - Family</a>
   <a href="@routes.Club.doeClubUwRegstatusupd(uw._id.toString, ACCEPTED)" class="btn btn-success">Reg - Accepted</a>
   <a href="@routes.Club.doeClubUwRegstatusupd(uw._id.toString, CURRENT)" class="btn btn-success">Reg - Current</a>
-  <p><p><br>Careful: 
+  <p><p><br>Careful:
   @util.confirm(
-  	"Delete Registration", 
-  	"This will delete this registration, all its kids and all related forms, completed or not", 
-  	routes.Club.doeClubUwRegstatusupd(uw._id.toString, "delete").toString,
-  	"btn btn-danger"
-  	)
+	"Delete Registration",
+	"This will delete this registration, all its kids and all related forms, completed or not",
+	routes.Club.doeClubUwRegstatusupd(uw._id.toString, "delete").toString,
+	"btn btn-danger"
+	)
   @if(uw.user.exists(_.tasks.exists(_.name == model.UserTasks.START_REGISTRATION))) {
     <a href="@routes.Club.doeCreateRegTask(uw._id.toString)" class="btn btn-success disabled" title="Create a task for the user to start registration!">Create Reg Task</a>
   } else {
@@ -108,59 +108,59 @@ club admin manages user: membership, regsitration etc
 
 </td></tr></table>
 </div> <!-- /well -->
-<div class="well">  
+<div class="well">
   <strong>List of Racers/members </strong>
 
 @model.RacerKidz.checkMyself(uw.userId)
 
 @rks=@{
   model.RacerKidz.findAssocForUser(uw.userId).map(x=>(x,x.rk.get)).map(t=>
-    Map("fname"->t._2.info.firstName, 
-    	"lname"->t._2.info.lastName, 
-    	"role" -> t._2.info.role, 
-    	"button"->t._2._id.toString, 
-    	"associd"->t._1._id.toString, 
-    	"id" -> t._2._id.toString))
+    Map("fname"->t._2.info.firstName,
+	"lname"->t._2.info.lastName,
+	"role" -> t._2.info.role,
+	"button"->t._2._id.toString,
+	"associd"->t._1._id.toString,
+	"id" -> t._2._id.toString))
 }
 
 @mnglink(row:Map[String,String],k:String,v:String)={
   @k match {
-  	case "button" => {
+	case "button" => {
       <a href="@routes.Kidz.doeKid(uw.userId.toString, v, "-", row("associd"), "Club")" class="btn btn-mini">...</a>
-      } 
-  	case "id" => {
+      }
+	case "id" => {
       @if(reg.exists(_.kids.exists(_.rkId.toString == v))) {
-  	    <span class="label">Included</span> 
-        as @reg.toList.flatMap(_.kids).filter(_.rkId.toString == v).map(_.role).mkString
-        <a href="@routes.Club.doeClubUwRMFormKid(reg.map(_._id).mkString,v,uw._id.toString, "x")" class="btn btn-mini btn-danger" title="remove from registration"> x </a>
+	    <span class="label">Included</span>
+	as @reg.toList.flatMap(_.kids).filter(_.rkId.toString == v).map(_.role).mkString
+	<a href="@routes.Club.doeClubUwRMFormKid(reg.map(_._id).mkString,v,uw._id.toString, "x")" class="btn btn-mini btn-danger" title="remove from registration"> x </a>
       } else {
       @reg.map{r=>
-          <a href="@routes.Club.doeClubUserRegAdd(r._id.toString,v,uw.user.get._id.toString, uw._id.toString)" class="btn btn-mini" title="also adds neccessary forms">Register</a>
+	  <a href="@routes.Club.doeClubUserRegAdd(r._id.toString,v,uw.user.get._id.toString, uw._id.toString)" class="btn btn-mini" title="also adds neccessary forms">Register</a>
 @***
-        @if(row("role") == ROLE_RACER) {
-        <a href="@routes.Club.doeClubUwAddFormKid(r._id.toString,v,uw._id.toString, "Racer")" class="btn btn-mini">x</a>
-          } else {
-          <a href="@routes.Club.doeClubUserRegAdd(r._id.toString,v,uw.user.get._id.toString, uw._id.toString)" class="btn btn-mini">Register</a>
-          }
+	@if(row("role") == ROLE_RACER) {
+	<a href="@routes.Club.doeClubUwAddFormKid(r._id.toString,v,uw._id.toString, "Racer")" class="btn btn-mini">x</a>
+	  } else {
+	  <a href="@routes.Club.doeClubUserRegAdd(r._id.toString,v,uw.user.get._id.toString, uw._id.toString)" class="btn btn-mini">Register</a>
+	  }
 ***@
-        }.getOrElse{
-        n/a
-        }
- 	  }
-      } 
+	}.getOrElse{
+	n/a
+	}
+	  }
+      }
     case _ => {@v}
   }
 }
 
 @util.utilSimpleTable(rks, Seq("fname" -> "F.Name", "lname"->"L.Name", "role" -> "Relationship", "button"->"Details", "id" -> "Registration"), Some(mnglink))
 
-Add a: 
+Add a:
 Add a: @model.RK.RELATIONSHIPS.map{r=>
   <a href="@routes.Kidz.doeKid(uw.userId.toString, "11", r, "-", "Club")" class="btn btn-mini btn-info">@r</a>
 }
 
 </div> @*** reg ***@
-  
+
 <hr>
 
   @reg.map { r =>
@@ -178,7 +178,7 @@ Add a: @model.RK.RELATIONSHIPS.map{r=>
   }
   </ul>
 </td><td>
-You should only add the Family forms from here. 
+You should only add the Family forms from here.
 <p>
 For all other forms, you should use the "family members not registered table" because otherwise we loose the connection between a medical form and the racer it is for, for example.
 <p>So, when the racer is assigned to a team, we cannot show the coach his or her medical form...
@@ -190,9 +190,9 @@ For all other forms, you should use the "family members not registered table" be
 @helper.form(action=routes.Club.doeClubRegMsg(uw._id.toString), 'class->"form-inline") {
   <label>Help message</label>
   <br><textarea rows="5" class="span4" name="msg" placeholder="Message"></textarea>
-  <button type="submit" class="btn btn-mini btn-primary">Send now!</button> 
+  <button type="submit" class="btn btn-mini btn-primary">Send now!</button>
 }
-</div> 
+</div>
 <hr>
   @views.html.club.regStatusLegend()
   @views.html.club.formStatusLegend()
@@ -205,4 +205,3 @@ For all other forms, you should use the "family members not registered table" be
   @htmlFooter(ads=true)
 </div> <!-- /container -->
 @htmlBottom()
-    

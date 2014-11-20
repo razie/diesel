@@ -5,9 +5,9 @@
   val i = new scala.util.Random().nextInt(names.length)
   names(i)
   }
-  
+
 @htmlHeadBar("", Some(user))
-   
+
 <div class="span2">
     @leftmenu(6, user)
     </div>
@@ -18,32 +18,32 @@
       <div class="well">
 
       <div class="row">
-        <div class="span6">
-        <h2>Privacy settings for @model.Users.findUserById(child).get.ename</h2>
+	<div class="span6">
+	<h2>Privacy settings for @model.Users.findUserById(child).get.ename</h2>
 
 @import helper.twitterBootstrap._
 
 @helper.form(action=routes.Profile.profile2u(child), 'class->"well") {
   @helper.select(
-    myForm("trust"), 
+    myForm("trust"),
      controllers.Profile.trusts.map(x=>(x,x)),
      '_label -> "Trust level",
     '_showConstraints -> false)
-    
+
   @helper.select(
-    myForm("notify"), 
+    myForm("notify"),
      controllers.Profile.notifiers.map(x=>(x,x)),
      '_label -> "Notify you on",
     '_showConstraints -> false)
-    
+
   <button type="submit" class="btn btn-primary">
   Update!
   </button>
-  
+
   @myForm.globalError.map {err=>
      <p style="color:red;font-weight:bold">@err.message</p>
-  } 
-  
+  }
+
   <p><small>By maintaining a profile, you agree to the <a href="@controllers.Wiki.w("Terms of Service")">Terms of Service</a></small><p>
 }
 
@@ -82,4 +82,3 @@
     </div> <!-- /container -->
 
     @htmlBottom()
-    

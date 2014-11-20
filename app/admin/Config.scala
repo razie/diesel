@@ -41,7 +41,7 @@ object Config extends WikiConfig {
   def callback (f:() => Unit) = {
     cbacks append f
   }
-  
+
   // parse a properties looking thing
   def parsep(content: String) = (content.split("\r\n")) filter (!_.startsWith("#")) map (_.split("=", 2)) filter (_.size == 2) map (x => (x(0), x(1)))
 
@@ -61,16 +61,16 @@ object Config extends WikiConfig {
       val RE(pre, prop) = u._1
 
       if (!xconfig.contains(pre))
-        xconfig.put(pre, HashMap[String, String](prop -> u._2))
+	xconfig.put(pre, HashMap[String, String](prop -> u._2))
       else
-        xconfig.get(pre).map(_.put(prop, u._2))
+	xconfig.get(pre).map(_.put(prop, u._2))
     }
 
     xconfig.keys.foreach(x => {
       println("============= config topic: " + x)
       xconfig.get(x).foreach(y => println(y.mkString("\n  ")))
     })
-    
+
     cbacks foreach (_())
 
     robotUserAgents = sitecfg("robots.useragents").toList.flatMap(s=>s.split("[;,]"))

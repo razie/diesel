@@ -28,15 +28,15 @@ object Support extends RazController with Logging {
 
     def create = RazMongo("Support") += grater[Support].asDBObject(Audit.create(this))
 
-    //  def close (resolution:String) = {
+    //	def close (resolution:String) = {
     //val newOne = Support(
-    //  email, desc, closed=true,
-    //  resolution,
-    //  createdDtm=createdDtm,
-    //  solvedDtm=Some(DateTime.now))
+    //	email, desc, closed=true,
+    //	resolution,
+    //	createdDtm=createdDtm,
+    //	solvedDtm=Some(DateTime.now))
     //
-    //    Mongo("Support").m.update(key, grater[Support].asDBObject(Audit.update(this)))
-    //  }
+    //	  Mongo("Support").m.update(key, grater[Support].asDBObject(Audit.update(this)))
+    //	}
   }
 
   def supportForm1 = Form {
@@ -67,18 +67,18 @@ object Support extends RazController with Logging {
     supportForm1.bindFromRequest.fold(
       formWithErrors => BadRequest(views.html.admin.support(formWithErrors, 21, page, auth)),
       {
-        case t @ (e, n, desc, v1, v2, details) => {
-          cdebug << t
-          if (v1 == v2 && v2 > 1 || v1 == 21 || auth.exists(_.isActive)) {
-            Emailer.withSession { implicit mailSession =>
-              Emailer.sendSupport("Support request", n, e, (auth.map("Username: " + _.userName + " ").mkString) + desc, details, page)
-            }
-            Msg("Ok - support request sent. We will look into it asap.", HOME)
-          } else {
-            Audit.logdb("BAD_MATH", List("request:" + request.toString, "headers:" + request.headers, "body:" + request.body).mkString("<br>"))
-            Msg("Either your math is bad or you're a robot...", HOME)
-          }
-        }
+	case t @ (e, n, desc, v1, v2, details) => {
+	  cdebug << t
+	  if (v1 == v2 && v2 > 1 || v1 == 21 || auth.exists(_.isActive)) {
+	    Emailer.withSession { implicit mailSession =>
+	      Emailer.sendSupport("Support request", n, e, (auth.map("Username: " + _.userName + " ").mkString) + desc, details, page)
+	    }
+	    Msg("Ok - support request sent. We will look into it asap.", HOME)
+	  } else {
+	    Audit.logdb("BAD_MATH", List("request:" + request.toString, "headers:" + request.headers, "body:" + request.body).mkString("<br>"))
+	    Msg("Either your math is bad or you're a robot...", HOME)
+	  }
+	}
       })
   }
 
@@ -98,16 +98,16 @@ object Support extends RazController with Logging {
     supportForm1.bindFromRequest.fold(
       formWithErrors => BadRequest(views.html.wiki.suggest(formWithErrors, 21, page, auth)),
       {
-        case t @ (e, n, desc, v1, v2, details) => {
-          cout << t
-          if (v1 == v2 && v2 > 1 || v1 == 21 || auth.exists(_.isActive)) {
-            Emailer.withSession { implicit mailSession =>
-              Emailer.sendSupport("Suggestion", n, e, (auth.map("Username: " + _.userName + " ").mkString) + desc, details, page)
-            }
-            Msg("Ok - question/suggestion sent. We will try to answer it asap.", HOME)
-          } else
-            Msg("Either your math is bad or you're a robot...", HOME)
-        }
+	case t @ (e, n, desc, v1, v2, details) => {
+	  cout << t
+	  if (v1 == v2 && v2 > 1 || v1 == 21 || auth.exists(_.isActive)) {
+	    Emailer.withSession { implicit mailSession =>
+	      Emailer.sendSupport("Suggestion", n, e, (auth.map("Username: " + _.userName + " ").mkString) + desc, details, page)
+	    }
+	    Msg("Ok - question/suggestion sent. We will try to answer it asap.", HOME)
+	  } else
+	    Msg("Either your math is bad or you're a robot...", HOME)
+	}
       })
   }
 

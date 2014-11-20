@@ -17,12 +17,12 @@ object RazWikiAuthorization extends RazController with Logging with WikiAuthoriz
     (
       // owner is same as member
       (owner.roles.contains(UserType.Organization) && (member.userName == owner.userName)) ||
-      // owner is the club 
+      // owner is the club
       (owner.roles.contains(UserType.Organization) && m1.exists(_.uwid.nameOrId == owner.userName)) ||
       // owner is someone else => club lists intersect?
       (!owner.roles.contains(UserType.Organization) && {
-        val m2 = owner.wikis.filter(x => x.uwid.cat == "Club" && x.role != "Fan").toList
-        m1.exists(x1 => m2.exists(_.uwid.id == x1.uwid.id))
+	val m2 = owner.wikis.filter(x => x.uwid.cat == "Club" && x.role != "Fan").toList
+	m1.exists(x1 => m2.exists(_.uwid.id == x1.uwid.id))
       }))
   }
 
@@ -39,13 +39,13 @@ object RazWikiAuthorization extends RazController with Logging with WikiAuthoriz
       // admin is god
       (!admin.isClub && admin.hasPerm(Perm.adminDb)) ||
       // admin is club admin
-      (!admin.isClub && { 
-        val aemail = admin.email.dec
-        clubs.exists(x1 => Users.findUserByUsername(x1.uwid.nameOrId).exists(
-          u => u.prefs.get("regAdmin").exists(_ == aemail) ||
-          Club(u).props.filter(_._1 startsWith "admin").exists(_._2 == aemail)
-          )) 
-        }) // TODO this is expensive - at least optimize as a Mongo query?
+      (!admin.isClub && {
+	val aemail = admin.email.dec
+	clubs.exists(x1 => Users.findUserByUsername(x1.uwid.nameOrId).exists(
+	  u => u.prefs.get("regAdmin").exists(_ == aemail) ||
+	  Club(u).props.filter(_._1 startsWith "admin").exists(_._2 == aemail)
+	  ))
+	}) // TODO this is expensive - at least optimize as a Mongo query?
       )
   }
 
@@ -58,21 +58,21 @@ object RazWikiAuthorization extends RazController with Logging with WikiAuthoriz
       (props(visibility) == Visibility.PUBLIC) || // if changing while edit, it will have a value even when public
       (u.isDefined orCorr cNoAuth).exists(_ == true) && // anything other than public needs logged in
       (
-        props.get("owner") == Some(u.get.id) || // can see anything I am owner of - no need to check Visibility.PRIVATE
-        (
-          props(visibility).startsWith(Visibility.CLUB) &&
-            props.get("owner").flatMap(Users.findUserById(_)).exists(owner =>
-              // hoping it's more likely members read blogs than register...
-              props(visibility) == Visibility.CLUB && isInSameClub(u.get, owner) || 
-                props(visibility) == Visibility.CLUB_ADMIN && isClubAdmin(u.get, owner) ||
-                // maybe the club created the parent topic (like forum/blog etc)?
-                props(visibility) == Visibility.CLUB &&
-                  props.get("parentOwner").flatMap(Users.findUserById(_)).exists(parentOwner => isInSameClub(u.get, parentOwner)) ||
-                props(visibility) == Visibility.CLUB &&
-                  we.flatMap(_.wid.findParent.flatMap(_.props.get("owner"))).flatMap(Users.findUserById(_)).exists(parentOwner => isInSameClub(u.get, parentOwner))
-            ) orCorr
-            cNotMember(uname(props.get("owner")))).getOrElse(
-            false))
+	props.get("owner") == Some(u.get.id) || // can see anything I am owner of - no need to check Visibility.PRIVATE
+	(
+	  props(visibility).startsWith(Visibility.CLUB) &&
+	    props.get("owner").flatMap(Users.findUserById(_)).exists(owner =>
+	      // hoping it's more likely members read blogs than register...
+	      props(visibility) == Visibility.CLUB && isInSameClub(u.get, owner) ||
+		props(visibility) == Visibility.CLUB_ADMIN && isClubAdmin(u.get, owner) ||
+		// maybe the club created the parent topic (like forum/blog etc)?
+		props(visibility) == Visibility.CLUB &&
+		  props.get("parentOwner").flatMap(Users.findUserById(_)).exists(parentOwner => isInSameClub(u.get, parentOwner)) ||
+		props(visibility) == Visibility.CLUB &&
+		  we.flatMap(_.wid.findParent.flatMap(_.props.get("owner"))).flatMap(Users.findUserById(_)).exists(parentOwner => isInSameClub(u.get, parentOwner))
+	    ) orCorr
+	    cNotMember(uname(props.get("owner")))).getOrElse(
+	    false))
   }
 
   /**
@@ -120,10 +120,10 @@ object RazWikiAuthorization extends RazController with Logging with WikiAuthoriz
       verif <- ("WikiLink" == cat || "User" == cat || au.hasPerm(Perm.eVerified)) orCorr corrVerified;
       res <- (!w.exists(_.isReserved) || au.hasPerm(Perm.adminWiki) || "User" == wid.cat) orErr ("Category is reserved");
       owner <- !(WikiDomain(wid.getRealm).needsOwner(cat)) ||
-        we.exists(_.isOwner(au.id)) ||
-        (wprops.flatMap(_.get("wvis")).isDefined && isVisible(u, wprops.get, "wvis")) ||
-        wprops.flatMap(_.get("visibility")).exists(_.startsWith(Visibility.CLUB) && isVisible(u, wprops.get, "visibility")) ||
-        !wvis(wprops).isDefined orErr ("Sorry - you are not the owner of this topic");
+	we.exists(_.isOwner(au.id)) ||
+	(wprops.flatMap(_.get("wvis")).isDefined && isVisible(u, wprops.get, "wvis")) ||
+	wprops.flatMap(_.get("visibility")).exists(_.startsWith(Visibility.CLUB) && isVisible(u, wprops.get, "visibility")) ||
+	!wvis(wprops).isDefined orErr ("Sorry - you are not the owner of this topic");
       memod <- (w.flatMap(_.contentTags.get("moderator")).map(_ == au.userName).getOrElse(true)) orErr ("Sorry - this is moderated and you are not the moderator, are you?");
       t <- true orErr ("can't")
     ) yield true)

@@ -1,7 +1,7 @@
 /**
  *   ____    __    ____  ____  ____,,___     ____  __  __  ____
- *  (  _ \  /__\  (_   )(_  _)( ___)/ __)   (  _ \(  )(  )(  _ \           Read
- *   )   / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <     README.txt
+ *  (  _ \  /__\  (_   )(_  _)( ___)/ __)   (  _ \(  )(  )(  _ \	   Read
+ *   )	 / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <     README.txt
  *  (_)\_)(__)(__)(____)(____)(____)(___/   (__)  (______)(____/    LICENSE.txt
  */
 package model
@@ -30,10 +30,10 @@ class WikiIndex (val realm:String) {
     // load it the first time
     Wikis(realm).foreach { db =>
       val w = WID(
-        db.as[String]("category"),
-        db.as[String]("name"),
-        if (db.containsField("parent")) Some(db.as[ObjectId]("parent")) else None,
-        None).r(db.as[String]("realm"))
+	db.as[String]("category"),
+	db.as[String]("name"),
+	if (db.containsField("parent")) Some(db.as[ObjectId]("parent")) else None,
+	None).r(db.as[String]("realm"))
       t.put(w.name, w, db.as[ObjectId]("_id"))
       lower.put(w.name.toLowerCase(), w.name)
       labels.put(w.name, db.as[String]("label"))

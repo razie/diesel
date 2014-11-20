@@ -8,9 +8,9 @@ profile - change email
   val i = new scala.util.Random().nextInt(names.length)
   names(i)
   }
-  
+
 @htmlHeadBar("Email", Some(au))
-   
+
 <div class="container">
   <div class="row">
   @leftmenu(5, au)
@@ -21,25 +21,25 @@ profile - change email
 
 @helper.form(action=routes.EdEmail.doeProfileEmail2, 'class->"well") {
   @helper.inputText(
-    myForm("curemail"), 
-    '_label -> "Current email", 
+    myForm("curemail"),
+    '_label -> "Current email",
     'readonly -> "yes",
     '_showConstraints -> false)
   @util.razText(myForm, "newemail", "New email")
-    
+
   <button type="submit" class="btn btn-primary">Change !</button>
- 
+
  @user.agree()
-  
+
   @myForm.globalError.map {err=>
      <p style="color:red;font-weight:bold">@err.message</p>
-  } 
-  
+  }
+
 }
 
        </div>
 <div class="span4">
-        
+
 <h2>Changing the email</h2>
 <p>
 <p>Take care when changing the email - this is your login as well.</p>

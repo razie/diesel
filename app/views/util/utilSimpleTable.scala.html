@@ -25,14 +25,14 @@ to use personal row class, hook the "rowClass" column in
   </tr>
 </thead>
 @col.map { db =>
-  <tr @func.map(_.apply(db, "rowClass", "")).getOrElse("") > 
-    @cols.collect { case (k,l) if(l != null && l.length>0) => 
+  <tr @func.map(_.apply(db, "rowClass", "")).getOrElse("") >
+    @cols.collect { case (k,l) if(l != null && l.length>0) =>
       <td>
       @{
       db.get(k) match {
-        case None | Some(null) => func.map(_.apply(db, k, null)).getOrElse("")
-        case Some(x) => func.map(_.apply(db, k, x.toString)).getOrElse(x)
-        }
+	case None | Some(null) => func.map(_.apply(db, k, null)).getOrElse("")
+	case Some(x) => func.map(_.apply(db, k, x.toString)).getOrElse(x)
+	}
       }
       </td>
     }
@@ -41,4 +41,3 @@ to use personal row class, hook the "rowClass" column in
 </table>
 
 <hr>
-    

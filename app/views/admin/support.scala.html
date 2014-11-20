@@ -8,8 +8,8 @@
     <div class="hero-unit">
 
       <div class="row">
-        <div class="span8">
-          <h2>Support request</h2>
+	<div class="span8">
+	  <h2>Support request</h2>
 
 @helper.form(action=routes.Support.supportu(page), 'class->"well") {
 
@@ -18,24 +18,24 @@
   <input type="hidden" name="email" value="@model.Enc.unapply(au.get.email)" />
 } else {
   @helper.inputText(
-    sForm("name"), 
+    sForm("name"),
     '_label -> "Your name",
     '_showConstraints -> false)
   @helper.inputText(
-    sForm("email"), 
+    sForm("email"),
     '_label -> "Your Email",
     '_showConstraints -> false)
 }
 
   @helper.inputText(
-    sForm("desc"), 
+    sForm("desc"),
     '_label -> "Description",
     'class -> "span6",
     '_showConstraints -> false)
-    
+
   @helper.textarea(
-    sForm("details"), 
-    '_label -> "Details", 
+    sForm("details"),
+    '_label -> "Details",
     '_showConstraints -> false,
     'class -> "span6",
     'rows->15)
@@ -46,23 +46,23 @@
   <div class="well">
   Help weed out some spam - please answer this question...
     @helper.inputText(
-      sForm("v1"), 
+      sForm("v1"),
       '_label -> ("Result of " + controllers.Support.divi(v2) + " = "),
       '_showConstraints -> false)
   </div>
 }
   <input type="hidden" name="v2" value="@sForm("v2").value" />
-  
+
   <button type="submit" class="btn btn-primary">Submit support request</button>
 
   @sForm.globalError.map { err=>
      <p style="color:red;font-weight:bold">@err.message</p>
-  } 
-  
+  }
+
   <p><small>By using this form, you agree to the <a href="@controllers.Wiki.w("Terms of Service")">Terms of Service</a></small><p>
   }
-  
-        </div>
+
+	</div>
       </div>
     </div>
 
@@ -73,4 +73,3 @@
   </div> <!-- /container -->
 
 @htmlBottom()
-    

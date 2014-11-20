@@ -24,22 +24,23 @@ object Application extends RazController {
     } getOrElse {
       val c = Config.config(Config.BANURLS)
       if (c.exists(_.contains(path))) {
-        val ip = request.headers.get("X-Forwarded-For")
+	val ip = request.headers.get("X-Forwarded-For")
 
-        if (ip.isDefined && BannedIps.isBanned(ip)) {
-          Audit.logdb("BANNED_IP", List("request:" + request.toString, "headers:" + request.headers, "body:" + request.body).mkString("<br>"))
-          BannedIps.ban(ip.get, request.method + " " + path)
-        }
-        // TODO emulate some well known wiki error response to throw them off
-        NotFound("")
+	if (ip.isDefined && BannedIps.isBanned(ip)) {
+	  Audit.logdb("BANNED_IP", List("request:" + request.toString, "headers:" + request.headers, "body:" + request.body).mkString("<br>"))
+	  BannedIps.ban(ip.get, request.method + " " + path)
+	}
+	// TODO emulate some well known wiki error response to throw them off
+	NotFound("")
       } else {
-        Audit.missingPage(" NO ROUTE FOR: " + path)
-//        NotFound("This is not the page you're looking for...!")
-        Redirect ("/")
+	Audit.missingPage(" NO ROUTE FOR: " + path)
+//	  NotFound("This is not the page you're looking for...!")
+	Redirect ("/")
       }
     }
   }
 
+  //todo implement options
   def options(path: String) = Action { implicit request =>
     Status(400) // bad request
   }
@@ -49,7 +50,7 @@ object Application extends RazController {
     Website.getHost.flatMap(Config.urlfwd(_)).map { host =>
       Redirect(host)
     } orElse Website.getHost.flatMap(Website.apply).flatMap(_.homePage).map{ home=>
-        Wiki.show(home, 1).apply(request).value.get.get
+	Wiki.show(home, 1).apply(request).value.get.get
     } getOrElse Application.idoeIndexItem(1) // RK main home screen
     //todo un-hardcode that
   }
@@ -85,9 +86,9 @@ object Application extends RazController {
     w.map { wid =>
       Audit.logdb("LUCKY", "wpath", wid.wpath)
       Config.urlcanon(wid.wpath, wid.page.map(_.tags)).map { canon =>
-        Redirect(canon)
+	Redirect(canon)
       } getOrElse {
-        Redirect(Wiki.w(wid))
+	Redirect(Wiki.w(wid))
       }
     } getOrElse {
       Redirect("/")
@@ -103,10 +104,10 @@ object Application extends RazController {
       Audit.logdb("DOE_HARRY", css)
 
       (for (u <- Users.findUserById("4fdb5d410cf247dd26c2a784")) yield {
-          Redirect("/").withSession(Config.CONNECTED -> Enc.toSession(u.email), "css" -> css)
+	  Redirect("/").withSession(Config.CONNECTED -> Enc.toSession(u.email), "css" -> css)
       }) getOrElse {
-        Audit.logdb("ERR_HARRY", "account is missing???")
-        Msg2("Can't find Harry Potter - sorry!")
+	Audit.logdb("ERR_HARRY", "account is missing???")
+	Msg2("Can't find Harry Potter - sorry!")
       }
     }
   }
@@ -119,11 +120,11 @@ object Application extends RazController {
     } else {
       Audit.logdb("SET_THEME", "X-FORWARDED-HOST = " + request.headers.get("X-FORWARDED-HOST"), css)
 
-      (for (au <- auth) 
-        yield 
-          Redirect("/").withSession(Config.CONNECTED -> Enc.toSession(au.email), "css" -> css)
+      (for (au <- auth)
+	yield
+	  Redirect("/").withSession(Config.CONNECTED -> Enc.toSession(au.email), "css" -> css)
       ) getOrElse
-          Redirect("/").withSession("css" -> css)
+	  Redirect("/").withSession("css" -> css)
     }
   }
 
@@ -152,18 +153,18 @@ object Application extends RazController {
       case "terms" => Action { implicit request => Redirect("/page/Terms_of_Service") }
       case "join" => Action { implicit request => Redirect("/doe/join") }
       case "logout" | "signout" => Action { implicit request =>
-        val au = auth
-        auth map (_.auditLogout)
-        cleanAuth(auth)
-        if (au.isDefined &&
-          System.currentTimeMillis - razSuTime < 15 * 60 * 1000 &&
-          request.session.get("extra").exists(_ == razSu)) {
-          val me = razSu
-          razSu = "no"
-          Audit.logdb("ADMIN_SU_RAZIE", "sure?")
-          Redirect("/").withSession(Config.CONNECTED -> Enc.toSession(me))
-        } else
-          Redirect("/").withNewSession
+	val au = auth
+	auth map (_.auditLogout)
+	cleanAuth(auth)
+	if (au.isDefined &&
+	  System.currentTimeMillis - razSuTime < 15 * 60 * 1000 &&
+	  request.session.get("extra").exists(_ == razSu)) {
+	  val me = razSu
+	  razSu = "no"
+	  Audit.logdb("ADMIN_SU_RAZIE", "sure?")
+	  Redirect("/").withSession(Config.CONNECTED -> Enc.toSession(me))
+	} else
+	  Redirect("/").withNewSession
       }
       case _ => { Audit.missingPage(page); TODO }
     }
@@ -190,34 +191,34 @@ object Application extends RazController {
       isok <- (code == T.TESTCODE) orErr "no code"
     ) yield Ok(what match {
       case "regByUserId" =>
-        ROne[model.Reg]("userId" -> data.aso).map(_._id.toString).mkString
+	ROne[model.Reg]("userId" -> data.aso).map(_._id.toString).mkString
       case "wikiSetOwnerById" =>
-        val Array(wId, uId) = data.split(",")
-        val w = ROne[model.WikiEntry]("_id" -> wId.aso).get
-        db.tx("test") { implicit txn =>
-          w.update(w.cloneProps(w.props ++ Map("owner" -> uId), uId.aso))
-        }
-        "ok"
+	val Array(wId, uId) = data.split(",")
+	val w = ROne[model.WikiEntry]("_id" -> wId.aso).get
+	db.tx("test") { implicit txn =>
+	  w.update(w.cloneProps(w.props ++ Map("owner" -> uId), uId.aso))
+	}
+	"ok"
       case "wikiIdByName" =>
-        ROne[model.WikiEntry]("name" -> data).map(_._id.toString).mkString
+	ROne[model.WikiEntry]("name" -> data).map(_._id.toString).mkString
       case "uwIdByUserId" =>
-        ROne[model.User]("_id" -> data.aso).toList.flatMap(_.wikis).map(_._id.toString).mkString
+	ROne[model.User]("_id" -> data.aso).toList.flatMap(_.wikis).map(_._id.toString).mkString
       case "userIdByFirstName" =>
-        ROne[model.User]("firstName" -> data).map(_._id.toString).mkString
+	ROne[model.User]("firstName" -> data).map(_._id.toString).mkString
       case "setuserUsernameById" =>
-        ROne[model.User]("_id" -> data.aso).foreach(u => u.update(u.copy(userName = data)))
-        "ok"
+	ROne[model.User]("_id" -> data.aso).foreach(u => u.update(u.copy(userName = data)))
+	"ok"
       case "verifyUserById" =>
-        val email = db.ROne[model.User]("_id" -> data.aso).map(_.email.toString).get
-        controllers.Tasks.verifiedEmail(DateTime.now().plusHours(1).toString().enc, email, data, auth)
-        "ok"
+	val email = db.ROne[model.User]("_id" -> data.aso).map(_.email.toString).get
+	controllers.Tasks.verifiedEmail(DateTime.now().plusHours(1).toString().enc, email, data, auth)
+	"ok"
       case "auth" =>
-        auth.toString
+	auth.toString
       case "kidByName" =>
-        val Array(f, l) = data split ","
-        ROne[model.RacerKidInfo]("firstName" -> f, "lastName" -> l).map(_.rkId.toString).mkString
+	val Array(f, l) = data split ","
+	ROne[model.RacerKidInfo]("firstName" -> f, "lastName" -> l).map(_.rkId.toString).mkString
       case "rkForUserId" =>
-        model.RacerKidz.findForUser(data.aso).map(_._id).toList.mkString(",")
+	model.RacerKidz.findForUser(data.aso).map(_._id).toList.mkString(",")
       case _ => "?"
     })) getOrElse
       unauthorized("Oops - some error")

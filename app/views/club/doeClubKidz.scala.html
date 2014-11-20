@@ -10,27 +10,27 @@ manage the list of kidz and/or their accounts
 
 @rks=@{
   (for (a <- model.RacerKidz.findAssocByClub(controllers.Club(user));
-  	   k <- model.RacerKidz.findById(a.to)) yield (k,a)).toList.sortBy(x=>x._1.info.lastName+x._1.info.firstName)
+	   k <- model.RacerKidz.findById(a.to)) yield (k,a)).toList.sortBy(x=>x._1.info.lastName+x._1.info.firstName)
 }
-  	   
+
 @rksactive = @{rksmap((k,a)=> k.info.status != STATUS_FORMER && a.role != ROLE_FAN)}
 @rksformer = @{rksmap((k,a)=> k.info.status == STATUS_FORMER || a.role == ROLE_FAN)}
 
 @rksmap(f:(RacerKid, RacerKidAssoc) =>Boolean) = @{
   for ((t,a) <- rks if(f(t, a))) yield
-    Map("fname"->t.info.firstName, 
-    	"lname"->t.info.lastName, 
-    	"role" -> a.role, 
-    	"source" -> a.assoc,
-    	"associd" -> a._id.toString,
-    	"button"->t._id.toString)
+    Map("fname"->t.info.firstName,
+	"lname"->t.info.lastName,
+	"role" -> a.role,
+	"source" -> a.assoc,
+	"associd" -> a._id.toString,
+	"button"->t._id.toString)
 }
 
 @mnglink(row:Map[String,String],k:String,v:String)={
   @k match {
-  	case "button" => {
+	case "button" => {
       <a href="@routes.Kidz.doeKid(user._id.toString, v, "-", row("associd"), "clubkidz")" class="btn btn-mini">More...</a>
-      } 
+      }
     case _ => { @v }
   }
 }
@@ -47,10 +47,10 @@ manage the list of kidz and/or their accounts
 
 <p><b>Summary:</b>
   @rks.filter(t=> t._1.info.status != STATUS_FORMER && t._2.role != ROLE_FAN).toList.groupBy(_._2.role).map {x=>
-  	@x._2.size <small>x</small> @x._1  ;  
+	@x._2.size <small>x</small> @x._1  ;
 }
 
-@util.utilSimpleTable(rksactive.iterator, 
+@util.utilSimpleTable(rksactive.iterator,
 	Seq("fname" -> "F.Name", "lname"->"L.Name", "role" -> "Role", "source" -> "Source", "button"->"Details"), Some(mnglink))
 
 Add a: @model.RK.ROLES.map{v=>
@@ -58,7 +58,7 @@ Add a: @model.RK.ROLES.map{v=>
 }
 
 <hr>
-Source is 
+Source is
 <ul>
 <li>Myself - well, automatically created for you
 <li>Registered - was included in a registration, by parents
@@ -67,7 +67,7 @@ Source is
 </ul>
 <hr>
 <strong>Former members</strong>
-@util.utilSimpleTable(rksformer.iterator, 
+@util.utilSimpleTable(rksformer.iterator,
 	Seq("fname" -> "F.Name",
     "lname"->"L.Name",
     "role" -> "Role",
@@ -80,4 +80,3 @@ Source is
 </div> <!-- /container -->
 
 @htmlBottom()
-    

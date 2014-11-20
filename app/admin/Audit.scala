@@ -1,7 +1,7 @@
 /**
  *   ____    __    ____  ____  ____,,___     ____  __  __  ____
- *  (  _ \  /__\  (_   )(_  _)( ___)/ __)   (  _ \(  )(  )(  _ \           Read
- *   )   / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <     README.txt
+ *  (  _ \  /__\  (_   )(_  _)( ___)/ __)   (  _ \(  )(  )(  _ \	   Read
+ *   )	 / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <     README.txt
  *  (_)\_)(__)(__)(____)(____)(____)(___/   (__)  (______)(____/    LICENSE.txt
  */
 package admin
@@ -32,7 +32,7 @@ case class Audit(
 }
 
 /**
- * just a proxy to 
+ * just a proxy to
  */
 object Audit extends AuditService with Logging {
 
@@ -44,11 +44,11 @@ object Audit extends AuditService with Logging {
   def !(a: Any) { Services.alli ! a }
   def !?(a: Any) { Services.alli !? a }
 
-  def logdb(what: String, details: Any*) = 
+  def logdb(what: String, details: Any*) =
     Services.audit.logdb(what, details:_*)
 
   /** log a db operation */
-  def logdbWithLink(what: String, link: String, details: Any*) = 
+  def logdbWithLink(what: String, link: String, details: Any*) =
     Services.audit.logdbWithLink(what, link, details:_*)
 }
 

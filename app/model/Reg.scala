@@ -70,7 +70,7 @@ object RegStatus {
   final val CURRENT = "current" // reg is current, approved and up to date for season
   final val ACCEPTED = "accepted" // forms accepted, pending payment
   final val EXPIRED = "expired" // reg is expired - accompanied by a task to update it / create new one
-  final val PENDING = "pending" // forms have been submitted - waiting 
+  final val PENDING = "pending" // forms have been submitted - waiting
   final val FAMILY = "family" // reg is filed by another member (parent or spouse)
   final val DELETE = "delete" // transient request - it will remove the record
 }

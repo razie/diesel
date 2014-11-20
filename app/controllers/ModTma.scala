@@ -112,13 +112,13 @@ object ModTma extends RazController with Logging {
   def jsechof = Action { implicit request =>
     OneForm.bindFromRequest.fold(
       formWithErrors =>
-        Msg2(formWithErrors.toString + "Oops! some error"),
+	Msg2(formWithErrors.toString + "Oops! some error"),
       {
-        case content =>
-          Ok(razscr dec content).as("text/html").withHeaders(
-            "Content-Security-Policy" -> "unsafe-inline,unsafe-eval",
-            "X-Content-Security-Policy" -> "unsafe-inline,unsafe-eval",
-            "X-WebKit-CSP" -> "unsafe-inline,unsafe-eval")
+	case content =>
+	  Ok(razscr dec content).as("text/html").withHeaders(
+	    "Content-Security-Policy" -> "unsafe-inline,unsafe-eval",
+	    "X-Content-Security-Policy" -> "unsafe-inline,unsafe-eval",
+	    "X-WebKit-CSP" -> "unsafe-inline,unsafe-eval")
       })
   }
 
@@ -133,10 +133,10 @@ object ModTma extends RazController with Logging {
   def buildhtml(id: String) = Action { implicit request =>
     lform.bindFromRequest.fold(
       formWithErrors =>
-        Msg2(formWithErrors.toString + "Oops! some error"),
+	Msg2(formWithErrors.toString + "Oops! some error"),
       {
-        case (hh, h, c, j) =>
-          xbuildhtml(id, hh, h, c, j)
+	case (hh, h, c, j) =>
+	  xbuildhtml(id, hh, h, c, j)
       })
   }
 
@@ -165,11 +165,11 @@ $hx
 </html>
 """
 
-    // stupid security disallow XSS by requiring a referer 
-    // TODO better security - 
+    // stupid security disallow XSS by requiring a referer
+    // TODO better security -
     if (request.headers.get("Referer").exists(r =>
       (r matches s"""^http[s]?://${Config.hostport}.*""") ||
-        (r matches s"""^http[s]?://${request.headers.get("X-Forwarded-Host").getOrElse("NOPE")}.*""")))
+	(r matches s"""^http[s]?://${request.headers.get("X-Forwarded-Host").getOrElse("NOPE")}.*""")))
       Ok(res).as("text/html")
     else {
       Audit.logdb("ERR_BUILDHTML", "Referer", request.headers.get("Referer"), "Host", request.host)
@@ -187,7 +187,7 @@ $hx
       Msg2(formWithErrors.toString + "Oops! some error"),
     {
       case (hh, h, c, j) =>
-        Ok(views.html.fiddle.playjs("", Map(), (hh, h, c, j), auth))
+	Ok(views.html.fiddle.playjs("", Map(), (hh, h, c, j), auth))
     })
   }
 

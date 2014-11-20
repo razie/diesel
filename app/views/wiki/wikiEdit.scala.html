@@ -14,21 +14,21 @@ edit a wiki page
 
 @reserved(page:Option[model.WikiEntry]) = {
   @page match {
-    case Some(we) => { 
+    case Some(we) => {
       @if(we.isReserved) {
-        YES <a href="@routes.Wikie.reserve(wid,false)">Unreserve it</a>
+	YES <a href="@routes.Wikie.reserve(wid,false)">Unreserve it</a>
       } else {
-        NO <a href="@routes.Wikie.reserve(wid,true)">Reserve it</a>
-      } 
+	NO <a href="@routes.Wikie.reserve(wid,true)">Reserve it</a>
+      }
     }
-    case None => { 
+    case None => {
       <b>new page</b>
     }
   }
-} 
+}
 
 @htmlHeadBar("Editing "+wid.cat+":"+ wid.name, au, realm)
-   
+
 <div class="container">
   <div class="row">
     <div class="span9">
@@ -39,55 +39,55 @@ edit a wiki page
 @helper.form(action=routes.Wikie.save(wid.formatted), 'class->"well form-inline") {
 <table valign="top">
 <tr><td>
-@******* 
+@*******
 PROBLEM: many places use label as name... via Wikis.formatName
 **********@
   @helper.inputText(
-    myForm("label"), 
+    myForm("label"),
     'class -> "input-xxlarge",
     '_label -> "Label (don't change)",
     '_showConstraints -> false)
   @helper.textarea(
-    myForm("content"), 
-    '_label -> "Content", 
+    myForm("content"),
+    '_label -> "Content",
     '_showConstraints -> false,
     'class -> "span7",
     'rows->20)
   @helper.inputText(
-    myForm("tags"), 
+    myForm("tags"),
     'class -> "input-xlarge",
     '_label -> "Tags (separated with ,)",
     '_showConstraints -> false)
 </td><td>
     <div>
   @helper.select(
-    myForm("markup"), 
+    myForm("markup"),
     Seq("md"->"Markdown"), //model.Wikis.markups.map(x=>(x,x)),
-    '_label -> "Markup Language", 
+    '_label -> "Markup Language",
     'class -> "input-small",
     '_showConstraints -> false)
 
   @helper.select(
-    myForm("visibility"), 
+    myForm("visibility"),
     model.Wikis.visibilityFor(wid.cat).map(x=>(x,x)),
-    '_label -> "Visibility", 
+    '_label -> "Visibility",
     'class -> "input-small",
     '_showConstraints -> false)
 
   @helper.select(
-    myForm("wvis"), 
+    myForm("wvis"),
     wvis().map(x=>(x,x)),
-    '_label -> "EditBy", 
+    '_label -> "EditBy",
     'class -> "input-small",
     '_showConstraints -> false)
-    
+
   @helper.select(
-    myForm("draft"), 
-    Seq("Notify"->"Notify", "Draft" -> "Draft", "Silent" -> "Silent"), 
+    myForm("draft"),
+    Seq("Notify"->"Notify", "Draft" -> "Draft", "Silent" -> "Silent"),
     'class -> "input-small",
-    '_label -> "Notify followers", 
+    '_label -> "Notify followers",
     '_showConstraints -> false)
-            
+
   @if(au.get.hasPerm(model.Perm.adminDb)) {
     <p>Reserved: @reserved(model.Wikis(wid.getRealm).find(wid.cat,wid.name))
     @if(model.Wikis(wid.getRealm).find(wid.cat,wid.name).isDefined) {
@@ -96,19 +96,19 @@ PROBLEM: many places use label as name... via Wikis.formatName
   }
 
   </div>
-</td></tr></table>    
+</td></tr></table>
     <div class="actions">
       <button type="submit" class="btn btn-primary">Save</button>
       <a href="@controllers.Wiki.w(wid, false)" class="btn">Cancel</a>
   </div>
-  
+
   @myForm.globalError.map { err=>
      <p style="color:red;font-weight:bold">@err.message</p>
-  } 
-  
+  }
+
   <p><small>See the <a href="/wiki/Admin/Quick Guide">quick guide</a>.</small>
   <br><small>By updating this page, you agree to the <a href="@controllers.Wiki.w("Terms of Service")">Terms of Service</a></small>
-  <br><small>Please do not replicate information already contained in other reference places like 
+  <br><small>Please do not replicate information already contained in other reference places like
       Wikipedia, just link to them. Use [[[Main_Page]]] to link to wikipedia.</small>
 }
 </div>
@@ -130,4 +130,3 @@ PROBLEM: many places use label as name... via Wikis.formatName
 </div> <!-- /container -->
 
 @htmlBottom()
-    

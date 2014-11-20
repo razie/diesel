@@ -6,28 +6,28 @@ the footer of every page...
 
 <footer>
   <p>&copy; <a>Razie</a>, 2012-2014
-  | <a href="/doe/support">Support</a> 
-  | <a href="/wiki/Admin:Terms_of_Service-notes">Terms of Service</a> 
+  | <a href="/doe/support">Support</a>
+  | <a href="/wiki/Admin:Terms_of_Service-notes">Terms of Service</a>
 
-@*** 
+@***
       | <small>(<a href="/mobile/1">Mobile</a>
       | <a href="/mobile/0">Desktop</a>
       )</small>
-***@      
+***@
 
-@*** 
+@***
       | <small>(<a href="javascript:cssref(dark)">Dark</a>
       | <a href="javascript:cssref(light)">Light</a>
       )</small>
-***@      
+***@
 
   </p>
 
 @if(ads && ! (Config.noads || Config.currUser.exists(_.isUnder13))) {
-	
+
   @if(Config.isLight) {
       <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-          <!-- RK-bottom-light -->
+	  <!-- RK-bottom-light -->
       <ins class="adsbygoogle"
       style="display:inline-block;width:728px;height:90px"
       data-ad-client="ca-pub-5622141672958561"

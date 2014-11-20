@@ -7,16 +7,16 @@
   <div class="row">
     <div class="span9">
       <div class="well">
-        @if(pages.size>0) {
-          <ul>
-          @pages.map { p=>
-            <li><a href="@controllers.Wiki.w(p.wid)">@p.label</a> <small>&nbsp;  @p.category</small>
-          } 
-         </ul>
-        } else {
-          <h3>No results found...</h3>
-        }
-        </div> 
+	@if(pages.size>0) {
+	  <ul>
+	  @pages.map { p=>
+	    <li><a href="@controllers.Wiki.w(p.wid)">@p.label</a> <small>&nbsp;  @p.category</small>
+	  }
+	 </ul>
+	} else {
+	  <h3>No results found...</h3>
+	}
+	</div>
 
       <hr>
       @htmlFooter()
@@ -34,4 +34,3 @@
 </div> <!-- /container -->
 
 @htmlBottom()
-    

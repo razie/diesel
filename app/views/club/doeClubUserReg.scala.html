@@ -1,4 +1,4 @@
-@*********** 
+@***********
   user manages registrations
 ***********@
 @(au:model.User, reg:model.Reg, rks:List[model.RacerKid])
@@ -10,19 +10,19 @@
 
 <div class="container"> <div class="row">
 @views.html.user.leftmenu(10, au)
-   
+
 <div class="span9">
 
 <h2>@model.Users.findUserById(reg.userId).map(_.userName).mkString Registration for @reg.clubName (as @reg.role)</h2>
 
 <p>  Status: @regStatusColored(reg.regStatus)
   @reg.regStatus match {
-  	case PENDING => {Need to complete all the forms below - please follow the simple steps below.}
-  	case CURRENT => {Registration current}
-  	case CURRENT => {Forms completed, pending payment/review}
-  	case EXPIRED => {Membership expired - ask for and complete the new forms}
-  	case FAMILY  => {Another member of the family is handling it}
-  	case _ => {???}
+	case PENDING => {Need to complete all the forms below - please follow the simple steps below.}
+	case CURRENT => {Registration current}
+	case CURRENT => {Forms completed, pending payment/review}
+	case EXPIRED => {Membership expired - ask for and complete the new forms}
+	case FAMILY  => {Another member of the family is handling it}
+	case _ => {???}
   }
 
 @if(reg.regStatus == ACCEPTED) {
@@ -39,7 +39,7 @@
 
 <div class="well">
 <h3>Step 2. Make sure <em>everyone</em> is listed below:</h3>
-<p>If a racer/parent/guardian/volunteer is not listed below, add one as a: 
+<p>If a racer/parent/guardian/volunteer is not listed below, add one as a:
 
 @model.RK.RELATIONSHIPS.map{r=>
   <a href="@routes.Kidz.doeKid(au._id.toString, "11", r, "-", reg._id.toString)" class="btn btn-mini btn-info">@r</a>
@@ -47,35 +47,35 @@
 
 @rkidz=@{
   rks.map(t=>
-    Map("fname"->t.info.firstName, 
-    	"role" -> t.info.role, 
-    	"button" -> t._id.toString, 
-    	"id"->t._id.toString))
+    Map("fname"->t.info.firstName,
+	"role" -> t.info.role,
+	"button" -> t._id.toString,
+	"id"->t._id.toString))
 }
 
 @addlink(row:Map[String,String],k:String,v:String)={
   @k match {
-  	case "button" => {
+	case "button" => {
       <a href="@routes.Kidz.doeKid(au._id.toString, v, "-", "-", reg._id.toString)" class="btn btn-mini">...</a>
- 	  }
-  	case "id" => {
+	  }
+	case "id" => {
       @if(reg.kids.exists(_.rkId.toString == v)) {
-  	    <span class="label">Included</span> 
-        as @reg.kids.filter(_.rkId.toString == v).map(_.role).mkString
-        <a href="@routes.Club.doeClubUwRMFormKid(reg._id.toString,v,au._id.toString, "x")" class="btn btn-mini btn-danger" title="remove from registration"> x </a>
+	    <span class="label">Included</span>
+	as @reg.kids.filter(_.rkId.toString == v).map(_.role).mkString
+	<a href="@routes.Club.doeClubUwRMFormKid(reg._id.toString,v,au._id.toString, "x")" class="btn btn-mini btn-danger" title="remove from registration"> x </a>
       } else {
-        <a href="@routes.Club.doeClubUserRegAdd(reg._id.toString,v,au._id.toString, "x")" class="btn btn-mini" title="also adds neccessary forms">Include now!</a>
- 	  }
- 	}
+	<a href="@routes.Club.doeClubUserRegAdd(reg._id.toString,v,au._id.toString, "x")" class="btn btn-mini" title="also adds neccessary forms">Include now!</a>
+	  }
+	}
     case _ => {@v}
   }
 }
 
-@util.utilSimpleTable(rkidz.iterator, 
-	Seq("fname" -> "Name", 
-		"role" -> "Relationship", 
-		"button" -> "Details", 
-		"id"->"Included in registration?"), 
+@util.utilSimpleTable(rkidz.iterator,
+	Seq("fname" -> "Name",
+		"role" -> "Relationship",
+		"button" -> "Details",
+		"id"->"Included in registration?"),
 	Some(addlink))
 </div>
 
@@ -89,16 +89,16 @@
   @if(rks.filter(rk => !reg.kids.exists(_.rkId == rk._id)).size == 1) {
     You have <strong>1 person
     } else {
-  You have <strong>@rks.filter(rk => !reg.kids.exists(_.rkId == rk._id)).size persons 
+  You have <strong>@rks.filter(rk => !reg.kids.exists(_.rkId == rk._id)).size persons
   }
   not included</strong> in the registration - are you sure you want to continue to the forms below?
-  </div>	
+  </div>
 }
 </div>
 
 <div class="well">
 <h3>Step 4. Complete all the forms</h3>
-<p>After adding all the members/racers in your family, these are the forms you need to complete... each form is important, not just the racer forms: <b>your club needs your address and contact information for each parent as well as medical information for the racers</b>. 
+<p>After adding all the members/racers in your family, these are the forms you need to complete... each form is important, not just the racer forms: <b>your club needs your address and contact information for each parent as well as medical information for the racers</b>.
 @club.userFormList(reg.wids, true)
 </div>
 
@@ -107,14 +107,13 @@
 <p>After all the forms have been aproved, you will receive separate payment instructions.
 </div>
 
-  <hr>  
+  <hr>
   @club.formStatusLegend()
-  
+
   </div> <!-- /container -->
   </div> <!-- /container -->
-  <hr>  
+  <hr>
   @htmlFooter(ads=true)
   </div> <!-- /container -->
 
 @htmlBottom()
-    

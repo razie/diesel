@@ -1,4 +1,4 @@
-@*********** 
+@***********
   user manages registrations
 ***********@
 @(au:model.User)
@@ -8,7 +8,7 @@
 
 <div class="container"> <div class="row">
 @user.leftmenu(10, au)
-   
+
 <div class="span9">
 
 @missingRegs=@{
@@ -32,9 +32,9 @@
 
 @mnglink(row:Map[String,String],k:String,v:String)={
   @k match {
-  	case "regStatus" => {
-  		@regStatusColored(v, Some(routes.Club.doeClubUserReg(row.get("id").get).toString))
-  		}
+	case "regStatus" => {
+		@regStatusColored(v, Some(routes.Club.doeClubUserReg(row.get("id").get).toString))
+		}
     case _ => {@v}
   }
 }
@@ -46,17 +46,17 @@
 
 @if(regs.isEmpty) {
   <div class="alert alert-danger">
-  <strong>No registrations!</strong> 
-  You have no registrations in progress - if you were looking for a specific club, then please follow this link to join it: 
+  <strong>No registrations!</strong>
+  You have no registrations in progress - if you were looking for a specific club, then please follow this link to join it:
   <b><a href="/wikie/link/Club">Join a club</a></b>
   <p>Find your club there and if they have registrations open, you will see a red link to "start registration" right after joining the club.
   </div>
 } else {
-  @util.utilSimpleTable(tab, 
-  	Seq("club" -> "Club", 
-  		"year"->"Year", 
-  		"role"->"Role", 
-  		"regStatus" -> "Status"), 
+  @util.utilSimpleTable(tab,
+	Seq("club" -> "Club",
+		"year"->"Year",
+		"role"->"Role",
+		"regStatus" -> "Status"),
     Some(mnglink))
 
   @missingRegs.map {club=>
@@ -67,7 +67,7 @@
   @club.regStatusLegend()
 }
 
-  </div> 
+  </div>
   </div> <!-- /row -->
   @user.agree()
   <hr>

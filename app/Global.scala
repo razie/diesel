@@ -1,7 +1,7 @@
 /**
- *    ____    __    ____  ____  ____,,___     ____  __  __  ____
- *   (  _ \  /__\  (_   )(_  _)( ___)/ __)   (  _ \(  )(  )(  _ \           Read
- *   )   / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <     README.txt
+ *    ____    __    ____  ____	____,,___     ____  __	__  ____
+ *   (	_ \  /__\  (_	)(_  _)( ___)/ __)   (	_ \(  )(  )(  _ \	    Read
+ *   )	 / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <     README.txt
  *  (_)\_)(__)(__)(____)(____)(____)(___/   (__)  (______)(____/    LICENSE.txt
  */
 
@@ -41,22 +41,22 @@ object Global extends WithFilters(LoggingFilter) {
     val m = ("ERR_onError", "Current count: " + lastErrorCount + " Request:" + request.toString, "headers:" + request.headers, "ex:" + ex.toString).toString
     if (System.currentTimeMillis - lastErrorTime >= ERR_DELTA1) {
       if (errEmails <= ERR_EMAILS || System.currentTimeMillis - firstErrorTime >= ERR_DELTA2) {
-        admin.SendEmail.withSession { implicit mailSession =>
-          Emailer.tellRaz("ERR_onError",
-            api.wix.user.map(_.userName).mkString, m)
+	admin.SendEmail.withSession { implicit mailSession =>
+	  Emailer.tellRaz("ERR_onError",
+	    api.wix.user.map(_.userName).mkString, m)
 
-          synchronized {
-            if (errEmails == ERR_EMAILS || System.currentTimeMillis - firstErrorTime >= ERR_DELTA2) {
-              errEmails = 0
-              firstErrorTime = lastErrorTime
-            }
-            errEmails = errEmails + 1
-            lastErrorTime = System.currentTimeMillis()
-            lastErrorCount = 0
-          }
-        }
+	  synchronized {
+	    if (errEmails == ERR_EMAILS || System.currentTimeMillis - firstErrorTime >= ERR_DELTA2) {
+	      errEmails = 0
+	      firstErrorTime = lastErrorTime
+	    }
+	    errEmails = errEmails + 1
+	    lastErrorTime = System.currentTimeMillis()
+	    lastErrorCount = 0
+	  }
+	}
       } else {
-        lastErrorCount = 0
+	lastErrorCount = 0
       }
     } else {
       lastErrorCount = 0
@@ -96,7 +96,7 @@ object Global extends WithFilters(LoggingFilter) {
 
   override def beforeStart(app: Application) {
     // register the later actor
-    //    val auditor = Akka.system.actorOf(Props[model.WikiAuditor], name = "WikiAuditor")
+    //	  val auditor = Akka.system.actorOf(Props[model.WikiAuditor], name = "WikiAuditor")
 
     Services.auth = RazAuthService
     Services.config = Config
@@ -106,9 +106,9 @@ object Global extends WithFilters(LoggingFilter) {
       val UPGRADE_AGAIN = false
       val mongoDbVer = 16 // normal is one higher than the last one
       val mongoUpgrades: Map[Int, UpgradeDb] = Map(
-          1 -> Upgrade1, 2 -> Upgrade2, 3 -> Upgrade3, 4 -> Upgrade4, 5 -> Upgrade5,
-          6 -> U6, 7 -> U7, 8 -> U8, 9 -> U9, 10 -> U10, 11 -> U11, 12 -> U12, 13 -> U13,
-          14 -> U14, 15 -> U15)
+	  1 -> Upgrade1, 2 -> Upgrade2, 3 -> Upgrade3, 4 -> Upgrade4, 5 -> Upgrade5,
+	  6 -> U6, 7 -> U7, 8 -> U8, 9 -> U9, 10 -> U10, 11 -> U11, 12 -> U12, 13 -> U13,
+	  14 -> U14, 15 -> U15)
 
       lazy val conn = MongoConnection(admin.Config.mongohost)
 
@@ -119,52 +119,52 @@ object Global extends WithFilters(LoggingFilter) {
       // authenticate
       val db = conn(Config.mongodb)
       if (!db.authenticate(Config.mongouser, admin.Config.mongopass)) {
-        clog << "ERR_MONGO_AUTHD"
-        throw new Exception("Cannot authenticate. Login failed.")
+	clog << "ERR_MONGO_AUTHD"
+	throw new Exception("Cannot authenticate. Login failed.")
       }
 
       //upgrading db version if needed
       def prep(adb:MongoDB) = {
-        // upgrade if needed
-        var dbVer = adb("Ver").findOne.map(_.get("ver").toString).map(_.toInt)
-        if (UPGRADE_AGAIN) dbVer = dbVer.map(_ - 1)
+	// upgrade if needed
+	var dbVer = adb("Ver").findOne.map(_.get("ver").toString).map(_.toInt)
+	if (UPGRADE_AGAIN) dbVer = dbVer.map(_ - 1)
 
-        var upgradingLoop = false // simple recursive protection
+	var upgradingLoop = false // simple recursive protection
 
-        // if i don't catch - there's no ending since it's a lazy val init...
-        try {
-          dbVer match {
-            case Some(v) => {
-              var ver = v
-              while (ver < mongoDbVer && mongoUpgrades.contains(ver)) {
-                if(upgradingLoop)
-                  throw new IllegalStateException("already looping to update - recursive DB usage while upgrading, check code")
-                upgradingLoop = true
-                mongoUpgrades.get(ver).fold (
-                  Log.error("NO UPGRADES FROM VER " + ver)
-                ) { u =>
-                  cout << "1 " + Thread.currentThread().getName()
-                  Log audit s"UPGRADING DB from ver $ver to ${mongoDbVer}"
-                  Thread.sleep(2000) // often screw up and goes in  a loop...
-                  u.upgrade(adb)
-                  adb("Ver").update(Map("ver" -> ver), Map("ver" -> mongoDbVer))
-                  Log.audit("UPGRADING DB... DONE")
-                }
-                ver = ver + 1
-                upgradingLoop = false
-              }
-            }
-            case None => adb("Ver") += Map("ver" -> mongoDbVer) // create a first ver entry
-          }
-        } catch {
-          case e: Throwable => {
-            Log.error("Exception during DB migration - darn thing won't work at all probably\n" + e, e)
-            e.printStackTrace()
-          }
-        }
+	// if i don't catch - there's no ending since it's a lazy val init...
+	try {
+	  dbVer match {
+	    case Some(v) => {
+	      var ver = v
+	      while (ver < mongoDbVer && mongoUpgrades.contains(ver)) {
+		if(upgradingLoop)
+		  throw new IllegalStateException("already looping to update - recursive DB usage while upgrading, check code")
+		upgradingLoop = true
+		mongoUpgrades.get(ver).fold (
+		  Log.error("NO UPGRADES FROM VER " + ver)
+		) { u =>
+		  cout << "1 " + Thread.currentThread().getName()
+		  Log audit s"UPGRADING DB from ver $ver to ${mongoDbVer}"
+		  Thread.sleep(2000) // often screw up and goes in  a loop...
+		  u.upgrade(adb)
+		  adb("Ver").update(Map("ver" -> ver), Map("ver" -> mongoDbVer))
+		  Log.audit("UPGRADING DB... DONE")
+		}
+		ver = ver + 1
+		upgradingLoop = false
+	      }
+	    }
+	    case None => adb("Ver") += Map("ver" -> mongoDbVer) // create a first ver entry
+	  }
+	} catch {
+	  case e: Throwable => {
+	    Log.error("Exception during DB migration - darn thing won't work at all probably\n" + e, e)
+	    e.printStackTrace()
+	  }
+	}
 
-        // that's it, db initialized?
-        adb
+	// that's it, db initialized?
+	adb
       }
 
       prep(db)
@@ -194,11 +194,11 @@ object Global extends WithFilters(LoggingFilter) {
 
     WikiScripster.impl = new RazWikiScripster
 
-    //    U11.upgradeWL(RazMongo.db)
-    //    U11.upgradeRaz(RazMongo.db)
-    //    U11.upgradeRk(RazMongo.db)
-    //    U11.upgradeGlacierForums(RazMongo.db)
-    //        U11.upgradeGlacierForums2()
+    //	  U11.upgradeWL(RazMongo.db)
+    //	  U11.upgradeRaz(RazMongo.db)
+    //	  U11.upgradeRk(RazMongo.db)
+    //	  U11.upgradeGlacierForums(RazMongo.db)
+    //	      U11.upgradeGlacierForums2()
 
     Services.audit = RazAuditService
     Services.alli = RazAlligator
@@ -209,7 +209,7 @@ object Global extends WithFilters(LoggingFilter) {
     lazy val auditor = Akka.system.actorOf(Props[WikiAuditor], name = "Alligator")
 
     def !(a: Any) {
-//      this receive a
+//	this receive a
       // TODO enable async audits
       auditor ! a
     }
@@ -245,22 +245,22 @@ object LoggingFilter extends Filter {
 
     def served {
       GlobalData.synchronized {
-        GlobalData.served = GlobalData.served + 1
-        GlobalData.serving = GlobalData.serving - 1
+	GlobalData.served = GlobalData.served + 1
+	GlobalData.serving = GlobalData.serving - 1
       }
     }
 
     def servedPage {
       GlobalData.synchronized {
-        GlobalData.servedPages = GlobalData.servedPages + 1
+	GlobalData.servedPages = GlobalData.servedPages + 1
       }
     }
 
     def logTime(what: String)(result: SimpleResult): Result = {
       val time = System.currentTimeMillis - start
       if (!isAsset) {
-        clog << s"LF.STOP $what ${rh.method} ${rh.uri} took ${time}ms and returned ${result.header.status}"
-        servedPage
+	clog << s"LF.STOP $what ${rh.method} ${rh.uri} took ${time}ms and returned ${result.header.status}"
+	servedPage
       }
       served
       result.withHeaders("Request-Time" -> time.toString)
@@ -270,22 +270,22 @@ object LoggingFilter extends Filter {
 
     try {
       next(rh) match {
-        //TODO restore these
-//        case plain: Future[SimpleResult] => logTime("plain")(plain)
-        // TODO enable this
-//        case async: AsyncResult => async.transform(logTime("async"))
-        case res @ _ => {
-          clog << s"LF.STOP.WHAT? ${rh.method} ${rh.uri} returned ${res}"
-          if (! isAsset) servedPage
-          served
-          res
-        }
+	//TODO restore these
+//	  case plain: Future[SimpleResult] => logTime("plain")(plain)
+	// TODO enable this
+//	  case async: AsyncResult => async.transform(logTime("async"))
+	case res @ _ => {
+	  clog << s"LF.STOP.WHAT? ${rh.method} ${rh.uri} returned ${res}"
+	  if (! isAsset) servedPage
+	  served
+	  res
+	}
       }
     } catch {
       case t: Throwable => {
-        clog << s"LF.STOP.EXCEPTION ${rh.method} ${rh.uri} threw ${t.toString} \n ${com.razie.pub.base.log.Log.getStackTraceAsString(t)}"
-        served
-        throw t
+	clog << s"LF.STOP.EXCEPTION ${rh.method} ${rh.uri} threw ${t.toString} \n ${com.razie.pub.base.log.Log.getStackTraceAsString(t)}"
+	served
+	throw t
       }
     }
   }

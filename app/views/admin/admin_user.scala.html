@@ -16,7 +16,7 @@ screen to admin one user
     }
 <br>  _id: @p._id
 }
-    
+
 
   @htmlHeadBar("admin user", admin)
 
@@ -57,8 +57,8 @@ screen to admin one user
 </ul>
     <hr>
 
-<a href="/razadmin/user/@user.get.id/su">SU</a> | 
-<a href="/razadmin/user/@user.get.id/delete1">DELETE</a> | 
+<a href="/razadmin/user/@user.get.id/su">SU</a> |
+<a href="/razadmin/user/@user.get.id/delete1">DELETE</a> |
 @if(user.isDefined) {
 @if('a' == user.get.status) {
 <a href="/razadmin/user/@user.get.id/status/s">SUSPEND</a>
@@ -66,29 +66,29 @@ screen to admin one user
 <a href="/razadmin/user/@user.get.id/status/a">ACTIVATE</a>
 }
 }
-| 
+|
       @helper.form(action=routes.Admin.uperm(user.get.id), 'class->"well form-inline") {
-        <input type="text" class="input-xlarge" name="perm" placeholder="+Perm">
-        <button type="submit" class="btn">+/-Perm</button>
+	<input type="text" class="input-xlarge" name="perm" placeholder="+Perm">
+	<button type="submit" class="btn">+/-Perm</button>
       }
 
       @helper.form(action=routes.Admin.uquota(user.get.id), 'class->"well form-inline") {
-        <input type="text" class="input" name="quota" placeholder="+Quota">
-        <button type="submit" class="btn">+/-Quota</button>
+	<input type="text" class="input" name="quota" placeholder="+Quota">
+	<button type="submit" class="btn">+/-Quota</button>
       }
 
       @helper.form(action=routes.Admin.uname(user.get.id), 'class->"well form-inline") {
-        <input type="text" class="input" name="val" placeholder="username">
-        <button type="submit" class="btn">Username</button>
+	<input type="text" class="input" name="val" placeholder="username">
+	<button type="submit" class="btn">Username</button>
       }
 
       @helper.form(action=routes.Admin.urealms(user.get.id), 'class->"well form-inline") {
-        <input type="text" class="input-xlarge" name="val" placeholder="Realms">
-        <button type="submit" class="btn">Set Realms</button>
+	<input type="text" class="input-xlarge" name="val" placeholder="Realms">
+	<button type="submit" class="btn">Set Realms</button>
       }
 
   <hr>
-  
+
   <ul>Events
   @user.map {u=>
     @db.RazMongo("UserEvent").find(Map("userId" -> new ObjectId(u.id))).map {ue=>
@@ -98,7 +98,7 @@ screen to admin one user
   </ul>
 
   <hr>
-    
+
   <ul>Links
   @user.map {u=>
     @u.wikis.map {uw=>
@@ -108,7 +108,7 @@ screen to admin one user
   </ul>
 
   <hr>
-    
+
   @htmlFooter()
 
 </div> <!-- /container -->

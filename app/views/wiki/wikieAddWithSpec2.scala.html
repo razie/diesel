@@ -9,33 +9,33 @@ create new page given a template
 
 <div class="container">
     <div class="row">
-        <div class="span9">
+	<div class="span9">
 
-            <h3>Creating a new <em>@cat</em>, with <em>@formWid.name</em></h3>
+	    <h3>Creating a new <em>@cat</em>, with <em>@formWid.name</em></h3>
 
-            <p>Fill in the required attributes below.</p>
-            <hr>
+	    <p>Fill in the required attributes below.</p>
+	    <hr>
 
-            @helper.form(action=routes.Wikie.addWithSpec(cat, name, formWid.wpath, torspec:String, realm), 'class->"well form-inline") {
-                @if(!formWid.page.exists(_.form.fields.contains("name"))) {
-                    Name: <input type="text" class="input-xlarge" name="name" placeholder="Name" value="@name">
-                }
+	    @helper.form(action=routes.Wikie.addWithSpec(cat, name, formWid.wpath, torspec:String, realm), 'class->"well form-inline") {
+		@if(!formWid.page.exists(_.form.fields.contains("name"))) {
+		    Name: <input type="text" class="input-xlarge" name="name" placeholder="Name" value="@name">
+		}
 
-                @wiki.wikiFormInt(formWid, Some(name), None, au, errors, false, false, true)
+		@wiki.wikiFormInt(formWid, Some(name), None, au, errors, false, false, true)
 
-                <button type="submit" class="btn">Create Now!</button>
-            }
+		<button type="submit" class="btn">Create Now!</button>
+	    }
 
-            <hr>
-            @htmlFooter(ads = true)
+	    <hr>
+	    @htmlFooter(ads = true)
 
-        </div> <!-- /span9 -->
+	</div> <!-- /span9 -->
 
-        <div class="span3">
-            @wiki.wikiFrag(WID("Admin","Right"),au,true)
+	<div class="span3">
+	    @wiki.wikiFrag(WID("Admin","Right"),au,true)
 
-            @addRight()
-        </div>
+	    @addRight()
+	</div>
 
     </div> <!-- row -->
 </div> <!-- /container -->

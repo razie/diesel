@@ -27,7 +27,7 @@ object Omp {
     .replaceAll("\\(", "(<ul>")
     .replaceAll("\\)", "</ul>)")
     .replaceAll("\\,", ",<li>")
-  
+
   // db of stuff
   val dbmap = new scala.collection.mutable.HashMap[String, OrderContext]()
 
@@ -99,7 +99,7 @@ trait Orchestration {
 
 trait Soi {
   def decompose(ctx: OrderContext): Flow
-  def execute(item: Item[OREntity]): String 
+  def execute(item: Item[OREntity]): String
 }
 
 
@@ -110,7 +110,7 @@ object RazBss extends Bss {
   def mkOrder(id: String, args: Map[String, String]): Order[OPEntity] = {
     val o = new Order[OPEntity](s"Bss.$id", args,
       Item[OPEntity]("add", new Product("Hsd", Map("plan"->"xgold"))) ::
-        Item[OPEntity]("add", new Product("Voice")) :: Nil)
+	Item[OPEntity]("add", new Product("Voice")) :: Nil)
     o
   }
 
@@ -126,11 +126,11 @@ object RazOm {
   def validate(order: Order[OPEntity], ctx:OrderContext) : Boolean = {
     true
   }
-  
+
   def decompose(order: Order[OPEntity], ctx: OrderContext): Order[OREntity] = {
     val fo = new Order[OREntity](s"FO.${order.id}", order.args,
-        order.items.flatMap(
-            psr.decompose(_).asInstanceOf[List[Item[OREntity]]]))
+	order.items.flatMap(
+	    psr.decompose(_).asInstanceOf[List[Item[OREntity]]]))
     fo
   }
 
@@ -142,7 +142,7 @@ object RazOm {
     context.soi = RazSoi.decompose(context)
 
     context.executionPlan = context.soi
-    
+
     context.incomingOrder.id
   }
 
@@ -156,8 +156,8 @@ object RazSoi extends Soi {
   def decompose(ctx: OrderContext): Flow = {
     val id = ctx.fulfilmentOrder.id
     val wf = new Flow("WF." + id,
-        ctx.fulfilmentOrder.items.flatMap(
-            psr.decompose(_).asInstanceOf[List[Item[OREntity]]]))
+	ctx.fulfilmentOrder.items.flatMap(
+	    psr.decompose(_).asInstanceOf[List[Item[OREntity]]]))
     wf
   }
 
@@ -170,25 +170,25 @@ object psr {
 
   def decompose[T](item: Item[T]) : List[Item[_]] = {
     item match {
-          
+
       case Item(act, Product("Hsd", pargs), args) if pargs.get("plan").exists(_ == "gold") =>
-        Item[RFS](act, RFS("Email", Map("quota" -> "100"))) +
-          Item[RFS](act, RFS("Webspace", pargs))
-          
+	Item[RFS](act, RFS("Email", Map("quota" -> "100"))) +
+	  Item[RFS](act, RFS("Webspace", pargs))
+
       case Item(act, Product("Hsd", pargs), args) =>
-        Item[RFS](act, RFS("Email", Map("quota" -> "10"))) +
-          Item[RFS](act, RFS("Webspace", pargs))
-          
+	Item[RFS](act, RFS("Email", Map("quota" -> "10"))) +
+	  Item[RFS](act, RFS("Webspace", pargs))
+
       case Item(act, Product("Voice", pargs), args) =>
-        Item[RFS](act, RFS("Line", pargs)) +
-          Item[RFS](act, RFS("Feature", pargs))
-          
+	Item[RFS](act, RFS("Line", pargs)) +
+	  Item[RFS](act, RFS("Feature", pargs))
+
       case Item(act, RFS("Email", pargs), args) =>
-        Item[RFS](act, RFS("SmpEmail", pargs)) :: Nil
-          
+	Item[RFS](act, RFS("SmpEmail", pargs)) :: Nil
+
       case Item(act, RFS("Webspace", pargs), args) =>
-        Item[RFS](act, RFS("SmpWebspace", pargs)) :: Nil
-          
+	Item[RFS](act, RFS("SmpWebspace", pargs)) :: Nil
+
       case _ => List()
     }
   }
@@ -204,15 +204,15 @@ object psr {
   }
 
   //  val decomp = Map(
-  //    K("Product", "Hsd") -> L(
-  //      V("RFS", "Email", identity) +
-  //        V("RFS", "Webspace", identity)),
-  //    K("Product", "Voice") -> L(
-  //      V("RFS", "Line", identity) +
-  //        V("RFS", "Feature", identity)),
-  //    K("RFS", "Email") -> L(
-  //      V("Task", "Email", identity) +
-  //        V("RFS", "Webspace", identity)))
+  //	K("Product", "Hsd") -> L(
+  //	  V("RFS", "Email", identity) +
+  //	    V("RFS", "Webspace", identity)),
+  //	K("Product", "Voice") -> L(
+  //	  V("RFS", "Line", identity) +
+  //	    V("RFS", "Feature", identity)),
+  //	K("RFS", "Email") -> L(
+  //	  V("Task", "Email", identity) +
+  //	    V("RFS", "Webspace", identity)))
 
 }
 

@@ -35,16 +35,16 @@ case class Tribe (
     wl:WikiLink,
     clubId:ObjectId) {
   cdebug << "TRIBE "+this.toString
-  
+
 //  lazy val users = RMany[TribeUser]("tribeId" -> _id)
     def name:String = page.contentTags.get("name").getOrElse(page.wid.name)
     def label:String = page.contentTags.get("label").getOrElse(page.label)
     def desc:String = page.contentTags.get("desc").getOrElse("?")
     def year:String = page.contentTags.get("year").getOrElse ("?")
     def role = page.contentTags.get("role").getOrElse ("?")
-    
+
     lazy val page = wid.page.get
-    
+
     def kidz = RMany[RacerWiki]("wid" -> wid.grated)
     def has (rkId:ObjectId) = kidz.exists(_.rkId == rkId)
 

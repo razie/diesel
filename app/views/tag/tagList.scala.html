@@ -21,8 +21,8 @@ tagPrefix is applied to browse another tag
       <li><a href="@browseTag(x._1)">@x._1</a> <small>(@x._2)</small></li>
     }
     @if(tags.size > max) {
-@**      <li><a href="@browseAllTags()">... more</a></li>
-**@      <li>...</li>
+@**	 <li><a href="@browseAllTags()">... more</a></li>
+**@	 <li>...</li>
     }
   </ul>
 </div>
@@ -44,7 +44,7 @@ var hardct = ['recent','all','none','archive', '']
 var t = function (tag) {
 return hardct.lastIndexOf('@current') >= 0 ? tag : '@current' + '/'+tag;
 }
-   
+
 //var items = [@Html(tags.map(x=>"\""+x._1+"\":\"/notes/tag/"+tagpath(x._1)+"\"").mkString(","))];
 var userTags = [@Html(tags.map(x=>"\""+x._1+"\"").mkString(","))];
 
@@ -62,4 +62,3 @@ body {
   padding-top: 50px;
 }
 </style>
-   

@@ -5,9 +5,9 @@
   val i = new scala.util.Random().nextInt(names.length)
   names(i)
   }
-  
+
 @htmlHeadBar("Password reset", Some(au))
-   
+
 <div class="container">
   <div class="row">
   @leftmenu(3, au)
@@ -17,29 +17,29 @@
 @import helper.twitterBootstrap._
 
 @helper.form(action=routes.Profile.doeProfilePass2(), 'class->"well") {
-  @helper.inputPassword( myForm("currpass"), '_label -> "Current Password", 
+  @helper.inputPassword( myForm("currpass"), '_label -> "Current Password",
     '_showConstraints -> false)
   @helper.inputPassword(
-    myForm("newpass"), 
-    '_label -> "New Password", 
+    myForm("newpass"),
+    '_label -> "New Password",
     '_showConstraints -> false,
     '_error->myForm.error("newpass"))
   @helper.inputPassword(
-    myForm("repass"), 
-    '_label -> "New Password, again", 
+    myForm("repass"),
+    '_label -> "New Password, again",
     '_showConstraints -> false,
     '_error->myForm.error("repass"))
-    
+
   <button type="submit" class="btn btn-primary">Change !</button>
 
   @user.agree()
-    
+
   @myForm.globalError.map {err=>
      <p style="color:red;font-weight:bold">@err.message</p>
-  } 
+  }
 }
      </div>
-     
+
       <div class="span4">
 <h2>Password change</h2>
 <p>
@@ -52,4 +52,3 @@
   @htmlFooter(ads=true)
 </div> <!-- /container -->
 @htmlBottom()
-    

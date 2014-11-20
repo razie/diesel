@@ -7,8 +7,8 @@
   <h2>Wikis.index:</h2>
 
   <table>
-  @model.WikiIndex.withIndex(model.Wikis.RK) { index => 
-    @index.map { (a,b,c) => 
+  @model.WikiIndex.withIndex(model.Wikis.RK) { index =>
+    @index.map { (a,b,c) =>
      <tr><td>@a</td><td>@b.cat</td><td>@b.name</td><td>@b.parent</td><td>@c</td></tr>
     }
   }
@@ -19,4 +19,3 @@
 </div> <!-- /container -->
 
 @htmlBottom()
-    

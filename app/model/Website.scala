@@ -50,6 +50,8 @@ class Website (we:WikiEntry) extends DslProps(we, "website") {
   def rightBottom:Option[WID] = this wprop "rightBottom"
   def about:Option[WID] = this wprop "about"
 
+  def reactor:String = this prop "reactor" OR "rk"
+
   def useWikiPrefix:Boolean = this bprop "useWikiPrefix" OR true
 
   //sections should be "More" "Support" "Social"
@@ -67,7 +69,7 @@ object Website {
     if (ce.isEmpty || System.currentTimeMillis > ce.get.millis) {
       val w = Wikis.rk.find("Site", s) map (new Website(_))
       if (w.isDefined)
-        cache.put(s, CacheEntry(w.get, System.currentTimeMillis()+w.get.ttl))
+	cache.put(s, CacheEntry(w.get, System.currentTimeMillis()+w.get.ttl))
       w
     } else
       ce.map(_.w)
@@ -105,7 +107,7 @@ object Realms {
     if (ce.isEmpty || System.currentTimeMillis > ce.get.millis) {
       val w = Wikis.rk.find("Reactor", s) map (new Realm(_))
       if (w.isDefined)
-        cache.put(s, CacheEntry(w.get, System.currentTimeMillis()+w.get.ttl))
+	cache.put(s, CacheEntry(w.get, System.currentTimeMillis()+w.get.ttl))
       w
     } else
       ce.map(_.w)

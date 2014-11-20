@@ -7,11 +7,11 @@ extra html for wiki fragments, used in another page
 @import _root_.controllers.NotesLocker
 
 @page.map {we=>
-   
+
 @if(page.exists(_.contentTags.contains("module.reg"))) {
   @user.map {u=>
     @views.html.modules.doeModRkRegs(u, we,
-      controllers.ModRkReg(we.wid), 
+      controllers.ModRkReg(we.wid),
       controllers.ModRk.regd(u, we.wid),
       controllers.ModRk.rks(u, we.wid))
     }.getOrElse {

@@ -6,11 +6,11 @@
     <div class="container">
 
 @if(mobile) {
-  @views.html.user.mainUserM(salutation,user, item) 
+  @views.html.user.mainUserM(salutation,user, item)
 } else {
-  @views.html.user.mainUserC(salutation,user, item) 
+  @views.html.user.mainUserC(salutation,user, item)
 }
-   
+
       <hr>
 
       @htmlFooter(ads=true)
@@ -18,4 +18,3 @@
     </div> <!-- /container -->
 
     @htmlBottom()
-    

@@ -8,24 +8,24 @@
       <div class="hero-unit">
 
       <div class="row">
-        <div class="span6">
-        <h2>Email verification!</h2>
-        <p>You are not logged in - please type your email and password again for verification!
-        </div>
+	<div class="span6">
+	<h2>Email verification!</h2>
+	<p>You are not logged in - please type your email and password again for verification!
+	</div>
 
-        <div class="span4">
+	<div class="span4">
 
 @import helper.twitterBootstrap._
 
 @helper.form(action=routes.Tasks.verifyEmail3(exp, e, u), 'class->"well") {
 
   @helper.inputText(
-    pForm("email"), 
+    pForm("email"),
     '_label -> "Email",
     '_error->pForm.error("email"))
 
   @helper.inputPassword(
-    pForm("password"), 
+    pForm("password"),
     '_label -> "Password",
     '_error->pForm.error("password"))
 
@@ -33,11 +33,11 @@
 
   @pForm.globalError.map {err=>
      <p style="color:red;font-weight:bold">@err.message</p>
-  } 
-  
+  }
+
   <p><small>By registering or logging in, you agree to the <a href="@controllers.Wiki.w("Terms of Service")">Terms of Service</a></small><p>
   }
-  
+
        </div>
       </div>
 
@@ -52,4 +52,3 @@
     </div> <!-- /container -->
 
     @htmlBottom()
-    

@@ -9,19 +9,19 @@
   val i = new scala.util.Random().nextInt(names.length)
   names(i)
   }
-   
+
 <div class="container">
   <div class="hero-unit">
     <div class="row">
       <div class="span6">
-        <h2>@salutation, @joe! <small><a href="@routes.Profile.doeJoin()">not @joe?</a></small></h2>
+	<h2>@salutation, @joe! <small><a href="@routes.Profile.doeJoin()">not @joe?</a></small></h2>
 
-        @wiki.wikiFragInt("Admin:page-index", None)
+	@wiki.wikiFragInt("Admin:page-index", None)
 
       </div>
 
       <div class="span4">
-        <br>
+	<br>
 @_root_.admin.Config.sitecfg("css").filter(_ == "dark").map {x=>
 @***
   <img width="60%" height="60%" style="opacity:0.7;filter:alpha(opacity=70);" src="@routes.Assets.at("images/local-sport-club-2.gif")"></img>
@@ -34,7 +34,7 @@
 ***@
 }
       </div>
-    </div> 
+    </div>
 
     <div class="row">
 <div class="span10">
@@ -46,13 +46,12 @@
 
 @wiki.wikiFragInt("Admin:page-index-bottom", None)
 
-     </div>  
-    </div>  
+     </div>
+    </div>
 
-  </div>  
+  </div>
   <hr>
   @htmlFooter()
 
 </div> <!-- /container -->
 @htmlBottom()
-    

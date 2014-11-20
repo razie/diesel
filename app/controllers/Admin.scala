@@ -44,34 +44,34 @@ object Admin extends RazController {
   def show(page: String) = FAD { implicit au =>
     implicit errCollector => implicit request =>
       page match {
-        case "reloadurlmap" => {
-          Config.reloadUrlMap
-          Ok(views.html.admin.admin_index("", auth))
-        }
+	case "reloadurlmap" => {
+	  Config.reloadUrlMap
+	  Ok(views.html.admin.admin_index("", auth))
+	}
 
-        case "resendEmails" => {
-          SendEmail.sender ! SendEmail.CMD_RESEND
-          Ok(views.html.admin.admin_index("", auth))
-        }
+	case "resendEmails" => {
+	  SendEmail.sender ! SendEmail.CMD_RESEND
+	  Ok(views.html.admin.admin_index("", auth))
+	}
 
-        case "tickEmails" => {
-          SendEmail.sender ! SendEmail.CMD_TICK
-          Ok(views.html.admin.admin_index("", auth))
-        }
+	case "tickEmails" => {
+	  SendEmail.sender ! SendEmail.CMD_TICK
+	  Ok(views.html.admin.admin_index("", auth))
+	}
 
-        case "wikidx" => Ok(views.html.admin.admin_wikidx(auth))
-        case "db" => Ok(views.html.admin.admin_db(auth))
-        case "index" => Ok(views.html.admin.admin_index("", auth))
-        case "users" => Ok(views.html.admin.admin_users(auth))
+	case "wikidx" => Ok(views.html.admin.admin_wikidx(auth))
+	case "db" => Ok(views.html.admin.admin_db(auth))
+	case "index" => Ok(views.html.admin.admin_index("", auth))
+	case "users" => Ok(views.html.admin.admin_users(auth))
 
-        case "init.db.please" => {
-          if ("yeah" == System.getProperty("devmode") || !RazMongo("User").exists) {
-            admin.Init.initDb()
-            Redirect("/")
-          } else Msg2("Nope - hehe")
-        }
+	case "init.db.please" => {
+	  if ("yeah" == System.getProperty("devmode") || !RazMongo("User").exists) {
+	    admin.Init.initDb()
+	    Redirect("/")
+	  } else Msg2("Nope - hehe")
+	}
 
-        case _ => { Audit.missingPage(page); Redirect("/") }
+	case _ => { Audit.missingPage(page); Redirect("/") }
       }
   }
 
@@ -90,14 +90,14 @@ object Admin extends RazController {
   def udelete2(id: String) = Action { implicit request =>
     forAdmin {
       db.tx { implicit txn =>
-        RazMongo("User").findOne(Map("_id" -> new ObjectId(id))).map { u =>
-          OldStuff("User", auth.get._id, u).create
-          RazMongo("User").remove(Map("_id" -> new ObjectId(id)))
-        }
-        RazMongo("Profile").findOne(Map("userId" -> new ObjectId(id))).map { u =>
-          OldStuff("Profile", auth.get._id, u).create
-          RazMongo("Profile").remove(Map("userId" -> new ObjectId(id)))
-        }
+	RazMongo("User").findOne(Map("_id" -> new ObjectId(id))).map { u =>
+	  OldStuff("User", auth.get._id, u).create
+	  RazMongo("User").remove(Map("_id" -> new ObjectId(id)))
+	}
+	RazMongo("Profile").findOne(Map("userId" -> new ObjectId(id))).map { u =>
+	  OldStuff("Profile", auth.get._id, u).create
+	  RazMongo("Profile").remove(Map("userId" -> new ObjectId(id)))
+	}
       }
       Redirect("/razadmin")
     }
@@ -110,7 +110,7 @@ object Admin extends RazController {
       goodS <- s.length == 1 && ("as" contains s(0)) orErr ("bad status");
       u <- Users.findUserById(id)
     ) yield {
-//      Profile.updateUser(u, User(u.userName, u.firstName, u.lastName, u.yob, u.email, u.pwd, s(0), u.roles, u.addr, u.prefs, u._id))
+//	Profile.updateUser(u, User(u.userName, u.firstName, u.lastName, u.yob, u.email, u.pwd, s(0), u.roles, u.addr, u.prefs, u._id))
       Profile.updateUser(u, u.copy(status=s(0)))
       Redirect("/razadmin/user/" + id)
     }) getOrElse {
@@ -130,7 +130,7 @@ object Admin extends RazController {
       Application.razSu = au.email
       Application.razSuTime = System.currentTimeMillis()
       Redirect("/").withSession(Config.CONNECTED -> Enc.toSession(u.email),
-        "extra" -> au.email)
+	"extra" -> au.email)
     }) getOrElse {
       error("ERR_ADMIN_CANT_UPDATE_USER su " + id+" "+ errCollector.mkString)
       unauthorized("ERR_ADMIN_CANT_UPDATE_USER su " + id+" "+ errCollector.mkString)
@@ -143,8 +143,8 @@ object Admin extends RazController {
   val permForm = Form {
     mapping(
       "perm" -> nonEmptyText.verifying(
-        "starts with +/-", a => ("+-" contains a(0))).verifying(
-          "known perm", a => Perm.all.contains(a.substring(1))))(AddPerm.apply)(AddPerm.unapply)
+	"starts with +/-", a => ("+-" contains a(0))).verifying(
+	  "known perm", a => Perm.all.contains(a.substring(1))))(AddPerm.apply)(AddPerm.unapply)
 
   }
 
@@ -152,27 +152,27 @@ object Admin extends RazController {
     implicit val errCollector = new VErrors()
     permForm.bindFromRequest.fold(
       formWithErrors =>
-        Msg2(formWithErrors.toString + "Oops, can't add that perm!"),
+	Msg2(formWithErrors.toString + "Oops, can't add that perm!"),
       {
-        case we @ AddPerm(perm) =>
-          (for (
-            can <- hasPerm(Perm.adminDb) orErr ("no permission");
-            goodS <- ("+-" contains perm(0)) && Perm.all.contains(perm.substring(1)) orErr ("bad perm");
-            u <- Users.findUserById(id);
-            pro <- u.profile
-          ) yield {
-            // remove/flip existing permission or add a new one?
-            this dbop pro.update(
-              if (perm(0) == '-' && (pro.perms.contains("+" + perm.substring(1)))) {
-                pro.removePerm("+" + perm.substring(1))
-              } else if (perm(0) == '+' && (pro.perms.contains("-" + perm.substring(1)))) {
-                pro.removePerm("-" + perm.substring(1))
-              } else pro.addPerm(perm))
-            Redirect("/razadmin/user/" + id)
-          }) getOrElse {
-            error("ERR_ADMIN_CANT_UPDATE_USER uperm " + id+" "+ errCollector.mkString)
-            Unauthorized("ERR_ADMIN_CANT_UPDATE_USER uperm " + id +" "+ errCollector.mkString)
-          }
+	case we @ AddPerm(perm) =>
+	  (for (
+	    can <- hasPerm(Perm.adminDb) orErr ("no permission");
+	    goodS <- ("+-" contains perm(0)) && Perm.all.contains(perm.substring(1)) orErr ("bad perm");
+	    u <- Users.findUserById(id);
+	    pro <- u.profile
+	  ) yield {
+	    // remove/flip existing permission or add a new one?
+	    this dbop pro.update(
+	      if (perm(0) == '-' && (pro.perms.contains("+" + perm.substring(1)))) {
+		pro.removePerm("+" + perm.substring(1))
+	      } else if (perm(0) == '+' && (pro.perms.contains("-" + perm.substring(1)))) {
+		pro.removePerm("-" + perm.substring(1))
+	      } else pro.addPerm(perm))
+	    Redirect("/razadmin/user/" + id)
+	  }) getOrElse {
+	    error("ERR_ADMIN_CANT_UPDATE_USER uperm " + id+" "+ errCollector.mkString)
+	    Unauthorized("ERR_ADMIN_CANT_UPDATE_USER uperm " + id +" "+ errCollector.mkString)
+	  }
       })
   }
 
@@ -183,73 +183,73 @@ object Admin extends RazController {
     implicit val errCollector = new VErrors()
     quotaForm.bindFromRequest.fold(
       formWithErrors =>
-        Msg2(formWithErrors.toString + "Oops, can't add that quota!"),
+	Msg2(formWithErrors.toString + "Oops, can't add that quota!"),
       {
-        case quota =>
-          (for (
-            can <- hasPerm(Perm.adminDb) orErr ("no permission");
-            u <- Users.findUserById(id);
-            pro <- u.profile
-          ) yield {
-            // remove/flip existing permission or add a new one?
-            u.quota.reset(quota)
-            Redirect("/razadmin/user/" + id)
-          }) getOrElse {
-            error("ERR_ADMIN_CANT_UPDATE_USER.uquota " + id+" "+ errCollector.mkString)
-            Unauthorized("ERR_ADMIN_CANT_UPDATE_USER.uquota " + id+" "+ errCollector.mkString)
-          }
+	case quota =>
+	  (for (
+	    can <- hasPerm(Perm.adminDb) orErr ("no permission");
+	    u <- Users.findUserById(id);
+	    pro <- u.profile
+	  ) yield {
+	    // remove/flip existing permission or add a new one?
+	    u.quota.reset(quota)
+	    Redirect("/razadmin/user/" + id)
+	  }) getOrElse {
+	    error("ERR_ADMIN_CANT_UPDATE_USER.uquota " + id+" "+ errCollector.mkString)
+	    Unauthorized("ERR_ADMIN_CANT_UPDATE_USER.uquota " + id+" "+ errCollector.mkString)
+	  }
       })
   }
 
-  def uname(id: String) = FAD { implicit au => 
+  def uname(id: String) = FAD { implicit au =>
     implicit errCollector => implicit request =>
 
       OneForm.bindFromRequest.fold(
       formWithErrors =>
-        Msg2(formWithErrors.toString + "Oops, can't add that quota!"),
+	Msg2(formWithErrors.toString + "Oops, can't add that quota!"),
       {
-        case uname =>
-          (for (
-            u <- Users.findUserById(id);
-            pro <- u.profile;
-            already <- !(u.userName == uname) orErr "Already updated"
-          ) yield {
-            // TODO transaction
-            db.tx("uname") { implicit txn =>
-              Profile.updateUser(u, u.copy(userName = uname))
-              Wikis.updateUserName(u.userName, uname)
-              cleanAuth(Some(u))
-            }
-            Redirect("/razadmin/user/" + id)
-          }) getOrElse {
-            error("ERR_ADMIN_CANT_UPDATE_USER.uname " + id+" "+ errCollector.mkString)
-            Unauthorized("ERR_ADMIN_CANT_UPDATE_USER.uname " + id+" " + errCollector.mkString)
-          }
+	case uname =>
+	  (for (
+	    u <- Users.findUserById(id);
+	    pro <- u.profile;
+	    already <- !(u.userName == uname) orErr "Already updated"
+	  ) yield {
+	    // TODO transaction
+	    db.tx("uname") { implicit txn =>
+	      Profile.updateUser(u, u.copy(userName = uname))
+	      Wikis.updateUserName(u.userName, uname)
+	      cleanAuth(Some(u))
+	    }
+	    Redirect("/razadmin/user/" + id)
+	  }) getOrElse {
+	    error("ERR_ADMIN_CANT_UPDATE_USER.uname " + id+" "+ errCollector.mkString)
+	    Unauthorized("ERR_ADMIN_CANT_UPDATE_USER.uname " + id+" " + errCollector.mkString)
+	  }
       })
   }
 
-  def urealms(id: String) = FAD { implicit au => 
+  def urealms(id: String) = FAD { implicit au =>
     implicit errCollector => implicit request =>
 
       OneForm.bindFromRequest.fold(
       formWithErrors =>
-        Msg2(formWithErrors.toString + "Oops, can't !"),
+	Msg2(formWithErrors.toString + "Oops, can't !"),
       {
-        case uname =>
-          (for (
-            u <- Users.findUserById(id);
-            pro <- u.profile
-          ) yield {
-            // TODO transaction
-            db.tx("urealms") { implicit txn =>
-              Profile.updateUser(u, u.copy(realms = uname.split("[, ]").toSet))
-              cleanAuth(Some(u))
-            }
-            Redirect("/razadmin/user/" + id)
-          }) getOrElse {
-            error("ERR_ADMIN_CANT_UPDATE_USER.urealms " + id+" "+ errCollector.mkString)
-            Unauthorized("ERR_ADMIN_CANT_UPDATE_USER.urealms " + id+" " + errCollector.mkString)
-          }
+	case uname =>
+	  (for (
+	    u <- Users.findUserById(id);
+	    pro <- u.profile
+	  ) yield {
+	    // TODO transaction
+	    db.tx("urealms") { implicit txn =>
+	      Profile.updateUser(u, u.copy(realms = uname.split("[, ]").toSet))
+	      cleanAuth(Some(u))
+	    }
+	    Redirect("/razadmin/user/" + id)
+	  }) getOrElse {
+	    error("ERR_ADMIN_CANT_UPDATE_USER.urealms " + id+" "+ errCollector.mkString)
+	    Unauthorized("ERR_ADMIN_CANT_UPDATE_USER.urealms " + id+" " + errCollector.mkString)
+	  }
       })
   }
 
@@ -310,9 +310,9 @@ object Admin extends RazController {
       val Array(y, m, what) = ym.split("-")
       val (yi, mi) = (y.toInt, m.toInt)
       Ok(RazMongo(what).findAll().filter(j =>
-        { val d = new DateTime(j.get(auditCols(what))); d.getYear() == yi && d.getMonthOfYear() == mi }).take(20000).toList.map { x =>
-        RazMongo(what).remove(Map("_id" -> x.get("_id").asInstanceOf[ObjectId]))
-        x
+	{ val d = new DateTime(j.get(auditCols(what))); d.getYear() == yi && d.getMonthOfYear() == mi }).take(20000).toList.map { x =>
+	RazMongo(what).remove(Map("_id" -> x.get("_id").asInstanceOf[ObjectId]))
+	x
       }.mkString("\n"))
     }
   }
@@ -322,40 +322,40 @@ object Admin extends RazController {
       val baseline = DateTime.now.minusDays(what)
       def f(j: DateTime) = j != null && (d == "d" && j.isAfter(baseline) || d == "y" && j.dayOfYear.get == baseline.dayOfYear.get)
       val sevents = {
-        val events =
-          (
-            (RazMongo("Audit").findAll().filter(j => f(j.get("when").asInstanceOf[DateTime])).toList
-              ++
-              RazMongo("AuditCleared").findAll().filter(j => f(j.get("when").asInstanceOf[DateTime])).toList).groupBy(_.get("msg"))).map { t =>
-                (t._2.size, t._1)
-              }.toList.sortWith(_._1 > _._1)
-        events.map(_._1).sum + " Events:\n" +
-          events.map(t => f"${t._1}%3d , ${t._2}").mkString("\n")
+	val events =
+	  (
+	    (RazMongo("Audit").findAll().filter(j => f(j.get("when").asInstanceOf[DateTime])).toList
+	      ++
+	      RazMongo("AuditCleared").findAll().filter(j => f(j.get("when").asInstanceOf[DateTime])).toList).groupBy(_.get("msg"))).map { t =>
+		(t._2.size, t._1)
+	      }.toList.sortWith(_._1 > _._1)
+	events.map(_._1).sum + " Events:\n" +
+	  events.map(t => f"${t._1}%3d , ${t._2}").mkString("\n")
       }
       val sadds = {
-        val adds =
-          (
-            (RazMongo("Audit").find(Map("msg" -> "ADD_SKI")).filter(j => f(j.get("when").asInstanceOf[DateTime])).toList
-              ++
-              RazMongo("AuditCleared").find(Map("msg" -> "ADD_SKI")).filter(j => f(j.get("when").asInstanceOf[DateTime])).toList)).map(o =>
-                (o.get("msg"), o.get("details"), o.get("when"))).toList
-        adds.size + " Adds:\n" +
-          adds.mkString("\n")
+	val adds =
+	  (
+	    (RazMongo("Audit").find(Map("msg" -> "ADD_SKI")).filter(j => f(j.get("when").asInstanceOf[DateTime])).toList
+	      ++
+	      RazMongo("AuditCleared").find(Map("msg" -> "ADD_SKI")).filter(j => f(j.get("when").asInstanceOf[DateTime])).toList)).map(o =>
+		(o.get("msg"), o.get("details"), o.get("when"))).toList
+	adds.size + " Adds:\n" +
+	  adds.mkString("\n")
       }
       val spages = {
-        val pages =
-          (
-            RazMongo("WikiAudit").findAll().filter(j => f(j.get("crDtm").asInstanceOf[DateTime])).toList.groupBy(x => (x.get("event"), x.get("wpath")))).map { t =>
-              (t._2.size, t._1)
-            }.toList.sortWith(_._1 > _._1)
-        pages.map(_._1).sum + " Pages:\n" +
-          pages.map(t => f"${t._1}%3d , ${t._2._1}, ${t._2._2}").mkString("\n")
+	val pages =
+	  (
+	    RazMongo("WikiAudit").findAll().filter(j => f(j.get("crDtm").asInstanceOf[DateTime])).toList.groupBy(x => (x.get("event"), x.get("wpath")))).map { t =>
+	      (t._2.size, t._1)
+	    }.toList.sortWith(_._1 > _._1)
+	pages.map(_._1).sum + " Pages:\n" +
+	  pages.map(t => f"${t._1}%3d , ${t._2._1}, ${t._2._2}").mkString("\n")
       }
       Ok(sevents +
-        "\n\n=========================================\n\n" +
-        sadds +
-        "\n\n=========================================\n\n" +
-        spages)
+	"\n\n=========================================\n\n" +
+	sadds +
+	"\n\n=========================================\n\n" +
+	spages)
     }
   }
 
@@ -366,8 +366,8 @@ object Admin extends RazController {
       l / (1024L*1024L) + "M"
     else if (l > 1024)
       l / 1024 + "K"
-    else 
-      l.toString 
+    else
+      l.toString
 
   def osusage = {
     var s = ""
@@ -375,17 +375,17 @@ object Admin extends RazController {
     for (method <- osm.getClass().getDeclaredMethods()) {
       method.setAccessible(true);
       if (method.getName().startsWith("get") && Modifier.isPublic(method.getModifiers())) {
-        val v = try {
-          method.invoke(osm).toString;
-        } catch {
-          case e: Exception => e.toString
-        } // try
-        val vn = try {
-          v.toLong
-        } catch {
-          case e: Exception => -1
-        } // try
-        s = s + (method.getName() -> (if(vn == -1) v else (nice(vn) + " - "+v))) + "\n";
+	val v = try {
+	  method.invoke(osm).toString;
+	} catch {
+	  case e: Exception => e.toString
+	} // try
+	val vn = try {
+	  v.toLong
+	} catch {
+	  case e: Exception => -1
+	} // try
+	s = s + (method.getName() -> (if(vn == -1) v else (nice(vn) + " - "+v))) + "\n";
       } // if
     } // for
     s"""$s\n\nwikis=${RazMongo("WikiEntry").m.size}\n
@@ -412,22 +412,22 @@ SendEmail.state=${SendEmail.state}\n
    what match {
      case "script1" => Ok(WikiScripster.impl.runScript("1+2", None, None, Map()))
      case _ => Ok(osusage)
-   } 
+   }
   }
 
   // TODO turn off emails during remote test
   def config(what: String) = Action { implicit request =>
     forActiveUser { au=>
       what match {
-        case "noemails" => Ok(SendEmail.NO_EMAILS.toString)
-        case "noemailstesting" => {
-          SendEmail.NOEMAILSTESTING = true
-          Ok(SendEmail.NOEMAILSTESTING.toString)
-        }
-        case "okemailstesting" => {
-          SendEmail.NOEMAILSTESTING = false
-          Ok(SendEmail.NOEMAILSTESTING.toString)
-        }
+	case "noemails" => Ok(SendEmail.NO_EMAILS.toString)
+	case "noemailstesting" => {
+	  SendEmail.NOEMAILSTESTING = true
+	  Ok(SendEmail.NOEMAILSTESTING.toString)
+	}
+	case "okemailstesting" => {
+	  SendEmail.NOEMAILSTESTING = false
+	  Ok(SendEmail.NOEMAILSTESTING.toString)
+	}
       }
     }
   }

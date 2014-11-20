@@ -131,7 +131,7 @@ case class User(
   lazy val canHasProfile = (!isUnder13) || Users.findParentOf(_id).exists(_.trust == "Public")
 
   // TODO cache groups
-  lazy val groups = roles flatMap { 
+  lazy val groups = roles flatMap {
     role => db.ROne[UserGroup]("name" -> role)
     }
 
@@ -143,7 +143,7 @@ case class User(
       yield t._1).flatMap(Users.findUserById(_)).toList) getOrElse List()
 
   /** load my profile */
-  lazy val profile = ROne[Profile]("userId" -> _id) 
+  lazy val profile = ROne[Profile]("userId" -> _id)
 
   /** the wikis I linked to */
   lazy val wikis = RMany[UserWiki]("userId" -> _id).toList
@@ -199,8 +199,8 @@ case class User(
   def shouldEmailParent(what: String) = {
     if (isUnder13) {
       for (
-        pc <- Users.findParentOf(this._id) if (pc.notifys == what);
-        parent <- ROne[User](pc.parentId)
+	pc <- Users.findParentOf(this._id) if (pc.notifys == what);
+	parent <- ROne[User](pc.parentId)
       ) yield parent
     } else None
   }
@@ -276,7 +276,7 @@ case class UserQuota(
     val q = this.copy(updates = updates.map(_ - 1) orElse Some(5))
     update(q)
 
-    if (q.updates.exists(_ < 20)) 
+    if (q.updates.exists(_ < 20))
       Emailer.sendEmailNeedQuota(Users.findUserById(userId).map(u=> s"$u.userName - $u.firstName $u.lastName").toString, userId.toString)
   }
 
@@ -309,7 +309,7 @@ case class ParentChild(
 }
 
 object UW {
-  final val NOEMAIL = "n" 
+  final val NOEMAIL = "n"
   final val EMAIL_EACH = "e"
   final val EMAIL_DAILY = "d" // TODO
 }
@@ -321,9 +321,9 @@ object UW {
  */
 @RTable
 case class UserWiki(
-    userId: ObjectId, 
+    userId: ObjectId,
     uwid: UWID,
-    role: String, 
+    role: String,
     notif:String = UW.EMAIL_EACH,
     _id: ObjectId = new ObjectId()) extends REntity[UserWiki] {
 
@@ -427,12 +427,12 @@ case class Task(name: String, desc: String)
 
 @RTable
 case class UserTask(
-    userId: ObjectId, 
+    userId: ObjectId,
     name: String,
     args:Map[String,String] = Map(),
     crDtm:DateTime = DateTime.now) {
-  
-  def desc = ROne[Task]("name" -> name) map (_.desc) getOrElse UserTasks.labelFor(this) 
+
+  def desc = ROne[Task]("name" -> name) map (_.desc) getOrElse UserTasks.labelFor(this)
   def create (implicit txn:db.Txn) = RCreate[UserTask](this)
 
   def delete (implicit txn:db.Txn) = {
@@ -443,16 +443,16 @@ case class UserTask(
 
 object UserTasks {
   final val START_REGISTRATION = "startRegistration"
-  
+
   def userNameChgDenied(u: User) = UserTask(u._id, "userNameChgDenied")
   def verifyEmail(u: User) = UserTask(u._id, "verifyEmail")
   def addParent(u: User) = UserTask(u._id, "addParent")
   def chooseTheme(u: User) = UserTask(u._id, "chooseTheme")
   def setupRegistration(u: User) = UserTask(u._id, "setupRegistration")
   def setupCalendars(u: User) = UserTask(u._id, "setupCalendars")
-  
+
   def some(u: User, what:String) = UserTask(u._id, what)
-  
+
   def labelFor (ut:UserTask) = {
     ut.name match {
       case START_REGISTRATION => "Start registration for "+ut.args.get("club").mkString

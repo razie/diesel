@@ -1,6 +1,6 @@
 @(implicit item:x.FulfillmentOrderItem, assocNmToSvcKey: java.util.Map[String, String])
 
-@mobileServiceIdentity = @{x.reqItems.get("Service:MobileServiceIdentity")} 
+@mobileServiceIdentity = @{x.reqItems.get("Service:MobileServiceIdentity")}
 @msisdn = @{x.reqItems.get("Resource:MSISDN")}
 
 <smpom:item>
@@ -43,16 +43,16 @@
 			<cmn:primaryKey>SubSvcSpec:mobile_service_identity</cmn:primaryKey>
 		</cbecore:describingSpecificationKey>
 		<smpcbe:externalKey>@x.y.lineItemKey</smpcbe:externalKey>
-		
+
 		<smpcbe:parentKey>
 			<cmn:type>http://www.sigma-systems.com/smp/43/xsd/SubscriberEntity/jsr144/v1-5#SubscriberServiceValue</cmn:type>
 			<cmn:primaryKey keyType="ExternalKey">@x.y.parentKey</cmn:primaryKey>
 		</smpcbe:parentKey>
-		
-          @if(!assocNmToSvcKey.isEmpty) {
-          <smpcbe:associations>
-            @if(assocNmToSvcKey.containsKey("mobile_service_has_device")) {
-            <smpcbe:association>
+
+	  @if(!assocNmToSvcKey.isEmpty) {
+	  <smpcbe:associations>
+	    @if(assocNmToSvcKey.containsKey("mobile_service_has_device")) {
+	    <smpcbe:association>
 				<cbecore:ZEndKey xsi:type="smpcbe:SubscriberServiceKey">
 					<cmn:type>http://www.sigma-systems.com/smp/43/xsd/SubscriberEntity/jsr144/v1-5#SubscriberServiceValue</cmn:type>
 					<cmn:primaryKey keyType="ExternalKey">@{assocNmToSvcKey.get("mobile_service_has_device")}</cmn:primaryKey>
@@ -60,9 +60,9 @@
 				<smpcbe:associationType>mobile_service_has_device</smpcbe:associationType>
 				<smpcbe:actionIndicator>add</smpcbe:actionIndicator>
 			</smpcbe:association>
-            }
-          </smpcbe:associations>
-          }
-          
-        </smpom:entity>
+	    }
+	  </smpcbe:associations>
+	  }
+
+	</smpom:entity>
 </smpom:item>

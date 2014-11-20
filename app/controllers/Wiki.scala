@@ -1,7 +1,7 @@
 /**
  *   ____    __    ____  ____  ____,,___     ____  __  __  ____
- *  (  _ \  /__\  (_   )(_  _)( ___)/ __)   (  _ \(  )(  )(  _ \           Read
- *   )   / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <     README.txt
+ *  (  _ \  /__\  (_   )(_  _)( ___)/ __)   (  _ \(  )(  )(  _ \	   Read
+ *   )	 / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <     README.txt
  *  (_)\_)(__)(__)(____)(____)(____)(___/   (__)  (______)(____/    LICENSE.txt
  */
 package controllers
@@ -12,7 +12,7 @@ import com.novus.salat._
 import db.RazSalatContext._
 import com.mongodb.{BasicDBObject, DBObject}
 import db.{ROne, RazMongo}
-import model.{CMDWID, WikiEntryOld, _}
+import model._
 import play.api.mvc.{Action, AnyContent, Request}
 import razie.{cout, Logging}
 
@@ -52,9 +52,9 @@ object Wiki extends WikiBase {
       s"""<b><a href="${w(wid)}/tag/$t">$label</a></b>"""
     } else {
       if(wid.parentWid.isDefined) {
-        s"""<b><a href="${w(wid.parentWid.get)}/tag/$t">$label</a></b>"""
+	s"""<b><a href="${w(wid.parentWid.get)}/tag/$t">$label</a></b>"""
       } else {
-        s"""<b><a href="${routes.Wiki.showTag(t, wid.getRealm)}">$label</a></b>"""
+	s"""<b><a href="${routes.Wiki.showTag(t, wid.getRealm)}">$label</a></b>"""
       }
     }
   }
@@ -78,39 +78,39 @@ object Wiki extends WikiBase {
     def filter (u:DBObject) = {
       def uf(n:String) = if(u.containsField(n)) u.get("name").asInstanceOf[String] else ""
       if (q.length <= 0)
-        qt.size > 0 && u.containsField("tags") && qt.foldLeft(true)((a, b) => a && u.get("tags").toString.toLowerCase.contains(b))
+	qt.size > 0 && u.containsField("tags") && qt.foldLeft(true)((a, b) => a && u.get("tags").toString.toLowerCase.contains(b))
       else
-        (q.length > 1 && uf("name").toLowerCase.contains(qi)) ||
-          (q.length > 1 && uf("label").toLowerCase.contains(qi)) ||
-          (q.length() > 3 && uf("content").toLowerCase.contains(qi))
+	(q.length > 1 && uf("name").toLowerCase.contains(qi)) ||
+	  (q.length > 1 && uf("label").toLowerCase.contains(qi)) ||
+	  (q.length() > 3 && uf("content").toLowerCase.contains(qi))
     }
     lazy val parent = WID.fromPath(scope).flatMap(x=>Wikis.find(x).orElse(Wikis(realm).findAnyOne(x.name)))
 
     val wikis =
       if(scope.length > 0 && parent.isDefined) {
-        val p = parent.get
+	val p = parent.get
 
-        def src (t:MongoCollection) = {
-          for (
-            u <- t.find(Map("realm"->realm, "parent" -> p._id)) if filter(u)
-          ) yield u
-        }.toList
+	def src (t:MongoCollection) = {
+	  for (
+	    u <- t.find(Map("realm"->realm, "parent" -> p._id)) if filter(u)
+	  ) yield u
+	}.toList
 
-        if(WikiDomain(realm).aEnds(p.category, "Child").contains("Item"))
-          RazMongo.withDb(RazMongo("weItem").m) (src)
-        else
-          RazMongo.withDb(RazMongo("WikiEntry").m) (src)
+	if(WikiDomain(realm).aEnds(p.category, "Child").contains("Item"))
+	  RazMongo.withDb(RazMongo("weItem").m) (src)
+	else
+	  RazMongo.withDb(RazMongo("WikiEntry").m) (src)
       } else {
-        RazMongo.withDb(RazMongo("WikiEntry").m) { t =>
-          for (
-            u <- t if filter(u)
-          ) yield u
-        }.toList
+	RazMongo.withDb(RazMongo("WikiEntry").m) { t =>
+	  for (
+	    u <- t.find(Map("realm"->realm)) if filter(u)
+	  ) yield u
+	}.toList
       }
 
     if(!isFromRobot) {
-      if(q.length > 0) Audit.logdb("QUERY", q, s"Scope: $scope", "Results: " + wikis.size, "User-Agent: "+request.headers.get("User-Agent").mkString)
-      else Audit.logdb("QUERY_TAG", curTags, "Scope: "+parent.map(_.wid.wpath).getOrElse(s"??? $scope"), "Results: " + wikis.size, "User-Agent: "+request.headers.get("User-Agent").mkString)
+      if(q.length > 0) Audit.logdb("QUERY", q, s"Realm: $realm, Scope: $scope", "Results: " + wikis.size, "User-Agent: "+request.headers.get("User-Agent").mkString)
+      else Audit.logdb("QUERY_TAG", curTags, s"Realm: $realm, Scope: "+parent.map(_.wid.wpath).getOrElse(s"??? $scope"), "Results: " + wikis.size, "User-Agent: "+request.headers.get("User-Agent").mkString)
     }
 
     if (wikis.size == 1)
@@ -119,21 +119,21 @@ object Wiki extends WikiBase {
       val wl = wikis.map(WikiEntry.grated _).take(500).toList
       val tags = wl.flatMap(_.tags).filter(_ != Tags.ARCHIVE).filter(_ != "").filter(x=> !qt.contains(x)).groupBy(identity).map(t => (t._1, t._2.size)).toSeq.sortBy(_._2).reverse
       Ok(views.html.wiki.wikiList(
-        q, q, curTags, wl.map(w => (w.wid, w.label)), tags,
-        (if(q.length>1) "/wikie/search/tag/"
-        else if(scope.length > 0) s"/wiki/$scope/tag/"
-         else "/wiki/tag/"),
-        (if(q.length>1) "?q="+q else ""))(auth,request)
+	q, q, curTags, wl.map(w => (w.wid, w.label)), tags,
+	(if(q.length>1) "/wikie/search/tag/"
+	else if(scope.length > 0) s"/wiki/$scope/tag/"
+	 else "/wiki/tag/"),
+	(if(q.length>1) "?q="+q else ""), realm)(auth,request)
       )
     }
   }
 
 //  private def topicred(wpath: String) = {
 //    if (Config.config(Config.TOPICRED).exists(_.contains(wpath))) {
-//      log("- redirecting " + wpath)
-//      Some(Redirect(controllers.Wiki.w(WID.fromPath(Config.config(Config.TOPICRED).get.apply(wpath)).get)))
+//	log("- redirecting " + wpath)
+//	Some(Redirect(controllers.Wiki.w(WID.fromPath(Config.config(Config.TOPICRED).get.apply(wpath)).get)))
 //    } else
-//      None
+//	None
 //  }
 
   val RK: String = Wikis.RK
@@ -207,34 +207,44 @@ object Wiki extends WikiBase {
   }
 
   /** show a page */
-  def showWid(cw: CMDWID, count: Int, realm:String) = {
+  def showWid(cw: CMDWID, count: Int, irealm:String) = {
     cw.cmd match {
       case "xp"  => xp(cw.wid.get, cw.rest)
       case "xpl" => xpl(cw.wid.get, cw.rest)
       case "rss.xml" => rss(cw.wid.get, cw.rest)
-      case "tag" => search(realm, "", cw.wpath getOrElse "", cw.rest)
+      case "debug" => Action { implicit request =>
+	val realm = Website.getHost.flatMap(x=>Website(x)).map(_.reactor).getOrElse(irealm)
+	val wid = cw.wid.get.r(irealm)
+	wikieDebug(wid, realm).apply(request).value.get.get
+      }
+      case "tag" => Action { implicit request =>
+	val realm = Website.getHost.flatMap(x=>Website(x)).map(_.reactor).getOrElse(irealm)
+	search(realm, "", cw.wpath getOrElse "", cw.rest).apply(request).value.get.get
+      }
       case _ => Action { implicit request =>
-        // must check if page is WITHIN site, otherwise redirect to main site
-        val fhost = Website.getHost
-        val redir = fhost flatMap Config.urlfwd
-        val canon = fhost flatMap (fh=> Config.urlcanon(cw.wpath.get, None).map(_.startsWith("http://"+fh)))
-        val newcw = if(cw.wid.get.realm.isDefined || Wikis.RK == realm) cw else cw.copy(wid=cw.wid.map(_.copy(realm=Some(realm))))
+	val realm = Website.getHost.flatMap(x=>Website(x)).map(_.reactor).getOrElse(irealm)
+	val wid = cw.wid.get.r(irealm)
+	// must check if page is WITHIN site, otherwise redirect to main site
+	val fhost = Website.getHost
+	val redir = fhost flatMap Config.urlfwd
+	val canon = fhost flatMap (fh=> Config.urlcanon(cw.wpath.get, None).map(_.startsWith("http://"+fh)))
+	val newcw = if(wid.realm.isDefined || Wikis.RK == realm) cw else cw.copy(wid=cw.wid.map(_.copy(realm=Some(realm))))
 
-        // if not me, no redirection and not the redirected path, THEN redirect
-        if (fhost.exists(_ != Config.hostport) &&
-          redir.isDefined &&
-          !cw.wpath.get.startsWith(redir.get.replaceFirst(".*/wiki/", "")) &&
-          !canon.exists(identity)) {
-          log("  REDIRECTED FROM - " + fhost)
-          log("    TO http://" + Config.hostport + "/wiki/" + cw.wpath.get)
-//          Redirect("http://" + Config.hostport + "/wiki/" + cw.wpath.get)
-          Redirect(newcw.wid.get.url)
-        } else fhost.flatMap(x=>Website(x)).map { web=>
-          show(newcw.wid.get, count).apply(request).value.get.get //todo what the heck is this?
-        } getOrElse {
-          // normal - continue showing the page
-          show(newcw.wid.get, count).apply(request).value.get.get
-        }
+	// if not me, no redirection and not the redirected path, THEN redirect
+	if (fhost.exists(_ != Config.hostport) &&
+	  redir.isDefined &&
+	  !cw.wpath.get.startsWith(redir.get.replaceFirst(".*/wiki/", "")) &&
+	  !canon.exists(identity)) {
+	  log("  REDIRECTED FROM - " + fhost)
+	  log("    TO http://" + Config.hostport + "/wiki/" + cw.wpath.get)
+//	    Redirect("http://" + Config.hostport + "/wiki/" + cw.wpath.get)
+	  Redirect(newcw.wid.get.url)
+	} else fhost.flatMap(x=>Website(x)).map { web=>
+	  show(wid, count).apply(request).value.get.get //todo what the heck is this?
+	} getOrElse {
+	  // normal - continue showing the page
+	  show(wid, count).apply(request).value.get.get
+	}
       }
     }
   }
@@ -244,14 +254,14 @@ object Wiki extends WikiBase {
 
   /** POST against a page - perhaps a trackback */
   def postWid(wp: String, realm:String) = Action { implicit request =>
-    //    if (model.BannedIps isBanned request.headers.get("X-FORWARDED-HOST")) {
-    //      admin.Audit.logdb("POST-BANNED", List("request:" + request.toString, "headers:" + request.headers, "body:" + request.body).mkString("<br>"))
-    //      Ok("")
-    //    } else {
-    //      admin.Audit.logdb("POST", List("request:" + request.toString, "headers:" + request.headers, "body:" + request.body).mkString("<br>"))
-    //    Services.audit.unauthorized(s"POST Referer=${request.headers.get("Referer")} - X-Forwarde-For: ${request.headers.get("X-Forwarded-For")}")
+    //	  if (model.BannedIps isBanned request.headers.get("X-FORWARDED-HOST")) {
+    //	    admin.Audit.logdb("POST-BANNED", List("request:" + request.toString, "headers:" + request.headers, "body:" + request.body).mkString("<br>"))
+    //	    Ok("")
+    //	  } else {
+    //	    admin.Audit.logdb("POST", List("request:" + request.toString, "headers:" + request.headers, "body:" + request.body).mkString("<br>"))
+    //	  Services.audit.unauthorized(s"POST Referer=${request.headers.get("Referer")} - X-Forwarde-For: ${request.headers.get("X-Forwarded-For")}")
     unauthorized("Oops - can't POST here", false)
-    //    }
+    //	  }
   }
 
   def show1(cat: String, name: String, realm:String) = show(WID(cat, name).r(realm))
@@ -306,49 +316,49 @@ object Wiki extends WikiBase {
       // TODO optimize to load just the WID - i'm redirecting anyways
       val wl = Wikis(wid.getRealm).findAny(name).filter(page => canSee(page.wid, au, Some(page)).getOrElse(false)).toList
       if (wl.size == 1) {
-        if (Array("Blog", "Post") contains wl.head.wid.cat) {
-          // Blogs and other topics are allowed nicer URLs, without category
-          // search engines don't like URLs with colons etc
-          show(wl.head.wid, count, print).apply(request).value.get.get
-        } else
-        // redirect to use the proper Category display
-          Redirect(controllers.Wiki.w(wl.head.wid))
+	if (Array("Blog", "Post") contains wl.head.wid.cat) {
+	  // Blogs and other topics are allowed nicer URLs, without category
+	  // search engines don't like URLs with colons etc
+	  show(wl.head.wid, count, print).apply(request).value.get.get
+	} else
+	// redirect to use the proper Category display
+	  Redirect(controllers.Wiki.w(wl.head.wid))
       } else if (wl.size > 0) {
-        val tags = wl.flatMap(_.tags).filter(_ != Tags.ARCHIVE).filter(_ != "").groupBy(identity).map(t => (t._1, t._2.size)).toSeq.sortBy(_._2).reverse
-        Ok(views.html.wiki.wikiList("category any", "", "", wl.map(x => (x.wid, x.label)), tags))
+	val tags = wl.flatMap(_.tags).filter(_ != Tags.ARCHIVE).filter(_ != "").groupBy(identity).map(t => (t._1, t._2.size)).toSeq.sortBy(_._2).reverse
+	Ok(views.html.wiki.wikiList("category any", "", "", wl.map(x => (x.wid, x.label)), tags, "./", "", wid.getRealm))
       }
       else
-        wikiPage(wid, Some(iwid.name), None, !shouldNotCount, au.isDefined && canEdit(wid, au, None).get)
+	wikiPage(wid, Some(iwid.name), None, !shouldNotCount, au.isDefined && canEdit(wid, au, None).get)
     } else {
       // normal request with cat and name
       val w = wid.page
 
       if (!w.isDefined && Config.config(Config.TOPICRED).exists(_.contains(wid.wpath))) {
-        log("- redirecting " + wid.wpath)
-        Redirect(controllers.Wiki.w(WID.fromPath(Config.config(Config.TOPICRED).get.apply(wid.wpath)).get))
+	log("- redirecting " + wid.wpath)
+	Redirect(controllers.Wiki.w(WID.fromPath(Config.config(Config.TOPICRED).get.apply(wid.wpath)).get))
       } else if (!w.isDefined && Config.config(Config.TOPICRED).exists(_.contains(iwid.wpath))) {
-        // specifically when rules changes- the reformated wid not longer working, try original
-        log("- redirecting " + iwid.wpath)
-        Redirect(controllers.Wiki.w(WID.fromPath(Config.config(Config.TOPICRED).get.apply(iwid.wpath)).get))
+	// specifically when rules changes- the reformated wid not longer working, try original
+	log("- redirecting " + iwid.wpath)
+	Redirect(controllers.Wiki.w(WID.fromPath(Config.config(Config.TOPICRED).get.apply(iwid.wpath)).get))
       } else {
-        // finally there!!
-        //        cout << "1"
-        if (!canSee(wid, au, w).getOrElse(false)) {
-          if (isFromRobot(request)) {
-            Audit.logdb("ROBOT", wid.wpath)
-            noPerm(wid, "SHOW", false)
-          } else
-            noPerm(wid, "SHOW")
-        } else
-        //        cout << "2"
-          w.map { w =>
-            // redirect a simple alias with no other content
-            w.alias.map { wid =>
-              Redirect(controllers.Wiki.w(wid.formatted))
-            } getOrElse
-              wikiPage(wid, Some(iwid.name), Some(w), !shouldNotCount, au.isDefined && canEdit(wid, au, Some(w)), print)
-          } getOrElse
-            wikiPage(wid, Some(iwid.name), None, !shouldNotCount, au.isDefined && canEdit(wid, au, None), print)
+	// finally there!!
+	//	  cout << "1"
+	if (!canSee(wid, au, w).getOrElse(false)) {
+	  if (isFromRobot(request)) {
+	    Audit.logdb("ROBOT", wid.wpath)
+	    noPerm(wid, "SHOW", false)
+	  } else
+	    noPerm(wid, "SHOW")
+	} else
+	//	  cout << "2"
+	  w.map { w =>
+	    // redirect a simple alias with no other content
+	    w.alias.map { wid =>
+	      Redirect(controllers.Wiki.w(wid.formatted))
+	    } getOrElse
+	      wikiPage(wid, Some(iwid.name), Some(w), !shouldNotCount, au.isDefined && canEdit(wid, au, Some(w)), print)
+	  } getOrElse
+	    wikiPage(wid, Some(iwid.name), None, !shouldNotCount, au.isDefined && canEdit(wid, au, None), print)
       }
     }
   }
@@ -363,7 +373,7 @@ object Wiki extends WikiBase {
 
     if (Array("Site", "Page").contains(wid.cat) && page.isDefined)
       Ok(views.html.wiki.wikiSite(wid, iname, page))
-    //    Ok(views.html.wiki.wikiPage(wid, iname, page, canEdit, print))
+    //	  Ok(views.html.wiki.wikiPage(wid, iname, page, canEdit, print))
     else if (page.exists(!_.fields.isEmpty)) {
       showForm(wid, iname, page, au, shouldCount, Map.empty, canEdit, print)
     } else
@@ -376,28 +386,25 @@ object Wiki extends WikiBase {
       // parse form data
       val data = razie.Snakk.jsonParsed(s.content)
       razie.MOLD(data.keys).map(_.toString).map { name =>
-        val x = data.getString(name)
-        //          cout << "FIELD " + name + "="+x
-        page.get.fields.get(name).foreach(f => page.get.fields.put(f.name, f.withValue(x)))
-        //          cout << "FIELDs " + page.get.fields.toString
+	val x = data.getString(name)
+	//	    cout << "FIELD " + name + "="+x
+	page.get.fields.get(name).foreach(f => page.get.fields.put(f.name, f.withValue(x)))
+	//	    cout << "FIELDs " + page.get.fields.toString
       }
     }
     Ok(views.html.wiki.wikiForm(wid, iname, page, user, errors, canEdit, print))
   }
 
-  def wikieDebug(iwid: WID) = Action { implicit request =>
+  def wikieDebug(iwid: WID, realm:String) = FAU { implicit au => implicit errCollector => implicit request =>
     implicit val errCollector = new VErrors()
 
-    val cat = iwid.cat
-    val name = Wikis.formatName(iwid)
-
-    val wid = WID(cat, name)
+    val wid = iwid.formatted
 
     razie.NoStaticS.put(model.QueryParms(request.queryString))
 
-    Wikis(iwid.getRealm).find(cat, name) match {
+    Wikis(wid.getRealm).find(wid) match {
       case x @ Some(w) if !canSee(wid, auth, x).getOrElse(false) => noPerm(wid, "DEBUG")
-      case y @ _ => Ok(views.html.wiki.wikiDebug(wid, Some(iwid.name), y, auth))
+      case y @ _ => Ok(views.html.wiki.wikieDebug(wid, Some(iwid.name), y, realm, auth))
     }
   }
 
@@ -421,10 +428,10 @@ object Wiki extends WikiBase {
 
       val xpath = "*/" + path
       val res: List[String] =
-        if (razie.GPath(xpath).isAttr) (root xpla xpath)
-        else (root xpl xpath).collect {
-          case we: WikiWrapper => we.wid.wpath
-        }
+	if (razie.GPath(xpath).isAttr) (root xpla xpath)
+	else (root xpl xpath).collect {
+	  case we: WikiWrapper => we.wid.wpath
+	}
 
       Ok(Json.toJson(res))
     }) getOrElse
@@ -443,11 +450,11 @@ object Wiki extends WikiBase {
       val xpath = "*/" + path
       // TODO use label not name
       val res = (root xpl xpath).collect {
-        case we: WikiWrapper => (we.wid, we.wid.name, we.w.toSeq.flatMap(_.tags))
+	case we: WikiWrapper => (we.wid, we.wid.name, we.w.toSeq.flatMap(_.tags))
       }
 
       val tags = res.flatMap(_._3).filter(_ != Tags.ARCHIVE).filter(_ != "").groupBy(identity).map(t => (t._1, t._2.size)).toSeq.sortBy(_._2).reverse
-      Ok(views.html.wiki.wikiList(path, "", "", res.map(t=>(t._1, t._2)), tags)(auth, request))
+      Ok(views.html.wiki.wikiList(path, "", "", res.map(t=>(t._1, t._2)), tags, "./", "", wid.getRealm)(auth, request))
     }) getOrElse
       Ok("Nothing... for " + wid + " XP " + path)
   }
@@ -463,14 +470,14 @@ object Wiki extends WikiBase {
     ) yield {
       // default to category
       val res = try {
-        val sec = wid.name
-        val script = w.scripts.find(sec == _.name).orElse(model.Wikis.category(widp.cat) flatMap (_.scripts.find(sec == _.name)))
-        val res: String = script.filter(_.checkSignature).map(s => {
-          val up = Config.currUser
-          model.WikiScripster.impl.runScript(s.content, Some(w), up, request.queryString.map(t => (t._1, t._2.mkString)))
-        }) getOrElse ""
-        Audit.logdb("SCRIPT_RESULT", res)
-        res
+	val sec = wid.name
+	val script = w.scripts.find(sec == _.name).orElse(model.Wikis.category(widp.cat) flatMap (_.scripts.find(sec == _.name)))
+	val res: String = script.filter(_.checkSignature).map(s => {
+	  val up = Config.currUser
+	  model.WikiScripster.impl.runScript(s.content, Some(w), up, request.queryString.map(t => (t._1, t._2.mkString)))
+	}) getOrElse ""
+	Audit.logdb("SCRIPT_RESULT", res)
+	res
       } catch { case _: Throwable => "?" }
       Ok(res)
     }) getOrElse unauthorized()

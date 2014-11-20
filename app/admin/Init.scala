@@ -25,29 +25,29 @@ object Init extends Logging {
 
     for (
       t <- Seq(
-        "Audit",
-        "AuditCleared",
-        "Comment",
-        "CommentStream",
-        "DoSec",
-        "OldStuff",
-        "ParentChild",
-        "Profile",
-        "RegdEmail",
-        "Stage",
-        "Task",
-        "User",
-        "UserEvent",
-        "UserGroup",
-        "UserOld",
-        "UserTask",
-        "UserWiki",
-        "Ver",
-        "WikiAudit",
-        "WikiCount",
-        "WikiEntry",
-        "WikiEntryOld",
-        "WikiLink")
+	"Audit",
+	"AuditCleared",
+	"Comment",
+	"CommentStream",
+	"DoSec",
+	"OldStuff",
+	"ParentChild",
+	"Profile",
+	"RegdEmail",
+	"Stage",
+	"Task",
+	"User",
+	"UserEvent",
+	"UserGroup",
+	"UserOld",
+	"UserTask",
+	"UserWiki",
+	"Ver",
+	"WikiAudit",
+	"WikiCount",
+	"WikiEntry",
+	"WikiEntryOld",
+	"WikiLink")
     ) RazMongo(t).drop
 
     import model.Perm._
@@ -63,7 +63,7 @@ object Init extends Logging {
     val razie = User("razie", "Razvan", "Cojocaru", 1970, e("razie@razie.com"), e("asdf"), 'a', Set("admin"))
     val users = List(razie)
     users map (ug => ug.create(ug.mkProfile))
-    
+
 
     val tasks = List(
       model.Task("addParent", "Add a parent to your account"),
@@ -87,7 +87,7 @@ object Init extends Logging {
 
       wr("Page", "Nothing"),
       wr("Page", "home", "{{redirect:/}}"),
-//      wr("Page", "Terms_of_Service", terms),
+//	wr("Page", "Terms_of_Service", terms),
       wr("Page", "wiki", "Main wiki entry page - please follow a category: [[list:Category]]"))
     pages map (_.create)
   }

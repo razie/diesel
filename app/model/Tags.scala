@@ -8,7 +8,6 @@ object Tags {
   final val NONE = "none"
   final val RECENT = "recent"
   final val INBOX = "inbox"
-
 }
 
 

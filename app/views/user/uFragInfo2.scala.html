@@ -20,11 +20,11 @@ included in mainUserC as the right hand side info box
 @evBefore() = @{
     user.events.filter(_._3.isBefore(DateTime.now))
 }
-  
+
 @evAfter() = @{
     user.events.filter(_._3.isAfter(DateTime.now))
 }
-  
+
 <div class="span6">
     <div class="well">
 
@@ -50,10 +50,10 @@ included in mainUserC as the right hand side info box
       <b>Stuff to do</b>
       <ul>
       @for(t <- user.tasks) {
-        <li><a style="color:red;font-weight:bold" href="/user/task/@t.name">@t.desc</a></li>
+	<li><a style="color:red;font-weight:bold" href="/user/task/@t.name">@t.desc</a></li>
       }
       @for(t <- regs) {
-        <li><a style="color:red;font-weight:bold" href="@routes.Club.doeClubUserReg(t._id.toString)">Pending registration forms for @t.clubName</a></li>
+	<li><a style="color:red;font-weight:bold" href="@routes.Club.doeClubUserReg(t._id.toString)">Pending registration forms for @t.clubName</a></li>
       }
       </ul>
     } else {
@@ -64,11 +64,11 @@ included in mainUserC as the right hand side info box
       <b>Recent events:</b>
       <ul>
       @for(t <- evBefore.takeRight(scala.math.max(3, 10-evAfter().size))) {
-        <li>@Html(model.Wikis.formatWikiLink(t._1.wid,t._1.wid.name, t._2,Some(t._1.label))._1)
-        @if(t._4.wid.name != null && t._4.wid.name.length>0) {
-          at @Html(t._4.format._1)
-        }
-        </li>
+	<li>@Html(model.Wikis.formatWikiLink(t._1.wid,t._1.wid.name, t._2,Some(t._1.label))._1)
+	@if(t._4.wid.name != null && t._4.wid.name.length>0) {
+	  at @Html(t._4.format._1)
+	}
+	</li>
       }
       </ul>
     } else {
@@ -78,11 +78,11 @@ included in mainUserC as the right hand side info box
       <b>Coming up:</b>
       <ul>
       @for(t <- evAfter.take(math.max(7, 10-evBefore().size))) {
-        <li>@Html(model.Wikis.formatWikiLink(t._1.wid,t._1.wid.name,t._2,Some(t._1.label))._1)
-        @if(t._4.wid.name != null  && t._4.wid.name.length>0) {
-          at @Html(t._4.format._1)
-        }
-        </li>
+	<li>@Html(model.Wikis.formatWikiLink(t._1.wid,t._1.wid.name,t._2,Some(t._1.label))._1)
+	@if(t._4.wid.name != null  && t._4.wid.name.length>0) {
+	  at @Html(t._4.format._1)
+	}
+	</li>
       }
     @if(evAfter.size>7) {
       <li>...</li>
@@ -91,7 +91,7 @@ included in mainUserC as the right hand side info box
     } else {
      <b>Nothing coming up...</b>
     }
-            
+
 @*********
     <a href="http://maps.googleapis.com/maps/api/staticmap?zoom=13&size=600x300&sensor=false&@locs().map(x=>"markers=color:red|%s".format(x, x)).mkString("&")">map</a>
     <a href="http://maps.googleapis.com/maps/api/staticmap?zoom=13&size=600x300&@user.events.filter(_._3.isAfter(DateTime.now)).map(x=>(x._4, x._4.contentTags.get("loc"))).filter(_._2.isDefined).map(x=>"markers=color:red|label:%s|%s".format(x._1.label, x._1.contentTags.get("loc"))).mkString("&")">map</a>
@@ -99,20 +99,20 @@ included in mainUserC as the right hand side info box
   }
 
 case 2 => {
-  
+
   @util.utilMap(
       (controllers.UserStuff.xp(user, "Calendar") \ UserStuff.Race \ "Venue").asInstanceOf[XListWrapper[_]],
       user.ll
       )
   }
 
-case 3 => { 
+case 3 => {
 
   Followed:
   @if(blogs.filter(_.role != "Owner").size>0) {
     (follow more <a class="btn btn-mini" href="/wikie/like/Forum">Forums &raquo;</a>
     <a class="btn btn-mini" href="/wikie/like/Blog">Blogs &raquo;</a>)</p>
-    <ul> 
+    <ul>
     @for(w <- blogs.filter(_.role != "Owner")) {
       <li><a href="@controllers.Wiki.w(w.wid)">@model.Wikis.label(w.wid)</a></li>
     }
@@ -122,13 +122,13 @@ case 3 => {
     <a class="btn btn-mini" href="/wikie/like/Blog">Blog &raquo;</a>)</p>
   }
 <p>
-  Owned: 
+  Owned:
   @if(blogs.filter(_.role == "Owner").size>0) {
     (create more <a class="btn btn-mini" href="/wikie/create/Forum">Forums &raquo;</a>
     <a class="btn btn-mini" href="/wikie/create/Blog">Blogs &raquo;</a>)</p>
-    <ul> 
+    <ul>
       @for(w <- blogs.filter(_.role == "Owner")) {
-        <li><a href="@controllers.Wiki.w(w.wid)">@model.Wikis.label(w.wid)</a></li>
+	<li><a href="@controllers.Wiki.w(w.wid)">@model.Wikis.label(w.wid)</a></li>
       }
     </ul>
   } else {
@@ -137,12 +137,12 @@ case 3 => {
   }
 }
 
-case 4 => { 
+case 4 => {
 
-  Owned: 
+  Owned:
   @if(user.pages("FormDesign").filter(_.role == "Owner").size>0) {
   <a class="btn btn-mini" href="/wikie/create/Note">Add &raquo;</a></p>
-  <ul> 
+  <ul>
     @for(w <- user.pages("FormDesign").filter(_.role == "Owner")) {
       <li><a href="@controllers.Wiki.w(w.wid)">@model.Wikis.label(w.wid)</a></li>
     }
@@ -154,6 +154,5 @@ case 4 => {
   }
 
 }
-            </div>
-          </div>
-          
+	    </div>
+	  </div>

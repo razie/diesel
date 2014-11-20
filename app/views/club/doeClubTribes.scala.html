@@ -4,7 +4,7 @@ club admin manages list of users and registrations
 @(user:model.User, club:Club)
 
 @htmlHeadBar("Tribes of club " + user.userName, Some(user))
-   
+
 <div class="container">
 <div class="row">
   @views.html.user.leftmenu(13, user)
@@ -13,21 +13,21 @@ club admin manages list of users and registrations
 
 @tribes=@{
   model.Tribes.findByClub(club).map(t=>
-    Map("name"->t.name, 
-    	"role"->t.role, 
-    	"year"->t.year, 
-    	"button"->t.page._id.toString, 
-    	"wpath" -> t.wid.wpath))
+    Map("name"->t.name,
+	"role"->t.role,
+	"year"->t.year,
+	"button"->t.page._id.toString,
+	"wpath" -> t.wid.wpath))
 }
 
 @mnglink(row:Map[String,String],k:String,v:String)={
   @k match {
-  	case "button" => {
+	case "button" => {
       <a href="@routes.Tribe.doeClubTribe(v)" class="btn btn-mini">More...</a>
-      } 
-  	case "name" => {
+      }
+	case "name" => {
       <a href="@controllers.Wiki.w(model.WID.fromPath(row.get("wpath").get).get)">@v</a>
-      } 
+      }
     case _ => {@v}
   }
 }
@@ -53,20 +53,19 @@ club admin manages list of users and registrations
   <p><label>Description</label>
   <input type="text" class="input-xlarge" name="desc" placeholder="Description">
   <p><label>Role</label>
-        <select id="role" name="role" class="input-small">
-           <option value="Team">Team</option>
-        </select>
-  <button type="submit" class="btn btn-mini btn-primary">Now</button> 
+	<select id="role" name="role" class="input-small">
+	   <option value="Team">Team</option>
+	</select>
+  <button type="submit" class="btn btn-mini btn-primary">Now</button>
   <a href="/wiki/Admin:Adding_a_Tribe" class="btn btn-mini btn-info">?</a>
 }
-</div> 
+</div>
 @helper.form(action=routes.Wikie.createLinked("Tribe",club.wid,"Child"), 'class->"form-inline") {
 }
 
-</div> 
+</div>
 </div> <!-- /row -->
   <hr>
   @htmlFooter(ads=true)
 </div> <!-- /container -->
 @htmlBottom()
-    

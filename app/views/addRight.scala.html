@@ -5,7 +5,7 @@ The add on the right hand side
 @import _root_.admin.Config
 
 @if(! (Config.noads || au.orElse(Config.currUser).exists(_.isUnder13))) {
-	
+
   @if(Config.theme.contains("light")) {
     <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
     <!-- RK-right-light -->

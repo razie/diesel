@@ -4,7 +4,7 @@ profile - edit contact info
 @(myForm: Form[_], au:model.User)
 
 @htmlHeadBar("Contact info", Some(au))
-   
+
 <div class="container">
   <div class="row">
   @leftmenu(11, au)
@@ -24,12 +24,12 @@ profile - edit contact info
   @util.razText(myForm, "country",     "Country")
 @***
   @helper.select(
-    myForm("state"), 
+    myForm("state"),
      Seq(""->"") ++ controllers.Profile.prov.map(x=>(x.toString,x.toString)),
      '_label -> "Province / State",
     '_showConstraints -> false)
   @helper.select(
-    myForm("country"), 
+    myForm("country"),
      Seq(""->"") ++ controllers.Profile.countries.map(x=>(x.toString,x.toString)),
      '_label -> "Country",
     '_showConstraints -> false)
@@ -37,21 +37,21 @@ profile - edit contact info
   @util.razText(myForm, "cellPhone", "Cell Phone")
   @util.razText(myForm, "homePhone", "Home Phone")
   @util.razText(myForm, "workPhone", "Work Phone")
-    
+
   <button type="submit" class="btn btn-primary">Update account!</button>
   @user.agree()
-    
+
   @myForm.globalError.map { err=>
      <p style="color:red;font-weight:bold">@err.message</p>
-  } 
+  }
 }
 </div>
-      
+
 <div class="span4">
       <h2 >Contact Info</h2>
       <p>
-        <p>Optionally, you can enter full contact information below - we can use it for registrations and other forms. 
-        <p>If you don't enter this information here, it's ok - you'll just have to enter it again and again for registrations etc.
+	<p>Optionally, you can enter full contact information below - we can use it for registrations and other forms.
+	<p>If you don't enter this information here, it's ok - you'll just have to enter it again and again for registrations etc.
 <div class="alert alert-danger">
 <strong>Note!</strong>
 that this information can be used in the registration forms you have to complete for clubs!
@@ -65,4 +65,3 @@ that this information can be used in the registration forms you have to complete
   @htmlFooter(ads=true)
 </div> <!-- /container -->
 @htmlBottom()
-        

@@ -9,7 +9,7 @@ create account
   val i = new scala.util.Random().nextInt(names.length)
   names(i)
   }
-  
+
 @htmlHeadBar("Create an account / Register", au, realm)
 
     <div class="container">
@@ -18,11 +18,11 @@ create account
       <div class="hero-unit">
 
       <div class="row">
-        <div class="span6">
-          @wiki.wikiFragInt("Admin:page-join3-"+realm, au)
-        </div>
+	<div class="span6">
+	  @wiki.wikiFragInt("Admin:page-join3-"+realm, au)
+	</div>
 
-        <div class="span4">
+	<div class="span4">
 
 @import helper.twitterBootstrap._
 
@@ -31,25 +31,25 @@ create account
     myForm("userType"),
     _root_.admin.Config.userTypes.map(x=>(x.toString,x.toString)),
      '_label ->
-             (if (realm==model.Reactors.NOTES) "Account type"
+	     (if (realm==model.Reactors.NOTES) "Account type"
   else "What you are"),
     '_showConstraints -> false)
   @helper.inputText(
-    myForm("firstName"), 
-    '_label -> "First name", 
+    myForm("firstName"),
+    '_label -> "First name",
     '_showConstraints -> false)
   @helper.inputText(
-    myForm("lastName"), 
-    '_label -> "Last name")          
+    myForm("lastName"),
+    '_label -> "Last name")
   @helper.select(
-    myForm("yob"), 
+    myForm("yob"),
      Seq("" -> "") ++ (Range(2005, 1912, -1) map (y=>(y.toString,y.toString))),
-    '_label -> "When you were born", 
-    'style -> "width: 100px", 
+    '_label -> "When you were born",
+    'style -> "width: 100px",
     '_showConstraints -> false)
   @helper.inputText(
-    myForm("address"), 
-    '_label -> "City, province/state, country", 
+    myForm("address"),
+    '_label -> "City, province/state, country",
     '_showConstraints -> false)
   @helper.checkbox(
     myForm("accept"),
@@ -59,13 +59,13 @@ create account
     else
       """I accept the <a href="/wiki/Terms of Service">Terms of Service</a>"""
     ),
-    '_label -> "", 
+    '_label -> "",
     '_showConstraints -> false)
-    
+
     @***** recaptcha ********@
 @if(Profile.RE_localhost && _root_.admin.Config.isLocalhost) {
-    @helper.inputText(myForm("recaptcha_challenge_field"))          
-    @helper.inputText(myForm("recaptcha_response_field"))          
+    @helper.inputText(myForm("recaptcha_challenge_field"))
+    @helper.inputText(myForm("recaptcha_response_field"))
 } else {
     <script type="text/javascript" src="//www.google.com/recaptcha/api/challenge?k=6Ld9uNASAAAAAL_5jXRwtBAtiJy8XGwSzZOWW80s"></script>
      <noscript>
@@ -77,11 +77,11 @@ create account
 
   @myForm.globalError.map { err=>
      <p style="color:red;font-weight:bold">@err.message</p>
-  } 
-<br> 
+  }
+<br>
 
   <button type="submit" class="btn btn-primary">That's it - create account!</button>
-  
+
 }
 
        </div>
@@ -96,4 +96,3 @@ create account
     </div> <!-- /container -->
 
     @htmlBottom()
-    

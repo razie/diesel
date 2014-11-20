@@ -1,7 +1,7 @@
 /**
  *   ____    __    ____  ____  ____,,___     ____  __  __  ____
- *  (  _ \  /__\  (_   )(_  _)( ___)/ __)   (  _ \(  )(  )(  _ \           Read
- *   )   / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <     README.txt
+ *  (  _ \  /__\  (_   )(_  _)( ___)/ __)   (  _ \(  )(  )(  _ \	   Read
+ *   )	 / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <     README.txt
  *  (_)\_)(__)(__)(____)(____)(____)(___/   (__)  (______)(____/    LICENSE.txt
  */
 package controllers
@@ -21,7 +21,7 @@ import razie.NoStaticS
 case class DarkLight(css: String)
 
 /** common razie controller utilities */
-class RazControllerBase extends Controller with Logging with Validation { 
+class RazControllerBase extends Controller with Logging with Validation {
 
     /** authentication - find the user currently logged in */
   def wauth(implicit request: Request[_]): Option[WikiUser] = {
@@ -34,7 +34,7 @@ class RazControllerBase extends Controller with Logging with Validation {
   def Msg2(msg: String, page: Option[String], u: Option[WikiUser] = None)(implicit request: Request[_]): play.api.mvc.SimpleResult = {
     ViewService.impl.utilMsg(msg, page, if (u.isDefined) u else wauth)
   }
-  
+
   /** result a page to display this message and optionally continue to a page */
   def Msg3(msg: String, page: Option[String], pageNO:Option[(String,String)], u: Option[WikiUser] = None)(implicit request: Request[_]): play.api.mvc.SimpleResult = {
     ViewService.impl.utilMsg(msg, page, if (u.isDefined) u else wauth, pageNO)

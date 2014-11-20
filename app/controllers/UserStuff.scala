@@ -19,14 +19,14 @@ import model.User
 
 class UserStuff (val user:User) {
   lazy val events = UserStuff.events(user)
-  private lazy val alocs = events flatMap (_._5 \ "Venue" \@ "loc") 
+  private lazy val alocs = events flatMap (_._5 \ "Venue" \@ "loc")
   lazy val locs = alocs.filter (! _.isEmpty).map(_.replaceFirst("ll:",""))
     //xp(user, "Calendar") \ UserStuff.Race \ "Venue" \@ "loc"}.filter(! _.isEmpty).map(_.replaceFirst("ll:",""))
 
   def comingUp = {
     events.filter(_._3.isAfter(DateTime.now))
   }
-  
+
   def pastEvents = {
     events.filter(_._3.isAfter(DateTime.now.minusDays(20)))
   }
@@ -45,9 +45,9 @@ object UserStuff extends RazController {
 
   def wiki(id: String, cat: String, name: String) =
     WikiLink(UWID("User", new ObjectId(id)), WID(cat, name).uwid.get, "").page.map(w =>
-        Wiki.show (WID("WikiLink", w.name))
+	Wiki.show (WID("WikiLink", w.name))
       ).getOrElse(
-        Action { implicit request => Redirect (Wiki.w (cat, name)) }
+	Action { implicit request => Redirect (Wiki.w (cat, name)) }
       )
 
   def Race = admin.Config.sitecfg("racecat").getOrElse("Race")
@@ -62,17 +62,17 @@ object UserStuff extends RazController {
 
       // TODO optimize this - lots of lookups...
       val races = (root \ "*" \ Race) ++ (root \ "*" \ "Event") ++ (root \ "*" \ "Training")
-      val dates = races.map { race => 
-        val wr = new Snakk.Wrapper(race, races.ctx)
-        (race.mkLink,
-        wr \@ "date",
-        ILink(WID("Venue", wr \@ "venue")),
-        wr 
-        )
+      val dates = races.map { race =>
+	val wr = new Snakk.Wrapper(race, races.ctx)
+	(race.mkLink,
+	wr \@ "date",
+	ILink(WID("Venue", wr \@ "venue")),
+	wr
+	)
       }.filter(_._2 != "")
       // filter those that parse successfuly
       dates.map(x => (x._1, x._2, DateParser.apply(x._2), x._3, x._4)).filter(_._3.successful).map(t => (t._1, t._2, t._3.get, t._4, t._5)
-          )
+	  )
     }
     dates.sortWith((a, b) => a._3 isBefore b._3)
   }
@@ -84,7 +84,7 @@ object UserStuff extends RazController {
   }
 
   // serve public profile
-  def doeUserCreateSomething = Action { implicit request => 
+  def doeUserCreateSomething = Action { implicit request =>
     Ok (views.html.user.doeUserCreateSomething(auth))
     }
 }
@@ -146,19 +146,19 @@ object Maps extends razie.Logging {
   def latlong(addr: String): Option[(String, String)] = {
     try {
       val resp = Snakk.json (
-        Snakk.url(
-          "http://maps.googleapis.com/maps/api/geocode/json?address=" + addr.toUrl + "&sensor=false",
-          Map.empty,
-          //        Map("privatekey" -> "6Ld9uNASAAAAADEg15VTEoHjbLmpGTkI-3BE3Eax", "remoteip" -> "kk", "challenge" -> challenge, "response" -> response),
-          "GET"))
+	Snakk.url(
+	  "http://maps.googleapis.com/maps/api/geocode/json?address=" + addr.toUrl + "&sensor=false",
+	  Map.empty,
+	  //	    Map("privatekey" -> "6Ld9uNASAAAAADEg15VTEoHjbLmpGTkI-3BE3Eax", "remoteip" -> "kk", "challenge" -> challenge, "response" -> response),
+	  "GET"))
 
       Some((
-        resp \ "results" \ "geometry" \ "location" \@@ "lat",
-        resp \ "results" \ "geometry" \ "location" \@@ "lng"))
+	resp \ "results" \ "geometry" \ "location" \@@ "lat",
+	resp \ "results" \ "geometry" \ "location" \@@ "lng"))
     } catch {
       case e @ (_ :Throwable) => {
-        error ("ERR_COMMS can't geocode address", e)
-        None
+	error ("ERR_COMMS can't geocode address", e)
+	None
       }
     }
   }

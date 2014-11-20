@@ -1,7 +1,7 @@
 /**
  *   ____    __    ____  ____  ____,,___     ____  __  __  ____
- *  (  _ \  /__\  (_   )(_  _)( ___)/ __)   (  _ \(  )(  )(  _ \           Read
- *   )   / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <     README.txt
+ *  (  _ \  /__\  (_   )(_  _)( ___)/ __)   (  _ \(  )(  )(  _ \	   Read
+ *   )	 / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <     README.txt
  *  (_)\_)(__)(__)(____)(____)(____)(___/   (__)  (______)(____/    LICENSE.txt
  */
 package model
@@ -67,7 +67,7 @@ abstract class WikiConfig {
     if(res.isEmpty) {
       // look for configured tags
      tags.flatMap(t=>config(URLCANON).flatMap(_.filterKeys(k=>t.contains(k)).headOption)).map { site=>
-        res = Some(site._2 + "/" + wpath)
+	res = Some(site._2 + "/" + wpath)
       }
     }
 
@@ -95,10 +95,10 @@ abstract class WikiConfig {
   def realm(implicit request: Request[_]) = {
     if(request.host contains "localhost") WikiConfig.RK else {
       config("realm").map { m =>
-        PlayTools.getHost match {
-          case Some(x) if m contains x => m(x)
-          case _ => WikiConfig.RK
-        }
+	PlayTools.getHost match {
+	  case Some(x) if m contains x => m(x)
+	  case _ => WikiConfig.RK
+	}
       } getOrElse WikiConfig.RK
     }
   }
@@ -122,7 +122,7 @@ abstract class WikiConfig {
 
   final val URLCFG = "urlcfg"
   final val URLCANON = "urlcanon"
-  final val URLMAP = "urlmap" 
+  final val URLMAP = "urlmap"
   final val URLFWD = "urlfwd"
   final val SITECFG = "sitecfg"
   final val TOPICRED = "topicred"

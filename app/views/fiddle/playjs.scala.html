@@ -2,9 +2,9 @@
 a JS with HTML and CSS fiddle
 **************@
 
-@(name:String, 
+@(name:String,
    args:Map[String,String],
-   content:(String, String, String, String), 
+   content:(String, String, String, String),
    au:Option[model.User],
    id:String = java.lang.System.currentTimeMillis().toString())
 
@@ -29,7 +29,7 @@ var resettabs = function(lid, id) {
    document.getElementById('css_'+id).className='';
    document.getElementById('js_'+id).className='';
    document.getElementById('run_'+id).className='';
-   
+
    document.getElementById(lid).className='active';
 }
 
@@ -70,9 +70,9 @@ var decscr = function (s) {
     </div>
     </td><td width="50%">
       @if(_root_.admin.Config.theme.contains("light")) {
-        <iframe id="iframe_@id" name="iframe_@id" style="width:100%; height:249px; border:0;"></iframe>
+	<iframe id="iframe_@id" name="iframe_@id" style="width:100%; height:249px; border:0;"></iframe>
       } else {
-        <iframe id="iframe_@id" name="iframe_@id" style="width:100%; height:249px; border:0; background-color:gray;"></iframe>
+	<iframe id="iframe_@id" name="iframe_@id" style="width:100%; height:249px; border:0; background-color:gray;"></iframe>
       }
   </td></tr></table>
 
@@ -98,7 +98,7 @@ var decscr = function (s) {
 @hh() = @{
    args.get("libs").toList.flatMap(_.split(";")).map {
       case ("raphael") =>
-        """<scrRAZipt src="/assets/vendor/raphael.js"></scrRAZipt><scrRAZipt src="/assets/vendor/axis.js"></scrRAZipt>""".stripMargin
+	"""<scrRAZipt src="/assets/vendor/raphael.js"></scrRAZipt><scrRAZipt src="/assets/vendor/axis.js"></scrRAZipt>""".stripMargin
    }.mkString("\n")
 }
 
@@ -166,7 +166,7 @@ var jsh = function(code) {
   //jsh(editor.getValue());
 
   var razChanged=true;
-  
+
   editor.getSession().on('change', function(e) {
     razChanged=true;
     //var j=editor.getValue();
@@ -180,12 +180,12 @@ setInterval(function(){
      razChanged=false;
      }
 },500);
-   
+
 </script>
 
       </div>
 
       <hr>
       @htmlFooter(ads = true)
-    
+
 @htmlBottom()

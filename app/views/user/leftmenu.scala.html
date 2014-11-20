@@ -4,7 +4,7 @@
   if(i == item) "active" else ""
 }
 
-<div class="well span2"> 
+<div class="well span2">
   <ul class="nav nav-list">
     <li class="@active(0)"><a href="@routes.Profile.doeHelp"><i class="icon-question-sign"></i>Help</a></li>
     <li class="@active(1)"><a href="@routes.Profile.doeProfile"><i class="icon-edit"></i>Basic profile</a></li>
@@ -21,7 +21,7 @@
     <li class="@active(6)"><a href="@routes.Club.doeClubKids"><i class="icon-user"></i>Members</a></li>
     <li class="@active(12)"><a href="@routes.Tribe.doeClubTribes"><i class="icon-list"></i>Tribes</a></li>
     <li class="@active(15)"><a href="@routes.Club.doeVol"><i class="icon-user"></i>Volunteers</a></li>
-} 
+}
 
 @if(! user.isClub && user.hasRealm(model.Wikis.RK)) {
     <hr>
@@ -33,7 +33,7 @@
        <li><a href="@routes.Profile.profile2(c.id)">@c.ename</a></li>
       }
     </ul>
-} 
+}
 
 @if(! user.isClub && user.hasRealm(model.Reactors.NOTES)) {
 }

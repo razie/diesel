@@ -2,7 +2,7 @@
 @import org.bson.types.ObjectId
 
 @htmlHeadBar("Volunteer hours", Option(user))
-   
+
 <div class="container"> <div class="row">
 @views.html.user.leftmenu(15, user)
 
@@ -15,22 +15,22 @@
 @vols=@{
   for (vh <- model.RacerKidz.findVolByRkaId(rkaid)) yield
     Map("hours"->vh.hours.toString,
-    	"desc"->vh.desc,
-    	"when"->vh.crDtm.toString("dd-MM"),
-    	"delete"->vh._id.toString
-    	)
+	"desc"->vh.desc,
+	"when"->vh.crDtm.toString("dd-MM"),
+	"delete"->vh._id.toString
+	)
 }
 
 @mnglink(row:Map[String,String],k:String,v:String)={
   @k match {
-  	case "delete" => {
+	case "delete" => {
       <a href="@routes.Club.doeVolDelete(rkaid, v)" class="btn btn-mini">Delete</a>
-      } 
+      }
     case _ => { @v }
   }
 }
 
-@util.utilSimpleTable(vols, 
+@util.utilSimpleTable(vols,
 	Seq("hours" -> "Hours", "when" -> "When", "desc"->"Why", "delete" -> "Delete"), Some(mnglink))
 
 

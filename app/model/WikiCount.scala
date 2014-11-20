@@ -1,7 +1,7 @@
 /**
  *   ____    __    ____  ____  ____,,___     ____  __  __  ____
- *  (  _ \  /__\  (_   )(_  _)( ___)/ __)   (  _ \(  )(  )(  _ \           Read
- *   )   / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <     README.txt
+ *  (  _ \  /__\  (_   )(_  _)( ___)/ __)   (  _ \(  )(  )(  _ \	   Read
+ *   )	 / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <     README.txt
  *  (_)\_)(__)(__)(____)(____)(____)(___/   (__)  (______)(____/    LICENSE.txt
  */
 package model
@@ -12,11 +12,11 @@ import org.bson.types.ObjectId
 /** keep track of views, per wiki page id */
 @db.RTable
 case class WikiCount (
-  pid: ObjectId, 
+  pid: ObjectId,
   count: Long = 1
   ) {
   def inc = {
-    WikiCount.findOne (pid) map (p=> 
+    WikiCount.findOne (pid) map (p=>
       RUpdate noAudit (Map("pid" -> pid), p.copy(count=p.count+1))
     ) orElse {
       RCreate noAudit this

@@ -4,14 +4,14 @@ purge audit tables
 @(map:scala.collection.mutable.HashMap[(String,String),Int], au:Option[model.User])
 
 @data = @{
-	map.groupBy(_._1._1).map(t=> 
-		Map("m"->t._1, 
+	map.groupBy(_._1._1).map(t=>
+		Map("m"->t._1,
 			"ac" -> t._2.get(t._1, "ac").map(_.toString).getOrElse(""),
 			"w" -> t._2.get(t._1, "w").map(_.toString).getOrElse(""),
 			"u" -> t._2.get(t._1, "u").map(_.toString).getOrElse("")
 	)).toList.sortBy(_.get("m")).iterator
 }
-	
+
 @fufu(row:Map[String,String],k:String,v:String) = {
   @k match {
     case "ac" if (v.length>0) => {
@@ -43,10 +43,9 @@ right click and save-as directly - as soon as you see them, they're gone!
     <hr>
     <a href="/razadmin/clearauditall">clear all</a>
     <hr>
-      
+
     @htmlFooter()
 
   </div> <!-- /container -->
 
   @htmlBottom()
-    

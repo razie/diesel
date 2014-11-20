@@ -1,4 +1,4 @@
-@*********** 
+@***********
   user manages Tribes
 ***********@
 @(user:model.User)
@@ -8,7 +8,7 @@
 <div class="container">
 <div class="row">
   @views.html.user.leftmenu(14, user)
-   
+
 <div class="span9">
 
 @regs=@{
@@ -28,21 +28,21 @@
 
 @mnglink(row:Map[String,String],k:String,v:String)={
   @k match {
-  	case "m" => {
+	case "m" => {
       <a href="@routes.Club.doeClubUserReg(v)" class="btn btn-mini">More...</a>
-      } 
+      }
     case "status" => {
   @v match {
-  	case PENDING => {<font style="color:red">}
-  	case CURRENT => {<font style="color:green">}
-  	case ACCEPTED => {<font style="color:yellow">}
-  	case EXPIRED => {<font style="color:ref">}
-  	case FAMILY  => {<font style="color:green">}
-  	case _ => {<font>}
+	case PENDING => {<font style="color:red">}
+	case CURRENT => {<font style="color:green">}
+	case ACCEPTED => {<font style="color:yellow">}
+	case EXPIRED => {<font style="color:ref">}
+	case FAMILY  => {<font style="color:green">}
+	case _ => {<font>}
   }
   @v
   </font>
-  } 
+  }
   case _ => {@v}
   }
 }
@@ -55,11 +55,10 @@
   @util.utilSimpleTable(tab, Seq("club" -> "Club", "year"->"Year", "role"->"Role", "status" -> "Status", "m"->"More"), Some(mnglink))
 ****@
 
-  </div> 
+  </div>
   </div> <!-- /row -->
   <hr>
   @htmlFooter(ads=true)
   </div> <!-- /container -->
 
 @htmlBottom()
-    

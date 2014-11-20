@@ -7,12 +7,13 @@ import play.api.mvc.Request
  */
 object PlayTools {
   def getHost (implicit request: Request[_]) =
-    if(request.headers.get("X-FORWARDED-HOST").exists(_ startsWith "localhost:"))
-      Some("www.racerkidz.com")    // for testing locally
-    //      Some("www.enduroschool.com")    // for testing locally
-    //      Some("www.glacierskiclub.com")    // for testing locally
-    //      Some("www.nofolders.net")    // for testing locally
-    //      Some("www.dieselreactor.net")    // for testing locally
+    if(Config.isLocalhost) //request.headers.get("X-FORWARDED-HOST").exists(_ startsWith "localhost:"))
+//	Some("www.racerkidz.com")    // for testing locally
+	  Some("re9.coolscala.com")    // for testing locally
+    //	    Some("www.enduroschool.com")    // for testing locally
+    //	    Some("www.glacierskiclub.com")    // for testing locally
+    //	    Some("www.nofolders.net")	 // for testing locally
+    //	    Some("www.dieselreactor.net")    // for testing locally
     else
       request.headers.get("X-FORWARDED-HOST")
 }

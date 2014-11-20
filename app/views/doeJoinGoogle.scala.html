@@ -4,14 +4,14 @@
 @import _root_.admin.Config.realm
 
 @htmlHeadBar("Login/register with Google", None, realm)
-   
+
 <div class="container">
   <div class="hero-unit">
     <div class="row">
       <div class="span6">
-        <h1>Welcome!</h1>
-        <br>
-        @wiki.wikiFragInt("Admin:page-join-google", None)
+	<h1>Welcome!</h1>
+	<br>
+	@wiki.wikiFragInt("Admin:page-join-google", None)
       </div>
 
       <div class="span4">
@@ -20,26 +20,26 @@
 
 @helper.form(action=routes.Profile.doeJoin2Google, 'class->"well") {
   @helper.inputText(
-    registerForm("email"), 
+    registerForm("email"),
     '_label -> "Email",
     '_showConstraints -> false)
   @helper.inputPassword(
-    registerForm("password"), 
-    '_label -> "Password", 
+    registerForm("password"),
+    '_label -> "Password",
     '_showConstraints -> false,
     '_error->registerForm.error("password"))
-    
+
   <button type="submit" class="btn btn-primary">Login</button>
 
   <input type="hidden" type="text" name="repassword">
 
   @registerForm.globalError.map { err=>
      <p style="color:red;font-weight:bold">@err.message</p>
-  } 
-  
+  }
+
   <p><small>By registering or logging in, you agree to the <a href="@controllers.Wiki.w("Admin", "Terms of Service-"+realm)">Terms of Service</a></small><p>
   }
-  
+
        </div>
       </div>
     </div>
@@ -59,7 +59,7 @@
     // Filter the emails object to find the user's primary account, which might
     // not always be the first in the array. The filter() method supports IE9+.
     email = obj['emails'].filter(function(v) {
-        return v.type === 'account'; // Filter out the primary email
+	return v.type === 'account'; // Filter out the primary email
     })[0].value; // get the email from the filtered results, should always be defined.
 
     console.log(profile);
@@ -70,21 +70,21 @@
     $.ajax({
       type: 'POST',
       url: '/doe/join/gtoken',
-    //        contentType: 'application/octet-stream; charset=utf-8',
-//      contentType: 'text/plain; charset=utf-8',
+    //	      contentType: 'application/octet-stream; charset=utf-8',
+//	contentType: 'text/plain; charset=utf-8',
       success: function(result) {
     // Handle or verify the server response if necessary.
 
     // Prints the list of people that the user has allowed the app to know
     // to the console.
 
-        if (result['profile'] && result['people']){
-          $('#results').html('Hello ' + result['profile']['displayName'] + '. You successfully made a server side call to people.get and people.list');
-        } else {
-          $('#results').html('Failed to make a server-side call. Check your configuration and console.');
-        }
+	if (result['profile'] && result['people']){
+	  $('#results').html('Hello ' + result['profile']['displayName'] + '. You successfully made a server side call to people.get and people.list');
+	} else {
+	  $('#results').html('Failed to make a server-side call. Check your configuration and console.');
+	}
       },
-//      processData: false,
+//	processData: false,
     data: {
     code : gauthResult['code'],
     email:email,
@@ -98,8 +98,8 @@
     function signInCallback(authResult) {
       if (authResult['code']) {
 
-        // Hide the sign-in button now that the user is authorized, for example:
-        $('#signinButton').attr('style', 'display: none');
+	// Hide the sign-in button now that the user is authorized, for example:
+	$('#signinButton').attr('style', 'display: none');
 
       gauthResult = authResult;
 
@@ -119,4 +119,3 @@
   @htmlFooter(false, false, realm)
 </div> <!-- /container -->
 @htmlBottom()
-    

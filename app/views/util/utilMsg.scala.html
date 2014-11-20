@@ -8,10 +8,10 @@ display a message with navigation (next)
 
 <div class="container">
   <div class="well">
-  
+
     <h3>@Html(model.Wikis.format(model.WID("?","?"), model.Wikis.MD, msg))</h3>
     <br>
-    
+
     @next.map { n=>
       <a class="btn btn-primary btn-large" href="@n">Continue</a>
      }
@@ -26,4 +26,3 @@ display a message with navigation (next)
 </div> <!-- /container -->
 
 @htmlBottom()
-    

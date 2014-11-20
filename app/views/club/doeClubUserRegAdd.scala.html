@@ -1,4 +1,4 @@
-@*********** 
+@***********
   add a member to a registration
 ***********@
 @(kid:model.RacerKid, next:String, user:model.User, reg:model.Reg)
@@ -11,7 +11,7 @@
 <div class="container">
 <div class="row">
   @views.html.user.leftmenu(10, user)
-   
+
 <div class="span9">
 
 <h2>Adding @kid.info.firstName to club @reg.clubName</h2>
@@ -24,13 +24,12 @@
 }
 
 <hr>
-<p>Some of these roles will automatically add more forms to complete for this registration, while some will not... 
+<p>Some of these roles will automatically add more forms to complete for this registration, while some will not...
 
-  <hr>  
+  <hr>
   @htmlFooter()
   </div> <!-- /container -->
   </div> <!-- /container -->
   </div> <!-- /container -->
 
 @htmlBottom()
-    

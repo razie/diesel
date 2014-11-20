@@ -1,7 +1,7 @@
 /**
  *   ____    __    ____  ____  ____,,___     ____  __  __  ____
- *  (  _ \  /__\  (_   )(_  _)( ___)/ __)   (  _ \(  )(  )(  _ \           Read
- *   )   / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <     README.txt
+ *  (  _ \  /__\  (_   )(_  _)( ___)/ __)   (  _ \(  )(  )(  _ \	   Read
+ *   )	 / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <     README.txt
  *  (_)\_)(__)(__)(____)(____)(____)(___/   (__)  (______)(____/    LICENSE.txt
  */
 package model
@@ -86,7 +86,7 @@ case class WikiEntry(
       if(wid.cat=="Note") AUDIT_NOTE_CREATED else AUDIT_WIKI_CREATED,
       s"/wiki/${wid.wpath}",
       "BY " + (WikiUsers.impl.findUserById(this.by).map(_.userName).getOrElse(this.by.toString)) +
-        " " + category + ":" + name)
+	" " + category + ":" + name)
     Wikis.weTable(wid.cat) += grater[WikiEntry].asDBObject(Audit.createnoaudit(this))
     Wikis.shouldFlag(name, label, content).map(auditFlagged(_))
     Wikis(realm).index.create(this)
@@ -148,7 +148,7 @@ case class WikiEntry(
     // add hardcoded attribute - these can be overriden by tags in content
     WikiParser.SState(s.s,
       Map("category" -> category, "name" -> name, "label" -> label, "url" -> (category + ":" + name),
-        "tags" -> tags.mkString(",")) ++ s.tags,
+	"tags" -> tags.mkString(",")) ++ s.tags,
       s.ilinks, s.decs)
   }
 
@@ -224,7 +224,7 @@ case class UWID(cat: String, id:ObjectId, realm:Option[String]=None) {
   def nameOrId = wid.map(_.name).getOrElse(id.toString)
   lazy val grated     = grater[UWID].asDBObject(this)
   lazy val page = Wikis(getRealm).find(this)
-  
+
   /** get the realm or the default */
   def getRealm = realm.getOrElse(Wikis.DFLT)
 
@@ -277,11 +277,11 @@ case class WID(cat: String, name: String, parent: Option[ObjectId] = None, secti
   def findId = {
     WikiIndex.withIndex(getRealm) { idx =>
       if(! cat.isEmpty)
-        idx.get2(name, this)
+	idx.get2(name, this)
       else {
-        // try the nocats
-        idx.get1k(name).filter(x=>WID.NOCATS.contains(x.cat)).headOption.flatMap(x=>idx.get2(name, x))
-        //todo maybe forget this branch and enhance equals to look at nocats ?
+	// try the nocats
+	idx.get1k(name).filter(x=>WID.NOCATS.contains(x.cat)).headOption.flatMap(x=>idx.get2(name, x))
+	//todo maybe forget this branch and enhance equals to look at nocats ?
       }
     } orElse Wikis.find(this).map(_._id)
   }
@@ -329,13 +329,13 @@ object WID {
   private def widFromSeg(a: Array[String]) = {
     val w = a.map { x =>
       x match {
-        case REGEX(c, n, s) => WID(
-          (if (c == null) "" else c.replaceFirst("[^.]+\\.", "")).replaceFirst(":", ""),
-          n,
-          None,
-          Option(s).filter(_.length > 1).map(_.substring(1)),
-          if(c != null && c.contains(".")) Some(c.replaceFirst("\\..*", "")) else None)
-        case _ => UNKNOWN
+	case REGEX(c, n, s) => WID(
+	  (if (c == null) "" else c.replaceFirst("[^.]+\\.", "")).replaceFirst(":", ""),
+	  n,
+	  None,
+	  Option(s).filter(_.length > 1).map(_.substring(1)),
+	  if(c != null && c.contains(".")) Some(c.replaceFirst("\\..*", "")) else None)
+	case _ => UNKNOWN
       }
     }
     val res = w.foldLeft[Option[WID]](None)((x, y) => Some(WID(y.cat, y.name, x.flatMap(_.findId), y.section, y.realm)))
@@ -356,30 +356,31 @@ object WID {
       None
     else {
       // TODO optimize this copy/paste later
-      Array("/xp/", "/xpl/", "/tag/", "/rss.xml").collectFirst {
-        case tag if path contains tag => {
-          val b = path split tag
-          val a = b.head split "/"
-          CMDWID(b.headOption, widFromSeg(a), tag.replaceAllLiterally("/", ""), b.tail.headOption.getOrElse(""))
-        }
+      //todo if the name contains the sequence /debug this won't work - should check i.e. /debug$
+      Array("/xp/", "/xpl/", "/tag/", "/rss.xml", "/debug").collectFirst {
+	case tag if path contains tag => {
+	  val b = path split tag
+	  val a = b.head split "/"
+	  CMDWID(b.headOption, widFromSeg(a), tag.replaceAllLiterally("/", ""), b.tail.headOption.getOrElse(""))
+	}
       } orElse Some(CMDWID(Some(path), widFromSeg(path split "/"), "", ""))
 
-//      if (path contains "/xp/") {
-//        val b = path split "/xp/"
-//        val a = b.head split "/"
-//        Some(CMDWID(b.headOption, widFromSeg(a), "xp", b.tail.headOption.getOrElse("")))
-//      } else if (path contains "/xpl/") {
-//        val b = path split "/xpl/"
-//        val a = b.head split "/"
-//        Some(CMDWID(b.headOption, widFromSeg(a), "xpl", b.tail.headOption.getOrElse("")))
-//      } else if (path contains "/tag/") {
-//        val b = path split "/tag/"
-//        val a = b.head split "/"
-//        Some(CMDWID(b.headOption, widFromSeg(a), "tag", b.tail.headOption.getOrElse("")))
-//      } else {
-//        val a = path split "/"
-//        Some(CMDWID(Some(path), widFromSeg(a), "", ""))
-//      }
+//	if (path contains "/xp/") {
+//	  val b = path split "/xp/"
+//	  val a = b.head split "/"
+//	  Some(CMDWID(b.headOption, widFromSeg(a), "xp", b.tail.headOption.getOrElse("")))
+//	} else if (path contains "/xpl/") {
+//	  val b = path split "/xpl/"
+//	  val a = b.head split "/"
+//	  Some(CMDWID(b.headOption, widFromSeg(a), "xpl", b.tail.headOption.getOrElse("")))
+//	} else if (path contains "/tag/") {
+//	  val b = path split "/tag/"
+//	  val a = b.head split "/"
+//	  Some(CMDWID(b.headOption, widFromSeg(a), "tag", b.tail.headOption.getOrElse("")))
+//	} else {
+//	  val a = path split "/"
+//	  Some(CMDWID(Some(path), widFromSeg(a), "", ""))
+//	}
     }
   }
 

@@ -6,8 +6,8 @@
 
       <!-- Main hero unit for a primary marketing message or call to action -->
       <div class="well">
-          <h2>Renaming a topic!</h2>
-          <p><strong>Warning</strong> - currently references are not renamed so if any other topic has a reference to this one, the reference will not work anymore! 
+	  <h2>Renaming a topic!</h2>
+	  <p><strong>Warning</strong> - currently references are not renamed so if any other topic has a reference to this one, the reference will not work anymore!
       </div>
 
 <div >
@@ -15,34 +15,34 @@
 
 @helper.form(action=routes.Wikie.wikieRename2(wid), 'class->"well") {
   @helper.inputText(
-    myForm("oldlabel"), 
-    '_class -> "input-xlarge disabled", 
-    '_label -> "Out with the old", 
+    myForm("oldlabel"),
+    '_class -> "input-xlarge disabled",
+    '_label -> "Out with the old",
     'readonly -> "yes",
     '_showConstraints -> false)
   @helper.inputText(
-    myForm("newlabel"), 
-    '_class -> "input-xlarge", 
-    '_label -> "In with the new", 
+    myForm("newlabel"),
+    '_class -> "input-xlarge",
+    '_label -> "In with the new",
     '_showConstraints -> false)
-    
+
     <div class="actions">
       <button type="submit" class="btn btn-primary">Rename it!</button>
       <a href="@controllers.Wiki.w(wid)" class="btn">Nah</a>
   </div>
-  
+
   @myForm.globalError.map { err=>
      <p style="color:red;font-weight:bold">@err.message</p>
-  } 
-  
+  }
+
   <br><small>By updating this page, you agree to the <a href="@controllers.Wiki.w("Terms of Service")Wiki.w("Terms of Service")">Terms of Service</a></small>
 }
 </div>
 
       <div class="well">
-          @wiki.wikiFrag(wid, au)
+	  @wiki.wikiFrag(wid, au)
       </div>
-          
+
       <hr>
 
       @htmlFooter()
@@ -50,4 +50,3 @@
     </div> <!-- /container -->
 
     @htmlBottom()
-    

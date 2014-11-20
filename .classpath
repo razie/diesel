@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
 	<classpathentry kind="src" output=".target" path="app"/>
-	<classpathentry kind="src" path="razeiki-scala"/>
+	<classpathentry kind="src" path="razwiki-scala"/>
 	<classpathentry kind="src" output=".target" path="test"/>
 	<classpathentry kind="src" path="modules/wcommon/app"/>
 	<classpathentry kind="src" path="modules/wiki/app"/>

@@ -5,7 +5,7 @@ club admin manages list of users and registrations
 @import _root_.admin.Config
 
 @htmlHeadBar("Registrations for club " + club.userName, Some(club))
-   
+
 <div class="container ">
   <div class="row">
   @views.html.user.leftmenu(7, club)
@@ -15,12 +15,12 @@ club admin manages list of users and registrations
   @tab=@{
     members.filter(_._1.isDefined).map(t=>
       Map("userName"->t._1.get.userName,
-        "firstName"->t._1.get.firstName,
-        "lastName"->t._1.get.lastName,
-        "role"->t._2.role,
-        "paid"->t._3.map(_.paid).getOrElse(""),
-        "regStatus" -> t._3.map(_.regStatus).getOrElse("n/a"),
-        "uwId"->t._2._id.toString))
+	"firstName"->t._1.get.firstName,
+	"lastName"->t._1.get.lastName,
+	"role"->t._2.role,
+	"paid"->t._3.map(_.paid).getOrElse(""),
+	"regStatus" -> t._3.map(_.regStatus).getOrElse("n/a"),
+	"uwId"->t._2._id.toString))
   }
 
 @allforms=@{
@@ -38,18 +38,18 @@ club admin manages list of users and registrations
 
 @mnglink(row:Map[String,String],k:String,v:String)={
   @k match {
-  	case "regStatus" => {
-  		@regStatusColored(v, Some(routes.Club.doeClubReg(id(row)).toString))
-  		}
-  	case "rowClass" => { 
-  		@row.get("regStatus") match {
-  		   case Some(PENDING) => { class="error" }
-  		   case Some(ACCEPTED) | Some(CURRENT) | Some(FAMILY) => { class="success" }
-  		   case _ => { }
-  		}
-  		}
+	case "regStatus" => {
+		@regStatusColored(v, Some(routes.Club.doeClubReg(id(row)).toString))
+		}
+	case "rowClass" => {
+		@row.get("regStatus") match {
+		   case Some(PENDING) => { class="error" }
+		   case Some(ACCEPTED) | Some(CURRENT) | Some(FAMILY) => { class="success" }
+		   case _ => { }
+		}
+		}
     case _ => { @v }
-  } 
+  }
 }
 
 <h2>Registration management panel for @club.firstName</h2>
@@ -65,13 +65,13 @@ club admin manages list of users and registrations
   <small><a href="/doe/club/regs?details=1">More stats (slow)</a></small>
 }
 
-@util.utilSimpleTable(tab.filter(_.apply("role") != "Fan").iterator, 
-	Seq("userName" -> "", 
-		"firstName"->"First", 
-		"lastName"->"Last", 
-		"role"->"Role", 
-		"paid" -> "Paid", 
-		"regStatus" -> "Registration", 
+@util.utilSimpleTable(tab.filter(_.apply("role") != "Fan").iterator,
+	Seq("userName" -> "",
+		"firstName"->"First",
+		"lastName"->"Last",
+		"role"->"Role",
+		"paid" -> "Paid",
+		"regStatus" -> "Registration",
 		"uwId"->""), Some(mnglink))
 
 <p>Send invitation to join club on RacerKidz for new members - copy this link and email it <br>
@@ -81,39 +81,39 @@ club admin manages list of users and registrations
 <br>
 
 @***
-<div class="well">  
+<div class="well">
 <strong>Members not registered</strong> do not have accounts on the site and/or are not included in a registration.
 
 @model.RacerKidz.checkMyself(club._id)
-  
+
 @rks=@{
   model.RacerKidz.findAssocForUser(club._id).filter(_.assoc == ASSOC_PARENT).map(x=>(x,x.rk.get)).map(t=>
-    Map("fname"->t._2.info.firstName, 
-    	"lname"->t._2.info.lastName, 
-    	"role" -> t._2.info.role, 
-    	"button"->t._2._id.toString, 
-    	"associd"->t._1._id.toString, 
-    	"id" -> t._2._id.toString))
+    Map("fname"->t._2.info.firstName,
+	"lname"->t._2.info.lastName,
+	"role" -> t._2.info.role,
+	"button"->t._2._id.toString,
+	"associd"->t._1._id.toString,
+	"id" -> t._2._id.toString))
 }
 
 @kidlink(row:Map[String,String],k:String,v:String)={
   @k match {
-  	case "button" => {
+	case "button" => {
       <a href="@routes.Kidz.doeUserKid(club._id.toString, v, "-", row("associd"), "Club")" class="btn btn-mini">More...</a>
-      } 
+      }
     case _ => {@v}
   }
 }
 
-@util.utilSimpleTable(rks, 
-	Seq("fname" -> "First Name", 
-		"lname"->"Last Name", 
-		"role" -> "Role", 
+@util.utilSimpleTable(rks,
+	Seq("fname" -> "First Name",
+		"lname"->"Last Name",
+		"role" -> "Role",
 		"button"->"Details"), Some(kidlink))
 
 Add more from <a href="@routes.Club.doeClubKids">here</a>
 
-</div> 
+</div>
 
 ***@
 
@@ -137,12 +137,12 @@ Add more from <a href="@routes.Club.doeClubKids">here</a>
 <hr>
 <h4>Former members and fans (should not register)</h4>
 
-@util.utilSimpleTable(tab.filter(_.apply("role") == "Fan").iterator, 
-	Seq("userName" -> "", 
-		"firstName"->"First", 
-		"lastName"->"Last", 
-		"role"->"Role", 
-		"regStatus" -> "Registration", 
+@util.utilSimpleTable(tab.filter(_.apply("role") == "Fan").iterator,
+	Seq("userName" -> "",
+		"firstName"->"First",
+		"lastName"->"Last",
+		"role"->"Role",
+		"regStatus" -> "Registration",
 		"uwId"->""), Some(mnglink))
 
 @*** TODO show members that don't like the club anymore - ex memebers with old regs ***@
@@ -160,4 +160,3 @@ Add more from <a href="@routes.Club.doeClubKids">here</a>
 </div> <!-- /container -->
 
 @htmlBottom()
-    

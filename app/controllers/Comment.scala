@@ -20,14 +20,14 @@ object Comment extends RazController with Logging {
     implicit val errCollector = new VErrors()
     commentForm.bindFromRequest.fold(
       formWithErrors => //todo fix realm
-        Msg2(formWithErrors.toString + "Hein?", Some(routes.Wiki.showId(topicId, Wikis.RK).url)),
+	Msg2(formWithErrors.toString + "Hein?", Some(routes.Wiki.showId(topicId, Wikis.RK).url)),
       {
-        case (link, content) => iadd(topicId, what, oid, None, content).apply(request).value.get.get
+	case (link, content) => iadd(topicId, what, oid, None, content).apply(request).value.get.get
       })
   }
 
-  def kopt (kind:String) = if(Array ("video","photo","slideshow") contains kind) Some(kind) else None 
-  
+  def kopt (kind:String) = if(Array ("video","photo","slideshow") contains kind) Some(kind) else None
+
   /** add a comment **/
   private def iadd(topicId: String, kind: String, oid: String, link:Option[String], content: String) = Action { implicit request =>
     implicit val errCollector = new VErrors()
@@ -37,18 +37,18 @@ object Comment extends RazController with Logging {
     ) yield {
       val cs = model.Comments.findForWiki(new ObjectId(topicId)).getOrElse(CommentStream(new ObjectId(topicId), "Wiki").create)
       if (!cs.isDuplo(oid)) {
-        cs.addComment(au, content, oid, link, kopt(kind))
-        // TODO send email to parent if kid
+	cs.addComment(au, content, oid, link, kopt(kind))
+	// TODO send email to parent if kid
 
-        admin.SendEmail.withSession { implicit mailSession =>
-          au.shouldEmailParent("Everything").map(parent => Emailer.sendEmailChildCommentWiki(parent, au, w.wid))
+	admin.SendEmail.withSession { implicit mailSession =>
+	  au.shouldEmailParent("Everything").map(parent => Emailer.sendEmailChildCommentWiki(parent, au, w.wid))
 
-          // email creator and all other commenters
-          Wikis.findById(topicId).map { w =>
-            (Users.findUserById(w.by).map(_._id).toList ++ cs.comments.map(_.userId)).distinct.filter(_ != au._id).map(uid =>
-              Users.findUserById(uid).map(u => Emailer.sendEmailNewComment(u, au, w.wid)))
-          }
-        }
+	  // email creator and all other commenters
+	  Wikis.findById(topicId).map { w =>
+	    (Users.findUserById(w.by).map(_._id).toList ++ cs.comments.map(_.userId)).distinct.filter(_ != au._id).map(uid =>
+	      Users.findUserById(uid).map(u => Emailer.sendEmailNewComment(u, au, w.wid)))
+	  }
+	}
       } else log("ERR_DUPLO_COMMENT")
       Redirect(routes.Wiki.showId(topicId, Wikis.RK)) //todo fix realm
     }) getOrElse {
@@ -60,19 +60,19 @@ object Comment extends RazController with Logging {
     implicit val errCollector = new VErrors()
     commentForm.bindFromRequest.fold(
       formWithErrors =>
-        Msg2(formWithErrors.toString + "Hein?", Some("/wiki/id/" + topicId)),
+	Msg2(formWithErrors.toString + "Hein?", Some("/wiki/id/" + topicId)),
       {
-        case (link, content) =>
-          (for (
-            au <- activeUser;
-            cs <- model.Comments.findForWiki(new ObjectId(topicId)) orErr ("No comments for this page...");
-            parent <- cs.comments.find(_._id.toString == replyId) orErr ("Can't find the comment to reply to...")
-          ) yield {
-            cs.addComment(au, content, oid, None, None, Some(parent._id))
-            Redirect(routes.Wiki.showId(topicId, Wikis.RK)) //todo fix realm
-          }) getOrElse {
-            Unauthorized("Oops - cannot add comment... " + errCollector.mkString)
-          }
+	case (link, content) =>
+	  (for (
+	    au <- activeUser;
+	    cs <- model.Comments.findForWiki(new ObjectId(topicId)) orErr ("No comments for this page...");
+	    parent <- cs.comments.find(_._id.toString == replyId) orErr ("Can't find the comment to reply to...")
+	  ) yield {
+	    cs.addComment(au, content, oid, None, None, Some(parent._id))
+	    Redirect(routes.Wiki.showId(topicId, Wikis.RK)) //todo fix realm
+	  }) getOrElse {
+	    Unauthorized("Oops - cannot add comment... " + errCollector.mkString)
+	  }
       })
   }
 
@@ -86,7 +86,7 @@ object Comment extends RazController with Logging {
       val pat = ("(?s)\\{\\{"+kind+" ([^}]*)\\}\\}(.*)").r
       val pat(l,c) = content
       (l,c)
-    } else 
+    } else
       ("", content)
   }
 
@@ -108,39 +108,39 @@ object Comment extends RazController with Logging {
     implicit val errCollector = new VErrors()
     commentForm.bindFromRequest.fold(
       formWithErrors => {
-        log(formWithErrors.toString)
-        BadRequest(views.html.comments.commEdit(wid, cid, kind, formWithErrors, auth))
+	log(formWithErrors.toString)
+	BadRequest(views.html.comments.commEdit(wid, cid, kind, formWithErrors, auth))
       },
       {
-        case (newlink, newcontent) =>
-          val con = if (newlink.length <= 0) newcontent else {
-          (kind match {
-            case "video" => 
-              if ((newlink contains "<a href") || (newlink contains "<iframe")) newlink
-              else "{{video " + newlink + "}}"
-            case "photo" => 
-              if ((newlink contains "<a href") || (newlink contains "<img")) newlink
-              else "{{photo " + newlink + "}}"
-            case "slideshow" => 
-              if ((newlink contains "<a href") || (newlink contains "<iframe") || (newlink contains "<embed")) newlink
-              else "{{slideshow " + newlink + "}}"
-            case _ => ""
-          }) + (if(newcontent.trim.length > 0) ("\n\n"+newcontent.trim) else "")
-          }
+	case (newlink, newcontent) =>
+	  val con = if (newlink.length <= 0) newcontent else {
+	  (kind match {
+	    case "video" =>
+	      if ((newlink contains "<a href") || (newlink contains "<iframe")) newlink
+	      else "{{video " + newlink + "}}"
+	    case "photo" =>
+	      if ((newlink contains "<a href") || (newlink contains "<img")) newlink
+	      else "{{photo " + newlink + "}}"
+	    case "slideshow" =>
+	      if ((newlink contains "<a href") || (newlink contains "<iframe") || (newlink contains "<embed")) newlink
+	      else "{{slideshow " + newlink + "}}"
+	    case _ => ""
+	  }) + (if(newcontent.trim.length > 0) ("\n\n"+newcontent.trim) else "")
+	  }
 
-          Comments.findCommentById(cid) map { comm =>
-            (for (
-              au <- activeUser;
-              can <- canEdit(comm, auth) orErr ("can only edit your comments")
-            ) yield {
-              if (con.length > 0) comm.update(con, None, au)
-              Redirect(controllers.Wiki.w(wid, false))
-            }) getOrElse
-              noPerm(wid)
-          } getOrElse {
-            if (con.length > 0) iadd(wid.findId.get.toString, kind, cid, kopt(newlink), con).apply(request).value.get.get
-            else  Redirect(controllers.Wiki.w(wid, false))
-          }
+	  Comments.findCommentById(cid) map { comm =>
+	    (for (
+	      au <- activeUser;
+	      can <- canEdit(comm, auth) orErr ("can only edit your comments")
+	    ) yield {
+	      if (con.length > 0) comm.update(con, None, au)
+	      Redirect(controllers.Wiki.w(wid, false))
+	    }) getOrElse
+	      noPerm(wid)
+	  } getOrElse {
+	    if (con.length > 0) iadd(wid.findId.get.toString, kind, cid, kopt(newlink), con).apply(request).value.get.get
+	    else  Redirect(controllers.Wiki.w(wid, false))
+	  }
       })
   }
 
@@ -150,8 +150,8 @@ object Comment extends RazController with Logging {
     (for (
       au <- activeUser;
       w <- Wikis.findById(cat,topic) orErr "Wiki topic not found"
-    //      comm <- Comments.findCommentById(cid) orErr ("bad comment id?");
-    //      can <- canEdit(comm, auth) orErr ("can only edit your comments")
+    //	    comm <- Comments.findCommentById(cid) orErr ("bad comment id?");
+    //	    can <- canEdit(comm, auth) orErr ("can only edit your comments")
     ) yield {
       Ok(views.html.comments.commEdit(w.wid, oid, kind, commentForm.fill("", ""), auth))
     }) getOrElse
