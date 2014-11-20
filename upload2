@@ -1,7 +1,0 @@
-
-cmd /C "play package"
-
-scp target/scala-2.10/racerkidz_2.10-0.1.3-SNAPSHOT.jar modules/wcommon/target/scala-2.10/wcommon_2.10-0.1.3-SNAPSHOT.jar modules/wiki/target/scala-2.10/wiki_2.10-0.1.3-SNAPSHOT.jar cloud2a.razie.com:rk/up/
-
-ssh cloud2a.razie.com ". ~/.bashrc; cd ~/rk; . ./update"
-

@@ -1,3 +1,0 @@
-
-ssh demo@cloud3.apefsjdolj.ro "cd ~/rk/app/run/logs; tail -f log.log"
-

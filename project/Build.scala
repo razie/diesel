@@ -26,14 +26,15 @@ object ApplicationBuild extends Build {
     "com.tristanhunt"    %% "knockoff"           % "0.8.1",
     "org.scalaz"         %% "scalaz-core"        % "7.0.3",
     "org.scalatest"      %% "scalatest"          % "1.9.2",
+    "com.typesafe"        % "config"             % "1.2.1",
 
     "com.razie"          %% "base"               % "0.6.6-SNAPSHOT",
     "com.razie"          %% "snakked"            % "0.6.6-SNAPSHOT",
-    "com.razie"          %% "scripster"          % "0.8.6-SNAPSHOT"
+    "com.razie"          %% "scripster-core"     % "0.8.6-SNAPSHOT"
     )
 
-    val repos = Seq("snapshots" at "https://oss.sonatype.org/content/repositories/snapshots",
-                    "releases"  at "https://oss.sonatype.org/content/repositories/releases")
+  val repos = Seq("snapshots" at "https://oss.sonatype.org/content/repositories/snapshots",
+                  "releases"  at "https://oss.sonatype.org/content/repositories/releases")
 
 /*
   val main = play.Project(appName, appVersion, appDependencies).settings(
@@ -65,6 +66,7 @@ object ApplicationBuild extends Build {
   val main = play.Project(appName, appVersion, appDependencies).settings(
       routesImport  += "model.Binders._",
       resolvers    ++= repos,
+      unmanagedSourceDirectories in Compile += baseDirectory.value / "../razwiki/common",
       sources in doc in Compile := List()
     ).dependsOn (
        wcommon, wiki

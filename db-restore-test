@@ -1,8 +1,0 @@
-#
-# RESET the test.racerkidz.com database to the latest production dump
-#
-
-#scp db/dump.tar.gz cloud3a.razie.com:/home/razvanc/rk/db/dump.tar.gz
-
-ssh cloud3a.razie.com "cd ~/rk; . ./dbr-restore-test"
-
