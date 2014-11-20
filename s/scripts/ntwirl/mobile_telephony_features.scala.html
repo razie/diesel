@@ -1,0 +1,61 @@
+@(reqItems: java.util.Map[String,
+com.sigma.omp.order.FulfillmentOrderItem], parentKey: String,
+assocNmToSvcKey: java.util.Map[String, String], lineItemKey: String )
+@mobileTelephonyFeatures = @{reqItems.get("Service:MobileTelephonyFeatures")}
+<smpom:item>
+	<cmn:key xsi:type="smpom:SmpEntityOrderItemKey">
+		<cmn:type>
+http://www.sigma-systems.com/smp/43/xsd/JVTSmpOrderManagement/jsr264/v1-0#SmpEntityOrderItemValue
+</cmn:type>
+		<cmn:primaryKey keyType="IdKey">-1</cmn:primaryKey>
+	</cmn:key>
+	<cbebi:action>add</cbebi:action>
+	<smpom:entity xsi:type="smpcbe:SubscriberServiceValue">
+		<cmn:key xsi:type="smpcbe:SubscriberServiceKey">
+			<cmn:type>
+http://www.sigma-systems.com/smp/43/xsd/SubscriberEntity/jsr144/v1-5#SubscriberServiceValue
+</cmn:type>
+			<cmn:primaryKey keyType="ExternalKey">@lineItemKey</cmn:primaryKey>
+		</cmn:key>
+		<cbecore:describedBy>
+			<cbecore:item>
+				<cbecore:value xsi:type="xs:string">@mobileTelephonyFeatures.getManagedEntity().getAttributeValue("CallForwardingUnconditional")</cbecore:value>
+				<cbecore:characteristic>sw_call_forward_unconditional</cbecore:characteristic>
+			</cbecore:item>
+			<cbecore:item>
+				<cbecore:value xsi:type="xs:string">@mobileTelephonyFeatures.getManagedEntity().getAttributeValue("CallHold")</cbecore:value>
+				<cbecore:characteristic>sw_call_hold</cbecore:characteristic>
+			</cbecore:item>
+			<cbecore:item>
+				<cbecore:value xsi:type="xs:string">@mobileTelephonyFeatures.getManagedEntity().getAttributeValue("CallWaiting")</cbecore:value>
+				<cbecore:characteristic>sw_call_waiting</cbecore:characteristic>
+			</cbecore:item>
+			<cbecore:item>
+				<cbecore:value xsi:type="xs:string">n</cbecore:value>
+				<cbecore:characteristic>sw_clip</cbecore:characteristic>
+			</cbecore:item>
+			<cbecore:item>
+				<cbecore:value xsi:type="xs:string">n</cbecore:value>
+				<cbecore:characteristic>sw_clir</cbecore:characteristic>
+			</cbecore:item>
+			<cbecore:item>
+				<cbecore:value xsi:type="xs:string">@mobileTelephonyFeatures.getManagedEntity().getAttributeValue("ThreeWayCalling")</cbecore:value>
+				<cbecore:characteristic>sw_three_way_calling</cbecore:characteristic>
+			</cbecore:item>
+		</cbecore:describedBy>
+		<cbecore:describingSpecificationKey
+			xsi:type="smpcbe:SubscriberServiceSpecificationKey">
+			<cmn:type>
+http://www.sigma-systems.com/smp/43/xsd/SubscriberEntity/jsr144/v1-5#SubscriberServiceSpecificationValue
+</cmn:type>
+			<cmn:primaryKey>SubSvcSpec:mobile_telephony_features</cmn:primaryKey>
+		</cbecore:describingSpecificationKey>
+		<smpcbe:externalKey>@lineItemKey</smpcbe:externalKey>
+		<smpcbe:parentKey>
+			<cmn:type>
+http://www.sigma-systems.com/smp/43/xsd/SubscriberEntity/jsr144/v1-5#SubscriberServiceValue
+</cmn:type>
+			<cmn:primaryKey keyType="ExternalKey">@parentKey</cmn:primaryKey>
+		</smpcbe:parentKey>
+	</smpom:entity>
+</smpom:item>

@@ -1,0 +1,31 @@
+@(reqItems: java.util.Map[String,
+com.sigma.omp.order.FulfillmentOrderItem], parentKey: String,
+assocNmToSvcKey: java.util.Map[String, String], lineItemKey: String )
+
+@mobileVoiceService = @{reqItems.get("Service:MobileVoiceService")}
+<smpom:item>
+	@eItemKey
+	<cbebi:action>add</cbebi:action>
+	<smpom:entity xsi:type="smpcbe:SubscriberServiceValue">
+		<cmn:key xsi:type="smpcbe:SubscriberServiceKey">
+			<cmn:type>
+http://www.sigma-systems.com/smp/43/xsd/SubscriberEntity/jsr144/v1-5#SubscriberServiceValue
+</cmn:type>
+			<cmn:primaryKey keyType="ExternalKey">@lineItemKey</cmn:primaryKey>
+		</cmn:key>
+		<cbecore:describingSpecificationKey
+			xsi:type="smpcbe:SubscriberServiceSpecificationKey">
+			<cmn:type>
+http://www.sigma-systems.com/smp/43/xsd/SubscriberEntity/jsr144/v1-5#SubscriberServiceSpecificationValue
+</cmn:type>
+			<cmn:primaryKey>SubSvcSpec:mobile_telephony_composed</cmn:primaryKey>
+		</cbecore:describingSpecificationKey>
+		<smpcbe:externalKey>@lineItemKey</smpcbe:externalKey>
+		<smpcbe:parentKey>
+			<cmn:type>
+http://www.sigma-systems.com/smp/43/xsd/SubscriberEntity/jsr144/v1-5#SubscriberServiceValue
+</cmn:type>
+			<cmn:primaryKey keyType="ExternalKey">@parentKey</cmn:primaryKey>
+		</smpcbe:parentKey>
+	</smpom:entity>
+</smpom:item>

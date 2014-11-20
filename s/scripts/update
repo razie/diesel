@@ -1,0 +1,29 @@
+## upgrade with what's in up
+. ./settings
+
+## let the crons know we're messing with it
+date > $APP/updating
+
+echo "1 - unpack"
+cd $APP/up
+unzip rk.zip
+cp $APP/settings $APP/up/scripts/settings
+cp $APP/test.robots.txt $APP/up/public/robots.txt
+
+echo "3 - stopping"
+cd $APP
+. $APP/up/scripts/stop
+
+echo "4 - backup"
+mv lib lib.OLD.$DT
+echo "4 - update"
+mv up lib
+mkdir up
+
+echo "2 - update/compile"
+cd $APP/lib
+$PLAY compile
+
+echo "6 - restart"
+cd $APP
+. $APP/restart

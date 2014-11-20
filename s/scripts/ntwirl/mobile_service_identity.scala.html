@@ -1,0 +1,68 @@
+@(reqItems: java.util.Map[String,
+com.sigma.omp.order.FulfillmentOrderItem], parentKey: String,
+assocNmToSvcKey: java.util.Map[String, String], lineItemKey: String )
+@mobileServiceIdentity = @{reqItems.get("Service:MobileServiceIdentity")} 
+@msisdn = @{reqItems.get("Resource:MSISDN")}
+<smpom:item>
+	<cmn:key xsi:type="smpom:SmpEntityOrderItemKey">
+		<cmn:type>http://www.sigma-systems.com/smp/43/xsd/JVTSmpOrderManagement/jsr264/v1-0#SmpEntityOrderItemValue</cmn:type>
+		<cmn:primaryKey keyType="IdKey">-1</cmn:primaryKey>
+	</cmn:key>
+	<cbebi:action>add</cbebi:action>
+	<smpom:entity xsi:type="smpcbe:SubscriberServiceValue">
+		<cmn:key xsi:type="smpcbe:SubscriberServiceKey">
+			<cmn:type>http://www.sigma-systems.com/smp/43/xsd/SubscriberEntity/jsr144/v1-5#SubscriberServiceValue</cmn:type>
+			<cmn:primaryKey keyType="ExternalKey">@lineItemKey</cmn:primaryKey>
+		</cmn:key>
+		<cbecore:describedBy>
+			<cbecore:item>
+				<cbecore:value xsi:type="xs:string">Default Data</cbecore:value>
+				<cbecore:characteristic>apn_list</cbecore:characteristic>
+			</cbecore:item>
+			<cbecore:item>
+				<cbecore:value xsi:type="xs:string">Mobile_Region_1</cbecore:value>
+				<cbecore:characteristic>home_mobile_network</cbecore:characteristic>
+			</cbecore:item>
+			<cbecore:item>
+				<cbecore:value xsi:type="xs:string">en</cbecore:value>
+				<cbecore:characteristic>language</cbecore:characteristic>
+			</cbecore:item>
+			<cbecore:item>
+				<cbecore:value xsi:type="xs:string">@msisdn.getManagedEntity().getAttributeValue("MSISDN")</cbecore:value>
+				<cbecore:characteristic>msisdn</cbecore:characteristic>
+			</cbecore:item>
+			<cbecore:item>
+				<cbecore:value xsi:type="xs:string">Postpaid</cbecore:value>
+				<cbecore:characteristic>payment_type</cbecore:characteristic>
+			</cbecore:item>
+			<cbecore:item>
+				<cbecore:value xsi:type="xs:string">Not Ported</cbecore:value>
+				<cbecore:characteristic>porting_type</cbecore:characteristic>
+			</cbecore:item>
+		</cbecore:describedBy>
+		<cbecore:describingSpecificationKey
+			xsi:type="smpcbe:SubscriberServiceSpecificationKey">
+			<cmn:type>http://www.sigma-systems.com/smp/43/xsd/SubscriberEntity/jsr144/v1-5#SubscriberServiceSpecificationValue</cmn:type>
+			<cmn:primaryKey>SubSvcSpec:mobile_service_identity</cmn:primaryKey>
+		</cbecore:describingSpecificationKey>
+		<smpcbe:externalKey>@lineItemKey</smpcbe:externalKey>
+		<smpcbe:parentKey>
+			<cmn:type>http://www.sigma-systems.com/smp/43/xsd/SubscriberEntity/jsr144/v1-5#SubscriberServiceValue</cmn:type>
+			<cmn:primaryKey keyType="ExternalKey">@parentKey</cmn:primaryKey>
+		</smpcbe:parentKey>
+          @if(!assocNmToSvcKey.isEmpty) {
+          <smpcbe:associations>
+            @if(assocNmToSvcKey.containsKey("mobile_service_has_device")) {
+            <smpcbe:association>
+				<cbecore:ZEndKey xsi:type="smpcbe:SubscriberServiceKey">
+					<cmn:type>http://www.sigma-systems.com/smp/43/xsd/SubscriberEntity/jsr144/v1-5#SubscriberServiceValue</cmn:type>
+					<cmn:primaryKey keyType="ExternalKey">@{assocNmToSvcKey.get("mobile_service_has_device")}</cmn:primaryKey>
+				</cbecore:ZEndKey>
+				<smpcbe:associationType>mobile_service_has_device</smpcbe:associationType>
+				<smpcbe:actionIndicator>add</smpcbe:actionIndicator>
+			</smpcbe:association>
+            }
+          </smpcbe:associations>
+          }
+        </smpom:entity>
+</smpom:item>

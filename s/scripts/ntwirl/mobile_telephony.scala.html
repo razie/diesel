@@ -1,0 +1,67 @@
+@(reqItems: java.util.Map[String,
+com.sigma.omp.order.FulfillmentOrderItem], parentKey: String,
+assocNmToSvcKey: java.util.Map[String, String], lineItemKey: String )
+@mobileTelephony = @{reqItems.get("Service:MobileTelephony")}
+<smpom:item>
+	<cmn:key xsi:type="smpom:SmpEntityOrderItemKey">
+		<cmn:type>...</cmn:type>
+		<cmn:primaryKey keyType="IdKey">-1</cmn:primaryKey>
+	</cmn:key>
+	<cbebi:action>add</cbebi:action>
+	<smpom:entity xsi:type="smpcbe:SubscriberServiceValue">
+		<cmn:key xsi:type="smpcbe:SubscriberServiceKey">
+			<cmn:type>
+http://www.sigma-systems.com/smp/43/xsd/SubscriberEntity/jsr144/v1-5#SubscriberServiceValue
+</cmn:type>
+			<cmn:primaryKey keyType="ExternalKey">@lineItemKey</cmn:primaryKey>
+		</cmn:key>
+		<cbecore:describedBy>
+			<cbecore:item>
+				<cbecore:value xsi:type="xs:string">@mobileTelephony.getManagedEntity().getAttributeValue("AllowCallingToPayPerUseEntertainmentNunbers")</cbecore:value>
+				<cbecore:characteristic>allow_calling_to_entertainment_numbers</cbecore:characteristic>
+			</cbecore:item>
+			<cbecore:item>
+				<cbecore:value xsi:type="xs:string">@mobileTelephony.getManagedEntity().getAttributeValue("AllowCallingToPayPerUseInfoNumbers")</cbecore:value>
+				<cbecore:characteristic>allow_calling_to_info_numbers</cbecore:characteristic>
+			</cbecore:item>
+			<cbecore:item>
+				<cbecore:value xsi:type="xs:string">@mobileTelephony.getManagedEntity().getAttributeValue("AllowCallsToAbroad")</cbecore:value>
+				<cbecore:characteristic>allow_calls_to_abroad</cbecore:characteristic>
+			</cbecore:item>
+			<cbecore:item>
+				<cbecore:value xsi:type="xs:string">@mobileTelephony.getManagedEntity().getAttributeValue("AllowIncomingCalls")</cbecore:value>
+				<cbecore:characteristic>allow_incoming_calls</cbecore:characteristic>
+			</cbecore:item>
+			<cbecore:item>
+				<cbecore:value xsi:type="xs:string">@mobileTelephony.getManagedEntity().getAttributeValue("AllowOutgoingCalls")</cbecore:value>
+				<cbecore:characteristic>allow_outgoing_calls</cbecore:characteristic>
+			</cbecore:item>
+			<cbecore:item>
+				<cbecore:value xsi:type="xs:string">@mobileTelephony.getManagedEntity().getAttributeValue("RoamingAllowIncomingCalls")</cbecore:value>
+				<cbecore:characteristic>roaming_allow_incoming_calls</cbecore:characteristic>
+			</cbecore:item>
+			<cbecore:item>
+				<cbecore:value xsi:type="xs:string">@mobileTelephony.getManagedEntity().getAttributeValue("RoamingAllowOugoingCalls")</cbecore:value>
+				<cbecore:characteristic>roaming_allow_outgoing_calls</cbecore:characteristic>
+			</cbecore:item>
+			<cbecore:item>
+				<cbecore:value xsi:type="xs:string">@mobileTelephony.getManagedEntity().getAttributeValue("RoamingAllowOutgoingCallsToOtherCountries")</cbecore:value>
+				<cbecore:characteristic>roaming_allow_outgoing_calls_to_other_countries</cbecore:characteristic>
+			</cbecore:item>
+		</cbecore:describedBy>
+		<cbecore:describingSpecificationKey
+			xsi:type="smpcbe:SubscriberServiceSpecificationKey">
+			<cmn:type>
+http://www.sigma-systems.com/smp/43/xsd/SubscriberEntity/jsr144/v1-5#SubscriberServiceSpecificationValue
+</cmn:type>
+			<cmn:primaryKey>SubSvcSpec:mobile_telephony</cmn:primaryKey>
+		</cbecore:describingSpecificationKey>
+		<smpcbe:externalKey>@lineItemKey</smpcbe:externalKey>
+		<smpcbe:parentKey>
+			<cmn:type>
+http://www.sigma-systems.com/smp/43/xsd/SubscriberEntity/jsr144/v1-5#SubscriberServiceValue
+</cmn:type>
+			<cmn:primaryKey keyType="ExternalKey">@parentKey</cmn:primaryKey>
+		</smpcbe:parentKey>
+	</smpom:entity>
+</smpom:item>

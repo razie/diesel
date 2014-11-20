@@ -1,0 +1,15 @@
+# restart the process
+. ./settings
+
+## 1 stop
+
+. $APP/lib/scripts/stop
+
+cd $APP/lib
+
+nohup $PLAYDIR/play -Dmongohost=$MOHOST -Dmongouser=$MOUSER -Dmongopass=$MOPASS -Drk.hostport=$RKHOSTPORT -Dmongodb=$MODB -Dlogger.file=$APP/lib/conf/logback.prod.xml -Danalytics=true -Drk.properties=$APP/lib/rk-testa.properties -Dcom.sun.management.jmxremote.port=9001 -Dcom.sun.management.jmxremote.ssl=false -Dcom.sun.management.jmxremote.authenticate=true -Dcom.sun.management.jmxremote.access.file=$APP/lib/scripts/jmxr.a -Dcom.sun.management.jmxremote.password.file=$APP/lib/scripts/jmxr.p start
+
+echo $! >$APP/pid 
+
+ps -u $RKUSER | grep java
+
