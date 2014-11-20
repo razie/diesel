@@ -7,9 +7,9 @@
 package controllers
 
 import admin.Validation
+import model.WikiUser
 import play.api.mvc.Controller
 import razie.Logging
-import model.WikiUser
 import play.api.data.Forms._
 import play.api.data._
 import play.api.mvc._

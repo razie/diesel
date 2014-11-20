@@ -14,8 +14,6 @@ import play.api.mvc._
 import razie.{cout, Logging}
 import javax.script.{ScriptEngineManager, ScriptEngine}
 import scala.Some
-import model.WikiAudit
-import model.User
 import scala.util.parsing.input.{CharArrayReader, Positional}
 import model.dom.DOM
 
@@ -852,7 +850,7 @@ object DomC extends RazController with Logging {
   }
 
   def dom(cat: String) = Action { implicit request =>
-    retj << WG.dom1(cat).tojmap
+    retj << WG.dom1(cat, "rk").tojmap
   }
 
   def domPlay(nid: String) = NotesLocker.FAU { implicit au =>

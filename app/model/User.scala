@@ -1,6 +1,7 @@
 package model
 
 import com.mongodb.casbah.Imports._
+import org.bson.types.ObjectId
 import org.joda.time.DateTime
 import admin.Audit
 import com.novus.salat._
@@ -26,6 +27,7 @@ import db.RazMongo
 import db.REntity
 import db.RUpdate
 import razie.Snakk
+import model.proto.UserId
 
 object UserType {
   val Organization = "Organization"
@@ -35,12 +37,6 @@ object UserType {
 case class Registration(email: String, password: String, repassword: String = "") {
   def ename = email.replaceAll("@.*", "")
 }
-
-///** register an email for news */
-//@db.RTable
-//case class RegdEmail(email: String, when: DateTime = DateTime.now) {
-//  def delete (implicit txn:db.Txn) = RDelete[RegdEmail]("email" -> email)
-//}
 
 /** temporary user for following stuff */
 @db.RTable
@@ -57,7 +53,7 @@ case class FollowerWiki(
   _id: ObjectId = new ObjectId()) {
   def delete = { Audit.delete(this); RDelete[FollowerWiki]("_id" -> _id) }
 
-  def follower = ROne[Follower](followerId)
+  def follower = db.ROne[Follower](followerId)
 }
 
 /** permissions for a user group */

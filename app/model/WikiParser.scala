@@ -29,7 +29,7 @@ import model.dom.WikiDomainParser
 object SedWiki {
   val SEARCH = """search:?([^]]*)""".r
   val SEARCH2 = """q:?([^]]*)""".r
-  val LIST = """list:?([^]]*)""".r
+  val LIST = """list:?([^.]*\.)?([^]]*)""".r
   val USERLIST = """userlist:?([^]]*)""".r
   val ALIAS = """alias:([^\]]*)""".r
   val NOALIAS = """(rk:)?([^|\]]*)([ ]*[|][ ]*)?([^]]*)?""".r
@@ -43,19 +43,20 @@ object SedWiki {
       case SEARCH2(nm) =>
         Some("""<a href="http://google.com/search?q=""" + Enc.toUrl(nm) + "\">" + nm + "</a>", None)
 
-      case LIST(cat) => Some(
-          (if (Wikis(realm).pageNames(cat).size < 100)
-            Wikis(realm).pageNames(cat).toList.sortWith(_ < _).map { p =>
-              Wikis.formatWikiLink(WID(cat, p).r(realm), p, p)
-            }.map(_._1).mkString(" ")
-          else "TOO MANY to list"),
-          None)
+      case LIST(newr, cat) => Some({
+        val newRealm = if(newr == null || newr.isEmpty) realm else newr.substring(0,newr.length-1)
+        Wikis(newRealm).pageNames(cat).take(50).toList.sortWith(_ < _).map { p =>
+          Wikis.formatWikiLink(WID(cat, p).r(newRealm), p, p)
+        }.map(_._1).mkString(" ")
+      },
+      None)
 
+        //todo what the heck is this?
       case USERLIST(cat) => {
         // TODO can't see more than 20-
         Some((
           try {
-            val up = razie.NoStaticS.get[model.WikiUser]
+            val up = razie.NoStaticS.get[WikiUser]
             val upp = up.toList.flatMap(_.myPages(cat)).map(_.asInstanceOf[{ def wid: WID }])
             "<ul>" + upp.sortWith(_.wid.name < _.wid.name).take(20).map(_.wid).map { wid =>
               Wikis.formatWikiLink(wid, Wikis(realm).label(wid).toString, Wikis(realm).label(wid).toString)
@@ -795,7 +796,9 @@ class WikiParserCls (realm:String = Wikis.RK) extends WikiParserBase with CsvPar
   /** {{section:name}}...{{/section}} */
   def wikiPropSection: PS = "{{" ~> opt(".") ~ """section|template|properties""".r ~ ":" ~ """[^}]*""".r ~ "}}" ~ lines <~ ("{{/" ~ """section|template|properties""".r ~ "}}") ^^ {
     case hidden ~ stype ~ _ ~ name ~ _ ~ lines => {
-      hidden.map(x => SState.EMPTY) getOrElse SState("`SECTION START {{" + stype + ":" + name + "}}`") + lines + SState("`SECTION END`")
+      val sname = "{{" + stype + ":" + name + "}}"
+      hidden.map(x => SState.EMPTY) getOrElse SState(
+        "`SECTION START " + sname + "`<br>") + lines + SState("<br>`SECTION END` " + sname )
     }
   }
 

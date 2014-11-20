@@ -17,71 +17,7 @@ import org.json.JSONArray
 import scala.collection.mutable.ListBuffer
 import org.json.JSONObject
 import scala.collection.mutable.HashMap
-
-/**
- * json helpers
- *
- *  a json is represented as maps of (name,value) and lists of values, which can be recursive
- */
-object js extends Logging {
-
-  /** turn a map of name,value into json */
-  def tojson(x: Map[_, _]): JSONObject = {
-    val o = new JSONObject()
-    x foreach {t:(_,_) =>
-      t._2 match {
-        case m: Map[_, _] => o.put(t._1.toString, tojson(m))
-        case s: String => o.put(t._1.toString, s)
-        case l: List[_] => o.put(t._1.toString, tojson(l))
-        case h @ _ => o.put(t._1.toString, h.toString)
-      }
-    }
-    o
-  }
-
-  /** turn a list into json */
-  def tojson(x: List[_]): JSONArray = {
-    val o = new JSONArray()
-    x.foreach { t:Any =>
-      t match {
-        case s: Map[_, _] => o.put(tojson(s))
-        case l: List[_] => o.put(tojson(l))
-        case s: String => o.put(s)
-      }
-    }
-    o
-  }
-
-  /** recursively transform a name,value map */
-  def jt(map: Map[_, _], path: String = "/")(f: PartialFunction[(String, String, Any), (String, Any)]): Map[String, Any] = {
-    val o = new HashMap[String, Any]()
-    map.foreach { t:(_,_) =>
-      val ts = t._1.toString
-      val r = if (f.isDefinedAt(path, ts, t._2)) f(path, ts, t._2) else (ts, t._2)
-      if (r._1 != null && r._1.length() > 0)
-        r._2 match {
-          case s: Map[_, _] => o put (r._1.toString, jt(s, path + "/" + ts)(f))
-          case l: List[_] => o put (r._1.toString, jt(l, path + "/" + ts)(f))
-          case s @ _ => o put (r._1.toString, s)
-        }
-    }
-    o.toMap
-  }
-
-  def jt(x: List[_])(f: PartialFunction[(String, String, Any), (String, Any)]): List[_] = jt(x, "/")(f)
-
-  /** recursively transform a name,value map */
-  def jt(x: List[_], path: String)(f: PartialFunction[(String, String, Any), (String, Any)]): List[_] = {
-    val o = new ListBuffer[Any]()
-    x.foreach { t:Any =>
-      t match {
-        case m: Map[_, _] => o.append(jt(m, path)(f))
-        case l: List[_] => o.append(jt(l, path)(f))
-      }
-    }
-    o.toList
-  }
-}
+import admin.js
 
 /** graph wiki controller */
 object WG extends Logging {
@@ -147,24 +83,24 @@ object WG extends Logging {
   }
 
   // single domain node
-  def dom1(cat: String) = {
+  def dom1(cat: String, realm:String) = {
     val links = for (
-      c <- Wikis.category(cat).toList;
-      x <- WikiDomain.gzEnds(c.name).map(t => (cat, t._1, t._2)) ::: WikiDomain.gaEnds(c.name).map(t => (t._1, cat, t._2))
+      c <- Wikis(realm).category(cat).toList;
+      x <- WikiDomain(realm).gzEnds(c.name).map(t => (cat, t._1, t._2)) ::: WikiDomain(realm).gaEnds(c.name).map(t => (t._1, cat, t._2))
     ) yield x
-    val nodes = (links.map(_._1) ::: links.map(_._2)).distinct.flatMap(t => Some(WNode(Wikis.category(t), t)))
+    val nodes = (links.map(_._1) ::: links.map(_._2)).distinct.flatMap(t => Some(WNode(Wikis(realm).category(t), t)))
     def n(c: String) = nodes.indexWhere(_.name == c)
     new WGraph(n(cat), nodes, links.map { t => (n(t._1), n(t._2), t._3) })
   }
 
   // entire domain - makes up a "Domain" node and links to all topics
-  def domain = {
+  def domain(realm:String) = {
     val links = for (
-      c <- Wikis.categories.toList;
-      x <- WikiDomain.gzEnds(c.name).map(t => (c.name, t._1, t._2)) ::: WikiDomain.gaEnds(c.name).map(t => (t._1, c.name, t._2))
+      c <- Wikis(realm).categories.toList;
+      x <- WikiDomain(realm).gzEnds(c.name).map(t => (c.name, t._1, t._2)) ::: WikiDomain(realm).gaEnds(c.name).map(t => (t._1, c.name, t._2))
     ) yield x
-    val fakes = Wikis.categories.toList.map(c => ("Domain", c.name, "fake"))
-    val nodes = WNode(None, "Domain") :: Wikis.categories.toList.map(t => WNode(Some(t), t.name))
+    val fakes = Wikis(realm).categories.toList.map(c => ("Domain", c.name, "fake"))
+    val nodes = WNode(None, "Domain") :: Wikis(realm).categories.toList.map(t => WNode(Some(t), t.name))
     def n(c: String) = nodes.indexWhere(_.name == c)
     new WGraph(n("Domain"), nodes, (fakes ::: links).map { t => (n(t._1), n(t._2), t._3) })
   }
@@ -179,31 +115,31 @@ object Gapi extends RazController with Logging {
     def <<(x: Map[String, Any]) = Ok(js.tojson(x).toString).as("application/json")
   }
 
-  def dom(cat: String) = Action { implicit request =>
-    retj << WG.dom1(cat).tojmap
+  def dom(cat: String, realm:String) = Action { implicit request =>
+    retj << WG.dom1(cat, realm).tojmap
   }
 
-  def jitdom(cat: String) = Action { implicit request =>
-    retj << WG.dom1(cat).toJIT
+  def jitdom(cat: String, realm:String) = Action { implicit request =>
+    retj << WG.dom1(cat, realm).toJIT
   }
 
-  def d3dom(cat: String) = Action { implicit request =>
-    retj << WG.dom1(cat).tod3
+  def d3dom(cat: String, realm:String) = Action { implicit request =>
+    retj << WG.dom1(cat, realm).tod3
   }
 
-  def domain = Action { implicit request =>
-    retj << WG.domain.tojmap
+  def domain(realm:String) = Action { implicit request =>
+    retj << WG.domain(realm).tojmap
   }
 
-  def jitdomain = Action { implicit request =>
-    retj << WG.domain.toJIT
+  def jitdomain(realm:String) = Action { implicit request =>
+    retj << WG.domain(realm).toJIT
   }
 
-  def d3domain = Action { implicit request =>
-    retj << WG.domain.tod3
+  def d3domain(realm:String) = Action { implicit request =>
+    retj << WG.domain(realm).tod3
   }
 
-  def wp1(topic: String) = Action { implicit request =>
+  def wp1(topic: String, realm:String) = Action { implicit request =>
     def wu(topic: String) = {
       val t = topic.encUrl
       s"http://en.wikipedia.org/w/api.php?format=json&action=query&titles=$t&prop=revisions&rvprop=content"
@@ -216,7 +152,7 @@ object Gapi extends RazController with Logging {
     val LPAT = """\[\[([^\]\|]*)(\|[^\]\]]*)?\]\]""".r
     val p1 = (LPAT.findAllIn(c).matchData.map { m =>
       Map("topic" -> m.group(1), "name" -> (if (m.group(2) != null) m.group(2).substring(1) else m.group(1)),
-        "url" -> ("http://localhost:9000/gapi/wp1/" + m.group(1)))
+        "url" -> ("http://localhost:9000/gapi/wp1/"+realm+"/" + m.group(1)))
     }).toList
 
     val g = Map("name" -> topic, "children" -> p1)

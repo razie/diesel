@@ -3,18 +3,24 @@ package model
 import admin.VErrors
 import db.RTable
 
-/** wraper with form utils */
-class WForm(val we: WikiEntry) {
-  def isFormSpec = false
-
-  def mkContent(j: org.json.JSONObject, content:String = we.content) = {
-    val co = content.replaceFirst("(?s)\\]\\].*", "]]") +
-      "\n" +
+/** form utils */
+object WForm {
+  /** format form fields as a content section */
+  def formData(j: org.json.JSONObject) = {
+    val co =
       "{{.section:formData}}\n" +
       j.toString +
       "\n{{/section}}\n"
     co
   }
+}
+/** wraper with form utils */
+class WForm(val we: WikiEntry) {
+  def isFormSpec = false
+
+  /** format form fields as a content section */
+  def mkContent(j: org.json.JSONObject, content:String = we.content) =
+    content.replaceFirst("(?s)\\]\\].*", "]]") + "\n" + WForm.formData(j)
 
   /** replace the fields in content with the respective html code */
   def formatFields(content: String) = {

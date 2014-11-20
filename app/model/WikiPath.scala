@@ -6,8 +6,9 @@
  */
 package model
 
-import razie._
 import admin.Services
+import razie.Debug._ // for implicits
+import razie.{XP, XpElement, XpSolver}
 
 object WikiPath {
   val debug = false;
@@ -32,8 +33,8 @@ class WikiWrapper(val wid:WID) extends WWrapper(wid.cat) {
   }.flatMap(_.toList) ++ lfrom ++ lto ++ BADlto))
 
   // TODO optimize
-  protected def lfrom = w.toList.flatMap(realw=>Wikis.linksFrom(realw.uwid)).map(x=>new ILink(x.to.wid.get, x.to.nameOrId))
-  protected def lto = w.toList.flatMap(realw=>Wikis.linksTo(realw.uwid)).map(x=>new ILink(x.from.wid.get, x.from.nameOrId))
+  def lfrom = w.toList.flatMap(realw=>Wikis.linksFrom(realw.uwid)).map(x=>new ILink(x.to.wid.get, x.to.nameOrId))
+  def lto = w.toList.flatMap(realw=>Wikis.linksTo(realw.uwid)).map(x=>new ILink(x.from.wid.get, x.from.nameOrId))
   
   // TODO this is like extremely bad !!!
   protected def BADallPages = Wikis(wid.getRealm).pageNames("Category").flatMap(cat=>Wikis(wid.getRealm).pageNames(cat).flatMap(name=>Wikis(wid.getRealm).find(cat, name).toList)).toList
@@ -72,8 +73,6 @@ object WikiXpSolver extends XpSolver[WWrapper] {
   type U = CONT
 
   val debug = WikiPath.debug
-  
-  import razie.Debug._
 
   override def children(root: T): (T, U) = {
     if(WikiPath.debug) println ("--CHILDREN("+root+")")

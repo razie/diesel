@@ -16,19 +16,15 @@ import play.api.mvc._
 import razie.{cout, Logging}
 import javax.script.{ScriptEngineManager, ScriptEngine}
 import scala.Some
-import model.WikiAudit
-import model.User
 import scala.util.parsing.input.{CharArrayReader, Positional}
 import model.dom.DOM
 
 /** controller for server side fiddles / services */
 object SFiddles extends RazController with Logging {
   import NotesTags._
-  import NotesLocker.FAU
 
   def qtojson (q:Map[String,String]) = "{" + q.map(t=>s"""${t._1} : "${t._2}" """).mkString(",") + "}"
   def qtourl (q:Map[String,String]) = q.map(t=>s"""${t._1}=${t._2}""").mkString("&")
-
 
   /** run sfiddles by name, as REST services */
   def sfiddle(path: String) = FAU { implicit au =>

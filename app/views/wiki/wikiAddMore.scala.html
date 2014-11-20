@@ -1,7 +1,6 @@
 @****************
 fragment: add more stuff to the current topic, including children, sub-topics etc
 ****************@
-
 @(wid:model.WID, page:Option[model.WikiEntry], user:Option[model.User])
 @import model._
 @import _root_.admin.IgnoreErrors
@@ -24,18 +23,27 @@ fragment: add more stuff to the current topic, including children, sub-topics et
     </div>
   }
 
-    @if(!model.WikiDomain.needsParent(wid.name)) {
-      @helper.form(action=routes.Wikie.add(wid.name, wid.getRealm), 'class->"well form-inline") {
+  @if(!model.WikiDomain(wid.getRealm).needsParent(wid.name)) {
+    @model.WikiDomain(wid.getRealm).aEnds(wid.name, "Template").headOption.map { wet =>
+      @helper.form(action=routes.Wikie.addWithSpec1(wid.name, wet, wid.getRealm), 'class->"well form-inline") {
+        <label>Create a new <a href="@wid.url">@model.Wikis(wid.getRealm).label(WID("Category",wid.name))</a> </label>
+        <button type="submit" class="btn">Choose template</button>
+      }
+    }
+
+    @if(model.WikiDomain(wid.getRealm).aEnds(wid.name, "Template").isEmpty) {
+      @helper.form(action=routes.Wikie.addWithName(wid.name, wid.getRealm), 'class->"well form-inline") {
         <label>Create a new <a href="@wid.url">@model.Wikis(wid.getRealm).label(WID("Category",wid.name))</a> </label>
         <input type="text" class="input-xlarge" name="name" placeholder="Name">
         <button type="submit" class="btn">Now</button>
       }
     }
+  }
 } else {
       <!-- list of child pages -->
-  @model.WikiDomain.aEnds(wid.cat, "Child").map {child=>
+  @model.WikiDomain(wid.getRealm).aEnds(wid.cat, "Child").map {child=>
     @if(page.isDefined && controllers.Wiki.canEdit(wid,user,page)(IgnoreErrors)) {
-      @helper.form(action=routes.Wikie.addLinked(child,wid,"Child"), 'class->"form-inline") {
+      @helper.form(action=routes.Wikie.createLinked(child,wid,"Child"), 'class->"form-inline") {
         <label>Create a <a href="/wiki/Category:@child">@model.Wikis.category(child).map(_.label).mkString</a> </label>
         <input type="text" class="input-xlarge" name="name" placeholder="Name">
             <button type="submit" class="btn btn-mini btn-primary">Now</button> 
@@ -43,8 +51,9 @@ fragment: add more stuff to the current topic, including children, sub-topics et
           }
         }
 
+    @* @model.Wikis.linksTo(page.get.uwid, "Child").filter(_.from.cat == child).toList) { kids =>*@
     @if(!page.exists(_.contentTags.contains("nochildposts"))) {
-      @defining(model.Wikis.linksTo(page.get.uwid,"Child").filter(_.from.cat == child).toList) { kids =>
+      @defining(model.Wikis.linksTo(page.get.uwid, "Child").filter(_.from.cat == child).toList) { kids =>
         @if(kids.size > 0) {
           <div class="well">
             @child (s) :

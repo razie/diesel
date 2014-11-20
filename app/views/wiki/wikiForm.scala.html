@@ -4,6 +4,8 @@ special handlng of forms
 @(wid:model.WID, iname:Option[String], page:Option[model.WikiEntry], au:Option[model.User], errors:Map[String,String], canEdit:Boolean, print:Boolean=false)
 @import model._
 
+@label()=@{ page.flatMap(_.contentTags.get("label")).orElse(page.map(_.label)).getOrElse(model.Wikis(wid.getRealm).label(wid)) }
+
 @if(!print) {
   @htmlHeadBar(page.flatMap(_.contentTags.get("title")).getOrElse(wid.cat +": "+ page.map(_.label).getOrElse(model.Wikis.label(wid))), au)
 } else {
@@ -29,25 +31,12 @@ special handlng of forms
     }
 }
 
-   
 <div class="container">
   <div class="row">
     <div class="span9">
 
       <div class="well">
-      
-@if(!errors.isEmpty) {
-<div class="alert alert-error">
-  <font style="color:red"><strong>Form has errors</strong> (was not saved):</font><ul>
-  <font style="color:red">
-        @errors.map {err=>
-        	<li><b>@err._1</b>  => @err._2 </li>
-        	}
-  </ul></font>
-</div>
-}
 
-<form action="/doe/form/submit/@wid.wpath" method="POST">
 
 @if(!print) {
 @regs.headOption.map(_.wids).map {wids=>
@@ -57,21 +46,14 @@ special handlng of forms
 }  
 } @*** print ***@
 
-@wiki.wikiFrag(wid,au,false,page, iname, false, false, canEdit, false, print)
+          <h2>@label()</h2>
 
-@if(!errors.isEmpty) {
-  <hr>
-<div class="alert alert-error">
-  <strong><a id="errors">Errors:</a></strong><ul>
-  <font style="color:red">
-        @errors.map {err=>
-        	<li><b>@err._1</b>  => @err._2 </li>
-        	}
-  </ul></font>
-</div>
-}
+<form action="/doe/form/submit/@wid.wpath" method="POST">
 
-        <hr>
+@wiki.wikiFormInt(wid, iname, page, au, errors, canEdit, print)
+
+<hr>
+
 @*********        
 for registration sequences - show prev/next
 *********@

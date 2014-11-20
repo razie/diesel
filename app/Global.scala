@@ -4,23 +4,23 @@
  *   )   / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <     README.txt
  *  (_)\_)(__)(__)(____)(____)(____)(___/   (__)  (______)(____/    LICENSE.txt
  */
+
+import java.util.Properties
+
+import admin.SMTPAuthenticator
 import admin._
 import controllers._
 import db._
-import model.EncryptService
-import model.WikiUsers
-import model.WikiUsersImpl
+import model._
 import play.api.Application
 import play.api._
 import play.api.mvc._
-import model.WikiScripster
-import razie.{cdebug, clog, cout}
+import razie.{cout, Log, cdebug, clog}
 import play.libs.Akka
 import akka.actor.Props
 import akka.actor.Actor
-import model.WikiAudit
-import model.WikiCount
-import com.mongodb.casbah.MongoConnection
+import com.mongodb.casbah.{MongoDB, MongoConnection}
+import com.mongodb.casbah.Imports._
 import java.io.File
 import scala.concurrent.ExecutionContext
 
@@ -101,13 +101,15 @@ object Global extends WithFilters(LoggingFilter) {
     Services.auth = RazAuthService
     Services.config = Config
 
-    Services.mongoDbVer = 16 // normal is one higher than the last one
-    Services.mongoUpgrades = Map(
-      1 -> Upgrade1, 2 -> Upgrade2, 3 -> Upgrade3, 4 -> Upgrade4, 5 -> Upgrade5,
-      6 -> U6, 7 -> U7, 8 -> U8, 9 -> U9, 10 -> U10, 11 -> U11, 12 -> U12, 13 -> U13,
-      14 -> U14, 15 -> U15)
+    /************** MONGO INIT *************/
+    RazMongo.setInstance {
+      val UPGRADE_AGAIN = false
+      val mongoDbVer = 16 // normal is one higher than the last one
+      val mongoUpgrades: Map[Int, UpgradeDb] = Map(
+          1 -> Upgrade1, 2 -> Upgrade2, 3 -> Upgrade3, 4 -> Upgrade4, 5 -> Upgrade5,
+          6 -> U6, 7 -> U7, 8 -> U8, 9 -> U9, 10 -> U10, 11 -> U11, 12 -> U12, 13 -> U13,
+          14 -> U14, 15 -> U15)
 
-    Services.mkDb = () => {
       lazy val conn = MongoConnection(admin.Config.mongohost)
 
       /** the actual database - done this way to run upgrades before other code uses it */
@@ -121,7 +123,67 @@ object Global extends WithFilters(LoggingFilter) {
         throw new Exception("Cannot authenticate. Login failed.")
       }
 
-      db
+      //upgrading db version if needed
+      def prep(adb:MongoDB) = {
+        // upgrade if needed
+        var dbVer = adb("Ver").findOne.map(_.get("ver").toString).map(_.toInt)
+        if (UPGRADE_AGAIN) dbVer = dbVer.map(_ - 1)
+
+        var upgradingLoop = false // simple recursive protection
+
+        // if i don't catch - there's no ending since it's a lazy val init...
+        try {
+          dbVer match {
+            case Some(v) => {
+              var ver = v
+              while (ver < mongoDbVer && mongoUpgrades.contains(ver)) {
+                if(upgradingLoop)
+                  throw new IllegalStateException("already looping to update - recursive DB usage while upgrading, check code")
+                upgradingLoop = true
+                mongoUpgrades.get(ver).fold (
+                  Log.error("NO UPGRADES FROM VER " + ver)
+                ) { u =>
+                  cout << "1 " + Thread.currentThread().getName()
+                  Log audit s"UPGRADING DB from ver $ver to ${mongoDbVer}"
+                  Thread.sleep(2000) // often screw up and goes in  a loop...
+                  u.upgrade(adb)
+                  adb("Ver").update(Map("ver" -> ver), Map("ver" -> mongoDbVer))
+                  Log.audit("UPGRADING DB... DONE")
+                }
+                ver = ver + 1
+                upgradingLoop = false
+              }
+            }
+            case None => adb("Ver") += Map("ver" -> mongoDbVer) // create a first ver entry
+          }
+        } catch {
+          case e: Throwable => {
+            Log.error("Exception during DB migration - darn thing won't work at all probably\n" + e, e)
+            e.printStackTrace()
+          }
+        }
+
+        // that's it, db initialized?
+        adb
+      }
+
+      prep(db)
+    }
+
+    RMongo.setInstance(RazAuditService)
+
+    SendEmail.mkSession = (debug: Boolean) => {
+      val props = new Properties();
+      props.put("mail.smtp.auth", "true");
+      props.put("mail.smtp.starttls.enable", "true");
+      props.put("mail.smtp.host", "smtp.gmail.com");
+      props.put("mail.smtp.port", "587");
+
+      import model.Sec._
+      val session = javax.mail.Session.getInstance(props, new admin.SMTPAuthenticator(Config.SUPPORT, "zlMMCe7HLnMYOvbjYpPp6w==".dec))
+
+      session.setDebug(debug);
+      session
     }
 
     WikiUsers.impl = WikiUsersImpl
@@ -140,6 +202,7 @@ object Global extends WithFilters(LoggingFilter) {
 
     Services.audit = RazAuditService
     Services.alli = RazAlligator
+
   }
 
   object RazAlligator extends Alligator {

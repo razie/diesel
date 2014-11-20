@@ -9,6 +9,8 @@ package model
 import java.io.FileInputStream
 import java.util.Properties
 
+import admin.PlayTools
+
 //import admin.Config
 import play.api.mvc.Request
 import razie.clog
@@ -20,6 +22,10 @@ import scala.collection.mutable
  *
  * create a property file rk.properties and include in classpath,
  * containing the properties below
+ *
+ *   *****************************************************************
+ *   ************* you can access this via Services.config ***********
+ *   *****************************************************************
  */
 abstract class WikiConfig {
   protected lazy val props = {
@@ -42,8 +48,11 @@ abstract class WikiConfig {
 
   //-------------- special admin/configuration pages
 
-  /** if there is an external favorite canonical URL for this WPATH */
-  def urlcanon(wpath: String, page:Option[WikiEntry]) = {
+  /** if there is an external favorite canonical URL for this WPATH
+    *
+    * @param tags taken from a WikiEntry - using it plain to decouple code
+    */
+  def urlcanon(wpath: String, tags:Option[Seq[String]]) = {
     var res: Option[String] = None
 
     //todo make unit test for urlcfg based canon for enduroschool
@@ -57,7 +66,7 @@ abstract class WikiConfig {
     // todo optimize this somehow wiht just some lookups based on tags
     if(res.isEmpty) {
       // look for configured tags
-     page.flatMap(p=>config(URLCANON).flatMap(_.filterKeys(k=>p.tags.contains(k)).headOption)).map { site=>
+     tags.flatMap(t=>config(URLCANON).flatMap(_.filterKeys(k=>t.contains(k)).headOption)).map { site=>
         res = Some(site._2 + "/" + wpath)
       }
     }
@@ -84,19 +93,19 @@ abstract class WikiConfig {
 
   /** @obsolete find the realm from the request parameters - hostport or forwarded-for or something */
   def realm(implicit request: Request[_]) = {
-    if(request.host contains "localhost") Wikis.RK else {
+    if(request.host contains "localhost") WikiConfig.RK else {
       config("realm").map { m =>
-        Website.getHost match {
+        PlayTools.getHost match {
           case Some(x) if m contains x => m(x)
-          case _ => Wikis.RK
+          case _ => WikiConfig.RK
         }
-      } getOrElse Wikis.RK
+      } getOrElse WikiConfig.RK
     }
   }
 
   /** pre-configured user types */
   def userTypes(implicit request: Request[_])  = {
-    if(realm == Reactors.NOTES)
+    if(realm == WikiConfig.NOTES)
       // TODO configure these
       List("Individual", "Organization")
     else
@@ -113,7 +122,7 @@ abstract class WikiConfig {
 
   final val URLCFG = "urlcfg"
   final val URLCANON = "urlcanon"
-  final val URLMAP = "urlmap"
+  final val URLMAP = "urlmap" 
   final val URLFWD = "urlfwd"
   final val SITECFG = "sitecfg"
   final val TOPICRED = "topicred"
@@ -123,4 +132,9 @@ abstract class WikiConfig {
 
   /** override to implement the actual configuration loading */
   def reloadUrlMap: Unit
+}
+
+object WikiConfig {
+  final val RK = "rk"
+  final val NOTES = "note"
 }

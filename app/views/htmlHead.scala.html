@@ -17,7 +17,7 @@
     <meta charset="utf-8">
 
     @*** keep google happy using Admin:urlcanon ***@
-    @page.flatMap(p=> Config.urlcanon(p.wid.wpath, page)).map {canon =>
+    @page.flatMap(p=> Config.urlcanon(p.wid.wpath, page.map(_.tags))).map {canon =>
       <link rel="canonical" href="@canon" />
     }.getOrElse{
       @if(page.isDefined) {

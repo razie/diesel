@@ -7,9 +7,8 @@
 package admin
 
 import com.mongodb.casbah.Imports._
-import com.novus.salat.grater
-import db.RazSalatContext.ctx
 import db._
+import org.bson.types.ObjectId
 import org.joda.time.DateTime
 import razie.Logging
 
@@ -53,38 +52,4 @@ object Audit extends AuditService with Logging {
     Services.audit.logdbWithLink(what, link, details:_*)
 }
 
-/**
- * razie's default Audit implementation - stores them events in a Mongo table. Use this as an example to write your own auditing service.
- *
- *  Upon review, move them to the cleared/history table and purge them sometimes
- */
-object RazAuditService extends AuditService with Logging {
 
-  /** log a db operation */
-  def logdb(what: String, details: Any*) = {
-    val d = details.mkString(",")
-    Services.alli ! Audit("a", what, d)
-    val s = what + " " + d
-    razie.Log.audit(s)
-    s
-  }
-
-  /** log a db operation */
-  def logdbWithLink(what: String, link: String, details: Any*) = {
-    val d = details.mkString(",")
-    Services.alli ! Audit("a", what, d, Some(link))
-    val s = what + " " + d
-    razie.Log.audit(s)
-    s
-  }
-
-  /** move from review to archive. archive is purged separately. */
-  def clearAudit(id: String, userId: String) = {
-    ROne[Audit](new ObjectId(id)) map { ae =>
-      val o = grater[Audit].asDBObject(ae)
-      o.putAll(Map("clearedBy" -> userId, "clearedDtm" -> DateTime.now))
-      RazMongo("AuditCleared") += o
-      RazMongo("Audit").remove(Map("_id" -> new ObjectId(id)))
-    }
-  }
-}

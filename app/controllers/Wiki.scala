@@ -12,7 +12,7 @@ import com.novus.salat._
 import db.RazSalatContext._
 import com.mongodb.{BasicDBObject, DBObject}
 import db.{ROne, RazMongo}
-import model.{CMDWID, WikiAudit, WikiEntryOld, _}
+import model.{CMDWID, WikiEntryOld, _}
 import play.api.mvc.{Action, AnyContent, Request}
 import razie.{cout, Logging}
 
@@ -76,12 +76,13 @@ object Wiki extends WikiBase {
     val qt = curTags.split("/").filter(_ != "tag") //todo only filter if first is tag ?
 
     def filter (u:DBObject) = {
+      def uf(n:String) = if(u.containsField(n)) u.get("name").asInstanceOf[String] else ""
       if (q.length <= 0)
         qt.size > 0 && u.containsField("tags") && qt.foldLeft(true)((a, b) => a && u.get("tags").toString.toLowerCase.contains(b))
       else
-        (q.length > 1 && u.get("name").asInstanceOf[String].toLowerCase.contains(qi)) ||
-          (q.length > 1 && u.get("label").asInstanceOf[String].toLowerCase.contains(qi)) ||
-          (q.length() > 3 && u.get("content").asInstanceOf[String].toLowerCase.contains(qi))
+        (q.length > 1 && uf("name").toLowerCase.contains(qi)) ||
+          (q.length > 1 && uf("label").toLowerCase.contains(qi)) ||
+          (q.length() > 3 && uf("content").toLowerCase.contains(qi))
     }
     lazy val parent = WID.fromPath(scope).flatMap(x=>Wikis.find(x).orElse(Wikis(realm).findAnyOne(x.name)))
 
@@ -95,7 +96,7 @@ object Wiki extends WikiBase {
           ) yield u
         }.toList
 
-        if(WikiDomain.aEnds(p.category, "Child").contains("Item"))
+        if(WikiDomain(realm).aEnds(p.category, "Child").contains("Item"))
           RazMongo.withDb(RazMongo("weItem").m) (src)
         else
           RazMongo.withDb(RazMongo("WikiEntry").m) (src)
@@ -127,13 +128,13 @@ object Wiki extends WikiBase {
     }
   }
 
-  private def topicred(wpath: String) = {
-    if (Config.config(Config.TOPICRED).exists(_.contains(wpath))) {
-      log("- redirecting " + wpath)
-      Some(Redirect(controllers.Wiki.w(WID.fromPath(Config.config(Config.TOPICRED).get.apply(wpath)).get)))
-    } else
-      None
-  }
+//  private def topicred(wpath: String) = {
+//    if (Config.config(Config.TOPICRED).exists(_.contains(wpath))) {
+//      log("- redirecting " + wpath)
+//      Some(Redirect(controllers.Wiki.w(WID.fromPath(Config.config(Config.TOPICRED).get.apply(wpath)).get)))
+//    } else
+//      None
+//  }
 
   val RK: String = Wikis.RK
 
@@ -207,30 +208,33 @@ object Wiki extends WikiBase {
 
   /** show a page */
   def showWid(cw: CMDWID, count: Int, realm:String) = {
-    if (cw.cmd == "xp") xp(cw.wid.get, cw.rest)
-    else if (cw.cmd == "xpl") xpl(cw.wid.get, cw.rest)
-    else if (cw.cmd == "tag") {
-      search(realm, "", cw.wpath getOrElse "", cw.rest)
-    }
-    else Action { implicit request =>
-      // must check if page is WITHIN site, otherwise redirect to main site
-      val fhost = Website.getHost
-      val redir = fhost flatMap (Config.urlfwd(_))
-      val canon = fhost flatMap (fh=> Config.urlcanon(cw.wpath.get, None).map(_.startsWith("http://"+fh)))
+    cw.cmd match {
+      case "xp"  => xp(cw.wid.get, cw.rest)
+      case "xpl" => xpl(cw.wid.get, cw.rest)
+      case "rss.xml" => rss(cw.wid.get, cw.rest)
+      case "tag" => search(realm, "", cw.wpath getOrElse "", cw.rest)
+      case _ => Action { implicit request =>
+        // must check if page is WITHIN site, otherwise redirect to main site
+        val fhost = Website.getHost
+        val redir = fhost flatMap Config.urlfwd
+        val canon = fhost flatMap (fh=> Config.urlcanon(cw.wpath.get, None).map(_.startsWith("http://"+fh)))
+        val newcw = if(cw.wid.get.realm.isDefined || Wikis.RK == realm) cw else cw.copy(wid=cw.wid.map(_.copy(realm=Some(realm))))
 
-      // if not me, no redirection and not the redirected path, THEN redirect
-      if (fhost.exists(_ != Config.hostport) &&
-        redir.isDefined &&
-        !cw.wpath.get.startsWith(redir.get.replaceFirst(".*/wiki/", "")) &&
-        !canon.exists(identity)) {
-        log("  REDIRECTED FROM - " + fhost)
-        log("    TO http://" + Config.hostport + "/wiki/" + cw.wpath.get)
-        Redirect("http://" + Config.hostport + "/wiki/" + cw.wpath.get)
-      } else fhost.flatMap(x=>Website(x)).map { web=>
-        show(cw.wid.get, count).apply(request).value.get.get
-      } getOrElse {
-        // normal - continue showing the page
-        show(cw.wid.get, count).apply(request).value.get.get
+        // if not me, no redirection and not the redirected path, THEN redirect
+        if (fhost.exists(_ != Config.hostport) &&
+          redir.isDefined &&
+          !cw.wpath.get.startsWith(redir.get.replaceFirst(".*/wiki/", "")) &&
+          !canon.exists(identity)) {
+          log("  REDIRECTED FROM - " + fhost)
+          log("    TO http://" + Config.hostport + "/wiki/" + cw.wpath.get)
+//          Redirect("http://" + Config.hostport + "/wiki/" + cw.wpath.get)
+          Redirect(newcw.wid.get.url)
+        } else fhost.flatMap(x=>Website(x)).map { web=>
+          show(newcw.wid.get, count).apply(request).value.get.get //todo what the heck is this?
+        } getOrElse {
+          // normal - continue showing the page
+          show(newcw.wid.get, count).apply(request).value.get.get
+        }
       }
     }
   }
@@ -273,7 +277,7 @@ object Wiki extends WikiBase {
   /** serve a site */
   def site(name: String) = show(WID("Site", name))
 
-  def wikieShow(iwid: WID, count: Int = 0) = show(iwid, count)
+  def wikieShow(iwid: WID, count: Int = 0, realm:String="rk") = show(iwid.r(realm), count)
 
   def show(iwid: WID, count: Int = 1, print: Boolean = false): Action[AnyContent] = Action { implicit request =>
     implicit val errCollector = new VErrors()
@@ -295,6 +299,7 @@ object Wiki extends WikiBase {
     // special pages
     if ("Page" == cat && "home" == name) Redirect("/")
     else if ("Admin" == cat && "home" == name) Redirect("/")
+    else if ("Reactor" == cat && !iwid.realm.exists(_ != Wikis.RK)) Redirect("/w/"+wid.name+"/wiki/"+wid.wpath)
     else if ("any" == cat || (cat.isEmpty && wid.parent.isEmpty)) {
       // search for any name only if cat is missing OR there is no parent
 
@@ -431,8 +436,7 @@ object Wiki extends WikiBase {
       worig <- page orElse Wikis(wid.getRealm).find(wid);
       w <- worig.alias.flatMap(x => Wikis(wid.getRealm).find(x)).orElse(Some(worig)) // TODO cascading aliases?
     ) yield {
-      val node = new WikiWrapper(wid)
-      val root = new razie.Snakk.Wrapper(node, WikiXpSolver)
+      val root = new razie.Snakk.Wrapper(new WikiWrapper(w.wid), WikiXpSolver)
 
       Audit.logdb("XP-L", wid.wpath + "/xpl/" + path)
 
@@ -489,6 +493,23 @@ object Wiki extends WikiBase {
   def social(label:String, url:String) = Action { implicit request =>
     Ok(views.html.wiki.social(label, url, auth))
   }
+
+  /** build a feed for the respective blog/forum */
+  def rss(wid: WID, path: String, page: Option[WikiEntry] = None) = Action { implicit request =>
+    implicit val errCollector = new VErrors()
+    (for (
+      worig <- page orElse Wikis(wid.getRealm).find(wid);
+      w <- worig.alias.flatMap(x => Wikis(wid.getRealm).find(x)).orElse(Some(worig));
+      can <- canSee(w.wid, auth, Some(w))// TODO cascading aliases?
+    ) yield {
+
+      if(!isFromRobot) Audit.logdb("RSS", wid.wpath + "/rss/")
+
+      Ok(views.xml.wiki.wikiRss(w, Wikis.linksTo(w.uwid).map(_.from).toList))
+    }) getOrElse
+      Ok("No feed found for " + wid + " TAGS " + path + "\n" + errCollector.mkString)
+  }
+
 }
 
 

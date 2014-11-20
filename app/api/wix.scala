@@ -1,10 +1,7 @@
 package api
 
-import model.User
-import model.WikiEntry
+import model._
 import controllers.{XWrapper,XListWrapper}
-import model.{WikiWrapper, WikiXpSolver}
-import model.WID
 import admin.Config
 import db.RazMongo
 

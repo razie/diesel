@@ -6,10 +6,7 @@
  */
 package admin
 
-import model.User
-import model.WikiEntry
-import model.WikiScripster
-import model.WikiUser
+import model.{WikiUser, User, WikiEntry, WikiScripster}
 import razie.base.scriptingx.ScalaScript
 
 /** run scripts in the RK specific context */

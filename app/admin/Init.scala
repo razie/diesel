@@ -52,7 +52,7 @@ object Init extends Logging {
 
     import model.Perm._
 
-    RazMongo("Ver") += Map("ver" -> Services.mongoDbVer) // create a first ver entry
+    RazMongo("Ver") += Map("ver" -> 1) // create a first ver entry
 
     val groups = List(
       UserGroup("admin", Set(uProfile.plus, adminWiki.plus, uWiki.plus, adminDb.plus)),

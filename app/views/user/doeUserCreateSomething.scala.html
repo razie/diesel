@@ -8,7 +8,7 @@ from user home page - create something
 @import model.WikiDomain
 
 @noParent(x:model.WikiEntry)=@{
-  !WikiDomain.needsParent(x.name)
+  !WikiDomain.rk.needsParent(x.name)
 }
    
 <div class="container">
@@ -23,7 +23,7 @@ from user home page - create something
       <form action="@routes.Wikie.edit2" method="GET" class="well form-inline">
         <input type="text" name="name" id="name" class="input-xlarge"  placeholder="enter a name"> 
         <select id="cat" name="cat" class="input-small">
-          @WikiDomain.zEnds("User", "Owner").filter(noParent).filter(_.name != "Form").sortWith(_.name < _.name).map{x=>
+          @WikiDomain.rk.zEnds("User", "Owner").filter(noParent).filter(_.name != "Form").sortWith(_.name < _.name).map{x=>
             <option value="@x.name" >@x.name</option>
           }
         </select>

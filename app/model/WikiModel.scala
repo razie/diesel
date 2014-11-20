@@ -191,6 +191,8 @@ case class WikiSection(parent: WikiEntry, stype: String, name: String, signature
 
   def checkSignature = Services.auth.checkSignature(sign, signature)
 
+  def wid = parent.wid.copy(section=Some(name))
+
   override def toString = s"WikiSection(stype=$stype,name=$name,signature=$signature,content=$content)"
 }
 
@@ -225,6 +227,25 @@ case class UWID(cat: String, id:ObjectId, realm:Option[String]=None) {
   
   /** get the realm or the default */
   def getRealm = realm.getOrElse(Wikis.DFLT)
+
+  /** withRealm - convienience builder */
+  def r(r:String) = if(Wikis.RK == r) this else this.copy(realm=Some(r))
+}
+
+/** a wrapper for categories, since they can now have a realm */
+case class CAT(cat: String, realm:Option[String]) { // don't give realm a None defaut, eh? see object.apply
+  /** get the realm or the default */
+  def getRealm = realm.getOrElse(Wikis.DFLT)
+}
+
+object CAT {
+  def unapply (cat:String) : Option[CAT] = Some(apply(cat))
+  def apply (cat:String) : CAT =
+    if(cat.contains(".")) {
+      val cs = cat.split("\\.")
+      CAT(cs(1), Some(cs(0)))
+    }
+    else CAT(cat, None)
 }
 
 /** a wiki id, a pair of cat and name - can reference a wiki entry or a section of an entry
@@ -243,10 +264,13 @@ case class WID(cat: String, name: String, parent: Option[ObjectId] = None, secti
   /** find the page for this, if any - respects the NOCATS */
   lazy val page = {
     if(cat.isEmpty) findId flatMap Wikis(getRealm).find // special for NOCATS
-    else Wikis.find(this)
+    else Wikis(getRealm).find(this)
    }
 
-  /** convienience builder */
+  /** get textual content, unprocessed, of this object, if found */
+  def content = section.map{s=> page.flatMap(_.sections.find(_.name == s)).map(_.content) getOrElse s"[Section $s not found!]"} orElse page.map(_.content)
+
+  /** withRealm - convienience builder */
   def r(r:String) = if(Wikis.RK == r) this else this.copy(realm=Some(r))
 
   /** find the ID for this page, if any - respects the NOCATS */
@@ -262,25 +286,28 @@ case class WID(cat: String, name: String, parent: Option[ObjectId] = None, secti
     } orElse Wikis.find(this).map(_._id)
   }
 
-  def uwid = findId map {x=>UWID(cat, x)}
+  def uwid = findId map {x=>UWID(cat, x, realm)}
 
   def cats = if(realm.exists(_ != Wikis.RK)) (realm.get + "." + cat) else cat
 
   /** format into nice url */
   def wpath: String = parentWid.map(_.wpath + "/").getOrElse("") + (
     if (cat != null && cat.length > 0 && !WID.NOCATS.contains(cat)) (cats + ":") else "") + name + (section.map("#" + _).getOrElse(""))
+  //this one used for simple cats with /w/:realm
+  def wpathnocats: String = parentWid.map(_.wpath + "/").getOrElse("") + (
+    if (cat != null && cat.length > 0 && !WID.NOCATS.contains(cat)) (cat + ":") else "") + name + (section.map("#" + _).getOrElse(""))
 
   /** full categories allways */
   def wpathFull: String = parentWid.map(_.wpath + "/").getOrElse("") + (
     if (cat != null && cat.length > 0 ) (cats + ":") else "") + name + (section.map("#" + _).getOrElse(""))
   def formatted = this.copy(name=Wikis.formatName(this))
-  def url: String = "http://" + Services.config.hostport + "/wiki/" + wpath
-  def urlRelative: String = "/wiki/" + wpath
+  def url: String = "http://" + Services.config.hostport + (realm.filter(_ != "rk").map(r=>s"/w/$r").getOrElse("")) + "/wiki/" + wpathnocats
+  def urlRelative: String = (realm.filter(_ != "rk").map(r=>s"/w/$r").getOrElse("")) + "/wiki/" + wpathnocats
   def ahref: String = "<a href=\"" + url + "\">" + toString + "</a>"
 
   /** helper to get a label, if defined or the default provided */
-  def label(id: String, alt: String) = WikiDomain.labelFor(this, id).getOrElse(alt)
-  def label(id: String) = WikiDomain.labelFor(this, id).getOrElse(id)
+  def label(id: String, alt: String) = WikiDomain(getRealm).labelFor(this, id).getOrElse(alt)
+  def label(id: String) = WikiDomain(getRealm).labelFor(this, id).getOrElse(id)
 
   /** get the realm or the default */
   def getRealm = realm.getOrElse(Wikis.DFLT)
@@ -329,22 +356,30 @@ object WID {
       None
     else {
       // TODO optimize this copy/paste later
-      if (path contains "/xp/") {
-        val b = path split "/xp/"
-        val a = b.head split "/"
-        Some(CMDWID(b.headOption, widFromSeg(a), "xp", b.tail.headOption.getOrElse("")))
-      } else if (path contains "/xpl/") {
-        val b = path split "/xpl/"
-        val a = b.head split "/"
-        Some(CMDWID(b.headOption, widFromSeg(a), "xpl", b.tail.headOption.getOrElse("")))
-      } else if (path contains "/tag/") {
-        val b = path split "/tag/"
-        val a = b.head split "/"
-        Some(CMDWID(b.headOption, widFromSeg(a), "tag", b.tail.headOption.getOrElse("")))
-      } else {
-        val a = path split "/"
-        Some(CMDWID(Some(path), widFromSeg(a), "", ""))
-      }
+      Array("/xp/", "/xpl/", "/tag/", "/rss.xml").collectFirst {
+        case tag if path contains tag => {
+          val b = path split tag
+          val a = b.head split "/"
+          CMDWID(b.headOption, widFromSeg(a), tag.replaceAllLiterally("/", ""), b.tail.headOption.getOrElse(""))
+        }
+      } orElse Some(CMDWID(Some(path), widFromSeg(path split "/"), "", ""))
+
+//      if (path contains "/xp/") {
+//        val b = path split "/xp/"
+//        val a = b.head split "/"
+//        Some(CMDWID(b.headOption, widFromSeg(a), "xp", b.tail.headOption.getOrElse("")))
+//      } else if (path contains "/xpl/") {
+//        val b = path split "/xpl/"
+//        val a = b.head split "/"
+//        Some(CMDWID(b.headOption, widFromSeg(a), "xpl", b.tail.headOption.getOrElse("")))
+//      } else if (path contains "/tag/") {
+//        val b = path split "/tag/"
+//        val a = b.head split "/"
+//        Some(CMDWID(b.headOption, widFromSeg(a), "tag", b.tail.headOption.getOrElse("")))
+//      } else {
+//        val a = path split "/"
+//        Some(CMDWID(Some(path), widFromSeg(a), "", ""))
+//      }
     }
   }
 
@@ -371,6 +406,7 @@ case class WikiLink(
   crDtm: DateTime = DateTime.now(),
   _id: ObjectId = new ObjectId()) extends REntity[WikiLink] {
 
+  /** the name of the link page, if there will be any */
   val wname = Array(from.cat, from.nameOrId, to.cat, to.nameOrId).mkString(":")
 
   def page = Wikis(from.getRealm).find("WikiLink", wname)

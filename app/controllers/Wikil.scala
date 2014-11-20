@@ -23,10 +23,6 @@ import play.api.mvc.{AnyContent, Action, Request}
 import razie.{cout, Logging, clog}
 import db.ROne
 import db.RMany
-import model.WikiAudit
-import model.WikiEntryOld
-import model.WikiLink
-import model.CMDWID
 
 object Wikil extends WikieBase {
 
@@ -300,7 +296,7 @@ object Wikil extends WikieBase {
   /** a user linked to a WID */
   def linkedUser(userId: String, wid: WID, withComment: Boolean) = Action { implicit request =>
 
-    razie.clog << s"METHOD linkedUser($userId, $wid, $withComment)"
+    clog << s"METHOD linkedUser($userId, $wid, $withComment)"
 
     def hows = {
       Wikis.category(wid.cat).flatMap(_.contentTags.get("roles:" + "User")) match {

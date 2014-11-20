@@ -5,12 +5,9 @@
  *  (_)\_)(__)(__)(____)(____)(____)(___/   (__)  (______)(____/    LICENSE.txt
  */
 package model
-import com.novus.salat.grater
-import db.RazSalatContext.ctx
+
+import db.{RCreate, ROne, RUpdate}
 import org.bson.types.ObjectId
-import db.ROne
-import db.RUpdate
-import db.RCreate
 
 /** keep track of views, per wiki page id */
 @db.RTable
@@ -18,7 +15,6 @@ case class WikiCount (
   pid: ObjectId, 
   count: Long = 1
   ) {
-  
   def inc = {
     WikiCount.findOne (pid) map (p=> 
       RUpdate noAudit (Map("pid" -> pid), p.copy(count=p.count+1))

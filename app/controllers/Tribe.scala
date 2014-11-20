@@ -15,8 +15,7 @@ import play.api.data.Forms.tuple
 import play.api.data.Form
 import play.api.mvc.Request
 import play.api.mvc.Action
-import razie.Logging
-import razie.Snakk
+import razie.{clog, Logging, Log}
 import admin._
 import org.bson.types.ObjectId
 import com.mongodb.casbah.Imports._
@@ -28,7 +27,6 @@ import db.RazSalatContext._
 import admin.CipherCrypt
 import java.net.URLEncoder
 import com.mongodb.util.JSON
-import razie.Log
 import model.Sec._
 import admin.MailSession
 import db.RTable
@@ -37,7 +35,6 @@ import db.ROne
 import db.RMany
 import db.RCreate
 import db.RDelete
-import razie.clog
 import model.Stage
 
 /** controller for tribes management */

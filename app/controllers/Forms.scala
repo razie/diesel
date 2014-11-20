@@ -16,15 +16,9 @@ import admin.MailSession
 import admin.Notif
 import admin.SendEmail
 import admin.VErrors
-import model.Enc
-import model.Perm
+import model._
 import db.RazSalatContext.ctx
 import model.Sec.EncryptedS
-import model.Stage
-import model.User
-import model.UserType
-import model.UserWiki
-import model.Users
 import play.api.data.Form
 import play.api.data.Forms.mapping
 import play.api.data.Forms.nonEmptyText
@@ -33,29 +27,8 @@ import play.api.data.Forms.tuple
 import play.api.libs.json.Json
 import play.api.mvc.Action
 import play.api.mvc.Request
-import razie.Logging
+import razie.{clog, cdebug, Logging, cout}
 import db.ROne
-import model.WikiCount
-import model.WikiIndex
-import model.Wikis
-import model.CMDWID
-import model.WikiAudit
-import model.WikiEntry
-import model.WikiEntryOld
-import model.WID
-import model.WikiLink
-import model.WikiDomain
-import model.WikiWrapper
-import model.WikiXpSolver
-import model.RegStatus
-import model.FormStatus
-import model.Regs
-import razie.cout
-import razie.clog
-import razie.cdebug
-import model.WikiForm
-import model.WForm
-import model.RacerKid
 
 /**
  * wiki controller
@@ -98,7 +71,7 @@ object Forms extends WikiBase with Logging {
       Map("visibility" -> "ClubAdmin",
         "wvis" -> "ClubAdmin"))
 
-    if (WikiDomain.needsOwner(wid.cat)) {
+    if (WikiDomain(wid.getRealm).needsOwner(wid.cat)) {
       we = we.cloneProps(we.props ++ Map("owner" -> u.id), u._id)
       model.UserWiki(u._id, we.uwid, "Owner").create
       //      RazController.cleanAuth()
@@ -148,7 +121,7 @@ object Forms extends WikiBase with Logging {
       Map("visibility" -> "ClubAdmin",
         "wvis" -> "ClubAdmin"))
 
-    if (WikiDomain.needsOwner(oldW.category)) {
+    if (WikiDomain(oldW.realm).needsOwner(oldW.category)) {
       we = we.cloneProps(we.props ++ Map("owner" -> u.id), u._id)
       model.UserWiki(u._id, we.uwid, "Owner").create
       //      RazController.cleanAuth()

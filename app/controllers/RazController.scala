@@ -1,27 +1,11 @@
 package controllers
 
-import admin.Audit
-import model._
-import play.api.data.Forms._
-import play.api.data._
-import play.api.mvc._
-import play.api._
-import razie.Logging
+import admin.{Audit, Config, IgnoreErrors, RazAuthService, Services, VErrors}
 import com.mongodb.WriteResult
-import admin.Validation
-import admin.Config
-import admin.VErrors
-import admin.IgnoreErrors
-import play.api.mvc.CookieBaker
-import play.api.libs.Crypto
-import play.api.data.validation.Constraint
-import play.api.data.validation.Invalid
-import play.api.data.validation.ValidationError
-import play.api.data.validation.Valid
-import razie.NoStaticS
-import db.UpgradeDb
-import admin.RazAuthService
-import admin.Services
+import model._
+import play.api.data.validation.{Constraint, Invalid, Valid, ValidationError}
+import play.api.mvc._
+import razie.{cdebug, Logging}
 
 
 /** common razie controller utilities */
@@ -150,16 +134,26 @@ ${errCollector.mkString}
       au <- activeUser;
       isA <- checkActive(au)
     ) yield f(au)(errCollector)(request)
-    ) getOrElse unauthorized("CAN'T")
+      ) getOrElse unauthorized("CAN'T")
+  }
+
+  def FAU(msg:String)(f: User => VErrors => Request[AnyContent] => Option[SimpleResult]) = Action { implicit request =>
+    implicit val errCollector = new VErrors()
+    (for (
+      au <- activeUser;
+      isA <- checkActive(au)
+    ) yield {
+      cdebug << "START_FAU "+msg
+      val temp = f(au)(errCollector)(request)
+      temp
+    }
+    ).flatten getOrElse unauthorized("CAN'T "+msg)
   }
 
   // todo enhance this - collect robot suspicions and store them in a proposal table
   protected def isFromRobot(implicit request: Request[_]) = {
     (request.headers.get("User-Agent").exists(ua => Config.robotUserAgents.exists(ua.contains(_))))
   }
-
-  import razie.cout
-  import razie.clog
 
   val HOME = WID("Admin", "home")
 }

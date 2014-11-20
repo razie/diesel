@@ -1,4 +1,4 @@
-package model
+package model.proto
 
 case class Sport(name: String, img: String, icon: String) {}
 

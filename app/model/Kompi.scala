@@ -18,15 +18,15 @@ import razie.base.scripting._
 import java.net.URLClassLoader
 
 
-object TestK extends App {
-  println(KOMPI("1+2"))
+object DELETEMETestK extends App {
+  println(DELETEMEKOMPI("1+2"))
 
 //  ClassLoader.getSystemClassLoader.asInstanceOf[java.net.URLClassLoader].getURLs.map { p =>
 //    println(p.getFile)
 //  }
 }
 
-object KOMPI {
+object DELETEMEKOMPI {
   def apply(s: String) = run(s)
 
   def run(s: String): String = {
@@ -63,7 +63,7 @@ object KOMPI {
    * environments like IntelliJ, SBT, or WebStart), and find the paths to JAR
    * files on disk.
    */
-  final class ReplClassloader(parent: ClassLoader) extends ClassLoader(parent) with Logger {
+  final class DELETEMEReplClassloader(parent: ClassLoader) extends ClassLoader(parent) with Logger {
     override def getResource(name: String): URL = {
       // Rather pass `settings.usejavacp.value = true` (which doesn't work
       // under SBT) we do the same as SBT and respond to a resource request

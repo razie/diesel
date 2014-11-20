@@ -1,8 +1,7 @@
-@(user: model.User, item:Int, ui:controllers.UserStuff)
-
 @*******
-included in mainUserC as the right hand side info box 
+included in mainUserC as the right hand side info box
 *********@
+@(user: model.User, item:Int, ui:controllers.UserStuff)
 
 @import org.joda.time.DateTime
 @import razie.RString._
@@ -111,16 +110,16 @@ case 3 => {
 
   Followed:
   @if(blogs.filter(_.role != "Owner").size>0) {
-    (follow more <a class="btn btn-mini" href="/wikie/add/Forums">Forums &raquo;</a>
-    <a class="btn btn-mini" href="/wikie/add/Blogs">Blogs &raquo;</a>)</p>
+    (follow more <a class="btn btn-mini" href="/wikie/like/Forum">Forums &raquo;</a>
+    <a class="btn btn-mini" href="/wikie/like/Blog">Blogs &raquo;</a>)</p>
     <ul> 
     @for(w <- blogs.filter(_.role != "Owner")) {
       <li><a href="@controllers.Wiki.w(w.wid)">@model.Wikis.label(w.wid)</a></li>
     }
   </ul>
   } else {
-    (follow one now <a class="btn btn-mini" href="/wikie/add/Forum">Forum &raquo;</a>
-    <a class="btn btn-mini" href="/wikie/add/Blog">Blog &raquo;</a>)</p>
+    (follow one now <a class="btn btn-mini" href="/wikie/like/Forum">Forum &raquo;</a>
+    <a class="btn btn-mini" href="/wikie/like/Blog">Blog &raquo;</a>)</p>
   }
 <p>
   Owned: 

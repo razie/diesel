@@ -1,4 +1,4 @@
-package model
+package model.proto
 
 
 /** represents a unique user id */

@@ -1,56 +1,12 @@
 package controllers
 
-import scala.Array.canBuildFrom
-import org.joda.time.DateTime
-import com.mongodb.DBObject
-import com.mongodb.casbah.Imports.map2MongoDBObject
-import com.mongodb.casbah.Imports.wrapDBObj
-import com.novus.salat.grater
-import admin.Audit
-import admin.Config
-import admin.Corr
-import admin.IgnoreErrors
-import admin.MailSession
-import admin.Notif
-import admin.SendEmail
-import admin.VErrors
-import model.Enc
-import model.Perm
-import db.RazSalatContext.ctx
+import admin.{Corr, IgnoreErrors, VErrors}
 import model.Sec.EncryptedS
-import model.Stage
-import model.User
-import model.UserType
-import model.UserWiki
-import model.Users
-import play.api.data.Form
-import play.api.data.Forms.mapping
-import play.api.data.Forms.nonEmptyText
-import play.api.data.Forms.text
-import play.api.data.Forms.tuple
-import play.api.libs.json.Json
-import play.api.mvc.Action
-import play.api.mvc.Request
+import model._
 import razie.Logging
-import razie.cout
-import db.ROne
-import model.WikiCount
-import model.WikiIndex
-import model.Wikis
-import model.CMDWID
-import model.WikiAudit
-import model.WikiEntry
-import model.WikiEntryOld
-import model.WID
-import model.WikiLink
-import model.WikiDomain
-import model.WikiWrapper
-import model.WikiXpSolver
-import model.WikiUser
 
 /** wiki controller base stuff - file too large */
 object RazWikiAuthorization extends RazController with Logging with WikiAuthorization {
-  import Visibility._
 
   implicit def toU (wu:WikiUser) : User = wu.asInstanceOf[User]
 
@@ -163,7 +119,7 @@ object RazWikiAuthorization extends RazController with Logging with WikiAuthoriz
       pro <- au.profile orCorr cNoProfile;
       verif <- ("WikiLink" == cat || "User" == cat || au.hasPerm(Perm.eVerified)) orCorr corrVerified;
       res <- (!w.exists(_.isReserved) || au.hasPerm(Perm.adminWiki) || "User" == wid.cat) orErr ("Category is reserved");
-      owner <- !(WikiDomain.needsOwner(cat)) ||
+      owner <- !(WikiDomain(wid.getRealm).needsOwner(cat)) ||
         we.exists(_.isOwner(au.id)) ||
         (wprops.flatMap(_.get("wvis")).isDefined && isVisible(u, wprops.get, "wvis")) ||
         wprops.flatMap(_.get("visibility")).exists(_.startsWith(Visibility.CLUB) && isVisible(u, wprops.get, "visibility")) ||

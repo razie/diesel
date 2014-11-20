@@ -1,0 +1,23 @@
+@(page:model.WikiEntry, items:List[model.UWID])<?xml version="1.0" encoding="UTF-8" ?>
+<rss version="2.0">
+    <channel>
+        <title>@page.label</title>
+        <link>@page.wid.url</link>
+        <description>TODO feed description</description>
+
+        @defining(org.joda.time.format.DateTimeFormat.forPattern("EEE, dd MMM yyyy HH:mm:ss Z")) {fmt=>
+
+          @** sorting with the page's create date time, no the link's create datetime - is that fair? *@
+          @items.flatMap(_.page).sortWith(_.crDtm isAfter _.crDtm).filter(! _.props.contains("draft")).take(50).map {we=>
+            <item>
+              <title>@we.label</title>
+              <link>@we.wid.url</link>
+              <pubDate>@fmt.print(we.crDtm)</pubDate>
+              <guid>@we.wid.url</guid>
+              <description>TODO description @we.crDtm</description>
+            </item>
+          }
+        }
+    </channel>
+</rss>
+

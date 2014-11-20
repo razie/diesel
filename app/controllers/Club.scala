@@ -9,7 +9,7 @@ import model._
 import org.bson.types.ObjectId
 import org.joda.time.DateTime
 import play.api.mvc.{Action, Request}
-import razie.{Logging, cout}
+import razie.{clog, Logging, cout}
 
 import scala.Array.canBuildFrom
 import scala.Option.option2Iterable
@@ -467,7 +467,7 @@ object Club extends RazController with Logging {
     ) yield {
       var r = reg
       regkid.wids.foreach { wid =>
-        razie.clog << "drop form " + wid
+        clog << "drop form " + wid
         r = r.copy(wids = (r.wids.filter(_.name != wid.name)))
 
         // have to delete form ?
@@ -526,7 +526,7 @@ object Club extends RazController with Logging {
       notCompleted <- form.form.formState != FormStatus.APPROVED orErr "form has been approved !"
     ) yield {
       var r = reg
-      razie.clog << "drop form " + formWid
+      clog << "drop form " + formWid
       r = r.copy(wids = (r.wids.filter(_.name != formWid.name)))
 
       // have to delete form ?
@@ -733,7 +733,7 @@ object Club extends RazController with Logging {
         }
       }
       club.newTasks.foreach { t => //(name, args)
-        razie.clog << "Creating user Task " + t
+        clog << "Creating user Task " + t
         //todo if not already
         UserTask(u._id, t._1, t._2.toMap).create
       }

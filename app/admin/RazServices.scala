@@ -1,19 +1,22 @@
 package admin
 
 import controllers.Admin
+import db.{ROne, RazMongo}
 import model._
-import play.api.Play.current
+//import play.api.Play.current
+import com.mongodb.casbah.Imports._
+import com.novus.salat.grater
+import controllers.DarkLight
+import db.RazSalatContext.ctx
+import org.bson.types.ObjectId
+import org.joda.time.DateTime
 import play.api.cache.Cache
 import play.api.mvc.Request
 import razie.Logging
-import org.bson.types.ObjectId
-import razie.cdebug
-import controllers.DarkLight
-import razie.clog
+
 
 /** statics and utilities for authentication cache */
 object RazAuthService extends AuthService[User] with Logging {
-  import admin.M._
 
   implicit def toU(wu: WikiUser): User = wu.asInstanceOf[User]
 
@@ -116,3 +119,40 @@ object RazAuthService extends AuthService[User] with Logging {
       ("ADMIN" == signature &&
         (razie.NoStaticS.get[WikiUser].map(_.asInstanceOf[User]).exists(_.hasPerm(Perm.adminDb)) || Services.config.isLocalhost))
 }
+
+/**
+ * razie's default Audit implementation - stores them events in a Mongo table. Use this as an example to write your own auditing service.
+ *
+ *  Upon review, move them to the cleared/history table and purge them sometimes
+ */
+object RazAuditService extends AuditService with Logging {
+
+  /** log a db operation */
+  def logdb(what: String, details: Any*) = {
+    val d = details.mkString(",")
+    Services.alli ! Audit("a", what, d)
+    val s = what + " " + d
+    razie.Log.audit(s)
+    s
+  }
+
+  /** log a db operation */
+  def logdbWithLink(what: String, link: String, details: Any*) = {
+    val d = details.mkString(",")
+    Services.alli ! Audit("a", what, d, Some(link))
+    val s = what + " " + d
+    razie.Log.audit(s)
+    s
+  }
+
+  /** move from review to archive. archive is purged separately. */
+  def clearAudit(id: String, userId: String) = {
+    ROne[Audit](new ObjectId(id)) map { ae =>
+      val o = grater[Audit].asDBObject(ae)
+      o.putAll(Map("clearedBy" -> userId, "clearedDtm" -> DateTime.now))
+      RazMongo("AuditCleared") += o
+      RazMongo("Audit").remove(Map("_id" -> new ObjectId(id)))
+    }
+  }
+}
+

@@ -43,7 +43,7 @@ case class WikiForm(we: WikiEntry) {
     }
   }
 
-  def isFormData = we.content.contains("section:formData}}")
+  def hasFormData = we.content.contains("section:formData}}")
   def formState = we.fields.get(FormStatus.FORM_STATE).map(_.value)
   def canEdit = we.fields.get(FormStatus.FORM_STATE).exists(Array(FormStatus.EDITING, FormStatus.CREATED) contains _.value)
   def canBeApproved = we.fields.get(FormStatus.FORM_STATE).exists(_.value == FormStatus.SUBMITTED)
@@ -52,3 +52,22 @@ case class WikiForm(we: WikiEntry) {
   def formDataJson = we.section("section", "formData").map(s => razie.Snakk.jsonParsed(s.content))
   def fields = we.fields
 }
+
+/** form utilities */
+object WikiForm {
+  
+  /** try to find and parse a random formData */
+  def parseFormData(c: String) = {
+    val parms = new scala.collection.mutable.HashMap[String, String]()
+    val PAT = """(?s)\{\{[.]?section:formData\}\}(.*)\{\{/section\}\}""".r
+    PAT.findFirstMatchIn(c).foreach { m =>
+      val data = razie.Snakk.jsonParsed(m.group(1))
+      razie.MOLD(data.keys).map(_.toString).map { name =>
+        val x = data.getString(name)
+        parms.put(name, x)
+      }
+    }
+  parms
+  }
+}
+

@@ -75,17 +75,9 @@ object Website {
 
   def apply (implicit request: Request[_]):Option[Website] = getHost flatMap Website.apply
 
-  def dflt = new Website(Wikis.categories.head) //todo this is stupid - find better default
+  def dflt = new Website(Wikis.rk.categories.head) //todo this is stupid - find better default
 
-  def getHost (implicit request: Request[_]) =
-    if(Config.isLocalhost)
-      Some("www.racerkidz.com")    // for testing locally
-    //      Some("www.enduroschool.com")    // for testing locally
-    //      Some("www.glacierskiclub.com")    // for testing locally
-    //      Some("www.nofolders.net")    // for testing locally
-    //      Some("www.dieselreactor.net")    // for testing locally
-    else
-      request.headers.get("X-FORWARDED-HOST")
+  def getHost (implicit request: Request[_]) = admin.PlayTools.getHost
 }
 
 /**
@@ -107,10 +99,11 @@ object Realms {
   case class CacheEntry (w:Realm, millis:Long)
   val cache = new collection.mutable.HashMap[String,CacheEntry]()
 
+  //todo as we scale - load/unload reactors from memory
   def apply (s:String):Option[Realm] = {
     val ce = cache.get(s)
     if (ce.isEmpty || System.currentTimeMillis > ce.get.millis) {
-      val w = Wikis.rk.find("Realm", s) map (new Realm(_))
+      val w = Wikis.rk.find("Reactor", s) map (new Realm(_))
       if (w.isDefined)
         cache.put(s, CacheEntry(w.get, System.currentTimeMillis()+w.get.ttl))
       w
@@ -120,7 +113,7 @@ object Realms {
 
   def apply (implicit request: Request[_]):Option[Realm] = getRealm flatMap Realms.apply
 
-  def dflt = new Realm(Wikis.categories.head) //todo this is stupid - find better default
+  def dflt = new Realm(Wikis.rk.categories.head) //todo this is stupid - find better default
 
   def getRealm (implicit request: Request[_]) = {
     val h = Website.getHost(request)

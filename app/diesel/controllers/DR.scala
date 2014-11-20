@@ -14,7 +14,7 @@ import db.RazSalatContext._
 import com.mongodb.{BasicDBObject, DBObject}
 import db.{ROne, RazMongo}
 import diesel.model._
-import model.{CMDWID, WikiAudit, WikiEntryOld, _}
+import model.{CMDWID, WikiEntryOld, _}
 import play.api.mvc.{Action, AnyContent, Request}
 import razie.{cout, Logging}
 

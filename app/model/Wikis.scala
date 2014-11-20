@@ -6,6 +6,7 @@
  */
 package model
 
+import com.mongodb.DBObject
 import com.mongodb.casbah.Imports._
 import com.novus.salat._
 import db.RazSalatContext._
@@ -19,19 +20,19 @@ import db.RazMongo
 
 /** the basic element of reaction: an app or module */
 class Reactor (val realm:String) {
-  val wiki : WikiInst = new WikiInst(realm)
+  val wiki:WikiInst = new WikiInst(realm)
+  val domain : WikiDomain = new WikiDomain (realm, wiki)
 }
 
 /** a wiki */
 class WikiInst (val realm:String) {
-  val domain : WikiDomain = new WikiDomain (realm)
   val index : WikiIndex = new WikiIndex (realm)
 
   val REALM = "realm" -> realm
 
   /** cache of categories - updated by the WikiIndex */
   lazy val cats = new collection.mutable.HashMap[String,WikiEntry]() ++
-    (RMany[WikiEntry]("realm" -> realm, "category" -> "Category") map (w=>(w.name,w)))
+    (RMany[WikiEntry](REALM, "category" -> "Category") map (w=>(w.name,w)))
 
   def weTable(cat: String) = Wikis.TABLE_NAMES.get(cat).map(x=>RazMongo(x)).getOrElse(if (Wikis.PERSISTED contains cat) RazMongo("we"+cat) else table)
   def weTables(cat: String) = Wikis.TABLE_NAMES.getOrElse(cat, if (Wikis.PERSISTED contains cat) ("we"+cat) else Wikis.TABLE_NAME)
@@ -58,12 +59,16 @@ class WikiInst (val realm:String) {
   def label(wid: UWID):String = /*wid.page map (_.label) orElse*/
     wid.wid.map(x=>label(x)).getOrElse(wid.nameOrId)
 
-  private def ifind(wid: WID) =
+  private def ifind(wid: WID) = {
     wid.parent.map {p=>
       weTable(wid.cat).findOne(Map(REALM, "category" -> wid.cat, "name" -> wid.name, "parent" -> p))
-    } getOrElse
-      weTable(wid.cat).findOne(Map(REALM, "category" -> wid.cat, "name" -> Wikis.formatName(wid.name)))
-
+    } getOrElse {
+      if("Reactor" == wid.cat) // reactors can be accessed both from their realm and main
+        weTable(wid.cat).findOne(Map("realm"->"rk", "category" -> wid.cat, "name" -> Wikis.formatName(wid.name)))
+     else
+        weTable(wid.cat).findOne(Map(REALM, "category" -> wid.cat, "name" -> Wikis.formatName(wid.name)))
+    }
+  }
 
   // TODO find by ID is bad, no - how to make it work across wikis ?
   def findById(id: String) = find(new ObjectId(id))
@@ -78,7 +83,20 @@ class WikiInst (val realm:String) {
   def findById(cat:String, id: ObjectId): Option[WikiEntry] =
     weTable(cat).findOne(Map("_id" -> id)) map (grater[WikiEntry].asObject(_))
 
-  def find(wid: WID): Option[WikiEntry] = ifind(wid) map (grater[WikiEntry].asObject(_))
+  def find(wid: WID): Option[WikiEntry] =
+    if(wid.cat.isEmpty && wid.parent.isEmpty) {
+      // some categories are allowed without cat if there's just one of them by name
+      val wl = findAny(wid.name).filter(we=>Array("Blog", "Post").contains(we.wid.cat)).toList
+      if(wl.size == 1) Some(wl.head)
+      else {
+        val wll = wl.filter(_.wid.getRealm == "rk")
+        if(wll.size == 1) Some(wll.head)
+        else None // don't want to randomly find what others define with same name...
+        //todo if someone else defines a blog/forum with same name, it will not find mine anymore - so MUST use REALMS
+      }
+    } else
+      ifind(wid) map (grater[WikiEntry].asObject(_))
+
   def find(uwid: UWID): Option[WikiEntry] = findById(uwid.cat, uwid.id)
 
   def find(category: String, name: String): Option[WikiEntry] = find(WID(category, name))
@@ -101,11 +119,16 @@ class WikiInst (val realm:String) {
   def findAnyOne(name: String) =
     table.findOne(Map(REALM, "name" -> name)) map (grater[WikiEntry].asObject(_))
 
+  def categories = cats.values
+  def category(cat: String) = cats.get(cat)
+  def visibilityFor(cat: String): Seq[String] =
+    cats.get(cat).flatMap(_.contentTags.get("visibility")).map(_.split(",").toSeq).getOrElse(Seq("Public"))
 }
 
 /** the default reactor, the main wiki */
 object RkReactor extends model.Reactor (Wikis.RK) {
   override val wiki : WikiInst = RkWikiInst
+  override val domain : WikiDomain = new WikiDomain(Wikis.RK, RkWikiInst)
 }
 
 /** a wiki */
@@ -113,15 +136,15 @@ object RkWikiInst extends model.WikiInst(Wikis.RK) {
 }
 
 object Reactors {
-  final val RK = Wikis.RK
-  final val NOTES = "note"
+  final val RK = WikiConfig.RK
+  final val NOTES = WikiConfig.NOTES
   
-  // all realms currently loaded in this node
+  //todo - scale... now all realms currently loaded in this node
   lazy val reactors = {
     val res = new collection.mutable.HashMap[String,Reactor]()
     res.put (Wikis.RK, RkReactor)
     res.put (NOTES, new Reactor(NOTES))
-    RkReactor.wiki.pages("Realm").filter(x=> !(Array(RK, NOTES) contains x.name)).foreach {w=>
+    RkReactor.wiki.pages("Reactor").filter(x=> !(Array(RK, NOTES) contains x.name)).foreach {w=>
       res.put (w.name, new Reactor(w.name))
     }
 
@@ -133,7 +156,7 @@ object Reactors {
     reactors.put(realm, new Reactor(realm))
   }
 
-  def apply (realm:String = Wikis.RK) = reactors(realm) // todo implement realms
+  def apply (realm:String = Wikis.RK) = reactors.getOrElse(realm, RkReactor) // using RK as a fallback
 }
 
 /** wiki factory and utils */
@@ -181,17 +204,16 @@ object Wikis extends Logging with Validation {
   def findById(cat:String, id: ObjectId): Option[WikiEntry] = 
     Reactors.reactors.foldLeft(None.asInstanceOf[Option[WikiEntry]])((a,b) => a orElse b._2.wiki.findById(cat, id))
 
+  /** @deprecated use realm */
+  def category(cat: String) =
+    if(cat.contains(".")) {
+      val cs = cat.split("\\.")
+      apply(cs(0)).category(cs(1))
+    }
+    else rk.category(cat)
 
-  /** cache of categories - updated by the WikiIndex */
-  lazy val cats = new collection.mutable.HashMap[String,WikiEntry]() ++
-    (RMany[WikiEntry]("category" -> "Category") map (w=>(w.name,w)))
-    
-  def categories = cats.values
-
-  def category(cat: String) = cats.get(cat)
-
-  def visibilityFor(cat: String): Seq[String] =
-    cats.get(cat).flatMap(_.contentTags.get("visibility")).map(_.split(",").toSeq).getOrElse(Seq("Public"))
+  /** @deprecated use realm */
+  def visibilityFor(cat: String): Seq[String] = rk.visibilityFor(cat)
 
   def linksFrom(from: UWID) = RMany[WikiLink]("from" -> from.grated)
 
@@ -239,7 +261,9 @@ object Wikis extends Logging with Validation {
     else 
       formatName(wid.name)
 
-  /** format an even more complex name */
+  /** format an even more complex name
+    * @param rk force links back to RK main or leave them
+    */
   def formatWikiLink(wid: WID, nicename: String, label: String, hover: Option[String] = None, rk: Boolean = false) = {
     val name = Wikis.formatName(wid.name)
     val title = hover.map("title=\"" + _ + "\"") getOrElse ("")
@@ -247,18 +271,19 @@ object Wikis extends Logging with Validation {
     val bigName = apply(wid.getRealm).index.getForLower(name.toLowerCase())
     if (bigName.isDefined || wid.cat.matches("User")) {
       var newwid = wid.copy(name=bigName.get)
-      var u = Services.config.urlmap("/wiki/%s".format(newwid.formatted.wpath))
+      var u = Services.config.urlmap(newwid.formatted.urlRelative)
 
       if (rk && (u startsWith "/")) u = "http://" + Services.config.rk + u
 
       ("""<a href="%s" title="%s">%s</a>""".format(u, title, label),
         Some(ILink(newwid, label)))
-    } else // hide it from google
-    if (rk)
-      ("""<a href="http://""" + Services.config.rk + """/wiki/%s" title="%s">%s<sup><b style="color:red">^</b></sup></a>""".format(wid.formatted.wpath, title, label),
+    } else if (rk)
+      // hide it from google
+      (s"""<a href="http://${Services.config.rk}${wid.formatted.urlRelative}" title="$title">$label<sup><b style="color:red">^</b></sup></a>""" ,
         Some(ILink(wid, label)))
     else
-      ("""<a href="/wikie/show/%s" title="%s">%s<sup><b style="color:red">++</b></sup></a>""".format(wid.wpath, hover.getOrElse("Missing page"), label),
+      (s"""<a href="/we/${wid.getRealm}/show/${wid.wpath}" title="%s">$label<sup><b style="color:red">++</b></sup></a>""".format
+        (hover.getOrElse("Missing page")),
         Some(ILink(wid, label)))
   }
 
@@ -274,18 +299,25 @@ object Wikis extends Logging with Validation {
     var done = false
     val res = try {
       val INCLUDE = """(?<!`)\[\[include:([^\]]*)\]\]""".r
-      INCLUDE.replaceAllIn(c2, { m =>
-        done = true
-        (for (
+      val res1 = INCLUDE.replaceAllIn(c2, { m =>
+        val content = for (
           wid <- WID.fromPath(m.group(1)) orErr ("bad format for page");
-          p <- wid.page orErr (s"page ${wid.wpath} not found")
-        ) yield {
-          if (wid.section.isDefined) {
-            wid.section.flatMap(p.section("section", _)).map(_.content).getOrElse("[ERR section %s not found]".format(wid.wpath))
-          } else {
-            p.content
-          }
-        }).map(_.replaceAll("\\$", "\\\\\\$")).getOrElse("`[ERR Can't include $1 " + errCollector.mkString + "]`")
+          c <- wid.content orErr s"content for ${wid.wpath} not found"
+        ) yield c
+
+        done = true
+        //regexp uses $ as a substitution
+        content.map(_.replaceAll("\\$", "\\\\\\$")).getOrElse("`[ERR Can't include $1 " + errCollector.mkString + "]`")
+      })
+
+      val TEMPLATE = """(?<!`)\[\[template:([^\]]*)\]\]""".r
+      TEMPLATE.replaceAllIn(res1, { m =>
+        done = true
+        //todo this is parse-ahead, maybe i can make it lazy?
+        val parms = WikiForm.parseFormData(c2)
+        val content = template (m.group(1), Map()++parms)
+        //regexp uses $ as a substitution
+        content.replaceAll("\\$", "\\\\\\$")
       })
     } catch {
       case s: Throwable => log("Error: ", s); "`[ERR Can't process an include]`"
@@ -321,10 +353,18 @@ object Wikis extends Logging with Validation {
     case _ => WikiParser.SState("UNKNOWN MARKUP " + markup + " - " + content)
   }
 
-  /** main formatting function */
+  /** main formatting function
+    *
+    * @param icontent to override the contents of the page
+    */
   private def format1(wid: WID, markup: String, icontent: String, we: Option[WikiEntry] = None) = {
     val res = try {
-      var content = we.map(_.preprocessed).getOrElse(preprocess(wid, markup, noporn(icontent))).fold(we).s
+      var content =
+        if(icontent == null || icontent.isEmpty)
+          we.map(_.preprocessed).getOrElse(preprocess(wid, markup, noporn(icontent))).fold(we).s
+        else
+          preprocess(wid, markup, noporn(icontent)).fold(we).s
+
       // TODO index noporn when saving/loading page, in the WikiIndex
       // TODO have a pre-processed and formatted page index I can use - for non-scripted pages, refreshed on save
       // run scripts
@@ -435,9 +475,20 @@ object Wikis extends Logging with Validation {
   }
 
   private def runScript(s: String, page: Option[WikiEntry]) = {
-    val up = razie.NoStaticS.get[model.WikiUser]
+    val up = razie.NoStaticS.get[WikiUser]
     val q = razie.NoStaticS.get[QueryParms]
     WikiScripster.impl.runScript(s, page, up, q.map(_.q.map(t => (t._1, t._2.mkString))).getOrElse(Map()))
+  }
+
+  /** format content from a template, given some parms */
+  def template(wpath: String, parms:Map[String,String]) = {
+    (for (wid <- WID.fromPath(wpath);
+          c <- wid.content
+    ) yield {
+      parms.foldLeft(c)((a,b)=>a.replaceAll("\\$\\{"+b._1+"\\}", b._2))
+    }) getOrElse (
+      "No content template for: " + wpath + "\n\nAttributes:\n\n" + parms.map{t=>s"* ${t._1} = ${t._2}\n"}.mkString
+      )
   }
 
   def noporn(s: String) = porn.foldLeft(s)((x, y) => x.replaceAll("""\b%s\b""".format(y), "BLIP"))
@@ -473,54 +524,4 @@ object Wikis extends Logging with Validation {
 
 }
 
-/** encapsulates the knowledge to use the wiki-defined domain model */
-class WikiDomain (realm:String) {
-
-  //todo load it
-
-  /** get all zends as List (to, role) */
-  def gzEnds(aEnd: String) =
-    (for (
-      c <- Wikis.categories if (c.contentTags.get("roles:" + aEnd).isDefined);
-      t <- c.contentTags.get("roles:" + aEnd).toList;
-      r <- t.split(",")
-    ) yield (c.name, r)).toList
-
-//    Wikis.categories.filter(_.contentTags.get("roles:" + aEnd).isDefined).flatMap(c=>c.contentTags.get("roles:" + aEnd).get.split(",").toList.map(x=>(c,x)))
-
-  def gaEnds(zEnd: String) =
-    for (
-      c <- Wikis.category(zEnd).toList;
-      t <- c.contentTags if (t._1 startsWith "roles:");
-      r <- t._2.split(",")
-    ) yield (t._1.split(":")(1), r)
-
-  /** zEnds that link to ME as role */
-  def zEnds(aEnd: String, role: String) =
-    Wikis.categories.filter(_.contentTags.get("roles:" + aEnd).map(_.split(",")).exists(_.contains(role) || role=="")).toList
-
-  /** aEnds that I link TO as role */
-  def aEnds(zEnd: String, role: String) =
-    for (
-      c <- Wikis.category(zEnd).toList;
-      t <- c.contentTags if (t._2.split(",").contains(role) || role=="")
-    ) yield t._1.split(":")(1)
-
-  def needsOwner(cat: String) =
-    Wikis.category(cat).flatMap(_.contentTags.get("roles:" + "User")).exists(_.split(",").contains("Owner"))
-
-  def noAds(cat: String) =
-    Wikis.category(cat).flatMap(_.contentTags.get("noAds")).isDefined
-
-  def needsParent(cat: String) =
-    Wikis.category(cat).exists(_.contentTags.exists { t =>
-      t._1.startsWith("roles:") && t._2.split(",").contains("Parent")
-    })
-
-  def labelFor(wid: WID, action: String) = Wikis.category(wid.cat) flatMap (_.contentTags.get("label." + action))
-}
-
-object WikiDomain extends WikiDomain (Wikis.RK) {
-  def apply (realm:String) = this
-}
 

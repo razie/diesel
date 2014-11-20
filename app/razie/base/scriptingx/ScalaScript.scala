@@ -132,7 +132,9 @@ class SBTScalaScriptContext(parent: ActionContext = null) extends ScalaScriptCon
       if(admin.Config.isLocalhost) {
         val myLoader = new ReplClassloader(getClass.getClassLoader)
         settings.embeddedDefaults(myLoader)
-        settings.bootclasspath.append("C:/cygwin/home/razvanc/w/racerkidz/lib_managed/jars/org.scala-lang/scala-library/scala-library-2.10.3.jar")
+//        settings.bootclasspath.append("C:/cygwin/home/razvanc/w/racerkidz/lib_managed/jars/org.scala-lang/scala-library/scala-library-2.10.3.jar")
+        settings.bootclasspath.append("/Users/raz/w/racerkidz/lib_managed/jars/org.scala-lang/scala-library/scala-library-2.10.4.jar")
+        //todo figure out why the heck and remove this hardcoded bs
 
 //        val cl = this.getClass.getClassLoader // or getClassLoader.getParent, or one more getParent...
 //

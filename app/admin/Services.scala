@@ -6,24 +6,25 @@
  */
 package admin
 
-import com.mongodb.casbah.{MongoConnection, MongoDB}
-import db.UpgradeDb
+import db.{RazMongo, UpgradeDb}
 import model.{WikiConfig, WikiUser}
+import admin.AuthService
 
-// yeah, I hate myself...
+/** central point of customization - aka service registry */
+// todo use some proper pattern - yeah, I hate myself...
 object Services {
   var auth: AuthService[WikiUser] = NoAuthService
   var audit: AuditService = NoAuditService
   var config: WikiConfig = null
 
-  var mongoDbVer = 0
-  var mongoUpgrades: Map[Int, UpgradeDb] = Map()
-
   var alli: Alligator = NoAlligator
 
-  /** connect to your database, with your connection properties, clustered or not etc */
-  var mkDb: () => MongoDB = () => {
-    MongoConnection("") apply ("")
+  def noInitSample = {
+    /** connect to your database, with your connection properties, clustered or not etc */
+    import com.mongodb.casbah.{MongoConnection, MongoDB}
+    RazMongo.setInstance {
+      MongoConnection("") apply ("")
+    }
   }
 }
 

@@ -33,8 +33,7 @@ class WikiIndex (val realm:String) {
         db.as[String]("category"),
         db.as[String]("name"),
         if (db.containsField("parent")) Some(db.as[ObjectId]("parent")) else None,
-        None,
-        Option(db.as[String]("realm")))
+        None).r(db.as[String]("realm"))
       t.put(w.name, w, db.as[ObjectId]("_id"))
       lower.put(w.name.toLowerCase(), w.name)
       labels.put(w.name, db.as[String]("label"))
@@ -46,7 +45,7 @@ class WikiIndex (val realm:String) {
   private def up(we: WikiEntry) {
     parsed.put(we._id, PEntry(we.ilinks))
     if (we.wid.cat == "Category")
-      Wikis.cats.put(we.wid.name, we)
+      Wikis(realm).cats.put(we.wid.name, we)
   }
 
   def graph(oid: ObjectId) = synchronized {

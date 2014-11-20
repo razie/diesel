@@ -1,8 +1,9 @@
 package admin
 
 import java.util.Properties
+
 import scala.Option.option2Iterable
-import model.{WikiConfig, WID, Wikis}
+import model.{WikiUser, WikiConfig, WID, Wikis}
 import scala.collection.mutable.HashMap
 import play.api.mvc.Request
 
@@ -12,7 +13,7 @@ object Config extends WikiConfig {
 
   final val METAS = "sitemetas"
   lazy val metas = Wikis.find(WID("Admin", METAS)) map (_.content) getOrElse ""
-  def currUser = { razie.NoStaticS.get[model.WikiUser].map(_.asInstanceOf[model.User]) }
+  def currUser = { razie.NoStaticS.get[WikiUser].map(_.asInstanceOf[model.User]) }
 
   final val mongodb = props.getProperty("rk.mongodb")
   final val mongohost = props.getProperty("rk.mongohost")

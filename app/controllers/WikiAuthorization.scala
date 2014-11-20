@@ -9,9 +9,7 @@ package controllers
 import admin.IgnoreErrors
 import admin.VErrors
 import db.RTable
-import model.WID
-import model.WikiEntry
-import model.WikiUser
+import model.{WikiUser, WID, WikiEntry}
 
 /** minimum authorization functionality required - provide your own in Global::beforeStart */
 trait WikiAuthorization {

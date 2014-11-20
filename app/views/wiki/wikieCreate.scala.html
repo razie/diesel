@@ -1,29 +1,22 @@
 @**************
 render a regular wiki page - site pages are rendered with wikiSite.scala.html
 **************@
-
-@(wid:model.WID, page:Option[model.WikiEntry], au:Option[model.User])
+@(cat:String, realm:String, au:Option[model.User])
 @import model._
 
-@htmlHeadBar(page.flatMap(_.contentTags.get("title")).getOrElse(wid.cat +": "+ page.map(_.label).getOrElse(model.Wikis(wid.getRealm).label(wid))), au)
+@htmlHeadBar("Creating a "+cat, au)
 
 <div class="container">
   <div class="row">
     <div class="span9">
 
-      @wiki.wikiAddMore(wid, page, au)
+      @helper.form(action=routes.Wikie.addWithName(cat, realm), 'class->"well form-inline") {
+        Name: <input type="text" class="input-xlarge" name="name" placeholder="Name">
 
-      <div class="well">
-        @wiki.wikiFrag(wid,au,false,page, None)
-      </div>
+        <button type="submit" class="btn">Create Now!</button>
+      }
 
       <hr>
-     
-      @wiki.wikiPageComments(wid, page, au)
-      
-      @********** if already two adds in page put none at the bottom, there's also one on the left **********@
-      @htmlFooter(ads = !page.exists(_.content.matches("""(?s).*\{\{ad[:}].*\{\{ad[:}].*""")))
-
     </div> <!-- /span9 -->
 
     <div class="span3">

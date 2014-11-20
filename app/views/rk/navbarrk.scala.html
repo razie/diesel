@@ -2,7 +2,6 @@
 creates the navigation bar
 ***@
 @(user:Option[model.WikiUser], mobile:Boolean = false, barTitle: String="Bar Title", logo:Option[String]=None, url:Option[String]=Some("/"), isSite:Boolean=false, club:String="", realm:String=model.Wikis.RK)(implicit au:Option[model.User], request:Option[Request[_]])
-
 @import _root_.admin.Config
 
 @web()=@{request.flatMap(x=>model.Website.apply(x)) getOrElse model.Website.dflt}

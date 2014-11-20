@@ -13,9 +13,9 @@ import org.joda.time.DateTime
 /**
  * auditing events on wiki pages, like edits, views etc
  *
- *  TODO should probably allow customization to track only interesting events, i.e. filters
+ * TODO should probably allow customization to track only interesting events, i.e. filters
  *
- *  for now - just purge the table as you feel like...
+ * for now - just purge the table as you feel like...
  */
 @db.RTable
 case class WikiAudit(
@@ -25,6 +25,5 @@ case class WikiAudit(
   details: Option[String] = None, // extra details
   crDtm: DateTime = DateTime.now,
   _id: ObjectId = new ObjectId()) {
-
   def create(implicit txn: Txn = tx.auto) = RCreate noAudit this
 }

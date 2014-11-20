@@ -1,6 +1,6 @@
 package admin;
 
-/***/
+/** forgot where i found this - sorry */
 public class NogoodBase64Codec {
 
     // Mapping table from 6-bit nibbles to Base64 characters.

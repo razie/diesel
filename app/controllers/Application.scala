@@ -9,6 +9,7 @@ import model.Sec._
 import model._
 import org.joda.time.DateTime
 import play.api.mvc.{Action, Request}
+import razie.clog
 
 /** main entry points */
 object Application extends RazController {
@@ -83,7 +84,7 @@ object Application extends RazController {
 
     w.map { wid =>
       Audit.logdb("LUCKY", "wpath", wid.wpath)
-      Config.urlcanon(wid.wpath, wid.page).map { canon =>
+      Config.urlcanon(wid.wpath, wid.page.map(_.tags)).map { canon =>
         Redirect(canon)
       } getOrElse {
         Redirect(Wiki.w(wid))
@@ -183,7 +184,7 @@ object Application extends RazController {
       def aso = new ObjectId(s)
     }
 
-    razie.clog << s"TESTING what=$what, data=$data, code=$code" << request.headers
+    clog << s"TESTING what=$what, data=$data, code=$code" << request.headers
     (for (
       u <- auth orErr "no user";
       isok <- (code == T.TESTCODE) orErr "no code"
