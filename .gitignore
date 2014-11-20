@@ -1,3 +1,9 @@
+.DS_Store
+.idea
+.idea_modules
+.settings
+*~
+*.log
 logs
 project/project
 project/target
@@ -15,4 +21,6 @@ modules
 /rk-backups
 /temp
 /BACKUP
-/s/db
+/s
+bootstrap.zip
+
