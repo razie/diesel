@@ -1,0 +1,3 @@
+
+ssh cloud3a.razie.com "export PATH=\$PATH:haha; cd ~/rk; . ./restart"
+
