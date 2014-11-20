@@ -34,11 +34,11 @@ trait RkTester extends UrlTester { self: FlatSpec with ShouldMatchers =>
     } catch {
       case _: Throwable => ""
     }
-    
+
     if (userId != "") {
       (email, userId)
     } else {
-      ("/doe/profile/create?testcode=" + TESTCODE).url.form(user(n)).wget // sok "we sent an emai" 
+      ("/doe/profile/create?testcode=" + TESTCODE).url.form(user(n)).wget // sok "we sent an emai"
       //    Thread.sleep(1000)
       userId = (s"/testingRaz/userIdByFirstName/$n/$TESTCODE", email, p).wget
       userId should have length (24)

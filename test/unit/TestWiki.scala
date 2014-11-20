@@ -31,7 +31,7 @@ class TestWiki extends FlatSpec with ShouldMatchers {
     "<a href=\"/wiki/any:Sport\">Sport</a> <a href=\"/wiki/any:Club\">Club</a>" === (Wikis.format(wid, Wikis.MD, "[[Sport]] [[Club]]"))
     "<a href=\"/wiki/any:Sport\">Sport</a> haha: <a href=\"/wiki/any:Privacy_Policy\">Privacy Policy" === (Wikis.format(wid, Wikis.MD, "[[Sport]] haha: [[Privacy Policy]]"))
   }
-  
+
   "WikiParser" should "recognize these " in {
     "" === (applys(""))
     "some sentence" === (applys("some sentence"))

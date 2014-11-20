@@ -14,18 +14,18 @@ class TestPerf extends FlatSpec with ShouldMatchers with RkTester {
     thr(2, 2)
 
     razie.Timer({
-      
+
       thr(20, 10000)
-      
+
     })._1 should be <= (10*1000L)
   }
 
   def thr(threads: Int, loops: Int) {
     razie.Threads.forkjoin(0 to threads) { i =>
       ((0 to loops) map { x =>
-        cout << s"run $x-$i"
-        "/wiki/Admin:Hosted_Services_for_Ski_Clubs" eok " forms"
-        "/wiki/Blog:Razie_Enduro_School" eok "dirt bike"
+	cout << s"run $x-$i"
+	"/wiki/Admin:Hosted_Services_for_Ski_Clubs" eok " forms"
+	"/wiki/Blog:Razie_Enduro_School" eok "dirt bike"
       })
     }
   }

@@ -357,13 +357,19 @@ object WID {
     else {
       // TODO optimize this copy/paste later
       //todo if the name contains the sequence /debug this won't work - should check i.e. /debug$
-      Array("/xp/", "/xpl/", "/tag/", "/rss.xml", "/debug").collectFirst {
-	case tag if path contains tag => {
-	  val b = path split tag
-	  val a = b.head split "/"
-	  CMDWID(b.headOption, widFromSeg(a), tag.replaceAllLiterally("/", ""), b.tail.headOption.getOrElse(""))
-	}
-      } orElse Some(CMDWID(Some(path), widFromSeg(path split "/"), "", ""))
+      Array("/xp/", "/xpl/", "/tag/").collectFirst {
+        case tag if path contains tag => splitIt (tag, path)
+      } orElse
+        Array("/rss.xml", "/debug").collectFirst {
+        case tag if path endsWith tag => splitIt (tag, path)
+      } orElse
+        Some(CMDWID(Some(path), widFromSeg(path split "/"), "", ""))
+
+      def splitIt (tag:String, path:String) = {
+        val b = path split tag
+        val a = b.head split "/"
+        CMDWID(b.headOption, widFromSeg(a), tag.replaceAllLiterally("/", ""), b.tail.headOption.getOrElse(""))
+      }
 
 //	if (path contains "/xp/") {
 //	  val b = path split "/xp/"

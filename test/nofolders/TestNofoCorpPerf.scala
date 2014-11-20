@@ -29,12 +29,12 @@ class TestNofoCorpPerf extends FlatSpec with ShouldMatchers with NofoTester {
   ("/razadmin/config/noemailstesting", joe, pjoe) eok "true" // can't send emails in perf testing
 
   /////////////////////////////////////////////////
-//    val clubs = doClubs(milis, noClubs, noUsers, false, 20)  
+//    val clubs = doClubs(milis, noClubs, noUsers, false, 20)
 //    cout << "Clubs: " + clubs.mkString
   /////////////////////////////////////////////////
 
   /////////////////////////////////////////////////
-//    val clubs = doClubs(milis, noClubs, noUsers, false, 20)  
+//    val clubs = doClubs(milis, noClubs, noUsers, false, 20)
 //    cout << "Clubs: " + clubs.mkString
   /////////////////////////////////////////////////
 
@@ -43,7 +43,7 @@ class TestNofoCorpPerf extends FlatSpec with ShouldMatchers with NofoTester {
 //  }
 
   ("/razadmin/config/okemailstesting", joe, pjoe) eok "false" // can't send emails in perf testing
-    
+
   cout << s"$noClubs clubs $noUsers families ${noUsers+noKidz} members"
   cout << "------------DONE"
 
@@ -80,11 +80,11 @@ Details:
     val form1 = crWiki(None, "Note", clubId + "-RacerForm",
       """
 First Name {{f:firstName:}}
-        
+
 Phone: {{f:physiciansPhone:}}
-        
+
 Asthma: {{f:cbAsthma:type=checkbox}}
-        
+
 Birth date(dd/mm/yyyy): {{f:birthDate:type=date}}
 
 """, club)
@@ -103,9 +103,9 @@ Birth date(dd/mm/yyyy): {{f:birthDate:type=date}}
     val users = localhost.MT.slicejoin(threads, (0 until members).toList) { i =>
       val (u, userId) = crUser(clubEname + "x"+i.toString + "coach", "Coach")
       val kids =
-        crKid(userId, u, "a-kid" + clubEname+"x"+i, clubEname, "Kid") ::
-          crKid(userId, u, "b-kid" + clubEname+"x"+i, clubEname, "Kid") ::
-          crKid(userId, u, "c-kid" + clubEname+"x"+i, clubEname, "Spouse") :: Nil
+	crKid(userId, u, "a-kid" + clubEname+"x"+i, clubEname, "Kid") ::
+	  crKid(userId, u, "b-kid" + clubEname+"x"+i, clubEname, "Kid") ::
+	  crKid(userId, u, "c-kid" + clubEname+"x"+i, clubEname, "Spouse") :: Nil
       (u, userId, kids)
     }.flatMap(_.toList).toList
 
@@ -119,10 +119,10 @@ Birth date(dd/mm/yyyy): {{f:birthDate:type=date}}
       // user becomes member of club
       val cname = (s"/testingRaz/userUsernameById/$userId/$TESTCODE", club, p).wget
       (s"/wikie/linked/User/$userId/Club/$clubId?wc=0").url.form(Map(
-        "how" -> "Coach",
-        "markup" -> "md",
-        "notif" -> "e",
-        "comment" -> "hahah")).basic(u, p) eok "added"
+	"how" -> "Coach",
+	"markup" -> "md",
+	"notif" -> "e",
+	"comment" -> "hahah")).basic(u, p) eok "added"
 
       val uwId = (s"/testingRaz/uwIdByUserId/$userId/$TESTCODE", club, p).wget
       uwId should have length (24)
@@ -130,20 +130,20 @@ Birth date(dd/mm/yyyy): {{f:birthDate:type=date}}
       (s"/doe/club/regs", club, p) eok uwId
 
       if (doReg) {
-        // start reg
-        (s"/doe/club/uw/regstatusupd/$uwId/expired", club, p) eok userId
-        val regId = (s"/testingRaz/regByUserId/$userId/$TESTCODE", club, p).wget
-        regId should have length (24)
+	// start reg
+	(s"/doe/club/uw/regstatusupd/$uwId/expired", club, p) eok userId
+	val regId = (s"/testingRaz/regByUserId/$userId/$TESTCODE", club, p).wget
+	regId should have length (24)
 
-        // add kids to it
-        //http://localhost:9000/doe/club/uw/addformkid/522f4d910577fc9c61f7f1ac/522f4d910577fc9c61f7f197/522f4d910577fc9c61f7f1a3/Racer
-        kids.foreach { t =>
-          val (rkId, role) = t
-          if (role == "Kid")
-            (s"/doe/club/uw/addformkid/$regId/$rkId/$uwId/Racer", club, p) eok userId
-          else
-            (s"/doe/club/uw/addformkid/$regId/$rkId/$uwId/Volunteer", club, p) eok userId
-        }
+	// add kids to it
+	//http://localhost:9000/doe/club/uw/addformkid/522f4d910577fc9c61f7f1ac/522f4d910577fc9c61f7f197/522f4d910577fc9c61f7f1a3/Racer
+	kids.foreach { t =>
+	  val (rkId, role) = t
+	  if (role == "Kid")
+	    (s"/doe/club/uw/addformkid/$regId/$rkId/$uwId/Racer", club, p) eok userId
+	  else
+	    (s"/doe/club/uw/addformkid/$regId/$rkId/$uwId/Volunteer", club, p) eok userId
+	}
       }
     }
 

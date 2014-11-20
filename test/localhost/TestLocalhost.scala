@@ -54,7 +54,7 @@ class TestLocalhost extends FlatSpec with ShouldMatchers with UrlTester {
 
     "/wiki/Category:Note" snok "Private Note"
     "/wiki/all/Note" snok "Private Note"
-    
+
     "/wikie/search?q=Glacier" sok "Glacier"
 
   //public vs private profiles
@@ -71,7 +71,7 @@ class TestEdit extends FlatSpec with ShouldMatchers with UrlTester {
   val (u,p) = ("H-joe@razie.com", "H-321mm321mm")
 
   val milis = System.currentTimeMillis.toString
-  
+
   val form = Map (
       "label" -> ("Joe Private Note "+milis),
       "markup" -> "md",
@@ -80,7 +80,7 @@ class TestEdit extends FlatSpec with ShouldMatchers with UrlTester {
       "wvis" -> "Private",
       "tags" -> "note")
   ("/wikie/edited/Note:Joe_Private_Note_"+milis).url.basic(u,p).form(form).wget // first create, no check
-//  ("/wiki/Note:Joe_Private_Note_"+milis).url.basic(u,p) sok "Private" // now check 
+//  ("/wiki/Note:Joe_Private_Note_"+milis).url.basic(u,p) sok "Private" // now check
 }
 
 class TestForms extends FlatSpec with ShouldMatchers with UrlTester {
