@@ -24,7 +24,7 @@ club admin manages list of users and registrations
   }
 
 @allforms=@{
-  Some(members.flatMap(_._3).flatMap(_.wids).flatMap(w=>model.Wikis.find(w).map(we=>(w, we.formRole, we.form.formState))))
+  Some(members.flatMap(_._3).flatMap(_.wids).flatMap(w=>razie.wiki.model.Wikis.find(w).map(we=>(w, we.formRole, we.form.formState))))
 }
 
 @tabMissing=@{

@@ -9,29 +9,24 @@ package model
 import model.dom.WikiDomainParser
 import razie.wiki.parser.WikiParserNotes
 import razie.wiki.parser.WikiParserT
-import razie.wiki.model.WikiInst
+import razie.wiki.model.{Wikis, WikiInst, Reactor}
 import razie.wiki.dom.WikiDomain
-import razie.wiki.model.Reactor
 
 /** the default reactor, the main wiki */
-object RkReactor extends Reactor (Wikis.RK) {
-  override val wiki : WikiInst = RkWikiInst
-  override val domain : WikiDomain = new WikiDomain(Wikis.RK, RkWikiInst)
+class RkReactor (realm:String) extends Reactor (realm) {
+  override val wiki : WikiInst = new RkWikiInst(realm)
+  override val domain : WikiDomain = new WikiDomain(realm, wiki)
 }
 
-/** a wiki */
+/** a wiki, used for all RK realms */
 class RkWikiInst(realm:String) extends WikiInst(realm) {
   class WikiParserCls(val realm:String) extends WikiParserT with DslParser with AdParser with WikiDomainParser with WikiParserNotes {
-    withWikiProp(dslWikiProps)
     withWikiProp(adWikiProps)
+    withWikiProp(dslWikiProps)
     withDotProp(notesDotProps)
     withBlocks(domainBlocks)
   }
 
   override def mkParser = new WikiParserCls(realm)
-}
-
-/** a wiki */
-object RkWikiInst extends RkWikiInst(Wikis.RK) {
 }
 

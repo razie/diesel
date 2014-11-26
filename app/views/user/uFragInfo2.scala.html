@@ -64,7 +64,7 @@ included in mainUserC as the right hand side info box
       <b>Recent events:</b>
       <ul>
       @for(t <- evBefore.takeRight(scala.math.max(3, 10-evAfter().size))) {
-        <li>@Html(model.Wikis.formatWikiLink(t._1.wid,t._1.wid.name, t._2,Some(t._1.label))._1)
+        <li>@Html(razie.wiki.model.Wikis.formatWikiLink(t._1.wid,t._1.wid.name, t._2,Some(t._1.label))._1)
         @if(t._4.wid.name != null && t._4.wid.name.length>0) {
           at @Html(t._4.format._1)
         }
@@ -78,7 +78,7 @@ included in mainUserC as the right hand side info box
       <b>Coming up:</b>
       <ul>
       @for(t <- evAfter.take(math.max(7, 10-evBefore().size))) {
-        <li>@Html(model.Wikis.formatWikiLink(t._1.wid,t._1.wid.name,t._2,Some(t._1.label))._1)
+        <li>@Html(razie.wiki.model.Wikis.formatWikiLink(t._1.wid,t._1.wid.name,t._2,Some(t._1.label))._1)
         @if(t._4.wid.name != null  && t._4.wid.name.length>0) {
           at @Html(t._4.format._1)
         }
@@ -114,7 +114,7 @@ case 3 => {
     <a class="btn btn-mini" href="/wikie/like/Blog">Blogs &raquo;</a>)</p>
     <ul>
     @for(w <- blogs.filter(_.role != "Owner")) {
-      <li><a href="@controllers.Wiki.w(w.wid)">@model.Wikis.label(w.wid)</a></li>
+      <li><a href="@controllers.Wiki.w(w.wid)">@razie.wiki.model.Wikis.label(w.wid)</a></li>
     }
   </ul>
   } else {
@@ -128,7 +128,7 @@ case 3 => {
     <a class="btn btn-mini" href="/wikie/create/Blog">Blogs &raquo;</a>)</p>
     <ul>
       @for(w <- blogs.filter(_.role == "Owner")) {
-        <li><a href="@controllers.Wiki.w(w.wid)">@model.Wikis.label(w.wid)</a></li>
+        <li><a href="@controllers.Wiki.w(w.wid)">@razie.wiki.model.Wikis.label(w.wid)</a></li>
       }
     </ul>
   } else {
@@ -144,7 +144,7 @@ case 4 => {
   <a class="btn btn-mini" href="/wikie/create/Note">Add &raquo;</a></p>
   <ul>
     @for(w <- user.pages(Wikis.DFLT, "FormDesign").filter(_.role == "Owner")) {
-      <li><a href="@controllers.Wiki.w(w.wid)">@model.Wikis.label(w.wid)</a></li>
+      <li><a href="@controllers.Wiki.w(w.wid)">@razie.wiki.model.Wikis.label(w.wid)</a></li>
     }
   </ul>
   } else {

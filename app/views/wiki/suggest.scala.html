@@ -1,5 +1,4 @@
 @(sForm:Form[_], v2:Int, page:String, au:Option[model.User])
-
 @import helper.twitterBootstrap._
 
 @htmlHeadBar("Suggest something", au)
@@ -18,7 +17,7 @@
 
 @if(au.isDefined) {
   <input type="hidden" name="name" value="@au.get.ename" />
-  <input type="hidden" name="email" value="@model.Enc.unapply(au.get.email)" />
+  <input type="hidden" name="email" value="@razie.wiki.Enc.unapply(au.get.email)" />
 } else {
   @helper.inputText(
     sForm("name"),

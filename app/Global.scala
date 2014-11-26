@@ -185,8 +185,8 @@ object Global extends WithFilters(LoggingFilter) {
 
     Services.mkReactor = {realm:String =>
       realm match {
-        case Reactors.DFLT | Reactors.NOTES => RkReactor
-        case _ => new Reactor(realm)
+        case Reactors.DFLT | Reactors.NOTES => new RkReactor(realm)
+        case _ => new RkReactor(realm)
       }
     }
 

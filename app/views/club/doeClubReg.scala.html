@@ -3,16 +3,16 @@ club admin manages user: membership, regsitration etc
 ******@
 @(myForm: Form[(String, String, String)], uw:model.UserWiki, club:model.User)
 @import model.RegStatus._
-@import model.FormStatus._
+@import razie.wiki.model.FormStatus._
 @import model.RK._
 
 @how() = @{
-  model.Wikis.category("Club").flatMap(_.contentTags.get("roles:"+"User")) match {
+  razie.wiki.model.Wikis.category("Club").flatMap(_.contentTags.get("roles:"+"User")) match {
     case Some(s) => {
       s.split(",").filter(x => ! Array("Owner","Admin").contains(x)).map(x=>(x,x)).toSeq
     }
     case None => {
-      model.Wikis.rk.pageNames("Link").map(x=>(x,x)).toList
+      razie.wiki.model.Wikis.rk.pageNames("Link").map(x=>(x,x)).toList
     }
   }
 }
@@ -21,7 +21,7 @@ club admin manages user: membership, regsitration etc
 
 @uname() = @{uw.user.map(u=>s"${u.userName} (${u.lastName}, ${u.firstName})").getOrElse("")}
 
-@formActions(w:model.WID, seq:Integer) = {
+@formActions(w:razie.wiki.model.WID, seq:Integer) = {
   <a href="@routes.Club.doeClubUwRMFormSeq(reg.map(_._id).mkString,"x",uw._id.toString, seq)" class="btn btn-mini btn-danger" title="remove from registration"> x </a>
 }
 

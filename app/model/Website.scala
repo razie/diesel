@@ -8,6 +8,7 @@ import razie.db.RazSalatContext._
 import play.api.mvc.{Request, Action}
 import razie.OR._
 import razie.wiki.util.PlayTools
+import razie.wiki.model.{Wikis, WikiEntry, WID}
 
 /**
  * dsl processing - entries with a props section

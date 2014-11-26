@@ -3,7 +3,7 @@ show/edit/capture a note
 
 msg types are msg, err
 **************@
-@(tag:String, we:model.WikiEntry, tags:model.Tags.Tags, msg:Seq[(String,String)], au:Option[model.User], isSearch:Boolean=false)(implicit request:Request[_])
+@(tag:String, we:razie.wiki.model.WikiEntry, tags:model.Tags.Tags, msg:Seq[(String,String)], au:Option[model.User], isSearch:Boolean=false)(implicit request:Request[_])
 @import model.Tags
 @import model.dom.DOM
 
@@ -31,7 +31,7 @@ Domain <small>| playground</small>
     </ul>
   }
 
-  <p>@Html(model.Wikis.format(we.wid, we.markup, we.content, Some(we)))</p>
+  <p>@Html(razie.wiki.model.Wikis.format(we.wid, we.markup, we.content, Some(we)))</p>
 
     <p>
     @if(au.exists(_.hasPerm(model.Perm.adminDb))) {

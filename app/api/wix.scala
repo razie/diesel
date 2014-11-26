@@ -4,10 +4,7 @@ import model._
 import controllers.{XWrapper,XListWrapper}
 import admin.Config
 import razie.db.RazMongo
-import razie.wiki.model.WikiWrapper
-import razie.wiki.model.WID
-import razie.wiki.model.WikiXpSolver
-import razie.wiki.model.WikiEntry
+import razie.wiki.model._
 import razie.wiki.util.M._
 
 /** this is available to scripts inside the wikis */

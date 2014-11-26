@@ -59,6 +59,7 @@ object Realm extends RazController with Logging {
       hasQuota <- (au.isAdmin || au.quota.canUpdate) orCorr cNoQuotaUpdates
     ) yield {
         val parms = Map(
+          "reactor"-> name,
           "realm"-> name,
           "name" -> name,
           "description"-> data.getOrElse("description","no description")
@@ -184,6 +185,7 @@ object Realm extends RazController with Logging {
       hasQuota <- (au.isAdmin || au.quota.canUpdate) orCorr cNoQuotaUpdates
     ) yield {
       val parms = Map(
+        "reactor"-> realm,
         "realm"-> realm,
         "description"-> data.getOrElse("description","no description")
       ) ++ data

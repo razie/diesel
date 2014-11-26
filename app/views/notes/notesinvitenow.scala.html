@@ -12,7 +12,7 @@ msg types are msg, err
   @notesmsg(msg, Some(au))
 </h3>
 
-@esc(s:String) = @{(model.Enc toUrl s).replaceAll("\\+", "%20")}
+@esc(s:String) = @{(razie.wiki.Enc toUrl s).replaceAll("\\+", "%20")}
 
 @subj = @{"""The power of simplicity... """}
 @body = @{

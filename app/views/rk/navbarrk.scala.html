@@ -1,7 +1,7 @@
 @***
 creates the navigation bar
 ***@
-@(user:Option[razie.wiki.model.WikiUser], mobile:Boolean = false, barTitle: String="Bar Title", logo:Option[String]=None, url:Option[String]=Some("/"), isSite:Boolean=false, club:String="", realm:String=model.Wikis.RK)(implicit au:Option[model.User], request:Option[Request[_]])
+@(user:Option[razie.wiki.model.WikiUser], mobile:Boolean = false, barTitle: String="Bar Title", logo:Option[String]=None, url:Option[String]=Some("/"), isSite:Boolean=false, club:String="", realm:String=razie.wiki.model.Wikis.RK)(implicit au:Option[model.User], request:Option[Request[_]])
 @import _root_.admin.Config
 @import razie.wiki.model.Wikis
 

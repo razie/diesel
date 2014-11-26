@@ -1,10 +1,10 @@
 @**************
 the footer of every page...
 **************@
-@(ads:Boolean=false, isSite:Boolean=false, realm:String=model.Wikis.RK)
+@(ads:Boolean=false, isSite:Boolean=false, realm:String=razie.wiki.model.Wikis.RK)
 
 @realm match {
-   case model.Reactors.NOTES => {
+   case razie.wiki.model.Reactors.NOTES => {
       @notes.htmlFooterNotes(ads, isSite)
       }
    case _ => {

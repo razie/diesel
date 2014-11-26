@@ -3,7 +3,7 @@
 @fufu(db:com.mongodb.casbah.Imports.DBObject, k:String, v:String) = {
   @k match {
     case "email" => {
-      @model.Enc.unapply(v)
+      @razie.wiki.Enc.unapply(v)
     }
     case "userName" => {
       <a href="/razadmin/user/@db.get("_id").toString">@v</a>

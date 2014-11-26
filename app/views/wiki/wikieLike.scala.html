@@ -3,8 +3,9 @@ link(like) a wiki: select or create from categoyr
 **************@
 @(wid:razie.wiki.model.WID, page:Option[razie.wiki.model.WikiEntry], au:Option[model.User])
 @import model._
+@import razie.wiki.model.WID
 
-@htmlHeadBar(page.flatMap(_.contentTags.get("title")).getOrElse(wid.cat +": "+ page.map(_.label).getOrElse(model.Wikis(wid.getRealm).label(wid))), au)
+@htmlHeadBar(page.flatMap(_.contentTags.get("title")).getOrElse(wid.cat +": "+ page.map(_.label).getOrElse(razie.wiki.model.Wikis(wid.getRealm).label(wid))), au)
 
 <div class="container">
   <div class="row">
@@ -14,7 +15,7 @@ link(like) a wiki: select or create from categoyr
 <hr>
 
 @import _root_.admin.Config
-@import model.Wikis
+@import razie.wiki.model.Wikis
 
 @if(wid.name == "Club") {
   <div class="alert alert-info">

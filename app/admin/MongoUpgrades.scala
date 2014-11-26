@@ -156,7 +156,7 @@ object U8 extends UpgradeDb with razie.Logging {
       for (u <- t) {
         val old = grater[OldUserWiki8].asObject(u)
         t.remove(u)
-//        t += grater[model.UserWiki].asDBObject(model.UserWiki(old.userId, model.WID(old.cat, old.name), old.role: String))
+//        t += grater[model.UserWiki].asDBObject(model.UserWiki(old.userId, razie.wiki.model.WID(old.cat, old.name), old.role: String))
       }
     }
   }

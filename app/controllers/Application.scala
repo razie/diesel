@@ -8,7 +8,7 @@ import model._
 import play.api.mvc.Action
 import play.api.mvc.Request
 import razie.wiki.admin.Audit
-import razie.wiki.model.{BannedIps, WID, WikiEntry, Wikis}
+import razie.wiki.model._
 import razie.db.ROne
 import razie.wiki.util.IgnoreErrors
 import razie.wiki.Enc

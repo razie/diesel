@@ -9,7 +9,7 @@ display a message with navigation (next)
 <div class="container">
   <div class="well">
 
-    <h3>@Html(model.Wikis.format(model.WID("?","?"), model.Wikis.MD, msg))</h3>
+    <h3>@Html(razie.wiki.model.Wikis.format(razie.wiki.model.WID("?","?"), razie.wiki.model.Wikis.MD, msg))</h3>
     <br>
 
     @next.map { n=>

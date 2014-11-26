@@ -3,7 +3,7 @@ show all the tags the user has
 
 msg types are msg, err
 **************@
-@(implicit au:Option[model.User], page:Option[model.WikiEntry]=None, title:String="No Folders")
+@(implicit au:Option[model.User], page:Option[razie.wiki.model.WikiEntry]=None, title:String="No Folders")
 
 @htmlHead(title, None, page)
 @notesnavbar(au)

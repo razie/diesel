@@ -3,7 +3,7 @@
 @wikicount(db:com.mongodb.casbah.Imports.DBObject, k:String, v:String) = {
   @k match {
     case "wpath" => {
-      @model.Wikis.findById(db.get("pid").toString).map {wp=>
+      @razie.wiki.model.Wikis.findById(db.get("pid").toString).map {wp=>
         <a href="/wiki/@wp.wid.wpath">@wp.wid.wpath</a>
       }
     }

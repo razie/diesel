@@ -3,6 +3,7 @@ select module to add to reactor
 ****************@
 @(realm:String, au:Option[model.User])
 @import model._
+@import razie.wiki.model.WID
 
 @htmlHeadBar("Select mod for reactor", au)
 
@@ -16,7 +17,7 @@ select module to add to reactor
             <h3>Select mod to add</h3>
             <hr>
 
-           @defining(model.Wikis.rk.pages(cat).filter(x=> !model.Wikis(realm).pages(catInst).contains(x))) {list=>
+           @defining(razie.wiki.model.Wikis.rk.pages(cat).filter(x=> !razie.wiki.model.Wikis(realm).pages(catInst).contains(x))) {list=>
                    @if(list.isEmpty) {
                        No more mods available... <a href="@controllers.Wiki.w("Admin", "Creating Reactor Mods")">create one!</a>
                    }

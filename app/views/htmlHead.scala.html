@@ -1,4 +1,4 @@
-@(pageTitle: String = "", cssr:Option[String]=None, page:Option[model.WikiEntry]=None, options:Map[String,String]=Map())(implicit moreMetas:Map[String,String]=Map.empty, au:Option[model.User], request:Option[Request[_]] = None)
+@(pageTitle: String = "", cssr:Option[String]=None, page:Option[razie.wiki.model.WikiEntry]=None, options:Map[String,String]=Map())(implicit moreMetas:Map[String,String]=Map.empty, au:Option[model.User], request:Option[Request[_]] = None)
 @import _root_.admin.Config
 
 @title() = @{

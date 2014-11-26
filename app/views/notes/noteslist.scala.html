@@ -3,13 +3,13 @@ list of notes
 
 msg types are msg, err
 **************@
-@(tag:String, notes:List[model.WikiEntry], tags:model.Tags.Tags, msg:Seq[(String,String)], au:Option[model.User], isSearch:Boolean=false)(implicit request:Request[_])
+@(tag:String, notes:List[razie.wiki.model.WikiEntry], tags:model.Tags.Tags, msg:Seq[(String,String)], au:Option[model.User], isSearch:Boolean=false)(implicit request:Request[_])
 @import model.Tags
 @import model.Tags
 
 @frup(au, None, s"Tagged $tag")
 
-@ccc(we:model.WikiEntry)= @{
+@ccc(we:razie.wiki.model.WikiEntry)= @{
     val x = controllers.NotesLocker.format(we.wid, we.markup, we.content, Some(we), au)
     if(x contains "CANNOT PARSE") {
       val id = System.currentTimeMillis().toString
@@ -70,7 +70,7 @@ msg types are msg, err
        </strong></small>
        </div>
 
-@**  <p>@Html(model.Wikis.format(we.wid, we.markup, we.content, Some(we)))</p>
+@**  <p>@Html(razie.wiki.model.Wikis.format(we.wid, we.markup, we.content, Some(we)))</p>
 **@
   <p>@Html(ccc(we))</p>
   @wiki.wikiFragExtras(au,Some(we))

@@ -63,14 +63,14 @@ PROBLEM: many places use label as name... via Wikis.formatName
     <div>
   @helper.select(
     myForm("markup"),
-    Seq("md"->"Markdown"), //model.Wikis.markups.map(x=>(x,x)),
+    Seq("md"->"Markdown"), //razie.wiki.model.Wikis.markups.map(x=>(x,x)),
     '_label -> "Markup Language",
     'class -> "input-small",
     '_showConstraints -> false)
 
   @helper.select(
     myForm("visibility"),
-    model.Wikis.visibilityFor(wid.cat).map(x=>(x,x)),
+    razie.wiki.model.Wikis.visibilityFor(wid.cat).map(x=>(x,x)),
     '_label -> "Visibility",
     'class -> "input-small",
     '_showConstraints -> false)
@@ -125,7 +125,7 @@ PROBLEM: many places use label as name... via Wikis.formatName
     </div> <!-- /span9 -->
 
     <div class="span3">
-      @wiki.wikiFrag(model.WID("Admin","Right"),au,true)
+      @wiki.wikiFrag(razie.wiki.model.WID("Admin","Right"),au,true)
     </div>
   </div> <!-- row -->
 </div> <!-- /container -->

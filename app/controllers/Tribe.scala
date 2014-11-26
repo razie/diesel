@@ -170,7 +170,7 @@ object Tribe extends RazController with Logging {
   //      c <- Club.findForUser(au);
   //      kwid <- c.regForm(role) orErr ("no reg form for role " + role);
   //      regAdmin <- c.uregAdmin orErr ("no regadmin");
-  //      uw <- model.Users.findUserLinksTo(model.WID("Club", au.userName)).find(_._id.toString == uwid) orErr ("no uw");
+  //      uw <- model.Users.findUserLinksTo(razie.wiki.model.WID("Club", au.userName)).find(_._id.toString == uwid) orErr ("no uw");
   //      u <- uw.user orErr ("oops - missing user?");
   //      reg <- Club(au).reg(u) orCorr ("no registration record for year... ?" -> "did you expire it first?")
   //    ) yield {

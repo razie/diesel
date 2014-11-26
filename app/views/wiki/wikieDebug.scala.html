@@ -25,7 +25,7 @@ debug a wiki page
 }
       <br>
       <br>
-      @Html(model.Wikis.format(page.map(_.wid).getOrElse(model.WID("?","?")), "md", c.content))
+      @Html(razie.wiki.model.Wikis.format(page.map(_.wid).getOrElse(razie.wiki.model.WID("?","?")), "md", c.content))
     </div>
     }
     }
@@ -91,7 +91,7 @@ debug a wiki page
       <div class="well">
         <ul>external followers
         @model.Users.findFollowerLinksTo(page.get.uwid).toList.flatMap(_.follower).map {f=>
-          <li>@model.Enc.unapply(f.email)</li>
+          <li>@razie.wiki.Enc.unapply(f.email)</li>
         }
        </ul>
       </div>
@@ -222,13 +222,13 @@ Json:
 
 Html:
       <div class="well">
-      @model.Wikis.format(wid, "md", page.get.content)
+      @razie.wiki.model.Wikis.format(wid, "md", page.get.content)
        </ul>
       </div>
 
 AST:
       <div class="well">
-      @Html(model.Wikis.preprocess(wid, page.get.markup, Wikis.noporn(page.get.content)).printHtml(1))
+      @Html(razie.wiki.model.Wikis.preprocess(wid, page.get.markup, Wikis.noporn(page.get.content)).printHtml(1))
        </ul>
       </div>
 

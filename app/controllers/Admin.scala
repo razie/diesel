@@ -18,11 +18,8 @@ import razie.wiki.model.Wikis
 import razie.wiki.admin.GlobalData
 import razie.wiki.admin.Audit
 import admin.RazAuditService
-import model.Users
-import model.WikiScripster
-import model.Perm
+import model.{WikiScripster, Users, Perm, User}
 import admin.Config
-import model.User
 import razie.wiki.admin.SendEmail
 
 object Admin extends RazController {

@@ -26,7 +26,7 @@ club admin manages list of users and registrations
       <a href="@routes.Tribe.doeClubTribe(v)" class="btn btn-mini">More...</a>
       }
         case "name" => {
-      <a href="@controllers.Wiki.w(model.WID.fromPath(row.get("wpath").get).get)">@v</a>
+      <a href="@controllers.Wiki.w(razie.wiki.model.WID.fromPath(row.get("wpath").get).get)">@v</a>
       }
     case _ => {@v}
   }

@@ -15,6 +15,6 @@ show one tip
 
 @tipone = @{
   val t = _root_.controllers.NotesLocker.tips((math.random * NotesLocker.tips.size).toInt)
-  val m = model.Wikis.format(model.WID("?","?"), "md", t)
+  val m = razie.wiki.model.Wikis.format(razie.wiki.model.WID("?","?"), "md", t)
   m.replaceFirst("^\\s*<p>", "").replaceFirst("</p>\\s*$", "")
 }

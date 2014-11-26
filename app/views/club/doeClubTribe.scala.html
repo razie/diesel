@@ -3,16 +3,16 @@ club admin manages user: membership, regsitration etc
 ******@
 @(myForm: Form[_], tribe:model.Tribe, club:model.User)
 @import model.RegStatus._
-@import model.FormStatus._
+@import razie.wiki.model.FormStatus._
 @import com.mongodb.casbah.Imports._
 
 @how() = @{
-//  model.Wikis.category("Club").flatMap(_.contentTags.get("roles:"+"User")) match {
+//  razie.wiki.model.Wikis.category("Club").flatMap(_.contentTags.get("roles:"+"User")) match {
 //    case Some(s) => {
 //      s.split(",").filter(x => ! Array("Owner","Admin").contains(x)).map(x=>(x,x)).toSeq
 //    }
 //    case None => {
-//      model.Wikis.pageNames("Link").map(x=>(x,x)).toList
+//      razie.wiki.model.Wikis.pageNames("Link").map(x=>(x,x)).toList
 //    }
 //  }
 
