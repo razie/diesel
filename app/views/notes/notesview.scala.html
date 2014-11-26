@@ -3,25 +3,26 @@ show/edit/capture a note
 
 msg types are msg, err
 **************@
-@(tag:String, we:model.WikiEntry, tags:model.Tags.Tags, msg:Seq[(String,String)], au:Option[model.User], isSearch:Boolean=false)(implicit request:Request[_])
+@(tag:String, we:razie.wiki.model.WikiEntry, tags:model.Tags.Tags, msg:Seq[(String,String)], au:Option[model.User], isSearch:Boolean=false)(implicit request:Request[_])
+@import razie.wiki.model.WikiEntry
 
 @frup(au)
 
-@ccc(we:model.WikiEntry)= @{
+@ccc(we:WikiEntry)= @{
     val x = controllers.NotesLocker.format(we.wid, we.markup, we.content, Some(we), au)
     if(x contains "CANNOT PARSE") {
       val id = System.currentTimeMillis().toString
       try {
-	val PAT = """.*PARSE\]\] \[([0-9]+)\.([0-9]+)\].*""".r
-	val PAT(line, col) = x
-	s"""<div style="color:red;font-weight:bold;" title="Problem with your content: $x">
-	<small>[[Check content below at Line:$line Position:$col]]</small></div><p></p>""".stripMargin + s"""
-	  <textarea id="$id" readonly="true" style="width:90%; margin-right:40px" rows="5">${we.content}</textarea>
+        val PAT = """.*PARSE\]\] \[([0-9]+)\.([0-9]+)\].*""".r
+        val PAT(line, col) = x
+        s"""<div style="color:red;font-weight:bold;" title="Problem with your content: $x">
+        <small>[[Check content below at Line:$line Position:$col]]</small></div><p></p>""".stripMargin + s"""
+          <textarea id="$id" readonly="true" style="width:90%; margin-right:40px" rows="5">${we.content}</textarea>
        """.stripMargin
       } catch {
-	case _ : Throwable => s"""<div style="color:red;font-weight:bold;" title="Problem with your content: $x">
-	<small>[[Check content]]</small></div><p></p>""".stripMargin + s"""
-	  <textarea id="$id" readonly="true" style="width:90%; margin-right:40px" rows="5">${we.content}</textarea>
+        case _ : Throwable => s"""<div style="color:red;font-weight:bold;" title="Problem with your content: $x">
+        <small>[[Check content]]</small></div><p></p>""".stripMargin + s"""
+          <textarea id="$id" readonly="true" style="width:90%; margin-right:40px" rows="5">${we.content}</textarea>
        """.stripMargin
       }
     } else x
@@ -58,11 +59,11 @@ msg types are msg, err
        <div style="float: right;">
        <small>Tags: <strong>
        @we.tags.map {x=>
-	   @if(tags find (_._1 == x) isEmpty ) {
-	       @x |
-	   } else {
-	       <a href="@routes.NotesLocker.tag(tagpath(x))">@x</a> |
-	   }
+           @if(tags find (_._1 == x) isEmpty ) {
+               @x |
+           } else {
+               <a href="@routes.NotesLocker.tag(tagpath(x))">@x</a> |
+           }
        }
        </strong></small>
        </div>

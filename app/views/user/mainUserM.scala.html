@@ -1,71 +1,10 @@
 @(salutation:String, user: model.User, item:Int)
-
 @import org.joda.time.DateTime
+@import model.Wikis
 
       <div class="well">
-@uFragInfo2(user, item, new controllers.UserStuff(user))
+@uFragInfo2(user, item, new controllers.UserStuff(Wikis.DFLT, user))
       </div>
 
-      <!-- Example row of columns -->
-      <div class="row">
-	<div class="span3">
-	  <h2>Sports</h2>
-	    @if(user.pages("Sport").size>0) {
-	      <ul>
-	      @for(t <- user.pages("Sport")) {
-		<li><a href="/user/@user.id/wiki/@t.uwid.cat/@t.uwid.nameOrId">@model.Wikis.label(t.uwid)</a></li>
-	      }
-	      </ul>
-	    } else {
-	      <b style="color:red">No sports...</b><p>
-	    }
-	  <p>
-	    <a class="btn btn-mini" href="/wiki/Sport">Add &raquo;</a>
-	  </p>
-	</div>
-	<div class="span3">
-	  <h2>Clubs</h2>
-	    @if(user.pages("Club").size>0) {
-	      <ul>
-	      @for(t <- user.pages("Club")) {
-		<li><a href="/user/@user.id/wiki/@t.uwid.cat/@t.uwid.nameOrId">@model.Wikis.label(t.uwid)</a></li>
-	      }
-	      </ul>
-	    } else {
-	      <b style="color:red">No clubs...</b><p>
-	    }
-	  <p>
-	    <a class="btn btn-mini" href="/wiki/Club">Add &raquo;</a>
-	  </p>
-	</div>
-	<div class="span3">
-	  <h2>Championships</h2>
-	    @if(user.pages("Series").size>0) {
-	      <ul>
-	      @for(t <- user.pages("Series")) {
-		<li><a href="/user/@user.id/wiki/@t.uwid.cat/@t.uwid.nameOrId">@model.Wikis.label(t.uwid)</a></li>
-	      }
-	      </ul>
-	    } else {
-	      <b style="color:red">No championships...</b><p>
-	    }
-	  <p>
-	    <a class="btn btn-mini" href="/wiki/Series">Add &raquo;</a>
-	  </p>
-       </div>
-	<div class="span3">
-	  <h2>Calendars</h2>
-	    @if(user.pages("Calendar").size>0) {
-	      <ul>
-	      @for(t <- user.pages("Calendar")) {
-		<li><a href="/user/@user.id/wiki/@t.uwid.cat/@t.uwid.nameOrId">@model.Wikis.label(t.uwid)</a></li>
-	      }
-	      </ul>
-	    } else {
-	      <b style="color:red">No calendars...</b><p>
-	    }
-	  <p>
-	    <a class="btn btn-mini" href="/wiki/Calendar">Add &raquo;</a>
-	  </p>
-       </div>
-      </div>
+@wiki.wikiFragInt("Admin:page-home-bottom", None)
+

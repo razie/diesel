@@ -1,5 +1,5 @@
-@(title:String, pages:List[model.WikiEntry], au:Option[model.User])
-@import model._
+@(title:String, pages:List[razie.wiki.model.WikiEntry], au:Option[model.User])
+@import razie.wiki.model._
 
 @htmlHeadBar("Results for: " + title, au)
 
@@ -7,16 +7,16 @@
   <div class="row">
     <div class="span9">
       <div class="well">
-	@if(pages.size>0) {
-	  <ul>
-	  @pages.map { p=>
-	    <li><a href="@controllers.Wiki.w(p.wid)">@p.label</a> <small>&nbsp;  @p.category</small>
-	  }
-	 </ul>
-	} else {
-	  <h3>No results found...</h3>
-	}
-	</div>
+        @if(pages.size>0) {
+          <ul>
+          @pages.map { p=>
+            <li><a href="@controllers.Wiki.w(p.wid)">@p.label</a> <small>&nbsp;  @p.category</small>
+          }
+         </ul>
+        } else {
+          <h3>No results found...</h3>
+        }
+        </div>
 
       <hr>
       @htmlFooter()

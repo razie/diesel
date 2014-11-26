@@ -66,12 +66,12 @@ msg types are msg, err
       <a id="discard" href="/notes/discard/@nid" class="btn btn-warn" title="This note was auto-saved...">Discard it</a>
 
     <div style="float:right">
-@**	 <a class="btn" onclick="preview()" title="Preview formatted">Preview it</a>
+@**      <a class="btn" onclick="preview()" title="Preview formatted">Preview it</a>
 **@
       @if(_root_.admin.Config.theme.contains("light")) {
-	<i id="iconsave" class="icon-briefcase"  title="Autosaving ok..."></i>
+        <i id="iconsave" class="icon-briefcase"  title="Autosaving ok..."></i>
       } else {
-	<i id="iconsave" class="icon-briefcase icon-white" title="Autosaving ok..."></i>
+        <i id="iconsave" class="icon-briefcase icon-white" title="Autosaving ok..."></i>
       }
       <a class="btn" onclick="archive()" title="Archive notes">Archive it</a>
     </div>
@@ -88,7 +88,7 @@ msg types are msg, err
       <strong>Stuff to do</strong>
       <ul>
       @for(t <- au.get.tasks) {
-	<li><a style="color:red;font-weight:bold" href="/user/task/@t.name">@t.desc</a></li>
+        <li><a style="color:red;font-weight:bold" href="/user/task/@t.name">@t.desc</a></li>
       }
       </ul>
       </div>
@@ -98,8 +98,8 @@ msg types are msg, err
 
 @if(!au.isDefined || au.get.isHarry) {
     <div class="alert alert-block alert-error">
-	<strong>Need account</strong>
-	You need to <a href="/doe/join">create an account</a> to actually create and save notes.
+        <strong>Need account</strong>
+        You need to <a href="/doe/join">create an account</a> to actually create and save notes.
     </div>
 }
 
@@ -235,7 +235,7 @@ function extractor(query) {
     console.log('q '+query)
     if(query.length>0)
       return item.replace(new RegExp('(' + query + ')', 'ig'), function ($1, match) {
-	return '<strong>' + match + '</strong>'
+        return '<strong>' + match + '</strong>'
       })
     else return item+'s';
   }
@@ -273,22 +273,22 @@ function extractor(query) {
 
       $.post($form.attr('action'), $form.serialize(), function(response) {
        console.log(response);
-	if(response.indexOf("msg") == 1) {
-	  $('#iconsave').css("background-color","")
-	  $('#iconsave' ).fadeIn(1500);
-	  $('#iconsave' ).fadeOut(1500);
-	} else {
-	  $('#iconsave').css("background-color","red")
-	  $('#iconsave')[0].title = response;
-	  $('#iconsave' ).show();
+        if(response.indexOf("msg") == 1) {
+          $('#iconsave').css("background-color","")
+          $('#iconsave' ).fadeIn(1500);
+          $('#iconsave' ).fadeOut(1500);
+        } else {
+          $('#iconsave').css("background-color","red")
+          $('#iconsave')[0].title = response;
+          $('#iconsave' ).show();
 
-	  if(response.indexOf("Old auto") > 0) {
-	    $('#submit')[0].disabled=true;
-	    $('#discard')[0].fadeIn();
-	    $('#submit').removeClass('btn-info').addClass('btn-danger');
-	    $('#submit')[0].title="This note was completed in a different window!";
-	  }
-	}
+          if(response.indexOf("Old auto") > 0) {
+            $('#submit')[0].disabled=true;
+            $('#discard')[0].fadeIn();
+            $('#submit').removeClass('btn-info').addClass('btn-danger');
+            $('#submit')[0].title="This note was completed in a different window!";
+          }
+        }
       });
     }
 

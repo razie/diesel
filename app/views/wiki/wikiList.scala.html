@@ -1,8 +1,8 @@
 @**************
 list of pages, with links etc - result of a query of some kind
 **************@
-@(title:String, search:String, curTags:String, pages:List[(model.WID, String)], tags:model.Tags.Tags, tagPrefix:String="./", tagSuffix:String="", realm:String)(implicit au:Option[model.User], request:Request[_])
-@import model._
+@(title:String, search:String, curTags:String, pages:List[(razie.wiki.model.WID, String)], tags:model.Tags.Tags, tagPrefix:String="./", tagSuffix:String="", realm:String)(implicit au:Option[model.User], request:Request[_])
+@import razie.wiki.model._
 
 @htmlHeadBar("Results for: " + title + curTags, au, realm)
 
@@ -14,58 +14,58 @@ list of pages, with links etc - result of a query of some kind
 
       <h3>
       @curTags match {
-	case "recent" => {Organize <small>| recent notes</small>}
-	case "none" => {Organize <small>| missing tags</small>}
-	case "all" => {All notes...}
-	case _ if search.length > 1 => {
-	  Search <small>| @search </small>
-	  @if(curTags.length>0) {
-	  | Tagged <small>@curTags.split("/").map {t=>
-	    |  <a class="h3 small" style="color:#757c82;" href="@browseTag(t)">@t</a>
-	  }
-	  }
-	</small>
-	  }
-	case _ => {
-	  Tagged <small>@curTags.split("/").map {t=>
-	    |  <a class="h3 small" style="color:#757c82;" href="@browseTag(t)">@t</a>
-	  }
-	  </small>
-	}
-	  }
+        case "recent" => {Organize <small>| recent notes</small>}
+        case "none" => {Organize <small>| missing tags</small>}
+        case "all" => {All notes...}
+        case _ if search.length > 1 => {
+          Search <small>| @search </small>
+          @if(curTags.length>0) {
+          | Tagged <small>@curTags.split("/").map {t=>
+            |  <a class="h3 small" style="color:#757c82;" href="@browseTag(t)">@t</a>
+          }
+          }
+        </small>
+          }
+        case _ => {
+          Tagged <small>@curTags.split("/").map {t=>
+            |  <a class="h3 small" style="color:#757c82;" href="@browseTag(t)">@t</a>
+          }
+          </small>
+        }
+          }
 
-	</h3>
+        </h3>
 
       <div class="well">
-	@ads.addSquareTop(au)
+        @ads.addSquareTop(au)
 
-	@if(pages.size > 0) {
-	  <ul>
-	  @pages.take(16).map { p=>
-	    <li><a href="@controllers.Wiki.w(p._1)">@p._2</a> <small>&nbsp;  @p._1.cat</small>
-	  }
+        @if(pages.size > 0) {
+          <ul>
+          @pages.take(16).map { p=>
+            <li><a href="@controllers.Wiki.w(p._1)">@p._2</a> <small>&nbsp;  @p._1.cat</small>
+          }
 
-	  @if(pages.size>16) {
-	    @ads.addSquareTop(au)
+          @if(pages.size>16) {
+            @ads.addSquareTop(au)
 
-	    @pages.drop(16).map { p=>
-	      <li><a href="@controllers.Wiki.w(p._1)">@p._2</a> <small>&nbsp;  @p._1.cat</small>
-	    }
+            @pages.drop(16).map { p=>
+              <li><a href="@controllers.Wiki.w(p._1)">@p._2</a> <small>&nbsp;  @p._1.cat</small>
+            }
 
-	    @if(pages.size < 27) {
-	      @Range(1,27-pages.size).map{i=> <p>&nbsp;</p>}
-	    }
-	  }
-	 </ul>
-	} else {
-	  <h3>No results found...</h3>
-	}
+            @if(pages.size < 27) {
+              @Range(1,27-pages.size).map{i=> <p>&nbsp;</p>}
+            }
+          }
+         </ul>
+        } else {
+          <h3>No results found...</h3>
+        }
 
-	@** leave room for ad **@
-	@if(pages.size < 13) {
-	  @Range(1,13-pages.size).map{i=> <p>&nbsp;</p>}
-	}
-	</div>
+        @** leave room for ad **@
+        @if(pages.size < 13) {
+          @Range(1,13-pages.size).map{i=> <p>&nbsp;</p>}
+        }
+        </div>
 
       <hr>
       @htmlFooter(!au.exists(_.isUnder13), false)

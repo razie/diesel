@@ -1,14 +1,19 @@
 package controllers
 
-import admin.{Config, SendEmail, _}
-import model.{DoSec, Enc, EncUrl, ParentChild, Perm, RK, RacerKidAssoc, RacerKidz, User, UserTask, UserTasks, Users}
 import org.joda.time.DateTime
 import play.api.mvc.{Action, Request}
 import razie.Logging
+import model._
+import razie.wiki.admin.{SecLink, SendEmail, MailSession}
+import razie.wiki.util.Corr
+import razie.wiki.EncUrl
+import razie.wiki.util.VErrors
+import razie.wiki.Enc
+import admin.Config
 
 object Tasks extends RazController with Logging {
   import controllers.Profile.parentForm
-  import model.Sec._
+  import razie.wiki.Sec._
 
   lazy val cNotParent = new Corr("you're not the parent", "login with the parent account and try again")
 
@@ -37,7 +42,7 @@ object Tasks extends RazController with Logging {
   }
 
   def userNameChgDenied = Action { implicit request =>
-    db.tx("usernamechgDenied") { implicit txn =>
+    razie.db.tx("usernamechgDenied") { implicit txn =>
       UserTasks.userNameChgDenied(auth.get).delete
     }
     Msg2("Your request to change username has been denied!")
@@ -54,52 +59,51 @@ object Tasks extends RazController with Logging {
     if (session.get("ujson").isDefined) {
       // during createing new user - user not created yet
       parentForm.bindFromRequest.fold(
-	formWithErrors => {
-	  error("FORM ERR " + formWithErrors)
-	  BadRequest(views.html.tasks.addParent(formWithErrors, "")).withSession("ujson" -> session.get("ujson").get)
-	},
-	{
-	  case pe: String => {
-	    for (
-	      uj <- session.get("ujson") orErr ("missing ujson - bad request");
-	      c <- Users.fromJson(uj) orErr ("cannot parse ujson - bad request")
-	    //		    txni <- db.tx("addParent2") { implicit txn =>
-	    ) yield {
-	      // TODO bad code - reconcile and reuse createion sequence from Profile.doCreateProfiles
-	      db.tx("addParent2") { implicit txn =>
-		val created = Profile.createUser(c)
+        formWithErrors => {
+          error("FORM ERR " + formWithErrors)
+          BadRequest(views.html.tasks.addParent(formWithErrors, "")).withSession("ujson" -> session.get("ujson").get)
+        },
+        {
+          case pe: String => {
+            for (
+              uj <- session.get("ujson") orErr ("missing ujson - bad request");
+              c <- Users.fromJson(uj) orErr ("cannot parse ujson - bad request")
+            ) yield {
+              // TODO bad code - reconcile and reuse createion sequence from Profile.doCreateProfiles
+              razie.db.tx("addParent2") { implicit txn =>
+                val created = Profile.createUser(c)
 
-		UserTasks.addParent(c).create
+                UserTasks.addParent(c).create
 
-		Emailer.withSession { implicit mailSession =>
-		  sendEmail(pe, c)
-		}
-	      }
-	    }
-	  } getOrElse {
-	    ERR
-	  }
-	})
+                Emailer.withSession { implicit mailSession =>
+                  sendEmail(pe, c)
+                }
+              }
+            }
+          } getOrElse {
+            ERR
+          }
+        })
     } else if (auth.isDefined) {
       // done later, user already created
       parentForm.bindFromRequest.fold(
-	formWithErrors => {
-	  error("FORM ERR " + formWithErrors)
-	  BadRequest(views.html.tasks.addParent(formWithErrors, auth.get.ename))
-	},
-	{
-	  case pe: String => {
-	    for (
-	      c <- auth orErr ("not authenticated")
-	    ) yield {
-	      Emailer.withSession { implicit mailSession =>
-		sendEmail(pe, c)
-	      }
-	    }
-	  } getOrElse {
-	    ERR
-	  }
-	})
+        formWithErrors => {
+          error("FORM ERR " + formWithErrors)
+          BadRequest(views.html.tasks.addParent(formWithErrors, auth.get.ename))
+        },
+        {
+          case pe: String => {
+            for (
+              c <- auth orErr ("not authenticated")
+            ) yield {
+              Emailer.withSession { implicit mailSession =>
+                sendEmail(pe, c)
+              }
+            }
+          } getOrElse {
+            ERR
+          }
+        })
     } else {
       error("ERR_ no ujson and no auth!!")
       ERR
@@ -117,7 +121,7 @@ object Tasks extends RazController with Logging {
     log("ENC_DT=" + EncUrl(dt))
     val hc1 = """/doe/tasks/addParent3?expiry=%s&parentEmail=%s&childEmail=%s&childId=%s""".format(EncUrl(dt), EncUrl(pe), Enc.toUrl(c.email), c.id)
     log("ENC_LINK1=" + hc1)
-    val ds = DoSec(hc1)
+    val ds = SecLink(hc1)
     log("ENC_LINK2=" + ds.secUrl)
 
     sendToParentAdd(pe, from, c.email, c.ename, ds.secUrl)
@@ -138,41 +142,41 @@ object Tasks extends RazController with Logging {
     implicit val errCollector = new VErrors()
     (expiry1, parentEmail, childEmail, childId) match {
       case (Enc(expiry), pe, ce, cid) => {
-	for (
-	  // play 2.0 workaround - remove in play 2.1
-	  date <- (try { Option(DateTime.parse(expiry)) } catch { case _: Throwable => (try { Option(DateTime.parse(expiry1.replaceAll(" ", "+").dec)) } catch { case _: Throwable => None }) }) orErr ("token faked or expired");
-	  notExpired <- date.isAfterNow orCorr cExpired;
-	  p <- auth orCorr cNoAuth;
-	  a <- (if (p.email == pe) Some(true) else None) orCorr cNotParent;
-	  pro <- p.profile orCorr cNoProfile;
-	  child <- Users.findUserById(cid) orErr ("child account not found");
-	  cpro <- child.profile orCorr cNoProfile;
-	  already <- !(Users.findPC(p._id, child._id).isDefined) orErr "Already defined"
-	) yield {
-	  db.tx("addParent3") { implicit txn =>
-	    pro.update(pro.addRel(cid -> "child"))
-	    cpro.update(cpro.addRel(p.id -> "parent"))
-	    UserTask(child._id, "addParent").delete
-	    ParentChild(p._id, child._id).create
+        for (
+          // play 2.0 workaround - remove in play 2.1
+          date <- (try { Option(DateTime.parse(expiry)) } catch { case _: Throwable => (try { Option(DateTime.parse(expiry1.replaceAll(" ", "+").dec)) } catch { case _: Throwable => None }) }) orErr ("token faked or expired");
+          notExpired <- date.isAfterNow orCorr cExpired;
+          p <- auth orCorr cNoAuth;
+          a <- (if (p.email == pe) Some(true) else None) orCorr cNotParent;
+          pro <- p.profile orCorr cNoProfile;
+          child <- Users.findUserById(cid) orErr ("child account not found");
+          cpro <- child.profile orCorr cNoProfile;
+          already <- !(Users.findPC(p._id, child._id).isDefined) orErr "Already defined"
+        ) yield {
+          razie.db.tx("addParent3") { implicit txn =>
+            pro.update(pro.addRel(cid -> "child"))
+            cpro.update(cpro.addRel(p.id -> "parent"))
+            UserTask(child._id, "addParent").delete
+            ParentChild(p._id, child._id).create
 
-	    // TODO manual reconcile
-	    RacerKidAssoc(
-	      p._id, RacerKidz.myself(child._id)._id, RK.ASSOC_CHILD,
-	      RK.ROLE_KID,
-	      p._id).create
-	  }
+            // TODO manual reconcile
+            RacerKidAssoc(
+              p._id, RacerKidz.myself(child._id)._id, RK.ASSOC_CHILD,
+              RK.ROLE_KID,
+              p._id).create
+          }
 
-	  Msg("""
+          Msg("""
 Ok child added. You can edit the privacy settings from your [profile page](/doe/profile).
 
 Please read our [[Terms of Service]] as well as our [[Privacy Policy]]
 """, HOME)
-	}
+        }
       } getOrElse
-	{
-	  error("ERR_CANT_UPDATE_USER.addParent3 " + session.get("email"))
-	  Unauthorized("Oops - cannot update this user [addParent3]... " + errCollector.mkString)
-	}
+        {
+          error("ERR_CANT_UPDATE_USER.addParent3 " + session.get("email"))
+          Unauthorized("Oops - cannot update this user [addParent3]... " + errCollector.mkString)
+        }
     }
   }
 
@@ -213,7 +217,7 @@ Ok - we sent an email to your registered email address <font style="color:red">$
     val header = request.headers.get("X-Forwarded-Host")
     val hc1 = """/user/task/verifyEmail2?expiry=%s&email=%s&id=%s""".format(EncUrl(dt), Enc.toUrl(c.email), c.id)
     log("ENC_LINK1=" + hc1)
-    val ds = DoSec(hc1, header)
+    val ds = SecLink(hc1, header)
     log("ENC_LINK2=" + ds.secUrl)
 
     val h = header.getOrElse ("www.racerkidz.com")
@@ -245,19 +249,19 @@ Ok - we sent an email to your registered email address <font style="color:red">$
   def verifyEmail3(expiry1: String, email: String, id: String) = Action { implicit request =>
     reloginForm.bindFromRequest.fold(
       formWithErrors => {
-	error("FORM ERR " + formWithErrors)
-	BadRequest(views.html.tasks.verifEmail3(formWithErrors, expiry1, email, id))
+        error("FORM ERR " + formWithErrors)
+        BadRequest(views.html.tasks.verifEmail3(formWithErrors, expiry1, email, id))
       },
       {
-	case (pe, pwd) => {
-	  val u = Users.findUser(pe.enc).orElse(Users.findUserNoCase(pe))
-	  if (pe.toLowerCase() == email.dec.toLowerCase() && u.exists(_.pwd == pwd.enc))
-	    verifiedEmail(expiry1, email, id, Users.findUser(email))
-	  else {
-	    u.foreach(_.auditLoginFailed)
-	    Msg2("Email doesn't match - could not verify email!")
-	  }
-	}
+        case (pe, pwd) => {
+          val u = Users.findUser(pe.enc).orElse(Users.findUserNoCase(pe))
+          if (pe.toLowerCase() == email.dec.toLowerCase() && u.exists(_.pwd == pwd.enc))
+            verifiedEmail(expiry1, email, id, Users.findUser(email))
+          else {
+            u.foreach(_.auditLoginFailed)
+            Msg2("Email doesn't match - could not verify email!")
+          }
+        }
       })
   }
 
@@ -271,58 +275,58 @@ Ok - we sent an email to your registered email address <font style="color:red">$
     implicit val errCollector = new VErrors()
     (expiry1, email, id) match {
       case (Enc(expiry), ce, cid) => {
-	for (
-	  // play 2.0 workaround - remove in play 2.1
-	  date <- (try { Option(DateTime.parse(expiry)) } catch { case _: Throwable => (try { Option(DateTime.parse(expiry1.replaceAll(" ", "+").dec)) } catch { case _: Throwable => None }) }) orErr ("token faked or expired");
-	  notExpired <- date.isAfterNow orCorr cExpired;
-	  p <- user orCorr cNoAuth;
-	  a <- (if (p.email == ce) Some(true) else None) logging ("ERR neq", p.email, ce) orErr "Not same user";
-	  pro <- p.profile orCorr cNoProfile
-	) yield {
-	  db.tx("verifiedEmail") { implicit txn =>
-	    if (!p.hasPerm(Perm.eVerified)) {
-	      // TODO transaction
-	      val ppp = pro.addPerm("+" + Perm.eVerified.s).addPerm("+" + Perm.uWiki.s)
-	      pro.update(if (p.isUnder13) ppp else ppp.addPerm("+" + Perm.uProfile.s))
+        for (
+          // play 2.0 workaround - remove in play 2.1
+          date <- (try { Option(DateTime.parse(expiry)) } catch { case _: Throwable => (try { Option(DateTime.parse(expiry1.replaceAll(" ", "+").dec)) } catch { case _: Throwable => None }) }) orErr ("token faked or expired");
+          notExpired <- date.isAfterNow orCorr cExpired;
+          p <- user orCorr cNoAuth;
+          a <- (if (p.email == ce) Some(true) else None) logging ("ERR neq", p.email, ce) orErr "Not same user";
+          pro <- p.profile orCorr cNoProfile
+        ) yield {
+          razie.db.tx("verifiedEmail") { implicit txn =>
+            if (!p.hasPerm(Perm.eVerified)) {
+              // TODO transaction
+              val ppp = pro.addPerm("+" + Perm.eVerified.s).addPerm("+" + Perm.uWiki.s)
+              pro.update(if (p.isUnder13) ppp else ppp.addPerm("+" + Perm.uProfile.s))
 
-	      // replace in cache
-	      Users.findUserById(p._id).map { u =>
-		cleanAuth(Some(u))
-	      }
-	    }
-	    UserTasks.verifyEmail(p).delete
-	  }
+              // replace in cache
+              Users.findUserById(p._id).map { u =>
+                cleanAuth(Some(u))
+              }
+            }
+            UserTasks.verifyEmail(p).delete
+          }
 
-	  Msg2("""
+          Msg2("""
 Ok, email verified. You can now edit topics.
 
 Please read our [[Terms of Service]] as well as our [[Privacy Policy]]
 """, Some("/")).withSession(Config.CONNECTED -> Enc.toSession(email))
-	}
+        }
       } getOrElse
-	{
-	  error("ERR_CANT_UPDATE_USER.verifiedEmail " + session.get("email"))
-	  Unauthorized("Oops - cannot update this user....verifiedEmail " + errCollector.mkString)
-	}
+        {
+          error("ERR_CANT_UPDATE_USER.verifiedEmail " + session.get("email"))
+          Unauthorized("Oops - cannot update this user....verifiedEmail " + errCollector.mkString)
+        }
     }
   }
 
   def some(what: String) = Action { implicit request =>
     forUser { au =>
       what match {
-	case "setupRegistration" => {
-	  Msg2("Setting up registration is a bit complicated right now, but we'll do it for you. <p>Please create a support request from the link at the bottom and tell us if you'd like registration and if you want to see the default forms or with your own forms.", Some("/"))
-	}
-	case "setupCalendars" => {
-	  Msg2("Setting up calendars is a bit complicated right now, but we'll do it for you. <p>Please create a support request from the link at the bottom and describe what calendar this is (club calendar probably) and the events in it: what, when, where.", Some("/"))
-	}
-	case UserTasks.START_REGISTRATION => {
-	  val ut = au.tasks.find(_.name == UserTasks.START_REGISTRATION)
-	  Ok(views.html.club.doeClubUserStartReg(auth.get, ut.map(_.args("club")).mkString))
-	}
-	case _ => {
-	  Msg2("?")
-	}
+        case "setupRegistration" => {
+          Msg2("Setting up registration is a bit complicated right now, but we'll do it for you. <p>Please create a support request from the link at the bottom and tell us if you'd like registration and if you want to see the default forms or with your own forms.", Some("/"))
+        }
+        case "setupCalendars" => {
+          Msg2("Setting up calendars is a bit complicated right now, but we'll do it for you. <p>Please create a support request from the link at the bottom and describe what calendar this is (club calendar probably) and the events in it: what, when, where.", Some("/"))
+        }
+        case UserTasks.START_REGISTRATION => {
+          val ut = au.tasks.find(_.name == UserTasks.START_REGISTRATION)
+          Ok(views.html.club.doeClubUserStartReg(auth.get, ut.map(_.args("club")).mkString))
+        }
+        case _ => {
+          Msg2("?")
+        }
       }
     }
   }
@@ -330,8 +334,8 @@ Please read our [[Terms of Service]] as well as our [[Privacy Policy]]
   def someok(what: String) = Action { implicit request =>
     forUser { au =>
       val t = UserTasks.some(au, what)
-      db.tx("someok") { implicit txn =>
-	t.delete
+      razie.db.tx("someok") { implicit txn =>
+        t.delete
       }
       Msg2(t.desc + " Completed!")
     }

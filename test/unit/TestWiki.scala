@@ -4,14 +4,13 @@ package unit
 
 import org.scalatest.FlatSpec
 import org.scalatest.matchers.ShouldMatchers
-import model.Wikis
-import model.WikiParser
-import model.WID
-import model.WikiParser
+import razie.wiki.parser.{WAST, nWikiParser}
+import razie.wiki.model.Wikis
+import razie.wiki.model.WID
 
 class TestWiki extends FlatSpec with ShouldMatchers {
 
-  def applys (s:String) = WikiParser.apply(s).fold(None)
+  def applys (s:String) = nWikiParser.apply(s).fold(None)
 
   "WikiParser" should "escape bad html" in {
     "&lt;applet&gt;" === (this applys "<applet>").s
@@ -41,15 +40,15 @@ class TestWiki extends FlatSpec with ShouldMatchers {
     "aa\nbb" === (applys("aa\nbb"))
     "{{Date 2011-07-24}}" === (applys("{{when:2011-07-24}}"))
     "haha {{Date 2011-07-24}}\nhehe" === (applys("haha {{when:2011-07-24}}\nhehe"))
-    WikiParser.SState("haha Date: 2011-07-24\nhehe", Map("when" -> "2011-07-24")) === (WikiParser.apply("haha {{when:2011-07-24}}\nhehe"))
+    WAST.SState("haha Date: 2011-07-24\nhehe", Map("when" -> "2011-07-24")) === (nWikiParser.apply("haha {{when:2011-07-24}}\nhehe"))
 
     "_____habibi__" === Wikis.formatName("[] /:habibi{}")
     //
   }
 
   "WikiParser" should "like dates" in {
-    "2012-01-21" === WikiParser.parseAll(WikiParser.date1, "2012-01-21").get
-    "2012-October-14" === WikiParser.parseAll(WikiParser.date2, "October 14, 2012").get
+    "2012-01-21" === nWikiParser.parseAll(nWikiParser.date1, "2012-01-21").get
+    "2012-October-14" === nWikiParser.parseAll(nWikiParser.date2, "October 14, 2012").get
   }
 
   scala.math.min(3,5)

@@ -1,9 +1,9 @@
 @**************
 render a regular wiki page - site pages are rendered with wikiSite.scala.html
 **************@
-@(wid:model.WID, iname:Option[String], page:Option[model.WikiEntry], canEdit:Boolean, print:Boolean=false)(implicit au:Option[model.User], request:Request[_])
+@(wid:razie.wiki.model.WID, iname:Option[String], page:Option[razie.wiki.model.WikiEntry], canEdit:Boolean, print:Boolean=false)(implicit au:Option[model.User], request:Request[_])
 
-@label()=@{ page.map(_.label).getOrElse(model.Wikis(wid.getRealm).label(wid)) }
+@label()=@{ page.map(_.label).getOrElse(razie.wiki.model.Wikis(wid.getRealm).label(wid)) }
 @web()=@{model.Website(request) getOrElse model.Website.dflt}
 @isSite()=@{Array("Site", "Page").contains(wid.cat) && page.isDefined}
 
@@ -22,17 +22,17 @@ render a regular wiki page - site pages are rendered with wikiSite.scala.html
 
     @if(page.flatMap(_.props.get("draft")).exists(_.toLowerCase == "draft")) {
       <div class="alert">
-	<strong>Draft!</strong> This page is a draft - a work in progress!
+        <strong>Draft!</strong> This page is a draft - a work in progress!
       </div>
     }
 
       <div class="well">
-	@wiki.wikiFrag(wid,au,false,page, iname, false, true, canEdit)
+        @wiki.wikiFrag(wid,au,false,page, iname, false, true, canEdit)
       </div>
 
       @if(page.isDefined) {
-	@wiki.wikiAddMore(wid, page, au)
-	@wiki.wikiPageComments(wid, page, au)
+        @wiki.wikiAddMore(wid, page, au)
+        @wiki.wikiPageComments(wid, page, au)
       }
 
       <hr>
@@ -43,17 +43,17 @@ render a regular wiki page - site pages are rendered with wikiSite.scala.html
     @* is there room for the right stuff **@
     @if(web().divMain == "9") {
       <div class="span3">
-	@web().rightTop.map { rt =>
-	  @wiki.wikiFrag(rt, au, simple = true)
-	}
+        @web().rightTop.map { rt =>
+          @wiki.wikiFrag(rt, au, simple = true)
+        }
 
-	@if(web().showAds == "yes") {
-	  @addRight()
-	}
+        @if(web().showAds == "yes") {
+          @addRight()
+        }
 
-	@web().rightBottom.map { rt =>
-	  @wiki.wikiFrag(rt, au, simple = true)
-	}
+        @web().rightBottom.map { rt =>
+          @wiki.wikiFrag(rt, au, simple = true)
+        }
 
       </div>
     }

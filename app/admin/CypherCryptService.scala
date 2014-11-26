@@ -1,6 +1,6 @@
 package admin
 
-import model.EncryptService
+import razie.wiki.EncryptService
 
 object CypherEncryptService extends EncryptService {
   def enc (s:String) : String = (new admin.CipherCrypt).encrypt(s)

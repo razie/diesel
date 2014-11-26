@@ -20,31 +20,31 @@ Builds an embedable map given a list of topics
     val (what,coord) = ll.split2(":")
     what match {
       case "ll" => {
-	val (x,y) = coord.split2(",")
-	"""marker = new google.maps.Marker({
-	position: new google.maps.LatLng(%s,%s),
-	map: map,
-	title:'%s',
-	url:'%s'
+        val (x,y) = coord.split2(",")
+        """marker = new google.maps.Marker({
+        position: new google.maps.LatLng(%s,%s),
+        map: map,
+        title:'%s',
+        url:'%s'
       });
       google.maps.event.addListener(marker, 'click', function() {
-	window.location.href = this.url;
+        window.location.href = this.url;
       });""".format(x,y,venue._2, Wiki.w("Venue", venue._3))
       }
       case "s" => {
-	controllers.Maps.latlong(ll).map {case (x,y) =>
-	"""marker = new google.maps.Marker({
-	position: new google.maps.LatLng(%s,%s),
-	map: map,
-	title:'%s',
-	url:'%s'
+        controllers.Maps.latlong(ll).map {case (x,y) =>
+        """marker = new google.maps.Marker({
+        position: new google.maps.LatLng(%s,%s),
+        map: map,
+        title:'%s',
+        url:'%s'
       });
       google.maps.event.addListener(marker, 'click', function() {
-	window.location.href = this.url;
+        window.location.href = this.url;
       }); """.format(x,y,venue._2, Wiki.w("Venue", venue._3))}.getOrElse("")
       }
       case _ => {
-	""
+        ""
       }
     }
   }
@@ -59,19 +59,19 @@ Builds an embedable map given a list of topics
       var map;
 
       function initialize() {
-	var mapDiv = document.getElementById("map_canvas");
-	map = new google.maps.Map(mapDiv, {
-	  center: @centerCalc(),
-	  zoom: 7,
-	  mapTypeId: google.maps.MapTypeId.ROADMAP
-	});
+        var mapDiv = document.getElementById("map_canvas");
+        map = new google.maps.Map(mapDiv, {
+          center: @centerCalc(),
+          zoom: 7,
+          mapTypeId: google.maps.MapTypeId.ROADMAP
+        });
 
       google.maps.event.addListenerOnce(map, 'tilesloaded', addMarkers);
       }
 
       function addMarkers() {
-	var marker;
-	@Html(locsj3().mkString)
+        var marker;
+        @Html(locsj3().mkString)
       }
     </script>
 

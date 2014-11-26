@@ -94,11 +94,11 @@ club admin manages user: membership, regsitration etc
   <a href="@routes.Club.doeClubUwRegstatusupd(uw._id.toString, CURRENT)" class="btn btn-success">Reg - Current</a>
   <p><p><br>Careful:
   @util.confirm(
-	"Delete Registration",
-	"This will delete this registration, all its kids and all related forms, completed or not",
-	routes.Club.doeClubUwRegstatusupd(uw._id.toString, "delete").toString,
-	"btn btn-danger"
-	)
+        "Delete Registration",
+        "This will delete this registration, all its kids and all related forms, completed or not",
+        routes.Club.doeClubUwRegstatusupd(uw._id.toString, "delete").toString,
+        "btn btn-danger"
+        )
   @if(uw.user.exists(_.tasks.exists(_.name == model.UserTasks.START_REGISTRATION))) {
     <a href="@routes.Club.doeCreateRegTask(uw._id.toString)" class="btn btn-success disabled" title="Create a task for the user to start registration!">Create Reg Task</a>
   } else {
@@ -116,37 +116,37 @@ club admin manages user: membership, regsitration etc
 @rks=@{
   model.RacerKidz.findAssocForUser(uw.userId).map(x=>(x,x.rk.get)).map(t=>
     Map("fname"->t._2.info.firstName,
-	"lname"->t._2.info.lastName,
-	"role" -> t._2.info.role,
-	"button"->t._2._id.toString,
-	"associd"->t._1._id.toString,
-	"id" -> t._2._id.toString))
+        "lname"->t._2.info.lastName,
+        "role" -> t._2.info.role,
+        "button"->t._2._id.toString,
+        "associd"->t._1._id.toString,
+        "id" -> t._2._id.toString))
 }
 
 @mnglink(row:Map[String,String],k:String,v:String)={
   @k match {
-	case "button" => {
+        case "button" => {
       <a href="@routes.Kidz.doeKid(uw.userId.toString, v, "-", row("associd"), "Club")" class="btn btn-mini">...</a>
       }
-	case "id" => {
+        case "id" => {
       @if(reg.exists(_.kids.exists(_.rkId.toString == v))) {
-	    <span class="label">Included</span>
-	as @reg.toList.flatMap(_.kids).filter(_.rkId.toString == v).map(_.role).mkString
-	<a href="@routes.Club.doeClubUwRMFormKid(reg.map(_._id).mkString,v,uw._id.toString, "x")" class="btn btn-mini btn-danger" title="remove from registration"> x </a>
+            <span class="label">Included</span>
+        as @reg.toList.flatMap(_.kids).filter(_.rkId.toString == v).map(_.role).mkString
+        <a href="@routes.Club.doeClubUwRMFormKid(reg.map(_._id).mkString,v,uw._id.toString, "x")" class="btn btn-mini btn-danger" title="remove from registration"> x </a>
       } else {
       @reg.map{r=>
-	  <a href="@routes.Club.doeClubUserRegAdd(r._id.toString,v,uw.user.get._id.toString, uw._id.toString)" class="btn btn-mini" title="also adds neccessary forms">Register</a>
+          <a href="@routes.Club.doeClubUserRegAdd(r._id.toString,v,uw.user.get._id.toString, uw._id.toString)" class="btn btn-mini" title="also adds neccessary forms">Register</a>
 @***
-	@if(row("role") == ROLE_RACER) {
-	<a href="@routes.Club.doeClubUwAddFormKid(r._id.toString,v,uw._id.toString, "Racer")" class="btn btn-mini">x</a>
-	  } else {
-	  <a href="@routes.Club.doeClubUserRegAdd(r._id.toString,v,uw.user.get._id.toString, uw._id.toString)" class="btn btn-mini">Register</a>
-	  }
+        @if(row("role") == ROLE_RACER) {
+        <a href="@routes.Club.doeClubUwAddFormKid(r._id.toString,v,uw._id.toString, "Racer")" class="btn btn-mini">x</a>
+          } else {
+          <a href="@routes.Club.doeClubUserRegAdd(r._id.toString,v,uw.user.get._id.toString, uw._id.toString)" class="btn btn-mini">Register</a>
+          }
 ***@
-	}.getOrElse{
-	n/a
-	}
-	  }
+        }.getOrElse{
+        n/a
+        }
+          }
       }
     case _ => {@v}
   }

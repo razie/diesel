@@ -1,23 +1,21 @@
 /**
  *   ____    __    ____  ____  ____,,___     ____  __  __  ____
- *  (  _ \  /__\  (_   )(_  _)( ___)/ __)   (  _ \(  )(  )(  _ \	   Read
- *   )	 / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <     README.txt
+ *  (  _ \  /__\  (_   )(_  _)( ___)/ __)   (  _ \(  )(  )(  _ \           Read
+ *   )   / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <     README.txt
  *  (_)\_)(__)(__)(____)(____)(____)(___/   (__)  (______)(____/    LICENSE.txt
  */
 package controllers
 
-import model.Sec.EncryptedS
+import razie.wiki.Sec.EncryptedS
 import play.api.mvc.Action
 import razie.Logging
-import model.Wikis
-import model.WikiEntry
-import model.WikiDomain
 import razie.gg
 import org.json.JSONArray
+import razie.wiki.dom.WikiDomain
+import razie.wiki.util.js
 import scala.collection.mutable.ListBuffer
 import org.json.JSONObject
 import scala.collection.mutable.HashMap
-import admin.js
 
 /** graph wiki controller */
 object WikiDom extends RazController with Logging {

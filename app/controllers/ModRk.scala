@@ -3,31 +3,20 @@
  */
 package controllers
 
+import razie.wiki.model.WID
+import razie.wiki.util.VErrors
+
 import scala.Array.canBuildFrom
 import scala.Array.fallbackCanBuildFrom
 import scala.Option.option2Iterable
 import org.bson.types.ObjectId
-import admin.SendEmail
-import admin.VErrors
-import db.REntity
-import db.RMany
-import db.ROne
-import db.RTable
-import model.FormStatus
-import model.RK
+import razie.db.REntity
+import razie.db.RMany
+import razie.db.ROne
+import razie.db.RTable
 import model.RacerKid
-import model.RacerKidAssoc
-import model.RacerKidz
-import model.Reg
-import model.RegKid
-import model.RegStatus
-import model.Regs
-import model.Sec.EncryptedS
+import razie.wiki.Sec.EncryptedS
 import model.User
-import model.Users
-import model.VolunteerH
-import model.WID
-import model.Wikis
 import play.api.data.Form
 import play.api.data.Forms.nonEmptyText
 import play.api.data.Forms.number
@@ -39,10 +28,10 @@ import play.api.mvc.Request
 import razie.Logging
 import razie.cout
 import admin.Config
-import db.RMongo
+import razie.db.RMongo
 import play.api.mvc.AnyContent
 import play.api.mvc.Result
-import db.RDelete
+import razie.db.RDelete
 
 /** per topic reg */
 case class ModRkReg(
@@ -52,7 +41,7 @@ case class ModRkReg(
 }
 
 /** per topic reg */
-@db.RTable
+@RTable
 case class ModRkEntry(
   rkId: ObjectId,
   wpath: String, // WID doesn't work
@@ -70,7 +59,7 @@ case class ModRkEntry(
 /** controller for club management */
 object ModRk extends RazController with Logging {
 
-  import db.RMongo.as
+  import razie.db.RMongo.as
 
   def regd (au:User, wid:WID) = ModRkReg(wid).kids.map(x => (x, x.rkId.as[model.RacerKid].get)).toList
   def rks (au:User, wid:WID) = model.RacerKidz.findAssocForUser(au._id).map(x => (x, x.rk.get)).toList

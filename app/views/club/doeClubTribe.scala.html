@@ -9,10 +9,10 @@ club admin manages user: membership, regsitration etc
 @how() = @{
 //  model.Wikis.category("Club").flatMap(_.contentTags.get("roles:"+"User")) match {
 //    case Some(s) => {
-//	s.split(",").filter(x => ! Array("Owner","Admin").contains(x)).map(x=>(x,x)).toSeq
+//      s.split(",").filter(x => ! Array("Owner","Admin").contains(x)).map(x=>(x,x)).toSeq
 //    }
 //    case None => {
-//	model.Wikis.pageNames("Link").map(x=>(x,x)).toList
+//      model.Wikis.pageNames("Link").map(x=>(x,x)).toList
 //    }
 //  }
 
@@ -33,18 +33,18 @@ club admin manages user: membership, regsitration etc
 @rkidzin=@{
   model.RacerKidz.findByClub(controllers.Club(club)).filter{x=> tribe.has(x._id)}.map(t=>
     Map("fname"->t.info.firstName,
-	"role" -> tribe.kidz.find(_.rkId==t._id).map(_.role).mkString,
-	"id"->t._id.toString))
+        "role" -> tribe.kidz.find(_.rkId==t._id).map(_.role).mkString,
+        "id"->t._id.toString))
 }
 
   @rmlink(row:Map[String,String],k:String,v:String)={
   @k match {
-	case "id" => {
+        case "id" => {
       @if(tribe.has(new ObjectId(v))) {
-	<a href="@routes.Tribe.doeClubRemoveKid(tribe.page._id.toString,v,v)" class="btn btn-mini btn-warn">Remove</a>
+        <a href="@routes.Tribe.doeClubRemoveKid(tribe.page._id.toString,v,v)" class="btn btn-mini btn-warn">Remove</a>
       } else {
-	  }
-	}
+          }
+        }
     case _ => {@v}
   }
 }

@@ -1,7 +1,7 @@
 @***************
 link(like) a wiki: select or create from categoyr
 **************@
-@(wid:model.WID, page:Option[model.WikiEntry], au:Option[model.User])
+@(wid:razie.wiki.model.WID, page:Option[razie.wiki.model.WikiEntry], au:Option[model.User])
 @import model._
 
 @htmlHeadBar(page.flatMap(_.contentTags.get("title")).getOrElse(wid.cat +": "+ page.map(_.label).getOrElse(model.Wikis(wid.getRealm).label(wid))), au)
@@ -27,7 +27,7 @@ link(like) a wiki: select or create from categoyr
       @wiki.wikiAddMore(wid, page, au)
 
       <div class="well">
-	@wiki.wikiFrag(wid,au,false,page, None)
+        @wiki.wikiFrag(wid,au,false,page, None)
       </div>
 
       <hr>

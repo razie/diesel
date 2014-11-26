@@ -18,11 +18,11 @@ create account
       <div class="hero-unit">
 
       <div class="row">
-	<div class="span6">
-	  @wiki.wikiFragInt("Admin:page-join3-"+realm, au)
-	</div>
+        <div class="span6">
+          @wiki.wikiFragInt("Admin:page-join3-"+realm, au)
+        </div>
 
-	<div class="span4">
+        <div class="span4">
 
 @import helper.twitterBootstrap._
 
@@ -31,7 +31,7 @@ create account
     myForm("userType"),
     _root_.admin.Config.userTypes.map(x=>(x.toString,x.toString)),
      '_label ->
-	     (if (realm==model.Reactors.NOTES) "Account type"
+             (if (realm==model.Reactors.NOTES) "Account type"
   else "What you are"),
     '_showConstraints -> false)
   @helper.inputText(

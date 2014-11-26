@@ -1,8 +1,8 @@
 @**************
 select a destination parent
 **************@
-@(wid:model.WID, page:model.WikiEntry, parents:List[(model.UWID, String)], au:Option[model.User])
-@import model._
+@(wid:razie.wiki.model.WID, page:razie.wiki.model.WikiEntry, parents:List[(razie.wiki.model.UWID, String)], au:Option[model.User])
+@import razie.wiki.model._
 
 @htmlHeadBar("Choose new parent for: " + wid.toString, au)
 
@@ -13,19 +13,19 @@ select a destination parent
   <div class="row">
     <div class="span9">
       <div class="well">
-	@parents.groupBy(_._1.cat).map { t =>
-	   @t._1 :
-	   @if(t._2.size>0) {
-	     <ul>
-	     @t._2.map { p=>
-	       <li><a href="@routes.Wikie.wikieMove2(page._id.toString, page.parent.get.toString, p._1.id.toString)">@p._2</a>
-	     }
-	    </ul>
-	   } else {
-	     No results found...
-	   }
-	}
-	</div>
+        @parents.groupBy(_._1.cat).map { t =>
+           @t._1 :
+           @if(t._2.size>0) {
+             <ul>
+             @t._2.map { p=>
+               <li><a href="@routes.Wikie.wikieMove2(page._id.toString, page.parent.get.toString, p._1.id.toString)">@p._2</a>
+             }
+            </ul>
+           } else {
+             No results found...
+           }
+        }
+        </div>
 
       <hr>
       @htmlFooter()

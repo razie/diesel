@@ -8,23 +8,23 @@ manage the list of kidz and/or their accounts
 
 @rfks=@{
   (for (a <- model.RacerKidz.findAssocForUser(user._id);
-	   k <- model.RacerKidz.findById(a.to)) yield (k,a)).toList.sortBy(x=>x._1.info.lastName+x._1.info.firstName)
+           k <- model.RacerKidz.findById(a.to)) yield (k,a)).toList.sortBy(x=>x._1.info.lastName+x._1.info.firstName)
 }
 
 @rksactive=@{
   for ((t,a) <- rks if(t.info.status != STATUS_FORMER)) yield
     Map("fname"->t.info.firstName,
-	"lname"->t.info.lastName,
-	"role" -> a.role,
-	"source" -> a.assoc,
-	"hours" -> a.hours.toString,
-	"family" -> controllers.Club.volFamily(t, rks, regs),
-	"button"->a._id.toString)
+        "lname"->t.info.lastName,
+        "role" -> a.role,
+        "source" -> a.assoc,
+        "hours" -> a.hours.toString,
+        "family" -> controllers.Club.volFamily(t, rks, regs),
+        "button"->a._id.toString)
 }
 
 @mnglink(row:Map[String,String],k:String,v:String)={
   @k match {
-	case "button" => {
+        case "button" => {
       <a href="@routes.Club.doeVolAdd(v)" class="btn btn-mini">Add...</a>
       }
     case _ => { @v }
@@ -44,13 +44,13 @@ manage the list of kidz and/or their accounts
 <p>Some records are created by their parents (see the "Source"). For those that did not register online, you can create records here, for team management etc.
 
 @util.utilSimpleTable(rksactive.iterator,
-	Seq("fname" -> "F.Name",
-		"lname"->"L.Name",
-		"role" -> "Role",
-		"source" -> "Source",
-		"hours" -> "Hours",
-		"family" -> "Family",
-		"button"->"Add more"), Some(mnglink))
+        Seq("fname" -> "F.Name",
+                "lname"->"L.Name",
+                "role" -> "Role",
+                "source" -> "Source",
+                "hours" -> "Hours",
+                "family" -> "Family",
+                "button"->"Add more"), Some(mnglink))
 
 Add a:
 <a href="@routes.Kidz.doeKid(user._id.toString, "11", ROLE_RACER, "-", "clubkidz")" class="btn btn-mini btn-info">@ROLE_RACER</a>

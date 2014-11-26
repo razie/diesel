@@ -4,9 +4,10 @@ import admin.Config
 import com.novus.salat._
 import controllers.Application._
 import controllers.{Application, Wiki}
-import db.RazSalatContext._
+import razie.db.RazSalatContext._
 import play.api.mvc.{Request, Action}
 import razie.OR._
+import razie.wiki.util.PlayTools
 
 /**
  * dsl processing - entries with a props section
@@ -69,7 +70,7 @@ object Website {
     if (ce.isEmpty || System.currentTimeMillis > ce.get.millis) {
       val w = Wikis.rk.find("Site", s) map (new Website(_))
       if (w.isDefined)
-	cache.put(s, CacheEntry(w.get, System.currentTimeMillis()+w.get.ttl))
+        cache.put(s, CacheEntry(w.get, System.currentTimeMillis()+w.get.ttl))
       w
     } else
       ce.map(_.w)
@@ -79,7 +80,8 @@ object Website {
 
   def dflt = new Website(Wikis.rk.categories.head) //todo this is stupid - find better default
 
-  def getHost (implicit request: Request[_]) = admin.PlayTools.getHost
+  /** @deprecated use PlayTools.getHost */
+  def getHost (implicit request: Request[_]) = PlayTools.getHost
 }
 
 /**
@@ -107,7 +109,7 @@ object Realms {
     if (ce.isEmpty || System.currentTimeMillis > ce.get.millis) {
       val w = Wikis.rk.find("Reactor", s) map (new Realm(_))
       if (w.isDefined)
-	cache.put(s, CacheEntry(w.get, System.currentTimeMillis()+w.get.ttl))
+        cache.put(s, CacheEntry(w.get, System.currentTimeMillis()+w.get.ttl))
       w
     } else
       ce.map(_.w)

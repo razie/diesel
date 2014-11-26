@@ -1,42 +1,42 @@
 @(ACCOUNT_ID : String, reqItems: Seq[x.FulfillmentOrderItem])
 
 <om:createAndStartRequestByValueRequest
-	xmlns:om="http://ossj.org/xml/OrderManagement/v1-0"
-	xmlns:v1="http://www.sigma-systems.com/smp/43/xsd/VoiceClecEntity/jsr144/v1-5"
-	xmlns:smpom="http://www.sigma-systems.com/smp/43/xsd/JVTSmpOrderManagement/jsr264/v1-0"
-	xmlns:smpcbe="http://www.sigma-systems.com/smp/43/xsd/SubscriberEntity/jsr144/v1-5"
-	xmlns:xs="http://www.w3.org/2001/XMLSchema"
-	xmlns:cbebi="http://ossj.org/xml/Common-CBEBi/v1-5"
-	xmlns:cmn="http://ossj.org/xml/Common/v1-5"
-	xmlns:cbecore="http://ossj.org/xml/Common-CBECore/v1-5"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-	<om:requestValue xsi:type="smpom:SmpEntityOrderValue">
-		<cmn:key xsi:type="smpom:SmpEntityOrderKey">
-			<cmn:type>http://www.sigma-systems.com/smp/43/xsd/JVTSmpOrderManagement/jsr264/v1-0#SmpEntityOrderValue</cmn:type>
-			<cmn:primaryKey keyType="IdKey">-1</cmn:primaryKey>
-		</cmn:key>
-		<cbecore:describingSpecificationKey
-			xsi:type="smpom:SmpEntityOrderSpecificationKey">
-			<cmn:type>http://www.sigma-systems.com/smp/43/xsd/JVTSmpOrderManagement/jsr264/v1-0#SmpEntityOrderSpecificationValue</cmn:type>
-			<cmn:primaryKey>EntityOrderSpec:ActionOrder</cmn:primaryKey>
-		</cbecore:describingSpecificationKey>
-		<om:clientId>web</om:clientId>
-		<smpom:subscriberKey>
-			<cmn:type>http://www.sigma-systems.com/smp/43/xsd/SubscriberEntity/jsr144/v1-5#SubscriberValue</cmn:type>
-			<cmn:primaryKey keyType="ExternalKey">Sub_@ACCOUNT_ID</cmn:primaryKey>
-		</smpom:subscriberKey>
-		<smpom:entityOrderItems>
+        xmlns:om="http://ossj.org/xml/OrderManagement/v1-0"
+        xmlns:v1="http://www.sigma-systems.com/smp/43/xsd/VoiceClecEntity/jsr144/v1-5"
+        xmlns:smpom="http://www.sigma-systems.com/smp/43/xsd/JVTSmpOrderManagement/jsr264/v1-0"
+        xmlns:smpcbe="http://www.sigma-systems.com/smp/43/xsd/SubscriberEntity/jsr144/v1-5"
+        xmlns:xs="http://www.w3.org/2001/XMLSchema"
+        xmlns:cbebi="http://ossj.org/xml/Common-CBEBi/v1-5"
+        xmlns:cmn="http://ossj.org/xml/Common/v1-5"
+        xmlns:cbecore="http://ossj.org/xml/Common-CBECore/v1-5"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+        <om:requestValue xsi:type="smpom:SmpEntityOrderValue">
+                <cmn:key xsi:type="smpom:SmpEntityOrderKey">
+                        <cmn:type>http://www.sigma-systems.com/smp/43/xsd/JVTSmpOrderManagement/jsr264/v1-0#SmpEntityOrderValue</cmn:type>
+                        <cmn:primaryKey keyType="IdKey">-1</cmn:primaryKey>
+                </cmn:key>
+                <cbecore:describingSpecificationKey
+                        xsi:type="smpom:SmpEntityOrderSpecificationKey">
+                        <cmn:type>http://www.sigma-systems.com/smp/43/xsd/JVTSmpOrderManagement/jsr264/v1-0#SmpEntityOrderSpecificationValue</cmn:type>
+                        <cmn:primaryKey>EntityOrderSpec:ActionOrder</cmn:primaryKey>
+                </cbecore:describingSpecificationKey>
+                <om:clientId>web</om:clientId>
+                <smpom:subscriberKey>
+                        <cmn:type>http://www.sigma-systems.com/smp/43/xsd/SubscriberEntity/jsr144/v1-5#SubscriberValue</cmn:type>
+                        <cmn:primaryKey keyType="ExternalKey">Sub_@ACCOUNT_ID</cmn:primaryKey>
+                </smpom:subscriberKey>
+                <smpom:entityOrderItems>
 
 @*** for each reqItem apply proper item template ***@
 
 @reqItems.map{item=>
   @item.entity.spec match {
-	  case x.SmpResources.MobileSIM       => { @zmobile_sim_card }
-	  case x.SmpServices.MobileTelephony  => { @zmobile_telephony @zmobile_telephony_composed}
-	  case x.SmpServices.MobileDataCommon => { @zmobile_data_common }
+          case x.SmpResources.MobileSIM       => { @zmobile_sim_card }
+          case x.SmpServices.MobileTelephony  => { @zmobile_telephony @zmobile_telephony_composed}
+          case x.SmpServices.MobileDataCommon => { @zmobile_data_common }
 
-	  case _ => { @eDefaultItem(item, item.entity) }
-	}
+          case _ => { @eDefaultItem(item, item.entity) }
+        }
 }
 @*** default case is flow through the PSR FO item to SMP item ***@
 
@@ -44,5 +44,5 @@
 
 
     </smpom:entityOrderItems>
-	</om:requestValue>
+        </om:requestValue>
 </om:createAndStartRequestByValueRequest>

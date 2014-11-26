@@ -95,9 +95,9 @@ Birth date(dd/mm/yyyy): {{f:birthDate:type=date}}
     val users = MT.slicejoin(threads, (0 until members).toList) { i =>
       val (u, userId) = crUser(clubEname + "x"+i.toString + "coach", "Coach")
       val kids =
-	crKid(userId, u, "a-kid" + clubEname+"x"+i, clubEname, "Kid") ::
-	  crKid(userId, u, "b-kid" + clubEname+"x"+i, clubEname, "Kid") ::
-	  crKid(userId, u, "c-kid" + clubEname+"x"+i, clubEname, "Spouse") :: Nil
+        crKid(userId, u, "a-kid" + clubEname+"x"+i, clubEname, "Kid") ::
+          crKid(userId, u, "b-kid" + clubEname+"x"+i, clubEname, "Kid") ::
+          crKid(userId, u, "c-kid" + clubEname+"x"+i, clubEname, "Spouse") :: Nil
       (u, userId, kids)
     }.flatMap(_.toList).toList
 
@@ -111,10 +111,10 @@ Birth date(dd/mm/yyyy): {{f:birthDate:type=date}}
       // user becomes member of club
       val cname = (s"/testingRaz/userUsernameById/$userId/$TESTCODE", club, p).wget
       (s"/wikie/linked/User/$userId/Club/$clubId?wc=0").url.form(Map(
-	"how" -> "Coach",
-	"markup" -> "md",
-	"notif" -> "e",
-	"comment" -> "hahah")).basic(u, p) eok "added"
+        "how" -> "Coach",
+        "markup" -> "md",
+        "notif" -> "e",
+        "comment" -> "hahah")).basic(u, p) eok "added"
 
       val uwId = (s"/testingRaz/uwIdByUserId/$userId/$TESTCODE", club, p).wget
       uwId should have length (24)
@@ -122,20 +122,20 @@ Birth date(dd/mm/yyyy): {{f:birthDate:type=date}}
       (s"/doe/club/regs", club, p) eok uwId
 
       if (doReg) {
-	// start reg
-	(s"/doe/club/uw/regstatusupd/$uwId/expired", club, p) eok userId
-	val regId = (s"/testingRaz/regByUserId/$userId/$TESTCODE", club, p).wget
-	regId should have length (24)
+        // start reg
+        (s"/doe/club/uw/regstatusupd/$uwId/expired", club, p) eok userId
+        val regId = (s"/testingRaz/regByUserId/$userId/$TESTCODE", club, p).wget
+        regId should have length (24)
 
-	// add kids to it
-	//http://localhost:9000/doe/club/uw/addformkid/522f4d910577fc9c61f7f1ac/522f4d910577fc9c61f7f197/522f4d910577fc9c61f7f1a3/Racer
-	kids.foreach { t =>
-	  val (rkId, role) = t
-	  if (role == "Kid")
-	    (s"/doe/club/uw/addformkid/$regId/$rkId/$uwId/Racer", club, p) eok userId
-	  else
-	    (s"/doe/club/uw/addformkid/$regId/$rkId/$uwId/Volunteer", club, p) eok userId
-	}
+        // add kids to it
+        //http://localhost:9000/doe/club/uw/addformkid/522f4d910577fc9c61f7f1ac/522f4d910577fc9c61f7f197/522f4d910577fc9c61f7f1a3/Racer
+        kids.foreach { t =>
+          val (rkId, role) = t
+          if (role == "Kid")
+            (s"/doe/club/uw/addformkid/$regId/$rkId/$uwId/Racer", club, p) eok userId
+          else
+            (s"/doe/club/uw/addformkid/$regId/$rkId/$uwId/Volunteer", club, p) eok userId
+        }
       }
     }
 
@@ -165,10 +165,10 @@ object MT { // TODO add to razie.Threads
     val slice = as.size / t
     val threads = (for (i <- 0 until t) yield {
       val r =
-	if (i == t - 1)
-	  // last loop does all
-	  i * slice until as.size
-	else i * slice until (i + 1) * slice
+        if (i == t - 1)
+          // last loop does all
+          i * slice until as.size
+        else i * slice until (i + 1) * slice
       new SliceFuncValThread(r, as, f)
     })
 
@@ -182,7 +182,7 @@ object MT { // TODO add to razie.Threads
 
     override def run() = {
       for (j <- r)
-	res append Option(f(as(j)))
+        res append Option(f(as(j)))
     }
   }
 }

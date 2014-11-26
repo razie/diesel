@@ -3,47 +3,14 @@
  */
 package controllers
 
-import scala.Array.canBuildFrom
-import scala.Array.fallbackCanBuildFrom
-import scala.Option.option2Iterable
-import org.bson.types.ObjectId
-import admin.SendEmail
-import admin.VErrors
-import db.REntity
-import db.RMany
-import db.ROne
-import db.RTable
-import model.FormStatus
-import model.RK
-import model.RacerKid
-import model.RacerKidAssoc
-import model.RacerKidz
-import model.Reg
-import model.RegKid
-import model.RegStatus
-import model.Regs
-import model.Sec.EncryptedS
-import model.User
-import model.Users
-import model.VolunteerH
-import model.WID
-import model.Wikis
-import play.api.data.Form
-import play.api.data.Forms.nonEmptyText
-import play.api.data.Forms.number
-import play.api.data.Forms.text
-import play.api.data.Forms.tuple
-import play.api.libs.json.Json
-import play.api.mvc.Action
-import play.api.mvc.Request
-import razie.Logging
-import razie.cout
 import admin.Config
-import db.RMongo
-import play.api.mvc.AnyContent
-import play.api.mvc.Result
-import db.RDelete
-import admin.Audit
+import model.RacerKid
+import org.bson.types.ObjectId
+import play.api.mvc.{Action, Request}
+import razie.Logging
+import razie.db.{RTable, REntity, RMany}
+import razie.wiki.admin.Audit
+import razie.wiki.model.WID
 
 /** per topic reg */
 case class Modx1(
@@ -53,7 +20,7 @@ case class Modx1(
 }
 
 /** per topic reg */
-@db.RTable
+@RTable
 case class ModTmaStudent(
   rkId: ObjectId,
   role: String,
@@ -68,9 +35,8 @@ case class ModTmaStudent(
 /** controller for club management */
 object ModTma extends RazController with Logging {
 
-  import play.api.data._
   import play.api.data.Forms._
-  import play.api.data.validation.Constraints._
+  import play.api.data._
 
   /** TODO find all badges, sorted for current user */
   def doeGetBadges = FAU { implicit au =>
@@ -112,13 +78,13 @@ object ModTma extends RazController with Logging {
   def jsechof = Action { implicit request =>
     OneForm.bindFromRequest.fold(
       formWithErrors =>
-	Msg2(formWithErrors.toString + "Oops! some error"),
+        Msg2(formWithErrors.toString + "Oops! some error"),
       {
-	case content =>
-	  Ok(razscr dec content).as("text/html").withHeaders(
-	    "Content-Security-Policy" -> "unsafe-inline,unsafe-eval",
-	    "X-Content-Security-Policy" -> "unsafe-inline,unsafe-eval",
-	    "X-WebKit-CSP" -> "unsafe-inline,unsafe-eval")
+        case content =>
+          Ok(razscr dec content).as("text/html").withHeaders(
+            "Content-Security-Policy" -> "unsafe-inline,unsafe-eval",
+            "X-Content-Security-Policy" -> "unsafe-inline,unsafe-eval",
+            "X-WebKit-CSP" -> "unsafe-inline,unsafe-eval")
       })
   }
 
@@ -133,10 +99,10 @@ object ModTma extends RazController with Logging {
   def buildhtml(id: String) = Action { implicit request =>
     lform.bindFromRequest.fold(
       formWithErrors =>
-	Msg2(formWithErrors.toString + "Oops! some error"),
+        Msg2(formWithErrors.toString + "Oops! some error"),
       {
-	case (hh, h, c, j) =>
-	  xbuildhtml(id, hh, h, c, j)
+        case (hh, h, c, j) =>
+          xbuildhtml(id, hh, h, c, j)
       })
   }
 
@@ -169,7 +135,7 @@ $hx
     // TODO better security -
     if (request.headers.get("Referer").exists(r =>
       (r matches s"""^http[s]?://${Config.hostport}.*""") ||
-	(r matches s"""^http[s]?://${request.headers.get("X-Forwarded-Host").getOrElse("NOPE")}.*""")))
+        (r matches s"""^http[s]?://${request.headers.get("X-Forwarded-Host").getOrElse("NOPE")}.*""")))
       Ok(res).as("text/html")
     else {
       Audit.logdb("ERR_BUILDHTML", "Referer", request.headers.get("Referer"), "Host", request.host)
@@ -187,7 +153,7 @@ $hx
       Msg2(formWithErrors.toString + "Oops! some error"),
     {
       case (hh, h, c, j) =>
-	Ok(views.html.fiddle.playjs("", Map(), (hh, h, c, j), auth))
+        Ok(views.html.fiddle.playjs("", Map(), (hh, h, c, j), auth))
     })
   }
 

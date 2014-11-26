@@ -1,69 +1,71 @@
 @****************
 fragment: add more stuff to the current topic, including children, sub-topics etc
 ****************@
-@(wid:model.WID, page:Option[model.WikiEntry], user:Option[model.User])
-@import model._
-@import _root_.admin.IgnoreErrors
+@(wid:razie.wiki.model.WID, page:Option[razie.wiki.model.WikiEntry], user:Option[model.User])
+@import razie.wiki.util.IgnoreErrors
+@import razie.wiki.model.{Wikis, WID}
+@import razie.wiki.dom.WikiDomain
+@import model.Perm
 
 @if("Category" == wid.cat && "User" != wid.name && ("WikiLink" != wid.name || user.exists(_.hasPerm(Perm.adminDb)))) {
   <!-- list of pages in category -->
-  @if(model.Wikis(wid.getRealm).pageNames(wid.name).size > 0) {
+  @if(Wikis(wid.getRealm).pageNames(wid.name).size > 0) {
     <div class="well">
       @wid.name entries:
 
-      @for(p <- model.Wikis(wid.getRealm).pages(wid.name).take(50) if(controllers.Wiki.isVisible(user,p.props))) {
-	<a href="@controllers.Wiki.w(p.wid)">@p.label</a> |
+      @for(p <- Wikis(wid.getRealm).pages(wid.name).take(50) if(controllers.Wiki.isVisible(user,p.props))) {
+        <a href="@controllers.Wiki.w(p.wid)">@p.label</a> |
       }
 
-      @if(model.Wikis(wid.getRealm).pageNames(wid.name).size > 50) {
-	<p><br>
-	  ... <a href="@routes.Wiki.all(wid.name, wid.getRealm)">See <b>all</b> !</a>
-	</p>
+      @if(Wikis(wid.getRealm).pageNames(wid.name).size > 50) {
+        <p><br>
+          ... <a href="@routes.Wiki.all(wid.name, wid.getRealm)">See <b>all</b> !</a>
+        </p>
       }
     </div>
   }
 
-  @if(!model.WikiDomain(wid.getRealm).needsParent(wid.name)) {
-    @model.WikiDomain(wid.getRealm).aEnds(wid.name, "Template").headOption.map { wet =>
+  @if(!WikiDomain(wid.getRealm).needsParent(wid.name)) {
+    @WikiDomain(wid.getRealm).aEnds(wid.name, "Template").headOption.map { wet =>
       @helper.form(action=routes.Wikie.addWithSpec1(wid.name, wet, wid.getRealm), 'class->"well form-inline") {
-	<label>Create a new <a href="@wid.url">@model.Wikis(wid.getRealm).label(WID("Category",wid.name))</a> </label>
-	<button type="submit" class="btn">Choose template</button>
+        <label>Create a new <a href="@wid.url">@Wikis(wid.getRealm).label(WID("Category",wid.name))</a> </label>
+        <button type="submit" class="btn">Choose template</button>
       }
     }
 
-    @if(model.WikiDomain(wid.getRealm).aEnds(wid.name, "Template").isEmpty) {
+    @if(WikiDomain(wid.getRealm).aEnds(wid.name, "Template").isEmpty) {
       @helper.form(action=routes.Wikie.addWithName(wid.name, wid.getRealm), 'class->"well form-inline") {
-	<label>Create a new <a href="@wid.url">@model.Wikis(wid.getRealm).label(WID("Category",wid.name))</a> </label>
-	<input type="text" class="input-xlarge" name="name" placeholder="Name">
-	<button type="submit" class="btn">Now</button>
+        <label>Create a new <a href="@wid.url">@Wikis(wid.getRealm).label(WID("Category",wid.name))</a> </label>
+        <input type="text" class="input-xlarge" name="name" placeholder="Name">
+        <button type="submit" class="btn">Now</button>
       }
     }
   }
 } else {
       <!-- list of child pages -->
-  @model.WikiDomain(wid.getRealm).aEnds(wid.cat, "Child").map {child=>
+  @WikiDomain(wid.getRealm).aEnds(wid.cat, "Child").map {child=>
     @if(page.isDefined && controllers.Wiki.canEdit(wid,user,page)(IgnoreErrors)) {
       @helper.form(action=routes.Wikie.createLinked(child,wid,"Child"), 'class->"form-inline") {
-	<label>Create a <a href="/wiki/Category:@child">@model.Wikis.category(child).map(_.label).mkString</a> </label>
-	<input type="text" class="input-xlarge" name="name" placeholder="Name">
-	    <button type="submit" class="btn btn-mini btn-primary">Now</button>
-	    <a href="/wiki/Admin:Adding_a_Child" class="btn btn-mini btn-info">?</a>
-	  }
-	}
+        <label>Create a <a href="/wiki/Category:@child">@Wikis.category(child).map(_.label).mkString</a> </label>
+        <input type="text" class="input-xlarge" name="name" placeholder="Name">
+            <button type="submit" class="btn btn-mini btn-primary">Now</button>
+            <a href="/wiki/Admin:Adding_a_Child" class="btn btn-mini btn-info">?</a>
+          }
+        }
 
-    @* @model.Wikis.linksTo(page.get.uwid, "Child").filter(_.from.cat == child).toList) { kids =>*@
+    @* @Wikis.linksTo(page.get.uwid, "Child").filter(_.from.cat == child).toList) { kids =>*@
     @if(!page.exists(_.contentTags.contains("nochildposts"))) {
-      @defining(model.Wikis.linksTo(page.get.uwid, "Child").filter(_.from.cat == child).toList) { kids =>
-	@if(kids.size > 0) {
-	  <div class="well">
-	    @child (s) :
-	    <ul>
-	    @kids.reverse.take(200).sortWith((a,b)=>b.crDtm.isBefore(a.crDtm)).map(_.from).map { p=>
-	      <li><a href="@controllers.Wiki.w(p)">@model.Wikis.label(p)</a>
-	    }
-	    </ul>
-	  </div>
-	}
+      @defining(Wikis.linksTo(page.get.uwid, "Child").filter(_.from.cat == child).toList) { kids =>
+        @if(kids.size > 0) {
+          <div class="well">
+            @child (s) :
+            <ul>
+            @kids.reverse.take(200).sortWith((a,b)=>b.crDtm.isBefore(a.crDtm)).map(_.from).map { p=>
+              <li><a href="@controllers.Wiki.w(p)">@Wikis.label(p)</a>
+            }
+            </ul>
+          </div>
+        }
       }
     }
   }

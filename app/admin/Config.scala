@@ -1,11 +1,10 @@
 package admin
 
-import java.util.Properties
+import razie.wiki.{Services, WikiConfig}
+import razie.wiki.model._
 
 import scala.Option.option2Iterable
-import model.{WikiUser, WikiConfig, WID, Wikis}
 import scala.collection.mutable.HashMap
-import play.api.mvc.Request
 
 /** extended config */
 object Config extends WikiConfig {
@@ -24,6 +23,15 @@ object Config extends WikiConfig {
 
   final val curYear = "2015"
 
+  override val simulateHost = {
+        "www.racerkidz.com"    // for testing locally
+//        "re9.coolscala.com"    // for testing locally
+//        "www.enduroschool.com"    // for testing locally
+//        "www.glacierskiclub.com"    // for testing locally
+//        "www.nofolders.net"    // for testing locally
+//        "www.dieselreactor.net"    // for testing locally
+  }
+
   def darkLight = { razie.NoStaticS.get[controllers.DarkLight] }
 
   def theme = {
@@ -34,18 +42,14 @@ object Config extends WikiConfig {
   def isLight = theme contains "light"
   def isDark = ! isLight
 
-  // called when configuration is reloaded - use them to refresh your caches
-  val cbacks = new collection.mutable.ListBuffer[() => Unit]()
-
-  /** add a callback to be called when the configuration is refreshed - use it to regresh your own configuration and/or caches */
-  def callback (f:() => Unit) = {
-    cbacks append f
-  }
-
   // parse a properties looking thing
   def parsep(content: String) = (content.split("\r\n")) filter (!_.startsWith("#")) map (_.split("=", 2)) filter (_.size == 2) map (x => (x(0), x(1)))
 
-  var robotUserAgents = List[String]()
+  def robotUserAgents = irobotUserAgents
+  private var irobotUserAgents = List[String]()
+
+  def reservedNames = ireservedNames
+  private var ireservedNames = List[String]()
 
   def reloadUrlMap {
     println("========================== RELOADING URL MAP ==============================")
@@ -61,9 +65,9 @@ object Config extends WikiConfig {
       val RE(pre, prop) = u._1
 
       if (!xconfig.contains(pre))
-	xconfig.put(pre, HashMap[String, String](prop -> u._2))
+        xconfig.put(pre, HashMap[String, String](prop -> u._2))
       else
-	xconfig.get(pre).map(_.put(prop, u._2))
+        xconfig.get(pre).map(_.put(prop, u._2))
     }
 
     xconfig.keys.foreach(x => {
@@ -71,9 +75,10 @@ object Config extends WikiConfig {
       xconfig.get(x).foreach(y => println(y.mkString("\n  ")))
     })
 
-    cbacks foreach (_())
+    Services.configCallbacks foreach (_())
 
-    robotUserAgents = sitecfg("robots.useragents").toList.flatMap(s=>s.split("[;,]"))
+    irobotUserAgents = sitecfg("robots.useragents").toList.flatMap(s=>s.split("[;,]"))
+    ireservedNames = sitecfg("reserved.names").toList.flatMap(s=>s.split("[;,]"))
   }
 
 }

@@ -24,7 +24,7 @@ reused in several screens to show the list of forms
   @if(links) {
     </td><td><a href="@controllers.Wiki.w(t._1)">@t._1.page.map(_.label).getOrElse(t._1.name)</a>
   } else {
-	</td><td>@t._1.page.map(_.label).getOrElse(t._1.name)
+        </td><td>@t._1.page.map(_.label).getOrElse(t._1.name)
   }
 
   </td><td>

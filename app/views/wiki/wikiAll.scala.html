@@ -3,7 +3,8 @@ list all topics in category
 **************@
 
 @(realm:String, name:String, au:Option[model.User])
-@import model._
+@import razie.wiki.model.{Wikis, WID}
+@import model.Perm
 
 @htmlHeadBar("All topics in category: " +name, au)
 
@@ -14,12 +15,12 @@ list all topics in category
     <!-- list of pages in category -->
     @if("User" != name || au.map(_.hasPerm(Perm.adminDb)).getOrElse(false)) {
       <div class="well">
-	<b>All</b> @name entries:
-	<ul>
-	@for(p <- model.Wikis(realm).pages(name) if(controllers.Wiki.isVisible(au,p.props))) {
-	  <li><a href="@controllers.Wiki.w(name, p.name, realm)">@p.label</a> </li>
-	}
-	</ul>
+        <b>All</b> @name entries:
+        <ul>
+        @for(p <- Wikis(realm).pages(name) if(controllers.Wiki.isVisible(au,p.props))) {
+          <li><a href="@controllers.Wiki.w(name, p.name, realm)">@p.label</a> </li>
+        }
+        </ul>
       </div>
     }
 
@@ -29,7 +30,7 @@ list all topics in category
     </div> <!-- /span9 -->
 
       <div class="span3">
-	  @wiki.wikiFrag(WID("Admin","Right").r(realm),au,true, None)
+          @wiki.wikiFrag(WID("Admin","Right").r(realm),au,true, None)
       </div>
 
   </div> <!-- row -->

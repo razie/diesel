@@ -70,31 +70,31 @@ object DELETEMEKOMPI {
       // by the compiler for the magic name "app.classpath", write the JAR files
       // from our classloader to a temporary file, and return that as the resource.
       if (name == "app.class.path") {
-	def writeTemp(content: String): File = {
-	  val f = File.createTempFile("classpath", ".txt")
-//	    IO.writeFile(f, content)
-	  val p = new java.io.PrintWriter(f)
-	  p.print(content)
-	  p.close
-	  f
-	}
-	logInfo("Attempting to configure Scala classpath based on classloader: " + getClass.getClassLoader)
-	val superResource = super.getResource(name)
-	if (superResource != null) superResource // In SBT, let it do it's thing
-	else getClass.getClassLoader match {
-	  case u: URLClassLoader =>
-	    // Rather pass `settings.usejavacp.value = true` (which doesn't work
-	    // under SBT) we do the same as SBT and respond to a resource request
-	    // by the compiler for the magic name "app.classpath"
-	logInfo("yay...")
-	    val files = u.getURLs.map(x => new java.io.File(x.toURI))
-	    val f = writeTemp(files.mkString(File.pathSeparator))
-	    f.toURI.toURL
-	  case _ =>
-	    // We're hosed here.
-	logInfo("uh-oh")
-	    null
-	}
+        def writeTemp(content: String): File = {
+          val f = File.createTempFile("classpath", ".txt")
+//          IO.writeFile(f, content)
+          val p = new java.io.PrintWriter(f)
+          p.print(content)
+          p.close
+          f
+        }
+        logInfo("Attempting to configure Scala classpath based on classloader: " + getClass.getClassLoader)
+        val superResource = super.getResource(name)
+        if (superResource != null) superResource // In SBT, let it do it's thing
+        else getClass.getClassLoader match {
+          case u: URLClassLoader =>
+            // Rather pass `settings.usejavacp.value = true` (which doesn't work
+            // under SBT) we do the same as SBT and respond to a resource request
+            // by the compiler for the magic name "app.classpath"
+        logInfo("yay...")
+            val files = u.getURLs.map(x => new java.io.File(x.toURI))
+            val f = writeTemp(files.mkString(File.pathSeparator))
+            f.toURI.toURL
+          case _ =>
+            // We're hosed here.
+        logInfo("uh-oh")
+            null
+        }
       } else super.getResource(name)
     }
   }
@@ -111,24 +111,24 @@ object DELETEMEKOMPI {
       val intp = new IMain(settings, output)
 
       // TODO this worked in 2.9 but not 2.10
-//	if (intp.global == null) sys.error("unable to create a Scala interpreter: " + stringWriter.toString)
+//      if (intp.global == null) sys.error("unable to create a Scala interpreter: " + stringWriter.toString)
 
       // To return a value from the interpreted code, we pass in a mutable cell.
       val holder = new Holder(null)
 
       // Compile and execute the code, and extract the evaluated value from the holder.
       try {
-	intp.bind("_holder", holder)
+        intp.bind("_holder", holder)
 
-	// allow the caller to bind variables in scope.
-	binder(intp)
-	intp.interpret("{ _holder.value = {%s\n}}".format(code)) match {
-	  case Results.Success => holder.value.asInstanceOf[T]
-	  case Results.Error | Results.Incomplete =>
-	    sys.error("Unable to interpret code: [%s]".format(stringWriter.toString))
-	}
+        // allow the caller to bind variables in scope.
+        binder(intp)
+        intp.interpret("{ _holder.value = {%s\n}}".format(code)) match {
+          case Results.Success => holder.value.asInstanceOf[T]
+          case Results.Error | Results.Incomplete =>
+            sys.error("Unable to interpret code: [%s]".format(stringWriter.toString))
+        }
       } finally {
-	intp.close()
+        intp.close()
       }
     }
   }

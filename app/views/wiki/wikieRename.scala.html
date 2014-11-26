@@ -1,4 +1,4 @@
-@(wid:model.WID, myForm:Form[_], au:Option[model.User])
+@(wid:razie.wiki.model.WID, myForm:Form[_], au:Option[model.User])
 
 @htmlHeadBar("", au)
 
@@ -6,8 +6,8 @@
 
       <!-- Main hero unit for a primary marketing message or call to action -->
       <div class="well">
-	  <h2>Renaming a topic!</h2>
-	  <p><strong>Warning</strong> - currently references are not renamed so if any other topic has a reference to this one, the reference will not work anymore!
+          <h2>Renaming a topic!</h2>
+          <p><strong>Warning</strong> - currently references are not renamed so if any other topic has a reference to this one, the reference will not work anymore!
       </div>
 
 <div >
@@ -40,7 +40,7 @@
 </div>
 
       <div class="well">
-	  @wiki.wikiFrag(wid, au)
+          @wiki.wikiFrag(wid, au)
       </div>
 
       <hr>

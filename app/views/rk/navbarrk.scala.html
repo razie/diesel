@@ -1,13 +1,14 @@
 @***
 creates the navigation bar
 ***@
-@(user:Option[model.WikiUser], mobile:Boolean = false, barTitle: String="Bar Title", logo:Option[String]=None, url:Option[String]=Some("/"), isSite:Boolean=false, club:String="", realm:String=model.Wikis.RK)(implicit au:Option[model.User], request:Option[Request[_]])
+@(user:Option[razie.wiki.model.WikiUser], mobile:Boolean = false, barTitle: String="Bar Title", logo:Option[String]=None, url:Option[String]=Some("/"), isSite:Boolean=false, club:String="", realm:String=model.Wikis.RK)(implicit au:Option[model.User], request:Option[Request[_]])
 @import _root_.admin.Config
+@import razie.wiki.model.Wikis
 
 @web()=@{request.flatMap(x=>model.Website.apply(x)) getOrElse model.Website.dflt}
 
 @searchUrl()=@{
-   if(model.Wikis.RK == realm) s"http://${Config.hostport}/wikie/search"
+   if(Wikis.RK == realm) s"http://${Config.hostport}/wikie/search"
    else s"http://${Config.hostport}/we/$realm/search"
    }
 
@@ -16,54 +17,54 @@ creates the navigation bar
     <div class="container">
 
       <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
-	<span class="icon-bar"></span>
-	<span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
       </a>
 
       @if(!Config.isLocalhost) {
       <a class="rkbrand" href="@url.getOrElse("http://"+Config.hostport)">
-	<img class="rklogo" src="@logo.getOrElse(routes.Assets.at("images/racerKids-small.gif"))" height="32" width="152" alt="RacerKidz logo"/>
+        <img class="rklogo" src="@logo.getOrElse(routes.Assets.at("images/racerKids-small.gif"))" height="32" width="152" alt="RacerKidz logo"/>
       </a>
       }
 
     <div class="nav-collapse">
 
       <ul class="nav">
-	@if(!isSite) {
-	  <li class="divider-vertical"></li>
-	  <li><a href="@web().navBrowse(realm)">Browse</a></li>
-	  <li><a href="http://@Config.hostport/doe/lucky">Lucky</a></li>
-	  <li><a href="/doe/selecttheme">Theme</a></li>
-	}
+        @if(!isSite) {
+          <li class="divider-vertical"></li>
+          <li><a href="@web().navBrowse(realm)">Browse</a></li>
+          <li><a href="http://@Config.hostport/doe/lucky">Lucky</a></li>
+          <li><a href="/doe/selecttheme">Theme</a></li>
+        }
       </ul>
     </div><!--/.nav-collapse -->
 
       <ul class="nav pull-right">
-	@user match {
-	  case Some(joe) => {
-	    <li class="dropdown">
-	      <a href="#" class="dropdown-toggle" data-toggle="dropdown">
-	      @if(Config.theme.contains("light")) {
-		<i class="icon-lock"></i>
-		} else {
-		<i class="icon-lock icon-white"></i>
-		}
-	      @joe.ename<b class="caret"></b></a>
-	      <ul class="dropdown-menu">
-		<li><a href="@routes.Profile.doeHelp"><i class="icon-edit"></i> Preferences</a></li>
-		<li><a href="/do/signout"><i class="icon-off"></i> Sign out</a></li>
-	      </ul>
-	    </li>
-	  }
+        @user match {
+          case Some(joe) => {
+            <li class="dropdown">
+              <a href="#" class="dropdown-toggle" data-toggle="dropdown">
+              @if(Config.theme.contains("light")) {
+                <i class="icon-lock"></i>
+                } else {
+                <i class="icon-lock icon-white"></i>
+                }
+              @joe.ename<b class="caret"></b></a>
+              <ul class="dropdown-menu">
+                <li><a href="@routes.Profile.doeHelp"><i class="icon-edit"></i> Preferences</a></li>
+                <li><a href="/do/signout"><i class="icon-off"></i> Sign out</a></li>
+              </ul>
+            </li>
+          }
 
-	  case None => {
-	    <li><a href="@web().join">Join</a></li>
-	  }
-	}
+          case None => {
+            <li><a href="@web().join">Join</a></li>
+          }
+        }
       </ul>
 
       <form class="navbar-search pull-right" action="@searchUrl()" method="GET">
-	<input type="text" class="search-query" placeholder="Search" id="q" name="q" title="Search box"/>
+        <input type="text" class="search-query" placeholder="Search" id="q" name="q" title="Search box"/>
       </form>
 
     </div>

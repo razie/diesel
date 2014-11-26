@@ -8,22 +8,22 @@
 
 <div class="span9">
 
-@import db.RMongo._
+@import razie.db.RMongo._
 
 <b>Total: @rka.hours hours @rka.to.as[model.RacerKid].map @{r=>"for "+r.info.firstName+r.info.lastName}
 
 @vols=@{
   for (vh <- model.RacerKidz.findVolByRkaId(rkaid)) yield
     Map("hours"->vh.hours.toString,
-	"desc"->vh.desc,
-	"when"->vh.crDtm.toString("dd-MM"),
-	"delete"->vh._id.toString
-	)
+        "desc"->vh.desc,
+        "when"->vh.crDtm.toString("dd-MM"),
+        "delete"->vh._id.toString
+        )
 }
 
 @mnglink(row:Map[String,String],k:String,v:String)={
   @k match {
-	case "delete" => {
+        case "delete" => {
       <a href="@routes.Club.doeVolDelete(rkaid, v)" class="btn btn-mini">Delete</a>
       }
     case _ => { @v }
@@ -31,7 +31,7 @@
 }
 
 @util.utilSimpleTable(vols,
-	Seq("hours" -> "Hours", "when" -> "When", "desc"->"Why", "delete" -> "Delete"), Some(mnglink))
+        Seq("hours" -> "Hours", "when" -> "When", "desc"->"Why", "delete" -> "Delete"), Some(mnglink))
 
 
 @import helper.twitterBootstrap._

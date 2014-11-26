@@ -70,9 +70,9 @@ var decscr = function (s) {
     </div>
     </td><td width="50%">
       @if(_root_.admin.Config.theme.contains("light")) {
-	<iframe id="iframe_@id" name="iframe_@id" style="width:100%; height:249px; border:0;"></iframe>
+        <iframe id="iframe_@id" name="iframe_@id" style="width:100%; height:249px; border:0;"></iframe>
       } else {
-	<iframe id="iframe_@id" name="iframe_@id" style="width:100%; height:249px; border:0; background-color:gray;"></iframe>
+        <iframe id="iframe_@id" name="iframe_@id" style="width:100%; height:249px; border:0; background-color:gray;"></iframe>
       }
   </td></tr></table>
 
@@ -98,7 +98,7 @@ var decscr = function (s) {
 @hh() = @{
    args.get("libs").toList.flatMap(_.split(";")).map {
       case ("raphael") =>
-	"""<scrRAZipt src="/assets/vendor/raphael.js"></scrRAZipt><scrRAZipt src="/assets/vendor/axis.js"></scrRAZipt>""".stripMargin
+        """<scrRAZipt src="/assets/vendor/raphael.js"></scrRAZipt><scrRAZipt src="/assets/vendor/axis.js"></scrRAZipt>""".stripMargin
    }.mkString("\n")
 }
 

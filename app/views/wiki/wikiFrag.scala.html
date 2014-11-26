@@ -1,10 +1,10 @@
 @**************
 wiki fragment, used in another page
 **************@
-@(wid:model.WID, au:Option[model.User], simple:Boolean = false, page:Option[model.WikiEntry]=None, iname:Option[String]=None, noTitle:Boolean=false, ads:Boolean=true, canEdit:Boolean=false, isSite:Boolean=false, print:Boolean=false)
-@import model.{WikiCount, WID, WikiEntry}
+@(wid:razie.wiki.model.WID, au:Option[model.User], simple:Boolean = false, page:Option[razie.wiki.model.WikiEntry]=None, iname:Option[String]=None, noTitle:Boolean=false, ads:Boolean=true, canEdit:Boolean=false, isSite:Boolean=false, print:Boolean=false)
+@import razie.wiki.model.{Wikis, WikiCount, WID, WikiEntry}
 @import _root_.admin.Config
-@import _root_.admin.IgnoreErrors
+@import razie.wiki.util.IgnoreErrors
 
 @nicename() = @{ iname.getOrElse(wid.name) }
 
@@ -14,9 +14,9 @@ wiki fragment, used in another page
 
   @prepend(l:List[String], c:String) = @{ c :: l }
 
-  @ww() = @{ model.Wikis(wid.getRealm).findAny(wid.name) }
+  @ww() = @{ Wikis(wid.getRealm).findAny(wid.name) }
 
-  @label()=@{ page.flatMap(_.contentTags.get("label")).orElse(page.map(_.label)).getOrElse(model.Wikis(wid.getRealm).label(wid)) }
+  @label()=@{ page.flatMap(_.contentTags.get("label")).orElse(page.map(_.label)).getOrElse(Wikis(wid.getRealm).label(wid)) }
 
   @url() = @{
     val u = controllers.Wiki.w(wid)
@@ -24,18 +24,18 @@ wiki fragment, used in another page
   }
 
   @ccc(wid:WID, we:WikiEntry)= @{
-    val x = model.Wikis.format(wid, we.markup, wid.content.mkString, Some(we))
+    val x = Wikis.format(wid, we.markup, wid.content.mkString, Some(we))
     try {
       if(x contains "CANNOT PARSE") {
-	val PAT = """.*PARSE\]\] \[([0-9]+)\.([0-9]+)\].*""".r
-	val PAT(line, col) = x
-	val id = System.currentTimeMillis().toString
-	s"""<div style="color:red;font-weight:bold;" title="Problem with your content: $x">
-	  <small>[[Check content below at Line:$line Position:$col]]
-	    <p>Sorry, dumb program here! The content is not lost: try editing this topic... also, please open a support issue and copy/paste there the content.
-	  </small></div><p></p>""".stripMargin + s"""
-	    <textarea id="$id" readonly="true" style="width:90%; margin-right:40px" rows="5">${we.content}</textarea>
-	 """.stripMargin
+        val PAT = """.*PARSE\]\] \[([0-9]+)\.([0-9]+)\].*""".r
+        val PAT(line, col) = x
+        val id = System.currentTimeMillis().toString
+        s"""<div style="color:red;font-weight:bold;" title="Problem with your content: $x">
+          <small>[[Check content below at Line:$line Position:$col]]
+            <p>Sorry, dumb program here! The content is not lost: try editing this topic... also, please open a support issue and copy/paste there the content.
+          </small></div><p></p>""".stripMargin + s"""
+            <textarea id="$id" readonly="true" style="width:90%; margin-right:40px" rows="5">${we.content}</textarea>
+         """.stripMargin
       } else x
     } catch {
       case _ : Throwable => x
@@ -46,37 +46,37 @@ wiki fragment, used in another page
   @page match {
     case Some(we) => {
       @if(!simple && !noTitle) {
-	@wid.cat match {
-	  case "any" => {
-	    <h2>@wid.name</h2>
-	  }
-	  case "Category" => {
-	    <h2>@label()
-	      (Category)</h2>
-	  }
-	  case _ => {
-	    <h2>@label()
-	      @if(au.isEmpty && "Blog" == wid.cat) {
-		<a class="btn btn-info" title="Subscribe to updates via email" href="@routes.Wikil.linkFollower1(wid)"><i class="icon-envelope icon-white"></i> Subscribe</a>
-	      } else {
-		@if(au.isEmpty && wid.parentWid.exists(_.cat == "Blog")) {
-		  <a class="btn btn-info" title="Subscribe to updates via email" href="@routes.Wikil.linkFollower1(wid.parentWid.get)"><i class="icon-envelope icon-white"></i> Subscribe</a>
-		}
-	      }
+        @wid.cat match {
+          case "any" => {
+            <h2>@wid.name</h2>
+          }
+          case "Category" => {
+            <h2>@label()
+              (Category)</h2>
+          }
+          case _ => {
+            <h2>@label()
+              @if(au.isEmpty && "Blog" == wid.cat) {
+                <a class="btn btn-info" title="Subscribe to updates via email" href="@routes.Wikil.linkFollower1(wid)"><i class="icon-envelope icon-white"></i> Subscribe</a>
+              } else {
+                @if(au.isEmpty && wid.parentWid.exists(_.cat == "Blog")) {
+                  <a class="btn btn-info" title="Subscribe to updates via email" href="@routes.Wikil.linkFollower1(wid.parentWid.get)"><i class="icon-envelope icon-white"></i> Subscribe</a>
+                }
+              }
 
-	      @if(!(Seq("WikiLink", "Form").contains(wid.cat) || page.exists(_.contentTags.contains("noSocial")))) {
-		<br>
-		<a class="btn btn-small btn-info" href="@routes.Wiki.social(label().toString, url())">Share <i class="icon-thumbs-up icon-white"></i></a>
+              @if(!(Seq("WikiLink", "Form").contains(wid.cat) || page.exists(_.contentTags.contains("noSocial")))) {
+                <br>
+                <a class="btn btn-small btn-info" href="@routes.Wiki.social(label().toString, url())">Share <i class="icon-thumbs-up icon-white"></i></a>
 
-		@if(Seq("Blog", "Forum").contains(wid.cat)) {
-		  <a class="btn btn-small btn-info" href="@controllers.Wiki.w(wid)/rss.xml">Feed (RSS) <i class="icon-star icon-white"></i></a>
-		}
+                @if(Seq("Blog", "Forum").contains(wid.cat)) {
+                  <a class="btn btn-small btn-info" href="@controllers.Wiki.w(wid)/rss.xml">Feed (RSS) <i class="icon-star icon-white"></i></a>
+                }
 
-	      }
+              }
 
-	    </h2>
-	  }
-	}
+            </h2>
+          }
+        }
       }
 
       <p></p>
@@ -87,118 +87,118 @@ wiki fragment, used in another page
 
       @if(!simple && !print) {
 
-	@if(ads && page.isDefined && !page.exists(_.contentTags.contains("noAds")) &&
-		"""\{\{ad[:}]""".r.findFirstIn(page.get.content).isEmpty &&
-		page.get.content.length > 100 && model.WikiDomain(wid.getRealm).noAds(page.get.category) &&
-		! _root_.admin.Config.noads) {
-	  <br>
-	  @Html(model.Ads.lederboard)
-	}
+        @if(ads && page.isDefined && !page.exists(_.contentTags.contains("noAds")) &&
+                """\{\{ad[:}]""".r.findFirstIn(page.get.content).isEmpty &&
+                page.get.content.length > 100 && model.WikiDomain(wid.getRealm).noAds(page.get.category) &&
+                ! _root_.admin.Config.noads) {
+          <br>
+          @Html(model.Ads.lederboard)
+        }
 
-	<p><small>
-	  @if(!isSite) {
-	    <em>By</em>:
-	    @**todo use separate page for missing users **@
-	    <a href="/user/@model.Users.nameOf(page.get.by)">@model.Users.nameOf(page.get.by)</a>
-	    | <small>
-	      @page.get.crDtm.toLocalDate().toString
-	      @if(page.get.updDtm.toLocalDate != page.get.crDtm.toLocalDate) { .. @page.get.updDtm.toLocalDate().toString }
-	      </small>
-	  }
+        <p><small>
+          @if(!isSite) {
+            <em>By</em>:
+            @**todo use separate page for missing users **@
+            <a href="/user/@model.Users.nameOf(page.get.by)">@model.Users.nameOf(page.get.by)</a>
+            | <small>
+              @page.get.crDtm.toLocalDate().toString
+              @if(page.get.updDtm.toLocalDate != page.get.crDtm.toLocalDate) { .. @page.get.updDtm.toLocalDate().toString }
+              </small>
+          }
 
-	  @** todo tag-based browsing **@
-	  @if(page.isDefined && page.get.tags.size>0) {
-	    | <em>Tags</em>:
-	    @page.get.tags.map { t =>
-	       @Html(controllers.Wiki.hrefTag(wid, t, t))@if(t != page.get.tags.last){,}
-	     }
-	  }
-	</small></p>
+          @** todo tag-based browsing **@
+          @if(page.isDefined && page.get.tags.size>0) {
+            | <em>Tags</em>:
+            @page.get.tags.map { t =>
+               @Html(controllers.Wiki.hrefTag(wid, t, t))@if(t != page.get.tags.last){,}
+             }
+          }
+        </small></p>
 
-	@wid.findParent.map {pwe=>
-	  <hr>
-	See more in: <strong><a href="@controllers.Wiki.w(pwe.wid)">@pwe.label</a> </strong>
-	@if(au.isEmpty && pwe.wid.cat == "Blog") {
-	  <a class="btn btn-info" title="Subscribe to updates via email" href="@routes.Wikil.linkFollower1(pwe.wid)"><i class="icon-envelope icon-white"></i> Subscribe</a>
-	}
-	}
+        @wid.findParent.map {pwe=>
+          <hr>
+        See more in: <strong><a href="@controllers.Wiki.w(pwe.wid)">@pwe.label</a> </strong>
+        @if(au.isEmpty && pwe.wid.cat == "Blog") {
+          <a class="btn btn-info" title="Subscribe to updates via email" href="@routes.Wikil.linkFollower1(pwe.wid)"><i class="icon-envelope icon-white"></i> Subscribe</a>
+        }
+        }
 
-	<hr>
-	@page.flatMap(x=>WikiCount.findOne(x._id)).map {pw=>
-	  <p><small>Viewed <strong>@pw.count</strong> times</small>
-	}
-	<small>
-	  (
-	  @if(canEdit && wid.cat != "Form" || au.exists(_.hasPerm(model.Perm.adminDb))) {
-	    <a href="@routes.Wikie.wikieEdit(page.get.wid)">Edit</a> |
-	  }
-	    @au.map {u =>
-	      <a href="@routes.Wikie.report(wid)">Report</a> |
-	    }
-	    <a href="@routes.Wiki.printWid(WID.cmdfromPath(wid.wpath).get, wid.getRealm)">Print</a>
-	    @if(au.exists(_.hasPerm(model.Perm.adminDb))) {
-	      | <a href="@controllers.Wiki.w(wid)/debug"><em>debug</em></a>
-	    }
-	    @if(!(Array("WikiLink", "Category", "Form") contains wid.cat)) {
-	      @if(canEdit) {
-		| <a href="@routes.Wikie.wikieRename1(wid)">Rename</a>
-	      }
-	      @if(au.isDefined && au.get.isActive) {
-		@if(au.get.isLinkedTo(we.uwid)) {
-		  | <a href="@routes.Wikil.unlinkUser(wid)">@wid.label("Unlike", "Unlike")</a>
-		} else {
-		  | <a href="@routes.Wikil.linkUser(wid,false)">@wid.label("Like")</a>
-		}
+        <hr>
+        @page.flatMap(x=>WikiCount.findOne(x._id)).map {pw=>
+          <p><small>Viewed <strong>@pw.count</strong> times</small>
+        }
+        <small>
+          (
+          @if(canEdit && wid.cat != "Form" || au.exists(_.hasPerm(model.Perm.adminDb))) {
+            <a href="@routes.Wikie.wikieEdit(page.get.wid)">Edit</a> |
+          }
+            @au.map {u =>
+              <a href="@routes.Wikie.report(wid)">Report</a> |
+            }
+            <a href="@routes.Wiki.printWid(WID.cmdfromPath(wid.wpath).get, wid.getRealm)">Print</a>
+            @if(au.exists(_.hasPerm(model.Perm.adminDb))) {
+              | <a href="@controllers.Wiki.w(wid)/debug"><em>debug</em></a>
+            }
+            @if(!(Array("WikiLink", "Category", "Form") contains wid.cat)) {
+              @if(canEdit) {
+                | <a href="@routes.Wikie.wikieRename1(wid)">Rename</a>
+              }
+              @if(au.isDefined && au.get.isActive) {
+                @if(au.get.isLinkedTo(we.uwid)) {
+                  | <a href="@routes.Wikil.unlinkUser(wid)">@wid.label("Unlike", "Unlike")</a>
+                } else {
+                  | <a href="@routes.Wikil.linkUser(wid,false)">@wid.label("Like")</a>
+                }
 
-		@if(au.get.isLinkedTo(we.uwid) && we.parent.isDefined) {
-		  | <a href="@routes.Wikie.wikieMove1(we._id.toString)">@wid.label("Move", "Move")</a>
-		}
-	      }
-	      @if(au.isEmpty && "Blog" == wid.cat) {
-		| <a href="@routes.Wikil.linkFollower1(wid)"><span style="color:red">Subscribe</span></a>
-		}
-	    }
-	    ) this page.
+                @if(au.get.isLinkedTo(we.uwid) && we.parent.isDefined) {
+                  | <a href="@routes.Wikie.wikieMove1(we._id.toString)">@wid.label("Move", "Move")</a>
+                }
+              }
+              @if(au.isEmpty && "Blog" == wid.cat) {
+                | <a href="@routes.Wikil.linkFollower1(wid)"><span style="color:red">Subscribe</span></a>
+                }
+            }
+            ) this page.
 
-	    @wid.cat match {
-	      case "WikiLink" if(wid.name.startsWith("User:")) => {
-		<br>This link page connects you to ??? TODO ???
+            @wid.cat match {
+              case "WikiLink" if(wid.name.startsWith("User:")) => {
+                <br>This link page connects you to ??? TODO ???
 @**
-		<a href="/wiki/@model.Wikis.linkFromName(wid.name).to.toString">@model.Wikis.linkFromName(wid.name).to.name</a>
-		: you can add some notes by <a href="@routes.Wikie.wikieEdit(page.get.wid)">editing</a> it.
+                <a href="/wiki/@model.Wikis.linkFromName(wid.name).to.toString">@model.Wikis.linkFromName(wid.name).to.name</a>
+                : you can add some notes by <a href="@routes.Wikie.wikieEdit(page.get.wid)">editing</a> it.
 **@
-	      }
-	      case "Category" => {
-		<br>You cannot edit categories.
-	      }
-	      case _ => {
-		<br>This content is Copyrighted, all rights reserved.
-	      }
-	    }
-	</small></p>
+              }
+              case "Category" => {
+                <br>You cannot edit categories.
+              }
+              case _ => {
+                <br>This content is Copyrighted, all rights reserved.
+              }
+            }
+        </small></p>
       } <!-- /simple -->
     }
 
     case None => {
       @if("any" != wid.cat && !wid.cat.isEmpty) {
-	@if("Race" == wid.cat || "Event" == wid.cat || "Training" == wid.cat) {
-	  <p><strong><font style="color:red">Note: </font></strong>A <strong>@wid.cat</strong> doesn't need its own page unless there you have some specific information about it... so, if you have some photos, videos or comments about it, create it below and share it with your mates!
-	<hr>
-	}
-	No entry for a <strong>@wid.cat</strong> named <strong>@nicename</strong> ... <a href="@routes.Wikie.wikieEdit(wid.copy(name=nicename))">create one</a></b>
+        @if("Race" == wid.cat || "Event" == wid.cat || "Training" == wid.cat) {
+          <p><strong><font style="color:red">Note: </font></strong>A <strong>@wid.cat</strong> doesn't need its own page unless there you have some specific information about it... so, if you have some photos, videos or comments about it, create it below and share it with your mates!
+        <hr>
+        }
+        No entry for a <strong>@wid.cat</strong> named <strong>@nicename</strong> ... <a href="@routes.Wikie.wikieEdit(wid.copy(name=nicename))">create one</a></b>
       } else {
-	<strong>No entry for @wid.name ... you could create one:</strong>
+        <strong>No entry for @wid.name ... you could create one:</strong>
 
-	<form action="@routes.Wikie.edit2" method="GET" class="well form-inline">
-	  <input type="text" name="name" id="name" value="@nicename">
-	  <select id="cat" name="cat" class="input-small">
-	  @prepend(model.Wikis(wid.getRealm).pageNames("Category").toList.filter(_ != "Topic").sortWith(_ < _), "Topic").map{x=>
-	    <option value="@x" >@x</option>
-	  }
-	  </select>
+        <form action="@routes.Wikie.edit2" method="GET" class="well form-inline">
+          <input type="text" name="name" id="name" value="@nicename">
+          <select id="cat" name="cat" class="input-small">
+          @prepend(model.Wikis(wid.getRealm).pageNames("Category").toList.filter(_ != "Topic").sortWith(_ < _), "Topic").map{x=>
+            <option value="@x" >@x</option>
+          }
+          </select>
 
-	  <button type="submit" class="btn btn-primary">Create</button>
-	</form>
+          <button type="submit" class="btn btn-primary">Create</button>
+        </form>
       }
     }
   }
@@ -218,9 +218,9 @@ wiki fragment, used in another page
     case Some(x) => one(w(x.category))
     case None => wid.cat match {
       case "any" => {
-	if(ww.size >= 1) many
-	else if(ww.size == 1) ww.map ( x=> one(w(x.category)) )
-	else one(None)
+        if(ww.size >= 1) many
+        else if(ww.size == 1) ww.map ( x=> one(w(x.category)) )
+        else one(None)
       }
       case _ => one(w(wid.cat))
     }

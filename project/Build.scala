@@ -66,7 +66,7 @@ object ApplicationBuild extends Build {
   val main = play.Project(appName, appVersion, appDependencies).settings(
       routesImport  += "model.Binders._",
       resolvers    ++= repos,
-      unmanagedSourceDirectories in Compile += baseDirectory.value / "../razwiki/common",
+      unmanagedSourceDirectories in Compile += baseDirectory.value / "../coolscala/common",
       sources in doc in Compile := List()
     ).dependsOn (
        wcommon, wiki

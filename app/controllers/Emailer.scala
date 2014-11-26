@@ -1,13 +1,17 @@
 package controllers
 
-import admin.{Config, MailSession, SendEmail, Services}
-import model.{DoSec, Enc, EncUrl, User, WID, WikiEntry, Wikis}
 import org.joda.time.DateTime
 import razie.Logging
+import razie.wiki.{Enc, EncUrl}
+import razie.wiki.model._
+import razie.wiki.admin.{SecLink, SendEmail, MailSession}
+import admin.Config
+import model.User
+import razie.wiki.Services
 
 /** all emails sent by site */
 object Emailer extends RazController with Logging {
-  import model.Sec._
+  import razie.wiki.Sec._
 
   def RK = admin.Config.sitecfg("RacerKidz").getOrElse("RacerKidz")
 
@@ -16,7 +20,7 @@ object Emailer extends RazController with Logging {
   def sendSupport(subj:String, name:String, e: String, desc: String, details: String, page:String)(implicit mailSession: MailSession) {
     val html = text("supportrequested").format(name, e, desc, details, page)
 
-    admin.SendEmail.send(SUPPORT, SUPPORT, subj+": " + desc, html)
+    SendEmail.send(SUPPORT, SUPPORT, subj+": " + desc, html)
   }
 
   def sendEmailChildUpdatedProfile(parent: User, child: User)(implicit mailSession: MailSession) = {
@@ -46,14 +50,14 @@ object Emailer extends RazController with Logging {
   /** invite to join on notes */
   def makeNotesInvite(toName:String, validDays: Int, acceptUrl: String, u: User) = {
     val dt = DateTime.now().plusDays(validDays)
-    val ds1 = DoSec(acceptUrl, Some("www.nofolders.net"), true, dt)
+    val ds1 = SecLink(acceptUrl, Some("www.nofolders.net"), true, dt)
     text("notesInvite").format(toName, ds1.secUrl, u.ename)
   }
 
   def sendEmailRequest(to: String, validDays: Int, task: String, description: String, userNotif: Option[String], acceptUrl: String, denyUrl: String, u: User)(implicit mailSession: MailSession) = {
     val dt = DateTime.now().plusDays(validDays)
-    val ds1 = DoSec(acceptUrl, None, true, dt)
-    val ds2 = DoSec(denyUrl, None, true, dt)
+    val ds1 = SecLink(acceptUrl, None, true, dt)
+    val ds2 = SecLink(denyUrl, None, true, dt)
 
     val html1 = text("emailrequest").format(description, ds1.secUrl, ds2.secUrl);
 
@@ -101,7 +105,7 @@ object Emailer extends RazController with Logging {
   def sendEmailFollowerLink(to: String, topic: WID, comment: String)(implicit mailSession: MailSession) = {
     val dt = DateTime.now().plusDays(10)
     val hc1 = """/wikie/linkFollower3/%s/%s/%s/%s""".format(EncUrl(dt.toString), to.enc, (if (comment.length > 0) comment else "Enjoy!").encUrl, topic.wpath)
-    val ds1 = DoSec(hc1, None, true, dt)
+    val ds1 = SecLink(hc1, None, true, dt)
 
     val html1 = text("followerlinkrequest").format(topic.name, ds1.secUrl, comment);
 

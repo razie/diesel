@@ -1,4 +1,4 @@
-@(pageTitle: String = "", au:Option[model.WikiUser]=None, realm:String=model.Wikis.RK)
+@(pageTitle: String = "", au:Option[razie.wiki.model.WikiUser]=None, realm:String=model.Wikis.RK)
 
 @htmlHead(pageTitle)(Map.empty, au.asInstanceOf[Option[model.User]])
 @navbar(au, realm)

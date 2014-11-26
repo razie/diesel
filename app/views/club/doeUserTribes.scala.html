@@ -28,17 +28,17 @@
 
 @mnglink(row:Map[String,String],k:String,v:String)={
   @k match {
-	case "m" => {
+        case "m" => {
       <a href="@routes.Club.doeClubUserReg(v)" class="btn btn-mini">More...</a>
       }
     case "status" => {
   @v match {
-	case PENDING => {<font style="color:red">}
-	case CURRENT => {<font style="color:green">}
-	case ACCEPTED => {<font style="color:yellow">}
-	case EXPIRED => {<font style="color:ref">}
-	case FAMILY  => {<font style="color:green">}
-	case _ => {<font>}
+        case PENDING => {<font style="color:red">}
+        case CURRENT => {<font style="color:green">}
+        case ACCEPTED => {<font style="color:yellow">}
+        case EXPIRED => {<font style="color:ref">}
+        case FAMILY  => {<font style="color:green">}
+        case _ => {<font>}
   }
   @v
   </font>

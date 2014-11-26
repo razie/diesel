@@ -1,6 +1,0 @@
-
-#set _JAVA_OPTIONS="-Xmx2400m"
-_JAVA_OPTIONS="-Xss1500k"
-rrr="-XX:+CMSClassUnloadingEnabled"
-RK=/Users/raz/w/racerkidz
-play -Ddevmode=yeah -Dlogger.file=$RK/conf/logback-test.xml -Drk.properties=$RK/rk.properties -Dcom.sun.management.jmxremote.port=9001 -Dcom.sun.management.jmxremote.ssl=false -Dcom.sun.management.jmx.remote.authenticate=false -Dcom.sun.management.jmxremote.access.file=$RK/jmxr.a -Dcom.sun.management.jmxremote.password.file=$RK/jmxr.p $1 $2 $3

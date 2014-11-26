@@ -2,11 +2,10 @@ package act
 
 import com.novus.salat._
 import com.novus.salat.annotations._
-import db.RazSalatContext._
+import razie.db.RazSalatContext._
 import com.mongodb.casbah.Imports._
 import org.joda.time.DateTime
 import scala.util.parsing.combinator.RegexParsers
-import admin.Audit
 import scala.util.matching.Regex.Match
 import scala.util.matching.Regex
 import razie.Log
@@ -15,10 +14,9 @@ import admin.Notif
 import admin.Config
 import play.mvc.Http.Request
 import razie.base.ActionContext
-import db.{ RTable, RCreate, RDelete }
-import model.WikiEntry
-import model.WID
+import razie.db.{ RTable, RCreate, RDelete }
 import razie.Logging
+import razie.wiki.model.WikiEntry
 
 /** specification of a process - all data in topic */
 case class WfProcessSpec(we: WikiEntry) {
@@ -122,7 +120,7 @@ then act:simple:pipe(cmd="pwd")
 else act:simple:telnet(host="pwd",port="",cmd="")
 """
 
-//	val w1 = seq {
+//      val w1 = seq {
 
 //    }
 

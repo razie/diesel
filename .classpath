@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
 	<classpathentry kind="src" output=".target" path="app"/>
-	<classpathentry kind="src" path="razwiki-scala"/>
+	<classpathentry kind="src" path="coolscala-common"/>
 	<classpathentry kind="src" output=".target" path="test"/>
 	<classpathentry kind="src" path="modules/wcommon/app"/>
 	<classpathentry kind="src" path="modules/wiki/app"/>
@@ -16,7 +16,6 @@
 	<classpathentry kind="lib" path="lib_managed/jars/com.jsuereth/scala-arm_2.10/scala-arm_2.10-1.3.jar"/>
 	<classpathentry kind="lib" path="lib_managed/jars/com.typesafe.play/play-iteratees_2.10/play-iteratees_2.10-2.2.2.jar"/>
 	<classpathentry kind="lib" path="lib_managed/jars/org.scala-stm/scala-stm_2.10/scala-stm_2.10-0.7.jar"/>
-	<classpathentry kind="lib" path="lib_managed/bundles/com.typesafe/config/config-1.0.2.jar"/>
 	<classpathentry kind="lib" path="lib_managed/jars/com.typesafe.play/play-json_2.10/play-json_2.10-2.2.2.jar"/>
 	<classpathentry kind="lib" path="lib_managed/jars/com.typesafe.play/play-functional_2.10/play-functional_2.10-2.2.2.jar"/>
 	<classpathentry kind="lib" path="lib_managed/jars/com.typesafe.play/play-datacommons_2.10/play-datacommons_2.10-2.2.2.jar"/>
@@ -120,5 +119,6 @@
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry kind="lib" path="lib_managed/jars/com.razie/scripster-core_2.10/scripster-core_2.10-0.8.6-SNAPSHOT.jar"/>
 	<classpathentry kind="lib" path="target/scala-2.10/classes_managed"/>
+	<classpathentry kind="lib" path="lib_managed/bundles/com.typesafe/config/config-1.2.1.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

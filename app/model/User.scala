@@ -1,33 +1,35 @@
 package model
 
+import razie.wiki.Sec._
 import com.mongodb.casbah.Imports._
+import com.mongodb.util.JSON
 import org.bson.types.ObjectId
 import org.joda.time.DateTime
-import admin.Audit
 import com.novus.salat._
 import com.novus.salat.annotations._
-import db.RazSalatContext._
+import razie.db.RazSalatContext._
 import admin.CipherCrypt
 import java.net.URLEncoder
-import com.mongodb.util.JSON
 import razie.Log
 import controllers.UserStuff
-import model.Sec._
 import controllers.Maps
 import controllers.RazController
-import admin.MailSession
 import controllers.Emailer
-import db.RTable
 import scala.annotation.StaticAnnotation
-import db.ROne
-import db.RMany
-import db.RCreate
-import db.RDelete
-import db.RazMongo
-import db.REntity
-import db.RUpdate
-import razie.Snakk
 import model.proto.UserId
+import razie.wiki.model.WWrapper
+import razie.wiki.model.UWID
+import razie.wiki.model.Wikis
+import razie.wiki.model.ILink
+import razie.wiki.model.WikiEntry
+import razie.wiki.model.WikiLink
+import razie.wiki.model.WikiUser
+import razie.wiki.admin.MailSession
+import razie.wiki.admin.Audit
+import razie.wiki.model.WikiUsers
+import com.mongodb.DBObject
+import razie.db._
+import razie.Snakk
 
 object UserType {
   val Organization = "Organization"
@@ -39,13 +41,17 @@ case class Registration(email: String, password: String, repassword: String = ""
 }
 
 /** temporary user for following stuff */
-@db.RTable
-case class Follower(email: String, name: String, when: DateTime = DateTime.now, _id: ObjectId = new ObjectId()) {
+@RTable
+case class Follower(
+  email: String,
+  name: String,
+  when: DateTime = DateTime.now,
+  _id: ObjectId = new ObjectId()) {
   def delete = RDelete[Follower]("email" -> email)
 }
 
 /** temporary user for following stuff */
-@db.RTable
+@RTable
 case class FollowerWiki(
   followerId: ObjectId,
   comment: String,
@@ -53,11 +59,11 @@ case class FollowerWiki(
   _id: ObjectId = new ObjectId()) {
   def delete = { Audit.delete(this); RDelete[FollowerWiki]("_id" -> _id) }
 
-  def follower = db.ROne[Follower](followerId)
+  def follower = ROne[Follower](followerId)
 }
 
 /** permissions for a user group */
-@db.RTable
+@RTable
 case class UserGroup(
   name: String,
   can: Set[String] = Set(Perm.uProfile.plus))
@@ -85,9 +91,8 @@ object Perm {
   val all: Seq[String] = Seq(adminDb, adminWiki, uWiki, uProfile, eVerified, apiCall, codeMaster, "cCategory", "uCategory", "uReserved")
 }
 
-
 /** Minimal user info - loaded all the time for a user */
-@db.RTable
+@RTable
 case class User(
   userName: String,
   firstName: String,
@@ -132,7 +137,7 @@ case class User(
 
   // TODO cache groups
   lazy val groups = roles flatMap {
-    role => db.ROne[UserGroup]("name" -> role)
+    role => ROne[UserGroup]("name" -> role)
     }
 
   /** make a default profile */
@@ -151,11 +156,11 @@ case class User(
   def isLinkedTo(uwid:UWID) = ROne[UserWiki]("userId" -> _id, "uwid" -> uwid.grated).toList
 
   /** pages of category that I linked to */
-  def pages(cat: String*) = wikis.filter(w=>cat.contains(w.uwid.cat))
-  def myPages(cat: String) = pages (cat)
+  def pages(realm:String, cat: String*) = wikis.filter(w=>cat.contains(w.uwid.cat))
+  def myPages(realm:String, cat: String) = pages (realm, cat)
 
-  def ownedPages(cat: String) =
-    Wikis.weTable(cat).find(Map("props.owner" -> id )) map (o=> UWID(cat, o._id.get))
+  def ownedPages(realm:String, cat: String) =
+    Wikis(realm).weTable(cat).find(Map("props.owner" -> id )) map (o=> UWID(cat, o._id.get))
 
   def auditCreated { Log.audit(AUDT_USER_CREATED + email) }
   def auditLogout { Log.audit(AUDT_USER_LOGOUT + email) }
@@ -170,11 +175,11 @@ case class User(
   lazy val key = Map("email" -> email)
 
   def create(p: Profile) {
-    var res = RCreate[User](this)
+    var res = RCreate(this)
 
     p.createdDtm = DateTime.now()
     p.lastUpdatedDtm = DateTime.now()
-    res = RCreate[Profile](p)
+    res = RCreate(p)
 
     UserEvent(_id, UserEvent.CREATE).create
   }
@@ -192,15 +197,16 @@ case class User(
   }
 
   //race, desc, date, venue
-  lazy val events: List[(ILink, String, DateTime, ILink, Snakk.Wrapper[WWrapper])] = UserStuff.events(this)
+  lazy val events: List[(ILink, String, DateTime, ILink, Snakk.Wrapper[WWrapper])] =
+    UserStuff.events(Wikis.RK, this)
 
   def toJson = grater[User].asDBObject(this).toString
 
   def shouldEmailParent(what: String) = {
     if (isUnder13) {
       for (
-	pc <- Users.findParentOf(this._id) if (pc.notifys == what);
-	parent <- ROne[User](pc.parentId)
+        pc <- Users.findParentOf(this._id) if (pc.notifys == what);
+        parent <- ROne[User](pc.parentId)
       ) yield parent
     } else None
   }
@@ -233,9 +239,7 @@ case class Profile(
   consent:Option[String] = None,
   _id: ObjectId = new ObjectId()) {
 
-  def update(p: Profile) = {
-    db.RUpdate[Profile](Map("userId" -> userId), p)
-  }
+  def update(p: Profile) =  RUpdate(Map("userId" -> userId), p)
 
   def addRel(t: (String, String)) = this.copy(relationships = relationships ++ Map(t))
   def addPerm(t: String) = this.copy(perms = perms + t)
@@ -297,11 +301,10 @@ case class ParentChild(
   childId: ObjectId,
   trust: String = "Private",
   notifys: String = "Everything",
-  _id: ObjectId = new ObjectId()) {
+  _id: ObjectId = new ObjectId()) extends REntity[ParentChild] {
 
-  def create = RCreate[ParentChild] (this)
   def update(p: ParentChild) = {
-    RUpdate[ParentChild](
+    RUpdate(
       Map("parentId" -> parentId, "childId" -> childId),
       p)
   }
@@ -314,11 +317,7 @@ object UW {
   final val EMAIL_DAILY = "d" // TODO
 }
 
-/**
- * a link between a user and a wiki
- *
- *  @param regStatus is one of RegStatus or None, which means not required or n/a (a fan or something)
- */
+/** a link between a user and a wiki */
 @RTable
 case class UserWiki(
     userId: ObjectId,
@@ -358,13 +357,13 @@ case class UserPerms(
 case class UserVerifReq(id: UserId, verifType: String)
 
 /** some user audit info */
-@db.RTable
+@RTable
 case class UserEvent(
   userId: ObjectId,
   what: String,
   when: DateTime = DateTime.now()) {
 
-  def create = RCreate[UserEvent](this)
+  def create = RCreate(this)
 }
 
 object UserEvent {
@@ -403,11 +402,11 @@ object Users {
   def findUserLinksTo(u: UWID) = RMany[UserWiki]("uwid" -> u.grated)
   def findUserLinksToCat(cat: String) = RMany[UserWiki]("wid.cat" -> cat)
 
-  def create(ug: UserGroup) = RCreate[UserGroup](ug)
+  def create(ug: UserGroup) = RCreate(ug)
 
   def group(name: String) = ROne[UserGroup]("name" -> name)
 
-  def create(r: Task) = RCreate[Task](r)
+  def create(r: Task) = RCreate(r)
 
   def findFollowerByEmail(email: String) = ROne[Follower]("email" -> email)
 //  def findFollowerLinksTo(wid: WID) = RMany[FollowerWiki]("wid.name" -> wid.name, "wid.cat" -> wid.cat)
@@ -433,9 +432,9 @@ case class UserTask(
     crDtm:DateTime = DateTime.now) {
 
   def desc = ROne[Task]("name" -> name) map (_.desc) getOrElse UserTasks.labelFor(this)
-  def create (implicit txn:db.Txn) = RCreate[UserTask](this)
+  def create (implicit txn:Txn) = RCreate(this)
 
-  def delete (implicit txn:db.Txn) = {
+  def delete (implicit txn:Txn) = {
     Audit.delete(this); // should delete more than one
     RDelete[UserTask]("userId" -> userId, "name" -> name)
   }

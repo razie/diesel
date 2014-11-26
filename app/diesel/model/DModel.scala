@@ -3,6 +3,10 @@ package diesel.model
 import diesel.controllers.SFiddles
 import model._
 import org.bson.types.ObjectId
+import razie.wiki.model.WikiSection
+import razie.wiki.model.Wikis
+import razie.wiki.model.UWID
+import razie.wiki.model.WikiEntry
 
 /** reactor helpers */
 object DReactors {
@@ -22,9 +26,9 @@ object DReactors {
   // known languages
   final val LANGS=Array("scala", "js", "ruby", "json", "xml")
 
-  def listByUser (u:User) = u.ownedPages(CAT_REACTOR)
+  def listByUser (u:User) = u.ownedPages("rk", CAT_REACTOR)
   def find (u:String, r:String) =
-    Users.findUserByUsername(u).flatMap(_.ownedPages(CAT_REACTOR).find(_.page.exists(_.name == r)))
+    Users.findUserByUsername(u).flatMap(_.ownedPages("rk", CAT_REACTOR).find(_.page.exists(_.name == r)))
 
   def apply (we:WikiEntry) =
     new DReactor(we.owner.get._id, we.name, we.contentTags.getOrElse("kind", KIND_WIKI), we.uwid, Wikis.childrenOf(we.uwid).toSeq)

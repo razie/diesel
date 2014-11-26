@@ -1,7 +1,6 @@
 @**************
 a JS with HTML and CSS fiddle
 **************@
-
 @(name:String,
    args:Map[String,String],
    content:(String, String, String, String),
@@ -57,7 +56,7 @@ var j_@id  ='@Html(tos(encscr(content._4)))'
 
   <ul class="nav nav-tabs" style="margin-bottom:0">
     <li id="html_@id" class="active">
-    <a	href="javascript:setpill('html_@id', '@id', h_@id)">HTML</a> </li>
+    <a  href="javascript:setpill('html_@id', '@id', h_@id)">HTML</a> </li>
     <li id="css_@id" > <a href="javascript:setpill('css_@id', '@id', c_@id)">CSS</a> </li>
     <li id="js_@id" > <a href="javascript:setpill('js_@id', '@id', decscr(j_@id))">JS</a> </li>
     <li id="run_@id" > <a title="Works only on Chrome and Firefox" href="javascript:runpill_@{id}('@{id}')">Run &raquo;</a> </li>
@@ -71,7 +70,7 @@ var j_@id  ='@Html(tos(encscr(content._4)))'
     </div>
     </td>
       <td width="50%">
-	<iframe id="iframe_@id" name="iframe_@id" style="border:0; width:100%; height:@{h1._1}px; background-color:gray;"></iframe>
+        <iframe id="iframe_@id" name="iframe_@id" style="border:0; width:100%; height:@{h1._1}px; background-color:gray;"></iframe>
       </td></tr></table>
 
   @** the stupidest thing on earth **@
@@ -103,7 +102,7 @@ $('#sform_'+@id).hide();
   ("""<scrRAZipt src="/assets/vendor/diesel.js"></scrRAZipt>""".stripMargin ::
     libs.map {
       case ("raphael") =>
-	"""<scrRAZipt src="/assets/vendor/raphael.js"></scrRAZipt><scrRAZipt src="/assets/vendor/axis.js"></scrRAZipt>""".stripMargin
+        """<scrRAZipt src="/assets/vendor/raphael.js"></scrRAZipt><scrRAZipt src="/assets/vendor/axis.js"></scrRAZipt>""".stripMargin
    }).mkString("")
 
 }
@@ -153,14 +152,14 @@ var playpill_@id = function(id) {
 @args.get("tab").map {x=>
    @x match {
      case "html" => {
-	setpill('html_@id', '@id', h_@id)
-	}
+        setpill('html_@id', '@id', h_@id)
+        }
      case "css"  => {
-	setpill('css_@id', '@id', c_@id)
-	}
-     case "js"	 => {
-	setpill('js_@id', '@id', decscr(j_@id))
-	}
+        setpill('css_@id', '@id', c_@id)
+        }
+     case "js"   => {
+        setpill('js_@id', '@id', decscr(j_@id))
+        }
    }
 }
 

@@ -1,7 +1,7 @@
 /**
  *   ____    __    ____  ____  ____,,___     ____  __  __  ____
- *  (  _ \  /__\  (_   )(_  _)( ___)/ __)   (  _ \(  )(  )(  _ \	   Read
- *   )	 / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <     README.txt
+ *  (  _ \  /__\  (_   )(_  _)( ___)/ __)   (  _ \(  )(  )(  _ \           Read
+ *   )   / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <     README.txt
  *  (_)\_)(__)(__)(____)(____)(____)(___/   (__)  (______)(____/    LICENSE.txt
  */
 package razie.gg
@@ -160,7 +160,7 @@ class NoCyclesGraphLike[N <: GNode[N, L], L <: GLink[N]](target: GraphLike[N, L]
       index(n) += from.get
     else
       index put (n,
-	from.map(mutable.ListBuffer[L](_)) getOrElse mutable.ListBuffer[L]())
+        from.map(mutable.ListBuffer[L](_)) getOrElse mutable.ListBuffer[L]())
 
   /** was this node traversed? */
   def isNodeCollected(n: N) = index.get(n).isDefined
@@ -177,11 +177,11 @@ class NoCyclesGraphLike[N <: GNode[N, L], L <: GLink[N]](target: GraphLike[N, L]
       throw new IllegalStateException("Maximum depth reached in graph: " + Graphs.maxDebugDepth + " reset Graphs.maxDebugDepth...")
     if (colored(n) && !isCollected(n, from)) {
       if (!isNodeCollected(n))
-	fn(n, level)
+        fn(n, level)
       collect(n, from)
       n.glinks.filter(x => !isCollected(n, Option(x))).foreach(l => {
-	fl(l, level)
-	iforeach(l.z, Option(l), fn, fl, level + 1)
+        fl(l, level)
+        iforeach(l.z, Option(l), fn, fl, level + 1)
       })
     }
   }

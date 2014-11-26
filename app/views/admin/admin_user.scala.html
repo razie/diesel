@@ -48,10 +48,10 @@ screen to admin one user
     <hr>
 <ul>Counts
 @user.map {u=>
-<li>  WikiEntry    count = @db.RazMongo("WikiEntry").count(Map("by" -> u._id))
-<li>  WikiEntryOld count = @db.RazMongo("WikiEntryOld").count(Map("entry.by" -> u._id))
-<li>  Comment count = @db.RazMongo("Comment").count(Map("userId" -> u._id))
-<li>  Notes    count = @db.RazMongo("weNote").count(Map("by" -> u._id))
+<li>  WikiEntry    count = @razie.db.RazMongo("WikiEntry").count(Map("by" -> u._id))
+<li>  WikiEntryOld count = @razie.db.RazMongo("WikiEntryOld").count(Map("entry.by" -> u._id))
+<li>  Comment count = @razie.db.RazMongo("Comment").count(Map("userId" -> u._id))
+<li>  Notes    count = @razie.db.RazMongo("weNote").count(Map("by" -> u._id))
 <li>  Quota =  @user.flatMap(_.quota.updates)
 }
 </ul>
@@ -68,30 +68,30 @@ screen to admin one user
 }
 |
       @helper.form(action=routes.Admin.uperm(user.get.id), 'class->"well form-inline") {
-	<input type="text" class="input-xlarge" name="perm" placeholder="+Perm">
-	<button type="submit" class="btn">+/-Perm</button>
+        <input type="text" class="input-xlarge" name="perm" placeholder="+Perm">
+        <button type="submit" class="btn">+/-Perm</button>
       }
 
       @helper.form(action=routes.Admin.uquota(user.get.id), 'class->"well form-inline") {
-	<input type="text" class="input" name="quota" placeholder="+Quota">
-	<button type="submit" class="btn">+/-Quota</button>
+        <input type="text" class="input" name="quota" placeholder="+Quota">
+        <button type="submit" class="btn">+/-Quota</button>
       }
 
       @helper.form(action=routes.Admin.uname(user.get.id), 'class->"well form-inline") {
-	<input type="text" class="input" name="val" placeholder="username">
-	<button type="submit" class="btn">Username</button>
+        <input type="text" class="input" name="val" placeholder="username">
+        <button type="submit" class="btn">Username</button>
       }
 
       @helper.form(action=routes.Admin.urealms(user.get.id), 'class->"well form-inline") {
-	<input type="text" class="input-xlarge" name="val" placeholder="Realms">
-	<button type="submit" class="btn">Set Realms</button>
+        <input type="text" class="input-xlarge" name="val" placeholder="Realms">
+        <button type="submit" class="btn">Set Realms</button>
       }
 
   <hr>
 
   <ul>Events
   @user.map {u=>
-    @db.RazMongo("UserEvent").find(Map("userId" -> new ObjectId(u.id))).map {ue=>
+    @razie.db.RazMongo("UserEvent").find(Map("userId" -> new ObjectId(u.id))).map {ue=>
       <li> @ue.toString
     }
   }

@@ -39,7 +39,7 @@ class TestNofoPerf extends FlatSpec with ShouldMatchers with NofoTester {
   /////////////////////////////////////////////////
 
   //  Perf.perf(Seq(1, 5, 10), 10) { (t, l) =>
-  //	val clubs = doClubs(s"$milis$t$l", 1, 10, false, 1)
+  //    val clubs = doClubs(s"$milis$t$l", 1, 10, false, 1)
   //  }
 
   ("/razadmin/config/okemailstesting", joe, pjoe) eok "false" // can't send emails in perf testing
@@ -73,8 +73,8 @@ class TestNofoPerf extends FlatSpec with ShouldMatchers with NofoTester {
       val (u, userId) = t
 
       val n = 0 until szNotes map { kk =>
-	val note = crNote(s"note-kk-$kk", TAGS((Math.random()*TAGS.size).toInt), u)
-	(note, u, kk)
+        val note = crNote(s"note-kk-$kk", TAGS((Math.random()*TAGS.size).toInt), u)
+        (note, u, kk)
       }
 
       n.toList

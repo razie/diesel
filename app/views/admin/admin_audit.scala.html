@@ -22,7 +22,7 @@ purge audit tables
 
   <div class="container">
 
-    <h2>Audit events <small>| 1000 of @db.RazMongo("Audit").size | <a href="@routes.Admin.clearauditSome(5)">clear 5</a> | <a href="@routes.Admin.clearauditSome(10)">clear 10</a> | <a href="@routes.Admin.clearauditSome(20)">clear 20</a></small></h2>
+    <h2>Audit events <small>| 1000 of @razie.db.RazMongo("Audit").size | <a href="@routes.Admin.clearauditSome(5)">clear 5</a> | <a href="@routes.Admin.clearauditSome(10)">clear 10</a> | <a href="@routes.Admin.clearauditSome(20)">clear 20</a></small></h2>
 
     @util.utilTable("Audit", Seq("level"->"L", "when"->"When", "msg"->"What", "cleared"->"Done", "details"->"Details"),what.map(s=>Map("msg" -> s)),Some("when"), Some(fufu))
 

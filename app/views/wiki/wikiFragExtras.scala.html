@@ -1,9 +1,9 @@
 @**************
 extra html for wiki fragments, used in another page
 **************@
-@(user:Option[model.User], page:Option[model.WikiEntry]=None)
+@(user:Option[model.User], page:Option[razie.wiki.model.WikiEntry]=None)
 @import _root_.admin.Config
-@import _root_.admin.IgnoreErrors
+@import razie.wiki.util.IgnoreErrors
 @import _root_.controllers.NotesLocker
 
 @page.map {we=>

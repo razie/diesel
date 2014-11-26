@@ -17,12 +17,12 @@
 
 <p>  Status: @regStatusColored(reg.regStatus)
   @reg.regStatus match {
-	case PENDING => {Need to complete all the forms below - please follow the simple steps below.}
-	case CURRENT => {Registration current}
-	case CURRENT => {Forms completed, pending payment/review}
-	case EXPIRED => {Membership expired - ask for and complete the new forms}
-	case FAMILY  => {Another member of the family is handling it}
-	case _ => {???}
+        case PENDING => {Need to complete all the forms below - please follow the simple steps below.}
+        case CURRENT => {Registration current}
+        case CURRENT => {Forms completed, pending payment/review}
+        case EXPIRED => {Membership expired - ask for and complete the new forms}
+        case FAMILY  => {Another member of the family is handling it}
+        case _ => {???}
   }
 
 @if(reg.regStatus == ACCEPTED) {
@@ -48,35 +48,35 @@
 @rkidz=@{
   rks.map(t=>
     Map("fname"->t.info.firstName,
-	"role" -> t.info.role,
-	"button" -> t._id.toString,
-	"id"->t._id.toString))
+        "role" -> t.info.role,
+        "button" -> t._id.toString,
+        "id"->t._id.toString))
 }
 
 @addlink(row:Map[String,String],k:String,v:String)={
   @k match {
-	case "button" => {
+        case "button" => {
       <a href="@routes.Kidz.doeKid(au._id.toString, v, "-", "-", reg._id.toString)" class="btn btn-mini">...</a>
-	  }
-	case "id" => {
+          }
+        case "id" => {
       @if(reg.kids.exists(_.rkId.toString == v)) {
-	    <span class="label">Included</span>
-	as @reg.kids.filter(_.rkId.toString == v).map(_.role).mkString
-	<a href="@routes.Club.doeClubUwRMFormKid(reg._id.toString,v,au._id.toString, "x")" class="btn btn-mini btn-danger" title="remove from registration"> x </a>
+            <span class="label">Included</span>
+        as @reg.kids.filter(_.rkId.toString == v).map(_.role).mkString
+        <a href="@routes.Club.doeClubUwRMFormKid(reg._id.toString,v,au._id.toString, "x")" class="btn btn-mini btn-danger" title="remove from registration"> x </a>
       } else {
-	<a href="@routes.Club.doeClubUserRegAdd(reg._id.toString,v,au._id.toString, "x")" class="btn btn-mini" title="also adds neccessary forms">Include now!</a>
-	  }
-	}
+        <a href="@routes.Club.doeClubUserRegAdd(reg._id.toString,v,au._id.toString, "x")" class="btn btn-mini" title="also adds neccessary forms">Include now!</a>
+          }
+        }
     case _ => {@v}
   }
 }
 
 @util.utilSimpleTable(rkidz.iterator,
-	Seq("fname" -> "Name",
-		"role" -> "Relationship",
-		"button" -> "Details",
-		"id"->"Included in registration?"),
-	Some(addlink))
+        Seq("fname" -> "Name",
+                "role" -> "Relationship",
+                "button" -> "Details",
+                "id"->"Included in registration?"),
+        Some(addlink))
 </div>
 
 <div class="well">

@@ -1,8 +1,10 @@
 @**************
 debug a wiki page
 **************@
-@(wid:model.WID, iname:Option[String], page:Option[model.WikiEntry], realm:String, au:Option[model.User])(implicit request:Request[_])
-@import model._
+@(wid:razie.wiki.model.WID, iname:Option[String], page:Option[razie.wiki.model.WikiEntry], realm:String, au:Option[model.User])(implicit request:Request[_])
+@import razie.wiki.model.{WikiEntry, WID, Wikis, CommentStream, WikiLink, WikiEntryOld}
+@import model.{Website, User}
+@import razie.db.{ROne, RMany, RUpdate}
 
 @comments(stream:Option[CommentStream]) = {
   @stream match {
@@ -15,7 +17,7 @@ debug a wiki page
     <div class="well">
       <b>By: <a href="/user/@model.Users.nameOf(c.userId)">@model.Users.nameOf(c.userId)</a></b>
 @*********
-&nbsp;	  <a href="/wikie" class="btn btn-mini">Reply</a>
+&nbsp;    <a href="/wikie" class="btn btn-mini">Reply</a>
 **********@
        &nbsp; <a href="" class="btn btn-mini btn-info">Report</a>
 @if(controllers.Comment.canEdit(c,au)) {
@@ -33,45 +35,45 @@ debug a wiki page
 @htmlHeadBar("WikiDebug: "+wid.cat +":"+ wid.name, au)
 
     <div class="container">
-	<div class="row">
+        <div class="row">
 
     <div class="span9">
 
       <div class="well">
-	  @wiki.wikiFrag(wid,au,false,page, iname)
+          @wiki.wikiFrag(wid,au,false,page, iname)
       </div>
 
-	<div class="well">
-	    <ul>Settings
-		<li>realm: @realm</li>
-		<li>wid.realm: @wid.realm</li>
-		<li>getHost: @Website.getHost</li>
-		<li>Website: @Website.apply(request).map(_.name)</li>
-		<li>request.headers: @request.headers</li>
-	    </ul>
-	</div>
+        <div class="well">
+            <ul>Settings
+                <li>realm: @realm</li>
+                <li>wid.realm: @wid.realm</li>
+                <li>getHost: @Website.getHost</li>
+                <li>Website: @Website.apply(request).map(_.name)</li>
+                <li>request.headers: @request.headers</li>
+            </ul>
+        </div>
 
-	<div class="well">
-	<ul>tags
-	@page.get.tags.map { p=>
-	  <li>@p</li>
-	}
+        <div class="well">
+        <ul>tags
+        @page.get.tags.map { p=>
+          <li>@p</li>
+        }
        </ul>
       </div>
 
       <div class="well">
-	<ul>contentTags
-	@page.get.contentTags.map { p=>
-	  <li>@p</li>
-	}
+        <ul>contentTags
+        @page.get.contentTags.map { p=>
+          <li>@p</li>
+        }
        </ul>
       </div>
 
       <div class="well">
-	<ul>ilinks
-	@page.get.ilinks.map { p=>
-	  <li>@p</li>
-	}
+        <ul>ilinks
+        @page.get.ilinks.map { p=>
+          <li>@p</li>
+        }
        </ul>
       </div>
 
@@ -79,117 +81,117 @@ debug a wiki page
   model.Users.findUserLinksTo(page.get.uwid).toList
 }
       <div class="well">
-	<ul>followers: userWikis @followers.size
-	@followers.map { uw=>
-	  <li>@model.Users.findUserById(uw.userId).map(_.userName).getOrElse(uw.userId) , @uw.role</li>
-	}
+        <ul>followers: userWikis @followers.size
+        @followers.map { uw=>
+          <li>@model.Users.findUserById(uw.userId).map(_.userName).getOrElse(uw.userId) , @uw.role</li>
+        }
        </ul>
       </div>
 
       <div class="well">
-	<ul>external followers
-	@model.Users.findFollowerLinksTo(page.get.uwid).toList.flatMap(_.follower).map {f=>
-	  <li>@model.Enc.unapply(f.email)</li>
-	}
+        <ul>external followers
+        @model.Users.findFollowerLinksTo(page.get.uwid).toList.flatMap(_.follower).map {f=>
+          <li>@model.Enc.unapply(f.email)</li>
+        }
        </ul>
       </div>
 
       <div class="well">
-	<ul>props
-	@page.get.props.map { p=>
-	  <li>@p</li>
-	}
+        <ul>props
+        @page.get.props.map { p=>
+          <li>@p</li>
+        }
        </ul>
       </div>
 
       <div class="well">
       @helper.form(action=routes.Wikie.uowner(page.get.wid), 'class->"well form-inline") {
-	<input type="text" class="input-large" name="newowner" placeholder="@page.map(_.owner)">
-	<button type="submit" class="btn">Update Owner</button>
+        <input type="text" class="input-large" name="newowner" placeholder="@page.map(_.owner)">
+        <button type="submit" class="btn">Update Owner</button>
       }
       </div>
       <div class="well">
        You can move all the posts/items, if this is a blog/forum/something to another. Careful - no checking done, heh.
       @helper.form(action=routes.Wikie.movePosts(page.get.wid), 'class->"well form-inline") {
-	<input type="text" class="input-large" name="newWid">
-	<button type="submit" class="btn">Move Now!</button>
+        <input type="text" class="input-large" name="newWid">
+        <button type="submit" class="btn">Move Now!</button>
       }
       </div>
 
 @linksFrom = @{
-  db.RMany[WikiLink]("from" -> page.get.uwid.grated).toList
+  RMany[WikiLink]("from" -> page.get.uwid.grated).toList
 }
 @linksTo = @{
-  db.RMany[WikiLink]("to" -> page.get.uwid.grated).toList
+  RMany[WikiLink]("to" -> page.get.uwid.grated).toList
 }
 @pages = @{
-  db.RMany[WikiEntry]("parent" -> Some(page.get.uwid.id)).toList
+  RMany[WikiEntry]("parent" -> Some(page.get.uwid.id)).toList
 }
 
       <div class="well">
-	<ul>children (pages with parent=me) @pages.size
-	  @pages.map{ p=>
-	    <li>@controllers.Wiki.w(p.wid)</li>
-	  }
-	</ul>
+        <ul>children (pages with parent=me) @pages.size
+          @pages.map{ p=>
+            <li>@controllers.Wiki.w(p.wid)</li>
+          }
+        </ul>
       </div>
 
       <div class="well">
-	<ul>links TO me (pages linked WikiLink to=me) @linksTo.size
-	  @linksTo.sortBy(_.to.wid.get.name).map{ p=>
-	    <li>@p.how @p.from.wid.map(_.wpath) @p._id</li>
-	  }
-	</ul>
-	Duplicates:
-	<ul>
-	@linksTo.groupBy(_.from.wid.get.name).filter(_._2.size > 1).map{ t=>
-	  <li>@t._1 <br>@t._2.map{wl=> <br>@wl }</li>
-	}
+        <ul>links TO me (pages linked WikiLink to=me) @linksTo.size
+          @linksTo.sortBy(_.to.wid.get.name).map{ p=>
+            <li>@p.how @p.from.wid.map(_.wpath) @p._id</li>
+          }
+        </ul>
+        Duplicates:
+        <ul>
+        @linksTo.groupBy(_.from.wid.get.name).filter(_._2.size > 1).map{ t=>
+          <li>@t._1 <br>@t._2.map{wl=> <br>@wl }</li>
+        }
       </div>
 
       <div class="well">
-	<ul>links FROM me (pages linked WikiLink from=me) @linksFrom.size
-	  @linksFrom.sortBy(_.to.wid.get.name).map{ p=>
-	    <li>@p.how @p.to.wid.map(_.wpath) @p._id</li>
-	  }
-	</ul>
-	Duplicates:
-	<ul>
-	  @linksFrom.groupBy(_.to.wid.get.name).filter(_._2.size > 1).map{ t=>
-	    <li>@t._1 @t._2.map{wl=> <br>@wl }</li>
-	  }
+        <ul>links FROM me (pages linked WikiLink from=me) @linksFrom.size
+          @linksFrom.sortBy(_.to.wid.get.name).map{ p=>
+            <li>@p.how @p.to.wid.map(_.wpath) @p._id</li>
+          }
+        </ul>
+        Duplicates:
+        <ul>
+          @linksFrom.groupBy(_.to.wid.get.name).filter(_._2.size > 1).map{ t=>
+            <li>@t._1 @t._2.map{wl=> <br>@wl }</li>
+          }
       </div>
 
       <div class="well">
-	<ul>sections
-	@page.get.sections.map { p=>
-	  <li>@p</li>
-	}
+        <ul>sections
+        @page.get.sections.map { p=>
+          <li>@p</li>
+        }
        </ul>
       </div>
 
       <div class="well">
-	<ul>fields
-	  @page.get.fields.map { p=>
-	    <li>@p</li>
-	  }
-	</ul>
-	<p>
-	@page.get.fields.map { p=>
-	  @p._1,
-	}
+        <ul>fields
+          @page.get.fields.map { p=>
+            <li>@p</li>
+          }
+        </ul>
+        <p>
+        @page.get.fields.map { p=>
+          @p._1,
+        }
       </div>
 
       <div class="well">
-	<ul>cache
-	@page.get.cache.map { p=>
-	  <li>@p.toString</li>
-	}
+        <ul>cache
+        @page.get.cache.map { p=>
+          <li>@p.toString</li>
+        }
        </ul>
       </div>
 
       <div class="well">
-	<ul>cp
+        <ul>cp
 @ClassLoader.getSystemClassLoader.asInstanceOf[java.net.URLClassLoader].getURLs.map { p=>
   <br>
 @p.getFile
@@ -200,21 +202,21 @@ debug a wiki page
       <div class="well">
       Versions:<p>
       <table class="table table-striped table-condensed">
-	 <thead><th>ver</th><th>content</th><th> date </th><th> User </th></thead>
-	@db.RMany[WikiEntryOld]("entry.category" -> page.get.category, "entry.name" -> page.get.name).map{ p=>
-	 <tr>
-	   <td> <a href="/wikie/ver/@p.entry.ver/@page.get.wid.wpath">@p.entry.ver</a> </td>
-	   <td> <a href="/wikie/content/ver/@p.entry.ver/@page.get.wid.wpath">@p.entry.ver</a> </td>
-	   <td> @p.entry.updDtm </td>
-	   <td> @db.ROne[User]("_id" -> p.entry.by).map(_.ename).getOrElse(p.entry.by.toString) </td>
-	 </tr>
-	 }
+         <thead><th>ver</th><th>content</th><th> date </th><th> User </th></thead>
+        @RMany[WikiEntryOld]("entry.category" -> page.get.category, "entry.name" -> page.get.name).map{ p=>
+         <tr>
+           <td> <a href="/wikie/ver/@p.entry.ver/@page.get.wid.wpath">@p.entry.ver</a> </td>
+           <td> <a href="/wikie/content/ver/@p.entry.ver/@page.get.wid.wpath">@p.entry.ver</a> </td>
+           <td> @p.entry.updDtm </td>
+           <td> @ROne[User]("_id" -> p.entry.by).map(_.ename).getOrElse(p.entry.by.toString) </td>
+         </tr>
+         }
        </table>
       </div>
 
 Json:
       <div class="well">
-	@page.map{ p=>@p.toString }
+        @page.map{ p=>@p.toString }
        </ul>
       </div>
 
@@ -236,7 +238,7 @@ AST:
     </div> <!-- /span9 -->
 
       <div class="span3">
-	  @wiki.wikiFrag(WID("Admin","Right"),au,true)
+          @wiki.wikiFrag(WID("Admin","Right"),au,true)
       </div>
 
   </div> <!-- row -->

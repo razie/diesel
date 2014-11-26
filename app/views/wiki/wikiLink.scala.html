@@ -1,10 +1,10 @@
-@(from:model.WID, to:model.WID, myForm:Form[controllers.Wikil.LinkWiki], withComment:Boolean, au:Option[model.User])
-@import model.Wikis
+@(from:razie.wiki.model.WID, to:razie.wiki.model.WID, myForm:Form[controllers.Wikil.LinkWiki], withComment:Boolean, au:Option[model.User])
+@import razie.wiki.model.Wikis
 @import helper.twitterBootstrap._
 @import model.UW
 
 @how() = @{
-  Wikis.category(to.cat).flatMap(_.contentTags.get("roles:"+from.cat)) match {
+  val h = Wikis(to.getRealm).category(to.cat).flatMap(_.contentTags.get("roles:"+from.cat)) match {
     case Some(s) => {
       s.split(",").filter(x => ! Array("Owner","Admin").contains(x)).map(x=>(x,x)).toSeq
     }
@@ -12,6 +12,7 @@
       Wikis(from.getRealm).pageNames("Link").map(x=>(x,x)).toList
     }
   }
+  if(h.isEmpty) Seq(("Enjoy", "Enjoy")) else h
 }
 
 @htmlHeadBar("", au)
@@ -19,19 +20,19 @@
 <div class="container">
   <div class="hero-unit">
       @if("User" == from.cat) {
-	  <h2>Cool! So you want to @to.label("LinkTo", "link to") @to.cat @to.name!</h2>
-	  <b>@to.label("LinkTo.Desc", "You will be notified of new activity.") !</b>
-	  } else {
-	  <h2>Cool! So you want to link @from.cat @from.name to @to.cat @to.name!</h2>
-	  }
-	  <p>
+          <h2>Cool! So you want to @to.label("LinkTo", "follow") @to.cat:@to.name!</h2>
+          <b>@to.label("LinkTo.Desc", "You will be notified of new activity") !</b>
+          } else {
+          <h2>Cool! So you want to link @from.cat:@from.name to @to.cat:@to.name!</h2>
+          }
+          <p>
     <div class="row">
       <div class="span4">
 
-@helper.form(action=routes.Wikil.linked(from.cat,from.name,to.cat,to.name,withComment), 'class->"well") {
+@helper.form(action=routes.Wikil.linked(from,to,withComment), 'class->"well") {
   @helper.select(
     myForm("how"),
-     how(),
+      how(),
     '_label -> "Select a role",
     '_showConstraints -> false)
 
@@ -44,7 +45,7 @@
     @if(withComment) {
   @helper.select(
     myForm("markup"),
-     model.Wikis.markups.map(x=>(x,x)),
+     Wikis.markups.map(x=>(x,x)),
     '_label -> "Markkup language",
     '_showConstraints -> false)
   @helper.textarea(
@@ -69,7 +70,7 @@
       <a href="@routes.Wikil.linkUser(to,false)" class="btn">Remove the note!</a>
     } else {
       @if(false && "Club" != to.cat) {
-	<a href="@routes.Wikil.linkUser(to,true)" class="btn">Add a note!</a>
+        <a href="@routes.Wikil.linkUser(to,true)" class="btn">Add a note!</a>
       }
     }
     </div>

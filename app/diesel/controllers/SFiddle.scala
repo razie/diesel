@@ -9,15 +9,17 @@ import com.mongodb.casbah.Imports.wrapDBObj
 import com.novus.salat.grater
 import admin._
 import model._
-import db._
-import db.RazSalatContext.ctx
-import model.Sec.EncryptedS
+import razie.db._
+import razie.db.RazSalatContext.ctx
+import razie.wiki.Sec.EncryptedS
 import play.api.mvc._
 import razie.{cout, Logging}
 import javax.script.{ScriptEngineManager, ScriptEngine}
 import scala.Some
 import scala.util.parsing.input.{CharArrayReader, Positional}
 import model.dom.DOM
+import razie.wiki.model.WikiEntry
+import razie.wiki.admin.Audit
 
 /** controller for server side fiddles / services */
 object SFiddles extends RazController with Logging {
@@ -35,12 +37,12 @@ object SFiddles extends RazController with Logging {
       val q = request.queryString.map(t=>(t._1, t._2.mkString))
 
       notes.headOption.filter(x=>(au hasPerm Perm.codeMaster) || (au hasPerm Perm.adminDb)).fold(
-	Ok(s"no sfiddle for $path")
+        Ok(s"no sfiddle for $path")
       ) {we=>
-	val script = we.content.lines.filterNot(_ startsWith ".").mkString("\n")
-	val lang = if(we.tags contains "js") "js" else if(we.tags contains "scala") "scala" else ""
-	val (_,res) = isfiddle(script, lang, Some(we))
-	Ok(res)
+        val script = we.content.lines.filterNot(_ startsWith ".").mkString("\n")
+        val lang = if(we.tags contains "js") "js" else if(we.tags contains "scala") "scala" else ""
+        val (_,res) = isfiddle(script, lang, Some(we))
+        Ok(res)
       }
   }
 
@@ -49,12 +51,12 @@ object SFiddles extends RazController with Logging {
     implicit errCollector => implicit request =>
 
       Some(1).filter(x=>(au hasPerm Perm.codeMaster) || (au hasPerm Perm.adminDb)).fold(
-	Ok(s"no sfiddle for id $id")
+        Ok(s"no sfiddle for id $id")
       ) {we=>
-	val lang = request.body.asFormUrlEncoded.get.apply("l").mkString
-	val j = ModTma.razscr.dec(request.body.asFormUrlEncoded.get.apply("j").mkString)
-	val (_,res) = isfiddle(j, lang)
-	Ok(res)
+        val lang = request.body.asFormUrlEncoded.get.apply("l").mkString
+        val j = ModTma.razscr.dec(request.body.asFormUrlEncoded.get.apply("j").mkString)
+        val (_,res) = isfiddle(j, lang)
+        Ok(res)
       }
   }
 
@@ -71,43 +73,43 @@ object SFiddles extends RazController with Logging {
       val qj = qtojson(q)
       val jscript = s"""var queryParms = $qj;\n$script"""
       try {
-	val factory = new ScriptEngineManager()
-	val engine = factory.getEngineByName("JavaScript")
-	val res = engine.eval(jscript)
-	Audit.logdb("SFIDDLE_EXEC", "JS", jscript)
-	(true, res.toString)
+        val factory = new ScriptEngineManager()
+        val engine = factory.getEngineByName("JavaScript")
+        val res = engine.eval(jscript)
+        Audit.logdb("SFIDDLE_EXEC", "JS", jscript)
+        (true, res.toString)
       } catch {
-	case t: Throwable => {
-	  log(s"while executing script\n$jscript",t)
-	  (false, jscript + "\n\n" + t)
-	}
+        case t: Throwable => {
+          log(s"while executing script\n$jscript",t)
+          (false, jscript + "\n\n" + t)
+        }
       }
     } else if(lang == "ruby") {
       val qj = qtojson(q)
       val jscript = ""//s"""var queryParms = $qj;\n$script"""
       try {
-	val factory = new ScriptEngineManager()
-	val engine = factory.getEngineByName("rb")
-	val res = engine.eval(jscript)
-	Audit.logdb("SFIDDLE_EXEC", "ruby", jscript)
-	(true, res.toString)
+        val factory = new ScriptEngineManager()
+        val engine = factory.getEngineByName("rb")
+        val res = engine.eval(jscript)
+        Audit.logdb("SFIDDLE_EXEC", "ruby", jscript)
+        (true, res.toString)
       } catch {
-	case t: Throwable => {
-	  log(s"while executing script\n$jscript",t)
-	  (false, jscript + "\n\n" + t)
-	}
+        case t: Throwable => {
+          log(s"while executing script\n$jscript",t)
+          (false, jscript + "\n\n" + t)
+        }
       }
     } else if(lang == "scala") {
       try {
-	val res = WikiScripster.impl.runScript(script, we, Some(au), q, true)
-	Audit.logdb("SFIDDLE_EXEC", "scala", script)
-	(true, res.toString)
+        val res = WikiScripster.impl.runScript(script, we, Some(au), q, true)
+        Audit.logdb("SFIDDLE_EXEC", "scala", script)
+        (true, res.toString)
       } catch {
-	case t:Throwable => {
-	  log(s"while executing script\n$script",t)
-//	    throw t
-	  (false, script+ "\n\n" + t)
-	}
+        case t:Throwable => {
+          log(s"while executing script\n$script",t)
+//          throw t
+          (false, script+ "\n\n" + t)
+        }
       }
     } else (false, script)
   }
@@ -120,9 +122,9 @@ object SFiddles extends RazController with Logging {
       val q = request.queryString.map(t=>(t._1, t._2.mkString))
 
       Some(1).filter(x=>(au hasPerm Perm.codeMaster) || (au hasPerm Perm.adminDb)).fold(
-	Ok(s"no sfiddle for ")
+        Ok(s"no sfiddle for ")
       ) {we =>
-	Ok(views.html.fiddle.play2(lang, j, q, Some(au)))
+        Ok(views.html.fiddle.play2(lang, j, q, Some(au)))
       }
   }
 }

@@ -30,9 +30,9 @@ to use personal row class, hook the "rowClass" column in
       <td>
       @{
       db.get(k) match {
-	case None | Some(null) => func.map(_.apply(db, k, null)).getOrElse("")
-	case Some(x) => func.map(_.apply(db, k, x.toString)).getOrElse(x)
-	}
+        case None | Some(null) => func.map(_.apply(db, k, null)).getOrElse("")
+        case Some(x) => func.map(_.apply(db, k, x.toString)).getOrElse(x)
+        }
       }
       </td>
     }

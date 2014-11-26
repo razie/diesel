@@ -5,12 +5,14 @@ msg types are msg, err
 **************@
 @(tag:String, notes:List[model.WikiEntry], tags:model.Tags.Tags, msg:Seq[(String,String)], au:Option[model.User], isSearch:Boolean=false)(ncs:List[controllers.NotesContact])
 @import model.Tags
-@import model.Tags
+@import razie.wiki.model.WikiEntry
+@import razie.wiki.model.Wikis
+
 
 @frup(au)
 
-@ccc(we:model.WikiEntry)= @{
-    val x = model.Wikis.format(we.wid, we.markup, we.content, Some(we))
+@ccc(we:WikiEntry)= @{
+    val x = Wikis.format(we.wid, we.markup, we.content, Some(we))
     if(x contains "CANNOT PARSE") {
       """<div style="color:red;font-weight:bold;" title="You misspelled some of the advanced features"><small>[[CANNOT PARSE]]</small></div><p></p>""" + we.content
     } else x
@@ -28,24 +30,24 @@ msg types are msg, err
       <td>Name</td> <td>Email</td><td>Actions</td>
     </thead>
 
-@name(we:model.WikiEntry) = @{
+@name(we:WikiEntry) = @{
   we.contentTags.get("name").filter(_ != we._id.toString).orElse(we.contentTags.get("email").map(_.replaceAll("@.*$", ""))).mkString
 }
-@email(we:model.WikiEntry) = @{
+@email(we:WikiEntry) = @{
   we.contentTags.get("email").mkString
 }
 
 @notes.map {we=>
-	<tr>
-	  <td>@name(we)</td>
-	  <td>@email(we)</td>
-	 <td>
-	   <small>[<a href="@routes.NotesLocker.noteById(we._id.toString)">Edit</a>]</small>
-	   @if(! ncs.exists(_.email.toLowerCase == email(we))) {
-	     <small>[<a href="@routes.NotesLocker.invite(email(we), name(we))">Invite</a>]</small>
-	   }
-	 </td>
-	</tr>
+        <tr>
+          <td>@name(we)</td>
+          <td>@email(we)</td>
+         <td>
+           <small>[<a href="@routes.NotesLocker.noteById(we._id.toString)">Edit</a>]</small>
+           @if(! ncs.exists(_.email.toLowerCase == email(we))) {
+             <small>[<a href="@routes.NotesLocker.invite(email(we), name(we))">Invite</a>]</small>
+           }
+         </td>
+        </tr>
 }
   </table>
 

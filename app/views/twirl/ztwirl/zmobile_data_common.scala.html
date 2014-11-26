@@ -7,7 +7,7 @@ no transfer parms, just a different translated parm
   item,
   item.entity,
   Map(
-    "roaming_indicator" 	 -> "RoamingEnabled"
+    "roaming_indicator"          -> "RoamingEnabled"
 ))
 
 @if(item.entity.spec == "email_with_kids") {
@@ -15,6 +15,6 @@ no transfer parms, just a different translated parm
      item,
      x.context.subscriber.getRelatedEntity(item.entity),
      Map(
-       "roaming_indicator"	    -> "RoamingEnabled"
+       "roaming_indicator"          -> "RoamingEnabled"
    ))
 }

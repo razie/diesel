@@ -7,25 +7,25 @@
   <div class="hero-unit">
     <div class="row">
       <div class="span6">
-	<h1>
-	  Welcome!
-	  @** the google button*@
-	  @if(realm == model.Reactors.NOTES) {
-	    <span align="right">
-	      <span id="signinButton">
-		<span
-		class="g-signin"
-		data-callback="signInCallback"
-		data-clientid="980280495626-7llkvk4o02anpu6qv1sseucc07f8f3gs.apps.googleusercontent.com"
-		data-cookiepolicy="single_host_origin"
-		data-scope="profile email">
-		</span>
-	      </span>
-	    </span>
-	  }
-	</h1>
-	<br>
-	@wiki.wikiFragInt("Admin:page-join-"+realm, None)
+        <h1>
+          Welcome!
+          @** the google button*@
+          @if(realm == model.Reactors.NOTES) {
+            <span align="right">
+              <span id="signinButton">
+                <span
+                class="g-signin"
+                data-callback="signInCallback"
+                data-clientid="980280495626-7llkvk4o02anpu6qv1sseucc07f8f3gs.apps.googleusercontent.com"
+                data-cookiepolicy="single_host_origin"
+                data-scope="profile email">
+                </span>
+              </span>
+            </span>
+          }
+        </h1>
+        <br>
+        @wiki.wikiFragInt("Admin:page-join-"+realm, None)
 
       </div>
 
@@ -107,8 +107,8 @@
     function signInCallback(authResult) {
       if (authResult['code']) {
 
-	// Hide the sign-in button now that the user is authorized, for example:
-	$('#signinButton').attr('style', 'display: none');
+        // Hide the sign-in button now that the user is authorized, for example:
+        $('#signinButton').attr('style', 'display: none');
 
       gauthResult = authResult;
 

@@ -3,11 +3,15 @@ package api
 import model._
 import controllers.{XWrapper,XListWrapper}
 import admin.Config
-import db.RazMongo
+import razie.db.RazMongo
+import razie.wiki.model.WikiWrapper
+import razie.wiki.model.WID
+import razie.wiki.model.WikiXpSolver
+import razie.wiki.model.WikiEntry
+import razie.wiki.util.M._
 
 /** this is available to scripts inside the wikis */
 object wix {
-  import admin.M._
 
   lazy val hostport:String = Config.hostport
 
@@ -15,6 +19,7 @@ object wix {
   var page: Option[WikiEntry] = None
   var user: Option[User] = None
   var query: Map[String,String] = Map()
+  var realm:String = Wikis.RK
 
   def isUserRegistered = user exists (u=> page >>> (x=>model.Users.findUserLinksTo(x.uwid).toList) exists (_.userId == u._id))
 
@@ -27,7 +32,7 @@ object wix {
   /** start xp from user's pages of given category, i.e. the races he subscribed to */
   def uxp (cat:String) =
     new XListWrapper(
-      user.toList.flatMap(_.pages(cat)).map { uw => new WikiWrapper(WID(cat, uw.uwid.nameOrId)) },
+      user.toList.flatMap(_.pages(realm, cat)).map { uw => new WikiWrapper(WID(cat, uw.uwid.nameOrId)) },
       WikiXpSolver)
 
   def countForms = RazMongo("weForm").size

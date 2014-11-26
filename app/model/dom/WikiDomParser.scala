@@ -1,26 +1,30 @@
 /**
  *   ____    __    ____  ____  ____,,___     ____  __  __  ____
- *  (  _ \  /__\  (_   )(_  _)( ___)/ __)   (  _ \(  )(  )(  _ \	   Read
- *   )	 / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <     README.txt
+ *  (  _ \  /__\  (_   )(_  _)( ___)/ __)   (  _ \(  )(  )(  _ \           Read
+ *   )   / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <     README.txt
  *  (_)\_)(__)(__)(____)(____)(____)(___/   (__)  (______)(____/    LICENSE.txt
  */
 package model.dom
 
 import scala.Option.option2Iterable
-import model.{WikiEntry, WikiParser, WikiParserBase}
+import model._
 import admin.Config
 import org.bson.types.ObjectId
 import play.api.mvc.Action
 import controllers.{NotesLocker, WG}
+import razie.wiki.parser.WAST
+import razie.wiki.model.WikiEntry
+import razie.wiki.parser.WikiParserBase
 
 /** domain parser - for domain sections in a wiki */
 trait WikiDomainParser extends WikiParserBase {
+  import WAST._
   import DOM._
 
   def ident: P = """\w+""".r
   def any: P = """.*""".r
 
-  def domainBlock = pobject | pclass
+  def domainBlocks = pobject | pclass
 
   /**
    * .class X [extends A,B]
@@ -30,17 +34,17 @@ trait WikiDomainParser extends WikiParserBase {
     opt(" " ~> ident) ~ opt(CRLF2 ~> rep1sep(attrline, CRLF2)) ^^ {
     case name ~ e ~ a ~ l => {
       val c = C(name, a.mkString, e.toList.flatMap(identity),
-	l.toList.flatMap(identity).collect{case x:DOM.P =>x},
-	l.toList.flatMap(identity).collect{case x:DOM.F =>x} )
+        l.toList.flatMap(identity).collect{case x:DOM.P =>x},
+        l.toList.flatMap(identity).collect{case x:DOM.F =>x} )
       SState(
-	"""<div class="well">""" +
-	  s"class $name  (" + l.mkString(", ") +
-	  ")" + e.mkString + a.map(" <" + _ + ">").mkString +
-	  """</div>""",
-	Map(), List(), List({ w =>
-	  w.cache.put(DOM_LIST, c :: w.cache.getOrElse(DOM_LIST, List[Any]()).asInstanceOf[List[Any]])
-	  w
-	}))
+        """<div class="well">""" +
+          s"class $name  (" + l.mkString(", ") +
+          ")" + e.mkString + a.map(" <" + _ + ">").mkString +
+          """</div>""",
+        Map(), List(), List({ w =>
+          w.cache.put(DOM_LIST, c :: w.cache.getOrElse(DOM_LIST, List[Any]()).asInstanceOf[List[Any]])
+          w
+        }))
     }
   }
 
@@ -48,14 +52,14 @@ trait WikiDomainParser extends WikiParserBase {
     case name ~ _ ~ c ~ l => {
       val o = O(name, c, l.toList.flatMap(identity))
       SState(
-	"""<div class="well">""" +
-	  s"object $name (" + l.mkString(", ") +
-	  ")" +
-	"""</div>""",
-	Map(), List(), List({ w =>
-	  w.cache.put(DOM_LIST, o :: w.cache.getOrElse(DOM_LIST, List[Any]()).asInstanceOf[List[Any]])
-	  w
-	}))
+        """<div class="well">""" +
+          s"object $name (" + l.mkString(", ") +
+          ")" +
+        """</div>""",
+        Map(), List(), List({ w =>
+          w.cache.put(DOM_LIST, o :: w.cache.getOrElse(DOM_LIST, List[Any]()).asInstanceOf[List[Any]])
+          w
+        }))
     }
   }
 
@@ -113,26 +117,26 @@ object DOM {
   case class D (name:String, classes:Map[String,C], objects:Map[String,O]) {
     def tojmap = {
       Map("name"->name,
-	"classes" -> classes.values.toList.map{c=>
-	  Map(
-	    "name"->c.name,
-	    "parms" -> c.parms.map{p=>
-	      Map(
-		"name"->p.name,
-		"t" -> p.t
-	      )
-	    }
-	  )},
-	"objects" -> objects.values.toList.map{c=>
-	  Map(
-	    "name"->c.name,
-	    "parms" -> c.parms.toList.map{p=>
-	      Map(
-		"name"->p.name,
-		"value" -> p.value
-	      )
-	    }
-	  )}
+        "classes" -> classes.values.toList.map{c=>
+          Map(
+            "name"->c.name,
+            "parms" -> c.parms.map{p=>
+              Map(
+                "name"->p.name,
+                "t" -> p.t
+              )
+            }
+          )},
+        "objects" -> objects.values.toList.map{c=>
+          Map(
+            "name"->c.name,
+            "parms" -> c.parms.toList.map{p=>
+              Map(
+                "name"->p.name,
+                "value" -> p.value
+              )
+            }
+          )}
       )
     }
   }
@@ -144,14 +148,14 @@ object DOM {
     we.preprocessed
     if(we.tags.contains(RDOM))
       Some(
-	we.cache.getOrElseUpdate("dom",
-	D("?",
-	  we.cache.getOrElse(DOM_LIST, List[Any]()).asInstanceOf[List[Any]].collect {
-	    case c:C => (c.name, c)
-	  }.toMap,
-	  we.cache.getOrElse(DOM_LIST, List[Any]()).asInstanceOf[List[Any]].collect {
-	    case o:O => (o.name, o)
-	  }.toMap)
+        we.cache.getOrElseUpdate("dom",
+        D("?",
+          we.cache.getOrElse(DOM_LIST, List[Any]()).asInstanceOf[List[Any]].collect {
+            case c:C => (c.name, c)
+          }.toMap,
+          we.cache.getOrElse(DOM_LIST, List[Any]()).asInstanceOf[List[Any]].collect {
+            case o:O => (o.name, o)
+          }.toMap)
       )) collect {case d:D => d}
     else None
   }

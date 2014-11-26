@@ -1,24 +1,25 @@
 @**************
 edit a wiki page
 **************@
-@(wid:model.WID, myForm:Form[controllers.Wikie.EditWiki], au:Option[model.User])(implicit request:Request[_])
+@(wid:razie.wiki.model.WID, myForm:Form[controllers.Wikie.EditWiki], au:Option[model.User])(implicit request:Request[_])
 @import _root_.admin.Config.realm
+@import razie.wiki.model.{Wikis, WID, WikiEntry}
 
 @v(name:String) = @{
   myForm(name).value.getOrElse("?")
 }
 
 @wvis() = @{
-  model.Wikis.visibilityFor(wid.cat) ++ (if(au.exists(_.isAdmin)) Seq("Private") else Nil)
+  Wikis.visibilityFor(wid.cat) ++ (if(au.exists(_.isAdmin)) Seq("Private") else Nil)
 }
 
-@reserved(page:Option[model.WikiEntry]) = {
+@reserved(page:Option[WikiEntry]) = {
   @page match {
     case Some(we) => {
       @if(we.isReserved) {
-	YES <a href="@routes.Wikie.reserve(wid,false)">Unreserve it</a>
+        YES <a href="@routes.Wikie.reserve(wid,false)">Unreserve it</a>
       } else {
-	NO <a href="@routes.Wikie.reserve(wid,true)">Reserve it</a>
+        NO <a href="@routes.Wikie.reserve(wid,true)">Reserve it</a>
       }
     }
     case None => {
@@ -89,8 +90,8 @@ PROBLEM: many places use label as name... via Wikis.formatName
     '_showConstraints -> false)
 
   @if(au.get.hasPerm(model.Perm.adminDb)) {
-    <p>Reserved: @reserved(model.Wikis(wid.getRealm).find(wid.cat,wid.name))
-    @if(model.Wikis(wid.getRealm).find(wid.cat,wid.name).isDefined) {
+    <p>Reserved: @reserved(Wikis(wid.getRealm).find(wid.cat,wid.name))
+    @if(Wikis(wid.getRealm).find(wid.cat,wid.name).isDefined) {
       <p><a href="@routes.Wikie.wikieDelete1(wid)">Delete it</a>
     }
   }
@@ -113,7 +114,7 @@ PROBLEM: many places use label as name... via Wikis.formatName
 }
 </div>
 
-@model.Wikis(wid.getRealm).find(wid).map{we=>
+@Wikis(wid.getRealm).find(wid).map{we=>
   <div class="well">
     @wiki.wikiFrag(wid,au, false, Some(we))
   </div>

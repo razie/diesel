@@ -1,12 +1,18 @@
 package controllers
 
-import admin.{Audit, Config, IgnoreErrors, RazAuthService, Services, VErrors}
+import admin.{Config, RazAuthService}
 import com.mongodb.WriteResult
 import model._
 import play.api.data.validation.{Constraint, Invalid, Valid, ValidationError}
 import play.api.mvc._
 import razie.{cdebug, Logging}
-
+import razie.wiki.model.Wikis
+import razie.wiki.util.IgnoreErrors
+import razie.wiki.model.WikiUser
+import razie.wiki.model.WID
+import razie.wiki.util.VErrors
+import razie.wiki.Services
+import razie.wiki.admin.Audit
 
 /** common razie controller utilities */
 class RazController extends RazControllerBase with Logging {
@@ -39,9 +45,9 @@ class RazController extends RazControllerBase with Logging {
   def checkActive(au: User)(implicit errCollector: VErrors = IgnoreErrors) =
     toON2(au.isActive) orCorr (
       if (au.userName == "HarryPotter")
-	cDemoAccount
+        cDemoAccount
       else
-	cAccountNotActive)
+        cAccountNotActive)
 
   //================= RESPONSES
 
@@ -49,9 +55,9 @@ class RazController extends RazControllerBase with Logging {
     if (errCollector.hasCorrections) {
       val uname = auth.map(_.userName).getOrElse(if(isFromRobot) "ROBOT" else "")
       if (shouldAudit)
-	Services.audit.auth("BY %s - Permission fail Page: %s Info: %s HEADERS: %s".format(uname, wid.toString, more + " " + errCollector.mkString, request.headers))
+        Services.audit.auth("BY %s - Permission fail Page: %s Info: %s HEADERS: %s".format(uname, wid.toString, more + " " + errCollector.mkString, request.headers))
       Unauthorized(views.html.util.utilMsg(
-	s"""
+        s"""
 Sorry, you don't have the permission to do this!
 
 ${errCollector.mkString}

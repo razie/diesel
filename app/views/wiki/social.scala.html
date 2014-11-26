@@ -3,7 +3,7 @@ social buttons for web pages
 **************@
 @(label:String, url:String, au:Option[model.User])
 @import _root_.admin.Config
-@import _root_.admin.IgnoreErrors
+@import razie.wiki.util.IgnoreErrors
 
 @htmlHead("Social for "+label, None, None)(Map("description"->"Share a page on social networks."), au)
 @navbar(au)

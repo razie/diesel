@@ -14,7 +14,7 @@ object Omp {
   import com.mongodb.casbah.Imports._
   import com.novus.salat.annotations._
   import com.novus.salat._
-//  import db.RazSalatContext._
+//  import razie.db.RazSalatContext._
   import com.mongodb.util.JSON
 
   def json[T <: AnyRef](x: T)(implicit m: Manifest[T]) =
@@ -110,7 +110,7 @@ object RazBss extends Bss {
   def mkOrder(id: String, args: Map[String, String]): Order[OPEntity] = {
     val o = new Order[OPEntity](s"Bss.$id", args,
       Item[OPEntity]("add", new Product("Hsd", Map("plan"->"xgold"))) ::
-	Item[OPEntity]("add", new Product("Voice")) :: Nil)
+        Item[OPEntity]("add", new Product("Voice")) :: Nil)
     o
   }
 
@@ -129,8 +129,8 @@ object RazOm {
 
   def decompose(order: Order[OPEntity], ctx: OrderContext): Order[OREntity] = {
     val fo = new Order[OREntity](s"FO.${order.id}", order.args,
-	order.items.flatMap(
-	    psr.decompose(_).asInstanceOf[List[Item[OREntity]]]))
+        order.items.flatMap(
+            psr.decompose(_).asInstanceOf[List[Item[OREntity]]]))
     fo
   }
 
@@ -156,8 +156,8 @@ object RazSoi extends Soi {
   def decompose(ctx: OrderContext): Flow = {
     val id = ctx.fulfilmentOrder.id
     val wf = new Flow("WF." + id,
-	ctx.fulfilmentOrder.items.flatMap(
-	    psr.decompose(_).asInstanceOf[List[Item[OREntity]]]))
+        ctx.fulfilmentOrder.items.flatMap(
+            psr.decompose(_).asInstanceOf[List[Item[OREntity]]]))
     wf
   }
 
@@ -172,22 +172,22 @@ object psr {
     item match {
 
       case Item(act, Product("Hsd", pargs), args) if pargs.get("plan").exists(_ == "gold") =>
-	Item[RFS](act, RFS("Email", Map("quota" -> "100"))) +
-	  Item[RFS](act, RFS("Webspace", pargs))
+        Item[RFS](act, RFS("Email", Map("quota" -> "100"))) +
+          Item[RFS](act, RFS("Webspace", pargs))
 
       case Item(act, Product("Hsd", pargs), args) =>
-	Item[RFS](act, RFS("Email", Map("quota" -> "10"))) +
-	  Item[RFS](act, RFS("Webspace", pargs))
+        Item[RFS](act, RFS("Email", Map("quota" -> "10"))) +
+          Item[RFS](act, RFS("Webspace", pargs))
 
       case Item(act, Product("Voice", pargs), args) =>
-	Item[RFS](act, RFS("Line", pargs)) +
-	  Item[RFS](act, RFS("Feature", pargs))
+        Item[RFS](act, RFS("Line", pargs)) +
+          Item[RFS](act, RFS("Feature", pargs))
 
       case Item(act, RFS("Email", pargs), args) =>
-	Item[RFS](act, RFS("SmpEmail", pargs)) :: Nil
+        Item[RFS](act, RFS("SmpEmail", pargs)) :: Nil
 
       case Item(act, RFS("Webspace", pargs), args) =>
-	Item[RFS](act, RFS("SmpWebspace", pargs)) :: Nil
+        Item[RFS](act, RFS("SmpWebspace", pargs)) :: Nil
 
       case _ => List()
     }
@@ -204,15 +204,15 @@ object psr {
   }
 
   //  val decomp = Map(
-  //	K("Product", "Hsd") -> L(
-  //	  V("RFS", "Email", identity) +
-  //	    V("RFS", "Webspace", identity)),
-  //	K("Product", "Voice") -> L(
-  //	  V("RFS", "Line", identity) +
-  //	    V("RFS", "Feature", identity)),
-  //	K("RFS", "Email") -> L(
-  //	  V("Task", "Email", identity) +
-  //	    V("RFS", "Webspace", identity)))
+  //    K("Product", "Hsd") -> L(
+  //      V("RFS", "Email", identity) +
+  //        V("RFS", "Webspace", identity)),
+  //    K("Product", "Voice") -> L(
+  //      V("RFS", "Line", identity) +
+  //        V("RFS", "Feature", identity)),
+  //    K("RFS", "Email") -> L(
+  //      V("Task", "Email", identity) +
+  //        V("RFS", "Webspace", identity)))
 
 }
 

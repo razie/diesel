@@ -20,9 +20,9 @@
 	</natures>
 	<linkedResources>
 		<link>
-			<name>razwiki-scala</name>
+			<name>coolscala-common</name>
 			<type>2</type>
-			<location>/Users/raz/w/razwiki/common/src/main/scala</location>
+			<location>/Users/raz/w/coolscala/common/src/main/scala</location>
 		</link>
 	</linkedResources>
 </projectDescription>

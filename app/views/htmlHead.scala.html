@@ -21,8 +21,8 @@
       <link rel="canonical" href="@canon" />
     }.getOrElse{
       @if(page.isDefined) {
-	@** i should be conservative and default to rk **@
-	<link rel="canonical" href="http://www.racerkidz.com/wiki/@page.get.wid.wpath" />
+        @** i should be conservative and default to rk **@
+        <link rel="canonical" href="http://www.racerkidz.com/wiki/@page.get.wid.wpath" />
       }
     }
 
@@ -51,7 +51,7 @@
   @if(Config.theme.contains("light")) {
     <style type="text/css">
       .navbar-inner {
-	background-color: red;
+        background-color: red;
   background-image: -moz-linear-gradient(top, #8a0808, #b40404);
   background-image: -ms-linear-gradient(top, #8a0808, #b40404);
   background-image: -webkit-gradient(linear, 0 0, 0 100%, from(#8a0808), to(#b40404));
@@ -60,7 +60,7 @@
   background-image: linear-gradient(#8a0808, #b40404 70%, #b40404);
   background-repeat: repeat-x;
   filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#8a0808', endColorstr='#b40404', GradientType=0);
-	}
+        }
     </style>
     } else {
     <style type="text/css">
@@ -81,8 +81,8 @@
     <!-- leave room for navbar but none at bottom (for gray links) -->
     <style type="text/css">
       body {
-	padding-top: 60px;
-	padding-bottom: 0px;
+        padding-top: 60px;
+        padding-bottom: 0px;
       }
     </style>
     <link href="@routes.Assets.at("bootstrap/css/bootstrap-responsive.css")" rel="stylesheet">
@@ -189,15 +189,15 @@ pre {
   word-wrap: break-word;
   color: #000000;
 }
-code .keyword		   { font-weight: bold; color: #993300 }
+code .keyword              { font-weight: bold; color: #993300 }
 code .string, code .regexp { color: #669933 }
-code .class		   { color: #CC6600 }
-code .special		   { color: #dd7522 }
-code .number		   { color: #eddd3d }
-code .comment		   { color: gray }
+code .class                { color: #CC6600 }
+code .special              { color: #dd7522 }
+code .number               { color: #eddd3d }
+code .comment              { color: gray }
 </style>
 
-} else {	      @*** dark theme ***@
+} else {              @*** dark theme ***@
 
 <style type="text/css">
 # this makes all look big, even `something`
@@ -212,12 +212,12 @@ pre {
   word-wrap: break-word;
   color: #DDDDDD
 }
-code .keyword		   { font-weight: bold; color: #FFCC00 }
+code .keyword              { font-weight: bold; color: #FFCC00 }
 code .string, code .regexp { color: #669933 }
-code .class		   { color: #C39A5E }
-code .special		   { color: #dd7522 }
-code .number		   { color: #eddd3d }
-code .comment		   { color: gray }
+code .class                { color: #C39A5E }
+code .special              { color: #dd7522 }
+code .number               { color: #eddd3d }
+code .comment              { color: gray }
 </style>
 }
 

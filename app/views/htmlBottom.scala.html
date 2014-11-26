@@ -15,32 +15,32 @@
   <table>
     <tr>
       <td style="width:200px;vertical-align: top">
-	<strong class="razbots">More</strong> <br>
-	<a class="razbot" href="/">Home</a> <br>
-	<a class="razbot" href="@web().about.map(_.url).getOrElse("/page/About")">About</a> <br>
-	@web().bottomMenu("More").map{t=>
-	  <a class="razbot" href="@t._2">@t._1</a><br>
-	}
+        <strong class="razbots">More</strong> <br>
+        <a class="razbot" href="/">Home</a> <br>
+        <a class="razbot" href="@web().about.map(_.url).getOrElse("/page/About")">About</a> <br>
+        @web().bottomMenu("More").map{t=>
+          <a class="razbot" href="@t._2">@t._1</a><br>
+        }
       </td>
       <td style="width:200px;vertical-align: top">
-	<strong class="razbots">Support</strong> <br>
-	<a class="razbot" href="/doe/support">Support</a> <br>
-	<a class="razbot" href="@web().tos">Terms of Service</a> <br>
-	<a class="razbot" href="@web().privacy">Privacy Policy</a> <br>
-	@web().bottomMenu("Support").map{t=>
-	  <a class="razbot" href="@t._2">@t._1</a><br>
-	}
+        <strong class="razbots">Support</strong> <br>
+        <a class="razbot" href="/doe/support">Support</a> <br>
+        <a class="razbot" href="@web().tos">Terms of Service</a> <br>
+        <a class="razbot" href="@web().privacy">Privacy Policy</a> <br>
+        @web().bottomMenu("Support").map{t=>
+          <a class="razbot" href="@t._2">@t._1</a><br>
+        }
       </td>
       <td style="width:200px;vertical-align: top">
-	<strong class="razbots">Social</strong><br>
-	<a class="razbot" href="http://twitter.com/@web().twitter">Twitter</a><br>
-	<a class="razbot" href="@web().blog.urlRelative">Blog</a> <br>
-	@web().gplus.map{g=>
-	  <a class="razbot" href="@g">Google+</a><br>
-	}
-	@web().bottomMenu("Social").map{t=>
-	  <a class="razbot" href="@t._2">@t._1</a><br>
-	}
+        <strong class="razbots">Social</strong><br>
+        <a class="razbot" href="http://twitter.com/@web().twitter">Twitter</a><br>
+        <a class="razbot" href="@web().blog.urlRelative">Blog</a> <br>
+        @web().gplus.map{g=>
+          <a class="razbot" href="@g">Google+</a><br>
+        }
+        @web().bottomMenu("Social").map{t=>
+          <a class="razbot" href="@t._2">@t._1</a><br>
+        }
       </td>
     </tr>
   </table>

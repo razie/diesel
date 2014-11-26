@@ -1,7 +1,6 @@
 package controllers
 
 import razie.RString._
-import admin.Audit
 import model._
 import play.api.data.Forms._
 import play.api.mvc._
@@ -14,11 +13,18 @@ import razie.XpSolver
 import razie.Snakk._
 import org.bson.types.ObjectId
 import scala.Some
-import model.WikiLink
-import model.User
+import razie.wiki.model.WWrapper
+import razie.wiki.model.UWID
+import razie.wiki.model.WikiXpSolver
+import razie.wiki.model.Wikis
+import razie.wiki.model.WikiWrapper
+import razie.wiki.parser.ParserSettings
+import razie.wiki.model.ILink
+import razie.wiki.model.WikiLink
+import razie.wiki.model.WID
 
-class UserStuff (val user:User) {
-  lazy val events = UserStuff.events(user)
+class UserStuff (val realm:String, val user:User) {
+  lazy val events = UserStuff.events(realm, user)
   private lazy val alocs = events flatMap (_._5 \ "Venue" \@ "loc")
   lazy val locs = alocs.filter (! _.isEmpty).map(_.replaceFirst("ll:",""))
     //xp(user, "Calendar") \ UserStuff.Race \ "Venue" \@ "loc"}.filter(! _.isEmpty).map(_.replaceFirst("ll:",""))
@@ -45,9 +51,9 @@ object UserStuff extends RazController {
 
   def wiki(id: String, cat: String, name: String) =
     WikiLink(UWID("User", new ObjectId(id)), WID(cat, name).uwid.get, "").page.map(w =>
-	Wiki.show (WID("WikiLink", w.name))
+        Wiki.show (WID("WikiLink", w.name))
       ).getOrElse(
-	Action { implicit request => Redirect (Wiki.w (cat, name)) }
+        Action { implicit request => Redirect (Wiki.w (cat, name)) }
       )
 
   def Race = admin.Config.sitecfg("racecat").getOrElse("Race")
@@ -55,31 +61,31 @@ object UserStuff extends RazController {
   /** user / Calendar / Race / Venue
    * @return (what,when)
    */
-  def events(u: User): List[(ILink, String, DateTime, ILink, Snakk.Wrapper[WWrapper])] = {
-    val dates = u.pages("Calendar").flatMap{ uw =>
-      val node = new WikiWrapper(WID("Calendar", uw.uwid.nameOrId))
+  def events(realm:String, u: User): List[(ILink, String, DateTime, ILink, Snakk.Wrapper[WWrapper])] = {
+    val dates = u.pages(realm, "Calendar").flatMap{ uw =>
+      val node = new WikiWrapper(WID("Calendar", uw.uwid.nameOrId).r(realm))
       val root = new razie.Snakk.Wrapper(node, WikiXpSolver)
 
       // TODO optimize this - lots of lookups...
       val races = (root \ "*" \ Race) ++ (root \ "*" \ "Event") ++ (root \ "*" \ "Training")
       val dates = races.map { race =>
-	val wr = new Snakk.Wrapper(race, races.ctx)
-	(race.mkLink,
-	wr \@ "date",
-	ILink(WID("Venue", wr \@ "venue")),
-	wr
-	)
+        val wr = new Snakk.Wrapper(race, races.ctx)
+        (race.mkLink,
+        wr \@ "date",
+        new ILink(WID("Venue", wr \@ "venue")),
+        wr
+        )
       }.filter(_._2 != "")
       // filter those that parse successfuly
       dates.map(x => (x._1, x._2, DateParser.apply(x._2), x._3, x._4)).filter(_._3.successful).map(t => (t._1, t._2, t._3.get, t._4, t._5)
-	  )
+          )
     }
     dates.sortWith((a, b) => a._3 isBefore b._3)
   }
 
-  def xp(u: User, cat: String) = {
+  def xp(realm:String, u: User, cat: String) = {
     new XListWrapper(
-      u.pages(cat).map { uw => new WikiWrapper(WID(cat, uw.uwid.nameOrId)) },
+      u.pages(realm, cat).map { uw => new WikiWrapper(WID(cat, uw.uwid.nameOrId).r(realm)) },
       WikiXpSolver)
   }
 
@@ -96,8 +102,7 @@ object DateParser extends RegexParsers {
   type PS = Parser[DateTime]
   def apply(input: String) = parseAll(dates, input)
 
-  val mth1 = WikiParser.mth1
-  val mth2 = WikiParser.mth2
+  import ParserSettings.{mth1, mth2}
 
   def dates = date1 | date2
   def date1 = """\d\d\d\d""".r ~ "-" ~ """\d\d""".r ~ "-" ~ """\d\d""".r ^^ { case y ~ _ ~ m ~ _ ~ d => new DateTime().withYear(y.toInt).withMonthOfYear(moy(m)).withDayOfMonth(d.toInt) }
@@ -113,7 +118,7 @@ object DateParser extends RegexParsers {
 object DateParserTA extends App {
   //  def main (argv:Array[String]) {
   val u = Users.findUserByUsername("Razie")
-  println(new UserStuff(u.get).pastEvents.mkString("\n"))
+  println(new UserStuff(Wikis.RK, u.get).pastEvents.mkString("\n"))
   //  }
 }
 
@@ -146,19 +151,19 @@ object Maps extends razie.Logging {
   def latlong(addr: String): Option[(String, String)] = {
     try {
       val resp = Snakk.json (
-	Snakk.url(
-	  "http://maps.googleapis.com/maps/api/geocode/json?address=" + addr.toUrl + "&sensor=false",
-	  Map.empty,
-	  //	    Map("privatekey" -> "6Ld9uNASAAAAADEg15VTEoHjbLmpGTkI-3BE3Eax", "remoteip" -> "kk", "challenge" -> challenge, "response" -> response),
-	  "GET"))
+        Snakk.url(
+          "http://maps.googleapis.com/maps/api/geocode/json?address=" + addr.toUrl + "&sensor=false",
+          Map.empty,
+          //        Map("privatekey" -> "6Ld9uNASAAAAADEg15VTEoHjbLmpGTkI-3BE3Eax", "remoteip" -> "kk", "challenge" -> challenge, "response" -> response),
+          "GET"))
 
       Some((
-	resp \ "results" \ "geometry" \ "location" \@@ "lat",
-	resp \ "results" \ "geometry" \ "location" \@@ "lng"))
+        resp \ "results" \ "geometry" \ "location" \@@ "lat",
+        resp \ "results" \ "geometry" \ "location" \@@ "lng"))
     } catch {
       case e @ (_ :Throwable) => {
-	error ("ERR_COMMS can't geocode address", e)
-	None
+        error ("ERR_COMMS can't geocode address", e)
+        None
       }
     }
   }

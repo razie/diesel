@@ -1,32 +1,17 @@
 package model
 
-import com.mongodb.casbah.Imports._
-import org.joda.time.DateTime
-import admin.Audit
-import com.novus.salat._
-import com.novus.salat.annotations._
-import db.RazSalatContext._
-import admin.CipherCrypt
-import java.net.URLEncoder
-import com.mongodb.util.JSON
-import razie.Log
-import controllers.UserStuff
-import model.Sec._
-import controllers.Maps
-import controllers.RazController
-import admin.MailSession
-import controllers.Emailer
-import db.RTable
 import scala.annotation.StaticAnnotation
-import db.ROne
-import db.RMany
-import db.RCreate
-import db.RDelete
-import db.RUpdate
-import razie.|>._
-import db.REntity
-import controllers.Club
+import org.joda.time.DateTime
+import com.mongodb.casbah.Imports._
 import admin.Config
+import controllers.Club
+import razie.db.REntity
+import razie.db.RMany
+import razie.db.ROne
+import razie.db.RTable
+import razie.wiki.model.WID
+import razie.|>._
+import razie.wiki.Sec._
 
 /** a user that may or may not have an account - or user group */
 trait TRacerKidInfo {
@@ -46,7 +31,7 @@ trait TRacerKidInfo {
 }
 
 /** a user that may or may not have an account - or user group */
-@db.RTable
+@RTable
 case class RacerKidInfo(
   firstName: String,
   lastName: String,
@@ -76,7 +61,7 @@ case class RacerKidInfo(
  *  User -> Assoc(Parent) -> RK(Normal) -> RKI (Spouse)
  *
  */
-@db.RTable
+@RTable
 case class RacerKid(
   ownerId: ObjectId, // owner user id - user that created/owns this info: parent or club or ... even club admin?
   userId: Option[ObjectId] = None, // populated if this represents a site user
@@ -121,7 +106,7 @@ case class RacerWiki(
 }
 
 /** relationships between RK from -Parent-> to */
-@db.RTable
+@RTable
 case class RacerKidAssoc(
   from: ObjectId, // User: parent, owner, club...
   to: ObjectId, // RacerKid: kid
@@ -138,7 +123,7 @@ case class RacerKidAssoc(
 }
 
 /** volunteer hours */
-@db.RTable
+@RTable
 case class VolunteerH(
   rkaId: ObjectId, // association for which I track volunteer events
   hours: Int, // hours in this entry
@@ -195,7 +180,7 @@ object RacerKidz {
 
   def findByParentUser(id: ObjectId) = {
     val mine = RMany[RacerKidAssoc]("from" -> id, "assoc" -> RK.ASSOC_PARENT) map (_.to) flatMap (findById)
-    //	  val fromOthers = RMany[RacerKid]("userId" -> id) flatMap (x=> RMany[RacerKidAssoc]("from" -> x._id, "what" -> RK.ASSOC_PARENT)) map (_.to) flatMap (findById)
+    //    val fromOthers = RMany[RacerKid]("userId" -> id) flatMap (x=> RMany[RacerKidAssoc]("from" -> x._id, "what" -> RK.ASSOC_PARENT)) map (_.to) flatMap (findById)
     mine //::: fromOthers
   }
   def findByParentRK(id: ObjectId) = RMany[RacerKidAssoc]("from" -> id, "assoc" -> RK.ASSOC_PARENT) map (_.to) flatMap (findById)
@@ -203,7 +188,7 @@ object RacerKidz {
   /** find all RK associated to user */
   def findAssocForUser(id: ObjectId) = {
     val mine = RMany[RacerKidAssoc]("from" -> id)
-    //	  val fromOthers = RMany[RacerKid]("userId" -> id) flatMap (x=> RMany[RacerKidAssoc]("from" -> x._id, "what" -> RK.ASSOC_PARENT)) map (_.to) flatMap (findById)
+    //    val fromOthers = RMany[RacerKid]("userId" -> id) flatMap (x=> RMany[RacerKidAssoc]("from" -> x._id, "what" -> RK.ASSOC_PARENT)) map (_.to) flatMap (findById)
     mine //::: fromOthers
   }
 
@@ -217,7 +202,7 @@ object RacerKidz {
 
   def findByClub(club: Club) = {
     val mine = findAssocByClub(club) map (_.to) flatMap (findById)
-    //	  val fromOthers = RMany[RacerKid]("userId" -> id) flatMap (x=> RMany[RacerKidAssoc]("from" -> x._id, "what" -> RK.ASSOC_PARENT)) map (_.to) flatMap (findById)
+    //    val fromOthers = RMany[RacerKid]("userId" -> id) flatMap (x=> RMany[RacerKidAssoc]("from" -> x._id, "what" -> RK.ASSOC_PARENT)) map (_.to) flatMap (findById)
     mine //::: fromOthers
   }
 

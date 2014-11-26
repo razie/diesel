@@ -2,11 +2,11 @@
 included in mainUserC as the right hand side info box
 *********@
 @(user: model.User, item:Int, ui:controllers.UserStuff)
-
 @import org.joda.time.DateTime
 @import razie.RString._
 @import controllers.XListWrapper
 @import controllers.Wiki
+@import razie.wiki.model.Wikis
 
 @active(i:Int) = @{
   if(i == item) "active" else ""
@@ -41,7 +41,7 @@ included in mainUserC as the right hand side info box
 }
 
 @blogs=@{
-  user.pages("Blog", "Forum")
+  user.pages(Wikis.DFLT, "Blog", "Forum")
 }
 
 @item match {
@@ -50,10 +50,10 @@ included in mainUserC as the right hand side info box
       <b>Stuff to do</b>
       <ul>
       @for(t <- user.tasks) {
-	<li><a style="color:red;font-weight:bold" href="/user/task/@t.name">@t.desc</a></li>
+        <li><a style="color:red;font-weight:bold" href="/user/task/@t.name">@t.desc</a></li>
       }
       @for(t <- regs) {
-	<li><a style="color:red;font-weight:bold" href="@routes.Club.doeClubUserReg(t._id.toString)">Pending registration forms for @t.clubName</a></li>
+        <li><a style="color:red;font-weight:bold" href="@routes.Club.doeClubUserReg(t._id.toString)">Pending registration forms for @t.clubName</a></li>
       }
       </ul>
     } else {
@@ -64,11 +64,11 @@ included in mainUserC as the right hand side info box
       <b>Recent events:</b>
       <ul>
       @for(t <- evBefore.takeRight(scala.math.max(3, 10-evAfter().size))) {
-	<li>@Html(model.Wikis.formatWikiLink(t._1.wid,t._1.wid.name, t._2,Some(t._1.label))._1)
-	@if(t._4.wid.name != null && t._4.wid.name.length>0) {
-	  at @Html(t._4.format._1)
-	}
-	</li>
+        <li>@Html(model.Wikis.formatWikiLink(t._1.wid,t._1.wid.name, t._2,Some(t._1.label))._1)
+        @if(t._4.wid.name != null && t._4.wid.name.length>0) {
+          at @Html(t._4.format._1)
+        }
+        </li>
       }
       </ul>
     } else {
@@ -78,11 +78,11 @@ included in mainUserC as the right hand side info box
       <b>Coming up:</b>
       <ul>
       @for(t <- evAfter.take(math.max(7, 10-evBefore().size))) {
-	<li>@Html(model.Wikis.formatWikiLink(t._1.wid,t._1.wid.name,t._2,Some(t._1.label))._1)
-	@if(t._4.wid.name != null  && t._4.wid.name.length>0) {
-	  at @Html(t._4.format._1)
-	}
-	</li>
+        <li>@Html(model.Wikis.formatWikiLink(t._1.wid,t._1.wid.name,t._2,Some(t._1.label))._1)
+        @if(t._4.wid.name != null  && t._4.wid.name.length>0) {
+          at @Html(t._4.format._1)
+        }
+        </li>
       }
     @if(evAfter.size>7) {
       <li>...</li>
@@ -101,7 +101,7 @@ included in mainUserC as the right hand side info box
 case 2 => {
 
   @util.utilMap(
-      (controllers.UserStuff.xp(user, "Calendar") \ UserStuff.Race \ "Venue").asInstanceOf[XListWrapper[_]],
+      (controllers.UserStuff.xp(Wikis.DFLT, user, "Calendar") \ UserStuff.Race \ "Venue").asInstanceOf[XListWrapper[_]],
       user.ll
       )
   }
@@ -128,7 +128,7 @@ case 3 => {
     <a class="btn btn-mini" href="/wikie/create/Blog">Blogs &raquo;</a>)</p>
     <ul>
       @for(w <- blogs.filter(_.role == "Owner")) {
-	<li><a href="@controllers.Wiki.w(w.wid)">@model.Wikis.label(w.wid)</a></li>
+        <li><a href="@controllers.Wiki.w(w.wid)">@model.Wikis.label(w.wid)</a></li>
       }
     </ul>
   } else {
@@ -140,10 +140,10 @@ case 3 => {
 case 4 => {
 
   Owned:
-  @if(user.pages("FormDesign").filter(_.role == "Owner").size>0) {
+  @if(user.pages(Wikis.DFLT, "FormDesign").filter(_.role == "Owner").size>0) {
   <a class="btn btn-mini" href="/wikie/create/Note">Add &raquo;</a></p>
   <ul>
-    @for(w <- user.pages("FormDesign").filter(_.role == "Owner")) {
+    @for(w <- user.pages(Wikis.DFLT, "FormDesign").filter(_.role == "Owner")) {
       <li><a href="@controllers.Wiki.w(w.wid)">@model.Wikis.label(w.wid)</a></li>
     }
   </ul>
@@ -154,5 +154,5 @@ case 4 => {
   }
 
 }
-	    </div>
-	  </div>
+            </div>
+          </div>

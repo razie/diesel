@@ -1,23 +1,22 @@
 /**
  *   ____    __    ____  ____  ____,,___     ____  __  __  ____
- *  (  _ \  /__\  (_   )(_  _)( ___)/ __)   (  _ \(  )(  )(  _ \	   Read
- *   )	 / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <     README.txt
+ *  (  _ \  /__\  (_   )(_  _)( ___)/ __)   (  _ \(  )(  )(  _ \           Read
+ *   )   / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <     README.txt
  *  (_)\_)(__)(__)(____)(____)(____)(___/   (__)  (______)(____/    LICENSE.txt
  */
 package controllers
 
-import model.Sec.EncryptedS
+import razie.wiki.Sec.EncryptedS
 import play.api.mvc.Action
 import razie.Logging
-import model.Wikis
-import model.WikiEntry
-import model.WikiDomain
 import razie.gg
 import org.json.JSONArray
+import razie.wiki.dom.WikiDomain
+import razie.wiki.model.{Wikis, WikiEntry}
+import razie.wiki.util.js
 import scala.collection.mutable.ListBuffer
 import org.json.JSONObject
 import scala.collection.mutable.HashMap
-import admin.js
 
 /** graph wiki controller */
 object WG extends Logging {
@@ -34,16 +33,16 @@ object WG extends Logging {
     def tojmap = {
       val s = new ListBuffer[Any]()
       tosg.dag.foreachNode(
-	(x: gg.SNode[WNode, String], v: Int) => {
-	  s append Map(
-	    "id" -> x.value.name,
-	    "name" -> x.value.name,
-	    "url" -> s"http://localhost:9000/gapi/d3dom/${x.value.name}",
-	    "xurl" -> s"http://localhost:9000/gapi/d3dom/${x.value.name}",
-	    "links" -> x.glinks.map(l => Map(
-	      "to" -> l.z.value.name,
-	      "type" -> "?")).toList)
-	})
+        (x: gg.SNode[WNode, String], v: Int) => {
+          s append Map(
+            "id" -> x.value.name,
+            "name" -> x.value.name,
+            "url" -> s"http://localhost:9000/gapi/d3dom/${x.value.name}",
+            "xurl" -> s"http://localhost:9000/gapi/d3dom/${x.value.name}",
+            "links" -> x.glinks.map(l => Map(
+              "to" -> l.z.value.name,
+              "type" -> "?")).toList)
+        })
       s.toList
     }
 
@@ -51,13 +50,13 @@ object WG extends Logging {
 
     def toJIT = {
       jt(tojmap) {
-	case ("/", "xurl", u) => ("data" -> Map(
-	  "$dim" -> "10",
-	  "url" -> u))
-	case (path, "links", l: List[_]) => ("adjacencies" -> jt(l, path) {
-	  case (_, "to", t) => ("nodeTo", t)
-	  case (_, "type", t) => ("data" -> Map("weight" -> "1"))
-	})
+        case ("/", "xurl", u) => ("data" -> Map(
+          "$dim" -> "10",
+          "url" -> u))
+        case (path, "links", l: List[_]) => ("adjacencies" -> jt(l, path) {
+          case (_, "to", t) => ("nodeTo", t)
+          case (_, "type", t) => ("data" -> Map("weight" -> "1"))
+        })
       }
     }
 
@@ -66,18 +65,18 @@ object WG extends Logging {
       val g: gg.NoCyclesGraphLike[gg.SNode[WNode, String], gg.SLink[WNode, String]] = tosg.dag
 
       def node(x: gg.SNode[WNode, String]): Map[String, Any] = {
-	g.collect(x, None)
-	Map(
-	  "name" -> x.value.name,
-	  "url" -> s"http://localhost:9000/gapi/d3dom/${x.value.name}",
-	  "children" -> (x.glinks.collect {
-	    case l if (!g.isNodeCollected(l.z)) => node(l.z)
-	    case l if (g.isNodeCollected(l.z)) => Map("name" -> l.z.value.name)
-	  }.toList))
+        g.collect(x, None)
+        Map(
+          "name" -> x.value.name,
+          "url" -> s"http://localhost:9000/gapi/d3dom/${x.value.name}",
+          "children" -> (x.glinks.collect {
+            case l if (!g.isNodeCollected(l.z)) => node(l.z)
+            case l if (g.isNodeCollected(l.z)) => Map("name" -> l.z.value.name)
+          }.toList))
       }
       jt(node(g.root)) {
-	// prune empty lists
-	case (_, "children", x: List[_]) if (x.isEmpty) => ("" -> x)
+        // prune empty lists
+        case (_, "children", x: List[_]) if (x.isEmpty) => ("" -> x)
       }
     }
   }
@@ -152,7 +151,7 @@ object Gapi extends RazController with Logging {
     val LPAT = """\[\[([^\]\|]*)(\|[^\]\]]*)?\]\]""".r
     val p1 = (LPAT.findAllIn(c).matchData.map { m =>
       Map("topic" -> m.group(1), "name" -> (if (m.group(2) != null) m.group(2).substring(1) else m.group(1)),
-	"url" -> ("http://localhost:9000/gapi/wp1/"+realm+"/" + m.group(1)))
+        "url" -> ("http://localhost:9000/gapi/wp1/"+realm+"/" + m.group(1)))
     }).toList
 
     val g = Map("name" -> topic, "children" -> p1)

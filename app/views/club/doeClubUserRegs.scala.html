@@ -32,9 +32,9 @@
 
 @mnglink(row:Map[String,String],k:String,v:String)={
   @k match {
-	case "regStatus" => {
-		@regStatusColored(v, Some(routes.Club.doeClubUserReg(row.get("id").get).toString))
-		}
+        case "regStatus" => {
+                @regStatusColored(v, Some(routes.Club.doeClubUserReg(row.get("id").get).toString))
+                }
     case _ => {@v}
   }
 }
@@ -53,10 +53,10 @@
   </div>
 } else {
   @util.utilSimpleTable(tab,
-	Seq("club" -> "Club",
-		"year"->"Year",
-		"role"->"Role",
-		"regStatus" -> "Status"),
+        Seq("club" -> "Club",
+                "year"->"Year",
+                "role"->"Role",
+                "regStatus" -> "Status"),
     Some(mnglink))
 
   @missingRegs.map {club=>

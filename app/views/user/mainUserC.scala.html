@@ -1,13 +1,13 @@
 @(salutation:String, user: model.User, item:Int)
-
 @import org.joda.time.DateTime
+@import model.Wikis
 
       <div class="well">
-	<div class="row">
+        <div class="row">
 @uFragInfo1(salutation, user, item)
 
-@uFragInfo2(user, item, new controllers.UserStuff(user))
-	</div>
+@uFragInfo2(user, item, new controllers.UserStuff(Wikis.DFLT, user))
+        </div>
       </div>
 
 

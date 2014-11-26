@@ -2,34 +2,35 @@ package model
 
 import com.mongodb.casbah.Imports._
 import org.joda.time.DateTime
-import admin.Audit
 import com.novus.salat._
 import com.novus.salat.annotations._
-import db.RazSalatContext._
+import razie.db.RazSalatContext._
 import admin.CipherCrypt
 import java.net.URLEncoder
 import com.mongodb.util.JSON
 import razie.Log
 import controllers.UserStuff
-import model.Sec._
+import razie.wiki.Sec._
 import controllers.Maps
 import controllers.RazController
-import admin.MailSession
 import controllers.Emailer
-import db.RTable
+import razie.db.RTable
 import scala.annotation.StaticAnnotation
-import db.ROne
-import db.RMany
-import db.RCreate
-import db.RDelete
-import db.RUpdate
-import db.REntity
+import razie.db.ROne
+import razie.db.RMany
+import razie.db.RCreate
+import razie.db.RDelete
+import razie.db.RUpdate
+import razie.db.REntity
 import controllers.Club
 import razie.cout
 import razie.cdebug
+import razie.wiki.model.WikiLink
+import razie.wiki.model.Wikis
+import razie.wiki.model.UWID
 
 /** a tribe - or user group */
-@db.RTable
+@RTable
 case class Tribe (
     uwid:UWID,
     wl:WikiLink,

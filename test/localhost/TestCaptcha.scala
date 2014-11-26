@@ -20,11 +20,11 @@ class TestCaptcha extends FlatSpec with ShouldMatchers with UrlTester {
   val challenge = "x"
   val response = "x"
 
-//	  val resp = Snakk.body(
-//	  Snakk.url(
-//	    "http://www.google.com/recaptcha/api/verify",
-//	    Map("privatekey" -> "6Ld9uNASAAAAADEg15VTEoHjbLmpGTkI-3BE3Eax", "remoteip" -> "kk", "challenge" -> challenge, "response" -> response),
-//	    "POST"))
+//        val resp = Snakk.body(
+//        Snakk.url(
+//          "http://www.google.com/recaptcha/api/verify",
+//          Map("privatekey" -> "6Ld9uNASAAAAADEg15VTEoHjbLmpGTkI-3BE3Eax", "remoteip" -> "kk", "challenge" -> challenge, "response" -> response),
+//          "POST"))
 //
 //   println ( "CAPTCHCA RESP=" + resp)
 

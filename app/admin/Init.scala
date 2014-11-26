@@ -1,17 +1,10 @@
 package admin
 
-import model.Enc
-import db.RazMongo
-import model.User
-import model.UserGroup
-import model.Users
-import model.WID
-import model.WikiEntry
+import model.{User, UserGroup, Users}
 import razie.Logging
-import com.mongodb.casbah.Imports._
-import com.novus.salat._
-import com.novus.salat.annotations._
-import razie.Log
+import razie.db.RazMongo
+import razie.wiki.Enc
+import razie.wiki.model.{Wikis, WikiEntry}
 
 /** not really used anymore - used in the beginning to reset the database */
 object Init extends Logging {
@@ -25,29 +18,29 @@ object Init extends Logging {
 
     for (
       t <- Seq(
-	"Audit",
-	"AuditCleared",
-	"Comment",
-	"CommentStream",
-	"DoSec",
-	"OldStuff",
-	"ParentChild",
-	"Profile",
-	"RegdEmail",
-	"Stage",
-	"Task",
-	"User",
-	"UserEvent",
-	"UserGroup",
-	"UserOld",
-	"UserTask",
-	"UserWiki",
-	"Ver",
-	"WikiAudit",
-	"WikiCount",
-	"WikiEntry",
-	"WikiEntryOld",
-	"WikiLink")
+        "Audit",
+        "AuditCleared",
+        "Comment",
+        "CommentStream",
+        "DoSec",
+        "OldStuff",
+        "ParentChild",
+        "Profile",
+        "RegdEmail",
+        "Stage",
+        "Task",
+        "User",
+        "UserEvent",
+        "UserGroup",
+        "UserOld",
+        "UserTask",
+        "UserWiki",
+        "Ver",
+        "WikiAudit",
+        "WikiCount",
+        "WikiEntry",
+        "WikiEntryOld",
+        "WikiLink")
     ) RazMongo(t).drop
 
     import model.Perm._
@@ -71,7 +64,7 @@ object Init extends Logging {
     tasks map (ug => Users.create(ug))
 
     def w(cat: String, name: String, wiki: String = "") =
-      WikiEntry(cat, model.Wikis formatName name, name, model.Wikis.MD, wiki, razie._id)
+      WikiEntry(cat, Wikis formatName name, name, Wikis.MD, wiki, razie._id)
 
     def wr(cat: String, name: String, wiki: String = "") = w(cat, name, wiki).cloneProps(Map("reserved" -> "yes"), razie._id)
 
@@ -87,7 +80,7 @@ object Init extends Logging {
 
       wr("Page", "Nothing"),
       wr("Page", "home", "{{redirect:/}}"),
-//	wr("Page", "Terms_of_Service", terms),
+//      wr("Page", "Terms_of_Service", terms),
       wr("Page", "wiki", "Main wiki entry page - please follow a category: [[list:Category]]"))
     pages map (_.create)
   }

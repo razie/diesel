@@ -1,9 +1,10 @@
 @**************
 render a page in a site rather than a normal page - some missing stuff
 **************@
-@(wid:model.WID, iname:Option[String], page:Option[model.WikiEntry])(implicit au:Option[model.User], request:Request[_])
+@(wid:razie.wiki.model.WID, iname:Option[String], page:Option[razie.wiki.model.WikiEntry])(implicit au:Option[model.User], request:Request[_])
+@import razie.wiki.model.Wikis
 
-@htmlHead(""+page.flatMap(_.contentTags.get("sitelabel")).getOrElse(page.map(_.label).getOrElse(model.Wikis(wid.getRealm).label(wid))), page.flatMap(_.contentTags.get("css")).orElse(web().css))
+@htmlHead(""+page.flatMap(_.contentTags.get("sitelabel")).getOrElse(page.map(_.label).getOrElse(razie.wiki.model.Wikis(wid.getRealm).label(wid))), page.flatMap(_.contentTags.get("css")).orElse(web().css))
 
 @showads() = @{
   page.isDefined && page.get.contentTags.get("showads").isDefined
@@ -12,9 +13,9 @@ render a page in a site rather than a normal page - some missing stuff
 @web()=@{model.Website(request) getOrElse model.Website.dflt}
 
 @if(page.isDefined && page.get.contentTags.get("logo").isDefined) {
-  @navbar(au, model.Wikis.RK, false, "Menu", page.get.contentTags.get("logo"), page.get.contentTags.get("siteurl"), true, page.get.contentTags.get("club").map("?club="+_).getOrElse(""))(au,Some(request))
+  @navbar(au, Wikis.RK, false, "Menu", page.get.contentTags.get("logo"), page.get.contentTags.get("siteurl"), true, page.get.contentTags.get("club").map("?club="+_).getOrElse(""))(au,Some(request))
 } else {
-  @navbar(au, model.Wikis.RK, false, "Menu", None, None, true)(au,Some(request))
+  @navbar(au, Wikis.RK, false, "Menu", None, None, true)(au,Some(request))
 }
 
 <div class="container">
@@ -26,7 +27,7 @@ render a page in a site rather than a normal page - some missing stuff
     <div class="span12">
   }
       <div class="well">
-	@wiki.wikiFrag(wid,au,false,page, iname, true, false, true)
+        @wiki.wikiFrag(wid,au,false,page, iname, true, false, true)
       </div>
 
       @wiki.wikiAddMore(wid, page, au)
@@ -39,10 +40,10 @@ render a page in a site rather than a normal page - some missing stuff
     @if(showads()) {
       <div class="span3">
 @*************
-	@wiki.wikiFrag(WID("Admin","Right"),au,true, None)
+        @wiki.wikiFrag(WID("Admin","Right"),au,true, None)
 *************@
 
-	@addRight()
+        @addRight()
       </div>
       }
 

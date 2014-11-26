@@ -1,16 +1,16 @@
 @********
 print form body - no header/footer - reuse in other screens
 *********@
-@(wid:model.WID, iname:Option[String], page:Option[model.WikiEntry], au:Option[model.User], errors:Map[String,String], canEdit:Boolean, print:Boolean=false, simple:Boolean=false)
+@(wid:razie.wiki.model.WID, iname:Option[String], page:Option[razie.wiki.model.WikiEntry], au:Option[model.User], errors:Map[String,String], canEdit:Boolean, print:Boolean=false, simple:Boolean=false)
 @import model._
 
 @if(!errors.isEmpty) {
 <div class="alert alert-error">
   <font style="color:red"><strong>Form has errors</strong> (was not saved):</font><ul>
   <font style="color:red">
-	@errors.map {err=>
-		<li><b>@err._1</b>  => @err._2 </li>
-		}
+        @errors.map {err=>
+                <li><b>@err._1</b>  => @err._2 </li>
+                }
   </ul></font>
 </div>
 }
@@ -22,9 +22,9 @@ print form body - no header/footer - reuse in other screens
 <div class="alert alert-error">
   <strong><a id="errors">Errors:</a></strong><ul>
   <font style="color:red">
-	@errors.map {err=>
-		<li><b>@err._1</b>  => @err._2 </li>
-		}
+        @errors.map {err=>
+                <li><b>@err._1</b>  => @err._2 </li>
+                }
   </ul></font>
 </div>
 }
