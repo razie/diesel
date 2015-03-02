@@ -1,0 +1,97 @@
+@******
+manage the volunteer hours by club admin
+******@
+@(reg:model.Reg, rkas:List[model.RacerKidAssoc], myForm: Form[_], club:controllers.Club, user:model.User)
+@import org.bson.types.ObjectId
+
+@htmlHeadBar("Volunteer hours", Option(user))
+
+<div class="container"> <div class="row">
+@views.html.user.leftmenu(15, user)
+
+<div class="span9">
+
+@vols=@{
+  for (
+      rka <- rkas;
+      vh <- model.RacerKidz.findVolByRkaId(rka._id.toString)) yield
+    Map("rkaId" -> rka._id.toString,
+        "who" -> rka.rk.get.info.ename,
+        "hours"->vh.hours.toString,
+        "desc"->vh.desc,
+        "comment"->vh.comment,
+        "approved"->vh.status,
+        "delete"->vh._id.toString
+        )
+}
+
+@mnglink(row:Map[String,String],k:String,v:String)={
+  @k match {
+    case "delete" => {
+      <a href="@routes.Club.doeVolDelete(row("rkaId"), v)" class="btn btn-mini">Delete</a>
+      }
+
+    case _ => { @v }
+  }
+}
+
+@util.utilSimpleTable(vols.iterator,
+  Seq("who" -> "Who", "hours" -> "Hours", "desc"->"What", "comment" -> "Desc", "approved" -> "Ok"), Some(mnglink))
+
+
+@import helper.twitterBootstrap._
+@import util.razText
+
+@club.props.get("VolunteerMessage").map { m =>
+  <div class="well">@m </div>
+}
+
+@helper.form(action=routes.Club.doeVolAdded(reg._id.toString), 'class->"well") {
+Add more hours:
+<table>
+    <tr>
+        <td>
+            <label>Who</label>
+            <select class="input-small" name="who">
+            @rkas.map { rka =>
+                <option value="@rka._id.toString">@rka.rk.get.info.ename</option>
+            }
+            </select>
+        </td>
+        <td>
+            <label>Hours</label>
+            <input type="text" class="input-small" name="hours">
+        </td>
+        <td>
+        <label>Description</label>
+        <select class="input-small" name="desc">
+        @club.volunteering.map { rka =>
+            <option value="@rka">@rka</option>
+        }
+        </select>
+        </td>
+        <td>
+            <label>Approver</label>
+            <select class="input-small" name="approver">
+            @club.approvers.map { t =>
+                <option value="@t._2">@t._1</option>
+            }
+            </select>
+
+        </td>
+    </tr>
+</table>
+    <label>Comment (when, what you did)</label>
+    <textarea lines=3 cols=30 class="input-xxlarge" name="comment"></textarea>
+  <button type="submit" class="btn btn-primary">Add</button>
+}
+
+  <p><small>By maintaining a profile, you agree to the <a href="@controllers.Wiki.w("Terms of Service")">Terms of Service</a></small><p>
+
+</div>
+
+  </div>
+  <hr>
+  @htmlFooter(ads=true)
+</div> <!-- /container -->
+@htmlBottom()

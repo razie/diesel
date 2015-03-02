@@ -8,28 +8,30 @@
 
 // CA options for {{
 var braTags =[
+  'img URL',
+  'video URL',
+  'photo URL',
+  'tag name',
+  'xpl path-expression',
+  'section',
+  'code [language]',
+  'red text-to-redify',
+  'roles',
+  'fiddle',
   'by', 'club',
   'where', 'at', 'place', 'venue',
   'loc:ll|s|url',
   'when', 'on', 'date',
-  'xpl',
-  'roles',
-  'ad',
+  'ad [squaretop|squareright]',
   'rk',
   'widget',
   'f',
   'r1.delimited',
   'r1.table',
-  'section',
   'template',
-  'img',
-  'video',
-  'photo',
   'slideshow',
-  'fiddle',
-  'code',
-  'def',
-  'lambda',
+  'def name:signature',
+  'lambda name:signature',
   'call'
 ];
 
@@ -48,6 +50,8 @@ function cont(value){
   return value.indexOf(term) == 0;
 }
 
+var topics=[]; // populate with options for topics
+var ltopics=[]; // topics lowercase
 var contacts=[];
 
 $('#content').textcomplete([
@@ -75,6 +79,28 @@ $('#content').textcomplete([
     },
     replace: function (value) {
       return '$1.' + value.replace(/(\w)[: ].*/, '\$1') + ' ';
+    },
+    cache: false
+  },
+  { // sqbraTags
+    match: /(\[\[)((\w| )*)$/,
+    search: function (term, callback) {
+      callback(topics.filter(function(value, j){
+        return ltopics[j].indexOf(term) == 0;
+      }), topics.length <= 0); // false means this array is all the data
+      if(topics.length <= 0)
+        $.getJSON('/wikie/options', { q: term })
+            .done(function (resp) {
+              topics = resp;
+              for(i=0; i<topics.length; i++) ltopics[i] = topics[i].toLowerCase();
+              callback(topics.filter(function(value, j){
+                return ltopics[j].indexOf(term) == 0;
+              }))
+            })
+            .fail(function (){ callback([]); });
+    },
+    replace: function (value) {
+      return ['\[\[' + value + '\]\]', ''];
     },
     cache: false
   },

@@ -1,7 +1,6 @@
 @**************
 list all topics in category
 **************@
-
 @(realm:String, name:String, au:Option[model.User])
 @import razie.wiki.model.{Wikis, WID}
 @import model.Perm
@@ -17,9 +16,16 @@ list all topics in category
       <div class="well">
         <b>All</b> @name entries:
         <ul>
-        @for(p <- Wikis(realm).pages(name) if(controllers.Wiki.isVisible(au,p.props))) {
-          <li><a href="@controllers.Wiki.w(name, p.name, realm)">@p.label</a> </li>
-        }
+          @if(name.isEmpty) {
+            @for(c <- Wikis(realm).categories.map(_.name);
+                 p <- Wikis(realm).pages(c) if(controllers.Wiki.isVisible(au,p.props))) {
+              <li><a href="@controllers.Wiki.w(p.category, p.name, realm)">@p.label</a> </li>
+            }
+          } else {
+            @for(p <- Wikis(realm).pages(name) if(controllers.Wiki.isVisible(au,p.props))) {
+              <li><a href="@controllers.Wiki.w(p.category, p.name, realm)">@p.label</a> </li>
+            }
+          }
         </ul>
       </div>
     }

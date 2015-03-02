@@ -8,7 +8,7 @@ import org.joda.time.DateTime
 import com.novus.salat._
 import com.novus.salat.annotations._
 import razie.db.RazSalatContext._
-import admin.CipherCrypt
+import admin.{Config, CipherCrypt}
 import java.net.URLEncoder
 import razie.Log
 import controllers.UserStuff
@@ -17,16 +17,9 @@ import controllers.RazController
 import controllers.Emailer
 import scala.annotation.StaticAnnotation
 import model.proto.UserId
-import razie.wiki.model.WWrapper
-import razie.wiki.model.UWID
-import razie.wiki.model.Wikis
-import razie.wiki.model.ILink
-import razie.wiki.model.WikiEntry
-import razie.wiki.model.WikiLink
-import razie.wiki.model.WikiUser
+import razie.wiki.model._
 import razie.wiki.admin.MailSession
 import razie.wiki.admin.Audit
-import razie.wiki.model.WikiUsers
 import com.mongodb.DBObject
 import razie.db._
 import razie.Snakk
@@ -160,7 +153,9 @@ case class User(
   def myPages(realm:String, cat: String) = pages (realm, cat)
 
   def ownedPages(realm:String, cat: String) =
-    Wikis(realm).weTable(cat).find(Map("props.owner" -> id )) map (o=> UWID(cat, o._id.get))
+    Wikis(realm).weTable(cat).find(Map("props.owner" -> id, "category" -> cat)) map {o=>
+      WID(cat, o.getAs[String]("name").get).r(o.getAs[String]("realm").get)
+    }
 
   def auditCreated { Log.audit(AUDT_USER_CREATED + email) }
   def auditLogout { Log.audit(AUDT_USER_LOGOUT + email) }
@@ -374,7 +369,7 @@ object UserEvent {
 
 /** user factory and utils */
 object Users {
-  lazy val reservedUsers = Array("assets", "do", "wiki", "admin")
+  lazy val reservedUsers = Array("assets", "do", "wiki", "admin") ++ Config.reservedNames
 
   def fromJson(j: String) = Option(grater[User].asObject(JSON.parse(j).asInstanceOf[DBObject]))
 
@@ -393,7 +388,13 @@ object Users {
     ROne.raw[User]("_id" -> id).fold("???")(_.apply("userName").toString)
 
   /** find tasks for user */
-  def findTasks(id: ObjectId) = RMany[UserTask]("userId" -> id)
+  def findTasks(uid: ObjectId) = {
+    val x = RMany[UserTask]("userId" -> uid).toList
+    if(ROne[VolunteerH]("approver" -> findUserById(uid).map(_.email.dec), "approvedBy" -> None).isDefined)
+      UserTasks.approveVolunteerHours(uid) :: x
+    else
+      x
+  }
 
   def findPC(pid: ObjectId, cid: ObjectId) = ROne[ParentChild]("parentId" -> pid, "childId" -> cid)
   def findParentOf(cid: ObjectId) = ROne[ParentChild]("childId" -> cid)
@@ -442,6 +443,7 @@ case class UserTask(
 
 object UserTasks {
   final val START_REGISTRATION = "startRegistration"
+  final val APPROVE_VOL = "approveVolunteerHours"
 
   def userNameChgDenied(u: User) = UserTask(u._id, "userNameChgDenied")
   def verifyEmail(u: User) = UserTask(u._id, "verifyEmail")
@@ -449,6 +451,7 @@ object UserTasks {
   def chooseTheme(u: User) = UserTask(u._id, "chooseTheme")
   def setupRegistration(u: User) = UserTask(u._id, "setupRegistration")
   def setupCalendars(u: User) = UserTask(u._id, "setupCalendars")
+  def approveVolunteerHours(uid: ObjectId) = UserTask(uid, APPROVE_VOL)
 
   def some(u: User, what:String) = UserTask(u._id, what)
 
@@ -457,6 +460,7 @@ object UserTasks {
       case START_REGISTRATION => "Start registration for "+ut.args.get("club").mkString
       case "setupRegistration" => "Setup registration and forms"
       case "setupCalendars" => "Setup club calendars"
+      case APPROVE_VOL => "Approve volunteer hours"
       case _ => "?"
     }
   }

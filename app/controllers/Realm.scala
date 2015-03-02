@@ -45,7 +45,7 @@ object Realm extends RazController with Logging {
     val data = PlayTools.postData
     val name = data("name")
 
-    val wid = WID(cat, name).r(realm).formatted // the wid to create
+    val wid = WID(cat, name).r(name).formatted // the wid to create
 
     (for (
       au <- activeUser;
@@ -77,6 +77,7 @@ object Realm extends RazController with Logging {
         }
 
         val iwikisc = tw.section("section", "pages").get.content
+        // substitution
         val wikisc = parms.foldLeft(iwikisc)((a,b)=>a.replaceAll("\\$\\{"+b._1+"\\}", b._2))
         val wikis = ConfigFactory.parseString(wikisc).resolveWith(ConfigFactory.parseMap(parms))
 
@@ -87,7 +88,9 @@ object Realm extends RazController with Logging {
           val label = page s "label"
           val tm = page s "template"
           val co = Wikis.template(tm, parms)
-          WikiEntry(cat, name, label, "md", co, au._id, Seq(), realm, 1, wid.parent, Map("owner" -> au.id))
+          WikiEntry(cat, name, label, "md", co, au._id, Seq(), name, 1, wid.parent,
+            Map("owner" -> au.id,
+              WikiEntry.PROP_WVIS -> Visibility.PRIVATE))
           // the realm is changed later just before saving
         }
       }
@@ -110,7 +113,9 @@ object Realm extends RazController with Logging {
         else
           Wikis.template(s"Category:$cat#template", parms) // last ditch attempt to find some overrides
 
-        var we = WikiEntry(wid.cat, wid.name, s"$name", "md", weCo, au._id, Seq(), realm, 1, wid.parent)
+        var we = WikiEntry(wid.cat, wid.name, s"$name", "md", weCo, au._id, Seq(), realm, 1, wid.parent,
+        Map("owner" -> au.id,
+          WikiEntry.PROP_WVIS -> Visibility.PRIVATE))
 
         // add the form fields as formDAta to the main page, if this came from a form
         if(templateWpath.endsWith("#form")) {
@@ -128,13 +133,21 @@ object Realm extends RazController with Logging {
 
       razie.db.tx(s"create.$cat") { implicit txn =>
         UserWiki(au._id, mainPage.uwid, "Owner").create
-        mainPage.create // create first, before using the reactor just below
-        cleanAuth()
-        Audit ! WikiAudit("CREATE_FROM_TEMPLATE", mainPage.wid.wpath, Some(au._id))
+
         if ("Reactor" == cat) {
+          mainPage.copy(realm=name).create // create first, before using the reactor just below
           Reactors add name
           pages = pages.filter(_.name != name) map (_.copy (realm=name))
+        } else {
+          mainPage.create // create first, before using the reactor just below
         }
+        cleanAuth()
+        Audit ! WikiAudit("CREATE_FROM_TEMPLATE", mainPage.wid.wpath, Some(au._id))
+
+//        if ("Reactor" == cat) {
+//          Reactors add name
+//          pages = pages.filter(_.name != name) map (_.copy (realm=name))
+//        }
         pages foreach(_.create)
       }
 
@@ -150,36 +163,34 @@ object Realm extends RazController with Logging {
       noPerm(wid, s"Cant' create your $cat ...")
   }
 
-  def addModule1(realm:String) = FAU {
+  /** start wizard to add module to reactor */
+  def addMod1(realm:String) = FAU {
     implicit au => implicit errCollector => implicit request =>
       (for (
-        au <- activeUser;
-        //todo check permissions to create reactors
-        //      can <- canEdit(wid, auth, Some(w));
-        //      r1 <- au.hasPerm(Perm.uWiki) orCorr cNoPermission;
-        twid <- WID.fromPath(s"Reactor:$realm") orErr s"template/spec $realm not found";
-        uwid <- twid.uwid
+        can <- canEdit(WID("Reactor", realm), auth, None);
+        r1 <- au.hasPerm(Perm.uWiki) orCorr cNoPermission;
+        twid <- Some(WID("Reactor", realm).r(realm));
+        uwid <- twid.uwid orErr s"template/spec $realm not found"
       ) yield {
         Ok(views.html.wiki.wikieAddModule(realm, auth))
       }) getOrElse
-        Msg2("Can't find the reactor...")
+        Msg2("Can't find the reactor..." + errCollector.mkString)
   }
 
   /** POSTed - add module to a reactor
     * @param module is the mod to add
     * @param realm is the id of the reactor to add to
     */
-  def addModule2(module:String, realm:String) = Action { implicit request =>
-    implicit val errCollector = new VErrors()
+  def addMod2(module:String, realm:String) = FAU {
+    implicit au => implicit errCollector => implicit request =>
 
-    val data = request.body.asFormUrlEncoded.map(_.collect { case (k, v :: r) => (k, v) }) getOrElse Map.empty // somehow i get list of values?
-    val wid = WID("Reactor", realm)
+    val data = PlayTools.postData
+    val wid = WID("Reactor", realm).r(realm)
 
     (for (
-      au <- activeUser;
       twid <- WID.fromPath(module) orErr s"$module not a proper WID";
-      tw <- Wikis.rk.find(twid) orErr s"Module $twid not found";
-      reactor <- Wikis.rk.find(wid) orErr s"Reactor $realm not found";
+      tw <- Wikis.dflt.find(twid) orErr s"Module $twid not found";
+      reactor <- Wikis.find(wid) orErr s"Reactor $realm not found";
       can <- canEdit(wid, auth, Some(reactor));
       r1 <- au.hasPerm(Perm.uWiki) orCorr cNoPermission;
       hasQuota <- (au.isAdmin || au.quota.canUpdate) orCorr cNoQuotaUpdates
@@ -213,7 +224,10 @@ object Realm extends RazController with Logging {
           val tm = page s "template"
           val co = Wikis.template(tm, parms)
           if(WID(cat,name).r(realm).page.isDefined) Nil
-          else List(WikiEntry(cat, name, label, "md", co, au._id, Seq(), realm, 1, None))
+          else List(WikiEntry(cat, name, label, "md", co, au._id, Seq(), realm, 1, None,
+          Map("owner" -> au.id,
+            WikiEntry.PROP_WVIS -> Visibility.PRIVATE))
+          )
         }
       }
 

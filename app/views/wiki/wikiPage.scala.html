@@ -6,60 +6,24 @@ render a regular wiki page - site pages are rendered with wikiSite.scala.html
 @label()=@{ page.map(_.label).getOrElse(razie.wiki.model.Wikis(wid.getRealm).label(wid)) }
 @web()=@{model.Website(request) getOrElse model.Website.dflt}
 @isSite()=@{Array("Site", "Page").contains(wid.cat) && page.isDefined}
+@layout=@{page.flatMap(_.contentTags.get("layout")) getOrElse web().layout}
 
 @htmlHead(page.flatMap(_.contentTags.get("title")).getOrElse(wid.cat +": "+ label), None, page)
 
 @if(!print) {@navbar(au, wid.getRealm)(au,Some(request))}
 
-<div class="container">
-  <div class="row">
+@{
+  layout match {
+    case "Play:wiki.layout.div12"      => wiki.layout.div12(wid, iname, page, canEdit, print)(au, request)
+    case "Play:wiki.layout.div12Cool"  => wiki.layout.div12Cool(wid, iname, page, canEdit, print)(au, request)
+    case "Play:wiki.layout.div12Plain" => wiki.layout.div12Plain(wid, iname, page, canEdit, print)(au, request)
+    case "Play:wiki.layout.div9Plain"  => wiki.layout.div9Plain(wid, iname, page, canEdit, print)(au, request)
+    case "Play:wiki.layout.div9Ad"  => wiki.layout.div9Ad(wid, iname, page, canEdit, print)(au, request)
+    case _ => wiki.layout.classic(wid, iname, page, canEdit, print)(au, request)
+  }
+}
 
-    @if(web().divMain == "9") {
-      <div class="span9">
-      } else {
-      <div class="span12">
-      }
-
-    @if(page.flatMap(_.props.get("draft")).exists(_.toLowerCase == "draft")) {
-      <div class="alert">
-        <strong>Draft!</strong> This page is a draft - a work in progress!
-      </div>
-    }
-
-      <div class="well">
-        @wiki.wikiFrag(wid,au,false,page, iname, false, true, canEdit)
-      </div>
-
-      @if(page.isDefined) {
-        @wiki.wikiAddMore(wid, page, au)
-        @wiki.wikiPageComments(wid, page, au)
-      }
-
-      <hr>
-      @htmlFooter(ads = web().showAds == "yes" && !page.exists(_.content.matches("""(?s).*\{\{ad[:}].*\{\{ad[:}].*""")) && !au.exists(_.isUnder13), false, wid.getRealm)
-
-    </div> <!-- /span9 -->
-
-    @* is there room for the right stuff **@
-    @if(web().divMain == "9") {
-      <div class="span3">
-        @web().rightTop.map { rt =>
-          @wiki.wikiFrag(rt, au, simple = true)
-        }
-
-        @if(web().showAds == "yes") {
-          @addRight()
-        }
-
-        @web().rightBottom.map { rt =>
-          @wiki.wikiFrag(rt, au, simple = true)
-        }
-
-      </div>
-    }
-
-  </div> <!-- row -->
-</div> <!-- /container -->
-
-@htmlBottom(false, Some(request))
+@if(!print) {
+  @htmlBottom(false, Some(request))
+}
 

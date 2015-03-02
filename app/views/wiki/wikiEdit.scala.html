@@ -114,6 +114,13 @@ PROBLEM: many places use label as name... via Wikis.formatName
 }
 </div>
 
+<script src="@routes.Assets.at("vendor/jquery.textcomplete.min.js")"></script>
+<script src="@routes.Assets.at("javascripts/rk-contentassist.js")"></script>
+
+<script>
+var dotTags = braTags;
+</script>
+
 @Wikis(wid.getRealm).find(wid).map{we=>
   <div class="well">
     @wiki.wikiFrag(wid,au, false, Some(we))
@@ -130,4 +137,4 @@ PROBLEM: many places use label as name... via Wikis.formatName
   </div> <!-- row -->
 </div> <!-- /container -->
 
-@htmlBottom()
+@htmlBottom(false, Some(request))

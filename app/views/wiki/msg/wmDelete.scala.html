@@ -1,0 +1,47 @@
+@****************
+fragment: add more stuff to the current topic, including children, sub-topics etc
+****************@
+@(uwid:razie.wiki.model.UWID)
+@import razie.wiki.util.IgnoreErrors
+@import razie.wiki.model.{Wikis, WID, WikiLink}
+@import model.UserWiki
+@import razie.wiki.dom.WikiDomain
+@import razie.db.RMany
+
+DELETE forever - are you sure? TODO Wikientry.parent==me etc
+
+<small>
+@defining(RMany[WikiLink]("to" -> uwid.grated)) {x =>
+Links from others :
+  @if(x.isEmpty) { None } else {
+  <ul>
+  @x.map{wl=>
+    <li>@wl.from.findWid.map(_.wpath).getOrElse(wl.from.nameOrId) | @wl.how</li>
+  }
+  </ul>
+  }
+}
+</small>
+
+<small>
+@defining(RMany[WikiLink]("from" -> uwid.grated)) {x =>
+<p>Links to others :
+  @if(x.isEmpty) { None } else {
+  <ul>
+      @x.map{wl=> <li>@wl.to.findWid.map(_.wpath).getOrElse(wl.to.nameOrId) | @wl.how</li>}
+    </ul>
+  }
+}
+</small>
+
+<small>
+@defining(RMany[UserWiki]("uwid" -> uwid.grated)) { x =>
+<p>Users:
+  @if(x.isEmpty) { None } else {
+  <ul>
+    @x.map{uw=> <li>@uw.user.map(_.userName).getOrElse("???") | @uw.role</li> }
+  </ul>
+  }
+}
+</small>
+

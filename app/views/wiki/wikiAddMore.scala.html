@@ -42,7 +42,7 @@ fragment: add more stuff to the current topic, including children, sub-topics et
     }
   }
 } else {
-      <!-- list of child pages -->
+  <!-- list of child pages -->
   @WikiDomain(wid.getRealm).aEnds(wid.cat, "Child").map {child=>
     @if(page.isDefined && controllers.Wiki.canEdit(wid,user,page)(IgnoreErrors)) {
       @helper.form(action=routes.Wikie.createLinked(child,wid,"Child"), 'class->"form-inline") {
@@ -53,9 +53,11 @@ fragment: add more stuff to the current topic, including children, sub-topics et
           }
         }
 
+    <!-- list of child pages -->
     @* @Wikis.linksTo(page.get.uwid, "Child").filter(_.from.cat == child).toList) { kids =>*@
     @if(!page.exists(_.contentTags.contains("nochildposts"))) {
-      @defining(Wikis.linksTo(page.get.uwid, "Child").filter(_.from.cat == child).toList) { kids =>
+      @defining(Wikis.linksTo(page.get.uwid, "Child").filter(_.from.cat == child).toList) { allKids =>
+      @defining(allKids.filter(_.draft.isEmpty)) { kids =>
         @if(kids.size > 0) {
           <div class="well">
             @child (s) :
@@ -67,6 +69,19 @@ fragment: add more stuff to the current topic, including children, sub-topics et
           </div>
         }
       }
+        @defining(allKids.filter(_.draft.isDefined)) { kids =>
+        @if(kids.size > 0) {
+          <div class="well">
+            DRAFT @child (s) :
+            <ul>
+            @kids.reverse.take(200).sortWith((a,b)=>b.crDtm.isBefore(a.crDtm)).map(_.from).map { p=>
+              <li><a href="@controllers.Wiki.w(p)">@Wikis.label(p)</a>
+            }
+            </ul>
+          </div>
+        }
+      }
+    }
     }
   }
 }

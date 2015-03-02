@@ -68,6 +68,71 @@ object Wikil extends WikieBase {
       noPerm(wid, "UNLINKUSER")
   }
 
+  /** user unlikes page */
+  def unlinkAll(wid: WID, really: String = "n") = Action { implicit request =>
+    implicit val errCollector = new VErrors()
+    (for (
+      au <- activeUser; // either club, clubAdmin or god
+      uwid <- wid.uwid orErr ("can't find uwid");
+      page <- wid.page orErr ("Cannot link to " + wid.name);
+      owner <- page.owner orErr ("Cannot link to " + wid.name);
+      isClub <- owner.asInstanceOf[User].isClub orErr ("possible only for a club");
+      r1 <- au.hasPerm(Perm.uProfile) orCorr cNoPermission("uProfile");
+      c <- Club.findForName(owner.userName)
+    ) yield {
+      if (really != "y") {
+        Msg3(really + "Are you certain you want to unlink all members?<p>Choose Unlink only if certain.",
+          Some(Wiki.w(wid)),
+          Some("Unlink" -> s"/wikie/unlinkAll/${wid.wpath}?really=y"))
+      } else {
+        val followers = Users.findUserLinksTo(page.uwid).toList
+        var count = 0
+        followers.filter(_.user.exists(c.isMember)).foreach { ul =>
+          ul.delete
+          count += 1
+          // TODO remove the comments page as well if any
+        }
+        cleanAuth()
+        Msg2(s"UNlinked $count users", Some(page.wid.urlRelative))
+      }
+    }) getOrElse
+      noPerm(wid, "UNLINKUSER")
+  }
+
+  /** user 'likes' page - link the current user to the page */
+  def linkAll(wid: WID, really: String = "n") = Action { implicit request =>
+    implicit val errCollector = new VErrors()
+    (for (
+      au <- activeUser; // either club, clubAdmin or god
+      hasuwid <- wid.uwid.isDefined orErr ("can't find uwid");
+      uwid <- wid.uwid;
+      page <- wid.page orErr ("Cannot link to " + wid.name);
+      owner <- page.owner orErr ("Cannot link to " + wid.name);
+      isClub <- owner.asInstanceOf[User].isClub orErr ("possible only for a club");
+      r1 <- (au.hasPerm(Perm.uProfile) || "Club" == wid.cat) orCorr cNoPermission("uProfile");
+      c <- Club.findForName(owner.userName)
+    ) yield {
+      if (really != "y") {
+        Msg3(really + "Are you certain you want to link all members?<p>Choose LINK only if certain.",
+          Some(Wiki.w(wid)),
+          Some("LINK" -> s"/wikie/linkAll/${wid.wpath}?really=y"))
+      } else {
+        def content = """[[User:%s | You]] -> [[%s:%s]]""".format(au.id, wid.cat, wid.name)
+        var count = 0
+        for (m <- c.userLinks if m.role != "Fan") {
+          // if he was already, just say it
+          if (m.user.isDefined && !m.user.get.pages(wid.getRealm, wid.cat).exists(_.uwid.id == uwid.id)) {
+            model.UserWiki(m.user.get.asInstanceOf[User]._id, uwid, "Contributor").create
+            count += 1
+          }
+        }
+        cleanAuth()
+        Msg2(s"Linked $count users", Some(page.wid.urlRelative))
+      }
+    }) getOrElse
+      noPerm(wid, "LINKUSER")
+  }
+
   /** user 'likes' page - link the current user to the page */
   def linkUser(wid: WID, withComment: Boolean = false) = Action { implicit request =>
     implicit val errCollector = new VErrors()

@@ -213,7 +213,7 @@ object NotesLocker extends RazController with Logging {
       "next" -> text,
       "id" -> text,
       "ver" -> number,
-      "content" -> text.verifying("Obscenity filter", !Wikis.hasporn(_)),
+      "content" -> text.verifying("Obscenity filter", !Wikis.hasBadWords(_)),
       "tags" -> text).verifying("Can't use spaces in tags yet, sorry!",
     { t: (String, String, Int, String, String) => !t._5.contains(" ") })
   }

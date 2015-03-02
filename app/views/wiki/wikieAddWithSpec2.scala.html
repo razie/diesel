@@ -13,11 +13,12 @@ create new page given a template
             <h3>Creating a new <em>@cat</em>, with <em>@formWid.name</em></h3>
 
             <p>Fill in the required attributes below.</p>
-            <hr>
 
             @helper.form(action=routes.Wikie.addWithSpec(cat, name, formWid.wpath, torspec:String, realm), 'class->"well form-inline") {
                 @if(!formWid.page.exists(_.form.fields.contains("name"))) {
-                    Name: <input type="text" class="input-xlarge" name="name" placeholder="Name" value="@name">
+                    Use a simple punchy single word, like "<b>mysite</b>" - your new website will be available at <b><small>http://mysite.wikireactor.com</small></b>
+                    <p>Name: <input type="text" class="input-xlarge" name="name" placeholder="Name" value="@name">
+                    <hr><p>More particulars:</p>
                 }
 
                 @wiki.wikiFormInt(formWid, Some(name), None, au, errors, false, false, true)

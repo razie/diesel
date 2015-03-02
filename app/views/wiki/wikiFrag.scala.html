@@ -8,6 +8,8 @@ wiki fragment, used in another page
 
 @nicename() = @{ iname.getOrElse(wid.name) }
 
+@favoriteCat = @{ "Topic" }
+
   @w(c:String) = @{
     if(page.isDefined) page else wid.page//razie.wiki.model.Wikis.find(c,wid.name)
   }
@@ -24,7 +26,8 @@ wiki fragment, used in another page
   }
 
   @ccc(wid:WID, we:WikiEntry)= @{
-    val x = Wikis.format(wid, we.markup, wid.content.mkString, Some(we))
+//    val x = Wikis.format(wid, we.markup, wid.content.mkString, Some(we))
+    val x = Wikis.format(wid, we.markup, "", Some(we))
     try {
       if(x contains "CANNOT PARSE") {
         val PAT = """.*PARSE\]\] \[([0-9]+)\.([0-9]+)\].*""".r
@@ -34,7 +37,7 @@ wiki fragment, used in another page
           <small>[[Check content below at Line:$line Position:$col]]
             <p>Sorry, dumb program here! The content is not lost: try editing this topic... also, please open a support issue and copy/paste there the content.
           </small></div><p></p>""".stripMargin + s"""
-            <textarea id="$id" readonly="true" style="width:90%; margin-right:40px" rows="5">${we.content.lines.zipWithIndex.map(t=>f"${t._2}%3s> ${t._1}").mkString("\n")}</textarea>
+            <textarea id="$id" readonly="true" style="width:90%; margin-right:40px" rows="15">${we.content.lines.zipWithIndex.map(t=>f"${t._2}%3s> ${t._1}").mkString("\n")}</textarea>
          """.stripMargin
       } else x
     } catch {
@@ -144,6 +147,7 @@ wiki fragment, used in another page
                 | <a href="@routes.Wikie.wikieRename1(wid)">Rename</a>
               }
               @if(au.isDefined && au.get.isActive) {
+
                 @if(au.get.isLinkedTo(we.uwid)) {
                   | <a href="@routes.Wikil.unlinkUser(wid)">@wid.label("Unlike", "Unlike")</a>
                 } else {
@@ -153,10 +157,19 @@ wiki fragment, used in another page
                 @if(au.get.isLinkedTo(we.uwid) && we.parent.isDefined) {
                   | <a href="@routes.Wikie.wikieMove1(we._id.toString)">@wid.label("Move", "Move")</a>
                 }
+
+                @if(we.isOwner(au.get.id) || au.exists(_.hasPerm(model.Perm.adminDb)) ||
+                    we.owner.exists(o=> o.asInstanceOf[model.User].isClub &&
+                    Club.findForUser(o.asInstanceOf[model.User]).flatMap(_.uregAdmin).exists(_._id == au.get._id))) {
+                  | <a href="@routes.Wikie.manage(we._id.toString)">Manage</a>
+                }
+
               }
+
               @if(au.isEmpty && "Blog" == wid.cat) {
                 | <a href="@routes.Wikil.linkFollower1(wid)"><span style="color:red">Subscribe</span></a>
                 }
+
             }
             ) this page.
 
@@ -192,7 +205,7 @@ wiki fragment, used in another page
         <form action="@routes.Wikie.edit2" method="GET" class="well form-inline">
           <input type="text" name="name" id="name" value="@nicename">
           <select id="cat" name="cat" class="input-small">
-          @prepend(razie.wiki.model.Wikis(wid.getRealm).pageNames("Category").toList.filter(_ != "Topic").sortWith(_ < _), "Topic").map{x=>
+          @prepend(razie.wiki.model.Wikis(wid.getRealm).pageNames("Category").toList.filter(_ != favoriteCat).sortWith(_ < _), favoriteCat).map{x=>
             <option value="@x" >@x</option>
           }
           </select>

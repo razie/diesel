@@ -120,5 +120,6 @@
 	<classpathentry kind="lib" path="lib_managed/jars/com.razie/scripster-core_2.10/scripster-core_2.10-0.8.6-SNAPSHOT.jar"/>
 	<classpathentry kind="lib" path="target/scala-2.10/classes_managed"/>
 	<classpathentry kind="lib" path="lib_managed/bundles/com.typesafe/config/config-1.2.1.jar"/>
+	<classpathentry kind="lib" path="lib_managed/jars/com.googlecode.java-diff-utils/diffutils/diffutils-1.2.1.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

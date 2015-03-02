@@ -26,14 +26,17 @@
 }
 
 @tab=@{
-  regs.iterator.map(r=>
-    Map("club"->r.clubName, "year"->r.year, "role"->r.role, "regStatus"->r.regStatus, "id" -> r._id.toString))
+  regs.iterator.map(reg=>
+    Map("club"->reg.clubName, "year"->reg.year, "role"->reg.role, "regStatus"->reg.regStatus, "id" -> reg._id.toString, "vol" -> controllers.Club.volPerReg(reg)))
 }
 
 @mnglink(row:Map[String,String],k:String,v:String)={
   @k match {
-        case "regStatus" => {
-                @regStatusColored(v, Some(routes.Club.doeClubUserReg(row.get("id").get).toString))
+      case "regStatus" => {
+          @regStatusColored(v, Some(routes.Club.doeClubUserReg(row.get("id").get).toString))
+      }
+        case "vol" => { @v
+            <a href="@routes.Club.doeUserVolAdd(row.get("id").get).toString" class="btn btn-mini">Manage</a>
                 }
     case _ => {@v}
   }
@@ -45,18 +48,25 @@
 <p>Click on the status of each, to manage the forms required to complete that registration.
 
 @if(regs.isEmpty) {
+    <div class="alert alert-info">
+        <strong>No registrations!</strong>
+        You have no registrations in progress - if you were looking for a specific club, then please follow this link to join it:
+        <b><a href="/wikie/link/Club">Join a club</a></b>
+        <p>Find your club there and if they have registrations open, you will see a red link to "start registration" right after joining the club.
+    </div>
+
   <div class="alert alert-danger">
-  <strong>No registrations!</strong>
-  You have no registrations in progress - if you were looking for a specific club, then please follow this link to join it:
-  <b><a href="/wikie/link/Club">Join a club</a></b>
-  <p>Find your club there and if they have registrations open, you will see a red link to "start registration" right after joining the club.
+  <strong>If you're looking to setup your club's registration!</strong>
+  If you are a club administrator looking to evaluate/setup the registration system or forms for your club, please <a href="/doe/support?desc=Setup+club+registration">contact us</a> to set it up for you.
+      <p>No worries, it's still free :)
   </div>
 } else {
   @util.utilSimpleTable(tab,
         Seq("club" -> "Club",
                 "year"->"Year",
                 "role"->"Role",
-                "regStatus" -> "Status"),
+            "regStatus" -> "Status",
+                "vol" -> "Volunteering"),
     Some(mnglink))
 
   @missingRegs.map {club=>

@@ -11,6 +11,7 @@ import com.mongodb.casbah.Imports._
 import com.typesafe.config.{ConfigObject, ConfigValue}
 import model.{UserWiki, User, Users, Perm}
 import org.bson.types.ObjectId
+import org.joda.time.DateTime
 import razie.wiki.Enc
 import razie.wiki.admin.{SendEmail, MailSession, Audit}
 import razie.wiki.dom.WikiDomain
@@ -43,7 +44,7 @@ class WikieBase extends WikiBase {
       "wvis" -> nonEmptyText,
       "tags" -> text.verifying(vPorn, vSpec),
       "draft" -> text.verifying(vPorn, vSpec))(EditWiki.apply)(EditWiki.unapply) verifying (
-      "Your entry failed the obscenity filter", { ew: EditWiki => !Wikis.hasporn(ew.content)
+      "Your entry failed the obscenity filter", { ew: EditWiki => !Wikis.hasBadWords(ew.content)
     })
   }
 
@@ -52,7 +53,7 @@ class WikieBase extends WikiBase {
   val reportForm = Form {
     mapping(
       "reason" -> nonEmptyText)(ReportWiki.apply)(ReportWiki.unapply) verifying (
-      "Your entry failed the obscenity filter", { ew: ReportWiki => !Wikis.hasporn(ew.reason)
+      "Your entry failed the obscenity filter", { ew: ReportWiki => !Wikis.hasBadWords(ew.reason)
     })
   }
 
@@ -64,7 +65,7 @@ class WikieBase extends WikiBase {
       "notif" -> nonEmptyText,
       "markup" -> text.verifying("Unknown!", request.queryString("wc").headOption.exists(_ == "0") || Wikis.markups.contains(_)),
       "comment" -> text)(LinkWiki.apply)(LinkWiki.unapply) verifying (
-      "Your entry failed the obscenity filter", { ew: LinkWiki => !Wikis.hasporn(ew.comment)
+      "Your entry failed the obscenity filter", { ew: LinkWiki => !Wikis.hasBadWords(ew.comment)
     })
   }
 
@@ -88,17 +89,17 @@ class WikieBase extends WikiBase {
 
   def renameForm(realm:String) = Form {
     tuple(
-      "oldlabel" -> text.verifying("Obscenity filter", !Wikis.hasporn(_)).verifying("Invalid characters", vldSpec(_)),
-      "newlabel" -> text.verifying("Obscenity filter", !Wikis.hasporn(_)).verifying("Invalid characters", vldSpec(_))) verifying
+      "oldlabel" -> text.verifying("Obscenity filter", !Wikis.hasBadWords(_)).verifying("Invalid characters", vldSpec(_)),
+      "newlabel" -> text.verifying("Obscenity filter", !Wikis.hasBadWords(_)).verifying("Invalid characters", vldSpec(_))) verifying
       ("Name already in use", { t: (String, String) => !Wikis(realm).index.containsName(Wikis.formatName(t._2))
       })
   }
 
   def replaceAllForm = Form {
     tuple(
-      "old" -> text.verifying("Obscenity filter", !Wikis.hasporn(_)).verifying("Invalid characters", vldSpec(_)),
-      "new" -> text.verifying("Obscenity filter", !Wikis.hasporn(_)).verifying("Invalid characters", vldSpec(_)),
-      "action" -> text.verifying("Obscenity filter", !Wikis.hasporn(_)).verifying("Invalid characters", vldSpec(_))) verifying
+      "old" -> text.verifying("Obscenity filter", !Wikis.hasBadWords(_)).verifying("Invalid characters", vldSpec(_)),
+      "new" -> text.verifying("Obscenity filter", !Wikis.hasBadWords(_)).verifying("Invalid characters", vldSpec(_)),
+      "action" -> text.verifying("Obscenity filter", !Wikis.hasBadWords(_)).verifying("Invalid characters", vldSpec(_))) verifying
       ("haha", { t: (String, String, String) => true
       })
   }
@@ -111,8 +112,7 @@ object Wikie extends WikieBase {
   implicit def obtob(o: Option[Boolean]): Boolean = o.exists(_ == true)
 
   /** when no pages found in 'any', i captured 'cat' in a form */
-  def edit2 = FAU {
-    implicit au => implicit errCollector => implicit request =>
+  def edit2 = FAU { implicit au => implicit errCollector => implicit request =>
     (for (
       cat <- request.queryString.get("cat").flatMap(_.headOption);
       name <- request.queryString.get("name").flatMap(_.headOption)
@@ -218,6 +218,13 @@ object Wikie extends WikieBase {
               val shouldPublish =
                 if (notif != "Draft" && we.props.contains("draft")) {
                   we = we.copy(props = we.props - "draft")
+
+                  // update link to parent if any to non-draft
+                  we.wid.parentWid.flatMap(_.uwid).foreach { puwid =>
+                    val wl = ROne[WikiLink]("from" -> we.uwid.grated, "to" -> puwid.grated, "how" -> "Child").toList
+                    wl.foreach( _.copy(draft=None).update )
+                  }
+
                   notif == "Notify" // Silent means no notif
                 } else false
 
@@ -274,7 +281,7 @@ object Wikie extends WikieBase {
             ) yield {
               //todo find the right realm from the url or something like Config.realm
               import razie.OR._
-              var we = WikiEntry(wid.cat, wid.name, l, m, co, au._id, Seq(), parent.map(_.realm) OR wid.getRealm, 1, wid.parent)
+              var we = WikiEntry(wid.cat, wid.name, l, m, co, au._id, Seq(), parent.map(_.realm) orElse wid.realm getOrElse getRealm(), 1, wid.parent)
 
               if (we.tags.mkString(",") != tags)
                 we = we.withTags(tags.split(",").map(_.trim).toSeq, au._id)
@@ -309,14 +316,18 @@ object Wikie extends WikieBase {
                     val wl = WikiLink(ufrom, uto, wls.how)
                     wl.create
                   }
-                  we = we.cloneParent(Wikis.find(wls.to).map(_._id)) // add parent
+                  we = we.copy(parent = Wikis.find(wls.to).map(_._id), updDtm = DateTime.now) // add parent
                   s.delete
                 }
 
                 // needs parent?
                 we.wid.parentWid.flatMap(_.uwid).foreach { puwid =>
-                  if (ROne[WikiLink]("from" -> we.uwid, "to" -> puwid, "how" -> "Child").isEmpty)
-                    WikiLink(we.uwid, puwid, "Child").create
+                  val isd = if(we.props.contains("draft")) Some("y") else None
+                  val wl = ROne[WikiLink]("from" -> we.uwid.grated, "to" -> puwid.grated, "how" -> "Child")
+                  if(wl.isDefined)
+                    wl.foreach(_.copy(draft=isd).update)
+                  else
+                    WikiLink(we.uwid, puwid, "Child", isd).create
                 }
 
                 we = we.cloneProps(we.props ++ Map("titi" -> "t"), au._id)
@@ -418,10 +429,17 @@ object Wikie extends WikieBase {
         if(name.length < 4) "Name too short"
       else if (name.length > 12 ) "Name too long"
       else if (Config.reservedNames.contains(name)) "Name is reserved"
+      else if (!name.matches("(?![-_])[A-Za-z0-9-_]{1,63}(?<![-_])")) "Name cannot contain special characters"
       else ""
 
       if(e.isEmpty) Realm.createR2(cat, templateWpath, torspec:String, realm).apply(request).value.get.get
       else Msg2("Error: " + Corr(e, Some(E)).toString)
+  }
+
+  // create reactor
+  def createReactor = FAU {
+    implicit au => implicit errCollector => implicit request =>
+      Ok(views.html.wiki.wikieAddWithSpec("Reactor", "", "Template", "ReactorTemplate", "wiki", auth))
   }
 
   // select template here, then redirect to name
@@ -474,7 +492,7 @@ object Wikie extends WikieBase {
     canDelete(wid).collect {
       case (au, w) =>
         Msg2C(
-          "DELETE forever - are you sure? TODO show/remove links FROM, links TO, Wikientry.parent==me etc, userWiki=me",
+          views.html.wiki.msg.wmDelete(w.uwid).body,
           Some(routes.Wikie.wikieDelete2(wid)))
     } getOrElse
       noPerm(wid, "ADMIN_DELETE1")
@@ -537,7 +555,7 @@ object Wikie extends WikieBase {
       case (_, n) =>
         canRename(wid).collect {
           case (au, w) =>
-            val newp = (w.cloneRenamed(n))
+            val newp = w.copy(name = Wikis.formatName(n), label = n, ver = w.ver + 1, updDtm = DateTime.now)
             razie.db.tx("Wiki.Rename") { implicit txn =>
               w.update(newp)
               cleanAuth()
@@ -561,11 +579,20 @@ object Wikie extends WikieBase {
 
   def wikieCreate(cats: String, realm:String=Wikis.RK) = FAU("create.wiki") {
     implicit au => implicit errCollector => implicit request =>
+      for (
+        cat <- CAT.unapply(cats);
+        w <- Wikis(cat.realm getOrElse realm).category(cat.cat)
+      ) yield {
+        Ok(views.html.wiki.wikieCreate(cat.cat, cat.realm getOrElse realm, auth))
+      }
+  }
+
+  def manage(id: String, realm:String=Wikis.RK) = FAU("manage.wiki") {
+    implicit au => implicit errCollector => implicit request =>
     for (
-      cat <- CAT.unapply(cats);
-      w <- Wikis(cat.realm getOrElse realm).category(cat.cat)
+      w <- Wikis(realm).findById(id)
     ) yield {
-      Ok(views.html.wiki.wikieCreate(cat.cat, cat.realm getOrElse realm, auth))
+      Ok(views.html.wiki.wikieManage(Some(au), Some(w)))
     }
   }
 
@@ -620,35 +647,92 @@ object Wikie extends WikieBase {
       })
   }
 
-  /** change owner */
-  def uowner(wid: WID) = FAU {
+  /** update parent */
+  def setParent(sourceWid: WID) = FAU {
     implicit au => implicit errCollector => implicit request =>
 
-    val uownerForm = Form("newowner" -> nonEmptyText)
+      val form = Form("newWid" -> nonEmptyText)
+
+      form.bindFromRequest.fold(
+      formWithErrors =>
+        Msg2(formWithErrors.toString + "Oops, can't add that quota!"),
+      {
+        case newWid =>
+          log("Wiki.setParent " + sourceWid + ", " + newWid)
+          (for (
+            au <- activeUser;
+            ok1 <- au.hasPerm(Perm.adminDb) orCorr cNoPermission;
+            sourceW <- Wikis.find(sourceWid);
+            destWid <- WID.fromPath(newWid) orErr "no dest found";
+            destW <- Wikis.find(destWid) orErr "no destination";
+            //            isFromPost <- ArWikiDomain.aEnds(sourceW.wid.cat, "Child").contains("Post") orErr "source has no child Posts/Items";
+            //            isToPost <- WikiDomain.aEnds(destW.wid.cat, "Child").contains("Post") orErr "dest has no child Posts/Items"
+            //            upd <- Notif.entityUpdateBefore(newVer, WikiEntry.UPD_UOWNER) orErr ("Not allowerd")
+            newVer <- Some(sourceW.copy(parent=Some(destW._id)))
+          ) yield {
+            Audit ! WikiAudit("SET_PARENT", sourceW.wid.wpath, Some(au._id), Some(newWid.toString))
+            razie.db.tx("Wiki.setparent") { implicit txn =>
+              sourceW.update(newVer)
+            }
+            Notif.entityUpdateAfter(newVer, WikiEntry.UPD_TOGGLE_RESERVED)
+            Redirect(controllers.Wiki.w(sourceWid))
+          }) getOrElse
+            noPerm(sourceWid, "ADMIN_MOVEPOSTS")
+      })
+  }
+
+  /** change owner */
+  def update(what:String, wid: WID) = FAU {
+    implicit au => implicit errCollector => implicit request =>
+
+    val uownerForm = Form("newvalue" -> nonEmptyText)
 
     uownerForm.bindFromRequest.fold(
     formWithErrors =>
       Msg2(formWithErrors.toString + "Oops, can't add that quota!"),
     {
-      case newowner =>
-        log("Wiki.uowner " + wid + ", " + newowner)
-        (for (
-          au <- activeUser;
-          ok1 <- au.hasPerm(Perm.adminDb) orCorr cNoPermission;
-          w <- Wikis.find(wid);
-          newu <- WikiUsers.impl.findUserByUsername(newowner) orErr (newowner + " User not found");
-          nochange <- (!w.owner.exists(_.userName == newowner)) orErr "no change";
-          newVer <- Some(w.cloneProps(w.props + ("owner" -> newu._id.toString), au._id));
-          upd <- Notif.entityUpdateBefore(newVer, WikiEntry.UPD_UOWNER) orErr "Not allowerd"
-        ) yield {
-          // can only change label of links OR if the formatted name doesn't change
-          razie.db.tx("Wiki.uowner") { implicit txn =>
-            w.update(newVer)
+      case newvalue =>
+        what match {
+          case "owner" => {
+            log("Wiki.uowner " + wid + ", " + newvalue)
+            (for (
+              au <- activeUser;
+              ok1 <- au.hasPerm(Perm.adminDb) orCorr cNoPermission;
+              w <- Wikis.find(wid);
+              newu <- WikiUsers.impl.findUserByUsername(newvalue) orErr (newvalue + " User not found");
+              nochange <- (!w.owner.exists(_.userName == newvalue)) orErr "no change";
+              newVer <- Some(w.cloneProps(w.props + ("owner" -> newu._id.toString), au._id));
+              upd <- Notif.entityUpdateBefore(newVer, WikiEntry.UPD_UOWNER) orErr "Not allowerd"
+            ) yield {
+              // can only change label of links OR if the formatted name doesn't change
+              razie.db.tx("Wiki.uowner") { implicit txn =>
+                w.update(newVer)
+              }
+              Notif.entityUpdateAfter(newVer, WikiEntry.UPD_UOWNER)
+              Redirect(controllers.Wiki.w(wid))
+            }) getOrElse
+              noPerm(wid, "ADMIN_UOWNER")
           }
-          Notif.entityUpdateAfter(newVer, WikiEntry.UPD_UOWNER)
-          Redirect(controllers.Wiki.w(wid))
-        }) getOrElse
-          noPerm(wid, "ADMIN_UOWNER")
+          case "realm" => {
+            log("Wiki.urealm " + wid + ", " + newvalue)
+            (for (
+              au <- activeUser;
+              ok1 <- au.hasPerm(Perm.adminDb) orCorr cNoPermission;
+              w <- Wikis.find(wid);
+              nochange <- (w.realm != newvalue) orErr "no change";
+              newVer <- Some(w.copy(realm=newvalue));
+              upd <- Notif.entityUpdateBefore(newVer, WikiEntry.UPD_UOWNER) orErr "Not allowerd"
+            ) yield {
+              // can only change label of links OR if the formatted name doesn't change
+              razie.db.tx("Wiki.urealm") { implicit txn =>
+                w.update(newVer)
+              }
+              Notif.entityUpdateAfter(newVer, WikiEntry.UPD_UOWNER)
+              Redirect(controllers.Wiki.w(wid))
+            }) getOrElse
+              noPerm(wid, "ADMIN_UOWNER")
+          }
+        }
     })
   }
 
@@ -724,8 +808,7 @@ object Wikie extends WikieBase {
   def replaceAll3() = FAU {
     implicit au => implicit errCollector => implicit request =>
       replaceAllForm.bindFromRequest.fold(
-        formWithErrors => Msg2(formWithErrors.toString + "Oops, can't !"),
-      {
+        formWithErrors => Msg2(formWithErrors.toString + "Oops, can't !"), {
         case (q, news, action) =>
           log("replace all " + q + " -> " + news)
 
@@ -766,7 +849,8 @@ object Wikie extends WikieBase {
     wikis
   }
 
-  def search(qi: String) = {
+  /** simple search for all realms */
+  def searchAll(qi: String) = {
     val PAT = qi.r
     def min(a:Int, b:Int) = if(a>b)b else a
     def max(a:Int, b:Int) = if(a>b)a else b

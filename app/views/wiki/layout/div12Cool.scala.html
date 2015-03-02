@@ -1,0 +1,35 @@
+@**************
+render a regular wiki page - site pages are rendered with wikiSite.scala.html
+**************@
+@(wid:razie.wiki.model.WID, iname:Option[String], page:Option[razie.wiki.model.WikiEntry], canEdit:Boolean, print:Boolean=false)(implicit au:Option[model.User], request:Request[_])
+
+@label()=@{ page.map(_.label).getOrElse(razie.wiki.model.Wikis(wid.getRealm).label(wid)) }
+@web()=@{model.Website(request) getOrElse model.Website.dflt}
+@isSite()=@{Array("Site", "Page").contains(wid.cat) && page.isDefined}
+
+<div class="container">
+  <div class="row">
+    <div class="span12">
+
+    @if(page.flatMap(_.props.get("draft")).exists(_.toLowerCase == "draft")) {
+      <div class="alert">
+        <strong>Draft!</strong> This page is a draft - a work in progress!
+      </div>
+    }
+
+      @wiki.wikiFrag(wid,au,false,page, iname, false, true, canEdit)
+
+      @if(page.isDefined && !print) {
+        @wiki.wikiAddMore(wid, page, au)
+        @wiki.wikiPageComments(wid, page, au)
+      }
+
+      <hr>
+      @if(!print) {
+        @htmlFooter(ads = web().showAds == "yes" && !page.exists(_.content.matches( """(?s).*\{\{ad[:}].*\{\{ad[:}].*""")) && !au.exists(_.isUnder13), false, wid.getRealm)
+      }
+
+    </div> <!-- row -->
+  </div> <!-- row -->
+</div> <!-- /container -->
+

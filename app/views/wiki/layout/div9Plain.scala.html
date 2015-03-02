@@ -1,0 +1,43 @@
+@**************
+render a regular wiki page - site pages are rendered with wikiSite.scala.html
+**************@
+@(wid:razie.wiki.model.WID, iname:Option[String], page:Option[razie.wiki.model.WikiEntry], canEdit:Boolean, print:Boolean=false)(implicit au:Option[model.User], request:Request[_])
+
+@label()=@{ page.map(_.label).getOrElse(razie.wiki.model.Wikis(wid.getRealm).label(wid)) }
+
+<div class="container">
+  <div class="row">
+
+    <div class="span9">
+
+    @if(page.flatMap(_.props.get("draft")).exists(_.toLowerCase == "draft")) {
+      <div class="alert">
+        <strong>Draft!</strong> This page is a draft - a work in progress!
+      </div>
+    }
+
+        @wiki.wikiFrag(wid,au,false,page, iname, false, true, canEdit)
+
+      @if(page.isDefined && !print) {
+        @wiki.wikiAddMore(wid, page, au)
+        @wiki.wikiPageComments(wid, page, au)
+      }
+
+      <hr>
+
+    </div> <!-- /span9 -->
+    @if(!print) {
+      <div class="span3">
+        @model.Website.get.rightTop.map { rt =>
+          @wiki.wikiFrag(rt, au, simple = true)
+        }
+      }
+
+      </div>
+
+  </div> <!-- row -->
+  @if(!print) {
+    @htmlFooter(ads = model.Website.get.showAds == "yes" && !page.exists(_.content.matches( """(?s).*\{\{ad[:}].*\{\{ad[:}].*""")) && !au.exists(_.isUnder13), false, wid.getRealm)
+  }
+</div> <!-- /container -->
+

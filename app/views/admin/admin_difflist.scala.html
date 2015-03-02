@@ -1,0 +1,52 @@
+@***
+purge audit tables
+***@
+@(reactor:String, target:String, lnew:List[controllers.Admin.WEAbstract], lremoved:List[controllers.Admin.WEAbstract], lchanged:List[(controllers.Admin.WEAbstract, controllers.Admin.WEAbstract)])(implicit au:Option[model.User])
+@import razie.wiki.model.WID
+
+@wp(wid:WID)=@{
+  if(_root_.admin.Config.isLocalhost && wid.getRealm == "rk") "rk." + wid.wpath
+  else wid.wpath
+}
+
+@htmlHeadBar("admin difflist", au)
+
+  <div class="container">
+
+    <h2>Diffs from @target</h2>
+
+      Removed:
+    <ul>
+    @lremoved.sortBy(_.realm).map { wea =>
+            <li>
+      @wea.realm <a href="http://@target@WID(wea.cat, wea.name).r(wea.realm).urlRelative">@wea.cat:@wea.name v@wea.ver</a>
+    }
+    </ul>
+    <hr>
+    Diffs:
+    <ul>
+    @lchanged.sortBy(_._2.realm).map { t =>
+      <li>
+          @t._2.realm <a href="@WID(t._1.cat, t._1.name).r(t._1.realm).url">@t._1.cat:@t._1.name</a> (<a href="/wikie/content/@wp(WID(t._1.cat, t._1.name).r(t._1.realm))">content</a>) TO
+        <a href="http://@target/@WID(t._2.cat, t._2.name).r(t._2.realm).urlRelative">@t._2.cat:@t._2.name</a>
+        - see
+      <a href="@routes.Admin.showDiff(target, WID(t._2.cat, t._2.name).r(t._2.realm))">DIFF</a>
+    }
+    </ul>
+
+    <hr>
+    New:
+    <ul>
+    @lnew.sortBy(_.realm).map { wea =>
+      <li>
+        @wea.realm <a href="/wikie/content/@wp(WID(wea.cat, wea.name).r(wea.realm))">@wea.cat:w/@wea.name v@wea.ver </a>
+        @wea.realm <a href="/wikie/content/@wp(WID(wea.cat, wea.name).r(wea.realm))">@wea.cat:w/@wea.name v@wea.ver </a>
+    }
+    </ul>
+    <hr>
+
+    @htmlFooter()
+
+  </div> <!-- /container -->
+
+  @htmlBottom()

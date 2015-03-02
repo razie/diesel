@@ -37,7 +37,8 @@ import razie.db.RDelete
 case class ModRkReg(
   wid: WID,
   curYear: String = Config.curYear) {
-  lazy val kids = RMany[ModRkEntry]("curYear" -> curYear, "wpath" -> wid.wpath).toList
+//  lazy val kids = RMany[ModRkEntry]("curYear" -> curYear, "wpath" -> wid.wpath).toList
+  lazy val kids = RMany[ModRkEntry]("wpath" -> wid.wpath).toList
 }
 
 /** per topic reg */

@@ -9,7 +9,7 @@ package controllers
 import admin._
 import com.mongodb.casbah.Imports._
 import com.novus.salat._
-import model.{Perm, Website, CMDWID, Tags}
+import model._
 import razie.db.RazSalatContext._
 import com.mongodb.{BasicDBObject, DBObject}
 import razie.db.{ROne, RazMongo}
@@ -38,6 +38,29 @@ class WikiBase extends RazController with Logging with WikiAuthorization {
   def canEdit(wid: WID, u: Option[WikiUser], w: Option[WikiEntry], props: Option[Map[String, String]] = None)(implicit errCollector: VErrors): Option[Boolean] =
     authImpl.canEdit(wid, u, w, props)(errCollector)
 
+  val RK: String = Wikis.RK
+  val UNKNOWN: String = "?"
+
+  /** determine the realm for the current request
+    *
+    * known realms take precedence for /w/REALM/xxx
+    *
+    * @param irealm - the realm hint from request, if any
+    * @param request
+    * @return
+    */
+  def getRealm (irealm:String = UNKNOWN) (implicit request : Request[_]) = {
+    if(UNKNOWN == irealm) {
+      val host = PlayTools.getHost
+      host.flatMap(x=>Website(x)).map(_.reactor).orElse {
+        host.map {h=>
+          // auto-websites of type REACTOR.coolscala.com
+          RkReactors.forHost(h).getOrElse(Reactors.DFLT)
+        }
+      }.getOrElse(Reactors.DFLT)
+    } else irealm
+  }
+
 }
 
 /** wiki controller */
@@ -52,7 +75,8 @@ object Wiki extends WikiBase {
       if(wid.parentWid.isDefined) {
         s"""<b><a href="${w(wid.parentWid.get)}/tag/$t">$label</a></b>"""
       } else {
-        s"""<b><a href="${routes.Wiki.showTag(t, wid.getRealm)}">$label</a></b>"""
+//        s"""<b><a href="${routes.Wiki.showTag(t, wid.getRealm)}">$label</a></b>"""
+        s"""<b><a href="/wiki/tag/$t">$label</a></b>"""
       }
     }
   }
@@ -60,10 +84,21 @@ object Wiki extends WikiBase {
   /** show a tag */
   def showTag(tag: String, irealm:String) = Action { implicit request=>
     // redirect all sites to RK for root tags
-    if (Website.getHost.exists(_ != Config.hostport) && !Config.isLocalhost)
+    if (PlayTools.getHost.exists(_ != Config.hostport) && !Config.isLocalhost)
       Redirect("http://" + Config.hostport + "/wiki/tag/" + tag)
     else
       search (getRealm(irealm), "", "", Enc.fromUrl(tag)).apply(request).value.get.get
+  }
+
+  //TODO optimize - index or whatever
+  /** search all topics  provide either q or curTags */
+  def options(irealm:String, q: String, scope:String, curTags:String="") = Action { implicit request =>
+    val realm = if (UNKNOWN == irealm) getRealm(irealm) else irealm
+
+    val index = Wikis(realm).index
+    val c1 = index.getOptions(q)
+
+    Ok("["+(c1).map(s=>s""" "${s.replaceAllLiterally("_", " ")}" """).mkString(",")+"]").as("text/json")
   }
 
   //TODO optimize - index or whatever
@@ -77,7 +112,7 @@ object Wiki extends WikiBase {
     val qt = curTags.split("/").filter(_ != "tag") //todo only filter if first is tag ?
 
     def filter (u:DBObject) = {
-      def uf(n:String) = if(u.containsField(n)) u.get("name").asInstanceOf[String] else ""
+      def uf(n:String) = if(u.containsField(n)) u.get(n).asInstanceOf[String] else ""
       if (q.length <= 0)
         qt.size > 0 && u.containsField("tags") && qt.foldLeft(true)((a, b) => a && u.get("tags").toString.toLowerCase.contains(b))
       else
@@ -137,8 +172,6 @@ object Wiki extends WikiBase {
 //      None
 //  }
 
-  val RK: String = Wikis.RK
-  val UNKNOWN: String = "?"
 
   /**
    * show an older version of a page
@@ -164,7 +197,8 @@ object Wiki extends WikiBase {
   def showWidContent(cw: CMDWID, irealm:String) = Action { implicit request =>
     implicit val errCollector = new VErrors()
     (for (
-      wid <- cw.wid.map(_.r(getRealm(irealm)));
+      iwid <- cw.wid;
+      wid <- if(iwid.realm.isDefined) Some(iwid) else Some(iwid.r(getRealm(irealm)));
       w <- wid.page;
       can <- canSee(wid, auth, wid.page.orElse(Some(w))) orCorr cNoPermission
     ) yield {
@@ -181,7 +215,8 @@ object Wiki extends WikiBase {
   def showWidContentVer(cw: CMDWID, ver: Int, irealm:String) = Action { implicit request =>
     implicit val errCollector = new VErrors()
     (for (
-      wid <- cw.wid.map(_.r(getRealm(irealm)));
+      iwid <- cw.wid;
+      wid <- if(iwid.realm.isDefined) Some(iwid) else Some(iwid.r(getRealm(irealm)));
       w <- ROne[WikiEntryOld]("entry.category" -> wid.cat, "entry.name" -> wid.name, "entry.ver" -> ver) orErr "not found";
       can <- canSee(wid, auth, wid.page.orElse(Some(w.entry))) orCorr cNoPermission
     ) yield {
@@ -208,31 +243,6 @@ object Wiki extends WikiBase {
     }
   }
 
-  /** determine the realm for the current request
-    *
-    * known realms take precedence for /w/REALM/xxx
-    *
-    * @param irealm - the realm hint from request, if any
-    * @param request
-    * @return
-    */
-  def getRealm (irealm:String) (implicit request : Request[_]) = {
-    if(UNKNOWN == irealm) {
-      val host = PlayTools.getHost
-      host.flatMap(x=>Website(x)).map(_.reactor).orElse {
-        host.map {h=>
-          // auto-websites of type REACTOR.coolscala.com
-          if (h.endsWith(".coolscala.com") ||
-              h.endsWith(".dieselapps.com")) {
-            // extract reactor
-            val r = h.substring(0, h.indexOf('.'))
-            if(Reactors.contains(r)) r else Reactors.DFLT
-          } else Reactors.DFLT
-        }
-      }.getOrElse(Reactors.DFLT)
-    } else irealm
-  }
-
   /** show a page */
   def showWid(cw: CMDWID, count: Int, irealm:String) = {
     cw.cmd match {
@@ -245,7 +255,9 @@ object Wiki extends WikiBase {
         wikieDebug(wid, realm).apply(request).value.get.get
       }
       case "tag" => Action { implicit request =>
-        search(getRealm(irealm), "", cw.wpath getOrElse "", cw.rest).apply(request).value.get.get
+        // stupid path like /wiki//tag/x comes here...
+        if(cw.wpath.isEmpty || cw.wpath.exists(_.isEmpty)) showTag(cw.rest, irealm).apply(request).value.get.get
+        else search(getRealm(irealm), "", cw.wpath getOrElse "", cw.rest).apply(request).value.get.get
       }
       case _ => Action { implicit request =>
         val realm = getRealm(irealm)
@@ -306,12 +318,8 @@ object Wiki extends WikiBase {
   /** @deprecated use the realm version */
   def w(cat: String, name: String) =
     Config.urlmap(WID(cat, name).urlRelative)
-//    if(cat.length <= 0) Config.urlmap(s"/wiki/$name")
-//    else Config.urlmap(s"/wiki/$cat:$name")
   def w(cat: String, name: String, realm:String) =
       Config.urlmap(WID(cat, name).r(realm).urlRelative)
-//    if(cat.length <= 0) Config.urlmap(s"/w/$realm/wiki/$name")
-//    else Config.urlmap(s"/w/$realm/wiki/$cat:$name")
 
   /** @deprecated use the realm version */
   def w(name: String) = Config.urlmap(s"/wiki/$name") //todo remove
@@ -441,7 +449,8 @@ object Wiki extends WikiBase {
 
     Wikis(wid.getRealm).find(wid) match {
       case x @ Some(w) if !canSee(wid, auth, x).getOrElse(false) => noPerm(wid, "DEBUG")
-      case y @ _ => Ok(views.html.wiki.wikieDebug(wid, Some(iwid.name), y, realm, auth))
+      case y @ Some(w) => Ok(views.html.wiki.wikieDebug(wid, Some(iwid.name), y, realm, auth))
+      case None => Msg2 (s"${wid.wpath} not found")
     }
   }
 

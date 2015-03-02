@@ -81,8 +81,8 @@ object Profile extends RazController with Logging {
 
   def crProfileForm(implicit request: Request[_]) = Form {
     mapping(
-      "firstName" -> nonEmptyText.verifying("Obscenity filter", !Wikis.hasporn(_)).verifying("Invalid characters", vldSpec(_)),
-      "lastName" -> text.verifying("Obscenity filter", !Wikis.hasporn(_)).verifying("Invalid characters", vldSpec(_)),
+      "firstName" -> nonEmptyText.verifying("Obscenity filter", !Wikis.hasBadWords(_)).verifying("Invalid characters", vldSpec(_)),
+      "lastName" -> text.verifying("Obscenity filter", !Wikis.hasBadWords(_)).verifying("Invalid characters", vldSpec(_)),
       "yob" -> number(min = 1900, max = 2012),
       "address" -> text.verifying("Invalid characters", vldSpec(_)),
       "userType" -> nonEmptyText.verifying("Please select one", ut => Config.userTypes.contains(ut)),
@@ -119,8 +119,8 @@ object Profile extends RazController with Logging {
   // profile
   def edProfileForm(implicit request: Request[_]) = Form {
     mapping(
-      "firstName" -> nonEmptyText.verifying("Obscenity filter", !Wikis.hasporn(_)).verifying("Invalid characters", vldSpec(_)),
-      "lastName" -> text.verifying("Obscenity filter", !Wikis.hasporn(_)).verifying("Invalid characters", vldSpec(_)),
+      "firstName" -> nonEmptyText.verifying("Obscenity filter", !Wikis.hasBadWords(_)).verifying("Invalid characters", vldSpec(_)),
+      "lastName" -> text.verifying("Obscenity filter", !Wikis.hasBadWords(_)).verifying("Invalid characters", vldSpec(_)),
       "userType" -> nonEmptyText.verifying("Please select one", ut => Config.userTypes.contains(ut)),
       "yob" -> number(min = 1900, max = 2012),
       "address" -> text.verifying("Invalid characters", vldSpec(_)))(
@@ -158,6 +158,7 @@ object Profile extends RazController with Logging {
     Ok(views.html.doeJoinGoogle(registerForm)).withSession("gaga" -> session.get("gaga").mkString, "extra" -> session.get("extra").mkString,  "gid" -> session.get("gid").mkString)
   } // continue with register()
 
+  /** join with email */
   def doeJoinWith(email: String) = Action {implicit request=>
     auth // clean theme
     log("joinWith email=" + email)
@@ -317,7 +318,7 @@ object Profile extends RazController with Logging {
             u <- Some(User(
               uname(f, l, y), f.trim, l.trim, y, Enc(e),
               Enc(p), 'a', Set(ut),
-              Set(Config.realm),
+              Set(Website.realm),
               (if (addr != null && addr.length > 0) Some(addr) else None),
               Map("css" -> dfltCss, "favQuote" -> "Do one thing every day that scares you - Eleanor Roosevelt", "weatherCode" -> "caon0696"),
               flash.get("gid") orElse session.get("gid")))

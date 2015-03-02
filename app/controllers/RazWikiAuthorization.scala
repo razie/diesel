@@ -19,9 +19,12 @@ object RazWikiAuthorization extends RazController with Logging with WikiAuthoriz
 
   implicit def toU (wu:WikiUser) : User = wu.asInstanceOf[User]
 
+  // allow fans or not
+  def NFAN (role:String) = role != "Former" // && role != "Fan"
+
   def isInSameClub(member: WikiUser, owner: WikiUser) = { //}(implicit errCollector: VError = IgnoreErrors) = {
     // all clubs where member
-    val m1 = member.asInstanceOf[User].wikis.filter(x => x.uwid.cat == "Club" && x.role != "Fan").toList
+    val m1 = member.asInstanceOf[User].wikis.filter(x => x.uwid.cat == "Club" && NFAN(x.role)).toList
 
     (
       // owner is same as member
@@ -30,7 +33,7 @@ object RazWikiAuthorization extends RazController with Logging with WikiAuthoriz
       (owner.roles.contains(UserType.Organization) && m1.exists(_.uwid.nameOrId == owner.userName)) ||
       // owner is someone else => club lists intersect?
       (!owner.roles.contains(UserType.Organization) && {
-        val m2 = owner.wikis.filter(x => x.uwid.cat == "Club" && x.role != "Fan").toList
+        val m2 = owner.wikis.filter(x => x.uwid.cat == "Club" && NFAN(x.role)).toList
         m1.exists(x1 => m2.exists(_.uwid.id == x1.uwid.id))
       }))
   }
@@ -38,7 +41,7 @@ object RazWikiAuthorization extends RazController with Logging with WikiAuthoriz
   /** if user is admin of club where owner member */
   def isClubAdmin(admin: WikiUser, owner: WikiUser) = { //}(implicit errCollector: VError = IgnoreErrors) = {
     // all clubs where member
-    val clubs = owner.wikis.filter(x => x.uwid.cat == "Club" && x.role != "Fan").toList
+    val clubs = owner.wikis.filter(x => x.uwid.cat == "Club" && NFAN(x.role)).toList
 
     (
       // owner is same as member

@@ -1,15 +1,10 @@
 @******
-manage the list of kidz and/or their accounts
+manage the volunteer hours by club admin
 ******@
 @(user:model.User, rks:List[(model.RacerKid, model.RacerKidAssoc)], regs:List[model.Reg])
 @import model.RK._
 
 @htmlHeadBar("Volunteer hours for " + user.userName, Option(user))
-
-@rfks=@{
-  (for (a <- model.RacerKidz.findAssocForUser(user._id);
-           k <- model.RacerKidz.findById(a.to)) yield (k,a)).toList.sortBy(x=>x._1.info.lastName+x._1.info.firstName)
-}
 
 @rksactive=@{
   for ((t,a) <- rks if(t.info.status != STATUS_FORMER)) yield

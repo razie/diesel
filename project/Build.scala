@@ -28,6 +28,8 @@ object ApplicationBuild extends Build {
     "org.scalatest"      %% "scalatest"          % "1.9.2",
     "com.typesafe"        % "config"             % "1.2.1",
 
+    "com.googlecode.java-diff-utils"        % "diffutils"             % "1.2.1",
+
     "com.razie"          %% "base"               % "0.6.6-SNAPSHOT",
     "com.razie"          %% "snakked"            % "0.6.6-SNAPSHOT",
     "com.razie"          %% "scripster-core"     % "0.8.6-SNAPSHOT"

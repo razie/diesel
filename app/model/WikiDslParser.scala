@@ -20,7 +20,7 @@ import razie.wiki.parser.WAST
 import razie.wiki.parser.WikiParserBase
 
 /** parse dsl, fiddles and code specific fragments */
-trait DslParser extends WikiParserBase {
+trait WikiDslParser extends WikiParserBase {
   import WAST._
   
   def dslWikiProps = wikiPropFiddle | wikiPropDsl

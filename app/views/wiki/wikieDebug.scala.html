@@ -104,15 +104,31 @@ debug a wiki page
        </ul>
       </div>
 
+        <div class="well">
+        @helper.form(action=routes.Wikie.update("realm", page.get.wid), 'class->"well form-inline") {
+            <input type="text" class="input-large" name="newvalue" value="@page.map(_.realm)">
+            <button type="submit" class="btn">Update realm</button>
+        }
+        </div>
+
       <div class="well">
-      @helper.form(action=routes.Wikie.uowner(page.get.wid), 'class->"well form-inline") {
-        <input type="text" class="input-large" name="newowner" placeholder="@page.map(_.owner)">
+      @helper.form(action=routes.Wikie.update("owner", page.get.wid), 'class->"well form-inline") {
+        <input type="text" class="input-large" name="newvalue" placeholder="@page.map(_.owner)">
         <button type="submit" class="btn">Update Owner</button>
       }
       </div>
+
+        <div class="well">
+            You can move all the posts/items, if this is a blog/forum/something to another. Careful - no checking done, heh.
+            @helper.form(action=routes.Wikie.movePosts(page.get.wid), 'class->"well form-inline") {
+                <input type="text" class="input-large" name="newWid">
+                <button type="submit" class="btn">Move Now!</button>
+            }
+        </div>
+
       <div class="well">
-       You can move all the posts/items, if this is a blog/forum/something to another. Careful - no checking done, heh.
-      @helper.form(action=routes.Wikie.movePosts(page.get.wid), 'class->"well form-inline") {
+       Set parent. Careful - no checking done, heh.
+      @helper.form(action=routes.Wikie.setParent(page.get.wid), 'class->"well form-inline") {
         <input type="text" class="input-large" name="newWid">
         <button type="submit" class="btn">Move Now!</button>
       }
@@ -228,7 +244,7 @@ Html:
 
 AST:
       <div class="well">
-      @Html(razie.wiki.model.Wikis.preprocess(wid, page.get.markup, Wikis.noporn(page.get.content)).printHtml(1))
+      @Html(razie.wiki.model.Wikis.preprocess(wid, page.get.markup, Wikis.noBadWords(page.get.content)).printHtml(1))
        </ul>
       </div>
 

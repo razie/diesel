@@ -10,7 +10,7 @@ import play.api.mvc.Request
 import razie.wiki.admin.Audit
 import razie.wiki.model._
 import razie.db.ROne
-import razie.wiki.util.IgnoreErrors
+import razie.wiki.util.{PlayTools, IgnoreErrors}
 import razie.wiki.Enc
 import razie.wiki.Sec._
 
@@ -37,8 +37,12 @@ object Application extends RazController {
         NotFound("")
       } else {
         Audit.missingPage(" NO ROUTE FOR: " + path)
-//        NotFound("This is not the page you're looking for...!")
-        Redirect ("/")
+        RkReactors(request).map(Wikis.apply).flatMap {wiki=>
+          wiki.find("Admin", path) orElse wiki.find("Page", path) map { we =>
+//            Redirect(we.wid.urlRelative)
+            Wiki.showWid(CMDWID(Some(we.wid.wpath), Some(we.wid), "", ""), 1, wiki.realm).apply(request).value.get.get
+          }
+        }.getOrElse (Redirect ("/"))
       }
     }
   }
@@ -52,12 +56,12 @@ object Application extends RazController {
   def root = Action { implicit request =>
     Website.getHost.flatMap(Config.urlfwd(_)).map { host =>
       Redirect(host)
-    } orElse Website.getHost.flatMap(Website.apply).flatMap(_.homePage).map{ home=>
+    } orElse Website.getHost.flatMap(Website.apply).flatMap(x=> if(auth.isDefined && x.userHomePage.isDefined) x.userHomePage else x.homePage).map { home =>
         Wiki.show(home, 1).apply(request).value.get.get
     } getOrElse {
-      val r = Wiki.getRealm(Wiki.UNKNOWN)
-      if (r != Reactors.DFLT) Wiki.show(Reactors(r).mainPage, 1).apply(request).value.get.get
-      else  Application.idoeIndexItem(1)
+        val r = Wiki.getRealm(Wiki.UNKNOWN)
+        if (r != Reactors.DFLT) Wiki.show(Reactors(r).mainPage(auth), 1).apply(request).value.get.get
+        else  Application.idoeIndexItem(1)
     } // RK main home screen
     //todo un-hardcode that
   }

@@ -25,8 +25,11 @@ object Config extends WikiConfig {
 
   override val simulateHost = {
         "www.racerkidz.com"    // for testing locally
-//        "re9.coolscala.com"    // for testing locally
+//    "tre1.wikireactor.com"    // for testing locally
+//        "www.coolscala.com"    // for testing locally
+//        "www.wikireactor.com"    // for testing locally
 //        "www.enduroschool.com"    // for testing locally
+//            "www.askicoach.com"    // for testing locally
 //        "www.glacierskiclub.com"    // for testing locally
 //        "www.nofolders.net"    // for testing locally
 //        "www.dieselreactor.net"    // for testing locally
@@ -47,6 +50,9 @@ object Config extends WikiConfig {
 
   def robotUserAgents = irobotUserAgents
   private var irobotUserAgents = List[String]()
+
+  def trustedSites = itrustedSites
+  private var itrustedSites = List[String]()
 
   def reservedNames = ireservedNames
   private var ireservedNames = List[String]()
@@ -79,6 +85,7 @@ object Config extends WikiConfig {
 
     irobotUserAgents = sitecfg("robots.useragents").toList.flatMap(s=>s.split("[;,]"))
     ireservedNames = sitecfg("reserved.names").toList.flatMap(s=>s.split("[;,]"))
+    itrustedSites = sitecfg("trusted.sites").toList.flatMap(s=>s.split("[;,]"))
   }
 
 }

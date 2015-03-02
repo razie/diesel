@@ -324,6 +324,10 @@ Please read our [[Terms of Service]] as well as our [[Privacy Policy]]
           val ut = au.tasks.find(_.name == UserTasks.START_REGISTRATION)
           Ok(views.html.club.doeClubUserStartReg(auth.get, ut.map(_.args("club")).mkString))
         }
+        case UserTasks.APPROVE_VOL => {
+          val ut = au.tasks.find(_.name == UserTasks.APPROVE_VOL)
+          Club.doeVolApprover(auth.get)
+        }
         case _ => {
           Msg2("?")
         }

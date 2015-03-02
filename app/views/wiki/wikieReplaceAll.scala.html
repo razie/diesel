@@ -8,6 +8,7 @@
       <div class="well">
           <h2>Replace text!</h2>
           <p><strong>Warning</strong> - it's a regexp, so escape special chars?
+          <p><strong>Warning</strong> - this is across all the REALMS
       </div>
 <div >
 @import helper.twitterBootstrap._
@@ -41,7 +42,7 @@ ALERT: you can't undo this!  </div>
       <div class="well">
 
        <table class="table table-striped">
-         @controllers.Wikie.search(myForm("old").value.mkString).map { t =>
+         @controllers.Wikie.searchAll(myForm("old").value.mkString).map { t =>
            <tr>
              <td>@Html(t._1.wid.ahref)</td><td>@t._2<span style="color:red;font-weight:bold">@t._3</span>@t._4</td>
              <td>@t._2<span style="color:red;font-weight:bold">@myForm("new").value.mkString</span>@t._4</td>

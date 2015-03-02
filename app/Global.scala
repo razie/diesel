@@ -13,6 +13,7 @@ import model._
 import play.api.Application
 import play.api._
 import play.api.mvc._
+import razie.wiki.util.{IgnoreErrors, VErrors}
 import razie.{cout, Log, cdebug, clog}
 import play.libs.Akka
 import akka.actor.Props
@@ -183,10 +184,10 @@ object Global extends WithFilters(LoggingFilter) {
 
     RMongo.setInstance(RazAuditService)
 
-    Services.mkReactor = {realm:String =>
+    Services.mkReactor = { (realm, fallBack)=>
       realm match {
-        case Reactors.DFLT | Reactors.NOTES => new RkReactor(realm)
-        case _ => new RkReactor(realm)
+        case Reactors.DFLT | Reactors.NOTES | Reactors.WIKI => new RkReactor(realm, fallBack)
+        case _ => new RkReactor(realm, fallBack)
       }
     }
 
@@ -212,12 +213,14 @@ object Global extends WithFilters(LoggingFilter) {
 
     //todo look these up in Website
     Services.isSiteTrusted = {s=>
-      !s.startsWith("www.racerkidz.com") &&
-        !s.startsWith("www.enduroschool.com") &&
-        !s.startsWith("www.nofolders.net") &&
-        !s.startsWith("www.askicoach.com") &&
-        !s.startsWith("www.dieselreactor.net") &&
-        !s.startsWith("www.coolscala.com")
+      s.startsWith("www.racerkidz.com") ||
+        s.startsWith("www.enduroschool.com") ||
+        s.startsWith("www.nofolders.net") ||
+        s.startsWith("www.askicoach.com") ||
+        s.startsWith("www.dieselreactor.net") ||
+        s.startsWith("www.wikireactor.net") ||
+        s.startsWith("www.coolscala.com") ||
+        Config.trustedSites.exists(x=>s.startsWith(x))
     }
 
     WikiScripster.impl = new RazWikiScripster
@@ -234,6 +237,19 @@ object Global extends WithFilters(LoggingFilter) {
     Services.audit = RazAuditService
     Services.alli = RazAlligator
 
+    Notif add new Notif {
+      override def entityCreateAfter[A](e: A)(implicit errCollector: VErrors = IgnoreErrors):Unit = {e match {case we:WikiEntry => up(we)}}
+      override def entityUpdateAfter[A](e: A, what: String)(implicit errCollector: VErrors = IgnoreErrors):Unit = {e match {case we:WikiEntry=>up(we)}}
+
+      private def up(we:WikiEntry):Unit = {
+        if("Site" == we.category) Website.clean(we.name)
+
+        if("Reactor" == we.category) {
+          Reactors.reload(we.name);
+          Website.clean(we.name+".wikireactor.com")
+        }
+      }
+    }
   }
 
   object RazAlligator extends Alligator {

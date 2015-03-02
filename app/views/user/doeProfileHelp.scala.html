@@ -1,3 +1,4 @@
+@* main preferences profile page *@
 @(au:model.User)
 
 @salutation() = @{
@@ -10,7 +11,7 @@
 
 <div class="container">
   <div class="row">
-  @leftmenu(0, au)
+  @user.leftmenu(0, au)
 
   <div class="span9">
         <h2>Profile and preferences</h2>
@@ -22,8 +23,12 @@
   <a href="@routes.Kidz.doeUserKids" class="btn btn-large btn-info">Members/Racerz</a>
   <a href="@routes.Club.doeVol" class="btn btn-large btn-info">Volunteers</a>
 } else {
-  <a href="@routes.Kidz.doeUserKids" class="btn btn-large btn-info">People/Racerz</a>
-  <a href="@routes.Club.doeClubUserRegs" class="btn btn-large btn-info">Registrations</a>
+
+  @if(! au.isClub && au.hasRealm(razie.wiki.model.Wikis.RK)) {
+    <a href="@routes.Kidz.doeUserKids" class="btn btn-large btn-info">People/Racerz</a>
+    <a href="@routes.Club.doeClubUserRegs" class="btn btn-large btn-info">Registrations</a>
+  }
+
   @if(!au.profile.flatMap(_.consent).isDefined) {
     <a href="@routes.Profile.doeConsent()" class="btn btn-large btn-danger">Need Consent!</a>
   }

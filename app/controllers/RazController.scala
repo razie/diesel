@@ -77,7 +77,7 @@ Sorry, you don't have the permission to do this!
 >> $more
 </font>
 
-If you got this message in error, please describe the issue in a <a href="/doe/support">support request</a> and we'll take care of it! Thanks!
+If you got this message in error, please describe the issue in a <a href="/doe/support?desc=No+permission">support request</a> and we'll take care of it! Thanks!
 
 """, Some(controllers.Wiki.w(wid).toString), auth))
   }
@@ -111,8 +111,8 @@ ${errCollector.mkString}
     Ok(views.html.util.utilMsg(msg, page.map(_.toString), if (u.isDefined) u else auth))
   }
 
-  def vPorn: Constraint[String] = Constraint[String]("constraint.noporn") { o =>
-    if (Wikis.hasporn(o))
+  def vPorn: Constraint[String] = Constraint[String]("constraint.noBadWords") { o =>
+    if (Wikis.hasBadWords(o))
       Invalid(ValidationError("Failed obscenity filter, eh?")) else Valid
   }
 

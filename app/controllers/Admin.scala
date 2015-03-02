@@ -5,22 +5,28 @@ import java.lang.reflect.Modifier
 import com.mongodb.casbah.Imports.{DBObject, IntOk}
 import com.mongodb.casbah.commons.MongoDBObject
 import com.novus.salat.grater
-import razie.db.RazMongo
+import difflib.DiffUtils
+import org.json.{JSONArray, JSONObject}
+import play.api.libs.json.JsObject
+import razie.db.{RMany, RazMongo}
 import razie.db.RazSalatContext.ctx
 import org.bson.types.ObjectId
 import org.joda.time.DateTime
 import play.api.data.Form
 import play.api.data.Forms.{mapping, nonEmptyText, number}
 import play.api.mvc.{Action, AnyContent, Request, Result}
-import razie.wiki.util.VErrors
+import razie.g.snakked
+import razie.wiki.util.{js, VErrors}
 import razie.wiki.Enc
-import razie.wiki.model.Wikis
+import razie.wiki.model.{WID, WikiEntry, Wikis}
 import razie.wiki.admin.GlobalData
 import razie.wiki.admin.Audit
 import admin.RazAuditService
 import model.{WikiScripster, Users, Perm, User}
 import admin.Config
 import razie.wiki.admin.SendEmail
+
+import scala.util.Try
 
 object Admin extends RazController {
   protected def hasPerm(p: Perm)(implicit request: Request[_]): Boolean = auth.map(_.hasPerm(p)) getOrElse false
@@ -364,6 +370,12 @@ object Admin extends RazController {
     }
   }
 
+  def auditSummary = {
+     RazMongo("Audit").findAll().toList.groupBy(_.get("msg")).map { t =>
+       (t._2.size, t._1.toString)
+     }.toList.sortWith(_._1 > _._1)
+  }
+
   private def nice(l: Long) =
     if (l > 2L * (1024L * 1024L * 1024L))
       l / (1024L * 1024L * 1024L) + "G"
@@ -397,6 +409,7 @@ object Admin extends RazController {
 scriptsRun=${WikiScripster.count}\n
 Global.serving=${GlobalData.serving}\n
 Global.served=${GlobalData.served}\n
+Global.wikiOptions=${GlobalData.wikiOptions}\n
 NotesLocker.autosaved=${NotesLocker.autosaved}\n
 Global.servedPages=${GlobalData.servedPages}\n
 Global.startedDtm=${GlobalData.startedDtm}\n
@@ -435,6 +448,66 @@ SendEmail.state=${SendEmail.state}\n
         }
       }
     }
+  }
+
+  // diffing
+
+  case class WEAbstract (id:String, cat:String, name:String, realm:String, ver:Int) {
+    def this (we:WikiEntry) = this(we._id.toString, we.category, we.name, we.realm, we.ver)
+    def j = js.tojson(Map("id"->id, "cat"->cat, "name"->name, "realm"->realm, "ver"->ver))
+  }
+
+  def wput(reactor:String) = FAD { implicit au =>
+    implicit errCollector => implicit request =>
+      Ok("")
+  }
+
+  def wlist(reactor:String) = FAD { implicit au =>
+    implicit errCollector => implicit request =>
+    val l = RMany[WikiEntry]().filter(we=> reactor.isEmpty || reactor == "all" || we.realm == reactor).map(x=>new WEAbstract(x)).toList
+    val res = l.map(_.j)
+    Ok(js.tojson(res).toString).as("application/json")
+  }
+
+  def difflist(reactor:String, target:String) = FAD { implicit au =>
+    implicit errCollector => implicit request =>
+      import razie.Snakk._
+      import razie.wiki.Sec._
+      try {
+        val b = body(url(s"http://$target/razadmin/wlist/$reactor").basic("H-"+au.email.dec, "H-"+au.pwd.dec))
+
+        val gd = new JSONArray(b)
+        val ldest = js.fromArray(gd).collect {
+          case x : Map[String, String] => WEAbstract(x("id"), x("cat"), x("name"), x("realm"), x("ver").toInt)
+        }
+
+        val lsrc = RMany[WikiEntry]().filter(we=> reactor.isEmpty || reactor == "all" || we.realm == reactor).map(x=>new WEAbstract(x)).toList
+
+        val lnew = lsrc.filter(x=> ldest.find(y=> y.id == x.id).isEmpty)
+        val lremoved = ldest.filter(x=> lsrc.find(y=> y.id == x.id).isEmpty)
+
+        val lchanged = for(x <- lsrc; y <- ldest if y.id == x.id && y.ver < x.ver) yield (x,y)
+        Ok(views.html.admin.admin_difflist(reactor, target, lnew, lremoved, lchanged)(auth))
+      } catch {
+        case x : Throwable => Ok ("error " + x)
+      }
+  }
+
+  def showDiff(target:String, wid:WID) = FAD { implicit au =>
+    implicit errCollector => implicit request =>
+      import razie.Snakk._
+      import razie.wiki.Sec._
+      import scala.collection.JavaConversions._
+
+      try {
+        val b = body(url(s"http://$target/wikie/content/${wid.wpath}").basic("H-"+au.email.dec, "H-"+au.pwd.dec))
+
+        val p = DiffUtils.diff(wid.content.get.lines.toList, b.lines.toList)
+
+        Ok(p.getDeltas.mkString("\n"))
+      } catch {
+        case x : Throwable => Ok ("error " + x)
+      }
   }
 }
 

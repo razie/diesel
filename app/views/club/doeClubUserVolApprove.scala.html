@@ -1,0 +1,46 @@
+@******
+manage the volunteer hours by club admin
+******@
+@(vhs:List[model.VolunteerH], user:model.User)
+@import org.bson.types.ObjectId
+
+@htmlHeadBar("Approving volunteer hours", Option(user))
+
+<div class="container"> <div class="row">
+@***
+    @views.html.user.leftmenu(15, user)
+***@
+
+<div class="span9">
+
+<h2>These are the volunteer hour requests</h2>
+
+@vhs.map{vh=>
+
+<b> @model.RacerKidz.findAssocById(vh.rkaId.toString).get.rk.get.info.ename </b>
+
+wants
+     @vh.hours.toString hours
+for
+   @vh.desc
+
+
+  <a href="@routes.Club.doeVolApprove(vh._id.toString, "y").toString" class="btn btn-mini btn-success">Approve</a>
+  <a href="@routes.Club.doeVolApprove(vh._id.toString, "n").toString" class="btn btn-mini btn-danger">Reject</a>
+
+<p>
+
+     @vh.comment
+
+<hr>
+}
+
+  <p><small>By maintaining a profile, you agree to the <a href="@controllers.Wiki.w("Terms of Service")">Terms of Service</a></small><p>
+
+</div>
+
+  </div>
+  <hr>
+  @htmlFooter(ads=true)
+</div> <!-- /container -->
+@htmlBottom()

@@ -7,8 +7,8 @@ select module to add to reactor
 
 @htmlHeadBar("Select mod for reactor", au)
 
-@cat()=@{"ReactorModule"}
-@catInst()=@{"ReactorMod"}
+@CAT()=@{"ReactorModule"}
+@CATINST()=@{"ReactorMod"}
 
 <div class="container">
     <div class="row">
@@ -17,12 +17,13 @@ select module to add to reactor
             <h3>Select mod to add</h3>
             <hr>
 
-           @defining(razie.wiki.model.Wikis.rk.pages(cat).filter(x=> !razie.wiki.model.Wikis(realm).pages(catInst).contains(x))) {list=>
+            @* mod tempaltes that are not there already *@
+           @defining(razie.wiki.model.Wikis.dflt.pages(CAT).filter(x=> !razie.wiki.model.Wikis(realm).pageNames(CATINST).contains(x.name))) {list=>
                    @if(list.isEmpty) {
                        No more mods available... <a href="@controllers.Wiki.w("Admin", "Creating Reactor Mods")">create one!</a>
                    }
            @list.map {we =>
-               <a href="@routes.Realm.addModule2(we.wid.wpath, realm)" style="text-decoration:none">
+               <a href="@routes.Realm.addMod2(we.wid.wpath, realm)" style="text-decoration:none">
                    <div class="alert alert-cool">
                        <h2><span style="color:#FF7519">@we.label</span>
                        @we.contentTags.get("title").map{t=><small>| @t</small>}

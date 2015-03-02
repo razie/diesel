@@ -128,9 +128,19 @@ case class VolunteerH(
   rkaId: ObjectId, // association for which I track volunteer events
   hours: Int, // hours in this entry
   desc: String, // description of work done
+  comment: String, // details/comments
   by: ObjectId, // user that created the entry
+  approver: Option[String]=None, // user that will approve: email or userName or userId
+  status: String=VH.ST_WAITING, // user that will approve: email or userName or userId
+  approvedBy: Option[ObjectId]=None, // user that approved the entry
   crDtm: DateTime = DateTime.now,
   _id: ObjectId = new ObjectId) extends REntity[VolunteerH] {
+}
+
+object VH {
+  final val ST_OK = "Ok"
+  final val ST_WAITING = "Waiting"
+  final val ST_REJECTED = "Rejected"
 }
 
 /** racer kid info utilities */

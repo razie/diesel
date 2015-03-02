@@ -44,13 +44,15 @@
     '_showConstraints -> false,
     '_error->registerForm.error("password"))
 
-  <button type="submit" class="btn btn-primary">Login</button>
-  <p>
+  <button type="submit" class="btn btn-success">Login</button>
+  <hr>
+  <span style="color:red;font-size: smaller"> To <strong>create a new account</strong>, please confirm the chosen password: </span>
+
   @helper.inputPassword(
     registerForm("repassword"),
-    '_label -> "Retype password to register")
+    '_label -> "")
 
-  <button type="submit" class="btn btn-inverse">Register</button>
+  <button type="submit" class="btn btn-warning">Create new account</button>
 
   @registerForm.globalError.map { err=>
      <p style="color:red;font-weight:bold">@err.message</p>

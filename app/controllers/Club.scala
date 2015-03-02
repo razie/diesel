@@ -50,11 +50,16 @@ case class Club(
   lazy val newFollows = propSeq.filter(_._1 startsWith "Follows.").map(t =>
     RoleWid(t._1.replaceFirst("Follows.", ""), WID.fromPath(t._2).get))
   lazy val filterRegFields = props.get("FilterFields").getOrElse("") split ","
+  lazy val volunteering = props.get("Volunteering").getOrElse("") split ","
 
   lazy val newTasks = propSeq filter (_._1 startsWith "Task.") map { t =>
     val PAT1 = "([^,]*),(.*)".r
     val PAT1(name, args) = t._2
     (name, args.split(",").map(x => x.split(":")(0) -> x.split(":")(1)).toMap)
+  }
+
+  lazy val approvers = propSeq filter (_._1 startsWith "Approver.") map { t =>
+    (t._1.replaceFirst("Approver.", ""), t._2)
   }
 
   lazy val msgFormsAccepted = (props filter (_._1 startsWith "Msg.formsAccepted")).toSeq.sortBy (_._1) map (_._2) mkString ("<p>")
@@ -65,6 +70,8 @@ case class Club(
   def reg(u: User) = model.Regs.findClubUserYear(user, u._id, curYear)
   def reg(wid: WID) = model.Regs.findWid(wid)
   def userLinks = model.Users.findUserLinksTo(uwid)
+  def isMember(u: User) = membership(u).isDefined
+  def membership(u: User) = ROne[UserWiki]("uwid" -> uwid.grated, "userId" -> u._id)
 
   // TODO filter by year as well
   def roleOf(rkId: ObjectId) =
@@ -172,7 +179,7 @@ object Club extends RazController with Logging {
 
   def edRegForm(implicit request: Request[_]) = Form {
     tuple(
-      "regType" -> nonEmptyText.verifying("Obscenity filter", !Wikis.hasporn(_)).verifying("Invalid characters", vldSpec(_)),
+      "regType" -> nonEmptyText.verifying("Obscenity filter", !Wikis.hasBadWords(_)).verifying("Invalid characters", vldSpec(_)),
       "curYear" -> number(min = 2012, max = 2025),
       "regAdmin" -> text.verifying("Invalid user", { x => Users.findUser(Enc(x)).isDefined }),
       "dsl" -> text) verifying
@@ -215,7 +222,7 @@ object Club extends RazController with Logging {
 
   def mngUserForm(implicit request: Request[_]) = Form {
     tuple(
-      "role" -> nonEmptyText.verifying("Obscenity filter", !Wikis.hasporn(_)).verifying("Invalid characters", vldSpec(_)),
+      "role" -> nonEmptyText.verifying("Obscenity filter", !Wikis.hasBadWords(_)).verifying("Invalid characters", vldSpec(_)),
       "regStatus" -> text,
       "paid" -> text)
   }
@@ -297,12 +304,12 @@ object Club extends RazController with Logging {
       cuwid <- WID("Club", au.userName).uwid orErr "no uwid";
       uw <- model.Users.findUserLinksTo(cuwid).find(_._id.toString == uwid) orErr "user is not a member";
       u <- uw.user;
-      msg <- request.queryString.get("msg") orErr "no message";
-      reg <- club.reg(u) orErr "no registration record for year... ?"
+      msg <- request.queryString.get("msg") orErr "no message"
     ) yield {
       SendEmail.withSession { implicit mailSession =>
         // notify user
-        Emailer.sendEmailClubRegHelp(u, au.userName, routes.Club.doeClubUserReg(reg._id.toString).toString, msg.mkString)
+        val link = club.reg(u) map {reg => routes.Club.doeClubUserReg(reg._id.toString).toString} getOrElse "http://www.racerkidz.com"
+        Emailer.sendEmailClubRegHelp(u, au.userName, link, msg.mkString)
       }
       Redirect(routes.Club.doeClubReg(uwid))
     }) getOrElse Msg2("CAN'T find registration " + errCollector.mkString)
@@ -601,24 +608,54 @@ object Club extends RazController with Logging {
     Ok(views.html.club.doeClubKidz(au))
   }
 
-  def doeVol = Action { implicit request =>
-    forActiveUser { au =>
+  // rollup volunteer hours per registration
+  def volPerReg(reg:Reg) = {
+    val club = Club(reg.clubName).get
+    val rkas = model.RacerKidz.findAssocByClub(club).filter(_.role != RK.ROLE_FAN).filter(a=> reg.kids.exists(_.rkId == a.to))
+    val x = rkas.map(_.hours)
+    if (x.isEmpty) "?" else x.sum.toString
+  }
+
+  /** for user per club au is the user */
+  def doeUserVolAdd (regId:String) = FAU { implicit au => implicit errCollector => implicit request =>
+    (for (
+      reg <- Regs.findId(regId) orErr "no registration found... ?";
+      club <- Club(reg.clubName)
+    ) yield {
+      reg.kids.map(_.rkId);
+      val rkas = model.RacerKidz.findAssocByClub(club).filter(_.role != RK.ROLE_FAN).filter(a=> reg.kids.exists(_.rkId == a.to))
+      Ok(views.html.club.doeClubUserVolAdd(reg, rkas.toList, addvol.fill("", 0, "?", "", ""), club, au))
+    }) getOrElse Msg2("OOPS " + errCollector.mkString)
+  }
+
+  /** for club per member */
+  def doeVol = FAU { implicit au => implicit errCollector => implicit request =>
+    (for (
+      uuwid <- WID("Club", au.userName).uwid orErr ("no uwid");
+      isClub <- au.isClub orErr ("registrations possible only for a club");
+      club <- Club(au.userName)
+    ) yield {
+
       val rks =
         (for (
-          a <- model.RacerKidz.findAssocForUser(au._id);
-          k <- model.RacerKidz.findById(a.to)
+          a <-  model.RacerKidz.findAssocByClub(club) if a.role != RK.ROLE_FAN;
+          k <-  model.RacerKidz.findById(a.to)        if k.info.status != RK.STATUS_FORMER
         ) yield (k, a)).toList.sortBy(x => x._1.info.lastName + x._1.info.firstName)
 
-      val regs = Regs.findClub(Club("Glacier_Ski_Club").get.user).toList
+      val regs = Regs.findClubYear(club.user, club.curYear).toList
 
       Ok(views.html.club.doeClubVol(au, rks, regs))
-    }
+      }) getOrElse Msg2("OOPS " + errCollector.mkString)
   }
 
   def addvol(implicit request: Request[_]) = Form {
     tuple(
+      "who" -> text,
       "hours" -> number(min = 0, max = 16),
-      "desc" -> text.verifying(vPorn, vSpec))
+      "desc" -> text.verifying(vPorn, vSpec),
+      "comment" -> text.verifying(vPorn, vSpec),
+      "approver" -> text.verifying(vPorn, vSpec)
+    )
   }
 
   /** capture volunteer hour record */
@@ -629,7 +666,7 @@ object Club extends RazController with Logging {
       isClub <- au.isClub orErr ("registration only for a club");
       rka <- ROne[RacerKidAssoc]("_id" -> new ObjectId(rkaId))
     ) yield {
-      Ok(views.html.club.doeClubVolAdd(rkaId, rka, addvol.fill(0, "?"), au))
+      Ok(views.html.club.doeClubVolAdd(rkaId, rka, addvol.fill(rkaId, 0, "?", "", "?"), au))
     }) getOrElse Msg2("CAN'T SEE PROFILE " + errCollector.mkString)
   }
 
@@ -637,17 +674,22 @@ object Club extends RazController with Logging {
   def doeVolAdded(rkaId: String) = Action { implicit request =>
     implicit val errCollector = new VErrors()
     (for (
-      au <- activeUser;
-      isClub <- au.isClub orErr ("registration only for a club");
-      rka <- ROne[RacerKidAssoc]("_id" -> new ObjectId(rkaId))
+      au <- activeUser
     ) yield {
       addvol.bindFromRequest.fold(
-        formWithErrors => BadRequest(views.html.club.doeClubVolAdd(rkaId, rka, formWithErrors, au)),
+        formWithErrors => Msg2("some error " + errCollector.mkString),
         {
-          case (h, d) =>
-            model.VolunteerH(new ObjectId(rkaId), h, d, au._id).create
-            rka.copy(hours = rka.hours + h).update
-            Redirect(routes.Club.doeVolAdd(rkaId))
+          case (w, h, d, c, a) =>
+            if(au.isClub) {
+              val rka = ROne[RacerKidAssoc]("_id" -> new ObjectId(rkaId)).get
+              model.VolunteerH(new ObjectId(rkaId), h, d, c, au._id, Some(a), VH.ST_OK).create
+              rka.copy(hours = rka.hours + h).update
+              Redirect(routes.Club.doeVolAdd(rkaId))
+            } else {
+              model.VolunteerH(new ObjectId(w), h, d, c, au._id, Some(a), VH.ST_WAITING).create
+//              rka.copy(hours = rka.hours + h).update
+              Redirect(routes.Club.doeUserVolAdd(rkaId))
+            }
         })
     }) getOrElse Msg2("CAN'T SEE PROFILE " + errCollector.mkString)
   }
@@ -661,9 +703,40 @@ object Club extends RazController with Logging {
       rka <- ROne[RacerKidAssoc]("_id" -> new ObjectId(rkaId));
       vh <- ROne[VolunteerH]("_id" -> new ObjectId(vhid))
     ) yield {
+      if (vh.status == VH.ST_OK) rka.copy(hours = rka.hours - vh.hours).update
       vh.delete
-      rka.copy(hours = rka.hours - vh.hours).update
       Redirect(routes.Club.doeVolAdd(rkaId))
+    }) getOrElse Msg2("CAN'T SEE PROFILE " + errCollector.mkString)
+  }
+
+  import razie.wiki.Sec._
+
+  /** capture volunteer hour record */
+  def doeVolApprover(user:User) (implicit request:Request[_]) = {
+    implicit val errCollector = new VErrors()
+    val vhs =
+      if (user.isClub)
+        RMany[VolunteerH]("approvedBy" -> None)
+      else
+        RMany[VolunteerH]("approver" -> Some(user.email.dec), "approvedBy" -> None)
+    Ok(views.html.club.doeClubUserVolApprove(vhs.toList, user))
+  }
+
+  /** approve volunteer hour record */
+  def doeVolApprove(vhid: String, approved:String) = Action { implicit request =>
+    implicit val errCollector = new VErrors()
+    (for (
+      au <- activeUser;
+      vh <- ROne[VolunteerH]("_id" -> new ObjectId(vhid));
+      rka <- ROne[RacerKidAssoc]("_id" -> vh.rkaId)
+    ) yield {
+      if("y" == approved) {
+        vh.copy(approvedBy = Some(au._id), status=VH.ST_OK).update
+        rka.copy(hours = rka.hours + vh.hours).update
+      } else {
+        vh.copy(approvedBy = Some(au._id), status=VH.ST_REJECTED).update
+      }
+      doeVolApprover(au)
     }) getOrElse Msg2("CAN'T SEE PROFILE " + errCollector.mkString)
   }
 

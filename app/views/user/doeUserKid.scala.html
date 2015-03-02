@@ -1,13 +1,13 @@
-@(userId:String, rkid:String, role:String, associd:String, next:String, myForm: Form[_], user:model.User)
+@(userId:String, rkid:String, role:String, associd:String, next:String, myForm: Form[_], au:model.User)
 @import org.bson.types.ObjectId
 @import controllers.RKU
 @import util.razText
 @import model.RK
 
-@htmlHeadBar("Racer Kid", Some(user))
+@htmlHeadBar("Racer Kid", Some(au))
 
 <div class="container"> <div class="row">
-@leftmenu(6, user)
+@user.leftmenu(6, au)
 
 <div class="span4">
 
@@ -18,7 +18,7 @@
 }
 
 @relationships = @{
-        if(user.isClub) Array(RK.ROLE_KID, RK.ROLE_COACH, RK.ROLE_SPOUSE, RK.ROLE_PARENT, RK.ROLE_MEMBER)
+        if(au.isClub) Array(RK.ROLE_KID, RK.ROLE_COACH, RK.ROLE_SPOUSE, RK.ROLE_PARENT, RK.ROLE_MEMBER)
         else RK.RELATIONSHIPS
 }
 
@@ -121,7 +121,7 @@
 }
 
 @mc=@{
-  for ((a,k) <- RKU(user).mergeCandidates(rka.get)) yield
+  for ((a,k) <- RKU(au).mergeCandidates(rka.get)) yield
     Map("fname"->k.info.firstName,
         "lname"->k.info.lastName,
         "role" -> a.role,
@@ -134,7 +134,7 @@
 @mnglink(row:Map[String,String],k:String,v:String)={
   @k match {
         case "button" => {
-      <a href="@routes.Kidz.doeKid(user._id.toString, v, "-", row("associd"), "clubkidz")" class="btn btn-mini">More...</a>
+      <a href="@routes.Kidz.doeKid(au._id.toString, v, "-", row("associd"), "clubkidz")" class="btn btn-mini">More...</a>
       }
         case "merge" => {
       <a href="@routes.Club.doeMergeKid(row("associd"), associd)" class="btn btn-mini btn-info">MERGE</a>
@@ -146,7 +146,7 @@
 </div>
   </div>
 
-@if(associd.length > 3 && !RKU(user).mergeCandidates(rka.get).isEmpty) {
+@if(associd.length > 3 && !RKU(au).mergeCandidates(rka.get).isEmpty) {
 There are merge candidates:
 @util.utilSimpleTable(mc,
         Seq("fname" -> "F.Name", "lname"->"L.Name", "role" -> "Role", "source" -> "Source", "button"->"Details", "merge" -> "Merge"), Some(mnglink))

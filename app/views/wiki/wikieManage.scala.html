@@ -1,0 +1,68 @@
+@**************
+wiki fragment, used in another page
+**************@
+@(au: Option[model.User], page: Option[razie.wiki.model.WikiEntry])
+@import razie.wiki.model.{Wikis, WikiCount, WID, WikiEntry}
+@import _root_.admin.Config
+@import razie.wiki.util.IgnoreErrors
+
+@label() = @{
+    page.flatMap(_.contentTags.get("label")).orElse(page.map(_.label)).getOrElse(Wikis(wid.getRealm).label(wid))
+}
+@wid = @{
+    page.get.wid
+}
+@we = @{
+    page.get
+}
+
+@url() = @{
+    val u = controllers.Wiki.w(page.get.wid)
+    if(u startsWith "http") u else s"http://${Config.hostport}$u"
+}
+
+@followers = @{
+    model.Users.findUserLinksTo(page.get.uwid).toList
+}
+
+@htmlHeadBar("", au)
+
+<div class="container">
+
+        <!-- Main hero unit for a primary marketing message or call to action -->
+    <h2>Manage @label</h2>
+    <p>
+
+        @if(au.exists(_.hasPerm(model.Perm.adminDb))) {
+        }
+
+        @if(au.isDefined && au.get.isActive) {
+
+            @if(we.owner.exists(_.asInstanceOf[model.User].isClub)) {
+                followers: @followers.size
+    <p>
+        <a href="@routes.Wikil.unlinkAll(wid)">Unlink all members</a>
+    <p>
+        <a href="@routes.Wikil.linkAll(wid)">Link all members</a>
+        }
+
+        @if(we.isOwner(au.get.id)) {
+        }
+
+        @if(au.get.isLinkedTo(we.uwid) && we.parent.isDefined) {
+    <p><a href="@routes.Wikie.wikieMove1(we._id.toString)">@wid.label("Move", "Move")</a>
+        }
+
+        }
+
+</div>
+
+<hr>
+
+@htmlFooter()
+
+    </div> <!-- /container -->
+
+@htmlBottom()
+
+

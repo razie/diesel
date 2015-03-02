@@ -13,10 +13,10 @@ import scala.collection.mutable.ListBuffer
 /** simple notification observers attempt - should really move to an actor implementation */
 trait Notif {
   def entityCreateBefore[A](e: A)(implicit errCollector: VErrors = IgnoreErrors): Boolean = { true }
-  def entityCreateAfter[A](e: A)(implicit errCollector: VErrors = IgnoreErrors) = {}
+  def entityCreateAfter[A](e: A)(implicit errCollector: VErrors = IgnoreErrors):Unit = {}
 
   def entityUpdateBefore[A](e: A, what: String)(implicit errCollector: VErrors = IgnoreErrors): Boolean = { true }
-  def entityUpdateAfter[A](e: A, what: String)(implicit errCollector: VErrors = IgnoreErrors) = {}
+  def entityUpdateAfter[A](e: A, what: String)(implicit errCollector: VErrors = IgnoreErrors):Unit = {}
 }
 
 /** simple notification observers attempt */
@@ -26,8 +26,8 @@ object Notif {
   def add(n: Notif) { notifieds append n }
 
   def entityCreateBefore[A](e: A)(implicit errCollector: VErrors = IgnoreErrors): Boolean = { notifieds.foldLeft(true)((x, y) => x && y.entityCreateBefore(e)(errCollector)) }
-  def entityCreateAfter[A](e: A)(implicit errCollector: VErrors = IgnoreErrors) = { notifieds map (_.entityCreateAfter(e)(errCollector)) }
+  def entityCreateAfter[A](e: A)(implicit errCollector: VErrors = IgnoreErrors):Unit = { notifieds map (_.entityCreateAfter(e)(errCollector)) }
 
   def entityUpdateBefore[A](e: A, what: String)(implicit errCollector: VErrors = IgnoreErrors): Boolean = { notifieds.foldLeft(true)((x, y) => x && y.entityUpdateBefore(e, what)) }
-  def entityUpdateAfter[A](e: A, what: String)(implicit errCollector: VErrors = IgnoreErrors) = { notifieds map (_.entityUpdateAfter(e, what)) }
+  def entityUpdateAfter[A](e: A, what: String)(implicit errCollector: VErrors = IgnoreErrors):Unit = { notifieds map (_.entityUpdateAfter(e, what)) }
 }

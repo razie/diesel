@@ -8,8 +8,8 @@ creates the navigation bar
 @web()=@{request.flatMap(x=>model.Website.apply(x)) getOrElse model.Website.dflt}
 
 @searchUrl()=@{
-   if(Wikis.RK == realm) s"http://${Config.hostport}/wikie/search"
-   else s"http://${Config.hostport}/we/$realm/search"
+   if(Config.isLocalhost) s"http://${Config.hostport}/we/$realm/search"
+   else s"/wikie/search"
    }
 
 <div class="navbar navbar-fixed-top">
@@ -52,6 +52,10 @@ creates the navigation bar
               @joe.ename<b class="caret"></b></a>
               <ul class="dropdown-menu">
                 <li><a href="@routes.Profile.doeHelp"><i class="icon-edit"></i> Preferences</a></li>
+                @Wikis(realm).find("Reactor", realm).map { r =>
+                  <li><a href="/wiki/Reactor:@realm"><i class="icon-edit"></i> Admin</a></li>
+                }
+                <li><hr></li>
                 <li><a href="/do/signout"><i class="icon-off"></i> Sign out</a></li>
               </ul>
             </li>

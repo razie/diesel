@@ -3,6 +3,9 @@
 #
 
 DT=`date | sed 's/ //g'`
+RKS=~/w/racerkidz/s
+
+cd $RKS
 
 gzip dump.tar
 mv dump.tar.gz rk-backups/dump.OLD.$DT.tar.gz
@@ -18,3 +21,4 @@ gunzip dump.tar.gz
 
 tar xvf dump.tar
 
+cd ..

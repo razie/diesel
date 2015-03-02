@@ -1,6 +1,5 @@
 
-rm rk.zip
-rm RUNNING_PID
+rm -f RUNNING_PID
 
 #scp `find ./lib_managed/jars/com.razie -name *.jar` razvanc@cloud3a.razie.com:rk/up/
 

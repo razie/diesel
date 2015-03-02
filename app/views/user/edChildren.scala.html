@@ -1,4 +1,4 @@
-@(myForm: Form[_], child:String, user:model.User)
+@(myForm: Form[_], child:String, au:model.User)
 
 @salutation() = @{
   val names = Array("Hi", "Hello", "Hey", "Howdy")
@@ -6,10 +6,10 @@
   names(i)
   }
 
-@htmlHeadBar("", Some(user))
+@htmlHeadBar("", Some(au))
 
 <div class="span2">
-    @leftmenu(6, user)
+    @user.leftmenu(6, au)
     </div>
 
     <div class="container span8">
