@@ -143,11 +143,6 @@ object Realm extends RazController with Logging {
         }
         cleanAuth()
         Audit ! WikiAudit("CREATE_FROM_TEMPLATE", mainPage.wid.wpath, Some(au._id))
-
-//        if ("Reactor" == cat) {
-//          Reactors add name
-//          pages = pages.filter(_.name != name) map (_.copy (realm=name))
-//        }
         pages foreach(_.create)
       }
 
@@ -223,7 +218,8 @@ object Realm extends RazController with Logging {
           val label = page s "label"
           val tm = page s "template"
           val co = Wikis.template(tm, parms)
-          if(WID(cat,name).r(realm).page.isDefined) Nil
+          // if page with same exists, forget it (make sure it didn't fallback to another realm)
+          if(WID(cat,name).r(realm).page.exists(_.realm == realm)) Nil
           else List(WikiEntry(cat, name, label, "md", co, au._id, Seq(), realm, 1, None,
           Map("owner" -> au.id,
             WikiEntry.PROP_WVIS -> Visibility.PRIVATE))
@@ -235,8 +231,9 @@ object Realm extends RazController with Logging {
 
       // todo visibility? public unless you pay 20$ account
 
+      Audit ! WikiAudit("CREATE_MOD", tw.wid.wpath, Some(au._id))
+
       razie.db.tx(s"addMod.$module") { implicit txn =>
-        Audit ! WikiAudit("CREATE_MOD", tw.wid.wpath, Some(au._id))
         pages foreach(_.create)
       }
 

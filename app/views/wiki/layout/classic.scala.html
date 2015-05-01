@@ -53,6 +53,13 @@ render a regular wiki page - site pages are rendered with wikiSite.scala.html
     }
 
   </div> <!-- row -->
-    @htmlFooter(ads = model.Website.get.showAds == "yes" && !page.exists(_.content.matches("""(?s).*\{\{ad[:}].*\{\{ad[:}].*""")) && !au.exists(_.isUnder13), false, wid.getRealm)
-</div> <!-- /container -->
+      @if(!print) {
+          @htmlFooter(ads = model.Website.get.showAds == "yes" &&
+                  !page.exists(_.content.matches( """(?s).*\{\{ad[:}].*\{\{ad[:}].*""")) &&
+                  !au.exists(_.isUnder13),
+              false,
+              wid.getRealm,
+              Some(request))
+      }
+  </div> <!-- /container -->
 

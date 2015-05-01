@@ -33,8 +33,11 @@ creates the navigation bar
         @if(!isSite) {
           <li class="divider-vertical"></li>
           <li><a href="@web().navBrowse(realm)">Browse</a></li>
-          <li><a href="http://@Config.hostport/doe/lucky">Lucky</a></li>
+          <li><a href="http://@Config.hostport/notes">Notes</a></li>
           <li><a href="/doe/selecttheme">Theme</a></li>
+            @web().navMenu.map{t=>
+                <li><a href="@t._2">@t._1</a></li>
+            }
         }
       </ul>
     </div><!--/.nav-collapse -->

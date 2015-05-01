@@ -10,7 +10,7 @@ import model._
 import org.bson.types.ObjectId
 import org.joda.time.DateTime
 import play.api.mvc.{Action, Request}
-import razie.wiki.Enc
+import razie.wiki.{EncUrl, Enc}
 import razie.wiki.model.{Wikis, WID}
 import razie.{clog, Logging, cout}
 import scala.Array.canBuildFrom
@@ -173,7 +173,7 @@ object Club extends RazController with Logging {
             uw,
             model.Regs.findClubUserYear(au, uw.userId, controllers.Club(au).curYear))).toList.sortBy(x => x._1.map(y => y.lastName + y.firstName).mkString)
 
-      Ok(views.html.club.doeClubRegs(au,!details.isEmpty, members))
+      Ok(views.html.club.doeClubRegs(au,details, members))
     }) getOrElse Msg2("CAN'T SEE PROFILE " + errCollector.mkString)
   }
 
@@ -611,9 +611,9 @@ object Club extends RazController with Logging {
   // rollup volunteer hours per registration
   def volPerReg(reg:Reg) = {
     val club = Club(reg.clubName).get
-    val rkas = model.RacerKidz.findAssocByClub(club).filter(_.role != RK.ROLE_FAN).filter(a=> reg.kids.exists(_.rkId == a.to))
-    val x = rkas.map(_.hours)
-    if (x.isEmpty) "?" else x.sum.toString
+    val rkasx = reg.kids.flatMap(rk=> RMany[RacerKidAssoc]("from" -> club.userId, "year" -> club.curYear, "to" -> rk.rkId).filter(_.role != RK.ROLE_FAN))
+    val x = rkasx.map(_.hours)
+    if (x.isEmpty) "~" else x.sum.toString
   }
 
   /** for user per club au is the user */
@@ -651,7 +651,7 @@ object Club extends RazController with Logging {
   def addvol(implicit request: Request[_]) = Form {
     tuple(
       "who" -> text,
-      "hours" -> number(min = 0, max = 16),
+      "hours" -> number(min = 0, max = 100),
       "desc" -> text.verifying(vPorn, vSpec),
       "comment" -> text.verifying(vPorn, vSpec),
       "approver" -> text.verifying(vPorn, vSpec)
@@ -664,34 +664,43 @@ object Club extends RazController with Logging {
     (for (
       au <- activeUser;
       isClub <- au.isClub orErr ("registration only for a club");
-      rka <- ROne[RacerKidAssoc]("_id" -> new ObjectId(rkaId))
+      rka <- ROne[RacerKidAssoc]("_id" -> new ObjectId(rkaId)) orErr ("No RKA id "+rkaId)
     ) yield {
       Ok(views.html.club.doeClubVolAdd(rkaId, rka, addvol.fill(rkaId, 0, "?", "", "?"), au))
-    }) getOrElse Msg2("CAN'T SEE PROFILE " + errCollector.mkString)
+    }) getOrElse Msg2("ERROR " + errCollector.mkString)
   }
 
   /** create volunteer hour record */
-  def doeVolAdded(rkaId: String) = Action { implicit request =>
+  def doeVolAdded(id: String) = Action { implicit request =>
+    // if from club, id == rkaId
+    // if from user id == regId
     implicit val errCollector = new VErrors()
     (for (
       au <- activeUser
     ) yield {
       addvol.bindFromRequest.fold(
-        formWithErrors => Msg2("some error " + errCollector.mkString),
+        formWithErrors =>
+          if(au.isClub) {
+            val rka = ROne[RacerKidAssoc]("_id" -> new ObjectId(id)).get
+            BadRequest(views.html.club.doeClubVolAdd(id, rka, formWithErrors, au))
+          } else
+//            BadRequest(views.html.club.doeClubUserVolAdd(reg, rkas.toList, formWithErrors, club, au))
+                Msg2("some error " + formWithErrors.errorsAsJson(lang).toString)
+      ,
         {
           case (w, h, d, c, a) =>
             if(au.isClub) {
-              val rka = ROne[RacerKidAssoc]("_id" -> new ObjectId(rkaId)).get
-              model.VolunteerH(new ObjectId(rkaId), h, d, c, au._id, Some(a), VH.ST_OK).create
+              val rka = ROne[RacerKidAssoc]("_id" -> new ObjectId(id)).get
+              model.VolunteerH(new ObjectId(id), h, d, c, au._id, Some(a), VH.ST_OK).create
               rka.copy(hours = rka.hours + h).update
-              Redirect(routes.Club.doeVolAdd(rkaId))
+              Redirect(routes.Club.doeVolAdd(id))
             } else {
               model.VolunteerH(new ObjectId(w), h, d, c, au._id, Some(a), VH.ST_WAITING).create
 //              rka.copy(hours = rka.hours + h).update
-              Redirect(routes.Club.doeUserVolAdd(rkaId))
+              Redirect(routes.Club.doeUserVolAdd(id))
             }
         })
-    }) getOrElse Msg2("CAN'T SEE PROFILE " + errCollector.mkString)
+    }) getOrElse Msg2("ERROR " + errCollector.mkString)
   }
 
   /** delete volunteer hour record */
@@ -699,13 +708,15 @@ object Club extends RazController with Logging {
     implicit val errCollector = new VErrors()
     (for (
       au <- activeUser;
-      isClub <- au.isClub orErr ("registration only for a club");
-      rka <- ROne[RacerKidAssoc]("_id" -> new ObjectId(rkaId));
       vh <- ROne[VolunteerH]("_id" -> new ObjectId(vhid))
     ) yield {
-      if (vh.status == VH.ST_OK) rka.copy(hours = rka.hours - vh.hours).update
       vh.delete
-      Redirect(routes.Club.doeVolAdd(rkaId))
+      if(au.isClub) {
+        val rka = ROne[RacerKidAssoc]("_id" -> new ObjectId(rkaId)).get
+        if (vh.status == VH.ST_OK) rka.copy(hours = rka.hours - vh.hours).update
+        Redirect(routes.Club.doeVolAdd(rkaId))
+      } else
+        Redirect(routes.Club.doeUserVolAdd(rkaId))
     }) getOrElse Msg2("CAN'T SEE PROFILE " + errCollector.mkString)
   }
 
@@ -730,13 +741,15 @@ object Club extends RazController with Logging {
       vh <- ROne[VolunteerH]("_id" -> new ObjectId(vhid));
       rka <- ROne[RacerKidAssoc]("_id" -> vh.rkaId)
     ) yield {
-      if("y" == approved) {
+      if(approved.startsWith("to:")) {
+        vh.copy(approver = Some(approved.replaceFirst("to:", ""))).update
+      } else if("y" == approved) {
         vh.copy(approvedBy = Some(au._id), status=VH.ST_OK).update
         rka.copy(hours = rka.hours + vh.hours).update
       } else {
         vh.copy(approvedBy = Some(au._id), status=VH.ST_REJECTED).update
       }
-      doeVolApprover(au)
+      Redirect ("/user/task/approveVolunteerHours")
     }) getOrElse Msg2("CAN'T SEE PROFILE " + errCollector.mkString)
   }
 

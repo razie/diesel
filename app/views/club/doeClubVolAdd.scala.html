@@ -27,7 +27,7 @@ manage the volunteer hours by club admin
 @mnglink(row:Map[String,String],k:String,v:String)={
   @k match {
         case "delete" => {
-      <a href="@routes.Club.doeVolDelete(rkaid, v)" class="btn btn-mini">Delete</a>
+      <a href="@routes.Club.doeVolDelete(rkaid, v)" class="btn btn-mini btn-danger"> x </a>
       }
     case _ => { @v }
   }

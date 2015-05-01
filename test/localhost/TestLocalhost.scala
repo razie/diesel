@@ -53,7 +53,7 @@ class TestLocalhost extends FlatSpec with ShouldMatchers with UrlTester {
     ("/wiki/Note:Razie_Private_Note", u, p).s400
 
     "/wiki/Category:Note" snok "Private Note"
-    "/wiki/all/Note" snok "Private Note"
+    "/w/rk/wiki/all/Note" snok "Private Note"
 
     "/wikie/search?q=Glacier" sok "Glacier"
 

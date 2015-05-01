@@ -343,7 +343,7 @@ object Profile extends RazController with Logging {
                   Tasks.sendEmailVerif(u)
                   if (!unameauto(u.yob))
                     Emailer.sendEmailUname(unameF(u.firstName, u.lastName), u)
-                  Emailer.tellRaz("New user", u.userName, u.email.dec, "realm: "+Config.realm)
+                  Emailer.tellRaz("New user", u.userName, u.email.dec, "realm: "+u.realms.mkString)
                 }
               }
 

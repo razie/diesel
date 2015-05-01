@@ -56,7 +56,9 @@ object Application extends RazController {
   def root = Action { implicit request =>
     Website.getHost.flatMap(Config.urlfwd(_)).map { host =>
       Redirect(host)
-    } orElse Website.getHost.flatMap(Website.apply).flatMap(x=> if(auth.isDefined && x.userHomePage.isDefined) x.userHomePage else x.homePage).map { home =>
+    } orElse Website.getHost.flatMap(Website.apply).flatMap(x=>
+      if(auth.isDefined && x.userHomePage.isDefined) x.userHomePage else x.homePage
+      ).map { home =>
         Wiki.show(home, 1).apply(request).value.get.get
     } getOrElse {
         val r = Wiki.getRealm(Wiki.UNKNOWN)
@@ -81,7 +83,8 @@ object Application extends RazController {
     Redirect(Wiki.w("Admin", "Hosted_Services_for_Ski_Clubs"))
   }
 
-  /** randomly redirect to a topic */
+  /** randomly redirect to a topic
+    * todo not used anymore */
   def lucky = Action { implicit request =>
 
     val au = auth

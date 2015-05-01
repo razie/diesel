@@ -21,14 +21,16 @@ manage the volunteer hours by club admin
         "desc"->vh.desc,
         "comment"->vh.comment,
         "approved"->vh.status,
-        "delete"->vh._id.toString
+        "delete"-> (if(vh.status == model.VH.ST_OK) "" else vh._id.toString)
         )
 }
 
 @mnglink(row:Map[String,String],k:String,v:String)={
   @k match {
     case "delete" => {
-      <a href="@routes.Club.doeVolDelete(row("rkaId"), v)" class="btn btn-mini">Delete</a>
+        @if(! v.isEmpty) {
+          <a href="@routes.Club.doeVolDelete(reg._id.toString, v)" class="btn btn-mini btn-danger"> x </a>
+        }
       }
 
     case _ => { @v }
@@ -36,7 +38,7 @@ manage the volunteer hours by club admin
 }
 
 @util.utilSimpleTable(vols.iterator,
-  Seq("who" -> "Who", "hours" -> "Hours", "desc"->"What", "comment" -> "Desc", "approved" -> "Ok"), Some(mnglink))
+  Seq("who" -> "Who", "hours" -> "Hours", "desc"->"What", "comment" -> "Desc", "approved" -> "Ok", "delete" -> "Delete"), Some(mnglink))
 
 
 @import helper.twitterBootstrap._

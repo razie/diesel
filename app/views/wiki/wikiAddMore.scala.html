@@ -23,9 +23,15 @@ fragment: add more stuff to the current topic, including children, sub-topics et
         </p>
       }
     </div>
+  } else {
+      <div class="well">
+      No @wid.name
+          (s)
+      </div>
   }
 
   @if(!WikiDomain(wid.getRealm).needsParent(wid.name)) {
+    @** see if there is an associated Template **@
     @WikiDomain(wid.getRealm).aEnds(wid.name, "Template").headOption.map { wet =>
       @helper.form(action=routes.Wikie.addWithSpec1(wid.name, wet, wid.getRealm), 'class->"well form-inline") {
         <label>Create a new <a href="@wid.url">@Wikis(wid.getRealm).label(WID("Category",wid.name))</a> </label>
@@ -33,6 +39,7 @@ fragment: add more stuff to the current topic, including children, sub-topics et
       }
     }
 
+    @** no Template - use default **@
     @if(WikiDomain(wid.getRealm).aEnds(wid.name, "Template").isEmpty) {
       @helper.form(action=routes.Wikie.addWithName(wid.name, wid.getRealm), 'class->"well form-inline") {
         <label>Create a new <a href="@wid.url">@Wikis(wid.getRealm).label(WID("Category",wid.name))</a> </label>
@@ -45,7 +52,7 @@ fragment: add more stuff to the current topic, including children, sub-topics et
   <!-- list of child pages -->
   @WikiDomain(wid.getRealm).aEnds(wid.cat, "Child").map {child=>
     @if(page.isDefined && controllers.Wiki.canEdit(wid,user,page)(IgnoreErrors)) {
-      @helper.form(action=routes.Wikie.createLinked(child,wid,"Child"), 'class->"form-inline") {
+      @helper.form(action=routes.Wikie.addLinked(child,wid,"Child"), 'class->"form-inline") {
         <label>Create a <a href="/wiki/Category:@child">@Wikis.category(child).map(_.label).mkString</a> </label>
         <input type="text" class="input-xlarge" name="name" placeholder="Name">
             <button type="submit" class="btn btn-mini btn-primary">Now</button>

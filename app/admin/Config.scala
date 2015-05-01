@@ -25,9 +25,9 @@ object Config extends WikiConfig {
 
   override val simulateHost = {
         "www.racerkidz.com"    // for testing locally
-//    "tre1.wikireactor.com"    // for testing locally
+//    "ski1.wikireactor.com"    // for testing locally
+//            "www.wikireactor.com"    // for testing locally
 //        "www.coolscala.com"    // for testing locally
-//        "www.wikireactor.com"    // for testing locally
 //        "www.enduroschool.com"    // for testing locally
 //            "www.askicoach.com"    // for testing locally
 //        "www.glacierskiclub.com"    // for testing locally

@@ -27,6 +27,7 @@ trait TRacerKidInfo {
   def _id: ObjectId
 
   def ename = if (firstName != null && firstName.size > 0) firstName else email.dec.replaceAll("@.*", "")
+  def fullName = firstName + " " + lastName
   def role = roles.head
 }
 

@@ -45,7 +45,8 @@ debug a wiki page
 
         <div class="well">
             <ul>Settings
-                <li>realm: @realm</li>
+                <li>current realm: @realm</li>
+                <li>page realm: @page.map(_.realm)</li>
                 <li>wid.realm: @wid.realm</li>
                 <li>getHost: @Website.getHost</li>
                 <li>Website: @Website.apply(request).map(_.name)</li>
@@ -108,6 +109,14 @@ debug a wiki page
         @helper.form(action=routes.Wikie.update("realm", page.get.wid), 'class->"well form-inline") {
             <input type="text" class="input-large" name="newvalue" value="@page.map(_.realm)">
             <button type="submit" class="btn">Update realm</button>
+        }
+        </div>
+
+        <div class="well">
+        @helper.form(action=routes.Wikie.update("realmALL", page.get.wid), 'class->"well form-inline") {
+            <input type="text" class="input-large" name="newvalue" value="@page.map(_.realm)">
+            <button type="submit" class="btn">Update realm ALL kids</button>
+            <p>please reboot server to reload indexes after this...</p>
         }
         </div>
 

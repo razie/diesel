@@ -6,6 +6,13 @@ manage the volunteer hours by club admin
 
 @htmlHeadBar("Approving volunteer hours", Option(user))
 
+@club(vol:model.VolunteerH) = @{
+  val x = model.RacerKidz.findAssocById(vol.rkaId.toString).map(_.from).flatMap(model.Users.findUserById(_))
+  x.filter(_.isClub).flatMap(u=>Club.apply(u.userName) )
+}
+
+@tos(t:String) =@{"to:" + t}
+
 <div class="container"> <div class="row">
 @***
     @views.html.user.leftmenu(15, user)
@@ -17,13 +24,12 @@ manage the volunteer hours by club admin
 
 @vhs.map{vh=>
 
-<b> @model.RacerKidz.findAssocById(vh.rkaId.toString).get.rk.get.info.ename </b>
+<b> @model.RacerKidz.findAssocById(vh.rkaId.toString).get.rk.get.info.fullName </b>
 
 wants
      @vh.hours.toString hours
 for
    @vh.desc
-
 
   <a href="@routes.Club.doeVolApprove(vh._id.toString, "y").toString" class="btn btn-mini btn-success">Approve</a>
   <a href="@routes.Club.doeVolApprove(vh._id.toString, "n").toString" class="btn btn-mini btn-danger">Reject</a>
@@ -31,6 +37,14 @@ for
 <p>
 
      @vh.comment
+
+    <p>
+    @club(vh).map{c=>
+        or reassign to:
+        @c.approvers.map { t =>
+            <a href="@routes.Club.doeVolApprove(vh._id.toString, tos(t._2)).toString" class="btn btn-mini btn-info">@t._1</a>
+}
+}
 
 <hr>
 }

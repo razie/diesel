@@ -1,7 +1,7 @@
 @******
 club admin manages list of users and registrations
 ******@
-@(club:model.User, details:Boolean, members:List[(Option[model.User], model.UserWiki, Option[model.Reg])])
+@(club:model.User, details:String, members:List[(Option[model.User], model.UserWiki, Option[model.Reg])])
 @import _root_.admin.Config
 
 @htmlHeadBar("Registrations for club " + club.userName, Some(club))
@@ -11,7 +11,6 @@ club admin manages list of users and registrations
   @views.html.user.leftmenu(7, club)
 
 <div class="span9">
-
   @tab=@{
     members.filter(_._1.isDefined).map(t=>
       Map("userName"->t._1.get.userName,
@@ -19,6 +18,7 @@ club admin manages list of users and registrations
         "lastName"->t._1.get.lastName,
         "role"->t._2.role,
         "paid"->t._3.map(_.paid).getOrElse(""),
+        "vol" -> (if(details == "2") t._3.map(controllers.Club.volPerReg).getOrElse("-") else ""),
         "regStatus" -> t._3.map(_.regStatus).getOrElse("n/a"),
         "uwId"->t._2._id.toString))
   }
@@ -56,13 +56,14 @@ club admin manages list of users and registrations
 
 <p>These are the members with accounts on the website. Click on the colorful statuses to manage that user/registration. (See the bottom for a legend).
 <br><b>Summary: @members.filter(_._2.role != "Fan").size</b> total: @members.filter(_._2.role != "Fan").groupBy(_._3.map(_.regStatus)).map{x=><b>@x._2.size</b> @x._1.getOrElse("n/a") , }
-@if(details) {
+@if(details == "1") {
   @allforms.map{forms=>
     <br><b>Forms: @forms.size</b> total: @forms.groupBy(_._3).map{x=><b>@x._2.size</b> @x._1.getOrElse("n/a") , }
     <br><b>Forms: @forms.size</b> total: @forms.groupBy(_._2).map{x=><b>@x._2.size</b> @x._1.getOrElse("n/a") , }
   }
 } else {
-  <small><a href="/doe/club/regs?details=1">More stats (slow)</a></small>
+    <p><small><a href="/doe/club/regs?details=1">More stats (slow)</a></small> |
+  <small><a href="/doe/club/regs?details=2">Hours report (slow)</a></small>
 }
 
 @util.utilSimpleTable(tab.filter(_.apply("role") != "Fan").iterator,
@@ -71,6 +72,7 @@ club admin manages list of users and registrations
                 "lastName"->"Last",
                 "role"->"Role",
                 "paid" -> "Paid",
+                "vol" -> "Hours",
                 "regStatus" -> "Registration",
                 "uwId"->""), Some(mnglink))
 

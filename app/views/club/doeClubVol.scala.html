@@ -6,6 +6,16 @@ manage the volunteer hours by club admin
 
 @htmlHeadBar("Volunteer hours for " + user.userName, Option(user))
 
+@allVols=@{
+    razie.db.RMany[model.VolunteerH]().filter(x=>rks.exists(_._2._id == x.rkaId)).size
+}
+
+@pendingVols=@{
+  val x = razie.db.RMany[model.VolunteerH]("status" -> model.VH.ST_WAITING).filter(x=>rks.exists(_._2._id == x.rkaId)).toList
+  val y = x.groupBy(_.approver)
+    (x.size, x.groupBy(_.approver))
+}
+
 @rksactive=@{
   for ((t,a) <- rks if(t.info.status != STATUS_FORMER)) yield
     Map("fname"->t.info.firstName,
@@ -37,6 +47,15 @@ manage the volunteer hours by club admin
 @model.RacerKidz.checkMyself(user._id)
 <br>
 <p>Some records are created by their parents (see the "Source"). For those that did not register online, you can create records here, for team management etc.
+
+@defining(pendingVols) { pv=>
+    <p>Stats: <b>@pv._1</b> pending submissions:
+        <ul>
+    @pv._2.map{l=>
+            <li>@l._2.size  @l._1</li>
+    }
+   </ul>
+}
 
 @util.utilSimpleTable(rksactive.iterator,
         Seq("fname" -> "F.Name",

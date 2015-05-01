@@ -1,0 +1,63 @@
+@***
+purge audit tables
+***@
+@(src:String, dest:String, diff:difflib.Patch)(implicit au:Option[model.User])
+@import razie.wiki.model.WID
+
+@wp(wid:WID)=@{
+  if(_root_.admin.Config.isLocalhost && wid.getRealm == "rk") "rk." + wid.wpath
+  else wid.wpath
+}
+
+@htmlHeadBar("admin showDiff", au)
+
+  <div class="container">
+
+    <h2>Diffs</h2>
+
+      <table class="table table-striped">
+          <thead>
+              <td>What</td>
+              <td>Remote</td>
+              <td>Local</td>
+          </thead>
+@diff.getDeltas.map{d =>
+  @d.getType.toString match {
+      case "INSERT" => {
+          <tr class="success">
+          }
+      case "DELETE" => {
+          <tr class="error">
+          }
+      case "CHANGE" => {
+          <tr class="">
+          }
+     case _ => {
+         <tr>
+         }
+      }
+      <td>
+          @d.getType
+      </td>
+      <td>
+          @d.getOriginal.getPosition <br>
+          @d.getOriginal.getLines.map{s=> @s <br>}
+      </td>
+<td>
+    @d.getRevised.getPosition <br>
+    @d.getRevised.getLines.map{s=> @s <br>}
+</td>
+  </tr>
+}
+
+      </table>
+
+      <hr>
+          @diff.getDeltas.mkString("\n")
+      <hr>
+
+    @htmlFooter()
+
+  </div> <!-- /container -->
+
+  @htmlBottom()

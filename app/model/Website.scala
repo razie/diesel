@@ -31,9 +31,6 @@ class Website (we:WikiEntry, extra:Seq[(String,String)] = Seq()) extends DslProp
   def name:String = this prop "name" OR "?"
   def url:String = this prop "url" OR "?"
   def css:Option[String] = this prop "css" // dark vs light
-  /** MSEC time to reload */
-  def ttl:Int = math.max(5000, (this prop "ttl" OR "60000").toInt)
-  //todo hook into wiki save and reload automatically
 
   def homePage:Option[WID] = this wprop "home"
   def userHomePage:Option[WID] = this wprop "userHome"
@@ -53,7 +50,7 @@ class Website (we:WikiEntry, extra:Seq[(String,String)] = Seq()) extends DslProp
   def support:String = this prop "support" OR "/doe/support"
 
   def join:String = this prop "join" OR "/doe/join"
-  def navBrowse(realm:String):String = this prop "nav.browse" OR (
+  def navBrowse(realm:String):String = this prop "nav.Browse" OR (
 //    if(Wikis.RK == realm) s"http://${Config.hostport}/wiki"
 //  else if(!Config.isLocalhost) s"/wiki" else s"http://${Config.hostport}/w/$realm/wiki"
     if(!Config.isLocalhost) s"/wiki" else s"http://${Config.hostport}/w/$realm/wiki"
@@ -64,6 +61,8 @@ class Website (we:WikiEntry, extra:Seq[(String,String)] = Seq()) extends DslProp
 
   def divMain:String = this prop "divMain" OR "9"
   def showAds:String = this prop "showAds" OR "yes"
+  def copyright:Option[String] = this prop "copyright"
+
   def rightTop:Option[WID] = this wprop "rightTop"
   def rightBottom:Option[WID] = this wprop "rightBottom"
   def about:Option[WID] = this wprop "about"
@@ -78,12 +77,17 @@ class Website (we:WikiEntry, extra:Seq[(String,String)] = Seq()) extends DslProp
   def bottomMenu (section:String) = {
     propSeq.filter(_._1 startsWith (s"bottom.$section")).map(t=>(t._1.replaceFirst(s"bottom.$section.", ""), t._2))
   }
+
+  //nav.TopLevel
+  def navMenu () = {
+    propSeq.filter(_._1 startsWith (s"nav.")).filter(! _._1.startsWith(s"nav.Browse")).map(t=>(t._1.replaceFirst(s"nav.", ""), t._2))
+  }
 }
 
 object Website {
   private case class CacheEntry (w:Website, millis:Long)
   private val cache = new collection.mutable.HashMap[String,CacheEntry]()
-  val EXP = 100000 // w.get.ttl
+  val EXP = 100000
 
   def apply (s:String):Option[Website] = {
     val ce = cache.get(s)

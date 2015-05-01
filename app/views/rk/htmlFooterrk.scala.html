@@ -1,11 +1,18 @@
 @**************
 the footer of every page...
 **************@
-@(ads:Boolean=false, isSite:Boolean=false)
+@(ads:Boolean=false, isSite:Boolean=false, request:Option[Request[_]])
 @import _root_.admin.Config
 
+@web()=@{request.flatMap(x=>model.Website.apply(x)) getOrElse model.Website.dflt}
+
 <footer>
-  <p>&copy; <a href="http://www.racerkidz.com">RacerKidz</a>, 2012-2014
+  <p>
+@web().copyright.map{x=>
+  @Html(x)
+}.getOrElse{
+  &copy; <a href="http://www.racerkidz.com">RacerKidz</a>, 2012-2015
+}
   | <a href="http://@_root_.admin.Config.hostport/doe/support">Support</a>
 @if(isSite) {
   | <a href="http://@_root_.admin.Config.hostport/page/Hosted_Terms_of_Service">Terms of Service</a>

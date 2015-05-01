@@ -447,9 +447,9 @@ object Wiki extends WikiBase {
 
     razie.NoStaticS.put(QueryParms(request.queryString))
 
-    Wikis(wid.getRealm).find(wid) match {
+    wid.page match {
       case x @ Some(w) if !canSee(wid, auth, x).getOrElse(false) => noPerm(wid, "DEBUG")
-      case y @ Some(w) => Ok(views.html.wiki.wikieDebug(wid, Some(iwid.name), y, realm, auth))
+      case y @ Some(w) => Ok(views.html.wiki.wikieDebug(w.wid, Some(iwid.name), y, realm, auth))
       case None => Msg2 (s"${wid.wpath} not found")
     }
   }

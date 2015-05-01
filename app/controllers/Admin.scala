@@ -502,9 +502,43 @@ SendEmail.state=${SendEmail.state}\n
       try {
         val b = body(url(s"http://$target/wikie/content/${wid.wpath}").basic("H-"+au.email.dec, "H-"+au.pwd.dec))
 
-        val p = DiffUtils.diff(wid.content.get.lines.toList, b.lines.toList)
+        val p = DiffUtils.diff(b.lines.toList, wid.content.get.lines.toList)
 
-        Ok(p.getDeltas.mkString("\n"))
+        Ok(views.html.admin.admin_showDiff(b, wid.content.get, p)(auth))
+      } catch {
+        case x : Throwable => Ok ("error " + x)
+      }
+  }
+
+  def applyDiff(target:String, wid:WID) = FAD { implicit au =>
+    implicit errCollector => implicit request =>
+      import razie.Snakk._
+      import razie.wiki.Sec._
+      import scala.collection.JavaConversions._
+
+      try {
+        val content = wid.content.get
+
+        val b = body(url(s"http://$target/wikie/setContent/${wid.wpath}").form(Map("content" -> content)).basic("H-"+au.email.dec, "H-"+au.pwd.dec))
+
+        Ok(b)
+      } catch {
+        case x : Throwable => Ok ("error " + x)
+      }
+  }
+
+  def setContentFromDiff(target:String, wid:WID) = FAD { implicit au =>
+    implicit errCollector => implicit request =>
+      import razie.Snakk._
+      import razie.wiki.Sec._
+      import scala.collection.JavaConversions._
+
+      try {
+        val b = body(url(s"http://$target/wikie/content/${wid.wpath}").basic("H-"+au.email.dec, "H-"+au.pwd.dec))
+
+        val p = DiffUtils.diff(b.lines.toList, wid.content.get.lines.toList)
+
+        Ok(views.html.admin.admin_showDiff(b, wid.content.get, p)(auth))
       } catch {
         case x : Throwable => Ok ("error " + x)
       }

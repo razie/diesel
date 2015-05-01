@@ -153,7 +153,7 @@ object Wikie extends WikieBase {
         (for (
           can <- canEdit(wid, Some(au), None, parentProps);
           r3 <- ("any" != wid.cat) orErr ("can't create in category any");
-          w <- Wikis(wid.getRealm).category(wid.cat) orErr ("cannot find the category " + wid.cat);
+          w <- Wikis(wid.getRealm).category(wid.cat) orErr (s"cannot find the category ${wid.cat} realm ${wid.getRealm}");
           r1 <- au.hasPerm(Perm.uWiki) orCorr cNoPermission("uWiki")
         ) yield {
           Audit.missingPage("wiki " + wid);
@@ -178,6 +178,66 @@ object Wikie extends WikieBase {
         }) getOrElse
           noPerm(wid, "EDIT")
     }
+  }
+
+  /** api to set content remotely - used by sync and such */
+  def setContent(wid: WID) = FAU {
+    implicit au => implicit errCollector => implicit request =>
+
+      val data = PlayTools.postData
+
+      log("Wiki.setContent " + wid)
+      Wikis.find(wid) match {
+        case Some(w) =>
+          (for (
+            can <- canEdit(wid, auth, Some(w));
+            r1 <- au.hasPerm(Perm.uWiki) orCorr cNoPermission("uWiki");
+            co <- data.get("content");
+            hasQuota <- (au.isAdmin || au.quota.canUpdate) orCorr cNoQuotaUpdates;
+            nochange <- (w.content != co) orErr ("no change");
+            newVer <- Some(w.copy(content=co, ver=w.ver+1, updDtm=DateTime.now));
+            upd <- Notif.entityUpdateBefore(newVer, WikiEntry.UPD_CONTENT) orErr ("Not allowerd")
+          ) yield {
+            var we = newVer
+
+            // signing scripts
+            if (au.hasPerm(Perm.adminDb)) {
+              if (!we.scripts.filter(_.signature startsWith "REVIEW").isEmpty) {
+                var c2 = we.content
+                for (s <- we.scripts.filter(_.signature startsWith "REVIEW")) {
+                  def sign(s: String) = Enc apply Enc.hash(s)
+
+                  c2 = we.PATTSIGN.replaceSomeIn(c2, { m =>
+                    clog << "SIGNING:" << m << m.groupNames.mkString
+                    if (s.name == (m group 2)) Some("{{%s:%s:%s}}%s{{/%s}}".format(
+                      m group 1, m group 2, sign(s.content), s.content.replaceAll("""\\""", """\\\\"""), m group 1))
+                    else None
+                  })
+                }
+                we = we.cloneContent(c2)
+              }
+            }
+
+            if (!we.scripts.filter(_.signature == "ADMIN").isEmpty && !(au.hasPerm(Perm.adminDb) || Config.isLocalhost)) {
+              noPerm(wid, "HACK_SCRIPTS1")
+            } else {
+              razie.db.tx("Wiki.Save") { implicit txn =>
+                w.update(we)
+                Notif.entityUpdateAfter(we, WikiEntry.UPD_CONTENT)
+                Emailer.laterSession { implicit mailSession =>
+                  au.quota.incUpdates
+//                      au.shouldEmailParent("Everything").map(parent => Emailer.sendEmailChildUpdatedWiki(parent, au, WID(w.category, w.name)))
+                }
+              }
+              Audit ! WikiAudit("API_SET_CONTENT", w.wid.wpath, Some(au._id))
+
+              Ok("ok")
+            }
+          }) getOrElse
+            Unauthorized("oops - " + errCollector.mkString)
+        case None =>
+          Unauthorized("oops - wid not found")
+      }
   }
 
   /** save an edited wiki - either new or updated */
@@ -276,7 +336,7 @@ object Wikie extends WikieBase {
               can <- canEdit(wid, auth, None, parentProps);
               hasQuota <- (au.isAdmin || au.quota.canUpdate) orCorr cNoQuotaUpdates;
               r3 <- ("any" != wid.cat) orErr ("can't create in category any");
-              w <- Wikis(wid.getRealm).category(wid.cat) orErr ("cannot find the category " + wid.cat);
+              w <- Wikis(wid.getRealm).category(wid.cat) orErr (s"cannot find the category ${wid.cat} realm ${wid.getRealm}");
               r1 <- (au.hasPerm(Perm.uWiki)) orCorr cNoPermission("uWiki")
             ) yield {
               //todo find the right realm from the url or something like Config.realm
@@ -452,7 +512,7 @@ object Wikie extends WikieBase {
   def addWithSpec2(cat: String, name:String, templateWpath:String, torspec:String, realm:String) = FAU {
     implicit au => implicit errCollector => implicit request =>
       WID.fromPath(templateWpath).flatMap(_.page).map { tpage =>
-        // if there is a form, use that WID
+        // if there is a section called "form", use that WID
         val wid = tpage.sections.find(_.name == "form").map(_.wid).getOrElse(tpage.wid)
         Ok(views.html.wiki.wikieAddWithSpec2(cat, name, wid, torspec, realm, auth, Map.empty))
       } getOrElse
@@ -462,12 +522,13 @@ object Wikie extends WikieBase {
   /** add a child/related to another topic - this stages the link and begins creation of kid.
     *
     * At the end, the staged link is persisted */
-  def createLinked(cat: String, pwid: WID, role: String) = FAU {
+  def addLinked(cat: String, pwid: WID, role: String) = FAU {
     implicit au => implicit errCollector => implicit request =>
     addForm.bindFromRequest.fold(
     formWithErrors => Msg2("Oops, can't add that name!", Some(pwid.urlRelative)),
     {
-      case name: String => {
+      case xname: String => {
+        val name = xname.replaceAll("/", "_") // it messes up a lot of stuff... can't have it
         val n = Wikis.formatName(WID(cat, name).r(pwid.getRealm))
         Stage("WikiLinkStaged", WikiLinkStaged(WID(cat, n, pwid.findId).r(pwid.getRealm), pwid, role).grated, au.userName).create
         Redirect(routes.Wikie.wikieEdit(WID(cat, name, pwid.findId).r(pwid.getRealm)))
@@ -726,6 +787,35 @@ object Wikie extends WikieBase {
               // can only change label of links OR if the formatted name doesn't change
               razie.db.tx("Wiki.urealm") { implicit txn =>
                 w.update(newVer)
+              }
+              Notif.entityUpdateAfter(newVer, WikiEntry.UPD_UOWNER)
+              Redirect(controllers.Wiki.w(wid))
+            }) getOrElse
+              noPerm(wid, "ADMIN_UOWNER")
+          }
+          case "realmALL" => {
+            log("Wiki.urealmALL " + wid + ", " + newvalue)
+            (for (
+              au <- activeUser;
+              ok1 <- au.hasPerm(Perm.adminDb) orCorr cNoPermission;
+              w <- Wikis.find(wid);
+              nochange <- (w.realm != newvalue) orErr "no change";
+              newVer <- Some(w.copy(realm=newvalue));
+              upd <- Notif.entityUpdateBefore(newVer, WikiEntry.UPD_UOWNER) orErr "Not allowerd"
+            ) yield {
+              // can only change label of links OR if the formatted name doesn't change
+              razie.db.tx("Wiki.urealmALL") { implicit txn =>
+                w.update(newVer)
+                RMany[WikiLink]("to" -> w.uwid.grated, "how"->"Child").toList.foreach{ link=>
+                  link.delete
+                  link.pageFrom.map{p=>
+                    val c = p.copy(realm=newvalue)
+                    p.update(c)
+                    link.copy(to = newVer.uwid, from = c.uwid).create
+                  } getOrElse {
+                    link.copy(to = newVer.uwid).create
+                  }
+                }
               }
               Notif.entityUpdateAfter(newVer, WikiEntry.UPD_UOWNER)
               Redirect(controllers.Wiki.w(wid))

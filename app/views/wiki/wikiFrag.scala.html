@@ -7,6 +7,8 @@ wiki fragment, used in another page
 @import razie.wiki.util.IgnoreErrors
 
 @nicename() = @{ iname.getOrElse(wid.name) }
+@ppage = @{if(page.isDefined) page else wid.page}
+@rss = @{page.flatMap(_.contentTags.get("rss")).getOrElse(controllers.Wiki.w(wid)+"/rss.xml")}
 
 @favoriteCat = @{ "Topic" }
 
@@ -26,7 +28,6 @@ wiki fragment, used in another page
   }
 
   @ccc(wid:WID, we:WikiEntry)= @{
-//    val x = Wikis.format(wid, we.markup, wid.content.mkString, Some(we))
     val x = Wikis.format(wid, we.markup, "", Some(we))
     try {
       if(x contains "CANNOT PARSE") {
@@ -37,7 +38,7 @@ wiki fragment, used in another page
           <small>[[Check content below at Line:$line Position:$col]]
             <p>Sorry, dumb program here! The content is not lost: try editing this topic... also, please open a support issue and copy/paste there the content.
           </small></div><p></p>""".stripMargin + s"""
-            <textarea id="$id" readonly="true" style="width:90%; margin-right:40px" rows="15">${we.content.lines.zipWithIndex.map(t=>f"${t._2}%3s> ${t._1}").mkString("\n")}</textarea>
+            <textarea id="$id" readonly="true" style="width:90%; margin-right:40px" rows="15">${we.content.lines.zipWithIndex.map(t=>f"${t._2+1}%3s> ${t._1}").mkString("\n")}</textarea>
          """.stripMargin
       } else x
     } catch {
@@ -72,7 +73,7 @@ wiki fragment, used in another page
                 <a class="btn btn-small btn-info" href="@routes.Wiki.social(label().toString, url())">Share <i class="icon-thumbs-up icon-white"></i></a>
 
                 @if(Seq("Blog", "Forum").contains(wid.cat)) {
-                  <a class="btn btn-small btn-info" href="@controllers.Wiki.w(wid)/rss.xml">Feed (RSS) <i class="icon-star icon-white"></i></a>
+                  <a class="btn btn-small btn-info" href="@rss">Feed (RSS) <i class="icon-star icon-white"></i></a>
                 }
 
               }
