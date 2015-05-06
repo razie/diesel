@@ -24,8 +24,8 @@ object Config extends WikiConfig {
   final val curYear = "2015"
 
   override val simulateHost = {
-        "www.racerkidz.com"    // for testing locally
-//    "ski1.wikireactor.com"    // for testing locally
+//        "www.racerkidz.com"    // for testing locally
+    "ski1.wikireactor.com"    // for testing locally
 //            "www.wikireactor.com"    // for testing locally
 //        "www.coolscala.com"    // for testing locally
 //        "www.enduroschool.com"    // for testing locally
