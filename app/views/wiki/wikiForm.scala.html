@@ -20,21 +20,21 @@ special handlng of forms
 
 @prevNext(wids:Seq[WID]) = {
   @wids.splitAt(wids.indexOf(wid))._1.lastOption.map{x=>
-    <a href="@controllers.Wiki.w(x)" class="btn btn-mini"><font style="color:orange">&laquo;</font> PREVIOUS</a>
+    <a href="@controllers.Wiki.w(x)" class="btn btn-xs"><font style="color:orange">&laquo;</font> PREVIOUS</a>
     }.getOrElse {
-    <a href="#" class="btn btn-mini disabled"><font style="color:orange">&laquo;</font> PREVIOUS</a>
+    <a href="#" class="btn btn-xs disabled"><font style="color:orange">&laquo;</font> PREVIOUS</a>
     }
   form (@(wids.indexOf(wid)+1) of @wids.size):
   @wids.splitAt(wids.indexOf(wid))._2.tail.headOption.map{x=>
-    <a href="@controllers.Wiki.w(x)" class="btn btn-mini">NEXT <font style="color:orange">&raquo;</font></a>
+    <a href="@controllers.Wiki.w(x)" class="btn btn-xs">NEXT <font style="color:orange">&raquo;</font></a>
     }.getOrElse {
-    <a href="#" class="btn btn-mini disabled">NEXT <font style="color:orange">&raquo;</font></a>
+    <a href="#" class="btn btn-xs disabled">NEXT <font style="color:orange">&raquo;</font></a>
     }
 }
 
 <div class="container">
   <div class="row">
-    <div class="span9">
+    <div class="col-sm-9">
 
       <div class="well">
 
@@ -110,9 +110,9 @@ for registration sequences - show prev/next
       <hr>
       @htmlFooter(ads=true)
 }
-    </div> <!-- /span9 -->
+    </div> <!-- /col-sm-9 -->
 
-    <div class="span3">
+    <div class="col-sm-3">
 @if(!print) {
     @wiki.wikiFrag(WID("Admin","Right"),au,true)
 

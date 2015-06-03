@@ -6,7 +6,7 @@
  */
 package model
 
-import diesel.model.{DReactors}
+import mod.diesel.model.{DReactors}
 import org.bson.types.ObjectId
 import razie.{cdebug, cout, clog}
 import scala.collection.mutable.ListBuffer
@@ -20,7 +20,7 @@ import razie.wiki.parser.WAST
 import razie.wiki.parser.WikiParserBase
 
 /** parse dsl, fiddles and code specific fragments */
-trait AdParser extends WikiParserBase {
+trait WikiAdParser extends WikiParserBase {
   import WAST._
   
   def adWikiProps = wikiPropAds
@@ -70,7 +70,7 @@ object Ads {
 </div>
                    """
   val squareinline = """<div style="margin: 10px 5px 0px 5px">""" + squarebase
-  val squaretopx = """ <div style="float:right;margin: -40px 5px 0px 5px"> """ + squarebase
+  val squaretopx = """ <div style="float:right;margin: -25px 5px 0px 5px"> """ + squarebase
   val squareright = """<div style="float:right">""" + squareinline + """</div>"""
   val squaretop = """<div style="float:right">""" + squaretopx + """</div>"""
 }

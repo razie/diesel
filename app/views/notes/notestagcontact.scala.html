@@ -3,13 +3,17 @@ list of contacts
 
 msg types are msg, err
 **************@
-@(tag:String, notes:List[razie.wiki.model.WikiEntry], tags:model.Tags.Tags, msg:Seq[(String,String)], au:Option[model.User], isSearch:Boolean=false)(ncs:List[controllers.NotesContact])
+@(noteList:List[razie.wiki.model.WikiEntry], ncs:List[mod.notes.controllers.NotesContact])(implicit stok:mod.notes.controllers.NotesOk)
 @import model.Tags
 @import razie.wiki.model.WikiEntry
 @import razie.wiki.model.Wikis
+@import mod.notes.controllers.NotesLocker
+@import mod.notes.controllers.routes
 
+@stok.title("Contacts")
 
-@frup(au)
+<h3> Contacts <small>| manage</small> @notes.notesmsg(stok.msg) </h3>
+
 
 @ccc(we:WikiEntry)= @{
     val x = Wikis.format(we.wid, we.markup, we.content, Some(we))
@@ -17,13 +21,6 @@ msg types are msg, err
       """<div style="color:red;font-weight:bold;" title="You misspelled some of the advanced features"><small>[[CANNOT PARSE]]</small></div><p></p>""" + we.content
     } else x
   }
-
-<h3>
-  Contacts <small>preview</small>
-  @notesmsg(msg, au)
-</h3>
-
-@tagpath(s:String) = @{ if(tag=="" || isSearch || Seq("none", "recent", "all").contains(tag)) s else (tag+"/"+s) }
 
   <table class="table">
     <thead>
@@ -37,7 +34,7 @@ msg types are msg, err
   we.contentTags.get("email").mkString
 }
 
-@notes.map {we=>
+@noteList.map {we=>
         <tr>
           <td>@name(we)</td>
           <td>@email(we)</td>
@@ -58,16 +55,13 @@ msg types are msg, err
     <td>Name</td> <td>Email</td>
   </thead>
 
-@au.map {u=>
 @ncs.map {nc=>
   <tr>
     <td>@nc.nick</td>
     <td>@nc.email</td>
   </tr>
 }
-}
   </table>
 
 <p></p>
 
-@frdown(if(isSearch) "" else tag, tags, au)

@@ -22,7 +22,7 @@ club admin manages user: membership, regsitration etc
 @uname() = @{uw.user.map(u=>s"${u.userName} (${u.lastName}, ${u.firstName})").getOrElse("")}
 
 @formActions(w:razie.wiki.model.WID, seq:Integer) = {
-  <a href="@routes.Club.doeClubUwRMFormSeq(reg.map(_._id).mkString,"x",uw._id.toString, seq)" class="btn btn-mini btn-danger" title="remove from registration"> x </a>
+  <a href="@routes.Club.doeClubUwRMFormSeq(reg.map(_._id).mkString,"x",uw._id.toString, seq)" class="btn btn-xs btn-danger" title="remove from registration"> x </a>
 }
 
 @htmlHeadBar("Member " + uname(), Some(club))
@@ -31,7 +31,7 @@ club admin manages user: membership, regsitration etc
   <div class="row">
   @views.html.user.leftmenu(7, club)
 
-<div class="span9">
+<div class="col-sm-9">
 
   <h2>Manage user @uname()</h2>
   <p>Membership, registration, tribes etc
@@ -126,21 +126,21 @@ club admin manages user: membership, regsitration etc
 @mnglink(row:Map[String,String],k:String,v:String)={
   @k match {
         case "button" => {
-      <a href="@routes.Kidz.doeKid(uw.userId.toString, v, "-", row("associd"), "Club")" class="btn btn-mini">...</a>
+      <a href="@routes.Kidz.doeKid(uw.userId.toString, v, "-", row("associd"), "Club")" class="btn btn-xs">...</a>
       }
         case "id" => {
       @if(reg.exists(_.kids.exists(_.rkId.toString == v))) {
             <span class="label">Included</span>
         as @reg.toList.flatMap(_.kids).filter(_.rkId.toString == v).map(_.role).mkString
-        <a href="@routes.Club.doeClubUwRMFormKid(reg.map(_._id).mkString,v,uw._id.toString, "x")" class="btn btn-mini btn-danger" title="remove from registration"> x </a>
+        <a href="@routes.Club.doeClubUwRMFormKid(reg.map(_._id).mkString,v,uw._id.toString, "x")" class="btn btn-xs btn-danger" title="remove from registration"> x </a>
       } else {
       @reg.map{r=>
-          <a href="@routes.Club.doeClubUserRegAdd(r._id.toString,v,uw.user.get._id.toString, uw._id.toString)" class="btn btn-mini" title="also adds neccessary forms">Register</a>
+          <a href="@routes.Club.doeClubUserRegAdd(r._id.toString,v,uw.user.get._id.toString, uw._id.toString)" class="btn btn-xs" title="also adds neccessary forms">Register</a>
 @***
         @if(row("role") == ROLE_RACER) {
-        <a href="@routes.Club.doeClubUwAddFormKid(r._id.toString,v,uw._id.toString, "Racer")" class="btn btn-mini">x</a>
+        <a href="@routes.Club.doeClubUwAddFormKid(r._id.toString,v,uw._id.toString, "Racer")" class="btn btn-xs">x</a>
           } else {
-          <a href="@routes.Club.doeClubUserRegAdd(r._id.toString,v,uw.user.get._id.toString, uw._id.toString)" class="btn btn-mini">Register</a>
+          <a href="@routes.Club.doeClubUserRegAdd(r._id.toString,v,uw.user.get._id.toString, uw._id.toString)" class="btn btn-xs">Register</a>
           }
 ***@
         }.getOrElse{
@@ -156,7 +156,7 @@ club admin manages user: membership, regsitration etc
 
 Add a:
 Add a: @model.RK.RELATIONSHIPS.map{r=>
-  <a href="@routes.Kidz.doeKid(uw.userId.toString, "11", r, "-", "Club")" class="btn btn-mini btn-info">@r</a>
+  <a href="@routes.Kidz.doeKid(uw.userId.toString, "11", r, "-", "Club")" class="btn btn-xs btn-info">@r</a>
 }
 
 </div> @*** reg ***@
@@ -173,7 +173,7 @@ Add a: @model.RK.RELATIONSHIPS.map{r=>
   <br>Additional forms:<br>
   @controllers.Club.findForUser(club).map { c =>
     @c.regForms.map { t =>
-    <p>&nbsp;&nbsp;&nbsp;<a href="@routes.Club.doeClubUwAddForm(uw._id.toString, t.role)" class="btn btn-large">Add @t.role</a>
+    <p>&nbsp;&nbsp;&nbsp;<a href="@routes.Club.doeClubUwAddForm(uw._id.toString, t.role)" class="btn btn-default btn-lg">Add @t.role</a>
     }
   }
   </ul>
@@ -189,8 +189,8 @@ For all other forms, you should use the "family members not registered table" be
 <div class="well">
 @helper.form(action=routes.Club.doeClubRegMsg(uw._id.toString), 'class->"form-inline") {
   <label>Help message</label>
-  <br><textarea rows="5" class="span4" name="msg" placeholder="Message"></textarea>
-  <button type="submit" class="btn btn-mini btn-primary">Send now!</button>
+  <br><textarea rows="5" class="col-sm-4" name="msg" placeholder="Message"></textarea>
+  <button type="submit" class="btn btn-xs btn-primary">Send now!</button>
 }
 </div>
 <hr>

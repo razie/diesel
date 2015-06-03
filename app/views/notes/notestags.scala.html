@@ -4,13 +4,15 @@ show/edit/capture a note
 msg types are msg, err
 **************@
 @(current:String, tags:model.Tags.Tags, au:Option[model.User])
+@import routes.Assets
+@import mod.notes.controllers.routes
 
 @tagpath(s:String) = @{ if(current=="" || Seq("none", "recent", "all", "archive").contains(current)) s else (current+"/"+s) }
 @browseTag(t:String)={@routes.NotesLocker.tag(tagpath(t))}
 @browseAllTags()={@routes.NotesLocker.alltags}
 
-<div class="span3">
-  <a href="/notes" class="btn btn-large btn-info">New thought...</a>
+<div class="col-sm-3">
+  <a href="/notes" class="btn btn-lg btn-info">New thought...</a>
   <p>
   </p>
   Organize:
@@ -18,16 +20,19 @@ msg types are msg, err
     <li><a href="@routes.NotesLocker.tag("recent")">[Recent]</a>
     <li><a href="@routes.NotesLocker.tag("none")">[Not tagged]</a>
     @au.map {u=>
-      <li><a href="@routes.NotesLocker.tag("inbox")">[Inbox](@controllers.Inbox.count(u._id))</a>
+      <li><a href="@routes.NotesLocker.tag("inbox")">[Inbox](@mod.notes.controllers.Inbox.count(u._id))</a>
     }
     <li><a href="@routes.NotesLocker.tag("archive")">[Archive]</a>
   </ul>
+
   @if(!tags.isEmpty) {
 
     <input id="typeahead" xonkeypress="keyp(event)" autocomplete="off" type="text"
-    class="typeahead search-query span2" placeholder="Search Tags" data-provide="typeahead" style="display:block; margin-bottom:10px">
+    class="typeahead search-query" placeholder="Search Tags" data-provide="typeahead" style="display:block; margin-bottom:10px">
 
     Contemplate:
+  } else {
+    No more tags
   }
   <ul>
     @tags.take(15).map {x=>
@@ -39,7 +44,7 @@ msg types are msg, err
   </ul>
 </div>
 
-<script src="@routes.Assets.at("bootstrap-2.2.3/js/bootstrap-typeahead.js")"></script>
+<script src="@Assets.at("bootstrap-2.2.3/js/bootstrap-typeahead.js")"></script>
 
 <script>
 function keyp(e){

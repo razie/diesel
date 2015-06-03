@@ -66,3 +66,4 @@ object Tribes {
   def findByClub(club:Club) = Wikis.linksTo(club.uwid,"Child").filter(_.from.cat == "Tribe").map(wl=> new Tribe(wl.from, wl, club.userId))
   def findById(id:ObjectId) = Wikis.findById(id.toString).map(w=> Tribe(w.uwid, Wikis.linksFrom(w.uwid, "Child").next, id))
 }
+

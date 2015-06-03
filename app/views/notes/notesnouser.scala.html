@@ -4,14 +4,13 @@ show/edit/capture a note
 msg types are msg, err
 **************@
 @()
-@import _root_.controllers.NotesLocker
+@import mod.notes.controllers.NotesLocker
 
 @htmlHead("No Folders")(Map.empty, None)
-@notesnavbar(None)
 
 <div class="container">
   <div class="row">
-    <div class="span9">
+    <div class="col-sm-9">
 
 <h2>
 @if(!_root_.admin.Config.isLocalhost) {
@@ -28,7 +27,7 @@ You cannot save notes without an account... please
 
       <hr>
       @htmlFooter(ads = true)
-    </div> <!-- /span9 -->
+    </div> <!-- /col-sm-9 -->
 
 @notestags("", Seq(), None)
 
@@ -36,3 +35,4 @@ You cannot save notes without an account... please
 </div> <!-- /container -->
 
 @htmlBottom()
+

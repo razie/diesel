@@ -3,17 +3,14 @@ show/edit/capture a note
 
 msg types are msg, err
 **************@
-@(tags:model.Tags.Tags, msg:Seq[(String,String)], au:Option[model.User])
-
-@import _root_.controllers.NotesLocker
-
-@frup(au)
+@()(implicit stok:mod.notes.controllers.NotesOk)
+@import mod.notes.controllers.NotesTips
 
 <h2>All tips </h2>
 
 <div class="well">
 
-@NotesLocker.tips.map{tip=>
+@NotesTips.tips.map{tip=>
   <small>
   <div class="alert alert-info">
     <strong>Tip</strong>
@@ -24,4 +21,4 @@ msg types are msg, err
 
 </div>
 
-@frdown("", tags, au)
+

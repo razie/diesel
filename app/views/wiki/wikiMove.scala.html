@@ -11,7 +11,7 @@ select a destination parent
 
 <div class="container">
   <div class="row">
-    <div class="span9">
+    <div class="col-sm-9">
       <div class="well">
         @parents.groupBy(_._1.cat).map { t =>
            @t._1 :
@@ -30,9 +30,9 @@ select a destination parent
       <hr>
       @htmlFooter()
 
-    </div> <!-- /span9 -->
+    </div> <!-- /col-sm-9 -->
 
-    <div class="span3">
+    <div class="col-sm-3">
       @wiki.wikiFrag(WID("Admin","Right"),au,true, None)
 
       @addRight()

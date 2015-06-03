@@ -3,8 +3,15 @@ show/edit/capture a note
 
 msg types are msg, err
 **************@
-@(myForm:Form[_], tags:model.Tags.Tags, msg:Seq[(String,String)], isAuto:Boolean=false, isReadOnly:Boolean=false)(implicit au:Option[model.User])
-@import _root_.controllers.NotesLocker
+@(myForm:Form[_], isAuto:Boolean=false, isReadOnly:Boolean=false)(implicit stok:mod.notes.controllers.NotesOk)
+@import routes.Assets
+@import mod.notes.controllers.NotesLocker
+@import mod.notes.controllers.NotesTips
+@import mod.notes.controllers.routes
+
+@stok.title("Create a note")
+
+<h3>Creative <small>| preview</small> @notes.notesmsg(stok.msg) </h3>
 
 @id = @{1}
 
@@ -18,37 +25,31 @@ msg types are msg, err
   if(k > 10) 15 else if(k > 5) 10 else 5
 }
 
-@frup(au)
-
-<h3>Creative <small>| preview</small> @notesmsg(msg, au) </h3>
-
 <div class="well" style="padding-bottom:0px">
 @import helper.twitterBootstrap._
 
 @helper.form(action=routes.NotesLocker.save(), 'class->"form-inline", 'style->"margin-bottom:0px") {
 
-@**
-  <div id="lock1" style="display:inline-block; width:100%; height:120px;"> </div>
-**@
-
   @helper.textarea(
     myForm("content"),
-    '_label -> (Html(NotesLocker.xhtml("admin,page,main", au))),
+    '_label -> (Html(NotesTips.xhtml("admin,page,main", Some(stok.au)))),
     '_showConstraints -> false,
-    'class -> "span8",
+    'class -> "col-sm-12",
+    'style -> "padding-left:5px",
     'rows->rows)
 
   @helper.inputText(
     myForm("tags"),
     '_label -> Html("""
-       <div class="span8" style="margin-left:0px">
+       <div class="col-sm-12" style="padding-left:0px; display:inline-block;">
        Tags <small>i.e. note,todo,forjohn,phone,email,contact,project1</small>
   <div style="float:right">
-      <a class="btn btn-mini" onclick="larger()" title="This is not twitter, eh?">+ Larger</a>
+      <a class="btn btn-xs btn-default" onclick="larger()" title="This is not twitter, eh?">+ Larger</a>
   </div>
        </div>
        """),
-    'class -> "span8",
+    'class -> "col-sm-12",
+    'style -> "padding-left:5px",
     'autocomplete -> "off",
     '_showConstraints -> false)
 
@@ -60,20 +61,18 @@ msg types are msg, err
   <input id="ver" type="hidden" name="ver" value="@ver" />
   <input type="hidden" id="next" name="next" value="@next"/>
 
-  <div class="actions span8" style="margin-left:0px; display:inline-block;">
-    <button id="submit" type="submit" class="btn btn-info">Save it</button>
+  <div class="actions col-sm-12" style="padding-left:0px; display:inline-block;">
+    <button id="submit" type="submit" class="btn btn-sm btn-info">Save it</button>
 
-      <a id="discard" href="/notes/discard/@nid" class="btn btn-warn" title="This note was auto-saved...">Discard it</a>
+    <a id="discard" href="/notes/discard/@nid" class="btn btn-sm btn-warning" title="This note was auto-saved...">Discard it</a>
 
     <div style="float:right">
-@**      <a class="btn" onclick="preview()" title="Preview formatted">Preview it</a>
-**@
       @if(_root_.admin.Config.theme.contains("light")) {
         <i id="iconsave" class="icon-briefcase"  title="Autosaving ok..."></i>
       } else {
         <i id="iconsave" class="icon-briefcase icon-white" title="Autosaving ok..."></i>
       }
-      <a class="btn" onclick="archive()" title="Archive notes">Archive it</a>
+      <a class="btn btn-sm btn-default" onclick="archive()" title="Archive notes">Archive it</a>
     </div>
   </div>
 
@@ -83,11 +82,11 @@ msg types are msg, err
 }
 
 @*** site todos - registration etc ***@
-    @if(au.exists(_.tasks.size > 0)) {
+    @if(stok.au.tasks.size > 0) {
        <div class="alert alert-block">
       <strong>Stuff to do</strong>
       <ul>
-      @for(t <- au.get.tasks) {
+      @for(t <- stok.au.tasks) {
         <li><a style="color:red;font-weight:bold" href="/user/task/@t.name">@t.desc</a></li>
       }
       </ul>
@@ -96,8 +95,8 @@ msg types are msg, err
 
 </div>
 
-@if(!au.isDefined || au.get.isHarry) {
-    <div class="alert alert-block alert-error">
+@if(stok.au.isHarry) {
+    <div class="alert alert-block alert-danger">
         <strong>Need account</strong>
         You need to <a href="/doe/join">create an account</a> to actually create and save notes.
     </div>
@@ -114,10 +113,10 @@ msg types are msg, err
 
 <script>
 // CA options for .
-var dotTags = braTags;
+var dotTags = [
 'shared to:who',
 'n name of this note',
-  @if(au.exists(_.hasPerm(model.Perm.codeMaster))) {
+  @if(stok.au.hasPerm(model.Perm.codeMaster)) {
     'sfiddle path',
   }
 //  'a to:who by:date description',
@@ -129,7 +128,7 @@ var dotTags = braTags;
 <script>
 $('#content')[0].focus();
 
-@if(au.isEmpty || !au.get.isActive) {
+@if(!stok.au.isActive) {
   $('#submit')[0].disabled=true;
   $('#content')[0].disabled=true;
   $('#tags')[0].disabled=true;
@@ -159,8 +158,6 @@ var saveit = function() {
 }
 
 </script>
-
-@frdown("", tags, au)
 
 @**
 <script src="@routes.Assets.at("ace-builds/src/ace.js")" type="text/javascript" charset="utf-8"></script>
@@ -208,7 +205,7 @@ setInterval(function(){
   <input type="hidden" id="anext" name="next" />
 </form>
 
-<script src="@routes.Assets.at("bootstrap-2.2.3/js/bootstrap-typeahead.js")"></script>
+<script src="@Assets.at("bootstrap-2.2.3/js/bootstrap-typeahead.js")"></script>
 <script>
 //from http://stackoverflow.com/questions/12662824/twitter-bootstrap-typeahead-multiple-values
 
@@ -243,8 +240,8 @@ function extractor(query) {
 </script>
 
 
-<script src="@routes.Assets.at("vendor/jquery.textcomplete.min.js")"></script>
-<script src="@routes.Assets.at("javascripts/rk-contentassist.js")"></script>
+<script src="@Assets.at("vendor/jquery.textcomplete.min.js")"></script>
+<script src="@Assets.at("javascripts/rk-contentassist.js")"></script>
 
 <script>
   @if(!isAuto) {
@@ -255,6 +252,18 @@ function extractor(query) {
 
   $('#atags')[0].value = $('#tags')[0].value;
   $('#acontent')[0].value = $('#content')[0].value;
+
+// RAZ new crap with bootstrap 3
+  $('.textcomplete-wrapper').addClass('col-sm-12');
+  $('.textcomplete-wrapper').css({
+    "padding-left" : "0px",
+    "padding-right" : "0px"
+    });
+  $('#content_field').addClass('col-sm-12');
+  $('#content_field').css({
+    "padding-left" : "0px",
+    "padding-right" : "0px"
+    });
 
   setInterval(function(){
     var t = $('#tags')[0].value;
@@ -296,7 +305,7 @@ function extractor(query) {
 </script>
 
 @** typeahead in the main box - not needed
-<script src="@routes.Assets.at("bootstrap/js/bootstrap-typeahead.js")"></script>
+<script src="@routes.Assets.at("bootstrap-2.2.3/js/bootstrap-typeahead.js")"></script>
 <script>
 //from http://stackoverflow.com/questions/12662824/twitter-bootstrap-typeahead-multiple-values
 

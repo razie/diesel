@@ -1,22 +1,26 @@
 @***************
 display a message with navigation (next)
 ***************@
-@(msg:String, next:Option[String], au:Option[razie.wiki.model.WikiUser], cancel:Option[(String,String)]=None)(implicit request:Request[_])
+@(msg:String, details:String, next:Option[String], au:Option[razie.wiki.model.WikiUser], cancel:Option[(String,String)]=None)(implicit request:Request[_])
 @import _root_.admin.Config.realm
 
-@htmlHeadBar("", au, realm)
+@whtmlHeadBar("", realm)(au.asInstanceOf[Option[model.User]], request)
 
 <div class="container">
   <div class="well">
 
-    <h3>@Html(razie.wiki.model.Wikis.format(razie.wiki.model.WID("?","?"), razie.wiki.model.Wikis.MD, msg))</h3>
+    <h3>
+    @Html(razie.wiki.model.Wikis.format(razie.wiki.model.WID("?","?"), razie.wiki.model.Wikis.MD, msg))
+    </h3>
+    @Html(razie.wiki.model.Wikis.format(razie.wiki.model.WID("?","?"), razie.wiki.model.Wikis.MD, details))
+
     <br>
 
     @next.map { n=>
-      <a class="btn btn-primary btn-large" href="@n">Continue</a>
+      <a class="btn btn-primary btn-lg" href="@n">Continue</a>
      }
     @cancel.map { n=>
-      <a class="btn btn-large btn-danger" href="@n._2">@n._1</a>
+      <a class="btn btn-lg btn-danger" href="@n._2">@n._1</a>
      }
   </div>
 
@@ -25,4 +29,4 @@ display a message with navigation (next)
 
 </div> <!-- /container -->
 
-@htmlBottom()
+@htmlBottom(false, Some(request))

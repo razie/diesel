@@ -9,7 +9,7 @@ list all topics in category
 
 <div class="container">
   <div class="row">
-    <div class="span9">
+    <div class="col-sm-9">
 
     <!-- list of pages in category -->
     @if("User" != name || au.map(_.hasPerm(Perm.adminDb)).getOrElse(false)) {
@@ -33,9 +33,9 @@ list all topics in category
       <hr>
       @htmlFooter(ads=true)
 
-    </div> <!-- /span9 -->
+    </div> <!-- /col-sm-9 -->
 
-      <div class="span3">
+      <div class="col-sm-3">
           @wiki.wikiFrag(WID("Admin","Right").r(realm),au,true, None)
       </div>
 

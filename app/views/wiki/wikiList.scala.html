@@ -4,13 +4,13 @@ list of pages, with links etc - result of a query of some kind
 @(title:String, search:String, curTags:String, pages:List[(razie.wiki.model.WID, String)], tags:model.Tags.Tags, tagPrefix:String="./", tagSuffix:String="", realm:String)(implicit au:Option[model.User], request:Request[_])
 @import razie.wiki.model._
 
-@htmlHeadBar("Results for: " + title + curTags, au, realm)
+@whtmlHeadBar("Results for: " + title + curTags, realm)
 
 @browseTag(t:String)={@tagPrefix@t@tagSuffix}
 
 <div class="container">
   <div class="row">
-    <div class="span9">
+    <div class="col-sm-9">
 
       <h3>
       @curTags match {
@@ -21,14 +21,14 @@ list of pages, with links etc - result of a query of some kind
           Search <small>| @search </small>
           @if(curTags.length>0) {
           | Tagged <small>@curTags.split("/").map {t=>
-            |  <a class="h3 small" style="color:#757c82;" href="@browseTag(t)">@t</a>
+            |  <a class="" style="color:#757c82;" href="@browseTag(t)">@t</a>
           }
           }
         </small>
           }
         case _ => {
           Tagged <small>@curTags.split("/").map {t=>
-            |  <a class="h3 small" style="color:#757c82;" href="@browseTag(t)">@t</a>
+            |  <a class="" style="color:#757c82;" href="@browseTag(t)">@t</a>
           }
           </small>
         }
@@ -71,9 +71,9 @@ list of pages, with links etc - result of a query of some kind
       <hr>
       @htmlFooter(!au.exists(_.isUnder13), false)
 
-    </div> <!-- /span9 -->
+    </div> <!-- /col-sm-9 -->
 
-    <div class="span3">
+    <div class="col-sm-3">
       @wiki.wikiFrag(WID("Admin","Right"),au,true, None)
 
 @**
@@ -87,5 +87,5 @@ list of pages, with links etc - result of a query of some kind
 </div> <!-- /container -->
 
 
-@htmlBottom(Some(request))
+@htmlBottom(false, Some(request))
 

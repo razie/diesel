@@ -3,14 +3,16 @@ list of notes
 
 msg types are msg, err
 **************@
-@(tag:String, notes:List[razie.wiki.model.WikiEntry], tags:model.Tags.Tags, msg:Seq[(String,String)], au:Option[model.User], isSearch:Boolean=false)(implicit request:Request[_])
-@import model.Tags
-@import model.Tags
+@(noteList:List[razie.wiki.model.WikiEntry])(implicit stok:mod.notes.controllers.NotesOk)
+@import mod.notes.controllers.{NotesLocker, Notes}
+@import mod.notes.controllers.routes
 
-@frup(au, None, s"Tagged $tag")
+@stok.title(s"Tagged ${stok.curTag}")
+
+@notes.headingWithTags(stok)
 
 @ccc(we:razie.wiki.model.WikiEntry)= @{
-    val x = controllers.NotesLocker.format(we.wid, we.markup, we.content, Some(we), au)
+    val x = NotesLocker.format(we.wid, we.markup, we.content, Some(we), Some(stok.au))
     if(x contains "CANNOT PARSE") {
       val id = System.currentTimeMillis().toString
       try {
@@ -29,28 +31,8 @@ msg types are msg, err
     } else x
   }
 
-<h3>
-@tag match {
-   case "recent" => {Organize <small>| recent notes</small>}
-   case "none" => {Organize <small>| missing tags</small>}
-   case "all" => {All notes...}
-   case _ if isSearch => {Search <small>| @tag </small> }
-   case _ => {
-     Tagged <small>@tag.split("/").map {t=>
-|  <a class="h3 small" style="color:#757c82;" href="@routes.NotesLocker.tag(t)">@t</a>
-     }
-     </small>
-   }
-}
-
-@notesmsg(msg, au)
-
-</h3>
-
-@tagpath(s:String) = @{ if(tag=="" || isSearch || Seq("none", "recent", "all").contains(tag)) s else (tag+"/"+s) }
-
-@au.map {user=>
- @notes.map(controllers.Notes.dec(user)).map {we=>
+@Some(stok.au).map {user=>
+ @noteList.map(Notes.dec(user)).map {we=>
    <div class="well well-small" style="border-radius:9px; margin-bottom:10px;">
    <small>
      <a href="@routes.NotesLocker.noteById(we._id.toString)">@we.crDtm.toString("YYYY-MM-dd hh:mm a").toLowerCase()
@@ -61,10 +43,10 @@ msg types are msg, err
        <div style="float: right;">
        <small>Tags: <strong>
        @we.tags.map {x=>
-           @if(tags find (_._1 == x) isEmpty ) {
+           @if(stok.tags find (_._1 == x) isEmpty ) {
                @x |
            } else {
-               <a href="@routes.NotesLocker.tag(tagpath(x))">@x</a> |
+               <a href="@routes.NotesLocker.tag(stok.tagPath(x))">@x</a> |
            }
        }
        </strong></small>
@@ -73,12 +55,9 @@ msg types are msg, err
 @**  <p>@Html(razie.wiki.model.Wikis.format(we.wid, we.markup, we.content, Some(we)))</p>
 **@
   <p>@Html(ccc(we))</p>
-  @wiki.wikiFragExtras(au,Some(we))
+  @wiki.wikiFragExtras(Some(stok.au),Some(we))
 
    </div>
 }
 }
-
-
-@frdown(if(isSearch) "" else tag, tags, au)
 

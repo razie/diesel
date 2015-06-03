@@ -12,53 +12,88 @@ creates the navigation bar
    else s"/wikie/search"
    }
 
-<div class="navbar navbar-fixed-top">
-  <div class="navbar-inner">
-    <div class="container">
 
-      <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+@if(Config.theme.contains("light")) {
+  <nav class="navbar navbar-fixed-top navbar-inverse">
+  @*<nav class="navbar navbar-fixed-top navbar-default">*@
+  } else {
+  <nav class="navbar navbar-fixed-top navbar-inverse">
+  }
+
+@*<div class="navbar-inner">*@
+  <div class="container" style="margin-left: 0px; margin-right : 0px ; width:auto">
+      <!-- Brand and toggle get grouped for better mobile display -->
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar">
+        <span class="sr-only">Toggle navigation</span>
         <span class="icon-bar"></span>
         <span class="icon-bar"></span>
-      </a>
+        <span class="icon-bar"></span>
+      </button>
+
+<style type="text/css">
+img.rklogo {
+      opacity:0.8;
+      filter:alpha(opacity=80); /* For IE8 and earlier */
+      }
+</style>
 
       @if(!Config.isLocalhost) {
-      <a class="rkbrand" href="@url.getOrElse("http://"+Config.hostport)">
-        <img class="rklogo" src="@logo.getOrElse(routes.Assets.at("images/racerKids-small.gif"))" height="32" width="152" alt="RacerKidz logo"/>
+      @web().navBrand.fold {
+      <a class="navbar-brand" style="padding: 8px 20px 5px; margin-left: -20px;" href="@url.getOrElse("http://"+Config.hostport)">
+        <img class="" src="@logo.getOrElse(routes.Assets.at("images/racerKids-small.gif"))" height="32" width="152" alt="RacerKidz logo"/>
       </a>
+      } {b=>
+        @Html(b)
       }
+      }
+    </div>
 
-    <div class="nav-collapse">
+      <!-- Collect the nav links, forms, and other content for toggling -->
+    <div class="navbar-collapse collapse" id="navbar">
+      <ul class="nav navbar-nav navbar-left">
 
-      <ul class="nav">
-        @if(!isSite) {
-          <li class="divider-vertical"></li>
-          <li><a href="@web().navBrowse(realm)">Browse</a></li>
-          <li><a href="http://@Config.hostport/notes">Notes</a></li>
-          <li><a href="/doe/selecttheme">Theme</a></li>
-            @web().navMenu.map{t=>
-                <li><a href="@t._2">@t._1</a></li>
+          @if(!isSite) {
+            <li class="divider-vertical"></li>
+            @if(web().navBrowse(realm) != "remove") {
+              <li><a href="@web().navBrowse(realm)">Browse</a></li>
             }
-        }
+            @if(web().navNotes != "remove") {
+              <li><a href="@web().navNotes">Notes</a></li>
+            }
+            @web().navMenu.filter(t=> !Array("Browse", "Theme", "Notes").contains(t._1)).map{t=>
+              <li><a href="@t._2">@t._1</a></li>
+            }
+          }
       </ul>
-    </div><!--/.nav-collapse -->
 
-      <ul class="nav pull-right">
+      <ul class="nav navbar-nav pull-right">
         @user match {
           case Some(joe) => {
             <li class="dropdown">
-              <a href="#" class="dropdown-toggle" data-toggle="dropdown">
-              @if(Config.theme.contains("light")) {
-                <i class="icon-lock"></i>
+              <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">
+                @if(Config.theme.contains("light")) {
+                  <i class="icon-lock"></i>
                 } else {
-                <i class="icon-lock icon-white"></i>
+                  <i class="icon-lock icon-white"></i>
                 }
-              @joe.ename<b class="caret"></b></a>
-              <ul class="dropdown-menu">
+                @joe.ename <span class="caret"></span>
+              </a>
+              <ul class="dropdown-menu" role="menu">
                 <li><a href="@routes.Profile.doeHelp"><i class="icon-edit"></i> Preferences</a></li>
+                @if(web().navTheme != "remove") {
+                  <li><a href="@web().navTheme">Theme</a></li>
+                }
                 @Wikis(realm).find("Reactor", realm).map { r =>
                   <li><a href="/wiki/Reactor:@realm"><i class="icon-edit"></i> Admin</a></li>
                 }
-                <li><hr></li>
+                @if(!web().navrMenu.isEmpty) {
+                  <li class="divider"></li>
+                  @web().navrMenu.map{t=>
+                    <li><a href="@t._2">@t._1</a></li>
+                  }
+                }
+                <li class="divider"></li>
                 <li><a href="/do/signout"><i class="icon-off"></i> Sign out</a></li>
               </ul>
             </li>
@@ -70,11 +105,16 @@ creates the navigation bar
         }
       </ul>
 
-      <form class="navbar-search pull-right" action="@searchUrl()" method="GET">
-        <input type="text" class="search-query" placeholder="Search" id="q" name="q" title="Search box"/>
-      </form>
+        <form class="navbar-form pull-right" role="search" action="@searchUrl()" method="GET">
+          <input type="text" class="form-control search-query" style="padding: 4px 4px 4px 4px; height: 26px; margin-top: 5px"
+          placeholder="Search" id="q" name="q" title="Search box"/>
+        </form>
 
-    </div>
-  </div>
+
 </div>
+
+    </div><!-- /.navbar-collapse -->
+  </div><!-- /.container-fluid -->
+  @*</div>*@
+</nav>
 

@@ -26,7 +26,8 @@ object WG extends Logging {
     def name = we.map(_.name) getOrElse iname
   }
 
-  case class WGraph(override val root: Int, override val nodes: Seq[WNode], override val links: Seq[(Int, Int, String)]) extends gg.VGraph[WNode, String](root, nodes, links) {
+  case class WGraph(val realm:String, override val root: Int, override val nodes: Seq[WNode], override val links: Seq[(Int, Int, String)])
+    extends gg.VGraph[WNode, String](root, nodes, links) {
 
     lazy val tosg = new gg.SGraphLike[WNode, String](this)
 
@@ -37,8 +38,8 @@ object WG extends Logging {
           s append Map(
             "id" -> x.value.name,
             "name" -> x.value.name,
-            "url" -> s"http://localhost:9000/gapi/d3dom/${x.value.name}",
-            "xurl" -> s"http://localhost:9000/gapi/d3dom/${x.value.name}",
+            "url" -> s"http://localhost:9000/gapi/d3dom/$realm/${x.value.name}",
+            "xurl" -> s"http://localhost:9000/gapi/d3dom/$realm/${x.value.name}",
             "links" -> x.glinks.map(l => Map(
               "to" -> l.z.value.name,
               "type" -> "?")).toList)
@@ -68,7 +69,7 @@ object WG extends Logging {
         g.collect(x, None)
         Map(
           "name" -> x.value.name,
-          "url" -> s"http://localhost:9000/gapi/d3dom/${x.value.name}",
+          "url" -> s"http://localhost:9000/gapi/d3dom/$realm/${x.value.name}",
           "children" -> (x.glinks.collect {
             case l if (!g.isNodeCollected(l.z)) => node(l.z)
             case l if (g.isNodeCollected(l.z)) => Map("name" -> l.z.value.name)
@@ -89,7 +90,7 @@ object WG extends Logging {
     ) yield x
     val nodes = (links.map(_._1) ::: links.map(_._2)).distinct.flatMap(t => Some(WNode(Wikis(realm).category(t), t)))
     def n(c: String) = nodes.indexWhere(_.name == c)
-    new WGraph(n(cat), nodes, links.map { t => (n(t._1), n(t._2), t._3) })
+    new WGraph(realm, n(cat), nodes, links.map { t => (n(t._1), n(t._2), t._3) })
   }
 
   // entire domain - makes up a "Domain" node and links to all topics
@@ -101,7 +102,7 @@ object WG extends Logging {
     val fakes = Wikis(realm).categories.toList.map(c => ("Domain", c.name, "fake"))
     val nodes = WNode(None, "Domain") :: Wikis(realm).categories.toList.map(t => WNode(Some(t), t.name))
     def n(c: String) = nodes.indexWhere(_.name == c)
-    new WGraph(n("Domain"), nodes, (fakes ::: links).map { t => (n(t._1), n(t._2), t._3) })
+    new WGraph(realm, n("Domain"), nodes, (fakes ::: links).map { t => (n(t._1), n(t._2), t._3) })
   }
 }
 
@@ -166,6 +167,10 @@ object Gapi extends RazController with Logging {
       case "g3" => Ok(views.html.gv.g3(url, auth))
       case _ => Ok(s"UHHHHHHHH no such thing: $g")
     }
+  }
+
+  def demo = Action { implicit request =>
+    Ok(views.html.gv.demo())
   }
 
 }

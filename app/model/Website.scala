@@ -7,27 +7,13 @@ import controllers.{Application, Wiki}
 import razie.db.RazSalatContext._
 import play.api.mvc.{Request, Action}
 import razie.OR._
-import razie.wiki.util.PlayTools
+import razie.wiki.util.{DslProps, PlayTools}
 import razie.wiki.model._
 
 /**
- * dsl processing - entries with a props section
+ * website settings - will collect website properties from the topic if it has a 'website' section
  */
-class DslProps (val we:WikiEntry, section:String, extra:Seq[(String,String)] = Seq()) {
-  lazy val propSeq = extra ++ (we.section("section", section).toArray flatMap (ws=>admin.Config.parsep(ws.content)))
-  lazy val props = propSeq.toMap[String,String]
-
-  def prop (s:String) = props get s
-  def wprop (s:String) = (this prop s).flatMap(x=>WID.fromPath(x))
-  def bprop (s:String) = (this prop s).map(_.toBoolean)
-
-  override def toString = propSeq.mkString
-}
-
-/**
- * website settings
- */
-class Website (we:WikiEntry, extra:Seq[(String,String)] = Seq()) extends DslProps(we, "website", extra) {
+class Website (we:WikiEntry, extra:Seq[(String,String)] = Seq()) extends DslProps(Some(we), "website", extra) {
   def name:String = this prop "name" OR "?"
   def url:String = this prop "url" OR "?"
   def css:Option[String] = this prop "css" // dark vs light
@@ -50,12 +36,6 @@ class Website (we:WikiEntry, extra:Seq[(String,String)] = Seq()) extends DslProp
   def support:String = this prop "support" OR "/doe/support"
 
   def join:String = this prop "join" OR "/doe/join"
-  def navBrowse(realm:String):String = this prop "nav.Browse" OR (
-//    if(Wikis.RK == realm) s"http://${Config.hostport}/wiki"
-//  else if(!Config.isLocalhost) s"/wiki" else s"http://${Config.hostport}/w/$realm/wiki"
-    if(!Config.isLocalhost) s"/wiki" else s"http://${Config.hostport}/w/$realm/wiki"
-    )
-
   def parent:Option[WID] = this wprop "parent"
   def skipParent:Option[WID] = this wprop "skipParent"
 
@@ -69,7 +49,7 @@ class Website (we:WikiEntry, extra:Seq[(String,String)] = Seq()) extends DslProp
 
   def layout:String = this prop "layout" OR "Play:classicLayout"
 
-  def reactor:String = this prop "reactor" OR "rk"
+  def reactor:String = this prop "reactor" OR (this prop "realm" OR "rk")
 
   def useWikiPrefix:Boolean = this bprop "useWikiPrefix" OR true
 
@@ -78,10 +58,23 @@ class Website (we:WikiEntry, extra:Seq[(String,String)] = Seq()) extends DslProp
     propSeq.filter(_._1 startsWith (s"bottom.$section")).map(t=>(t._1.replaceFirst(s"bottom.$section.", ""), t._2))
   }
 
-  //nav.TopLevel
-  def navMenu () = {
-    propSeq.filter(_._1 startsWith (s"nav.")).filter(! _._1.startsWith(s"nav.Browse")).map(t=>(t._1.replaceFirst(s"nav.", ""), t._2))
-  }
+    //nav.TopLevel
+    def navrMenu () = {
+      propSeq.filter(_._1 startsWith (s"navr.")).map(t=>(t._1.replaceFirst(s"navr.", ""), t._2))
+    }
+    //nav.TopLevel
+    def navMenu () = {
+      propSeq.filter(_._1 startsWith (s"nav.")).filter(! _._1.startsWith(s"nav.Browse")).map(t=>(t._1.replaceFirst(s"nav.", ""), t._2))
+    }
+    def navBrowse(realm:String):String = this prop "nav.Browse" OR (
+      //    if(Wikis.RK == realm) s"http://${Config.hostport}/wiki"
+      //  else if(!Config.isLocalhost) s"/wiki" else s"http://${Config.hostport}/w/$realm/wiki"
+      if(!Config.isLocalhost) s"/wiki" else s"http://${Config.hostport}/w/$realm/wiki"
+      )
+
+    def navNotes:String = this prop "nav.Notes" OR s"http://${Config.hostport}/notes"
+    def navTheme:String = this prop "nav.Theme" OR "/doe/selecttheme"
+    def navBrand = this prop "nav-brand"
 }
 
 object Website {
@@ -97,7 +90,7 @@ object Website {
         cache.put(s, CacheEntry(w.get, System.currentTimeMillis()+EXP))
       else RkReactors.forHost(s).map { r=>
         // auto-websites of type REACTOR.coolscala.com
-        Reactors.findWikiEntry(r).map { rpage=>
+        Reactors.findWikiEntry(r).map { rpage=> // todo no need to reload, the reactor now has the page
           // create an entry even if no website section present
           w = Some(new Website(rpage, Seq("reactor" -> r)))
           cache.put(s, CacheEntry(w.get, System.currentTimeMillis()+EXP))

@@ -2,13 +2,7 @@
 creates the navigation bar
 ***@
 @(user:Option[razie.wiki.model.WikiUser], realm:String=razie.wiki.model.Wikis.RK, mobile:Boolean = false, barTitle: String="Bar Title", logo:Option[String]=None, url:Option[String]=Some("/"), isSite:Boolean=false, club:String="")(implicit au:Option[model.User]=None, request:Option[Request[_]]=None)
-@import razie.wiki.model.Reactors
 
-@realm match {
-   case Reactors.NOTES => {
-      @notes.notesnavbar(user, mobile, barTitle, logo, url, isSite, club)
-      }
-   case _ => {
-      @rk.navbarrk(user, mobile, barTitle, logo, url, isSite, club, realm)(au,request)
-      }
-}
+@rk.navbarrk(user, mobile, barTitle, logo, url, isSite, club, realm)(au,request)
+
+

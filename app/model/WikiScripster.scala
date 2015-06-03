@@ -14,7 +14,9 @@ import razie.wiki.admin.Audit
 /** execute wiki scala scripts */
 trait WikiScripster {
   /** run the given script in the context of the given page and user as well as the query map */
-  def runScript(s: String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, String], devMode:Boolean=false): String
+  def runScript   (s: String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, String], devMode:Boolean=false): String
+  def runScriptAny(s: String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, String], devMode:Boolean=false): Any
+
   def mk: WikiScripster
 }
 
@@ -37,14 +39,14 @@ object WikiScripster {
     def mk = new CWikiScripster
 
     /** run the given script in the context of the given page and user as well as the query map */
-    def runScript(s: String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, String], devMode:Boolean=false): String = synchronized {
+    def runScriptAny (s: String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, String], devMode:Boolean=false): Any = synchronized {
       import razie.base.scriptingx._
 
       Audit.logdb("WIKI_SCRIPSTER", "exec", s)
       try {
         val c = new CSTimer("script", "?")
         c.start()
-        val res = (ScalaScript(s).interactive(ctx) getOrElse "?").toString
+        val res = (ScalaScript(s).interactive(ctx) getOrElse "?")
         ctx.clear // make sure there's nothing for hackers
         c.stop()
 
@@ -62,6 +64,11 @@ object WikiScripster {
           else "?"
         }
       }
+    }
+
+    /** run the given script in the context of the given page and user as well as the query map */
+    def runScript(s: String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, String], devMode:Boolean=false): String = synchronized {
+      runScriptAny(s, page, user, query, devMode).toString
     }
   }
 }

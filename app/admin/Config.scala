@@ -10,14 +10,11 @@ import scala.collection.mutable.HashMap
 object Config extends WikiConfig {
   // ------------- meta tags to include in html - useful for analytics/webmaster stuff
 
+  import WikiConfig.parsep
+
   final val METAS = "sitemetas"
   lazy val metas = Wikis.find(WID("Admin", METAS)) map (_.content) getOrElse ""
   def currUser = { razie.NoStaticS.get[WikiUser].map(_.asInstanceOf[model.User]) }
-
-  final val mongodb = props.getProperty("rk.mongodb")
-  final val mongohost = props.getProperty("rk.mongohost")
-  final val mongouser = props.getProperty("rk.mongouser")
-  final val mongopass = props.getProperty("rk.mongopass")
 
   final val CONNECTED = props.getProperty("rk.connected", "connected")
 
@@ -25,7 +22,8 @@ object Config extends WikiConfig {
 
   override val simulateHost = {
 //        "www.racerkidz.com"    // for testing locally
-    "ski1.wikireactor.com"    // for testing locally
+    "www.effectiveskiing.com"    // for testing locally
+//                "re9.wikireactor.com"    // for testing locally
 //            "www.wikireactor.com"    // for testing locally
 //        "www.coolscala.com"    // for testing locally
 //        "www.enduroschool.com"    // for testing locally
@@ -45,9 +43,6 @@ object Config extends WikiConfig {
   def isLight = theme contains "light"
   def isDark = ! isLight
 
-  // parse a properties looking thing
-  def parsep(content: String) = (content.split("\r\n")) filter (!_.startsWith("#")) map (_.split("=", 2)) filter (_.size == 2) map (x => (x(0), x(1)))
-
   def robotUserAgents = irobotUserAgents
   private var irobotUserAgents = List[String]()
 
@@ -66,6 +61,7 @@ object Config extends WikiConfig {
       xurlmap.map(xconfig.put(c, _))
     }
 
+    // concentrated all types in just one topic "urlcfg"
     for (u <- Wikis.find(WID("Admin", URLCFG)).toSeq map (_.content) flatMap parsep) {
       val RE = """([^.]+)\.(.*)""".r
       val RE(pre, prop) = u._1

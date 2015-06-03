@@ -25,7 +25,7 @@ included in mainUserC as the right hand side info box
     user.events.filter(_._3.isAfter(DateTime.now))
 }
 
-<div class="span6">
+<div class="col-sm-6">
     <div class="well">
 
 <ul class="nav nav-tabs">
@@ -110,30 +110,30 @@ case 3 => {
 
   Followed:
   @if(blogs.filter(_.role != "Owner").size>0) {
-    (follow more <a class="btn btn-mini" href="/wikie/like/Forum">Forums &raquo;</a>
-    <a class="btn btn-mini" href="/wikie/like/Blog">Blogs &raquo;</a>)</p>
+    (follow more <a class="btn btn-xs" href="/wikie/like/Forum">Forums &raquo;</a>
+    <a class="btn btn-xs" href="/wikie/like/Blog">Blogs &raquo;</a>)</p>
     <ul>
     @for(w <- blogs.filter(_.role != "Owner")) {
       <li><a href="@controllers.Wiki.w(w.wid)">@razie.wiki.model.Wikis.label(w.wid)</a></li>
     }
   </ul>
   } else {
-    (follow one now <a class="btn btn-mini" href="/wikie/like/Forum">Forum &raquo;</a>
-    <a class="btn btn-mini" href="/wikie/like/Blog">Blog &raquo;</a>)</p>
+    (follow one now <a class="btn btn-xs" href="/wikie/like/Forum">Forum &raquo;</a>
+    <a class="btn btn-xs" href="/wikie/like/Blog">Blog &raquo;</a>)</p>
   }
 <p>
   Owned:
   @if(blogs.filter(_.role == "Owner").size>0) {
-    (create more <a class="btn btn-mini" href="/wikie/create/Forum">Forums &raquo;</a>
-    <a class="btn btn-mini" href="/wikie/create/Blog">Blogs &raquo;</a>)</p>
+    (create more <a class="btn btn-xs" href="/wikie/create/Forum">Forums &raquo;</a>
+    <a class="btn btn-xs" href="/wikie/create/Blog">Blogs &raquo;</a>)</p>
     <ul>
       @for(w <- blogs.filter(_.role == "Owner")) {
         <li><a href="@controllers.Wiki.w(w.wid)">@razie.wiki.model.Wikis.label(w.wid)</a></li>
       }
     </ul>
   } else {
-    (create a <a class="btn btn-mini" href="/wikie/create/Forum">Forum &raquo;</a>
-    <a class="btn btn-mini" href="/wikie/create/Blog">Blog &raquo;</a>)</p>
+    (create a <a class="btn btn-xs" href="/wikie/create/Forum">Forum &raquo;</a>
+    <a class="btn btn-xs" href="/wikie/create/Blog">Blog &raquo;</a>)</p>
   }
 }
 
@@ -141,7 +141,7 @@ case 4 => {
 
   Owned:
   @if(user.pages(Wikis.DFLT, "FormDesign").filter(_.role == "Owner").size>0) {
-  <a class="btn btn-mini" href="/wikie/create/Note">Add &raquo;</a></p>
+  <a class="btn btn-xs" href="/wikie/create/Note">Add &raquo;</a></p>
   <ul>
     @for(w <- user.pages(Wikis.DFLT, "FormDesign").filter(_.role == "Owner")) {
       <li><a href="@controllers.Wiki.w(w.wid)">@razie.wiki.model.Wikis.label(w.wid)</a></li>
@@ -149,7 +149,7 @@ case 4 => {
   </ul>
   } else {
     None
-    <a class="btn btn-mini" href="/wikie/create/Note">Create one &raquo;</a></p>
+    <a class="btn btn-xs" href="/wikie/create/Note">Create one &raquo;</a></p>
   }
   }
 

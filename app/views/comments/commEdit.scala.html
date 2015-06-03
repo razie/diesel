@@ -4,7 +4,7 @@
 
 <div class="container">
   <div class="row">
-    <div class="span9">
+    <div class="col-sm-9">
 
 @import helper.twitterBootstrap._
 
@@ -22,14 +22,14 @@
       myForm("link"),
       '_label -> "Edit link",
       '_showConstraints -> false,
-      'class -> "span6",
+      'class -> "col-sm-12",
       'rows->5)
 
     @helper.textarea(
       myForm("content"),
       '_label -> "Edit comment",
       '_showConstraints -> false,
-      'class -> "span6",
+      'class -> "col-sm-12",
       'rows-> 5)
 
   } else {
@@ -39,7 +39,7 @@
       myForm("content"),
       '_label -> "Edit comment",
       '_showConstraints -> false,
-      'class -> "span6",
+      'class -> "col-sm-6",
       'rows-> 15)
   }
 
@@ -74,9 +74,9 @@ You cannot share photos from facebook unfortunately, they don't allow that.
     <hr>
     @htmlFooter(ads=true)
 
-  </div> <!-- /span9 -->
+  </div> <!-- /col-sm-9 -->
 
-  <div class="span3">
+  <div class="col-sm-3">
     @wiki.wikiFrag(razie.wiki.model.WID("Admin","Right"),au,true)
     @addRight()
   </div>

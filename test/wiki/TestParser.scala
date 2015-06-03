@@ -1,14 +1,14 @@
 
-
-package unit
+package wiki
 
 import org.scalatest.FlatSpec
 import org.scalatest.matchers.ShouldMatchers
+import razie.wiki.model.{WID, Wikis}
 import razie.wiki.parser.{WAST, nWikiParser}
-import razie.wiki.model.Wikis
-import razie.wiki.model.WID
 
-class TestWiki extends FlatSpec with ShouldMatchers {
+
+class TestParser extends FlatSpec with ShouldMatchers {
+  TestInit.init
 
   def applys (s:String) = nWikiParser.apply(s).fold(None)
 
@@ -29,6 +29,11 @@ class TestWiki extends FlatSpec with ShouldMatchers {
     "<a href=\"/wiki/Club:Offroad_Ontario\">Curu</a>" === (Wikis.format(wid, Wikis.MD, "[[Club:Offroad Ontario | Curu]]"))
     "<a href=\"/wiki/any:Sport\">Sport</a> <a href=\"/wiki/any:Club\">Club</a>" === (Wikis.format(wid, Wikis.MD, "[[Sport]] [[Club]]"))
     "<a href=\"/wiki/any:Sport\">Sport</a> haha: <a href=\"/wiki/any:Privacy_Policy\">Privacy Policy" === (Wikis.format(wid, Wikis.MD, "[[Sport]] haha: [[Privacy Policy]]"))
+  }
+
+  "WikiParser" should "recognize roles in [[[]]]" in {
+    "<a href=\"/wiki/Club:Offroad_Ontario\">Curu</a>" === (Wikis.format(wid, Wikis.MD, "[[friend::Club:Offroad Ontario | Curu]]"))
+//    (Wikis.format(wid, Wikis.MD, "[[friend::Category:Sport]]"))
   }
 
   "WikiParser" should "recognize these " in {

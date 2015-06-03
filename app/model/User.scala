@@ -77,11 +77,18 @@ object Perm {
   val apiCall = Perm("apiCall") // special users that can make api calls
   val codeMaster = Perm("codeMaster") // can create services in eithe scala or JS
 
+  val Basic = Perm("Basic") // paid account
+  val Gold = Perm("Gold") // paid account
+  val Platinum = Perm("Platinum") // paid account
+
   implicit def tos(p: Perm): String = p.s
 
   // TODO - how to do this better with enum support
   // TODO - remove the old perms from this list at some point
-  val all: Seq[String] = Seq(adminDb, adminWiki, uWiki, uProfile, eVerified, apiCall, codeMaster, "cCategory", "uCategory", "uReserved")
+  val all: Seq[String] = Seq(adminDb, adminWiki, uWiki, uProfile, eVerified, apiCall, codeMaster,
+    "cCategory", "uCategory", "uReserved",
+    Basic, Gold, Platinum
+  )
 }
 
 /** Minimal user info - loaded all the time for a user */

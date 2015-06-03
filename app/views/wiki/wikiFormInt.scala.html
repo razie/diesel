@@ -5,7 +5,7 @@ print form body - no header/footer - reuse in other screens
 @import model._
 
 @if(!errors.isEmpty) {
-<div class="alert alert-error">
+<div class="alert alert-danger">
   <font style="color:red"><strong>Form has errors</strong> (was not saved):</font><ul>
   <font style="color:red">
         @errors.map {err=>
@@ -19,7 +19,7 @@ print form body - no header/footer - reuse in other screens
 
 @if(!errors.isEmpty) {
   <hr>
-<div class="alert alert-error">
+<div class="alert alert-danger">
   <strong><a id="errors">Errors:</a></strong><ul>
   <font style="color:red">
         @errors.map {err=>

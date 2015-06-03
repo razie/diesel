@@ -53,16 +53,19 @@ object Realm extends RazController with Logging {
       hasQuota <- (au.isAdmin || au.quota.canUpdate) orCorr cNoQuotaUpdates;
       r1 <- au.hasPerm(Perm.uWiki) orCorr cNoPermission;
       n1 <- name.matches("[a-zA-Z0-9_ -]+") orErr "no special characters in the name";
-      n2 <- (name.length > 3 && name.length < 20) orErr "name too short or too long";
+      n2 <- (name.length >= 3 && name.length < 20) orErr "name too short or too long";
       twid <- WID.fromPath(templateWpath) orErr s"template/spec wpath $templateWpath not found";
       tw <- Wikis(realm).find(twid) orErr s"template/spec $twid not found";
       hasQuota <- (au.isAdmin || au.quota.canUpdate) orCorr cNoQuotaUpdates
     ) yield {
-        val parms = Map(
-          "reactor"-> name,
-          "realm"-> name,
-          "name" -> name,
-          "description"-> data.getOrElse("description","no description")
+        val parms =
+          (
+            if("Reactor" == cat) Map(
+            "reactor"-> name,
+            "realm"-> name) else Map.empty
+            ) ++ Map(
+            "name" -> name,
+            "description"-> data.getOrElse("description","no description")
         ) ++ data
 
       import com.typesafe.config.{Config, ConfigFactory}
@@ -105,7 +108,6 @@ object Realm extends RazController with Logging {
             tw.sections.find(_.name == "template").map {sec=>
               if(templateWpath.endsWith("#form"))
                 "[[template:"+templateWpath.replaceFirst("#form$", "#template") +"]]\n" // for Specs - just include the form...
-//                Realm.template(templateWpath.replaceFirst("#form$", "#template"), parms)
               else
                 Wikis.template(templateWpath+"#template", parms)
             } getOrElse "[[include:"+templateWpath+"]]\n" // for Specs - just include the form...
@@ -136,7 +138,7 @@ object Realm extends RazController with Logging {
 
         if ("Reactor" == cat) {
           mainPage.copy(realm=name).create // create first, before using the reactor just below
-          Reactors add name
+          Reactors.add(name, mainPage)
           pages = pages.filter(_.name != name) map (_.copy (realm=name))
         } else {
           mainPage.create // create first, before using the reactor just below

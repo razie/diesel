@@ -3,20 +3,20 @@ list of contacts
 
 msg types are msg, err
 **************@
-@(email:String, name:String, msg:Seq[(String,String)])(implicit au:model.User)
+@(email:String, name:String)(implicit stok:mod.notes.controllers.NotesOk)
 
-@frup(Some(au))
+@stok.title("Invite now")
 
 <h3>
   Invite <small>| contact</small>
-  @notesmsg(msg, Some(au))
+  @notes.notesmsg(stok.msg)
 </h3>
 
 @esc(s:String) = @{(razie.wiki.Enc toUrl s).replaceAll("\\+", "%20")}
 
 @subj = @{"""The power of simplicity... """}
 @body = @{
-  controllers.Emailer.makeNotesInvite(name, 5, s"/notes/connect/accept/${au._id.toString}", au)
+  controllers.Emailer.makeNotesInvite(name, 5, s"/notes/connect/accept/${stok.au._id.toString}", stok.au)
 }
 <p>
 <a href="mailto:@email?subject=@esc(subj)&body=@esc(body)">
@@ -26,4 +26,3 @@ Send Invite Email
 <p>
 <p>
 
-@frdown("", Seq(), Some(au))

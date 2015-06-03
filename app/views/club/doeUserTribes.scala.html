@@ -9,7 +9,7 @@
 <div class="row">
   @views.html.user.leftmenu(14, user)
 
-<div class="span9">
+<div class="col-sm-9">
 
 @regs=@{
   val clubs = user.wikis.filter(_.wid.cat=="Club").flatMap(w=>model.Users.findUserByUsername(w.wid.name).toList)
@@ -29,7 +29,7 @@
 @mnglink(row:Map[String,String],k:String,v:String)={
   @k match {
         case "m" => {
-      <a href="@routes.Club.doeClubUserReg(v)" class="btn btn-mini">More...</a>
+      <a href="@routes.Club.doeClubUserReg(v)" class="btn btn-xs">More...</a>
       }
     case "status" => {
   @v match {

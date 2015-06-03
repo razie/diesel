@@ -1,11 +1,10 @@
 package controllers
 
-import admin.Notif
 import model._
 import org.joda.time.DateTime
 import play.api.mvc.Action
 import razie.db.{Txn, tx}
-import razie.wiki.admin.SendEmail
+import razie.wiki.admin.{WikiObservers, SendEmail}
 import razie.wiki.dom.WikiDomain
 import razie.wiki.model.FormStatus
 import razie.wiki.model.WID
@@ -202,14 +201,14 @@ object Forms extends WikiBase with Logging {
             Wiki.showForm(wid, None, Some(newVer), Some(au), false, Map() ++ errors, can)
           } else {
             // save the wiki page?
-            val upd = Notif.entityUpdateBefore(newVer, WikiEntry.UPD_CONTENT) orErr ("Not allowerd")
+            val upd = WikiObservers.entityUpdateBefore(newVer, WikiEntry.UPD_CONTENT) orErr ("Not allowerd")
 
             var we = newVer
             razie.db.tx("forms.submitted") { implicit txn =>
-              w.update(we)
-              Notif.entityUpdateAfter(we, WikiEntry.UPD_CONTENT)
+              w.update(we, Some("form_submitted"))
+              WikiObservers.entityUpdateAfter(we, WikiEntry.UPD_CONTENT)
               act.WikiWf.event("wikiFormSubmit", Map("wpath" -> we.wid.wpath, "userName" -> au.userName))
-              Notif.entityUpdateAfter(we, WikiEntry.UPD_CONTENT)
+              WikiObservers.entityUpdateAfter(we, WikiEntry.UPD_CONTENT)
               Emailer.withSession { implicit mailSession =>
                 //                    au.quota.incUpdates
                 au.shouldEmailParent("Everything").map(parent => Emailer.sendEmailChildUpdatedWiki(parent, au, WID(w.category, w.name)))

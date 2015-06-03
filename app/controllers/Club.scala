@@ -10,7 +10,7 @@ import model._
 import org.bson.types.ObjectId
 import org.joda.time.DateTime
 import play.api.mvc.{Action, Request}
-import razie.wiki.{EncUrl, Enc}
+import razie.wiki.{WikiConfig, EncUrl, Enc}
 import razie.wiki.model.{Wikis, WID}
 import razie.{clog, Logging, cout}
 import scala.Array.canBuildFrom
@@ -41,7 +41,7 @@ case class Club(
   def setU(u: User) = { oUser = Some(u); this }
 
   /** props like Follows.Fan will be rolled up and killed in a map so you can find them in this here seq */
-  lazy val propSeq = Config parsep dsl
+  lazy val propSeq = WikiConfig parsep dsl
   lazy val props = propSeq.toMap
 
   def isRegOpen = propSeq.exists(x => "reg.open" == x._1 && "yes" == x._2)

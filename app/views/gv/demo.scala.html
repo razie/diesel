@@ -1,0 +1,49 @@
+@**************
+demos for graphing/domain browsers
+**************@
+@()
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Hypertree - Weighted Graph Animation</title>
+  </head>
+
+  <body onload="init();">
+
+    @demo(url: String) = {
+      <br>
+      <a href="@url" >@url</a>
+      <br>
+    }
+
+    <h2>JSON extracts</h2>
+    <hr>
+    @demo("http://localhost:9000/gapi/dom/rk/Club")
+    @demo("http://localhost:9000/gapi/jitdom/rk/Club")
+    @demo("http://localhost:9000/gapi/d3dom/rk/Club")
+    <hr>
+    @demo("http://localhost:9000/gapi/domain/rk")
+    @demo("http://localhost:9000/gapi/jitdomain/rk")
+    @demo("http://localhost:9000/gapi/d3domain/rk")
+
+    <h2>graph views</h2>
+    <hr>
+      @demo("http://localhost:9000/gapi/samples/g1?url=http://localhost:9000/gapi/jitdom/rk/Club")
+      @demo("http://localhost:9000/gapi/samples/g1?url=http://localhost:9000/gapi/jitdomain/rk")
+      @demo("")
+      @demo("http://localhost:9000/gapi/samples/g2?url=http://localhost:9000/gapi/d3dom/rk/Club")
+      @demo("http://localhost:9000/gapi/samples/g2?url=http://localhost:9000/gapi/d3domain/rk")
+      @demo("")
+      @demo("http://localhost:9000/gapi/samples/g3?url=http://localhost:9000/gapi/d3dom/rk/Club")
+      @demo("http://localhost:9000/gapi/samples/g3?url=http://localhost:9000/gapi/d3domain/rk")
+      @demo("")
+      @demo("")
+      @demo("")
+      @demo("")
+
+  </body>
+</html>
+
+

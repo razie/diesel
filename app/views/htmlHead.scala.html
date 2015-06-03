@@ -31,20 +31,27 @@
 
     @Html(_root_.admin.Config.metas)
 
-    @page.flatMap(_.contentTags.get("meta.description")).map { d =>
-      <meta name="description" content="@d">
+    @page.map{p=>
+      @p.contentTags.filter(_._1.startsWith("meta.")).map { t =>
+        <meta name="@t._1.substring(5)" content="@t._2">
+      }
     }
 
-    @page.flatMap(_.props.get("meta.author")).map { d =>
+    @page.flatMap(_.contentTags.get("meta.author")).map { d =>
       <meta name="author" content="@d">
     }
 
     <!-- Le styles -->
-    <link href="@routes.Assets.at("bootstrap-2.2.3/css/bootstrap-"+css+".css")" rel="stylesheet">
+    <link href="@routes.Assets.at("bootstrap-3.3.4/css/bootstrap.css")" rel="stylesheet">
+    <link href="@routes.Assets.at("bootstrap-3.3.4/css/bootstrap-theme.css")" rel="stylesheet">
+    <link href="@routes.Assets.at("bootstrap-3.3.4/css/bootstrap-light.css")" rel="stylesheet">
+    @if(Config.theme.contains("dark")) {
+      <link href="@routes.Assets.at("bootstrap-3.3.4/css/bootstrap-"+css+".css")" rel="stylesheet">
+    }
 
 @*******
-    <script src="@routes.Assets.at("bootstrap-2.2.3/js/bootstrap-modal.js")" type="text/javascript"></script>
-    <script src="@routes.Assets.at("bootstrap-2.2.3/js/bootstrap-transition.js")" type="text/javascript"></script>
+    <script src="@routes.Assets.at("bootstrap-3.3.4/js/bootstrap-modal.js")" type="text/javascript"></script>
+    <script src="@routes.Assets.at("bootstrap-3.3.4/js/bootstrap-transition.js")" type="text/javascript"></script>
 ********@
 
 @if(Config.hostport.startsWith("test") || Config.hostport.startsWith("xlocalhost")) {
@@ -85,9 +92,11 @@
         padding-bottom: 0px;
       }
     </style>
-    <link href="@routes.Assets.at("bootstrap-2.2.3/css/bootstrap-responsive.min.css")" rel="stylesheet">
 
+      @****
     <script src="@routes.Assets.at("javascripts/jquery-1.7.1.min.js")" type="text/javascript"></script>
+      ****@
+    <script src="@routes.Assets.at("javascripts/jquery-1.11.2.min.js")" type="text/javascript"></script>
 
     <!-- Le HTML5 shim, for IE6-8 support of HTML5 elements -->
     <!--[if lt IE 9]>
@@ -104,21 +113,6 @@
     ****@
 
 <style type="text/css">
-img.rklogo
-  {
-  opacity:0.8;
-  filter:alpha(opacity=80); /* For IE8 and earlier */
-  }
-
-.navbar .rkbrand { /* this is a copy of the bootstrap .brand */
-  float: left;
-  display: block;
-  padding: 4px 20px 1px;
-  #padding: 11px 20px 11px;
-  margin-left: -20px;
-  font-size: 20px;
-}
-
 ul.like-buttons{
   float: left;
   list-style: none;

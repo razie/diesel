@@ -3,7 +3,7 @@ fragment: add more stuff to the current topic, including children, sub-topics et
 ****************@
 @(uwid:razie.wiki.model.UWID)
 @import razie.wiki.util.IgnoreErrors
-@import razie.wiki.model.{Wikis, WID, WikiLink}
+@import razie.wiki.model.{Wikis, WID, WikiLink, WikiEntry}
 @import model.UserWiki
 @import razie.wiki.dom.WikiDomain
 @import razie.db.RMany
@@ -44,4 +44,20 @@ Links from others :
   }
 }
 </small>
+
+
+  @if(uwid.cat == "Reactor") {
+<h2>It is a reactor, here are the topics to delete:</h2>
+
+<small>
+@defining(RMany[WikiEntry]("realm" -> uwid.wid.get.name)) {x=>
+<p>Topics:
+  @if(x.isEmpty) { None } else {
+  <ul>
+    @x.map{uw=> <li>@uw.wid.wpath</li> }
+    </ul>
+  }
+  }
+</small>
+  }
 

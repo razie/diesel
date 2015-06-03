@@ -24,7 +24,7 @@ club admin manages user: membership, regsitration etc
 <div class="container"> <div class="row">
 @views.html.user.leftmenu(13, club)
 
-<div class="span9">
+<div class="col-sm-9">
 
 <h2>Manage tribe @tribe.name</h2>
 <br>
@@ -41,7 +41,7 @@ club admin manages user: membership, regsitration etc
   @k match {
         case "id" => {
       @if(tribe.has(new ObjectId(v))) {
-        <a href="@routes.Tribe.doeClubRemoveKid(tribe.page._id.toString,v,v)" class="btn btn-mini btn-warn">Remove</a>
+        <a href="@routes.Tribe.doeClubRemoveKid(tribe.page._id.toString,v,v)" class="btn btn-xs btn-warning">Remove</a>
       } else {
           }
         }
@@ -101,7 +101,7 @@ club admin manages user: membership, regsitration etc
 <p>Add more Members:
 
 @List("Racer", "Coach", "Manager").map{h=>
-<a href="@routes.Tribe.doeTribeAddHow(tribe.page._id.toString,h)" class="btn btn-large btn-info">@h</a>
+<a href="@routes.Tribe.doeTribeAddHow(tribe.page._id.toString,h)" class="btn btn-lg btn-info">@h</a>
 }
 
 </div>

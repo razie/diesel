@@ -35,7 +35,7 @@ fragment: add more stuff to the current topic, including children, sub-topics et
     @WikiDomain(wid.getRealm).aEnds(wid.name, "Template").headOption.map { wet =>
       @helper.form(action=routes.Wikie.addWithSpec1(wid.name, wet, wid.getRealm), 'class->"well form-inline") {
         <label>Create a new <a href="@wid.url">@Wikis(wid.getRealm).label(WID("Category",wid.name))</a> </label>
-        <button type="submit" class="btn">Choose template</button>
+        <button type="submit" class="btn btn-default">Choose template</button>
       }
     }
 
@@ -44,7 +44,7 @@ fragment: add more stuff to the current topic, including children, sub-topics et
       @helper.form(action=routes.Wikie.addWithName(wid.name, wid.getRealm), 'class->"well form-inline") {
         <label>Create a new <a href="@wid.url">@Wikis(wid.getRealm).label(WID("Category",wid.name))</a> </label>
         <input type="text" class="input-xlarge" name="name" placeholder="Name">
-        <button type="submit" class="btn">Now</button>
+        <button type="submit" class="btn btn-default">Now</button>
       }
     }
   }
@@ -55,8 +55,8 @@ fragment: add more stuff to the current topic, including children, sub-topics et
       @helper.form(action=routes.Wikie.addLinked(child,wid,"Child"), 'class->"form-inline") {
         <label>Create a <a href="/wiki/Category:@child">@Wikis.category(child).map(_.label).mkString</a> </label>
         <input type="text" class="input-xlarge" name="name" placeholder="Name">
-            <button type="submit" class="btn btn-mini btn-primary">Now</button>
-            <a href="/wiki/Admin:Adding_a_Child" class="btn btn-mini btn-info">?</a>
+            <button type="submit" class="btn btn-xs btn-primary">Now</button>
+            <a href="/wiki/Admin:Adding_a_Child" class="btn btn-xs btn-info">?</a>
           }
         }
 

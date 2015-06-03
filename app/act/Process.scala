@@ -10,9 +10,6 @@ import scala.util.matching.Regex.Match
 import scala.util.matching.Regex
 import razie.Log
 import razie.base.data.TripleIdx
-import admin.Notif
-import admin.Config
-import play.mvc.Http.Request
 import razie.base.ActionContext
 import razie.db.{ RTable, RCreate, RDelete }
 import razie.Logging

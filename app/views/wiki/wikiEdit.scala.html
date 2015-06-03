@@ -10,7 +10,7 @@ edit a wiki page
 }
 
 @wvis() = @{
-  Wikis.visibilityFor(wid.cat) ++ (if(au.exists(_.isAdmin)) Seq("Private") else Nil)
+  Wikis.visibilityFor(wid.cat) ++ (if(au.exists(_.isAdmin)) Seq("Admin") else Nil)
 }
 
 @reserved(page:Option[WikiEntry]) = {
@@ -28,39 +28,39 @@ edit a wiki page
   }
 }
 
-@htmlHeadBar("Editing "+wid.cat+":"+ wid.name, au, realm)
+@whtmlHeadBar("Editing "+wid.cat+":"+ wid.name, realm)(au,request)
 
 <div class="container">
   <div class="row">
-    <div class="span9">
+    <div class="col-sm-9">
 
 <div >
 @import helper.twitterBootstrap._
 
-@helper.form(action=routes.Wikie.save(wid.formatted), 'class->"well form-inline") {
-<table valign="top">
-<tr><td>
+@helper.form(action=routes.Wikie.save(wid.formatted), 'class->"well") {
+<div class="row">
 @*******
 PROBLEM: many places use label as name... via Wikis.formatName
 **********@
+  <div class="form-group col-sm-9">
   @helper.inputText(
     myForm("label"),
-    'class -> "input-xxlarge",
+    'class -> "form-control col-sm-12",
     '_label -> "Label (don't change)",
     '_showConstraints -> false)
   @helper.textarea(
     myForm("content"),
     '_label -> "Content",
     '_showConstraints -> false,
-    'class -> "span7",
+    'class -> "form-control col-sm-12",
     'rows->20)
   @helper.inputText(
     myForm("tags"),
-    'class -> "input-xlarge",
+    'class -> "form-control col-sm-12",
     '_label -> "Tags (separated with ,)",
     '_showConstraints -> false)
-</td><td>
-    <div>
+  </div>
+  <div class="form-group col-sm-3">
   @helper.select(
     myForm("markup"),
     Seq("md"->"Markdown"), //razie.wiki.model.Wikis.markups.map(x=>(x,x)),
@@ -70,7 +70,7 @@ PROBLEM: many places use label as name... via Wikis.formatName
 
   @helper.select(
     myForm("visibility"),
-    razie.wiki.model.Wikis.visibilityFor(wid.cat).map(x=>(x,x)),
+    razie.wiki.model.Reactors(wid.getRealm).wiki.visibilityFor(wid.cat).map(x=>(x,x)),
     '_label -> "Visibility",
     'class -> "input-small",
     '_showConstraints -> false)
@@ -96,11 +96,11 @@ PROBLEM: many places use label as name... via Wikis.formatName
     }
   }
 
-  </div>
-</td></tr></table>
+</div>
+</div>
     <div class="actions">
       <button type="submit" class="btn btn-primary">Save</button>
-      <a href="@controllers.Wiki.w(wid, false)" class="btn">Cancel</a>
+      <a href="@controllers.Wiki.w(wid, false)" class="btn btn-default">Cancel</a>
   </div>
 
   @myForm.globalError.map { err=>
@@ -114,12 +114,12 @@ PROBLEM: many places use label as name... via Wikis.formatName
 }
 </div>
 
+      <script>
+var dotTags = [];
+</script>
+
 <script src="@routes.Assets.at("vendor/jquery.textcomplete.min.js")"></script>
 <script src="@routes.Assets.at("javascripts/rk-contentassist.js")"></script>
-
-<script>
-var dotTags = braTags;
-</script>
 
 @Wikis(wid.getRealm).find(wid).map{we=>
   <div class="well">
@@ -129,9 +129,9 @@ var dotTags = braTags;
 
     <hr>
     @htmlFooter(false, false, realm)
-    </div> <!-- /span9 -->
+    </div> <!-- /col-sm-9 -->
 
-    <div class="span3">
+    <div class="col-sm-3">
       @wiki.wikiFrag(razie.wiki.model.WID("Admin","Right"),au,true)
     </div>
   </div> <!-- row -->

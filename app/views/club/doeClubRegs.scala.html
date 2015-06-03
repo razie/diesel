@@ -10,7 +10,7 @@ club admin manages list of users and registrations
   <div class="row">
   @views.html.user.leftmenu(7, club)
 
-<div class="span9">
+<div class="col-sm-9">
   @tab=@{
     members.filter(_._1.isDefined).map(t=>
       Map("userName"->t._1.get.userName,
@@ -101,7 +101,7 @@ club admin manages list of users and registrations
 @kidlink(row:Map[String,String],k:String,v:String)={
   @k match {
         case "button" => {
-      <a href="@routes.Kidz.doeUserKid(club._id.toString, v, "-", row("associd"), "Club")" class="btn btn-mini">More...</a>
+      <a href="@routes.Kidz.doeUserKid(club._id.toString, v, "-", row("associd"), "Club")" class="btn btn-xs">More...</a>
       }
     case _ => {@v}
   }
@@ -127,10 +127,10 @@ Add more from <a href="@routes.Club.doeClubKids">here</a>
   @controllers.Club.findForUser(club).map { c =>
     @c.regForms.map { t =>
     <li>
-      <a href="@routes.Club.doeClubRegsReportCsv(t.role)" class="btn btn-mini">Report CSV</a> -
-      <a href="@routes.Club.doeClubRegsReportJson(t.role)" class="btn btn-mini">Report Json</a> - @t.role
+      <a href="@routes.Club.doeClubRegsReportCsv(t.role)" class="btn btn-xs">Report CSV</a> -
+      <a href="@routes.Club.doeClubRegsReportJson(t.role)" class="btn btn-xs">Report Json</a> - @t.role
       @c.props.filter(_._1 startsWith ("Report."+t.role)).map {tt=>
-      | <a href="@routes.Club.doeClubRegsReportCsv(t.role, tt._2)" class="btn btn-mini">@tt._1.replaceFirst("Report."+t.role+".", "")</a>
+      | <a href="@routes.Club.doeClubRegsReportCsv(t.role, tt._2)" class="btn btn-xs">@tt._1.replaceFirst("Report."+t.role+".", "")</a>
       }
     }
   }

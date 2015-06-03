@@ -11,7 +11,7 @@
 <div class="container"> <div class="row">
 @views.html.user.leftmenu(10, au)
 
-<div class="span9">
+<div class="col-sm-9">
 
 <h2>@model.Users.findUserById(reg.userId).map(_.userName).mkString Registration for @reg.clubName (as @reg.role)</h2>
 
@@ -42,7 +42,7 @@
 <p>If a racer/parent/guardian/volunteer is not listed below, add one as a:
 
 @model.RK.RELATIONSHIPS.map{r=>
-  <a href="@routes.Kidz.doeKid(au._id.toString, "11", r, "-", reg._id.toString)" class="btn btn-mini btn-info">@r</a>
+  <a href="@routes.Kidz.doeKid(au._id.toString, "11", r, "-", reg._id.toString)" class="btn btn-xs btn-info">@r</a>
 }
 
 @rkidz=@{
@@ -56,15 +56,15 @@
 @addlink(row:Map[String,String],k:String,v:String)={
   @k match {
         case "button" => {
-      <a href="@routes.Kidz.doeKid(au._id.toString, v, "-", "-", reg._id.toString)" class="btn btn-mini">...</a>
+      <a href="@routes.Kidz.doeKid(au._id.toString, v, "-", "-", reg._id.toString)" class="btn btn-xs">...</a>
           }
         case "id" => {
       @if(reg.kids.exists(_.rkId.toString == v)) {
             <span class="label">Included</span>
         as @reg.kids.filter(_.rkId.toString == v).map(_.role).mkString
-        <a href="@routes.Club.doeClubUwRMFormKid(reg._id.toString,v,au._id.toString, "x")" class="btn btn-mini btn-danger" title="remove from registration"> x </a>
+        <a href="@routes.Club.doeClubUwRMFormKid(reg._id.toString,v,au._id.toString, "x")" class="btn btn-xs btn-danger" title="remove from registration"> x </a>
       } else {
-        <a href="@routes.Club.doeClubUserRegAdd(reg._id.toString,v,au._id.toString, "x")" class="btn btn-mini" title="also adds neccessary forms">Include now!</a>
+        <a href="@routes.Club.doeClubUserRegAdd(reg._id.toString,v,au._id.toString, "x")" class="btn btn-xs" title="also adds neccessary forms">Include now!</a>
           }
         }
     case _ => {@v}
@@ -81,7 +81,7 @@
 
 <div class="well">
 <h3>Step 3. Make sure <em>everyone</em> is included in this registration</h3>
-<p>Use the <span class="btn btn-mini">Include now!</span> buttons in the table above, to add to the current registration. Please include anyone that is a parent/guardian and/or will race, volunteer or coach for the club.
+<p>Use the <span class="btn btn-xs">Include now!</span> buttons in the table above, to add to the current registration. Please include anyone that is a parent/guardian and/or will race, volunteer or coach for the club.
 <p>If you make a mistake, use the red <span class="label label-important"> x </span> button with care: it will delete completed forms if it has to...
 <p>Making sure this list is correct <b>before</b> you start completing the forms can save you having to re-fill some forms!
 @if(rks.exists(rk => !reg.kids.exists(_.rkId == rk._id))) {

@@ -6,7 +6,7 @@
  */
 package model
 
-import diesel.model.{DReactors}
+import mod.diesel.model.{DReactors}
 import org.bson.types.ObjectId
 import razie.{cdebug, cout, clog}
 import scala.collection.mutable.ListBuffer

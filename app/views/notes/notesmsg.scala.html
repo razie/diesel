@@ -3,7 +3,7 @@ show/edit/capture a note
 
 msg types are msg, err
 **************@
-@(msg:Seq[(String,String)], au:Option[model.User])
+@(msg:Seq[(String,String)])
 
 <small>
 &nbsp; &nbsp; &nbsp; &nbsp;
@@ -11,7 +11,7 @@ msg types are msg, err
   <div id="messages" style="float:right;">
 
     @if(msg.size>0 && msg(0)._1 == "err") {
-     <div id="msg" style="display:inline;" class="alert alert-error">
+     <div id="msg" style="display:inline;" class="alert alert-danger">
      <strong>@msg(0)._2</strong>
      </div>
     }

@@ -30,7 +30,7 @@ manage the volunteer hours by club admin
 @mnglink(row:Map[String,String],k:String,v:String)={
   @k match {
         case "button" => {
-      <a href="@routes.Club.doeVolAdd(v)" class="btn btn-mini">Add...</a>
+      <a href="@routes.Club.doeVolAdd(v)" class="btn btn-xs">Add...</a>
       }
     case _ => { @v }
   }
@@ -40,7 +40,7 @@ manage the volunteer hours by club admin
 <div class="row">
 @views.html.user.leftmenu(15, user)
 
-<div class="span9">
+<div class="col-sm-9">
 
 <h2>Kidz and member info from all over the place @user.firstName</h2>
 
@@ -67,9 +67,9 @@ manage the volunteer hours by club admin
                 "button"->"Add more"), Some(mnglink))
 
 Add a:
-<a href="@routes.Kidz.doeKid(user._id.toString, "11", ROLE_RACER, "-", "clubkidz")" class="btn btn-mini btn-info">@ROLE_RACER</a>
-<a href="@routes.Kidz.doeKid(user._id.toString, "11", ROLE_SPOUSE, "-", "clubkidz")" class="btn btn-mini btn-info">@ROLE_SPOUSE</a>
-<a href="@routes.Kidz.doeKid(user._id.toString, "11", ROLE_MEMBER, "-", "clubkidz")" class="btn btn-mini btn-info">@ROLE_MEMBER</a>
+<a href="@routes.Kidz.doeKid(user._id.toString, "11", ROLE_RACER, "-", "clubkidz")" class="btn btn-xs btn-info">@ROLE_RACER</a>
+<a href="@routes.Kidz.doeKid(user._id.toString, "11", ROLE_SPOUSE, "-", "clubkidz")" class="btn btn-xs btn-info">@ROLE_SPOUSE</a>
+<a href="@routes.Kidz.doeKid(user._id.toString, "11", ROLE_MEMBER, "-", "clubkidz")" class="btn btn-xs btn-info">@ROLE_MEMBER</a>
 
 <hr>
 Source is

@@ -3,10 +3,14 @@ show/edit/capture a note
 
 msg types are msg, err
 **************@
-@(myForm:Form[_], tags:model.Tags.Tags, msg:Seq[(String,String)], isAuto:Boolean=false)(implicit au:Option[model.User])
-@import model.Tags
-@import model.Tags
-@import _root_.controllers.NotesLocker
+@(myForm:Form[_], isAuto:Boolean=false)(implicit stok:mod.notes.controllers.NotesOk)
+@import mod.notes.controllers.NotesLocker
+@import mod.notes.controllers.NotesTips
+@import mod.notes.controllers.routes
+
+@stok.title("invite?")
+
+<h3>Creative <small>| preview</small> @notes.notesmsg(stok.msg) </h3>
 
 @id = @{1}
 
@@ -18,39 +22,40 @@ msg types are msg, err
    if(line.length() - line.replace("\n", "").length() > 5) 10 else 5
 }
 
-@notes.frup(au)
-
-<h3>Creative <small>| preview</small> @notes.notesmsg(msg, au) </h3>
 
 <div class="well" style="padding-bottom:0px">
 @import helper.twitterBootstrap._
 
 @helper.form(action=routes.NotesLocker.save(), 'class->"form-inline", 'style->"margin-bottom:0px") {
 
-@**
-  <div id="lock1" style="display:inline-block; width:100%; height:120px;"> </div>
-**@
-
   @helper.textarea(
     myForm("content"),
-    '_label -> (Html(NotesLocker.xhtml("admin,page,main", au))),
+    '_label -> (Html(NotesTips.xhtml("admin,page,main", Some(stok.au)))),
     '_showConstraints -> false,
-    'class -> "span8",
+    'class -> "col-sm-12",
     'rows->rows)
 
- <div id="xflash" ><h2 id="flash1" style="text-align:center; width:100%; color:#49afcd;">preview</h2><p id="flash2" style="text-align:center; width:100%">preview mode only</p></div>
+   <div id="xflash" ><h2 id="flash1" style="text-align:center; width:100%; color:#49afcd;">preview</h2><p id="flash2" style="text-align:center; width:100%">preview mode only</p></div>
+
+   <div class="col-sm-12" style="margin-left:0px; padding-left: 0px; padding-right : 0px; padding-bottom: 10px;">
+       Tags <small>i.e. note,todo,forjohn,phone,email,contact,project1 </small>
+       <div style="float:right">
+           <a class="btn btn-xs" onclick="larger()" title="This is not twitter, eh?">+ Larger</a>
+       </div>
+   </div>
 
   @helper.inputText(
     myForm("tags"),
-    '_label -> Html("""
-       <div class="span8" style="margin-left:0px">
-       Tags <small>i.e. note,todo,forjohn,phone,email,contact,project1</small>
-  <div style="float:right">
-      <a class="btn btn-mini" onclick="larger()" title="This is not twitter, eh?">+ Larger</a>
-  </div>
-       </div>
-       """),
-    'class -> "span8",
+      '_label -> "",
+//    '_label -> Html("""
+//       <div class="col-sm-12" style="margin-left:0px">
+//       Tags <small>i.e. note,todo,forjohn,phone,email,contact,project1 </small>
+//  <div style="float:right">
+//      <a class="btn btn-xs" onclick="larger()" title="This is not twitter, eh?">+ Larger</a>
+//  </div>
+//       </div>
+//       """),
+    'class -> "col-sm-12",
     'autocomplete -> "off",
     '_showConstraints -> false)
 
@@ -61,15 +66,15 @@ msg types are msg, err
   <input id="id" type="hidden" name="id" value="@nid" />
   <input id="ver" type="hidden" name="ver" value="@ver" />
 
-  <div class="actions span8" style="margin-left:0px; display:inline-block;">
+  <div class="actions col-sm-12" style="margin-left:0px; display:inline-block;">
     <button id="submit" type="submit" class="btn btn-info">Save it</button>
 
     @if(isAuto) {
-      <a id="discard" href="/notes/discard/@nid" class="btn btn-warn" title="This note was auto-saved...">Discard it</a>
+      <a id="discard" href="/notes/discard/@nid" class="btn btn-warning" title="This note was auto-saved...">Discard it</a>
     }
 
     <div style="float:right">
-      <a class="btn" onclick="archive()" title="Archive notes">Archive it</a>
+      <a class="btn btn-default" onclick="archive()" title="Archive notes">Archive it</a>
     </div>
   </div>
 
@@ -79,9 +84,9 @@ msg types are msg, err
 }
 </div>
 
-@if(!au.isDefined || au.get.isHarry) {
+@if(stok.au.isHarry) {
   </span>
-    <div class="alert alert-block alert-error">
+    <div class="alert alert-block alert-danger">
       <strong>Need account</strong> - this is a demo account, please sign in with google or <a href="/login">create an account</a>.
         @** the google button*@
         <span id="signinButton">
@@ -101,7 +106,7 @@ msg types are msg, err
 <script>
 $('#content')[0].focus();
 
-@if(au.isEmpty || !au.get.isActive) {
+@if(!stok.au.isActive) {
   $('#submit')[0].disabled=true;
   $('#content')[0].disabled=true;
   $('#tags')[0].disabled=true;
@@ -240,7 +245,5 @@ $form[0].submit();
 
   }
   </script>
-
-@notes.frdown("", tags, au, false)
 
 

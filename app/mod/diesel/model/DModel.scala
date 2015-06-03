@@ -1,8 +1,9 @@
-package diesel.model
+package mod.diesel.model
 
-import diesel.controllers.SFiddles
+import mod.diesel.controllers.SFiddles
 import model._
 import org.bson.types.ObjectId
+import play.api.mvc.Request
 import razie.wiki.model.WikiSection
 import razie.wiki.model.Wikis
 import razie.wiki.model.UWID
@@ -84,7 +85,7 @@ abstract class DieselReactor (
     new Diesel.Section(CAT_DOMAIN, ho.get.name, k, domains.map(_.script).mkString("\n"), ho.get.we)
   }
 
-  def react (event:String, args:Map[String,String])(implicit au:User) = {
+  def react (event:String, args:Map[String,String])(implicit request:Request[_], au:User) = {
     val dom = domain
     val body = bodies.find(_.name == event)
     assert (body exists (_.lang == dom.lang))

@@ -6,54 +6,54 @@
 <div class="container">
 
   <!-- Main hero unit for a primary marketing message or call to action -->
-  <div class="hero-unit">
+  <div class="jumbotron">
     <div class="row">
-      <div class="span4">
+      <div class="col-sm-4">
         <b><a href="@routes.Profile.doeJoin()">Not @au.get.ename?</a></b>
         <p>If you're not an admin of this site, please leave and report seeing this page with a brief support request at the bottom of the page</p>
         See the content of a page: /wikie/content/Page:X
-      <p><a href="@routes.Admin.system("x")" class="btn btn-large">system</a>
-        <p><a href="/razadmin/reloadurlmap" class="btn btn-large">admin reload urlmap</a>
-        <p><a href="/razadmin/resendEmails" class="btn btn-large">resend emails</a>
-        <a href="/razadmin/tickEmails" class="btn btn-large">emails tick</a>
-        <p></p><a href="/razadmin/difflist/all/www.racerkidz.com" class="btn btn-large">diff list RK</a>
-        <a href="@routes.Wikie.replaceAll1()" class="btn btn-large">replace all</a>
+      <p><a href="@routes.Admin.system("x")" class="btn btn-default btn-lg">system</a>
+        <p><a href="/razadmin/reloadurlmap" class="btn btn-default btn-lg">admin reload urlmap</a>
+        <p><a href="/razadmin/resendEmails" class="btn btn-default btn-lg">resend emails</a>
+        <a href="/razadmin/tickEmails" class="btn btn-default btn-lg">emails tick</a>
+        <p></p><a href="/razadmin/difflist/all/www.racerkidz.com" class="btn btn-default btn-lg">diff list RK</a>
+        <a href="@routes.Wikie.replaceAll1()" class="btn btn-default btn-lg">replace all</a>
       </div>
-    <div class="span6">
-      <p><a href="/razadmin/db" class="btn btn-large">admin db</a>
-      <a href="/razadmin/users" class="btn btn-large">admin users</a>
-      <p><a href="/razadmin/wikidx" class="btn btn-large">admin wikidx</a>
-      <p><a href="/razadmin/audit/purge1" class="btn btn-large">audit purge1</a>
-      <p><a href="/razadmin/audit" class="btn btn-large">admin audit</a>
-      <a href="/razadmin/auditreport/d/1" class="btn btn-large">day</a>
-      <a href="/razadmin/auditreport/d/7" class="btn btn-large">week</a>
-      <a href="/razadmin/auditreport/d/30" class="btn btn-large">month</a>
-      <a href="/razadmin/auditreport/y/1" class="btn btn-large">yesterday</a>
+    <div class="col-sm-6">
+      <p><a href="/razadmin/db" class="btn btn-default btn-lg">admin db</a>
+      <a href="/razadmin/users" class="btn btn-default btn-lg">admin users</a>
+      <p><a href="/razadmin/wikidx" class="btn btn-default btn-lg">admin wikidx</a>
+      <p><a href="/razadmin/audit/purge1" class="btn btn-default btn-lg">audit purge1</a>
+      <p><a href="/razadmin/audit" class="btn btn-default btn-lg">admin audit</a>
+      <a href="/razadmin/auditreport/d/1" class="btn btn-default btn-lg">day</a>
+      <a href="/razadmin/auditreport/d/7" class="btn btn-default btn-lg">week</a>
+      <a href="/razadmin/auditreport/d/30" class="btn btn-default btn-lg">month</a>
+      <a href="/razadmin/auditreport/y/1" class="btn btn-default btn-lg">yesterday</a>
     </div>
   </div>
 </div>
 
   <div class="row">
-    <div class="span3">
+    <div class="col-sm-3">
       <h2>Pages</h2>
       <p>There are @RazMongo("WikiEntry").size pages</p>
       <p>There are @RazMongo("weNote").size notes</p>
-      <p><a class="btn" href="/razadmin/calendars">View details &raquo;</a></p>
+      <p><a class="btn btn-default" href="/razadmin/calendars">View details &raquo;</a></p>
     </div>
-    <div class="span3">
+    <div class="col-sm-3">
       <h2>Users</h2>
       <p>@RazMongo("User").size users and @RazMongo("RacerKid").size RacerKidz</p>
-      <p><a class="btn" href="/razadmin/calendars">View details &raquo;</a></p>
+      <p><a class="btn btn-default" href="/razadmin/calendars">View details &raquo;</a></p>
     </div>
-    <div class="span3">
+    <div class="col-sm-3">
       <h2>Registrations</h2>
       <p>@RazMongo("Reg").size and @RazMongo("RegKid").size kidz</p>
-      <p><a class="btn" href="/razadmin/calendars">View details &raquo;</a></p>
+      <p><a class="btn btn-default" href="/razadmin/calendars">View details &raquo;</a></p>
    </div>
-    <div class="span3">
+    <div class="col-sm-3">
       <h2>Forms</h2>
       <p>@RazMongo("weForm").size forms</p>
-      <p><a class="btn" href="/razadmin/calendars">View details &raquo;</a></p>
+      <p><a class="btn btn-default" href="/razadmin/calendars">View details &raquo;</a></p>
    </div>
   </div>
 

@@ -3,11 +3,12 @@ show all the tags the user has
 
 msg types are msg, err
 **************@
-@(tags:model.Tags.Tags, au:Option[model.User])
+@()(implicit stok:mod.notes.controllers.NotesOk)
+@import mod.notes.controllers.routes
 
-@frup(au)
+@stok.title("All tags")
 
-<h3>Tags <small>(@tags.size)</small></h3>
+<h3>Tags <small>| (@stok.tags.size)</small></h3>
 
 <div class="well">
 
@@ -16,11 +17,10 @@ Your tags:
 <ul>
   <li><a href="@routes.NotesLocker.tag("all")">all</a></li>
   <li><a href="@routes.NotesLocker.tag("none")">no tag</a></li>
-  @tags.map {x=>
+  @stok.tags.map {x=>
     <li><a href="@routes.NotesLocker.tag(x._1)">@x._1 <small>(@x._2)</small></a></li>
   }
 </ul>
 
 </div>
 
-@frdown("", tags, au)

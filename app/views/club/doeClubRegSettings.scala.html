@@ -7,7 +7,7 @@
 
     @views.html.user.leftmenu(9, user)
 
-        <div class="span9">
+        <div class="col-sm-9">
 
 <h2>Registration settings</h2>
 <p>
@@ -36,7 +36,7 @@
   @helper.textarea(
     myForm("dsl"),
     '_label -> "Settings (role=WID)",
-    'class -> "span6",
+    'class -> "col-sm-6",
     'rows -> 20,
     '_showConstraints -> false)
 

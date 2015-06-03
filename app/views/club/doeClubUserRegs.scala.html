@@ -9,7 +9,7 @@
 <div class="container"> <div class="row">
 @user.leftmenu(10, au)
 
-<div class="span9">
+<div class="col-sm-9">
 
 @missingRegs=@{
   // clubs with open regs that I'm not reg'd for
@@ -36,7 +36,7 @@
           @regStatusColored(v, Some(routes.Club.doeClubUserReg(row.get("id").get).toString))
       }
         case "vol" => { @v
-            <a href="@routes.Club.doeUserVolAdd(row.get("id").get).toString" class="btn btn-mini">Manage</a>
+            <a href="@routes.Club.doeUserVolAdd(row.get("id").get).toString" class="btn btn-xs">Manage</a>
                 }
     case _ => {@v}
   }

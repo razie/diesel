@@ -41,12 +41,41 @@ object wix {
     def ename = iuser.get.ename
     def isDefined = iuser.isDefined
     def isEmpty = iuser.isEmpty
+    def id = iuser.get._id
     def isOwner = iuser.exists(u=> ipage.flatMap(_.owner).exists(_._id == u._id))
     def ownedPages(realm:String, cat:String) = iuser.toList.flatMap(_.ownedPages(realm, cat))
 
     def map[T] (f: user.type => T) = if(isDefined) Some(f(user)) else None
 
     def isRegistered = iuser exists (u=> ipage >>> (x=>model.Users.findUserLinksTo(x.uwid).toList) exists (_.userId == u._id))
+  }
+
+  def json = {
+    """var wix = {
+    """ +
+      (if(ipage.isDefined) {
+    s"""
+    "page" : {
+      "name" : "${ipage.get.name}",
+      "isDefined" : "${ipage.isDefined}",
+      "isEmpty" : "${ipage.isEmpty}",
+      "wid" : "${ipage.get.wid}"
+    },
+    """
+    } else "") +
+   (if(iuser.isDefined) {
+      s"""
+    "user" : {
+      "userName" : "${iuser.get.userName}",
+      "firstName" : "${iuser.get.firstName}",
+      "ename" : "${iuser.get.ename}",
+      "isDefined" : "${iuser.isDefined}",
+      "isEmpty" : "${iuser.isEmpty}",
+      "id" : "${iuser.get._id.toString}"
+    }
+    """
+   } else "") +
+    """}"""
   }
 
   def query: Map[String,String] = iquery

@@ -21,6 +21,10 @@ object Application extends RazController {
   def whatever(path: String) = Action { implicit request =>
     log("REDIRECTING? - " + path)
     Website.getHost.orElse(Some(Config.hostport)).flatMap(x =>
+      Config.urlrewrite(x + "/" + path)).map { host =>
+      log("  REDIRECTED TO - " + host)
+      Redirect(host)
+    } orElse Website.getHost.orElse(Some(Config.hostport)).flatMap(x =>
       Config.urlfwd(x + "/" + path)).map { host =>
       log("  REDIRECTED TO - " + host)
       Redirect(host)
@@ -210,7 +214,7 @@ object Application extends RazController {
         val Array(wId, uId) = data.split(",")
         val w = ROne[WikiEntry]("_id" -> wId.aso).get
         razie.db.tx("test") { implicit txn =>
-          w.update(w.cloneProps(w.props ++ Map("owner" -> uId), uId.aso))
+          w.update(w.cloneProps(w.props ++ Map("owner" -> uId), uId.aso), Some("testing"))
         }
         "ok"
       case "wikiIdByName" =>

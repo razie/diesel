@@ -3,14 +3,13 @@ list of contacts
 
 msg types are msg, err
 **************@
-@(tag:String, notes:List[razie.wiki.model.WikiEntry], tags:model.Tags.Tags, msg:Seq[(String,String)], au:Option[model.User], isSearch:Boolean=false)(ncs:List[controllers.Inbox])
+@(ncs:List[mod.notes.controllers.Inbox])(implicit stok:mod.notes.controllers.NotesOk)
+@import mod.notes.controllers.{NotesLocker, Inbox}
+@import mod.notes.controllers.routes
 
-@frup(au)
+@stok.title("Inbox")
 
-<h3>
-  Inbox <small>| preview</small>
-  @notesmsg(msg, au)
-</h3>
+<h3> Inbox <small>| preview</small> @notes.notesmsg(stok.msg) </h3>
 
   <table class="table">
     <thead>
@@ -37,4 +36,3 @@ msg types are msg, err
 
 <p></p>
 
-@frdown(if(isSearch) "" else tag, tags, au)

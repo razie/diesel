@@ -18,8 +18,8 @@ purge audit tables
       <table class="table table-striped">
           <thead>
               <td>What</td>
-              <td>Remote</td>
               <td>Local</td>
+              <td>Remote</td>
           </thead>
 @diff.getDeltas.map{d =>
   @d.getType.toString match {

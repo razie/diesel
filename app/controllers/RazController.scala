@@ -5,11 +5,10 @@ import com.mongodb.WriteResult
 import model._
 import play.api.data.validation.{Constraint, Invalid, Valid, ValidationError}
 import play.api.mvc._
+import play.api.templates.Html
 import razie.{cdebug, Logging}
-import razie.wiki.model.Wikis
+import razie.wiki.model.{Reactors, Wikis, WikiUser, WID}
 import razie.wiki.util.IgnoreErrors
-import razie.wiki.model.WikiUser
-import razie.wiki.model.WID
 import razie.wiki.util.VErrors
 import razie.wiki.Services
 import razie.wiki.admin.Audit
@@ -54,28 +53,28 @@ class RazController extends RazControllerBase with Logging {
   def noPerm(wid: WID, more: String = "", shouldAudit: Boolean = true)(implicit request: Request[_], errCollector: VErrors = IgnoreErrors) = {
     if (errCollector.hasCorrections) {
       val uname = auth.map(_.userName).getOrElse(if(isFromRobot) "ROBOT" else "")
+      val msg = Website.get.prop("msg.err.noPerm").getOrElse("Sorry, you don't have the permission to do this!")
+
       if (shouldAudit)
         Services.audit.auth("BY %s - Permission fail Page: %s Info: %s HEADERS: %s".format(uname, wid.toString, more + " " + errCollector.mkString, request.headers))
       Unauthorized(views.html.util.utilMsg(
+        s""" <span style="color:red">$msg</span>""",
         s"""
-Sorry, you don't have the permission to do this!
-
 ${errCollector.mkString}
 
-$more
+>> $more
 """, Some(controllers.Wiki.w(wid).toString), auth))
     } else noPermOLD(wid, more + " " + errCollector.mkString)
   }
 
   private def noPermOLD(wid: WID, more: String = "")(implicit request: Request[_]) = {
     Services.audit.auth("BY %s - Permission fail Page: %s Info: %s HEADERS: %s".format((auth.map(_.userName).getOrElse("")), wid.toString, more, request.headers))
+    val msg = Website.get.prop("msg.err.noPerm").getOrElse("Sorry, you don't have the permission to do this!")
     Unauthorized(views.html.util.utilMsg(
+      s""" <span style="color:red">$msg</span>""",
       s"""
-Sorry, you don't have the permission to do this!
 
-<font style="color:red">
 >> $more
-</font>
 
 If you got this message in error, please describe the issue in a <a href="/doe/support?desc=No+permission">support request</a> and we'll take care of it! Thanks!
 
@@ -86,8 +85,8 @@ If you got this message in error, please describe the issue in a <a href="/doe/s
     if(shouldAudit)
     Services.audit.unauthorized("BY %s - Info: %s HEADERS: %s".format((auth.map(_.userName).getOrElse("")), more + " " + errCollector.mkString, request.headers))
     Unauthorized(views.html.util.utilMsg(
+      more,
       s"""
-$more
 
 ${errCollector.mkString}
 
@@ -104,11 +103,11 @@ ${errCollector.mkString}
   }
 
   def Msg2(msg: String)(implicit request: Request[_]): play.api.mvc.SimpleResult = {
-    Ok(views.html.util.utilMsg(msg, None, auth))
+    Ok(views.html.util.utilMsg(msg, "", None, auth))
   }
 
   def Msg2C(msg: String, page: Option[Call], u: Option[User] = None)(implicit request: Request[_]): play.api.mvc.SimpleResult = {
-    Ok(views.html.util.utilMsg(msg, page.map(_.toString), if (u.isDefined) u else auth))
+    Ok(views.html.util.utilMsg(msg, "", page.map(_.toString), if (u.isDefined) u else auth))
   }
 
   def vPorn: Constraint[String] = Constraint[String]("constraint.noBadWords") { o =>
@@ -134,6 +133,7 @@ ${errCollector.mkString}
     ) yield body(au)) getOrElse unauthorized("Oops - how did you get here? [no user]")
   }
 
+  /** action builder that decomposes the request, extracting user and creating a simple error buffer */
   def FAU(f: User => VErrors => Request[AnyContent] => SimpleResult) = Action { implicit request =>
     implicit val errCollector = new VErrors()
     (for (
@@ -162,9 +162,33 @@ ${errCollector.mkString}
   }
 
   val HOME = WID("Admin", "home")
+
+  // Reactor OK - understands reqctor
+  val ROK = new {
+    def apply (msg: Seq[(String, String)])(implicit au: model.User, request: Request[_]) =
+      new StateOk(msg, Website.realm, Some(au), Some(request))
+    def apply (msg: (String, String))(implicit au: model.User, request: Request[_]) =
+      new StateOk(Seq(msg), Website.realm, Some(au), Some(request))
+    def apply () (implicit au: model.User, request: Request[_]) =
+      new StateOk(Seq(), Website.realm, Some(au), Some(request))
+    def apply (au: Option[model.User], request: Request[_]) =
+      new StateOk(Seq(), Website.realm(request), au, Some(request))
+  }
+}
+
+/** captures the current state of what to display - passed to all views */
+class StateOk(val msg: Seq[(String, String)], val realm:String, val au: Option[model.User], val request: Option[Request[_]]) {
+  var _title : String = "No Folders" // this is set by the body as it builds itself and used by the header, heh
+
+  /** set the title of this page */
+  def title(s:String) = {this._title = s; ""}
+
+  def apply (content: StateOk => Html) = {
+    RkViewService.Ok (views.html.util.reactorLayout(content(this), msg)(this))
+  }
 }
 
 object RkViewService extends RazController with ViewService {
-  def utilMsg (msg:String, link:Option[String], user:Option[WikiUser], linkNO:Option[(String,String)]=None)(implicit request: Request[_]): play.api.mvc.SimpleResult =
-    Ok(views.html.util.utilMsg(msg, link, user.map(_.asInstanceOf[User]) orElse auth, linkNO))
+  def utilMsg (msg:String, details:String, link:Option[String], user:Option[WikiUser], linkNO:Option[(String,String)]=None)(implicit request: Request[_]): play.api.mvc.SimpleResult =
+    Ok(views.html.util.utilMsg(msg, details, link, user.map(_.asInstanceOf[User]) orElse auth, linkNO))
 }

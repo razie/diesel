@@ -7,18 +7,18 @@ Need consent
 
 <div class="container">
 <div class="row">
-<div class="span9">
+<div class="col-sm-9">
 
   @razie.wiki.model.Wikis.rk.find("Admin", "Consent").map{we =>
       <h1>@au.ename - Consent Required!</h1>
 
     @wiki.wikiFrag(we.wid,Some(au),true,Some(we), None, true, true)
 
-  <p><a href="@routes.Profile.doeConsent2(we.wid.wpath + " ver "+we.ver, next)" class="btn btn-large btn-success">Consent and continue!</a>
+  <p><a href="@routes.Profile.doeConsent2(we.wid.wpath + " ver "+we.ver, next)" class="btn btn-lg btn-success">Consent and continue!</a>
     <p>If you do not wish to consent, you cannot start registration, since all that relies on automated emails, sorry.</p>
   }.getOrElse{
     <p>No consent required.
-    <p><a href="@routes.Profile.doeConsent2("none")" class="btn btn-large btn-success">Continue!</a>
+    <p><a href="@routes.Profile.doeConsent2("none")" class="btn btn-lg btn-success">Continue!</a>
   }
 <hr>
 </div>

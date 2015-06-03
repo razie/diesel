@@ -14,11 +14,12 @@ render a regular wiki page - site pages are rendered with wikiSite.scala.html
 
 @{
   layout match {
-    case "Play:wiki.layout.div12"      => wiki.layout.div12(wid, iname, page, canEdit, print)(au, request)
-    case "Play:wiki.layout.div12Cool"  => wiki.layout.div12Cool(wid, iname, page, canEdit, print)(au, request)
-    case "Play:wiki.layout.div12Plain" => wiki.layout.div12Plain(wid, iname, page, canEdit, print)(au, request)
-    case "Play:wiki.layout.div9Plain"  => wiki.layout.div9Plain(wid, iname, page, canEdit, print)(au, request)
-    case "Play:wiki.layout.div9Ad"  => wiki.layout.div9Ad(wid, iname, page, canEdit, print)(au, request)
+    case "Play:wiki.layout.div12"         => wiki.layout.div12(wid, iname, page, canEdit, print)(au, request)
+    case "Play:wiki.layout.div12FullPage" => wiki.layout.div12FullPage(wid, iname, page, canEdit, print)(au, request)
+    case "Play:wiki.layout.div12Cool"     => wiki.layout.div12Cool(wid, iname, page, canEdit, print)(au, request)
+    case "Play:wiki.layout.div12Plain"    => wiki.layout.div12Plain(wid, iname, page, canEdit, print)(au, request)
+    case "Play:wiki.layout.div9Plain"     => wiki.layout.div9Plain(wid, iname, page, canEdit, print)(au, request)
+    case "Play:wiki.layout.div9Ad"        => wiki.layout.div9Ad(wid, iname, page, canEdit, print)(au, request)
     case _ => wiki.layout.classic(wid, iname, page, canEdit, print)(au, request)
   }
 }

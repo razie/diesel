@@ -3,13 +3,13 @@
 @htmlHeadBar("", au)
 
 <div class="container">
-  <div class="hero-unit">
+  <div class="jumbotron">
     <div class="row">
-      <div class="span6">
+      <div class="col-sm-6">
         <h1>Sorry, @au.map(_.ename).getOrElse("Anonymous")</h1>
         <p>You are not authorized to access this URL.
       </div>
-      <div class="span4">
+      <div class="col-sm-4">
         <img width="60%" height="60%" src="@routes.Assets.at("images/thumbs_olympic-sport-icons1.gif")"></img>
       </div>
     </div>

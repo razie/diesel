@@ -8,18 +8,18 @@ render a regular wiki page - site pages are rendered with wikiSite.scala.html
 
 <div class="container">
   <div class="row">
-    <div class="span9">
+    <div class="col-sm-9">
 
       @helper.form(action=routes.Wikie.addWithName(cat, realm), 'class->"well form-inline") {
         Name: <input type="text" class="input-xlarge" name="name" placeholder="Name">
 
-        <button type="submit" class="btn">Create Now!</button>
+        <button type="submit" class="btn btn-default">Create Now!</button>
       }
 
       <hr>
-    </div> <!-- /span9 -->
+    </div> <!-- /col-sm-9 -->
 
-    <div class="span3">
+    <div class="col-sm-3">
     @wiki.wikiFrag(WID("Admin","Right"),au,true)
 
     @addRight()

@@ -8,26 +8,30 @@ package model
 
 import model.dom.WikiDomainParser
 import play.api.mvc.Request
+import razie.wiki.WikiConfig
 import razie.wiki.parser.WikiParserNotes
 import razie.wiki.parser.WikiParserT
-import razie.wiki.model.{Reactors, Wikis, WikiInst, Reactor}
+import razie.wiki.model._
 import razie.wiki.dom.WikiDomain
 import razie.wiki.util.PlayTools
 
 /** the default reactor, the main wiki */
-class RkReactor (realm:String, fallBack:Option[Reactor]) extends Reactor (realm) {
+class RkReactor (realm:String, fallBack:Option[Reactor], we:Option[WikiEntry]) extends Reactor (realm, None, we) {
   override val wiki : WikiInst = new RkWikiInst(realm, fallBack.map(_.wiki))
   override val domain : WikiDomain = new WikiDomain(realm, wiki)
 }
 
 /** a wiki, used for all RK realms */
 class RkWikiInst(realm:String, fallBack:Option[WikiInst]) extends WikiInst(realm, fallBack) {
-  class WikiParserCls(val realm:String) extends WikiParserT with WikiDslParser with WikiCodeParser with AdParser with WikiDomainParser with WikiParserNotes {
+  class WikiParserCls(val realm:String) extends WikiParserT
+  with WikiDslParser with WikiCodeParser with WikiAdParser
+  with WikiDomainParser with WikiParserNotes with WikiDarkParser{
     withWikiProp(adWikiProps)
     withWikiProp(codeWikiProps)
     withWikiProp(dslWikiProps)
     withDotProp(notesDotProps)
     withBlocks(domainBlocks)
+    withBlocks(darkHtml)
   }
 
   override def mkParser = new WikiParserCls(realm)
@@ -45,7 +49,15 @@ object RkReactors {
       // extract reactor
       val r = h.substring(0, h.indexOf('.')).toLowerCase
       Reactors.lowerCase.get(Reactors.ALIASES.getOrElse(r, r))
-    } else None
+    } else {
+      // try to find one that has a website section with this url
+      // todo keep parsing the webiste section all the time
+      Reactors.reactors.values.find(_.we.flatMap(_.section("section", "website")).exists {s=>
+        val propSeq = WikiConfig.parsep(s.content)
+
+        propSeq.exists(t=>t._1 == "domain" && t._2 == h)
+      }).map(_.realm)
+    }
   }
 
   def apply (request:Request[_]) = PlayTools.getHost(request).flatMap(forHost)

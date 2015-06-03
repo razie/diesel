@@ -14,7 +14,7 @@ manage the list of kidz and/or their accounts
 
 <div class="container">
 <div class="row">
-<div class="span9">
+<div class="col-sm-9">
 
 @if(! Club(clubName).exists(_.isRegOpen)) {
 
@@ -26,7 +26,7 @@ manage the list of kidz and/or their accounts
 
   @prevReg.map{reg=>
     <p>We found a previous year's registration for you (@reg.year) - you should copy all those forms to this year and just update them: </p>
-    <p><a href="@routes.Club.doeStartRegCopy(clubName, reg._id.toString)" class="btn btn-large btn-success">Copy previous year's registration!</a>
+    <p><a href="@routes.Club.doeStartRegCopy(clubName, reg._id.toString)" class="btn btn-lg btn-success">Copy previous year's registration!</a>
 
    <hr>
 
@@ -50,21 +50,21 @@ manage the list of kidz and/or their accounts
 <h2>Option 1: Registering kids</h2>
 
   <p>If you are registering a family with <b>kids</b>, use this option. Even if you're a parent coach, you should use this option.
-  <p><a href="@routes.Club.doeStartReg(clubName, "Family")" class="btn btn-large btn-success">Start Family Registration!</a>
+  <p><a href="@routes.Club.doeStartReg(clubName, "Family")" class="btn btn-lg btn-success">Start Family Registration!</a>
 
 <hr>
 
   <h2>Option 2: Registering staff</h2>
 
   <p>If you are NOT registering any kids, you are an individual such as a coach, official etc - start below:
-  <p><a href="@routes.Club.doeStartReg(clubName, "individual")" class="btn btn-large btn-warning">Start Individual Registration!</a>
+  <p><a href="@routes.Club.doeStartReg(clubName, "individual")" class="btn btn-lg btn-warning">Start Individual Registration!</a>
 
 <hr>
 
   <h2>Option 3: no registration needed</h2>
 
   <p>If you don't need a registration (your parents will do it etc), just click below to remove this task:
-  <p><a href="@routes.Club.doeStartReg(clubName, "None")" class="btn btn-large btn-info">No registration for me!</a>
+  <p><a href="@routes.Club.doeStartReg(clubName, "None")" class="btn btn-lg btn-info">No registration for me!</a>
 
 }
 <hr>

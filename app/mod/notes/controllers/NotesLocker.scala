@@ -1,46 +1,28 @@
-package controllers
+package mod.notes.controllers
 
-import admin.{Config, Notif}
-import org.bson.types.ObjectId
-import org.joda.time.DateTime
-import com.mongodb.casbah.Imports.map2MongoDBObject
+import _root_.controllers.{Emailer, Wiki, WG, RazController}
+import admin.{Config}
 import com.mongodb.casbah.Imports.wrapDBObj
 import com.novus.salat.grater
-import razie.db._
-import razie.db.RazSalatContext.ctx
-import razie.wiki.Sec.EncryptedS
-import play.api.mvc._
-import razie.wiki.{Enc, Services}
-import razie.wiki.admin.{SendEmail, Audit}
-import razie.{cout, Logging}
-import javax.script.{ScriptEngineManager, ScriptEngine}
-import scala.Some
-import scala.util.parsing.input.{CharArrayReader, Positional}
+import mod.notes.controllers
+import mod.notes.controllers.NotesLocker
 import model.dom.DOM
-import model.{Perm, User, Users}
+import model._
+import org.bson.types.ObjectId
+import org.joda.time.DateTime
+import play.api.mvc._
+import play.api.templates.Html
+import razie.db.RazSalatContext.ctx
+import razie.db._
+import razie.wiki.Sec.EncryptedS
+import razie.wiki.admin.{WikiObservers, Audit, SendEmail}
 import razie.wiki.model._
 import razie.wiki.parser.ParserCommons
-import razie.wiki.util.js
-import razie.wiki.util.VErrors
+import razie.wiki.util.{VErrors, js}
+import razie.wiki.{WikiConfig, Enc, Services}
+import razie.{Logging, cout}
 
-/** a contact connection between two users */
-@RTable
-case class NotesContact (
-  oId: ObjectId, // ownwer
-  email: String, // email of other
-  nick: String, // nickname for other
-  uId: Option[ObjectId], // user id of other
-  noteId: Option[ObjectId], // in case there are more notes about this contact
-  rkId: Option[ObjectId]=None,
-  crDtm: DateTime = DateTime.now,
-  _id: ObjectId = new ObjectId) extends REntity[NotesContact] {
-
-  // optimize access to User object
-  lazy val o = oId.as[User]
-  lazy val u = uId.map(_.as[User])
-
-  override def toString: String = toJson
-}
+import scala.util.parsing.input.Positional
 
 /** autosaved notes */
 @RTable
@@ -55,43 +37,6 @@ case class AutosavedNote(
   override def create(implicit txn: Txn) = RCreate.noAudit[AutosavedNote](this)
   override def update (implicit txn: Txn) = RUpdate.noAudit(Map("_id" -> _id), this)
   override def delete(implicit txn: Txn) = RDelete.noAudit[AutosavedNote](this)
-}
-
-/** share a note with another user */
-@RTable
-case class NoteShare (
-  noteId: ObjectId, // the note it's about
-  toId: ObjectId,
-  ownerId: ObjectId,
-  how: String="", // "" - read/write, "ro" - readonly
-  crDtm:DateTime = DateTime.now,
-  _id: ObjectId = new ObjectId()) extends REntity[NoteShare] {
-  def note = Notes.wiki.find(noteId)
-}
-
-/** inbox */
-@RTable
-case class Inbox(
-  toId: ObjectId,
-  fromId: ObjectId,
-  what: String, // "Msg", "Action", "Share"
-  noteId: Option[ObjectId], // the note it's about
-  content: String,
-  tags: String,
-  state: String, // u-unread, r-read, d-deleted
-  crDtm:DateTime = DateTime.now,
-  updDtm:DateTime = DateTime.now,
-  _id: ObjectId = new ObjectId()) extends REntity[Inbox] {
-
-  def from : String = ROne[NotesContact]("uid"->fromId).map(_.nick) orElse fromId.as[User].map(_.ename) getOrElse "?"
-}
-
-object Inbox {
-  def count(uid: ObjectId) = {
-    RCount[Inbox]("toId"->uid, "state"->"u")
-  }
-  def find(uid: ObjectId) =
-    RMany[Inbox]("toId"->uid) filter (_.state != "d")
 }
 
 /** special tags */
@@ -112,32 +57,37 @@ object NotesTags {
   final val CIRCLE = "circle"
 }
 
+/** notes organized by books per realms */
+case class Book (realm:String, name:String)
+
 //todo Notes should be a module, working per realm
 object Notes {
   import NotesTags._
 
   final val CAT = "Note"
 
-  final val REALM = "note"
+  final val REALM = WikiConfig.NOTES
 
   final val wiki = Wikis(REALM)
+//  def wiki (implicit request:Request[Any]) = Wikis(Website.realm)
 
   def dec(au:User)(w:WikiEntry) = if(w.by == au._id && w.tags.contains(NotesTags.ENC))w.copy(content=w.content.dec) else w
 
-  def notesById(id: ObjectId) =
+  def notesById(id: ObjectId)(implicit request:Request[Any]) =
     wiki.weTable(CAT).findOne(Map("_id" -> id)) map (grater[WikiEntry].asObject(_))
-  def notesForUser(uid: ObjectId, archived: Boolean = false) =
-    wiki.weTable(CAT).find(Map("by" -> uid)) map (grater[WikiEntry].asObject(_)) filter (n => !n.tags.contains(NotesTags.ARCHIVE) || archived)
-  def tagsForUser(uid: ObjectId) = {
-    notesForUser(uid).toList.flatMap(_.tags).filter(_ != NotesTags.ARCHIVE).filter(_ != "").groupBy(identity).map(t => (t._1, t._2.size)).toSeq.sortBy(_._2).reverse
+  def notesForUser(book:Book, uid: ObjectId, archived: Boolean = false) =
+    wiki.weTable(CAT).find(Map("by" -> uid, "realm" -> book.realm)) map (grater[WikiEntry].asObject(_)) filter (n => !n.tags.contains(NotesTags.ARCHIVE) || archived)
+  def tagsForUser(book:Book, uid: ObjectId) = {
+    notesForUser(book, uid).toList.flatMap(_.tags).filter(_ != NotesTags.ARCHIVE).filter(_ != "").groupBy(identity).map(t => (t._1, t._2.size)).toSeq.sortBy(_._2).reverse
     // TODO somehow i can get empty tags...
   }
 
-  def notesForTag(uid: ObjectId, tag: String) =
-    notesForUser(uid, ARCHIVE == tag).filter(n => n.tags.contains(tag) || (tag == ALL) || (tag == NONE && n.tags.isEmpty))
+  // todo optimize this and query with smart mongo query on tags
+  def notesForTag(book:Book, uid: ObjectId, tag: String) =
+    notesForUser(book, uid, ARCHIVE == tag).filter(n => n.tags.contains(tag) || (tag == ALL) || (tag == NONE && n.tags.isEmpty))
 
-  def notesForNotesTags(uid: ObjectId, tags: Seq[String]) =
-    notesForUser(uid).filter(n => tags.foldLeft(true)((b, t) => b && n.tags.contains(t)))
+  def notesForNotesTags(book:Book, uid: ObjectId, tags: Seq[String]) =
+    notesForUser(book, uid).filter(n => tags.foldLeft(true)((b, t) => b && n.tags.contains(t)))
 
   def isShared (we:WikiEntry, uid:ObjectId) = {
     ROne[NoteShare]("noteId"->we._id, "toId"->uid).isDefined
@@ -148,18 +98,17 @@ object Notes {
   }
 }
 
-/** controller for club management */
+/** controller for notes management */
 object NotesLocker extends RazController with Logging {
-  import NotesTags._
   import Notes.CAT
-
-  import play.api.data._
+  import NotesTags._
   import play.api.data.Forms._
+  import play.api.data._
 
   var autosaved = 0L;
   lazy val HARRY = Users.findUserById("4fdb5d410cf247dd26c2a784")
 
-  /** for active user */
+  /** for active user or HArry Potter */
   def FUH(f: User => VErrors => Request[AnyContent] => SimpleResult) = Action { implicit request =>
     implicit val errCollector = new VErrors()
 
@@ -183,7 +132,9 @@ object NotesLocker extends RazController with Logging {
       } else if ("invite page" == "invite page") {
         auditIt
         if(request.path == "/notes")
-          Ok(views.html.notes.notesmaininvite(NEWNOTE, autags(HARRY.get), Seq())(HARRY))
+          NOK("", autags(request, HARRY.get), Seq.empty, false)(HARRY.get, request) { implicit stok=>
+            views.html.notes.notesmaininvite(NEWNOTE)
+          }
         else if(request.path startsWith "/notes/tag/")// && isFromRobot)
           f(HARRY.get)(errCollector)(request)
         else
@@ -224,9 +175,11 @@ object NotesLocker extends RazController with Logging {
     implicit errCollector => implicit request =>
 
       ROne[AutosavedNote]("uid"->au._id) map {as=>
-        Ok(views.html.notes.notesmain(lform.fill("", as.nid.toString, as.ver, as.content, as.tags), autags, Seq(), true)(Some(au)))
+      NOK ("", autags, Seq.empty, false) apply {implicit stok=>
+        views.html.notes.notesmain(lform.fill("", as.nid.toString, as.ver, as.content, as.tags))
+      }
       } getOrElse
-        Ok(views.html.notes.notesmain(NEWNOTE, autags, Seq())(Some(au)))
+        OkNewNote()
   }
 
   /** discard current autosaved note */
@@ -235,6 +188,9 @@ object NotesLocker extends RazController with Logging {
       ROne[AutosavedNote]("uid"->au._id, "nid"->new ObjectId(id)) map (_.delete(tx.local("notes.create")))
       Redirect(routes.NotesLocker.index())
   }
+
+  def book(implicit request:Request[_]) =
+    Book(Website.realm, "main")
 
   /** for active user */
   def saveFAU(f: User => VErrors => Request[AnyContent] => SimpleResult) = Action { implicit request =>
@@ -249,7 +205,11 @@ object NotesLocker extends RazController with Logging {
   def save = saveFAU { implicit au =>
     implicit errCollector => implicit request =>
       lform.bindFromRequest.fold(
-      formWithErrors => BadRequest(views.html.notes.notesmain(formWithErrors, autags, Seq("err" -> "[Errors...]"))(Some(au))),
+      formWithErrors => BadRequest(
+        views.html.notes.notesmain(formWithErrors)(
+          NotesOk ("", autags, Seq("err" -> "[Errors...]"), false, au, request)
+        )
+      ),
       {
         case (next, ids, ver, content, tags) =>
           import Visibility._
@@ -298,14 +258,14 @@ object NotesLocker extends RazController with Logging {
                 tooold <- (ver >= w.ver) orErr { msg = ("err" -> "[Old auto-saved content...]"); "old autosaved" };
                 nocontent <- ("" != content) orErr { msg = ("err" -> "[No content...]"); "no content" };
                 newVer <- Some(w.cloneNewVer(w.label, "md", content, au._id));
-                upd <- Notif.entityUpdateBefore(newVer, WikiEntry.UPD_CONTENT) orErr { msg = ("err" -> "[Not allowed...]"); "Not allowed" }
+                upd <- WikiObservers.entityUpdateBefore(newVer, WikiEntry.UPD_CONTENT) orErr { msg = ("err" -> "[Not allowed...]"); "Not allowed" }
               ) {
                 var we = preprocess(newVer, true)
 
                 razie.db.tx("notes.Save") { implicit txn =>
                   ROne[AutosavedNote]("nid"->id) foreach (_.delete)
                   we.update(we)
-                  Notif.entityUpdateAfter(we, WikiEntry.UPD_CONTENT)
+                  WikiObservers.entityUpdateAfter(we, WikiEntry.UPD_CONTENT)
                   //            Emailer.laterSession { implicit mailSession =>
                   //              au.quota.incUpdates
                   //              if (shouldPublish) notifyFollowersCreate(we, au)
@@ -321,7 +281,8 @@ object NotesLocker extends RazController with Logging {
               if (content.trim.isEmpty)
                 msg = ("err" -> "[Empty note...]")
               else {
-                var we = WikiEntry(CAT, wid.name, "", "md", content, au._id, Seq(), Reactors.NOTES, 1, wid.parent)
+                val realm = if(Website.realm == "rk") Reactors.NOTES else Website.realm
+                var we = WikiEntry(CAT, wid.name, "", "md", content, au._id, Seq(), realm, 1, wid.parent)
                 we = we.copy(_id = id)
                 we = preprocess(we, false)
 
@@ -355,11 +316,11 @@ object NotesLocker extends RazController with Logging {
           if (next != "")
             Redirect(next)
           else
-            Ok(views.html.notes.notesmain(NEWNOTE, autags, Seq(msg))(Some(au)))
+            OkNewNote(Seq(msg))
       })
   }
 
-  private def process (we:WikiEntry)(implicit au:User) {
+  private def process (we:WikiEntry)(implicit request:Request[_], au:User) {
     object NotesParser extends ParserCommons {
       case class State (s:String) extends Positional
 
@@ -373,10 +334,8 @@ object NotesLocker extends RazController with Logging {
 
       def line: PS = dpShare | pdpAct
 
-      import razie.|>
-
       //todo optimize - this loads all contacts to find, flatmapped per circle, cache per user somehow
-      def wecs = Notes.notesForTag(au._id, "contact")
+      def wecs = Notes.notesForTag(book, au._id, "contact")
 
       /** find contact for MY name
         *
@@ -528,9 +487,11 @@ object NotesLocker extends RazController with Logging {
       val wl = wpath.wid.flatMap(_.page).filter(page => Wiki.canSee(page.wid, Option(au), Some(page)).getOrElse(false))
 
       wl.map { n =>
-        Ok(views.html.notes.notesview("", n, autags, Seq("msg" -> s"[view]"), Some(au)))
+        NOK ("", autags, "msg" -> s"[view]") apply {implicit stok=>
+          views.html.notes.notesview(n)
+        }
       } getOrElse {
-        Ok(views.html.notes.notesmain(NEWNOTE, autags, Seq("err" -> "[Note not found]"))(Some(au)))
+        OkNewNote(Seq("err" -> "[Note not found]"))
       }
   }
 
@@ -543,30 +504,36 @@ object NotesLocker extends RazController with Logging {
     implicit errCollector => implicit request =>
       Notes.notesById(new ObjectId(nid)).map { n =>
         if (n.by == au._id || Notes.isShared(n, au._id))
-          Ok(views.html.notes.notesview("", Notes.dec(au)(n), autags, Seq("msg" -> s"[view]"), Some(au)))
+          NOK ("", autags, "msg" -> s"[view]") apply {implicit stok=>
+            views.html.notes.notesview (Notes.dec(au)(n))
+          }
         else
-          Ok(views.html.notes.notesmain(NEWNOTE, autags, Seq("err" -> "[Not your note...]"))(Some(au)))
+          OkNewNote(Seq("err" -> "[Not your note...]"))
       } getOrElse {
-        Ok(views.html.notes.notesmain(NEWNOTE, autags, Seq("err" -> "[Note not found]"))(Some(au)))
+        OkNewNote(Seq("err" -> "[Note not found]"))
       }
   }
 
   def domPlay(nid: String) = FAU { implicit au =>
     implicit errCollector => implicit request =>
       import razie.|>._
-      val next = request.headers.get("Referer").mkString |> {x => if(x.contains(Config.hostport) || x.contains("/notes"))x else ""}
+      val next = request.headers.get("Referer").mkString |> {x => if(x.contains(Config.hostport) || x.contains("/notes")) x else ""}
       Notes.notesById(new ObjectId(nid)).map { n =>
-        if (n.by == au._id || Notes.isShared(n, au._id))
-          Ok(views.html.notes.domPlay("", Notes.dec(au)(n), autags, Seq("msg" -> s"[view]"), Some(au)))
-        else
-          Ok(views.html.notes.notesmain(NEWNOTE, autags, Seq("err" -> "[Not your note...]"))(Some(au)))
+        if (n.by == au._id || Notes.isShared(n, au._id)) {
+          NOK ("", autags, "msg" -> s"[view]") apply {implicit stok=>
+            views.html.notes.domPlay(Notes.dec(au)(n))
+          }
+        } else
+          OkNewNote(Seq("err" -> "[Not your note...]"))
       } getOrElse {
-        Ok(views.html.notes.notesmain(NEWNOTE, autags, Seq("err" -> "[Note not found]"))(Some(au)))
+        OkNewNote(Seq("err" -> "[Note not found]"))
       }
   }
 
   private def OkNewNote(msg:Seq[(String,String)]=Seq())(implicit request:Request[AnyContent], au:User) = {
-    Ok(views.html.notes.notesmain(NEWNOTE, autags, msg)(Some(au)))
+    NOK ("", autags, msg, false) apply { implicit stok =>
+      views.html.notes.notesmain(NEWNOTE)
+    }
   }
 
   /** edit a note */
@@ -575,19 +542,28 @@ object NotesLocker extends RazController with Logging {
       val onid = new ObjectId(nid)
 
       ROne[AutosavedNote]("uid"->au._id, "nid"->onid) map {as=>
-        Ok(views.html.notes.notesmain(lform.fill("", as.nid.toString, as.ver, as.content, as.tags), autags, Seq("msg"->"[Autosaved note found]"), true)(Some(au)))
+        NOK ("", autags, Seq("msg" -> "[Autosaved note found]"), false) apply { implicit stok =>
+          views.html.notes.notesmain(lform.fill("", as.nid.toString, as.ver, as.content, as.tags))
+        }
       } orElse
         Notes.notesById(onid).map(Notes.dec(au)).map { n =>
           if (n.by == au._id)
-            Ok(views.html.notes.notesmain(lform.fill(next, n._id.toString, n.ver, n.content, n.tags.mkString(",")), autags, Seq())(Some(au)))
+            NOK ("", autags, Seq.empty, false) apply { implicit stok =>
+              views.html.notes.notesmain(lform.fill(next, n._id.toString, n.ver, n.content, n.tags.mkString(",")))
+            }
           else if(Notes.isShared(n, au._id))
-            Ok(views.html.notes.notesmain(lform.fill(next, n._id.toString, n.ver, n.content, n.tags.mkString(",")), autags, Seq("msg"->"Shared note..."), false, true)(Some(au)))
+                NOK ("", autags, Seq("msg" -> "Shared note..."), false) apply { implicit stok =>
+                  views.html.notes.notesmain(lform.fill(next, n._id.toString, n.ver, n.content, n.tags.mkString(",")), false, true)
+                }
           else
-//            Ok(views.html.notes.notesmain(NEWNOTE, autags, Seq("err" -> "[Not your note...]"))(Some(au)))
             OkNewNote(Seq("err" -> "[Not your note...]"))
         } getOrElse {
         OkNewNote(Seq("err" -> "[Note not found]"))
       }
+  }
+
+  def test = Action { implicit request =>
+      Ok(Website.realm)
   }
 
   def note(wpath: model.CMDWID) = FAU { implicit au =>
@@ -600,21 +576,36 @@ object NotesLocker extends RazController with Logging {
       //        else
       //          Ok(views.html.notes.notesmain(lform.fill("", IDOS, "", ""), autags, Seq("err" -> "[Not your note...]"), auth))
       //      } getOrElse {
-      Ok(views.html.notes.notesmain(NEWNOTE, autags, Seq("err" -> "[Note not found]"))(Some(au)))
+      OkNewNote(Seq("err" -> "[Note not found]"))
     //      }
   }
 
   def alltips = FAU { implicit au =>
     implicit errCollector => implicit request =>
-      Ok(views.html.notes.notesalltips(autags, Seq("msg" -> s"[??]"), auth))
+//      Ok(views.html.notes.notesalltips(autags, Seq("msg" -> s"[??]"), auth))
+      NOK ("", autags, "msg" -> s"[??]") apply {implicit stok=>
+        views.html.notes.notesalltips()
+      }
+  }
+
+  // helper so NOK is colored like Ok or others
+  val NOK = new {
+    def apply (curTag: String, tags: model.Tags.Tags, msg: Seq[(String, String)], isSearch:Boolean)(implicit au: model.User, request: Request[_]) =
+      new NotesOk(curTag, tags, msg, isSearch, au, request)
+    def apply (curTag: String, tags: model.Tags.Tags, msg: (String, String), isSearch:Boolean=false)(implicit au: model.User, request: Request[_]) =
+      new NotesOk(curTag, tags, Seq(msg), isSearch, au, request)
   }
 
   def alltags = FUH { implicit au =>
     implicit errCollector => implicit request =>
-      Ok(views.html.notes.notesalltags(autags, Some(au)))
+      NOK ("", autags, Seq.empty, false) apply { implicit stok =>
+        views.html.notes.notesalltags()
+      }
   }
 
-  def autags(implicit au: User) = Notes.tagsForUser(au._id)
+  // todo optimize big time looser here
+  def autags(implicit request:Request[_], au: User) =
+    Notes.tagsForUser(book, au._id)
 
   def tag(tag: String) = FUH { implicit au =>
     implicit errCollector => implicit request =>
@@ -622,10 +613,10 @@ object NotesLocker extends RazController with Logging {
 
       //todo this loads everything...
       val res = tag match {
-        case RECENT => Notes.notesForTag(au._id, ALL).toList.sortWith { (a, b) => a.updDtm isAfter b.updDtm }
-        case NONE => Notes.notesForTag(au._id, NONE).toList.sortWith { (a, b) => a.updDtm isAfter b.updDtm }
-        case ARCHIVE => Notes.notesForTag(au._id, ARCHIVE).toList.sortWith { (a, b) => a.updDtm isAfter b.updDtm }
-        case _ => Notes.notesForNotesTags(au._id, ltag).toList.sortWith { (a, b) => a.updDtm isAfter b.updDtm }
+        case RECENT => Notes.notesForTag(book, au._id, ALL).toList.sortWith { (a, b) => a.updDtm isAfter b.updDtm }
+        case NONE => Notes.notesForTag(book, au._id, NONE).toList.sortWith { (a, b) => a.updDtm isAfter b.updDtm }
+        case ARCHIVE => Notes.notesForTag(book, au._id, ARCHIVE).toList.sortWith { (a, b) => a.updDtm isAfter b.updDtm }
+        case _ => Notes.notesForNotesTags(book, au._id, ltag).toList.sortWith { (a, b) => a.updDtm isAfter b.updDtm }
       }
 
       //todo this is stupid
@@ -635,26 +626,39 @@ object NotesLocker extends RazController with Logging {
       // last chance filtering - any moron can come through here and the Notes may fuck up
       val notes = res.filter(_.by == au._id).take(20).toList // TOOD optimize - inbox doesn't need etc
 
+      val nok = NOK (tag, counted, "msg" -> s"[Found ${notes.size} notes]")
+
       tag match {
         case INBOX => {
           val inb = Inbox.find(au._id).toList
-          Ok(views.html.notes.notestaginbox(tag, notes, counted,
-            Seq("msg" -> s"[Found ${notes.size} notes]"), Some(au))(inb))
+
+          nok {implicit stok=>
+            views.html.notes.notestaginbox(inb)
+          }
+
+//          OkNotes(tag, counted, Seq("msg" -> s"[Found ${notes.size} notes]")) {
+//            views.html.notes.notestaginbox(inb)
+//          }
         }
-        case CONTACT => Ok(views.html.notes.notestagcontact(tag, notes, counted,
-          Seq("msg" -> s"[Found ${notes.size} notes]"), Some(au))(RMany[NotesContact]("oId"->au._id).toList))
-        case _ if(!res.isEmpty) => Ok(views.html.notes.noteslist(tag, notes, counted,
-          Seq("msg" -> s"[Found ${notes.size} notes]"), Some(au)))
+        case CONTACT =>
+          nok apply {implicit stok=>
+            views.html.notes.notestagcontact(notes, RMany[NotesContact]("oId"->au._id).toList)
+          }
+        case _ if(!res.isEmpty) =>
+          nok apply {implicit stok=>
+            views.html.notes.noteslist(notes)
+          }
         case _ if(res.isEmpty) =>
           // TODO redirect
-          Ok(views.html.notes.notesmain(NEWNOTE, autags,
-            Seq("msg" -> "[No notes found]"))(Some(au)))
+          OkNewNote(Seq("msg" -> "[No notes found]"))
       }
   }
 
   def invite(e: String, n:String) = FAU { implicit au =>
     implicit errCollector => implicit request =>
-      Ok(views.html.notes.notesinvitenow(e, n, Seq("msg" -> "[]")))
+      NOK ("", Seq.empty, "msg" -> s"[view]") apply {implicit stok=>
+        views.html.notes.notesinvitenow(e, n)
+      }
   }
 
   /** friend accepts connection */
@@ -691,8 +695,8 @@ object NotesLocker extends RazController with Logging {
       }
   }
 
-  // format a note into html
-  def format(wid: WID, markup: String, icontent: String, iwe: Option[WikiEntry] = None, au:Option[model.User])(implicit request:Request[_]) = {
+  // format a note into html - customized to manage sfiddles
+  def format(wid: WID, markup: String, icontent: String, iwe: Option[WikiEntry] = None, au:Option[model.User])(implicit stok:NotesOk) = {
     iwe.filter(x=>
       ((au exists (_ hasPerm Perm.codeMaster)) || (au exists (_ hasPerm Perm.adminDb))) &&
         (icontent.lines.find(_ startsWith ".sfiddle").isDefined)).fold(
@@ -743,12 +747,12 @@ object NotesLocker extends RazController with Logging {
         val res = wikis.map(WikiEntry.grated _)
         // last chance filtering - any moron can come through here and the Notes may fuck up
         val notes = res.filter(_.by == au._id).take(20).toList
-        Ok(views.html.notes.noteslist(q, notes, autags,
-          Seq("msg" -> s"[Found ${notes.size} notes]"), Some(au), true))
+        NOK (q, autags, Seq("msg" -> s"[Found ${notes.size} notes]"), true) apply {implicit stok=>
+          views.html.notes.noteslist(notes)
+        }
       } else {
         // TODO redirect
-        Ok(views.html.notes.notesmain(NEWNOTE, autags,
-          Seq(msg))(Some(au)))
+        OkNewNote(Seq(msg))
       }
   }
 
@@ -761,12 +765,17 @@ object NotesLocker extends RazController with Logging {
         we.contentTags.get(NAME).filter(_ != we._id.toString).orElse(we.contentTags.get(EMAIL).map(_.replaceAll("@.*$", ""))).mkString
       }
 
-      val c1 = Notes.notesForTag(au._id, CONTACT).map(we=>name(we)).toList
+      val c1 = Notes.notesForTag(book, au._id, CONTACT).map(we=>name(we)).toList
       val c2 = RMany[NotesContact]("oId"->au._id).map(_.nick).toList
       val c3 = RMany[FriendCircle]("ownerId"->au._id).map(_.name).toList
 
       Ok("["+(c1 ::: c2 ::: c3).map(s=>s""" "$s" """).mkString(",")+"]").as("text/json")
   }
+
+}
+
+object NotesTips {
+  def book= Book("rk", "")
 
   // when configuration changes, call this to udpate mine
   Services.configCallback { () =>
@@ -789,49 +798,10 @@ object NotesLocker extends RazController with Logging {
 
   def xhtml(tags: String, au: Option[User]) = {
     au.flatMap { u =>
-      val w = Notes.notesForNotesTags(u._id, tags.split(",").toSeq).take(1).find(x => true)
+      val w = Notes.notesForNotesTags(book, u._id, tags.split(",").toSeq).take(1).find(x => true)
       w.map(x =>
         Wikis.format(x.wid, x.markup, x.content).replaceFirst("^\\s*<p>", "").replaceFirst("</p>\\s*$", ""))
     }.getOrElse(sitehtml(tags))
-  }
-}
-
-// -------------- circles
-
-/** a circle of friends / team etc */
-@RTable
-case class FriendCircle (
-                          name: String,
-                          ownerId: ObjectId, // user
-                          members:Seq[String] = Seq(), // users
-                          role: String="", // work, ski, enduro etc
-                          crDtm:DateTime = DateTime.now,
-                          _id: ObjectId = new ObjectId()) extends REntity[FriendCircle] {
-
-  def owner = ownerId.as[User]
-}
-
-/** notes shared to a circle */
-@RTable
-case class CircleShare (
-                         noteId: ObjectId, // the note it's about
-                         to: ObjectId,
-                         ownerId: ObjectId,
-                         how: String="", // "" - read/write, "ro" - readonly
-                         crDtm:DateTime = DateTime.now,
-                         _id: ObjectId = new ObjectId()) extends REntity[CircleShare] {
-
-  def owner = ownerId.as[User]
-}
-
-object Circles {
-  import NotesTags._
-
-  def get (name:String)(implicit au:User) = ROne[FriendCircle]("ownerId"->au._id,"name"->name)
-  def createOrFind (we:WikiEntry)(implicit au:User) = get(we.contentTags(NAME)) getOrElse {
-    val ret = FriendCircle(we.contentTags(NAME), au._id)
-    ret.create
-    ret
   }
 }
 
@@ -855,16 +825,18 @@ object DomC extends RazController with Logging {
       }
   }
 
-  def dom(cat: String) = Action { implicit request =>
+  def domcat(cat: String) = Action { implicit request =>
     retj << WG.dom1(cat, "rk").tojmap
   }
 
   def domPlay(nid: String) = NotesLocker.FAU { implicit au =>
     implicit errCollector => implicit request =>
       Notes.notesById(new ObjectId(nid)).map { n =>
-        if (n.by == au._id || Notes.isShared(n, au._id))
-          Ok(views.html.notes.domPlay("", Notes.dec(au)(n), NotesLocker.autags, Seq("msg" -> s"[view]"), Some(au)))
-        else
+        if (n.by == au._id || Notes.isShared(n, au._id)) {
+          NotesLocker.NOK ("", NotesLocker.autags, "msg" -> s"[view]") apply {implicit stok=>
+            views.html.notes.domPlay(Notes.dec(au)(n))
+          }
+        } else
           NotFound("[Not your note...]")
       } getOrElse {
         NotFound("[Note not found...]")
@@ -872,4 +844,23 @@ object DomC extends RazController with Logging {
   }
 
 }
+
+/** captures the current state of what to display - passed to all views */
+case class NotesOk(curTag: String, tags: model.Tags.Tags, msg: Seq[(String, String)], isSearch:Boolean, au: model.User, request: Request[_]) {
+  var _title : String = "No Folders" // this is set by the body as it builds itself and used by the header, heh
+
+  /** set the title of this page */
+  def title(s:String) = {this._title = s; ""}
+
+  def apply(content: NotesOk => Html) = {
+    NotesLocker.Ok (views.html.notes.notesLayout(content(this), curTag, tags, msg)(this))
+  }
+
+  /** format a tag path */
+  def tagPath (s:String) = {
+    if(curTag=="" || isSearch || Seq("none", "recent", "all").contains(curTag)) s else (curTag+"/"+s)
+  }
+
+}
+
 

@@ -18,7 +18,7 @@ manage the volunteer hours by club admin
     @views.html.user.leftmenu(15, user)
 ***@
 
-<div class="span9">
+<div class="col-sm-9">
 
 <h2>These are the volunteer hour requests</h2>
 
@@ -31,8 +31,8 @@ wants
 for
    @vh.desc
 
-  <a href="@routes.Club.doeVolApprove(vh._id.toString, "y").toString" class="btn btn-mini btn-success">Approve</a>
-  <a href="@routes.Club.doeVolApprove(vh._id.toString, "n").toString" class="btn btn-mini btn-danger">Reject</a>
+  <a href="@routes.Club.doeVolApprove(vh._id.toString, "y").toString" class="btn btn-xs btn-success">Approve</a>
+  <a href="@routes.Club.doeVolApprove(vh._id.toString, "n").toString" class="btn btn-xs btn-danger">Reject</a>
 
 <p>
 
@@ -42,7 +42,7 @@ for
     @club(vh).map{c=>
         or reassign to:
         @c.approvers.map { t =>
-            <a href="@routes.Club.doeVolApprove(vh._id.toString, tos(t._2)).toString" class="btn btn-mini btn-info">@t._1</a>
+            <a href="@routes.Club.doeVolApprove(vh._id.toString, tos(t._2)).toString" class="btn btn-xs btn-info">@t._1</a>
 }
 }
 

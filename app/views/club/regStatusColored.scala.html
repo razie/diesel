@@ -4,9 +4,9 @@
 
 @button(color:String) = {
   @link.map {v=>
-      <a href="@v" class="btn btn-mini @color">@regStatus</a>
+      <a href="@v" class="btn btn-xs @color">@regStatus</a>
     }.getOrElse {
-      <a class="btn btn-mini @color">@regStatus</a>
+      <a class="btn btn-xs @color">@regStatus</a>
   }
 }
 

@@ -9,7 +9,7 @@ manage the volunteer hours by club admin
 <div class="container"> <div class="row">
 @views.html.user.leftmenu(15, user)
 
-<div class="span9">
+<div class="col-sm-9">
 
 @vols=@{
   for (
@@ -29,7 +29,7 @@ manage the volunteer hours by club admin
   @k match {
     case "delete" => {
         @if(! v.isEmpty) {
-          <a href="@routes.Club.doeVolDelete(reg._id.toString, v)" class="btn btn-mini btn-danger"> x </a>
+          <a href="@routes.Club.doeVolDelete(reg._id.toString, v)" class="btn btn-xs btn-danger"> x </a>
         }
       }
 

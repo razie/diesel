@@ -2,6 +2,7 @@ package model
 
 object Tags {
   type Tags = Seq[(String, Int)]
+  def empty = Seq.empty[(String, Int)]
 
   final val ARCHIVE = "archive"
   final val ALL = "all"

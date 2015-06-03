@@ -29,7 +29,7 @@ manage the list of kidz and/or their accounts
 @mnglink(row:Map[String,String],k:String,v:String)={
   @k match {
         case "button" => {
-      <a href="@routes.Kidz.doeKid(user._id.toString, v, "-", row("associd"), "clubkidz")" class="btn btn-mini">More...</a>
+      <a href="@routes.Kidz.doeKid(user._id.toString, v, "-", row("associd"), "clubkidz")" class="btn btn-xs">More...</a>
       }
     case _ => { @v }
   }
@@ -39,7 +39,7 @@ manage the list of kidz and/or their accounts
 <div class="row">
 @views.html.user.leftmenu(6, user)
 
-<div class="span9">
+<div class="col-sm-9">
 
 <h2>Members of @user.firstName</h2>
 
@@ -54,7 +54,7 @@ manage the list of kidz and/or their accounts
         Seq("fname" -> "F.Name", "lname"->"L.Name", "role" -> "Role", "source" -> "Source", "button"->"Details"), Some(mnglink))
 
 Add a: @model.RK.ROLES.map{v=>
-  <a href="@routes.Kidz.doeKid(user._id.toString, "11", v, "-", "clubkidz")" class="btn btn-mini btn-info">@v</a>
+  <a href="@routes.Kidz.doeKid(user._id.toString, "11", v, "-", "clubkidz")" class="btn btn-xs btn-info">@v</a>
 }
 
 <hr>

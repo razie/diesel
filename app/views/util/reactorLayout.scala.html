@@ -1,0 +1,33 @@
+@**************
+default layout 9/3 with ads, top and bottom
+**************@
+@(content: Html, msg: Seq[(String, String)])(implicit stok: controllers.StateOk)
+
+@htmlHead(stok._title, None, None)(Map.empty, stok.au, stok.request)
+@navbar(stok.au, stok.realm)(stok.au, stok.request)
+
+<div class="container" style="margin-top : 15 px">
+  <div class="row">
+    <div class="col-sm-9">
+
+      @content
+
+      <hr>
+      @htmlFooter(ads = true)
+
+    </div> <!-- /col-sm-9 -->
+
+    <div class="col-sm-3">
+      @stok.request.map(model.Website.get(_)).flatMap(_.rightTop).map { rt =>
+        @wiki.wikiFrag(rt, stok.au, simple = true)
+      }
+
+      @if(stok.request.map(model.Website.get(_)).flatMap(_.rightTop).isEmpty) {
+        @wiki.wikiFrag(razie.wiki.model.WID("Admin", "Right").r(stok.realm), stok.au, true, None)
+      }
+    </div>
+
+  </div> <!-- row -->
+</div> <!-- /container -->
+
+@htmlBottom(false, stok.request)

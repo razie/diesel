@@ -1,7 +1,7 @@
 @*****************
 from user home page - create something
 *****************@
-@(au:Option[model.User])
+@(au:Option[model.User])(implicit request: Request[_])
 
 @htmlHeadBar("Creating something...", au)
 
@@ -13,7 +13,7 @@ from user home page - create something
 
 <div class="container">
   <div class="row">
-    <div class="span9">
+    <div class="col-sm-9">
 
 <h2>Create something</h2>
 
@@ -48,9 +48,9 @@ from user home page - create something
       <hr>
       @htmlFooter()
 
-    </div> <!-- /span9 -->
+    </div> <!-- /col-sm-9 -->
 
-    <div class="span3">
+    <div class="col-sm-3">
       @wiki.wikiFrag(razie.wiki.model.WID("Admin","Right"),au,true)
     </div>
   </div> <!-- row -->

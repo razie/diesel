@@ -6,6 +6,7 @@ import com.mongodb.casbah.Imports.{DBObject, IntOk}
 import com.mongodb.casbah.commons.MongoDBObject
 import com.novus.salat.grater
 import difflib.DiffUtils
+import mod.notes.controllers.NotesLocker
 import org.json.{JSONArray, JSONObject}
 import play.api.libs.json.JsObject
 import razie.db.{RMany, RazMongo}
@@ -18,7 +19,7 @@ import play.api.mvc.{Action, AnyContent, Request, Result}
 import razie.g.snakked
 import razie.wiki.util.{js, VErrors}
 import razie.wiki.Enc
-import razie.wiki.model.{WID, WikiEntry, Wikis}
+import razie.wiki.model.{WikiTrash, WID, WikiEntry, Wikis}
 import razie.wiki.admin.GlobalData
 import razie.wiki.admin.Audit
 import admin.RazAuditService
@@ -105,11 +106,11 @@ object Admin extends RazController {
     forAdmin {
       razie.db.tx { implicit txn =>
         RazMongo("User").findOne(Map("_id" -> new ObjectId(id))).map { u =>
-          OldStuff("User", auth.get._id, u).create
+          WikiTrash("User", u, auth.get.userName, txn.id).create
           RazMongo("User").remove(Map("_id" -> new ObjectId(id)))
         }
         RazMongo("Profile").findOne(Map("userId" -> new ObjectId(id))).map { u =>
-          OldStuff("Profile", auth.get._id, u).create
+          WikiTrash("Profile", u, auth.get.userName, txn.id).create
           RazMongo("Profile").remove(Map("userId" -> new ObjectId(id)))
         }
       }
@@ -452,9 +453,9 @@ SendEmail.state=${SendEmail.state}\n
 
   // diffing
 
-  case class WEAbstract (id:String, cat:String, name:String, realm:String, ver:Int) {
-    def this (we:WikiEntry) = this(we._id.toString, we.category, we.name, we.realm, we.ver)
-    def j = js.tojson(Map("id"->id, "cat"->cat, "name"->name, "realm"->realm, "ver"->ver))
+  case class WEAbstract (id:String, cat:String, name:String, realm:String, ver:Int, updDtm:DateTime) {
+    def this (we:WikiEntry) = this(we._id.toString, we.category, we.name, we.realm, we.ver, we.updDtm)
+    def j = js.tojson(Map("id"->id, "cat"->cat, "name"->name, "realm"->realm, "ver"->ver, "updDtm" -> updDtm))
   }
 
   def wput(reactor:String) = FAD { implicit au =>
@@ -478,7 +479,7 @@ SendEmail.state=${SendEmail.state}\n
 
         val gd = new JSONArray(b)
         val ldest = js.fromArray(gd).collect {
-          case x : Map[String, String] => WEAbstract(x("id"), x("cat"), x("name"), x("realm"), x("ver").toInt)
+          case x : Map[String, String] => WEAbstract(x("id"), x("cat"), x("name"), x("realm"), x("ver").toInt, new DateTime(x("updDtm")))
         }
 
         val lsrc = RMany[WikiEntry]().filter(we=> reactor.isEmpty || reactor == "all" || we.realm == reactor).map(x=>new WEAbstract(x)).toList
@@ -486,8 +487,10 @@ SendEmail.state=${SendEmail.state}\n
         val lnew = lsrc.filter(x=> ldest.find(y=> y.id == x.id).isEmpty)
         val lremoved = ldest.filter(x=> lsrc.find(y=> y.id == x.id).isEmpty)
 
-        val lchanged = for(x <- lsrc; y <- ldest if y.id == x.id && y.ver < x.ver) yield (x,y)
-        Ok(views.html.admin.admin_difflist(reactor, target, lnew, lremoved, lchanged)(auth))
+        val lchanged = for(x <- lsrc; y <- ldest if y.id == x.id && (y.ver != x.ver || y.updDtm != x.updDtm))
+          yield (x,y, if (y.ver < x.ver || y.updDtm.isBefore(x.updDtm)) "L" else "R")
+
+          Ok(views.html.admin.admin_difflist(reactor, target, lnew, lremoved, lchanged)(auth))
       } catch {
         case x : Throwable => Ok ("error " + x)
       }
@@ -502,14 +505,33 @@ SendEmail.state=${SendEmail.state}\n
       try {
         val b = body(url(s"http://$target/wikie/content/${wid.wpath}").basic("H-"+au.email.dec, "H-"+au.pwd.dec))
 
-        val p = DiffUtils.diff(b.lines.toList, wid.content.get.lines.toList)
+        val p = DiffUtils.diff(wid.content.get.lines.toList, b.lines.toList)
 
-        Ok(views.html.admin.admin_showDiff(b, wid.content.get, p)(auth))
+        Ok(views.html.admin.admin_showDiff(wid.content.get, b, p)(auth))
       } catch {
         case x : Throwable => Ok ("error " + x)
       }
   }
 
+  // create the remote
+  def applyDiffCr(target:String, wid:WID) = FAD { implicit au =>
+    implicit errCollector => implicit request =>
+      import razie.Snakk._
+      import razie.wiki.Sec._
+      import scala.collection.JavaConversions._
+
+      try {
+        val content = wid.content.get
+
+        val b = body(url(s"http://$target/wikie/setContent/${wid.wpath}").form(Map("we" -> wid.page.get.grated.toString)).basic("H-"+au.email.dec, "H-"+au.pwd.dec))
+
+        Ok(b + " <a href=\"" + s"http://$target${wid.urlRelative}" + "\">" + wid.wpath + "</a>")
+      } catch {
+        case x : Throwable => Ok ("error " + x)
+      }
+  }
+
+  // to remote
   def applyDiff(target:String, wid:WID) = FAD { implicit au =>
     implicit errCollector => implicit request =>
       import razie.Snakk._
@@ -521,7 +543,29 @@ SendEmail.state=${SendEmail.state}\n
 
         val b = body(url(s"http://$target/wikie/setContent/${wid.wpath}").form(Map("content" -> content)).basic("H-"+au.email.dec, "H-"+au.pwd.dec))
 
-        Ok(b)
+        Ok(b + " <a href=\"" + s"http://$target${wid.urlRelative}" + "\">" + wid.wpath + "</a>")
+      } catch {
+        case x : Throwable => Ok ("error " + x)
+      }
+  }
+
+  // from remote
+  def applyDiff2(target:String, wid:WID) = FAD { implicit au =>
+    implicit errCollector => implicit request =>
+      import razie.Snakk._
+      import razie.wiki.Sec._
+      import scala.collection.JavaConversions._
+
+      try {
+        val remote = s"http://$target/wikie/content/${wid.wpath}"
+        val content = body(url(remote).basic("H-"+au.email.dec, "H-"+au.pwd.dec))
+
+        if(! content.isEmpty) {
+          val b = body(url(s"http://localhost:9000/wikie/setContent/${wid.wpath}").form(Map("content" -> content)).basic("H-"+au.email.dec, "H-"+au.pwd.dec))
+          Ok(b + wid.ahrefRelative)
+        } else {
+          Ok ("Couldnot read remote content from: " + remote)
+        }
       } catch {
         case x : Throwable => Ok ("error " + x)
       }

@@ -3,13 +3,16 @@ show/edit/capture a note
 
 msg types are msg, err
 **************@
-@(tag:String, we:razie.wiki.model.WikiEntry, tags:model.Tags.Tags, msg:Seq[(String,String)], au:Option[model.User], isSearch:Boolean=false)(implicit request:Request[_])
+@(we:razie.wiki.model.WikiEntry)(implicit stok:mod.notes.controllers.NotesOk)
 @import razie.wiki.model.WikiEntry
+@import mod.notes.controllers.{DomC, NotesLocker}
+@import mod.notes.controllers.routes
 
-@frup(au)
+@stok.title("View note")
+@notes.headingWithTags(stok)
 
 @ccc(we:WikiEntry)= @{
-    val x = controllers.NotesLocker.format(we.wid, we.markup, we.content, Some(we), au)
+    val x = NotesLocker.format(we.wid, we.markup, we.content, Some(we), Some(stok.au))
     if(x contains "CANNOT PARSE") {
       val id = System.currentTimeMillis().toString
       try {
@@ -28,26 +31,6 @@ msg types are msg, err
     } else x
   }
 
-<h3>
-@tag match {
-   case "recent" => {Organize <small>recent notes</small>}
-   case "none" => {Organize <small>missing tags</small>}
-   case "all" => {All notes...}
-   case _ if isSearch => {Search results for '@tag'... }
-   case _ => {
-     Tagged <small>@tag.split("/").map {t=>
-|  <a class="h3 small" style="color:#757c82;" href="@routes.NotesLocker.tag(t)">@t</a>
-     }
-     </small>
-   }
-}
-
-@notesmsg(msg, au)
-
-</h3>
-
-@tagpath(s:String) = @{ if(tag=="" || isSearch || Seq("none", "recent", "all").contains(tag)) s else (tag+"/"+s) }
-
 
    <div class="well well-small" style="border-radius:9px; margin-bottom:10px;">
    <small>
@@ -59,10 +42,10 @@ msg types are msg, err
        <div style="float: right;">
        <small>Tags: <strong>
        @we.tags.map {x=>
-           @if(tags find (_._1 == x) isEmpty ) {
+           @if(stok.tags find (_._1 == x) isEmpty ) {
                @x |
            } else {
-               <a href="@routes.NotesLocker.tag(tagpath(x))">@x</a> |
+               <a href="@routes.NotesLocker.tag(stok.tagPath(x))">@x</a> |
            }
        }
        </strong></small>
@@ -75,10 +58,7 @@ msg types are msg, err
    }
   <p>@Html(ccc(we))</p>
 
-  @wiki.wikiFragExtras(au,Some(we))
+  @wiki.wikiFragExtras(Some(stok.au),Some(we))
 
    </div>
-
-
-@frdown(if(isSearch) "" else tag, tags, au)
 

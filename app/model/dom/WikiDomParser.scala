@@ -11,7 +11,7 @@ import model._
 import admin.Config
 import org.bson.types.ObjectId
 import play.api.mvc.Action
-import controllers.{NotesLocker, WG}
+import controllers.WG
 import razie.wiki.parser.WAST
 import razie.wiki.model.WikiEntry
 import razie.wiki.parser.WikiParserBase

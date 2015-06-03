@@ -7,9 +7,9 @@ only used in one place - probably remove and move it there
 
 @button(color:String) = {
   @link.map {v=>
-      <a href="@v" class="btn btn-mini @color">@formStatus</a>
+      <a href="@v" class="btn btn-xs @color">@formStatus</a>
     }.getOrElse {
-      <a class="btn btn-mini @color">@formStatus</a>
+      <a class="btn btn-xs @color">@formStatus</a>
   }
 }
 

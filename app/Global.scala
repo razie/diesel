@@ -8,6 +8,7 @@
 import java.util.Properties
 import admin._
 import controllers._
+import mod.book.Progress
 import razie.db._
 import model._
 import play.api.Application
@@ -24,7 +25,7 @@ import java.io.File
 import scala.concurrent.ExecutionContext
 import controllers.ViewService
 import razie.wiki.model.WikiCount
-import razie.wiki.admin.{SMTPAuthenticator, SendEmail, GlobalData, Audit}
+import razie.wiki.admin._
 import razie.wiki.{WikiConfig, Alligator, EncryptService, Services}
 import razie.wiki.model.WikiAudit
 import razie.wiki.model.WikiUsers
@@ -116,11 +117,12 @@ object Global extends WithFilters(LoggingFilter) {
     /************** MONGO INIT *************/
     RazMongo.setInstance {
       val UPGRADE_AGAIN = false
-      val mongoDbVer = 16 // normal is one higher than the last one
       val mongoUpgrades: Map[Int, UpgradeDb] = Map(
           1 -> Upgrade1, 2 -> Upgrade2, 3 -> Upgrade3, 4 -> Upgrade4, 5 -> Upgrade5,
           6 -> U6, 7 -> U7, 8 -> U8, 9 -> U9, 10 -> U10, 11 -> U11, 12 -> U12, 13 -> U13,
-          14 -> U14, 15 -> U15)
+          14 -> U14, 15 -> U15, 16 -> U16) /* NOTE as soon as you list it here, it will apply */
+
+      def mongoDbVer = mongoUpgrades.keySet.max + 1
 
       lazy val conn = MongoConnection(admin.Config.mongohost)
 
@@ -184,10 +186,10 @@ object Global extends WithFilters(LoggingFilter) {
 
     RMongo.setInstance(RazAuditService)
 
-    Services.mkReactor = { (realm, fallBack)=>
+    Services.mkReactor = { (realm, fallBack, we)=>
       realm match {
-        case Reactors.DFLT | Reactors.NOTES | Reactors.WIKI => new RkReactor(realm, fallBack)
-        case _ => new RkReactor(realm, fallBack)
+        case Reactors.DFLT | Reactors.NOTES | Reactors.WIKI => new RkReactor(realm, fallBack, we)
+        case _ => new RkReactor(realm, fallBack, we)
       }
     }
 
@@ -237,19 +239,19 @@ object Global extends WithFilters(LoggingFilter) {
     Services.audit = RazAuditService
     Services.alli = RazAlligator
 
-    Notif add new Notif {
-      override def entityCreateAfter[A](e: A)(implicit errCollector: VErrors = IgnoreErrors):Unit = {e match {case we:WikiEntry => up(we)}}
-      override def entityUpdateAfter[A](e: A, what: String)(implicit errCollector: VErrors = IgnoreErrors):Unit = {e match {case we:WikiEntry=>up(we)}}
-
-      private def up(we:WikiEntry):Unit = {
+    WikiObservers mini {
+      case we:WikiEntry=> {
         if("Site" == we.category) Website.clean(we.name)
 
         if("Reactor" == we.category) {
           Reactors.reload(we.name);
-          Website.clean(we.name+".wikireactor.com")
+          Website.clean (we.name+".wikireactor.com")
+          new Website(we).prop("domain").map (Website.clean)
         }
       }
     }
+
+    Progress.init
   }
 
   object RazAlligator extends Alligator {

@@ -9,10 +9,9 @@ tagPrefix is applied to browse another tag
 @browseTag(t:String)={@tagPrefix@tagpath(t)@tagSuffix}
 @browseAllTags()={"."}
 
-<div class="span3">
   @if(!tags.isEmpty && max > 5) {
     <input id="typeahead" xonkeypress="keyp(event)" autocomplete="off" type="text"
-    class="typeahead search-query span2" placeholder="Search Tags" data-provide="typeahead" style="display:block; margin-bottom:10px">
+    class="typeahead search-query" placeholder=" Search Tags" data-provide="typeahead" style="display:block; margin-bottom:10px">
 
     Contemplate:
   }
@@ -25,7 +24,6 @@ tagPrefix is applied to browse another tag
 **@      <li>...</li>
     }
   </ul>
-</div>
 
 <script src="@routes.Assets.at("bootstrap-2.2.3/js/bootstrap-typeahead.js")"></script>
 

@@ -97,7 +97,7 @@ $('#sform_'+@id).hide();
 
 @hh() = @{
   val fromT = args.get("libs").toList.flatMap(_.split(";")) // todo deprecate this
-  val libs = (fromT ::: diesel.model.Diesel.findRequires(content._4)).distinct
+  val libs = (fromT ::: mod.diesel.model.Diesel.findRequires(content._4)).distinct
 
   ("""<scrRAZipt src="/assets/vendor/diesel.js"></scrRAZipt>""".stripMargin ::
     libs.map {

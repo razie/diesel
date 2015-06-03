@@ -4,7 +4,7 @@
  *   )   / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <     README.txt
  *  (_)\_)(__)(__)(____)(____)(____)(___/   (__)  (______)(____/    LICENSE.txt
  */
-package diesel.controllers
+package mod.diesel.controllers
 
 import admin._
 import com.mongodb.casbah.Imports._
@@ -13,7 +13,7 @@ import controllers.RazController
 import razie.db.RazSalatContext._
 import com.mongodb.{BasicDBObject, DBObject}
 import razie.db.{ROne, RazMongo}
-import diesel.model._
+import mod.diesel.model._
 import play.api.mvc.{Action, AnyContent, Request}
 import razie.{cout, Logging}
 import razie.wiki.admin.Audit

@@ -6,6 +6,8 @@ for now it's just one per page...
 msg types are msg, err
 **************@
 @(myForm:Form[_], page:razie.wiki.model.WikiEntry, au:Option[model.User])
+@import mod.notes.controllers.NotesLocker
+@import mod.notes.controllers.routes
 
 @id = @{1}
 
@@ -22,13 +24,13 @@ msg types are msg, err
     myForm("content"),
     '_label -> Html("""Type a note below, give it some tags and throw it in the note locker."""),
     '_showConstraints -> false,
-    'class -> "span7",
+    'class -> "col-sm-7",
     'rows->5)
 
   @helper.inputText(
     myForm("tags"),
     '_label -> Html("""Tags <small>i.e. note,todo,forjohn,phone,email,contact,project1</small>"""),
-    'class -> "span7",
+    'class -> "col-sm-7",
     'autocomplete -> "off",
     '_showConstraints -> false)
 

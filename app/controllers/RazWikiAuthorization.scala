@@ -71,6 +71,10 @@ object RazWikiAuthorization extends RazController with Logging with WikiAuthoriz
       (u.isDefined orCorr cNoAuth).exists(_ == true) && // anything other than public needs logged in
       (
         props.get("owner") == Some(u.get.id) || // can see anything I am owner of - no need to check Visibility.PRIVATE
+        props(visibility) == Visibility.MEMBER || // any website member
+          (props(visibility) == Visibility.PLATINUM && u.get.hasPerm(Perm.Platinum)) ||
+          (props(visibility) == Visibility.GOLD && (u.get.hasPerm(Perm.Platinum) || u.get.hasPerm(Perm.Gold))) ||
+          (props(visibility) == Visibility.BASIC && (u.get.hasPerm(Perm.Platinum) || u.get.hasPerm(Perm.Gold) || u.get.hasPerm(Perm.Basic))) ||
         (
           props(visibility).startsWith(Visibility.CLUB) &&
             props.get("owner").flatMap(Users.findUserById(_)).exists(owner =>

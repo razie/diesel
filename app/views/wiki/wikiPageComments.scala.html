@@ -11,10 +11,10 @@
   @stream.comments.map { c =>
     <div class="well">
       <b>By: <a href="/user/@model.Users.nameOf(c.userId)">@model.Users.nameOf(c.userId)</a></b>
-        &nbsp;    <a href="@routes.Comment.vComment1(wid.cat, page.get._id.toString, "Wiki", {new com.mongodb.casbah.Imports.ObjectId().toString}, "text")" class="btn btn-mini btn-success">Reply</a>
-        &nbsp; <a href="" class="btn btn-mini btn-warning">Report</a>
+        &nbsp;    <a href="@routes.Comment.vComment1(wid.cat, page.get._id.toString, "Wiki", {new com.mongodb.casbah.Imports.ObjectId().toString}, "text")" class="btn btn-xs btn-success">Reply</a>
+        &nbsp; <a href="" class="btn btn-xs btn-warning">Report</a>
         @if(controllers.Comment.canEdit(c,user)) {
-          &nbsp; <a href="@routes.Comment.edit(wid,c._id.toString)" class="btn btn-mini btn-info">Edit</a>
+          &nbsp; <a href="@routes.Comment.edit(wid,c._id.toString)" class="btn btn-xs btn-info">Edit</a>
         }
       <br>
       <br>
@@ -35,10 +35,10 @@
       } else {
         @if(!page.flatMap(_.contentTags.get("nocomments")).isDefined) {
 
-    <a href="@routes.Comment.vComment1(wid.cat, page.get._id.toString, "Wiki", {new com.mongodb.casbah.Imports.ObjectId().toString}, "text")" class="btn"><span style="color:orange">+</span>Comment</a>
-    <a href="@routes.Comment.vComment1(wid.cat, page.get._id.toString, "Wiki", {new com.mongodb.casbah.Imports.ObjectId().toString}, "video")" class="btn"><span style="color:orange">+</span>Video</a>
-    <a href="@routes.Comment.vComment1(wid.cat, page.get._id.toString, "Wiki", {new com.mongodb.casbah.Imports.ObjectId().toString}, "photo")" class="btn"><span style="color:orange">+</span>Photo</a>
-    <a href="@routes.Comment.vComment1(wid.cat, page.get._id.toString, "Wiki", {new com.mongodb.casbah.Imports.ObjectId().toString}, "slideshow")" class="btn"><span style="color:orange">+</span>Slideshow</a>
+    <a href="@routes.Comment.vComment1(wid.cat, page.get._id.toString, "Wiki", {new com.mongodb.casbah.Imports.ObjectId().toString}, "text")" class="btn btn-default"><span style="color:orange">+</span>Comment</a>
+    <a href="@routes.Comment.vComment1(wid.cat, page.get._id.toString, "Wiki", {new com.mongodb.casbah.Imports.ObjectId().toString}, "video")" class="btn btn-default"><span style="color:orange">+</span>Video</a>
+    <a href="@routes.Comment.vComment1(wid.cat, page.get._id.toString, "Wiki", {new com.mongodb.casbah.Imports.ObjectId().toString}, "photo")" class="btn btn-default"><span style="color:orange">+</span>Photo</a>
+    <a href="@routes.Comment.vComment1(wid.cat, page.get._id.toString, "Wiki", {new com.mongodb.casbah.Imports.ObjectId().toString}, "slideshow")" class="btn btn-default"><span style="color:orange">+</span>Slideshow</a>
 
     &nbsp;&nbsp;
 
@@ -64,9 +64,9 @@
 @*************
           @helper.form(action=routes.Comment.add(page.get._id.toString,"Wiki",{new com.mongodb.casbah.Imports.ObjectId().toString}), 'class->"well form-inline") {
             <label>Add a new comment </label><br>
-            <textarea id="content" class="span6" name="content" placeholder="content" rows="5"></textarea>
+            <textarea id="content" class="col-sm-6" name="content" placeholder="content" rows="5"></textarea>
             <button type="submit" class="btn btn-primary" onclick="$(this).addClass('disabled');">Now</button>
-            <a href="/wiki/Admin:Adding_a_Comment" class="btn btn-mini btn-info">?</a>
+            <a href="/wiki/Admin:Adding_a_Comment" class="btn btn-xs btn-info">?</a>
             }
 **********@
 

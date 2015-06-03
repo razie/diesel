@@ -6,14 +6,14 @@
  */
 package controllers
 
-import admin.{Config, Notif}
+import admin.{Config}
 import com.mongodb.casbah.Imports._
 import com.typesafe.config.{ConfigObject, ConfigValue}
 import model.{UserWiki, User, Users, Perm}
 import org.bson.types.ObjectId
 import org.joda.time.DateTime
 import razie.wiki.Enc
-import razie.wiki.admin.{SendEmail, MailSession, Audit}
+import razie.wiki.admin.{WikiObservers, SendEmail, MailSession, Audit}
 import razie.wiki.dom.WikiDomain
 import razie.wiki.util.{Corr, PlayTools, VErrors}
 import razie.{clog, cdebug}
@@ -30,6 +30,12 @@ import play.api.data.Forms.tuple
 import play.api.mvc.{SimpleResult, AnyContent, Action, Request}
 import razie.wiki.model._
 import razie.wiki.Sec._
+import com.mongodb.casbah.Imports._
+import com.novus.salat._
+import org.joda.time.DateTime
+import razie.Log
+import razie.db.RazSalatContext._
+import razie.db._
 
 class WikieBase extends WikiBase {
 
@@ -130,7 +136,8 @@ object Wikie extends WikieBase {
 
     cdebug << "wikieEdit " + wid
 
-    Wikis.find(wid) match {
+    val x = Wikis.find(wid)
+    Wikis.find(wid).filter(wid.realm.isEmpty || _.realm == wid.realm.get) match {
       case Some(w) =>
         (for (
           can <- canEdit(wid, Some(au), Some(w));
@@ -180,6 +187,27 @@ object Wikie extends WikieBase {
     }
   }
 
+  private def signScripts (iwe:WikiEntry, au:User) = {
+    var we = iwe
+    if (au.hasPerm(Perm.adminDb)) {
+      if (!we.scripts.filter(_.signature startsWith "REVIEW").isEmpty) {
+        var c2 = we.content
+        for (s <- we.scripts.filter(_.signature startsWith "REVIEW")) {
+          def sign(s: String) = Enc apply Enc.hash(s)
+
+          c2 = we.PATTSIGN.replaceSomeIn(c2, { m =>
+            clog << "SIGNING:" << m << m.groupNames.mkString
+            if (s.name == (m group 2)) Some("{{%s:%s:%s}}%s{{/%s}}".format(
+              m group 1, m group 2, sign(s.content), s.content.replaceAll("""\\""", """\\\\"""), m group 1))
+            else None
+          })
+        }
+        we = we.cloneContent(c2)
+      }
+    }
+  we
+  }
+
   /** api to set content remotely - used by sync and such */
   def setContent(wid: WID) = FAU {
     implicit au => implicit errCollector => implicit request =>
@@ -187,7 +215,7 @@ object Wikie extends WikieBase {
       val data = PlayTools.postData
 
       log("Wiki.setContent " + wid)
-      Wikis.find(wid) match {
+      Wikis.find(wid).filter(wid.realm.isEmpty || _.realm == wid.realm.get) match {
         case Some(w) =>
           (for (
             can <- canEdit(wid, auth, Some(w));
@@ -196,34 +224,19 @@ object Wikie extends WikieBase {
             hasQuota <- (au.isAdmin || au.quota.canUpdate) orCorr cNoQuotaUpdates;
             nochange <- (w.content != co) orErr ("no change");
             newVer <- Some(w.copy(content=co, ver=w.ver+1, updDtm=DateTime.now));
-            upd <- Notif.entityUpdateBefore(newVer, WikiEntry.UPD_CONTENT) orErr ("Not allowerd")
+            upd <- WikiObservers.entityUpdateBefore(newVer, WikiEntry.UPD_CONTENT) orErr ("Not allowerd")
           ) yield {
             var we = newVer
 
-            // signing scripts
-            if (au.hasPerm(Perm.adminDb)) {
-              if (!we.scripts.filter(_.signature startsWith "REVIEW").isEmpty) {
-                var c2 = we.content
-                for (s <- we.scripts.filter(_.signature startsWith "REVIEW")) {
-                  def sign(s: String) = Enc apply Enc.hash(s)
-
-                  c2 = we.PATTSIGN.replaceSomeIn(c2, { m =>
-                    clog << "SIGNING:" << m << m.groupNames.mkString
-                    if (s.name == (m group 2)) Some("{{%s:%s:%s}}%s{{/%s}}".format(
-                      m group 1, m group 2, sign(s.content), s.content.replaceAll("""\\""", """\\\\"""), m group 1))
-                    else None
-                  })
-                }
-                we = we.cloneContent(c2)
-              }
-            }
+            we = signScripts(we, au)
 
             if (!we.scripts.filter(_.signature == "ADMIN").isEmpty && !(au.hasPerm(Perm.adminDb) || Config.isLocalhost)) {
               noPerm(wid, "HACK_SCRIPTS1")
             } else {
-              razie.db.tx("Wiki.Save") { implicit txn =>
-                w.update(we)
-                Notif.entityUpdateAfter(we, WikiEntry.UPD_CONTENT)
+              razie.db.tx("Wiki.setContent") { implicit txn =>
+                WikiEntryOld(w, Some("setContent")).create
+                w.update(we, Some("setContent"))
+                WikiObservers.entityUpdateAfter(we, WikiEntry.UPD_CONTENT)
                 Emailer.laterSession { implicit mailSession =>
                   au.quota.incUpdates
 //                      au.shouldEmailParent("Everything").map(parent => Emailer.sendEmailChildUpdatedWiki(parent, au, WID(w.category, w.name)))
@@ -235,8 +248,41 @@ object Wikie extends WikieBase {
             }
           }) getOrElse
             Unauthorized("oops - " + errCollector.mkString)
-        case None =>
-          Unauthorized("oops - wid not found")
+        case None => {
+          def fromJ (s:String) = {
+            val dbo = com.mongodb.util.JSON.parse(s).asInstanceOf[DBObject];
+            Some(grater[WikiEntry].asObject(dbo))
+          }
+
+          (for (
+            r1 <- au.hasPerm(Perm.uWiki) orCorr cNoPermission("uWiki");
+            hasQuota <- (au.isAdmin || au.quota.canUpdate) orCorr cNoQuotaUpdates;
+            wej <- data.get("we");
+            w <- fromJ (wej);
+            can <- canEdit(wid, auth, Some(w));
+            newVer <- Some(w.copy(ver=1, updDtm=DateTime.now)); // not copying over history so reset to now
+            upd <- WikiObservers.entityUpdateBefore(newVer, WikiEntry.UPD_CONTENT) orErr ("Not allowerd")
+          ) yield {
+              var we = newVer
+
+              we = signScripts(we, au)
+
+              if (!we.scripts.filter(_.signature == "ADMIN").isEmpty && !(au.hasPerm(Perm.adminDb) || Config.isLocalhost)) {
+                noPerm(wid, "HACK_SCRIPTS1")
+              } else {
+                razie.db.tx("Wiki.setContent") { implicit txn =>
+                  we.create
+                  Audit ! WikiAudit("CREATE", we.wid.wpath, Some(au._id))
+
+                  WikiObservers.entityCreateAfter(we, WikiEntry.UPD_CONTENT)
+                }
+                Audit ! WikiAudit("API_SET_CONTENTcr", w.wid.wpath, Some(au._id))
+
+                Ok("ok")
+              }
+            }) getOrElse
+            Unauthorized("oops - " + errCollector.mkString)
+        }
       }
   }
 
@@ -252,7 +298,8 @@ object Wikie extends WikieBase {
     {
       case we @ EditWiki(l, m, co, vis, wvis, tags, notif) => {
         log("Wiki.save " + wid)
-        Wikis.find(wid) match {
+        val x = Wikis.find(wid)
+        Wikis.find(wid).filter(wid.realm.isEmpty || _.realm == wid.realm.get) match {
           case Some(w) =>
             (for (
               can <- canEdit(wid, auth, Some(w));
@@ -265,7 +312,7 @@ object Wikie extends WikieBase {
                 w.tags.mkString(",") != tags) orErr ("no change");
               newlab <- Some(if ("WikiLink" == wid.cat || "User" == wid.cat) l else if (wid.name == Wikis.formatName(l)) l else w.label);
               newVer <- Some(w.cloneNewVer(newlab, m, co, au._id));
-              upd <- Notif.entityUpdateBefore(newVer, WikiEntry.UPD_CONTENT) orErr ("Not allowerd")
+              upd <- WikiObservers.entityUpdateBefore(newVer, WikiEntry.UPD_CONTENT) orErr ("Not allowerd")
             ) yield {
               var we = newVer
 
@@ -291,23 +338,7 @@ object Wikie extends WikieBase {
               if (we.tags.mkString(",") != tags)
                 we = we.withTags(tags.split(",").map(_.trim).toSeq, au._id)
 
-              // signing scripts
-              if (au.hasPerm(Perm.adminDb)) {
-                if (!we.scripts.filter(_.signature startsWith "REVIEW").isEmpty) {
-                  var c2 = we.content
-                  for (s <- we.scripts.filter(_.signature startsWith "REVIEW")) {
-                    def sign(s: String) = Enc apply Enc.hash(s)
-
-                    c2 = we.PATTSIGN.replaceSomeIn(c2, { m =>
-                      clog << "SIGNING:" << m << m.groupNames.mkString
-                      if (s.name == (m group 2)) Some("{{%s:%s:%s}}%s{{/%s}}".format(
-                        m group 1, m group 2, sign(s.content), s.content.replaceAll("""\\""", """\\\\"""), m group 1))
-                      else None
-                    })
-                  }
-                  we = we.cloneContent(c2)
-                }
-              }
+                we = signScripts(we, au)
 
               if (!we.scripts.filter(_.signature == "ADMIN").isEmpty && !(au.hasPerm(Perm.adminDb) || Config.isLocalhost)) {
                 noPerm(wid, "HACK_SCRIPTS1")
@@ -315,7 +346,7 @@ object Wikie extends WikieBase {
                 razie.db.tx("Wiki.Save") { implicit txn =>
                   // can only change label of links OR if the formatted name doesn't change
                   w.update(we)
-                  Notif.entityUpdateAfter(we, WikiEntry.UPD_CONTENT)
+                  WikiObservers.entityUpdateAfter(we, WikiEntry.UPD_CONTENT)
                   Emailer.laterSession { implicit mailSession =>
                     au.quota.incUpdates
                     if (shouldPublish) notifyFollowersCreate(we, au)
@@ -486,8 +517,8 @@ object Wikie extends WikieBase {
       val name = PlayTools.postData.apply("name")
       val E = " - go back and try another name..."
       val e =
-        if(name.length < 4) "Name too short"
-      else if (name.length > 12 ) "Name too long"
+        if(name.length < 3 && !au.isAdmin) "Name too short"
+      else if (name.length > 12 && !au.isAdmin) "Name too long"
       else if (Config.reservedNames.contains(name)) "Name is reserved"
       else if (!name.matches("(?![-_])[A-Za-z0-9-_]{1,63}(?<![-_])")) "Name cannot contain special characters"
       else ""
@@ -549,43 +580,58 @@ object Wikie extends WikieBase {
   def wikieDelete1(wid: WID) = FAU {
     implicit au => implicit errCollector => implicit request =>
 
-    log("Wiki.delete1 " + wid)
-    canDelete(wid).collect {
-      case (au, w) =>
-        Msg2C(
-          views.html.wiki.msg.wmDelete(w.uwid).body,
-          Some(routes.Wikie.wikieDelete2(wid)))
-    } getOrElse
-      noPerm(wid, "ADMIN_DELETE1")
+      log("Wiki.delete1 " + wid)
+      canDelete(wid).collect {
+        case (au, w) =>
+          Msg2C(
+            views.html.wiki.msg.wmDelete(w.uwid).body,
+            Some(routes.Wikie.wikieDelete2(wid)))
+      } getOrElse
+        noPerm(wid, "ADMIN_DELETE1")
   }
 
   /** delete step 2: do it */
   def wikieDelete2(wid: WID) = FAU {
     implicit au => implicit errCollector => implicit request =>
 
-    log("Wiki.delete2 " + wid)
-    if (wid.cat != "Club") canDelete(wid).collect {
-      case (au, w) =>
-        razie.db.tx("Wiki.delete") { implicit txn =>
-          RMany[WikiLink]("to" -> w.uwid.grated).toList.foreach(_.delete)
-          RMany[WikiLink]("from" -> w.uwid.grated).toList.foreach(_.delete)
-          var done = false
-          RMany[UserWiki]("uwid" -> w.uwid.grated).toList.foreach(wl => {
-            wl.delete
-            done = true
-          })
-
-          // can only change label of links OR if the formatted name doesn't change
-          // delete at last, so if any links fail, the thing stays there
-          w.delete(au.userName)
-
-          if (done) cleanAuth() // it probably belongs to the current user, cached...
+      log("Wiki.delete2 " + wid)
+      if (wid.cat != "Club") canDelete(wid).collect {
+        case (au, w) if wid.cat == "Reactor" => {
+          var count = 0
+          razie.db.tx("Wiki.delete") { implicit txn =>
+            RMany[WikiEntry]("realm" -> wid.name).toList.map {we=>
+              count += 1
+              we.delete(au.userName)
+            }
+            cleanAuth()
+          }
+          Msg2(s"REACTOR DELETED forever - no way back! Deleted $count topics")
         }
-        Msg2("DELETED forever - no way back!")
-    } getOrElse
-      noPerm(wid, "ADMIN_DELETE2")
-    else
-      Msg2("Can't delete a " + wid.cat)
+
+        case (au, w) => {
+          var count = 0
+          razie.db.tx("Wiki.delete") { implicit txn =>
+            RMany[WikiLink]("to" -> w.uwid.grated).toList.foreach(_.delete)
+            RMany[WikiLink]("from" -> w.uwid.grated).toList.foreach(_.delete)
+            var done = false
+            RMany[UserWiki]("uwid" -> w.uwid.grated).toList.foreach(wl => {
+              wl.delete
+              done = true
+            })
+
+            // can only change label of links OR if the formatted name doesn't change
+            // delete at last, so if any links fail, the thing stays there
+            w.delete(au.userName)
+            count += 1
+
+            if (done) cleanAuth() // it probably belongs to the current user, cached...
+          }
+          Msg2(s"DELETED forever - no way back! Deleted $count topics")
+        }
+      } getOrElse
+        noPerm(wid, "ADMIN_DELETE2")
+      else
+        Msg2("Can't delete a " + wid.cat)
   }
 
   private def canRename(wid: WID)(implicit errCollector: VErrors, request: Request[_]) = {
@@ -618,7 +664,7 @@ object Wikie extends WikieBase {
           case (au, w) =>
             val newp = w.copy(name = Wikis.formatName(n), label = n, ver = w.ver + 1, updDtm = DateTime.now)
             razie.db.tx("Wiki.Rename") { implicit txn =>
-              w.update(newp)
+              w.update(newp, Some("renamed"))
               cleanAuth()
             }
 
@@ -677,7 +723,7 @@ object Wikie extends WikieBase {
             destW <- Wikis.find(destWid) orErr "no destination";
 //            isFromPost <- ArWikiDomain.aEnds(sourceW.wid.cat, "Child").contains("Post") orErr "source has no child Posts/Items";
 //            isToPost <- WikiDomain.aEnds(destW.wid.cat, "Child").contains("Post") orErr "dest has no child Posts/Items"
-//            upd <- Notif.entityUpdateBefore(newVer, WikiEntry.UPD_UOWNER) orErr ("Not allowerd")
+//            upd <- WikiObservers.entityUpdateBefore(newVer, WikiEntry.UPD_UOWNER) orErr ("Not allowerd")
             nochange <- (sourceW.wid != destW.wid) orErr "no change"
           ) yield {
 //            val links = RMany[WikiLink]("to" -> sourceW.uwid.grated, "how" -> "Child", "from.cat" -> "Post").toList
@@ -697,11 +743,11 @@ object Wikie extends WikieBase {
                 RMany[WikiEntry]("parent" -> Some(sourceW.uwid.id)).toList
             razie.db.tx("Wiki.movePosts") { implicit txn =>
               links.foreach { _.copy(to = destW.uwid).update }
-              pages.foreach(w=>w.update(w.copy(parent=Some(destW.uwid.id))))
+              pages.foreach(w=>w.update(w.copy(parent=Some(destW.uwid.id)), Some("moved_posts")))
             }
             val m = s" ${links.size} WikiLinks and ${pages.size} WikiEntry /posts from ${sourceW.wid.wpath} to ${destW.wid.wpath}"
             Audit ! WikiAudit("MOVE_POSTS", sourceW.wid.wpath, Some(au._id), Some(m))
-//            Notif.entityUpdateAfter(newVer, WikiEntry.UPD_UOWNER)
+//            WikiObservers.entityUpdateAfter(newVer, WikiEntry.UPD_UOWNER)
             Msg2(s"Moved $m", Some(controllers.Wiki.w(sourceWid)))
           }) getOrElse
             noPerm(sourceWid, "ADMIN_MOVEPOSTS")
@@ -728,14 +774,14 @@ object Wikie extends WikieBase {
             destW <- Wikis.find(destWid) orErr "no destination";
             //            isFromPost <- ArWikiDomain.aEnds(sourceW.wid.cat, "Child").contains("Post") orErr "source has no child Posts/Items";
             //            isToPost <- WikiDomain.aEnds(destW.wid.cat, "Child").contains("Post") orErr "dest has no child Posts/Items"
-            //            upd <- Notif.entityUpdateBefore(newVer, WikiEntry.UPD_UOWNER) orErr ("Not allowerd")
+            //            upd <- WikiObservers.entityUpdateBefore(newVer, WikiEntry.UPD_UOWNER) orErr ("Not allowerd")
             newVer <- Some(sourceW.copy(parent=Some(destW._id)))
           ) yield {
             Audit ! WikiAudit("SET_PARENT", sourceW.wid.wpath, Some(au._id), Some(newWid.toString))
             razie.db.tx("Wiki.setparent") { implicit txn =>
-              sourceW.update(newVer)
+              sourceW.update(newVer, Some("setParent"))
             }
-            Notif.entityUpdateAfter(newVer, WikiEntry.UPD_TOGGLE_RESERVED)
+            WikiObservers.entityUpdateAfter(newVer, WikiEntry.UPD_TOGGLE_RESERVED)
             Redirect(controllers.Wiki.w(sourceWid))
           }) getOrElse
             noPerm(sourceWid, "ADMIN_MOVEPOSTS")
@@ -763,13 +809,13 @@ object Wikie extends WikieBase {
               newu <- WikiUsers.impl.findUserByUsername(newvalue) orErr (newvalue + " User not found");
               nochange <- (!w.owner.exists(_.userName == newvalue)) orErr "no change";
               newVer <- Some(w.cloneProps(w.props + ("owner" -> newu._id.toString), au._id));
-              upd <- Notif.entityUpdateBefore(newVer, WikiEntry.UPD_UOWNER) orErr "Not allowerd"
+              upd <- WikiObservers.entityUpdateBefore(newVer, WikiEntry.UPD_UOWNER) orErr "Not allowerd"
             ) yield {
               // can only change label of links OR if the formatted name doesn't change
               razie.db.tx("Wiki.uowner") { implicit txn =>
                 w.update(newVer)
               }
-              Notif.entityUpdateAfter(newVer, WikiEntry.UPD_UOWNER)
+              WikiObservers.entityUpdateAfter(newVer, WikiEntry.UPD_UOWNER)
               Redirect(controllers.Wiki.w(wid))
             }) getOrElse
               noPerm(wid, "ADMIN_UOWNER")
@@ -782,13 +828,13 @@ object Wikie extends WikieBase {
               w <- Wikis.find(wid);
               nochange <- (w.realm != newvalue) orErr "no change";
               newVer <- Some(w.copy(realm=newvalue));
-              upd <- Notif.entityUpdateBefore(newVer, WikiEntry.UPD_UOWNER) orErr "Not allowerd"
+              upd <- WikiObservers.entityUpdateBefore(newVer, WikiEntry.UPD_UOWNER) orErr "Not allowerd"
             ) yield {
               // can only change label of links OR if the formatted name doesn't change
               razie.db.tx("Wiki.urealm") { implicit txn =>
                 w.update(newVer)
               }
-              Notif.entityUpdateAfter(newVer, WikiEntry.UPD_UOWNER)
+              WikiObservers.entityUpdateAfter(newVer, WikiEntry.UPD_UOWNER)
               Redirect(controllers.Wiki.w(wid))
             }) getOrElse
               noPerm(wid, "ADMIN_UOWNER")
@@ -799,9 +845,9 @@ object Wikie extends WikieBase {
               au <- activeUser;
               ok1 <- au.hasPerm(Perm.adminDb) orCorr cNoPermission;
               w <- Wikis.find(wid);
-              nochange <- (w.realm != newvalue) orErr "no change";
+//              nochange <- (w.realm != newvalue) orErr "no change";  // don't check nochange
               newVer <- Some(w.copy(realm=newvalue));
-              upd <- Notif.entityUpdateBefore(newVer, WikiEntry.UPD_UOWNER) orErr "Not allowerd"
+              upd <- WikiObservers.entityUpdateBefore(newVer, WikiEntry.UPD_UOWNER) orErr "Not allowerd"
             ) yield {
               // can only change label of links OR if the formatted name doesn't change
               razie.db.tx("Wiki.urealmALL") { implicit txn =>
@@ -817,7 +863,7 @@ object Wikie extends WikieBase {
                   }
                 }
               }
-              Notif.entityUpdateAfter(newVer, WikiEntry.UPD_UOWNER)
+              WikiObservers.entityUpdateAfter(newVer, WikiEntry.UPD_UOWNER)
               Redirect(controllers.Wiki.w(wid))
             }) getOrElse
               noPerm(wid, "ADMIN_UOWNER")
@@ -838,13 +884,13 @@ object Wikie extends WikieBase {
       ok2 <- canEdit(wid, Some(au), Some(w));
       nochange <- (w.isReserved != how) orErr "no change";
       newVer <- Some(w.cloneProps(w.props + ("reserved" -> (if (how) "yes" else "no")), au._id));
-      upd <- Notif.entityUpdateBefore(newVer, WikiEntry.UPD_TOGGLE_RESERVED) orErr ("Not allowerd")
+      upd <- WikiObservers.entityUpdateBefore(newVer, WikiEntry.UPD_TOGGLE_RESERVED) orErr ("Not allowerd")
     ) yield {
       // can only change label of links OR if the formatted name doesn't change
       razie.db.tx("Wiki.Reserve") { implicit txn =>
-        w.update(newVer)
+        w.update(newVer, Some("reserve"))
       }
-      Notif.entityUpdateAfter(newVer, WikiEntry.UPD_TOGGLE_RESERVED)
+      WikiObservers.entityUpdateAfter(newVer, WikiEntry.UPD_TOGGLE_RESERVED)
       Redirect(controllers.Wiki.w(wid))
     }) getOrElse
       noPerm(wid, "ADMIN_RESERVE")

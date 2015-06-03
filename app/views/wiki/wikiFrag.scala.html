@@ -28,8 +28,10 @@ wiki fragment, used in another page
   }
 
   @ccc(wid:WID, we:WikiEntry)= @{
-    val x = Wikis.format(wid, we.markup, "", Some(we))
-    try {
+    var ocontent:Option[String] = None
+    ocontent = razie.wiki.mods.WikiMods.mods.values.foldLeft(ocontent){(a,b)=> if(b.isInterested(we)) b.modPreFormat(we, a) else a}
+    val x = Wikis.format(wid, we.markup, ocontent.getOrElse(""), Some(we))
+    val y = try {
       if(x contains "CANNOT PARSE") {
         val PAT = """.*PARSE\]\] \[([0-9]+)\.([0-9]+)\].*""".r
         val PAT(line, col) = x
@@ -40,10 +42,14 @@ wiki fragment, used in another page
           </small></div><p></p>""".stripMargin + s"""
             <textarea id="$id" readonly="true" style="width:90%; margin-right:40px" rows="15">${we.content.lines.zipWithIndex.map(t=>f"${t._2+1}%3s> ${t._1}").mkString("\n")}</textarea>
          """.stripMargin
-      } else x
+      } else {
+        Wikis.divLater(x)
+      }
     } catch {
       case _ : Throwable => x
     }
+
+    razie.wiki.mods.WikiMods.mods.values.foldLeft(y){(a,b)=> if(b.isInterested(we)) b.modPostFormat(we, a) else a}
   }
 
   @one(page:Option[WikiEntry]) = {
@@ -59,6 +65,8 @@ wiki fragment, used in another page
               (Category)</h2>
           }
           case _ => {
+            @if(page.exists(_.contentTags.contains("noTitle"))) {
+            } else {
             <h2>@label()
               @if(au.isEmpty && "Blog" == wid.cat) {
                 <a class="btn btn-info" title="Subscribe to updates via email" href="@routes.Wikil.linkFollower1(wid)"><i class="icon-envelope icon-white"></i> Subscribe</a>
@@ -70,22 +78,23 @@ wiki fragment, used in another page
 
               @if(!(Seq("WikiLink", "Form").contains(wid.cat) || page.exists(_.contentTags.contains("noSocial")))) {
                 <br>
-                <a class="btn btn-small btn-info" href="@routes.Wiki.social(label().toString, url())">Share <i class="icon-thumbs-up icon-white"></i></a>
+                <a class="btn btn-xs btn-info" href="@routes.Wiki.social(label().toString, url())">Share <i class="icon-thumbs-up icon-white"></i></a>
 
                 @if(Seq("Blog", "Forum").contains(wid.cat)) {
-                  <a class="btn btn-small btn-info" href="@rss">Feed (RSS) <i class="icon-star icon-white"></i></a>
+                  <a class="btn btn-xs btn-info" href="@rss">Feed (RSS) <i class="icon-star icon-white"></i></a>
                 }
 
               }
 
             </h2>
+            }
           }
         }
       }
 
-      <p></p>
+      <p id="wikiFragP1"></p>
       @Html(ccc(wid, we))
-      <p></p>
+      <p id="wikiFragP2"></p>
 
       @wikiFragExtras(au,page)
 

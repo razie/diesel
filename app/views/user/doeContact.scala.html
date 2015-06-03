@@ -1,67 +1,59 @@
 @***
 profile - edit contact info
 ***@
-@(myForm: Form[_], au:model.User)
-
-@htmlHeadBar("Contact info", Some(au))
-
-<div class="container">
-  <div class="row">
-  @user.leftmenu(11, au)
+@(myForm: Form[_], au: model.User)(implicit request: Request[_])
 
 @import helper.twitterBootstrap._
 
-@if(au.isUnder13) {
-  <p>You don't need to provide detailed contact info...
-} else {
-<div class="span4">
-@helper.form(action=routes.Profile.doeContactUpdate(), 'class->"well") {
-  @util.razText(myForm, "streetAndNo", "Street & Number")
-  @util.razText(myForm, "aptNo",       "Apt no")
-  @util.razText(myForm, "city",        "City")
-  @util.razText(myForm, "postalCode",  "Postal/Zip code")
-  @util.razText(myForm, "state",       "Province / State")
-  @util.razText(myForm, "country",     "Country")
-@***
-  @helper.select(
-    myForm("state"),
-     Seq(""->"") ++ controllers.Profile.prov.map(x=>(x.toString,x.toString)),
-     '_label -> "Province / State",
-    '_showConstraints -> false)
-  @helper.select(
-    myForm("country"),
-     Seq(""->"") ++ controllers.Profile.countries.map(x=>(x.toString,x.toString)),
-     '_label -> "Country",
-    '_showConstraints -> false)
-***@
-  @util.razText(myForm, "cellPhone", "Cell Phone")
-  @util.razText(myForm, "homePhone", "Home Phone")
-  @util.razText(myForm, "workPhone", "Work Phone")
+@user.doePLayout(au, "Contact info", 11) {
 
-  <button type="submit" class="btn btn-primary">Update account!</button>
-  @user.agree()
+  @if(au.isUnder13) {
+    <p>You don't need to provide detailed contact info...
+  } else {
+    <div class="col-sm-4">
+    @helper.form(action = routes.Profile.doeContactUpdate(), 'class -> "well") {
+      @util.razText(myForm, "streetAndNo", "Street & Number")
+      @util.razText(myForm, "aptNo", "Apt no")
+      @util.razText(myForm, "city", "City")
+      @util.razText(myForm, "postalCode", "Postal/Zip code")
+      @util.razText(myForm, "state", "Province / State")
+      @util.razText(myForm, "country", "Country")
+      @***
+      @helper.select(
+      myForm("state"),
+      Seq(""->"") ++ controllers.Profile.prov.map(x=>(x.toString,x.toString)),
+      '_label -> "Province / State",
+      '_showConstraints -> false)
+      @helper.select(
+      myForm("country"),
+      Seq(""->"") ++ controllers.Profile.countries.map(x=>(x.toString,x.toString)),
+      '_label -> "Country",
+      '_showConstraints -> false)
+      ***@
+      @util.razText(myForm, "cellPhone", "Cell Phone")
+      @util.razText(myForm, "homePhone", "Home Phone")
+      @util.razText(myForm, "workPhone", "Work Phone")
 
-  @myForm.globalError.map { err=>
-     <p style="color:red;font-weight:bold">@err.message</p>
-  }
-}
-</div>
+      <button type="submit" class="btn btn-primary">Update account!</button>
+      @user.agree()
 
-<div class="span4">
+      @myForm.globalError.map { err =>
+        <p style="color : red ; font-weight : bold">@err.message</p>
+      }
+    }
+    </div>
+
+    <div class="col-sm-4">
       <h2 >Contact Info</h2>
       <p>
-        <p>Optionally, you can enter full contact information below - we can use it for registrations and other forms.
-        <p>If you don't enter this information here, it's ok - you'll just have to enter it again and again for registrations etc.
-<div class="alert alert-danger">
-<strong>Note!</strong>
-that this information can be used in the registration forms you have to complete for clubs!
-</div>
+      <p>Optionally, you can enter full contact information below - we can use it for registrations and other forms.
+      <p>
+        If you don't enter this information here, it's ok - you'll just have to enter it again and again for registrations etc.
+    <div class="alert alert-danger">
+      <strong>Note!</strong>
+      that this information can be used in the registration forms you have to complete for clubs!
+    </div>
+    </div>
+  }
 }
 
-</div>
-
-  </div> <!-- /row -->
-  <hr>
-  @htmlFooter(ads=true)
-</div> <!-- /container -->
-@htmlBottom()

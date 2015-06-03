@@ -8,13 +8,9 @@ render a regular wiki page - site pages are rendered with wikiSite.scala.html
 <div class="container">
   <div class="row">
 
-    <div class="span9">
+    <div class="col-sm-9">
 
-    @if(page.flatMap(_.props.get("draft")).exists(_.toLowerCase == "draft")) {
-      <div class="alert">
-        <strong>Draft!</strong> This page is a draft - a work in progress!
-      </div>
-    }
+      @wiki.layout.draft(page)
 
         @wiki.wikiFrag(wid,au,false,page, iname, false, true, canEdit)
 
@@ -25,9 +21,9 @@ render a regular wiki page - site pages are rendered with wikiSite.scala.html
 
       <hr>
 
-    </div> <!-- /span9 -->
+    </div> <!-- /col-sm-9 -->
     @if(!print) {
-      <div class="span3">
+      <div class="col-sm-3">
         @model.Website.get.rightTop.map { rt =>
           @wiki.wikiFrag(rt, au, simple = true)
         }

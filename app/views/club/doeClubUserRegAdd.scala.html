@@ -12,7 +12,7 @@
 <div class="row">
   @views.html.user.leftmenu(10, user)
 
-<div class="span9">
+<div class="col-sm-9">
 
 <h2>Adding @kid.info.firstName to club @reg.clubName</h2>
 
@@ -20,7 +20,7 @@
 <p>Will <b>@kid.info.firstName</b> be a:
 
 @model.RK.ROLES.map{r=>
-  <a href="@routes.Club.doeClubUwAddFormKid(reg._id.toString,kid._id.toString, next, r)" class="btn btn-large btn-info">@r</a>
+  <a href="@routes.Club.doeClubUwAddFormKid(reg._id.toString,kid._id.toString, next, r)" class="btn btn-lg btn-info">@r</a>
 }
 
 <hr>

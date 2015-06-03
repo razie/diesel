@@ -132,24 +132,26 @@ class SBTScalaScriptContext(parent: ActionContext = null) extends ScalaScriptCon
       if(admin.Config.isLocalhost) {
         val myLoader = new ReplClassloader(getClass.getClassLoader)
         settings.embeddedDefaults(myLoader)
-//        settings.bootclasspath.append("C:/cygwin/home/razvanc/w/racerkidz/lib_managed/jars/org.scala-lang/scala-library/scala-library-2.10.3.jar")
         settings.bootclasspath.append("/Users/raz/w/racerkidz/lib_managed/jars/org.scala-lang/scala-library/scala-library-2.10.4.jar")
         //todo figure out why the heck and remove this hardcoded bs
 
-//        val cl = this.getClass.getClassLoader // or getClassLoader.getParent, or one more getParent...
-//
-//        val urls = cl match {
-//          case cl: java.net.URLClassLoader => cl.getURLs.toList
-//          case a => sys.error("oops: I was expecting an URLClassLoader, foud a " + a.getClass)
-//        }
-//        val classpath = (urls map { _.toString })
-//
-//        razie.cout << "=================CLASSPATH: " + classpath
-//
-//        settings.bootclasspath.value = classpath.distinct.mkString(java.io.File.pathSeparator)
-//        settings.classpath.value = classpath.distinct.mkString(java.io.File.pathSeparator)
-//        settings.bootclasspath.append("C:/cygwin/home/razvanc/w/racerkidz/lib_managed/jars/org.scala-lang/scala-library/scala-library-2.10.3.jar")
-//        settings.embeddedDefaults(cl) // or getClass.getClassLoader
+        // RAZ WAS COMMENTED OUT
+        val cl = this.getClass.getClassLoader // or getClassLoader.getParent, or one more getParent...
+
+        val urls = cl match {
+            // HE HE HE started working when I collected this and parent
+          case cl: java.net.URLClassLoader => cl.getURLs.toList ++
+            cl.getParent.asInstanceOf[java.net.URLClassLoader].getURLs.toList
+          case a => sys.error("oops: I was expecting an URLClassLoader, foud a " + a.getClass)
+        }
+        val classpath = (urls map { _.toString })
+
+        razie.cout << "=================CLASSPATH: " + classpath
+
+        settings.bootclasspath.value = classpath.distinct.mkString(java.io.File.pathSeparator)
+        settings.classpath.value = classpath.distinct.mkString(java.io.File.pathSeparator)
+        settings.bootclasspath.append("/Users/raz/w/racerkidz/lib_managed/jars/org.scala-lang/scala-library/scala-library-2.10.4.jar")
+        settings.embeddedDefaults(cl) // or getClass.getClassLoader
       } else {
         // production - javacp is enough
         settings.usejavacp.value = true

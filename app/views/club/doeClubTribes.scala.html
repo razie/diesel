@@ -9,7 +9,7 @@ club admin manages list of users and registrations
 <div class="row">
   @views.html.user.leftmenu(13, user)
 
-<div class="span9">
+<div class="col-sm-9">
 
 @tribes=@{
   model.Tribes.findByClub(club).map(t=>
@@ -23,7 +23,7 @@ club admin manages list of users and registrations
 @mnglink(row:Map[String,String],k:String,v:String)={
   @k match {
         case "button" => {
-      <a href="@routes.Tribe.doeClubTribe(v)" class="btn btn-mini">More...</a>
+      <a href="@routes.Tribe.doeClubTribe(v)" class="btn btn-xs">More...</a>
       }
         case "name" => {
       <a href="@controllers.Wiki.w(razie.wiki.model.WID.fromPath(row.get("wpath").get).get)">@v</a>
@@ -56,8 +56,8 @@ club admin manages list of users and registrations
         <select id="role" name="role" class="input-small">
            <option value="Team">Team</option>
         </select>
-  <button type="submit" class="btn btn-mini btn-primary">Now</button>
-  <a href="/wiki/Admin:Adding_a_Tribe" class="btn btn-mini btn-info">?</a>
+  <button type="submit" class="btn btn-xs btn-primary">Now</button>
+  <a href="/wiki/Admin:Adding_a_Tribe" class="btn btn-xs btn-info">?</a>
 }
 </div>
 @helper.form(action=routes.Wikie.addLinked("Tribe",club.wid,"Child"), 'class->"form-inline") {

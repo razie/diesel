@@ -76,7 +76,7 @@ var runpill_@id = function(id) {
   $('#l_'+id)[0].value= "@l";
   $('#j_'+id)[0].value= editor.getValue();
   $('#ssform_'+id)[0].target = 'iframe_'+id;
-  $('#ssform_'+id)[0].action = "/sfiddle/sfiddle2/"+id+"?@diesel.controllers.SFiddles.qtourl(q)";
+  $('#ssform_'+id)[0].action = "/sfiddle/sfiddle2/"+id+"?@mod.diesel.controllers.SFiddles.qtourl(q)";
   $('#ssform_'+id)[0].submit();
 }
 

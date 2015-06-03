@@ -69,22 +69,22 @@ screen to admin one user
 |
       @helper.form(action=routes.Admin.uperm(user.get.id), 'class->"well form-inline") {
         <input type="text" class="input-xlarge" name="perm" placeholder="+Perm">
-        <button type="submit" class="btn">+/-Perm</button>
+        <button type="submit" class="btn btn-default">+/-Perm</button>
       }
 
       @helper.form(action=routes.Admin.uquota(user.get.id), 'class->"well form-inline") {
         <input type="text" class="input" name="quota" placeholder="+Quota">
-        <button type="submit" class="btn">+/-Quota</button>
+        <button type="submit" class="btn btn-default">+/-Quota</button>
       }
 
       @helper.form(action=routes.Admin.uname(user.get.id), 'class->"well form-inline") {
         <input type="text" class="input" name="val" placeholder="username">
-        <button type="submit" class="btn">Username</button>
+        <button type="submit" class="btn btn-default">Username</button>
       }
 
       @helper.form(action=routes.Admin.urealms(user.get.id), 'class->"well form-inline") {
         <input type="text" class="input-xlarge" name="val" placeholder="Realms">
-        <button type="submit" class="btn">Set Realms</button>
+        <button type="submit" class="btn btn-default">Set Realms</button>
       }
 
   <hr>

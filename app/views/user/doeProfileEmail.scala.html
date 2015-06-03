@@ -1,53 +1,38 @@
 @***
 profile - change email
 ***@
-@(myForm: Form[_], au:model.User)
-
-@salutation() = @{
-  val names = Array("Hi", "Hello", "Hey", "Howdy")
-  val i = new scala.util.Random().nextInt(names.length)
-  names(i)
-  }
-
-@htmlHeadBar("Email", Some(au))
-
-<div class="container">
-  <div class="row">
-  @user.leftmenu(5, au)
-
-    <div class="span4">
+@(myForm: Form[_], au: model.User)(implicit request: Request[_])
 
 @import helper.twitterBootstrap._
 
-@helper.form(action=routes.EdEmail.doeProfileEmail2, 'class->"well") {
-  @helper.inputText(
-    myForm("curemail"),
-    '_label -> "Current email",
-    'readonly -> "yes",
-    '_showConstraints -> false)
-  @util.razText(myForm, "newemail", "New email")
+@user.doePLayout(au, "Email", 5) {
 
-  <button type="submit" class="btn btn-primary">Change !</button>
+  <div class="col-sm-4">
+    @helper.form(action = routes.EdEmail.doeProfileEmail2, 'class -> "well") {
+      @helper.inputText(
+        myForm("curemail"),
+        '_label -> "Current email",
+        'readonly -> "yes",
+        '_showConstraints -> false)
+      @util.razText(myForm, "newemail", "New email")
 
- @user.agree()
+      <button type="submit" class="btn btn-primary">Change !</button>
 
-  @myForm.globalError.map {err=>
-     <p style="color:red;font-weight:bold">@err.message</p>
-  }
+      @user.agree()
+
+      @myForm.globalError.map { err =>
+        <p style="color : red ; font-weight : bold">@err.message</p>
+      }
+
+    }
+
+  </div>
+  <div class="col-sm-4">
+
+    <h2>Changing the email</h2>
+    <p>
+    <p>Take care when changing the email - this is your login as well.</p>
+
+  </div>
 
 }
-
-       </div>
-<div class="span4">
-
-<h2>Changing the email</h2>
-<p>
-<p>Take care when changing the email - this is your login as well.</p>
-
-</div>
-
-  </div> <!-- /row -->
-  <hr>
-  @htmlFooter(ads=true)
-</div> <!-- /container -->
-@htmlBottom()

@@ -637,4 +637,24 @@ object U15 extends UpgradeDb with razie.Logging {
   }
 }
 
+// realm to notes
+object U16 extends UpgradeDb with razie.Logging {
+  import razie.db.RazSalatContext._
+
+  def upgrade(db: MongoDB) {
+    var i = 0;
+
+    withDb(db("weNote")) { implicit t =>
+      for (u <- t) {
+        cdebug << "UPGRADING " + t.name + u
+        u.put("realm", "notes")
+        t.save(u)
+        i = i+1
+      }
+    }
+
+    clog < s"UPGRADED $i entries"
+  }
+}
+
 

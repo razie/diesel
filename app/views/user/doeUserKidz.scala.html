@@ -1,63 +1,62 @@
 @******
 manage the list of kidz and/or their accounts
 ******@
-@(au:model.User)
+@(au: model.User)(implicit request: Request[_])
 @import model.RK._
 
-@htmlHeadBar("RacerKidz for " + au.userName, Option(au))
+@import helper.twitterBootstrap._
 
-<div class="container"> <div class="row">
-@user.leftmenu(6, au)
-
-<div class="span9">
-
-<h2>Racerz, parentz, guardianz... @au.firstName</h2>
-
-<br>
-<p>Add everybody here: spouse, kidz etc. You should already be listed here. This list is used when registering to any clubs, assignment to teams etc.
-
-<p>Those kidz that have their own account on this site will be listed on the left, so you can manage their privacy settings as well.
-
-@rks=@{
-  (for (a <- model.RacerKidz.findAssocForUser(au._id);
-           k <- model.RacerKidz.findById(a.to)) yield (k,a)).map(t=>
-    Map("fname"->t._1.info.firstName,
-        "lname"->t._1.info.lastName,
-        "role" -> t._2.role,
-        "associd" -> t._2._id.toString,
-        "button"->t._1._id.toString))
+@rks = @{
+  (for(a <- model.RacerKidz.findAssocForUser(au._id);
+    k <- model.RacerKidz.findById(a.to)) yield (k, a)).map(t =>
+    Map("fname" -> t._1.info.firstName,
+      "lname" -> t._1.info.lastName,
+      "role" -> t._2.role,
+      "associd" -> t._2._id.toString,
+      "button" -> t._1._id.toString))
 }
 
-@mnglink(row:Map[String,String],k:String,v:String)={
-  @k match {
-        case "button" => {
-      <a href="@routes.Kidz.doeKid(au._id.toString, v, "-", row("associd"), "kidz")" class="btn btn-mini">More...</a>
-      }
-    case _ => { @v }
+@mnglink(row: Map[String, String], k: String, v: String) = {
+@k match {
+  case "button" => {
+    <a href="@routes.Kidz.doeKid(au._id.toString, v, "-", row("associd"), "kidz")" class="btn btn-xs">More...</a>
+  }
+  case _ => {
+    @v
   }
 }
-
-@util.utilSimpleTable(rks, Seq(
-        "fname" -> "First Name",
-        "lname"->"Last Name",
-        "role" -> "Relationship",
-        "button"->"Details"),
-        Some(mnglink))
-
-Add a: @model.RK.RELATIONSHIPS.map{r=>
-  <a href="@routes.Kidz.doeKid(au._id.toString, "11", r, "-", "kidz")" class="btn btn-mini btn-info">@r</a>
 }
 
-<br><br>
+@user.doePLayout(au, "RacerKidz for " + au.userName, 6) {
 
-<p>If there are duplicate records, one of them will have the option to merge into the other.
+  <div class="col-sm-9">
 
-<div class="alert alert-danger"><strong>Privacy:</strong> This list is shared with the clubs you are member of!</div>
+    <h2>Racerz, parentz, guardianz... @au.firstName</h2>
 
-</div>
-</div>
-  <hr>
-  @htmlFooter(ads=true)
-</div> <!-- /container -->
+    <br>
+    <p>
+      Add everybody here: spouse, kidz etc. You should already be listed here. This list is used when registering to any clubs, assignment to teams etc.
 
-@htmlBottom()
+    <p>
+      Those kidz that have their own account on this site will be listed on the left, so you can manage their privacy settings as well.
+
+      @util.utilSimpleTable(rks, Seq(
+        "fname" -> "First Name",
+        "lname" -> "Last Name",
+        "role" -> "Relationship",
+        "button" -> "Details"),
+        Some(mnglink))
+
+      Add a: @model.RK.RELATIONSHIPS.map { r =>
+      <a href="@routes.Kidz.doeKid(au._id.toString, "11", r, "-", "kidz")" class="btn btn-xs btn-info">@r</a>
+    }
+
+      <br><br>
+
+    <p>If there are duplicate records, one of them will have the option to merge into the other.
+
+  <div class="alert alert-danger"><strong>Privacy:</strong>
+    This list is shared with the clubs you are member of!</div>
+
+  </div>
+}

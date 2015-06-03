@@ -3,12 +3,13 @@ create new page given a template
 ****************@
 @(cat:String, name:String, formWid:razie.wiki.model.WID, torspec:String, realm:String, au:Option[model.User], errors:Map[String,String])
 @import razie.wiki.util.IgnoreErrors
+@import razie.wiki.model.Wikis
 
 @htmlHeadBar("Create new with template", au)
 
 <div class="container">
     <div class="row">
-        <div class="span9">
+        <div class="col-sm-9">
 
             <h3>Creating a new <em>@cat</em>, with <em>@formWid.name</em></h3>
 
@@ -16,22 +17,26 @@ create new page given a template
 
             @helper.form(action=routes.Wikie.addWithSpec(cat, name, formWid.wpath, torspec:String, realm), 'class->"well form-inline") {
                 @if(!formWid.page.exists(_.form.fields.contains("name"))) {
-                    Use a simple punchy single word, like "<b>mysite</b>" - your new website will be available at <b><small>http://mysite.wikireactor.com</small></b>
-                    <p>Name: <input type="text" class="input-xlarge" name="name" placeholder="Name" value="@name">
+                    @Wikis(realm).category(cat).flatMap(_.contentTags.get("label.createWithTemplate")).getOrElse {
+                        Use
+                        a simple punchy single word, like "<b>mysite</b>" - your new website will be
+                        available at <b><small>http://mysite.wikireactor.com</small></b>
+                    }
+                    <p></p><p>Name: <input type="text" class="" name="name" placeholder="Name" value="@name">
                     <hr><p>More particulars:</p>
                 }
 
                 @wiki.wikiFormInt(formWid, Some(name), None, au, errors, false, false, true)
 
-                <button type="submit" class="btn">Create Now!</button>
+                <button type="submit" class="btn btn-default">Create Now!</button>
             }
 
             <hr>
             @htmlFooter(ads = true)
 
-        </div> <!-- /span9 -->
+        </div> <!-- /col-sm-9 -->
 
-        <div class="span3">
+        <div class="col-sm-3">
             @wiki.wikiFrag(razie.wiki.model.WID("Admin","Right"),au,true)
 
             @addRight()

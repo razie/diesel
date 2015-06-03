@@ -10,7 +10,7 @@
 
 <div class="container">
       <div class="row">
-        <div class="span8">
+        <div class="col-sm-8">
           <h2>Questions / suggestions</h2>
 
 @helper.form(action=routes.Support.suggested(page), 'class->"well") {
@@ -32,14 +32,14 @@
   @helper.inputText(
     sForm("desc"),
     '_label -> "Description",
-    'class -> "span6",
+    'class -> "col-sm-6",
     '_showConstraints -> false)
 
   @helper.textarea(
     sForm("details"),
     '_label -> "Details",
     '_showConstraints -> false,
-    'class -> "span6",
+    'class -> "col-sm-6",
     'rows->15)
 
 @if(au.isDefined) {
