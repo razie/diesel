@@ -52,7 +52,7 @@ object Comment extends RazController with Logging {
           }
         }
       } else log("ERR_DUPLO_COMMENT")
-      Redirect(routes.Wiki.showId(topicId, Wikis.RK)) //todo fix realm
+      Redirect(routes.Wiki.showId(topicId, w.realm))
     }) getOrElse {
       Unauthorized("Oops - cannot add comment... " + errCollector.mkString)
     }
@@ -147,11 +147,11 @@ object Comment extends RazController with Logging {
   }
 
   /** start to add a video/photo comment **/
-  def vComment1(cat:String, topic: String, what: String, oid: String, kind: String) = Action { implicit request =>
+  def vComment1(cat:String, topicId: String, what: String, oid: String, kind: String) = Action { implicit request =>
     implicit val errCollector = new VErrors()
     (for (
       au <- activeUser;
-      w <- Wikis.findById(cat,topic) orErr "Wiki topic not found"
+      w <- Wikis.findById(cat,topicId) orErr "Wiki topic not found"
     //      comm <- Comments.findCommentById(cid) orErr ("bad comment id?");
     //      can <- canEdit(comm, auth) orErr ("can only edit your comments")
     ) yield {

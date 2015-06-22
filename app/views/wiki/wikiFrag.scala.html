@@ -31,7 +31,7 @@ wiki fragment, used in another page
     var ocontent:Option[String] = None
     ocontent = razie.wiki.mods.WikiMods.mods.values.foldLeft(ocontent){(a,b)=> if(b.isInterested(we)) b.modPreFormat(we, a) else a}
     val x = Wikis.format(wid, we.markup, ocontent.getOrElse(""), Some(we))
-    val y = try {
+    var y = try {
       if(x contains "CANNOT PARSE") {
         val PAT = """.*PARSE\]\] \[([0-9]+)\.([0-9]+)\].*""".r
         val PAT(line, col) = x
@@ -40,7 +40,7 @@ wiki fragment, used in another page
           <small>[[Check content below at Line:$line Position:$col]]
             <p>Sorry, dumb program here! The content is not lost: try editing this topic... also, please open a support issue and copy/paste there the content.
           </small></div><p></p>""".stripMargin + s"""
-            <textarea id="$id" readonly="true" style="width:90%; margin-right:40px" rows="15">${we.content.lines.zipWithIndex.map(t=>f"${t._2+1}%3s> ${t._1}").mkString("\n")}</textarea>
+            <textarea id="$id" readonly="true" style="width:90%; margin-right:40px" rows="15">${we.included.lines.zipWithIndex.map(t=>f"${t._2+1}%3s> ${t._1}").mkString("\n")}</textarea>
          """.stripMargin
       } else {
         Wikis.divLater(x)
@@ -49,7 +49,9 @@ wiki fragment, used in another page
       case _ : Throwable => x
     }
 
-    razie.wiki.mods.WikiMods.mods.values.foldLeft(y){(a,b)=> if(b.isInterested(we)) b.modPostFormat(we, a) else a}
+    y = razie.wiki.mods.WikiMods.mods.values.foldLeft(y){(a,b)=> if(b.isInterested(we)) b.modPostFormat(we, a) else a}
+    y = Wikis(wid.getRealm).applyTemplates(wid, y, "html")
+    y
   }
 
   @one(page:Option[WikiEntry]) = {
@@ -231,14 +233,16 @@ wiki fragment, used in another page
     Multiple options:
     <ul>
     @ww.map { we =>
-      <li><a href="@controllers.Wiki.w(we.category, we.name)">@we.category @we.name</a></li>
+      <li><a href="@controllers.Wiki.w(we.wid)">@we.category @we.name</a></li>
     }
     </ul>
   }
 
 @{
   page match {
-    case Some(x) => one(w(x.category))
+    case Some(x) => {
+        one(w(x.category))
+    }
     case None => wid.cat match {
       case "any" => {
         if(ww.size >= 1) many

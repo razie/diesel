@@ -29,7 +29,7 @@ Builds an embedable map given a list of topics
       });
       google.maps.event.addListener(marker, 'click', function() {
         window.location.href = this.url;
-      });""".format(x,y,venue._2, Wiki.w("Venue", venue._3))
+      });""".format(x,y,venue._2, Wiki.w("Venue", venue._3, "rk"))
       }
       case "s" => {
         controllers.Maps.latlong(ll).map {case (x,y) =>
@@ -41,7 +41,7 @@ Builds an embedable map given a list of topics
       });
       google.maps.event.addListener(marker, 'click', function() {
         window.location.href = this.url;
-      }); """.format(x,y,venue._2, Wiki.w("Venue", venue._3))}.getOrElse("")
+      }); """.format(x,y,venue._2, Wiki.w("Venue", venue._3, "rk"))}.getOrElse("")
       }
       case _ => {
         ""

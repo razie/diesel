@@ -7,7 +7,17 @@ fragment: add more stuff to the current topic, including children, sub-topics et
 @import razie.wiki.dom.WikiDomain
 @import model.Perm
 
-@if("Category" == wid.cat && "User" != wid.name && ("WikiLink" != wid.name || user.exists(_.hasPerm(Perm.adminDb)))) {
+@allassocs(wid:WID) = @{
+  // all those I am parent to OR are children to me
+  WikiDomain(wid.getRealm).zEnds(wid.cat, "Child") :::
+  WikiDomain(wid.getRealm).aEnds(wid.cat, "Parent") :::
+  WikiDomain(wid.getRealm).assocsWhereIHaveRole(wid.cat, "Parent")
+}
+
+@if("Category" == wid.cat &&
+    "User" != wid.name &&
+    ("WikiLink" != wid.name ||
+      user.exists(_.hasPerm(Perm.adminDb)))) {
   <!-- list of pages in category -->
   @if(Wikis(wid.getRealm).pageNames(wid.name).size > 0) {
     <div class="well">
@@ -32,33 +42,41 @@ fragment: add more stuff to the current topic, including children, sub-topics et
 
   @if(!WikiDomain(wid.getRealm).needsParent(wid.name)) {
     @** see if there is an associated Template **@
-    @WikiDomain(wid.getRealm).aEnds(wid.name, "Template").headOption.map { wet =>
-      @helper.form(action=routes.Wikie.addWithSpec1(wid.name, wet, wid.getRealm), 'class->"well form-inline") {
-        <label>Create a new <a href="@wid.url">@Wikis(wid.getRealm).label(WID("Category",wid.name))</a> </label>
-        <button type="submit" class="btn btn-default">Choose template</button>
-      }
+    @WikiDomain(wid.getRealm).zEnds(wid.name, "Template").headOption.map { wet =>
+      <div class="col-sm-4">
+        @helper.form(action=routes.Wikie.addWithSpec1(wid.name, wet, wid.getRealm), 'class->"well form-inline") {
+          <label>Create a new <a href="@wid.url">@Wikis(wid.getRealm).label(WID("Category",wid.name))</a> </label>
+          <button type="submit" class="btn btn-default">Choose template</button>
+        }
+      </div>
     }
 
     @** no Template - use default **@
-    @if(WikiDomain(wid.getRealm).aEnds(wid.name, "Template").isEmpty) {
+    @if(WikiDomain(wid.getRealm).zEnds(wid.name, "Template").isEmpty) {
       @helper.form(action=routes.Wikie.addWithName(wid.name, wid.getRealm), 'class->"well form-inline") {
-        <label>Create a new <a href="@wid.url">@Wikis(wid.getRealm).label(WID("Category",wid.name))</a> </label>
+        <div class="col-sm-4">
+          <label>Create a new <a href="@wid.url">@Wikis(wid.getRealm).label(WID("Category",wid.name))</a> </label>
+        </div>
         <input type="text" class="input-xlarge" name="name" placeholder="Name">
         <button type="submit" class="btn btn-default">Now</button>
       }
     }
   }
 } else {
+  @** not a category - regular page, find possible children **@
   <!-- list of child pages -->
-  @WikiDomain(wid.getRealm).aEnds(wid.cat, "Child").map {child=>
+  @allassocs(wid).distinct.map {child=>
     @if(page.isDefined && controllers.Wiki.canEdit(wid,user,page)(IgnoreErrors)) {
       @helper.form(action=routes.Wikie.addLinked(child,wid,"Child"), 'class->"form-inline") {
-        <label>Create a <a href="/wiki/Category:@child">@Wikis.category(child).map(_.label).mkString</a> </label>
+        <div class="col-sm-4">
+          <label>Create a <a href="/wiki/Category:@child">@Wikis.category(child).map(_.label).getOrElse(child)</a> </label>
+        </div>
         <input type="text" class="input-xlarge" name="name" placeholder="Name">
-            <button type="submit" class="btn btn-xs btn-primary">Now</button>
-            <a href="/wiki/Admin:Adding_a_Child" class="btn btn-xs btn-info">?</a>
-          }
-        }
+        <button type="submit" class="btn btn-xs btn-primary">Now</button>
+        <a href="/wiki/Admin:Adding_a_Child" class="btn btn-xs btn-info">?</a>
+      }
+      <br>
+    }
 
     <!-- list of child pages -->
     @* @Wikis.linksTo(page.get.uwid, "Child").filter(_.from.cat == child).toList) { kids =>*@

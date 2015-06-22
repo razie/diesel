@@ -6,137 +6,76 @@
  */
 package controllers
 
+import admin.Config
+import mod.diesel.model.{WG}
+import mod.diesel.model.WG.WGraph
+import razie.diesel.RDOM
+import razie.wiki.{Enc, EncUrl}
 import razie.wiki.Sec.EncryptedS
 import play.api.mvc.Action
 import razie.Logging
 import razie.gg
 import org.json.JSONArray
 import razie.wiki.dom.WikiDomain
-import razie.wiki.model.{Wikis, WikiEntry}
-import razie.wiki.util.js
+import razie.wiki.model.{WID, Wikis, WikiEntry}
+import razie.js
+import razie.wiki.util.PlayTools
 import scala.collection.mutable.ListBuffer
 import org.json.JSONObject
 import scala.collection.mutable.HashMap
-
-/** graph wiki controller */
-object WG extends Logging {
-  import js._
-
-  case class WNode(we: Option[WikiEntry], iname: String = "") {
-    def name = we.map(_.name) getOrElse iname
-  }
-
-  case class WGraph(val realm:String, override val root: Int, override val nodes: Seq[WNode], override val links: Seq[(Int, Int, String)])
-    extends gg.VGraph[WNode, String](root, nodes, links) {
-
-    lazy val tosg = new gg.SGraphLike[WNode, String](this)
-
-    def tojmap = {
-      val s = new ListBuffer[Any]()
-      tosg.dag.foreachNode(
-        (x: gg.SNode[WNode, String], v: Int) => {
-          s append Map(
-            "id" -> x.value.name,
-            "name" -> x.value.name,
-            "url" -> s"http://localhost:9000/gapi/d3dom/$realm/${x.value.name}",
-            "xurl" -> s"http://localhost:9000/gapi/d3dom/$realm/${x.value.name}",
-            "links" -> x.glinks.map(l => Map(
-              "to" -> l.z.value.name,
-              "type" -> "?")).toList)
-        })
-      s.toList
-    }
-
-    import js._
-
-    def toJIT = {
-      jt(tojmap) {
-        case ("/", "xurl", u) => ("data" -> Map(
-          "$dim" -> "10",
-          "url" -> u))
-        case (path, "links", l: List[_]) => ("adjacencies" -> jt(l, path) {
-          case (_, "to", t) => ("nodeTo", t)
-          case (_, "type", t) => ("data" -> Map("weight" -> "1"))
-        })
-      }
-    }
-
-    def tod3 = {
-      // custom tree/root traversal
-      val g: gg.NoCyclesGraphLike[gg.SNode[WNode, String], gg.SLink[WNode, String]] = tosg.dag
-
-      def node(x: gg.SNode[WNode, String]): Map[String, Any] = {
-        g.collect(x, None)
-        Map(
-          "name" -> x.value.name,
-          "url" -> s"http://localhost:9000/gapi/d3dom/$realm/${x.value.name}",
-          "children" -> (x.glinks.collect {
-            case l if (!g.isNodeCollected(l.z)) => node(l.z)
-            case l if (g.isNodeCollected(l.z)) => Map("name" -> l.z.value.name)
-          }.toList))
-      }
-      jt(node(g.root)) {
-        // prune empty lists
-        case (_, "children", x: List[_]) if (x.isEmpty) => ("" -> x)
-      }
-    }
-  }
-
-  // single domain node
-  def dom1(cat: String, realm:String) = {
-    val links = for (
-      c <- Wikis(realm).category(cat).toList;
-      x <- WikiDomain(realm).gzEnds(c.name).map(t => (cat, t._1, t._2)) ::: WikiDomain(realm).gaEnds(c.name).map(t => (t._1, cat, t._2))
-    ) yield x
-    val nodes = (links.map(_._1) ::: links.map(_._2)).distinct.flatMap(t => Some(WNode(Wikis(realm).category(t), t)))
-    def n(c: String) = nodes.indexWhere(_.name == c)
-    new WGraph(realm, n(cat), nodes, links.map { t => (n(t._1), n(t._2), t._3) })
-  }
-
-  // entire domain - makes up a "Domain" node and links to all topics
-  def domain(realm:String) = {
-    val links = for (
-      c <- Wikis(realm).categories.toList;
-      x <- WikiDomain(realm).gzEnds(c.name).map(t => (c.name, t._1, t._2)) ::: WikiDomain(realm).gaEnds(c.name).map(t => (t._1, c.name, t._2))
-    ) yield x
-    val fakes = Wikis(realm).categories.toList.map(c => ("Domain", c.name, "fake"))
-    val nodes = WNode(None, "Domain") :: Wikis(realm).categories.toList.map(t => WNode(Some(t), t.name))
-    def n(c: String) = nodes.indexWhere(_.name == c)
-    new WGraph(realm, n("Domain"), nodes, (fakes ::: links).map { t => (n(t._1), n(t._2), t._3) })
-  }
-}
 
 /** graph wiki controller */
 object Gapi extends RazController with Logging {
   import play.api.libs.json._
 
   object retj {
-    def <<(x: List[Any]) = Ok(js.tojson(x).toString).as("application/json")
-    def <<(x: Map[String, Any]) = Ok(js.tojson(x).toString).as("application/json")
+    def <<(x: List[Any]) = Ok(js.tojsons(x, 0).toString).as("application/json")
+    def <<(x: Map[String, Any]) = Ok(js.tojsons(x).toString).as("application/json")
   }
 
-  def dom(cat: String, realm:String) = Action { implicit request =>
-    retj << WG.dom1(cat, realm).tojmap
+    def AS (as:String, wg:WGraph) = as match {
+      case "d3" => retj << wg.tod3
+      case "jit" => retj << wg.toJIT
+      case "spacetree" => retj << wg.tostree
+      case _ => retj << wg.tojmap
   }
 
-  def jitdom(cat: String, realm:String) = Action { implicit request =>
-    retj << WG.dom1(cat, realm).toJIT
+  def fromCat(realm: String, cat:String, as:String) = Action { implicit request =>
+    AS(as, WG.fromCat(cat, realm))
   }
 
-  def d3dom(cat: String, realm:String) = Action { implicit request =>
-    retj << WG.dom1(cat, realm).tod3
+  def fromRealm(realm:String, as:String) = Action { implicit request =>
+    AS(as, WG.fromRealm(realm))
   }
 
-  def domain(realm:String) = Action { implicit request =>
-    retj << WG.domain(realm).tojmap
+  def fromWpathYuml(wpath:String, as:String) = Action { implicit request =>
+    val wid = WID.fromPath(wpath).get
+    val page = wid.page.get
+    val rdom = WikiDomain.domFrom(page).get.revise
+
+    var s = rdom.classes.values.map{c=> "["+c.name+
+      (if(c.parms.size>0) "|"+c.parms.map{p=>p.name}.mkString(";") else "")+
+      (if(c.methods.size>0) "|"+c.methods.map{p=>p.name+"()"}.mkString(";") else "")+
+      "]"}.mkString(", ") +
+      (if(rdom.assocs.size>0) (", " + rdom.assocs.map{a=>
+      "["+a.a+"]" + "++-0..*>"+"["+a.z+"]"
+    }.mkString(", ")) else "")
+
+    val u = "http://yuml.me/diagram/plain/class/"+Enc.toUrl(s)
+    Ok(s+"<br>http://yuml.me/diagram/plain/class/"+Enc.toUrl(s)+s"""<br><img src="$u"/>""").as("text/html")
+    Redirect(u)
   }
 
-  def jitdomain(realm:String) = Action { implicit request =>
-    retj << WG.domain(realm).toJIT
+  def fromWpath(wpath:String, as:String) = Action { implicit request =>
+    AS(as, WG.rdomain(wpath))
   }
 
-  def d3domain(realm:String) = Action { implicit request =>
-    retj << WG.domain(realm).tod3
+  def rdomain(realm:String) = Action { implicit request =>
+    retj << WG.rdomain(realm).tojmap
+  }
+
+  def reactordomain(realm:String) = Action { implicit request =>
+    retj << WG.rdomain(realm).tojmap
   }
 
   def wp1(topic: String, realm:String) = Action { implicit request =>
@@ -160,17 +99,27 @@ object Gapi extends RazController with Logging {
     Ok(js.tojson(g).toString).as("application/json")
   }
 
-  def g(g: String, url: String) = Action { implicit request =>
+  def g(g: String, iurl: String) = Action { implicit request =>
+
+    val url =
+      if(iurl startsWith "http") iurl
+      else if(Config.isLocalhost) "http://"+Config.hostport+iurl
+      else "http://" + PlayTools.getHost.mkString + iurl
+
     g match {
       case "g1" => Ok(views.html.gv.g1(url, auth))
       case "g2" => Ok(views.html.gv.g2(url, auth))
       case "g3" => Ok(views.html.gv.g3(url, auth))
+      case "spacetree" => Ok(views.html.gv.spacetree(url, auth))
+      case "domA" =>  Ok(WikiDomain(url).rdom.toString).as("application/json")
       case _ => Ok(s"UHHHHHHHH no such thing: $g")
     }
   }
 
+  /** URL is /gapi/demo */
   def demo = Action { implicit request =>
     Ok(views.html.gv.demo())
   }
+
 
 }

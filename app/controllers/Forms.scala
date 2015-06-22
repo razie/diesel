@@ -164,12 +164,19 @@ object Forms extends WikiBase with Logging {
     }
 
   /** save the form and possibly change status: submit/reject/accept */
-  def doeSubmit(iwid: WID) = Action { implicit request =>
+  def doeSubmit(iwid: WID) = Action.async { implicit request =>
+    if(iwid.cat.contains("DslEntity"))
+      doeSubmit2(iwid).apply(request)
+    else
+      doeSubmitOld(iwid).apply(request)
+  }
+
+  def doeSubmitOld(iwid: WID) = Action { implicit request =>
     implicit val errCollector = new VErrors()
 
     val cat = iwid.cat
     val name = Wikis.formatName(iwid)
-    val wid = WID(cat, name)
+    val wid = WID(cat, name).r(iwid.getRealm)
 
     val data = request.body.asFormUrlEncoded
     val data2 = data.map(_.collect { case (k, v :: r) => (k, v) }).get // somehow i get list of values?
@@ -185,6 +192,108 @@ object Forms extends WikiBase with Logging {
           can <- canEdit(wid, auth, Some(w));
           r1 <- au.hasPerm(Perm.uWiki) orCorr cNoPermission;
           club <- Club.findForReviewer(au);
+          hasQuota <- (au.isAdmin || au.quota.canUpdate) orCorr cNoQuotaUpdates;
+          isFormData <- (w.content.contains("section:formData}}") orErr "Not a form")
+        ) yield {
+            val (newData, errors) = wf.validate(data2)
+
+            // validation also cleans up the data, of symbols, tabs etc
+            val newVer = w.cloneNewVer(w.label, w.markup, wf.mkContent(json(Map() ++ newData, !errors.isEmpty)), au._id)
+
+            if (!errors.isEmpty) {
+              // render erors
+              clog << "Wiki.FORM.Errors: " + errors.toString
+              cout << "new content:" + newVer.content
+              newVer.preprocessed
+              Wiki.showForm(wid, None, Some(newVer), Some(au), false, Map() ++ errors, can)
+            } else {
+              // save the wiki page?
+              val upd = WikiObservers.entityUpdateBefore(newVer, WikiEntry.UPD_CONTENT) orErr ("Not allowerd")
+
+              var we = newVer
+              razie.db.tx("forms.submitted") { implicit txn =>
+                w.update(we, Some("form_submitted"))
+                WikiObservers.entityUpdateAfter(we, WikiEntry.UPD_CONTENT)
+                act.WikiWf.event("wikiFormSubmit", Map("wpath" -> we.wid.wpath, "userName" -> au.userName))
+                WikiObservers.entityUpdateAfter(we, WikiEntry.UPD_CONTENT)
+                Emailer.withSession { implicit mailSession =>
+                  //                    au.quota.incUpdates
+                  au.shouldEmailParent("Everything").map(parent => Emailer.sendEmailChildUpdatedWiki(parent, au, WID(w.category, w.name)))
+
+                  if (data2.contains("submit_button")) {
+                    SendEmail.withSession { implicit mailSession =>
+                      //                  cout << Regs.findWid(wid)
+                      //                  cout << Regs.findWid(wid).flatMap(x => Users.findUserByUsername(x.clubName))
+                      //                  cout << Regs.findWid(wid).flatMap(x => Users.findUserByUsername(x.clubName)).map(Club(_).regAdmin)
+                      Regs.findWid(wid).flatMap(x => Users.findUserByUsername(x.clubName)).map(Club(_).regAdmin).foreach { reviewer =>
+                        Emailer.sendEmailFormSubmitted(reviewer, au, Wiki.w(wid.wpath))
+                      }
+                    }
+                  } else if (data2.contains("approve_button")) {
+                    // if all forms in a registration are good, change status
+                    // TODO optimize this
+                    for (
+                      r <- club.reg(wid);
+                      owner <- w.owner
+                    ) {
+                      cdebug << r.wids.filter(_.page.flatMap(_.form.formState).exists(_ == FormStatus.APPROVED)).size
+                      if (r.wids.filter(_.page.flatMap(_.form.formState).exists(_ == FormStatus.APPROVED)).size == r.wids.size) {
+                        r.updateRegStatus(RegStatus.ACCEPTED)
+                        SendEmail.withSession { implicit mailSession =>
+                          Emailer.sendEmailFormsAccepted(au, owner.asInstanceOf[User], r.clubName, club.msgFormsAccepted)
+                        }
+                      }
+                    }
+                    // TODO send email with accepted
+                    1 // TODO send email with reg. current
+                  } else if (data2.contains("reject_button")) {
+                    SendEmail.withSession { implicit mailSession =>
+                      w.owner.foreach { owner =>
+                        club.reg(wid).foreach { r =>
+                          Emailer.sendEmailFormRejected(au, owner.asInstanceOf[User], r.clubName, routes.Club.doeClubUserReg(r._id.toString).toString, data2.get("formRejected").getOrElse("Something's wrong...?"))
+
+                          // if it was ok and one rejected, then reset status of the entire reg to pending
+                          if (r.regStatus != RegStatus.PENDING && r.wids.filter(_.page.flatMap(_.form.formState).exists(_ == FormStatus.APPROVED)).size != r.wids.size)
+                            r.updateRegStatus(RegStatus.PENDING)
+                        }
+                      }
+                    }
+                  }
+                }
+
+                WikiAudit("EDIT_FORM", w.wid.wpath, Some(au._id)).create
+              }
+              Redirect(controllers.Wiki.w(we.wid, true)).flashing("count" -> "0")
+            }
+          }) getOrElse
+          unauthorized("?")
+      case None =>
+        noPerm(wid, "HACK_SAVEEDIT")
+    }
+  }
+
+  /** new clean version, without Reg */
+  def doeSubmit2(iwid: WID) = Action { implicit request =>
+    implicit val errCollector = new VErrors()
+
+    val cat = iwid.cat
+    val name = Wikis.formatName(iwid)
+    val wid = WID(cat, name)
+
+    val data = request.body.asFormUrlEncoded
+    val data2 = data.map(_.collect { case (k, v :: r) => (k, v) }).get // somehow i get list of values?
+
+    // TODO this is copy paste from def save
+    clog << "Wiki.FORM.save2 " + wid
+
+    Wikis.find(wid) match {
+      case Some(w) =>
+        val wf = new WForm(w)
+        (for (
+          au <- activeUser;
+          can <- canEdit(wid, auth, Some(w));
+          r1 <- au.hasPerm(Perm.uWiki) orCorr cNoPermission;
+//          club <- Club.findForReviewer(au);
           hasQuota <- (au.isAdmin || au.quota.canUpdate) orCorr cNoQuotaUpdates;
           isFormData <- (w.content.contains("section:formData}}") orErr "Not a form")
         ) yield {
@@ -222,35 +331,8 @@ object Forms extends WikiBase with Logging {
                       Emailer.sendEmailFormSubmitted(reviewer, au, Wiki.w(wid.wpath))
                     }
                   }
-                } else if (data2.contains("approve_button")) {
-                  // if all forms in a registration are good, change status
-                  // TODO optimize this
-                  for (
-                    r <- club.reg(wid);
-                    owner <- w.owner
-                  ) {
-                    cdebug << r.wids.filter(_.page.flatMap(_.form.formState).exists(_ == FormStatus.APPROVED)).size
-                    if (r.wids.filter(_.page.flatMap(_.form.formState).exists(_ == FormStatus.APPROVED)).size == r.wids.size) {
-                      r.updateRegStatus(RegStatus.ACCEPTED)
-                      SendEmail.withSession { implicit mailSession =>
-                        Emailer.sendEmailFormsAccepted(au, owner.asInstanceOf[User], r.clubName, club.msgFormsAccepted)
-                      }
-                    }
-                  }
-                  // TODO send email with accepted
-                  1 // TODO send email with reg. current
-                } else if (data2.contains("reject_button")) {
-                  SendEmail.withSession { implicit mailSession =>
-                    w.owner.foreach { owner =>
-                      club.reg(wid).foreach { r =>
-                        Emailer.sendEmailFormRejected(au, owner.asInstanceOf[User], r.clubName, routes.Club.doeClubUserReg(r._id.toString).toString, data2.get("formRejected").getOrElse("Something's wrong...?"))
-
-                        // if it was ok and one rejected, then reset status of the entire reg to pending
-                        if (r.regStatus != RegStatus.PENDING && r.wids.filter(_.page.flatMap(_.form.formState).exists(_ == FormStatus.APPROVED)).size != r.wids.size)
-                          r.updateRegStatus(RegStatus.PENDING)
-                      }
-                    }
-                  }
+                } else {
+                  throw new IllegalArgumentException("")
                 }
               }
 
@@ -261,7 +343,53 @@ object Forms extends WikiBase with Logging {
         }) getOrElse
           unauthorized("?")
       case None =>
-        noPerm(wid, "HACK_SAVEEDIT")
+        val w = new WikiEntry(data2("category"), data2("name"), data2("category") + " - " +data2("name"), "md", data2("content"), auth.get._id, Seq(data2("tags")), data2("realm"))
+        val wf = new WForm(w)
+        (for (
+          au <- activeUser;
+          can <- canEdit(wid, auth, Some(w));
+          r1 <- au.hasPerm(Perm.uWiki) orCorr cNoPermission;
+          //          club <- Club.findForReviewer(au);
+          hasQuota <- (au.isAdmin || au.quota.canUpdate) orCorr cNoQuotaUpdates;
+          isFormData <- (w.content.contains("section:formData}}") orErr "Not a form")
+        ) yield {
+            val (newData, errors) = wf.validate(data2 - "content")
+
+            // validation also cleans up the data, of symbols, tabs etc
+            val newVer = w.cloneNewVer(w.label, w.markup, wf.mkContent(json(Map() ++ newData, !errors.isEmpty)), au._id)
+
+            if (!errors.isEmpty) {
+              // render erors
+              clog << "Wiki.FORM.Errors: " + errors.toString
+              cout << "new content:" + newVer.content
+              newVer.preprocessed
+              Wiki.showForm(wid, None, Some(newVer), Some(au), false, Map() ++ errors, can)
+            } else {
+              // save the wiki page?
+              val upd = WikiObservers.entityUpdateBefore(newVer, WikiEntry.UPD_CONTENT) orErr ("Not allowerd")
+
+              var we = newVer
+              razie.db.tx("forms.submitted") { implicit txn =>
+                we.create
+                WikiObservers.entityUpdateAfter(we, WikiEntry.UPD_CONTENT)
+                act.WikiWf.event("wikiFormSubmit", Map("wpath" -> we.wid.wpath, "userName" -> au.userName))
+                WikiObservers.entityUpdateAfter(we, WikiEntry.UPD_CONTENT)
+                Emailer.withSession { implicit mailSession =>
+                  //                    au.quota.incUpdates
+                  au.shouldEmailParent("Everything").map(parent => Emailer.sendEmailChildUpdatedWiki(parent, au, WID(w.category, w.name)))
+
+                  if (data2.contains("submit_button")) {
+                  } else {
+                    throw new IllegalArgumentException("")
+                  }
+                }
+
+                WikiAudit("EDIT_FORM", w.wid.wpath, Some(au._id)).create
+              }
+              Redirect(controllers.Wiki.w(we.wid, true)).flashing("count" -> "0")
+            }
+          }) getOrElse
+          unauthorized("?")
     }
   }
 

@@ -1,0 +1,19 @@
+@**
+screen to admin one user
+**@
+@(content: =>Html)(implicit stok: controllers.StateOk)
+
+@htmlHeadBar(stok._title, stok.au)
+
+<div class="container">
+
+  <h2>User</h2>
+
+  @content
+
+  @htmlFooter(false, false, stok.realm, stok.request)
+
+</div> <!-- /container -->
+
+@htmlBottom(false, stok.request)
+

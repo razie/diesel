@@ -45,7 +45,7 @@
     <link href="@routes.Assets.at("bootstrap-3.3.4/css/bootstrap.css")" rel="stylesheet">
     <link href="@routes.Assets.at("bootstrap-3.3.4/css/bootstrap-theme.css")" rel="stylesheet">
     <link href="@routes.Assets.at("bootstrap-3.3.4/css/bootstrap-light.css")" rel="stylesheet">
-    @if(Config.theme.contains("dark")) {
+    @if(Config.getTheme(au, request).contains("dark")) {
       <link href="@routes.Assets.at("bootstrap-3.3.4/css/bootstrap-"+css+".css")" rel="stylesheet">
     }
 
@@ -134,16 +134,46 @@ li.g-like{
 }
 </style>
 
+@if(_root_.admin.Config.isLocalhost) {
+  <script type="text/javascript">
+  var tstamp = @System.currentTimeMillis();
+  setInterval(function(){
+    $.get("/razadmin/ping/shouldReload", function( data ) {
+      if(data > tstamp) {
+        tstamp = data;
+        console.log("reloading...");
+        location.reload();
+      } else {
+//        console.log("ping... "+data);
+      }
+    });
+  },2000);
+</script>
+}
+
 @if(_root_.admin.Config.analytics) {
   <script type="text/javascript">
   var xrazprop = (function() {
     var xp = {};
 
+@**
+    @model.Website.all.map{w=>
+      @w.prop("analyticsId").map{t=>
+        xp['@w.url'] = '@t';
+      }
+    }
+**@
+
+    @request.flatMap(model.Website.apply(_)).flatMap(_.prop("analyticsId")).map{t=>
+      return '@t';
+    }.getOrElse{
     @Config.config("analytics").toList.flatMap(_.toSeq).map {t=>
       xp['@t._1'] = '@t._2';
     }
 
     return xp[document.location.hostname] || 'UA-31808405-1';
+    }
+
 })();
 
     @** this is from google analytics tracking adsense from adsense integration **@

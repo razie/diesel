@@ -80,6 +80,7 @@ object Perm {
   val Basic = Perm("Basic") // paid account
   val Gold = Perm("Gold") // paid account
   val Platinum = Perm("Platinum") // paid account
+  val Moderator = Perm("Moderator") // paid account
 
   implicit def tos(p: Perm): String = p.s
 
@@ -87,7 +88,7 @@ object Perm {
   // TODO - remove the old perms from this list at some point
   val all: Seq[String] = Seq(adminDb, adminWiki, uWiki, uProfile, eVerified, apiCall, codeMaster,
     "cCategory", "uCategory", "uReserved",
-    Basic, Gold, Platinum
+    Basic, Gold, Platinum, Moderator
   )
 }
 

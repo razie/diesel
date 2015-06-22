@@ -6,7 +6,6 @@
  */
 package model
 
-import mod.diesel.model.{DReactors}
 import org.bson.types.ObjectId
 import razie.{cdebug, cout, clog}
 import scala.collection.mutable.ListBuffer
@@ -15,7 +14,6 @@ import scala.util.matching.Regex.Match
 import scala.util.parsing.combinator.RegexParsers
 import scala.Option.option2Iterable
 import scala.collection.mutable
-import model.dom.WikiDomainParser
 import razie.wiki.parser.WAST
 import razie.wiki.parser.WikiParserBase
 

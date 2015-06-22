@@ -2,7 +2,7 @@
 create account
 **@
 @(myForm: Form[controllers.Profile.CrProfile], au:Option[model.User]=None)(implicit request:Request[_])
-@import _root_.admin.Config.realm
+@import model.Website.realm
 
 @salutation() = @{
   val names = Array("Hi", "Hello", "Hey", "Howdy")

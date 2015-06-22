@@ -4,7 +4,6 @@ import admin.{Config}
 import com.mongodb.casbah.Imports.wrapDBObj
 import com.novus.salat.grater
 import mod.notes.controllers
-import model.dom.DOM
 import model.{Perm, User, Users}
 import org.bson.types.ObjectId
 import org.joda.time.DateTime
@@ -15,7 +14,8 @@ import razie.wiki.Sec.EncryptedS
 import razie.wiki.admin.{Audit, SendEmail}
 import razie.wiki.model._
 import razie.wiki.parser.ParserCommons
-import razie.wiki.util.{VErrors, js}
+import razie.wiki.util.{VErrors}
+import razie.js
 import razie.wiki.{Enc, Services}
 import razie.{Logging, cout}
 

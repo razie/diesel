@@ -8,7 +8,7 @@ special handlng of forms
 @label()=@{ page.flatMap(_.contentTags.get("label")).orElse(page.map(_.label)).getOrElse(razie.wiki.model.Wikis(wid.getRealm).label(wid)) }
 
 @if(!print) {
-  @htmlHeadBar(page.flatMap(_.contentTags.get("title")).getOrElse(wid.cat +": "+ page.map(_.label).getOrElse(razie.wiki.model.Wikis.label(wid))), au)
+  @htmlHeadBar(page.flatMap(_.contentTags.get("title")).getOrElse(wid.cat +": "+ page.map(_.label).getOrElse(razie.wiki.model.Wikis.label(wid))), au, wid.getRealm)
 } else {
   //no bar
   @htmlHead(page.flatMap(_.contentTags.get("title")).getOrElse(wid.cat +": "+ page.map(_.label).getOrElse(razie.wiki.model.Wikis.label(wid))), Some("light"))(Map.empty, au)

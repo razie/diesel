@@ -4,6 +4,7 @@ import model.Website
 import play.api.mvc.Action
 import razie.wiki.admin.{WikiRefinery, WikiRefined}
 import razie.wiki.mods.{WikiMods, WikiMod}
+import razie.wiki.parser.WAST
 import razie.wiki.util.{IgnoreErrors, VErrors}
 import views.html.modules.book.{viewSections, prevNext, viewProgress}
 
@@ -34,7 +35,7 @@ case class TopicList (
 
   def this (ownerTopic:UWID) = this (ownerTopic, {
     val wid = ownerTopic.wid.get
-    val res = Wikis.preprocess(wid, "md", wid.content.get).fold(None)
+    val res = Wikis.preprocess(wid, "md", wid.content.get).fold(WAST.context(None))
     res.ilinks.filter(_.role.exists(_ == "step")).flatMap(_.wid.uwid).toSeq
   })
 
@@ -318,13 +319,13 @@ object Progress extends RazController with WikiMod {
   CodePills.add("mod.progress/sections") {implicit request=>
     implicit val errCollector = new VErrors()
     val q = request.queryString.map(t=>(t._1, t._2.mkString))
-    val pathway = q("pathway")
-    val sec = q("section")
     val all = q.getOrElse("all", "no")
 
     (for (
-      au <- activeUser;
-      isA <- checkActive(au)
+      au      <- activeUser;
+      isA     <- checkActive(au);
+      pathway <- q.get("pathway") orErr "missing pathway";
+      sec     <- q.get("section") orErr "missing section"
     ) yield {
         val path = pathway.split("/")
         val pwid = WID.fromPath(path(0)).get.r(Website.realm)
@@ -340,13 +341,14 @@ object Progress extends RazController with WikiMod {
                 viewSections(sec, p, tl, pathway)
             }
           }) getOrElse unauthorized("oops")
-      }) getOrElse unauthorized("You need a free account to track your progress.")
+      }) getOrElse unauthorized("You need a free account to track your progress. ")
   }
 
   CodePills.add("api/wix/realm/count") {implicit request=>
     implicit val errCollector = new VErrors()
     api.wix.init(None, auth, Map.empty, Website.realm)
-    Ok(api.wix.realm.count.toString)
+    Ok(api.wix.realm.count.toString).withHeaders("Access-Control-Allow-Origin" -> "*")
+    // allow is for cross-site scripting
     }
 
   def modName:String = "mod.progress"

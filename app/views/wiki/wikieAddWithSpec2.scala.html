@@ -1,11 +1,12 @@
 @****************
 create new page given a template
 ****************@
-@(cat:String, name:String, formWid:razie.wiki.model.WID, torspec:String, realm:String, au:Option[model.User], errors:Map[String,String])
+@(cat:String, name:String, formWid:razie.wiki.model.WID, formPage:Option[razie.wiki.model.WikiEntry], torspec:String, realm:String, au:Option[model.User], errors:Map[String,String])
 @import razie.wiki.util.IgnoreErrors
 @import razie.wiki.model.Wikis
 
 @htmlHeadBar("Create new with template", au)
+
 
 <div class="container">
     <div class="row">
@@ -16,17 +17,22 @@ create new page given a template
             <p>Fill in the required attributes below.</p>
 
             @helper.form(action=routes.Wikie.addWithSpec(cat, name, formWid.wpath, torspec:String, realm), 'class->"well form-inline") {
-                @if(!formWid.page.exists(_.form.fields.contains("name"))) {
+
+                @if(!formPage.exists(_.form.fields.contains("name"))) {
                     @Wikis(realm).category(cat).flatMap(_.contentTags.get("label.createWithTemplate")).getOrElse {
+                        @if(cat == "Reactor") {
                         Use
                         a simple punchy single word, like "<b>mysite</b>" - your new website will be
                         available at <b><small>http://mysite.wikireactor.com</small></b>
+                        } else {
+                            Give it a name...
+                        }
                     }
                     <p></p><p>Name: <input type="text" class="" name="name" placeholder="Name" value="@name">
                     <hr><p>More particulars:</p>
                 }
 
-                @wiki.wikiFormInt(formWid, Some(name), None, au, errors, false, false, true)
+                @wiki.wikiFormInt(formWid, Some(name), formPage, au, errors, false, false, true)
 
                 <button type="submit" class="btn btn-default">Create Now!</button>
             }

@@ -20,7 +20,7 @@ select module to add to reactor
             @* mod tempaltes that are not there already *@
            @defining(razie.wiki.model.Wikis.dflt.pages(CAT).filter(x=> !razie.wiki.model.Wikis(realm).pageNames(CATINST).contains(x.name))) {list=>
                    @if(list.isEmpty) {
-                       No more mods available... <a href="@controllers.Wiki.w("Admin", "Creating Reactor Mods")">create one!</a>
+                       No more mods available... <a href="@controllers.Wiki.w("Admin", "Creating Reactor Mods", "wiki")">create one!</a>
                    }
            @list.map {we =>
                <a href="@routes.Realm.addMod2(we.wid.wpath, realm)" style="text-decoration:none">

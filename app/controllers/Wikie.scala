@@ -9,12 +9,14 @@ package controllers
 import admin.{Config}
 import com.mongodb.casbah.Imports._
 import com.typesafe.config.{ConfigObject, ConfigValue}
+import mod.diesel.model.Diesel
 import model.{UserWiki, User, Users, Perm}
 import org.bson.types.ObjectId
 import org.joda.time.DateTime
 import razie.wiki.Enc
 import razie.wiki.admin.{WikiObservers, SendEmail, MailSession, Audit}
 import razie.wiki.dom.WikiDomain
+import razie.wiki.parser.WAST
 import razie.wiki.util.{Corr, PlayTools, VErrors}
 import razie.{clog, cdebug}
 import scala.Array.canBuildFrom
@@ -44,7 +46,7 @@ class WikieBase extends WikiBase {
   val editForm = Form {
     mapping(
       "label" -> nonEmptyText.verifying(vPorn, vSpec),
-      "markup" -> nonEmptyText.verifying("Unknown!", Wikis.markups.contains(_)),
+      "markup" -> nonEmptyText.verifying("Unknown!", {x:String=> Wikis.markups.contains(x)}),
       "content" -> nonEmptyText,
       "visibility" -> nonEmptyText,
       "wvis" -> nonEmptyText,
@@ -122,7 +124,9 @@ object Wikie extends WikieBase {
     (for (
       cat <- request.queryString.get("cat").flatMap(_.headOption);
       name <- request.queryString.get("name").flatMap(_.headOption)
-    ) yield wikieEdit(WID(cat, name)).apply(request).value.get.get) getOrElse {
+    ) yield {
+          wikieEdit(WID(cat, name)).apply(request).value.get.get
+      }) getOrElse {
       error("ERR_HACK Wiki.email2")
       Unauthorized("Oops - cannot create this link... " + errCollector.mkString)
     }
@@ -144,12 +148,24 @@ object Wikie extends WikieBase {
           hasQuota <- (au.isAdmin || au.quota.canUpdate) orCorr cNoQuotaUpdates;
           r1 <- au.hasPerm(Perm.uWiki) orCorr cNoPermission("uWiki")
         ) yield {
-          Ok(views.html.wiki.wikiEdit(w.wid, editForm.fill(
+            if(w.markup == Wikis.JS || w.markup == Wikis.JSON || w.markup == Wikis.SCALA)
+              Ok(views.html.wiki.wikiEditJS(w.wid,
+                Map.empty,
+                editForm.fill(
+              EditWiki(w.label,
+                w.markup,
+                w.content,
+                w.props.get("visibility").orElse(Reactors(wid.getRealm).props.prop("default.visibility")).getOrElse(PUBLIC),
+                wvis(Some(w.props)).orElse(Reactors(wid.getRealm).props.prop("default.wvis")).getOrElse(PUBLIC),
+                w.tags.mkString(","),
+                w.props.get("draft").getOrElse("Notify"))),
+              Some(au)))
+          else Ok(views.html.wiki.wikiEdit(w.wid, editForm.fill(
             EditWiki(w.label,
               w.markup,
               w.content,
-              (w.props.get("visibility").getOrElse(PUBLIC)),
-              wvis(Some(w.props)).getOrElse(PUBLIC),
+              w.props.get("visibility").orElse(Reactors(wid.getRealm).props.prop("default.visibility")).getOrElse(PUBLIC),
+              wvis(Some(w.props)).orElse(Reactors(wid.getRealm).props.prop("default.wvis")).getOrElse(PUBLIC),
               w.tags.mkString(","),
               w.props.get("draft").getOrElse("Notify"))),
             Some(au)))
@@ -160,18 +176,18 @@ object Wikie extends WikieBase {
         (for (
           can <- canEdit(wid, Some(au), None, parentProps);
           r3 <- ("any" != wid.cat) orErr ("can't create in category any");
-          w <- Wikis(wid.getRealm).category(wid.cat) orErr (s"cannot find the category ${wid.cat} realm ${wid.getRealm}");
+          w <- WikiDomain(wid.getRealm).rdom.classes.get(wid.cat) orErr (s"cannot find the category ${wid.cat} realm ${wid.getRealm}");
           r1 <- au.hasPerm(Perm.uWiki) orCorr cNoPermission("uWiki")
         ) yield {
           Audit.missingPage("wiki " + wid);
 
           // try to parse the name for tags - then add them to the content
-          val preprocessed = Wikis.preprocess(wid, Wikis.MD, wid.name).fold(None)
+          val preprocessed = Wikis.preprocess(wid, Wikis.MD, wid.name).fold(WAST.context(None))
           val tags = preprocessed.tags
           val contentFromTags = tags.foldLeft("") { (x, t) => x + "{{" + t._1 + ":" + t._2 + "}}\n\n" }
 
-          val visibility = wid.findParent.flatMap(_.props.get("visibility")).getOrElse(Wikis.visibilityFor(wid.cat).headOption.getOrElse(PUBLIC))
-          val wwvis = wvis(wid.findParent.map(_.props)).getOrElse(Wikis.visibilityFor(wid.cat).headOption.getOrElse(PUBLIC))
+          val visibility = wid.findParent.flatMap(_.props.get("visibility")).orElse(Reactors(wid.getRealm).props.prop("default.visibility")).getOrElse(Reactors(wid.getRealm).wiki.visibilityFor(wid.cat).headOption.getOrElse(PUBLIC))
+          val wwvis = wvis(wid.findParent.map(_.props)).orElse(Reactors(wid.getRealm).props.prop("default.wvis")).getOrElse(Reactors(wid.getRealm).wiki.visibilityFor(wid.cat).headOption.getOrElse(PUBLIC))
 
           Ok(views.html.wiki.wikiEdit(wid, editForm.fill(
             EditWiki(wid.name.replaceAll("_", " "),
@@ -212,6 +228,11 @@ object Wikie extends WikieBase {
   def setContent(wid: WID) = FAU {
     implicit au => implicit errCollector => implicit request =>
 
+      def fromJ (s:String) = {
+        val dbo = com.mongodb.util.JSON.parse(s).asInstanceOf[DBObject];
+        Some(grater[WikiEntry].asObject(dbo))
+      }
+
       val data = PlayTools.postData
 
       log("Wiki.setContent " + wid)
@@ -220,10 +241,11 @@ object Wikie extends WikieBase {
           (for (
             can <- canEdit(wid, auth, Some(w));
             r1 <- au.hasPerm(Perm.uWiki) orCorr cNoPermission("uWiki");
-            co <- data.get("content");
+            wej <- data.get("we");
+            remote <- fromJ (wej);
             hasQuota <- (au.isAdmin || au.quota.canUpdate) orCorr cNoQuotaUpdates;
-            nochange <- (w.content != co) orErr ("no change");
-            newVer <- Some(w.copy(content=co, ver=w.ver+1, updDtm=DateTime.now));
+            nochange <- (w.content != remote.content) orErr ("no change");
+            newVer <- Some(w.copy(content=remote.content, ver=w.ver+1, updDtm=remote.updDtm));
             upd <- WikiObservers.entityUpdateBefore(newVer, WikiEntry.UPD_CONTENT) orErr ("Not allowerd")
           ) yield {
             var we = newVer
@@ -249,11 +271,6 @@ object Wikie extends WikieBase {
           }) getOrElse
             Unauthorized("oops - " + errCollector.mkString)
         case None => {
-          def fromJ (s:String) = {
-            val dbo = com.mongodb.util.JSON.parse(s).asInstanceOf[DBObject];
-            Some(grater[WikiEntry].asObject(dbo))
-          }
-
           (for (
             r1 <- au.hasPerm(Perm.uWiki) orCorr cNoPermission("uWiki");
             hasQuota <- (au.isAdmin || au.quota.canUpdate) orCorr cNoQuotaUpdates;
@@ -293,7 +310,12 @@ object Wikie extends WikieBase {
     editForm.bindFromRequest.fold(
     formWithErrors => {
       log(formWithErrors.toString)
-      BadRequest(views.html.wiki.wikiEdit(wid, formWithErrors, auth))
+      val markup = formWithErrors("markup").value.mkString
+      if(Wikis.markups.isDsl(markup))
+        //todo mod/plugin/factory for these views to allow future languages
+        BadRequest(views.html.wiki.wikiEditJS(wid, Map.empty, formWithErrors, auth))
+      else
+        BadRequest(views.html.wiki.wikiEdit(wid, formWithErrors, auth))
     },
     {
       case we @ EditWiki(l, m, co, vis, wvis, tags, notif) => {
@@ -305,9 +327,9 @@ object Wikie extends WikieBase {
               can <- canEdit(wid, auth, Some(w));
               r1 <- au.hasPerm(Perm.uWiki) orCorr cNoPermission("uWiki");
               hasQuota <- (au.isAdmin || au.quota.canUpdate) orCorr cNoQuotaUpdates;
-              nochange <- (w.label != l || w.markup != m || w.content != co || (
-                w.props.get("visibility").map(_ != vis).getOrElse(vis != PUBLIC) ||
-                  w.props.get("wvis").map(_ != wvis).getOrElse(wvis != PUBLIC)) ||
+              nochange <- (w.label != l || w.markup != m || w.content != co ||
+                (!w.props.get("visibility").exists(_ == vis)) ||
+                (!w.props.get("wvis").exists(_ == wvis)) ||
                 w.props.get("draft").map(_ != notif).getOrElse(false) ||
                 w.tags.mkString(",") != tags) orErr ("no change");
               newlab <- Some(if ("WikiLink" == wid.cat || "User" == wid.cat) l else if (wid.name == Wikis.formatName(l)) l else w.label);
@@ -317,9 +339,9 @@ object Wikie extends WikieBase {
               var we = newVer
 
               // visibility?
-              if (we.props.get("visibility").map(_ != vis).getOrElse(vis != PUBLIC))
+              if (! we.props.get("visibility").exists(_ == vis))
                 we = we.cloneProps(we.props ++ Map("visibility" -> vis), au._id)
-              if (we.props.get("wvis").map(_ != wvis).getOrElse(wvis != PUBLIC))
+              if (! we.props.get("wvis").exists(_ == wvis))
                 we = we.cloneProps(we.props ++ Map("wvis" -> wvis), au._id)
 
               val shouldPublish =
@@ -367,7 +389,7 @@ object Wikie extends WikieBase {
               can <- canEdit(wid, auth, None, parentProps);
               hasQuota <- (au.isAdmin || au.quota.canUpdate) orCorr cNoQuotaUpdates;
               r3 <- ("any" != wid.cat) orErr ("can't create in category any");
-              w <- Wikis(wid.getRealm).category(wid.cat) orErr (s"cannot find the category ${wid.cat} realm ${wid.getRealm}");
+              w <- WikiDomain(wid.getRealm).rdom.classes.get(wid.cat) orErr (s"cannot find the category ${wid.cat} realm ${wid.getRealm}");
               r1 <- (au.hasPerm(Perm.uWiki)) orCorr cNoPermission("uWiki")
             ) yield {
               //todo find the right realm from the url or something like Config.realm
@@ -391,10 +413,8 @@ object Wikie extends WikieBase {
               }
 
               // visibility?
-              if (vis != PUBLIC)
-                we = we.cloneProps(we.props ++ Map("visibility" -> vis), au._id)
-              if (wvis != "Public")
-                we = we.cloneProps(we.props ++ Map("wvis" -> wvis), au._id)
+              we = we.cloneProps(we.props ++ Map("visibility" -> vis), au._id)
+              we = we.cloneProps(we.props ++ Map("wvis" -> wvis), au._id)
               if (notif == "Draft")
                 we = we.cloneProps(we.props ++ Map("draft" -> notif), au._id)
 
@@ -500,10 +520,11 @@ object Wikie extends WikieBase {
     formWithErrors => Msg2("Oops, can't add that name!" + formWithErrors, Some("/wiki/" + cat)),
     {
       case name: String => {
-        WikiDomain(realm).aEnds(cat, "Template").headOption.map { t =>
+        WikiDomain(realm).zEnds(cat, "Template").headOption.map { t =>
           Ok(views.html.wiki.wikieAddWithSpec(cat, name, "Template", t, realm, auth))
         } orElse
-        WikiDomain(realm).aEnds(cat, "Spec").headOption.map { t =>
+//          WikiDomain(realm).zEnds(cat, "Spec").headOption.map { t =>
+        WikiDomain(realm).assocsWhereTheyHaveRole(cat, "Spec").headOption.map { t =>
           Ok(views.html.wiki.wikieAddWithSpec(cat, name, "Spec", t, realm, auth))
         } getOrElse
           Redirect(routes.Wikie.wikieEdit(WID(cat, name).r(realm)))
@@ -545,7 +566,11 @@ object Wikie extends WikieBase {
       WID.fromPath(templateWpath).flatMap(_.page).map { tpage =>
         // if there is a section called "form", use that WID
         val wid = tpage.sections.find(_.name == "form").map(_.wid).getOrElse(tpage.wid)
-        Ok(views.html.wiki.wikieAddWithSpec2(cat, name, wid, torspec, realm, auth, Map.empty))
+        // either make from DOM or use
+        val formPage =
+          if(WikiDomain(realm).isWikiCategory(cat)) wid.page
+          else Some(Diesel.mkFormDef(realm, WikiDomain(realm).rdom.classes.get(cat).get, "temp", au))
+        Ok(views.html.wiki.wikieAddWithSpec2(cat, name, wid, formPage, torspec, realm, auth, Map.empty))
       } getOrElse
         Msg2(s"Can't find template [[$templateWpath]]")
   }
@@ -598,11 +623,13 @@ object Wikie extends WikieBase {
       if (wid.cat != "Club") canDelete(wid).collect {
         case (au, w) if wid.cat == "Reactor" => {
           var count = 0
+          val realm = wid.name
           razie.db.tx("Wiki.delete") { implicit txn =>
             RMany[WikiEntry]("realm" -> wid.name).toList.map {we=>
               count += 1
               we.delete(au.userName)
             }
+            Reactors.reload(realm)
             cleanAuth()
           }
           Msg2(s"REACTOR DELETED forever - no way back! Deleted $count topics")
@@ -902,8 +929,7 @@ object Wikie extends WikieBase {
     (for (
       w <- Wikis(realm).findById(id)
     ) yield {
-      val parentCats1 = WikiDomain(realm).aEnds(w.wid.cat, "Parent")
-      val parentCats2 = WikiDomain(realm).zEnds(w.wid.cat, "Parent").map(_.wid.cat)
+      val parentCats1 = WikiDomain(realm).zEnds(w.wid.cat, "Parent")
       val parents = parentCats1.flatMap {c=>
         Wikis(realm).pages(c).filter(w=>canEdit(w.wid, auth, Some(w)).exists(_ == true)).map(w=>(w.uwid, w.label))
       }

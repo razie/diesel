@@ -2,15 +2,16 @@
 edit a wiki page
 **************@
 @(wid:razie.wiki.model.WID, myForm:Form[controllers.Wikie.EditWiki], au:Option[model.User])(implicit request:Request[_])
-@import _root_.admin.Config.realm
+@import model.Website.realm
 @import razie.wiki.model.{Wikis, WID, WikiEntry}
+@import razie.wiki.model.Reactors
 
 @v(name:String) = @{
   myForm(name).value.getOrElse("?")
 }
 
 @wvis() = @{
-  Wikis.visibilityFor(wid.cat) ++ (if(au.exists(_.isAdmin)) Seq("Admin") else Nil)
+  Reactors(wid.getRealm).wiki.visibilityFor(wid.cat, "wvis") ++ (if(au.exists(_.isAdmin)) Seq("Admin") else Nil)
 }
 
 @reserved(page:Option[WikiEntry]) = {
@@ -63,14 +64,14 @@ PROBLEM: many places use label as name... via Wikis.formatName
   <div class="form-group col-sm-3">
   @helper.select(
     myForm("markup"),
-    Seq("md"->"Markdown"), //razie.wiki.model.Wikis.markups.map(x=>(x,x)),
+    razie.wiki.model.Wikis.markups.list,
     '_label -> "Markup Language",
     'class -> "input-small",
     '_showConstraints -> false)
 
   @helper.select(
     myForm("visibility"),
-    razie.wiki.model.Reactors(wid.getRealm).wiki.visibilityFor(wid.cat).map(x=>(x,x)),
+    Reactors(wid.getRealm).wiki.visibilityFor(wid.cat).map(x=>(x,x)),
     '_label -> "Visibility",
     'class -> "input-small",
     '_showConstraints -> false)
@@ -107,7 +108,7 @@ PROBLEM: many places use label as name... via Wikis.formatName
      <p style="color:red;font-weight:bold">@err.message</p>
   }
 
-  <p><small>See the <a href="/wiki/Admin/Quick Guide">quick guide</a>.</small>
+  <p><small>See the <a href="/wiki/rk.Admin:Quick Guide">quick guide</a>.</small>
   <br><small>By updating this page, you agree to the <a href="@controllers.Wiki.w("Terms of Service")">Terms of Service</a></small>
   <br><small>Please do not replicate information already contained in other reference places like
       Wikipedia, just link to them. Use [[[Main_Page]]] to link to wikipedia.</small>
@@ -123,7 +124,7 @@ var dotTags = [];
 
 @Wikis(wid.getRealm).find(wid).map{we=>
   <div class="well">
-    @wiki.wikiFrag(wid,au, false, Some(we))
+      @wiki.wikiFrag(wid,au, false, Some(we))
   </div>
 }
 

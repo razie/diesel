@@ -53,7 +53,7 @@ object UserStuff extends RazController {
     WikiLink(UWID("User", new ObjectId(id)), WID(cat, name).uwid.get, "").page.map(w =>
         Wiki.show (WID("WikiLink", w.name))
       ).getOrElse(
-        Action { implicit request => Redirect (Wiki.w (cat, name)) }
+        Action { implicit request => Redirect (Wiki.w (cat, name, Website.realm)) }
       )
 
   def Race = admin.Config.sitecfg("racecat").getOrElse("Race")

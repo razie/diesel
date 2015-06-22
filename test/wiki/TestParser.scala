@@ -10,7 +10,7 @@ import razie.wiki.parser.{WAST, nWikiParser}
 class TestParser extends FlatSpec with ShouldMatchers {
   TestInit.init
 
-  def applys (s:String) = nWikiParser.apply(s).fold(None)
+  def applys (s:String) = nWikiParser.apply(s).fold(WAST.context(None))
 
   "WikiParser" should "escape bad html" in {
     "&lt;applet&gt;" === (this applys "<applet>").s

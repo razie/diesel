@@ -2,7 +2,7 @@
 a JS/SCALA server side fiddle
 **************@
 
-@(l:String,
+@(lang:String,
   content:String,
   q:Map[String,String],
   au:Option[model.User],
@@ -12,7 +12,7 @@ a JS/SCALA server side fiddle
 
 <div class="well">
 
-<h2>Fiddle with @l code...</h2>
+<h2>Fiddle with @lang code...</h2>
 
 @tos(s:String) = @{
   s.replaceAll("\r", "").replaceAll("\n", "\\\\n'\n+'")
@@ -73,7 +73,7 @@ var decscr = function (s) {
 $('#sform_'+@id).hide();
 
 var runpill_@id = function(id) {
-  $('#l_'+id)[0].value= "@l";
+  $('#l_'+id)[0].value= "@lang";
   $('#j_'+id)[0].value= editor.getValue();
   $('#ssform_'+id)[0].target = 'iframe_'+id;
   $('#ssform_'+id)[0].action = "/sfiddle/sfiddle2/"+id+"?@mod.diesel.controllers.SFiddles.qtourl(q)";

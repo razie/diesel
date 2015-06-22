@@ -18,26 +18,35 @@ demos for graphing/domain browsers
       <br>
     }
 
+    <h2>DOMain plays</h2>
+    <hr>
+    @demo("http://localhost:9000/gapi/samples/domA?url=rk")
     <h2>JSON extracts</h2>
     <hr>
-    @demo("http://localhost:9000/gapi/dom/rk/Club")
-    @demo("http://localhost:9000/gapi/jitdom/rk/Club")
-    @demo("http://localhost:9000/gapi/d3dom/rk/Club")
+    @demo("http://localhost:9000/gapi/fromCat/rk/Club?as=json")
+    @demo("http://localhost:9000/gapi/fromCat/rk/Club?as=jit")
+    @demo("http://localhost:9000/gapi/fromCat/rk/Club?as=d3")
+    @demo("http://localhost:9000/gapi/fromCat/rk/Club?as=spacetree")
     <hr>
-    @demo("http://localhost:9000/gapi/domain/rk")
-    @demo("http://localhost:9000/gapi/jitdomain/rk")
-    @demo("http://localhost:9000/gapi/d3domain/rk")
+    @demo("http://localhost:9000/gapi/fromRealm/rk?as=json")
+    @demo("http://localhost:9000/gapi/fromRealm/rk?as=jit")
+    @demo("http://localhost:9000/gapi/fromRealm/rk?as=d3")
+    @demo("http://localhost:9000/gapi/fromRealm/rk?as=spacetree")
+    <hr>
 
     <h2>graph views</h2>
     <hr>
-      @demo("http://localhost:9000/gapi/samples/g1?url=http://localhost:9000/gapi/jitdom/rk/Club")
-      @demo("http://localhost:9000/gapi/samples/g1?url=http://localhost:9000/gapi/jitdomain/rk")
+      @demo("http://localhost:9000/gapi/samples/g1?url=http://localhost:9000/gapi/fromCat/rk/Club?as=json")
+      @demo("http://localhost:9000/gapi/samples/g1?url=http://localhost:9000/gapi/fromRealm/rk?as=jit")
       @demo("")
-      @demo("http://localhost:9000/gapi/samples/g2?url=http://localhost:9000/gapi/d3dom/rk/Club")
-      @demo("http://localhost:9000/gapi/samples/g2?url=http://localhost:9000/gapi/d3domain/rk")
+      @demo("http://localhost:9000/gapi/samples/g2?url=http://localhost:9000/gapi/fromCat/rk/Club?as=json")
+      @demo("http://localhost:9000/gapi/samples/g2?url=http://localhost:9000/gapi/fromRealm/rk?as=jit")
       @demo("")
-      @demo("http://localhost:9000/gapi/samples/g3?url=http://localhost:9000/gapi/d3dom/rk/Club")
-      @demo("http://localhost:9000/gapi/samples/g3?url=http://localhost:9000/gapi/d3domain/rk")
+      @demo("http://localhost:9000/gapi/samples/g3?url=http://localhost:9000/gapi/fromCat/rk/Club?as=json")
+      @demo("http://localhost:9000/gapi/samples/g3?url=http://localhost:9000/gapi/fromRealm/rk?as=jit")
+      @demo("")
+      @demo("http://localhost:9000/gapi/samples/spacetree?url=http://localhost:9000/gapi/fromCat/rk/Club?as=spacetree")
+      @demo("http://localhost:9000/gapi/samples/spacetree?url=http://localhost:9000/gapi/stree/rk?as=spacetree")
       @demo("")
       @demo("")
       @demo("")

@@ -14,20 +14,20 @@ import razie.wiki.util.{PlayTools, IgnoreErrors}
 import razie.wiki.Enc
 import razie.wiki.Sec._
 
+import scala.concurrent.Future
+
 /** main entry points */
 object Application extends RazController {
 
   // serve any URL other than routes matches - try the forward list...
-  def whatever(path: String) = Action { implicit request =>
-    log("REDIRECTING? - " + path)
+  def whatever(path: String) = Action.async { implicit request =>
+    log("URL - REDIRECTING? - " + path)
     Website.getHost.orElse(Some(Config.hostport)).flatMap(x =>
-      Config.urlrewrite(x + "/" + path)).map { host =>
+      Config.urlrewrite(x + "/" + path) orElse
+      Config.urlfwd(x + "/" + path)
+    ).map { host =>
       log("  REDIRECTED TO - " + host)
-      Redirect(host)
-    } orElse Website.getHost.orElse(Some(Config.hostport)).flatMap(x =>
-      Config.urlfwd(x + "/" + path)).map { host =>
-      log("  REDIRECTED TO - " + host)
-      Redirect(host)
+      Future.successful(Redirect(host))
     } getOrElse {
       val c = Config.config(Config.BANURLS)
       if (c.exists(_.contains(path))) {
@@ -38,15 +38,16 @@ object Application extends RazController {
           BannedIps.ban(ip.get, request.method + " " + path)
         }
         // TODO emulate some well known wiki error response to throw them off
-        NotFound("")
+        Future.successful(NotFound(""))
       } else {
-        Audit.missingPage(" NO ROUTE FOR: " + path)
+        Audit.missingPage("URL - NO ROUTE FOR: " + path)
         RkReactors(request).map(Wikis.apply).flatMap {wiki=>
           wiki.find("Admin", path) orElse wiki.find("Page", path) map { we =>
-//            Redirect(we.wid.urlRelative)
-            Wiki.showWid(CMDWID(Some(we.wid.wpath), Some(we.wid), "", ""), 1, wiki.realm).apply(request).value.get.get
+            Wiki.showWid(CMDWID(Some(we.wid.wpath), Some(we.wid), "", ""), 1, wiki.realm).apply(request)
           }
-        }.getOrElse (Redirect ("/"))
+        }.getOrElse (
+          Future.successful(Redirect ("/"))
+        )
       }
     }
   }
@@ -57,17 +58,21 @@ object Application extends RazController {
   }
 
   /** serve the root of a website - figure out which and serve the main page */
-  def root = Action { implicit request =>
+  def root = Action.async { implicit request =>
     Website.getHost.flatMap(Config.urlfwd(_)).map { host =>
-      Redirect(host)
-    } orElse Website.getHost.flatMap(Website.apply).flatMap(x=>
-      if(auth.isDefined && x.userHomePage.isDefined) x.userHomePage else x.homePage
-      ).map { home =>
-        Wiki.show(home, 1).apply(request).value.get.get
+      log ("URL - Redirecting main page from "+Website.getHost + " TO "+host)
+      Future.successful(Redirect(host))
+    } orElse Website.getHost.flatMap(Website.apply).flatMap{x=>
+      log ("URL - serve Website homePage for "+x.name)
+      if(auth.isDefined && x.userHomePage.isDefined) x.userHomePage
+      else x.homePage
+      }.map { home =>
+        Wiki.show(home, 1).apply(request)
     } getOrElse {
         val r = Wiki.getRealm(Wiki.UNKNOWN)
-        if (r != Reactors.DFLT) Wiki.show(Reactors(r).mainPage(auth), 1).apply(request).value.get.get
-        else  Application.idoeIndexItem(1)
+        log ("URL - show default reactor main "+r)
+        if (r != Reactors.DFLT) Wiki.show(Reactors(r).mainPage(auth), 1).apply(request)
+        else  Future.successful(Application.idoeIndexItem(1))
     } // RK main home screen
     //todo un-hardcode that
   }
@@ -84,7 +89,7 @@ object Application extends RazController {
 
   def skiwho(who: String) = Action { implicit request =>
     Audit.logdb("ADD_SKI", "who: " + who)
-    Redirect(Wiki.w("Admin", "Hosted_Services_for_Ski_Clubs"))
+    Redirect(Wiki.w("Admin", "Hosted_Services_for_Ski_Clubs", "rk"))
   }
 
   /** randomly redirect to a topic

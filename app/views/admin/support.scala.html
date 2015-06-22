@@ -1,8 +1,8 @@
 @(sForm:Form[_], v2:Int, page:String, au:Option[model.User])(implicit request:Request[_])
-
+@import model.Website.realm
 @import helper.twitterBootstrap._
 
-@htmlHeadBar("Support", au, _root_.admin.Config.realm)
+@htmlHeadBar("Support", au, realm)
 
   <div class="container">
     <div class="jumbotron">
@@ -68,7 +68,7 @@
 
   <hr>
 
-  @htmlFooter(true, false, _root_.admin.Config.realm)
+  @htmlFooter(true, false, realm)
 
   </div> <!-- /container -->
 

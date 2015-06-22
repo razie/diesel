@@ -20,7 +20,6 @@ import javax.script.{ScriptEngineManager, ScriptEngine}
 import scala.Some
 import scala.concurrent.Future
 import scala.util.parsing.input.{CharArrayReader, Positional}
-import model.dom.DOM
 import razie.wiki.model.WikiEntry
 import razie.wiki.admin.Audit
 

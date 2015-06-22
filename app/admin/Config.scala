@@ -1,5 +1,9 @@
 package admin
 
+import controllers.DarkLight
+import model.Website
+import play.api.mvc.Request
+import razie.wiki.admin.WikiObservers
 import razie.wiki.{Services, WikiConfig}
 import razie.wiki.model._
 
@@ -12,6 +16,8 @@ object Config extends WikiConfig {
 
   import WikiConfig.parsep
 
+  override val noads = isLocalhost
+
   final val METAS = "sitemetas"
   lazy val metas = Wikis.find(WID("Admin", METAS)) map (_.content) getOrElse ""
   def currUser = { razie.NoStaticS.get[WikiUser].map(_.asInstanceOf[model.User]) }
@@ -21,19 +27,41 @@ object Config extends WikiConfig {
   final val curYear = "2015"
 
   override val simulateHost = {
-//        "www.racerkidz.com"    // for testing locally
-    "www.effectiveskiing.com"    // for testing locally
-//                "re9.wikireactor.com"    // for testing locally
-//            "www.wikireactor.com"    // for testing locally
+        "www.racerkidz.com"    // for testing locally
+//    "www.effectiveskiing.com"    // for testing locally
+//                "ski.wikireactor.com"    // for testing locally
+//                "www.wikireactor.com"    // for testing locally
+//            "catsim.wikireactor.com"    // for testing locally
 //        "www.coolscala.com"    // for testing locally
-//        "www.enduroschool.com"    // for testing locally
+//        "www.enduroschol.com"    // for testing locally
 //            "www.askicoach.com"    // for testing locally
 //        "www.glacierskiclub.com"    // for testing locally
 //        "www.nofolders.net"    // for testing locally
 //        "www.dieselreactor.net"    // for testing locally
   }
 
+  final val CFG_PAGES = Array(SITECFG, TOPICRED, USERTYPES, BANURLS, URLCFG)
+
+  WikiObservers mini {
+    case we:WikiEntry if "Admin" == we.category && CFG_PAGES.contains(we.name)  => {
+      reloadUrlMap
+    }
+  }
+
   def darkLight = { razie.NoStaticS.get[controllers.DarkLight] }
+
+  def getTheme (user:Option[WikiUser], request:Option[Request[_]]) = {
+    // session settings override everything
+    request.flatMap(_.session.get("css")) orElse (
+        // then user
+        user.flatMap(_.css)
+      ) orElse (
+        // or website settings
+        request.flatMap(r=> Website(r)).flatMap(_.css)
+      ) orElse darkLight.map(_.css).orElse(
+        sitecfg("css")
+    ) getOrElse ("dark")
+  }
 
   def theme = {
     darkLight.map(_.css).orElse(currUser.flatMap(_.css).orElse(
@@ -54,7 +82,7 @@ object Config extends WikiConfig {
 
   def reloadUrlMap {
     println("========================== RELOADING URL MAP ==============================")
-    for (c <- Array(SITECFG, TOPICRED, SAFESITES, USERTYPES, BANURLS)) {
+    for (c <- Array(SITECFG, TOPICRED, USERTYPES, BANURLS)) {
       val urlmaps = Some(Wikis.find(WID("Admin", c)).toSeq map (_.content) flatMap parsep)
       val xurlmap = (urlmaps.map(se => HashMap[String, String](se: _*)))
       println("========================== RELOADING URL MAP ==============================")
@@ -81,6 +109,7 @@ object Config extends WikiConfig {
 
     irobotUserAgents = sitecfg("robots.useragents").toList.flatMap(s=>s.split("[;,]"))
     ireservedNames = sitecfg("reserved.names").toList.flatMap(s=>s.split("[;,]"))
+    // todo settle this - there are two places for configuring trusted sites
     itrustedSites = sitecfg("trusted.sites").toList.flatMap(s=>s.split("[;,]"))
   }
 

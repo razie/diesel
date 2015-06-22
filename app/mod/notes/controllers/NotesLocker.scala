@@ -1,12 +1,12 @@
 package mod.notes.controllers
 
-import _root_.controllers.{Emailer, Wiki, WG, RazController}
+import _root_.controllers.{Emailer, Wiki, RazController}
 import admin.{Config}
 import com.mongodb.casbah.Imports.wrapDBObj
 import com.novus.salat.grater
+import mod.diesel.model.{WG}
 import mod.notes.controllers
 import mod.notes.controllers.NotesLocker
-import model.dom.DOM
 import model._
 import org.bson.types.ObjectId
 import org.joda.time.DateTime
@@ -16,9 +16,11 @@ import razie.db.RazSalatContext.ctx
 import razie.db._
 import razie.wiki.Sec.EncryptedS
 import razie.wiki.admin.{WikiObservers, Audit, SendEmail}
+import razie.wiki.dom.WikiDomain
 import razie.wiki.model._
 import razie.wiki.parser.ParserCommons
-import razie.wiki.util.{VErrors, js}
+import razie.wiki.util.{VErrors}
+import razie.js
 import razie.wiki.{WikiConfig, Enc, Services}
 import razie.{Logging, cout}
 
@@ -817,7 +819,7 @@ object DomC extends RazController with Logging {
     implicit errCollector => implicit request =>
       Notes.notesById(new ObjectId(nid)).map { n =>
         if (n.by == au._id || Notes.isShared(n, au._id))
-          retj << DOM(n).get.tojmap
+          retj << WikiDomain.domFrom(n).get.tojmap
         else
           NotFound("[Not your note...]")
       } getOrElse {
@@ -826,7 +828,7 @@ object DomC extends RazController with Logging {
   }
 
   def domcat(cat: String) = Action { implicit request =>
-    retj << WG.dom1(cat, "rk").tojmap
+    retj << WG.fromCat(cat, "rk").tojmap
   }
 
   def domPlay(nid: String) = NotesLocker.FAU { implicit au =>

@@ -15,9 +15,11 @@ trait WikiDarkParser extends WikiParserBase {
   
   def darkHtml = wikiPropImgDark | htmlDark
 
+  private def isDark = Config.isDark
+
   def wikiPropImgDark: PS = "{{img" ~> """\.light|\.dark""".r ~ """[: ]""".r ~ """[^} ]*""".r ~ optargs <~ "}}" ^^ {
     case stype ~ _ ~ name ~ args => {
-      if(Config.isDark && stype.contains("dark") || !Config.isDark && stype.contains("light")) {
+      if(isDark && stype.contains("dark") || !isDark && stype.contains("light")) {
         val sargs = args.foldLeft(""){(c, a) => s""" $c ${a._1}="${a._2}" """}
         SState(s"""<img src="$name" $sargs />""")
       } else {
@@ -30,7 +32,7 @@ trait WikiDarkParser extends WikiParserBase {
   /** {{section:name}}...{{/section}} */
   def htmlDark: PS = "{{" ~> opt(".") ~ """html.dark|html.light""".r ~ "}}" ~ lines <~ ("{{/" ~ """html""".r ~ "}}") ^^ {
     case hidden ~ stype ~ _ ~ lines => {
-      if(Config.isDark && stype.contains("dark") || !Config.isDark && stype.contains("light")) {
+      if(isDark && stype.contains("dark") || !isDark && stype.contains("light")) {
         lines
       } else {
         SState.EMPTY

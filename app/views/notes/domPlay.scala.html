@@ -4,7 +4,6 @@ show/edit/capture a note
 msg types are msg, err
 **************@
 @(we: razie.wiki.model.WikiEntry)(implicit stok: mod.notes.controllers.NotesOk)
-@import model.dom.DOM
 @import mod.notes.controllers.DomC
 @import mod.notes.controllers.routes
 
@@ -16,7 +15,7 @@ msg types are msg, err
 
   <p><a href="@routes.DomC.domj(we._id.toString)">json</a></p>
 
-  @DOM(we).fold(Html("no DOMain...?")) { d =>
+  @razie.wiki.dom.WikiDomain.domFrom(we).fold(Html("no DOMain...?")) { d =>
     <ul>
       classes: @d.classes.map { c =>
       <li>@c._1 <small>@c._2.toString</small></li>

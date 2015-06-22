@@ -4,6 +4,8 @@ import java.lang.management.{ManagementFactory, OperatingSystemMXBean}
 import java.lang.reflect.Modifier
 import com.mongodb.casbah.Imports.{DBObject, IntOk}
 import com.mongodb.casbah.commons.MongoDBObject
+import com.mongodb.casbah.Imports._
+import com.novus.salat._
 import com.novus.salat.grater
 import difflib.DiffUtils
 import mod.notes.controllers.NotesLocker
@@ -17,7 +19,8 @@ import play.api.data.Form
 import play.api.data.Forms.{mapping, nonEmptyText, number}
 import play.api.mvc.{Action, AnyContent, Request, Result}
 import razie.g.snakked
-import razie.wiki.util.{js, VErrors}
+import razie.wiki.util.{VErrors}
+import razie.js
 import razie.wiki.Enc
 import razie.wiki.model.{WikiTrash, WID, WikiEntry, Wikis}
 import razie.wiki.admin.GlobalData
@@ -426,10 +429,15 @@ SendEmail.state=${SendEmail.state}\n
     }
   }
 
+  val reloadt=System.currentTimeMillis(); // reset when classloader reloads
+
   // unsecured ping for
   def ping(what: String) = Action { implicit request =>
     what match {
       case "script1" => Ok(WikiScripster.impl.runScript("1+2", None, None, Map()))
+      case "shouldReload" => {
+        Ok(reloadt.toString).as("application/text")
+      }
       case _ => Ok(osusage)
     }
   }
@@ -453,9 +461,9 @@ SendEmail.state=${SendEmail.state}\n
 
   // diffing
 
-  case class WEAbstract (id:String, cat:String, name:String, realm:String, ver:Int, updDtm:DateTime) {
-    def this (we:WikiEntry) = this(we._id.toString, we.category, we.name, we.realm, we.ver, we.updDtm)
-    def j = js.tojson(Map("id"->id, "cat"->cat, "name"->name, "realm"->realm, "ver"->ver, "updDtm" -> updDtm))
+  case class WEAbstract (id:String, cat:String, name:String, realm:String, ver:Int, updDtm:DateTime, hash:Int) {
+    def this (we:WikiEntry) = this(we._id.toString, we.category, we.name, we.realm, we.ver, we.updDtm, we.content.hashCode)
+    def j = js.tojson(Map("id"->id, "cat"->cat, "name"->name, "realm"->realm, "ver"->ver, "updDtm" -> updDtm, "hash" -> hash.toString))
   }
 
   def wput(reactor:String) = FAD { implicit au =>
@@ -479,7 +487,7 @@ SendEmail.state=${SendEmail.state}\n
 
         val gd = new JSONArray(b)
         val ldest = js.fromArray(gd).collect {
-          case x : Map[String, String] => WEAbstract(x("id"), x("cat"), x("name"), x("realm"), x("ver").toInt, new DateTime(x("updDtm")))
+          case x : Map[String, String] => WEAbstract(x("id"), x("cat"), x("name"), x("realm"), x("ver").toInt, new DateTime(x("updDtm")), x("hash").toInt)
         }
 
         val lsrc = RMany[WikiEntry]().filter(we=> reactor.isEmpty || reactor == "all" || we.realm == reactor).map(x=>new WEAbstract(x)).toList
@@ -488,9 +496,9 @@ SendEmail.state=${SendEmail.state}\n
         val lremoved = ldest.filter(x=> lsrc.find(y=> y.id == x.id).isEmpty)
 
         val lchanged = for(x <- lsrc; y <- ldest if y.id == x.id && (y.ver != x.ver || y.updDtm != x.updDtm))
-          yield (x,y, if (y.ver < x.ver || y.updDtm.isBefore(x.updDtm)) "L" else "R")
+          yield (x,y, if(x.hash == y.hash) "-" else if (y.ver < x.ver || y.updDtm.isBefore(x.updDtm)) "L" else "R")
 
-          Ok(views.html.admin.admin_difflist(reactor, target, lnew, lremoved, lchanged)(auth))
+          Ok(views.html.admin.admin_difflist(reactor, target, lnew, lremoved, lchanged.sortBy(_._3))(auth))
       } catch {
         case x : Throwable => Ok ("error " + x)
       }
@@ -539,11 +547,14 @@ SendEmail.state=${SendEmail.state}\n
       import scala.collection.JavaConversions._
 
       try {
-        val content = wid.content.get
 
-        val b = body(url(s"http://$target/wikie/setContent/${wid.wpath}").form(Map("content" -> content)).basic("H-"+au.email.dec, "H-"+au.pwd.dec))
+        val b = body(url(s"http://$target/wikie/setContent/${wid.wpath}").form(Map("we" -> wid.page.get.grated.toString)).basic("H-"+au.email.dec, "H-"+au.pwd.dec))
 
-        Ok(b + " <a href=\"" + s"http://$target${wid.urlRelative}" + "\">" + wid.wpath + "</a>")
+        if(b contains "ok")
+          //todo redirect to list
+          Ok(b + " <a href=\"" + s"http://$target${wid.urlRelative}" + "\">" + wid.wpath + "</a>")
+        else
+          Ok(b + " <a href=\"" + s"http://$target${wid.urlRelative}" + "\">" + wid.wpath + "</a>")
       } catch {
         case x : Throwable => Ok ("error " + x)
       }
@@ -557,11 +568,14 @@ SendEmail.state=${SendEmail.state}\n
       import scala.collection.JavaConversions._
 
       try {
-        val remote = s"http://$target/wikie/content/${wid.wpath}"
-        val content = body(url(remote).basic("H-"+au.email.dec, "H-"+au.pwd.dec))
+        val remote = s"http://$target/wikie/json/${wid.wpath}"
+        val wes = body(url(remote).basic("H-"+au.email.dec, "H-"+au.pwd.dec))
 
-        if(! content.isEmpty) {
-          val b = body(url(s"http://localhost:9000/wikie/setContent/${wid.wpath}").form(Map("content" -> content)).basic("H-"+au.email.dec, "H-"+au.pwd.dec))
+        if(! wes.isEmpty) {
+          val dbo = com.mongodb.util.JSON.parse(wes).asInstanceOf[DBObject];
+          val remote = grater[WikiEntry].asObject(dbo)
+
+          val b = body(url(s"http://localhost:9000/wikie/setContent/${wid.wpath}").form(Map("we" -> wes)).basic("H-"+au.email.dec, "H-"+au.pwd.dec))
           Ok(b + wid.ahrefRelative)
         } else {
           Ok ("Couldnot read remote content from: " + remote)

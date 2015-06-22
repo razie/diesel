@@ -58,6 +58,7 @@ object Realm extends RazController with Logging {
       tw <- Wikis(realm).find(twid) orErr s"template/spec $twid not found";
       hasQuota <- (au.isAdmin || au.quota.canUpdate) orCorr cNoQuotaUpdates
     ) yield {
+        //todo use ReactorCreateContext
         val parms =
           (
             if("Reactor" == cat) Map(
@@ -81,7 +82,8 @@ object Realm extends RazController with Logging {
 
         val iwikisc = tw.section("section", "pages").get.content
         // substitution
-        val wikisc = parms.foldLeft(iwikisc)((a,b)=>a.replaceAll("\\$\\{"+b._1+"\\}", b._2))
+//        val wikisc = parms.foldLeft(iwikisc)((a,b)=>a.replaceAll("\\$\\{"+b._1+"\\}", b._2))
+        val wikisc = parms.foldLeft(iwikisc)((a,b)=>a.replaceAll("\\{\\{\\$\\$"+b._1+"\\}\\}", b._2))
         val wikis = ConfigFactory.parseString(wikisc).resolveWith(ConfigFactory.parseMap(parms))
 
         pages = wikis.getObject("pages") map {t =>

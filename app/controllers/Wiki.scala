@@ -9,6 +9,7 @@ package controllers
 import admin._
 import com.mongodb.casbah.Imports._
 import com.novus.salat._
+import mod.diesel.controllers.DieselControl
 import model._
 import razie.db.RazSalatContext._
 import com.mongodb.{BasicDBObject, DBObject}
@@ -120,7 +121,7 @@ object Wiki extends WikiBase {
       else
         (q.length > 1 && uf("name").toLowerCase.contains(qi)) ||
           (q.length > 1 && uf("label").toLowerCase.contains(qi)) ||
-          (q.length() > 3 && uf("content").toLowerCase.contains(qi))
+          ((q.length() > 3 || auth.exists(_.isAdmin)) && uf("content").toLowerCase.contains(qi))
     }
     lazy val parent = WID.fromPath(scope).flatMap(x=>Wikis.find(x).orElse(Wikis(realm).findAnyOne(x.name)))
 
@@ -134,7 +135,7 @@ object Wiki extends WikiBase {
           ) yield u
         }.toList
 
-        if(WikiDomain(realm).aEnds(p.category, "Child").contains("Item"))
+        if(WikiDomain(realm).zEnds(p.category, "Child").contains("Item"))
           RazMongo.withDb(RazMongo("weItem").m) (src)
         else
           RazMongo.withDb(RazMongo("WikiEntry").m) (src)
@@ -156,13 +157,14 @@ object Wiki extends WikiBase {
     else {
       val wl = wikis.map(WikiEntry.grated _).take(500).toList
       val tags = wl.flatMap(_.tags).filter(_ != Tags.ARCHIVE).filter(_ != "").filter(x=> !qt.contains(x)).groupBy(identity).map(t => (t._1, t._2.size)).toSeq.sortBy(_._2).reverse
-      Ok(views.html.wiki.wikiList(
-        q, q, curTags, wl.map(w => (w.wid, w.label)), tags,
-        (if(q.length>1) "/wikie/search/tag/"
-        else if(scope.length > 0) s"/wiki/$scope/tag/"
-         else "/wiki/tag/"),
-        (if(q.length>1) "?q="+q else ""), realm)(auth,request)
-      )
+      ROK(auth, request) noLayout  {implicit stok=>
+        views.html.wiki.wikiList(
+          q, q, curTags, wl.map(w => (w.wid, w.label)), tags,
+          (if(q.length>1) "/wikie/search/tag/"
+          else if(scope.length > 0) s"/wiki/$scope/tag/"
+           else "/wiki/tag/"),
+          (if(q.length>1) "?q="+q else ""), realm)
+      }
     }
   }
 
@@ -204,7 +206,25 @@ object Wiki extends WikiBase {
       w <- wid.page;
       can <- canSee(wid, auth, wid.page.orElse(Some(w))) orCorr cNoPermission
     ) yield {
-      Ok(w.content)
+        Ok(w.content)
+      }) getOrElse {
+      noPerm(cw.wid.get, "SHOW.CONTENT")
+    }
+  }
+
+  /**
+   * show conetnt of current version
+   *  TODO is this authorized?
+   */
+  def showWidJson(cw: CMDWID, irealm:String) = Action { implicit request =>
+    implicit val errCollector = new VErrors()
+    (for (
+      iwid <- cw.wid;
+      wid <- if(iwid.realm.isDefined) Some(iwid) else Some(iwid.r(getRealm(irealm)));
+      w <- wid.page;
+      can <- canSee(wid, auth, wid.page.orElse(Some(w))) orCorr cNoPermission
+    ) yield {
+      Ok(w.grated.toString).as("application/json")
     }) getOrElse {
       noPerm(cw.wid.get, "SHOW.CONTENT")
     }
@@ -317,15 +337,12 @@ object Wiki extends WikiBase {
   }
   def showId(id: String, irealm:String) = Action { implicit request =>
     val realm = getRealm(irealm)
-    (for (w <- Wikis(realm).findById(id)) yield Redirect(controllers.Wiki.w(w.category, w.name))) getOrElse Msg2("Oops - id not found")
+    (for (w <- Wikis(realm).findById(id)) yield Redirect(controllers.Wiki.w(w.wid))) getOrElse Msg2("Oops - id not found")
   }
 
   def w(we: UWID):String = we.wid.map(wid=>w(wid)).getOrElse("ERR_NO_URL_FOR_"+we.toString)
   def w(we: WID, shouldCount: Boolean = true):String = Config.urlmap(we.urlRelative + (if (!shouldCount) "?count=0" else ""))
 
-  /** @deprecated use the realm version */
-  def w(cat: String, name: String) =
-    Config.urlmap(WID(cat, name).urlRelative)
   def w(cat: String, name: String, realm:String) =
       Config.urlmap(WID(cat, name).r(realm).urlRelative)
 
@@ -339,7 +356,8 @@ object Wiki extends WikiBase {
 
   def wikieShow(iwid: WID, count: Int = 0, irealm:String=UNKNOWN) =
     Action { implicit request =>
-      show(iwid.r(getRealm(irealm)), count).apply(request).value.get.get
+      val wid = if(iwid.realm.isDefined) iwid else iwid.r(getRealm(irealm))
+      show(wid, count).apply(request).value.get.get
   }
 
   def show(iwid: WID, count: Int = 1, print: Boolean = false): Action[AnyContent] = Action { implicit request =>
@@ -363,6 +381,8 @@ object Wiki extends WikiBase {
     if ("Page" == cat && "home" == name) Redirect("/")
     else if ("Admin" == cat && "home" == name) Redirect("/")
     else if ("Reactor" == cat && !iwid.realm.exists(_ != Wikis.RK)) Redirect("/w/"+wid.name+"/wiki/"+wid.wpath)
+    else if ("Category" == cat && !Wikis(iwid.getRealm).categories.exists(_.name == name))
+      DieselControl.catBrowser(iwid.getRealm, name, "").apply(request).value.get.get
     else if ("any" == cat || (cat.isEmpty && wid.parent.isEmpty)) {
       // search for any name only if cat is missing OR there is no parent
 
@@ -378,7 +398,9 @@ object Wiki extends WikiBase {
           Redirect(controllers.Wiki.w(wl.head.wid))
       } else if (wl.size > 0) {
         val tags = wl.flatMap(_.tags).filter(_ != Tags.ARCHIVE).filter(_ != "").groupBy(identity).map(t => (t._1, t._2.size)).toSeq.sortBy(_._2).reverse
-        Ok(views.html.wiki.wikiList("category any", "", "", wl.map(x => (x.wid, x.label)), tags, "./", "", wid.getRealm))
+        ROK(auth, request) noLayout  { implicit stok =>
+          views.html.wiki.wikiList("category any", "", "", wl.map(x => (x.wid, x.label)), tags, "./", "", wid.getRealm)
+        }
       }
       else
         wikiPage(wid, Some(iwid.name), None, !shouldNotCount, au.isDefined && canEdit(wid, au, None).get)
@@ -518,7 +540,9 @@ object Wiki extends WikiBase {
       }
 
       val tags = res.flatMap(_._3).filter(_ != Tags.ARCHIVE).filter(_ != "").groupBy(identity).map(t => (t._1, t._2.size)).toSeq.sortBy(_._2).reverse
-      Ok(views.html.wiki.wikiList(path, "", "", res.map(t=>(t._1, t._2)), tags, "./", "", wid.getRealm)(auth, request))
+      ROK(auth, request) noLayout  { implicit stok =>
+        views.html.wiki.wikiList(path, "", "", res.map(t => (t._1, t._2)), tags, "./", "", wid.getRealm)
+      }
     }) getOrElse
       Unauthorized("Nothing... for " + wid + " XP " + path+" ERR: "+errCollector.mkString)
   }

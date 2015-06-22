@@ -6,7 +6,7 @@
  */
 package model
 
-import mod.diesel.model.{DReactors}
+import mod.diesel.model.{Diesel}
 import org.bson.types.ObjectId
 import razie.{cdebug, cout, clog}
 import scala.collection.mutable.ListBuffer
@@ -15,7 +15,6 @@ import scala.util.matching.Regex.Match
 import scala.util.parsing.combinator.RegexParsers
 import scala.Option.option2Iterable
 import scala.collection.mutable
-import model.dom.WikiDomainParser
 import razie.wiki.parser.WAST
 import razie.wiki.parser.WikiParserBase
 
@@ -100,9 +99,9 @@ trait WikiDslParser extends WikiParserBase {
       }
 
       if(hidden.isDefined) SState("")
-      else LazyState {(current, we) =>
+      else LazyState {(current, ctx) =>
         // try to figure out the language from the content parsed so far
-        val lang = DReactors.findLang(current.tags, we)
+        val lang = Diesel.findLang(current.tags, ctx.we)
         val fid = ffiddle(lang)
         SState(s"""<div><b><small>DSL ${stype.replaceFirst("dsl.","")}</b> ($name):</small><br>$fid}</div>""")//, Map.empty, List.empty, List(wffiddle))
       }

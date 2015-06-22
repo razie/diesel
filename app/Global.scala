@@ -14,7 +14,7 @@ import model._
 import play.api.Application
 import play.api._
 import play.api.mvc._
-import razie.wiki.util.{IgnoreErrors, VErrors}
+import razie.wiki.util.{PlayTools, IgnoreErrors, VErrors}
 import razie.{cout, Log, cdebug, clog}
 import play.libs.Akka
 import akka.actor.Props
@@ -22,7 +22,7 @@ import akka.actor.Actor
 import com.mongodb.casbah.{MongoDB, MongoConnection}
 import com.mongodb.casbah.Imports._
 import java.io.File
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{Future, ExecutionContext}
 import controllers.ViewService
 import razie.wiki.model.WikiCount
 import razie.wiki.admin._
@@ -89,11 +89,29 @@ object Global extends WithFilters(LoggingFilter) {
   }
 
   override def onRouteRequest(request: RequestHeader): Option[Handler] = {
-    if (! request.path.startsWith( "/assets/"))
+    if (! request.path.startsWith( "/assets/") && !request.path.startsWith( "/razadmin/ping/shouldReload"))
       cdebug << ("ROUTE_REQ.START: " + request.toString)
-    val res = super.onRouteRequest(request)
-    if (! request.path.startsWith( "/assets/"))
+
+    /** get the host that was forwarded here - used for multi-site hosting */
+
+    val host = PlayTools.getHost(request).orElse(Some(Config.hostport))
+    val redirected = host.flatMap(x => Config.urlrewrite(x + request.path))
+
+    val res = redirected.map { x =>
+      clog << ("URL - REDIRECTING? - " + host.mkString+request.path)
+      clog << ("URL -   TO         - " + redirected)
+      EssentialAction {rh=>
+      Action { rh:play.api.mvc.RequestHeader =>
+        Results.Redirect(x)
+        }.apply(rh)
+      }
+    } orElse {
+      super.onRouteRequest(request)
+    }
+
+    if (! request.path.startsWith( "/assets/") && !request.path.startsWith( "/razadmin/ping/shouldReload"))
       cdebug << ("ROUTE_REQ.STOP: " + request.toString)
+
     res
   }
 
@@ -215,13 +233,6 @@ object Global extends WithFilters(LoggingFilter) {
 
     //todo look these up in Website
     Services.isSiteTrusted = {s=>
-      s.startsWith("www.racerkidz.com") ||
-        s.startsWith("www.enduroschool.com") ||
-        s.startsWith("www.nofolders.net") ||
-        s.startsWith("www.askicoach.com") ||
-        s.startsWith("www.dieselreactor.net") ||
-        s.startsWith("www.wikireactor.net") ||
-        s.startsWith("www.coolscala.com") ||
         Config.trustedSites.exists(x=>s.startsWith(x))
     }
 
@@ -286,7 +297,7 @@ object LoggingFilter extends Filter {
 
   def apply(next: (RequestHeader) => scala.concurrent.Future[SimpleResult])(rh: RequestHeader) = {
     val start = System.currentTimeMillis
-    if (! rh.uri.startsWith( "/assets/"))
+    if (! rh.uri.startsWith( "/assets/") && !rh.uri.startsWith( "/razadmin/ping/shouldReload"))
       cdebug << s"LF.START ${rh.method} ${rh.uri}"
     GlobalData.synchronized {
       GlobalData.serving = GlobalData.serving + 1
@@ -307,7 +318,7 @@ object LoggingFilter extends Filter {
 
     def logTime(what: String)(result: SimpleResult): Result = {
       val time = System.currentTimeMillis - start
-      if (!isAsset) {
+      if (!isAsset && !rh.uri.startsWith("/razadmin/ping/shouldReload")) {
         clog << s"LF.STOP $what ${rh.method} ${rh.uri} took ${time}ms and returned ${result.header.status}"
         servedPage
       }
@@ -324,7 +335,8 @@ object LoggingFilter extends Filter {
         // TODO enable this
 //        case async: AsyncResult => async.transform(logTime("async"))
         case res @ _ => {
-          clog << s"LF.STOP.WHAT? ${rh.method} ${rh.uri} returned ${res}"
+          if (!rh.uri.startsWith("/razadmin/ping/shouldReload"))
+            clog << s"LF.STOP.WHAT? ${rh.method} ${rh.uri} "//returned ${res}"
           if (! isAsset) servedPage
           served
           res

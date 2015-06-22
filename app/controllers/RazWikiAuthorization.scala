@@ -72,9 +72,10 @@ object RazWikiAuthorization extends RazController with Logging with WikiAuthoriz
       (
         props.get("owner") == Some(u.get.id) || // can see anything I am owner of - no need to check Visibility.PRIVATE
         props(visibility) == Visibility.MEMBER || // any website member
-          (props(visibility) == Visibility.PLATINUM && u.get.hasPerm(Perm.Platinum)) ||
-          (props(visibility) == Visibility.GOLD && (u.get.hasPerm(Perm.Platinum) || u.get.hasPerm(Perm.Gold))) ||
-          (props(visibility) == Visibility.BASIC && (u.get.hasPerm(Perm.Platinum) || u.get.hasPerm(Perm.Gold) || u.get.hasPerm(Perm.Basic))) ||
+          (props(visibility) == Visibility.MODERATOR && u.get.hasPerm(Perm.Moderator)) ||
+          (props(visibility) == Visibility.PLATINUM && (u.get.hasPerm(Perm.Moderator) || u.get.hasPerm(Perm.Platinum))) ||
+          (props(visibility) == Visibility.GOLD && (u.get.hasPerm(Perm.Moderator) || u.get.hasPerm(Perm.Platinum) || u.get.hasPerm(Perm.Gold))) ||
+          (props(visibility) == Visibility.BASIC && (u.get.hasPerm(Perm.Moderator) || u.get.hasPerm(Perm.Platinum) || u.get.hasPerm(Perm.Gold) || u.get.hasPerm(Perm.Basic))) ||
         (
           props(visibility).startsWith(Visibility.CLUB) &&
             props.get("owner").flatMap(Users.findUserById(_)).exists(owner =>
@@ -141,6 +142,7 @@ object RazWikiAuthorization extends RazController with Logging with WikiAuthoriz
         wprops.flatMap(_.get("visibility")).exists(_.startsWith(Visibility.CLUB) && isVisible(u, wprops.get, "visibility")) ||
         !wvis(wprops).isDefined orErr ("Sorry - you are not the owner of this topic");
       memod <- (w.flatMap(_.contentTags.get("moderator")).map(_ == au.userName).getOrElse(true)) orErr ("Sorry - this is moderated and you are not the moderator, are you?");
+      noLevel <- wprops.flatMap(_.get("wvis")).filter(x=> isVisible(u, wprops.get, "wvis")) orErr "Not enough Karma";
       t <- true orErr ("can't")
     ) yield true)
   }

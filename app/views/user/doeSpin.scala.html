@@ -1,6 +1,7 @@
 @(au:Option[model.User]=None)(implicit request:Request[_])
+@import model.Website.realm
 
-@htmlHeadBar("Take for a spin", au, _root_.admin.Config.realm)
+@htmlHeadBar("Take for a spin", au, realm)
 
 <div class="container">
   <div class="well">

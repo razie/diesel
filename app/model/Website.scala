@@ -101,6 +101,8 @@ object Website {
       ce.map(_.w)
   }
 
+  def all = cache.values.map(_.w).toList
+
   def realm (implicit request:Request[_]) = apply(request).map(_.reactor).getOrElse(dflt.reactor)
 
   def apply (implicit request: Request[_]):Option[Website] = getHost flatMap Website.apply

@@ -60,7 +60,8 @@ object WikiScripster {
       } catch {
         case ex: Throwable => { // any exceptions, get a new parser
           wikiCtx = None
-          if(devMode) throw ex
+          razie.Log.log("ERR WikiScripster: ", ex)
+          if(true || devMode) throw ex
           else "?"
         }
       }

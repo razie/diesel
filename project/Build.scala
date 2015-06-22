@@ -4,7 +4,7 @@ import play.Project._
 
 object V {
   val version      = "0.1.3-SNAPSHOT"
-  val scalaVersion = "2.10.3" 
+  val scalaVersion = "2.10.4" 
   val organization = "com.razie"
 
   def snap = (if (V.version endsWith "-SNAPSHOT") "-SNAPSHOT" else "")
@@ -30,9 +30,9 @@ object ApplicationBuild extends Build {
 
     "com.googlecode.java-diff-utils"        % "diffutils"             % "1.2.1",
 
-    "com.razie"          %% "base"               % "0.6.6-SNAPSHOT",
-    "com.razie"          %% "snakked"            % "0.6.6-SNAPSHOT",
-    "com.razie"          %% "scripster-core"     % "0.8.6-SNAPSHOT"
+    "com.razie"          %% "base"               % "0.6.7-SNAPSHOT",
+    "com.razie"          %% "snakked"            % "0.6.7-SNAPSHOT",
+    "com.razie"          %% "scripster-core"     % "0.8.7-SNAPSHOT"
     )
 
   val repos = Seq("snapshots" at "https://oss.sonatype.org/content/repositories/snapshots",

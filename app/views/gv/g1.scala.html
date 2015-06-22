@@ -187,6 +187,7 @@ $.ajax({
     url:      "@url",
     success: function(data){
         console.log(data);
+        $('json').innerHTML = JSON.stringify(data, null, "  ");
         paint(data);
     }
 });

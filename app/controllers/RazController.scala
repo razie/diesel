@@ -178,13 +178,17 @@ ${errCollector.mkString}
 
 /** captures the current state of what to display - passed to all views */
 class StateOk(val msg: Seq[(String, String)], val realm:String, val au: Option[model.User], val request: Option[Request[_]]) {
-  var _title : String = "No Folders" // this is set by the body as it builds itself and used by the header, heh
+  var _title : String = "" // this is set by the body as it builds itself and used by the header, heh
 
   /** set the title of this page */
   def title(s:String) = {this._title = s; ""}
 
   def apply (content: StateOk => Html) = {
     RkViewService.Ok (views.html.util.reactorLayout(content(this), msg)(this))
+  }
+
+  def noLayout (content: StateOk => Html) = {
+    RkViewService.Ok (content(this))
   }
 }
 

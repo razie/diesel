@@ -15,14 +15,9 @@ render a regular wiki page - site pages are rendered with wikiSite.scala.html
       <div class="col-sm-12">
       }
 
-    @wiki.layout.draft(page)
-    @if(page.flatMap(_.props.get("draft")).exists(_.toLowerCase == "draft")) {
-      <div class="alert">
-        <strong>Draft!</strong> This page is a draft - a work in progress!
-      </div>
-    }
+     @wiki.layout.draft(page)
 
-        @wiki.wikiFrag(wid,au,false,page, iname, false, true, canEdit)
+     @wiki.wikiFrag(wid,au,false,page, iname, false, true, canEdit)
 
       @if(page.isDefined && !print) {
         @wiki.wikiAddMore(wid, page, au)

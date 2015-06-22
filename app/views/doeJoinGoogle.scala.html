@@ -1,7 +1,7 @@
 @** joining with google - capture more details after signing into ggoogle
 **@
 @(registerForm:Form[model.Registration])(implicit request:Request[_])
-@import _root_.admin.Config.realm
+@import model.Website.realm
 
 @htmlHeadBar("Login/register with Google", None, realm)
 
@@ -37,7 +37,7 @@
      <p style="color:red;font-weight:bold">@err.message</p>
   }
 
-  <p><small>By registering or logging in, you agree to the <a href="@controllers.Wiki.w("Admin", "Terms of Service-"+realm)">Terms of Service</a></small><p>
+  <p><small>By registering or logging in, you agree to the <a href="@controllers.Wiki.w("Admin", "Terms of Service-"+realm, realm)">Terms of Service</a></small><p>
   }
 
        </div>
