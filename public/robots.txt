@@ -15,3 +15,5 @@ Disallow: /wikie/
 Disallow: /we/
 Disallow: /admin/
 Disallow: /sfiddle/
+Disallow: /diesel/
+

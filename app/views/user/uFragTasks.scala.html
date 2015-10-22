@@ -1,0 +1,31 @@
+@*******
+included in mainUserC as the right hand side info box
+*********@
+@(user: model.User, quiet:Boolean, ui:controllers.UserStuff)
+@import org.joda.time.DateTime
+@import razie.RString._
+@import controllers.XListWrapper
+@import controllers.Wiki
+@import razie.wiki.model.Wikis
+
+@regs=@{
+  val clubs = user.wikis.filter(_.uwid.cat=="Club").flatMap(w=>model.Users.findUserByUsername(w.uwid.nameOrId).toList)
+  clubs.flatMap(c=>model.Regs.findClubUser(c, user._id)).filter(_.regStatus == model.RegStatus.PENDING)
+}
+
+  @if(user.tasks.size + regs.size > 0) {
+    <b>Stuff to do</b>
+    <ul>
+    @for(t <- user.tasks) {
+      <li><a style="color:red;font-weight:bold" href="/user/task/@t.name">@t.desc</a></li>
+    }
+    @for(t <- regs) {
+      <li><a style="color:red;font-weight:bold" href="@routes.Club.doeClubUserReg(t._id.toString)">Pending registration forms for @t.clubName</a></li>
+    }
+    </ul>
+  } else {
+    @if(!quiet) {
+      <b>No tasks.</b>
+    }
+  }
+

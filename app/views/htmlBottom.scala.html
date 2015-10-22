@@ -17,7 +17,7 @@
       <td style="width:200px;vertical-align: top">
         <strong class="razbots">More</strong> <br>
         <a class="razbot" href="/">Home</a> <br>
-        <a class="razbot" href="@web().about.map(_.url).getOrElse("/page/About")">About</a> <br>
+        <a class="razbot" href="@web().about.getOrElse("/page/About")">About</a> <br>
         @web().bottomMenu("More").map{t=>
           <a class="razbot" href="@t._2">@t._1</a><br>
         }

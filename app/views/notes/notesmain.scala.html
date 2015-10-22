@@ -211,8 +211,10 @@ setInterval(function(){
 
 var $tagsInput = $('#tags');
 
+var userTags = [@Html(stok.tags.map(_._1).mkString("\"", "\",\"", "\""))];
+
 function extractor(query) {
-  var result = /([^,]+)$/.exec(query);
+  var result = /([^,]*)$/.exec(query);
   if(result && result[1]) return result[1].replace(/.*,/,'').trim();
   return '';
 }
@@ -220,11 +222,11 @@ function extractor(query) {
   $('#tags').typeahead({
     source: userTags,
     updater: function(item) {
-    return this.$element.val().replace(/([^,]+)\w*$/,item);
+    return this.$element.val().replace(/([^,]*)\w*$/,item);
   },
     matcher: function (item) {
       var tquery = extractor(this.query);
-      if(!tquery) return false;
+      //if(!tquery) return false;
       return ~item.toLowerCase().indexOf(tquery.toLowerCase())
     },
     highlighter: function (item) {
@@ -234,16 +236,30 @@ function extractor(query) {
       return item.replace(new RegExp('(' + query + ')', 'ig'), function ($1, match) {
         return '<strong>' + match + '</strong>'
       })
-    else return item+'s';
+    else return item;//+'s';
   }
 });
 </script>
 
+<script>
+var realm = "@stok.realm";
+</script>
 
+<script src="@Assets.at("javascripts/rk-contentassist-sqbr.js")"></script>
 <script src="@Assets.at("vendor/jquery.textcomplete.min.js")"></script>
 <script src="@Assets.at("javascripts/rk-contentassist.js")"></script>
 
 <script>
+var dotTags = [];
+
+$('#content').textcomplete([
+  CA_TC_braTags (optsToDomain(braDomain)),
+  CA_TC_sqbraTags,
+  CA_TC_dotTags (optsToDomain(braDomain.concat(dotTags))),
+  CA_TC_to
+ ]);
+
+
   @if(!isAuto) {
     $ ( '#discard' ).fadeOut ( ) ;
   }

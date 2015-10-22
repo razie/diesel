@@ -22,7 +22,8 @@ render a regular wiki page - site pages are rendered with wikiSite.scala.html
 
       <hr>
       @if(!print) {
-          @htmlFooter(ads = model.Website.get.showAds == "yes" &&
+          @htmlFooter(ads = model.Website.get.adsAtBottom &&
+              !page.exists(_.contentTags.contains("noAds")) &&
                   !page.exists(_.content.matches( """(?s).*\{\{ad[:}].*\{\{ad[:}].*""")) &&
                   !au.exists(_.isUnder13),
               false,

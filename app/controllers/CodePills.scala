@@ -10,22 +10,28 @@ import scala.collection.mutable
   */
 object CodePills extends RazController {
 
-  abstract class BasePill(val name: String) {
+  sealed abstract class BasePill(val name: String) {
     def run (request:Request[_]) : Result
   }
-  class Pill1(override val name: String, body: Request[_] => Result) extends BasePill(name) {
+
+  /** simple pill wrapper */
+  private class Pill1(override val name: String, body: Request[_] => Result) extends BasePill(name) {
     def run (request:Request[_]) : Result = body(request)
   }
-  class Pill2(override val name: String, body: Request[_] => String) extends BasePill(name) {
+
+  /** text pill wrapper */
+  private class Pill2(override val name: String, body: Request[_] => String) extends BasePill(name) {
     def run (request:Request[_]) : Result = Ok(body(request)).as("application/text")
   }
 
-  val pills = new mutable.HashMap[String, BasePill]()
+  private val pills = new mutable.HashMap[String, BasePill]()
 
+  /** add a pill by name with the given body */
   def add(name: String)(body: Request[_] => Result): Unit = {
     pills += (name -> new Pill1(name, body))
   }
 
+  /** add a text pill by name with the given body */
   def addString(name: String)(body: Request[_] => String): Unit = {
     pills += (name -> new Pill2(name, body))
   }
@@ -43,6 +49,7 @@ object CodePills extends RazController {
     }
   }
 
+  // initialize the thing
   add ("list") {request=>
     Ok(pills.keySet.mkString("\n"))
   }

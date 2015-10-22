@@ -20,7 +20,7 @@
             <br><small>The emails will also include instructions on how to unsubscribe, should the posts get boring.</small>
       </div>
 
-      <div class="col-sm-4">
+      <div class="col-sm-6">
 
         @Wikil.moderatorOf(to).map {mu=>
           Note that the @to.cat.toLowerCase is moderated by <a href="@controllers.Wiki.w("User", mu, to.getRealm)">@mu</a> - we'll ask for permission!
@@ -43,7 +43,7 @@
             myForm("comment"),
             '_label -> "Comment for self",
             '_showConstraints -> false,
-            'cols->120,
+//            'cols->120,
             'rows->3)
 
           <div class="well">

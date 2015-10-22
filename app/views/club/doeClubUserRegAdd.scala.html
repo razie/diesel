@@ -19,9 +19,15 @@
 <hr>
 <p>Will <b>@kid.info.firstName</b> be a:
 
-@model.RK.ROLES.map{r=>
+@model.RK.ROLES.filter(_ != model.RK.ROLE_FAN).map{r=>
   <a href="@routes.Club.doeClubUwAddFormKid(reg._id.toString,kid._id.toString, next, r)" class="btn btn-lg btn-info">@r</a>
 }
+<p>Select one of the roles above. </p>
+  <ul>
+    <li>@model.RK.ROLE_MEMBER - member of the club: parent, official etc </li>
+    <li>@model.RK.ROLE_COACH - coach </li>
+    <li>@model.RK.ROLE_RACER - racer </li>
+  </ul>
 
 <hr>
 <p>Some of these roles will automatically add more forms to complete for this registration, while some will not...
@@ -33,3 +39,4 @@
   </div> <!-- /container -->
 
 @htmlBottom()
+

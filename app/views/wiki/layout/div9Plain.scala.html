@@ -1,7 +1,7 @@
 @**************
 render a regular wiki page - site pages are rendered with wikiSite.scala.html
 **************@
-@(wid:razie.wiki.model.WID, iname:Option[String], page:Option[razie.wiki.model.WikiEntry], canEdit:Boolean, print:Boolean=false)(implicit au:Option[model.User], request:Request[_])
+@(wid:razie.wiki.model.WID, iname:Option[String], page:Option[razie.wiki.model.WikiEntry], canEdit:Boolean, print:Boolean=false)(implicit stok: controllers.StateOk)
 
 @label()=@{ page.map(_.label).getOrElse(razie.wiki.model.Wikis(wid.getRealm).label(wid)) }
 
@@ -12,11 +12,11 @@ render a regular wiki page - site pages are rendered with wikiSite.scala.html
 
       @wiki.layout.draft(page)
 
-        @wiki.wikiFrag(wid,au,false,page, iname, false, true, canEdit)
+        @wiki.wikiFrag(wid,stok.au,false,page, iname, false, true, canEdit)
 
       @if(page.isDefined && !print) {
-        @wiki.wikiAddMore(wid, page, au)
-        @wiki.wikiPageComments(wid, page, au)
+        @wiki.wikiAddMore(wid, page, stok.au)(stok.au, stok.request.get)
+        @wiki.wikiPageComments(wid, page, stok.au)
       }
 
       <hr>
@@ -24,8 +24,8 @@ render a regular wiki page - site pages are rendered with wikiSite.scala.html
     </div> <!-- /col-sm-9 -->
     @if(!print) {
       <div class="col-sm-3">
-        @model.Website.get.rightTop.map { rt =>
-          @wiki.wikiFrag(rt, au, simple = true)
+        @model.Website.gets.rightTop.map { rt =>
+          @wiki.wikiFrag(rt, stok.au, simple = true)
         }
       }
 
@@ -34,12 +34,13 @@ render a regular wiki page - site pages are rendered with wikiSite.scala.html
   </div> <!-- row -->
     @if(!print) {
         @htmlFooter(
-    ads = model.Website.get.showAds == "yes" &&
+    ads = model.Website.gets.adsAtBottom &&
+        !page.exists(_.contentTags.contains("noAds")) &&
                 !page.exists(_.content.matches( """(?s).*\{\{ad[:}].*\{\{ad[:}].*""")) &&
-                !au.exists(_.isUnder13),
+                !stok.au.exists(_.isUnder13),
             false,
             wid.getRealm,
-            Some(request))
+            stok.request)
     }
 </div> <!-- /container -->
 

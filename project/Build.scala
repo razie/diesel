@@ -23,20 +23,21 @@ object ApplicationBuild extends Build {
     "ch.qos.logback"      % "logback-classic"    % "1.0.13",
     "org.mongodb"        %% "casbah"             % "2.6.5", //"2.5.0",
     "com.novus"          %% "salat-core"         % "1.9.2", //"1.9.6",
-    "com.tristanhunt"    %% "knockoff"           % "0.8.1",
+    "com.tristanhunt"    %% "knockoff"           % "0.8.3",
     "org.scalaz"         %% "scalaz-core"        % "7.0.3",
     "org.scalatest"      %% "scalatest"          % "1.9.2",
     "com.typesafe"        % "config"             % "1.2.1",
 
     "com.googlecode.java-diff-utils"        % "diffutils"             % "1.2.1",
 
-    "com.razie"          %% "base"               % "0.6.7-SNAPSHOT",
-    "com.razie"          %% "snakked"            % "0.6.7-SNAPSHOT",
-    "com.razie"          %% "scripster-core"     % "0.8.7-SNAPSHOT"
+    "com.razie"          %% "base"               % "0.6.7",//-SNAPSHOT",
+    "com.razie"          %% "snakked"            % "0.6.7",//-SNAPSHOT",
+    "com.razie"          %% "scripster-core"     % "0.8.7"//-SNAPSHOT"
     )
 
-  val repos = Seq("snapshots" at "https://oss.sonatype.org/content/repositories/snapshots",
-                  "releases"  at "https://oss.sonatype.org/content/repositories/releases")
+    val repos = Seq("snapshots" at "https://oss.sonatype.org/content/repositories/snapshots",
+                    "releases"  at "https://oss.sonatype.org/content/repositories/releases"
+    )
 
 /*
   val main = play.Project(appName, appVersion, appDependencies).settings(

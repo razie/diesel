@@ -93,6 +93,16 @@ object UserStuff extends RazController {
   def doeUserCreateSomething = Action { implicit request =>
     Ok (views.html.user.doeUserCreateSomething(auth))
     }
+
+  def fragTasks (quiet:String) = FAU { implicit au => implicit errCollector => implicit request =>
+    Ok (views.html.user.uFragTasks(au, quiet == "true", new controllers.UserStuff(Website.getRealm, au)))
+  }
+  def fragEvents (quiet:String) = FAU { implicit au => implicit errCollector => implicit request =>
+    Ok (views.html.user.uFragEvents(au, quiet == "true", new controllers.UserStuff(Website.getRealm, au)))
+  }
+  def fragBlogs (quiet:String) = FAU { implicit au => implicit errCollector => implicit request =>
+    Ok (views.html.user.uFragBlogs(au, quiet == "true", new controllers.UserStuff(Website.getRealm, au)))
+  }
 }
 
 /** parse dates into joda.DateTime */

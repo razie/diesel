@@ -13,6 +13,8 @@ import razie.wiki.util.VErrors
 import razie.wiki.Services
 import razie.wiki.admin.Audit
 
+import scala.collection.mutable
+
 /** common razie controller utilities */
 class RazController extends RazControllerBase with Logging {
 
@@ -50,20 +52,29 @@ class RazController extends RazControllerBase with Logging {
 
   //================= RESPONSES
 
-  def noPerm(wid: WID, more: String = "", shouldAudit: Boolean = true)(implicit request: Request[_], errCollector: VErrors = IgnoreErrors) = {
+  def noPerm(wid: WID, more: String = "", shouldAudit: Boolean = true, teaser:String = "")(implicit request: Request[_], errCollector: VErrors = IgnoreErrors) = {
     if (errCollector.hasCorrections) {
       val uname = auth.map(_.userName).getOrElse(if(isFromRobot) "ROBOT" else "")
       val msg = Website.get.prop("msg.err.noPerm").getOrElse("Sorry, you don't have the permission to do this!")
 
       if (shouldAudit)
         Services.audit.auth("BY %s - Permission fail Page: %s Info: %s HEADERS: %s".format(uname, wid.toString, more + " " + errCollector.mkString, request.headers))
-      Unauthorized(views.html.util.utilMsg(
-        s""" <span style="color:red">$msg</span>""",
-        s"""
+
+      if(teaser.isEmpty)
+        Unauthorized(views.html.util.utilMsg(
+          s""" <span style="color:red">$msg</span>""",
+          s"""
 ${errCollector.mkString}
 
 >> $more
 """, Some(controllers.Wiki.w(wid).toString), auth))
+      else
+        Unauthorized(views.html.util.utilMsg(
+        teaser,
+        s"""
+$more
+
+""".stripMargin, Some(controllers.Wiki.w(wid).toString), auth))
     } else noPermOLD(wid, more + " " + errCollector.mkString)
   }
 
@@ -83,7 +94,7 @@ If you got this message in error, please describe the issue in a <a href="/doe/s
 
   def unauthorized(more: String = "", shouldAudit:Boolean=true)(implicit request: Request[_], errCollector: VErrors = IgnoreErrors) = {
     if(shouldAudit)
-    Services.audit.unauthorized("BY %s - Info: %s HEADERS: %s".format((auth.map(_.userName).getOrElse("")), more + " " + errCollector.mkString, request.headers))
+      Services.audit.unauthorized("BY %s - Info: %s HEADERS: %s".format((auth.map(_.userName).getOrElse("")), more + " " + errCollector.mkString, request.headers))
     Unauthorized(views.html.util.utilMsg(
       more,
       s"""
@@ -140,7 +151,10 @@ ${errCollector.mkString}
       au <- activeUser;
       isA <- checkActive(au)
     ) yield f(au)(errCollector)(request)
-      ) getOrElse unauthorized("CAN'T")
+      ) getOrElse {
+      val more = Website(request).flatMap(_.prop("msg.noPerm")).flatMap(WID.fromPath).flatMap(_.content).mkString
+      unauthorized("OOPS "+more)
+    }
   }
 
   def FAU(msg:String)(f: User => VErrors => Request[AnyContent] => Option[SimpleResult]) = Action { implicit request =>
@@ -153,7 +167,10 @@ ${errCollector.mkString}
       val temp = f(au)(errCollector)(request)
       temp
     }
-    ).flatten getOrElse unauthorized("CAN'T "+msg)
+    ).flatten getOrElse {
+      val more = Website(request).flatMap(_.prop("msg.noPerm")).flatMap(WID.fromPath).flatMap(_.content).mkString
+      unauthorized("OOPS "+msg+more)
+    }
   }
 
   // todo enhance this - collect robot suspicions and store them in a proposal table
@@ -179,17 +196,32 @@ ${errCollector.mkString}
 /** captures the current state of what to display - passed to all views */
 class StateOk(val msg: Seq[(String, String)], val realm:String, val au: Option[model.User], val request: Option[Request[_]]) {
   var _title : String = "" // this is set by the body as it builds itself and used by the header, heh
+  val _metas = new mutable.HashMap[String,String]() // moremetas
 
   /** set the title of this page */
   def title(s:String) = {this._title = s; ""}
+
+  /** add a meta to this page's header */
+  def meta(name:String, content:String) = {this._metas.put(name, content); ""}
+  def metas = _metas.toMap
 
   def apply (content: StateOk => Html) = {
     RkViewService.Ok (views.html.util.reactorLayout(content(this), msg)(this))
   }
 
+  def justLayout (content: StateOk => Html) = {
+    views.html.util.reactorLayout(content(this), msg)(this)
+  }
+
+  def notFound (content: StateOk => Html) = {
+    RkViewService.NotFound (views.html.util.reactorLayout(content(this), msg)(this))
+  }
+
   def noLayout (content: StateOk => Html) = {
     RkViewService.Ok (content(this))
   }
+
+  def website = Website.gets(this)
 }
 
 object RkViewService extends RazController with ViewService {

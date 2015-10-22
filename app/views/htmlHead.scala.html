@@ -7,7 +7,7 @@
 }
 
 @css() = @{
-  val ret = cssr.orElse(au.flatMap(_.css)).getOrElse(_root_.admin.Config.theme)
+  val ret = cssr.getOrElse(_root_.admin.Config.getTheme(au, request))
   if(ret == null || ret.length <=0) "light" else ret
 }
 
@@ -41,6 +41,10 @@
       <meta name="author" content="@d">
     }
 
+    @moreMetas.map { t =>
+      <meta name="@t._1" content="@t._2">
+    }
+
     <!-- Le styles -->
     <link href="@routes.Assets.at("bootstrap-3.3.4/css/bootstrap.css")" rel="stylesheet">
     <link href="@routes.Assets.at("bootstrap-3.3.4/css/bootstrap-theme.css")" rel="stylesheet">
@@ -55,7 +59,7 @@
 ********@
 
 @if(Config.hostport.startsWith("test") || Config.hostport.startsWith("xlocalhost")) {
-  @if(Config.theme.contains("light")) {
+  @if(Config.getTheme(au, request).contains("light")) {
     <style type="text/css">
       .navbar-inner {
         background-color: red;
@@ -198,7 +202,7 @@ li.g-like{
 @** nots needs without this if
  @if(page.exists(p=>"""\{\{code[:}]""".r.findFirstIn(p.content).isDefined)) { **@
 
-  @if(Config.theme.contains("light")) {
+  @if(Config.getTheme(au, request).contains("light")) {
 
 <style type="text/css">
 # this makes all look big, even `something`

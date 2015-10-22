@@ -1,17 +1,19 @@
 @**************
 edit a wiki page
 **************@
-@(wid:razie.wiki.model.WID, myForm:Form[controllers.Wikie.EditWiki], au:Option[model.User])(implicit request:Request[_])
+@(wid:razie.wiki.model.WID, myForm:Form[controllers.Wikie.EditWiki], noshow:String="")(implicit stok: controllers.StateOk)
 @import model.Website.realm
 @import razie.wiki.model.{Wikis, WID, WikiEntry}
 @import razie.wiki.model.Reactors
+
+@stok.title("Editing "+wid.cat+":"+ wid.name)
 
 @v(name:String) = @{
   myForm(name).value.getOrElse("?")
 }
 
 @wvis() = @{
-  Reactors(wid.getRealm).wiki.visibilityFor(wid.cat, "wvis") ++ (if(au.exists(_.isAdmin)) Seq("Admin") else Nil)
+  Reactors(stok.realm).wiki.visibilityFor(wid.cat, "wvis") ++ (if(stok.au.exists(_.isAdmin)) Seq("Admin") else Nil)
 }
 
 @reserved(page:Option[WikiEntry]) = {
@@ -29,11 +31,10 @@ edit a wiki page
   }
 }
 
-@whtmlHeadBar("Editing "+wid.cat+":"+ wid.name, realm)(au,request)
 
 <div class="container">
   <div class="row">
-    <div class="col-sm-9">
+    <div class="col-sm-12">
 
 <div >
 @import helper.twitterBootstrap._
@@ -43,6 +44,8 @@ edit a wiki page
 @*******
 PROBLEM: many places use label as name... via Wikis.formatName
 **********@
+  <input type="hidden" name="oldVer" value='@myForm("oldVer").value' >
+
   <div class="form-group col-sm-9">
   @helper.inputText(
     myForm("label"),
@@ -59,6 +62,7 @@ PROBLEM: many places use label as name... via Wikis.formatName
     myForm("tags"),
     'class -> "form-control col-sm-12",
     '_label -> "Tags (separated with ,)",
+    'autocomplete -> "off",
     '_showConstraints -> false)
   </div>
   <div class="form-group col-sm-3">
@@ -71,7 +75,7 @@ PROBLEM: many places use label as name... via Wikis.formatName
 
   @helper.select(
     myForm("visibility"),
-    Reactors(wid.getRealm).wiki.visibilityFor(wid.cat).map(x=>(x,x)),
+    Reactors(stok.realm).wiki.visibilityFor(wid.cat).map(x=>(x,x)),
     '_label -> "Visibility",
     'class -> "input-small",
     '_showConstraints -> false)
@@ -90,8 +94,8 @@ PROBLEM: many places use label as name... via Wikis.formatName
     '_label -> "Notify followers",
     '_showConstraints -> false)
 
-  @if(au.get.hasPerm(model.Perm.adminDb)) {
-    <p>Reserved: @reserved(Wikis(wid.getRealm).find(wid.cat,wid.name))
+  @if(stok.au.get.hasPerm(model.Perm.adminDb)) {
+    <p>Reserved: @reserved(Wikis(stok.realm).find(wid.cat,wid.name))
     @if(Wikis(wid.getRealm).find(wid.cat,wid.name).isDefined) {
       <p><a href="@routes.Wikie.wikieDelete1(wid)">Delete it</a>
     }
@@ -101,7 +105,7 @@ PROBLEM: many places use label as name... via Wikis.formatName
 </div>
     <div class="actions">
       <button type="submit" class="btn btn-primary">Save</button>
-      <a href="@controllers.Wiki.w(wid, false)" class="btn btn-default">Cancel</a>
+      <a href="@controllers.Wiki.wr(wid, stok.realm, false)" class="btn btn-default">Cancel</a>
   </div>
 
   @myForm.globalError.map { err=>
@@ -115,27 +119,75 @@ PROBLEM: many places use label as name... via Wikis.formatName
 }
 </div>
 
-      <script>
-var dotTags = [];
+<script>
+var realm = "@stok.realm";
 </script>
 
+<!-- for tags -->
+<script src="@routes.Assets.at("bootstrap-2.2.3/js/bootstrap-typeahead.js")"></script>
+<script>
+//from http://stackoverflow.com/questions/12662824/twitter-bootstrap-typeahead-multiple-values
+
+  var $tagsInput = $('#tags');
+
+  //todo populate dynamically when user does need tag editing.. using /wikie/tagOptions
+  // see CA_TC_sqbraTags for jquery load json example
+  var userTags = [
+    @Html(razie.wiki.model.Wikis(stok.realm).index.usedTags.keys.map(s=> "'" + s + "'").mkString(","))
+    ]
+
+  function extractor(query) {
+    var result = /([^,]*)$/.exec(query);
+    if(result && result[1]) return result[1].replace(/.*,/,'').trim();
+    return '';
+  }
+
+  $('#tags').typeahead({
+    source: userTags,
+    updater: function(item) {
+    return this.$element.val().replace(/([^,]*)\w*$/,item);
+  },
+    matcher: function (item) {
+      var tquery = extractor(this.query);
+      //if(!tquery) return false;
+      return ~item.toLowerCase().indexOf(tquery.toLowerCase())
+    },
+    highlighter: function (item) {
+    var query = extractor(this.query);
+    console.log('q '+query)
+    if(query.length>0)
+      return item.replace(new RegExp('(' + query + ')', 'ig'), function ($1, match) {
+        return '<strong>' + match + '</strong>'
+      })
+    else return item;//+'s';
+  }
+});
+</script>
+
+<script src="@routes.Assets.at("javascripts/rk-contentassist-sqbr.js")"></script>
 <script src="@routes.Assets.at("vendor/jquery.textcomplete.min.js")"></script>
 <script src="@routes.Assets.at("javascripts/rk-contentassist.js")"></script>
 
+<script>
+var dotTags = [];
+
+$('#content').textcomplete([
+  CA_TC_braTags (optsToDomain(braDomain)),
+  CA_TC_sqbraTags,
+  CA_TC_dotTags (optsToDomain(braDomain.concat(dotTags)))
+ ]);
+
+</script>
+
 @Wikis(wid.getRealm).find(wid).map{we=>
   <div class="well">
-      @wiki.wikiFrag(wid,au, false, Some(we))
+    @if(noshow.isEmpty) {
+      @wiki.wikiFrag(wid,stok.au, false, Some(we))
+    }
   </div>
 }
 
-    <hr>
-    @htmlFooter(false, false, realm)
     </div> <!-- /col-sm-9 -->
-
-    <div class="col-sm-3">
-      @wiki.wikiFrag(razie.wiki.model.WID("Admin","Right"),au,true)
-    </div>
   </div> <!-- row -->
 </div> <!-- /container -->
 
-@htmlBottom(false, Some(request))

@@ -37,7 +37,7 @@ render a regular wiki page - site pages are rendered with wikiSite.scala.html
           @wiki.wikiFrag(rt, au, simple = true)
         }
 
-        @if(web().showAds == "yes") {
+        @if(web().adsAtBottom) {
           @addRight()
         }
 
@@ -50,7 +50,8 @@ render a regular wiki page - site pages are rendered with wikiSite.scala.html
 
   </div> <!-- row -->
       @if(!print) {
-          @htmlFooter(ads = model.Website.get.showAds == "yes" &&
+          @htmlFooter(ads = model.Website.get.adsAtBottom &&
+              !page.exists(_.contentTags.contains("noAds")) &&
                   !page.exists(_.content.matches( """(?s).*\{\{ad[:}].*\{\{ad[:}].*""")) &&
                   !au.exists(_.isUnder13),
               false,

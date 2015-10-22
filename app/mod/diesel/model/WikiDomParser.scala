@@ -52,10 +52,14 @@ trait WikiDomainParser extends WikiParserBase {
          w.cache.put(WikiDomain.DOM_LIST, c :: rest)
          w
         }
+
+        def mkList = s"""<a href="/diesel/list2/${c.name}">list</a>"""
+        def mkNew  = if(ctx.we.exists(w=> WikiDomain.canCreateNew(w.realm, name))) s""" | <a href="/doe/diesel/create/${c.name}">new</a>""" else ""
+
         SState(
           s"""
-            |<div align="right"><small><a href="/diesel/list2/${c.name}">list</a> | <a href="/doe/diesel/create/${c.name}">new</a>
-            |</small></div><div class="well">
+            |<div align="right"><small>$mkList $mkNew </small></div>
+            |<div class="well">
             |$c
             |</div>""".stripMargin)
       }

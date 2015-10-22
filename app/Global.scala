@@ -134,11 +134,11 @@ object Global extends WithFilters(LoggingFilter) {
 
     /************** MONGO INIT *************/
     RazMongo.setInstance {
-      val UPGRADE_AGAIN = false
+      val UPGRADE_AGAIN = false // only the last upgrade
       val mongoUpgrades: Map[Int, UpgradeDb] = Map(
           1 -> Upgrade1, 2 -> Upgrade2, 3 -> Upgrade3, 4 -> Upgrade4, 5 -> Upgrade5,
           6 -> U6, 7 -> U7, 8 -> U8, 9 -> U9, 10 -> U10, 11 -> U11, 12 -> U12, 13 -> U13,
-          14 -> U14, 15 -> U15, 16 -> U16) /* NOTE as soon as you list it here, it will apply */
+          14 -> U14, 15 -> U15, 16 -> U16, 17 -> U17) /* NOTE as soon as you list it here, it will apply */
 
       def mongoDbVer = mongoUpgrades.keySet.max + 1
 
@@ -159,7 +159,7 @@ object Global extends WithFilters(LoggingFilter) {
       def prep(adb:MongoDB) = {
         // upgrade if needed
         var dbVer = adb("Ver").findOne.map(_.get("ver").toString).map(_.toInt)
-        if (UPGRADE_AGAIN) dbVer = dbVer.map(_ - 1)
+        if (UPGRADE_AGAIN) dbVer = dbVer.map(x => mongoDbVer - 1)
 
         var upgradingLoop = false // simple recursive protection
 
@@ -251,7 +251,8 @@ object Global extends WithFilters(LoggingFilter) {
     Services.alli = RazAlligator
 
     WikiObservers mini {
-      case we:WikiEntry=> {
+      case WikiEvent(_, "WikiEntry", _, Some(x), _, _) => {
+        val we = x.asInstanceOf[WikiEntry]
         if("Site" == we.category) Website.clean(we.name)
 
         if("Reactor" == we.category) {
@@ -265,6 +266,7 @@ object Global extends WithFilters(LoggingFilter) {
     Progress.init
   }
 
+  /** my dispatcher implementation */
   object RazAlligator extends Alligator {
     lazy val auditor = Akka.system.actorOf(Props[WikiAuditor], name = "Alligator")
 
@@ -279,7 +281,10 @@ object Global extends WithFilters(LoggingFilter) {
     }
 
     def receive: PartialFunction[Any, Unit] = {
-      case wa: WikiAudit => wa.create
+      case wa: WikiAudit => {
+        wa.create
+        WikiObservers.after(wa.toEvent)
+      }
       case a: Audit => a.create
       case wc: WikiCount => wc.inc
       case e: Emailing => e.send

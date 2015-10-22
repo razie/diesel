@@ -1,11 +1,13 @@
 @****************
 fragment: add more stuff to the current topic, including children, sub-topics etc
 ****************@
-@(wid:razie.wiki.model.WID, page:Option[razie.wiki.model.WikiEntry], user:Option[model.User])
+@(wid:razie.wiki.model.WID, page:Option[razie.wiki.model.WikiEntry], user:Option[model.User])(implicit au:Option[model.User], request:Request[_])
 @import razie.wiki.util.IgnoreErrors
 @import razie.wiki.model.{Wikis, WID}
 @import razie.wiki.dom.WikiDomain
 @import model.Perm
+
+@realm()=@{model.Website.realm(request)}
 
 @allassocs(wid:WID) = @{
   // all those I am parent to OR are children to me
@@ -14,10 +16,7 @@ fragment: add more stuff to the current topic, including children, sub-topics et
   WikiDomain(wid.getRealm).assocsWhereIHaveRole(wid.cat, "Parent")
 }
 
-@if("Category" == wid.cat &&
-    "User" != wid.name &&
-    ("WikiLink" != wid.name ||
-      user.exists(_.hasPerm(Perm.adminDb)))) {
+@if("Category" == wid.cat && WikiDomain.canCreateNew(wid.getRealm, wid.name)) {
   <!-- list of pages in category -->
   @if(Wikis(wid.getRealm).pageNames(wid.name).size > 0) {
     <div class="well">
@@ -88,7 +87,7 @@ fragment: add more stuff to the current topic, including children, sub-topics et
             @child (s) :
             <ul>
             @kids.reverse.take(200).sortWith((a,b)=>b.crDtm.isBefore(a.crDtm)).map(_.from).map { p=>
-              <li><a href="@controllers.Wiki.w(p)">@Wikis.label(p)</a>
+              <li><a href="@controllers.Wiki.w(p, realm)">@Wikis.label(p)</a>
             }
             </ul>
           </div>
@@ -100,7 +99,7 @@ fragment: add more stuff to the current topic, including children, sub-topics et
             DRAFT @child (s) :
             <ul>
             @kids.reverse.take(200).sortWith((a,b)=>b.crDtm.isBefore(a.crDtm)).map(_.from).map { p=>
-              <li><a href="@controllers.Wiki.w(p)">@Wikis.label(p)</a>
+              <li><a href="@controllers.Wiki.w(p, realm)">@Wikis.label(p)</a>
             }
             </ul>
           </div>

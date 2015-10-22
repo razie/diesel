@@ -13,7 +13,7 @@ browse a domain
       </small></div><div class="well">
       @Html(c.fullHtml)
       </div>
-    @wiki.wikiAddMore(razie.wiki.model.WID("Category", cat).r(realm), None, stok.au)
+    @wiki.wikiAddMore(razie.wiki.model.WID("Category", cat).r(realm), None, stok.au)(stok.au, stok.request.get)
   }.getOrElse{
     <span style="color:red">Absolutely nothing found about <b>@cat</b> - it is most likely inferred!</span>
     <p>

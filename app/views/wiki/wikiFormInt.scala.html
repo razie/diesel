@@ -6,12 +6,14 @@ print form body - no header/footer - reuse in other screens
 
 @if(!errors.isEmpty) {
 <div class="alert alert-danger">
-  <font style="color:red"><strong>Form has errors</strong> (was not saved):</font><ul>
-  <font style="color:red">
-        @errors.map {err=>
-                <li><b>@err._1</b>  => @err._2 </li>
-                }
-  </ul></font>
+  <span style="color:red"><strong>Form has errors</strong> (was not saved):</span>
+  <span style="color:red">
+    <ul>
+      @errors.map {err=>
+        <li><b>@err._1</b>  => @err._2 </li>
+      }
+  </ul>
+  </span>
 </div>
 }
 
@@ -20,12 +22,14 @@ print form body - no header/footer - reuse in other screens
 @if(!errors.isEmpty) {
   <hr>
 <div class="alert alert-danger">
-  <strong><a id="errors">Errors:</a></strong><ul>
-  <font style="color:red">
-        @errors.map {err=>
-                <li><b>@err._1</b>  => @err._2 </li>
-                }
-  </ul></font>
+  <strong><a id="errors">Errors:</a></strong>
+  <span style="color:red">
+    <ul>
+       @errors.map {err=>
+          <li><b>@err._1</b>  => @err._2 </li>
+       }
+  </ul>
+  </span>
 </div>
 }
 

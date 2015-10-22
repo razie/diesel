@@ -1,30 +1,30 @@
 @**************
 render a regular wiki page - site pages are rendered with wikiSite.scala.html
 **************@
-@(wid:razie.wiki.model.WID, iname:Option[String], page:Option[razie.wiki.model.WikiEntry], canEdit:Boolean, print:Boolean=false)(implicit au:Option[model.User], request:Request[_])
+@(wid:razie.wiki.model.WID, iname:Option[String], page:Option[razie.wiki.model.WikiEntry], canEdit:Boolean, print:Boolean=false)(implicit stok: controllers.StateOk)
 
 @label()=@{ page.map(_.label).getOrElse(razie.wiki.model.Wikis(wid.getRealm).label(wid)) }
-@web()=@{model.Website(request) getOrElse model.Website.dflt}
+@web()=@{model.Website.gets}
 @isSite()=@{Array("Site", "Page").contains(wid.cat) && page.isDefined}
 @layout=@{page.flatMap(_.contentTags.get("layout")) getOrElse web().layout}
 
-@htmlHead(page.flatMap(_.contentTags.get("title")).getOrElse(wid.cat +": "+ label), None, page)
+@htmlHead(page.flatMap(_.contentTags.get("title")).getOrElse(/*wid.cat + ": "+*/ label), None, page)(Map.empty, stok.au, stok.request)
 
-@if(!print) {@navbar(au, wid.getRealm)(au,Some(request))}
+@if(!print) {@navbar(stok.au, wid.getRealm)(stok.au,stok.request)}
 
 @{
   layout match {
-    case "Play:wiki.layout.div12"         => wiki.layout.div12(wid, iname, page, canEdit, print)(au, request)
-    case "Play:wiki.layout.div12FullPage" => wiki.layout.div12FullPage(wid, iname, page, canEdit, print)(au, request)
-    case "Play:wiki.layout.div12Cool"     => wiki.layout.div12Cool(wid, iname, page, canEdit, print)(au, request)
-    case "Play:wiki.layout.div12Plain"    => wiki.layout.div12Plain(wid, iname, page, canEdit, print)(au, request)
-    case "Play:wiki.layout.div9Plain"     => wiki.layout.div9Plain(wid, iname, page, canEdit, print)(au, request)
-    case "Play:wiki.layout.div9Ad"        => wiki.layout.div9Ad(wid, iname, page, canEdit, print)(au, request)
-    case _ => wiki.layout.classic(wid, iname, page, canEdit, print)(au, request)
+    case "Play:wiki.layout.div12"         => wiki.layout.div12(wid, iname, page, canEdit, print)
+    case "Play:wiki.layout.div12FullPage" => wiki.layout.div12FullPage(wid, iname, page, canEdit, print)
+    case "Play:wiki.layout.div12Cool"     => wiki.layout.div12Cool(wid, iname, page, canEdit, print)(stok.au, stok.request.get)
+    case "Play:wiki.layout.div12Plain"    => wiki.layout.div12Plain(wid, iname, page, canEdit, print)(stok.au, stok.request.get)
+    case "Play:wiki.layout.div9Plain"     => wiki.layout.div9Plain(wid, iname, page, canEdit, print)
+    case "Play:wiki.layout.div9Ad"        => wiki.layout.div9Ad(wid, iname, page, canEdit, print)(stok.au, stok.request.get)
+    case _ => wiki.layout.classic(wid, iname, page, canEdit, print)(stok.au, stok.request.get)
   }
 }
 
 @if(!print) {
-  @htmlBottom(false, Some(request))
+  @htmlBottom(false, stok.request)
 }
 

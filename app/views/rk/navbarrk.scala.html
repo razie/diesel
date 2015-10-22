@@ -12,8 +12,14 @@ creates the navigation bar
    else s"/wikie/search"
    }
 
+<style type="text/css">
+  img.rklogo {
+    opacity:0.8;
+    filter:alpha(opacity=80); /* For IE8 and earlier */
+  }
+</style>
 
-@if(Config.theme.contains("light")) {
+@if(Config.getTheme(au, request).contains("light")) {
   <nav class="navbar navbar-fixed-top navbar-inverse">
   @*<nav class="navbar navbar-fixed-top navbar-default">*@
   } else {
@@ -31,12 +37,6 @@ creates the navigation bar
         <span class="icon-bar"></span>
       </button>
 
-<style type="text/css">
-img.rklogo {
-      opacity:0.8;
-      filter:alpha(opacity=80); /* For IE8 and earlier */
-      }
-</style>
 
       @if(!Config.isLocalhost) {
       @web().navBrand.fold {
@@ -62,7 +62,7 @@ img.rklogo {
               <li><a href="@web().navNotes">Notes</a></li>
             }
             @web().navMenu.filter(t=> !Array("Browse", "Theme", "Notes").contains(t._1)).map{t=>
-              <li><a href="@t._2">@t._1</a></li>
+              <li><a href="@t._2">@Html(t._1)</a></li>
             }
           }
       </ul>
@@ -72,7 +72,7 @@ img.rklogo {
           case Some(joe) => {
             <li class="dropdown">
               <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">
-                @if(Config.theme.contains("light")) {
+                @if(Config.getTheme(au, request).contains("light")) {
                   <i class="icon-lock"></i>
                 } else {
                   <i class="icon-lock icon-white"></i>
@@ -111,10 +111,7 @@ img.rklogo {
         </form>
 
 
-</div>
-
-    </div><!-- /.navbar-collapse -->
-  </div><!-- /.container-fluid -->
-  @*</div>*@
+    </div>
+  </div><!-- /.navbar-collapse -->
 </nav>
 

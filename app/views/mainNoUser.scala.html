@@ -4,52 +4,42 @@
 
 @htmlHeadBar("", None)
 
+
 @pic = @{
+  // todo not used anymore
   val names = _root_.admin.Config.sitecfg("main.images").toList.flatMap(s=>s.split("[;,]"))
   val i = new scala.util.Random().nextInt(names.length)
   names(i)
   }
 
 <div class="container">
-  <div class="jumbotron">
     <div class="row">
-      <div class="col-sm-6">
+      <div class="col-sm-12">
         @*<h2>@salutation, @joe! <small><a href="@routes.Profile.doeJoin()">not @joe?</a></small></h2>*@
 
         @wiki.wikiFragInt("Admin:page-index", None)
 
       </div>
 
+      @***
       <div class="col-sm-4">
         <br>
 @_root_.admin.Config.sitecfg("css").filter(_ == "dark").map {x=>
-@***
-  <img width="60%" height="60%" style="opacity:0.7;filter:alpha(opacity=70);" src="@routes.Assets.at("images/local-sport-club-2.gif")"></img>
-***@
   <img class="img-rounded" style="opacity:0.8;filter:alpha(opacity=80);" src="@routes.Assets.at("images/"+pic)"></img>
 }.getOrElse {
   <img class="img-rounded" src="@routes.Assets.at("images/"+pic)"></img>
-@***
-  <img width="60%" height="60%" src="@routes.Assets.at("images/local-sport-club-1.gif")"></img>
-***@
 }
       </div>
-    </div>
+      ***@
+
+    </div> @* row*@
 
     <div class="row">
-<div class="col-sm-10">
-<br>
-<p><a class="btn btn-primary btn-lg" href="@routes.Profile.doeJoin()">Join &raquo;</a>
-<a class="btn btn-inverse btn-lg" href="@routes.Application.doeSpin">Take it for a spin &raquo;</a>
-   <a class="btn btn-danger btn-lg" href="http://500px.com/editors">Nah, checkout some cool pix &raquo;</a></p>
-<br>
 
 @wiki.wikiFragInt("Admin:page-index-bottom", None)
 
-     </div>
     </div>
 
-  </div>
   <hr>
   @htmlFooter()
 

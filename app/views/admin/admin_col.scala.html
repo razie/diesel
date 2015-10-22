@@ -6,7 +6,7 @@
 
 <h2>Records</h2>
 
-@col.map { db =>
+@col.take(3000).map { db =>
 <ul>
   @db.keySet.map { k =>
    <li>@k : @db.get(k)</li>

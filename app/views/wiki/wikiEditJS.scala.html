@@ -175,21 +175,12 @@ PROBLEM: many places use label as name... via Wikis.formatName
      <p style="color:red;font-weight:bold">@err.message</p>
   }
 
-
-
   <p><small>See the <a href="/wiki/Admin/Quick Guide">quick guide</a>.</small>
   <br><small>By updating this page, you agree to the <a href="@controllers.Wiki.w("Terms of Service")">Terms of Service</a></small>
   <br><small>Please do not replicate information already contained in other reference places like
       Wikipedia, just link to them. Use [[[Main_Page]]] to link to wikipedia.</small>
 }
 </div>
-
-      <script>
-var dotTags = [];
-</script>
-
-@*<script src="@routes.Assets.at("vendor/jquery.textcomplete.min.js")"></script>*@
-@*<script src="@routes.Assets.at("javascripts/rk-contentassist.js")"></script>*@
 
 @Wikis(wid.getRealm).find(wid).map{we=>
   <div class="well">

@@ -5,6 +5,7 @@ club admin manages user: membership, regsitration etc
 @import model.RegStatus._
 @import razie.wiki.model.FormStatus._
 @import model.RK._
+  @import controllers.Club
 
 @how() = @{
   razie.wiki.model.Wikis.category("Club").flatMap(_.contentTags.get("roles:"+"User")) match {
@@ -17,6 +18,7 @@ club admin manages user: membership, regsitration etc
   }
 }
 
+@regs() = @{uw.user.toList.flatMap(u=>model.Regs.findClubUser(club, u._id)).toList.filter(_.year == Club(club).curYear)}
 @reg() = @{uw.user.flatMap(u=>controllers.Club(club).reg(u))}
 
 @uname() = @{uw.user.map(u=>s"${u.userName} (${u.lastName}, ${u.firstName})").getOrElse("")}
@@ -66,12 +68,15 @@ club admin manages user: membership, regsitration etc
 }
 
 @prevReg=@{
-  Club(club.userName).flatMap(c=>model.Regs.findClubUser(c.user, uw.userId).filter(_.regStatus != model.RegStatus.FAMILY).toList.sortBy(_.year).headOption)
+  Club(club.userName).flatMap(c=>model.Regs.findClubUser(c.user, uw.userId).filter(_.regStatus != model.RegStatus.FAMILY).toList.sortBy(_.year).reverse.headOption)
 }
 
 </td><td>
   <strong>Registration</strong>
   <p> Status: @regStatusColored(reg.map(_.regStatus).getOrElse("n/a"))
+  @if(regs().size > 1) {
+    <span style="color:red"> OOPS - MORE REGS for the same year</span>
+  }
   <p> To start a registration for a member, then <strong>1-Expire</strong> the current registration, then <strong>Add Family</strong> the required Family forms below, then <strong>2-Start</strong>, which
   will also send an email to the member.
   <p>

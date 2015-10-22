@@ -34,8 +34,8 @@ screen to admin one user
 <br>  emailenc: @u.email
 <br>  pwd: @u.pwd
 <br>  status: @u.status
-<br>  roles: @u.roles
-<br>  realms: @u.realms
+<br>  roles: @u.roles.mkString(",")
+<br>  realms: @u.realms.mkString(",")
 <br>  prefs: @u.prefs
 <br>  _id: @u.id
 }

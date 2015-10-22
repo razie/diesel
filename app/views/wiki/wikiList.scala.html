@@ -6,7 +6,21 @@ list of pages, with links etc - result of a query of some kind
 
 @stok.title("Results for: " + title + curTags)
 
-@whtmlHeadBar("Results for: " + title + curTags, realm)(stok.au, stok.request.get)
+@** stop robots from indexing duplicates of tag1/tag2 and tag2/tag1 **@
+@if(curTags.split("/").size > 1) {
+  @stok.meta("robots", "noindex, follow")
+}
+
+@highlight(s:String)={
+  @if(search.length>1) {
+    @Html(s.replaceAll(s"(?i)($search)", "<b>$1</b>"))
+  } else {
+    @s
+  }
+}
+
+@htmlHead("Results for: " + title + curTags)(stok.metas, stok.au, stok.request)
+@navbar(stok.au, realm)(stok.au, stok.request)
 
 @browseTag(t:String)={@tagPrefix@t@tagSuffix}
 
@@ -38,22 +52,24 @@ list of pages, with links etc - result of a query of some kind
         }
           }
 
+        @notes.notesmsg(Seq(("msg" -> ("Found "+pages.size.toString+" topics"))))
+
         </h3>
 
       <div class="well">
-        @ads.addSquareTop(stok.au)
+        @ads.addSquareTop(stok)
 
         @if(pages.size > 0) {
           <ul>
           @pages.take(16).map { p=>
-            <li><a href="@controllers.Wiki.w(p._1)">@label(p._2, p._1)</a> <small>&nbsp;  @p._1.cat</small>
+            <li><a href="@controllers.Wiki.wr(p._1, realm)">@highlight(label(p._2, p._1))</a> <small>&nbsp;  @p._1.cat</small>
           }
 
           @if(pages.size>16) {
-            @ads.addSquareTop(stok.au)
+            @ads.addSquareTop(stok)
 
             @pages.drop(16).map { p=>
-              <li><a href="@controllers.Wiki.w(p._1)">@label(p._2, p._1)</a> <small>&nbsp;  @p._1.cat</small>
+              <li><a href="@controllers.Wiki.wr(p._1, realm)">@highlight(label(p._2, p._1))</a> <small>&nbsp;  @p._1.cat</small>
             }
 
             @if(pages.size < 27) {
@@ -83,7 +99,7 @@ list of pages, with links etc - result of a query of some kind
 @**
       @addRight()
 **@
-      @tag.tagList(curTags, tags, 20, tagPrefix, tagSuffix)
+      @tag.tagList(curTags, tags, 30, tagPrefix, tagSuffix)
     </div>
 
   </div> <!-- row -->
@@ -91,5 +107,4 @@ list of pages, with links etc - result of a query of some kind
 </div> <!-- /container -->
 
 
-@htmlBottom(false, (stok.request))
 

@@ -143,7 +143,7 @@ object Wikil extends WikieBase {
       exists <- wid.page.isDefined orErr ("Cannot link to " + wid.name);
       // even new users that didn't verify their email can register for club
       //      isConsent <- au.profile.flatMap(_.consent).isDefined orCorr Profile.cNoConsent;
-      r1 <- (au.hasPerm(Perm.uProfile) || "Club" == wid.cat) orCorr cNoPermission("uProfile")
+      r1 <- (au.hasPerm(Perm.uProfile) || "Club" == wid.cat) orCorr cNotVerified
     ) yield {
       def content = """[[User:%s | You]] -> [[%s:%s]]""".format(au.id, wid.cat, wid.name)
 
@@ -244,7 +244,7 @@ object Wikil extends WikieBase {
         Msg2("Ok - you are subscribed to %s via email!".format(wid.page.map(_.label).getOrElse(wid.name)), Some(wid.urlRelative))
       }
     }) getOrElse {
-      error("ERR_CANT_UPDATE_USER " + session.get("email"))
+      error("ERR_CANT_UPDATE_USER " + session.get("email").mkString + errCollector.mkString)
       unauthorized("Oops - cannot create this link... ")
     }
   }

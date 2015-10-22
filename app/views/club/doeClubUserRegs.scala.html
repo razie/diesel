@@ -1,86 +1,96 @@
 @***********
-  user manages registrations
+user manages registrations
 ***********@
-@(au:model.User)
+@(au: model.User)
 @import model.RegStatus._
+@import controllers.Club
 
 @htmlHeadBar("Registrations for " + au.userName, Option(au))
 
-<div class="container"> <div class="row">
-@user.leftmenu(10, au)
-
-<div class="col-sm-9">
-
-@missingRegs=@{
+@missingRegs = @{
   // clubs with open regs that I'm not reg'd for
-  val clubs = au.wikis.filter(_.wid.cat=="Club").flatMap(w=>model.Users.findUserByUsername(w.wid.name).toList)
-  clubs.map{c=> (c, Club(c))}.collect {
+  val clubs = au.wikis.filter(_.wid.cat == "Club").flatMap(w => model.Users.findUserByUsername(w.wid.name).toList)
+  clubs.map { c => (c, Club(c)) }.collect {
     case (c, club) if club.isRegOpen && model.Regs.findClubUserYear(c, au._id, club.curYear).isEmpty =>
       club
   }
 }
 
-@regs=@{
-  val clubs = au.wikis.filter(_.wid.cat=="Club").flatMap(w=>model.Users.findUserByUsername(w.wid.name).toList)
-  clubs.flatMap(c=>model.Regs.findClubUser(c, au._id)).sortWith(_.year >= _.year)
+@regs = @{
+  val clubs = au.wikis.filter(_.wid.cat == "Club").flatMap(w => model.Users.findUserByUsername(w.wid.name).toList)
+  clubs.flatMap(c => model.Regs.findClubUser(c, au._id)).sortWith(_.year >= _.year)
 }
 
-@tab=@{
-    regs.iterator.map(reg=>
-    Map("club"->reg.clubName, "year"->reg.year, "role"->reg.role, "regStatus"->reg.regStatus, "id" -> reg._id.toString, "vol" -> controllers.Club.volPerReg(reg)))
+@tab = @{
+  regs.iterator.map(reg =>
+    Map("club" -> reg.clubName, "year" -> reg.year, "role" -> reg.role, "regStatus" -> reg.regStatus, "id" -> reg._id.toString, "vol" -> controllers.Club.volPerReg(reg)))
 }
 
-@mnglink(row:Map[String,String],k:String,v:String)={
-  @k match {
+<div class="container"> <div class="row">
+  @user.leftmenu(10, au)
+
+  <div class="col-sm-9">
+
+    @mnglink(row: Map[String, String], k: String, v: String) = {
+    @k match {
       case "regStatus" => {
-          @regStatusColored(v, Some(routes.Club.doeClubUserReg(row.get("id").get).toString))
+        @regStatusColored(v, Some(routes.Club.doeClubUserReg(row.get("id").get).toString))
       }
-        case "vol" => { @v
-            <a href="@routes.Club.doeUserVolAdd(row.get("id").get).toString" class="btn btn-xs">Manage</a>
-                }
-    case _ => {@v}
-  }
-}
+      case "vol" => {
+        @v
+        <a href="@routes.Club.doeUserVolAdd(row.get("id").get).toString" class="btn btn-xs">Manage</a>
+      }
+      case _ => {
+        @v
+      }
+    }
+    }
 
-<h2>Registration management panel</h2>
-<br>
-<p>@au.ename, this is the list of clubs you have registrations for. Some registrations may be old, current or pending - see the bottom of the page for a legend.
-<p>Click on the status of each, to manage the forms required to complete that registration.
+    <h2>Registration management panel</h2>
+    <br>
+    <p>@au.ename
+      , this is the list of clubs you have registrations for. Some registrations may be old, current or pending - see the bottom of the page for a legend.
+    <p>Click on the status of each, to manage the forms required to complete that registration.
 
-@if(regs.isEmpty) {
-    <div class="alert alert-info">
+    @if(regs.isEmpty) {
+      <div class="alert alert-info">
         <strong>No registrations!</strong>
         You have no registrations in progress - if you were looking for a specific club, then please follow this link to join it:
         <b><a href="/wikie/link/Club">Join a club</a></b>
-        <p>Find your club there and if they have registrations open, you will see a red link to "start registration" right after joining the club.
-    </div>
+        <p>
+          Find your club there and if they have registrations open, you will see a red link to "start registration" right after joining the club.
+      </div>
 
-  <div class="alert alert-danger">
-  <strong>If you're looking to setup your club's registration!</strong>
-  If you are a club administrator looking to evaluate/setup the registration system or forms for your club, please <a href="/doe/support?desc=Setup+club+registration">contact us</a> to set it up for you.
-      <p>No worries, it's still free :)
-  </div>
-} else {
-  @util.utilSimpleTable(tab,
+      <div class="alert alert-danger">
+        <strong>If you're looking to setup your club's registration!</strong>
+        If you are a club administrator looking to evaluate/setup the registration system or forms for your club, please <a href="/doe/support?desc=Setup+club+registration">
+        contact us</a> to set it up for you.
+        <p>No worries, it's still free :)
+      </div>
+    } else {
+      @missingRegs.map { club =>
+        <p>No registrations for the current year - <b>@club.userName, @club.curYear</b></p>
+        <a href="@routes.Club.doeStartRegSimple(club.userName)" class="btn btn-info">
+          Start registration for @club.curYear</a>
+      }
+      <p></p>
+
+      @util.utilSimpleTable(tab,
         Seq("club" -> "Club",
-                "year"->"Year",
-                "role"->"Role",
-            "regStatus" -> "Status",
-                "vol" -> "Volunteering"),
-    Some(mnglink))
+          "year" -> "Year",
+          "role" -> "Role",
+          "regStatus" -> "Status",
+          "vol" -> "Volunteering"),
+        Some(mnglink))
 
-  @missingRegs.map {club=>
-    <p>No registrations for the current year - @club.userName, @club.curYear</p>
-    <a href="views.html.club.doeClubUserStartRegSimple()">Start</a>
-  }
-
-  @club.regStatusLegend()
-}
+      <p></p>
+      @club.regStatusLegend()
+    }
 
   </div>
-  </div> <!-- /row -->
+</div> <!-- /row -->
   @user.agree()
   <hr>
-  @htmlFooter(ads=true)
+  @htmlFooter(ads = true)
 </div> <!-- /container -->
 @htmlBottom()

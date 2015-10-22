@@ -193,7 +193,8 @@ object Forms extends WikiBase with Logging {
           r1 <- au.hasPerm(Perm.uWiki) orCorr cNoPermission;
           club <- Club.findForReviewer(au);
           hasQuota <- (au.isAdmin || au.quota.canUpdate) orCorr cNoQuotaUpdates;
-          isFormData <- (w.content.contains("section:formData}}") orErr "Not a form")
+          isFormData <- (w.content.contains("section:formData}}") orErr "Not a form");
+          upd <- Wikie.before(w, WikiAudit.UPD_CONTENT) orErr ("Not allowerd")
         ) yield {
             val (newData, errors) = wf.validate(data2)
 
@@ -205,17 +206,15 @@ object Forms extends WikiBase with Logging {
               clog << "Wiki.FORM.Errors: " + errors.toString
               cout << "new content:" + newVer.content
               newVer.preprocessed
-              Wiki.showForm(wid, None, Some(newVer), Some(au), false, Map() ++ errors, can)
+              Wiki.showForm(wid, None, Some(newVer), Some(au), false, Map() ++ errors, can)(Some(au), request)
             } else {
               // save the wiki page?
-              val upd = WikiObservers.entityUpdateBefore(newVer, WikiEntry.UPD_CONTENT) orErr ("Not allowerd")
 
               var we = newVer
               razie.db.tx("forms.submitted") { implicit txn =>
                 w.update(we, Some("form_submitted"))
-                WikiObservers.entityUpdateAfter(we, WikiEntry.UPD_CONTENT)
                 act.WikiWf.event("wikiFormSubmit", Map("wpath" -> we.wid.wpath, "userName" -> au.userName))
-                WikiObservers.entityUpdateAfter(we, WikiEntry.UPD_CONTENT)
+                Wikie.after(we, WikiAudit.UPD_CONTENT, Some(au))
                 Emailer.withSession { implicit mailSession =>
                   //                    au.quota.incUpdates
                   au.shouldEmailParent("Everything").map(parent => Emailer.sendEmailChildUpdatedWiki(parent, au, WID(w.category, w.name)))
@@ -226,7 +225,7 @@ object Forms extends WikiBase with Logging {
                       //                  cout << Regs.findWid(wid).flatMap(x => Users.findUserByUsername(x.clubName))
                       //                  cout << Regs.findWid(wid).flatMap(x => Users.findUserByUsername(x.clubName)).map(Club(_).regAdmin)
                       Regs.findWid(wid).flatMap(x => Users.findUserByUsername(x.clubName)).map(Club(_).regAdmin).foreach { reviewer =>
-                        Emailer.sendEmailFormSubmitted(reviewer, au, Wiki.w(wid.wpath))
+                        Emailer.sendEmailFormSubmitted(reviewer, au, Wiki.w(wid))
                       }
                     }
                   } else if (data2.contains("approve_button")) {
@@ -295,7 +294,8 @@ object Forms extends WikiBase with Logging {
           r1 <- au.hasPerm(Perm.uWiki) orCorr cNoPermission;
 //          club <- Club.findForReviewer(au);
           hasQuota <- (au.isAdmin || au.quota.canUpdate) orCorr cNoQuotaUpdates;
-          isFormData <- (w.content.contains("section:formData}}") orErr "Not a form")
+          isFormData <- (w.content.contains("section:formData}}") orErr "Not a form");
+          upd <- Wikie.before(w, WikiAudit.UPD_CONTENT) orErr ("Not allowerd")
         ) yield {
           val (newData, errors) = wf.validate(data2)
 
@@ -307,17 +307,13 @@ object Forms extends WikiBase with Logging {
             clog << "Wiki.FORM.Errors: " + errors.toString
             cout << "new content:" + newVer.content
             newVer.preprocessed
-            Wiki.showForm(wid, None, Some(newVer), Some(au), false, Map() ++ errors, can)
+            Wiki.showForm(wid, None, Some(newVer), Some(au), false, Map() ++ errors, can)(Some(au), request)
           } else {
-            // save the wiki page?
-            val upd = WikiObservers.entityUpdateBefore(newVer, WikiEntry.UPD_CONTENT) orErr ("Not allowerd")
-
             var we = newVer
             razie.db.tx("forms.submitted") { implicit txn =>
               w.update(we, Some("form_submitted"))
-              WikiObservers.entityUpdateAfter(we, WikiEntry.UPD_CONTENT)
               act.WikiWf.event("wikiFormSubmit", Map("wpath" -> we.wid.wpath, "userName" -> au.userName))
-              WikiObservers.entityUpdateAfter(we, WikiEntry.UPD_CONTENT)
+              Wikie.after(we, WikiAudit.UPD_CONTENT, Some(au))
               Emailer.withSession { implicit mailSession =>
                 //                    au.quota.incUpdates
                 au.shouldEmailParent("Everything").map(parent => Emailer.sendEmailChildUpdatedWiki(parent, au, WID(w.category, w.name)))
@@ -328,7 +324,7 @@ object Forms extends WikiBase with Logging {
                     //                  cout << Regs.findWid(wid).flatMap(x => Users.findUserByUsername(x.clubName))
                     //                  cout << Regs.findWid(wid).flatMap(x => Users.findUserByUsername(x.clubName)).map(Club(_).regAdmin)
                     Regs.findWid(wid).flatMap(x => Users.findUserByUsername(x.clubName)).map(Club(_).regAdmin).foreach { reviewer =>
-                      Emailer.sendEmailFormSubmitted(reviewer, au, Wiki.w(wid.wpath))
+                      Emailer.sendEmailFormSubmitted(reviewer, au, Wiki.w(wid))
                     }
                   }
                 } else {
@@ -351,7 +347,8 @@ object Forms extends WikiBase with Logging {
           r1 <- au.hasPerm(Perm.uWiki) orCorr cNoPermission;
           //          club <- Club.findForReviewer(au);
           hasQuota <- (au.isAdmin || au.quota.canUpdate) orCorr cNoQuotaUpdates;
-          isFormData <- (w.content.contains("section:formData}}") orErr "Not a form")
+          isFormData <- (w.content.contains("section:formData}}") orErr "Not a form");
+          upd <- Wikie.before(w, WikiAudit.UPD_CONTENT) orErr ("Not allowerd")
         ) yield {
             val (newData, errors) = wf.validate(data2 - "content")
 
@@ -363,17 +360,13 @@ object Forms extends WikiBase with Logging {
               clog << "Wiki.FORM.Errors: " + errors.toString
               cout << "new content:" + newVer.content
               newVer.preprocessed
-              Wiki.showForm(wid, None, Some(newVer), Some(au), false, Map() ++ errors, can)
+              Wiki.showForm(wid, None, Some(newVer), Some(au), false, Map() ++ errors, can)(Some(au), request)
             } else {
-              // save the wiki page?
-              val upd = WikiObservers.entityUpdateBefore(newVer, WikiEntry.UPD_CONTENT) orErr ("Not allowerd")
-
               var we = newVer
               razie.db.tx("forms.submitted") { implicit txn =>
                 we.create
-                WikiObservers.entityUpdateAfter(we, WikiEntry.UPD_CONTENT)
                 act.WikiWf.event("wikiFormSubmit", Map("wpath" -> we.wid.wpath, "userName" -> au.userName))
-                WikiObservers.entityUpdateAfter(we, WikiEntry.UPD_CONTENT)
+                Wikie.after(we, WikiAudit.UPD_CONTENT, Some(au))
                 Emailer.withSession { implicit mailSession =>
                   //                    au.quota.incUpdates
                   au.shouldEmailParent("Everything").map(parent => Emailer.sendEmailChildUpdatedWiki(parent, au, WID(w.category, w.name)))

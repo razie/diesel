@@ -3,7 +3,7 @@ package admin
 import controllers.DarkLight
 import model.Website
 import play.api.mvc.Request
-import razie.wiki.admin.WikiObservers
+import razie.wiki.admin.{WikiEvent, WikiObservers}
 import razie.wiki.{Services, WikiConfig}
 import razie.wiki.model._
 
@@ -24,16 +24,17 @@ object Config extends WikiConfig {
 
   final val CONNECTED = props.getProperty("rk.connected", "connected")
 
-  final val curYear = "2015"
+  final val curYear = "2016" // current year for registrations
 
   override val simulateHost = {
-        "www.racerkidz.com"    // for testing locally
-//    "www.effectiveskiing.com"    // for testing locally
+//        "www.racerkidz.com"    // for testing locally
+    "www.effectiveskiing.com"    // for testing locally
 //                "ski.wikireactor.com"    // for testing locally
 //                "www.wikireactor.com"    // for testing locally
+//    "ebaysim.wikireactor.com"    // for testing locally
 //            "catsim.wikireactor.com"    // for testing locally
 //        "www.coolscala.com"    // for testing locally
-//        "www.enduroschol.com"    // for testing locally
+//        "www.enduroschool.com"    // for testing locally
 //            "www.askicoach.com"    // for testing locally
 //        "www.glacierskiclub.com"    // for testing locally
 //        "www.nofolders.net"    // for testing locally
@@ -43,8 +44,9 @@ object Config extends WikiConfig {
   final val CFG_PAGES = Array(SITECFG, TOPICRED, USERTYPES, BANURLS, URLCFG)
 
   WikiObservers mini {
-    case we:WikiEntry if "Admin" == we.category && CFG_PAGES.contains(we.name)  => {
-      reloadUrlMap
+    case WikiEvent(_, "WikiEntry", _, Some(x), _, _)
+      if "Admin" == x.asInstanceOf[WikiEntry].category && CFG_PAGES.contains(x.asInstanceOf[WikiEntry].name)  => {
+        reloadUrlMap
     }
   }
 
@@ -60,13 +62,11 @@ object Config extends WikiConfig {
         request.flatMap(r=> Website(r)).flatMap(_.css)
       ) orElse darkLight.map(_.css).orElse(
         sitecfg("css")
-    ) getOrElse ("dark")
+    ) getOrElse ("light")
   }
 
-  def theme = {
-    darkLight.map(_.css).orElse(currUser.flatMap(_.css).orElse(
-      sitecfg("css"))) getOrElse ("dark")
-  }
+  // no request available
+  def theme = getTheme (currUser, None)
 
   def isLight = theme contains "light"
   def isDark = ! isLight

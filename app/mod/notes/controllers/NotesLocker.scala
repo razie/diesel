@@ -1,12 +1,11 @@
 package mod.notes.controllers
 
-import _root_.controllers.{Emailer, Wiki, RazController}
+import _root_.controllers.{Wikie, Emailer, Wiki, RazController}
 import admin.{Config}
 import com.mongodb.casbah.Imports.wrapDBObj
 import com.novus.salat.grater
 import mod.diesel.model.{WG}
 import mod.notes.controllers
-import mod.notes.controllers.NotesLocker
 import model._
 import org.bson.types.ObjectId
 import org.joda.time.DateTime
@@ -260,14 +259,14 @@ object NotesLocker extends RazController with Logging {
                 tooold <- (ver >= w.ver) orErr { msg = ("err" -> "[Old auto-saved content...]"); "old autosaved" };
                 nocontent <- ("" != content) orErr { msg = ("err" -> "[No content...]"); "no content" };
                 newVer <- Some(w.cloneNewVer(w.label, "md", content, au._id));
-                upd <- WikiObservers.entityUpdateBefore(newVer, WikiEntry.UPD_CONTENT) orErr { msg = ("err" -> "[Not allowed...]"); "Not allowed" }
+                upd <- Wikie.before(newVer, WikiAudit.UPD_CONTENT) orErr { msg = ("err" -> "[Not allowed...]"); "Not allowed" }
               ) {
                 var we = preprocess(newVer, true)
 
                 razie.db.tx("notes.Save") { implicit txn =>
                   ROne[AutosavedNote]("nid"->id) foreach (_.delete)
                   we.update(we)
-                  WikiObservers.entityUpdateAfter(we, WikiEntry.UPD_CONTENT)
+                  Wikie.after(we, WikiAudit.UPD_CONTENT, Some(au))
                   //            Emailer.laterSession { implicit mailSession =>
                   //              au.quota.incUpdates
                   //              if (shouldPublish) notifyFollowersCreate(we, au)
@@ -850,6 +849,8 @@ object DomC extends RazController with Logging {
 /** captures the current state of what to display - passed to all views */
 case class NotesOk(curTag: String, tags: model.Tags.Tags, msg: Seq[(String, String)], isSearch:Boolean, au: model.User, request: Request[_]) {
   var _title : String = "No Folders" // this is set by the body as it builds itself and used by the header, heh
+
+  val realm = Website.realm(request)
 
   /** set the title of this page */
   def title(s:String) = {this._title = s; ""}

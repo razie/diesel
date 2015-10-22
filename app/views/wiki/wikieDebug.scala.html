@@ -136,7 +136,7 @@ debug a wiki page
         </div>
 
       <div class="well">
-       Set parent. Careful - no checking done, heh.
+       Set parent. Careful - no checking done, heh. WikiLinks not updated. Use n/a to remove parent.
       @helper.form(action=routes.Wikie.setParent(page.get.wid), 'class->"well form-inline") {
         <input type="text" class="input-large" name="newWid">
         <button type="submit" class="btn btn-default">Move Now!</button>
@@ -224,11 +224,15 @@ debug a wiki page
        </ul>
       </div>
 
+      @versions()= @{
+        RMany[WikiEntryOld]("entry._id" -> page.get._id).toList //include this for topics that changed category
+      }
+
       <div class="well">
       Versions:<p>
       <table class="table table-striped table-condensed">
          <thead><th>ver</th><th>content</th><th> date </th><th> User </th></thead>
-        @RMany[WikiEntryOld]("entry.category" -> page.get.category, "entry.name" -> page.get.name).map{ p=>
+        @versions().distinct.map{ p=>
          <tr>
            <td> <a href="/wikie/ver/@p.entry.ver/@page.get.wid.wpath">@p.entry.ver</a> </td>
            <td> <a href="/wikie/content/ver/@p.entry.ver/@page.get.wid.wpath">@p.entry.ver</a> </td>

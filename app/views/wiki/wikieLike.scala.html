@@ -1,7 +1,7 @@
 @***************
 link(like) a wiki: select or create from categoyr
 **************@
-@(wid:razie.wiki.model.WID, page:Option[razie.wiki.model.WikiEntry], au:Option[model.User])
+@(wid:razie.wiki.model.WID, page:Option[razie.wiki.model.WikiEntry], au:Option[model.User])(implicit stok: controllers.StateOk)
 @import model._
 @import razie.wiki.model.WID
 
@@ -25,7 +25,7 @@ link(like) a wiki: select or create from categoyr
 <hr>
 }
 
-      @wiki.wikiAddMore(wid, page, au)
+      @wiki.wikiAddMore(wid, page, au)(stok.au, stok.request.get)
 
       <div class="well">
         @wiki.wikiFrag(wid,au,false,page, None)

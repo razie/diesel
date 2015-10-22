@@ -20,6 +20,11 @@
 
 @helper.form(action=routes.Wikie.replaceAll3(), 'class->"well") {
   @helper.inputText(
+    myForm("realm"),
+    '_class -> "input-xlarge disabled",
+    '_label -> "Realm - if empty, it's ALL REALMS !!!",
+    '_showConstraints -> false)
+  @helper.inputText(
     myForm("old"),
     '_class -> "input-xlarge disabled",
     '_label -> "Out with the old",
@@ -46,13 +51,11 @@ ALERT: you can't undo this!  </div>
       <div class="well">
 
        <table class="table table-striped">
-         @controllers.Wikie.searchAll(myForm("old").value.mkString).map { t =>
+         @controllers.Wikie.searchAll(myForm("old").value.mkString, myForm("realm").value.mkString).map { t =>
            <tr>
              <td>@Html(t._1.wid.ahref)</td>
              <td>@t._2<span style="color:red;font-weight:bold">@t._3</span>@t._4</td>
-             <td>@t._2<span style="color:red;font-weight:bold">
-             @repl(t._2.toString, t._3, myForm("old").value.mkString, myForm("new").value.mkString, t._4.toString)
-         </span>@t._4</td>
+             <td>@t._2<span style="color:red;font-weight:bold">@repl(t._2.toString, t._3, myForm("old").value.mkString, myForm("new").value.mkString, t._4.toString)</span>@t._4</td>
            </tr>
          }
        </table>

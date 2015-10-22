@@ -657,4 +657,42 @@ object U16 extends UpgradeDb with razie.Logging {
   }
 }
 
+// UWID gets realm
+object U17 extends UpgradeDb with razie.Logging {
+  import razie.db.RazSalatContext._
+
+  val missed = ListBuffer[String]()
+
+  def upgrade(db: MongoDB) {
+
+    def fixuwid (u:UWID)(implicit t:MongoCollection) = {
+      db("WikiEntry").findOne(Map("_id" -> u.id)).map(grater[WikiEntry].asObject(_)).map(_.uwid).filter(_.realm.isDefined) // only update those with a realm
+    }
+
+    var i = 0;
+
+    def fix (table:String, col:String) = {
+      withDb(db(table)) { implicit t =>
+        for (u <- t if(u.contains(col))) {
+          cdebug << "UPGRADING " + t.name + u
+          val uwid = fixuwid (grater[UWID].asObject(u.as[BasicDBObject](col)))
+          uwid.foreach { uw =>
+            u.put(col, uw.grated)
+            t.save(u)
+            i = i + 1
+          }
+        }
+      }
+    }
+
+    fix("FollowerWiki", "uwid")
+    fix("WikiLink", "from")
+    fix("WikiLink", "to")
+    fix("UserWiki", "uwid")
+
+    clog < s"""MISSED ${missed.size} : \n${missed.mkString("\n")} """
+    clog < s"UPGRADED $i entries"
+  }
+}
+
 

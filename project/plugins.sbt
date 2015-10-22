@@ -10,3 +10,6 @@ addSbtPlugin("com.typesafe.play" % "sbt-plugin" % "2.2.2")
 // auto refresh
 addSbtPlugin("com.jamesward" %% "play-auto-refresh" % "0.0.11")
 
+//sign artifacts
+addSbtPlugin("com.typesafe.sbt" % "sbt-pgp" % "0.8")
+

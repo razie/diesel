@@ -1,6 +1,7 @@
 
 rm -f RUNNING_PID
 
+#### use this to zip up all other razie's projects when updating
 #scp `find ./lib_managed/jars/com.razie -name *.jar` razvanc@cloud3a.razie.com:rk/up/
 
 p package

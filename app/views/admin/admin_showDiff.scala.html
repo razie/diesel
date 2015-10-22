@@ -1,7 +1,7 @@
 @***
 purge audit tables
 ***@
-@(src:String, dest:String, diff:difflib.Patch)(implicit au:Option[model.User])
+@(src:String, dest:String, diff:difflib.Patch, srcWe:razie.wiki.model.WikiEntry, destWe:razie.wiki.model.WikiEntry)(implicit au:Option[model.User])
 @import razie.wiki.model.WID
 
 @wp(wid:WID)=@{
@@ -21,6 +21,11 @@ purge audit tables
               <td>Local</td>
               <td>Remote</td>
           </thead>
+        <tr>
+          <td>Ver/updDtm</td>
+          <td>@srcWe.ver / @srcWe.updDtm</td>
+          <td>@destWe.ver / @destWe.updDtm</td>
+        </tr>
 @diff.getDeltas.map{d =>
   @d.getType.toString match {
       case "INSERT" => {
@@ -49,7 +54,13 @@ purge audit tables
 </td>
   </tr>
 }
-
+@if(srcWe.tags.mkString(",") != destWe.tags.mkString(",")) {
+  <tr>
+    <td>tags</td>
+    <td>@srcWe.tags.mkString(",")</td>
+    <td>@destWe.tags.mkString(",")</td>
+  </tr>
+}
       </table>
 
       <hr>

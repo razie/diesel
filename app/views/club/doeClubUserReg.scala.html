@@ -34,13 +34,14 @@
 
 <div class="well">
 <h3>Step 1. Fill out your contact information here: <a href="/doe/contact">contact info</a></h3>
-<p>It is used in several forms and you won't have to type it many times...
+<p>... or update it. It is used in several forms and you won't have to type it many times...
 </div>
 
 <div class="well">
 <h3>Step 2. Make sure <em>everyone</em> is listed below:</h3>
-<p>If a racer/parent/guardian/volunteer is not listed below, add one as a:
-
+<p>These are the people of interest: you, racers, parents, guardians, anyone that may volunteer etc.
+  <p>If a racer/parent/guardian/volunteer is not listed below, add one as a:
+<br>
 @model.RK.RELATIONSHIPS.map{r=>
   <a href="@routes.Kidz.doeKid(au._id.toString, "11", r, "-", reg._id.toString)" class="btn btn-xs btn-info">@r</a>
 }
@@ -62,9 +63,9 @@
       @if(reg.kids.exists(_.rkId.toString == v)) {
             <span class="label">Included</span>
         as @reg.kids.filter(_.rkId.toString == v).map(_.role).mkString
-        <a href="@routes.Club.doeClubUwRMFormKid(reg._id.toString,v,au._id.toString, "x")" class="btn btn-xs btn-danger" title="remove from registration"> x </a>
+        <a href="@routes.Club.doeClubUwRMFormKid(reg._id.toString,v,au._id.toString, "x")" class="btn btn-default btn-xs btn-danger" title="remove from registration"> x </a>
       } else {
-        <a href="@routes.Club.doeClubUserRegAdd(reg._id.toString,v,au._id.toString, "x")" class="btn btn-xs" title="also adds neccessary forms">Include now!</a>
+        <a href="@routes.Club.doeClubUserRegAdd(reg._id.toString,v,au._id.toString, "x")" class="btn btn-primary btn-xs" title="also adds neccessary forms">Include now!</a>
           }
         }
     case _ => {@v}

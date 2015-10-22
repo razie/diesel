@@ -208,31 +208,32 @@ object Diesel {
     PAT.findAllMatchIn(content).map(_.group(1)).toList
   }
 
-
+  /** make form definition to capture a new instance of a DSL category */
   def mkFormDef (realm:String, c:C, name:String, au:User) = {
     val TYPES = Array("", "string")
 
     val content = "<table class=\"table\">\n" +
-      (if(!c.parms.exists(_.name == "name"))
-        "<tr><td>" + s"""Name </td><td> {{f:name:}}""" + "</td></tr>\n"
-        ) +
+      (if(!c.parms.exists(_.name == "name"))// && !c.parms.exists(_.name == "id"))
+         s"""<tr>\n  <td> Name </td>\n  <td> {{f:name:}} </td>\n  <td></td></tr>\n"""
+       else ""
+      ) +
       c.parms.map{p=>
-      "<tr><td>"+(
+      "<tr>\n  <td>"+(
         if(TYPES contains p.ttype)
-          s"""${p.name} </td><td> {{f:${p.name}:}}"""
+          s"""${p.name} </td>\n  <td> {{f:${p.name}:}}"""
         else if(p.ttype == "Image")
-          s"""${p.name} </td><td> {{f:${p.name}:}} Image URL"""
+          s"""${p.name} </td>\n  <td> {{f:${p.name}:}} Image URL"""
         else
-          s"""${p.name} COMPLICATED</td><td>""" + p.ttype
-      )+"</td></tr>\n"
+          s"""${p.name} COMPLICATED</td>\n  <td>""" + p.ttype
+      )+"</td>\n  <td></td></tr>\n"
     }.mkString +
-    "</table>" +
+    "</table>\n\n" +
     s"""
 {{.section:formData}}
 {"formState":"created" }
 {{/section}}
 """
-    new WikiEntry(c.name, name, c.name+" - "+name, "md", content, au._id, Seq("dslCat"), realm)
+    new WikiEntry(c.name, name, c.name+" - "+name, "md", content, au._id, Seq("dslObject", c.name.toLowerCase), realm)
   }
 
 }

@@ -5,22 +5,26 @@ simple popul modal confirmation for freaky stuff
 
 @modal(title:String, body:String, button:String, href:String, btnClass:String="btn btn-info") = {
 
-  <script src="@routes.Assets.at("bootstrap-2.2.3/js/bootstrap-modal.js")" type="text/javascript"></script>
-<a href="#myModal" role="button" class="@btnClass" data-toggle="modal">@button</a>
-<div id="myModal" class="modal hide fade">
-  <div class="modal-header">
-    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
-    <h3>@title</h3>
-  </div>
-  <div class="modal-body">
-    <p>@body</p>
-  </div>
-  <div class="modal-footer">
-    <a href="#" class="btn btn-default" data-dismiss="modal">Nah!</a>
-    <a href="@href" class="@btnClass">@button</a>
-  </div>
-</div>
+  <button type="button" class="@btnClass" data-toggle="modal" data-target="#myModal1">@button</button>
+  <div id="myModal1" class="modal fade">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close" aria-hidden="true">&times;</button>
+          <h3>@title</h3>
+        </div>
+        <div class="modal-body">
+          <p>@body</p>
+        </div>
+        <div class="modal-footer">
+          <a href="#" class="btn btn-default" data-dismiss="modal">Nah!</a>
+          <a href="@href" class="@btnClass">@button</a>
+        </div>
+      </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+  </div><!-- /.modal -->
 }
 
-
 @modal("Are you sure?", details, what, href, btnClass)
+
+

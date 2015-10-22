@@ -4,12 +4,11 @@
 
 //https://github.com/yuku-t/jquery-textcomplete
 
-// CA options for {{
+// sample json domain - this format feeds into the drop down
 var braTagsTEST ={
   'img' : 'URL',
-  'video' : 'URL',
   'ad' : ['squaretop', 'squareright'],
-  'ad1' : [
+  'test1' : [
     {'squaretop' : ['a', 'b']},
     'squareright'
     ],
@@ -27,63 +26,23 @@ var braTagsTEST ={
   'call' : ''
 };
 
-// CA options for {{
-var braDomain = [
+// sample domain spec - you can turn it into json with optsToDomain(x)
+var braDomainTest = [
   'img URL',
-  {'ad1' : [
+  {'test1' : [ // this is in json
     {'squaretop' : ['a', 'b']},
     'squareright'
   ]},
-  'ad [squaretop|squareright]',
-  'video URL',
-  'photo URL',
-  'slideshow URL',
-  'link.img URL',
-  'feed.rss URL',
-  'tag name',
+  'ad [squaretop|squareright]', // optional with options
   'xpl path-expression',
   'section',
   'code [language]',
   'red text-to-redify',
-  'roles ',
-  'fiddle',
-  'by', 'club',
-  'where', 'at', 'place', 'venue',
-  'loc:ll|s|url',
-  'when', 'on', 'date',
-  'rk',
-  'widget',
-  'f',
-  'r1.delimited',
-  'r1.table',
-  'template',
-  'red',
-  'def name:signature',
-  'lambda name:signature',
-  'call'
+  'loc:ll|s|url'            // options
 ];
 
-var braTags = optsToDomain (braDomain);
-var dTags = optsToDomain (braDomain.concat(dotTags));
-
-// CA options for by:
-var byTags = [
-  'tomorow',
-  'monday',
-  'tuesday',
-  'wednesday',
-  'thursday',
-  'friday'
-];
-
-// contains
-function cont(value){
-  return value.indexOf(term) == 0;
-}
-
-var topics=[]; // populate with options for topics
-var ltopics=[]; // topics lowercase
-var contacts=[];
+//var braTags = optsToDomain (braDomain);
+//var dTags = optsToDomain (braDomain.concat(dotTags));
 
 /** enumerate the props of the structure */
 function enumProps (o) {
@@ -202,83 +161,4 @@ function optsToDomain (o) {
   return res;
 }
 
-$('#content').textcomplete([
-  { // braTags
-    match: /(\{\{)([\w ]*)$/,
-    search: function (term, callback) {
-      var terms = term.split(' ');
-      var opts = getOptions(braTags, terms, 0); // options
-      //if (opts.length > 0)
-        callback(opts, false);// false means this array is all the data
-      //else
-      //  callback(['}}'], false);// false means this array is all the data
-    },
-    replace: function (value) {
-      // double space is a marker for the FUTURE options
-      var xvalue = value.replace(/(\w)  .*/, '\$1');
-      if(xvalue.indexOf(' ') >= 0)
-        return ['\{\{' + xvalue + ' ', ''];
-      else
-        // first time, only one term, insert }}
-        return ['\{\{' + xvalue + ' ', '\}\}'];
-    },
-    cache: false
-  },
-  { // dotTags
-    match: /(^|\s)\.([\w ]*)$/,
-    search: function (term, callback) {
-      var terms = term.split(' ');
-      callback(getOptions(dTags, terms, 0), false);// false means this array is all the data
-    },
-    replace: function (value) {
-      //return '$1.' + value.replace(/(\w)[: ].*/, '\$1') + ' ';
-      return '$1.' + value.replace(/(\w)  .*/, '\$1') + ' ';
-    },
-    cache: false
-  },
-  { // sqbraTags
-    match: /(\[\[)([\w| ]*)$/,
-    search: function (term, callback) {
-      callback(topics.filter(function(value, j){
-        var lterm = term.toLowerCase()
-        return ltopics[j].indexOf(lterm) == 0;
-      }), topics.length <= 0); // false means this array is all the data
-      if(topics.length <= 0)
-        $.getJSON('/wikie/options', { q: term })
-            .done(function (resp) {
-              topics = resp;
-              for(i=0; i<topics.length; i++) ltopics[i] = topics[i].toLowerCase();
-              callback(topics.filter(function(value, j){
-                return ltopics[j].indexOf(term) == 0;
-              }))
-            })
-            .fail(function (){ callback([]); });
-    },
-    replace: function (value) {
-      return ['\[\[' + value + '\]\]', ''];
-    },
-    cache: false
-  },
-  {
-    match: /(to):(\w*)$/,
-    search: function (term, callback) {
-      callback(contacts.filter(function(value) {
-        return value.indexOf ( term ) == 0 ;
-      }), contacts.length <= 0); // false means this array is all the data
-      if(contacts.length <= 0)
-        $.getJSON('/notes/contacts', { q: term })
-            .done(function (resp) {
-              contacts = resp;
-              callback(contacts.filter(function(value){
-                return value.indexOf(term) == 0;
-              }))
-            })
-            .fail(function (){ callback([]); });
-    },
-    replace: function (value) {
-      return 'to:' + value + ' ';
-    },
-    cache: false
-  }
-]);
-
+// see wikiEdit.scala.html for sample usage of the content assist

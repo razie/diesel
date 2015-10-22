@@ -13,13 +13,9 @@ import play.api.data.Form
 import play.api.data.Forms.{mapping, nonEmptyText, tuple, _}
 import play.api.mvc.{Action, Request}
 import razie.OR._
-import razie.wiki.util.Corr
+import razie.wiki.util.{PlayTools, Corr, VErrors}
 import razie.wiki.admin.{Audit, SendEmail}
-import razie.wiki.model.WikiIndex
-import razie.wiki.model.Wikis
-import razie.wiki.model.WID
-import razie.wiki.util.Corr
-import razie.wiki.util.VErrors
+import razie.wiki.model.{Reactors, WikiIndex, Wikis, WID}
 import razie.wiki.Enc
 
 object Profile extends RazController with Logging {
@@ -234,17 +230,18 @@ object Profile extends RazController with Logging {
   }
 
   /** login or start registration */
-  def login(email: String, pass:String, extra: String, gid:String="") = {
+  def login(email: String, pass:String, extra: String, gid:String="") (implicit request:Request[_]) = {
     // TODO optimize - we lookup users twice on login
+    val realm = Wikie.getRealm()
     Users.findUser(Enc(email)) orElse (Users.findUserNoCase(email)) match {
       case Some(u) =>
         if (Enc(pass) == u.pwd || u.gid.exists(_ == gid)) {
           Audit.logdb("USER_LOGIN", u.userName, u.firstName + " " + u.lastName)
           u.auditLogin
           debug("SEss.conn=" + (Config.CONNECTED -> Enc.toSession(u.email)))
-          if(u.profile.flatMap(_.consent).isDefined)
+          if(u.profile.flatMap(_.consent).isDefined) {
             Redirect("/").withSession(Config.CONNECTED -> Enc.toSession(u.email))
-          else
+          } else
             Ok(views.html.user.doeConsent(u)).withSession(Config.CONNECTED -> Enc.toSession(u.email))
         } else {
           u.auditLoginFailed
@@ -253,6 +250,11 @@ object Profile extends RazController with Logging {
       case None => // capture basic profile and create profile
         Redirect(routes.Profile.doeJoin3).flashing("email" -> email, "pwd" -> pass, "gid"->gid, "extra" -> extra)
     }
+  }
+
+  /** logout */
+  def doeLogout () = Action { implicit request =>
+    Redirect("/").withNewSession
   }
 
   def doeConsent (next:String) = Action { implicit request =>
@@ -302,10 +304,15 @@ object Profile extends RazController with Logging {
     auth // clean theme
 
     val resp = crProfileForm.bindFromRequest
+
     resp.fold(
       formWithErrors => {
         warn("FORM ERR " + formWithErrors)
-        BadRequest(views.html.user.doeJoin3(formWithErrors, auth)).withSession("pwd" -> getFromSession("pwd", T.TESTCODE).get, "email" -> getFromSession("email", "@k.com").get, "extra" -> getFromSession("extra", "extra").mkString, "gid" -> session.get("gid").mkString)
+        BadRequest(views.html.user.doeJoin3(formWithErrors, auth)).withSession(
+          "pwd" -> getFromSession("pwd", T.TESTCODE).get,
+          "email" -> getFromSession("email", "@k.com").get,
+          "extra" -> getFromSession("extra", "extra").mkString,
+          "gid" -> session.get("gid").mkString)
       },
       {
         //  case class CrProfile (firstName:String, lastName:String, yob:Int, email:String, userType:String)

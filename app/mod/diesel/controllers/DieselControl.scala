@@ -17,7 +17,7 @@ import mod.diesel.model._
 import play.api.mvc.{Action, AnyContent, Request}
 import razie.wiki.dom.WikiDomain
 import razie.wiki.model.{WikiEntry, Wikis, WID}
-import razie.wiki.util.PlayTools
+import razie.wiki.util.{VErrors, PlayTools}
 import razie.{cout, Logging}
 import razie.wiki.admin.Audit
 
@@ -74,19 +74,24 @@ object DieselControl extends RazController with Logging {
   }
 
   def dslDomBrowser(wpath:String, cat:String, ipath:String) = Action { implicit request =>
-    val wid = WID.fromPath(wpath).get
-    val page = wid.page
-    val rdom = page.flatMap(WikiDomain.domFrom).get.revise addRoot
-    val left  = rdom.assocs.filter(_.z == cat)
-    val right = rdom.assocs.filter(_.a == cat)
-    val path = if(ipath == "/") ipath+cat else ipath
+    val errCollector = new VErrors()
 
-    def mkLink (s:String) = routes.DieselControl.dslDomBrowser (wpath, s, path+"/"+s).toString()
+    (for (
+      wid  <- WID.fromPath(wpath) orErr "wpath not found";
+      page <- wid.page orErr "page not found";
+      dom <- WikiDomain.domFrom(page) orErr "no dom"
+    ) yield {
+      val rdom = dom.revise addRoot
+      val left  = rdom.assocs.filter(_.z == cat)
+      val right = rdom.assocs.filter(_.a == cat)
+      val path = if(ipath == "/") ipath+cat else ipath
 
+      def mkLink (s:String) = routes.DieselControl.dslDomBrowser (wpath, s, path+"/"+s).toString()
 
-    ROK(auth, request) apply {implicit stok=>
-      views.html.diesel.catBrowser(wid.getRealm, page, cat, left, right)(mkLink)
-    }
+      ROK(auth, request) apply {implicit stok=>
+        views.html.diesel.catBrowser(wid.getRealm, Some(page), cat, left, right)(mkLink)
+      }
+    }) getOrElse NotFound(errCollector.mkString)
   }
 
   def catBrowser(realm:String, cat:String, ipath:String) = Action { implicit request =>
@@ -148,14 +153,15 @@ object DieselControl extends RazController with Logging {
     }
   }
 
-  def createDD(cat:String, ipath:String) = FAU { implicit au => implicit errCollector => implicit request =>
+  /** create a new instance of cat */
+  def create(cat:String, ipath:String) = FAU { implicit au => implicit errCollector => implicit request =>
     val realm = Website.realm
     val rdom = WikiDomain(realm).rdom
     val left  = rdom.assocs.filter(_.z == cat)
     val right = rdom.assocs.filter(_.a == cat)
     val path = if(ipath == "/") ipath+cat else ipath
 
-    def mkLink (s:String) = routes.DieselControl.catBrowser (s, path+"/"+s).toString()
+    def mkLink (s:String) = routes.DieselControl.catBrowser (realm, s, path+"/"+s).toString()
 
     ROK(auth, request) apply {implicit stok=>
       views.html.diesel.createDD(realm, cat, left, right, rdom, Map.empty)(mkLink)

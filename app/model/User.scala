@@ -103,7 +103,7 @@ case class User(
   pwd: String,
   status: Char = 'a', // a-active, s-suspended, d-deleted
   roles: Set[String], // = Set("Racer"),
-  realms: Set[String]=Set(), // = RK modules (notes, rk, clubadmin etc)
+  realms: Set[String]=Set(), // = RK modules (notes, rk, ski etc)
   addr: Option[String] = None, // address as typed in
   prefs: Map[String, String] = Map(), // = Set("Racer"),
   gid: Option[String] = None, // google id
@@ -240,6 +240,7 @@ case class Profile(
   relationships: Map[String, String] = Map(), // (who -> what)
   contact: Option[Contact] = None,
   consent:Option[String] = None,
+  realmInfo: Map[String, String] = Map(), // (who -> what)
   _id: ObjectId = new ObjectId()) {
 
   def update(p: Profile) =  RUpdate(Map("userId" -> userId), p)
@@ -251,6 +252,10 @@ case class Profile(
   def setContact(c: Contact) = this.copy(contact = Some(c))
 
   def consented(ver: String) = this.copy(consent = Some(ver + " on " +DateTime.now().toString()))
+
+  def addRealmInfo(realm: String, prop:String, value:String) = {
+    this.copy(realmInfo = this.realmInfo + ((realm+"."+prop) -> value))
+  }
 
   var createdDtm: DateTime = DateTime.now
   var lastUpdatedDtm: DateTime = DateTime.now
@@ -392,6 +397,7 @@ object Users {
   def findUserById(id: ObjectId) = ROne[User](id)
   def findUserByUsername(uname: String) = ROne[User]("userName" -> uname)
 
+  //todo optimize this - cache some users?
   def nameOf(id: ObjectId): String = /* leave it */
     ROne.raw[User]("_id" -> id).fold("???")(_.apply("userName").toString)
 
@@ -409,6 +415,7 @@ object Users {
   def findChildOf(pid: ObjectId) = ROne[ParentChild]("parentId" -> pid)
 
   def findUserLinksTo(u: UWID) = RMany[UserWiki]("uwid" -> u.grated)
+//  def findUserLinksTo(u: UWID) = RMany[UserWiki]("uwid.cat" -> u.cat, "uwid.id" -> u.id)
   def findUserLinksToCat(cat: String) = RMany[UserWiki]("wid.cat" -> cat)
 
   def create(ug: UserGroup) = RCreate(ug)
@@ -418,8 +425,8 @@ object Users {
   def create(r: Task) = RCreate(r)
 
   def findFollowerByEmail(email: String) = ROne[Follower]("email" -> email)
-//  def findFollowerLinksTo(wid: WID) = RMany[FollowerWiki]("wid.name" -> wid.name, "wid.cat" -> wid.cat)
-  def findFollowerLinksTo(uwid: UWID) = RMany[FollowerWiki]("uwid" -> uwid.grated)
+  def findFollowerLinksTo(u: UWID) = RMany[FollowerWiki]("uwid" -> u.grated)
+//  def findFollowerLinksTo(u: UWID) = RMany[FollowerWiki]("uwid.cat" -> u.cat, "uwid.id" -> u.id)
 }
 
 /** user factory and utils */

@@ -5,6 +5,7 @@ wiki fragment, used in another page
 @import razie.wiki.model.{Wikis, WikiCount, WID, WikiEntry}
 @import _root_.admin.Config
 @import razie.wiki.util.IgnoreErrors
+@import razie.clog
 
 @nicename() = @{ iname.getOrElse(wid.name) }
 @ppage = @{if(page.isDefined) page else wid.page}
@@ -28,9 +29,9 @@ wiki fragment, used in another page
   }
 
   @ccc(wid:WID, we:WikiEntry)= @{
-    var ocontent:Option[String] = None
-    ocontent = razie.wiki.mods.WikiMods.mods.values.foldLeft(ocontent){(a,b)=> if(b.isInterested(we)) b.modPreFormat(we, a) else a}
-    val x = Wikis.format(wid, we.markup, ocontent.getOrElse(""), Some(we))
+//    cdebug << "D"
+    // this will use the preprocessed cache and just do MD format
+    val x = Wikis.format(wid, we.markup, null, Some(we))
     var y = try {
       if(x contains "CANNOT PARSE") {
         val PAT = """.*PARSE\]\] \[([0-9]+)\.([0-9]+)\].*""".r
@@ -48,9 +49,11 @@ wiki fragment, used in another page
     } catch {
       case _ : Throwable => x
     }
+//    cdebug << "E"
 
-    y = razie.wiki.mods.WikiMods.mods.values.foldLeft(y){(a,b)=> if(b.isInterested(we)) b.modPostFormat(we, a) else a}
+    y = razie.wiki.mods.WikiMods.modPostHtml(we, y)
     y = Wikis(wid.getRealm).applyTemplates(wid, y, "html")
+//    cdebug << "F"
     y
   }
 
@@ -145,14 +148,16 @@ wiki fragment, used in another page
         <small>
           (
           @if(canEdit && wid.cat != "Form" || au.exists(_.hasPerm(model.Perm.adminDb))) {
-            <a href="@routes.Wikie.wikieEdit(page.get.wid)">Edit</a> |
+            <a href="@routes.Wikie.wikieEdit(page.get.wid)">Edit</a>
           }
             @au.map {u =>
-              <a href="@routes.Wikie.report(wid)">Report</a> |
+              | <a href="@routes.Wiki.wikiBrowse(wid.wpath, "")">Browse</a>
+              | <a href="@routes.Wikie.report(wid)">Report</a>
             }
-            <a href="@routes.Wiki.printWid(WID.cmdfromPath(wid.wpath).get, wid.getRealm)">Print</a>
+            | <a href="@routes.Wiki.printWid(WID.cmdfromPath(wid.wpath).get, wid.getRealm)">Print</a>
             @if(au.exists(_.hasPerm(model.Perm.adminDb))) {
               | <a href="@controllers.Wiki.w(wid)/debug"><em>debug</em></a>
+              | <a href="@routes.Wiki.wikieUsage(wid)"><em>usage</em></a>
             }
             @if(!(Array("WikiLink", "Category", "Form") contains wid.cat)) {
               @if(canEdit) {
@@ -207,7 +212,7 @@ wiki fragment, used in another page
     case None => {
       @if("any" != wid.cat && !wid.cat.isEmpty) {
         @if("Race" == wid.cat || "Event" == wid.cat || "Training" == wid.cat) {
-          <p><strong><font style="color:red">Note: </font></strong>A <strong>@wid.cat</strong> doesn't need its own page unless there you have some specific information about it... so, if you have some photos, videos or comments about it, create it below and share it with your mates!
+          <p><strong><span style="color:red">Note: </span></strong>A <strong>@wid.cat</strong> doesn't need its own page unless there you have some specific information about it... so, if you have some photos, videos or comments about it, create it below and share it with your mates!
         <hr>
         }
         No entry for a <strong>@wid.cat</strong> named <strong>@nicename</strong> ... <a href="@routes.Wikie.wikieEdit(wid.copy(name=nicename))">create one</a></b>

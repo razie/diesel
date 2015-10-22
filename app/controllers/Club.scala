@@ -337,25 +337,27 @@ object Club extends RazController with Logging {
 
         Redirect(routes.Club.doeClubReg(uwid))
       } else {
-        val oldreg = ooldreg.getOrElse {
-          val r = Reg(u._id, au.userName, club.curYear, uw.role, Seq(), how)
-          r.create
-          r
-        }
+        ooldreg.map { oldreg =>
+          //        val oldreg = ooldreg.getOrElse {
+          //          val r = Reg(u._id, au.userName, club.curYear, uw.role, Seq(), how)
+          //          r.create
+          //          r
+          //        }
 
-        oldreg.copy(regStatus = how).update
-        val reg = club.reg(u).get
+          oldreg.copy(regStatus = how).update
+          val reg = club.reg(u).get
 
-        // if status just changed to PENDING, send email invitation
-        if (!ooldreg.exists(how == _.regStatus) && how == RegStatus.PENDING) {
-          SendEmail.withSession { implicit mailSession =>
-            // notify user
-            Emailer.sendEmailClubRegStart(u, au.userName, routes.Club.doeClubUserReg(reg._id.toString).toString)
+          // if status just changed to PENDING, send email invitation
+          if (!ooldreg.exists(how == _.regStatus) && how == RegStatus.PENDING) {
+            SendEmail.withSession { implicit mailSession =>
+              // notify user
+              Emailer.sendEmailClubRegStart(u, au.userName, routes.Club.doeClubUserReg(reg._id.toString).toString)
+            }
           }
-        }
+          Redirect(routes.Club.doeClubReg(uwid))
+        }.getOrElse(None)
         Redirect(routes.Club.doeClubReg(uwid))
       }
-
     }) getOrElse Msg2("CAN'T find registration " + errCollector.mkString)
   }
 
@@ -850,15 +852,15 @@ object Club extends RazController with Logging {
     ) yield {
       // 1. expire
       razie.db.tx("userStartRegCopy") { implicit txn =>
-        cout << "OLD REG: " << prevReg
-        var reg = prevReg.copy(_id = new ObjectId(), year = c.curYear, regStatus = RegStatus.EXPIRED, paid="")
+//        cout << "OLD REG: " << prevReg
+        var reg = prevReg.copy(_id = new ObjectId(), year = c.curYear, regStatus = RegStatus.PENDING, paid="")
 
-        cout << "REG: " << reg
+//        cout << "REG: " << reg
 
        val widNameMap = new collection.mutable.HashMap[String,String]()
 
         val newWids = reg.wids.map { wid =>
-          cout << "  proc " << wid
+//          cout << "  proc " << wid
           val oldW = Wikis.find(wid).get
 
           // find and upgrade the year
@@ -872,11 +874,11 @@ object Club extends RazController with Logging {
             val newname = name.replaceFirst(prevReg.year, reg.year)
             c.regForms.find(_.wid.name == newname).get // todo kaboom
           }
-          cout << "  new form: " << newForm
+//          cout << "  new form: " << newForm
 
           val newfwid = WID("Form", s"${newForm.wid.name}-${role}-${id + kid}-${reg.year}-${num}")
-          cout << "  old  wid: " << oldW.wid
-          cout << "  new fwid: " << newfwid
+//          cout << "  old  wid: " << oldW.wid
+//          cout << "  new fwid: " << newfwid
 
           widNameMap put (oldW.wid.name, newfwid.name)
 
@@ -887,22 +889,22 @@ object Club extends RazController with Logging {
               label = label + s" for $kidName season ${reg.year}"
             val newW = controllers.Forms.copyForm (user, oldW, newfwid.name, label, newForm, c.filterRegFields)
 
-            cout << "  old form: " << oldW
-            cout << "  new form: " << newW
+//            cout << "  old form: " << oldW
+//            cout << "  new form: " << newW
           }
 
           newfwid
         }
 
         reg = reg.copy (wids = newWids)
-        cout << "  NEW REG: " << reg
+//        cout << "  NEW REG: " << reg
 
         reg.create
 
         // copy kid regs with new form names as well
         prevReg.kids.toList.map{ ork =>
           val rk = ork.copy(_id = new ObjectId(), regId = reg._id, wids=ork.wids.map(ow => WID(ow.cat, widNameMap(ow.name))), crDtm=DateTime.now())
-          cout << "   NEW REGKID" << rk
+//          cout << "   NEW REGKID" << rk
           rk.create
           assoc(c, rk.rk.get, model.RK.ASSOC_REGD, rk.role, au, c.curYear)
         }
@@ -928,10 +930,8 @@ object Club extends RazController with Logging {
   }
 
   /** called by user not the club */
-  def doeStartRegSimple(clubName: String) = Action { implicit request =>
-    implicit val errCollector = new VErrors()
+  def doeStartRegSimple(clubName: String) = FAU { implicit au => implicit errCollector => implicit request =>
     (for (
-      au <- activeUser;
       c <- Club(clubName);
       regAdmin <- c.uregAdmin orErr ("Registration is not open yet! [no regadmin]");
       isOpen <- c.propSeq.exists(x => "reg.open" == x._1 && "yes" == x._2) orErr ("Registration is not open yet!");

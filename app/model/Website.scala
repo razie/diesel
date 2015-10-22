@@ -3,7 +3,7 @@ package model
 import admin.Config
 import com.novus.salat._
 import controllers.Application._
-import controllers.{Application, Wiki}
+import controllers.{StateOk, Application, Wiki}
 import razie.db.RazSalatContext._
 import play.api.mvc.{Request, Action}
 import razie.OR._
@@ -40,12 +40,18 @@ class Website (we:WikiEntry, extra:Seq[(String,String)] = Seq()) extends DslProp
   def skipParent:Option[WID] = this wprop "skipParent"
 
   def divMain:String = this prop "divMain" OR "9"
-  def showAds:String = this prop "showAds" OR "yes"
   def copyright:Option[String] = this prop "copyright"
+
+  def adsOnList = this bprop "adsOnList" OR true
+  def adsAtBottom = this bprop "adsAtBottom" OR true
+  def adsForUsers = this bprop "adsForUsers" OR true
 
   def rightTop:Option[WID] = this wprop "rightTop"
   def rightBottom:Option[WID] = this wprop "rightBottom"
-  def about:Option[WID] = this wprop "about"
+  def about:Option[String] = this prop "about" flatMap {s=>
+    if (s.startsWith("http") || (s startsWith "/")) Some(s)
+    else WID.fromPath(s).map(_.url)
+  }
 
   def layout:String = this prop "layout" OR "Play:classicLayout"
 
@@ -74,7 +80,7 @@ class Website (we:WikiEntry, extra:Seq[(String,String)] = Seq()) extends DslProp
 
     def navNotes:String = this prop "nav.Notes" OR s"http://${Config.hostport}/notes"
     def navTheme:String = this prop "nav.Theme" OR "/doe/selecttheme"
-    def navBrand = this prop "nav-brand"
+    def navBrand = this prop "navBrand"
 }
 
 object Website {
@@ -104,11 +110,13 @@ object Website {
   def all = cache.values.map(_.w).toList
 
   def realm (implicit request:Request[_]) = apply(request).map(_.reactor).getOrElse(dflt.reactor)
+  def getRealm (implicit request:Request[_]) = realm(request)
 
   def apply (implicit request: Request[_]):Option[Website] = getHost flatMap Website.apply
 
   /** find or default */
-  def get (implicit request: Request[_]) : Website = apply getOrElse dflt
+  def get  (implicit request: Request[_]) : Website = apply getOrElse dflt
+  def gets (implicit stok: StateOk) : Website = get(stok.request.get)
 
   def clean (host:String):Unit = { cache.remove(host) }
 
