@@ -1,7 +1,7 @@
 @********
 print form body - no header/footer - reuse in other screens
 *********@
-@(wid:razie.wiki.model.WID, iname:Option[String], page:Option[razie.wiki.model.WikiEntry], au:Option[model.User], errors:Map[String,String], canEdit:Boolean, print:Boolean=false, simple:Boolean=false)
+@(wid:razie.wiki.model.WID, iname:Option[String], page:Option[razie.wiki.model.WikiEntry], au:Option[model.User], errors:Map[String,String], canEdit:Boolean, print:Boolean=false, simple:Boolean=false)(implicit stok: controllers.StateOk)
 @import model._
 
 @if(!errors.isEmpty) {

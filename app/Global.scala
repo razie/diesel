@@ -7,6 +7,8 @@
 
 import java.util.Properties
 import admin._
+import akka.cluster.{MemberStatus, Cluster}
+import akka.cluster.ClusterEvent.{CurrentClusterState, MemberUp}
 import controllers._
 import mod.book.Progress
 import razie.db._
@@ -17,8 +19,7 @@ import play.api.mvc._
 import razie.wiki.util.{PlayTools, IgnoreErrors, VErrors}
 import razie.{cout, Log, cdebug, clog}
 import play.libs.Akka
-import akka.actor.Props
-import akka.actor.Actor
+import akka.actor.{RootActorPath, Props, Actor}
 import com.mongodb.casbah.{MongoDB, MongoConnection}
 import com.mongodb.casbah.Imports._
 import java.io.File
@@ -34,6 +35,8 @@ import razie.wiki.model.Reactors
 import razie.wiki.model.WikiEntry
 import razie.wiki.model.Reactor
 import razie.wiki.Sec._
+
+import scala.util.Try
 
 /** customize some global handling errors */
 object Global extends WithFilters(LoggingFilter) {
@@ -54,7 +57,7 @@ object Global extends WithFilters(LoggingFilter) {
       if (errEmails <= ERR_EMAILS || System.currentTimeMillis - firstErrorTime >= ERR_DELTA2) {
         SendEmail.withSession { implicit mailSession =>
           Emailer.tellRaz("ERR_onError",
-            api.wix.user.map(_.userName).mkString, m)
+            Services.auth.authUser (Request(request, "")).map(_.userName).mkString, m)
 
           synchronized {
             if (errEmails == ERR_EMAILS || System.currentTimeMillis - firstErrorTime >= ERR_DELTA2) {
@@ -117,8 +120,10 @@ object Global extends WithFilters(LoggingFilter) {
 
   override def onStart(app: Application) = {
     // automated restart / patch / update handling
-    try { new File("../updating").delete() }
+    Try { new File("../updating").delete() }.isSuccess
     super.onStart(app)
+
+    Services ! new RazAlligator.InitAlligator
 
     // todo  SendEmail.initialize
   }
@@ -129,7 +134,7 @@ object Global extends WithFilters(LoggingFilter) {
 
 //    WikiConfig.RK = "rk"
 
-    Services.auth = RazAuthService
+    Services.auth = new RazAuthService ()
     Services.config = Config
 
     /************** MONGO INIT *************/
@@ -204,10 +209,10 @@ object Global extends WithFilters(LoggingFilter) {
 
     RMongo.setInstance(RazAuditService)
 
-    Services.mkReactor = { (realm, fallBack, we)=>
+    Services.mkReactor = { (realm, fallBacks, we)=>
       realm match {
-        case Reactors.DFLT | Reactors.NOTES | Reactors.WIKI => new RkReactor(realm, fallBack, we)
-        case _ => new RkReactor(realm, fallBack, we)
+        case Reactors.RK | Reactors.NOTES | Reactors.WIKI => new RkReactor(realm, fallBacks, we)
+        case _ => new RkReactor(realm, fallBacks, we)
       }
     }
 
@@ -229,7 +234,7 @@ object Global extends WithFilters(LoggingFilter) {
 
     EncryptService.impl = admin.CypherEncryptService
     ViewService.impl = RkViewService
-    Wiki.authImpl = RazWikiAuthorization
+    Services.wikiAuth = RazWikiAuthorization
 
     //todo look these up in Website
     Services.isSiteTrusted = {s=>
@@ -237,8 +242,8 @@ object Global extends WithFilters(LoggingFilter) {
     }
 
     WikiScripster.impl = new RazWikiScripster
-    Services.runScriptImpl = (s: String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, String], devMode:Boolean) => {
-      WikiScripster.impl.runScript(s, page, user, query, devMode)
+    Services.runScriptImpl = (s: String, lang:String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, String], devMode:Boolean) => {
+      WikiScripster.impl.runScript(s, lang, page, user, query, devMode)
     }
 
     //    U11.upgradeWL(RazMongo.db)
@@ -248,7 +253,7 @@ object Global extends WithFilters(LoggingFilter) {
     //        U11.upgradeGlacierForums2()
 
     Services.audit = RazAuditService
-    Services.alli = RazAlligator
+    Services.initAlli(RazAlligator)
 
     WikiObservers mini {
       case WikiEvent(_, "WikiEntry", _, Some(x), _, _) => {
@@ -263,12 +268,22 @@ object Global extends WithFilters(LoggingFilter) {
       }
     }
 
+    WikiObservers mini {
+      case WikiEvent("AUTH_CLEAN", "User", id, _, _, _) => {
+        Services.auth.cleanAuth2(Users.findUserById(new ObjectId(id)).get)
+      }
+    }
+
     Progress.init
+
   }
 
   /** my dispatcher implementation */
   object RazAlligator extends Alligator {
     lazy val auditor = Akka.system.actorOf(Props[WikiAuditor], name = "Alligator")
+//    lazy val clusterBrute = Akka.system.actorOf(Props[ClusterBrute], name = "ClusterBrute")
+
+    class InitAlligator
 
     def !(a: Any) {
 //      this receive a
@@ -284,15 +299,59 @@ object Global extends WithFilters(LoggingFilter) {
       case wa: WikiAudit => {
         wa.create
         WikiObservers.after(wa.toEvent)
+        clusterize(wa.toEvent)
       }
+      case ev1: WikiEvent[_] => clusterize(ev1)
       case a: Audit => a.create
       case wc: WikiCount => wc.inc
+      case init: InitAlligator => {
+        clog << auditor.path
+//        clog << clusterBrute.path
+      }
       case e: Emailing => e.send
       case x @ _ => Audit("a", "ERR_ALLIGATOR", x.getClass.getName).create
     }
 
+    def clusterize (ev:WikiEvent[_]) = {
+//      clusterBrute ! ev
+    }
+
     class WikiAuditor extends Actor {
       def receive = RazAlligator.receive
+    }
+
+    /** receives events from cluster members */
+    class ClusterBrute extends Actor {
+        val cluster = Cluster(context.system)
+
+        override def preStart(): Unit =
+          cluster.subscribe(self, classOf[MemberUp])
+        override def postStop(): Unit =
+          cluster.unsubscribe(self)
+
+        def receive = {
+          case state: CurrentClusterState ⇒
+            state.members.filter(_.status == MemberStatus.Up) foreach register
+          case MemberUp(m) ⇒ register(m)
+
+          // actual work
+          case ev1: WikiEvent[_] => {
+            if(sender.compareTo(self) != 0) {
+              clog << "CLUSTER_BRUTE " + ev1.toString
+              WikiObservers.after(ev1)
+            } else {
+              clog << "CLUSTER_BRUTE SELF_NO_DO" + ev1.toString
+            }
+          }
+          case x @ _ => Audit("a", "ERR_CLUSTER_BRUTE", x.getClass.getName).create
+        }
+
+        def register(member: akka.cluster.Member): Unit = {
+          clog << "CLUSTER_REG " + member.toString()
+//          if (member.hasRole("front"))
+//            context.actorSelection(RootActorPath(member.address) /
+//              "user" / "frontend") ! "haha" //BackendRegistration
+        }
     }
   }
 }
@@ -300,7 +359,11 @@ object Global extends WithFilters(LoggingFilter) {
 object LoggingFilter extends Filter {
   import ExecutionContext.Implicits.global
 
-  def apply(next: (RequestHeader) => scala.concurrent.Future[SimpleResult])(rh: RequestHeader) = {
+  private def isFromRobot(request: RequestHeader) = {
+    (request.headers.get("User-Agent").exists(ua => Config.robotUserAgents.exists(ua.contains(_))))
+  }
+
+  def apply(next: (RequestHeader) => scala.concurrent.Future[Result])(rh: RequestHeader) = {
     val start = System.currentTimeMillis
     if (! rh.uri.startsWith( "/assets/") && !rh.uri.startsWith( "/razadmin/ping/shouldReload"))
       cdebug << s"LF.START ${rh.method} ${rh.uri}"
@@ -321,12 +384,12 @@ object LoggingFilter extends Filter {
       }
     }
 
-    def logTime(what: String)(result: SimpleResult): Result = {
+    def logTime(rh:RequestHeader)(what: String)(result: Result): Result = {
       val time = System.currentTimeMillis - start
-      if (!isAsset && !rh.uri.startsWith("/razadmin/ping/shouldReload")) {
-        clog << s"LF.STOP $what ${rh.method} ${rh.uri} took ${time}ms and returned ${result.header.status}"
-        servedPage
+      if (rh.uri.startsWith("/razadmin/ping/shouldReload") || isFromRobot(rh)) {} else {
+        clog << s"LF.STOP.$what ${rh.method} ${rh.host}${rh.uri} took ${time}ms and returned ${result.header.status}"
       }
+      if (! isAsset) servedPage
       served
       result.withHeaders("Request-Time" -> time.toString)
     }
@@ -334,18 +397,8 @@ object LoggingFilter extends Filter {
     def isAsset = rh.uri.startsWith( "/assets/") || rh.uri.startsWith("/favicon")
 
     try {
-      next(rh) match {
-        //TODO restore these
-//        case plain: Future[SimpleResult] => logTime("plain")(plain)
-        // TODO enable this
-//        case async: AsyncResult => async.transform(logTime("async"))
-        case res @ _ => {
-          if (!rh.uri.startsWith("/razadmin/ping/shouldReload"))
-            clog << s"LF.STOP.WHAT? ${rh.method} ${rh.uri} "//returned ${res}"
-          if (! isAsset) servedPage
-          served
-          res
-        }
+      next(rh) map { res =>
+        logTime(rh)(if(isAsset) "ASSET" else "PAGE")(res)
       }
     } catch {
       case t: Throwable => {

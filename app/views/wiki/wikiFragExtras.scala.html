@@ -9,7 +9,7 @@ extra html for wiki fragments, used in another page
 
 @page.map {we=>
 
-@if(page.exists(_.contentTags.contains("module.reg"))) {
+@if(page.exists(_.contentProps.contains("module.reg"))) {
   @user.map {u=>
     @views.html.modules.doeModRkRegs(u, we,
       controllers.ModRkReg(we.wid),
@@ -20,7 +20,7 @@ extra html for wiki fragments, used in another page
     }
 }
 
-@if(page.exists(_.contentTags.contains("module.tma"))) {
+@if(page.exists(_.contentProps.contains("module.tma"))) {
   @user.map {u=>
     @views.html.tma.doeModTma(u, page.get)
     }.getOrElse {
@@ -28,15 +28,22 @@ extra html for wiki fragments, used in another page
     }
 }
 
-@if(page.exists(_.contentTags.contains("module.note"))) {
-  @views.html.notes.doeModNote(NotesLocker.NEWNOTE, we, user)
+@if(page.exists(_.contentProps.contains("module.note"))) {
+  @views.html.notes.doeModNote(NotesLocker.NEWNOTENB, we, user)
 }
 
 @*** the styles required are also included in header ***@
 @if(page.exists(p=>"""\{\{code:scala""".r.findFirstIn(p.content).isDefined)) {
    <script src="@routes.Assets.at("vendor/hiscala.js")"></script>
 } else {
-@if(page.exists(p=>"""\{\{code:js""".r.findFirstIn(p.content).isDefined)) {
+@if(page.exists(p=>
+  """\{\{code[: ]js""".r.findFirstIn(p.content).isDefined ||
+  """\{\{code[: ]javascript""".r.findFirstIn(p.content).isDefined ||
+  """\{\{dsl\.""".r.findFirstIn(p.content).isDefined ||
+  """\{\{jsfiddle""".r.findFirstIn(p.content).isDefined ||
+      """\{\{fiddle[: ]js""".r.findFirstIn(p.content).isDefined ||
+  """```js""".r.findFirstIn(p.content).isDefined
+)) {
    <script src="@routes.Assets.at("vendor/hijs.js")"></script>
 }
 }

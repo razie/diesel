@@ -1,7 +1,7 @@
 @******
 manage the volunteer hours by club admin
 ******@
-@(rkaid:String, rka:model.RacerKidAssoc, myForm: Form[_], user:model.User)
+@(clubName:String, rkaid:String, rka:model.RacerKidAssoc, myForm: Form[_], user:model.User)(implicit stok:controllers.StateOk)
 @import org.bson.types.ObjectId
 
 @htmlHeadBar("Volunteer hours", Option(user))
@@ -27,7 +27,7 @@ manage the volunteer hours by club admin
 @mnglink(row:Map[String,String],k:String,v:String)={
   @k match {
         case "delete" => {
-      <a href="@routes.Club.doeVolDelete(rkaid, v)" class="btn btn-xs btn-danger"> x </a>
+      <a href="@routes.Club.doeVolDelete(clubName, rkaid, v)" class="btn btn-xs btn-danger"> x </a>
       }
     case _ => { @v }
   }
@@ -38,9 +38,11 @@ manage the volunteer hours by club admin
 
 
 @import helper.twitterBootstrap._
+@import play.api.Play.current
+@import play.api.i18n.Messages.Implicits._
 @import util.razText
 
-@helper.form(action=routes.Club.doeVolAdded(rkaid), 'class->"well") {
+@helper.form(action=routes.Club.doeVolAdded(clubName,rkaid), 'class->"well") {
 Add more hours:
 
   <label>Hours</label>

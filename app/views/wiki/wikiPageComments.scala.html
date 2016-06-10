@@ -1,52 +1,12 @@
-@(wid:razie.wiki.model.WID, page:Option[razie.wiki.model.WikiEntry], user:Option[model.User])
+@(wid:razie.wiki.model.WID, page:Option[razie.wiki.model.WikiEntry], user:Option[model.User])(implicit stok: controllers.StateOk)
 @import razie.wiki.model._
 
-@comments(stream:Option[CommentStream]) = {
-  @stream match {
-    case None => {}
-    case Some(stream) => {
-  There's @stream.comments.size comment(s)...
-  <p>
-
-  @stream.comments.map { c =>
-    <div class="well">
-      <b>By: <a href="/user/@model.Users.nameOf(c.userId)">@model.Users.nameOf(c.userId)</a></b>
-        &nbsp;    <a href="@routes.Comment.vComment1(wid.cat, page.get._id.toString, "Wiki", {new com.mongodb.casbah.Imports.ObjectId().toString}, "text")" class="btn btn-xs btn-success">Reply</a>
-        &nbsp; <a href="" class="btn btn-xs btn-warning">Report</a>
-        @if(controllers.Comment.canEdit(c,user)) {
-          &nbsp; <a href="@routes.Comment.edit(wid,c._id.toString)" class="btn btn-xs btn-info">Edit</a>
-        }
-      <br>
-      <br>
-      @Html(Wikis.format(page.map(_.wid).getOrElse(WID("?","?")), "md", c.content))
-    </div>
-    }
-@commentBar
-    }
-  }
-}
-
-
-@commentBar() = {
-  @if(user.isDefined) {
-    @if(page.map(_.isReserved).getOrElse(true)) {
-    } else {
-      @if(!user.get.canHasProfile) {
-      } else {
-        @if(!page.flatMap(_.contentTags.get("nocomments")).isDefined) {
-
-    <a href="@routes.Comment.vComment1(wid.cat, page.get._id.toString, "Wiki", {new com.mongodb.casbah.Imports.ObjectId().toString}, "text")" class="btn btn-default"><span style="color:orange">+</span>Comment</a>
-    <a href="@routes.Comment.vComment1(wid.cat, page.get._id.toString, "Wiki", {new com.mongodb.casbah.Imports.ObjectId().toString}, "video")" class="btn btn-default"><span style="color:orange">+</span>Video</a>
-    <a href="@routes.Comment.vComment1(wid.cat, page.get._id.toString, "Wiki", {new com.mongodb.casbah.Imports.ObjectId().toString}, "photo")" class="btn btn-default"><span style="color:orange">+</span>Photo</a>
-    <a href="@routes.Comment.vComment1(wid.cat, page.get._id.toString, "Wiki", {new com.mongodb.casbah.Imports.ObjectId().toString}, "slideshow")" class="btn btn-default"><span style="color:orange">+</span>Slideshow</a>
-
-    &nbsp;&nbsp;
-
-          }
-        }
-      }
-    } else {
-  }
+@** add new comments **@
+@canComment() = @{
+  user.isDefined &&
+  !page.exists(_.isReserved) &&
+  user.get.canHasProfile &&
+  !page.flatMap(_.contentProps.get("nocomments")).isDefined
 }
 
 
@@ -57,18 +17,7 @@
       @if(!user.get.canHasProfile) {
         You can't comment on public pages, sorry!
       } else {
-        @if(!page.flatMap(_.contentTags.get("nocomments")).isDefined) {
-
-@commentBar
-
-@*************
-          @helper.form(action=routes.Comment.add(page.get._id.toString,"Wiki",{new com.mongodb.casbah.Imports.ObjectId().toString}), 'class->"well form-inline") {
-            <label>Add a new comment </label><br>
-            <textarea id="content" class="col-sm-6" name="content" placeholder="content" rows="5"></textarea>
-            <button type="submit" class="btn btn-primary" onclick="$(this).addClass('disabled');">Now</button>
-            <a href="/wiki/Admin:Adding_a_Comment" class="btn btn-xs btn-info">?</a>
-            }
-**********@
+        @if(!page.flatMap(_.contentProps.get("nocomments")).isDefined) {
 
           }
         }
@@ -77,22 +26,6 @@
       You need to <a href="/doe/join">log in</a> to post a comment, sorry!
   }
 
-@comments(page.flatMap(p=>Comments.findForWiki(p._id)))
+@comments.commStream(page.flatMap(p=>Comments.findForWiki(p._id)), page.get._id.toString, "Wiki", canComment())
 
 
-@*********
-ain't working...
-<div class="modal" id="modalReply">
-  <div class="modal-header">
-    <button class="close" data-dismiss="modal">x</button>
-    <h3>Modal header</h3>
-  </div>
-  <div class="modal-body">
-    <p>One fine body�</p>
-  </div>
-  <div class="modal-footer">
-    <a href="#" class="btn">Close</a>
-    <a href="#" class="btn btn-primary">Save changes</a>
-  </div>
-</div>
-**********@

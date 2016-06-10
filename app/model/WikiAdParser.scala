@@ -43,28 +43,28 @@ object Ads {
   case object None extends Type
 
   val lederboard = """
-  <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-    <!-- 728x90all -->
-    <ins class="adsbygoogle"
-         style="display:inline-block;width:728px;height:90px"
-         data-ad-client="ca-pub-5622141672958561"
-         data-ad-slot="3920300830"></ins>
-    <script>
-      (adsbygoogle = window.adsbygoogle || []).push({});
-    </script>
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<!-- 728x90all -->
+<ins class="adsbygoogle"
+style="display:inline-block;width:728px;height:90px"
+data-ad-client="ca-pub-5622141672958561"
+data-ad-slot="3920300830"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
 <p>
                    """
 
-  val squarebase = """
-  <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-    <!-- square -->
-    <ins class="adsbygoogle"
-         style="display:inline-block;width:336px;height:280px"
-         data-ad-client="ca-pub-5622141672958561"
-         data-ad-slot="4940326420"></ins>
-    <script>
-      (adsbygoogle = window.adsbygoogle || []).push({});
-    </script>
+  private val squarebase = """
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<!-- square -->
+<ins class="adsbygoogle"
+style="display:inline-block;width:336px;height:280px"
+data-ad-client="ca-pub-5622141672958561"
+data-ad-slot="4940326420"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
 </div>
                    """
   val squareinline = """<div style="margin: 10px 5px 0px 5px">""" + squarebase

@@ -1,12 +1,11 @@
-@(au:Option[model.User])
+@()(implicit stok: controllers.StateOk)
 
-@htmlHeadBar("", au)
+@stok.title("no rights")
 
-<div class="container">
   <div class="jumbotron">
     <div class="row">
       <div class="col-sm-6">
-        <h1>Sorry, @au.map(_.ename).getOrElse("Anonymous")</h1>
+        <h1>Sorry, @stok.au.map(_.ename).getOrElse("Anonymous")</h1>
         <p>You are not authorized to access this URL.
       </div>
       <div class="col-sm-4">
@@ -15,8 +14,4 @@
     </div>
   </div>
 
-  <hr>
-  @htmlFooter()
-</div> <!-- /container -->
 
-@htmlBottom()

@@ -15,11 +15,8 @@
     <p>&nbsp;<p>
 
   @if(au.isClub) {
-    <a href="@routes.Club.doeClubRegs()" class="btn btn-lg btn-info">Registrations</a>
     <a href="@routes.Kidz.doeUserKids" class="btn btn-lg btn-info">Members/Racerz</a>
-    <a href="@routes.Club.doeVol" class="btn btn-lg btn-info">Volunteers</a>
   } else {
-
     @if(!au.isClub && au.hasRealm(razie.wiki.model.Wikis.RK)) {
       <a href="@routes.Kidz.doeUserKids" class="btn btn-lg btn-info">People/Racerz</a>
       <a href="@routes.Club.doeClubUserRegs" class="btn btn-lg btn-info">Registrations</a>

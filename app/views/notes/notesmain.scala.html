@@ -11,7 +11,22 @@ msg types are msg, err
 
 @stok.title("Create a note")
 
-<h3>Creative <small>| preview</small> @notes.notesmsg(stok.msg) </h3>
+<h3>Creative <small>| preview</small> @notes.notesmsg(stok.msg)
+  <div style="float:right">
+    <small>
+      @stok.request.cookies.get("pinTags").map(_.value).filter(_.nonEmpty).map { t =>
+        <b><span class="glyphicon glyphicon-tags" style="color:#50BBDB" title="Pinned tags: @t"></span></b>&nbsp;&nbsp;
+      }
+    <input type="checkbox" id="useName" onchange="changeName(this);" title="Notes by default don't have names..."/> Names
+    </small>
+  </div>
+</h3>
+
+<script>
+  if(localStorage.getItem("rkNoteUseName") == "1")
+    $("#useName").prop("checked", true);
+</script>
+
 
 @id = @{1}
 
@@ -27,8 +42,16 @@ msg types are msg, err
 
 <div class="well" style="padding-bottom:0px">
 @import helper.twitterBootstrap._
+@import play.api.Play.current
+@import play.api.i18n.Messages.Implicits._
 
 @helper.form(action=routes.NotesLocker.save(), 'class->"form-inline", 'style->"margin-bottom:0px") {
+
+  <input type="text" id="name" name="name" value="@myForm("name").value.mkString" class="col-sm-12 " style="padding-left:5px; display:none" autocomplete="off" placeholder="Name">
+
+<script>
+  if(document.getElementById("useName").checked) {$("#name").show();}
+</script>
 
   @helper.textarea(
     myForm("content"),
@@ -62,12 +85,12 @@ msg types are msg, err
   <input type="hidden" id="next" name="next" value="@next"/>
 
   <div class="actions col-sm-12" style="padding-left:0px; display:inline-block;">
-    <button id="submit" type="submit" class="btn btn-sm btn-info">Save it</button>
+    <button id="submit" type="submit"  class="btn btn-sm btn-info">Save it</button>
 
     <a id="discard" href="/notes/discard/@nid" class="btn btn-sm btn-warning" title="This note was auto-saved...">Discard it</a>
 
     <div style="float:right">
-      @if(_root_.admin.Config.theme.contains("light")) {
+      @if(stok.isLight) {
         <i id="iconsave" class="icon-briefcase"  title="Autosaving ok..."></i>
       } else {
         <i id="iconsave" class="icon-briefcase icon-white" title="Autosaving ok..."></i>
@@ -110,6 +133,18 @@ msg types are msg, err
   </code></pre>
 </div>
 ***@
+
+<script>
+function changeName (element) {
+  if(element.checked) {
+    localStorage.setItem("rkNoteUseName", "1");
+    $("#name").fadeIn(1000);
+  } else {
+    localStorage.setItem("rkNoteUseName", "0");
+    $("#name").fadeOut(600);
+  }
+}
+</script>
 
 <script>
 // CA options for .

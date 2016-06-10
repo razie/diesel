@@ -1,4 +1,4 @@
-@(salutation:String, user: model.User, item:Int)
+@(salutation:String, user: model.User, item:Int)(implicit stok:controllers.StateOk)
 
 @*******
 included in mainUserC as the left hand side info box
@@ -13,7 +13,7 @@ included in mainUserC as the left hand side info box
         @wiki.wikiFragInt("Admin:page-doeindex1", Some(user))
 
         <iframe marginheight="0" marginwidth="0" name="wxButtonFrame" id="wxButtonFrame" height="168"
-    src="http://btn.weather.ca/weatherbuttons/template7.php?placeCode=@user.pref("weatherCode")("caon0696")&category0=Cities&containerWidth=180&btnNo=&backgroundColor=blue&multipleCity=0&citySearch=1&celsiusF=C"
+    src="http://btn.weather.ca/weatherbuttons/template7.php?placeCode=@user.getPrefs("weatherCode","caon0696")&category0=Cities&containerWidth=180&btnNo=&backgroundColor=blue&multipleCity=0&citySearch=1&celsiusF=C"
     align="top" frameborder="0" width="180" scrolling="no"></iframe>
 
         }

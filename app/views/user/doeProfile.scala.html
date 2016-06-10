@@ -8,19 +8,13 @@
     @helper.form(action = routes.Profile.doeProfileUpdate(), 'class -> "well") {
       @util.razText(myForm, "firstName", "First name")
       @util.razText(myForm, "lastName", "Last name")
-      @helper.select(
-        myForm("userType"),
-        _root_.admin.Config.userTypes.map(x => (x.toString, x.toString)),
-        '_label -> "What you are",
-        'readonly -> "no",
-        '_showConstraints -> false)
-      @helper.select(
-        myForm("yob"),
+
+      @util.razSelect(myForm, "userType", "What you are",
+        _root_.admin.Config.userTypes.map(x => (x.toString, x.toString)))
+      @util.razSelect(myForm, "yob", "When you were born",
         (Range(2005, 1912, -1) map (y => (y.toString, y.toString))),
-        '_label -> "When you were born",
-        'style -> "width: 100px",
-        'readonly -> "no",
-        '_showConstraints -> false)
+        'style -> "width: 100px")
+
       @util.razText(myForm, "address", "City, Prov/State, Country")
 
       <button type="submit" class="btn btn-primary">Update account!</button>

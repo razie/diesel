@@ -11,27 +11,6 @@ msg types are msg, err
 @stok.title("View note")
 @notes.headingWithTags(stok)
 
-@ccc(we:WikiEntry)= @{
-    val x = NotesLocker.format(we.wid, we.markup, we.content, Some(we), Some(stok.au))
-    if(x contains "CANNOT PARSE") {
-      val id = System.currentTimeMillis().toString
-      try {
-        val PAT = """.*PARSE\]\] \[([0-9]+)\.([0-9]+)\].*""".r
-        val PAT(line, col) = x
-        s"""<div style="color:red;font-weight:bold;" title="Problem with your content: $x">
-        <small>[[Check content below at Line:$line Position:$col]]</small></div><p></p>""".stripMargin + s"""
-          <textarea id="$id" readonly="true" style="width:90%; margin-right:40px" rows="5">${we.content}</textarea>
-       """.stripMargin
-      } catch {
-        case _ : Throwable => s"""<div style="color:red;font-weight:bold;" title="Problem with your content: $x">
-        <small>[[Check content]]</small></div><p></p>""".stripMargin + s"""
-          <textarea id="$id" readonly="true" style="width:90%; margin-right:40px" rows="5">${we.content}</textarea>
-       """.stripMargin
-      }
-    } else x
-  }
-
-
    <div class="well well-small" style="border-radius:9px; margin-bottom:10px;">
    <small>
      <a href="@routes.NotesLocker.noteById(we._id.toString)">@we.crDtm.toString("YYYY-MM-dd hh:mm a").toLowerCase()
@@ -56,7 +35,7 @@ msg types are msg, err
    @if(we.tags.contains("r.domain")) {
      <p><a href="@routes.DomC.domPlay(we._id.toString)">domain playground</a></p>
    }
-  <p>@Html(ccc(we))</p>
+  <p>@notes.notesFormat(we, stok.au)</p>
 
   @wiki.wikiFragExtras(Some(stok.au),Some(we))
 

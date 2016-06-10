@@ -1,4 +1,4 @@
-@(msg:String, next:String, au:Option[model.User])
+@(msg:String, next:String, au:Option[model.User])(implicit req:views.RazRequest)
 
 @htmlHeadBar("", au)
 
@@ -12,8 +12,9 @@
   </div>
 
   <hr>
-  @htmlFooter()
+  @htmlFooter()(req.stok)
 
 </div> <!-- /container -->
 
-@htmlBottom()
+@htmlBottom()(req.stok)
+

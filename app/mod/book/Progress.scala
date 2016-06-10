@@ -2,6 +2,7 @@ package mod.book
 
 import model.{User, Website}
 import play.api.mvc.Action
+import razie.wiki.Services
 import razie.wiki.admin.{Audit, WikiRefinery, WikiRefined}
 import razie.wiki.mods.{WikiMods, WikiMod}
 import razie.wiki.parser.WAST
@@ -45,23 +46,32 @@ case class Progress (
   val ownerWid = ownerTopic.wid
   def pathway = ownerTopic.wid.map(_.wpath).mkString
 
-  def rec   (uwid:UWID, section:Option[WID] = None) = records.find(x=> x.topic == uwid && x.section == section)
-  def rec   (uwid:UWID, status:String) = records.find(x=> x.topic == uwid && x.status == status && x.section.isEmpty)
-  def recs  (uwid:UWID, section:Option[WID] = None) = records.filter(x=> x.topic == uwid && x.section == section)
-  def recs  (uwid:UWID, status:String) = records.filter(x=> x.topic == uwid && x.status == status && x.section.isEmpty)
+  // only the last record - the rest are history and not searched
+  def rec   (uwid:UWID, section:Option[WID] = None) =
+    records.collectFirst{ case x if x.topic == uwid && x.section == section => x}
+  def rec   (uwid:UWID, status:String) =
+    records.collectFirst{ case x if x.topic == uwid && x.section.isEmpty => x}.filter(_.status == status)
 
-  def percentage = (records.size-1).toString + "/" +
+  def percentage = (records.map(_.topic).distinct.size-1).toString + "/" +
     Progress.topicList(ownerTopic).map(_.countSteps.toString).getOrElse("?")
 
   def isInProgress (uwid:UWID, section:Option[WID] = None) =
   //todo maybe READ topics are done?
     records.find(x=> x.topic == uwid && x.section == section).exists(x=> x.status == Progress.STATUS_IN_PROGRESS)// || x.status == Progress.STATUS_READ)
 
+  // does it contain topics in READ status, which may have collectables
   def hasCollectables (uwid:UWID) =
     records.find(x=> x.topic == uwid && x.section == None).exists(x=>
       x.status == Progress.STATUS_READ
     )
 
+  /** nothing else to do */
+  def isDone (uwid:UWID, section:Option[WID] = None) =
+    records.find(x=> x.topic == uwid && x.section == section).exists(x=>
+      x.status == Progress.STATUS_READ || x.status == Progress.STATUS_PASSED || x.status == Progress.STATUS_COMPLETE
+    )
+
+  /** includes skipped */
   def isComplete (uwid:UWID, section:Option[WID] = None) =
     records.find(x=> x.topic == uwid && x.section == section).exists(x=>
       x.status == Progress.STATUS_PASSED || x.status == Progress.STATUS_COMPLETE || x.status == Progress.STATUS_SKIPPED
@@ -76,7 +86,7 @@ case class Progress (
     if (rec(uwid, status).isDefined)
       this
     else {
-      Audit ! Audit("?", "PROGRESS_REC", s"User: ${ownerId.as[User].map(_.userName).mkString} Topic: ${uwid.nameOrId} Status: $status")
+      Services ! Audit("?", "PROGRESS_REC", s"User: ${ownerId.as[User].map(_.userName).mkString} Topic: ${uwid.nameOrId} Status: $status")
       val t = copy(records = new ProgressRecord(uwid, section, status) +: records)
       t.updateNoAudit
       t
@@ -117,7 +127,7 @@ object Progress extends RazController with WikiMod {
     findForUser(ownerId).filter(_.status == STATUS_IN_PROGRESS).foreach{p=>
       p.copy(status=STATUS_PAUSED).update
     }
-    Audit ! Audit("?", "PROGRESS_START", s"User: ${ownerId.as[User].map(_.userName).mkString} TopicList: ${tl.uwid.nameOrId}")
+    Services ! Audit("?", "PROGRESS_START", s"User: ${ownerId.as[User].map(_.userName).mkString} TopicList: ${tl.uwid.nameOrId}")
     val p = new Progress (ownerId, tl.ownerTopic, STATUS_IN_PROGRESS, Seq(new ProgressRecord(tl.ownerTopic, None, STATUS_IN_PROGRESS)))
     p.createNoAudit
     p
@@ -144,9 +154,11 @@ object Progress extends RazController with WikiMod {
     ) yield {
         ViewService.impl.utilMsg(
           "Are you sure?",
-          "Click Reset to delete all progress history !!!\n\n Or just Continue and go back !",
-          Some("/book/progress/view"), Some(au),
-          Some("Reset" -> s"/book/progress/restart1?pathway=$pathway"))
+          "You were already progressing along this pathway.\n\n" +
+            "Click Reset to delete all progress history and start again!!!\n\n" +
+            "Or just Continue the progression!",
+          Some("/improve/skiing/view"), Some(au),
+          Some("Reset" -> s"/improve/skiing/restart1?pathway=$pathway"))
       }) orElse
     Some(Redirect(routes.Progress.restart1(pathway)))
   }
@@ -207,15 +219,16 @@ object Progress extends RazController with WikiMod {
   val DFLT_PATHWAY = "Pathway:Effective"
 
   // ----------------- pills
+  final val PILL = "improve.skiing"
 
   def sayHi = Action {request=> Ok("hello")}
 
-  CodePills.addString ("mod.progress/sayhi") {implicit request=>
+  CodePills.addString (s"$PILL/sayhi") {implicit request=>
     "ok"
   }
 
   // later load of the doNext links - needed later to reuse request
-  CodePills.add("mod.progress/next") {implicit request=>
+  CodePills.add(s"$PILL/next") {implicit request=>
     implicit val errCollector = new VErrors()
     val q = request.queryString.map(t=>(t._1, t._2.mkString))
 
@@ -236,7 +249,7 @@ object Progress extends RazController with WikiMod {
           |<div class="alert alert-warning">
           |    <span style="font-weight : bold ;color:red">
           |        You need a <i>free</i> account to track progress and access the first of 9 levels and start improving your skiing!
-          |        <p><a href="/doe/join">Join now!</a> Checkout the <a href="/book/progress/view">contents</a>
+          |        <p><a href="/doe/join">Join now!</a> Checkout the <a href="/improve/skiing/view">contents</a>
           |         or the public <a href="/browse">wiki!</a>
           |    </span>
           |</div>
@@ -244,7 +257,7 @@ object Progress extends RazController with WikiMod {
   }
 
   /** mark as read and collect drills or complete if no drills */
-  CodePills.add("mod.progress/doNext") {implicit request=>
+  CodePills.add(s"$PILL/doNext") {implicit request=>
     implicit val errCollector = new VErrors()
     implicit val q = request.queryString.map(t=>(t._1, t._2.mkString))
 
@@ -263,7 +276,7 @@ object Progress extends RazController with WikiMod {
 
             //if there are no drills incomplete then mark as complete
             if(st == STATUS_READ && page.sections.filter{s=>
-              SECTIONS.keys.exists(s.signature startsWith _) && !p.isComplete(page.uwid, Some(s.wid))
+              SECTIONS.keys.exists(s.signature startsWith _) && !p.isDone(page.uwid, Some(s.wid))
             }.isEmpty)
               st = STATUS_COMPLETE
 
@@ -282,10 +295,11 @@ object Progress extends RazController with WikiMod {
   }
 
   /** find all the sections in progress for user */
-  CodePills.add("mod.progress/sections") {implicit request=>
+  CodePills.add(s"$PILL/sections") {implicit request=>
     implicit val errCollector = new VErrors()
     implicit val q = request.queryString.map(t=>(t._1, t._2.mkString))
     val all = q.getOrElse("all", "no")
+    val query = q.filter(_._1 startsWith "q.").map(t=>(t._1.substring(2), t._2))
 
     (for (
       au      <- activeUser;
@@ -301,9 +315,9 @@ object Progress extends RazController with WikiMod {
             val p = ROne[Progress]("ownerId" -> au._id, "ownerTopic" -> pway.uwid.grated)
             ROK()(au, request) apply {implicit stok=>
               if("yes" == all)
-                viewSections(sec, None, tl, pathway)
+                viewSections(sec, None, tl, pathway, query)
               else
-                viewSections(sec, p, tl, pathway)
+                viewSections(sec, p, tl, pathway, query)
             }
           }) getOrElse unauthorized("oops")
       }) getOrElse
@@ -314,7 +328,7 @@ object Progress extends RazController with WikiMod {
     q.get(name) orErr s"missing $name"
 
   /** make up html sequence for done/skip buttons for drills */
-  CodePills.add("mod.progress/section/buttons") {implicit request=>
+  CodePills.add(s"$PILL/section/buttons") {implicit request=>
     implicit val errCollector = new VErrors()
     implicit val q = request.queryString.map(t=>(t._1, t._2.mkString))
 
@@ -330,14 +344,14 @@ object Progress extends RazController with WikiMod {
           name     <- qget("section")
         ) yield {
             val disabled = if(p.isComplete(uwid, Some(wid.copy(section=Some(name))))) "disabled" else ""
-            Ok(s"""<a class="btn btn-danger btn-xs $disabled" href="/pill/mod.progress/section/done?status=s&section=$name&wid=${we.wid.wpath}">Skip</a>
-                   <a class="btn btn-success btn-xs $disabled" href="/pill/mod.progress/section/done?status=c&section=$name&wid=${we.wid.wpath}">Done</a>""")
+            Ok(s"""<a class="btn btn-danger btn-xs $disabled" href="/pill/$PILL/section/done?status=s&section=$name&wid=${we.wid.wpath}">Skip</a>
+                   <a class="btn btn-success btn-xs $disabled" href="/pill/$PILL/section/done?status=c&section=$name&wid=${we.wid.wpath}">Done</a>""")
           }) getOrElse Ok("<b>{{Pathway not started}}</b>")
       }) getOrElse Ok("""<b><span style="color:red">{{Login to track}}</span></b>""")
 //      unauthorized("You need a free account to track your progress.")
   }
 
-  CodePills.add("mod.progress/section/done") {implicit request=>
+  CodePills.add(s"$PILL/section/done") {implicit request=>
     implicit val errCollector = new VErrors()
     implicit val q = request.queryString.map(t=>(t._1, t._2.mkString))
 
@@ -368,35 +382,58 @@ object Progress extends RazController with WikiMod {
       }) getOrElse unauthorized("You need a free account to track your progress.")
   }
 
+  CodePills.add(s"$PILL/misc/hasMain") {implicit request=>
+    implicit val errCollector = new VErrors()
+    implicit val au = activeUser;
+
+    val res = au.flatMap {u=> findForUser(u._id).find(_.status == STATUS_IN_PROGRESS)} flatMap (_.ownerWid) filter (_.wpath contains DFLT_PATHWAY)
+
+    if(res.isDefined)
+      Ok("").withHeaders("Access-Control-Allow-Origin" -> "*")
+    else
+      Ok(
+        s"""
+          <div class="alert alert-warning">
+            You did not start the main pathway
+            <a class="btn btn-success" href="/improve/skiing/restart?pathway=$DFLT_PATHWAY">
+        Start it now!</a>
+        <br>
+        Following the main pathway will guide you through the topics and sessions, in order.
+           |</div>
+        """.stripMargin).withHeaders("Access-Control-Allow-Origin" -> "*")
+  }
+
   CodePills.add("api/wix/realm/count") {implicit request=>
     implicit val errCollector = new VErrors()
-    api.wix.init(None, auth, Map.empty, Website.realm)
-    Ok(api.wix.realm.count.toString).withHeaders("Access-Control-Allow-Origin" -> "*")
+    Ok(api.wix(None, auth, Map.empty, Website.realm).realm.count.toString).withHeaders("Access-Control-Allow-Origin" -> "*")
     // allow is for cross-site scripting
   }
 
 
   // ------------ mods
 
-  def modName:String = "mod.progress"
-  def modProps:Seq[String] = Seq("mod.progress")
+  def modName:String = PILL
+  def modProps:Seq[String] = Seq(PILL)
   def isInterested (we:WikiEntry) : Boolean =
-    we.tags.contains("mod.progress")
+    we.tags.contains("improve-skiing")
 
   /** format a section for display, with done/skip buttons and state */
-  def formatSec (we:WikiEntry, cur:WikiSection, what:String, path:String) : String = {
+  def formatSec (we:WikiEntry, cur:WikiSection, what:String, path:String, au:Option[User]) : String = {
     val (kind, name) = (cur.signature, cur.name)
 
-    val c = s"""`{{section $name:$kind}}`${cur.content}`{{/section}}`"""
+    val c =
+      s"""`{{section $name:$kind}}`${cur.content}
+         |<small>Read original <a href="${we.wid.urlRelative}">topic</a></small> `{{/section}}`""".stripMargin
 
     // this will callback the modPreFormat below
-    val f = Wikis.format(we.wid, we.markup, c, Some(we))
+    val f = Wikis.format(we.wid, we.markup, c, Some(we), au)
     val r = modPostHtmlNoBottom(we, f)
     r
   }
 
   val SECTIONS = Map("GETUP" -> "GET UP!", "ONSNOW" -> "ON SNOW!", "QUIZ" -> "QUIZ!")
 
+  // replace the sections in content to add blue boxes and stuff
   override def modPreHtml (we:WikiEntry, content:Option[String]) : Option[String] = {
     content.orElse(Some(we.content)).map{c=>
     // this ((?>.*?(?=\{\{/))) means non-greedy lookahead
@@ -405,20 +442,22 @@ object Progress extends RazController with WikiMod {
     val PATT1 = """(?s)`\{\{\.*(section)([: ])?([^:}]*)?(:)?([^}]*)?\}\}`((?>.*?(?=`\{\{/[^`])))`\{\{/\.*(section)?\}\}`""".r //?s means DOTALL - multiline
 
     def div (kind:String, name:String, content:String) =
-      s"""{div.alert.info}<b>$kind</b> <small>$name</small>&nbsp;&nbsp;<div align="right" style="display:inline">${buttons(name)}</div><br>$content{/div}"""
+      s"""{div.alert.info}<b>$kind</b> <small>$name</small>&nbsp;&nbsp;<div align="right" style="display:inline">${buttons(name)}</div>$content{/div}"""
 
     def buttons (name:String) = {
-      s"""<a class="btn btn-danger btn-xs" href="/pill/mod.progress/box?what=s&name=$name&wid=${we.wid.wpath}">Skip</a>
-      <a class="btn btn-success btn-xs" href="/pill/mod.progress/box?what=c&name=$name&wid=${we.wid.wpath}">Done</a>"""
-      s"""<span id="$name">...</span>"""+
-     Wikis.propLater(name, s"/pill/mod.progress/section/buttons?section=$name&wid=${we.wid.wpath}}}")
+      if(we.sections.find(_.name == name).exists(_.args.contains("when")))
+        ""
+      else
+        s"""<span id="$name">...</span>\r"""+
+        Wikis.propLater(name, s"/pill/$PILL/section/buttons?section=$name&wid=${we.wid.wpath}}}")
     }
 
     PATT1.replaceSomeIn(c, {m=>
       SECTIONS.foldLeft(None.asInstanceOf[Option[String]]) {(o, t) =>
         if(o.isDefined) o
         else if(m.groupCount > 4 && m.group(5).startsWith(t._1)) {
-          Some(div(t._2, m.group(3), m.group(6)).replaceAll("\\$", "\\\\\\$"))
+          // the replace $ is because the regexp gets pissed
+          Some(div(t._2, m.group(3), /*we.sections.find(_.name == m.group(3)).map(_.args.mkString).mkString + */ m.group(6)).replaceAll("\\$", "\\\\\\$"))
         }
         else None
       }
@@ -426,6 +465,7 @@ object Progress extends RazController with WikiMod {
     }
   }
 
+  // need to temp subst this - the markdown formatter goes nuts if I put div tags pre-html
   def modPostHtmlNoBottom (we:WikiEntry, html:String) : String =
     html.replaceAll("\\{div.alert.info}", "<div class=\"alert alert-info\">").
     replaceAll("\\{/div\\}", "</div>")
@@ -440,7 +480,7 @@ object Progress extends RazController with WikiMod {
       value+
       """">div.later</div> <script>$("#"""+
       value+
-      """").load("/pill/mod.progress/next?wpath="""+
+      s"""").load("/pill/$PILL/next?wpath="""+
       we.map(_.wid.wpath).mkString+
       """");</script> """
   }

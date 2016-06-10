@@ -1,21 +1,22 @@
-@(sForm:Form[_], v2:Int, page:String, au:Option[model.User])(implicit request:Request[_])
+@(sForm:Form[_], page:String)(implicit stok: controllers.StateOk)
 @import model.Website.realm
 @import helper.twitterBootstrap._
+@import play.api.Play.current
+@import play.api.i18n.Messages.Implicits._
 
-@htmlHeadBar("Support", au, realm)
+@stok.title("Support")
 
-  <div class="container">
-    <div class="jumbotron">
+@admin.adminLayout {
 
-      <div class="row">
-        <div class="col-sm-9">
-          <h2>Support request</h2>
 
-@helper.form(action=routes.Support.supportu(page), 'class->"well") {
+<div class="row">
+  <h2>Support request</h2>
+<div class="well col-md-8">
+@helper.form(action=routes.Support.supportu(page)) {
 
-@if(au.isDefined) {
-  <input type="hidden" name="name" value="@au.get.ename" />
-  <input type="hidden" name="email" value="@razie.wiki.Enc.unapply(au.get.email)" />
+@if(stok.au.isDefined) {
+  <input type="hidden" name="name" value="@stok.au.get.ename" />
+  <input type="hidden" name="email" value="@razie.wiki.Enc.unapply(stok.au.get.email)" />
 } else {
   @helper.inputText(
     sForm("name"),
@@ -30,46 +31,36 @@
   @helper.inputText(
     sForm("desc"),
     '_label -> "Description",
-    'class -> "col-sm-12",
     '_showConstraints -> false)
 
   @helper.textarea(
     sForm("details"),
     '_label -> "Details",
     '_showConstraints -> false,
-    'class -> "col-sm-12",
-    'rows->15)
+    'rows->5)
 
-@if(au.isDefined) {
-  <input type="hidden" name="v1" value="@sForm("v2").value" />
+<script>
+  $("textarea, input").addClass("form-control");
+</script>
+
+@if(stok.au.isDefined) {
+  <input type="hidden" name="g-recaptcha-response" />
 } else {
-  <div class="well">
-  Help weed out some spam - please answer this question...
-    @helper.inputText(
-      sForm("v1"),
-      '_label -> ("Result of " + controllers.Support.divi(v2) + " = "),
-      '_showConstraints -> false)
-  </div>
+  @util.recaptcha()
 }
-  <input type="hidden" name="v2" value="@sForm("v2").value" />
 
-  <button type="submit" class="btn btn-primary">Submit support request</button>
-
+  <br>
   @sForm.globalError.map { err=>
      <p style="color:red;font-weight:bold">@err.message</p>
   }
 
+  <div class="actions">
+    <button type="submit" class="btn btn-primary">Submit support request</button>
+  </div>
+
   <p><small>By using this form, you agree to the <a href="@controllers.Wiki.w("Terms of Service")">Terms of Service</a></small><p>
   }
+</div>
+  </div>
+}
 
-        </div>
-      </div>
-    </div>
-
-  <hr>
-
-  @htmlFooter(true, false, realm)
-
-  </div> <!-- /container -->
-
-@htmlBottom()

@@ -1,7 +1,8 @@
 @***
 purge audit tables
 ***@
-@(map:scala.collection.mutable.HashMap[(String,String),Int], au:Option[model.User])
+@(map:scala.collection.mutable.HashMap[(String,String),Int])(implicit stok: controllers.StateOk)
+
 
 @data = @{
         map.groupBy(_._1._1).map(t=>
@@ -27,9 +28,7 @@ purge audit tables
   }
 }
 
-  @htmlHeadBar("admin audit", au)
-
-  <div class="container">
+@stok.title("admin audit")
 
     <h2>Audit events</h2>
 
@@ -44,8 +43,4 @@ right click and save-as directly - as soon as you see them, they're gone!
     <a href="/razadmin/clearauditall">clear all</a>
     <hr>
 
-    @htmlFooter()
 
-  </div> <!-- /container -->
-
-  @htmlBottom()

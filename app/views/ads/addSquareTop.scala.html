@@ -5,7 +5,7 @@ The add on the right hand side
 @import _root_.admin.Config
 
 @if(!
-    (Config.noads || stok.au.orElse(Config.currUser).exists(_.isUnder13) || !stok.website.adsOnList ||
+    (Config.noads || stok.au.exists(_.isUnder13) || !stok.website.adsOnList ||
     (stok.au.exists(_.isActive) && !stok.website.adsForUsers))
 ) {
   @Html(model.Ads.squareright)

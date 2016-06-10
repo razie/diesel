@@ -6,6 +6,7 @@
  */
 package model
 
+import mod.diesel.controllers.SFiddles
 import razie.{CSTimer, csys}
 import razie.wiki.model.WikiUser
 import razie.wiki.model.WikiEntry
@@ -14,8 +15,8 @@ import razie.wiki.admin.Audit
 /** execute wiki scala scripts */
 trait WikiScripster {
   /** run the given script in the context of the given page and user as well as the query map */
-  def runScript   (s: String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, String], devMode:Boolean=false): String
-  def runScriptAny(s: String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, String], devMode:Boolean=false): Any
+  def runScript   (s:String, lang: String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, String], devMode:Boolean=false): String
+  def runScriptAny(s:String, lang: String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, String], devMode:Boolean=false): Any
 
   def mk: WikiScripster
 }
@@ -23,7 +24,36 @@ trait WikiScripster {
 /** simple scripts runner - I do customize it further only to setup some context available to the scripts... */
 object WikiScripster {
   var count = 0
-  var impl: WikiScripster = new CWikiScripster
+  var impl: WikiScripster = new JSWikiScripster
+  var implScala: WikiScripster = new CWikiScripster
+
+  class JSWikiScripster extends WikiScripster {
+
+    def mk = new JSWikiScripster
+
+    /** run the given script in the context of the given page and user as well as the query map */
+    def runScriptAny (s:String, lang: String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, String], devMode:Boolean=false): Any = synchronized {
+      Audit.logdb("WIKI_SCRIPSTER", "execJS", lang+":"+s)
+      try {
+        val c = new CSTimer("script", "?")
+        c.start()
+        val res = SFiddles.isfiddleMap(s, lang, page, user, query)
+        c.stop()
+        if(res._1) res._2 else "ERR: " + res._2
+      } catch {
+        case ex: Throwable => { // any exceptions, get a new parser
+          razie.Log.log("ERR WikiScripster: ", ex)
+          if(true || devMode) throw ex
+          else "?"
+        }
+      }
+    }
+
+    /** run the given script in the context of the given page and user as well as the query map */
+    def runScript(s:String, lang: String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, String], devMode:Boolean=false): String = synchronized {
+      runScriptAny(s, lang, page, user, query, devMode).toString
+    }
+  }
 
   class CWikiScripster extends WikiScripster {
 
@@ -39,10 +69,10 @@ object WikiScripster {
     def mk = new CWikiScripster
 
     /** run the given script in the context of the given page and user as well as the query map */
-    def runScriptAny (s: String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, String], devMode:Boolean=false): Any = synchronized {
+    def runScriptAny (s:String, lang: String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, String], devMode:Boolean=false): Any = synchronized {
       import razie.base.scriptingx._
 
-      Audit.logdb("WIKI_SCRIPSTER", "exec", s)
+      Audit.logdb("WIKI_SCRIPSTER", "exec", lang+":"+s)
       try {
         val c = new CSTimer("script", "?")
         c.start()
@@ -68,8 +98,8 @@ object WikiScripster {
     }
 
     /** run the given script in the context of the given page and user as well as the query map */
-    def runScript(s: String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, String], devMode:Boolean=false): String = synchronized {
-      runScriptAny(s, page, user, query, devMode).toString
+    def runScript(s:String, lang: String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, String], devMode:Boolean=false): String = synchronized {
+      runScriptAny(s, lang, page, user, query, devMode).toString
     }
   }
 }

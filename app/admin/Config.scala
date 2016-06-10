@@ -1,7 +1,6 @@
 package admin
 
-import controllers.DarkLight
-import model.Website
+import model.{User, Website}
 import play.api.mvc.Request
 import razie.wiki.admin.{WikiEvent, WikiObservers}
 import razie.wiki.{Services, WikiConfig}
@@ -20,25 +19,27 @@ object Config extends WikiConfig {
 
   final val METAS = "sitemetas"
   lazy val metas = Wikis.find(WID("Admin", METAS)) map (_.content) getOrElse ""
-  def currUser = { razie.NoStaticS.get[WikiUser].map(_.asInstanceOf[model.User]) }
 
   final val CONNECTED = props.getProperty("rk.connected", "connected")
 
   final val curYear = "2016" // current year for registrations
 
-  override val simulateHost = {
+  override def simulateHost = isimulateHost
+  var isimulateHost = {
 //        "www.racerkidz.com"    // for testing locally
-    "www.effectiveskiing.com"    // for testing locally
+//    "www.wikireactor.com"    // for testing locally
+//    "www.effectiveskiing.com"    // for testing locally
 //                "ski.wikireactor.com"    // for testing locally
-//                "www.wikireactor.com"    // for testing locally
 //    "ebaysim.wikireactor.com"    // for testing locally
+            "dsl1.wikireactor.com"    // for testing locally
 //            "catsim.wikireactor.com"    // for testing locally
 //        "www.coolscala.com"    // for testing locally
 //        "www.enduroschool.com"    // for testing locally
 //            "www.askicoach.com"    // for testing locally
 //        "www.glacierskiclub.com"    // for testing locally
 //        "www.nofolders.net"    // for testing locally
-//        "www.dieselreactor.net"    // for testing locally
+    //        "www.dieselreactor.net"    // for testing locally
+//        "gsc.wikireactor.com"    // for testing locally
   }
 
   final val CFG_PAGES = Array(SITECFG, TOPICRED, USERTYPES, BANURLS, URLCFG)
@@ -50,8 +51,6 @@ object Config extends WikiConfig {
     }
   }
 
-  def darkLight = { razie.NoStaticS.get[controllers.DarkLight] }
-
   def getTheme (user:Option[WikiUser], request:Option[Request[_]]) = {
     // session settings override everything
     request.flatMap(_.session.get("css")) orElse (
@@ -60,16 +59,13 @@ object Config extends WikiConfig {
       ) orElse (
         // or website settings
         request.flatMap(r=> Website(r)).flatMap(_.css)
-      ) orElse darkLight.map(_.css).orElse(
-        sitecfg("css")
     ) getOrElse ("light")
   }
 
   // no request available
-  def theme = getTheme (currUser, None)
-
-  def isLight = theme contains "light"
-  def isDark = ! isLight
+  def isLight(au:Option[User], request:Option[Request[_]]=None) = getTheme (au, request) contains "light"
+  // todo remove this - relies on statics
+  def oldisLight = isLight(None, None)
 
   def robotUserAgents = irobotUserAgents
   private var irobotUserAgents = List[String]()
@@ -101,7 +97,7 @@ object Config extends WikiConfig {
     }
 
     xconfig.keys.foreach(x => {
-      println("============= config topic: " + x)
+      println("============= config topic: " + x + " size " + xconfig.get(x).size)
       xconfig.get(x).foreach(y => println(y.mkString("\n  ")))
     })
 

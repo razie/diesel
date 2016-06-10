@@ -3,7 +3,7 @@ fragment: add more stuff to the current topic, including children, sub-topics et
 ****************@
 @(uwid:razie.wiki.model.UWID)
 @import razie.wiki.util.IgnoreErrors
-@import razie.wiki.model.{Wikis, WID, WikiLink, WikiEntry}
+@import razie.wiki.model.{Wikis, WID, WikiLink, WikiEntry, Comments, Comment, CommentStream}
 @import model.UserWiki
 @import razie.wiki.dom.WikiDomain
 @import razie.db.RMany
@@ -36,12 +36,18 @@ Links from others :
 
 <small>
 @defining(RMany[UserWiki]("uwid" -> uwid.grated)) { x =>
-<p>Users:
-  @if(x.isEmpty) { None } else {
-  <ul>
+    <p>Users:
+      @if(x.isEmpty) { None } else {
+    <ul>
     @x.map{uw=> <li>@uw.user.map(_.userName).getOrElse("???") | @uw.role</li> }
-  </ul>
+    </ul>
   }
+}
+</small>
+
+<small>
+@defining(Comments.findForWiki(uwid.id)) { x =>
+<p>Comments: @x.map(_.comments.size)
 }
 </small>
 

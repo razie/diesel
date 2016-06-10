@@ -42,12 +42,20 @@ class UserStuff (val realm:String, val user:User) {
 /** profile related control */
 object UserStuff extends RazController {
 
+  def findPublicProfile(realm:String, uid:String) =
+    Wikis.find(WID("User", realm+"-"+uid)) orElse Wikis.find(WID("User", uid))
+
   // serve public profile
-  def pub(id: String) =
-    if (Wikis.find(WID("User", id)).isDefined)
-      Wiki.show (WID("User", id))
-    else
-      Action { implicit request => Msg2 ("This user does not have a public profile!") }
+  def pub(id: String) = Action { implicit request =>
+      val au = auth
+      val user = Users.findUserByUsername(id)
+      if(au.isDefined && user.isDefined) {
+        ROK(au, request) { implicit stok =>
+          views.html.user.userInfo(user.get)
+        }
+      } else
+        Msg2 ("This user does not have a public profile!")
+  }
 
   def wiki(id: String, cat: String, name: String) =
     WikiLink(UWID("User", new ObjectId(id)), WID(cat, name).uwid.get, "").page.map(w =>
@@ -91,17 +99,17 @@ object UserStuff extends RazController {
 
   // serve public profile
   def doeUserCreateSomething = Action { implicit request =>
-    Ok (views.html.user.doeUserCreateSomething(auth))
+    ROK.r noLayout {implicit stok=>views.html.user.doeUserCreateSomething(auth)}
     }
 
   def fragTasks (quiet:String) = FAU { implicit au => implicit errCollector => implicit request =>
-    Ok (views.html.user.uFragTasks(au, quiet == "true", new controllers.UserStuff(Website.getRealm, au)))
+    ROK.s noLayout { implicit stok => views.html.user.uFragTasks(au, quiet, new UserStuff(Website.getRealm, au)) }
   }
   def fragEvents (quiet:String) = FAU { implicit au => implicit errCollector => implicit request =>
-    Ok (views.html.user.uFragEvents(au, quiet == "true", new controllers.UserStuff(Website.getRealm, au)))
+    ROK.s noLayout { implicit stok => views.html.user.uFragEvents(au, quiet == "true", new UserStuff(Website.getRealm, au)) }
   }
   def fragBlogs (quiet:String) = FAU { implicit au => implicit errCollector => implicit request =>
-    Ok (views.html.user.uFragBlogs(au, quiet == "true", new controllers.UserStuff(Website.getRealm, au)))
+    ROK.s noLayout { implicit stok => views.html.user.uFragBlogs(au, quiet == "true", new UserStuff(Website.getRealm, au)) }
   }
 }
 

@@ -32,7 +32,7 @@ object Tasks extends RazController with Logging {
   // ujson is used during creation of the child account - not yet in db
   def addParent1 = Action { implicit request =>
     (for (
-      uj <- session.get("ujson") orErr ("missing ujson");
+      uj <- request.session.get("ujson") orErr ("missing ujson");
       u <- Users.fromJson(uj) orErr ("cannot parse ujson")
     ) yield {
       debug("ujson=" + uj)
@@ -52,21 +52,21 @@ object Tasks extends RazController with Logging {
   def addParent2 = Action { implicit request =>
     implicit val errCollector = new VErrors()
     def ERR = {
-      error("ERR_CANT_UPDATE_USER.addParent2 " + session.get("email"))
+      verror("ERR_CANT_UPDATE_USER.addParent2 " + request.session.get("email"))
       Unauthorized("Oops - cannot update this user [addParent2]... " + errCollector.mkString)
     }
 
-    if (session.get("ujson").isDefined) {
+    if (request.session.get("ujson").isDefined) {
       // during createing new user - user not created yet
       parentForm.bindFromRequest.fold(
         formWithErrors => {
           error("FORM ERR " + formWithErrors)
-          BadRequest(views.html.tasks.addParent(formWithErrors, "")).withSession("ujson" -> session.get("ujson").get)
+          BadRequest(views.html.tasks.addParent(formWithErrors, "")).withSession("ujson" -> request.session.get("ujson").get)
         },
         {
           case pe: String => {
             for (
-              uj <- session.get("ujson") orErr ("missing ujson - bad request");
+              uj <- request.session.get("ujson") orErr ("missing ujson - bad request");
               c <- Users.fromJson(uj) orErr ("cannot parse ujson - bad request")
             ) yield {
               // TODO bad code - reconcile and reuse createion sequence from Profile.doCreateProfiles
@@ -174,7 +174,7 @@ Please read our [[Terms of Service]] as well as our [[Privacy Policy]]
         }
       } getOrElse
         {
-          error("ERR_CANT_UPDATE_USER.addParent3 " + session.get("email"))
+          verror("ERR_CANT_UPDATE_USER.addParent3 " + request.session.get("email"))
           Unauthorized("Oops - cannot update this user [addParent3]... " + errCollector.mkString)
         }
     }
@@ -184,7 +184,7 @@ Please read our [[Terms of Service]] as well as our [[Privacy Policy]]
   def verifyEmail1 = Action { implicit request =>
     implicit val errCollector = new VErrors()
     def ERR = {
-      error("ERR_CANT_UPDATE_USER.verifyEmail1 " + session.get("email"))
+      verror("ERR_CANT_UPDATE_USER.verifyEmail1 " + request.session.get("email"))
       Unauthorized("Oops - cannot update this user....verifyEmail1 " + errCollector.mkString)
     }
 
@@ -240,7 +240,7 @@ Ok - we sent an email to your registered email address <font style="color:red">$
   def verifyEmail2(expiry1: String, email: String, id: String) = Action { implicit request =>
     val odate = (try { Option(DateTime.parse(expiry1.dec)) } catch { case _: Throwable => (try { Option(DateTime.parse(expiry1.replaceAll(" ", "+").dec)) } catch { case _: Throwable => None }) }) orErr ("token faked or expired")
     if (odate.isDefined && odate.get.isAfterNow && !auth.isDefined)
-      Ok(views.html.tasks.verifEmail3(reloginForm.fill(("", "")), expiry1, email, id))
+      Ok(views.html.tasks.verifEmail3(reloginForm.fill(("", "")), expiry1, email, id, auth))
     else
       verifyEmail3a(expiry1, email, id)
   }
@@ -250,7 +250,7 @@ Ok - we sent an email to your registered email address <font style="color:red">$
     reloginForm.bindFromRequest.fold(
       formWithErrors => {
         error("FORM ERR " + formWithErrors)
-        BadRequest(views.html.tasks.verifEmail3(formWithErrors, expiry1, email, id))
+        BadRequest(views.html.tasks.verifEmail3(formWithErrors, expiry1, email, id, auth))
       },
       {
         case (pe, pwd) => {
@@ -258,7 +258,7 @@ Ok - we sent an email to your registered email address <font style="color:red">$
           if (pe.toLowerCase() == email.dec.toLowerCase() && u.exists(_.pwd == pwd.enc))
             verifiedEmail(expiry1, email, id, Users.findUser(email))
           else {
-            u.foreach(_.auditLoginFailed)
+            u.foreach(_.auditLoginFailed(Website.getRealm))
             Msg2("Email doesn't match - could not verify email!")
           }
         }
@@ -305,7 +305,7 @@ Please read our [[Terms of Service]] as well as our [[Privacy Policy]]
         }
       } getOrElse
         {
-          error("ERR_CANT_UPDATE_USER.verifiedEmail " + session.get("email"))
+          verror("ERR_CANT_UPDATE_USER.verifiedEmail " + request.session.get("email"))
           Unauthorized("Oops - cannot update this user....verifiedEmail " + errCollector.mkString)
         }
     }
@@ -322,11 +322,13 @@ Please read our [[Terms of Service]] as well as our [[Privacy Policy]]
         }
         case UserTasks.START_REGISTRATION => {
           val ut = au.tasks.find(_.name == UserTasks.START_REGISTRATION)
-          Ok(views.html.club.doeClubUserStartReg(auth.get, ut.map(_.args("club")).mkString))
+//          ROK s (au, request) apply { implicit stok =>(views.html.club.doeClubUserStartReg(ut.map(_.args("club")).mkString))}
+          Redirect(routes.Club.doeStartRegSimple(ut.map(_.args("club")).mkString))
         }
         case UserTasks.APPROVE_VOL => {
           val ut = au.tasks.find(_.name == UserTasks.APPROVE_VOL)
-          Club.doeVolApprover(auth.get)
+                    Club.doeVolApprover(auth.get)
+//          Redirect(routes.Club.doeVolApprover(auth.get))
         }
         case _ => {
           Msg2("?")

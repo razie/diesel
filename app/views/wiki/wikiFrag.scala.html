@@ -1,7 +1,7 @@
 @**************
 wiki fragment, used in another page
 **************@
-@(wid:razie.wiki.model.WID, au:Option[model.User], simple:Boolean = false, page:Option[razie.wiki.model.WikiEntry]=None, iname:Option[String]=None, noTitle:Boolean=false, ads:Boolean=true, canEdit:Boolean=false, isSite:Boolean=false, print:Boolean=false)
+@(wid:razie.wiki.model.WID, au:Option[model.User], simple:Boolean = false, page:Option[razie.wiki.model.WikiEntry]=None, iname:Option[String]=None, noTitle:Boolean=false, ads:Boolean=true, canEdit:Boolean=false, isSite:Boolean=false, print:Boolean=false)(implicit stok: controllers.StateOk)
 @import razie.wiki.model.{Wikis, WikiCount, WID, WikiEntry}
 @import _root_.admin.Config
 @import razie.wiki.util.IgnoreErrors
@@ -9,7 +9,7 @@ wiki fragment, used in another page
 
 @nicename() = @{ iname.getOrElse(wid.name) }
 @ppage = @{if(page.isDefined) page else wid.page}
-@rss = @{page.flatMap(_.contentTags.get("rss")).getOrElse(controllers.Wiki.w(wid)+"/rss.xml")}
+@rss = @{page.flatMap(_.contentProps.get("rss")).getOrElse(controllers.Wiki.w(wid)+"/rss.xml")}
 
 @favoriteCat = @{ "Topic" }
 
@@ -21,17 +21,17 @@ wiki fragment, used in another page
 
   @ww() = @{ Wikis(wid.getRealm).findAny(wid.name) }
 
-  @label()=@{ page.flatMap(_.contentTags.get("label")).orElse(page.map(_.label)).getOrElse(Wikis(wid.getRealm).label(wid)) }
+  @label()=@{ page.flatMap(_.contentProps.get("label")).orElse(page.map(_.label)).getOrElse(Wikis(wid.getRealm).label(wid)) }
 
   @url() = @{
-    val u = controllers.Wiki.w(wid)
+    val u = wid.url
     if(u startsWith "http") u else  s"http://${Config.hostport}$u"
   }
 
   @ccc(wid:WID, we:WikiEntry)= @{
-//    cdebug << "D"
+//    razie.cdebug << "D"
     // this will use the preprocessed cache and just do MD format
-    val x = Wikis.format(wid, we.markup, null, Some(we))
+    val x = Wikis.format(wid, we.markup, null, Some(we), au)
     var y = try {
       if(x contains "CANNOT PARSE") {
         val PAT = """.*PARSE\]\] \[([0-9]+)\.([0-9]+)\].*""".r
@@ -47,13 +47,13 @@ wiki fragment, used in another page
         Wikis.divLater(x)
       }
     } catch {
-      case _ : Throwable => x
+      case _ : Throwable => x+" Exception!"
     }
-//    cdebug << "E"
+//    razie.cdebug << "E"
 
     y = razie.wiki.mods.WikiMods.modPostHtml(we, y)
     y = Wikis(wid.getRealm).applyTemplates(wid, y, "html")
-//    cdebug << "F"
+//    razie.cdebug << "F"
     y
   }
 
@@ -70,7 +70,7 @@ wiki fragment, used in another page
               (Category)</h2>
           }
           case _ => {
-            @if(page.exists(_.contentTags.contains("noTitle"))) {
+            @if(page.exists(_.contentProps.contains("noTitle"))) {
             } else {
             <h2>@label()
               @if(au.isEmpty && "Blog" == wid.cat) {
@@ -81,14 +81,13 @@ wiki fragment, used in another page
                 }
               }
 
-              @if(!(Seq("WikiLink", "Form").contains(wid.cat) || page.exists(_.contentTags.contains("noSocial")))) {
+              @if(!(Seq("WikiLink", "Form").contains(wid.cat) || page.exists(_.contentProps.contains("noSocial")))) {
                 <br>
                 <a class="btn btn-xs btn-info" href="@routes.Wiki.social(label().toString, url())">Share <i class="icon-thumbs-up icon-white"></i></a>
 
                 @if(Seq("Blog", "Forum").contains(wid.cat)) {
                   <a class="btn btn-xs btn-info" href="@rss">Feed (RSS) <i class="icon-star icon-white"></i></a>
                 }
-
               }
 
             </h2>
@@ -105,7 +104,7 @@ wiki fragment, used in another page
 
       @if(!simple && !print) {
 
-        @if(ads && page.isDefined && !page.exists(_.contentTags.contains("noAds")) &&
+        @if(ads && page.isDefined && !page.exists(_.contentProps.contains("noAds")) &&
                 """\{\{ad[:}]""".r.findFirstIn(page.get.content).isEmpty &&
                 page.get.content.length > 100 && razie.wiki.dom.WikiDomain(wid.getRealm).noAds(page.get.category) &&
                 ! _root_.admin.Config.noads) {
@@ -113,7 +112,9 @@ wiki fragment, used in another page
           @Html(model.Ads.lederboard)
         }
 
-        <p><small>
+        <p>
+      <div id="wikiBy">
+          <small>
           @if(!isSite) {
             <em>By</em>:
             @**todo use separate page for missing users **@
@@ -124,24 +125,59 @@ wiki fragment, used in another page
               </small>
           }
 
+            @******* tags *******@
+
           @** todo tag-based browsing **@
-          @if(page.isDefined && page.get.tags.size>0) {
+          @if(page.exists(_.tags.size>0)) {
             | <em>Tags</em>:
             @page.get.tags.map { t =>
-               @Html(controllers.Wiki.hrefTag(wid, t, t))@if(t != page.get.tags.last){,}
+               @Html(controllers.Wiki.hrefTag(stok.realm, wid, t, t))@if(t != page.get.tags.last){,}
              }
           }
-        </small></p>
 
-        @wid.findParent.map {pwe=>
+
+            @******* likes *******@
+
+            |
+
+            @if(au.exists(_.isActive) && page.exists(p=> !(p.likes contains au.get._id.toString))) {
+              <a href="@routes.Wikie.like(wid, 1)" class="glyphicon glyphicon-thumbs-up" title="This topic is helpful"></a>
+            } else {
+              @if(au.exists(_.isActive)) {
+                <span class="glyphicon glyphicon-thumbs-up" title="You already rated this topic"></span>
+              } else {
+                <span class="glyphicon glyphicon-thumbs-up" title="Need to login to rate topic"></span>
+              }
+            }
+            @if(page.exists(_.likes.size > 0)) {
+              <span style="font-size: x-small">(@page.get.likes.size)</span>
+            }
+
+            @**
+            @if(au.exists(_.isActive)) {
+                &nbsp; <a href="@routes.Wikie.like(wid, 0)" class="glyphicon glyphicon-thumbs-down" title="This topic is not helpful"></a>
+            } else {
+                &nbsp; <span class="glyphicon glyphicon-thumbs-down" title="Need to login to rate topic"></span>
+            }
+            @if(page.exists(_.dislikes.size > 0)) {
+              <span style="font-size: x-small">(@page.get.dislikes.size)</span>
+            }
+            **@
+
+          </small>
+        </div>
+        </p>
+
+        @wid.parentWid.map {pwid=>
           <hr>
-        See more in: <strong><a href="@controllers.Wiki.w(pwe.wid)">@pwe.label</a> </strong>
-        @if(au.isEmpty && pwe.wid.cat == "Blog") {
-          <a class="btn btn-info" title="Subscribe to updates via email" href="@routes.Wikil.linkFollower1(pwe.wid)"><i class="icon-envelope icon-white"></i> Subscribe</a>
+        See more in: <strong><a href="@controllers.Wiki.w(pwid)">@pwid.getLabel</a> </strong>
+        @if(au.isEmpty && pwid.cat == "Blog") {
+          <a class="btn btn-info" title="Subscribe to updates via email" href="@routes.Wikil.linkFollower1(pwid)"><i class="icon-envelope icon-white"></i> Subscribe</a>
         }
         }
 
         <hr>
+      <div id="wikiBottomMenu">
         @page.flatMap(x=>WikiCount.findOne(x._id)).map {pw=>
           <p><small>Viewed <strong>@pw.count</strong> times</small>
         }
@@ -156,7 +192,7 @@ wiki fragment, used in another page
             }
             | <a href="@routes.Wiki.printWid(WID.cmdfromPath(wid.wpath).get, wid.getRealm)">Print</a>
             @if(au.exists(_.hasPerm(model.Perm.adminDb))) {
-              | <a href="@controllers.Wiki.w(wid)/debug"><em>debug</em></a>
+              | <a href="@routes.Wiki.wikieDebug(wid)"><em>debug</em></a>
               | <a href="@routes.Wiki.wikieUsage(wid)"><em>usage</em></a>
             }
             @if(!(Array("WikiLink", "Category", "Form") contains wid.cat)) {
@@ -190,6 +226,7 @@ wiki fragment, used in another page
             }
             ) this page.
 
+            <div id="wikiBottomCopyright">
             @wid.cat match {
               case "WikiLink" if(wid.name.startsWith("User:")) => {
                 <br>This link page connects you to ??? TODO ???
@@ -205,7 +242,9 @@ wiki fragment, used in another page
                 <br>This content is Copyrighted, all rights reserved.
               }
             }
+          </div>
         </small></p>
+        </div>
       } <!-- /simple -->
     }
 

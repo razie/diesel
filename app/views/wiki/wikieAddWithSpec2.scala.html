@@ -1,25 +1,20 @@
 @****************
 create new page given a template
 ****************@
-@(cat:String, name:String, formWid:razie.wiki.model.WID, formPage:Option[razie.wiki.model.WikiEntry], torspec:String, realm:String, au:Option[model.User], errors:Map[String,String])
+@(cat:String, name:String, formWid:razie.wiki.model.WID, formPage:Option[razie.wiki.model.WikiEntry], torspec:String, errors:Map[String,String])(implicit stok:controllers.StateOk)
 @import razie.wiki.util.IgnoreErrors
 @import razie.wiki.model.Wikis
 
-@htmlHeadBar("Create new with template", au)
-
-
-<div class="container">
-    <div class="row">
-        <div class="col-sm-9">
+@stok.title("Create new with template")
 
             <h3>Creating a new <em>@cat</em>, with <em>@formWid.name</em></h3>
 
             <p>Fill in the required attributes below.</p>
 
-            @helper.form(action=routes.Wikie.addWithSpec(cat, name, formWid.wpath, torspec:String, realm), 'class->"well form-inline") {
+            @helper.form(action=routes.Wikie.addWithSpec(cat, name, formWid.wpath, torspec:String, stok.realm), 'class->"well form-inline") {
 
                 @if(!formPage.exists(_.form.fields.contains("name"))) {
-                    @Wikis(realm).category(cat).flatMap(_.contentTags.get("label.createWithTemplate")).getOrElse {
+                    @Wikis(stok.realm).category(cat).flatMap(_.contentProps.get("label.createWithTemplate")).getOrElse {
                         @if(cat == "Reactor") {
                         Use
                         a simple punchy single word, like "<b>mysite</b>" - your new website will be
@@ -32,25 +27,10 @@ create new page given a template
                     <hr><p>More particulars:</p>
                 }
 
-                @wiki.wikiFormInt(formWid, Some(name), formPage, au, errors, false, false, true)
+                @wiki.wikiFormInt(formWid, Some(name), formPage, stok.au, errors, false, false, true)
 
                 <button type="submit" class="btn btn-default">Create Now!</button>
             }
 
             <hr>
-            @htmlFooter(ads = true)
-
-        </div> <!-- /col-sm-9 -->
-
-        <div class="col-sm-3">
-            @wiki.wikiFrag(razie.wiki.model.WID("Admin","Right"),au,true)
-
-            @addRight()
-        </div>
-
-    </div> <!-- row -->
-</div> <!-- /container -->
-
-@htmlBottom()
-
 

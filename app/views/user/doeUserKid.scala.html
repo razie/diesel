@@ -1,14 +1,24 @@
-@(userId: String, rkid: String, role: String, associd: String, next: String, myForm: Form[_], au: model.User)(implicit request: Request[_])
+@(userId: String, rkid: String, role: String, associd: String, next: String, myForm: Form[_])(implicit stok:controllers.StateOk)
 @import org.bson.types.ObjectId
 @import controllers.RKU
 @import util.razText
 @import model.RK
 
 @import helper.twitterBootstrap._
+@import play.api.Play.current
+@import play.api.i18n.Messages.Implicits._
+
+@au=@{stok.au.get}
+@clubName=@{stok.au.get.userName}
 
 @relationships = @{
   if(au.isClub) Array(RK.ROLE_KID, RK.ROLE_COACH, RK.ROLE_SPOUSE, RK.ROLE_PARENT, RK.ROLE_MEMBER)
   else RK.RELATIONSHIPS
+}
+
+@rk = @{
+  if(rkid.length < 2) None
+  else model.RacerKidz.findById(new ObjectId(rkid))
 }
 
 @rka = @{
@@ -17,7 +27,7 @@
 }
 
 @mc = @{
-  for((a, k) <- RKU(au).mergeCandidates(rka.get)) yield
+  for((a, k) <- RKU(stok.au.get).mergeCandidates(rka.get)) yield
     Map("fname" -> k.info.firstName,
       "lname" -> k.info.lastName,
       "role" -> a.role,
@@ -30,7 +40,7 @@
 @mnglink(row: Map[String, String], k: String, v: String) = {
 @k match {
   case "button" => {
-    <a href="@routes.Kidz.doeKid(au._id.toString, v, "-", row("associd"), "clubkidz")" class="btn btn-xs">More...</a>
+    <a href="@routes.Kidz.doeKid(stok.au.get._id.toString, v, "-", row("associd"), "clubkidz:"+clubName)" class="btn btn-xs">More...</a>
   }
   case "merge" => {
     <a href="@routes.Club.doeMergeKid(row("associd"), associd)" class="btn btn-xs btn-info">MERGE</a>
@@ -42,9 +52,9 @@
 }
 
 
-@user.doePLayout(au, "Racer kid", 6) {
+@stok.title("Racer kid")
 
-  <div class="col-sm-4">
+  <div class="col-sm-6">
 
     @if(role == "-") {
       <h2>Edit a person</h2>
@@ -78,7 +88,7 @@
 
       @helper.select(
         myForm("notifyParent"),
-        Seq("y" -> "Yes", "n" -> "No"),
+        Seq("n" -> "No", "y" -> "Yes"),
         '_label -> "Notify parent",
         '_error -> myForm.error("notifyParent"),
         '_showConstraints -> false)
@@ -93,6 +103,17 @@
       } else {
         <input type="hidden" name="assocRole" value="@myForm("assocRole").value" />
       }
+
+      @if(next.startsWith("invite:")) {
+        @helper.textarea(
+          myForm("invite"),
+          '_label -> "Invitation",
+          '_error -> myForm.error("invitation"),
+          '_showConstraints -> false)
+        <script>$("textarea").attr("rows", "5");</script>
+      } else {
+        <input type="hidden" name="invitation" value="@myForm("invitation").value" />
+      }
       @***
       @helper.select(
       myForm("status"),
@@ -103,18 +124,32 @@
       ***@
       <input type="hidden" name="status" value="@myForm("status").value" />
 
+     @formFix()
+
       <p>
+        @if(controllers.Kidz.canEditKid(rkid, stok.au.get, next)) {
         @if(rkid.length > 2) {
-          @if(model.RacerKidz.findById(new ObjectId(rkid)).exists(_.rkiId.isDefined)) {
+          @if(rk.exists(_.rkiId.isDefined)) {
             @*** no update for myself or RK for Users ***@
             <button type="submit" class="btn btn-primary">Update Info</button>
           } else {
-            Can't update this info right now... click here if you need to overwrite it:
-            <a href="@routes.Kidz.doeKidOverride(userId, rkid, role, associd, next)" class="btn btn-danger">
-              Override</a>
+            @** info must come from their own account **@
+            @if(rk.exists(_.userId.isDefined)) {
+              <div class="alert alert-success">
+                <small>
+                  This user has an account - please notify the account holder if the info is inaccurate or incomplete.
+                </small>
+              </div>
+            } else {
+              @*Where the heck does this info come from then?*@
+            <p>Can't update this info right now...
+              click here if you need to overwrite it:
+            <a href="@routes.Kidz.doeKidOverride(userId, rkid, role, associd, next)" class="btn btn-danger">Override</a>
+            }
           }
         } else {
           <button type="submit" class="btn btn-primary">Create</button>
+      }
         }
 
         @myForm.errors.map { err =>
@@ -125,20 +160,22 @@
         <p style="color : red ; font-weight : bold">@err.message</p>
       }
 
-      <div class="alert alert-warning"><strong>Privacy!</strong>
-        This information will be shared with the clubs you are a member of! </div>
+      <div class="alert alert-warning">
+        <small>
+        <strong>Privacy!</strong> This information will be shared with the clubs you are a member of!
+        </small>
+      </div>
       <p><small>By maintaining a profile, you agree to the <a href="@controllers.Wiki.w("Terms of Service")">
         Terms of Service</a></small> <p>
       }
 
   </div>
 
-  <div class="col-sm-4">
+  <div class="col-sm-6">
 
-    <h2>Create / update a RacerKid</h2>
-    <p>The racers associated to you.
+    <p>The persons associated to you.
     <p>
-      This information about your racers is shared with the clubs you belong to. The club administrators can help you kepe this up to date as well, by editing it... it may even have been created by the club administrator the first time you registered the racer.</p>
+      This information about your racers is shared with the clubs you belong to, maintained by you and the club administrators.
     <p><b>Email</b>
       If provided, coaches messages and other notices are sent to this address. If the racer doesn't have one, leave empty and use the "notify parent" option.
     <p>
@@ -156,4 +193,4 @@
       Seq("fname" -> "F.Name", "lname" -> "L.Name", "role" -> "Role", "source" -> "Source", "button" -> "Details", "merge" -> "Merge"), Some(mnglink))
   }
 
-}
+

@@ -1,7 +1,7 @@
 @******
 Need consent
 ******@
-@(au:model.User, next:String="/")
+@(au:model.User, next:String="/")(implicit stok: controllers.StateOk)
 
 @htmlHeadBar("Need consent from " + au.userName, Some(au))
 

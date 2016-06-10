@@ -1,49 +1,26 @@
 @***************
 link(like) a wiki: select or create from categoyr
 **************@
-@(wid:razie.wiki.model.WID, page:Option[razie.wiki.model.WikiEntry], au:Option[model.User])(implicit stok: controllers.StateOk)
-@import model._
-@import razie.wiki.model.WID
-
-@htmlHeadBar(page.flatMap(_.contentTags.get("title")).getOrElse(wid.cat +": "+ page.map(_.label).getOrElse(razie.wiki.model.Wikis(wid.getRealm).label(wid))), au)
-
-<div class="container">
-  <div class="row">
-    <div class="col-sm-9">
+@(wid:razie.wiki.model.WID, page:Option[razie.wiki.model.WikiEntry])(implicit stok: controllers.StateOk)
+@import _root_.admin.Config
+@import razie.wiki.model.Wikis
 
 <b>Find an existing <em>@wid.name</em> or create a new one.</b>
 <hr>
 
-@import _root_.admin.Config
-@import razie.wiki.model.Wikis
-
 @if(wid.name == "Club") {
   <div class="alert alert-info">
   <strong>Clubs with registration open:</strong>
- @Html(Config.sitecfg("regClubs.list").toList.flatMap(_.split(",")).map(x=>Wikis.sformat(s"<b>[[Club:$x]]</b>")).mkString(" | "))
+  @Html(Config.sitecfg("regClubs.list").toList.flatMap(_.split(",")).map(x=>Wikis.sformat(s"<b>[[Club:$x]]</b>", "md", stok.au)).mkString(" | "))
   </div>
 <hr>
 }
 
-      @wiki.wikiAddMore(wid, page, au)(stok.au, stok.request.get)
+@wiki.wikiAddMore(wid, page)
 
       <div class="well">
-        @wiki.wikiFrag(wid,au,false,page, None)
+        @wiki.wikiFrag(wid,stok.au,false,page, None)
       </div>
 
       <hr>
-      @********** if already two adds in page put none at the bottom, there's also one on the left **********@
-      @htmlFooter(ads = !page.exists(_.content.matches("""(?s).*\{\{ad[:}].*\{\{ad[:}].*""")))
 
-    </div> <!-- /col-sm-9 -->
-
-    <div class="col-sm-3">
-    @wiki.wikiFrag(WID("Admin","Right"),au,true)
-
-    @addRight()
-    </div>
-
-  </div> <!-- row -->
-</div> <!-- /container -->
-
-@htmlBottom()

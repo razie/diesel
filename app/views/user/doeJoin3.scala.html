@@ -1,8 +1,7 @@
 @**
 create account
 **@
-@(myForm: Form[controllers.Profile.CrProfile], au:Option[model.User]=None)(implicit request:Request[_])
-@import model.Website.realm
+@(myForm: Form[controllers.Profile.CrProfile], au:Option[model.User]=None)(implicit stok: controllers.StateOk)
 
 @salutation() = @{
   val names = Array("Hi", "Hello", "Hey", "Howdy")
@@ -10,7 +9,7 @@ create account
   names(i)
   }
 
-@htmlHeadBar("Create an account / Register", au, realm)
+@htmlHeadBar("Create an account / Register", au, stok.realm)
 
     <div class="container">
 
@@ -19,42 +18,31 @@ create account
 
       <div class="row">
         <div class="col-sm-6">
-          @wiki.wikiFragInt("Admin:page-join3-"+realm, au)
+          @wiki.wikiFragInt("Admin:page-join3-"+stok.realm, au)
         </div>
 
-        <div class="col-sm-4">
+        <div class="col-sm-6">
 
 @import helper.twitterBootstrap._
+@import play.api.Play.current
+@import play.api.i18n.Messages.Implicits._
 
 @helper.form(action=routes.Profile.doeCreateProfile(), 'class->"well") {
-  @helper.select(
-    myForm("userType"),
-    _root_.admin.Config.userTypes.map(x=>(x.toString,x.toString)),
-     '_label ->
-             (if (realm==razie.wiki.model.Reactors.NOTES) "Account type"
-  else "What you are"),
-    '_showConstraints -> false)
-  @helper.inputText(
-    myForm("firstName"),
-    '_label -> "First name",
-    '_showConstraints -> false)
-  @helper.inputText(
-    myForm("lastName"),
-    '_label -> "Last name")
-  @helper.select(
-    myForm("yob"),
-     Seq("" -> "") ++ (Range(2005, 1912, -1) map (y=>(y.toString,y.toString))),
-    '_label -> "When you were born",
-    'style -> "width: 100px",
-    '_showConstraints -> false)
-  @helper.inputText(
-    myForm("address"),
-    '_label -> "City, province/state, country",
-    '_showConstraints -> false)
+  @util.razSelect(myForm, "userType",
+    (if (stok.realm==razie.wiki.model.Reactors.NOTES) "Account type"
+     else "What you are"),
+    _root_.admin.Config.userTypes(stok.request.get).map(x=>(x.toString,x.toString)))
+  @util.razText(myForm, "firstName", "First name")
+  @util.razText(myForm, "lastName", "Last name")
+  @util.razSelect(myForm, "yob", "When you were born",
+    Seq("" -> "") ++ (Range(2005, 1912, -1) map (y=>(y.toString,y.toString))),
+    'style -> "width: 100px" )
+  @util.razText(myForm, "address", "City, province/state, country")
+
   @helper.checkbox(
     myForm("accept"),
     '_text -> Html(
-    if (realm==razie.wiki.model.Reactors.NOTES)
+    if (stok.realm==razie.wiki.model.Reactors.NOTES)
       """I accept the <a href="/wiki/Terms of Service-notes">Terms of Service</a>"""
     else
       """I accept the <a href="/wiki/Terms of Service">Terms of Service</a>"""
@@ -63,17 +51,8 @@ create account
     '_showConstraints -> false)
 
     @***** recaptcha ********@
-@if(Profile.RE_localhost && _root_.admin.Config.isLocalhost) {
-    @helper.inputText(myForm("recaptcha_challenge_field"))
-    @helper.inputText(myForm("recaptcha_response_field"))
-} else {
-    <script type="text/javascript" src="//www.google.com/recaptcha/api/challenge?k=6Ld9uNASAAAAAL_5jXRwtBAtiJy8XGwSzZOWW80s"></script>
-     <noscript>
-       <iframe src="//www.google.com/recaptcha/api/noscript?k=6Ld9uNASAAAAAL_5jXRwtBAtiJy8XGwSzZOWW80s" height="300" width="500" frameborder="0"></iframe>
-       <br><textarea name="recaptcha_challenge_field" rows="3" cols="40"></textarea>
-       <input type="hidden" name="recaptcha_response_field" value="manual_challenge">
-     </noscript>
-}
+
+  @util.recaptcha()
 
   @myForm.globalError.map { err=>
      <p style="color:red;font-weight:bold">@err.message</p>
@@ -91,7 +70,7 @@ create account
 
       <hr>
 
-      @htmlFooter(false, false, realm)
+      @htmlFooter(false, false, stok.realm)
 
     </div> <!-- /container -->
 

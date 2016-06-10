@@ -1,17 +1,18 @@
 @******
 manage the list of kidz and/or their accounts
 ******@
-@(au: model.User)(implicit request: Request[_])
+@()(implicit stok:controllers.StateOk)
 @import model.RK._
 
 @import helper.twitterBootstrap._
 
 @rks = @{
-  (for(a <- model.RacerKidz.findAssocForUser(au._id);
+  (for(a <- stok.au.get.rka;
     k <- model.RacerKidz.findById(a.to)) yield (k, a)).map(t =>
     Map("fname" -> t._1.info.firstName,
       "lname" -> t._1.info.lastName,
       "role" -> t._2.role,
+      "notes" -> t._1._id.toString,
       "associd" -> t._2._id.toString,
       "button" -> t._1._id.toString))
 }
@@ -19,7 +20,10 @@ manage the list of kidz and/or their accounts
 @mnglink(row: Map[String, String], k: String, v: String) = {
 @k match {
   case "button" => {
-    <a href="@routes.Kidz.doeKid(au._id.toString, v, "-", row("associd"), "kidz")" class="btn btn-xs">More...</a>
+    <a href="@routes.Kidz.doeKid(stok.au.get._id.toString, v, "-", row("associd"), "kidz")" class="btn btn-xs">More...</a>
+  }
+  case "notes" => {
+    <a href="@routes.Kidz.doeKidHistory("", v)" class="btn btn-info btn-xs">More...</a>
   }
   case _ => {
     @v
@@ -27,11 +31,9 @@ manage the list of kidz and/or their accounts
 }
 }
 
-@user.doePLayout(au, "RacerKidz for " + au.userName, 6) {
+@stok.title("RacerKidz for " + stok.au.get.userName)
 
-  <div class="col-sm-9">
-
-    <h2>Racerz, parentz, guardianz... @au.firstName</h2>
+    <h2>Racerz, parentz, guardianz... @stok.au.get.firstName</h2>
 
     <br>
     <p>
@@ -44,11 +46,13 @@ manage the list of kidz and/or their accounts
         "fname" -> "First Name",
         "lname" -> "Last Name",
         "role" -> "Relationship",
-        "button" -> "Details"),
+        "button" -> "Details",
+        "notes" -> "History"
+      ),
         Some(mnglink))
 
       Add a: @model.RK.RELATIONSHIPS.map { r =>
-      <a href="@routes.Kidz.doeKid(au._id.toString, "11", r, "-", "kidz")" class="btn btn-xs btn-info">@r</a>
+      <a href="@routes.Kidz.doeKid(stok.au.get._id.toString, "11", r, "-", "kidz")" class="btn btn-xs btn-info">@r</a>
     }
 
       <br><br>
@@ -58,5 +62,3 @@ manage the list of kidz and/or their accounts
   <div class="alert alert-danger"><strong>Privacy:</strong>
     This list is shared with the clubs you are member of!</div>
 
-  </div>
-}

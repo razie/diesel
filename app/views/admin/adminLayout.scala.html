@@ -1,19 +1,22 @@
 @**
 screen to admin one user
 **@
-@(content: =>Html)(implicit stok: controllers.StateOk)
+@(body: => play.twirl.api.Html)(implicit stok: controllers.StateOk)
 
-@htmlHeadBar(stok._title, stok.au)
+@defining(body) { content=>
+
+@htmlHeadBar(stok._title, stok.au, stok.realm)
 
 <div class="container">
 
-  <h2>User</h2>
-
   @content
 
+  <hr>
   @htmlFooter(false, false, stok.realm, stok.request)
 
 </div> <!-- /container -->
 
 @htmlBottom(false, stok.request)
+
+}
 

@@ -4,8 +4,7 @@ edit a wiki page
 @(wid:razie.wiki.model.WID,
     q:Map[String,String],
     myForm:Form[controllers.Wikie.EditWiki],
-    au:Option[model.User])(implicit request:Request[_])
-@import model.Website.realm
+    au:Option[model.User])(implicit stok: controllers.StateOk)
 @import razie.wiki.model.{Wikis, WID, WikiEntry, Reactors}
 
 
@@ -66,7 +65,7 @@ var decscr = function (s) {
   }
 }
 
-@whtmlHeadBar("Editing "+wid.cat+":"+ wid.name, realm)(au,request)
+@whtmlHeadBar("Editing "+wid.cat+":"+ wid.name, stok.realm)(au,stok.request.get)
 
 <div class="container">
   <div class="row">
@@ -74,8 +73,10 @@ var decscr = function (s) {
 
 <div >
 @import helper.twitterBootstrap._
+@import play.api.Play.current
+@import play.api.i18n.Messages.Implicits._
 
-@helper.form(action=routes.Wikie.save(wid.formatted), 'class->"well") {
+  @helper.form(action=routes.Wikie.save(wid.formatted), 'class->"well") {
 <div class="row">
 @*******
 PROBLEM: many places use label as name... via Wikis.formatName
@@ -106,7 +107,7 @@ PROBLEM: many places use label as name... via Wikis.formatName
 <code id="code_@id">@content</code></pre>
 </div>
 <div class="well" title="Results of running the scripts...">
-  @if(_root_.admin.Config.theme.contains("light")) {
+  @if(stok.css.contains("light")) {
     <iframe id="iframe_@id" name="iframe_@id" style="width:100%; height:49px; border:0;"></iframe>
   } else {
     <iframe id="iframe_@id" name="iframe_@id" style="width:100%; height:49px; border:0; background-color:gray;"></iframe>
@@ -236,7 +237,7 @@ var jsh = function(code) {
 <script src="@routes.Assets.at("ace-builds/src/ace.js")" type="text/javascript" charset="utf-8"></script>
 <script>
   var editor = ace.edit("pre3_@id");
-  @if(_root_.admin.Config.theme.contains("light")) {
+  @if(stok.css.contains("light")) {
   editor.setTheme ( "ace/theme/crimson_editor" ) ;
 } else {
   editor.setTheme ( "ace/theme/twilight" ) ;
@@ -270,7 +271,7 @@ setInterval(function(){
 
 
       <hr>
-      @htmlFooter(false, false, realm)
+      @htmlFooter(false, false, stok.realm)
     </div> <!-- /col-sm-9 -->
 
     <div class="col-sm-3">
@@ -279,5 +280,5 @@ setInterval(function(){
   </div> <!-- row -->
 </div> <!-- /container -->
 
-@htmlBottom(false, Some(request))
+@htmlBottom(false, stok.request)
 

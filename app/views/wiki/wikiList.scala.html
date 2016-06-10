@@ -19,9 +19,6 @@ list of pages, with links etc - result of a query of some kind
   }
 }
 
-@htmlHead("Results for: " + title + curTags)(stok.metas, stok.au, stok.request)
-@navbar(stok.au, realm)(stok.au, stok.request)
-
 @browseTag(t:String)={@tagPrefix@t@tagSuffix}
 
 @label(s:String, wid:WID) = @{if(s.isEmpty) wid.name else s}
@@ -62,14 +59,18 @@ list of pages, with links etc - result of a query of some kind
         @if(pages.size > 0) {
           <ul>
           @pages.take(16).map { p=>
-            <li><a href="@controllers.Wiki.wr(p._1, realm)">@highlight(label(p._2, p._1))</a> <small>&nbsp;  @p._1.cat</small>
+            <li><a href="@controllers.Wiki.wr(p._1, realm)">@highlight(label(p._2, p._1))</a> <small>&nbsp;  @p._1.cat
+            @if(curTags.contains("-wordcount")) { <b> @p._1.page.map(_.wordCount).mkString </b>}
+              </small>
           }
 
           @if(pages.size>16) {
             @ads.addSquareTop(stok)
 
             @pages.drop(16).map { p=>
-              <li><a href="@controllers.Wiki.wr(p._1, realm)">@highlight(label(p._2, p._1))</a> <small>&nbsp;  @p._1.cat</small>
+              <li><a href="@controllers.Wiki.wr(p._1, realm)">@highlight(label(p._2, p._1))</a> <small>&nbsp;  @p._1.cat
+                @if(curTags.contains("-wordcount")) { <b> @p._1.page.map(_.wordCount).mkString </b>}
+              </small>
             }
 
             @if(pages.size < 27) {
@@ -88,17 +89,11 @@ list of pages, with links etc - result of a query of some kind
         }
         </div>
 
-      <hr>
-      @htmlFooter(!stok.au.exists(_.isUnder13), false)
-
     </div> <!-- /col-sm-9 -->
 
     <div class="col-sm-3">
       @wiki.wikiFrag(WID("Admin","Right"),stok.au,true, None)
 
-@**
-      @addRight()
-**@
       @tag.tagList(curTags, tags, 30, tagPrefix, tagSuffix)
     </div>
 

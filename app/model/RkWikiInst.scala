@@ -16,13 +16,13 @@ import razie.wiki.dom.WikiDomain
 import razie.wiki.util.PlayTools
 
 /** the default reactor, the main wiki */
-class RkReactor (realm:String, fallBack:Option[Reactor], we:Option[WikiEntry]) extends Reactor (realm, None, we) {
-  override val wiki : WikiInst = new RkWikiInst(realm, fallBack.map(_.wiki))
+class RkReactor (realm:String, fallBacks:List[Reactor], we:Option[WikiEntry]) extends Reactor (realm, Nil, we) {
+  override val wiki : WikiInst = new RkWikiInst(realm, fallBacks.map(_.wiki))
   override val domain : WikiDomain = new WikiDomain(realm, wiki)
 }
 
 /** a wiki, used for all RK realms */
-class RkWikiInst(realm:String, fallBack:Option[WikiInst]) extends WikiInst(realm, fallBack) {
+class RkWikiInst(realm:String, fallBacks:List[WikiInst]) extends WikiInst(realm, fallBacks) {
   class WikiParserCls(val realm:String) extends WikiParserT
   with WikiDslParser with WikiCodeParser with WikiAdParser
   with WikiDomainParser with WikiParserNotes with WikiDarkParser{

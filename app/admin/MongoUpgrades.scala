@@ -18,6 +18,7 @@ import model.RacerKidz
 import model.UserTask
 import model.RK
 import model.Profile
+import razie.db.tx.txn
 
 object Upgrade1 extends UpgradeDb {
   def upgrade(db: MongoDB) {}

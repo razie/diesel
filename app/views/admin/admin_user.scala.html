@@ -1,7 +1,7 @@
 @**
 screen to admin one user
 **@
-@(user:Option[model.User], admin:Option[model.User])
+@(user:Option[model.User])(implicit stok: controllers.StateOk)
 @import com.mongodb.casbah.Imports._
 
 @pro(p:model.Profile) = {
@@ -17,9 +17,7 @@ screen to admin one user
 }
 
 
-  @htmlHeadBar("admin user", admin)
-
-  <div class="container">
+  @stok.title("admin user")
 
     <h2>User</h2>
 
@@ -69,6 +67,7 @@ screen to admin one user
       @helper.form(action=routes.Admin.uperm(user.get.id), 'class->"well form-inline") {
         <input type="text" class="input-xlarge" name="perm" placeholder="+Perm">
         <button type="submit" class="btn btn-default">+/-Perm</button>
+
       }
 
       @helper.form(action=routes.Admin.uquota(user.get.id), 'class->"well form-inline") {
@@ -106,10 +105,13 @@ screen to admin one user
   }
   </ul>
 
-  <hr>
+    <h2>WikiAudit</h2>
+    <ul>
+      @user.map {u=>
+        @razie.db.RazMongo("WikiAudit").find(Map("userId" -> new ObjectId(u.id))).map {ue=>
+          <li> @ue.get("crDtm") - <a href="/wiki/@ue.get("wpath")">@ue.get("wpath")</a>
+        }
+      }
+    </ul>
 
-  @htmlFooter()
 
-</div> <!-- /container -->
-
-@htmlBottom()

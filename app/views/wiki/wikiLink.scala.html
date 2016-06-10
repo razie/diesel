@@ -1,10 +1,12 @@
-@(from:razie.wiki.model.WID, to:razie.wiki.model.WID, myForm:Form[controllers.Wikil.LinkWiki], withComment:Boolean, au:Option[model.User])
+@(from:razie.wiki.model.WID, to:razie.wiki.model.WID, myForm:Form[controllers.Wikil.LinkWiki], withComment:Boolean)(implicit stok:controllers.StateOk)
 @import razie.wiki.model.Wikis
 @import helper.twitterBootstrap._
+@import play.api.Play.current
+@import play.api.i18n.Messages.Implicits._
 @import model.UW
 
 @how() = @{
-  val h = Wikis(to.getRealm).category(to.cat).flatMap(_.contentTags.get("roles:"+from.cat)) match {
+  val h = Wikis(to.getRealm).category(to.cat).flatMap(_.contentProps.get("roles:"+from.cat)) match {
     case Some(s) => {
       s.split(",").filter(x => ! Array("Owner","Admin").contains(x)).map(x=>(x,x)).toSeq
     }
@@ -15,10 +17,6 @@
   if(h.isEmpty) Seq(("Enjoy", "Enjoy")) else h
 }
 
-@htmlHeadBar("", au, from.getRealm)
-
-<div class="container">
-  <div class="jumbotron">
       @if("User" == from.cat) {
           <h2>Cool! So you want to @to.label("LinkTo", "follow") @to.cat:@to.name!</h2>
           <b>@to.label("LinkTo.Desc", "You will be notified of new activity") !</b>
@@ -26,6 +24,7 @@
           <h2>Cool! So you want to link @from.cat:@from.name to @to.cat:@to.name!</h2>
           }
           <p>
+
     <div class="row">
       <div class="col-sm-4">
 
@@ -64,8 +63,8 @@
   }
 
     <div class="actions">
-      <button type="submit" class="btn btn-primary">Ok-Join</button>
-      <a href="@controllers.Wiki.w(to)" class="btn btn-default">Nah-Cancel</a>
+      <button type="submit" class="btn btn-success">Ok</button>
+      <a href="@controllers.Wiki.w(to)" class="btn btn-danger">Nah-Cancel</a>
     @if(withComment) {
       <a href="@routes.Wikil.linkUser(to,false)" class="btn btn-default">Remove the note!</a>
     } else {
@@ -76,7 +75,8 @@
     </div>
 }
   </div>
-      <div class="col-sm-6">
+
+<div class="col-sm-6">
       @if("User" == from.cat && "Club" == to.cat) {
       <p>Select the role that best describes you.
       <ul><small>
@@ -102,9 +102,4 @@
     that the @to.cat.toLowerCase is moderated by <a href="@controllers.Wiki.w("User", mu, to.getRealm)">@mu</a> - we'll ask for permission!
   </div>
 }
-      </div>
 
-  <hr>
-  @htmlFooter()
-</div> <!-- /container -->
-@htmlBottom()

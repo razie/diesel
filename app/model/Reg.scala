@@ -78,11 +78,11 @@ object Regs {
 
   def fromJson(j: String) = Option(grater[Reg].asObject(JSON.parse(j).asInstanceOf[DBObject]))
 
-  def findClubUser(club: User, userId: ObjectId) = RMany[Reg]("clubName" -> club.userName, "userId" -> userId)
-  def findClubYear(club: User, year: String) = RMany[Reg]("clubName" -> club.userName, "year" -> year)
-  def findClubUserYear(club: User, userId: ObjectId, year: String) = ROne[Reg]("clubName" -> club.userName, "userId" -> userId, "year" -> year)
+  def findClubUser(clubName: String, userId: ObjectId) = RMany[Reg]("clubName" -> clubName, "userId" -> userId)
+  def findClubYear(clubName: String, year: String) = RMany[Reg]("clubName" -> clubName, "year" -> year)
+  def findClubUserYear(clubName: String, userId: ObjectId, year: String) = ROne[Reg]("clubName" -> clubName, "userId" -> userId, "year" -> year)
   def findId(id: String) = ROne[Reg]("_id" -> new ObjectId(id))
-  def findClub(club: User) = RMany[Reg]("clubName" -> club.userName)
+  def findClub(clubName: String) = RMany[Reg]("clubName" -> clubName)
   def findWid(wid: WID) = RMany[Reg]().filter(_.wids.contains(wid)) // TODO optimize - really bad
 
   def findRkClub(userId: ObjectId, clubName:String) = RMany[Reg]("clubName" -> clubName, "userId" -> userId) // TODO add curyear

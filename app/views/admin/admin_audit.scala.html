@@ -1,7 +1,7 @@
 @***
 purge audit tables
 ***@
-@(what:Option[String])(implicit au:Option[model.User])
+@(what:Option[String])(implicit stok: controllers.StateOk)
 
 @fufu(db:com.mongodb.casbah.Imports.DBObject, k:String, v:String) = {
   @k match {
@@ -18,9 +18,7 @@ purge audit tables
     }
 }
 
-@htmlHeadBar("admin audit", au)
-
-  <div class="container">
+@stok.title("admin audit")
 
     <h2>Audit events <small>| @math.min(1000, razie.db.RazMongo("Audit").size) of @razie.db.RazMongo("Audit").size |
         <a href="@routes.Admin.clearauditSome(5)">clear 5</a> | <a href="@routes.Admin.clearauditSome(10)">clear 10</a> |
@@ -58,11 +56,5 @@ purge audit tables
           }
        </ul>
 
-      <hr>
 
-    @htmlFooter()
-
-  </div> <!-- /container -->
-
-  @htmlBottom()
 

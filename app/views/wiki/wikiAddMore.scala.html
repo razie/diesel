@@ -1,13 +1,11 @@
 @****************
 fragment: add more stuff to the current topic, including children, sub-topics etc
 ****************@
-@(wid:razie.wiki.model.WID, page:Option[razie.wiki.model.WikiEntry], user:Option[model.User])(implicit au:Option[model.User], request:Request[_])
+@(wid:razie.wiki.model.WID, page:Option[razie.wiki.model.WikiEntry])(implicit stok: controllers.StateOk)
 @import razie.wiki.util.IgnoreErrors
 @import razie.wiki.model.{Wikis, WID}
 @import razie.wiki.dom.WikiDomain
 @import model.Perm
-
-@realm()=@{model.Website.realm(request)}
 
 @allassocs(wid:WID) = @{
   // all those I am parent to OR are children to me
@@ -16,14 +14,20 @@ fragment: add more stuff to the current topic, including children, sub-topics et
   WikiDomain(wid.getRealm).assocsWhereIHaveRole(wid.cat, "Parent")
 }
 
+@createLabel(child:String)={
+  @page.flatMap(_.contentProps.get("label.createChildren")).getOrElse {
+    Create a <a href="/wiki/Category:@child">@Wikis.category(child).map(_.label).getOrElse(child)</a>
+  }
+}
+
 @if("Category" == wid.cat && WikiDomain.canCreateNew(wid.getRealm, wid.name)) {
   <!-- list of pages in category -->
   @if(Wikis(wid.getRealm).pageNames(wid.name).size > 0) {
     <div class="well">
       @wid.name entries:
 
-      @for(p <- Wikis(wid.getRealm).pages(wid.name).take(50) if(controllers.Wiki.isVisible(user,p.props))) {
-        <a href="@controllers.Wiki.w(p.wid)">@p.label</a> |
+      @for(p <- Wikis(wid.getRealm).pages(wid.name).take(50) if(controllers.Wiki.isVisible(stok.au, p.props))) {
+        <a href="@controllers.Wiki.wr(p.wid, stok.realm)">@p.label</a> |
       }
 
       @if(Wikis(wid.getRealm).pageNames(wid.name).size > 50) {
@@ -43,21 +47,23 @@ fragment: add more stuff to the current topic, including children, sub-topics et
     @** see if there is an associated Template **@
     @WikiDomain(wid.getRealm).zEnds(wid.name, "Template").headOption.map { wet =>
       <div class="col-sm-4">
-        @helper.form(action=routes.Wikie.addWithSpec1(wid.name, wet, wid.getRealm), 'class->"well form-inline") {
+        @helper.form(action=routes.Wikie.addWithSpec1(wid.name, wet, wid.getRealm), 'class->"form-inline") {
+          <div class="alert alert-success">
           <label>Create a new <a href="@wid.url">@Wikis(wid.getRealm).label(WID("Category",wid.name))</a> </label>
           <button type="submit" class="btn btn-default">Choose template</button>
+          </div>
         }
       </div>
     }
 
     @** no Template - use default **@
     @if(WikiDomain(wid.getRealm).zEnds(wid.name, "Template").isEmpty) {
-      @helper.form(action=routes.Wikie.addWithName(wid.name, wid.getRealm), 'class->"well form-inline") {
-        <div class="col-sm-4">
+      @helper.form(action=routes.Wikie.addWithName(wid.name), 'class->"form-inline") {
+        <div class="alert alert-success col-md-12">
           <label>Create a new <a href="@wid.url">@Wikis(wid.getRealm).label(WID("Category",wid.name))</a> </label>
-        </div>
-        <input type="text" class="input-xlarge" name="name" placeholder="Name">
-        <button type="submit" class="btn btn-default">Now</button>
+        &nbsp;&nbsp;<input type="text" style="width:50%" class="form-control" name="name" placeholder="Name">
+          <button type="submit" class="btn btn-default">Now</button>
+          </div>
       }
     }
   }
@@ -65,29 +71,31 @@ fragment: add more stuff to the current topic, including children, sub-topics et
   @** not a category - regular page, find possible children **@
   <!-- list of child pages -->
   @allassocs(wid).distinct.map {child=>
-    @if(page.isDefined && controllers.Wiki.canEdit(wid,user,page)(IgnoreErrors)) {
+    @if(page.isDefined && controllers.Wiki.canEdit(wid, stok.au, page)(IgnoreErrors)) {
       @helper.form(action=routes.Wikie.addLinked(child,wid,"Child"), 'class->"form-inline") {
-        <div class="col-sm-4">
-          <label>Create a <a href="/wiki/Category:@child">@Wikis.category(child).map(_.label).getOrElse(child)</a> </label>
+        <div class="alert alert-success">
+            <label>@createLabel(child)</label>
+          &nbsp;&nbsp;<input type="text" style="width:50%" class="form-control" name="name" placeholder="Name">
+          <button type="submit" class="btn btn-xs btn-primary">Now</button>
+          <a href="/wiki/Admin:Adding_a_Child" class="btn btn-xs btn-info">?</a>
         </div>
-        <input type="text" class="input-xlarge" name="name" placeholder="Name">
-        <button type="submit" class="btn btn-xs btn-primary">Now</button>
-        <a href="/wiki/Admin:Adding_a_Child" class="btn btn-xs btn-info">?</a>
       }
-      <br>
     }
 
     <!-- list of child pages -->
+
+    <!-- if you don't see child pages after changing realms, perhaps the categories are not defined in that reactor -->
+
     @* @Wikis.linksTo(page.get.uwid, "Child").filter(_.from.cat == child).toList) { kids =>*@
-    @if(!page.exists(_.contentTags.contains("nochildposts"))) {
-      @defining(Wikis.linksTo(page.get.uwid, "Child").filter(_.from.cat == child).toList) { allKids =>
+    @if(!page.exists(_.contentProps.contains("nochildposts"))) {
+      @defining(Wikis.linksTo(child, page.get.uwid, "Child").toList) { allKids =>
       @defining(allKids.filter(_.draft.isEmpty)) { kids =>
         @if(kids.size > 0) {
           <div class="well">
             @child (s) :
             <ul>
             @kids.reverse.take(200).sortWith((a,b)=>b.crDtm.isBefore(a.crDtm)).map(_.from).map { p=>
-              <li><a href="@controllers.Wiki.w(p, realm)">@Wikis.label(p)</a>
+              <li><a href="@controllers.Wiki.w(p, stok.realm)">@Wikis.label(p)</a>
             }
             </ul>
           </div>
@@ -99,7 +107,7 @@ fragment: add more stuff to the current topic, including children, sub-topics et
             DRAFT @child (s) :
             <ul>
             @kids.reverse.take(200).sortWith((a,b)=>b.crDtm.isBefore(a.crDtm)).map(_.from).map { p=>
-              <li><a href="@controllers.Wiki.w(p, realm)">@Wikis.label(p)</a>
+              <li><a href="@controllers.Wiki.w(p, stok.realm)">@Wikis.label(p)</a>
             }
             </ul>
           </div>

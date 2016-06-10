@@ -63,7 +63,7 @@ object ModRk extends RazController with Logging {
   import razie.db.RMongo.as
 
   def regd (au:User, wid:WID) = ModRkReg(wid).kids.map(x => (x, x.rkId.as[model.RacerKid].get)).toList
-  def rks (au:User, wid:WID) = model.RacerKidz.findAssocForUser(au._id).map(x => (x, x.rk.get)).toList
+  def rks (au:User, wid:WID) = au.rka.map(x => (x, x.rk.get)).toList
 
   def doeModRkRegs(wid: WID) = FAU { implicit au => implicit errCollector => implicit request =>
     implicit val errCollector = new VErrors()
@@ -71,7 +71,7 @@ object ModRk extends RazController with Logging {
       page <- wid.page
     ) yield {
       val regd = ModRkReg(page.wid).kids.map(x => (x, x.rkId.as[model.RacerKid].get)).toList
-      val rks = model.RacerKidz.findAssocForUser(au._id).map(x => (x, x.rk.get)).toList
+      val rks = au.rka.map(x => (x, x.rk.get)).toList
 
       Ok(views.html.modules.doeModRkRegs(au, page, ModRkReg(page.wid), regd, rks))
     }) getOrElse Msg2("CAN'T SEE PROFILE " + errCollector.mkString)

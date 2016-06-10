@@ -1,4 +1,4 @@
-@(pForm:Form[String], au:model.User)
+@(pForm:Form[String], au:model.User)(implicit req:views.RazRequest)
 
 @htmlHeadBar("Choosing theme", Some(au))
 
@@ -25,6 +25,8 @@ To get back to this screen, simply sign-out by clicking on your name on the top-
         <div class="col-sm-4">
 
 @import helper.twitterBootstrap._
+@import play.api.Play.current
+@import play.api.i18n.Messages.Implicits._
 
 @helper.form(action=routes.Tasks.addParent2, 'class->"well") {
 
@@ -50,8 +52,8 @@ To get back to this screen, simply sign-out by clicking on your name on the top-
 
       <hr>
 
-      @htmlFooter()
+      @htmlFooter()(req.stok)
 
     </div> <!-- /container -->
 
-    @htmlBottom()
+

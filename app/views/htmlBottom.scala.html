@@ -1,12 +1,14 @@
 @** botom of html,
 **@
-@(isSite:Boolean=false, orequest:Option[Request[_]] = None, site:Option[model.Website] = None)
+@(isSite:Boolean=false, orequest:Option[Request[_]] = None, site:Option[model.Website] = None)(implicit stok:controllers.StateOk)
 
-@web()=@{(site orElse orequest.flatMap(r=>model.Website(r))) getOrElse model.Website.dflt}
+@web()=@{(site orElse orequest.orElse(stok.request).flatMap(r=>model.Website(r))) getOrElse model.Website.dflt}
 
 <p></p>
 
-@if(_root_.admin.Config.isLight) {
+<footer>
+
+@if(stok.isLight) {
   <div style="background-color:#4E4D4D">
   } else {
   <div style="background-color:#4E4D4D">
@@ -47,6 +49,8 @@
   <div style="height:20px"></div>
 </div>
 </div>
+
+</footer>
 
 
     <!-- Le javascript

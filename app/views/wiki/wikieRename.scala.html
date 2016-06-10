@@ -1,17 +1,16 @@
-@(wid:razie.wiki.model.WID, myForm:Form[_], au:Option[model.User])
+@(wid:razie.wiki.model.WID, myForm:Form[_], au:Option[model.User])(implicit stok: controllers.StateOk)
 
-@htmlHeadBar("", au)
+@stok.title("Renaming "+wid.wpath)
 
-    <div class="container">
-
-      <!-- Main hero unit for a primary marketing message or call to action -->
-      <div class="well">
-          <h2>Renaming a topic!</h2>
-          <p><strong>Warning</strong> - currently references are not renamed so if any other topic has a reference to this one, the reference will not work anymore!
-      </div>
+<div class="well">
+  <h2>Renaming a topic!</h2>
+  <p><strong>Warning</strong> - currently references are not renamed so if any other topic has a reference to this one, the reference will not work anymore!
+</div>
 
 <div >
 @import helper.twitterBootstrap._
+@import play.api.Play.current
+@import play.api.i18n.Messages.Implicits._
 
 @helper.form(action=routes.Wikie.wikieRename2(wid), 'class->"well") {
   @helper.inputText(
@@ -43,10 +42,3 @@
           @wiki.wikiFrag(wid, au)
       </div>
 
-      <hr>
-
-      @htmlFooter()
-
-    </div> <!-- /container -->
-
-    @htmlBottom()

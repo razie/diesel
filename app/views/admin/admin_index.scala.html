@@ -1,21 +1,22 @@
-@(salutation:String, au:Option[model.User])
+@(salutation:String)(implicit stok: controllers.StateOk)
 @import razie.db.RazMongo
 
-@htmlHeadBar("admin index", au)
-
-<div class="container">
+@stok.title("admin index")
 
   <!-- Main hero unit for a primary marketing message or call to action -->
   <div class="jumbotron">
     <div class="row">
       <div class="col-sm-4">
-        <b><a href="@routes.Profile.doeJoin()">Not @au.get.ename?</a></b>
+        <b><a href="@routes.Profile.doeJoin()">Not @stok.au.get.ename?</a></b>
         <p>If you're not an admin of this site, please leave and report seeing this page with a brief support request at the bottom of the page</p>
         See the content of a page: /wikie/content/Page:X
       <p><a href="@routes.Admin.system("x")" class="btn btn-default btn-lg">system</a>
         <p><a href="/razadmin/reloadurlmap" class="btn btn-default btn-lg">admin reload urlmap</a>
-        <p><a href="/razadmin/resendEmails" class="btn btn-default btn-lg">resend emails</a>
-        <a href="/razadmin/tickEmails" class="btn btn-default btn-lg">emails tick</a>
+        <p><a href="@routes.Admin.test()" class="btn btn-default btn-lg">TESTS</a>
+        <p>
+          <a href="/razadmin/resendEmails" class="btn btn-default btn-lg">resend emails</a>
+          <a href="#" class="btn btn-default btn-lg" onclick="testEmail()">SEND TEST EMAIL</a>
+          <a href="/razadmin/tickEmails" class="btn btn-default btn-lg">emails tick</a>
         <p></p><a href="/razadmin/difflist/all/www.racerkidz.com" class="btn btn-default btn-lg">diff list RK</a>
         <a href="@routes.Wikie.replaceAll1()" class="btn btn-default btn-lg">replace all</a>
       </div>
@@ -57,8 +58,8 @@
    </div>
   </div>
 
-  <hr>
-  @htmlFooter()
-</div> <!-- /container -->
-
-@htmlBottom()
+  <script>
+    function testEmail() {
+     $.post('/razadmin/testEmail');
+    }
+  </script>

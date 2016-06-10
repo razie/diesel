@@ -1,7 +1,6 @@
-@(registerForm:Form[model.Registration])(implicit request:Request[_])
-@import model.Website.realm
+@(registerForm:Form[controllers.Profile.Registration])(implicit stok:controllers.StateOk)
 
-@htmlHeadBar("Login/register", None, realm)
+@htmlHeadBar("Login/register", None, stok.realm)
 
 <div class="container">
   <div class="jumbotron">
@@ -10,7 +9,7 @@
         <h1>
           Welcome!
           @** the google button*@
-          @if(realm == razie.wiki.model.Reactors.NOTES) {
+          @if(stok.realm == razie.wiki.model.Reactors.NOTES) {
             <span align="right">
               <span id="signinButton">
                 <span
@@ -25,13 +24,15 @@
           }
         </h1>
         <br>
-        @wiki.wikiFragInt(s"$realm.Admin:page-join-$realm", None)
+        @wiki.wikiFragInt(s"${stok.realm}.Admin:page-join-${stok.realm}", None)
 
       </div>
 
       <div class="col-sm-4">
 
 @import helper.twitterBootstrap._
+@import play.api.Play.current
+@import play.api.i18n.Messages.Implicits._
 
 @helper.form(action=routes.Profile.doeJoin2, 'class->"well") {
   @helper.inputText(
@@ -58,7 +59,7 @@
      <p style="color:red;font-weight:bold">@err.message</p>
   }
 
-  <p><small>By registering or logging in, you agree to the <a href="@controllers.Wiki.w("Admin", "Terms of Service-"+realm, realm)">Terms of Service</a></small><p>
+  <p><small>By registering or logging in, you agree to the <a href="@controllers.Wiki.w("Admin", "Terms of Service-"+stok.realm, stok.realm)">Terms of Service</a></small><p>
   }
 
        </div>
@@ -127,6 +128,6 @@
     }
     </script>
 
-  @htmlFooter(false, false, realm)
+  @htmlFooter(false, false, stok.realm)
 </div> <!-- /container -->
 @htmlBottom()

@@ -24,6 +24,7 @@ Have fun!
     </div>
   </div>
   <hr>
-  @htmlFooter()
+  @htmlFooter()(new StateOk(Seq(), "", au.asInstanceOf[Option[model.User]], Some(request)))
 </div> <!-- /container -->
-@htmlBottom()
+@htmlBottom()(new StateOk(Seq(), "", au.asInstanceOf[Option[model.User]], Some(request)))
+

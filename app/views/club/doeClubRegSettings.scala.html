@@ -1,13 +1,6 @@
-@(myForm: Form[(String, Int, String, String)], user:model.User)
+@(clubName:String, myForm: Form[(String, Int, String, String)])(implicit stok:controllers.StateOk)
 
-@htmlHeadBar("", Some(user))
-
-<div class="container">
-      <div class="row">
-
-    @views.html.user.leftmenu(9, user)
-
-        <div class="col-sm-9">
+@stok.title("Regisration settings")
 
 <h2>Registration settings</h2>
 <p>
@@ -16,8 +9,10 @@
 </div>
 
 @import helper.twitterBootstrap._
+@import play.api.Play.current
+@import play.api.i18n.Messages.Implicits._
 
-@helper.form(action=routes.Club.doeClubUpdateRegSettings(), 'class->"well") {
+@helper.form(action=routes.Club.doeClubUpdateRegSettings(clubName), 'class->"well") {
   @helper.select(
     myForm("regType"),
      Seq("None"->"None", "Family"->"Family", "Individual"->"Individual", "FamilyWithKids"->"FamilyWithKids"),
@@ -36,9 +31,11 @@
   @helper.textarea(
     myForm("dsl"),
     '_label -> "Settings (role=WID)",
-    'class -> "col-sm-6",
+    'class -> "form-control",
     'rows -> 20,
     '_showConstraints -> false)
+
+  @formFix()
 
   <button type="submit" class="btn btn-primary">Update account!</button>
 
@@ -46,12 +43,4 @@
      <p style="color:red;font-weight:bold">@err.message</p>
   }
 }
-      </div>
-    </div>
 
-  <p><small>By maintaining a profile, you agree to the <a href="@controllers.Wiki.w("Terms of Service")">Terms of Service</a></small><p>
-
-  <hr>
-  @htmlFooter(ads=true)
-</div> <!-- /container -->
-@htmlBottom()

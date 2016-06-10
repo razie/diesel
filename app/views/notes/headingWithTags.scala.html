@@ -11,6 +11,16 @@ msg types are msg, err
   stok.curTag
 }
 
+@calcId(t:String)=@{
+ tag.replaceAll("(^|^.*[/])("+t+")(/.*|$)", "$1$2").replaceAll("[/.]", "-");
+}
+
+<script src="@controllers.routes.Assets.at("javascripts/weCommons.js")"></script>
+
+<script>
+var tags = "@tag";
+</script>
+
 <h3>
   @tag match {
     case "recent" => {Organize <small>| recent notes</small>}
@@ -19,8 +29,20 @@ msg types are msg, err
     case _ if stok.isSearch => {Search <small>| @tag </small>}
     case _ => {
       Tagged <small>@tag.split("/").map { t =>
-        | <a class="" style="color : #757c82 ;" href="@routes.NotesLocker.tag(t)">@t</a>
+        | <a id="a-@calcId(t)" style="color : #757c82 ;" href="@routes.NotesLocker.tag(t)">@t</a>
+
+          @** divs are hidden and only the one is shown **@
+        <div id="tag-@calcId(t)" style="display:none">
+           <a href="#unpin" onclick="setPinTags('@tag.replaceAll("([/]*"+t+")([/]?.*)", "")')" title="Unpin the last tag">
+            <span class="glyphicon glyphicon-pushpin"></span>
+          </a>
+          </div>
       }
+      <div id="pintags" style="display:none">
+          &nbsp;&nbsp; <a href="#pin" onclick="setPinTags('@tag')" title="Pin these tags">
+            <span class="glyphicon glyphicon-tags"></span>
+          </a>
+      </div>
       </small>
     }
   }
@@ -28,4 +50,23 @@ msg types are msg, err
   @notes.notesmsg(stok.msg)
 
 </h3>
+
+<script>
+if(pinTags != null && pinTags.length > 0) {
+  var calcId = pinTags.replace(/[/.]/g, '-');
+  $("#tag-"+calcId).css('display', 'inline-block');
+  $("#a-"+calcId).click(function() { return false; });
+  var doit=true;
+  $("a").each(function(i,e) {
+    if(e.id.startsWith("a-") && doit) {
+      if(e.id == "a-"+calcId) doit=false;
+      else $(e).click(function() { return false; });
+    }
+  });
+}
+
+if(pinTags != tags) { // show unpin if not last
+  $("#pintags").css('display', 'inline-block');
+}
+</script>
 

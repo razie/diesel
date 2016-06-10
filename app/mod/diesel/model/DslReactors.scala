@@ -70,7 +70,7 @@ abstract class DieselReactor(
     val body = bodies.find(_.name == event)
     body.map { b =>
       assert(b.lang == dom.lang, "unknown language: "+b.lang + " domain lang is: "+dom.lang)
-      SFiddles.isfiddleMap(addImports(dom.script, b.script), b.lang, Some(b.we), args)._2
+      SFiddles.isfiddleMap(addImports(dom.script, b.script), b.lang, Some(b.we), Some(au), args)._2
     }.getOrElse("ERR - no body found for event: "+event+" in reactor: "+reactor.page.map(_.wid.wpath).mkString)
   }
 
@@ -96,10 +96,10 @@ abstract class DieselReactor(
     s.lines.filterNot(s => s.startsWith(".") || s.stripMargin.isEmpty).mkString("\n")
 
   private def determineLang(we: WikiEntry): String =
-    LANGS.find(we.tags contains _) getOrElse we.contentTags.getOrElse("lang", supportedLang)
+    LANGS.find(we.tags contains _) getOrElse we.contentProps.getOrElse("lang", supportedLang)
 
   private def determineLang(sec: WikiSection, we: WikiEntry): String =
-    LANGS.find(we.tags contains _) getOrElse we.contentTags.getOrElse("lang", supportedLang)
+    LANGS.find(we.tags contains _) getOrElse we.contentProps.getOrElse("lang", supportedLang)
 
   override def toString = s"${this.getClass.getSimpleName}: ${reactor.toString} sections: ${sections.mkString}"
 }
@@ -161,7 +161,7 @@ object Diesel {
     Wikis(realm).find(CAT_REACTOR, module))
 
   def apply(we: WikiEntry) =
-    new DslModule(we.name, we.contentTags.getOrElse("kind", KIND_WIKI), we.uwid, Wikis.childrenOf(we.uwid).toSeq)
+    new DslModule(we.name, we.contentProps.getOrElse("kind", KIND_WIKI), we.uwid, Wikis.childrenOf(we.uwid).toSeq)
 
   def findLang(tags: Map[String, String], we: Option[WikiEntry]) = {
     def fromk(k: String) = k.replaceFirst("wiki", "").replaceAll("\\.", "") match {

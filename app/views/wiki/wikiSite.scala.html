@@ -1,21 +1,21 @@
 @**************
 render a page in a site rather than a normal page - some missing stuff
 **************@
-@(wid:razie.wiki.model.WID, iname:Option[String], page:Option[razie.wiki.model.WikiEntry])(implicit au:Option[model.User], request:Request[_])
+@(wid:razie.wiki.model.WID, iname:Option[String], page:Option[razie.wiki.model.WikiEntry])(implicit stok: controllers.StateOk)
 @import razie.wiki.model.Wikis
 
 @showads() = @{
-  page.isDefined && page.get.contentTags.get("showads").isDefined
+  page.isDefined && page.get.contentProps.get("showads").isDefined
 }
 
-@web()=@{model.Website(request) getOrElse model.Website.dflt}
+@logo()    = @{page.flatMap(_.contentProps.get("logo"))}
+@siteurl() = @{page.flatMap(_.contentProps.get("siteurl"))}
+@club()    = @{page.flatMap(_.contentProps.get("club")).map("?club="+_).getOrElse("")}
 
-@logo()    = @{page.flatMap(_.contentTags.get("logo"))}
-@siteurl() = @{page.flatMap(_.contentTags.get("siteurl"))}
-@club()    = @{page.flatMap(_.contentTags.get("club")).map("?club="+_).getOrElse("")}
+@stok.maybeCss(page.flatMap(_.contentProps.get("css")))
 
-@htmlHead(""+page.flatMap(_.contentTags.get("sitelabel")).getOrElse(page.map(_.label).getOrElse(razie.wiki.model.Wikis(wid.getRealm).label(wid))), page.flatMap(_.contentTags.get("css")).orElse(web().css))
-@navbar(au, Wikis.RK, false, "Menu", logo(), siteurl(), true, club())(au,Some(request))
+@htmlHead(""+page.flatMap(_.contentProps.get("sitelabel")).getOrElse(page.map(_.label).getOrElse(razie.wiki.model.Wikis(wid.getRealm).label(wid))), Some(stok))(Map.empty, stok.au, stok.request)
+@navbar(stok.au, Wikis.RK, false, "Menu", logo(), siteurl(), true, club())(stok.au,stok.request)
 
 <div class="container">
   <div class="row">
@@ -26,10 +26,10 @@ render a page in a site rather than a normal page - some missing stuff
     <div class="col-sm-12">
   }
       <div class="well">
-        @wiki.wikiFrag(wid,au,false,page, iname, true, false, true)
+        @wiki.wikiFrag(wid,stok.au,false,page, iname, true, false, true)
       </div>
 
-      @wiki.wikiAddMore(wid, page, au)
+      @wiki.wikiAddMore(wid, page)
 
       <hr>
       @htmlFooter(ads=showads(), isSite=true)
@@ -49,4 +49,4 @@ render a page in a site rather than a normal page - some missing stuff
   </div> <!-- row -->
 </div> <!-- /container -->
 
-@htmlBottom(false, Some(request))
+@htmlBottom(false, stok.request)

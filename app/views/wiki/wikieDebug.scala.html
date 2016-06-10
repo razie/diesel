@@ -1,56 +1,25 @@
 @**************
 debug a wiki page
 **************@
-@(wid:razie.wiki.model.WID, iname:Option[String], page:Option[razie.wiki.model.WikiEntry], realm:String, au:Option[model.User])(implicit request:Request[_])
-@import razie.wiki.model.{WikiEntry, WID, Wikis, CommentStream, WikiLink, WikiEntryOld}
+@(wid:razie.wiki.model.WID, iname:Option[String], page:Option[razie.wiki.model.WikiEntry])(implicit stok: controllers.StateOk)
+@import razie.wiki.model.{WikiEntry, WID, Wikis, WikiCount, WikiLink, WikiEntryOld}
 @import model.{Website, User}
 @import razie.db.{ROne, RMany, RUpdate}
 
-@comments(stream:Option[CommentStream]) = {
-  @stream match {
-    case None => {}
-    case Some(stream) => {
-  There's @stream.comments.size comment(s)...
-  <p>
-
-  @stream.comments.map { c =>
-    <div class="well">
-      <b>By: <a href="/user/@model.Users.nameOf(c.userId)">@model.Users.nameOf(c.userId)</a></b>
-@*********
-&nbsp;    <a href="/wikie" class="btn btn-xs">Reply</a>
-**********@
-       &nbsp; <a href="" class="btn btn-xs btn-info">Report</a>
-@if(controllers.Comment.canEdit(c,au)) {
-       &nbsp; <a href="@routes.Comment.edit(wid,c._id.toString)" class="btn btn-xs btn-info">Edit</a>
-}
-      <br>
-      <br>
-      @Html(razie.wiki.model.Wikis.format(page.map(_.wid).getOrElse(razie.wiki.model.WID("?","?")), "md", c.content))
-    </div>
-    }
-    }
-  }
-}
-
-@htmlHeadBar("WikiDebug: "+wid.cat +":"+ wid.name, au)
-
-    <div class="container">
-        <div class="row">
-
-    <div class="col-sm-9">
+@stok.title("WikiDebug: "+wid.cat +":"+ wid.name)
 
       <div class="well">
-          @wiki.wikiFrag(wid,au,false,page, iname)
+          @wiki.wikiFrag(wid,stok.au,false,page, iname)
       </div>
 
         <div class="well">
             <ul>Settings
-                <li>current realm: @realm</li>
+                <li>current realm: @stok.realm</li>
                 <li>page realm: @page.map(_.realm)</li>
                 <li>wid.realm: @wid.realm</li>
-                <li>getHost: @Website.getHost</li>
-                <li>Website: @Website.apply(request).map(_.name)</li>
-                <li>request.headers: @request.headers</li>
+                <li>getHost: @Website.getHost(stok.request.get)</li>
+                <li>Website: @Website.apply(stok.request.get).map(_.name)</li>
+                <li>request.headers: @stok.request.get.headers</li>
             </ul>
         </div>
 
@@ -64,7 +33,7 @@ debug a wiki page
 
       <div class="well">
         <ul>contentTags
-        @page.get.contentTags.map { p=>
+        @page.get.contentProps.map { p=>
           <li>@p</li>
         }
        </ul>
@@ -87,6 +56,24 @@ debug a wiki page
           <li>@model.Users.findUserById(uw.userId).map(_.userName).getOrElse(uw.userId) , @uw.role</li>
         }
        </ul>
+        <p>Remove all followers: <a class="btn btn-default" href="@routes.Club.doeDelAllFollowers(page.get.wid)">REMOVE ALL</a>
+        </p>
+      </div>
+
+      <div class="well">
+        Add all club members as followers:
+        @helper.form(action=routes.Club.doeAddClubFollowers(page.get.wid), 'class->"well form-inline") {
+          <input type="text" class="input-large" name="newvalue" value="">
+          <button type="submit" class="btn btn-default">ADD followers</button>
+        }
+      </div>
+
+      <div class="well">
+        Remove all club members as followers:
+      @helper.form(action=routes.Club.doeDelClubFollowers(page.get.wid), 'class->"well form-inline") {
+        <input type="text" class="input-large" name="newvalue" value="">
+        <button type="submit" class="btn btn-default">REMOVE followers</button>
+      }
       </div>
 
       <div class="well">
@@ -124,6 +111,13 @@ debug a wiki page
       @helper.form(action=routes.Wikie.update("owner", page.get.wid), 'class->"well form-inline") {
         <input type="text" class="input-large" name="newvalue" placeholder="@page.map(_.owner)">
         <button type="submit" class="btn btn-default">Update Owner</button>
+      }
+      </div>
+
+      <div class="well">
+      @helper.form(action=routes.Wikie.update("counter", page.get.wid), 'class->"well form-inline") {
+        <input type="text" class="input-large" name="newvalue" placeholder="@page.map(_._id).flatMap(WikiCount.findOne).map(_.count)">
+        <button type="submit" class="btn btn-default">Update Counter</button>
       }
       </div>
 
@@ -251,7 +245,7 @@ Json:
 
 Html:
       <div class="well">
-      @razie.wiki.model.Wikis.format(wid, "md", page.get.content)
+      @razie.wiki.model.Wikis.format(wid, "md", page.get.content, page, stok.au)
        </ul>
       </div>
 
@@ -261,16 +255,4 @@ AST:
        </ul>
       </div>
 
-      <hr>
-      @htmlFooter()
 
-    </div> <!-- /col-sm-9 -->
-
-      <div class="col-sm-3">
-          @wiki.wikiFrag(WID("Admin","Right"),au,true)
-      </div>
-
-  </div> <!-- row -->
-</div> <!-- /container -->
-
-@htmlBottom()

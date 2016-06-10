@@ -1,5 +1,5 @@
 @**************
-render a regular wiki page - site pages are rendered with wikiSite.scala.html
+eh
 **************@
 @(wid:razie.wiki.model.WID, iname:Option[String], page:Option[razie.wiki.model.WikiEntry], canEdit:Boolean, print:Boolean=false)(implicit stok: controllers.StateOk)
 
@@ -15,7 +15,7 @@ render a regular wiki page - site pages are rendered with wikiSite.scala.html
         @wiki.wikiFrag(wid,stok.au,false,page, iname, false, true, canEdit)
 
       @if(page.isDefined && !print) {
-        @wiki.wikiAddMore(wid, page, stok.au)(stok.au, stok.request.get)
+        @wiki.wikiAddMore(wid, page)
         @wiki.wikiPageComments(wid, page, stok.au)
       }
 
@@ -24,7 +24,7 @@ render a regular wiki page - site pages are rendered with wikiSite.scala.html
     </div> <!-- /col-sm-9 -->
     @if(!print) {
       <div class="col-sm-3">
-        @model.Website.gets.rightTop.map { rt =>
+        @stok.website.rightTop.map { rt =>
           @wiki.wikiFrag(rt, stok.au, simple = true)
         }
       }
@@ -34,8 +34,9 @@ render a regular wiki page - site pages are rendered with wikiSite.scala.html
   </div> <!-- row -->
     @if(!print) {
         @htmlFooter(
-    ads = model.Website.gets.adsAtBottom &&
-        !page.exists(_.contentTags.contains("noAds")) &&
+    ads = stok.website.adsAtBottom &&
+        (stok.au.isEmpty || stok.website.adsForUsers) &&
+        !page.exists(_.contentProps.contains("noAds")) &&
                 !page.exists(_.content.matches( """(?s).*\{\{ad[:}].*\{\{ad[:}].*""")) &&
                 !stok.au.exists(_.isUnder13),
             false,

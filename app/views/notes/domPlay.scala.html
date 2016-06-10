@@ -28,7 +28,7 @@ msg types are msg, err
     </ul>
   }
 
-  <p>@Html(razie.wiki.model.Wikis.format(we.wid, we.markup, we.content, Some(we)))</p>
+  <p>@Html(razie.wiki.model.Wikis.format(we.wid, we.markup, we.content, Some(we), Some(stok.au)))</p>
 
   <p>
   @if(stok.au.hasPerm(model.Perm.adminDb)) {

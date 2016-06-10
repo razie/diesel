@@ -4,6 +4,8 @@ profile - change email
 @(myForm: Form[_], au: model.User)(implicit request: Request[_])
 
 @import helper.twitterBootstrap._
+@import play.api.Play.current
+@import play.api.i18n.Messages.Implicits._
 
 @user.doePLayout(au, "Email", 5) {
 

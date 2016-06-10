@@ -1,7 +1,7 @@
 @***
 simple layout for profile and preference pages
 ***@
-@(au: model.User, title: String, itemNo: Integer)(body: => play.api.templates.Html)(implicit request: Request[_])
+@(au: model.User, title: String, itemNo: Integer)(body: => play.twirl.api.Html)(implicit request:Request[_])
 
 @htmlHead(title)(Map.empty, Some(au))
 @navbar(Some(au))(Some(au), Some(request))
@@ -14,7 +14,7 @@ simple layout for profile and preference pages
 
   </div> <!-- /row -->
   <hr>
-  @htmlFooter(ads = true)
+  @htmlFooter(ads = true)(new StateOk(Seq(), "", Some(au), Some(request)))
 </div> <!-- /container -->
 
-@htmlBottom(false, Some(request))
+@htmlBottom(false)(new StateOk(Seq(), "", Some(au), Some(request)))

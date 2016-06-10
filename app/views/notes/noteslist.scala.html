@@ -3,7 +3,7 @@ list of notes
 
 msg types are msg, err
 **************@
-@(noteList:List[razie.wiki.model.WikiEntry])(implicit stok:mod.notes.controllers.NotesOk)
+@(noteList:List[razie.wiki.model.WikiEntry], forSelection:Boolean=false)(implicit stok:mod.notes.controllers.NotesOk)
 @import mod.notes.controllers.{NotesLocker, Notes}
 @import mod.notes.controllers.routes
 
@@ -11,29 +11,14 @@ msg types are msg, err
 
 @notes.headingWithTags(stok)
 
-@ccc(we:razie.wiki.model.WikiEntry)= @{
-    val x = NotesLocker.format(we.wid, we.markup, we.content, Some(we), Some(stok.au))
-    if(x contains "CANNOT PARSE") {
-      val id = System.currentTimeMillis().toString
-      try {
-        val PAT = """.*PARSE\]\] \[([0-9]+)\.([0-9]+)\].*""".r
-        val PAT(line, col) = x
-        s"""<div style="color:red;font-weight:bold;" title="Problem with your content: $x">
-        <small>[[Check content below at Line:$line Position:$col]]</small></div><p></p>""".stripMargin + s"""
-          <textarea id="$id" readonly="true" style="width:90%; margin-right:40px" rows="5">${we.content}</textarea>
-       """.stripMargin
-      } catch {
-        case _ : Throwable => s"""<div style="color:red;font-weight:bold;" title="Problem with your content: $x">
-        <small>[[Check content]]</small></div><p></p>""".stripMargin + s"""
-          <textarea id="$id" readonly="true" style="width:90%; margin-right:40px" rows="5">${we.content}</textarea>
-       """.stripMargin
-      }
-    } else x
-  }
-
 @Some(stok.au).map {user=>
  @noteList.map(Notes.dec(user)).map {we=>
-   <div class="well well-small" style="border-radius:9px; margin-bottom:10px;">
+
+   <div class="noteslist well-small panel panel-info" style="border-radius:9px; margin-bottom:10px; background-color: #eeeeee"
+     nid="@we._id.toString"
+   >
+     @*<div class="panel-heading"*@
+       @*style="pading:5px 5px; padding-top: 3px; padding-right: 5px; padding-bottom: 3px; padding-left: 5px;">*@
    <small>
      <a href="@routes.NotesLocker.noteById(we._id.toString)">@we.crDtm.toString("YYYY-MM-dd hh:mm a").toLowerCase()
        <strong>[Edit]</strong></a>
@@ -42,22 +27,48 @@ msg types are msg, err
 
        <div style="float: right;">
        <small>Tags: <strong>
-       @we.tags.map {x=>
+       ...
+         @we.tags.map {x=>
            @if(stok.tags find (_._1 == x) isEmpty ) {
+@**
                @x |
+**@
            } else {
-               <a href="@routes.NotesLocker.tag(stok.tagPath(x))">@x</a> |
+               | <a href="@routes.NotesLocker.tag(stok.tagPath(x))">@x</a>
            }
+
        }
        </strong></small>
        </div>
+       @*</div> *@@* heading *@
 
-@**  <p>@Html(razie.wiki.model.Wikis.format(we.wid, we.markup, we.content, Some(we)))</p>
-**@
-  <p>@Html(ccc(we))</p>
+     <div class="notesbody panel-body" style="background-color: #eeeeee">
+
+  <p>@notes.notesFormat(we, stok.au)</p>
+
+     @if(forSelection) {
+     }
+     </div>
+
   @wiki.wikiFragExtras(Some(stok.au),Some(we))
 
    </div>
 }
 }
 
+<script>
+  $(document).ready(function(){
+    @if(forSelection) {
+      $(".noteslist, .notesbody").addClass("hoverDiv");
+      $(".noteslist").click(function(){
+        noteSelected($(this).attr('nid'))
+      });
+    }
+
+    $(".hoverDiv").hover(function(){
+        $(this).css("background", "#cccccc");
+    }, function(){
+        $(this).css("background", "#eeeeee");
+    });
+});
+</script>

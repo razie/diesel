@@ -1,7 +1,7 @@
 @*******
 included in mainUserC as the right hand side info box
 *********@
-@(user: model.User, item:Int, ui:controllers.UserStuff)
+@(user: model.User, item:Int, ui:controllers.UserStuff)(implicit stok:controllers.StateOk)
 @import org.joda.time.DateTime
 @import razie.RString._
 @import controllers.XListWrapper
@@ -27,10 +27,6 @@ included in mainUserC as the right hand side info box
   <li class="@active(4)"><a href="/doe/index/4">Forms</a></li>
 </ul>
 
-@regs=@{
-  val clubs = user.wikis.filter(_.uwid.cat=="Club").flatMap(w=>model.Users.findUserByUsername(w.uwid.nameOrId).toList)
-  clubs.flatMap(c=>model.Regs.findClubUser(c, user._id)).filter(_.regStatus == model.RegStatus.PENDING)
-}
 
 @blogs=@{
   user.pages(Wikis.DFLT, "Blog", "Forum")
@@ -38,37 +34,14 @@ included in mainUserC as the right hand side info box
 
 @item match {
   case 1 => {
-    @uFragTasks(user, false, ui)
+    @uFragTasks(user, "false", ui)
     <p>
     @uFragEvents(user, false, ui)
-  }
-
-case 2 => {
-  @util.utilMap(
-      (controllers.UserStuff.xp(Wikis.DFLT, user, "Calendar") \ UserStuff.Race \ "Venue").asInstanceOf[XListWrapper[_]],
-      user.ll
-      )
   }
 
 case 3 => {
   @uFragBlogs(user, false, ui)
 }
-
-case 4 => {
-
-  Owned:
-  @if(user.pages(Wikis.DFLT, "FormDesign").filter(_.role == "Owner").size>0) {
-  <a class="btn btn-default btn-xs" href="/wikie/create/Note">Add &raquo;</a></p>
-  <ul>
-    @for(w <- user.pages(Wikis.DFLT, "FormDesign").filter(_.role == "Owner")) {
-      <li><a href="@controllers.Wiki.w(w.wid)">@razie.wiki.model.Wikis.label(w.wid)</a></li>
-    }
-  </ul>
-  } else {
-    None
-    <a class="btn btn-default btn-xs" href="/wikie/create/Note">Create one &raquo;</a></p>
-  }
-  }
 
 }
             </div>

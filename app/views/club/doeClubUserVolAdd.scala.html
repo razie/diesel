@@ -1,15 +1,12 @@
 @******
 manage the volunteer hours by club admin
 ******@
-@(reg:model.Reg, rkas:List[model.RacerKidAssoc], myForm: Form[_], club:controllers.Club, user:model.User)
+@(reg:model.Reg, rkas:List[model.RacerKidAssoc], myForm: Form[_], club:controllers.Club)(implicit stok:controllers.StateOk)
 @import org.bson.types.ObjectId
 
-@htmlHeadBar("Volunteer hours", Option(user))
+@user=@{stok.au.get}
 
-<div class="container"> <div class="row">
-@views.html.user.leftmenu(15, user)
-
-<div class="col-sm-9">
+@stok.title("Volunteer hours")
 
 @vols=@{
   for (
@@ -29,7 +26,7 @@ manage the volunteer hours by club admin
   @k match {
     case "delete" => {
         @if(! v.isEmpty) {
-          <a href="@routes.Club.doeVolDelete(reg._id.toString, v)" class="btn btn-xs btn-danger"> x </a>
+          <a href="@routes.Club.doeVolDelete(club.name, reg._id.toString, v)" class="btn btn-xs btn-danger"> x </a>
         }
       }
 
@@ -37,19 +34,22 @@ manage the volunteer hours by club admin
   }
 }
 
+<h3>Current volunteer hour submissions</h3>
+
 @util.utilSimpleTable(vols.iterator,
   Seq("who" -> "Who", "hours" -> "Hours", "desc"->"What", "comment" -> "Desc", "approved" -> "Ok", "delete" -> "Delete"), Some(mnglink))
 
-
 @import helper.twitterBootstrap._
+@import play.api.Play.current
+@import play.api.i18n.Messages.Implicits._
 @import util.razText
 
 @club.props.get("VolunteerMessage").map { m =>
   <div class="well">@m </div>
 }
 
-@helper.form(action=routes.Club.doeVolAdded(reg._id.toString), 'class->"well") {
-Add more hours:
+@helper.form(action=routes.Club.doeVolAdded(club.name, reg._id.toString), 'class->"well") {
+<h3>Submit more hours:</h3>
 <table>
     <tr>
         <td>
@@ -65,7 +65,7 @@ Add more hours:
             <input type="text" class="input-small" name="hours">
         </td>
         <td>
-        <label>Description</label>
+        <label>Category</label>
         <select class="input-small" name="desc">
         @club.volunteering.map { rka =>
             <option value="@rka">@rka</option>
@@ -83,17 +83,10 @@ Add more hours:
         </td>
     </tr>
 </table>
-    <label>Comment (when, what you did)</label>
+<br>
+  <label>Description (when, where, what)</label><br>
     <textarea lines=3 cols=30 class="input-xxlarge" name="comment"></textarea>
-  <button type="submit" class="btn btn-primary">Add</button>
+  <br>
+  <button type="submit" class="btn btn-primary"> Submit hours </button>
 }
 
-  <p><small>By maintaining a profile, you agree to the <a href="@controllers.Wiki.w("Terms of Service")">Terms of Service</a></small><p>
-
-</div>
-
-  </div>
-  <hr>
-  @htmlFooter(ads=true)
-</div> <!-- /container -->
-@htmlBottom()

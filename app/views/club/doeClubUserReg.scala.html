@@ -1,17 +1,13 @@
 @***********
   user manages registrations
 ***********@
-@(au:model.User, reg:model.Reg, rks:List[model.RacerKid])
+@(reg:model.Reg, rks:List[model.RacerKid])(implicit stok:controllers.StateOk)
 @import model.RegStatus._
 @import razie.wiki.model.FormStatus._
 @import model.RK._
 
-@htmlHeadBar("Reg for " + au.userName, Option(au))
-
-<div class="container"> <div class="row">
-@views.html.user.leftmenu(10, au)
-
-<div class="col-sm-9">
+  @au=@{stok.au.get}
+  @stok.title("Reg for " + au.userName)
 
 <h2>@model.Users.findUserById(reg.userId).map(_.userName).mkString Registration for @reg.clubName (as @reg.role)</h2>
 
@@ -111,10 +107,3 @@
   <hr>
   @club.formStatusLegend()
 
-  </div> <!-- /container -->
-  </div> <!-- /container -->
-  <hr>
-  @htmlFooter(ads=true)
-  </div> <!-- /container -->
-
-@htmlBottom()

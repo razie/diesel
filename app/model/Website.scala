@@ -42,6 +42,8 @@ class Website (we:WikiEntry, extra:Seq[(String,String)] = Seq()) extends DslProp
   def divMain:String = this prop "divMain" OR "9"
   def copyright:Option[String] = this prop "copyright"
 
+  def logo:Option[String] = this prop "logo"
+
   def adsOnList = this bprop "adsOnList" OR true
   def adsAtBottom = this bprop "adsAtBottom" OR true
   def adsForUsers = this bprop "adsForUsers" OR true
@@ -70,15 +72,9 @@ class Website (we:WikiEntry, extra:Seq[(String,String)] = Seq()) extends DslProp
     }
     //nav.TopLevel
     def navMenu () = {
-      propSeq.filter(_._1 startsWith (s"nav.")).filter(! _._1.startsWith(s"nav.Browse")).map(t=>(t._1.replaceFirst(s"nav.", ""), t._2))
+      propSeq.filter(_._1 startsWith (s"nav.")).map(t=>(t._1.replaceFirst(s"nav.", ""), t._2))
     }
-    def navBrowse(realm:String):String = this prop "nav.Browse" OR (
-      //    if(Wikis.RK == realm) s"http://${Config.hostport}/wiki"
-      //  else if(!Config.isLocalhost) s"/wiki" else s"http://${Config.hostport}/w/$realm/wiki"
-      if(!Config.isLocalhost) s"/wiki" else s"http://${Config.hostport}/w/$realm/wiki"
-      )
 
-    def navNotes:String = this prop "nav.Notes" OR s"http://${Config.hostport}/notes"
     def navTheme:String = this prop "nav.Theme" OR "/doe/selecttheme"
     def navBrand = this prop "navBrand"
 }
@@ -88,6 +84,7 @@ object Website {
   private val cache = new collection.mutable.HashMap[String,CacheEntry]()
   val EXP = 100000
 
+  // s is the host
   def apply (s:String):Option[Website] = {
     val ce = cache.get(s)
     if (ce.isEmpty) {// || System.currentTimeMillis > ce.get.millis) {
@@ -106,6 +103,9 @@ object Website {
     } else
       ce.map(_.w)
   }
+
+  def forRealm (r:String) = Reactors(r).we.map(we=> new Website(we))
+  def forReactor (we:WikiEntry) = new Website(we) // todo optimize and not create every time
 
   def all = cache.values.map(_.w).toList
 

@@ -1,4 +1,4 @@
-@(pForm:Form[(String,String)], exp:String, e:String, u:String)
+@(pForm:Form[(String,String)], exp:String, e:String, u:String, au:Option[model.User])(implicit request:Request[_])
 
 @htmlHeadBar()
 
@@ -16,13 +16,12 @@
         <div class="col-sm-4">
 
 @import helper.twitterBootstrap._
+@import play.api.Play.current
+@import play.api.i18n.Messages.Implicits._
 
 @helper.form(action=routes.Tasks.verifyEmail3(exp, e, u), 'class->"well") {
 
-  @helper.inputText(
-    pForm("email"),
-    '_label -> "Email",
-    '_error->pForm.error("email"))
+  @util.razText(pForm, "email", "Email", '_error->pForm.error("email"))
 
   @helper.inputPassword(
     pForm("password"),
@@ -47,8 +46,9 @@
 
       <hr>
 
-      @htmlFooter()
+      @htmlFooter()(new StateOk(Seq(), "", au, Some(request)))
 
     </div> <!-- /container -->
 
-    @htmlBottom()
+    @htmlBottom()(new StateOk(Seq(), "", au, Some(request)))
+

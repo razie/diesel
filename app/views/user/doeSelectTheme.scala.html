@@ -1,12 +1,10 @@
 @** select a theme for this session
 **@
-@(au:Option[model.User]=None)(implicit request:Request[_])
-@import model.Website.realm
+@()(implicit stok:controllers.StateOk)
 
-@htmlHead("Select a theme")(Map("description"->"Select a dark or light theme to browse this website."), au)
-@navbar(au, realm)
+@stok.title("Select a theme")
+@stok.meta("description", "Select a dark or light theme to browse this website.")
 
-<div class="container">
   <div class="well">
     <h2>Select a theme</h2>
 <p class="lead">While we are convinced that it's a matter of time until the web will be dark, i.e. light-colored fonts on dark backgrounds,
@@ -25,7 +23,4 @@ Note that this setting is temporary. If you want to make it permanent, get an ac
 <p>
 Have fun!
   </div>
-  <hr>
-  @htmlFooter()
-</div> <!-- /container -->
-@htmlBottom()
+

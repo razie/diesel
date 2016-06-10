@@ -1,7 +1,7 @@
 @*******
 included in mainUserC as the right hand side info box
 *********@
-@(user: model.User, quiet:Boolean, ui:controllers.UserStuff)
+@(user: model.User, quiet:String, ui:controllers.UserStuff)
 @import org.joda.time.DateTime
 @import razie.RString._
 @import controllers.XListWrapper
@@ -9,11 +9,16 @@ included in mainUserC as the right hand side info box
 @import razie.wiki.model.Wikis
 
 @regs=@{
-  val clubs = user.wikis.filter(_.uwid.cat=="Club").flatMap(w=>model.Users.findUserByUsername(w.uwid.nameOrId).toList)
+  val clubs = user.wikis.filter(_.uwid.cat=="Club").map(_.uwid.nameOrId)
   clubs.flatMap(c=>model.Regs.findClubUser(c, user._id)).filter(_.regStatus == model.RegStatus.PENDING)
 }
 
   @if(user.tasks.size + regs.size > 0) {
+    @if(quiet.contains("alert")) {
+      <div class="alert alert-danger">
+      </div>
+    }
+
     <b>Stuff to do</b>
     <ul>
     @for(t <- user.tasks) {
@@ -23,9 +28,14 @@ included in mainUserC as the right hand side info box
       <li><a style="color:red;font-weight:bold" href="@routes.Club.doeClubUserReg(t._id.toString)">Pending registration forms for @t.clubName</a></li>
     }
     </ul>
+
+    @if(quiet.contains("alert")) {
+      </div>
+    }
   } else {
-    @if(!quiet) {
+    @if(!quiet.contains("true")) {
       <b>No tasks.</b>
     }
   }
+
 

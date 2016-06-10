@@ -1,5 +1,6 @@
-@(pageTitle: String = "", cssr:Option[String]=None, page:Option[razie.wiki.model.WikiEntry]=None, options:Map[String,String]=Map())(implicit moreMetas:Map[String,String]=Map.empty, au:Option[model.User], request:Option[Request[_]] = None)
+@(pageTitle: String = "", stok:Option[controllers.StateOk]=None, page:Option[razie.wiki.model.WikiEntry]=None, options:Map[String,String]=Map())(implicit moreMetas:Map[String,String]=Map.empty, au:Option[model.User], request:Option[Request[_]] = None)
 @import _root_.admin.Config
+@import razie.wiki.model.Reactors
 
 @title() = @{
   if(pageTitle.length==0) Config.sitecfg("RacerKidz") getOrElse ("RacerKidz")
@@ -7,8 +8,7 @@
 }
 
 @css() = @{
-  val ret = cssr.getOrElse(_root_.admin.Config.getTheme(au, request))
-  if(ret == null || ret.length <=0) "light" else ret
+  stok.getOrElse(new controllers.StateOk(Seq(), "", au, request)).css
 }
 
 <!DOCTYPE html>
@@ -18,13 +18,19 @@
 
     @*** keep google happy using Admin:urlcanon ***@
     @page.flatMap(p=> Config.urlcanon(p.wid.wpath, page.map(_.tags))).map {canon =>
+        <!-- canon -->
       <link rel="canonical" href="@canon" />
     }.getOrElse{
       @if(page.isDefined) {
         @** i should be conservative and default to rk **@
-        <link rel="canonical" href="http://www.racerkidz.com/wiki/@page.get.wid.wpath" />
+          <!-- page -->
+        <link rel="canonical" href="@hostName/wiki/@page.get.wid.wpath" />
       }
     }
+
+@hostName=@{
+  Reactors(page.get.wid.getRealm).websiteProps.prop("url").getOrElse("http://www.racerkidz.com")
+}
 
     <title>@title</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -32,12 +38,12 @@
     @Html(_root_.admin.Config.metas)
 
     @page.map{p=>
-      @p.contentTags.filter(_._1.startsWith("meta.")).map { t =>
+      @p.contentProps.filter(_._1.startsWith("meta.")).map { t =>
         <meta name="@t._1.substring(5)" content="@t._2">
       }
     }
 
-    @page.flatMap(_.contentTags.get("meta.author")).map { d =>
+    @page.flatMap(_.contentProps.get("meta.author")).map { d =>
       <meta name="author" content="@d">
     }
 
@@ -49,7 +55,7 @@
     <link href="@routes.Assets.at("bootstrap-3.3.4/css/bootstrap.css")" rel="stylesheet">
     <link href="@routes.Assets.at("bootstrap-3.3.4/css/bootstrap-theme.css")" rel="stylesheet">
     <link href="@routes.Assets.at("bootstrap-3.3.4/css/bootstrap-light.css")" rel="stylesheet">
-    @if(Config.getTheme(au, request).contains("dark")) {
+    @if(css.contains("dark")) {
       <link href="@routes.Assets.at("bootstrap-3.3.4/css/bootstrap-"+css+".css")" rel="stylesheet">
     }
 
@@ -59,7 +65,7 @@
 ********@
 
 @if(Config.hostport.startsWith("test") || Config.hostport.startsWith("xlocalhost")) {
-  @if(Config.getTheme(au, request).contains("light")) {
+  @if(css.contains("light")) {
     <style type="text/css">
       .navbar-inner {
         background-color: red;
@@ -94,6 +100,9 @@
       body {
         padding-top: 60px;
         padding-bottom: 0px;
+      }
+      .error {
+        color: red;
       }
     </style>
 
@@ -141,15 +150,17 @@ li.g-like{
 @if(_root_.admin.Config.isLocalhost) {
   <script type="text/javascript">
   var tstamp = @System.currentTimeMillis();
-  setInterval(function(){
+  var shouldReloadTimer = setInterval(function(){
     $.get("/razadmin/ping/shouldReload", function( data ) {
       if(data > tstamp) {
         tstamp = data;
         console.log("reloading...");
         location.reload();
       } else {
-//        console.log("ping... "+data);
       }
+    }).fail(function(){
+      // on error, just backoff for a while
+      clearInterval(shouldReloadTimer);
     });
   },2000);
 </script>
@@ -202,7 +213,7 @@ li.g-like{
 @** nots needs without this if
  @if(page.exists(p=>"""\{\{code[:}]""".r.findFirstIn(p.content).isDefined)) { **@
 
-  @if(Config.getTheme(au, request).contains("light")) {
+  @if(css.contains("light")) {
 
 <style type="text/css">
 # this makes all look big, even `something`

@@ -1,12 +1,9 @@
-@(to:razie.wiki.model.WID, v2:Int, myForm:Form[controllers.Wikil.FollowerLinkWiki])
-  @import helper.twitterBootstrap._
+@(to:razie.wiki.model.WID,  myForm:Form[controllers.Wikil.FollowerLinkWiki])(implicit stok:controllers.StateOk)
+@import helper.twitterBootstrap._
+@import play.api.Play.current
+@import play.api.i18n.Messages.Implicits._
 
-  @htmlHead()(Map("description"->"Follow a page or topic or a blog."), None)
-  @navbar(None)
-
-<div class="container">
-  <div class="jumbotron">
-    <div class="row">
+  @stok.meta("description", "Follow a page or topic or a blog.")
 
       <div class="col-sm-6">
         <h2>Cool! So you want to @to.label("LinkTo", "follow") @to.cat @to.name!</h2>
@@ -46,14 +43,7 @@
 //            'cols->120,
             'rows->3)
 
-          <div class="well">
-            Help weed out some spam - please answer this question...
-            @helper.inputText(
-              myForm("v1"),
-              '_label -> ("Result of " + controllers.Support.divi(v2) + " = "),
-              '_showConstraints -> false)
-          </div>
-          <input type="hidden" name="v2" value="@myForm("v2").value" />
+          @util.recaptcha()
 
           @myForm.globalError.map { err=>
             <p style="color:red;font-weight:bold">@err.message</p>
@@ -68,11 +58,4 @@
         }
       </div>
 
-    </div>
 
-    <hr>
-    @htmlFooter()
-
-  </div> <!-- /container -->
-
-  @htmlBottom()

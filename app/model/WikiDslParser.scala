@@ -22,13 +22,22 @@ import razie.wiki.parser.WikiParserBase
 trait WikiDslParser extends WikiParserBase {
   import WAST._
   
-  def dslWikiProps = wikiPropFiddle | wikiPropDsl
+  def dslWikiProps = wikiPropFiddle | wikiPropJsFiddle | wikiPropDsl
+
+  private def trim (s:String) = s.replaceAll("\r", "").replaceAll("^\n|\n$","")//.replaceAll("\n", "\\\\n'\n+'")
+
+  def wikiPropJsFiddle: PS = "{{" ~> """jsfiddle""".r ~ opt(":" ~ rep(arg <~ opt(","))) ~ "}}" ~ opt(CRLF1 | CRLF3 | CRLF2) ~ slines <~ ("{{/jsfiddle}}" | "{{/}}") ^^ {
+    case stype ~ xargs ~ _ ~ _ ~ lines =>
+      var args = (if(xargs.isDefined) xargs.get._2 else List()).toMap
+      val name = args.getOrElse("name", "")
+
+      SState(views.html.fiddle.inlineBrowserJsFiddle("", trim(lines.s), args, None).body) // trim EOLs
+  }
 
   def wikiPropFiddle: PS = "{{" ~> """fiddle""".r ~ "[: ]".r ~ """[^:}]*""".r ~ opt(":" ~ rep(arg <~ opt(","))) ~ "}}" ~ opt(CRLF1 | CRLF3 | CRLF2) ~ slines <~ "{{/fiddle}}" ^^ {
     case stype ~ _ ~ lang ~ xargs ~ _ ~ _ ~ lines =>
       var args = (if(xargs.isDefined) xargs.get._2 else List()).toMap
       val name = args.getOrElse("name", "")
-      def trim (s:String) = s.replaceAll("\r", "").replaceAll("^\n|\n$","")//.replaceAll("\n", "\\\\n'\n+'")
       lazy val ss = lines.s.replaceAll("&lt;", "<").replaceAll("&gt;", ">") // bad html was escaped while parsing
 
       try {
@@ -52,14 +61,15 @@ trait WikiDslParser extends WikiParserBase {
 
             // remove empty lines from parsing
 
-            SState(views.html.fiddle.jsfiddle(name, args, (trim(hh), trim(h), trim(c), trim(j)), None).body)
+            SState(views.html.fiddle.inlineHtmlfiddle(name, args, (trim(hh), trim(h), trim(c), trim(j)), None).body)
           }
           case "javascript" =>
-            SState(views.html.fiddle.jsfiddle(name, args, ("", "", "", trim("document.write(function(){ return " + ss.replaceFirst("\n", "") + "}())")), None).body)
+            SState(views.html.fiddle.inlineBrowserJsFiddle("", trim(ss.replaceFirst("\n", "")), args, None).body) // trim EOLs
+//            SState(views.html.fiddle.inlineHtmlfiddle(name, args, ("", "", "", trim("document.write(function(){ return " + ss.replaceFirst("\n", "") + "}())")), None).body)
           case "scala" =>
-            SState(views.html.fiddle.scalafiddle(name, args, lines.s, None).body)
+            SState(views.html.fiddle.inlineScalaFiddle(name, args, lines.s, None).body)
           case _ =>
-            SState(views.html.fiddle.scalafiddle(name, args, lines.s, None).body)
+            SState(views.html.fiddle.inlineScalaFiddle(name, args, lines.s, None).body)
         }
       }
       catch  {
@@ -86,9 +96,9 @@ trait WikiDslParser extends WikiParserBase {
         val script = lines.s.trim.replaceAll("\r", "")
         try {
           if(lang contains "js") {
-            views.html.fiddle.jsfiddle2("js", script, None).body
+            views.html.fiddle.inlineServerFiddle("js", script, None).body
           } else if(lang contains "scala") {
-            views.html.fiddle.jsfiddle2("scala", script, None).body
+            views.html.fiddle.inlineServerFiddle("scala", script, None).body
           } else {
             "unknown language"
           }
@@ -101,7 +111,7 @@ trait WikiDslParser extends WikiParserBase {
       if(hidden.isDefined) SState("")
       else LazyState {(current, ctx) =>
         // try to figure out the language from the content parsed so far
-        val lang = Diesel.findLang(current.tags, ctx.we)
+        val lang = Diesel.findLang(current.props, ctx.we)
         val fid = ffiddle(lang)
         SState(s"""<div><b><small>DSL ${stype.replaceFirst("dsl.","")}</b> ($name):</small><br>$fid}</div>""")//, Map.empty, List.empty, List(wffiddle))
       }

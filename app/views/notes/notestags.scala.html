@@ -1,15 +1,15 @@
 @**************
-show/edit/capture a note
-
-msg types are msg, err
+the right sidebar with tag navigation
 **************@
-@(current:String, tags:model.Tags.Tags, au:Option[model.User])
+@(current:String, tags:model.Tags.Tags, au:Option[model.User], request:play.api.mvc.Request[_])
 @import routes.Assets
 @import mod.notes.controllers.routes
 
 @tagpath(s:String) = @{ if(current=="" || Seq("none", "recent", "all", "archive").contains(current)) s else (current+"/"+s) }
 @browseTag(t:String)={@routes.NotesLocker.tag(tagpath(t))}
 @browseAllTags()={@routes.NotesLocker.alltags}
+
+<script src="@controllers.routes.Assets.at("javascripts/weCommons.js")"></script>
 
 <div class="col-sm-3">
   <a href="/notes" class="btn btn-lg btn-info">New thought...</a>
@@ -35,8 +35,16 @@ msg types are msg, err
     No more tags
   }
   <ul>
-    @tags.take(15).map {x=>
-      <li><a href="@browseTag(x._1)">@x._1</a> <small>(@x._2)</small></li>
+    @defining(mod.notes.controllers.NotesLocker.book(request)) { book =>
+      @tags.take(15).map { x =>
+        <li><a href="@browseTag(x._1)">@x._1</a> <small>(@x._2)</small>
+          @if(book.pinTags.contains(x._1)) {
+            <a href="#unpin" onclick="setPinTags('@book.pinTags.filter(_ != x._1).mkString("/")')" title="Unpin this tag">
+            <span class="glyphicon glyphicon-pushpin"></span>
+            </a>
+          }
+        </li>
+      }
     }
     @if(tags.size > 15) {
       <li><a href="@browseAllTags()">... more</a></li>

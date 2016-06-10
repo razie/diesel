@@ -23,14 +23,11 @@ import razie.wiki.admin.Audit
 import com.mongodb.DBObject
 import razie.db._
 import razie.Snakk
+import razie.db.RMongo.as
+import razie.db.tx.txn
 
 object UserType {
   val Organization = "Organization"
-}
-
-/** temporary registrtion/login form */
-case class Registration(email: String, password: String, repassword: String = "") {
-  def ename = email.replaceAll("@.*", "")
 }
 
 /** temporary user for following stuff */
@@ -68,6 +65,7 @@ case class Perm(s: String) {
   def minus = "-" + this.s
 }
 
+// ACLs
 object Perm {
   val adminDb = Perm("adminDb") // god - can fix users etc
   val adminWiki = Perm("adminWiki") // can administer wiki - edit categories/reserved pages etc
@@ -77,6 +75,7 @@ object Perm {
   val apiCall = Perm("apiCall") // special users that can make api calls
   val codeMaster = Perm("codeMaster") // can create services in eithe scala or JS
 
+  val Member = Perm("Member") // not paid account - this is not actually needed in the profile - if au then member
   val Basic = Perm("Basic") // paid account
   val Gold = Perm("Gold") // paid account
   val Platinum = Perm("Platinum") // paid account
@@ -123,13 +122,19 @@ case class User(
   def isSuspended = status == 's'
   def isAdmin = hasPerm(Perm.adminDb) || hasPerm(Perm.adminWiki)
   def isClub = roles contains UserType.Organization.toString
-//  def isClubAdmin = isClub // TODO allow users to manage clubs somehow - SU
   def isUnder13 = DateTime.now.year.get - yob <= 12
   def isHarry = id == "4fdb5d410cf247dd26c2a784"
 
   // TODO optimize
   def perms: Set[String] = profile.map(_.perms).getOrElse(Set()) ++ groups.flatMap(_.can).toSet
   def hasPerm(p: Perm) = perms.contains("+" + p.s) && !perms.contains("-" + p.s)
+
+  override def hasMembershipLevel(s:String) =
+    (s == Perm.Member.s) ||
+    (s == Perm.Moderator.s && this.hasPerm(Perm.Moderator)) ||
+    (s == Perm.Platinum.s && (this.hasPerm(Perm.Moderator) || this.hasPerm(Perm.Platinum))) ||
+    (s == Perm.Gold.s && (this.hasPerm(Perm.Moderator) || this.hasPerm(Perm.Platinum) || this.hasPerm(Perm.Gold))) ||
+    (s == Perm.Basic.s && (this.hasPerm(Perm.Moderator) || this.hasPerm(Perm.Platinum) || this.hasPerm(Perm.Gold) || this.hasPerm(Perm.Basic)))
 
   // centered on Toronto by default
   lazy val ll = addr.flatMap(Maps.latlong _).getOrElse(("43.664395", "-79.376907"))
@@ -157,7 +162,10 @@ case class User(
   def isLinkedTo(uwid:UWID) = ROne[UserWiki]("userId" -> _id, "uwid" -> uwid.grated).toList
 
   /** pages of category that I linked to */
-  def pages(realm:String, cat: String*) = wikis.filter(w=>cat.contains(w.uwid.cat))
+  def pages(realm:String, cat: String*) = wikis.filter{w=>
+    (cat=="*"   || cat.contains(w.uwid.cat)) &&
+    (realm=="*" || Reactors(realm).supers.contains(w.uwid.getRealm))
+  }
   def myPages(realm:String, cat: String) = pages (realm, cat)
 
   def ownedPages(realm:String, cat: String) =
@@ -165,10 +173,10 @@ case class User(
       WID(cat, o.getAs[String]("name").get).r(o.getAs[String]("realm").get)
     }
 
-  def auditCreated { Log.audit(AUDT_USER_CREATED + email) }
-  def auditLogout { Log.audit(AUDT_USER_LOGOUT + email) }
-  def auditLogin { Log.audit(AUDT_USER_LOGIN + email) }
-  def auditLoginFailed { Log.audit(AUDT_USER_LOGIN_FAILED + email) }
+  def auditCreated(realm:String) { Log.audit(AUDT_USER_CREATED + email + " realm: " + realm) }
+  def auditLogout(realm:String) { Log.audit(AUDT_USER_LOGOUT + email+" realm: "+realm) }
+  def auditLogin(realm:String) { Log.audit(AUDT_USER_LOGIN + email + " realm: " + realm) }
+  def auditLoginFailed(realm:String) { Log.audit(AUDT_USER_LOGIN_FAILED + email + " realm: " + realm) }
 
   final val AUDT_USER_CREATED = "USER_CREATED "
   final val AUDT_USER_LOGIN = "USER_LOGIN "
@@ -214,13 +222,24 @@ case class User(
     } else None
   }
 
-  def pref(name: String)(default: => String) = prefs.get(name).getOrElse(default)
+  def getPrefs(name: String, default:String="") = prefs.get(name).getOrElse(default)
+  def setPrefs(name: String, value : => String) = this.update(this.copy(prefs = this.prefs + (name -> value)))
 
   def hasRealm(m:String) = realms.contains(m) || (realms.isEmpty && Wikis.RK == m)
 
   def quota = ROne[UserQuota]("userId" -> _id) getOrElse UserQuota(_id)
 
   var css = prefs.get("css")
+
+  /** find all RKA associated to user */
+  def rka = {
+    val mine = RMany[RacerKidAssoc]("from" -> _id)
+    //    val fromOthers = RMany[RacerKid]("userId" -> id) flatMap (x=> RMany[RacerKidAssoc]("from" -> x._id, "what" -> RK.ASSOC_PARENT)) map (_.to) flatMap (findById)
+    mine //::: fromOthers
+  }
+  /** find all RK associated to user */
+  def rk = rka map (_.to) flatMap (_.as[RacerKid])
+  def myself=RacerKidz.myself(_id)
 }
 
 case class Contact(info: Map[String, String])
@@ -253,8 +272,12 @@ case class Profile(
 
   def consented(ver: String) = this.copy(consent = Some(ver + " on " +DateTime.now().toString()))
 
-  def addRealmInfo(realm: String, prop:String, value:String) = {
-    this.copy(realmInfo = this.realmInfo + ((realm+"."+prop) -> value))
+  def setRealmProp(realm: String, prop:String, value:String) = {
+    this.update(this.copy(realmInfo = this.realmInfo + ((realm+"."+prop) -> value)))
+  }
+
+  def getRealmProp(realm: String, prop:String, dfltValue:String="") = {
+    realmInfo.getOrElse(realm+"."+prop, dfltValue)
   }
 
   var createdDtm: DateTime = DateTime.now

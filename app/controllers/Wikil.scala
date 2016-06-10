@@ -31,6 +31,24 @@ object Wikil extends WikieBase {
 
   implicit def obtob(o: Option[Boolean]): Boolean = o.exists(_ == true)
 
+  case class FollowerLinkWiki(email1: String, email2: String, comment: String, g_recaptcha_response:String="")
+
+  def followerLinkForm(implicit request: Request[_]) = Form {
+    mapping(
+      "email1" -> nonEmptyText.verifying("Wrong format!", vldEmail(_)).verifying("Invalid characters", vldSpec(_)),
+      "email2" -> nonEmptyText.verifying("Wrong format!", vldEmail(_)).verifying("Invalid characters", vldSpec(_)),
+      "comment" -> play.api.data.Forms.text,
+      "g-recaptcha-response" -> text
+    )(FollowerLinkWiki.apply)(FollowerLinkWiki.unapply) verifying
+      ("CAPTCHA failed!", { cr: FollowerLinkWiki =>
+        Recaptcha.verify2(cr.g_recaptcha_response, clientIp)
+      }) verifying
+      ("Email mismatch - please type again", { reg: FollowerLinkWiki =>
+        if (reg.email1.length > 0 && reg.email2.length > 0 && reg.email1 != reg.email2) false
+        else true
+      })
+  }
+
   def link(fromCat: String, fromName: String, toCat: String, toName: String) = {
     if ("User" == fromCat) linkUser(WID(toCat, toName))
     else
@@ -155,9 +173,10 @@ object Wikil extends WikieBase {
           Msg2("Already added!", Some("/"))
         }
       } getOrElse {
-        // need to link now
-        Ok(views.html.wiki.wikiLink(WID("User", au.id), wid,
-          linkForm.fill(LinkWiki("Enjoy", model.UW.EMAIL_EACH, Wikis.MD, content)), withComment, auth))
+        ROK(Some(au), request) {implicit stok =>
+          views.html.wiki.wikiLink(WID("User", au.id), wid,
+            linkForm.fill(LinkWiki("Enjoy", model.UW.EMAIL_EACH, Wikis.MD, content)), withComment)
+        }
       }
     }) getOrElse
       noPerm(wid, "LINKUSER")
@@ -172,8 +191,9 @@ object Wikil extends WikieBase {
         exists <- wid.page.isDefined orErr ("Cannot link to " + wid.name);
         r1 <- canSee(wid, None, wid.page)
       ) yield {
-        val v2 = (10 + math.random * 11).toInt
-        Ok(views.html.wiki.wikiFollowerLink1(wid, v2, followerLinkForm.fill(FollowerLinkWiki("", "", 0, v2, ""))))
+          ROK(auth, request) {implicit stok =>
+            views.html.wiki.wikiFollowerLink1(wid, followerLinkForm.fill(FollowerLinkWiki("", "", "")))
+          }
       }) getOrElse
         noPerm(wid, "LINKUSER")
     }
@@ -185,16 +205,16 @@ object Wikil extends WikieBase {
     implicit val errCollector = new VErrors()
 
     followerLinkForm.bindFromRequest.fold(
-    formWithErrors => BadRequest(views.html.wiki.wikiFollowerLink1(wid, 21, formWithErrors)),
+    formWithErrors => BadRequest(
+      ROK(auth, request) justLayout { implicit stok =>
+        views.html.wiki.wikiFollowerLink1(wid, formWithErrors)
+      }
+    ),
     {
-      case we @ FollowerLinkWiki(email1, email2, v1, v2, comment) =>
+      case we @ FollowerLinkWiki(email1, email2, comment, _) =>
         (for (
           exists <- wid.page.isDefined orErr ("Cannot link to non-existent page: " + wid.name);
           uwid <- wid.page map (_.uwid);
-          goodMath <- (v1 == v2 && v2 > 1 || v1 == 21) orErr {
-            Audit.logdb("BAD_MATH", List("request:" + request.toString, "headers:" + request.headers, "body:" + request.body).mkString("<br>"))
-            ("Bad math")
-          };
           r1 <- canSee(wid, None, wid.page)
         ) yield {
           val es = email1.enc
@@ -208,7 +228,7 @@ object Wikil extends WikieBase {
             Msg2("You got an email with a link, to activate your subscription. Enjoy!", Some(wid.urlRelative))
           }
         }) getOrElse {
-          error("ERR_CANT_UPDATE_USER " + session.get("email"))
+          verror("ERR_CANT_UPDATE_USER.linkFollower2" + wid + " : " + request.session.get("email"))
           unauthorized("Oops - cannot create this link... ")
         }
     })
@@ -244,7 +264,7 @@ object Wikil extends WikieBase {
         Msg2("Ok - you are subscribed to %s via email!".format(wid.page.map(_.label).getOrElse(wid.name)), Some(wid.urlRelative))
       }
     }) getOrElse {
-      error("ERR_CANT_UPDATE_USER " + session.get("email").mkString + errCollector.mkString)
+      verror("ERR_CANT_UPDATE_USER.linkFollower3 " + wid + " : " + request.session.get("email").mkString)
       unauthorized("Oops - cannot create this link... ")
     }
   }
@@ -265,12 +285,12 @@ object Wikil extends WikieBase {
       // TODO remove follower, possibly notify owner of topic or moderator
       Msg2("Sorry - please submit a support request...", Some(wid.urlRelative))
     }) getOrElse {
-      error("ERR_CANT_UPDATE_USER " + session.get("email"))
-      unauthorized("Oops - cannot create this link... ")
+      verror(s"""ERR_CANT_UPDATE_USER.unlinkFollower4 : $wid : ${request.session.get("email")}""")
+      unauthorized("Oops - cannot remove this subscription... ")
     }
   }
 
-  def moderatorOf(wid: WID) = Wikis.find(wid).flatMap(_.contentTags.get("moderator"))
+  def moderatorOf(wid: WID) = Wikis.find(wid).flatMap(_.contentProps.get("moderator"))
 
   def linked(from:WID, to:WID, withComment: Boolean) = {
     if ("User" == from.cat) linkedUser(from.name, to, withComment)
@@ -298,7 +318,7 @@ object Wikil extends WikieBase {
     implicit val errCollector = new VErrors()
 
     def hows = {
-      Wikis.rk.category("Club").flatMap(_.contentTags.get("roles:" + "User")) match {
+      Wikis.rk.category("Club").flatMap(_.contentProps.get("roles:" + "User")) match {
         case Some(s) => s.split(",").toList
         case None => Wikis.rk.pageNames("Link").toList
       }
@@ -326,7 +346,7 @@ object Wikil extends WikieBase {
       }
       Msg2("OK, added!", Some("/"))
     }) getOrElse {
-      error("ERR_CANT_LINK_USER " + session.get("email"))
+      error("ERR_CANT_LINK_USER " + request.session.get("email"))
       unauthorized("Oops - cannot create this link... ")
     }
   }
@@ -360,12 +380,13 @@ object Wikil extends WikieBase {
   }
 
   /** a user linked to a WID */
-  def linkedUser(userId: String, wid: WID, withComment: Boolean) = Action { implicit request =>
+  def linkedUser(userId: String, wid: WID, withComment: Boolean) = FAU {
+    implicit au => implicit errCollector => implicit request =>
 
     clog << s"METHOD linkedUser($userId, $wid, $withComment)"
 
     def hows = {
-      Wikis.category(wid.cat).flatMap(_.contentTags.get("roles:" + "User")) match {
+      Wikis.category(wid.cat).flatMap(_.contentProps.get("roles:" + "User")) match {
         case Some(s) => s.split(",").toList
         case None => Wikis.rk.pageNames("Link").toList
       }
@@ -374,11 +395,13 @@ object Wikil extends WikieBase {
     implicit val errCollector = new VErrors()
 
     linkForm.bindFromRequest.fold(
-    formWithErrors => BadRequest(views.html.wiki.wikiLink(WID("User", auth.get.id), wid, formWithErrors, withComment, auth)),
+    formWithErrors => BadRequest(
+      ROK(Some(au), request) justLayout { implicit stok =>
+        views.html.wiki.wikiLink(WID("User", auth.get.id), wid, formWithErrors, withComment)
+      }),
     {
       case we @ LinkWiki(how, notif, mark, comment) =>
         (for (
-          au <- activeUser;
           hasuwid <- wid.uwid.isDefined orErr "cannot find a uwid";
           uwid <- wid.uwid;
           isMe <- (au.id equals userId) orErr {
@@ -415,7 +438,7 @@ object Wikil extends WikieBase {
             }
           }
         }) getOrElse {
-          error("ERR_CANT_UPDATE_USER " + session.get("email"))
+          verror(s"""ERR_CANT_UPDATE_USER.linkedUser $userId : $wid : ${request.session.get("email")}""")
           unauthorized("Oops - cannot create this link... ")
         }
     })

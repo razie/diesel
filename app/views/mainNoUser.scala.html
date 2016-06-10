@@ -1,9 +1,6 @@
 @** main page without a user
 **@
-@(salutation:String, joe:String)
-
-@htmlHeadBar("", None)
-
+@(salutation:String, joe:String)(implicit stok:controllers.StateOk)
 
 @pic = @{
   // todo not used anymore
@@ -12,14 +9,7 @@
   names(i)
   }
 
-<div class="container">
-    <div class="row">
-      <div class="col-sm-12">
-        @*<h2>@salutation, @joe! <small><a href="@routes.Profile.doeJoin()">not @joe?</a></small></h2>*@
-
         @wiki.wikiFragInt("Admin:page-index", None)
-
-      </div>
 
       @***
       <div class="col-sm-4">
@@ -38,10 +28,5 @@
 
 @wiki.wikiFragInt("Admin:page-index-bottom", None)
 
-    </div>
+@** the div is closed in layout **@
 
-  <hr>
-  @htmlFooter()
-
-</div> <!-- /container -->
-@htmlBottom()

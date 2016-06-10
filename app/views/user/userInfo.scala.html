@@ -1,0 +1,21 @@
+@**
+user info as displayed to public
+**@
+
+@(user:model.User)(implicit stok:controllers.StateOk)
+
+@stok.title("User info for "+user.userName)
+
+User: @user.userName
+
+<a href="@mod.msg.routes.Messaging.doeStartThread("PM", user._id.toString)">Start PM</a>
+
+<hr>
+
+@defining(controllers.UserStuff.findPublicProfile(stok.realm, user.userName)) {w=>
+  @if(w.isEmpty) {
+    No public profile...
+  } else {
+    @wiki.wikiFrag(w.get.wid, stok.au, true, w)
+  }
+}

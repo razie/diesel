@@ -1,7 +1,6 @@
 @**************
-a JS fiddle only, no html/css
+a server JS fiddle only, no html/css
 **************@
-
 @( lang:String,
    content:String,
    user:Option[model.User],
@@ -21,6 +20,8 @@ a JS fiddle only, no html/css
   val x1 = 150//(args.get("height").getOrElse("150")).toInt
   (x1, x1-2)
 }
+
+jsfiddle2
 
 <script>
 var resettabs = function(lid, id) {
@@ -65,11 +66,7 @@ var j_@id  ='@Html(tos(encscr(content)))'
       <pre id="pre_@id" style="display:inline-block; width:90%; height:@{h1._2}px; margin-bottom:0; border:0"><code id="code_@id">@content</code></pre>
     </div>
     </td><td width="30%">
-      @if(_root_.admin.Config.theme.contains("light")) {
-        <iframe id="iframe_@id" name="iframe_@id" style="border:0; width:100%; height:@{h1._1}px;"></iframe>
-      } else {
-        <iframe id="iframe_@id" name="iframe_@id" style="border:0; width:100%; height:@{h1._1}px; background-color:gray;"></iframe>
-      }
+        <iframe id="iframe_@id" name="iframe_@id" style="border:0; width:100%; height:@{h1._1}px; background-color:lightgray;"></iframe>
   </td></tr></table>
 
 <div id="sform_@id">

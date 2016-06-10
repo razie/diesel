@@ -1,15 +1,14 @@
 @**************
-render a regular wiki page - site pages are rendered with wikiSite.scala.html
+eh
 **************@
-@(wid:razie.wiki.model.WID, iname:Option[String], page:Option[razie.wiki.model.WikiEntry], canEdit:Boolean, print:Boolean=false)(implicit au:Option[model.User], request:Request[_])
+@(wid:razie.wiki.model.WID, iname:Option[String], page:Option[razie.wiki.model.WikiEntry], canEdit:Boolean, print:Boolean=false)(implicit stok: controllers.StateOk)
 
 @label()=@{ page.map(_.label).getOrElse(razie.wiki.model.Wikis(wid.getRealm).label(wid)) }
-@web()=@{model.Website.get}
 
 <div class="container">
   <div class="row">
 
-    @if(model.Website.get.divMain == "9") {
+    @if(stok.website.divMain == "9") {
       <div class="col-sm-9">
       } else {
       <div class="col-sm-12">
@@ -17,11 +16,11 @@ render a regular wiki page - site pages are rendered with wikiSite.scala.html
 
      @wiki.layout.draft(page)
 
-     @wiki.wikiFrag(wid,au,false,page, iname, false, true, canEdit)
+     @wiki.wikiFrag(wid, stok.au,false,page, iname, false, true, canEdit)
 
       @if(page.isDefined && !print) {
-        @wiki.wikiAddMore(wid, page, au)
-        @wiki.wikiPageComments(wid, page, au)
+        @wiki.wikiAddMore(wid, page)
+        @wiki.wikiPageComments(wid, page,  stok.au)
       }
 
       <hr>
@@ -29,32 +28,32 @@ render a regular wiki page - site pages are rendered with wikiSite.scala.html
     </div> <!-- /col-sm-9 -->
 
     @* is there room for the right stuff **@
-    @if(model.Website.get.divMain == "9" && !print) {
+    @if(stok.website.divMain == "9") {
       <div class="col-sm-3">
-        @web().rightTop.map { rt =>
-          @wiki.wikiFrag(rt, au, simple = true)
+        @stok.website.rightTop.map { rt =>
+          @wiki.wikiFrag(rt, stok.au, simple = true)
         }
 
-        @if(web().adsAtBottom) {
+        @if(stok.website.adsAtBottom) {
           @addRight()
         }
 
-        @web().rightBottom.map { rt =>
-          @wiki.wikiFrag(rt, au, simple = true)
+        @stok.website.rightBottom.map { rt =>
+          @wiki.wikiFrag(rt, stok.au, simple = true)
         }
-
       </div>
     }
 
   </div> <!-- row -->
       @if(!print) {
-          @htmlFooter(ads = model.Website.get.adsAtBottom &&
-              !page.exists(_.contentTags.contains("noAds")) &&
+          @htmlFooter(ads = stok.website.adsAtBottom &&
+              ( stok.au.isEmpty || stok.website.adsForUsers) &&
+              !page.exists(_.contentProps.contains("noAds")) &&
                   !page.exists(_.content.matches( """(?s).*\{\{ad[:}].*\{\{ad[:}].*""")) &&
-                  !au.exists(_.isUnder13),
+                  ! stok.au.exists(_.isUnder13),
               false,
               wid.getRealm,
-              Some(request))
+              stok.request)
       }
   </div> <!-- /container -->
 

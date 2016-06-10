@@ -1,10 +1,10 @@
 @******
 manage the volunteer hours by club admin
 ******@
-@(user:model.User, rks:List[(model.RacerKid, model.RacerKidAssoc)], regs:List[model.Reg])
+@(clubName:String, rks:List[(model.RacerKid, model.RacerKidAssoc)], regs:List[model.Reg])(implicit stok:controllers.StateOk)
 @import model.RK._
 
-@htmlHeadBar("Volunteer hours for " + user.userName, Option(user))
+@stok.title("Volunteer hours for " + clubName)
 
 @allVols=@{
     razie.db.RMany[model.VolunteerH]().filter(x=>rks.exists(_._2._id == x.rkaId)).size
@@ -30,26 +30,20 @@ manage the volunteer hours by club admin
 @mnglink(row:Map[String,String],k:String,v:String)={
   @k match {
         case "button" => {
-      <a href="@routes.Club.doeVolAdd(v)" class="btn btn-xs">Add...</a>
+      <a href="@routes.Club.doeVolAdd(clubName, v)" class="btn btn-xs">Add...</a>
       }
     case _ => { @v }
   }
 }
 
-<div class="container">
-<div class="row">
-@views.html.user.leftmenu(15, user)
+<h2>Volunteer hours for @clubName</h2>
 
-<div class="col-sm-9">
-
-<h2>Kidz and member info from all over the place @user.firstName</h2>
-
-@model.RacerKidz.checkMyself(user._id)
+@model.RacerKidz.checkMyself(stok.au.get._id)
 <br>
 <p>Some records are created by their parents (see the "Source"). For those that did not register online, you can create records here, for team management etc.
 
 @defining(pendingVols) { pv=>
-    <p>Stats: <b>@pv._1</b> pending submissions:
+    <p>Stats: <b>@pv._1</b> pending submissions for these approvers:
         <ul>
     @pv._2.map{l=>
             <li>@l._2.size  @l._1</li>
@@ -67,9 +61,9 @@ manage the volunteer hours by club admin
                 "button"->"Add more"), Some(mnglink))
 
 Add a:
-<a href="@routes.Kidz.doeKid(user._id.toString, "11", ROLE_RACER, "-", "clubkidz")" class="btn btn-xs btn-info">@ROLE_RACER</a>
-<a href="@routes.Kidz.doeKid(user._id.toString, "11", ROLE_SPOUSE, "-", "clubkidz")" class="btn btn-xs btn-info">@ROLE_SPOUSE</a>
-<a href="@routes.Kidz.doeKid(user._id.toString, "11", ROLE_MEMBER, "-", "clubkidz")" class="btn btn-xs btn-info">@ROLE_MEMBER</a>
+<a href="@routes.Kidz.doeKid(stok.au.get._id.toString, "11", ROLE_RACER, "-", "clubkidz:"+clubName)" class="btn btn-xs btn-info">@ROLE_RACER</a>
+<a href="@routes.Kidz.doeKid(stok.au.get._id.toString, "11", ROLE_SPOUSE, "-", "clubkidz:"+clubName)" class="btn btn-xs btn-info">@ROLE_SPOUSE</a>
+<a href="@routes.Kidz.doeKid(stok.au.get._id.toString, "11", ROLE_MEMBER, "-", "clubkidz:"+clubName)" class="btn btn-xs btn-info">@ROLE_MEMBER</a>
 
 <hr>
 Source is
@@ -79,10 +73,4 @@ Source is
 <li>Parent - record was created here... we are the "parent"
 </ul>
 <hr>
-</div>
-</div>
-  <hr>
-  @htmlFooter(ads=true)
-</div> <!-- /container -->
 
-@htmlBottom()

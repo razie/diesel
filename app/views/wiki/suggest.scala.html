@@ -1,12 +1,9 @@
-@(sForm:Form[_], v2:Int, page:String, au:Option[model.User])
+@(sForm:Form[_], page:String, au:Option[model.User])(implicit request:Request[_])
 @import helper.twitterBootstrap._
+@import play.api.Play.current
+@import play.api.i18n.Messages.Implicits._
 
 @htmlHeadBar("Suggest something", au)
-
-@divi() = @{
-  val x = (math.random * (v2-3)).toInt
-  s"$x + ${v2-x}"
-}
 
 <div class="container">
       <div class="row">
@@ -32,29 +29,23 @@
   @helper.inputText(
     sForm("desc"),
     '_label -> "Description",
-    'class -> "col-sm-6",
     '_showConstraints -> false)
 
   @helper.textarea(
     sForm("details"),
     '_label -> "Details",
     '_showConstraints -> false,
-    'class -> "col-sm-6",
     'rows->15)
 
-@if(au.isDefined) {
-  <input type="hidden" name="v1" value="@sForm("v2").value" />
-} else {
-  <div class="well">
-  Help weed out some spam - please answer this question...
-    @helper.inputText(
-      sForm("v1"),
-      '_label -> ("Result of " + divi() + " = "),
-      '_showConstraints -> false)
-  </div>
-}
+<script>
+  $("textarea, input").addClass("form-control");
+</script>
 
-  <input type="hidden" name="v2" value="@sForm("v2").value" />
+  @if(au.isDefined) {
+    <input type="hidden" name="g-recaptcha-response" />
+  } else {
+    @util.recaptcha()
+  }
 
   <button type="submit" class="btn btn-primary">Submit!</button>
 
@@ -70,8 +61,9 @@
 
   <hr>
 
-  @htmlFooter()
+  @htmlFooter()(new StateOk(Seq(), "", au, Some(request)))
 
   </div> <!-- /container -->
 
-@htmlBottom()
+@htmlBottom()(new StateOk(Seq(), "", au, Some(request)))
+

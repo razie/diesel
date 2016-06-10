@@ -1,18 +1,14 @@
 @****************
 select module to add to reactor
 ****************@
-@(realm:String, au:Option[model.User])
+@(realm:String)(implicit stok:controllers.StateOk)
 @import model._
 @import razie.wiki.model.WID
 
-@htmlHeadBar("Select mod for reactor", au)
+@stok.title("Select mod for reactor")
 
 @CAT()=@{"ReactorModule"}
 @CATINST()=@{"ReactorMod"}
-
-<div class="container">
-    <div class="row">
-        <div class="col-sm-9">
 
             <h3>Select mod to add</h3>
             <hr>
@@ -26,28 +22,13 @@ select module to add to reactor
                <a href="@routes.Realm.addMod2(we.wid.wpath, realm)" style="text-decoration:none">
                    <div class="alert alert-cool">
                        <h2><span style="color:#FF7519">@we.label</span>
-                       @we.contentTags.get("title").map{t=><small>| @t</small>}
+                       @we.contentProps.get("title").map{t=><small>| @t</small>}
                        </h2>
-                       <p>@we.contentTags.getOrElse("description", "Needs description>")</p>
+                       <p>@we.contentProps.getOrElse("description", "Needs description>")</p>
                    </div>
                </a>
            }
            }
 
             <hr>
-            @htmlFooter(ads = true)
-
-        </div> <!-- /col-sm-9 -->
-
-        <div class="col-sm-3">
-            @wiki.wikiFrag(WID("Admin","Right"),au,true)
-
-            @addRight()
-        </div>
-
-    </div> <!-- row -->
-</div> <!-- /container -->
-
-@htmlBottom()
-
 

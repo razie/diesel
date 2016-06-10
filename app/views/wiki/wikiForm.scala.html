@@ -5,9 +5,9 @@ special handlng of forms
 @import razie.wiki.model.WID
 @import model.User
 
-@label()=@{ page.flatMap(_.contentTags.get("label")).orElse(page.map(_.label)).getOrElse(razie.wiki.model.Wikis(wid.getRealm).label(wid)) }
+@label()=@{ page.flatMap(_.contentProps.get("label")).orElse(page.map(_.label)).getOrElse(razie.wiki.model.Wikis(wid.getRealm).label(wid)) }
 
-@htmlHead(page.flatMap(_.contentTags.get("title")).getOrElse(wid.cat +": "+ page.map(_.label).getOrElse(razie.wiki.model.Wikis.label(wid))))(Map.empty, stok.au, stok.request)
+@htmlHead(page.flatMap(_.contentProps.get("title")).getOrElse(wid.cat +": "+ page.map(_.label).getOrElse(razie.wiki.model.Wikis.label(wid))))(Map.empty, stok.au, stok.request)
 
 @if(!print) {@navbar(stok.au, wid.getRealm)(stok.au,stok.request)}
 
@@ -56,14 +56,13 @@ special handlng of forms
 <form action="/doe/form/submit/@wid.wpath" method="POST">
 
 @wiki.wikiFormInt(wid, iname, page, au, errors, canEdit, print)
-
 <hr>
 
 @*********
 for registration sequences - show prev/next
 *********@
 @regs=@{
-  val clubs = au.toList.flatMap(_.wikis).filter(_.uwid.cat=="Club").flatMap(w=>model.Users.findUserByUsername(w.uwid.nameOrId).toList)
+  val clubs = au.toList.flatMap(_.wikis).filter(_.uwid.cat=="Club").map(_.uwid.nameOrId)
   clubs.flatMap(c=>model.Regs.findClubUser(c, au.get._id)).filter(_.wids.contains(wid))
 }
 
@@ -107,7 +106,7 @@ for registration sequences - show prev/next
       </div>
 
 @if(!print) {
-      @wiki.wikiAddMore(wid, page, au)(stok.au, stok.request.get)
+      @wiki.wikiAddMore(wid, page)
 
       @wiki.wikiPageComments(wid, page, au)
 
@@ -127,4 +126,7 @@ for registration sequences - show prev/next
   </div> <!-- row -->
 </div> <!-- /container -->
 
-@htmlBottom()
+@if(!print) {
+  @htmlBottom()
+}
+

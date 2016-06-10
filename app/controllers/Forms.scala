@@ -205,7 +205,7 @@ object Forms extends WikiBase with Logging {
               // render erors
               clog << "Wiki.FORM.Errors: " + errors.toString
               cout << "new content:" + newVer.content
-              newVer.preprocessed
+              newVer.preprocess(Some(au))
               Wiki.showForm(wid, None, Some(newVer), Some(au), false, Map() ++ errors, can)(Some(au), request)
             } else {
               // save the wiki page?
@@ -306,7 +306,7 @@ object Forms extends WikiBase with Logging {
             // render erors
             clog << "Wiki.FORM.Errors: " + errors.toString
             cout << "new content:" + newVer.content
-            newVer.preprocessed
+            newVer.preprocess(Some(au))
             Wiki.showForm(wid, None, Some(newVer), Some(au), false, Map() ++ errors, can)(Some(au), request)
           } else {
             var we = newVer
@@ -359,7 +359,7 @@ object Forms extends WikiBase with Logging {
               // render erors
               clog << "Wiki.FORM.Errors: " + errors.toString
               cout << "new content:" + newVer.content
-              newVer.preprocessed
+              newVer.preprocess(Some(au))
               Wiki.showForm(wid, None, Some(newVer), Some(au), false, Map() ++ errors, can)(Some(au), request)
             } else {
               var we = newVer

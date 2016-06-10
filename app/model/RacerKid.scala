@@ -5,13 +5,67 @@ import org.joda.time.DateTime
 import com.mongodb.casbah.Imports._
 import admin.Config
 import controllers.Club
-import razie.db.REntity
-import razie.db.RMany
-import razie.db.ROne
-import razie.db.RTable
-import razie.wiki.model.WID
+import razie.db._
+import razie.wiki.model.{WikiEntry, UWID, WID}
 import razie.|>._
 import razie.wiki.Sec._
+
+/** a feed element */
+trait TFeedItem {
+  def authorId: Option[ObjectId] // who created this
+  def eId: ObjectId              // the object this points to
+  def kind:String                // the type of object this points to
+  def role:String                // the role this element plays
+  def ctx:String                 // the context at the time
+  def crDtm: DateTime
+}
+
+/** a feed of items.
+  *
+  * A feed belongs to a source or a user.
+  * */
+class Feed(
+  val parentId:ObjectId, // user or RK or parentWID
+  val name:String,       // if given, this is role as well, distinguish between user's feeds
+  val kind:String,       // the type of object this points to
+  val role:String,       // the role this element plays
+  val source: FeedSource
+) {
+  def items : List[TFeedItem] = source.items
+}
+
+trait FeedSource {
+  def items : List[TFeedItem] // make stream
+}
+
+class FeedSourceQuery (kind:String, criteria:Map[String,String]) extends FeedSource {
+  def items : List[TFeedItem] = {
+//    def history = RMany[RkHistory]("rkId" -> _id).toList.sortWith((a,b)=>a.crDtm.compareTo(b.crDtm) >= 0)
+    List.empty
+  }
+}
+
+class FeedSourceList (val litems : List[TFeedItem]) extends FeedSource {
+  def items : List[TFeedItem] = litems
+}
+
+class FeedSourceAggregation (sources:List[FeedSource]) extends FeedSource {
+  def items : List[TFeedItem] = {
+    sources.flatMap(_.items).sortWith((a, b) => a.crDtm.compareTo(b.crDtm) >= 0)
+  }
+}
+
+/** a history element */
+case class RkHistory (
+  rkId: ObjectId, // the kid this belongs to
+  authorId: Option[ObjectId], // who created this
+  eId: ObjectId,   // the object this points to
+  kind:String,    // the type of object this points to
+  role:String,    // the role this element plays
+  ctx:String, // the context at the time
+  crDtm: DateTime = DateTime.now,
+  _id: ObjectId = new ObjectId()) extends REntity[RkHistory] with TFeedItem {
+}
 
 /** a user that may or may not have an account - or user group */
 trait TRacerKidInfo {
@@ -29,6 +83,47 @@ trait TRacerKidInfo {
   def ename = if (firstName != null && firstName.size > 0) firstName else email.dec.replaceAll("@.*", "")
   def fullName = firstName + " " + lastName
   def role = roles.head
+}
+
+case class RKidHistoryFeed (
+  rkId:ObjectId // user or RK or parentWID
+  ) extends Feed(rkId, "History", "History", "History", new KidHistorySource(rkId)) {
+
+  def post(we:WikiEntry, au:User) = {
+    val h = RkHistory(
+      rkId,
+      Some(au._id),
+      we._id,
+      we.category,
+      "post",
+      ""
+    )
+    h.create
+  }
+
+  def add(h:RkHistory) = {
+    h.create
+    // todo update no unread
+  }
+
+  def findByElement(eid:String) = {
+    RMany[RkHistory]("rkId" -> rkId, "eId" -> new ObjectId(eid)).toList
+  }
+
+  def delete(h:RkHistory) = {
+    h.delete
+  }
+
+}
+
+/** a feed of items.
+  *
+  * A feed belongs to a source or a user.
+  * */
+class KidHistorySource (
+  rkId:ObjectId // user or RK or parentWID
+  ) extends FeedSource {
+  override def items = RMany[RkHistory]("rkId" -> rkId).toList.sortWith((a,b)=>a.crDtm.compareTo(b.crDtm) >= 0).toList
 }
 
 /** a user that may or may not have an account - or user group */
@@ -90,6 +185,15 @@ case class RacerKid(
 
   //TODO unique
   lazy val all:List[RacerKid] = (this :: RMany[RacerKid]("newRkId"->_id).toList ::: oldRkId.toList.flatMap(_.as[RacerKid].toList))
+
+  def history = new RKidHistoryFeed(_id)
+
+  // all teams in Club, that I'm in role
+  def teams (club:Club, role:String) =
+    model.RacerKidz.findWikiAssocById(_id.toString, club.curYear, "Team").filter(t=> role.isEmpty || t.role == role)
+
+  def rka = RMany[RacerKidAssoc]("to" -> _id)
+  def clubs = rka.toList.flatMap(rka=> ROne[Club]("userId" -> rka.from).filter(_.curYear == rka.year).toList).distinct
 }
 
 /**
@@ -121,6 +225,20 @@ case class RacerKidAssoc(
 
   def user = from.as[User]
   def rk = to.as[RacerKid]
+  def club = from.as[User] map Club.apply // for now using
+}
+
+/** relationships between RK from -Parent-> to */
+@RTable
+case class RacerKidWikiAssoc(
+  rkId: ObjectId, // from
+  uwid: UWID, // to
+  year: String, // relevant for club memberships only
+  role: String, // role of "to" in the association: Racer, Coach, Parent, Spouse
+  crDtm: DateTime = DateTime.now,
+  _id: ObjectId = new ObjectId()) extends REntity[RacerKidWikiAssoc] {
+
+  def rk = rkId.as[RacerKid]
 }
 
 /** volunteer hours */
@@ -157,10 +275,11 @@ object RK {
   final val ROLE_COACH = "Coach"
   final val ROLE_VOLUNTEER = "Volunteer"
   final val ROLE_MEMBER = "Member"
+  final val ROLE_GUEST = "Guest"
   final val ROLE_FAN = "Fan" // for former members and others
 
-  final val RELATIONSHIPS = Array(ROLE_KID, ROLE_SPOUSE, ROLE_PARENT, ROLE_MEMBER)
-  final val ROLES = Array(ROLE_RACER, ROLE_COACH, ROLE_MEMBER, ROLE_FAN)
+  final val RELATIONSHIPS = Array(ROLE_GUEST, ROLE_KID, ROLE_SPOUSE, ROLE_PARENT, ROLE_MEMBER)
+  final val ROLES = Array(ROLE_RACER, ROLE_COACH, ROLE_GUEST, ROLE_MEMBER, ROLE_FAN)
 
   final val KIND_NORMAL = "Norm"
   final val KIND_MYSELF = "Myself"
@@ -185,9 +304,19 @@ object RK {
 /** racer kid info utilities */
 object RacerKidz {
   def findById(rkId: ObjectId) = ROne[RacerKid]("_id" -> rkId)
+  def findByIdAndRole(rkId: ObjectId, role:String) = ROne[RacerKid]("_id" -> rkId)
   def findByIds(rkId: String) = ROne[RacerKid]("_id" -> new ObjectId(rkId))
 
   def findAssocById(rkaId: String) = ROne[RacerKidAssoc]("_id" -> new ObjectId(rkaId))
+
+  def findWikiAssocs(year:String, uwid:UWID) =
+    RMany[RacerKidWikiAssoc]("year"->year, "uwid.cat"->uwid.cat, "uwid.id"->uwid.id)
+
+  def findWikiAssocs(year:String, cat:String) =
+    RMany[RacerKidWikiAssoc]("year"->year, "uwid.cat"->cat)
+
+  def findWikiAssocById(rkId: String, year:String, cat:String) =
+    RMany[RacerKidWikiAssoc]("rkId" -> new ObjectId(rkId), "year"->year, "uwid.cat"->cat)
 
   def findByParentUser(id: ObjectId) = {
     val mine = RMany[RacerKidAssoc]("from" -> id, "assoc" -> RK.ASSOC_PARENT) map (_.to) flatMap (findById)
@@ -203,19 +332,8 @@ object RacerKidz {
     mine //::: fromOthers
   }
 
-  /** find all RK associated to user */
   def findForUser(id: ObjectId) =
     findAssocForUser(id) map (_.to) flatMap (findById)
-
-  def findAssocByClub(club: Club) = {
-    RMany[RacerKidAssoc]("from" -> club.userId, "year" -> club.curYear) //, "what" -> RK.ASSOC_REGD)
-  }
-
-  def findByClub(club: Club) = {
-    val mine = findAssocByClub(club) map (_.to) flatMap (findById)
-    //    val fromOthers = RMany[RacerKid]("userId" -> id) flatMap (x=> RMany[RacerKidAssoc]("from" -> x._id, "what" -> RK.ASSOC_PARENT)) map (_.to) flatMap (findById)
-    mine //::: fromOthers
-  }
 
   def myself(userId: ObjectId) = {
     // TODO creating the RK for myself

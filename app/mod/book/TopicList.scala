@@ -155,7 +155,7 @@ case class TopicList (
       case (TLTopic(t), _, path) => {
         if(p.isEmpty || p.exists(p=> p.hasCollectables(t))) {
           res appendAll t.page.toList.flatMap{page=>
-            page.preprocessed;
+            page.preprocessed; // todo needs au
             val x = page.sections.filter{s=>
               cond(page, s)
             }

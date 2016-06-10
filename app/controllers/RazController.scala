@@ -5,18 +5,21 @@ import com.mongodb.WriteResult
 import model._
 import play.api.data.validation.{Constraint, Invalid, Valid, ValidationError}
 import play.api.mvc._
-import play.api.templates.Html
+import play.twirl.api.Html
 import razie.{cdebug, Logging}
 import razie.wiki.model.{Reactors, Wikis, WikiUser, WID}
 import razie.wiki.util.IgnoreErrors
 import razie.wiki.util.VErrors
 import razie.wiki.Services
-import razie.wiki.admin.Audit
+import razie.wiki.admin.{WikiEvent, Audit}
+import views.RazRequest
 
 import scala.collection.mutable
 
 /** common razie controller utilities */
 class RazController extends RazControllerBase with Logging {
+
+  implicit def razRequest (implicit request:Request[_]) = new RazRequest(request)
 
   def SUPPORT = Config.SUPPORT
 
@@ -24,16 +27,23 @@ class RazController extends RazControllerBase with Logging {
 
   override def error (message: => String) = Audit.logdb("ERR_?", message)
 
+  def error (code:String, message: => String) (implicit errCollector: VErrors = IgnoreErrors) =
+    Audit.logdb(code, message + " : " + errCollector.mkString)
+
+  def verror (message: => String) (implicit errCollector: VErrors = IgnoreErrors) =
+    Audit.logdb("ERR_?", message + " : " + errCollector.mkString)
+
   def dbop(r: WriteResult) = {}//log("DB_RESULT: " + r.getError)
 
   /** clean the cache for current user - probably a profile change */
   def cleanAuth (u: Option[User] = None)(implicit request: Request[_]) {
-    RazAuthService.cleanAuth(u)(request)
+    Services ! WikiEvent("AUTH_CLEAN", "User", u.map(_._id).mkString)
+    Services.auth.cleanAuth(u)(request)
   }
 
   /** authentication - find the user currently logged in */
   def auth(implicit request: Request[_]): Option[User] = {
-    val au = RazAuthService.authUser (request)
+    val au = Services.auth.authUser (request).asInstanceOf[Option[User]]
     au
   }
 
@@ -43,7 +53,7 @@ class RazController extends RazControllerBase with Logging {
     (au flatMap checkActive) map (_ => au.get)
   }
 
-  def checkActive(au: User)(implicit errCollector: VErrors = IgnoreErrors) =
+  def checkActive(au: WikiUser)(implicit errCollector: VErrors = IgnoreErrors) =
     toON2(au.isActive) orCorr (
       if (au.userName == "HarryPotter")
         cDemoAccount
@@ -95,6 +105,9 @@ If you got this message in error, please describe the issue in a <a href="/doe/s
   def unauthorized(more: String = "", shouldAudit:Boolean=true)(implicit request: Request[_], errCollector: VErrors = IgnoreErrors) = {
     if(shouldAudit)
       Services.audit.unauthorized("BY %s - Info: %s HEADERS: %s".format((auth.map(_.userName).getOrElse("")), more + " " + errCollector.mkString, request.headers))
+    else
+      log("UNAUTHORIED: BY %s - Info: %s HEADERS: %s".format((auth.map(_.userName).getOrElse("")), more + " " + errCollector.mkString, request.headers))
+
     Unauthorized(views.html.util.utilMsg(
       more,
       s"""
@@ -109,15 +122,15 @@ ${errCollector.mkString}
     Ok(views.html.util.utilErr(msg, controllers.Wiki.w(wid), auth))
   }
 
-  def Msg(msg: String, wid: WID, u: Option[User] = None)(implicit request: Request[_]): play.api.mvc.SimpleResult = {
+  def Msg(msg: String, wid: WID, u: Option[User] = None)(implicit request: Request[_]): play.api.mvc.Result = {
     Msg2(msg, Some(controllers.Wiki.w(wid, false)), if (u.isDefined) u else auth)(request)
   }
 
-  def Msg2(msg: String)(implicit request: Request[_]): play.api.mvc.SimpleResult = {
+  def Msg2(msg: String)(implicit request: Request[_]): play.api.mvc.Result = {
     Ok(views.html.util.utilMsg(msg, "", None, auth))
   }
 
-  def Msg2C(msg: String, page: Option[Call], u: Option[User] = None)(implicit request: Request[_]): play.api.mvc.SimpleResult = {
+  def Msg2C(msg: String, page: Option[Call], u: Option[User] = None)(implicit request: Request[_]): play.api.mvc.Result = {
     Ok(views.html.util.utilMsg(msg, "", page.map(_.toString), if (u.isDefined) u else auth))
   }
 
@@ -130,7 +143,7 @@ ${errCollector.mkString}
   def clientIp(implicit request: Request[_]) =
     request.headers.get("X-Forwarded-For").getOrElse(request.headers.get("RemoteIP").getOrElse("x.x.x.x"))
 
-  protected def forActiveUser[T](body: User => SimpleResult)(implicit request: Request[_]) = {
+  protected def forActiveUser[T](body: User => Result)(implicit request: Request[_]) = {
     implicit val errCollector = new VErrors()
     (for (
       au <- auth;
@@ -138,14 +151,14 @@ ${errCollector.mkString}
     ) yield body(au)) getOrElse unauthorized("Can't... (not an active user)")
   }
 
-  protected def forUser[T](body: User => SimpleResult)(implicit request: Request[_]) = {
+  protected def forUser[T](body: User => Result)(implicit request: Request[_]) = {
     (for (
       au <- auth
     ) yield body(au)) getOrElse unauthorized("Oops - how did you get here? [no user]")
   }
 
   /** action builder that decomposes the request, extracting user and creating a simple error buffer */
-  def FAU(f: User => VErrors => Request[AnyContent] => SimpleResult) = Action { implicit request =>
+  def FAU(f: User => VErrors => Request[AnyContent] => Result) = Action { implicit request =>
     implicit val errCollector = new VErrors()
     (for (
       au <- activeUser;
@@ -153,11 +166,11 @@ ${errCollector.mkString}
     ) yield f(au)(errCollector)(request)
       ) getOrElse {
       val more = Website(request).flatMap(_.prop("msg.noPerm")).flatMap(WID.fromPath).flatMap(_.content).mkString
-      unauthorized("OOPS "+more)
+      unauthorized("OOPS "+more, !isFromRobot)
     }
   }
 
-  def FAU(msg:String)(f: User => VErrors => Request[AnyContent] => Option[SimpleResult]) = Action { implicit request =>
+  def FAU(msg:String)(f: User => VErrors => Request[AnyContent] => Option[Result]) = Action { implicit request =>
     implicit val errCollector = new VErrors()
     (for (
       au <- activeUser;
@@ -169,7 +182,7 @@ ${errCollector.mkString}
     }
     ).flatten getOrElse {
       val more = Website(request).flatMap(_.prop("msg.noPerm")).flatMap(WID.fromPath).flatMap(_.content).mkString
-      unauthorized("OOPS "+msg+more)
+      unauthorized("OOPS "+msg+more, !isFromRobot)
     }
   }
 
@@ -190,6 +203,10 @@ ${errCollector.mkString}
       new StateOk(Seq(), Website.realm, Some(au), Some(request))
     def apply (au: Option[model.User], request: Request[_]) =
       new StateOk(Seq(), Website.realm(request), au, Some(request))
+    def s (implicit au: model.User, request: Request[_]) =
+      new StateOk(Seq(), Website.realm, Some(au), Some(request))
+    def r (implicit request: Request[_]) =
+      new StateOk(Seq(), Website.realm, auth, Some(request))
   }
 }
 
@@ -197,13 +214,37 @@ ${errCollector.mkString}
 class StateOk(val msg: Seq[(String, String)], val realm:String, val au: Option[model.User], val request: Option[Request[_]]) {
   var _title : String = "" // this is set by the body as it builds itself and used by the header, heh
   val _metas = new mutable.HashMap[String,String]() // moremetas
+  var _css : Option[String] = None // if you determine you want a different CSS
 
   /** set the title of this page */
   def title(s:String) = {this._title = s; ""}
 
+  /** set the title of this page */
+  def css(s:String) = {this._css = Some(s); ""}
+  def maybeCss(s:Option[String]) = {this._css = s; ""}
+  def css = {
+    val ret = _css.getOrElse {
+      // session settings override everything
+      request.flatMap(_.session.get("css")) orElse (
+        // then user
+        au.flatMap(_.css)
+        ) orElse (
+        // or website settings
+        request.flatMap(r=> Website(r)).flatMap(_.css)
+        ) getOrElse ("light")
+    }
+
+    if(ret == null || ret.length <=0) "light" else ret
+  }
+  def isLight = css contains "light"
+
   /** add a meta to this page's header */
   def meta(name:String, content:String) = {this._metas.put(name, content); ""}
   def metas = _metas.toMap
+
+  def reactorLayout12 (content: StateOk => Html) = {
+    RkViewService.Ok (views.html.util.reactorLayout12(content(this), msg)(this))
+  }
 
   def apply (content: StateOk => Html) = {
     RkViewService.Ok (views.html.util.reactorLayout(content(this), msg)(this))
@@ -217,6 +258,10 @@ class StateOk(val msg: Seq[(String, String)], val realm:String, val au: Option[m
     RkViewService.NotFound (views.html.util.reactorLayout(content(this), msg)(this))
   }
 
+  def badRequest (content: StateOk => Html) = {
+    RkViewService.BadRequest (views.html.util.reactorLayout(content(this), msg)(this))
+  }
+
   def noLayout (content: StateOk => Html) = {
     RkViewService.Ok (content(this))
   }
@@ -225,6 +270,6 @@ class StateOk(val msg: Seq[(String, String)], val realm:String, val au: Option[m
 }
 
 object RkViewService extends RazController with ViewService {
-  def utilMsg (msg:String, details:String, link:Option[String], user:Option[WikiUser], linkNO:Option[(String,String)]=None)(implicit request: Request[_]): play.api.mvc.SimpleResult =
+  def utilMsg (msg:String, details:String, link:Option[String], user:Option[WikiUser], linkNO:Option[(String,String)]=None)(implicit request: Request[_]): play.api.mvc.Result =
     Ok(views.html.util.utilMsg(msg, details, link, user.map(_.asInstanceOf[User]) orElse auth, linkNO))
 }

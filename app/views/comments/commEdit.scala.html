@@ -1,14 +1,12 @@
-@(wid:razie.wiki.model.WID, cid:String, kind:String, myForm:Form[_], au:Option[model.User])
+@(pid:String, role:String, cid:String, kind:String, myForm:Form[_])(implicit stok:controllers.StateOk)
 
-@htmlHeadBar("Editing comment", au)
-
-<div class="container">
-  <div class="row">
-    <div class="col-sm-9">
+@stok.title("Editing comment")
 
 @import helper.twitterBootstrap._
+@import play.api.Play.current
+@import play.api.i18n.Messages.Implicits._
 
-@helper.form(action=routes.Comment.save(wid, cid, kind), 'class->"well form-inline") {
+@helper.form(action=routes.Comment.save(pid, role, cid, kind), 'class->"well form-inline") {
 
   @if(Array("video","photo","slideshow").contains(kind)) {
 
@@ -39,7 +37,7 @@
       myForm("content"),
       '_label -> "Edit comment",
       '_showConstraints -> false,
-      'class -> "col-sm-6",
+      'class -> "col-sm-12",
       'rows-> 15)
   }
 
@@ -71,17 +69,4 @@ You cannot share photos from facebook unfortunately, they don't allow that.
 
 }
 
-    <hr>
-    @htmlFooter(ads=true)
 
-  </div> <!-- /col-sm-9 -->
-
-  <div class="col-sm-3">
-    @wiki.wikiFrag(razie.wiki.model.WID("Admin","Right"),au,true)
-    @addRight()
-  </div>
-
-  </div> <!-- row -->
-</div> <!-- /container -->
-
-@htmlBottom()

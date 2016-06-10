@@ -1,5 +1,5 @@
 @**************
-a JS with HTML and CSS fiddle
+an inline JS with HTML and CSS fiddle
 **************@
 @(name:String,
    args:Map[String,String],
@@ -54,34 +54,25 @@ var c_@id  ='@Html(tos(content._3))'
 var j_@id  ='@Html(tos(encscr(content._4)))'
 </script>
 
-  <ul class="nav nav-tabs" style="margin-bottom:0">
+  <ul class="nav nav-tabs nav" style="margin-bottom:0;">
     <li id="html_@id" class="active">
-    <a  href="javascript:setpill('html_@id', '@id', h_@id)">HTML</a> </li>
-    <li id="css_@id" > <a href="javascript:setpill('css_@id', '@id', c_@id)">CSS</a> </li>
-    <li id="js_@id" > <a href="javascript:setpill('js_@id', '@id', decscr(j_@id))">JS</a> </li>
-    <li id="run_@id" > <a title="Works only on Chrome and Firefox" href="javascript:runpill_@{id}('@{id}')">Run &raquo;</a> </li>
-    <li id="play_@id" > <a href="javascript:playpill_@{id}('@{id}')">Play...</a> </li>
+    <a  href="javascript:setpill('html_@id', '@id', h_@id)"><small>HTML</small></a> </li>
+    <li id="css_@id" > <a href="javascript:setpill('css_@id', '@id', c_@id)"><small>CSS</small></a> </li>
+    <li id="js_@id" > <a href="javascript:setpill('js_@id', '@id', decscr(j_@id))"><small>JS</small></a> </li>
+    <li id="run_@id" > <a title="Works only on Chrome and Firefox" href="javascript:runpill_@{id}('@{id}')"><small>Run &raquo;</small></a> </li>
+    <li id="play_@id" > <a href="javascript:playpill_@{id}('@{id}')"><small>Play...</small></a> </li>
   </ul>
 
   <table style="width:100%">
-    <tr><td width="50%">
-    <div style="display:inline-block; width:100%; height:@{h1._1}px; overflow-y:auto;">
-      <pre id="pre_@id" style="display:inline-block; width:90%; height:@{h1._2}px; margin-bottom:0; border:0;"><code id="code_@id">@content._2</code></pre>
+    <tr><td width="60%">
+    <div style="display:inline-block; width:100%; height:@{h1._1}px; /*overflow-y:auto;*/">
+      <pre id="pre_@id" style="display:inline-block; width:98%; height:@{h1._2}px; margin-bottom:0; border:0;"><code id="code_@id">@content._2</code></pre>
     </div>
     </td>
-      <td width="50%">
-        <iframe id="iframe_@id" name="iframe_@id" style="border:0; width:100%; height:@{h1._1}px; background-color:gray;"></iframe>
-      </td></tr></table>
-
-  @** the stupidest thing on earth **@
-@ifr = {
-  @if(_root_.admin.Config.theme.contains("light")) {
-    <iframe id="iframe_@id" name="iframe_@id" style="border:0; width:100%; height:@{h1._1}px;"></iframe>
-  } else {
-    <iframe id="iframe_@id" name="iframe_@id" style="border:0; width:100%; height:@{h1._1}px; background-color:gray;"></iframe>
-  }
-}
-
+      <td width="40%">
+        <iframe id="iframe_@id" name="iframe_@id" style="border:0; width:100%; height:@{h1._1}px; background-color:lightgray;"></iframe>
+      </td></tr>
+  </table>
 
 <div id="sform_@id">
 <form id="ssform_@id" name="ssform_@id" action="/doe/tma/pbuildhtml" method="post" target="iframe_@id">
@@ -94,6 +85,7 @@ var j_@id  ='@Html(tos(encscr(content._4)))'
 
 <script>
 $('#sform_'+@id).hide();
+$('#iframe_'+@id).contents().find('html').html("<div style='text-align: center;'>Press Run to see results...</div>");
 
 @hh() = @{
   val fromT = args.get("libs").toList.flatMap(_.split(";")) // todo deprecate this

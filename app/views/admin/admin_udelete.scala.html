@@ -1,4 +1,4 @@
-@(user:Option[model.User], admin:Option[model.User])
+@(user:Option[model.User])(implicit stok: controllers.StateOk)
 @import com.mongodb.casbah.Imports._
 
 @pro(p:model.Profile) = {
@@ -13,10 +13,7 @@
 <br>  _id: @p._id
 }
 
-
-@htmlHeadBar("admin user", admin)
-
-<div class="container">
+@stok.title("admin user")
 
   <h2>User</h2>
 
@@ -53,9 +50,4 @@
   <hr>
   <a href="/razadmin/user/@user.get.id/delete2">IF YOU PRESS THIS THE WORLD WILL END! YOU SURE?</a>
 
-  <hr>
-  @htmlFooter()
 
-</div> <!-- /container -->
-
-@htmlBottom()

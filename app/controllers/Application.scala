@@ -7,11 +7,11 @@ import admin.Config
 import model._
 import play.api.mvc.Action
 import play.api.mvc.Request
-import razie.wiki.admin.Audit
+import razie.wiki.admin.{WikiEvent, Audit}
 import razie.wiki.model._
 import razie.db.ROne
 import razie.wiki.util.{PlayTools, IgnoreErrors}
-import razie.wiki.Enc
+import razie.wiki.{Services, Enc}
 import razie.wiki.Sec._
 
 import scala.concurrent.Future
@@ -62,7 +62,8 @@ object Application extends RazController {
     Website.getHost.flatMap(Config.urlfwd(_)).map { host =>
       log ("URL - Redirecting main page from "+Website.getHost + " TO "+host)
       Future.successful(Redirect(host))
-    } orElse Website.getHost.flatMap(Website.apply).flatMap{x=>
+//    } orElse Website.getHost.flatMap(Website.apply).filter(w=> !Reactors.contains(w.reactor)).flatMap {x=>
+    } orElse Website.getHost.flatMap(Website.apply).filter(w=>w.we.exists(_.category == "Site") || w.homePage.exists(_.name != "Home")).flatMap {x=>
       log ("URL - serve Website homePage for "+x.name)
       if(auth.isDefined && x.userHomePage.isDefined) x.userHomePage
       else x.homePage
@@ -71,21 +72,14 @@ object Application extends RazController {
     } getOrElse {
         val r = Wiki.getRealm(Wiki.UNKNOWN)
         log ("URL - show default reactor main "+r)
-        if (r != Reactors.DFLT) Wiki.show(Reactors(r).mainPage(auth), 1).apply(request)
-        else  Future.successful(Application.idoeIndexItem(1))
+//        if (r != Reactors.RK)
+          Wiki.show(Reactors(r).mainPage(auth), 1).apply(request)
+//        else  Future.successful(Application.idoeIndexItem(1))
     } // RK main home screen
     //todo un-hardcode that
   }
 
-  def index = doeIndexItem(1)
-  def index1 = doeIndexItem(1)
-
-  def idoeIndexItem(i: Int)(implicit request: Request[_]) =
-    Ok(views.html.index("", auth, i, session.get("mobile").isDefined))
-
-  def doeIndexItem(i: Int) = Action { implicit request =>
-    idoeIndexItem(i)
-  }
+  def index = root
 
   def skiwho(who: String) = Action { implicit request =>
     Audit.logdb("ADD_SKI", "who: " + who)
@@ -155,15 +149,17 @@ object Application extends RazController {
     Ok(views.html.user.doeSpin(auth))
   }
 
+  import Admin.StokAdmin
+
   def doeSelectTheme = Action { implicit request =>
-    Ok(views.html.user.doeSelectTheme(auth))
+    ROK.r admin {implicit stok=> views.html.user.doeSelectTheme()}
   }
 
   // TODO better mobile display
   def mobile(m: Boolean) = Action { implicit request =>
     Redirect("/").withSession(
-      if (m) session + ("mobile" -> "yes")
-      else session - "mobile")
+      if (m) request.session + ("mobile" -> "yes")
+      else request.session - "mobile")
   }
 
   var razSu = "nothing" // if I su, this is the email of who I su'd as
@@ -177,7 +173,7 @@ object Application extends RazController {
       case "join" => Action { implicit request => Redirect("/doe/join") }
       case "logout" | "signout" => Action { implicit request =>
         val au = auth
-        auth map (_.auditLogout)
+        auth map (_.auditLogout(Website.getRealm))
         cleanAuth(auth)
         if (au.isDefined &&
           System.currentTimeMillis - razSuTime < 15 * 60 * 1000 &&
@@ -186,8 +182,9 @@ object Application extends RazController {
           razSu = "no"
           Audit.logdb("ADMIN_SU_RAZIE", "sure?")
           Redirect("/").withSession(Config.CONNECTED -> Enc.toSession(me))
-        } else
+        } else {
           Redirect("/").withNewSession
+        }
       }
       case _ => { Audit.missingPage(page); TODO }
     }
@@ -200,6 +197,18 @@ object Application extends RazController {
   def hostedAll = Action { implicit request =>
     def link(s: String) = """<a href="/hosted/%s/index.html">%s</a>""".format(s, s)
     Msg2("Assets are: \n" + new File("public/hosted/").list().map(link(_)).mkString("<br>"))
+  }
+
+  import razie.|>
+
+  def listswitch = FAU { implicit au => implicit errCollector => implicit request =>
+    Ok(Reactors.reactors.values.map{r=> r.websiteProps.prop("domain")}.filter(_.isDefined).map(_.get).map(d=>
+      s"""<a href="/doe/www/$d">$d</a><br>""").mkString).as("html")
+  }
+
+  def switch(domain: String) = FAU { implicit au => implicit errCollector => implicit request =>
+    Config.isimulateHost = domain
+    Redirect("/")
   }
 
   // testing specific stuff - needs a code sent over but any user account

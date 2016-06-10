@@ -7,6 +7,10 @@ creates the navigation bar
 
 @web()=@{request.flatMap(x=>model.Website.apply(x)) getOrElse model.Website.dflt}
 
+@css() = @{
+  new controllers.StateOk(Seq(), "", au, request).css
+}
+
 @searchUrl()=@{
    if(Config.isLocalhost) s"http://${Config.hostport}/we/$realm/search"
    else s"/wikie/search"
@@ -41,7 +45,7 @@ creates the navigation bar
       @if(!Config.isLocalhost) {
       @web().navBrand.fold {
       <a class="navbar-brand" style="padding: 8px 20px 5px; margin-left: -20px;" href="@url.getOrElse("http://"+Config.hostport)">
-        <img class="" src="@logo.getOrElse(routes.Assets.at("images/racerKids-small.gif"))" height="32" width="152" alt="RacerKidz logo"/>
+        <img class="" src="@logo.orElse(web().logo).getOrElse(routes.Assets.at("images/racerKids-small.gif"))" height="32" width="152" alt="RacerKidz logo"/>
       </a>
       } {b=>
         @Html(b)
@@ -55,13 +59,7 @@ creates the navigation bar
 
           @if(!isSite) {
             <li class="divider-vertical"></li>
-            @if(web().navBrowse(realm) != "remove") {
-              <li><a href="@web().navBrowse(realm)">Browse</a></li>
-            }
-            @if(web().navNotes != "remove") {
-              <li><a href="@web().navNotes">Notes</a></li>
-            }
-            @web().navMenu.filter(t=> !Array("Browse", "Theme", "Notes").contains(t._1)).map{t=>
+            @web().navMenu.map{t=>
               <li><a href="@t._2">@Html(t._1)</a></li>
             }
           }
@@ -81,26 +79,32 @@ creates the navigation bar
               </a>
               <ul class="dropdown-menu" role="menu">
                 <li><a href="@routes.Profile.doeHelp"><i class="icon-edit"></i> Preferences</a></li>
-                @if(web().navTheme != "remove") {
-                  <li><a href="@web().navTheme">Theme</a></li>
-                }
-                @Wikis(realm).find("Reactor", realm).map { r =>
+                <li><a href="@mod.msg.routes.Messaging.doePM"><i class="icon-edit"></i> Messages</a></li>
                   <li><a href="/wiki/Reactor:@realm"><i class="icon-edit"></i> Admin</a></li>
-                }
+
                 @if(!web().navrMenu.isEmpty) {
                   <li class="divider"></li>
                   @web().navrMenu.map{t=>
                     <li><a href="@t._2">@t._1</a></li>
                   }
                 }
+
+                @if(au.exists(u=> u.hasPerm(model.Perm.codeMaster) || u.isAdmin)) {
+                  <li><a href="/sfiddle/play3/js">SFiddle</a></li>
+                  <li><a href="/sfiddle/playinbrowser/js">JS-Fiddle</a></li>
+                  <li><a href="/sfiddle/playDsl/js">DSL-Fiddle</a></li>
+                  <li><a href="/sfiddle/playDom/x">DOM-Fiddle</a></li>
+                }
+
                 <li class="divider"></li>
+
                 <li><a href="/do/signout"><i class="icon-off"></i> Sign out</a></li>
               </ul>
             </li>
           }
 
           case None => {
-            <li><a href="@web().join">Join</a></li>
+            <li><a href="@web().join">Login</a></li>
           }
         }
       </ul>

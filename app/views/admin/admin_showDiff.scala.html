@@ -1,7 +1,6 @@
 @***
-purge audit tables
 ***@
-@(src:String, dest:String, diff:difflib.Patch, srcWe:razie.wiki.model.WikiEntry, destWe:razie.wiki.model.WikiEntry)(implicit au:Option[model.User])
+@(src:String, dest:String, diff:difflib.Patch, srcWe:razie.wiki.model.WikiEntry, destWe:razie.wiki.model.WikiEntry)(implicit stok: controllers.StateOk)
 @import razie.wiki.model.WID
 
 @wp(wid:WID)=@{
@@ -9,9 +8,7 @@ purge audit tables
   else wid.wpath
 }
 
-@htmlHeadBar("admin showDiff", au)
-
-  <div class="container">
+@stok.title("admin showDiff")
 
     <h2>Diffs</h2>
 
@@ -65,10 +62,4 @@ purge audit tables
 
       <hr>
           @diff.getDeltas.mkString("\n")
-      <hr>
 
-    @htmlFooter()
-
-  </div> <!-- /container -->
-
-  @htmlBottom()

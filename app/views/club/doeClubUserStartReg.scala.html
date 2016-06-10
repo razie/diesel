@@ -1,20 +1,17 @@
 @******
 manage the list of kidz and/or their accounts
 ******@
-@(user: model.User, clubName: String)
+@(clubName: String)(implicit stok:controllers.StateOk)
   @import model.RK._
   @import model.RacerKid
   @import _root_.controllers.Club
 
-  @htmlHeadBar("Start registration for " + user.userName, Some(user))
+  @user=@{stok.au.get}
+  @stok.title("Start registration for " + user.userName)
 
   @prevReg = @{
-    Club(clubName).flatMap(c => model.Regs.findClubUser(c.user, user._id).toList.sortBy(_.year).reverse.headOption)
+    Club(clubName).flatMap(c => model.Regs.findClubUser(c.name, user._id).toList.sortBy(_.year).reverse.headOption)
   }
-
-  <div class="container">
-    <div class="row">
-      <div class="col-sm-9">
 
         @if(!Club(clubName).exists(_.isRegOpen)) {
 
@@ -77,11 +74,5 @@ manage the list of kidz and/or their accounts
               No registration for me!</a>
           </div>
           }
-      <hr>
-      </div>
-      </div>
-      <hr>
-      @htmlFooter(ads = true)
-    </div> <!-- /container -->
+</div>
 
-  @htmlBottom()

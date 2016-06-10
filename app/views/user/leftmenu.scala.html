@@ -16,18 +16,12 @@
     <li class="@active(5)"><a href="@routes.EdEmail.doeProfileEmail"><i class="icon-envelope"></i>Email</a></li>
     <li class="@active(8)"><a href="@routes.Profile.doeProfilePreferences"><i class="icon-cog"></i>Preferences</a></li>
 @if(au.isClub) {
-    <li class="@active(9)"><a href="@routes.Club.doeClubRegSettings"><i class="icon-list"></i>Setup</a></li>
     <hr>
-    <li class="@active(7)"><a href="@routes.Club.doeClubRegs("")"><i class="icon-list"></i>Registrations</a></li>
-    <li class="@active(6)"><a href="@routes.Club.doeClubKids"><i class="icon-au"></i>Members</a></li>
-    <li class="@active(12)"><a href="@routes.Tribe.doeClubTribes"><i class="icon-list"></i>Tribes</a></li>
-    <li class="@active(15)"><a href="@routes.Club.doeVol"><i class="icon-au"></i>Volunteers</a></li>
+    <li class="@active(6)"><a href="@routes.Club.doeClubKids()"><i class="icon-au"></i>Members</a></li>
 }
 
 @if(! au.isClub && au.hasRealm(razie.wiki.model.Wikis.RK)) {
     <hr>
-    <li class="@active(10)"><a href="@routes.Club.doeClubUserRegs"><i class="icon-list"></i>Registrations</a></li>
-    <li class="@active(14)"><a href="@routes.Tribe.doeUserTribes"><i class="icon-list"></i>Tribes</a></li>
     <li class="@active(6)"><a href="@routes.Kidz.doeUserKids"><i class="icon-au"></i>Racerz</a></li>
     <ul>
       @for(c <- au.rel("child")) {

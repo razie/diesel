@@ -27,37 +27,7 @@ object OmpCtrl extends RazController {
   def show(entity: String, step: Int, id: String) = Action { implicit request =>
     entity match {
       case "step" => Ok(views.html.ompv.ompShow(step, id, Omp.context))
-      //            Redirect("/")
       case _ => unauthorized(s"Unknown page for $entity and $id")
     }
-  }
-
-  val OneForm = Form("val" -> nonEmptyText)
-
-  case class AddPerm(perm: String)
-  val permForm = Form {
-    mapping(
-      "perm" -> nonEmptyText.verifying(
-        "starts with +/-", a => ("+-" contains a(0))).verifying(
-          "known perm", a => Perm.all.contains(a.substring(1))))(AddPerm.apply)(AddPerm.unapply)
-
-  }
-
-  def uperm(id: String) = Action { implicit request =>
-    implicit val errCollector = new VErrors()
-    permForm.bindFromRequest.fold(
-      formWithErrors =>
-        Msg2(formWithErrors.toString + "Oops, can't add that perm!"),
-      {
-        case we @ AddPerm(perm) =>
-          (for (
-            goodS <- ("+-" contains perm(0)) && Perm.all.contains(perm.substring(1)) orErr ("bad perm")
-          ) yield {
-            Redirect("/razadmin/user/" + id)
-          }) getOrElse {
-            error("ERR_ADMIN_CANT_UPDATE_USER uperm " + id + " " + errCollector.mkString)
-            Unauthorized("ERR_ADMIN_CANT_UPDATE_USER uperm " + id + " " + errCollector.mkString)
-          }
-      })
   }
 }

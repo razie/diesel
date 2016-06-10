@@ -15,12 +15,16 @@ import com.mongodb.{BasicDBObject, DBObject}
 import razie.db.{RMany, ROne, RazMongo}
 import mod.diesel.model._
 import play.api.mvc.{Action, AnyContent, Request}
+import razie.diesel.RDOM
 import razie.wiki.dom.WikiDomain
 import razie.wiki.model.{WikiEntry, Wikis, WID}
 import razie.wiki.util.{VErrors, PlayTools}
 import razie.{cout, Logging}
 import razie.wiki.admin.Audit
 
+import scala.util.Try
+
+/** diesel controller */
 object DieselControl extends RazController with Logging {
   implicit def obtob(o: Option[Boolean]): Boolean = o.exists(_ == true)
 
@@ -60,6 +64,99 @@ object DieselControl extends RazController with Logging {
     Ok(res.mkString)
   }
 
+  def prep(v: String) =
+    if (v.startsWith("\"")) v.replaceAll("\"", "")
+    else if (v.startsWith("\'")) v.replaceAll("\'", "")
+    else v
+
+  def qTyped(q:Map[String,String], f:RDOM.F) = q.map { t =>
+    val p = f.parms.find(_.name == t._1)
+                  if (p.exists(_.ttype == "Int")) (t._1+"",
+                    try {
+                     t._2.toInt
+                    } catch {
+                      case e:Throwable => throw new IllegalArgumentException("Type error: expected Int, parm "+t._1+" found "+t._2)
+                    }
+                    )
+                  else
+    (t._1, prep(t._2))
+  }
+  /** TOPIC - call a topic level function */
+  def fcall(wpath: String, fname:String) = FAU { implicit au => implicit errCollector => implicit request=>
+    val q = request.queryString.map(t=>(t._1, t._2.mkString))
+    Audit("x", "DSL_FCALL", s"$wpath with ${q.mkString}")
+    (for(
+      wid <- WID.fromPath(wpath) orErr "bad wid";
+      we <- wid.page orErr "no page";
+      dom <- WikiDomain.domFrom(we).map(_.revise) orErr "no domain in page";
+      //      fname <- wid.section.orElse(request.) orErr "no func name";
+      f <- dom.funcs.get(fname) orErr s"no func $fname in domain"
+    ) yield {
+        // prepare the func body - put a return on it and stuff
+        val res = try {
+          if (f.script != "") {
+            val c = dom.mkCompiler("js")
+            val x = c.compileAll ( c.not {case fx:RDOM.F if fx.name == f.name => true})
+            val s = x + "\n" + f.script
+            //          val lines = f.script.lines.toList
+            //        val s = lines.foldRight("}}"){(a,b)=>
+            //          if(b == "}}" && !a.contains("return")) "return " + a
+            //          else if(b == "}}") a
+            //          else a+b
+            //        }
+
+            SFiddles.isfiddleMap(s, "js", Some(we), Some(au), q, Some(qTyped(q,f)))._2
+          } else
+            "ABSTRACT FUNC"
+        } catch {
+          case e:Throwable => e.getMessage
+        }
+        Ok(res.toString)
+      }) getOrElse NotFound("NotFound: "+wpath+" "+errCollector.mkString)
+  }
+
+  /** TOPIC - call a topic level function */
+  def jplay(wpath: String, fname:String) = FAU { implicit au => implicit errCollector => implicit request=>
+    val q = request.queryString.map(t=>(t._1, t._2.mkString))
+    Audit("x", "DSL_FPLAY", s"$wpath with ${q.mkString}")
+    (for(
+      wid <- WID.fromPath(wpath) orErr "bad wid";
+      we <- wid.page orErr "no page";
+      dom <- WikiDomain.domFrom(we).map(_.revise) orErr "no domain in page";
+      //      fname <- wid.section.orElse(request.) orErr "no func name";
+      f <- dom.funcs.get(fname) orErr s"no func $fname in domain"
+    ) yield {
+        // prepare the func body - put a return on it and stuff
+        val c = dom.mkCompiler("js")
+        val s = c.compile(f) + "\n" + c.call(f)
+        val x = c.compileAll ( c.not {case fx:RDOM.F if fx.name == f.name => true})
+
+        ROK() reactorLayout12 { implicit stok =>
+          views.html.fiddle.playBrowserFiddle("js", s, q, Some(we), x)
+        }
+      }) getOrElse NotFound("NotFound: "+wpath+" "+errCollector.mkString)
+  }
+
+  /** TOPIC - call a topic level function */
+  def splay(wpath: String, fname:String) = FAU { implicit au => implicit errCollector => implicit request=>
+    val q = request.queryString.map(t=>(t._1, t._2.mkString))
+    Audit("x", "DSL_FPLAY", s"$wpath with ${q.mkString}")
+    (for(
+      wid <- WID.fromPath(wpath) orErr "bad wid";
+      we <- wid.page orErr "no page";
+      dom <- WikiDomain.domFrom(we).map(_.revise) orErr "no domain in page";
+//      fname <- wid.section.orElse(request.) orErr "no func name";
+      f <- dom.funcs.get(fname) orErr s"no func $fname in domain"
+    ) yield {
+        // prepare the func body - put a return on it and stuff
+       val s = f.script
+
+      ROK() reactorLayout12 { implicit stok =>
+        views.html.fiddle.playServerFiddle("js", s, q, Some(we))
+      }
+    }) getOrElse NotFound("NotFound: "+wpath+" "+errCollector.mkString)
+  }
+
   //************* DIESEL
 
   import razie.js
@@ -89,7 +186,7 @@ object DieselControl extends RazController with Logging {
       def mkLink (s:String) = routes.DieselControl.dslDomBrowser (wpath, s, path+"/"+s).toString()
 
       ROK(auth, request) apply {implicit stok=>
-        views.html.diesel.catBrowser(wid.getRealm, Some(page), cat, left, right)(mkLink)
+        views.html.modules.diesel.catBrowser(wid.getRealm, Some(page), cat, left, right)(mkLink)
       }
     }) getOrElse NotFound(errCollector.mkString)
   }
@@ -107,9 +204,9 @@ object DieselControl extends RazController with Logging {
 
     ROK(auth, request) apply {implicit stok=>
       if(c.exists(_.stereotypes contains "wikiCategory"))
-        views.html.diesel.catBrowser(realm, page, cat, left, right)(mkLink)
+        views.html.modules.diesel.catBrowser(realm, page, cat, left, right)(mkLink)
       else
-        views.html.diesel.domCat(realm, cat, left, right)(mkLink)
+        views.html.modules.diesel.domCat(realm, cat, left, right)(mkLink)
     }
   }
 
@@ -134,7 +231,7 @@ object DieselControl extends RazController with Logging {
     val wl = Wikis(realm).pages(cat).toList
     val tags = wl.flatMap(_.tags).filter(_ != Tags.ARCHIVE).filter(_ != "").groupBy(identity).map(t => (t._1, t._2.size)).toSeq.sortBy(_._2).reverse
 
-    ROK(auth, request) noLayout  {implicit stok=>
+    ROK(auth, request) reactorLayout12 {implicit stok=>
       views.html.wiki.wikiList("list diesel entities", "", "", wl.map(x => (x.wid, x.label)), tags, "./", "", realm)
     }
   }
@@ -148,7 +245,7 @@ object DieselControl extends RazController with Logging {
     val wl = Wikis(wid.getRealm).pages(cat).toList
     val tags = wl.flatMap(_.tags).filter(_ != Tags.ARCHIVE).filter(_ != "").groupBy(identity).map(t => (t._1, t._2.size)).toSeq.sortBy(_._2).reverse
 
-    ROK(auth, request) noLayout  {implicit stok=>
+    ROK(auth, request) reactorLayout12 {implicit stok=>
       views.html.wiki.wikiList("list diesel entities", "", "", wl.map(x => (x.wid, x.label)), tags, "./", "", wid.getRealm)
     }
   }
@@ -164,7 +261,7 @@ object DieselControl extends RazController with Logging {
     def mkLink (s:String) = routes.DieselControl.catBrowser (realm, s, path+"/"+s).toString()
 
     ROK(auth, request) apply {implicit stok=>
-      views.html.diesel.createDD(realm, cat, left, right, rdom, Map.empty)(mkLink)
+      views.html.modules.diesel.createDD(realm, cat, left, right, rdom, Map.empty)(mkLink)
     }
   }
 

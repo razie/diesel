@@ -1,7 +1,7 @@
 @**************
 the footer of every page...
 **************@
-@(ads:Boolean=false, isSite:Boolean=false)
+@(ads:Boolean=false, isSite:Boolean=false)(implicit stok: mod.notes.controllers.NotesOk)
 @import _root_.admin.Config
 
 <footer>
@@ -23,9 +23,9 @@ the footer of every page...
 
   </p>
 
-@if(ads && ! (Config.noads || Config.currUser.exists(_.isUnder13))) {
+@if(ads && ! (Config.noads || stok.au.isUnder13)) {
 
-  @if(Config.isLight) {
+  @if(stok.isLight) {
       <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
           <!-- RK-bottom-light -->
       <ins class="adsbygoogle"

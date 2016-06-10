@@ -16,7 +16,7 @@ msg types are msg, err
 
 
 @ccc(we:WikiEntry)= @{
-    val x = Wikis.format(we.wid, we.markup, we.content, Some(we))
+    val x = Wikis.format(we.wid, we.markup, we.content, Some(we), Some(stok.au))
     if(x contains "CANNOT PARSE") {
       """<div style="color:red;font-weight:bold;" title="You misspelled some of the advanced features"><small>[[CANNOT PARSE]]</small></div><p></p>""" + we.content
     } else x
@@ -28,10 +28,10 @@ msg types are msg, err
     </thead>
 
 @name(we:WikiEntry) = @{
-  we.contentTags.get("name").filter(_ != we._id.toString).orElse(we.contentTags.get("email").map(_.replaceAll("@.*$", ""))).mkString
+  we.contentProps.get("name").filter(_ != we._id.toString).orElse(we.contentProps.get("email").map(_.replaceAll("@.*$", ""))).mkString
 }
 @email(we:WikiEntry) = @{
-  we.contentTags.get("email").mkString
+  we.contentProps.get("email").mkString
 }
 
 @noteList.map {we=>

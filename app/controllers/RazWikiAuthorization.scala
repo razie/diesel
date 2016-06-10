@@ -1,5 +1,7 @@
 package controllers
 
+import javax.management.relation.RoleStatus
+
 import razie.wiki.Sec.EncryptedS
 import model._
 import razie.Logging
@@ -22,8 +24,8 @@ object RazWikiAuthorization extends RazController with Logging with WikiAuthoriz
   // allow fans or not
   def NFAN (role:String) = role != "Former" // && role != "Fan"
 
-  def isInSameClub(member: WikiUser, owner: WikiUser) = { //}(implicit errCollector: VError = IgnoreErrors) = {
-    // all clubs where member
+  def isInSameClub(member: WikiUser, owner: WikiUser, role:String="") = { //}(implicit errCollector: VError = IgnoreErrors) = {
+    // member's clubs
     val m1 = member.asInstanceOf[User].wikis.filter(x => x.uwid.cat == "Club" && NFAN(x.role)).toList
 
     (
@@ -33,15 +35,15 @@ object RazWikiAuthorization extends RazController with Logging with WikiAuthoriz
       (owner.roles.contains(UserType.Organization) && m1.exists(_.uwid.nameOrId == owner.userName)) ||
       // owner is someone else => club lists intersect?
       (!owner.roles.contains(UserType.Organization) && {
-        val m2 = owner.wikis.filter(x => x.uwid.cat == "Club" && NFAN(x.role)).toList
-        m1.exists(x1 => m2.exists(_.uwid.id == x1.uwid.id))
+        val m2 = owner.wikis.filter(x => x.uwid.cat == "Club" && NFAN(x.role)) // owner's clubs
+        m1.exists(x1 => m2.exists(x2=> x2.uwid.id == x1.uwid.id && (role.isEmpty || role == x1.role))) // do they intersect?
       }))
   }
 
   /** if user is admin of club where owner member */
   def isClubAdmin(admin: WikiUser, owner: WikiUser) = { //}(implicit errCollector: VError = IgnoreErrors) = {
     // all clubs where member
-    val clubs = owner.wikis.filter(x => x.uwid.cat == "Club" && NFAN(x.role)).toList
+    val clubs = owner.wikis.filter(x => x.uwid.cat == "Club" && NFAN(x.role))
 
     (
       // owner is same as member
@@ -81,6 +83,7 @@ object RazWikiAuthorization extends RazController with Logging with WikiAuthoriz
             props.get("owner").flatMap(Users.findUserById(_)).exists(owner =>
               // hoping it's more likely members read blogs than register...
               props(visibility) == Visibility.CLUB && isInSameClub(u.get, owner) ||
+                props(visibility) == Visibility.CLUB_COACH && isInSameClub(u.get, owner, "Coach") ||
                 props(visibility) == Visibility.CLUB_ADMIN && isClubAdmin(u.get, owner) ||
                 // maybe the club created the parent topic (like forum/blog etc)?
                 props(visibility) == Visibility.CLUB &&
@@ -141,7 +144,7 @@ object RazWikiAuthorization extends RazController with Logging with WikiAuthoriz
         (wprops.flatMap(_.get("wvis")).isDefined && isVisible(u, wprops.get, "wvis")) ||
         wprops.flatMap(_.get("visibility")).exists(_.startsWith(Visibility.CLUB) && isVisible(u, wprops.get, "visibility")) ||
         !wvis(wprops).isDefined orErr ("Sorry - you are not the owner of this topic");
-      memod <- (w.flatMap(_.contentTags.get("moderator")).map(_ == au.userName).getOrElse(true)) orErr ("Sorry - this is moderated and you are not the moderator, are you?");
+      memod <- (w.flatMap(_.contentProps.get("moderator")).map(_ == au.userName).getOrElse(true)) orErr ("Sorry - this is moderated and you are not the moderator, are you?");
       noLevel <- wprops.flatMap(_.get("wvis")).filter(x=> isVisible(u, wprops.get, "wvis")) orErr "Not enough Karma";
       t <- true orErr ("can't")
     ) yield true)

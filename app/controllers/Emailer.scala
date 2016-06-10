@@ -15,7 +15,8 @@ object Emailer extends RazController with Logging {
 
   def RK = admin.Config.sitecfg("RacerKidz").getOrElse("RacerKidz")
 
-  def text(name: String) = Wikis.rk.find("Admin", "template-emails").flatMap(_.section("template", name)).map(_.content).getOrElse("[ERROR] can't find Admin template-emails: " + name)
+  def bottom() = Wikis.rk.find("Admin", "template-emails-bottom").map(_.content).getOrElse("")
+  def text(name: String) = Wikis.rk.find("Admin", "template-emails").flatMap(_.section("template", name)).map(_.content+bottom).getOrElse("[ERROR] can't find Admin template-emails: " + name)
 
   def sendSupport(subj:String, name:String, e: String, desc: String, details: String, page:String)(implicit mailSession: MailSession) {
     val html = text("supportrequested").format(name, e, desc, details, page)
@@ -104,7 +105,7 @@ object Emailer extends RazController with Logging {
 
   def sendEmailFollowerLink(to: String, topic: WID, comment: String)(implicit mailSession: MailSession) = {
     val dt = DateTime.now().plusDays(10)
-    val hc1 = """/wikie/linkFollower3/%s/%s/%s/%s""".format(EncUrl(dt.toString), to.enc, (if (comment.length > 0) comment else "Enjoy!").encUrl, topic.wpath)
+    val hc1 = """/wikie/linkFollower3/%s/%s/%s/%s""".format(EncUrl(dt.toString), to.enc, (if (comment.length > 0) comment else "Enjoy!").encUrl, topic.wpathFull)
     val ds1 = SecLink(hc1, None, true, dt)
 
     val html1 = text("followerlinkrequest").format(topic.name, ds1.secUrl, comment);
@@ -145,16 +146,17 @@ object Emailer extends RazController with Logging {
     SendEmail.send(parent.email.dec, SUPPORT, RK + " - child commented on public topic", html1)
   }
 
-  def sendEmailNewComment(to: User, commenter: User, wiki: WID)(implicit mailSession: MailSession) = {
-    val html1 = text("newcomment").format(to.ename, commenter.userName, wiki.url, wiki.cat, wiki.name);
+  def sendEmailNewComment(to: User, commenter: User, wid: WID)(implicit mailSession: MailSession) = {
+    val html1 = text("newcomment").format(to.ename, commenter.userName, wid.url, wid.cat, wid.name);
 
     SendEmail.notif(to.email.dec, SUPPORT, RK + " - new comment posted", html1)
   }
 
-  def sendEmailNewTopic(to: User, commenter: User, wiki: WID, wpost: WikiEntry)(implicit mailSession: MailSession) = {
-    val html1 = text("newtopic").format(to.ename, commenter.userName, wiki.url, wiki.cat, wiki.name, wpost.label);
+  def sendEmailNewTopic(to: User, commenter: User, wiki: WikiEntry, wpost: WikiEntry)(implicit mailSession: MailSession) = {
+    val html1 = text("newtopic").format(to.ename, commenter.userName, wiki.wid.url, wiki.wid.cat, wiki.getLabel,
+      wpost.getLabel, wpost.getDescription, wpost.wid.url);
 
-    SendEmail.notif(to.email.dec, SUPPORT, RK + " - new " + wpost.wid.cat + " in " + wiki.name + " : " + wpost.label, html1)
+    SendEmail.notif(to.email.dec, SUPPORT, RK + " - new " + wpost.wid.cat + " in " + wiki.getLabel + " : " + wpost.getLabel, html1)
   }
 
   def sendEmailNeedQuota(uName: String, uId: String)(implicit mailSession: MailSession) = {
@@ -188,6 +190,10 @@ object Emailer extends RazController with Logging {
     SendEmail.send(owner.email.dec, SUPPORT, cname + " - all forms accepted", html1)
   }
 
+  def sendRaz(what: String, args: Any*)(implicit mailSession: MailSession) = {
+    SendEmail.send("razie@razie.com", SUPPORT, RK + " - " + what, args.mkString("\n"))
+  }
+
   def tellRaz(what: String, args: Any*)(implicit mailSession: MailSession) = {
     tell("razie@razie.com", what, args:_*)
   }
@@ -200,7 +206,7 @@ object Emailer extends RazController with Logging {
   def withSession[C](body: (MailSession) => C): C = SendEmail.withSession(body)
 
   /** not really needed - email is sent on a background thread anyhow */
-  def laterSession[C](body: (MailSession) => Unit): Unit = Services.alli ! new Emailing(body)
+  def laterSession[C](body: (MailSession) => Unit): Unit = Services ! new Emailing(body)
 }
 
 /** used to send a set of emails later */

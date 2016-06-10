@@ -8,22 +8,21 @@ import razie.wiki.model.WikiUser
 import razie.wiki.util.AuthService
 import com.mongodb.casbah.Imports._
 import com.novus.salat.grater
-import controllers.DarkLight
 import org.bson.types.ObjectId
 import org.joda.time.DateTime
-import play.api.cache.Cache
-import play.api.mvc.Request
+import play.api.mvc.{RequestHeader, Request}
 import razie.Logging
 import razie.db.RazSalatContext.ctx
-import razie.wiki.admin.AuditService
+import razie.wiki.admin.{WikiEvent, WikiObservers, AuditService, Audit}
 import razie.wiki.util.IgnoreErrors
 import razie.wiki.util.VErrors
 import razie.wiki.Services
-import razie.wiki.admin.Audit
+//import play.cache._
+import play.api.cache._
 
 
 /** statics and utilities for authentication cache */
-object RazAuthService extends AuthService[User] with Logging {
+class RazAuthService extends AuthService[User] with Logging {
 
   implicit def toU(wu: WikiUser): User = wu.asInstanceOf[User]
 
@@ -41,6 +40,17 @@ object RazAuthService extends AuthService[User] with Logging {
     }
   }
 
+  /** clean the cache for given user - probably a profile change, should reload profile.
+    * needed this for cluster auth. State is evil!
+    */
+  def cleanAuth2(u: WikiUser) = {
+    import play.api.Play.current
+    synchronized {
+      debug("AUTH CLEAN =" + u._id)
+      Cache.remove(u.email + ".connected")
+    }
+  }
+
   /** authentication - find the user currently logged in, from either the session or http basic auth */
   def authUser(implicit request: Request[_]): Option[User] = {
     val connected = request.session.get(Config.CONNECTED)
@@ -49,22 +59,9 @@ object RazAuthService extends AuthService[User] with Logging {
     import play.api.Play.current
     debug("AUTH SESSION.connected=" + connected)
 
-    // this is set even if no users logged in
-    // TODO must get rid of this stupid statics... why can't play do this?
-    razie.NoStaticS.remove[DarkLight]
-    request.session.get("css").fold {
-      Website(request).flatMap(_.css).foreach{x=>
-        razie.NoStaticS.put(DarkLight(x))
-      }
-    } { v =>
-      // session settings override everything
-      razie.NoStaticS.put(DarkLight(v))
-    }
-    //todo configure per realm
-
     synchronized {
       // from session
-      val au = connected.flatMap { euid =>
+      var au = connected.flatMap { euid =>
         val uid = Enc.fromSession(euid)
         Cache.getAs[User](uid + ".connected").map(u => Some(u)).getOrElse {
           debug("AUTH connecting=" + uid)
@@ -74,7 +71,14 @@ object RazAuthService extends AuthService[User] with Logging {
             u
           }
         }
-      } orElse authorization.flatMap { euid =>
+      }
+
+      // for testing it may be overriden in http header
+      if(authorization.exists(_.startsWith("None")) && au.exists(_.isAdmin)) {
+        log("AUTH OVERRIDE NONE")
+        au = None
+      } else if(authorization.exists(_.startsWith("Basic ")) && (au.isEmpty || au.exists(_.isAdmin)))
+      au = authorization.flatMap { euid =>
         // from basic http auth headers, for testing and API
         val e2 = euid.replaceFirst("Basic ", "")
         val e3 = new String(Base64 dec e2) //new sun.misc.BASE64Decoder().decodeBuffer(e2)
@@ -85,7 +89,7 @@ object RazAuthService extends AuthService[User] with Logging {
 //            cdebug << "AUTH BASIC attempt "+e3
             Users.findUser(Enc(em)).flatMap { u =>
               if (Enc(pa) == u.pwd) {
-                u.auditLogin
+                u.auditLogin (Website.getRealm)
                 val uid = u.id
                 debug("AUTH BASIC connected=" + u)
                 Cache.set(u.email + ".connected", u, 120)
@@ -96,14 +100,6 @@ object RazAuthService extends AuthService[User] with Logging {
           case _ => println("ERR_AUTH wrong Basic auth encoding..."); None
         }
       }
-
-      // allow theme to be overriten per request / session
-      request.session.get("css").foreach { v =>
-        au.foreach(_.css = Some(v)); // will be set statically later
-      }
-
-      razie.NoStaticS.put[WikiUser](au.getOrElse(null))
-      au.foreach(u => razie.NoStaticS.put(DarkLight(u.css.getOrElse("dark"))))
 
       au
     }
@@ -121,10 +117,9 @@ object RazAuthService extends AuthService[User] with Logging {
   def sign(content: String): String = Enc apply Enc.hash(content)
 
   /** check that the signatures match - there's a trick here, heh */
-  def checkSignature(sign: String, signature: String): Boolean =
+  def checkSignature(sign: String, signature: String, au:Option[WikiUser]): Boolean =
     sign == signature ||
-      ("ADMIN" == signature &&
-        (razie.NoStaticS.get[WikiUser].map(_.asInstanceOf[User]).exists(_.hasPerm(Perm.adminDb)) || Services.config.isLocalhost))
+      ("ADMIN" == signature && (au.map(_.asInstanceOf[User]).exists(_.hasPerm(Perm.adminDb)) || Services.config.isLocalhost))
 }
 
 /**
@@ -137,7 +132,7 @@ object RazAuditService extends AuditService with Logging {
   /** log a db operation */
   def logdb(what: String, details: Any*) = {
     val d = details.mkString(",")
-    Services.alli ! Audit("a", what, d)
+    Services ! Audit("a", what, d)
     val s = what + " " + d
     razie.Log.audit(s)
     s
@@ -146,7 +141,7 @@ object RazAuditService extends AuditService with Logging {
   /** log a db operation */
   def logdbWithLink(what: String, link: String, details: Any*) = {
     val d = details.mkString(",")
-    Services.alli ! Audit("a", what, d, Some(link))
+    Services ! Audit("a", what, d, Some(link))
     val s = what + " " + d
     razie.Log.audit(s)
     s

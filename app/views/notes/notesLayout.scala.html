@@ -14,7 +14,7 @@ msg types are msg, err
 
         @content
 
-        @notes.notesonetip()
+        @notes.notesonetip(Some(stok.au))
 
       <hr>
 
@@ -22,7 +22,7 @@ msg types are msg, err
 
       </div> <!-- /col-sm-9 -->
 
-      @notes.notestags(tag, tags, Some(stok.au))
+      @notes.notestags(tag, tags, Some(stok.au), stok.request)
 
     </div> <!-- row -->
   </div> <!-- /container -->

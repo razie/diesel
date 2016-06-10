@@ -2,7 +2,7 @@
 display a message with navigation (next)
 ***************@
 @(msg:String, details:String, next:Option[String], au:Option[razie.wiki.model.WikiUser], cancel:Option[(String,String)]=None)(implicit request:Request[_])
-  @import model.Website.realm
+@import model.Website.realm
 
 @whtmlHeadBar("", realm)(au.asInstanceOf[Option[model.User]], request)
 
@@ -10,9 +10,9 @@ display a message with navigation (next)
   <div class="well">
 
     <h3>
-    @Html(razie.wiki.model.Wikis.format(razie.wiki.model.WID("?","?"), razie.wiki.model.Wikis.MD, msg))
+    @Html(razie.wiki.model.Wikis.format(razie.wiki.model.WID("?","?"), razie.wiki.model.Wikis.MD, msg, None, au))
     </h3>
-    @Html(razie.wiki.model.Wikis.format(razie.wiki.model.WID("?","?"), razie.wiki.model.Wikis.MD, details))
+    @Html(razie.wiki.model.Wikis.format(razie.wiki.model.WID("?","?"), razie.wiki.model.Wikis.MD, details, None, au))
 
     <br>
 
@@ -25,8 +25,9 @@ display a message with navigation (next)
   </div>
 
   <hr>
-  @htmlFooter(false, false, realm)
+  @htmlFooter(false, false, realm)(new StateOk(Seq(), "", au.asInstanceOf[Option[model.User]], Some(request)))
 
 </div> <!-- /container -->
 
-@htmlBottom(false, Some(request))
+@htmlBottom(false, Some(request))(new StateOk(Seq(), "", au.asInstanceOf[Option[model.User]], Some(request)))
+

@@ -1,51 +1,64 @@
 package api
 
+import mod.diesel.controllers.SFiddles
 import model._
-import controllers.{XWrapper,XListWrapper}
+import controllers.{Club, XWrapper, XListWrapper}
 import admin.Config
 import razie.db.RazMongo
+import razie.wiki.Dec
 import razie.wiki.model._
 import razie.wiki.util.M._
 
 /** this is available to scripts inside the wikis */
-object wix {
-  //todo wix is static - make nonstatic
-
+class wix (owe: Option[WikiEntry], ou:Option[WikiUser], q:Map[String,String], r:String) {
   lazy val hostport:String = Config.hostport
 
   // hide actual app objects and give selective access via public objects below
-  private var ipage: Option[WikiEntry] = None
-  private var iuser: Option[User] = None //todo use this
-  private var iquery: Map[String,String] = Map()
-  private var irealm: String = ""
+  private var ipage: Option[WikiEntry] = owe
+  private var iuser: Option[User] = ou.asInstanceOf[Option[User]]
+  private var iquery: Map[String,String] = q
+  private var irealm: String = r
 
-  def init (owe: Option[WikiEntry], ou:Option[User], q:Map[String,String], r:String): Unit = {
-    ipage=owe
-    iuser=ou
-    iquery=q
-    irealm=r
-  }
-
-  object page {
+  val page = new {
     def name = ipage.get.name
     def isDefined = ipage.isDefined
     def isEmpty = ipage.isEmpty
     def wid = ipage.get.wid
+    def findAssocWithCat(cat:String) = ipage.find(_.category == "Club").orElse {
+      def flatten (page:WikiEntry):List[WikiEntry] = page :: page.parent.flatMap(Wikis.find).toList.flatMap(flatten)
+      ipage.toList.flatMap(flatten).find(_.category == "Club").orElse(
+        ipage.toList.flatMap(w=> w.linksFrom.toList).flatMap(_.pageTo.toList).find(_.category == "Club")
+      )
+    }
 
-    def map[T] (f: page.type => T) = if(isDefined) Some(f(page)) else None
+//    def map[T] (f: page.type => T) = if(isDefined) Some(f(page)) else None
   }
 
-  object user {
+  def ownedPages(realm:String, cat:String) = utils.wikiList(iuser.toList.flatMap(_.ownedPages(realm, cat)))
+
+  val user = new {
     def userName = iuser.get.userName
     def firstName = iuser.get.firstName
     def ename = iuser.get.ename
     def isDefined = iuser.isDefined
     def isEmpty = iuser.isEmpty
+    def hasMembershipLevel(s:String) = iuser.map(_.hasMembershipLevel(s)) getOrElse false
     def id = iuser.get._id
     def isOwner = iuser.exists(u=> ipage.flatMap(_.owner).exists(_._id == u._id))
-    def ownedPages(realm:String, cat:String) = iuser.toList.flatMap(_.ownedPages(realm, cat))
+    def isClubAdmin = iuser.exists{u=>
+      isDbAdmin ||
+        page.findAssocWithCat("Club").map(_.name).flatMap(Club.findForName).exists(_.isAdminEmail(Dec(u.email)))
+    }
+    def isClubMember = iuser.exists{u=>
+      page.findAssocWithCat("Club").map(_.name).exists(name=>u.wikis.filter(_.wid.cat == "Club").exists(_.wid.name == name))
+    }
+    def isClubCoach = iuser.exists{u=>
+      page.findAssocWithCat("Club").map(_.name).flatMap(Club.apply).exists(_.isMemberRole(u._id, "Coach"))
+    }
 
-    def map[T] (f: user.type => T) = if(isDefined) Some(f(user)) else None
+    def isDbAdmin = iuser.exists{_.isAdmin }
+
+//    def map[T] (f: user.type => T) = if(isDefined) Some(f(user)) else None
 
     def isRegistered = iuser exists (u=> ipage >>> (x=>model.Users.findUserLinksTo(x.uwid).toList) exists (_.userId == u._id))
   }
@@ -53,29 +66,44 @@ object wix {
   def json = {
     """var wix = {
     """ +
+      s"""
+      "hostport" : "${hostport}",
+    """ +
       (if(ipage.isDefined) {
-    s"""
+        s"""
     "page" : {
       "name" : "${ipage.get.name}",
       "isDefined" : "${ipage.isDefined}",
       "isEmpty" : "${ipage.isEmpty}",
-      "wid" : "${ipage.get.wid}"
+      "wid" : "${ipage.get.wid.wpath}"
     },
     """
-    } else "") +
-   (if(iuser.isDefined) {
-      s"""
+      } else "") +
+      (if(iuser.isDefined) {
+        s"""
     "user" : {
       "userName" : "${iuser.get.userName}",
       "firstName" : "${iuser.get.firstName}",
       "ename" : "${iuser.get.ename}",
-      "isDefined" : "${iuser.isDefined}",
-      "isEmpty" : "${iuser.isEmpty}",
-      "id" : "${iuser.get._id.toString}"
-    }
+      "isDefined" : ${iuser.isDefined},
+      "isEmpty" : ${iuser.isEmpty},
+      "isClubAdmin" : ${user.isClubAdmin},
+      "isClubCoach" : ${user.isClubCoach},
+      "isRegistered" : ${user.isRegistered},
+      "id" : "${iuser.get._id.toString}",
+      "perms" : ["${iuser.get.perms.mkString("\",\"")}"],
+      "groups" : ["${iuser.get.groups.map(_.name).mkString("\",\"")}"]
+    },
     """
-   } else "") +
-    """}"""
+      } else "") +
+      s"""
+    "query" :
+    """ +
+      SFiddles.qtojson(iquery) +
+      """
+    };
+    wix.utils = new (Java.type("api.WixUtils"))(wixj);
+      """
   }
 
   def query: Map[String,String] = iquery
@@ -98,9 +126,25 @@ object wix {
       WikiXpSolver)
   //  {controllers.UserStuff.xp(user, "Calendar") \ UserStuff.Race \ "Venue" \@ "loc"}.filter(! _.isEmpty).map(_.replaceFirst("ll:",""))
 
-  object utils {
-    def countForms = RazMongo("weForm").size
-    def wikiList(wids:List[WID]) = "<ul>"+wids.map(x=> "<li>"+ x.ahrefRelative + "</li>").mkString("") + "</ul>"
+  def utils = new WixUtils(this)
+}
+
+/** this is available to scripts inside the wikis */
+object wix {
+
+  def apply (owe: Option[WikiEntry], ou:Option[WikiUser], q:Map[String,String], r:String) = {
+    new wix(owe, ou, q, r)
   }
 
+  object utils {
+    def countForms() = RazMongo("weForm").size
+
+  }
 }
+
+class WixUtils(w:wix) {
+  def countRealmPages() = Wikis(w.realm.name).count
+  def countForms() = wix.utils.countForms()
+  def wikiList(wids:List[WID]) = "<ul>"+wids.map(x=> "<li>"+ x.ahrefRelative + "</li>").mkString("") + "</ul>"
+}
+

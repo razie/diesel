@@ -1,7 +1,7 @@
 @*******
 included in mainUserC as the right hand side info box
 *********@
-@(user: model.User, quiet:Boolean, ui:controllers.UserStuff)
+@(user: model.User, quiet:Boolean, ui:controllers.UserStuff)(implicit stok:controllers.StateOk)
 @import org.joda.time.DateTime
 @import razie.RString._
 @import controllers.XListWrapper
@@ -20,7 +20,7 @@ included in mainUserC as the right hand side info box
       <b>Recent events:</b>
       <ul>
       @for(t <- evBefore.takeRight(scala.math.max(3, 10-evAfter().size))) {
-        <li>@Html(razie.wiki.model.Wikis.formatWikiLink(razie.wiki.model.Wikis.RK, t._1.wid,t._1.wid.name, t._2,Some(t._1.label))._1)
+        <li>@Html(razie.wiki.model.Wikis.formatWikiLink(stok.realm, t._1.wid,t._1.wid.name, t._2,Some(t._1.label))._1)
         @if(t._4.wid.name != null && t._4.wid.name.length>0) {
           at @Html(t._4.format._1)
         }
@@ -34,7 +34,7 @@ included in mainUserC as the right hand side info box
       <b>Coming up:</b>
       <ul>
       @for(t <- evAfter.take(math.max(7, 10-evBefore().size))) {
-        <li>@Html(razie.wiki.model.Wikis.formatWikiLink(razie.wiki.model.Wikis.RK, t._1.wid,t._1.wid.name,t._2,Some(t._1.label))._1)
+        <li>@Html(razie.wiki.model.Wikis.formatWikiLink(stok.realm, t._1.wid,t._1.wid.name,t._2,Some(t._1.label))._1)
         @if(t._4.wid.name != null  && t._4.wid.name.length>0) {
           at @Html(t._4.format._1)
         }

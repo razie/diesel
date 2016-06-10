@@ -1,4 +1,15 @@
-@(name:String, col:scala.Iterator[com.mongodb.casbah.Imports.DBObject], fields:Array[String])
+@(name:String, col:scala.Iterator[com.mongodb.casbah.Imports.DBObject], fields:Array[String])(implicit stok: controllers.StateOk)
+
+@** render a field representing a userId **@
+@userId(v:String) = {
+@if(v == null || v.length <= 1) {
+  <span style="color:#ff0000">???</span>
+} else {
+  @model.Users.findUserById(v).map {u=>
+    <a href="/razadmin/user/@u._id.toString">@u.userName</a>
+  }
+}
+}
 
 @wikicount(db:com.mongodb.casbah.Imports.DBObject, k:String, v:String) = {
   @k match {
@@ -14,55 +25,56 @@
 }
 
 @rka(db:com.mongodb.casbah.Imports.DBObject, k:String, v:String) = {
+@k match {
+  case "from" | "owner" => { @userId(v) }
+  case "_id"            => { @entity("RacerKidAssoc", v) }
+  case "to" => {
+    @if(v == null || v.length <= 1) {<span style="color:#ff0000">???</span>} else {
+      @model.RacerKidz.findByIds(v).map {rk=>
+        <a href="/razadmin/rk/@rk._id.toString">@rk.info.fullName</a>
+      }
+    }
+  }
+  case _=> {
+    @v
+  }
+}
+}
+
+
+@rk(db:com.mongodb.casbah.Imports.DBObject, k:String, v:String) = {
   @k match {
-    case "from" | "owner" => {
-      @if(v == null || v.length <= 1) {<span style="color:#ff0000">???</span>} else {
-        @model.Users.findUserById(v).map {u=>
-        <a href="/razadmin/user/@u._id.toString">@u.userName</a>
-        }
-      }
-    }
-    case "to" => {
-      @if(v == null || v.length <= 1) {<span style="color:#ff0000">???</span>} else {
-        @model.RacerKidz.findByIds(v).map {rk=>
-          <a href="/razadmin/rk/@rk._id.toString">@rk.info.ename</a>
-        }
-      }
-    }
+    case "ownerId" | "userId" => { @userId(v) }
+    case "_id"                => { @entity("RacerKid", v) }
+    case "rkiId"              => { @entity("RacerKidInfo", v) }
     case _=> {
       @v
     }
   }
 }
 
-@htmlHeadBar("admin db: "+name, None)
 
-<div class="container">
+@stok.title("admin db: "+name)
 
-<h2>Records</h2>
+  <h2>Records</h2>
 
 
-@name match {
-  case "WikiCount" => {
-    @util.utilTable("WikiCount", List("pid","count","wpath").map(c=>c->c), None, Some("count"), Some(wikicount))
+  @name match {
+    case "WikiCount" => {
+      @util.utilTable("WikiCount", List("pid", "count", "wpath").map(c => c -> c), None, Some("count"), Some(wikicount))
+    }
+    case "RacerKid" => {
+      @util.utilTable("RacerKid", fields.map(c => c -> c), None, None, Some(rk))
+    }
+    case "RacerKidAssoc" => {
+      @util.utilTable("RacerKidAssoc", fields.map(c => c -> c), None, None, Some(rka))
+    }
+    case _ => {
+      @util.utilTable(name, fields.map(c => c -> c), None, None, None)
+    }
   }
-  case "RacerKidAssoc" => {
-    @util.utilTable("RacerKidAssoc", fields.map(c=>c->c), None, None, Some(rka))
-  }
-  case _ => {
-        @util.utilTable(name, fields.map(c=>c->c), None, None, None)
-  }
-}
+  @*************
+  @if(!Array("User","Profile","WikiEntry","Ver","Audit", "WikiAudit").contains(name)) {
+  <a class="btn btn-xs btn-danger" href="@routes.Admin.delcoldb(name,db.get("_id").toString)">DEL - no confirmation!</a>
+  *************@
 
-
-@*************
-@if(!Array("User","Profile","WikiEntry","Ver","Audit", "WikiAudit").contains(name)) {
-<a class="btn btn-xs btn-danger" href="@routes.Admin.delcoldb(name,db.get("_id").toString)">DEL - no confirmation!</a>
-*************@
-
-  <hr>
-  @htmlFooter()
-
-</div> <!-- /container -->
-
-@htmlBottom()

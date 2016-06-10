@@ -1,8 +1,6 @@
-@(wid:razie.wiki.model.WID, myForm:Form[controllers.Wikie.ReportWiki], au:Option[model.User])
+@(wid:razie.wiki.model.WID, myForm:Form[controllers.Wikie.ReportWiki])(implicit stok: controllers.StateOk)
 
-@htmlHeadBar("", au)
-
-    <div class="container">
+@stok.title("Reporting page: "+wid.wpath)
 
       <!-- Main hero unit for a primary marketing message or call to action -->
       <div class="well">
@@ -12,6 +10,8 @@
 
 <div >
 @import helper.twitterBootstrap._
+@import play.api.Play.current
+@import play.api.i18n.Messages.Implicits._
 
 @helper.form(action=routes.Wikie.reported(wid), 'class->"well") {
   @helper.textarea(
@@ -34,14 +34,8 @@
 }
 </div>
 
-      <div class="well">
-          @wiki.wikiFrag(wid,au)
-      </div>
+<div class="well">
+  @wiki.wikiFrag(wid,stok.au)
+</div>
 
-      <hr>
 
-      @htmlFooter()
-
-    </div> <!-- /container -->
-
-    @htmlBottom()

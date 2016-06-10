@@ -1,23 +1,25 @@
 @***********
 user manages registrations
 ***********@
-@(au: model.User)
+@()(implicit stok:controllers.StateOk)
 @import model.RegStatus._
 @import controllers.Club
 
-@htmlHeadBar("Registrations for " + au.userName, Option(au))
+@stok.title("Registrations for " + stok.au.get.userName)
+
+@au=@{stok.au.get}
 
 @missingRegs = @{
   // clubs with open regs that I'm not reg'd for
   val clubs = au.wikis.filter(_.wid.cat == "Club").flatMap(w => model.Users.findUserByUsername(w.wid.name).toList)
   clubs.map { c => (c, Club(c)) }.collect {
-    case (c, club) if club.isRegOpen && model.Regs.findClubUserYear(c, au._id, club.curYear).isEmpty =>
+    case (c, club) if club.isRegOpen && model.Regs.findClubUserYear(club.name, au._id, club.curYear).isEmpty =>
       club
   }
 }
 
 @regs = @{
-  val clubs = au.wikis.filter(_.wid.cat == "Club").flatMap(w => model.Users.findUserByUsername(w.wid.name).toList)
+  val clubs = au.wikis.filter(_.wid.cat == "Club").map(_.wid.name)
   clubs.flatMap(c => model.Regs.findClubUser(c, au._id)).sortWith(_.year >= _.year)
 }
 
@@ -25,11 +27,6 @@ user manages registrations
   regs.iterator.map(reg =>
     Map("club" -> reg.clubName, "year" -> reg.year, "role" -> reg.role, "regStatus" -> reg.regStatus, "id" -> reg._id.toString, "vol" -> controllers.Club.volPerReg(reg)))
 }
-
-<div class="container"> <div class="row">
-  @user.leftmenu(10, au)
-
-  <div class="col-sm-9">
 
     @mnglink(row: Map[String, String], k: String, v: String) = {
     @k match {
@@ -86,11 +83,3 @@ user manages registrations
       <p></p>
       @club.regStatusLegend()
     }
-
-  </div>
-</div> <!-- /row -->
-  @user.agree()
-  <hr>
-  @htmlFooter(ads = true)
-</div> <!-- /container -->
-@htmlBottom()

@@ -2,6 +2,7 @@ package controllers
 
 import java.lang.management.{ManagementFactory, OperatingSystemMXBean}
 import java.lang.reflect.Modifier
+import akka.cluster.Cluster
 import com.mongodb.casbah.Imports.{DBObject, IntOk}
 import com.mongodb.casbah.commons.MongoDBObject
 import com.mongodb.casbah.Imports._
@@ -10,7 +11,9 @@ import com.novus.salat.grater
 import difflib.DiffUtils
 import mod.notes.controllers.NotesLocker
 import org.json.{JSONArray, JSONObject}
+import play.api.libs.concurrent.Akka
 import play.api.libs.json.JsObject
+import play.twirl.api.Html
 import razie.db.{RMany, RazMongo}
 import razie.db.RazSalatContext.ctx
 import org.bson.types.ObjectId
@@ -23,12 +26,11 @@ import razie.wiki.util.{VErrors}
 import razie.js
 import razie.wiki.Enc
 import razie.wiki.model.{WikiTrash, WID, WikiEntry, Wikis}
-import razie.wiki.admin.GlobalData
-import razie.wiki.admin.Audit
+import razie.wiki.admin.{MailSession, GlobalData, Audit, SendEmail}
 import admin.RazAuditService
 import model.{WikiScripster, Users, Perm, User}
 import admin.Config
-import razie.wiki.admin.SendEmail
+import x.context
 
 import scala.util.Try
 import razie.Snakk._
@@ -38,12 +40,12 @@ import scala.collection.JavaConversions._
 object Admin extends RazController {
   protected def hasPerm(p: Perm)(implicit request: Request[_]): Boolean = auth.map(_.hasPerm(p)) getOrElse false
 
-  protected def forAdmin[T](body: => play.api.mvc.SimpleResult)(implicit request: Request[_]) = {
+  protected def forAdmin[T](body: => play.api.mvc.Result)(implicit request: Request[_]) = {
     if (hasPerm(Perm.adminDb)) body
     else noPerm(HOME)
   }
 
-  protected def FA[T](body: Request[_] => play.api.mvc.SimpleResult) = Action { implicit request =>
+  protected def FA[T](body: Request[_] => play.api.mvc.Result) = Action { implicit request =>
     forAdmin {
       body(request)
     }
@@ -59,29 +61,36 @@ object Admin extends RazController {
     }) getOrElse unauthorized("CAN'T")
   }
 
+  // use my layout
+  implicit class StokAdmin (s:StateOk) {
+    def admin (content: StateOk => Html) = {
+      RkViewService.Ok (views.html.admin.adminLayout(content(s))(s))
+    }
+  }
+
   // routes do/:page
   def show(page: String) = FAD { implicit au =>
     implicit errCollector => implicit request =>
       page match {
         case "reloadurlmap" => {
           Config.reloadUrlMap
-          Ok(views.html.admin.admin_index("", auth))
+          ROK() admin  {implicit stok=> views.html.admin.admin_index("")}
         }
 
         case "resendEmails" => {
-          SendEmail.sender ! SendEmail.CMD_RESEND
-          Ok(views.html.admin.admin_index("", auth))
+          SendEmail.emailSender ! SendEmail.CMD_RESEND
+          ROK() admin  {implicit stok=> views.html.admin.admin_index("")}
         }
 
         case "tickEmails" => {
-          SendEmail.sender ! SendEmail.CMD_TICK
-          Ok(views.html.admin.admin_index("", auth))
+          SendEmail.emailSender ! SendEmail.CMD_TICK
+          ROK() admin  {implicit stok=> views.html.admin.admin_index("")}
         }
 
-        case "wikidx" => Ok(views.html.admin.admin_wikidx(auth))
-        case "db" => Ok(views.html.admin.admin_db(auth))
-        case "index" => Ok(views.html.admin.admin_index("", auth))
-        case "users" => Ok(views.html.admin.admin_users(auth))
+        case "wikidx" => ROK() admin  {implicit stok=> views.html.admin.admin_wikidx()}
+        case "db" =>     ROK() admin  {implicit stok=> views.html.admin.admin_db()}
+        case "index" =>  ROK() admin  {implicit stok=> views.html.admin.admin_index("")}
+        case "users" =>  ROK() admin  {implicit stok=> views.html.admin.admin_users()}
 
         case "init.db.please" => {
           if ("yeah" == System.getProperty("devmode") || !RazMongo("User").exists) {
@@ -98,13 +107,19 @@ object Admin extends RazController {
 
   def user(id: String) = Action { implicit request =>
     forAdmin {
-      Ok(views.html.admin.admin_user(model.Users.findUserById(id), auth))
+      ROK(auth, request) admin {implicit stok=> views.html.admin.admin_user(model.Users.findUserById(id))}
+    }
+  }
+
+  def test() = Action { implicit request =>
+    forAdmin {
+      ROK(auth, request) admin {implicit stok=> views.html.admin.admin_test()}
     }
   }
 
   def udelete1(id: String) = Action { implicit request =>
     forAdmin {
-      Ok(views.html.admin.admin_udelete(model.Users.findUserById(id), auth))
+      ROK(auth, request) admin {implicit stok=> views.html.admin.admin_udelete(model.Users.findUserById(id))}
     }
   }
 
@@ -272,23 +287,31 @@ object Admin extends RazController {
 
   def col(name: String) = Action { implicit request =>
     forAdmin {
-      Ok(views.html.admin.admin_col(name, RazMongo(name).findAll))
+      ROK(auth, request) admin {implicit stok=> views.html.admin.admin_col(name, RazMongo(name).findAll)}
     }
   }
 
+  def dbFind(value: String) = FA { implicit request =>
+    ROK(auth, request) noLayout  {implicit stok=> views.html.admin.admin_db_find(value)}
+  }
+
+  def colEntity(name: String, id: String) = FA { implicit request =>
+    ROK(auth, request) admin {implicit stok=> views.html.admin.admin_col_entity(name, id, RazMongo(name).findOne(Map("_id" -> new ObjectId(id))))}
+  }
+
   def colTab(name: String, cols: String) = FA { implicit request =>
-    Ok(views.html.admin.admin_col_tab(name, RazMongo(name).findAll, cols.split(",")))
+    ROK(auth, request) admin {implicit stok=> views.html.admin.admin_col_tab(name, RazMongo(name).findAll, cols.split(","))}
   }
 
   def delcoldb(table: String, id: String) = FA { implicit request =>
     // TODO audit
     Audit.logdb("ADMIN_DELETE", "Table:" + table + " json:" + RazMongo(table).findOne(Map("_id" -> new ObjectId(id))))
     RazMongo(table).remove(Map("_id" -> new ObjectId(id)))
-    Ok(views.html.admin.admin_col(table, RazMongo(table).findAll))
+    ROK(auth, request) admin {implicit stok=> views.html.admin.admin_col(table, RazMongo(table).findAll)}
   }
 
   def showAudit(msg: String) = FA { implicit request =>
-    Ok(views.html.admin.admin_audit(if (msg.length > 0) Some(msg) else None)(auth))
+    ROK(auth, request) admin {implicit stok=> views.html.admin.admin_audit(if (msg.length > 0) Some(msg) else None)}
   }
 
   def clearaudit(id: String) = FA { implicit request =>
@@ -317,7 +340,7 @@ object Admin extends RazController {
     RazMongo("AuditCleared").findAll().map(j => new DateTime(j.get("when"))).map(d => s"${d.getYear}-${d.getMonthOfYear}").foreach(count("ac", _))
     RazMongo("WikiAudit").findAll().map(j => new DateTime(j.get("crDtm"))).map(d => s"${d.getYear}-${d.getMonthOfYear}").foreach(count("w", _))
     RazMongo("UserEvent").findAll().map(j => new DateTime(j.get("when"))).map(d => s"${d.getYear}-${d.getMonthOfYear}").foreach(count("u", _))
-    Ok(views.html.admin.admin_audit_purge1(map, auth))
+    ROK(auth,request) admin {implicit stok=> views.html.admin.admin_audit_purge1(map)}
   }
 
   final val auditCols = Map("AuditCleared" -> "when", "WikiAudit" -> "crDtm", "UserEvent" -> "when")
@@ -412,6 +435,7 @@ object Admin extends RazController {
         s = s + (method.getName() -> (if (vn == -1) v else (nice(vn) + " - " + v))) + "\n";
       } // if
     } // for
+    import play.api.libs.concurrent.Execution.Implicits.defaultContext
     s"""$s\n\nwikis=${RazMongo("WikiEntry").size}\n
 scriptsRun=${WikiScripster.count}\n
 Global.serving=${GlobalData.serving}\n
@@ -423,6 +447,9 @@ Global.startedDtm=${GlobalData.startedDtm}\n
 \n
 SendEmail.curCount=${SendEmail.curCount}\n
 SendEmail.state=${SendEmail.state}\n
+\n
+Threads=${defaultContext.toString}\n
+ClusterStatus=${GlobalData.clusterStatus}\n
 """
   }
 
@@ -437,7 +464,7 @@ SendEmail.state=${SendEmail.state}\n
   // unsecured ping for
   def ping(what: String) = Action { implicit request =>
     what match {
-      case "script1" => Ok(WikiScripster.impl.runScript("1+2", None, None, Map()))
+      case "script1" => Ok(WikiScripster.impl.runScript("1+2", "js", None, None, Map()))
       case "shouldReload" => {
         Ok(reloadt.toString).as("application/text")
       }
@@ -474,11 +501,18 @@ SendEmail.state=${SendEmail.state}\n
       Ok("")
   }
 
-  def wlist(reactor:String) = FAD { implicit au =>
+  def wlist(reactor:String, hostname:String, me:String) = FAD { implicit au =>
     implicit errCollector => implicit request =>
-    val l = RMany[WikiEntry]().filter(we=> reactor.isEmpty || reactor == "all" || we.realm == reactor).map(x=>new WEAbstract(x)).toList
-    val res = l.map(_.j)
-    Ok(js.tojson(res).toString).as("application/json")
+    if (hostname.isEmpty) {
+      val l = RMany[WikiEntry]().filter(we=> reactor.isEmpty || reactor == "all" || we.realm == reactor).map(x=>new WEAbstract(x)).toList
+      val list = l.map(_.j)
+      Ok(js.tojson(list).toString).as("application/json")
+    } else if(hostname != me) {
+      val b = body(url(s"http://$hostname/razadmin/wlist/$reactor?me=${request.host}").basic("H-"+au.email.dec, "H-"+au.pwd.dec))
+      Ok(b).as("application/json")
+    }  else {
+      NotFound("same host again?")
+    }
   }
 
   def difflist(reactor:String, target:String) = FAD { implicit au =>
@@ -488,7 +522,10 @@ SendEmail.state=${SendEmail.state}\n
 
         val gd = new JSONArray(b)
         val ldest = js.fromArray(gd).collect {
-          case x : Map[String, String] => WEAbstract(x("id"), x("cat"), x("name"), x("realm"), x("ver").toInt, new DateTime(x("updDtm")), x("hash").toInt, x("tags"))
+          case m : Map[_, _] => {
+            val x = m.asInstanceOf[Map[String,String]]
+            WEAbstract(x("id"), x("cat"), x("name"), x("realm"), x("ver").toInt, new DateTime(x("updDtm")), x("hash").toInt, x("tags"))
+          }
         }
 
         val lsrc = RMany[WikiEntry]().filter(we=> reactor.isEmpty || reactor == "all" || we.realm == reactor).map(x=>new WEAbstract(x)).toList
@@ -499,7 +536,7 @@ SendEmail.state=${SendEmail.state}\n
         val lchanged = for(x <- lsrc; y <- ldest if y.id == x.id && (y.ver != x.ver || y.updDtm != x.updDtm))
           yield (x,y, if(x.hash == y.hash && x.tags == y.tags) "-" else if (y.ver < x.ver || y.updDtm.isBefore(x.updDtm)) "L" else "R")
 
-          Ok(views.html.admin.admin_difflist(reactor, target, lnew, lremoved, lchanged.sortBy(_._3))(auth))
+          ROK() admin {implicit stok=> views.html.admin.admin_difflist(reactor, target, lnew, lremoved, lchanged.sortBy(_._3))}
       } catch {
         case x : Throwable => Ok ("error " + x)
       }
@@ -510,7 +547,7 @@ SendEmail.state=${SendEmail.state}\n
       getWE(target, wid).fold({t=>
         val b = t._1.content
         val p = DiffUtils.diff(wid.content.get.lines.toList, b.lines.toList)
-        Ok(views.html.admin.admin_showDiff(wid.content.get, b, p, wid.page.get, t._1)(auth))
+        ROK() admin {implicit stok=> views.html.admin.admin_showDiff(wid.content.get, b, p, wid.page.get, t._1)}
       },{err=>
         Ok ("ERR: " + err)
       })
@@ -574,6 +611,23 @@ SendEmail.state=${SendEmail.state}\n
       }, {err=>
         Ok ("ERR: "+err)
       })
+  }
+
+  def testEmail() = FAD { implicit au => implicit errCollector => implicit request =>
+    SendEmail.withSession { implicit mailSession =>
+      Emailer.tellRaz("Notify It's " + System.currentTimeMillis(), au.userName, "notification")
+      Emailer.sendRaz("Send It's " + System.currentTimeMillis(), au.userName, "regular email")
+    }
+    Ok ("ok")
+  }
+
+  def proxyTest(what:String, url:String) = FAD { implicit au => implicit errCollector => implicit request =>
+    what match {
+      case "" => ""
+      case "Joe" => "" //"Authorization": "Basic " + btoa('H-@Dec(stok.au.get.email)', + ":" + 'H-@Dec(stok.au.get.pwd)')
+      case "" => ""
+    }
+    Ok ("")
   }
 
 //  def setContentFromDiff(target:String, wid:WID) = FAD { implicit au =>

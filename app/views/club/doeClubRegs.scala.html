@@ -1,16 +1,11 @@
 @******
 club admin manages list of users and registrations
 ******@
-@(club:model.User, details:String, members:List[(Option[model.User], model.UserWiki, Option[model.Reg])])
+@(clubName:String, club:model.User, details:String, members:List[(Option[model.User], model.UserWiki, Option[model.Reg])])(implicit stok:controllers.StateOk)
 @import _root_.admin.Config
 
-@htmlHeadBar("Registrations for club " + club.userName, Some(club))
+@stok.title("Registrations for club " + clubName)
 
-<div class="container ">
-  <div class="row">
-  @views.html.user.leftmenu(7, club)
-
-<div class="col-sm-9">
   @tab=@{
     members.filter(_._1.isDefined).map(t=>
       Map("userName"->t._1.get.userName,
@@ -39,7 +34,7 @@ club admin manages list of users and registrations
 @mnglink(row:Map[String,String],k:String,v:String)={
   @k match {
         case "regStatus" => {
-                @regStatusColored(v, Some(routes.Club.doeClubReg(id(row)).toString))
+                @regStatusColored(v, Some(routes.Club.doeClubReg(clubName, id(row)).toString))
                 }
         case "rowClass" => {
                 @row.get("regStatus") match {
@@ -52,7 +47,7 @@ club admin manages list of users and registrations
   }
 }
 
-<h2>Registration management panel for @club.firstName</h2>
+<h2>Registration management panel for @clubName</h2>
 
 <p>These are the members with accounts on the website. Click on the colorful statuses to manage that user/registration. (See the bottom for a legend).
 <br><b>Summary: @members.filter(_._2.role != "Fan").size</b> total: @members.filter(_._2.role != "Fan").groupBy(_._3.map(_.regStatus)).map{x=><b>@x._2.size</b> @x._1.getOrElse("n/a") , }
@@ -62,8 +57,8 @@ club admin manages list of users and registrations
     <br><b>Forms: @forms.size</b> total: @forms.groupBy(_._2).map{x=><b>@x._2.size</b> @x._1.getOrElse("n/a") , }
   }
 } else {
-    <p><small><a href="/doe/club/regs?details=1">More stats (slow)</a></small> |
-  <small><a href="/doe/club/regs?details=2">Hours report (slow)</a></small>
+    <p><small><a href="/doe/club/@clubName/regs?details=1">More stats (slow)</a></small> |
+  <small><a href="/doe/club/@clubName/regs?details=2">Hours report (slow)</a></small>
 }
 
 @util.utilSimpleTable(tab.filter(_.apply("role") != "Fan").iterator,
@@ -127,8 +122,9 @@ Add more from <a href="@routes.Club.doeClubKids">here</a>
   @controllers.Club.findForUser(club).map { c =>
     @c.regForms.map { t =>
     <li>
-      <a href="@routes.Club.doeClubRegsReportCsv(t.role)" class="btn btn-xs">Report CSV</a> -
-      <a href="@routes.Club.doeClubRegsReportJson(t.role)" class="btn btn-xs">Report Json</a> - @t.role
+      Report <a href="@routes.Club.doeClubRegsReportCsv(t.role)" class="btn btn-xs">CSV</a> -
+      <a href="@routes.Club.doeClubRegsReportJson(t.role)" class="btn btn-xs">Json</a> -
+      <a href="@routes.Club.doeClubRegsReportHtml(t.role)" class="btn btn-xs">Html</a> - @t.role
       @c.props.filter(_._1 startsWith ("Report."+t.role)).map {tt=>
       | <a href="@routes.Club.doeClubRegsReportCsv(t.role, tt._2)" class="btn btn-xs">@tt._1.replaceFirst("Report."+t.role+".", "")</a>
       }
@@ -155,10 +151,3 @@ Add more from <a href="@routes.Club.doeClubKids">here</a>
   @util.utilSimpleTable(tabMissing.iterator, Seq("userId" -> "userId", "role"->"Role"), None)
 }
 
-</div> <!-- /container -->
-</div> <!-- /container -->
-  <hr>
-  @htmlFooter(ads=true)
-</div> <!-- /container -->
-
-@htmlBottom()

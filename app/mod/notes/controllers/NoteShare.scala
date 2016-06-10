@@ -113,8 +113,8 @@ object Circles {
   import NotesTags._
 
   def get (name:String)(implicit au:User) = ROne[FriendCircle]("ownerId"->au._id,"name"->name)
-  def createOrFind (we:WikiEntry)(implicit au:User) = get(we.contentTags(NAME)) getOrElse {
-    val ret = FriendCircle(we.contentTags(NAME), au._id)
+  def createOrFind (we:WikiEntry)(implicit au:User) = get(we.contentProps(NAME)) getOrElse {
+    val ret = FriendCircle(we.contentProps(NAME), au._id)
     ret.create
     ret
   }

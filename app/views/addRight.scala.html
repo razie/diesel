@@ -1,19 +1,19 @@
 @***
 The add on the right hand side
 ***@
-@(au:Option[model.User] = None)
+@()(implicit stok: controllers.StateOk)
 @import _root_.admin.Config
 
-@if(! (Config.noads || au.orElse(Config.currUser).exists(_.isUnder13))) {
+@if(! (Config.noads || stok.au.exists(_.isUnder13))) {
 
-  @if(Config.theme.contains("light")) {
+  @if(stok.css.contains("light")) {
     <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
     <!-- RK-right-light -->
     <ins class="adsbygoogle"
     style="display:inline-block;width:160px;height:600px"
     data-ad-client="ca-pub-5622141672958561"
     data-ad-slot="9704195992"></ins>
-    <script>
+    <script>http://marketplace.eclipse.org/marketplace-client-intro?mpc_install=84
     (adsbygoogle = window.adsbygoogle || []).push({});
     </script>
   } else {
@@ -28,3 +28,4 @@ The add on the right hand side
     </script>
     }
 }
+

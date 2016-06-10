@@ -1,60 +1,100 @@
 @******
 manage the list of kidz and/or their accounts
 ******@
-@(user:model.User)
+@(club:controllers.Club, role:String="", teams:List[razie.wiki.model.WikiLink],
+    rks:List[(model.RacerKid, model.RacerKidAssoc)])(implicit stok:controllers.StateOk)
 @import model.RK._
 @import model.RacerKid
 @import model.RacerKidAssoc
+@import razie.wiki.model.Wikis
 
-@htmlHeadBar("RacerKidz for " + user.userName, Some(user))
-
-@rks=@{
-  (for (a <- model.RacerKidz.findAssocByClub(controllers.Club(user));
-           k <- model.RacerKidz.findById(a.to)) yield (k,a)).toList.sortBy(x=>x._1.info.lastName+x._1.info.firstName)
-}
+@stok.title("RacerKidz for " + club.name)
 
 @rksactive = @{rksmap((k,a)=> k.info.status != STATUS_FORMER && a.role != ROLE_FAN)}
 @rksformer = @{rksmap((k,a)=> k.info.status == STATUS_FORMER || a.role == ROLE_FAN)}
 
 @rksmap(f:(RacerKid, RacerKidAssoc) =>Boolean) = @{
-  for ((t,a) <- rks if(f(t, a))) yield
-    Map("fname"->t.info.firstName,
-        "lname"->t.info.lastName,
+  for ((k,a) <- rks if(f(k, a))) yield
+    Map("rkaid"->a._id.toString,
+        "fname"->k.info.firstName,
+        "lname"->k.info.lastName,
         "role" -> a.role,
         "source" -> a.assoc,
+      "notes"->k._id.toString,
         "associd" -> a._id.toString,
-        "button"->t._id.toString)
+        "team" -> model.RacerKidz.findWikiAssocById(k._id.toString, club.curYear, "Team").filter(x=>
+          teams.find(_.from.id == x.uwid.id)
+      ).toList.headOption.map(_.uwid.nameOrId).mkString,
+        "button"->k._id.toString)
 }
 
 @mnglink(row:Map[String,String],k:String,v:String)={
   @k match {
-        case "button" => {
-      <a href="@routes.Kidz.doeKid(user._id.toString, v, "-", row("associd"), "clubkidz")" class="btn btn-xs">More...</a>
+    case "button" => {
+      <a href="@routes.Kidz.doeKid(stok.au.get._id.toString, v, "-", row("associd"), "clubkidz:"+club.name)" class="btn btn-default btn-xs">More...</a>
+    }
+    case "role" => {
+      @if(club.isClubAdmin(stok.au.get)) {
+      <select rkaid="@row("rkaid")" onchange="setRole(this)" oldvalue="@v">
+        @model.RK.ROLES.map { t =>
+          @if(v == t) {
+            <option selected="selected" value="@t">@t</option>
+          } else {
+            <option value="@t">@t</option>
+          }
+        }
+      </select>
+      } else {
+        @v
       }
+    }
+    case "team" => {
+      @if(club.isClubAdmin(stok.au.get)) {
+      <select rkaid="@row("rkaid")" onchange="setTeam(this)" oldvalue="@v">
+        <option value=""></option>
+        @teams.map { t =>
+            @if(v == t.from.nameOrId) {
+              <option selected="selected" value="@t.from.id.toString">@t.from.nameOrId</option>
+            } else {
+              <option value="@t.from.id.toString">@t.from.nameOrId</option>
+            }
+        }
+      </select>
+      } else {
+        @v
+      }
+      }
+    case "notes" => {
+      @if(club.isClubAdmin(stok.au.get) || club.isMemberRole(stok.au.get._id, "Coach")) {
+        <a href="@routes.Kidz.doeKidHistory(club.name, v)" class="btn btn-info btn-xs">More...</a>
+      }
+    }
     case _ => { @v }
   }
 }
 
-<div class="container">
-<div class="row">
-@views.html.user.leftmenu(6, user)
-
-<div class="col-sm-9">
-
-<h2>Members of @user.firstName</h2>
+<h2>Members of @club.name</h2>
 
 <p>Some records are created by the parents (see the "Source"). For those that did not register online, you can create records here, for team management etc. See at the bottom for correlations.
 
-<p><b>Summary:</b>
-  @rks.filter(t=> t._1.info.status != STATUS_FORMER && t._2.role != ROLE_FAN).toList.groupBy(_._2.role).map {x=>
+<div>
+  <div style="display: inline-block">
+  <b>Summary:</b>
+    @rks.filter(t=> t._1.info.status != STATUS_FORMER && t._2.role != ROLE_FAN).toList.groupBy(_._2.role).map {x=>
         @x._2.size <small>x</small> @x._1  ;
-}
+    }
+  </div>
+  <div  style="display: inline-block" class="pull-right">
+    <span id="saved" class="glyphicon glyphicon-floppy-save"></span>
+    <input type="checkbox" name="confirmChanges" id="confirmChanges" checked> Confirmation
+  </div>
+</div>
 
 @util.utilSimpleTable(rksactive.iterator,
-        Seq("fname" -> "F.Name", "lname"->"L.Name", "role" -> "Role", "source" -> "Source", "button"->"Details"), Some(mnglink))
+  Seq("fname" -> "F.Name", "lname"->"L.Name", "role" -> "Role", "source" -> "Source", "team"->"Team", "button"->"Details", "notes"->"History"), Some(mnglink))
 
 Add a: @model.RK.ROLES.map{v=>
-  <a href="@routes.Kidz.doeKid(user._id.toString, "11", v, "-", "clubkidz")" class="btn btn-xs btn-info">@v</a>
+  <a href="@routes.Kidz.doeKid(club.userId.toString, "11", v, "-", "clubkidz:"+club.name)" class="btn btn-xs btn-info">@v</a>
 }
 
 <hr>
@@ -65,18 +105,58 @@ Source is
 <li>Parent - record was created here... we are the "parent"
 <li>Link - record was created when the user (having an account on this website) "liked" this club
 </ul>
+
 <hr>
 <strong>Former members</strong>
+
 @util.utilSimpleTable(rksformer.iterator,
         Seq("fname" -> "F.Name",
     "lname"->"L.Name",
     "role" -> "Role",
     "source" -> "Source",
     "button"->"Details"), Some(mnglink))
-</div>
-</div>
-  <hr>
-  @htmlFooter(ads=true)
-</div> <!-- /container -->
 
-@htmlBottom()
+<script src="@routes.Assets.at("javascripts/weCommons.js")"></script>
+
+<script>
+
+$("#saved").hide();
+
+function saved() {
+  $("#saved").fadeIn(500, function() {
+    $("#saved").fadeOut(500);
+  });
+}
+
+useLocalStorageCheckbox ("confirmChanges", "confirmChanges");
+
+function dontConfirm() {
+  return $('#confirmChanges').prop('checked') ? false : true;
+}
+
+function setTeam(sel)  {
+  if (dontConfirm() || confirm("Change the team ?")) {
+    var tid=sel.value == "" ? "-" : sel.value;
+    $.post( "/doe/club/kidz/setTeam/"+sel.getAttribute("rkaid")+"/@club.name/"+ tid, function( data ) {
+      sel.setAttribute("oldvalue", sel.value);
+      saved();
+    }).fail(function(){
+      window.location.reload();
+    });
+  } else {
+    window.location.reload();
+//    sel.value = sel.getAttribute("oldvalue");
+  }
+}
+function setRole(sel)  {
+  if (dontConfirm() || confirm("Change the role to "+sel.value+" ?")) {
+    $.post( "/doe/club/kidz/updRka/"+sel.getAttribute("rkaid")+"/role/" + sel.value, function( data ) {
+      sel.setAttribute("oldvalue", sel.value)
+    });
+  } else {
+    sel.value = sel.getAttribute("oldvalue");
+  }
+}
+</script>
+
+

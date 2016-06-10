@@ -11,6 +11,7 @@ import com.typesafe.config.ConfigValue
 import controllers.Wikie._
 import model.{UserWiki, Perm}
 import org.bson.types.ObjectId
+import razie.wiki.Services
 import scala.Array.canBuildFrom
 import com.mongodb.DBObject
 import razie.db.{REntity, RazMongo, ROne, RMany}
@@ -21,7 +22,7 @@ import play.api.data.Forms.mapping
 import play.api.data.Forms.nonEmptyText
 import play.api.data.Forms.text
 import play.api.data.Forms.tuple
-import play.api.mvc.{SimpleResult, AnyContent, Action, Request}
+import play.api.mvc.{Result, AnyContent, Action, Request}
 import razie.{cout, Logging, clog}
 import razie.wiki.model._
 import razie.wiki.util.{PlayTools, VErrors}
@@ -146,7 +147,7 @@ object Realm extends RazController with Logging {
           mainPage.create // create first, before using the reactor just below
         }
         cleanAuth()
-        Audit ! WikiAudit("CREATE_FROM_TEMPLATE", mainPage.wid.wpath, Some(au._id))
+        Services ! WikiAudit("CREATE_FROM_TEMPLATE", mainPage.wid.wpath, Some(au._id))
         pages foreach(_.create)
       }
 
@@ -171,7 +172,9 @@ object Realm extends RazController with Logging {
         twid <- Some(WID("Reactor", realm).r(realm));
         uwid <- twid.uwid orErr s"template/spec $realm not found"
       ) yield {
-        Ok(views.html.wiki.wikieAddModule(realm, auth))
+          ROK(Some(au), request) { implicit stok =>
+            views.html.wiki.wikieAddModule(realm)
+          }
       }) getOrElse
         Msg2("Can't find the reactor..." + errCollector.mkString)
   }
@@ -235,7 +238,7 @@ object Realm extends RazController with Logging {
 
       // todo visibility? public unless you pay 20$ account
 
-      Audit ! WikiAudit("CREATE_MOD", tw.wid.wpath, Some(au._id))
+      Services ! WikiAudit("CREATE_MOD", tw.wid.wpath, Some(au._id))
 
       razie.db.tx(s"addMod.$module") { implicit txn =>
         pages foreach(_.create)

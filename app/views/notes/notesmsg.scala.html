@@ -5,27 +5,6 @@ msg types are msg, err
 **************@
 @(msg:Seq[(String,String)])
 
-<small>
-&nbsp; &nbsp; &nbsp; &nbsp;
-
-  <div id="messages" style="float:right;">
-
-    @if(msg.size>0 && msg(0)._1 == "err") {
-     <div id="msg" style="display:inline;" class="alert alert-danger">
-     <strong>@msg(0)._2</strong>
-     </div>
-    }
-
-    @if(msg.size>0 && msg(0)._1 == "msg") {
-      <div id="msg" style="display:inline;" class="alert alert-info">
-      <strong>@msg(0)._2</strong>
-      </div>
-    }
-
-  </div>
-</small>
-
-  <script>
-  $('#msg').fadeOut(4000);
-  </script>
+@notes.notesmsgDiv("notesmsg")
+@notes.notesmsgShow("notesmsg", msg)
 

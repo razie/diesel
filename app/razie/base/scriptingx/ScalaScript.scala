@@ -7,11 +7,11 @@
 package razie.base.scriptingx
 
 import razie.base.ActionContext
-import razie.base.scripting.RazieInterpreter
+//import razie.base.scripting.RazieInterpreter
 import razie.base.scripting.ScriptContextImpl
-import razie.cdebug
+import razie.{CSTimer, cdebug}
 import scala.tools.{ nsc => nsc }
-import scala.tools.nsc.interpreter.IR
+import scala.tools.nsc.interpreter.{IMain, IR}
 import java.net.URL
 import java.io.File
 import java.net.URLClassLoader
@@ -132,7 +132,7 @@ class SBTScalaScriptContext(parent: ActionContext = null) extends ScalaScriptCon
       if(admin.Config.isLocalhost) {
         val myLoader = new ReplClassloader(getClass.getClassLoader)
         settings.embeddedDefaults(myLoader)
-        settings.bootclasspath.append("/Users/raz/w/racerkidz/lib_managed/jars/org.scala-lang/scala-library/scala-library-2.10.4.jar")
+        settings.bootclasspath.append("/Users/raz/w/racerkidz/lib_managed/jars/org.scala-lang/scala-library/scala-library-2.11.8.jar")
         //todo figure out why the heck and remove this hardcoded bs
 
         // RAZ WAS COMMENTED OUT
@@ -140,8 +140,8 @@ class SBTScalaScriptContext(parent: ActionContext = null) extends ScalaScriptCon
 
         val urls = cl match {
             // HE HE HE started working when I collected this and parent
-          case cl: java.net.URLClassLoader => cl.getURLs.toList ++
-            cl.getParent.asInstanceOf[java.net.URLClassLoader].getURLs.toList
+          case cl: java.net.URLClassLoader => cl.getURLs.toList //++
+///*pre-2.4.6 */           cl.getParent.asInstanceOf[java.net.URLClassLoader].getURLs.toList
           case a => sys.error("oops: I was expecting an URLClassLoader, foud a " + a.getClass)
         }
         val classpath = (urls map { _.toString })
@@ -308,15 +308,21 @@ class ScalaScript(val script: String) extends RazScript with razie.Logging {
         Some(ctx.asInstanceOf[ScalaScriptContext])
       else None
 
+    val c = new CSTimer("run-deb", "?")
+    c.snap("1")
     val p = sctx.map(_.parser) getOrElse (sctx.get mkParser println)
 
     try {
+      c.snap("2")
       sctx.get.bind(ctx, p)
+      c.snap("3")
 
-      val ret = p.eval(new razie.base.scripting.ScalaScript(this.script))
+      val ret = p.eval(new razie.base.scriptingx.ScalaScript(this.script))
+      c.snap("4")
 
       // bind new names back into context
       p.lastNames.foreach(m => ctx.set(m._1, m._2.asInstanceOf[AnyRef]))
+      c.snap("5")
 
       ret
     } catch {

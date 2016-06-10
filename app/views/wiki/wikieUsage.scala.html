@@ -1,51 +1,25 @@
 @**************
 debug a wiki page
 **************@
-@(wid:razie.wiki.model.WID, iname:Option[String], page:Option[razie.wiki.model.WikiEntry], realm:String, au:Option[model.User])(implicit request:Request[_])
+@(wid:razie.wiki.model.WID, iname:Option[String], page:Option[razie.wiki.model.WikiEntry])(implicit stok: controllers.StateOk)
 @import razie.wiki.model.{WikiEntry, WID, Wikis, CommentStream, WikiLink, WikiEntryOld}
 @import model.{Website, User}
 @import razie.db.{ROne, RMany, RUpdate}
 
-@comments(stream:Option[CommentStream]) = {
-  @stream match {
-    case None => {}
-    case Some(stream) => {
-  There's @stream.comments.size comment(s)...
-  <p>
-
-  @stream.comments.map { c =>
-    <div class="well">
-      <b>By: <a href="/user/@model.Users.nameOf(c.userId)">@model.Users.nameOf(c.userId)</a></b>
-@*********
-&nbsp;    <a href="/wikie" class="btn btn-xs">Reply</a>
-**********@
-       &nbsp; <a href="" class="btn btn-xs btn-info">Report</a>
-@if(controllers.Comment.canEdit(c,au)) {
-       &nbsp; <a href="@routes.Comment.edit(wid,c._id.toString)" class="btn btn-xs btn-info">Edit</a>
-}
-      <br>
-      <br>
-      @Html(razie.wiki.model.Wikis.format(page.map(_.wid).getOrElse(razie.wiki.model.WID("?","?")), "md", c.content))
-    </div>
-    }
-    }
-  }
-}
-
-@htmlHeadBar("WikiUsage: "+wid.cat +":"+ wid.name, au)
-
-    <div class="container">
-        <div class="row">
-
-    <div class="col-sm-9">
+@stok.title("WikiUsage: "+wid.cat +":"+ wid.name)
 
         <div class="well">
             <ul>Settings
-                <li>current realm: @realm</li>
+                <li>current realm: @stok.realm</li>
                 <li>page realm: @page.map(_.realm)</li>
                 <li>wid.realm: @wid.realm</li>
-                <li>getHost: @Website.getHost</li>
-                <li>Website: @Website.apply(request).map(_.name)</li>
+                <li>getHost: @Website.getHost(stok.request.get)</li>
+                <li>Website: @Website.apply(stok.request.get).map(_.name)</li>
+            </ul>
+          <ul>Stats
+            <li>Word count: <b>@page.map(_.wordCount).mkString</b>
+            <li>Label: @page.map(_.getLabel)
+            <li>Description: @page.map(_.getDescription)
             </ul>
         </div>
 
@@ -133,16 +107,3 @@ debug a wiki page
         }
       </div>
 
-      <hr>
-      @htmlFooter()
-
-    </div> <!-- /col-sm-9 -->
-
-      <div class="col-sm-3">
-          @wiki.wikiFrag(WID("Admin","Right"),au,true)
-      </div>
-
-  </div> <!-- row -->
-</div> <!-- /container -->
-
-@htmlBottom()
