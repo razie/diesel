@@ -1,0 +1,14 @@
+@(value:String)(implicit stok: controllers.StateOk)
+@import razie.db.RazMongo
+
+  <b>Usages of @value</b><br>
+  <ul>
+  @RazMongo.collectionNames.toList.sortWith(_ < _).map { c =>
+    @RazMongo(c).findAll().map { x =>
+      @if(x.toString.contains(value)) {
+        <li><a href="@routes.Admin.colEntity(c, x.get("_id").toString)">@c @x.get("_id").toString</a></li>
+      }
+    }
+  }
+  </ul>
+

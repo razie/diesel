@@ -1,0 +1,136 @@
+@**************
+an **inline** JS/SCALA client side fiddle
+**************@
+@(lang:String,
+  content:String,
+  q:Map[String,String],
+  au:Option[model.User],
+  id:String = java.lang.System.currentTimeMillis().toString())
+
+<div>
+
+  <div class="row" style="align-items:center;">
+    <div class="col-sm-9" style="">
+      <pre id="pre3_@id" style="">@content.trim.replaceAll("\n$", "")</pre>
+    </div>
+      <div class="col-sm-3" id="resultdiv_@id" style="">
+        <pre id="iframe_@id" name="iframe_@id" style="background:lightgray; padding:1px; text-align: center">Click for result</pre>
+      </div>
+  </div>
+
+<div id="pre3bdiv_@id" style="display:inline-block; width:100%; height:80px; overflow-y:auto;">
+  <pre id="pre3b_@id" style="display:inline-block; width:92%; height:119px; margin-bottom:0; padding:0px; border:0;"><code id="codeb_@id">
+  </code></pre>
+</div>
+
+<script type="text/javascript" src="@routes.Assets.at("vendor/jshint.js")"></script>
+
+  <div id="preamble" style="display: none">
+    //can't move this because you could have many in the same page
+    function println(x) {
+    // output is from the closure so for each occurence in a page
+    output = output + JSON.stringify(x) + "\n";
+    }
+  </div>
+
+<script>
+
+$('#pre3bdiv_'+@id).hide();
+
+var runpill_@id = function(id) {
+  var preamble = $('#preamble').text();
+  var code = editor_@{id}.getValue();
+  var output = "";
+  var res = "";
+
+  try {
+    res = eval(preamble + "\n" + code);
+    paintErr(false);
+  } catch (e) {
+    paintErr(true);
+    if (e instanceof SyntaxError) {
+        res = e.message;
+    } else {
+        res = e;
+    }
+  }
+
+  if(typeof res != 'undefined' && res != null) res = res.toString();
+  else if(typeof res == 'undefined' && output.length <= 0) res = " ";
+  else if(typeof res == 'undefined' && output.length > 0) res = "";
+  if(code.length > 0) $('#iframe_'+id).text(output+res);
+  else $('#iframe_'+id).text("Click for result");
+}
+
+function paintErr(isErr) {
+  $('#iframe_'+@id).toggleClass("panel panel-success", !isErr);
+  $('#iframe_'+@id).toggleClass("panel panel-danger", isErr);
+}
+
+// returns true if no errors
+var jsh = function(code) {
+  JSHINT(code, {expr: true, asi:true}); // enable expression mode and don't warn semicolons
+  var ret = JSHINT.data();
+
+  var er = 'Line\tReason\n';
+
+  if(JSHINT.data().errors) {
+    JSHINT.data().errors.forEach(function(e){
+      er = er+e.line + '\t\t'+e.reason+'\n';
+    })
+    document.getElementById('pre3b_@id').innerText = er;
+    @*$('#pre3bdiv_'+@id).show();*@
+    paintErr(true);
+    return false;
+  } else {
+    @*$('#pre3bdiv_'+@id).hide();*@
+    document.getElementById('pre3b_@id').innerText = "";
+    paintErr(false);
+    return true;
+  }
+}
+</script>
+
+<script src="@routes.Assets.at("ace-builds/src/ace.js")" type="text/javascript" charset="utf-8"></script>
+<script src="@routes.Assets.at("ace-builds/src/mode-javascript.js")" type="text/javascript" charset="utf-8"></script>
+<script src="@routes.Assets.at("ace-builds/src/ext-language_tools.js")" type="text/javascript" charset="utf-8"></script>
+<script>
+  ace.require("ace/ext/language_tools");
+  var editor_@{id} = ace.edit("pre3_@id");
+  editor_@{id}.setOptions({
+    maxLines: 10,
+    highlightActiveLine: false,
+    enableBasicAutocompletion: true,
+    enableSnippets: false,
+    enableLiveAutocomplete: true
+  });
+  @if(_root_.admin.Config.isLight(au)) {
+//  editor_@{id}.setTheme ( "ace/theme/crimson_editor" ) ;
+  editor_@{id}.setTheme ( "ace/theme/solarized_light" ) ;
+} else {
+  editor_@{id}.setTheme ( "ace/theme/twilight" ) ;
+}
+  editor_@{id}.getSession().setMode("ace/mode/javascript");
+
+  //jsh(editor.getValue());
+
+  var razChanged_@{id}=true;
+
+  editor_@{id}.getSession().on("change", function(e) {
+    razChanged_@{id}=true;
+    //var j=editor.getValue();
+    //jsh(j);
+  });
+
+setInterval(function(){
+   if(razChanged_@{id}) {
+     var j=editor_@{id}.getValue();
+     if(jsh(j)) runpill_@{id}('@{id}');
+     razChanged_@{id}=false;
+     }
+},500);
+
+</script>
+
+</div>
+

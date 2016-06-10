@@ -5,11 +5,10 @@ logLevel := Level.Warn
 resolvers += "Typesafe repository" at "http://repo.typesafe.com/typesafe/releases/"
 
 // Use the Play sbt plugin for Play projects
-addSbtPlugin("com.typesafe.play" % "sbt-plugin" % "2.2.2")
-
-// auto refresh
-addSbtPlugin("com.jamesward" %% "play-auto-refresh" % "0.0.11")
+addSbtPlugin("com.typesafe.play" % "sbt-plugin" % "2.4.6")
 
 //sign artifacts
 addSbtPlugin("com.typesafe.sbt" % "sbt-pgp" % "0.8")
+
+addSbtPlugin("com.typesafe.sbteclipse" % "sbteclipse-plugin" % "4.0.0")
 

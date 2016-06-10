@@ -427,6 +427,12 @@ textarea[readonly] {
     color: #3a87ad;
 }
 
+.alert-black {
+    color: #454545;
+    background-color: #afafaf;
+    border-color: #454545;
+}
+
 .alert-info {
     color: #31708f;
     background-color: #142531;

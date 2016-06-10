@@ -1,0 +1,31 @@
+@** print either the value or if the "schema" says it's an ID, a link to the other entity **@
+@(name:String, k:String, v:String)
+
+@ids=@{
+  Map(
+    "RkHistory.rkId" -> "RacerKid",
+    "RkHistory.authorUserId" -> "User",
+    "RkHistory.elementId" -> "?",
+    "RacerKidAssoc.from" -> "User",
+    "RacerKidAssoc.to" -> "RacerKid",
+    "RacerKidAssoc.owner" -> "User",
+    "RacerKid.ownerId" -> "User",
+    "RacerKid.userId" -> "User",
+    "RacerKid.rkiId" -> "RacerKidInfo",
+    "RacerKid.oldRkId" -> "RacerKid",
+    "Comment.streamId" -> "CommentStream",
+    "Comment.userId" -> "User",
+    "Club.userId" -> "User"
+  )
+}
+
+    @if(ids.get(name+"."+k).isDefined) {
+      @if(ids(name+"."+k) == "?" ) {
+        <a style="color:red" href="@routes.Admin.dbFind(v)">@v</a>
+      } else {
+        @admin.entity(ids(name+"."+k),v)
+      }
+    } else {
+      @v
+    }
+

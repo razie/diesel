@@ -58,10 +58,10 @@ object TestInit extends WithFilters {
 }
 
 /** OPTIONAL: my own reactor - customize the customizables */
-class MyReactor(realm: String) extends Reactor(realm, None, None) {
+class MyReactor(realm: String) extends Reactor(realm, Nil, None) {
 
   /** my wiki - used to compose my own parser */
-  class MyWikiInst(realm: String) extends WikiInst(realm, None) {
+  class MyWikiInst(realm: String) extends WikiInst(realm, Nil) {
     class MyWikiParserCls(val realm: String) extends WikiParserT {
     }
 

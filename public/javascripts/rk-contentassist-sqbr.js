@@ -13,6 +13,9 @@ var braDomain = [
   'photo.small URL',
   'photo.medium URL',
   'photo.large URL',
+  {'noSocial' : ['true']},
+  {'nocomments' : ['true']},
+  {'noTitle' : ['true']},
   {'noAds' : ['true']},
   {'test1' : [
     {'squaretop' : ['a', 'b']},
@@ -53,7 +56,11 @@ var braDomain = [
   'lambda name:signature',
   'call',
   'footref', 'footnote',
-  '/section'
+  {'if' : [
+    'api.wix.user.isActive',
+    'api.wix.user.isClubAdmin'
+  ]},
+  '/section','/alert','/if'
 ];
 
 

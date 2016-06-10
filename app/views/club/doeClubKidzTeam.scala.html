@@ -1,0 +1,70 @@
+@******
+manage the list of kidz and/or their accounts
+******@
+@(club:controllers.Club, role:String, team:razie.wiki.model.WID)(implicit stok:controllers.StateOk)
+@import model.RK._
+@import model.RacerKid
+@import model.RacerKidAssoc
+@import razie.wiki.model.Wikis
+
+@stok.title("RacerKidz for " + club.name + " / " + team.name)
+
+@rks=@{
+  (for (
+    w <- model.RacerKidz.findWikiAssocs(club.curYear, team.uwid.get).toList;
+    a <- club.rka(w.rkId, role);
+    k <- w.rk
+  ) yield
+    (k,a)).toList.sortBy(x=>x._1.info.lastName+x._1.info.firstName)
+}
+
+@rksactive = @{rksmap((k,a)=> k.info.status != STATUS_FORMER && a.role != ROLE_FAN)}
+
+@rksmap(f:(RacerKid, RacerKidAssoc) =>Boolean) = @{
+  for ((k,a) <- rks if(f(k, a))) yield
+    Map("rkaid"->a._id.toString,
+        "fname"->k.info.firstName,
+        "lname"->k.info.lastName,
+        "role" -> a.role,
+        "associd" -> a._id.toString,
+      "notes"->k._id.toString,
+        "details"->k._id.toString)
+}
+
+<script>
+function setTeam(sel)  {
+  $.post( "/doe/club/kidz/setTeam/"+sel.id+"/"+ sel.value, function( data ) {
+  });
+}
+</script>
+
+@mnglink(row:Map[String,String],k:String,v:String)={
+  @k match {
+    case "details" => {
+      <a href="@routes.Kidz.doeKid(stok.au.get._id.toString, v, "-", row("associd"), "clubkidz:"+club.name)" class="btn btn-default btn-xs">More...</a>
+    }
+    case "notes" => {
+      <a href="@routes.Kidz.doeKidHistory(club.name, v)" class="btn btn-info btn-xs">More...</a>
+    }
+    case _ => { @v }
+  }
+}
+
+@defining(rks.filter(t=> t._1.info.status != STATUS_FORMER && t._2.role != ROLE_FAN).toList) {list=>
+@if(list.isEmpty) {
+  <h2>No members...</h2>
+} else {
+  <h2>Members of @team.name</h2>
+
+  <p><b>Summary:</b>
+    @rks.filter(t=> t._1.info.status != STATUS_FORMER && t._2.role != ROLE_FAN).toList.groupBy(_._2.role).map {x=>
+      @x._2.size <small>x</small> @x._1  ;
+    }
+
+  @util.utilSimpleTable(rksactive.iterator,
+    Seq("fname" -> "F.Name", "lname"->"L.Name", "role" -> "Role", "details"->"Details", "notes"->"History"), Some(mnglink))
+
+  }
+}
+
+

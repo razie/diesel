@@ -8,6 +8,7 @@ Disallow: /wikie/
 Disallow: /we/
 Disallow: /admin/
 Disallow: /sfiddle/
+Disallow: /weapi/
 
 User-agent: *
 Disallow: /doe/
@@ -16,4 +17,5 @@ Disallow: /we/
 Disallow: /admin/
 Disallow: /sfiddle/
 Disallow: /diesel/
+Disallow: /weapi/
 

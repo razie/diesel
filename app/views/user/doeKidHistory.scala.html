@@ -1,0 +1,352 @@
+@(club: controllers.Club, rk: model.RacerKid, settings: String)(implicit stok: controllers.StateOk)
+@import razie.wiki.model.Visibility
+@import org.bson.types.ObjectId
+@import controllers.RKU
+@import util.razText
+@import model.RK
+@import razie.wiki.model.{WID, WikiEntry, Wikis}
+
+@import helper.twitterBootstrap._
+
+  @ccc(wid: WID, we: WikiEntry, c:Option[String]=None) = @{
+    //    cdebug << "D"
+    // this will use the preprocessed cache and just do MD format
+    val x = Wikis.format(wid, we.markup, c.getOrElse(null), Some(we), stok.au)
+    var y = try {
+      if(x contains "CANNOT PARSE") {
+        val PAT = """.*PARSE\]\] \[([0-9]+)\.([0-9]+)\].*""".r
+        val PAT(line, col) = x
+        val id = System.currentTimeMillis().toString
+        s"""<div style="color:red;font-weight:bold;" title="Problem with your content: $x">
+          <small>[[Check content below at Line:$line Position:$col]]
+            <p>Sorry, dumb program here! The content is not lost: try editing this topic... also, please open a support issue and copy/paste there the content.
+          </small></div><p></p>""".stripMargin +
+            s"""
+            <textarea id="$id" readonly="true" style="width:90%; margin-right:40px" rows="15">${we.included.lines.zipWithIndex.map(t => f"${t._2 + 1}%3s> ${t._1}").mkString("\n")}</textarea>
+         """.stripMargin
+      } else {
+        Wikis.divLater(x)
+      }
+    } catch {
+      case _: Throwable => x
+    }
+    //    cdebug << "E"
+
+    y = razie.wiki.mods.WikiMods.modPostHtml(we, y)
+    y = Wikis(wid.getRealm).applyTemplates(wid, y, "html")
+    //    cdebug << "F"
+    y
+  }
+
+  @paint(h: model.TFeedItem, we:WikiEntry) = {
+   @if(h.kind != "Comment") {
+      <div class="panel panel-@pnelColor(h, we)" id="@h.eId.toString" style="border-radius : 9 px ; margin-bottom : 10 px;">
+        <div class="panel-heading"
+        style="pading:5px 5px; padding-top: 3px; padding-right: 5px; padding-bottom: 3px; padding-left: 5px;">
+          <small>
+            @model.Users.nameOf(we.by) |
+            @we.crDtm.toString("YYYY-MM-dd hh:mm a").toLowerCase()
+            @if(canEdit(h,we)) {
+            [<a href="@mod.notes.controllers.routes.NotesLocker.noteById(we._id.toString)"><strong>Edit</strong>]</a>
+            }
+            [<a href="@mod.notes.controllers.routes.NotesLocker.viewNoteById(we._id.toString)"><strong>View</strong></a>]
+          </small>
+
+          <div style="float : right ;">
+            <small>Tags: <strong>
+            @we.tags.map { x =>
+              @x |
+              @**
+              @if(stok.tags find (_._1 == x) isEmpty ) {
+              @x |
+              } else {
+              <a href="@mod.notes.controllers.routes.NotesLocker.tag(stok.tagPath(x))">@x</a> |
+              }
+              **@
+            }
+            </strong></small>
+          </div>
+        </div>
+
+        @*<div class="panel-body alert-@pnelColor(h,we)" style="background-color: #fCf8eb; color:black">*@
+        <div class="panel-body alert-@pnelColor(h,we)" style="color:black">
+          @if(we.category != "Note") {
+            @Html(we.wid.ahrefRelative)<br>
+          }
+
+          @if(h.role == "post") {
+            <button type="button" class="close" aria-label="Dismiss" onclick="dismissPost('@h.eId')" title="Dismiss this alert">
+              <span aria-hidden="true">&times;</span>
+            </button>
+            <p>@Html(ccc(we.wid, we, we.getFirstParagraph))</p>
+          } else {
+            <p>@Html(ccc(we.wid, we))</p>
+          }
+        </div>
+
+      </div>
+  } else {
+    @h
+  }
+  }
+
+@pnelColor(h:model.TFeedItem, we:WikiEntry) = @{
+  // todo notes are always private
+  if(we.tags.contains("insight") || we.visibility == Visibility.CLUB_COACH) "success"
+  else if(we.tags.contains("private") /*|| we.visibility == Visibility.PRIVATE*/ ) "danger"
+  else if(we.tags.contains("goal") || we.tags.contains("plan")) "info"
+  else if(we.tags.contains("post") || we.tags.contains("item")) "warning"
+  else "info"
+}
+
+@filterForCoach(t:model.TFeedItem)(we:WikiEntry) = @{
+  // I see my own and my posts
+  if(we.tags.contains("private") /*|| we.visibility == Visibility.PRIVATE*/) we.ownerId.exists(_ == stok.au.get._id)
+  else if(t.role=="post") rk.userId.exists(_ == stok.au.get._id)
+  else if(we.tags.contains("insight") || we.visibility == Visibility.CLUB_COACH) club.isClubCoach(stok.au.get)
+    else !Array("private", "insight").exists(we.tags.contains)
+}
+
+@canEdit(t:model.TFeedItem, we:WikiEntry) = @{
+  // I see my own and my posts
+  if(we.tags.contains("private") /*|| we.visibility == Visibility.PRIVATE*/) we.ownerId.exists(_ == stok.au.get._id)
+  else if(t.role=="post") false
+  else if(we.tags.contains("coaching") || we.visibility == Visibility.CLUB_COACH) club.isClubCoach(stok.au.get)
+  else !Array("private", "insight").exists(we.tags.contains)
+}
+
+@stok.title("athlete history")
+
+<h3>@rk.info.fullName
+  <small>|
+  @if(rk.userId.isDefined) {account holder} else {no account}
+  </small>
+  @notes.notesmsgDiv("histmsg")
+</h3>
+
+  <p>
+  </p>
+
+@if(settings contains "grouped") {
+  <input type="checkbox" name="grouped" checked onchange="changeGrouped(this);"/> Grouped
+} else {
+  <input type="checkbox" name="grouped" onchange="changeGrouped(this);"/> Grouped
+}
+  | Add a:
+  @if(club.isClubCoach(stok.au.get)) {
+  <a href="#" onclick="addNote();" title="Private insight / notes visible to coaches only">Insight</a> |
+  <a href="#" onclick="addEval()" title="An evaluation shared with the athlete">Evaluation</a> |
+}
+   <a href="#" onclick="addGoal()" title="Select a goal">Goal</a> |
+   <a href="#" onclick="addPlan()" title="Select a plan">Plan</a> |
+   <a href="#" onclick="addFeedback()" title="Some feedback">Feedback</a> |
+   <a href="#" onclick="addMA()" title="Movement analysis">MA</a> |
+<p>
+</p>
+
+<div id="info" class="bg-primary"></div>
+<div id="extra"></div>
+
+@items()=@{
+  rk.history.items.map(h=>(h,razie.wiki.model.Wikis.findById(h.kind, h.eId).filter(! _.tags.contains("archive")).filter(filterForCoach(h)))).filter(_._2.isDefined)
+}
+
+@defining(items().take(20)) { history =>
+  @notes.notesmsgShow("histmsg", Seq(("msg" -> ("Found "+history.size.toString+" items"))))
+
+  @if(settings contains "grouped") {
+    <p></p>Groups: @history.groupBy(_._1.role).map { g =>
+      <a href="#@g._1">@g._1 <small>(s)</small></a> |
+    }
+
+    @history.groupBy(_._1.role).map { g =>
+      <a name="@g._1"></a>
+
+      <h2>@g._1 <small>(s)</small></h2>
+
+    @g._2.map(t=> paint(t._1, t._2.get))
+      <hr>
+    }
+  } else {
+    @history.map(t=> paint(t._1, t._2.get))
+  }
+
+  @if(history.size == 0) {
+    <div class="alert alert-success">
+      <p>You have no items here... this is your <b>main feed</b>. Items appear from the different notifications you subscribed to (like news, alerts or blog items).</p>
+      <p>You can take notes yourself, create and track goals, plans etc but... <b>as an athlete</b>, the coaches will assign you these. </p>
+      <p><b>As a coach</b>, you'll keep track of your own personal notes. You can see each athlete's profile by going to the respective team.</p>
+    </div>
+  }
+}
+
+<script>
+var selecting="";
+
+function dismissPost(eid) {
+  var url = "@controllers.routes.Kidz.doeDismissHistory("NID")".replace(/NID/g, eid);
+  $.ajax({
+    type: "POST",
+    url:  url,
+    success: function(data) {
+      $("#"+eid).fadeOut(600);
+      notesMsgShow("msg", "dismissed ok")
+    },
+    error: function(result) {
+      notesMsgShow("err", "can't dismiss: "+result)
+    }
+});
+}
+function addNote() {
+  $("#info").text("Private insight / notes visible to coaches only");
+  $("#extra").load("@mod.notes.controllers.routes.NotesLocker.embed("Note", "for coaches", "coaching,insight", "Note", "")");
+}
+function addFeedback() {
+  $("#info").text("Feedback is shared with the athlete");
+  $("#extra").load("@mod.notes.controllers.routes.NotesLocker.embed("Message", "feedback", "coaching,feedback", "Message", "")");
+}
+function addMA() {
+  $("#info").text("MA is shared with the athlete");
+  $("#extra").load("@mod.notes.controllers.routes.NotesLocker.embed("Note", "MA", "ma", "MA", "")");
+}
+function addGoal() {
+  selecting="goal";
+  $("#info").text("Select a goal...");
+  showModal("@mod.notes.controllers.routes.NotesLocker.selectFrom(List(club.props.getOrElse("system.plan", ""), "template/racer/goal").filter(! _.isEmpty).mkString("/"))");
+}
+
+function addPlan() {
+  selecting="plan";
+  $("#info").text("Select a plan...");
+  showModal("@mod.notes.controllers.routes.NotesLocker.selectFrom(List(club.props.getOrElse("system.plan", ""), "template/racer/plan").filter(! _.isEmpty).mkString("/"))");
+}
+
+function addEval() {
+  $("#info").text("Evaluations are shared with the athlete");
+  $("#extra").load("@mod.notes.controllers.routes.NotesLocker.embed("Evaluation", "feedback", "evaluation", "Evaluation", "")");
+}
+
+function noteSelected(nid) {
+  $("#oneModal").modal('hide');
+
+  if(selecting == 'plan' || selecting=='goal') {
+    var url ;
+
+    if(selecting=='plan') {
+      $("#info").text("Now customize the plan for the athlete...");
+      url = '@mod.notes.controllers.routes.NotesLocker.embed("Plan", "organize", "plan,long-term", "Plan", "NID")';
+    } else if(selecting=='goal') {
+      $("#info").text("Now customize the goal for the athlete...");
+      url = '@mod.notes.controllers.routes.NotesLocker.embed("Goal", "reach", "goal,long-term", "Goal", "NID")';
+    }
+    $("#extra").load(url.replace(/NID/g, nid));
+    selecting="";
+  }
+}
+
+function noteAdded (noteId, context) {
+  $.post('/doe/4us/addNote?club=@club.name&noteid='+noteId+'&role='+context+'&rkid=@rk._id.toString',
+    '', function(response) {
+    console.log(response);
+
+    if(response.indexOf("msg") == 1) {
+    // todo deal with response codes
+    } else {
+    }
+
+    setTimeout(function() {
+      window.location.reload();
+    }, 100);
+  });
+}
+
+function changeGrouped (element) {
+  var settings = element.checked ? "grouped" : "";
+  window.location = '@routes.Kidz.doeKidHistory(club.name, rk._id.toString, "")&settings='+settings;
+}
+</script>
+
+
+
+<div id="oneModal" class="modal fade">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-body" style="max-height: 420px; overflow-y: auto;">
+        <p>?</p>
+      </div>
+    </div><!-- /.modal-content -->
+  </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
+<script>
+    // clear modal contents on close
+    $('#oneModal').on('hidden.bs.modal', function (e) {
+        $("#oneModal > div > div > div.modal-body").html('...');
+    })
+
+  $("#oneModal").css("max-height", "");
+  $("#oneModal").css("overflow-y", "");
+
+//  newConfirm(dLab(msg),
+//  dLab("[[Cancel]]"),
+//  function(){cOn(0);},
+//  dLab("[[Discard changes]]"),
+//  function(){
+//  clearLocalChange();
+//  logout();
+//  });
+
+
+   function showModal(url)
+    {
+        $("#oneModal > div > div > div.modal-body").load(url);
+        $("#oneModal").modal('show');
+    }
+
+
+
+  function newConfirm(msg, cancelMsg, onCancel, okMsg, onOk)
+  {
+  $("#confirmModal > div > div > div.modal-body > p").html(msg);
+  $("#confirmModal > div > div > div.modal-footer > button.btn.btn-default").html(cancelMsg);
+  $("#confirmModal > div > div > div.modal-footer > button.btn.btn-default").show();
+  //        $("#confirmModal > div > div > div.modal-footer > button.btn.btn-default").click(onCancel);
+  $("#confirmModal > div > div > div.modal-footer > button.btn.btn-primary").html(okMsg).unbind('click');
+  $("#confirmModal > div > div > div.modal-footer > button.btn.btn-primary").html(okMsg).click(onOk);
+  $("#confirmModal").modal('show');
+  }
+
+  function newConfirmNoYes(msg, onOk, onCancel)
+  {
+  $("#confirmModal > div > div > div.modal-body > p").html(msg);
+  $("#confirmModal > div > div > div.modal-footer > button.btn.btn-default").html(dLab("[[No]]"));
+  $("#confirmModal > div > div > div.modal-footer > button.btn.btn-default").show();
+  $("#confirmModal > div > div > div.modal-footer > button.btn.btn-default").html(dLab("[[No]]")).unbind('click');
+  $("#confirmModal > div > div > div.modal-footer > button.btn.btn-default").html(dLab("[[No]]")).click(onCancel);
+  $("#confirmModal > div > div > div.modal-footer > button.btn.btn-primary").html(dLab("[[Yes]]")).unbind('click');
+  $("#confirmModal > div > div > div.modal-footer > button.btn.btn-primary").html(dLab("[[Yes]]")).click(onOk);
+  $("#confirmModal").modal('show');
+  }
+</script>
+
+
+
+<div id="confirmModal" class="modal fade">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title">Please confirm</h4>
+      </div>
+      <div class="modal-body" style="max-height: 420px; overflow-y: auto;">
+        <p>?</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-primary" data-dismiss="modal">Save changes</button>
+      </div>
+    </div><!-- /.modal-content -->
+  </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
+

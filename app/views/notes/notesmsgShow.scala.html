@@ -1,0 +1,24 @@
+@**************
+show/edit/capture a note
+
+msg types are msg, err
+**************@
+@(name:String, msg:Seq[(String,String)])
+
+<script>
+
+$('#@name').removeClass('alert-info');
+$('#@name').removeClass('alert-danger');
+
+@if(msg.size>0 && msg(0)._1 == "err") {
+  $('#@name').addClass('alert-danger');
+  } else {
+  $('#@name').addClass('alert-info');
+  }
+@if(msg.size>0) {
+  $('#@name').html("<strong>@msg(0)._2</strong>");
+  $('#@name').show();
+  $('#@name').fadeOut(4000);
+  }
+</script>
+

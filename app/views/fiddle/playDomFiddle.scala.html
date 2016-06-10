@@ -1,0 +1,328 @@
+@**************
+a JS with HTML and CSS fiddle
+**************@
+@(name:String,
+    args:Map[String,String],
+    g:String,
+    i:String,
+    au:Option[model.User],
+    errMsg:Option[String],
+    id:String = java.lang.System.currentTimeMillis().toString())(implicit stok:controllers.StateOk)
+
+@stok.title("Fiddle, fiddle")
+
+<script src="@routes.Assets.at("javascripts/weFiddles.js")"></script>
+
+  <h3>DOM fiddle | <small>
+    <input type="checkbox" id="refresh" checked> Real time (<span id="roundtrip"></span>)
+  </small></h3>
+
+@*<a class="btn btn-primary btn-xs" title="Works only on Chrome and Firefox" href="javascript:runpill_@{id}('@{id}')">Run &raquo;</a>*@
+@*<br>*@
+
+<div class="row" style="align-items:center;">
+  <div id="pre1box_@id" class="col-sm-6" style="">
+    <pre id="pre1_@id" style="height:228px; ">@g</pre>
+  </div>
+  <div class="col-sm-6 well" id="pre2_@id" style="overflow: scroll">
+  </div>
+</div>
+<div class="row" style="align-items:center;">
+  <div id="pre3box_@id" class="col-sm-6" style="">
+    <pre id="pre3_@id" style="height:228px; ">@i</pre>
+  </div>
+  @*<div class="col-sm-6" id="resultdiv_@id" style="">*@
+    <pre class="col-sm-6" id="iframe_@id" name="iframe_@id" style="padding:1px; Xtext-align: center">Start typing...</pre>
+  @*</div>*@
+</div>
+
+  <small>Errors in code:</small><br>
+
+  <div style="display:inline-block; width:100%; height:130px; overflow-y:auto;">
+    <pre id="pre3b_@id" style="display:inline-block; width:92%; height:119px; margin-bottom:0; padding:0px; border:0;"><code id="codeb_@id">
+
+    </code></pre>
+  </div>
+
+
+@md(f: =>Html)={
+  @Html(razie.wiki.model.Wikis.sformat(f.toString(), "md", au))
+}
+
+@md{
+When done with this session, click the browser's BACK button to go back.
+
+## Help
+
+Type some DOM, then some instance and see them **reflected** instantly.
+}
+
+
+
+
+
+<script>
+$('#pre2_'+@id).css('max-height', $('#pre1box_@id').height()-10+'px');
+$('#iframe_'+@id).css('max-height', $('#pre3box_@id').height()-10+'px');
+$('#iframe_'+@id).contents().find('html').html("<div style='text-align: center;'>@errMsg.getOrElse("Press Run to see results...")</div>");
+
+var domContentAssist=[];
+var instContentAssist=[];
+
+var runpill_@id = function(id) {
+  var lastTime = new Date().getTime();
+  $.ajax(
+    '/sfiddle/buildDom1/'+id+'?@Html(mod.diesel.controllers.SFiddles.qtourl(args))', {
+    type: 'POST',
+    data: $.param({
+      g : editor1.getValue(),
+      i : editor.getValue()
+    }),
+    contentType: 'application/x-www-form-urlencoded',
+    success: function(data) {
+//      $('#pre2_'+id).contents().find('html').html(data.res);
+      $('#pre2_'+id).html(data.res);
+      domContentAssist = data.ca;
+      var du = new Date().getTime() - lastTime;
+      $('#roundtrip').text(du+' ms');
+      // also trigger inst update
+      runpill2_@{id}('@{id}');
+    },
+    error  : function(x) {
+      console.log( "ERR "+x.toString());
+    }
+  });
+}
+
+var runpill2_@id = function(id) {
+  var lastTime = new Date().getTime();
+  $.ajax(
+    '/sfiddle/buildDom2/'+id+'?@Html(mod.diesel.controllers.SFiddles.qtourl(args))', {
+    type: 'POST',
+    data: $.param({
+      g : editor1.getValue(),
+      i : editor.getValue()
+    }),
+    contentType: 'application/x-www-form-urlencoded',
+    success: function(data) {
+      $('#iframe_'+id).html(data.res);
+      instContentAssist = data.ca;
+      var du = new Date().getTime() - lastTime;
+      $('#roundtrip').text(du+' ms');
+    },
+    error  : function(x) {
+      console.log( "ERR "+x.toString());
+    }
+  });
+
+}
+</script>
+
+<script type="text/javascript" src="@routes.Assets.at("vendor/jshint.js")"></script>
+
+<script>
+var jsh = function(code) {
+  JSHINT(code);
+  var ret = JSHINT.data();
+
+  var er = 'Line\tReason\n';
+
+  document.getElementById('pre3b_@id').innerText = "";
+
+  if(JSHINT.data().errors) {
+    JSHINT.data().errors.forEach(function(e){
+      er = er+e.line + '\t\t'+e.reason+'\n';
+    })
+  }
+
+  document.getElementById('pre3b_@id').innerText = er;
+}
+</script>
+
+<script src="@routes.Assets.at("javascripts/rk-contentassist.js")"></script>
+
+<script src="@routes.Assets.at("ace-builds/src/ace.js")" type="text/javascript" charset="utf-8"></script>
+
+<script src="@routes.Assets.at("ace-builds/src/mode-nvp1.js")" type="text/javascript" charset="utf-8"></script>
+<script src="@routes.Assets.at("ace-builds/src/ext-language_tools.js")" type="text/javascript" charset="utf-8"></script>
+
+@*<script type="text/javascript" src="/sfiddle/tempAsset/@id/gLexer.js")"></script>*@
+@*<script type="text/javascript" src="/sfiddle/tempAsset/@id/gParser.js")"></script>*@
+
+
+<script>
+  var langTools = ace.require("ace/ext/language_tools");
+
+  var editor1 = ace.edit("pre1_@id");
+  @if(_root_.admin.Config.isLight(au)) {
+  editor1.setTheme ( "ace/theme/crimson_editor" ) ;
+} else {
+  editor1.setTheme ( "ace/theme/twilight" ) ;
+}
+  editor1.getSession().setMode("ace/mode/nvp1");
+
+  var editor = ace.edit("pre3_@id");
+  @if(_root_.admin.Config.isLight(au)) {
+  editor.setTheme ( "ace/theme/crimson_editor" ) ;
+} else {
+  editor.setTheme ( "ace/theme/twilight" ) ;
+}
+  editor.getSession().setMode("ace/mode/nvp1");
+
+  var domCompleter = {
+    getCompletions: domCompl(false)
+  };
+  var instCompleter = {
+    getCompletions: domCompl(true)
+  };
+
+var keyWordCompleter = {
+    getCompletions: function(editor, session, pos, prefix, callback) {
+        var state = editor.session.getState(pos.row);
+        var completions = session.$mode.getCompletions(state, session, pos, prefix);
+        callback(null, completions);
+    }
+};
+
+//  editor.setOptions({enableBasicAutocompletion: true});
+  editor1.setOptions({
+    enableBasicAutocompletion: true  //[domCompleter]
+  });
+  editor.setOptions({
+    enableBasicAutocompletion: true, //[instCompleter]
+    enableLiveAutocomplete:  true,
+    enableLiveAutocompletion:  true
+  });
+//  langTools.addCompleter(instCompleter);
+  langTools.setCompleters([keyWordCompleter, instCompleter]);
+
+
+  function domCompl (i) {
+    return function (editor, session, pos, prefix, callback) {
+      var contentAssist = i ? instContentAssist : domContentAssist;
+//      if (prefix.length === 0) { callback(null, wl); return }
+      var line = session.getLine(pos.row);
+      var terms = line.split(' ');
+      if(terms.indexOf('->') == terms.length-1 ||
+         terms.indexOf('=>') == terms.length-1 ||
+         terms[0] && terms[0] == '$expect' ||
+         terms[0] && terms[0] == '$mock') {
+        var newTerms = ['$when', ''];
+        line = '$when ';
+        var opts = getOptions(contentAssist, newTerms, 0); // options
+        callback(null, opts.map(function(value) {
+          // double space is a marker for the FUTURE options
+          var xvalue = value.replace(/(\w)  .*/, '\$1');
+          var aft = value.replace(/(.*)  /, '');
+          var curr = aft.replace(line, '');
+          return {name: value, value: curr, score: 100, meta: "dom"}
+        }));
+      } else {
+      var opts = getOptions(contentAssist, terms, 0); // options
+//      callback(null, opts);
+      callback(null, opts.map(function(value) {
+        // double space is a marker for the FUTURE options
+        var xvalue = value.replace(/(\w)  .*/, '\$1');
+
+//      if (xvalue.indexOf(' ') >= 0)
+//        s= ['\{\{' + xvalue + ' ', ''];
+//      else if (xvalue.indexOf('/') == 0)
+//        s= ['\{\{' + xvalue, '\}\}'];
+//      else
+//       first time, only one term, insert }}
+//        s= ['\{\{' + xvalue + ' ', '\}\}'];
+
+        var curr = xvalue.replace(line, '');
+        var aft = value.replace(/(.*)  /, '');
+//        return {name: ea.word, value: ea.word, score: ea.score, meta: "rhyme"}
+        return {name: value, value: curr, score: 100, meta: "dom"}
+        }));
+    };
+    };
+  };
+
+var codeGui = function(editor) {
+  var selectionRange = editor.getSelectionRange();
+  var content = editor.session.getTextRange(selectionRange);
+
+  popupContent("This is the GUI\n\n"+content);
+  }
+
+editor1.commands.addCommand({
+    name: "gui",
+    bindKey: {win: "Ctrl-G", mac: "Command-G"},
+    exec: codeGui
+});
+editor.commands.addCommand({
+    name: "gui",
+    bindKey: {win: "Ctrl-G", mac: "Command-G"},
+    exec: codeGui
+});
+
+  //jsh(editor.getValue());
+
+  var domChanged=true;
+  var instChanged=true;
+
+  editor1.getSession().on('change', function(e) {
+    domChanged=true;
+  });
+
+  editor.getSession().on('change', function(e) {
+    instChanged=true;
+  });
+
+setInterval(function(){
+   if(domChanged) {
+     domChanged=false;
+     runpill_@{id}('@{id}');
+     }
+   if(instChanged) {
+     instChanged=false;
+     runpill2_@{id}('@{id}');
+     }
+},500);
+
+</script>
+
+<div id="oneModal" class="modal fade">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-body">
+        <p>?</p>
+      </div>
+    </div><!-- /.modal-content -->
+  </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
+<script>
+    // clear modal contents on close
+    $('#oneModal').on('hidden.bs.modal', function (e) {
+        $("#oneModal > div > div > div.modal-body").html('...');
+    })
+
+  function popupContent (content) {
+    loadInDivContent("#oneModal > div > div > div.modal-body", content);
+    $("#oneModal").modal('show');
+  }
+
+  function loadInDivContent(div, content, complete) {
+    $(div).html(content);
+  }
+
+  function popupUrl(url) {
+    loadInDiv("#oneModal > div > div > div.modal-body", url);
+    $("#oneModal").modal('show');
+  }
+
+  function loadInDiv(div, url, complete) {
+    $.ajaxSetup({
+    dataFilter:lookupLabels(url),
+    cache: false
+    });
+
+    $(div).load(url, complete);
+  }
+
+</script>
+

@@ -1,0 +1,36 @@
+@**************
+show/edit/capture a note
+
+msg types are msg, err
+**************@
+@(name:String)
+
+<small>
+&nbsp; &nbsp; &nbsp; &nbsp;
+
+  <div id="messages" style="float:right;margin-top:10px">
+    <div id="@name" style="display:inline;" class="alert alert-info">
+    </div>
+  </div>
+</small>
+
+<script>
+  $('#@name').hide();
+
+function notesMsgShow(kind,text) {
+  $('#@name').removeClass('alert-info');
+  $('#@name').removeClass('alert-danger');
+
+  if(kind == "err") {
+    $('#@name').addClass('alert-danger');
+  } else {
+    $('#@name').addClass('alert-info');
+  }
+
+  $('#@name').html('<strong>'+text+'</strong>');
+  $('#@name').show();
+  $('#@name').fadeOut(4000);
+  }
+
+</script>
+

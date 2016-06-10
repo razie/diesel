@@ -23,16 +23,16 @@ class TestParser extends FlatSpec with ShouldMatchers {
 
   val wid = WID("?", "?")
   "WikiParser" should "recognize [[]] and [[[]]]" in {
-    "<a href=\"/wiki/any:Sport\">Sport</a>" === (Wikis.format(wid, Wikis.MD, "[[Sport]]"))
-    "<a href=\"/wiki/any:Sport\">Curu</a>" === (Wikis.format(wid, Wikis.MD, "[[Sport|Curu]]"))
-    "<a href=\"/wiki/any:Sport\">Curu</a>" === (Wikis.format(wid, Wikis.MD, "[[Sport | Curu]]"))
-    "<a href=\"/wiki/Club:Offroad_Ontario\">Curu</a>" === (Wikis.format(wid, Wikis.MD, "[[Club:Offroad Ontario | Curu]]"))
-    "<a href=\"/wiki/any:Sport\">Sport</a> <a href=\"/wiki/any:Club\">Club</a>" === (Wikis.format(wid, Wikis.MD, "[[Sport]] [[Club]]"))
-    "<a href=\"/wiki/any:Sport\">Sport</a> haha: <a href=\"/wiki/any:Privacy_Policy\">Privacy Policy" === (Wikis.format(wid, Wikis.MD, "[[Sport]] haha: [[Privacy Policy]]"))
+    "<a href=\"/wiki/any:Sport\">Sport</a>" === (Wikis.format(wid, Wikis.MD, "[[Sport]]", None, None))
+    "<a href=\"/wiki/any:Sport\">Curu</a>" === (Wikis.format(wid, Wikis.MD, "[[Sport|Curu]]", None, None))
+    "<a href=\"/wiki/any:Sport\">Curu</a>" === (Wikis.format(wid, Wikis.MD, "[[Sport | Curu]]", None, None))
+    "<a href=\"/wiki/Club:Offroad_Ontario\">Curu</a>" === (Wikis.format(wid, Wikis.MD, "[[Club:Offroad Ontario | Curu]]", None, None))
+    "<a href=\"/wiki/any:Sport\">Sport</a> <a href=\"/wiki/any:Club\">Club</a>" === (Wikis.format(wid, Wikis.MD, "[[Sport]] [[Club]]", None, None))
+    "<a href=\"/wiki/any:Sport\">Sport</a> haha: <a href=\"/wiki/any:Privacy_Policy\">Privacy Policy" === (Wikis.format(wid, Wikis.MD, "[[Sport]] haha: [[Privacy Policy]]", None, None))
   }
 
   "WikiParser" should "recognize roles in [[[]]]" in {
-    "<a href=\"/wiki/Club:Offroad_Ontario\">Curu</a>" === (Wikis.format(wid, Wikis.MD, "[[friend::Club:Offroad Ontario | Curu]]"))
+    "<a href=\"/wiki/Club:Offroad_Ontario\">Curu</a>" === (Wikis.format(wid, Wikis.MD, "[[friend::Club:Offroad Ontario | Curu]]", None, None))
 //    (Wikis.format(wid, Wikis.MD, "[[friend::Category:Sport]]"))
   }
 
