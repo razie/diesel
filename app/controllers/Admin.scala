@@ -542,12 +542,13 @@ ClusterStatus=${GlobalData.clusterStatus}\n
       }
   }
 
+  /** compute and show diff for a WID */
   def showDiff(target:String, wid:WID) = FAD { implicit au =>
     implicit errCollector => implicit request =>
       getWE(target, wid).fold({t=>
-        val b = t._1.content
-        val p = DiffUtils.diff(wid.content.get.lines.toList, b.lines.toList)
-        ROK() admin {implicit stok=> views.html.admin.admin_showDiff(wid.content.get, b, p, wid.page.get, t._1)}
+        val remote = t._1.content
+        val patch = DiffUtils.diff(wid.content.get.lines.toList, remote.lines.toList)
+        ROK() admin {implicit stok=> views.html.admin.admin_showDiff(wid.content.get, remote, patch, wid.page.get, t._1)}
       },{err=>
         Ok ("ERR: " + err)
       })
@@ -583,6 +584,7 @@ ClusterStatus=${GlobalData.clusterStatus}\n
       }
   }
 
+  /** fetch remote WE */
   private def getWE(target:String, wid:WID)(implicit au:User):Either[(WikiEntry, String), String] = {
     try {
       val remote = s"http://$target/wikie/json/${wid.wpathFull}"

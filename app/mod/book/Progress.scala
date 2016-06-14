@@ -287,6 +287,13 @@ object Progress extends RazController with WikiMod {
       }) getOrElse unauthorized("You need a free account to track your progress.")
   }
 
+  private def findCurr(uid:ObjectId, pathway:Option[String]) = {
+    if(pathway.nonEmpty && pathway.get.nonEmpty)
+      pathway
+    else
+      findCurrentForUser(uid).flatMap(_.ownerWid).map(_.wpath)
+  }
+
   private def findCurrOrDefault(uid:ObjectId, pathway:Option[String]) = {
     if(pathway.nonEmpty && pathway.get.nonEmpty)
       pathway

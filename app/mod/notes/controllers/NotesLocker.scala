@@ -636,6 +636,7 @@ object NotesLocker extends RazController with Logging {
     val pin = request.cookies.get("pinTags").map(_.value)
 
     if(pin.exists(pin=> !tag.startsWith(pin))) {
+      // if pinned tags, just re-scope this one
       val newt = if(book.pinTags.contains(tag)) "" else ("/"+tag)
       Redirect(routes.NotesLocker.tag(pin.mkString + newt))
     } else {

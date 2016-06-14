@@ -943,5 +943,19 @@ object WikiApiv1 extends WikiBase {
       }
     }
   }
+  /**
+   * full path
+   */
+  def fullpath(cw: CMDWID, irealm:String) = Action { implicit request =>
+    implicit val errCollector = IgnoreErrors
+    prepWid(cw, irealm) {wid=>
+      page(wid) {w=>
+        if(canSee(wid, auth, Some(w)))
+          Ok(wid.wpathFull)
+        else
+          Unauthorized(s"Can't see wpath ${wid.wpath}")
+      }
+    }
+  }
 }
 

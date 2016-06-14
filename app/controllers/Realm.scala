@@ -83,7 +83,6 @@ object Realm extends RazController with Logging {
 
         val iwikisc = tw.section("section", "pages").get.content
         // substitution
-//        val wikisc = parms.foldLeft(iwikisc)((a,b)=>a.replaceAll("\\$\\{"+b._1+"\\}", b._2))
         val wikisc = parms.foldLeft(iwikisc)((a,b)=>a.replaceAll("\\{\\{\\$\\$"+b._1+"\\}\\}", b._2))
         val wikis = ConfigFactory.parseString(wikisc).resolveWith(ConfigFactory.parseMap(parms))
 

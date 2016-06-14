@@ -2,7 +2,10 @@
  * Created by razvanc on 02/05/2014.
  */
 
-/** tie a flaoting checkbox to localStorage */
+/** tie a floating checkbox to localStorage
+ *
+ * inputId and storageName should be same... however, the storageName should have a pageId to avoid conflicts with other pages...
+ */
 function useLocalStorageCheckbox (inputId, storageName, callback) {
   if(localStorage.getItem(storageName) != 'undefined')
     $('#'+inputId).prop('checked', localStorage.getItem(storageName) === 'true');

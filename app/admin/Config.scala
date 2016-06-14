@@ -31,7 +31,7 @@ object Config extends WikiConfig {
 //    "www.effectiveskiing.com"    // for testing locally
 //                "ski.wikireactor.com"    // for testing locally
 //    "ebaysim.wikireactor.com"    // for testing locally
-            "dsl1.wikireactor.com"    // for testing locally
+//            "dsl1.wikireactor.com"    // for testing locally
 //            "catsim.wikireactor.com"    // for testing locally
 //        "www.coolscala.com"    // for testing locally
 //        "www.enduroschool.com"    // for testing locally
@@ -39,7 +39,8 @@ object Config extends WikiConfig {
 //        "www.glacierskiclub.com"    // for testing locally
 //        "www.nofolders.net"    // for testing locally
     //        "www.dieselreactor.net"    // for testing locally
-//        "gsc.wikireactor.com"    // for testing locally
+    //        "gsc.wikireactor.com"    // for testing locally
+        "c52.wikireactor.com"    // for testing locally
   }
 
   final val CFG_PAGES = Array(SITECFG, TOPICRED, USERTYPES, BANURLS, URLCFG)

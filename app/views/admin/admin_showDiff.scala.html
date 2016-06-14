@@ -11,7 +11,7 @@
 @stok.title("admin showDiff")
 
     <h2>Diffs</h2>
-
+<small>
       <table class="table table-striped">
           <thead>
               <td>What</td>
@@ -23,34 +23,9 @@
           <td>@srcWe.ver / @srcWe.updDtm</td>
           <td>@destWe.ver / @destWe.updDtm</td>
         </tr>
-@diff.getDeltas.map{d =>
-  @d.getType.toString match {
-      case "INSERT" => {
-          <tr class="success">
-          }
-      case "DELETE" => {
-          <tr class="error">
-          }
-      case "CHANGE" => {
-          <tr class="">
-          }
-     case _ => {
-         <tr>
-         }
-      }
-      <td>
-          @d.getType
-      </td>
-      <td>
-          @d.getOriginal.getPosition <br>
-          @d.getOriginal.getLines.map{s=> @s <br>}
-      </td>
-<td>
-    @d.getRevised.getPosition <br>
-    @d.getRevised.getLines.map{s=> @s <br>}
-</td>
-  </tr>
-}
+
+@admin.diffTable(diff)
+
 @if(srcWe.tags.mkString(",") != destWe.tags.mkString(",")) {
   <tr>
     <td>tags</td>
@@ -59,6 +34,7 @@
   </tr>
 }
       </table>
+</small>
 
       <hr>
           @diff.getDeltas.mkString("\n")

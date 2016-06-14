@@ -1032,7 +1032,7 @@ object Wikie extends WikieBase {
     }
   }
 
-  /** mark a wiki as reserved - only admin can edit */
+  /** someone likes a wiki */
   def like(wid: WID, how: Int) = FAU("wikie.like") {
     implicit au => implicit errCollector => implicit request =>
 

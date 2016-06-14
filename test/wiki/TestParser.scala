@@ -4,8 +4,11 @@ package wiki
 import org.scalatest.FlatSpec
 import org.scalatest.matchers.ShouldMatchers
 import razie.wiki.model.{WID, Wikis}
-import razie.wiki.parser.{WAST, nWikiParser}
+import razie.wiki.parser.{WAST, WikiParserT}
 
+object nWikiParser extends WikiParserT {
+  def realm =  Wikis.RK
+}
 
 class TestParser extends FlatSpec with ShouldMatchers {
   TestInit.init

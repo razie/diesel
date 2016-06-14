@@ -1,0 +1,46 @@
+@***
+  print a nice table of text diffs
+***@
+@(diff:difflib.Patch, heading:Option[(String,String,String)]=None)
+
+  @heading.map{t=>
+    <table class="table table-striped">
+      <thead>
+        <td>@t._1</td>
+        <td>@t._2</td>
+        <td>@t._3</td>
+      </thead>
+  }
+@diff.getDeltas.map{d =>
+  @d.getType.toString match {
+      case "INSERT" => {
+          <tr class="success">
+          }
+      case "DELETE" => {
+          <tr class="error">
+          }
+      case "CHANGE" => {
+          <tr class="">
+          }
+     case _ => {
+         <tr>
+         }
+      }
+      <td>
+          @d.getType
+      </td>
+      <td>
+          @d.getOriginal.getPosition <br>
+          @d.getOriginal.getLines.map{s=> @s <br>}
+      </td>
+<td>
+    @d.getRevised.getPosition <br>
+    @d.getRevised.getLines.map{s=> @s <br>}
+</td>
+  </tr>
+}
+
+  @heading.map{t=>
+    </table>
+  }
+

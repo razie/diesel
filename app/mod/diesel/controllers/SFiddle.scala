@@ -4,18 +4,14 @@ import java.io.File
 import java.util
 
 import controllers._
+import difflib.DiffUtils
 import mod.diesel.model.RDExt._
 import mod.diesel.model._
 import mod.notes.controllers.{Notes, NotesTags, NotesLocker}
-import NotesLocker._
 import org.antlr.v4.tool.{ANTLRMessage, ANTLRToolListener}
-import org.bson.types.ObjectId
-import org.joda.time.DateTime
-import com.mongodb.casbah.Imports.map2MongoDBObject
-import com.mongodb.casbah.Imports.wrapDBObj
-import com.novus.salat.grater
 import admin._
 import model._
+import org.scalatest.fixture
 import razie.db._
 import razie.db.RazSalatContext.ctx
 import razie.diesel.RDOM.O
@@ -33,26 +29,50 @@ import scala.collection.mutable.ListBuffer
 import scala.concurrent.Future
 import scala.util.Try
 import scala.util.parsing.input.{CharArrayReader, Positional}
-import razie.wiki.model.{Wikis, WikiEntry, WikiUser}
+import razie.wiki.model.{WID, Wikis, WikiEntry, WikiUser}
 import razie.wiki.admin.Audit
 
 /** controller for server side fiddles / services */
-object SFiddles extends RazController with Logging {
+class SFiddleBase extends RazController {
+
   import NotesTags._
 
   def test = "haha"
 
-  def typeSafe(v:String) : String = {
-    if(v.trim.startsWith("\"") || v.trim.startsWith("'") || v.trim.startsWith("{") || v.trim.startsWith("[")) v
-    else Try { v.toInt.toString } getOrElse { "'"+v+"'" }
+  def typeSafe(v: String): String = {
+    if (v.trim.startsWith("\"") || v.trim.startsWith("'") || v.trim.startsWith("{") || v.trim.startsWith("[")) v
+    else Try {
+      v.toInt.toString
+    } getOrElse {
+      "'" + v + "'"
+    }
   }
-  def jstypeSafe(v:String) : Any = {
-    if(v.trim.startsWith("\"") || v.trim.startsWith("'")) v.replaceFirst("[\"']([^\"']*)[\"']", "$1")
+
+  def jstypeSafe(v: String): Any = {
+    if (v.trim.startsWith("\"") || v.trim.startsWith("'")) v.replaceFirst("[\"']([^\"']*)[\"']", "$1")
     else if (v.trim.startsWith("{") || v.trim.startsWith("[")) v
-    else Try { v.toInt } getOrElse { v } //"'"+v+"'" }
+    else Try {
+      v.toInt
+    } getOrElse {
+      v
+    } //"'"+v+"'" }
   }
-  def qtojson (q:Map[String,String]) = "{" + q.map(t=>s"""${t._1} : ${typeSafe(t._2)} """).mkString(",") + "}"
-  def qtourl (q:Map[String,String]) = q.map(t=>s"""${t._1}=${t._2}""").mkString("&")
+
+  def qtojson(q: Map[String, String]) = "{" + q.map(t => s"""${t._1} : ${typeSafe(t._2)} """).mkString(",") + "}"
+
+  def qtourl(q: Map[String, String]) = q.map(t => s"""${t._1}=${t._2}""").mkString("&")
+
+  object razscr {
+    def dec(s: String) = {
+      s.replaceAll("scrRAZipt", "script").replaceAll("%3B", ";").replaceAll("%2B", "+").replaceAll("%27", "'")
+    }
+  }
+
+}
+
+/** controller for server side fiddles / services */
+object SFiddles extends SFiddleBase with Logging {
+  import NotesTags._
 
   /** run sfiddles by name, as REST services */
   def sfiddle(path: String) = FAU { implicit au =>
@@ -103,9 +123,13 @@ object SFiddles extends RazController with Logging {
     isfiddleMap (script, lang, we, Some(au), q)
   }
 
+  //todo deprecate
+  def isfiddleMap(script: String, lang:String, we:Option[WikiEntry], au:Option[WikiUser], q:Map[String,String], typed:Option[Map[String,Any]] = None) =
+    newsfiddleMap(script, lang, we, au, q, typed, false)
+
   /** run a fiddle with a map of arguments "queryParms" */
   // todo protect calls to this
-  def isfiddleMap(script: String, lang:String, we:Option[WikiEntry], au:Option[WikiUser], q:Map[String,String], typed:Option[Map[String,Any]] = None) = {
+  def newsfiddleMap(script: String, lang:String, we:Option[WikiEntry], au:Option[WikiUser], q:Map[String,String], typed:Option[Map[String,Any]] = None, doAudit:Boolean=true) = {
     val wix = api.wix(we, au, q, "")
     if(lang == "js") {
       val qj = qtojson(q)
@@ -118,7 +142,7 @@ object SFiddles extends RazController with Logging {
         q.foreach(t=>bindings.put(t._1, typed.flatMap(_.get(t._1)).getOrElse(jstypeSafe(t._2))))
         bindings.put("wixj", wix)
         val res = engine.eval(jscript, bindings)
-        Audit.logdb("SFIDDLE_EXEC", "JS", jscript)
+        if(doAudit) Audit.logdb("SFIDDLE_EXEC", "JS", jscript)
         (true, if(res != null) res.toString else "")
       } catch {
         case t: Throwable => {
@@ -211,179 +235,6 @@ object SFiddles extends RazController with Logging {
       if(name endsWith "js") "application/javascript"
     else "application/text"
     Ok(assets.get(id).flatMap(_.get(name)).mkString).as(ctype)
-  }
-
-  /** display the play sfiddle screen */
-  def playDom(lang: String) = FAU { implicit au =>
-    implicit errCollector => implicit request =>
-      val q = request.queryString.map(t=>(t._1, t._2.mkString))
-
-      Some(1).filter(x=>(au hasPerm Perm.codeMaster) || (au hasPerm Perm.adminDb)).fold(
-        Ok(s"no sfiddle for ")
-      ) {we =>
-        val x = Autosave.OR("playDom", au._id, Map(
-          "dom"  -> """$when a.b -> c.d""",
-          "inst" -> """$msg a.b"""
-        ))
-        val g = x("dom")
-        val i = x("inst")
-
-        val id = java.lang.System.currentTimeMillis().toString()
-
-        ROK() reactorLayout12 { implicit stok =>
-          views.html.fiddle.playDomFiddle("", q, g, i, auth, Some(""), id)
-        }
-      }
-  }
-
-  object retj {
-    def <<(x: List[Any]) = Ok(js.tojsons(x, 0).toString).as("application/json")
-    def <<(x: Map[String, Any]) = Ok(js.tojson(x).toString).as("application/json")
-  }
-
-  /** display the play sfiddle screen */
-  def buildDom1(id: String) = FAU { implicit au => implicit errCollector => implicit request =>
-    val q = request.queryString.map(t=>(t._1, t._2.mkString))
-
-    //todo this
-    //    Some(1).filter(x=>(au hasPerm Perm.codeMaster) || (au hasPerm Perm.adminDb)).fold(
-
-    val g = razscr.dec(request.body.asFormUrlEncoded.get.apply("g").mkString)
-    val i = razscr.dec(request.body.asFormUrlEncoded.get.apply("i").mkString)
-    Autosave.set("playDom", au._id, Map("dom" -> g, "inst" -> i))
-
-    val page = new WikiEntry("temp", "temp", "temp", "md", g, au._id, Seq("dslObject"), "")
-    val dom = WikiDomain.domFrom(page).get.revise addRoot
-
-    var res = Wikis.format(page.wid, page.markup, null, Some(page), auth)
-    retj << Map("res" -> res, "ca" -> RDExt.toCAjmap(dom))
-  }
-
-  case class TestResult (value:String) {
-    override def toString =
-      if(value == "ok")
-        s"""<span class="label label-success">$value</span>"""
-    else if(value == "fail")
-        s"""<span class="label label-danger">$value</span>"""
-    else
-        s"""<span class="label label-warning">$value</span>"""
-  }
-
-  case class DomAst (value:Any, kind:String, children:ListBuffer[DomAst] = new ListBuffer[DomAst]()) {
-    def tos(level:Int):String = ("  " * level)+kind+"::"+value.toString+"\n"+children.map(_.tos(level+1)).mkString
-    override def toString = tos(0)
-    def collect[T](f: PartialFunction[DomAst,T]) = {
-      val res = new ListBuffer[T]()
-      def inspect(d:DomAst, level:Int):Unit = {
-        if(f.isDefinedAt(d)) res append f(d)
-        d.children.map(inspect(_,level+1))
-      }
-      inspect(this, 0)
-      res
-    }
-  }
-
-  /** display the play sfiddle screen */
-  def buildDom2(id: String) = FAU { implicit au => implicit errCollector => implicit request =>
-    val q = request.queryString.map(t=>(t._1, t._2.mkString))
-
-    //todo this
-    //    Some(1).filter(x=>(au hasPerm Perm.codeMaster) || (au hasPerm Perm.adminDb)).fold(
-
-    val g = razscr.dec(request.body.asFormUrlEncoded.get.apply("g").mkString)
-    val i = razscr.dec(request.body.asFormUrlEncoded.get.apply("i").mkString)
-    Autosave.set("playDom", au._id, Map("dom" -> g, "inst" -> i))
-
-    val page = new WikiEntry("temp", "temp", "temp", "md", g, au._id, Seq("dslObject"), "")
-    val dom = WikiDomain.domFrom(page).get.revise addRoot
-
-    val ipage = new WikiEntry("temp", "temp", "temp", "md", i, au._id, Seq("dslObject"), "")
-    val idom = WikiDomain.domFrom(ipage).get.revise addRoot
-
-    val rules = WikiDomain.domFilter(page) {
-      case e:ERule => e
-    }
-
-    var res = ""
-
-    val root=DomAst("root", "root")
-
-    // transform one element / one step
-    def step (a:DomAst, recurse:Boolean=true):Unit = a.value match {
-      case n:EMsg => { // look for mocks
-         implicit val ctx=ECtx()
-        var mocked=false
-          root.collect {
-            case d@DomAst(m:EMock, _, _) if m.rule.e.test(n)  && a.children.isEmpty => {
-              mocked=true
-              // run the mock
-              val values = m.rule.i.apply(n, None).collect {
-                // collect resulting values
-                case x:EMsg => a.children appendAll x.attrs.map(x=> DomAst(EVal(x), "generated"))
-              }
-            }
-          }
-
-        if (!mocked && rules.exists(_.e.test(n))) {
-          rules.filter(_.e.test(n)).map{r=>
-            val spec = dom.moreElements.collect {
-              case x:EMsg if x.entity == r.i.cls && x.met == r.i.met => x
-            }.headOption
-
-            // each rule may recurse and add stuff
-            implicit val ctx = ECtx((root.collect {
-              case d@DomAst(v:EVal, _, _) => v.p
-            }).toList)
-
-            val news = r.i.apply(n, spec).map(x=>DomAst(x, "generated"))
-            if(recurse) news.foreach{n=>
-              a.children append n
-              step(n, recurse)
-            }
-            true
-          }
-        }
-
-      }
-
-      case e:ExpectM => {
-        root.collect {
-          case d@DomAst(n:EMsg, "generated", _) =>
-            if(e.m.test(n))
-              a.children append DomAst(TestResult("ok"), "test")
-        }
-        if(a.children.isEmpty) a.children append DomAst(TestResult("fail"), "test")
-      }
-
-      case e:ExpectV => {
-        root.collect {
-          case d@DomAst(n:EVal, "generated", _) =>
-            if(e.test(n.p))
-              a.children append DomAst(TestResult("ok"), "test")
-        }
-        if(a.children.isEmpty) a.children append DomAst(TestResult("fail"), "test")
-      }
-      case _ => false
-    }
-
-
-    root.children appendAll WikiDomain.domFilter(ipage) {
-      case o:O if o.name != "context" => DomAst(o, "input")
-      case v:EMsg => DomAst(v, "input")
-      case v:EMock => DomAst(v, "input")
-      case e:ExpectM => DomAst(e, "test")
-      case e:ExpectV => DomAst(e, "test")
-    }
-
-    // start processing all elements
-    root.children.foreach(step(_, true))
-    res += root.toString
-
-    retj << Map("res" -> res, "ca" -> RDExt.toCAjmap(dom plus idom))
-  }
-
-  private def rule(r:ERule, n:EMsg) = {
-
   }
 
   /** display the play sfiddle screen */
@@ -483,11 +334,6 @@ object SFiddles extends RazController with Logging {
   import play.api.data.Forms._
   import play.api.data._
 
-  object razscr {
-    def dec(s: String) = {
-      s.replaceAll("scrRAZipt", "script").replaceAll("%3B", ";").replaceAll("%2B", "+").replaceAll("%27", "'")
-    }
-  }
 
   def lform(implicit request: Request[_]) = Form {
     tuple(

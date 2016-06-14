@@ -1,35 +1,69 @@
 @**************
 a JS with HTML and CSS fiddle
 **************@
-@(name:String,
+@(reactor:String,
     args:Map[String,String],
-    g:String,
-    i:String,
+    spec:String,
+    story:String,
+    specWpath:String,
+    storyWpath:String,
+    specChanged:Boolean,
+    storyChanged:Boolean,
     au:Option[model.User],
     errMsg:Option[String],
     id:String = java.lang.System.currentTimeMillis().toString())(implicit stok:controllers.StateOk)
+@import razie.wiki.model.WID
 
-@stok.title("Fiddle, fiddle")
+@stok.title("Diesel fiddle")
 
 <script src="@routes.Assets.at("javascripts/weFiddles.js")"></script>
+<script src="@routes.Assets.at("javascripts/weCommons.js")"></script>
 
-  <h3>DOM fiddle | <small>
-    <input type="checkbox" id="refresh" checked> Real time (<span id="roundtrip"></span>)
-  </small></h3>
+  <h3>Diesel fiddle | <small>
+    <input type="checkbox" id="refresh" checked> Real time (<span id="roundtrip">.. ms</span>)
+    <span id="errors" class="label label-default">0 failed</span>
+    <span onclick="setSpec('Spec');" class="label label-primary" style="cursor:pointer">Spec <span id="curSpec"></span> <span class="glyphicon glyphicon-chevron-down"></span></span><span id="specChanged" class="label label-success">
+    <a href="#" onclick="popupMenu1('Spec');return false;">
+      <span class="glyphicon glyphicon-floppy-disk"> </span>
+    </a>
+    </span>&nbsp;
+    <span onclick="setSpec('Story');" class="label label-primary" style="cursor:pointer">Story <span id="curStory"></span> <span class="glyphicon glyphicon-chevron-down"></span></span><span id="storyChanged" class="label label-success">
+      <a href="#" onclick="popupMenu1('Story');return false;">
+        <span class="glyphicon glyphicon-floppy-disk"> </span>
+        </a>
+    </span>&nbsp;
+    | <input type="checkbox" id="mockMode" title="Use the mocks" checked> Mocks
+    | <input type="checkbox" id="sketchMode" title="Not used yet"> Sketch
+    | <input type="checkbox" id="blenderMode" title="Blend all specs together" checked> Blender
+    | <input type="checkbox" id="draftMode" title="Use autosaved drafts not originals" checked> Drafts
+  </small>
+  </h3>
 
 @*<a class="btn btn-primary btn-xs" title="Works only on Chrome and Firefox" href="javascript:runpill_@{id}('@{id}')">Run &raquo;</a>*@
 @*<br>*@
 
 <div class="row" style="align-items:center;">
-  <div id="pre1box_@id" class="col-sm-6" style="">
-    <pre id="pre1_@id" style="height:228px; ">@g</pre>
+  <div id="title1_@id" class="col-sm-6" style="">
   </div>
-  <div class="col-sm-6 well" id="pre2_@id" style="overflow: scroll">
+  <div id="title2_@id" class="col-sm-6" style="">
+  </div>
+</div>
+<div class="row" style="align-items:center;">
+  <div id="pre1box_@id" class="col-sm-6" style="">
+    <pre id="pre1_@id" style="height:228px; ">@spec</pre>
+  </div>
+  <div class="col-sm-6 well" id="pre2_@id" style="overflow: scroll; margin-bottom:2px">
+  </div>
+</div>
+<div class="row" style="align-items:center;">
+  <div id="title3_@id" class="col-sm-6" style="">
+  </div>
+  <div id="title4_@id" class="col-sm-6" style="">
   </div>
 </div>
 <div class="row" style="align-items:center;">
   <div id="pre3box_@id" class="col-sm-6" style="">
-    <pre id="pre3_@id" style="height:228px; ">@i</pre>
+    <pre id="pre3_@id" style="height:228px; ">@story</pre>
   </div>
   @*<div class="col-sm-6" id="resultdiv_@id" style="">*@
     <pre class="col-sm-6" id="iframe_@id" name="iframe_@id" style="padding:1px; Xtext-align: center">Start typing...</pre>
@@ -66,17 +100,42 @@ $('#pre2_'+@id).css('max-height', $('#pre1box_@id').height()-10+'px');
 $('#iframe_'+@id).css('max-height', $('#pre3box_@id').height()-10+'px');
 $('#iframe_'+@id).contents().find('html').html("<div style='text-align: center;'>@errMsg.getOrElse("Press Run to see results...")</div>");
 
+useLocalStorageCheckbox("sketchMode", "domFiddleSketchMode");
+useLocalStorageCheckbox("mockMode", "domFiddleMockMode");
+useLocalStorageCheckbox("blenderMode", "domFiddleBlenderMode");
+useLocalStorageCheckbox("draftMode", "domFiddleDraftsMode");
+
+$('#sketchMode, #mockMode, #blenderMode, #draftMode').change(function(){
+      runpill2_@{id}('@{id}');
+});
+
 var domContentAssist=[];
 var instContentAssist=[];
+
+var specWpath='@specWpath';
+var storyWpath='@storyWpath';
+
+$(document).keyup(function(e) {
+  if (e.keyCode == 27) { // escape key maps to keycode `27`
+    $("#oneModal").modal('hide');
+  }
+});
 
 var runpill_@id = function(id) {
   var lastTime = new Date().getTime();
   $.ajax(
-    '/sfiddle/buildDom1/'+id+'?@Html(mod.diesel.controllers.SFiddles.qtourl(args))', {
+    '/dfiddle/buildDom1/'+id+'?@Html(mod.diesel.controllers.SFiddles.qtourl(args))', {
     type: 'POST',
     data: $.param({
-      g : editor1.getValue(),
-      i : editor.getValue()
+      sketchMode : $('#sketchMode').prop('checked'),
+      mockMode : $('#mockMode').prop('checked'),
+      blenderMode : $('#blenderMode').prop('checked'),
+      draftMode : $('#draftMode').prop('checked'),
+      reactor : '@reactor',
+      specWpath : specWpath,
+      storyWpath : storyWpath,
+      spec : editor1.getValue(),
+      story : editor.getValue()
     }),
     contentType: 'application/x-www-form-urlencoded',
     success: function(data) {
@@ -85,6 +144,7 @@ var runpill_@id = function(id) {
       domContentAssist = data.ca;
       var du = new Date().getTime() - lastTime;
       $('#roundtrip').text(du+' ms');
+      specChanged(data.specChanged);
       // also trigger inst update
       runpill2_@{id}('@{id}');
     },
@@ -94,21 +154,122 @@ var runpill_@id = function(id) {
   });
 }
 
+function setErrors (s) {
+  $('#errors').text(s + ' failed');
+  $('#errors').removeClass();
+  if(s == 0 || s == "0")
+    $('#errors').addClass("label label-success");
+  else
+    $('#errors').addClass("label label-danger");
+}
+
 var runpill2_@id = function(id) {
   var lastTime = new Date().getTime();
   $.ajax(
-    '/sfiddle/buildDom2/'+id+'?@Html(mod.diesel.controllers.SFiddles.qtourl(args))', {
+    '/dfiddle/buildDom2/'+id+'?@Html(mod.diesel.controllers.SFiddles.qtourl(args))', {
     type: 'POST',
     data: $.param({
-      g : editor1.getValue(),
-      i : editor.getValue()
+      sketchMode : $('#sketchMode').prop('checked'),
+      mockMode : $('#mockMode').prop('checked'),
+      blenderMode : $('#blenderMode').prop('checked'),
+      draftMode : $('#draftMode').prop('checked'),
+      reactor : '@reactor',
+      specWpath : specWpath,
+      storyWpath : storyWpath,
+      spec : editor1.getValue(),
+      story : editor.getValue()
     }),
     contentType: 'application/x-www-form-urlencoded',
     success: function(data) {
       $('#iframe_'+id).html(data.res);
       instContentAssist = data.ca;
+      setErrors(data.failureCount);
       var du = new Date().getTime() - lastTime;
       $('#roundtrip').text(du+' ms');
+      storyChanged(data.storyChanged);
+    },
+    error  : function(x) {
+      console.log( "ERR "+x.toString());
+    }
+  });
+}
+
+if('@specWpath'.length > 0) $("#curSpec").text('(@WID.fromPath(specWpath).map(_.name))');
+if('@storyWpath'.length > 0) $("#curStory").text('(@WID.fromPath(storyWpath).map(_.name))');
+
+function specChanged(spec) {
+  $('#specChanged').removeClass();
+  if(spec === "true") $("#specChanged").addClass("label label-warning");
+  else $("#specChanged").addClass("label label-success");
+}
+
+function storyChanged(story) {
+  $('#storyChanged').removeClass();
+  if(story === "true") $("#storyChanged").addClass("label label-warning");
+  else $("#storyChanged").addClass("label label-success");
+}
+
+function setSpec(what) {
+  $.ajax(
+    '/dfiddle/domListCat/@reactor/'+what, {
+    type: 'GET',
+    success: function(data) {
+      popupContent("Select "+what+"<br><br>"+data);
+    },
+    error  : function(x) {
+      popupContent("ERR... can't set spec<p>"+x);
+    }
+  });
+}
+
+function popupMenu1(what) {
+  //todo get the diffs
+  $.ajax(
+    '/dfiddle/diffDom/@id', {
+    type: 'POST',
+    data: $.param({
+      reactor : '@reactor',
+      specWpath : specWpath,
+      storyWpath : storyWpath,
+      spec : editor1.getValue(),
+      story : editor.getValue()
+    }),
+    contentType: 'application/x-www-form-urlencoded',
+    success: function(data) {
+      var tex = "Save/revert "+what+"<br><br>"+
+       '<a href="#" onclick="revertOrig(\''+what+'\'); return false;">Revert</a> | ' +
+       '<a href="#" onclick="saveOrig(\''+what+'\'); return false;">Save</a> | ' +
+       '<a href="#" onclick="saveNew(\''+what+'\'); return false;">Save as</a> ' +
+       '<input name="news" id="news" type="text" placeholder="new topic name"></input>' +
+        '<hr>Local changes:' ;
+      if(what == "Spec") {
+        popupContent(tex + data.specDiff);
+      } else if(what == "Story") {
+        popupContent(tex + data.storyDiff);
+      }
+    },
+    error  : function(x) {
+      console.log( "ERR "+x.toString());
+    }
+  });
+}
+
+function revertOrig(what) {
+  console.log("revert.."+what);
+  //todo get the diffs
+  $.ajax(
+    '/dfiddle/revert/@id/'+what, {
+    type: 'POST',
+    data: $.param({
+      reactor : '@reactor',
+      specWpath : specWpath,
+      storyWpath : storyWpath,
+      spec : editor1.getValue(),
+      story : editor.getValue()
+    }),
+    contentType: 'application/x-www-form-urlencoded',
+    success: function(data) {
+      location.reload(true);
     },
     error  : function(x) {
       console.log( "ERR "+x.toString());
@@ -116,6 +277,57 @@ var runpill2_@id = function(id) {
   });
 
 }
+
+function saveOrig(what) {
+  console.log("save.."+what);
+  //todo get the diffs
+  $.ajax(
+    '/dfiddle/save/@id/'+what, {
+    type: 'POST',
+    data: $.param({
+      newName : '',
+      reactor : '@reactor',
+      specWpath : specWpath,
+      storyWpath : storyWpath,
+      spec : editor1.getValue(),
+      story : editor.getValue()
+    }),
+    contentType: 'application/x-www-form-urlencoded',
+    success: function(data) {
+      location.reload(true);
+    },
+    error  : function(x) {
+      console.log( "ERR "+x.toString());
+    }
+  });
+}
+
+function saveNew(what) {
+  console.log("saveNEW.."+what);
+  var name = $("#news").val();
+  //todo get the diffs
+  $.ajax(
+    '/dfiddle/save/@id/'+what, {
+    type: 'POST',
+    data: $.param({
+      newName : name,
+      reactor : '@reactor',
+      specWpath : specWpath,
+      storyWpath : storyWpath,
+      spec : editor1.getValue(),
+      story : editor.getValue()
+    }),
+    contentType: 'application/x-www-form-urlencoded',
+    success: function(data) {
+      location.reload();
+      @*location = '/dfiddle/playDom/@id?what='+newName, {*@
+    },
+    error  : function(x) {
+      console.log( "ERR "+x.toString());
+    }
+  });
+}
+
 </script>
 
 <script type="text/javascript" src="@routes.Assets.at("vendor/jshint.js")"></script>
@@ -148,7 +360,6 @@ var jsh = function(code) {
 
 @*<script type="text/javascript" src="/sfiddle/tempAsset/@id/gLexer.js")"></script>*@
 @*<script type="text/javascript" src="/sfiddle/tempAsset/@id/gParser.js")"></script>*@
-
 
 <script>
   var langTools = ace.require("ace/ext/language_tools");
@@ -241,11 +452,118 @@ var keyWordCompleter = {
     };
   };
 
-var codeGui = function(editor) {
-  var selectionRange = editor.getSelectionRange();
-  var content = editor.session.getTextRange(selectionRange);
 
-  popupContent("This is the GUI\n\n"+content);
+function z(m,i) {
+  return m && m.length >= i && m[i] ? m[i] : "";
+}
+
+var curCap='';
+
+function capWhenTo(s) {
+//$when email.update (name,pwd) =>yahoo.upd_pwd (email,password=pwd)
+  curCap='when';
+  var m=/\$when *([\w*]+)\.([\w*]+) *(\([^)]*\))? *=> *([\w*]+)\.([\w*]+) *(\([^)]*\))?/.exec(s);
+  var e1=m[1];
+  var a1=z(m,2);
+  var p1=z(m,3);
+  var e2=z(m,4);
+  var a2=z(m,6);
+  var p2=z(m,7);
+
+return ''+
+  'Entity: <input id="entity1" value=\''+e1+'\'></input><br>'+
+  'Action: <input id="action1" value=\''+a1+'\'></input><br>'+
+  'Parms: <input id="parms1" value=\''+p1+'\'></input><br>'+
+  '<hr>'+
+  'Entity: <input id="entity1" value=\''+e2+'\'></input><br>'+
+  'Action: <input id="action1" value=\''+a2+'\'></input><br>'+
+  'Parms: <input id="parms1" value=\''+p2+'\'></input><br>'+
+  ''
+};
+
+function capMsgTo(s) {
+//$msg <GET> billing.get_email (name, url="/bill/email") : (email)
+  curCap='msg';
+  var m=/\$msg *(<\w+>)? *([\w*]+)\.([\w*]+) *(\([^)]*\))?(( *: *)\([^)]*\))?/.exec(s);
+  var k=m[1];
+  var e=z(m,2);
+  var a=z(m,3);
+  var p=z(m,4);
+  var r=z(m,6);
+
+return ''+
+  'Kind: <input id="kind" value=\''+k+'\'></input><br>'+
+  'Entity: <input id="entity" value=\''+e+'\'></input><br>'+
+  'Action: <input id="action" value=\''+a+'\'></input><br>'+
+  'Parms: <input id="parms" value=\''+p+'\'></input><br>'+
+  'Result: <input id="result" value=\''+r+'\'></input><br>'+
+  ''
+};
+
+function capMsgFrom() {
+//$msg <GET> billing.get_email (name, url="/bill/email") : (email)
+  var k=$("#kind").val();
+  var e=$("#entity").val();
+  var a=$("#action").val();
+  var p=$("#parms").val();
+  var r=$("#result").val();
+
+return '$msg '+k+' '+e+'.'+a+' '+p +(r.length > 0 ? r : '');
+};
+
+function capExpectMTo(s) {
+//expect $msg <GET> billing.get_email (name, url="/bill/email") : (email)
+  curCap='expect';
+  var m=/\$expect \$msg *(<\w+>)? *([\w*]+)\.([\w*]+) *(\([^)]*\))? * (:)? *(\([^)]*\))?/.exec(s);
+  var k=m[2];
+  var e=z(m,3);
+  var a=z(m,4);
+  var p=z(m,5);
+  var r=z(m,7);
+
+return ''+
+  'Kind: <input id="kind" value=\''+k+'\'></input><br>'+
+  'Entity: <input id="entity" value=\''+e+'\'></input><br>'+
+  'Action: <input id="action" value=\''+a+'\'></input><br>'+
+  'Parms: <input id="parms" value=\''+p+'\'></input><br>'+
+  'Result: <input id="result" value=\''+p+'\'></input><br>'+
+  ''
+};
+
+function capTo(s) {
+  if(s.match(/\$msg/)) return capMsgTo(s);
+  else if(s.match(/\$when/)) return capWhenTo(s);
+  else if(s.match(/\$expect \$msg/)) return capExpectMTo(s);
+  else return "?";
+};
+
+function capFrom() {
+  if(curCap == 'msg') return capMsgFrom();
+  else return "";
+};
+
+var saveLine;
+
+var codeGui = function(editor) {
+//  var selectionRange = editor.getSelectionRange();
+//  var content = editor.session.getTextRange(selectionRange);
+  var line = editor.session.getLine(editor.selection.getCursor().row);
+
+saveLine = function () {
+  var s = capFrom();
+  if(s.length > 0) {
+
+var Range = require("ace/range").Range
+var row = editor.selection.getCursor().row
+var newText = s
+editor.session.replace(new Range(row, 0, row, Number.MAX_VALUE), newText)
+//    editor.session.getLine(editor.selection.getCursor().row);
+  }
+  $("#oneModal").modal('hide');
+};
+
+  popupContent("This is the GUI<p></p>"+capTo(line) +
+  '<hr><button class="btn btn-primary" onclick="saveLine()">Done</button>');
   }
 
 editor1.commands.addCommand({

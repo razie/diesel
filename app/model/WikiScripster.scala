@@ -37,7 +37,7 @@ object WikiScripster {
       try {
         val c = new CSTimer("script", "?")
         c.start()
-        val res = SFiddles.isfiddleMap(s, lang, page, user, query)
+        val res = SFiddles.newsfiddleMap(s, lang, page, user, query, None, true)
         c.stop()
         if(res._1) res._2 else "ERR: " + res._2
       } catch {

@@ -57,8 +57,8 @@ var braDomain = [
   'call',
   'footref', 'footnote',
   {'if' : [
-    'api.wix.user.isActive',
-    'api.wix.user.isClubAdmin'
+    'wix.user.isActive',
+    'wix.user.isClubAdmin'
   ]},
   '/section','/alert','/if'
 ];
