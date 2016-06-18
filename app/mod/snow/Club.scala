@@ -1231,7 +1231,12 @@ object Club extends RazController with Logging {
         wid <- club.contentProps.get(role).flatMap(WID.fromPath)
       )yield
         Redirect(wid.url)
-       ) getOrElse Msg2("No such forum found in your clubs...")
+       ) getOrElse Msg("No such forum/calendar found in your clubs...",
+         """
+           |To join a club, click [/wikie/like/Club here].
+           |
+           |To host/create a club or learn more about this website, read [/wiki/Admin:Hosted_Services_for_Ski_Clubs this].
+           |""".stripMargin)
     }
 }
 

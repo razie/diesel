@@ -73,6 +73,7 @@ object Perm {
   val uProfile = Perm("uProfile")
   val eVerified = Perm("eVerified")
   val apiCall = Perm("apiCall") // special users that can make api calls
+  val domFiddle = Perm("domFiddle") // can create services in eithe scala or JS
   val codeMaster = Perm("codeMaster") // can create services in eithe scala or JS
 
   val Member = Perm("Member") // not paid account - this is not actually needed in the profile - if au then member
@@ -87,7 +88,7 @@ object Perm {
   // TODO - remove the old perms from this list at some point
   val all: Seq[String] = Seq(adminDb, adminWiki, uWiki, uProfile, eVerified, apiCall, codeMaster,
     "cCategory", "uCategory", "uReserved",
-    Basic, Gold, Platinum, Moderator
+    Basic, Gold, Platinum, Moderator, domFiddle
   )
 }
 

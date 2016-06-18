@@ -7,30 +7,32 @@ create new page given a template
 
 @stok.title("Create new with template")
 
-            <h3>Creating a new <em>@cat</em>, with <em>@formWid.name</em></h3>
+<h3>Creating a new <em>@cat</em>, with <em>@formWid.name</em></h3>
 
-            <p>Fill in the required attributes below.</p>
+<p>Fill in the required attributes below.</p>
 
-            @helper.form(action=routes.Wikie.addWithSpec(cat, name, formWid.wpath, torspec:String, stok.realm), 'class->"well form-inline") {
+@helper.form(action=routes.Wikie.addWithSpec(cat, name, formWid.wpath, torspec:String, stok.realm), 'class->"well form-inline") {
 
-                @if(!formPage.exists(_.form.fields.contains("name"))) {
-                    @Wikis(stok.realm).category(cat).flatMap(_.contentProps.get("label.createWithTemplate")).getOrElse {
-                        @if(cat == "Reactor") {
-                        Use
-                        a simple punchy single word, like "<b>mysite</b>" - your new website will be
-                        available at <b><small>http://mysite.wikireactor.com</small></b>
-                        } else {
-                            Give it a name...
-                        }
-                    }
-                    <p></p><p>Name: <input type="text" class="" name="name" placeholder="Name" value="@name">
-                    <hr><p>More particulars:</p>
-                }
+  @** you can override the entire form in your template *@
+  @if(!formPage.exists(_.form.fields.contains("name"))) {
+    @Wikis(stok.realm).category(cat).flatMap(_.contentProps.get("label.createWithTemplate")).getOrElse {
+      @if(cat == "Reactor") {
+        Use
+        a simple punchy single word, like "<b>mysite</b>" - your new website will be
+        available at <b><small>http://mysite.wikireactor.com</small></b>
+      } else {
+        Give it a name...
+      }
+    }
+    <p></p><p>Name: <input type="text" class="" name="name" placeholder="Name" value="@name">
+    <hr>
+    <p>More particulars:</p>
+  }
 
-                @wiki.wikiFormInt(formWid, Some(name), formPage, stok.au, errors, false, false, true)
+  @wiki.wikiFormInt(formWid, Some(name), formPage, stok.au, errors, false, false, true)
 
-                <button type="submit" class="btn btn-default">Create Now!</button>
-            }
+  <button type="submit" class="btn btn-primary">Create Now!</button>
+}
 
-            <hr>
+<hr>
 

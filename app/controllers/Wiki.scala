@@ -299,7 +299,8 @@ object Wiki extends WikiBase {
 
   /** show specific pages like about/tos/etc from a site or default to the RK pages from admin */
   def showSitePage(name: String, count:Int) = Action { implicit request =>
-    Website.getHost.flatMap(x=>Website(x)).flatMap(web=>Wikis.find(WID("Page", name, web.we.map(_._id)))).map {we=>
+    Website.getHost.flatMap(x=>Website(x)).flatMap(web=>
+      Wikis.find(WID("Page", name, web.we.map(_._id)))).map {we=>
       show(we.wid, count).apply(request).value.get.get //todo already have the page - optimize
     } getOrElse {
       // normal - continue showing the page

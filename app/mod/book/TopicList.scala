@@ -40,7 +40,7 @@ case class TopicList (
 
   def this (ownerTopic:UWID) = this (ownerTopic, {
     val wid = ownerTopic.wid.get
-    val res = Wikis.preprocess(wid, "md", wid.content.get).fold(WAST.context(None))
+    val res = Wikis.preprocess(wid, "md", wid.content.get, None).fold(WAST.context(None))
     res.ilinks.filter(_.role.exists(_ == "step")).flatMap(_.wid.uwid).toSeq
   })
 

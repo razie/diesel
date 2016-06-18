@@ -126,6 +126,14 @@ ${errCollector.mkString}
     Msg2(msg, Some(controllers.Wiki.w(wid, false)), if (u.isDefined) u else auth)(request)
   }
 
+  def Msg(msg: String)(implicit request: Request[_]): play.api.mvc.Result = {
+    Msg(msg, "")
+  }
+
+  def Msg(msg: String, details:String)(implicit request: Request[_]): play.api.mvc.Result = {
+    Ok(views.html.util.utilMsg(msg, details, None, auth))
+  }
+
   def Msg2(msg: String)(implicit request: Request[_]): play.api.mvc.Result = {
     Ok(views.html.util.utilMsg(msg, "", None, auth))
   }

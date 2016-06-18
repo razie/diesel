@@ -32,15 +32,20 @@ object Snow extends RazController with Logging {
 
   // list of clubs and teams with links
   def cteams = FAU { implicit au => implicit errCollector => implicit request =>
-    Ok(
-      Some(au.myself).map { rk =>
+    var msg =
+        Some(au.myself).map { rk =>
         rk.clubs.distinct.map { club =>
           club.wid.ahrefNice + rk.teams(club,"").map{ team=>
-            team.uwid.findWid.map(_.ahrefNice) mkString " | "
+            team.uwid.findWid.map(_.ahrefNice).getOrElse(
+              s"""<span title="Team assoc with no name ${team._id.toString}">?</span>"""
+            )
           }.mkString(" ( ", "|", " ) ")
         } mkString " | "
       } mkString
-    )
+
+    if(msg.trim.isEmpty) msg = """<small>[Need to <a href="/wikie/like/Club">join</a> a club OR read more <a href="/wiki/Admin:Hosted_Services_for_Ski_Clubs">about this website</a>] </small>"""
+
+    Ok( msg )
   }
 
   def doeAddNote(clubName:String, noteid:String, role:String, rkid:String) = FAU { implicit au => implicit errCollector => implicit request =>

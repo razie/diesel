@@ -204,6 +204,7 @@ object Admin extends RazController {
             } else if (perm(0) == '+' && (pro.perms.contains("-" + perm.substring(1)))) {
               pro.removePerm("-" + perm.substring(1))
             } else pro.addPerm(perm))
+            cleanAuth(Some(u))
           Redirect("/razadmin/user/" + id)
         }) getOrElse {
           error("ERR_ADMIN_CANT_UPDATE_USER uperm " + id + " " + errCollector.mkString)

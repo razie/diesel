@@ -16,31 +16,56 @@ a JS with HTML and CSS fiddle
 
 @stok.title("Diesel fiddle")
 
+<style>
+.ace-primaryline {
+  background-color: yellow;
+  position:absolute;
+}
+</style>
+
+<script src="@routes.Assets.at("javascripts/rk-contentassist-sqbr.js")"></script>
 <script src="@routes.Assets.at("javascripts/weFiddles.js")"></script>
 <script src="@routes.Assets.at("javascripts/weCommons.js")"></script>
 
   <h3>Diesel fiddle | <small>
     <input type="checkbox" id="refresh" checked> Real time (<span id="roundtrip">.. ms</span>)
     <span id="errors" class="label label-default">0 failed</span>
-    <span onclick="setSpec('Spec');" class="label label-primary" style="cursor:pointer">Spec <span id="curSpec"></span> <span class="glyphicon glyphicon-chevron-down"></span></span><span id="specChanged" class="label label-success">
-    <a href="#" onclick="popupMenu1('Spec');return false;">
+
+    <span onclick="setSpec('Story');" class="label label-primary" style="cursor:pointer">Story <span id="curStory"></span> <span class="glyphicon glyphicon-chevron-down">
+    </span></span><span id="storyChanged" class="label label-success" onclick="popupMenu1('Story');" style="cursor:pointer" title="Current draft differs from original">
       <span class="glyphicon glyphicon-floppy-disk"> </span>
-    </a>
+  </span>&nbsp;
+
+    <span onclick="setSpec('Spec');" class="label label-primary" style="cursor:pointer">Spec <span id="curSpec"></span> <span class="glyphicon glyphicon-chevron-down">
+    </span></span><span id="specChanged" class="label label-success" onclick="popupMenu1('Spec');" style="cursor:pointer" title="Current draft differs from original">
+      <span class="glyphicon glyphicon-floppy-disk"> </span>
     </span>&nbsp;
-    <span onclick="setSpec('Story');" class="label label-primary" style="cursor:pointer">Story <span id="curStory"></span> <span class="glyphicon glyphicon-chevron-down"></span></span><span id="storyChanged" class="label label-success">
-      <a href="#" onclick="popupMenu1('Story');return false;">
-        <span class="glyphicon glyphicon-floppy-disk"> </span>
-        </a>
-    </span>&nbsp;
+
     | <input type="checkbox" id="mockMode" title="Use the mocks" checked> Mocks
     | <input type="checkbox" id="sketchMode" title="Not used yet"> Sketch
-    | <input type="checkbox" id="blenderMode" title="Blend all specs together" checked> Blender
+    | <input type="checkbox" id="blenderMode" title="Blend all specs together"> Blender
     | <input type="checkbox" id="draftMode" title="Use autosaved drafts not originals" checked> Drafts
+    | <input type="checkbox" id="wikiMode" title="Show the wiki instead of the tree" > Wiki
   </small>
   </h3>
 
 @*<a class="btn btn-primary btn-xs" title="Works only on Chrome and Firefox" href="javascript:runpill_@{id}('@{id}')">Run &raquo;</a>*@
 @*<br>*@
+
+  <div class="row" style="align-items:center;">
+    <div id="title3_@id" class="col-sm-6" style="">
+  </div>
+    <div id="title4_@id" class="col-sm-6" style="">
+  </div>
+  </div>
+  <div class="row" style="align-items:center;">
+    <div id="pre3box_@id" class="col-sm-6" style="">
+      <pre id="pre3_@id" style="height:228px; ">@story</pre>
+    </div>
+    <div class="col-sm-6 well" id="iframew_@id" style="overflow: scroll; margin-bottom:2px">
+    </div>
+    <pre class="col-sm-6" id="iframe_@id" style="padding:1px; Xtext-align: center">Start typing...</pre>
+  </div>
 
 <div class="row" style="align-items:center;">
   <div id="title1_@id" class="col-sm-6" style="">
@@ -54,20 +79,6 @@ a JS with HTML and CSS fiddle
   </div>
   <div class="col-sm-6 well" id="pre2_@id" style="overflow: scroll; margin-bottom:2px">
   </div>
-</div>
-<div class="row" style="align-items:center;">
-  <div id="title3_@id" class="col-sm-6" style="">
-  </div>
-  <div id="title4_@id" class="col-sm-6" style="">
-  </div>
-</div>
-<div class="row" style="align-items:center;">
-  <div id="pre3box_@id" class="col-sm-6" style="">
-    <pre id="pre3_@id" style="height:228px; ">@story</pre>
-  </div>
-  @*<div class="col-sm-6" id="resultdiv_@id" style="">*@
-    <pre class="col-sm-6" id="iframe_@id" name="iframe_@id" style="padding:1px; Xtext-align: center">Start typing...</pre>
-  @*</div>*@
 </div>
 
   <small>Errors in code:</small><br>
@@ -84,11 +95,14 @@ a JS with HTML and CSS fiddle
 }
 
 @md{
-When done with this session, click the browser's BACK button to go back.
+### Help
 
-## Help
+Change anything and see your changes **reflected** instantly.
 
-Type some DOM, then some instance and see them **reflected** instantly.
+If you need help with the syntax, just click Ctrl+Space (Cmd+Space on Mac).
+
+If you'd rather see the elements ($msg, $when etc) as a dialog, go to that line and press Ctrl+G (Cmd+G on Mac).
+
 }
 
 
@@ -96,17 +110,37 @@ Type some DOM, then some instance and see them **reflected** instantly.
 
 
 <script>
+var realm = '@reactor';
+
 $('#pre2_'+@id).css('max-height', $('#pre1box_@id').height()-10+'px');
+$('#iframew_'+@id).css('max-height', $('#pre3box_@id').height()-10+'px');
 $('#iframe_'+@id).css('max-height', $('#pre3box_@id').height()-10+'px');
-$('#iframe_'+@id).contents().find('html').html("<div style='text-align: center;'>@errMsg.getOrElse("Press Run to see results...")</div>");
 
 useLocalStorageCheckbox("sketchMode", "domFiddleSketchMode");
 useLocalStorageCheckbox("mockMode", "domFiddleMockMode");
 useLocalStorageCheckbox("blenderMode", "domFiddleBlenderMode");
 useLocalStorageCheckbox("draftMode", "domFiddleDraftsMode");
+useLocalStorageCheckbox("wikiMode", "domFiddleWikiMode");
 
 $('#sketchMode, #mockMode, #blenderMode, #draftMode').change(function(){
       runpill2_@{id}('@{id}');
+});
+
+function showHideIframe() {
+  if($('#wikiMode').prop('checked')) {
+    $('#iframew_@id').show();
+    $('#iframe_'+@id).hide();
+  } else {
+    $('#iframew_@id').hide();
+    $('#iframe_@id').show();
+  }
+};
+
+showHideIframe();
+
+$('#wikiMode').change(function(){
+  showHideIframe();
+  runpill2_@{id}('@{id}');
 });
 
 var domContentAssist=[];
@@ -139,7 +173,6 @@ var runpill_@id = function(id) {
     }),
     contentType: 'application/x-www-form-urlencoded',
     success: function(data) {
-//      $('#pre2_'+id).contents().find('html').html(data.res);
       $('#pre2_'+id).html(data.res);
       domContentAssist = data.ca;
       var du = new Date().getTime() - lastTime;
@@ -181,7 +214,10 @@ var runpill2_@id = function(id) {
     }),
     contentType: 'application/x-www-form-urlencoded',
     success: function(data) {
-      $('#iframe_'+id).html(data.res);
+      if($('#wikiMode').prop('checked'))
+        $('#iframew_'+id).html(data.wiki);
+      else
+        $('#iframe_'+id).html(data.res);
       instContentAssist = data.ca;
       setErrors(data.failureCount);
       var du = new Date().getTime() - lastTime;
@@ -236,7 +272,8 @@ function popupMenu1(what) {
     }),
     contentType: 'application/x-www-form-urlencoded',
     success: function(data) {
-      var tex = "Save/revert "+what+"<br><br>"+
+    var cant = '@reactor' == "specs" ? "<small><b>You cannot save in <em>this</em> reactor!</b></small>" : "";
+      var tex = "Save/revert "+what+"<br>"+cant+"<br>"+
        '<a href="#" onclick="revertOrig(\''+what+'\'); return false;">Revert</a> | ' +
        '<a href="#" onclick="saveOrig(\''+what+'\'); return false;">Save</a> | ' +
        '<a href="#" onclick="saveNew(\''+what+'\'); return false;">Save as</a> ' +
@@ -352,6 +389,7 @@ var jsh = function(code) {
 </script>
 
 <script src="@routes.Assets.at("javascripts/rk-contentassist.js")"></script>
+<script src="@routes.Assets.at("javascripts/weDieselDom.js")"></script>
 
 <script src="@routes.Assets.at("ace-builds/src/ace.js")" type="text/javascript" charset="utf-8"></script>
 
@@ -380,6 +418,19 @@ var jsh = function(code) {
 }
   editor.getSession().setMode("ace/mode/nvp1");
 
+  editor1.setOptions({
+    enableBasicAutocompletion: true,
+    enableLiveAutocomplete:  true,
+    enableLiveAutocompletion:  true
+  });
+  editor.setOptions({
+    enableBasicAutocompletion: true,
+    enableLiveAutocomplete:  true,
+    enableLiveAutocompletion:  true
+  });
+
+  //todo can't have two editors with two completers...
+  //todo I could simulate it with an IF inside instCompletions
   var domCompleter = {
     getCompletions: domCompl(false)
   };
@@ -387,184 +438,17 @@ var jsh = function(code) {
     getCompletions: domCompl(true)
   };
 
-var keyWordCompleter = {
+  // delegate the keywords to the xtext generated completer
+  var keyWordCompleter = {
     getCompletions: function(editor, session, pos, prefix, callback) {
         var state = editor.session.getState(pos.row);
         var completions = session.$mode.getCompletions(state, session, pos, prefix);
         callback(null, completions);
     }
-};
-
-//  editor.setOptions({enableBasicAutocompletion: true});
-  editor1.setOptions({
-    enableBasicAutocompletion: true  //[domCompleter]
-  });
-  editor.setOptions({
-    enableBasicAutocompletion: true, //[instCompleter]
-    enableLiveAutocomplete:  true,
-    enableLiveAutocompletion:  true
-  });
-//  langTools.addCompleter(instCompleter);
-  langTools.setCompleters([keyWordCompleter, instCompleter]);
-
-
-  function domCompl (i) {
-    return function (editor, session, pos, prefix, callback) {
-      var contentAssist = i ? instContentAssist : domContentAssist;
-//      if (prefix.length === 0) { callback(null, wl); return }
-      var line = session.getLine(pos.row);
-      var terms = line.split(' ');
-      if(terms.indexOf('->') == terms.length-1 ||
-         terms.indexOf('=>') == terms.length-1 ||
-         terms[0] && terms[0] == '$expect' ||
-         terms[0] && terms[0] == '$mock') {
-        var newTerms = ['$when', ''];
-        line = '$when ';
-        var opts = getOptions(contentAssist, newTerms, 0); // options
-        callback(null, opts.map(function(value) {
-          // double space is a marker for the FUTURE options
-          var xvalue = value.replace(/(\w)  .*/, '\$1');
-          var aft = value.replace(/(.*)  /, '');
-          var curr = aft.replace(line, '');
-          return {name: value, value: curr, score: 100, meta: "dom"}
-        }));
-      } else {
-      var opts = getOptions(contentAssist, terms, 0); // options
-//      callback(null, opts);
-      callback(null, opts.map(function(value) {
-        // double space is a marker for the FUTURE options
-        var xvalue = value.replace(/(\w)  .*/, '\$1');
-
-//      if (xvalue.indexOf(' ') >= 0)
-//        s= ['\{\{' + xvalue + ' ', ''];
-//      else if (xvalue.indexOf('/') == 0)
-//        s= ['\{\{' + xvalue, '\}\}'];
-//      else
-//       first time, only one term, insert }}
-//        s= ['\{\{' + xvalue + ' ', '\}\}'];
-
-        var curr = xvalue.replace(line, '');
-        var aft = value.replace(/(.*)  /, '');
-//        return {name: ea.word, value: ea.word, score: ea.score, meta: "rhyme"}
-        return {name: value, value: curr, score: 100, meta: "dom"}
-        }));
-    };
-    };
   };
 
-
-function z(m,i) {
-  return m && m.length >= i && m[i] ? m[i] : "";
-}
-
-var curCap='';
-
-function capWhenTo(s) {
-//$when email.update (name,pwd) =>yahoo.upd_pwd (email,password=pwd)
-  curCap='when';
-  var m=/\$when *([\w*]+)\.([\w*]+) *(\([^)]*\))? *=> *([\w*]+)\.([\w*]+) *(\([^)]*\))?/.exec(s);
-  var e1=m[1];
-  var a1=z(m,2);
-  var p1=z(m,3);
-  var e2=z(m,4);
-  var a2=z(m,6);
-  var p2=z(m,7);
-
-return ''+
-  'Entity: <input id="entity1" value=\''+e1+'\'></input><br>'+
-  'Action: <input id="action1" value=\''+a1+'\'></input><br>'+
-  'Parms: <input id="parms1" value=\''+p1+'\'></input><br>'+
-  '<hr>'+
-  'Entity: <input id="entity1" value=\''+e2+'\'></input><br>'+
-  'Action: <input id="action1" value=\''+a2+'\'></input><br>'+
-  'Parms: <input id="parms1" value=\''+p2+'\'></input><br>'+
-  ''
-};
-
-function capMsgTo(s) {
-//$msg <GET> billing.get_email (name, url="/bill/email") : (email)
-  curCap='msg';
-  var m=/\$msg *(<\w+>)? *([\w*]+)\.([\w*]+) *(\([^)]*\))?(( *: *)\([^)]*\))?/.exec(s);
-  var k=m[1];
-  var e=z(m,2);
-  var a=z(m,3);
-  var p=z(m,4);
-  var r=z(m,6);
-
-return ''+
-  'Kind: <input id="kind" value=\''+k+'\'></input><br>'+
-  'Entity: <input id="entity" value=\''+e+'\'></input><br>'+
-  'Action: <input id="action" value=\''+a+'\'></input><br>'+
-  'Parms: <input id="parms" value=\''+p+'\'></input><br>'+
-  'Result: <input id="result" value=\''+r+'\'></input><br>'+
-  ''
-};
-
-function capMsgFrom() {
-//$msg <GET> billing.get_email (name, url="/bill/email") : (email)
-  var k=$("#kind").val();
-  var e=$("#entity").val();
-  var a=$("#action").val();
-  var p=$("#parms").val();
-  var r=$("#result").val();
-
-return '$msg '+k+' '+e+'.'+a+' '+p +(r.length > 0 ? r : '');
-};
-
-function capExpectMTo(s) {
-//expect $msg <GET> billing.get_email (name, url="/bill/email") : (email)
-  curCap='expect';
-  var m=/\$expect \$msg *(<\w+>)? *([\w*]+)\.([\w*]+) *(\([^)]*\))? * (:)? *(\([^)]*\))?/.exec(s);
-  var k=m[2];
-  var e=z(m,3);
-  var a=z(m,4);
-  var p=z(m,5);
-  var r=z(m,7);
-
-return ''+
-  'Kind: <input id="kind" value=\''+k+'\'></input><br>'+
-  'Entity: <input id="entity" value=\''+e+'\'></input><br>'+
-  'Action: <input id="action" value=\''+a+'\'></input><br>'+
-  'Parms: <input id="parms" value=\''+p+'\'></input><br>'+
-  'Result: <input id="result" value=\''+p+'\'></input><br>'+
-  ''
-};
-
-function capTo(s) {
-  if(s.match(/\$msg/)) return capMsgTo(s);
-  else if(s.match(/\$when/)) return capWhenTo(s);
-  else if(s.match(/\$expect \$msg/)) return capExpectMTo(s);
-  else return "?";
-};
-
-function capFrom() {
-  if(curCap == 'msg') return capMsgFrom();
-  else return "";
-};
-
-var saveLine;
-
-var codeGui = function(editor) {
-//  var selectionRange = editor.getSelectionRange();
-//  var content = editor.session.getTextRange(selectionRange);
-  var line = editor.session.getLine(editor.selection.getCursor().row);
-
-saveLine = function () {
-  var s = capFrom();
-  if(s.length > 0) {
-
-var Range = require("ace/range").Range
-var row = editor.selection.getCursor().row
-var newText = s
-editor.session.replace(new Range(row, 0, row, Number.MAX_VALUE), newText)
-//    editor.session.getLine(editor.selection.getCursor().row);
-  }
-  $("#oneModal").modal('hide');
-};
-
-  popupContent("This is the GUI<p></p>"+capTo(line) +
-  '<hr><button class="btn btn-primary" onclick="saveLine()">Done</button>');
-  }
+  //  langTools.addCompleter(instCompleter);
+  langTools.setCompleters([keyWordCompleter, instCompleter]);
 
 editor1.commands.addCommand({
     name: "gui",

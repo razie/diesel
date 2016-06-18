@@ -62,6 +62,22 @@ var runpill_@id = function(id) {
   var res = "";
 
   try {
+  $.ajax(
+    '/sfiddle/saveFiddle/JSFiddle/@stok.realm', {
+    type: 'POST',
+    data: $.param({
+      l : 'js',
+      j : editor.getValue()
+    }),
+    contentType: 'application/x-www-form-urlencoded',
+    success: function(data) {
+    // todo paint something
+    },
+    error  : function(x) {
+      console.log( "ERR "+x.toString());
+    }
+  });
+
     res = eval(moreContext+preamble+"\n"+code);
     paintErr(false);
   } catch (e) {

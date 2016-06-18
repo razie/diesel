@@ -26,12 +26,26 @@ rule_DomainModel:
 
 
 rule_AbstractElement:
-    rule_Expect | rule_Msg | rule_When | rule_Option | rule_Val | rule_Mock;
+    rule_Expect | rule_Msg | rule_When | rule_Option | rule_Val | rule_Mock | rule_Topic | rule_Braq;
 
 
 
 
 //-------------------- raz
+
+rule_Topic:
+    '[[' name=rule_QualifiedName (':' t=rule_QualifiedName)? ']]'
+;
+
+
+
+
+rule_Braq:
+    '}'
+;
+
+
+
 
 rule_Expect:
     rule_ExpectM | rule_ExpectV

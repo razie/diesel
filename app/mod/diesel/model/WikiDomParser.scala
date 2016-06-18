@@ -6,7 +6,9 @@
  */
 package mod.diesel.model
 
+
 import mod.diesel.controllers.SFiddles
+import razie.{js, clog}
 import razie.diesel.RDOM._
 import razie.diesel.{RDomain, RDOM}
 import razie.wiki.{Enc, Dec}
@@ -25,6 +27,7 @@ import scala.collection.mutable
 import scala.collection.mutable.HashMap
 import scala.collection.mutable.ListBuffer
 import scala.util.Try
+import scala.util.parsing.input.Positional
 
 /** domain parser - for domain sections in a wiki */
 trait WikiDomainParser extends WikiParserBase {
@@ -37,19 +40,88 @@ trait WikiDomainParser extends WikiParserBase {
 
   def any: P = """.*""".r
 
+  //todo full expr with +-/* and XP
   def value: P = ident | number | str
 
   def number: P = """\d+""".r
 
-  def str: P = """"[^"]*"""".r
+  // todo commented - if " not included in string, evaluation has trouble - see expr(s)
+  // todo see stripq and remove it everywhere when quotes die and proper type inference is used
+  def str: P = "\"" ~> """[^"]*""".r <~ "\""
+//  def str: P = """"[^"]*"""".r
 
   def ws = whiteSpace
 
   def ows = opt(whiteSpace)
 
-  def domainBlocks = pobject | pclass | passoc | pfunc | pwhen | pmsg | pexpectm | pexpectv | pprop | pmock
+  def domainBlocks = pobject | pclass | passoc | pfunc | pwhen | pmsg | pval | pexpectm | pexpectv | pmock
 
   // todo replace $ with . i.e. .class
+
+  //------------ expressions and conditions
+
+  def expr : Parser[AExpr] = ppexpr | pterm1
+  def ppexpr : Parser[AExpr] = pterm1 ~ "+" ~ pterm1 ^^ { case a ~ s ~ b => AExpr2(a, "+", b) }
+  def pterm1 : Parser[AExpr] = numexpr | cexpr | aident //| moreexpr
+
+  def numexpr : Parser[AExpr] = number ^^ { case i => new CExpr(i, "Number") }
+  def cexpr : Parser[AExpr] = "\"" ~> """[^"]*""".r <~ "\"" ^^ { case e => new CExpr (e, "String") }
+  def aident : Parser[AExpr] = ident ^^ { case i => new AExprIdent(i) }
+
+  //------------ conditions
+
+  def cond : Parser[BExpr] = boolexpr
+
+  def boolexpr: Parser[BExpr] = bterm1|bterm1~"||"~bterm1 ^^ { case a~s~b => bcmp(a,s,b) }
+  def bterm1: Parser[BExpr] = bfactor1|bfactor1~"&&"~bfactor1 ^^ { case a~s~b => bcmp(a,s,b) }
+  def bfactor1: Parser[BExpr] = eq | neq | lte | gte | lt | gt
+  def eq : Parser[BExpr] = expr ~ "==" ~ expr ^^ { case a~s~b => cmp(a,s,b) }
+  def neq: Parser[BExpr] = expr ~ "!=" ~ expr ^^ { case a~s~b => cmp(a,s,b) }
+  def lte: Parser[BExpr] = expr ~ "<=" ~ expr ^^ { case a~s~b => cmp(a,s,b) }
+  def gte: Parser[BExpr] = expr ~ ">=" ~ expr ^^ { case a~s~b => cmp(a,s,b) }
+  def lt : Parser[BExpr] = expr ~ "<"  ~ expr ^^ { case a~s~b => cmp(a,s,b) }
+  def gt : Parser[BExpr] = expr ~ ">"  ~ expr ^^ { case a~s~b => cmp(a,s,b) }
+
+  def bcmp (a:BExpr, s:String, b:BExpr) = new BCMP1 (a,s,b)
+  def cmp  (a:AExpr, s:String, b:AExpr) = new BCMP2 (a,s,b)
+
+  /** boolean expressions */
+  abstract class BExpr(e:String) extends HasDsl {
+    def apply (e:Any)(implicit ctx:ECtx) : Boolean
+    override def toDsl = e
+  }
+
+  /** negated boolean expression */
+  case class BCMPNot(a: BExpr) extends BExpr("") {
+    override def apply (e:Any)(implicit ctx:ECtx) = !a.apply(e)
+  }
+
+  /** composed boolean expression */
+  case class BCMP1 (a:BExpr, op:String, b:BExpr) extends BExpr (a.toDsl+" "+op+" "+b.toDsl) {
+    override def apply (in:Any)(implicit ctx:ECtx) = op match {
+      case "||" => a.apply(in) || b.apply(in)
+      case "&&" => a.apply(in) && b.apply(in)
+      case _ => { clog << "[ERR Operator " + op + " UNKNOWN!!!]"; false}
+    }
+    override def toString = a.toString+" "+op+" "+b.toString
+  }
+
+  /** simple boolean expression */
+  case class BCMP2  (a:AExpr, op:String, b:Expr) extends BExpr (a.toDsl+" "+op+" "+b.toDsl) {
+    override def apply (in:Any)(implicit ctx:ECtx) = op match {
+      case "==" => a(in) == b(in)
+      case "!=" => a(in) != b(in)
+      case "~=" => a(in).toString matches b(in).toString
+      case "<=" => a(in).toString <= b(in).toString
+      case ">=" => a(in).toString >= b(in).toString
+      case "<" => a(in).toString < b(in).toString
+      case ">" => a(in).toString > b(in).toString
+      case _ => { clog << "[ERR Operator " + op + " UNKNOWN!!!]"; false}
+    }
+  }
+
+  // ----------------------
+
 
   def optKinds: PS = opt(ows ~> "[" ~> ows ~> repsep(ident, ",") <~ "]") ^^ {
     case Some(tParm) => tParm.mkString
@@ -94,6 +166,11 @@ trait WikiDomainParser extends WikiParserBase {
     case cls ~ _ ~ role ~ a => (cls, role, a)
   }
 
+  /** assoc : role */
+  def clsMatch: Parser[(String, String, List[RDOM.PM])] = (ident | "*") ~ " *. *".r ~ (ident | "*") ~ optMatchAttrs ^^ {
+    case cls ~ _ ~ role ~ a => (cls, role, a)
+  }
+
   /**
    * add a domain element to the topic
    */
@@ -116,8 +193,7 @@ trait WikiDomainParser extends WikiParserBase {
   /**
    * .when a.role (attrs) => z.role (attrs)
    */
-  def pif: Parser[EIf] =
-    """[.$]if""".r ~> ws ~> optAttrs ^^ {
+  def pif: Parser[EIf] = """[.$]if""".r ~> ws ~> optMatchAttrs ^^ {
       case aa => RDExt.EIf(aa)
     }
 
@@ -125,12 +201,15 @@ trait WikiDomainParser extends WikiParserBase {
    * .when a.role (attrs) => z.role (attrs)
    */
   def pwhen: PS =
-    """[.$]when""".r ~> ws ~> clsMet ~ opt(pif) ~ " *=> *".r ~ clsMet ^^ {
-      case Tuple3(ac, am, aa) ~ cond ~ _ ~ Tuple3(zc, zm, za) => {
-        val x = RDExt.EMatch(ac, am, aa, cond)
-        val y = RDExt.EMap(zc, zm, za)
-        val rule = RDExt.ERule(x, y)
-        addToDom(rule)
+    keyw("""[.$]when""".r) ~ ws ~ clsMatch ~ opt(pif) ~ " *=> *".r ~ clsMet ^^ {
+      case k ~ _ ~ Tuple3(ac, am, aa) ~ cond ~ _ ~ Tuple3(zc, zm, za) => {
+        LazyState { (current, ctx) =>
+          val x = RDExt.EMatch(ac, am, aa, cond)
+          val y = RDExt.EMap(zc, zm, za)
+          val f = RDExt.ERule(x, y)
+          f.pos = Some(EPos(ctx.we.map(_.wid.wpath).mkString, k.pos.line, k.pos.column))
+          addToDom(f).ifold(current, ctx)
+        }
       }
     }
 
@@ -138,12 +217,16 @@ trait WikiDomainParser extends WikiParserBase {
    * .mock a.role (attrs) => z.role (attrs)
    */
   def pmock: PS =
-    """[.$]mock""".r ~> ws ~> clsMet ~ opt(pif) ~ " *=> *".r ~ optAttrs ^^ {
-      case Tuple3(ac, am, aa) ~ cond ~ _ ~ za => {
-        val x = RDExt.EMatch(ac, am, aa, cond)
-        val y = RDExt.EMap("", "", za)
-        val rule = EMock(ERule(x, y))
-        addToDom(rule)
+    keyw("""[.$]mock""".r) ~ ws ~ clsMatch ~ opt(pif) ~ " *=> *".r ~ optAttrs ^^ {
+      case k ~ _ ~ Tuple3(ac, am, aa) ~ cond ~ _ ~ za => {
+        LazyState { (current, ctx) =>
+          val x = RDExt.EMatch(ac, am, aa, cond)
+          val y = RDExt.EMap("", "", za)
+          val f = EMock(ERule(x, y))
+          f.pos = Some(EPos(ctx.we.map(_.wid.wpath).mkString, k.pos.line, k.pos.column))
+          f.rule.pos = Some(EPos(ctx.we.map(_.wid.wpath).mkString, k.pos.line, k.pos.column))
+          addToDom(f).ifold(current, ctx)
+        }
       }
     }
 
@@ -187,6 +270,14 @@ trait WikiDomainParser extends WikiParserBase {
     case None => List.empty
   }
 
+  /**
+   * optional attributes
+   */
+  def optMatchAttrs: Parser[List[RDOM.PM]] = opt(" *\\(".r ~> rep1sep(pmatchattr, ",") <~ ")") ^^ {
+    case Some(a) => a
+    case None => List.empty
+  }
+
   // ?
   def attr: Parser[_ >: CM] = pattr
 
@@ -205,11 +296,37 @@ trait WikiDomainParser extends WikiParserBase {
    * <> means it's a ref, not ownership
    * * means it's a list
    */
-  def pattr: Parser[RDOM.P] = " *".r ~> ident ~ opt(" *: *".r ~> opt("<>") ~ ident ~ optKinds) ~ opt(" *\\* *".r) ~ opt(" *= *".r ~> value) ^^ {
-    case name ~ t ~ multi ~ e => t match {
-      case Some(Some(ref) ~ tt ~ k) => P(name, tt + k.s, ref, multi.mkString, e.mkString)
-      case Some(None ~ tt ~ k) => P(name, tt + k.s, "", multi.mkString, e.mkString)
-      case None => P(name, "", "", multi.mkString, e.mkString)
+  def pmatchattr: Parser[RDOM.PM] = " *".r ~> ident ~ opt(" *: *".r ~> opt("<>") ~ ident ~ optKinds) ~ opt(" *\\* *".r) ~ opt(" *".r ~> ("==|~=|~=".r) ~ " *".r ~ value) ^^ {
+    case name ~ t ~ multi ~ e => {
+      val exp = e match {
+        case Some(op ~ _ ~ v) => (op, v)
+        case None => ("", "")
+      }
+      t match {
+        case Some(Some(ref) ~ tt ~ k) => PM(name, tt + k.s, ref, multi.mkString, exp._1, exp._2)
+        case Some(None ~ tt ~ k) => PM(name, tt + k.s, "", multi.mkString, exp._1, exp._2)
+        case None => PM(name, "", "", multi.mkString, exp._1, exp._2)
+      }
+    }
+  }
+
+  /**
+   * name:<>type[kind]*=default
+   * <> means it's a ref, not ownership
+   * * means it's a list
+   */
+  def pattr: Parser[RDOM.P] = " *".r ~> ident ~ opt(" *: *".r ~> opt("<>") ~ ident ~ optKinds) ~ opt(" *\\* *".r) ~ opt(" *= *".r ~> expr) ^^ {
+    case name ~ t ~ multi ~ e => {
+      val (dflt, ex) = e match {
+        case Some(CExpr(ee, "String")) => (ee, None)
+        case Some(expr) => ("", Some(expr))
+        case None => ("", None)
+      }
+      t match {
+        case Some(Some(ref) ~ tt ~ k) => P(name, tt + k.s, ref, multi.mkString, dflt, ex)
+        case Some(None ~ tt ~ k) => P(name, tt + k.s, "", multi.mkString, dflt, ex)
+        case None => P(name, "", "", multi.mkString, dflt, ex)
+      }
     }
   }
 
@@ -229,13 +346,20 @@ trait WikiDomainParser extends WikiParserBase {
    *
    * use them to set options
    */
-  def pprop: PS = "[.$]attr *".r ~> pattr ^^ {
+  def pval: PS = "[.$]val *".r ~> pattr ^^ {
     case a => {
       LazyState { (current, ctx) =>
-        collectDom(EAttr(a), ctx.we)
+        collectDom(EVal(a), ctx.we)
         SState("Option: " + a.toString)
       }
     }
+  }
+
+  case class Keyw(s:String) extends Positional
+
+  private def keyw (r:scala.util.matching.Regex) = positioned(pkeyw(r))
+  private def pkeyw (r:scala.util.matching.Regex) : Parser[Keyw] = r ^^ {
+    case s => Keyw(s)
   }
 
   /**
@@ -243,23 +367,11 @@ trait WikiDomainParser extends WikiParserBase {
    *
    * An NVP is either the spec or an instance of a function call, a message, a data object... whatever...
    */
-  def pmsg: PS = "[.$]msg *".r ~> opt("<" ~> "[^>]+".r <~ "> *".r) ~ ident ~ " *\\. *".r ~ ident ~ optAttrs ~ opt(" *: *".r ~> optAttrs) ^^ {
-    case stype ~ ent ~ _ ~ ac ~ attrs ~ ret => {
+  def pmsg: PS = keyw("[.$]msg *".r) ~ opt("<" ~> "[^>]+".r <~ "> *".r) ~ ident ~ " *\\. *".r ~ ident ~ optAttrs ~ opt(" *: *".r ~> optAttrs) ^^ {
+    case k ~ stype ~ ent ~ _ ~ ac ~ attrs ~ ret => {
       LazyState { (current, ctx) =>
         val f = RDExt.EMsg(ent, ac, attrs, ret.toList.flatten(identity), stype.mkString.trim)
-        collectDom(f, ctx.we)
-        SState(f.toString)
-      }
-    }
-  }
-
-  /**
-   * .expect object.func (a,b)
-   */
-  def pexpectm: PS = "[.$]expect * [$]msg *".r ~> ident ~ " *\\. *".r ~ ident ~ optAttrs ~ opt(pif) ^^ {
-    case ent ~ _ ~ ac ~ attrs ~ cond => {
-      LazyState { (current, ctx) =>
-        val f = RDExt.ExpectM(RDExt.EMatch(ent, ac, attrs, cond))
+        f.pos = Some(EPos(ctx.we.map(_.wid.wpath).mkString, k.pos.line, k.pos.column))
         collectDom(f, ctx.we)
         SState(f.toHtml)
       }
@@ -269,12 +381,27 @@ trait WikiDomainParser extends WikiParserBase {
   /**
    * .expect object.func (a,b)
    */
-  def pexpectv: PS = "[.$]expect * [$]val *".r ~> pattr ^^ {
-    case a => {
+  def pexpectm: PS = keyw("[.$]expect * [$]msg *".r) ~ ident ~ " *\\. *".r ~ ident ~ optMatchAttrs ~ opt(pif) ^^ {
+    case k ~ ent ~ _ ~ ac ~ attrs ~ cond => {
+      LazyState { (current, ctx) =>
+        val f = RDExt.ExpectM(RDExt.EMatch(ent, ac, attrs, cond))
+        f.pos = Some(EPos(ctx.we.map(_.wid.wpath).mkString, k.pos.line, k.pos.column))
+        collectDom(f, ctx.we)
+        SState(f.toHtml)
+      }
+    }
+  }
+
+  /**
+   * .expect object.func (a,b)
+   */
+  def pexpectv: PS = keyw("[.$]expect * [$]val *".r) ~ optMatchAttrs ^^ {
+    case k ~ a => {
       LazyState { (current, ctx) =>
         val f = RDExt.ExpectV(a)
+        f.pos = Some(EPos(ctx.we.map(_.wid.wpath).mkString, k.pos.line, k.pos.column))
         collectDom(f, ctx.we)
-        SState("expect::" + f.toString)
+        SState("expect::" + f.toHtml)
       }
     }
   }
@@ -372,59 +499,82 @@ object RDExt {
     override def toString = "val: " + p.toString
   }
 
-  // just a wrapper for type
-  case class EAttr(p: RDOM.P) {
-    override def toString = p.toString
+  /** check to match the arguments */
+  def sketchAttrs(defs:MatchAttrs, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) : Attrs = {
+    defs.map(p=> P(p.name, p.ttype, p.ref, p.multi, p.dflt))
   }
 
-  def span(s: String, k: String = "default") = s"""<span class="label label-$k">$s</span>"""
-
   // wrapper
-  case class ExpectM(m: EMatch) extends CanHtml {
+  case class ExpectM(m: EMatch) extends CanHtml with HasPosition {
+    var pos : Option[EPos] = None
     override def toHtml = span("expect::") + m.toString
 
     override def toString = "expect::" + m.toString
+
+    /** check to match the arguments */
+    def sketch(cole: Option[MatchCollector] = None)(implicit ctx: ECtx) : List[EMsg] = {
+      var e = EMsg(m.cls, m.met, sketchAttrs(m.attrs, cole))
+      e.pos = pos
+//      e.spec = destSpec
+//      count += 1
+      List(e)
+    }
   }
 
   // wrapper
-  case class ExpectV(p: P) extends CanHtml {
-    override def toHtml = span("expect::") + p.toString
+  // todo use a EMatch and combine with ExpectM - empty e/a
+  case class ExpectV(pm:MatchAttrs) extends CanHtml with HasPosition {
+    var pos : Option[EPos] = None
+    override def toHtml = span("expect::") + pm.toString
 
-    override def toString = "expect::" + p.toString
+    override def toString = "expect::" + pm.toString
 
     /** check to match the arguments */
-    def test(a: P, cole: Option[MatchCollector] = None) = {
-      var res = false
-      if (p.name.size > 0) {
-        res = a.name == p.name
-      }
-      if (p.dflt.size > 0) {
-        if (p.name.size > 0) {
-          res = a.name == p.name && a.dflt == p.dflt
-        }
-      }
-      res
+    def test(a:Attrs, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) = {
+      testA(a, pm, cole)
+    }
+
+    /** check to match the arguments */
+    def sketch(cole: Option[MatchCollector] = None)(implicit ctx: ECtx) : Attrs = {
+      sketchAttrs(pm, cole)
     }
 
   }
 
+  // reference where the item was defined, so we can scroll back to it
+  case class EPos (wpath:String, line:Int, col:Int) {
+    def toJmap = Map (
+      "wpath" -> wpath,
+      "line" -> line,
+      "col" -> col
+    )
+
+    private def spec =
+      if(wpath.toLowerCase.contains("spec")) "SPEC" else "STORY"
+
+    override def toString = s"""{wpath:"$wpath", line:$line, col:$col}"""
+    def toRef = s"""weref($spec, $line, $col)"""
+  }
+
   // a nvp - can be a spec or an event, message, function etc
-  case class EMsg(entity: String, met: String, attrs: List[RDOM.P], ret: List[RDOM.P] = Nil, stype: String = "") extends CanHtml {
+  case class EMsg(entity: String, met: String, attrs: List[RDOM.P], ret: List[RDOM.P] = Nil, stype: String = "") extends CanHtml with HasPosition {
     var spec: Option[EMsg] = None
+    var pos : Option[EPos] = None
 
     // if this was an instance and you know of a spec
     private def first: String = spec.map(_.first).getOrElse(
-      span("msg:", resolved) + span(stype, "info")
+      kspan("msg:", resolved, spec.flatMap(_.pos)) + span(stype, "info")
     )
 
     private def resolved: String = spec.map(_.resolved).getOrElse(
       if (stype == "GET" || stype == "POST") "default" else "warning"
     )
 
-    override def toHtml = first +
-      s""" $entity.<b>$met</b> (${attrs.mkString(", ")})"""
+    override def toHtml =
+      first + s""" $entity.<b>$met</b> (${attrs.mkString(", ")})"""
 
-    override def toString = toHtml
+    override def toString =
+      s""" $entity.$met (${attrs.mkString(", ")})"""
   }
 
   // an instance at runtime
@@ -436,6 +586,7 @@ object RDExt {
   }
 
   type Attrs = List[RDOM.P]
+  type MatchAttrs = List[RDOM.PM]
 
   class SingleMatch(val x: Any) {
     var score = 0;
@@ -453,7 +604,7 @@ object RDExt {
   }
 
   class MatchCollector {
-    var cur = new SingleMatch()
+    var cur = new SingleMatch("")
     var highestScore = 0;
     var highestMatching: Option[SingleMatch] = None
     val old = new ListBuffer[SingleMatch]()
@@ -477,13 +628,21 @@ object RDExt {
   }
 
   // a simple condition
-  case class EIf(attrs: Attrs) extends CanHtml {
+  case class EIf(attrs: MatchAttrs) extends CanHtml {
     def test(e: EMsg, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) = testA(e.attrs, attrs, cole)
 
     override def toHtml = span("$if::") + attrs.mkString
 
     override def toString = "$if " + attrs.mkString
   }
+
+  private def check (p:P, pm:PM) =
+    p.name == pm.name && {
+      if("==" == pm.op) p.dflt == pm.dflt
+      else if("!=" == pm.op) p.dflt != pm.dflt
+      else if("~=" == pm.op) p.dflt matches pm.dflt
+      else false
+    }
 
   /**
    * matching attrs
@@ -494,18 +653,15 @@ object RDExt {
    *
    * (a=1) it occurs with value
    */
-  private def testA(in: Attrs, cond: Attrs, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) = {
+  private def testA(in: Attrs, cond: MatchAttrs, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) = {
     cond.zipWithIndex.foldLeft(true)((a, b) => a && {
       var res = false
+
       if (b._1.dflt.size > 0) {
         if (b._1.name.size > 0) {
-          res = in.exists(x => x.name == b._1.name && x.dflt == b._1.dflt)
-          if (res) cole.map(_.plus(b._1.name + "=" + b._1.dflt))
+          res = in.exists(x => check(x, b._1))
+          if (res) cole.map(_.plus(b._1.name + b._1.op + b._1.dflt))
           else cole.map(_.minus(b._1.name, in.find(_.name == b._1.name).getOrElse(b._1)))
-        } else {
-          res = in(b._2).dflt == b._1.dflt
-          if (res) cole.map(_.plus(b._1.name + "=" + b._1.dflt))
-          else cole.map(_.minus(b._1.name, b._1))
         }
       } else {
         // check and record the name failure
@@ -520,7 +676,7 @@ object RDExt {
   }
 
   // a match case
-  case class EMatch(cls: String, met: String, attrs: Attrs, cond: Option[EIf] = None) {
+  case class EMatch(cls: String, met: String, attrs: MatchAttrs, cond: Option[EIf] = None) {
     // todo match also the object parms if any and method parms if any
     def test(e: EMsg, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) = {
       if ("*" == cls || e.entity == cls) {
@@ -540,41 +696,47 @@ object RDExt {
     var count = 0;
 
     // todo match also the object parms if any and method parms if any
-    def apply(e: EEvent) =
-      "?event"
-
-    def apply(in: EMsg, destSpec: Option[EMsg])(implicit ctx: ECtx): List[Any] = {
+    def apply(in: EMsg, destSpec: Option[EMsg], pos:Option[EPos])(implicit ctx: ECtx): List[Any] = {
       var e = EMsg(cls, met, sourceAttrs(in, attrs, destSpec.map(_.attrs)))
+      e.pos = pos
       e.spec = destSpec
       count += 1
       List(e)
     }
 
     def sourceAttrs(in: EMsg, spec: Attrs, destSpec: Option[Attrs])(implicit ctx: ECtx) = {
+      // current context, msg overrides
+      val myCtx = new ECtx(in.attrs, Some(ctx))
 
       // solve an expression
-      def expr(s: String) = {
-        if (s.startsWith("\"")) s // string
-        else if (s.matches("[0-9]+")) s // num
-        else in.attrs.find(_.name == s).map(_.dflt).getOrElse("")
+      def expr(p: P) = {
+          p.expr.map(_.apply("")(myCtx).toString).getOrElse{
+          val s = p.dflt
+          s
+//          if (s.matches("[0-9]+")) s // num
+//          else if (s.startsWith("\"")) s // string
+//          else in.attrs.find(_.name == s).map(_.dflt).getOrElse("")
+        }
       }
 
       if (spec.nonEmpty) spec.map { p =>
-        //todo use expr
-        val v = in.attrs.find(_.name == p.name).map(_.dflt).orElse(
+        // sourcing has expr, overrules
+        val v =
+          if(p.dflt.length > 0 || p.expr.nonEmpty) expr(p)
+          else in.attrs.find(_.name == p.name).map(_.dflt).orElse(
           ctx.get(p.name)
         ).getOrElse(
-          expr(p.dflt)
+          "" // todo or somehow mark a missing parm?
         )
         p.copy(dflt = v)
       } else if (destSpec.exists(_.nonEmpty)) destSpec.get.map { p =>
-        //todo use expr
+        // when defaulting to spec, order changes
         val v = in.attrs.find(_.name == p.name).map(_.dflt).orElse(
           ctx.get(p.name)
         ).getOrElse(
-          expr(p.dflt)
+          expr(p)
         )
-        p.copy(dflt = v)
+        p.copy(dflt = v, expr=None)
       } else Nil
     }
 
@@ -582,7 +744,8 @@ object RDExt {
   }
 
   // a wrapper
-  case class EMock(rule: ERule) extends CanHtml {
+  case class EMock(rule: ERule) extends CanHtml with HasPosition {
+    var pos : Option[EPos] = None
     override def toHtml = span(count.toString) + " " + rule.toHtml
 
     override def toString = toHtml
@@ -603,26 +766,91 @@ object RDExt {
     def putAll(p: List[P]) = p.foreach(x => attrs.put(x.name, x))
   }
 
-  // a context - LIST, use to see speed of list
-  class ECtx() {
-    var attrs: List[P] = Nil
+  trait EApplicable {
+    def test(m: EMsg, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) : Boolean
 
-    def apply(name: String): String = attrs.find(_.name == name).map(_.dflt).getOrElse("")
-
-    def get(name: String): Option[String] = attrs.find(_.name == name).map(_.dflt)
-
-    def put(p: P) = attrs = p :: attrs
-
-    def putAll(p: List[P]) = attrs = p ::: attrs
+    def apply(in: EMsg, destSpec: Option[EMsg])(implicit ctx: ECtx): List[Any]
   }
 
 
   // a context
-  case class ERule(e: EMatch, i: EMap) extends CanHtml {
+  case class ERule(e: EMatch, i: EMap) extends CanHtml with EApplicable with HasPosition {
+    var pos : Option[EPos] = None
+    override def test(m: EMsg, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) =
+      e.test(m, cole)
+
+    override def apply(in: EMsg, destSpec: Option[EMsg])(implicit ctx: ECtx): List[Any] =
+      i.apply(in, destSpec, pos)
+
     override def toHtml = span("$when::") + " " + e + " => " + i
 
     override def toString = "$when:: " + e + " => " + i
   }
+
+  // a context
+  abstract class EExecutor (val name:String) extends EApplicable {
+  }
+
+  // a context
+  object EETest extends EExecutor("test") {
+    override def test(m: EMsg, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) = {
+      m.stype.startsWith("TEST.")
+    }
+
+    override def apply(in: EMsg, destSpec: Option[EMsg])(implicit ctx: ECtx): List[Any] = {
+      in.ret.headOption.map(_.copy(dflt=in.stype.replaceFirst("TEST.", ""))).map(EVal).toList
+    }
+
+    override def toString = "$executor::test "
+  }
+
+  case class EError (msg:String) extends CanHtml {
+    override def toHtml = span("$error::", "danger") + " " + msg
+    override def toString = "$error::"+msg
+  }
+
+  // temp strip quotes from values
+  //todo when types are supported, remove this method and all its uses
+  def stripq(s:String) = if(s.startsWith("\"") && s.endsWith("\"")) s.substring(1,s.length-1) else s
+
+  // a context
+  object EESnakk extends EExecutor("snakk") {
+    // find the spec of the generated message, to ref
+    private def spec(m:EMsg)(implicit ctx: ECtx) =
+      ctx.domain.flatMap(_.moreElements.collect {
+      case x: EMsg if x.entity == m.entity && x.met == m.met => x
+    }.headOption)
+
+    override def test(m: EMsg, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) = {
+      if(m.stype == "GET" || m.stype == "POST") true
+      else {
+        spec(m).exists(m=> m.stype == "GET" || m.stype == "POST")
+      }
+    }
+
+    override def apply(in: EMsg, destSpec: Option[EMsg])(implicit ctx: ECtx): List[Any] = {
+      in.attrs.find(_.name == "url").orElse(
+        spec(in).flatMap(_.attrs.find(_.name == "url"))
+      ).map {u=>
+        import razie.Snakk._
+        try {
+          val stype = if(in.stype.length > 0) in.stype else spec(in).map(_.stype).mkString
+          val res = body(url(
+            stripq(u.dflt)
+//            in.attrs.filter(_.name != "url").map(p=>(p.name -> p.dflt)).toMap,
+//            stype))
+          ))
+          in.ret.headOption.orElse(spec(in).flatMap(_.ret.headOption)).map(_.copy(dflt=res)).map(EVal).toList
+        } catch {
+          case t:Throwable => EError("Error snakking: "+t.getMessage)::Nil
+        }
+      } getOrElse EError("no url attribute for RESTification ")::Nil
+    }
+
+    override def toString = "$executor::snakk "
+  }
+
+  val executors = EESnakk :: EETest :: Nil
 
   /** simple json for content assist */
   def toCAjmap(d: RDomain) = {
@@ -636,7 +864,7 @@ object RDExt {
     }
 
     Map(
-      "$when" -> {
+      "$EntityAction" -> {
         d.moreElements.collect({
           case n: EMsg => collect(n.entity, n.met)
           case n: ERule => {
@@ -649,8 +877,21 @@ object RDExt {
     )
   }
 
+  trait HasPosition {
+    def pos : Option[EPos]
+
+    def kspan(s: String, k: String = "default", specPos:Option[EPos]) = {
+      def mkref: String = pos.orElse(specPos).map(_.toRef).mkString
+      pos.map(p =>
+        s"""<span onclick="$mkref" style="cursor:pointer" class="label label-$k">$s</span>"""
+      ) getOrElse
+        s"""<span class="label label-$k">$s</span>"""
+    }
+  }
 
   trait CanHtml {
+    def span(s: String, k: String = "default") = s"""<span class="label label-$k">$s</span>"""
+
     def toHtml: String
   }
 
@@ -670,20 +911,41 @@ object RDExt {
 
   case class DomAst(value: Any, kind: String, children: ListBuffer[DomAst] = new ListBuffer[DomAst]()) {
     var moreDetails = " "
+    var specs: List[Any] = Nil
 
-    def tos(level: Int): String = ("  " * level) + kind + "::" + value.toString + moreDetails + "\n" + children.map(_.tos(level + 1)).mkString
+    def withSpec (s:Any) = {
+      specs = s :: specs
+      this
+    }
+
+    def tos(level: Int): String = ("  " * level) + kind + "::" + {
+      value match {
+        case c:CanHtml => c.toHtml
+        case x => x.toString
+      }
+    } + moreDetails + "\n" + children.map(_.tos(level + 1)).mkString
 
     override def toString = tos(0)
 
     // visit/recurse with filter
-    def collect[T](f: PartialFunction[DomAst, T]) = {
+    def collect[T](f: PartialFunction[DomAst, T]) : List[T] = {
       val res = new ListBuffer[T]()
       def inspect(d: DomAst, level: Int): Unit = {
         if (f.isDefinedAt(d)) res append f(d)
         d.children.map(inspect(_, level + 1))
       }
       inspect(this, 0)
-      res
+      res.toList
+    }
+
+    /** GUI needs position info for surfing */
+    def posInfo = collect{
+      case d@DomAst(m:EMsg, _, _) if(m.pos.nonEmpty) =>
+        Map(
+          "kind" -> "msg",
+          "id" -> (m.entity+"."+m.met),
+          "pos" -> m.pos.get.toJmap
+        )
     }
   }
 
@@ -696,7 +958,7 @@ object RDExt {
     val maxLevels = 6
 
     // setup the context for this eval
-    implicit val ctx = new ECtx()
+    implicit val ctx = new ECtx().withDomain(dom)
 
     val rules = dom.moreElements.collect {
       case e:ERule => e
@@ -711,14 +973,19 @@ object RDExt {
           var mocked = false
 
           if (mockMode) {
-            root.collect {
-              case d@DomAst(m: EMock, _, _) if m.rule.e.test(n) && a.children.isEmpty => {
+            (root.collect {
+              // mocks from story AST
+              case d@DomAst(m: EMock, _, _) if m.rule.e.test(n) && a.children.isEmpty => m
+            } ::: dom.moreElements.toList).collect {
+              // todo perf optimize moreelements.toList above
+              // plus mocks from spec dom
+              case m:EMock if m.rule.e.test(n) && a.children.isEmpty => {
                 mocked = true
                 // run the mock
-                val values = m.rule.i.apply(n, None).collect {
+                val values = m.rule.i.apply(n, None, m.pos).collect {
                   // collect resulting values
                   case x: EMsg => {
-                    a.children appendAll x.attrs.map(x => DomAst(EVal(x), "generated"))
+                    a.children appendAll x.attrs.map(x => DomAst(EVal(x), "generated").withSpec(m))
                     ctx putAll x.attrs
                   }
                 }
@@ -726,18 +993,34 @@ object RDExt {
             }
           }
 
+          var ruled = false
           // no mocks fit, so let's find rules
-          if (!mocked) {
-            //} && rules.exists(_.e.test(n))) {
+          // I run rules even if mocks fit - mocking mocks only going out, not decomposing
+          if (true || !mocked) {
             rules.filter(_.e.test(n)).map { r =>
-              mocked = true
+              ruled = true
 
               // find the spec of the generated message, to ref
               val spec = dom.moreElements.collect {
                 case x: EMsg if x.entity == r.i.cls && x.met == r.i.met => x
               }.headOption
 
-              val news = r.i.apply(n, spec).map(x => DomAst(x, "generated"))
+              val news = r.i.apply(n, spec, r.pos).map(x => DomAst(x, "generated").withSpec(r))
+              if (recurse) news.foreach { n =>
+                a.children append n
+                expand(n, recurse, level + 1)
+              }
+              true
+            }
+          }
+
+          // no mocks, let's try executing it
+          // I run snaks even if rules fit - but not if mocked
+          if (!mocked && !mockMode) {
+            executors.filter(_.test(n)).map { r =>
+              mocked = true
+
+              val news = r.apply(n, None).map(x => DomAst(x, "generated").withSpec(r))
               if (recurse) news.foreach { n =>
                 a.children append n
                 expand(n, recurse, level + 1)
@@ -782,9 +1065,11 @@ object RDExt {
             case d@DomAst(n: EMsg, "generated", _) =>
               cole.newMatch(d)
               if (e.m.test(n, Some(cole)))
-                a.children append DomAst(TestResult("ok"), "test")
+                a.children append DomAst(TestResult("ok"), "test").withSpec(e)
           }
+
           cole.done
+
           // if it matched some Msg then highlight it there
           if (cole.highestMatching.exists(c =>
             c.score >= 2 &&
@@ -798,25 +1083,51 @@ object RDExt {
             val s = c.diffs.values.toList.map(x => s"""<span style="color:red">$x</span>""").mkString(",")
             d.moreDetails = d.moreDetails + label("expected", "danger") + " " + s
           }
-          // add test failure
-          if (a.children.isEmpty) a.children append DomAst(
-            TestResult(
-              "fail",
-              cole.highestMatching.map(_.diffs.values.toList.map(x => s"""<span style="color:red">$x</span>""")).mkString),
-            "test"
-          )
+
+          // did some rules succeed?
+          if (a.children.isEmpty) {
+            // oops - add test failure
+            if(! sketchMode) {
+              a.children append DomAst(
+                TestResult(
+                  "fail",
+                  cole.highestMatching.map(_.diffs.values.toList.map(x => s"""<span style="color:red">$x</span>""")).mkString),
+                "test"
+              ).withSpec(e)
+            } else {
+              // or... fake it, sketch it
+              //todo should i add the test as a warning?
+              a.children appendAll e.sketch(None).map(x => DomAst(x, "generated").withSpec(e))
+            }
+          }
         }
 
         case e: ExpectV => {
           val cole = new MatchCollector()
-          root.collect {
-            case d@DomAst(n: EVal, "generated", _) =>
-              if (e.test(n.p, Some(cole)))
-                a.children append DomAst(TestResult("ok"), "test")
+          // test each generated value
+          val vals = root.collect {
+            case d@DomAst(n: EVal, "generated", _) => n.p
           }
-          if (a.children.isEmpty) a.children append DomAst(TestResult("fail"), "test")
+
+          if (e.test(vals, Some(cole)))
+            a.children append DomAst(TestResult("ok"), "test").withSpec(e)
+
+            // did some rules succeed?
+            if (a.children.isEmpty) {
+              // oops - add test failure
+              if(! sketchMode) {
+                a.children append DomAst(TestResult("fail"), "test").withSpec(e)
+              } else {
+                // or... fake it, sketch it
+                //todo should i add the test as a warning?
+                a.children appendAll e.sketch(None).map(EVal).map(x => DomAst(x, "generated").withSpec(e))
+              }
+            }
         }
-        case _ => false
+
+        case s@_ => {
+          clog << "NOT KNOWN: " + s.toString
+        }
       }
   }
 

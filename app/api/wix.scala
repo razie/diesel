@@ -17,7 +17,7 @@ class wix (owe: Option[WikiEntry], ou:Option[WikiUser], q:Map[String,String], r:
   private var ipage: Option[WikiEntry] = owe
   private var iuser: Option[User] = ou.asInstanceOf[Option[User]]
   private var iquery: Map[String,String] = q
-  private var irealm: String = r
+  private var irealm: String = if(r.isEmpty) owe.map(_.realm).mkString else r
 
   val page = new {
     def name = ipage.get.name

@@ -191,7 +191,7 @@ object Wikie extends WikieBase {
           Audit.missingPage("wiki " + wid);
 
           // try to parse the name for tags - then add them to the content
-          val preprocessed = Wikis.preprocess(wid, Wikis.MD, wid.name).fold(WAST.context(None))
+          val preprocessed = Wikis.preprocess(wid, Wikis.MD, wid.name, None).fold(WAST.context(None))
           val props = preprocessed.props
           val contentFromTags = props.foldLeft("") { (x, t) => x + "{{" + t._1 + ":" + t._2 + "}}\n\n" }
 
@@ -671,6 +671,7 @@ object Wikie extends WikieBase {
 
       log("Wiki.delete2 " + wid)
       if (wid.cat != "Club") canDelete(wid).collect {
+        // delete all reactor pages
         case (au, w) if wid.cat == "Reactor" => {
           var count = 0
           val realm = wid.name
@@ -678,6 +679,7 @@ object Wikie extends WikieBase {
             RMany[WikiEntry]("realm" -> wid.name).toList.map {we=>
               count += 1
               we.delete(au.userName)
+              // todo delete AutoSaves for reactor
             }
             Reactors.reload(realm)
             Services ! WikiAudit(WikiAudit.DELETE_WIKI, w.wid.wpathFull, Some(au._id), None, Some(w), None, Some(w._id.toString))

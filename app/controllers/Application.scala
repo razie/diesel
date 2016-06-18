@@ -63,7 +63,7 @@ object Application extends RazController {
       log ("URL - Redirecting main page from "+Website.getHost + " TO "+host)
       Future.successful(Redirect(host))
 //    } orElse Website.getHost.flatMap(Website.apply).filter(w=> !Reactors.contains(w.reactor)).flatMap {x=>
-    } orElse Website.getHost.flatMap(Website.apply).filter(w=>w.we.exists(_.category == "Site") || w.homePage.exists(_.name != "Home")).flatMap {x=>
+    } orElse Website.getHost.flatMap(Website.apply).filter(w=>w.we.exists(_.category == "Site") || w.homePage.isDefined/*exists(_.name != "Home")*/).flatMap {x=>
       log ("URL - serve Website homePage for "+x.name)
       if(auth.isDefined && x.userHomePage.isDefined) x.userHomePage
       else x.homePage

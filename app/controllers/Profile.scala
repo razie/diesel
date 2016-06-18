@@ -268,7 +268,7 @@ object Profile extends RazController with Logging {
       unauthorized("Oops - how did you get here? [join3]").withNewSession
   }
 
-  private def dfltCss = Config.sitecfg("dflt.css") getOrElse "dark"
+  private def dfltCss = Config.sitecfg("dflt.css") getOrElse "light"
 
   /** join step 4 - after captcha: create profile and send emails */
   def doeCreateProfile(testcode: String) = Action { implicit request =>

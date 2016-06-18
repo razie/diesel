@@ -2,7 +2,6 @@ package mod.diesel.controllers
 
 import java.io.File
 import java.util
-
 import controllers._
 import difflib.DiffUtils
 import mod.diesel.model.RDExt._
@@ -222,10 +221,33 @@ object SFiddles extends SFiddleBase with Logging {
         Ok(s"no sfiddle for ")
       ) {we =>
         ROK() reactorLayout12 { implicit stok =>
-          views.html.fiddle.playBrowserFiddle(lang, "", q )
+
+          val script = Autosave.OR("JSFiddle."+lang+"."+stok.realm, au._id, Map(
+            "content" -> """1+2"""
+          ))
+
+          views.html.fiddle.playBrowserFiddle(lang, script("content"), q )
         }
       }
   }
+
+  /** display the play sfiddle screen */
+  def saveFiddle(reactor:String, what:String) = FAU { implicit au =>
+    implicit errCollector => implicit request =>
+      val q = request.queryString.map(t=>(t._1, t._2.mkString))
+
+      val lang = request.body.asFormUrlEncoded.get.apply("l").mkString
+      val j = request.body.asFormUrlEncoded.get.apply("j").mkString
+
+      Some(1).filter(x=>(au hasPerm Perm.codeMaster) || (au hasPerm Perm.adminDb)).fold(
+        Ok(s"no sfiddle for ")
+      ) {we =>
+          Autosave.set(what+"."+lang+"."+Website.realm, au._id, Map(
+            "content" -> j
+          ))
+        Ok(s"saved")
+        }
+      }
 
   //[id [asset, content]]
   var assets = new mutable.HashMap[String, Map[String,String]]()

@@ -14,7 +14,11 @@ ssh razvanc@cloud2a.razie.com ". ~/.bashrc; scp ~/rk/up/com.razie.racerkidz-0.9.
 
 ssh razvanc@cloud2a.razie.com ". ~/.bashrc; cd ~/rk; . ./update"
 sleep 1
+curl http://cloud2a.razie.com:9000/wiki/Club:Glacier_Ski_Club
+sleep 1
 ssh razvanc@cloud3a.razie.com ". ~/.bashrc; cd ~/rk; . ./update"
+sleep 1
+curl http://cloud3a.razie.com:9000/wiki/Club:Glacier_Ski_Club
 
 # prime it
 curl http://www.racerkidz.com/wiki/Club:Glacier_Ski_Club

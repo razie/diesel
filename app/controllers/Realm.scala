@@ -9,9 +9,9 @@ package controllers
 import com.mongodb.casbah.Imports._
 import com.typesafe.config.ConfigValue
 import controllers.Wikie._
-import model.{UserWiki, Perm}
+import model.{Users, UserWiki, Perm}
 import org.bson.types.ObjectId
-import razie.wiki.Services
+import razie.wiki.{Enc, Services}
 import scala.Array.canBuildFrom
 import com.mongodb.DBObject
 import razie.db.{REntity, RazMongo, ROne, RMany}
@@ -74,11 +74,13 @@ object Realm extends RazController with Logging {
       import scala.collection.JavaConversions._
 
       var pages : Iterable[WikiEntry] = Nil
+      var addMods : Iterable[String] = Nil
 
       // do we have pages to create?
       if(tw.section("section", "pages").isDefined) {
         implicit class RConfValue (c:ConfigValue) {
-          def s (k:String) = c.unwrapped().asInstanceOf[java.util.HashMap[String,String]].get(k)
+          def s (k:String) =
+            Option(c.unwrapped().asInstanceOf[java.util.HashMap[String,String]].get(k)).mkString
         }
 
         val iwikisc = tw.section("section", "pages").get.content
@@ -92,12 +94,20 @@ object Realm extends RazController with Logging {
           val name = page s "name"
           val label = page s "label"
           val tm = page s "template"
+          val tags = cat.toLowerCase :: (page s "tags").split(",").toList
           val co = Wikis.template(tm, parms)
-          WikiEntry(cat, name, label, "md", co, au._id, Seq(), name, 1, wid.parent,
+          WikiEntry(cat, name, label, "md", co, au._id, tags.distinct.toSeq, name, 1, wid.parent,
             Map("owner" -> au.id,
               WikiEntry.PROP_WVIS -> Visibility.PRIVATE))
           // the realm is changed later just before saving
         }
+
+        if(wikis.hasPath("addMods"))
+          addMods = wikis.getObject("addMods") map {t =>
+            val (n, page) = t
+            val tm = page s "template"
+            tm
+          }
       }
 
       val mainPage = pages.find(_.name == name) getOrElse {
@@ -157,9 +167,44 @@ object Realm extends RazController with Logging {
         Emailer.tellRaz("New REACTOR", au.userName, wid.ahref)
       }
 
-      Redirect(controllers.Wiki.w(mainPage.wid, true)).flashing("count" -> "0")
+
+        val x = addMods.toList
+        if(x.nonEmpty) {
+          x.map(m=>
+            addMod2(m, name).apply(request).value.get.get
+          )
+        }
+
+      val userHome = pages.find(_.name == "UserHome")
+      if(admin.Config.isLocalhost)
+        Redirect(controllers.Wiki.w((userHome getOrElse mainPage).wid, true)).flashing("count" -> "0")
+      else {
+        val conn = request.session.get(admin.Config.CONNECTED).mkString
+        val temp = new ObjectId().toString
+        ssoRequests.put(temp, conn)
+        // todo use temp not conn
+        Redirect(s"http://$name.wikireactor.com/sso/"+conn, SEE_OTHER)
+      }
     }) getOrElse
       noPerm(wid, s"Cant' create your $cat ...")
+  }
+
+  //todo play upgrade make static
+  val ssoRequests = new collection.mutable.HashMap[String,String]()
+
+  //todo make work in cluster...
+  def sso(id:String) = Action { request =>
+//    val res = ssoRequests.get(id).flatMap {conn=>
+    val res = Some(id).flatMap {conn=>
+      val uid = Enc.fromSession(id)
+      Users.findUser(uid).map { u =>
+        Audit.logdb("USER_LOGIN.SSO", u.userName, u.firstName + " " + u.lastName + " realm: " + request.host)
+        debug("SSO.conn=" + (admin.Config.CONNECTED -> Enc.toSession(u.email)))
+        Redirect("/").withSession(admin.Config.CONNECTED -> Enc.toSession(u.email))
+      }
+    } getOrElse Redirect("/")
+//    ssoRequests.remove(id)
+    res
   }
 
   /** start wizard to add module to reactor */
