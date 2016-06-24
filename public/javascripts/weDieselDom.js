@@ -12,11 +12,13 @@ function domCompl (i) {
     // => entity.action
     if(terms.indexOf('->') == terms.length-1 ||
       terms.indexOf('=>') == terms.length-1 ||
+      terms[0] && terms[0] == '$receive' ||
+      terms[0] && terms[0] == '$match' ||
       terms[0] && terms[0] == '$when' ||
       terms[0] && terms[0] == '$expect' ||
       terms[0] && terms[0] == '$mock') {
-      var newTerms = ['$EntityActions', ''];
-      line = '$EntityAtions ';
+      var newTerms = ['msg', ''];
+      line = 'msg ';
       var opts = getOptions(contentAssist, newTerms, 0); // options
       callback(null, opts.map(function(value) {
         // double space is a marker for the FUTURE options
@@ -219,19 +221,27 @@ var lastMarker=null;
 
 function weref(wpath,line,col) {
   var Range = ace.require('ace/range').Range;
-   if(lastMarker != null) {
-     editor.session.removeMarker(lastMarker);
-     editor1.session.removeMarker(lastMarker);
-     lastMarker = null;
-   }
-   if(wpath == SPEC) {
-     editor1.scrollToLine(line, true, true, function () {});
-     //editor1.gotoLine(line, 10, true);
-     lastMarker = editor1.session.addMarker(new Range(line-1, 0, line-1, 100), "ace-primaryline", "fullLine");
-   } else if(wpath == STORY) {
-     editor.scrollToLine(line, true, true, function () {});
-     //editor.gotoLine(line, 10, true);
-     lastMarker = editor.session.addMarker(new Range(line-1, 0, line-1, 100), "ace-primaryline", "fullLine");
-   }
+  if(lastMarker != null) {
+    editor.session.removeMarker(lastMarker);
+    editor1.session.removeMarker(lastMarker);
+    lastMarker = null;
+  }
+  if(wpath.includes("Spec:")) {
+    editor1.scrollToLine(line, true, true, function () {});
+    //editor1.gotoLine(line, 10, true);
+    lastMarker = editor1.session.addMarker(new Range(line-1, 0, line-1, 100), "ace-primaryline", "fullLine");
+  } else if(wpath.includes("Story:")) {
+    editor.scrollToLine(line, true, true, function () {});
+    //editor.gotoLine(line, 10, true);
+    lastMarker = editor.session.addMarker(new Range(line-1, 0, line-1, 100), "ace-primaryline", "fullLine");
+  }
+}
+
+function wefiddle(wpath,line,col) {
+  if(wpath.includes("Spec:")) {
+    window.location.href='/diesel/fiddle/playDom/'+realm+'?spec='+wpath
+  } else if(wpath.includes("Story:")) {
+    window.location.href='/diesel/fiddle/playDom/'+realm+'?story='+wpath
+  }
 }
 

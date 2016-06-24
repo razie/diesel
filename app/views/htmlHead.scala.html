@@ -1,15 +1,22 @@
 @(pageTitle: String = "", stok:Option[controllers.StateOk]=None, page:Option[razie.wiki.model.WikiEntry]=None, options:Map[String,String]=Map())(implicit moreMetas:Map[String,String]=Map.empty, au:Option[model.User], request:Option[Request[_]] = None)
 @import _root_.admin.Config
 @import razie.wiki.model.Reactors
+@import model.Website
 
 @title() = @{
-  if(pageTitle.length==0) Config.sitecfg("RacerKidz") getOrElse ("RacerKidz")
+  if(pageTitle.length==0)
+    stok.map(_._title).getOrElse (Config.sitecfg("RacerKidz") getOrElse ("RacerKidz"))
   else pageTitle
 }
 
 @css() = @{
-  stok.getOrElse(new controllers.StateOk(Seq(), "", au, request)).css
+  stok.getOrElse(new controllers.StateOk("", au, request)).css
 }
+
+@reactor=@{
+  stok.map(_.realm).orElse(request.map(r=>Website.realm(r))).orElse(page.map(_.wid.getRealm)).getOrElse("")
+}
+
 
 <!DOCTYPE html>
 <html lang="en">
@@ -50,6 +57,13 @@
     @moreMetas.map { t =>
       <meta name="@t._1" content="@t._2">
     }
+
+    <!-- RK scripts -->
+<script>
+var realm = '@reactor';
+</script>
+    <!-- todo optimize this - don't need teh entire file -->
+    <script src="@routes.Assets.at("javascripts/weDieselDom.js")"></script>
 
     <!-- Le styles -->
     <link href="@routes.Assets.at("bootstrap-3.3.4/css/bootstrap.css")" rel="stylesheet">

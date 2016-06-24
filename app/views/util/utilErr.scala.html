@@ -1,6 +1,6 @@
-@(msg:String, next:String, au:Option[model.User])(implicit req:views.RazRequest)
+@(msg:String, next:String)(implicit req:controllers.RazRequest)
 
-@htmlHeadBar("", au)
+@htmlHeadBar("")(req.stok)
 
 <div class="container">
   <div class="well">

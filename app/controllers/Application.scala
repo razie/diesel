@@ -146,7 +146,7 @@ object Application extends RazController {
   }
 
   def doeSpin = Action { implicit request =>
-    Ok(views.html.user.doeSpin(auth))
+    Ok(views.html.user.doeSpin()(ROK.r))
   }
 
   import Admin.StokAdmin

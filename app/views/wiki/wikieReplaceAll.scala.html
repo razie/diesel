@@ -1,6 +1,6 @@
-@(myForm:Form[_], au:Option[model.User], tags:Boolean)(implicit req:views.RazRequest)
+@(myForm:Form[_], tags:Boolean)(implicit stok:controllers.RazRequest)
 
-@htmlHeadBar("", au)
+@htmlHeadBar("")
 
     <div class="container">
 
@@ -125,7 +125,7 @@ ALERT: you can't undo this!
 
   }
 
-  @htmlFooter()(req.stok)
+  @htmlFooter()
 
 </div> <!-- /container -->
 }

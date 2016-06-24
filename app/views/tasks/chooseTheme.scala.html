@@ -1,6 +1,6 @@
-@(pForm:Form[String], au:model.User)(implicit req:views.RazRequest)
+@(pForm:Form[String])(implicit stok:controllers.RazRequest)
 
-@htmlHeadBar("Choosing theme", Some(au))
+@htmlHeadBar("Choosing theme")
 
 <div class="container"> <div class="jumbotron">
 
@@ -52,7 +52,7 @@ To get back to this screen, simply sign-out by clicking on your name on the top-
 
       <hr>
 
-      @htmlFooter()(req.stok)
+      @htmlFooter()
 
     </div> <!-- /container -->
 

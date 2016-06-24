@@ -18,7 +18,7 @@ import scala.Option.option2Iterable
 import model._
 import admin.Config
 import org.bson.types.ObjectId
-import play.api.mvc.Action
+import play.api.mvc.{AnyContent, Request, Action}
 import razie.wiki.parser.WAST
 import razie.wiki.model.WikiEntry
 import razie.wiki.parser.WikiParserBase
@@ -54,7 +54,7 @@ trait WikiDomainParser extends WikiParserBase {
 
   def ows = opt(whiteSpace)
 
-  def domainBlocks = pobject | pclass | passoc | pfunc | pwhen | pmsg | pval | pexpectm | pexpectv | pmock
+  def domainBlocks = pobject | pclass | passoc | pfunc | pdfiddle | pwhen | pmatch | preceive | pmsg | pval | pexpectm | pexpectv | pmock
 
   // todo replace $ with . i.e. .class
 
@@ -195,6 +195,20 @@ trait WikiDomainParser extends WikiParserBase {
    */
   def pif: Parser[EIf] = """[.$]if""".r ~> ws ~> optMatchAttrs ^^ {
       case aa => RDExt.EIf(aa)
+    }
+
+  /**
+   * .match a.role (attrs) => z.role (attrs)
+   */
+  def pmatch: PS =
+    keyw("""[.$]match""".r) ~ ws ~ clsMatch ~ opt(pif) ^^ {
+      case k ~ _ ~ Tuple3(ac, am, aa) ~ cond => {
+        LazyState { (current, ctx) =>
+          val x = RDExt.EMatch(ac, am, aa, cond)
+//          f.pos = Some(EPos(ctx.we.map(_.wid.wpath).mkString, k.pos.line, k.pos.column))
+          addToDom(x).ifold(current, ctx)
+        }
+      }
     }
 
   /**
@@ -363,6 +377,22 @@ trait WikiDomainParser extends WikiParserBase {
   }
 
   /**
+   * .receive object.func (a,b)
+   *
+   * An NVP is either the spec or an instance of a function call, a message, a data object... whatever...
+   */
+  def preceive: PS = keyw("[.$]receive *".r) ~ opt("<" ~> "[^>]+".r <~ "> *".r) ~ ident ~ " *\\. *".r ~ ident ~ optAttrs ~ opt(" *: *".r ~> optAttrs) ^^ {
+    case k ~ stype ~ ent ~ _ ~ ac ~ attrs ~ ret => {
+      LazyState { (current, ctx) =>
+        val f = RDExt.EMsg("receive", ent, ac, attrs, ret.toList.flatten(identity), stype.mkString.trim)
+        f.pos = Some(EPos(ctx.we.map(_.wid.wpath).mkString, k.pos.line, k.pos.column))
+        collectDom(f, ctx.we)
+        SState(CanHtml.span("receive::")+f.toHtmlInPage)
+      }
+    }
+  }
+
+  /**
    * .msg object.func (a,b)
    *
    * An NVP is either the spec or an instance of a function call, a message, a data object... whatever...
@@ -370,18 +400,31 @@ trait WikiDomainParser extends WikiParserBase {
   def pmsg: PS = keyw("[.$]msg *".r) ~ opt("<" ~> "[^>]+".r <~ "> *".r) ~ ident ~ " *\\. *".r ~ ident ~ optAttrs ~ opt(" *: *".r ~> optAttrs) ^^ {
     case k ~ stype ~ ent ~ _ ~ ac ~ attrs ~ ret => {
       LazyState { (current, ctx) =>
-        val f = RDExt.EMsg(ent, ac, attrs, ret.toList.flatten(identity), stype.mkString.trim)
+        val f = RDExt.EMsg("def", ent, ac, attrs, ret.toList.flatten(identity), stype.mkString.trim)
         f.pos = Some(EPos(ctx.we.map(_.wid.wpath).mkString, k.pos.line, k.pos.column))
         collectDom(f, ctx.we)
-        SState(f.toHtml)
+        SState(f.toHtmlInPage)
       }
+    }
+  }
+
+  /**
+   * .msg object.func (a,b)
+   *
+   * An NVP is either the spec or an instance of a function call, a message, a data object... whatever...
+   */
+  def linemsg (wpath:String) = keyw("[.$]msg *".r) ~ opt("<" ~> "[^>]+".r <~ "> *".r) ~ ident ~ " *\\. *".r ~ ident ~ optAttrs ~ opt(" *: *".r ~> optAttrs) ^^ {
+    case k ~ stype ~ ent ~ _ ~ ac ~ attrs ~ ret => {
+        val f = RDExt.EMsg("def", ent, ac, attrs, ret.toList.flatten(identity), stype.mkString.trim)
+        f.pos = Some(EPos(wpath, k.pos.line, k.pos.column))
+        f
     }
   }
 
   /**
    * .expect object.func (a,b)
    */
-  def pexpectm: PS = keyw("[.$]expect * [$]msg *".r) ~ ident ~ " *\\. *".r ~ ident ~ optMatchAttrs ~ opt(pif) ^^ {
+  def pexpectm: PS = keyw("[.$]expect *[$]msg *".r) ~ ident ~ " *\\. *".r ~ ident ~ optMatchAttrs ~ opt(pif) ^^ {
     case k ~ ent ~ _ ~ ac ~ attrs ~ cond => {
       LazyState { (current, ctx) =>
         val f = RDExt.ExpectM(RDExt.EMatch(ent, ac, attrs, cond))
@@ -401,7 +444,7 @@ trait WikiDomainParser extends WikiParserBase {
         val f = RDExt.ExpectV(a)
         f.pos = Some(EPos(ctx.we.map(_.wid.wpath).mkString, k.pos.line, k.pos.column))
         collectDom(f, ctx.we)
-        SState("expect::" + f.toHtml)
+        SState(f.toHtml)
       }
     }
   }
@@ -475,6 +518,34 @@ trait WikiDomainParser extends WikiParserBase {
       new ExecCall(cls, func, attres)
   }
 
+  private def trim (s:String) = s.replaceAll("\r", "").replaceAll("^\n|\n$","")//.replaceAll("\n", "\\\\n'\n+'")
+
+  // {{diesel name:type
+  def pdfiddle: PS = "{{" ~> """dfiddle""".r ~ "[: ]".r ~ """[^:}]*""".r ~ "[: ]".r ~ """[^:}]*""".r ~ optargs ~ "}}" ~ opt(CRLF1 | CRLF3 | CRLF2) ~ slines <~ "{{/dfiddle}}" ^^ {
+    case d ~ _ ~ name ~ _ ~ kind ~ xargs ~ _ ~ _ ~ lines =>
+      var args = xargs.toMap
+//      val name = args.getOrElse("name", "")
+
+      try {
+        LazyState { (current, ctx) =>
+//          if (!(args contains "tab"))
+//            args = args + ("tab" -> lang)
+
+          val links = lines.s.lines.filter(_.startsWith("$msg")).map{l=>
+            parseAll(linemsg(ctx.we.get.wid.wpath), l).map {st=>
+              st.toHref(name)
+            }.getOrElse("???")
+          }.mkString("\n")
+          SState(views.html.fiddle.inlineDomFiddle(ctx.we.get.wid, ctx.we, name, args, trim(lines.s), links).body)
+        }
+      }
+      catch  {
+        case t : Throwable =>
+          if(admin.Config.isLocalhost) throw t // debugging
+          SState(s"""<font style="color:red">[[BAD FIDDLE - check syntax: ${t.toString}]]</font>""")
+      }
+  }
+
 }
 
 class ExecValue(p: RDOM.P) extends EXEC {
@@ -507,13 +578,13 @@ object RDExt {
   // wrapper
   case class ExpectM(m: EMatch) extends CanHtml with HasPosition {
     var pos : Option[EPos] = None
-    override def toHtml = span("expect::") + m.toString
+    override def toHtml = span("expect::") +" "+ m.toHtml
 
-    override def toString = "expect::" + m.toString
+    override def toString = "expect:: " + m.toString
 
     /** check to match the arguments */
     def sketch(cole: Option[MatchCollector] = None)(implicit ctx: ECtx) : List[EMsg] = {
-      var e = EMsg(m.cls, m.met, sketchAttrs(m.attrs, cole))
+      var e = EMsg("generated", m.cls, m.met, sketchAttrs(m.attrs, cole))
       e.pos = pos
 //      e.spec = destSpec
 //      count += 1
@@ -525,9 +596,9 @@ object RDExt {
   // todo use a EMatch and combine with ExpectM - empty e/a
   case class ExpectV(pm:MatchAttrs) extends CanHtml with HasPosition {
     var pos : Option[EPos] = None
-    override def toHtml = span("expect::") + pm.toString
+    override def toHtml = span("expect::") +" "+ pm.mkString("(", ",", ")")
 
-    override def toString = "expect::" + pm.toString
+    override def toString = "expect:: " + pm.mkString("(", ",", ")")
 
     /** check to match the arguments */
     def test(a:Attrs, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) = {
@@ -549,15 +620,12 @@ object RDExt {
       "col" -> col
     )
 
-    private def spec =
-      if(wpath.toLowerCase.contains("spec")) "SPEC" else "STORY"
-
     override def toString = s"""{wpath:"$wpath", line:$line, col:$col}"""
-    def toRef = s"""weref($spec, $line, $col)"""
+    def toRef = s"""weref('$wpath', $line, $col)"""
   }
 
   // a nvp - can be a spec or an event, message, function etc
-  case class EMsg(entity: String, met: String, attrs: List[RDOM.P], ret: List[RDOM.P] = Nil, stype: String = "") extends CanHtml with HasPosition {
+  case class EMsg(arch:String, entity: String, met: String, attrs: List[RDOM.P], ret: List[RDOM.P] = Nil, stype: String = "") extends CanHtml with HasPosition {
     var spec: Option[EMsg] = None
     var pos : Option[EPos] = None
 
@@ -571,10 +639,32 @@ object RDExt {
     )
 
     override def toHtml =
-      first + s""" $entity.<b>$met</b> (${attrs.mkString(", ")})"""
+      /*span(arch+"::")+*/first + s""" $entity.<b>$met</b> (${attrs.map(_.toHtml).mkString(", ")})"""
+
+    def toHtmlInPage = toHtml.replaceAllLiterally("weref", "wefiddle")
 
     override def toString =
       s""" $entity.$met (${attrs.mkString(", ")})"""
+
+    def attrsToHtml (attrs: Attrs) = {
+      attrs.map{p=>
+        s"""${p.name}=${p.dflt}"""
+      }.mkString("&")
+    }
+
+    def toHref (section:String="") = {
+        var x = s"""/diesel/wiki/${pos.map(_.wpath).mkString}/react/$entity/$met?${attrsToHtml(attrs)}"""
+        if (x.endsWith("&") || x.endsWith("?")) ""
+        else if (x contains "?") x = x + "&"
+        else x = x + "?"
+      x = x + "resultMode=value"
+
+      if(section != "") {
+        x = x + "&dfiddle=" + section
+      }
+      var url = x
+      s"""<a href="$url">$entity.$met (${attrs.mkString(", ")})</a>"""
+    }
   }
 
   // an instance at runtime
@@ -590,7 +680,7 @@ object RDExt {
 
   class SingleMatch(val x: Any) {
     var score = 0;
-    val diffs = new HashMap[String, Any]()
+    val diffs = new HashMap[String, (Any, Any)]() // (found, expected)
     var highestMatching: String = ""
     var curTesting: String = ""
 
@@ -598,8 +688,8 @@ object RDExt {
       score += 1
     }
 
-    def minus(name: String, diff: Any) = {
-      diffs.put(name, diff.toString)
+    def minus(name: String, found: Any, expected:Any) = {
+      diffs.put(name, (found.toString, expected.toString))
     }
   }
 
@@ -624,7 +714,7 @@ object RDExt {
 
     def plus(s: String) = cur.plus(s)
 
-    def minus(name: String, diff: Any) = cur.minus(name, diff)
+    def minus(name: String, found: Any, expected:Any) = cur.minus(name, found, expected)
   }
 
   // a simple condition
@@ -661,14 +751,14 @@ object RDExt {
         if (b._1.name.size > 0) {
           res = in.exists(x => check(x, b._1))
           if (res) cole.map(_.plus(b._1.name + b._1.op + b._1.dflt))
-          else cole.map(_.minus(b._1.name, in.find(_.name == b._1.name).getOrElse(b._1)))
+          else cole.map(_.minus(b._1.name, in.find(_.name == b._1.name).mkString, b._1))
         }
       } else {
         // check and record the name failure
         if (b._1.name.size > 0) {
           res = in.exists(_.name == b._1.name)
           if (res) cole.map(_.plus(b._1.name))
-          else cole.map(_.minus(b._1.name, b._1.name))
+          else cole.map(_.minus(b._1.name, b._1.name, b._1))
         }
       }
       res
@@ -676,7 +766,7 @@ object RDExt {
   }
 
   // a match case
-  case class EMatch(cls: String, met: String, attrs: MatchAttrs, cond: Option[EIf] = None) {
+  case class EMatch(cls: String, met: String, attrs: MatchAttrs, cond: Option[EIf] = None) extends CanHtml {
     // todo match also the object parms if any and method parms if any
     def test(e: EMsg, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) = {
       if ("*" == cls || e.entity == cls) {
@@ -688,7 +778,9 @@ object RDExt {
       } else false
     }
 
-    override def toString = cls + "." + met + " " + attrs.mkString
+    override def toHtml = cls + "." + met + " " + attrs.map(_.toHtml).mkString("(", ",", ")")
+
+    override def toString = cls + "." + met + " " + attrs.mkString("(", ",", ")")
   }
 
   // a match case
@@ -697,7 +789,7 @@ object RDExt {
 
     // todo match also the object parms if any and method parms if any
     def apply(in: EMsg, destSpec: Option[EMsg], pos:Option[EPos])(implicit ctx: ECtx): List[Any] = {
-      var e = EMsg(cls, met, sourceAttrs(in, attrs, destSpec.map(_.attrs)))
+      var e = EMsg("generated", cls, met, sourceAttrs(in, attrs, destSpec.map(_.attrs)))
       e.pos = pos
       e.spec = destSpec
       count += 1
@@ -864,7 +956,7 @@ object RDExt {
     }
 
     Map(
-      "$EntityAction" -> {
+      "msg" -> {
         d.moreElements.collect({
           case n: EMsg => collect(n.entity, n.met)
           case n: ERule => {
@@ -889,6 +981,10 @@ object RDExt {
     }
   }
 
+  object CanHtml {
+    def span(s: String, k: String = "default") = s"""<span class="label label-$k">$s</span>"""
+  }
+
   trait CanHtml {
     def span(s: String, k: String = "default") = s"""<span class="label label-$k">$s</span>"""
 
@@ -909,7 +1005,7 @@ object RDExt {
     s"""<span class="label label-$color">$value</span>"""
 
 
-  case class DomAst(value: Any, kind: String, children: ListBuffer[DomAst] = new ListBuffer[DomAst]()) {
+  case class DomAst(value: Any, kind: String, children: ListBuffer[DomAst] = new ListBuffer[DomAst]()) extends CanHtml {
     var moreDetails = " "
     var specs: List[Any] = Nil
 
@@ -918,14 +1014,29 @@ object RDExt {
       this
     }
 
-    def tos(level: Int): String = ("  " * level) + kind + "::" + {
+    def tos(level: Int, html:Boolean): String = ("  " * level) + kind + "::" + {
       value match {
-        case c:CanHtml => c.toHtml
+        case c:CanHtml if(html) => c.toHtml
         case x => x.toString
       }
-    } + moreDetails + "\n" + children.map(_.tos(level + 1)).mkString
+    } + moreDetails + "\n" + children.map(_.tos(level + 1, html)).mkString
 
-    override def toString = tos(0)
+    override def toString = tos(0, false)
+    override def toHtml = tos(0, true)
+
+    def toj : Map[String,Any] =
+      Map (
+        "kind" -> kind,
+        "value" ->
+          (value match {
+//          case c:CanHtml => c.toHtml
+          case x => x.toString
+        }),
+        "details" -> moreDetails,
+        "children" -> children.map(_.toj).toList
+      )
+
+    def toJson = toj
 
     // visit/recurse with filter
     def collect[T](f: PartialFunction[DomAst, T]) : List[T] = {
@@ -949,11 +1060,38 @@ object RDExt {
     }
   }
 
+  object DomEngineSettings {
+    /** take the settings from either URL or body form or default */
+    def fromRequest(request:Request[AnyContent]) = {
+      val q = request.queryString.map(t=>(t._1, t._2.mkString))
+      def fParm(name:String)=
+        request.body.asFormUrlEncoded.flatMap(_.getOrElse(name, Seq.empty).headOption)
+      def fqParm(name:String, dflt:String) =
+        q.get(name).orElse(fParm(name)).getOrElse(dflt)
+
+      new DomEngineSettings(
+        mockMode = fqParm("mockMode", "true").toBoolean,
+        blenderMode = fqParm("blenderMode", "true").toBoolean,
+        draftMode = fqParm("draftMode", "true").toBoolean,
+        sketchMode = fqParm("sketchMode", "false").toBoolean,
+        execMode = fqParm("execMode", "sync")
+      )
+    }
+  }
+
+  class DomEngineSettings(
+    var mockMode    : Boolean = false,
+    var blenderMode : Boolean = true,
+    var draftMode   : Boolean = true,
+    var sketchMode  : Boolean = true,
+    var execMode    : String = "sync"
+    ) {
+  }
+
   class DomEngine(
-                   val dom: RDomain,
-                   val root: DomAst,
-                   val mockMode: Boolean,
-                   val sketchMode: Boolean) {
+    val dom: RDomain,
+    val root: DomAst,
+    val settings: DomEngineSettings) {
 
     val maxLevels = 6
 
@@ -972,7 +1110,7 @@ object RDExt {
           // look for mocks
           var mocked = false
 
-          if (mockMode) {
+          if (settings.mockMode) {
             (root.collect {
               // mocks from story AST
               case d@DomAst(m: EMock, _, _) if m.rule.e.test(n) && a.children.isEmpty => m
@@ -1016,7 +1154,7 @@ object RDExt {
 
           // no mocks, let's try executing it
           // I run snaks even if rules fit - but not if mocked
-          if (!mocked && !mockMode) {
+          if (!mocked && !settings.mockMode) {
             executors.filter(_.test(n)).map { r =>
               mocked = true
 
@@ -1080,18 +1218,18 @@ object RDExt {
             val c = cole.highestMatching.get
             val d = c.x.asInstanceOf[DomAst]
             val m = d.value.asInstanceOf[EMsg]
-            val s = c.diffs.values.toList.map(x => s"""<span style="color:red">$x</span>""").mkString(",")
+            val s = c.diffs.values.map(_._2).toList.map(x => s"""<span style="color:red">$x</span>""").mkString(",")
             d.moreDetails = d.moreDetails + label("expected", "danger") + " " + s
           }
 
           // did some rules succeed?
           if (a.children.isEmpty) {
             // oops - add test failure
-            if(! sketchMode) {
+            if(! settings.sketchMode) {
               a.children append DomAst(
                 TestResult(
                   "fail",
-                  cole.highestMatching.map(_.diffs.values.toList.map(x => s"""<span style="color:red">$x</span>""")).mkString),
+                  label("found", "danger") + " " + cole.highestMatching.map(_.diffs.values.map(_._1).toList.map(x => s"""<span style="color:red">$x</span>""").mkString(",")).mkString),
                 "test"
               ).withSpec(e)
             } else {
@@ -1115,7 +1253,7 @@ object RDExt {
             // did some rules succeed?
             if (a.children.isEmpty) {
               // oops - add test failure
-              if(! sketchMode) {
+              if(! settings.sketchMode) {
                 a.children append DomAst(TestResult("fail"), "test").withSpec(e)
               } else {
                 // or... fake it, sketch it

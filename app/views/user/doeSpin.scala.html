@@ -1,7 +1,7 @@
-@(au:Option[model.User]=None)(implicit request:Request[_])
+@()(implicit stok:controllers.StateOk)
 @import model.Website.realm
 
-@htmlHeadBar("Take for a spin", au, realm)
+@htmlHeadBar("Take for a spin")
 
 <div class="container">
   <div class="well">
@@ -24,7 +24,6 @@ Have fun!
     </div>
   </div>
   <hr>
-  @htmlFooter()(new StateOk(Seq(), "", au.asInstanceOf[Option[model.User]], Some(request)))
-</div> <!-- /container -->
-@htmlBottom()(new StateOk(Seq(), "", au.asInstanceOf[Option[model.User]], Some(request)))
+  @htmlFooter()
+@htmlBottom()
 

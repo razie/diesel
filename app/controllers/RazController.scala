@@ -12,14 +12,23 @@ import razie.wiki.util.IgnoreErrors
 import razie.wiki.util.VErrors
 import razie.wiki.Services
 import razie.wiki.admin.{WikiEvent, Audit}
-import views.RazRequest
 
 import scala.collection.mutable
+import scala.concurrent.Future
 
 /** common razie controller utilities */
 class RazController extends RazControllerBase with Logging {
 
+//  implicit def betterrazRequest[A] (implicit request:Request[A]) = new BetterRazRequest[A](request)
   implicit def razRequest (implicit request:Request[_]) = new RazRequest(request)
+  implicit def errCollector (implicit req : RazRequest) = req.errCollector
+//  implicit def stok (implicit req: RazRequest) = req.stok
+
+  object BetterFAUR extends ActionBuilder[BetterRazRequest] with ActionTransformer[Request, BetterRazRequest] {
+    def transform[A](request: Request[A]) = Future.successful {
+      new BetterRazRequest(request)
+    }
+  }
 
   def SUPPORT = Config.SUPPORT
 
@@ -119,7 +128,7 @@ ${errCollector.mkString}
 
   def Oops(msg: String, wid: WID)(implicit request: Request[_]) = {
     error(msg)
-    Ok(views.html.util.utilErr(msg, controllers.Wiki.w(wid), auth))
+    Ok(views.html.util.utilErr(msg, controllers.Wiki.w(wid)))
   }
 
   def Msg(msg: String, wid: WID, u: Option[User] = None)(implicit request: Request[_]): play.api.mvc.Result = {
@@ -166,6 +175,19 @@ ${errCollector.mkString}
   }
 
   /** action builder that decomposes the request, extracting user and creating a simple error buffer */
+  def FAUR(f: RazRequest => Result) = Action { implicit request =>
+    val req = razRequest
+    (for (
+      au <- activeUser;
+      isA <- checkActive(au)
+    ) yield f(req)
+      ) getOrElse {
+      val more = Website(request).flatMap(_.prop("msg.noPerm")).flatMap(WID.fromPath).flatMap(_.content).mkString
+      unauthorized("OOPS "+more, !isFromRobot)
+    }
+  }
+
+  /** action builder that decomposes the request, extracting user and creating a simple error buffer */
   def FAU(f: User => VErrors => Request[AnyContent] => Result) = Action { implicit request =>
     implicit val errCollector = new VErrors()
     (for (
@@ -203,29 +225,43 @@ ${errCollector.mkString}
 
   // Reactor OK - understands reqctor
   val ROK = new {
-    def apply (msg: Seq[(String, String)])(implicit au: model.User, request: Request[_]) =
-      new StateOk(msg, Website.realm, Some(au), Some(request))
-    def apply (msg: (String, String))(implicit au: model.User, request: Request[_]) =
-      new StateOk(Seq(msg), Website.realm, Some(au), Some(request))
+    def apply (msg: Seq[(String, String)])(implicit au: model.User, request: Request[_]) = {
+      new StateOk(Website.realm, Some(au), Some(request)).msg(msg)
+    }
+    def apply (msg: (String, String))(implicit au: model.User, request: Request[_]) = {
+      new StateOk(Website.realm, Some(au), Some(request)).msg(msg)
+    }
     def apply () (implicit au: model.User, request: Request[_]) =
-      new StateOk(Seq(), Website.realm, Some(au), Some(request))
+      new StateOk(Website.realm, Some(au), Some(request))
     def apply (au: Option[model.User], request: Request[_]) =
-      new StateOk(Seq(), Website.realm(request), au, Some(request))
+      new StateOk(Website.realm(request), au, Some(request))
     def s (implicit au: model.User, request: Request[_]) =
-      new StateOk(Seq(), Website.realm, Some(au), Some(request))
+      new StateOk(Website.realm, Some(au), Some(request))
     def r (implicit request: Request[_]) =
-      new StateOk(Seq(), Website.realm, auth, Some(request))
+      new StateOk(Website.realm, auth, Some(request))
+    def k (implicit stok: RazRequest) =
+      stok
   }
 }
 
 /** captures the current state of what to display - passed to all views */
-class StateOk(val msg: Seq[(String, String)], val realm:String, val au: Option[model.User], val request: Option[Request[_]]) {
+class StateOk(val realm:String, val au: Option[model.User], val request: Option[Request[_]]) {
+  var msg: Seq[(String, String)] = Seq.empty
   var _title : String = "" // this is set by the body as it builds itself and used by the header, heh
   val _metas = new mutable.HashMap[String,String]() // moremetas
   var _css : Option[String] = None // if you determine you want a different CSS
 
   /** set the title of this page */
   def title(s:String) = {this._title = s; ""}
+
+  def msg (imsg: Seq[(String, String)]) : StateOk = {
+    msg = imsg
+    this
+  }
+  def msg (imsg: (String, String)) : StateOk = {
+    msg = Seq(imsg)
+    this
+  }
 
   /** set the title of this page */
   def css(s:String) = {this._css = Some(s); ""}
@@ -250,29 +286,37 @@ class StateOk(val msg: Seq[(String, String)], val realm:String, val au: Option[m
   def meta(name:String, content:String) = {this._metas.put(name, content); ""}
   def metas = _metas.toMap
 
-  def reactorLayout12 (content: StateOk => Html) = {
+  def reactorLayout12 (content: => Html) =
+    RkViewService.Ok (views.html.util.reactorLayout12(content, msg)(this))
+  def reactorLayout12 (content: StateOk => Html) =
     RkViewService.Ok (views.html.util.reactorLayout12(content(this), msg)(this))
-  }
 
-  def apply (content: StateOk => Html) = {
+  def apply (content: => Html) =
+    RkViewService.Ok (views.html.util.reactorLayout(content, msg)(this))
+  def apply (content: StateOk => Html) =
     RkViewService.Ok (views.html.util.reactorLayout(content(this), msg)(this))
-  }
 
-  def justLayout (content: StateOk => Html) = {
+  def justLayout (content: => Html) =
+    views.html.util.reactorLayout(content, msg)(this)
+  def justLayout (content: StateOk => Html) =
     views.html.util.reactorLayout(content(this), msg)(this)
-  }
 
-  def notFound (content: StateOk => Html) = {
+  def notFound (content: => Html) =
+    RkViewService.NotFound (views.html.util.reactorLayout(content, msg)(this))
+  def notFound (content: StateOk => Html) =
     RkViewService.NotFound (views.html.util.reactorLayout(content(this), msg)(this))
-  }
 
-  def badRequest (content: StateOk => Html) = {
+  /** use when handling forms */
+  def badRequest (content: => Html) =
+    RkViewService.BadRequest (views.html.util.reactorLayout(content, msg)(this))
+  def badRequest (content: StateOk => Html) =
     RkViewService.BadRequest (views.html.util.reactorLayout(content(this), msg)(this))
-  }
 
-  def noLayout (content: StateOk => Html) = {
+  /** use for old templates with embedded layout OR plaint text */
+  def noLayout (content: => Html) =
+    RkViewService.Ok (content)
+  def noLayout (content: StateOk => Html) =
     RkViewService.Ok (content(this))
-  }
 
   def website = Website.gets(this)
 }
@@ -281,3 +325,27 @@ object RkViewService extends RazController with ViewService {
   def utilMsg (msg:String, details:String, link:Option[String], user:Option[WikiUser], linkNO:Option[(String,String)]=None)(implicit request: Request[_]): play.api.mvc.Result =
     Ok(views.html.util.utilMsg(msg, details, link, user.map(_.asInstanceOf[User]) orElse auth, linkNO))
 }
+
+class RazRequest (val ireq:Request[_]) extends StateOk (
+  Website.getRealm (ireq),
+  Services.auth.authUser(ireq).asInstanceOf[Option[User]],
+  Some(ireq)) {
+
+  def req = ireq.asInstanceOf[Request[AnyContent]]
+  def oreq = Some(ireq)
+  //  lazy val au =
+
+  lazy val stok = this //new controllers.StateOk(Seq(), realm, au, Some(request))
+  lazy val errCollector = new razie.wiki.util.VErrors()
+}
+
+// todo I can't use this - when using it, too many errors from implicits and stuff
+class BetterRazRequest[A] (val request:Request[A]) extends WrappedRequest[A] (request) {
+  def oreq = Some(request)
+  lazy val au = Services.auth.authUser(request).asInstanceOf[Option[User]]
+  lazy val realm = Website.getRealm (request)
+  lazy val stok = new controllers.StateOk(realm, au, Some(request))
+  lazy val errCollector = new razie.wiki.util.VErrors()
+}
+
+

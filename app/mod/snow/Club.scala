@@ -625,7 +625,9 @@ object Club extends RazController with Logging {
       c <- Club.findForName(reg.clubName) orErr "club not found";
       regAdmin <- c.uregAdmin orErr ("no regadmin")
     ) yield {
-        ROK() apply { implicit stok => (views.html.club.doeClubUserRegAdd(rk, next, u, reg))}
+        ROK() apply { implicit stok =>
+          views.html.club.doeClubUserRegAdd(rk, next, u, reg)
+        }
     }) getOrElse unauthorized()
   }
 
@@ -1026,7 +1028,9 @@ object Club extends RazController with Logging {
       }
     }) getOrElse  {
       if(activeUser.isDefined && !activeUser.get.profile.flatMap(_.consent).isDefined)
-        ROK.r noLayout {implicit stok=> views.html.user.doeConsent(activeUser.get)}
+        ROK.r noLayout {implicit stok=>
+          views.html.user.doeConsent()
+        }
       else
         Msg2("CAN'T START REGISTRATION " + errCollector.mkString)
       }
@@ -1044,7 +1048,7 @@ object Club extends RazController with Logging {
         ROK() apply { implicit stok => views.html.club.doeClubUserStartReg(clubName) }
     }) getOrElse  {
       if(activeUser.isDefined && !activeUser.get.profile.flatMap(_.consent).isDefined)
-        ROK.s noLayout {implicit stok=>views.html.user.doeConsent(activeUser.get, routes.Club.doeStartRegSimple(clubName).url)}
+        ROK.s noLayout {implicit stok=>views.html.user.doeConsent(routes.Club.doeStartRegSimple(clubName).url)}
       else
         Msg2("CAN'T START REGISTRATION " + errCollector.mkString)
     }
@@ -1093,8 +1097,9 @@ object Club extends RazController with Logging {
       }
     }) getOrElse  {
       if(activeUser.isDefined && !activeUser.get.profile.flatMap(_.consent).isDefined)
-        ROK.r noLayout {implicit stok=>views.html.user.doeConsent(activeUser.get)}
-      else
+        ROK.r noLayout {implicit stok=>
+          views.html.user.doeConsent()
+        } else
         Msg2("CAN'T START REGISTRATION " + errCollector.mkString)
       }
   }

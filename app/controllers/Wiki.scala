@@ -616,7 +616,7 @@ object Wiki extends WikiBase {
   }
 
   def all(cat: String, irealm:String) = Action { implicit request =>
-    ROK.r noLayout {implicit stok=>views.html.wiki.wikiAll(getRealm(irealm), cat, auth)}
+    ROK.r noLayout {implicit stok=>views.html.wiki.wikiAll(getRealm(irealm), cat)}
   }
 
   import play.api.libs.json._

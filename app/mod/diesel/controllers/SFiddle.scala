@@ -422,7 +422,9 @@ $hx
       Msg2(formWithErrors.toString + "Oops! some error"),
     {
       case (hh, h, c, j) =>
-        Ok(views.html.fiddle.playHtmlFiddle("", Map(), (hh, h, c, j), auth))
+        ROK.r noLayout { implicit stok =>
+          views.html.fiddle.playHtmlFiddle("", Map(), (hh, h, c, j))
+        }
     })
   }
 

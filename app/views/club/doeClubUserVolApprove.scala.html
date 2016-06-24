@@ -4,7 +4,7 @@ manage the volunteer hours by club admin
 @(vhs:List[model.VolunteerH], user:model.User)(implicit stok:controllers.StateOk)
 @import org.bson.types.ObjectId
 @au=@{stok.au.get}
-@htmlHeadBar("Approving volunteer hours", Option(user))
+@htmlHeadBar("Approving volunteer hours")
 
 @club(vol:model.VolunteerH) = @{
   val x = model.RacerKidz.findAssocById(vol.rkaId.toString).map(_.from).flatMap(model.Users.findUserById(_))

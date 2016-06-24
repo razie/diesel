@@ -1,29 +1,29 @@
 @**************
 list all topics in category
 **************@
-@(realm:String, name:String, au:Option[model.User])(implicit stok: controllers.StateOk)
+@(realm:String, name:String)(implicit stok: controllers.StateOk)
 @import razie.wiki.model.{Wikis, WID}
 @import model.Perm
 
-@htmlHeadBar("All topics in category: " +name, au, realm)
+@htmlHeadBar("All topics in category: " +name)
 
 <div class="container">
   <div class="row">
     <div class="col-sm-9">
 
     <!-- list of pages in category -->
-    @if("User" != name || au.map(_.hasPerm(Perm.adminDb)).getOrElse(false)) {
+    @if("User" != name || stok.au.map(_.hasPerm(Perm.adminDb)).getOrElse(false)) {
       <div class="well">
         <b>All</b> @name entries:
         <ul>
           @if(name.isEmpty) {
             @for(c <- Wikis(realm).categories.map(_.name);
-                 p <- Wikis(realm).pages(c) if(controllers.Wiki.isVisible(au,p.props))) {
+                 p <- Wikis(realm).pages(c) if(controllers.Wiki.isVisible(stok.au,p.props))) {
               <li><a href="@controllers.Wiki.w(p.category, p.name, realm)">@p.label</a>
                 <small>&nbsp;  @p.category <span title="wordcount"> @p.wordCount </span> </small>
                 }
           } else {
-            @for(p <- Wikis(realm).pages(name) if(controllers.Wiki.isVisible(au,p.props))) {
+            @for(p <- Wikis(realm).pages(name) if(controllers.Wiki.isVisible(stok.au,p.props))) {
               <li><a href="@controllers.Wiki.w(p.category, p.name, realm)">@p.label</a>
                 <small>&nbsp;  @p.category <span title="wordcount"> @p.wordCount </span> </small>
             }
@@ -38,10 +38,11 @@ list all topics in category
     </div> <!-- /col-sm-9 -->
 
       <div class="col-sm-3">
-          @wiki.wikiFrag(WID("Admin","Right").r(realm),au,true, None)
+          @wiki.wikiFrag(WID("Admin","Right").r(realm),stok.au,true, None)
       </div>
 
   </div> <!-- row -->
 </div> <!-- /container -->
 
 @htmlBottom()
+

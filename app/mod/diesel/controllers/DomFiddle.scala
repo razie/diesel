@@ -81,6 +81,23 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
       |""".stripMargin
 
   /** action builder that decomposes the request, extracting user and creating a simple error buffer */
+  def FAUPR(f: RazRequest => Result) = Action { implicit request =>
+    implicit val stok = new RazRequest(request)
+    (for (
+      au <- stok.au;
+      isA <- checkActive(au);
+      ok <-
+      ((au hasPerm Perm.domFiddle) ||
+        (au hasPerm Perm.codeMaster) ||
+        (au hasPerm Perm.adminDb)) orCorr(cNoPermission)
+    ) yield f(stok)
+      ) getOrElse {
+      val more = Website(request).flatMap(_.prop("msg.noPerm")).flatMap(WID.fromPath).flatMap(_.content).mkString
+      Msg("You need more karma...", "Open a karma request")
+    }
+  }
+
+  /** action builder that decomposes the request, extracting user and creating a simple error buffer */
   def FAUP(f: User => VErrors => Request[AnyContent] => Result) = Action { implicit request =>
     implicit val errCollector = new VErrors()
     (for (
@@ -98,12 +115,12 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
   }
 
   /** display the play sfiddle screen */
-  def playDom(reactor: String, iSpecWpath:String, iStoryWpath:String) = FAUP { implicit au =>
-    implicit errCollector => implicit request =>
-      val q = request.queryString.map(t=>(t._1, t._2.mkString))
+  def playDom(reactor: String, iSpecWpath:String, iStoryWpath:String) = FAUPR { implicit stok =>
+//    implicit errCollector => implicit request =>
+      val q = stok.req.queryString.map(t=>(t._1, t._2.mkString))
 
         //1. which wids were you looking at last?
-        val wids = Autosave.OR("DomFidPath."+reactor, au._id, Map(
+        val wids = Autosave.OR("DomFidPath."+reactor, stok.au.get._id, Map(
           "specWpath"  -> """""",
           "storyWpath" -> """"""
         ))
@@ -113,7 +130,7 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
 
         // need settings?
         if(iSpecWpath != "?" && iSpecWpath != specWpath) {
-          DomWorker later AutosaveSet("DomFidPath."+reactor, au._id, Map(
+          DomWorker later AutosaveSet("DomFidPath."+reactor, stok.au.get._id, Map(
             "specWpath"  -> iSpecWpath,
             "storyWpath" -> storyWpath
           ))
@@ -123,7 +140,7 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
 
         // need settings?
         if(iStoryWpath != "?" && iStoryWpath != storyWpath) {
-          DomWorker later AutosaveSet("DomFidPath."+reactor, au._id, Map(
+          DomWorker later AutosaveSet("DomFidPath."+reactor, stok.au.get._id, Map(
             "specWpath"  -> specWpath,
             "storyWpath" -> iStoryWpath
           ))
@@ -134,18 +151,18 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
         val stw = WID.fromPath(storyWpath).flatMap(_.page).map(_.content).getOrElse(SAMPLE_STORY)
 
         //2 their contents
-        val spec = Autosave.OR("DomFidSpec."+reactor+"."+specWpath, au._id, Map(
+        val spec = Autosave.OR("DomFidSpec."+reactor+"."+specWpath, stok.au.get._id, Map(
           "content"  -> spw
         )).apply("content")
 
-        val story = Autosave.OR("DomFidStory."+reactor+"."+storyWpath, au._id, Map(
+        val story = Autosave.OR("DomFidStory."+reactor+"."+storyWpath, stok.au.get._id, Map(
           "content"  -> stw
         )).apply("content")
 
         val id = java.lang.System.currentTimeMillis().toString()
 
-        ROK() reactorLayout12 { implicit stok =>
-          views.html.fiddle.playDomFiddle(reactor, q, spec, story, specWpath, storyWpath, (spw != story), (stw != story), auth, Some(""), id)
+        ROK.k reactorLayout12 {
+          views.html.fiddle.playDomFiddle(reactor, q, spec, story, specWpath, storyWpath, (spw != story), (stw != story), Some(""), id)
         }
   }
 
@@ -155,47 +172,47 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
   }
 
   /** list cats */
-  def domListCat(cat: String, reactor:String) = FAU { implicit au => implicit errCollector => implicit request =>
+  def domListCat(cat: String, reactor:String) = FAUR { implicit stok=>
     val what=cat.toLowerCase
     Ok(
-      s"""<a href="/dfiddle/playDom/$reactor?$what=">none (fiddle)</a><br>"""+
+      s"""<a href="/diesel/fiddle/playDom/$reactor?$what=">none (fiddle)</a><br>"""+
       Wikis(reactor).pageNames(cat).map(s=>
-      s"""<a href="/dfiddle/playDom/$reactor?$what=$reactor.$cat:$s">$s</a>"""
+      s"""<a href="/diesel/fiddle/playDom/$reactor?$what=$reactor.$cat:$s">$s</a>"""
     ).mkString("<br>")
     )
   }
 
   /** display the play sfiddle screen */
-  def buildDom1(id: String) = FAUP { implicit au => implicit errCollector => implicit request =>
-    val q = request.queryString.map(t=>(t._1, t._2.mkString))
+  def buildDom1(id: String) = FAUPR { implicit stok=>
+    val q = stok.req.queryString.map(t=>(t._1, t._2.mkString))
 
     //todo this
     //    Some(1).filter(x=>(au hasPerm Perm.codeMaster) || (au hasPerm Perm.adminDb)).fold(
 
-    val reactor = razscr.dec(request.body.asFormUrlEncoded.get.apply("reactor").mkString)
-    val specWpath = razscr.dec(request.body.asFormUrlEncoded.get.apply("specWpath").mkString)
-    val storyWpath = razscr.dec(request.body.asFormUrlEncoded.get.apply("storyWpath").mkString)
-    val spec = razscr.dec(request.body.asFormUrlEncoded.get.apply("spec").mkString)
-    val story = razscr.dec(request.body.asFormUrlEncoded.get.apply("story").mkString)
+    val reactor = razscr.dec(stok.req.body.asFormUrlEncoded.get.apply("reactor").mkString)
+    val specWpath = razscr.dec(stok.req.body.asFormUrlEncoded.get.apply("specWpath").mkString)
+    val storyWpath = razscr.dec(stok.req.body.asFormUrlEncoded.get.apply("storyWpath").mkString)
+    val spec = razscr.dec(stok.req.body.asFormUrlEncoded.get.apply("spec").mkString)
+    val story = razscr.dec(stok.req.body.asFormUrlEncoded.get.apply("story").mkString)
 
     //1. which wids were you looking at last?
-    DomWorker later AutosaveSet("DomFidPath."+reactor, au._id, Map(
+    DomWorker later AutosaveSet("DomFidPath."+reactor, stok.au.get._id, Map(
       "specWpath"  -> specWpath,
       "storyWpath" -> storyWpath
     ))
 
     //2 their contents
-      DomWorker later AutosaveSet("DomFidSpec."+reactor+"."+specWpath, au._id, Map(
+      DomWorker later AutosaveSet("DomFidSpec."+reactor+"."+specWpath, stok.au.get._id, Map(
       "content"  -> spec
     ))
 
     val spw = WID.fromPath(specWpath).flatMap(_.page).map(_.content).getOrElse(SAMPLE_SPEC)
     val stw = WID.fromPath(storyWpath).flatMap(_.page).map(_.content).getOrElse(SAMPLE_STORY)
 
-    val page = new WikiEntry("Spec", "temp", "temp", "md", spec, au._id, Seq("dslObject"), "")
+    val page = new WikiEntry("Spec", "temp", "temp", "md", spec, stok.au.get._id, Seq("dslObject"), "")
     val dom = WikiDomain.domFrom(page).get.revise addRoot
 
-    var res = Wikis.format(page.wid, page.markup, null, Some(page), auth)
+    var res = Wikis.format(page.wid, page.markup, null, Some(page), stok.au)
     retj << Map(
       "res" -> res,
       "ca" -> RDExt.toCAjmap(dom), // todo should respect blenderMode ?
@@ -212,44 +229,46 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
     * @param id
     * @return
     */
-  def buildDom2(id: String) = FAUP { implicit au => implicit errCollector => implicit request =>
-    val q = request.queryString.map(t=>(t._1, t._2.mkString))
+  def buildDom2(id: String) = FAUPR { implicit stok=>
+    val q = stok.req.queryString.map(t=>(t._1, t._2.mkString))
 
-    def fParm(name:String)= razscr.dec(request.body.asFormUrlEncoded.get.apply(name).mkString)
+    def fParm(name:String)=
+      stok.req.body.asFormUrlEncoded.get.apply(name).mkString
 
     val stimer = new CSTimer("buildDom2", id)
     stimer start "heh"
 
-    val sketchMode = fParm("sketchMode").toBoolean
-    val mockMode = fParm("mockMode").toBoolean
-    val blenderMode = fParm("blenderMode").toBoolean
-    val draftMode = fParm("draftMode").toBoolean
+    val settings = DomEngineSettings.fromRequest(stok.req)
+
+    val saveMode = fParm("saveMode").toBoolean
     val reactor = fParm("reactor")
     val specWpath = fParm("specWpath")
     val storyWpath = fParm("storyWpath")
     val spec = fParm("spec")
     val story = fParm("story")
 
-    DomWorker later AutosaveSet("DomFidPath."+reactor, au._id, Map(
+    if(saveMode) {
+    DomWorker later AutosaveSet("DomFidPath."+reactor, stok.au.get._id, Map(
       "specWpath"  -> specWpath,
       "storyWpath" -> storyWpath
     ))
 
     //2 their contents
-    DomWorker later AutosaveSet("DomFidStory."+reactor+"."+storyWpath, au._id, Map(
+    DomWorker later AutosaveSet("DomFidStory."+reactor+"."+storyWpath, stok.au.get._id, Map(
       "content"  -> story
     ))
+    }
 
     stimer snap "1"
 
-    val page = new WikiEntry("Spec", "temp", "temp", "md", spec, au._id, Seq("dslObject"), "")
+    val page = new WikiEntry("Spec", "temp", "temp", "md", spec, stok.au.get._id, Seq("dslObject"), "")
     val dom =
-      if(blenderMode) {
+      if(settings.blenderMode) {
       val spw = WID.fromPath(specWpath)
-      val d = Wikis(reactor).pages("Spec").filter(_.name != spw.map(_.name).mkString).toList.map{
+      val d = Wikis(reactor).pages("Spec").filter(_.name != spw.map(_.name).mkString).toList.map{ p=>
 //         if draft mode, find the auto-saved version if any
-        p=> if(draftMode) {
-          val c = Autosave.find("DomFidSpec."+reactor+"."+p.wid.wpath, au._id).flatMap(_.get("content")).mkString
+        if(settings.draftMode) {
+          val c = Autosave.find("DomFidSpec."+reactor+"."+p.wid.wpath, stok.au.get._id).flatMap(_.get("content")).mkString
           if(c.length > 0)  p.copy(content=c)
           else p
         } else p
@@ -263,7 +282,7 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
 
     stimer snap "2"
 
-    val ipage = new WikiEntry("Story", "temp", "temp", "md", story, au._id, Seq("dslObject"), "")
+    val ipage = new WikiEntry("Story", "temp", "temp", "md", story, stok.au.get._id, Seq("dslObject"), "")
     val idom = WikiDomain.domFrom(ipage).get.revise addRoot
 
     stimer snap "3"
@@ -274,24 +293,24 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
 
     // not parse again.. take from dom
     root.children appendAll WikiDomain.domFilter(ipage) {
-      case o:O if o.name != "context" => DomAst(o, "input")
-      case v:EMsg => DomAst(v, "input")
+      case o:O if o.name != "context" => DomAst(o, "received")
+      case v:EMsg => DomAst(v, "received")
       case v:EMock => DomAst(v, "mock")
       case e:ExpectM => DomAst(e, "test")
       case e:ExpectV => DomAst(e, "test")
     }
 
     // start processing all elements
-    val engine = new DomEngine(dom, root, mockMode, sketchMode)
+    val engine = new DomEngine(dom, root, settings)
 
     root.children.foreach(engine.expand(_, true, 1))
-    res += root.toString
+    res += root.toHtml
 
     val stw = WID.fromPath(storyWpath).flatMap(_.page).map(_.content).getOrElse("Sample story\n\n$msg home.guest_arrived(name=\"Jane\")\n\n$expect $msg lights.on\n")
 
     stimer snap "4"
 
-    val wiki = Wikis.format(ipage.wid, ipage.markup, null, Some(ipage), Some(au))
+    val wiki = Wikis.format(ipage.wid, ipage.markup, null, Some(ipage), stok.au)
 
     stimer snap "5"
 
@@ -315,39 +334,77 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
     * @param id
     * @return
     */
-  def runDom(reactor:String, e:String, a:String) = FAUP { implicit au => implicit errCollector => implicit request =>
+  def runWiki(cwid:CMDWID) = Action.async { implicit request =>
+    val errors = new ListBuffer[String]()
+
+    val q = request.queryString.map(t=>(t._1, t._2.mkString))
+    val resultMode = q.getOrElse("resultMode", "")
+
+    cwid.wid.flatMap(_.page).map {we=>
+      val PAT = """(\w*)/(\w*)""".r
+      val PAT(e,a) = cwid.rest
+
+      val nw = if(q.contains("dfiddle")) cwid.wid.get.copy(section=q.get("dfiddle")) else cwid.wid.get
+      irunDom(we.realm, e, a, Some(nw)).apply(request)
+    } getOrElse {
+      errors append "WPath not found: [["+cwid.wpath.mkString+"]]"
+
+      val ret = if("val" == resultMode) {
+        Ok("")
+      } else {
+        // multiple values as json
+        var m = Map(
+          "values" -> Map.empty,
+          "failureCount" -> 0,
+          "errors" -> errors.toList
+        )
+
+        retj << m
+      }
+
+      Future.successful(ret)
+    }
+  }
+
+  def runDom(reactor:String, e:String, a:String) = Action.async { implicit request =>
+    irunDom(reactor, e, a, None).apply(request)
+  }
+
+  /** compute the instance
+    *
+    * todo perf: DB - parsing about 50-50
+    * todo perf actor for async queued DB updates
+    * todo perf specialized parser with just the DOM rules and no wiki/markdown, using WikiParserMini instead of WikiParserT
+    *
+    * @param id
+    * @return
+    */
+  private def irunDom(reactor:String, e:String, a:String, useThisOne:Option[WID]) = FAUP { implicit au => implicit errCollector => implicit request =>
     val q = request.queryString.map(t=>(t._1, t._2.mkString))
 
     def fParm(name:String, dflt:String="") = q.getOrElse(name, dflt)
 
-    //todo this
-    //    Some(1).filter(x=>(au hasPerm Perm.codeMaster) || (au hasPerm Perm.adminDb)).fold(
-
-    val sketchMode = q.getOrElse("sketchMode", "false").toBoolean//fParm("sketchMode").toBoolean
-    val mockMode = q.getOrElse("mockMode", "true").toBoolean//fParm("mockMode").toBoolean
-    val blenderMode = q.getOrElse("blenderMode", "true").toBoolean//fParm("blenderMode").toBoolean
-    val draftMode = q.getOrElse("draftMode", "true").toBoolean//fParm("draftMode").toBoolean
-    val execMode = q.getOrElse("execMode", "sync")//fParm("draftMode").toBoolean
+    val settings = DomEngineSettings.fromRequest(request)
 
     val RES_API = """
-      |Send result mode to control output:
-      | * val one single value, no matter what
-      | * json one or more values as Json
-      | * tree include the tree
-      |
-      | The Json always includes any errors.
-    """.stripMargin
+                    |Send result mode to control output:
+                    | * val one single value, no matter what
+                    | * json one or more values as Json
+                    | * tree include the tree
+                    |
+                    | The Json always includes any errors.
+                  """.stripMargin
 
     val resultMode = q.getOrElse("resultMode", "")
 
     val page = new WikiEntry("Spec", "temp", "temp", "md", "", au._id, Seq("dslObject"), "")
 
-    val dom = if(blenderMode) {
-//      val spw = WID.fromPath(specWpath)
-      val stories = if(sketchMode) Wikis(reactor).pages("Story")./*filter(_.name != stw.get.name).*/toList else Nil
+    val dom = if(settings.blenderMode) {
+      //      val spw = WID.fromPath(specWpath)
+      val stories = if(settings.sketchMode) Wikis(reactor).pages("Story")./*filter(_.name != stw.get.name).*/toList else Nil
       val d = (Wikis(reactor).pages("Spec")./*filter(_.name != spw.get.name).*/toList:::stories).map{
         // if draft mode, find the auto-saved version if any
-        p=> if(draftMode) {
+        p=> if(settings.draftMode) {
           val c = Autosave.find("DomFid"+p.category+"."+reactor+"."+p.wid.wpath, au._id).flatMap(_.get("content")).mkString
           if(c.length > 0)  p.copy(content=c)
           else p
@@ -359,14 +416,30 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
       d
     } else {
       //the contents of the fiddle
-      val spec = Autosave.find("DomFidSpec."+reactor+".", au._id).mkString
+      val spec =
+        if(useThisOne.isDefined) ""
+        else Autosave.find("DomFidSpec."+reactor+".", au._id).mkString
       val page = new WikiEntry("Spec", "temp", "temp", "md", spec, au._id, Seq("dslObject"), "")
       WikiDomain.domFrom(page).get.revise.addRoot
     }
 
     val FILTER = Array("sketchMode", "mockMode", "blenderMode", "draftMode")
-    val story = "$msg "+e+"."+a+" ("+q.filter(x=> ! FILTER.contains(x._1)).map(t=>t._1+"=\""+t._2+"\"").mkString(",")+")\n"
+    var story = "$msg "+e+"."+a+" ("+q.filter(x=> ! FILTER.contains(x._1)).map(t=>t._1+"=\""+t._2+"\"").mkString(",")+")\n"
     clog << "STORY: " + story
+
+    val story2 = if(settings.sketchMode) {
+      // in sketch mode, add the temp fiddle tests - filter out messages, as we already have one
+        useThisOne.map {p=>
+          Autosave.find("DomFidStory."+reactor+"."+p.wpath, au._id).flatMap(_.get("content")) getOrElse p.content.mkString
+        } getOrElse
+          Autosave.find("DomFidStory."+reactor+".", au._id).mkString
+    } else if(useThisOne.isDefined) {
+      useThisOne.get.content.mkString
+    } else ""
+
+    story = story + story2.lines.filterNot(x=>
+      x.trim.startsWith("$msg") || x.trim.startsWith("$receive")
+    ).mkString("\n")
 
     val ipage = new WikiEntry("Story", "temp", "temp", "md", story, au._id, Seq("dslObject"), "")
     val idom = WikiDomain.domFrom(ipage).get.revise addRoot
@@ -377,18 +450,18 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
 
     // not again.. take from dom
     root.children appendAll WikiDomain.domFilter(ipage) {
-      case o:O if o.name != "context" => DomAst(o, "input")
-      case v:EMsg => DomAst(v, "input")
+      case o:O if o.name != "context" => DomAst(o, "received")
+      case v:EMsg => DomAst(v, "received")
       case v:EMock => DomAst(v, "mock")
       case e:ExpectM => DomAst(e, "test")
       case e:ExpectV => DomAst(e, "test")
     }
 
     // start processing all elements
-    val engine = new DomEngine(dom, root, mockMode, sketchMode)
+    val engine = new DomEngine(dom, root, settings)
 
     root.children.foreach(engine.expand(_, true, 1))
-//    res += root.toString
+    //    res += root.toString
 
     val errors = new ListBuffer[String]()
 
@@ -409,7 +482,7 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
       case d@DomAst(EVal(p), /*"generated"*/ _, _) if oattrs.isEmpty || oattrs.find(_.name == p.name).isDefined => (p.name, p.dflt)
     }
 
-    if("val" == resultMode || "" == resultMode && oattrs.size == 1) {
+    if("value" == resultMode || "" == resultMode && oattrs.size == 1) {
       // one value
       val res = values.headOption.map(_._2).getOrElse("")
       Ok(stripq(res))
@@ -423,9 +496,13 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
         "errors" -> errors.toList
       )
 
-      if("tree" == resultMode) m = m + ("tree" -> root.toString)
+      if("treeHtml" == resultMode) m = m + ("tree" -> root.toHtml)
+      if("treeJson" == resultMode) m = m + ("tree" -> root.toJson)
 
-      retj << m
+      if("debug" == resultMode) {
+        Ok(root.toString).as("application/json")
+      } else
+        Ok(js.tojson(m).toString).as("application/json")
     }
   }
 
@@ -574,6 +651,9 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
             au.profile.map{p=>
               p.update(p.addPerm('+'+Perm.domFiddle))
               cleanAuth(Some(au))
+              Emailer.withSession { implicit mailSession =>
+                Emailer.tellRaz("reactivestories invitation used", s"email: $email   invite: $invite")
+              }
               Redirect("/wiki/Admin:UserHome")
             } getOrElse Msg("No profile !!!???")
           } else Msg("Not your invite...")
@@ -592,7 +672,7 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
   def invite(email:String) = FAU { implicit au => implicit errCollector => implicit request =>
     if(au.isAdmin && email != "-") {
       val id = new ObjectId()
-      val link = "/dfiddle/invited?email="+Enc.toUrl(email)+"&invitation="+id.toString
+      val link = "/diesel/invited?email="+Enc.toUrl(email)+"&invitation="+id.toString
       val sec = SecLink(link, Some("specs.dieselapps.com"),
         10, DateTime.now.plusDays(5), 0, DateTime.now, id)
       Msg("Invite link: "+sec.secUrl, "   code: "+id.toString)

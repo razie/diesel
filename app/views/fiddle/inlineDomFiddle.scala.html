@@ -1,0 +1,143 @@
+@**************
+an inline JS with HTML and CSS fiddle
+**************@
+@(wid:razie.wiki.model.WID,
+  we:Option[razie.wiki.model.WikiEntry],
+   name:String,
+   args:Map[String,String],
+    content:String,
+   links:String,
+   xid:String = java.lang.System.currentTimeMillis().toString())
+
+@id()=@{if(name.length > 0) name else xid}
+@reactor()=@{wid.getRealm}
+
+@** to JS multiline string - make generated JS code look nice **@
+@tos(s:String) = @{
+  s.replaceAll("\r", "").replaceAll("\n", "\\\\n'\n+'")
+}
+
+<script>
+var resettabs = function(lid, id) {
+   document.getElementById('story_'+id).className='';
+   document.getElementById('ast_'+id).className='';
+   document.getElementById('links_'+id).className='';
+
+   document.getElementById(lid).className='active';
+}
+
+var setpill = function(lid,id,s) {
+   if(lid == 'links_'+id) {
+     $('#code_'+id).html(s);
+   } else
+     $('#code_'+id).text(s);
+   resettabs(lid, id);
+}
+
+var story_@id = '@Html(tos(content))';
+var ast_@id  = '';
+var links_@id  = '@Html(tos(links))';
+
+function setAst_@{id} () {
+  ast_@id  = 'Loading...';
+  setpill('ast_@id', '@id', ast_@id);
+  runpill2_@id ('@id');
+  setpill('ast_@id', '@id', ast_@id);
+}
+
+var runpill2_@id = function(id) {
+  var lastTime = new Date().getTime();
+  $.ajax(
+    '/diesel/fiddle/buildDom2/'+id+'?@Html(mod.diesel.controllers.SFiddles.qtourl(args))', {
+    type: 'POST',
+    data: $.param({
+      saveMode : false,
+      sketchMode : true,
+      mockMode : true,
+      blenderMode : false,
+      draftMode : false,
+      reactor : '@reactor',
+      specWpath : '',
+      storyWpath : '',
+      story : story_@id,
+      spec : ''
+    }),
+    contentType: 'application/x-www-form-urlencoded',
+    success: function(data) {
+//      if($('#wikiMode').prop('checked'))
+//        $('#iframew_'+id).html(data.wiki);
+//        $('#code_'+id).html(data.wiki);
+//      else
+//        $('#iframe_'+id).html(data.res);
+        ast_@id = data.res;
+
+        // todo make sure it's still this tab that's focused
+        $('#code_'+id).html(data.res);
+//      instContentAssist = data.ca;
+//      setErrors(data.failureCount);
+      var du = new Date().getTime() - lastTime;
+//      $('#roundtrip').text(du+' ms');
+//      storyChanged(data.storyChanged);
+    },
+    error  : function(x) {
+      console.log( "ERR "+x.toString());
+    }
+  });
+}
+
+</script>
+
+  <ul class="nav nav-tabs" style="margin-bottom:0;">
+    <li id="story_@id" class="active">
+      <a  href="javascript:setpill('story_@id', '@id', story_@id)">
+        <small>Story</small></a> </li>
+    <li id="ast_@id" >
+      <a href="javascript:setAst_@{id}()">
+        <small>AST</small></a> </li>
+    <li id="links_@id">
+      <a  href="javascript:setpill('links_@id', '@id', links_@id)">
+        <small>REST</small></a> </li>
+    <li id="play_@id" >
+      <a href="javascript:playpill_@{id}('@{id}')">
+        <small>Fiddle...</small></a> </li>
+  </ul>
+
+  <pre id="pre_@id" style="display:inline-block; width:98%; margin-bottom:0; border:0;"><code id="code_@id">@content</code></pre>
+<p></p>
+
+<script>
+var upd_@id = function(id) {
+}
+
+var runpill_@id = function(id) {
+  upd_@{id}(id);
+//  $('#ssform_'+id)[0].target = 'iframe_'+id;
+//  $('#ssform_'+id)[0].action = "/doe/tma/buildhtml/"+id;
+//  $('#ssform_'+id)[0].submit();
+}
+
+var playpill_@id = function(id) {
+  upd_@{id}(id);
+//  $('#ssform_'+id)[0].target = '';
+//  $('#ssform_'+id)[0].action = "/doe/tma/playjs/"+id;
+//  $('#ssform_'+id)[0].submit();
+}
+</script>
+
+<script>
+// set the current tab
+@args.get("tab").map {x=>
+   @x match {
+     case "html" => {
+        setpill('html_@id', '@id', h_@id)
+        }
+     case "css"  => {
+        setpill('css_@id', '@id', c_@id)
+        }
+     case "js"   => {
+        setpill('js_@id', '@id', decscr(j_@id))
+        }
+   }
+}
+</script>
+

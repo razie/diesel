@@ -441,6 +441,7 @@ textarea[readonly] {
 
 .nav > li > a {
     font-weight: bold;
+    padding: 2px 10px;
 }
 
 .nav > li > a:hover,

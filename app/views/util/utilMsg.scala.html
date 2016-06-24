@@ -1,10 +1,10 @@
 @***************
 display a message with navigation (next)
 ***************@
-@(msg:String, details:String, next:Option[String], au:Option[razie.wiki.model.WikiUser], cancel:Option[(String,String)]=None)(implicit request:Request[_])
+@(msg:String, details:String, next:Option[String], au:Option[razie.wiki.model.WikiUser], cancel:Option[(String,String)]=None)(implicit stok:controllers.RazRequest)
 @import model.Website.realm
 
-@whtmlHeadBar("", realm)(au.asInstanceOf[Option[model.User]], request)
+@whtmlHeadBar("")(stok.au, stok.req)
 
 <div class="container">
   <div class="well">
@@ -25,9 +25,9 @@ display a message with navigation (next)
   </div>
 
   <hr>
-  @htmlFooter(false, false, realm)(new StateOk(Seq(), "", au.asInstanceOf[Option[model.User]], Some(request)))
+  @htmlFooter(false, false, stok.realm)
 
 </div> <!-- /container -->
 
-@htmlBottom(false, Some(request))(new StateOk(Seq(), "", au.asInstanceOf[Option[model.User]], Some(request)))
+@htmlBottom(false)
 

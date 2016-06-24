@@ -1,6 +1,6 @@
-@(pForm:Form[String], userEname:String)(implicit req:views.RazRequest)
+@(pForm:Form[String], userEname:String)(implicit req:controllers.RazRequest)
 
-@htmlHeadBar()
+@htmlHeadBar()(req.stok)
 
     <div class="container">
 

@@ -26,22 +26,43 @@ rule_DomainModel:
 
 
 rule_AbstractElement:
-    rule_Expect | rule_Msg | rule_When | rule_Option | rule_Val | rule_Mock | rule_Topic | rule_Braq;
+    rule_Expect | rule_Msg | rule_Match | rule_When | rule_Receive | rule_Option | rule_Val | rule_Mock | rule_Topic | rule_Braq;
 
 
 
 
 //-------------------- raz
 
-rule_Topic:
-    '[[' name=rule_QualifiedName (':' t=rule_QualifiedName)? ']]'
+rule_Receive:
+    '$receive' ('<' stype=rule_MsgStereo '>')? name=rule_QualifiedName attrs=rule_AttrSpecs?
 ;
 
 
 
 
-rule_Braq:
-    '}'
+rule_Msg:
+    '$msg' ('<' stype=rule_MsgStereo '>')? name=rule_QualifiedName attrs=rule_AttrSpecs?
+;
+
+
+
+
+rule_When:
+	'$when' a=ID aa=rule_Attrs? cond=rule_Condition? '=>' z=ID za=rule_AttrSpecs? 
+;
+
+
+
+
+rule_Match:
+	'$match' a=ID aa=rule_Attrs? cond=rule_Condition? 
+;
+
+
+
+
+rule_Mock:
+	'$mock' a=ID aa=rule_Attrs? cond=rule_Condition? '=>' za=rule_AttrSpecs?
 ;
 
 
@@ -75,27 +96,6 @@ rule_ExpectV:
 
 rule_Val:
     '$val' p=rule_AttrSpec
-;
-
-
-
-
-rule_Msg:
-    '$msg' ('<' stype=rule_MsgStereo '>')? name=rule_QualifiedName attrs=rule_AttrSpecs?
-;
-
-
-
-
-rule_When:
-	'$when' a=ID aa=rule_Attrs? cond=rule_Condition? '=>' z=ID za=rule_AttrSpecs? 
-;
-
-
-
-
-rule_Mock:
-	'$mock' a=ID aa=rule_Attrs? cond=rule_Condition? '=>' za=rule_AttrSpecs?
 ;
 
 
@@ -135,6 +135,20 @@ rule_Attrs:
 
 rule_AttrSpecs:
     ('(' (attrs+=rule_AttrSpec (',' attrs+=rule_AttrSpec)*)? ')')
+;
+
+
+
+
+rule_Topic:
+    '[[' name=rule_QualifiedName (':' t=rule_QualifiedName)? ']]'
+;
+
+
+
+
+rule_Braq:
+    '}'
 ;
 
 

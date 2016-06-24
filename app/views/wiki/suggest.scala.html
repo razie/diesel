@@ -1,9 +1,9 @@
-@(sForm:Form[_], page:String, au:Option[model.User])(implicit request:Request[_])
+@(sForm:Form[_], page:String)(implicit stok:controllers.StateOk)
 @import helper.twitterBootstrap._
 @import play.api.Play.current
 @import play.api.i18n.Messages.Implicits._
 
-@htmlHeadBar("Suggest something", au)
+@htmlHeadBar("Suggest something")
 
 <div class="container">
       <div class="row">
@@ -12,9 +12,9 @@
 
 @helper.form(action=routes.Support.suggested(page), 'class->"well") {
 
-@if(au.isDefined) {
-  <input type="hidden" name="name" value="@au.get.ename" />
-  <input type="hidden" name="email" value="@razie.wiki.Enc.unapply(au.get.email)" />
+@if(stok.au.isDefined) {
+  <input type="hidden" name="name" value="@stok.au.get.ename" />
+  <input type="hidden" name="email" value="@razie.wiki.Enc.unapply(stok.au.get.email)" />
 } else {
   @helper.inputText(
     sForm("name"),
@@ -41,7 +41,7 @@
   $("textarea, input").addClass("form-control");
 </script>
 
-  @if(au.isDefined) {
+  @if(stok.au.isDefined) {
     <input type="hidden" name="g-recaptcha-response" />
   } else {
     @util.recaptcha()
@@ -61,9 +61,9 @@
 
   <hr>
 
-  @htmlFooter()(new StateOk(Seq(), "", au, Some(request)))
+  @htmlFooter()
 
   </div> <!-- /container -->
 
-@htmlBottom()(new StateOk(Seq(), "", au, Some(request)))
+@htmlBottom()
 

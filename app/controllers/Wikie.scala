@@ -159,7 +159,7 @@ object Wikie extends WikieBase {
                       wvis(Some(w.props)).orElse(Reactors(wid.getRealm).props.prop("default.wvis")).getOrElse(PUBLIC),
                       w.ver.toString,
                       w.tags.mkString(","),
-                      w.props.get("draft").getOrElse("Notify"))), Some(au)),
+                      w.props.get("draft").getOrElse("Notify")))),
                 Seq.empty
                 )
               }
@@ -272,7 +272,7 @@ object Wikie extends WikieBase {
               razie.db.tx("Wiki.setContent") { implicit txn =>
                 WikiEntryOld(w, Some("setContent")).create
                 w.update(we, Some("setContent"))
-                Emailer.laterSession { implicit mailSession =>
+                Emailer.withSession { implicit mailSession =>
                   au.quota.incUpdates
 //                      au.shouldEmailParent("Everything").map(parent => Emailer.sendEmailChildUpdatedWiki(parent, au, WID(w.category, w.name)))
                 }
@@ -334,7 +334,7 @@ object Wikie extends WikieBase {
       val markup = formWithErrors("markup").value.mkString
       if(Wikis.markups.isDsl(markup))
         //todo mod/plugin/factory for these views to allow future languages
-        ROK.s noLayout {implicit stok=> views.html.wiki.wikiEditJS(wid, Map.empty, formWithErrors, auth)}
+        ROK.s noLayout {implicit stok=> views.html.wiki.wikiEditJS(wid, Map.empty, formWithErrors)}
       else
         ROK.s badRequest { implicit stok =>
           views.html.wiki.wikiEdit(wid, formWithErrors, "")
@@ -404,7 +404,7 @@ object Wikie extends WikieBase {
                 razie.db.tx("Wiki.Save") { implicit txn =>
                   // can only change label of links OR if the formatted name doesn't change
                   w.update(we)
-                  Emailer.laterSession { implicit mailSession =>
+                  Emailer.withSession { implicit mailSession =>
                     au.quota.incUpdates
                     if (shouldPublish) notifyFollowersCreate(we, au)
                     au.shouldEmailParent("Everything").map(parent => Emailer.sendEmailChildUpdatedWiki(parent, au, WID(w.category, w.name)))
@@ -536,7 +536,7 @@ object Wikie extends WikieBase {
       case None => {
         clog << "need logged in to report a wiki"
         val msg = "You need to be logged in to report a page! If you really must, please create a support request at the bottom of this page..."
-        Ok(views.html.util.utilErr(msg, controllers.Wiki.w(wid), auth))
+        Ok(views.html.util.utilErr(msg, controllers.Wiki.w(wid)))
       }
     }
   }
@@ -1097,7 +1097,7 @@ object Wikie extends WikieBase {
   /** START find and replace content in pages */
   def replaceAll1() = FAU {
     implicit au => implicit errCollector => implicit request =>
-    Ok(views.html.wiki.wikieReplaceAll(replaceAllForm.fill("", "", "", ""), auth, false))
+    Ok(views.html.wiki.wikieReplaceAll(replaceAllForm.fill("", "", "", ""), false))
   }
 
   /** DO find and replace content in pages */
@@ -1120,7 +1120,7 @@ object Wikie extends WikieBase {
             ) {
             }
           }
-          Ok(views.html.wiki.wikieReplaceAll(replaceAllForm.fill(realm, q, news, ""), auth, false))
+          Ok(views.html.wiki.wikieReplaceAll(replaceAllForm.fill(realm, q, news, ""), false))
       })
   }
 
@@ -1154,7 +1154,7 @@ object Wikie extends WikieBase {
                 }
             cout << "FOUND: " + wikis.size
             }
-          Ok(views.html.wiki.wikieReplaceAll(replaceAllForm.fill(realm, q, news, ""), auth, true))
+          Ok(views.html.wiki.wikieReplaceAll(replaceAllForm.fill(realm, q, news, ""), true))
       })
   }
 

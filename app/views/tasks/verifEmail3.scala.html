@@ -1,4 +1,4 @@
-@(pForm:Form[(String,String)], exp:String, e:String, u:String, au:Option[model.User])(implicit request:Request[_])
+@(pForm:Form[(String,String)], exp:String, e:String, u:String)(implicit stok:controllers.StateOk)
 
 @htmlHeadBar()
 
@@ -46,9 +46,9 @@
 
       <hr>
 
-      @htmlFooter()(new StateOk(Seq(), "", au, Some(request)))
+      @htmlFooter()
 
     </div> <!-- /container -->
 
-    @htmlBottom()(new StateOk(Seq(), "", au, Some(request)))
+    @htmlBottom()
 

@@ -77,16 +77,18 @@ object Support extends RazController with Logging {
 
   def suggest(page: String, desc: String, details: String) = Action { implicit request =>
     import razie.wiki.Sec._
-    Ok(views.html.wiki.suggest(supportForm1.fill((
-      auth.map(_.email.dec).getOrElse(""),
-      auth.map(_.ename).getOrElse(""),
-      if (desc.length <= 0) "Oops!" else desc,
-      details, "")), page, auth))
+    ROK.r noLayout { implicit stok =>
+      views.html.wiki.suggest(supportForm1.fill((
+        auth.map(_.email.dec).getOrElse(""),
+        auth.map(_.ename).getOrElse(""),
+        if (desc.length <= 0) "Oops!" else desc,
+        details, "")), page)
+    }
   }
 
   def suggested(page: String) = Action { implicit request =>
     supportForm1.bindFromRequest.fold(
-      formWithErrors => BadRequest(views.html.wiki.suggest(formWithErrors, page, auth)),
+      formWithErrors => BadRequest(views.html.wiki.suggest(formWithErrors, page)(ROK.r)),
       {
         case t @ (e, n, desc, details, g_response) => {
           cout << t

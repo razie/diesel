@@ -3,10 +3,10 @@ show/edit/capture a note
 
 msg types are msg, err
 **************@
-@(req:views.RazRequest)
+@(implicit stok:controllers.RazRequest)
 @import mod.notes.controllers.NotesLocker
 
-@htmlHead("No Folders")(Map.empty, None)
+@htmlHead("No Folders", Some(stok))(Map.empty, None)
 
 <div class="container">
   <div class="row">
@@ -26,13 +26,13 @@ You cannot save notes without an account... please
 </div>
 
       <hr>
-      @htmlFooter(ads = true)(req.stok)
+      @htmlFooter(ads = true)
     </div> <!-- /col-sm-9 -->
 
-@notestags("", Seq(), None, req.req)
+@notestags("", Seq(), None, stok.req)
 
   </div> <!-- row -->
 </div> <!-- /container -->
 
-@htmlBottom()(req.stok)
+@htmlBottom()
 

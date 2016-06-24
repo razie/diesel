@@ -96,6 +96,10 @@ textarea {
   color: #3a87ad;
 }
 
+.nav > li > a {
+  padding: 2px 10px;
+}
+
 .navbar .navbar-form .search-query {
   border-radius: 15px;
   -webkit-border-radius: 15px;

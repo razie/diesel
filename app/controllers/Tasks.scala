@@ -240,7 +240,9 @@ Ok - we sent an email to your registered email address <font style="color:red">$
   def verifyEmail2(expiry1: String, email: String, id: String) = Action { implicit request =>
     val odate = (try { Option(DateTime.parse(expiry1.dec)) } catch { case _: Throwable => (try { Option(DateTime.parse(expiry1.replaceAll(" ", "+").dec)) } catch { case _: Throwable => None }) }) orErr ("token faked or expired")
     if (odate.isDefined && odate.get.isAfterNow && !auth.isDefined)
-      Ok(views.html.tasks.verifEmail3(reloginForm.fill(("", "")), expiry1, email, id, auth))
+      ROK.r noLayout {implicit stok=>
+        views.html.tasks.verifEmail3(reloginForm.fill(("", "")), expiry1, email, id)
+      }
     else
       verifyEmail3a(expiry1, email, id)
   }
@@ -250,7 +252,7 @@ Ok - we sent an email to your registered email address <font style="color:red">$
     reloginForm.bindFromRequest.fold(
       formWithErrors => {
         error("FORM ERR " + formWithErrors)
-        BadRequest(views.html.tasks.verifEmail3(formWithErrors, expiry1, email, id, auth))
+        BadRequest(views.html.tasks.verifEmail3(formWithErrors, expiry1, email, id)(ROK.r))
       },
       {
         case (pe, pwd) => {
@@ -322,7 +324,6 @@ Please read our [[Terms of Service]] as well as our [[Privacy Policy]]
         }
         case UserTasks.START_REGISTRATION => {
           val ut = au.tasks.find(_.name == UserTasks.START_REGISTRATION)
-//          ROK s (au, request) apply { implicit stok =>(views.html.club.doeClubUserStartReg(ut.map(_.args("club")).mkString))}
           Redirect(routes.Club.doeStartRegSimple(ut.map(_.args("club")).mkString))
         }
         case UserTasks.APPROVE_VOL => {

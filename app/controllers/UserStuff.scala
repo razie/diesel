@@ -99,7 +99,7 @@ object UserStuff extends RazController {
 
   // serve public profile
   def doeUserCreateSomething = Action { implicit request =>
-    ROK.r noLayout {implicit stok=>views.html.user.doeUserCreateSomething(auth)}
+    ROK.r noLayout {implicit stok=>views.html.user.doeUserCreateSomething()}
     }
 
   def fragTasks (quiet:String) = FAU { implicit au => implicit errCollector => implicit request =>

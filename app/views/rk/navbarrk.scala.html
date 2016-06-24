@@ -8,7 +8,7 @@ creates the navigation bar
 @web()=@{request.flatMap(x=>model.Website.apply(x)) getOrElse model.Website.dflt}
 
 @css() = @{
-  new controllers.StateOk(Seq(), "", au, request).css
+  new controllers.StateOk("", au, request).css
 }
 
 @searchUrl()=@{
@@ -93,7 +93,7 @@ creates the navigation bar
                   <li><a href="/sfiddle/play3/js">SFiddle</a></li>
                   <li><a href="/sfiddle/playinbrowser/js">JS-Fiddle</a></li>
                   <li><a href="/sfiddle/playDsl/js">DSL-Fiddle</a></li>
-                  <li><a href="/dfiddle/playDom/@web().reactor">Diesel-Fiddle</a></li>
+                  <li><a href="/diesel/fiddle/playDom/@web().reactor">Diesel-Fiddle</a></li>
                 }
 
                 <li class="divider"></li>

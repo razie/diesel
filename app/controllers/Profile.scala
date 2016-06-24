@@ -227,7 +227,7 @@ object Profile extends RazController with Logging {
           if(u.profile.flatMap(_.consent).isDefined) {
             Redirect("/").withSession(Config.CONNECTED -> Enc.toSession(u.email))
           } else
-            (ROK.r noLayout {implicit stok=> views.html.user.doeConsent(u)}).withSession(Config.CONNECTED -> Enc.toSession(u.email))
+            (ROK.r noLayout {implicit stok=> views.html.user.doeConsent()}).withSession(Config.CONNECTED -> Enc.toSession(u.email))
         } else {
           u.auditLoginFailed(realm)
           Redirect(routes.Profile.doeJoin()).withNewSession
@@ -244,7 +244,7 @@ object Profile extends RazController with Logging {
 
   def doeConsent (next:String) = Action { implicit request =>
     forActiveUser { implicit au =>
-      ROK.s noLayout {implicit stok=> views.html.user.doeConsent(au)}
+      ROK.s noLayout {implicit stok=> views.html.user.doeConsent()}
     }
   }
 
@@ -264,7 +264,7 @@ object Profile extends RazController with Logging {
       e <- request.flash.get("email");
       p <- request.flash.get("pwd") orElse request.flash.get("gid")
     ) yield (ROK.r noLayout {implicit stok=> views.html.user.doeJoin3(crProfileForm.fill(
-        CrProfile("", "", 13, "", "racer", false)), auth)}).withSession("pwd" -> p, "email" -> e, "extra" -> request.flash.get("extra").mkString, "gid" -> request.flash.get("gid").mkString)) getOrElse
+        CrProfile("", "", 13, "", "racer", false)))}).withSession("pwd" -> p, "email" -> e, "extra" -> request.flash.get("extra").mkString, "gid" -> request.flash.get("gid").mkString)) getOrElse
       unauthorized("Oops - how did you get here? [join3]").withNewSession
   }
 
@@ -293,7 +293,7 @@ object Profile extends RazController with Logging {
     resp.fold(
       formWithErrors => {
         warn("FORM ERR " + formWithErrors)
-        (ROK.r badRequest {implicit stok=> views.html.user.doeJoin3(formWithErrors, auth)}).withSession(
+        (ROK.r badRequest {implicit stok=> views.html.user.doeJoin3(formWithErrors)}).withSession(
           "pwd" -> getFromSession("pwd", T.TESTCODE).get,
           "email" -> getFromSession("email", "@k.com").get,
           "extra" -> getFromSession("extra", "extra").mkString,

@@ -221,7 +221,7 @@ object Wikil extends WikieBase {
           if (model.Users.findFollowerLinksTo(uwid).toList.flatMap(_.follower).exists(_.email == es)) {
             Msg2("You already subscribed with that email... Enjoy!", Some(wid.urlRelative))
           } else {
-            Emailer.laterSession { implicit mailSession =>
+            Emailer.withSession { implicit mailSession =>
               Emailer.sendEmailFollowerLink(email1, wid, comment)
               Emailer.tellRaz("Subscribed", email1 + " ip=" + request.headers.get("X-Forwarded-For"), wid.ahref, comment)
             }

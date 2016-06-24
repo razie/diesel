@@ -9,7 +9,6 @@ a JS with HTML and CSS fiddle
     storyWpath:String,
     specChanged:Boolean,
     storyChanged:Boolean,
-    au:Option[model.User],
     errMsg:Option[String],
     id:String = java.lang.System.currentTimeMillis().toString())(implicit stok:controllers.StateOk)
 @import razie.wiki.model.WID
@@ -91,7 +90,7 @@ a JS with HTML and CSS fiddle
 
 
 @md(f: =>Html)={
-  @Html(razie.wiki.model.Wikis.sformat(f.toString(), "md", au))
+  @Html(razie.wiki.model.Wikis.sformat(f.toString(), "md", stok.au))
 }
 
 @md{
@@ -158,7 +157,7 @@ $(document).keyup(function(e) {
 var runpill_@id = function(id) {
   var lastTime = new Date().getTime();
   $.ajax(
-    '/dfiddle/buildDom1/'+id+'?@Html(mod.diesel.controllers.SFiddles.qtourl(args))', {
+    '/diesel/fiddle/buildDom1/'+id+'?@Html(mod.diesel.controllers.SFiddles.qtourl(args))', {
     type: 'POST',
     data: $.param({
       sketchMode : $('#sketchMode').prop('checked'),
@@ -199,9 +198,10 @@ function setErrors (s) {
 var runpill2_@id = function(id) {
   var lastTime = new Date().getTime();
   $.ajax(
-    '/dfiddle/buildDom2/'+id+'?@Html(mod.diesel.controllers.SFiddles.qtourl(args))', {
+    '/diesel/fiddle/buildDom2/'+id+'?@Html(mod.diesel.controllers.SFiddles.qtourl(args))', {
     type: 'POST',
     data: $.param({
+      saveMode : true,
       sketchMode : $('#sketchMode').prop('checked'),
       mockMode : $('#mockMode').prop('checked'),
       blenderMode : $('#blenderMode').prop('checked'),
@@ -247,7 +247,7 @@ function storyChanged(story) {
 
 function setSpec(what) {
   $.ajax(
-    '/dfiddle/domListCat/@reactor/'+what, {
+    '/diesel/fiddle/domListCat/@reactor/'+what, {
     type: 'GET',
     success: function(data) {
       popupContent("Select "+what+"<br><br>"+data);
@@ -261,7 +261,7 @@ function setSpec(what) {
 function popupMenu1(what) {
   //todo get the diffs
   $.ajax(
-    '/dfiddle/diffDom/@id', {
+    '/diesel/fiddle/diffDom/@id', {
     type: 'POST',
     data: $.param({
       reactor : '@reactor',
@@ -295,7 +295,7 @@ function revertOrig(what) {
   console.log("revert.."+what);
   //todo get the diffs
   $.ajax(
-    '/dfiddle/revert/@id/'+what, {
+    '/diesel/fiddle/revert/@id/'+what, {
     type: 'POST',
     data: $.param({
       reactor : '@reactor',
@@ -319,7 +319,7 @@ function saveOrig(what) {
   console.log("save.."+what);
   //todo get the diffs
   $.ajax(
-    '/dfiddle/save/@id/'+what, {
+    '/diesel/fiddle/save/@id/'+what, {
     type: 'POST',
     data: $.param({
       newName : '',
@@ -344,7 +344,7 @@ function saveNew(what) {
   var name = $("#news").val();
   //todo get the diffs
   $.ajax(
-    '/dfiddle/save/@id/'+what, {
+    '/diesel/fiddle/save/@id/'+what, {
     type: 'POST',
     data: $.param({
       newName : name,
@@ -357,7 +357,7 @@ function saveNew(what) {
     contentType: 'application/x-www-form-urlencoded',
     success: function(data) {
       location.reload();
-      @*location = '/dfiddle/playDom/@id?what='+newName, {*@
+      @*location = '/diesel/fiddle/playDom/@id?what='+newName, {*@
     },
     error  : function(x) {
       console.log( "ERR "+x.toString());
@@ -403,7 +403,7 @@ var jsh = function(code) {
   var langTools = ace.require("ace/ext/language_tools");
 
   var editor1 = ace.edit("pre1_@id");
-  @if(_root_.admin.Config.isLight(au)) {
+  @if(stok.isLight) {
   editor1.setTheme ( "ace/theme/crimson_editor" ) ;
 } else {
   editor1.setTheme ( "ace/theme/twilight" ) ;
@@ -411,7 +411,7 @@ var jsh = function(code) {
   editor1.getSession().setMode("ace/mode/nvp1");
 
   var editor = ace.edit("pre3_@id");
-  @if(_root_.admin.Config.isLight(au)) {
+  @if(stok.isLight) {
   editor.setTheme ( "ace/theme/crimson_editor" ) ;
 } else {
   editor.setTheme ( "ace/theme/twilight" ) ;

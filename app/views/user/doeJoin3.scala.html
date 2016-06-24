@@ -1,7 +1,7 @@
 @**
 create account
 **@
-@(myForm: Form[controllers.Profile.CrProfile], au:Option[model.User]=None)(implicit stok: controllers.StateOk)
+@(myForm: Form[controllers.Profile.CrProfile])(implicit stok: controllers.StateOk)
 
 @salutation() = @{
   val names = Array("Hi", "Hello", "Hey", "Howdy")
@@ -9,7 +9,7 @@ create account
   names(i)
   }
 
-@htmlHeadBar("Create an account / Register", au, stok.realm)
+@htmlHeadBar("Create an account / Register")
 
     <div class="container">
 
@@ -18,7 +18,7 @@ create account
 
       <div class="row">
         <div class="col-sm-6">
-          @wiki.wikiFragInt("Admin:page-join3-"+stok.realm, au)
+          @wiki.wikiFragInt("Admin:page-join3-"+stok.realm, stok.au)
         </div>
 
         <div class="col-sm-6">

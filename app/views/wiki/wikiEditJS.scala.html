@@ -3,8 +3,7 @@ edit a wiki page
 **************@
 @(wid:razie.wiki.model.WID,
     q:Map[String,String],
-    myForm:Form[controllers.Wikie.EditWiki],
-    au:Option[model.User])(implicit stok: controllers.StateOk)
+    myForm:Form[controllers.Wikie.EditWiki])(implicit stok: controllers.StateOk)
 @import razie.wiki.model.{Wikis, WID, WikiEntry, Reactors}
 
 
@@ -47,7 +46,7 @@ var decscr = function (s) {
 }
 
 @wvis() = @{
-  Reactors(wid.getRealm).wiki.visibilityFor(wid.cat, "wvis") ++ (if(au.exists(_.isAdmin)) Seq("Admin") else Nil)
+  Reactors(wid.getRealm).wiki.visibilityFor(wid.cat, "wvis") ++ (if(stok.au.exists(_.isAdmin)) Seq("Admin") else Nil)
 }
 
 @reserved(page:Option[WikiEntry]) = {
@@ -65,7 +64,7 @@ var decscr = function (s) {
   }
 }
 
-@whtmlHeadBar("Editing "+wid.cat+":"+ wid.name, stok.realm)(au,stok.request.get)
+@whtmlHeadBar("Editing "+wid.cat+":"+ wid.name)(stok.au,stok.request.get)
 
 <div class="container">
   <div class="row">
@@ -158,7 +157,7 @@ PROBLEM: many places use label as name... via Wikis.formatName
     '_label -> "Notify followers",
     '_showConstraints -> false)
 
-  @if(au.get.hasPerm(model.Perm.adminDb)) {
+  @if(stok.au.get.hasPerm(model.Perm.adminDb)) {
     <p>Reserved: @reserved(Wikis(wid.getRealm).find(wid.cat,wid.name))
     @if(Wikis(wid.getRealm).find(wid.cat,wid.name).isDefined) {
       <p><a href="@routes.Wikie.wikieDelete1(wid)">Delete it</a>
@@ -185,7 +184,7 @@ PROBLEM: many places use label as name... via Wikis.formatName
 
 @Wikis(wid.getRealm).find(wid).map{we=>
   <div class="well">
-    @wiki.wikiFrag(wid,au, false, Some(we))
+    @wiki.wikiFrag(wid,stok.au, false, Some(we))
   </div>
 }
 
@@ -275,7 +274,7 @@ setInterval(function(){
     </div> <!-- /col-sm-9 -->
 
     <div class="col-sm-3">
-    @wiki.wikiFrag(razie.wiki.model.WID("Admin","Right"),au,true)
+    @wiki.wikiFrag(razie.wiki.model.WID("Admin","Right"),stok.au,true)
     </div>
   </div> <!-- row -->
 </div> <!-- /container -->

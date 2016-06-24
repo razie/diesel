@@ -204,9 +204,6 @@ object Emailer extends RazController with Logging {
 
   /** see SendEmail.withSession - email is sent in a background thread */
   def withSession[C](body: (MailSession) => C): C = SendEmail.withSession(body)
-
-  /** not really needed - email is sent on a background thread anyhow */
-  def laterSession[C](body: (MailSession) => Unit): Unit = Services ! new Emailing(body)
 }
 
 /** used to send a set of emails later */

@@ -4,10 +4,9 @@ a JS with HTML and CSS fiddle
 @(name:String,
    args:Map[String,String],
    content:(String, String, String, String),
-   au:Option[model.User],
-   id:String = java.lang.System.currentTimeMillis().toString())
+   id:String = java.lang.System.currentTimeMillis().toString())(implicit stok:controllers.StateOk)
 
-@htmlHeadBar("Learn Javascript and html", au)
+@htmlHeadBar("Learn Javascript and html")
 
 <div class="well">
 
@@ -136,7 +135,7 @@ var jsh = function(code) {
 <script src="@routes.Assets.at("ace-builds/src/ace.js")" type="text/javascript" charset="utf-8"></script>
 <script>
   var editor1 = ace.edit("pre1_@id");
-  @if(_root_.admin.Config.isLight(au)) {
+  @if(_root_.admin.Config.isLight(stok.au)) {
   editor1.setTheme ( "ace/theme/crimson_editor" ) ;
 } else {
   editor1.setTheme ( "ace/theme/twilight" ) ;
@@ -144,7 +143,7 @@ var jsh = function(code) {
   editor1.getSession().setMode("ace/mode/html");
 
   var editor2 = ace.edit("pre2_@id");
-  @if(_root_.admin.Config.isLight(au)) {
+  @if(_root_.admin.Config.isLight(stok.au)) {
   editor2.setTheme ( "ace/theme/crimson_editor" ) ;
 } else {
   editor2.setTheme ( "ace/theme/twilight" ) ;
@@ -152,7 +151,7 @@ var jsh = function(code) {
   editor2.getSession().setMode("ace/mode/css");
 
   var editor = ace.edit("pre3_@id");
-  @if(_root_.admin.Config.isLight(au)) {
+  @if(_root_.admin.Config.isLight(stok.au)) {
   editor.setTheme ( "ace/theme/crimson_editor" ) ;
 } else {
   editor.setTheme ( "ace/theme/twilight" ) ;

@@ -11,7 +11,58 @@ wiki fragment, used in another page
 @ppage = @{if(page.isDefined) page else wid.page}
 @rss = @{page.flatMap(_.contentProps.get("rss")).getOrElse(controllers.Wiki.w(wid)+"/rss.xml")}
 
-@favoriteCat = @{ "Topic" }
+<style>
+.ace-primaryline {
+background-color: yellow;
+position:absolute;
+}
+</style>
+
+  <script>
+function selectTextareaLine(tarea,lineNum) {
+    lineNum--; // array starts at 0
+    var lines = tarea.value.split("\n");
+
+    // calculate start/end
+    var startPos = 0, endPos = tarea.value.length;
+    for(var x = 0; x < lines.length; x++) {
+        if(x == lineNum) {
+            break;
+        }
+        startPos += (lines[x].length+1);
+    }
+
+    var endPos = lines[lineNum].length+startPos;
+
+    // do selection
+    // Chrome / Firefox
+
+    if(typeof(tarea.selectionStart) != "undefined") {
+        tarea.focus();
+        tarea.selectionStart = startPos;
+        tarea.selectionEnd = endPos;
+        return true;
+    }
+
+    // IE
+    if (document.selection && document.selection.createRange) {
+        tarea.focus();
+        tarea.select();
+        var range = document.selection.createRange();
+        range.collapse(true);
+        range.moveEnd("character", endPos);
+        range.moveStart("character", startPos);
+        range.select();
+        return true;
+    }
+
+    return false;
+}
+  </script>
+
+  <script src="@routes.Assets.at("ace-builds/src/ace.js")" type="text/javascript" charset="utf-8"></script>
+
+  @favoriteCat = @{ "Topic" }
 
   @w(c:String) = @{
     if(page.isDefined) page else wid.page//razie.wiki.model.Wikis.find(c,wid.name)
@@ -34,7 +85,7 @@ wiki fragment, used in another page
     val x = Wikis.format(wid, we.markup, null, Some(we), au)
     var y = try {
       if(x contains "CANNOT PARSE") {
-        val PAT = """.*PARSE\]\] \[([0-9]+)\.([0-9]+)\].*""".r
+        val PAT = """(?s).*PARSE\]\] \[([0-9]+)\.([0-9]+)\].*""".r
         val PAT(line, col) = x
         val id = System.currentTimeMillis().toString
         s"""<div style="color:red;font-weight:bold;" title="Problem with your content: $x">
@@ -42,12 +93,40 @@ wiki fragment, used in another page
             <p>Sorry, dumb program here! The content is not lost: try editing this topic... also, please open a support issue and copy/paste there the content.
           </small></div><p></p>""".stripMargin + s"""
             <textarea id="$id" readonly="true" style="width:90%; margin-right:40px" rows="15">${we.included.lines.zipWithIndex.map(t=>f"${t._2+1}%3s> ${t._1}").mkString("\n")}</textarea>
+            <script>
+            var tarea = document.getElementById('$id');
+            selectTextareaLine(tarea,$line);
+            var textarea = $$('#$id');
+            var cursorPosition = textarea.prop("selectionStart");
+            textarea.scrollTop(tarea.selectionStart);
+            </script>
+         """.stripMargin
+        s"""<div style="color:red;font-weight:bold;" title="Problem with your content: $x">
+          <small>[[Check content below at Line:$line Position:$col]]
+            <p>Sorry, dumb program here! The content is not lost: try editing this topic... also, please open a support issue and copy/paste there the content.
+          </small></div><p></p>""".stripMargin + s"""
+            <pre id="$id" readonly="true" style="height:300px">${we.included}</pre>
+            <script>
+  var langTools = ace.require("ace/ext/language_tools");
+  var editor1 = ace.edit("$id");
+  editor1.setTheme ( "ace/theme/crimson_editor" ) ;
+  editor1.setOptions({
+    readOnly: true
+  });
+  setTimeout(function(){
+    var line = $line;
+    var Range = ace.require('ace/range').Range;
+    editor1.scrollToLine(line, true, true, function () {});
+      //editor1.gotoLine(line, 10, true);
+    editor1.session.addMarker(new Range(line-1, 0, line-1, 100), "ace-primaryline", "fullLine");
+  }, 100);
+            </script>
          """.stripMargin
       } else {
         Wikis.divLater(x)
       }
     } catch {
-      case _ : Throwable => x+" Exception!"
+      case e : Throwable => x+" Exception! ["+e.getClass + "]["+e.getMessage+"]"
     }
 //    razie.cdebug << "E"
 
@@ -297,4 +376,5 @@ wiki fragment, used in another page
     }
   }
 }
+
 
