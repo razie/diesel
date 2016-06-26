@@ -1,0 +1,108 @@
+@**************
+a JS with HTML and CSS fiddle
+**************@
+@(reactor:String,
+    args:Map[String,String],
+    errMsg:Option[String],
+    id:String = java.lang.System.currentTimeMillis().toString())(implicit stok:controllers.StateOk)
+@import razie.wiki.model.WID
+
+@stok.title("Diesel fiddle")
+
+<style>
+.ace-primaryline {
+  background-color: yellow;
+  position:absolute;
+}
+</style>
+
+<script src="@routes.Assets.at("javascripts/weFiddles.js")"></script>
+<script src="@routes.Assets.at("javascripts/weCommons.js")"></script>
+
+  <h3>Diesel fiddle | <small>
+    <input type="checkbox" id="refresh" checked> Real time (<span id="roundtrip">.. ms</span>)
+    <span id="errors" class="label label-default">0 failed</span>
+
+    <span onclick="setSpec('Story');" class="label label-primary" style="cursor:pointer">Story <span id="curStory"></span> <span class="glyphicon glyphicon-chevron-down">
+    </span></span><span id="storyChanged" class="label label-success" onclick="popupMenu1('Story');" style="cursor:pointer" title="Current draft differs from original">
+      <span class="glyphicon glyphicon-floppy-disk"> </span>
+  </span>&nbsp;
+
+    <span onclick="setSpec('Spec');" class="label label-primary" style="cursor:pointer">Spec <span id="curSpec"></span> <span class="glyphicon glyphicon-chevron-down">
+    </span></span><span id="specChanged" class="label label-success" onclick="popupMenu1('Spec');" style="cursor:pointer" title="Current draft differs from original">
+      <span class="glyphicon glyphicon-floppy-disk"> </span>
+    </span>&nbsp;
+
+    | <input type="checkbox" id="mockMode" title="Use the mocks" checked> Mocks
+    | <input type="checkbox" id="sketchMode" title="Not used yet"> Sketch
+    | <input type="checkbox" id="blenderMode" title="Blend all specs together"> Blender
+    | <input type="checkbox" id="draftMode" title="Use autosaved drafts not originals" checked> Drafts
+    | <input type="checkbox" id="wikiMode" title="Show the wiki instead of the tree" > Wiki
+    | <span onclick="startESP();" class="label label-primary" style="cursor:pointer">ESP
+        <span class="glyphicon glyphicon-log-out"></span>
+      </span>
+  </small>
+  </h3>
+
+@*<a class="btn btn-primary btn-xs" title="Works only on Chrome and Firefox" href="javascript:runpill_@{id}('@{id}')">Run &raquo;</a>*@
+@*<br>*@
+
+  <div class="row" style="align-items:center;">
+    <div class="col-sm-6 well" id="iframew_@id" style="overflow: scroll; margin-bottom:2px">
+    </div>
+    <pre class="col-sm-6" id="iframe_@id" style="padding:1px; Xtext-align: center">Start typing...</pre>
+  </div>
+
+@md(f: =>Html)={
+  @Html(razie.wiki.model.Wikis.sformat(f.toString(), "md", stok.au))
+}
+
+@md{
+### Help
+
+This is an ESP spawn of another window. As long as the other window is open, this will
+  reflect any changes made in the original window.
+
+}
+
+
+
+
+<script>
+var realm = '@reactor';
+
+$('#pre2_'+@id).css('max-height', $('#pre1box_@id').height()-10+'px');
+$('#iframew_'+@id).css('max-height', $('#pre3box_@id').height()-10+'px');
+$('#iframe_'+@id).css('max-height', $('#pre3box_@id').height()-10+'px');
+
+var id = '@id';
+
+    var WS = window['MozWebSocket'] ? MozWebSocket : WebSocket
+    @*var dateSocket = new WS('ws://localhost:9000/diesel/fiddle/espOpen/@reactor/@id');*@
+    var dateSocket = new WS('@mod.diesel.controllers.routes.DomFiddles.espOpen(reactor,id).webSocketURL()(stok.request.get)');
+
+    dateSocket.onmessage = function(event) {
+      var data = JSON.parse(event.data);
+
+      if(data.ping && data.ping =="true") {
+        console.log(event);
+      } else  {
+        $('#iframew_'+id).html(data.wiki);
+        $('#iframe_'+id).html(data.res);
+        setErrors(data.failureCount);
+      }
+    }
+
+function setErrors (s) {
+  $('#errors').text(s + ' failed');
+  $('#errors').removeClass();
+  if(s == 0 || s == "0")
+    $('#errors').addClass("label label-success");
+  else
+    $('#errors').addClass("label label-danger");
+}
+
+
+</script>
+
+

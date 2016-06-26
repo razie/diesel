@@ -78,7 +78,24 @@ var runpill_@id = function(id) {
     }
   });
 
-    res = eval(moreContext+preamble+"\n"+code);
+//    res = eval(moreContext+preamble+"\n"+code);
+
+  limitEval(moreContext+preamble+"\n"+code, function(success, returnValue) {
+    if (success) {
+      res = returnValue;
+      paintErr(false);
+    }
+    else {
+      paintErr(true);
+      res = 'The code takes too long to run';
+    }
+
+    if(typeof res != 'undefined' && res != null) res = res.toString();
+    else if(typeof res == 'undefined') res = "";
+    if(code.length > 0) $('#iframe_'+id).text(output+res);
+    else $('#iframe_'+id).text("Start typing...");
+  }, 3000);
+
     paintErr(false);
   } catch (e) {
     paintErr(true);
@@ -87,12 +104,11 @@ var runpill_@id = function(id) {
     } else {
         res = e;
     }
+    if(typeof res != 'undefined' && res != null) res = res.toString();
+    else if(typeof res == 'undefined') res = "";
+    if(code.length > 0) $('#iframe_'+id).text(output+res);
+    else $('#iframe_'+id).text("Start typing...");
   }
-
-  if(typeof res != 'undefined' && res != null) res = res.toString();
-  else if(typeof res == 'undefined') res = "";
-  if(code.length > 0) $('#iframe_'+id).text(output+res);
-  else $('#iframe_'+id).text("Start typing...");
 }
 
 function paintErr(isErr) {

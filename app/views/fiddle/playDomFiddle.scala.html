@@ -45,6 +45,9 @@ a JS with HTML and CSS fiddle
     | <input type="checkbox" id="blenderMode" title="Blend all specs together"> Blender
     | <input type="checkbox" id="draftMode" title="Use autosaved drafts not originals" checked> Drafts
     | <input type="checkbox" id="wikiMode" title="Show the wiki instead of the tree" > Wiki
+    | <span onclick="startESP();" class="label label-primary" style="cursor:pointer">ESP
+        <span class="glyphicon glyphicon-log-out"></span>
+      </span>
   </small>
   </h3>
 
@@ -110,6 +113,13 @@ If you'd rather see the elements ($msg, $when etc) as a dialog, go to that line 
 
 <script>
 var realm = '@reactor';
+
+function startESP() {
+  window.open('/diesel/fiddle/startESP/@reactor/@id');//?@Html(mod.diesel.controllers.SFiddles.qtourl(args))')
+  setTimeout(function(){
+    runpill2_@{id}('@{id}');
+  }, 500);
+}
 
 $('#pre2_'+@id).css('max-height', $('#pre1box_@id').height()-10+'px');
 $('#iframew_'+@id).css('max-height', $('#pre3box_@id').height()-10+'px');

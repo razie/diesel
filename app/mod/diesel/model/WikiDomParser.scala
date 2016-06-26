@@ -903,7 +903,8 @@ object RDExt {
 
   // temp strip quotes from values
   //todo when types are supported, remove this method and all its uses
-  def stripq(s:String) = if(s.startsWith("\"") && s.endsWith("\"")) s.substring(1,s.length-1) else s
+  def stripQuotes(s:String) =
+    if(s.startsWith("\"") && s.endsWith("\"")) s.substring(1,s.length-1) else s
 
   // a context
   object EESnakk extends EExecutor("snakk") {
@@ -913,13 +914,24 @@ object RDExt {
       case x: EMsg if x.entity == m.entity && x.met == m.met => x
     }.headOption)
 
+    /** can I eecute this task? */
     override def test(m: EMsg, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) = {
-      if(m.stype == "GET" || m.stype == "POST") true
-      else {
+      m.stype == "GET" || m.stype == "POST" ||
         spec(m).exists(m=> m.stype == "GET" || m.stype == "POST")
-      }
     }
 
+    private def prepUrl (url:String, attrs: Attrs) = {
+      val PATT = """(:\w+)*""".r
+      val u = PATT.replaceSomeIn(url, { m =>
+        val n = (m group 2).substring(1)
+        attrs.find(_.name == n).map(x=>
+          stripQuotes(x.dflt)
+        )
+      })
+      u
+    }
+
+    /** execute the task then */
     override def apply(in: EMsg, destSpec: Option[EMsg])(implicit ctx: ECtx): List[Any] = {
       in.attrs.find(_.name == "url").orElse(
         spec(in).flatMap(_.attrs.find(_.name == "url"))
@@ -928,7 +940,9 @@ object RDExt {
         try {
           val stype = if(in.stype.length > 0) in.stype else spec(in).map(_.stype).mkString
           val res = body(url(
-            stripq(u.dflt)
+            prepUrl(stripQuotes(u.dflt),
+              P("subject", "", "", "", in.entity) ::
+              P("verb", "", "", "", in.met) :: in.attrs)
 //            in.attrs.filter(_.name != "url").map(p=>(p.name -> p.dflt)).toMap,
 //            stype))
           ))

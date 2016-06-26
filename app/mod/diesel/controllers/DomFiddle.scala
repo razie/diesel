@@ -2,6 +2,7 @@ package mod.diesel.controllers
 
 import java.io.File
 import java.util
+import java.util.concurrent.TimeUnit
 import akka.actor.{Actor, Props}
 import controllers._
 import difflib.{Patch, DiffUtils}
@@ -30,6 +31,7 @@ import scala.Some
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.Future
+import scala.concurrent.duration.Duration
 import scala.util.Try
 import scala.util.parsing.input.{CharArrayReader, Positional}
 import razie.wiki.model.{WID, Wikis, WikiEntry, WikiUser}
@@ -220,6 +222,72 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
     )
   }
 
+  import play.api.mvc._
+  import play.api.Play.current
+  import scala.concurrent.Future
+  import akka.actor._
+
+  val clients = new mutable.HashMap[String, ActorRef]()
+
+//  def espOpen(reactor:String, id:String) = WebSocket.tryAcceptWithActor[String, String] { request =>
+//    Future.successful(
+// todo auth
+//      Option(1) match {
+//        case None => Left(Forbidden)
+//        case Some(_) => {
+//Right({out:ActorRef =>
+//val x = new MyWebSocketActor(out, false)
+//clients.put(id, x.self)
+//Props(x)
+//})
+//          }
+//      })
+//)
+
+  def espOpen(reactor:String, id:String) = WebSocket.acceptWithActor[String, String] { request => out =>
+    Props(new MyWebSocketActor(out, id, false))
+  }
+
+  class MyWebSocketActor(out: ActorRef, id:String, client:Boolean) extends Actor {
+    clients.put(id, self)
+
+    def receive = {
+      case msg: String =>
+        out ! (js.tojson(Map("ping" -> true, "msg" -> msg)).toString)
+      case m: Map[String,Any] =>
+        out ! (js.tojson(m).toString)
+    }
+
+    // ping myself on a timer to clear dead connections
+    override def preStart(): Unit = {
+      import scala.concurrent.ExecutionContext.Implicits.global
+      Akka.system.scheduler.schedule(
+        Duration.create(30, TimeUnit.SECONDS),
+        Duration.create(30, TimeUnit.SECONDS),
+        this.self,
+        "ping")
+    }
+
+    override def postStop() = {
+      // socket closed
+      clients.remove(id)
+    }
+
+  }
+
+
+  /**
+   * split a page. the page will then open a channel espOpenClient
+   * the server will send with buildDom2
+   */
+  def startESP(reactor:String, id: String) = FAUPR { implicit stok =>
+    val q = stok.req.queryString.map(t => (t._1, t._2.mkString))
+
+    ROK.k reactorLayout12 {
+      views.html.fiddle.playESPDomFiddle(reactor, q, Some(""), id)
+    }
+  }
+
   /** compute the instance
     *
     * todo perf: DB - parsing about 50-50
@@ -314,7 +382,7 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
 
     stimer snap "5"
 
-    retj << Map(
+    val m = Map(
       "res" -> res,
       "wiki" -> wiki,
       "ca" -> RDExt.toCAjmap(dom plus idom), // in blenderMode dom is full
@@ -323,6 +391,10 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
       }).size,
       "storyChanged" -> (storyWpath.length > 0 && stw.replaceAllLiterally("\r", "") != story)
     )
+
+    clients.get(id).foreach(_ ! m)
+    clients.values.foreach(_ ! m)
+    retj << m
   }
 
   /** compute the instance
@@ -475,7 +547,7 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
       errors append s"Can't find the spec for $e.$a"
     }
 
-    import RDExt.stripq
+    import RDExt.stripQuotes
 
     // collect values
     val values = root.collect {
@@ -485,7 +557,7 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
     if("value" == resultMode || "" == resultMode && oattrs.size == 1) {
       // one value
       val res = values.headOption.map(_._2).getOrElse("")
-      Ok(stripq(res))
+      Ok(stripQuotes(res))
     } else {
       // multiple values as json
       var m = Map(
