@@ -211,7 +211,7 @@ object Club extends RazController with Logging {
                     uw,
                     model.Regs.findClubUserYear(clubName, uw.userId, c.curYear))).toList.sortBy(x => x._1.map(y => y.lastName + y.firstName).mkString)
 
-              ROK.s(au,request) apply { implicit stok => views.html.club.doeClubRegs(clubName, au,details, members) }
+              ROK.r apply { implicit stok => views.html.club.doeClubRegs(clubName, au,details, members) }
             }) getOrElse Msg2("CAN'T SEE PROFILE " + errCollector.mkString)
       }
   }
@@ -228,18 +228,18 @@ object Club extends RazController with Logging {
   }
 
   /** registration settings */
-  def doeClubRegSettings(clubName:String) = FAU { implicit au => implicit errCollector => implicit request =>
+  def doeClubRegSettings(clubName:String) = FAUR { implicit request =>
     (for (
-      c <- Club.findForAdmin(clubName, au) orErr ("Not a club or you're not admin")
+      c <- Club.findForAdmin(clubName, request.au.get) orErr ("Not a club or you're not admin")
     ) yield {
-        ROK()  apply { implicit stok => views.html.club.doeClubRegSettings(clubName, edRegForm.fill(
+        ROK.k apply { implicit stok => views.html.club.doeClubRegSettings(clubName, edRegForm.fill(
         (c.regType, c.curYear.toInt, c.regAdmin, c.dsl))) }
     }) getOrElse Msg2("CAN'T SEE PROFILE " + errCollector.mkString)
   }
 
-  def doeClubUpdateRegSettings(clubName:String) = FAU { implicit au => implicit errCollector => implicit request =>
-    edRegForm.bindFromRequest.fold(
-      formWithErrors => ROK() badRequest { implicit stok => views.html.club.doeClubRegSettings(clubName, formWithErrors) },
+  def doeClubUpdateRegSettings(clubName:String) = FAUR {implicit request =>
+    edRegForm.bindFromRequest()(request.ireq).fold(
+      formWithErrors => ROK.k badRequest { implicit stok => views.html.club.doeClubRegSettings(clubName, formWithErrors) },
       {
         case (t, y, a, d) => forActiveUser { au =>
           val c1 = Club.findForAdmin(clubName, au).get.copy(
@@ -263,25 +263,25 @@ object Club extends RazController with Logging {
   }
 
   // club admin panel
-  def doeClubAdminPanel(club:String) = FAU { implicit au => implicit errCollector => implicit request =>
+  def doeClubAdminPanel(club:String) = FAUR { implicit request =>
     (for (
       c <- Club(club) orErr ("Not a club")
     ) yield {
-        ROK() noLayout { implicit stok =>
+        ROK.k noLayout { implicit stok =>
           views.html.club.doeClubAdminPanel(c)
         }
       }) getOrElse unauthorized()
   }
 
   // manage user screen
-  def doeClubReg(club:String, uwid: String) = FAU { implicit au => implicit errCollector => implicit request =>
+  def doeClubReg(club:String, uwid: String) = FAUR { implicit request =>
     (for (
-      c <- Club.findForAdmin(club, au) orErr ("Not a club or you're not admin");
+      c <- Club.findForAdmin(club, request.au.get) orErr ("Not a club or you're not admin");
       uw <- model.Users.findUserLinksTo(c.uwid).find(_._id.toString == uwid);
       u <- uw.user
     ) yield {
       val reg = c.reg(u)
-        ROK() apply { implicit stok =>
+        ROK.k apply { implicit stok =>
           views.html.club.doeClubReg(c, mngUserForm.fill(
           (uw.role, reg.map(_.regStatus).getOrElse("n/a"), reg.map(_.paid).mkString)), uw)
         }
@@ -290,14 +290,14 @@ object Club extends RazController with Logging {
 
   import play.api.libs.json._
 
-  def doeClubRegsReportHtml(club:String, what: String, cols: String) = FAU { implicit au => implicit errCollector => implicit request =>
+  def doeClubRegsReportHtml(club:String, what: String, cols: String) = FAUR { implicit request =>
     (for (
-      c <- Club.findForAdmin(club, au) orErr ("Not a club or you're not admin")
+      c <- Club.findForAdmin(club, request.au.get) orErr ("Not a club or you're not admin")
     ) yield {
         val regs = model.Regs.findClubYear(club, c.curYear)
         val forms = regs.flatMap(_.wids).flatMap(_.page).filter(_.formRole.exists(_ == what)).toList
 
-        ROK.s noLayout {implicit stok=>doeClubRegsRepHtml(au, forms)}
+        ROK.k noLayout {implicit stok=>doeClubRegsRepHtml(request.au.get, forms)}
       }) getOrElse Msg2("CAN'T : " + errCollector.mkString)
   }
 
@@ -328,7 +328,7 @@ object Club extends RazController with Logging {
       u <- olduw.user orErr "no olduw user"
     ) yield {
       mngUserForm.bindFromRequest.fold(
-        formWithErrors => ROK() badRequest { implicit stok =>(views.html.club.doeClubReg(club, formWithErrors, olduw))},
+        formWithErrors => ROK.s badRequest { implicit stok =>(views.html.club.doeClubReg(club, formWithErrors, olduw))},
         {
           case (r, s, p) =>
             olduw.updateRole(r)
@@ -347,7 +347,7 @@ object Club extends RazController with Logging {
               reg.get.update
             }
 
-            ROK() apply { implicit stok =>(views.html.club.doeClubReg(club, mngUserForm.fill(
+            ROK.s apply { implicit stok =>(views.html.club.doeClubReg(club, mngUserForm.fill(
               (uw.role, reg.map(_.regStatus).getOrElse("n/a"), reg.map(_.paid).mkString)), uw))}
         })
     }) getOrElse Msg2("CAN'T SEE PROFILE " + errCollector.mkString)
@@ -625,7 +625,7 @@ object Club extends RazController with Logging {
       c <- Club.findForName(reg.clubName) orErr "club not found";
       regAdmin <- c.uregAdmin orErr ("no regadmin")
     ) yield {
-        ROK() apply { implicit stok =>
+        ROK.s apply { implicit stok =>
           views.html.club.doeClubUserRegAdd(rk, next, u, reg)
         }
     }) getOrElse unauthorized()
@@ -637,7 +637,7 @@ object Club extends RazController with Logging {
     (for (
       isConsent <- au.profile.flatMap(_.consent).isDefined orCorr cNoConsent
     ) yield {
-      ROK() apply { implicit stok => views.html.club.doeClubUserRegs() }
+      ROK.s apply { implicit stok => views.html.club.doeClubUserRegs() }
     }) getOrElse unauthorized()
   }
 
@@ -648,7 +648,7 @@ object Club extends RazController with Logging {
       isConsent <- au.profile.flatMap(_.consent).isDefined orCorr cNoConsent;
       reg <- model.Regs.findId(regid) orErr ("no reg found")
     ) yield {
-        ROK() apply { implicit stok => views.html.club.doeClubUserReg(reg, RacerKidz.findForUser(reg.userId).toList) }
+        ROK.s apply { implicit stok => views.html.club.doeClubUserReg(reg, RacerKidz.findForUser(reg.userId).toList) }
     }) getOrElse unauthorized()
   }
 
@@ -662,7 +662,7 @@ object Club extends RazController with Logging {
                 k <- model.RacerKidz.findById(a.to)) yield
           (k,a)).toList.sortBy(x=>x._1.info.lastName+x._1.info.firstName)
 
-      ROK() apply {implicit stok=>
+      ROK.s apply {implicit stok=>
         views.html.club.doeClubKidz(c, role, Wikis.linksTo("Team", c.uwid, "Child").toList/*.sortBy(_.from.nameOrId)*/, rks) // U8 is bigger than U10... ugh
       }
     }) getOrElse unauthorized()
@@ -678,15 +678,15 @@ object Club extends RazController with Logging {
       c <- team.parentOf("Club").map(_.name).flatMap(Club.apply) orErr "Club not found";
       ism <- c.isMember(au) orCorr cNotMember(c.name)
     ) yield {
-        ROK.s(au, request) noLayout {implicit stok=>
+        ROK.r noLayout {implicit stok=>
           views.html.club.doeClubKidzTeam(c, "", team)
         }
-    }) getOrElse ROK(auth, request).noLayout {implicit stok=>
+    }) getOrElse ROK.r.noLayout {implicit stok=>
       Html("<div class=\"alert alert-warning\">"+errCollector.mkString+"</div>") // return ok as this is an insert
     }
   }
 
-  def doeUpdRka(rkaid:String, prop:String, value:String) = FAU { implicit au => implicit errCollector => implicit request =>
+  def doeUpdRka(rkaid:String, prop:String, value:String) = FAUR { implicit request =>
     (for(
       rka <- RacerKidz.findAssocById(rkaid);
       club <- rka.club
@@ -733,7 +733,7 @@ object Club extends RazController with Logging {
     ) yield {
       reg.kids.map(_.rkId);
       val rkas = club.rka.filter(_.role != RK.ROLE_FAN).filter(a=> reg.kids.exists(_.rkId == a.to))
-        ROK() apply { implicit stok => (views.html.club.doeClubUserVolAdd(reg, rkas.toList, addvol.fill("", 0, "?", "", ""), club))}
+        ROK.s apply { implicit stok => (views.html.club.doeClubUserVolAdd(reg, rkas.toList, addvol.fill("", 0, "?", "", ""), club))}
     }) getOrElse unauthorized()
   }
 
@@ -751,7 +751,7 @@ object Club extends RazController with Logging {
 
       val regs = Regs.findClubYear(clubName, club.curYear).toList
 
-        ROK() apply { implicit stok => (views.html.club.doeClubVol(club.name, rks, regs))}
+        ROK.s apply { implicit stok => (views.html.club.doeClubVol(club.name, rks, regs))}
       }) getOrElse unauthorized()
   }
 
@@ -771,7 +771,7 @@ object Club extends RazController with Logging {
       club <- Club.findForAdmin(clubName, au) orErr ("Not a club or you're not admin");
       rka <- ROne[RacerKidAssoc]("_id" -> new ObjectId(rkaId)) orErr ("No RKA id "+rkaId)
     ) yield {
-        ROK() apply { implicit stok =>(views.html.club.doeClubVolAdd(clubName, rkaId, rka, addvol.fill(rkaId, 0, "?", "", "?"), au))}
+        ROK.s apply { implicit stok =>(views.html.club.doeClubVolAdd(clubName, rkaId, rka, addvol.fill(rkaId, 0, "?", "", "?"), au))}
     }) getOrElse Msg2("ERROR " + errCollector.mkString)
   }
 
@@ -1045,7 +1045,7 @@ object Club extends RazController with Logging {
       isConsent <- au.profile.flatMap(_.consent).isDefined orCorr cNoConsent;
       uclub <- Users.findUserByUsername(clubName)
     ) yield {
-        ROK() apply { implicit stok => views.html.club.doeClubUserStartReg(clubName) }
+        ROK.s apply { implicit stok => views.html.club.doeClubUserStartReg(clubName) }
     }) getOrElse  {
       if(activeUser.isDefined && !activeUser.get.profile.flatMap(_.consent).isDefined)
         ROK.s noLayout {implicit stok=>views.html.user.doeConsent(routes.Club.doeStartRegSimple(clubName).url)}

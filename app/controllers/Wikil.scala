@@ -152,10 +152,8 @@ object Wikil extends WikieBase {
   }
 
   /** user 'likes' page - link the current user to the page */
-  def linkUser(wid: WID, withComment: Boolean = false) = Action { implicit request =>
-    implicit val errCollector = new VErrors()
+  def linkUser(wid: WID, withComment: Boolean = false) = FAU { implicit au => implicit errCollector => implicit request =>
     (for (
-      au <- activeUser;
       hasuwid <- wid.uwid.isDefined orErr ("can't find uwid");
       uwid <- wid.uwid;
       exists <- wid.page.isDefined orErr ("Cannot link to " + wid.name);
@@ -173,7 +171,7 @@ object Wikil extends WikieBase {
           Msg2("Already added!", Some("/"))
         }
       } getOrElse {
-        ROK(Some(au), request) {implicit stok =>
+        ROK.r apply {implicit stok =>
           views.html.wiki.wikiLink(WID("User", au.id), wid,
             linkForm.fill(LinkWiki("Enjoy", model.UW.EMAIL_EACH, Wikis.MD, content)), withComment)
         }
@@ -191,7 +189,7 @@ object Wikil extends WikieBase {
         exists <- wid.page.isDefined orErr ("Cannot link to " + wid.name);
         r1 <- canSee(wid, None, wid.page)
       ) yield {
-          ROK(auth, request) {implicit stok =>
+          ROK.r apply {implicit stok =>
             views.html.wiki.wikiFollowerLink1(wid, followerLinkForm.fill(FollowerLinkWiki("", "", "")))
           }
       }) getOrElse
@@ -206,7 +204,7 @@ object Wikil extends WikieBase {
 
     followerLinkForm.bindFromRequest.fold(
     formWithErrors => BadRequest(
-      ROK(auth, request) justLayout { implicit stok =>
+      ROK.r justLayout { implicit stok =>
         views.html.wiki.wikiFollowerLink1(wid, formWithErrors)
       }
     ),
@@ -396,7 +394,7 @@ object Wikil extends WikieBase {
 
     linkForm.bindFromRequest.fold(
     formWithErrors => BadRequest(
-      ROK(Some(au), request) justLayout { implicit stok =>
+      ROK.s justLayout { implicit stok =>
         views.html.wiki.wikiLink(WID("User", auth.get.id), wid, formWithErrors, withComment)
       }),
     {

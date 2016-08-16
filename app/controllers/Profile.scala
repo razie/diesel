@@ -11,7 +11,7 @@ import org.joda.time.DateTime
 import org.json.JSONObject
 import play.api.data.Form
 import play.api.data.Forms.{mapping, nonEmptyText, tuple, _}
-import play.api.mvc.{Action, Request}
+import play.api.mvc.{RequestHeader, Action, Request}
 import razie.OR._
 import razie.wiki.util.{PlayTools, Corr, VErrors}
 import razie.wiki.admin.{Audit, SendEmail}
@@ -806,7 +806,7 @@ object EdEmail extends RazController {
 object Kidz extends RazController {
 
   def doeUserKids = FAU { implicit au => implicit errCollector => implicit request =>
-    ROK() apply {implicit stok=> views.html.user.doeUserKidz() }
+    ROK.s apply {implicit stok=> views.html.user.doeUserKidz() }
   }
 
   def form(au: User) = Form {
@@ -896,7 +896,7 @@ object Kidz extends RazController {
   def doeKidUpdate(userId: String, rkId: String, role: String, associd: String, next: String) = FAU { implicit au => implicit errCollector => implicit request =>
     var goodRkid = rkId
     form(auth.get).bindFromRequest.fold(
-      formWithErrors => ROK() badRequest {implicit stok=>(views.html.user.doeUserKid(userId, rkId, role, associd, next, formWithErrors))},
+      formWithErrors => ROK.s badRequest {implicit stok=>(views.html.user.doeUserKid(userId, rkId, role, associd, next, formWithErrors))},
       {
         case (xf, xl, xe, d, g, r, s, ar, i, n) =>
           val f = xf.trim
@@ -1015,7 +1015,7 @@ object Kidz extends RazController {
       c <- Club(club);
       can <- (c.isClubAdmin(au) || c.isMemberRole(au._id, "Coach") || rk.userId.exists(_ == au._id)) orCorr cNotCoach(club)
     ) yield {
-        ROK() apply {implicit stok=> views.html.user.doeKidHistory(c, rk, settings) }
+        ROK.s apply {implicit stok=> views.html.user.doeKidHistory(c, rk, settings) }
       }) getOrElse unauthorized(rkId + "      " + au._id.toString + "   "+RacerKidz.findById(new ObjectId(rkId)).flatMap(_.userId).mkString)
   }
 
@@ -1025,7 +1025,7 @@ object Kidz extends RazController {
       c <- rk.clubs.headOption;
       can <- (rk.userId.exists(_ == au._id)) orCorr cNotCoach(c.name)
     ) yield {
-        ROK() apply {implicit stok=> views.html.user.doeKidHistory(c, rk, settings) }
+        ROK.s apply {implicit stok=> views.html.user.doeKidHistory(c, rk, settings) }
       }) getOrElse unauthorized()
   }
 

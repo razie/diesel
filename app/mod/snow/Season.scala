@@ -68,7 +68,7 @@ object Season extends RazController with Logging {
       parent <- WID.fromPath(parentWid);
       c <- Club.findForAdmin(parent.name, au) orErr ("Not a club or you're not admin")
     ) yield {
-        ROK.s apply { implicit stok =>
+        ROK.s apply { implicit stok=>
           views.html.modules.snow.doeCreateSeason(parent.name, seasonForm.fill((c.curYear, c.curYear)))
         }
       }) getOrElse Msg2("CAN'T SEE PROFILE " + errCollector.mkString)
@@ -78,7 +78,7 @@ object Season extends RazController with Logging {
     (for (
       c <- Club.findForAdmin(clubName, au) orErr ("Not a club or you're not admin")
     ) yield {
-        ROK.r apply { implicit stok =>
+        ROK.r apply { implicit stok=>
           views.html.modules.snow.doeCreateSeason(clubName, seasonForm.fill((c.curYear, c.curYear)))
         }
       }) getOrElse Msg2("CAN'T SEE PROFILE " + errCollector.mkString)
@@ -89,7 +89,7 @@ object Season extends RazController with Logging {
       s <- ROne[Season](new ObjectId(id)) orErr ("Not a valid season");
       c <- Club.findForAdmin("", au) orErr ("Not a club or you're not admin")
     ) yield {
-        ROK.r apply { implicit stok =>
+        ROK.r apply { implicit stok=>
           views.html.modules.snow.doeCreateSeason("", seasonForm.fill((s.year, s.label)))
         }
       }) getOrElse Msg2("OOPS " + errCollector.mkString)
@@ -97,7 +97,7 @@ object Season extends RazController with Logging {
 
   def doeUpdateSeason(clubName:String) = FAU { implicit au => implicit errCollector => implicit request =>
     seasonForm.bindFromRequest.fold(
-    formWithErrors => ROK() badRequest { implicit stok => views.html.modules.snow.doeCreateSeason(clubName, formWithErrors) },
+    formWithErrors => ROK.s badRequest { implicit stok=> views.html.modules.snow.doeCreateSeason(clubName, formWithErrors) },
     {
       case (y, l) => forActiveUser { au =>
         //        val c1 = ROne[Season]()
@@ -107,8 +107,8 @@ object Season extends RazController with Logging {
     })
   }
 
-  def viewSeason(id:String) = Action { implicit request =>
-    ROK.r  apply { implicit stok =>
+  def viewSeason(id:String) = RAction { implicit request =>
+    ROK.k apply { implicit stok=>
       views.html.modules.snow.viewSeason(ROne[Season](new ObjectId(id)).get)
     }
   }

@@ -44,6 +44,7 @@ function err(url, code) {
   }
 }
 
+/** get URL 200 and make sure it includes string s */
 function sok(url, s) {
   return function(next) {
     testGet(url, function(result) {
@@ -100,10 +101,13 @@ function auth(u,p) {
 }
 
 function testGet(url, check, ferr) {
+  var u = "http://"+target+url;
+  if(url.indexOf('http') == 0) u = url;
+
   try {
     $.ajax({
       type: "GET",
-      url:"http://"+target+url,
+      url: u,
       async: true,
       headers: testHeaders,
         success: function (result){
@@ -131,28 +135,30 @@ function runSuites() {
   testState = "running";
   var curCount = 0;
 
-  var tests = testApi();
+  var suites = [testCode(), testApi()];
 
-  function testCase(i) {
+  function testCase(s,i) {
     function continueTest() {
-      if(i < tests.length-1 && testState == "running") setTimeout(testCase(i+1), 50);
+      if(i < suites[s].length-1 && testState == "running") setTimeout(testCase(s,i+1), 50);
+      else if(s < suites.length-1 && testState == "running") setTimeout(testCase(s+1,0), 50);
       else if(testState == "running") testState = "done";
     }
 
-    $("#cur").text(i);
-    $("#count").text(i);
+    curCount = curCount+1;
+
+    $("#cur").text('suite '+s + ' test '+i);
+    $("#count").text(curCount);
 
     var t1=new Date().getTime();
 
-
     try {
-      tests[i](continueTest);
+      suites[s][i](continueTest);
     } catch(err) {
       continueTest();
     }
   }
 
-  testCase(0);
+  testCase(0, 0);
 }
 
 function testApi() {
@@ -174,6 +180,20 @@ function testApi() {
     auth(''),
 
     err('/weapi/v1/entry/rk.A:dm:in:TestPublic',       404)
+  ];
+  return tests;
+}
+
+function testCode() {
+  var tests = [
+    // test API
+    sok('/improve/skiing/view', '<title>View progress</title>'),
+    //sok('http://www.effectiveskiing.com/improve/skiing/view', '<title>'),
+
+    // test private
+    //auth('None'),
+    //err('/weapi/v1/entry/ver/1/rk.Admin:TestPrivate',  401),
+    auth('')
     ];
   return tests;
 }

@@ -164,7 +164,7 @@ object Wikie extends WikieBase {
                 )
               }
           else
-              ROK(Some(au), request) noLayout { implicit stok =>
+              ROK.s noLayout { implicit stok =>
                 views.html.util.reactorLayout12FullPage(
                 views.html.wiki.wikiEdit(w.wid, editForm.fill(
                   EditWiki(w.label,
@@ -197,8 +197,9 @@ object Wikie extends WikieBase {
 
           val visibility = wid.findParent.flatMap(_.props.get("visibility")).orElse(Reactors(realm).props.prop("default.visibility")).getOrElse(Reactors(realm).wiki.visibilityFor(wid.cat).headOption.getOrElse(PUBLIC))
           val wwvis = wvis(wid.findParent.map(_.props)).orElse(Reactors(realm).props.prop("default.wvis")).getOrElse(Reactors(realm).wiki.visibilityFor(wid.cat).headOption.getOrElse(PUBLIC))
+          val draft = wid.findParent.flatMap(_.props.get("editMode")).orElse(Reactors(realm).props.prop("default.editMode")).getOrElse("Notify")
 
-          ROK(Some(au), request) noLayout  { implicit stok =>
+          ROK.s noLayout  { implicit stok =>
             views.html.util.reactorLayout12FullPage(
             views.html.wiki.wikiEdit(wid, editForm.fill(
               EditWiki(wid.name.replaceAll("_", " "),
@@ -208,7 +209,8 @@ object Wikie extends WikieBase {
                 wwvis,
                 "0",
                 (if ("Topic" == wid.cat) "" else wid.cat.toLowerCase),
-                Reactors(realm).props.prop("default.editMode").getOrElse("Notify"))), noshow),
+                draft)),
+                noshow),
               Seq.empty
             )
           }
@@ -529,10 +531,10 @@ object Wikie extends WikieBase {
   }
 
   /** screen to report a page */
-  def report(wid: WID) = Action { implicit request =>
-    auth match {
+  def report(wid: WID) = RAction { implicit request =>
+    request.au match {
       case Some(user) =>
-        ROK s(user,request) apply {implicit stok=> views.html.wiki.wikieReport(wid, reportForm.fill(ReportWiki("")))}
+        ROK.k apply {implicit stok=> views.html.wiki.wikieReport(wid, reportForm.fill(ReportWiki("")))}
       case None => {
         clog << "need logged in to report a wiki"
         val msg = "You need to be logged in to report a page! If you really must, please create a support request at the bottom of this page..."
@@ -730,8 +732,8 @@ object Wikie extends WikieBase {
   /** rename step 1: form for new name */
   def wikieRename1(wid: WID) = FAU("rename.wiki.1") { implicit au => implicit errCollector => implicit request =>
     canRename(wid).collect {
-      case (au, w) =>
-        ROK(Some(au), request) apply {implicit stok=> views.html.wiki.wikieRename(wid, renameForm(wid.getRealm).fill((w.label, w.label)), auth)}
+      case (_, w) =>
+        ROK.s apply {implicit stok=> views.html.wiki.wikieRename(wid, renameForm(wid.getRealm).fill((w.label, w.label)), auth)}
     }
   }
 
@@ -762,7 +764,7 @@ object Wikie extends WikieBase {
       cat <- CAT.unapply(cats);
       w   <- Wikis(cat.realm getOrElse getRealm()).category(cat.cat)
     ) yield {
-      ROK(Some(au), request) { implicit stok =>
+      ROK.s apply { implicit stok =>
         assert(stok.realm == (cat.realm getOrElse getRealm()))
         views.html.wiki.wikieLike(w.wid, Some(w))
       }
@@ -775,7 +777,7 @@ object Wikie extends WikieBase {
         cat <- CAT.unapply(cats);
         w   <- Wikis(cat.realm getOrElse getRealm()).category(cat.cat)
       ) yield {
-        ROK(Some(au), request) noLayout { implicit stok =>
+        ROK.s noLayout { implicit stok =>
           assert(stok.realm == (cat.realm getOrElse getRealm()))
           views.html.wiki.wikieCreate(cat.cat)
         }
@@ -787,7 +789,7 @@ object Wikie extends WikieBase {
     for (
       w <- Wikis(getRealm()).findById(id)
     ) yield {
-      ROK(Some(au), request) noLayout { implicit stok =>
+      ROK.s noLayout { implicit stok =>
         views.html.wiki.wikieManage(Some(w))
       }
     }
@@ -1066,7 +1068,7 @@ object Wikie extends WikieBase {
         Wikis(realm).pages(c).filter(w=>canEdit(w.wid, auth, Some(w)).exists(_ == true)).map(w=>(w.uwid, w.label))
       }
       if(parents.size > 0)
-        ROK(Some(au), request) apply { implicit stok =>
+        ROK.s apply { implicit stok =>
           views.html.wiki.wikiMove(w.wid, w, parents)
         }
       else
@@ -1095,15 +1097,13 @@ object Wikie extends WikieBase {
   }
 
   /** START find and replace content in pages */
-  def replaceAll1() = FAU {
-    implicit au => implicit errCollector => implicit request =>
+  def replaceAll1() = FAUR {implicit request =>
     Ok(views.html.wiki.wikieReplaceAll(replaceAllForm.fill("", "", "", ""), false))
   }
 
   /** DO find and replace content in pages */
-  def replaceAll3() = FAU {
-    implicit au => implicit errCollector => implicit request =>
-      replaceAllForm.bindFromRequest.fold(
+  def replaceAll3() = FAUR { implicit request =>
+      replaceAllForm.bindFromRequest()(request.ireq).fold(
       formWithErrors => Msg2(formWithErrors.toString + "Oops, can't !"), {
         case (realm, q, news, action) =>
           log("replace all " + q + " -> " + news)
@@ -1114,7 +1114,7 @@ object Wikie extends WikieBase {
             u
           }
 
-          if("replace" == action && au.isAdmin) {
+          if("replace" == action && request.au.get.isAdmin) {
             for (
               (u, m) <- isearch(q, realm, Some(update))
             ) {
@@ -1125,9 +1125,8 @@ object Wikie extends WikieBase {
   }
 
   /** DO find and replace content in pages */
-  def replaceAllTag3() = FAU {
-    implicit au => implicit errCollector => implicit request =>
-      replaceAllForm.bindFromRequest.fold(
+  def replaceAllTag3() = FAUR { implicit request =>
+      replaceAllForm.bindFromRequest()(request.ireq).fold(
         formWithErrors => Msg2(formWithErrors.toString + "Oops, can't !"), {
         case (realm, q, news, action) =>
           log("replace all tag" + q + " -> " + news)
@@ -1142,7 +1141,7 @@ object Wikie extends WikieBase {
             u
           }
 
-          if("replace" == action && au.isAdmin) {
+          if("replace" == action && request.au.get.isAdmin) {
               val table = RazMongo("WikiEntry")
 
               val wikis =

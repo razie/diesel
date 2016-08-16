@@ -26,6 +26,7 @@ abstract class TLNode
 case class TLFolder(x:TopicList) extends TLNode
 case class TLTopic(x:UWID)  extends TLNode
 case class TLFolderEnd(x:TopicList)  extends TLNode
+case class TLFolderEndRoot(x:TopicList)  extends TLNode
 
 /** a list of topics, picked up from another topic/section.
   *

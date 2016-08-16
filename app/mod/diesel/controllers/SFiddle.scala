@@ -192,7 +192,7 @@ object SFiddles extends SFiddleBase with Logging {
       Some(1).filter(x=>(au hasPerm Perm.codeMaster) || (au hasPerm Perm.adminDb)).fold(
         Ok(s"no sfiddle for ")
       ) {we =>
-        ROK() reactorLayout12 { implicit stok =>
+        ROK.s reactorLayout12 { implicit stok =>
           views.html.fiddle.playServerFiddle(lang, "", q)
         }
       }
@@ -206,7 +206,7 @@ object SFiddles extends SFiddleBase with Logging {
       Some(1).filter(x=>(au hasPerm Perm.codeMaster) || (au hasPerm Perm.adminDb)).fold(
         Ok(s"no sfiddle for ")
       ) {we =>
-        ROK() reactorLayout12 { implicit stok =>
+        ROK.s reactorLayout12 { implicit stok =>
           views.html.fiddle.playServerFiddle(lang, "", q)
         }
       }
@@ -220,7 +220,7 @@ object SFiddles extends SFiddleBase with Logging {
       Some(1).filter(x=>(au hasPerm Perm.codeMaster) || (au hasPerm Perm.adminDb)).fold(
         Ok(s"no sfiddle for ")
       ) {we =>
-        ROK() reactorLayout12 { implicit stok =>
+        ROK.s reactorLayout12 { implicit stok =>
 
           val script = Autosave.OR("JSFiddle."+lang+"."+stok.realm, au._id, Map(
             "content" -> """1+2"""
@@ -270,7 +270,7 @@ object SFiddles extends SFiddleBase with Logging {
         val g = "grammar g;\nmain: 'a'|'b' ;"
         val id = java.lang.System.currentTimeMillis().toString()
         val res = processDsl(id, g)
-        ROK() reactorLayout12 { implicit stok =>
+        ROK.s reactorLayout12 { implicit stok =>
           views.html.fiddle.playDslFiddle("", q, ("", g, "", ""), auth, Some(res), id)
         }
       }
@@ -345,7 +345,7 @@ object SFiddles extends SFiddleBase with Logging {
 
         //          Ok(res);
 
-        ROK() reactorLayout12 { implicit stok =>
+        ROK.s reactorLayout12 { implicit stok =>
           views.html.fiddle.playDslFiddle("", q, (hh, g, c, j), auth, Some(res))
         }
     })

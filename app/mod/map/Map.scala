@@ -13,7 +13,7 @@ import controllers.{RazController, CodePills, Club}
 object Map extends RazController {
 
   def simpleMap = FAU { implicit au=> implicit errCollector=> implicit request=>
-    ROK() apply {implicit stok=>
+    ROK.s apply {implicit stok=>
       views.html.modules.map.simpleMap()
     }
 

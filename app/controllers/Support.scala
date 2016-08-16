@@ -48,7 +48,7 @@ object Support extends RazController with Logging {
   // display the form
   def support(page: String, desc: String, details: String) = Action { implicit request =>
     import razie.wiki.Sec._
-    ROK(auth, request) apply {implicit stok=> views.html.admin.support(supportForm1.fill((
+    ROK.r apply {implicit stok=> views.html.admin.support(supportForm1.fill((
       auth.map(_.email.dec).getOrElse(""),
       auth.map(_.ename).getOrElse(""),
       if (desc.length <= 0) "Oops!" else desc,
@@ -58,7 +58,7 @@ object Support extends RazController with Logging {
   // user submitted form
   def supportu(page: String) = Action { implicit request =>
     supportForm1.bindFromRequest.fold(
-      formWithErrors => ROK(auth, request) badRequest {implicit stok=> views.html.admin.support(formWithErrors, page)},
+      formWithErrors => ROK.r badRequest {implicit stok=> views.html.admin.support(formWithErrors, page)},
       {
         case t @ (e, n, desc, details, g_response) => {
           cdebug << t

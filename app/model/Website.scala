@@ -5,7 +5,7 @@ import com.novus.salat._
 import controllers.Application._
 import controllers.{StateOk, Application, Wiki}
 import razie.db.RazSalatContext._
-import play.api.mvc.{Request, Action}
+import play.api.mvc.{RequestHeader, Request, Action}
 import razie.OR._
 import razie.wiki.util.{DslProps, PlayTools}
 import razie.wiki.model._
@@ -109,6 +109,7 @@ object Website {
 
   def all = cache.values.map(_.w).toList
 
+  def xrealm (implicit request:RequestHeader) = (getHost flatMap Website.apply).map(_.reactor).getOrElse(dflt.reactor)
   def realm (implicit request:Request[_]) = apply(request).map(_.reactor).getOrElse(dflt.reactor)
   def getRealm (implicit request:Request[_]) = realm(request)
 
@@ -123,6 +124,6 @@ object Website {
   def dflt = new Website(Wikis.rk.categories.head) //todo this is stupid - find better default
 
   /** @deprecated use PlayTools.getHost */
-  def getHost (implicit request: Request[_]) = PlayTools.getHost
+  def getHost (implicit request: RequestHeader) = PlayTools.getHost
 }
 

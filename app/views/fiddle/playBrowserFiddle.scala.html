@@ -53,6 +53,9 @@ function println(x) {
 <script>
 $('#iframe_'+@id).css('max-height', $('#pre3box_@id').height()+'px');
 
+// TODO IMPORTANT
+// running is async, it may race with you typing
+// must queue run/save requests
 var runpill_@id = function(id) {
   var moreContext = $("#moreContext").text();
   var preamble = $("#preamble").text();
@@ -87,7 +90,7 @@ var runpill_@id = function(id) {
     }
     else {
       paintErr(true);
-      res = 'The code takes too long to run';
+      res = 'TIMEOUT - infinite loop?';
     }
 
     if(typeof res != 'undefined' && res != null) res = res.toString();

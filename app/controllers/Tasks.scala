@@ -21,18 +21,18 @@ object Tasks extends RazController with Logging {
   import play.api.data._
 
   // step 1 - show the form for user already created (from task)
-  def addParent = Action { implicit request =>
+  def addParent = RAction { implicit request =>
     (for (
-      u <- auth
+      u <- request.au
     ) yield Ok(views.html.tasks.addParent(parentForm.fill(""), u.ename))) getOrElse
       Unauthorized("Oops - how did you get here? [addParent]")
   }
 
   // step 1b - when creating user
   // ujson is used during creation of the child account - not yet in db
-  def addParent1 = Action { implicit request =>
+  def addParent1 = RAction { implicit request =>
     (for (
-      uj <- request.session.get("ujson") orErr ("missing ujson");
+      uj <- request.ireq.session.get("ujson") orErr ("missing ujson");
       u <- Users.fromJson(uj) orErr ("cannot parse ujson")
     ) yield {
       debug("ujson=" + uj)
@@ -49,8 +49,7 @@ object Tasks extends RazController with Logging {
   }
 
   // step 2 - filled parent email, now creating child user and send email to parent
-  def addParent2 = Action { implicit request =>
-    implicit val errCollector = new VErrors()
+  def addParent2 = RAction { implicit request =>
     def ERR = {
       verror("ERR_CANT_UPDATE_USER.addParent2 " + request.session.get("email"))
       Unauthorized("Oops - cannot update this user [addParent2]... " + errCollector.mkString)
@@ -58,7 +57,7 @@ object Tasks extends RazController with Logging {
 
     if (request.session.get("ujson").isDefined) {
       // during createing new user - user not created yet
-      parentForm.bindFromRequest.fold(
+      parentForm.bindFromRequest()(request.ireq).fold(
         formWithErrors => {
           error("FORM ERR " + formWithErrors)
           BadRequest(views.html.tasks.addParent(formWithErrors, "")).withSession("ujson" -> request.session.get("ujson").get)
@@ -71,12 +70,12 @@ object Tasks extends RazController with Logging {
             ) yield {
               // TODO bad code - reconcile and reuse createion sequence from Profile.doCreateProfiles
               razie.db.tx("addParent2") { implicit txn =>
-                val created = Profile.createUser(c)
+                val created = Profile.createUser(c)(request.ireq, txn)
 
                 UserTasks.addParent(c).create
 
                 Emailer.withSession { implicit mailSession =>
-                  sendEmail(pe, c)
+                  sendEmail(pe, c)(request.ireq, mailSession)
                 }
               }
             }
@@ -84,20 +83,20 @@ object Tasks extends RazController with Logging {
             ERR
           }
         })
-    } else if (auth.isDefined) {
+    } else if (request.au.isDefined) {
       // done later, user already created
-      parentForm.bindFromRequest.fold(
+      parentForm.bindFromRequest()(request.ireq).fold(
         formWithErrors => {
           error("FORM ERR " + formWithErrors)
-          BadRequest(views.html.tasks.addParent(formWithErrors, auth.get.ename))
+          BadRequest(views.html.tasks.addParent(formWithErrors, request.au.get.ename))
         },
         {
           case pe: String => {
             for (
-              c <- auth orErr ("not authenticated")
+              c <- request.au orErr ("not authenticated")
             ) yield {
               Emailer.withSession { implicit mailSession =>
-                sendEmail(pe, c)
+                sendEmail(pe, c)(request.ireq, mailSession)
               }
             }
           } getOrElse {

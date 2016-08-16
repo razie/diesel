@@ -27,7 +27,7 @@ class RazAuthService extends AuthService[User] with Logging {
   implicit def toU(wu: WikiUser): User = wu.asInstanceOf[User]
 
   /** clean the cache for current user - probably a profile change */
-  def cleanAuth(u: Option[WikiUser] = None)(implicit request: Request[_]) {
+  def cleanAuth(u: Option[WikiUser] = None)(implicit request: RequestHeader) {
     import play.api.Play.current
     request.session.get(Config.CONNECTED).map { euid =>
       synchronized {
@@ -52,7 +52,7 @@ class RazAuthService extends AuthService[User] with Logging {
   }
 
   /** authentication - find the user currently logged in, from either the session or http basic auth */
-  def authUser(implicit request: Request[_]): Option[User] = {
+  def authUser(implicit request: RequestHeader): Option[User] = {
     val connected = request.session.get(Config.CONNECTED)
     val authorization = request.headers.get("Authorization")
 
@@ -89,7 +89,7 @@ class RazAuthService extends AuthService[User] with Logging {
 //            cdebug << "AUTH BASIC attempt "+e3
             Users.findUser(Enc(em)).flatMap { u =>
               if (Enc(pa) == u.pwd) {
-                u.auditLogin (Website.getRealm)
+                u.auditLogin (Website.xrealm)
                 val uid = u.id
                 debug("AUTH BASIC connected=" + u)
                 Cache.set(u.email + ".connected", u, 120)

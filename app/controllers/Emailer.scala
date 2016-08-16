@@ -202,6 +202,12 @@ object Emailer extends RazController with Logging {
     SendEmail.notif(who, SUPPORT, RK + " - " + what, args.mkString("\n"))
   }
 
+  def testEmail()(implicit mailSession: MailSession) = {
+    val html1 = text("newcomment").format("raz", "who", "xxx", "xxx", "xxx");
+    Emailer.tellRaz("Notify It's " + System.currentTimeMillis(), html1)
+    Emailer.sendRaz("Send It's " + System.currentTimeMillis(), html1)
+  }
+
   /** see SendEmail.withSession - email is sent in a background thread */
   def withSession[C](body: (MailSession) => C): C = SendEmail.withSession(body)
 }

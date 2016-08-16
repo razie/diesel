@@ -70,7 +70,7 @@ object Application extends RazController {
       }.map { home =>
         Wiki.show(home, 1).apply(request)
     } getOrElse {
-        val r = Wiki.getRealm(Wiki.UNKNOWN)
+        val r = Wiki.getRealm()
         log ("URL - show default reactor main "+r)
 //        if (r != Reactors.RK)
           Wiki.show(Reactors(r).mainPage(auth), 1).apply(request)
@@ -146,7 +146,7 @@ object Application extends RazController {
   }
 
   def doeSpin = Action { implicit request =>
-    Ok(views.html.user.doeSpin()(ROK.r))
+    ROK.r noLayout { implicit stok=> views.html.user.doeSpin() }
   }
 
   import Admin.StokAdmin

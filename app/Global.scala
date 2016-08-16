@@ -274,8 +274,9 @@ object Global extends WithFilters(LoggingFilter) {
       }
     }
 
-    Progress.init
+    WikiRefinery.init()
 
+    Progress.init
   }
 
   /** my dispatcher implementation */

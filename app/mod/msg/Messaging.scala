@@ -131,7 +131,7 @@ object Messaging extends RazController with Logging {
 
   def doePostToGroup (role:String, group:String) = FAU {
     implicit au => implicit errCollector => implicit request =>
-      ROK(Some(au), request)  { implicit stok =>
+      ROK.s apply  { implicit stok =>
         val mid = new ObjectId
         val cs = CommentStream(mid, "Msg")
         cs.create
@@ -145,7 +145,7 @@ object Messaging extends RazController with Logging {
 
   def doeStartThread (role:String, uid:String, title:String) = FAU {
     implicit au => implicit errCollector => implicit request =>
-      ROK(Some(au), request) { implicit stok =>
+      ROK.s apply { implicit stok =>
         val to = Users.findUserByUsername(uid).map(_._id.toString) orElse Users.findUserById(uid).map(_._id.toString) getOrElse (uid)
         views.html.modules.msg.startThread(startMsgForm.fill("title"->title), role, to)
     }
@@ -155,13 +155,13 @@ object Messaging extends RazController with Logging {
     implicit au => implicit errCollector => implicit request =>
     startMsgForm.bindFromRequest.fold(
     formWithErrors => BadRequest(
-      ROK(Some(au), request) justLayout { implicit stok =>
+      ROK.s justLayout { implicit stok =>
         views.html.modules.msg.startThread(formWithErrors, role, uid)
       }
     ),
     {
       case (_, title) => {
-        ROK(Some(au), request)  { implicit stok =>
+        ROK.s apply { implicit stok =>
           val to = new ObjectId(uid)
           val mid = new ObjectId
           val cs = CommentStream(mid, "PM")
@@ -178,7 +178,7 @@ object Messaging extends RazController with Logging {
 
   def doePM() = FAU {
     implicit au => implicit errCollector => implicit request =>
-      ROK(Some(au), request)  { implicit stok =>
+      ROK.s apply  { implicit stok =>
         views.html.modules.msg.privateMessages(pmList(au))
       }
   }
@@ -186,7 +186,7 @@ object Messaging extends RazController with Logging {
   def doeThread(threadId:String) = FAU("msg.thread") {
     implicit au => implicit errCollector => implicit request =>
       ROne[MsgThread](new ObjectId(threadId)).map { thread=>
-        ROK(Some(au), request)  { implicit stok =>
+        ROK.s apply { implicit stok =>
           if(!thread.isRead(au._id)) thread.readNow(au._id).update
           views.html.modules.msg.thread(thread)
         }

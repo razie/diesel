@@ -131,7 +131,7 @@ object DieselControl extends RazController with Logging {
         val s = c.compile(f) + "\n" + c.call(f)
         val x = c.compileAll ( c.not {case fx:RDOM.F if fx.name == f.name => true})
 
-        ROK() reactorLayout12 { implicit stok =>
+        ROK.s reactorLayout12 { implicit stok =>
           views.html.fiddle.playBrowserFiddle("js", s, q, Some(we), x)
         }
       }) getOrElse NotFound("NotFound: "+wpath+" "+errCollector.mkString)
@@ -151,7 +151,7 @@ object DieselControl extends RazController with Logging {
         // prepare the func body - put a return on it and stuff
        val s = f.script
 
-      ROK() reactorLayout12 { implicit stok =>
+      ROK.s reactorLayout12 { implicit stok =>
         views.html.fiddle.playServerFiddle("js", s, q, Some(we))
       }
     }) getOrElse NotFound("NotFound: "+wpath+" "+errCollector.mkString)
@@ -185,7 +185,7 @@ object DieselControl extends RazController with Logging {
 
       def mkLink (s:String) = routes.DieselControl.dslDomBrowser (wpath, s, path+"/"+s).toString()
 
-      ROK(auth, request) apply {implicit stok=>
+      ROK.r apply {implicit stok=>
         views.html.modules.diesel.catBrowser(wid.getRealm, Some(page), cat, left, right)(mkLink)
       }
     }) getOrElse NotFound(errCollector.mkString)
@@ -202,7 +202,7 @@ object DieselControl extends RazController with Logging {
 
     val page = Wikis(realm).category(cat)
 
-    ROK(auth, request) apply {implicit stok=>
+    ROK.r apply {implicit stok=>
       if(c.exists(_.stereotypes contains "wikiCategory"))
         views.html.modules.diesel.catBrowser(realm, page, cat, left, right)(mkLink)
       else
@@ -231,7 +231,7 @@ object DieselControl extends RazController with Logging {
     val wl = Wikis(realm).pages(cat).toList
     val tags = wl.flatMap(_.tags).filter(_ != Tags.ARCHIVE).filter(_ != "").groupBy(identity).map(t => (t._1, t._2.size)).toSeq.sortBy(_._2).reverse
 
-    ROK(auth, request) reactorLayout12 {implicit stok=>
+    ROK.r reactorLayout12 {implicit stok=>
       views.html.wiki.wikiList("list diesel entities", "", "", wl.map(x => (x.wid, x.label)), tags, "./", "", realm)
     }
   }
@@ -245,7 +245,7 @@ object DieselControl extends RazController with Logging {
     val wl = Wikis(wid.getRealm).pages(cat).toList
     val tags = wl.flatMap(_.tags).filter(_ != Tags.ARCHIVE).filter(_ != "").groupBy(identity).map(t => (t._1, t._2.size)).toSeq.sortBy(_._2).reverse
 
-    ROK(auth, request) reactorLayout12 {implicit stok=>
+    ROK.r reactorLayout12 {implicit stok=>
       views.html.wiki.wikiList("list diesel entities", "", "", wl.map(x => (x.wid, x.label)), tags, "./", "", wid.getRealm)
     }
   }
@@ -260,7 +260,7 @@ object DieselControl extends RazController with Logging {
 
     def mkLink (s:String) = routes.DieselControl.catBrowser (realm, s, path+"/"+s).toString()
 
-    ROK(auth, request) apply {implicit stok=>
+    ROK.r apply {implicit stok=>
       views.html.modules.diesel.createDD(realm, cat, left, right, rdom, Map.empty)(mkLink)
     }
   }

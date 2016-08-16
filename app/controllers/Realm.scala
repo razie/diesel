@@ -216,7 +216,7 @@ object Realm extends RazController with Logging {
         twid <- Some(WID("Reactor", realm).r(realm));
         uwid <- twid.uwid orErr s"template/spec $realm not found"
       ) yield {
-          ROK(Some(au), request) { implicit stok =>
+          ROK.s apply { implicit stok =>
             views.html.wiki.wikieAddModule(realm)
           }
       }) getOrElse

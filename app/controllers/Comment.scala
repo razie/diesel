@@ -98,7 +98,7 @@ object Comment extends RazController with Logging {
         can <- canEdit(comm, auth) orErr ("can only edit your comments")
       ) yield {
           val (link, content) = split (comm.content, comm.kind.getOrElse("text"))
-          ROK(auth, request) noLayout { implicit stok =>
+          ROK.r noLayout { implicit stok =>
             views.html.comments.commEdit(pid, role, cid, comm.kind.getOrElse("text"), commentForm.fill(link, content.trim))
           }
         }) getOrElse
@@ -137,7 +137,7 @@ object Comment extends RazController with Logging {
       formWithErrors => {
         log(formWithErrors.toString)
         BadRequest(
-          ROK(auth, request) justLayout { implicit stok =>
+          ROK.r justLayout { implicit stok =>
             views.html.comments.commEdit(pid, role, cid, kind, formWithErrors)
           }
         )
@@ -221,7 +221,7 @@ object Comment extends RazController with Logging {
     implicit au => implicit errCollector => implicit request =>
 
     if(checkEntity(pid, role)) {
-        ROK(auth, request)  { implicit stok =>
+        ROK.r apply { implicit stok =>
           views.html.comments.commEdit(pid, role, oid, kind, commentForm.fill("", ""))
         }
     } else

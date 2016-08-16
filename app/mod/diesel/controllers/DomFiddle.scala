@@ -163,7 +163,7 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
 
         val id = java.lang.System.currentTimeMillis().toString()
 
-        ROK.k reactorLayout12 {
+        ROK.k reactorLayout12 {implicit stok=>
           views.html.fiddle.playDomFiddle(reactor, q, spec, story, specWpath, storyWpath, (spw != story), (stw != story), Some(""), id)
         }
   }
@@ -283,8 +283,23 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
   def startESP(reactor:String, id: String) = FAUPR { implicit stok =>
     val q = stok.req.queryString.map(t => (t._1, t._2.mkString))
 
-    ROK.k reactorLayout12 {
+    ROK.k reactorLayout12 {implicit stok=>
       views.html.fiddle.playESPDomFiddle(reactor, q, Some(""), id)
+    }
+  }
+
+  val cachel = new mutable.ListBuffer[String]()
+  val cachem = new mutable.HashMap[String,(WikiEntry,Option[RDomain])]()
+
+  def orcached (we:WikiEntry, d: =>Option[RDomain]) : Option[RDomain] = {
+    cachem.get(we.content).flatMap(_._2).orElse {
+      val x = d
+      cachem.put(we.content, (we, d))
+      cachel.append(we.content)
+      if(cachel.size > 100) {
+        cachem.remove(cachel.remove(0))
+      }
+      d
     }
   }
 
@@ -327,7 +342,7 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
     ))
     }
 
-    stimer snap "1"
+    stimer snap "1_parse_req"
 
     val page = new WikiEntry("Spec", "temp", "temp", "md", spec, stok.au.get._id, Seq("dslObject"), "")
     val dom =
@@ -342,18 +357,20 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
         } else p
       }.flatMap(
 //         to domain
-        p=> WikiDomain.domFrom(p).toList
-      ).foldLeft(WikiDomain.domFrom(page).get)((a,b) => a.plus(b)).revise.addRoot
+        p=> orcached(p, WikiDomain.domFrom(p)).toList
+      ).foldLeft(
+        orcached(page, WikiDomain.domFrom(page)).get
+      )((a,b) => a.plus(b)).revise.addRoot
       d
     } else
-      WikiDomain.domFrom(page).get.revise addRoot
+      orcached(page, WikiDomain.domFrom(page)).get.revise addRoot
 
-    stimer snap "2"
+    stimer snap "2_parse_specs"
 
     val ipage = new WikiEntry("Story", "temp", "temp", "md", story, stok.au.get._id, Seq("dslObject"), "")
     val idom = WikiDomain.domFrom(ipage).get.revise addRoot
 
-    stimer snap "3"
+    stimer snap "3_parse_story"
 
     var res = ""
 
@@ -376,11 +393,11 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
 
     val stw = WID.fromPath(storyWpath).flatMap(_.page).map(_.content).getOrElse("Sample story\n\n$msg home.guest_arrived(name=\"Jane\")\n\n$expect $msg lights.on\n")
 
-    stimer snap "4"
+    stimer snap "4_engine_expand"
 
     val wiki = Wikis.format(ipage.wid, ipage.markup, null, Some(ipage), stok.au)
 
-    stimer snap "5"
+    stimer snap "5_format_page"
 
     val m = Map(
       "res" -> res,
@@ -421,7 +438,7 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
     } getOrElse {
       errors append "WPath not found: [["+cwid.wpath.mkString+"]]"
 
-      val ret = if("val" == resultMode) {
+      val ret = if("value" == resultMode) {
         Ok("")
       } else {
         // multiple values as json

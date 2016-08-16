@@ -12,7 +12,7 @@ import views.html.modules.book.{viewSections, prevNext, viewProgress}
 import org.joda.time.DateTime
 import com.mongodb.casbah.Imports._
 import admin.{Config}
-import controllers.{ViewService, RazController, CodePills, Club}
+import controllers._
 import razie.db._
 import razie.wiki.model._
 import razie.|>._
@@ -177,9 +177,9 @@ object Progress extends RazController with WikiMod {
         })
   }
 
-  def view (pathway:String) = Action {implicit request=>
+  def view (pathway:String) = RAction {implicit request=>
     implicit val errCollector = new VErrors()
-    implicit val au = activeUser;
+    implicit val au = request.au; // there is result for non AU
 
     def viewPathway (p:String) = {
       val path = p.split("/")
@@ -189,7 +189,7 @@ object Progress extends RazController with WikiMod {
         tl <- Progress.topicList(pway.uwid) orErr "topic list not found"
       ) yield {
           val p = au.flatMap(u=> findByUserAndTopic(u._id, pway.uwid))
-          ROK(au, request) apply {implicit stok=>
+          ROK.k apply {implicit stok=>
             viewProgress(p, tl, path(0))
           }
         }) getOrElse unauthorized("oops")
@@ -206,9 +206,9 @@ object Progress extends RazController with WikiMod {
     }
   }
 
-  def switchTo (pathway:String)= FAU {implicit au=> implicit errCollector=> implicit request=>
-    WID.fromPath(pathway).flatMap(_.uwid).flatMap(u=> findByUserAndTopic(au._id, u)).map{p=>
-      findForUser(au._id).filter(_.status == STATUS_IN_PROGRESS).foreach{p=>
+  def switchTo (pathway:String)= FAUR {implicit request=>
+    WID.fromPath(pathway).flatMap(_.uwid).flatMap(u=> findByUserAndTopic(request.au.get._id, u)).map{p=>
+      findForUser(request.au.get._id).filter(_.status == STATUS_IN_PROGRESS).foreach{p=>
         p.copy(status=STATUS_PAUSED).update
       }
       p.copy(status=STATUS_IN_PROGRESS).update
@@ -230,13 +230,13 @@ object Progress extends RazController with WikiMod {
   // later load of the doNext links - needed later to reuse request
   CodePills.add(s"$PILL/next") {implicit request=>
     implicit val errCollector = new VErrors()
-    val q = request.queryString.map(t=>(t._1, t._2.mkString))
+    val q = request.ireq.queryString.map(t=>(t._1, t._2.mkString))
 
     (for (
-      au <- activeUser
+      au <- request.au
     ) yield {
         (for (
-          pwid <- q.get("wpath") flatMap WID.fromPath map (_.r(Website.realm)) orErr "invalid wpath";
+          pwid <- q.get("wpath") flatMap WID.fromPath map (_.r(request.realm)) orErr "invalid wpath";
           uwid <- pwid.uwid;
           p <- findForTopic(au._id, uwid);
           tl <- Progress.topicList(p.ownerTopic) orErr "topic list not found"
@@ -259,14 +259,14 @@ object Progress extends RazController with WikiMod {
   /** mark as read and collect drills or complete if no drills */
   CodePills.add(s"$PILL/doNext") {implicit request=>
     implicit val errCollector = new VErrors()
-    implicit val q = request.queryString.map(t=>(t._1, t._2.mkString))
+    implicit val q = request.ireq.queryString.map(t=>(t._1, t._2.mkString))
 
     (for (
-      au <- activeUser
+      au <- request.au
     ) yield {
         (for (
-          widFrom <- q.get("from") flatMap WID.fromPath map (_.r(Website.realm)) orErr "invalid wpath";
-          widTo   <- q.get("to") flatMap WID.fromPath map(_.r(Website.realm)) orErr "invalid wpath";
+          widFrom <- q.get("from") flatMap WID.fromPath map (_.r(request.realm)) orErr "invalid wpath";
+          widTo   <- q.get("to") flatMap WID.fromPath map(_.r(request.realm)) orErr "invalid wpath";
           uwid    <- widFrom.uwid;
           page    <- uwid.page orErr "page not found: "+uwid;
           p       <- findForTopic(au._id, uwid);
@@ -303,24 +303,23 @@ object Progress extends RazController with WikiMod {
 
   /** find all the sections in progress for user */
   CodePills.add(s"$PILL/sections") {implicit request=>
-    implicit val errCollector = new VErrors()
-    implicit val q = request.queryString.map(t=>(t._1, t._2.mkString))
+    implicit val q = request.ireq.queryString.map(t=>(t._1, t._2.mkString))
     val all = q.getOrElse("all", "no")
     val query = q.filter(_._1 startsWith "q.").map(t=>(t._1.substring(2), t._2))
 
     (for (
-      au      <- activeUser;
+      au      <- request.au;
       pathway <- findCurrOrDefault(au._id, q.get("pathway"));
       sec     <- qget("section")
     ) yield {
         val path = pathway.split("/")
-        val pwid = WID.fromPath(path(0)).get.r(Website.realm)
+        val pwid = WID.fromPath(path(0)).get.r(request.realm)
         (for(
           pway <- pwid.page orErr "pathway not found";
           tl <- Progress.topicList(pway.uwid) orErr "topic list not found"
         ) yield {
             val p = ROne[Progress]("ownerId" -> au._id, "ownerTopic" -> pway.uwid.grated)
-            ROK()(au, request) apply {implicit stok=>
+            ROK.k apply {implicit stok=>
               if("yes" == all)
                 viewSections(sec, None, tl, pathway, query)
               else
@@ -336,14 +335,13 @@ object Progress extends RazController with WikiMod {
 
   /** make up html sequence for done/skip buttons for drills */
   CodePills.add(s"$PILL/section/buttons") {implicit request=>
-    implicit val errCollector = new VErrors()
-    implicit val q = request.queryString.map(t=>(t._1, t._2.mkString))
+    implicit val q = request.ireq.queryString.map(t=>(t._1, t._2.mkString))
 
     (for (
-      au <- activeUser
+      au <- request.au
     ) yield {
         (for (
-          wid   <- q.get("wid") flatMap WID.fromPath map(_.r(Website.realm)) orErr "invalid wpath";
+          wid   <- q.get("wid") flatMap WID.fromPath map(_.r(request.realm)) orErr "invalid wpath";
           uwid    <- wid.uwid;
           we <- wid.page;
           p       <- findForTopic(au._id, uwid);
@@ -359,14 +357,13 @@ object Progress extends RazController with WikiMod {
   }
 
   CodePills.add(s"$PILL/section/done") {implicit request=>
-    implicit val errCollector = new VErrors()
-    implicit val q = request.queryString.map(t=>(t._1, t._2.mkString))
+    implicit val q = request.ireq.queryString.map(t=>(t._1, t._2.mkString))
 
     (for (
-      au <- activeUser
+      au <- request.au
     ) yield {
         (for (
-          wid    <- q.get("wid") flatMap WID.fromPath map(_.r(Website.realm)) orErr "invalid wpath";
+          wid    <- q.get("wid") flatMap WID.fromPath map(_.r(request.realm)) orErr "invalid wpath";
           uwid   <- wid.uwid;
           page   <- wid.page;
           p      <- findForTopic(au._id, uwid);
@@ -386,14 +383,11 @@ object Progress extends RazController with WikiMod {
 
             Ok(s"""Ok - completed $name""")
           }) getOrElse Ok("<b>{{Pathway not started}}</b>")
-      }) getOrElse unauthorized("You need a free account to track your progress.")
+      }) getOrElse unauthorized("You need a free account to track your progress.")(request.ireq)
   }
 
-  CodePills.add(s"$PILL/misc/hasMain") {implicit request=>
-    implicit val errCollector = new VErrors()
-    implicit val au = activeUser;
-
-    val res = au.flatMap {u=> findForUser(u._id).find(_.status == STATUS_IN_PROGRESS)} flatMap (_.ownerWid) filter (_.wpath contains DFLT_PATHWAY)
+  CodePills.add(s"$PILL/misc/hasMain") {implicit stok=>
+    val res = stok.au.flatMap {u=> findForUser(u._id).find(_.status == STATUS_IN_PROGRESS)} flatMap (_.ownerWid) filter (_.wpath contains DFLT_PATHWAY)
 
     if(res.isDefined)
       Ok("").withHeaders("Access-Control-Allow-Origin" -> "*")
@@ -410,9 +404,8 @@ object Progress extends RazController with WikiMod {
         """.stripMargin).withHeaders("Access-Control-Allow-Origin" -> "*")
   }
 
-  CodePills.add("api/wix/realm/count") {implicit request=>
-    implicit val errCollector = new VErrors()
-    Ok(api.wix(None, auth, Map.empty, Website.realm).realm.count.toString).withHeaders("Access-Control-Allow-Origin" -> "*")
+  CodePills.add("api/wix/realm/count") {implicit stok=>
+    Ok(api.wix(None, stok.au, Map.empty, stok.realm).realm.count.toString).withHeaders("Access-Control-Allow-Origin" -> "*")
     // allow is for cross-site scripting
   }
 

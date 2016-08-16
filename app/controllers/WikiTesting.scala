@@ -42,7 +42,7 @@ object WikiTesting extends WikiBase {
     val realm = getRealm(irealm)
     ((for (au <- auth;
            w <- Wikis(realm).findById(cat, id)
-     ) yield ROK(auth, request) noLayout { implicit stok =>
+     ) yield ROK.r noLayout { implicit stok =>
 //      new Html(
         // some info for testing threads and concurrent users etc
 //        Html("username="+auth.map(_.userName).mkString),

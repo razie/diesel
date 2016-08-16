@@ -37,11 +37,14 @@ trait WikiDomainParser extends WikiParserBase {
   import RDExt._
 
   def ident: P = """\w+""".r
+  def qident: P = ident ~ rep("." ~> ident) ^^ {
+    case i ~ l => (i :: l).mkString(".")
+  }
 
   def any: P = """.*""".r
 
   //todo full expr with +-/* and XP
-  def value: P = ident | number | str
+  def value: P = qident | number | str
 
   def number: P = """\d+""".r
 
@@ -61,7 +64,10 @@ trait WikiDomainParser extends WikiParserBase {
   //------------ expressions and conditions
 
   def expr : Parser[AExpr] = ppexpr | pterm1
-  def ppexpr : Parser[AExpr] = pterm1 ~ "+" ~ pterm1 ^^ { case a ~ s ~ b => AExpr2(a, "+", b) }
+  def ppexpr : Parser[AExpr] = pterm1 ~ rep("+" ~> pterm1)  ^^ {
+    case a ~ l if l.isEmpty => a
+    case a ~ l => l.foldLeft(a)((a,b) => AExpr2(a, "+", b))
+  }
   def pterm1 : Parser[AExpr] = numexpr | cexpr | aident //| moreexpr
 
   def numexpr : Parser[AExpr] = number ^^ { case i => new CExpr(i, "Number") }
@@ -162,6 +168,11 @@ trait WikiDomainParser extends WikiParserBase {
   }
 
   /** assoc : role */
+  def justAttrs: Parser[(String, String, List[RDOM.P])] = attrs ^^ {
+    case a => ("", "", a)
+  }
+
+  /** assoc : role */
   def clsMet: Parser[(String, String, List[RDOM.P])] = (ident | "*") ~ " *. *".r ~ (ident | "*") ~ optAttrs ^^ {
     case cls ~ _ ~ role ~ a => (cls, role, a)
   }
@@ -215,7 +226,7 @@ trait WikiDomainParser extends WikiParserBase {
    * .when a.role (attrs) => z.role (attrs)
    */
   def pwhen: PS =
-    keyw("""[.$]when""".r) ~ ws ~ clsMatch ~ opt(pif) ~ " *=> *".r ~ clsMet ^^ {
+    keyw("""[.$]when""".r) ~ ws ~ clsMatch ~ opt(pif) ~ " *=> *".r ~ (clsMet | justAttrs) ^^ {
       case k ~ _ ~ Tuple3(ac, am, aa) ~ cond ~ _ ~ Tuple3(zc, zm, za) => {
         LazyState { (current, ctx) =>
           val x = RDExt.EMatch(ac, am, aa, cond)
@@ -279,7 +290,12 @@ trait WikiDomainParser extends WikiParserBase {
   /**
    * optional attributes
    */
-  def optAttrs: Parser[List[RDOM.P]] = opt(" *\\(".r ~> rep1sep(pattr, ",") <~ ")") ^^ {
+  def attrs: Parser[List[RDOM.P]] = " *\\(".r ~> rep1sep(pattr, ",") <~ ")"
+
+  /**
+   * optional attributes
+   */
+  def optAttrs: Parser[List[RDOM.P]] = opt(attrs) ^^ {
     case Some(a) => a
     case None => List.empty
   }
@@ -310,7 +326,7 @@ trait WikiDomainParser extends WikiParserBase {
    * <> means it's a ref, not ownership
    * * means it's a list
    */
-  def pmatchattr: Parser[RDOM.PM] = " *".r ~> ident ~ opt(" *: *".r ~> opt("<>") ~ ident ~ optKinds) ~ opt(" *\\* *".r) ~ opt(" *".r ~> ("==|~=|~=".r) ~ " *".r ~ value) ^^ {
+  def pmatchattr: Parser[RDOM.PM] = " *".r ~> qident ~ opt(" *: *".r ~> opt("<>") ~ ident ~ optKinds) ~ opt(" *\\* *".r) ~ opt(" *".r ~> ("==|~=|~=".r) ~ " *".r ~ value) ^^ {
     case name ~ t ~ multi ~ e => {
       val exp = e match {
         case Some(op ~ _ ~ v) => (op, v)
@@ -635,7 +651,10 @@ object RDExt {
     )
 
     private def resolved: String = spec.map(_.resolved).getOrElse(
-      if (stype == "GET" || stype == "POST") "default" else "warning"
+      if (stype == "GET" || stype == "POST" ||
+        executors.exists(_.test(this)(ECtx.empty))
+      ) "default"
+      else "warning"
     )
 
     override def toHtml =
@@ -787,7 +806,6 @@ object RDExt {
   case class EMap(cls: String, met: String, attrs: Attrs) {
     var count = 0;
 
-    // todo match also the object parms if any and method parms if any
     def apply(in: EMsg, destSpec: Option[EMsg], pos:Option[EPos])(implicit ctx: ECtx): List[Any] = {
       var e = EMsg("generated", cls, met, sourceAttrs(in, attrs, destSpec.map(_.attrs)))
       e.pos = pos
@@ -798,7 +816,7 @@ object RDExt {
 
     def sourceAttrs(in: EMsg, spec: Attrs, destSpec: Option[Attrs])(implicit ctx: ECtx) = {
       // current context, msg overrides
-      val myCtx = new ECtx(in.attrs, Some(ctx))
+      val myCtx = new StaticECtx(in.attrs, Some(ctx))
 
       // solve an expression
       def expr(p: P) = {
@@ -861,6 +879,8 @@ object RDExt {
   trait EApplicable {
     def test(m: EMsg, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) : Boolean
 
+    def isMock : Boolean = false
+
     def apply(in: EMsg, destSpec: Option[EMsg])(implicit ctx: ECtx): List[Any]
   }
 
@@ -879,8 +899,37 @@ object RDExt {
     override def toString = "$when:: " + e + " => " + i
   }
 
-  // a context
+  // can execute messages -
+  // todo can these add more decomosition or just proces leafs?
   abstract class EExecutor (val name:String) extends EApplicable {
+  }
+
+  // the context persistence commands
+  object EECtx extends EExecutor("ctx") {
+
+    /** map of active contexts per transaction */
+    val contexts = new mutable.HashMap[String, ECtx]()
+
+    override def isMock : Boolean = true
+    override def test(m: EMsg, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) = {
+      m.entity == "ctx"
+    }
+
+    override def apply(in: EMsg, destSpec: Option[EMsg])(implicit ctx: ECtx): List[Any] = {
+      in.met match {
+        case "persisted" => {
+          contexts.get(ctx("kind")+ctx("id")).map(x=>
+            if(ctx != x)
+              ctx.root.asInstanceOf[DomEngECtx].overwrite(x)
+          ).getOrElse {
+            contexts.put(ctx("kind") + ctx("id"), ctx.root) // should I save this one?
+          }
+          Nil
+        }
+      }
+    }
+
+    override def toString = "$executor::ctx "
   }
 
   // a context
@@ -914,7 +963,7 @@ object RDExt {
       case x: EMsg if x.entity == m.entity && x.met == m.met => x
     }.headOption)
 
-    /** can I eecute this task? */
+    /** can I execute this task? */
     override def test(m: EMsg, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) = {
       m.stype == "GET" || m.stype == "POST" ||
         spec(m).exists(m=> m.stype == "GET" || m.stype == "POST")
@@ -956,7 +1005,7 @@ object RDExt {
     override def toString = "$executor::snakk "
   }
 
-  val executors = EESnakk :: EETest :: Nil
+  val executors = EECtx :: EESnakk :: EETest :: Nil
 
   /** simple json for content assist */
   def toCAjmap(d: RDomain) = {
@@ -1110,7 +1159,7 @@ object RDExt {
     val maxLevels = 6
 
     // setup the context for this eval
-    implicit val ctx = new ECtx().withDomain(dom)
+    implicit val ctx = new DomEngECtx().withDomain(dom)
 
     val rules = dom.moreElements.collect {
       case e:ERule => e
@@ -1135,7 +1184,7 @@ object RDExt {
                 mocked = true
                 // run the mock
                 val values = m.rule.i.apply(n, None, m.pos).collect {
-                  // collect resulting values
+                  // collect resulting values and dump message
                   case x: EMsg => {
                     a.children appendAll x.attrs.map(x => DomAst(EVal(x), "generated").withSpec(m))
                     ctx putAll x.attrs
@@ -1157,19 +1206,30 @@ object RDExt {
                 case x: EMsg if x.entity == r.i.cls && x.met == r.i.met => x
               }.headOption
 
-              val news = r.i.apply(n, spec, r.pos).map(x => DomAst(x, "generated").withSpec(r))
-              if (recurse) news.foreach { n =>
-                a.children append n
-                expand(n, recurse, level + 1)
+              val news = r.i.apply(n, spec, r.pos).collect {
+                // if values then collect resulting values and dump message
+                case x: EMsg if x.entity == "" && x.met == "" => {
+                  a.children appendAll x.attrs.map(x => DomAst(EVal(x), "generated").withSpec(r))
+                  ctx putAll x.attrs
+                }
+                  // else collect message
+                case x: EMsg => {
+                  val n = DomAst(x, "generated").withSpec(r)
+                  a.children append n
+                  if (recurse) {
+                    expand(n, recurse, level + 1)
+                  }
+                }
               }
+
               true
             }
           }
 
           // no mocks, let's try executing it
           // I run snaks even if rules fit - but not if mocked
-          if (!mocked && !settings.mockMode) {
-            executors.filter(_.test(n)).map { r =>
+          if (!mocked) {
+            executors.filter(x=> (!settings.mockMode || x.isMock) && x.test(n)).map { r =>
               mocked = true
 
               val news = r.apply(n, None).map(x => DomAst(x, "generated").withSpec(r))

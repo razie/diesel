@@ -50,7 +50,7 @@ object UserStuff extends RazController {
       val au = auth
       val user = Users.findUserByUsername(id)
       if(au.isDefined && user.isDefined) {
-        ROK(au, request) { implicit stok =>
+        ROK.r apply { implicit stok =>
           views.html.user.userInfo(user.get)
         }
       } else

@@ -60,7 +60,14 @@ var braDomain = [
     'wix.user.isActive',
     'wix.user.isClubAdmin'
   ]},
-  '/section','/alert','/if'
+  {'visible' : [
+    'Member',
+    'Basic',
+    'Gold',
+    'Platinum',
+    'Moderator'
+  ]},
+  '/section','/alert','/if', '/visible'
 ];
 
 

@@ -45,6 +45,7 @@ class WikiBase extends RazController with Logging with WikiAuthorization {
     Services.wikiAuth.canEdit(wid, u, w, props)(errCollector)
 
   val RK: String = Wikis.RK
+
   val UNKNOWN: String = "?"
 
   /** determine the realm for the current request
@@ -58,14 +59,9 @@ class WikiBase extends RazController with Logging with WikiAuthorization {
     * @return
     */
   def getRealm (irealm:String = UNKNOWN) (implicit request : Request[_]) = {
+    // todo I think this function is obsoleted - reactors add themselves in Websites...?
     if(UNKNOWN == irealm) {
-      val host = PlayTools.getHost
-      host.flatMap(x=>Website(x)).map(_.reactor).orElse {
-        host.map {h=>
-          // auto-websites of type REACTOR.coolscala.com
-          RkReactors.forHost(h).getOrElse(Reactors.RK)
-        }
-      }.getOrElse(Reactors.RK)
+      PlayTools.getHost.flatMap(x=>Website(x)).map(_.reactor).getOrElse(Reactors.RK)
     } else irealm
   }
 
@@ -211,8 +207,8 @@ object Wiki extends WikiBase {
           (if(q.length>1) "?q="+q else ""), realm)
       }
 
-      if(wl.nonEmpty) ROK(auth, request) reactorLayout12 result
-      else ROK(auth, request) notFound result // Google likes 404 here or reports it as a "soft 404"
+      if(wl.nonEmpty) ROK.r reactorLayout12 result
+      else ROK.r notFound result // Google likes 404 here or reports it as a "soft 404"
     }
   }
 
@@ -224,31 +220,29 @@ object Wiki extends WikiBase {
    * show an older version of a page
    * todo interesting: if auth permissions changed in the mean time - should I use old or new perms?
    */
-  def showWidVer(cw: CMDWID, ver: Int, irealm:String) = Action { implicit request =>
+  def showWidVer(cw: CMDWID, ver: Int, irealm:String) = RAction { implicit request =>
     implicit val errCollector = new VErrors()
     (for (
       wid <- prepWid(cw, irealm);
       page <- wid.page orErr "page not found";
       w <- ROne[WikiEntryOld]("entry._id" -> page._id, "entry.ver" -> ver) orErr "not found";
-      can <- canSee(wid, auth, wid.page.orElse(Some(w.entry))) orCorr cNoPermission
+      can <- canSee(wid, request.au, wid.page.orElse(Some(w.entry))) orCorr cNoPermission
     ) yield {
-      wikiPage(wid, Some(wid.name), Some(w.entry), false, false)(auth, request)
+      wikiPage(wid, Some(wid.name), Some(w.entry), false, false)
     }) getOrElse {
       noPerm(cw.wid.get, "SHOW.VER")
     }
   }
 
-
   /**
    * show conetnt of current version
    * todo interesting: if auth permissions changed in the mean time - should I use old or new perms?
    */
-  def showWidContent(cw: CMDWID, irealm:String) = Action { implicit request =>
-    implicit val errCollector = new VErrors()
+  def showWidContent(cw: CMDWID, irealm:String) = RAction { implicit request =>
     (for (
       wid <- prepWid(cw, irealm);
       w <- wid.page;
-      can <- canSee(wid, auth, Some(w)) orCorr cNoPermission
+      can <- canSee(wid, request.au, Some(w)) orCorr cNoPermission
     ) yield {
         Ok(w.content)
       }) getOrElse {
@@ -260,12 +254,11 @@ object Wiki extends WikiBase {
    * show conetnt of current version
    * todo interesting: if auth permissions changed in the mean time - should I use old or new perms?
    */
-  def showWidContentVer(cw: CMDWID, ver: Int, irealm:String) = Action { implicit request =>
-    implicit val errCollector = new VErrors()
+  def showWidContentVer(cw: CMDWID, ver: Int, irealm:String) = RAction { implicit request =>
     (for (
       wid <- prepWid(cw, irealm);
       w <- ROne[WikiEntryOld]("entry.category" -> wid.cat, "entry.name" -> wid.name, "entry.ver" -> ver) orErr "not found";
-      can <- canSee(wid, auth, wid.page.orElse(Some(w.entry))) orCorr cNoPermission
+      can <- canSee(wid, request.au, wid.page.orElse(Some(w.entry))) orCorr cNoPermission
     ) yield {
       Ok(w.entry.content)
     }) getOrElse {
@@ -276,12 +269,11 @@ object Wiki extends WikiBase {
   /**
    * show full entry as JSON
    */
-  def showWidJson(cw: CMDWID, irealm:String) = Action { implicit request =>
-    implicit val errCollector = new VErrors()
+  def showWidJson(cw: CMDWID, irealm:String) = RAction { implicit request =>
     (for (
       wid <- prepWid(cw, irealm);
       w <- wid.page;
-      can <- canSee(wid, auth, Some(w)) orCorr cNoPermission
+      can <- canSee(wid, request.au, Some(w)) orCorr cNoPermission
     ) yield {
         Ok(w.grated.toString).as("application/json")
       }) getOrElse {
@@ -304,7 +296,7 @@ object Wiki extends WikiBase {
       show(we.wid, count).apply(request).value.get.get //todo already have the page - optimize
     } getOrElse {
       // normal - continue showing the page
-      show(WID("Admin", name), count).apply(request).value.get.get
+      show(WID("Admin", name).r(getRealm()), count).apply(request).value.get.get
     }
   }
 
@@ -426,16 +418,16 @@ object Wiki extends WikiBase {
     show(wid, count).apply(request).value.get.get
   }
 
-  def show(iwid: WID, count: Int = 1, print: Boolean = false): Action[AnyContent] = Action { implicit request =>
+  def show(iwid: WID, count: Int = 1, print: Boolean = false): Action[AnyContent] = RAction { implicit request =>
     implicit val errCollector = new VErrors()
-    implicit val au = auth
+    implicit val au = request.au
 
     def canSeeMaybe(wid: WID, au: Option[WikiUser], w: Option[WikiEntry]) = {
       canSee(wid, au, w).getOrElse(false) || w.exists(_.contentProps.contains("publicAlternative"))
     }
 
     val shouldNotCount = request.flash.get("count").exists("0" == _) || (count == 0) ||
-      isFromRobot(request) || au.exists("Razie" == _.userName) || au.exists("Ileana" == _.userName) || au.exists("Admin" == _.userName)
+      isFromRobot(request.ireq) || au.exists("Razie" == _.userName) || au.exists("Ileana" == _.userName) || au.exists("Admin" == _.userName)
 
     debug("show2 " + iwid.wpath)
     val cat = if (iwid.cat.endsWith(":")) iwid.cat.substring(0, iwid.cat.length - 1) else iwid.cat
@@ -444,7 +436,7 @@ object Wiki extends WikiBase {
     // optimize - don't reload some crap already in the iwid
     val wid = if (cat == iwid.cat && name == iwid.name) iwid else WID(cat, name, iwid.parent, iwid.section, iwid.realm)
 
-    val realm = getRealm()
+    val realm = getRealm(UNKNOWN)(request.ireq) // todo request.realm
     // so they are available to scripts
     razie.NoStaticS.put(QueryParms(request.queryString))
 
@@ -454,7 +446,7 @@ object Wiki extends WikiBase {
     else if ("Admin" == cat && "Private_Messages" == name) Redirect("/doe/msg/PM")
     else if ("Reactor" == cat && iwid.name != Wikis.RK && !iwid.realm.exists(_ != Wikis.RK)) Redirect("/w/"+wid.name+"/wiki/"+wid.wpath)
     else if ("Category" == cat && !Wikis(iwid.getRealm).categories.exists(_.name == name))
-      DieselControl.catBrowser(iwid.getRealm, name, "").apply(request).value.get.get
+      DieselControl.catBrowser(iwid.getRealm, name, "").apply(request.ireq.asInstanceOf[Request[AnyContent]]).value.get.get
     else if ("any" == cat || (cat.isEmpty && wid.parent.isEmpty)) {
       // search for any name only if cat is missing OR there is no parent
 
@@ -464,13 +456,13 @@ object Wiki extends WikiBase {
         if (Array("Blog", "Post", "Topic", "Page") contains wl.head.wid.cat) {
           // Blogs and other topics are allowed nicer URLs, without category
           // search engines don't like URLs with colons etc
-          show(wl.head.wid, count, print).apply(request).value.get.get
+          show(wl.head.wid, count, print).apply(request.ireq.asInstanceOf[Request[AnyContent]]).value.get.get
         } else
         // redirect to use the proper Category display
           Redirect(controllers.Wiki.wr(wl.head.wid, realm))
       } else if (wl.nonEmpty) {
         val tags = wl.flatMap(_.tags).filter(_ != Tags.ARCHIVE).filter(_ != "").groupBy(identity).map(t => (t._1, t._2.size)).toSeq.sortBy(_._2).reverse
-        ROK(auth, request) reactorLayout12 { implicit stok =>
+        ROK.k reactorLayout12 { implicit stok =>
           views.html.wiki.wikiList("category any", "", "", wl.map(x => (x.wid, x.label)), tags, "./", "", wid.getRealm)
         }
       }
@@ -511,8 +503,8 @@ object Wiki extends WikiBase {
         //        cout << "1"
         if (!canSee(wid, au, w).getOrElse(false) && !w.exists(_.contentProps.contains("publicAlternative"))) {
           // HERE the user is not authorized to see - can we tease or not?
-          val more = Website(request).flatMap(_.prop("msg.noPerm")).flatMap(WID.fromPath).flatMap(_.content).mkString
-          val teaser = Website(request).flatMap(_.prop("msg.err.teaserCategories")).flatMap(_.split(",").find(_ == wid.cat)).flatMap(_ => w).map{
+          val more = request.website.prop("msg.noPerm").flatMap(WID.fromPath).flatMap(_.content).mkString
+          val teaser = request.website.prop("msg.err.teaserCategories").flatMap(_.split(",").find(_ == wid.cat)).flatMap(_ => w).map{
             page=> {
               def tags = page.tags.map(t=>s"""<a href="/wiki/tag/$t"><b>$t</b></a>""").mkString(" | ")
               s"""
@@ -527,7 +519,7 @@ object Wiki extends WikiBase {
 //          if (isFromRobot(request)) Audit.logdb("ROBOT", wid.wpath)
 
           if(teaser.isEmpty)
-            noPerm(wid, "SHOW " + more, !isFromRobot(request))
+            noPerm(wid, "SHOW " + more, !isFromRobot(request.ireq))
           else
             noPerm(wid, more, false, teaser)
         } else {
@@ -554,32 +546,32 @@ object Wiki extends WikiBase {
   }
 
   // this has been already authorized - will not check anymore
-  private def wikiPage(wid: WID, iname: Option[String], page: Option[WikiEntry], shouldCount: Boolean, canEdit: Boolean, print: Boolean = false)(implicit au: Option[User], request:Request[_]) = {
+  private def wikiPage(wid: WID, iname: Option[String], page: Option[WikiEntry], shouldCount: Boolean, canEdit: Boolean, print: Boolean = false)(implicit stok:RazRequest) = {
     if (shouldCount) page.foreach { p =>
-      Services ! WikiAudit("SHOW", p.wid.wpath, au.map(_._id))
+      Services ! WikiAudit("SHOW", p.wid.wpath, stok.au.map(_._id))
       Services ! WikiCount(p._id)
     }
 
 //    cdebug << "A"
-    page.map(_.preprocess(au)) // just make sure it's processed
+    page.map(_.preprocess(stok.au)) // just make sure it's processed
 //    cdebug << "B"
 
     if (Array("Site", "xPage").contains(wid.cat) && page.isDefined)
-      ROK(au, request) noLayout { implicit stok =>
+      ROK.k noLayout { implicit stok =>
         views.html.wiki.wikiSite(wid, iname, page)
       }
     //    Ok(views.html.wiki.wikiPage(wid, iname, page, canEdit, print))
     else if (page.exists(_.fields.nonEmpty)) {
-      showForm(wid, iname, page, au, shouldCount, Map.empty, canEdit, print)
+      showForm(wid, iname, page, stok.au, shouldCount, Map.empty, canEdit, print)
     } else {
 //    cdebug << "C"
-      ROK(au, request) noLayout { implicit stok =>
+      ROK.k noLayout { implicit stok =>
         views.html.wiki.wikiPage(wid, iname, page, canEdit, print)
       }
       }
   }
 
-  def showForm(wid: WID, iname: Option[String], page: Option[WikiEntry], user: Option[User], shouldCount: Boolean, errors: Map[String, String], canEdit: Boolean, print: Boolean = false)(implicit au: Option[model.User], request:Request[_]) = {
+  def showForm(wid: WID, iname: Option[String], page: Option[WikiEntry], user: Option[User], shouldCount: Boolean, errors: Map[String, String], canEdit: Boolean, print: Boolean = false)(implicit stok:RazRequest) = {
     // form design
     page.flatMap(_.section("section", "formData")).foreach { s =>
       // parse form data
@@ -591,7 +583,7 @@ object Wiki extends WikiBase {
         //          cout << "FIELDs " + page.get.fields.toString
       }
     }
-    ROK(auth, request) noLayout { implicit stok =>
+    ROK.k noLayout { implicit stok =>
       views.html.wiki.wikiForm(wid, iname, page, user, errors, canEdit, print)
     }
   }
@@ -671,7 +663,7 @@ object Wiki extends WikiBase {
         }
 
         val tags = res.flatMap(_._3).filter(_ != Tags.ARCHIVE).filter(_ != "").groupBy(identity).map(t => (t._1, t._2.size)).toSeq.sortBy(_._2).reverse
-        ROK(auth, request) reactorLayout12 { implicit stok =>
+        ROK.r reactorLayout12 { implicit stok =>
           views.html.wiki.wikiList(path, "", "", res.map(t => (t._1, t._2)), tags, "./", "", wid.getRealm)
         }
       }) getOrElse
@@ -692,7 +684,7 @@ object Wiki extends WikiBase {
         }
 
       val tags = res.flatMap(_._3).filter(_ != Tags.ARCHIVE).filter(_ != "").groupBy(identity).map(t => (t._1, t._2.size)).toSeq.sortBy(_._2).reverse
-      ROK(auth, request) apply { implicit stok =>
+      ROK.r apply { implicit stok =>
         views.html.wiki.wikiList("", "", "", res.map(t => (t._1, t._2)), tags, "./", "", realm)
       }
   }
@@ -734,12 +726,12 @@ object Wiki extends WikiBase {
   }
 
   /** try to link to something - find it */
-  def wikiBrowse(wpath:String, ipath:String) = Action { implicit request =>
-    implicit val errCollector = new VErrors()
+  def wikiBrowse(wpath:String, ipath:String) = RAction { implicit request =>
     val realm = getRealm()
     (for (
       we <- WID.fromPath(wpath).flatMap(Wikis(realm).find) orErr "cannot find page"
     ) yield {
+      we.preprocess(request.au) // setup user
       val ilinks = we.ilinks
 
       //todo page.get null
@@ -756,7 +748,7 @@ object Wiki extends WikiBase {
 
       def mkLink (s:String) = routes.Wiki.wikiBrowse (s, path+"/"+s).toString()
 
-      ROK(auth, request) apply {implicit stok=>
+      ROK.k apply {implicit stok=>
         views.html.modules.diesel.wikiBrowser(realm, Some(we), middle, left, right)(mkLink)
       }
     }) getOrElse unauthorized()
@@ -764,7 +756,7 @@ object Wiki extends WikiBase {
 
   /** try to link to something - find it */
   def social(label:String, url:String) = Action { implicit request =>
-    ROK(auth, request) { implicit stok =>
+    ROK.r apply { implicit stok =>
       (views.html.wiki.social(label, url))
     }
   }
@@ -793,13 +785,36 @@ object Wiki extends WikiBase {
     Ok("["+(tags).map(s=>s""" "$s" """).mkString(",")+"]").as("text/json")
   }
 
-  def wikieReport(what:String) = FAU { implicit au => implicit errCollector => implicit request =>
-    ROK(Some(au), request) apply {implicit stok=>
+  def wikieReport(what:String) = FAUR { implicit request =>
+    ROK.k apply {implicit stok=>
       what match {
         case "views" =>
           views.html.wiki.reportViews()
+        case "video" =>
+          views.html.wiki.reportTag(new WTReport("video", request.realm))
+        case "photo" =>
+          views.html.wiki.reportTag(new WTReport("photo", request.realm))
         case _ =>
           views.html.wiki.reportViews()
+      }
+    }
+  }
+
+  class WTReport (val tag:String, val realm:String) {
+    // value, list of wikis
+    val rep = new collection.mutable.HashMap[String, List[WID]]()
+
+    Wikis(realm).foreach { dbo=>
+      val we = grater[WikiEntry].asObject(dbo)
+
+      val PATT = ("""(?s)\{\{""" + tag + """(\.\w*)?([: ])?([^ }]*)?""").r
+
+      for (m <- PATT.findAllMatchIn(we.content)) {
+        val url = m.group(3)
+        if(!rep.contains(url))
+          rep.put(url, List(we.wid))
+        else
+          rep.put(url, we.wid :: rep(url))
       }
     }
   }
@@ -825,7 +840,7 @@ object Wiki extends WikiBase {
       case e:Throwable => s"Error reading RSS from $realUrl: ${e.getClass.getSimpleName} : ${e.getLocalizedMessage}"
     }.get
 
-    ROK(None, request) noLayout {implicit stok=>
+    ROK.r noLayout {implicit stok=>
         Html(res)
     }
   }
@@ -865,7 +880,7 @@ object WikiApiv1 extends WikiBase {
     prepWid(cw, irealm) {wid=>
       page(wid) {w=>
         if(canSee(wid, auth, Some(w)))
-         ROK(auth, request) noLayout { implicit stok =>
+         ROK.r noLayout { implicit stok =>
            views.html.wiki.wikiFrag(w.wid, stok.au, true, Some(w))
          }
         else

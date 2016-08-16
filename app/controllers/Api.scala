@@ -93,7 +93,7 @@ object Api extends RazController {
   }
 
   def user(id: String) = NFAU { implicit request =>
-    ROK(auth, request) admin {implicit stok=>
+    ROK.r admin {implicit stok=>
       views.html.admin.admin_user(model.Users.findUserById(id))}
   }
 }

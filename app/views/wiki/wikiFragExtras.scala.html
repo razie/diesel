@@ -41,11 +41,18 @@ extra html for wiki fragments, used in another page
   """\{\{code[: ]javascript""".r.findFirstIn(p.content).isDefined ||
   """\{\{dsl\.""".r.findFirstIn(p.content).isDefined ||
   """\{\{jsfiddle""".r.findFirstIn(p.content).isDefined ||
-      """\{\{fiddle[: ]js""".r.findFirstIn(p.content).isDefined ||
+  """\{\{fiddle[: ]js""".r.findFirstIn(p.content).isDefined ||
   """```js""".r.findFirstIn(p.content).isDefined
 )) {
    <script src="@routes.Assets.at("vendor/hijs.js")"></script>
-}
+} else {
+  @if(page.exists(p=>
+    """\{\{dfiddle""".r.findFirstIn(p.content).isDefined ||
+    """```diesel""".r.findFirstIn(p.content).isDefined
+  )) {
+    <script src="@routes.Assets.at("vendor/hidiesel.js")"></script>
+  }
+  }
 }
 }
 

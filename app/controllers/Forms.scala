@@ -206,7 +206,7 @@ object Forms extends WikiBase with Logging {
               clog << "Wiki.FORM.Errors: " + errors.toString
               cout << "new content:" + newVer.content
               newVer.preprocess(Some(au))
-              Wiki.showForm(wid, None, Some(newVer), Some(au), false, Map() ++ errors, can)(Some(au), request)
+              Wiki.showForm(wid, None, Some(newVer), Some(au), false, Map() ++ errors, can)(ROK.r)
             } else {
               // save the wiki page?
 
@@ -307,7 +307,7 @@ object Forms extends WikiBase with Logging {
             clog << "Wiki.FORM.Errors: " + errors.toString
             cout << "new content:" + newVer.content
             newVer.preprocess(Some(au))
-            Wiki.showForm(wid, None, Some(newVer), Some(au), false, Map() ++ errors, can)(Some(au), request)
+            Wiki.showForm(wid, None, Some(newVer), Some(au), false, Map() ++ errors, can)(ROK.r)
           } else {
             var we = newVer
             razie.db.tx("forms.submitted") { implicit txn =>
@@ -360,7 +360,7 @@ object Forms extends WikiBase with Logging {
               clog << "Wiki.FORM.Errors: " + errors.toString
               cout << "new content:" + newVer.content
               newVer.preprocess(Some(au))
-              Wiki.showForm(wid, None, Some(newVer), Some(au), false, Map() ++ errors, can)(Some(au), request)
+              Wiki.showForm(wid, None, Some(newVer), Some(au), false, Map() ++ errors, can)(ROK.r)
             } else {
               var we = newVer
               razie.db.tx("forms.submitted") { implicit txn =>
