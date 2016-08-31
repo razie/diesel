@@ -2,10 +2,11 @@
 club admin manages user: membership, regsitration etc
 ******@
 @(club:controllers.Club, myForm: Form[(String, String, String)], uw:model.UserWiki)(implicit stok:controllers.StateOk)
-@import model.RegStatus._
+@import mod.snow.{RK, Regs, RegStatus, RacerKidz}
+@import mod.snow.RegStatus._
 @import razie.wiki.model.FormStatus._
-@import model.RK._
-  @import controllers.Club
+@import mod.snow.RK._
+@import controllers.Club
 
 @how() = @{
   razie.wiki.model.Wikis.category("Club").flatMap(_.contentProps.get("roles:"+"User")) match {
@@ -18,7 +19,7 @@ club admin manages user: membership, regsitration etc
   }
 }
 
-@regs() = @{uw.user.toList.flatMap(u=>model.Regs.findClubUser(club.name, u._id)).toList.filter(_.year == club.curYear)}
+@regs() = @{uw.user.toList.flatMap(u=>Regs.findClubUser(club.name, u._id)).toList.filter(_.year == club.curYear)}
 @reg() = @{uw.user.flatMap(u=>club.reg(u))}
 
 @uname() = @{uw.user.map(u=>s"${u.userName} (${u.lastName}, ${u.firstName})").getOrElse("")}
@@ -64,7 +65,7 @@ club admin manages user: membership, regsitration etc
 }
 
 @prevReg=@{
-  model.Regs.findClubUser(club.name, uw.userId).filter(_.regStatus != model.RegStatus.FAMILY).toList.sortBy(_.year).reverse.headOption
+  Regs.findClubUser(club.name, uw.userId).filter(_.regStatus != RegStatus.FAMILY).toList.sortBy(_.year).reverse.headOption
 }
 
 </td><td>
@@ -112,10 +113,10 @@ club admin manages user: membership, regsitration etc
 <div class="well">
   <strong>List of Racers/members </strong>
 
-@model.RacerKidz.checkMyself(uw.userId)
+@RacerKidz.checkMyself(uw.userId)
 
 @rks=@{
-  model.RacerKidz.findAssocForUser(uw.userId).map(x=>(x,x.rk.get)).map(t=>
+  mod.snow.RacerKidz.findAssocForUser(uw.userId).map(x=>(x,x.rk.get)).map(t=>
     Map("fname"->t._2.info.firstName,
         "lname"->t._2.info.lastName,
         "role" -> t._2.info.role,
@@ -156,7 +157,7 @@ club admin manages user: membership, regsitration etc
 @util.utilSimpleTable(rks, Seq("fname" -> "F.Name", "lname"->"L.Name", "role" -> "Relationship", "button"->"Details", "id" -> "Registration"), Some(mnglink))
 
 Add a:
-Add a: @model.RK.RELATIONSHIPS.map{r=>
+Add a: @mod.snow.RK.RELATIONSHIPS.map{r=>
   <a href="@routes.Kidz.doeKid(uw.userId.toString, "11", r, "-", "Club:"+club.name)" class="btn btn-xs btn-info">@r</a>
 }
 

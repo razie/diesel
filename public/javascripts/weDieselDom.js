@@ -2,29 +2,61 @@
  * Created by razvanc on 02/05/2014.
  */
 
+/** am I withing brackets? go back and count ) and ( pairs) */
+function isInBrackets(line,pos){
+  var count=0;
+  for(var i=pos-1; i>= 0; i--) {
+    if(line.charAt(i) == ')') count = count-1;
+    if(line.charAt(i) == '(') count = count+1;
+  }
+  return count > 0;
+}
+
 function domCompl (i) {
   return function (editor, session, pos, prefix, callback) {
     var contentAssist = i ? instContentAssist : domContentAssist;
 //      if (prefix.length === 0) { callback(null, wl); return }
     var line = session.getLine(pos.row);
-    var terms = line.split(' ');
+    var terms = line.slice(0, pos.column-1).split(' ');
 
     // => entity.action
     if(terms.indexOf('->') == terms.length-1 ||
       terms.indexOf('=>') == terms.length-1 ||
       terms[0] && terms[0] == '$receive' ||
       terms[0] && terms[0] == '$match' ||
+      terms[0] && terms[0] == '$msg' ||
       terms[0] && terms[0] == '$when' ||
       terms[0] && terms[0] == '$expect' ||
       terms[0] && terms[0] == '$mock') {
+
       var newTerms = ['msg', ''];
-      line = 'msg ';
+      if(isInBrackets(line,pos.column)) newTerms[0] = 'attr'; // looking for attr
+
+      var reduceDot = '';
+      if(
+        terms.indexOf('$msg') != terms.length-1 &&
+        terms.indexOf('$mock') != terms.length-1 &&
+        terms.indexOf('->') != terms.length-1 &&
+        terms.indexOf('=>') != terms.length-1) {
+        // last is probably a part of it
+        newTerms[1] = terms[terms.length-1]
+        if(newTerms[1].lastIndexOf('.') > -1)
+          reduceDot = newTerms[1].slice(0, newTerms[1].lastIndexOf('.')+1)
+      }
+
+      if(newTerms[0] == 'attr') newTerms[1] = newTerms[1].replace(/.*[,()]/, '');
+
+      line = newTerms[0] + ' ';  //msg or attr
+
       var opts = getOptions(contentAssist, newTerms, 0); // options
       callback(null, opts.map(function(value) {
         // double space is a marker for the FUTURE options
         var xvalue = value.replace(/(\w)  .*/, '\$1');
         var aft = value.replace(/(.*)  /, '');
         var curr = aft.replace(line, '');
+        // ace will replace only back to  a dot, so we'll cut it out for them
+        // otherwise they'll replace modem.cre with modem.modem.create
+        curr = curr.replace(reduceDot, '');
         return {name: value, value: curr, score: 100, meta: "dom"}
       }));
     } else if(terms[terms.length-1].match(/\[\[[^\]]*\]\]/)) {

@@ -1,0 +1,31 @@
+@**************
+list all topics in category
+**************@
+@(q:String, tags:String, scope:String, list:Iterator[razie.wiki.model.WikiEntry])(implicit stok: controllers.StateOk)
+@import razie.wiki.model.{Wikis, WID}
+
+@stok.title("All topics : " +tags)
+
+  <b>Tags:</b> @tags
+  <br>
+  <table id="wlist" class="table table-condensed">
+    <thead>
+      <tr><td>Name</td><td>Category</td><td>Word count</td></tr>
+      </thead>
+      @list.map{p=>
+        <tr>
+          <td>
+            <a href="@controllers.Wiki.w(p.category, p.name, stok.realm)">@p.label</a>
+          </td>
+          <td>
+            <small>&nbsp;  @p.category</small>
+          </td>
+          <td>
+            <small><span title="wordcount"> @p.wordCount </span> </small>
+          </td>
+        </tr>
+    }
+  </table>
+
+@util.dataTables("wlist")
+

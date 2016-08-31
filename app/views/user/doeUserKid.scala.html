@@ -1,8 +1,9 @@
 @(userId: String, rkid: String, role: String, associd: String, next: String, myForm: Form[_])(implicit stok:controllers.StateOk)
+@import mod.snow.RK
 @import org.bson.types.ObjectId
+@import mod.snow.RacerKidz
 @import controllers.RKU
 @import util.razText
-@import model.RK
 
 @import helper.twitterBootstrap._
 @import play.api.Play.current
@@ -18,12 +19,12 @@
 
 @rk = @{
   if(rkid.length < 2) None
-  else model.RacerKidz.findById(new ObjectId(rkid))
+  else RacerKidz.findById(new ObjectId(rkid))
 }
 
 @rka = @{
   if(associd.length < 2) None
-  else model.RacerKidz.findAssocById(associd)
+  else mod.snow.RacerKidz.findAssocById(associd)
 }
 
 @mc = @{
@@ -96,7 +97,7 @@
       @if(associd.length > 3) {
         @helper.select(
           myForm("assocRole"),
-          model.RK.ROLES.map { r => (r, r) },
+          mod.snow.RK.ROLES.map { r => (r, r) },
           '_label -> "ROLE",
           '_error -> myForm.error("assocRole"),
           '_showConstraints -> false)

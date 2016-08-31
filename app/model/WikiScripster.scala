@@ -33,12 +33,8 @@ object WikiScripster {
 
     /** run the given script in the context of the given page and user as well as the query map */
     def runScriptAny (s:String, lang: String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, String], devMode:Boolean=false): Any = synchronized {
-      Audit.logdb("WIKI_SCRIPSTER", "execJS", lang+":"+s)
       try {
-        val c = new CSTimer("script", "?")
-        c.start()
-        val res = SFiddles.newsfiddleMap(s, lang, page, user, query, None, true)
-        c.stop()
+        val res = SFiddles.newsfiddleMap(s, lang, page, user, query, None, false)
         if(res._1) res._2 else "ERR: " + res._2
       } catch {
         case ex: Throwable => { // any exceptions, get a new parser

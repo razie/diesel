@@ -11,13 +11,6 @@ wiki fragment, used in another page
 @ppage = @{if(page.isDefined) page else wid.page}
 @rss = @{page.flatMap(_.contentProps.get("rss")).getOrElse(controllers.Wiki.w(wid)+"/rss.xml")}
 
-<style>
-.ace-primaryline {
-background-color: yellow;
-position:absolute;
-}
-</style>
-
   <script>
 function selectTextareaLine(tarea,lineNum) {
     lineNum--; // array starts at 0

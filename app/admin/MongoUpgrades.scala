@@ -3,20 +3,18 @@ package admin
 import com.mongodb.casbah.Imports._
 import com.novus.salat._
 import com.novus.salat.annotations._
+import mod.snow.{RacerKidz, RK, RacerKidAssoc}
 import razie.wiki.Enc
 import razie.{clog, cout}
 import controllers.Club
 import scala.collection.mutable.ListBuffer
-import model.RacerKidAssoc
 import razie.db.RTable
 import razie.db.ROne
 import razie.db.RMany
 import razie.wiki.model._
 import razie.db.RUpdate
 import razie.db.UpgradeDb
-import model.RacerKidz
 import model.UserTask
-import model.RK
 import model.Profile
 import razie.db.tx.txn
 

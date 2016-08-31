@@ -10,7 +10,7 @@ included in mainUserC as the right hand side info box
 
 @regs=@{
   val clubs = user.wikis.filter(_.uwid.cat=="Club").map(_.uwid.nameOrId)
-  clubs.flatMap(c=>model.Regs.findClubUser(c, user._id)).filter(_.regStatus == model.RegStatus.PENDING)
+  clubs.flatMap(c=>mod.snow.Regs.findClubUser(c, user._id)).filter(_.regStatus == mod.snow.RegStatus.PENDING)
 }
 
   @if(user.tasks.size + regs.size > 0) {

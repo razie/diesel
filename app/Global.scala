@@ -9,6 +9,7 @@ import java.util.Properties
 import admin._
 import akka.cluster.{MemberStatus, Cluster}
 import akka.cluster.ClusterEvent.{CurrentClusterState, MemberUp}
+import com.google.inject.Guice
 import controllers._
 import mod.book.Progress
 import razie.db._
@@ -133,6 +134,8 @@ object Global extends WithFilters(LoggingFilter) {
     //    val auditor = Akka.system.actorOf(Props[model.WikiAuditor], name = "WikiAuditor")
 
 //    WikiConfig.RK = "rk"
+
+//    val injector = Guice.createInjector(new Module)
 
     Services.auth = new RazAuthService ()
     Services.config = Config

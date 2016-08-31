@@ -1,8 +1,10 @@
-@(club: String, rk: model.RacerKid, settings: String)(implicit stok: controllers.StateOk)
-@import org.bson.types.ObjectId
+@import mod.snow.RacerKid
+@import mod.snow.TFeedItem
+@(club: String, rk: RacerKid, settings: String)(implicit stok: controllers.StateOk)
+@@import mod.snow.RK
+import org.bson.types.ObjectId
 @import controllers.RKU
 @import util.razText
-@import model.RK
 @import razie.wiki.model.{WID, WikiEntry, Wikis}
 
 @stok.title("athlete history")
@@ -37,7 +39,7 @@
   y
 }
 
-@paint(h: model.TFeedItem) = {
+@paint(h: TFeedItem) = {
 @if(h.kind == "Note") {
   @razie.wiki.model.Wikis.findById("Note", h.eId).map { we =>
 

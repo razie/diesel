@@ -1,5 +1,6 @@
 package controllers
 
+import mod.snow.{RacerKidz, RK, RacerKidAssoc}
 import org.joda.time.DateTime
 import play.api.mvc.{Action, Request}
 import razie.Logging
@@ -199,8 +200,7 @@ Please read our [[Terms of Service]] as well as our [[Privacy Policy]]
 
   def msgVerif(c: User, extra: String = "", next: Option[String] = None)(implicit request: Request[_]) = {
     val MSG_EMAIL_VERIF = s"""
-Ok - we sent an email to your registered email address <font style="color:red">${c.email.dec}</font> - please follow the instructions in that email to validate your email address.
-<p>You can't really <font style="color:red">begin using the site</font> until you verify your email, sorry...
+Please check your email <font style="color:red">${c.email.dec}</font> for an actiation email and follow the instructions to validate your email address. Please do that soon: it will expire in a few hours, for security reasons.
 <p>Please check your spam/junk folders as well in the next few minutes - make sure you mark """ + Config.SUPPORT + """ as a safe sender!""" + extra
 
     Msg2(MSG_EMAIL_VERIF, next, Some(c)).withSession(Config.CONNECTED -> Enc.toSession(c.email))

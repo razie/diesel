@@ -1,7 +1,7 @@
 @******
 club admin manages list of users and registrations
 ******@
-@(clubName:String, club:model.User, details:String, members:List[(Option[model.User], model.UserWiki, Option[model.Reg])])(implicit stok:controllers.StateOk)
+@(clubName:String, club:model.User, details:String, members:List[(Option[model.User], model.UserWiki, Option[mod.snow.Reg])])(implicit stok:controllers.StateOk)
 @import _root_.admin.Config
 
 @stok.title("Registrations for club " + clubName)
@@ -29,7 +29,7 @@ club admin manages list of users and registrations
 
 @id(row:Map[String,String])=@{row.get("uwId").get}
 
-@import model.RegStatus._
+@import mod.snow.RegStatus._
 
 @mnglink(row:Map[String,String],k:String,v:String)={
   @k match {

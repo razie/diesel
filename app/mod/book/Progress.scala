@@ -125,7 +125,7 @@ object Progress extends RazController with WikiMod {
   def startProgress (ownerId:ObjectId, tl:TopicList): Progress = {
     //suspend anything in progress
     findForUser(ownerId).filter(_.status == STATUS_IN_PROGRESS).foreach{p=>
-      p.copy(status=STATUS_PAUSED).update
+      p.copy(status=STATUS_PAUSED).updateNoAudit
     }
     Services ! Audit("?", "PROGRESS_START", s"User: ${ownerId.as[User].map(_.userName).mkString} TopicList: ${tl.uwid.nameOrId}")
     val p = new Progress (ownerId, tl.ownerTopic, STATUS_IN_PROGRESS, Seq(new ProgressRecord(tl.ownerTopic, None, STATUS_IN_PROGRESS)))
@@ -209,9 +209,9 @@ object Progress extends RazController with WikiMod {
   def switchTo (pathway:String)= FAUR {implicit request=>
     WID.fromPath(pathway).flatMap(_.uwid).flatMap(u=> findByUserAndTopic(request.au.get._id, u)).map{p=>
       findForUser(request.au.get._id).filter(_.status == STATUS_IN_PROGRESS).foreach{p=>
-        p.copy(status=STATUS_PAUSED).update
+        p.copy(status=STATUS_PAUSED).updateNoAudit
       }
-      p.copy(status=STATUS_IN_PROGRESS).update
+      p.copy(status=STATUS_IN_PROGRESS).updateNoAudit
     }
     Redirect(routes.Progress.view(pathway))
   }

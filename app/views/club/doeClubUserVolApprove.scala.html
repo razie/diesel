@@ -1,13 +1,15 @@
 @******
 manage the volunteer hours by club admin
 ******@
-@(vhs:List[model.VolunteerH], user:model.User)(implicit stok:controllers.StateOk)
+@import mod.snow.VolunteerH
+@import mod.snow.RacerKidz
+@(vhs:List[VolunteerH], user:model.User)(implicit stok:controllers.StateOk)
 @import org.bson.types.ObjectId
 @au=@{stok.au.get}
 @htmlHeadBar("Approving volunteer hours")
 
-@club(vol:model.VolunteerH) = @{
-  val x = model.RacerKidz.findAssocById(vol.rkaId.toString).map(_.from).flatMap(model.Users.findUserById(_))
+@club(vol:VolunteerH) = @{
+  val x = RacerKidz.findAssocById(vol.rkaId.toString).map(_.from).flatMap(model.Users.findUserById(_))
   x.filter(_.isClub).flatMap(u=>Club.apply(u.userName) )
 }
 
@@ -24,7 +26,7 @@ manage the volunteer hours by club admin
 
 @vhs.map{vh=>
 
-<b> @model.RacerKidz.findAssocById(vh.rkaId.toString).get.rk.get.info.fullName </b>
+<b> @mod.snow.RacerKidz.findAssocById(vh.rkaId.toString).get.rk.get.info.fullName </b>
 
 wants
      @vh.hours.toString hours

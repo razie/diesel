@@ -39,7 +39,7 @@ edit a wiki page
       <div id="weForm" class="col-md-12">
           <h2 style="padding-top: 40px; margin-top: -40px;">Editor
             <small> |
-              <a href="#" onclick="submitPlease()" class="btn btn-xs "><span class="glyphicon glyphicon-floppy-disk"></span> Save</a>
+              <a href="#" onclick="submitPlease()" class="btn btn-xs "><span id="floppy" class="glyphicon glyphicon-floppy-disk"></span> Save</a>
             </small>
             <div class="pull-right">
               @if(stok.au.exists(_.isAdmin)) {
@@ -79,7 +79,7 @@ PROBLEM: many places use label as name... via Wikis.formatName
     <br>
     <div class="actions">
       <button type="submit" class="btn btn-primary">Save</button>
-      <a href="@controllers.Wiki.wr(wid, stok.realm, false)" class="btn btn-default">Cancel</a>
+      <a href="@controllers.Wiki.wr(wid, stok.realm, false)" onclick="return cancel();" class="btn btn-default">Cancel</a>
     </div>
 
   </div>
@@ -225,6 +225,9 @@ $('#content').textcomplete([
   <h2 style="padding-top: 40px; margin-top: -40px;">Preview
     <small>
       | <input type="checkbox" name="weLive" id="weLive"> live preview <span id="rtrip"></span>
+@if(stok.au.exists(_.isAdmin)) {
+      | <input type="checkbox" name="weServer" id="weServer"> server
+}
     </small>
     <div class="pull-right">
       <a href="#" onclick="refreshServer()" class="btn btn-xs" title="Refresh preview from server"><span class="glyphicon glyphicon-refresh"></span> Refresh</a>
@@ -258,30 +261,93 @@ $('#content').textcomplete([
 
 <script>
 
+var textarea = $("#content");
+
 $("#bigOne").css("min-height", $("#weForm").height());
 
 function submitPlease() {
   $("form").submit();
 }
 
-var textarea = $("#content");
 
 useLocalStorageCheckbox("weLive", "weLive");
+@if(stok.au.exists(_.isAdmin)) {
+  useLocalStorageCheckbox("weServer", "weServer");
+}
 
-textarea.bind('input propertychange', _.debounce(livePreview, 50, { maxWait: 100 }));
+var preview = _.debounce(livePreview, 250, { maxWait: 500 });
+textarea.bind('input propertychange', preview);
+$("#tags").bind('input propertychange', preview);
+
+var saveDraftDebounced = _.debounce(saveDraft, 2000, { maxWait: 5000 });
 
 $("#content").change(livePreview);
 
+/** update the preview */
 function livePreview() {
+  var content = $("#content").val();
+  var tags = $("#tags").val();
+
   if($('#weLive').prop('checked')) {
-    var content = $("#content").val();
-    var tags = $("#tags").val();
-    if(canRenderInPage('@wid.cat', '@wid.name', content, tags) && @stok.au.exists(_.isAdmin)) parseAndRender();
+    if(
+      canRenderInPage('@wid.cat', '@wid.name', content, tags) &&
+      ! $('#weServer').prop('checked')
+      ) parseAndRender();
     else {
       $("#rtrip").text("(from server)");
       refreshServer();
     }
   }
+
+  saveDraftDebounced();
+}
+
+/** save the draft on the backend */
+function saveDraft() {
+  var content = $("#content").val();
+  var tags = $("#tags").val();
+
+  $.ajax(
+    '/wikie/saveDraft/@wid.wpath', {
+    type: 'POST',
+    data: $.param({
+      content : content,
+      tags : tags
+    }),
+    timeout : 2000,
+    contentType: 'application/x-www-form-urlencoded',
+    success: function(data) {
+      $("#floppy").fadeOut(500);
+      $("#floppy").attr("title", "Draft saved!");
+      $("#floppy").css("color", "green");
+      $("#floppy").fadeIn(500);
+    },
+    error  : function(x) {
+      $("#floppy").fadeOut(500);
+      $("#floppy").attr("title", "ERROR: Cannot save draft");
+      $("#floppy").css("color", "red");
+      $("#floppy").fadeIn(500);
+      console.log( "ERR "+x.toString());
+    }
+  });
+}
+
+function cancel() {
+  $.ajax(
+    '/wikie/deleteDraft/@wid.wpath', {
+    type: 'POST',
+    data: $.param({
+      nothing : ''
+    }),
+    contentType: 'application/x-www-form-urlencoded',
+    success: function(data) {
+    },
+    error  : function(x) {
+      console.log( "ERR "+x.toString());
+    }
+  });
+
+  return true;
 }
 
 //////////////////////// resizing layout
@@ -293,6 +359,11 @@ if(window.localStorage.getItem("weEditLayout") != null) {
 }
 
 setView ("12", currentLayout);
+
+function setTextAreaHeight() {
+  var curOthers = $("#weForm9" ).height() - textarea.height();
+  textarea.height(window.innerHeight-curOthers-120);
+}
 
 function setView(currentLayout, newLayout) {
   if(newLayout != currentLayout) {
@@ -313,6 +384,7 @@ function setView(currentLayout, newLayout) {
     $("#weSettings").show();
     $("#weForm1"  ).addClass("col-sm-4");
     $("#weForm1"  ).hide();
+    $("#label_field").show();
   } else if(newLayout == "6" && newLayout != currentLayout) {
     // preview side by side editor
     $("#weForm"  ).addClass("col-sm-6");
@@ -324,6 +396,8 @@ function setView(currentLayout, newLayout) {
     $("#weSettings").hide();
     $("#weForm1"  ).addClass("col-sm-6");
     $("#weForm1"  ).show();
+    $("#label_field").hide();
+    setTextAreaHeight();
   } else if(newLayout == "9" && newLayout != currentLayout) {
     // 1/3 editor 2/3 preview
     $("#weForm"  ).addClass("col-sm-4");
@@ -335,6 +409,8 @@ function setView(currentLayout, newLayout) {
     $("#weForm9" ).addClass("form-group col-sm-12");
 //    $("#editForm"     ).addClass("well");
     $("#weSettings").hide();
+    $("#label_field").hide();
+    setTextAreaHeight();
   }
 }
 

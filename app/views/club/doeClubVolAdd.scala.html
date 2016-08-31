@@ -1,7 +1,10 @@
 @******
 manage the volunteer hours by club admin
 ******@
-@(clubName:String, rkaid:String, rka:model.RacerKidAssoc, myForm: Form[_], user:model.User)(implicit stok:controllers.StateOk)
+@import mod.snow.RacerKid
+@import mod.snow.RacerKidAssoc
+@import mod.snow.RacerKidz
+@(clubName:String, rkaid:String, rka:RacerKidAssoc, myForm: Form[_], user:model.User)(implicit stok:controllers.StateOk)
 @import org.bson.types.ObjectId
 
 @htmlHeadBar("Volunteer hours")
@@ -13,10 +16,10 @@ manage the volunteer hours by club admin
 
 @import razie.db.RMongo._
 
-<b>Total: @rka.hours hours @rka.to.as[model.RacerKid].map @{r=>"for "+r.info.firstName+r.info.lastName}
+<b>Total: @rka.hours hours @rka.to.as[RacerKid].map @{r=>"for "+r.info.firstName+r.info.lastName}
 
 @vols=@{
-  for (vh <- model.RacerKidz.findVolByRkaId(rkaid)) yield
+  for (vh <- RacerKidz.findVolByRkaId(rkaid)) yield
     Map("hours"->vh.hours.toString,
         "desc"->vh.desc,
         "when"->vh.crDtm.toString("dd-MM"),

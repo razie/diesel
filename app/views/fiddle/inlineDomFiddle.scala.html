@@ -48,7 +48,7 @@ function setAst_@{id} () {
 var runpill2_@id = function(id) {
   var lastTime = new Date().getTime();
   $.ajax(
-    '/diesel/fiddle/buildDom2/'+id+'?@Html(mod.diesel.controllers.SFiddles.qtourl(args))', {
+    '/diesel/fiddle/fiddleStoryUpdated/'+id+'?@Html(mod.diesel.controllers.SFiddles.qtourl(args))', {
     type: 'POST',
     data: $.param({
       saveMode : false,

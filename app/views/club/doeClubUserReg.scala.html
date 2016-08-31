@@ -1,10 +1,12 @@
 @***********
   user manages registrations
 ***********@
-@(reg:model.Reg, rks:List[model.RacerKid])(implicit stok:controllers.StateOk)
-@import model.RegStatus._
+@(reg:mod.snow.Reg, rks:List[mod.snow.RacerKid])(implicit stok:controllers.StateOk)
+@import mod.snow.RacerKid
+@import mod.snow.RK
+@import mod.snow.RegStatus._
 @import razie.wiki.model.FormStatus._
-@import model.RK._
+@import mod.snow.RK._
 
   @au=@{stok.au.get}
   @stok.title("Reg for " + au.userName)
@@ -38,7 +40,7 @@
 <p>These are the people of interest: you, racers, parents, guardians, anyone that may volunteer etc.
   <p>If a racer/parent/guardian/volunteer is not listed below, add one as a:
 <br>
-@model.RK.RELATIONSHIPS.map{r=>
+@mod.snow.RK.RELATIONSHIPS.map{r=>
   <a href="@routes.Kidz.doeKid(au._id.toString, "11", r, "-", reg._id.toString)" class="btn btn-xs btn-info">@r</a>
 }
 

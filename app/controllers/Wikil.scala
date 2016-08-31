@@ -6,6 +6,7 @@
  */
 package controllers
 
+import mod.snow.{RacerKidz, RK, RacerKidAssoc}
 import model.{Users, User, Perm}
 
 import scala.Array.canBuildFrom
@@ -352,8 +353,8 @@ object Wikil extends WikieBase {
   // link a user for moderated club was approved
   private def ilinkAccept(user: User, club: Club, pageUwid:UWID, how: String)(implicit request: Request[_], txn: Txn) {
     // only if there is a club/user entry for that Club page
-    val rk = model.RacerKidz.myself(user._id)
-    model.RacerKidAssoc(club.userId, rk._id, model.RK.ASSOC_LINK, user.role, club.userId).create
+    val rk = RacerKidz.myself(user._id)
+    RacerKidAssoc(club.userId, rk._id, mod.snow.RK.ASSOC_LINK, user.role, club.userId).create
 
     //    createLinkedUser(user, WID("Club", club.userName), UWID("Club", club._id), false, how, "", "")
     createLinkedUser(user, WID("Club", club.userName), pageUwid, false, how, "", "")

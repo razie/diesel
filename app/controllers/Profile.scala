@@ -1,6 +1,7 @@
 package controllers
 
 import admin.Config
+import mod.snow._
 import razie.db.{ROne, Txn}
 import razie.{Logging, cout, Snakk}
 import razie.db.RMongo._
@@ -263,9 +264,14 @@ object Profile extends RazController with Logging {
     (for (
       e <- request.flash.get("email");
       p <- request.flash.get("pwd") orElse request.flash.get("gid")
-    ) yield (ROK.r noLayout {implicit stok=> views.html.user.doeJoin3(crProfileForm.fill(
-        CrProfile("", "", 13, "", "racer", false)))}).withSession("pwd" -> p, "email" -> e, "extra" -> request.flash.get("extra").mkString, "gid" -> request.flash.get("gid").mkString)) getOrElse
-      unauthorized("Oops - how did you get here? [join3]").withNewSession
+    ) yield
+      (ROK.r noLayout {implicit stok=>
+        views.html.user.doeJoin3(crProfileForm.fill(
+          CrProfile("", "", 13, "", "racer", false)))}).withSession("pwd" -> p, "email" -> e, "extra" -> request.flash.get("extra").mkString, "gid" -> request.flash.get("gid").mkString)
+    ) getOrElse
+      unauthorized(
+        """Session expired [join3] - please <a href="/doe/join">start again</a>."""
+        ).withNewSession
   }
 
   private def dfltCss = Config.sitecfg("dflt.css") getOrElse "light"

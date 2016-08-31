@@ -9,7 +9,7 @@ package mod.diesel.controllers
 import com.mongodb.casbah.Imports._
 import com.novus.salat._
 import controllers.RazController
-import model.{Tags, Website}
+import model.{Autosave, Tags, Website}
 import razie.db.RazSalatContext._
 import com.mongodb.{BasicDBObject, DBObject}
 import razie.db.{RMany, ROne, RazMongo}
@@ -81,13 +81,20 @@ object DieselControl extends RazController with Logging {
                   else
     (t._1, prep(t._2))
   }
+
   /** TOPIC - call a topic level function */
-  def fcall(wpath: String, fname:String) = FAU { implicit au => implicit errCollector => implicit request=>
-    val q = request.queryString.map(t=>(t._1, t._2.mkString))
+  def fcall(wpath: String, fname:String) = RAction { implicit stok=>
+    val q = stok.req.queryString.map(t=>(t._1, t._2.mkString))
     Audit("x", "DSL_FCALL", s"$wpath with ${q.mkString}")
     (for(
       wid <- WID.fromPath(wpath) orErr "bad wid";
-      we <- wid.page orErr "no page";
+      we <- wid.page.orElse {
+        if( (wid.cat == "Spec" || wid.cat == "Story") && wid.name == "fiddle") {
+          val x = Autosave.find(s"DomFid${wid.cat}."+stok.realm+".", stok.au.map(_._id)).flatMap(_.get("content")).mkString
+          val page = new WikiEntry(wid.cat, "fiddle", "fiddle", "md", x, stok.au.map(_._id).getOrElse(new ObjectId()), Seq("dslObject"), "")
+          Some(page)
+        } else None
+      } orErr "no page";
       dom <- WikiDomain.domFrom(we).map(_.revise) orErr "no domain in page";
       //      fname <- wid.section.orElse(request.) orErr "no func name";
       f <- dom.funcs.get(fname) orErr s"no func $fname in domain"
@@ -98,21 +105,14 @@ object DieselControl extends RazController with Logging {
             val c = dom.mkCompiler("js")
             val x = c.compileAll ( c.not {case fx:RDOM.F if fx.name == f.name => true})
             val s = x + "\n" + f.script
-            //          val lines = f.script.lines.toList
-            //        val s = lines.foldRight("}}"){(a,b)=>
-            //          if(b == "}}" && !a.contains("return")) "return " + a
-            //          else if(b == "}}") a
-            //          else a+b
-            //        }
-
-            SFiddles.isfiddleMap(s, "js", Some(we), Some(au), q, Some(qTyped(q,f)))._2
+            SFiddles.isfiddleMap(s, "js", Some(we), stok.au, q, Some(qTyped(q,f)))._2
           } else
             "ABSTRACT FUNC"
         } catch {
           case e:Throwable => e.getMessage
         }
         Ok(res.toString)
-      }) getOrElse NotFound("NotFound: "+wpath+" "+errCollector.mkString)
+      }) getOrElse NotFound("NotFound: "+wpath+" "+stok.errCollector.mkString)
   }
 
   /** TOPIC - call a topic level function */

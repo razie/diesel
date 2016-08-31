@@ -2,10 +2,10 @@
 manage the list of kidz and/or their accounts
 ******@
 @(club:controllers.Club, role:String="", teams:List[razie.wiki.model.WikiLink],
-    rks:List[(model.RacerKid, model.RacerKidAssoc)])(implicit stok:controllers.StateOk)
-@import model.RK._
-@import model.RacerKid
-@import model.RacerKidAssoc
+    rks:List[(mod.snow.RacerKid, mod.snow.RacerKidAssoc)])(implicit stok:controllers.StateOk)
+@import mod.snow.{RacerKid, RacerKidAssoc, RacerKidz}
+@import mod.snow.RK
+@import mod.snow.RK._
 @import razie.wiki.model.Wikis
 
 @stok.title("RacerKidz for " + club.name)
@@ -22,7 +22,7 @@ manage the list of kidz and/or their accounts
         "source" -> a.assoc,
       "notes"->k._id.toString,
         "associd" -> a._id.toString,
-        "team" -> model.RacerKidz.findWikiAssocById(k._id.toString, club.curYear, "Team").filter(x=>
+        "team" -> RacerKidz.findWikiAssocById(k._id.toString, club.curYear, "Team").filter(x=>
           teams.find(_.from.id == x.uwid.id)
       ).toList.headOption.map(_.uwid.nameOrId).mkString,
         "button"->k._id.toString)
@@ -36,7 +36,7 @@ manage the list of kidz and/or their accounts
     case "role" => {
       @if(club.isClubAdmin(stok.au.get)) {
       <select rkaid="@row("rkaid")" onchange="setRole(this)" oldvalue="@v">
-        @model.RK.ROLES.map { t =>
+        @mod.snow.RK.ROLES.map { t =>
           @if(v == t) {
             <option selected="selected" value="@t">@t</option>
           } else {
@@ -93,7 +93,7 @@ manage the list of kidz and/or their accounts
 @util.utilSimpleTable(rksactive.iterator,
   Seq("fname" -> "F.Name", "lname"->"L.Name", "role" -> "Role", "source" -> "Source", "team"->"Team", "button"->"Details", "notes"->"History"), Some(mnglink))
 
-Add a: @model.RK.ROLES.map{v=>
+Add a: @mod.snow.RK.ROLES.map{v=>
   <a href="@routes.Kidz.doeKid(club.userId.toString, "11", v, "-", "clubkidz:"+club.name)" class="btn btn-xs btn-info">@v</a>
 }
 

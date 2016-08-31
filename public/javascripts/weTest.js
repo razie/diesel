@@ -3,7 +3,11 @@
  */
 
 var testState="none";
-var target="";
+
+function target() {
+  return $("#target").val();
+}
+
 var pageList = []; // list of pages available to test
 
 function x() {
@@ -17,6 +21,7 @@ function x() {
   .fail(function (){ callback([]); });
 }
 
+/** add an error to the report */
 function report(s,err) {
   if(err) {
     $("#err").append(s+"<br>");
@@ -29,6 +34,7 @@ function report(s,err) {
 function mkTest(f) {
 }
 
+/** test that an URL returns an error code */
 function err(url, code) {
   return function(next) {
     testGet(url, function(result) {
@@ -46,33 +52,28 @@ function err(url, code) {
 
 /** get URL 200 and make sure it includes string s */
 function sok(url, s) {
-  return function(next) {
-    testGet(url, function(result) {
-      var res = result;
-      if(typeof result == 'object') res = JSON.stringify(result);
-
-      if (res.indexOf(s) >= 0) {
-        report("OK "+url + "\t"+s, false);
-      } else {
-        report("NOT_CONTAINS "+url + "\t"+s, true);
-      }
-      next();
-    }, function(err) {
-      report("ERR_AJAX "+url + "\t"+JSON.stringify(err), true);
-      next();
-    })
-  }
+  return snok (url, s, true);
 }
 
+/** get URL 200 and make sure it NOT includes string s */
 function nok(url, s) {
+  return snok (url, s, false);
+}
+
+/** get URL 200 and make sure it includes string s */
+function snok(url, s, should) {
   return function(next) {
     testGet(url, function(result) {
       var res = result;
       if(typeof result == 'object') res = JSON.stringify(result);
-      if (res.indexOf(s) >= 0) {
-        report("CONTAINS "+url + "\t"+s, true);
+
+      if (res.indexOf(s) >= 0 && should) {
+        report("OK " + url + "\t" + s, false);
+      } else if (res.indexOf(s) >= 0 && !should) {
+        report("CONTAINS "+url + "\t"+s, false);
       } else {
-        report("OK "+url + "\t"+s, false);
+        var not = (res.indexOf(s) >= 0) ? "" : "NOT_";
+        report(not+"CONTAINS "+url + "\t"+s, true);
       }
       next();
     }, function(err) {
@@ -100,8 +101,9 @@ function auth(u,p) {
   }
 }
 
+/** test url with given predicate */
 function testGet(url, check, ferr) {
-  var u = "http://"+target+url;
+  var u = "http://"+target()+url;
   if(url.indexOf('http') == 0) u = url;
 
   try {
@@ -130,18 +132,23 @@ function testGet(url, check, ferr) {
 }
 
 
-//err('', 403)
+/**
+ * Needs a var suites =[[],[]] is the array of arrays of callbacks.
+ *
+ * see admin_test.scala.html
+ */
 function runSuites() {
   testState = "running";
   var curCount = 0;
 
-  var suites = [testCode(), testApi()];
-
   function testCase(s,i) {
     function continueTest() {
-      if(i < suites[s].length-1 && testState == "running") setTimeout(testCase(s,i+1), 50);
-      else if(s < suites.length-1 && testState == "running") setTimeout(testCase(s+1,0), 50);
-      else if(testState == "running") testState = "done";
+      if(i < suites[s].length-1 && testState == "running")
+        setTimeout(testCase(s,i+1), 50);
+      else if(s < suites.length-1 && testState == "running")
+        setTimeout(testCase(s+1,0), 50);
+      else if(testState == "running")
+        testState = "done";
     }
 
     curCount = curCount+1;
@@ -161,58 +168,55 @@ function runSuites() {
   testCase(0, 0);
 }
 
-function testApi() {
-  var tests = [
-    // test API
-    sok('/weapi/v1/entry/rk.Admin:TestPublic',         'Testing'),
-    sok('/weapi/v1/content/rk.Admin:TestPublic',       'Testing'),
-    sok('/weapi/v1/html/rk.Admin:TestPublic',          'Testing'),
-    sok('/weapi/v1/entry/id/574f1c26b0c8520467c017c7', 'Testing'),
-    nok('/weapi/v1/entry/ver/1/rk.Admin:TestPublic',   'Testing'),
+/**
+ * see streamSimulator.scala.html
+ * streamNext (streamName, curIndex, continuation())
+ * delay in msec between ticks
+ */
+function runStream(name, streamNext, delay, take) {
+  testState = "running";
+  var curCount = 0;
 
-    // test private
-    auth('None'),
-    err('/weapi/v1/entry/rk.Admin:TestPrivate',        401),
-    err('/weapi/v1/content/rk.Admin:TestPrivate',      401),
-    err('/weapi/v1/html/rk.Admin:TestPrivate',         401),
-    err('/weapi/v1/entry/id/506c867a0cf26592618ee264', 401),
-    err('/weapi/v1/entry/ver/1/rk.Admin:TestPrivate',  401),
-    auth(''),
+  function testCase(s,i) {
 
-    err('/weapi/v1/entry/rk.A:dm:in:TestPublic',       404)
-  ];
-  return tests;
+    function continueTest() {
+      if(i < take-1 && testState == "running")
+        setTimeout(function(){testCase(s,i+1)}, delay);
+      else if(testState == "running")
+        testState = "done";
+    }
+
+    curCount = curCount+1;
+
+    $("#cur").text('suite '+s + ' test '+i);
+    $("#count").text(curCount);
+
+    var t1=new Date().getTime();
+
+    try {
+      streamNext(s, i, continueTest);
+
+      var t2=new Date().getTime();
+      incAverage(curCount, t2-t1);
+    } catch(err) {
+      continueTest();
+    }
+  }
+
+  testCase(name, 0);
 }
 
-function testCode() {
-  var tests = [
-    // test API
-    sok('/improve/skiing/view', '<title>View progress</title>'),
-    //sok('http://www.effectiveskiing.com/improve/skiing/view', '<title>'),
-
-    // test private
-    //auth('None'),
-    //err('/weapi/v1/entry/ver/1/rk.Admin:TestPrivate',  401),
-    auth('')
-    ];
-  return tests;
-}
-
-
-
-function setTarget() {
-  target=$("#target").val();
-}
 function pauseTest() {
   testState = "paused";
 }
 function stopTest() {
   testState = "stopped";
 }
+
 function getPageList() {
   $.ajax({
     type: "GET",
-    url:"http://"+target+"/razadmin/wlist/all?hostname="+target,
+    url:"http://"+target()+"/razadmin/wlist/all?hostname="+target(),
     dataType: 'json',
     async: false,
   //headers: {
@@ -228,6 +232,7 @@ function getPageList() {
 
 function runContentTest() {
   testState = "running";
+  var curCount = 0;
 
   getPageList();
 
@@ -235,8 +240,10 @@ function runContentTest() {
 
   function testPage(i) {
     function continueTest() {
-      if(i >=0  && testState == "running") setTimeout(testPage(i-1), 50);
-      else if(testState == "running") testState = "done";
+      if(i >=0  && testState == "running")
+        setTimeout(function(){testPage(i-1)}, 50);
+      else if(testState == "running")
+        testState = "done";
     }
 
     $("#cur").text(pageList[i].cat+ ":" + pageList[i].name);
@@ -247,7 +254,7 @@ function runContentTest() {
     try {
       $.ajax({
         type: "GET",
-        url:"http://"+target+"/wiki/fragById/"+pageList[i].cat+ "/" + pageList[i].id,
+        url:"http://"+target()+"/wiki/fragById/"+pageList[i].cat+ "/" + pageList[i].id,
         async: true,
       //headers: {
       //  "Authorization": "Basic " + btoa('H-@Dec(stok.au.get.email)', + ":" + 'H-@Dec(stok.au.get.pwd)')
@@ -262,6 +269,9 @@ function runContentTest() {
               " words took "+(t2-t1) + " millis <br>");
 //          $("#frag").text(result);
           }
+          var t2=new Date().getTime();
+          curCount = curCount+1;
+          incAverage(curCount, t2-t1);
           continueTest();
         },
       error: function (result){
@@ -280,16 +290,17 @@ function runContentTest() {
 testPage(pageList.length-1);
 }
 
+var rollingAverage = 0.0;
+
+function incAverage(curCount, msec) {
+  rollingAverage = (rollingAverage*(curCount-1) + msec)/curCount;
+  $("#average").text(Math.round(rollingAverage) + "  msec");
+}
+
 function runStressTest() {
   testState = "running";
   var curCount = 0;
-  var rollingAverage = 0.0;
   var threads = 5;
-
-  function incAverage(msec) {
-    rollingAverage = (rollingAverage*(curCount-1) + msec)/curCount;
-    $("#average").text(rollingAverage);
-  }
 
   getPageList();
 
@@ -297,8 +308,10 @@ function runStressTest() {
 
   function testPage(i) {
     function continueTest() {
-      if(i > 0 && testState == "running") setTimeout(testPage(i-1), 50);
-      else if(testState == "running") setTimeout(testPage(pageList.length-1), 50);
+      if(i > 0 && testState == "running")
+        setTimeout(function(){testPage(i-1)}, 50);
+      else if(testState == "running")
+        setTimeout(function(){testPage(pageList.length-1)}, 50);
     }
 
     $("#cur").text(pageList[i].cat+ ":" + pageList[i].name);
@@ -310,7 +323,7 @@ function runStressTest() {
     try {
       $.ajax({
         type: "GET",
-        url:"http://"+target+"/wiki/fragById/"+pageList[i].cat+ "/" + pageList[i].id,
+        url:"http://"+target()+"/wiki/fragById/"+pageList[i].cat+ "/" + pageList[i].id,
         async: true,
       //headers: {
       //  "Authorization": "Basic " + btoa('H-@Dec(stok.au.get.email)', + ":" + 'H-@Dec(stok.au.get.pwd)')
@@ -321,7 +334,7 @@ function runStressTest() {
             $("#topics").append('<span style="color:red">err - ' + pageList[i].cat+ ":" + pageList[i].name+"</span><br>");
           } else {
             var t2=new Date().getTime();
-            incAverage(t2-t1);
+            incAverage(curCount, t2-t1);
 //            $("#topics").append("ok  - " + pageList[i].cat+ ":" + pageList[i].name+" "+result.split(" ").length+
 //              " words took "+(t2-t1) + " millis <br>");
 //          $("#frag").text(result);

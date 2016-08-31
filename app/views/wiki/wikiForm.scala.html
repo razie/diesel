@@ -9,7 +9,7 @@ special handlng of forms
 
 @htmlHead(page.flatMap(_.contentProps.get("title")).getOrElse(wid.cat +": "+ page.map(_.label).getOrElse(razie.wiki.model.Wikis.label(wid))))(Map.empty, stok.au, stok.request)
 
-@if(!print) {@navbar(stok.au, wid.getRealm)(stok.au,stok.request)}
+@if(!print) {@navbar(stok.au, wid.getRealm)}
 
 @***
 @if(!print) {
@@ -63,7 +63,7 @@ for registration sequences - show prev/next
 *********@
 @regs=@{
   val clubs = au.toList.flatMap(_.wikis).filter(_.uwid.cat=="Club").map(_.uwid.nameOrId)
-  clubs.flatMap(c=>model.Regs.findClubUser(c, au.get._id)).filter(_.wids.contains(wid))
+  clubs.flatMap(c=>mod.snow.Regs.findClubUser(c, au.get._id)).filter(_.wids.contains(wid))
 }
 
 @if(!print) {

@@ -5,6 +5,10 @@ browse a domain
 
 @stok.title("Wiki report views")
 
+@** can't - better if I leave it alone
+@util.dataTables("WikiCount")
+**@
+
 @fFilter(db:com.mongodb.casbah.Imports.DBObject) = @{
   razie.wiki.model.Wikis.findById(db.get("pid").toString).map {wp=>
     wp.realm == stok.realm

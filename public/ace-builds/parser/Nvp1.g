@@ -109,7 +109,7 @@ rule_Option:
 
 
 rule_AttrSpec:
-  name=ID (':' ttype=rule_DataType)? ('=' eexpr=rule_EXPR)?;
+  name=rule_QualifiedName (':' ttype=rule_DataType)? ('=' eexpr=rule_EXPR)?;
 
 
 
@@ -121,20 +121,21 @@ rule_Attr:
 
 
 rule_EXPR:
-  parm=ID | svalue=STRING | ivalue=INT;
+  parm=rule_QualifiedName | svalue=STRING | ivalue=INT;
 
 
 
+//  parm=[Attr|QualifiedName] | svalue=STRING | ivalue=INT;
   
 rule_Attrs:
-    ('(' (attrs+=rule_Attr (',' attrs+=rule_Attr)*)? ')')
+    '(' (attrs+=rule_Attr (',' attrs+=rule_Attr)*)? ')'
 ;
 
 
 
 
 rule_AttrSpecs:
-    ('(' (attrs+=rule_AttrSpec (',' attrs+=rule_AttrSpec)*)? ')')
+   '(' (attrs+=rule_AttrSpec (',' attrs+=rule_AttrSpec)*)? ')'
 ;
 
 

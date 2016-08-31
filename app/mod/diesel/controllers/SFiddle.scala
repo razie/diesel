@@ -20,7 +20,7 @@ import razie.wiki.Sec.EncryptedS
 import play.api.mvc._
 import razie.wiki.dom.WikiDomain
 import razie.wiki.util.VErrors
-import razie.{js, cout, Logging}
+import razie.{CSTimer, js, cout, Logging}
 import javax.script.{ScriptEngineManager, ScriptEngine}
 import scala.Some
 import scala.collection.mutable
@@ -130,6 +130,9 @@ object SFiddles extends SFiddleBase with Logging {
   // todo protect calls to this
   def newsfiddleMap(script: String, lang:String, we:Option[WikiEntry], au:Option[WikiUser], q:Map[String,String], typed:Option[Map[String,Any]] = None, doAudit:Boolean=true) = {
     val wix = api.wix(we, au, q, "")
+    val c = new CSTimer("script", "?")
+    c.start()
+
     if(lang == "js") {
       val qj = qtojson(q)
       val jscript = s"""var queryParms = $qj;\n${wix.json}\n$script"""
@@ -141,13 +144,17 @@ object SFiddles extends SFiddleBase with Logging {
         q.foreach(t=>bindings.put(t._1, typed.flatMap(_.get(t._1)).getOrElse(jstypeSafe(t._2))))
         bindings.put("wixj", wix)
         val res = engine.eval(jscript, bindings)
-        if(doAudit) Audit.logdb("SFIDDLE_EXEC", "JS", jscript)
         (true, if(res != null) res.toString else "")
       } catch {
         case t: Throwable => {
-          log(s"while executing script\n$jscript",t)
+          log(s"while executing script\n$jscript", t)
           (false, t + "\n\n" + jscript)
         }
+      } finally {
+        c.stop()
+//        if(doAudit)
+        audit("SFIDDLE_EXEC JS" + (c.last - c.beg) + " msec" + jscript)
+        Audit.logdb("SFIDDLE_EXEC", "JS", (c.last - c.beg) + " msec", jscript.takeRight(300))
       }
     } else if(lang == "ruby") {
       val qj = qtojson(q)

@@ -63,7 +63,6 @@
 var realm = '@reactor';
 </script>
     <!-- todo optimize this - don't need teh entire file -->
-    <script src="@routes.Assets.at("javascripts/weDieselDom.js")"></script>
 
     <!-- Le styles -->
     <link href="@routes.Assets.at("bootstrap-3.3.4/css/bootstrap.css")" rel="stylesheet">
@@ -296,6 +295,21 @@ code .comment              { color: gray }
 </style>
 
 @**}**@
+
+<style type="text/css">
+img.rklogo {
+  opacity:0.8;
+  filter:alpha(opacity=80); /* For IE8 and earlier */
+}
+</style>
+
+<style>
+.ace-primaryline {
+  background-color: yellow;
+  position:absolute;
+}
+</style>
+
 
 </head>
 

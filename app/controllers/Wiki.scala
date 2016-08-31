@@ -115,7 +115,7 @@ object Wiki extends WikiBase {
 
   //TODO optimize - index or whatever
   /** search all topics  provide either q or curTags */
-  def search(irealm:String, q: String, scope:String, curTags:String="") = Action { implicit request =>
+  def getList(irealm:String, q: String, scope:String, curTags:String="", max:Int=2000)(implicit request : Request[_]) = {
     val realm = if("all" != irealm) getRealm(irealm) else irealm
 
     //TODO limit the number of searches - is this performance critical?
@@ -152,7 +152,7 @@ object Wiki extends WikiBase {
         qnot((qi.length > 1 && uf("name").toLowerCase.contains(qi)) ||
           (qi.length > 1 && uf("label").toLowerCase.contains(qi)) ||
           ((qi.length() > 3 || auth.exists(_.isAdmin)) && uf("content").toLowerCase.contains(qi))
-          ) && hasTags
+        ) && hasTags
     }
 
     lazy val parent = WID.fromPath(scope).flatMap(x=>Wikis.find(x).orElse(Wikis(realm).findAnyOne(x.name)))
@@ -183,18 +183,32 @@ object Wiki extends WikiBase {
 
     if(!isFromRobot) {
       if(qi.length > 0) Audit.logdb("QUERY", q, s"Realm: $realm, Scope: $scope", "Results: " + wikis.size, "User-Agent: "+request.headers.get("User-Agent").mkString)
-//      else Audit.logdb("QUERY_TAG", curTags, s"Realm: $realm, Scope: "+parent.map(_.wid.wpath).getOrElse(s"??? $scope"), "Results: " + wikis.size, "User-Agent: "+request.headers.get("User-Agent").mkString)
+      //      else Audit.logdb("QUERY_TAG", curTags, s"Realm: $realm, Scope: "+parent.map(_.wid.wpath).getOrElse(s"??? $scope"), "Results: " + wikis.size, "User-Agent: "+request.headers.get("User-Agent").mkString)
     }
 
     if (wikis.size == 1)
-      Redirect(controllers.Wiki.w(WikiEntry.grated(wikis.head).wid))
+      wikis.map(WikiEntry.grated _)
     else {
-      val wl1 = wikis.map(WikiEntry.grated _).take(500)
+      val wl1 = wikis.map(WikiEntry.grated _).take(max)
       //todo optimize - split and sort up-front, not as a separate step
       val wl2 = wl1.partition(w=> qnot(w.name.toLowerCase.contains(qi) || w.label.toLowerCase.contains(qi)))
       val wl = if(qi.length > 0) wl2._1.sortBy(_.name.length) ::: wl2._2 else wl1
-//      val wl = wl2._2 //if(q.length > 0) wl2._1 ::: wl2._2 else wl1
+      wl
+    }
+  }
 
+  //TODO optimize - index or whatever
+  /** search all topics  provide either q or curTags */
+  def search(irealm:String, q: String, scope:String, curTags:String="") = Action { implicit request =>
+    val realm = if("all" != irealm) getRealm(irealm) else irealm
+    val qi = if(q.length > 0 && q(0) == '-') q.substring(1).toLowerCase else q.toLowerCase
+    val qt = curTags.split("/").filter(_ != "tag").map(_.split(","))
+
+    val wl = getList(irealm, q, scope, curTags, 500)(request)
+
+    if (wl.size == 1)
+      Redirect(controllers.Wiki.w(wl.head.wid))
+    else {
       // the list of tags, sorted by count of occurences
       val tags = wl.flatMap(_.tags).filter(_ != Tags.ARCHIVE).filter(_ != "").filter(x=> !qt.contains(x)).groupBy(identity).map(t => (t._1, t._2.size)).toSeq.sortBy(_._2).reverse
 
@@ -608,7 +622,15 @@ object Wiki extends WikiBase {
   }
 
   def all(cat: String, irealm:String) = Action { implicit request =>
-    ROK.r noLayout {implicit stok=>views.html.wiki.wikiAll(getRealm(irealm), cat)}
+    Redirect("/wiki/analyze")
+  }
+
+  def analyze(q: String, tags:String, scope:String) = RAction { implicit stok =>
+    val wl = getList(stok.realm, q, scope, tags)
+
+    ROK.k apply {implicit stok=>
+      views.html.wiki.wikiAnalyze(q, tags, scope, wl.toIterator)
+    }
   }
 
   import play.api.libs.json._

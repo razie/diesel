@@ -6,7 +6,7 @@
  */
 package model
 
-import mod.diesel.model.WikiDomainParser
+import mod.diesel.model.parser.WikiDomainParser
 import play.api.mvc.Request
 import razie.wiki.WikiConfig
 import razie.wiki.parser.WikiParserNotes

@@ -441,6 +441,9 @@ textarea[readonly] {
 
 .nav > li > a {
     font-weight: bold;
+}
+
+.nav-tabs > li > a {
     padding: 2px 10px;
 }
 

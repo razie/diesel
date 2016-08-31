@@ -15,7 +15,7 @@ render a page in a site rather than a normal page - some missing stuff
 @stok.maybeCss(page.flatMap(_.contentProps.get("css")))
 
 @htmlHead(""+page.flatMap(_.contentProps.get("sitelabel")).getOrElse(page.map(_.label).getOrElse(razie.wiki.model.Wikis(wid.getRealm).label(wid))), Some(stok))(Map.empty, stok.au, stok.request)
-@navbar(stok.au, Wikis.RK, false, "Menu", logo(), siteurl(), true, club())(stok.au,stok.request)
+@navbar(stok.au, Wikis.RK, false, "Menu", logo(), siteurl(), true, club())
 
 <div class="container">
   <div class="row">

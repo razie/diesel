@@ -2,15 +2,16 @@
 manage the list of kidz and/or their accounts
 ******@
 @(clubName: String)(implicit stok:controllers.StateOk)
-  @import model.RK._
-  @import model.RacerKid
-  @import _root_.controllers.Club
+@import mod.snow.RacerKid
+@import mod.snow.RK._
+@import mod.snow.RK
+@import _root_.controllers.Club
 
   @user=@{stok.au.get}
   @stok.title("Start registration for " + user.userName)
 
   @prevReg = @{
-    Club(clubName).flatMap(c => model.Regs.findClubUser(c.name, user._id).toList.sortBy(_.year).reverse.headOption)
+    Club(clubName).flatMap(c => mod.snow.Regs.findClubUser(c.name, user._id).toList.sortBy(_.year).reverse.headOption)
   }
 
         @if(!Club(clubName).exists(_.isRegOpen)) {

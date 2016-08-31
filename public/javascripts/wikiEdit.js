@@ -17,7 +17,8 @@ function parseAndRender() {
 
 function refreshServer() {
   var content = $("#content").val();
-  $.post("/wikie/preview/@wid.wpath", {'content' : content}, function(data) {
+  var tags = $("#tags").val();
+  $.post("/wikie/preview/@wid.wpath", {'content' : content, 'tags' : tags}, function(data) {
     $("#weOutputData").html(data);
   })
 }

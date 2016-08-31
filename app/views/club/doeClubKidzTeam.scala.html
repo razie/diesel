@@ -2,16 +2,17 @@
 manage the list of kidz and/or their accounts
 ******@
 @(club:controllers.Club, role:String, team:razie.wiki.model.WID)(implicit stok:controllers.StateOk)
-@import model.RK._
-@import model.RacerKid
-@import model.RacerKidAssoc
+@import mod.snow.RK
+@import mod.snow.{RacerKidAssoc, RacerKid}
+@import mod.snow.RK._
 @import razie.wiki.model.Wikis
+@import mod.snow.RacerKidz
 
 @stok.title("RacerKidz for " + club.name + " / " + team.name)
 
 @rks=@{
   (for (
-    w <- model.RacerKidz.findWikiAssocs(club.curYear, team.uwid.get).toList;
+    w <- RacerKidz.findWikiAssocs(club.curYear, team.uwid.get).toList;
     a <- club.rka(w.rkId, role);
     k <- w.rk
   ) yield

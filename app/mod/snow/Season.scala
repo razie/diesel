@@ -4,7 +4,6 @@ import admin.Config
 import akka.actor.{Actor, Props}
 import controllers.{Club, RazController}
 import controllers.Wiki._
-import model.RK
 import play.api.libs.concurrent.Akka
 import play.mvc.Result
 import razie.wiki.admin.SendEmail

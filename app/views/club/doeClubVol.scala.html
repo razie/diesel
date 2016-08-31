@@ -1,17 +1,23 @@
 @******
 manage the volunteer hours by club admin
 ******@
-@(clubName:String, rks:List[(model.RacerKid, model.RacerKidAssoc)], regs:List[model.Reg])(implicit stok:controllers.StateOk)
-@import model.RK._
+@(clubName:String, rks:List[(mod.snow.RacerKid, mod.snow.RacerKidAssoc)], regs:List[mod.snow.Reg])(implicit stok:controllers.StateOk)
+@import mod.snow.RK._
+@import mod.snow.RacerKid
+@import mod.snow.RacerKidAssoc
+@import mod.snow.VolunteerH
+@import mod.snow.VH
+@import mod.snow.RK
+@import mod.snow.RacerKidz
 
 @stok.title("Volunteer hours for " + clubName)
 
 @allVols=@{
-    razie.db.RMany[model.VolunteerH]().filter(x=>rks.exists(_._2._id == x.rkaId)).size
+    razie.db.RMany[VolunteerH]().filter(x=>rks.exists(_._2._id == x.rkaId)).size
 }
 
 @pendingVols=@{
-  val x = razie.db.RMany[model.VolunteerH]("status" -> model.VH.ST_WAITING).filter(x=>rks.exists(_._2._id == x.rkaId)).toList
+  val x = razie.db.RMany[VolunteerH]("status" -> VH.ST_WAITING).filter(x=>rks.exists(_._2._id == x.rkaId)).toList
   val y = x.groupBy(_.approver)
     (x.size, x.groupBy(_.approver))
 }
@@ -38,7 +44,7 @@ manage the volunteer hours by club admin
 
 <h2>Volunteer hours for @clubName</h2>
 
-@model.RacerKidz.checkMyself(stok.au.get._id)
+@RacerKidz.checkMyself(stok.au.get._id)
 <br>
 <p>Some records are created by their parents (see the "Source"). For those that did not register online, you can create records here, for team management etc.
 

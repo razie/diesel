@@ -1,7 +1,10 @@
 @******
 manage the volunteer hours by club admin
 ******@
-@(reg:model.Reg, rkas:List[model.RacerKidAssoc], myForm: Form[_], club:controllers.Club)(implicit stok:controllers.StateOk)
+@(reg:mod.snow.Reg, rkas:List[mod.snow.RacerKidAssoc], myForm: Form[_], club:controllers.Club)(implicit stok:controllers.StateOk)
+@import mod.snow.VH
+@import mod.snow.RacerKidz
+@import mod.snow.RacerKidAssoc
 @import org.bson.types.ObjectId
 
 @user=@{stok.au.get}
@@ -11,14 +14,14 @@ manage the volunteer hours by club admin
 @vols=@{
   for (
       rka <- rkas;
-      vh <- model.RacerKidz.findVolByRkaId(rka._id.toString)) yield
+      vh <- RacerKidz.findVolByRkaId(rka._id.toString)) yield
     Map("rkaId" -> rka._id.toString,
         "who" -> rka.rk.get.info.ename,
         "hours"->vh.hours.toString,
         "desc"->vh.desc,
         "comment"->vh.comment,
         "approved"->vh.status,
-        "delete"-> (if(vh.status == model.VH.ST_OK) "" else vh._id.toString)
+        "delete"-> (if(vh.status == VH.ST_OK) "" else vh._id.toString)
         )
 }
 

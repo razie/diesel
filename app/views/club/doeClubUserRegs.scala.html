@@ -2,7 +2,8 @@
 user manages registrations
 ***********@
 @()(implicit stok:controllers.StateOk)
-@import model.RegStatus._
+@import mod.snow.Regs
+@import mod.snow.RegStatus._
 @import controllers.Club
 
 @stok.title("Registrations for " + stok.au.get.userName)
@@ -13,14 +14,14 @@ user manages registrations
   // clubs with open regs that I'm not reg'd for
   val clubs = au.wikis.filter(_.wid.cat == "Club").flatMap(w => model.Users.findUserByUsername(w.wid.name).toList)
   clubs.map { c => (c, Club(c)) }.collect {
-    case (c, club) if club.isRegOpen && model.Regs.findClubUserYear(club.name, au._id, club.curYear).isEmpty =>
+    case (c, club) if club.isRegOpen && Regs.findClubUserYear(club.name, au._id, club.curYear).isEmpty =>
       club
   }
 }
 
 @regs = @{
   val clubs = au.wikis.filter(_.wid.cat == "Club").map(_.wid.name)
-  clubs.flatMap(c => model.Regs.findClubUser(c, au._id)).sortWith(_.year >= _.year)
+  clubs.flatMap(c => Regs.findClubUser(c, au._id)).sortWith(_.year >= _.year)
 }
 
 @tab = @{

@@ -1,5 +1,7 @@
 package controllers
 
+import mod.snow._
+import mod.snow.RK
 import play.api.i18n.Messages
 import play.api.i18n.MessagesApi
 import play.api.i18n.Messages.Implicits._
@@ -8,7 +10,6 @@ import play.api.Play.current
 import admin.Config
 import akka.actor.{Actor, Props}
 import controllers.Wiki._
-import model.RK
 import play.api.libs.concurrent.Akka
 import play.mvc.Result
 import play.twirl.api.Html
@@ -98,8 +99,8 @@ case class Club (
   def regForm(role: String) = regForms.find(_.role == role)
   def uregAdmin = Users.findUser(Enc(regAdmin))
 
-  def reg(u:User) = model.Regs.findClubUserYear(name, u._id, curYear)
-  def reg(wid: WID) = model.Regs.findWid(wid)
+  def reg(u:User) = Regs.findClubUserYear(name, u._id, curYear)
+  def reg(wid: WID) = Regs.findWid(wid)
   def userLinks = model.Users.findUserLinksTo(uwid)
 
   // TODO filter by year as well
@@ -177,7 +178,7 @@ object Club extends RazController with Logging {
   // manage user screen
   def membersData(club:Club, what: String, cols: String): (List[String], List[List[String]]) = {
     val members = club.userLinks.map(_.userId)
-    val regs = model.Regs.findClubYear(club.name, club.curYear)
+    val regs = Regs.findClubYear(club.name, club.curYear)
     val forms = regs.flatMap(_.wids).flatMap(_.page).filter(_.formRole.exists(_ == what)).map(_.form.fields).toList
 
     // each set of fields has all attr - pick the first
@@ -209,7 +210,7 @@ object Club extends RazController with Logging {
                 model.Users.findUserLinksTo(c.uwid).map(uw =>
                   (model.Users.findUserById(uw.userId),
                     uw,
-                    model.Regs.findClubUserYear(clubName, uw.userId, c.curYear))).toList.sortBy(x => x._1.map(y => y.lastName + y.firstName).mkString)
+                    Regs.findClubUserYear(clubName, uw.userId, c.curYear))).toList.sortBy(x => x._1.map(y => y.lastName + y.firstName).mkString)
 
               ROK.r apply { implicit stok => views.html.club.doeClubRegs(clubName, au,details, members) }
             }) getOrElse Msg2("CAN'T SEE PROFILE " + errCollector.mkString)
@@ -294,7 +295,7 @@ object Club extends RazController with Logging {
     (for (
       c <- Club.findForAdmin(club, request.au.get) orErr ("Not a club or you're not admin")
     ) yield {
-        val regs = model.Regs.findClubYear(club, c.curYear)
+        val regs = Regs.findClubYear(club, c.curYear)
         val forms = regs.flatMap(_.wids).flatMap(_.page).filter(_.formRole.exists(_ == what)).toList
 
         ROK.k noLayout {implicit stok=>doeClubRegsRepHtml(request.au.get, forms)}
@@ -483,7 +484,7 @@ object Club extends RazController with Logging {
         }).toList
 
         RegKid(reg._id, rk._id, fwids, role).create
-        assoc(c, rk, model.RK.ASSOC_REGD, role, au, c.curYear)
+        assoc(c, rk, mod.snow.RK.ASSOC_REGD, role, au, c.curYear)
         Redirect(nextPage)
       } else
         Msg2(s"""${rk.info.firstName} was already added as <em>${before.get.role}</em> - please click continue, then remove her/him from the registration with the red <span class="label label-important">x</span> button and then re-add with the different role. <p>Note that any forms filled for his role will be <em>removed</em>!""",
@@ -611,7 +612,7 @@ object Club extends RazController with Logging {
       rka.foreach(_.copy(role = role, assoc = RK.ASSOC_REGD).update)
     else {
       // TODO other use cases will be manual - should I notify?
-      RacerKidAssoc(c.userId, rk._id, model.RK.ASSOC_REGD, role, owner._id, 0, year).create
+      RacerKidAssoc(c.userId, rk._id, mod.snow.RK.ASSOC_REGD, role, owner._id, 0, year).create
     }
   }
 
@@ -646,7 +647,7 @@ object Club extends RazController with Logging {
      implicit val errCollector = new VErrors()
     (for (
       isConsent <- au.profile.flatMap(_.consent).isDefined orCorr cNoConsent;
-      reg <- model.Regs.findId(regid) orErr ("no reg found")
+      reg <- Regs.findId(regid) orErr ("no reg found")
     ) yield {
         ROK.s apply { implicit stok => views.html.club.doeClubUserReg(reg, RacerKidz.findForUser(reg.userId).toList) }
     }) getOrElse unauthorized()
@@ -659,7 +660,7 @@ object Club extends RazController with Logging {
       ism <- c.isMember(au) orCorr cNotMember(club)
     ) yield {
         val rks= (for (a <- c.rka(role);
-                k <- model.RacerKidz.findById(a.to)) yield
+                k <- RacerKidz.findById(a.to)) yield
           (k,a)).toList.sortBy(x=>x._1.info.lastName+x._1.info.firstName)
 
       ROK.s apply {implicit stok=>
@@ -746,7 +747,7 @@ object Club extends RazController with Logging {
       val rks =
         (for (
           a <-  club.rka if a.role != RK.ROLE_FAN;
-          k <-  model.RacerKidz.findById(a.to)        if k.info.status != RK.STATUS_FORMER
+          k <-  mod.snow.RacerKidz.findById(a.to)        if k.info.status != RK.STATUS_FORMER
         ) yield (k, a)).toList.sortBy(x => x._1.info.lastName + x._1.info.firstName)
 
       val regs = Regs.findClubYear(clubName, club.curYear).toList
@@ -798,11 +799,11 @@ object Club extends RazController with Logging {
           case (w, h, d, c, a) =>
             if(!clubName.isEmpty) {
               val rka = ROne[RacerKidAssoc]("_id" -> new ObjectId(id)).get
-              model.VolunteerH(new ObjectId(id), h, d, c, au._id, Some(a), VH.ST_OK).create
+              VolunteerH(new ObjectId(id), h, d, c, au._id, Some(a), VH.ST_OK).create
               rka.copy(hours = rka.hours + h).update
               Redirect(routes.Club.doeVolAdd(clubName, id))
             } else {
-              model.VolunteerH(new ObjectId(w), h, d, c, au._id, Some(a), VH.ST_WAITING).create
+              mod.snow.VolunteerH(new ObjectId(w), h, d, c, au._id, Some(a), VH.ST_WAITING).create
 //              rka.copy(hours = rka.hours + h).update
               Redirect(routes.Club.doeUserVolAdd(id))
             }
@@ -861,7 +862,7 @@ object Club extends RazController with Logging {
   }
 
   // rollup per family/reg
-  def volFamily(rk: RacerKid, rks: List[(model.RacerKid, model.RacerKidAssoc)], regs: List[Reg]) = {
+  def volFamily(rk: RacerKid, rks: List[(RacerKid, RacerKidAssoc)], regs: List[Reg]) = {
     (for (
       uid <- rk.userId;
       reg <- regs.find(_.userId == uid)
@@ -948,7 +949,7 @@ object Club extends RazController with Logging {
       regAdmin <- c.uregAdmin orErr "Registration is not open yet! [no regadmin]";
       isOpen <- c.propSeq.exists(x => "reg.open" == x._1 && "yes" == x._2) orErr "Registration is not open yet!";
       uclub <- Users.findUserByUsername(clubName);
-      prevReg <- model.Regs.findId(prevRegId);
+      prevReg <- Regs.findId(prevRegId);
       // either mine or i'm the club
       isMine <- (prevReg.userId == au._id && prevReg.clubName == clubName || prevReg.clubName == au.userName) orErr ("Not your registration: " + prevRegId);
       user <- Users.findUserById(prevReg.userId) orErr ("Cant find user: " + prevReg.userId);
@@ -1011,7 +1012,7 @@ object Club extends RazController with Logging {
           val rk = ork.copy(_id = new ObjectId(), regId = reg._id, wids=ork.wids.map(ow => WID(ow.cat, widNameMap(ow.name))), crDtm=DateTime.now())
 //          cout << "   NEW REGKID" << rk
           rk.create
-          assoc(c, rk.rk.get, model.RK.ASSOC_REGD, rk.role, au, c.curYear)
+          assoc(c, rk.rk.get, mod.snow.RK.ASSOC_REGD, rk.role, au, c.curYear)
         }
 
 
@@ -1108,11 +1109,11 @@ object Club extends RazController with Logging {
   def tempChangeYUear {
     // 1. for each user member, create a rka
     RMany[model.UserWiki]().filter(_.uwid.cat == "Club").foreach { uw =>
-      val rk = model.RacerKidz.myself(uw.userId)
+      val rk = mod.snow.RacerKidz.myself(uw.userId)
       cout << uw
       val c = controllers.Club(uw.uwid.wid.get.name)
       c.foreach { c =>
-        model.RacerKidAssoc(c.userId, rk._id, model.RK.ASSOC_LINK, uw.role, c.userId).create
+        mod.snow.RacerKidAssoc(c.userId, rk._id, mod.snow.RK.ASSOC_LINK, uw.role, c.userId).create
       }
     }
   }

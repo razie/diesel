@@ -1,5 +1,5 @@
 @(pageTitle: String = "", realm:String=razie.wiki.model.Wikis.RK)(implicit au:Option[model.User], request:Request[_])
 
 @htmlHead(pageTitle)(Map.empty, au, Some(request))
-@navbar(au, realm)(au, Some(request))
+@navbar(au, realm)(new controllers.StateOk(realm, au, Some(request)))
 

@@ -1,24 +1,15 @@
-package model
+package mod.snow
 
 import com.mongodb.casbah.Imports._
 import org.joda.time.DateTime
 import com.novus.salat._
 import com.novus.salat.annotations._
 import razie.db.RazSalatContext._
-import admin.CipherCrypt
-import java.net.URLEncoder
 import com.mongodb.util.JSON
-import razie.Log
-import controllers.UserStuff
-import controllers.Maps
-import controllers.RazController
-import controllers.Emailer
 import razie.db.RTable
 import scala.annotation.StaticAnnotation
 import razie.db.ROne
 import razie.db.RMany
-import razie.db.RCreate
-import razie.db.RDelete
 import razie.db.REntity
 import razie.wiki.model.WID
 

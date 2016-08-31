@@ -1,9 +1,11 @@
-@(club: controllers.Club, rk: model.RacerKid, settings: String)(implicit stok: controllers.StateOk)
+@(club: controllers.Club, rk: mod.snow.RacerKid, settings: String)(implicit stok: controllers.StateOk)
+@import mod.snow.RK
+@import mod.snow.RacerKid
+@import mod.snow.TFeedItem
 @import razie.wiki.model.Visibility
 @import org.bson.types.ObjectId
 @import controllers.RKU
 @import util.razText
-@import model.RK
 @import razie.wiki.model.{WID, WikiEntry, Wikis}
 
 @import helper.twitterBootstrap._
@@ -38,7 +40,7 @@
     y
   }
 
-  @paint(h: model.TFeedItem, we:WikiEntry) = {
+  @paint(h: TFeedItem, we:WikiEntry) = {
    @if(h.kind != "Comment") {
       <div class="panel panel-@pnelColor(h, we)" id="@h.eId.toString" style="border-radius : 9 px ; margin-bottom : 10 px;">
         <div class="panel-heading"
@@ -90,7 +92,7 @@
   }
   }
 
-@pnelColor(h:model.TFeedItem, we:WikiEntry) = @{
+@pnelColor(h:TFeedItem, we:WikiEntry) = @{
   // todo notes are always private
   if(we.tags.contains("insight") || we.visibility == Visibility.CLUB_COACH) "success"
   else if(we.tags.contains("private") /*|| we.visibility == Visibility.PRIVATE*/ ) "danger"
@@ -99,7 +101,7 @@
   else "info"
 }
 
-@filterForCoach(t:model.TFeedItem)(we:WikiEntry) = @{
+@filterForCoach(t:TFeedItem)(we:WikiEntry) = @{
   // I see my own and my posts
   if(we.tags.contains("private") /*|| we.visibility == Visibility.PRIVATE*/) we.ownerId.exists(_ == stok.au.get._id)
   else if(t.role=="post") rk.userId.exists(_ == stok.au.get._id)
@@ -107,7 +109,7 @@
     else !Array("private", "insight").exists(we.tags.contains)
 }
 
-@canEdit(t:model.TFeedItem, we:WikiEntry) = @{
+@canEdit(t:TFeedItem, we:WikiEntry) = @{
   // I see my own and my posts
   if(we.tags.contains("private") /*|| we.visibility == Visibility.PRIVATE*/) we.ownerId.exists(_ == stok.au.get._id)
   else if(t.role=="post") false

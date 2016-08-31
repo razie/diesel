@@ -13,15 +13,15 @@ scp $T/com.razie.racerkidz-0.9.1-SNAPSHOT-sans-externalized.jar $T/com.razie.rac
 ssh razvanc@cloud2a.razie.com ". ~/.bashrc; scp ~/rk/up/com.razie.racerkidz-0.9.1-SNAPSHOT-sans-externalized.jar ~/rk/up/com.razie.racerkidz-0.9.1-SNAPSHOT-assets.jar ~/rk/up/wcommon_2.11-0.9.1-SNAPSHOT.jar ~/rk/up/wiki_2.11-0.9.1-SNAPSHOT.jar razvanc@cloud3a.razie.com:rk/up/"
 
 ssh razvanc@cloud2a.razie.com ". ~/.bashrc; cd ~/rk; . ./update"
-sleep 1
-curl http://cloud2a.razie.com:9000/wiki/Club:Glacier_Ski_Club
-sleep 1
+#sleep 1
+#curl http://cloud2a.razie.com:9000/wiki/Club:Glacier_Ski_Club
+#sleep 1
 ssh razvanc@cloud3a.razie.com ". ~/.bashrc; cd ~/rk; . ./update"
-sleep 1
-curl http://cloud3a.razie.com:9000/wiki/Club:Glacier_Ski_Club
+#sleep 1
+#curl http://cloud3a.razie.com:9000/wiki/Club:Glacier_Ski_Club
 
 # prime it
-curl http://www.racerkidz.com/wiki/Club:Glacier_Ski_Club
+#curl http://www.racerkidz.com/wiki/Club:Glacier_Ski_Club
 
 
 ################### Docs

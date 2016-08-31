@@ -1,6 +1,7 @@
 package controllers
 
 import java.io.File
+import mod.snow.{RacerKidz, RacerKidInfo}
 import org.joda.time.DateTime
 import com.mongodb.casbah.Imports._
 import admin.Config
@@ -13,6 +14,7 @@ import razie.db.ROne
 import razie.wiki.util.{PlayTools, IgnoreErrors}
 import razie.wiki.{Services, Enc}
 import razie.wiki.Sec._
+import mod.snow._
 
 import scala.concurrent.Future
 
@@ -223,7 +225,7 @@ object Application extends RazController {
       isok <- (code == T.TESTCODE) orErr "no code"
     ) yield Ok(what match {
       case "regByUserId" =>
-        ROne[model.Reg]("userId" -> data.aso).map(_._id.toString).mkString
+        ROne[Reg]("userId" -> data.aso).map(_._id.toString).mkString
       case "wikiSetOwnerById" =>
         val Array(wId, uId) = data.split(",")
         val w = ROne[WikiEntry]("_id" -> wId.aso).get

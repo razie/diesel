@@ -1,0 +1,4 @@
+cp ../../w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/* public/ace-builds/parser
+cp ../../w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/ace/mode-nvp1.js public/ace-builds/src
+cp ../../w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/ace/worker-nvp1.js public/ace-builds/src
+

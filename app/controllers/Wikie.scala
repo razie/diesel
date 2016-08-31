@@ -11,12 +11,13 @@ import admin.{Config}
 import razie.db.RazSalatContext._
 import razie.db._
 import com.mongodb.casbah.Imports._
+import com.mongodb.DBObject
 import com.novus.salat._
 import org.joda.time.DateTime
 
 import com.typesafe.config.{ConfigObject, ConfigValue}
 import mod.diesel.model.Diesel
-import model.{UserWiki, User, Users, Perm}
+import model._
 import org.bson.types.ObjectId
 import org.joda.time.DateTime
 import razie.wiki.{Services, Enc}
@@ -26,7 +27,6 @@ import razie.wiki.parser.WAST
 import razie.wiki.util.{IgnoreErrors, Corr, PlayTools, VErrors}
 import razie.{cout, clog, cdebug, Log}
 import scala.Array.canBuildFrom
-import com.mongodb.DBObject
 import razie.db.{REntity, RazMongo, ROne, RMany}
 import razie.db.RazSalatContext.ctx
 import razie.wiki.Sec.EncryptedS
@@ -132,6 +132,8 @@ object Wikie extends WikieBase {
   def wikieEdit(wid: WID, icontent: String = "", noshow:String="") = FAU {
     implicit au => implicit errCollector => implicit request =>
 
+    val stok = ROK.s
+
     def realm = wid.realm getOrElse getRealm()
 
     val n = Wikis.formatName(wid)
@@ -146,6 +148,12 @@ object Wikie extends WikieBase {
           hasQuota <- (au.isAdmin || au.quota.canUpdate) orCorr cNoQuotaUpdates;
           r1 <- au.hasPerm(Perm.uWiki) orCorr cNoPermission("uWiki")
         ) yield {
+            //look for drafts
+            val draft = Autosave.OR("wikie."+w.wid.wpath, stok.au.get._id, Map(
+              "content"  -> w.content,
+              "tags" -> w.tags.mkString(",")
+            ))
+
             if(w.markup == Wikis.JS || w.markup == Wikis.JSON || w.markup == Wikis.SCALA)
               ROK.s noLayout { implicit stok =>
                 views.html.util.reactorLayout12FullPage(
@@ -154,11 +162,11 @@ object Wikie extends WikieBase {
                   editForm.fill(
                     EditWiki(w.label,
                       w.markup,
-                      w.content,
+                      draft("content"),
                       w.props.get("visibility").orElse(Reactors(wid.getRealm).props.prop("default.visibility")).getOrElse(PUBLIC),
                       wvis(Some(w.props)).orElse(Reactors(wid.getRealm).props.prop("default.wvis")).getOrElse(PUBLIC),
                       w.ver.toString,
-                      w.tags.mkString(","),
+                      draft("tags"),
                       w.props.get("draft").getOrElse("Notify")))),
                 Seq.empty
                 )
@@ -169,11 +177,11 @@ object Wikie extends WikieBase {
                 views.html.wiki.wikiEdit(w.wid, editForm.fill(
                   EditWiki(w.label,
                     w.markup,
-                    w.content,
+                    draft("content"),
                     w.props.get("visibility").orElse(Reactors(realm).props.prop("default.visibility")).getOrElse(PUBLIC),
                     wvis(Some(w.props)).orElse(Reactors(realm).props.prop("default.wvis")).getOrElse(PUBLIC),
                     w.ver.toString,
-                    w.tags.mkString(","),
+                    draft("tags"),
                     w.props.get("draft").getOrElse("Notify"))), noshow),
                   Seq.empty
                 )
@@ -240,6 +248,30 @@ object Wikie extends WikieBase {
   we
   }
 
+  // clear all draft versions
+  private def clearDrafts (w:WID, realm:String, au:User) = {
+    Autosave.delete("wikie."+w.wpath, au._id)
+  }
+
+  def deleteDraft (w:WID) = FAUR { stok=>
+    Autosave.delete("wikie."+w.wpath, stok.au.get._id)
+    Ok("")
+  }
+
+  // clear all draft versions
+  def saveDraft (w:WID) = FAUR { implicit stok=>
+    val q = stok.req.queryString.map(t=>(t._1, t._2.mkString))
+    val realm = w.realm.getOrElse(stok.realm)
+    val content = stok.req.body.asFormUrlEncoded.get.apply("content").mkString
+    val tags = stok.req.body.asFormUrlEncoded.get.apply("tags").mkString
+    Autosave.set("wikie."+w.wpath, stok.au.get._id,
+    Map(
+      "content"  -> content,
+      "tags" -> tags
+    ))
+    Ok("saved")
+  }
+
   /** api to set content remotely - used by sync and such */
   def setContent(wid: WID) = FAU {
     implicit au => implicit errCollector => implicit request =>
@@ -274,6 +306,7 @@ object Wikie extends WikieBase {
               razie.db.tx("Wiki.setContent") { implicit txn =>
                 WikiEntryOld(w, Some("setContent")).create
                 w.update(we, Some("setContent"))
+                clearDrafts(we.wid, we.realm, au)
                 Emailer.withSession { implicit mailSession =>
                   au.quota.incUpdates
 //                      au.shouldEmailParent("Everything").map(parent => Emailer.sendEmailChildUpdatedWiki(parent, au, WID(w.category, w.name)))
@@ -321,7 +354,8 @@ object Wikie extends WikieBase {
     implicit au => implicit errCollector => implicit request =>
     val data = PlayTools.postData
       val content = data("content")
-    val page = WikiEntry(wid.cat, wid.name, wid.name, "md", content, au._id)
+      val tags = data("tags")
+    val page = WikiEntry(wid.cat, wid.name, wid.name, "md", content, au._id, tags.split(",").toSeq)
 
     ROK.s noLayout {implicit stok=> views.html.wiki.wikiFrag(wid, Some(au), true, Some(page))}
   }
@@ -406,6 +440,7 @@ object Wikie extends WikieBase {
                 razie.db.tx("Wiki.Save") { implicit txn =>
                   // can only change label of links OR if the formatted name doesn't change
                   w.update(we)
+                  clearDrafts(we.wid, we.realm, au)
                   Emailer.withSession { implicit mailSession =>
                     au.quota.incUpdates
                     if (shouldPublish) notifyFollowersCreate(we, au)

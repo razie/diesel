@@ -339,8 +339,8 @@ class StateOk(val realm:String, val au: Option[model.User], val request: Option[
   def reactorLayout12 (content: StateOk => Html) =
     RkViewService.Ok (views.html.util.reactorLayout12(content(this), msg)(this))
 
-//  def apply (content: => Html) =
-//    RkViewService.Ok (views.html.util.reactorLayout(content, msg)(this))
+  def apply (content: => Html) =
+    RkViewService.Ok (views.html.util.reactorLayout(content, msg)(this))
 
   def apply (content: StateOk => Html) =
     RkViewService.Ok (views.html.util.reactorLayout(content(this), msg)(this))
@@ -372,6 +372,7 @@ object RkViewService extends RazController with ViewService {
   }
 }
 
+/** trying some type foolery - pass this off as a Request[_] as well and proxy to original */
 class RazRequest (realm:String, au:Option[User], val ireq:Request[_]) extends StateOk (
   realm,
   au orElse Services.auth.authUser(ireq).asInstanceOf[Option[User]],

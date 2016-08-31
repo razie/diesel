@@ -40,7 +40,46 @@ Tests the content of all pages - through parser looking for CANNOT PARSE errors
 <script src="@routes.Assets.at("javascripts/weTest.js")"></script>
 
 <script>
- target = "@stok.request.get.host";
+
+function testApi() {
+  var tests = [
+    // test API
+    sok('/weapi/v1/entry/rk.Admin:TestPublic',         'Testing'),
+    sok('/weapi/v1/content/rk.Admin:TestPublic',       'Testing'),
+    sok('/weapi/v1/html/rk.Admin:TestPublic',          'Testing'),
+    sok('/weapi/v1/entry/id/574f1c26b0c8520467c017c7', 'Testing'),
+    nok('/weapi/v1/entry/ver/1/rk.Admin:TestPublic',   'Testing'),
+
+    // test private
+    auth('None'),
+    err('/weapi/v1/entry/rk.Admin:TestPrivate',        401),
+    err('/weapi/v1/content/rk.Admin:TestPrivate',      401),
+    err('/weapi/v1/html/rk.Admin:TestPrivate',         401),
+    err('/weapi/v1/entry/id/506c867a0cf26592618ee264', 401),
+    err('/weapi/v1/entry/ver/1/rk.Admin:TestPrivate',  401),
+    auth(''),
+
+    err('/weapi/v1/entry/rk.A:dm:in:TestPublic',       404)
+  ];
+  return tests;
+}
+
+function testCode() {
+  var tests = [
+    // test API
+    sok('/improve/skiing/view', '<title>View progress</title>'),
+    //sok('http://www.effectiveskiing.com/improve/skiing/view', '<title>'),
+
+    // test private
+    //auth('None'),
+    //err('/weapi/v1/entry/ver/1/rk.Admin:TestPrivate',  401),
+    auth('')
+    ];
+  return tests;
+}
+
+var suites = [[], testCode(), testApi()];
+
 </script>
 
 

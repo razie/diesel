@@ -11,7 +11,7 @@ render a regular wiki page - site pages are rendered with wikiSite.scala.html
 
 @htmlHead(page.flatMap(_.contentProps.get("title")).getOrElse(/*wid.cat + ": "+*/ label), None, page)(Map.empty, stok.au, stok.request)
 
-@if(!print) {@navbar(stok.au, wid.getRealm)(stok.au,stok.request)}
+@if(!print) {@navbar(stok.au, wid.getRealm)}
 
 @{
   layout match {

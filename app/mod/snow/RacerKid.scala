@@ -1,14 +1,13 @@
-package model
+package mod.snow
 
-import scala.annotation.StaticAnnotation
-import org.joda.time.DateTime
-import com.mongodb.casbah.Imports._
 import admin.Config
+import com.mongodb.casbah.Imports._
 import controllers.Club
+import org.joda.time.DateTime
 import razie.db._
-import razie.wiki.model.{WikiEntry, UWID, WID}
-import razie.|>._
 import razie.wiki.Sec._
+import razie.wiki.model.{UWID, WID, WikiEntry}
+import model.User
 
 /** a feed element */
 trait TFeedItem {
@@ -190,7 +189,7 @@ case class RacerKid(
 
   // all teams in Club, that I'm in role
   def teams (club:Club, role:String) =
-    model.RacerKidz.findWikiAssocById(_id.toString, club.curYear, "Team").filter(t=> role.isEmpty || t.role == role)
+    RacerKidz.findWikiAssocById(_id.toString, club.curYear, "Team").filter(t=> role.isEmpty || t.role == role)
 
   def rka = RMany[RacerKidAssoc]("to" -> _id)
   def clubs = rka.toList.flatMap(rka=> ROne[Club]("userId" -> rka.from).filter(_.curYear == rka.year).toList).distinct

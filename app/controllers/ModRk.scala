@@ -3,6 +3,7 @@
  */
 package controllers
 
+import mod.snow.RacerKid
 import razie.wiki.model.WID
 import razie.wiki.util.VErrors
 
@@ -14,7 +15,6 @@ import razie.db.REntity
 import razie.db.RMany
 import razie.db.ROne
 import razie.db.RTable
-import model.RacerKid
 import razie.wiki.Sec.EncryptedS
 import model.User
 import play.api.data.Form
@@ -62,7 +62,7 @@ object ModRk extends RazController with Logging {
 
   import razie.db.RMongo.as
 
-  def regd (au:User, wid:WID) = ModRkReg(wid).kids.map(x => (x, x.rkId.as[model.RacerKid].get)).toList
+  def regd (au:User, wid:WID) = ModRkReg(wid).kids.map(x => (x, x.rkId.as[RacerKid].get)).toList
   def rks (au:User, wid:WID) = au.rka.map(x => (x, x.rk.get)).toList
 
   def doeModRkRegs(wid: WID) = FAU { implicit au => implicit errCollector => implicit request =>
@@ -70,7 +70,7 @@ object ModRk extends RazController with Logging {
     (for (
       page <- wid.page
     ) yield {
-      val regd = ModRkReg(page.wid).kids.map(x => (x, x.rkId.as[model.RacerKid].get)).toList
+      val regd = ModRkReg(page.wid).kids.map(x => (x, x.rkId.as[RacerKid].get)).toList
       val rks = au.rka.map(x => (x, x.rk.get)).toList
 
       Ok(views.html.modules.doeModRkRegs(au, page, ModRkReg(page.wid), regd, rks))

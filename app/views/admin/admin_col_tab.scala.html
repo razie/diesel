@@ -1,3 +1,4 @@
+@import mod.snow.RacerKidz
 @(name:String, col:scala.Iterator[com.mongodb.casbah.Imports.DBObject], fields:Array[String])(implicit stok: controllers.StateOk)
 
 @** render a field representing a userId **@
@@ -30,7 +31,7 @@
   case "_id"            => { @entity("RacerKidAssoc", v) }
   case "to" => {
     @if(v == null || v.length <= 1) {<span style="color:#ff0000">???</span>} else {
-      @model.RacerKidz.findByIds(v).map {rk=>
+      @RacerKidz.findByIds(v).map {rk=>
         <a href="/razadmin/rk/@rk._id.toString">@rk.info.fullName</a>
       }
     }

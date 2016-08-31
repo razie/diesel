@@ -1,10 +1,11 @@
 @***********
   add a member to a registration
 ***********@
-@(kid:model.RacerKid, next:String, user:model.User, reg:model.Reg)(implicit stok:controllers.StateOk)
-@import model.RegStatus._
+@(kid:mod.snow.RacerKid, next:String, user:model.User, reg:mod.snow.Reg)(implicit stok:controllers.StateOk)
+@import mod.snow.{RK}
+@import mod.snow.RegStatus._
 @import razie.wiki.model.FormStatus._
-@import model.RK._
+@import mod.snow.RK._
 
 @htmlHeadBar("Reg for " + user.userName)
 
@@ -19,14 +20,14 @@
 <hr>
 <p>Will <b>@kid.info.firstName</b> be a:
 
-@model.RK.ROLES.filter(_ != model.RK.ROLE_FAN).map{r=>
+@RK.ROLES.filter(_ != RK.ROLE_FAN).map{r=>
   <a href="@routes.Club.doeClubUwAddFormKid(reg._id.toString,kid._id.toString, next, r)" class="btn btn-lg btn-info">@r</a>
 }
 <p>Select one of the roles above. </p>
   <ul>
-    <li>@model.RK.ROLE_MEMBER - member of the club: parent, official etc </li>
-    <li>@model.RK.ROLE_COACH - coach </li>
-    <li>@model.RK.ROLE_RACER - racer </li>
+    <li>@RK.ROLE_MEMBER - member of the club: parent, official etc </li>
+    <li>@RK.ROLE_COACH - coach </li>
+    <li>@RK.ROLE_RACER - racer </li>
   </ul>
 
 <hr>

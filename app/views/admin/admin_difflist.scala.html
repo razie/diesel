@@ -10,6 +10,8 @@ purge audit tables
   else wid.wpath
 }
 
+@e(s:String)=@{s.replaceAllLiterally("'", "\\'")}
+
 @stok.title("admin diff list")
 
     <h2>Diffs from @target</h2>
@@ -26,12 +28,12 @@ purge audit tables
     Content diffs:
     <table class="table table-striped">
     @lchanged.filter(_._3 != "-").sortBy(x=> x._2.realm+x._3).map { t =>
-      <tr>
+      <tr id="row-@t._2.id">
         <td>
           @if(t._3 == "R") {
-          <a href="@routes.Admin.applyDiff2(target, WID(t._2.cat, t._2.name).r(t._2.realm))" class="btn btn-xs btn-success">USE REMOTE</a>
+          <a id="b1-@t._2.id" xhref="#" onclick="applyDif('@t._2.id', '@routes.Admin.applyDiff2(target, WID(t._2.cat, t._2.name).r(t._2.realm))')" class="btn btn-xs btn-success">USE REMOTE</a>
           } else {
-          <a href="@routes.Admin.applyDiff2(target, WID(t._2.cat, t._2.name).r(t._2.realm))" class="btn btn-xs btn-warning">USE REMOTE</a>
+          <a id="b1-@t._2.id" xhref="#" onclick="applyDif('@t._2.id', '@routes.Admin.applyDiff2(target, WID(t._2.cat, t._2.name).r(t._2.realm))')" class="btn btn-xs btn-warning">USE REMOTE</a>
           }
       </td>
         <td>
@@ -45,9 +47,9 @@ purge audit tables
         </td>
         <td>
         @if(t._3 == "L") {
-            <a href="@routes.Admin.applyDiff(target, WID(t._2.cat, t._2.name).r(t._2.realm))" class="btn btn-xs btn-success">USE LOCAL</a>
+            <a id="b2-@t._2.id" xhref="#" onclick="applyDif('@t._2.id', '@routes.Admin.applyDiff(target, WID(t._2.cat, t._2.name).r(t._2.realm))')" class="btn btn-xs btn-success">USE LOCAL</a>
           } else {
-            <a href="@routes.Admin.applyDiff(target, WID(t._2.cat, t._2.name).r(t._2.realm))" class="btn btn-xs btn-warning">USE LOCAL</a>
+            <a id="b2-@t._2.id" xhref="#" onclick="applyDif('@t._2.id', '@routes.Admin.applyDiff(target, WID(t._2.cat, t._2.name).r(t._2.realm))')" class="btn btn-xs btn-warning">USE LOCAL</a>
           }
         </td>
       </tr>
@@ -97,4 +99,25 @@ purge audit tables
     }
     </table>
 
+<script>
+function applyDif(id,url) {
+  $.ajax(
+    url, {
+    type: 'GET',
+    success: function(data) {
+      if(data.indexOf("ok") == 0) {
+        $('#row-'+id).fadeOut(250);
+//        $('#b1-'+id).fadeOut();
+//        $('#b2-'+id).fadeOut();
+      } else {
+      alert ("ERROR: "+data)
+      }
+    },
+    error  : function(x) {
+      alert( "ERR "+x.toString());
+    }
+  });
+
+}
+</script>
 

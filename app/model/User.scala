@@ -1,5 +1,6 @@
 package model
 
+import mod.snow._
 import razie.wiki.Sec._
 import com.mongodb.casbah.Imports._
 import com.mongodb.util.JSON
@@ -132,7 +133,7 @@ case class User(
 
   override def hasMembershipLevel(s:String) =
     (s == Perm.Member.s) ||
-    (s == Perm.Moderator.s && this.hasPerm(Perm.Moderator)) ||
+    (s == Perm.Moderator.s && (this.hasPerm(Perm.Moderator) || this.isAdmin)) ||
     (s == Perm.Platinum.s && (this.hasPerm(Perm.Moderator) || this.hasPerm(Perm.Platinum))) ||
     (s == Perm.Gold.s && (this.hasPerm(Perm.Moderator) || this.hasPerm(Perm.Platinum) || this.hasPerm(Perm.Gold))) ||
     (s == Perm.Basic.s && (this.hasPerm(Perm.Moderator) || this.hasPerm(Perm.Platinum) || this.hasPerm(Perm.Gold) || this.hasPerm(Perm.Basic)))
