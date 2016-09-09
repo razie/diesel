@@ -75,7 +75,6 @@ trait TRacerKidInfo {
   def gender: String // M/F/?
   def roles: Set[String]
   def status: Char
-  def parents: Set[ObjectId]
   def notifyParent: Boolean
   def _id: ObjectId
 
@@ -142,8 +141,6 @@ case class RacerKidInfo(
   _id: ObjectId = new ObjectId()) extends REntity[RacerKidInfo] with TRacerKidInfo {
 
   def yob: Int = dob.getYear()
-
-  def parents: Set[ObjectId] = RMany[RacerKidAssoc]("to" -> _id, "what" -> RK.ASSOC_PARENT).map(_.from).toSet
 }
 
 /**
@@ -193,6 +190,9 @@ case class RacerKid(
 
   def rka = RMany[RacerKidAssoc]("to" -> _id)
   def clubs = rka.toList.flatMap(rka=> ROne[Club]("userId" -> rka.from).filter(_.curYear == rka.year).toList).distinct
+
+  def parents: Set[ObjectId] = RMany[RacerKidAssoc]("to" -> _id, "assoc" -> RK.ASSOC_PARENT).map(_.from).toSet
+  def parentUsers: Seq[User] = parents.flatMap(_.as[User].toList).toSeq
 }
 
 /**

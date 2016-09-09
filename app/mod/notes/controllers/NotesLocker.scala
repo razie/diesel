@@ -554,6 +554,7 @@ object NotesLocker extends RazController with Logging {
       }
   }
 
+  /** return back to the main screen, with the message */
   private def OkNewNote(msg:Seq[(String,String)]=Seq())(implicit request:Request[AnyContent], au:User) = {
     NOK ("", autags, msg, false) apply { implicit stok =>
       views.html.notes.notesmain(NEWNOTE)

@@ -82,7 +82,6 @@ trait WikiDomainParser extends WikiParserBase {
 
   // ----------------------
 
-
   def optKinds: PS = opt(ows ~> "[" ~> ows ~> repsep(ident, ",") <~ "]") ^^ {
     case Some(tParm) => tParm.mkString
     case None => ""
@@ -245,7 +244,7 @@ trait WikiDomainParser extends WikiParserBase {
   /**
    * optional attributes
    */
-  def attrs: Parser[List[RDOM.P]] = " *\\(".r ~> ows ~> rep1sep(pattr, "," ~ ows) <~ ows <~ ")"
+  def attrs: Parser[List[RDOM.P]] = " *\\(".r ~> ows ~> repsep(pattr, "," ~ ows) <~ ows <~ ")"
 
   /**
    * optional attributes
@@ -258,7 +257,7 @@ trait WikiDomainParser extends WikiParserBase {
   /**
    * optional attributes
    */
-  def optMatchAttrs: Parser[List[RDOM.PM]] = opt(" *\\(".r ~> ows ~> rep1sep(pmatchattr, "," ~ ows) <~ ows <~ ")") ^^ {
+  def optMatchAttrs: Parser[List[RDOM.PM]] = opt(" *\\(".r ~> ows ~> repsep(pmatchattr, "," ~ ows) <~ ows <~ ")") ^^ {
     case Some(a) => a
     case None => List.empty
   }
@@ -372,7 +371,18 @@ trait WikiDomainParser extends WikiParserBase {
   def pmsg: PS = keyw("[.$]msg *".r) ~ opt("<" ~> "[^>]+".r <~ "> *".r) ~ ident ~ " *\\. *".r ~ ident ~ optAttrs ~ opt(" *: *".r ~> optAttrs) ^^ {
     case k ~ stype ~ ent ~ _ ~ ac ~ attrs ~ ret => {
       LazyState { (current, ctx) =>
-        val f = EMsg("def", ent, ac, attrs, ret.toList.flatten(identity), stype.mkString.trim)
+
+        val ea = ent+"."+ac
+        val archn =
+          if(stype.exists(_.length > 0)) stype.mkString.trim
+          else {
+            val sc = ctx.we.flatMap(_.templateSections.find(_.name == ea)).map(_.content).mkString
+            if("" != sc) EESnakk.parseTemplate(sc).method else ""
+          }
+
+        val f = EMsg("def", ent, ac, attrs, ret.toList.flatten(identity), archn)
+
+
         f.pos = Some(EPos(ctx.we.map(_.wid.wpath).mkString, k.pos.line, k.pos.column))
         collectDom(f, ctx.we)
         SState(f.toHtmlInPage+"<br>")
@@ -446,7 +456,7 @@ trait WikiDomainParser extends WikiParserBase {
   /**
    * .func name (a,b) : String
    */
-  def pfunc: PS = "[.$]def *".r ~> ident ~ optAttrs ~ opt(" *: *".r ~> ident) ~ optScript ~ optBlock ^^ {
+  def pfunc: PS = "[.$]def *".r ~> qident ~ optAttrs ~ opt(" *: *".r ~> ident) ~ optScript ~ optBlock ^^ {
     case name ~ a ~ t ~ s ~ b => {
       LazyState { (current, ctx) =>
         val f = F(name, a, t.mkString, s.fold(ctx).s, b)

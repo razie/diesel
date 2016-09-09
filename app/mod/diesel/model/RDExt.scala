@@ -17,6 +17,7 @@ import mod.diesel.controllers.{DieselControl, SFiddles}
 import razie.diesel.RDOM._
 import razie.diesel._
 import razie.js
+import razie.wiki.model.Wikis
 
 import scala.Option.option2Iterable
 import scala.collection.mutable
@@ -60,7 +61,7 @@ object RDExt {
     var pos : Option[EPos] = None
     def withPos(p:Option[EPos]) = {this.pos = p; this}
 
-    override def toHtml = kspan("expect::") +" "+ pm.mkString("(", ",", ")")
+    override def toHtml = kspan("expect::") +" "+ pm.map(_.toHtml).mkString("(", ",", ")")
 
     override def toString = "expect:: " + pm.mkString("(", ",", ")")
 
@@ -408,12 +409,12 @@ object RDExt {
     // can execute even in mockMode
     override def isMock = true
 
-    override def test(m: EMsg, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) = {
-      m.entity == "func"
+    override def test(in: EMsg, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) = {
+      ctx.domain.exists(_.funcs.contains(in.entity + "." + in.met))
     }
 
     override def apply(in: EMsg, destSpec: Option[EMsg])(implicit ctx: ECtx): List[Any] = {
-      val res = ctx.domain.flatMap(_.funcs.get(in.met)).map { f =>
+      val res = ctx.domain.flatMap(_.funcs.get(in.entity + "." + in.met)).map { f =>
         val res = try {
           if (f.script != "") {
             val c = ctx.domain.get.mkCompiler("js")
@@ -468,12 +469,13 @@ object RDExt {
       case x: EMsg if x.entity == m.entity && x.met == m.met => x
     }.headOption)
 
-  // a context
+  /** snakk REST APIs */
   object EESnakk extends EExecutor("snakk") {
     /** can I execute this task? */
     override def test(m: EMsg, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) = {
       m.stype == "GET" || m.stype == "POST" ||
-        spec(m).exists(m=> m.stype == "GET" || m.stype == "POST")
+        spec(m).exists(m=> m.stype == "GET" || m.stype == "POST" ||
+        ctx.findTemplate(m.entity+"."+m.met).isDefined)
     }
 
     private def prepUrl (url:String, attrs: Attrs) = {
@@ -489,30 +491,103 @@ object RDExt {
 
     /** execute the task then */
     override def apply(in: EMsg, destSpec: Option[EMsg])(implicit ctx: ECtx): List[Any] = {
-      in.attrs.find(_.name == "url").orElse(
-        spec(in).flatMap(_.attrs.find(_.name == "url"))
-      ).map {u=>
-        import razie.Snakk._
-        //          val stype = if(in.stype.length > 0) in.stype else spec(in).map(_.stype).mkString
+      val template = ctx.findTemplate(in.entity+"."+in.met)
+      val tcontent = template.map(_.content).map{content=>
+        // todo either this or prepUrl not both
+        val PAT = """\$\{([^\}]*)\}""".r
+        val s1 = PAT.replaceAllIn(content, {m =>
+          ctx(m.group(1))
+        })
+        s1
+      }
+
+      import razie.Snakk._
+
+      tcontent.map(parseTemplate).map {sc=>
+        val newurl = if(sc.url startsWith "/") "http://" + ctx.hostname+sc.url else sc.url
+        // with templates
         val x = url(
-          prepUrl(stripQuotes(u.dflt),
+          prepUrl(stripQuotes(newurl),
             P("subject", "", "", "", in.entity) ::
-              P("verb", "", "", "", in.met) :: in.attrs)
+            P("verb", "", "", "", in.met) :: in.attrs),
           //            in.attrs.filter(_.name != "url").map(p=>(p.name -> p.dflt)).toMap,
-          //            stype))
+        Map.empty[String,String],
+        sc.method
         )
         try {
-          val res = body(x)
-          in.ret.headOption.orElse(spec(in).flatMap(_.ret.headOption)).orElse(
-            Some(new P("result", ""))
-          ).map(_.copy(dflt=res)).map(x=>EVal(x)).toList
+          val res = jsonParsed(body(x))
+            // message specified return mappings
+          val ret = if(in.ret.nonEmpty) in.ret else spec(in).toList.flatMap(_.ret)
+
+          val strs = if(template.get.signature.length > 0) {
+            val mapping = template.get.signature.split(",").map(s=>s.split("=")).map(a=> (a(0), a(1)))
+            val strs = mapping.map { t =>
+              (t._1, json(res) \@@ t._2)
+            }
+            strs.toList
+          } else {
+//          (
+//            if(ret.nonEmpty) ret else List(new P("result", ""))
+//            ).map(p => p.copy(dflt = res \ "values" \@@ p.name)).map(x => EVal(x))
+            val a = res.getJSONObject("values")
+            val strs = (
+                for (k <- 0 until a.names.length())
+                  yield (a.names.get(k).toString, a.getString(a.names.get(k).toString))
+              )
+            strs.toList
+          }
+
+          strs.toList.map(t=> new P(t._1, t._2)).map{x =>
+            ctx.put(x)
+            EVal(x).withPos(Some(EPos(template.get.wid.copy(section = None).wpath, template.get.line, template.get.col)))
+          }
         } catch {
-          case t:Throwable => {
-            razie.clog << t.toString
-            EError("Error snakking: "+u+ " :: " +t.toString)::Nil
+          case t: Throwable => {
+            razie.Log.log("error snakking", t)
+            EError("Error snakking: " + x + " :: " + t.toString) :: Nil
           }
         }
-      } getOrElse EError("no url attribute for RESTification ")::Nil
+      } getOrElse {
+        // old way without templates
+        in.attrs.find(_.name == "url").orElse(
+          spec(in).flatMap(_.attrs.find(_.name == "url"))
+        ).map { u =>
+          //          val stype = if(in.stype.length > 0) in.stype else spec(in).map(_.stype).mkString
+          val x = url(
+            prepUrl(stripQuotes(u.dflt),
+              P("subject", "", "", "", in.entity) ::
+                P("verb", "", "", "", in.met) :: in.attrs)
+            //            in.attrs.filter(_.name != "url").map(p=>(p.name -> p.dflt)).toMap,
+            //            stype))
+          )
+          try {
+            val res = body(x)
+            in.ret.headOption.orElse(spec(in).flatMap(_.ret.headOption)).orElse(
+              Some(new P("result", ""))
+            ).map(_.copy(dflt = res)).map(x => EVal(x)).toList
+          } catch {
+            case t: Throwable => {
+              razie.Log.log("error snakking", t)
+              EError("Error snakking: " + u + " :: " + t.toString) :: Nil
+            }
+          }
+        } getOrElse EError("no url attribute for RESTification ") :: Nil
+      }
+    }
+
+    case class SnakCall (method:String, url:String, headers:String, content:String)
+
+    def parseTemplate (is:String) = {
+//      val regex = """(?s)(GET|POST) ([^\n]+)\n(([^\n]+\n)*)?(.+)?""".r
+//      val regex (method, url, headers, content) = s
+
+      // templates start with a \n
+      val s = if(is startsWith "\n") is.substring(1) else is
+      val verb = s.split(" ").head
+      val url = s.split(" ").tail.head.replaceFirst("\n.*", "")
+      val headers = if(s contains "\n\n") s.replaceFirst("(?s)\n\n.*", "").lines.drop(1).mkString("\n") else ""
+      val content = if(s contains "\n\n") s.replaceFirst("(?s).*\n\n", "") else ""
+      new SnakCall (verb, url, "", content.replaceFirst("(?s)\n$", ""))
     }
 
     override def toString = "$executor::snakk "
@@ -660,6 +735,7 @@ case class EMsg(arch:String, entity: String, met: String, attrs: List[RDOM.P], r
     kspan("msg:", resolved, spec.flatMap(_.pos)) + span(stype, "info")
   )
 
+  /** color - if has executor */
   private def resolved: String = spec.map(_.resolved).getOrElse(
     if (stype == "GET" || stype == "POST" ||
       executors.exists(_.test(this)(ECtx.empty))

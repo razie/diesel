@@ -11,7 +11,8 @@ import org.bson.types.ObjectId
 import play.api.mvc.{AnyContent, Request}
 import razie.clog
 import razie.diesel.RDOM._
-import razie.diesel.{DomEngECtx, RDomain, ECtx}
+import razie.diesel.{StaticECtx, DomEngECtx, RDomain, ECtx}
+import razie.wiki.model.WikiEntry
 
 import scala.Option.option2Iterable
 import scala.collection.mutable.ListBuffer
@@ -140,23 +141,25 @@ object DomEngineSettings {
 }
 
 class DomEngineSettings(
-                         var mockMode    : Boolean = false,
-                         var blenderMode : Boolean = true,
-                         var draftMode   : Boolean = true,
-                         var sketchMode  : Boolean = true,
-                         var execMode    : String = "sync"
-                         ) {
+  var mockMode    : Boolean = false,
+  var blenderMode : Boolean = true,
+  var draftMode   : Boolean = true,
+  var sketchMode  : Boolean = true,
+  var execMode    : String = "sync"
+  ) {
 }
 
+/** an engine */
 class DomEngine(
   val dom: RDomain,
   val root: DomAst,
-  val settings: DomEngineSettings) {
+  val settings: DomEngineSettings,
+  val pages : List[WikiEntry]) {
 
   val maxLevels = 10
 
   // setup the context for this eval
-  implicit val ctx = new DomEngECtx().withDomain(dom)
+  implicit val ctx = new DomEngECtx().withDomain(dom).withSpecs(pages)
 
   val rules = dom.moreElements.collect {
     case e:ERule => e
@@ -171,7 +174,7 @@ class DomEngine(
   def expand(a: DomAst, recurse: Boolean = true, level: Int): Unit =
     if (level >= maxLevels) a.children append DomAst(TestResult("fail: Max-Level!", "You have a recursive rule generating this branch..."), "error")
     else a.value match {
-      case n: EVal => {
+      case n: EVal if ! AstKinds.isGenerated(a.kind) => {
         a.children append DomAst(EVal(n.p).withPos(n.pos), AstKinds.MOCKED)
         ctx.put(n.p)
       }
@@ -238,9 +241,9 @@ class DomEngine(
           executors.filter(x=> (!settings.mockMode || x.isMock) && x.test(n)).map { r =>
             mocked = true
 
-            val news = r.apply(n, None).map(x => DomAst(x, AstKinds.GENERATED).withSpec(r))
+            val news = r.apply(n, None)(new StaticECtx(n.attrs, Some(ctx))).map(x => DomAst(x, AstKinds.GENERATED).withSpec(r))
+            a.children appendAll news
             if (recurse) news.foreach { n =>
-              a.children append n
               expand(n, recurse, level + 1)
             }
             true
@@ -296,7 +299,16 @@ class DomEngine(
 
       case e: ExpectM => {
         val cole = new MatchCollector()
-        root.collect {
+        val targets = if(e.when.isDefined) {
+          // find generated messages that should be tested
+          root.collect {
+            case d@DomAst(n: EMsg, k, _, _) if e.when.exists(_.test(n)) => d
+          }
+        } else List(root)
+
+        if(targets.size > 0) {
+        // todo look at all possible targets - will need to create a matchCollector per etc
+        targets.head.collect {
           case d@DomAst(n: EMsg, k, _, _) if AstKinds.isGenerated(k) =>
             cole.newMatch(d)
             if (e.m.test(n, Some(cole)))
@@ -335,15 +347,27 @@ class DomEngine(
           //              a.children appendAll e.sketch(None).map(x => DomAst(x, AstKinds.GENERATED).withSpec(e))
           //            }
         }
+        }
       }
 
       case e: ExpectV => {
         val cole = new MatchCollector()
-        // test each generated value
-        val vals = root.collect {
+
+        // identify sub-trees that it applies to
+        val targets = if(e.when.isDefined) {
+          // find generated messages that should be tested
+          root.collect {
+            case d@DomAst(n: EMsg, k, _, _) if e.when.exists(_.test(n)) => d
+          }
+        } else List(root)
+
+        if(targets.size > 0) {
+        // todo look at all possible targets - will need to create a matchCollector per etc
+        val vals = targets.head.collect {
           case d@DomAst(n: EVal, k, _, _) if AstKinds.isGenerated(k) => n.p
         }
 
+          // test each generated value
         if (e.test(vals, Some(cole)))
           a.children append DomAst(TestResult("ok"), AstKinds.TEST).withSpec(e)
 
@@ -357,6 +381,7 @@ class DomEngine(
             //todo should i add the test as a warning?
 //            a.children appendAll e.sketch(None).map(x=>EVal(x)).map(x => DomAst(x, "generated.sketched").withSpec(e))
 //          }
+        }
         }
       }
 

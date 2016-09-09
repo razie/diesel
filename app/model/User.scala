@@ -112,7 +112,6 @@ case class User(
 
   // TODO change id = it shows like everywhere
   def id = _id.toString
-  def parents:Set[ObjectId] = Set.empty // TODO implement from trait RacerKid
   def gender = "?"
   def notifyParent = false
 

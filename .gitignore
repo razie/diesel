@@ -15,6 +15,7 @@ dump
 dump*
 data
 modules
+node/dieselNode/node_modules
 /.target
 /bin
 /lib_managed

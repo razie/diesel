@@ -21,7 +21,7 @@ import razie.|>._
 
 import scala.collection.mutable.ListBuffer
 
-// for traversal
+// for traversal - type of visit callback
 abstract class TLNode
 case class TLFolder(x:TopicList) extends TLNode
 case class TLTopic(x:UWID)  extends TLNode
@@ -51,9 +51,13 @@ case class TopicList (
     */
   def traverse[B] (p:Option[Progress], path:String)
                   (f:PartialFunction[(TLNode,Option[Progress], String), B]) : List[B] = {
-    (if(f.isDefinedAt(TLFolder(this), p, path)) List(f(TLFolder(this), p, path))  else Nil) ++
-    //todo client must at least respond to each node or should I check it
+    (
+      if(f.isDefinedAt(TLFolder(this), p, path))
+        List(f(TLFolder(this), p, path))
+      else Nil
+    ) ++
       topics.toList.flatMap{uwid=>
+        //todo client must at least respond to each node or should I check it
         val npath = path+"/"+uwid.page.get.wid.wpath
         if(uwid.cat == "Pathway") {
           Progress.topicList(uwid).toList.flatMap(_.traverse(p, npath)(f))
@@ -61,7 +65,11 @@ case class TopicList (
           f(TLTopic(uwid), p, npath) :: Nil
         }
       } ++
-        (if(f.isDefinedAt(TLFolderEnd(this), p, path)) List(f(TLFolderEnd(this), p, path)) else Nil)
+        (
+          if(f.isDefinedAt(TLFolderEnd(this), p, path))
+            List(f(TLFolderEnd(this), p, path))
+          else Nil
+        )
   }
 
   def contains (u:UWID, p:Progress) = {

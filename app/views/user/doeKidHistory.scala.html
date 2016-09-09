@@ -10,6 +10,9 @@
 
 @import helper.twitterBootstrap._
 
+@help()= @{
+}
+
   @ccc(wid: WID, we: WikiEntry, c:Option[String]=None) = @{
     //    cdebug << "D"
     // this will use the preprocessed cache and just do MD format
@@ -73,14 +76,17 @@
         @*<div class="panel-body alert-@pnelColor(h,we)" style="background-color: #fCf8eb; color:black">*@
         <div class="panel-body alert-@pnelColor(h,we)" style="color:black">
           @if(we.category != "Note") {
-            @Html(we.wid.ahrefRelative)<br>
+            @Html(we.wid.ahrefNice)<br>
           }
 
           @if(h.role == "post") {
             <button type="button" class="close" aria-label="Dismiss" onclick="dismissPost('@h.eId')" title="Dismiss this alert">
               <span aria-hidden="true">&times;</span>
             </button>
-            <p>@Html(ccc(we.wid, we, we.getFirstParagraph))</p>
+            <p>@Html(ccc(we.wid, we, we.getFirstParagraph.map(_ +
+                "<br><small>... <a href=\"" + we.wid.urlRelative +
+                "\">(more available)</a></small>"
+            )))</p>
           } else {
             <p>@Html(ccc(we.wid, we))</p>
           }
@@ -121,7 +127,8 @@
 
 <h3>@rk.info.fullName
   <small>|
-  @if(rk.userId.isDefined) {account holder} else {no account}
+    @if(rk.userId.isDefined) {account holder} else {parent acct: @rk.parentUsers.map(_.fullName).mkString(",")}
+    | <a href="#" onclick="help(); return false;" title="More help" style="color:red">Help!</a>
   </small>
   @notes.notesmsgDiv("histmsg")
 </h3>
@@ -135,14 +142,14 @@
   <input type="checkbox" name="grouped" onchange="changeGrouped(this);"/> Grouped
 }
   | Add a:
+   <a href="#" onclick="addGoal(); return false;"      title="Select a goal">Goal</a> |
+   <a href="#" onclick="addPlan(); return false;"      title="Select a plan">Plan</a> |
   @if(club.isClubCoach(stok.au.get)) {
-  <a href="#" onclick="addNote();" title="Private insight / notes visible to coaches only">Insight</a> |
-  <a href="#" onclick="addEval()" title="An evaluation shared with the athlete">Evaluation</a> |
-}
-   <a href="#" onclick="addGoal()" title="Select a goal">Goal</a> |
-   <a href="#" onclick="addPlan()" title="Select a plan">Plan</a> |
-   <a href="#" onclick="addFeedback()" title="Some feedback">Feedback</a> |
-   <a href="#" onclick="addMA()" title="Movement analysis">MA</a> |
+    <a href="#" onclick="addNote();; return false;"    title="Private insight / notes visible to coaches only">Insight</a> |
+    <a href="#" onclick="addEval(); return false;"     title="An evaluation shared with the athlete">Evaluation</a> |
+    <a href="#" onclick="addFeedback(); return false;" title="Some feedback">Feedback</a> |
+    <a href="#" onclick="addMA(); return false;"       title="Movement analysis">MA</a> |
+  }
 <p>
 </p>
 
@@ -155,6 +162,16 @@
 
 @defining(items().take(20)) { history =>
   @notes.notesmsgShow("histmsg", Seq(("msg" -> ("Found "+history.size.toString+" items"))))
+
+<div id="help" class="alert alert-success" style="display: none;">
+  <p>This is your <b>main feed</b>.
+    Items appear from the different notifications you subscribed to (like news, alerts or blog items).
+    <b>You can dismiss notifications with the X button on the right!</b></p>
+  <p>You can take notes yourself, create and track goals, plans etc but... <b>as an athlete</b>
+    , the coaches will assign you these. </p>
+  <p><b>As a coach</b>
+    , you'll keep track of your own personal notes. You can see each athlete's profile by going to the respective team.</p>
+</div>
 
   @if(settings contains "grouped") {
     <p></p>Groups: @history.groupBy(_._1.role).map { g =>
@@ -174,11 +191,9 @@
   }
 
   @if(history.size == 0) {
-    <div class="alert alert-success">
-      <p>You have no items here... this is your <b>main feed</b>. Items appear from the different notifications you subscribed to (like news, alerts or blog items).</p>
-      <p>You can take notes yourself, create and track goals, plans etc but... <b>as an athlete</b>, the coaches will assign you these. </p>
-      <p><b>As a coach</b>, you'll keep track of your own personal notes. You can see each athlete's profile by going to the respective team.</p>
-    </div>
+    <script>
+    $("#help").show();
+    </script>
   }
 }
 
@@ -266,6 +281,10 @@ function changeGrouped (element) {
   var settings = element.checked ? "grouped" : "";
   window.location = '@routes.Kidz.doeKidHistory(club.name, rk._id.toString, "")&settings='+settings;
 }
+
+function help() {
+  $("#help").toggle();
+}
 </script>
 
 
@@ -321,12 +340,12 @@ function changeGrouped (element) {
   function newConfirmNoYes(msg, onOk, onCancel)
   {
   $("#confirmModal > div > div > div.modal-body > p").html(msg);
-  $("#confirmModal > div > div > div.modal-footer > button.btn.btn-default").html(dLab("[[No]]"));
+  $("#confirmModal > div > div > div.modal-footer > button.btn.btn-default").html("No");
   $("#confirmModal > div > div > div.modal-footer > button.btn.btn-default").show();
-  $("#confirmModal > div > div > div.modal-footer > button.btn.btn-default").html(dLab("[[No]]")).unbind('click');
-  $("#confirmModal > div > div > div.modal-footer > button.btn.btn-default").html(dLab("[[No]]")).click(onCancel);
-  $("#confirmModal > div > div > div.modal-footer > button.btn.btn-primary").html(dLab("[[Yes]]")).unbind('click');
-  $("#confirmModal > div > div > div.modal-footer > button.btn.btn-primary").html(dLab("[[Yes]]")).click(onOk);
+  $("#confirmModal > div > div > div.modal-footer > button.btn.btn-default").html("No").unbind('click');
+  $("#confirmModal > div > div > div.modal-footer > button.btn.btn-default").html("No").click(onCancel);
+  $("#confirmModal > div > div > div.modal-footer > button.btn.btn-primary").html("Yes").unbind('click');
+  $("#confirmModal > div > div > div.modal-footer > button.btn.btn-primary").html("Yes").click(onOk);
   $("#confirmModal").modal('show');
   }
 </script>

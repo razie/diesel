@@ -71,11 +71,12 @@ a JS with HTML and CSS fiddle
 
   <div class="row" style="align-items:center;">
     <div id="title1a_@id" class="col-sm-6" style="font-size: small">Mock/Spec
-  </div>
+      <input type="checkbox" id="expandedSpec" title="Expand/collapse spec" checked> <small>(show/hide)</small>
+    </div>
     <div id="title1b_@id" class="col-sm-6" style="font-size: small">
   </div>
   </div>
-  <div class="row" style="align-items:center;">
+  <div id="specRow" class="row" style="align-items:center;">
     <div id="divIn1_@id" class="col-sm-6" style="">
       <pre id="pre1_@id" style="height:228px; ">@spec</pre>
     </div>
@@ -116,12 +117,14 @@ If you'd rather see the elements ($msg, $when etc) as a dialog, go to that line 
 <script>
 // used in imported scripts
 var realm = '@reactor';
+var fiddleId = '@id';
 
 useLocalStorageCheckbox("sketchMode", "domFiddleSketchMode");
 useLocalStorageCheckbox("mockMode", "domFiddleMockMode");
 useLocalStorageCheckbox("blenderMode", "domFiddleBlenderMode");
 useLocalStorageCheckbox("draftMode", "domFiddleDraftsMode");
 useLocalStorageCheckbox("wikiMode", "domFiddleWikiMode");
+
 
 $('#sketchMode, #mockMode, #blenderMode, #draftMode').change(function(){
       runpill2_@{id}('@{id}');
@@ -305,7 +308,12 @@ if('@storyWpath'.length > 0) $("#curStory").text('(@WID.fromPath(storyWpath).map
   var keyWordCompleter = {
     getCompletions: function(editor, session, pos, prefix, callback) {
         var state = editor.session.getState(pos.row);
-        var completions = session.$mode.getCompletions(state, session, pos, prefix);
+        var completions = [];
+
+        // raz: not interested except in DSL lines
+//        if(session.getLine(pos.row).indexOf("$") == 0) {
+          completions = session.$mode.getCompletions(state, session, pos, prefix);
+//        }
         callback(null, completions);
     }
   };
@@ -492,6 +500,22 @@ function saveNew(what) {
     });
 }
 
+// it's on load because otherwise the div has no contents
+$(window).load (function() {
+  useLocalStorageCheckbox("expandedSpec", "domFiddleExpandedSpec", function (a,b,expanded) {
+    if(expanded) {
+      $("#specRow").show();
+      $("#pre3_@id").css("height", "228px");
+      $("#divOut3_@id").css("max-height", "228px");
+      $("#iframeOut3_@id").css("max-height", "228px");
+    } else {
+      $("#specRow").hide();
+      $("#pre3_@id").css("height", "428px");
+      $("#divOut3_@id").css("max-height", "428px");
+      $("#iframeOut3_@id").css("max-height", "428px");
+    }
+  });
+});
 </script>
 
 

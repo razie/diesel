@@ -1,4 +1,4 @@
-// $ANTLR 3.3 avr. 19, 2016 01:13:22 /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g 2016-08-25 14:56:08
+// $ANTLR 3.3 avr. 19, 2016 01:13:22 /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g 2016-09-02 09:48:43
 
 
 
@@ -21,8 +21,6 @@ var Nvp1Lexer = function(input, state) {
 
 org.antlr.lang.augmentObject(Nvp1Lexer, {
     EOF: -1,
-    T__9: 9,
-    T__10: 10,
     T__11: 11,
     T__12: 12,
     T__13: 13,
@@ -51,11 +49,15 @@ org.antlr.lang.augmentObject(Nvp1Lexer, {
     T__36: 36,
     T__37: 37,
     T__38: 38,
-    ID: 4,
-    STRING: 5,
-    INT: 6,
-    COMMENT: 7,
-    WS: 8
+    T__39: 39,
+    T__40: 40,
+    TEXT: 4,
+    NEWLINE: 5,
+    ID: 6,
+    STRING: 7,
+    INT: 8,
+    COMMENT: 9,
+    WS: 10
 });
 
 (function(){
@@ -63,8 +65,6 @@ var HIDDEN = org.antlr.runtime.Token.HIDDEN_CHANNEL,
     EOF = org.antlr.runtime.Token.EOF;
 org.antlr.lang.extend(Nvp1Lexer, org.antlr.runtime.Lexer, {
     EOF : -1,
-    T__9 : 9,
-    T__10 : 10,
     T__11 : 11,
     T__12 : 12,
     T__13 : 13,
@@ -93,61 +93,27 @@ org.antlr.lang.extend(Nvp1Lexer, org.antlr.runtime.Lexer, {
     T__36 : 36,
     T__37 : 37,
     T__38 : 38,
-    ID : 4,
-    STRING : 5,
-    INT : 6,
-    COMMENT : 7,
-    WS : 8,
+    T__39 : 39,
+    T__40 : 40,
+    TEXT : 4,
+    NEWLINE : 5,
+    ID : 6,
+    STRING : 7,
+    INT : 8,
+    COMMENT : 9,
+    WS : 10,
     getGrammarFileName: function() { return "/Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g"; }
 });
 org.antlr.lang.augmentObject(Nvp1Lexer.prototype, {
-    // $ANTLR start T__9
-    mT__9: function()  {
-        try {
-            var _type = this.T__9;
-            var _channel = org.antlr.runtime.BaseRecognizer.DEFAULT_TOKEN_CHANNEL;
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:10:6: ( '$receive' )
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:10:8: '$receive'
-            this.match("$receive"); 
-
-
-
-
-            this.state.type = _type;
-            this.state.channel = _channel;
-        }
-        finally {
-        }
-    },
-    // $ANTLR end "T__9",
-
-    // $ANTLR start T__10
-    mT__10: function()  {
-        try {
-            var _type = this.T__10;
-            var _channel = org.antlr.runtime.BaseRecognizer.DEFAULT_TOKEN_CHANNEL;
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:11:7: ( '<' )
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:11:9: '<'
-            this.match('<'); 
-
-
-
-            this.state.type = _type;
-            this.state.channel = _channel;
-        }
-        finally {
-        }
-    },
-    // $ANTLR end "T__10",
-
     // $ANTLR start T__11
     mT__11: function()  {
         try {
             var _type = this.T__11;
             var _channel = org.antlr.runtime.BaseRecognizer.DEFAULT_TOKEN_CHANNEL;
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:12:7: ( '>' )
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:12:9: '>'
-            this.match('>'); 
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:10:7: ( '$receive' )
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:10:9: '$receive'
+            this.match("$receive"); 
+
 
 
 
@@ -164,10 +130,9 @@ org.antlr.lang.augmentObject(Nvp1Lexer.prototype, {
         try {
             var _type = this.T__12;
             var _channel = org.antlr.runtime.BaseRecognizer.DEFAULT_TOKEN_CHANNEL;
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:13:7: ( '$msg' )
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:13:9: '$msg'
-            this.match("$msg"); 
-
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:11:7: ( '<' )
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:11:9: '<'
+            this.match('<'); 
 
 
 
@@ -184,10 +149,9 @@ org.antlr.lang.augmentObject(Nvp1Lexer.prototype, {
         try {
             var _type = this.T__13;
             var _channel = org.antlr.runtime.BaseRecognizer.DEFAULT_TOKEN_CHANNEL;
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:14:7: ( '$when' )
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:14:9: '$when'
-            this.match("$when"); 
-
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:12:7: ( '>' )
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:12:9: '>'
+            this.match('>'); 
 
 
 
@@ -204,9 +168,9 @@ org.antlr.lang.augmentObject(Nvp1Lexer.prototype, {
         try {
             var _type = this.T__14;
             var _channel = org.antlr.runtime.BaseRecognizer.DEFAULT_TOKEN_CHANNEL;
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:15:7: ( '=>' )
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:15:9: '=>'
-            this.match("=>"); 
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:13:7: ( '$msg' )
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:13:9: '$msg'
+            this.match("$msg"); 
 
 
 
@@ -224,9 +188,9 @@ org.antlr.lang.augmentObject(Nvp1Lexer.prototype, {
         try {
             var _type = this.T__15;
             var _channel = org.antlr.runtime.BaseRecognizer.DEFAULT_TOKEN_CHANNEL;
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:16:7: ( '$match' )
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:16:9: '$match'
-            this.match("$match"); 
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:14:7: ( '$when' )
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:14:9: '$when'
+            this.match("$when"); 
 
 
 
@@ -244,9 +208,9 @@ org.antlr.lang.augmentObject(Nvp1Lexer.prototype, {
         try {
             var _type = this.T__16;
             var _channel = org.antlr.runtime.BaseRecognizer.DEFAULT_TOKEN_CHANNEL;
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:17:7: ( '$mock' )
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:17:9: '$mock'
-            this.match("$mock"); 
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:15:7: ( '=>' )
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:15:9: '=>'
+            this.match("=>"); 
 
 
 
@@ -264,9 +228,9 @@ org.antlr.lang.augmentObject(Nvp1Lexer.prototype, {
         try {
             var _type = this.T__17;
             var _channel = org.antlr.runtime.BaseRecognizer.DEFAULT_TOKEN_CHANNEL;
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:18:7: ( '$if' )
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:18:9: '$if'
-            this.match("$if"); 
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:16:7: ( '$match' )
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:16:9: '$match'
+            this.match("$match"); 
 
 
 
@@ -284,9 +248,9 @@ org.antlr.lang.augmentObject(Nvp1Lexer.prototype, {
         try {
             var _type = this.T__18;
             var _channel = org.antlr.runtime.BaseRecognizer.DEFAULT_TOKEN_CHANNEL;
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:19:7: ( '$expect' )
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:19:9: '$expect'
-            this.match("$expect"); 
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:17:7: ( '$mock' )
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:17:9: '$mock'
+            this.match("$mock"); 
 
 
 
@@ -304,9 +268,9 @@ org.antlr.lang.augmentObject(Nvp1Lexer.prototype, {
         try {
             var _type = this.T__19;
             var _channel = org.antlr.runtime.BaseRecognizer.DEFAULT_TOKEN_CHANNEL;
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:20:7: ( '$val' )
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:20:9: '$val'
-            this.match("$val"); 
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:18:7: ( '$if' )
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:18:9: '$if'
+            this.match("$if"); 
 
 
 
@@ -324,9 +288,9 @@ org.antlr.lang.augmentObject(Nvp1Lexer.prototype, {
         try {
             var _type = this.T__20;
             var _channel = org.antlr.runtime.BaseRecognizer.DEFAULT_TOKEN_CHANNEL;
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:21:7: ( '$opt' )
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:21:9: '$opt'
-            this.match("$opt"); 
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:19:7: ( '$expect' )
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:19:9: '$expect'
+            this.match("$expect"); 
 
 
 
@@ -344,9 +308,10 @@ org.antlr.lang.augmentObject(Nvp1Lexer.prototype, {
         try {
             var _type = this.T__21;
             var _channel = org.antlr.runtime.BaseRecognizer.DEFAULT_TOKEN_CHANNEL;
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:22:7: ( ':' )
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:22:9: ':'
-            this.match(':'); 
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:20:7: ( '$val' )
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:20:9: '$val'
+            this.match("$val"); 
+
 
 
 
@@ -363,9 +328,10 @@ org.antlr.lang.augmentObject(Nvp1Lexer.prototype, {
         try {
             var _type = this.T__22;
             var _channel = org.antlr.runtime.BaseRecognizer.DEFAULT_TOKEN_CHANNEL;
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:23:7: ( '=' )
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:23:9: '='
-            this.match('='); 
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:21:7: ( '$opt' )
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:21:9: '$opt'
+            this.match("$opt"); 
+
 
 
 
@@ -382,9 +348,9 @@ org.antlr.lang.augmentObject(Nvp1Lexer.prototype, {
         try {
             var _type = this.T__23;
             var _channel = org.antlr.runtime.BaseRecognizer.DEFAULT_TOKEN_CHANNEL;
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:24:7: ( '(' )
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:24:9: '('
-            this.match('('); 
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:22:7: ( ':' )
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:22:9: ':'
+            this.match(':'); 
 
 
 
@@ -401,9 +367,9 @@ org.antlr.lang.augmentObject(Nvp1Lexer.prototype, {
         try {
             var _type = this.T__24;
             var _channel = org.antlr.runtime.BaseRecognizer.DEFAULT_TOKEN_CHANNEL;
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:25:7: ( ',' )
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:25:9: ','
-            this.match(','); 
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:23:7: ( '=' )
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:23:9: '='
+            this.match('='); 
 
 
 
@@ -420,9 +386,9 @@ org.antlr.lang.augmentObject(Nvp1Lexer.prototype, {
         try {
             var _type = this.T__25;
             var _channel = org.antlr.runtime.BaseRecognizer.DEFAULT_TOKEN_CHANNEL;
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:26:7: ( ')' )
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:26:9: ')'
-            this.match(')'); 
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:24:7: ( '(' )
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:24:9: '('
+            this.match('('); 
 
 
 
@@ -439,10 +405,9 @@ org.antlr.lang.augmentObject(Nvp1Lexer.prototype, {
         try {
             var _type = this.T__26;
             var _channel = org.antlr.runtime.BaseRecognizer.DEFAULT_TOKEN_CHANNEL;
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:27:7: ( '[[' )
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:27:9: '[['
-            this.match("[["); 
-
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:25:7: ( ',' )
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:25:9: ','
+            this.match(','); 
 
 
 
@@ -459,10 +424,9 @@ org.antlr.lang.augmentObject(Nvp1Lexer.prototype, {
         try {
             var _type = this.T__27;
             var _channel = org.antlr.runtime.BaseRecognizer.DEFAULT_TOKEN_CHANNEL;
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:28:7: ( ']]' )
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:28:9: ']]'
-            this.match("]]"); 
-
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:26:7: ( ')' )
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:26:9: ')'
+            this.match(')'); 
 
 
 
@@ -479,9 +443,10 @@ org.antlr.lang.augmentObject(Nvp1Lexer.prototype, {
         try {
             var _type = this.T__28;
             var _channel = org.antlr.runtime.BaseRecognizer.DEFAULT_TOKEN_CHANNEL;
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:29:7: ( '}' )
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:29:9: '}'
-            this.match('}'); 
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:27:7: ( '[[' )
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:27:9: '[['
+            this.match("[["); 
+
 
 
 
@@ -498,9 +463,9 @@ org.antlr.lang.augmentObject(Nvp1Lexer.prototype, {
         try {
             var _type = this.T__29;
             var _channel = org.antlr.runtime.BaseRecognizer.DEFAULT_TOKEN_CHANNEL;
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:30:7: ( '.*' )
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:30:9: '.*'
-            this.match(".*"); 
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:28:7: ( ']]' )
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:28:9: ']]'
+            this.match("]]"); 
 
 
 
@@ -518,9 +483,9 @@ org.antlr.lang.augmentObject(Nvp1Lexer.prototype, {
         try {
             var _type = this.T__30;
             var _channel = org.antlr.runtime.BaseRecognizer.DEFAULT_TOKEN_CHANNEL;
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:31:7: ( '.' )
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:31:9: '.'
-            this.match('.'); 
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:29:7: ( '}' )
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:29:9: '}'
+            this.match('}'); 
 
 
 
@@ -537,9 +502,9 @@ org.antlr.lang.augmentObject(Nvp1Lexer.prototype, {
         try {
             var _type = this.T__31;
             var _channel = org.antlr.runtime.BaseRecognizer.DEFAULT_TOKEN_CHANNEL;
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:32:7: ( 'String' )
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:32:9: 'String'
-            this.match("String"); 
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:30:7: ( '.*' )
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:30:9: '.*'
+            this.match(".*"); 
 
 
 
@@ -557,10 +522,9 @@ org.antlr.lang.augmentObject(Nvp1Lexer.prototype, {
         try {
             var _type = this.T__32;
             var _channel = org.antlr.runtime.BaseRecognizer.DEFAULT_TOKEN_CHANNEL;
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:33:7: ( 'Int' )
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:33:9: 'Int'
-            this.match("Int"); 
-
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:31:7: ( '.' )
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:31:9: '.'
+            this.match('.'); 
 
 
 
@@ -577,9 +541,9 @@ org.antlr.lang.augmentObject(Nvp1Lexer.prototype, {
         try {
             var _type = this.T__33;
             var _channel = org.antlr.runtime.BaseRecognizer.DEFAULT_TOKEN_CHANNEL;
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:34:7: ( 'Date' )
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:34:9: 'Date'
-            this.match("Date"); 
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:32:7: ( 'String' )
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:32:9: 'String'
+            this.match("String"); 
 
 
 
@@ -597,9 +561,9 @@ org.antlr.lang.augmentObject(Nvp1Lexer.prototype, {
         try {
             var _type = this.T__34;
             var _channel = org.antlr.runtime.BaseRecognizer.DEFAULT_TOKEN_CHANNEL;
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:35:7: ( 'GET' )
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:35:9: 'GET'
-            this.match("GET"); 
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:33:7: ( 'Int' )
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:33:9: 'Int'
+            this.match("Int"); 
 
 
 
@@ -617,9 +581,9 @@ org.antlr.lang.augmentObject(Nvp1Lexer.prototype, {
         try {
             var _type = this.T__35;
             var _channel = org.antlr.runtime.BaseRecognizer.DEFAULT_TOKEN_CHANNEL;
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:36:7: ( 'POST' )
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:36:9: 'POST'
-            this.match("POST"); 
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:34:7: ( 'Date' )
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:34:9: 'Date'
+            this.match("Date"); 
 
 
 
@@ -637,9 +601,9 @@ org.antlr.lang.augmentObject(Nvp1Lexer.prototype, {
         try {
             var _type = this.T__36;
             var _channel = org.antlr.runtime.BaseRecognizer.DEFAULT_TOKEN_CHANNEL;
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:37:7: ( 'Camel' )
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:37:9: 'Camel'
-            this.match("Camel"); 
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:35:7: ( 'GET' )
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:35:9: 'GET'
+            this.match("GET"); 
 
 
 
@@ -657,9 +621,9 @@ org.antlr.lang.augmentObject(Nvp1Lexer.prototype, {
         try {
             var _type = this.T__37;
             var _channel = org.antlr.runtime.BaseRecognizer.DEFAULT_TOKEN_CHANNEL;
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:38:7: ( 'JS' )
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:38:9: 'JS'
-            this.match("JS"); 
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:36:7: ( 'POST' )
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:36:9: 'POST'
+            this.match("POST"); 
 
 
 
@@ -677,6 +641,46 @@ org.antlr.lang.augmentObject(Nvp1Lexer.prototype, {
         try {
             var _type = this.T__38;
             var _channel = org.antlr.runtime.BaseRecognizer.DEFAULT_TOKEN_CHANNEL;
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:37:7: ( 'Camel' )
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:37:9: 'Camel'
+            this.match("Camel"); 
+
+
+
+
+            this.state.type = _type;
+            this.state.channel = _channel;
+        }
+        finally {
+        }
+    },
+    // $ANTLR end "T__38",
+
+    // $ANTLR start T__39
+    mT__39: function()  {
+        try {
+            var _type = this.T__39;
+            var _channel = org.antlr.runtime.BaseRecognizer.DEFAULT_TOKEN_CHANNEL;
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:38:7: ( 'JS' )
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:38:9: 'JS'
+            this.match("JS"); 
+
+
+
+
+            this.state.type = _type;
+            this.state.channel = _channel;
+        }
+        finally {
+        }
+    },
+    // $ANTLR end "T__39",
+
+    // $ANTLR start T__40
+    mT__40: function()  {
+        try {
+            var _type = this.T__40;
+            var _channel = org.antlr.runtime.BaseRecognizer.DEFAULT_TOKEN_CHANNEL;
             // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:39:7: ( 'Java' )
             // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:39:9: 'Java'
             this.match("Java"); 
@@ -690,15 +694,15 @@ org.antlr.lang.augmentObject(Nvp1Lexer.prototype, {
         finally {
         }
     },
-    // $ANTLR end "T__38",
+    // $ANTLR end "T__40",
 
     // $ANTLR start ID
     mID: function()  {
         try {
             var _type = this.ID;
             var _channel = org.antlr.runtime.BaseRecognizer.DEFAULT_TOKEN_CHANNEL;
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:179:4: ( ( 'a' .. 'z' | 'A' .. 'Z' | '_' ) ( 'a' .. 'z' | 'A' .. 'Z' | '_' | '0' .. '9' )* )
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:179:6: ( 'a' .. 'z' | 'A' .. 'Z' | '_' ) ( 'a' .. 'z' | 'A' .. 'Z' | '_' | '0' .. '9' )*
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:181:4: ( ( 'a' .. 'z' | 'A' .. 'Z' | '_' ) ( 'a' .. 'z' | 'A' .. 'Z' | '_' | '0' .. '9' )* )
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:181:6: ( 'a' .. 'z' | 'A' .. 'Z' | '_' ) ( 'a' .. 'z' | 'A' .. 'Z' | '_' | '0' .. '9' )*
             if ( (this.input.LA(1)>='A' && this.input.LA(1)<='Z')||this.input.LA(1)=='_'||(this.input.LA(1)>='a' && this.input.LA(1)<='z') ) {
                 this.input.consume();
 
@@ -708,7 +712,7 @@ org.antlr.lang.augmentObject(Nvp1Lexer.prototype, {
                 this.recover(mse);
                 throw mse;}
 
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:179:34: ( 'a' .. 'z' | 'A' .. 'Z' | '_' | '0' .. '9' )*
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:181:34: ( 'a' .. 'z' | 'A' .. 'Z' | '_' | '0' .. '9' )*
             loop1:
             do {
                 var alt1=2;
@@ -756,9 +760,9 @@ org.antlr.lang.augmentObject(Nvp1Lexer.prototype, {
         try {
             var _type = this.STRING;
             var _channel = org.antlr.runtime.BaseRecognizer.DEFAULT_TOKEN_CHANNEL;
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:181:8: ( ( '\"' ( '\\\\' ( 'b' | 't' | 'n' | 'f' | 'r' | 'u' | '\"' | '\\'' | '\\\\' ) | ~ ( ( '\\\\' | '\"' ) ) )* '\"' | '\\'' ( '\\\\' ( 'b' | 't' | 'n' | 'f' | 'r' | 'u' | '\"' | '\\'' | '\\\\' ) | ~ ( ( '\\\\' | '\\'' ) ) )* '\\'' ) )
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:181:10: ( '\"' ( '\\\\' ( 'b' | 't' | 'n' | 'f' | 'r' | 'u' | '\"' | '\\'' | '\\\\' ) | ~ ( ( '\\\\' | '\"' ) ) )* '\"' | '\\'' ( '\\\\' ( 'b' | 't' | 'n' | 'f' | 'r' | 'u' | '\"' | '\\'' | '\\\\' ) | ~ ( ( '\\\\' | '\\'' ) ) )* '\\'' )
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:181:10: ( '\"' ( '\\\\' ( 'b' | 't' | 'n' | 'f' | 'r' | 'u' | '\"' | '\\'' | '\\\\' ) | ~ ( ( '\\\\' | '\"' ) ) )* '\"' | '\\'' ( '\\\\' ( 'b' | 't' | 'n' | 'f' | 'r' | 'u' | '\"' | '\\'' | '\\\\' ) | ~ ( ( '\\\\' | '\\'' ) ) )* '\\'' )
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:183:8: ( ( '\"' ( '\\\\' ( 'b' | 't' | 'n' | 'f' | 'r' | 'u' | '\"' | '\\'' | '\\\\' ) | ~ ( ( '\\\\' | '\"' ) ) )* '\"' | '\\'' ( '\\\\' ( 'b' | 't' | 'n' | 'f' | 'r' | 'u' | '\"' | '\\'' | '\\\\' ) | ~ ( ( '\\\\' | '\\'' ) ) )* '\\'' ) )
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:183:10: ( '\"' ( '\\\\' ( 'b' | 't' | 'n' | 'f' | 'r' | 'u' | '\"' | '\\'' | '\\\\' ) | ~ ( ( '\\\\' | '\"' ) ) )* '\"' | '\\'' ( '\\\\' ( 'b' | 't' | 'n' | 'f' | 'r' | 'u' | '\"' | '\\'' | '\\\\' ) | ~ ( ( '\\\\' | '\\'' ) ) )* '\\'' )
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:183:10: ( '\"' ( '\\\\' ( 'b' | 't' | 'n' | 'f' | 'r' | 'u' | '\"' | '\\'' | '\\\\' ) | ~ ( ( '\\\\' | '\"' ) ) )* '\"' | '\\'' ( '\\\\' ( 'b' | 't' | 'n' | 'f' | 'r' | 'u' | '\"' | '\\'' | '\\\\' ) | ~ ( ( '\\\\' | '\\'' ) ) )* '\\'' )
             var alt4=2;
             var LA4_0 = this.input.LA(1);
 
@@ -776,9 +780,9 @@ org.antlr.lang.augmentObject(Nvp1Lexer.prototype, {
             }
             switch (alt4) {
                 case 1 :
-                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:181:11: '\"' ( '\\\\' ( 'b' | 't' | 'n' | 'f' | 'r' | 'u' | '\"' | '\\'' | '\\\\' ) | ~ ( ( '\\\\' | '\"' ) ) )* '\"'
+                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:183:11: '\"' ( '\\\\' ( 'b' | 't' | 'n' | 'f' | 'r' | 'u' | '\"' | '\\'' | '\\\\' ) | ~ ( ( '\\\\' | '\"' ) ) )* '\"'
                     this.match('\"'); 
-                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:181:15: ( '\\\\' ( 'b' | 't' | 'n' | 'f' | 'r' | 'u' | '\"' | '\\'' | '\\\\' ) | ~ ( ( '\\\\' | '\"' ) ) )*
+                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:183:15: ( '\\\\' ( 'b' | 't' | 'n' | 'f' | 'r' | 'u' | '\"' | '\\'' | '\\\\' ) | ~ ( ( '\\\\' | '\"' ) ) )*
                     loop2:
                     do {
                         var alt2=3;
@@ -794,7 +798,7 @@ org.antlr.lang.augmentObject(Nvp1Lexer.prototype, {
 
                         switch (alt2) {
                         case 1 :
-                            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:181:16: '\\\\' ( 'b' | 't' | 'n' | 'f' | 'r' | 'u' | '\"' | '\\'' | '\\\\' )
+                            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:183:16: '\\\\' ( 'b' | 't' | 'n' | 'f' | 'r' | 'u' | '\"' | '\\'' | '\\\\' )
                             this.match('\\'); 
                             if ( this.input.LA(1)=='\"'||this.input.LA(1)=='\''||this.input.LA(1)=='\\'||this.input.LA(1)=='b'||this.input.LA(1)=='f'||this.input.LA(1)=='n'||this.input.LA(1)=='r'||(this.input.LA(1)>='t' && this.input.LA(1)<='u') ) {
                                 this.input.consume();
@@ -809,7 +813,7 @@ org.antlr.lang.augmentObject(Nvp1Lexer.prototype, {
 
                             break;
                         case 2 :
-                            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:181:61: ~ ( ( '\\\\' | '\"' ) )
+                            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:183:61: ~ ( ( '\\\\' | '\"' ) )
                             if ( (this.input.LA(1)>='\u0000' && this.input.LA(1)<='!')||(this.input.LA(1)>='#' && this.input.LA(1)<='[')||(this.input.LA(1)>=']' && this.input.LA(1)<='\uFFFF') ) {
                                 this.input.consume();
 
@@ -833,9 +837,9 @@ org.antlr.lang.augmentObject(Nvp1Lexer.prototype, {
 
                     break;
                 case 2 :
-                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:181:81: '\\'' ( '\\\\' ( 'b' | 't' | 'n' | 'f' | 'r' | 'u' | '\"' | '\\'' | '\\\\' ) | ~ ( ( '\\\\' | '\\'' ) ) )* '\\''
+                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:183:81: '\\'' ( '\\\\' ( 'b' | 't' | 'n' | 'f' | 'r' | 'u' | '\"' | '\\'' | '\\\\' ) | ~ ( ( '\\\\' | '\\'' ) ) )* '\\''
                     this.match('\''); 
-                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:181:86: ( '\\\\' ( 'b' | 't' | 'n' | 'f' | 'r' | 'u' | '\"' | '\\'' | '\\\\' ) | ~ ( ( '\\\\' | '\\'' ) ) )*
+                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:183:86: ( '\\\\' ( 'b' | 't' | 'n' | 'f' | 'r' | 'u' | '\"' | '\\'' | '\\\\' ) | ~ ( ( '\\\\' | '\\'' ) ) )*
                     loop3:
                     do {
                         var alt3=3;
@@ -851,7 +855,7 @@ org.antlr.lang.augmentObject(Nvp1Lexer.prototype, {
 
                         switch (alt3) {
                         case 1 :
-                            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:181:87: '\\\\' ( 'b' | 't' | 'n' | 'f' | 'r' | 'u' | '\"' | '\\'' | '\\\\' )
+                            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:183:87: '\\\\' ( 'b' | 't' | 'n' | 'f' | 'r' | 'u' | '\"' | '\\'' | '\\\\' )
                             this.match('\\'); 
                             if ( this.input.LA(1)=='\"'||this.input.LA(1)=='\''||this.input.LA(1)=='\\'||this.input.LA(1)=='b'||this.input.LA(1)=='f'||this.input.LA(1)=='n'||this.input.LA(1)=='r'||(this.input.LA(1)>='t' && this.input.LA(1)<='u') ) {
                                 this.input.consume();
@@ -866,7 +870,7 @@ org.antlr.lang.augmentObject(Nvp1Lexer.prototype, {
 
                             break;
                         case 2 :
-                            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:181:132: ~ ( ( '\\\\' | '\\'' ) )
+                            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:183:132: ~ ( ( '\\\\' | '\\'' ) )
                             if ( (this.input.LA(1)>='\u0000' && this.input.LA(1)<='&')||(this.input.LA(1)>='(' && this.input.LA(1)<='[')||(this.input.LA(1)>=']' && this.input.LA(1)<='\uFFFF') ) {
                                 this.input.consume();
 
@@ -908,9 +912,9 @@ org.antlr.lang.augmentObject(Nvp1Lexer.prototype, {
         try {
             var _type = this.COMMENT;
             var _channel = org.antlr.runtime.BaseRecognizer.DEFAULT_TOKEN_CHANNEL;
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:183:9: ( ( '/*' ( . )* '*/' | '//' (~ ( '\\r' | '\\n' ) )* ) )
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:183:11: ( '/*' ( . )* '*/' | '//' (~ ( '\\r' | '\\n' ) )* )
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:183:11: ( '/*' ( . )* '*/' | '//' (~ ( '\\r' | '\\n' ) )* )
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:185:9: ( ( '/*' ( . )* '*/' | '//' (~ ( '\\r' | '\\n' ) )* ) )
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:185:11: ( '/*' ( . )* '*/' | '//' (~ ( '\\r' | '\\n' ) )* )
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:185:11: ( '/*' ( . )* '*/' | '//' (~ ( '\\r' | '\\n' ) )* )
             var alt7=2;
             var LA7_0 = this.input.LA(1);
 
@@ -938,10 +942,10 @@ org.antlr.lang.augmentObject(Nvp1Lexer.prototype, {
             }
             switch (alt7) {
                 case 1 :
-                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:183:12: '/*' ( . )* '*/'
+                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:185:12: '/*' ( . )* '*/'
                     this.match("/*"); 
 
-                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:183:17: ( . )*
+                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:185:17: ( . )*
                     loop5:
                     do {
                         var alt5=2;
@@ -966,7 +970,7 @@ org.antlr.lang.augmentObject(Nvp1Lexer.prototype, {
 
                         switch (alt5) {
                         case 1 :
-                            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:183:17: .
+                            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:185:17: .
                             this.matchAny(); 
 
 
@@ -983,10 +987,10 @@ org.antlr.lang.augmentObject(Nvp1Lexer.prototype, {
 
                     break;
                 case 2 :
-                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:183:27: '//' (~ ( '\\r' | '\\n' ) )*
+                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:185:27: '//' (~ ( '\\r' | '\\n' ) )*
                     this.match("//"); 
 
-                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:183:32: (~ ( '\\r' | '\\n' ) )*
+                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:185:32: (~ ( '\\r' | '\\n' ) )*
                     loop6:
                     do {
                         var alt6=2;
@@ -999,7 +1003,7 @@ org.antlr.lang.augmentObject(Nvp1Lexer.prototype, {
 
                         switch (alt6) {
                         case 1 :
-                            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:183:32: ~ ( '\\r' | '\\n' )
+                            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:185:32: ~ ( '\\r' | '\\n' )
                             if ( (this.input.LA(1)>='\u0000' && this.input.LA(1)<='\t')||(this.input.LA(1)>='\u000B' && this.input.LA(1)<='\f')||(this.input.LA(1)>='\u000E' && this.input.LA(1)<='\uFFFF') ) {
                                 this.input.consume();
 
@@ -1041,8 +1045,8 @@ org.antlr.lang.augmentObject(Nvp1Lexer.prototype, {
         try {
             var _type = this.WS;
             var _channel = org.antlr.runtime.BaseRecognizer.DEFAULT_TOKEN_CHANNEL;
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:185:3: ( ( ' ' | '\\r' | '\\t' | '\\u000C' | '\\n' ) )
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:185:6: ( ' ' | '\\r' | '\\t' | '\\u000C' | '\\n' )
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:187:3: ( ( ' ' | '\\r' | '\\t' | '\\u000C' | '\\n' ) )
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:187:6: ( ' ' | '\\r' | '\\t' | '\\u000C' | '\\n' )
             if ( (this.input.LA(1)>='\t' && this.input.LA(1)<='\n')||(this.input.LA(1)>='\f' && this.input.LA(1)<='\r')||this.input.LA(1)==' ' ) {
                 this.input.consume();
 
@@ -1069,9 +1073,9 @@ org.antlr.lang.augmentObject(Nvp1Lexer.prototype, {
         try {
             var _type = this.INT;
             var _channel = org.antlr.runtime.BaseRecognizer.DEFAULT_TOKEN_CHANNEL;
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:189:4: ( ( '0' .. '9' )+ )
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:189:6: ( '0' .. '9' )+
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:189:6: ( '0' .. '9' )+
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:191:4: ( ( '0' .. '9' )+ )
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:191:6: ( '0' .. '9' )+
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:191:6: ( '0' .. '9' )+
             var cnt8=0;
             loop8:
             do {
@@ -1085,7 +1089,7 @@ org.antlr.lang.augmentObject(Nvp1Lexer.prototype, {
 
                 switch (alt8) {
                 case 1 :
-                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:189:7: '0' .. '9'
+                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:191:7: '0' .. '9'
                     this.matchRange('0','9'); 
 
 
@@ -1113,216 +1117,216 @@ org.antlr.lang.augmentObject(Nvp1Lexer.prototype, {
     // $ANTLR end "INT",
 
     mTokens: function() {
-        // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:8: ( T__9 | T__10 | T__11 | T__12 | T__13 | T__14 | T__15 | T__16 | T__17 | T__18 | T__19 | T__20 | T__21 | T__22 | T__23 | T__24 | T__25 | T__26 | T__27 | T__28 | T__29 | T__30 | T__31 | T__32 | T__33 | T__34 | T__35 | T__36 | T__37 | T__38 | ID | STRING | COMMENT | WS | INT )
+        // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:8: ( T__11 | T__12 | T__13 | T__14 | T__15 | T__16 | T__17 | T__18 | T__19 | T__20 | T__21 | T__22 | T__23 | T__24 | T__25 | T__26 | T__27 | T__28 | T__29 | T__30 | T__31 | T__32 | T__33 | T__34 | T__35 | T__36 | T__37 | T__38 | T__39 | T__40 | ID | STRING | COMMENT | WS | INT )
         var alt9=35;
         alt9 = this.dfa9.predict(this.input);
         switch (alt9) {
             case 1 :
-                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:10: T__9
-                this.mT__9(); 
-
-
-                break;
-            case 2 :
-                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:15: T__10
-                this.mT__10(); 
-
-
-                break;
-            case 3 :
-                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:21: T__11
+                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:10: T__11
                 this.mT__11(); 
 
 
                 break;
-            case 4 :
-                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:27: T__12
+            case 2 :
+                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:16: T__12
                 this.mT__12(); 
 
 
                 break;
-            case 5 :
-                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:33: T__13
+            case 3 :
+                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:22: T__13
                 this.mT__13(); 
 
 
                 break;
-            case 6 :
-                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:39: T__14
+            case 4 :
+                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:28: T__14
                 this.mT__14(); 
 
 
                 break;
-            case 7 :
-                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:45: T__15
+            case 5 :
+                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:34: T__15
                 this.mT__15(); 
 
 
                 break;
-            case 8 :
-                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:51: T__16
+            case 6 :
+                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:40: T__16
                 this.mT__16(); 
 
 
                 break;
-            case 9 :
-                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:57: T__17
+            case 7 :
+                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:46: T__17
                 this.mT__17(); 
 
 
                 break;
-            case 10 :
-                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:63: T__18
+            case 8 :
+                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:52: T__18
                 this.mT__18(); 
 
 
                 break;
-            case 11 :
-                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:69: T__19
+            case 9 :
+                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:58: T__19
                 this.mT__19(); 
 
 
                 break;
-            case 12 :
-                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:75: T__20
+            case 10 :
+                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:64: T__20
                 this.mT__20(); 
 
 
                 break;
-            case 13 :
-                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:81: T__21
+            case 11 :
+                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:70: T__21
                 this.mT__21(); 
 
 
                 break;
-            case 14 :
-                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:87: T__22
+            case 12 :
+                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:76: T__22
                 this.mT__22(); 
 
 
                 break;
-            case 15 :
-                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:93: T__23
+            case 13 :
+                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:82: T__23
                 this.mT__23(); 
 
 
                 break;
-            case 16 :
-                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:99: T__24
+            case 14 :
+                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:88: T__24
                 this.mT__24(); 
 
 
                 break;
-            case 17 :
-                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:105: T__25
+            case 15 :
+                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:94: T__25
                 this.mT__25(); 
 
 
                 break;
-            case 18 :
-                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:111: T__26
+            case 16 :
+                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:100: T__26
                 this.mT__26(); 
 
 
                 break;
-            case 19 :
-                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:117: T__27
+            case 17 :
+                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:106: T__27
                 this.mT__27(); 
 
 
                 break;
-            case 20 :
-                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:123: T__28
+            case 18 :
+                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:112: T__28
                 this.mT__28(); 
 
 
                 break;
-            case 21 :
-                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:129: T__29
+            case 19 :
+                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:118: T__29
                 this.mT__29(); 
 
 
                 break;
-            case 22 :
-                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:135: T__30
+            case 20 :
+                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:124: T__30
                 this.mT__30(); 
 
 
                 break;
-            case 23 :
-                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:141: T__31
+            case 21 :
+                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:130: T__31
                 this.mT__31(); 
 
 
                 break;
-            case 24 :
-                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:147: T__32
+            case 22 :
+                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:136: T__32
                 this.mT__32(); 
 
 
                 break;
-            case 25 :
-                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:153: T__33
+            case 23 :
+                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:142: T__33
                 this.mT__33(); 
 
 
                 break;
-            case 26 :
-                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:159: T__34
+            case 24 :
+                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:148: T__34
                 this.mT__34(); 
 
 
                 break;
-            case 27 :
-                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:165: T__35
+            case 25 :
+                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:154: T__35
                 this.mT__35(); 
 
 
                 break;
-            case 28 :
-                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:171: T__36
+            case 26 :
+                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:160: T__36
                 this.mT__36(); 
 
 
                 break;
-            case 29 :
-                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:177: T__37
+            case 27 :
+                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:166: T__37
                 this.mT__37(); 
 
 
                 break;
-            case 30 :
-                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:183: T__38
+            case 28 :
+                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:172: T__38
                 this.mT__38(); 
 
 
                 break;
+            case 29 :
+                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:178: T__39
+                this.mT__39(); 
+
+
+                break;
+            case 30 :
+                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:184: T__40
+                this.mT__40(); 
+
+
+                break;
             case 31 :
-                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:189: ID
+                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:190: ID
                 this.mID(); 
 
 
                 break;
             case 32 :
-                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:192: STRING
+                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:193: STRING
                 this.mSTRING(); 
 
 
                 break;
             case 33 :
-                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:199: COMMENT
+                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:200: COMMENT
                 this.mCOMMENT(); 
 
 
                 break;
             case 34 :
-                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:207: WS
+                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:208: WS
                 this.mWS(); 
 
 
                 break;
             case 35 :
-                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:210: INT
+                // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:1:211: INT
                 this.mINT(); 
 
 
@@ -1503,7 +1507,7 @@ Nvp1Lexer.DFA9 = function(recognizer) {
 
 org.antlr.lang.extend(Nvp1Lexer.DFA9, org.antlr.runtime.DFA, {
     getDescription: function() {
-        return "1:1: Tokens : ( T__9 | T__10 | T__11 | T__12 | T__13 | T__14 | T__15 | T__16 | T__17 | T__18 | T__19 | T__20 | T__21 | T__22 | T__23 | T__24 | T__25 | T__26 | T__27 | T__28 | T__29 | T__30 | T__31 | T__32 | T__33 | T__34 | T__35 | T__36 | T__37 | T__38 | ID | STRING | COMMENT | WS | INT );";
+        return "1:1: Tokens : ( T__11 | T__12 | T__13 | T__14 | T__15 | T__16 | T__17 | T__18 | T__19 | T__20 | T__21 | T__22 | T__23 | T__24 | T__25 | T__26 | T__27 | T__28 | T__29 | T__30 | T__31 | T__32 | T__33 | T__34 | T__35 | T__36 | T__37 | T__38 | T__39 | T__40 | ID | STRING | COMMENT | WS | INT );";
     },
     dummy: null
 });

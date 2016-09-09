@@ -26,7 +26,7 @@ rule_DomainModel:
 
 
 rule_AbstractElement:
-    rule_Expect | rule_Msg | rule_Match | rule_When | rule_Receive | rule_Option | rule_Val | rule_Mock | rule_Topic | rule_Braq;
+    rule_Expect | rule_Msg | rule_Match | rule_When | rule_Receive | rule_Option | rule_Val | rule_Mock | rule_Topic | rule_Braq | TEXT;
 
 
 
@@ -34,35 +34,35 @@ rule_AbstractElement:
 //-------------------- raz
 
 rule_Receive:
-    '$receive' ('<' stype=rule_MsgStereo '>')? name=rule_QualifiedName attrs=rule_AttrSpecs?
+    '$receive' ('<' stype=rule_MsgStereo '>')? name=rule_QualifiedName attrs=rule_AttrSpecs? NEWLINE
 ;
 
 
 
 
 rule_Msg:
-    '$msg' ('<' stype=rule_MsgStereo '>')? name=rule_QualifiedName attrs=rule_AttrSpecs?
+    '$msg' ('<' stype=rule_MsgStereo '>')? name=rule_QualifiedName attrs=rule_AttrSpecs? NEWLINE
 ;
 
 
 
 
 rule_When:
-	'$when' a=ID aa=rule_Attrs? cond=rule_Condition? '=>' z=ID za=rule_AttrSpecs? 
+	'$when' a=ID aa=rule_Attrs? cond=rule_Condition? '=>' z=ID za=rule_AttrSpecs?  NEWLINE
 ;
 
 
 
 
 rule_Match:
-	'$match' a=ID aa=rule_Attrs? cond=rule_Condition? 
+	'$match' a=ID aa=rule_Attrs? cond=rule_Condition?  NEWLINE
 ;
 
 
 
 
 rule_Mock:
-	'$mock' a=ID aa=rule_Attrs? cond=rule_Condition? '=>' za=rule_AttrSpecs?
+	'$mock' a=ID aa=rule_Attrs? cond=rule_Condition? '=>' za=rule_AttrSpecs? NEWLINE
 ;
 
 
@@ -83,26 +83,28 @@ rule_Condition:
 
 
 rule_ExpectM:
-    '$expect' ('$msg' name=rule_QualifiedName attrs=rule_AttrSpecs?) (cond=rule_Condition)?;
+    '$expect' ('$msg' name=rule_QualifiedName attrs=rule_AttrSpecs?) (cond=rule_Condition)?NEWLINE
+;
 
 
 
 
 rule_ExpectV:
-    '$expect' ('$val' p=rule_AttrSpec?) (cond=rule_Condition)?;
+    '$expect' ('$val' p=rule_AttrSpec?) (cond=rule_Condition)?NEWLINE
+;
 
 
 
 
 rule_Val:
-    '$val' p=rule_AttrSpec
+    '$val' p=rule_AttrSpec NEWLINE
 ;
 
 
 
 
 rule_Option:
-    '$opt' attr=rule_AttrSpec
+    '$opt' attr=rule_AttrSpec NEWLINE
 ;
 
 

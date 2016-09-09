@@ -17,6 +17,10 @@ function useLocalStorageCheckbox (inputId, storageName, callback) {
       callback(inputId, storageName, $('#'+inputId).prop('checked'));
   }
 
+  // call to initialize
+  if(typeof callback != 'undefined')
+    callback(inputId, storageName, $('#'+inputId).prop('checked'));
+
   $('#'+inputId).change(updConfirm);
 }
 

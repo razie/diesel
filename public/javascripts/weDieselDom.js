@@ -17,7 +17,7 @@ function domCompl (i) {
     var contentAssist = i ? instContentAssist : domContentAssist;
 //      if (prefix.length === 0) { callback(null, wl); return }
     var line = session.getLine(pos.row);
-    var terms = line.slice(0, pos.column-1).split(' ');
+    var terms = line.slice(0, pos.column).split(' ');
 
     // => entity.action
     if(terms.indexOf('->') == terms.length-1 ||
@@ -59,9 +59,9 @@ function domCompl (i) {
         curr = curr.replace(reduceDot, '');
         return {name: value, value: curr, score: 100, meta: "dom"}
       }));
-    } else if(terms[terms.length-1].match(/\[\[[^\]]*\]\]/)) {
+    } else if(terms[terms.length-1].match(/\[\[[^\]]*/)) {
       // CA for wikis
-      var top = terms[terms.length-1].match(/\[\[([^\]]*)\]\]/)[1];
+      var top = terms[terms.length-1].match(/\[\[([^\]]*)/)[1];
       console.log('[[]]');
       CA_TC_sqbraTags.search(top, function(opts){
         callback(null, opts.map(function(value) {
@@ -251,6 +251,7 @@ var STORY="STORY";
 var lastMarker=null;
 
 
+/** this works IN the fiddle only */
 function weref(wpath,line,col) {
   var Range = ace.require('ace/range').Range;
   if(lastMarker != null) {
@@ -258,10 +259,17 @@ function weref(wpath,line,col) {
     editor1.session.removeMarker(lastMarker);
     lastMarker = null;
   }
+
   if(wpath.includes("Spec:")) {
-    editor1.scrollToLine(line, true, true, function () {});
-    //editor1.gotoLine(line, 10, true);
-    lastMarker = editor1.session.addMarker(new Range(line-1, 0, line-1, 100), "ace-primaryline", "fullLine");
+    // is it a different spec?
+    if(wpath != specWpath) loadSpec(wpath, rest);
+    else rest();
+
+    function rest() {
+      editor1.scrollToLine(line, true, true, function () {});
+      //editor1.gotoLine(line, 10, true);
+      lastMarker = editor1.session.addMarker(new Range(line-1, 0, line-1, 100), "ace-primaryline", "fullLine");
+    }
   } else if(wpath.includes("Story:")) {
     editor.scrollToLine(line, true, true, function () {});
     //editor.gotoLine(line, 10, true);
@@ -269,11 +277,38 @@ function weref(wpath,line,col) {
   }
 }
 
+/** this works from anywhere, to open the fiddle on an element */
 function wefiddle(wpath,line,col) {
   if(wpath.includes("Spec:")) {
     window.location.href='/diesel/fiddle/playDom/'+realm+'?spec='+wpath
   } else if(wpath.includes("Story:")) {
     window.location.href='/diesel/fiddle/playDom/'+realm+'?story='+wpath
+  }
+}
+
+function loadSpec (wpath, rest) {
+  specWpath = wpath;
+  var wid = WID(wpath);
+  $("#curSpec").text(WID(wpath).name);
+  $.ajax( '/diesel/content/Spec/'+wpath, {
+    success: function (data) {
+      editor1.setValue(data);
+      editor1.selection.clearSelection();
+      rest();
+    },
+    error  : rest
+  });
+}
+
+function WID(wpath) {
+  var r = wpath.indexOf(":") > 0 ? wpath.replace(/(\w*)?\..*/, '\$1') : "";
+  var c = wpath.indexOf(":") > 0 ? wpath.replace(/(\w*\.)?(\w*):.*/, '\$2') : "";
+  var n = wpath.indexOf(":") > 0 ? wpath.replace(/(\w*\.)?(\w*):(\w*)/, '\$3') : wpath;
+  return {
+    realm : r,
+    cat : c,
+    name : n,
+    contentUrl : '/wikie/content/'+wpath
   }
 }
 

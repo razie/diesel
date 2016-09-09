@@ -19,12 +19,12 @@ import play.libs.Akka
 import razie.db._
 import razie.db.RazSalatContext.ctx
 import razie.diesel.RDOM.O
-import razie.diesel.RDomain
+import razie.diesel.{SimpleECtx, ECtx, RDomain}
 import razie.wiki.Enc
 import razie.wiki.Sec.EncryptedS
 import play.api.mvc._
 import razie.wiki.dom.WikiDomain
-import razie.wiki.util.VErrors
+import razie.wiki.util.{PlayTools, VErrors}
 import razie.{CSTimer, js, cout, Logging}
 import javax.script.{ScriptEngineManager, ScriptEngine}
 import scala.Some
@@ -117,59 +117,68 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
     }
   }
 
+  def content (what:String, wid:CMDWID) = FAUPR {implicit stok=>
+    val DFS = if(what.toLowerCase == "spec") "DomFidSpec." else "DomFidStory."
+    val spw = wid.wid.flatMap(_.page).map(_.content).getOrElse("")
+
+    val ospec = wid.wpath.flatMap(specWpath=> Autosave.find(DFS+stok.realm+"."+specWpath, stok.au.get._id).map(_.apply("content")))
+
+    Ok(ospec getOrElse spw)
+  }
+
   /** display the play sfiddle screen */
   def playDom(reactor: String, iSpecWpath:String, iStoryWpath:String) = FAUPR { implicit stok =>
-      val q = stok.req.queryString.map(t=>(t._1, t._2.mkString))
+    val q = stok.req.queryString.map(t=>(t._1, t._2.mkString))
 
-        //1. which wids were you looking at last?
-        val wids = Autosave.OR("DomFidPath."+reactor, stok.au.get._id, Map(
-          "specWpath"  -> """""",
-          "storyWpath" -> """"""
-        ))
+    //1. which wids were you looking at last?
+    val wids = Autosave.OR("DomFidPath."+reactor, stok.au.get._id, Map(
+      "specWpath"  -> """""",
+      "storyWpath" -> """"""
+    ))
 
-        var specWpath = wids("specWpath")
-        var storyWpath = wids("storyWpath")
+    var specWpath = wids("specWpath")
+    var storyWpath = wids("storyWpath")
 
-        // need settings?
-        if(iSpecWpath != "?" && iSpecWpath != specWpath) {
-          DomWorker later AutosaveSet("DomFidPath."+reactor, stok.au.get._id, Map(
-            "specWpath"  -> iSpecWpath,
-            "storyWpath" -> storyWpath
-          ))
-          specWpath = iSpecWpath
-        }
+    // need settings?
+    if(iSpecWpath != "?" && iSpecWpath != specWpath) {
+      DomWorker later AutosaveSet("DomFidPath."+reactor, stok.au.get._id, Map(
+        "specWpath"  -> iSpecWpath,
+        "storyWpath" -> storyWpath
+      ))
+      specWpath = iSpecWpath
+    }
 
 
-        // need settings?
-        if(iStoryWpath != "?" && iStoryWpath != storyWpath) {
-          DomWorker later AutosaveSet("DomFidPath."+reactor, stok.au.get._id, Map(
-            "specWpath"  -> specWpath,
-            "storyWpath" -> iStoryWpath
-          ))
-          storyWpath = iStoryWpath
-        }
+    // need saved?
+    if(iStoryWpath != "?" && iStoryWpath != storyWpath) {
+      DomWorker later AutosaveSet("DomFidPath."+reactor, stok.au.get._id, Map(
+        "specWpath"  -> specWpath,
+        "storyWpath" -> iStoryWpath
+      ))
+      storyWpath = iStoryWpath
+    }
 
-        val spw = WID.fromPath(specWpath).flatMap(_.page).map(_.content).getOrElse(SAMPLE_SPEC)
-        val stw = WID.fromPath(storyWpath).flatMap(_.page).map(_.content).getOrElse(SAMPLE_STORY)
+    val spw = WID.fromPath(specWpath).flatMap(_.page).map(_.content).getOrElse(SAMPLE_SPEC)
+    val stw = WID.fromPath(storyWpath).flatMap(_.page).map(_.content).getOrElse(SAMPLE_STORY)
 
-        //2 their contents
-        val spec = Autosave.OR("DomFidSpec."+reactor+"."+specWpath, stok.au.get._id, Map(
-          "content"  -> spw
-        )).apply("content")
+    //2 their contents
+    val spec = Autosave.OR("DomFidSpec."+reactor+"."+specWpath, stok.au.get._id, Map(
+      "content"  -> spw
+    )).apply("content")
 
     val story = Autosave.OR("DomFidStory."+reactor+"."+storyWpath, stok.au.get._id, Map(
       "content"  -> stw
     )).apply("content")
 
-        val capture = Autosave.OR("DomFidCapture."+reactor+"."+"", stok.au.get._id, Map(
-          "content"  -> "Paste AST capture here"
-        )).apply("content")
+    val capture = Autosave.OR("DomFidCapture."+reactor+"."+"", stok.au.get._id, Map(
+      "content"  -> "Paste AST capture here"
+    )).apply("content")
 
-        val id = java.lang.System.currentTimeMillis().toString()
+    val id = java.lang.System.currentTimeMillis().toString()
 
-        ROK.k reactorLayout12 {implicit stok=>
-          views.html.fiddle.playDomFiddle(reactor, q, spec, story, capture, specWpath, storyWpath, (spw != story), (stw != story), Some(""), id)
-        }
+    ROK.k reactorLayout12 {implicit stok=>
+      views.html.fiddle.playDomFiddle(reactor, q, spec, story, capture, specWpath, storyWpath, (spw != story), (stw != story), Some(""), id)
+    }
   }
 
   object retj {
@@ -283,13 +292,13 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
     val story = fParm("story")
     val capture = fParm("capture")
 
-    //1. which wids were you looking at last?
+    //autosave which wids were you looking at last?
     DomWorker later AutosaveSet("DomFidPath."+reactor, stok.au.get._id, Map(
       "specWpath"  -> specWpath,
       "storyWpath" -> storyWpath
     ))
 
-    //2 their contents
+    //autosave their contents
     DomWorker later AutosaveSet("DomFidSpec."+reactor+"."+specWpath, stok.au.get._id, Map(
       "content"  -> spec
     ))
@@ -299,11 +308,13 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
 
     val spw = WID.fromPath(specWpath).flatMap(_.page).map(_.content).getOrElse(SAMPLE_SPEC)
     val stw = WID.fromPath(storyWpath).flatMap(_.page).map(_.content).getOrElse(SAMPLE_STORY)
+    val storyName = WID.fromPath(storyWpath).map(_.name).getOrElse("fiddle")
+    val specName = WID.fromPath(specWpath).map(_.name).getOrElse("fiddle")
 
-    val page = new WikiEntry("Spec", "fiddle", "fiddle", "md", spec, stok.au.get._id, Seq("dslObject"), "")
+    val page = new WikiEntry("Spec", specName, specName, "md", spec, stok.au.get._id, Seq("dslObject"), "")
     val dom = WikiDomain.domFrom(page).get.revise addRoot
 
-    val ipage = new WikiEntry("Story", "fiddle", "fiddle", "md", story, stok.au.get._id, Seq("dslObject"), "")
+    val ipage = new WikiEntry("Story", storyName, storyName, "md", story, stok.au.get._id, Seq("dslObject"), "")
     val idom = WikiDomain.domFrom(ipage).get.revise addRoot
 
     var res = Wikis.format(page.wid, page.markup, null, Some(page), stok.au)
@@ -349,7 +360,7 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
         "storyWpath" -> storyWpath
       ))
 
-    //2 their contents
+      //2 their contents
       DomWorker later AutosaveSet("DomFidStory."+reactor+"."+storyWpath, stok.au.get._id, Map(
         "content"  -> story
       ))
@@ -360,31 +371,39 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
 
     stimer snap "1_parse_req"
 
-    val page = new WikiEntry("Spec", "fiddle", "fiddle", "md", spec, stok.au.get._id, Seq("dslObject"), "")
-    val dom =
+    val storyName = WID.fromPath(storyWpath).map(_.name).getOrElse("fiddle")
+    val specName = WID.fromPath(specWpath).map(_.name).getOrElse("fiddle")
+
+    val page = new WikiEntry("Spec", specName, specName, "md", spec, stok.au.get._id, Seq("dslObject"), "")
+
+    val pages =
       if(settings.blenderMode) {
-      val spw = WID.fromPath(specWpath)
-      val d = Wikis(reactor).pages("Spec").filter(_.name != spw.map(_.name).mkString).toList.map{ p=>
-//         if draft mode, find the auto-saved version if any
-        if(settings.draftMode) {
-          val c = Autosave.find("DomFidSpec."+reactor+"."+p.wid.wpath, stok.au.get._id).flatMap(_.get("content")).mkString
-          if(c.length > 0)  p.copy(content=c)
-          else p
-        } else p
-      }.flatMap(
-//         to domain
-        p=> orcached(p, WikiDomain.domFrom(p)).toList
-      ).foldLeft(
-        orcached(page, WikiDomain.domFrom(page)).get
-      )((a,b) => a.plus(b)).revise.addRoot
-      d
-    } else
-      orcached(page, WikiDomain.domFrom(page)).get.revise addRoot
+//        val spw = WID.fromPath(specWpath)
+//        val d = Wikis(reactor).pages("Spec").filter(_.name != spw.map(_.name).mkString).toList.map { p =>
+        val d = Wikis(reactor).pages("Spec").toList.map { p =>
+          //         if draft mode, find the auto-saved version if any
+          if (settings.draftMode) {
+            val c = Autosave.find("DomFidSpec." + reactor + "." + p.wid.wpath, stok.au.get._id).flatMap(_.get("content")).mkString
+            if (c.length > 0) p.copy(content = c)
+            else p
+          } else p
+        }
+        d
+      } else
+      List(page)
+
+//        orcached(page, WikiDomain.domFrom(page)).get.revise addRoot
+
+    // todo is adding page twice...
+    val dom = pages.flatMap(p=>
+      orcached(p, WikiDomain.domFrom(p)).toList
+    ).foldLeft(
+      WikiDomain.empty
+    )((a,b) => a.plus(b)).revise.addRoot
 
     stimer snap "2_parse_specs"
 
-    val ipage = new WikiEntry("Story", "fiddle", "fiddle", "md", story, stok.au.get._id, Seq("dslObject"), "")
-    val idom = WikiDomain.domFrom(ipage).get.revise addRoot
+    val ipage = new WikiEntry("Story", storyName, storyName, "md", story, stok.au.get._id, Seq("dslObject"), "")
 
     stimer snap "3_parse_story"
 
@@ -399,7 +418,7 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
         else DieselJsonFactory.fromj(m).asInstanceOf[DomAst]
         ).withDetails("(from capture)")
       captureTree = d.toHtml
-      addStoryToAst(d, ipage, false)
+      addStoryToAst(d, ipage, true)
       d
     } else {
       val d = DomAst("root", ROOT).withDetails("(from story)")
@@ -407,8 +426,11 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
       d
     }
 
+    val idom = WikiDomain.domFrom(ipage).get.revise addRoot
+
     // start processing all elements
-    val engine = new DomEngine(dom, root, settings)
+    val engine = new DomEngine(dom, root, settings, ipage :: pages)
+    setHostname(engine.ctx)
 
     // decompose all tree or just testing?
     if(capture startsWith "{") {
@@ -443,19 +465,94 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
     retj << m
   }
 
+  def setHostname (ctx:SimpleECtx)(implicit stok:RazRequest): Unit = {
+    ctx.hostname = PlayTools.getHost(stok.req).mkString
+  }
+
+  /** prepare an engine
+    */
+  def prepEngine(id: String,
+                 settings:DomEngineSettings,
+                 reactor:String,
+                 root : DomAst,
+                 justTests:Boolean)(implicit stok:RazRequest) = {
+
+    val wids = Autosave.OR("DomFidPath."+reactor, stok.au.get._id, Map(
+        "specWpath"  -> """""",
+        "storyWpath" -> """"""
+      ))
+
+    var storyWpath = wids("storyWpath")
+
+    val stw = WID.fromPath(storyWpath).flatMap(_.page).map(_.content).getOrElse(SAMPLE_STORY)
+    val storyName = WID.fromPath(storyWpath).map(_.name).getOrElse("fiddle")
+
+    val story = Autosave.OR("DomFidStory."+reactor+"."+storyWpath, stok.au.get._id, Map(
+      "content"  -> stw
+    )).apply("content")
+
+    val id = java.lang.System.currentTimeMillis().toString()
+
+    val pages =
+      if(settings.blenderMode) {
+//      val spw = WID.fromPath(specWpath)
+//      val d = Wikis(reactor).pages("Spec").filter(_.name != spw.map(_.name).mkString).toList.map { p =>
+      val d = Wikis(reactor).pages("Spec").toList.map { p =>
+        //         if draft mode, find the auto-saved version if any
+        if (settings.draftMode) {
+          val c = Autosave.find("DomFidSpec." + reactor + "." + p.wid.wpath, stok.au.get._id).flatMap(_.get("content")).mkString
+          if (c.length > 0) p.copy(content = c)
+          else p
+        } else p
+      }
+      d
+    } else {
+        var specWpath = wids("specWpath")
+        val spw = WID.fromPath(specWpath).flatMap(_.page).map(_.content).getOrElse(SAMPLE_SPEC)
+        val specName = WID.fromPath(specWpath).map(_.name).getOrElse("fiddle")
+        val spec = Autosave.OR("DomFidSpec."+reactor+"."+specWpath, stok.au.get._id, Map(
+          "content"  -> spw
+        )).apply("content")
+
+      val page = new WikiEntry("Spec", specName, specName, "md", spec, stok.au.get._id, Seq("dslObject"), "")
+      List(page)
+    }
+
+    val dom = pages.flatMap(p=>
+      orcached(p, WikiDomain.domFrom(p)).toList
+    ).foldLeft(
+      WikiDomain.empty
+    )((a,b) => a.plus(b)).revise.addRoot
+
+//    stimer snap "2_parse_specs"
+
+    val ipage = new WikiEntry("Story", storyName, storyName, "md", story, stok.au.get._id, Seq("dslObject"), "")
+    val idom = WikiDomain.domFrom(ipage).get.revise addRoot
+
+//    stimer snap "3_parse_story"
+
+    addStoryToAst(root, ipage, justTests)
+
+    // start processing all elements
+    val engine = new DomEngine(dom, root, settings, ipage :: pages)
+    setHostname(engine.ctx)
+
+    engine
+  }
+
   /* populate the DOM from the story: add msg inst, mocks and test cases */
-  def addStoryToAst (root:DomAst, story:WikiEntry, includeMsg:Boolean=true) = {
+  def addStoryToAst (root:DomAst, story:WikiEntry, justTests:Boolean=false, justMocks:Boolean=false) = {
     var lastM : Option[EMsg] = None
     root.children appendAll WikiDomain.domFilter(story) {
       case o:O if o.name != "context" => List(DomAst(o, RECEIVED))
       case v:EMsg => {
         lastM = Some(v);
-        if(includeMsg) List(DomAst(v, RECEIVED)) else Nil
+        if(!justTests || !justMocks) List(DomAst(v, RECEIVED)) else Nil
       }
       case v:EVal => List(DomAst(v, RECEIVED))
       case v:EMock => List(DomAst(v, RECEIVED))
-      case e:ExpectM => List(DomAst(e.withGuard(lastM.map(_.asMatch)), "test"))
-      case e:ExpectV => List(DomAst(e.withGuard(lastM.map(_.asMatch)), "test"))
+      case e:ExpectM if(!justMocks) => List(DomAst(e.withGuard(lastM.map(_.asMatch)), "test"))
+      case e:ExpectV if(!justMocks) => List(DomAst(e.withGuard(lastM.map(_.asMatch)), "test"))
     }.flatten
   }
 
@@ -533,20 +630,17 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
 
     val page = new WikiEntry("Spec", "fiddle", "fiddle", "md", "", stok.au.map(_._id).getOrElse(NOUSER), Seq("dslObject"), "")
 
-    val dom = if(settings.blenderMode) {
-      //      val spw = WID.fromPath(specWpath)
+    val pages = if(settings.blenderMode) {
+      // blend all specs and stories
       val stories = if(settings.sketchMode) Wikis(reactor).pages("Story")./*filter(_.name != stw.get.name).*/toList else Nil
-      val d = (Wikis(reactor).pages("Spec")./*filter(_.name != spw.get.name).*/toList:::stories).map{
+      val d = (Wikis(reactor).pages("Spec")./*filter(_.name != spw.get.name).*/toList:::stories).map{ p=>
         // if draft mode, find the auto-saved version if any
-        p=> if(settings.draftMode) {
+        if(settings.draftMode) {
           val c = Autosave.find("DomFid"+p.category+"."+reactor+"."+p.wid.wpath, stok.au.map(_._id)).flatMap(_.get("content")).mkString
           if(c.length > 0)  p.copy(content=c)
           else p
         } else p
-      }.flatMap(
-        // to domain
-        p=> WikiDomain.domFrom(p).toList
-      ).foldLeft(WikiDomain.domFrom(page).get)((a,b) => a.plus(b)).revise.addRoot
+      }
       d
     } else {
       //the contents of the fiddle
@@ -554,8 +648,14 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
         if(useThisOne.isDefined) ""
         else Autosave.find("DomFidSpec."+reactor+".", stok.au.map(_._id)).flatMap(_.get("content")).mkString
       val page = new WikiEntry("Spec", "fiddle", "fiddle", "md", spec, stok.au.map(_._id).getOrElse(NOUSER), Seq("dslObject"), "")
-      WikiDomain.domFrom(page).get.revise.addRoot
+//      WikiDomain.domFrom(page).get.revise.addRoot
+      List(page)
     }
+
+    // to domain
+    val dom = pages.flatMap( p=>
+      WikiDomain.domFrom(p).toList
+    ).foldLeft(WikiDomain.domFrom(page).get)((a,b) => a.plus(b)).revise.addRoot
 
     // make up a story
     val FILTER = Array("sketchMode", "mockMode", "blenderMode", "draftMode")
@@ -585,7 +685,8 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
     addStoryToAst(root, ipage)
 
     // start processing all elements
-    val engine = new DomEngine(dom plus idom, root, settings)
+    val engine = new DomEngine(dom plus idom, root, settings, ipage :: pages)
+    setHostname(engine.ctx)
 
     root.children.foreach(engine.expand(_, true, 1))
     //    res += root.toString
@@ -812,14 +913,23 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
   }
 
   def streamSimulator () = FAUR {implicit stok=>
-    val id="1234"
-    val capture = Autosave.OR("DomFidSim."+reactor+"."+id, stok.au.get._id, Map(
+    val id="aStream"
+    val content = Autosave.OR("DomFidSim."+stok.realm+"."+id, stok.au.get._id, Map(
       "content"  -> "Paste AST capture here"
     )).apply("content")
 
-    ROK.k apply {implicit stok=>
+    ROK.k reactorLayout12   {implicit stok=>
       views.html.modules.diesel.streamSimulator()
     }
+  }
+
+  /** fiddle screen - spec changed */
+  def streamCapture(id: String) = FAUPR { implicit stok=>
+    val content = Autosave.OR("DomFidSim."+stok.realm+"."+id, stok.au.get._id, Map(
+      "content"  -> "Paste AST capture here"
+    )).apply("content")
+
+    Ok(js.tojsons(js.parse(content))).as("application/text")
   }
 
   /** fiddle screen - spec changed */
@@ -829,10 +939,9 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
     def fParm(name:String)=
       stok.req.body.asFormUrlEncoded.get.apply(name).mkString
 
-    val reactor = fParm("reactor")
     val capture = fParm("capture")
 
-    DomWorker later AutosaveSet("DomFidSim."+reactor+"."+id, stok.au.get._id, Map(
+    DomWorker later AutosaveSet("DomFidSim."+stok.realm+"."+id, stok.au.get._id, Map(
       "content"  -> capture
     ))
 
@@ -842,9 +951,12 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
 
   var asts: List[(String, String, DomAst)] = Nil
 
-  def viewAst (id:String) = FAUR {implicit stok=>
+  def viewAst (id:String, format:String) = FAUR {implicit stok=>
       asts.find(_._2 == id).map {ast=>
-        Ok(ast.toString())
+        if(format == "html")
+          Ok(ast._3.toHtml)
+        else
+          Ok(ast.toString())
       }.getOrElse {
         NotFound("ast not found")
     }
@@ -859,15 +971,80 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
     def fParm(name:String)=
       stok.req.body.asFormUrlEncoded.get.get(name).map(_.mkString).getOrElse("")
 
-    val capture = fParm("tree")
+    val capture = fParm("capture")
     val m = js.parse(capture)
-    val d = DieselJsonFactory.fromj(m).asInstanceOf[DomAst].withDetails("(POSTed ast)")
-    val captureTree = d.toHtml
+//    val root = DieselJsonFactory.fromj(m).asInstanceOf[DomAst].withDetails("(POSTed ast)")
+      // is teh map from a debug session or just the AST
+     val root = (
+      if(m contains "tree") DieselJsonFactory.fromj(m("tree").asInstanceOf[Map[String,Any]]).asInstanceOf[DomAst]
+      else DieselJsonFactory.fromj(m).asInstanceOf[DomAst]
+      ).withDetails("(from capture)")
+
     val xid = if(id == "-") new ObjectId().toString else id
 
-    asts = (stream, xid, d) :: asts
-    Ok("ok")
+    var settings = new DomEngineSettings(
+        mockMode = true,
+        blenderMode = false,
+        draftMode = true,
+        sketchMode = false,
+        execMode = "sync"
+      )
+
+    val engine = prepEngine(xid, settings, stok.realm, root, true)
+
+    // decompose all tree or just testing?
+    root.children.filter(_.kind == "test").foreach(engine.expand(_, true, 1))
+
+    if(asts.size > 500) asts = asts.take(499)
+    asts = (stream, xid, root) :: asts
+
+    var ret = Map(
+      "ok" -> "true",
+      "failureCount" -> (root.collect {
+        case d@DomAst(n:TestResult, _, _, _) if n.value.startsWith("fail") => n
+      }).size
+    )
+
+    Ok(js.tojsons(ret).toString).as("application/json")
   }
+
+  /** proxy real service GET */
+  def proxy(path:String) = RAction {implicit stok =>
+    val engine = prepEngine(new ObjectId().toString,
+      DomEngineSettings.fromRequest(stok.req),
+      stok.realm,
+      DomAst("root", ROOT),
+      false)
+
+    val q = stok.req.queryString.map(t=>(t._1, t._2.mkString))
+
+    // does the current request match the template?
+    def matchesRequest(tpath:String, rpath:String) = {
+      val a = rpath.split("/")
+      val b = tpath.split("/")
+
+      a.zip(b).foldLeft(true)((a,b)=>a && b._1 == b._2 || b._2.matches("""\$\{([^\}]*)\}"""))
+    }
+
+    val template = engine.ctx.specs.flatMap(_.templateSections.filter{t=>
+      val turl = EESnakk.parseTemplate(t.content).url
+      val tpath = if(turl startsWith "http://") {
+        turl.replaceFirst("https?://", "").replaceFirst(".*/", "/")
+      } else turl
+      matchesRequest(tpath, stok.req.path)
+    }).headOption
+
+    import razie.Snakk._
+//    val body = body("")
+
+      Ok("haha").as("application/json")
+  }
+
+  /** proxy real service GET */
+  def proxyPost(path:String) = RAction {implicit stok =>
+    Ok("haha").as("application/json")
+  }
+
 }
 
 /** speed up initial response - do backups and stuff in background */
