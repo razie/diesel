@@ -17,7 +17,10 @@ Classic layout
     @wiki.layout.draft(page)
 
       <div class="well">
-        @wiki.wikiFrag(wid, stok.au, false, page, iname, false, true, canEdit, false, false)
+        @wiki.wikiFrag(wid, None, false, page, iname, false, true, canEdit, false, false)
+        @wid.page.map {we =>
+          @wiki.wikiFragBottom(we, false, canEdit, false, print)
+        }
       </div>
 
       @if(page.isDefined) {
@@ -33,7 +36,7 @@ Classic layout
     @if(stok.website.divMain == "9") {
       <div class="col-sm-3">
         @stok.website.rightTop.map { rt =>
-          @wiki.wikiFrag(rt, stok.au, simple = true)
+          @wiki.wikiFrag(rt, None, simple = true)
         }
 
         @if(stok.website.adsAtBottom) {
@@ -41,7 +44,7 @@ Classic layout
         }
 
         @stok.website.rightBottom.map { rt =>
-          @wiki.wikiFrag(rt, stok.au, simple = true)
+          @wiki.wikiFrag(rt, None, simple = true)
         }
 
       </div>

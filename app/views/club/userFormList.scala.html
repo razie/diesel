@@ -14,9 +14,8 @@ reused in several screens to show the list of forms
 
 @wids.zipWithIndex.map { t=>
   <tr><td>
-
   @if(current.exists(wid=>t._2 == wids.indexOf(wid))) {
-    <span class="badge badge-inverse">@{t._2+1}</span>
+    <span class="badge" style="background-color: black">@{t._2+1}</span>
   } else {
     <span class="badge">@{t._2+1}</span>
   }

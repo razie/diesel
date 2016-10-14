@@ -1,17 +1,18 @@
 package controllers
 
 import java.io.File
+import admin.Config
 import mod.snow.{RacerKidz, RacerKidInfo}
 import org.joda.time.DateTime
 import com.mongodb.casbah.Imports._
-import admin.Config
 import model._
 import play.api.mvc.Action
 import play.api.mvc.Request
-import razie.wiki.admin.{WikiEvent, Audit}
+import razie.base.Audit
+import razie.wiki.admin.BannedIps
 import razie.wiki.model._
 import razie.db.ROne
-import razie.wiki.util.{PlayTools, IgnoreErrors}
+import razie.wiki.util.PlayTools
 import razie.wiki.{Services, Enc}
 import razie.wiki.Sec._
 import mod.snow._
@@ -24,7 +25,7 @@ object Application extends RazController {
   // serve any URL other than routes matches - try the forward list...
   def whatever(path: String) = Action.async { implicit request =>
     log("URL - REDIRECTING? - " + path)
-    Website.getHost.orElse(Some(Config.hostport)).flatMap(x =>
+    Website.getHost.orElse(Some(Services.config.hostport)).flatMap(x =>
       Config.urlrewrite(x + "/" + path) orElse
       Config.urlfwd(x + "/" + path)
     ).map { host =>
@@ -65,17 +66,22 @@ object Application extends RazController {
       log ("URL - Redirecting main page from "+Website.getHost + " TO "+host)
       Future.successful(Redirect(host))
 //    } orElse Website.getHost.flatMap(Website.apply).filter(w=> !Reactors.contains(w.reactor)).flatMap {x=>
-    } orElse Website.getHost.flatMap(Website.apply).filter(w=>w.we.exists(_.category == "Site") || w.homePage.isDefined/*exists(_.name != "Home")*/).flatMap {x=>
+    } orElse Website.getHost.flatMap(Website.apply).filter(w=>
+      w.we.exists(_.category == "Site") || w.homePage.isDefined/*exists(_.name != "Home")*/
+    ).flatMap {x=>
       log ("URL - serve Website homePage for "+x.name)
-      if(auth.isDefined && x.userHomePage.isDefined) x.userHomePage
-      else x.homePage
+      auth.map{au=>
+        au.roles.find(y=>(x wprop "userHome."+y).isDefined).flatMap { y =>
+          (x wprop "userHome." + y)
+        } orElse x.userHomePage
+      } getOrElse x.homePage
       }.map { home =>
         Wiki.show(home, 1).apply(request)
     } getOrElse {
         val r = Wiki.getRealm()
         log ("URL - show default reactor main "+r)
 //        if (r != Reactors.RK)
-          Wiki.show(Reactors(r).mainPage(auth), 1).apply(request)
+          Wiki.show(WikiReactors(r).mainPage(auth), 1).apply(request)
 //        else  Future.successful(Application.idoeIndexItem(1))
     } // RK main home screen
     //todo un-hardcode that
@@ -171,7 +177,7 @@ object Application extends RazController {
     page match {
       case "index" => index
       case "profile" => Action { implicit request => Redirect("/doe/profile") }
-      case "terms" => Action { implicit request => Redirect("/page/Terms_of_Service") }
+      case "terms" => Action { implicit request => Redirect("/wiki/Terms_of_Service") }
       case "join" => Action { implicit request => Redirect("/doe/join") }
       case "logout" | "signout" => Action { implicit request =>
         val au = auth
@@ -204,7 +210,7 @@ object Application extends RazController {
   import razie.|>
 
   def listswitch = FAU { implicit au => implicit errCollector => implicit request =>
-    Ok(Reactors.reactors.values.map{r=> r.websiteProps.prop("domain")}.filter(_.isDefined).map(_.get).map(d=>
+    Ok(WikiReactors.reactors.values.map{r=> r.websiteProps.prop("domain")}.filter(_.isDefined).map(_.get).map(d=>
       s"""<a href="/doe/www/$d">$d</a><br>""").mkString).as("html")
   }
 

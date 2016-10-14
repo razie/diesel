@@ -1,0 +1,27 @@
+@***
+Admin user - list of users
+***@
+@()(implicit stok: controllers.StateOk)
+
+@fufu(db:com.mongodb.casbah.Imports.DBObject, k:String, v:String) = {
+  @k match {
+    case "email" => {
+      @razie.wiki.Enc.unapply(v)
+    }
+    case "userName" => {
+      <a href="@routes.AdminUser.user(db.get("_id").toString)">@v</a>
+    }
+    case _=> {
+      @v
+    }
+  }
+}
+
+  @stok.title("admin users")
+
+    <h2>Users</h2>
+
+    @util.utilTable("User", Seq("userName" -> "UserName", "_id" -> "Id", "email" -> "Email", "firstName" -> "First Name", "lastName" -> "Last Name", "yob" -> "YOB", "realms" -> "Realms"), None, None, Some(fufu))
+
+
+

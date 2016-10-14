@@ -9,7 +9,7 @@ debug a wiki page
 @stok.title("WikiDebug: "+wid.cat +":"+ wid.name)
 
       <div class="well">
-          @wiki.wikiFrag(wid,stok.au,false,page, iname)
+          @wiki.wikiFrag(wid,None,false,page, iname)
       </div>
 
         <div class="well">
@@ -30,6 +30,14 @@ debug a wiki page
         }
        </ul>
       </div>
+
+  <div class="well">
+    <ul>props
+      @page.get.props.map { p=>
+        <li>@p</li>
+      }
+    </ul>
+  </div>
 
       <div class="well">
         <ul>contentTags
@@ -84,14 +92,6 @@ debug a wiki page
        </ul>
       </div>
 
-      <div class="well">
-        <ul>props
-        @page.get.props.map { p=>
-          <li>@p</li>
-        }
-       </ul>
-      </div>
-
         <div class="well">
         @helper.form(action=routes.Wikie.update("realm", page.get.wid), 'class->"well form-inline") {
             <input type="text" class="input-large" name="newvalue" value="@page.map(_.realm)">
@@ -130,7 +130,7 @@ debug a wiki page
         </div>
 
       <div class="well">
-       Set parent. Careful - no checking done, heh. WikiLinks not updated. Use n/a to remove parent.
+       Set parent. Careful - no checking done, heh. WikiLinks updated... maintaining the date of publishing as well. Use n/a to remove parent.
       @helper.form(action=routes.Wikie.setParent(page.get.wid), 'class->"well form-inline") {
         <input type="text" class="input-large" name="newWid">
         <button type="submit" class="btn btn-default">Move Now!</button>

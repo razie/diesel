@@ -2,9 +2,9 @@
 The add on the right hand side
 ***@
 @()(implicit stok: controllers.StateOk)
-@import _root_.admin.Config
+@import _root_.razie.wiki.Services
 
-@if(! (Config.noads || stok.au.exists(_.isUnder13))) {
+@if(! (Services.config.noads || stok.au.exists(_.isUnder13))) {
 
   @if(stok.css.contains("light")) {
     <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>

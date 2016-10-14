@@ -6,12 +6,14 @@
  */
 package mod.diesel.model
 
+import razie.diesel.ext._
 import mod.diesel.model.RDExt._
 import org.bson.types.ObjectId
 import play.api.mvc.{AnyContent, Request}
 import razie.clog
-import razie.diesel.RDOM._
-import razie.diesel.{StaticECtx, DomEngECtx, RDomain, ECtx}
+import razie.diesel.dom._
+import RDOM._
+import razie.wiki.dom.WikiDomain
 import razie.wiki.model.WikiEntry
 
 import scala.Option.option2Iterable
@@ -154,7 +156,7 @@ class DomEngine(
   val dom: RDomain,
   val root: DomAst,
   val settings: DomEngineSettings,
-  val pages : List[WikiEntry]) {
+  val pages : List[DSpec]) {
 
   val maxLevels = 10
 
@@ -238,7 +240,7 @@ class DomEngine(
         // no mocks, let's try executing it
         // I run snaks even if rules fit - but not if mocked
         if (!mocked) {
-          executors.filter(x=> (!settings.mockMode || x.isMock) && x.test(n)).map { r =>
+          Executors.all.filter(x=> (!settings.mockMode || x.isMock) && x.test(n)).map { r =>
             mocked = true
 
             val news = r.apply(n, None)(new StaticECtx(n.attrs, Some(ctx))).map(x => DomAst(x, AstKinds.GENERATED).withSpec(r))

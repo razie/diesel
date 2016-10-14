@@ -2,16 +2,14 @@ package mod.book
 
 import model.Website
 import play.api.mvc.Action
-import razie.wiki.admin.{WikiRefinery, WikiRefined}
+import razie.wiki.model.WikiRefined
 import razie.wiki.mods.{WikiMods, WikiMod}
 import razie.wiki.parser.WAST
-import razie.wiki.util.{IgnoreErrors, VErrors}
 import views.html.modules.book.{viewSections, prevNext, viewProgress}
 
 import org.joda.time.DateTime
 import com.mongodb.casbah.Imports._
-import admin.{Config}
-import controllers.{ViewService, RazController, CodePills, Club}
+import controllers._
 import razie.db.REntity
 import razie.db.RMany
 import razie.db.ROne

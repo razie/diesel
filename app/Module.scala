@@ -5,46 +5,130 @@
  *  (_)\_)(__)(__)(____)(____)(____)(___/   (__)  (______)(____/    LICENSE.txt
  */
 
-import java.util.Properties
 import admin._
-import akka.cluster.{MemberStatus, Cluster}
-import akka.cluster.ClusterEvent.{CurrentClusterState, MemberUp}
 import com.google.inject.AbstractModule
-import controllers._
-import mod.book.Progress
-import razie.db._
-import model._
-import play.api.Application
-import play.api._
-import play.api.mvc._
-import razie.wiki.util.{AuthService, PlayTools, IgnoreErrors, VErrors}
-import razie.{cout, Log, cdebug, clog}
-import play.libs.Akka
-import akka.actor.{RootActorPath, Props, Actor}
 import com.mongodb.casbah.{MongoDB, MongoConnection}
 import com.mongodb.casbah.Imports._
-import java.io.File
-import scala.concurrent.{Future, ExecutionContext}
-import controllers.ViewService
-import razie.wiki.model.WikiCount
-import razie.wiki.admin._
-import razie.wiki.{WikiConfig, Alligator, EncryptService, Services}
-import razie.wiki.model.WikiAudit
+import controllers.{ViewService, RazWikiAuthorization, RkViewService}
+import model.WikiUsersImpl
+import razie.base.Audit
+import razie.db.{RMongo, UpgradeDb, RazMongo}
+import razie.wiki.{EncryptService, Services}
 import razie.wiki.model.WikiUsers
-import razie.wiki.model.WikiUser
-import razie.wiki.model.Reactors
-import razie.wiki.model.WikiEntry
-import razie.wiki.model.Reactor
-import razie.wiki.Sec._
-
-import scala.util.Try
+import razie.wiki.util.AuthService
+import razie.{clog, cout, Log}
 
 /** NOT WORKING !!!!!!!!!! */
 class Module extends AbstractModule {
-  razie.clog << "HIIIIIIIIIIIIIIIIII"
   def configure() = {
-    razie.clog << "HAAAAAAAAAAAAAAAAAAAAAAAA"
-//    bind[AuthService].to[RazAuthService]
+    clog << "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ configure"
+
+    Services.auth = new RazAuthService ()
+    bind(classOf[AuthService[_]]).toInstance(Services.auth)
+
+    Services.config = Config
+
+    mongoInit()
+
+    // init after DB because it needs DB
+    Audit.impl = new RazAuditService
+    RMongo.setInstance(Audit.impl)
+
+    WikiUsers.impl = WikiUsersImpl
+
+    EncryptService.impl = admin.CypherEncryptService
+    ViewService.impl = RkViewService
+    Services.wikiAuth = RazWikiAuthorization
+
+    //todo look these up in Website
+    Services.isSiteTrusted = {s=>
+      Config.trustedSites.exists(x=>s.startsWith(x))
+    }
+
+  }
+
+  def mongoInit(): Unit = {
+    /************** MONGO INIT *************/
+    RazMongo.setInstance {
+      val UPGRADE_AGAIN = false // only the last upgrade
+      val mongoUpgrades: Map[Int, UpgradeDb] = Map(
+          1 -> Upgrade1, 2 -> Upgrade2, 3 -> Upgrade3, 4 -> Upgrade4, 5 -> Upgrade5,
+          6 -> U6, 7 -> U7, 8 -> U8, 9 -> U9, 10 -> U10, 11 -> U11, 12 -> U12, 13 -> U13,
+          14 -> U14, 15 -> U15, 16 -> U16, 17 -> U17) /* NOTE as soon as you list it here, it will apply */
+
+      def mongoDbVer = mongoUpgrades.keySet.max + 1
+
+      lazy val conn = MongoConnection(admin.Config.mongohost)
+
+      /** the actual database - done this way to run upgrades before other code uses it */
+      com.mongodb.casbah.commons.conversions.scala.RegisterConversionHelpers()
+      com.mongodb.casbah.commons.conversions.scala.RegisterJodaTimeConversionHelpers()
+
+      // authenticate
+      val db = conn(Config.mongodb)
+      if (!db.authenticate(Config.mongouser, admin.Config.mongopass)) {
+        clog << "ERR_MONGO_AUTHD"
+        throw new Exception("Cannot authenticate. Login failed.")
+      }
+
+      //upgrading db version if needed
+      def prep(adb:MongoDB) = {
+        // upgrade if needed
+        var curs = adb("Ver").find(Map("name" -> "version"))
+        var ver = if(curs.hasNext) curs.next() else {
+          var dbVer = adb("Ver").findOne.map(_.get("ver").toString).map(_.toInt)
+          if(dbVer.isDefined) {
+            adb("Ver").remove(Map("ver" -> dbVer))
+          }
+          adb("Ver").insert(Map("name" -> "version", "ver" -> dbVer.getOrElse(1)))
+          adb("Ver").find(Map("name" -> "version")).next
+        }
+
+        var dbVer = Option(ver.get("ver").toString.toInt)
+        if (UPGRADE_AGAIN) dbVer = dbVer.map(x => mongoDbVer - 1)
+
+        var upgradingLoop = false // simple recursive protection
+
+        // if i don't catch - there's no ending since it's a lazy val init...
+        try {
+              var ver = dbVer.get
+              while (ver < mongoDbVer && mongoUpgrades.contains(ver)) {
+                if(upgradingLoop)
+                  throw new IllegalStateException("already looping to update - recursive DB usage while upgrading, check code")
+                upgradingLoop = true
+                mongoUpgrades.get(ver).fold (
+                  Log.error("NO UPGRADES FROM VER " + ver)
+                ) { u =>
+                  cout << "1 " + Thread.currentThread().getName()
+                  Log audit s"UPGRADING DB from ver $ver to ${mongoDbVer}"
+                  Thread.sleep(2000) // often screw up and goes in  a loop...
+                  u.upgrade(adb)
+                  adb("Ver").update(Map("ver" -> ver), Map("ver" -> mongoDbVer))
+                  Log.audit("UPGRADING DB... DONE")
+                }
+                ver = ver + 1
+                upgradingLoop = false
+              }
+        } catch {
+          case e: Throwable => {
+            Log.error("Exception during DB migration - darn thing won't work at all probably\n" + e, e)
+            e.printStackTrace()
+          }
+        }
+
+        // that's it, db initialized?
+        adb
+      }
+
+      //    U11.upgradeWL(RazMongo.db)
+      //    U11.upgradeRaz(RazMongo.db)
+      //    U11.upgradeRk(RazMongo.db)
+      //    U11.upgradeGlacierForums(RazMongo.db)
+      //        U11.upgradeGlacierForums2()
+
+
+      prep(db)
+    }
   }
 }
 

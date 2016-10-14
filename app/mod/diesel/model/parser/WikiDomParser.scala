@@ -6,11 +6,14 @@
  */
 package mod.diesel.model.parser
 
-import mod.diesel.model.{EMsg, RDExt, EVal}
+import mod.diesel.model.{RDExt}
+import razie.diesel.ext._
 import razie.clog
 import razie.diesel._
-import razie.diesel.RDOM._
-import razie.wiki.Enc
+import razie.diesel.dom._
+import razie.diesel.dom.RDOM
+import RDOM._
+import razie.wiki.{Services, Enc}
 import razie.wiki.dom.WikiDomain
 import razie.wiki.model.WikiEntry
 import razie.wiki.parser.{WAST, WikiParserBase}
@@ -159,7 +162,7 @@ trait WikiDomainParser extends WikiParserBase {
   /**
    */
   def pif: Parser[EIf] = """[.$]if""".r ~> ws ~> optMatchAttrs ^^ {
-      case aa => RDExt.EIf(aa)
+      case aa => EIf(aa)
     }
 
   /**
@@ -169,7 +172,7 @@ trait WikiDomainParser extends WikiParserBase {
     keyw("""[.$]match""".r) ~ ws ~ clsMatch ~ opt(pif) ^^ {
       case k ~ _ ~ Tuple3(ac, am, aa) ~ cond => {
         LazyState { (current, ctx) =>
-          val x = RDExt.EMatch(ac, am, aa, cond)
+          val x = EMatch(ac, am, aa, cond)
 //          f.pos = Some(EPos(ctx.we.map(_.wid.wpath).mkString, k.pos.line, k.pos.column))
           addToDom(x).ifold(current, ctx)
         }
@@ -183,9 +186,9 @@ trait WikiDomainParser extends WikiParserBase {
     keyw("""[.$]when""".r) ~ ws ~ clsMatch ~ ws ~ opt(pif) ~ " *=>".r ~ ows ~ (clsMet | justAttrs) ^^ {
       case k ~ _ ~ Tuple3(ac, am, aa) ~ _ ~ cond ~ _ ~ _ ~ Tuple3(zc, zm, za) => {
         LazyState { (current, ctx) =>
-          val x = RDExt.EMatch(ac, am, aa, cond)
-          val y = RDExt.EMap(zc, zm, za)
-          val f = RDExt.ERule(x, y)
+          val x = EMatch(ac, am, aa, cond)
+          val y = EMap(zc, zm, za)
+          val f = ERule(x, y)
           f.pos = Some(EPos(ctx.we.map(_.wid.wpath).mkString, k.pos.line, k.pos.column))
           addToDom(f).ifold(current, ctx)
         }
@@ -199,8 +202,8 @@ trait WikiDomainParser extends WikiParserBase {
     keyw("""[.$]mock""".r) ~ ws ~ clsMatch ~ opt(pif) ~ " *=>".r ~ ows ~ optAttrs ^^ {
       case k ~ _ ~ Tuple3(ac, am, aa) ~ cond ~ _ ~ _ ~ za => {
         LazyState { (current, ctx) =>
-          val x = RDExt.EMatch(ac, am, aa, cond)
-          val y = RDExt.EMap("", "", za)
+          val x = EMatch(ac, am, aa, cond)
+          val y = EMap("", "", za)
           val f = EMock(ERule(x, y))
           f.pos = Some(EPos(ctx.we.map(_.wid.wpath).mkString, k.pos.line, k.pos.column))
           f.rule.pos = Some(EPos(ctx.we.map(_.wid.wpath).mkString, k.pos.line, k.pos.column))
@@ -409,8 +412,8 @@ trait WikiDomainParser extends WikiParserBase {
   def linemock (wpath:String) =
     keyw("""[.$]mock""".r) ~ ws ~ clsMatch ~ opt(pif) ~ " *=> *".r ~ optAttrs ^^ {
       case k ~ _ ~ Tuple3(ac, am, aa) ~ cond ~ _ ~ za => {
-          val x = RDExt.EMatch(ac, am, aa, cond)
-          val y = RDExt.EMap("", "", za)
+          val x = EMatch(ac, am, aa, cond)
+          val y = EMap("", "", za)
           val f = EMock(ERule(x, y))
           f.pos = Some(EPos(wpath, k.pos.line, k.pos.column))
           f.rule.pos = Some(EPos(wpath, k.pos.line, k.pos.column))
@@ -424,7 +427,7 @@ trait WikiDomainParser extends WikiParserBase {
   def pexpectm: PS = keyw("[.$]expect *[$]msg *".r) ~ ident ~ " *\\. *".r ~ ident ~ optMatchAttrs ~ opt(pif) ^^ {
     case k ~ ent ~ _ ~ ac ~ attrs ~ cond => {
       LazyState { (current, ctx) =>
-        val f = RDExt.ExpectM(RDExt.EMatch(ent, ac, attrs, cond))
+        val f = ExpectM(EMatch(ent, ac, attrs, cond))
         f.pos = Some(EPos(ctx.we.map(_.wid.wpath).mkString, k.pos.line, k.pos.column))
         collectDom(f, ctx.we)
         SState(f.toHtml+"<br>")
@@ -438,7 +441,7 @@ trait WikiDomainParser extends WikiParserBase {
   def pexpectv: PS = keyw("[.$]expect * [$]val *".r) ~ optMatchAttrs ^^ {
     case k ~ a => {
       LazyState { (current, ctx) =>
-        val f = RDExt.ExpectV(a)
+        val f = ExpectV(a)
         f.pos = Some(EPos(ctx.we.map(_.wid.wpath).mkString, k.pos.line, k.pos.column))
         collectDom(f, ctx.we)
         SState(f.toHtml+"<br>")
@@ -543,7 +546,7 @@ trait WikiDomainParser extends WikiParserBase {
       }
       catch  {
         case t : Throwable =>
-          if(admin.Config.isLocalhost) throw t // debugging
+          if(Services.config.isLocalhost) throw t // debugging
           SState(s"""<font style="color:red">[[BAD FIDDLE - check syntax: ${t.toString}]]</font>""")
       }
   }

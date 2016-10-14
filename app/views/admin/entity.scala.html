@@ -1,9 +1,0 @@
-@** render a field representing a userId **@
-@(name:String, v:String)
-
-    @if(v == null || v.length <= 1) {
-      <span style="color:#ff0000">???</span>
-    } else {
-      <a href="@routes.Admin.colEntity(name,v)">@v</a>
-    }
-

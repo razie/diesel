@@ -74,7 +74,7 @@ trait WikiDslParser extends WikiParserBase {
       }
       catch  {
         case t : Throwable =>
-          if(admin.Config.isLocalhost) throw t // debugging
+          if(razie.wiki.Services.config.isLocalhost) throw t // debugging
           SState(s"""<font style="color:red">[[BAD FIDDLE - check syntax: ${t.toString}]]</font>""")
       }
   }

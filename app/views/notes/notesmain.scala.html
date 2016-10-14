@@ -15,7 +15,7 @@ msg types are msg, err
   <div style="float:right">
     <small>
       @stok.request.cookies.get("pinTags").map(_.value).filter(_.nonEmpty).map { t =>
-        <b><span class="glyphicon glyphicon-tags" style="color:#50BBDB" title="Pinned tags: @t"></span></b>&nbsp;&nbsp;
+        <b><span onclick="removePins();" class="badge" style="background-color: #08a4b5" title="Remove pinned tags: @t"><span class="glyphicon glyphicon-tags"></span>&nbsp;@{t.count(_ == '/')+1}</span></b>&nbsp;&nbsp;
       }
     <input type="checkbox" id="useName" onchange="changeName(this);" title="Notes by default don't have names..."/> Names
     </small>
@@ -25,6 +25,11 @@ msg types are msg, err
 <script>
   if(localStorage.getItem("rkNoteUseName") == "1")
     $("#useName").prop("checked", true);
+
+function removePins() {
+  setPinTags("");
+  location.reload();
+}
 </script>
 
 
@@ -87,7 +92,7 @@ msg types are msg, err
   <div class="actions col-sm-12" style="padding-left:0px; display:inline-block;">
     <button id="submit" type="submit"  class="btn btn-sm btn-info">Save it</button>
 
-    <a id="discard" href="/notes/discard/@nid" class="btn btn-sm btn-warning" title="This note was auto-saved...">Discard it</a>
+    <a id="discard" href="/notes/discard/@nid" class="btn btn-sm btn-warning" title="This note was auto-saved..." style="display: none">Discard it</a>
 
     <div style="float:right">
       @if(stok.isLight) {
@@ -100,7 +105,10 @@ msg types are msg, err
   </div>
 
 <div style="display:inline-block">
-  <p><small>You are typing markdown - see the <a href="/wiki/No_Folders/Notes_Quick_Guide">quick guide</a>.</small>
+  <p><span id="ispublic" class="label label-danger" style="display: none">
+    <small>This note is now public! Anyone may see it!</small>
+  </span>
+  <small>You are typing markdown - see the <a href="/wiki/No_Folders/Notes_Quick_Guide">quick guide</a>.</small>
 </div>
 }
 
@@ -187,6 +195,18 @@ var archive = function(s) {
   r = r.length > 0 ? r+',' : r
   $('#tags')[0].value = r+'archive';
 }
+
+function isPublic(){
+  if($('#tags')[0].value.indexOf("public") >= 0) {
+    $("#ispublic").show(500);
+  } else {
+    $("#ispublic").hide(500);
+  }
+}
+
+isPublic();
+
+$('#tags').bind("propertychange change click keyup input paste", isPublic);
 
 var saveit = function() {
   document.location = '/notes/saved?tags='+document.getElementById('tags').value+'&n='+razuri(editor1.getValue());
@@ -295,8 +315,8 @@ $('#content').textcomplete([
  ]);
 
 
-  @if(!isAuto) {
-    $ ( '#discard' ).fadeOut ( ) ;
+  @if(isAuto) {
+    $ ( '#discard' ).fadeIn ( ) ;
   }
 
   $('#iconsave' ).fadeOut();

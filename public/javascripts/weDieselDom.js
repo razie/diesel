@@ -252,7 +252,7 @@ var lastMarker=null;
 
 
 /** this works IN the fiddle only */
-function weref(wpath,line,col) {
+function weSelect(wpath,line,col) {
   var Range = ace.require('ace/range').Range;
   if(lastMarker != null) {
     editor.session.removeMarker(lastMarker);
@@ -261,15 +261,9 @@ function weref(wpath,line,col) {
   }
 
   if(wpath.includes("Spec:")) {
-    // is it a different spec?
-    if(wpath != specWpath) loadSpec(wpath, rest);
-    else rest();
-
-    function rest() {
-      editor1.scrollToLine(line, true, true, function () {});
-      //editor1.gotoLine(line, 10, true);
-      lastMarker = editor1.session.addMarker(new Range(line-1, 0, line-1, 100), "ace-primaryline", "fullLine");
-    }
+    editor1.scrollToLine(line, true, true, function () {});
+    //editor1.gotoLine(line, 10, true);
+    lastMarker = editor1.session.addMarker(new Range(line-1, 0, line-1, 100), "ace-primaryline", "fullLine");
   } else if(wpath.includes("Story:")) {
     editor.scrollToLine(line, true, true, function () {});
     //editor.gotoLine(line, 10, true);
@@ -277,12 +271,25 @@ function weref(wpath,line,col) {
   }
 }
 
+/** this works IN the fiddle only */
+function weref(wpath,line,col) {
+  if(wpath.includes("Spec:")) {
+    // is it a different spec?
+    if(wpath != specWpath) loadSpec(wpath, function () {
+        weSelect(wpath, line, col)
+      });
+    else weSelect(wpath, line, col);
+  } else if(wpath.includes("Story:")) {
+    weSelect(wpath, line, col);
+  }
+}
+
 /** this works from anywhere, to open the fiddle on an element */
 function wefiddle(wpath,line,col) {
   if(wpath.includes("Spec:")) {
-    window.location.href='/diesel/fiddle/playDom/'+realm+'?spec='+wpath
+    window.location.href='/diesel/fiddle/playDom/'+realm+'?line='+line+'&col='+col+'&spec='+wpath
   } else if(wpath.includes("Story:")) {
-    window.location.href='/diesel/fiddle/playDom/'+realm+'?story='+wpath
+    window.location.href='/diesel/fiddle/playDom/'+realm+'?line='+line+'&col='+col+'&story='+wpath
   }
 }
 

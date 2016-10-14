@@ -13,7 +13,7 @@ included in mainUserC as the right hand side info box
 }
 
 @locs() = @{
-  {user.events flatMap { _._5 \ "Venue" \@ "loc"}}.filter(! _.isEmpty).map(_.replaceFirst("ll:",""))
+  {controllers.UserStuff.events(user) flatMap { _._5 \ "Venue" \@ "loc"}}.filter(! _.isEmpty).map(_.replaceFirst("ll:",""))
 //  {controllers.UserStuff.xp(user, "Calendar") \ UserStuff.Race \ "Venue" \@ "loc"}.filter(! _.isEmpty).map(_.replaceFirst("ll:",""))
 }
 

@@ -9,11 +9,11 @@ included in mainUserC as the right hand side info box
 @import razie.wiki.model.Wikis
 
 @evBefore() = @{
-    user.events.filter(_._3.isBefore(DateTime.now))
+  controllers.UserStuff.events(user).filter(_._3.isBefore(DateTime.now))
 }
 
 @evAfter() = @{
-    user.events.filter(_._3.isAfter(DateTime.now))
+  controllers.UserStuff.events(user).filter(_._3.isAfter(DateTime.now))
 }
 
     @if(evBefore.size>0) {

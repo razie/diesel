@@ -6,38 +6,44 @@
 @import mod.snow.RegStatus._
 @import razie.wiki.model.FormStatus._
 @import mod.snow.RK._
+@import razie.wiki.dom.WikiDomain
 
-@htmlHeadBar("Reg for " + user.userName)
+@stok.title("Reg for " + stok.au.get.userName)
 
-<div class="container">
-<div class="row">
-  @views.html.user.leftmenu(10, user)
+<h2>Adding @kid.info.firstName to registration for @reg.club.name</h2>
 
-<div class="col-sm-9">
-
-<h2>Adding @kid.info.firstName to club @reg.clubName</h2>
+@roles()=@{
+  WikiDomain(reg.club.getRealm).roles(reg.club.cat, "Person")
+}
 
 <hr>
 <p>Will <b>@kid.info.firstName</b> be a:
 
-@RK.ROLES.filter(_ != RK.ROLE_FAN).map{r=>
+@disabled(r:String)=@{
+  if(reg.clubName == "Demo_Ski_Club" && r != RK.ROLE_RACER) "disabled" else ""
+}
+
+@if(reg.clubName == "Demo_Ski_Club") {
+    @roles().filter(_ != RK.ROLE_FAN).map{r=>
+      <a href="@routes.Club.doeClubUwAddFormKid(reg._id.toString,kid._id.toString, next, r)" class="btn btn-lg btn-info" @disabled(r) >@r</a>
+    }
+    <br><small>(for demo you can register as a Racer only)</small>
+  } else {
+
+@roles().filter(_ != RK.ROLE_FAN).map{r=>
   <a href="@routes.Club.doeClubUwAddFormKid(reg._id.toString,kid._id.toString, next, r)" class="btn btn-lg btn-info">@r</a>
 }
+  }
+
 <p>Select one of the roles above. </p>
   <ul>
-    <li>@RK.ROLE_MEMBER - member of the club: parent, official etc </li>
-    <li>@RK.ROLE_COACH - coach </li>
-    <li>@RK.ROLE_RACER - racer </li>
+    <li><b>@RK.ROLE_RACER</b> - racer enroled in the program</li>
+    <li><b>@RK.ROLE_COACH</b> - coach for the club</li>
+    <li><b>@RK.ROLE_MEMBER</b> - member of the club: <b>parent</b>, official etc </li>
+    <li><b>@RK.ROLE_GUEST</b> - masters racers and other guests that need to sign a waiver </li>
   </ul>
 
 <hr>
 <p>Some of these roles will automatically add more forms to complete for this registration, while some will not...
 
-  <hr>
-  @htmlFooter()
-  </div> <!-- /container -->
-  </div> <!-- /container -->
-  </div> <!-- /container -->
-
-@htmlBottom()
 

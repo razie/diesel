@@ -3,7 +3,7 @@ show/edit/capture a note
 
 context is passed back to the callback
 **************@
-@(myForm:Form[_], title:String, miniTitle:String, context:String, isAuto:Boolean=false, isReadOnly:Boolean=false)(implicit stok:mod.notes.controllers.NotesOk)
+@(myForm:Form[_], title:String, miniTitle:String, context:String, isAuto:Boolean=false, isReadOnly:Boolean=false, asap:Boolean=false)(implicit stok:mod.notes.controllers.NotesOk)
 @import routes.Assets
 @import mod.notes.controllers.NotesLocker
 @import mod.notes.controllers.NotesTips
@@ -32,9 +32,10 @@ context is passed back to the callback
 
 @helper.form(action=routes.NotesLocker.save(), 'class->"form-inline", 'style->"margin-bottom:0px", 'id -> "notesForm") {
 
+  @** label was     (Html(NotesTips.xhtml("admin,page,main", Some(stok.au)))), **@
   @helper.textarea(
     myForm("content"),
-    '_label -> (Html(NotesTips.xhtml("admin,page,main", Some(stok.au)))),
+    '_label -> "",
     '_showConstraints -> false,
     'class -> "col-sm-12",
     'style -> "padding-left:5px",
@@ -86,6 +87,12 @@ context is passed back to the callback
 }
 
   <script>
+  @if(asap) {
+    $( document ).ready(function() {
+      submitNotes();
+    });
+  }
+
     function submitNotes() {
       var $form = $('#notesForm');
 

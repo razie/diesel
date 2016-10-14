@@ -2,9 +2,9 @@
 wiki fragment, used in another page
 **************@
 @(page: Option[razie.wiki.model.WikiEntry])(implicit stok:controllers.StateOk)
+@import controllers.IgnoreErrors
 @import razie.wiki.model.{Wikis, WikiCount, WID, WikiEntry}
-@import _root_.admin.Config
-@import razie.wiki.util.IgnoreErrors
+@import _root_.razie.wiki.Services
 
 @label() = @{
     page.flatMap(_.contentProps.get("label")).orElse(page.map(_.label)).getOrElse(Wikis(wid.getRealm).label(wid))
@@ -18,7 +18,7 @@ wiki fragment, used in another page
 
 @url() = @{
     val u = controllers.Wiki.w(page.get.wid)
-    if(u startsWith "http") u else s"http://${Config.hostport}$u"
+    if(u startsWith "http") u else s"http://${Services.config.hostport}$u"
 }
 
 @followers = @{

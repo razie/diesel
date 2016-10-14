@@ -4,64 +4,63 @@ manage the volunteer hours by club admin
 @import mod.snow.RacerKid
 @import mod.snow.RacerKidAssoc
 @import mod.snow.RacerKidz
-@(clubName:String, rkaid:String, rka:RacerKidAssoc, myForm: Form[_], user:model.User)(implicit stok:controllers.StateOk)
+@(club: controllers.Club, rkaid: String, rka: RacerKidAssoc, myForm: Form[_], user: model.User)(implicit stok: controllers.StateOk)
 @import org.bson.types.ObjectId
+@import razie.db.RMongo.as
+@import controllers.Club
 
-@htmlHeadBar("Volunteer hours")
+@stok.title("Volunteer hours")
 
-<div class="container"> <div class="row">
-@views.html.user.leftmenu(15, user)
+<b>Total: @rka.hours hours @rka.to.as[RacerKid].map @{ r => "for " + r.info.firstName + r.info.lastName }
 
-<div class="col-sm-9">
-
-@import razie.db.RMongo._
-
-<b>Total: @rka.hours hours @rka.to.as[RacerKid].map @{r=>"for "+r.info.firstName+r.info.lastName}
-
-@vols=@{
-  for (vh <- RacerKidz.findVolByRkaId(rkaid)) yield
-    Map("hours"->vh.hours.toString,
-        "desc"->vh.desc,
-        "when"->vh.crDtm.toString("dd-MM"),
-        "delete"->vh._id.toString
-        )
-}
-
-@mnglink(row:Map[String,String],k:String,v:String)={
-  @k match {
-        case "delete" => {
-      <a href="@routes.Club.doeVolDelete(clubName, rkaid, v)" class="btn btn-xs btn-danger"> x </a>
-      }
-    case _ => { @v }
+  @vols = @{
+    for(vh <- RacerKidz.findVolByRkaId(rkaid)) yield
+      Map("hours" -> vh.hours.toString,
+        "desc" -> vh.desc,
+        "when" -> vh.crDtm.toString("dd-MM"),
+        "delete" -> vh._id.toString
+      )
   }
+
+  @mnglink(row: Map[String, String], k: String, v: String) = {
+  @k match {
+    case "delete" => {
+      <a href="@routes.Vol.doeVolDelete(club.wid, rkaid, v)" class="btn btn-xs btn-danger"> x </a>
+    }
+    case _ => {
+      @v
+    }
+  }
+  }
+
+  @util.utilSimpleTable(vols,
+    Seq("hours" -> "Hours", "when" -> "When", "desc" -> "Why", "delete" -> "Delete"), Some(mnglink))
+
+
+  @import helper.twitterBootstrap._
+  @import play.api.Play.current
+  @import play.api.i18n.Messages.Implicits._
+  @import util.razText
+
+  @helper.form(action = routes.Vol.doeVolAdded(club.wid, rkaid), 'class -> "alert alert-info form-inline") {
+    Add more hours:
+
+    <label>Hours</label>
+    <input type="text" class="input-small" name="who" hidden value="@rkaid">
+    <input type="text" class="input-small" name="comment" hidden value="">
+    <input type="text" class="input-small" name="approver" hidden value="">
+
+    @util.razText(myForm, "hours", "Hours")
+
+    @util.razSelect(myForm, "desc", "Category",
+      club.volunteering.map { rka =>
+        (rka -> rka)
+      }.toSeq,
+      'class -> "input-small" )
+@formErrors(myForm)
+
+    <button type="submit" class="btn btn-primary">Add</button>
 }
 
-@util.utilSimpleTable(vols,
-        Seq("hours" -> "Hours", "when" -> "When", "desc"->"Why", "delete" -> "Delete"), Some(mnglink))
 
 
-@import helper.twitterBootstrap._
-@import play.api.Play.current
-@import play.api.i18n.Messages.Implicits._
-@import util.razText
-
-@helper.form(action=routes.Club.doeVolAdded(clubName,rkaid), 'class->"well") {
-Add more hours:
-
-  <label>Hours</label>
-  <input type="text" class="input-small" name="hours">
-  <label>Description</label>
-  <input type="text" class="input-xlarge" name="desc" placeholder="type here">
-
-  <button type="submit" class="btn btn-primary">Add</button>
-}
-
-  <p><small>By maintaining a profile, you agree to the <a href="@controllers.Wiki.w("Terms of Service")">Terms of Service</a></small><p>
-
-</div>
-
-  </div>
-  <hr>
-  @htmlFooter(ads=true)
-</div> <!-- /container -->
-@htmlBottom()

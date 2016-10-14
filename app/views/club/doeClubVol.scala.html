@@ -1,7 +1,7 @@
 @******
 manage the volunteer hours by club admin
 ******@
-@(clubName:String, rks:List[(mod.snow.RacerKid, mod.snow.RacerKidAssoc)], regs:List[mod.snow.Reg])(implicit stok:controllers.StateOk)
+@(club:controllers.Club, rks:List[(mod.snow.RacerKid, mod.snow.RacerKidAssoc)], regs:List[mod.snow.Reg])(implicit stok:controllers.StateOk)
 @import mod.snow.RK._
 @import mod.snow.RacerKid
 @import mod.snow.RacerKidAssoc
@@ -10,7 +10,7 @@ manage the volunteer hours by club admin
 @import mod.snow.RK
 @import mod.snow.RacerKidz
 
-@stok.title("Volunteer hours for " + clubName)
+@stok.title("Volunteer hours for " + club.name)
 
 @allVols=@{
     razie.db.RMany[VolunteerH]().filter(x=>rks.exists(_._2._id == x.rkaId)).size
@@ -29,20 +29,20 @@ manage the volunteer hours by club admin
         "role" -> a.role,
         "source" -> a.assoc,
         "hours" -> a.hours.toString,
-        "family" -> controllers.Club.volFamily(t, rks, regs),
+        "family" -> controllers.Vol.volFamily(t, rks, regs),
         "button"->a._id.toString)
 }
 
 @mnglink(row:Map[String,String],k:String,v:String)={
   @k match {
         case "button" => {
-      <a href="@routes.Club.doeVolAdd(clubName, v)" class="btn btn-xs">Add...</a>
+      <a href="@routes.Vol.doeVolAdd(club.wid, v)" class="btn btn-xs">Add...</a>
       }
     case _ => { @v }
   }
 }
 
-<h2>Volunteer hours for @clubName</h2>
+<h2>Volunteer hours for @club.name</h2>
 
 @RacerKidz.checkMyself(stok.au.get._id)
 <br>
@@ -67,9 +67,9 @@ manage the volunteer hours by club admin
                 "button"->"Add more"), Some(mnglink))
 
 Add a:
-<a href="@routes.Kidz.doeKid(stok.au.get._id.toString, "11", ROLE_RACER, "-", "clubkidz:"+clubName)" class="btn btn-xs btn-info">@ROLE_RACER</a>
-<a href="@routes.Kidz.doeKid(stok.au.get._id.toString, "11", ROLE_SPOUSE, "-", "clubkidz:"+clubName)" class="btn btn-xs btn-info">@ROLE_SPOUSE</a>
-<a href="@routes.Kidz.doeKid(stok.au.get._id.toString, "11", ROLE_MEMBER, "-", "clubkidz:"+clubName)" class="btn btn-xs btn-info">@ROLE_MEMBER</a>
+<a href="@routes.Kidz.doeUserKid(stok.au.get._id.toString, "11", ROLE_RACER, "-", "clubkidz:"+club.wid.wpath)" class="btn btn-xs btn-info">@ROLE_RACER</a>
+<a href="@routes.Kidz.doeUserKid(stok.au.get._id.toString, "11", ROLE_SPOUSE, "-", "clubkidz:"+club.wid.wpath)" class="btn btn-xs btn-info">@ROLE_SPOUSE</a>
+<a href="@routes.Kidz.doeUserKid(stok.au.get._id.toString, "11", ROLE_MEMBER, "-", "clubkidz:"+club.wid.wpath)" class="btn btn-xs btn-info">@ROLE_MEMBER</a>
 
 <hr>
 Source is

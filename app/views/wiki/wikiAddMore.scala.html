@@ -2,7 +2,7 @@
 fragment: add more stuff to the current topic, including children, sub-topics etc
 ****************@
 @(wid:razie.wiki.model.WID, page:Option[razie.wiki.model.WikiEntry])(implicit stok: controllers.StateOk)
-@import razie.wiki.util.IgnoreErrors
+@import controllers.IgnoreErrors
 @import razie.wiki.model.{Wikis, WID}
 @import razie.wiki.dom.WikiDomain
 @import model.Perm
@@ -24,7 +24,7 @@ fragment: add more stuff to the current topic, including children, sub-topics et
   <!-- list of pages in category -->
   @if(Wikis(wid.getRealm).pageNames(wid.name).size > 0) {
     <div class="well">
-      @wid.name entries:
+      @wid.name pages:
 
       @for(p <- Wikis(wid.getRealm).pages(wid.name).take(50) if(controllers.Wiki.isVisible(stok.au, p.props))) {
         <a href="@controllers.Wiki.wr(p.wid, stok.realm)">@p.label</a> |
@@ -46,15 +46,26 @@ fragment: add more stuff to the current topic, including children, sub-topics et
   @if(!WikiDomain(wid.getRealm).needsParent(wid.name)) {
     @** see if there is an associated Template **@
     @WikiDomain(wid.getRealm).zEnds(wid.name, "Template").headOption.map { wet =>
-      <div class="col-sm-4">
+      <div class="col-md-12">
         @helper.form(action=routes.Wikie.addWithSpec1(wid.name, wet, wid.getRealm), 'class->"form-inline") {
           <div class="alert alert-success">
-          <label>Create a new <a href="@wid.url">@Wikis(wid.getRealm).label(WID("Category",wid.name))</a> </label>
-          <button type="submit" class="btn btn-default">Choose template</button>
+            <label>Create a new <a href="@wid.url">@Wikis(wid.getRealm).label(WID("Category",wid.name))</a> </label>
+            <button type="submit" class="btn btn-default">Choose template</button>
           </div>
         }
       </div>
     }
+
+    @** static templates are just one *@
+@**    @WikiDomain(wid.getRealm).zEnds(wid.name, "StaticTemplate").headOption.map { wet =>
+      <div class="col-md-12">
+          <div class="alert alert-success">
+          <label>Create a new <a href="@wid.url">@Wikis(wid.getRealm).label(WID("Category",wid.name))</a> </label>
+          <a href="@routes.Wikie.wikieCreate(wid.name)" class="btn btn-default">Create from template</a>
+          </div>
+      </div>
+    }
+**@
 
     @** no Template - use default **@
     @if(WikiDomain(wid.getRealm).zEnds(wid.name, "Template").isEmpty) {
@@ -62,7 +73,12 @@ fragment: add more stuff to the current topic, including children, sub-topics et
         <div class="alert alert-success col-md-12">
           <label>Create a new <a href="@wid.url">@Wikis(wid.getRealm).label(WID("Category",wid.name))</a> </label>
         &nbsp;&nbsp;<input type="text" style="width:50%" class="form-control" name="name" placeholder="Name">
+        @if(WikiDomain(wid.getRealm).zEnds(wid.name, "StaticTemplate").nonEmpty ||
+            wid.page.flatMap(_.sections.find(_.name == "form")).isDefined) {
+          <button type="submit" class="btn btn-default">Create with template</button>
+        } else {
           <button type="submit" class="btn btn-default">Now</button>
+        }
           </div>
       }
     }
@@ -73,7 +89,7 @@ fragment: add more stuff to the current topic, including children, sub-topics et
   @allassocs(wid).distinct.map {child=>
     @if(page.isDefined && controllers.Wiki.canEdit(wid, stok.au, page)(IgnoreErrors)) {
       @helper.form(action=routes.Wikie.addLinked(child,wid,"Child"), 'class->"form-inline") {
-        <div class="alert alert-success">
+        <div id="cr@child" class="alert alert-success">
             <label>@createLabel(child)</label>
           &nbsp;&nbsp;<input type="text" style="width:50%" class="form-control" name="name" placeholder="Name">
           <button type="submit" class="btn btn-xs btn-primary">Now</button>
@@ -91,7 +107,11 @@ fragment: add more stuff to the current topic, including children, sub-topics et
       @defining(Wikis.linksTo(child, page.get.uwid, "Child").toList) { allKids =>
       @defining(allKids.filter(_.draft.isEmpty)) { kids =>
         @if(kids.size > 0) {
-          <div class="well">
+          <script>
+            $("#cr@child").css("margin-bottom", "0px");
+          </script>
+
+          <div id="ki@child" class="well">
             @child (s) :
             <ul>
             @kids.reverse.take(200).sortWith((a,b)=>b.crDtm.isBefore(a.crDtm)).map(_.from).map { p=>
@@ -103,6 +123,11 @@ fragment: add more stuff to the current topic, including children, sub-topics et
       }
         @defining(allKids.filter(_.draft.isDefined)) { kids =>
         @if(kids.size > 0) {
+          <script>
+            $("#cr@child").css("margin-bottom", "0px");
+            $("#ki@child").css("margin-bottom", "0px");
+          </script>
+
           <div class="well">
             DRAFT @child (s) :
             <ul>

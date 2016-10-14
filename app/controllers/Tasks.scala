@@ -6,10 +6,8 @@ import play.api.mvc.{Action, Request}
 import razie.Logging
 import model._
 import razie.wiki.admin.{SecLink, SendEmail, MailSession}
-import razie.wiki.util.Corr
-import razie.wiki.EncUrl
-import razie.wiki.util.VErrors
-import razie.wiki.Enc
+import razie.wiki.model.WID
+import razie.wiki.{Services, EncUrl, Enc}
 import admin.Config
 
 object Tasks extends RazController with Logging {
@@ -128,13 +126,13 @@ object Tasks extends RazController with Logging {
     Msg("Ok - we sent an email - please ask your parent to follow the instructions in that email. " +
       "" +
       "They have to first register and then follow this [link](" +
-      ds.secUrl + ")", HOME, Some(c)).withSession(Config.CONNECTED -> Enc.toSession(c.email))
+      ds.secUrl + ")", HOME, Some(c)).withSession(Services.config.CONNECTED -> Enc.toSession(c.email))
   }
 
   def sendToParentAdd(to: String, from: String, childEmail: String, childName: String, link: String)(implicit mailSession: MailSession) {
     val html = Emailer.text("parentadd").format(childName, childEmail.dec, EncUrl(to), EncUrl(to), link);
 
-    SendEmail.send(to, from, "Racer Kid parent - please activate your account", html.replaceAll("www.racerkidz.com", Config.hostport))
+    SendEmail.send(to, from, "Racer Kid parent - please activate your account", html.replaceAll("www.racerkidz.com", Services.config.hostport))
   }
 
   /** step 3 - parent clicked on email link to add child */
@@ -203,7 +201,7 @@ Please read our [[Terms of Service]] as well as our [[Privacy Policy]]
 Please check your email <font style="color:red">${c.email.dec}</font> for an actiation email and follow the instructions to validate your email address. Please do that soon: it will expire in a few hours, for security reasons.
 <p>Please check your spam/junk folders as well in the next few minutes - make sure you mark """ + Config.SUPPORT + """ as a safe sender!""" + extra
 
-    Msg2(MSG_EMAIL_VERIF, next, Some(c)).withSession(Config.CONNECTED -> Enc.toSession(c.email))
+    Msg2(MSG_EMAIL_VERIF, next, Some(c)).withSession(Services.config.CONNECTED -> Enc.toSession(c.email))
   }
 
   def sendEmailVerif(c: User)(implicit request: Request[_], mailSession: MailSession) = {
@@ -223,10 +221,34 @@ Please check your email <font style="color:red">${c.email.dec}</font> for an act
     sendToVerif1(c.email.dec, from, c.ename, h, ds.secUrl)
   }
 
+  /** reset pwd */
+  def sendEmailReset(c: User)(implicit request: Request[_], mailSession: MailSession) = {
+    val from = Config.SUPPORT
+    val dt = DateTime.now().plusHours(1).toString()
+    log("ENC_DT=" + dt)
+    log("ENC_DT=" + dt.enc)
+    log("ENC_DT=" + dt.enc.dec)
+    log("ENC_DT=" + EncUrl(dt))
+    val header = request.headers.get("X-Forwarded-Host")
+    val hc1 = """/doe/profile/forgot3?expiry=%s&id=%s""".format(EncUrl(dt), c.id)
+    log("ENC_LINK1=" + hc1)
+    val ds = SecLink(hc1, header, 1, DateTime.now.plusHours(1))
+    log("ENC_LINK2=" + ds.secUrl)
+
+    val h = header.getOrElse ("www.racerkidz.com")
+    sendToReset1(c.email.dec, from, c.ename, h, ds.secUrl)
+  }
+
   def sendToVerif1(email: String, from: String, name: String, h:String, link: String)(implicit mailSession: MailSession) = {
     val html = Emailer.text("emailverif").format(name, email, h, h, link);
 
-    SendEmail.send(email, from, "Racer Kid - please activate your account", html)
+    SendEmail.send(email, from, "Racer Kid - please verify your email", html)
+  }
+
+  def sendToReset1(email: String, from: String, name: String, h:String, link: String)(implicit mailSession: MailSession) = {
+    val html = Emailer.text("emailreset").format(name, link);
+
+    SendEmail.send(email, from, "Racer Kid - please reset your password", html)
   }
 
   val reloginForm = Form {
@@ -255,9 +277,9 @@ Please check your email <font style="color:red">${c.email.dec}</font> for an act
       },
       {
         case (pe, pwd) => {
-          val u = Users.findUser(pe.enc).orElse(Users.findUserNoCase(pe))
+          val u = Users.findUserByEmail(pe.enc).orElse(Users.findUserNoCase(pe))
           if (pe.toLowerCase() == email.dec.toLowerCase() && u.exists(_.pwd == pwd.enc))
-            verifiedEmail(expiry1, email, id, Users.findUser(email))
+            verifiedEmail(expiry1, email, id, Users.findUserByEmail(email))
           else {
             u.foreach(_.auditLoginFailed(Website.getRealm))
             Msg2("Email doesn't match - could not verify email!")
@@ -302,11 +324,11 @@ Please check your email <font style="color:red">${c.email.dec}</font> for an act
 Ok, email verified. You can now edit topics.
 
 Please read our [[Terms of Service]] as well as our [[Privacy Policy]]
-""", Some("/")).withSession(Config.CONNECTED -> Enc.toSession(email))
+""", Some("/")).withSession(Services.config.CONNECTED -> Enc.toSession(email))
         }
       } getOrElse
         {
-          verror("ERR_CANT_UPDATE_USER.verifiedEmail " + request.session.get("email"))
+          verror("ERR_CANT_UPDATE_USER.verifiedEmail " + Enc.unapply(email))
           Unauthorized("Oops - cannot update this user....verifiedEmail " + errCollector.mkString)
         }
     }
@@ -323,11 +345,11 @@ Please read our [[Terms of Service]] as well as our [[Privacy Policy]]
         }
         case UserTasks.START_REGISTRATION => {
           val ut = au.tasks.find(_.name == UserTasks.START_REGISTRATION)
-          Redirect(routes.Club.doeStartRegSimple(ut.map(_.args("club")).mkString))
+          Redirect(routes.Club.doeStartRegSimple(WID.fromPath(ut.map(_.args("club")).mkString).get))
         }
         case UserTasks.APPROVE_VOL => {
           val ut = au.tasks.find(_.name == UserTasks.APPROVE_VOL)
-                    Club.doeVolApprover(auth.get)
+                    Vol.doeVolApprover(auth.get)
 //          Redirect(routes.Club.doeVolApprover(auth.get))
         }
         case _ => {

@@ -1,10 +1,10 @@
 @******
 club admin manages list of users and registrations
 ******@
-@(clubName:String, club:model.User, details:String, members:List[(Option[model.User], model.UserWiki, Option[mod.snow.Reg])])(implicit stok:controllers.StateOk)
-@import _root_.admin.Config
+@(clubName:razie.wiki.model.WID, club:controllers.Club, details:String, members:List[(Option[model.User], model.UserWiki, Option[mod.snow.Reg])])(implicit stok:controllers.StateOk)
+@import _root_.razie.wiki.Services
 
-@stok.title("Registrations for club " + clubName)
+@stok.title("Registrations for club " + clubName.wpath)
 
   @tab=@{
     members.filter(_._1.isDefined).map(t=>
@@ -13,13 +13,13 @@ club admin manages list of users and registrations
         "lastName"->t._1.get.lastName,
         "role"->t._2.role,
         "paid"->t._3.map(_.paid).getOrElse(""),
-        "vol" -> (if(details == "2") t._3.map(controllers.Club.volPerReg).getOrElse("-") else ""),
+        "vol" -> (if(details == "2") t._3.map(controllers.Vol.volPerReg).getOrElse("-") else ""),
         "regStatus" -> t._3.map(_.regStatus).getOrElse("n/a"),
         "uwId"->t._2._id.toString))
   }
 
 @allforms=@{
-  Some(members.flatMap(_._3).flatMap(_.wids).flatMap(w=>razie.wiki.model.Wikis.find(w).map(we=>(w, we.formRole, we.form.formState))))
+  Some(members.flatMap(_._3).flatMap(_.deprecatedWids).flatMap(w=>razie.wiki.model.Wikis.find(w).map(we=>(w, we.formRole, we.formState))))
 }
 
 @tabMissing=@{
@@ -47,18 +47,19 @@ club admin manages list of users and registrations
   }
 }
 
-<h2>Registration management panel for @clubName</h2>
+<h2>Registration management panel for @clubName.name</h2>
 
 <p>These are the members with accounts on the website. Click on the colorful statuses to manage that user/registration. (See the bottom for a legend).
 <br><b>Summary: @members.filter(_._2.role != "Fan").size</b> total: @members.filter(_._2.role != "Fan").groupBy(_._3.map(_.regStatus)).map{x=><b>@x._2.size</b> @x._1.getOrElse("n/a") , }
+
 @if(details == "1") {
   @allforms.map{forms=>
     <br><b>Forms: @forms.size</b> total: @forms.groupBy(_._3).map{x=><b>@x._2.size</b> @x._1.getOrElse("n/a") , }
     <br><b>Forms: @forms.size</b> total: @forms.groupBy(_._2).map{x=><b>@x._2.size</b> @x._1.getOrElse("n/a") , }
   }
 } else {
-    <p><small><a href="/doe/club/@clubName/regs?details=1">More stats (slow)</a></small> |
-  <small><a href="/doe/club/@clubName/regs?details=2">Hours report (slow)</a></small>
+    <p><small><a href="@routes.Club.doeClubRegs(clubName,"1")">More stats</a></small> |
+  <small><a href="@routes.Club.doeClubRegs(clubName,"2")">Hours report (slow)</a></small>
 }
 
 @util.utilSimpleTable(tab.filter(_.apply("role") != "Fan").iterator,
@@ -72,7 +73,7 @@ club admin manages list of users and registrations
                 "uwId"->""), Some(mnglink))
 
 <p>Send invitation to join club on RacerKidz for new members - copy this link and email it <br>
-<strong>http://@Config.hostport/wiki/Admin:Join_A_Club?club=@club.userName</strong>
+<strong>http://@Services.config.hostport/wiki/Admin:Join_A_Club?club=@clubName</strong>
 
 <br>
 <br>
@@ -108,7 +109,7 @@ club admin manages list of users and registrations
                 "role" -> "Role",
                 "button"->"Details"), Some(kidlink))
 
-Add more from <a href="@routes.Club.doeClubKids">here</a>
+Add more from <a href="@routes.Club.doeClubKidz">here</a>
 
 </div>
 
@@ -119,17 +120,16 @@ Add more from <a href="@routes.Club.doeClubKids">here</a>
 
   <br>Reporting per form
   <ul>
-  @controllers.Club.findForUser(club).map { c =>
-    @c.regForms.map { t =>
+    @club.regForms.map { t =>
     <li>
-      Report <a href="@routes.Club.doeClubRegsReportCsv(t.role)" class="btn btn-xs">CSV</a> -
-      <a href="@routes.Club.doeClubRegsReportJson(t.role)" class="btn btn-xs">Json</a> -
-      <a href="@routes.Club.doeClubRegsReportHtml(t.role)" class="btn btn-xs">Html</a> - @t.role
-      @c.props.filter(_._1 startsWith ("Report."+t.role)).map {tt=>
-      | <a href="@routes.Club.doeClubRegsReportCsv(t.role, tt._2)" class="btn btn-xs">@tt._1.replaceFirst("Report."+t.role+".", "")</a>
+      Report
+        <a href="@routes.Club.doeClubRegsReportCsv(clubName, t.role)" class="btn btn-xs">CSV</a> -
+        <a href="@routes.Club.doeClubRegsReportJson(clubName, t.role)" class="btn btn-xs">Json</a> -
+        <a href="@routes.Club.doeClubRegsReportHtml(clubName, t.role)" class="btn btn-xs">Html</a> - @t.role
+      @club.props.filter(_._1 startsWith ("Report."+t.role)).map {tt=>
+      | <a href="@routes.Club.doeClubRegsReportCsv(clubName, t.role, tt._2)" class="btn btn-xs">@tt._1.replaceFirst("Report."+t.role+".", "")</a>
       }
     }
-  }
   </ul>
 
 <hr>
@@ -150,4 +150,15 @@ Add more from <a href="@routes.Club.doeClubKids">here</a>
 
   @util.utilSimpleTable(tabMissing.iterator, Seq("userId" -> "userId", "role"->"Role"), None)
 }
+
+<hr>
+
+<h2>Purging</h2>
+
+@mod.snow.Regs.findClub(clubName).toList.groupBy(_.year).toSeq.sortBy(_._1).map{t=>
+  <br><a href="@routes.Club.doePurgeRegs(clubName, t._1)">@t._1</a> - @t._2.size
+  RegKid @t._2.map(_.kids.size).sum
+  Forms @t._2.map(_.wids.size).sum
+}
+
 

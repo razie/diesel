@@ -1,0 +1,41 @@
+@******
+manage the volunteer hours by club admin
+******@
+@(wid:razie.wiki.model.WID, myForm: Form[_])(implicit stok: controllers.StateOk)
+@import controllers.Club
+
+@stok.title("Activating hosting and registration for "+wid.wpath)
+
+@import helper.twitterBootstrap._
+@import play.api.Play.current
+@import play.api.i18n.Messages.Implicits._
+@import util.razText
+
+<h2>Activate hosting and registration for @wid.wpath</h2>
+
+<p>
+  Activating clubs requires administrator approval.
+  Please submit a request below.
+</p>
+<p>
+  Indicate the desired administrator email (should be the email used for this account) and what is your relationship to this club, how can we verify that your email is associated to the club...
+</p>
+
+@helper.form(action = routes.Club.doeClubActivateHosting1(wid), 'class -> "well") {
+  @razText(myForm, "regAdmin", "Admin email")
+
+  @helper.textarea(
+    myForm("rel"),
+    '_label -> "Please tell us about your relationship to this club",
+    '_showConstraints -> false,
+    'cols->60,
+    'rows->3)
+
+  <p>
+    If you're looking to just test the capabilities of the website, <a href="">join The Demo Ski Club</a>
+  </p>
+
+  <button type="submit" class="btn btn-primary">Send</button>
+}
+
+@formFix()

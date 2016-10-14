@@ -1,10 +1,49 @@
 @** add bootstrap classes to form fields **@
-@()
+@(dateFields:Seq[String] = Seq.empty)
 
 <script>
-$("input").addClass("form-control");
-$("select").addClass("form-control");
-$("textarea").addClass("form-control");
+$('input[type="text"]:not([hidden])').addClass("form-control");
+$('input[type="email"]:not([hidden])').addClass("form-control");
+$('input[type="password"]:not([hidden])').addClass("form-control");
+$('select:not([hidden])').addClass("form-control");
+$('textarea:not([hidden])').addClass("form-control");
+
+
 </script>
 
+
+@** date picker **@
+
+@if(dateFields.nonEmpty){
+
+<link href="@routes.Assets.at("datepicker/css/bootstrap-datepicker.min.css")" rel="stylesheet">
+<script type="text/javascript" src="@routes.Assets.at("vendor/moment.js")"></script>
+  @*<script type="text/javascript" src="/path/to/bootstrap/js/transition.js"></script>*@
+  @*<script type="text/javascript" src="/path/to/bootstrap/js/collapse.js"></script>*@
+  @*<script type="text/javascript" src="/path/to/bootstrap/dist/bootstrap.min.js"></script>*@
+<script href="@routes.Assets.at("bootstrap-3.3.4/js/bootstrap-min.js")"></script>
+
+<script type="text/javascript" src="@routes.Assets.at("datepicker/js/bootstrap-datepicker.js")"></script>
+
+@*<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/transition.js"></script>*@
+@*<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/collapse.js"></script>*@
+
+<script>
+function weFormSetupDate(name) {
+  $('input[name="'+name+'"]').datepicker({
+    format : 'yyyy-mm-dd',
+    autoclose: true,
+    keepOpen: false
+  });
+    $('input[name="'+name+'"]').on('changeDate', function(ev){
+    $('input[name="'+name+'"]').val(ev.target.value);
+    $('input[name="'+name+'"]').attr('value', ev.target.value);
+  });
+}
+
+@dateFields.map { f =>
+   weFormSetupDate('@f');
+}
+</script>
+}
 

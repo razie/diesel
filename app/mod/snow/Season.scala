@@ -2,7 +2,7 @@ package mod.snow
 
 import admin.Config
 import akka.actor.{Actor, Props}
-import controllers.{Club, RazController}
+import controllers.{VErrors, Club, RazController}
 import controllers.Wiki._
 import play.api.libs.concurrent.Akka
 import play.mvc.Result
@@ -16,12 +16,11 @@ import org.bson.types.ObjectId
 import org.joda.time.DateTime
 import play.api.mvc.{Action, Request}
 import razie.wiki.{Dec, WikiConfig, EncUrl, Enc}
-import razie.wiki.model.{Reactors, Wikis, WID, FormStatus}
+import razie.wiki.model.{WikiReactors, Wikis, WID, FormStatus}
 import razie.{clog, Logging, cout}
 import views.html.club.doeClubRegsRepHtml
 import scala.Array.canBuildFrom
 import scala.Option.option2Iterable
-import razie.wiki.util.VErrors
 import razie.wiki.admin.SendEmail
 import razie.db.Txn
 
@@ -43,8 +42,6 @@ case class Season (
 
 /** controller for club management */
 object Season extends RazController with Logging {
-
-//  def findForAdmin(n: String, u:User) = ROne[Club]("userName"->n).filter(c=> u.isAdmin || c.isAdminEmail(Dec(u.email)))
 
   import play.api.data.Forms._
   import play.api.data._

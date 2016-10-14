@@ -6,11 +6,9 @@
 
 @stok.title("Support")
 
-@admin.adminLayout {
-
 
 <div class="row">
-  <h2>Support request</h2>
+  <h2>Contact / Support request</h2>
 <div class="well col-md-8">
 @helper.form(action=routes.Support.supportu(page)) {
 
@@ -54,13 +52,16 @@
      <p style="color:red;font-weight:bold">@err.message</p>
   }
 
+@if(stok.au.isEmpty) {
+  <div class="alert alert-danger"><b>Note</b> that you are not logged in, so you need to include your email address above, in order for us to reply to this request!</div>
+}
+
   <div class="actions">
-    <button type="submit" class="btn btn-primary">Submit support request</button>
+    <button type="submit" class="btn btn-primary">Submit request</button>
   </div>
 
   <p><small>By using this form, you agree to the <a href="@controllers.Wiki.w("Terms of Service")">Terms of Service</a></small><p>
   }
 </div>
   </div>
-}
 

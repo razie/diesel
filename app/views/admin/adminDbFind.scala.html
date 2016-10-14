@@ -1,0 +1,19 @@
+@**
+DB Admin - find an id usage all over the database
+**@
+@(value: String)(implicit stok: controllers.StateOk)
+@import razie.db.RazMongo
+
+@stok.title("admin db - find value: " + value)
+
+  <b>Usages of @value</b> <br>
+  <ul>
+  @RazMongo.collectionNames.filterNot(Array("Audit", "AuditCleared", "WikiAudit", "WikiEntryOld").contains).toList.sortWith(_ < _).map { c =>
+    @RazMongo(c).findAll().map { x =>
+      @if(x.toString.contains(value)) {
+        <li><a href="@routes.AdminDb.colEntity(c, x.get("_id").toString)">@c @x.get("_id").toString</a></li>
+      }
+    }
+  }
+  </ul>
+

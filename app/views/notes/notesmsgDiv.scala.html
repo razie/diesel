@@ -1,7 +1,5 @@
 @**************
-show/edit/capture a note
-
-msg types are msg, err
+paint the message div
 **************@
 @(name:String)
 
@@ -20,16 +18,19 @@ msg types are msg, err
 function notesMsgShow(kind,text) {
   $('#@name').removeClass('alert-info');
   $('#@name').removeClass('alert-danger');
+  $('#@name').removeClass('alert-success');
 
-  if(kind == "err") {
+  if(kind == "err" || kind == "danger") {
     $('#@name').addClass('alert-danger');
+  } else if(kind == "ok" || kind == "success") {
+    $('#@name').addClass('alert-success');
   } else {
     $('#@name').addClass('alert-info');
   }
 
   $('#@name').html('<strong>'+text+'</strong>');
   $('#@name').show();
-  $('#@name').fadeOut(4000);
+  $('#@name').fadeOut(5000);
   }
 
 </script>

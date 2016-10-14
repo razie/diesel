@@ -3,15 +3,14 @@ package api
 import mod.diesel.controllers.SFiddles
 import model._
 import controllers.{Club, XWrapper, XListWrapper}
-import admin.Config
 import razie.db.RazMongo
-import razie.wiki.Dec
+import razie.wiki.{Services, Dec}
 import razie.wiki.model._
 import razie.wiki.util.M._
 
 /** this is available to scripts inside the wikis */
 class wix (owe: Option[WikiEntry], ou:Option[WikiUser], q:Map[String,String], r:String) {
-  lazy val hostport:String = Config.hostport
+  lazy val hostport:String = Services.config.hostport
 
   // hide actual app objects and give selective access via public objects below
   private var ipage: Option[WikiEntry] = owe
@@ -24,11 +23,14 @@ class wix (owe: Option[WikiEntry], ou:Option[WikiUser], q:Map[String,String], r:
     def isDefined = ipage.isDefined
     def isEmpty = ipage.isEmpty
     def wid = ipage.get.wid
-    def findAssocWithCat(cat:String) = ipage.find(_.category == "Club").orElse {
-      def flatten (page:WikiEntry):List[WikiEntry] = page :: page.parent.flatMap(Wikis.find).toList.flatMap(flatten)
-      ipage.toList.flatMap(flatten).find(_.category == "Club").orElse(
-        ipage.toList.flatMap(w=> w.linksFrom.toList).flatMap(_.pageTo.toList).find(_.category == "Club")
-      )
+    def findAssocWithCat(cat:List[String]) = {
+      def isc (c:String) = cat contains c
+      ipage.find(cat contains _.category).orElse {
+        def flatten (page:WikiEntry):List[WikiEntry] = page :: page.parent.flatMap(Wikis.find).toList.flatMap(flatten)
+        ipage.toList.flatMap(flatten).find(cat contains _.category).orElse(
+          ipage.toList.flatMap(w=> w.linksFrom.toList).flatMap(_.pageTo.toList).find(cat contains _.category)
+        )
+      }
     }
 
 //    def map[T] (f: page.type => T) = if(isDefined) Some(f(page)) else None
@@ -47,13 +49,13 @@ class wix (owe: Option[WikiEntry], ou:Option[WikiUser], q:Map[String,String], r:
     def isOwner = iuser.exists(u=> ipage.flatMap(_.owner).exists(_._id == u._id))
     def isClubAdmin = iuser.exists{u=>
       isDbAdmin ||
-        page.findAssocWithCat("Club").map(_.name).flatMap(Club.findForName).exists(_.isAdminEmail(Dec(u.email)))
+        page.findAssocWithCat(List("Club", "Pro")).map(_.wid).flatMap(Club.apply).exists(_.isAdminEmail(Dec(u.email)))
     }
     def isClubMember = iuser.exists{u=>
-      page.findAssocWithCat("Club").map(_.name).exists(name=>u.wikis.filter(_.wid.cat == "Club").exists(_.wid.name == name))
+      page.findAssocWithCat(List("Club", "Pro")).map(_.wid).exists(name=>u.wikis.filter(_.wid.cat == "Club").exists(_.wid.name == name))
     }
     def isClubCoach = iuser.exists{u=>
-      page.findAssocWithCat("Club").map(_.name).flatMap(Club.apply).exists(_.isMemberRole(u._id, "Coach"))
+      page.findAssocWithCat(List("Club", "Pro")).map(_.wid).flatMap(Club.apply).exists(_.isMemberRole(u._id, "Coach"))
     }
 
     def isDbAdmin = iuser.exists{_.isAdmin }
@@ -73,9 +75,13 @@ class wix (owe: Option[WikiEntry], ou:Option[WikiUser], q:Map[String,String], r:
         s"""
     "page" : {
       "name" : "${ipage.get.name}",
-      "isDefined" : "${ipage.isDefined}",
-      "isEmpty" : "${ipage.isEmpty}",
-      "wid" : "${ipage.get.wid.wpath}"
+      "category" : "${ipage.get.category}",
+      "isModerated" : ${ipage.flatMap(_.attr("moderator")).exists(_.length > 0)},
+      "isDefined" : ${ipage.isDefined},
+      "isEmpty" : ${ipage.isEmpty},
+      "wid" : "${ipage.get.wid.wpath}",
+      "wpath" : "${ipage.get.wid.wpath}",
+      "wpathnocats" : "${ipage.get.wid.wpathnocats}"
     },
     """
       } else "") +
@@ -87,6 +93,7 @@ class wix (owe: Option[WikiEntry], ou:Option[WikiUser], q:Map[String,String], r:
       "ename" : "${iuser.get.ename}",
       "isDefined" : ${iuser.isDefined},
       "isEmpty" : ${iuser.isEmpty},
+      "isClubMember" : ${user.isClubMember},
       "isClubAdmin" : ${user.isClubAdmin},
       "isClubCoach" : ${user.isClubCoach},
       "isRegistered" : ${user.isRegistered},
@@ -145,6 +152,6 @@ object wix {
 class WixUtils(w:wix) {
   def countRealmPages() = Wikis(w.realm.name).count
   def countForms() = wix.utils.countForms()
-  def wikiList(wids:List[WID]) = "<ul>"+wids.map(x=> "<li>"+ x.ahrefRelative + "</li>").mkString("") + "</ul>"
+  def wikiList(wids:List[WID]) = "<ul>"+wids.map(x=> "<li>"+ x.ahrefRelative() + "</li>").mkString("") + "</ul>"
 }
 

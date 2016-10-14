@@ -1,0 +1,35 @@
+@(myForm: Form[_])(implicit stok: RazRequest)
+
+@import helper.twitterBootstrap._
+@import play.api.Play.current
+@import play.api.i18n.Messages.Implicits._
+
+@stok.title("Password reset")
+
+<p>Please enter your email address</p>
+
+  @helper.form(action = routes.Profile.doeForgotPass2(), 'class -> "well") {
+    @helper.inputText(
+      myForm("email"),
+      '_label -> "Email",
+      '_showConstraints -> false,
+      '_error -> myForm.error("email"))
+
+    <button type="submit" class="btn btn-primary">Continue </button>
+
+    @user.agree()
+
+    @myForm.globalError.map { err =>
+      <p style="color : red ; font-weight : bold">@err.message</p>
+    }
+  }
+
+<script>
+  $("input").addClass("input-lg")
+</script>
+
+<p>If your email was in our database, you will receive an email with a password reset link in the next few minutes. That link will expire quickly, please use it asap.</p>
+  <p>If you do not receive an email, please contact support.</p>
+
+  @formFix()
+

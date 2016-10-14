@@ -7,10 +7,10 @@
 package model
 
 import mod.diesel.controllers.SFiddles
+import razie.base.Audit
 import razie.{CSTimer, csys}
 import razie.wiki.model.WikiUser
 import razie.wiki.model.WikiEntry
-import razie.wiki.admin.Audit
 
 /** execute wiki scala scripts */
 trait WikiScripster {

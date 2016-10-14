@@ -104,7 +104,7 @@ var jsh = function(code) {
     enableSnippets: false,
     enableLiveAutocomplete: true
   });
-  @if(_root_.admin.Config.isLight(au)) {
+  @if(_root_.razie.wiki.Services.config.isLight(au)) {
 //  editor_@{id}.setTheme ( "ace/theme/crimson_editor" ) ;
   editor_@{id}.setTheme ( "ace/theme/solarized_light" ) ;
 } else {

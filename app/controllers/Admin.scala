@@ -10,10 +10,12 @@ import com.novus.salat._
 import com.novus.salat.grater
 import difflib.DiffUtils
 import mod.notes.controllers.NotesLocker
+import mod.snow.RK
 import org.json.{JSONArray, JSONObject}
 import play.api.libs.concurrent.Akka
 import play.api.libs.json.JsObject
 import play.twirl.api.Html
+import razie.base.Audit
 import razie.db.{RMany, RazMongo}
 import razie.db.RazSalatContext.ctx
 import org.bson.types.ObjectId
@@ -22,14 +24,12 @@ import play.api.data.Form
 import play.api.data.Forms.{mapping, nonEmptyText, number}
 import play.api.mvc.{Action, AnyContent, Request, Result}
 import razie.g.snakked
-import razie.wiki.util.{VErrors}
 import razie.js
-import razie.wiki.Enc
+import razie.wiki.{Services, Enc}
 import razie.wiki.model.{WikiTrash, WID, WikiEntry, Wikis}
-import razie.wiki.admin.{MailSession, GlobalData, Audit, SendEmail}
-import admin.RazAuditService
+import razie.wiki.admin.{MailSession, GlobalData, SendEmail}
+import admin.{ClearAudits, RazAuditService}
 import model.{WikiScripster, Users, Perm, User}
-import admin.Config
 import x.context
 
 import scala.util.Try
@@ -37,11 +37,9 @@ import razie.Snakk._
 import razie.wiki.Sec._
 import scala.collection.JavaConversions._
 
-object Admin extends RazController {
-  protected def hasPerm(p: Perm)(implicit request: Request[_]): Boolean = auth.map(_.hasPerm(p)) getOrElse false
-
+class AdminBase extends RazController {
   protected def forAdmin[T](body: => play.api.mvc.Result)(implicit request: Request[_]) = {
-    if (hasPerm(Perm.adminDb)) body
+    if (auth.map(_.hasPerm(Perm.adminDb)) getOrElse false) body
     else noPerm(HOME)
   }
 
@@ -61,36 +59,95 @@ object Admin extends RazController {
     }) getOrElse unauthorized("CAN'T")
   }
 
+  /** action builder that decomposes the request, extracting user and creating a simple error buffer */
+  def FADR(f: RazRequest => Result) = Action { implicit request =>
+    val req = razRequest
+    (for (
+      au <- req.au;
+      isA <- checkActive(au)
+    ) yield {
+        f(req)
+    }) getOrElse unauthorized("CAN'T")
+//      ) getOrElse {
+//      val more = Website(request).flatMap(_.prop("msg.noPerm")).flatMap(WID.fromPath).flatMap(_.content).mkString
+//      unauthorized("OOPS "+more, !isFromRobot)
+//    }
+  }
+
   // use my layout
   implicit class StokAdmin (s:StateOk) {
     def admin (content: StateOk => Html) = {
       RkViewService.Ok (views.html.admin.adminLayout(content(s))(s))
     }
   }
+}
 
+/** admin the mongo db directly */
+object AdminDb extends AdminBase {
+
+  /** view a table */
+  def col(name: String) = FADR { implicit request =>
+    ROK.k admin { implicit stok => views.html.admin.adminDbCol(name, RazMongo(name).findAll) }
+  }
+
+  /** find a value across all records */
+  def dbFind(value: String) = FA { implicit request =>
+    ROK.r noLayout { implicit stok => views.html.admin.adminDbFind(value) }
+  }
+
+  /** look at a record */
+  def colEntity(name: String, id: String) = FA { implicit request =>
+    ROK.r admin { implicit stok => views.html.admin.adminDbColEntity(name, id, RazMongo(name).findOne(Map("_id" -> new ObjectId(id)))) }
+  }
+
+  /** view a table in table format */
+  def colTab(name: String, cols: String) = FA { implicit request =>
+    ROK.r admin { implicit stok => views.html.admin.adminDbColTab(name, RazMongo(name).findAll, cols.split(",")) }
+  }
+
+  /** delete a record from a table */
+  def delcoldb(table: String, id: String) = FA { implicit request =>
+    // TODO audit
+    Audit.logdb("ADMIN_DELETE", "Table:" + table + " json:" + RazMongo(table).findOne(Map("_id" -> new ObjectId(id))))
+    RazMongo(table).remove(Map("_id" -> new ObjectId(id)))
+    ROK.r admin { implicit stok => views.html.admin.adminDbCol(table, RazMongo(table).findAll) }
+  }
+}
+
+object Admin extends AdminBase {
   // routes do/:page
   def show(page: String) = FAD { implicit au =>
     implicit errCollector => implicit request =>
       page match {
         case "reloadurlmap" => {
-          Config.reloadUrlMap
-          ROK.s admin  {implicit stok=> views.html.admin.admin_index("")}
+          Services.config.reloadUrlMap
+          ROK.s admin { implicit stok => views.html.admin.adminIndex("") }
+        }
+
+        case "send10" => {
+          SendEmail.emailSender ! SendEmail.CMD_SEND10
+          ROK.s admin { implicit stok => views.html.admin.adminIndex("") }
+        }
+
+        case "stopEmails" => {
+          SendEmail.emailSender ! SendEmail.CMD_STOPEMAILS
+          ROK.s admin { implicit stok => views.html.admin.adminIndex("") }
         }
 
         case "resendEmails" => {
           SendEmail.emailSender ! SendEmail.CMD_RESEND
-          ROK.s admin  {implicit stok=> views.html.admin.admin_index("")}
+          ROK.s admin { implicit stok => views.html.admin.adminIndex("") }
         }
 
         case "tickEmails" => {
           SendEmail.emailSender ! SendEmail.CMD_TICK
-          ROK.s admin  {implicit stok=> views.html.admin.admin_index("")}
+          ROK.s admin { implicit stok => views.html.admin.adminIndex("") }
         }
 
-        case "wikidx" => ROK.s admin  {implicit stok=> views.html.admin.admin_wikidx()}
-        case "db" =>     ROK.s admin  {implicit stok=> views.html.admin.admin_db()}
-        case "index" =>  ROK.s admin  {implicit stok=> views.html.admin.admin_index("")}
-        case "users" =>  ROK.s admin  {implicit stok=> views.html.admin.admin_users()}
+        case "wikidx" => ROK.s admin { implicit stok => views.html.admin.adminWikiIndex() }
+        case "db" => ROK.s admin { implicit stok => views.html.admin.adminDb() }
+        case "index" => ROK.s admin { implicit stok => views.html.admin.adminIndex("") }
+        case "users" => ROK.s admin { implicit stok => views.html.admin.adminUsers() }
 
         case "init.db.please" => {
           if ("yeah" == System.getProperty("devmode") || !RazMongo("User").exists) {
@@ -100,31 +157,26 @@ object Admin extends RazController {
         }
 
         case _ => {
-          Audit.missingPage(page); Redirect("/")
+          Audit.missingPage(page);
+          Redirect("/")
         }
       }
   }
+}
 
-  def user(id: String) = Action { implicit request =>
-    forAdmin {
-      ROK.r admin {implicit stok=> views.html.admin.admin_user(model.Users.findUserById(id))}
+object AdminUser extends AdminBase {
+  def user(id: String) =
+    FAD { implicit au => implicit errCollector => implicit request =>
+      ROK.r admin { implicit stok => views.html.admin.adminUser(model.Users.findUserById(id)) }
     }
-  }
 
-  def test() = Action { implicit request =>
-    forAdmin {
-      ROK.r admin {implicit stok=> views.html.admin.admin_test()}
+  def udelete1(id: String) =
+    FAD { implicit au => implicit errCollector => implicit request =>
+      ROK.r admin { implicit stok => views.html.admin.adminUserDelete(model.Users.findUserById(id)) }
     }
-  }
 
-  def udelete1(id: String) = Action { implicit request =>
-    forAdmin {
-      ROK.r admin {implicit stok=> views.html.admin.admin_udelete(model.Users.findUserById(id))}
-    }
-  }
-
-  def udelete2(id: String) = Action { implicit request =>
-    forAdmin {
+  def udelete2(id: String) =
+    FAD { implicit au => implicit errCollector => implicit request =>
       razie.db.tx { implicit txn =>
         RazMongo("User").findOne(Map("_id" -> new ObjectId(id))).map { u =>
           WikiTrash("User", u, auth.get.userName, txn.id).create
@@ -137,41 +189,38 @@ object Admin extends RazController {
       }
       Redirect("/razadmin")
     }
-  }
 
-  def ustatus(id: String, s: String) = Action { implicit request =>
-    implicit val errCollector = new VErrors()
-    (for (
-      can <- hasPerm(Perm.adminDb) orErr ("no permission");
-      goodS <- s.length == 1 && ("as" contains s(0)) orErr ("bad status");
-      u <- Users.findUserById(id)
-    ) yield {
-      //        Profile.updateUser(u, User(u.userName, u.firstName, u.lastName, u.yob, u.email, u.pwd, s(0), u.roles, u.addr, u.prefs, u._id))
-      Profile.updateUser(u, u.copy(status = s(0)))
-      Redirect("/razadmin/user/" + id)
-    }) getOrElse {
-      error("ERR_ADMIN_CANT_UPDATE_USER ustatus " + id + " " + errCollector.mkString)
-      unauthorized("ERR_ADMIN_CANT_UPDATE_USER ustatus " + id + " " + errCollector.mkString)
+  def ustatus(id: String, s: String) =
+    FAD { implicit au => implicit errCollector => implicit request =>
+      (for (
+        goodS <- s.length == 1 && ("as" contains s(0)) orErr ("bad status");
+        u <- Users.findUserById(id)
+      ) yield {
+          //        Profile.updateUser(u, User(u.userName, u.firstName, u.lastName, u.yob, u.email, u.pwd, s(0), u.roles, u.addr, u.prefs, u._id))
+          Profile.updateUser(u, u.copy(status = s(0)))
+          Redirect("/razadmin/user/" + id)
+        }) getOrElse {
+        error("ERR_ADMIN_CANT_UPDATE_USER ustatus " + id + " " + errCollector.mkString)
+        unauthorized("ERR_ADMIN_CANT_UPDATE_USER ustatus " + id + " " + errCollector.mkString)
+      }
     }
-  }
 
-  def su(id: String) = Action { implicit request =>
-    implicit val errCollector = new VErrors()
-    (for (
-      au <- auth;
-      can <- hasPerm(Perm.adminDb) orErr ("no permission");
-      u <- Users.findUserById(id)
-    ) yield {
-      Audit.logdb("ADMIN_SU", u.userName)
-      Application.razSu = au.email
-      Application.razSuTime = System.currentTimeMillis()
-      Redirect("/").withSession(Config.CONNECTED -> Enc.toSession(u.email),
-        "extra" -> au.email)
-    }) getOrElse {
-      error("ERR_ADMIN_CANT_UPDATE_USER su " + id + " " + errCollector.mkString)
-      unauthorized("ERR_ADMIN_CANT_UPDATE_USER su " + id + " " + errCollector.mkString)
+  def su(id: String) =
+    FAD { implicit au => implicit errCollector => implicit request =>
+      (for (
+        can <- au.hasPerm(Perm.adminDb) orErr ("no permission");
+        u <- Users.findUserById(id)
+      ) yield {
+          Audit.logdb("ADMIN_SU", u.userName)
+          Application.razSu = au.email
+          Application.razSuTime = System.currentTimeMillis()
+          Redirect("/").withSession(Services.config.CONNECTED -> Enc.toSession(u.email),
+            "extra" -> au.email)
+        }) getOrElse {
+        error("ERR_ADMIN_CANT_UPDATE_USER su " + id + " " + errCollector.mkString)
+        unauthorized("ERR_ADMIN_CANT_UPDATE_USER su " + id + " " + errCollector.mkString)
+      }
     }
-  }
 
   val OneForm = Form("val" -> nonEmptyText)
 
@@ -181,73 +230,70 @@ object Admin extends RazController {
     mapping(
       "perm" -> nonEmptyText.verifying(
         "starts with +/-", a => ("+-" contains a(0))).verifying(
-          "known perm", a => Perm.all.contains(a.substring(1))))(AddPerm.apply)(AddPerm.unapply)
+        "known perm", a => Perm.all.contains(a.substring(1))))(AddPerm.apply)(AddPerm.unapply)
 
   }
 
-  def uperm(id: String) = Action { implicit request =>
-    implicit val errCollector = new VErrors()
-    permForm.bindFromRequest.fold(
-    formWithErrors =>
-      Msg2(formWithErrors.toString + "Oops, can't add that perm!"), {
-      case we@AddPerm(perm) =>
-        (for (
-          can <- hasPerm(Perm.adminDb) orErr ("no permission");
-          goodS <- ("+-" contains perm(0)) && Perm.all.contains(perm.substring(1)) orErr ("bad perm");
-          u <- Users.findUserById(id);
-          pro <- u.profile
-        ) yield {
-          // remove/flip existing permission or add a new one?
-          pro.update(
-            if (perm(0) == '-' && (pro.perms.contains("+" + perm.substring(1)))) {
-              pro.removePerm("+" + perm.substring(1))
-            } else if (perm(0) == '+' && (pro.perms.contains("-" + perm.substring(1)))) {
-              pro.removePerm("-" + perm.substring(1))
-            } else pro.addPerm(perm))
-            cleanAuth(Some(u))
-          Redirect("/razadmin/user/" + id)
-        }) getOrElse {
-          error("ERR_ADMIN_CANT_UPDATE_USER uperm " + id + " " + errCollector.mkString)
-          Unauthorized("ERR_ADMIN_CANT_UPDATE_USER uperm " + id + " " + errCollector.mkString)
-        }
-    })
-  }
+  def uperm(id: String) =
+    FAD { implicit au => implicit errCollector => implicit request =>
+      permForm.bindFromRequest.fold(
+      formWithErrors =>
+        Msg2(formWithErrors.toString + "Oops, can't add that perm!"), {
+        case we@AddPerm(perm) =>
+          (for (
+            goodS <- ("+-" contains perm(0)) && Perm.all.contains(perm.substring(1)) orErr ("bad perm");
+            u <- Users.findUserById(id);
+            pro <- u.profile
+          ) yield {
+              // remove/flip existing permission or add a new one?
+              pro.update(
+                if (perm(0) == '-' && (pro.perms.contains("+" + perm.substring(1)))) {
+                  pro.removePerm("+" + perm.substring(1))
+                } else if (perm(0) == '+' && (pro.perms.contains("-" + perm.substring(1)))) {
+                  pro.removePerm("-" + perm.substring(1))
+                } else pro.addPerm(perm))
+              cleanAuth(Some(u))
+              Redirect("/razadmin/user/" + id)
+            }) getOrElse {
+            error("ERR_ADMIN_CANT_UPDATE_USER uperm " + id + " " + errCollector.mkString)
+            Unauthorized("ERR_ADMIN_CANT_UPDATE_USER uperm " + id + " " + errCollector.mkString)
+          }
+      })
+    }
 
   val quotaForm = Form(
     "quota" -> number(-1, 1000, true))
 
-  def uquota(id: String) = Action { implicit request =>
-    implicit val errCollector = new VErrors()
-    quotaForm.bindFromRequest.fold(
-    formWithErrors =>
-      Msg2(formWithErrors.toString + "Oops, can't add that quota!"), {
-      case quota =>
-        (for (
-          can <- hasPerm(Perm.adminDb) orErr ("no permission");
-          u <- Users.findUserById(id);
-          pro <- u.profile
-        ) yield {
-          // remove/flip existing permission or add a new one?
-          u.quota.reset(quota)
-          Redirect("/razadmin/user/" + id)
-        }) getOrElse {
-          error("ERR_ADMIN_CANT_UPDATE_USER.uquota " + id + " " + errCollector.mkString)
-          Unauthorized("ERR_ADMIN_CANT_UPDATE_USER.uquota " + id + " " + errCollector.mkString)
-        }
-    })
-  }
-
-  def uname(id: String) = FAD { implicit au =>
-    implicit errCollector => implicit request =>
-      OneForm.bindFromRequest.fold(
+  def uquota(id: String) =
+    FAD { implicit au => implicit errCollector => implicit request =>
+      quotaForm.bindFromRequest.fold(
       formWithErrors =>
         Msg2(formWithErrors.toString + "Oops, can't add that quota!"), {
-        case uname =>
+        case quota =>
           (for (
             u <- Users.findUserById(id);
-            pro <- u.profile;
-            already <- !(u.userName == uname) orErr "Already updated"
+            pro <- u.profile
           ) yield {
+              // remove/flip existing permission or add a new one?
+              u.quota.reset(quota)
+              Redirect("/razadmin/user/" + id)
+            }) getOrElse {
+            error("ERR_ADMIN_CANT_UPDATE_USER.uquota " + id + " " + errCollector.mkString)
+            Unauthorized("ERR_ADMIN_CANT_UPDATE_USER.uquota " + id + " " + errCollector.mkString)
+          }
+      })
+    }
+
+  def uname(id: String) = FAD { implicit au => implicit errCollector => implicit request =>
+    OneForm.bindFromRequest.fold(
+    formWithErrors =>
+      Msg2(formWithErrors.toString + "Oops, can't add that quota!"), {
+      case uname =>
+        (for (
+          u <- Users.findUserById(id);
+          pro <- u.profile;
+          already <- !(u.userName == uname) orErr "Already updated"
+        ) yield {
             // TODO transaction
             razie.db.tx("uname") { implicit txn =>
               Profile.updateUser(u, u.copy(userName = uname))
@@ -256,10 +302,10 @@ object Admin extends RazController {
             }
             Redirect("/razadmin/user/" + id)
           }) getOrElse {
-            error("ERR_ADMIN_CANT_UPDATE_USER.uname " + id + " " + errCollector.mkString)
-            Unauthorized("ERR_ADMIN_CANT_UPDATE_USER.uname " + id + " " + errCollector.mkString)
-          }
-      })
+          error("ERR_ADMIN_CANT_UPDATE_USER.uname " + id + " " + errCollector.mkString)
+          Unauthorized("ERR_ADMIN_CANT_UPDATE_USER.uname " + id + " " + errCollector.mkString)
+        }
+    })
   }
 
   def urealms(id: String) = FAD { implicit au =>
@@ -273,64 +319,66 @@ object Admin extends RazController {
             u <- Users.findUserById(id);
             pro <- u.profile
           ) yield {
-            // TODO transaction
-            razie.db.tx("urealms") { implicit txn =>
-              Profile.updateUser(u, u.copy(realms = uname.split("[, ]").toSet))
-              cleanAuth(Some(u))
-            }
-            Redirect("/razadmin/user/" + id)
-          }) getOrElse {
+              // TODO transaction
+              razie.db.tx("urealms") { implicit txn =>
+                Profile.updateUser(u, u.copy(realms = uname.split("[, ]").toSet))
+                cleanAuth(Some(u))
+              }
+              Redirect("/razadmin/user/" + id)
+            }) getOrElse {
             error("ERR_ADMIN_CANT_UPDATE_USER.urealms " + id + " " + errCollector.mkString)
             Unauthorized("ERR_ADMIN_CANT_UPDATE_USER.urealms " + id + " " + errCollector.mkString)
           }
       })
   }
 
-  def col(name: String) = Action { implicit request =>
-    forAdmin {
-      ROK.r admin {implicit stok=> views.html.admin.admin_col(name, RazMongo(name).findAll)}
-    }
-  }
+  def uroles(id: String) = FAD { implicit au =>
+    implicit errCollector => implicit request =>
 
-  def dbFind(value: String) = FA { implicit request =>
-    ROK.r noLayout  {implicit stok=> views.html.admin.admin_db_find(value)}
+      OneForm.bindFromRequest.fold(
+      formWithErrors =>
+        Msg2(formWithErrors.toString + "Oops, can't !"), {
+        case uname =>
+          (for (
+            u <- Users.findUserById(id);
+            pro <- u.profile
+          ) yield {
+              // TODO transaction
+              razie.db.tx("uroles") { implicit txn =>
+                Profile.updateUser(u, u.copy(roles = uname.split("[, ]").toSet))
+                cleanAuth(Some(u))
+              }
+              Redirect("/razadmin/user/" + id)
+            }) getOrElse {
+            error("ERR_ADMIN_CANT_UPDATE_USER.uroles " + id + " " + errCollector.mkString)
+            Unauthorized("ERR_ADMIN_CANT_UPDATE_USER.uroles " + id + " " + errCollector.mkString)
+          }
+      })
   }
+}
 
-  def colEntity(name: String, id: String) = FA { implicit request =>
-    ROK.r admin {implicit stok=> views.html.admin.admin_col_entity(name, id, RazMongo(name).findOne(Map("_id" -> new ObjectId(id))))}
-  }
-
-  def colTab(name: String, cols: String) = FA { implicit request =>
-    ROK.r admin {implicit stok=> views.html.admin.admin_col_tab(name, RazMongo(name).findAll, cols.split(","))}
-  }
-
-  def delcoldb(table: String, id: String) = FA { implicit request =>
-    // TODO audit
-    Audit.logdb("ADMIN_DELETE", "Table:" + table + " json:" + RazMongo(table).findOne(Map("_id" -> new ObjectId(id))))
-    RazMongo(table).remove(Map("_id" -> new ObjectId(id)))
-    ROK.r admin {implicit stok=> views.html.admin.admin_col(table, RazMongo(table).findAll)}
-  }
-
+/** admin the audit tables directly */
+object AdminAudit extends AdminBase {
   def showAudit(msg: String) = FA { implicit request =>
-    ROK.r admin {implicit stok=> views.html.admin.admin_audit(if (msg.length > 0) Some(msg) else None)}
+    ROK.r admin {implicit stok=> views.html.admin.adminAudit(if (msg.length > 0) Some(msg) else None)}
   }
 
   def clearaudit(id: String) = FA { implicit request =>
-    RazAuditService.clearAudit(id, auth.get.id)
+    ClearAudits.clearAudit(id, auth.get.id)
     Redirect("/razadmin/audit")
   }
 
   def clearauditSome(howMany: Int) = FA { implicit request =>
-    RazMongo("Audit").findAll().sort(MongoDBObject("when" -> -1)).take(howMany).map(_.get("_id").toString).toList.foreach(RazAuditService.clearAudit(_, auth.get.id))
-    Redirect(routes.Admin.showAudit(""))
+    RazMongo("Audit").findAll().sort(MongoDBObject("when" -> -1)).take(howMany).map(_.get("_id").toString).toList.foreach(ClearAudits.clearAudit(_, auth.get.id))
+    Redirect(routes.AdminAudit.showAudit(""))
   }
 
   def clearauditAll(msg: String) = FA { implicit request =>
     //filter or all
     if (msg.length > 0)
-      RazMongo("Audit").find(Map("msg" -> msg)).sort(MongoDBObject("when" -> -1)).take(1000).map(_.get("_id").toString).toList.foreach(RazAuditService.clearAudit(_, auth.get.id))
+      RazMongo("Audit").find(Map("msg" -> msg)).sort(MongoDBObject("when" -> -1)).take(1000).map(_.get("_id").toString).toList.foreach(ClearAudits.clearAudit(_, auth.get.id))
     else
-      RazMongo("Audit").findAll().sort(MongoDBObject("when" -> -1)).take(1000).map(_.get("_id").toString).toList.foreach(RazAuditService.clearAudit(_, auth.get.id))
+      RazMongo("Audit").findAll().sort(MongoDBObject("when" -> -1)).take(1000).map(_.get("_id").toString).toList.foreach(ClearAudits.clearAudit(_, auth.get.id))
     Redirect("/razadmin/audit#bottom")
   }
 
@@ -341,7 +389,7 @@ object Admin extends RazController {
     RazMongo("AuditCleared").findAll().map(j => new DateTime(j.get("when"))).map(d => s"${d.getYear}-${d.getMonthOfYear}").foreach(count("ac", _))
     RazMongo("WikiAudit").findAll().map(j => new DateTime(j.get("crDtm"))).map(d => s"${d.getYear}-${d.getMonthOfYear}").foreach(count("w", _))
     RazMongo("UserEvent").findAll().map(j => new DateTime(j.get("when"))).map(d => s"${d.getYear}-${d.getMonthOfYear}").foreach(count("u", _))
-    ROK.r admin {implicit stok=> views.html.admin.admin_audit_purge1(map)}
+    ROK.r admin {implicit stok=> views.html.admin.adminAuditPurge1(map)}
   }
 
   final val auditCols = Map("AuditCleared" -> "when", "WikiAudit" -> "crDtm", "UserEvent" -> "when")
@@ -406,7 +454,10 @@ object Admin extends RazController {
        (t._2.size, t._1.toString)
      }.toList.sortWith(_._1 > _._1)
   }
+}
 
+/** admin the audit tables directly */
+object AdminSys extends AdminBase {
   private def nice(l: Long) =
     if (l > 2L * (1024L * 1024L * 1024L))
       l / (1024L * 1024L * 1024L) + "G"
@@ -489,8 +540,10 @@ ClusterStatus=${GlobalData.clusterStatus}\n
       }
     }
   }
+}
 
-  // diffing
+/** Diff and sync remote wiki copies */
+object AdminDiff extends AdminBase {
 
   case class WEAbstract (id:String, cat:String, name:String, realm:String, ver:Int, updDtm:DateTime, hash:Int, tags:String) {
     def this (we:WikiEntry) = this(we._id.toString, we.category, we.name, we.realm, we.ver, we.updDtm, we.content.hashCode, we.tags.mkString)
@@ -502,6 +555,7 @@ ClusterStatus=${GlobalData.clusterStatus}\n
       Ok("")
   }
 
+  /** get list of pages - invoked by remote trying to sync */
   def wlist(reactor:String, hostname:String, me:String) = FAD { implicit au =>
     implicit errCollector => implicit request =>
     if (hostname.isEmpty) {
@@ -516,6 +570,7 @@ ClusterStatus=${GlobalData.clusterStatus}\n
     }
   }
 
+  /** show the list of diffs to remote */
   def difflist(reactor:String, target:String) = FAD { implicit au =>
     implicit errCollector => implicit request =>
       try {
@@ -537,9 +592,12 @@ ClusterStatus=${GlobalData.clusterStatus}\n
         val lchanged = for(x <- lsrc; y <- ldest if y.id == x.id && (y.ver != x.ver || y.updDtm != x.updDtm))
           yield (x,y, if(x.hash == y.hash && x.tags == y.tags) "-" else if (y.ver < x.ver || y.updDtm.isBefore(x.updDtm)) "L" else "R")
 
-          ROK.s admin {implicit stok=> views.html.admin.admin_difflist(reactor, target, lnew, lremoved, lchanged.sortBy(_._3))}
+          ROK.s admin {implicit stok=> views.html.admin.adminDifflist(reactor, target, lnew, lremoved, lchanged.sortBy(_._3))}
       } catch {
-        case x : Throwable => Ok ("error " + x)
+        case x : Throwable => {
+          audit("ERROR getting remote diffs", x)
+          Ok ("error " + x)
+        }
       }
   }
 
@@ -549,7 +607,7 @@ ClusterStatus=${GlobalData.clusterStatus}\n
       getWE(target, wid).fold({t=>
         val remote = t._1.content
         val patch = DiffUtils.diff(wid.content.get.lines.toList, remote.lines.toList)
-        ROK.s admin {implicit stok=> views.html.admin.admin_showDiff(wid.content.get, remote, patch, wid.page.get, t._1)}
+        ROK.s admin {implicit stok=> views.html.admin.adminDiffShow(wid.content.get, remote, patch, wid.page.get, t._1)}
       },{err=>
         Ok ("ERR: " + err)
       })
@@ -606,20 +664,30 @@ ClusterStatus=${GlobalData.clusterStatus}\n
   }
 
   // from remote
-  def applyDiff2(target:String, wid:WID) = FAD { implicit au =>
-    implicit errCollector => implicit request =>
-      getWE(target, wid).fold({t =>
-        val b = body(url(s"http://localhost:9000/wikie/setContent/${wid.wpathFull}").form(Map("we" -> t._2)).basic("H-"+au.email.dec, "H-"+au.pwd.dec))
-        Ok(b + wid.ahrefRelative)
+  def applyDiff2(target:String, wid:WID) = FADR {implicit request =>
+      getWE(target, wid)(request.au.get).fold({t =>
+        val b = body(url(s"http://localhost:9000/wikie/setContent/${wid.wpathFull}").form(Map("we" -> t._2)).basic("H-"+request.au.get.email.dec, "H-"+request.au.get.pwd.dec))
+        Ok(b + wid.ahrefRelative(request.realm))
       }, {err=>
         Ok ("ERR: "+err)
       })
   }
+}
+
+/** Diff and sync remote wiki copies */
+object AdminTest extends AdminBase {
+  def test() = FADR { implicit stok=>
+      ROK.k admin { implicit stok => views.html.admin.adminTest() }
+    }
 
   def testEmail() = FAD { implicit au => implicit errCollector => implicit request =>
     SendEmail.withSession { implicit mailSession =>
-      Emailer.testEmail()
+      SendEmail.notif("razie@razie.com", Services.config.SUPPORT, "TEST email Notify It's " + System.currentTimeMillis(), "nothing much herem eh")
     }
+    SendEmail.withSession { implicit mailSession =>
+      SendEmail.send("razie@razie.com", Services.config.SUPPORT, "TEST email Send It's " + System.currentTimeMillis(), "nothing much herem eh")
+    }
+
     Ok ("ok")
   }
 

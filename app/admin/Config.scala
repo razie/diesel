@@ -2,7 +2,7 @@ package admin
 
 import model.{User, Website}
 import play.api.mvc.Request
-import razie.wiki.admin.{WikiEvent, WikiObservers}
+import razie.wiki.model.WikiObservers
 import razie.wiki.{Services, WikiConfig}
 import razie.wiki.model._
 
@@ -11,73 +11,57 @@ import scala.collection.mutable.HashMap
 
 /** extended config */
 object Config extends WikiConfig {
-  // ------------- meta tags to include in html - useful for analytics/webmaster stuff
+  final val curYear = "2017" // just FYI basicaly, each club has its own year
 
   import WikiConfig.parsep
-
-  override val noads = isLocalhost
-
-  final val METAS = "sitemetas"
-  lazy val metas = Wikis.find(WID("Admin", METAS)) map (_.content) getOrElse ""
-
-  final val CONNECTED = props.getProperty("rk.connected", "connected")
-
-  final val curYear = "2016" // current year for registrations
 
   override def simulateHost = isimulateHost
   var isimulateHost = {
 //        "www.racerkidz.com"    // for testing locally
-//    "www.wikireactor.com"    // for testing locally
+    "www.snowproapp.com"
 //    "www.effectiveskiing.com"    // for testing locally
-//                "ski.wikireactor.com"    // for testing locally
-//    "ebaysim.wikireactor.com"    // for testing locally
-//            "catsim.wikireactor.com"    // for testing locally
+//    "www.dieselapps.com"    // for testing locally
+//    "wiki.dieselapps.com"    // for testing locally
+//                "ski.dieselapps.com"    // for testing locally
+//    "ebaysim.dieselapps.com"    // for testing locally
+//            "catsim.dieselapps.com"    // for testing locally
 //        "www.coolscala.com"    // for testing locally
 //        "www.enduroschool.com"    // for testing locally
 //            "www.askicoach.com"    // for testing locally
 //        "www.glacierskiclub.com"    // for testing locally
 //        "www.nofolders.net"    // for testing locally
     //        "www.dieselreactor.net"    // for testing locally
-//            "gsc.wikireactor.com"    // for testing locally
-            "specs.wikireactor.com"    // for testing locally
-//        "c52.wikireactor.com"    // for testing locally
+//            "gsc.dieselapps.com"    // for testing locally
+//            "specs.dieselapps.com"    // for testing locally
+    //        "c52.dieselapps.com"    // for testing locally
+  }
+
+  private var ibadIps = Array("178.175.146.90")
+  def badIps = ibadIps
+
+  override def getTheme (user:Option[WikiUser], request:Option[Request[_]]) = {
+    // session settings override everything
+    request.flatMap(_.session.get("css")) orElse (
+      // then user
+      user.flatMap(_.css)
+      ) orElse (
+      // or website settings
+      request.flatMap(r=> Website(r)).flatMap(_.css)
+      ) getOrElse ("light")
   }
 
   final val CFG_PAGES = Array(SITECFG, TOPICRED, USERTYPES, BANURLS, URLCFG)
 
   WikiObservers mini {
-    case WikiEvent(_, "WikiEntry", _, Some(x), _, _)
+    case WikiEvent(_, "WikiEntry", _, Some(x), _, _, _)
       if "Admin" == x.asInstanceOf[WikiEntry].category && CFG_PAGES.contains(x.asInstanceOf[WikiEntry].name)  => {
         reloadUrlMap
     }
   }
 
-  def getTheme (user:Option[WikiUser], request:Option[Request[_]]) = {
-    // session settings override everything
-    request.flatMap(_.session.get("css")) orElse (
-        // then user
-        user.flatMap(_.css)
-      ) orElse (
-        // or website settings
-        request.flatMap(r=> Website(r)).flatMap(_.css)
-    ) getOrElse ("light")
-  }
-
-  // no request available
-  def isLight(au:Option[User], request:Option[Request[_]]=None) = getTheme (au, request) contains "light"
-  // todo remove this - relies on statics
-  def oldisLight = isLight(None, None)
-
-  def robotUserAgents = irobotUserAgents
-  private var irobotUserAgents = List[String]()
-
-  def trustedSites = itrustedSites
-  private var itrustedSites = List[String]()
-
-  def reservedNames = ireservedNames
-  private var ireservedNames = List[String]()
-
-  def reloadUrlMap {
+  // using sync here, although access is not... sometimes weird conflict
+  // todo remove the object and reload atomically the Services.config
+  def reloadUrlMap = synchronized {
     println("========================== RELOADING URL MAP ==============================")
     for (c <- Array(SITECFG, TOPICRED, USERTYPES, BANURLS)) {
       val urlmaps = Some(Wikis.find(WID("Admin", c)).toSeq map (_.content) flatMap parsep)
@@ -102,12 +86,13 @@ object Config extends WikiConfig {
       xconfig.get(x).foreach(y => println(y.mkString("\n  ")))
     })
 
-    Services.configCallbacks foreach (_())
+    Services ! new WikiConfigChanged
 
     irobotUserAgents = sitecfg("robots.useragents").toList.flatMap(s=>s.split("[;,]"))
     ireservedNames = sitecfg("reserved.names").toList.flatMap(s=>s.split("[;,]"))
     // todo settle this - there are two places for configuring trusted sites
     itrustedSites = sitecfg("trusted.sites").toList.flatMap(s=>s.split("[;,]"))
+    ibadIps = sitecfg("badips").toList.flatMap(s=>s.split("[;,]")).toArray
   }
 
 }

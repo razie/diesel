@@ -1,0 +1,123 @@
+@***
+purge audit tables
+***@
+@(reactor:String, target:String, lnew:List[controllers.AdminDiff.WEAbstract], lremoved:List[controllers.AdminDiff.WEAbstract], lchanged:List[(controllers.AdminDiff.WEAbstract, controllers.AdminDiff.WEAbstract, String)])(implicit stok: controllers.StateOk)
+@import razie.wiki.model.WID
+
+
+@wp(wid:WID)=@{
+  if(_root_.razie.wiki.Services.config.isLocalhost && wid.getRealm == "rk") "rk." + wid.wpath
+  else wid.wpath
+}
+
+@e(s:String)=@{s.replaceAllLiterally("'", "\\'")}
+
+@stok.title("admin diff list")
+
+    <h2>Diffs from @target</h2>
+
+    Removed local or new on remote:
+    <ul>
+    @lremoved.sortBy(_.realm).map { wea =>
+            <li>
+      @wea.realm <a href="http://@target@WID(wea.cat, wea.name).r(wea.realm).urlRelative">@wea.cat:@wea.name v@wea.ver</a>
+    }
+    </ul>
+
+    <hr>
+    Content diffs:
+    <table class="table table-striped">
+    @lchanged.filter(_._3 != "-").sortBy(x=> x._2.realm+x._3).map { t =>
+      <tr id="row-@t._2.id">
+        <td>
+          @if(t._3 == "R") {
+          <a id="b1-@t._2.id" xhref="#" onclick="applyDif('@t._2.id', '@routes.AdminDiff.applyDiff2(target, WID(t._2.cat, t._2.name).r(t._2.realm))')" class="btn btn-xs btn-success">USE REMOTE</a>
+          } else {
+          <a id="b1-@t._2.id" xhref="#" onclick="applyDif('@t._2.id', '@routes.AdminDiff.applyDiff2(target, WID(t._2.cat, t._2.name).r(t._2.realm))')" class="btn btn-xs btn-warning">USE REMOTE</a>
+          }
+      </td>
+        <td>
+          @t._2.realm <a href="@WID(t._1.cat, t._1.name).r(t._1.realm).url">@t._1.cat:@t._1.name</a> (<a href="/wikie/content/@wp(WID(t._1.cat, t._1.name).r(t._1.realm))">content</a>) TO
+        <a href="http://@target/@WID(t._2.cat, t._2.name).r(t._2.realm).urlRelative">@t._2.cat:@t._2.name</a>
+        - see
+      <a href="@routes.AdminDiff.showDiff(target, WID(t._2.cat, t._2.name).r(t._2.realm))" class="btn btn-xs btn-info">>DIFF</a>
+        </td>
+        <td>
+          @t._3
+        </td>
+        <td>
+        @if(t._3 == "L") {
+            <a id="b2-@t._2.id" xhref="#" onclick="applyDif('@t._2.id', '@routes.AdminDiff.applyDiff(target, WID(t._2.cat, t._2.name).r(t._2.realm))')" class="btn btn-xs btn-success">USE LOCAL</a>
+          } else {
+            <a id="b2-@t._2.id" xhref="#" onclick="applyDif('@t._2.id', '@routes.AdminDiff.applyDiff(target, WID(t._2.cat, t._2.name).r(t._2.realm))')" class="btn btn-xs btn-warning">USE LOCAL</a>
+          }
+        </td>
+      </tr>
+    }
+    </table>
+
+    <hr>
+    New local or removed on remote: (won't copy over links)
+    <table class="table table-striped">
+    @lnew.sortBy(_.realm).map { wea =>
+      <tr>
+        <td>
+          <a href="@routes.Wikie.wikieDelete1(WID(wea.cat, wea.name).r(wea.realm))" class="btn btn-xs btn-danger">DELETE</a>
+        </td>
+        <td>
+        @wea.realm <a href="@controllers.Wiki.w(wea.cat, wea.name, wea.realm)">@wea.cat:w/@wea.name v@wea.ver </a>
+        ( <a href="/wikie/content/@wp(WID(wea.cat, wea.name).r(wea.realm))">content </a> )
+        </td>
+        <td>
+      <a href="@routes.AdminDiff.applyDiffCr(target, WID(wea.cat, wea.name).r(wea.realm))" class="btn btn-xs btn-success">TO REMOTE</a>
+        </td>
+      </tr>
+    }
+    </table>
+
+    <hr>
+    Minor diffs (same content, different versions - possibly already sync'd):
+    <table class="table table-striped">
+    @lchanged.filter(_._3 == "-").sortBy(x=> x._2.realm+x._3).map { t =>
+      <tr>
+        <td>
+          <a href="@routes.AdminDiff.applyDiff2(target, WID(t._2.cat, t._2.name).r(t._2.realm))" class="btn btn-xs btn-default">USE REMOTE</a>
+        </td>
+        <td>
+          @t._2.realm <a href="@WID(t._1.cat, t._1.name).r(t._1.realm).url">@t._1.cat:@t._1.name</a> (<a href="/wikie/content/@wp(WID(t._1.cat, t._1.name).r(t._1.realm))">content</a>) TO
+          <a href="http://@target/@WID(t._2.cat, t._2.name).r(t._2.realm).urlRelative">@t._2.cat:@t._2.name</a>
+          - see
+          <a href="@routes.AdminDiff.showDiff(target, WID(t._2.cat, t._2.name).r(t._2.realm))" class="btn btn-xs btn-info">>DIFF</a>
+        </td>
+        <td>
+        @t._3
+        </td>
+        <td>
+          <a href="@routes.AdminDiff.applyDiff(target, WID(t._2.cat, t._2.name).r(t._2.realm))" class="btn btn-xs btn-default">USE LOCAL</a>
+        </td>
+      </tr>
+    }
+    </table>
+
+<script>
+function applyDif(id,url) {
+  $.ajax(
+    url, {
+    type: 'GET',
+    success: function(data) {
+      if(data.indexOf("ok") == 0) {
+        $('#row-'+id).fadeOut(250);
+//        $('#b1-'+id).fadeOut();
+//        $('#b2-'+id).fadeOut();
+      } else {
+      alert ("ERROR: "+data)
+      }
+    },
+    error  : function(x) {
+      alert( "ERR "+x.toString());
+    }
+  });
+
+}
+</script>
+

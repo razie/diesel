@@ -119,10 +119,15 @@ var sqbraStatics = [
 
 // this is not a constructor - it will get its domain from remote
 var CA_TC_sqbraTags = { // sqbraTags
-  match: /(\[\[)([\w| ]*)$/,
+  match: /(\[\[)([\w| .]*)$/,
 
   search: function (term, callback) {
     var lterm = term.toLowerCase();
+    var r = (term.indexOf(".") == term.length-1 && term.length > 0) ? term.substring(0, term.length-1) : realm;
+
+    var prefix = function(value) {
+      return r+'.'+value;
+    };
     var filterTopics = function(value, j) {
       return ltopics[j].indexOf(lterm) >= 0;
     };
@@ -130,25 +135,76 @@ var CA_TC_sqbraTags = { // sqbraTags
       return sqbraStatics[j].indexOf(lterm) >= 0;
     };
 
-    if(topics.length <= 0)
+    // bring options
+    if(topics.length <= 0 || term.indexOf(".") == term.length-1 && term.length > 0) {
       //$.getJSON('/wikie/options', { q: term , realm : realm })
-      $.getJSON('/wikie/options', { q: '' , realm : realm })
+      $.getJSON('/wikie/options', { q: '' , realm : r })
         .done(function (resp) {
-          topics = resp;
+          if(r != realm) topics = resp.map(prefix);
+          else topics = resp;
+
           for(i=0; i<topics.length; i++) ltopics[i] = topics[i].toLowerCase();
           callback(topics.filter(filterTopics).concat(sqbraStatics.filter(filterStatics)));
         })
         .fail(function (){ callback([]); });
-    else
-      callback(topics.filter(filterTopics).concat(sqbraStatics.filter(filterStatics)), false);
+    } else {
+      callback(
+        topics.filter(filterTopics).concat(sqbraStatics.filter(filterStatics)) );//, false);
       // false means this array is all the data
-    },
+    }
+  },
 
   replace: function (value) {
     return ['\[\[' + value + '\]\]', ''];
   },
 
   cache: false
+};
+
+// this is not a constructor - it will get its domain from remote
+var CA_TC_wikifield = function(cat) { // sqbraTags
+  return {
+  match: /()([\w| .]*)$/,
+
+  search: function (term, callback) {
+    var lterm = term.toLowerCase();
+    var r = (term.indexOf(".") == term.length-1 && term.length > 0) ? term.substring(0, term.length-1) : realm;
+
+    var prefix = function(value) {
+      return r+'.'+value;
+    };
+    var filterTopics = function(value, j) {
+      return ltopics[j].indexOf(lterm) >= 0;
+    };
+    var filterStatics = function(value, j) {
+      return sqbraStatics[j].indexOf(lterm) >= 0;
+    };
+
+    // bring options
+    if(topics.length <= 0 || term.indexOf(".") == term.length-1 && term.length > 0) {
+      //$.getJSON('/wikie/options', { q: term , realm : realm })
+      $.getJSON('/wikie/options', { cat:'Venue', q: '' , realm : r })
+        .done(function (resp) {
+          if(r != realm) topics = resp.map(prefix);
+          else topics = resp;
+
+          for(i=0; i<topics.length; i++) ltopics[i] = topics[i].toLowerCase();
+          callback(topics.filter(filterTopics).concat(sqbraStatics.filter(filterStatics)));
+        })
+        .fail(function (){ callback([]); });
+    } else {
+      callback(
+        topics.filter(filterTopics).concat(sqbraStatics.filter(filterStatics)) );//, false);
+        // false means this array is all the data
+      }
+    },
+
+  replace: function (value) {
+    return [value, ''];
+  },
+
+  cache: false
+  };
 };
 
 

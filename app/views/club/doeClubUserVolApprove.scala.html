@@ -6,7 +6,8 @@ manage the volunteer hours by club admin
 @(vhs:List[VolunteerH], user:model.User)(implicit stok:controllers.StateOk)
 @import org.bson.types.ObjectId
 @au=@{stok.au.get}
-@htmlHeadBar("Approving volunteer hours")
+
+@stok.title("Approving volunteer hours")
 
 @club(vol:VolunteerH) = @{
   val x = RacerKidz.findAssocById(vol.rkaId.toString).map(_.from).flatMap(model.Users.findUserById(_))
@@ -14,13 +15,6 @@ manage the volunteer hours by club admin
 }
 
 @tos(t:String) =@{"to:" + t}
-
-<div class="container"> <div class="row">
-@***
-    @views.html.user.leftmenu(15, user)
-***@
-
-<div class="col-sm-9">
 
 <h2>These are the volunteer hour requests</h2>
 
@@ -33,18 +27,20 @@ wants
 for
    @vh.desc
 
-  <a href="@routes.Club.doeVolApprove(vh._id.toString, "y").toString" class="btn btn-xs btn-success">Approve</a>
-  <a href="@routes.Club.doeVolApprove(vh._id.toString, "n").toString" class="btn btn-xs btn-danger">Reject</a>
+  <a href="@routes.Vol.doeVolApprove(vh._id.toString, "y").toString" class="btn btn-xs btn-success">Approve</a>
+  <a href="@routes.Vol.doeVolApprove(vh._id.toString, "n").toString" class="btn btn-xs btn-danger">Reject</a>
 
 <p>
 
-     @vh.comment
+  submitted on (@vh.crDtm.toString("yyyy-MM-dd"))
+<br>
+    @vh.comment
 
     <p>
     @club(vh).map{c=>
         or reassign to:
         @c.approvers.map { t =>
-            <a href="@routes.Club.doeVolApprove(vh._id.toString, tos(t._2)).toString" class="btn btn-xs btn-info">@t._1</a>
+            <a href="@routes.Vol.doeVolApprove(vh._id.toString, tos(t._2)).toString" class="btn btn-xs btn-info">@t._1</a>
 }
 }
 
@@ -53,10 +49,3 @@ for
 
   <p><small>By maintaining a profile, you agree to the <a href="@controllers.Wiki.w("Terms of Service")">Terms of Service</a></small><p>
 
-</div>
-
-  </div>
-  <hr>
-  @htmlFooter(ads=true)
-</div> <!-- /container -->
-@htmlBottom()

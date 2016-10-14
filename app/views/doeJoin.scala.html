@@ -9,7 +9,7 @@
         <h1>
           Welcome!
           @** the google button*@
-          @if(stok.realm == razie.wiki.model.Reactors.NOTES) {
+          @if(stok.realm == razie.wiki.model.WikiReactors.NOTES) {
             <span align="right">
               <span id="signinButton">
                 <span
@@ -34,7 +34,7 @@
 @import play.api.Play.current
 @import play.api.i18n.Messages.Implicits._
 
-@helper.form(action=routes.Profile.doeJoin2, 'class->"well") {
+@helper.form(action=routes.Profile.doeJoin2, 'class->"well alert alert-info") {
   @helper.inputText(
     registerForm("email"),
     '_label -> "Email",
@@ -46,12 +46,18 @@
     '_error->registerForm.error("password"))
 
   <button type="submit" class="btn btn-success">Login</button>
+  <a href="@routes.Profile.doeForgotPass()" class="btn btn-info">Forgot password!</a>
   <hr>
-  <span style="color:red;font-size: smaller"> To <strong>create a new account</strong>, please confirm the chosen password: </span>
+  <span style="color:red;font-size: smaller"> To <strong>create a new account</strong>, please confirm the chosen email and password: </span>
+
+  @helper.inputText(
+    registerForm("reemail"),
+    '_label -> "Email",
+    '_showConstraints -> false)
 
   @helper.inputPassword(
     registerForm("repassword"),
-    '_label -> "")
+    '_label -> "Password")
 
   <button type="submit" class="btn btn-warning">Create new account</button>
 
@@ -63,6 +69,7 @@
   }
 
        </div>
+      @formFix()
 
       </div>
     </div>

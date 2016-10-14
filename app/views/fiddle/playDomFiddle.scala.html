@@ -11,7 +11,11 @@ a JS with HTML and CSS fiddle
     specChanged:Boolean,
     storyChanged:Boolean,
     errMsg:Option[String],
-    id:String = java.lang.System.currentTimeMillis().toString())(implicit stok:controllers.StateOk)
+    id:String = java.lang.System.currentTimeMillis().toString(),
+    wpath:String,
+    line:String,
+    col:String
+    )(implicit stok:controllers.StateOk)
 @import razie.wiki.model.WID
 
 @stok.title("Diesel fiddle")
@@ -24,8 +28,8 @@ a JS with HTML and CSS fiddle
 </style>
 
 <script src="@routes.Assets.at("javascripts/rk-contentassist-sqbr.js")"></script>
-<script src="@routes.Assets.at("javascripts/weFiddles.js")"></script>
 <script src="@routes.Assets.at("javascripts/weCommons.js")"></script>
+<script src="@routes.Assets.at("javascripts/weFiddles.js")"></script>
 
   <h3>Diesel fiddle | <small>
     <input type="checkbox" id="refresh" checked> Real time (<span id="roundtrip">.. ms</span>)
@@ -518,6 +522,13 @@ $(window).load (function() {
 });
 </script>
 
+@if(line.length > 0 && col.length > 0) {
+  <script>
+  setTimeout(function(){
+    weSelect('@wpath', @line, @col);
+  }, 500);
+  </script>
+}
 
 @util.oneModal()
 

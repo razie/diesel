@@ -1,6 +1,5 @@
 package mod.notes.controllers
 
-import admin.{Config}
 import com.mongodb.casbah.Imports.wrapDBObj
 import com.novus.salat.grater
 import mod.notes.controllers
@@ -11,10 +10,9 @@ import play.api.mvc._
 import razie.db.RazSalatContext.ctx
 import razie.db._
 import razie.wiki.Sec.EncryptedS
-import razie.wiki.admin.{Audit, SendEmail}
+import razie.wiki.admin.SendEmail
 import razie.wiki.model._
 import razie.wiki.parser.ParserCommons
-import razie.wiki.util.{VErrors}
 import razie.js
 import razie.wiki.{Enc, Services}
 import razie.{Logging, cout}

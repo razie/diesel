@@ -1,15 +1,15 @@
 @***********
   user manages registrations
 ***********@
-@(reg:mod.snow.Reg, rks:List[mod.snow.RacerKid])(implicit stok:controllers.StateOk)
+@(reg:mod.snow.Reg, rks:List[(mod.snow.RacerKidAssoc,mod.snow.RacerKid)])(implicit stok:controllers.StateOk)
 @import mod.snow.RacerKid
 @import mod.snow.RK
 @import mod.snow.RegStatus._
 @import razie.wiki.model.FormStatus._
 @import mod.snow.RK._
 
-  @au=@{stok.au.get}
-  @stok.title("Reg for " + au.userName)
+@au=@{stok.au.get}
+@stok.title("Reg for " + stok.au.get.userName)
 
 <h2>@model.Users.findUserById(reg.userId).map(_.userName).mkString Registration for @reg.clubName (as @reg.role)</h2>
 
@@ -26,42 +26,48 @@
 @if(reg.regStatus == ACCEPTED) {
   <div class="well">
     <h3>Payment instructions:</h3>
+    Total fees due: <b>@reg.fee()</b>
+    <br><small>Note: you'll have to substract your training credit from last year, if any!</small>
+    <p></p>
     @controllers.Club(reg.clubName).map{x=> @Html(x.msgFormsAccepted)}
   </div>
 }
 
 <div class="well">
-<h3>Step 1. Fill out your contact information here: <a href="/doe/contact">contact info</a></h3>
+<h3>Step 1. Fill out your contact information here: <a href="@routes.Profile.doeContact(reg._id.toString)">contact info</a></h3>
 <p>... or update it. It is used in several forms and you won't have to type it many times...
 </div>
 
 <div class="well">
-<h3>Step 2. Make sure <em>everyone</em> is listed below:</h3>
-<p>These are the people of interest: you, racers, parents, guardians, anyone that may volunteer etc.
-  <p>If a racer/parent/guardian/volunteer is not listed below, add one as a:
-<br>
+<h3>Step 2. List all familiy members:</h3>
+<p>Racers, parents, guardians, volunteers etc.
+  <p>Add a:
 @mod.snow.RK.RELATIONSHIPS.map{r=>
-  <a href="@routes.Kidz.doeKid(au._id.toString, "11", r, "-", reg._id.toString)" class="btn btn-xs btn-info">@r</a>
+  <a href="@routes.Kidz.doeUserKid(stok.au.get._id.toString, "11", r, "-", "Reg:"+reg._id.toString)" class="btn btn-xs btn-info">@r</a>
 }
 
 @rkidz=@{
   rks.map(t=>
-    Map("fname"->t.info.firstName,
-        "role" -> t.info.role,
-        "button" -> t._id.toString,
-        "id"->t._id.toString))
+    Map("fname"->t._2.info.firstName,
+      "rel" -> t._1.role,
+        "role" -> t._2.info.role,
+        "button" -> t._2._id.toString,
+        "id"->t._2._id.toString))
 }
 
 @addlink(row:Map[String,String],k:String,v:String)={
   @k match {
         case "button" => {
-      <a href="@routes.Kidz.doeKid(au._id.toString, v, "-", "-", reg._id.toString)" class="btn btn-xs">...</a>
+      <a href="@routes.Kidz.doeUserKid(au._id.toString, v,
+        "-",
+        rks.find(_._2._id.toString == v).map(_._1._id.toString).getOrElse("-"),
+        "Reg:"+reg._id.toString)" class="btn btn-xs btn-default">&nbsp;&nbsp;<span class="glyphicon glyphicon-list-alt"/>&nbsp;</a>
           }
         case "id" => {
       @if(reg.kids.exists(_.rkId.toString == v)) {
-            <span class="label">Included</span>
+            <span class="label label-success">Included</span>
         as @reg.kids.filter(_.rkId.toString == v).map(_.role).mkString
-        <a href="@routes.Club.doeClubUwRMFormKid(reg._id.toString,v,au._id.toString, "x")" class="btn btn-default btn-xs btn-danger" title="remove from registration"> x </a>
+        <a href="@routes.Club.doeClubUwRmFormKid(reg._id.toString,v,au._id.toString, "x")" class="btn btn-default btn-xs btn-danger" title="remove from registration"> x </a>
       } else {
         <a href="@routes.Club.doeClubUserRegAdd(reg._id.toString,v,au._id.toString, "x")" class="btn btn-primary btn-xs" title="also adds neccessary forms">Include now!</a>
           }
@@ -72,7 +78,8 @@
 
 @util.utilSimpleTable(rkidz.iterator,
         Seq("fname" -> "Name",
-                "role" -> "Relationship",
+          "rel" -> "Relationship",
+                "role" -> "Role",
                 "button" -> "Details",
                 "id"->"Included in registration?"),
         Some(addlink))
@@ -83,12 +90,12 @@
 <p>Use the <span class="btn btn-xs">Include now!</span> buttons in the table above, to add to the current registration. Please include anyone that is a parent/guardian and/or will race, volunteer or coach for the club.
 <p>If you make a mistake, use the red <span class="label label-important"> x </span> button with care: it will delete completed forms if it has to...
 <p>Making sure this list is correct <b>before</b> you start completing the forms can save you having to re-fill some forms!
-@if(rks.exists(rk => !reg.kids.exists(_.rkId == rk._id))) {
+@if(rks.exists(rk => !reg.kids.exists(_.rkId == rk._2._id))) {
   <div class="alert alert-warning">
-  @if(rks.filter(rk => !reg.kids.exists(_.rkId == rk._id)).size == 1) {
+  @if(rks.filter(rk => !reg.kids.exists(_.rkId == rk._2._id)).size == 1) {
     You have <strong>1 person
     } else {
-  You have <strong>@rks.filter(rk => !reg.kids.exists(_.rkId == rk._id)).size persons
+  You have <strong>@rks.filter(rk => !reg.kids.exists(_.rkId == rk._2._id)).size persons
   }
   not included</strong> in the registration - are you sure you want to continue to the forms below?
   </div>
@@ -98,11 +105,12 @@
 <div class="well">
 <h3>Step 4. Complete all the forms</h3>
 <p>After adding all the members/racers in your family, these are the forms you need to complete... each form is important, not just the racer forms: <b>your club needs your address and contact information for each parent as well as medical information for the racers</b>.
-@club.userFormList(reg.wids, true)
+@club.userFormList(reg.deprecatedWids, true)
 </div>
 
 <div class="well">
 <h3>Step 5. Payment</h3>
+  Total fees due: <b>@reg.fee()</b>
 <p>After all the forms have been aproved, you will receive separate payment instructions.
 </div>
 

@@ -2,10 +2,10 @@
 The add on the right hand side
 ***@
 @(implicit stok: controllers.StateOk)
-@import _root_.admin.Config
+@import _root_.razie.wiki.Services
 
 @if(!
-    (Config.noads || stok.au.exists(_.isUnder13) || !stok.website.adsOnList ||
+    (Services.config.noads || stok.au.exists(_.isUnder13) || !stok.website.adsOnList ||
     (stok.au.exists(_.isActive) && !stok.website.adsForUsers))
 ) {
   @Html(model.Ads.squareright)

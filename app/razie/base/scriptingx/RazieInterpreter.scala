@@ -65,7 +65,7 @@ import memberHandlers._
 
   /** evaluate a script */
   def eval(s: ScalaScript): RazScript.RSResult[Any] = {
-    val c = new CSTimer("eval", "?")
+    val c = new CSTimer("eval", "-")
     c.start("1")
     beQuietDuring {
       interpret(s.script) match {

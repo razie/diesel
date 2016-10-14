@@ -14,19 +14,27 @@ user manages registrations
   // clubs with open regs that I'm not reg'd for
   val clubs = au.wikis.filter(_.wid.cat == "Club").flatMap(w => model.Users.findUserByUsername(w.wid.name).toList)
   clubs.map { c => (c, Club(c)) }.collect {
-    case (c, club) if club.isRegOpen && Regs.findClubUserYear(club.name, au._id, club.curYear).isEmpty =>
+    case (c, club) if club.isRegOpen && Regs.findClubUserYear(club.wid, au._id, club.curYear).isEmpty =>
       club
   }
 }
 
 @regs = @{
-  val clubs = au.wikis.filter(_.wid.cat == "Club").map(_.wid.name)
-  clubs.flatMap(c => Regs.findClubUser(c, au._id)).sortWith(_.year >= _.year)
+//  val clubs = au.wikis.filter(_.wid.cat == "Club").map(_.wid.name)
+//  clubs.flatMap(c => Regs.findClubUser(c, au._id)).sortWith(_.year >= _.year)
+  // don't start from clubs - user may have left some clubs
+  Regs.findByUserId(au._id).toList.sortWith(_.year >= _.year)
 }
 
 @tab = @{
   regs.iterator.map(reg =>
-    Map("club" -> reg.clubName, "year" -> reg.year, "role" -> reg.role, "regStatus" -> reg.regStatus, "id" -> reg._id.toString, "vol" -> controllers.Club.volPerReg(reg)))
+    Map(
+      "club" -> reg.clubName,
+      "year" -> reg.year,
+      "role" -> reg.role,
+      "regStatus" -> reg.regStatus,
+      "id" -> reg._id.toString,
+      "vol" -> controllers.Vol.volPerReg(reg)))
 }
 
     @mnglink(row: Map[String, String], k: String, v: String) = {
@@ -36,7 +44,7 @@ user manages registrations
       }
       case "vol" => {
         @v
-        <a href="@routes.Club.doeUserVolAdd(row.get("id").get).toString" class="btn btn-xs">Manage</a>
+        <a href="@routes.Vol.doeUserVolAdd(row.get("id").get).toString" class="btn btn-xs">Manage</a>
       }
       case _ => {
         @v
@@ -50,7 +58,8 @@ user manages registrations
       , this is the list of clubs you have registrations for. Some registrations may be old, current or pending - see the bottom of the page for a legend.
     <p>Click on the status of each, to manage the forms required to complete that registration.
 
-    @if(regs.isEmpty) {
+@defining(missingRegs){mr=>
+    @if(regs.isEmpty && mr.isEmpty) {
       <div class="alert alert-info">
         <strong>No registrations!</strong>
         You have no registrations in progress - if you were looking for a specific club, then please follow this link to join it:
@@ -66,12 +75,13 @@ user manages registrations
         <p>No worries, it's still free :)
       </div>
     } else {
-      @missingRegs.map { club =>
+      @mr.map { club =>
         <p>No registrations for the current year - <b>@club.userName, @club.curYear</b></p>
-        <a href="@routes.Club.doeStartRegSimple(club.userName)" class="btn btn-info">
-          Start registration for @club.curYear</a>
+        <a href="@routes.Club.doeStartRegSimple(club.wid)" class="btn btn-success btn-lg">
+          Start registration for <b>@club.userName, @club.curYear</b></a>
       }
-      <p></p>
+    }
+<p></p>
 
       @util.utilSimpleTable(tab,
         Seq("club" -> "Club",

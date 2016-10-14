@@ -1,10 +1,10 @@
-@(clubName:String, myForm: Form[(String, Int, String, String)])(implicit stok:controllers.StateOk)
+@(club:razie.wiki.model.WID, myForm: Form[(String, Int, String, String)])(implicit stok:controllers.StateOk)
 
-@stok.title("Regisration settings")
+@stok.title("Registration settings")
 
 <h2>Registration settings</h2>
 <p>
-<div class="alert alert-danger">
+<div class="alert alert-warning">
 <strong>Careful</strong> changing these... you may screw up the current registration year...
 </div>
 
@@ -12,7 +12,7 @@
 @import play.api.Play.current
 @import play.api.i18n.Messages.Implicits._
 
-@helper.form(action=routes.Club.doeClubUpdateRegSettings(clubName), 'class->"well") {
+@helper.form(action=routes.Club.doeClubUpdateRegSettings(club), 'class->"well") {
   @helper.select(
     myForm("regType"),
      Seq("None"->"None", "Family"->"Family", "Individual"->"Individual", "FamilyWithKids"->"FamilyWithKids"),

@@ -7,12 +7,9 @@ import model._
 import razie.Logging
 import razie.wiki.model.WikiIndex
 import razie.wiki.model.Wikis
-import razie.wiki.util.IgnoreErrors
 import razie.wiki.model.WikiEntry
 import razie.wiki.model.WikiUser
 import razie.wiki.model.WID
-import razie.wiki.util.Corr
-import razie.wiki.util.VErrors
 import razie.wiki.model.Visibility
 import razie.wiki.dom.WikiDomain
 
@@ -125,7 +122,9 @@ object RazWikiAuthorization extends RazController with Logging with WikiAuthoriz
     val name = wid.name
     lazy val we = if (w.isDefined) w else Wikis(wid.getRealm).find(cat, name)
     lazy val wprops = if (we.isDefined) we.map(_.props) else props
-    if (u.isDefined && u.exists(_.hasPerm(Perm.adminDb)))
+    if (u.exists(_.hasPerm(Perm.adminDb)))
+      Some(true)
+    else if(u.exists(Club.canAdmin(wid, _)))
       Some(true)
     else (for (
       cansee <- canSee(wid, u, w);

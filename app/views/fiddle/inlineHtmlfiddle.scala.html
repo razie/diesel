@@ -12,6 +12,10 @@ an inline JS with HTML and CSS fiddle
   s.replaceAll("\r", "").replaceAll("\n", "\\\\n'\n+'")
 }
 
+@encjs(s:String) = @{
+  s.replaceAll("'","\\\\'")
+}
+
 @encscr(s:String) = @{
   s.replaceAll("'","%27").replaceAll("script","scrRAZipt")
   //.replace(/'/g,'%27')););
@@ -49,7 +53,7 @@ var decscr = function (s) {
 }
 
 var hh_@id ='@Html(tos(content._1))'
-var h_@id  ='@Html(tos(content._2))'
+var h_@id  ='@Html(tos(encjs(content._2)))'
 var c_@id  ='@Html(tos(content._3))'
 var j_@id  ='@Html(tos(encscr(content._4)))'
 </script>

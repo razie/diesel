@@ -2,14 +2,9 @@
 create account
 **@
 @(myForm: Form[controllers.Profile.CrProfile])(implicit stok: controllers.StateOk)
+@import razie.wiki.model.WID
 
-@salutation() = @{
-  val names = Array("Hi", "Hello", "Hey", "Howdy")
-  val i = new scala.util.Random().nextInt(names.length)
-  names(i)
-  }
-
-@htmlHeadBar("Create an account / Register")
+@stok.title("Create an account / Register")
 
     <div class="container">
 
@@ -18,7 +13,11 @@ create account
 
       <div class="row">
         <div class="col-sm-6">
-          @wiki.wikiFragInt("Admin:page-join3-"+stok.realm, stok.au)
+          @WID.fromPath("Admin:page-join3-"+stok.realm).flatMap(_.page).orElse(
+            WID.fromPath("Admin:page-join3-rk").flatMap(_.page)
+          ).map{page=>
+            @wiki.wikiFrag(page.wid,None,true,Some(page))
+          }
         </div>
 
         <div class="col-sm-6">
@@ -27,11 +26,11 @@ create account
 @import play.api.Play.current
 @import play.api.i18n.Messages.Implicits._
 
-@helper.form(action=routes.Profile.doeCreateProfile(), 'class->"well") {
+@helper.form(action=routes.Profile.doeCreateProfile(), 'class->"well alert alert-info") {
   @util.razSelect(myForm, "userType",
-    (if (stok.realm==razie.wiki.model.Reactors.NOTES) "Account type"
+    (if (stok.realm==razie.wiki.model.WikiReactors.NOTES) "Account type"
      else "What you are"),
-    _root_.admin.Config.userTypes(stok.request.get).map(x=>(x.toString,x.toString)))
+    model.Website.userTypes(stok.request.get).map(x=>(x.toString,model.Website.userTypeDesc(x.toString)(stok.request.get))))
   @util.razText(myForm, "firstName", "First name")
   @util.razText(myForm, "lastName", "Last name")
   @util.razSelect(myForm, "yob", "When you were born",
@@ -39,10 +38,18 @@ create account
     'style -> "width: 100px" )
   @util.razText(myForm, "address", "City, province/state, country")
 
+  @helper.textarea(
+    myForm("about"),
+    '_label -> "Tell us about yourself",
+    '_showConstraints -> false,
+    'placeholder -> "... so we can help direct you: current certifications, what are you looking to get out of this website, etc",
+    'class -> "form-control col-sm-12",
+    'rows->5)
+
   @helper.checkbox(
     myForm("accept"),
     '_text -> Html(
-    if (stok.realm==razie.wiki.model.Reactors.NOTES)
+    if (stok.realm==razie.wiki.model.WikiReactors.NOTES)
       """I accept the <a href="/wiki/Terms of Service-notes">Terms of Service</a>"""
     else
       """I accept the <a href="/wiki/Terms of Service">Terms of Service</a>"""
@@ -62,16 +69,10 @@ create account
   <button type="submit" class="btn btn-primary">That's it - create account!</button>
 
 }
+          @formFix()
 
        </div>
       </div>
 
       </div>
 
-      <hr>
-
-      @htmlFooter(false, false, stok.realm)
-
-    </div> <!-- /container -->
-
-    @htmlBottom()

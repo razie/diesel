@@ -1,6 +1,9 @@
 @(myForm: Form[model.User], au: model.User)(implicit request: Request[_])
 
 @import helper.twitterBootstrap._
+@import play.api.Play.current
+@import play.api.i18n.Messages.Implicits._
+
 
 @user.doePLayout(au, "Profile", 1) {
 
@@ -9,13 +12,26 @@
       @util.razText(myForm, "firstName", "First name")
       @util.razText(myForm, "lastName", "Last name")
 
-      @util.razSelect(myForm, "userType", "What you are",
-        _root_.admin.Config.userTypes.map(x => (x.toString, x.toString)))
+      <small>
+      Current roles:  @au.roles.mkString(",")<br><br>
+      </small>
+
+      @util.razSelect(myForm, "userType", "Add a role",
+        model.Website.userTypes(request).map(x=>(x.toString,model.Website.userTypeDesc(x.toString)(request))))
+
       @util.razSelect(myForm, "yob", "When you were born",
         (Range(2005, 1912, -1) map (y => (y.toString, y.toString))),
         'style -> "width: 100px")
 
       @util.razText(myForm, "address", "City, Prov/State, Country")
+
+      @helper.textarea(
+        myForm("about"),
+        '_label -> "Tell us about yourself",
+        '_showConstraints -> false,
+        'placeholder -> "... so we can help direct you: current certifications, what are you looking to get out of this website, etc",
+        'class -> "form-control col-sm-12",
+        'rows->5)
 
       <button type="submit" class="btn btn-primary">Update account!</button>
 
@@ -37,5 +53,5 @@
     <p>You have the option to add more detailed contact information under <b>Contact info</b>.
 
   </div>
-
+  @formFix()
 }

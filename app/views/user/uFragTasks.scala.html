@@ -2,18 +2,23 @@
 included in mainUserC as the right hand side info box
 *********@
 @(user: model.User, quiet:String, ui:controllers.UserStuff)
-@import org.joda.time.DateTime
-@import razie.RString._
-@import controllers.XListWrapper
-@import controllers.Wiki
-@import razie.wiki.model.Wikis
+@import mod.snow.VolunteerH
+@import mod.snow.VH
+@import razie.wiki.Enc
 
-@regs=@{
-  val clubs = user.wikis.filter(_.uwid.cat=="Club").map(_.uwid.nameOrId)
+@cregs=@{
+  val clubs = user.wikis.filter(c=> c.uwid.cat=="Club" || c.uwid.cat=="Pro" || c.uwid.cat=="School").toList.flatMap(_.uwid.findWid.toList)
   clubs.flatMap(c=>mod.snow.Regs.findClubUser(c, user._id)).filter(_.regStatus == mod.snow.RegStatus.PENDING)
 }
 
-  @if(user.tasks.size + regs.size > 0) {
+@pendingVols=@{
+  val x = razie.db.RMany[VolunteerH]("status" -> VH.ST_WAITING, "approver" -> Enc.unapply(user.email)).toList
+  if(x.size > 0) Option(x.size) else None
+}
+
+@defining(cregs) {regs=>
+@defining(pendingVols) {vols=>
+  @if(user.tasks.size + regs.size + vols.getOrElse(0) > 0) {
     @if(quiet.contains("alert")) {
       <div class="alert alert-danger">
     }
@@ -23,8 +28,15 @@ included in mainUserC as the right hand side info box
     @for(t <- user.tasks) {
       <li><a style="color:red;font-weight:bold" href="/user/task/@t.name">@t.desc</a></li>
     }
-    @for(t <- regs) {
-      <li><a style="color:red;font-weight:bold" href="@routes.Club.doeClubUserReg(t._id.toString)">Pending registration forms for @t.clubName</a></li>
+      @for(t <- regs) {
+        <li><a style="color:red;font-weight:bold" href="@routes.Club.doeClubUserReg(t._id.toString)">Pending registration forms for @t.clubName</a></li>
+      }
+
+      @vols
+
+    @for( vsz <- vols; t <- Some(model.UserTasks.approveVolunteerHours(user._id))) {
+      <li><a style="color:red;font-weight:bold" href="/user/task/@t.name">@t.desc (@vsz)</a></li>
+      @*<li><a style="color:red;font-weight:bold" href="@routes.Vol.doeClubUserReg(t._id.toString)">Need to approve some volunteer hours (@vsz)</a></li>*@
     }
     </ul>
 
@@ -36,5 +48,7 @@ included in mainUserC as the right hand side info box
       <b>No tasks.</b>
     }
   }
+}
+}
 
 

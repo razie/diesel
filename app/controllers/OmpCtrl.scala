@@ -19,7 +19,6 @@ import java.lang.management.ManagementFactory
 import java.lang.reflect.Modifier
 import model.WikiScripster
 import omp._
-import razie.wiki.util.VErrors
 
 object OmpCtrl extends RazController {
 

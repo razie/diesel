@@ -1,7 +1,8 @@
 package admin
 
-import controllers.Admin
+import controllers.{IgnoreErrors, VErrors, Admin}
 import model._
+import razie.base.{AuditService, Audit}
 import razie.db.{ROne, RazMongo}
 import razie.wiki.{Base64, Enc}
 import razie.wiki.model.WikiUser
@@ -13,11 +14,10 @@ import org.joda.time.DateTime
 import play.api.mvc.{RequestHeader, Request}
 import razie.Logging
 import razie.db.RazSalatContext.ctx
-import razie.wiki.admin.{WikiEvent, WikiObservers, AuditService, Audit}
-import razie.wiki.util.IgnoreErrors
-import razie.wiki.util.VErrors
 import razie.wiki.Services
+
 //import play.cache._
+
 import play.api.cache._
 
 
@@ -29,12 +29,13 @@ class RazAuthService extends AuthService[User] with Logging {
   /** clean the cache for current user - probably a profile change */
   def cleanAuth(u: Option[WikiUser] = None)(implicit request: RequestHeader) {
     import play.api.Play.current
-    request.session.get(Config.CONNECTED).map { euid =>
+    request.session.get(Services.config.CONNECTED).map { euid =>
       synchronized {
         val uid = Enc.fromSession(euid)
-        (u orElse Users.findUser(uid)).foreach { u =>
+        (u orElse Users.findUserByEmail(uid)).foreach { u =>
           debug("AUTH CLEAN =" + u._id)
           Cache.remove(u.email + ".connected")
+          Cache.remove(u._id.toString + ".name")
         }
       }
     }
@@ -48,12 +49,13 @@ class RazAuthService extends AuthService[User] with Logging {
     synchronized {
       debug("AUTH CLEAN =" + u._id)
       Cache.remove(u.email + ".connected")
+      Cache.remove(u._id.toString + ".name")
     }
   }
 
   /** authentication - find the user currently logged in, from either the session or http basic auth */
   def authUser(implicit request: RequestHeader): Option[User] = {
-    val connected = request.session.get(Config.CONNECTED)
+    val connected = request.session.get(Services.config.CONNECTED)
     val authorization = request.headers.get("Authorization")
 
     import play.api.Play.current
@@ -63,43 +65,49 @@ class RazAuthService extends AuthService[User] with Logging {
       // from session
       var au = connected.flatMap { euid =>
         val uid = Enc.fromSession(euid)
-        Cache.getAs[User](uid + ".connected").map(u => Some(u)).getOrElse {
+        Cache.getAs[User](uid + ".connected").map(u => Some(u)
+        ).getOrElse {
           debug("AUTH connecting=" + uid)
-          Users.findUser(uid).map { u =>
+          Users.findUserByEmail(uid).map { u =>
             debug("AUTH connected=" + u)
+            debug("AUTH MEH =" + u.clubs.size)
             Cache.set(u.email + ".connected", u, 120)
+            Cache.set(u._id.toString + ".name", u.userName, 120)
             u
           }
         }
       }
 
       // for testing it may be overriden in http header
-      if(authorization.exists(_.startsWith("None")) && au.exists(_.isAdmin)) {
+      if (authorization.exists(_.startsWith("None")) && au.exists(_.isAdmin)) {
         log("AUTH OVERRIDE NONE")
         au = None
-      } else if(authorization.exists(_.startsWith("Basic ")) && (au.isEmpty || au.exists(_.isAdmin)))
-      au = authorization.flatMap { euid =>
-        // from basic http auth headers, for testing and API
-        val e2 = euid.replaceFirst("Basic ", "")
-        val e3 = new String(Base64 dec e2) //new sun.misc.BASE64Decoder().decodeBuffer(e2)
-        val EP = """H-([^:]*):H-(.*)""".r
+      } else if (authorization.exists(_.startsWith("Basic ")) && (au.isEmpty || au.exists(_.isAdmin)))
+        au = authorization.flatMap { euid =>
+          // from basic http auth headers, for testing and API
+          val e2 = euid.replaceFirst("Basic ", "")
+          val e3 = new String(Base64 dec e2) //new sun.misc.BASE64Decoder().decodeBuffer(e2)
+        val EP =
+          """H-([^:]*):H-(.*)""".r
 
-        e3 match {
-          case EP(em, pa) =>
-//            cdebug << "AUTH BASIC attempt "+e3
-            Users.findUser(Enc(em)).flatMap { u =>
-              if (Enc(pa) == u.pwd) {
-                u.auditLogin (Website.xrealm)
-                val uid = u.id
-                debug("AUTH BASIC connected=" + u)
-                Cache.set(u.email + ".connected", u, 120)
-                Some(u)
-              } else None
-            }
+          e3 match {
+            case EP(em, pa) =>
+              //            cdebug << "AUTH BASIC attempt "+e3
+              Users.findUserByEmail(Enc(em)).flatMap { u =>
+                // can su if admin, for testing
+                if (Enc(pa) == u.pwd || (pa=="su" && au.exists(_.isAdmin))) {
+                  u.auditLogin(Website.xrealm)
+                  val uid = u.id
+                  debug("AUTH BASIC connected=" + u)
+                  Cache.set(u.email + ".connected", u, 120)
+                  Cache.set(u._id.toString + ".name", u.userName, 120)
+                  Some(u)
+                } else None
+              }
 
-          case _ => println("ERR_AUTH wrong Basic auth encoding..."); None
+            case _ => println("ERR_AUTH wrong Basic auth encoding..."); None
+          }
         }
-      }
 
       au
     }
@@ -117,17 +125,22 @@ class RazAuthService extends AuthService[User] with Logging {
   def sign(content: String): String = Enc apply Enc.hash(content)
 
   /** check that the signatures match - there's a trick here, heh */
-  def checkSignature(sign: String, signature: String, au:Option[WikiUser]): Boolean =
+  def checkSignature(sign: String, signature: String, au: Option[WikiUser]): Boolean =
     sign == signature ||
-      ("ADMIN" == signature && (au.map(_.asInstanceOf[User]).exists(_.hasPerm(Perm.adminDb)) || Services.config.isLocalhost))
+      ("ADMIN" == signature &&
+        (
+          au.map(_.asInstanceOf[User]).exists(_.hasPerm(Perm.adminDb)) ||
+          Services.config.isLocalhost
+        )
+      )
 }
 
 /**
  * razie's default Audit implementation - stores them events in a Mongo table. Use this as an example to write your own auditing service.
  *
- *  Upon review, move them to the cleared/history table and purge them sometimes
+ * Upon review, move them to the cleared/history table and purge them sometimes
  */
-object RazAuditService extends AuditService with Logging {
+class RazAuditService extends AuditService with Logging {
 
   /** log a db operation */
   def logdb(what: String, details: Any*) = {
@@ -147,6 +160,9 @@ object RazAuditService extends AuditService with Logging {
     s
   }
 
+}
+
+object ClearAudits {
   /** move from review to archive. archive is purged separately. */
   def clearAudit(id: String, userId: String) = {
     ROne[Audit](new ObjectId(id)) map { ae =>

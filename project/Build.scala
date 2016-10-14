@@ -2,6 +2,7 @@ import sbt._
 import Keys._
 import play.PlayScala._
 import play.sbt.routes.RoutesKeys
+import play.twirl.sbt.Import.TwirlKeys
 
 object V {
   val version      = "0.9.1-SNAPSHOT"
@@ -21,14 +22,15 @@ object ApplicationBuild extends Build {
     "commons-codec"       % "commons-codec"      % "1.4",
     "javax.mail"          % "mail"               % "1.4.5",
     "ch.qos.logback"      % "logback-classic"    % "1.0.13",
-    "org.mongodb"        %% "casbah"             % "2.8.2", //"2.6.5", //"2.5.0",
-    "com.novus"          %% "salat-core"         % "1.9.9", //"1.9.2", //"1.9.6",
-    "com.atlassian.commonmark"   % "commonmark"  % "0.5.0",
+    "org.mongodb"        %% "casbah"             % "2.8.2",
+    "com.novus"          %% "salat-core"         % "1.9.9",
+    "com.atlassian.commonmark"   % "commonmark"  % "0.7.0",
     "org.scalaz"         %% "scalaz-core"        % "7.2.1",
     "org.scalatest"      %% "scalatest"          % "2.1.3",
     "com.typesafe"        % "config"             % "1.2.1",
-    "com.typesafe.akka"  %% "akka-cluster"       % "2.4.2", //2.2.0
-    "com.typesafe.akka"  %% "akka-slf4j"         % "2.4.2", //2.2.0
+    "com.typesafe.akka"  %% "akka-cluster"       % "2.4.2",
+    "com.typesafe.akka"  %% "akka-contrib"       % "2.4.2",
+    "com.typesafe.akka"  %% "akka-slf4j"         % "2.4.2",
 
     "com.googlecode.java-diff-utils"        % "diffutils"             % "1.2.1",
 
@@ -43,22 +45,13 @@ object ApplicationBuild extends Build {
                     "releases"  at "https://oss.sonatype.org/content/repositories/releases"
     )
 
-  lazy val root = Project("racerkidz", file(".")).enablePlugins(play.PlayScala).settings(
-    (baseSettings ++ Seq(
-      libraryDependencies ++= appDependencies,
-      RoutesKeys.routesImport  += "model.Binders._",
-//      unmanagedSourceDirectories in Compile += baseDirectory.value / "../../w2/com.razie.dsl1/src-gen",
-      unmanagedSourceDirectories in Compile += baseDirectory.value / "../coolscala/common"
-    )):_*
-    ).dependsOn (
-       wcommon, wiki
-    ).aggregate (
-       wcommon, wiki
-    )
-
   lazy val wcommon = Project("wcommon", file("modules/wcommon")).enablePlugins(play.PlayScala).settings(
     (baseSettings ++ Seq(
       libraryDependencies ++= appDependencies,
+//      unmanagedSourceDirectories in Compile += baseDirectory.value / "../coolscala/common/app",
+//      unmanagedSourceDirectories in Compile += baseDirectory.value / "../coolscala/wiki/app",
+      sourceDirectories in Compile += baseDirectory.value / "../coolscala/common/app",
+      sourceDirectories in Compile += baseDirectory.value / "../coolscala/wiki/app",
       RoutesKeys.routesImport  += "model.Binders._"
     )):_*
   )
@@ -66,6 +59,9 @@ object ApplicationBuild extends Build {
   lazy val wiki = Project("wiki", file("modules/wiki")).enablePlugins(play.PlayScala).settings(
     (baseSettings ++ Seq(
       libraryDependencies ++= appDependencies,
+//      unmanagedSourceDirectories in Compile += baseDirectory.value / "../coolscala/common",
+//      unmanagedSourceDirectories in Compile += baseDirectory.value / "../coolscala/wiki",
+    sourceDirectories in (Compile, TwirlKeys.compileTemplates) += baseDirectory.value / "../coolscala/wiki/app",
       RoutesKeys.routesImport  += "model.Binders._"
     )):_*
   ).dependsOn (
@@ -73,6 +69,22 @@ object ApplicationBuild extends Build {
   ).aggregate (
     wcommon
   )
+
+  lazy val root = Project("racerkidz", file(".")).enablePlugins(play.PlayScala).settings(
+    (baseSettings ++ Seq(
+      libraryDependencies ++= appDependencies,
+//      unmanagedSourceDirectories in Compile += baseDirectory.value / "../../w2/com.razie.dsl1/src-gen",
+      unmanagedSourceDirectories in Compile += baseDirectory.value / "../coolscala/common",
+      unmanagedSourceDirectories in Compile += baseDirectory.value / "../coolscala/wiki",
+    sourceDirectories in (Compile, TwirlKeys.compileTemplates) += baseDirectory.value / "../coolscala/wiki/app",
+//      unmanagedSourceDirectories in TwirlKeys.compileTemplates += baseDirectory.value / "../coolscala/wiki/app",
+      RoutesKeys.routesImport  += "model.Binders._"
+    )):_*
+    ).dependsOn (
+       wcommon, wiki //, file("../coolscala/common"), file("../coolscala/wiki")
+    ).aggregate (
+       wcommon, wiki //, file("../coolscala/common"), file("../coolscala/wiki")
+    )
 
   def baseSettings = /*Defaults.defaultSettings ++*/ Seq (
     scalaVersion         := V.scalaVersion,

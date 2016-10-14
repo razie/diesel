@@ -1,15 +1,21 @@
 @**************
 wiki fragment, used in another page
 **************@
-@(wid:razie.wiki.model.WID, au:Option[model.User], simple:Boolean = false, page:Option[razie.wiki.model.WikiEntry]=None, iname:Option[String]=None, noTitle:Boolean=false, ads:Boolean=true, canEdit:Boolean=false, isSite:Boolean=false, print:Boolean=false)(implicit stok: controllers.StateOk)
+@(wid:razie.wiki.model.WID, altContent:Option[String]=None, simple:Boolean = false, page:Option[razie.wiki.model.WikiEntry]=None, iname:Option[String]=None, noTitle:Boolean=false, ads:Boolean=true, canEdit:Boolean=false, isSite:Boolean=false, print:Boolean=false)(implicit stok: controllers.StateOk)
+@import controllers.IgnoreErrors
 @import razie.wiki.model.{Wikis, WikiCount, WID, WikiEntry}
-@import _root_.admin.Config
-@import razie.wiki.util.IgnoreErrors
+@import _root_.razie.wiki.Services
 @import razie.clog
 
 @nicename() = @{ iname.getOrElse(wid.name) }
-@ppage = @{if(page.isDefined) page else wid.page}
 @rss = @{page.flatMap(_.contentProps.get("rss")).getOrElse(controllers.Wiki.w(wid)+"/rss.xml")}
+
+@canComment() = @{
+    stok.au.isDefined &&
+    !page.exists(_.isReserved) &&
+    stok.au.get.canHasProfile &&
+    !page.flatMap(_.contentProps.get("nocomments")).isDefined
+}
 
   <script>
 function selectTextareaLine(tarea,lineNum) {
@@ -58,7 +64,8 @@ function selectTextareaLine(tarea,lineNum) {
   @favoriteCat = @{ "Topic" }
 
   @w(c:String) = @{
-    if(page.isDefined) page else wid.page//razie.wiki.model.Wikis.find(c,wid.name)
+    if(page.isDefined) page
+    else controllers.Wiki.cachedPage(wid, stok.au)//wid.page
   }
 
   @prepend(l:List[String], c:String) = @{ c :: l }
@@ -69,13 +76,13 @@ function selectTextareaLine(tarea,lineNum) {
 
   @url() = @{
     val u = wid.url
-    if(u startsWith "http") u else  s"http://${Config.hostport}$u"
+    if(u startsWith "http") u else  s"http://${Services.config.hostport}$u"
   }
 
   @ccc(wid:WID, we:WikiEntry)= @{
 //    razie.cdebug << "D"
     // this will use the preprocessed cache and just do MD format
-    val x = Wikis.format(wid, we.markup, null, Some(we), au)
+    val x = Wikis.format(wid, we.markup, altContent.getOrElse(null), Some(we), stok.au)
     var y = try {
       if(x contains "CANNOT PARSE") {
         val PAT = """(?s).*PARSE\]\] \[([0-9]+)\.([0-9]+)\].*""".r
@@ -145,20 +152,32 @@ function selectTextareaLine(tarea,lineNum) {
             @if(page.exists(_.contentProps.contains("noTitle"))) {
             } else {
             <h2>@label()
-              @if(au.isEmpty && "Blog" == wid.cat) {
+              @if(stok.au.isEmpty && "Blog" == wid.cat) {
                 <a class="btn btn-info" title="Subscribe to updates via email" href="@routes.Wikil.linkFollower1(wid)"><i class="icon-envelope icon-white"></i> Subscribe</a>
               } else {
-                @if(au.isEmpty && wid.parentWid.exists(_.cat == "Blog")) {
+                @if(stok.au.isEmpty && wid.parentWid.exists(_.cat == "Blog")) {
                   <a class="btn btn-info" title="Subscribe to updates via email" href="@routes.Wikil.linkFollower1(wid.parentWid.get)"><i class="icon-envelope icon-white"></i> Subscribe</a>
                 }
               }
 
               @if(!(Seq("WikiLink", "Form").contains(wid.cat) || page.exists(_.contentProps.contains("noSocial")))) {
                 <br>
-                <a class="btn btn-xs btn-info" href="@routes.Wiki.social(label().toString, url())">Share <i class="icon-thumbs-up icon-white"></i></a>
+                <a class="btn btn-xs btn-info" href="@routes.Wiki.social(label().toString, url())">Share <span class="glyphicon glyphicon-thumbs-up icon-white"></span></a>
 
                 @if(Seq("Blog", "Forum").contains(wid.cat)) {
-                  <a class="btn btn-xs btn-info" href="@rss">Feed (RSS) <i class="icon-star icon-white"></i></a>
+                  <a class="btn btn-spanxs btn-info" href="@rss">Feed (RSS) <span class="glyphicon glyphicon-star icon-white"></span></a>
+                }
+
+                @defining(if(Services.config.isLocalhost) "" else "http://www.snowproapp.com") { host =>
+                  @if(Seq("Club", "Pro", "School").contains(wid.cat)) {
+                    @if(stok.au.isDefined) {
+                      <a class="btn btn-xs btn-success" href="@host/wikie/linkuser/@wid.wpath?wc=0">
+                        Connect with <span class="glyphicon glyphicon-star icon-white"></span></a>
+                    } else {
+                      <a class="btn btn-xs btn-success" href="@host/doe/join?club=@wid.wpath">
+                        Connect with <span class="glyphicon glyphicon-star icon-white"></span></a>
+                    }
+                  }
                 }
               }
 
@@ -168,161 +187,49 @@ function selectTextareaLine(tarea,lineNum) {
         }
       }
 
+      @if(!simple && Seq("Item").contains(wid.cat)) {
+        @if(canComment) {
+          <a href="@routes.Comment.startComment(we._id.toString, "Wiki", {new com.mongodb.casbah.Imports.ObjectId().toString}, "text")" class="btn btn-lg btn-success"><span style="color:orange">+</span>Reply/comment</a>
+        }
+        @if(stok.au.exists(x=> x.canHasProfile &&
+            (we.isOwner(x.id) ||
+             Club.canAdmin(we.wid, x)
+            ))) {
+          <a href="@routes.Wikie.wikieDelete1(wid)" class="btn btn-lg btn-danger"><span style="color:orange">+</span>Delete item</a>
+        }
+
+        @if(!canComment) {
+          <div title="NEED to login to reply/comment" >
+            <button class="btn btn-lg btn-success" disabled><span style="color:orange">+</span>Reply/comment</button>
+          </div>
+        }
+      }
+
       <p id="wikiFragP1"></p>
       @Html(ccc(wid, we))
       <p id="wikiFragP2"></p>
 
-      @wikiFragExtras(au,page)
+      @wikiFragExtras(stok.au,page)
 
       @if(!simple && !print) {
 
         @if(ads && page.isDefined && !page.exists(_.contentProps.contains("noAds")) &&
                 """\{\{ad[:}]""".r.findFirstIn(page.get.content).isEmpty &&
                 page.get.content.length > 100 && razie.wiki.dom.WikiDomain(wid.getRealm).noAds(page.get.category) &&
-                ! _root_.admin.Config.noads) {
+                ! _root_.razie.wiki.Services.config.noads) {
           <br>
           @Html(model.Ads.lederboard)
         }
 
         <p>
-      <div id="wikiBy">
-          <small>
-          @if(!isSite) {
-            <em>By</em>:
-            @**todo use separate page for missing users **@
-            <a href="/user/@model.Users.nameOf(page.get.by)">@model.Users.nameOf(page.get.by)</a>
-            | <small>
-              @page.get.crDtm.toLocalDate().toString
-              @if(page.get.updDtm.toLocalDate != page.get.crDtm.toLocalDate) { .. @page.get.updDtm.toLocalDate().toString }
-              </small>
-          }
-
-            @******* tags *******@
-
-          @** todo tag-based browsing **@
-          @if(page.exists(_.tags.size>0)) {
-            | <em>Tags</em>:
-            @page.get.tags.map { t =>
-               @Html(controllers.Wiki.hrefTag(stok.realm, wid, t, t))@if(t != page.get.tags.last){,}
-             }
-          }
 
 
-            @******* likes *******@
-
-            |
-
-            @if(au.exists(_.isActive) && page.exists(p=> !(p.likes contains au.get._id.toString))) {
-              <a href="@routes.Wikie.like(wid, 1)" class="glyphicon glyphicon-thumbs-up" title="This topic is helpful"></a>
-            } else {
-              @if(au.exists(_.isActive)) {
-                <span class="glyphicon glyphicon-thumbs-up" title="You already rated this topic"></span>
-              } else {
-                <span class="glyphicon glyphicon-thumbs-up" title="Need to login to rate topic"></span>
-              }
-            }
-            @if(page.exists(_.likes.size > 0)) {
-              <span style="font-size: x-small">(@page.get.likes.size)</span>
-            }
-
-            @**
-            @if(au.exists(_.isActive)) {
-                &nbsp; <a href="@routes.Wikie.like(wid, 0)" class="glyphicon glyphicon-thumbs-down" title="This topic is not helpful"></a>
-            } else {
-                &nbsp; <span class="glyphicon glyphicon-thumbs-down" title="Need to login to rate topic"></span>
-            }
-            @if(page.exists(_.dislikes.size > 0)) {
-              <span style="font-size: x-small">(@page.get.dislikes.size)</span>
-            }
-            **@
-
-          </small>
-        </div>
-        </p>
-
-        @wid.parentWid.map {pwid=>
-          <hr>
-        See more in: <strong><a href="@controllers.Wiki.w(pwid)">@pwid.getLabel</a> </strong>
-        @if(au.isEmpty && pwid.cat == "Blog") {
-          <a class="btn btn-info" title="Subscribe to updates via email" href="@routes.Wikil.linkFollower1(pwid)"><i class="icon-envelope icon-white"></i> Subscribe</a>
-        }
-        }
-
-        <hr>
-      <div id="wikiBottomMenu">
-        @page.flatMap(x=>WikiCount.findOne(x._id)).map {pw=>
-          <p><small>Viewed <strong>@pw.count</strong> times</small>
-        }
-        <small>
-          (
-          @if(canEdit && wid.cat != "Form" || au.exists(_.hasPerm(model.Perm.adminDb))) {
-            <a href="@routes.Wikie.wikieEdit(page.get.wid)">Edit</a>
-          }
-            @au.map {u =>
-              | <a href="@routes.Wiki.wikiBrowse(wid.wpath, "")">Browse</a>
-              | <a href="@routes.Wikie.report(wid)">Report</a>
-            }
-            | <a href="@routes.Wiki.printWid(WID.cmdfromPath(wid.wpath).get, wid.getRealm)">Print</a>
-            @if(au.exists(_.hasPerm(model.Perm.adminDb))) {
-              | <a href="@routes.Wiki.wikieDebug(wid)"><em>debug</em></a>
-              | <a href="@routes.Wiki.wikieUsage(wid)"><em>usage</em></a>
-            }
-            @if(!(Array("WikiLink", "Category", "Form") contains wid.cat)) {
-              @if(canEdit) {
-                | <a href="@routes.Wikie.wikieRename1(wid)">Rename</a>
-              }
-              @if(au.isDefined && au.get.isActive) {
-
-                @if(au.get.isLinkedTo(we.uwid)) {
-                  | <a href="@routes.Wikil.unlinkUser(wid)">@wid.label("Unlike", "Unlike")</a>
-                } else {
-                  | <a href="@routes.Wikil.linkUser(wid,false)">@wid.label("Like")</a>
-                }
-
-                @if(au.get.isLinkedTo(we.uwid) && we.parent.isDefined) {
-                  | <a href="@routes.Wikie.wikieMove1(we._id.toString)">@wid.label("Move", "Move")</a>
-                }
-
-                @if(we.isOwner(au.get.id) || au.exists(_.hasPerm(model.Perm.adminDb)) ||
-                    we.owner.exists(o=> o.asInstanceOf[model.User].isClub &&
-                    Club.findForUser(o.asInstanceOf[model.User]).flatMap(_.uregAdmin).exists(_._id == au.get._id))) {
-                  | <a href="@routes.Wikie.manage(we._id.toString)">Manage</a>
-                }
-
-              }
-
-              @if(au.isEmpty && "Blog" == wid.cat) {
-                | <a href="@routes.Wikil.linkFollower1(wid)"><span style="color:red">Subscribe</span></a>
-                }
-
-            }
-            ) this page.
-
-            <div id="wikiBottomCopyright">
-            @wid.cat match {
-              case "WikiLink" if(wid.name.startsWith("User:")) => {
-                <br>This link page connects you to ??? TODO ???
-@**
-                <a href="/wiki/@razie.wiki.model.Wikis.linkFromName(wid.name).to.toString">@razie.wiki.model.Wikis.linkFromName(wid.name).to.name</a>
-                : you can add some notes by <a href="@routes.Wikie.wikieEdit(page.get.wid)">editing</a> it.
-**@
-              }
-              case "Category" => {
-                <br>You cannot edit categories.
-              }
-              case _ => {
-                <br>This content is Copyrighted, all rights reserved.
-              }
-            }
-          </div>
-        </small></p>
-        </div>
       } <!-- /simple -->
     }
 
     case None => {
       @if("any" != wid.cat && !wid.cat.isEmpty) {
-        @if("Race" == wid.cat || "Event" == wid.cat || "Training" == wid.cat) {
+        @if(Wikis.isEvent(wid.cat)) {
           <p><strong><span style="color:red">Note: </span></strong>A <strong>@wid.cat</strong> doesn't need its own page unless there you have some specific information about it... so, if you have some photos, videos or comments about it, create it below and share it with your mates!
         <hr>
         }
@@ -343,6 +250,12 @@ function selectTextareaLine(tarea,lineNum) {
       }
     }
   }
+
+    @*for preview, the page is fake*@
+    @if(page.exists(_.fields.size > 0)) {
+      @formFix(page.toList.flatMap(_.form.fields.values.filter(_.attributes.get("type").exists(_ == "date"))).map(_.name).toSeq)
+    }
+
   }
 
   @many() = {

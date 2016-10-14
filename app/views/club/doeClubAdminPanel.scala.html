@@ -1,62 +1,72 @@
 @******
 club admin manages user: membership, regsitration etc
 ******@
-@(c:controllers.Club)(implicit stok:controllers.StateOk)
+@(c: controllers.Club, wid:razie.wiki.model.WID)(implicit stok: controllers.StateOk)
+@import razie.wiki.dom.WikiDomain
 
-@club()=@{c.name}
-
-@teams()=@{
-  razie.wiki.model.Wikis.linksTo("Team", c.uwid, "Child").toList
+@wpath() = @{
+  c.wid.wpath
 }
 
-@showteams()={
-  Teams: @teams().map{ t => @Html(t.from.findWid.map(_.ahrefNice).mkString) | }
+@club() = @{
+  c.name
 }
 
-@panel()={
+@teams() = @{
+  razie.wiki.model.Wikis.linksTo("Program", c.uwid, "Child").toList
+}
+
+@showteams() = {
+  Programs: @teams().map { t => @Html(t.from.findWid.map(_.ahrefNice(stok.realm)).mkString) | }
+}
+
+@roles()=@{
+  WikiDomain(c.wid.getRealm).roles(c.wid.cat, "Person")
+}
+
+@panel() = {
 @if(stok.au.exists(c.isClubAdmin)) {
 {{alert yellow }}
 <b>Admin management panel</b>
 
-Add: [/4us/addUser?club=@club&role=Racer Racer]
+Invite: @roles.map { x => [/4us/invite/@wpath?role=@x @x] | }
 
-Invite: [/4us/invite?club=@club&role=Racer Racer] | [/4us/invite?club=@club&role=Coach Coach]
+Manage: @roles.map { x => [/4us/manage/@wpath?role=@x @x] | }
 
-Manage: [/4us/manage?club=@club&role=Racer Racers] | [/4us/manage?club=@club&role=Coach Coaches] | [/4us/manage?club=@club&role=Member Members] | [/4us/manage?club=@club All]
-
-More: [/doe/club/regs/@club Registrations] | [/doe/club/regsettings/@club Settings] | [/doe/club/vol/@club Volunteers] | [/doe/club/tribes/@club Tribes]
-
-@showteams()
-{{/alert}}
+@if(wid.cat == "Club" || wid.cat.length <= 0) {
+  More: [/doe/club/regs/@c.wid.wpath Registrations] | [/doe/club/regsettings/@wpath Settings] | [/doe/club/vol/@wpath Volunteers] | [/doe/4us/badge/@wpath Get badge]
+} else {
+  @if(wid.cat == "Pro") {
+  More: [/doe/club/regsettings/@wpath Settings] | [/doe/4us/badge/@wpath Get badge]
+  } else {
+  More: [/doe/club/regs/@c.wid.wpath Registrations] | [/doe/club/regsettings/@wpath Settings] | [/doe/4us/badge/@wpath Get badge]
+  }
+  }
+  @showteams()
+  {{/alert}}
 }
 
 @if(stok.au.exists(c.isClubCoach) && !stok.au.exists(c.isClubAdmin)) {
-{{alert yellow }}
-<b>Coach management panel</b>
+  {{alert yellow }}
+  <b>Coach management panel</b>
 
-Invite: [/4us/invite?club=@club&role=Racer Racer] | [/4us/invite?club=@club&role=Coach Coach]
+  Invite: @roles.map { x => [/4us/invite/@wpath?role=@x @x] | }
 
-Lists: [/4us/manage?club=@club&role=Racer Racers] | [/4us/manage?club=@club&role=Coach Coaches]
+  Lists: @roles.map { x => [/4us/manage/@wpath?role=@x @x] | }
 
-@showteams()
-{{/alert}}
+  @showteams()
+  {{/alert}}
 }
 
-@**
-@if(api.wix.user.isClubMember && !api.wix.user.isClubCoach && !api.wix.user.isClubAdmin) {
-{{alert yellow }}
-<b>Member management panel</b>
-
-Lists: [/4us/manage?club=@club&role=Racer Racers] | [/4us/manage?club=@club&role=Coach Coaches]
-{{/alert}}
+@if(stok.au.exists(c.isMember) && !stok.au.exists(c.isClubCoach) && !stok.au.exists(c.isClubAdmin)) {
+  {{alert yellow }}
+  @showteams()
+  {{/alert}}
 }
-**@
-
 }
 
 @Html(razie.wiki.model.Wikis.format(razie.wiki.model.WID.empty, "md", panel().body, None, stok.au))
-
 @**
 @panel()
-  **@
+**@
 

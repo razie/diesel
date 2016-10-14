@@ -3,16 +3,12 @@ Need consent
 ******@
 @(next:String="/")(implicit stok: controllers.StateOk)
 
-@htmlHeadBar("Need consent from " + stok.au.get.userName)
+@stok.title("Need consent")
 
-<div class="container">
-<div class="row">
-<div class="col-sm-9">
+@razie.wiki.model.Wikis.rk.find("Admin", "Consent").map{we =>
+  <h1>Consent Required!</h1>
 
-  @razie.wiki.model.Wikis.rk.find("Admin", "Consent").map{we =>
-      <h1>@stok.au.get.ename - Consent Required!</h1>
-
-    @wiki.wikiFrag(we.wid,stok.au,true,Some(we), None, true, true)
+    @wiki.wikiFrag(we.wid,None,true,Some(we), None, true, true)
 
   <p><a href="@routes.Profile.doeConsent2(we.wid.wpath + " ver "+we.ver, next)" class="btn btn-lg btn-success">Consent and continue!</a>
     <p>If you do not wish to consent, you cannot start registration, since all that relies on automated emails, sorry.</p>
@@ -20,11 +16,4 @@ Need consent
     <p>No consent required.
     <p><a href="@routes.Profile.doeConsent2("none")" class="btn btn-lg btn-success">Continue!</a>
   }
-<hr>
-</div>
-</div>
-  <hr>
-  @htmlFooter(ads=true)
-</div> <!-- /container -->
 
-@htmlBottom()

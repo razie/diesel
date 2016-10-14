@@ -6,7 +6,6 @@ import razie.wiki.mods.{WikiMods, WikiMod}
 
 import org.joda.time.DateTime
 import com.mongodb.casbah.Imports._
-import admin.{Config}
 import controllers.{RazController, CodePills, Club}
 
 /** racer kid info utilities */

@@ -429,7 +429,7 @@ object U12 extends UpgradeDb with razie.Logging {
       withDb(db(tableName)) { t =>
         for (u <- t) {
           clog < "UPGRADING " + u
-          u.put("realm", (if(tableName=="weLocker") Reactors.NOTES else Wikis.RK))
+          u.put("realm", (if(tableName=="weLocker") WikiReactors.NOTES else Wikis.RK))
           val p = u.get("props")
           if (p != null) {
             val t = p.asInstanceOf[DBObject].get("tags")

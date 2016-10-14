@@ -1,0 +1,41 @@
+@***
+***@
+@(src:String, dest:String, diff:difflib.Patch, srcWe:razie.wiki.model.WikiEntry, destWe:razie.wiki.model.WikiEntry)(implicit stok: controllers.StateOk)
+@import razie.wiki.model.WID
+
+@wp(wid:WID)=@{
+  if(_root_.razie.wiki.Services.config.isLocalhost && wid.getRealm == "rk") "rk." + wid.wpath
+  else wid.wpath
+}
+
+@stok.title("admin showDiff")
+
+    <h2>Diffs</h2>
+<small>
+      <table class="table table-striped">
+          <thead>
+              <td>What</td>
+              <td>Local</td>
+              <td>Remote</td>
+          </thead>
+        <tr>
+          <td>Ver/updDtm</td>
+          <td>@srcWe.ver / @srcWe.updDtm</td>
+          <td>@destWe.ver / @destWe.updDtm</td>
+        </tr>
+
+@admin.diffTable(diff)
+
+@if(srcWe.tags.mkString(",") != destWe.tags.mkString(",")) {
+  <tr>
+    <td>tags</td>
+    <td>@srcWe.tags.mkString(",")</td>
+    <td>@destWe.tags.mkString(",")</td>
+  </tr>
+}
+      </table>
+</small>
+
+      <hr>
+          @diff.getDeltas.mkString("\n")
+

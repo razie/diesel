@@ -10,13 +10,12 @@ import razie.Logging
 import razie.db.ROne
 import razie.wiki.admin.SendEmail
 import razie.wiki.model._
-import razie.wiki.util.VErrors
 
 object Comment extends RazController with Logging {
   val commentForm = Form {
     tuple(
-      "link" -> text.verifying(vSpec, vPorn),
-      "content" -> text.verifying(vSpec, vPorn))
+      "link" -> text.verifying(vSpec, vBadWords),
+      "content" -> text.verifying(vSpec, vBadWords))
   }
 
   /** add a comment **/

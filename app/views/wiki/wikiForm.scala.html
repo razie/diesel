@@ -1,9 +1,14 @@
 @********
 special handlng of forms
+
+registration and form sets are handled here.
+
+the actual form contents are in wikiFormInt
 *********@
 @(wid:razie.wiki.model.WID, iname:Option[String], page:Option[razie.wiki.model.WikiEntry], au:Option[model.User], errors:Map[String,String], canEdit:Boolean, print:Boolean=false)(implicit stok: controllers.StateOk)
 @import razie.wiki.model.WID
 @import model.User
+@import mod.snow.Reg
 
 @label()=@{ page.flatMap(_.contentProps.get("label")).orElse(page.map(_.label)).getOrElse(razie.wiki.model.Wikis(wid.getRealm).label(wid)) }
 
@@ -11,20 +16,18 @@ special handlng of forms
 
 @if(!print) {@navbar(stok.au, wid.getRealm)}
 
-@***
-@if(!print) {
-  @htmlHeadBar(page.flatMap(_.contentTags.get("title")).getOrElse(wid.cat +": "+ page.map(_.label).getOrElse(razie.wiki.model.Wikis.label(wid))), au, wid.getRealm)
-} else {
-  //no bar
-  @htmlHead(page.flatMap(_.contentTags.get("title")).getOrElse(wid.cat +": "+ page.map(_.label).getOrElse(razie.wiki.model.Wikis.label(wid))), Some("light"))(Map.empty, au)
+@regs=@{
+  mod.snow.Regs.findWid(wid).toList.headOption
 }
-***@
 
 @isClubAdmin(u: User) = @{
-        page.flatMap(_.owner).exists(controllers.RazWikiAuthorization.isClubAdmin(u, _))
+  page.flatMap(_.owner).exists(controllers.RazWikiAuthorization.isClubAdmin(u, _))
 }
 
-@prevNext(wids:Seq[WID]) = {
+@*********
+for registration sequences - show prev/next
+*********@
+@prevNext(wids:Seq[WID], reg:Option[Reg]) = {
   @wids.splitAt(wids.indexOf(wid))._1.lastOption.map{x=>
     <a href="@controllers.Wiki.w(x)" class="btn btn-xs"><font style="color:orange">&laquo;</font> PREVIOUS</a>
     }.getOrElse {
@@ -34,7 +37,11 @@ special handlng of forms
   @wids.splitAt(wids.indexOf(wid))._2.tail.headOption.map{x=>
     <a href="@controllers.Wiki.w(x)" class="btn btn-xs">NEXT <font style="color:orange">&raquo;</font></a>
     }.getOrElse {
-    <a href="#" class="btn btn-xs disabled">NEXT <font style="color:orange">&raquo;</font></a>
+      @reg.map{r=>
+        <a href="@routes.Club.doeClubUserReg(r._id.toString)" class="btn btn-xs">NEXT <font style="color : orange">&raquo;</font></a>
+      }.getOrElse{
+        <a href="#" class="btn btn-xs disabled">NEXT <font style="color : orange">&raquo;</font></a>
+      }
     }
 }
 
@@ -43,70 +50,46 @@ special handlng of forms
     <div class="col-sm-9">
       <div class="well">
 
+@defining(regs) {reg=>
+
 @if(!print) {
-  @regs.headOption.map(_.wids).map {wids=>
-    <div class="alert alert-info">
-    <strong>Registration forms:</strong>  @prevNext(wids)
-    </div>
-  }
+  @reg.map(_.deprecatedWids).map {wids=>
+      <div class="alert alert-info">
+      <strong>Registration forms:</strong>  @prevNext(wids, reg)
+      </div>
+      }
 } @*** print ***@
 
-          <h2>@label()</h2>
+<h2>@label()</h2>
 
-<form action="/doe/form/submit/@wid.wpath" method="POST">
-
-@wiki.wikiFormInt(wid, iname, page, au, errors, canEdit, print)
-<hr>
-
-@*********
-for registration sequences - show prev/next
-*********@
-@regs=@{
-  val clubs = au.toList.flatMap(_.wikis).filter(_.uwid.cat=="Club").map(_.uwid.nameOrId)
-  clubs.flatMap(c=>mod.snow.Regs.findClubUser(c, au.get._id)).filter(_.wids.contains(wid))
-}
+@wiki.wikiFormSimple(wid, iname, page, errors, canEdit, print)
 
 @if(!print) {
 
-@if(page.exists(_.form.canEdit) ||
-  au.exists(isClubAdmin(_)) &&
-  (page.get.form.canBeApproved || page.get.form.canBeRejected)) {
-}
-
-@if(page.exists(_.form.canEdit)){
-        <input type="submit" name="save_button" value="Save for later" class="btn btn-info">
-        <input type="submit" name="submit_button" value="Submit for approval" class="btn btn-success">
-        <strong>Please <font style="color:red">save or submit</font> before leaving this page!</strong>
-        }
-@if(au.exists(isClubAdmin(_)) && page.get.form.canBeApproved) {
-        <input type="submit" name="approve_button" value="Approve" class="btn btn-success">
-        }
-@if(au.exists(isClubAdmin(_)) && (page.get.form.canBeApproved || page.get.form.canBeRejected)) {
-        <input type="submit" name="reject_button" value="Reject" class="btn btn-danger">
-        <p>
-        <textarea name="formRejected" value="Reject reason" rows="3" placeholder="reason for rejection" class="input-xxlarge"></textarea>
-        }
-
-@regs.headOption.map(_.wids).map {wids=>
+@reg.map(_.deprecatedWids).map {wids=>
         <hr>
   <p><div class="alert alert-info">
-  <strong>Registration forms:</strong>  @prevNext(wids)
+  <strong>Registration forms:</strong>  @prevNext(wids, reg)
 
   @wids.lastOption.map{x=>
   }
 
   @if(wids.size > 1) {
-        @club.userFormList(wids, false, Some(wid))
+        @club.userFormList(wids, true, Some(wid))
     }
     </div>
   }
 } @*** print ***@
+}
 
-      </form>
-      </div>
+</div>
 
 @if(!print) {
       @wiki.wikiAddMore(wid, page)
+
+  @wid.page.map {we =>
+    @wiki.wikiFragBottom(we, false, canEdit, false, print)
+  }
 
       @wiki.wikiPageComments(wid, page, au)
 
@@ -117,7 +100,7 @@ for registration sequences - show prev/next
 
     <div class="col-sm-3">
 @if(!print) {
-    @wiki.wikiFrag(WID("Admin","Right"),au,true)
+    @wiki.wikiFrag(WID("Admin","Right"),None,true)
 
     @addRight()
 }

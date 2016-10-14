@@ -4,6 +4,7 @@ import java.io.File
 import java.util
 import controllers._
 import difflib.DiffUtils
+import jdk.nashorn.api.scripting.{ClassFilter, NashornScriptEngineFactory}
 import mod.diesel.model.RDExt._
 import mod.diesel.model._
 import mod.notes.controllers.{Notes, NotesTags, NotesLocker}
@@ -11,15 +12,15 @@ import org.antlr.v4.tool.{ANTLRMessage, ANTLRToolListener}
 import admin._
 import model._
 import org.scalatest.fixture
+import razie.base.Audit
 import razie.db._
 import razie.db.RazSalatContext.ctx
-import razie.diesel.RDOM.O
-import razie.diesel.RDomain
-import razie.wiki.Enc
+import razie.diesel.dom.{RDomain, RDOM}
+import RDOM.O
+import razie.wiki.{Services, Enc}
 import razie.wiki.Sec.EncryptedS
 import play.api.mvc._
 import razie.wiki.dom.WikiDomain
-import razie.wiki.util.VErrors
 import razie.{CSTimer, js, cout, Logging}
 import javax.script.{ScriptEngineManager, ScriptEngine}
 import scala.Some
@@ -29,7 +30,7 @@ import scala.concurrent.Future
 import scala.util.Try
 import scala.util.parsing.input.{CharArrayReader, Positional}
 import razie.wiki.model.{WID, Wikis, WikiEntry, WikiUser}
-import razie.wiki.admin.Audit
+import razie.wiki.admin.Autosave
 
 /** controller for server side fiddles / services */
 class SFiddleBase extends RazController {
@@ -137,8 +138,11 @@ object SFiddles extends SFiddleBase with Logging {
       val qj = qtojson(q)
       val jscript = s"""var queryParms = $qj;\n${wix.json}\n$script"""
       try {
-        val factory = new ScriptEngineManager()
-        val engine = factory.getEngineByName("JavaScript")
+//        val factory = new ScriptEngineManager()
+//        val engine = factory.getEngineByName("JavaScript")
+        val factory = new NashornScriptEngineFactory();
+        val engine = factory.getScriptEngine( new MyCF() );
+
         var bindings = engine.createBindings()
         // attempt to use typed bindings, if available
         q.foreach(t=>bindings.put(t._1, typed.flatMap(_.get(t._1)).getOrElse(jstypeSafe(t._2))))
@@ -152,9 +156,9 @@ object SFiddles extends SFiddleBase with Logging {
         }
       } finally {
         c.stop()
-//        if(doAudit)
         audit("SFIDDLE_EXEC JS" + (c.last - c.beg) + " msec" + jscript)
-        Audit.logdb("SFIDDLE_EXEC", "JS", (c.last - c.beg) + " msec", jscript.takeRight(300))
+        if(doAudit)
+          Audit.logdb("SFIDDLE_EXEC", "JS", (c.last - c.beg) + " msec", jscript.takeRight(300))
       }
     } else if(lang == "ruby") {
       val qj = qtojson(q)
@@ -187,6 +191,16 @@ object SFiddles extends SFiddleBase with Logging {
         }
       }
     } else (false, script)
+  }
+
+  class MyCF extends ClassFilter {
+    override def exposeToScripts(s:String) : Boolean = {
+      if (s == "api.WixUtils") true;
+      else {
+        Audit.logdb("ERR_DENIED", "js class access denied ", s)
+        false
+      };
+    }
   }
 
   /** display the play sfiddle screen */
@@ -410,10 +424,12 @@ $hx
     // stupid security disallow XSS by requiring a referer
     // TODO better security -
     if (request.headers.get("Referer").exists(r =>
-      (r matches s"""^http[s]?://${Config.hostport}.*""") ||
+      (r matches s"""^http[s]?://${Services.config.hostport}.*""") ||
         (r matches s"""^http[s]?://${request.headers.get("X-Forwarded-Host").getOrElse("NOPE")}.*""")))
-      Ok(res).as("text/html")
-    else {
+      Ok(res).as("text/html").withHeaders(
+        "X-XSS-Protection" -> "0")
+//      Ok(res).as("text/html")
+      else {
       Audit.logdb("ERR_BUILDHTML", "Referer", request.headers.get("Referer"), "Host", request.host)
       Ok("n/a").as("text/html")
     }
@@ -442,6 +458,7 @@ $hx
     Ok(razscr dec echo).as("text/html").withHeaders(
       "Content-Security-Policy" -> "script-src http: 'unsafe-inline'",
       "X-Content-Security-Policy" -> "unsafe-inline,unsafe-eval",
+      "X-XSS-Protection" -> "0",
       "X-WebKit-CSP" -> "unsafe-inline,unsafe-eval")
   }
 
@@ -456,6 +473,7 @@ $hx
         Ok(razscr dec content).as("text/html").withHeaders(
           "Content-Security-Policy" -> "unsafe-inline,unsafe-eval",
           "X-Content-Security-Policy" -> "unsafe-inline,unsafe-eval",
+          "X-XSS-Protection" -> "0",
           "X-WebKit-CSP" -> "unsafe-inline,unsafe-eval")
     })
   }

@@ -7,8 +7,13 @@ manage the list of kidz and/or their accounts
 @import mod.snow.RK
 @import mod.snow.RK._
 @import razie.wiki.model.Wikis
+@import razie.wiki.dom.WikiDomain
 
 @stok.title("RacerKidz for " + club.name)
+
+@roles()=@{
+  WikiDomain(club.wid.getRealm).roles(club.wid.cat, "Person")
+}
 
 @rksactive = @{rksmap((k,a)=> k.info.status != STATUS_FORMER && a.role != ROLE_FAN)}
 @rksformer = @{rksmap((k,a)=> k.info.status == STATUS_FORMER || a.role == ROLE_FAN)}
@@ -22,7 +27,7 @@ manage the list of kidz and/or their accounts
         "source" -> a.assoc,
       "notes"->k._id.toString,
         "associd" -> a._id.toString,
-        "team" -> RacerKidz.findWikiAssocById(k._id.toString, club.curYear, "Team").filter(x=>
+        "team" -> RacerKidz.findWikiAssocById(k._id.toString, club.curYear, "Program").filter(x=>
           teams.find(_.from.id == x.uwid.id)
       ).toList.headOption.map(_.uwid.nameOrId).mkString,
         "button"->k._id.toString)
@@ -31,12 +36,19 @@ manage the list of kidz and/or their accounts
 @mnglink(row:Map[String,String],k:String,v:String)={
   @k match {
     case "button" => {
-      <a href="@routes.Kidz.doeKid(stok.au.get._id.toString, v, "-", row("associd"), "clubkidz:"+club.name)" class="btn btn-default btn-xs">More...</a>
+      <a href="@routes.Kidz.doeUserKid(stok.au.get._id.toString, v, "-", row("associd"), "clubkidz:"+club.wid.wpath)" class="btn btn-default btn-xs">&nbsp;&nbsp;<span class="glyphicon glyphicon-list-alt"/>&nbsp;</a>
+    }
+    case "source" => {
+      @if(v == "Registered" && club.isClubAdmin(stok.au.get)) {
+        <a href="@routes.Club.doeRedirectRegKid(club.wid, row("associd"))">@v</a>
+      } else {
+        @v
+      }
     }
     case "role" => {
       @if(club.isClubAdmin(stok.au.get)) {
       <select rkaid="@row("rkaid")" onchange="setRole(this)" oldvalue="@v">
-        @mod.snow.RK.ROLES.map { t =>
+        @roles().map { t =>
           @if(v == t) {
             <option selected="selected" value="@t">@t</option>
           } else {
@@ -66,11 +78,19 @@ manage the list of kidz and/or their accounts
       }
     case "notes" => {
       @if(club.isClubAdmin(stok.au.get) || club.isMemberRole(stok.au.get._id, "Coach")) {
-        <a href="@routes.Kidz.doeKidHistory(club.name, v)" class="btn btn-info btn-xs">More...</a>
+        <a href="@routes.Kidz.doeKidHistory(club.wid.wpath, v)" class="btn btn-info btn-xs">&nbsp;&nbsp;<span class="glyphicon glyphicon-th-list"/>&nbsp;</a>
       }
     }
     case _ => { @v }
   }
+}
+
+@teamSummary=@{
+    rks.filter(t => t._1.info.status != STATUS_FORMER && t._2.role != ROLE_FAN).toList.map {t =>
+      RacerKidz.findWikiAssocById(t._1._id.toString, club.curYear, "Program").filter(x =>
+        teams.find(_.from.id == x.uwid.id)
+      ).toList.headOption.map(_.uwid.nameOrId).getOrElse("Unassigned")
+    }.groupBy(identity)
 }
 
 <h2>Members of @club.name</h2>
@@ -81,20 +101,27 @@ manage the list of kidz and/or their accounts
   <div style="display: inline-block">
   <b>Summary:</b>
     @rks.filter(t=> t._1.info.status != STATUS_FORMER && t._2.role != ROLE_FAN).toList.groupBy(_._2.role).map {x=>
-        @x._2.size <small>x</small> @x._1  ;
+      @x._2.size <small>x</small> @x._1  ;
+    }
+    <br>
+    @teamSummary.map {x=>
+      @x._2.size<small>x</small>@x._1  ;
     }
   </div>
   <div  style="display: inline-block" class="pull-right">
-    <span id="saved" class="glyphicon glyphicon-floppy-save"></span>
+    <span id="saved" class="glyphicon glyphicon-floppy-save" style="color:green"></span>
     <input type="checkbox" name="confirmChanges" id="confirmChanges" checked> Confirmation
   </div>
 </div>
 
 @util.utilSimpleTable(rksactive.iterator,
-  Seq("fname" -> "F.Name", "lname"->"L.Name", "role" -> "Role", "source" -> "Source", "team"->"Team", "button"->"Details", "notes"->"History"), Some(mnglink))
+  Seq("fname" -> "F.Name", "lname"->"L.Name", "role" -> "Role", "source" -> "Source", "team"->"Program", "button"->"Details", "notes"->"History"), Some(mnglink))
 
-Add a: @mod.snow.RK.ROLES.map{v=>
-  <a href="@routes.Kidz.doeKid(club.userId.toString, "11", v, "-", "clubkidz:"+club.name)" class="btn btn-xs btn-info">@v</a>
+@if(stok.au.exists(club.isClubAdmin)) {
+@club.wid.cat
+  Add a: @roles().map{v=>
+  <a href="@routes.Kidz.doeUserKid(club.userId.toString, "11", v, "-", "clubkidz:"+club.wid.wpath)" class="btn btn-xs btn-info">@v</a>
+}
 }
 
 <hr>
@@ -137,7 +164,7 @@ function dontConfirm() {
 function setTeam(sel)  {
   if (dontConfirm() || confirm("Change the team ?")) {
     var tid=sel.value == "" ? "-" : sel.value;
-    $.post( "/doe/club/kidz/setTeam/"+sel.getAttribute("rkaid")+"/@club.name/"+ tid, function( data ) {
+    $.post( "/doe/club/kidz/setTeam/"+sel.getAttribute("rkaid")+"/"+tid+"/@club.wid.wpath", function( data ) {
       sel.setAttribute("oldvalue", sel.value);
       saved();
     }).fail(function(){

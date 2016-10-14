@@ -2,7 +2,7 @@
 the footer of every page...
 **************@
 @(ads:Boolean=false, isSite:Boolean=false)(implicit stok: mod.notes.controllers.NotesOk)
-@import _root_.admin.Config
+@import _root_.razie.wiki.Services
 
 <footer>
   <p>&copy; <a>Razie</a>, 2012-2014
@@ -23,7 +23,7 @@ the footer of every page...
 
   </p>
 
-@if(ads && ! (Config.noads || stok.au.isUnder13)) {
+@if(ads && ! (Services.config.noads || stok.au.isUnder13)) {
 
   @if(stok.isLight) {
       <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>

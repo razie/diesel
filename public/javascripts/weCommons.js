@@ -102,6 +102,16 @@ function rmCookie(name) {
 }
 
 
+///////////////// animations
+
+function weBlink(selector,text,color) {
+  $(selector).text(text);
+  $(selector).css("background-color", color);
+  $(selector).fadeIn(700, function() {
+    $(selector).fadeOut(700);
+  });
+}
+
 ///////////////// notes
 
 var pinTags = getCookie("pinTags");
@@ -112,6 +122,36 @@ function setPinTags (tags) {
   setCookie("pinTags", tags);
   pinTags = getCookie("pinTags");
   location.reload();
+}
+
+
+///////////////// forms
+
+function weGetField(frm,name) {
+  if(typeof name == 'undefined')
+    return $('[name="'+frm+'"]').val();
+  else
+    return $('#'+frm+' [name="'+name+'"]').val();
+}
+
+function weSetField(frm,name, v) {
+  if(typeof v == 'undefined')
+    return $('[name="'+frm+'"]').val(name);
+  else
+    return $('#'+frm+' [name="'+name+'"]').val(v);
+}
+
+function weFormEditNote(frm,name) {
+  var content = weGetField(name);
+  weNoteEditPopup(frm,name, content);
+  return false;
+}
+
+function weFormEditedNote(frm,name, content) {
+  $('#'+frm+' [name="'+name+'-holder"]').text(content);
+  weSetField(frm,name, content);
+
+  return false;
 }
 
 

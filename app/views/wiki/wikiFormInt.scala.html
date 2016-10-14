@@ -1,35 +1,46 @@
 @********
 print form body - no header/footer - reuse in other screens
 *********@
-@(wid:razie.wiki.model.WID, iname:Option[String], page:Option[razie.wiki.model.WikiEntry], au:Option[model.User], errors:Map[String,String], canEdit:Boolean, print:Boolean=false, simple:Boolean=false)(implicit stok: controllers.StateOk)
+@(wid: razie.wiki.model.WID, iname: Option[String], page: Option[razie.wiki.model.WikiEntry], errors: Map[String, String], canEdit: Boolean, print: Boolean = false, simple: Boolean = false)(implicit stok: controllers.StateOk)
 @import model._
 
-@if(!errors.isEmpty) {
-<div class="alert alert-danger">
-  <span style="color:red"><strong>Form has errors</strong> (was not saved):</span>
-  <span style="color:red">
-    <ul>
-      @errors.map {err=>
-        <li><b>@err._1</b>  => @err._2 </li>
-      }
-  </ul>
-  </span>
-</div>
-}
+@fid()=@{page.map(_._id).mkString}
 
-@wiki.wikiFrag(wid, au, simple, page, iname, true, false, canEdit, false, print)
-
-@if(!errors.isEmpty) {
-  <hr>
-<div class="alert alert-danger">
-  <strong><a id="errors">Errors:</a></strong>
-  <span style="color:red">
-    <ul>
-       @errors.map {err=>
+  @if(!errors.isEmpty) {
+    <div class="alert alert-danger">
+      <span style="color : red"><strong>Form has errors</strong> (was not saved):</span>
+      <span style="color : red">
+        <ul>
+        @errors.map { err =>
           <li><b>@err._1</b>  => @err._2 </li>
-       }
-  </ul>
-  </span>
-</div>
-}
+        }
+        </ul>
+      </span>
+    </div>
+  }
 
+  <script src="@routes.Assets.at("javascripts/weCommons.js")"></script>
+
+  @wiki.wikiFrag(wid, None, simple, page, iname, true, false, canEdit, false, print)
+
+  @if(!errors.isEmpty) {
+    <hr>
+    <div class="alert alert-danger">
+      <strong><a id="errors">Errors:</a></strong>
+      <span style="color : red">
+        <ul>
+        @errors.map { err =>
+          <li><b>@err._1</b>  => @err._2 </li>
+        }
+        </ul>
+      </span>
+    </div>
+  }
+
+<script>
+$("input, select").change(function(){
+  if(typeof weUpdateForm != "undefined") weUpdateForm('wikiForm-@fid');
+});
+</script>
+
+@util.popupNote()

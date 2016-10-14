@@ -1,3 +1,6 @@
+@**
+person information
+**@
 @(userId: String, rkid: String, role: String, associd: String, next: String, myForm: Form[_])(implicit stok:controllers.StateOk)
 @import mod.snow.RK
 @import org.bson.types.ObjectId
@@ -10,12 +13,27 @@
 @import play.api.i18n.Messages.Implicits._
 
 @au=@{stok.au.get}
-@clubName=@{stok.au.get.userName}
 
-@relationships = @{
-  if(au.isClub) Array(RK.ROLE_KID, RK.ROLE_COACH, RK.ROLE_SPOUSE, RK.ROLE_PARENT, RK.ROLE_MEMBER)
-  else RK.RELATIONSHIPS
+@clubName=@{
+  if(
+    next.startsWith("Club:") ||
+    next.startsWith("clubkidz:") ||
+    next.startsWith("invite:")
+  ) cname
+  else stok.au.get.userName
 }
+@cname=@{next.substring(next.indexOf(':') + 1)}
+
+  @relationships = @{
+    if( next.startsWith("Club:") || next.startsWith("clubkidz:"))
+      RK.RELATIONSHIPS.map(x => (x, x))
+    else if(next.startsWith("invite:"))
+      model.Website.userTypes(stok.request.get).toArray.map(
+        x=> (x.toString, model.Website.userTypeDesc(x.toString)(stok.request.get))
+      )
+    else
+      RK.RELATIONSHIPS.map(x => (x, x))
+  }
 
 @rk = @{
   if(rkid.length < 2) None
@@ -41,7 +59,7 @@
 @mnglink(row: Map[String, String], k: String, v: String) = {
 @k match {
   case "button" => {
-    <a href="@routes.Kidz.doeKid(stok.au.get._id.toString, v, "-", row("associd"), "clubkidz:"+clubName)" class="btn btn-xs">More...</a>
+    <a href="@routes.Kidz.doeUserKid(stok.au.get._id.toString, v, "-", row("associd"), "clubkidz:"+clubName)" class="btn btn-xs">More...</a>
   }
   case "merge" => {
     <a href="@routes.Club.doeMergeKid(row("associd"), associd)" class="btn btn-xs btn-info">MERGE</a>
@@ -68,11 +86,9 @@
       @razText(myForm, "lname", "Last Name")
       @razText(myForm, "email", "Email")
 
-      @helper.inputDate(
-        myForm("dob"),
-        '_label -> "Date of Birth",
-        '_error -> myForm.error("role"),
-        '_showConstraints -> false)
+      @if(!next.startsWith("invite")) {
+
+      @razText(myForm, "dob", "Date of Birth")
 
       @helper.select(
         myForm("gender"),
@@ -80,40 +96,49 @@
         '_label -> "Gender",
         '_error -> myForm.error("gender"),
         '_showConstraints -> false)
+      } else {
+        <input type="hidden" name="dob" value="@myForm("dob").value" />
+        <input type="hidden" name="gender" value="@myForm("gender").value" />
+      }
 
-      @helper.select(
-        myForm("role"),
-        relationships.map(x => (x, x)),
-        '_label -> "Relationship",
-        '_showConstraints -> false)
-
-      @helper.select(
-        myForm("notifyParent"),
-        Seq("n" -> "No", "y" -> "Yes"),
-        '_label -> "Notify parent",
-        '_error -> myForm.error("notifyParent"),
-        '_showConstraints -> false)
-
+      @** I cannot select a parent for myself... ? **@
       @if(associd.length > 3) {
         @helper.select(
           myForm("assocRole"),
-          mod.snow.RK.ROLES.map { r => (r, r) },
-          '_label -> "ROLE",
+          relationships.filter(_._1 != RK.ROLE_PARENT),
+          '_label -> "Relationship to me",
           '_error -> myForm.error("assocRole"),
           '_showConstraints -> false)
       } else {
         <input type="hidden" name="assocRole" value="@myForm("assocRole").value" />
       }
 
+      @helper.select(
+        myForm("role"),
+        relationships.filter(_._1 != RK.ROLE_SPOUSE),
+        '_label -> "Role",
+        '_showConstraints -> false)
+
+      @if(!next.startsWith("invite")) {
+        @helper.select(
+          myForm("notifyParent"),
+          Seq("n" -> "No", "y" -> "Yes"),
+          '_label -> "Notify parent",
+          '_error -> myForm.error("notifyParent"),
+          '_showConstraints -> false)
+      } else {
+        <input type="hidden" name="notifyParent" value="@myForm("notifyParent").value" />
+      }
+
       @if(next.startsWith("invite:")) {
         @helper.textarea(
           myForm("invite"),
           '_label -> "Invitation",
-          '_error -> myForm.error("invitation"),
+          '_error -> myForm.error("invite"),
           '_showConstraints -> false)
         <script>$("textarea").attr("rows", "5");</script>
       } else {
-        <input type="hidden" name="invitation" value="@myForm("invitation").value" />
+        <input type="hidden" name="invite" value="@myForm("invite").value" />
       }
       @***
       @helper.select(
@@ -125,10 +150,10 @@
       ***@
       <input type="hidden" name="status" value="@myForm("status").value" />
 
-     @formFix()
+@formFix(Seq("dob"))
 
       <p>
-        @if(controllers.Kidz.canEditKid(rkid, stok.au.get, next)) {
+      @if(controllers.Kidz.canEditKid(rkid, stok.au.get, next)) {
         @if(rkid.length > 2) {
           @if(rk.exists(_.rkiId.isDefined)) {
             @*** no update for myself or RK for Users ***@
@@ -150,8 +175,8 @@
           }
         } else {
           <button type="submit" class="btn btn-primary">Create</button>
-      }
         }
+      }
 
         @myForm.errors.map { err =>
       <p style="color : red ; font-weight : bold">@err.message</p>
@@ -182,8 +207,9 @@
     <p>
       Do not provide the email if you don't want the person to be contacted by other club members like coaches, team managers etc.
     <p>Other notifications include posting videos of a race or training session where the kid participated etc.
+    <p><b>Role</b> The role this person plays (i.e. Parent for parents)
+    <p><b>Relationship</b> The relationship to me (i.e. Spouse or Kid)
     <p><b>Notify parent</b> Do you want to be notified about all messages sent to the racer by coaches etc?
-    <p><strong>Status=Former</strong> is for clubs manually managing their membership.
 
 
   </div>

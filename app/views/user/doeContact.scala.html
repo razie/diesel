@@ -1,7 +1,7 @@
 @***
 profile - edit contact info
 ***@
-@(myForm: Form[_], au: model.User)(implicit request: Request[_])
+@(regid:String, myForm: Form[_], au: model.User)(implicit request: Request[_])
 
 @import helper.twitterBootstrap._
 
@@ -11,7 +11,7 @@ profile - edit contact info
     <p>You don't need to provide detailed contact info...
   } else {
     <div class="col-sm-4">
-    @helper.form(action = routes.Profile.doeContactUpdate(), 'class -> "well") {
+    @helper.form(action = routes.Profile.doeContactUpdate(regid), 'class -> "well") {
       @util.razText(myForm, "streetAndNo", "Street & Number")
       @util.razText(myForm, "aptNo", "Apt no")
       @util.razText(myForm, "city", "City")
@@ -54,6 +54,7 @@ profile - edit contact info
       that this information can be used in the registration forms you have to complete for clubs!
     </div>
     </div>
+    @formFix()
   }
 }
 

@@ -23,9 +23,9 @@ trait WikiCodeParser extends WikiParserBase {
   
   def codeWikiProps = wikiPropScript | wikiPropCall | wikiPropExpr
 
-  def wikiPropScript: PS = "{{" ~> """def|lambda""".r ~ "[: ]".r ~ """[^:}]*""".r ~ ":" ~ """[^}]*""".r ~ "}}" ~ lines <~ ("{{/def}}" | "{{/lambda}}" | "{{/}}") ^^ {
+  def wikiPropScript: PS = "{{" ~> """def|lambda|inline""".r ~ "[: ]".r ~ """[^:}]*""".r ~ ":" ~ """[^}]*""".r ~ "}}" ~ lines <~ ("{{/def}}" | "{{/lambda}}" |"{{/inline}}" | "{{/}}") ^^ {
     case stype ~ _ ~ name ~ _ ~ sign ~ _ ~ lines => {
-      if ("lambda" == stype)
+      if ("lambda" == stype || "inline" == stype)
         SState("`{{call:#" + name + "}}`") // lambdas are executed right there...
       else
         SState("`{{" + stype + ":" + name + "}}`") // defs are expanded in pre-processing and executed in display

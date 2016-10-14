@@ -1,7 +1,6 @@
 package mod.notes.controllers
 
 import _root_.controllers._
-import admin.{Config}
 import com.mongodb.casbah.Imports.wrapDBObj
 import com.novus.salat.grater
 import mod.diesel.model.{WG}
@@ -11,14 +10,14 @@ import org.bson.types.ObjectId
 import org.joda.time.DateTime
 import play.api.mvc._
 import play.twirl.api.Html
+import razie.base.Audit
 import razie.db.RazSalatContext.ctx
 import razie.db._
 import razie.wiki.Sec.EncryptedS
-import razie.wiki.admin.{WikiObservers, Audit, SendEmail}
+import razie.wiki.admin.SendEmail
 import razie.wiki.dom.WikiDomain
 import razie.wiki.model._
 import razie.wiki.parser.ParserCommons
-import razie.wiki.util.{VErrors}
 import razie.js
 import razie.wiki.{WikiConfig, Enc, Services}
 import razie.{Logging, cout}
@@ -57,10 +56,14 @@ object NotesTags {
   final val SFIDDLE = "sfiddle"
   final val FIDDLE = "fiddle"
   final val CIRCLE = "circle"
+
+  final val SPECIAL_TAGS = Array(ARCHIVE,ALL,NONE,RECENT,INBOX)
 }
 
 /** notes organized by books per realms */
-case class Book (realm:String, name:String, pinTags:Array[String]=Array())
+case class Book (realm:String, name:String, pinTags:Array[String]=Array()) {
+  val public = pinTags contains "public"
+}
 
 //todo Notes should be a module, working per realm
 object Notes {
@@ -82,6 +85,13 @@ object Notes {
       !n.tags.contains(NotesTags.ARCHIVE) || archived
     } filter { n=>
       book.pinTags.foldLeft(true)((a,b)=>a && n.tags.contains(b))
+    }
+  // todo optimize and protect better?
+  def notesForPublic(book:Book, uid: ObjectId, archived: Boolean = false) =
+    wiki.weTable(CAT).find(Map("realm" -> book.realm)) map (grater[WikiEntry].asObject(_)) filter {n =>
+      !n.tags.contains(NotesTags.ARCHIVE) || archived
+    } filter { n=>
+      book.public && book.pinTags.foldLeft(true)((a,b)=>a && n.tags.contains(b))
     }
   def tagsForUser(book:Book, uid: ObjectId) = {
     notesForUser(book, uid).toList.flatMap(_.tags).filter(_ != NotesTags.ARCHIVE).filter(_ != "").groupBy(identity).map(t => (t._1, t._2.size)).toSeq.sortBy(_._2).reverse
@@ -130,7 +140,7 @@ object NotesLocker extends RazController with Logging {
       if ("no allow public" == "allow public" || request.queryString.contains("please")) {
         auditIt
         (for (u <- HARRY) yield {
-          Redirect(request.path).withSession(Config.CONNECTED -> Enc.toSession(u.email), "css" -> "light")
+          Redirect(request.path).withSession(Services.config.CONNECTED -> Enc.toSession(u.email), "css" -> "light")
         }) getOrElse {
           Audit.logdb("ERR_HARRY", "account is missing???")
           unauthorized("CAN'T SEE PROFILE ")
@@ -188,17 +198,6 @@ object NotesLocker extends RazController with Logging {
       }
       } getOrElse
         OkNewNote()
-  }
-
-  /** the embedded version of new note creation */
-  def embed(title:String, miniTitle:String, tags:String, context:String, baseId:String) = FAU { implicit au=> implicit errCollector=> implicit request=>
-    val base = if(ObjectId.isValid(baseId)) Notes.notesById(new ObjectId(baseId)) else None;
-
-    NOK ("", autags, Seq.empty, false) noLayout {implicit stok=>
-      views.html.notes.notes_embed(lform.fill("", "", IDOS, 0,
-        (base.map(_.content).getOrElse("")),
-        tags), title, miniTitle, context)
-    }
   }
 
   /** discard current autosaved note */
@@ -520,7 +519,7 @@ object NotesLocker extends RazController with Logging {
 
   def next (implicit request : Request[AnyContent]) = {
     import razie.|>._
-    request.headers.get("Referer").mkString |> {x => if(x.contains(Config.hostport) || x.contains("/notes"))x else ""}
+    request.headers.get("Referer").mkString |> {x => if(x.contains(Services.config.hostport) || x.contains("/notes"))x else ""}
   }
 
   def viewNoteById(nid: String) = FAU { implicit au =>
@@ -541,7 +540,7 @@ object NotesLocker extends RazController with Logging {
   def domPlay(nid: String) = FAU { implicit au =>
     implicit errCollector => implicit request =>
       import razie.|>._
-      val next = request.headers.get("Referer").mkString |> {x => if(x.contains(Config.hostport) || x.contains("/notes")) x else ""}
+      val next = request.headers.get("Referer").mkString |> {x => if(x.contains(Services.config.hostport) || x.contains("/notes")) x else ""}
       Notes.notesById(new ObjectId(nid)).map { n =>
         if (n.by == au._id || Notes.isShared(n, au._id)) {
           NOK ("", autags, "msg" -> s"[view]") apply {implicit stok=>
@@ -636,7 +635,7 @@ object NotesLocker extends RazController with Logging {
     val ltag = tag.split("/").map(_.trim)
     val pin = request.cookies.get("pinTags").map(_.value)
 
-    if(pin.exists(pin=> !tag.startsWith(pin))) {
+    if(pin.exists(pin=> !tag.startsWith(pin)) && !SPECIAL_TAGS.contains(tag)) {
       // if pinned tags, just re-scope this one
       val newt = if(book.pinTags.contains(tag)) "" else ("/"+tag)
       Redirect(routes.NotesLocker.tag(pin.mkString + newt))
@@ -653,7 +652,7 @@ object NotesLocker extends RazController with Logging {
       val outNotesTags = res.flatMap(_.tags).distinct.filterNot(ltag contains _)
       val counted = outNotesTags.map(t => (t, res.count(_.tags contains t))).sortBy(_._2).reverse
 
-      // last chance filtering - any moron can come through here and the Notes may fuck up
+      // last chance filtering - any moron can come through here and the Notes may screw up
       val notes = res.filter(_.by == au._id).take(20).toList // TOOD optimize - inbox doesn't need etc
 
       val nok = NOK (tag, counted, "msg" -> s"[Found ${notes.size} notes]")
@@ -685,21 +684,44 @@ object NotesLocker extends RazController with Logging {
     }
   }
 
+  /** the embedded version of new note creation */
+  def embed(title:String, miniTitle:String, tags:String, context:String, baseId:String, asap:Boolean=false) = FAU { implicit au=> implicit errCollector=> implicit request=>
+    val initial = if(ObjectId.isValid(baseId)) Notes.notesById(new ObjectId(baseId)) else None;
+    var content = initial.map(_.content).getOrElse("")
+
+    initial.map(_.preprocess(Some(au)))
+
+    if(initial.exists(_.fields.nonEmpty)) {
+      content = content + "\n" + _root_.controllers.Forms.mkFormData(initial.get.wid.page.get)
+    }
+
+    NOK ("", autags, Seq.empty, false) noLayout {implicit stok=>
+      views.html.notes.notes_embed(lform.fill("", "", IDOS, 0,
+        content,
+        tags), title, miniTitle, context, false, false, asap)
+    }
+  }
+
   /** present a selection browser starting with the given tags */
   def selectFrom(tag: String) = FUH { implicit au =>
     implicit errCollector => implicit request =>
       val ltag = tag.split("/").map(_.trim)
 
       //todo this loads everything...
-      val b = book.copy(pinTags = Array()) // disregard users' pinned tags for selecting for selecting...?
-      val res = Notes.notesForNotesTags(b, au._id, ltag).toList.sortWith { (a, b) => a.updDtm isAfter b.updDtm }
+      val b = book.copy(pinTags = ltag) // disregard users' pinned tags for selecting for selecting...?
+      val res =
+      (if(b.public)
+          Notes.notesForPublic(b, au._id)
+        else
+          Notes.notesForNotesTags(b, au._id, Seq.empty)
+      ).toList.sortWith { (a, b) => a.updDtm isAfter b.updDtm }
 
       //todo this is stupid
       val outNotesTags = res.flatMap(_.tags).distinct.filterNot(ltag contains _)
       val counted = outNotesTags.map(t => (t, res.count(_.tags contains t))).sortBy(_._2).reverse
 
-      // last chance filtering - any moron can come through here and the Notes may fuck up
-      val notes = res.filter(_.by == au._id).take(50).toList // TOOD optimize - inbox doesn't need etc
+      // last chance filtering - any moron can come through here and the Notes may screw up
+      val notes = res.filter(_.by == au._id || b.public).take(50).toList // TOOD optimize - inbox doesn't need etc
 
       val nok = NOK (tag, counted, "msg" -> s"[Found ${notes.size} notes]")
 
@@ -753,9 +775,16 @@ object NotesLocker extends RazController with Logging {
   // format a note into html - customized to manage sfiddles
   def format(wid: WID, markup: String, icontent: String, iwe: Option[WikiEntry] = None, au:Option[model.User]) = {
     iwe.filter(x=>
-      ((au exists (_ hasPerm Perm.codeMaster)) || (au exists (_ hasPerm Perm.adminDb))) &&
-        (icontent.lines.find(_ startsWith ".sfiddle").isDefined)).fold(
-        (if(icontent.lines.find(_ startsWith ".sfiddle").isDefined) "[[No permission for sfiddles]]" else "") +
+      (
+        (au exists (_ hasPerm Perm.codeMaster)) ||
+        (au exists (_ hasPerm Perm.adminDb))
+      ) &&
+      icontent.lines.find(_ startsWith ".sfiddle").isDefined
+    ).fold(
+        (
+          if(icontent.lines.find(_ startsWith ".sfiddle").isDefined)
+            "[[No permission for sfiddles]]"
+          else "") +
         Wikis.format(wid, markup, icontent, iwe, au)
       ) {we=>
       val script = we.content.lines.filterNot(_ startsWith ".").mkString("\n")
@@ -800,7 +829,7 @@ object NotesLocker extends RazController with Logging {
 
       if (!wikis.isEmpty) {
         val res = wikis.map(WikiEntry.grated _)
-        // last chance filtering - any moron can come through here and the Notes may fuck up
+        // last chance filtering - any moron can come through here and the Notes may screw up
         val notes = res.filter(_.by == au._id).take(20).toList
         NOK (q, autags, Seq("msg" -> s"[Found ${notes.size} notes]"), true) apply {implicit stok=>
           views.html.notes.noteslist(notes)
@@ -833,8 +862,9 @@ object NotesTips {
   def book= Book("rk", "")
 
   // when configuration changes, call this to udpate mine
-  Services.configCallback { () =>
-    inw = Wikis.rk.find("Admin", "notes-tips").toList
+  WikiObservers mini {
+    case x:WikiConfigChanged =>
+      inw = Wikis.rk.find("Admin", "notes-tips").toList
   }
 
   private var inw = Wikis.rk.find("Admin", "notes-tips").toList
@@ -846,7 +876,7 @@ object NotesTips {
   }
 
   def sitehtml(code: String) = {
-    val m = notesWiki.flatMap(_.sections.filter(_.name == code)).map(_.content).map(x => Wikis.format(WID("?", "?"), "md", x, None,None)).headOption.getOrElse(code)
+    val m = notesWiki.flatMap(_.sections.filter(_.name == code)).map(_.content).map(x => Wikis.format(WID.empty, "md", x, None,None)).headOption.getOrElse(code)
     // todo why the heck does it put those?
     m.replaceFirst("^\\s*<p>", "").replaceFirst("</p>\\s*$", "")
   }
@@ -905,6 +935,8 @@ case class NotesOk(curTag: String, tags: model.Tags.Tags, msg: Seq[(String, Stri
   var _title : String = "No Folders" // this is set by the body as it builds itself and used by the header, heh
 
   val realm = Website.realm(request)
+
+  def stok = new StateOk(realm, Option(au), Option(request))
 
   def css = {
     val ret =

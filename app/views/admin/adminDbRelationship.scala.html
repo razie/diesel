@@ -1,0 +1,49 @@
+@**
+Admin DB - print either the value or if the "schema" says it's an ID, a link to the other entity
+**@
+@(name:String, k:String, v:String)
+
+@fields=@{
+  Map(
+    "rkId" -> "RacerKid",
+    "userId" -> "User",
+    "rkiId" -> "RacerKidInfo",
+    "rkaId" -> "RacerKidAssoc",
+    "rkId" -> "RacerKid",
+    "regId" -> "Reg"
+  )
+}
+
+@ids=@{
+  Map(
+    "WikiEntry.by" -> "User",
+    "WikiEntry.parent" -> "WikiEntry",
+    "RkHistory.authorId" -> "User",
+    "RkHistory.eId" -> "?",
+    "RacerKidAssoc.from" -> "User",
+    "RacerKidAssoc.to" -> "RacerKid",
+    "RacerKidAssoc.owner" -> "User",
+    "RacerKid.ownerId" -> "User",
+    "RacerKid.oldRkId" -> "RacerKid",
+    "Comment.streamId" -> "CommentStream"
+  )
+}
+
+    @if(ids.get(name+"."+k).isDefined) {
+      @if(ids(name+"."+k) == "?" ) {
+        <a style="color:red" href="@routes.AdminDb.dbFind(v)">@v</a>
+      } else {
+        @admin.adminDbEntity(ids(name+"."+k),v)
+      }
+    } else {
+  @if(fields.get(k).isDefined) {
+    @if(fields(k) == "?" ) {
+      <a style="color:red" href="@routes.AdminDb.dbFind(v)">@v</a>
+    } else {
+      @admin.adminDbEntity(fields(k),v)
+    }
+  } else {
+    @v
+  }
+    }
+

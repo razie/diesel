@@ -12,10 +12,13 @@ eh
 
     @wiki.layout.draft(page)
 
-      @wiki.wikiFrag(wid, stok.au,false,page, iname, false, true, canEdit)
+      @wiki.wikiFrag(wid, None,false,page, iname, false, true, canEdit)
 
       @if(page.isDefined && !print) {
         @wiki.wikiAddMore(wid, page)
+        @wid.page.map {we =>
+          @wiki.wikiFragBottom(we, false, canEdit, false, print)
+        }
         @wiki.wikiPageComments(wid, page,  stok.au)
       }
 

@@ -2,14 +2,13 @@
 extra html for wiki fragments, used in another page
  **************@
 @(user:Option[model.User], page:Option[razie.wiki.model.WikiEntry]=None)
+@import controllers.IgnoreErrors
 @import mod.notes.controllers.NotesLocker
-@import _root_.admin.Config
-@import razie.wiki.util.IgnoreErrors
 @import mod.notes.controllers.NotesLocker
 
 @page.map {we=>
 
-@if(page.exists(_.contentProps.contains("module.reg"))) {
+@if(we.contentProps.contains("module.reg") || we.props.contains("module:reg")) {
   @user.map {u=>
     @views.html.modules.doeModRkRegs(u, we,
       controllers.ModRkReg(we.wid),
@@ -33,7 +32,7 @@ extra html for wiki fragments, used in another page
 }
 
 @*** the styles required are also included in header ***@
-@if(page.exists(p=>"""\{\{code:scala""".r.findFirstIn(p.content).isDefined)) {
+@if(page.exists(p=>"""\{\{code[: ]+scala""".r.findFirstIn(p.content).isDefined)) {
    <script src="@routes.Assets.at("vendor/hiscala.js")"></script>
 } else {
 @if(page.exists(p=>

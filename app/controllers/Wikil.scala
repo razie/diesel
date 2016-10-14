@@ -6,8 +6,11 @@
  */
 package controllers
 
-import mod.snow.{RacerKidz, RK, RacerKidAssoc}
+import mod.snow.{Regs, RacerKidz, RK, RacerKidAssoc}
 import model.{Users, User, Perm}
+import razie.base.Audit
+import razie.wiki.Enc
+import razie.wiki.admin.SendEmail
 
 import scala.Array.canBuildFrom
 import org.joda.time.DateTime
@@ -23,8 +26,6 @@ import play.api.data.Forms.tuple
 import play.api.mvc.{AnyContent, Action, Request}
 import razie.{cout, Logging, clog}
 import razie.wiki.model._
-import razie.wiki.util.VErrors
-import razie.wiki.admin.Audit
 
 object Wikil extends WikieBase {
 
@@ -57,26 +58,48 @@ object Wikil extends WikieBase {
   }
 
   /** user unlikes page */
-  def unlinkUser(wid: WID, really: String = "n") = Action { implicit request =>
-    implicit val errCollector = new VErrors()
+  def unlinkUser(wid: WID, really: String = "n") = FAUR { implicit stok =>
     (for (
-      au <- activeUser;
+      au <- stok.au;
       uwid <- wid.uwid orErr ("can't find uwid");
       r1 <- au.hasPerm(Perm.uProfile) orCorr cNoPermission("uProfile")
     ) yield {
-      if (wid.cat == "Club" && really != "y") {
-        Msg3(really + "Are you certain you want to leave club? You will not be able to follow calendars, register or see any of the forums etc...<p>Choose Leave only if certain.",
+      if (wid.domain.isA("Club", wid.cat) && really != "y") {
+        def hasRegs =
+          if(Regs.findClubUser(wid, au._id).nonEmpty)
+            """<span style="color:red">You have registrations for this club - they will not be deleted !</span>"""
+        else "No registrations for this club."
+
+        Msg3(
+          s"""Are you certain you want to leave club?
+            |You will not be able to follow calendars, register or see any of the forums etc...
+            |<p>$hasRegs
+            |<p>Choose Leave only if certain.""".stripMargin,
           Some(Wiki.w(wid)),
-          Some("Leave" -> s"/wikie/unlinkuser/${wid.wpath}?really=y"))
+          Some("Leave" -> routes.Wikil.unlinkUser(wid, "y").toString))
       } else {
-        // if he was already, just say it
-        au.pages(wid.getRealm, wid.cat).find(_.uwid == uwid).map { wl =>
-          // TODO remove the comments page as well if any
-          //        wl.wlink.page.map { wlp =>
-          //          Redirect(routes.Wiki.wikieEdit(WID("WikiLink", wl.wname)))
-          //        }
+        au.pages(wid.getRealm, wid.cat).find(_.uwid == uwid).toList.headOption.map { wl =>
+          // two links: UserWiki and RacerKidAssoc
           wl.delete
+          val rk = RacerKidz.myself(au._id)
+          rk.rka.filter(_.assoc == mod.snow.RK.ASSOC_LINK).filter (rka=>
+            Club.findForUserId(rka.from).exists(_.name == wid.name)
+          ).toList.map(_.delete)
           cleanAuth()
+
+          if (wid.domain.isA("Club", wid.cat)) {
+            Club.userLeft(au, wid.name)(razie.db.tx.auto)
+          }
+
+          if (wid.domain.isA("Club", wid.cat) && Regs.findClubUser(wid, au._id).nonEmpty) {
+            // notify club admin
+            moderatorOf(wid).map {mod=>
+              Emailer.withSession { implicit mailSession =>
+                Emailer.tell(mod, "User left the page", " Page: "+wid.wpath, " User:"+au.userName)
+              }
+            }
+          }
+
           Msg2("OK, removed link!", Some("/"))
         } getOrElse {
           // need to link now
@@ -87,7 +110,6 @@ object Wikil extends WikieBase {
       noPerm(wid, "UNLINKUSER")
   }
 
-  /** user unlikes page */
   def unlinkAll(wid: WID, really: String = "n") = Action { implicit request =>
     implicit val errCollector = new VErrors()
     (for (
@@ -160,7 +182,7 @@ object Wikil extends WikieBase {
       exists <- wid.page.isDefined orErr ("Cannot link to " + wid.name);
       // even new users that didn't verify their email can register for club
       //      isConsent <- au.profile.flatMap(_.consent).isDefined orCorr Profile.cNoConsent;
-      r1 <- (au.hasPerm(Perm.uProfile) || "Club" == wid.cat) orCorr cNotVerified
+      r1 <- (au.hasPerm(Perm.uProfile) || wid.domain.isA("Club", wid.cat)) orCorr cNotVerified
     ) yield {
       def content = """[[User:%s | You]] -> [[%s:%s]]""".format(au.id, wid.cat, wid.name)
 
@@ -173,7 +195,9 @@ object Wikil extends WikieBase {
         }
       } getOrElse {
         ROK.r apply {implicit stok =>
-          views.html.wiki.wikiLink(WID("User", au.id), wid,
+          views.html.wiki.wikiLink(
+            WID("User", au.id),
+            wid,
             linkForm.fill(LinkWiki("Enjoy", model.UW.EMAIL_EACH, Wikis.MD, content)), withComment)
         }
       }
@@ -255,7 +279,7 @@ object Wikil extends WikieBase {
           newf
         }
         RCreate(model.FollowerWiki(f._id, comment.decUrl, uwid))
-
+cleanAuth(auth)
         Emailer.withSession { implicit mailSession =>
           Emailer.tellRaz("Subscription confirmed", email.dec, wid.ahref, comment.decUrl)
         }
@@ -289,7 +313,7 @@ object Wikil extends WikieBase {
     }
   }
 
-  def moderatorOf(wid: WID) = Wikis.find(wid).flatMap(_.contentProps.get("moderator"))
+  def moderatorOf(wid: WID) = wid.page.flatMap(_.contentProps.get("moderator"))
 
   def linked(from:WID, to:WID, withComment: Boolean) = {
     if ("User" == from.cat) linkedUser(from.name, to, withComment)
@@ -306,25 +330,18 @@ object Wikil extends WikieBase {
       WikiEntry("WikiLink", wl.wname, "You like " + Wikis.label(wid), mark, comment, au._id).cloneProps(Map("owner" -> au.id), au._id).create
     }
 
-    if (wid.cat == "Club")
-      Club.linkUser(au, wid.name, how)
+    if (Wikis.domain(wid.getRealm).isA("Club", wid.cat))
+      Club.linkedUser(au, wid, how)
 
     cleanAuth(Some(au))
   }
 
   // link a user for moderated club was approved by moderator
-  def linkAccept (expiry: String, userId: String, club: String, how: String) = Action { implicit request =>
+  def linkAccept (expiry: String, userId: String, club: WID, how: String) = Action { implicit request =>
     implicit val errCollector = new VErrors()
 
-    def hows = {
-      Wikis.rk.category("Club").flatMap(_.contentProps.get("roles:" + "User")) match {
-        case Some(s) => s.split(",").toList
-        case None => Wikis.rk.pageNames("Link").toList
-      }
-    }
-
     import razie.wiki.Sec._
-    val wid = WID("Club", club)
+    val wid = club
 
     (for (
     // play 2.0 workaround - remove in play 2.1
@@ -333,12 +350,12 @@ object Wikil extends WikieBase {
       user <- Users.findUserById(userId);
       isA <- checkActive(user);
       admin <- auth orCorr cNoAuth;
-      modUname <- moderatorOf(WID("Club", club));
-      isMod <- (admin.hasPerm(Perm.adminDb) || admin.userName == modUname) orErr ("You do not have permission!!!");
-      ok <- hows.contains(how) orErr ("invalid role");
+      c <- Club(club.name);
+      modEmail <- moderatorOf(wid);
+      isMod <- c.isClubAdmin(admin) orErr ("You do not have permission!!!");
+      ok <- hows(club, "User").contains(how) orErr ("invalid role");
       uwid <- wid.uwid orErr ("can't find uwid");
-      again <- (!user.wikis.exists(_.uwid == uwid)) orErr ("Aldready associated to club");
-      c <- Club(club)
+      again <- (!user.wikis.exists(_.uwid == uwid)) orErr ("Aldready associated to club")
     ) yield {
       razie.db.tx("linkUser.toWiki") { implicit txn =>
         ilinkAccept(user, c, uwid, how)
@@ -354,24 +371,37 @@ object Wikil extends WikieBase {
   private def ilinkAccept(user: User, club: Club, pageUwid:UWID, how: String)(implicit request: Request[_], txn: Txn) {
     // only if there is a club/user entry for that Club page
     val rk = RacerKidz.myself(user._id)
-    RacerKidAssoc(club.userId, rk._id, mod.snow.RK.ASSOC_LINK, user.role, club.userId).create
+    RacerKidAssoc(club.userId, rk._id, mod.snow.RK.ASSOC_LINK, how, club.userId).create
 
-    //    createLinkedUser(user, WID("Club", club.userName), UWID("Club", club._id), false, how, "", "")
-    createLinkedUser(user, WID("Club", club.userName), pageUwid, false, how, "", "")
+    createLinkedUser(user, club.wid, pageUwid, false, how, "", "")
 
     if (!user.quota.updates.exists(_ > 10))
       user.quota.reset(50)
 
     Emailer.withSession { implicit mailSession =>
       Emailer.sendEmailLinkOk(user, club.userName)
-      Emailer.tellRaz("User joined club", "Club: " + club.userName, "Role: " + how, s"User: ${user.firstName} ${user.lastName} (${user.userName} ${user.email.dec}")
-      club.props.filter(_._1.startsWith("link.notify.")).foreach { t =>
-        Emailer.tell(t._2, "User joined club", "Club: " + club.userName, "Role: " + how, s"User: ${user.firstName} ${user.lastName} (${user.userName} ${user.email.dec}")
+      Emailer.tellRaz("User joined club", "Club: " + club.wid.wpath, "Role: " + how, s"User: ${user.firstName} ${user.lastName} (${user.userName} ${user.email.dec}")
+      (moderatorOf(club.wid).toList :::
+        club.props.filter(_._1.startsWith("link.notify.")).toList.map(_._2)
+      ).distinct.foreach { email =>
+        Emailer.tell(email, "User connected to page", "Page: " + club.wid.wpath, "Role: " + how, s"User: ${user.firstName} ${user.lastName} (${user.userName} ${user.email.dec}")
       }
     }
   }
 
-  def linkDeny(userId: String, club: String, how: String) = Action { implicit request =>
+  // roles
+  def hows(to:WID, from:String) = {
+    to.page.flatMap(_.contentProps.get("roles:"+from)) match {
+      case Some(s) => {
+        s.split(",").toList
+      }
+      case None => {
+        Wikis.domain(to.getRealm).roles(to.cat, from)
+      }
+    }
+  }
+
+  def linkDeny(userId: String, club: WID, how: String) = Action { implicit request =>
     Emailer.withSession { implicit mailSession =>
       Emailer.sendEmailLinkDenied(Users.findUserById(userId).get, club)
     }
@@ -383,13 +413,6 @@ object Wikil extends WikieBase {
     implicit au => implicit errCollector => implicit request =>
 
     clog << s"METHOD linkedUser($userId, $wid, $withComment)"
-
-    def hows = {
-      Wikis.category(wid.cat).flatMap(_.contentProps.get("roles:" + "User")) match {
-        case Some(s) => s.split(",").toList
-        case None => Wikis.rk.pageNames("Link").toList
-      }
-    }
 
     implicit val errCollector = new VErrors()
 
@@ -408,19 +431,20 @@ object Wikil extends WikieBase {
             "invalid user"
           };
           page <- wid.page orErr s"Page $wid not found";
-          ok <- hows.contains(how) orErr "invalid role";
+          ok <- hows(wid, "User").contains(how) orErr "invalid role";
           xxx <- Some("")
         ) yield {
           razie.db.tx("wiki.linkeduser") { implicit txn =>
-            val mod = moderatorOf(wid).flatMap(mid => { println(mid); Users.findUserByUsername(mid) })
+            val mod = moderatorOf(wid).flatMap(mid => { Users.findUserByEmail(Enc(mid)) })
 
-            if ("Club" == wid.cat && mod.isDefined) {
-              if (Club(wid.name).exists(_.props.get("link.auto").mkString == "yes")) {
-                ilinkAccept(au, Club(wid.name).get, uwid, how)
+            if (wid.domain.isA("Club", wid.cat)) {
+              if (mod.isEmpty ||
+                Club(wid).exists(_.props.get("link.auto").mkString == "yes")) {
+                ilinkAccept(au, Club(wid).get, uwid, how)
                 Msg2("OK, added!", Some("/"))
               } else {
                 Emailer.withSession { implicit mailSession =>
-                  Emailer.sendEmailLink(mod.get, au, wid.name, how)
+                  Emailer.sendEmailLink(mod.get, au, wid, how)
                 }
                 Msg2(s"An email has been sent to the moderator of <strong>${page.label}</strong>, you will receive an email when they're done!",
                   Some("/"))

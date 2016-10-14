@@ -8,19 +8,20 @@ package mod.diesel.controllers
 
 import com.mongodb.casbah.Imports._
 import com.novus.salat._
-import controllers.RazController
-import model.{Autosave, Tags, Website}
+import controllers.{VErrors, RazController}
+import model.{Tags, Website}
+import razie.base.Audit
 import razie.db.RazSalatContext._
 import com.mongodb.{BasicDBObject, DBObject}
 import razie.db.{RMany, ROne, RazMongo}
 import mod.diesel.model._
 import play.api.mvc.{Action, AnyContent, Request}
-import razie.diesel.RDOM
+import razie.diesel.dom._
 import razie.wiki.dom.WikiDomain
 import razie.wiki.model.{WikiEntry, Wikis, WID}
-import razie.wiki.util.{VErrors, PlayTools}
+import razie.wiki.util.PlayTools
 import razie.{cout, Logging}
-import razie.wiki.admin.Audit
+import razie.wiki.admin.Autosave
 
 import scala.util.Try
 
@@ -62,24 +63,6 @@ object DieselControl extends RazController with Logging {
     Audit("x", "DSL_EVENT", s"$mod/$event with ${q.mkString}")
     val res = iload(mod, Website.realm) map (_.react(event, q))
     Ok(res.mkString)
-  }
-
-  def prep(v: String) =
-    if (v.startsWith("\"")) v.replaceAll("\"", "")
-    else if (v.startsWith("\'")) v.replaceAll("\'", "")
-    else v
-
-  def qTyped(q:Map[String,String], f:RDOM.F) = q.map { t =>
-    val p = f.parms.find(_.name == t._1)
-                  if (p.exists(_.ttype == "Int")) (t._1+"",
-                    try {
-                     t._2.toInt
-                    } catch {
-                      case e:Throwable => throw new IllegalArgumentException("Type error: expected Int, parm "+t._1+" found "+t._2)
-                    }
-                    )
-                  else
-    (t._1, prep(t._2))
   }
 
   /** TOPIC - call a topic level function */
@@ -182,11 +165,13 @@ object DieselControl extends RazController with Logging {
       val left  = rdom.assocs.filter(_.z == cat)
       val right = rdom.assocs.filter(_.a == cat)
       val path = if(ipath == "/") ipath+cat else ipath
+      val c  = rdom.classes.get(cat)
+      val base = c.toList.flatMap(_.base)
 
       def mkLink (s:String) = routes.DieselControl.dslDomBrowser (wpath, s, path+"/"+s).toString()
 
       ROK.r apply {implicit stok=>
-        views.html.modules.diesel.catBrowser(wid.getRealm, Some(page), cat, left, right)(mkLink)
+        views.html.modules.diesel.catBrowser(wid.getRealm, Some(page), cat, base, left, right)(mkLink)
       }
     }) getOrElse NotFound(errCollector.mkString)
   }
@@ -196,6 +181,7 @@ object DieselControl extends RazController with Logging {
     val c  = WikiDomain(realm).rdom.classes.get(cat)
     val left  = rdom.assocs.filter(_.z == cat)
     val right = rdom.assocs.filter(_.a == cat)
+    val base = c.toList.flatMap(_.base)
     val path = if(ipath == "/") ipath+cat else ipath
 
     def mkLink (s:String) = routes.DieselControl.catBrowser (realm, s, path+"/"+s).toString()
@@ -204,9 +190,9 @@ object DieselControl extends RazController with Logging {
 
     ROK.r apply {implicit stok=>
       if(c.exists(_.stereotypes contains "wikiCategory"))
-        views.html.modules.diesel.catBrowser(realm, page, cat, left, right)(mkLink)
+        views.html.modules.diesel.catBrowser(realm, page, cat, base, left, right)(mkLink)
       else
-        views.html.modules.diesel.domCat(realm, cat, left, right)(mkLink)
+        views.html.modules.diesel.domCat(realm, cat, base, left, right)(mkLink)
     }
   }
 

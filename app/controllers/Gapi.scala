@@ -9,8 +9,8 @@ package controllers
 import admin.Config
 import mod.diesel.model.{WG}
 import mod.diesel.model.WG.WGraph
-import razie.diesel.RDOM
-import razie.wiki.{Enc, EncUrl}
+import razie.diesel.dom.RDOM
+import razie.wiki.{Services, Enc, EncUrl}
 import razie.wiki.Sec.EncryptedS
 import play.api.mvc.Action
 import razie.Logging
@@ -103,7 +103,7 @@ object Gapi extends RazController with Logging {
 
     val url =
       if(iurl startsWith "http") iurl
-      else if(Config.isLocalhost) "http://"+Config.hostport+iurl
+      else if(Services.config.isLocalhost) "http://"+Services.config.hostport+iurl
       else "http://" + PlayTools.getHost.mkString + iurl
 
     g match {

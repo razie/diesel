@@ -15,10 +15,10 @@ function parseAndRender() {
   $("#weOutputData").html(result);
 }
 
-function refreshServer() {
+function refreshServer(wp) {
   var content = $("#content").val();
   var tags = $("#tags").val();
-  $.post("/wikie/preview/@wid.wpath", {'content' : content, 'tags' : tags}, function(data) {
+  $.post("/wikie/preview/"+wp, {'content' : content, 'tags' : tags}, function(data) {
     $("#weOutputData").html(data);
   })
 }

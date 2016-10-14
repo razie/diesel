@@ -42,9 +42,9 @@ function err(url, code) {
       next();
     }, function(err) {
       if(err.status == code)
-        report(code+url + "\t"+JSON.stringify(err), false);
+        report(code+" "+url /* + "\t"+JSON.stringify(err)*/, false);
       else
-        report("ERR_AJAX "+url + "\t"+JSON.stringify(err), true);
+        report("ERR_AJAX "+url + "\t Expected "+code + "\t got: "+JSON.stringify(err), true);
     next();
     })
   }
@@ -60,6 +60,11 @@ function nok(url, s) {
   return snok (url, s, false);
 }
 
+function ahref(url) {
+  var u = "http://"+target()+url;
+  return '<a href="'+u+'">'+url+'</a>';
+}
+
 /** get URL 200 and make sure it includes string s */
 function snok(url, s, should) {
   return function(next) {
@@ -68,16 +73,16 @@ function snok(url, s, should) {
       if(typeof result == 'object') res = JSON.stringify(result);
 
       if (res.indexOf(s) >= 0 && should) {
-        report("OK " + url + "\t" + s, false);
-      } else if (res.indexOf(s) >= 0 && !should) {
-        report("CONTAINS "+url + "\t"+s, false);
+        report("200 " + ahref(url) + "\t" + s, false);
+      } else if (res.indexOf(s) < 0 && !should) {
+        report("200 "+ahref(url) + "\t CONTAINS "+s, false);
       } else {
         var not = (res.indexOf(s) >= 0) ? "" : "NOT_";
-        report(not+"CONTAINS "+url + "\t"+s, true);
+        report("200 "+ahref(url) + "\t"+not+"CONTAINS " +s, true);
       }
       next();
     }, function(err) {
-      report("ERR_AJAX "+url + "\t"+JSON.stringify(err), true);
+      report("ERR_AJAX "+ahref(url) + "\t"+JSON.stringify(err), true);
       next();
     })
   }
@@ -85,6 +90,12 @@ function snok(url, s, should) {
 
 var testHeaders={};
 
+/** switch user. user empty username to switch back.
+ *
+ * To avoid user passwords in clear text,
+ * if the current user is admin,
+ * the auth realm could SU automatically
+ */
 function auth(u,p) {
   return function(next) {
     if(u == 'None') {

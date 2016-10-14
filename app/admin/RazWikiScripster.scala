@@ -19,7 +19,6 @@ class RazWikiScripster extends WikiScripster.JSWikiScripster {
   override def runScriptAny(s: String, lang:String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, String], devMode:Boolean=false) = synchronized {
     def r = page.map(we=>if(we.category == "Reactor") we.name else we.realm).getOrElse(Wikis.RK)
 
-
     super.runScriptAny(s, lang, page, user, query, devMode)
   }
 

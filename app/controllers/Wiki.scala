@@ -11,21 +11,22 @@ import com.mongodb.casbah.Imports._
 import com.novus.salat._
 import mod.diesel.controllers.DieselControl
 import model._
+import org.bson.types.ObjectId
+import org.scalatest.path
 import play.twirl.api.Html
+import razie.base.Audit
 import razie.db.RazSalatContext._
 import com.mongodb.{BasicDBObject, DBObject}
 import razie.db.{ROne, RazMongo}
 import play.api.mvc.{Action, AnyContent, Request}
-import razie.diesel.RDOM
-import razie.wiki.admin.Audit
-import razie.wiki.util.{PlayTools, VErrors}
-import razie.{cout, Logging}
+import razie.diesel.dom.RDOM
+import razie.wiki.util.PlayTools
+import razie.{js, cout, Logging}
 import razie.wiki.model._
 import scala.Array.canBuildFrom
 import razie.wiki.{Services, Enc}
 import razie.wiki.dom.WikiDomain
 import razie.wiki.model.WikiAudit
-import razie.wiki.util.IgnoreErrors
 
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.Future
@@ -61,7 +62,7 @@ class WikiBase extends RazController with Logging with WikiAuthorization {
   def getRealm (irealm:String = UNKNOWN) (implicit request : Request[_]) = {
     // todo I think this function is obsoleted - reactors add themselves in Websites...?
     if(UNKNOWN == irealm) {
-      PlayTools.getHost.flatMap(x=>Website(x)).map(_.reactor).getOrElse(Reactors.RK)
+      PlayTools.getHost.flatMap(x=>Website(x)).map(_.reactor).getOrElse(WikiReactors.RK)
     } else irealm
   }
 
@@ -94,20 +95,23 @@ object Wiki extends WikiBase {
   def showTag(tag: String, irealm:String) = Action.async { implicit request=>
     // todo don't knwo why i do this redir
     // it's meant to work for other sites without reactors, that have no local tags
-    if (PlayTools.getHost.exists(_ != Config.hostport) && !Config.isLocalhost && getRealm(irealm) == Wikis.RK)
-      Future.successful(Redirect("http://" + Config.hostport + "/wiki/tag/" + tag))
+    if (PlayTools.getHost.exists(_ != Services.config.hostport) && !Services.config.isLocalhost && getRealm(irealm) == Wikis.RK)
+      Future.successful(Redirect("http://" + Services.config.hostport + "/wiki/tag/" + tag))
     else
       search (getRealm(irealm), "", "", Enc.fromUrl(tag)).apply(request)
   }
 
-  /** content assist for [[ ]] topics - search all topics  provide either q or curTags */
+  /** content assist for [[ ]] topics - search all topics  provide either q or curTags
+    *
+    * cat can be a comma-sep-list
+    */
   //TODO optimize - index or whatever
   //todo cnt should be a parameter - API
-  def options(irealm:String, q: String, scope:String, curTags:String="", cnt:Int) = Action { implicit request =>
+  def wikieOptions(irealm:String, cat:String, q: String, scope:String, curTags:String="", cnt:Int) = Action { implicit request =>
     val realm = getRealm(irealm)
 
     val index = Wikis(realm).index
-    val c1 = index.getOptions(q, cnt)
+    val c1 = index.getOptions(cat, q, cnt)
 
     // todo stupid name to label - should use indexed labels ?? should I
     Ok("["+(c1).map(s=>s""" "${s.replaceAllLiterally("_", " ")}" """).mkString(",")+"]").as("text/json")
@@ -228,7 +232,9 @@ object Wiki extends WikiBase {
 
   /** prepare the wid to be fully defined with realm and whatnot */
   def prepWid (cw:CMDWID, irealm:String) (implicit request:Request[_]) =
-    cw.wid.map(iwid => if(iwid.realm.isDefined) iwid else iwid.r(getRealm(irealm)))
+    cw.wid.map(iwid =>
+      if(iwid.realm.isDefined) iwid
+      else iwid.r(getRealm(irealm)))
 
   /**
    * show an older version of a page
@@ -303,17 +309,6 @@ object Wiki extends WikiBase {
     showWid(CMDWID(cw.wpath.map(x=>parent+"/"+x), cw.wid.flatMap(x=>WID.fromPath(parent+"/"+x.wpath)), cw.cmd, cw.rest), count, realm)
   }
 
-  /** show specific pages like about/tos/etc from a site or default to the RK pages from admin */
-  def showSitePage(name: String, count:Int) = Action { implicit request =>
-    Website.getHost.flatMap(x=>Website(x)).flatMap(web=>
-      Wikis.find(WID("Page", name, web.we.map(_._id)))).map {we=>
-      show(we.wid, count).apply(request).value.get.get //todo already have the page - optimize
-    } getOrElse {
-      // normal - continue showing the page
-      show(WID("Admin", name).r(getRealm()), count).apply(request).value.get.get
-    }
-  }
-
   def showWidR(cw: CMDWID, count: Int, irealm:String) = {
       // if same realm and uses w/realm/wiki/wpath, just redirect, don't mess with google
       Action {implicit request=>
@@ -326,55 +321,54 @@ object Wiki extends WikiBase {
   }
 
   /** show a page */
-  def showWid(cw: CMDWID, count: Int, irealm:String) = {
+  def showWid(cw: CMDWID, count: Int, irealm:String) = Action {implicit request=>
+    prepWid(cw, irealm).map {wid=>
     cw.cmd match {
-      case "xp"  => xp(cw.wid.get, irealm, cw.rest)
-      case "xpl" => xpl(cw.wid.get, irealm, cw.rest)
-      case "rss.xml" => rss(cw.wid.get, cw.rest)
-      case "debug" | "usage" => Action.async { implicit request =>
+      case "xp"  => xp(wid, cw.rest).apply(request).value.get.get
+      case "xpl" => xpl(wid, cw.rest).apply(request).value.get.get
+      case "rss.xml" => rss(wid, cw.rest).apply(request).value.get.get
+      case "debug" | "usage" => {//Action.async { implicit request =>
         val realm = getRealm(irealm)
         val wid = cw.wid.get.r(realm)
-        wikieDebug(wid, cw.cmd).apply(request)//.value.get.get
+        wikieDebug(wid, cw.cmd).apply(request).value.get.get
       }
-      case "tag" => Action { implicit request =>
+      case "tag" => {
         // stupid path like /wiki//tag/x comes here...
         if(cw.wpath.isEmpty || cw.wpath.exists(_.isEmpty)) showTag(cw.rest, irealm).apply(request).value.get.get
         else search(getRealm(irealm), "", cw.wpath getOrElse "", cw.rest).apply(request).value.get.get
       }
-      case _ => Action { implicit request =>
+      case _ => {
         val realm = getRealm(irealm)
-        prepWid(cw, irealm).map {wid=>
         // must check if page is WITHIN site, otherwise redirect to main site
           val fhost = Website.getHost
           val redir = fhost flatMap Config.urlfwd
           val rewrite = fhost.flatMap(h=> Config.urlrewrite(h + request.path))
           val canon = fhost flatMap (fh=> Config.urlcanon(cw.wpath.get, None).map(_.startsWith("http://"+fh)))
-          val newcw = if(wid.realm.isDefined || Wikis.RK == realm) cw else cw.copy(wid=cw.wid.map(_.copy(realm=Some(realm))))
 
           // removed topics redirected
           if (rewrite.isDefined) {
             log("  REWRITE: REDIRECTED FROM - " + fhost+request.path)
             log("    TO " + rewrite.get)
             Redirect(rewrite.get)
-          } else if (fhost.exists(_ != Config.hostport) &&
+          } else if (fhost.exists(_ != Services.config.hostport) &&
             // if not me, no redirection and not the redirected path, THEN redirect
             redir.isDefined &&
             !cw.wpath.get.startsWith(redir.get.replaceFirst(".*/wiki/", "")) &&
             !canon.exists(identity)) {
             log("  REDIRECTED FROM - " + fhost)
-            log("    TO http://" + Config.hostport + "/wiki/" + cw.wpath.get)
+            log("    TO http://" + Services.config.hostport + "/wiki/" + cw.wpath.get)
   //          Redirect("http://" + Config.hostport + "/wiki/" + cw.wpath.get)
-            Redirect(newcw.wid.get.url)
+            Redirect(wid.url)
           } else fhost.flatMap(x=>Website(x)).map { web=>
             show(wid, count).apply(request).value.get.get //todo what the heck is this?
           } getOrElse {
             // normal - continue showing the page
             show(wid, count).apply(request).value.get.get
           }
-        }.getOrElse {
-          NotFound ("WID not found")
-        }
       }
+    }
+    }.getOrElse {
+      NotFound ("WID not found")
     }
   }
 
@@ -448,7 +442,14 @@ object Wiki extends WikiBase {
     val name = Wikis.formatName(WID(cat, iwid.name))
 
     // optimize - don't reload some crap already in the iwid
-    val wid = if (cat == iwid.cat && name == iwid.name) iwid else WID(cat, name, iwid.parent, iwid.section, iwid.realm)
+    val wid =
+      if (ObjectId.isValid(iwid.name)) {
+        // todo I do two lookups to serve by ID
+        val wn = UWID(cat, new ObjectId(iwid.name), iwid.realm).findWid.map(_.name).getOrElse(UNKNOWN)
+        WID(cat, wn, iwid.parent, iwid.section, iwid.realm)
+      }
+      else if (cat == iwid.cat && name == iwid.name) iwid
+      else WID(cat, name, iwid.parent, iwid.section, iwid.realm)
 
     val realm = getRealm(UNKNOWN)(request.ireq) // todo request.realm
     // so they are available to scripts
@@ -492,7 +493,9 @@ object Wiki extends WikiBase {
       }
     } else {
       // normal request with cat and name
-      val w = wid.page
+
+      // the idea is that as pages are displayed *with a user*, the cache fills up
+      val w = cachedPage(wid, au)
 
       if (!w.isDefined && Config.config(Config.TOPICRED).exists(_.contains(wid.wpath))) {
         log("- redirecting TOPICRED " + wid.wpath)
@@ -515,7 +518,8 @@ object Wiki extends WikiBase {
       } else {
         // finally there!!
         //        cout << "1"
-        if (!canSee(wid, au, w).getOrElse(false) && !w.exists(_.contentProps.contains("publicAlternative"))) {
+        val can = canSee(wid, au, w).getOrElse(false)
+        if (!can && !w.exists(_.contentProps.contains("publicAlternative"))) {
           // HERE the user is not authorized to see - can we tease or not?
           val more = request.website.prop("msg.noPerm").flatMap(WID.fromPath).flatMap(_.content).mkString
           val teaser = request.website.prop("msg.err.teaserCategories").flatMap(_.split(",").find(_ == wid.cat)).flatMap(_ => w).map{
@@ -539,7 +543,7 @@ object Wiki extends WikiBase {
         } else {
         //        cout << "2"
           // alternative public page
-          if (!canSee(wid, au, w).getOrElse(false) && w.exists(_.contentProps.contains("publicAlternative")) && (WID fromPath w.get.contentProps("publicAlternative")).isDefined ) {
+          if (!can && w.exists(_.contentProps.contains("publicAlternative")) && (WID fromPath w.get.contentProps("publicAlternative")).isDefined ) {
             val nwid = WID fromPath w.get.contentProps("publicAlternative")
             wikiPage(nwid.get, Some(iwid.name), nwid.flatMap(_.page), !shouldNotCount, au.isDefined && canEdit(wid, au, None), print)
           } else {
@@ -559,6 +563,29 @@ object Wiki extends WikiBase {
     }
   }
 
+  def cachedPage(wid:WID, au:Option[User]) = {
+    val w = {
+      if (Services.config.cacheWikis) {
+        import play.api.cache._
+        import play.api.Play.current
+
+        Cache.getAs[WikiEntry](wid.wpath+".page").map { x =>
+          clog << "WIKI_CACHED FULL-" + wid.wpath
+          x
+        }.orElse {
+          val n = wid.page
+          n.map(_.preprocess(au))
+          if (n.exists(_.cacheable)) {
+            Cache.set(n.get.wid.wpath + ".page", n.get, 300) // 10 miuntes
+          }
+          n
+        }
+      } else
+        wid.page
+    }
+    w
+  }
+
   // this has been already authorized - will not check anymore
   private def wikiPage(wid: WID, iname: Option[String], page: Option[WikiEntry], shouldCount: Boolean, canEdit: Boolean, print: Boolean = false)(implicit stok:RazRequest) = {
     if (shouldCount) page.foreach { p =>
@@ -570,7 +597,7 @@ object Wiki extends WikiBase {
     page.map(_.preprocess(stok.au)) // just make sure it's processed
 //    cdebug << "B"
 
-    if (Array("Site", "xPage").contains(wid.cat) && page.isDefined)
+    if (Array("Site").contains(wid.cat) && page.isDefined)
       ROK.k noLayout { implicit stok =>
         views.html.wiki.wikiSite(wid, iname, page)
       }
@@ -621,8 +648,14 @@ object Wiki extends WikiBase {
     }
   }
 
-  def all(cat: String, irealm:String) = Action { implicit request =>
-    Redirect("/wiki/analyze")
+  def all(cat: String, irealm:String) = RAction { implicit stok =>
+    val wl = Wikis(getRealm(irealm)(stok.req)).pages(cat)
+
+    ROK.k apply {implicit stok=>
+      views.html.wiki.wikiAnalyze("", "", "", wl.toIterator)
+    }
+
+//    Redirect("/wiki/analyze")
   }
 
   def analyze(q: String, tags:String, scope:String) = RAction { implicit stok =>
@@ -635,9 +668,8 @@ object Wiki extends WikiBase {
 
   import play.api.libs.json._
 
-  def xp(iwid: WID, irealm:String, path: String, page: Option[WikiEntry] = None) = Action { implicit request =>
+  def xp(wid: WID, path: String, page: Option[WikiEntry] = None) = Action { implicit request =>
     implicit val errCollector = new VErrors()
-    val wid = iwid.r(getRealm(irealm))
     (for (
       worig <- xpRoot(wid, page);
       w <- worig.alias.flatMap(x => Wikis(wid.getRealm).find(x)).orElse(Some(worig)) orErr "no page" // TODO cascading aliases?
@@ -648,13 +680,19 @@ object Wiki extends WikiBase {
       Audit.logdb("XP", wid.wpath + "/xp/" + path)
 
       val xpath = "*/" + path
-      val res: List[String] =
-        if (razie.GPath(xpath).isAttr) (root xpla xpath)
-        else (root xpl xpath).collect {
-          case we: WikiWrapper => we.wid.wpath
-        }
+      val res: List[Any] =
+        if(xpath.matches(".*/@\\((.*)\\)")) {
+          // report style: /ha/ha/@(name,wpath,url)
+          val names = xpath.replaceAll(".*/@\\((.*)\\)", "$1").split(",")
+          (root xpl xpath.replaceAll("/@.*", "")).collect {
+            case we: WikiWrapper => names.map{x=>
+              (x -> WikiXpSolver.getAttr(we, x))
+            }.toMap
+          }
+        } else if (razie.GPath(xpath).isAttr) (root xpla xpath)
+        else (root xpla (xpath+"/@wpath"))
 
-      Ok(Json.toJson(res))
+      Ok(js.tojsons(res, 1)).as("application/json")
     }) getOrElse
       Unauthorized("Nothing... for " + wid + " XP " + path+" ERR: "+errCollector.mkString)
   }
@@ -667,9 +705,8 @@ object Wiki extends WikiBase {
       ) orElse Wikis(wid.getRealm).find(wid);
   }
 
-  def xpl(iwid: WID, irealm:String, path: String, page: Option[WikiEntry] = None) = Action { implicit request =>
+  def xpl(wid: WID, path: String, page: Option[WikiEntry] = None) = Action { implicit request =>
     implicit val errCollector = new VErrors()
-    val wid = iwid.r(getRealm(irealm))
     (for (
       worig <- xpRoot(wid, page);
       w <- worig.alias.flatMap(x => Wikis(wid.getRealm).find(x)).orElse(Some(worig)) orErr "no page" // TODO cascading aliases?
@@ -799,7 +836,8 @@ object Wiki extends WikiBase {
       Ok("No feed found for " + wid + " TAGS " + path + "\n" + errCollector.mkString)
   }
 
-  def tagOptions(irealm:String) = Action { implicit request =>
+  /** return all tags used as JSON array */
+  def wikieTagOptions(irealm:String) = Action { implicit request =>
     val realm = if (UNKNOWN == irealm) getRealm(irealm) else irealm
 
     val tags = Wikis(realm).index.usedTags.keys
@@ -891,38 +929,7 @@ object WikiApiv1 extends WikiBase {
       val page = WikiEntry(wid.cat, wid.name, wid.name, "md", content, au._id)
 
       // todo should I authorize this?
-      ROK.s noLayout { implicit stok => views.html.wiki.wikiFrag(wid, Some(au), true, Some(page)) }
-    }
-  }
-
-  /**
-   * show full entry as html
-   */
-  def html(cw: CMDWID, irealm:String) = Action { implicit request => implicit val errCollector = IgnoreErrors
-    prepWid(cw, irealm) {wid=>
-      page(wid) {w=>
-        if(canSee(wid, auth, Some(w)))
-         ROK.r noLayout { implicit stok =>
-           views.html.wiki.wikiFrag(w.wid, stok.au, true, Some(w))
-         }
-        else
-          Unauthorized(s"Can't see wpath ${wid.wpath}")
-      }
-    }
-  }
-
-  /**
-   * show full entry as JSON
-   */
-  def entry(cw: CMDWID, irealm:String) = Action { implicit request =>
-    implicit val errCollector = IgnoreErrors
-    prepWid(cw, irealm) {wid=>
-      page(wid) {w=>
-        if(canSee(wid, auth, Some(w)))
-          Ok(filterJson(w.grated).toString).as("application/json")
-        else
-          Unauthorized(s"Can't see wpath ${wid.wpath}")
-      }
+      ROK.s noLayout { implicit stok => views.html.wiki.wikiFrag(wid, None, true, Some(page)) }
     }
   }
 
@@ -967,33 +974,29 @@ object WikiApiv1 extends WikiBase {
   }
 
   /**
-   * show conetnt of current version
+   * return parts of a topic in different ways
    * todo interesting: if auth permissions changed in the mean time - should I use old or new perms?
    */
-  def content(cw: CMDWID, irealm:String) = Action { implicit request =>
+  def format(cw: CMDWID, form:String, irealm:String) = Action { implicit request =>
     implicit val errCollector = IgnoreErrors
     prepWid(cw, irealm) {wid=>
       page(wid) {w=>
         if(canSee(wid, auth, Some(w)))
-          Ok(w.content)
+          form match {
+            case "content"  => Ok(w.content)
+            case "fullpath" => Ok(wid.wpathFull)
+            case "html"  =>
+              ROK.r noLayout { implicit stok =>
+                views.html.wiki.wikiFrag(w.wid, None, true, Some(w))
+              }
+            case "json"  =>
+              Ok(filterJson(w.grated).toString).as("application/json")
+          }
         else
           Unauthorized(s"Can't see wpath ${wid.wpath}")
       }
     }
   }
-  /**
-   * full path
-   */
-  def fullpath(cw: CMDWID, irealm:String) = Action { implicit request =>
-    implicit val errCollector = IgnoreErrors
-    prepWid(cw, irealm) {wid=>
-      page(wid) {w=>
-        if(canSee(wid, auth, Some(w)))
-          Ok(wid.wpathFull)
-        else
-          Unauthorized(s"Can't see wpath ${wid.wpath}")
-      }
-    }
-  }
+
 }
 

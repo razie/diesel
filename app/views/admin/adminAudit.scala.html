@@ -1,0 +1,60 @@
+@***
+purge audit tables
+***@
+@(what:Option[String])(implicit stok: controllers.StateOk)
+
+@fufu(db:com.mongodb.casbah.Imports.DBObject, k:String, v:String) = {
+  @k match {
+    case "cleared" => {
+    <a href="@routes.AdminAudit.clearaudit(db.get("_id").toString)">clear</a>
+    }
+    case "when" if (db.containsField("link")) => {
+      <a href="@db.get("link").toString">@v</a>
+    }
+   case "msg" => {
+       <a href="@routes.AdminAudit.showAudit(v)">@v</a>
+    }
+    case _ => { @v }
+    }
+}
+
+@stok.title("admin audit")
+
+    <h2>Audit events <small>| @math.min(1000, razie.db.RazMongo("Audit").size) of @razie.db.RazMongo("Audit").size |
+        <a href="@routes.AdminAudit.clearauditSome(5)">clear 5</a> | <a href="@routes.AdminAudit.clearauditSome(10)">clear 10</a> |
+        <a href="@routes.AdminAudit.clearauditSome(20)">clear 20</a> | <a href="#bottom">Bottom</a>
+
+      @if(what.isDefined) {
+        | <a href="@routes.AdminAudit.clearauditAll(what.mkString)">clear all @what</a>
+      }
+
+    </small>
+    </h2>
+
+    @util.utilTable("Audit", Seq("level"->"L", "when"->"When", "node" -> "Node", "msg"->"What", "cleared"->"Done", "details"->"Details"),what.map(s=>Map("msg" -> s)),Some("when"), Some(fufu))
+
+      <a name="bottom"></a>
+      <hr>
+
+    Careful with this button: it can clear a lot of logs quickly...
+
+    <hr>
+
+    @if(what.isDefined) {
+      <a href="@routes.AdminAudit.clearauditAll(what.mkString)">clear all @what</a>
+    } else {
+      <a href="@routes.AdminAudit.clearauditAll()">clear all</a>
+    }
+    <hr>
+
+
+     Summary:
+
+      <ul>
+          @controllers.AdminAudit.auditSummary.map{t=>
+              <li>@t._1 <a href="@routes.AdminAudit.showAudit(t._2)">@t._2</a>
+          }
+       </ul>
+
+
+

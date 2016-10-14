@@ -23,7 +23,7 @@
         }
       }
     } else {
-      You need to <a href="/doe/join">log in</a> to post a comment, sorry!
+      You need to log in to post a comment!
   }
 
 @comments.commStream(page.flatMap(p=>Comments.findForWiki(p._id)), page.get._id.toString, "Wiki", canComment())

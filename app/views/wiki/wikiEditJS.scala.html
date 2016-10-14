@@ -4,7 +4,7 @@ edit a wiki page
 @(wid:razie.wiki.model.WID,
     q:Map[String,String],
     myForm:Form[controllers.Wikie.EditWiki])(implicit stok: controllers.StateOk)
-@import razie.wiki.model.{Wikis, WID, WikiEntry, Reactors}
+@import razie.wiki.model.{Wikis, WID, WikiEntry, WikiReactors}
 
 
   @**** FIDDLE STUFF ******@
@@ -46,7 +46,7 @@ var decscr = function (s) {
 }
 
 @wvis() = @{
-  Reactors(wid.getRealm).wiki.visibilityFor(wid.cat, "wvis") ++ (if(stok.au.exists(_.isAdmin)) Seq("Admin") else Nil)
+  WikiReactors(wid.getRealm).wiki.visibilityFor(wid.cat, "wvis") ++ (if(stok.au.exists(_.isAdmin)) Seq("Admin") else Nil)
 }
 
 @reserved(page:Option[WikiEntry]) = {
@@ -138,7 +138,7 @@ PROBLEM: many places use label as name... via Wikis.formatName
 
   @helper.select(
     myForm("visibility"),
-    Reactors(wid.getRealm).wiki.visibilityFor(wid.cat).map(x=>(x,x)),
+    WikiReactors(wid.getRealm).wiki.visibilityFor(wid.cat).map(x=>(x,x)),
     '_label -> "Visibility",
     'class -> "input-small",
     '_showConstraints -> false)
@@ -184,7 +184,7 @@ PROBLEM: many places use label as name... via Wikis.formatName
 
 @Wikis(wid.getRealm).find(wid).map{we=>
   <div class="well">
-    @wiki.wikiFrag(wid,stok.au, false, Some(we))
+    @wiki.wikiFrag(wid,None, false, Some(we))
   </div>
 }
 
@@ -274,7 +274,7 @@ setInterval(function(){
     </div> <!-- /col-sm-9 -->
 
     <div class="col-sm-3">
-    @wiki.wikiFrag(razie.wiki.model.WID("Admin","Right"),stok.au,true)
+    @wiki.wikiFrag(razie.wiki.model.WID("Admin","Right"),None,true)
     </div>
   </div> <!-- row -->
 </div> <!-- /container -->

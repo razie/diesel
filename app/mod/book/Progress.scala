@@ -1,17 +1,17 @@
 package mod.book
 
-import model.{User, Website}
+import model.{Users, User, Website}
+import org.bson.types.ObjectId
 import play.api.mvc.Action
+import razie.base.Audit
+import razie.js
 import razie.wiki.Services
-import razie.wiki.admin.{Audit, WikiRefinery, WikiRefined}
 import razie.wiki.mods.{WikiMods, WikiMod}
 import razie.wiki.parser.WAST
-import razie.wiki.util.{IgnoreErrors, VErrors}
 import views.html.modules.book.{viewSections, prevNext, viewProgress}
 
 import org.joda.time.DateTime
 import com.mongodb.casbah.Imports._
-import admin.{Config}
 import controllers._
 import razie.db._
 import razie.wiki.model._
@@ -25,7 +25,14 @@ case class ProgressRecord (
   section:Option[WID],
   status: String, // 's' skipped, 'r' read, 'p' passed quiz
   dtm: DateTime = DateTime.now()
+  ) {
+  def toj = Map(
+    "topic" -> topic.wid.map(_.wpath).getOrElse(topic.toString),
+    "section" -> section.map(_.wpath).mkString,
+    "status" -> status,
+    "dtm" -> dtm.toString
   )
+}
 
 /** a user that may or may not have an account - or user group
   *
@@ -238,7 +245,7 @@ object Progress extends RazController with WikiMod {
         (for (
           pwid <- q.get("wpath") flatMap WID.fromPath map (_.r(request.realm)) orErr "invalid wpath";
           uwid <- pwid.uwid;
-          p <- findForTopic(au._id, uwid);
+          p <- Progress.findCurrentForUser(au._id);// orElse findForTopic(au._id, uwid);
           tl <- Progress.topicList(p.ownerTopic) orErr "topic list not found"
         ) yield {
             val n = tl.next(uwid,p)
@@ -448,7 +455,7 @@ object Progress extends RazController with WikiMod {
       if(we.sections.find(_.name == name).exists(_.args.contains("when")))
         ""
       else
-        s"""<span id="$name">...</span>\r"""+
+        s"""<span id="$name">...</span>\n"""+
         Wikis.propLater(name, s"/pill/$PILL/section/buttons?section=$name&wid=${we.wid.wpath}}}")
     }
 
@@ -486,5 +493,38 @@ object Progress extends RazController with WikiMod {
   }
 
   WikiMods register this
+
+  def apiHistory (forUser:String) = FAUR {implicit stok=>
+    val user = if(forUser.length > 0) Users.findUserById(forUser) else stok.au
+    var ret = "[]"
+    user.map {u=>
+      findCurrentForUser(u._id).map {p=>
+        ret = js.tojsons(p.records.map (_.toj).toList, 1)
+      }
+    }
+    Ok(ret).as("application/json")
+  }
+
+  def apiNext (forUser:String) = FAUR {implicit stok=>
+    val user = if(forUser.length > 0) Users.findUserById(forUser) else stok.au
+    var ret = "[]"
+    user.map {u=>
+      findCurrentForUser(u._id).map {p=>
+        val tl = Progress.topicList(p.ownerTopic)
+        tl.flatMap(_.current(p)).map { cur =>
+          cur.wid.flatMap(_.page).map {p=>
+            ret = js.tojsons(List(Map(
+              "label" -> p.label,
+              "wpath" -> p.wid.wpath,
+              "url" -> p.wid.urlRelative,
+              "id" -> p._id.toString
+            )), 1)
+          }
+        }
+      }
+    }
+    Ok(ret).as("application/json")
+  }
+
 }
 

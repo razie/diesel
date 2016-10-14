@@ -4,12 +4,12 @@ import com.sun.xml.internal.ws.resources.AddressingMessages
 import play.api.data.Forms._
 import play.api.data._
 import play.api.mvc._
+import razie.base.Audit
 import razie.{Logging, cdebug, cout}
 import com.novus.salat.grater
 import razie.db.RazMongo
 import razie.db.RazSalatContext.ctx
 import org.joda.time.DateTime
-import razie.wiki.admin.Audit
 
 /** support features */
 object Support extends RazController with Logging {
@@ -38,20 +38,20 @@ object Support extends RazController with Logging {
   def supportForm1 = Form {
     tuple(
       "email" -> nonEmptyText.verifying(vEmail, vSpec),
-      "name" -> nonEmptyText.verifying("Too Long!", _.length < 80).verifying(vPorn, vSpec),
-      "desc" -> nonEmptyText.verifying("Too Long!", _.length < 80).verifying(vPorn, vSpec),
+      "name" -> nonEmptyText.verifying("Too Long!", _.length < 80).verifying(vBadWords, vSpec),
+      "desc" -> nonEmptyText.verifying("Too Long!", _.length < 80).verifying(vBadWords, vSpec),
       "details" -> text,
       "g-recaptcha-response" -> text
     )
   }
 
   // display the form
-  def support(page: String, desc: String, details: String) = Action { implicit request =>
+  def doeSupport(page: String, desc: String, details: String) = Action { implicit request =>
     import razie.wiki.Sec._
     ROK.r apply {implicit stok=> views.html.admin.support(supportForm1.fill((
       auth.map(_.email.dec).getOrElse(""),
       auth.map(_.ename).getOrElse(""),
-      if (desc.length <= 0) "Oops!" else desc,
+      if (desc.length <= 0) "" else desc,
       details, "")), page)}
   }
 

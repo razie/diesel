@@ -6,7 +6,7 @@
  */
 package model
 
-import admin.Config
+import razie.wiki.Services
 import razie.wiki.parser.{WAST, WikiParserBase}
 
 /** parse dsl, fiddles and code specific fragments */
@@ -16,7 +16,7 @@ trait WikiDarkParser extends WikiParserBase {
   def darkHtml = wikiPropImgDark | htmlDark
 
   // todo remove this - relies on statics
-  private def isDark = !Config.oldisLight
+  private def isDark = !Services.config.oldisLight
 
   def wikiPropImgDark: PS = "{{img" ~> """\.light|\.dark""".r ~ """[: ]""".r ~ """[^} ]*""".r ~ optargs <~ "}}" ^^ {
     case stype ~ _ ~ name ~ args => {

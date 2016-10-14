@@ -1,7 +1,8 @@
-@(club: controllers.Club, rk: mod.snow.RacerKid, settings: String)(implicit stok: controllers.StateOk)
+@import mod.snow.RkHistory
+@(club: Option[controllers.Club], rk: mod.snow.RacerKid, settings: String)(implicit stok: controllers.StateOk)
+@import model.User
 @import mod.snow.RK
 @import mod.snow.RacerKid
-@import mod.snow.TFeedItem
 @import razie.wiki.model.Visibility
 @import org.bson.types.ObjectId
 @import controllers.RKU
@@ -13,46 +14,29 @@
 @help()= @{
 }
 
-  @ccc(wid: WID, we: WikiEntry, c:Option[String]=None) = @{
-    //    cdebug << "D"
-    // this will use the preprocessed cache and just do MD format
-    val x = Wikis.format(wid, we.markup, c.getOrElse(null), Some(we), stok.au)
-    var y = try {
-      if(x contains "CANNOT PARSE") {
-        val PAT = """.*PARSE\]\] \[([0-9]+)\.([0-9]+)\].*""".r
-        val PAT(line, col) = x
-        val id = System.currentTimeMillis().toString
-        s"""<div style="color:red;font-weight:bold;" title="Problem with your content: $x">
-          <small>[[Check content below at Line:$line Position:$col]]
-            <p>Sorry, dumb program here! The content is not lost: try editing this topic... also, please open a support issue and copy/paste there the content.
-          </small></div><p></p>""".stripMargin +
-            s"""
-            <textarea id="$id" readonly="true" style="width:90%; margin-right:40px" rows="15">${we.included.lines.zipWithIndex.map(t => f"${t._2 + 1}%3s> ${t._1}").mkString("\n")}</textarea>
-         """.stripMargin
-      } else {
-        Wikis.divLater(x)
-      }
-    } catch {
-      case _: Throwable => x
-    }
-    //    cdebug << "E"
+@renderContent(wid: WID, we: WikiEntry, c:Option[String]=None) = {
+ @{
+   we.preprocess(stok.au)
+   ""
+ }
 
-    y = razie.wiki.mods.WikiMods.modPostHtml(we, y)
-    y = Wikis(wid.getRealm).applyTemplates(wid, y, "html")
-    //    cdebug << "F"
-    y
+  @if(we.fields.nonEmpty && c.isEmpty) {
+    @wiki.wikiFormSimple(wid, None, Some(we), Map.empty, false, false, true)
+  } else {
+    @wiki.wikiFrag(wid, c, true, Some(we), None, true, false, false, false, false)
   }
+}
 
-  @paint(h: TFeedItem, we:WikiEntry) = {
-   @if(h.kind != "Comment") {
-      <div class="panel panel-@pnelColor(h, we)" id="@h.eId.toString" style="border-radius : 9 px ; margin-bottom : 10 px;">
+  @paint(h: RkHistory, we:WikiEntry) = {
+   @if(h.eKind != "Comment") {
+      <div class="panel panel-@pnelColor(h, we)" id="@h._id.toString" style="border-radius : 9 px ; margin-bottom : 10 px;">
         <div class="panel-heading"
         style="pading:5px 5px; padding-top: 3px; padding-right: 5px; padding-bottom: 3px; padding-left: 5px;">
           <small>
             @model.Users.nameOf(we.by) |
             @we.crDtm.toString("YYYY-MM-dd hh:mm a").toLowerCase()
             @if(canEdit(h,we)) {
-            [<a href="@mod.notes.controllers.routes.NotesLocker.noteById(we._id.toString)"><strong>Edit</strong>]</a>
+              [<a href="@mod.notes.controllers.routes.NotesLocker.noteById(we._id.toString)"><strong>Edit</strong>]</a>
             }
             [<a href="@mod.notes.controllers.routes.NotesLocker.viewNoteById(we._id.toString)"><strong>View</strong></a>]
           </small>
@@ -73,22 +57,25 @@
           </div>
         </div>
 
-        @*<div class="panel-body alert-@pnelColor(h,we)" style="background-color: #fCf8eb; color:black">*@
-        <div class="panel-body alert-@pnelColor(h,we)" style="color:black">
-          @if(we.category != "Note") {
-            @Html(we.wid.ahrefNice)<br>
+        <div class="panel-body alert-@pnelColor(h,we)" style="background-color: #fCf8eb; color:black">
+        @*<div class="panel-body alert-@pnelColor(h,we)" style="color:black">*@
+          @if(we.category != "Note" && h.eKind != "memo") {
+            @Html(we.wid.ahrefNice(stok.realm))<br>
+          }
+
+          @if(h.role == "post" || stok.au.exists(_.isAdmin) || club.exists(c=>stok.au.exists(c.isClubAdmin(_)))) {
+            <button type="button" class="close" aria-label="Dismiss" onclick="dismissPost('@h._id.toString', '@h.eId.mkString')" title="Dismiss this alert">
+              <span aria-hidden="true">&times;</span>
+            </button>
           }
 
           @if(h.role == "post") {
-            <button type="button" class="close" aria-label="Dismiss" onclick="dismissPost('@h.eId')" title="Dismiss this alert">
-              <span aria-hidden="true">&times;</span>
-            </button>
-            <p>@Html(ccc(we.wid, we, we.getFirstParagraph.map(_ +
+            <p>@renderContent(we.wid, we, we.getFirstParagraph.map(_ +
                 "<br><small>... <a href=\"" + we.wid.urlRelative +
                 "\">(more available)</a></small>"
-            )))</p>
+            ))</p>
           } else {
-            <p>@Html(ccc(we.wid, we))</p>
+            <p>@renderContent(we.wid, we)</p>
           }
         </div>
 
@@ -98,28 +85,20 @@
   }
   }
 
-@pnelColor(h:TFeedItem, we:WikiEntry) = @{
+@pnelColor(h:RkHistory, we:WikiEntry) = @{
   // todo notes are always private
   if(we.tags.contains("insight") || we.visibility == Visibility.CLUB_COACH) "success"
   else if(we.tags.contains("private") /*|| we.visibility == Visibility.PRIVATE*/ ) "danger"
   else if(we.tags.contains("goal") || we.tags.contains("plan")) "info"
-  else if(we.tags.contains("post") || we.tags.contains("item")) "warning"
+  else if(h.role == "post" || we.tags.contains("post") || we.tags.contains("item")) "warning"
   else "info"
 }
 
-@filterForCoach(t:TFeedItem)(we:WikiEntry) = @{
-  // I see my own and my posts
-  if(we.tags.contains("private") /*|| we.visibility == Visibility.PRIVATE*/) we.ownerId.exists(_ == stok.au.get._id)
-  else if(t.role=="post") rk.userId.exists(_ == stok.au.get._id)
-  else if(we.tags.contains("insight") || we.visibility == Visibility.CLUB_COACH) club.isClubCoach(stok.au.get)
-    else !Array("private", "insight").exists(we.tags.contains)
-}
-
-@canEdit(t:TFeedItem, we:WikiEntry) = @{
+@canEdit(t:RkHistory, we:WikiEntry) = @{
   // I see my own and my posts
   if(we.tags.contains("private") /*|| we.visibility == Visibility.PRIVATE*/) we.ownerId.exists(_ == stok.au.get._id)
   else if(t.role=="post") false
-  else if(we.tags.contains("coaching") || we.visibility == Visibility.CLUB_COACH) club.isClubCoach(stok.au.get)
+  else if(we.tags.contains("coaching") || we.visibility == Visibility.CLUB_COACH) club.exists(_.isClubCoach(stok.au.get))
   else !Array("private", "insight").exists(we.tags.contains)
 }
 
@@ -141,14 +120,19 @@
 } else {
   <input type="checkbox" name="grouped" onchange="changeGrouped(this);"/> Grouped
 }
+  | <a href="#" class="btn btn-xs btn-success" onclick="deletePosts(); return false;"      title="Delete all the post notifications">Clear posts</a>
   | Add a:
-   <a href="#" onclick="addGoal(); return false;"      title="Select a goal">Goal</a> |
-   <a href="#" onclick="addPlan(); return false;"      title="Select a plan">Plan</a> |
-  @if(club.isClubCoach(stok.au.get)) {
-    <a href="#" onclick="addNote();; return false;"    title="Private insight / notes visible to coaches only">Insight</a> |
-    <a href="#" onclick="addEval(); return false;"     title="An evaluation shared with the athlete">Evaluation</a> |
-    <a href="#" onclick="addFeedback(); return false;" title="Some feedback">Feedback</a> |
-    <a href="#" onclick="addMA(); return false;"       title="Movement analysis">MA</a> |
+  <span onclick="startNote(); return false;" class="label label-primary" style="cursor:pointer"><span id="curNote">Note</span> <span class="glyphicon glyphicon-chevron-down">
+  </span></span>
+
+   <a href="#" onclick="addMsg(); return false;"      title="Send a message">Message</a>
+@if(club.exists(c=> c.isClubCoach(stok.au.get) || c.isClubAdmin(stok.au.get)) || stok.au.exists(_.isAdmin)) {
+  @*| <a href="#" onclick="addGoal(); return false;"      title="Select a goal">Goal</a> |*@
+  @*| <a href="#" onclick="addPlan(); return false;"      title="Select a plan">Plan</a> |*@
+    | <a href="#" onclick="addInsight();; return false;"    title="Private insight / notes visible to coaches only">Insight</a>
+    | <a href="#" onclick="addEval(); return false;"     title="An evaluation shared with the athlete">Evaluation</a>
+    | <a href="#" onclick="addFeedback(); return false;" title="Some feedback">Feedback</a>
+    | <a href="#" onclick="addVideo(); return false;"       title="Video analysis">Video</a>
   }
 <p>
 </p>
@@ -156,8 +140,25 @@
 <div id="info" class="bg-primary"></div>
 <div id="extra"></div>
 
+@goodItems(rk:RacerKid, au:User) = @{
+  rk.history.items.map(h=>
+    (h,
+     h.eId.flatMap(razie.wiki.model.Wikis.findById(h.eKind, _)).filter
+            (! _.tags.contains("archive")).filter
+            (filterForCoach(rk,h,au)))
+  ).filter(x=>x._2.isDefined || x._1.eId.isEmpty)
+}
+
+@filterForCoach(rk:RacerKid,t:RkHistory,au:User)(we:WikiEntry) = @{
+  // I see my own and my posts
+  if(we.tags.contains("private") /*|| we.visibility == Visibility.PRIVATE*/) we.ownerId.exists(_ == stok.au.get._id)
+  else if(t.role=="post") rk.userId.exists(_ == au._id)
+  else if(we.tags.contains("insight") || we.visibility == Visibility.CLUB_COACH) club.exists(_.isClubCoach(stok.au.get))
+  else !Array("private", "insight").exists(we.tags.contains)
+  }
+
 @items()=@{
-  rk.history.items.map(h=>(h,razie.wiki.model.Wikis.findById(h.kind, h.eId).filter(! _.tags.contains("archive")).filter(filterForCoach(h)))).filter(_._2.isDefined)
+  goodItems(rk, stok.au.get)
 }
 
 @defining(items().take(20)) { history =>
@@ -167,10 +168,16 @@
   <p>This is your <b>main feed</b>.
     Items appear from the different notifications you subscribed to (like news, alerts or blog items).
     <b>You can dismiss notifications with the X button on the right!</b></p>
-  <p>You can take notes yourself, create and track goals, plans etc but... <b>as an athlete</b>
-    , the coaches will assign you these. </p>
   <p><b>As a coach</b>
-    , you'll keep track of your own personal notes. You can see each athlete's profile by going to the respective team.</p>
+    , you'll keep track of your own personal notes. You can see each athlete's profile by going to the respective team
+    - read <a href="/wiki/rk.Admin:Coaches_and_notifications">Coaches and notifications</a>
+  </p>
+  <p><b>As a member / parent / racer</b>
+    , you'll keep track of your own notes and messages with coaches
+    - read <a href="/wiki/rk.Admin:Members_and_notifications">Members and notifications</a>
+  </p>
+  <p>You can use <a href="#" class="btn btn-xs btn-success" onclick="deletePosts(); return false;" title="Delete all the post notifications">Clear posts</a> to
+  clear all the small notifications and leave only the important items.
 </div>
 
   @if(settings contains "grouped") {
@@ -183,93 +190,134 @@
 
       <h2>@g._1 <small>(s)</small></h2>
 
-    @g._2.map(t=> paint(t._1, t._2.get))
+    @g._2.map(t=> paint(t._1, t._2.getOrElse(justContent(t._1))))
       <hr>
     }
   } else {
-    @history.map(t=> paint(t._1, t._2.get))
+    @history.map(t=> paint(t._1, t._2.getOrElse(justContent(t._1))))
   }
 
-  @if(history.size == 0) {
+  @if((history.size == 0 || rk.history.firstTime.isDefined) &&
+      rk.userId.exists(uid=> stok.au.exists(_._id == uid))) {
     <script>
+    // don't show when looking at someone else's history
     $("#help").show();
     </script>
   }
 }
 
+@justContent(h:RkHistory)=@{
+  // make up a wiki from a message
+  WikiEntry("-", "-", "-", "md", h.ctx, h.authorId.getOrElse(stok.au.get._id), Seq(h.role)).copy(
+    crDtm = h.crDtm
+  )
+}
+
+@tagSelect(what:String, s:String)=@{
+List(
+  s,
+  club.map(_.props.getOrElse(what, "")).mkString,
+  club.map(_.props.getOrElse("system.discipline", "")).mkString
+).filter(! _.isEmpty).mkString("/")
+}
+
 <script>
 var selecting="";
 
-function dismissPost(eid) {
-  var url = "@controllers.routes.Kidz.doeDismissHistory("NID")".replace(/NID/g, eid);
+function dismissPost(hid,eid) {
+  var url = "@controllers.routes.Kidz.doeDismissHistory("NID")".replace(/NID/g, hid);
   $.ajax({
     type: "POST",
     url:  url,
     success: function(data) {
-      $("#"+eid).fadeOut(600);
-      notesMsgShow("msg", "dismissed ok")
+      $("#"+hid).fadeOut(600);
+//      notesMsgShow("msg", "Dismissed ok")
     },
     error: function(result) {
-      notesMsgShow("err", "can't dismiss: "+result)
+      console.log("ERROR: Can't dismiss: "+result.responseText)
+      notesMsgShow("err", "Can't dismiss: "+result.statusText)
     }
 });
 }
-function addNote() {
+function addInsight() {
   $("#info").text("Private insight / notes visible to coaches only");
   $("#extra").load("@mod.notes.controllers.routes.NotesLocker.embed("Note", "for coaches", "coaching,insight", "Note", "")");
+}
+function addMsg() {
+  $("#info").text("Message");
+  $("#extra").load("@mod.notes.controllers.routes.NotesLocker.embed("Message", "message", "message", "Message", "")");
 }
 function addFeedback() {
   $("#info").text("Feedback is shared with the athlete");
   $("#extra").load("@mod.notes.controllers.routes.NotesLocker.embed("Message", "feedback", "coaching,feedback", "Message", "")");
 }
-function addMA() {
-  $("#info").text("MA is shared with the athlete");
-  $("#extra").load("@mod.notes.controllers.routes.NotesLocker.embed("Note", "MA", "ma", "MA", "")");
+function addVideo() {
+  $("#info").text("Video analysis is shared with the athlete");
+  $("#extra").load("@mod.notes.controllers.routes.NotesLocker.embed("Note", "Video", "video,feedback", "Video", "")");
 }
 function addGoal() {
   selecting="goal";
   $("#info").text("Select a goal...");
-  showModal("@mod.notes.controllers.routes.NotesLocker.selectFrom(List(club.props.getOrElse("system.plan", ""), "template/racer/goal").filter(! _.isEmpty).mkString("/"))");
+  showSelectModal("@mod.notes.controllers.routes.NotesLocker.selectFrom(tagSelect("system.plan", "public/template/goal"))");
 }
 
 function addPlan() {
   selecting="plan";
   $("#info").text("Select a plan...");
-  showModal("@mod.notes.controllers.routes.NotesLocker.selectFrom(List(club.props.getOrElse("system.plan", ""), "template/racer/plan").filter(! _.isEmpty).mkString("/"))");
+  showSelectModal("@mod.notes.controllers.routes.NotesLocker.selectFrom(tagSelect("system.plan", "public/template/plan"))");
 }
 
 function addEval() {
-  $("#info").text("Evaluations are shared with the athlete");
-  $("#extra").load("@mod.notes.controllers.routes.NotesLocker.embed("Evaluation", "feedback", "evaluation", "Evaluation", "")");
+  selecting="eval";
+  $("#info").text("Select an eval ...");
+  showSelectModal("@mod.notes.controllers.routes.NotesLocker.selectFrom(tagSelect("system.eval", "public/template/eval"))");
+//  $("#info").text("Evaluations are shared with the athlete");
+  @*$("#extra").load("@mod.notes.controllers.routes.NotesLocker.embed("Evaluation", "feedback", "evaluation", "Evaluation", "")");*@
 }
 
+/** callback from Notes on note selected */
 function noteSelected(nid) {
-  $("#oneModal").modal('hide');
+  $("#selectModal").modal('hide');
 
-  if(selecting == 'plan' || selecting=='goal') {
+  if(selecting == 'plan' || selecting=='goal' || selecting=='eval') {
     var url ;
 
+    $("#info").text("Now customize for the athlete...");
     if(selecting=='plan') {
-      $("#info").text("Now customize the plan for the athlete...");
       url = '@mod.notes.controllers.routes.NotesLocker.embed("Plan", "organize", "plan,long-term", "Plan", "NID")';
     } else if(selecting=='goal') {
-      $("#info").text("Now customize the goal for the athlete...");
       url = '@mod.notes.controllers.routes.NotesLocker.embed("Goal", "reach", "goal,long-term", "Goal", "NID")';
+    } else if(selecting=='eval') {
+      url = '@mod.notes.controllers.routes.NotesLocker.embed("Evaluation", "feedback", "eval", "Evaluation", "NID", true)';
     }
     $("#extra").load(url.replace(/NID/g, nid));
     selecting="";
   }
 }
 
+/** callback from Notes on note content submitted */
 function noteAdded (noteId, context) {
-  $.post('/doe/4us/addNote?club=@club.name&noteid='+noteId+'&role='+context+'&rkid=@rk._id.toString',
+  $.post(
+    '/doe/4us/addNote?club=@club.map(_.name).mkString&noteid='+noteId+'&role='+context+'&rkid=@rk._id.toString',
+    '',
+    function(response) {
+      console.log(response);
+
+      if(response.indexOf("msg") == 1) {
+      // todo deal with response codes
+      } else {
+      }
+
+      setTimeout(function() {
+        window.location.reload();
+      }, 100);
+  });
+}
+
+function deletePosts () {
+  $.post('/doe/4us/deletePosts',
     '', function(response) {
     console.log(response);
-
-    if(response.indexOf("msg") == 1) {
-    // todo deal with response codes
-    } else {
-    }
 
     setTimeout(function() {
       window.location.reload();
@@ -279,17 +327,30 @@ function noteAdded (noteId, context) {
 
 function changeGrouped (element) {
   var settings = element.checked ? "grouped" : "";
-  window.location = '@routes.Kidz.doeKidHistory(club.name, rk._id.toString, "")&settings='+settings;
+  window.location = '@routes.Kidz.doeKidHistory(club.map(_.name).mkString, rk._id.toString, "")&settings='+settings;
 }
 
 function help() {
   $("#help").toggle();
 }
+
+function startNote(what) {
+   popupContent("Select category:<br><br>"+
+   '<a href="#" onclick="addNote(\'equipment\'); return false;">Equipment</a><br>' +
+   '<a href="#" onclick="addNote(\'technical\'); return false;">Technical</a><br>' +
+   '<a href="#" onclick="addNote(\'tactical\'); return false;">Tactical</a><br>'
+   );
+}
+
+function addNote(tag) {
+  $("#oneModal").modal('hide');
+  $("#info").text("Note");
+  $("#extra").load("@mod.notes.controllers.routes.NotesLocker.embed("Note", "message", "TAGG", "Note", "")".replace(/TAGG/, tag));
+}
 </script>
 
 
-
-<div id="oneModal" class="modal fade">
+<div id="selectModal" class="modal fade">
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-body" style="max-height: 420px; overflow-y: auto;">
@@ -301,73 +362,22 @@ function help() {
 
 <script>
     // clear modal contents on close
-    $('#oneModal').on('hidden.bs.modal', function (e) {
-        $("#oneModal > div > div > div.modal-body").html('...');
+    $('#selectModal').on('hidden.bs.modal', function (e) {
+        $("#selectModal > div > div > div.modal-body").html('...');
     })
 
-  $("#oneModal").css("max-height", "");
-  $("#oneModal").css("overflow-y", "");
-
-//  newConfirm(dLab(msg),
-//  dLab("[[Cancel]]"),
-//  function(){cOn(0);},
-//  dLab("[[Discard changes]]"),
-//  function(){
-//  clearLocalChange();
-//  logout();
-//  });
+  $("#selectModal").css("max-height", "");
+  $("#selectModal").css("overflow-y", "");
 
 
-   function showModal(url)
+   function showSelectModal(url)
     {
-        $("#oneModal > div > div > div.modal-body").load(url);
-        $("#oneModal").modal('show');
+        $("#selectModal > div > div > div.modal-body").load(url);
+        $("#selectModal").modal('show');
     }
-
-
-
-  function newConfirm(msg, cancelMsg, onCancel, okMsg, onOk)
-  {
-  $("#confirmModal > div > div > div.modal-body > p").html(msg);
-  $("#confirmModal > div > div > div.modal-footer > button.btn.btn-default").html(cancelMsg);
-  $("#confirmModal > div > div > div.modal-footer > button.btn.btn-default").show();
-  //        $("#confirmModal > div > div > div.modal-footer > button.btn.btn-default").click(onCancel);
-  $("#confirmModal > div > div > div.modal-footer > button.btn.btn-primary").html(okMsg).unbind('click');
-  $("#confirmModal > div > div > div.modal-footer > button.btn.btn-primary").html(okMsg).click(onOk);
-  $("#confirmModal").modal('show');
-  }
-
-  function newConfirmNoYes(msg, onOk, onCancel)
-  {
-  $("#confirmModal > div > div > div.modal-body > p").html(msg);
-  $("#confirmModal > div > div > div.modal-footer > button.btn.btn-default").html("No");
-  $("#confirmModal > div > div > div.modal-footer > button.btn.btn-default").show();
-  $("#confirmModal > div > div > div.modal-footer > button.btn.btn-default").html("No").unbind('click');
-  $("#confirmModal > div > div > div.modal-footer > button.btn.btn-default").html("No").click(onCancel);
-  $("#confirmModal > div > div > div.modal-footer > button.btn.btn-primary").html("Yes").unbind('click');
-  $("#confirmModal > div > div > div.modal-footer > button.btn.btn-primary").html("Yes").click(onOk);
-  $("#confirmModal").modal('show');
-  }
 </script>
 
 
-
-<div id="confirmModal" class="modal fade">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-        <h4 class="modal-title">Please confirm</h4>
-      </div>
-      <div class="modal-body" style="max-height: 420px; overflow-y: auto;">
-        <p>?</p>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-        <button type="button" class="btn btn-primary" data-dismiss="modal">Save changes</button>
-      </div>
-    </div><!-- /.modal-content -->
-  </div><!-- /.modal-dialog -->
-</div><!-- /.modal -->
+@util.oneModal()
 
 

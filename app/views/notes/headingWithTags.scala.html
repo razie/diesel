@@ -3,7 +3,7 @@ list of notes
 
 msg types are msg, err
 **************@
-@(implicit stok: mod.notes.controllers.NotesOk)
+@(implicit stok: mod.notes.controllers.NotesOk, forSelection:Boolean=false)
 @import mod.notes.controllers.{NotesLocker, Notes}
 @import mod.notes.controllers.routes
 
@@ -32,17 +32,19 @@ var tags = "@tag";
         | <a id="a-@calcId(t)" style="color : #757c82 ;" href="@routes.NotesLocker.tag(t)">@t</a>
 
           @** divs are hidden and only the one is shown **@
+@if(!forSelection) {
         <div id="tag-@calcId(t)" style="display:none">
            <a href="#unpin" onclick="setPinTags('@tag.replaceAll("([/]*"+t+")([/]?.*)", "")')" title="Unpin the last tag">
             <span class="glyphicon glyphicon-pushpin"></span>
           </a>
           </div>
-      }
       <div id="pintags" style="display:none">
           &nbsp;&nbsp; <a href="#pin" onclick="setPinTags('@tag')" title="Pin these tags">
             <span class="glyphicon glyphicon-tags"></span>
           </a>
       </div>
+}
+      }
       </small>
     }
   }

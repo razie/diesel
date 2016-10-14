@@ -1,7 +1,7 @@
 package mod.msg
 
-import admin.Config
 import org.bson.types
+import razie.base.{Audit, Auditor}
 import razie.db.Txn
 import razie.{Logging, cout, Snakk}
 import razie.db.RMongo._
@@ -14,23 +14,20 @@ import play.api.data.Form
 import play.api.data.Forms.{mapping, nonEmptyText, tuple, _}
 import play.api.mvc.{Action, Request}
 import razie.OR._
-import razie.wiki.util.{PlayTools, Corr, VErrors}
-import razie.wiki.admin.{Audit, SendEmail}
+import razie.wiki.util.PlayTools
+import razie.wiki.admin.SendEmail
 import razie.wiki.model._
 import razie.wiki.Enc
 
-import controllers.RazController
+import controllers.{Corr, RazController}
 import model._
 import org.joda.time.DateTime
 import play.api.data.Form
 import razie.Logging
 import razie.db._
-import razie.wiki.admin.Audit
-import razie.wiki.util.Corr
 import play.api.data.Forms._
 
 import org.bson.types.ObjectId
-import razie.wiki.admin.Auditor
 import razie.{cdebug, clog}
 import com.mongodb.casbah.Imports._
 import com.novus.salat._
@@ -122,7 +119,7 @@ object Messaging extends RazController with Logging {
   def startMsgForm = Form {
     tuple(
       "nothing" -> text,
-      "title" -> nonEmptyText.verifying(vSpec, vPorn)
+      "title" -> nonEmptyText.verifying(vSpec, vBadWords)
     ) verifying
       ("", { t: (String, String) =>
         true

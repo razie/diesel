@@ -11,6 +11,7 @@ import com.typesafe.config.ConfigValue
 import controllers.Wikie._
 import model.{Users, UserWiki, Perm}
 import org.bson.types.ObjectId
+import razie.base.Audit
 import razie.wiki.{Enc, Services}
 import scala.Array.canBuildFrom
 import com.mongodb.DBObject
@@ -25,8 +26,8 @@ import play.api.data.Forms.tuple
 import play.api.mvc.{Result, AnyContent, Action, Request}
 import razie.{cout, Logging, clog}
 import razie.wiki.model._
-import razie.wiki.util.{PlayTools, VErrors}
-import razie.wiki.admin.{SendEmail, Audit}
+import razie.wiki.util.PlayTools
+import razie.wiki.admin.SendEmail
 
 /** realm/reactor controller */
 object Realm extends RazController with Logging {
@@ -46,7 +47,9 @@ object Realm extends RazController with Logging {
     val data = PlayTools.postData
     val name = data("name")
 
-    val wid = WID(cat, name).r(name).formatted // the wid to create
+      val wid =
+        if(cat == "Reactor") WID(cat, name).r(name).formatted // the wid to create
+        else WID(cat, name).r(realm).formatted // the wid to create
 
     (for (
       au <- activeUser;
@@ -94,7 +97,7 @@ object Realm extends RazController with Logging {
           val name = page s "name"
           val label = page s "label"
           val tm = page s "template"
-          val tags = cat.toLowerCase :: (page s "tags").split(",").toList
+          val tags = (cat.toLowerCase :: (page s "tags").split(",").toList).distinct
           val co = Wikis.template(tm, parms)
           WikiEntry(cat, name, label, "md", co, au._id, tags.distinct.toSeq, name, 1, wid.parent,
             Map("owner" -> au.id,
@@ -120,6 +123,14 @@ object Realm extends RazController with Logging {
             tw.sections.find(_.name == "template").map {sec=>
               if(templateWpath.endsWith("#form"))
                 "[[template:"+templateWpath.replaceFirst("#form$", "#template") +"]]\n" // for Specs - just include the form...
+              else
+                Wikis.template(templateWpath+"#template", parms)
+            } getOrElse "[[include:"+templateWpath+"]]\n" // for Specs - just include the form...
+          }
+          else if("Template" == torspec) {
+            tw.sections.find(_.name == "template").map {sec=>
+              if(templateWpath.endsWith("#form"))
+                Wikis.template(templateWpath.replaceFirst("#form$", "#template"), parms)
               else
                 Wikis.template(templateWpath+"#template", parms)
             } getOrElse "[[include:"+templateWpath+"]]\n" // for Specs - just include the form...
@@ -150,7 +161,7 @@ object Realm extends RazController with Logging {
 
         if ("Reactor" == cat) {
           mainPage.copy(realm=name).create // create first, before using the reactor just below
-          Reactors.add(name, mainPage)
+          WikiReactors.add(name, mainPage)
           pages = pages.filter(_.name != name) map (_.copy (realm=name))
         } else {
           mainPage.create // create first, before using the reactor just below
@@ -176,14 +187,14 @@ object Realm extends RazController with Logging {
         }
 
       val userHome = pages.find(_.name == "UserHome")
-      if(admin.Config.isLocalhost)
+      if(Services.config.isLocalhost)
         Redirect(controllers.Wiki.w((userHome getOrElse mainPage).wid, true)).flashing("count" -> "0")
       else {
-        val conn = request.session.get(admin.Config.CONNECTED).mkString
+        val conn = request.session.get(Services.config.CONNECTED).mkString
         val temp = new ObjectId().toString
         ssoRequests.put(temp, conn)
         // todo use temp not conn
-        Redirect(s"http://$name.wikireactor.com/sso/"+conn, SEE_OTHER)
+        Redirect(s"http://$name.dieselapps.com/sso/"+conn, SEE_OTHER)
       }
     }) getOrElse
       noPerm(wid, s"Cant' create your $cat ...")
@@ -197,10 +208,10 @@ object Realm extends RazController with Logging {
 //    val res = ssoRequests.get(id).flatMap {conn=>
     val res = Some(id).flatMap {conn=>
       val uid = Enc.fromSession(id)
-      Users.findUser(uid).map { u =>
+      Users.findUserByEmail(uid).map { u =>
         Audit.logdb("USER_LOGIN.SSO", u.userName, u.firstName + " " + u.lastName + " realm: " + request.host)
-        debug("SSO.conn=" + (admin.Config.CONNECTED -> Enc.toSession(u.email)))
-        Redirect("/").withSession(admin.Config.CONNECTED -> Enc.toSession(u.email))
+        debug("SSO.conn=" + (Services.config.CONNECTED -> Enc.toSession(u.email)))
+        Redirect("/").withSession(Services.config.CONNECTED -> Enc.toSession(u.email))
       }
     } getOrElse Redirect("/")
 //    ssoRequests.remove(id)

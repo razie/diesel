@@ -66,12 +66,15 @@ object UserStuff extends RazController {
 
   def Race = admin.Config.sitecfg("racecat").getOrElse("Race")
 
+  def events(u: User): List[(ILink, String, DateTime, ILink, Snakk.Wrapper[WWrapper])] =
+    events("*", u)
+
   /** user / Calendar / Race / Venue
    * @return (what,when)
    */
   def events(realm:String, u: User): List[(ILink, String, DateTime, ILink, Snakk.Wrapper[WWrapper])] = {
     val dates = u.pages(realm, "Calendar").flatMap{ uw =>
-      val node = new WikiWrapper(WID("Calendar", uw.uwid.nameOrId).r(realm))
+      val node = new WikiWrapper(uw.uwid.wid.get)
       val root = new razie.Snakk.Wrapper(node, WikiXpSolver)
 
       // TODO optimize this - lots of lookups...
@@ -123,8 +126,14 @@ object DateParser extends RegexParsers {
   import ParserSettings.{mth1, mth2}
 
   def dates = date1 | date2
-  def date1 = """\d\d\d\d""".r ~ "-" ~ """\d\d""".r ~ "-" ~ """\d\d""".r ^^ { case y ~ _ ~ m ~ _ ~ d => new DateTime().withYear(y.toInt).withMonthOfYear(moy(m)).withDayOfMonth(d.toInt) }
-  def date2 = (mth2 + "|" + mth1).r ~ " *".r ~ """\d[\d]?""".r ~ "[ ,-]*".r ~ """\d\d\d\d""".r ^^ { case m ~ _ ~ d ~ _ ~ y => new DateTime().withYear(y.toInt).withMonthOfYear(moy(m)).withDayOfMonth(d.toInt) }
+  def date1 = """\d\d\d\d""".r ~ "-" ~ """\d\d""".r ~ "-" ~ """\d\d""".r ^^ {
+    case y ~ _ ~ m ~ _ ~ d =>
+      new DateTime().withYear(y.toInt).withMonthOfYear(m.toInt).withDayOfMonth(d.toInt)
+  }
+  def date2 = (mth2 + "|" + mth1).r ~ " *".r ~ """\d[\d]?""".r ~ "[ ,-]*".r ~ """\d\d\d\d""".r ^^ {
+    case m ~ _ ~ d ~ _ ~ y =>
+      new DateTime().withYear(y.toInt).withMonthOfYear(moy(m)).withDayOfMonth(d.toInt)
+  }
 
   val moy = Map(
     "Jan" -> 1, "Feb" -> 2, "Mar" -> 3, "Apr" -> 4, "May" -> 5, "Jun" -> 6, "Jul" -> 7, "Aug" -> 8, "Sep" -> 9, "Sept" -> 9, "Oct" -> 10, "Nov" -> 11, "Dec" -> 12,
@@ -162,29 +171,6 @@ class XWrapper[T](node: T, ctx: XpSolver[T]) extends Wrapper(node, ctx) {
   def \@-(n: (String, String)): (String, String) = (this \@ n._1, this \@ n._2)
   def \@-(n: (String, String, String)): (String, String, String) = (this \@ n._1, this \@ n._2, this \@ n._3)
   def \@-(n: (String, String, String, String)): (String, String, String, String) = (this \@ n._1, this \@ n._2, this \@ n._3, this \@ n._4)
-}
-
-object Maps extends razie.Logging {
-
-  def latlong(addr: String): Option[(String, String)] = {
-    try {
-      val resp = Snakk.json (
-        Snakk.url(
-          "http://maps.googleapis.com/maps/api/geocode/json?address=" + addr.toUrl + "&sensor=false",
-          Map.empty,
-          //        Map("privatekey" -> "6Ld9uNASAAAAADEg15VTEoHjbLmpGTkI-3BE3Eax", "remoteip" -> "kk", "challenge" -> challenge, "response" -> response),
-          "GET"))
-
-      Some((
-        resp \ "results" \ "geometry" \ "location" \@@ "lat",
-        resp \ "results" \ "geometry" \ "location" \@@ "lng"))
-    } catch {
-      case e @ (_ :Throwable) => {
-        error ("ERR_COMMS can't geocode address", e)
-        None
-      }
-    }
-  }
 }
 
 object TMRKK extends App {

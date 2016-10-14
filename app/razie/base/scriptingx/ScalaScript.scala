@@ -129,7 +129,7 @@ class SBTScalaScriptContext(parent: ActionContext = null) extends ScalaScriptCon
       // the repl uses the same thread
       settings.Yreplsync.value = true
 
-      if(admin.Config.isLocalhost) {
+      if(razie.wiki.Services.config.isLocalhost) {
         val myLoader = new ReplClassloader(getClass.getClassLoader)
         settings.embeddedDefaults(myLoader)
         settings.bootclasspath.append("/Users/raz/w/racerkidz/lib_managed/jars/org.scala-lang/scala-library/scala-library-2.11.8.jar")
@@ -308,7 +308,7 @@ class ScalaScript(val script: String) extends RazScript with razie.Logging {
         Some(ctx.asInstanceOf[ScalaScriptContext])
       else None
 
-    val c = new CSTimer("run-deb", "?")
+    val c = new CSTimer("run-deb", "-")
     c.snap("1")
     val p = sctx.map(_.parser) getOrElse (sctx.get mkParser println)
 

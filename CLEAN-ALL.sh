@@ -1,4 +1,4 @@
-## Clean all fucking sbt stuff
+## Clean all sbt stuff
 
 DIR=/Users/raz/w/racerkidz
 

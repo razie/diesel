@@ -10,13 +10,8 @@ manage the list of kidz and/or their accounts
 
 @stok.title("RacerKidz for " + club.name + " / " + team.name)
 
-@rks=@{
-  (for (
-    w <- RacerKidz.findWikiAssocs(club.curYear, team.uwid.get).toList;
-    a <- club.rka(w.rkId, role);
-    k <- w.rk
-  ) yield
-    (k,a)).toList.sortBy(x=>x._1.info.lastName+x._1.info.firstName)
+@rks= @{
+  club.teamMembers(team, role)
 }
 
 @rksactive = @{rksmap((k,a)=> k.info.status != STATUS_FORMER && a.role != ROLE_FAN)}
@@ -32,26 +27,19 @@ manage the list of kidz and/or their accounts
         "details"->k._id.toString)
 }
 
-<script>
-function setTeam(sel)  {
-  $.post( "/doe/club/kidz/setTeam/"+sel.id+"/"+ sel.value, function( data ) {
-  });
-}
-</script>
-
 @mnglink(row:Map[String,String],k:String,v:String)={
   @k match {
     case "details" => {
-      <a href="@routes.Kidz.doeKid(stok.au.get._id.toString, v, "-", row("associd"), "clubkidz:"+club.name)" class="btn btn-default btn-xs">More...</a>
+      <a href="@routes.Kidz.doeUserKid(stok.au.get._id.toString, v, "-", row("associd"), "clubkidz:"+club.wid.wpath)" class="btn btn-default btn-xs">&nbsp;&nbsp;<span class="glyphicon glyphicon-list-alt"/>&nbsp;&nbsp;</a>
     }
     case "notes" => {
-      <a href="@routes.Kidz.doeKidHistory(club.name, v)" class="btn btn-info btn-xs">More...</a>
+      <a href="@routes.Kidz.doeKidHistory(club.wid.wpath, v)" class="btn btn-info btn-xs">&nbsp;&nbsp;<span class="glyphicon glyphicon-th-list"/>&nbsp;&nbsp;</a>
     }
     case _ => { @v }
   }
 }
 
-@defining(rks.filter(t=> t._1.info.status != STATUS_FORMER && t._2.role != ROLE_FAN).toList) {list=>
+@defining(club.activeTeamMembers(team, role)) {list=>
 @if(list.isEmpty) {
   <h2>No members...</h2>
 } else {
@@ -66,6 +54,55 @@ function setTeam(sel)  {
     Seq("fname" -> "F.Name", "lname"->"L.Name", "role" -> "Role", "details"->"Details", "notes"->"History"), Some(mnglink))
 
   }
+
+  @if(club.isClubCoach(stok.au.get)) {
+    <button onclick="sendNote()" class="btn btn-success">Message to all <span id="msgbtn" class="glyphicon glyphicon-chevron-down"></span></button>
+    <button id="sendnow" onclick="sendNow()" class="btn btn-info">Send</button>
+    <br>
+    <textarea id="msgall" rows="5" cols="80"></textarea>
+  }
 }
+
+@formFix()
+
+<script>
+$("#msgall,#sendnow").hide();
+
+function sendNote() {
+  if($("#msgall").is(":visible")) {
+    $("#msgbtn").removeClass("glyphicon-chevron-up");
+    $("#msgbtn").addClass("glyphicon-chevron-down");
+    $("#msgall,#sendnow").fadeOut(500);
+  } else {
+    $("#msgbtn").removeClass("glyphicon-chevron-down");
+    $("#msgbtn").addClass("glyphicon-chevron-up");
+    $("#msgall,#sendnow").fadeIn(500);
+  }
+}
+
+function sendNow() {
+  var content = $("#msgall").val();
+  var url = "@mod.snow.routes.Snow.doeSendMsgTeam("MID", "memo")".replace(/MID/g, '@team.wpath');
+  $.ajax({
+    type: "POST",
+    url:  url,
+    data: $.param({
+      content : content
+    }),
+    contentType: 'application/x-www-form-urlencoded',
+    success: function(data) {
+      notesMsgShow("err", "Can't post: "+result.statusText)
+    },
+    error: function(result) {
+      console.log("ERROR: Can't postmsgall: "+result.responseText)
+      notesMsgShow("err", "Can't post: "+result.statusText)
+    }
+  });
+
+  $("#msgbtn").removeClass("glyphicon-chevron-up");
+  $("#msgbtn").addClass("glyphicon-chevron-down");
+  $("#msgall,#sendnow").fadeOut(500);
+}
+</script>
 
 

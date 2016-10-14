@@ -8,6 +8,7 @@ import controllers._
 import difflib.{Patch, DiffUtils}
 import mod.diesel.controllers.DomWorker.AutosaveSet
 import mod.diesel.model.RDExt._
+import razie.diesel.ext._
 import mod.diesel.model._
 import org.antlr.v4.tool.{ANTLRMessage, ANTLRToolListener}
 import admin._
@@ -18,13 +19,14 @@ import org.scalatest.fixture
 import play.libs.Akka
 import razie.db._
 import razie.db.RazSalatContext.ctx
-import razie.diesel.RDOM.O
-import razie.diesel.{SimpleECtx, ECtx, RDomain}
+import razie.diesel.dom.{SimpleECtx, RDomain, RDOM}
+import RDOM.O
+import razie.diesel.dom.{SimpleECtx, ECtx}
 import razie.wiki.Enc
 import razie.wiki.Sec.EncryptedS
 import play.api.mvc._
 import razie.wiki.dom.WikiDomain
-import razie.wiki.util.{PlayTools, VErrors}
+import razie.wiki.util.PlayTools
 import razie.{CSTimer, js, cout, Logging}
 import javax.script.{ScriptEngineManager, ScriptEngine}
 import scala.Some
@@ -35,7 +37,7 @@ import scala.concurrent.duration.Duration
 import scala.util.Try
 import scala.util.parsing.input.{CharArrayReader, Positional}
 import razie.wiki.model.{WID, Wikis, WikiEntry, WikiUser}
-import razie.wiki.admin.{SecLink, Audit}
+import razie.wiki.admin.{Autosave, SecLink}
 import AstKinds._
 
 /** controller for server side fiddles / services */
@@ -127,9 +129,7 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
   }
 
   /** display the play sfiddle screen */
-  def playDom(reactor: String, iSpecWpath:String, iStoryWpath:String) = FAUPR { implicit stok =>
-    val q = stok.req.queryString.map(t=>(t._1, t._2.mkString))
-
+  def playDom(reactor: String, iSpecWpath:String, iStoryWpath:String, line:String, col:String) = FAUPR { implicit stok =>
     //1. which wids were you looking at last?
     val wids = Autosave.OR("DomFidPath."+reactor, stok.au.get._id, Map(
       "specWpath"  -> """""",
@@ -147,7 +147,6 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
       ))
       specWpath = iSpecWpath
     }
-
 
     // need saved?
     if(iStoryWpath != "?" && iStoryWpath != storyWpath) {
@@ -177,7 +176,8 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
     val id = java.lang.System.currentTimeMillis().toString()
 
     ROK.k reactorLayout12 {implicit stok=>
-      views.html.fiddle.playDomFiddle(reactor, q, spec, story, capture, specWpath, storyWpath, (spw != story), (stw != story), Some(""), id)
+      val wp = if(iSpecWpath.length > 0) iSpecWpath else iStoryWpath
+      views.html.fiddle.playDomFiddle(reactor, stok.query, spec, story, capture, specWpath, storyWpath, (spw != story), (stw != story), Some(""), id, wp, line, col)
     }
   }
 
@@ -256,10 +256,9 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
    * the server will send with buildDom2
    */
   def startESP(reactor:String, id: String) = FAUPR { implicit stok =>
-    val q = stok.req.queryString.map(t => (t._1, t._2.mkString))
 
     ROK.k reactorLayout12 {implicit stok=>
-      views.html.fiddle.playESPDomFiddle(reactor, q, Some(""), id)
+      views.html.fiddle.playESPDomFiddle(reactor, stok.query, Some(""), id)
     }
   }
 
@@ -280,17 +279,14 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
 
   /** fiddle screen - spec changed */
   def fiddleSpecUpdated(id: String) = FAUPR { implicit stok=>
-    val q = stok.req.queryString.map(t=>(t._1, t._2.mkString))
+    val q = stok.query
 
-    def fParm(name:String)=
-      stok.req.body.asFormUrlEncoded.get.apply(name).mkString
-
-    val reactor = fParm("reactor")
-    val specWpath = fParm("specWpath")
-    val storyWpath = fParm("storyWpath")
-    val spec = fParm("spec")
-    val story = fParm("story")
-    val capture = fParm("capture")
+    val reactor = stok.formParm("reactor")
+    val specWpath = stok.formParm("specWpath")
+    val storyWpath = stok.formParm("storyWpath")
+    val spec = stok.formParm("spec")
+    val story = stok.formParm("story")
+    val capture = stok.formParm("capture")
 
     //autosave which wids were you looking at last?
     DomWorker later AutosaveSet("DomFidPath."+reactor, stok.au.get._id, Map(
@@ -336,23 +332,18 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
     * @return
     */
   def fiddleStoryUpdated(id: String) = FAUPR { implicit stok=>
-    val q = stok.req.queryString.map(t=>(t._1, t._2.mkString))
-
-    def fParm(name:String)=
-      stok.req.body.asFormUrlEncoded.get.get(name).map(_.mkString).getOrElse("")
-
     val stimer = new CSTimer("buildDomStory", id)
     stimer start "heh"
 
     val settings = DomEngineSettings.fromRequest(stok.req)
 
-    val saveMode = fParm("saveMode").toBoolean
-    val reactor = fParm("reactor")
-    val specWpath = fParm("specWpath")
-    val storyWpath = fParm("storyWpath")
-    val spec = fParm("spec")
-    val story = fParm("story")
-    val capture = fParm("capture")
+    val saveMode = stok.formParm("saveMode").toBoolean
+    val reactor = stok.formParm("reactor")
+    val specWpath = stok.formParm("specWpath")
+    val storyWpath = stok.formParm("storyWpath")
+    val spec = stok.formParm("spec")
+    val story = stok.formParm("story")
+    val capture = stok.formParm("capture")
 
     if(saveMode) {
       DomWorker later AutosaveSet("DomFidPath."+reactor, stok.au.get._id, Map(
@@ -429,7 +420,7 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
     val idom = WikiDomain.domFrom(ipage).get.revise addRoot
 
     // start processing all elements
-    val engine = new DomEngine(dom, root, settings, ipage :: pages)
+    val engine = new DomEngine(dom, root, settings, ipage :: pages map WikiDomain.spec)
     setHostname(engine.ctx)
 
     // decompose all tree or just testing?
@@ -534,7 +525,7 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
     addStoryToAst(root, ipage, justTests)
 
     // start processing all elements
-    val engine = new DomEngine(dom, root, settings, ipage :: pages)
+    val engine = new DomEngine(dom, root, settings, ipage :: pages map WikiDomain.spec)
     setHostname(engine.ctx)
 
     engine
@@ -561,8 +552,7 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
     val stok = ROK.r
     val errors = new ListBuffer[String]()
 
-    val q = request.queryString.map(t=>(t._1, t._2.mkString))
-    val resultMode = q.getOrElse("resultMode", "")
+    val resultMode = stok.query.getOrElse("resultMode", "")
 
     cwid.wid.flatMap(wid=> wid.page.orElse {
       if( (wid.cat == "Spec" || wid.cat == "Story") && wid.name == "fiddle") {
@@ -574,7 +564,7 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
       val PAT = """(\w*)/(\w*)""".r
       val PAT(e,a) = cwid.rest
 
-      val nw = if(q.contains("dfiddle")) cwid.wid.get.copy(section=q.get("dfiddle")) else cwid.wid.get
+      val nw = if(stok.query.contains("dfiddle")) cwid.wid.get.copy(section=stok.query.get("dfiddle")) else cwid.wid.get
       irunDom(e, a, Some(nw)).apply(request)
     } getOrElse {
       errors append "WPath not found: [["+cwid.wpath.mkString+"]]"
@@ -608,12 +598,9 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
     * @param useThisOne if nonEmpty then will use this
     */
   private def irunDom(e:String, a:String, useThisOne:Option[WID]) = RAction { implicit stok=>
-    val q = stok.req.queryString.map(t=>(t._1, t._2.mkString))
-
     val reactor = stok.realm
 
-    def fParm(name:String, dflt:String="") =
-      q.getOrElse(name, dflt)
+    def fParm(name:String, dflt:String="") = stok.query.getOrElse(name, dflt)
 
     val settings = DomEngineSettings.fromRequest(stok.req)
 
@@ -626,7 +613,7 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
                     | The Json always includes any errors.
                   """.stripMargin
 
-    val resultMode = q.getOrElse("resultMode", "")
+    val resultMode = fParm("resultMode")
 
     val page = new WikiEntry("Spec", "fiddle", "fiddle", "md", "", stok.au.map(_._id).getOrElse(NOUSER), Seq("dslObject"), "")
 
@@ -659,7 +646,7 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
 
     // make up a story
     val FILTER = Array("sketchMode", "mockMode", "blenderMode", "draftMode")
-    var story = "$msg "+e+"."+a+" ("+q.filter(x=> ! FILTER.contains(x._1)).map(t=>t._1+"=\""+t._2+"\"").mkString(",")+")\n"
+    var story = "$msg "+e+"."+a+" ("+stok.query.filter(x=> ! FILTER.contains(x._1)).map(t=>t._1+"=\""+t._2+"\"").mkString(",")+")\n"
     clog << "STORY: " + story
 
     val story2 = if(settings.sketchMode) {
@@ -685,7 +672,7 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
     addStoryToAst(root, ipage)
 
     // start processing all elements
-    val engine = new DomEngine(dom plus idom, root, settings, ipage :: pages)
+    val engine = new DomEngine(dom plus idom, root, settings, ipage :: pages map WikiDomain.spec)
     setHostname(engine.ctx)
 
     root.children.foreach(engine.expand(_, true, 1))
@@ -741,18 +728,14 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
 
   /** calc the diff draft to original for story and spec */
   def diffDom(id: String) = FAUPR { implicit stok=>
-    val q = stok.req.queryString.map(t=>(t._1, t._2.mkString))
-
-    def fParm(name:String)= razscr.dec(stok.req.body.asFormUrlEncoded.get.apply(name).mkString)
-
     //todo this
     //    Some(1).filter(x=>(au hasPerm Perm.codeMaster) || (au hasPerm Perm.adminDb)).fold(
 
-    val reactor = fParm("reactor")
-    val specWpath = fParm("specWpath")
-    val storyWpath = fParm("storyWpath")
-    val spec = fParm("spec")
-    val story = fParm("story")
+    val reactor = stok.formParm("reactor")
+    val specWpath = stok.formParm("specWpath")
+    val storyWpath = stok.formParm("storyWpath")
+    val spec = stok.formParm("spec")
+    val story = stok.formParm("story")
 
     //1. which wids were you looking at last?
     DomWorker later AutosaveSet("DomFidPath."+reactor, stok.au.get._id, Map(
@@ -828,8 +811,6 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
 
   /** revert the temp/auto draft to the original */
   def revert(id: String, what:String) = FAUPR { implicit stok=>
-    val q = stok.req.queryString.map(t=>(t._1, t._2.mkString))
-
     //todo this
     //    Some(1).filter(x=>(au hasPerm Perm.codeMaster) || (au hasPerm Perm.adminDb)).fold(
 
@@ -934,12 +915,7 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
 
   /** fiddle screen - spec changed */
   def streamUpdated(id: String) = FAUPR { implicit stok=>
-    val q = stok.req.queryString.map(t=>(t._1, t._2.mkString))
-
-    def fParm(name:String)=
-      stok.req.body.asFormUrlEncoded.get.apply(name).mkString
-
-    val capture = fParm("capture")
+    val capture = stok.formParm("capture")
 
     DomWorker later AutosaveSet("DomFidSim."+stok.realm+"."+id, stok.au.get._id, Map(
       "content"  -> capture
@@ -968,10 +944,7 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
   }
 
   def postAst (stream:String, id:String, parentId:String) = FAUR {implicit stok=>
-    def fParm(name:String)=
-      stok.req.body.asFormUrlEncoded.get.get(name).map(_.mkString).getOrElse("")
-
-    val capture = fParm("capture")
+    val capture = stok.formParm("capture")
     val m = js.parse(capture)
 //    val root = DieselJsonFactory.fromj(m).asInstanceOf[DomAst].withDetails("(POSTed ast)")
       // is teh map from a debug session or just the AST
@@ -1026,13 +999,13 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
       a.zip(b).foldLeft(true)((a,b)=>a && b._1 == b._2 || b._2.matches("""\$\{([^\}]*)\}"""))
     }
 
-    val template = engine.ctx.specs.flatMap(_.templateSections.filter{t=>
-      val turl = EESnakk.parseTemplate(t.content).url
-      val tpath = if(turl startsWith "http://") {
-        turl.replaceFirst("https?://", "").replaceFirst(".*/", "/")
-      } else turl
-      matchesRequest(tpath, stok.req.path)
-    }).headOption
+//    val template = engine.ctx.specs.flatMap(_.templateSections.filter{t=>
+//      val turl = EESnakk.parseTemplate(t.content).url
+//      val tpath = if(turl startsWith "http://") {
+//        turl.replaceFirst("https?://", "").replaceFirst(".*/", "/")
+//      } else turl
+//      matchesRequest(tpath, stok.req.path)
+//    }).headOption
 
     import razie.Snakk._
 //    val body = body("")
@@ -1043,6 +1016,22 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
   /** proxy real service GET */
   def proxyPost(path:String) = RAction {implicit stok =>
     Ok("haha").as("application/json")
+  }
+
+  /** roll up and navigate the definitions */
+  def navigate () = FAUR {implicit stok=>
+
+    val engine = prepEngine(new ObjectId().toString,
+      DomEngineSettings.fromRequest(stok.req),
+      stok.realm,
+      DomAst("root", ROOT),
+      false)
+
+    val msgs = RDExt.summarize(engine.dom).toList
+
+    ROK.k reactorLayout12 {implicit stok=>
+      views.html.modules.diesel.navigateMsg(msgs)
+    }
   }
 
 }

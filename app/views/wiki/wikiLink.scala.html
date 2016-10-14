@@ -1,3 +1,6 @@
+@**
+link a user to a wiki: club membership etc
+**@
 @(from:razie.wiki.model.WID, to:razie.wiki.model.WID, myForm:Form[controllers.Wikil.LinkWiki], withComment:Boolean)(implicit stok:controllers.StateOk)
 @import razie.wiki.model.Wikis
 @import helper.twitterBootstrap._
@@ -6,15 +9,19 @@
 @import model.UW
 
 @how() = @{
-  val h = Wikis(to.getRealm).category(to.cat).flatMap(_.contentProps.get("roles:"+from.cat)) match {
-    case Some(s) => {
-      s.split(",").filter(x => ! Array("Owner","Admin").contains(x)).map(x=>(x,x)).toSeq
-    }
-    case None => {
-      Wikis(from.getRealm).pageNames("Link").map(x=>(x,x)).toList
-    }
+  // can override roles in page or in category
+  val h = to.page.flatMap(_.contentProps.get("roles:"+from.cat)) match {
+      case Some(s) => {
+        s.split(",").toList
+      }
+      case None => {
+        Wikis.domain(to.getRealm).roles(to.cat, from.cat)
+        // Wikis(to.getRealm).category(to.cat).flatMap(_.contentProps.get("roles:"+from.cat)) match
+      }
   }
-  if(h.isEmpty) Seq(("Enjoy", "Enjoy")) else h
+
+  if(h.isEmpty) Seq("Enjoy")
+  else h.filter(x => ! Array("Owner","Admin").contains(x)).toSeq
 }
 
       @if("User" == from.cat) {
@@ -28,10 +35,10 @@
     <div class="row">
       <div class="col-sm-4">
 
-@helper.form(action=routes.Wikil.linked(from,to,withComment), 'class->"well") {
+@helper.form(action=routes.Wikil.linked(from,to,withComment), 'class->"well alert alert-info") {
   @helper.select(
     myForm("how"),
-      how(),
+      how().map(x=>(x,x)).toSeq,
     '_label -> "Select a role",
     '_showConstraints -> false)
 
@@ -99,7 +106,9 @@
 @Wikil.moderatorOf(to).map {mu=>
   <div class="alert alert-warn">
   <strong>Note</strong>
-    that the @to.cat.toLowerCase is moderated by <a href="@controllers.Wiki.w("User", mu, to.getRealm)">@mu</a> - we'll ask for permission!
+    that the @to.cat.toLowerCase is moderated
+  @*by <a href="@controllers.Wiki.w("User", mu, to.getRealm)">@mu</a> - *@
+    - we'll ask for permission!
   </div>
 }
 

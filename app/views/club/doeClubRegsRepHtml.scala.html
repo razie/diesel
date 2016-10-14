@@ -20,7 +20,7 @@ report for printing for club reg med forms
 @forms.map{ form =>
   <h4 class="newPage">Empty</h4>
     <h2 class="newPage">@form.formRole.mkString Form: @fields(form, "lastName"), @fields(form, "firstName")</h2>
-    @wiki.wikiFrag(form.wid, Some(club), true, Some(form), None, true, false, false, false, true)
+    @wiki.wikiFrag(form.wid, None, true, Some(form), None, true, false, false, false, true)
 }
  </body>
 </html>

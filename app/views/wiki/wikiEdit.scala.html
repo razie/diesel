@@ -1,10 +1,12 @@
 @**************
 edit a wiki page
 **************@
-@(wid:razie.wiki.model.WID, myForm:Form[controllers.Wikie.EditWiki], noshow:String="")(implicit stok: controllers.StateOk)
+@(wid:razie.wiki.model.WID, myForm:Form[controllers.Wikie.EditWiki], hasDraft:Boolean = false, noshow:String="")(implicit stok: controllers.StateOk)
 @import model.Website.realm
 @import razie.wiki.model.{Wikis, WID, WikiEntry}
-@import razie.wiki.model.Reactors
+@import razie.wiki.model.WikiReactors
+
+@import play.mvc.Http.Context.Implicit
 
 @stok.title("Editing "+wid.cat+":"+ wid.name)
 
@@ -12,8 +14,23 @@ edit a wiki page
   myForm(name).value.getOrElse("?")
 }
 
-@wvis() = @{
-  Reactors(stok.realm).wiki.visibilityFor(wid.cat, "wvis") ++ (if(stok.au.exists(_.isAdmin)) Seq("Admin") else Nil)
+@varx(name:String, value:String="") = @{
+Implicit.flash().put("bibi", "haha")
+}
+
+
+  @vis(s:Option[String]) = @{
+    val x = WikiReactors(stok.realm).wiki.visibilityFor(wid.cat)
+    // add the current value, if not contained
+    if(s.exists(x.contains)) x
+    else s.map(Seq(_) ++ x) getOrElse x
+  }
+
+@wvis(s:Option[String]) = @{
+  val x = WikiReactors(stok.realm).wiki.visibilityFor(wid.cat, "wvis") ++ (if(stok.au.exists(_.isAdmin)) Seq("Admin") else Nil)
+  // add the current value, if not contained
+  if(s.exists(x.contains)) x
+  else s.map(Seq(_) ++ x) getOrElse x
 }
 
 @reserved(page:Option[WikiEntry]) = {
@@ -43,7 +60,10 @@ edit a wiki page
             </small>
             <div class="pull-right">
               @if(stok.au.exists(_.isAdmin)) {
+                <small>
+                <a href="#" onclick="showSettings()" class="btn btn-xs "><span id="showSettings" class="glyphicon glyphicon-list-alt"></span> Settings</a> |
                 <a href="#" onclick="resetView()" class="btn btn-xs "><span class="glyphicon glyphicon-th-large"></span> Layout</a>
+                </small>
               }
               <span style="font-size: x-small">
               </span>
@@ -66,6 +86,7 @@ PROBLEM: many places use label as name... via Wikis.formatName
   @helper.textarea(
     myForm("content"),
     '_label -> "Content",
+    'placeholder -> "Edit content here",
     '_showConstraints -> false,
     'class -> "form-control col-sm-12",
     'rows->20)
@@ -84,7 +105,7 @@ PROBLEM: many places use label as name... via Wikis.formatName
 
   </div>
 
-  <div id="weSettings" class="form-group col-sm-3">
+  <div id="weSettings" class="form-group col-sm-3 alert alert-info">
   @helper.select(
     myForm("markup"),
     razie.wiki.model.Wikis.markups.list,
@@ -94,14 +115,14 @@ PROBLEM: many places use label as name... via Wikis.formatName
 
   @helper.select(
     myForm("visibility"),
-    Reactors(stok.realm).wiki.visibilityFor(wid.cat).map(x=>(x,x)),
+    vis(myForm("visibility").value).map(x=>(x,x)),
     '_label -> "Visibility",
     'class -> "input-small",
     '_showConstraints -> false)
 
   @helper.select(
     myForm("wvis"),
-    wvis().map(x=>(x,x)),
+    wvis(myForm("wvis").value).map(x=>(x,x)),
     '_label -> "EditBy",
     'class -> "input-small",
     '_showConstraints -> false)
@@ -230,14 +251,14 @@ $('#content').textcomplete([
 }
     </small>
     <div class="pull-right">
-      <a href="#" onclick="refreshServer()" class="btn btn-xs" title="Refresh preview from server"><span class="glyphicon glyphicon-refresh"></span> Refresh</a>
+      <a href="#" onclick="refreshServer('@wid.wpath')" class="btn btn-xs" title="Refresh preview from server"><span class="glyphicon glyphicon-refresh"></span> Refresh</a>
       </span>
     </div>
   </h2>
   <div id="weOutputData">
 @Wikis(wid.getRealm).find(wid).map{we=>
     @if(noshow.isEmpty) {
-      @wiki.wikiFrag(wid,stok.au, true, Some(we))
+      @wiki.wikiFrag(wid,None, true, Some(we))
     }
 }
   </div>
@@ -261,6 +282,10 @@ $('#content').textcomplete([
 
 <script>
 
+@if(hasDraft) {
+  $("#floppy").css("color", "green");
+}
+
 var textarea = $("#content");
 
 $("#bigOne").css("min-height", $("#weForm").height());
@@ -268,6 +293,7 @@ $("#bigOne").css("min-height", $("#weForm").height());
 function submitPlease() {
   $("form").submit();
 }
+
 
 
 useLocalStorageCheckbox("weLive", "weLive");
@@ -295,7 +321,7 @@ function livePreview() {
       ) parseAndRender();
     else {
       $("#rtrip").text("(from server)");
-      refreshServer();
+      refreshServer('@wid.wpath');
     }
   }
 
@@ -388,7 +414,6 @@ function setView(currentLayout, newLayout) {
   } else if(newLayout == "6" && newLayout != currentLayout) {
     // preview side by side editor
     $("#weForm"  ).addClass("col-sm-6");
-    $("#weForm"  ).css("position", "relative");
     $("#weForm"  ).css("position", "fixed");
     $("#weOutput").addClass("col-sm-6");
     $("#weForm9" ).addClass("form-group col-sm-12");
@@ -414,6 +439,20 @@ function setView(currentLayout, newLayout) {
   }
 }
 
+// toggle weSettings
+function showSettings() {
+  var wes = $("#weSettings");
+  if(wes.is(":visible")) {
+    $("#weSettings").hide();
+    $("#weSettings"  ).css("position", "relative");
+  } else {
+    $("#weSettings"  ).css("position", "fixed");
+//    $("#weSettings"  ).css("background-color", "black");
+    $("#weSettings").show();
+  }
+}
+
+
 var layouts = ["12", "6", "9"];
 
 function resetView() {
@@ -425,6 +464,35 @@ function resetView() {
   setView(currentLayout, newLayout);
   currentLayout = newLayout;
 }
+
+// prevent footer scrolling over editor
+$(document).ready(function() {
+  footR=$('#weFooter').offset().top;
+  $(window).scroll(function() {
+    var formB=$('#weForm').height();
+    if(currentLayout=="9" || currentLayout=="6") {
+      var s = footR - $(window).scrollTop(); // dist to top of screen
+    // if want to scroll the top too (i.e. footer pushing top(
+    //    if(s <= $('#header').height()) {
+    //      $('#header').css({'top':''+(s-$('#header').height())+'px'});
+    //    }
+    //    else{
+    //      $('#header').css({'top':'0px'});
+    //    }
+
+    // if want to just stop scrolling bottom
+      if(s <= formB) {
+    //      $('#header').css({'top':''+(s-$('#header').height())+'px'});
+        $("#weFooter"  ).css("position", "fixed");
+        $('#weFooter').css({'top':formB-100});
+      }
+      else{
+        $("#weFooter"  ).css("position", "static");
+//        $('#weFooter').css({'top':s});
+      }
+    }
+  });
+});
 
 </script>
 
