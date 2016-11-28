@@ -157,7 +157,7 @@ object Realm extends RazController with Logging {
       // todo visibility? public unless you pay 20$ account
 
       razie.db.tx(s"create.$cat") { implicit txn =>
-        UserWiki(au._id, mainPage.uwid, "Owner").create
+        UserWiki(au._id, mainPage.uwid, "Admin").create
 
         if ("Reactor" == cat) {
           mainPage.copy(realm=name).create // create first, before using the reactor just below

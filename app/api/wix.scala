@@ -65,10 +65,10 @@ class wix (owe: Option[WikiEntry], ou:Option[WikiUser], q:Map[String,String], r:
     def isRegistered = iuser exists (u=> ipage >>> (x=>model.Users.findUserLinksTo(x.uwid).toList) exists (_.userId == u._id))
   }
 
-  def json = {
+  def jsonBrowser = {
     """var wix = {
     """ +
-      s"""
+   s"""
       "hostport" : "${hostport}",
     """ +
       (if(ipage.isDefined) {
@@ -109,8 +109,12 @@ class wix (owe: Option[WikiEntry], ou:Option[WikiUser], q:Map[String,String], r:
       SFiddles.qtojson(iquery) +
       """
     };
-    wix.utils = new (Java.type("api.WixUtils"))(wixj);
       """
+  }
+
+  def json = {
+    jsonBrowser +
+      """wix.utils = new (Java.type("api.WixUtils"))(wixj);"""
   }
 
   def query: Map[String,String] = iquery

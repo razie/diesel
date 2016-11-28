@@ -39,7 +39,7 @@ the right sidebar with tag navigation
       @tags.take(15).map { x =>
         <li><a href="@browseTag(x._1)">@x._1</a> <small>(@x._2)</small>
           @if(book.pinTags.contains(x._1)) {
-            <a href="#unpin" onclick="setPinTags('@book.pinTags.filter(_ != x._1).mkString("/")')" title="Unpin this tag">
+            <a href="#unpin" onclick="setPinTags('@book.pinTags.ltags.filter(_ != x._1).mkString("/")')" title="Unpin this tag">
             <span class="glyphicon glyphicon-pushpin"></span>
             </a>
           }

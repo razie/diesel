@@ -69,7 +69,7 @@ $fdata
 
     if (WikiDomain(wid.getRealm).needsOwner(wid.cat)) {
       we = we.cloneProps(we.props ++ Map("owner" -> u.id), u._id)
-      model.UserWiki(u._id, we.uwid, "Owner").create
+//      model.UserWiki(u._id, we.uwid, "Owner").create
       //      RazController.cleanAuth()
     }
 
@@ -128,7 +128,7 @@ $fdata
 
     if (WikiDomain(oldW.realm).needsOwner(oldW.category)) {
       we = we.cloneProps(we.props ++ Map("owner" -> u.id), u._id)
-      model.UserWiki(u._id, we.uwid, "Owner").create
+//      model.UserWiki(u._id, we.uwid, "Owner").create
       //      RazController.cleanAuth()
     }
 
@@ -162,7 +162,7 @@ $fdata
     "approve_button",
     "reject_button")
 
-    private def json(d: Map[String, String], errors: Boolean) = {
+    def json(d: Map[String, String], errors: Boolean) = {
       val j = new org.json.JSONObject()
 
       d.filter(t => !buttons.contains(t._1)).foreach(t => j.put(t._1, t._2))
@@ -187,7 +187,7 @@ $fdata
 
   /** save the form and possibly change status: submit/reject/accept */
   def doeSubmit(iwid: WID) = Action.async { implicit request =>
-    if(iwid.cat.contains("DslEntity"))
+    if(iwid.cat.contains("DslEntity") || iwid.content.exists(_.indexOf("wikie.form") >= 0))
       doeSubmit2(iwid).apply(request)
     else if(request.body.asFormUrlEncoded.get.contains("weNextUrl"))
       doeSubmit3(iwid).apply(request)
@@ -255,6 +255,9 @@ $fdata
                       Regs.findWid(wid).flatMap(x => Users.findUserByUsername(x.clubName)).map(Club(_).regAdmin).foreach { reviewer =>
                         Emailer.sendEmailFormSubmitted(reviewer, au, Wiki.w(wid))
                       }
+                      we.props.get("notifyUsers").toList.flatMap(_.split(",")).flatMap(Users.findUserById(_).toList).map{u=>
+                        Emailer.sendEmailFormNotify(u, au, Wiki.w(wid), we.props.getOrElse("role", ""))
+                      }
                     }
                   } else if (data2.contains("approve_button")) {
                     // if all forms in a registration are good, change status
@@ -294,7 +297,7 @@ $fdata
               Redirect(controllers.Wiki.w(we.wid, true)).flashing("count" -> "0")
             }
           }) getOrElse
-          unauthorized("?")
+          Unauthorized(errCollector.mkString)
       case None =>
         noPerm(wid, "HACK_SAVEEDIT")
     }
@@ -351,12 +354,15 @@ $fdata
                   au.shouldEmailParent("Everything").map(parent => Emailer.sendEmailChildUpdatedWiki(parent, au, WID(w.category, w.name)))
 
                   if (data2.contains("submit_button")) {
-                    SendEmail.withSession { implicit mailSession =>
+                    Emailer.withSession { implicit mailSession =>
                       //                  cout << Regs.findWid(wid)
                       //                  cout << Regs.findWid(wid).flatMap(x => Users.findUserByUsername(x.clubName))
                       //                  cout << Regs.findWid(wid).flatMap(x => Users.findUserByUsername(x.clubName)).map(Club(_).regAdmin)
                       Regs.findWid(wid).flatMap(x => Users.findUserByUsername(x.clubName)).map(Club(_).regAdmin).foreach { reviewer =>
                         Emailer.sendEmailFormSubmitted(reviewer, au, Wiki.w(wid))
+                      }
+                      we.props.get("notifyUsers").toList.flatMap(_.split(",")).flatMap(Users.findUserById(_).toList).map{u=>
+                        Emailer.sendEmailFormNotify(u, au, Wiki.w(wid), we.props.getOrElse("role", ""))
                       }
                     }
                   } else {
@@ -369,7 +375,7 @@ $fdata
               Redirect(controllers.Wiki.w(we.wid, true)).flashing("count" -> "0")
             }
           }) getOrElse
-          unauthorized("?")
+          Unauthorized(errCollector.mkString)
       case None =>
         val w = new WikiEntry(data2("category"), data2("name"), data2("category") + " - " +data2("name"), "md", data2("content"), auth.get._id, Seq(data2("tags")), data2("realm"))
         val wf = new WForm(w)
@@ -418,7 +424,7 @@ $fdata
               Redirect(controllers.Wiki.w(we.wid, true)).flashing("count" -> "0")
             }
           }) getOrElse
-          unauthorized("?")
+          Unauthorized(errCollector.mkString)
     }
   }
 
@@ -467,7 +473,7 @@ $fdata
               Wiki.showForm(iwid, None, Some(we), Some(au), false, Map(), true)(ROK.r)
             }
       }) getOrElse
-        unauthorized("?")
+          Unauthorized(errCollector.mkString)
   }
 
   def doeCreateReg(iwid: WID) = Action { implicit request =>
@@ -512,6 +518,24 @@ $fdata
         Map.empty,
         next,
         form
+      )
+    }
+  }
+
+  /** edit a new form, will reference its form design */
+  def doeFormEdit(wid:WID) = FAUR {implicit stok =>
+    val we = wid.page.get
+    val form = Wikis.formFor(we)
+    val fs = form.flatMap(WID.fromPath)
+
+    val newe = we.copy(content = fs.flatMap(_.content).mkString +"\n{{.wiki.noTemplates true}}\n"+ we.content)
+
+    ROK.k apply {
+      views.html.wiki.wikiGenForm(
+        newe,
+        Map.empty,
+        "",
+        form.flatMap(WID.fromPath)
       )
     }
   }

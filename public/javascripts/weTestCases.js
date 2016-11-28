@@ -106,6 +106,104 @@ function testSkiing() {
   return tests;
 }
 
-var suites = [[], testApi(), testScripting(), testNotes(), testClubs(), testSkiing()];
+
+function testcrUser(n, role) {
+  return function(next) {
+    crUser(n,role);
+    next();
+  }
+}
+
+/** create a user */
+function crUser(n, role) {
+  var form = {
+    "firstName" : n,
+    "lastName" : '',
+    "yob" : "1991",
+    "address" : "City of future",
+    "userType" : role,
+    "accept" : "true",
+    "about" : "ha",
+    "g-recaptcha-response" : TESTCODE
+  };
+  var email = "H-" + n + "@k.com"; // k.com is recognized elsewhere
+
+  // maybe user already created, be nice - this is for testing
+  var userId = wget("/testingRaz/userIdByFirstName/"+n+"/"+TESTCODE);
+
+  if (userId == "") {
+    var res;
+    res = pwget("/doe/profile/create?testcode=" + TESTCODE, form); // sok "we sent an emai"
+    //    Thread.sleep(1000)
+    userId = wget("/testingRaz/userIdByFirstName/"+n+"/"+TESTCODE);
+
+    //userId should have length (24)
+    if(userId.length != 24)
+      report("ERR crUser " + "\t" +userId, true);
+    else {
+      report("OK crUser " + "\t" +userId , false);
+
+    res = wget("/testingRaz/auth/x/"+TESTCODE);
+    res = wget("/testingRaz/verifyUserById/"+userId+"/"+TESTCODE);
+      // I don't what this :
+    //res = wget("/testingRaz/setuserUsernameById/"+userId+"/"+TESTCODE);
+    console.log("User created: " + "H-" + n + " "+ userId);
+    }
+  }
+}
+
+function testPros() {
+  var pro = 'a1'+testCYCLE,
+    guest = 'a2'+testCYCLE;
+  var tests = [
+    testcrUser(pro, 'Pro'),
+    auth("H-" + pro + "@k.com", "H-"+TESTCODE),
+    sok('/doe/consent2/Admin:Consent ver 2', 'Thank'),
+    sok ("/", pro),
+    auth(''),
+
+    testcrUser(guest, 'Guest'),
+    auth("H-" + guest + "@k.com", "H-"+TESTCODE),
+    sok('/doe/consent2/Admin:Consent ver 2', 'Thank'),
+    sok ("/", guest),
+    auth(''),
+
+    auth("H-" + pro + "@k.com", "H-"+TESTCODE),
+    //psok ("/4us/activate/Pro", {
+    psok ("/doe/form/submit/Form:a_form", {
+      discipline : 'alpine',
+      system : 'effective',
+      cbCalendar : 'y',
+      cbForum : 'y',
+      cbBuyAndSell : 'y',
+      cbApprove : 'n',
+      desc : 'description',
+      certs : 'certifications',
+      photo : '',
+      weNextUrl : '/4us/activate/Pro',
+      weContent : '',
+      video : ''
+    }, "certifications"),
+
+    auth(''),
+
+
+
+    auth('')
+  ];
+  return tests;
+}
+
+// lazy after testCYCLE init
+var suites = function () {
+  return {
+    testPros: testPros(),
+    testAPI: testApi(),
+    testScripting: testScripting(),
+    testnotes: testNotes(),
+    testClubs: testClubs(),
+    testSkiing: testSkiing()
+  };
+};
 
 

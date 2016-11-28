@@ -1,24 +1,71 @@
 @******
 club admin manages list of users and registrations
 ******@
-@import mod.snow.RacerKidAssoc
 @(clubwid:razie.wiki.model.WID, club:model.User, details:String, members:List[(Option[model.User], model.UserWiki, Option[mod.snow.Reg])], regs:List[mod.snow.Reg], rks:List[controllers.ModRkEntry], rkas:List[mod.snow.RacerKidAssoc])(implicit stok:controllers.StateOk)
 @import _root_.razie.wiki.Services
+@import mod.snow.RacerKidAssoc
+@import mod.snow.RacerKidz
+@import razie.wiki.model.WikiCount
+@import razie.wiki.model.WikiLink
+@import model.UserWiki
+@import razie.db.ROne
+@import razie.db.RMany
 
 @stok.title("purge Registrations for club " + clubwid.name)
 
 <h2>Purging</h2>
 
-<br>Regs @regs.size
+club  @clubwid.wpath   @clubwid.uwid
 
-<br>RegKid @regs.map(_.kids.size).sum
+<br><button onclick="doPurge('Reg')" >purge now</button> Regs @regs.size
 
-<br>Forms @regs.map(_.deprecatedWids.size).sum
+<br><button onclick="doPurge('RegKid')" >purge now</button> RegKid @regs.map(_.kids.size).sum
 
-<br>ModRkEntry @rks.size
-<br>RacerKidAssoc @rkas.size
+<br><button onclick="doPurge('Form')" >purge now</button> Forms @regs.map(_.deprecatedWids.size).sum
 
-  VolunteerH
+<br><button onclick="doPurge('WikiCount')" >purge now</button>
+  WikiCount @regs.map(_.deprecatedWids.flatMap(_.uwid.toSeq).flatMap{uw=>
+  RMany[WikiCount]("pid" -> uw.id).toSeq
+}.size).sum
+
+<br><button onclick="doPurge('WikiLink')" >purge now</button>
+  WikiLink @regs.map(_.deprecatedWids.flatMap(_.uwid.toSeq).flatMap{uw=>
+  RMany[WikiLink]("from.id" -> uw.id).toSeq ++
+      RMany[WikiLink]("to.id" -> uw.id).toSeq
+}.size).sum
+
+<br><button onclick="doPurge('UserWiki')" >purge now</button>
+  UserWiki @regs.map(_.deprecatedWids.flatMap(_.uwid.toSeq).flatMap{uw=>
+  RMany[UserWiki]("uwid.id" -> uw.id).toSeq
+}.size).sum
+
+
+<br><button onclick="doPurge('ModRkEntry')" >purge now</button> ModRkEntry @rks.size
+<br><button onclick="doPurge('RacerKidAssoc')" >purge now</button> RacerKidAssoc @rkas.size
+
+@*<br><button onclick="doPurge('VolunteerH')" >purge now</button> VolunteerH @{rkas.toList.map{x=>*@
+  @*RacerKidz.findVolByRkaId(x._id.toString).toSeq.size*@
+@*}.sum*@
+@*}*@
+
+@tabrkas=@{
+  rkas.map(x=> Map(
+    "from" -> x.from.toString,
+    "to" -> x.to.toString,
+    "assoc" -> x.assoc,
+    "role" -> x.role,
+    "owner" -> x.owner.toString,
+    "year" -> x.year
+  ))
+}
+
+@util.utilSimpleTable(tabrkas.iterator,
+  Seq("from"->"from",
+    "to"->"to",
+    "assoc"->"assoc",
+    "role"->"Role",
+    "owner"->"owner",
+    "year" -> "year"), None)
 
 <hr>
 
@@ -31,11 +78,28 @@ club admin manages list of users and registrations
   "RegKid" @k._id
   }
 
+  @reg.deprecatedWids.map { w =>
+    <br>
+  "Form" @w.wpath
+  }
+
  @reg.deprecatedWids.map { w =>
-   <br>
-   "Form" @w.wpath
+ @w.uwid.map { uw =>
+   @ROne[WikiCount]("pid" -> uw.id).map{wc=> <br>WikiCount @wc._id}
+   @RMany[WikiLink]("from.id" -> uw.id).map{wl=> <br>WikiLink from @wl._id}
+   @RMany[WikiLink]("to.id" -> uw.id).map{wl=> <br>WikiLink to @wl._id}
+   @RMany[UserWiki]("uwid.id" -> uw.id).map{wl=> <br>UserWiki @wl._id}
+ }
  }
 
+    <script>
+      function doPurge(what) {
+  $.post("/doe/club/dopurgeregs/"+what+"/@{regs.head.year}/@{clubwid.wpath}", {}, function(data) {
+    window.location.reload();
+  })
+  alert("wait...");
+      }
+    </script>
   <hr>
 }
 

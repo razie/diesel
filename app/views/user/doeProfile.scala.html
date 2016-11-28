@@ -1,4 +1,4 @@
-@(myForm: Form[model.User], au: model.User)(implicit request: Request[_])
+@(myForm: Form[model.User], au: model.User)(implicit request: controllers.RazRequest)
 
 @import helper.twitterBootstrap._
 @import play.api.Play.current
@@ -17,7 +17,7 @@
       </small>
 
       @util.razSelect(myForm, "userType", "Add a role",
-        model.Website.userTypes(request).map(x=>(x.toString,model.Website.userTypeDesc(x.toString)(request))))
+        model.Website.userTypes(request.req).map(x=>(x.toString,model.Website.userTypeDesc(x.toString)(request.req))))
 
       @util.razSelect(myForm, "yob", "When you were born",
         (Range(2005, 1912, -1) map (y => (y.toString, y.toString))),

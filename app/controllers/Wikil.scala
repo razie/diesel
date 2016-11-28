@@ -6,10 +6,10 @@
  */
 package controllers
 
-import mod.snow.{Regs, RacerKidz, RK, RacerKidAssoc}
-import model.{Users, User, Perm}
+import mod.snow._
+import model.{Website, Users, User, Perm}
 import razie.base.Audit
-import razie.wiki.Enc
+import razie.wiki.{Services, Enc}
 import razie.wiki.admin.SendEmail
 
 import scala.Array.canBuildFrom
@@ -62,7 +62,7 @@ object Wikil extends WikieBase {
     (for (
       au <- stok.au;
       uwid <- wid.uwid orErr ("can't find uwid");
-      r1 <- au.hasPerm(Perm.uProfile) orCorr cNoPermission("uProfile")
+      r1 <- au.hasPerm(Perm.uProfile) orCorr cNoPermission("uProfile - probably need to validate email")
     ) yield {
       if (wid.domain.isA("Club", wid.cat) && really != "y") {
         def hasRegs =
@@ -85,7 +85,6 @@ object Wikil extends WikieBase {
           rk.rka.filter(_.assoc == mod.snow.RK.ASSOC_LINK).filter (rka=>
             Club.findForUserId(rka.from).exists(_.name == wid.name)
           ).toList.map(_.delete)
-          cleanAuth()
 
           if (wid.domain.isA("Club", wid.cat)) {
             Club.userLeft(au, wid.name)(razie.db.tx.auto)
@@ -94,12 +93,13 @@ object Wikil extends WikieBase {
           if (wid.domain.isA("Club", wid.cat) && Regs.findClubUser(wid, au._id).nonEmpty) {
             // notify club admin
             moderatorOf(wid).map {mod=>
-              Emailer.withSession { implicit mailSession =>
+              Emailer.withSession(stok.realm) { implicit mailSession =>
                 Emailer.tell(mod, "User left the page", " Page: "+wid.wpath, " User:"+au.userName)
               }
             }
           }
 
+          cleanAuth()
           Msg2("OK, removed link!", Some("/"))
         } getOrElse {
           // need to link now
@@ -244,7 +244,7 @@ object Wikil extends WikieBase {
           if (model.Users.findFollowerLinksTo(uwid).toList.flatMap(_.follower).exists(_.email == es)) {
             Msg2("You already subscribed with that email... Enjoy!", Some(wid.urlRelative))
           } else {
-            Emailer.withSession { implicit mailSession =>
+            Emailer.withSession(wid.getRealm) { implicit mailSession =>
               Emailer.sendEmailFollowerLink(email1, wid, comment)
               Emailer.tellRaz("Subscribed", email1 + " ip=" + request.headers.get("X-Forwarded-For"), wid.ahref, comment)
             }
@@ -280,7 +280,7 @@ object Wikil extends WikieBase {
         }
         RCreate(model.FollowerWiki(f._id, comment.decUrl, uwid))
 cleanAuth(auth)
-        Emailer.withSession { implicit mailSession =>
+        Emailer.withSession(wid.getRealm) { implicit mailSession =>
           Emailer.tellRaz("Subscription confirmed", email.dec, wid.ahref, comment.decUrl)
         }
 
@@ -321,21 +321,6 @@ cleanAuth(auth)
       TODO
   }
 
-  // link a user for moderated club was approved
-  private def createLinkedUser(au: User, wid:WID, uwid: UWID, withComment: Boolean, how: String, mark: String, comment: String)(implicit request: Request[_], txn: Txn) = {
-    model.UserWiki(au._id, uwid, how).create
-    if (withComment) {
-      val wl = WikiLink(UWID("User", au._id), uwid, how)
-      wl.create
-      WikiEntry("WikiLink", wl.wname, "You like " + Wikis.label(wid), mark, comment, au._id).cloneProps(Map("owner" -> au.id), au._id).create
-    }
-
-    if (Wikis.domain(wid.getRealm).isA("Club", wid.cat))
-      Club.linkedUser(au, wid, how)
-
-    cleanAuth(Some(au))
-  }
-
   // link a user for moderated club was approved by moderator
   def linkAccept (expiry: String, userId: String, club: WID, how: String) = Action { implicit request =>
     implicit val errCollector = new VErrors()
@@ -358,7 +343,7 @@ cleanAuth(auth)
       again <- (!user.wikis.exists(_.uwid == uwid)) orErr ("Aldready associated to club")
     ) yield {
       razie.db.tx("linkUser.toWiki") { implicit txn =>
-        ilinkAccept(user, c, uwid, how)
+        ilinkAccept(user, c, uwid, how, true)
       }
       Msg2("OK, added!", Some("/"))
     }) getOrElse {
@@ -368,18 +353,21 @@ cleanAuth(auth)
   }
 
   // link a user for moderated club was approved
-  private def ilinkAccept(user: User, club: Club, pageUwid:UWID, how: String)(implicit request: Request[_], txn: Txn) {
+  private def ilinkAccept(user: User, club: Club, pageUwid:UWID, how: String, giveQuota:Boolean)(implicit txn: Txn) {
     // only if there is a club/user entry for that Club page
     val rk = RacerKidz.myself(user._id)
-    RacerKidAssoc(club.userId, rk._id, mod.snow.RK.ASSOC_LINK, how, club.userId).create
+    if(!rk.rka.exists(_.from == club.userId))
+      RacerKidAssoc(club.userId, rk._id, mod.snow.RK.ASSOC_LINK, how, club.userId).create
+    if(!rk.rkwa.exists(_.uwid.id == club.uwid.id))
+      RacerKidz.rkwa(rk._id, club.uwid, club.curYear, how, mod.snow.RK.ASSOC_LINK)
 
     createLinkedUser(user, club.wid, pageUwid, false, how, "", "")
 
-    if (!user.quota.updates.exists(_ > 10))
+    if (giveQuota && !user.quota.updates.exists(_ > 10))
       user.quota.reset(50)
 
-    Emailer.withSession { implicit mailSession =>
-      Emailer.sendEmailLinkOk(user, club.userName)
+    Emailer.withSession(club.wid.realm.flatMap(Website.forRealm).map(_.label)) { implicit mailSession =>
+      Emailer.sendEmailLinkOk(user, club.userName, club.msgWelcome)
       Emailer.tellRaz("User joined club", "Club: " + club.wid.wpath, "Role: " + how, s"User: ${user.firstName} ${user.lastName} (${user.userName} ${user.email.dec}")
       (moderatorOf(club.wid).toList :::
         club.props.filter(_._1.startsWith("link.notify.")).toList.map(_._2)
@@ -388,6 +376,22 @@ cleanAuth(auth)
       }
     }
   }
+
+  // link a user for moderated club was approved
+  private def createLinkedUser(au: User, wid:WID, uwid: UWID, withComment: Boolean, how: String, mark: String, comment: String)(implicit txn: Txn) = {
+    model.UserWiki(au._id, uwid, how).create
+    if (withComment) {
+      val wl = WikiLink(UWID("User", au._id), uwid, how)
+      wl.create
+      WikiEntry("WikiLink", wl.wname, "You like " + Wikis.label(wid), mark, comment, au._id).cloneProps(Map("owner" -> au.id), au._id).create
+    }
+
+    if (Wikis.domain(wid.getRealm).isA("Club", wid.cat))
+      Club.linkedUser(au, wid, how)
+
+    Services ! WikiEvent("AUTH_CLEAN", "User", au._id.toString)
+  }
+
 
   // roles
   def hows(to:WID, from:String) = {
@@ -402,13 +406,13 @@ cleanAuth(auth)
   }
 
   def linkDeny(userId: String, club: WID, how: String) = Action { implicit request =>
-    Emailer.withSession { implicit mailSession =>
+    Emailer.withSession(club.getRealm) { implicit mailSession =>
       Emailer.sendEmailLinkDenied(Users.findUserById(userId).get, club)
     }
     Msg2("OK, denied!", Some("/"))
   }
 
-  /** a user linked to a WID */
+  /** a user linked to a WID - submitted form */
   def linkedUser(userId: String, wid: WID, withComment: Boolean) = FAU {
     implicit au => implicit errCollector => implicit request =>
 
@@ -419,7 +423,7 @@ cleanAuth(auth)
     linkForm.bindFromRequest.fold(
     formWithErrors => BadRequest(
       ROK.s justLayout { implicit stok =>
-        views.html.wiki.wikiLink(WID("User", auth.get.id), wid, formWithErrors, withComment)
+        views.html.wiki.wikiLink(WID("User", au.id), wid, formWithErrors, withComment)
       }),
     {
       case we @ LinkWiki(how, notif, mark, comment) =>
@@ -440,10 +444,11 @@ cleanAuth(auth)
             if (wid.domain.isA("Club", wid.cat)) {
               if (mod.isEmpty ||
                 Club(wid).exists(_.props.get("link.auto").mkString == "yes")) {
-                ilinkAccept(au, Club(wid).get, uwid, how)
+                ilinkAccept(au, Club(wid).get, uwid, how, true)
+                cleanAuth(Some(au))
                 Msg2("OK, added!", Some("/"))
               } else {
-                Emailer.withSession { implicit mailSession =>
+                Emailer.withSession(wid.getRealm) { implicit mailSession =>
                   Emailer.sendEmailLink(mod.get, au, wid, how)
                 }
                 Msg2(s"An email has been sent to the moderator of <strong>${page.label}</strong>, you will receive an email when they're done!",
@@ -456,7 +461,7 @@ cleanAuth(auth)
                 wl.create
                 WikiEntry("WikiLink", wl.wname, "You like " + Wikis.label(wid), mark, comment, au._id).cloneProps(Map("owner" -> au.id), au._id).create
               }
-              cleanAuth()
+              cleanAuth(Some(au))
               Msg2("OK, added!", Some("/"))
             }
           }
@@ -467,5 +472,42 @@ cleanAuth(auth)
     })
   }
 
+  /** a user linked to a WID - submitted form */
+  def wikiFollow(uname:String, wpath: String, how:String) = {
+    //todo auth
+    clog << s"METHOD wiki.follow($how, $wpath, $uname)"
+
+    implicit val errCollector = new VErrors()
+
+    (for (
+      au <- Users.findUserByUsername(uname) orErr "user not found: "+uname;
+      wid <- WID.fromPath(wpath) orErr "wpath not found: "+wpath;
+      uwid <- wid.uwid orErr "wpath does not exist: "+wpath;
+      page <- wid.page orErr s"Page $wid not found";
+      ok <- hows(wid, "User").contains(how) orErr "invalid role";
+      xxx <- Some("")
+    ) yield {
+        razie.db.tx("wiki.follow") { implicit txn =>
+          val mod = moderatorOf(wid).flatMap(mid => { Users.findUserByEmail(Enc(mid)) })
+
+          if (wid.domain.isA("Club", wid.cat)) {
+            if (mod.isEmpty ||
+              Club(wid).exists(_.props.get("link.auto").mkString == "yes")) {
+              ilinkAccept(au, Club(wid).get, uwid, how, false) // no quota
+              "OK, added!"
+            } else {
+              Emailer.withSession(wid.getRealm) { implicit mailSession =>
+                Emailer.sendEmailLink(mod.get, au, wid, how)
+              }
+             "Email sent to mod"
+            }
+          } else {
+            model.UserWiki(au._id, uwid, how).create
+            Services ! WikiEvent("AUTH_CLEAN", "User", au._id.toString)
+            "OK, added!"
+          }
+      }
+    }) getOrElse ("ERROR: "+errCollector.mkString)
+  }
 }
 

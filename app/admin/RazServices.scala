@@ -32,7 +32,7 @@ class RazAuthService extends AuthService[User] with Logging {
     request.session.get(Services.config.CONNECTED).map { euid =>
       synchronized {
         val uid = Enc.fromSession(euid)
-        (u orElse Users.findUserByEmail(uid)).foreach { u =>
+        (u orElse Cache.getAs[User](uid + ".connected") orElse Users.findUserByEmail(uid)).foreach { u =>
           debug("AUTH CLEAN =" + u._id)
           Cache.remove(u.email + ".connected")
           Cache.remove(u._id.toString + ".name")
@@ -70,7 +70,7 @@ class RazAuthService extends AuthService[User] with Logging {
           debug("AUTH connecting=" + uid)
           Users.findUserByEmail(uid).map { u =>
             debug("AUTH connected=" + u)
-            debug("AUTH MEH =" + u.clubs.size)
+//            debug("AUTH MEH =" + u.clubs.size)
             Cache.set(u.email + ".connected", u, 120)
             Cache.set(u._id.toString + ".name", u.userName, 120)
             u

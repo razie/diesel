@@ -5,6 +5,7 @@ eh
 
 @label()=@{ page.map(_.label).getOrElse(razie.wiki.model.Wikis(wid.getRealm).label(wid)) }
 
+  <!-- layout div9Plain -->
 <div class="container">
   <div class="row">
 
@@ -12,7 +13,11 @@ eh
 
       @wiki.layout.draft(page)
 
-        @wiki.wikiFrag(wid,None,false,page, iname, false, true, canEdit)
+      @modules.diesel.wBrowser(stok.realm, page, "top")(identity)
+
+      @wiki.wikiFrag(wid,None,false,page, iname, false, true, canEdit)
+
+      @modules.diesel.wBrowser(stok.realm, page, "bottom")(identity)
 
       @if(page.isDefined && !print) {
         @wiki.wikiAddMore(wid, page)
@@ -38,12 +43,7 @@ eh
 
   </div> <!-- row -->
     @if(!print) {
-        @htmlFooter(
-    ads = stok.website.adsAtBottom &&
-        (stok.au.isEmpty || stok.website.adsForUsers) &&
-        !page.exists(_.contentProps.contains("noAds")) &&
-                !page.exists(_.content.matches( """(?s).*\{\{ad[:}].*\{\{ad[:}].*""")) &&
-                !stok.au.exists(_.isUnder13),
+        @htmlFooter(ads = stok.showBottomAds(page),
             false,
             wid.getRealm,
             stok.request)

@@ -3,7 +3,7 @@ add data tables with sort pagination and search
 
 name is the ID of the table to upgrade
 **************@
-@(name:String)
+@(name:String, order:Seq[(Int,String)]=Seq.empty)
 
 <link  href="https://cdn.datatables.net/plug-ins/1.10.7/integration/bootstrap/3/dataTables.bootstrap.css" rel="stylesheet" />
 <script src="https://cdn.datatables.net/1.10.7/js/jquery.dataTables.min.js"></script>
@@ -15,11 +15,17 @@ name is the ID of the table to upgrade
 <script src="@routes.Assets.at("dataTables1.10.7.bootstrap.js")"></script>
 **@
 
+
 <script>
   $(document).ready(function() {
   var @name = $('#@name').dataTable({
     'paging' : false
   });
+  $('#@name').dataTable().api().order(
+  @order.map { t =>
+    [@t._1, "@t._2"]
+  }
+  ).draw();
 });
 </script>
 

@@ -8,8 +8,13 @@ eh
 
   @wiki.layout.draft(page)
 
+@modules.diesel.wBrowser(stok.realm, page, "top")(identity)
+
   @wiki.wikiFrag(wid,None,false,page, iname, false, true, canEdit)
 
+@modules.diesel.wBrowser(stok.realm, page, "bottom")(identity)
+
+  <!-- layout div12FullPage -->
 <div class="container">
       @if(page.isDefined && !print) {
         @wiki.wikiAddMore(wid, page)
@@ -21,11 +26,7 @@ eh
 
     <hr>
       @if(!print) {
-          @htmlFooter(ads = stok.website.adsAtBottom &&
-              (stok.au.isEmpty || stok.website.adsForUsers) &&
-              !page.exists(_.contentProps.contains("noAds")) &&
-                  !page.exists(_.content.matches( """(?s).*\{\{ad[:}].*\{\{ad[:}].*""")) &&
-                  !stok.au.exists(_.isUnder13),
+          @htmlFooter(ads = stok.showBottomAds(page),
               false,
               wid.getRealm,
               stok.request)

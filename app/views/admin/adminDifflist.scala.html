@@ -16,11 +16,12 @@ purge audit tables
 
     <h2>Diffs from @target</h2>
 
-    Removed local or new on remote:
+    Removed local or new on remote (won't copy links!!):
     <ul>
     @lremoved.sortBy(_.realm).map { wea =>
             <li>
       @wea.realm <a href="http://@target@WID(wea.cat, wea.name).r(wea.realm).urlRelative">@wea.cat:@wea.name v@wea.ver</a>
+            &nbsp;&nbsp;&nbsp;<a href="@routes.AdminDiff.applyDiff2(target, WID(wea.cat, wea.name).r(wea.realm))" class="btn btn-xs btn-success">TO Local</a>
     }
     </ul>
 
@@ -38,9 +39,9 @@ purge audit tables
       </td>
         <td>
           @t._2.realm <a href="@WID(t._1.cat, t._1.name).r(t._1.realm).url">@t._1.cat:@t._1.name</a> (<a href="/wikie/content/@wp(WID(t._1.cat, t._1.name).r(t._1.realm))">content</a>) TO
-        <a href="http://@target/@WID(t._2.cat, t._2.name).r(t._2.realm).urlRelative">@t._2.cat:@t._2.name</a>
+        <a href="http://@{target}@WID(t._2.cat, t._2.name).r(t._2.realm).urlRelative">@t._2.cat:@t._2.name</a>
         - see
-      <a href="@routes.AdminDiff.showDiff(target, WID(t._2.cat, t._2.name).r(t._2.realm))" class="btn btn-xs btn-info">>DIFF</a>
+      <a href="@routes.AdminDiff.showDiff(t._3, target, WID(t._2.cat, t._2.name).r(t._2.realm))" class="btn btn-xs btn-info">>DIFF</a>
         </td>
         <td>
           @t._3
@@ -87,7 +88,7 @@ purge audit tables
           @t._2.realm <a href="@WID(t._1.cat, t._1.name).r(t._1.realm).url">@t._1.cat:@t._1.name</a> (<a href="/wikie/content/@wp(WID(t._1.cat, t._1.name).r(t._1.realm))">content</a>) TO
           <a href="http://@target/@WID(t._2.cat, t._2.name).r(t._2.realm).urlRelative">@t._2.cat:@t._2.name</a>
           - see
-          <a href="@routes.AdminDiff.showDiff(target, WID(t._2.cat, t._2.name).r(t._2.realm))" class="btn btn-xs btn-info">>DIFF</a>
+          <a href="@routes.AdminDiff.showDiff(t._3, target, WID(t._2.cat, t._2.name).r(t._2.realm))" class="btn btn-xs btn-info">>DIFF</a>
         </td>
         <td>
         @t._3

@@ -34,11 +34,16 @@ object ApplicationBuild extends Build {
 
     "com.googlecode.java-diff-utils"        % "diffutils"             % "1.2.1",
 
-    "org.antlr" % "antlr4" % "4.5.3",
+// for snakked
+   "org.json"       % "json"            % "20090211",
+   "commons-jxpath" % "commons-jxpath"  % "1.3",
+   "org.scala-lang.modules" %% "scala-xml" % "1.0.3",
 
-    "com.razie"          %% "base"               % "0.9.1",//-SNAPSHOT",
-    "com.razie"          %% "snakked"            % "0.9.1",//-SNAPSHOT",
-    "com.razie"          %% "scripster-core"     % "0.9.1"//-SNAPSHOT"
+//    "com.razie"          %% "base"               % "0.9.1",//-SNAPSHOT",
+//    "com.razie"          %% "snakked"            % "0.9.1",//-SNAPSHOT",
+//    "com.razie"          %% "scripster-core"     % "0.9.1"//-SNAPSHOT"
+
+    "org.antlr" % "antlr4" % "4.5.3"
     )
 
     val repos = Seq("snapshots" at "https://oss.sonatype.org/content/repositories/snapshots",
@@ -74,6 +79,9 @@ object ApplicationBuild extends Build {
     (baseSettings ++ Seq(
       libraryDependencies ++= appDependencies,
 //      unmanagedSourceDirectories in Compile += baseDirectory.value / "../../w2/com.razie.dsl1/src-gen",
+      unmanagedSourceDirectories in Compile += baseDirectory.value / "../razbase//base/src/main/scala",
+      unmanagedSourceDirectories in Compile += baseDirectory.value / "../snakked/core/src/main/scala",
+      unmanagedSourceDirectories in Compile += baseDirectory.value / "../scripster/src/main/scala",
       unmanagedSourceDirectories in Compile += baseDirectory.value / "../coolscala/common",
       unmanagedSourceDirectories in Compile += baseDirectory.value / "../coolscala/wiki",
     sourceDirectories in (Compile, TwirlKeys.compileTemplates) += baseDirectory.value / "../coolscala/wiki/app",

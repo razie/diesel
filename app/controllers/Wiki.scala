@@ -20,6 +20,7 @@ import com.mongodb.{BasicDBObject, DBObject}
 import razie.db.{ROne, RazMongo}
 import play.api.mvc.{Action, AnyContent, Request}
 import razie.diesel.dom.RDOM
+import razie.diesel.ext.{EMsg, ERule}
 import razie.wiki.util.PlayTools
 import razie.{js, cout, Logging}
 import razie.wiki.model._
@@ -117,6 +118,64 @@ object Wiki extends WikiBase {
     Ok("["+(c1).map(s=>s""" "${s.replaceAllLiterally("_", " ")}" """).mkString(",")+"]").as("text/json")
   }
 
+  def filterTags (category:String, utags:String, page:Option[WikiEntry], qt:Array[Array[String]]) = {
+    qt.size > 0 &&
+      qt.foldLeft(true)((a, b) => a && (
+        if(b(0).startsWith("-")) ! utags.contains(b(0).substring(1))
+        else b.foldLeft(false)((a, b) => a || (utags.contains(b) ||
+          b == "*" ||
+          category.toLowerCase == b ||
+          (b == "draft" && page.exists(_.isDraft))) ||
+          (b == "public" && page.exists(_.visibility == PUBLIC))
+        ))
+      )
+  }
+
+  def extract (realm:String, page:Option[WikiEntry]) = {
+    def p(p:String) = Website.forRealm(realm).flatMap(_.prop(p)).mkString
+
+    if(p("wbrowser.query") == "dieselMsg") {
+      val domList = page.get.cache.getOrElse(WikiDomain.DOM_LIST, List[Any]()).asInstanceOf[List[Any]].reverse
+      val colEnt = new ListBuffer[(RDOM.A, String)]()
+      val colMsg = new ListBuffer[(RDOM.A, String)]()
+
+      val all = domList.collect {
+        case m:EMsg =>
+          colEnt append ((
+            RDOM.A(page.get.getLabel, page.get.name, m.entity, "me", "msg"),
+            ""
+            ))
+          colMsg append ((
+            RDOM.A(page.get.getLabel, page.get.name, m.entity+"."+m.met, "me", "met"),
+            ""
+          ))
+      }
+      (colEnt.distinct.toList.map(_._1), colMsg.distinct.toList.map(_._1), Nil)
+    } else {
+      // normal browse mode tagQuery
+     val all = page.get.ilinks.distinct.collect {
+        case link if link.wid.page.isDefined =>
+          (RDOM.A(page.get.getLabel, page.get.name, link.wid.name, "me", link.role.mkString), link.wid.page.get.tags.mkString)
+      }
+
+      def qt(t:String) = {
+        t.split("[/&]").filter(_ != "tag").map(_.split("[,|]"))
+      }
+
+      def filter(cat:String, tags:String, s:String) = {
+        Wiki.filterTags(cat, tags, page, qt(p(s)))
+      }
+
+      (
+        all.filter(x=>filter("", x._2, "wbrowser.left")).map(_._1),
+        all.filter(x=>filter("", x._2, "wbrowser.middle")).map(_._1),
+        all.filter(x=>filter("", x._2, "wbrowser.right")).map(_._1)
+      )
+    }
+
+  }
+
+
   //TODO optimize - index or whatever
   /** search all topics  provide either q or curTags */
   def getList(irealm:String, q: String, scope:String, curTags:String="", max:Int=2000)(implicit request : Request[_]) = {
@@ -173,11 +232,11 @@ object Wiki extends WikiBase {
         }.toList
 
         if(WikiDomain(realm).zEnds(p.category, "Child").contains("Item"))
-          RazMongo.withDb(RazMongo("weItem").m) (src)
+          RazMongo.withDb(RazMongo("weItem").m, "query") (src)
         else
-          RazMongo.withDb(RazMongo("WikiEntry").m) (src)
+          RazMongo.withDb(RazMongo("WikiEntry").m, "query") (src)
       } else {
-        RazMongo.withDb(RazMongo("WikiEntry").m) { t =>
+        RazMongo.withDb(RazMongo("WikiEntry").m, "query") { t =>
           for (
             u <- t.find(REALM) if filter(u)
           ) yield u
@@ -413,6 +472,7 @@ object Wiki extends WikiBase {
   def wr(wid: WID, fromRealm:String, shouldCount: Boolean = true):String =
     Config.urlmap(wid.urlRelative(fromRealm) + (if (!shouldCount) "?count=0" else ""))
 
+  /** @deprecated use the one with fromREalm */
   def w(cat: String, name: String, realm:String) =
       Config.urlmap(WID(cat, name).r(realm).urlRelative)
 
@@ -808,7 +868,7 @@ object Wiki extends WikiBase {
       def mkLink (s:String) = routes.Wiki.wikiBrowse (s, path+"/"+s).toString()
 
       ROK.k apply {implicit stok=>
-        views.html.modules.diesel.wikiBrowser(realm, Some(we), middle, left, right)(mkLink)
+        views.html.modules.diesel.wikiBrowser(realm, Some(we))(mkLink)
       }
     }) getOrElse unauthorized()
   }

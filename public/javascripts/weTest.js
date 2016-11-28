@@ -3,6 +3,8 @@
  */
 
 var testState="none";
+var testCYCLE = 1;
+var TESTCODE = "RazTesting";
 
 function target() {
   return $("#target").val();
@@ -51,6 +53,16 @@ function err(url, code) {
 }
 
 /** get URL 200 and make sure it includes string s */
+function psok(url, data, s) {
+  return psnok (url, data, s, true);
+}
+
+/** get URL 200 and make sure it NOT includes string s */
+function pnok(url, data, s) {
+  return psnok (url, data, s, false);
+}
+
+/** get URL 200 and make sure it includes string s */
 function sok(url, s) {
   return snok (url, s, true);
 }
@@ -69,6 +81,29 @@ function ahref(url) {
 function snok(url, s, should) {
   return function(next) {
     testGet(url, function(result) {
+      var res = result;
+      if(typeof result == 'object') res = JSON.stringify(result);
+
+      if (res.indexOf(s) >= 0 && should) {
+        report("200 " + ahref(url) + "\t" + s, false);
+      } else if (res.indexOf(s) < 0 && !should) {
+        report("200 "+ahref(url) + "\t CONTAINS "+s, false);
+      } else {
+        var not = (res.indexOf(s) >= 0) ? "" : "NOT_";
+        report("200 "+ahref(url) + "\t"+not+"CONTAINS " +s, true);
+      }
+      next();
+    }, function(err) {
+      report("ERR_AJAX "+ahref(url) + "\t"+JSON.stringify(err), true);
+      next();
+    })
+  }
+}
+
+/** get URL 200 and make sure it includes string s */
+function psnok(url, data, s, should) {
+  return function(next) {
+    testPost(url, data, function(result) {
       var res = result;
       if(typeof result == 'object') res = JSON.stringify(result);
 
@@ -113,6 +148,71 @@ function auth(u,p) {
 }
 
 /** test url with given predicate */
+function pwget(url, data) {
+  var u = "http://"+target()+url;
+  if(url.indexOf('http') == 0) u = url;
+  var res = "";
+
+  try {
+    $.ajax({
+      type: "POST",
+      url: u,
+      async: false,
+      data : data,
+      headers: testHeaders,
+      success: function (result){
+        try {
+          res = result;
+        } catch (err) {
+          console.log(err);
+        }
+        //continueTest();
+      },
+      error: function (result){
+        //continueTest();
+        console.log(result);
+      }
+    });
+  } catch(err) {
+    console.log(err);
+    //continueTest();
+  }
+  return res;
+}
+
+/** test url with given predicate */
+function wget(url) {
+  var u = "http://"+target()+url;
+  if(url.indexOf('http') == 0) u = url;
+  var res = "";
+
+  try {
+    $.ajax({
+      type: "GET",
+      url: u,
+      async: false,
+      headers: testHeaders,
+      success: function (result){
+        try {
+          res = result;
+        } catch (err) {
+          console.log(err);
+        }
+        //continueTest();
+      },
+      error: function (result){
+        //continueTest();
+        console.log(result);
+      }
+    });
+  } catch(err) {
+    console.log(err);
+    //continueTest();
+  }
+  return res;
+}
+
+/** test url with given predicate */
 function testGet(url, check, ferr) {
   var u = "http://"+target()+url;
   if(url.indexOf('http') == 0) u = url;
@@ -122,6 +222,37 @@ function testGet(url, check, ferr) {
       type: "GET",
       url: u,
       async: true,
+      headers: testHeaders,
+      success: function (result){
+        try {
+          check(result)
+        } catch (err) {
+          ferr(err);
+        }
+        //continueTest();
+      },
+      error: function (result){
+        //continueTest();
+        ferr(result);
+      }
+    });
+  } catch(err) {
+    ferr(err);
+    //continueTest();
+  }
+}
+
+/** test url with given predicate */
+function testPost(url, data, check, ferr) {
+  var u = "http://"+target()+url;
+  if(url.indexOf('http') == 0) u = url;
+
+  try {
+    $.ajax({
+      type: "POST",
+      url: u,
+      async: true,
+      data : data,
       headers: testHeaders,
         success: function (result){
           try {
@@ -142,21 +273,29 @@ function testGet(url, check, ferr) {
 }
 }
 
-
 /**
  * Needs a var suites =[[],[]] is the array of arrays of callbacks.
  *
  * see admin_test.scala.html
  */
-function runSuites() {
+function runSuites(starting) {
   testState = "running";
+  testCYCLE = parseInt(wget("/testingRaz/testCycle/x/"+TESTCODE));
+
+  var mysuites = suites();
+
   var curCount = 0;
+  var cases = [];
+  if(starting) cases = [starting];
+  else {
+    for(var k in mysuites) cases.push(k);
+  }
 
   function testCase(s,i) {
     function continueTest() {
-      if(i < suites[s].length-1 && testState == "running")
+      if(i < mysuites[cases[s]].length-1 && testState == "running")
         setTimeout(testCase(s,i+1), 50);
-      else if(s < suites.length-1 && testState == "running")
+      else if(s < cases.length-1 && testState == "running")
         setTimeout(testCase(s+1,0), 50);
       else if(testState == "running")
         testState = "done";
@@ -164,19 +303,20 @@ function runSuites() {
 
     curCount = curCount+1;
 
-    $("#cur").text('suite '+s + ' test '+i);
+    $("#cur").text('suite '+cases[s] + ' test '+i);
     $("#count").text(curCount);
 
     var t1=new Date().getTime();
 
     try {
-      suites[s][i](continueTest);
+      mysuites[cases[s]][i](continueTest);
     } catch(err) {
       continueTest();
     }
   }
 
   testCase(0, 0);
+  return false;
 }
 
 /**

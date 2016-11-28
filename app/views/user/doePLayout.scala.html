@@ -1,10 +1,10 @@
 @***
 simple layout for profile and preference pages
 ***@
-@(au: model.User, title: String, itemNo: Integer)(body: => play.twirl.api.Html)(implicit request:Request[_])
+@(au: model.User, title: String, itemNo: Integer)(body: => play.twirl.api.Html)(implicit request:controllers.RazRequest)
 
-@htmlHead(title)(Map.empty, Some(au))
-@navbar(Some(au))(new controllers.StateOk("", Some(au), Some(request)))
+@htmlHead(title, Some(request))(Map.empty, Some(au))
+@navbar(Some(au))(new controllers.StateOk("", Some(au), request.oreq))
 
 <div class="container">
   <div class="row">
@@ -14,7 +14,7 @@ simple layout for profile and preference pages
 
   </div> <!-- /row -->
   <hr>
-  @htmlFooter(ads = true)(new StateOk("", Some(au), Some(request)))
+  @htmlFooter(ads = true)
 </div> <!-- /container -->
 
-@htmlBottom(false)(new StateOk("", Some(au), Some(request)))
+@htmlBottom(false)

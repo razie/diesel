@@ -26,7 +26,7 @@ rule_DomainModel:
 
 
 rule_AbstractElement:
-    rule_Expect | rule_Msg | rule_Match | rule_When | rule_Receive | rule_Option | rule_Val | rule_Mock | rule_Topic | rule_Braq | TEXT;
+    rule_Expect | rule_Msg | rule_Match | rule_When | rule_Receive | rule_Flow | rule_Option | rule_Val | rule_Mock | rule_Topic | rule_Braq | TEXT;
 
 
 
@@ -63,6 +63,34 @@ rule_Match:
 
 rule_Mock:
 	'$mock' a=ID aa=rule_Attrs? cond=rule_Condition? '=>' za=rule_AttrSpecs? NEWLINE
+;
+
+
+
+
+rule_Flow:
+	'$flow' a=ID aa=rule_Attrs? cond=rule_Condition? '=>' expr=rule_FlowExprA  NEWLINE
+;
+
+
+
+
+rule_FlowExprA:
+  a=rule_FlowExprP ( '+' b+=rule_FlowExprP)*
+;
+
+
+
+
+rule_FlowExprP:
+  a=rule_FlowExprT ('|' b+=rule_FlowExprT)*
+;
+
+
+
+
+rule_FlowExprT:
+  m=ID | '(' rule_FlowExprA ')'
 ;
 
 

@@ -104,11 +104,12 @@ function rmCookie(name) {
 
 ///////////////// animations
 
-function weBlink(selector,text,color) {
+function weBlink(selector,text,color,duration) {
+  var dur = duration || 1000;
   $(selector).text(text);
   $(selector).css("background-color", color);
-  $(selector).fadeIn(700, function() {
-    $(selector).fadeOut(700);
+  $(selector).fadeIn(dur, function() {
+    $(selector).fadeOut(dur);
   });
 }
 

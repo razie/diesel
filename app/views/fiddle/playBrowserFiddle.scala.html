@@ -3,15 +3,21 @@ a JS/SCALA client side fiddle, **full page**
 **************@
 @(lang:String,
   content:String,
+  tags:String,
   q:Map[String,String],
+  isAuto:Boolean=false,
   we:Option[razie.wiki.model.WikiEntry]=None,
   moreContext:String="",
   id:String = java.lang.System.currentTimeMillis().toString())(implicit stok:controllers.StateOk)
+@import model.Perm
 
 @stok.title("Fiddle, fiddle")
 
-<h2>Browser fiddle (@lang) | <small>
+<h2>Browser fiddle (@lang)
+  | <small>
   <input type="checkbox" id="refresh" checked> Real time (<span id="roundtrip"></span>)
+  | <input type="checkbox" id="raphael" > Raphael
+  | @Html(we.map(x=>"editing [["+x.wid.ahrefNice(stok.realm)+"]]").mkString)
 </small></h2>
 
 <script src="@routes.Assets.at("javascripts/weFiddles.js")"></script>
@@ -21,14 +27,28 @@ a JS/SCALA client side fiddle, **full page**
 </pre>
 
 <div class="row" style="align-items:center;">
-  <div id="pre3box_@id" class="col-sm-9" style="">
+  <div id="pre3box_@id" class="col-sm-8" style="">
     <pre id="pre3_@id" style="height:228px; ">@content.trim.replaceAll("\n$", "")</pre>
   </div>
-  <div class="col-sm-3" id="resultdiv_@id" style="">
-    <pre id="iframe_@id" name="iframe_@id" style="background:lightgray; padding:1px; text-align: center">Start typing...</pre>
+  <div class="col-sm-4" id="resultdiv_@id" style="overflow-y:auto">
+    <pre id="iframe_@id" name="iframe_@id" style="padding:1px; text-align: center">Start typing...</pre>
+    <pre id="log_@id" name="log_@id" style="padding:1px; text-align: left"></pre>
   </div>
 </div>
 
+<div>
+   <input type="text" name="tags" id="tags" class="col-sm-6 input-sm" placeholder="Tags, comma-separated" value="@tags"/>
+  &nbsp;
+    @if(we.isDefined) {
+      <a id="update" href="#" onclick="updateFiddle(); return false;" class="btn btn-info btn-xs">Update fiddle</a>
+    } else {
+      <a id="update" href="#" onclick="updateFiddle(); return false;" class="btn btn-info btn-xs">Save fiddle</a>
+    }
+    <small><span id="autosave">@if(isAuto) { (autosave) }</span></small>
+</div>
+
+
+<br>
 
 <small>Errors in code:</small><br>
 
@@ -40,18 +60,72 @@ a JS/SCALA client side fiddle, **full page**
 <b>When done, click the browser's BACK button to go back.</b>
 
 <div id="preamble" style="display: none">
-//can't move this because you could have many in the same page
-function println() {
-  // the default prints to printer
+  var preambleData;
+
+    //can't move this because you could have many in the same page
+  function println() {
+    // the default prints to printer
   }
-function println(x) {
-  // output is from the closure so for each occurence in a page
-  output = output + JSON.stringify(x) + "\n";
+  function log(x) {
+    if(typeof output != "undefined") {
+      output = output+JSON.stringify(x)+"\n";
+    }
+  }
+  function alert(x) {
+    log(x);
+  }
+  function plot(x,y,c) {
+    postMessage({i:preambleData.i, cmd:'plot', x:x, y:y, c:c});
+  }
+  function rect(x,y,l,w,c) {
+    postMessage({i:preambleData.i, cmd:'rect', x:x, y:y, l:l, w:w, c:c});
   }
 </div>
 
+<div id="postamble" style="display: none">
+</div>
+
+<script src="@routes.Assets.at("vendor/raphael.js")" type="text/javascript" charset="utf-8"></script>
+<script src="@routes.Assets.at("vendor/axis.js")" type="text/javascript" charset="utf-8"></script>
+<script src="@routes.Assets.at("javascripts/weCommons.js")" type="text/javascript" charset="utf-8"></script>
+
 <script>
-$('#iframe_'+@id).css('max-height', $('#pre3box_@id').height()+'px');
+useLocalStorageCheckbox("refresh", "browserFiddleRefreshMode");
+useLocalStorageCheckbox("raphael", "browserFiddleRaphaelMode");
+
+var id = '@id';
+
+$('#resultdiv_'+@id).css('max-height', $('#pre3box_@id').height()+'px');
+var output = "";
+
+var seqNum_@id = 0;
+
+@if(stok.au.isEmpty) {
+  $('#update').attr("disabled","disabled");
+  $('#update').attr("title","You need an account to save");
+}
+
+function updateFiddle () {
+  var code = editor.getValue();
+
+    $.ajax(
+    '/sfiddle/updateFiddle/js?wpath=@we.map(_.wid.wpath).mkString', {
+      type: 'POST',
+      data: $.param({
+        l : 'js',
+        tags : $("#tags").val(),
+        j : editor.getValue()
+      }),
+      contentType: 'application/x-www-form-urlencoded',
+      success: function(data) {
+        alert("Fiddle saved");
+      },
+      error  : function(x) {
+        console.log( "ERR "+x.toString());
+        alert("Fiddle NOT saved - ERROR: "+x.toString());
+      }
+    });
+};
 
 // TODO IMPORTANT
 // running is async, it may race with you typing
@@ -59,58 +133,84 @@ $('#iframe_'+@id).css('max-height', $('#pre3box_@id').height()+'px');
 var runpill_@id = function(id) {
   var moreContext = $("#moreContext").text();
   var preamble = $("#preamble").text();
+  var postamble = $("#postamble").text();
   var code = editor.getValue();
 
-  var output = "";
+  var raphael = $('#raphael').prop('checked');
+
+  if(raphael) {
+    var width = $('#iframe_'+id).width();
+    var height = $('#pre3box_@id').height();
+    $('#iframe_'+id).height(height);
+    window.raphael = new Raphael(document.getElementById('iframe_'+id), width, height);
+    window.raphael.axis = axis;
+//    window.raphael.circle(100,100, 50).attr("fill", "blue");
+  }
+
   var res = "";
 
   try {
-  $.ajax(
-    '/sfiddle/saveFiddle/JSFiddle/@stok.realm', {
-    type: 'POST',
-    data: $.param({
-      l : 'js',
-      j : editor.getValue()
-    }),
-    contentType: 'application/x-www-form-urlencoded',
-    success: function(data) {
-    // todo paint something
-    },
-    error  : function(x) {
-      console.log( "ERR "+x.toString());
+@if(stok.au.nonEmpty) {
+    $.ajax(
+      '/sfiddle/saveFiddle/JSFiddle/@stok.realm?wpath=@we.map(_.wid.wpath).mkString', {
+      type: 'POST',
+      data: $.param({
+        l : 'js',
+        tags : $("#tags").val(),
+        j : editor.getValue()
+      }),
+      contentType: 'application/x-www-form-urlencoded',
+      success: function(data) {
+        $("#autosave").hide();
+        $("#autosave").attr("title", "");
+        $("#autosave").text("autosaved");
+        $("#autosave").fadeIn();
+      },
+      error  : function(x) {
+        $("#autosave").attr("title", x.toString());
+        $("#autosave").text("autosave ERR");
+        console.log( "ERR "+x.toString());
+      }
+    });
+}
+
+  seqNum_@id = seqNum_@id +1;
+  var closureSeq = seqNum_@id;
+
+  limitEval(moreContext+preamble+"\n"+code, function(success, returnValue, outputStr) {
+    if(closureSeq != seqNum_@id) {
+      console.log("ignored old result: "+closureSeq+' current: '+seqNum_@id);
+      return;
     }
-  });
 
-//    res = eval(moreContext+preamble+"\n"+code);
-
-  limitEval(moreContext+preamble+"\n"+code, function(success, returnValue) {
     if (success) {
       res = returnValue;
       paintErr(false);
     }
     else {
       paintErr(true);
-      res = 'TIMEOUT - infinite loop?';
+      res = returnValue || 'TIMEOUT - infinite loop?';
     }
 
     if(typeof res != 'undefined' && res != null) res = res.toString();
     else if(typeof res == 'undefined') res = "";
-    if(code.length > 0) $('#iframe_'+id).text(output+res);
-    else $('#iframe_'+id).text("Start typing...");
+    var finalres = res;
+    if(code.length > 0 && !raphael) {
+      $('#iframe_'+id).html(finalres);
+      if(typeof outputStr != 'undefined' && outputStr != null) {
+        $('#log_'+id).html(outputStr);
+        $('#log_'+id).show();
+      } else {
+        $('#log_'+id).hide();
+      }
+      }
+    else if(!raphael)
+      $('#iframe_'+id).text("Start typing...");
   }, 3000);
 
     paintErr(false);
   } catch (e) {
     paintErr(true);
-    if (e instanceof SyntaxError) {
-        res = e.message;
-    } else {
-        res = e;
-    }
-    if(typeof res != 'undefined' && res != null) res = res.toString();
-    else if(typeof res == 'undefined') res = "";
-    if(code.length > 0) $('#iframe_'+id).text(output+res);
-    else $('#iframe_'+id).text("Start typing...");
   }
 }
 
@@ -146,7 +246,9 @@ var jsh = function(code) {
 
   <script src="@routes.Assets.at("ace-builds/src/ace.js")" type="text/javascript" charset="utf-8"></script>
   <script src="@routes.Assets.at("ace-builds/src/mode-javascript.js")" type="text/javascript" charset="utf-8"></script>
-  <script src="@routes.Assets.at("ace-builds/src/ext-language_tools.js")" type="text/javascript" charset="utf-8"></script>
+<script src="@routes.Assets.at("ace-builds/src/ext-language_tools.js")" type="text/javascript" charset="utf-8"></script>
+
+
 <script>
   ace.require("ace/ext/language_tools");
   var editor = ace.edit("pre3_@id");

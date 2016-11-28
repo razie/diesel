@@ -152,7 +152,7 @@ case class TopicList (
   /** find a certain type of section that was not completed in the completed topics.
     *
     * If no progress passed, then find all sections */
-  def sections (p:Option[Progress], cond:(WikiEntry, WikiSection) => Boolean) = {
+  def sections (p:Option[Progress], seeAll:Boolean, cond:(WikiEntry, WikiSection) => Boolean) = {
     // todo could cache this under progress as we go along, I guess
     val res = ListBuffer[(String, WikiSection)]()
 
@@ -160,11 +160,11 @@ case class TopicList (
       case (TLFolder(t), _, _) => {
       }
       case (TLTopic(t), _, path) => {
-        if(p.isEmpty || p.exists(p=> p.hasCollectables(t))) {
+        if(p.isEmpty || seeAll || p.exists(_.hasCollectables(t))) {
           res appendAll t.page.toList.flatMap{page=>
             page.preprocessed; // todo needs au
             val x = page.sections.filter{s=>
-              cond(page, s)
+              !res.exists(_._2.name == s.name) && cond(page, s)
             }
             x.map(x=>(path,x))
           }

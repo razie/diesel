@@ -1,6 +1,7 @@
 package mod.book
 
 import model.{Users, User, Website}
+import org.apache.commons.lang3.StringUtils
 import org.bson.types.ObjectId
 import play.api.mvc.Action
 import razie.base.Audit
@@ -66,7 +67,7 @@ case class Progress (
   //todo maybe READ topics are done?
     records.find(x=> x.topic == uwid && x.section == section).exists(x=> x.status == Progress.STATUS_IN_PROGRESS)// || x.status == Progress.STATUS_READ)
 
-  // does it contain topics in READ status, which may have collectables
+  /** does it contain topics in READ status, which may have collectables */
   def hasCollectables (uwid:UWID) =
     records.find(x=> x.topic == uwid && x.section == None).exists(x=>
       x.status == Progress.STATUS_READ
@@ -128,6 +129,15 @@ object Progress extends RazController with WikiMod {
   }
 
   import RMongo.as
+
+  def XX(s1:String, s2:String) = {
+    val x = s1 diff s2
+    val y=  s1.toSeq.diff(s2.toSeq)
+    val z=  s1.toCharArray.diff(s2.toCharArray)
+    val xxx= StringUtils.indexOfDifference(s1, s2)
+    val xxxxx= StringUtils.difference(s1,s2)
+    x
+  }
 
   def startProgress (ownerId:ObjectId, tl:TopicList): Progress = {
     //suspend anything in progress
@@ -255,7 +265,7 @@ object Progress extends RazController with WikiMod {
         """
           |<div class="alert alert-warning">
           |    <span style="font-weight : bold ;color:red">
-          |        You need a <i>free</i> account to track progress and access the first of 9 levels and start improving your skiing!
+          |        You need a <i>free</i> account to track progress and access the the on-snow sessions and start improving your skiing!
           |        <p><a href="/doe/join">Join now!</a> Checkout the <a href="/improve/skiing/view">contents</a>
           |         or the public <a href="/browse">wiki!</a>
           |    </span>
@@ -289,7 +299,7 @@ object Progress extends RazController with WikiMod {
 
             val n = tl.next(uwid,p)
             p.addAndUpdate (uwid, None, st)
-            Redirect(widTo.urlRelative)
+            Redirect(widTo.urlRelative(request.realm))
           }) getOrElse Ok("<b>{{Pathway not started}}</b>")
       }) getOrElse unauthorized("You need a free account to track your progress.")
   }
@@ -394,7 +404,12 @@ object Progress extends RazController with WikiMod {
   }
 
   CodePills.add(s"$PILL/misc/hasMain") {implicit stok=>
-    val res = stok.au.flatMap {u=> findForUser(u._id).find(_.status == STATUS_IN_PROGRESS)} flatMap (_.ownerWid) filter (_.wpath contains DFLT_PATHWAY)
+    val res = stok.au.flatMap { u =>
+      findForUser(u._id) filter
+        (x => (x.status == STATUS_IN_PROGRESS || x.status == STATUS_PAUSED)) flatMap
+        (_.ownerWid.toList) find
+        (_.wpath contains DFLT_PATHWAY)
+    }
 
     if(res.isDefined)
       Ok("").withHeaders("Access-Control-Allow-Origin" -> "*")
@@ -425,15 +440,15 @@ object Progress extends RazController with WikiMod {
     we.tags.contains("improve-skiing")
 
   /** format a section for display, with done/skip buttons and state */
-  def formatSec (we:WikiEntry, cur:WikiSection, what:String, path:String, au:Option[User]) : String = {
+  def formatSec (we:WikiEntry, cur:WikiSection, what:String, path:String)(implicit stok:StateOk) : String = {
     val (kind, name) = (cur.signature, cur.name)
 
     val c =
       s"""`{{section $name:$kind}}`${cur.content}
-         |<small>Read original <a href="${we.wid.urlRelative}">topic</a></small> `{{/section}}`""".stripMargin
+         |<small>Read original <a href="${we.wid.urlRelative(stok.realm)}">topic</a></small> `{{/section}}`""".stripMargin
 
     // this will callback the modPreFormat below
-    val f = Wikis.format(we.wid, we.markup, c, Some(we), au)
+    val f = Wikis.format(we.wid, we.markup, c, Some(we), stok.au)
     val r = modPostHtmlNoBottom(we, f)
     r
   }
@@ -452,9 +467,9 @@ object Progress extends RazController with WikiMod {
       s"""{div.alert.info}<b>$kind</b> <small>$name</small>&nbsp;&nbsp;<div align="right" style="display:inline">${buttons(name)}</div>$content{/div}"""
 
     def buttons (name:String) = {
-      if(we.sections.find(_.name == name).exists(_.args.contains("when")))
-        ""
-      else
+//      if(we.sections.find(_.name == name).exists(_.args.contains("when")))
+//        ""
+//      else
         s"""<span id="$name">...</span>\n"""+
         Wikis.propLater(name, s"/pill/$PILL/section/buttons?section=$name&wid=${we.wid.wpath}}}")
     }
@@ -516,7 +531,7 @@ object Progress extends RazController with WikiMod {
             ret = js.tojsons(List(Map(
               "label" -> p.label,
               "wpath" -> p.wid.wpath,
-              "url" -> p.wid.urlRelative,
+              "url" -> p.wid.urlRelative(stok.realm),
               "id" -> p._id.toString
             )), 1)
           }

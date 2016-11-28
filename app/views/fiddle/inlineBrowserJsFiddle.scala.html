@@ -24,12 +24,13 @@ an **inline** JS/SCALA client side fiddle
 </div>
 
 <script type="text/javascript" src="@routes.Assets.at("vendor/jshint.js")"></script>
+<script src="@routes.Assets.at("javascripts/weFiddles.js")"></script>
 
   <div id="preamble" style="display: none">
-    //can't move this because you could have many in the same page
-    function println(x) {
-    // output is from the closure so for each occurence in a page
-    output = output + JSON.stringify(x) + "\n";
+    function log(x) {
+    if(typeof output != "undefined") {
+    output = output+JSON.stringify(x)+"\n";
+    }
     }
   </div>
 
@@ -37,38 +38,51 @@ an **inline** JS/SCALA client side fiddle
 
 $('#pre3bdiv_'+@id).hide();
 
+var seqNum_@id = 0;
+
 var runpill_@id = function(id) {
   var preamble = $('#preamble').text();
   var code = editor_@{id}.getValue();
   var output = "";
   var res = "";
 
-  try {
-    res = eval(preamble + "\n" + code);
-    paintErr(false);
-  } catch (e) {
-    paintErr(true);
-    if (e instanceof SyntaxError) {
-        res = e.message;
-    } else {
-        res = e;
-    }
-  }
+    seqNum_@id = seqNum_@id +1;
+    var closureSeq = seqNum_@id;
 
-  if(typeof res != 'undefined' && res != null) res = res.toString();
-  else if(typeof res == 'undefined' && output.length <= 0) res = " ";
-  else if(typeof res == 'undefined' && output.length > 0) res = "";
-  if(code.length > 0) $('#iframe_'+id).text(output+res);
-  else $('#iframe_'+id).text("Click for result");
+  limitEval(preamble+"\n"+code, function(success, returnValue, outputStr) {
+    if(closureSeq != seqNum_@id) {
+      console.log("ignored old result: "+closureSeq+' current: '+seqNum_@id);
+      return;
+    }
+
+    if (success) {
+      res = returnValue;
+      paintErr(id, false);
+    }
+    else {
+      paintErr(id, true);
+      res = returnValue || 'TIMEOUT - infinite loop?';
+    }
+
+    if(typeof res != 'undefined' && res != null) res = res.toString();
+    else if(typeof res == 'undefined') res = "";
+    var finalres = res;
+    if(typeof outputStr != 'undefined' && outputStr != null && outputStr != "")
+      finalres = "<b>"+res + "</b>" + "\n--------------\n"+outputStr;
+    if(code.length > 0) $('#iframe_'+id).html(finalres);
+    else $('#iframe_'+id).text("Start typing...");
+  }, 3000);
+
+  paintErr(id,false);
 }
 
-function paintErr(isErr) {
-  $('#iframe_'+@id).toggleClass("panel panel-success", !isErr);
-  $('#iframe_'+@id).toggleClass("panel panel-danger", isErr);
+function paintErr(id,isErr) {
+  $('#iframe_'+id).toggleClass("panel panel-success", !isErr);
+  $('#iframe_'+id).toggleClass("panel panel-danger", isErr);
 }
 
 // returns true if no errors
-var jsh = function(code) {
+var jsh = function(id,code) {
   JSHINT(code, {expr: true, asi:true}); // enable expression mode and don't warn semicolons
   var ret = JSHINT.data();
 
@@ -78,14 +92,14 @@ var jsh = function(code) {
     JSHINT.data().errors.forEach(function(e){
       er = er+e.line + '\t\t'+e.reason+'\n';
     })
-    document.getElementById('pre3b_@id').innerText = er;
+    document.getElementById('pre3b_'+id).innerText = er;
     @*$('#pre3bdiv_'+@id).show();*@
-    paintErr(true);
+    paintErr(id,true);
     return false;
   } else {
     @*$('#pre3bdiv_'+@id).hide();*@
-    document.getElementById('pre3b_@id').innerText = "";
-    paintErr(false);
+    document.getElementById('pre3b_'+id).innerText = "";
+    paintErr(id,false);
     return true;
   }
 }
@@ -114,19 +128,19 @@ var jsh = function(code) {
 
   //jsh(editor.getValue());
 
-  var razChanged_@{id}=true;
+  var razChanged_@{id}='@id';
 
   editor_@{id}.getSession().on("change", function(e) {
-    razChanged_@{id}=true;
+    razChanged_@{id} = '@id';
     //var j=editor.getValue();
     //jsh(j);
   });
 
 setInterval(function(){
-   if(razChanged_@{id}) {
+   if(razChanged_@{id} != '') {
      var j=editor_@{id}.getValue();
-     if(jsh(j)) runpill_@{id}('@{id}');
-     razChanged_@{id}=false;
+     if(jsh(razChanged_@{id}, j)) runpill_@{id}('@{id}');
+     razChanged_@{id}='';
      }
 },500);
 

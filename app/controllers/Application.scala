@@ -9,6 +9,7 @@ import model._
 import play.api.mvc.Action
 import play.api.mvc.Request
 import razie.base.Audit
+import razie.db.RazMongo.RazMongoTable
 import razie.wiki.admin.BannedIps
 import razie.wiki.model._
 import razie.db.ROne
@@ -48,9 +49,17 @@ object Application extends RazController {
           wiki.find("Admin", path) orElse wiki.find("Page", path) map { we =>
             Wiki.showWid(CMDWID(Some(we.wid.wpath), Some(we.wid), "", ""), 1, wiki.realm).apply(request)
           }
-        }.getOrElse (
-          Future.successful(Redirect ("/"))
-        )
+        }.getOrElse {
+          // check for /cat/name
+          val e = path.split("/")
+          WID.PATHCATS.find(s=>e.size == 2 && (e(0) == s.toLowerCase || e(0) == s)).map {cat=>
+            val wid = WID(cat, e(1))
+            val rewritten = path.replace(s"${e(0)}/${e(1)}", wid.wpath)
+            val cmd = WID.cmdfromPath(rewritten).get
+            Wiki.showWid(cmd, 1, "?").apply(request)
+          } getOrElse
+            Future.successful(Redirect("/"))
+        }
       }
     }
   }
@@ -258,7 +267,18 @@ object Application extends RazController {
         val Array(f, l) = data split ","
         ROne[RacerKidInfo]("firstName" -> f, "lastName" -> l).map(_.rkId.toString).mkString
       case "rkForUserId" =>
-        RacerKidz.findForUser(data.aso).map(_._id).toList.mkString(",")
+        RacerKidz.findAllForUser(data.aso).map(_._id).toList.mkString(",")
+//      case "crUser" =>
+//        RkTe
+      case "testCycle" => {
+        def apply(table: String) = new RazMongoTable(table)
+        val c = apply("Ver").findOne(Map("name" -> "TestCycle"))
+        if(c.isDefined)
+          apply("Ver").update(Map("name" -> "TestCycle"), Map("$set" -> Map("cycle" -> (c.get.getAs[String]("cycle").get.toInt+1).toString)))
+        else
+          apply("Ver") += Map("name" -> "TestCycle", "cycle" -> "1")
+        c.map(_.getAs[String]("cycle").get).getOrElse(1).toString
+      }
       case _ => "?"
     })) getOrElse
       unauthorized("Oops - some error")

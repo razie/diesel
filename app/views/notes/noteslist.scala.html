@@ -24,7 +24,7 @@ msg types are msg, err
 
  @noteList.map(Notes.dec(user)).map {we=>
 
-   <div class="noteslist well-small panel panel-info" style="border-radius:9px; margin-bottom:10px; background-color: #eeeeee"
+   <div class="noteslist well-small panel panel-info" style="border-radius:9px; margin-bottom:10px; "
      nid="@we._id.toString"
    >
      @*<div class="panel-heading"*@
@@ -52,7 +52,7 @@ msg types are msg, err
        </div>
        @*</div> *@@* heading *@
 
-     <div class="notesbody panel-body" style="background-color: #eeeeee">
+     <div class="notesbody panel-body" style="">
 
        @{
          we.preprocess(Some(stok.au))
@@ -82,10 +82,12 @@ msg types are msg, err
       });
     }
 
+var currbgc = $(".hoverDiv").css("background-color");
+
     $(".hoverDiv").hover(function(){
         $(this).css("background", "#cccccc");
     }, function(){
-        $(this).css("background", "#eeeeee");
+        $(this).css("background", currbgc);
     });
 });
 </script>

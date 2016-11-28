@@ -57,8 +57,9 @@ class RazController extends RazControllerBase with Logging {
 
   /** clean the cache for current user - probably a profile change */
   def cleanAuth (u: Option[User] = None)(implicit request: RequestHeader) {
-    Services ! WikiEvent("AUTH_CLEAN", "User", u.map(_._id).mkString)
-    Services.auth.cleanAuth(u)(request)
+    val au = u.orElse(xauth(request))
+    Services ! WikiEvent("AUTH_CLEAN", "User", au.map(_._id).mkString)
+    Services.auth.cleanAuth(au)(request)
   }
 
   /** @deprecated see auth */
@@ -109,25 +110,29 @@ class RazController extends RazControllerBase with Logging {
           views.html.util.utilMsg(
           s""" <span style="color:red">$msg</span>""",
           s"""
-${errCollector.mkString}
-
->> $more
-"""+md("Admin:Unauthorized"), Some(controllers.Wiki.w(wid).toString), auth)(rhRequest), Seq.empty)(rhRequest))
+             |${errCollector.mkString}
+             |>> $more
+             |""".stripMargin +
+            md("Admin:Unauthorized"),
+            Some(controllers.Wiki.w(wid).toString), auth)(rhRequest), Seq.empty)(rhRequest))
       else
-        Unauthorized(
+      // with teasers, don't send the Unauthorized answer anymore
+        Ok(
           views.html.util.reactorLayout12(
           views.html.util.utilMsg(
         teaser,
         s"""
-$more
-
-"""+md("Admin:Unauthorized"), Some(controllers.Wiki.w(wid).toString), auth)(rhRequest), Seq.empty)(rhRequest))
+           |$more
+           |""".stripMargin +
+          md("Admin:Unauthorized"),
+            Some(controllers.Wiki.w(wid).toString), auth)(rhRequest), Seq.empty)(rhRequest))
     } else noPermOLD(wid, more + " " + errCollector.mkString)
   }
 
-  private def md (wpath:String) : String = WID.fromPath(wpath).flatMap(_.page).map{p=>
-    Wikis.format(p, None)
-  }.getOrElse("")
+  private def md (wpath:String)(implicit request: RequestHeader) : String =
+    WID.fromPath(wpath).map(_.r(rhRequest(request).realm)).flatMap(_.page).map{p=>
+      Wikis.format(p, None)
+    }.getOrElse("")
 
   private def noPermOLD(wid: WID, more: String = "")(implicit request: Request[_]) = {
 //    implicit val stok = razRequest
@@ -245,6 +250,12 @@ ${errCollector.mkString}
   }
 
   /** action builder that decomposes the request, extracting user and creating a simple error buffer */
+  def RActiona(f: RazRequest => Future[Result]) = Action.async { implicit request =>
+    val req = razRequest
+    f(req)
+  }
+
+  /** action builder that decomposes the request, extracting user and creating a simple error buffer */
   def FAUR(f: RazRequest => Result) : Action[AnyContent] =
     FAUR("")(r=> Some(f(r)))
 
@@ -280,7 +291,7 @@ ${errCollector.mkString}
     }
     ).flatten getOrElse {
       val more = Website(request).flatMap(_.prop("msg.noPerm")).flatMap(WID.fromPath).flatMap(_.content).mkString
-      unauthorized(s"OOPS $more [$msg]", !isFromRobot)
+      unauthorized(s"OOPS [$msg] $more ", !isFromRobot)
     }
   }
 

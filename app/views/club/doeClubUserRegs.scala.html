@@ -12,11 +12,8 @@ user manages registrations
 
 @missingRegs = @{
   // clubs with open regs that I'm not reg'd for
-  val clubs = au.wikis.filter(_.wid.cat == "Club").flatMap(w => model.Users.findUserByUsername(w.wid.name).toList)
-  clubs.map { c => (c, Club(c)) }.collect {
-    case (c, club) if club.isRegOpen && Regs.findClubUserYear(club.wid, au._id, club.curYear).isEmpty =>
-      club
-  }
+  val clubs = au.wikis.filter(_.wid.cat == "Club").flatMap(uw=>Club(uw.wid).toList)
+  clubs.filter(club=> club.isRegOpen && Regs.findClubUserYear(club.wid, au._id, club.curYear).isEmpty)
 }
 
 @regs = @{

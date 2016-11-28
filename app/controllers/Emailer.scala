@@ -7,7 +7,7 @@ import razie.wiki.{Enc, EncUrl}
 import razie.wiki.model._
 import razie.wiki.admin.{SecLink, SendEmail, MailSession}
 import admin.Config
-import model.User
+import model.{Website, User}
 import razie.wiki.Services
 import Config.SUPPORT
 
@@ -17,7 +17,7 @@ object Emailer extends RazController with Logging {
 
   def hostport = Services.config.hostport
 
-  def RK = admin.Config.sitecfg("RacerKidz").getOrElse("RacerKidz")
+  def RK(implicit mailSession: MailSession) = mailSession.website.getOrElse(admin.Config.sitecfg("RacerKidz").getOrElse("RacerKidz"))
 
   def bottom() = Wikis.rk.find("Admin", "template-emails-bottom").map(_.content).getOrElse("")
   def text(name: String) = Wikis.rk.find("Admin", "template-emails").flatMap(_.section("template", name)).map(_.content+bottom).getOrElse("[ERROR] can't find Admin template-emails: " + name)
@@ -126,10 +126,10 @@ object Emailer extends RazController with Logging {
     SendEmail.notif(to, SUPPORT, /*RK + " - new " + wpost.wid.cat + " in " + */ parent.name + " : " + wpost.label, html1)
   }
 
-  def sendEmailLinkOk(u: User, club: String)(implicit mailSession: MailSession) = {
-    val html1 = text("linkok").format(u.ename, club);
+  def sendEmailLinkOk(u: User, club: String, welcome:String)(implicit mailSession: MailSession) = {
+    val html1 = text("linkok").format(u.ename, club, welcome);
 
-    SendEmail.send(u.email.dec, SUPPORT, RK + " :) club membership approved", html1)
+    SendEmail.send(u.email.dec, SUPPORT, RK + s" - Welcome to ${club}", html1)
   }
 
   def sendEmailLinkDenied(u: User, club: WID)(implicit mailSession: MailSession) = {
@@ -186,14 +186,36 @@ object Emailer extends RazController with Logging {
     SendEmail.send(u.email.dec, SUPPORT, club + " - registration help", html1)
   }
 
-  def sendEmailFormSubmitted(reviewer: String, owner: User, link: String)(implicit mailSession: MailSession) = {
+  def sendEmailNewNote(what:String, to: User, by:User, link: String, role:String, memo:String)(implicit mailSession: MailSession) = {
+    val sub = s" - $what note for you"
+    val r = if(role.length > 0) role else "form"
+    val html1 = text("newNote").format(to.ename, r, by.ename, link, memo);
+    SendEmail.notif(to.email.dec, SUPPORT, RK + sub, html1)
+  }
+
+  def sendEmailFormAssigned(to: User, by:User, link: String, role:String)(implicit mailSession: MailSession) = {
+    val sub = if(role.length > 0) s" - $role assigned to you" else " - form assigned"
+    val r = if(role.length > 0) role else "form"
+    val html1 = text("formAssigned").format(to.ename, r, by.ename, link);
+    SendEmail.notif(to.email.dec, SUPPORT, RK + sub, html1)
+  }
+
+  def sendEmailFormNotify(to: User, by: User, link: String, role:String="")(implicit mailSession: MailSession) = {
+    val r = if(role.length > 0) role else "form"
+    val html1 = text("formNotify").format(to.ename, r, by.ename, "http://" + hostport + link);
+    val sub = if(role.length > 0) s" - $role completed for you" else " - form submitted"
+    SendEmail.notif(to.email.dec, SUPPORT, RK + sub, html1)
+  }
+
+  def sendEmailFormSubmitted(reviewer: String, owner: User, link: String, role:String="")(implicit mailSession: MailSession) = {
     val html1 = text("formSubmitted").format(reviewer, owner.ename, "http://" + hostport + link);
-    SendEmail.notif(reviewer, SUPPORT, RK + " - form submitted", html1)
+    val sub = if(role.length > 0) s" - $role completed for you" else " - form submitted"
+    SendEmail.notif(reviewer, SUPPORT, RK + sub, html1)
   }
 
   def sendEmailFormRejected(reviewer: User, owner: User, cname: String, link: String, msg: String)(implicit mailSession: MailSession) = {
     val html1 = text("formRejected").format(owner.ename, "http://" + hostport + link, msg);
-    SendEmail.send(owner.email.dec, SUPPORT, cname + " - form rejected ", html1)
+    SendEmail.notif(owner.email.dec, SUPPORT, cname + " - form rejected ", html1)
   }
 
   def sendEmailFormsAccepted(reviewer: User, owner: User, cname: String, fee:String, msg: String)(implicit mailSession: MailSession) = {
@@ -220,6 +242,8 @@ object Emailer extends RazController with Logging {
 
   /** see SendEmail.withSession - email is sent in a background thread */
   def withSession[C](body: (MailSession) => C): C = SendEmail.withSession(body)
+  def withSession[C](web:Option[String])(body: (MailSession) => C): C = SendEmail.withSession(web)(body)
+  def withSession[C](realm:String)(body: (MailSession) => C): C = SendEmail.withSession(Website.forRealm(realm).map(_.label))(body)
 }
 
 /** used to send a set of emails later */

@@ -2,8 +2,10 @@ package mod.snow
 
 import admin.Config
 import com.mongodb.casbah.Imports._
+import com.novus.salat._
 import controllers.Club
 import org.joda.time.DateTime
+import razie.base.Audit
 import razie.db._
 import razie.wiki.Sec._
 import razie.wiki.dom.WikiDomain
@@ -17,13 +19,16 @@ import model.{Users, TPersonInfo, User}
   * - bcast is a simple broadcast message
   */
 case class RkHistory (
-  rkId: ObjectId, // the kid this belongs to
-  authorId: Option[ObjectId], // who created this
+  rkId: ObjectId, // to: the kid this belongs to
+  authorId: Option[ObjectId], // from: who created this
   eId: Option[ObjectId],   // the object this points to
   eKind:String,    // the type of object this points to
   role:String,    // the role this element plays
   ctx:String, // the context at the time
-  important: Option[String] = None, // important ones shold float at top
+  important: Option[String] = None, // important ones shold float at top, like announcements
+  replyTo:Option[ObjectId]=None, // reply to eId
+  content:Option[String]=None, // reply to eId
+  tags:Option[String]=None, // reply to eId
   crDtm: DateTime = DateTime.now,
   _id: ObjectId = new ObjectId()) extends REntity[RkHistory] {
 }
@@ -35,9 +40,12 @@ case class RkHistoryFeed (
   firstTime:Option[Boolean]=None, // this is set in rk.history
   _id: ObjectId = new ObjectId()) extends REntity[RkHistoryFeed] {
 
-  def items = RMany[RkHistory]("rkId" -> rkId).toList.sortWith((a,b)=>a.crDtm.compareTo(b.crDtm) >= 0).toList
+  def items (howMany:Int = -1) :List[RkHistory] =
+    RMany.sortLimit[RkHistory](Map("rkId" -> rkId), Map("crDtm" -> -1), howMany)
 
-  def post(we:WikiEntry, au:User) = {
+//        .toList.sortWith((a,b)=>a.crDtm.compareTo(b.crDtm) >= 0).toList.take(howMany)
+
+  def post(we:WikiEntry, au:User, text:Option[String]=None) = {
     val h = RkHistory(
       rkId,
       Some(au._id),
@@ -45,17 +53,17 @@ case class RkHistoryFeed (
       we.category,
       "post",
       ""
-    )
-    h.create
+    ).copy(content=text)
+    h.createNoAudit
     inc
   }
 
-  private def inc = this.copy(news=news+1).update
-  def reset = this.copy(news=0, firstTime=None).update
+  private def inc = this.copy(news=news+1).updateNoAudit
+  def reset = this.copy(news=0, firstTime=None).updateNoAudit
 
-  def add(h:RkHistory) = {
+  def add(h:RkHistory, shouldInc:Boolean=true) = {
     h.create
-    inc
+    if(shouldInc) inc
   }
 
   def findByElement(eid:String) = {
@@ -132,7 +140,7 @@ case class RacerKid(
   def history = {
     ROne[RkHistoryFeed]("rkId"-> _id).getOrElse {
       var h = new RkHistoryFeed(_id, 0, Some(true))
-      h = h.copy(news=h.items.size)
+      h = h.copy(news=h.items(-1).size)
       h.create
       h
     }
@@ -147,6 +155,8 @@ case class RacerKid(
     )
 
   def rka = RMany[RacerKidAssoc]("to" -> _id)
+  def rkwa = RMany[RacerKidWikiAssoc]("from" -> _id)
+
   def clubs =
    rka.map(_.from).toList.distinct.flatMap(Club.findForUserId).toList//.filter(_.curYear == rka.year)
 //    for(
@@ -155,6 +165,7 @@ case class RacerKid(
 
   def parents: Set[ObjectId] = RMany[RacerKidAssoc]("to" -> _id, "assoc" -> RK.ASSOC_PARENT).map(_.from).toSet
   def parentUsers: Seq[User] = parents.flatMap(_.as[User].toList).toSeq
+  def usersToNotify: List[ObjectId] = userId.toList ++ parents.toList
 }
 
 /**
@@ -216,6 +227,7 @@ case class RacerKidWikiAssoc(
   uwid: UWID, // to
   year: String, // relevant for club memberships only
   role: String, // role of "to" in the association: Racer, Coach, Parent, Spouse
+  assoc:String = mod.snow.RK.ASSOC_LINK, // why am i associated
   crDtm: DateTime = DateTime.now,
   _id: ObjectId = new ObjectId()) extends REntity[RacerKidWikiAssoc] {
 
@@ -283,6 +295,8 @@ object RK {
   final val ASSOC_INVITED = "Invited" // user no longer club member
 
   lazy val noid = new ObjectId()
+
+
 }
 
 /** racer kid info utilities */
@@ -319,18 +333,21 @@ object RacerKidz {
     mine //::: fromOthers
   }
 
-  def findForUser(id: ObjectId) =
+  def findByUserId (userId:ObjectId) = ROne[RacerKid]("userId" -> Some(userId)).get
+
+  def findAllForUser(id: ObjectId) =
     findAssocForUser(id) map (_.to) flatMap (findById)
 
   def myself(userId: ObjectId) : RacerKid = {
     // TODO creating the RK for myself
-    if (!ROne[RacerKid]("userId" -> Some(userId)).isDefined) {
-      val rk = RacerKid(userId, Some(userId), None, None, Seq.empty, RK.KIND_MYSELF)
-      rk.create
-      RacerKidAssoc(userId, rk._id, RK.ASSOC_MYSELF, RK.ASSOC_MYSELF, userId).create
+    var rk = ROne[RacerKid]("userId" -> Some(userId))
+    if (rk.isEmpty) {
+      val nrk = RacerKid(userId, Some(userId), None, None, Seq.empty, RK.KIND_MYSELF)
+      nrk.create
+      RacerKidAssoc(userId, nrk._id, RK.ASSOC_MYSELF, RK.ASSOC_MYSELF, userId).create
+      rk = ROne[RacerKid]("userId" -> Some(userId))
     }
-    val rk = ROne[RacerKid]("userId" -> Some(userId)).get
-    rk
+    rk.get
   }
 
   def checkMyself(userId: ObjectId) { myself(userId) }
@@ -343,6 +360,17 @@ object RacerKidz {
     val kidz = findByParentUser(reg.userId)
   }
 
+  def rkwa(
+            rkId: ObjectId,
+            uwid: UWID, // to
+            year: String, // relevant for club memberships only
+            role: String, // role of "to" in the association: Racer, Coach, Parent, Spouse
+            assoc:String = mod.snow.RK.ASSOC_LINK
+            )(implicit txn: Txn = tx.auto) = {
+    //    RacerKidWikiAssoc(rkId, uwid, year, role, assoc).create
+    // enable when moving from RKA to RKA for club membership
+  }
+
   /** find all RKA associated to user */
   def rka (u:User) = {
     val mine = RMany[RacerKidAssoc]("from" -> u._id)
@@ -351,6 +379,12 @@ object RacerKidz {
   }
   /** find all RK associated to user */
   def rk (u:User) = rka(u) flatMap (_.rk)
+
+  def rmHistory(id:ObjectId, role:String="post")(implicit txn:Txn) : Unit ={
+    val c = RMany[RkHistory]("eId"->id, "role"->role).size
+    RDelete[RkHistory]("eId"->id, "role"->role)
+    Audit.logdb("ENTITY_DELETE", s"$c RkHistory DELETED")
+  }
 
   final val JoeDoe = RacerKidInfo("Joe", "Doe", "", DateTime.parse("2000-01-15"), "M", Set.empty, RK.STATUS_ACTIVE, false, RK.noid, RK.noid)
   final val empty = RacerKidInfo("", "", "", DateTime.parse("2000-01-15"), "M", Set.empty, RK.STATUS_ACTIVE, true, RK.noid, RK.noid)

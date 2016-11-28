@@ -5,6 +5,7 @@ import com.mongodb.casbah.Imports.wrapDBObj
 import com.novus.salat.grater
 import mod.diesel.model.{WG}
 import mod.notes.controllers
+import mod.notes.controllers.NotesLocker.TagQuery
 import model._
 import org.bson.types.ObjectId
 import org.joda.time.DateTime
@@ -61,8 +62,8 @@ object NotesTags {
 }
 
 /** notes organized by books per realms */
-case class Book (realm:String, name:String, pinTags:Array[String]=Array()) {
-  val public = pinTags contains "public"
+case class Book (realm:String, name:String, pinTags:TagQuery=new TagQuery("")) {
+  val public = pinTags.public
 }
 
 //todo Notes should be a module, working per realm
@@ -84,14 +85,14 @@ object Notes {
     wiki.weTable(CAT).find(Map("by" -> uid, "realm" -> book.realm)) map (grater[WikiEntry].asObject(_)) filter {n =>
       !n.tags.contains(NotesTags.ARCHIVE) || archived
     } filter { n=>
-      book.pinTags.foldLeft(true)((a,b)=>a && n.tags.contains(b))
+      book.pinTags.matches(n.tags)
     }
   // todo optimize and protect better?
   def notesForPublic(book:Book, uid: ObjectId, archived: Boolean = false) =
     wiki.weTable(CAT).find(Map("realm" -> book.realm)) map (grater[WikiEntry].asObject(_)) filter {n =>
       !n.tags.contains(NotesTags.ARCHIVE) || archived
     } filter { n=>
-      book.public && book.pinTags.foldLeft(true)((a,b)=>a && n.tags.contains(b))
+      book.public && book.pinTags.matches(n.tags)
     }
   def tagsForUser(book:Book, uid: ObjectId) = {
     notesForUser(book, uid).toList.flatMap(_.tags).filter(_ != NotesTags.ARCHIVE).filter(_ != "").groupBy(identity).map(t => (t._1, t._2.size)).toSeq.sortBy(_._2).reverse
@@ -187,14 +188,14 @@ object NotesLocker extends RazController with Logging {
   }
 
   def NEWNOTENB = lform.fill("", "", IDOS, 0, "", "")
-  def NEWNOTE(implicit request:Request[_]) = lform.fill("", "", IDOS, 0, "", book.pinTags.mkString(","))
+  def NEWNOTE(implicit request:Request[_]) = lform.fill("", "", IDOS, 0, "", book.pinTags.ltags.mkString(","))
 
   def index = FUH { implicit au =>
     implicit errCollector => implicit request =>
 
       ROne[AutosavedNote]("uid"->au._id) map {as=>
       NOK ("", autags, Seq.empty, false) apply {implicit stok=>
-        views.html.notes.notesmain(lform.fill("", "", as.nid.toString, as.ver, as.content, as.tags))
+        views.html.notes.notesmain(lform.fill("", "", as.nid.toString, as.ver, as.content, as.tags), true)
       }
       } getOrElse
         OkNewNote()
@@ -211,7 +212,7 @@ object NotesLocker extends RazController with Logging {
   // if you want to keep separate notes in this reactor, set the prop below to something
     Book(Website.apply(request).filter(_.prop("separateNotes").isDefined).map(_.reactor).getOrElse("notes"),
       "main",
-      request.cookies.get("pinTags").map(_.value).toArray.flatMap(_.split("/")).filter(_.nonEmpty)
+      new TagQuery(request.cookies.get("pinTags").map(_.value).mkString)
     )
 
   /** for active user */
@@ -461,7 +462,7 @@ object NotesLocker extends RazController with Logging {
       autosaved += 1;
 
       lform.bindFromRequest.fold(
-      formWithErrors => Ok(("err" -> ("[Bad content] "+formWithErrors.errors.map(_.message).mkString)).toString),
+      formWithErrors => Ok(("err" -> ("[Bad content] "+formWithErrors.errors.map(_.message).mkString+formWithErrors.globalErrors.mkString)).toString),
       {
         case (_, name, ids, ver, content, tags) =>
           val nid = if (ids.length > 0) new ObjectId(ids) else new ObjectId()
@@ -637,7 +638,7 @@ object NotesLocker extends RazController with Logging {
 
     if(pin.exists(pin=> !tag.startsWith(pin)) && !SPECIAL_TAGS.contains(tag)) {
       // if pinned tags, just re-scope this one
-      val newt = if(book.pinTags.contains(tag)) "" else ("/"+tag)
+      val newt = if(book.pinTags.atags.contains(tag)) "" else ("/"+tag)
       Redirect(routes.NotesLocker.tag(pin.mkString + newt))
     } else {
       //todo this loads everything...
@@ -684,8 +685,11 @@ object NotesLocker extends RazController with Logging {
     }
   }
 
-  /** the embedded version of new note creation */
-  def embed(title:String, miniTitle:String, tags:String, context:String, baseId:String, asap:Boolean=false) = FAU { implicit au=> implicit errCollector=> implicit request=>
+  /** the embedded version of new note creation
+    *
+    * @param asap will cause it to create the note on the spot, no editing required
+    */
+  def embed(title:String, miniTitle:String, tags:String, context:String, baseId:String, asap:Boolean=false, justCapture:Boolean=false, submit:String="") = FAU { implicit au=> implicit errCollector=> implicit request=>
     val initial = if(ObjectId.isValid(baseId)) Notes.notesById(new ObjectId(baseId)) else None;
     var content = initial.map(_.content).getOrElse("")
 
@@ -698,17 +702,46 @@ object NotesLocker extends RazController with Logging {
     NOK ("", autags, Seq.empty, false) noLayout {implicit stok=>
       views.html.notes.notes_embed(lform.fill("", "", IDOS, 0,
         content,
-        tags), title, miniTitle, context, false, false, asap)
+        tags), title, miniTitle, context, false, false, asap, justCapture, submit)
+    }
+  }
+
+  /** working with tags query
+    * a/b|c/d is a and (b or c) and d
+    */
+  class TagQuery (val tags:String) {
+    val ltags = tags.split("/").map(_.trim).filter(_.length > 0)
+    val atags = ltags.filter(_.indexOf(",") < 0)
+    val otags = ltags.filter(_.indexOf(",") >= 0).map(_.split(",").map(_.trim).filter(_.length > 0))
+
+    // can't mix public with something else and still get public...
+    def public = ltags contains "public"
+
+    def matches(t:Seq[String]) = {
+      atags.foldLeft(true)((a,b)=>a &&
+        (if(b.startsWith("-")) ! t.contains(b.substring(1))
+        else t.contains(b))
+      ) &&
+      otags.foldLeft(true)((a,b)=>a &&
+        b.foldLeft(false)((a,c)=>a || t.contains(c))
+      )
+    }
+
+    def contains(t:String) = {
+      atags.foldLeft(false)((a,b)=>a || t.contains(b)) ||
+        otags.foldLeft(false)((a,b)=>a ||
+          b.foldLeft(false)((a,c)=>a || t.contains(c))
+        )
     }
   }
 
   /** present a selection browser starting with the given tags */
   def selectFrom(tag: String) = FUH { implicit au =>
     implicit errCollector => implicit request =>
-      val ltag = tag.split("/").map(_.trim)
+      val tagq = new TagQuery(tag)
 
       //todo this loads everything...
-      val b = book.copy(pinTags = ltag) // disregard users' pinned tags for selecting for selecting...?
+      val b = book.copy(pinTags = tagq) // disregard users' pinned tags for selecting for selecting...?
       val res =
       (if(b.public)
           Notes.notesForPublic(b, au._id)
@@ -717,7 +750,8 @@ object NotesLocker extends RazController with Logging {
       ).toList.sortWith { (a, b) => a.updDtm isAfter b.updDtm }
 
       //todo this is stupid
-      val outNotesTags = res.flatMap(_.tags).distinct.filterNot(ltag contains _)
+      // counting tag occurences of tags not in tag query
+      val outNotesTags = res.flatMap(_.tags).distinct.filterNot(tagq contains _)
       val counted = outNotesTags.map(t => (t, res.count(_.tags contains t))).sortBy(_._2).reverse
 
       // last chance filtering - any moron can come through here and the Notes may screw up

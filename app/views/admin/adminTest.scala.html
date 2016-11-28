@@ -6,6 +6,9 @@ screen to admin one user
 
 @stok.title("admin testing")
 
+<script src="@routes.Assets.at("javascripts/weTest.js")"></script>
+<script src="@routes.Assets.at("javascripts/weTestCases.js")"></script>
+
 Target host:
 <input type="text" class="input-lg" name="target" id="target" onchange="setTarget();" value="@stok.request.get.host"></input>
 
@@ -20,6 +23,13 @@ Tests the content of all pages - through parser looking for CANNOT PARSE errors
 <p></p>
   <a class="btn btn-primary" onclick="runStressTest();">Run STRESS test</a>
 <a class="btn btn-primary" onclick="runSuites();">Run Suites</a>
+
+<script>
+var su = suites();
+for(var key in su)  {
+  document.write(' | <a onclick="runSuites(\''+ key+'\');">'+key+'</a>');
+}
+</script>
 
 <div class="row">
   <div class="col-md-9">
@@ -36,8 +46,5 @@ Tests the content of all pages - through parser looking for CANNOT PARSE errors
   <div id="frag" style="max-lines: 20" class="col-md-3">
   </div>
 </div>
-
-<script src="@routes.Assets.at("javascripts/weTest.js")"></script>
-<script src="@routes.Assets.at("javascripts/weTestCases.js")"></script>
 
 

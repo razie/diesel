@@ -1,7 +1,34 @@
 @***
   print a nice table of text diffs
 ***@
-@(diff:difflib.Patch, heading:Option[(String,String,String)]=None)
+@(side:String, diff:difflib.Patch, heading:Option[(String,String,String)]=None)
+
+@colorl=@{"green" /*if(side=="L") "green" else "red"*/}
+@colorr=@{"red" /*if(side=="R") "green" else "red"*/}
+
+@fo(c:difflib.Delta)=@{
+  if(side=="R") c.getOriginal else c.getRevised
+}
+
+@fr(c:difflib.Delta)=@{
+  if(side=="L") c.getOriginal else c.getRevised
+}
+
+@computeDiff(s1:String, s2:String,color:String)={
+@defining(org.apache.commons.lang3.StringUtils.indexOfDifference(s1, s2)) { d =>
+  @defining(s1.length - org.apache.commons.lang3.StringUtils.indexOfDifference(s1.reverse, s2.reverse)) { d2 =>
+    @if(d >= 0 && d < s1.length) {
+      @if(d2 >= d && d2 < s1.length-1) {
+        @s1.substring(0, d)<span style="color:@color; background-color: #f5ffb3">@s1.substring(d, d2+1)</span>@s1.substring(d2+1)
+      } else {
+        @s1.substring(0, d)<span style="color:@color; background-color: #f5ffb3">@s1.substring(d)</span>
+      }
+    } else {
+      @s1
+    }
+  }
+}
+}
 
   @heading.map{t=>
     <table class="table table-striped">
@@ -29,13 +56,31 @@
       <td>
           @d.getType
       </td>
-      <td>
-          @d.getOriginal.getPosition <br>
-          @d.getOriginal.getLines.map{s=> @s <br>}
+<td>
+          @fo(d).getPosition <br>
+          @fo(d).getLines.zipWithIndex.map{s=>
+            @if(fr(d).getLines.size > s._2) {
+            @computeDiff(s._1.toString,
+              (if(fr(d).getLines.size > s._2) fr(d).getLines().get(s._2).toString else ""),
+              colorl)
+            } else {
+              @s
+            }
+            <br>
+          }
       </td>
 <td>
-    @d.getRevised.getPosition <br>
-    @d.getRevised.getLines.map{s=> @s <br>}
+    @fr(d).getPosition <br>
+  @fr(d).getLines.zipWithIndex.map{s=>
+    @if(fo(d).getLines.size > s._2) {
+      @computeDiff(s._1.toString,
+      (if(fo(d).getLines.size > s._2) fo(d).getLines().get(s._2).toString else ""),
+      colorr)
+    } else {
+      @s
+    }
+    <br>
+  }
 </td>
   </tr>
 }

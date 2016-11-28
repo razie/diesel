@@ -17,23 +17,22 @@ object Config extends WikiConfig {
 
   override def simulateHost = isimulateHost
   var isimulateHost = {
-//        "www.racerkidz.com"    // for testing locally
-    "www.snowproapp.com"
-//    "www.effectiveskiing.com"    // for testing locally
+//      "www.racerkidz.com"    // for testing locally
+//      "www.snowproapp.com"
+      "www.effectiveskiing.com"    // for testing locally
 //    "www.dieselapps.com"    // for testing locally
+//    "specs.dieselapps.com"    // for testing locally
 //    "wiki.dieselapps.com"    // for testing locally
-//                "ski.dieselapps.com"    // for testing locally
 //    "ebaysim.dieselapps.com"    // for testing locally
-//            "catsim.dieselapps.com"    // for testing locally
-//        "www.coolscala.com"    // for testing locally
-//        "www.enduroschool.com"    // for testing locally
-//            "www.askicoach.com"    // for testing locally
-//        "www.glacierskiclub.com"    // for testing locally
-//        "www.nofolders.net"    // for testing locally
-    //        "www.dieselreactor.net"    // for testing locally
-//            "gsc.dieselapps.com"    // for testing locally
-//            "specs.dieselapps.com"    // for testing locally
-    //        "c52.dieselapps.com"    // for testing locally
+//    "catsim.dieselapps.com"    // for testing locally
+//    "www.coolscala.com"    // for testing locally
+//    "www.enduroschool.com"    // for testing locally
+//    "www.askicoach.com"    // for testing locally
+//    "www.glacierskiclub.com"    // for testing locally
+//    "www.nofolders.net"    // for testing locally
+//    "www.dieselreactor.net"    // for testing locally
+//    "gsc.dieselapps.com"    // for testing locally
+//    "c52.dieselapps.com"    // for testing locally
   }
 
   private var ibadIps = Array("178.175.146.90")
@@ -66,7 +65,6 @@ object Config extends WikiConfig {
     for (c <- Array(SITECFG, TOPICRED, USERTYPES, BANURLS)) {
       val urlmaps = Some(Wikis.find(WID("Admin", c)).toSeq map (_.content) flatMap parsep)
       val xurlmap = (urlmaps.map(se => HashMap[String, String](se: _*)))
-      println("========================== RELOADING URL MAP ==============================")
       xurlmap.map(xconfig.put(c, _))
     }
 
@@ -82,8 +80,8 @@ object Config extends WikiConfig {
     }
 
     xconfig.keys.foreach(x => {
-      println("============= config topic: " + x + " size " + xconfig.get(x).size)
-      xconfig.get(x).foreach(y => println(y.mkString("\n  ")))
+//      println("============= config topic: " + x + " size " + xconfig.get(x).size)
+//      xconfig.get(x).foreach(y => println(y.mkString("\n  ")))
     })
 
     Services ! new WikiConfigChanged

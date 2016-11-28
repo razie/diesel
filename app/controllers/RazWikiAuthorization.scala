@@ -120,7 +120,7 @@ object RazWikiAuthorization extends RazController with Logging with WikiAuthoriz
   def canEdit(wid: WID, u: Option[WikiUser], w: Option[WikiEntry], props: Option[Map[String, String]] = None)(implicit errCollector: VErrors): Option[Boolean] = {
     val cat = wid.cat
     val name = wid.name
-    lazy val we = if (w.isDefined) w else Wikis(wid.getRealm).find(cat, name)
+    lazy val we = w orElse wid.page
     lazy val wprops = if (we.isDefined) we.map(_.props) else props
     if (u.exists(_.hasPerm(Perm.adminDb)))
       Some(true)
@@ -143,7 +143,7 @@ object RazWikiAuthorization extends RazController with Logging with WikiAuthoriz
         (wprops.flatMap(_.get("wvis")).isDefined && isVisible(u, wprops.get, "wvis")) ||
         wprops.flatMap(_.get("visibility")).exists(_.startsWith(Visibility.CLUB) && isVisible(u, wprops.get, "visibility")) ||
         !wvis(wprops).isDefined orErr ("Sorry - you are not the owner of this topic");
-      memod <- (w.flatMap(_.contentProps.get("moderator")).map(_ == au.userName).getOrElse(true)) orErr ("Sorry - this is moderated and you are not the moderator, are you?");
+      memod <- (we.flatMap(_.contentProps.get("moderator")).map(_ == au.email.dec).getOrElse(true)) orErr ("Sorry - this is moderated and you are not the moderator, are you?");
       noLevel <- wprops.flatMap(_.get("wvis")).filter(x=> isVisible(u, wprops.get, "wvis")) orErr "Not enough Karma";
       t <- true orErr ("can't")
     ) yield true)

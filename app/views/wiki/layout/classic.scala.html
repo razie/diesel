@@ -5,6 +5,8 @@ Classic layout
 
 @label()=@{ page.map(_.label).getOrElse(razie.wiki.model.Wikis(wid.getRealm).label(wid)) }
 
+<!-- layout classic -->
+
 <div class="container">
   <div class="row">
 
@@ -16,8 +18,13 @@ Classic layout
 
     @wiki.layout.draft(page)
 
+    @modules.diesel.wBrowser(stok.realm, page, "top")(identity)
+
       <div class="well">
         @wiki.wikiFrag(wid, None, false, page, iname, false, true, canEdit, false, false)
+
+        @modules.diesel.wBrowser(stok.realm, page, "top")(identity)
+
         @wid.page.map {we =>
           @wiki.wikiFragBottom(we, false, canEdit, false, print)
         }
@@ -39,7 +46,7 @@ Classic layout
           @wiki.wikiFrag(rt, None, simple = true)
         }
 
-        @if(stok.website.adsAtBottom) {
+        @if(stok.showSideAds(page)) {
           @addRight()
         }
 
@@ -52,11 +59,7 @@ Classic layout
 
   </div> <!-- row -->
       @if(!print) {
-          @htmlFooter(ads = stok.website.adsAtBottom &&
-              (stok.au.isEmpty || stok.website.adsForUsers) &&
-              !page.exists(_.contentProps.contains("noAds")) &&
-                  !page.exists(_.content.matches( """(?s).*\{\{ad[:}].*\{\{ad[:}].*""")) &&
-                  !stok.au.exists(_.isUnder13),
+          @htmlFooter(ads = stok.showBottomAds(page),
               false,
               wid.getRealm,
               stok.request)

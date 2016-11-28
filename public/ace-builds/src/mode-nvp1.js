@@ -133,7 +133,7 @@ define('ace/mode/nvp1_highlight_rules', ['require', 'exports', 'module' , 'ace/l
 
     var nvp1HighlightRules = function() {
     	
-        var keywords = ("$mock|$if|POST|JS|String|Camel|Int|$msg|$receive|$opt|[[|]]|{{|}}|=>|Java|$when|Date|$val|$expect|GET|.*|$match");
+        var keywords = ("$mock|$if|POST|JS|String|Camel|Int|$msg|$receive|$opt|[[|]]|{{|}}|=>|Java|$when|Date|$val|$expect|GET|$flow|.*|$match");
         var builtinTypes = ("");
         var builtinFunctions = ("");
         var builtinConstants = ("");

@@ -14,7 +14,7 @@ render a regular wiki page - site pages are rendered with wikiSite.scala.html
 @if(!print) {@navbar(stok.au, wid.getRealm)}
 
 @{
-  layout match {
+  layout.trim match {
     case "Play:wiki.layout.div12"         => wiki.layout.div12(wid, iname, page, canEdit, print)
     case "Play:wiki.layout.div12FullPage" => wiki.layout.div12FullPage(wid, iname, page, canEdit, print)
     case "Play:wiki.layout.div12Cool"     => wiki.layout.div12Cool(wid, iname, page, canEdit, print)(stok)

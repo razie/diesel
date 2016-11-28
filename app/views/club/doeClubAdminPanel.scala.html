@@ -29,15 +29,16 @@ club admin manages user: membership, regsitration etc
 {{alert yellow }}
 <b>Admin management panel</b>
 
-Invite: @roles.map { x => [/4us/invite/@wpath?role=@x @x] | }
+@*Invite: @roles.map { x => [/4us/invite/@wpath?role=@x @x] | }*@
 
 Manage: @roles.map { x => [/4us/manage/@wpath?role=@x @x] | }
 
 @if(wid.cat == "Club" || wid.cat.length <= 0) {
-  More: [/doe/club/regs/@c.wid.wpath Registrations] | [/doe/club/regsettings/@wpath Settings] | [/doe/club/vol/@wpath Volunteers] | [/doe/4us/badge/@wpath Get badge]
+  More: [/doe/club/regs/@c.wid.wpath Registrations] |
+  @if(stok.au.exists(_.isAdmin)) { [/doe/club/regsettings/@wpath Settings] | } [/doe/club/vol/@wpath Volunteers] | [/doe/4us/badge/@wpath Get badge]
 } else {
   @if(wid.cat == "Pro") {
-  More: [/doe/club/regsettings/@wpath Settings] | [/doe/4us/badge/@wpath Get badge]
+  More: @if(stok.au.exists(_.isAdmin)) { [/doe/club/regsettings/@wpath Settings] | } [/doe/4us/badge/@wpath Get badge]
   } else {
   More: [/doe/club/regs/@c.wid.wpath Registrations] | [/doe/club/regsettings/@wpath Settings] | [/doe/4us/badge/@wpath Get badge]
   }

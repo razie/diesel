@@ -18,6 +18,12 @@ DB Admin - admin a record
 }
 
 <hr>
+<form action="@routes.AdminDb.updcoldb(name,id)" class="form-inline" method="POST">
+Field: <input name="field">
+Value: <input name="value">
+<input type="submit" value="Update">
+</form>
+<hr>
 
 @col.map { db =>
   <br>@db.toString

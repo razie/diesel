@@ -1,6 +1,7 @@
 package controllers
 
 import mod.msg.MsgThread
+import mod.snow.RacerKidz
 import model.{Users, Perm, User}
 import org.bson.types.ObjectId
 import play.api.data.Form
@@ -182,9 +183,19 @@ object Comment extends RazController with Logging {
     if("Wiki" == role) {
         // email creator and all other commenters
         Wikis.findById(pid).map { w =>
-          au.shouldEmailParent("Everything").map(parent => Emailer.sendEmailChildCommentWiki(parent, au, w.wid))
-          (Users.findUserById(w.by).map(_._id).toList ++ cs.comments.map(_.userId)).distinct.filter(_ != au._id).map(uid =>
-            Users.findUserById(uid).map(u => Emailer.sendEmailNewComment(u, au, w.wid)))
+          au.shouldEmailParent("Everything").map{parent =>
+            Emailer.sendEmailChildCommentWiki(parent, au, w.wid)
+          }
+          (
+            // topic owner and all that commented on it
+            Users.findUserById(w.by).map(_._id).toList ++
+              cs.comments.map(_.userId)
+          ).distinct.filter(_ != au._id).map {uid =>
+            Users.findUserById(uid).map {u =>
+              Emailer.sendEmailNewComment(u, au, w.wid)
+              RacerKidz.myself(u._id).history.post(w, au, Some("New comment posted by "+au.fullName))
+            }
+          }
         }
     } else if("PM" == role || "Msg" == role || "MA" == role)
       ROne[MsgThread](new ObjectId(pid)).map {msg=>

@@ -42,6 +42,15 @@ screen to admin one user
 <p>
 @user.flatMap(_.profile).map(pro(_))
 
+@user.map {u=>
+  <hr>
+  <ul>Mod notes
+    @u.modNotes.map {n=>
+    <li>@n </li>
+    }
+  </ul>
+}
+
     <hr>
 <ul>Counts
 @user.map {u=>
@@ -67,12 +76,17 @@ screen to admin one user
       @helper.form(action=routes.AdminUser.uperm(user.get.id), 'class->"well form-inline") {
         <input type="text" class="input-xlarge" name="perm" placeholder="+Perm">
         <button type="submit" class="btn btn-default">+/-Perm</button>
+  adminWiki uWiki uProfile eVerified apiCall domFiddle codeMaster | Member Basic Gold Platinum Moderator
+  }
 
-      }
+@helper.form(action=routes.AdminUser.uquota(user.get.id), 'class->"well form-inline") {
+  <input type="text" class="input" name="quota" placeholder="+Quota">
+  <button type="submit" class="btn btn-default">+/-Quota</button>
+}
 
-      @helper.form(action=routes.AdminUser.uquota(user.get.id), 'class->"well form-inline") {
-        <input type="text" class="input" name="quota" placeholder="+Quota">
-        <button type="submit" class="btn btn-default">+/-Quota</button>
+      @helper.form(action=routes.AdminUser.umodnotes(user.get.id), 'class->"well form-inline") {
+        <input type="text" class="input col-xs-8" name="val" placeholder="+/-Note">
+        <button type="submit" class="btn btn-default">+/-Note</button>
       }
 
       @helper.form(action=routes.AdminUser.uname(user.get.id), 'class->"well form-inline") {

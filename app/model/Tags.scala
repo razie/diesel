@@ -9,6 +9,8 @@ object Tags {
   final val NONE = "none"
   final val RECENT = "recent"
   final val INBOX = "inbox"
+
+  def apply (s:String) = s.split(",").map(_.trim).filter(_.length > 0).toSeq
 }
 
 

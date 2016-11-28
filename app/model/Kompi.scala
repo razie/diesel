@@ -2,6 +2,8 @@ package model
 
 import java.io.StringWriter
 import java.io.PrintWriter
+import razie.base.scriptingx.ReplClassloader
+
 import scala.tools.nsc.interpreter.Results
 import scala.tools.nsc.Settings
 import java.io.File
@@ -103,6 +105,8 @@ object DELETEMEKOMPI {
     def evaluate[T](code: String)(binder: IMain => Unit): T = {
       val settings = new Settings(sys.error(_))
       settings.Yreplsync.value = true
+
+      // USE THE razie.base.scripting (scripster-core) for this to work
       val myLoader = new ReplClassloader(getClass.getClassLoader)
       settings.embeddedDefaults(myLoader)
 

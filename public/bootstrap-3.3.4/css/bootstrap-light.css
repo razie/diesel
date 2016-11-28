@@ -92,6 +92,12 @@ textarea {
   margin-left: 20px;
 }
 
+.alert-cool:hover,
+.alert-cool:active,
+.alert-cool:focus {
+  background-color: #50c1f9; /*#70aecd;*/
+}
+
 .alert-cool h4 {
   color: #3a87ad;
 }

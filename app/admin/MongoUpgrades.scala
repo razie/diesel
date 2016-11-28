@@ -393,15 +393,15 @@ object U11 extends UpgradeDb with razie.Logging {
     var cnt = 0
     var all = 0
     Club(cname).foreach { club =>
-      club.userLinks.toList.filter(uw => uw.role != "Owner").map { uw =>
-        all = all + 1
+//      club.userLinks.toList.filter(uw => uw.role != "Owner").map { uw =>
+//        all = all + 1
 //        Users.findUserById(uw.userId).filter(!_.wikis.exists(_.wid == wid)).foreach { rw =>
 //          val newuw = model.UserWiki(uw.userId, wid, role)
 //          newuw.create
 //          cout << " 1 DB creating " + "   ===>>>   " + newuw.toString
 //          cnt = cnt + 1
 //        }
-      }
+//      }
     }
     cout << s"=======================DB created $cnt of $all"
   }

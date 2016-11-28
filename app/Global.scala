@@ -10,6 +10,8 @@ import admin._
 import com.google.inject.Guice
 import controllers._
 import mod.book.Progress
+import mod.diesel.controllers.{DieselMsgString, DomFiddles}
+import mod.diesel.model.DomEngineSettings
 import org.scalatest.path
 import razie.base.Audit
 import razie.db._
@@ -203,6 +205,8 @@ object Global extends WithFilters(LoggingFilter) {
     WikiRefinery.init()
 
     Progress.init
+
+    SendEmail.init
   }
 
 }

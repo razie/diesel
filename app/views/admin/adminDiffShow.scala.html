@@ -1,6 +1,7 @@
 @***
+show diffs for a pair dest/src
 ***@
-@(src:String, dest:String, diff:difflib.Patch, srcWe:razie.wiki.model.WikiEntry, destWe:razie.wiki.model.WikiEntry)(implicit stok: controllers.StateOk)
+@(side:String, src:String, dest:String, diff:difflib.Patch, srcWe:razie.wiki.model.WikiEntry, destWe:razie.wiki.model.WikiEntry)(implicit stok: controllers.StateOk)
 @import razie.wiki.model.WID
 
 @wp(wid:WID)=@{
@@ -14,9 +15,9 @@
 <small>
       <table class="table table-striped">
           <thead>
-              <td>What</td>
-              <td>Local</td>
-              <td>Remote</td>
+              <td>What (@side)</td>
+              <td><b>Local</b></td>
+              <td><b>Remote</b></td>
           </thead>
         <tr>
           <td>Ver/updDtm</td>
@@ -24,7 +25,7 @@
           <td>@destWe.ver / @destWe.updDtm</td>
         </tr>
 
-@admin.diffTable(diff)
+@admin.diffTable(side,diff)
 
 @if(srcWe.tags.mkString(",") != destWe.tags.mkString(",")) {
   <tr>
@@ -35,7 +36,4 @@
 }
       </table>
 </small>
-
-      <hr>
-          @diff.getDeltas.mkString("\n")
 

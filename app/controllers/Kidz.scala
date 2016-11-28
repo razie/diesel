@@ -15,6 +15,8 @@ import razie.OR._
 import razie.wiki.admin.SendEmail
 import razie.wiki.model.{WikiLink, WID}
 
+import scala.util.Try
+
 object Kidz extends RazController {
 
   def doeUserKidz = FAUR { implicit stok=>
@@ -48,12 +50,12 @@ object Kidz extends RazController {
           "Must have no more than one spouse...", {
             t: (String, String, String, DateTime, String, String, String, String, String, String) =>
               val _@ (f, l, e, d, g, r, ar, s, i, n) = t
-              !(r == RK.ROLE_SPOUSE && RacerKidz.findForUser(au._id).exists(_.info.roles.toString == RK.ROLE_SPOUSE))
+              !(r == RK.ROLE_SPOUSE && RacerKidz.findAllForUser(au._id).exists(_.info.roles.toString == RK.ROLE_SPOUSE))
           }) verifying (
             "You are already defined...", {
               t: (String, String, String, DateTime, String, String, String, String, String, String) =>
                 val _@ (f, l, e, d, g, r, ar, s, i, n) = t
-                !(r == RK.ROLE_ME && RacerKidz.findForUser(au._id).exists(_.info.roles.toString == RK.ROLE_ME))
+                !(r == RK.ROLE_ME && RacerKidz.findAllForUser(au._id).exists(_.info.roles.toString == RK.ROLE_ME))
             })
   }
 
@@ -272,7 +274,7 @@ object Kidz extends RazController {
   def doeKidHistory(club:String, rkId: String, settings:String) = FAUR { implicit stok=>
     (for (
       rk <- RacerKidz.findById(new ObjectId(rkId)) orErr "No Person records found";
-      c <- Club(club) orErr s"Club not found ($club)";
+      c <- Club(club) orElse Kidz.findAllClubs(stok.au.get, rk).headOption orErr s"Club not found ($club)";
       au <- stok.au
     ) yield {
         if( // me
@@ -298,7 +300,7 @@ object Kidz extends RazController {
       def f(x:String) =
         s"""<a href="/doe/history"><span class="badge" style="background-color: red" title="updates since last time">$x</span></a>"""
       Ok(
-        if(rk.history.news > 9) f("+9")
+        if(rk.history.news > 9) f("9+")
         else if(rk.history.news > 0) f(rk.history.news.toString)
         else ""
       )

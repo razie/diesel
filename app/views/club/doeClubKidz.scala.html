@@ -9,7 +9,7 @@ manage the list of kidz and/or their accounts
 @import razie.wiki.model.Wikis
 @import razie.wiki.dom.WikiDomain
 
-@stok.title("RacerKidz for " + club.name)
+@stok.title("Members for " + club.name)
 
 @roles()=@{
   WikiDomain(club.wid.getRealm).roles(club.wid.cat, "Person")
@@ -96,6 +96,10 @@ manage the list of kidz and/or their accounts
 <h2>Members of @club.name</h2>
 
 <p>Some records are created by the parents (see the "Source"). For those that did not register online, you can create records here, for team management etc. See at the bottom for correlations.
+
+@if(role != "") {
+<span class="label label-default">Invite more <a href="/4us/invite/@club.wid.wpath?role=@role">@{role}s</a></span>
+}
 
 <div>
   <div style="display: inline-block">

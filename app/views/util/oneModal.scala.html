@@ -19,6 +19,10 @@ popupUrl(url)
 </div><!-- /.modal -->
 
 <script>
+function oneModalHide() {
+  $("#oneModal").modal('hide');
+}
+
   function popupContent (content) {
     loadInDivContent("#oneModal > div > div > div.modal-body", content);
     $("#oneModal").modal('show');

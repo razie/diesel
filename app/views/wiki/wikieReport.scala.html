@@ -18,7 +18,6 @@
     myForm("reason"),
     '_label -> "Reason",
     '_showConstraints -> false,
-    'cols->100,
     'rows->10)
 
     <div class="actions">
@@ -33,6 +32,8 @@
   <br><small>By updating this page, you agree to the <a href="@controllers.Wiki.w("Terms of Service")Wiki.w("Terms of Service")">Terms of Service</a></small>
 }
 </div>
+
+@formFix()
 
 <div class="well">
   @wiki.wikiFrag(wid)

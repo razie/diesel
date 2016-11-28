@@ -54,7 +54,11 @@ the actual form contents are in wikiFormInt
           <strong>Please <font style="color : red">save or submit</font> before leaving this page!</strong>
         }
       } else {
-        <input type="submit" name="save_button" value="Save" class="btn btn-info">
+        @** coach can edit questionaire *@
+        <input type="submit" name="save_button" value="Save for later" class="btn btn-info">
+        @if(page.exists(_.form.canEditBy(stok.au.get._id.toString))) {
+          <input type="submit" name="submit_button" title="Notify the owner" value="Submit" class="btn btn-success">
+        }
         <span name="saved" class="label label-default" hidden></span>
       }
     }
@@ -80,21 +84,35 @@ the actual form contents are in wikiFormInt
 @if(simple) {
 // this is the id of the form
   $('#wikiForm-@fid').submit(function(e) {
+    var sub1 = $("#wikiForm-@fid > input[type=submit][clicked=true]").attr("name");
+    var sub2 = $("#wikiForm-@fid > input[type=submit][clicked=true]").val();
+    $("#wikiForm-@fid > input[type=submit][clicked=true]").attr("disabled", "disabled");
+
+    var data = $('#wikiForm-@fid').serialize()
+    data=data+'&'+sub1+'='+sub2;
+
     $.ajax({
       type: $('#wikiForm-@fid').attr('method'),
       url: $('#wikiForm-@fid').attr('action'),
-      data: $('#wikiForm-@fid').serialize(),
+      data: data,
       success: function(data) {
-//        $('[name="submit_button"]').switchClass("btn-info", "btn-success", 500);
         weBlink('#wikiForm-@fid [name="saved"]', "Saved", "green");
+        if(typeof weNotifyFormSubmitted != 'undefined')
+          weNotifyFormSubmitted('@wid.wpath');
       },
       error: function(data) {
-        weBlink('#wikiForm-@fid [name="saved"]', "NOT Saved", "red");
+        weBlink('#wikiForm-@fid [name="saved"]', "NOT Saved - "+data.responseText, "red", 5000);
       }
     });
 
     e.preventDefault(); // avoid to execute the actual submit of the form.
   });
+
+  $("form input[type=submit]").click(function() {
+    $("input[type=submit]", $(this).parents("form")).removeAttr("clicked");
+    $(this).attr("clicked", "true");
+  });
+
 }
 
   // submit automatically after validation

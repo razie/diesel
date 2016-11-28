@@ -73,7 +73,7 @@ object Tasks extends RazController with Logging {
 
                 UserTasks.addParent(c).create
 
-                Emailer.withSession { implicit mailSession =>
+                Emailer.withSession(request.realm) { implicit mailSession =>
                   sendEmail(pe, c)(request.ireq, mailSession)
                 }
               }
@@ -94,7 +94,7 @@ object Tasks extends RazController with Logging {
             for (
               c <- request.au orErr ("not authenticated")
             ) yield {
-              Emailer.withSession { implicit mailSession =>
+              Emailer.withSession(request.realm) { implicit mailSession =>
                 sendEmail(pe, c)(request.ireq, mailSession)
               }
             }
@@ -179,16 +179,15 @@ Please read our [[Terms of Service]] as well as our [[Privacy Policy]]
   }
 
   /** step 1 - send verification email */
-  def verifyEmail1 = Action { implicit request =>
-    implicit val errCollector = new VErrors()
+  def verifyEmail1 = RAction { implicit request =>
     def ERR = {
-      verror("ERR_CANT_UPDATE_USER.verifyEmail1 " + request.session.get("email"))
-      Unauthorized("Oops - cannot update this user....verifyEmail1 " + errCollector.mkString)
+      verror("ERR_CANT_UPDATE_USER.verifyEmail1 " + request.session.get("email") + " REQUEST: "+request.req.toString)
+      Unauthorized("Oops - cannot update this user....verifyEmail1 " + request.errCollector.mkString)
     }
 
     (for (
       c <- auth orCorr cNoAuth
-    ) yield Emailer.withSession { implicit mailSession =>
+    ) yield Emailer.withSession(request.realm) { implicit mailSession =>
       sendEmailVerif(c)
       msgVerif(c)
     }) getOrElse {
@@ -198,10 +197,16 @@ Please read our [[Terms of Service]] as well as our [[Privacy Policy]]
 
   def msgVerif(c: User, extra: String = "", next: Option[String] = None)(implicit request: Request[_]) = {
     val MSG_EMAIL_VERIF = s"""
-Please check your email <font style="color:red">${c.email.dec}</font> for an actiation email and follow the instructions to validate your email address. Please do that soon: it will expire in a few hours, for security reasons.
-<p>Please check your spam/junk folders as well in the next few minutes - make sure you mark """ + Config.SUPPORT + """ as a safe sender!""" + extra
+Please check your email <font style="color:red">${c.email.dec}</font> for an activation email and follow the instructions to validate your email address.
+Please do that soon: it will expire in a few hours, for security reasons.
+<p>Please check your spam/junk folders as well in the next few minutes - make sure you mark ${Config.SUPPORT} as a safe sender!
+<p>Especially if you have an @hotmail.com/.ca or @live.com/.ca or @outlook.com/.ca email address - their spam filter is very aggressive!
+""" + extra
 
-    Msg2(MSG_EMAIL_VERIF, next, Some(c)).withSession(Services.config.CONNECTED -> Enc.toSession(c.email))
+    if(c.email.dec.contains("@k.com"))
+      Msg2(MSG_EMAIL_VERIF, next, Some(c)) // for testing, don't logout user
+    else
+      Msg2(MSG_EMAIL_VERIF, next, Some(c)).withSession(Services.config.CONNECTED -> Enc.toSession(c.email))
   }
 
   def sendEmailVerif(c: User)(implicit request: Request[_], mailSession: MailSession) = {

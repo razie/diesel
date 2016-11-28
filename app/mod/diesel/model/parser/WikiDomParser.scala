@@ -21,6 +21,17 @@ import razie.wiki.parser.{WAST, WikiParserBase}
 import scala.Option.option2Iterable
 import scala.util.parsing.input.Positional
 
+class FlowExpr ()
+case class SeqExpr (op:String, l:Seq[FlowExpr]) extends FlowExpr {
+  override def toString = l.mkString(op)
+}
+case class MsgExpr (ea:String) extends FlowExpr {
+  override def toString = ea
+}
+case class BFlowExpr (b:FlowExpr) extends FlowExpr {
+  override def toString = s"( $b )"
+}
+
 /** domain parser - for domain sections in a wiki */
 trait WikiDomainParser extends WikiParserBase {
 
@@ -49,39 +60,66 @@ trait WikiDomainParser extends WikiParserBase {
 
   def ows = opt(whiteSpace)
 
-  def domainBlocks = pobject | pclass | passoc | pfunc | pdfiddle | pwhen | pmatch | preceive | pmsg | pval | pexpectm | pexpectv | pmock
+  def domainBlocks = pobject | pclass | passoc | pfunc | pdfiddle | pwhen | pflow | pmatch | preceive | pmsg | pval | pexpectm | pexpectv | pmock
 
   // todo replace $ with . i.e. .class
 
   //------------ expressions and conditions
 
   def expr : Parser[Expr] = ppexpr | pterm1
-  def ppexpr : Parser[Expr] = pterm1 ~ rep("+" ~> pterm1)  ^^ {
+  def ppexpr : Parser[Expr] = pterm1 ~ rep(ows ~> ("+" | "-" | "|") ~ ows ~ pterm1)  ^^ {
     case a ~ l if l.isEmpty => a
-    case a ~ l => l.foldLeft(a)((a,b) => AExpr2(a, "+", b))
+    case a ~ l => l.foldLeft(a)((a,b) =>
+      b match {
+        case op ~ _ ~ p => AExpr2(a, op, p)
+      }
+    )
   }
-  def pterm1 : Parser[Expr] = numexpr | cexpr | aident //| moreexpr
+  def pterm1 : Parser[Expr] = numexpr | cexpr | aident | exregex | eblock
+  def eblock : Parser[Expr] = "(" ~ ows ~> expr <~ ows ~ ")" ^^ {case ex => BlockExpr (ex) }
 
   def numexpr : Parser[Expr] = number ^^ { case i => new CExpr(i, "Number") }
   def cexpr : Parser[Expr] = "\"" ~> """[^"]*""".r <~ "\"" ^^ { case e => new CExpr (e, "String") }
-  def aident : Parser[Expr] = ident ^^ { case i => new AExprIdent(i) }
+  def aident : Parser[Expr] = qident ^^ { case i => new AExprIdent(i) }
+  def exregex: Parser[Expr] = """/[^/]*/""".r ^^ { case x => new CExpr(x, "Regex") }
 
   //------------ conditions
 
   def cond : Parser[BExpr] = boolexpr
 
-  def boolexpr: Parser[BExpr] = bterm1|bterm1~"||"~bterm1 ^^ { case a~s~b => bcmp(a,s,b) }
-  def bterm1: Parser[BExpr] = bfactor1|bfactor1~"&&"~bfactor1 ^^ { case a~s~b => bcmp(a,s,b) }
+  def boolexpr: Parser[BExpr] = bterm1|bterm1~"||"~bterm1 ^^ { case a~s~b => bcmp(a,s.trim,b) }
+  def bterm1: Parser[BExpr] = bfactor1|bfactor1~"&&"~bfactor1 ^^ { case a~s~b => bcmp(a,s.trim,b) }
   def bfactor1: Parser[BExpr] = eq | neq | lte | gte | lt | gt
-  def eq : Parser[BExpr] = expr ~ "==" ~ expr ^^ { case a~s~b => cmp(a,s,b) }
-  def neq: Parser[BExpr] = expr ~ "!=" ~ expr ^^ { case a~s~b => cmp(a,s,b) }
-  def lte: Parser[BExpr] = expr ~ "<=" ~ expr ^^ { case a~s~b => cmp(a,s,b) }
-  def gte: Parser[BExpr] = expr ~ ">=" ~ expr ^^ { case a~s~b => cmp(a,s,b) }
-  def lt : Parser[BExpr] = expr ~ "<"  ~ expr ^^ { case a~s~b => cmp(a,s,b) }
-  def gt : Parser[BExpr] = expr ~ ">"  ~ expr ^^ { case a~s~b => cmp(a,s,b) }
+  def eq : Parser[BExpr] = expr ~ "==" ~ expr ^^ { case a~s~b => cmp(a,s.trim,b) }
+  def neq: Parser[BExpr] = expr ~ "!=" ~ expr ^^ { case a~s~b => cmp(a,s.trim,b) }
+  def lte: Parser[BExpr] = expr ~ "<=" ~ expr ^^ { case a~s~b => cmp(a,s.trim,b) }
+  def gte: Parser[BExpr] = expr ~ ">=" ~ expr ^^ { case a~s~b => cmp(a,s.trim,b) }
+  def lt : Parser[BExpr] = expr ~ "<"  ~ expr ^^ { case a~s~b => cmp(a,s.trim,b) }
+  def gt : Parser[BExpr] = expr ~ ">"  ~ expr ^^ { case a~s~b => cmp(a,s.trim,b) }
 
   def bcmp (a:BExpr, s:String, b:BExpr) = new BCMP1 (a,s,b)
   def cmp  (a:Expr, s:String, b:Expr) = new BCMP2 (a,s,b)
+
+  // ---------------------- flow expressions
+
+  def flowexpr : Parser[FlowExpr] = seqexpr
+  def seqexpr : Parser[FlowExpr] = parexpr ~ rep(ows ~> ("+" | "-") ~ ows ~ parexpr)  ^^ {
+    case a ~ l =>
+      SeqExpr("+", a :: l.collect{
+        case op ~ _ ~ p => p
+      })
+  }
+  def parexpr : Parser[FlowExpr] = parterm1 ~ rep(ows ~> ("|" | "||") ~ ows ~ parterm1)  ^^ {
+    case a ~ l =>
+      SeqExpr("|", a :: l.collect{
+        case op ~ _ ~ p => p
+      })
+  }
+  def parterm1 : Parser[FlowExpr] = parblock | msgterm1
+  def parblock : Parser[FlowExpr] = "(" ~ ows ~> seqexpr <~ ows ~ ")" ^^ {
+    case ex => BFlowExpr(ex)
+  }
+  def msgterm1 : Parser[FlowExpr] = qident ^^ { case i => new MsgExpr(i) }
 
   // ----------------------
 
@@ -189,6 +227,21 @@ trait WikiDomainParser extends WikiParserBase {
           val x = EMatch(ac, am, aa, cond)
           val y = EMap(zc, zm, za)
           val f = ERule(x, y)
+          f.pos = Some(EPos(ctx.we.map(_.wid.wpath).mkString, k.pos.line, k.pos.column))
+          addToDom(f).ifold(current, ctx)
+        }
+      }
+    }
+
+  /**
+   * .flow e.a => expr
+   */
+  def pflow: PS =
+    keyw("""[.$]flow""".r) ~ ws ~ clsMatch ~ ws ~ opt(pif) ~ " *=>".r ~ ows ~ flowexpr ^^ {
+      case k ~ _ ~ Tuple3(ac, am, aa) ~ _ ~ cond ~ _ ~ _ ~ ex => {
+        LazyState { (current, ctx) =>
+          val x = EMatch(ac, am, aa, cond)
+          val f = EFlow(x, ex)
           f.pos = Some(EPos(ctx.we.map(_.wid.wpath).mkString, k.pos.line, k.pos.column))
           addToDom(f).ifold(current, ctx)
         }
@@ -371,7 +424,7 @@ trait WikiDomainParser extends WikiParserBase {
    *
    * An NVP is either the spec or an instance of a function call, a message, a data object... whatever...
    */
-  def pmsg: PS = keyw("[.$]msg *".r) ~ opt("<" ~> "[^>]+".r <~ "> *".r) ~ ident ~ " *\\. *".r ~ ident ~ optAttrs ~ opt(" *: *".r ~> optAttrs) ^^ {
+  def pmsg: PS = keyw("[.$]msg *".r) ~ opt("<" ~> "[^>]+".r <~ "> *".r) ~ (ident | "*" | jsregex) ~ " *. *".r ~ (ident | "*" | jsregex) ~ optAttrs ~ opt(" *(:|=>) *".r ~> optAttrs) ^^ {
     case k ~ stype ~ ent ~ _ ~ ac ~ attrs ~ ret => {
       LazyState { (current, ctx) =>
 

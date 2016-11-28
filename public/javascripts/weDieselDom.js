@@ -27,6 +27,7 @@ function domCompl (i) {
       terms[0] && terms[0] == '$msg' ||
       terms[0] && terms[0] == '$when' ||
       terms[0] && terms[0] == '$expect' ||
+      terms[0] && terms[0] == '$flow' ||
       terms[0] && terms[0] == '$mock') {
 
       var newTerms = ['msg', ''];

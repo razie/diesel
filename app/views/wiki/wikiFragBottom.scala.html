@@ -10,6 +10,11 @@ wiki fragment, used in another page
 @page=@{Option(we)}
 @wid=@{we.wid}
 
+@wikiForm()=@{
+  page.get.attr("wiki.form") orElse
+  Wikis(wid.getRealm).category(wid.cat).flatMap(_.attr("inst.form"))
+}
+
 @rss = @{
   page.flatMap(_.contentProps.get("rss")).getOrElse(controllers.Wiki.w(wid) + "/rss.xml")
 }
@@ -95,11 +100,20 @@ wiki fragment, used in another page
     }
     <small>
       (
-      @if(canEdit && wid.cat != "Form" || stok.au.exists(_.hasPerm(model.Perm.adminDb))) {
-        <a href="@routes.Wikie.wikieEdit(page.get.wid)">Edit</a>
+      @if(canEdit || stok.au.exists(_.hasPerm(model.Perm.adminDb))) {
+        @if(wid.cat != "Form" || stok.au.exists(_.hasPerm(model.Perm.adminDb))) {
+          @if(wikiForm().isDefined) {
+            <a href="@routes.Forms.doeFormEdit(page.get.wid)">Edit</a>
+            @if(stok.au.exists(_.hasPerm(model.Perm.adminDb))) {
+              | <a href="@routes.Wikie.wikieEdit(page.get.wid)">Edit/c</a>
+            }
+          } else {
+            <a href="@routes.Wikie.wikieEdit(page.get.wid)">Edit</a>
+          }
+        }
       }
       @stok.au.map { u =>
-        | <a href="@routes.Wiki.wikiBrowse(wid.wpath, "")">Browse</a>
+        | <a href="" onclick="browseBtn();return false;">Browse</a>
         | <a href="@routes.Wikie.report(wid)">Report</a>
       }
       | <a href="@routes.Wiki.printWid(WID.cmdfromPath(wid.wpath).get, wid.getRealm)">Print</a>
@@ -111,13 +125,15 @@ wiki fragment, used in another page
         @if(canEdit) {
           | <a href="@routes.Wikie.wikieRename1(wid)">Rename</a>
         }
+
         @if(stok.au.isDefined && stok.au.get.isActive) {
 
           @defining(stok.au.get.isLinkedTo(we.uwid)) { isLinked =>
+
             @if(isLinked) {
-              | <a href="@routes.Wikil.unlinkUser(wid)">@wid.label("Unlike", "Unlike")</a>
+              | <a href="@routes.Wikil.unlinkUser(wid)">@wid.label("Unlike", "Unfollow")</a>
             } else {
-              | <a href="@routes.Wikil.linkUser(wid, false)">@wid.label("Like")</a>
+              | <a href="@routes.Wikil.linkUser(wid, false)">@wid.label("Like", "Follow")</a>
             }
 
             @if(isLinked && we.parent.isDefined) {
@@ -159,4 +175,22 @@ wiki fragment, used in another page
     </small></p>
   </div>
 } <!-- /simple -->
+
+<script src="@routes.Assets.at("javascripts/weCommons.js")" type="text/javascript" charset="utf-8"></script>
+
+<script>
+var storageName = "weBrowser";
+
+if(getCookie(storageName) == null) setCookie(storageName, "false")
+
+function browseBtn() {
+  //<a href="@routes.Wiki.wikiBrowse(wid.wpath, "")">Browse</a>
+  if(getCookie(storageName) === "true") {
+    setCookie(storageName, "false")
+  } else {
+    setCookie(storageName, "true")
+  }
+  window.location.reload();
+}
+</script>
 

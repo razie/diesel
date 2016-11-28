@@ -26,11 +26,18 @@ create account
 @import play.api.Play.current
 @import play.api.i18n.Messages.Implicits._
 
-@helper.form(action=routes.Profile.doeCreateProfile(), 'class->"well alert alert-info") {
+@helper.form(action=routes.Profile.doeCreateProfile(), 'class->"") {
+
+  <div class="alert alert-info alert-link" style="margin-bottom: 0px">
+    <strong>
   @util.razSelect(myForm, "userType",
     (if (stok.realm==razie.wiki.model.WikiReactors.NOTES) "Account type"
-     else "What you are"),
+     else "What you are (guest or pro)"),
     model.Website.userTypes(stok.request.get).map(x=>(x.toString,model.Website.userTypeDesc(x.toString)(stok.request.get))))
+  </strong>
+    </div>
+
+  <div class="alert alert-info">
   @util.razText(myForm, "firstName", "First name")
   @util.razText(myForm, "lastName", "Last name")
   @util.razSelect(myForm, "yob", "When you were born",
@@ -67,6 +74,7 @@ create account
 <br>
 
   <button type="submit" class="btn btn-primary">That's it - create account!</button>
+  </div>
 
 }
           @formFix()

@@ -11,16 +11,18 @@ browse a domain
 
 @fFilter(db:com.mongodb.casbah.Imports.DBObject) = @{
   razie.wiki.model.Wikis.findById(db.get("pid").toString).map {wp=>
-    wp.realm == stok.realm
+    if(wp.realm == stok.realm) {
+      db.put("wpath", wp.wid.wpath)
+      true
+    } else
+      false
   }.getOrElse(false)
 }
 
 @wikicount(db:com.mongodb.casbah.Imports.DBObject, k:String, v:String) = {
 @k match {
   case "wpath" => {
-    @razie.wiki.model.Wikis.findById(db.get("pid").toString).map {wp=>
-      <a href="/wiki/@wp.wid.wpath">@wp.wid.wpath</a>
-    }
+      <a href="/wiki/@v">@v</a>
   }
   case _=> {
     @v
@@ -29,4 +31,6 @@ browse a domain
 }
 
 @util.utilTable("WikiCount", List("pid","count","wpath").map(c=>c->c), None, Some("count"), Some(wikicount), Some(fFilter))
+
+@util.dataTables("WikiCount", Seq(1 -> "desc"))
 

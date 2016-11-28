@@ -1,16 +1,19 @@
 package services
 
+import mod.diesel.controllers.{DomFiddles, DieselMsgString}
+import mod.diesel.model.DomEngineSettings
 import razie.wiki.Services
 import akka.actor.{Actor, Props}
 import controllers.{Emailer, Emailing}
 import model.EventNeedsQuota
 import razie.base.Audit
-import razie.clog
+import razie.{cout, clog}
 import razie.wiki.Services
 import play.libs.Akka
 import razie.wiki.admin.SendEmail
 import razie.wiki.model._
 import com.google.inject.Singleton
+import scala.concurrent.ExecutionContext.Implicits.global
 
 /** main event dispatcher implementation */
 @Singleton
@@ -52,6 +55,7 @@ class WikiAsyncObservers extends Actor {
     }
 
     case ev1: WikiEvent[_] => {
+      WikiObservers.after(ev1)
       clusterize(ev1.copy(node=nodeName.mkString))
     }
 
@@ -73,6 +77,14 @@ class WikiAsyncObservers extends Actor {
       }
 
     case e: Emailing => e.send
+
+    case m@DieselMsgString(s, specs, stories) => {
+      cout << "======== DIESEL MSG: " + m.toString
+      DomFiddles.runDom(s, specs, stories, new DomEngineSettings()).map {res =>
+        cout << "======== DIESEL RES: " + res.toString
+        Audit.logdb("DIESEL_MSG", m.toString, res.toString)
+      }
+    }
 
     case x@_ =>
       Audit.logdb("ERR_ALLIGATOR", x.getClass.getName)
@@ -117,10 +129,10 @@ class WikiPubSub extends Actor {
 
     // actual work
     case ev1: WikiEventBase if (sender.compareTo(self) != 0) => {
-      clog << "CLUSTER_BRUTE_RECEIVED " + ev1.toString
+      clog << s"CLUSTER_BRUTE_RECEIVED ${ev1.toString} from $self"
       if (maxCount > 0) {
         maxCount -= 1
-        Audit.logdb("DEBUG", "remote.event", "me: " + self.path + " from: " + sender.path, ev1.toString().take(250))
+        Audit.logdb("DEBUG", "exec.event", "me: " + self.path + " from: " + sender.path, ev1.toString().take(250))
         WikiObservers.after(ev1)
       }
     }

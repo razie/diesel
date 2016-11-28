@@ -1,4 +1,3 @@
-@import mod.snow.RkHistory
 @(club: Option[controllers.Club], rk: mod.snow.RacerKid, settings: String)(implicit stok: controllers.StateOk)
 @import model.User
 @import mod.snow.RK
@@ -8,11 +7,17 @@
 @import controllers.RKU
 @import util.razText
 @import razie.wiki.model.{WID, WikiEntry, Wikis}
-
+@import mod.snow.RkHistory
+@import mod.snow.Snow.ROLES
+@import razie.wiki.Services
 @import helper.twitterBootstrap._
 
 @help()= @{
 }
+
+@*Coaches: @mod.snow.Snow.findCoaches(club.map(_.wid), rk._id.toString).map{x=>*@
+  @** @x._1, @model.Users.findUserById(x._2.userId.get).get.fullName)*@
+@*}*@
 
 @renderContent(wid: WID, we: WikiEntry, c:Option[String]=None) = {
  @{
@@ -63,14 +68,32 @@
             @Html(we.wid.ahrefNice(stok.realm))<br>
           }
 
-          @if(h.role == "post" || stok.au.exists(_.isAdmin) || club.exists(c=>stok.au.exists(c.isClubAdmin(_)))) {
-            <button type="button" class="close" aria-label="Dismiss" onclick="dismissPost('@h._id.toString', '@h.eId.mkString')" title="Dismiss this alert">
+          @if(stok.au.exists(_.isAdmin) || Services.config.isDebugMode) {
+            <button type="button" class="close" aria-label="Info" title="@{h.toJsonNice}">
+              <span class="glyphicon glyphicon-question-sign"></span>
+            </button>
+          }
+
+          @if(h.role == "post" || club.exists(c=>stok.au.exists(c.isClubAdmin(_)))) {
+            @** should admin see delete for all ? **@
+          }
+
+          @if(h.role == "post" || h.role == "message") {
+            &nbsp;&nbsp;<button type="button" class="close" aria-label="Dismiss" onclick="dismissPost('@h._id.toString', '@h.eId.mkString')" title="Dismiss this alert">
               <span aria-hidden="true">&times;</span>
             </button>
           }
 
+          @if(h.role != "post" && stok.au.exists(x=> h.authorId.exists(_ != x._id)) ) {
+            <button type="button" class="close" aria-label="Dismiss" onclick="addReply('@h._id.toString', '@h.eId.mkString')" title="Reply to this message">
+              <span class="glyphicon glyphicon-comment"></span>
+            </button>
+          }
+
           @if(h.role == "post") {
-            <p>@renderContent(we.wid, we, we.getFirstParagraph.map(_ +
+            <p>@renderContent(we.wid, we,
+                h.content.orElse(we.getFirstParagraph).map(para=>
+                para +
                 "<br><small>... <a href=\"" + we.wid.urlRelative +
                 "\">(more available)</a></small>"
             ))</p>
@@ -87,16 +110,18 @@
 
 @pnelColor(h:RkHistory, we:WikiEntry) = @{
   // todo notes are always private
-  if(we.tags.contains("insight") || we.visibility == Visibility.CLUB_COACH) "success"
-  else if(we.tags.contains("private") /*|| we.visibility == Visibility.PRIVATE*/ ) "danger"
-  else if(we.tags.contains("goal") || we.tags.contains("plan")) "info"
+  if(we.tags.contains("coach-only")) "success"
+  else if(h.role == "Message") "info"
+  else if(we.tags.contains("private") || we.visibility == Visibility.PRIVATE ) "success"
   else if(h.role == "post" || we.tags.contains("post") || we.tags.contains("item")) "warning"
   else "info"
 }
 
 @canEdit(t:RkHistory, we:WikiEntry) = @{
   // I see my own and my posts
-  if(we.tags.contains("private") /*|| we.visibility == Visibility.PRIVATE*/) we.ownerId.exists(_ == stok.au.get._id)
+  // todo why am I second guessing canEdit for history?
+  if(we.ownerId.exists(_ == stok.au.get._id)) true
+  else if(we.tags.contains("private") /*|| we.visibility == Visibility.PRIVATE*/) we.ownerId.exists(_ == stok.au.get._id)
   else if(t.role=="post") false
   else if(we.tags.contains("coaching") || we.visibility == Visibility.CLUB_COACH) club.exists(_.isClubCoach(stok.au.get))
   else !Array("private", "insight").exists(we.tags.contains)
@@ -121,19 +146,17 @@
   <input type="checkbox" name="grouped" onchange="changeGrouped(this);"/> Grouped
 }
   | <a href="#" class="btn btn-xs btn-success" onclick="deletePosts(); return false;"      title="Delete all the post notifications">Clear posts</a>
-  | Add a:
-  <span onclick="startNote(); return false;" class="label label-primary" style="cursor:pointer"><span id="curNote">Note</span> <span class="glyphicon glyphicon-chevron-down">
-  </span></span>
+  |
 
-   <a href="#" onclick="addMsg(); return false;"      title="Send a message">Message</a>
-@if(club.exists(c=> c.isClubCoach(stok.au.get) || c.isClubAdmin(stok.au.get)) || stok.au.exists(_.isAdmin)) {
-  @*| <a href="#" onclick="addGoal(); return false;"      title="Select a goal">Goal</a> |*@
-  @*| <a href="#" onclick="addPlan(); return false;"      title="Select a plan">Plan</a> |*@
-    | <a href="#" onclick="addInsight();; return false;"    title="Private insight / notes visible to coaches only">Insight</a>
-    | <a href="#" onclick="addEval(); return false;"     title="An evaluation shared with the athlete">Evaluation</a>
-    | <a href="#" onclick="addFeedback(); return false;" title="Some feedback">Feedback</a>
-    | <a href="#" onclick="addVideo(); return false;"       title="Video analysis">Video</a>
-  }
+@if(rk.userId.exists(a=> stok.au.exists(_._id == a))) {
+  <span onclick="startPersonal(); return false;" class="label label-primary" style="cursor:pointer"><span id="curNote">Personal notes</span> <span class="glyphicon glyphicon-chevron-down"></span>
+  </span>&nbsp;
+}
+  <span onclick="startMessaging(); return false;" class="label label-primary" style="cursor:pointer"><span id="curMessages">Messages</span> <span class="glyphicon glyphicon-chevron-down"></span>
+  </span>&nbsp;
+  <span onclick="startCoach(); return false;" class="label label-primary" style="cursor:pointer"><span id="curCoaching">Coaching</span> <span class="glyphicon glyphicon-chevron-down"></span>
+  </span>&nbsp;
+
 <p>
 </p>
 
@@ -141,7 +164,7 @@
 <div id="extra"></div>
 
 @goodItems(rk:RacerKid, au:User) = @{
-  rk.history.items.map(h=>
+  rk.history.items(30).map(h=>
     (h,
      h.eId.flatMap(razie.wiki.model.Wikis.findById(h.eKind, _)).filter
             (! _.tags.contains("archive")).filter
@@ -150,11 +173,18 @@
 }
 
 @filterForCoach(rk:RacerKid,t:RkHistory,au:User)(we:WikiEntry) = @{
+  // no 1 - only coaches see insight
+  if(we.tags.contains("coach-only"))
+    club.exists(_.isClubCoach(stok.au.get))
   // I see my own and my posts
-  if(we.tags.contains("private") /*|| we.visibility == Visibility.PRIVATE*/) we.ownerId.exists(_ == stok.au.get._id)
-  else if(t.role=="post") rk.userId.exists(_ == au._id)
-  else if(we.tags.contains("insight") || we.visibility == Visibility.CLUB_COACH) club.exists(_.isClubCoach(stok.au.get))
-  else !Array("private", "insight").exists(we.tags.contains)
+  else if(we.tags.contains("private") /*|| we.visibility == Visibility.PRIVATE*/)
+    we.ownerId.exists(_ == stok.au.get._id)
+  else if(t.role=="post")
+      rk.usersToNotify.exists(_ == au._id)
+  else if(we.visibility == Visibility.CLUB_COACH) (
+          club.exists(_.isClubCoach(stok.au.get)) ||
+          rk.usersToNotify.exists(_ == au._id))
+  else !Array("private", "coach-only").exists(we.tags.contains)
   }
 
 @items()=@{
@@ -178,6 +208,9 @@
   </p>
   <p>You can use <a href="#" class="btn btn-xs btn-success" onclick="deletePosts(); return false;" title="Delete all the post notifications">Clear posts</a> to
   clear all the small notifications and leave only the important items.
+    <p>You can reply to most messages using the <span class="glyphicon glyphicon-comment"></span> icon to
+      the right of the message.
+    </p>
 </div>
 
   @if(settings contains "grouped") {
@@ -208,7 +241,7 @@
 
 @justContent(h:RkHistory)=@{
   // make up a wiki from a message
-  WikiEntry("-", "-", "-", "md", h.ctx, h.authorId.getOrElse(stok.au.get._id), Seq(h.role)).copy(
+  WikiEntry("-", "-", "-", "md", h.content.getOrElse(h.ctx), h.authorId.getOrElse(stok.au.get._id), Seq(h.role) ++ h.tags.toSeq.flatMap(_.split(",").toSeq)).copy(
     crDtm = h.crDtm
   )
 }
@@ -231,7 +264,6 @@ function dismissPost(hid,eid) {
     url:  url,
     success: function(data) {
       $("#"+hid).fadeOut(600);
-//      notesMsgShow("msg", "Dismissed ok")
     },
     error: function(result) {
       console.log("ERROR: Can't dismiss: "+result.responseText)
@@ -239,56 +271,87 @@ function dismissPost(hid,eid) {
     }
 });
 }
+
+function Extra (x) {
+  $("#extra").html('<span class="badge">Loading...</span><br><br>');
+  $("#extra").load(x);
+}
+
 function addInsight() {
   $("#info").text("Private insight / notes visible to coaches only");
-  $("#extra").load("@mod.notes.controllers.routes.NotesLocker.embed("Note", "for coaches", "coaching,insight", "Note", "")");
+  Extra("@mod.notes.controllers.routes.NotesLocker.embed("Note", "for coaches", "coaching,coach-only", ROLES.INSIGHT, "")");
 }
+
 function addMsg() {
   $("#info").text("Message");
-  $("#extra").load("@mod.notes.controllers.routes.NotesLocker.embed("Message", "message", "message", "Message", "")");
+  Extra("@mod.notes.controllers.routes.NotesLocker.embed(ROLES.MESSAGE, "message", "message", ROLES.MESSAGE, "", false, true, "Send it")");
 }
+
+function addReply(id1,id2) {
+  $("#info").text("Reply message");
+  Extra("@mod.notes.controllers.routes.NotesLocker.embed(ROLES.MESSAGE, "reply", "message", ROLES.REPLY+"ID1", "", false, true, "Send it")".replace(/ID1/,id1));
+}
+
 function addFeedback() {
   $("#info").text("Feedback is shared with the athlete");
-  $("#extra").load("@mod.notes.controllers.routes.NotesLocker.embed("Message", "feedback", "coaching,feedback", "Message", "")");
+  Extra("@mod.notes.controllers.routes.NotesLocker.embed(ROLES.FEEDBACK, "feedback", "coaching,feedback", ROLES.FEEDBACK, "")");
 }
+
 function addVideo() {
   $("#info").text("Video analysis is shared with the athlete");
-  $("#extra").load("@mod.notes.controllers.routes.NotesLocker.embed("Note", "Video", "video,feedback", "Video", "")");
+  Extra("@mod.notes.controllers.routes.NotesLocker.embed(ROLES.VIDEO, ROLES.VIDEO, "video,feedback", ROLES.VIDEO, "")");
 }
+
+function addMAReq() {
+  $("#info").text("Insert the youtube video link");
+  Extra("@mod.notes.controllers.routes.NotesLocker.embed(ROLES.MAREQ, "MA", "video,request", ROLES.MAREQ, "")");
+}
+
+function addAskCoach() {
+  $("#info").text("You will be notified of the reply");
+  Extra("@mod.notes.controllers.routes.NotesLocker.embed(ROLES.ASK, ROLES.ASK, "question,request", ROLES.ASK, "")");
+}
+
 function addGoal() {
   selecting="goal";
   $("#info").text("Select a goal...");
-  showSelectModal("@mod.notes.controllers.routes.NotesLocker.selectFrom(tagSelect("system.plan", "public/template/goal"))");
+  showSelectModal("@mod.notes.controllers.routes.NotesLocker.selectFrom(tagSelect("system.templates", "public/template/goal"))");
 }
 
 function addPlan() {
   selecting="plan";
   $("#info").text("Select a plan...");
-  showSelectModal("@mod.notes.controllers.routes.NotesLocker.selectFrom(tagSelect("system.plan", "public/template/plan"))");
+  showSelectModal("@mod.notes.controllers.routes.NotesLocker.selectFrom(tagSelect("system.templates", "public/template/plan"))");
 }
 
 function addEval() {
-  selecting="eval";
+  selecting="evaluation";
   $("#info").text("Select an eval ...");
-  showSelectModal("@mod.notes.controllers.routes.NotesLocker.selectFrom(tagSelect("system.eval", "public/template/eval"))");
-//  $("#info").text("Evaluations are shared with the athlete");
-  @*$("#extra").load("@mod.notes.controllers.routes.NotesLocker.embed("Evaluation", "feedback", "evaluation", "Evaluation", "")");*@
+  showSelectModal("@mod.notes.controllers.routes.NotesLocker.selectFrom(tagSelect("system.templates", "public/template/evaluation"))");
+}
+
+function addQuestionaire() {
+  selecting="question";
+  $("#info").text("Select a form ...");
+  showSelectModal("@mod.notes.controllers.routes.NotesLocker.selectFrom(tagSelect("system.templates", "public/template/question"))");
 }
 
 /** callback from Notes on note selected */
 function noteSelected(nid) {
   $("#selectModal").modal('hide');
 
-  if(selecting == 'plan' || selecting=='goal' || selecting=='eval') {
+  if(selecting == 'plan' || selecting=='goal' || selecting=='evaluation' || selecting=='question') {
     var url ;
 
     $("#info").text("Now customize for the athlete...");
     if(selecting=='plan') {
-      url = '@mod.notes.controllers.routes.NotesLocker.embed("Plan", "organize", "plan,long-term", "Plan", "NID")';
+      url = '@mod.notes.controllers.routes.NotesLocker.embed(ROLES.PLAN, "organize", "plan,long-term", ROLES.PLAN, "NID")';
     } else if(selecting=='goal') {
-      url = '@mod.notes.controllers.routes.NotesLocker.embed("Goal", "reach", "goal,long-term", "Goal", "NID")';
-    } else if(selecting=='eval') {
-      url = '@mod.notes.controllers.routes.NotesLocker.embed("Evaluation", "feedback", "eval", "Evaluation", "NID", true)';
+      url = '@mod.notes.controllers.routes.NotesLocker.embed(ROLES.GOAL, "reach", "goal,long-term", ROLES.GOAL, "NID")';
+    } else if(selecting=='evaluation') {
+      url = '@mod.notes.controllers.routes.NotesLocker.embed(ROLES.EVALUATION, "feedback", "evaluation", ROLES.EVALUATION, "NID", true)';
+    } else if(selecting=='question') {
+      url = '@mod.notes.controllers.routes.NotesLocker.embed(ROLES.QUESTIONAIRE, "feedback", "question", ROLES.QUESTIONAIRE, "NID", true)';
     }
     $("#extra").load(url.replace(/NID/g, nid));
     selecting="";
@@ -296,10 +359,10 @@ function noteSelected(nid) {
 }
 
 /** callback from Notes on note content submitted */
-function noteAdded (noteId, context) {
+function noteAdded (noteId, context, extra) {
   $.post(
-    '/doe/4us/addNote?club=@club.map(_.name).mkString&noteid='+noteId+'&role='+context+'&rkid=@rk._id.toString',
-    '',
+    '/doe/4us/addNote/@{club.map(_.wid.wpath).mkString}'+'?noteid='+noteId+'&role='+context+'&rkid=@rk._id.toString',
+    extra,
     function(response) {
       console.log(response);
 
@@ -334,18 +397,61 @@ function help() {
   $("#help").toggle();
 }
 
-function startNote(what) {
+function startPersonal() {
    popupContent("Select category:<br><br>"+
+   'Add a personal note in one of the categories below:<p></p>' +
    '<a href="#" onclick="addNote(\'equipment\'); return false;">Equipment</a><br>' +
    '<a href="#" onclick="addNote(\'technical\'); return false;">Technical</a><br>' +
    '<a href="#" onclick="addNote(\'tactical\'); return false;">Tactical</a><br>'
    );
 }
 
+function startMessaging() {
+   popupContent("Select category:<br><br>"+
+  @if(rk.userId.exists(a=> stok.au.exists(_._id == a))) {
+    'You need to post messages to someone else\'s feed...'
+   } else {
+   '<a href="#" onclick="oneModalHide(); addMsg(); return false;">Message</a><br>'
+   }
+   );
+}
+
+function startCoach() {
+   popupContent("Select category:<br><br>"+
+@if(club.exists(c=> c.isClubCoach(stok.au.get) || c.isClubAdmin(stok.au.get)) || stok.au.exists(_.isAdmin)) {
+   '<a href="#" onclick="oneModalHide(); addInsight(); return false;">Insight</a> - <small>private coach note, visible only to coaches</small><br>' +
+   '<a href="#" onclick="oneModalHide(); addEval(); return false;">Evaluation</a> - <small>an evaluation from the coach </small><br>' +
+   '<a href="#" onclick="oneModalHide(); addQuestionaire(); return false;">Questionaire</a> - <small>a questionaire to be completed</small><br>' +
+   '<a href="#" onclick="oneModalHide(); addFeedback(); return false;">Feedback</a> - <small>a coache\'s note</small><br>' +
+   '<a href="#" onclick="oneModalHide(); addVideo(); return false;">Video</a> - <small>a video/MA from coach</small><br>' +
+  }
+  @if(rk.userId.exists(a=> stok.au.exists(_._id == a))) {
+   '<a href="#" onclick="oneModalHide(); addMAReq(); return false;"><b>MA Request</b></a> - <small>request feedback on a photo/video</small><br>' +
+   '<a href="#" onclick="oneModalHide(); addAskCoach(); return false;"><b>Ask a coach</b></a> - <small>ask the coach a question</small><br>' +
+  }
+   ''
+   );
+
+  @*| <a href="#" onclick="addGoal(); return false;"      title="Select a goal">Goal</a> |*@
+  @*| <a href="#" onclick="addPlan(); return false;"      title="Select a plan">Plan</a> |*@
+ @**
+ <a href="#" onclick="addMsg(); return false;"      title="Send a message">Message</a>
+    | <a href="#" onclick="addInsight();; return false;"    title="Private insight / notes visible to coaches only">Insight</a>
+    | <a href="#" onclick="addEval(); return false;"     title="An evaluation shared with the athlete">Evaluation</a>
+    | <a href="#" onclick="addQuestionaire(); return false;" title="Some feedback">Quest</a>
+    | <a href="#" onclick="addFeedback(); return false;" title="Some feedback">Feedback</a>
+    | <a href="#" onclick="addVideo(); return false;"       title="Video analysis">Video</a>
+**@
+}
+
 function addNote(tag) {
   $("#oneModal").modal('hide');
   $("#info").text("Note");
   $("#extra").load("@mod.notes.controllers.routes.NotesLocker.embed("Note", "message", "TAGG", "Note", "")".replace(/TAGG/, tag));
+}
+
+function weNotifyFormSubmitted(wpath) {
+  window.location.reload();
 }
 </script>
 

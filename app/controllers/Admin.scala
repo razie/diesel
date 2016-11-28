@@ -16,7 +16,7 @@ import play.api.libs.concurrent.Akka
 import play.api.libs.json.JsObject
 import play.twirl.api.Html
 import razie.base.Audit
-import razie.db.{RMany, RazMongo}
+import razie.db.{WikiTrash, RMany, RazMongo}
 import razie.db.RazSalatContext.ctx
 import org.bson.types.ObjectId
 import org.joda.time.DateTime
@@ -26,7 +26,7 @@ import play.api.mvc.{Action, AnyContent, Request, Result}
 import razie.g.snakked
 import razie.js
 import razie.wiki.{Services, Enc}
-import razie.wiki.model.{WikiTrash, WID, WikiEntry, Wikis}
+import razie.wiki.model.{WID, WikiEntry, Wikis}
 import razie.wiki.admin.{MailSession, GlobalData, SendEmail}
 import admin.{ClearAudits, RazAuditService}
 import model.{WikiScripster, Users, Perm, User}
@@ -64,14 +64,11 @@ class AdminBase extends RazController {
     val req = razRequest
     (for (
       au <- req.au;
-      isA <- checkActive(au)
+      isA <- checkActive(au);
+      can <- au.hasPerm(Perm.adminDb) orErr "no permission"
     ) yield {
         f(req)
     }) getOrElse unauthorized("CAN'T")
-//      ) getOrElse {
-//      val more = Website(request).flatMap(_.prop("msg.noPerm")).flatMap(WID.fromPath).flatMap(_.content).mkString
-//      unauthorized("OOPS "+more, !isFromRobot)
-//    }
   }
 
   // use my layout
@@ -107,10 +104,20 @@ object AdminDb extends AdminBase {
 
   /** delete a record from a table */
   def delcoldb(table: String, id: String) = FA { implicit request =>
-    // TODO audit
     Audit.logdb("ADMIN_DELETE", "Table:" + table + " json:" + RazMongo(table).findOne(Map("_id" -> new ObjectId(id))))
     RazMongo(table).remove(Map("_id" -> new ObjectId(id)))
     ROK.r admin { implicit stok => views.html.admin.adminDbCol(table, RazMongo(table).findAll) }
+  }
+
+  /** delete a record from a table */
+  def updcoldb(table: String, id: String) = FADR { implicit request =>
+    val field = request.formParm("field")
+    val value = request.formParm("value")
+    if(field.length > 0) {
+      Audit.logdb("ADMIN_UPDATE", "Table:" + table + s"$field:$value")
+      clog << RazMongo(table).update(Map("_id" -> new ObjectId(id)), Map("$set" -> Map(field -> value)))
+    }
+    Redirect(routes.AdminDb.colEntity(table, id))
   }
 }
 
@@ -283,6 +290,35 @@ object AdminUser extends AdminBase {
           }
       })
     }
+
+  def umodnotes(id: String) = FAD { implicit au => implicit errCollector => implicit request =>
+    OneForm.bindFromRequest.fold(
+    formWithErrors =>
+      Msg2(formWithErrors.toString + "Oops, can't add that quota!"), {
+      case uname =>
+        (for (
+          u <- Users.findUserById(id);
+          pro <- u.profile
+        ) yield {
+            // TODO transaction
+            razie.db.tx("umodnote") { implicit txn =>
+              Profile.updateUser(u,
+              {
+                if(uname startsWith "+")
+                  u.copy(modNotes = u.modNotes ++ Seq(uname.drop(1)))
+                else
+                  u.copy(modNotes = u.modNotes.filter(_ != uname.drop(1)))
+              }
+              )
+              cleanAuth(Some(u))
+            }
+            Redirect("/razadmin/user/" + id)
+          }) getOrElse {
+          error("ERR_ADMIN_CANT_UPDATE_USER.uname " + id + " " + errCollector.mkString)
+          Unauthorized("ERR_ADMIN_CANT_UPDATE_USER.uname " + id + " " + errCollector.mkString)
+        }
+    })
+  }
 
   def uname(id: String) = FAD { implicit au => implicit errCollector => implicit request =>
     OneForm.bindFromRequest.fold(
@@ -602,52 +638,76 @@ object AdminDiff extends AdminBase {
   }
 
   /** compute and show diff for a WID */
-  def showDiff(target:String, wid:WID) = FAD { implicit au =>
+  def showDiff(side:String, target:String, wid:WID) = FAD { implicit au =>
     implicit errCollector => implicit request =>
       getWE(target, wid).fold({t=>
         val remote = t._1.content
-        val patch = DiffUtils.diff(wid.content.get.lines.toList, remote.lines.toList)
-        ROK.s admin {implicit stok=> views.html.admin.adminDiffShow(wid.content.get, remote, patch, wid.page.get, t._1)}
+        val patch =
+        if(side=="R")
+          DiffUtils.diff(wid.content.get.lines.toList, remote.lines.toList)
+        else
+          DiffUtils.diff(remote.lines.toList, wid.content.get.lines.toList)
+        ROK.s admin {implicit stok=>
+          if(side=="R")
+            views.html.admin.adminDiffShow(side, wid.content.get, remote, patch, wid.page.get, t._1)
+          else
+            views.html.admin.adminDiffShow(side, remote, wid.content.get, patch, t._1, wid.page.get)
+        }
       },{err=>
         Ok ("ERR: " + err)
       })
   }
 
   // create the remote
-  def applyDiffCr(target:String, wid:WID) = FAD { implicit au =>
-    implicit errCollector => implicit request =>
+  def applyDiffCr(target:String, wid:WID) = FADR { implicit request =>
       try {
         val content = wid.content.get
 
-        val b = body(url(s"http://$target/wikie/setContent/${wid.wpathFull}").form(Map("we" -> wid.page.get.grated.toString)).basic("H-"+au.email.dec, "H-"+au.pwd.dec))
+        val b = body(
+          url(s"http://$target/wikie/setContent/${wid.wpathFull}").
+            form(Map("we" -> wid.page.get.grated.toString)).
+            basic("H-"+request.au.get.email.dec, "H-"+request.au.get.pwd.dec))
 
-        Ok(b + " <a href=\"" + s"http://$target${wid.urlRelative}" + "\">" + wid.wpath + "</a>")
+        Ok(b + " <a href=\"" + s"http://$target${wid.urlRelative(request.realm)}" + "\">" + wid.wpath + "</a>")
       } catch {
         case x : Throwable => Ok ("error " + x)
       }
   }
 
   // to remote
-  def applyDiff(target:String, wid:WID) = FAD { implicit au =>
-    implicit errCollector => implicit request =>
+  def applyDiff(target:String, wid:WID) = FADR { implicit request =>
       try {
-        val b = body(url(s"http://$target/wikie/setContent/${wid.wpathFull}").form(Map("we" -> wid.page.get.grated.toString)).basic("H-"+au.email.dec, "H-"+au.pwd.dec))
+        val b = body(
+          url(s"http://$target/wikie/setContent/${wid.wpathFull}").
+            form(Map("we" -> wid.page.get.grated.toString)).
+            basic("H-"+request.au.get.email.dec, "H-"+request.au.get.pwd.dec))
 
         if(b contains "ok")
           //todo redirect to list
-          Ok(b + " <a href=\"" + s"http://$target${wid.urlRelative}" + "\">" + wid.wpath + "</a>")
+          Ok(b + " <a href=\"" + s"http://$target${wid.urlRelative(request.realm)}" + "\">" + wid.wpath + "</a>")
         else
-          Ok(b + " <a href=\"" + s"http://$target${wid.urlRelative}" + "\">" + wid.wpath + "</a>")
+          Ok(b + " <a href=\"" + s"http://$target${wid.urlRelative(request.realm)}" + "\">" + wid.wpath + "</a>")
       } catch {
         case x : Throwable => Ok ("error " + x)
       }
+  }
+
+  // from remote
+  def applyDiff2(target:String, wid:WID) = FADR {implicit request =>
+      getWE(target, wid)(request.au.get).fold({t =>
+        val b = body(url(s"http://localhost:9000/wikie/setContent/${wid.wpathFull}").form(Map("we" -> t._2)).basic("H-"+request.au.get.email.dec, "H-"+request.au.get.pwd.dec))
+        Ok(b + wid.ahrefRelative(request.realm))
+      }, {err=>
+        Ok ("ERR: "+err)
+      })
   }
 
   /** fetch remote WE */
   private def getWE(target:String, wid:WID)(implicit au:User):Either[(WikiEntry, String), String] = {
     try {
       val remote = s"http://$target/wikie/json/${wid.wpathFull}"
-      val wes = body(url(remote).basic("H-"+au.email.dec, "H-"+au.pwd.dec))
+      val wes = body(
+        url(remote).basic("H-"+au.email.dec, "H-"+au.pwd.dec))
 
       if(! wes.isEmpty) {
         val dbo = com.mongodb.util.JSON.parse(wes).asInstanceOf[DBObject];
@@ -663,15 +723,6 @@ object AdminDiff extends AdminBase {
     }
   }
 
-  // from remote
-  def applyDiff2(target:String, wid:WID) = FADR {implicit request =>
-      getWE(target, wid)(request.au.get).fold({t =>
-        val b = body(url(s"http://localhost:9000/wikie/setContent/${wid.wpathFull}").form(Map("we" -> t._2)).basic("H-"+request.au.get.email.dec, "H-"+request.au.get.pwd.dec))
-        Ok(b + wid.ahrefRelative(request.realm))
-      }, {err=>
-        Ok ("ERR: "+err)
-      })
-  }
 }
 
 /** Diff and sync remote wiki copies */

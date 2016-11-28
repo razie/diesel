@@ -114,9 +114,10 @@ object DieselControl extends RazController with Logging {
         val s = c.compile(f) + "\n" + c.call(f)
         val x = c.compileAll ( c.not {case fx:RDOM.F if fx.name == f.name => true})
 
-        ROK.s reactorLayout12 { implicit stok =>
-          views.html.fiddle.playBrowserFiddle("js", s, q, Some(we), x)
-        }
+        Ok("TODO - look at commented code here - where is this?")
+//        ROK.s reactorLayout12 { implicit stok =>
+//          views.html.fiddle.playBrowserFiddle("js", s, q, Some(we), x)
+//        }
       }) getOrElse NotFound("NotFound: "+wpath+" "+errCollector.mkString)
   }
 

@@ -23,7 +23,12 @@ format a note
           <textarea id="$id" readonly="true" style="width:90%; margin-right:40px" rows="5">${we.content}</textarea>
        """.stripMargin
     }
-  } else x
+  } else {
+    var y = x
+    y = razie.wiki.mods.WikiMods.modPostHtml(we, y)
+    y = razie.wiki.model.Wikis(we.wid.getRealm).applyTemplates(we.wid, y, "html")
+    y
+  }
 }
 
 @Html(ccc(we))

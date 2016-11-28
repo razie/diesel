@@ -5,6 +5,9 @@ import akka.actor.{Actor, Props}
 import controllers._
 import model._
 import org.bson.types.ObjectId
+import org.scalatest.path
+import play.api.mvc.Result
+import razie.db.{ROne, tx}
 import razie.wiki.dom.WikiDomain
 import razie.wiki.{Dec, WikiConfig, EncUrl, Enc}
 import razie.wiki.model._
@@ -85,47 +88,36 @@ object Snow extends RazController with Logging {
     Forms.sForm(WID("FormDesign", "ActivatePro"), routes.Snow.activate1(cat).url)
   }
 
+  // edit form submitted
   def activate1(cat:String) = FAUR { implicit stok=>
+    val w = WID("FormDesign", "ActivatePro").r(stok.realm).page.get
+    val wf = new WForm(w)
+    val (newData, errors) = wf.validate(stok.formParms)
+//    val x = wf.mkContent(Forms.json(Map() ++ newData, !errors.isEmpty))
+    val x = WForm.formData(Forms.json(Map() ++ newData, false))
+
     val wid = WID(cat, stok.au.get.userName).r(stok.realm)
+    val name = wid.name
+    val email = Dec(stok.au.get.email)
+
+    val discipline=stok.formParm("discipline")
+    val system=stok.formParm("system")
+    val hasCalendar=stok.formParm("cbCalendar") == "y"
+    val hasForum=stok.formParm("cbForum") == "y"
+    val hasBuy=stok.formParm("cbBuyAndSell") == "y"
+    val approve=
+      if(stok.formParm("cbApprove") == "y") "no" else "yes"
+    val desc=stok.formParm("desc")
+    val certs=stok.formParm("certs")
+    val photo=stok.formParm("photo")
+    val video=stok.formParm("video")
+    val visible=stok.formParm("visible")
+
     if(!wid.page.isDefined) {
-      val wid = WID(cat, stok.au.get.userName).r(stok.realm)
-      val name = wid.name
-      val email = Dec(stok.au.get.email)
-
-      val discipline=stok.formParm("discipline")
-      val system=stok.formParm("system")
-      val hasCalendar=stok.formParm("cbCalendar") == "y"
-      val hasForum=stok.formParm("cbForum") == "y"
-      val hasBuy=stok.formParm("cbBuyAndSell") == "y"
-      val approve=
-        if(stok.formParm("cbApprove") == "y") "no" else "yes"
-      val desc=stok.formParm("desc")
-      val certs=stok.formParm("certs")
-      val photo=stok.formParm("photo")
-      val video=stok.formParm("video")
-
-      val iphoto = if(photo.trim.length > 0) s"""{{photo $photo"}}""" else ""
-      val icerts = if(certs.trim.length > 0) certs else "Certifications"
-      val idesc  = if(desc.trim.length > 0) desc else s"${stok.au.get.fullName}'s page."
-      val ivideo  = if(video.trim.length > 0) s"""{{video $video}}""" else ""
-
+      // first time
       val firstPara =
         s"""
-          |<div class="row">
-          |
-          |<div class="col-sm-4">
-          |$iphoto
-          |</div>
-          |
-          |<div class="col-sm-8">
-          |$icerts
-          |</div>
-          |</div>
-          |
-          |$idesc
-          |<br>
-          |$ivideo
-          |
+        |$x
         """.stripMargin
 
       val ibuy = if(hasBuy) s"..role.buyandsell $cat:$name/Forum:${name}_Buy_Sell" else ""
@@ -142,9 +134,6 @@ object Snow extends RazController with Logging {
         |
         |{{.DO NOT EDIT THIS PART below}}
         |
-        |<div id="admin"></div>
-        |{{later admin /doe/club/adminpanel/${wid.wpath}}}
-        |
         |..editMode Draft
         |
         |{{.moderator:$email}}
@@ -157,7 +146,10 @@ object Snow extends RazController with Logging {
       """.stripMargin,
       stok.au.get._id,
       Seq(cat.toLowerCase),
-      stok.realm).copy(props=Map("wvis" -> Visibility.MODERATOR, "owner" -> stok.au.get.id))
+      stok.realm).copy(props=Map(
+        "wvis" -> Visibility.MODERATOR,
+        "visibility" -> visible,
+        "owner" -> stok.au.get.id))
 
       val buy = if(!hasBuy) None else Some(
         WikiEntry(
@@ -220,9 +212,8 @@ object Snow extends RazController with Logging {
           |regAdmin=$email
           |
           |system.discipline $discipline
-          |system.goal $system
-          |system.plan $system
-          |system.eval $system
+          |system.org $system
+          |system.templates $system,effective
           |
           |# new users follow these (Follows.role=WPATH)
           |Follows.Contributor=$cat:$name/Forum:${name}_Buy_Sell
@@ -240,7 +231,7 @@ object Snow extends RazController with Logging {
         """.stripMargin)
 
       club.create
-      UserWiki( stok.au.get._id, club.uwid, "Owner").create
+      UserWiki( stok.au.get._id, club.uwid, "Pro").create
 
       buy.map {we=>
         we.create
@@ -260,13 +251,18 @@ object Snow extends RazController with Logging {
         WikiLink(we.uwid, club.uwid, "Child").create
       }
 
-      stok.au.get.update(stok.au.get.copy(clubSettings = settings))
+      stok.au.map{user=>
+        user.update(user.copy(clubSettings = settings))
 
-      Emailer.withSession { implicit mailSession =>
+        if (!user.quota.updates.exists(_ > 10))
+          user.quota.reset(20)
+      }
+
+      Emailer.withSession(stok.realm) { implicit mailSession =>
         Emailer.tellRaz("ACTIVATED_PRO", "user: "+stok.au.get.fullName)
       }
       cleanAuth()
-      Redirect(club.wid.url)
+      Redirect(club.wid.urlRelative(stok.realm))
     } else
       Msg("Already activated", wid)
   }
@@ -299,7 +295,7 @@ object Snow extends RazController with Logging {
       val email=stok.formParm("email")
       val desc=stok.formParm("desc")
 
-      Emailer.withSession { implicit mailSession =>
+      Emailer.withSession(stok.realm) { implicit mailSession =>
         Emailer.sendEmailInvitePro(stok.au.get, name, email, desc)
         Emailer.tellRaz("INVITED_PRO", "user: "+stok.au.get.fullName)
       }
@@ -307,21 +303,252 @@ object Snow extends RazController with Logging {
       Msg("Thank you - invite sent")
   }
 
-  def doeAddNote(clubName:String, noteid:String, role:String, rkid:String) = FAU { implicit au => implicit errCollector => implicit request =>
-    val club = Club(clubName).get
+  object ROLES {
+    final val EVALUATION = "Evaluation"
+    final val QUESTIONAIRE = "Questionnaire"
+    final val MAREQ = "MA-Request"
+    final val ASK = "Question"
+    final val FEEDBACK = "Feedback"
+    final val MESSAGE = "Message"
+    final val REPLY = "Reply"
+    final val INSIGHT = "Insight"
+    final val PLAN = "Plan"
+    final val GOAL = "Goal"
+    final val NOTE = "Note"
+    final val VIDEO = "Video"
+  }
 
-    RacerKidz.findByIds(rkid).foreach { rk =>
-      rk.history.add(
-        RkHistory(
-          new ObjectId(rkid),
-          Some(au._id),
-          Some(new ObjectId(noteid)),
-          "Note",
-          role,
-          "Club:" + clubName
-        ))
+  /** either coach or me or parent */
+  def canHistory(clubWid:Option[WID], rkid:String)(implicit request:RazRequest) = {
+    request.au.isDefined &&
+      (
+      RacerKidz.findByIds(rkid).exists(_.usersToNotify.contains(request.au.get._id)) ||
+      clubWid.flatMap(Club.apply).exists(_.isClubCoach(request.au.get))
+      )
+  }
+
+  def doeFindCoaches(clubWid:CMDWID, rkid:String) = FAUR("find.team.coaches") { implicit request =>
+    if(canHistory(clubWid.wid, rkid))
+      Some(Ok(
+        findCoaches(clubWid.wid, rkid).map(x=>
+          x._1.wpath + "-------" + x._2.userId.flatMap(Users.findUserById).map(_.fullName)).mkString(",")
+      ))
+    else
+      None
+  }
+
+  def findCoaches(clubWid:Option[WID], rkid:String) = {
+    val club = clubWid.flatMap(Club.apply);
+    val teamCoach = for(
+      rk <- RacerKidz.findByIds(rkid).toList;
+      c <- rk.clubs.filter(x=> club.isEmpty || club.get.uwid.id == x.uwid.id);
+      t <- rk.teams(c, "");
+      twid <- t.uwid.wid.toList;
+      coach <- c.activeTeamMembers(twid).filter(x=>Club.isCoachRole(x._2.role))
+    ) yield (twid, coach._1)
+    teamCoach ++ (
+      if(teamCoach.isEmpty)
+        club.toList.flatMap(_.rka().filter(x=>Club.isCoachRole(x.role)).flatMap(rka=>
+          rka.rk.toList.map(rrk=>
+            (club.get.wid, rrk)
+          )
+        )
+      )
+      else Nil
+      )
+  }
+
+  // note was added - now process it
+  def doeAddNote(clubWid:CMDWID, noteid:String, role:String, rkid:String) = FAUR { implicit request =>
+    val created = request.formParm("created") == "true"
+    var memo = request.formParm("content")
+
+    if(canHistory(clubWid.wid, rkid)) RacerKidz.findByIds(rkid).foreach { rk =>
+      val club = clubWid.wid.map(Club.apply)
+      val id = new ObjectId(noteid)
+      var hrole = role
+      val weNote = Wikis(request.realm).findById("Note", id) // the note, if any
+
+      if(created && weNote.isDefined)
+        memo = weNote.map(_.content).getOrElse("")
+
+      implicit val txn = tx.txn
+
+      def link(we:WikiEntry) = "http://" + WikiReactors(request.realm).websiteProps.prop("domain").getOrElse(Config.hostport) + we.wid.urlRelative(request.realm)
+      def linkH = "http://" + WikiReactors(request.realm).websiteProps.prop("domain").getOrElse(Config.hostport) + "/doe/history"
+
+      if (role == ROLES.EVALUATION) {
+        // created by coach, completed by coach, notify user WHEN COMPLETE
+        weNote.map { we =>
+          we.update(we.copy(
+            tags = Seq("coaching") ++ we.tags,
+            props = we.props ++ Map(
+              "visibility" -> "ClubCoach",
+              "wvis" -> "ClubCoach",
+              "notifyUsers" -> rk.usersToNotify.mkString(","),
+              "role" -> role)
+          ))
+        }
+      } else if (role == ROLES.QUESTIONAIRE) {
+        // created by coach, notify user NOW, completed by user, notify coach
+        weNote.map { we =>
+          we.update(we.copy(
+            tags = Seq("coaching") ++ we.tags,
+            props = we.props ++
+              Map("notifyUsers" -> request.au.get._id.toString,
+                "role" -> role,
+                "visibility" -> "ClubCoach",
+                "wvis" -> "ClubCoach") ++
+              (if (rk.usersToNotify.nonEmpty) Map(
+                "owner" -> rk.usersToNotify.head.toString
+              )
+              else Map.empty[String, String])
+          ))
+
+          // notify users to complete questionaire
+          Emailer.withSession(request.realm) { implicit mailSession =>
+            rk.usersToNotify.flatMap(Users.findUserById(_).toList).map { u =>
+              Emailer.sendEmailFormAssigned(
+                u,
+                request.au.get,
+                /*link(we)*/linkH,
+                role)
+            }
+          }
+        }
+      } else if (role == ROLES.MAREQ || role == ROLES.ASK) {
+        // created by racer, completed by coach, notify user WHEN COMPLETE
+        val coaches: List[ObjectId] = findCoaches(clubWid.wid, rkid).flatMap(_._2.userId).toList.take(1)
+
+        weNote.map { we =>
+          we.update(we.copy(
+            tags = Seq("coaching") ++ we.tags,
+            props = we.props ++ Map(
+              "visibility" -> "ClubCoach",
+              "wvis" -> "ClubCoach")
+          ))
+
+          // notify coaches
+          Emailer.withSession(request.realm) { implicit mailSession =>
+            coaches.flatMap(Users.findUserById(_).toList).map { u =>
+              val rk = RacerKidz.myself(u._id)
+              rk.history.add(
+                RkHistory(
+                  rk._id,
+                  Some(request.au.get._id),
+                  Some(id),
+                  "Note",
+                  role,
+                  clubWid.wid.map(_.wpath).mkString
+                ))
+              Emailer.sendEmailNewNote(role, u, request.au.get, /*link(we)*/linkH, role, memo)
+            }
+          }
+        }
+      } else if (role.startsWith(ROLES.REPLY)) {
+        val to = role.substring(ROLES.REPLY.length)
+        val toH = ROne[RkHistory]("_id" -> new ObjectId(to))
+        val toUser = toH.flatMap(_.authorId)
+        hrole = ROLES.MESSAGE
+
+        // if sending from the other's history, then need to flip and save for myself
+        // if sending from my history, nothing to do
+
+
+        if (created) {
+          weNote.map { we =>
+            we.update(we.copy(
+              tags = Seq("coaching") ++ we.tags,
+              props = we.props ++ Map(
+                "visibility" -> "ClubCoach",
+                "wvis" -> "ClubCoach")
+            ))
+
+            // notify other
+            Emailer.withSession(request.realm) { implicit mailSession =>
+              toUser.flatMap(Users.findUserById).map { u =>
+                var tork = RacerKidz.myself(u._id)
+                if(tork._id == rk._id) tork=RacerKidz.myself(request.au.get._id) //was looking at the other's history, force this copy to mine
+                tork.history.add(
+                  RkHistory(
+                    tork._id,
+                    Some(request.au.get._id),
+                    Some(id),
+                    "Note",
+                    hrole,
+                    clubWid.wid.map(_.wpath).mkString
+                  ))
+                Emailer.sendEmailNewNote(ROLES.REPLY, u, request.au.get, /*link(we)*/linkH, hrole, memo)
+              }
+            }
+          }
+        } else {
+          // notify other
+          Emailer.withSession(request.realm) { implicit mailSession =>
+            toUser.flatMap(Users.findUserById).map { u =>
+              var tork = RacerKidz.myself(u._id)
+              if(tork._id == rk._id) tork=RacerKidz.myself(request.au.get._id) //was looking at the other's history, force this copy to mine
+              tork.history.add(
+                RkHistory(
+                  tork._id,
+                  Some(request.au.get._id),
+                  None,
+                  "Note",
+                  hrole,
+                  clubWid.wid.map(_.wpath).mkString
+                ).copy(
+                  content = Some(request.formParm("content")),
+                  tags = Some(request.formParm("tags"))
+                ))
+              Emailer.sendEmailNewNote(ROLES.REPLY, u, request.au.get, linkH, hrole,memo)
+            }
+          }
+        }
+      } else if (role == ROLES.FEEDBACK || role == ROLES.VIDEO) {
+        // notify user of coache's notes
+        weNote.map { we =>
+          Emailer.withSession(request.realm) { implicit mailSession =>
+            rk.usersToNotify.flatMap(Users.findUserById(_).toList).map { u =>
+              Emailer.sendEmailNewNote(role, u, request.au.get, Wiki.w(we.wid), role,memo)
+            }
+          }
+        }
+      } else if (role == ROLES.MESSAGE) {
+          Emailer.withSession(request.realm) { implicit mailSession =>
+            rk.usersToNotify.flatMap(Users.findUserById(_).toList).map { u =>
+              Emailer.sendEmailNewNote(role, u, request.au.get,linkH, role,memo)
+            }
+          }
+      }
+
+      val shouldBadge = role != ROLES.INSIGHT
+
+      if (created) {
+        // add history for the kid
+        rk.history.add(
+          RkHistory(
+            new ObjectId(rkid),
+            Some(request.au.get._id),
+            Some(id),
+            "Note",
+            hrole,
+            clubWid.wid.map(_.wpath).mkString
+          ), shouldBadge)
+      } else {
+        rk.history.add(
+          RkHistory(
+            rk._id,
+            Some(request.au.get._id),
+            None,
+            "Note",
+            hrole,
+            clubWid.wid.map(_.wpath).mkString
+          ).copy(
+            content = Some(request.formParm("content")),
+            tags = Some(request.formParm("tags"))
+          ), shouldBadge)
+      }
     }
-
     Ok("history created") // this is ajax
   }
 
@@ -352,6 +579,7 @@ object Snow extends RazController with Logging {
 
   def doeConnectBadge(club:WID) = FAUR { implicit request =>
     val site = if(club.cat == "Club" ) "www.racerkidz.com" else "www.snowproapp.com"
+    val path = club.canonpath
     Ok(
       s"""
         |<style>
@@ -387,30 +615,36 @@ object Snow extends RazController with Logging {
         |   background: #1b435e;
         |   }
         |</style>
-        |<p><a href="http://$site/wiki/${club.wpathnocats}" class="xbutton">Connect on SnowProApp</a></p>
+        |<p><a href="http://$site/$path" class="xbutton">Connect on SnowProApp</a></p>
         |<p></p>
       """.stripMargin)
   }
 
   /** send a message to the team members */
-  def doeSendMsgTeam(teamWpath:String, what:String) = FAUR { implicit stok =>
+  def doeSendMsgTeam(teamWpath:String, what:String) = FAUR { implicit request =>
     (for (
       team <- WID.fromPath(teamWpath) orErr "Team not found";
       c <- team.parentOf(WikiDomain(team.getRealm).isA("Club", _)).map(_.name).flatMap(Club.apply) orErr "Club not found";
-      ism <- c.isMember(stok.au.get) orCorr cNotMember(c.name);
-      isc <- c.isClubCoach(stok.au.get) orCorr cNotMember(c.name)
+      ism <- c.isMember(request.au.get) orCorr cNotMember(c.name);
+      isc <- c.isClubCoach(request.au.get) orCorr cNotMember(c.name)
     ) yield {
+      Emailer.withSession(request.realm) { implicit mailSession =>
       c.activeTeamMembers(team).map{kid=>
-        val memo = stok.formParm("content")
+        val memo = request.formParm("content")
         val h = RkHistory(
           kid._1._id,
-          Some(stok.au.get._id),
+          Some(request.au.get._id),
           None,
           "memo",
           "memo",
           memo
           )
         h.create
+        def linkH = "http://" + WikiReactors(request.realm).websiteProps.prop("domain").getOrElse(Config.hostport) + "/doe/history"
+          kid._1.usersToNotify.flatMap(Users.findUserById(_).toList).map { u =>
+            Emailer.sendEmailNewNote(ROLES.MESSAGE, u, request.au.get,linkH, ROLES.MESSAGE, memo)
+          }
+        }
         }
       Ok("history created") // this is ajax
 

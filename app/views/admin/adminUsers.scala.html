@@ -11,6 +11,9 @@ Admin user - list of users
     case "userName" => {
       <a href="@routes.AdminUser.user(db.get("_id").toString)">@v</a>
     }
+    case "_id" => {
+      @admin.adminDbEntity("User", v)
+    }
     case _=> {
       @v
     }
@@ -21,7 +24,6 @@ Admin user - list of users
 
     <h2>Users</h2>
 
-    @util.utilTable("User", Seq("userName" -> "UserName", "_id" -> "Id", "email" -> "Email", "firstName" -> "First Name", "lastName" -> "Last Name", "yob" -> "YOB", "realms" -> "Realms"), None, None, Some(fufu))
-
+@util.utilTable("User", Seq("userName" -> "UserName", "_id" -> "Id", "email" -> "Email", "firstName" -> "First Name", "lastName" -> "Last Name", "yob" -> "YOB", "realms" -> "Realms"), None, None, Some(fufu))
 
 

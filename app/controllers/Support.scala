@@ -56,19 +56,19 @@ object Support extends RazController with Logging {
   }
 
   // user submitted form
-  def supportu(page: String) = Action { implicit request =>
+  def supportu(page: String) = RAction { implicit request =>
     supportForm1.bindFromRequest.fold(
-      formWithErrors => ROK.r badRequest {implicit stok=> views.html.admin.support(formWithErrors, page)},
+      formWithErrors => ROK.k badRequest {implicit stok=> views.html.admin.support(formWithErrors, page)},
       {
         case t @ (e, n, desc, details, g_response) => {
           cdebug << t
           if (auth.exists(_.isActive) || Recaptcha.verify2(g_response, clientIp)) {
-            Emailer.withSession { implicit mailSession =>
+            Emailer.withSession(request.realm) { implicit mailSession =>
               Emailer.sendSupport("Support request", n, e, (auth.map("Username: " + _.userName + " ").mkString) + desc, details, page)
             }
             Msg("Ok - support request sent. We will look into it asap.", HOME)
           } else {
-            Audit.logdb("BAD_MATH", List("request:" + request.toString, "headers:" + request.headers, "body:" + request.body).mkString("<br>"))
+            Audit.logdb("BAD_MATH", List("request:" + request.toString, "headers:" + request.headers, "body:" + request.req.body).mkString("<br>"))
             Msg("Human verification fail...", HOME)
           }
         }

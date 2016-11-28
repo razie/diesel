@@ -22,10 +22,11 @@ import razie.db.RazSalatContext.ctx
 import razie.diesel.dom.{SimpleECtx, RDomain, RDOM}
 import RDOM.O
 import razie.diesel.dom.{SimpleECtx, ECtx}
-import razie.wiki.Enc
+import razie.wiki.{Services, Enc}
 import razie.wiki.Sec.EncryptedS
 import play.api.mvc._
 import razie.wiki.dom.WikiDomain
+import razie.wiki.mods.WikiMods
 import razie.wiki.util.PlayTools
 import razie.{CSTimer, js, cout, Logging}
 import javax.script.{ScriptEngineManager, ScriptEngine}
@@ -39,6 +40,7 @@ import scala.util.parsing.input.{CharArrayReader, Positional}
 import razie.wiki.model.{WID, Wikis, WikiEntry, WikiUser}
 import razie.wiki.admin.{Autosave, SecLink}
 import AstKinds._
+import scala.concurrent.ExecutionContext.Implicits.global
 
 /** controller for server side fiddles / services */
 object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
@@ -97,6 +99,22 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
         (au hasPerm Perm.adminDb)) orCorr(cNoPermission)
     ) yield f(stok)
       ) getOrElse {
+      val more = Website(request).flatMap(_.prop("msg.noPerm")).flatMap(WID.fromPath).flatMap(_.content).mkString
+      Msg("You need more karma...", "Open a karma request")
+    }
+  }
+
+  def FAUPRa(f: RazRequest => Future[Result]) = Action.async { implicit request =>
+    implicit val stok = new RazRequest(request)
+    (for (
+      au <- stok.au;
+      isA <- checkActive(au);
+      ok <-
+      ((au hasPerm Perm.domFiddle) ||
+        (au hasPerm Perm.codeMaster) ||
+        (au hasPerm Perm.adminDb)) orCorr(cNoPermission)
+    ) yield f(stok)
+      ) getOrElse Future {
       val more = Website(request).flatMap(_.prop("msg.noPerm")).flatMap(WID.fromPath).flatMap(_.content).mkString
       Msg("You need more karma...", "Open a karma request")
     }
@@ -202,6 +220,7 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
   import scala.concurrent.Future
   import akka.actor._
 
+  // active clients, for broadcasting
   val clients = new mutable.HashMap[String, ActorRef]()
 
 //  def espOpen(reactor:String, id:String) = WebSocket.tryAcceptWithActor[String, String] { request =>
@@ -219,10 +238,40 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
 //      })
 //)
 
+  /**
+   * 1. split a page. the page will then open a channel espOpenClient
+   * the server will send with buildDom2
+   *
+   * do this to start a new page with session:
+   * window.open('/diesel/fiddle/startESP/specs/1478275158003');//?spec=specs.Spec:flow_spec')
+   */
+  def startESP(reactor:String, id: String) = FAUPR { implicit stok =>
+
+    ROK.k reactorLayout12 {implicit stok=>
+      views.html.fiddle.playESPDomFiddle(reactor, stok.query, Some(""), id)
+    }
+  }
+
+  /**
+   * 2. client page start an ESP socket - this is the client page connecting through here
+   *
+   * @param reactor
+   * @param id
+   * @return
+   */
+
   def espOpen(reactor:String, id:String) = WebSocket.acceptWithActor[String, String] { request => out =>
     Props(new MyWebSocketActor(out, id, false))
   }
 
+  /** 3. websocket handler - one per socket
+    *
+    * it's a simple relay - send it Maps and it will toJson and send them over
+    *
+    * it will also ping the pages on a schedule and die and close socket when client no longer there
+    *
+    * see playESPDomFiddle
+    */
   class MyWebSocketActor(out: ActorRef, id:String, client:Boolean) extends Actor {
     clients.put(id, self)
 
@@ -251,33 +300,35 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
   }
 
 
-  /**
-   * split a page. the page will then open a channel espOpenClient
-   * the server will send with buildDom2
-   */
-  def startESP(reactor:String, id: String) = FAUPR { implicit stok =>
+  // cache and expiry
 
-    ROK.k reactorLayout12 {implicit stok=>
-      views.html.fiddle.playESPDomFiddle(reactor, stok.query, Some(""), id)
-    }
-  }
 
-  val cachel = new mutable.ListBuffer[String]()
+  // stupid LRU expiry
+  val cachel = new mutable.HashMap[String, Int]()
   val cachem = new mutable.HashMap[String,(WikiEntry,Option[RDomain])]()
 
   def orcached (we:WikiEntry, d: =>Option[RDomain]) : Option[RDomain] = {
-    cachem.get(we.content).flatMap(_._2).orElse {
+    val res = cachem.get(we.content).flatMap(_._2).orElse {
       val x = d
       cachem.put(we.content, (we, d))
-      cachel.append(we.content)
+      cachel.put(we.content, 0)
       if(cachel.size > 100) {
-        cachem.remove(cachel.remove(0))
+        var min = 0
+        var minc = ""
+        cachel.foreach(x=> if(x._2 < min) {
+          min = x._2
+          minc = x._1
+        })
+        cachel.remove(minc)
+        cachem.remove(minc)
       }
       d
     }
+    cachel.update(we.content, cachel(we.content) + 1)
+    res
   }
 
-  /** fiddle screen - spec changed */
+  /** fiddle screen - spec changed, rerun and resend new tree */
   def fiddleSpecUpdated(id: String) = FAUPR { implicit stok=>
     val q = stok.query
 
@@ -331,7 +382,7 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
     * @param id
     * @return
     */
-  def fiddleStoryUpdated(id: String) = FAUPR { implicit stok=>
+  def fiddleStoryUpdated(id: String) = FAUPRa { implicit stok=>
     val stimer = new CSTimer("buildDomStory", id)
     stimer start "heh"
 
@@ -420,44 +471,51 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
     val idom = WikiDomain.domFrom(ipage).get.revise addRoot
 
     // start processing all elements
-    val engine = new DomEngine(dom, root, settings, ipage :: pages map WikiDomain.spec)
+    val engine = DieselAppContext.mkEngine(dom, root, settings, ipage :: pages map WikiDomain.spec)
     setHostname(engine.ctx)
 
-    // decompose all tree or just testing?
-    if(capture startsWith "{") {
-      root.children.filter(_.kind == "test").foreach(engine.expand(_, true, 1))
+    // decompose all tree or just testing? - if there is a capture, I will only test it
+    val fut = if(capture startsWith "{") {
+      engine.processTests
     } else {
-      root.children.foreach(engine.expand(_, true, 1))
+      engine.process
     }
 
-    res += root.toHtml
+    fut.map {engine =>
+      res += engine.root.toHtml
 
-    val stw = WID.fromPath(storyWpath).flatMap(_.page).map(_.content).getOrElse("Sample story\n\n$msg home.guest_arrived(name=\"Jane\")\n\n$expect $msg lights.on\n")
+      val stw = WID.fromPath(storyWpath).flatMap(_.page).map(_.content).getOrElse("Sample story\n\n$msg home.guest_arrived(name=\"Jane\")\n\n$expect $msg lights.on\n")
 
-    stimer snap "4_engine_expand"
+      stimer snap "4_engine_expand"
 
-    val wiki = Wikis.format(ipage.wid, ipage.markup, null, Some(ipage), stok.au)
+      val wiki = Wikis.format(ipage.wid, ipage.markup, null, Some(ipage), stok.au)
 
-    stimer snap "5_format_page"
+      stimer snap "5_format_page"
 
-    val m = Map(
-      "res" -> res,
-      "capture" -> captureTree,
-      "wiki" -> wiki,
-      "ca" -> RDExt.toCAjmap(dom plus idom), // in blenderMode dom is full
-      "failureCount" -> (root.collect {
-        case d@DomAst(n:TestResult, _, _, _) if n.value.startsWith("fail") => n
-      }).size,
-      "storyChanged" -> (storyWpath.length > 0 && stw.replaceAllLiterally("\r", "") != story)
-    )
+      val m = Map(
+        "res" -> res,
+        "capture" -> captureTree,
+        "wiki" -> wiki,
+        "ca" -> RDExt.toCAjmap(dom plus idom), // in blenderMode dom is full
+        "failureCount" -> (root.collect {
+          case d@DomAst(n:TestResult, _, _, _) if n.value.startsWith("fail") => n
+        }).size,
+        "storyChanged" -> (storyWpath.length > 0 && stw.replaceAllLiterally("\r", "") != story)
+      )
 
-    clients.get(id).foreach(_ ! m)
-    clients.values.foreach(_ ! m)
-    retj << m
+      clients.get(id).foreach(_ ! m)
+      clients.values.foreach(_ ! m) // todo WTF am I broadcasting?
+      retj << m
+    }
   }
 
   def setHostname (ctx:SimpleECtx)(implicit stok:RazRequest): Unit = {
-    ctx.hostname = PlayTools.getHost(stok.req).mkString
+    ctx._hostname =
+      Some(
+      // on localhost, it shouldn't go out
+        if(Services.config.isLocalhost) "localhost:9000"
+        else PlayTools.getHost(stok.req).mkString
+      )
   }
 
   /** prepare an engine
@@ -525,7 +583,7 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
     addStoryToAst(root, ipage, justTests)
 
     // start processing all elements
-    val engine = new DomEngine(dom, root, settings, ipage :: pages map WikiDomain.spec)
+    val engine = DieselAppContext.mkEngine(dom, root, settings, ipage :: pages map WikiDomain.spec)
     setHostname(engine.ctx)
 
     engine
@@ -554,7 +612,7 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
 
     val resultMode = stok.query.getOrElse("resultMode", "")
 
-    cwid.wid.flatMap(wid=> wid.page.orElse {
+    cwid.wid.map(stok.prepWid).flatMap(wid=> wid.page.orElse {
       if( (wid.cat == "Spec" || wid.cat == "Story") && wid.name == "fiddle") {
         val x = Autosave.find(s"DomFid${wid.cat}."+stok.realm+".", stok.au.map(_._id)).flatMap(_.get("content")).mkString
         val page = new WikiEntry(wid.cat, "fiddle", "fiddle", "md", x, stok.au.map(_._id).getOrElse(new ObjectId()), Seq("dslObject"), "")
@@ -564,7 +622,9 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
       val PAT = """(\w*)/(\w*)""".r
       val PAT(e,a) = cwid.rest
 
-      val nw = if(stok.query.contains("dfiddle")) cwid.wid.get.copy(section=stok.query.get("dfiddle")) else cwid.wid.get
+      val nw =
+        if(stok.query.contains("dfiddle")) we.wid.copy(section=stok.query.get("dfiddle"))
+        else we.wid
       irunDom(e, a, Some(nw)).apply(request)
     } getOrElse {
       errors append "WPath not found: [["+cwid.wpath.mkString+"]]"
@@ -597,7 +657,7 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
     *
     * @param useThisOne if nonEmpty then will use this
     */
-  private def irunDom(e:String, a:String, useThisOne:Option[WID]) = RAction { implicit stok=>
+  private def irunDom(e:String, a:String, useThisOne:Option[WID]) = RActiona { implicit stok=>
     val reactor = stok.realm
 
     def fParm(name:String, dflt:String="") = stok.query.getOrElse(name, dflt)
@@ -635,13 +695,14 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
         if(useThisOne.isDefined) ""
         else Autosave.find("DomFidSpec."+reactor+".", stok.au.map(_._id)).flatMap(_.get("content")).mkString
       val page = new WikiEntry("Spec", "fiddle", "fiddle", "md", spec, stok.au.map(_._id).getOrElse(NOUSER), Seq("dslObject"), "")
-//      WikiDomain.domFrom(page).get.revise.addRoot
+      //      WikiDomain.domFrom(page).get.revise.addRoot
       List(page)
     }
 
     // to domain
     val dom = pages.flatMap( p=>
-      WikiDomain.domFrom(p).toList
+      orcached(p, WikiDomain.domFrom(p)).toList
+//      WikiDomain.domFrom(p).toList
     ).foldLeft(WikiDomain.domFrom(page).get)((a,b) => a.plus(b)).revise.addRoot
 
     // make up a story
@@ -651,17 +712,17 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
 
     val story2 = if(settings.sketchMode) {
       // in sketch mode, add the temp fiddle tests - filter out messages, as we already have one
-        useThisOne.map {p=>
-          Autosave.find("DomFidStory."+reactor+"."+p.wpath, stok.au.map(_._id)).flatMap(_.get("content")) getOrElse p.content.mkString
-        } getOrElse
-          Autosave.find("DomFidStory."+reactor+".", stok.au.map(_._id)).flatMap(_.get("content")).mkString
+      useThisOne.map {p=>
+        Autosave.find("DomFidStory."+reactor+"."+p.wpath, stok.au.map(_._id)).flatMap(_.get("content")) getOrElse p.content.mkString
+      } getOrElse
+        Autosave.find("DomFidStory."+reactor+".", stok.au.map(_._id)).flatMap(_.get("content")).mkString
     } else if(useThisOne.isDefined) {
       useThisOne.get.content.mkString
     } else ""
 
-    story = story + story2.lines.filterNot(x=>
+    story = story +"\n"+story2.lines.filterNot(x=>
       x.trim.startsWith("$msg") || x.trim.startsWith("$receive")
-    ).mkString("\n")
+    ).mkString("\n")+"\n"
 
     val ipage = new WikiEntry("Story", "fiddle", "fiddle", "md", story, stok.au.map(_._id).getOrElse(NOUSER), Seq("dslObject"), "")
     val idom = WikiDomain.domFrom(ipage).get.revise addRoot
@@ -672,57 +733,132 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
     addStoryToAst(root, ipage)
 
     // start processing all elements
-    val engine = new DomEngine(dom plus idom, root, settings, ipage :: pages map WikiDomain.spec)
+    val engine = DieselAppContext.mkEngine(dom plus idom, root, settings, ipage :: pages map WikiDomain.spec)
     setHostname(engine.ctx)
 
-    root.children.foreach(engine.expand(_, true, 1))
-    //    res += root.toString
+    val fut = engine.process
 
-    val errors = new ListBuffer[String]()
+    fut.map { engine =>
+      val errors = new ListBuffer[String]()
 
-    // find the spec and check its result
-    // then find the resulting value.. if not, then json
-    val oattrs = dom.moreElements.collect{
-      case n:EMsg if n.entity == e && n.met == a => n
-    }.headOption.toList.flatMap(_.ret)
+      // find the spec and check its result
+      // then find the resulting value.. if not, then json
+      val oattrs = dom.moreElements.collect {
+        case n: EMsg if n.entity == e && n.met == a => n
+      }.headOption.toList.flatMap(_.ret)
 
-    if(oattrs.isEmpty) {
-      errors append s"Can't find the spec for $e.$a"
+      if (oattrs.isEmpty) {
+        errors append s"Can't find the spec for $e.$a"
+      }
+
+      import RDExt.stripQuotes
+
+      // collect values
+      val values = root.collect {
+        case d@DomAst(EVal(p), /*"generated"*/ _, _, _) if oattrs.isEmpty || oattrs.find(_.name == p.name).isDefined => (p.name, p.dflt)
+      }
+
+      if ("value" == resultMode || "" == resultMode && oattrs.size == 1) {
+        // one value
+        val res = values.headOption.map(_._2).getOrElse("")
+        Ok(stripQuotes(res))
+      } else {
+        // multiple values as json
+        var m = Map(
+          "values" -> values.toMap,
+          "failureCount" -> (root.collect {
+            case d@DomAst(n: TestResult, _, _, _) if n.value.startsWith("fail") => n
+          }).size,
+          "errors" -> errors.toList,
+          "dieselTrace" -> DieselTrace(root, settings.node, engine.id, "diesel", "runDom", settings.parentNodeId).toJson
+        )
+
+        if ("treeHtml" == resultMode) m = m + ("tree" -> root.toHtml)
+        if ("treeJson" == resultMode) m = m + ("tree" -> root.toJson)
+
+        if ("debug" == resultMode) {
+          Ok(root.toString).as("application/json")
+        } else if ("dieselTree" == resultMode) {
+          val m = root.toj
+          val y = DieselJsonFactory.fromj(m).asInstanceOf[DomAst]
+          val x = js.tojsons(y.toj).toString
+          Ok(x).as("application/json")
+        } else
+          Ok(js.tojsons(m).toString).as("application/json")
+      }
     }
+  }
 
-    import RDExt.stripQuotes
+  /** execute message to given reactor
+    *
+    * not in a context of a request
+    */
+  def runDom(msg:String, specs:List[WID], stories:List[WID], settings:DomEngineSettings) : Future[Map[String,Any]] = {
+    val page = new WikiEntry("Spec", "fiddle", "fiddle", "md", "", NOUSER, Seq("dslObject"), "")
 
-    // collect values
-    val values = root.collect {
-      case d@DomAst(EVal(p), /*"generated"*/ _, _, _) if oattrs.isEmpty || oattrs.find(_.name == p.name).isDefined => (p.name, p.dflt)
-    }
+    val pages = (specs ::: stories).filter(_.section.isEmpty).flatMap(_.page)
 
-    if("value" == resultMode || "" == resultMode && oattrs.size == 1) {
-      // one value
-      val res = values.headOption.map(_._2).getOrElse("")
-      Ok(stripQuotes(res))
-    } else {
-      // multiple values as json
+    // to domain
+    val dom = pages.flatMap( p=>
+      WikiDomain.domFrom(p).toList
+    ).foldLeft(WikiDomain.domFrom(page).get)((a,b) => a.plus(b)).revise.addRoot
+
+    // make up a story
+    val FILTER = Array("sketchMode", "mockMode", "blenderMode", "draftMode")
+    var story = if(msg.trim.startsWith("$msg")) msg else "$msg "+ msg
+    clog << "STORY: " + story
+
+    // todo this has no EPos - I'm loosing the epos on sections
+    // put together all sections
+    val story2 = (specs ::: stories).filter(_.section.isDefined).flatMap(_.content).mkString("\n")
+    story = story +"\n"+story2.lines.filterNot(x=>
+      x.trim.startsWith("$msg") || x.trim.startsWith("$receive")
+    ).mkString("\n")+"\n"
+
+    val ipage = new WikiEntry("Story", "fiddle", "fiddle", "md", story, NOUSER, Seq("dslObject"), "")
+    val idom = WikiDomain.domFrom(ipage).get.revise addRoot
+
+    var res = ""
+
+    val root=DomAst("root", "root")
+    addStoryToAst(root, ipage)
+
+    // start processing all elements
+    val engine = DieselAppContext.mkEngine(dom plus idom, root, settings, ipage :: pages map WikiDomain.spec)
+
+    engine.process.map { engine =>
+
+      val errors = new ListBuffer[String]()
+
+      // find the spec and check its result
+      // then find the resulting value.. if not, then json
+      val oattrs = dom.moreElements.collect {
+        //      case n:EMsg if n.entity == e && n.met == a => n
+        case n: EMsg if msg.startsWith(n.entity + "." + n.met) => n
+      }.headOption.toList.flatMap(_.ret)
+
+      if (oattrs.isEmpty) {
+        errors append s"Can't find the spec for $msg"
+      }
+
+      import RDExt.stripQuotes
+
+      // collect values
+      val values = root.collect {
+        case d@DomAst(EVal(p), /*"generated"*/ _, _, _) if oattrs.isEmpty || oattrs.find(_.name == p.name).isDefined => (p.name, p.dflt)
+      }
+
       var m = Map(
+        "value" -> values.headOption.map(_._2).map(stripQuotes).getOrElse(""),
         "values" -> values.toMap,
         "failureCount" -> (root.collect {
-          case d@DomAst(n:TestResult, _, _, _) if n.value.startsWith("fail") => n
+          case d@DomAst(n: TestResult, _, _, _) if n.value.startsWith("fail") => n
         }).size,
-        "errors" -> errors.toList
+        "errors" -> errors.toList,
+        "root" -> root,
+        "dieselTrace" -> DieselTrace(root, settings.node, engine.id, "diesel", "runDom", settings.parentNodeId).toJson
       )
-
-      if("treeHtml" == resultMode) m = m + ("tree" -> root.toHtml)
-      if("treeJson" == resultMode) m = m + ("tree" -> root.toJson)
-
-      if("debug" == resultMode) {
-        Ok(root.toString).as("application/json")
-      } else if("dieselTree" == resultMode) {
-        val m = root.toj
-        val y = DieselJsonFactory.fromj(m).asInstanceOf[DomAst]
-        val x = js.tojsons(y.toj).toString
-        Ok(x).as("application/json")
-      } else
-        Ok(js.tojsons(m).toString).as("application/json")
+      m
     }
   }
 
@@ -748,7 +884,7 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
 
     import scala.collection.JavaConversions._
 
-    def diffTable (p:Patch) = s"""<small>${views.html.admin.diffTable(p, Some(("How", "Orig", "Autosaved")))}</small>"""
+    def diffTable (p:Patch) = s"""<small>${views.html.admin.diffTable("", p, Some(("How", "Orig", "Autosaved")))}</small>"""
 
     def diffT = diffTable(DiffUtils.diff(stw.lines.toList, story.lines.toList))
     def diffP = diffTable(DiffUtils.diff(spw.lines.toList, spec.lines.toList))
@@ -844,11 +980,11 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
   }
 
   /** display the play sfiddle screen */
-  def invited = Action { implicit request =>
-    val q = request.queryString.map(t=>(t._1, t._2.mkString))
+  def invited = RAction { implicit request =>
+    val q = request.query
     /** get parm from formrequest body or empty string */
     def fParm(name:String) =
-      razscr.dec(request.body.asFormUrlEncoded.get.apply(name).mkString)
+      razscr.dec(request.req.body.asFormUrlEncoded.get.apply(name).mkString)
     def fqParm(name:String) =
       q.get(name).getOrElse(fParm(name))
 
@@ -966,7 +1102,7 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
     val engine = prepEngine(xid, settings, stok.realm, root, true)
 
     // decompose all tree or just testing?
-    root.children.filter(_.kind == "test").foreach(engine.expand(_, true, 1))
+    engine.processTests
 
     if(asts.size > 500) asts = asts.take(499)
     asts = (stream, xid, root) :: asts
@@ -1069,4 +1205,7 @@ object DomWorker {
 //    }
   }
 }
+
+case class DieselMsg (e:String, a:String, parms:Map[String,String], specs:List[WID], stories:List[WID])
+case class DieselMsgString (msg:String, specs:List[WID], stories:List[WID])
 

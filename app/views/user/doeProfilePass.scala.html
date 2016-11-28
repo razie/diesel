@@ -1,4 +1,4 @@
-@(myForm: Form[_], au: model.User)(implicit request: Request[_])
+@(myForm: Form[_], au: model.User)(implicit request: controllers.RazRequest)
 
 @salutation() = @{
   val names = Array("Hi", "Hello", "Hey", "Howdy")

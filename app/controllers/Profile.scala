@@ -1,5 +1,6 @@
 package controllers
 
+import mod.diesel.controllers.{DieselMsgString, DieselMsg}
 import mod.snow._
 import razie.base.Audit
 import razie.db.{ROne, Txn}
@@ -15,7 +16,7 @@ import play.api.data.Forms.{mapping, nonEmptyText, tuple, _}
 import play.api.mvc.{Action, Request}
 import razie.OR._
 import razie.wiki.admin.SendEmail
-import razie.wiki.model.{WikiIndex, Wikis, WID}
+import razie.wiki.model.{WikiEvent, WikiIndex, Wikis, WID}
 import razie.wiki.{Services, Enc}
 
 object Profile extends RazController with Logging {
@@ -358,9 +359,18 @@ object Profile extends RazController with Logging {
 
               razie.db.tx("doeCreateProfile") { implicit txn =>
                 // TODO bad code - update and reuse account creation code in Tasks.addParent
-                val created = { u.create(u.mkProfile); Some(u)}
+                val pro = u.mkProfile
+                val created = { u.create(pro); Some(u)}
                 created.foreach { x => RacerKidz.myself(x._id) }
-                UserTasks.verifyEmail(u).create
+
+                // when testing, skip email verification
+                if(! Services.config.isLocalhost) {
+                  UserTasks.verifyEmail(u).create
+                } else {
+                  val ppp = pro.addPerm("+" + Perm.eVerified.s).addPerm("+" + Perm.uWiki.s)
+                  pro.update(if (u.isUnder13) ppp else ppp.addPerm("+" + Perm.uProfile.s))
+                }
+
                 if (u.isClub) {
                   UserTasks.setupCalendars(u).create
                   UserTasks.setupRegistration(u).create
@@ -375,6 +385,14 @@ object Profile extends RazController with Logging {
                   Emailer.tellRaz("New user", u.userName, u.email.dec, "realm: "+u.realms.mkString, "ABOUT: "+about)
                 }
               }
+
+              val stok = ROK.r
+
+              //realm new user flow
+              Services ! DieselMsgString(
+                s"""$$msg user.joined(userName="${u.userName}", realm="${stok.realm}")""",
+                WID.fromPath(s"${stok.realm}.Reactor:${stok.realm}#diesel").toList,
+                Nil)
 
               // process extra parms to determine what next
               request.session.get("extra") map { x =>
@@ -414,7 +432,7 @@ object Profile extends RazController with Logging {
   }
 
   /** show children in profile **/
-  def profile2(child: String) = Action { implicit request =>
+  def profile2(child: String) = RAction { implicit request =>
     implicit val errCollector = new VErrors()
     (for (
       au <- activeUser;
@@ -423,17 +441,17 @@ object Profile extends RazController with Logging {
       log("PC " + au._id + "        " + c._id)
       log("PC " + Users.findPC(au._id, c._id))
       val ParentChild(_, _, t, n, _) = Users.findPC(au._id, c._id).getOrElse(ParentChild(null, null, "Private", "Everything"))
-      Ok(views.html.user.edChildren(edprofileForm2.fill((t, n)), child, au))
+      ROK.k noLayout {views.html.user.edChildren(edprofileForm2.fill((t, n)), child, au)}
     }) getOrElse unauthorized("Oops - how did you get here? [p2]")
   }
 
   /** edited children in profile **/
-  def profile2u(child: String) = Action { implicit request =>
+  def profile2u(child: String) = RAction { implicit request =>
     implicit val errCollector = new VErrors()
     edprofileForm2.bindFromRequest.fold(
       formWithErrors => {
         warn("FORM ERR " + formWithErrors)
-        BadRequest(views.html.user.edChildren(formWithErrors, child, auth.get))
+        ROK.k badRequest{views.html.user.edChildren(formWithErrors, child, auth.get)}
       },
       {
         case (t, n) => {
@@ -455,9 +473,9 @@ object Profile extends RazController with Logging {
       })
   }
 
-  def doeUpdPrefs = Action { implicit request =>
+  def doeUpdPrefs = RAction { implicit request =>
     prefsForm.bindFromRequest.fold(
-    formWithErrors => BadRequest(views.html.user.doeProfilePreferences(formWithErrors, auth.get)),
+    formWithErrors => ROK.k badRequest {views.html.user.doeProfilePreferences(formWithErrors, auth.get)},
     {
       case (css, favQuote, weatherCode) => forActiveUser { au =>
         val u = updateUser(au, au.copy(prefs=au.prefs ++
@@ -523,13 +541,15 @@ object Profile extends RazController with Logging {
     }
   }
 
-    def doeProfilePreferences = Action { implicit request =>
+    def doeProfilePreferences = RAction { implicit request =>
     forUser { au =>
-      Ok(views.html.user.doeProfilePreferences(prefsForm.fill((
+      ROK.k noLayout {
+        views.html.user.doeProfilePreferences(prefsForm.fill((
         au.getPrefs("css",dfltCss),
         au.getPrefs("favQuote",""),
         au.getPrefs("weatherCode",""))),
-        au))
+        au)
+      }
     }
   }
 
@@ -537,10 +557,10 @@ object Profile extends RazController with Logging {
     Ok(views.html.user.doeProfileHelp())
   }
 
-  def doeProfileUpdate = Action { implicit request =>
+  def doeProfileUpdate = RAction { implicit request =>
     edProfileForm.bindFromRequest.fold(
       formWithErrors =>
-        BadRequest(views.html.user.doeProfile(formWithErrors, auth.get)),
+        ROK.k badRequest{views.html.user.doeProfile(formWithErrors, auth.get)},
       {
         case u: User =>
           forActiveUser { au =>
@@ -860,18 +880,22 @@ object EdEmail extends RazController {
       ("Sorry - already in use", { t: (String, String) => !Users.findUserByEmail(t._2.enc).isDefined })
   }
 
-  // authenticated means doing a task later
-  def doeProfileEmail() = Action { implicit request =>
+  // change email
+  def doeProfileEmail() = RAction { implicit request =>
     (for (
       au <- auth orCorr cNoAuth
-    ) yield Ok(views.html.user.doeProfileEmail(emailForm.fill(au.email.dec, ""), auth.get))) getOrElse
+    ) yield ROK.k noLayout {
+        views.html.user.doeProfileEmail(emailForm.fill(au.email.dec, ""), auth.get)
+      }
+      ) getOrElse
       unauthorized("Oops - how did you get here? [step1]")
   }
 
-  def doeProfileEmail2() = Action { implicit request =>
+  // change email
+  def doeProfileEmail2() = RAction { implicit request =>
     implicit val errCollector = new VErrors()
     emailForm.bindFromRequest.fold(
-      formWithErrors => BadRequest(views.html.user.doeProfileEmail(formWithErrors, auth.get)),
+      formWithErrors => ROK.k badRequest {views.html.user.doeProfileEmail(formWithErrors, auth.get)},
       {
         case (o, n) =>
           (for (

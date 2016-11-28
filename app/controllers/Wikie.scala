@@ -7,7 +7,7 @@
 package controllers
 
 import admin.{Config}
-import mod.snow.RacerKidz
+import mod.snow.{RkHistory, RacerKidz}
 import razie.base.Audit
 
 import razie.db.RazSalatContext._
@@ -280,8 +280,8 @@ object Wikie extends WikieBase {
 
           c2 = we.PATTSIGN.replaceSomeIn(c2, { m =>
             clog << "SIGNING:" << m << m.groupNames.mkString
-            if (s.name == (m group 2)) Some("{{%s:%s:%s}}%s{{/%s}}".format(
-              m group 1, m group 2, sign(s.content), s.content.replaceAll("""\\""", """\\\\"""), m group 1))
+            if (s.name == (m group 3)) Some("{{%s:%s:%s}}%s{{/%s}}".format(
+              (m group 1)+(m group 2), m group 3, sign(s.content), s.content.replaceAll("""\\""", """\\\\""").replaceAll("\\$", "\\\\\\$"), m group 2))
             else None
           })
         }
@@ -305,8 +305,9 @@ object Wikie extends WikieBase {
   def saveDraft (w:WID) = FAUR { implicit stok=>
     val q = stok.req.queryString.map(t=>(t._1, t._2.mkString))
     val realm = w.realm.getOrElse(stok.realm)
-    val content = stok.req.body.asFormUrlEncoded.get.apply("content").mkString
-    val tags = stok.req.body.asFormUrlEncoded.get.apply("tags").mkString
+    val content = stok.formParm("content")
+    val tags = stok.formParm("tags")
+
     Autosave.set("wikie."+w.wpath, stok.au.get._id,
     Map(
       "content"  -> content,
@@ -393,14 +394,12 @@ object Wikie extends WikieBase {
 
 
   /** POST new content to preview an edited wiki */
-  def preview(wid: WID) = FAU {
-    implicit au => implicit errCollector => implicit request =>
-    val data = PlayTools.postData
-      val content = data("content")
-      val tags = data("tags")
-    val page = WikiEntry(wid.cat, wid.name, wid.name, "md", content, au._id, tags.split(",").toSeq)
+  def preview(wid: WID) = FAUR { implicit stok =>
+    val content = stok.formParm("content")
+    val tags = stok.formParm("tags")
+    val page = WikiEntry(wid.cat, wid.name, wid.name, "md", content, stok.au.get._id, Tags(tags))
 
-    ROK.s noLayout {implicit stok=>
+    ROK.k noLayout {implicit stok=>
       // important to pass altContent, so it will bypass format caches
       views.html.wiki.wikiFrag(wid, Some(content), true, Some(page))
     }
@@ -536,7 +535,7 @@ object Wikie extends WikieBase {
                 } else false
 
               if (we.tags.mkString(",") != tags)
-                we = we.withTags(tags.split(",").map(_.trim).toSeq, au._id)
+                we = we.withTags(Tags(tags), au._id)
 
                 we = signScripts(we, au)
 
@@ -547,7 +546,7 @@ object Wikie extends WikieBase {
                   // can only change label of links OR if the formatted name doesn't change
                   w.update(we)
                   clearDrafts(we.wid, we.realm, au)
-                  Emailer.withSession { implicit mailSession =>
+                  Emailer.withSession(stok.realm) { implicit mailSession =>
                     au.quota.incUpdates
                     if (shouldPublish) notifyFollowersCreate(we, au)
                     au.shouldEmailParent("Everything").map(parent => Emailer.sendEmailChildUpdatedWiki(parent, au, WID(w.category, w.name)))
@@ -575,7 +574,7 @@ object Wikie extends WikieBase {
               var we = WikiEntry(wid.cat, newName, newLabel, m, newContent, au._id, Seq(), parent.map(_.realm) orElse wid.realm getOrElse getRealm(), 1, wid.parent)
 
               if (we.tags.mkString(",") != tags)
-                we = we.withTags(tags.split(",").map(_.trim).toSeq, au._id)
+                we = we.withTags(Tags(tags), au._id)
 
               // special properties
               we.preprocess(Some(au))
@@ -586,7 +585,7 @@ object Wikie extends WikieBase {
               // needs owner?
               if (WikiDomain(wid.getRealm).needsOwner(wid.cat)) {
                 we = we.cloneProps(we.props ++ Map("owner" -> au.id), au._id)
-                model.UserWiki(au._id, we.uwid, "Owner").create
+//                model.UserWiki(au._id, we.uwid, "Owner").create
                 cleanAuth()
               }
 
@@ -633,7 +632,7 @@ object Wikie extends WikieBase {
                 we.create
                 Services ! WikiAudit(WikiAudit.CREATE_WIKI, we.wid.wpathFull, Some(au._id), None, Some(we))
 
-                SendEmail.withSession { implicit mailSession =>
+                Emailer.withSession(stok.realm) { implicit mailSession =>
                   au.quota.incUpdates
                   au.shouldEmailParent("Everything").map(parent => Emailer.sendEmailChildUpdatedWiki(parent, au, wid)) // ::: notifyFollowers (we)
                   if (notif == "Notify") notifyFollowersCreate(we, au)
@@ -655,16 +654,20 @@ object Wikie extends WikieBase {
 
     wpost.parent flatMap (Wikis(wpost.realm).find) map { w =>
       // user wikis
-      (Users.findUserById(w.by).map(_._id).toList ++ model.Users.findUserLinksTo(w.uwid).filter(_.notif == model.UW.EMAIL_EACH).toList.map(_.userId)).distinct.filter(_ != au._id).map(uid =>
+      (
+        w.by :: model.Users.findUserLinksTo(w.uwid).filter(_.notif == model.UW.EMAIL_EACH).toList.map(_.userId)
+      ).distinct.filter(_ != au._id).map(uid =>
         Users.findUserById(uid).map{u =>
           Emailer.sendEmailNewTopic(u, au, w, wpost)
         })
 
       // add posts to their feed, regardless of their notification
-      (Users.findUserById(w.by).map(_._id).toList ++ model.Users.findUserLinksTo(w.uwid).toList.map(_.userId)).distinct.filter(_ != au._id).map(uid =>
-        Users.findUserById(uid).map{u =>
-          RacerKidz.myself(u._id).history.post(wpost, au)
-        })
+      val size = (
+        w.by :: model.Users.findUserLinksTo(w.uwid).map(_.userId).toList
+      ).distinct.filter(uid=>uid != au._id).map{uid =>
+          RacerKidz.myself(uid).history.post(wpost, au)
+      }.size
+      Audit.logdb("ENTITY_CREATE", size + " RkHistory entries")
 
       // followers by email
       model.Users.findFollowerLinksTo(w.uwid).toList.groupBy(_.followerId).values.map(_.head).map(flink =>
@@ -688,13 +691,13 @@ object Wikie extends WikieBase {
   }
 
   /** reported a page */
-  def reported(wid: WID) = Action { implicit request =>
+  def reported(wid: WID) = RAction { implicit request =>
     reportForm.bindFromRequest.fold(
     formWithErrors => ROK.r badRequest {implicit stok=> views.html.wiki.wikieReport(wid, formWithErrors)},
     {
       case we @ ReportWiki(reason) =>
         Wikis.flag(wid, "reported by user: " + auth.map(_.ename) + " BECAUSE " + reason)
-        SendEmail.withSession { implicit session =>
+        Emailer.withSession(request.realm) { implicit session =>
           SendEmail.send(Config.SUPPORT, Config.SUPPORT, "WIKI_FLAGGED",
             "link: " + wid.ahref + "reported by user: " + auth.map(_.ename) + " BECAUSE " + reason)
         }
@@ -835,6 +838,7 @@ object Wikie extends WikieBase {
             RMany[WikiEntry]("realm" -> wid.name).toList.map {we=>
               count += 1
               we.delete(au.userName)
+              RacerKidz.rmHistory(we._id)
               // todo delete AutoSaves for reactor
             }
             WikiReactors.reload(realm)
@@ -863,6 +867,7 @@ object Wikie extends WikieBase {
               // can only change label of links OR if the formatted name doesn't change
               // delete at last, so if any links fail, the thing stays there
               w.delete(au.userName)
+              RacerKidz.rmHistory(w._id)
               count += 1
               Services ! WikiAudit(WikiAudit.DELETE_WIKI, w.wid.wpathFull, Some(au._id), None, Some(w), None, Some(w._id.toString))
 

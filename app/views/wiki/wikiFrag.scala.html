@@ -131,7 +131,9 @@ function selectTextareaLine(tarea,lineNum) {
 //    razie.cdebug << "E"
 
     y = razie.wiki.mods.WikiMods.modPostHtml(we, y)
-    y = Wikis(wid.getRealm).applyTemplates(wid, y, "html")
+    if(!altContent.getOrElse(we.content).contains(".wiki.noTemplate")) {
+      y = Wikis(wid.getRealm).applyTemplates(wid, y, "html")
+    }
 //    razie.cdebug << "F"
     y
   }
@@ -162,7 +164,8 @@ function selectTextareaLine(tarea,lineNum) {
 
               @if(!(Seq("WikiLink", "Form").contains(wid.cat) || page.exists(_.contentProps.contains("noSocial")))) {
                 <br>
-                <a class="btn btn-xs btn-info" href="@routes.Wiki.social(label().toString, url())">Share <span class="glyphicon glyphicon-thumbs-up icon-white"></span></a>
+                <div class="addthis_inline_share_toolbox" style="display: inline-block"></div>
+                @*<a class="btn btn-xs btn-info" href="@routes.Wiki.social(label().toString, url())">Share <span class="glyphicon glyphicon-thumbs-up icon-white"></span></a>*@
 
                 @if(Seq("Blog", "Forum").contains(wid.cat)) {
                   <a class="btn btn-spanxs btn-info" href="@rss">Feed (RSS) <span class="glyphicon glyphicon-star icon-white"></span></a>

@@ -95,11 +95,7 @@ function removePins() {
     <a id="discard" href="/notes/discard/@nid" class="btn btn-sm btn-warning" title="This note was auto-saved..." style="display: none">Discard it</a>
 
     <div style="float:right">
-      @if(stok.isLight) {
-        <i id="iconsave" class="icon-briefcase"  title="Autosaving ok..."></i>
-      } else {
-        <i id="iconsave" class="icon-briefcase icon-white" title="Autosaving ok..."></i>
-      }
+      <span id="iconsave" class="glyphicon glyphicon-briefcase"  title="Autosaving ok..."></span>
       <a class="btn btn-sm btn-default" onclick="archive()" title="Archive notes">Archive it</a>
     </div>
   </div>
@@ -253,6 +249,7 @@ setInterval(function(){
 **@
 
 <form id="autosave" action="@routes.NotesLocker.autosave()" method="post" >
+  <input type="hidden" id="aname" name="name" />
   <input type="hidden" id="aid" name="id" />
   <textarea style="display:none" id="acontent" name="content"></textarea>
   <input type="hidden" id="atags" name="tags" />
@@ -321,6 +318,7 @@ $('#content').textcomplete([
 
   $('#iconsave' ).fadeOut();
 
+  $('#aname')[0].value = $('#name')[0].value;
   $('#atags')[0].value = $('#tags')[0].value;
   $('#acontent')[0].value = $('#content')[0].value;
 
@@ -354,12 +352,12 @@ $('#content').textcomplete([
       $.post($form.attr('action'), $form.serialize(), function(response) {
        console.log(response);
         if(response.indexOf("msg") == 1) {
-          $('#iconsave').css("background-color","")
+          $('#iconsave').css("color","green")
           $('#iconsave' ).fadeIn(1500);
           $('#iconsave' ).fadeOut(1500);
         } else {
-          $('#iconsave').css("background-color","red")
-          $('#iconsave')[0].title = response;
+          $('#iconsave').css("color","red")
+          $('#iconsave')[0].title = "Can't autosave: "+response;
           $('#iconsave' ).show();
 
           if(response.indexOf("Old auto") > 0) {
@@ -369,6 +367,10 @@ $('#content').textcomplete([
             $('#submit')[0].title="This note was completed in a different window!";
           }
         }
+      }).fail(function(response){
+          $('#iconsave').css("color","red")
+          $('#iconsave')[0].title = "Can't autosave: "+response;
+          $('#iconsave' ).show();
       });
     }
 

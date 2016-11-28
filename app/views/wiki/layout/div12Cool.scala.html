@@ -6,16 +6,22 @@ a nicer div12
 @label()=@{ page.map(_.label).getOrElse(razie.wiki.model.Wikis(wid.getRealm).label(wid)) }
 @isSite()=@{Array("Site", "Page").contains(wid.cat) && page.isDefined}
 
+  <!-- layout div12Cool -->
 <div class="container">
   <div class="row">
     <div class="col-sm-12">
 
       @wiki.layout.draft(page)
 
+      @modules.diesel.wBrowser(stok.realm, page, "top")(identity)
+
       @wiki.wikiFrag(wid,None,false,page, iname, false, true, canEdit)
+
+      @modules.diesel.wBrowser(stok.realm, page, "bottom")(identity)
 
       @if(page.isDefined && !print) {
         @wiki.wikiAddMore(wid, page)
+
 
         @wid.page.map {we =>
           @wiki.wikiFragBottom(we, false, canEdit, isSite, print)
@@ -26,11 +32,7 @@ a nicer div12
 
       <hr>
       @if(!print) {
-          @htmlFooter(ads = stok.website.adsAtBottom &&
-              (stok.au.isEmpty || stok.website.adsForUsers) &&
-              !page.exists(_.contentProps.contains("noAds")) &&
-                  !page.exists(_.content.matches( """(?s).*\{\{ad[:}].*\{\{ad[:}].*""")) &&
-                  !stok.au.exists(_.isUnder13),
+          @htmlFooter(ads = stok.showBottomAds(page),
               false,
               wid.getRealm,
               stok.request)

@@ -10,11 +10,14 @@ import com.google.inject.AbstractModule
 import com.mongodb.casbah.{MongoDB, MongoConnection}
 import com.mongodb.casbah.Imports._
 import controllers.{ViewService, RazWikiAuthorization, RkViewService}
+import mod.diesel.controllers.{DieselMod, FiddleMod}
 import model.WikiUsersImpl
 import razie.base.Audit
 import razie.db.{RMongo, UpgradeDb, RazMongo}
+import razie.wiki.admin.SendEmail
+import razie.wiki.mods.WikiMods
 import razie.wiki.{EncryptService, Services}
-import razie.wiki.model.WikiUsers
+import razie.wiki.model.{WikiReactors, WikiUsers}
 import razie.wiki.util.AuthService
 import razie.{clog, cout, Log}
 
@@ -45,6 +48,12 @@ class Module extends AbstractModule {
       Config.trustedSites.exists(x=>s.startsWith(x))
     }
 
+    mod.diesel.model.RDExt.init
+    WikiMods register new FiddleMod
+    WikiMods register new DieselMod
+
+//    WikiReactors.apply("rk") // weird stuff happens to diesel parser if I do this
+    Audit.logdb("NODE_RESTARTED", Services.config.node)
   }
 
   def mongoInit(): Unit = {

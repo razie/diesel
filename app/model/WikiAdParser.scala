@@ -6,7 +6,9 @@
  */
 package model
 
+import controllers.StateOk
 import org.bson.types.ObjectId
+import razie.wiki.model.WikiEntry
 import razie.{cdebug, cout, clog}
 import scala.collection.mutable.ListBuffer
 import scala.util.Try
@@ -71,5 +73,6 @@ data-ad-slot="4940326420"></ins>
   val squaretopx = """ <div style="float:right;margin: -25px 5px 0px 5px"> """ + squarebase
   val squareright = """<div style="float:right">""" + squareinline + """</div>"""
   val squaretop = """<div style="float:right">""" + squaretopx + """</div>"""
+
 }
 

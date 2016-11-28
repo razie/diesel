@@ -23,12 +23,14 @@ trait WikiCodeParser extends WikiParserBase {
   
   def codeWikiProps = wikiPropScript | wikiPropCall | wikiPropExpr
 
-  def wikiPropScript: PS = "{{" ~> """def|lambda|inline""".r ~ "[: ]".r ~ """[^:}]*""".r ~ ":" ~ """[^}]*""".r ~ "}}" ~ lines <~ ("{{/def}}" | "{{/lambda}}" |"{{/inline}}" | "{{/}}") ^^ {
-    case stype ~ _ ~ name ~ _ ~ sign ~ _ ~ lines => {
+  def wikiPropScript: PS = "{{" ~> "\\.?".r ~ """def|lambda|inline""".r ~ "[: ]".r ~ """[^:}]*""".r ~ ":" ~ """[^}]*""".r ~ "}}" ~ lines <~ ("{{/def}}" | "{{/lambda}}" |"{{/inline}}" | "{{/}}") ^^ {
+    case hidden ~ stype ~ _ ~ name ~ _ ~ sign ~ _ ~ lines => {
+      // inlines still need to be called with a call - but will be expanded right there
       if ("lambda" == stype || "inline" == stype)
-        SState("`{{call:#" + name + "}}`") // lambdas are executed right there...
-      else
-        SState("`{{" + stype + ":" + name + "}}`") // defs are expanded in pre-processing and executed in display
+        SState(s"`{{call:#$name}}`") // lambdas are executed right there...
+      else if(hidden.length <= 0)
+        SState(s"`{{$stype:$name}}`") // defs are expanded in pre-processing and executed in display
+      else SState.EMPTY
     }
   }
 
