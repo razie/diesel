@@ -86,7 +86,7 @@
 
           @if(h.role != "post" && stok.au.exists(x=> h.authorId.exists(_ != x._id)) ) {
             <button type="button" class="close" aria-label="Dismiss" onclick="addReply('@h._id.toString', '@h.eId.mkString')" title="Reply to this message">
-              <span class="glyphicon glyphicon-comment"></span>
+              <span style="font-weight: bold" class="glyphicon glyphicon-share"></span>
             </button>
           }
 
@@ -419,13 +419,19 @@ function startMessaging() {
 function startCoach() {
    popupContent("Select category:<br><br>"+
 @if(club.exists(c=> c.isClubCoach(stok.au.get) || c.isClubAdmin(stok.au.get)) || stok.au.exists(_.isAdmin)) {
+'<b>Coaches</b> can send:<br>' +
    '<a href="#" onclick="oneModalHide(); addInsight(); return false;">Insight</a> - <small>private coach note, visible only to coaches</small><br>' +
    '<a href="#" onclick="oneModalHide(); addEval(); return false;">Evaluation</a> - <small>an evaluation from the coach </small><br>' +
    '<a href="#" onclick="oneModalHide(); addQuestionaire(); return false;">Questionaire</a> - <small>a questionaire to be completed</small><br>' +
    '<a href="#" onclick="oneModalHide(); addFeedback(); return false;">Feedback</a> - <small>a coache\'s note</small><br>' +
    '<a href="#" onclick="oneModalHide(); addVideo(); return false;">Video</a> - <small>a video/MA from coach</small><br>' +
+   '<hr>'+
+   '<a href="#" onclick="oneModalHide(); addGoal(); return false;" title="Select a goal">Goal</a> - Select a goal<br>' +
+//   '<a href="#" onclick="oneModalHide(); addPlan(); return false;" title="Select a plan">Plan</a> - Select a plan' +
+   ''+
   }
   @if(rk.userId.exists(a=> stok.au.exists(_._id == a))) {
+'<b>Members</b> can send:<br>' +
    '<a href="#" onclick="oneModalHide(); addMAReq(); return false;"><b>MA Request</b></a> - <small>request feedback on a photo/video</small><br>' +
    '<a href="#" onclick="oneModalHide(); addAskCoach(); return false;"><b>Ask a coach</b></a> - <small>ask the coach a question</small><br>' +
   }

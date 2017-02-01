@@ -8,6 +8,13 @@ debug a wiki page
 
 @stok.title("WikiDebug: "+wid.cat +":"+ wid.name)
 
+@if(stok.au.exists(_.hasPerm(model.Perm.adminDb))) {
+<p>
+  <a href="@routes.Wiki.wikieDebug(wid)"><em>debug</em></a>
+  | <a href="@routes.Wiki.wikieUsage(wid)"><em>usage</em></a>
+  | <a href="@routes.Wiki.wikieReferences(wid)"><em>references</em></a>
+</p>
+}
       <div class="well">
           @wiki.wikiFrag(wid,None,false,page, iname)
       </div>

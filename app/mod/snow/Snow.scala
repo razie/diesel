@@ -7,13 +7,14 @@ import model._
 import org.bson.types.ObjectId
 import org.scalatest.path
 import play.api.mvc.Result
+import razie.base.Audit
 import razie.db.{ROne, tx}
 import razie.wiki.dom.WikiDomain
-import razie.wiki.{Dec, WikiConfig, EncUrl, Enc}
+import razie.wiki.{Dec, Enc, EncUrl, WikiConfig}
 import razie.wiki.model._
-import razie.{clog, Logging, cout}
-import scala.Option.option2Iterable
+import razie.{Logging, clog, cout}
 
+import scala.Option.option2Iterable
 import scala.concurrent.Future
 
 case class RoleWid(role: String, wid: WID)
@@ -377,7 +378,7 @@ object Snow extends RazController with Logging {
       def link(we:WikiEntry) = "http://" + WikiReactors(request.realm).websiteProps.prop("domain").getOrElse(Config.hostport) + we.wid.urlRelative(request.realm)
       def linkH = "http://" + WikiReactors(request.realm).websiteProps.prop("domain").getOrElse(Config.hostport) + "/doe/history"
 
-      if (role == ROLES.EVALUATION) {
+      if (role == ROLES.EVALUATION || role == ROLES.FEEDBACK || role == ROLES.VIDEO) {
         // created by coach, completed by coach, notify user WHEN COMPLETE
         weNote.map { we =>
           we.update(we.copy(
@@ -407,7 +408,7 @@ object Snow extends RazController with Logging {
 
           // notify users to complete questionaire
           Emailer.withSession(request.realm) { implicit mailSession =>
-            rk.usersToNotify.flatMap(Users.findUserById(_).toList).map { u =>
+            rk.personsToNotify.map { u =>
               Emailer.sendEmailFormAssigned(
                 u,
                 request.au.get,
@@ -430,7 +431,7 @@ object Snow extends RazController with Logging {
 
           // notify coaches
           Emailer.withSession(request.realm) { implicit mailSession =>
-            coaches.flatMap(Users.findUserById(_).toList).map { u =>
+            coaches.flatMap(Users.findUserById(_).toList).filter(_.isActive).map { u =>
               val rk = RacerKidz.myself(u._id)
               rk.history.add(
                 RkHistory(
@@ -466,7 +467,7 @@ object Snow extends RazController with Logging {
 
             // notify other
             Emailer.withSession(request.realm) { implicit mailSession =>
-              toUser.flatMap(Users.findUserById).map { u =>
+              toUser.flatMap(Users.findUserById).filter(_.isActive).map { u =>
                 var tork = RacerKidz.myself(u._id)
                 if(tork._id == rk._id) tork=RacerKidz.myself(request.au.get._id) //was looking at the other's history, force this copy to mine
                 tork.history.add(
@@ -485,7 +486,7 @@ object Snow extends RazController with Logging {
         } else {
           // notify other
           Emailer.withSession(request.realm) { implicit mailSession =>
-            toUser.flatMap(Users.findUserById).map { u =>
+            toUser.flatMap(Users.findUserById).filter(_.isActive).map { u =>
               var tork = RacerKidz.myself(u._id)
               if(tork._id == rk._id) tork=RacerKidz.myself(request.au.get._id) //was looking at the other's history, force this copy to mine
               tork.history.add(
@@ -508,14 +509,14 @@ object Snow extends RazController with Logging {
         // notify user of coache's notes
         weNote.map { we =>
           Emailer.withSession(request.realm) { implicit mailSession =>
-            rk.usersToNotify.flatMap(Users.findUserById(_).toList).map { u =>
+            rk.personsToNotify.map { u =>
               Emailer.sendEmailNewNote(role, u, request.au.get, Wiki.w(we.wid), role,memo)
             }
           }
         }
       } else if (role == ROLES.MESSAGE) {
           Emailer.withSession(request.realm) { implicit mailSession =>
-            rk.usersToNotify.flatMap(Users.findUserById(_).toList).map { u =>
+            rk.personsToNotify.map { u =>
               Emailer.sendEmailNewNote(role, u, request.au.get,linkH, role,memo)
             }
           }
@@ -620,35 +621,55 @@ object Snow extends RazController with Logging {
       """.stripMargin)
   }
 
+  import razie.wiki.Sec._
+
   /** send a message to the team members */
   def doeSendMsgTeam(teamWpath:String, what:String) = FAUR { implicit request =>
+    val memo = request.formParm("content")
+    val tags = request.formParm("tags")
+    val role = request.formParm("role")
+    val kids = request.formParm("kids")
+    val sendEmail = request.formParm("sendEmail") == "true"
     (for (
       team <- WID.fromPath(teamWpath) orErr "Team not found";
-      c <- team.parentOf(WikiDomain(team.getRealm).isA("Club", _)).map(_.name).flatMap(Club.apply) orErr "Club not found";
+      c <- team.parentOf(WikiDomain(team.getRealm).isA("Club", _)).flatMap(Club.apply) orErr "Club not found";
       ism <- c.isMember(request.au.get) orCorr cNotMember(c.name);
-      isc <- c.isClubCoach(request.au.get) orCorr cNotMember(c.name)
+      isc <- c.isClubCoach(request.au.get) orCorr cNotMember(c.name, "coach")
     ) yield {
+      var size = 0
+
       Emailer.withSession(request.realm) { implicit mailSession =>
-      c.activeTeamMembers(team).map{kid=>
-        val memo = request.formParm("content")
+      size = kids.split(",").toList.flatMap(RacerKidz.findByIds).map{kid=>
         val h = RkHistory(
-          kid._1._id,
+          kid._id,
           Some(request.au.get._id),
           None,
-          "memo",
-          "memo",
-          memo
+          "Memo",
+          role,
+          "coaching",
+          None,
+          None,
+          Some(memo),
+          if(tags != "") Some(tags) else None
           )
-        h.create
+
+        h.createNoAudit
+
         def linkH = "http://" + WikiReactors(request.realm).websiteProps.prop("domain").getOrElse(Config.hostport) + "/doe/history"
-          kid._1.usersToNotify.flatMap(Users.findUserById(_).toList).map { u =>
-            Emailer.sendEmailNewNote(ROLES.MESSAGE, u, request.au.get,linkH, ROLES.MESSAGE, memo)
+        def linkP = "http://" + WikiReactors(request.realm).websiteProps.prop("domain").getOrElse(Config.hostport) + "/doe/kid/history/" + kid._id.toString + "?club="
+
+        if(sendEmail) {
+          kid.personsToNotify.map { u =>
+            Emailer.sendEmailNewNote(ROLES.MESSAGE, u, request.au.get,linkP, ROLES.MESSAGE, memo)
           }
         }
-        }
+      }.size
+    }
+
+      Audit.logdb("ENTITY_CREATE", size + " RkHistory entries")
       Ok("history created") // this is ajax
 
-      Ok(c.activeTeamMembers(team).mkString)
+//      Ok(c.activeTeamMembers(team).mkString)
     }) getOrElse unauthorizedPOST()
   }
 

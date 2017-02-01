@@ -5,7 +5,6 @@ import com.mongodb.casbah.Imports.wrapDBObj
 import com.novus.salat.grater
 import mod.diesel.model.{WG}
 import mod.notes.controllers
-import mod.notes.controllers.NotesLocker.TagQuery
 import model._
 import org.bson.types.ObjectId
 import org.joda.time.DateTime
@@ -703,35 +702,6 @@ object NotesLocker extends RazController with Logging {
       views.html.notes.notes_embed(lform.fill("", "", IDOS, 0,
         content,
         tags), title, miniTitle, context, false, false, asap, justCapture, submit)
-    }
-  }
-
-  /** working with tags query
-    * a/b|c/d is a and (b or c) and d
-    */
-  class TagQuery (val tags:String) {
-    val ltags = tags.split("/").map(_.trim).filter(_.length > 0)
-    val atags = ltags.filter(_.indexOf(",") < 0)
-    val otags = ltags.filter(_.indexOf(",") >= 0).map(_.split(",").map(_.trim).filter(_.length > 0))
-
-    // can't mix public with something else and still get public...
-    def public = ltags contains "public"
-
-    def matches(t:Seq[String]) = {
-      atags.foldLeft(true)((a,b)=>a &&
-        (if(b.startsWith("-")) ! t.contains(b.substring(1))
-        else t.contains(b))
-      ) &&
-      otags.foldLeft(true)((a,b)=>a &&
-        b.foldLeft(false)((a,c)=>a || t.contains(c))
-      )
-    }
-
-    def contains(t:String) = {
-      atags.foldLeft(false)((a,b)=>a || t.contains(b)) ||
-        otags.foldLeft(false)((a,b)=>a ||
-          b.foldLeft(false)((a,c)=>a || t.contains(c))
-        )
     }
   }
 

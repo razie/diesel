@@ -116,7 +116,7 @@ club admin manages user: membership, regsitration etc
 <div class="well">
   <strong>List of Racers/members </strong>
 
-@RacerKidz.checkMyself(uw.userId)
+  @RacerKidz.checkMyself(uw.userId)
 
 @rks=@{
   mod.snow.RacerKidz.findAssocForUser(uw.userId).map(x=>(x,x.rk.get)).map(t=>

@@ -1,13 +1,13 @@
 package controllers
 
-import mod.snow.RacerKid
+import mod.snow.{RacerKid, RacerKidInfo}
 import org.joda.time.DateTime
 import razie.Logging
 import razie.wiki.{Enc, EncUrl}
 import razie.wiki.model._
-import razie.wiki.admin.{SecLink, SendEmail, MailSession}
+import razie.wiki.admin.{MailSession, SecLink, SendEmail}
 import admin.Config
-import model.{Website, User}
+import model.{TPersonInfo, User, Website}
 import razie.wiki.Services
 import Config.SUPPORT
 
@@ -156,7 +156,23 @@ object Emailer extends RazController with Logging {
     SendEmail.notif(to.email.dec, SUPPORT, RK + " - new comment posted", html1)
   }
 
-  def sendEmailNewTopic(to: User, commenter: User, wiki: WikiEntry, wpost: WikiEntry)(implicit mailSession: MailSession) = {
+  def sendEmailNewWiki(to: User, commenter: User, wpost: WikiEntry)(implicit mailSession: MailSession) = {
+    val avail = wpost.visibility match {
+      case Visibility.PUBLIC => "Visible to all"
+      case Visibility.MEMBER => "Visible to all members"
+      case Visibility.BASIC => "Visible to green/blue/black members"
+      case Visibility.GOLD => "Visible to black membership only"
+      case Visibility.PLATINUM => "Visible to racers only"
+      case _ => "Visible?"
+    }
+
+    val html1 = text("newwiki").format(to.ename, commenter.userName,
+      wpost.getLabel, wpost.getDescription, wpost.wid.url, avail);
+
+    SendEmail.notif(to.email.dec, SUPPORT, RK + " - new " + wpost.wid.cat + " : " + wpost.getLabel, html1)
+  }
+
+  def sendEmailNewPost(to: User, commenter: User, wiki: WikiEntry, wpost: WikiEntry)(implicit mailSession: MailSession) = {
     val html1 = text("newtopic").format(to.ename, commenter.userName, wiki.wid.url, wiki.wid.cat, wiki.getLabel,
       wpost.getLabel, wpost.getDescription, wpost.wid.url);
 
@@ -186,14 +202,14 @@ object Emailer extends RazController with Logging {
     SendEmail.send(u.email.dec, SUPPORT, club + " - registration help", html1)
   }
 
-  def sendEmailNewNote(what:String, to: User, by:User, link: String, role:String, memo:String)(implicit mailSession: MailSession) = {
+  def sendEmailNewNote(what:String, to: TPersonInfo, by:User, link: String, role:String, memo:String)(implicit mailSession: MailSession) = {
     val sub = s" - $what note for you"
     val r = if(role.length > 0) role else "form"
     val html1 = text("newNote").format(to.ename, r, by.ename, link, memo);
     SendEmail.notif(to.email.dec, SUPPORT, RK + sub, html1)
   }
 
-  def sendEmailFormAssigned(to: User, by:User, link: String, role:String)(implicit mailSession: MailSession) = {
+  def sendEmailFormAssigned(to: TPersonInfo, by:User, link: String, role:String)(implicit mailSession: MailSession) = {
     val sub = if(role.length > 0) s" - $role assigned to you" else " - form assigned"
     val r = if(role.length > 0) role else "form"
     val html1 = text("formAssigned").format(to.ename, r, by.ename, link);

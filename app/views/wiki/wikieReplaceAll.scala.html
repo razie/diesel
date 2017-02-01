@@ -2,15 +2,13 @@
 
 @htmlHeadBar("")
 
-    <div class="container">
+<div class="container">
+    <h2>Replace!
+    <small>
+    | it's a regexp, so escape special chars?
+    </small>
+    </h2>
 
-      <!-- Main hero unit for a primary marketing message or call to action -->
-      <div class="well">
-          <h2>Replace text!</h2>
-          <p><strong>Warning</strong> - it's a regexp, so escape special chars?
-          <p><strong>Warning</strong> - this is across all the REALMS
-      </div>
-<div >
 @import helper.twitterBootstrap._
 
 @repl(p:String, s:String, q:String, r:String, suf:String) = @{
@@ -23,39 +21,8 @@
 @import play.api.i18n.Messages.Implicits._
 
 
-  Replace tags:
-  @helper.form(action=routes.Wikie.replaceAllTag3(), 'class->"well") {
-    @helper.inputText(
-      myForm("realm"),
-      '_class -> "input-xlarge disabled",
-      '_label -> "Realm - if empty, it's ALL REALMS !!!",
-      '_showConstraints -> false)
-    @helper.inputText(
-      myForm("old"),
-      '_class -> "input-xlarge disabled",
-      '_label -> "Out with the old",
-      '_showConstraints -> false)
-    @helper.inputText(
-      myForm("new"),
-      '_class -> "input-xlarge",
-      '_label -> "In with the new",
-      '_showConstraints -> false)
-
-    <div class="actions">
-      <button type="submit" class="btn btn-primary" name="action" value="preview">Preview</button>
-      <button type="submit" class="btn btn-danger" name="action" value="replace">Replace it!</button>
-      ALERT: you can't undo this!
-    </div>
-
-    @myForm.globalError.map { err=>
-      <p style="color:red;font-weight:bold">@err.message</p>
-    }
-
-  }
-
-  <hr>
-  Replace text:
-@helper.form(action=routes.Wikie.replaceAll3(), 'class->"well") {
+  <b>Replace text:</b>
+@helper.form(action=routes.Wikie.replaceAll3(), 'class->"alert alert-success", 'id -> "formtext") {
   @helper.inputText(
     myForm("realm"),
     '_class -> "input-xlarge disabled",
@@ -83,7 +50,7 @@ ALERT: you can't undo this!
   }
 
 }
-</div>
+
 
 @if(! tags) {
   @defining(controllers.Wikie.searchAll(myForm("old").value.mkString, myForm("realm").value.mkString)) {results=>
@@ -129,4 +96,36 @@ ALERT: you can't undo this!
 
 </div> <!-- /container -->
 }
+
+
+  <b>Replace tags:</b>
+  @helper.form(action=routes.Wikie.replaceAllTag3(), 'class->"alert alert-danger", 'id -> "formtags") {
+    @helper.inputText(
+      myForm("realm"),
+      '_class -> "input-xlarge disabled",
+      '_label -> "Realm - if empty, it's ALL REALMS !!!",
+      '_showConstraints -> false)
+    @helper.inputText(
+      myForm("old"),
+      '_class -> "input-xlarge disabled",
+      '_label -> "Out with the old",
+      '_showConstraints -> false)
+    @helper.inputText(
+      myForm("new"),
+      '_class -> "input-xlarge",
+      '_label -> "In with the new",
+      '_showConstraints -> false)
+
+    <div class="actions">
+      <button type="submit" class="btn btn-primary" name="action" value="preview">Preview</button>
+      <button type="submit" class="btn btn-danger" name="action" value="replace">Replace it!</button>
+      ALERT: you can't undo this!
+    </div>
+
+    @myForm.globalError.map { err=>
+      <p style="color:red;font-weight:bold">@err.message</p>
+    }
+
+  }
+
 

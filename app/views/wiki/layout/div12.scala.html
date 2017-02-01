@@ -13,13 +13,13 @@ just a div12 full page, no right side
 
     @wiki.layout.draft(page)
 
-    @modules.diesel.wBrowser(stok.realm, page, "top")(identity)
+    @modules.diesel.wBrowser(stok.realm, page, "top")
 
       <div class="well">
         @wiki.wikiFrag(wid,None,false,page, iname, false, true, canEdit)
       </div>
 
-    @modules.diesel.wBrowser(stok.realm, page, "bottom")(identity)
+    @modules.diesel.wBrowser(stok.realm, page, "bottom")
 
       @if(page.isDefined && !print) {
         @wiki.wikiAddMore(wid, page)

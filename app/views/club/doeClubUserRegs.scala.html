@@ -31,7 +31,9 @@ user manages registrations
       "role" -> reg.role,
       "regStatus" -> reg.regStatus,
       "id" -> reg._id.toString,
-      "vol" -> controllers.Vol.volPerReg(reg)))
+      "vol" -> controllers.Vol.volPerReg(reg),
+      "balance" -> mod.cart.Acct.findCurrent(reg.userId, reg.club).map(_.balance.toString).getOrElse("")
+    ))
 }
 
     @mnglink(row: Map[String, String], k: String, v: String) = {
@@ -85,7 +87,8 @@ user manages registrations
           "year" -> "Year",
           "role" -> "Role",
           "regStatus" -> "Status",
-          "vol" -> "Volunteering"),
+          "vol" -> "Volunteer",
+          "balance" -> "Balance"),
         Some(mnglink))
 
       <p></p>

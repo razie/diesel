@@ -122,6 +122,7 @@ case class Club(userId: ObjectId, iwid: Option[WID] = None) {
   def reg(u: User) = Regs.findClubUserYear(wid, u._id, curYear)
 
   def userLinks = model.Users.findUserLinksTo(uwid)
+  def activeMembers = userLinks.filter(_.role != RK.ROLE_FAN).toList
 
   // TODO filter by year as well
   def roleOf(rkId: ObjectId) =

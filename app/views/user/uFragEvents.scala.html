@@ -3,50 +3,53 @@ included in mainUserC as the right hand side info box
 *********@
 @(user: model.User, quiet:Boolean, ui:controllers.UserStuff)(implicit stok:controllers.StateOk)
 @import org.joda.time.DateTime
-@import razie.RString._
-@import controllers.XListWrapper
-@import controllers.Wiki
-@import razie.wiki.model.Wikis
 
-@evBefore() = @{
-  controllers.UserStuff.events(user).filter(_._3.isBefore(DateTime.now))
-}
+@defining(DateTime.now.minusDays(0).withTime(0,0,0,0)){midnight=>
+@defining(controllers.UserStuff.events(user).toList) {events=>
+  @defining(events.filter(_._3.isAfter(midnight))) {evA=>
+    @defining(events.filter(_._3.isBefore(midnight))) {evB=>
 
-@evAfter() = @{
-  controllers.UserStuff.events(user).filter(_._3.isAfter(DateTime.now))
-}
+      @if(evA.size>0) {
+        <b>Coming up:</b>
+        <ul>
+          @for(t <- evA.take(math.max(6, 8-evB.size))) {
+            <li>@Html(razie.wiki.model.Wikis.formatWikiLink(stok.realm, t._1.wid,t._1.wid.name,t._2,Some(t._1.label))._1)
+              @if(t._4.wid.name != null  && t._4.wid.name.length>0) {
+                <small>at @Html(t._4.format(16)._1)</small>
+              }
+            </li>
+          }
+          @if(evA.size>7) {
+            <li>...</li>
+          }
+        </ul>
+      } else {
+        @if(!quiet) {
+          <b>Nothing coming up...</b>
+        }
+      }
 
-    @if(evBefore.size>0) {
+        <p>
+
+    @if(evB.size>0) {
       <b>Recent events:</b>
       <ul>
-      @for(t <- evBefore.takeRight(scala.math.max(3, 10-evAfter().size))) {
-        <li>@Html(razie.wiki.model.Wikis.formatWikiLink(stok.realm, t._1.wid,t._1.wid.name, t._2,Some(t._1.label))._1)
+      @for(t <- evB.takeRight(scala.math.max(2, 8-evA.size)).reverse) {
+        <li>
+          <small>
+          @Html(razie.wiki.model.Wikis.formatWikiLink(stok.realm, t._1.wid,t._1.wid.name, t._2,Some(t._1.label))._1)
+          </small>
         @if(t._4.wid.name != null && t._4.wid.name.length>0) {
-          at @Html(t._4.format._1)
+          <small>at @Html(t._4.format(16)._1)</small>
         }
         </li>
       }
       </ul>
     } else {
     }
-    <p>
-    @if(evAfter.size>0) {
-      <b>Coming up:</b>
-      <ul>
-      @for(t <- evAfter.take(math.max(7, 10-evBefore().size))) {
-        <li>@Html(razie.wiki.model.Wikis.formatWikiLink(stok.realm, t._1.wid,t._1.wid.name,t._2,Some(t._1.label))._1)
-        @if(t._4.wid.name != null  && t._4.wid.name.length>0) {
-          at @Html(t._4.format._1)
-        }
-        </li>
-      }
-    @if(evAfter.size>7) {
-      <li>...</li>
+
     }
-      </ul>
-    } else {
-  @if(!quiet) {
-     <b>Nothing coming up...</b>
   }
-    }
+}
+}
 

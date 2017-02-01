@@ -2,13 +2,14 @@
 DB Admin - admin a record
 **@
 @(name:String, id:String, col:Option[com.mongodb.casbah.Imports.DBObject])(implicit stok: controllers.StateOk)
+@import razie.js
 
 @stok.title("admin db entity: "+name)
 
 @col.map { db =>
 <ul>
   @db.keySet.map { k =>
-    <li>@k : @admin.adminDbRelationship(name, k, db.get(k).toString)</li>
+       <li><b>@k</b> : @admin.adminDbRelationship(name, k, db.get(k).toString)</li>
   }
 
   @if(!Array("User","Profile","WikiEntry","Ver","Audit", "WikiAudit").contains(name)) {
@@ -26,7 +27,10 @@ Value: <input name="value">
 <hr>
 
 @col.map { db =>
-  <br>@db.toString
+    <pre>
+  @js.tojsons(js.parse(db.toString))
+    </pre>
+  <hr>@db.toString
    }
 
 <h2>Usages</h2>

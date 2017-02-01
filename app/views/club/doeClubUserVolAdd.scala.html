@@ -45,7 +45,12 @@ manage the volunteer hours by user himself
   <h3>Current volunteer hour submissions</h3>
 
   @util.utilSimpleTable(vols.iterator,
-    Seq("who" -> "Who", "hours" -> "Hours", "desc" -> "What", "comment" -> "Desc", "approved" -> "Ok", "delete" -> "Delete"), Some(mnglink))
+    Seq("who" -> "Who",
+      "hours" -> "Hours",
+      "desc" -> "What",
+      "comment" -> "Details",
+      "approved" -> "Approved",
+      "delete" -> "Delete"), Some(mnglink))
 
   @import helper.twitterBootstrap._
   @import play.api.Play.current

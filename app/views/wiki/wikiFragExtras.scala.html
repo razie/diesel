@@ -1,7 +1,7 @@
 @**************
 extra html for wiki fragments, used in another page
  **************@
-@(user:Option[model.User], page:Option[razie.wiki.model.WikiEntry]=None)
+@(user:Option[model.User], page:Option[razie.wiki.model.WikiEntry]=None)(implicit stok:controllers.StateOk)
 @import controllers.IgnoreErrors
 @import mod.notes.controllers.NotesLocker
 @import mod.notes.controllers.NotesLocker
@@ -10,10 +10,13 @@ extra html for wiki fragments, used in another page
 
 @if(we.contentProps.contains("module.reg") || we.props.contains("module:reg")) {
   @user.map {u=>
-    @views.html.modules.doeModRkRegs(u, we,
-      controllers.ModRkReg(we.wid),
-      controllers.ModRk.regd(u, we.wid),
-      controllers.ModRk.rks(u, we.wid))
+
+    <div id="modulereg">
+      <span class="label label-default">Loading... </span>
+    </div>
+
+    <script async>$("#modulereg").load("/doe/modrk/regs/WPATH".replace(/WPATH/, "@we.wid.wpath"));</script>
+
     }.getOrElse {
     <p> @alert("blue"){<strong>Registration: </strong>you need to <strong>log in</strong> to register to this event }
     }

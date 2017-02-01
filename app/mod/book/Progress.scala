@@ -9,7 +9,7 @@ import razie.js
 import razie.wiki.Services
 import razie.wiki.mods.{WikiMods, WikiMod}
 import razie.wiki.parser.WAST
-import views.html.modules.book.{viewSections, prevNext, viewProgress}
+import views.html.modules.book.{viewSections, prevNext, viewProgress, viewGuide}
 
 import org.joda.time.DateTime
 import com.mongodb.casbah.Imports._
@@ -223,6 +223,71 @@ object Progress extends RazController with WikiMod {
     }
   }
 
+  def doeViewGuide = FAUR("view progress map") {implicit request=>
+    for(
+      x <- request.au
+    ) yield {
+
+      // label - tag
+      val skills = List (
+        "Stance",
+        "Tipping",
+        "Flexing",
+        "CB",
+        "CA",
+        "Fore/aft",
+        "Carving",
+        "Speed control"
+      )
+
+          // label - tag
+          val tags = Map (
+            "Stance" -> "stance",
+            "Tipping" -> "tipping",
+            "Flexing" -> "flexing",
+            "CB" -> "counterbalancing",
+            "CA" -> "counteraction",
+            "Fore/aft" -> "fore-aft",
+            "Carving" -> "carving",
+            "Speed control" -> "speed-control",
+            "" -> ""
+          )
+
+          // label - percent
+          val mm1 = Map (
+            "Stance" -> 2,
+            "Tipping" -> 26,
+            "Flexing" -> 26,
+            "CB" -> 65,
+            "Fore/aft" -> 26
+          )
+
+
+      findForUser(x._id) map {p =>
+        p
+      }
+
+          val m1 = skills.flatMap {skill=>
+            tags(skill).map{tag=>
+              1
+            }
+          }
+
+          // label - percent
+          val m2 = Map (
+            "Stancxe" -> 65,
+            "Tipping" -> 65,
+            "Flexing" -> 65,
+            "CB" -> 65,
+            "Fore/aft" -> 65
+          )
+
+          ROK.k apply {implicit stok=>
+            viewGuide(skills, tags, mm1, m2)
+          }
+      }
+  }
+
   def switchTo (pathway:String)= FAUR {implicit request=>
     WID.fromPath(pathway).flatMap(_.uwid).flatMap(u=> findByUserAndTopic(request.au.get._id, u)).map{p=>
       findForUser(request.au.get._id).filter(_.status == STATUS_IN_PROGRESS).foreach{p=>
@@ -369,7 +434,7 @@ object Progress extends RazController with WikiMod {
             Ok(s"""<a class="btn btn-danger btn-xs $disabled" href="/pill/$PILL/section/done?status=s&section=$name&wid=${we.wid.wpath}">Skip</a>
                    <a class="btn btn-success btn-xs $disabled" href="/pill/$PILL/section/done?status=c&section=$name&wid=${we.wid.wpath}">Done</a>""")
           }) getOrElse Ok("<b>{{Pathway not started}}</b>")
-      }) getOrElse Ok("""<b><span style="color:red">{{Login to track}}</span></b>""")
+      }) getOrElse Ok("""<b><span style="color:red">{{Login to track progress}}</span></b>""")
 //      unauthorized("You need a free account to track your progress.")
   }
 

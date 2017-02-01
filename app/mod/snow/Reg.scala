@@ -26,13 +26,13 @@ case class Reg(
   crDtm: DateTime = DateTime.now,
   _id: ObjectId = new ObjectId()) extends REntity[Reg] {
 
-
   def deprecatedWids: Seq[WID] = roleWids.map(_.wid)
 
   def updateRegStatus(newStatus: String) = this.copy(regStatus = newStatus).update
   def updateRole(newRole: String) = this.copy(role = newRole).update
 
   def kids = RMany[RegKid]("regId" -> _id)
+  def roleOf (rkId : ObjectId) = kids.find(_.rkId == rkId).map(_.role)
 
   /** sum up all "fee" fields across all forms */
   def fee() = {

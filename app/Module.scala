@@ -7,19 +7,20 @@
 
 import admin._
 import com.google.inject.AbstractModule
-import com.mongodb.casbah.{MongoDB, MongoConnection}
+import com.mongodb.casbah.{MongoConnection, MongoDB}
 import com.mongodb.casbah.Imports._
-import controllers.{ViewService, RazWikiAuthorization, RkViewService}
+import controllers.{ModRkExec, RazWikiAuthorization, RkViewService, ViewService}
 import mod.diesel.controllers.{DieselMod, FiddleMod}
 import model.WikiUsersImpl
 import razie.base.Audit
-import razie.db.{RMongo, UpgradeDb, RazMongo}
+import razie.db.{RMongo, RazMongo, UpgradeDb}
+import razie.diesel.ext.Executors
 import razie.wiki.admin.SendEmail
 import razie.wiki.mods.WikiMods
 import razie.wiki.{EncryptService, Services}
 import razie.wiki.model.{WikiReactors, WikiUsers}
 import razie.wiki.util.AuthService
-import razie.{clog, cout, Log}
+import razie.{Log, clog, cout}
 
 /** NOT WORKING !!!!!!!!!! */
 class Module extends AbstractModule {
@@ -51,6 +52,8 @@ class Module extends AbstractModule {
     mod.diesel.model.RDExt.init
     WikiMods register new FiddleMod
     WikiMods register new DieselMod
+
+    Executors.add (ModRkExec)
 
 //    WikiReactors.apply("rk") // weird stuff happens to diesel parser if I do this
     Audit.logdb("NODE_RESTARTED", Services.config.node)

@@ -46,16 +46,19 @@ case class RkHistoryFeed (
 //        .toList.sortWith((a,b)=>a.crDtm.compareTo(b.crDtm) >= 0).toList.take(howMany)
 
   def post(we:WikiEntry, au:User, text:Option[String]=None) = {
-    val h = RkHistory(
-      rkId,
-      Some(au._id),
-      Some(we._id),
-      we.category,
-      "post",
-      ""
-    ).copy(content=text)
-    h.createNoAudit
-    inc
+    // don't bother posting if user not reading...
+    if(news < 10) {
+      val h = RkHistory(
+        rkId,
+        Some(au._id),
+        Some(we._id),
+        we.category,
+        "post",
+        ""
+      ).copy(content = text)
+      h.createNoAudit
+      inc
+    }
   }
 
   private def inc = this.copy(news=news+1).updateNoAudit
@@ -166,6 +169,16 @@ case class RacerKid(
   def parents: Set[ObjectId] = RMany[RacerKidAssoc]("to" -> _id, "assoc" -> RK.ASSOC_PARENT).map(_.from).toSet
   def parentUsers: Seq[User] = parents.flatMap(_.as[User].toList).toSeq
   def usersToNotify: List[ObjectId] = userId.toList ++ parents.toList
+  // list of all persons of interest with non-empty emails
+  def personsToNotify: List[TPersonInfo] = {
+//    (userId.toList ++ parents.toList).flatMap(_.as[User]) ++ List(info) filter(_.email.dec.length > 0)
+    var x : List[TPersonInfo] = parents.toList.flatMap(_.as[User])
+    val u = userId.toList.flatMap(_.as[User])
+    x = x ++ u.filter(u=> x.find(_.email.dec == u.email.dec).isEmpty)
+    if(x.find(_.email.dec == info.email.dec).isEmpty)
+      x = info :: x
+    x.filter(_.email.dec.length > 0)
+  }
 }
 
 /**

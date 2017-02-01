@@ -55,7 +55,11 @@ edit a wiki page
 }
 
 @hasReg()=@{
-  wid.page.flatMap(_.attr("module:reg")).isDefined
+  wid.page.flatMap(_.attr("module:reg")).exists(_ == "yes")
+}
+
+@regOpen()=@{
+  wid.page.flatMap(_.attr("module:reg-open")).exists(_ == "yes")
 }
 
 @helper.form(action=routes.Wikie.save(wid.formatted), 'id -> "editForm", 'class -> "well") {
@@ -69,23 +73,38 @@ PROBLEM: many places use label as name... via Wikis.formatName
   <div id="weForm9" class="form-group col-sm-9">
 
    <div class="col-sm-12" style="padding : 0 ;">
+
    <div class="col-sm-4 col-lg-3">
+     <label for="when">When</label>
+     <input name="when" value='@dateEh' type="text" class="form-control">
+   </div>
 
-   <label for="when">When</label>
-   <input name="when" value='@dateEh' type="text" class="form-control">
+   <div class="col-sm-8 col-lg-6">
+     <label for="where">Where</label>
+     <input id="where" name="where" value='@wid.page.flatMap(_.attr("venue")).mkString' type="text" class="form-control">
+   </div>
 
-    </div>
-      <div class="col-sm-8 col-lg-6">
-   <label for="where">Where</label>
-   <input id="where" name="where" value='@wid.page.flatMap(_.attr("venue")).mkString' type="text" class="form-control">
-      </div>
-     <div class="col-sm-4 col-lg-2">
-       <label for="reg">Use registration</label>
+     <div class="col-sm-2 col-lg-1">
+       <label for="reg">Reg?</label>
        @if(hasReg()) {
-       <input id="reg" name="reg" type="checkbox" class="form-control" checked>
+         <input id="reg" name="reg" type="checkbox" class="form-control" checked>
        } else {
-       <input id="reg" name="reg" type="checkbox" class="form-control">
-       }
+         <input id="reg" name="reg" type="checkbox" class="form-control">
+         }
+     </div>
+
+     <div class="col-sm-2 col-lg-1">
+       <label for="regopen">open</label>
+       @if(regOpen()) {
+         <input id="regopen" name="regopen" type="checkbox" class="form-control" checked>
+       } else {
+         <input id="regopen" name="regopen" type="checkbox" class="form-control">
+         }
+     </div>
+
+     <div class="col-sm-4 col-lg-2">
+       <label for="price">Price</label>
+       <input name="price" id="price" value='@wid.page.flatMap(_.attr("price")).mkString' type="number" class="form-control"> CAD
      </div>
    </div>
 

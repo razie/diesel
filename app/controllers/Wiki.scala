@@ -118,19 +118,33 @@ object Wiki extends WikiBase {
     Ok("["+(c1).map(s=>s""" "${s.replaceAllLiterally("_", " ")}" """).mkString(",")+"]").as("text/json")
   }
 
+  /**
+   *
+   * @param category
+   * @param utags
+   * @param page
+   * @param qt - first array is and, second is or
+   * @return
+   */
   def filterTags (category:String, utags:String, page:Option[WikiEntry], qt:Array[Array[String]]) = {
+    def checkT (b:String) = {
+      utags.contains(b) ||
+      b == "*" ||
+      category.toLowerCase == b ||
+      (b == "draft" && page.exists(_.isDraft)) ||
+      (b == "public" && page.exists(_.visibility == PUBLIC))
+    }
+
     qt.size > 0 &&
       qt.foldLeft(true)((a, b) => a && (
-        if(b(0).startsWith("-")) ! utags.contains(b(0).substring(1))
-        else b.foldLeft(false)((a, b) => a || (utags.contains(b) ||
-          b == "*" ||
-          category.toLowerCase == b ||
-          (b == "draft" && page.exists(_.isDraft))) ||
-          (b == "public" && page.exists(_.visibility == PUBLIC))
-        ))
+        if(b(0).startsWith("-")) ! checkT(b(0).substring(1))
+        else b.foldLeft(false)((a, b) => a || checkT(b)))
       )
   }
 
+  /** extract associations from the page
+    * @return Tuple(left, middle, right, mkLink)
+    */
   def extract (realm:String, page:Option[WikiEntry]) = {
     def p(p:String) = Website.forRealm(realm).flatMap(_.prop(p)).mkString
 
@@ -138,6 +152,9 @@ object Wiki extends WikiBase {
       val domList = page.get.cache.getOrElse(WikiDomain.DOM_LIST, List[Any]()).asInstanceOf[List[Any]].reverse
       val colEnt = new ListBuffer[(RDOM.A, String)]()
       val colMsg = new ListBuffer[(RDOM.A, String)]()
+
+      val mkl = (s : String) => ""
+//      def mkLink (s:String) = routes.Wiki.wikiBrowse (s, path+"/"+s).toString()
 
       val all = domList.collect {
         case m:EMsg =>
@@ -150,7 +167,7 @@ object Wiki extends WikiBase {
             ""
           ))
       }
-      (colEnt.distinct.toList.map(_._1), colMsg.distinct.toList.map(_._1), Nil)
+      (colEnt.distinct.toList.map(_._1), colMsg.distinct.toList.map(_._1), Nil, mkl)
     } else {
       // normal browse mode tagQuery
      val all = page.get.ilinks.distinct.collect {
@@ -166,13 +183,18 @@ object Wiki extends WikiBase {
         Wiki.filterTags(cat, tags, page, qt(p(s)))
       }
 
+      // todo beef it up - include topic and stuff
+      val mkl = (s : String) => "/wiki/"+s
+//      def mkLink (s:String) = routes.Wiki.wikiBrowse (s, path+"/"+s).toString()
+//      def mkLink (s:String) = routes.Wiki.showWid (CMDWID(Option(s), none, "", ""), 1, "?").toString()
+
       (
         all.filter(x=>filter("", x._2, "wbrowser.left")).map(_._1),
         all.filter(x=>filter("", x._2, "wbrowser.middle")).map(_._1),
-        all.filter(x=>filter("", x._2, "wbrowser.right")).map(_._1)
+        all.filter(x=>filter("", x._2, "wbrowser.right")).map(_._1),
+        mkl
       )
     }
-
   }
 
 
@@ -195,18 +217,23 @@ object Wiki extends WikiBase {
     //todo optimize: run query straight in the database ?
     def filter (u:DBObject) = {
       def uf(n:String) = if(u.containsField(n)) u.get(n).asInstanceOf[String] else ""
+
       def hasTags = {
         val utags = if(u.containsField("tags")) u.get("tags").toString.toLowerCase else ""
+
+        def checkT(b:String) = {
+          utags.contains(b) ||
+          b == "*" ||
+          (b == "draft" && u.containsField("props") && u.getAs[DBObject]("props").exists(_.containsField("draft"))) ||
+          (b == "public" && u.containsField("props") && u.getAs[DBObject]("props").exists(_.getAsOrElse[String]("visibility", PUBLIC) == PUBLIC)) ||
+          u.get("category").toString.toLowerCase == b
+        }
+
         qt.size > 0 &&
           u.containsField("tags") &&
           qt.foldLeft(true)((a, b) => a && (
-            if(b(0).startsWith("-")) ! utags.contains(b(0).substring(1))
-            else b.foldLeft(false)((a, b) => a || (utags.contains(b) ||
-              b == "*" ||
-              (b == "draft" && u.containsField("props") && u.getAs[DBObject]("props").exists(_.containsField("draft"))) ||
-              (b == "public" && u.containsField("props") && u.getAs[DBObject]("props").exists(_.getAsOrElse[String]("visibility", PUBLIC) == PUBLIC)) ||
-              u.get("category").toString.toLowerCase == b
-              ))
+            if(b(0).startsWith("-")) ! checkT(b(0).substring(1))
+            else b.foldLeft(false)((a, b) => a || checkT(b))
             ))
       }
       if (qi.length <= 0) // just a tag search
@@ -689,6 +716,7 @@ object Wiki extends WikiBase {
     }
   }
 
+  def wikieReferences(iwid: WID) = wikieDebug (iwid, "references")
   def wikieUsage(iwid: WID) = wikieDebug (iwid, "usage")
 
   def wikieDebug(iwid: WID, what:String="debug") = FAU { implicit au => implicit errCollector => implicit request =>
@@ -700,9 +728,9 @@ object Wiki extends WikiBase {
 
     wid.page match {
       case x @ Some(w) if !canSee(wid, auth, x).getOrElse(false) => noPerm(wid, "DEBUG")
-      case y @ Some(w) => if("usage" == what)
+      case y @ Some(w) if("usage" == what) =>
         ROK.s apply {implicit stok=> views.html.wiki.wikieUsage(w.wid, Some(iwid.name), y)}
-        else
+      case y @ Some(w) =>
         ROK.s apply {implicit stok=> views.html.wiki.wikieDebug(w.wid, Some(iwid.name), y)}
       case None => Msg2 (s"${wid.wpath} not found")
     }
@@ -844,7 +872,9 @@ object Wiki extends WikiBase {
     }) getOrElse unauthorized()
   }
 
-  /** try to link to something - find it */
+  /** @deprecated
+    * todo remove
+    */
   def wikiBrowse(wpath:String, ipath:String) = RAction { implicit request =>
     val realm = getRealm()
     (for (

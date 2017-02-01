@@ -148,6 +148,7 @@ function weFormEditNote(frm,name) {
   return false;
 }
 
+
 function weFormEditedNote(frm,name, content) {
   $('#'+frm+' [name="'+name+'-holder"]').text(content);
   weSetField(frm,name, content);
@@ -155,4 +156,27 @@ function weFormEditedNote(frm,name, content) {
   return false;
 }
 
+
+//========= browser
+
+var weBrowserStorage = "weBrowser";
+
+/** toggle the we browser on and off */
+function weToggleBrowser() {
+  if(getCookie(weBrowserStorage) == null) setCookie(weBrowserStorage, "false")
+
+  if(getCookie(weBrowserStorage) === "true") {
+    setCookie(weBrowserStorage, "false")
+  } else {
+    setCookie(weBrowserStorage, "true")
+  }
+  window.location.reload();
+}
+
+/** is the we browser on */
+function weIsBrowser() {
+  if(getCookie(weBrowserStorage) == null) setCookie(weBrowserStorage, "false")
+
+  return getCookie(weBrowserStorage) === "true";
+}
 

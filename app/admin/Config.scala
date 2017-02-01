@@ -18,8 +18,8 @@ object Config extends WikiConfig {
   override def simulateHost = isimulateHost
   var isimulateHost = {
 //      "www.racerkidz.com"    // for testing locally
-//      "www.snowproapp.com"
       "www.effectiveskiing.com"    // for testing locally
+//      "www.snowproapp.com"
 //    "www.dieselapps.com"    // for testing locally
 //    "specs.dieselapps.com"    // for testing locally
 //    "wiki.dieselapps.com"    // for testing locally
@@ -88,7 +88,7 @@ object Config extends WikiConfig {
 
     irobotUserAgents = sitecfg("robots.useragents").toList.flatMap(s=>s.split("[;,]"))
     ireservedNames = sitecfg("reserved.names").toList.flatMap(s=>s.split("[;,]"))
-    // todo settle this - there are two places for configuring trusted sites
+//     todo settle this - there are two places for configuring trusted sites
     itrustedSites = sitecfg("trusted.sites").toList.flatMap(s=>s.split("[;,]"))
     ibadIps = sitecfg("badips").toList.flatMap(s=>s.split("[;,]")).toArray
   }

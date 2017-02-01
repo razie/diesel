@@ -6,8 +6,8 @@
  */
 package mod.diesel.model
 
-import akka.actor.{ActorRef, Actor, Props}
-import mod.diesel.model.parser.{BFlowExpr, MsgExpr, FlowExpr, SeqExpr}
+import akka.actor.{Actor, ActorRef, Props}
+import mod.diesel.model.parser.{BFlowExpr, FlowExpr, MsgExpr, SeqExpr}
 import play.libs.Akka
 import razie.diesel.ext._
 import mod.diesel.model.RDExt._
@@ -25,9 +25,9 @@ import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.Future
 import scala.concurrent.Promise
-
 import scala.concurrent.ExecutionContext.Implicits.global
 import DomState._
+import controllers.RazRequest
 
 object AstKinds {
   final val ROOT = "root"
@@ -218,6 +218,15 @@ case class DomAst(
 }
 
 object DomEngineSettings {
+  /** */
+  def from(stok:RazRequest) = {
+    val q = fromRequest(stok.req)
+    if(q.configTag.isEmpty && stok.au.isDefined) q.configTag = Some(stok.au.get._id.toString)
+    // todo should keep the original user or switch?
+    if(q.userId.isEmpty && stok.au.isDefined) q.userId = Some(stok.au.get._id.toString)
+    q
+  }
+
   /** take the settings from either URL or body form or default */
   def fromRequest(request:Request[AnyContent]) = {
     val q = request.queryString.map(t=>(t._1, t._2.mkString))
@@ -233,26 +242,45 @@ object DomEngineSettings {
     def fqhParm(name:String) =
       q.get(name).orElse(fParm(name)).orElse(request.headers.get(name))
 
+    def fqhoParm(name:String, dflt:String) =
+      q.get(name).orElse(fParm(name)).orElse(request.headers.get(name)).getOrElse(dflt)
+
     new DomEngineSettings(
-      mockMode = fqParm("mockMode", "true").toBoolean,
-      blenderMode = fqParm("blenderMode", "true").toBoolean,
-      draftMode = fqParm("draftMode", "true").toBoolean,
-      sketchMode = fqParm("sketchMode", "false").toBoolean,
-      execMode = fqParm("execMode", "sync"),
-      parentNodeId = fqhParm("dieselNodeId")
+      mockMode = fqhoParm("mockMode", "true").toBoolean,
+      blenderMode = fqhoParm("blenderMode", "true").toBoolean,
+      draftMode = fqhoParm("draftMode", "true").toBoolean,
+      sketchMode = fqhoParm("sketchMode", "false").toBoolean,
+      execMode = fqhoParm("execMode", "sync"),
+      resultMode = fqhoParm("resultMode", "json"),
+      parentNodeId = fqhParm("dieselNodeId"),
+      configTag = fqhParm("dieselConfigTag"),
+      userId = fqhParm("dieselUserId")
     )
   }
 }
 
-class DomEngineSettings(
+class DomEngineSettings
+(
   var mockMode    : Boolean = false,
   var blenderMode : Boolean = true,
   var draftMode   : Boolean = true,
   var sketchMode  : Boolean = true,
   var execMode    : String = "sync",
-  var parentNodeId: Option[String] = None // when ran for a separate request
+  var resultMode    : String = "json",
+
+  // when ran for a separate request
+  var parentNodeId: Option[String] = None,
+
+  /** tag for configuration: either a userId or a recognized global tag */
+  var configTag : Option[String] = None,
+
+  /** user id */
+  var userId : Option[String] = None
   ) {
   val node = Services.config.node
+
+  /** is this supposed to use a user cfg */
+  def configUserId = configTag.map(x=>if(ObjectId.isValid(x)) Some(new ObjectId(x)) else None)
 }
 
 /** an engine */
@@ -272,7 +300,7 @@ class DomEngine(
   }
 
   // setup the context for this eval
-  implicit val ctx = new DomEngECtx().withDomain(dom).withSpecs(pages)
+  implicit val ctx = new DomEngECtx(settings).withDomain(dom).withSpecs(pages)
 
   val rules = dom.moreElements.collect {
     case e:ERule => e

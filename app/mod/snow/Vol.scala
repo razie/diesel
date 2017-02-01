@@ -48,8 +48,8 @@ object Vol extends RazController with Logging {
   }
 
   /** for user per club au is the user */
-  def doeUserVolAdd (regId:String) = FAUR { implicit stok =>
-    (for (
+  def doeUserVolAdd (regId:String) = FAUR("add volunteer hours") { implicit stok =>
+    for (
       reg <- Regs.findId(regId) orErr "no registration found... ?";
       club <- Club(reg.clubName)
     ) yield {
@@ -58,12 +58,12 @@ object Vol extends RazController with Logging {
         ROK.k apply {
           views.html.club.doeClubUserVolAdd(reg, rkas.toList, addvol.fill("", 0, "?", "", ""), club)
         }
-    }) getOrElse unauthorized()
+    }
   }
 
   /** for club per member */
-  def doeVol(wid:WID) = FAUR { implicit stok =>
-    (for (
+  def doeVol(wid:WID) = FAUR("see volunteer hours") { implicit stok =>
+    for (
       club <- Club.findForAdmin(wid, stok.au.get) orErr ("Not a club or you're not admin")
     ) yield {
 
@@ -76,7 +76,7 @@ object Vol extends RazController with Logging {
       val regs = Regs.findClubYear(club.wid, club.curYear).toList
 
         ROK.k apply { views.html.club.doeClubVol(club, rks, regs) }
-      }) getOrElse unauthorized()
+      }
   }
 
   def addvol = Form {
@@ -90,13 +90,13 @@ object Vol extends RazController with Logging {
   }
 
   /** club admin: capture volunteer hour record */
-  def doeVolAdd(wid:WID, rkaId: String) = FAUR { implicit stok =>
-    (for (
+  def doeVolAdd(wid:WID, rkaId: String) = FAUR("adding volunteer hours") { implicit stok =>
+    for (
       club <- Club.findForAdmin(wid, stok.au.get) orErr ("Not a club or you're not admin");
       rka <- ROne[RacerKidAssoc]("_id" -> new ObjectId(rkaId)) orErr ("No RKA id "+rkaId)
     ) yield {
         ROK.k apply { views.html.club.doeClubVolAdd(club, rkaId, rka, addvol.fill(rkaId, 0, "?", "", "?"), stok.au.get) }
-    }) getOrElse Msg2("ERROR " + errCollector.mkString)
+    }
   }
 
   /** create volunteer hour record
@@ -125,8 +125,11 @@ object Vol extends RazController with Logging {
         {
           case (w, h, d, c, a) =>
             val id = w
-            val rka = ROne[RacerKidAssoc]("_id" -> new ObjectId(id)).get
-            rka.copy(hours = rka.hours + h).update
+
+            ROne[RacerKidAssoc]("_id" -> new ObjectId(id)).map{rka=>
+              rka.copy(hours = rka.hours + h).update
+            }
+
             if(!wid.isEmpty) {
               VolunteerH(new ObjectId(id), h, d, c, stok.au.get._id, Some(a), VH.ST_OK).create
               Redirect(routes.Vol.doeVolAdd(wid, rid))
@@ -145,9 +148,14 @@ object Vol extends RazController with Logging {
       vh <- ROne[VolunteerH]("_id" -> new ObjectId(vhid))
     ) yield {
       vh.delete
+
       if(!wid.isEmpty) {
-        val rka = ROne[RacerKidAssoc]("_id" -> new ObjectId(rkaId)).get
-        if (vh.status == VH.ST_OK) rka.copy(hours = rka.hours - vh.hours).update
+
+        ROne[RacerKidAssoc]("_id" -> new ObjectId(rkaId)).map { rka =>
+          if (vh.status == VH.ST_OK)
+            rka.copy(hours = rka.hours - vh.hours).update
+        }
+
         Redirect(routes.Vol.doeVolAdd(wid, rkaId))
       } else
         Redirect(routes.Vol.doeUserVolAdd(rkaId))

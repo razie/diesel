@@ -386,7 +386,7 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
     val stimer = new CSTimer("buildDomStory", id)
     stimer start "heh"
 
-    val settings = DomEngineSettings.fromRequest(stok.req)
+    val settings = DomEngineSettings.from(stok)
 
     val saveMode = stok.formParm("saveMode").toBoolean
     val reactor = stok.formParm("reactor")
@@ -662,7 +662,8 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
 
     def fParm(name:String, dflt:String="") = stok.query.getOrElse(name, dflt)
 
-    val settings = DomEngineSettings.fromRequest(stok.req)
+    val settings = DomEngineSettings.from(stok)
+    val userId = settings.userId.map(new ObjectId(_)) orElse stok.au.map(_._id)
 
     val RES_API = """
                     |Send result mode to control output:
@@ -673,17 +674,16 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
                     | The Json always includes any errors.
                   """.stripMargin
 
-    val resultMode = fParm("resultMode")
-
     val page = new WikiEntry("Spec", "fiddle", "fiddle", "md", "", stok.au.map(_._id).getOrElse(NOUSER), Seq("dslObject"), "")
 
     val pages = if(settings.blenderMode) {
       // blend all specs and stories
       val stories = if(settings.sketchMode) Wikis(reactor).pages("Story")./*filter(_.name != stw.get.name).*/toList else Nil
-      val d = (Wikis(reactor).pages("Spec")./*filter(_.name != spw.get.name).*/toList:::stories).map{ p=>
+      val specs = Wikis(reactor).pages("Spec").toList
+      val d = (specs./*filter(_.name != spw.get.name).*/toList ::: stories).map{ p=>
         // if draft mode, find the auto-saved version if any
         if(settings.draftMode) {
-          val c = Autosave.find("DomFid"+p.category+"."+reactor+"."+p.wid.wpath, stok.au.map(_._id)).flatMap(_.get("content")).mkString
+          val c = Autosave.find("DomFid"+p.category+"."+reactor+"."+p.wid.wpath, userId).flatMap(_.get("content")).mkString
           if(c.length > 0)  p.copy(content=c)
           else p
         } else p
@@ -693,7 +693,7 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
       //the contents of the fiddle
       val spec =
         if(useThisOne.isDefined) ""
-        else Autosave.find("DomFidSpec."+reactor+".", stok.au.map(_._id)).flatMap(_.get("content")).mkString
+        else Autosave.find("DomFidSpec."+reactor+".", userId).flatMap(_.get("content")).mkString
       val page = new WikiEntry("Spec", "fiddle", "fiddle", "md", spec, stok.au.map(_._id).getOrElse(NOUSER), Seq("dslObject"), "")
       //      WikiDomain.domFrom(page).get.revise.addRoot
       List(page)
@@ -713,9 +713,9 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
     val story2 = if(settings.sketchMode) {
       // in sketch mode, add the temp fiddle tests - filter out messages, as we already have one
       useThisOne.map {p=>
-        Autosave.find("DomFidStory."+reactor+"."+p.wpath, stok.au.map(_._id)).flatMap(_.get("content")) getOrElse p.content.mkString
+        Autosave.find("DomFidStory."+reactor+"."+p.wpath, userId).flatMap(_.get("content")) getOrElse p.content.mkString
       } getOrElse
-        Autosave.find("DomFidStory."+reactor+".", stok.au.map(_._id)).flatMap(_.get("content")).mkString
+        Autosave.find("DomFidStory."+reactor+".", userId).flatMap(_.get("content")).mkString
     } else if(useThisOne.isDefined) {
       useThisOne.get.content.mkString
     } else ""
@@ -758,7 +758,7 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
         case d@DomAst(EVal(p), /*"generated"*/ _, _, _) if oattrs.isEmpty || oattrs.find(_.name == p.name).isDefined => (p.name, p.dflt)
       }
 
-      if ("value" == resultMode || "" == resultMode && oattrs.size == 1) {
+      if ("value" == settings.resultMode || "" == settings.resultMode && oattrs.size == 1) {
         // one value
         val res = values.headOption.map(_._2).getOrElse("")
         Ok(stripQuotes(res))
@@ -773,12 +773,12 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
           "dieselTrace" -> DieselTrace(root, settings.node, engine.id, "diesel", "runDom", settings.parentNodeId).toJson
         )
 
-        if ("treeHtml" == resultMode) m = m + ("tree" -> root.toHtml)
-        if ("treeJson" == resultMode) m = m + ("tree" -> root.toJson)
+        if ("treeHtml" == settings.resultMode) m = m + ("tree" -> root.toHtml)
+        if ("treeJson" == settings.resultMode) m = m + ("tree" -> root.toJson)
 
-        if ("debug" == resultMode) {
+        if ("debug" == settings.resultMode) {
           Ok(root.toString).as("application/json")
-        } else if ("dieselTree" == resultMode) {
+        } else if ("dieselTree" == settings.resultMode) {
           val m = root.toj
           val y = DieselJsonFactory.fromj(m).asInstanceOf[DomAst]
           val x = js.tojsons(y.toj).toString
@@ -934,10 +934,10 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
     } else {
       if(what == "Spec") {
         val spw = WID.fromPath(specWpath).flatMap(_.page)
-        spw.map(_.update(spw.get.copy(content=spec), Some("saved diesel fiddle")))
+        spw.map(old=> old.update(old.copy(content=spec, ver=old.ver+1), Some("saved diesel fiddle")))
       } else if (what == "Story") {
         val stw = WID.fromPath(storyWpath).flatMap(_.page)
-        stw.map(_.update(stw.get.copy(content=story), Some("saved diesel fiddle")))
+        stw.map(old=> old.update(old.copy(content=story, ver=old.ver+1), Some("saved diesel fiddle")))
       }
     }
 
@@ -1120,7 +1120,7 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
   /** proxy real service GET */
   def proxy(path:String) = RAction {implicit stok =>
     val engine = prepEngine(new ObjectId().toString,
-      DomEngineSettings.fromRequest(stok.req),
+      DomEngineSettings.from(stok),
       stok.realm,
       DomAst("root", ROOT),
       false)
@@ -1158,7 +1158,7 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
   def navigate () = FAUR {implicit stok=>
 
     val engine = prepEngine(new ObjectId().toString,
-      DomEngineSettings.fromRequest(stok.req),
+      DomEngineSettings.from(stok),
       stok.realm,
       DomAst("root", ROOT),
       false)

@@ -49,6 +49,7 @@ case class SnakCall (method:String, url:String, headers:Map[String,String], cont
     x
   }
 
+  /** xp root for either xml or json body */
   def root = {
     val conn = Snakk.conn(isurl)
     val is = conn.getInputStream()
@@ -381,10 +382,10 @@ object RDExt {
           //            ).map(p => p.copy(dflt = res \ "values" \@@ p.name)).map(x => EVal(x))
           val res = jsonParsed(response)
           val a = res.getJSONObject("values")
-          val strs = (
+          val strs = if(a.names == null) List.empty else (
             for (k <- 0 until a.names.length())
               yield (a.names.get(k).toString, a.getString(a.names.get(k).toString))
-            )
+            ).toList
           strs.toList
         }
       }
@@ -399,8 +400,15 @@ object RDExt {
             P("verb", "", "", "", in.met) :: in.attrs),
           //            in.attrs.filter(_.name != "url").map(p=>(p.name -> p.dflt)).toMap,
           (
-            if(ctx.curNode.isDefined) sc.headers + ("dieselNodeId" -> ctx.curNode.get.id)
-            else sc.headers
+            sc.headers ++
+              {
+                ctx.curNode.map(node=>
+                  ("dieselNodeId" -> node.id) ).toList ++
+                ctx.root.asInstanceOf[DomEngECtx].settings.userId.map(x=>
+                  ("dieselUserId" -> x) ).toList ++
+                ctx.root.asInstanceOf[DomEngECtx].settings.configTag.map(x=>
+                  ("dieselConfigTag" -> x) ).toList
+              }.toMap
           ),
         sc.method
         )
@@ -420,7 +428,12 @@ object RDExt {
           val ret = if(in.ret.nonEmpty) in.ret else spec(in).toList.flatMap(_.ret)
 
           // 2. find ret spec
-          val temp = template.get.parms.split(",").map(s=>s.split("=")).map(a=> (a(0), a(1)))
+//          val xtemp = template.get.parms.split(",").map(s=>s.split("="))//.map(a=> (a(0), a(1)))
+          val temp =
+            if(template.get.parms.trim.length > 0)
+              template.get.parms.split(",").map(s=>s.split("=")).map(a=> (a(0), a(1)))
+            else Array.empty[(String,String)]
+
           val x = if(in.ret.nonEmpty) in.ret else spec(in).toList.flatMap(_.ret)
           val specs = x.map(p=>(p.name, p.dflt, p.expr.mkString))
           val regex = temp.find(_._1 == "regex").map(_._2).orElse(specs.find(_._1 == "regex").map(_._3))

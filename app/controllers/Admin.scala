@@ -300,19 +300,21 @@ object AdminUser extends AdminBase {
           u <- Users.findUserById(id);
           pro <- u.profile
         ) yield {
+            var ok=true
             // TODO transaction
             razie.db.tx("umodnote") { implicit txn =>
-              Profile.updateUser(u,
-              {
                 if(uname startsWith "+")
-                  u.copy(modNotes = u.modNotes ++ Seq(uname.drop(1)))
+                  Profile.updateUser(u, u.copy(modNotes = u.modNotes ++ Seq(uname.drop(1))) )
+                else if(uname startsWith "-")
+                  Profile.updateUser(u, u.copy(modNotes = u.modNotes.filter(_ != uname.drop(1))) )
                 else
-                  u.copy(modNotes = u.modNotes.filter(_ != uname.drop(1)))
-              }
-              )
+                  ok=false
               cleanAuth(Some(u))
             }
-            Redirect("/razadmin/user/" + id)
+            if(ok)
+              Redirect("/razadmin/user/" + id)
+            else
+              Msg2("Go back and use +/- to indicate add/remove")
           }) getOrElse {
           error("ERR_ADMIN_CANT_UPDATE_USER.uname " + id + " " + errCollector.mkString)
           Unauthorized("ERR_ADMIN_CANT_UPDATE_USER.uname " + id + " " + errCollector.mkString)
@@ -486,7 +488,8 @@ object AdminAudit extends AdminBase {
   }
 
   def auditSummary = {
-     RazMongo("Audit").findAll().toList.groupBy(_.get("msg")).map { t =>
+    val x = RazMongo("Audit").findAll().toList
+    RazMongo("Audit").findAll().toList.groupBy(_.get("msg")).map { t =>
        (t._2.size, t._1.toString)
      }.toList.sortWith(_._1 > _._1)
   }
@@ -625,8 +628,22 @@ object AdminDiff extends AdminBase {
         val lnew = lsrc.filter(x=> ldest.find(y=> y.id == x.id).isEmpty)
         val lremoved = ldest.filter(x=> lsrc.find(y=> y.id == x.id).isEmpty)
 
-        val lchanged = for(x <- lsrc; y <- ldest if y.id == x.id && (y.ver != x.ver || y.updDtm != x.updDtm))
-          yield (x,y, if(x.hash == y.hash && x.tags == y.tags) "-" else if (y.ver < x.ver || y.updDtm.isBefore(x.updDtm)) "L" else "R")
+        val lchanged = for(
+          x <- lsrc;
+          y <- ldest if y.id == x.id &&
+          (
+            x.ver != y.ver ||
+            x.updDtm.compareTo(y.updDtm) != 0 ||
+            x.name != y.name ||
+            x.realm != y.realm ||
+            x.cat != y.cat
+            // todo compare properties as well
+          )
+        ) yield
+          (x,
+            y,
+            if(x.hash == y.hash && x.tags == y.tags) "-" else if (x.ver > y.ver || x.updDtm.isAfter(y.updDtm)) "L" else "R"
+          )
 
           ROK.s admin {implicit stok=> views.html.admin.adminDifflist(reactor, target, lnew, lremoved, lchanged.sortBy(_._3))}
       } catch {
@@ -647,6 +664,7 @@ object AdminDiff extends AdminBase {
           DiffUtils.diff(wid.content.get.lines.toList, remote.lines.toList)
         else
           DiffUtils.diff(remote.lines.toList, wid.content.get.lines.toList)
+
         ROK.s admin {implicit stok=>
           if(side=="R")
             views.html.admin.adminDiffShow(side, wid.content.get, remote, patch, wid.page.get, t._1)
@@ -677,6 +695,7 @@ object AdminDiff extends AdminBase {
   // to remote
   def applyDiff(target:String, wid:WID) = FADR { implicit request =>
       try {
+        val page = wid.page.get
         val b = body(
           url(s"http://$target/wikie/setContent/${wid.wpathFull}").
             form(Map("we" -> wid.page.get.grated.toString)).

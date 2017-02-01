@@ -15,7 +15,9 @@ club admin manages list of users and registrations
         "paid"->t._3.map(_.paid).getOrElse(""),
         "vol" -> (if(details == "2") t._3.map(controllers.Vol.volPerReg).getOrElse("-") else ""),
         "regStatus" -> t._3.map(_.regStatus).getOrElse("n/a"),
-        "uwId"->t._2._id.toString))
+        "balance" -> t._3.flatMap(reg=>mod.cart.Acct.findCurrent(reg.userId, reg.club)).map(_.balance.toString).getOrElse(""),
+        "uwId"->t._2._id.toString
+      ))
   }
 
 @allforms=@{
@@ -69,7 +71,8 @@ club admin manages list of users and registrations
                 "role"->"Role",
                 "paid" -> "Paid",
                 "vol" -> "Hours",
-                "regStatus" -> "Registration",
+          "balance" -> "Balance",
+          "regStatus" -> "Registration",
                 "uwId"->""), Some(mnglink))
 
 <p>Send invitation to join club on RacerKidz for new members - copy this link and email it <br>

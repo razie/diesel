@@ -10,6 +10,11 @@ manage the list of kidz and/or their accounts
 
 @stok.title("RacerKidz for " + club.name + " / " + team.name)
 
+@kids()=@{
+  club.activeTeamMembers(team).map(_._1._id)
+}
+
+
 @rks= @{
   club.teamMembers(team, role)
 }
@@ -43,7 +48,9 @@ manage the list of kidz and/or their accounts
 @if(list.isEmpty) {
   <h2>No members...</h2>
 } else {
-  <h2>Members of @team.name</h2>
+  <h2>Members of @team.name
+    @notes.notesmsgDiv("teammsg")
+  </h2>
 
   <p><b>Summary:</b>
     @rks.filter(t=> t._1.info.status != STATUS_FORMER && t._2.role != ROLE_FAN).toList.groupBy(_._2.role).map {x=>
@@ -56,53 +63,8 @@ manage the list of kidz and/or their accounts
   }
 
   @if(club.isClubCoach(stok.au.get)) {
-    <button onclick="sendNote()" class="btn btn-success">Message to all <span id="msgbtn" class="glyphicon glyphicon-chevron-down"></span></button>
-    <button id="sendnow" onclick="sendNow()" class="btn btn-info">Send</button>
-    <br>
-    <textarea id="msgall" rows="5" cols="80"></textarea>
+    @groupMessaging(club, role, team, kids())
   }
 }
-
-@formFix()
-
-<script>
-$("#msgall,#sendnow").hide();
-
-function sendNote() {
-  if($("#msgall").is(":visible")) {
-    $("#msgbtn").removeClass("glyphicon-chevron-up");
-    $("#msgbtn").addClass("glyphicon-chevron-down");
-    $("#msgall,#sendnow").fadeOut(500);
-  } else {
-    $("#msgbtn").removeClass("glyphicon-chevron-down");
-    $("#msgbtn").addClass("glyphicon-chevron-up");
-    $("#msgall,#sendnow").fadeIn(500);
-  }
-}
-
-function sendNow() {
-  var content = $("#msgall").val();
-  var url = "@mod.snow.routes.Snow.doeSendMsgTeam("MID", "memo")".replace(/MID/g, '@team.wpath');
-  $.ajax({
-    type: "POST",
-    url:  url,
-    data: $.param({
-      content : content
-    }),
-    contentType: 'application/x-www-form-urlencoded',
-    success: function(data) {
-      notesMsgShow("err", "Can't post: "+result.statusText)
-    },
-    error: function(result) {
-      console.log("ERROR: Can't postmsgall: "+result.responseText)
-      notesMsgShow("err", "Can't post: "+result.statusText)
-    }
-  });
-
-  $("#msgbtn").removeClass("glyphicon-chevron-up");
-  $("#msgbtn").addClass("glyphicon-chevron-down");
-  $("#msgall,#sendnow").fadeOut(500);
-}
-</script>
 
 

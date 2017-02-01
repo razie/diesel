@@ -81,6 +81,14 @@ wiki fragment, used in another page
       **@
 
     </small>
+
+    @if(stok.au.exists(_.isAdmin)) {
+      <br>
+      <small>
+        Admin-stats: @page.map(_.wordCount) words
+      </small>
+    }
+
   </div>
   </p>
 
@@ -104,7 +112,7 @@ wiki fragment, used in another page
         @if(wid.cat != "Form" || stok.au.exists(_.hasPerm(model.Perm.adminDb))) {
           @if(wikiForm().isDefined) {
             <a href="@routes.Forms.doeFormEdit(page.get.wid)">Edit</a>
-            @if(stok.au.exists(_.hasPerm(model.Perm.adminDb))) {
+            @if(stok.au.exists(_.isAdmin)) {
               | <a href="@routes.Wikie.wikieEdit(page.get.wid)">Edit/c</a>
             }
           } else {
@@ -113,7 +121,7 @@ wiki fragment, used in another page
         }
       }
       @stok.au.map { u =>
-        | <a href="" onclick="browseBtn();return false;">Browse</a>
+        | <a href="" onclick="weToggleBrowser();return false;">Browse</a>
         | <a href="@routes.Wikie.report(wid)">Report</a>
       }
       | <a href="@routes.Wiki.printWid(WID.cmdfromPath(wid.wpath).get, wid.getRealm)">Print</a>
@@ -178,19 +186,4 @@ wiki fragment, used in another page
 
 <script src="@routes.Assets.at("javascripts/weCommons.js")" type="text/javascript" charset="utf-8"></script>
 
-<script>
-var storageName = "weBrowser";
-
-if(getCookie(storageName) == null) setCookie(storageName, "false")
-
-function browseBtn() {
-  //<a href="@routes.Wiki.wikiBrowse(wid.wpath, "")">Browse</a>
-  if(getCookie(storageName) === "true") {
-    setCookie(storageName, "false")
-  } else {
-    setCookie(storageName, "true")
-  }
-  window.location.reload();
-}
-</script>
 

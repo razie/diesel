@@ -191,7 +191,7 @@ object Comment extends RazController with Logging {
             Users.findUserById(w.by).map(_._id).toList ++
               cs.comments.map(_.userId)
           ).distinct.filter(_ != au._id).map {uid =>
-            Users.findUserById(uid).map {u =>
+            Users.findUserById(uid).filter(_.isActive).map {u =>
               Emailer.sendEmailNewComment(u, au, w.wid)
               RacerKidz.myself(u._id).history.post(w, au, Some("New comment posted by "+au.fullName))
             }
@@ -201,7 +201,7 @@ object Comment extends RazController with Logging {
       ROne[MsgThread](new ObjectId(pid)).map {msg=>
         var newMsg = msg
         // will email only once, not every time comment is added - also whenteh first comment is added
-        msg.users.filter(x=> x.userId != au._id && (x.read || cs.comments.size == 1)).map(_.userId).distinct.flatMap(uid=>Users.findUserById(uid)).foreach {user=>
+        msg.users.filter(x=> x.userId != au._id && (x.read || cs.comments.size == 1)).map(_.userId).distinct.flatMap(uid=>Users.findUserById(uid)).filter(_.isActive).foreach {user=>
           Emailer.sendEmailNewComment(user, au, WID("Admin", "Private Messages"))
           newMsg = msg.readNow(user._id, false)
         }

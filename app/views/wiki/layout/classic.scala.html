@@ -18,12 +18,12 @@ Classic layout
 
     @wiki.layout.draft(page)
 
-    @modules.diesel.wBrowser(stok.realm, page, "top")(identity)
+    @modules.diesel.wBrowser(stok.realm, page, "top")
 
       <div class="well">
         @wiki.wikiFrag(wid, None, false, page, iname, false, true, canEdit, false, false)
 
-        @modules.diesel.wBrowser(stok.realm, page, "top")(identity)
+        @modules.diesel.wBrowser(stok.realm, page, "top")
 
         @wid.page.map {we =>
           @wiki.wikiFragBottom(we, false, canEdit, false, print)
