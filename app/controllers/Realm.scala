@@ -156,7 +156,7 @@ object Realm extends RazController with Logging {
 
       // todo visibility? public unless you pay 20$ account
 
-      razie.db.tx(s"create.$cat") { implicit txn =>
+      razie.db.tx(s"create.$cat", au.userName) { implicit txn =>
         UserWiki(au._id, mainPage.uwid, "Admin").create
 
         if ("Reactor" == cat) {
@@ -295,7 +295,7 @@ object Realm extends RazController with Logging {
 
       Services ! WikiAudit("CREATE_MOD", tw.wid.wpath, Some(au._id))
 
-      razie.db.tx(s"addMod.$module") { implicit txn =>
+      razie.db.tx(s"addMod.$module", au.userName) { implicit txn =>
         pages foreach(_.create)
       }
 

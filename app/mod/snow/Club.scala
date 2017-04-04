@@ -242,10 +242,15 @@ regAdmin=$regAdmin
   }
 
   // need to do some stuff when creating new clubs
-  WikiObservers mini {
-    case ev@WikiEvent(WikiAudit.CREATE_WIKI, "WikiEntry", wpath, entity: Option[WikiEntry], _, _, _) => {
-    }
-  }
+//  WikiObservers mini {
+//    case ev@WikiEvent(
+//      WikiAudit.CREATE_WIKI,
+//      "WikiEntry",
+//      wpath,
+//      entity: Option[WikiEntry],
+//      _, _, _) => {
+//    }
+//  }
 
   // manage user screen
   def membersData(club: Club, what: String, cols: String): (List[String], List[List[String]]) = {
@@ -437,29 +442,32 @@ regAdmin=$regAdmin
       olduw <- model.Users.findUserLinksTo(club.uwid).find(_._id.toString == uwid) orErr "user is not a member";
       u <- olduw.user orErr "no olduw user"
     ) yield {
-        mngUserForm.bindFromRequest.fold(
+      mngUserForm.bindFromRequest.fold(
         formWithErrors => ROK.s badRequest { implicit stok =>
           views.html.club.doeClubReg(club, formWithErrors, olduw)
         }, {
           case (r, s, p) =>
-            olduw.updateRole(r)
-            //reload
-            val uw = model.Users.findUserLinksTo(club.uwid).find(_._id.toString == uwid).get
+            razie.db.tx("doeClubMemberUpdate", au.userName  ) { implicit txn =>
+              olduw.updateRole(r)
+              //reload
+              val uw = model.Users.findUserLinksTo(club.uwid).find(_._id.toString == uwid).get
 
-            // update the role of the assoc as well
-            for (
-              rk <- ROne[RacerKid]("ownerId" -> olduw.userId, "userId" -> olduw.userId, "kind" -> RK.KIND_MYSELF);
-              rka <- ROne[RacerKidAssoc]("from" -> au._id, "to" -> rk._id, "year" -> Club(au).curYear)
-            ) if (rka.role != r) rka.copy(role = r).update
+              // update the role of the assoc as well
+              for (
+                rk <- ROne[RacerKid]("ownerId" -> olduw.userId, "userId" -> olduw.userId, "kind" -> RK.KIND_MYSELF);
+                rka <- ROne[RacerKidAssoc]("from" -> au._id, "to" -> rk._id, "year" -> Club(au).curYear)
+              ) if (rka.role != r) rka.copy(role = r).update
 
-            var reg = club.reg(u)
-            if (reg.exists(_.paid != p)) {
-              reg = Some(reg.get.copy(paid = p))
-              reg.get.update
-            }
+              var reg = club.reg(u)
+              if (reg.exists(_.paid != p)) {
+                reg = Some(reg.get.copy(paid = p))
+                reg.get.update
+              }
 
-            ROK.s apply { implicit stok => (views.html.club.doeClubReg(club, mngUserForm.fill(
-              (uw.role, reg.map(_.regStatus).getOrElse("n/a"), reg.map(_.paid).mkString)), uw))
+              ROK.s apply { implicit stok =>
+                (views.html.club.doeClubReg(club, mngUserForm.fill(
+                  (uw.role, reg.map(_.regStatus).getOrElse("n/a"), reg.map(_.paid).mkString)), uw))
+              }
             }
         })
       }) getOrElse Msg2("CAN'T SEE PROFILE " + errCollector.mkString)
@@ -483,12 +491,14 @@ regAdmin=$regAdmin
   }
 
   /** change registration status */
-  def doeClubUwRegstatusupd(clubName: WID, uwid: String, how: String) = FAU { implicit au => implicit errCollector => implicit request =>
+  def doeClubUwRegstatusupd(clubName: WID, uwid: String, how: String) = FAU {
+    implicit au => implicit errCollector => implicit request =>
     (for (
       club <- Club.findForAdmin(clubName, au) orCorr cNotAdmin(clubName.wpath);
       uw <- model.Users.findUserLinksTo(club.uwid).find(_._id.toString == uwid) orErr ("user is not a member");
       u <- uw.user
     ) yield {
+      razie.db.tx("doeClubUwRegstatusupd", au.userName) { implicit txn =>
         val ooldreg = club.reg(u) //orErr ("no registration record for year... ?")
 
         if (how == RegStatus.DELETE) {
@@ -524,6 +534,7 @@ regAdmin=$regAdmin
           }
           Redirect(routes.Club.doeClubReg(clubName, uwid))
         }
+      }
       }) getOrElse Msg2("OOPS" + errCollector.mkString)
   }
 
@@ -537,7 +548,8 @@ regAdmin=$regAdmin
       u <- uw.user orErr ("oops - missing user?");
       reg <- c.reg(u) orCorr ("no registration record for year... ?" -> "did you expire it first?")
     ) yield {
-        addForm(u, c, reg, regAdmin, role)
+      implicit val txn = razie.db.tx.local("doeClubUwAddForm", au.userName  )
+      addForm(u, c, reg, regAdmin, role)
         Redirect(routes.Club.doeClubReg(clubName, uwid.toString))
       }) getOrElse Msg2("OOPS" + errCollector.mkString)
   }
@@ -551,7 +563,7 @@ regAdmin=$regAdmin
   }
 
   /** add a form to current registration - NOT for a kid */
-  private def addForm(u: User, c: Club, reg: Reg, regAdmin: User, role: String) {
+  private def addForm(u: User, c: Club, reg: Reg, regAdmin: User, role: String)(implicit txn:Txn) {
     val form = c.regForm(role).get
     val newfwid = WID("Form", s"${form.wid.name}-${form.role}-${u._id}-${reg.year}-${reg.deprecatedWids.size}")
     var label = removeYear(s"${form.wid.name.replaceAll("_", " ")}")
@@ -595,6 +607,8 @@ regAdmin=$regAdmin
         can <- canModifyReg(au, reg, c);
         regAdmin <- c.uregAdmin orErr ("no regadmin")
       ) yield {
+        razie.db.tx("doeClubUwAddFormKid", au.userName) { implicit txn =>
+
           val nextPage = if (reg.userId != au._id) // if not member, then admin
             routes.Club.doeClubReg(reg.club, next)
           else
@@ -633,6 +647,7 @@ regAdmin=$regAdmin
             Msg2(
               s"""${rk.info.firstName} was already added as <em>${before.get.role}</em> - please click continue, then remove her/him from the registration with the red <span class="label label-important">x</span> button and then re-add with the different role. <p>Note that any forms filled for his role will be <em>removed</em>!""",
               Some(nextPage.url))
+        }
         }) getOrElse Msg2("OOPS" + errCollector.mkString)
   }
 
@@ -653,7 +668,7 @@ regAdmin=$regAdmin
           def sex1 = if (rk.info.gender.toLowerCase startsWith "m") "his" else "her"
           def sex2 = if (rk.info.gender.toLowerCase startsWith "m") "him" else "her"
           Msg2(
-            s"""This will remove ${rk.info.firstName} from this registration.
+            s"""This will remove ${rk.info.firstName} from your family and this registration.
     <p>Note that any forms filled for $sex1 role will be <em>removed</em>! You can then re-add $sex2 back, with the same or different role.
     <p>If you don't want to remove $sex2, just go back... otherwise click Continue below.""",
             Some(routes.Club.doeClubUwRmFormKid1(regId, rkId, uwid, role).url))
@@ -677,6 +692,7 @@ regAdmin=$regAdmin
         notCompleted <- (!regkid.deprecatedwids.flatMap(x => Wikis.find(x).flatMap(_.formState).toList).exists(_ == FormStatus.APPROVED)) orErr
           ("some forms have been approved for this person")
       ) yield {
+        razie.db.tx("doeClubUwRmFormKid1", au.userName) { implicit txn =>
           var r = reg
           regkid.deprecatedwids.foreach { wid =>
             clog << "drop form " + wid
@@ -697,6 +713,7 @@ regAdmin=$regAdmin
           c.rka.filter(a => a.to == regkid.rkId && a.assoc == RK.ASSOC_REGD).foreach(_.delete)
 
           Redirect(next)
+        }
         }) getOrElse Msg2("CAN'T remove registration: " + errCollector.mkString,
         Some(next.toString))
   }
@@ -742,6 +759,7 @@ regAdmin=$regAdmin
         regkid <- RMany[RegKid]("regId" -> reg._id).find(_.deprecatedwids.exists(_.name == formWid.name)).isEmpty orErr "this form belongs to a regKid";
         notCompleted <- form.formState != FormStatus.APPROVED orErr "form has been approved !"
       ) yield {
+        razie.db.tx("doeClubUwRmFormSeq1", au.userName) { implicit txn =>
           var r = reg
           clog << "drop form " + formWid
           r = r.copy(
@@ -753,12 +771,13 @@ regAdmin=$regAdmin
           // controllers.Forms.crFormKid(u, form.wid, newfwid, label, regAdmin, Some(form.role), rk)
           r.update
           Redirect(next)
+        }
         }) getOrElse Msg2("CAN'T remove form: " + errCollector.mkString,
         Some(next.toString))
   }
 
   /** build or update an association... there's a few possibilities */
-  def assoc(c: Club, rk: RacerKid, assoc: String, role: String, owner: User, year: String) {
+  def assoc(c: Club, rk: RacerKid, assoc: String, role: String, owner: User, year: String)(implicit txn:Txn) {
     // simple case, same rk again (member registers himself)
     val rka = ROne[RacerKidAssoc]("from" -> c.userId, "to" -> rk._id, "year" -> year)
     // if assoc already from Link, just update role
@@ -981,10 +1000,12 @@ regAdmin=$regAdmin
       rka <- RacerKidz.findAssocById(rkaid);
       club <- rka.club
     ) yield {
+      razie.db.tx("doeUpdRka", request.userName) { implicit txn =>
         val newRka =
           if ("role" == prop)
             rka.copy(role = value).update
         Ok("ok")
+      }
       }) getOrElse unauthorized();
   }
 
@@ -993,6 +1014,7 @@ regAdmin=$regAdmin
       rka <- RacerKidz.findAssocById(rkaid);
       club <- Club.findForAdmin(club, au) orErr ("Not a club or you're not admin")
     ) yield {
+      razie.db.tx("doeClubKidzSetTeam", au.userName) { implicit txn =>
         val team = if (teamid != "-") Wikis.findById("Program", teamid) else None;
         val old = RacerKidz.findWikiAssocById(rka.to.toString, club.curYear, "Program").filter(
           _.uwid.wid.exists(_.parentWid.exists(_.name == club.userName))).toList.headOption
@@ -1003,6 +1025,7 @@ regAdmin=$regAdmin
         else team.foreach { team =>
           new RacerKidWikiAssoc(rka.to, team.uwid, club.curYear, rka.role).create
         }
+      }
         Ok("ok")
       }) getOrElse unauthorized()
   }
@@ -1034,6 +1057,7 @@ regAdmin=$regAdmin
           dierk = dierk.copy(newRkId = Option(liverk._id))
         }
 
+      razie.db.tx("doeMergeKid", au.userName) { implicit txn =>
         // override with email from user account
         liverk.user.foreach { u =>
           liverk.rki.foreach { rki =>
@@ -1045,6 +1069,7 @@ regAdmin=$regAdmin
         liverk.update
         dierk.update
         dies.moveTo(liverka) // also moves hours and wikiassocs
+      }
 
         if (au.isClub) Redirect("/") //routes.Club.doeClubKidz("",""))
         else Redirect(routes.Kidz.doeUserKidz)
@@ -1120,7 +1145,7 @@ regAdmin=$regAdmin
       isSame <- (prevReg.year != c.curYear) orErr ("Can't copy this year's registration: " + prevRegId)
     ) yield {
         // 1. expire
-        razie.db.tx("userStartRegCopy") { implicit txn =>
+        razie.db.tx("userStartRegCopy", au.userName) { implicit txn =>
           //        cout << "OLD REG: " << prevReg
           var reg = prevReg.copy(_id = new ObjectId(), year = c.curYear, regStatus = RegStatus.PENDING, paid = "")
 
@@ -1215,7 +1240,7 @@ regAdmin=$regAdmin
       isConsent <- au.profile.flatMap(_.consent).isDefined orCorr cNoConsent
     ) yield {
         Regs.findClubUserYear(clubName, au._id, c.curYear).map { reg =>
-          UserTask(au._id, UserTasks.START_REGISTRATION).delete(tx.txn)
+          UserTask(au._id, UserTasks.START_REGISTRATION).delete(tx.auto)
           Msg2("Registration already in progress for club " + clubName, Some(routes.Club.doeClubUserReg(reg._id.toString).url))
         }.getOrElse {
           ROK.s apply { implicit stok => views.html.club.doeClubUserStartReg(clubName) }
@@ -1239,7 +1264,7 @@ regAdmin=$regAdmin
       isConsent <- au.profile.flatMap(_.consent).isDefined orCorr cNoConsent
     ) yield {
         // current registration?
-        razie.db.tx("userStartReg") { implicit txn =>
+        razie.db.tx("userStartReg", au.userName) { implicit txn =>
           if ("None" == how) {
             UserTask(au._id, UserTasks.START_REGISTRATION).delete
             Redirect("/")
@@ -1287,7 +1312,7 @@ regAdmin=$regAdmin
       u <- uw.user
     ) yield {
         // current registration?
-        razie.db.tx("userStartReg") { implicit txn =>
+        razie.db.tx("userStartReg", au.userName) { implicit txn =>
           if (!u.tasks.exists(_.name == UserTasks.START_REGISTRATION))
             UserTask(u._id, UserTasks.START_REGISTRATION, Map("club" -> cwid.wpath)).create
         }
@@ -1316,7 +1341,7 @@ regAdmin=$regAdmin
             w <- Wikis.find(wid)
           ) yield {
               // can only change label of links OR if the formatted name doesn't change
-              razie.db.tx("Club.addFollowers") { implicit txn =>
+              razie.db.tx("Club.addFollowers", au.userName) { implicit txn =>
                 club.userLinks.foreach { uw =>
                   new UserWiki(uw.userId, w.uwid, "Fan").create
                 }
@@ -1346,7 +1371,7 @@ regAdmin=$regAdmin
             page <- Wikis.find(wid)
           ) yield {
               // can only change label of links OR if the formatted name doesn't change
-              razie.db.tx("Club.delFollowers") { implicit txn =>
+              razie.db.tx("Club.delFollowers", au.userName) { implicit txn =>
                 val l = model.Users.findUserLinksTo(page.uwid).toList
                 l.filter(_.user.exists(club.isMember)).foreach(_.deleteNoAudit)
               }
@@ -1366,7 +1391,7 @@ regAdmin=$regAdmin
         page <- Wikis.find(wid)
       ) yield {
           // can only change label of links OR if the formatted name doesn't change
-          razie.db.tx("Wikie.delFollowers") { implicit txn =>
+          razie.db.tx("Wikie.delFollowers", au.userName) { implicit txn =>
             val l = model.Users.findUserLinksTo(page.uwid).toList
             l.foreach(_.deleteNoAudit)
           }
@@ -1455,7 +1480,7 @@ regAdmin=$regAdmin
             val rks = RMany[ModRkEntry]("curYear" -> year).filter(_.wpath contains clubName).toList
             val rkas = RMany[RacerKidAssoc]("year" -> year).filter(_.assoc == "Registered").toList
 
-            razie.db.tx { implicit txn =>
+            razie.db.tx("doeDoPurgeRegs", au.userName) { implicit txn =>
               what match {
                 case "WikiCount" =>
                   regs.map(_.deprecatedWids.flatMap(_.uwid.toSeq).flatMap { uw =>

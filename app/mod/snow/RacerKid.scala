@@ -56,16 +56,16 @@ case class RkHistoryFeed (
         "post",
         ""
       ).copy(content = text)
-      h.createNoAudit
+      h.createNoAudit(tx.auto)
       inc
     }
   }
 
-  private def inc = this.copy(news=news+1).updateNoAudit
-  def reset = this.copy(news=0, firstTime=None).updateNoAudit
+  private def inc = this.copy(news=news+1).updateNoAudit(tx.auto)
+  def reset = this.copy(news=0, firstTime=None).updateNoAudit(tx.auto)
 
   def add(h:RkHistory, shouldInc:Boolean=true) = {
-    h.create
+    h.create(tx.auto)
     if(shouldInc) inc
   }
 
@@ -78,7 +78,7 @@ case class RkHistoryFeed (
   }
 
   def delete(h:RkHistory) = {
-    h.delete
+    h.deleteNoAudit(tx.auto)
   }
 }
 
@@ -144,7 +144,7 @@ case class RacerKid(
     ROne[RkHistoryFeed]("rkId"-> _id).getOrElse {
       var h = new RkHistoryFeed(_id, 0, Some(true))
       h = h.copy(news=h.items(-1).size)
-      h.create
+      h.create(tx.auto)
       h
     }
   }
@@ -208,19 +208,19 @@ case class RacerKidAssoc(
   crDtm: DateTime = DateTime.now,
   _id: ObjectId = new ObjectId()) extends REntity[RacerKidAssoc] {
 
-  override def delete(implicit txn: Txn = tx.auto) = {
+  override def delete(implicit txn: Txn) = {
     RacerKidz.findVolByRkaId(_id.toString).foreach(_.delete)
     RacerKidz.findWikiAssocByRk(to).foreach(_.delete)
     RDelete[RacerKidAssoc](this)
   }
-  override def deleteNoAudit(implicit txn: Txn = tx.auto) = {
+  override def deleteNoAudit(implicit txn: Txn) = {
     RacerKidz.findVolByRkaId(_id.toString).foreach(_.deleteNoAudit)
     RacerKidz.findWikiAssocByRk(to).foreach(_.deleteNoAudit)
     RDelete.noAudit[RacerKidAssoc](this)
   }
 
   /** move everything off to another assoc - used when merging */
-  def moveTo(lives:RacerKidAssoc)(implicit txn: Txn = tx.auto) = {
+  def moveTo(lives:RacerKidAssoc)(implicit txn:Txn) = {
     RacerKidz.findVolByRkaId(_id.toString).foreach(_.copy(rkaId = lives._id).update)
     RDelete[RacerKidAssoc](this)
   }
@@ -356,8 +356,8 @@ object RacerKidz {
     var rk = ROne[RacerKid]("userId" -> Some(userId))
     if (rk.isEmpty) {
       val nrk = RacerKid(userId, Some(userId), None, None, Seq.empty, RK.KIND_MYSELF)
-      nrk.create
-      RacerKidAssoc(userId, nrk._id, RK.ASSOC_MYSELF, RK.ASSOC_MYSELF, userId).create
+      nrk.create(tx.auto)
+      RacerKidAssoc(userId, nrk._id, RK.ASSOC_MYSELF, RK.ASSOC_MYSELF, userId).create(tx.auto)
       rk = ROne[RacerKid]("userId" -> Some(userId))
     }
     rk.get

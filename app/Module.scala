@@ -35,7 +35,7 @@ class Module extends AbstractModule {
     mongoInit()
 
     // init after DB because it needs DB
-    Audit.impl = new RazAuditService
+    Audit.impl = new MdbAuditService
     RMongo.setInstance(Audit.impl)
 
     WikiUsers.impl = WikiUsersImpl
@@ -131,13 +131,6 @@ class Module extends AbstractModule {
         // that's it, db initialized?
         adb
       }
-
-      //    U11.upgradeWL(RazMongo.db)
-      //    U11.upgradeRaz(RazMongo.db)
-      //    U11.upgradeRk(RazMongo.db)
-      //    U11.upgradeGlacierForums(RazMongo.db)
-      //        U11.upgradeGlacierForums2()
-
 
       prep(db)
     }

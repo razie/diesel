@@ -1,13 +1,13 @@
 package controllers
 
-import admin.{Config, RazAuthService}
+import admin.{Config}
 import com.mongodb.WriteResult
 import model._
 import play.api.data.validation.{Constraint, Invalid, Valid, ValidationError}
 import play.api.mvc._
-import play.twirl.api.Html
 import razie.base.Audit
-import razie.{cdebug, Logging}
+import razie.db.Txn
+import razie.{Logging}
 import razie.wiki.model._
 import razie.wiki.Services
 
@@ -27,6 +27,8 @@ class RazController extends RazControllerBase with Logging {
 //  implicit def xxx (implicit request:RazRequest) : RequestHeader = request.ireq
   // allow calling old methods from new code
   implicit def xxx (implicit request:RazRequest) : Request[_] = request.ireq
+
+  implicit def txn (implicit request:RazRequest) : Txn = request.txn
 
   def rhRequest (implicit request:RequestHeader) = request match {
     case rr : RazRequest => rr
@@ -246,13 +248,17 @@ ${errCollector.mkString}
   /** action builder that decomposes the request, extracting user and creating a simple error buffer */
   def RAction(f: RazRequest => Result) = Action { implicit request =>
     val req = razRequest
-    f(req)
+    val temp = f(req)
+    req.txn.commit
+    temp
   }
 
   /** action builder that decomposes the request, extracting user and creating a simple error buffer */
   def RActiona(f: RazRequest => Future[Result]) = Action.async { implicit request =>
     val req = razRequest
-    f(req)
+    val temp = f(req)
+    req.txn.commit
+    temp
   }
 
   /** action builder that decomposes the request, extracting user and creating a simple error buffer */
@@ -267,6 +273,7 @@ ${errCollector.mkString}
     ) yield {
         if(msg.nonEmpty) cdebug << "START_FAU "+msg
         val temp = f(req)
+        req.txn.commit
         temp
     }
     ).flatten getOrElse {

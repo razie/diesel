@@ -15,9 +15,9 @@ function parseAndRender() {
   $("#weOutputData").html(result);
 }
 
-function refreshServer(wp) {
-  var content = $("#content").val();
-  var tags = $("#tags").val();
+function refreshServer(wp, content, tags) {
+  // var content = $("#content").val();
+  // var tags = $("#tags").val();
   $.post("/wikie/preview/"+wp, {'content' : content, 'tags' : tags}, function(data) {
     $("#weOutputData").html(data);
   })

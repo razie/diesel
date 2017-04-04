@@ -1,7 +1,6 @@
 @**************
 edit a wiki page
 **************@
-@import model.Perm
 @(wid:razie.wiki.model.WID, myForm:Form[controllers.Wikie.EditWiki], hasDraft:Boolean = false, noshow:String="")(implicit stok: controllers.StateOk)
 @import model.Website.realm
 @import razie.wiki.model.{Wikis, WID, WikiEntry}
@@ -29,7 +28,6 @@ edit a wiki page
 @varx(name:String, value:String="") = @{
 Implicit.flash().put("bibi", "haha")
 }
-
 
   @vis(s:Option[String]) = @{
     val x = WikiReactors(stok.realm).wiki.visibilityFor(wid.cat)
@@ -73,8 +71,11 @@ Implicit.flash().put("bibi", "haha")
             <div class="pull-right">
               @if(stok.au.exists(_.isMod)) {
                 <small>
-                <a href="#" onclick="showSettings()" class="btn btn-xs "><span id="showSettings" class="glyphicon glyphicon-list-alt"></span> Settings</a> |
-                <a href="#" onclick="resetView()" class="btn btn-xs "><span class="glyphicon glyphicon-th-large"></span> Layout</a>
+                <a href="#" onclick="showDsl(); return false;" class="btn btn-xs ">
+                  <input type="checkbox" xonclick="showDsl(); return false;" name="weDsl" id="weDsl" disabled>
+                  dsl</a>
+                | <a href="#" onclick="showSettings()" class="btn btn-xs "><span id="showSettings" class="glyphicon glyphicon-list-alt"></span> Settings</a>
+                | <a href="#" onclick="resetView()" class="btn btn-xs "><span class="glyphicon glyphicon-th-large"></span> Layout</a>
                 </small>
               }
               <span style="font-size: x-small">
@@ -102,7 +103,12 @@ PROBLEM: many places use label as name... via Wikis.formatName
     '_showConstraints -> false,
     'class -> "form-control col-sm-12",
     'rows->20)
-  @helper.inputText(
+
+    <span style="font-size: small" id="ace-label" style="display:none;">Content</span><br>
+    @*<textarea xstyle="display:none;" name="content" id="content" class="form-control col-sm-12" rows="20">@myForm("content").value</textarea>*@
+    <pre style="display:none;" id="acec" style="height: 200px;">@myForm("content").value<</pre>
+
+    @helper.inputText(
     myForm("tags"),
     'class -> "form-control col-sm-12",
     '_label -> "Tags (separated with ,)",
@@ -178,12 +184,28 @@ function checkDraft()  {
   if ($("#draft").val() == "Notify" && $("#visibility").val() != "Public")
     confirm("Warning: publishing with visibility not Public reduces views!");
 }
+
+//useLocalStorageCheckbox("weDsl", "weDsl", switchDsl);
+if(localStorage.getItem("weDsl") != 'undefined')
+  $('#'+"weDsl").prop('checked', localStorage.getItem("weDsl") === 'true');
+
 </script>
 
       @*********************** content assist ************************@
 
 <!-- for tags -->
 <script src="@routes.Assets.at("bootstrap-2.2.3/js/bootstrap-typeahead.js")"></script>
+
+@if(true) {
+  @*these apply for ACE*@
+<script src="@routes.Assets.at("javascripts/weDieselDom.js")"></script>
+
+<script src="@routes.Assets.at("ace-builds/src/ace.js")" type="text/javascript" charset="utf-8"></script>
+
+<script src="@routes.Assets.at("ace-builds/src/mode-nvp1.js")" type="text/javascript" charset="utf-8"></script>
+<script src="@routes.Assets.at("ace-builds/src/ext-language_tools.js")" type="text/javascript" charset="utf-8"></script>
+}
+
 <script>
 //from http://stackoverflow.com/questions/12662824/twitter-bootstrap-typeahead-multiple-values
 
@@ -241,17 +263,6 @@ function checkDraft()  {
 <script src="@routes.Assets.at("javascripts/wikiEdit.js")"></script>
 <script src="@routes.Assets.at("javascripts/rk-contentassist.js")"></script>
 
-<script>
-var dotTags = [];
-
-$('#content').textcomplete([
-  CA_TC_braTags (optsToDomain(braDomain)),
-  CA_TC_sqbraTags,
-  CA_TC_dotTags (optsToDomain(braDomain.concat(dotTags)))
- ]);
-
-</script>
-
 <div id="weForm1" class="col-sm-4" style="display: none;"></div>
 
 <div class="well col-md-12" id="weOutput">
@@ -263,7 +274,7 @@ $('#content').textcomplete([
 }
     </small>
     <div class="pull-right">
-      <a href="#" onclick="refreshServer('@wid.wpath')" class="btn btn-xs" title="Refresh preview from server"><span class="glyphicon glyphicon-refresh"></span> Refresh</a>
+      <a href="#" onclick="refreshServerNow()" class="btn btn-xs" title="Refresh preview from server"><span class="glyphicon glyphicon-refresh"></span> Refresh</a>
       </span>
     </div>
   </h2>
@@ -293,7 +304,123 @@ $('#content').textcomplete([
 <script src="@routes.Assets.at("vendor/lodash.4.12.0.min.js")"></script>
 
 <script>
+    // only applies to old style tetarea
+    var dotTags = [];
 
+    $('#content').textcomplete([
+      CA_TC_braTags (optsToDomain(braDomain)),
+      CA_TC_sqbraTags,
+      CA_TC_dotTags (optsToDomain(braDomain.concat(dotTags)))
+    ]);
+
+</script>
+
+<script>
+  // --------------------------------------- ACE specifics
+
+var domContentAssist=[];
+var instContentAssist=[];
+
+function detachAce() {
+  aceAttached = false;
+  if(aceEditor) {
+    aceEditor.destroy();
+    aceEditor.remove();
+  }
+}
+
+function attachAce() {
+  aceAttached = true;
+
+  var langTools = ace.require("ace/ext/language_tools");
+  var editor = ace.edit("acec");
+  var textarea = $('textarea[name="content"]');
+
+  editor.getSession().setValue(textarea.val());
+
+//  editor.getSession().on('change', function(){
+//    textarea.val(editor.getSession().getValue());
+//  });
+
+  @if(stok.isLight) {
+    editor.setTheme ( "ace/theme/crimson_editor" ) ;
+  } else {
+    editor.setTheme ( "ace/theme/twilight" ) ;
+  }
+  editor.getSession().setMode("ace/mode/nvp1");
+
+  editor.setOptions({
+    enableBasicAutocompletion: true,
+    enableLiveAutocomplete:  true,
+    enableLiveAutocompletion:  true
+  });
+
+
+  //var dotTags = [];
+  //
+  //$('#content').textcomplete([
+  //  CA_TC_braTags (optsToDomain(braDomain)),
+  //  CA_TC_sqbraTags,
+  //  CA_TC_dotTags (optsToDomain(braDomain.concat(dotTags)))
+  // ]);
+
+
+  //todo can't have two editors with two completers...
+  //todo I could simulate it with an IF inside instCompletions
+  var domCompleter = {
+    getCompletions: domCompl(false)
+  };
+  var instCompleter = {
+    getCompletions: domCompl(true)
+  };
+
+  // delegate the keywords to the xtext generated completer
+  var keyWordCompleter = {
+    getCompletions: function(editor, session, pos, prefix, callback) {
+        var state = editor.session.getState(pos.row);
+        var completions = [];
+
+        // raz: not interested except in DSL lines
+//        if(session.getLine(pos.row).indexOf("$") == 0) {
+          completions = session.$mode.getCompletions(state, session, pos, prefix);
+//        }
+        callback(null, completions);
+    }
+  };
+
+  //  langTools.addCompleter(instCompleter);
+  langTools.setCompleters([keyWordCompleter, instCompleter]);
+
+  editor.commands.addCommand({
+    name: "gui",
+    bindKey: {win: "Ctrl-G", mac: "Command-G"},
+    exec: codeGui
+  });
+
+  var domChanged=true;
+  var instChanged=true;
+  var captureChanged=true;
+
+  editor.getSession().on('change', function(e) {
+    instChanged=true;
+  });
+
+  setInterval(function(){
+    if(instChanged) {
+      instChanged=false;
+      livePreview();
+    }
+  },500);
+
+  aceEditor = editor;
+  }
+
+$(window).load (function() {
+//  $("ace_editor").css("height", "400px");
+});
+</script>
+
+<script>
 @if(hasDraft) {
   $("#floppy").css("color", "green");
 }
@@ -305,8 +432,6 @@ $("#bigOne").css("min-height", $("#weForm").height());
 function submitPlease() {
   $("form").submit();
 }
-
-
 
 useLocalStorageCheckbox("weLive", "weLive");
 @if(stok.au.exists(_.isMod)) {
@@ -321,9 +446,16 @@ var saveDraftDebounced = _.debounce(saveDraft, 2000, { maxWait: 5000 });
 
 $("#content").change(livePreview);
 
+function refreshServerNow() {
+  var content = aceAttached ? editor.getSession().getValue() : $("#content").val();
+  var tags = $("#tags").val();
+
+  refreshServer('@wid.wpath', content, tags);
+}
+
 /** update the preview */
 function livePreview() {
-  var content = $("#content").val();
+  var content = aceAttached ? aceEditor.getSession().getValue() : $("#content").val();
   var tags = $("#tags").val();
 
   if($('#weLive').prop('checked')) {
@@ -333,7 +465,7 @@ function livePreview() {
       ) parseAndRender();
     else {
       $("#rtrip").text("(from server)");
-      refreshServer('@wid.wpath');
+      refreshServer('@wid.wpath', content, tags);
     }
   }
 
@@ -342,7 +474,7 @@ function livePreview() {
 
 /** save the draft on the backend */
 function saveDraft() {
-  var content = $("#content").val();
+  var content = aceAttached ? aceEditor.getSession().getValue() : $("#content").val();
   var tags = $("#tags").val();
 
   $.ajax(
@@ -399,8 +531,12 @@ if(window.localStorage.getItem("weEditLayout") != null) {
 setView ("12", currentLayout);
 
 function setTextAreaHeight() {
-  var curOthers = $("#weForm9" ).height() - textarea.height();
-  textarea.height(window.innerHeight-curOthers-120);
+  var textHeight = aceAttached ? $("#acec").height() : textarea.height();
+  var curOthers = $("#weForm9" ).height() - textHeight;
+  if(aceAttached)
+    $("#acec").height(window.innerHeight-curOthers-120);
+  else
+    textarea.height(window.innerHeight-curOthers-120);
 }
 
 function setView(currentLayout, newLayout) {
@@ -459,11 +595,44 @@ function showSettings() {
     $("#weSettings"  ).css("position", "relative");
   } else {
     $("#weSettings"  ).css("position", "fixed");
-//    $("#weSettings"  ).css("background-color", "black");
     $("#weSettings").show();
   }
 }
 
+var aceAttached = false; // true in ACE mode
+var aceEditor;    // set only when attached
+
+// toggle dsl
+function showDsl() {
+  if($('#weDsl').prop('checked')) {
+    $('#weDsl').prop('checked', false);
+  } else {
+    $('#weDsl').prop('checked', true);
+  }
+
+  localStorage.setItem('weDsl', $('#weDsl').prop('checked'));
+
+  switchDsl();
+}
+
+// toggle dsl
+function switchDsl(a,b,state) {
+  if($('#weDsl').prop('checked')) {
+    // show ACE
+    $("#content").hide();
+    $("#content_field").hide();
+    $("#acec").show();
+    $("#ace-label").show();
+    if(! aceAttached) attachAce();
+  } else {
+    // hide ACE
+    $("#ace-label").hide();
+    $("#acec").hide();
+    $("#content_field").show();
+    $("#content").show();
+  }
+  setTextAreaHeight();
+}
 
 var layouts = ["12", "6", "9"];
 
@@ -505,6 +674,8 @@ $(document).ready(function() {
     }
   });
 });
+
+switchDsl();
 
 </script>
 

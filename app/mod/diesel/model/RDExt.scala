@@ -6,20 +6,21 @@
  */
 package mod.diesel.model
 
-import java.net.URI
+import java.io.{BufferedReader, IOException, InputStreamReader, PrintWriter}
+import java.net.{Socket, URI}
 import java.util.regex.Pattern
 
 import com.razie.pub.comms.Comms
 import controllers.Wikil
-import mod.diesel.controllers.{DieselMsgString, SFiddles, DieselControl}
+import mod.diesel.controllers.{DieselControl, DieselMsgString, SFiddles}
 import model.Users
 import razie.db.RazSalatContext._
 import razie.db._
 import com.mongodb.casbah.Imports._
 import com.mongodb.DBObject
 import com.novus.salat._
+import mod.diesel.model.RDExt.{EError, EInfo}
 import org.joda.time.DateTime
-
 import razie.diesel.dom._
 import razie.diesel.dom.RDOM._
 import razie.diesel.ext._
@@ -30,38 +31,119 @@ import razie.{clog, js}
 import scala.Option.option2Iterable
 import scala.collection.mutable
 import scala.collection.mutable.{HashMap, ListBuffer}
-
 import razie.Snakk
 import razie.SnakkUrl
+import razie.xp.{JsonOWrapper, JsonWrapper}
+import sun.misc.Regexp
 
 import scala.util.Try
 
-case class SnakCall (method:String, url:String, headers:Map[String,String], content:String) {
+/** accumulate results and infos and errors */
+class InfoAccumulator (var eres : List[Any] = Nil) {
+  def += (x:Any) = append(x)
+  def append (x:Any) = {
+    x match {
+      case l : List[_] => eres = eres ::: l
+      case _ => eres = eres ::: x :: Nil
+    }
+    eres
+  }
+}
+
+/** a single snakk call to make
+  * @param protocol http, telnet
+  * */
+case class SnakCall (protocol:String, method:String, url:String, headers:Map[String,String], content:String) {
   def toJson = grater[SnakCall].toPrettyJSON(this)
   var isurl : SnakkUrl = null
   def setUrl(u:SnakkUrl) = {isurl = u}
 
-  var ibody : Option[String] = None
+  def postContent = if(content != null && content.length > 0) Some(content) else None
 
-  def body = ibody.getOrElse{
-    val x = Snakk.body(isurl)
-    ibody = Some(x)
-    x
+  var ibody : Option[String] = None
+  var iContentType : Option[String] = None
+
+  def body = ibody.getOrElse {
+    val conn = Snakk.conn(isurl, postContent)
+    val is = conn.getInputStream()
+    iContentType = Some(conn.getHeaderField("Content-Type"))
+    ibody = Some(Comms.readStream(is))
+    ibody.get
   }
 
   /** xp root for either xml or json body */
-  def root = {
-    val conn = Snakk.conn(isurl)
-    val is = conn.getInputStream()
-    ibody = Option(Comms.readStream(is))
-
-    val x = conn.getHeaderField("Content-Type")
-    conn.getHeaderField("Content-Type") match {
-      case "application/xml" => Snakk.xml(ibody.getOrElse(""))
-      case "application/json" => Snakk.json(ibody.getOrElse(""))
-      case x@_ => throw new IllegalStateException ("unknown content-type: "+x)
+  def root : Option[Snakk.Wrapper[_]]  = {
+    val b = body
+    iContentType match {
+      case Some("application/xml") => Some(Snakk.xml(b))
+      case Some("application/json") => Some(Snakk.json(b))
+      case x@_ => {
+//        throw new IllegalStateException ("unknown content-type: "+x)
+        None
+      }
     }
   }
+
+  def telnet (hostname:String, port:String, send:Option[String], info:Option[InfoAccumulator]) : String = {
+    var res = ""
+    try {
+      val pingSocket = new Socket(hostname, port.toInt);
+      pingSocket.setSoTimeout(3000) // 1 sec
+      val out = new PrintWriter(pingSocket.getOutputStream(), true);
+      val ins = pingSocket.getInputStream();
+
+//      out println "GET / HTTP/1.1"
+//      out println "GET /diesel/test/plus/a/b HTTP/1.1"
+//      out println ""
+      send.toList.flatMap(_.lines.toList) map { outs=>
+        out.println(outs)
+        info map(_ += EInfo("telnet Sent line: "+outs))
+      }
+
+      val inp = new BufferedReader(new InputStreamReader(pingSocket.getInputStream()));
+
+      import scala.collection.JavaConverters._
+//      for(x <- inp.lines.iterator().asScala)
+//        res = res + x
+//      val res = inp.readLine()
+
+//      res = inp.readLine()
+//      res = res + Comms.readStream(ins)
+
+      try
+      {
+        val buff = new Array[Byte](1024);
+      var ret_read = 0;
+
+      do
+      {
+        ret_read = ins.read(buff);
+        if(ret_read > 0)
+        {
+          res = res + new String(buff, 0, ret_read)
+//          System.out.print(new String(buff, 0, ret_read));
+        }
+      }
+      while (ret_read >= 0);
+      }
+
+      ibody = Some(res)
+      iContentType = Some("application/text")
+
+      out.close();
+      ins.close();
+      pingSocket.close();
+
+      res
+    } catch {
+      case e : Throwable => {
+        info map(_ += EError("telnet Exception:"+ e.toString))
+        ibody = Some(res)
+        return res;
+      }
+    }
+  }
+
 }
 
 /** RDOM extensions */
@@ -91,11 +173,12 @@ object RDExt {
           parms("attrs"),
           parms("ret"),
           s("stype")
-        )
+        ).withPos(if(o.contains("pos")) Some(new EPos(o("pos").asInstanceOf[Map[String, Any]])) else None)
 
         case "EVal" => EVal (P(
           s("name"), "", "", "", s("value")
-        ))
+        )).withPos(if(o.contains("pos")) Some(new EPos(o("pos").asInstanceOf[Map[String, Any]])) else None)
+
         case "DomAst" => {
           val c = l("children").collect {
             case m:Map[String, Any] => fromj(m).asInstanceOf[DomAst]
@@ -179,6 +262,8 @@ object RDExt {
     }
 
     override def toString = "$executor::wiki "
+    override val messages : List[EMsg] =
+      EMsg("", "wiki", "follow", Nil) :: Nil
   }
 
   // the context persistence commands
@@ -216,10 +301,33 @@ object RDExt {
           //          contexts.put(ctx("kind") + ctx("id"), ctx.root) // should I save this one?
           Nil
         }
+        case "echo" => {
+          in.attrs.map {a=>
+            new EVal(a.name, a.dflt) // todo calc exprs
+          }
+        }
+        case "sleep" => {
+          val d = in.attrs.find(_.name == "duration").map(_.dflt.toInt).getOrElse(1000)
+          Thread.sleep(d)
+          new EInfo("ctx.sleep - slept "+d) :: Nil
+        }
+        case "timer" => {
+          val d = in.attrs.find(_.name == "duration").map(_.dflt.toInt).getOrElse(1000)
+          val m = in.attrs.find(_.name == "msg").map(_.dflt).getOrElse("$msg ctx.echo (msg=\"timer without message\")")
+          DieselAppContext.router.map(_ ! DEStartTimer("x",d,Nil))
+          new EInfo("ctx.timer - start "+d) :: Nil
+        }
       }
     }
 
     override def toString = "$executor::ctx "
+
+    override val messages : List[EMsg] =
+      EMsg("", "ctx", "persisted", Nil) ::
+      EMsg("", "ctx", "log", Nil) ::
+      EMsg("", "ctx", "echo", Nil) ::
+      EMsg("", "ctx", "test", Nil) ::
+      EMsg("", "ctx", "clear", Nil) :: Nil
   }
 
   // the context persistence commands
@@ -274,8 +382,12 @@ object RDExt {
 
   /** some error, with a message and details */
   case class EError (msg:String, details:String="") extends CanHtml {
-    override def toHtml = span("$error::", "danger", details) + " " + msg
-    override def toString = "$error::"+msg
+    override def toHtml =
+    if(details.length > 0)
+      span("error::", "danger", details, "style=\"cursor:help\"") + " " + msg
+    else
+      span("error::", "danger", details) + " " + msg
+    override def toString = "error::"+msg
   }
 
   /** a simple info node with a message and details - details are displayed as a popup */
@@ -283,7 +395,11 @@ object RDExt {
     var pos : Option[EPos] = None
     def withPos(p:Option[EPos]) = {this.pos = p; this}
 
-    override def toHtml = span("info::", "info", details) + " " + msg
+    override def toHtml =
+      if(details.length > 0)
+        span("info::", "info", details, "style=\"cursor:help\"") + " " + msg
+      else
+        span("info::", "info", details) + " " + msg
     override def toString = "info::"+msg
   }
 
@@ -302,16 +418,133 @@ object RDExt {
          => x
     }.headOption)
 
+  /** a REST request or response: content and type */
+  class EEContent (val body:String, val ctype:String, val iroot:Option[Snakk.Wrapper[_]] = None) {
+    def isXml = "application/xml" == ctype
+    def isJson = "application/json" == ctype
+
+    import razie.Snakk._
+
+    /** xp root for either xml or json body */
+    lazy val root:Snakk.Wrapper[_] = iroot getOrElse {
+      ctype match {
+        case "application/xml" => Snakk.xml(body)
+        case "application/json" => Snakk.json(body)
+        case x@_ => Snakk.json("")
+        //throw new IllegalStateException ("unknown content-type: "+x)
+      }
+    }
+
+    lazy val hasValues = root \ "values"
+    lazy val r = if(hasValues.size > 0) hasValues else root
+
+    // todo not optimal
+    def exists(f: scala.Function1[P, scala.Boolean]): scala.Boolean = {
+      val x = (r \ "*").nodes collect {
+         case j : JsonOWrapper => {
+           razie.MOLD(j.j.keys).map(_.toString).map {n=>
+             P(n, "", "", "", r \ "*" \@@ n)
+           }
+        }
+      }
+      x.flatten.exists(f)
+    }
+
+    // todo don't like this
+    def get(name:String) : Option[String]  = {
+      (r \@@ name).toOption
+    }
+
+    /** name, default, expr */
+    def ex(n:String, d:String, e:String)  = {
+      if (e.isEmpty)
+        (n, (r \@@ n OR d).toString)
+      else if (e.startsWith("/") && e.endsWith("/")) // regex
+        (n, e.substring(1, e.length - 1).r.findFirstIn(body).mkString)
+      else
+        (n, (r \@@ e OR d).toString)
+    }
+
+    /** extract the values and expressions from a response
+      *
+      * @param temp a list of name/expression
+      * @param spec a list of name/default/expression
+      * @param regex an optional regex with named groups
+      */
+    def extract (temp:Map[String,String], spec:Seq[(String,String, String)], regex:Option[String]) = {
+
+      if(regex.isDefined) {
+        val rex =
+          if (regex.get.startsWith("/") && regex.get.endsWith("/"))
+            regex.get.substring(1, regex.get.length - 1)
+          else regex.get
+
+        val jrex = Pattern.compile(rex).matcher(body)
+        //          val hasit = jrex.find()
+        if(jrex.find())
+          (
+            for(g <- spec)
+              yield (
+                g._1,
+                Try {
+                  jrex.group(g._1)
+                }.getOrElse(g._2)
+              )
+            ).toList
+        else Nil
+      } else if(temp.nonEmpty) {
+        val strs = temp.map { t =>
+          ex(t._1, "", t._2)
+        }
+        strs.toList
+      } else if(spec.nonEmpty) {
+        // main case
+        spec.map(t=>ex(t._1, t._2, t._3)).toList
+      } else {
+        // last ditch attempt to discover some values
+
+        //          (
+        //            if(ret.nonEmpty) ret else List(new P("result", ""))
+        //            ).map(p => p.copy(dflt = res \ "values" \@@ p.name)).map(x => EVal(x))
+        val res = jsonParsed(body)
+        val a = res.getJSONObject("values")
+        val strs = if(a.names == null) List.empty else (
+          for (k <- 0 until a.names.length())
+            yield (a.names.get(k).toString, a.getString(a.names.get(k).toString))
+          ).toList
+        strs.toList
+      }
+    }
+
+  }
+
   /** snakk REST APIs */
   object EESnakk extends EExecutor("snakk") {
+
     /** can I execute this task? */
     override def test(m: EMsg, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) = {
-      m.stype == "GET" || m.stype == "POST" || m.stype=="TELNET" ||
-        spec(m).exists(m=> m.stype == "GET" || m.stype == "POST" || m.stype=="TELNET" ||
+      (m.stype contains "GET") || (m.stype contains "POST") || (m.stype contains "TELNET") ||
+        spec(m).exists(m=>
+          (m.stype contains "GET") || (m.stype contains "POST") || (m.stype contains "TELNET") ||
         ctx.findTemplate(m.entity+"."+m.met).isDefined)
     }
 
+    /** prepare the template content - expand $parm expressions */
+    private def prepStr (url:String, attrs: Attrs) = {
+      //todo add expressions like ${...}
+      val PATT = """(\$\w+)*""".r
+      val u = PATT.replaceSomeIn(url, { m =>
+        val n = if(m.matched.length > 0) m.matched.substring(1) else ""
+        attrs.find(_.name == n).map(x=>
+          stripQuotes(x.dflt)
+        )
+      })
+      u
+    }
+
+    /** prepare the URL - expand $parm expressions */
     private def prepUrl (url:String, attrs: Attrs) = {
+      //todo add expressions like ${...}
       val PATT = """(\$\w+)*""".r
       val u = PATT.replaceSomeIn(url, { m =>
         val n = if(m.matched.length > 0) m.matched.substring(1) else ""
@@ -326,6 +559,7 @@ object RDExt {
     /** execute the task then */
     override def apply(in: EMsg, destSpec: Option[EMsg])(implicit ctx: ECtx): List[Any] = {
       val template = ctx.findTemplate(in.entity+"."+in.met)
+
       val tcontent = template.map(_.content).map{content=>
         // todo either this or prepUrl not both
         val PAT = """\$\{([^\}]*)\}""".r
@@ -337,184 +571,148 @@ object RDExt {
 
       import razie.Snakk._
 
-      def extract (response:String, kind:String, root:Snakk.Wrapper[_], temp:Seq[(String,String)], spec:Seq[(String,String, String)], regex:Option[String]) = {
-        val hasValues = root \ "values"
-        val r = if(hasValues.size > 0) hasValues else root
+      var eres = new InfoAccumulator()
+      var response = "" // actual textual response
+      var urlx = "?" // url, filled later for error rep
 
-        def ex(n:String, d:String, e:String)  = {
-          if (e.isEmpty)
-            (n, (r \@@ n OR d).toString)
-          else if (e.startsWith("/") && e.endsWith("/")) // regex
-            (n, e.substring(1, e.length - 1).r.findFirstIn(response).mkString)
-          else
-            (n, (r \@@ e OR d).toString)
-        }
+      try {
 
-        if(regex.isDefined) {
-          val rex =
-            if (regex.get.startsWith("/") && regex.get.endsWith("/"))
-              regex.get.substring(1, regex.get.length - 1)
-          else regex.get
+        // 1. prepare the request
+        tcontent.map(parseTemplate(template, _, in.attrs)).map { sc =>
+          val newurl = if (sc.url startsWith "/") "http://" + ctx.hostname.mkString + sc.url else sc.url
+          // with templates
 
-          val jrex = Pattern.compile(rex).matcher(response)
-//          val hasit = jrex.find()
-          if(jrex.find())
-          (
-            for(g <- spec)
-              yield (
-                g._1,
-                Try {
-                  jrex.group(g._1)
-                }.getOrElse(g._2)
-                )
-          ).toList
-          else Nil
-        } else if(temp.nonEmpty) {
-          val strs = temp.map { t =>
-            ex(t._1, "", t._2)
+          val content =
+          if(template.flatMap(_.parms.get("protocol")).exists(_ == "telnet")) {
+            // telnet
+            eres += EInfo("Snakking TELNET ", Enc.escapeHtml(sc.toJson)).withPos(Some(template.get.pos))
+//            response = sc.body // make the call
+            val REX = """([.\w]+)[:/ ](\w+).*""".r
+            val REX(host,port) = newurl
+            response = sc.telnet(host, port, sc.postContent, Some(eres))
+            eres += EInfo("Response", Enc.escapeHtml(response))
+            val content = new EEContent(response, sc.iContentType.getOrElse(""), None)
+            content
+          } else {
+            // http
+            val x = url(
+              prepUrl(stripQuotes(newurl),
+                P("subject", "", "", "", in.entity) ::
+                  P("verb", "", "", "", in.met) :: in.attrs),
+              //            in.attrs.filter(_.name != "url").map(p=>(p.name -> p.dflt)).toMap,
+              (
+                sc.headers ++ {
+                  ctx.curNode.map(node =>
+                    ("dieselNodeId" -> node.id)).toList ++
+                    ctx.root.asInstanceOf[DomEngECtx].settings.userId.map(x =>
+                      ("dieselUserId" -> x)).toList ++
+                    ctx.root.asInstanceOf[DomEngECtx].settings.configTag.map(x =>
+                      ("dieselConfigTag" -> x)).toList
+                }.toMap
+                ),
+              sc.method
+            )
+
+            urlx = x.toString
+            sc.setUrl(x)
+
+            eres += EInfo("Snakking " + x.url, Enc.escapeHtml(sc.toJson)).withPos(Some(template.get.pos))
+            response = sc.body // make the call
+            eres += EInfo("Response", Enc.escapeHtml(response))
+            val content = new EEContent(response, sc.iContentType.getOrElse(""), sc.root)
+            content
           }
-          strs.toList
-        } else if(spec.nonEmpty) {
-          spec.map(t=>ex(t._1, t._2, t._3)).toList
-        } else {
-          //          (
-          //            if(ret.nonEmpty) ret else List(new P("result", ""))
-          //            ).map(p => p.copy(dflt = res \ "values" \@@ p.name)).map(x => EVal(x))
-          val res = jsonParsed(response)
-          val a = res.getJSONObject("values")
-          val strs = if(a.names == null) List.empty else (
-            for (k <- 0 until a.names.length())
-              yield (a.names.get(k).toString, a.getString(a.names.get(k).toString))
-            ).toList
-          strs.toList
-        }
-      }
 
-      // 1. prepare the request
-      tcontent.map(parseTemplate).map {sc=>
-        val newurl = if(sc.url startsWith "/") "http://" + ctx.hostname.mkString+sc.url else sc.url
-        // with templates
-        val x = url(
-          prepUrl(stripQuotes(newurl),
-            P("subject", "", "", "", in.entity) ::
-            P("verb", "", "", "", in.met) :: in.attrs),
-          //            in.attrs.filter(_.name != "url").map(p=>(p.name -> p.dflt)).toMap,
-          (
-            sc.headers ++
-              {
-                ctx.curNode.map(node=>
-                  ("dieselNodeId" -> node.id) ).toList ++
-                ctx.root.asInstanceOf[DomEngECtx].settings.userId.map(x=>
-                  ("dieselUserId" -> x) ).toList ++
-                ctx.root.asInstanceOf[DomEngECtx].settings.configTag.map(x=>
-                  ("dieselConfigTag" -> x) ).toList
-              }.toMap
-          ),
-        sc.method
-        )
+          // does the template have return parm specs?
+          val temp = template.get.parms
 
-        sc.setUrl(x)
-
-        var eres : List[Any] = Nil
-        eres = eres ::: EInfo("Snakking "+x.url, Enc.escapeHtml(sc.toJson)).withPos(Some(template.get.pos)) :: Nil
-        var response = ""
-
-        try {
-          val root = sc.root
-          response = sc.body //body(x)
-          eres = eres ::: EInfo("Response" , Enc.escapeHtml(response)) :: Nil
-
-            // message specified return mappings
-          val ret = if(in.ret.nonEmpty) in.ret else spec(in).toList.flatMap(_.ret)
-
-          // 2. find ret spec
-//          val xtemp = template.get.parms.split(",").map(s=>s.split("="))//.map(a=> (a(0), a(1)))
-          val temp =
-            if(template.get.parms.trim.length > 0)
-              template.get.parms.split(",").map(s=>s.split("=")).map(a=> (a(0), a(1)))
-            else Array.empty[(String,String)]
-
-          val x = if(in.ret.nonEmpty) in.ret else spec(in).toList.flatMap(_.ret)
-          val specs = x.map(p=>(p.name, p.dflt, p.expr.mkString))
+          // message specified return mappings, if any
+          val retSpec = if (in.ret.nonEmpty) in.ret else spec(in).toList.flatMap(_.ret)
+          // collect any parm specs
+          val specs = retSpec.map(p => (p.name, p.dflt, p.expr.mkString))
           val regex = temp.find(_._1 == "regex").map(_._2).orElse(specs.find(_._1 == "regex").map(_._3))
 
           // 2. extract values
-          val strs = extract(response, "json", root, temp, specs, regex)
+          val strs = content.extract(temp, specs, regex)
 
-          val pos = (template.map(_.pos)).orElse (spec(in).flatMap(_.pos))
+          val pos = (template.map(_.pos)).orElse(spec(in).flatMap(_.pos))
           // add the resulting values
-          eres = eres ::: strs.map(t=> new P(t._1, t._2)).map{x =>
+          eres += strs.map(t => new P(t._1, t._2)).map { x =>
             ctx.put(x)
             EVal(x).withPos(pos)
           }
 
           // 3. look for stiching dieselTrace
-          val mres = js.parse(response)
-          if(mres.contains("dieselTrace")) {
-            val trace = DieselJsonFactory.trace(mres("dieselTrace").asInstanceOf[Map[String,Any]])
-            eres = eres ::: trace :: Nil
+          if (content.isJson) {
+            val mres = js.parse(response)
+            if (mres.contains("dieselTrace")) {
+              val trace = DieselJsonFactory.trace(mres("dieselTrace").asInstanceOf[Map[String, Any]])
+              eres += trace
+            }
           }
 
-          eres
-        } catch {
-          case t: Throwable => {
-            razie.Log.log("error snakking", t)
-            eres ::: EError("Error snakking: " + x, t.toString) ::
-            EError("Exception : " + t.toString) ::
-            EError("Response: ", response) :: Nil
-          }
-        }
-      } getOrElse {
-        // old way without templates
-        in.attrs.find(_.name == "url").orElse(
-          spec(in).flatMap(_.attrs.find(_.name == "url"))
-        ).map { u =>
-          val sc = new SnakCall(in.arch, u.dflt, Map.empty, "")
-//          case class SnakCall (method:String, url:String, headers:Map[String,String], content:String) {
-          val x = url(
-            prepUrl(stripQuotes(u.dflt),
-              P("subject", "", "", "", in.entity) ::
-                P("verb", "", "", "", in.met) :: in.attrs)
-            //            in.attrs.filter(_.name != "url").map(p=>(p.name -> p.dflt)).toMap,
-            //            stype))
-          )
+          eres.eres
+        } getOrElse {
+          // no template or tcontent => old way without templates
+          in.attrs.find(_.name == "url").orElse(
+            spec(in).flatMap(_.attrs.find(_.name == "url"))
+          ).map { u =>
+            val sc = new SnakCall("http", in.arch, u.dflt, Map.empty, "")
+            //          case class SnakCall (method:String, url:String, headers:Map[String,String], content:String) {
+            val ux = url(
+              prepUrl(stripQuotes(u.dflt),
+                P("subject", "", "", "", in.entity) ::
+                  P("verb", "", "", "", in.met) :: in.attrs)
+              //            in.attrs.filter(_.name != "url").map(p=>(p.name -> p.dflt)).toMap,
+              //            stype))
+            )
 
-          sc.setUrl(x)
+            urlx = ux.toString
+            sc.setUrl(ux)
 
-          var eres : List[Any] = Nil
-          eres = eres ::: EInfo("Snakking "+x.url, Enc.escapeHtml(sc.toJson)).withPos(spec(in).flatMap(_.pos)) :: Nil
+            eres += EInfo("Snakking " + ux.url, Enc.escapeHtml(sc.toJson)).withPos(spec(in).flatMap(_.pos))
 
-          try {
-            val root = sc.root
-            val response = sc.body //body(x)
-            eres = eres ::: EInfo("Response" , Enc.escapeHtml(response)) :: Nil
+            val content = {
+              if (sc.method == "open") {
+                val response = sc.telnet("localhost", "9000", sc.postContent, Some(eres))
+                new EEContent(sc.body, "application/text", None)
+              } else {
+                val response = sc.body
+                eres += EInfo("Response", Enc.escapeHtml(response))
+
+                new EEContent(sc.body, sc.iContentType.getOrElse(""), sc.root)
+              }
+            }
 
             // 2. extract values
             val specxxx = spec(in)
-            val x = if(in.ret.nonEmpty) in.ret else spec(in).toList.flatMap(_.ret)
-            val specs = x.map(p=>(p.name, p.dflt, p.expr.mkString))
+            val x = if (in.ret.nonEmpty) in.ret else spec(in).toList.flatMap(_.ret)
+            val specs = x.map(p => (p.name, p.dflt, p.expr.mkString))
             val regex = specs.find(_._1 == "regex") map (_._2)
-            val strs = extract(response, "json", root, Seq.empty, specs, regex)
+            val strs = content.extract(Map.empty, specs, regex)
 
-            val pos = (template.map(_.pos)).orElse (spec(in).flatMap(_.pos))
+            val pos = (template.map(_.pos)).orElse(spec(in).flatMap(_.pos))
             // add the resulting values
-            strs.map(t=> new P(t._1, t._2)).map{x =>
+            strs.map(t => new P(t._1, t._2)).map { x =>
               ctx.put(x)
               EVal(x).withPos(pos)
             }
-          } catch {
-            case t: Throwable => {
-              razie.Log.log("error snakking", t)
-              eres ::: EError("Error snakking: " + u, t.toString) ::
-              EError("Exception : " + t.toString) :: Nil
-            }
-          }
-        } getOrElse EError("no url attribute for RESTification ") :: Nil
+          } getOrElse
+            EError("no url attribute for RESTification ") :: Nil
+        }
+      } catch {
+        case t: Throwable => {
+          razie.Log.log("error snakking", t)
+          eres += EError("Error snakking: " + urlx, t.toString) ::
+            EError("Exception : " + t.toString) ::
+            EError("Response: ", response) :: Nil
+        }
       }
     }
 
-    /**
-     * {{template rest.create}}
+    /** parse a template into a SNakkCall
+      *
+{{template rest.create}}
 POST /diesel/fiddle/react/rest/mcreate?name=$name&address=$address&resultMode=json
 sso_token : joe 123456
 content-type: media
@@ -528,7 +726,23 @@ content-type: media
      * @param is
      * @return
      */
-    def parseTemplate (is:String) = {
+    def parseTemplate (t:Option[DTemplate], is:String, attrs: Attrs) = {
+      if(t.flatMap(_.parms.get("protocol")).exists(_ == "telnet"))
+        parseTelnetTemplate(t, is, attrs)
+      else parseHttpTemplate(t, is, attrs)
+    }
+
+    def parseTelnetTemplate (t:Option[DTemplate], is:String, attrs: Attrs) = {
+      // templates start with a \n
+      val s = if(is startsWith "\n") is.substring(1) else is
+      val lines = s.lines
+      val REX = """(\w+) ([.\w]+)[:/ ](\w+).*""".r
+      val REX(verb,host,port) = lines.take(1).next
+      val content = lines.mkString("\n")
+      new SnakCall ("telnet", "telnet", s"$host:$port", Map.empty, prepStr(content, attrs).replaceFirst("(?s)\n\r?$", ""))
+    }
+
+    def parseHttpTemplate (template:Option[DTemplate], is:String, attrs: Attrs) = {
 //      val regex = """(?s)(GET|POST) ([^\n]+)\n(([^\n]+\n)*)?(.+)?""".r
 //      val regex (method, url, headers, content) = s
 
@@ -536,12 +750,13 @@ content-type: media
       val s = if(is startsWith "\n") is.substring(1) else is
       val verb = s.split(" ").head
       val url = s.split(" ").tail.head.replaceFirst("\n.*", "")
-      val headers = if(s contains "\n\n") s.replaceFirst("(?s)\n\n.*", "").lines.drop(1).mkString("\n") else ""
-      val content = if(s contains "\n\n") s.replaceFirst("(?s).*\n\n", "") else ""
-      val hattr = headers.lines.map(_.split(":", 2)).collect{
+      val headers = if(s matches "(?s).*\n\r?\n\r?.*") s.replaceFirst("(?s)\n\r?\n\r?.*", "").lines.drop(1).mkString("\n") else ""
+      var content = if(s matches "(?s).*\n\r?\n\r?.*") s.replaceFirst("(?s).*\n\r?\n\r?", "") else ""
+      if(content endsWith("\n")) content = content.substring(0, content.length-1)
+      val hattr = prepStr(headers, attrs).lines.map(_.split(":", 2)).collect{
         case a if a.size == 2 => (a(0).trim, a(1).trim)
       }.toSeq.toMap
-      new SnakCall (verb, url, hattr, content.replaceFirst("(?s)\n$", ""))
+      new SnakCall ("http", verb, url, hattr, prepStr(content, attrs).replaceFirst("(?s)\n\r?$", ""))
     }
 
     override def toString = "$executor::snakk "
@@ -561,7 +776,6 @@ content-type: media
     def toHtml = EMsg("", e, a ,Nil).withPos(pos).toHtmlInPage
   }
 
-  /** simple json for content assist */
   def summarize(d: RDomain) = {
     val msgs  = new ListBuffer[MsgCol]
     val attrs = new ListBuffer[PCol]
@@ -601,10 +815,12 @@ content-type: media
           }
           case n: ERule => {
             collectMsg(n.e.asMsg.withPos(n.pos))
-            collectMsg(n.i.asMsg.withPos(n.pos))
+            n.i.map {x=>
+              collectMsg(x.asMsg.withPos(n.pos))
+            }
           }
           case n: EMock => {
-            collectMsg(n.rule.e.asMsg.withPos(n.pos), n.rule.i.attrs)
+            collectMsg(n.rule.e.asMsg.withPos(n.pos), n.rule.i.flatMap(_.attrs))
           }
           case n: ExpectM => collectMsg(n.m.asMsg.withPos(n.pos))
         })
@@ -638,13 +854,18 @@ content-type: media
       l.map(p=>collect(p.name, "", "attr"))
     }
 
+    // add known executors
+    Executors.all.flatMap(_.messages).map(m=> collect(m.entity, m.met))
+
     Map(
       "msg" -> {
         d.moreElements.collect({
           case n: EMsg => collect(n.entity, n.met)
           case n: ERule => {
             collect(n.e.cls, n.e.met)
-            collect(n.i.cls, n.i.met)
+            n.i.map {x=>
+              collect(x.cls, x.met)
+            }
           }
           case n: EMock => collect(n.rule.e.cls, n.rule.e.met)
           case n: ExpectM => collect(n.m.cls, n.m.met)
@@ -656,11 +877,15 @@ content-type: media
           case n: EMsg => collectP(n.attrs)
           case n: ERule => {
             collectPM(n.e.attrs)
-            collectP(n.i.attrs)
+            n.i.map { x =>
+              collectP(x.attrs)
+            }
           }
           case n: EMock => collectPM(n.rule.e.attrs)
           case n: ExpectM => collectPM(n.m.attrs)
         })
+
+        // return collected
         visited.filter(_._1 == "attr").toList.map(t => t._2)
       }
     )

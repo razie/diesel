@@ -6,7 +6,7 @@ import model.{UserId, Users}
 import org.bson.types.ObjectId
 import org.joda.time.DateTime
 import razie.base.Audit
-import razie.db.{REntity, RMany, ROne}
+import razie.db._
 import razie.wiki.model.{UWID, WID}
 
 import scala.util.Try
@@ -30,7 +30,7 @@ case class Acct
 
   def loadBalance = Acct.findById(_id).get.balance
 
-  def add (t:AcctTxn) = {
+  def add (t:AcctTxn)(implicit txn:Txn) = {
     val a = this.copy(balance = balance + t.amount, lastTxnId = Some(t._id))
     Audit.logdb("BILLING", t.what.toUpperCase, "Balance = "+a.balance, t)
     t.create
@@ -79,7 +79,7 @@ object Acct {
     Club(clubWid).map { club=>
       ROne[Acct]("userId" -> userId, "clubWid" -> club.uwid.grated).getOrElse {
           val c = Acct(Users.nameOf(userId), userId, None, clubWid.uwid.get)
-          c.create
+          c.create(tx.auto)
           c
       }
     }

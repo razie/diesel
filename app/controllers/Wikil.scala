@@ -110,10 +110,9 @@ object Wikil extends WikieBase {
       noPerm(wid, "UNLINKUSER")
   }
 
-  def unlinkAll(wid: WID, really: String = "n") = Action { implicit request =>
-    implicit val errCollector = new VErrors()
-    (for (
-      au <- activeUser; // either club, clubAdmin or god
+  def unlinkAll(wid: WID, really: String = "n") = FAUR("unlink.user") { implicit request =>
+    val au = request.au.get
+    for (
       uwid <- wid.uwid orErr ("can't find uwid");
       page <- wid.page orErr ("Cannot link to " + wid.name);
       owner <- page.owner orErr ("Cannot link to " + wid.name);
@@ -136,15 +135,13 @@ object Wikil extends WikieBase {
         cleanAuth()
         Msg2(s"UNlinked $count users", Some(page.wid.urlRelative))
       }
-    }) getOrElse
-      noPerm(wid, "UNLINKUSER")
+    }
   }
 
   /** user 'likes' page - link the current user to the page */
-  def linkAll(wid: WID, really: String = "n") = Action { implicit request =>
-    implicit val errCollector = new VErrors()
+  def linkAll(wid: WID, really: String = "n") = FAUR { implicit request =>
+    val au = request.au.get
     (for (
-      au <- activeUser; // either club, clubAdmin or god
       hasuwid <- wid.uwid.isDefined orErr ("can't find uwid");
       uwid <- wid.uwid;
       page <- wid.page orErr ("Cannot link to " + wid.name);
@@ -258,9 +255,7 @@ object Wikil extends WikieBase {
   }
 
   /** clicked confirm in the email -> so follow */
-  def linkFollower3(expiry: String, email: String, comment: String, wid: WID) = Action { implicit request =>
-    implicit val errCollector = new VErrors()
-
+  def linkFollower3(expiry: String, email: String, comment: String, wid: WID) = RAction { implicit request =>
     (for (
       exists <- wid.page.isDefined orErr ("Cannot link to " + wid.name);
       uwid <- wid.page.map(_.uwid);
@@ -292,9 +287,7 @@ cleanAuth(auth)
     }
   }
 
-  def unlinkFollower4(expiry: String, email: String, wid: WID) = Action { implicit request =>
-    implicit val errCollector = new VErrors()
-
+  def unlinkFollower4(expiry: String, email: String, wid: WID) = RAction { implicit request =>
     (for (
       exists <- wid.page.isDefined orErr ("Cannot link to " + wid.name);
       r1 <- canSee(wid, None, wid.page)
@@ -342,7 +335,7 @@ cleanAuth(auth)
       uwid <- wid.uwid orErr ("can't find uwid");
       again <- (!user.wikis.exists(_.uwid == uwid)) orErr ("Aldready associated to club")
     ) yield {
-      razie.db.tx("linkUser.toWiki") { implicit txn =>
+      razie.db.tx("linkUser.toWiki", admin.userName) { implicit txn =>
         ilinkAccept(user, c, uwid, how, true)
       }
       Msg2("OK, added!", Some("/"))
@@ -438,7 +431,7 @@ cleanAuth(auth)
           ok <- hows(wid, "User").contains(how) orErr "invalid role";
           xxx <- Some("")
         ) yield {
-          razie.db.tx("wiki.linkeduser") { implicit txn =>
+          razie.db.tx("wiki.linkeduser", au.userName) { implicit txn =>
             val mod = moderatorOf(wid).flatMap(mid => { Users.findUserByEmail(Enc(mid)) })
 
             if (wid.domain.isA("Club", wid.cat)) {
@@ -487,7 +480,7 @@ cleanAuth(auth)
       ok <- hows(wid, "User").contains(how) orErr "invalid role";
       xxx <- Some("")
     ) yield {
-        razie.db.tx("wiki.follow") { implicit txn =>
+        razie.db.tx("wiki.follow", au.userName) { implicit txn =>
           val mod = moderatorOf(wid).flatMap(mid => { Users.findUserByEmail(Enc(mid)) })
 
           if (wid.domain.isA("Club", wid.cat)) {

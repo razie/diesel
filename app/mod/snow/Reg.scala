@@ -28,8 +28,8 @@ case class Reg(
 
   def deprecatedWids: Seq[WID] = roleWids.map(_.wid)
 
-  def updateRegStatus(newStatus: String) = this.copy(regStatus = newStatus).update
-  def updateRole(newRole: String) = this.copy(role = newRole).update
+  def updateRegStatus(newStatus: String)(implicit txn:Txn) = this.copy(regStatus = newStatus).update
+  def updateRole(newRole: String)(implicit txn:Txn) = this.copy(role = newRole).update
 
   def kids = RMany[RegKid]("regId" -> _id)
   def roleOf (rkId : ObjectId) = kids.find(_.rkId == rkId).map(_.role)
@@ -96,92 +96,96 @@ object Regs {
   def findRkClub(userId: ObjectId, clubwid:WID) = RMany[Reg]("clubName" -> clubwid.name, "userId" -> userId) // TODO add curyear
 
   def upgradeAllRegs1 = {
-    RazMongo.upgradeMaybe("upgradeAllRegs1", Array.empty) {
-      RMany[Reg]().foreach{r=>
-        if(r.roleWids.isEmpty) {
-          val rw = r.wids.map(x=>RoleWid(
+
+    razie.db.tx("upgrades1", "?") { implicit txn =>
+      RazMongo.upgradeMaybe("upgradeAllRegs1", Array.empty) {
+        RMany[Reg]().foreach { r =>
+          if (r.roleWids.isEmpty) {
+            val rw = r.wids.map(x => RoleWid(
+              x.page.flatMap(_.formRole).get,
+              x))
+            if (rw.size > 0) {
+              r.copy(roleWids = rw).update
+            }
+          }
+        }
+      }
+
+      // formState from content to prop
+      RazMongo.upgradeMaybe("upgradeAllForms2", Array.empty) {
+        Wikis("rk").pages("Form").foreach { p =>
+          if (p.form.formState.nonEmpty) {
+            val n = p.cloneProps(p.props ++ Map(FormStatus.FORM_STATE -> p.form.formState.get), p.by)
+            p.update(n)
+          }
+        }
+      }
+    }
+  }
+
+  razie.db.tx("upgrades", "?") { implicit txn =>
+
+    RazMongo.upgradeMaybe("upgradeAllRegs3", Array.empty) {
+      RMany[RegKid]().foreach { r =>
+        if (r.roleWids.isEmpty) {
+          val rw = r.deprecatedwids.map(x => RoleWid(
             x.page.flatMap(_.formRole).get,
             x))
-          if(rw.size > 0) {
-            r.copy(roleWids = rw).update
+          if (rw.size > 0) {
+            r.copy(roleWids = rw).updateNoAudit
           }
         }
       }
     }
 
-    // formState from content to prop
-    RazMongo.upgradeMaybe("upgradeAllForms2", Array.empty) {
-      Wikis("rk").pages("Form").foreach{p=>
-        if(p.form.formState.nonEmpty) {
-          val n = p.cloneProps(p.props ++ Map(FormStatus.FORM_STATE -> p.form.formState.get), p.by)
-          p.update(n)(razie.db.tx.auto)
+    RazMongo.upgradeMaybe("upgradeAllRegs4", Array("upgradeAllRegs3")) {
+      // remove deprecated wids
+      RMany[Reg]().foreach { r =>
+        if (!r.wids.isEmpty && r.roleWids.size == r.wids.size) {
+          r.copy(wids = Seq.empty).updateNoAudit
+        }
+      }
+      RMany[RegKid]().foreach { r =>
+        if (!r.wids.isEmpty && r.roleWids.size == r.wids.size) {
+          r.copy(wids = Seq.empty).updateNoAudit
         }
       }
     }
-  }
 
-  RazMongo.upgradeMaybe("upgradeAllRegs3", Array.empty) {
-    RMany[RegKid]().foreach{r=>
-      if(r.roleWids.isEmpty) {
-        val rw = r.deprecatedwids.map(x=>RoleWid(
-          x.page.flatMap(_.formRole).get,
-          x))
-        if(rw.size > 0) {
-          r.copy(roleWids = rw).updateNoAudit
-        }
+    RazMongo.upgradeMaybe("upgradeAllRegs7", Array("upgradeAllRegs4")) {
+      RMany[Reg]().foreach { r =>
+        clog << "Upgrading Reg " + r.toString
+        r.copy(club = WID("Club", r.clubName).r("rk")).updateNoAudit
       }
     }
-  }
 
-  RazMongo.upgradeMaybe("upgradeAllRegs4", Array("upgradeAllRegs3")) {
-    // remove deprecated wids
-    RMany[Reg]().foreach{r=>
-      if(!r.wids.isEmpty && r.roleWids.size == r.wids.size) {
-        r.copy(wids = Seq.empty).updateNoAudit
-      }
-    }
-    RMany[RegKid]().foreach{r=>
-      if(!r.wids.isEmpty && r.roleWids.size == r.wids.size) {
-        r.copy(wids = Seq.empty).updateNoAudit
-      }
-    }
-  }
-
-  RazMongo.upgradeMaybe("upgradeAllRegs7", Array("upgradeAllRegs4")) {
-    RMany[Reg]().foreach{r=>
-      clog << "Upgrading Reg " + r.toString
-      r.copy(club = WID("Club", r.clubName).r("rk")).updateNoAudit
-    }
-  }
-
-  RazMongo.upgradeMaybe("teamToProgram", Array("upgradeAllRegs7")) {
-    RMany[RacerKidWikiAssoc]().foreach{r=>
-      if(r.uwid.cat=="Program") {
-        clog << "Upgrading RKWA " + r.toString
-        r.copy(uwid=r.uwid.copy(cat="Program")).updateNoAudit
-      }
-    }
-    tx.apply { implicit txn=>
-      RMany[WikiEntry]().foreach{r=>
-        if(r.category=="Team") {
+    RazMongo.upgradeMaybe("teamToProgram", Array("upgradeAllRegs7")) {
+      RMany[RacerKidWikiAssoc]().foreach { r =>
+        if (r.uwid.cat == "Program") {
           clog << "Upgrading RKWA " + r.toString
-          RUpdate(r.copy(category="Program"))
+          r.copy(uwid = r.uwid.copy(cat = "Program")).updateNoAudit
         }
       }
-      RMany[WikiLink]().foreach{r=>
-        if(r.from.cat=="Team") {
+      RMany[WikiEntry]().foreach { r =>
+        if (r.category == "Team") {
           clog << "Upgrading RKWA " + r.toString
-          r.copy(from=r.from.copy(cat="Program")).updateNoAudit
+          RUpdate(r.copy(category = "Program"))
+        }
+      }
+      RMany[WikiLink]().foreach { r =>
+        if (r.from.cat == "Team") {
+          clog << "Upgrading RKWA " + r.toString
+          r.copy(from = r.from.copy(cat = "Program")).updateNoAudit
         }
       }
     }
-  }
 
-  RazMongo.upgradeMaybe("teamToProgram2", Array("teamToProgram")) {
-    RMany[RacerKidWikiAssoc]().foreach{r=>
-      if(r.uwid.cat=="Program") {
-        clog << "Upgrading RKWA " + r.toString
-        r.copy(uwid=r.uwid.copy(cat="Program")).updateNoAudit
+    RazMongo.upgradeMaybe("teamToProgram2", Array("teamToProgram")) {
+      RMany[RacerKidWikiAssoc]().foreach { r =>
+        if (r.uwid.cat == "Program") {
+          clog << "Upgrading RKWA " + r.toString
+          r.copy(uwid = r.uwid.copy(cat = "Program")).updateNoAudit
+        }
       }
     }
   }

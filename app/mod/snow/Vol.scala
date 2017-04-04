@@ -124,18 +124,20 @@ object Vol extends RazController with Logging {
         },
         {
           case (w, h, d, c, a) =>
-            val id = w
+            razie.db.tx("voladded", stok.userName) { implicit txn =>
+              val id = w
 
-            ROne[RacerKidAssoc]("_id" -> new ObjectId(id)).map{rka=>
-              rka.copy(hours = rka.hours + h).update
-            }
+              ROne[RacerKidAssoc]("_id" -> new ObjectId(id)).map { rka =>
+                rka.copy(hours = rka.hours + h).update
+              }
 
-            if(!wid.isEmpty) {
-              VolunteerH(new ObjectId(id), h, d, c, stok.au.get._id, Some(a), VH.ST_OK).create
-              Redirect(routes.Vol.doeVolAdd(wid, rid))
-            } else {
-              mod.snow.VolunteerH(new ObjectId(id), h, d, c, stok.au.get._id, Some(a), VH.ST_WAITING).create
-              Redirect(routes.Vol.doeUserVolAdd(rid))
+              if (!wid.isEmpty) {
+                VolunteerH(new ObjectId(id), h, d, c, stok.au.get._id, Some(a), VH.ST_OK).create
+                Redirect(routes.Vol.doeVolAdd(wid, rid))
+              } else {
+                mod.snow.VolunteerH(new ObjectId(id), h, d, c, stok.au.get._id, Some(a), VH.ST_WAITING).create
+                Redirect(routes.Vol.doeUserVolAdd(rid))
+              }
             }
         })
   }
@@ -146,7 +148,7 @@ object Vol extends RazController with Logging {
     (for (
       au <- activeUser;
       vh <- ROne[VolunteerH]("_id" -> new ObjectId(vhid))
-    ) yield {
+    ) yield razie.db.tx("voldel", au.userName) { implicit txn =>
       vh.delete
 
       if(!wid.isEmpty) {
@@ -182,7 +184,7 @@ object Vol extends RazController with Logging {
       au <- activeUser;
       vh <- ROne[VolunteerH]("_id" -> new ObjectId(vhid));
       rka <- ROne[RacerKidAssoc]("_id" -> vh.rkaId)
-    ) yield {
+    ) yield razie.db.tx("volappro", au.userName) { implicit txn =>
       if(approved.startsWith("to:")) {
         vh.copy(approver = Some(approved.replaceFirst("to:", ""))).update
       } else if("y" == approved) {

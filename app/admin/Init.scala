@@ -2,9 +2,9 @@ package admin
 
 import model.{User, UserGroup, Users}
 import razie.Logging
-import razie.db.RazMongo
+import razie.db.{RazMongo, tx}
 import razie.wiki.Enc
-import razie.wiki.model.{Wikis, WikiEntry}
+import razie.wiki.model.{WikiEntry, Wikis}
 
 /** not really used anymore - used in the beginning to reset the database */
 object Init extends Logging {
@@ -12,7 +12,7 @@ object Init extends Logging {
   def e(s: String) = Enc(s)
 
   /** initialize the database */
-  def initDb() = {
+  def initDb() = tx("init.db", "?") {implicit txn=>
 
     audit("INIT DB")
 

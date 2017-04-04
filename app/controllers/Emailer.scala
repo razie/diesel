@@ -55,7 +55,7 @@ object Emailer extends RazController with Logging {
   /** invite to join on notes */
   def makeNotesInvite(toName:String, validDays: Int, acceptUrl: String, u: User) = {
     val dt = DateTime.now().plusDays(validDays)
-    val ds1 = SecLink(acceptUrl, Some("www.nofolders.net"), 1, dt)
+    val ds1 = SecLink(acceptUrl, Some("notes.razie.com"), 1, dt)
     text("notesInvite").format(toName, ds1.secUrl, u.ename)
   }
 

@@ -1,5 +1,5 @@
 @**************
-edit a wiki page
+ACE based editor
 **************@
 @(wid:razie.wiki.model.WID, myForm:Form[controllers.Wikie.EditWiki], hasDraft:Boolean = false, noshow:String="")(implicit stok: controllers.StateOk)
 @import model.Website.realm
@@ -14,14 +14,15 @@ edit a wiki page
   myForm(name).value.getOrElse("?")
 }
 
-
 @notifs()=@{
-  if(wid.page.exists(_.isDraft))
-    (
+  (
+  if(wid.cat == "Item")
+    Seq("Notify", "History", "Silent") ++ (if(stok.au.exists((_.isMod))) Seq("Site", "HistorySite") else Nil)
+  else if(wid.page.exists(_.isDraft))
     Seq("Draft", "Silent", "Notify", "History") ++ (if(stok.au.exists((_.isMod))) Seq("Site", "HistorySite") else Nil)
-    ) map (x=> (x,x))
   else
-    Seq("Silent" -> "Silent", "Draft" -> "Draft")
+    Seq("Silent", "Draft")
+  ) map (x=> (x,x))
 }
 
 @varx(name:String, value:String="") = @{
@@ -95,11 +96,7 @@ PROBLEM: many places use label as name... via Wikis.formatName
     'class -> "form-control col-sm-12",
     '_label -> "Label (don't change)",
     '_showConstraints -> false)
-
-
-@**
-**@
-    @helper.textarea(
+  @helper.textarea(
     myForm("content"),
     '_label -> "Content",
     'placeholder -> "Edit content here",
@@ -107,7 +104,7 @@ PROBLEM: many places use label as name... via Wikis.formatName
     'class -> "form-control col-sm-12",
     'rows->20)
 
-    <span style="font-size: small">Content</span><br>
+    <span style="font-size: small" id="ace-label" style="display:none;">Content</span><br>
     @*<textarea xstyle="display:none;" name="content" id="content" class="form-control col-sm-12" rows="20">@myForm("content").value</textarea>*@
     <pre style="display:none;" id="acec" style="height: 200px;">@myForm("content").value<</pre>
 
@@ -156,7 +153,7 @@ PROBLEM: many places use label as name... via Wikis.formatName
     '_showConstraints -> false)
 
   @if(stok.au.get.hasPerm(model.Perm.adminDb)) {
-    <p>Reserved: @reserved(wid.page))
+    <p>Reserved: @reserved(wid.page)
     @if(wid.page.isDefined) {
       <p><a href="@routes.Wikie.wikieDelete1(wid)">Delete it</a>
     }
@@ -198,12 +195,16 @@ if(localStorage.getItem("weDsl") != 'undefined')
 
 <!-- for tags -->
 <script src="@routes.Assets.at("bootstrap-2.2.3/js/bootstrap-typeahead.js")"></script>
+
+@if(true) {
+  @*these apply for ACE*@
 <script src="@routes.Assets.at("javascripts/weDieselDom.js")"></script>
 
 <script src="@routes.Assets.at("ace-builds/src/ace.js")" type="text/javascript" charset="utf-8"></script>
 
 <script src="@routes.Assets.at("ace-builds/src/mode-nvp1.js")" type="text/javascript" charset="utf-8"></script>
 <script src="@routes.Assets.at("ace-builds/src/ext-language_tools.js")" type="text/javascript" charset="utf-8"></script>
+}
 
 <script>
 //from http://stackoverflow.com/questions/12662824/twitter-bootstrap-typeahead-multiple-values
@@ -273,7 +274,7 @@ if(localStorage.getItem("weDsl") != 'undefined')
 }
     </small>
     <div class="pull-right">
-      <a href="#" onclick="refreshServer('@wid.wpath')" class="btn btn-xs" title="Refresh preview from server"><span class="glyphicon glyphicon-refresh"></span> Refresh</a>
+      <a href="#" onclick="refreshServerNow()" class="btn btn-xs" title="Refresh preview from server"><span class="glyphicon glyphicon-refresh"></span> Refresh</a>
       </span>
     </div>
   </h2>
@@ -303,9 +304,29 @@ if(localStorage.getItem("weDsl") != 'undefined')
 <script src="@routes.Assets.at("vendor/lodash.4.12.0.min.js")"></script>
 
 <script>
+    // only applies to old style tetarea
+    var dotTags = [];
+
+    $('#content').textcomplete([
+      CA_TC_braTags (optsToDomain(braDomain)),
+      CA_TC_sqbraTags,
+      CA_TC_dotTags (optsToDomain(braDomain.concat(dotTags)))
+    ]);
+
+</script>
+
+<script>
+  // --------------------------------------- ACE specifics
+
+var domContentAssist=[];
+var instContentAssist=[];
 
 function detachAce() {
   aceAttached = false;
+  if(aceEditor) {
+    aceEditor.destroy();
+    aceEditor.remove();
+  }
 }
 
 function attachAce() {
@@ -317,9 +338,9 @@ function attachAce() {
 
   editor.getSession().setValue(textarea.val());
 
-  editor.getSession().on('change', function(){
-    textarea.val(editor.getSession().getValue());
-  });
+//  editor.getSession().on('change', function(){
+//    textarea.val(editor.getSession().getValue());
+//  });
 
   @if(stok.isLight) {
     editor.setTheme ( "ace/theme/crimson_editor" ) ;
@@ -383,16 +404,28 @@ function attachAce() {
   editor.getSession().on('change', function(e) {
     instChanged=true;
   });
-}
+
+  setInterval(function(){
+    if(instChanged) {
+      instChanged=false;
+      livePreview();
+    }
+  },500);
+
+  aceEditor = editor;
+  }
 
 $(window).load (function() {
 //  $("ace_editor").css("height", "400px");
 });
+</script>
 
-
+<script>
 @if(hasDraft) {
   $("#floppy").css("color", "green");
 }
+
+var textarea = $("#content");
 
 $("#bigOne").css("min-height", $("#weForm").height());
 
@@ -406,16 +439,23 @@ useLocalStorageCheckbox("weLive", "weLive");
 }
 
 var preview = _.debounce(livePreview, 250, { maxWait: 500 });
-//textarea.bind('input propertychange', preview);
+textarea.bind('input propertychange', preview);
 $("#tags").bind('input propertychange', preview);
 
 var saveDraftDebounced = _.debounce(saveDraft, 2000, { maxWait: 5000 });
 
 $("#content").change(livePreview);
 
+function refreshServerNow() {
+  var content = aceAttached ? editor.getSession().getValue() : $("#content").val();
+  var tags = $("#tags").val();
+
+  refreshServer('@wid.wpath', content, tags);
+}
+
 /** update the preview */
 function livePreview() {
-  var content = editor.getSession().getValue();
+  var content = aceAttached ? aceEditor.getSession().getValue() : $("#content").val();
   var tags = $("#tags").val();
 
   if($('#weLive').prop('checked')) {
@@ -425,7 +465,7 @@ function livePreview() {
       ) parseAndRender();
     else {
       $("#rtrip").text("(from server)");
-      refreshServer('@wid.wpath');
+      refreshServer('@wid.wpath', content, tags);
     }
   }
 
@@ -434,7 +474,7 @@ function livePreview() {
 
 /** save the draft on the backend */
 function saveDraft() {
-  var content = editor.getSession().getValue();
+  var content = aceAttached ? aceEditor.getSession().getValue() : $("#content").val();
   var tags = $("#tags").val();
 
   $.ajax(
@@ -491,8 +531,12 @@ if(window.localStorage.getItem("weEditLayout") != null) {
 setView ("12", currentLayout);
 
 function setTextAreaHeight() {
-  var curOthers = $("#weForm9" ).height() - $("#acec").height();
-  $("#acec").height(window.innerHeight-curOthers-120);
+  var textHeight = aceAttached ? $("#acec").height() : textarea.height();
+  var curOthers = $("#weForm9" ).height() - textHeight;
+  if(aceAttached)
+    $("#acec").height(window.innerHeight-curOthers-120);
+  else
+    textarea.height(window.innerHeight-curOthers-120);
 }
 
 function setView(currentLayout, newLayout) {
@@ -555,6 +599,9 @@ function showSettings() {
   }
 }
 
+var aceAttached = false; // true in ACE mode
+var aceEditor;    // set only when attached
+
 // toggle dsl
 function showDsl() {
   if($('#weDsl').prop('checked')) {
@@ -568,20 +615,24 @@ function showDsl() {
   switchDsl();
 }
 
-var aceAttached = false;
-
 // toggle dsl
 function switchDsl(a,b,state) {
   if($('#weDsl').prop('checked')) {
+    // show ACE
     $("#content").hide();
+    $("#content_field").hide();
     $("#acec").show();
+    $("#ace-label").show();
     if(! aceAttached) attachAce();
   } else {
+    // hide ACE
+    $("#ace-label").hide();
     $("#acec").hide();
+    $("#content_field").show();
     $("#content").show();
   }
+  setTextAreaHeight();
 }
-
 
 var layouts = ["12", "6", "9"];
 
@@ -627,6 +678,5 @@ $(document).ready(function() {
 switchDsl();
 
 </script>
-
 
 

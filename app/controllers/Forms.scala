@@ -42,7 +42,7 @@ object Forms extends WikiBase with Logging {
   }
 
   /** create a new form instance for a user */
-  def crForm(u: User, formSpec: WID, formData: WID, label: String, reviewer: User, formRole: Option[String], defaults: Map[String, String] = Map.empty)(implicit txn: Txn = tx.auto) = {
+  def crForm(u: User, formSpec: WID, formData: WID, label: String, reviewer: User, formRole: Option[String], defaults: Map[String, String] = Map.empty)(implicit txn: Txn) = {
     val wid = formData
 
     // build the defaults - cross check with formSpec
@@ -146,7 +146,7 @@ $fdata
   }
 
   /** create a new form instance for a user */
-  def crFormKid(u: User, formSpec: WID, formData: WID, label: String, reviewer: User, formRole: Option[String], rk: RacerKid) = {
+  def crFormKid(u: User, formSpec: WID, formData: WID, label: String, reviewer: User, formRole: Option[String], rk: RacerKid)(implicit txn:Txn) = {
     crForm(u, formSpec, formData, label, reviewer, formRole,
       Map(
         "firstName" -> rk.info.firstName,
@@ -239,7 +239,7 @@ $fdata
               we.form.formState.foreach(fr =>
                 we = we.cloneProps(we.props ++ Map(FormStatus.FORM_STATE -> fr), au._id))
 
-              razie.db.tx("forms.submitted") { implicit txn =>
+              razie.db.tx("forms.submitted", au.userName) { implicit txn =>
                 w.update(we, Some("form_submitted"))
                 act.WikiWf.event("wikiFormSubmit", Map("wpath" -> we.wid.wpath, "userName" -> au.userName))
                 Wikie.after(we, WikiAudit.UPD_CONTENT, Some(au))
@@ -345,7 +345,7 @@ $fdata
               we.form.formState.foreach(fr =>
                 we = we.cloneProps(we.props ++ Map(FormStatus.FORM_STATE -> fr), au._id))
 
-              razie.db.tx("forms.submitted") { implicit txn =>
+              razie.db.tx("forms.submitted", au.userName) { implicit txn =>
                 w.update(we, Some("form_submitted"))
                 act.WikiWf.event("wikiFormSubmit", Map("wpath" -> we.wid.wpath, "userName" -> au.userName))
                 Wikie.after(we, WikiAudit.UPD_CONTENT, Some(au))
@@ -405,7 +405,7 @@ $fdata
               we.form.formState.foreach(fr =>
                 we = we.cloneProps(we.props ++ Map(FormStatus.FORM_STATE -> fr), au._id))
 
-              razie.db.tx("forms.submitted") { implicit txn =>
+              razie.db.tx("forms.submitted", au.userName) { implicit txn =>
                 we.create
                 act.WikiWf.event("wikiFormSubmit", Map("wpath" -> we.wid.wpath, "userName" -> au.userName))
                 Wikie.after(we, WikiAudit.UPD_CONTENT, Some(au))
@@ -457,7 +457,7 @@ $fdata
               we.form.formState.foreach(fr =>
                 we = we.cloneProps(we.props ++ Map(FormStatus.FORM_STATE -> fr), au._id))
 
-              razie.db.tx("forms.submitted") { implicit txn =>
+              razie.db.tx("forms.submitted", au.userName) { implicit txn =>
 
                 act.WikiWf.event("wikiFormSubmit", Map("wpath" -> we.wid.wpath, "userName" -> au.userName))
                 Wikie.after(we, WikiAudit.UPD_CONTENT, Some(au))

@@ -132,7 +132,7 @@ object Wikie extends WikieBase {
 
   /** serve page for edit */
   def wikieEditNew(wid: WID, noshow: String = "") =
-    wikieEdit(wid, "", noshow)
+    wikieEdit(wid, "", noshow, true)
 
   def wikieEdit(wid: WID, icontent: String = "", noshow:String="", old:Boolean=true) = FAU {
     implicit au => implicit errCollector => implicit request =>
@@ -237,7 +237,7 @@ object Wikie extends WikieBase {
 
           val visibility = wid.findParent.flatMap(_.props.get("visibility")).orElse(WikiReactors(realm).props.prop("default.visibility")).getOrElse(WikiReactors(realm).wiki.visibilityFor(wid.cat).headOption.getOrElse(PUBLIC))
           val wwvis = wvis(wid.findParent.map(_.props)).orElse(WikiReactors(realm).props.prop("default.wvis")).getOrElse(WikiReactors(realm).wiki.visibilityFor(wid.cat).headOption.getOrElse(PUBLIC))
-          val draft = wid.findParent.flatMap(_.contentProps.get("editMode")).orElse(WikiReactors(realm).props.prop("default.editMode")).getOrElse("Notify")
+          val draft =      wid.findParent.flatMap(_.contentProps.get("editMode")).orElse(Wikis(realm).category(wid.cat).flatMap(_.contentProps.get("editMode"))).orElse(WikiReactors(realm).props.prop("default.editMode")).getOrElse("Notify")
 
             if(Wikis.isEvent(wid.cat))
               ROK.s noLayout { implicit stok =>
@@ -360,7 +360,7 @@ object Wikie extends WikieBase {
               if (!we.scripts.filter(_.signature == "ADMIN").isEmpty && !(au.hasPerm(Perm.adminDb) || Services.config.isLocalhost)) {
                 noPerm(wid, "HACK_SCRIPTS1")
               } else {
-                razie.db.tx("Wiki.setContent") { implicit txn =>
+                razie.db.tx("Wiki.setContent", request.userName) { implicit txn =>
                   WikiEntryOld(w, Some("setContent")).create
                   w.update(we, Some("setContent"))
                   clearDrafts(we.wid, au)
@@ -393,7 +393,7 @@ object Wikie extends WikieBase {
               if (!we.scripts.filter(_.signature == "ADMIN").isEmpty && !(au.hasPerm(Perm.adminDb) || Services.config.isLocalhost)) {
                 noPerm(wid, "HACK_SCRIPTS1")
               } else {
-                razie.db.tx("Wiki.setContent") { implicit txn =>
+                razie.db.tx("Wiki.setContent", request.userName) { implicit txn =>
                   we.create
                   Services ! WikiAudit(WikiAudit.CREATE_API, we.wid.wpathFull, Some(au._id), None, Some(we))
                 }
@@ -536,9 +536,10 @@ object Wikie extends WikieBase {
               }
 
               // don't change date if silent update while not draft
-              if (au.isAdmin && notif == "Silent" && !we.props.contains("draft")) {
-                we = we.copy(updDtm = w.updDtm)
-              }
+              // todo why??? this removes updated date time in all topics pretty much
+//              if (au.isAdmin && notif == "Silent" && !we.props.contains("draft")) {
+//                we = we.copy(updDtm = w.updDtm)
+//              }
 
                 // do parents think it's draft?
               val plink = we.wid.parentWid.flatMap(_.uwid).flatMap { puwid =>
@@ -570,7 +571,7 @@ object Wikie extends WikieBase {
               if (!we.scripts.filter(_.signature == "ADMIN").isEmpty && !(au.hasPerm(Perm.adminDb) || Services.config.isLocalhost)) {
                 noPerm(wid, "HACK_SCRIPTS1")
               } else {
-                razie.db.tx("Wiki.Save") { implicit txn =>
+                razie.db.tx("Wiki.Save", stok.userName) { implicit txn =>
                   // can only change label of links OR if the formatted name doesn't change
                   w.update(we)
                   clearDrafts(we.wid, au)
@@ -626,7 +627,7 @@ object Wikie extends WikieBase {
 
               we = setEventProps(we)
 
-              razie.db.tx("wiki.create") { implicit txn =>
+              razie.db.tx("wiki.create", stok.userName) { implicit txn =>
                 // anything staged for this?
                 for (s <- Staged.find("WikiLinkStaged").filter(x => x.content.get("from").asInstanceOf[DBObject].get("cat") == wid.cat && x.content.get("from").asInstanceOf[DBObject].get("name") == wid.name)) {
                   val wls = Wikis.fromGrated[WikiLinkStaged](s.content)
@@ -903,7 +904,7 @@ object Wikie extends WikieBase {
         // delete all reactor pages
         case (au, w) if wid.cat == "Reactor" => {
           val realm = wid.name
-          razie.db.tx("Wiki.delete") { implicit txn =>
+          razie.db.tx("Wiki.delete", au.userName) { implicit txn =>
             RMany[WikiEntry]("realm" -> wid.name).toList.map {we=>
               del(we)
 //              count += 1
@@ -919,7 +920,7 @@ object Wikie extends WikieBase {
         }
 
         case (au, w) => {
-          razie.db.tx("Wiki.delete") { implicit txn =>
+          razie.db.tx("Wiki.delete", au.userName) { implicit txn =>
             del(w)
 
             if (done) cleanAuth() // it probably belongs to the current user, cached...
@@ -952,7 +953,7 @@ object Wikie extends WikieBase {
   }
 
   /** rename step 2: do it */
-  def wikieRename2(wid: WID) = FAU("rename.wiki") { implicit au => implicit errCollector => implicit request =>
+  def wikieRename2(wid: WID) = FAUR("rename.wiki") { implicit request =>
     renameForm(wid).bindFromRequest.fold(
     formWithErrors => Some(ROK.r badRequest {implicit stok=> views.html.wiki.wikieRename(wid, formWithErrors, auth)}),
     {
@@ -960,11 +961,9 @@ object Wikie extends WikieBase {
         canRename(wid).collect {
           case (au, w) =>
             val newp = w.copy(name = Wikis.formatName(n), label = n, ver = w.ver + 1, updDtm = DateTime.now)
-            razie.db.tx("Wiki.Rename") { implicit txn =>
               w.update(newp, Some("renamed"))
               Services ! WikiAudit(WikiAudit.UPD_RENAME, newp.wid.wpathFull, Some(au._id), None, Some(newp), Some(w), Some(w.wid.wpathFull))
               cleanAuth()
-            }
 
             Msg("OK, renamed!", newp.wid)
         }
@@ -1010,9 +1009,7 @@ object Wikie extends WikieBase {
   }
 
   /** move the posts of another blof to another or just one post if this is it */
-  def movePosts(sourceWid: WID) = FAU {
-    implicit au => implicit errCollector => implicit request =>
-
+  def movePosts(sourceWid: WID) = FAUR { implicit request =>
       val form = Form("newWid" -> nonEmptyText)
 
       form.bindFromRequest.fold(
@@ -1022,7 +1019,7 @@ object Wikie extends WikieBase {
         case newWid =>
           log("Wiki.movePosts " + sourceWid + ", " + newWid)
           (for (
-            au <- activeUser;
+            au <- request.au;
             ok1 <- au.hasPerm(Perm.adminDb) orCorr cNoPermission;
             sourceW <- Wikis.find(sourceWid);
             destWid <- WID.fromPath(newWid) orErr "no source";
@@ -1047,7 +1044,7 @@ object Wikie extends WikieBase {
                 List(sourceW)
               else
                 RMany[WikiEntry]("parent" -> Some(sourceW.uwid.id)).toList
-            razie.db.tx("Wiki.movePosts") { implicit txn =>
+            razie.db.tx("Wiki.movePosts", au.userName) { implicit txn =>
               links.foreach { _.copy(to = destW.uwid).update }
               pages.foreach{w=>
                 w.update(w.copy(parent=Some(destW.uwid.id)), Some("moved_posts"))
@@ -1081,7 +1078,7 @@ object Wikie extends WikieBase {
             newVer <- Some(sourceW.copy(parent=None));
             upd <- before(newVer, WikiAudit.UPD_SETP_PARENT) orErr ("Not allowerd")
           ) yield {
-              razie.db.tx("Wiki.setparent") { implicit txn =>
+              razie.db.tx("Wiki.setparent", au.userName) { implicit txn =>
                 sourceW.update(newVer, Some("setParent"))
                 ROne[WikiLink]("from" -> sourceW.uwid.grated, "how" -> "Child").foreach(_.delete)
               }
@@ -1102,7 +1099,7 @@ object Wikie extends WikieBase {
             newVer <- Some(sourceW.copy(parent=Some(destW._id)));
             upd <- before(newVer, WikiAudit.UPD_SETP_PARENT) orErr ("Not allowerd")
           ) yield {
-            razie.db.tx("Wiki.setparent") { implicit txn =>
+            razie.db.tx("Wiki.setparent", au.userName) { implicit txn =>
               sourceW.update(newVer, Some("setParent"))
               val owl = ROne[WikiLink]("from" -> sourceW.uwid.grated, "how" -> "Child")
               owl.foreach(_.delete)
@@ -1144,7 +1141,7 @@ object Wikie extends WikieBase {
               upd <- before(newVer, WikiAudit.UPD_UOWNER) orErr "Not allowerd"
             ) yield {
               // can only change label of links OR if the formatted name doesn't change
-              razie.db.tx("Wiki.uowner") { implicit txn =>
+              razie.db.tx("Wiki.uowner", au.userName) { implicit txn =>
                 w.update(newVer)
               }
               Wikie.after(newVer, WikiAudit.UPD_UOWNER, Some(au))
@@ -1162,7 +1159,7 @@ object Wikie extends WikieBase {
               upd <- before(newVer, WikiAudit.UPD_UOWNER) orErr "Not allowerd"
             ) yield {
                 // can only change label of links OR if the formatted name doesn't change
-                razie.db.tx("Wiki.ucategory") { implicit txn =>
+                razie.db.tx("Wiki.ucategory", au.userName) { implicit txn =>
                   w.update(newVer)
                 }
                 Wikie.after(newVer, WikiAudit.UPD_CATEGORY, Some(au))
@@ -1177,7 +1174,7 @@ object Wikie extends WikieBase {
               w <- Wikis.find(wid)
             ) yield {
                 // can only change label of links OR if the formatted name doesn't change
-                razie.db.tx("Wiki.counter") { implicit txn =>
+                razie.db.tx("Wiki.counter", au.userName) { implicit txn =>
                   WikiCount.findOne(w._id).foreach(_.set(newvalue.toLong))
                 }
                 Redirect(controllers.Wiki.w(wid))
@@ -1194,7 +1191,7 @@ object Wikie extends WikieBase {
               upd <- before(newVer, WikiAudit.UPD_UOWNER) orErr "Not allowerd"
             ) yield {
               // can only change label of links OR if the formatted name doesn't change
-              razie.db.tx("Wiki.urealm") { implicit txn =>
+              razie.db.tx("Wiki.urealm", au.userName) { implicit txn =>
                 w.update(newVer)
               }
               Wikie.after(newVer, WikiAudit.UPD_REALM, Some(au))
@@ -1212,7 +1209,7 @@ object Wikie extends WikieBase {
               upd <- before(newVer, WikiAudit.UPD_UOWNER) orErr "Not allowerd"
             ) yield {
               // can only change label of links OR if the formatted name doesn't change
-              razie.db.tx("Wiki.urealmALL") { implicit txn =>
+              razie.db.tx("Wiki.urealmALL", au.userName) { implicit txn =>
                 w.update(newVer)
                 RMany[WikiLink]("to" -> w.uwid.grated, "how"->"Child").toList.foreach{ link=>
                   link.delete
@@ -1249,7 +1246,7 @@ object Wikie extends WikieBase {
       upd <- before(newVer, WikiAudit.UPD_TOGGLE_RESERVED) orErr ("Not allowed")
     ) yield {
       // can only change label of links OR if the formatted name doesn't change
-      razie.db.tx("Wiki.Reserve") { implicit txn =>
+      razie.db.tx("Wiki.Reserve", au.userName) { implicit txn =>
         w.update(newVer, Some("reserve"))
       }
       Wikie.after(newVer, WikiAudit.UPD_TOGGLE_RESERVED, Some(au))
@@ -1270,7 +1267,7 @@ object Wikie extends WikieBase {
         newVer <- Some(w.copy (likes=like.map(_._id.toString).toList ::: w.likes, dislikes=dislike.map(_._id.toString).toList ::: w.dislikes));
         upd <- before(newVer, WikiAudit.UPD_LIKE) orErr ("Not allowed")
       ) yield {
-        razie.db.tx("Wiki.like") { implicit txn =>
+        razie.db.tx("Wiki.like", au.userName) { implicit txn =>
           RUpdate.noAudit[WikiEntry](Wikis(w.realm).weTables(wid.cat), Map("_id" -> newVer._id), newVer)
         }
         Wikie.after(newVer, WikiAudit.UPD_LIKE, Some(au))
@@ -1306,7 +1303,7 @@ object Wikie extends WikieBase {
       toW <- Wikis(realm).findById(to);
       hasP <- pageW.parent.exists(_.toString == from) orErr "does not have a parent"
     ) yield {
-      razie.db.tx("Wiki.Move") { implicit txn =>
+      razie.db.tx("Wiki.Move", au.userName) { implicit txn =>
         pageW.update(pageW.copy(parent=Some(toW._id)))
         RMany[WikiLink]("from" -> pageW.uwid.grated, "to" -> fromW.uwid.grated, "how"->"Child").toList.foreach{ link=>
           link.delete

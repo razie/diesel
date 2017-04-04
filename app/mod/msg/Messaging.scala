@@ -55,7 +55,7 @@ object JSRules {
   def findOrCreate (rule:String) = {
     ROne[JSRule]("hash"->rule.hashCode).map(_._id) getOrElse {
       val x = new JSRule(rule, rule.hashCode)
-      x.create
+      x.create(tx.auto)
       x._id
     }
   }
@@ -128,15 +128,17 @@ object Messaging extends RazController with Logging {
 
   def doePostToGroup (role:String, group:String) = FAU {
     implicit au => implicit errCollector => implicit request =>
-      ROK.s apply  { implicit stok =>
-        val mid = new ObjectId
-        val cs = CommentStream(mid, "Msg")
-        cs.create
-        val thread = MsgThread(cs._id, stok.realm, role, s"$role ${au.userName}",
-          Seq(MsgUser(au._id, UROLE_FROM)),
-          Seq(), Seq(JSRules.group(group)), DateTime.now(), mid)
-        thread.create
-        views.html.modules.msg.thread(thread)
+      razie.db.tx("doePostToGroup", au.userName) { implicit txn =>
+        ROK.s apply { implicit stok =>
+          val mid = new ObjectId
+          val cs = CommentStream(mid, "Msg")
+          cs.create
+          val thread = MsgThread(cs._id, stok.realm, role, s"$role ${au.userName}",
+            Seq(MsgUser(au._id, UROLE_FROM)),
+            Seq(), Seq(JSRules.group(group)), DateTime.now(), mid)
+          thread.create
+          views.html.modules.msg.thread(thread)
+        }
       }
   }
 
@@ -157,7 +159,7 @@ object Messaging extends RazController with Logging {
       }
     ),
     {
-      case (_, title) => {
+      case (_, title) => razie.db.tx("doeStartThread2", au.userName) { implicit txn =>
         ROK.s apply { implicit stok =>
           val to = new ObjectId(uid)
           val mid = new ObjectId
@@ -182,10 +184,12 @@ object Messaging extends RazController with Logging {
 
   def doeThread(threadId:String) = FAU("msg.thread") {
     implicit au => implicit errCollector => implicit request =>
-      ROne[MsgThread](new ObjectId(threadId)).map { thread=>
-        ROK.s apply { implicit stok =>
-          if(!thread.isRead(au._id)) thread.readNow(au._id).update
-          views.html.modules.msg.thread(thread)
+      ROne[MsgThread](new ObjectId(threadId)).map { thread =>
+        razie.db.tx("doeModRkRemove", au.userName) { implicit txn =>
+          ROK.s apply { implicit stok =>
+            if (!thread.isRead(au._id)) thread.readNow(au._id).update
+            views.html.modules.msg.thread(thread)
+          }
         }
       }
   }

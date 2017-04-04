@@ -357,7 +357,7 @@ object Profile extends RazController with Logging {
             } else {
               if(about.length > 0) u = u.copy(prefs = u.prefs + ("about" -> about))
 
-              razie.db.tx("doeCreateProfile") { implicit txn =>
+              razie.db.tx("doeCreateProfile", u.userName) { implicit txn =>
                 // TODO bad code - update and reuse account creation code in Tasks.addParent
                 val pro = u.mkProfile
                 val created = { u.create(pro); Some(u)}
@@ -818,7 +818,7 @@ object EdUsername extends RazController {
           already <- !(u.userName == newusername) orErr "Already updated"
         ) yield {
           // TODO transaction
-          razie.db.tx("accept.user") { implicit txn =>
+          razie.db.tx("accept.user", admin.userName) { implicit txn =>
             Profile.updateUser(u, u.copy(userName=newusername))
             UserTasks.userNameChgDenied(u).delete
             Wikis.updateUserName(u.userName, newusername)
@@ -853,7 +853,7 @@ object EdUsername extends RazController {
           already <- !(user.userName == newusername) orErr "Already updated"
         ) yield {
           // TODO transaction
-         razie.db.tx("deny.user") { implicit txn =>
+         razie.db.tx("deny.user", u.userName) { implicit txn =>
             UserTasks.userNameChgDenied(u).create
             Emailer.withSession { implicit mailSession =>
               Emailer.sendEmailUnameDenied(newusername, u)
@@ -901,7 +901,7 @@ object EdEmail extends RazController {
           (for (
             au <- activeUser
           ) yield {
-            razie.db.tx("change.email") { implicit txn =>
+            razie.db.tx("change.email", au.userName) { implicit txn =>
               val newu = au.copy(email = n.enc)
               //            val newu = User(au.userName, au.firstName, au.lastName, au.yob, n.enc, au.pwd, au.status, u.roles, u.addr, u.prefs, u._id)
               Profile.updateUser(au, newu)

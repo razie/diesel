@@ -71,10 +71,7 @@ object Notes {
 
   final val CAT = "Note"
 
-  final val REALM = WikiConfig.NOTES
-
-  final val wiki = Wikis(REALM)
-//  def wiki (implicit request:Request[Any]) = Wikis(Website.realm)
+  final val wiki = Wikis(WikiConfig.NOTES)
 
   def dec(au:User)(w:WikiEntry) = if(w.by == au._id && w.tags.contains(NotesTags.ENC))w.copy(content=w.content.dec) else w
 
@@ -203,7 +200,7 @@ object NotesLocker extends RazController with Logging {
   /** discard current autosaved note */
   def discard(id:String) = FAU { implicit au =>
     implicit errCollector => implicit request =>
-      ROne[AutosavedNote]("uid"->au._id, "nid"->new ObjectId(id)) map (_.delete(tx.local("notes.create")))
+      ROne[AutosavedNote]("uid"->au._id, "nid"->new ObjectId(id)) map (_.delete(tx.local("notes.create", au.userName)))
       Redirect(routes.NotesLocker.index())
   }
 
@@ -242,7 +239,7 @@ object NotesLocker extends RazController with Logging {
           var msg = ("msg" -> "[Saved in locker]")
 
           // delete here no matter what -
-          ROne[AutosavedNote]("uid"->au._id, "nid"->id) foreach (_.delete(tx.local("notes.autosave.clear")))
+          ROne[AutosavedNote]("uid"->au._id, "nid"->id) foreach (_.delete(tx.local("notes.autosave.clear", au.userName)))
           //        RMany[AutosavedNote]("uid" -> au._id) foreach (_.delete)
 
           def alltags (more:String) = (tags + "," + more).split("[, ]").map(_.trim.toLowerCase).filter(!_.isEmpty).distinct.toSeq
@@ -284,7 +281,7 @@ object NotesLocker extends RazController with Logging {
               ) {
                 var we = preprocess(newVer, true)
 
-                razie.db.tx("notes.Save") { implicit txn =>
+                razie.db.tx("notes.Save", au.userName) { implicit txn =>
                   ROne[AutosavedNote]("nid"->id) foreach (_.delete)
                   we.update(we)
                   Wikie.after(we, WikiAudit.UPD_CONTENT, Some(au))
@@ -308,7 +305,7 @@ object NotesLocker extends RazController with Logging {
                 we = we.copy(_id = id)
                 we = preprocess(we, false)
 
-                razie.db.tx("notes.create") { implicit txn =>
+                razie.db.tx("notes.create", au.userName) { implicit txn =>
 
                   we = we.cloneProps(we.props ++ Map("owner" -> au.id), au._id)
                   //cleanAuth()
@@ -396,7 +393,7 @@ object NotesLocker extends RazController with Logging {
             members.foreach {nc =>
               if(! circle.members.contains(nc.nick)) {
                 nc.uId.map {uid=>
-                  Inbox(uid, au._id, "Circle", Some(we._id), "Added to a circle", "", "u").create(tx.local("notes.inbox"))
+                  Inbox(uid, au._id, "Circle", Some(we._id), "Added to a circle", "", "u").create(tx.local("notes.inbox", "?"))
                 }
                 SendEmail.withSession { implicit mailSession =>
                   Emailer.circled(au.ename, nc.email, nc.nick, s"/note/id/${we._id}")
@@ -404,14 +401,14 @@ object NotesLocker extends RazController with Logging {
               }
             }
 
-            circle.copy(members=members.map(_.nick).toSeq).update(tx.local("notes.inbox"))
+            circle.copy(members=members.map(_.nick).toSeq).update(tx.local("notes.inbox", "?"))
 
           } else tos.collect {
             case _ ~ to => {
               nco(to).toList ::: cco(to) filter (_.uId.isDefined) foreach {nc=>
-                if(ROne[NoteShare]("noteId"->we._id, "toId"->nc.uId.get).isEmpty) tx("notes.inbox") {implicit txn=>
+                if(ROne[NoteShare]("noteId"->we._id, "toId"->nc.uId.get).isEmpty) tx("notes.inbox", au.userName) {implicit txn=>
                   NoteShare(we._id, nc.uId.get, au._id).create
-                  Inbox(nc.uId.get, au._id, "Share", Some(we._id), "Note shared with you", "", "u").create(tx.local("notes.inbox"))
+                  Inbox(nc.uId.get, au._id, "Share", Some(we._id), "Note shared with you", "", "u").create(tx.local("notes.inbox", "?"))
                   SendEmail.withSession { implicit mailSession =>
                     Emailer.noteShared(au.ename, nc.email, nc.nick, s"/note/id/${we._id}")
                   }
@@ -433,7 +430,7 @@ object NotesLocker extends RazController with Logging {
           tos.collect {
             case _ ~ to => {
               nco(to).filter(_.uId.isDefined).foreach { nc =>
-                Inbox(nc.uId.get, au._id, "Action", Some(we._id), value, "", "u").create(tx.local("notes.inbox"))
+                Inbox(nc.uId.get, au._id, "Action", Some(we._id), value, "", "u").create(tx.local("notes.inbox", "?"))
               }
             }
           }
@@ -477,7 +474,7 @@ object NotesLocker extends RazController with Logging {
                   nochange <- (as.content != content ||
                     as.tags != tags) orErr { msg = ("err" -> "[No change...]"); "no change" }
                 ) {
-                  tx("notes.autosave.u") { implicit txn =>
+                  tx("notes.autosave.u", au.userName) { implicit txn =>
                     as.copy(name=name, content=content, tags=tags).update
                   }
                 }
@@ -491,7 +488,7 @@ object NotesLocker extends RazController with Logging {
               } else if (onote.exists(_.ver > ver)) {
                 msg = ("err" -> "[Old autosave - please discard it]")
               } else {
-                tx("notes.autosave.c") { implicit txn =>
+                tx("notes.autosave.c", au.userName) { implicit txn =>
                   val as = AutosavedNote(au._id, name, nid, ver, content, tags)
                   as.create
                 }
@@ -749,7 +746,7 @@ object NotesLocker extends RazController with Logging {
       val other = Users.findUserById(e)
       other match {
         case Some(o) => {
-          razie.db.tx("notes.connect.accept") {implicit txn=>
+          razie.db.tx("notes.connect.accept", au.userName) {implicit txn=>
             // first my end of it:
             if(ROne[NotesContact]("oId"->au._id, "uId"->o._id).isEmpty)
             //todo find the note fo this contact

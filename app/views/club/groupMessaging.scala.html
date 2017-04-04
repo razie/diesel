@@ -10,6 +10,8 @@ message a group (either a team or modRk event)
     kids:List[ObjectId]
 )(implicit stok:controllers.StateOk)
 
+@notes.notesmsgDiv("teammsg")
+
 <div class="alert alert-info">
     <button onclick="sendNote()" class="btn btn-primary">Message to all <span id="msgbtn" class="glyphicon glyphicon-chevron-down"></span></button>
 

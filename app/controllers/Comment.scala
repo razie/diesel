@@ -2,13 +2,13 @@ package controllers
 
 import mod.msg.MsgThread
 import mod.snow.RacerKidz
-import model.{Users, Perm, User}
+import model.{Perm, User, Users}
 import org.bson.types.ObjectId
 import play.api.data.Form
 import play.api.data.Forms._
 import play.api.mvc.Action
 import razie.Logging
-import razie.db.ROne
+import razie.db.{ROne, tx}
 import razie.wiki.admin.SendEmail
 import razie.wiki.model._
 
@@ -205,7 +205,7 @@ object Comment extends RazController with Logging {
           Emailer.sendEmailNewComment(user, au, WID("Admin", "Private Messages"))
           newMsg = msg.readNow(user._id, false)
         }
-        newMsg.update
+        newMsg.update(tx.auto)
       }
     }
   }

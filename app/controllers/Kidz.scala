@@ -129,10 +129,11 @@ object Kidz extends RazController {
   }
 
   // updated/created kid form
-  def doeKidUpdate(userId: String, rkId: String, role: String, associd: String, next: String) = FAU { implicit au => implicit errCollector => implicit request =>
+  def doeKidUpdate(userId: String, rkId: String, role: String, associd: String, next: String) = FAUR { implicit request =>
+    val au = request.au.get
     var goodRkid = rkId
     form(auth.get).bindFromRequest.fold(
-      formWithErrors => ROK.s badRequest {implicit stok=>
+      formWithErrors => ROK.k badRequest {implicit stok=>
         views.html.user.doeUserKid(userId, rkId, role, associd, next, formWithErrors)
       },
       {
@@ -221,10 +222,9 @@ object Kidz extends RazController {
       })
   }
 
-  def doeKidOverride(userId: String, rkId: String, role: String, associd: String, next: String) = Action { implicit request =>
-    implicit val errCollector = new VErrors()
+  def doeKidOverride(userId: String, rkId: String, role: String, associd: String, next: String) = FAUR { implicit request =>
+    val au = request.au.get
     (for (
-      au <- activeUser;
       rk <- RacerKidz.findById(new ObjectId(rkId));
       u <- rk.user
     ) yield {

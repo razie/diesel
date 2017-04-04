@@ -41,7 +41,7 @@ object Tasks extends RazController with Logging {
   }
 
   def userNameChgDenied = Action { implicit request =>
-    razie.db.tx("usernamechgDenied") { implicit txn =>
+    razie.db.tx("usernamechgDenied", auth.get.userName) { implicit txn =>
       UserTasks.userNameChgDenied(auth.get).delete
     }
     Msg2("Your request to change username has been denied!")
@@ -68,7 +68,7 @@ object Tasks extends RazController with Logging {
               c <- Users.fromJson(uj) orErr ("cannot parse ujson - bad request")
             ) yield {
               // TODO bad code - reconcile and reuse createion sequence from Profile.doCreateProfiles
-              razie.db.tx("addParent2") { implicit txn =>
+              razie.db.tx("addParent2", "?") { implicit txn =>
                 val created = Profile.createUser(c)(request.ireq, txn)
 
                 UserTasks.addParent(c).create
@@ -151,7 +151,7 @@ object Tasks extends RazController with Logging {
           cpro <- child.profile orCorr cNoProfile;
           already <- !(Users.findPC(p._id, child._id).isDefined) orErr "Already defined"
         ) yield {
-          razie.db.tx("addParent3") { implicit txn =>
+          razie.db.tx("addParent3", p.userName) { implicit txn =>
             pro.update(pro.addRel(cid -> "child"))
             cpro.update(cpro.addRel(p.id -> "parent"))
             UserTask(child._id, "addParent").delete
@@ -311,7 +311,7 @@ Please do that soon: it will expire in a few hours, for security reasons.
           a <- (if (p.email == ce) Some(true) else None) logging ("ERR neq", p.email, ce) orErr "Not same user";
           pro <- p.profile orCorr cNoProfile
         ) yield {
-          razie.db.tx("verifiedEmail") { implicit txn =>
+          razie.db.tx("verifiedEmail", p.userName) { implicit txn =>
             if (!p.hasPerm(Perm.eVerified)) {
               // TODO transaction
               val ppp = pro.addPerm("+" + Perm.eVerified.s).addPerm("+" + Perm.uWiki.s)
@@ -367,7 +367,7 @@ Please read our [[Terms of Service]] as well as our [[Privacy Policy]]
   def someok(what: String) = Action { implicit request =>
     forUser { au =>
       val t = UserTasks.some(au, what)
-      razie.db.tx("someok") { implicit txn =>
+      razie.db.tx("someok", au.userName) { implicit txn =>
         t.delete
       }
       Msg2(t.desc + " Completed!")

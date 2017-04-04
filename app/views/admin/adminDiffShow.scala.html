@@ -9,15 +9,18 @@ show diffs for a pair dest/src
   else wid.wpath
 }
 
+@rowclsl=@{if(side=="L") "success" else "danger"}
+@rowclsr=@{if(side=="R") "success" else "danger"}
+
 @stok.title("admin showDiff")
 
-    <h2>Diffs</h2>
+    <h2>Diffs: @srcWe.getLabel</h2>
 <small>
       <table class="table table-striped">
           <thead>
               <td>What (@side)</td>
-              <td><b>Local</b></td>
-              <td><b>Remote</b></td>
+            <td><span class="label label-@rowclsl"><b>Local</b></span></td>
+            <td><span class="label label-@rowclsr"><b>Remote</b></span></td>
           </thead>
         <tr>
           <td>Ver/updDtm</td>

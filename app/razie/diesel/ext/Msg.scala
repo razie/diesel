@@ -114,13 +114,26 @@ case class EMatch(cls: String, met: String, attrs: MatchAttrs, cond: Option[EIf]
     P (p.name, p.ttype, p.ref, p.multi, p.dflt)
   })
 
-  override def toHtml = ea(cls, met) + " " + attrs.map(_.toHtml).mkString("(", ",", ")")
+  override def toHtml = ea(cls, met) + " " + toHtmlMAttrs(attrs)
 
   override def toString = cls + "." + met + " " + attrs.mkString("(", ",", ")")
 }
 
-// mapping a message
-case class EMap(cls: String, met: String, attrs: Attrs) extends CanHtml {
+/**
+  * just a call to next - how to call next: wait => or no wait ==>
+  */
+case class ENext (msg:EMsg, arrow:String) extends CanHtml {
+  override def toHtml   = arrow + " " + msg.toHtml
+  override def toString = arrow + " " + msg.toString
+}
+
+/** mapping a message - a decomposition rule (right hand side of =>)
+  *
+  * @param cls
+  * @param met
+  * @param attrs
+  */
+case class EMap(cls: String, met: String, attrs: Attrs, arrow:String="=>") extends CanHtml {
   var count = 0;
 
   def apply(in: EMsg, destSpec: Option[EMsg], pos:Option[EPos])(implicit ctx: ECtx): List[Any] = {
@@ -128,7 +141,9 @@ case class EMap(cls: String, met: String, attrs: Attrs) extends CanHtml {
     e.pos = pos
     e.spec = destSpec
     count += 1
-    List(e)
+
+    if(arrow == "==>") List(ENext(e, arrow))
+    else List(e)
   }
 
   def sourceAttrs(in: EMsg, spec: Attrs, destSpec: Option[Attrs])(implicit ctx: ECtx) = {
@@ -164,16 +179,22 @@ case class EMap(cls: String, met: String, attrs: Attrs) extends CanHtml {
         expr(p)
       )
       p.copy(dflt = v, expr=None)
-    } else Nil
+    } else {
+      // if no map rules and no spec, then just copy/propagate all parms
+      in.attrs.map {a=>
+        a.copy()
+      }
+    }
   }
 
   def asMsg = EMsg("", cls, met, attrs.map{p=>
     P (p.name, p.ttype, p.ref, p.multi, p.dflt)
   })
 
-  override def toHtml = ea(cls, met) + " " + attrs.map(_.toHtml).mkString("(", ",", ")")
+//  override def toHtml = "<b>=&gt;</b> " + ea(cls, met) + " " + attrs.map(_.toHtml).mkString("(", ",", ")")
+  override def toHtml = """<span class="glyphicon glyphicon-arrow-right"></span> """ + ea(cls, met) + " " + toHtmlAttrs(attrs)
 
-  override def toString = cls + "." + met + " " + attrs.mkString("(", ",", ")")
+  override def toString = "=> " + cls + "." + met + " " + attrs.mkString("(", ",", ")")
 }
 
 import mod.diesel.model.parser.FlowExpr
@@ -187,23 +208,23 @@ case class EFlow(e: EMatch, ex: FlowExpr) extends CanHtml with EApplicable with 
   override def apply(in: EMsg, destSpec: Option[EMsg])(implicit ctx: ECtx): List[Any] =
     Nil//i.apply(in, destSpec, pos)
 
-  override def toHtml = span("$flow::") + s" $e => $ex <br>"
+  override def toHtml = span("$flow::") + s" ${e.toHtml} => $ex <br>"
 
   override def toString = s"$$flow:: $e => $ex"
 }
 
 // a context
-case class ERule(e: EMatch, i: EMap) extends CanHtml with EApplicable with HasPosition {
+case class ERule(e: EMatch, i: List[EMap]) extends CanHtml with EApplicable with HasPosition {
   var pos : Option[EPos] = None
   override def test(m: EMsg, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) =
     e.test(m, cole)
 
   override def apply(in: EMsg, destSpec: Option[EMsg])(implicit ctx: ECtx): List[Any] =
-    i.apply(in, destSpec, pos)
+    i.flatMap(_.apply(in, destSpec, pos))
 
-  override def toHtml = span("$when::") + s" ${e.toHtml} => ${i.toHtml} <br>"
+  override def toHtml = span("$when::") + s" ${e.toHtml} ${i.map(_.toHtml).mkString("<br>")} <br>"
 
-  override def toString = "$when:: " + e + " => " + i
+  override def toString = "$when:: " + e + " => " + i.mkString
 }
 
 // a nvp - can be a spec or an event, message, function etc
@@ -231,7 +252,13 @@ case class EMsg(arch:String, entity: String, met: String, attrs: List[RDOM.P], r
         )
       },
       "stype" -> stype
-    )
+    ) ++ {
+      pos.map{p=>
+        Map ("ref" -> p.toRef,
+          "pos" -> p.toJmap
+        )
+      }.getOrElse(Map.empty)
+    }
 
   // if this was an instance and you know of a spec
   def first: String = spec.map(_.first).getOrElse(
@@ -240,7 +267,7 @@ case class EMsg(arch:String, entity: String, met: String, attrs: List[RDOM.P], r
 
   /** color - if has executor */
   private def resolved: String = spec.map(_.resolved).getOrElse(
-    if (stype == "GET" || stype == "POST" ||
+    if ((stype contains "GET") || (stype contains "POST") ||
       Executors.all.exists(_.test(this)(ECtx.empty))
     ) "default"
     else "warning"
@@ -251,8 +278,9 @@ case class EMsg(arch:String, entity: String, met: String, attrs: List[RDOM.P], r
     PM (p.name, p.ttype, p.ref, p.multi, "==", p.dflt)
   })
 
-  override def toHtml =
-  /*span(arch+"::")+*/first + s""" ${ea(entity,met)} (${attrs.map(_.toHtml).mkString(", ")})"""
+  override def toHtml = {
+  /*span(arch+"::")+*/first + s""" ${ea(entity,met)} """ + toHtmlAttrs(attrs)
+  }
 
   def toHtmlInPage = hrefBtn2+hrefBtn1 + toHtml.replaceAllLiterally("weref", "wefiddle")
 
@@ -262,7 +290,7 @@ case class EMsg(arch:String, entity: String, met: String, attrs: List[RDOM.P], r
   override def toString =
     s""" $entity.$met (${attrs.mkString(", ")})"""
 
-  def attrsToHtml (attrs: Attrs) = {
+  def attrsToUrl (attrs: Attrs) = {
     attrs.map{p=>
       s"""${p.name}=${p.dflt}"""
     }.mkString("&")
@@ -270,7 +298,7 @@ case class EMsg(arch:String, entity: String, met: String, attrs: List[RDOM.P], r
 
   // local invocation url
   def url1 (section:String="") = {
-    var x = s"""/diesel/wiki/${pos.map(_.wpath).mkString}/react/$entity/$met?${attrsToHtml(attrs)}"""
+    var x = s"""/diesel/wiki/${pos.map(_.wpath).mkString}/react/$entity/$met?${attrsToUrl(attrs)}"""
     if (x.endsWith("&") || x.endsWith("?")) ""
     else if (x contains "?") x = x + "&"
     else x = x + "?"
@@ -284,7 +312,7 @@ case class EMsg(arch:String, entity: String, met: String, attrs: List[RDOM.P], r
 
   // reactor invocation url
   def url2 (section:String="") = {
-    var x = s"""/diesel/fiddle/react/$entity/$met?${attrsToHtml(attrs)}"""
+    var x = s"""/diesel/fiddle/react/$entity/$met?${attrsToUrl(attrs)}"""
     if (x.endsWith("&") || x.endsWith("?")) ""
     else if (x contains "?") x = x + "&"
     else x = x + "?"
@@ -319,7 +347,7 @@ case class EMock(rule: ERule) extends CanHtml with HasPosition {
 
   override def toString = count.toString + " " + rule.toString
 
-  def count = rule.i.count
+  def count = rule.i.map(_.count).sum  // todo is slow
 }
 
 // just a wrapper for type
@@ -334,7 +362,13 @@ case class EVal(p: RDOM.P) extends CanHtml with HasPosition {
       "class" -> "EVal",
       "name" -> p.name,
       "value" -> p.dflt
-    )
+    ) ++ {
+      pos.map{p=>
+        Map ("ref" -> p.toRef,
+         "pos" -> p.toJmap
+        )
+      }.getOrElse(Map.empty)
+    }
 
   override def toHtml = kspan("val::") + p.toString
 
@@ -344,6 +378,7 @@ case class EVal(p: RDOM.P) extends CanHtml with HasPosition {
 // can execute messages -
 // todo can these add more decomosition or just proces leafs?
 abstract class EExecutor (val name:String) extends EApplicable {
+  def messages : List[EMsg] = Nil
 }
 
 object Executors {

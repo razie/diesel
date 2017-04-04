@@ -12,6 +12,7 @@ function isInBrackets(line,pos){
   return count > 0;
 }
 
+/** CA content assist for dom DSL */
 function domCompl (i) {
   return function (editor, session, pos, prefix, callback) {
     var contentAssist = i ? instContentAssist : domContentAssist;
@@ -28,6 +29,7 @@ function domCompl (i) {
       terms[0] && terms[0] == '$when' ||
       terms[0] && terms[0] == '$expect' ||
       terms[0] && terms[0] == '$flow' ||
+      terms[0] && terms[0] == '=>' ||
       terms[0] && terms[0] == '$mock') {
 
       var newTerms = ['msg', ''];
@@ -319,4 +321,109 @@ function WID(wpath) {
     contentUrl : '/wikie/content/'+wpath
   }
 }
+
+//---------------- configuration
+
+var domEngineConfig = getEngConfig();
+
+function getEngConfig() {
+  $.ajax(
+    '/diesel/engine/config/json', {
+      type: 'GET',
+      success: function(data) {
+        domEngineConfig = data;
+      },
+      error  : function(x) {
+        console.log( "ERR "+x.toString());
+      }
+    });
+}
+
+function setEngConfig() {
+  $.ajax(
+    '/diesel/engine/config/json', {
+      type: 'POST',
+      data: $.param({
+        domEngineConfig: domEngineConfig
+      }),
+      contentType: 'application/x-www-form-urlencoded',
+      success: function (data) {
+      },
+      error: function (x) {
+        console.log("ERR " + x.toString());
+      }
+    });
+}
+
+function setEngConfigElement(name,value) {
+  $.ajax(
+    '/diesel/engine/config/json', {
+      type: 'POST',
+      data: $.param({
+        domEngineConfig: domEngineConfig
+      }),
+      contentType: 'application/x-www-form-urlencoded',
+      success: function (data) {
+      },
+      error: function (x) {
+        console.log("ERR " + x.toString());
+      }
+    });
+}
+
+/** update the tag query from checkboxes */
+function cbToTagQuery (obj) {
+  var ors = []; // tags for OR
+  var tq = '';
+
+  function el(s) {
+    if(tq.length == 0) tq = tq+s;
+    else tq = tq + '/' + s;
+  }
+
+  $(':checkbox').each(function(i, obj) {
+    if($(obj).is(':checked')) {
+      if(obj.getAttribute("id").startsWith("cbp")) ors.push(obj.getAttribute("title"));
+      if(obj.getAttribute("id").startsWith("cba")) el(obj.getAttribute("title"));
+      if(obj.getAttribute("id").startsWith("cbm")) el('-'+obj.getAttribute("title"));
+    }
+  });
+
+  if(ors.length > 0) {
+    var x = ors.reduce(function(acc,val){return acc.length <= 0 ? val : acc + '|' + val;})
+    tq = tq.length <= 0 ? x : x + '/' + tq;
+  }
+
+//  $("#tagQuery").text(tq);
+  $("#tagQuery").val(tq);
+}
+
+/** update the tag query from checkboxes */
+function tagQueryTocb (tq) {
+  $(':checkbox').prop('checked', false);
+
+  function el(s) {
+    var ors = s.split('|'); // or elements
+
+    if(ors.length > 1) {
+      ors.map(function(val) {
+        $("#cbp"+val).prop('checked', true);
+      })
+    } else if(ors.length == 1) {
+      var val = ors.pop()
+      if(val.startsWith("-"))
+        $("#cbm"+val.substr(1)).prop('checked', true);
+      else
+        $("#cba"+val).prop('checked', true);
+    }
+  }
+
+  var ands = tq.split('/');
+
+  if(ands.length > 0) {
+    ands.map(el);
+  }
+
+}
+
 

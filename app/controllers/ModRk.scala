@@ -69,7 +69,7 @@ case class ModRkEntry
   def current = state match {
     case None => role
     case Some(ModRk.STATE_PAID) => role
-    case Some(ModRk.STATE_INCART) => """<a href="/doe/cart" class="btn btn-warning">Need to checkout</a>"""
+    case Some(ModRk.STATE_INCART) => """<a href="/doe/cart" class="btn btn-warning">In shopping cart</a>"""
   }
 
   // optimize access to User object
@@ -126,7 +126,7 @@ object ModRk extends RazController with Logging {
     (for (
       club <- wid.parentOf(WikiDomain(wid.getRealm).isA("Club", _)).flatMap(Club.apply) orErr "Club not found";
       ism <- club.isMember(stok.au.get) orCorr cNotMember(club.name)
-    ) yield {
+    ) yield razie.db.tx("doeModRkAdd", stok.userName) { implicit txn =>
       var e = ModRkEntry(new ObjectId(rkid), None, wid.uwid, role)
       if (wid.page.get.attr("price").exists(_.trim.length > 0) &&
           !wid.page.get.attr("module.reg-excluded").exists(_.split(",") contains role)
@@ -152,54 +152,55 @@ object ModRk extends RazController with Logging {
   /** remove a reg record and refund credits if Admin and paid */
   def doeModRkRemove(wid: WID, rkid: String) = FAUR { implicit stok =>
     var msg = ""
-    wid.uwid.map { uwid =>
-      ROne[ModRkEntry]("rkId" -> new ObjectId(rkid), "uwid.cat" -> uwid.cat, "uwid.id" -> uwid.id).foreach { reg =>
+    razie.db.tx("doeModRkRemove", stok.userName) { implicit txn =>
+      wid.uwid.map { uwid =>
+        ROne[ModRkEntry]("rkId" -> new ObjectId(rkid), "uwid.cat" -> uwid.cat, "uwid.id" -> uwid.id).foreach { reg =>
 
-        if (reg.state.exists(_ == STATE_PAID)) {
+          if (reg.state.exists(_ == STATE_PAID)) {
 
-          msg = "CANNOT remove paid item"
+            msg = "CANNOT remove paid item"
 
-          if(stok.au.exists(_.canAdmin(wid))) {
+            if (stok.au.exists(_.canAdmin(wid))) {
 
-            // find cart item and refund credit price
+              // find cart item and refund credit price
 
-            // todo optimize to use rkid owner as cart user id
-            if(
-              (for(
-              cart <- RMany[Cart]("state" -> "done.paid");
-              item <- cart.items.find(i=> i.entQuery == wid.wpath+rkid && i.state == Cart.STATE_PAID)
-            ) yield {
-              Carts.irefundItem(cart, item._id.toString, stok.au.get)
-              msg = "REFUNDED paid item"
+              // todo optimize to use rkid owner as cart user id
+              if (
+                (for (
+                  cart <- RMany[Cart]("state" -> "done.paid");
+                  item <- cart.items.find(i => i.entQuery == wid.wpath + rkid && i.state == Cart.STATE_PAID)
+                ) yield {
+                  Carts.irefundItem(cart, item._id.toString, stok.au.get)
+                  msg = "REFUNDED paid item"
+                }
+                  ).toList.size <= 0) {
+                msg = "can't find cart or item: " + stok.errCollector.mkString
+              }
+
             }
-            ).toList.size <= 0) {
-              msg = "can't find cart or item: " + stok.errCollector.mkString
+
+          } else
+            reg.delete
+
+          // if there is a cart -
+          if (reg.state.exists(_ == STATE_INCART))
+            Cart.find(stok.au.get._id).map { cart =>
+              cart.rm(wid.wpath + rkid)
             }
 
-          }
-
-        } else
-          reg.delete
-
-        // if there is a cart -
-        if (reg.state.exists(_ == STATE_INCART))
-          Cart.find(stok.au.get._id).map { cart =>
-            cart.rm(wid.wpath + rkid)
-          }
-
-        //todo delete forms too, if any
+          //todo delete forms too, if any
+        }
       }
+
+      // try also old records with wpath
+      ROne[ModRkEntry]("rkId" -> new ObjectId(rkid), "wpath" -> wid.wpath).foreach(_.delete)
+
+      if (msg.length > 0)
+        Msg(msg, wid)
+      else
+        Redirect(Wiki.w(wid))
     }
-
-    // try also old records with wpath
-    ROne[ModRkEntry]("rkId" -> new ObjectId(rkid), "wpath" -> wid.wpath).foreach(_.delete)
-
-    if (msg.length > 0)
-      Msg(msg, wid)
-    else
-      Redirect(Wiki.w(wid))
   }
-
 }
 
 
@@ -212,54 +213,56 @@ object ModRkExec extends EExecutor("modrk") {
   }
 
   override def apply(in: EMsg, destSpec: Option[EMsg])(implicit ctx: ECtx): List[Any] = {
-    in.met match {
+    razie.db.tx("ModRkExec", "?") { implicit txn =>
+      in.met match {
 
-      case "updstatus" => {
-        //todo auth
-        var msg = "ok"
-        clog << "modrk.remove"
-        val wpath = ctx("wpath")
-        val rkid = ctx("rkid")
+        case "updstatus" => {
+          //todo auth
+          var msg = "ok"
+          clog << "modrk.remove"
+          val wpath = ctx("wpath")
+          val rkid = ctx("rkid")
 
-        WID.fromPath(wpath).flatMap(_.uwid).map {
-          uwid =>
-            ROne[ModRkEntry](
-              "rkId" -> new ObjectId(rkid), "uwid.cat" -> uwid.cat, "uwid.id" -> uwid.id).foreach {
-              reg =>
-                if (reg.state.exists(_ == ModRk.STATE_PAID)) {
-                  msg = "CANNOT update paid item"
-                } else
-                  reg.copy(state = Some(ModRk.STATE_PAID)).update
-            }
+          WID.fromPath(wpath).flatMap(_.uwid).map {
+            uwid =>
+              ROne[ModRkEntry](
+                "rkId" -> new ObjectId(rkid), "uwid.cat" -> uwid.cat, "uwid.id" -> uwid.id).foreach {
+                reg =>
+                  if (reg.state.exists(_ == ModRk.STATE_PAID)) {
+                    msg = "CANNOT update paid item"
+                  } else
+                    reg.copy(state = Some(ModRk.STATE_PAID)).update
+              }
+          }
+          List(new EVal("result", msg))
         }
-        List(new EVal("result", msg))
-      }
 
-      case "remove" => {
-        //todo auth
-        var msg = "ok"
-        clog << "modrk.remove"
-        val wpath = ctx("wpath")
-        val rkid = ctx("rkid")
+        case "remove" => {
+          //todo auth
+          var msg = "ok"
+          clog << "modrk.remove"
+          val wpath = ctx("wpath")
+          val rkid = ctx("rkid")
 
-        WID.fromPath(wpath).flatMap(_.uwid).map {
-          uwid =>
-            ROne[ModRkEntry](
-              "rkId" -> new ObjectId(rkid), "uwid.cat" -> uwid.cat, "uwid.id" -> uwid.id).foreach {
-              reg =>
-                if (reg.state.exists(_ == ModRk.STATE_PAID)) {
-                  msg = "Removed paid item !!"
-                  razie.base.Audit.logdb("MODRK_DEL", "Removed paid record", reg.grated.toString)
-                  reg.delete
-                } else
-                  reg.delete
-            }
+          WID.fromPath(wpath).flatMap(_.uwid).map {
+            uwid =>
+              ROne[ModRkEntry](
+                "rkId" -> new ObjectId(rkid), "uwid.cat" -> uwid.cat, "uwid.id" -> uwid.id).foreach {
+                reg =>
+                  if (reg.state.exists(_ == ModRk.STATE_PAID)) {
+                    msg = "Removed paid item !!"
+                    razie.base.Audit.logdb("MODRK_DEL", "Removed paid record", reg.grated.toString)
+                    reg.delete
+                  } else
+                    reg.delete
+              }
+          }
+          List(new EVal("result", msg))
         }
-        List(new EVal("result", msg))
-      }
 
-      case _ => {
-        Nil
+        case _ => {
+          Nil
+        }
       }
     }
   }

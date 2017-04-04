@@ -1,18 +1,14 @@
 package mod.flow
 
 import model.{User, Website}
-import play.api.mvc.{Result, Request, Action}
+import play.api.mvc.{Action, Request, Result}
 import razie.clog
-import razie.wiki.mods.{WikiMods, WikiMod}
+import razie.wiki.mods.{WikiMod, WikiMods}
 import razie.wiki.parser.WAST
-
 import org.joda.time.DateTime
 import com.mongodb.casbah.Imports._
-import controllers.{RazController, CodePills, Club}
-import razie.db.REntity
-import razie.db.RMany
-import razie.db.ROne
-import razie.db.RTable
+import controllers.{Club, CodePills, RazController}
+import razie.db._
 import razie.wiki.model._
 import razie.|>._
 
@@ -86,7 +82,7 @@ case class FProgress (
       this
     else {
       val t = copy(records = new FProgressRecord(id, status) +: records)
-      t.update
+      t.update(tx.auto)
       t
     }
   }
@@ -101,7 +97,7 @@ case class FProgress (
           uwid <- w.uwid;
           u <- ctx.user
         ) {
-          model.UserWiki(u._id, uwid, "Fan").create
+          model.UserWiki(u._id, uwid, "Fan").create(tx.auto)
         }
         None
       case ("wiki", "log") => {
@@ -117,7 +113,7 @@ case class FProgress (
     val next = spec.items.find(p=>isNext(p._id))
 
     if(next.isEmpty) {
-      this.copy(status=FProgress.STATUS_COMPLETE).update
+      this.copy(status=FProgress.STATUS_COMPLETE).update(tx.auto)
     }
 
     val res = next.flatMap(p=> process (p, ctx))
@@ -147,7 +143,7 @@ object FProgress extends RazController {
 
   def startFProgress (ownerId:ObjectId, tl:FList, desc:String): FProgress = {
     val p = new FProgress (ownerId, tl, desc, STATUS_NOT_STARTED, Seq(new FProgressRecord(tl.items.head._id, STATUS_IN_PROGRESS)))
-    p.create
+    p.create(tx.auto)
     p
   }
 

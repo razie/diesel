@@ -3,7 +3,7 @@ package mod.cart
 import model.UserId
 import org.bson.types.ObjectId
 import org.joda.time.DateTime
-import razie.db.{REntity, RMany, ROne}
+import razie.db.{REntity, RMany, ROne, Txn}
 import razie.wiki.model.UWID
 
 import scala.util.Try
@@ -25,12 +25,12 @@ case class Cart (
 
   def isOpen = state startsWith "open."
 
-  def add (item:CartItem) = {
+  def add (item:CartItem)(implicit txn:Txn) = {
     val c = copy(items = items ++ Seq(item), updDtm = DateTime.now)
     c.update
   }
 
-  def rm (itemQuery:String) = {
+  def rm (itemQuery:String)(implicit txn:Txn) = {
     val c = copy(items = items.filter(_.entQuery != itemQuery), updDtm = DateTime.now)
     c.update
   }
@@ -108,7 +108,7 @@ object Cart {
   def createOrFind (userId:ObjectId, club:UWID) : Cart = {
     ROne[Cart] ("userId" -> userId, "archived" -> false, "clubWid" -> club.grated).getOrElse{
       val c = Cart (userId, club)
-      c.create
+      c.create(razie.db.tx.auto)
       c
     }
   }

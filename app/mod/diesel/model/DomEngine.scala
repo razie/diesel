@@ -6,6 +6,8 @@
  */
 package mod.diesel.model
 
+import java.util.concurrent.TimeUnit
+
 import akka.actor.{Actor, ActorRef, Props}
 import mod.diesel.model.parser.{BFlowExpr, FlowExpr, MsgExpr, SeqExpr}
 import play.libs.Akka
@@ -29,6 +31,8 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import DomState._
 import controllers.RazRequest
 
+import scala.concurrent.duration.Duration
+
 object AstKinds {
   final val ROOT = "root"
   final val RECEIVED = "received"
@@ -47,7 +51,7 @@ object DomState {
   final val STARTED="exec.started" // is executing now
   final val DONE="final.done" // done
   final val LATER="exec.later" // queued up somewhere for later
-  final val DEPY="exec.depy" // waiting on another task
+  final val DEPENDENT="exec.depy" // waiting on another task
 
   def inProgress(s:String) = s startsWith "exec."
 }
@@ -57,7 +61,6 @@ object DieselAppContext {
   var engMap = new mutable.HashMap[String,DomEngine]()
   var refMap = new mutable.HashMap[String,ActorRef]()
   var router : Option[ActorRef] = None
-  var asyncDispatch : Option[ActorRef] = None
 
   def init (node:String="", app:String="") = {
     if(appCtx.isEmpty) appCtx = Some(new DieselAppContext(
@@ -69,11 +72,6 @@ object DieselAppContext {
     val a = Akka.system.actorOf(p)
     router = Some(a)
     a ! DEInit
-
-    val pa = Props(new DEAsyncDispatcher())
-    val aa = Akka.system.actorOf(pa)
-    asyncDispatch = Some(aa)
-    aa ! DEInit
 
     appCtx.get
   }
@@ -88,8 +86,9 @@ object DieselAppContext {
     eng
   }
 
-  def stop = {
+  def engines = engMap.values.toList
 
+  def stop = {
   }
 
   def ctx = appCtx.getOrElse(init())
@@ -140,7 +139,7 @@ case class DieselTrace(
   */
 case class DomAst(
   value: Any,
-  kind: String,
+  kind: String = AstKinds.GENERATED,
   children: ListBuffer[DomAst] = new ListBuffer[DomAst](),
   id : String = new ObjectId().toString
   ) extends CanHtml {
@@ -151,6 +150,13 @@ case class DomAst(
 
   var moreDetails = " "
   var specs: List[Any] = Nil
+  var prereq: List[String] = Nil
+
+  /** depends on other nodes by IDs */
+  def withPrereq (s:List[String]) = {
+    prereq = s ::: prereq
+    this
+  }
 
   /** this node has a spec */
   def withSpec (s:Any) = {
@@ -185,6 +191,7 @@ case class DomAst(
         }),
       "details" -> moreDetails,
       "id" -> id,
+      "status" -> status,
       "children" -> children.map(_.toj).toList
     )
 
@@ -221,7 +228,10 @@ object DomEngineSettings {
   /** */
   def from(stok:RazRequest) = {
     val q = fromRequest(stok.req)
+
+    // find the config tag (which configuration to use - default to userId
     if(q.configTag.isEmpty && stok.au.isDefined) q.configTag = Some(stok.au.get._id.toString)
+
     // todo should keep the original user or switch?
     if(q.userId.isEmpty && stok.au.isDefined) q.userId = Some(stok.au.get._id.toString)
     q
@@ -246,17 +256,55 @@ object DomEngineSettings {
       q.get(name).orElse(fParm(name)).orElse(request.headers.get(name)).getOrElse(dflt)
 
     new DomEngineSettings(
-      mockMode = fqhoParm("mockMode", "true").toBoolean,
-      blenderMode = fqhoParm("blenderMode", "true").toBoolean,
-      draftMode = fqhoParm("draftMode", "true").toBoolean,
-      sketchMode = fqhoParm("sketchMode", "false").toBoolean,
-      execMode = fqhoParm("execMode", "sync"),
-      resultMode = fqhoParm("resultMode", "json"),
+      mockMode = fqhoParm(MOCK_MODE, "true").toBoolean,
+      blenderMode = fqhoParm(BLENDER_MODE, "true").toBoolean,
+      draftMode = fqhoParm(DRAFT_MODE, "true").toBoolean,
+      sketchMode = fqhoParm(SKETCH_MODE, "false").toBoolean,
+      execMode = fqhoParm(EXEC_MODE, "sync"),
+      resultMode = fqhoParm(RESULT_MODE, "json"),
       parentNodeId = fqhParm("dieselNodeId"),
       configTag = fqhParm("dieselConfigTag"),
-      userId = fqhParm("dieselUserId")
+      userId = fqhParm("dieselUserId"),
+      {
+        if(request.contentType.exists(c=> c == "application/json")) {
+          Some(new EEContent(request.body.asJson.mkString, request.contentType.get))
+        } else None
+      }
     )
   }
+
+  /** take the settings from either URL or body form or default */
+  def fromJson(j:Map[String, String]) = {
+    def fqhParm(name:String) =
+      j.get(name)
+
+    def fqhoParm(name:String, dflt:String) =
+      j.get(name).getOrElse(dflt)
+
+    new DomEngineSettings(
+      mockMode = fqhoParm(MOCK_MODE, "true").toBoolean,
+      blenderMode = fqhoParm(BLENDER_MODE, "true").toBoolean,
+      draftMode = fqhoParm(DRAFT_MODE, "true").toBoolean,
+      sketchMode = fqhoParm(SKETCH_MODE, "false").toBoolean,
+      execMode = fqhoParm(EXEC_MODE, "sync"),
+      resultMode = fqhoParm(RESULT_MODE, "json"),
+      parentNodeId = fqhParm(DIESEL_NODE_ID),
+      configTag = fqhParm(DIESEL_CONFIG_TAG),
+      userId = fqhParm(DIESEL_USER_ID)
+    )
+  }
+
+  final val SKETCH_MODE="sketchMode"
+  final val MOCK_MODE="mockMode"
+  final val BLENDER_MODE="blenderMode"
+  final val DRAFT_MODE="draftMode"
+  final val EXEC_MODE="execMode"
+  final val RESULT_MODE="resultMode"
+  final val DIESEL_NODE_ID = "dieselNodeId"
+  final val DIESEL_CONFIG_TAG = "dieselConfigTag"
+  final val DIESEL_USER_ID = "dieselUserId"
+  final val TAG_QUERY = "tagQuery"
+  final val FILTER = Array(SKETCH_MODE, MOCK_MODE, BLENDER_MODE, DRAFT_MODE, EXEC_MODE, RESULT_MODE)
 }
 
 class DomEngineSettings
@@ -275,12 +323,38 @@ class DomEngineSettings
   var configTag : Option[String] = None,
 
   /** user id */
-  var userId : Option[String] = None
+  var userId : Option[String] = None,
+
+  /** content that was posted with the request */
+  var postedContent : Option[EEContent] = None,
+
+  /** tag query to select for modeBlender */
+  var tagQuery : Option[String] = None
   ) {
   val node = Services.config.node
 
   /** is this supposed to use a user cfg */
   def configUserId = configTag.map(x=>if(ObjectId.isValid(x)) Some(new ObjectId(x)) else None)
+
+  def toJson : Map[String,String] = {
+    import DomEngineSettings._
+    Map(
+      MOCK_MODE -> mockMode.toString,
+      SKETCH_MODE -> sketchMode.toString,
+      BLENDER_MODE -> blenderMode.toString,
+      DRAFT_MODE -> draftMode.toString,
+      EXEC_MODE -> execMode,
+      RESULT_MODE -> resultMode
+    ) ++ parentNodeId.map(x=>
+      Map(DIESEL_NODE_ID -> x)
+    ).getOrElse(Map.empty) ++ configTag.map(x=>
+      Map(DIESEL_CONFIG_TAG -> x)
+    ).getOrElse(Map.empty) ++ userId.map(x=>
+      Map(DIESEL_USER_ID -> x)
+    ).getOrElse(Map.empty) ++ tagQuery.map(x=>
+      Map(TAG_QUERY -> x)
+    ).getOrElse(Map.empty)
+  }
 }
 
 /** an engine */
@@ -295,10 +369,6 @@ class DomEngine(
 
   val maxLevels = 15
 
-  def later (m:List[DEMsg]) = {
-    m.map(m=>DieselAppContext.router.map(_ ! m))
-  }
-
   // setup the context for this eval
   implicit val ctx = new DomEngECtx(settings).withDomain(dom).withSpecs(pages)
 
@@ -310,13 +380,24 @@ class DomEngine(
     case e:EFlow => e
   }
 
+  def spawn (nodes:List[DomAst]) = {
+    val newRoot = DomAst("root", AstKinds.ROOT).withDetails("(spawned)")
+    newRoot.children appendAll nodes
+    val engine = DieselAppContext.mkEngine(dom, newRoot, settings, pages)
+    engine.ctx._hostname = ctx._hostname
+    engine
+  }
+
+  def later (m:List[DEMsg]) = {
+    m.map(m=>DieselAppContext.router.map(_ ! m))
+  }
+
   def collectValues[T] (f: PartialFunction[Any, T]) : List[T] =
     root.collect {
       case v if(f.isDefinedAt(v.value)) => f(v.value)
     }
 
-
-  def parent(node: DomAst): Option[DomAst] =
+  def findParent(node: DomAst): Option[DomAst] =
     root.collect {
       case a if a.children.exists(_.id == node.id) => a
     }.headOption
@@ -330,10 +411,12 @@ class DomEngine(
     // parent status update
 
     val x =
-      checkState(parent(a).getOrElse(root)) :::
-      depys.toList.filter(_.prereq.id == a.id).flatMap(d=>root.find(d.depy.id).toList).filter{n=>
+      checkState(findParent(a).getOrElse(root)) :::
+      depys.toList.filter(_.prereq.id == a.id).flatMap(d=>
+        root.find(d.depy.id).toList
+      ).filter { n =>
         val prereq = depys.filter(x => x.depy.id == n.id && DomState.inProgress(x.prereq.status))
-        prereq.isEmpty && n.status == DEPY
+        prereq.isEmpty && n.status == DEPENDENT
       }.map { n =>
         n.status = LATER
         DEReq(id, n, true, level + 1)
@@ -341,22 +424,25 @@ class DomEngine(
     x
   }
 
+  /** dependency between two nodes */
   case class DADepy (prereq:DomAst, depy:DomAst)
 
   val depys = ListBuffer[DADepy]()
 
+  /** create / add some dependencies, so d waits for p */
+  def crdep(p:List[DomAst], d:List[DomAst]) = {
+    d.map{d=>
+      // d will wait
+      if(p.nonEmpty) d.status = DEPENDENT
+      p.map(p=>depys.append(DADepy(p,d)))
+    }
+  }
+
   // find the next execution list
+  // a is already assumed to have been stitched in the main tree
   def findFront(a: DomAst, results:List[DomAst]): List[DomAst] = {
     // any flows to shape it?
     var res = results
-
-    def crdep(p:List[DomAst], d:List[DomAst]) = {
-      d.map{d=>
-        // d will wait
-        if(p.nonEmpty) d.status = DEPY
-        p.map(p=>depys.append(DADepy(p,d)))
-      }
-    }
 
     // returns the front of that branch and builds side effecting depys from those to the rest
     def rec(e:FlowExpr) : List[DomAst] = e match {
@@ -383,10 +469,20 @@ class DomEngine(
         res = rec(f.ex)
     }
 
-    res
+    // add explicit depys
+    results.filter(_.prereq.nonEmpty).map{res=>
+      crdep(res.prereq.flatMap(root.find), List(res))
+    }
+
+    res.filter(_.status != DEPENDENT)
   }
 
-  // a decomp req
+  /** a decomp req - starts processing a message
+    *
+    * @param a the node to decompose/process
+    * @param recurse
+    * @param level
+    */
   def req(a: DomAst, recurse: Boolean = true, level: Int): Unit = {
     a.status = DomState.STARTED
 
@@ -399,7 +495,14 @@ class DomEngine(
     later(msgs)
   }
 
-  // process a reply with results
+  /** process a reply with results
+    *
+    * @param a the node that got this reply
+    * @param recurse
+    * @param level
+    * @param results
+    * @return
+    */
   def rep(a: DomAst, recurse: Boolean = true, level: Int, results:List[DomAst]): List[DEMsg] = {
     var msgs : List[DEMsg] = Nil // continuations from this cycle
 
@@ -459,7 +562,10 @@ class DomEngine(
 //    }
     clog << "DomEng"+id+" process"
     root.status = STARTED
-    val msgs = root.children.toList.map{x=>
+
+    // async start
+//    val msgs = root.children.toList.map{x=>
+    val msgs = findFront(root, root.children.toList).toList.map{x=>
       x.status = LATER
       DEReq(id, x, true, 0)
     }
@@ -473,6 +579,9 @@ class DomEngine(
 
   /** transform one element / one step
     *
+    * 1. you can collect children of the current node, like info nodes etc
+    * 2. return continuations, including processing through the children
+    *
     * @param a node to decompose
     * @param recurse should recurse
     * @param level
@@ -485,6 +594,18 @@ class DomEngine(
     if (level >= maxLevels) {
       a.children append DomAst(TestResult("fail: Max-Level!", "You have a recursive rule generating this branch..."), "error")
     } else a.value match {
+
+      case next@ENext(m, "==>") => {
+        // start new engine/process
+        // todo should find settings for target service  ?
+        val eng = spawn(List(DomAst(m)))
+        eng.process // start it up in the background
+        a.children append DomAst(EInfo(s"""Spawn engine <a href="/diesel/engine/view/${eng.id}">${eng.id}</a>"""))//.withPos((m.get.pos)))
+      }
+
+      case n1@ENext(m, arr) => {
+        msgs = rep(a, recurse, level, List(DomAst(m, AstKinds.GENERATED)))
+      }
 
       case n: EMsg => {
         // look for mocks
@@ -500,7 +621,7 @@ class DomEngine(
             case m: EMock if m.rule.e.test(n) && a.children.isEmpty => {
               mocked = true
               // run the mock
-              val values = m.rule.i.apply(n, None, m.pos).collect {
+              val values = m.rule.i.flatMap(_.apply(n, None, m.pos)).collect {
                 // mocks onl generate values, not messages
                 // collect resulting values and dump message
                 case x: EMsg => {
@@ -516,28 +637,35 @@ class DomEngine(
         // no mocks fit, so let's find rules
         // I run rules even if mocks fit - mocking mocks only going out, not decomposing
         if (true || !mocked) {
-          val news = rules.filter(_.e.test(n)).map { r =>
+          rules.filter(_.e.test(n)).map { r =>
+            // each matching rule
             ruled = true
 
-            // find the spec of the generated message, to ref
-            val spec = dom.moreElements.collect {
-              case x: EMsg if x.entity == r.i.cls && x.met == r.i.met => x
-            }.headOption
+            // generate each gen/map
+            r.i.map { ri =>
+              // find the spec of the generated message, to ref
+              val spec = dom.moreElements.collect {
+                case x: EMsg if x.entity == ri.cls && x.met == ri.met => x
+              }.headOption
 
-            val news = r.i.apply(n, spec, r.pos).collect {
-              // if values then collect resulting values and dump message
-              case x: EMsg if x.entity == "" && x.met == "" => {
-                a.children appendAll x.attrs.map(x => DomAst(EVal(x), AstKinds.GENERATED).withSpec(r))
-                ctx putAll x.attrs
-                None
+              val newMsgs = ri.apply(n, spec, r.pos).collect {
+                // hack: if only values then collect resulting values and dump message
+                case x: EMsg if x.entity == "" && x.met == "" => {
+                  a.children appendAll x.attrs.map(x => DomAst(EVal(x), AstKinds.GENERATED).withSpec(r))
+                  ctx putAll x.attrs
+                  None
+                }
+                // else collect message
+                case x: EMsg => {
+                  Some(DomAst(x, AstKinds.GENERATED).withSpec(r))
+                }
+                case x: ENext => {
+                  Some(DomAst(x, AstKinds.GENERATED).withSpec(r))
+                }
               }
-              // else collect message
-              case x: EMsg => {
-                Some(DomAst(x, AstKinds.GENERATED).withSpec(r))
-              }
+
+              newNodes = newNodes ::: newMsgs.flatMap(_.toList)
             }
-
-            newNodes = newNodes ::: news.flatMap(_.toList)
           }
         }
 
@@ -707,18 +835,30 @@ class DomEngine(
 
 /** ====================== Actor infrastructure =============== */
 
+/** base class for engine internal message */
 class DEMsg ()
 
-/** a message - request to decompose */
+/** a message - request to decompose
+  *
+  * The engine will decompose the given node a and send to self a DERep
+  */
 case class DEReq (engineId:String, a:DomAst, recurse:Boolean, level:Int) extends DEMsg
 
-/** a message - reply to decompose */
+/** a message - reply to decompose
+  *
+  * The engine will stich the AST together and continue
+  */
 case class DERep (engineId:String, a:DomAst, recurse:Boolean, level:Int, results:List[DomAst]) extends DEMsg
 
+/** initialize and stop the engine */
 case object DEInit extends DEMsg
 case object DEStop extends DEMsg
 
-/** engine router - routes updates to proper engine
+case class DEStartTimer (engineId:String, d:Int, results:List[DomAst]) extends DEMsg
+case class DETimer      (engineId:String, results:List[DomAst]) extends DEMsg
+
+/**
+  * engine router - routes updates to proper engine actor
   */
 class DomEngineRouter () extends Actor {
 
@@ -766,58 +906,28 @@ class DomEngineActor (eng:DomEngine) extends Actor {
 
     case DEStop => {
       //remove refs for active engines
-      DieselAppContext.engMap.remove(eng.id)
+//      DieselAppContext.engMap.remove(eng.id)
       DieselAppContext.refMap.remove(eng.id)
       context stop self
     }
-  }
-}
 
-/** aka thread pool
-  */
-class DEAsyncDispatcher () extends Actor {
-  var workers : List[ActorRef] = Nil
-  var curWorker = 0
-
-  def route(a:Any) = {
-    workers(curWorker) ! a
-    curWorker = (curWorker+1) % workers.size
-  }
-
-  def receive = {
-    case DEInit => {
-      for(i <- (0 until 10).toList) {
-        val pa = Props(new DEAsyncActor())
-        val aa = Akka.system.actorOf(pa)
-        workers = aa :: workers
-        aa ! DEInit
+    case timer @ DEStartTimer(id,d,m) => {
+      if(eng.id == id) {
+        Akka.system.scheduler.scheduleOnce(
+          Duration.create(1, TimeUnit.MINUTES),
+          this.self,
+          DETimer(id,m)
+        )
       }
+      else DieselAppContext.router.map(_ ! timer)
     }
 
-    case req @ DEReq(id, a, r, l) => route(req)
-
-    case rep @ DERep(id, a, r, l, results) => route(rep)
-
-    case DEStop => {
-      workers.map(_ ! DEStop)
-    }
-  }
-}
-
-/** exec context for engine - each engine has its own.
-  *
-  * it will serialize status udpates and execution
-  */
-class DEAsyncActor () extends Actor {
-
-  def receive = {
-    case DEInit => { }
-
-    case req @ DEReq(id, a, r, l) => {
-//      DieselAppContext.refMap.get(id).map(_ ! req)
+    case timer @ DETimer(id,m) => {
+      if(eng.id == id) {
+      }
+      else DieselAppContext.router.map(_ ! timer)
     }
 
-    case DEStop => { }
   }
 }
 

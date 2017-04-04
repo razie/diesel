@@ -114,6 +114,8 @@ object Snow extends RazController with Logging {
     val video=stok.formParm("video")
     val visible=stok.formParm("visible")
 
+    implicit val txn = razie.db.tx.local("activate1", stok.userName)
+
     if(!wid.page.isDefined) {
       // first time
       val firstPara =
@@ -263,6 +265,9 @@ object Snow extends RazController with Logging {
         Emailer.tellRaz("ACTIVATED_PRO", "user: "+stok.au.get.fullName)
       }
       cleanAuth()
+
+      txn.commit
+
       Redirect(club.wid.urlRelative(stok.realm))
     } else
       Msg("Already activated", wid)
@@ -373,7 +378,7 @@ object Snow extends RazController with Logging {
       if(created && weNote.isDefined)
         memo = weNote.map(_.content).getOrElse("")
 
-      implicit val txn = tx.txn
+      implicit val txn = tx.local("doeAddNote", request.userName)
 
       def link(we:WikiEntry) = "http://" + WikiReactors(request.realm).websiteProps.prop("domain").getOrElse(Config.hostport) + we.wid.urlRelative(request.realm)
       def linkH = "http://" + WikiReactors(request.realm).websiteProps.prop("domain").getOrElse(Config.hostport) + "/doe/history"
@@ -389,6 +394,15 @@ object Snow extends RazController with Logging {
               "notifyUsers" -> rk.usersToNotify.mkString(","),
               "role" -> role)
           ))
+        }
+
+        // notify user of coache's notes
+        weNote.map { we =>
+          Emailer.withSession(request.realm) { implicit mailSession =>
+            rk.personsToNotify.map { u =>
+              Emailer.sendEmailNewNote(role, u, request.au.get, Wiki.w(we.wid), role,memo)
+            }
+          }
         }
       } else if (role == ROLES.QUESTIONAIRE) {
         // created by coach, notify user NOW, completed by user, notify coach
@@ -505,15 +519,6 @@ object Snow extends RazController with Logging {
             }
           }
         }
-      } else if (role == ROLES.FEEDBACK || role == ROLES.VIDEO) {
-        // notify user of coache's notes
-        weNote.map { we =>
-          Emailer.withSession(request.realm) { implicit mailSession =>
-            rk.personsToNotify.map { u =>
-              Emailer.sendEmailNewNote(role, u, request.au.get, Wiki.w(we.wid), role,memo)
-            }
-          }
-        }
       } else if (role == ROLES.MESSAGE) {
           Emailer.withSession(request.realm) { implicit mailSession =>
             rk.personsToNotify.map { u =>
@@ -563,17 +568,17 @@ object Snow extends RazController with Logging {
     Ok(s"deleted $count posts") // this is ajax
   }
 
-  def doeAddPost(clubName:String, postid:String, role:String, rkid:String) = FAU { implicit au => implicit errCollector => implicit request =>
+  def doeAddPost(clubName:String, postid:String, role:String, rkid:String) = FAUR { implicit request =>
     val h = RkHistory(
       new ObjectId(rkid),
-      Some(au._id),
+      Some(request.au.get._id),
       Some(new ObjectId(postid)),
       "WikiEntry",
       role,
       "Club:"+clubName
     )
 
-    h.create
+    h.create(razie.db.tx.auto)
 
     Ok("history created") // this is ajax
   }
@@ -653,7 +658,7 @@ object Snow extends RazController with Logging {
           if(tags != "") Some(tags) else None
           )
 
-        h.createNoAudit
+        h.createNoAudit(razie.db.tx.auto)
 
         def linkH = "http://" + WikiReactors(request.realm).websiteProps.prop("domain").getOrElse(Config.hostport) + "/doe/history"
         def linkP = "http://" + WikiReactors(request.realm).websiteProps.prop("domain").getOrElse(Config.hostport) + "/doe/kid/history/" + kid._id.toString + "?club="

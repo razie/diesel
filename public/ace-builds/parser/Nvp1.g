@@ -48,7 +48,8 @@ rule_Msg:
 
 
 rule_When:
-	'$when' a=ID aa=rule_Attrs? cond=rule_Condition? '=>' z=ID za=rule_AttrSpecs?  NEWLINE
+	'$when' a=ID aa=rule_Attrs? cond=rule_Condition? ARROW z=ID za=rule_AttrSpecs?  NEWLINE
+	( ARROW z=ID za=rule_AttrSpecs? NEWLINE )*
 ;
 
 
@@ -63,6 +64,7 @@ rule_Match:
 
 rule_Mock:
 	'$mock' a=ID aa=rule_Attrs? cond=rule_Condition? '=>' za=rule_AttrSpecs? NEWLINE
+	( '=>' za=rule_AttrSpecs? NEWLINE )* 
 ;
 
 

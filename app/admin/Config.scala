@@ -1,6 +1,7 @@
 package admin
 
-import model.{User, Website}
+import model.Website
+import play.api.Play
 import play.api.mvc.Request
 import razie.wiki.model.WikiObservers
 import razie.wiki.{Services, WikiConfig}
@@ -13,15 +14,17 @@ import scala.collection.mutable.HashMap
 object Config extends WikiConfig {
   final val curYear = "2017" // just FYI basicaly, each club has its own year
 
+  def playProp (s:String) = Play.current.configuration.getString(s).mkString
+
   import WikiConfig.parsep
 
   override def simulateHost = isimulateHost
   var isimulateHost = {
+    //      "www.snowproapp.com"
 //      "www.racerkidz.com"    // for testing locally
-      "www.effectiveskiing.com"    // for testing locally
-//      "www.snowproapp.com"
-//    "www.dieselapps.com"    // for testing locally
-//    "specs.dieselapps.com"    // for testing locally
+//      "www.effectiveskiing.com"    // for testing locally
+    "specs.dieselapps.com"    // for testing locally
+    //    "www.dieselapps.com"    // for testing locally
 //    "wiki.dieselapps.com"    // for testing locally
 //    "ebaysim.dieselapps.com"    // for testing locally
 //    "catsim.dieselapps.com"    // for testing locally
@@ -29,7 +32,7 @@ object Config extends WikiConfig {
 //    "www.enduroschool.com"    // for testing locally
 //    "www.askicoach.com"    // for testing locally
 //    "www.glacierskiclub.com"    // for testing locally
-//    "www.nofolders.net"    // for testing locally
+//    "notes.razie.com"    // for testing locally
 //    "www.dieselreactor.net"    // for testing locally
 //    "gsc.dieselapps.com"    // for testing locally
 //    "c52.dieselapps.com"    // for testing locally

@@ -139,11 +139,12 @@ package object ext {
       * @param s the keyword
       * @param k the color code
       * @param title optional hover title
+      * @param extra optional other attrs
       * @return
       */
-    def span(s: String, k: String = "default", title:String="") = {
+    def span(s: String, k: String = "default", title:String="", extra:String="") = {
       val t = CanHtml.prepTitle(title)
-      s"""<span class="label label-$k" $t>$s</span>"""
+      s"""<span class="label label-$k" $t $extra>$s</span>"""
     }
 
     /** format an html message span
@@ -161,6 +162,8 @@ package object ext {
     def toHtml: String
   }
 
+  def toHtmlAttrs(attrs: Attrs)      = if(attrs.nonEmpty) s"""${attrs.map(_.toHtml).mkString("(", ", ", ")")}""" else ""
+  def toHtmlMAttrs(attrs: MatchAttrs) = if(attrs.nonEmpty) s"""${attrs.map(_.toHtml).mkString("(", ", ", ")")}""" else ""
 
 }
 

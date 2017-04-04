@@ -244,7 +244,7 @@ object Application extends RazController {
       case "wikiSetOwnerById" =>
         val Array(wId, uId) = data.split(",")
         val w = ROne[WikiEntry]("_id" -> wId.aso).get
-        razie.db.tx("test") { implicit txn =>
+        razie.db.tx("test", "?") { implicit txn =>
           w.update(w.cloneProps(w.props ++ Map("owner" -> uId), uId.aso), Some("testing"))
         }
         "ok"

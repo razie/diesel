@@ -45,9 +45,14 @@ a JS with HTML and CSS fiddle
       <span class="glyphicon glyphicon-floppy-disk"> </span>
     </span>&nbsp;
 
-    | <input type="checkbox" id="mockMode" title="Use the mocks" checked> Mocks
+    | <span class="label label-default" >
+        <input type="checkbox" id="mockMode" title="Use the mocks" checked>
+          <span onclick="configMock();" style="cursor:pointer" >Mocks <span class="glyphicon glyphicon-chevron-down"></span></span></span>
     | <input type="checkbox" id="sketchMode" title="Not used yet"> Sketch
-    | <input type="checkbox" id="blenderMode" title="Blend all specs together"> Blender
+
+    | <span class="label label-default" style="cursor:pointer">
+      <input type="checkbox" id="blenderMode" title="Blend all specs together">
+    <span onclick="configBlender();">Blender <span class="glyphicon glyphicon-chevron-down"></span></span></span>
     | <input type="checkbox" id="draftMode" title="Use autosaved drafts not originals" checked> Drafts
     | <input type="checkbox" id="wikiMode" title="Show the wiki instead of the tree" > Wiki
     | <span onclick="startESP();" class="label label-primary" style="cursor:pointer">ESP
@@ -56,9 +61,8 @@ a JS with HTML and CSS fiddle
   </small>
   </h3>
 
-
   <div class="row" style="align-items:center;">
-    <div id="title3a_@id" class="col-sm-6" style="font-size: small">Story
+    <div id="title3a_@id" class="col-sm-6" style="font-size: small">Story <span class="label label-default" onclick="openStory();">...</span>
   </div>
     <div id="title3b_@id" class="col-sm-6" style="font-size: small">
   </div>
@@ -74,7 +78,7 @@ a JS with HTML and CSS fiddle
 
 
   <div class="row" style="align-items:center;">
-    <div id="title1a_@id" class="col-sm-6" style="font-size: small">Mock/Spec
+    <div id="title1a_@id" class="col-sm-6" style="font-size: small">Mock/Spec <span class="label label-default" onclick="openSpec();">...</span>
       <input type="checkbox" id="expandedSpec" title="Expand/collapse spec" checked> <small>(show/hide)</small>
     </div>
     <div id="title1b_@id" class="col-sm-6" style="font-size: small">
@@ -135,8 +139,10 @@ $('#sketchMode, #mockMode, #blenderMode, #draftMode').change(function(){
 });
 
 function startESP() {
-  window.open('/diesel/fiddle/startESP/@reactor/@id');//?@Html(mod.diesel.controllers.SFiddles.qtourl(args))')
+  window.open('/diesel/fiddle/startESP/@reactor/@id');
+
   setTimeout(function(){
+    // populate/update the ESP screen
     runpill2_@{id}('@{id}');
   }, 500);
 }
@@ -168,6 +174,9 @@ var instContentAssist=[];
 
 var specWpath='@specWpath';
 var storyWpath='@storyWpath';
+
+if(specWpath.length > 0) $("#curSpec").text('(@WID.fromPath(specWpath).map(_.name))');
+if(storyWpath.length > 0) $("#curStory").text('(@WID.fromPath(storyWpath).map(_.name))');
 
 var runpill_@id = function(id) {
   var lastTime = new Date().getTime();
@@ -234,7 +243,7 @@ var runpill2_@id = function(id) {
       if($('#wikiMode').prop('checked'))
         $('#divOut3_'+id).html(data.wiki);
       else
-        $('#iframeOut3_'+id).html(data.res);
+        $('#iframeOut3_'+id).html(data.res+'\n');
       $('#iframeOut5_'+id).html(data.capture);
       instContentAssist = data.ca;
       setErrors(data.failureCount);
@@ -248,8 +257,6 @@ var runpill2_@id = function(id) {
   });
 }
 
-if('@specWpath'.length > 0) $("#curSpec").text('(@WID.fromPath(specWpath).map(_.name))');
-if('@storyWpath'.length > 0) $("#curStory").text('(@WID.fromPath(storyWpath).map(_.name))');
 </script>
 
 <script src="@routes.Assets.at("javascripts/weDieselDiffs.js")"></script>
@@ -520,6 +527,45 @@ $(window).load (function() {
     }
   });
 });
+
+/** popup config TQ */
+function configTagQuery (title,tq,cback) {
+  $.ajax(
+      '/diesel/engine/configTags', {
+        type: 'POST',
+        data: $.param({
+          title : title,
+          tq : tq
+        }),
+        contentType: 'application/x-www-form-urlencoded',
+        success: function(data) {
+          popupContent(data);
+        },
+        error  : function(x) {
+          popupContent("ERR... <p>"+x);
+          cback(tq, x);
+        }
+      });
+}
+
+function configMock() {
+  configTagQuery("Mock config", "sub|fibe/spec/-dsl", function (tq,err) {
+  });
+}
+
+function configBlender() {
+  configTagQuery("Blender config", "sub|fibe/spec/-dsl", function (tq,err) {
+  });
+}
+
+function openStory() {
+  window.open("about:blank", "_blank").location = '/wiki/'+storyWpath;
+}
+
+function openSpec() {
+  window.open("about:blank", "_blank").location = '/wiki/'+specWpath;
+}
+
 </script>
 
 @if(line.length > 0 && col.length > 0) {

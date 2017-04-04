@@ -21,9 +21,15 @@ trait DSpec {
 /** a specification of a template */
 trait DTemplate {
   def content : String
-  def parms : String
+  def parmStr : String
   def specPath : SpecPath
   def pos : EPos
+
+  def parms =
+    if(parmStr.trim.length > 0)
+      parmStr.split(",").map(s=>s.split("=")).map(a=> (a(0), a(1))).toMap
+    else Map.empty[String,String]
+
 }
 
 /** can retrieve specs, by wpath and ver */
@@ -137,9 +143,11 @@ class DomEngECtx(val settings:DomEngineSettings, cur: List[P] = Nil, base: Optio
   var overwritten: Option[ECtx] = None
   var persisted: Boolean = false
 
-  override def apply(name: String): String = overwritten.map(_.apply(name)).getOrElse(super.apply(name))
+  private def ps(name:String) : Option[String] = settings.postedContent.flatMap(_.get(name))
 
-  override def get(name: String): Option[String] = overwritten.map(_.get(name)).getOrElse(super.get(name))
+  override def apply(name: String): String = overwritten.map(_.apply(name)).orElse(ps(name)).getOrElse(super.apply(name))
+
+  override def get(name: String): Option[String] = overwritten.flatMap(_.get(name)).orElse(ps(name)).orElse(super.get(name))
 
   override def put(p: P): Unit = overwritten.map(_.put(p)).getOrElse(super.put(p))
 
@@ -148,7 +156,7 @@ class DomEngECtx(val settings:DomEngineSettings, cur: List[P] = Nil, base: Optio
   override def root: ECtx = overwritten.map(_.root).getOrElse(super.root)
 
   override def exists(f: scala.Function1[P, scala.Boolean]): scala.Boolean =
-    overwritten.map(_.exists(f)).getOrElse(super.exists(f))
+    overwritten.map(_.exists(f)).orElse(settings.postedContent.map(_.exists(f))).getOrElse(super.exists(f))
 
   def overwrite(ctx: ECtx) =
     if (this != ctx)
@@ -171,6 +179,13 @@ object ECtx {
 
 /** reference where the item was defined, so we can scroll back to it */
 case class EPos (wpath:String, line:Int, col:Int) {
+  def this(o:Map[String, Any]) =
+    this(
+      o.getOrElse("wpath", "").toString,
+      o.getOrElse("line", "0").toString.toInt,
+      o.getOrElse("col", "0").toString.toInt
+    )
+
   def toJmap = Map (
     "wpath" -> wpath,
     "line" -> line,

@@ -205,14 +205,16 @@ object WikiDomain {//extends WikiDomain (Wikis.RK) {
 
     def findTemplate(name: String): Option[DTemplate] =
       we.templateSections.find(_.name == name).map {t=>
-        new DTemplate {
-          def content : String = t.content
-          def parms : String = t.signature
-          def specPath = SpecPath("local", t.wid.wpath)
-          def pos : EPos = EPos(t.wid.copy(section = None).wpath, t.line, t.col)
-        }
+        new WikiDTemplate (t)
       }
   }
+
 }
 
+class WikiDTemplate (t:WikiSection) extends DTemplate {
+  def content : String = t.content
+  def parmStr : String = t.signature
+  def specPath = SpecPath("local", t.wid.wpath)
+  def pos : EPos = EPos(t.wid.copy(section = None).wpath, t.line, t.col)
+}
 

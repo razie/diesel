@@ -31,6 +31,9 @@ object ApplicationBuild extends Build {
     "com.typesafe.akka"  %% "akka-cluster"       % "2.4.2",
     "com.typesafe.akka"  %% "akka-contrib"       % "2.4.2",
     "com.typesafe.akka"  %% "akka-slf4j"         % "2.4.2",
+    "com.typesafe.akka"  %% "akka-camel"         % "2.4.2",
+
+//    "org.apache.camel"   %% "camel-core"         % "2.18.3",
 
     "com.googlecode.java-diff-utils"        % "diffutils"             % "1.2.1",
 

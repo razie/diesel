@@ -27,7 +27,7 @@ import razie.js
 import razie.wiki.Enc
 import razie.wiki.model.{WID, WikiEntry, Wikis}
 import razie.wiki.admin.{MailSession, GlobalData, SendEmail}
-import admin.RazAuditService
+import admin.MdbAuditService
 import model._
 import x.context
 

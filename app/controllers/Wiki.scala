@@ -20,12 +20,13 @@ import com.mongodb.{BasicDBObject, DBObject}
 import razie.db.{ROne, RazMongo}
 import play.api.mvc.{Action, AnyContent, Request}
 import razie.diesel.dom.RDOM
-import razie.diesel.ext.{EMsg, ERule}
+import razie.diesel.ext.{EMsg, ERule, ExpectM}
 import razie.wiki.util.PlayTools
-import razie.{js, cout, Logging}
+import razie.{Logging, cout, js}
 import razie.wiki.model._
+
 import scala.Array.canBuildFrom
-import razie.wiki.{Services, Enc}
+import razie.wiki.{Enc, Services}
 import razie.wiki.dom.WikiDomain
 import razie.wiki.model.WikiAudit
 
@@ -146,6 +147,7 @@ object Wiki extends WikiBase {
     * @return Tuple(left, middle, right, mkLink)
     */
   def extract (realm:String, page:Option[WikiEntry]) = {
+    // website prop p
     def p(p:String) = Website.forRealm(realm).flatMap(_.prop(p)).mkString
 
     if(p("wbrowser.query") == "dieselMsg") {
@@ -157,15 +159,26 @@ object Wiki extends WikiBase {
 //      def mkLink (s:String) = routes.Wiki.wikiBrowse (s, path+"/"+s).toString()
 
       val all = domList.collect {
-        case m:EMsg =>
+        case m:EMsg => {
           colEnt append ((
-            RDOM.A(page.get.getLabel, page.get.name, m.entity, "me", "msg"),
+            RDOM.A(page.get.getLabel, page.get.name, m.entity, "me", "service"),
             ""
             ))
           colMsg append ((
-            RDOM.A(page.get.getLabel, page.get.name, m.entity+"."+m.met, "me", "met"),
+            RDOM.A(page.get.getLabel, page.get.name, m.entity+"."+m.met, "me", "msg"),
             ""
           ))
+        }
+        case m:ExpectM => {
+          colEnt append ((
+            RDOM.A(page.get.getLabel, page.get.name, m.m.cls, "me", "service"),
+            ""
+          ))
+          colMsg append ((
+            RDOM.A(page.get.getLabel, page.get.name, m.m.cls + "." + m.m.met, "me", "msg"),
+            ""
+          ))
+        }
       }
       (colEnt.distinct.toList.map(_._1), colMsg.distinct.toList.map(_._1), Nil, mkl)
     } else {
@@ -737,7 +750,13 @@ object Wiki extends WikiBase {
   }
 
   def all(cat: String, irealm:String) = RAction { implicit stok =>
-    val wl = Wikis(getRealm(irealm)(stok.req)).pages(cat)
+    val wl =
+      if(cat != "" && cat != "Form" && cat != "User")
+        Wikis(getRealm(irealm)(stok.req)).pages(cat)
+      else if(cat == "") // all
+        Wikis(getRealm(irealm)(stok.req)).table.find(Map("realm" -> stok.realm)) map (grater[WikiEntry].asObject(_))
+      else
+        List.empty[WikiEntry].toIterator
 
     ROK.k apply {implicit stok=>
       views.html.wiki.wikiAnalyze("", "", "", wl.toIterator)

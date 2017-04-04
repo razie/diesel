@@ -6,19 +6,20 @@
  */
 package mod.diesel.model.parser
 
-import mod.diesel.model.{RDExt}
+import mod.diesel.model.RDExt
 import razie.diesel.ext._
 import razie.clog
 import razie.diesel._
 import razie.diesel.dom._
 import razie.diesel.dom.RDOM
 import RDOM._
-import razie.wiki.{Services, Enc}
-import razie.wiki.dom.WikiDomain
+import razie.wiki.{Enc, Services}
+import razie.wiki.dom.{WikiDTemplate, WikiDomain}
 import razie.wiki.model.WikiEntry
 import razie.wiki.parser.{WAST, WikiParserBase}
 
 import scala.Option.option2Iterable
+import scala.util.Try
 import scala.util.parsing.input.Positional
 
 class FlowExpr ()
@@ -78,9 +79,13 @@ trait WikiDomainParser extends WikiParserBase {
   def pterm1 : Parser[Expr] = numexpr | cexpr | aident | exregex | eblock
   def eblock : Parser[Expr] = "(" ~ ows ~> expr <~ ows ~ ")" ^^ {case ex => BlockExpr (ex) }
 
+  // a number
   def numexpr : Parser[Expr] = number ^^ { case i => new CExpr(i, "Number") }
+  // string const
   def cexpr : Parser[Expr] = "\"" ~> """[^"]*""".r <~ "\"" ^^ { case e => new CExpr (e, "String") }
+  // qualified identifier
   def aident : Parser[Expr] = qident ^^ { case i => new AExprIdent(i) }
+  // regular expression, JS style
   def exregex: Parser[Expr] = """/[^/]*/""".r ^^ { case x => new CExpr(x, "Regex") }
 
   //------------ conditions
@@ -217,21 +222,47 @@ trait WikiDomainParser extends WikiParserBase {
       }
     }
 
+  def pArrow: Parser[String] = "=>" | "==>" ^^ {
+    case  s => s
+  }
+
+  /**
+    *  => z.role (attrs)
+    */
+  def pgen: Parser[EMap] =
+    ows ~> pArrow ~ ows ~ (clsMet | justAttrs) ^^ {
+      case  arrow ~ _ ~ Tuple3(zc, zm, za) => {
+        EMap(zc, zm, za, arrow)
+      }
+    }
+
   /**
    * .when a.role (attrs) => z.role (attrs)
    */
   def pwhen: PS =
-    keyw("""[.$]when""".r) ~ ws ~ clsMatch ~ ws ~ opt(pif) ~ " *=>".r ~ ows ~ (clsMet | justAttrs) ^^ {
-      case k ~ _ ~ Tuple3(ac, am, aa) ~ _ ~ cond ~ _ ~ _ ~ Tuple3(zc, zm, za) => {
+    keyw("""[.$]when""".r) ~ ws ~ clsMatch ~ ws ~ opt(pif) ~ rep(pgen) ^^ {
+      case k ~ _ ~ Tuple3(ac, am, aa) ~ _ ~ cond ~ gens => {
         LazyState { (current, ctx) =>
           val x = EMatch(ac, am, aa, cond)
-          val y = EMap(zc, zm, za)
-          val f = ERule(x, y)
+          val f = ERule(x, gens)
           f.pos = Some(EPos(ctx.we.map(_.wid.wpath).mkString, k.pos.line, k.pos.column))
           addToDom(f).ifold(current, ctx)
         }
       }
     }
+//  def pwhen: PS =
+//      keyw("""[.$]when""".r) ~ ws ~ clsMatch ~ ws ~ opt(pif) ~ " *=>".r ~ ows ~ (clsMet | justAttrs) ^^ {
+//            case k ~ _ ~ Tuple3(ac, am, aa) ~ _ ~ cond ~ _ ~ _ ~ Tuple3(zc, zm, za) => {
+//        LazyState { (current, ctx) =>
+//          val x = EMatch(ac, am, aa, cond)
+//          val y = EMap(zc, zm, za)
+//          val f = ERule(x, List(y))
+//          f.pos = Some(EPos(ctx.we.map(_.wid.wpath).mkString, k.pos.line, k.pos.column))
+//          addToDom(f).ifold(current, ctx)
+//        }
+//      }
+//    }
+
 
   /**
    * .flow e.a => expr
@@ -257,7 +288,7 @@ trait WikiDomainParser extends WikiParserBase {
         LazyState { (current, ctx) =>
           val x = EMatch(ac, am, aa, cond)
           val y = EMap("", "", za)
-          val f = EMock(ERule(x, y))
+          val f = EMock(ERule(x, List(y)))
           f.pos = Some(EPos(ctx.we.map(_.wid.wpath).mkString, k.pos.line, k.pos.column))
           f.rule.pos = Some(EPos(ctx.we.map(_.wid.wpath).mkString, k.pos.line, k.pos.column))
           addToDom(f).ifold(current, ctx)
@@ -432,12 +463,16 @@ trait WikiDomainParser extends WikiParserBase {
         val archn =
           if(stype.exists(_.length > 0)) stype.mkString.trim
           else {
-            val sc = ctx.we.flatMap(_.templateSections.find(_.name == ea)).map(_.content).mkString
-            if("" != sc) EESnakk.parseTemplate(sc).method else ""
+            // todo snakkers need to be plugged in and insulated better
+            // find snakker and import stype
+            val t = ctx.we.flatMap(_.templateSections.find(_.name == ea))
+            val sc = t.map(_.content).mkString
+            if("" != sc) Try {
+              EESnakk.parseTemplate(t.map(new WikiDTemplate(_)), sc, attrs).method
+            }.getOrElse("") else ""
           }
 
         val f = EMsg("def", ent, ac, attrs, ret.toList.flatten(identity), archn)
-
 
         f.pos = Some(EPos(ctx.we.map(_.wid.wpath).mkString, k.pos.line, k.pos.column))
         collectDom(f, ctx.we)
@@ -467,7 +502,7 @@ trait WikiDomainParser extends WikiParserBase {
       case k ~ _ ~ Tuple3(ac, am, aa) ~ cond ~ _ ~ za => {
           val x = EMatch(ac, am, aa, cond)
           val y = EMap("", "", za)
-          val f = EMock(ERule(x, y))
+          val f = EMock(ERule(x, List(y)))
           f.pos = Some(EPos(wpath, k.pos.line, k.pos.column))
           f.rule.pos = Some(EPos(wpath, k.pos.line, k.pos.column))
         f

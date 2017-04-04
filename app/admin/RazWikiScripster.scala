@@ -6,9 +6,8 @@
  */
 package admin
 
-import model.{User, WikiScripster}
+import model.{WikiScripster}
 import razie.wiki.model.{Wikis, WikiUser, WikiEntry}
-import razie.db.RTable
 
 /** run scripts in the RK specific context */
 class RazWikiScripster extends WikiScripster.JSWikiScripster {
@@ -17,7 +16,7 @@ class RazWikiScripster extends WikiScripster.JSWikiScripster {
 
   /** run the given script in the context of the given page and user as well as the query map */
   override def runScriptAny(s: String, lang:String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, String], devMode:Boolean=false) = synchronized {
-    def r = page.map(we=>if(we.category == "Reactor") we.name else we.realm).getOrElse(Wikis.RK)
+//    def r = page.map(we=>if(we.category == "Reactor") we.name else we.realm).getOrElse(Wikis.RK)
 
     super.runScriptAny(s, lang, page, user, query, devMode)
   }

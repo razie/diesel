@@ -28,7 +28,7 @@ import razie.js
 import razie.wiki.{Services, Enc}
 import razie.wiki.model.{WID, WikiEntry, Wikis}
 import razie.wiki.admin.{MailSession, GlobalData, SendEmail}
-import admin.{ClearAudits, RazAuditService}
+import admin.{ClearAudits, MdbAuditService}
 import model.{WikiScripster, Users, Perm, User}
 import x.context
 
@@ -184,7 +184,7 @@ object AdminUser extends AdminBase {
 
   def udelete2(id: String) =
     FAD { implicit au => implicit errCollector => implicit request =>
-      razie.db.tx { implicit txn =>
+      razie.db.tx("udelete2", au.userName) { implicit txn =>
         RazMongo("User").findOne(Map("_id" -> new ObjectId(id))).map { u =>
           WikiTrash("User", u, auth.get.userName, txn.id).create
           RazMongo("User").remove(Map("_id" -> new ObjectId(id)))
@@ -302,7 +302,7 @@ object AdminUser extends AdminBase {
         ) yield {
             var ok=true
             // TODO transaction
-            razie.db.tx("umodnote") { implicit txn =>
+            razie.db.tx("umodnote", au.userName) { implicit txn =>
                 if(uname startsWith "+")
                   Profile.updateUser(u, u.copy(modNotes = u.modNotes ++ Seq(uname.drop(1))) )
                 else if(uname startsWith "-")
@@ -333,7 +333,7 @@ object AdminUser extends AdminBase {
           already <- !(u.userName == uname) orErr "Already updated"
         ) yield {
             // TODO transaction
-            razie.db.tx("uname") { implicit txn =>
+            razie.db.tx("uname", au.userName) { implicit txn =>
               Profile.updateUser(u, u.copy(userName = uname))
               Wikis.updateUserName(u.userName, uname)
               cleanAuth(Some(u))
@@ -358,7 +358,7 @@ object AdminUser extends AdminBase {
             pro <- u.profile
           ) yield {
               // TODO transaction
-              razie.db.tx("urealms") { implicit txn =>
+              razie.db.tx("urealms", au.userName) { implicit txn =>
                 Profile.updateUser(u, u.copy(realms = uname.split("[, ]").toSet))
                 cleanAuth(Some(u))
               }
@@ -382,7 +382,7 @@ object AdminUser extends AdminBase {
             pro <- u.profile
           ) yield {
               // TODO transaction
-              razie.db.tx("uroles") { implicit txn =>
+              razie.db.tx("uroles", au.userName) { implicit txn =>
                 Profile.updateUser(u, u.copy(roles = uname.split("[, ]").toSet))
                 cleanAuth(Some(u))
               }
@@ -663,13 +663,15 @@ object AdminDiff extends AdminBase {
         if(side=="R")
           DiffUtils.diff(wid.content.get.lines.toList, remote.lines.toList)
         else
-          DiffUtils.diff(remote.lines.toList, wid.content.get.lines.toList)
+          DiffUtils.diff(wid.content.get.lines.toList, remote.lines.toList)
+//          DiffUtils.diff(remote.lines.toList, wid.content.get.lines.toList)
 
         ROK.s admin {implicit stok=>
           if(side=="R")
             views.html.admin.adminDiffShow(side, wid.content.get, remote, patch, wid.page.get, t._1)
           else
-            views.html.admin.adminDiffShow(side, remote, wid.content.get, patch, t._1, wid.page.get)
+            views.html.admin.adminDiffShow(side, wid.content.get, remote, patch, wid.page.get, t._1)
+//            views.html.admin.adminDiffShow(side, remote, wid.content.get, patch, t._1, wid.page.get)
         }
       },{err=>
         Ok ("ERR: " + err)

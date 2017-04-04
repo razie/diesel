@@ -96,7 +96,7 @@ case class Progress (
     else {
       Services ! Audit("?", "PROGRESS_REC", s"User: ${ownerId.as[User].map(_.userName).mkString} Topic: ${uwid.nameOrId} Status: $status")
       val t = copy(records = new ProgressRecord(uwid, section, status) +: records)
-      t.updateNoAudit
+      t.updateNoAudit(tx.auto)
       t
     }
   }
@@ -142,11 +142,11 @@ object Progress extends RazController with WikiMod {
   def startProgress (ownerId:ObjectId, tl:TopicList): Progress = {
     //suspend anything in progress
     findForUser(ownerId).filter(_.status == STATUS_IN_PROGRESS).foreach{p=>
-      p.copy(status=STATUS_PAUSED).updateNoAudit
+      p.copy(status=STATUS_PAUSED).updateNoAudit(tx.auto)
     }
     Services ! Audit("?", "PROGRESS_START", s"User: ${ownerId.as[User].map(_.userName).mkString} TopicList: ${tl.uwid.nameOrId}")
     val p = new Progress (ownerId, tl.ownerTopic, STATUS_IN_PROGRESS, Seq(new ProgressRecord(tl.ownerTopic, None, STATUS_IN_PROGRESS)))
-    p.createNoAudit
+    p.createNoAudit(tx.auto)
     p
   }
 
@@ -187,7 +187,7 @@ object Progress extends RazController with WikiMod {
       (for(
         pway <- pwid.page orErr "pathway not found";
         tl <- Progress.topicList(pway.uwid) orErr ("topic list not found: "+pwid.wpath)
-      ) yield {
+      ) yield     razie.db.tx("restart1", au.userName) { implicit txn =>
           findByUserAndTopic(au._id, tl.ownerTopic).map(_.delete)
           val p = startProgress(au._id, tl)
           Redirect(routes.Progress.view(pathway))
