@@ -1,6 +1,7 @@
 package controllers
 
-import play.api.mvc.{Action, Request, Result}
+import play.api.mvc.{Action, Result}
+import com.google.inject.Singleton
 
 import scala.collection.mutable
 
@@ -8,6 +9,7 @@ import scala.collection.mutable
   *
   * pills are called with /pill/name
   */
+//@Singleton
 object CodePills extends RazController {
 
   sealed abstract class BasePill(val name: String) {

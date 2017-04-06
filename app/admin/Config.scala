@@ -14,7 +14,8 @@ import scala.collection.mutable.HashMap
 object Config extends WikiConfig {
   final val curYear = "2017" // just FYI basicaly, each club has its own year
 
-  def playProp (s:String) = Play.current.configuration.getString(s).mkString
+  // todo this is not working. Need to inject configuration here
+//  def appConf (s:String) = Play.current.configuration.getString(s).mkString
 
   import WikiConfig.parsep
 
@@ -24,7 +25,7 @@ object Config extends WikiConfig {
 //      "www.racerkidz.com"    // for testing locally
 //      "www.effectiveskiing.com"    // for testing locally
     "specs.dieselapps.com"    // for testing locally
-    //    "www.dieselapps.com"    // for testing locally
+//        "www.dieselapps.com"    // for testing locally
 //    "wiki.dieselapps.com"    // for testing locally
 //    "ebaysim.dieselapps.com"    // for testing locally
 //    "catsim.dieselapps.com"    // for testing locally

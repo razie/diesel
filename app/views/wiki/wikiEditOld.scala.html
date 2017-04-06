@@ -429,7 +429,23 @@ var textarea = $("#content");
 
 $("#bigOne").css("min-height", $("#weForm").height());
 
+
+/** syc content between the two forms */
+function getContent() {
+  return aceAttached ? aceEditor.getSession().getValue() : $("#content").val();
+}
+
+/** syc content between the two forms */
+function syncContent() {
+  if(aceAttached) {
+    $("#content").val(aceEditor.getSession().getValue());
+  } else if(typeof aceEditor != 'undefined') {
+    aceEditor.getSession().setValue($("#content").val());
+  }
+}
+
 function submitPlease() {
+  syncContent();
   $("form").submit();
 }
 
@@ -447,7 +463,7 @@ var saveDraftDebounced = _.debounce(saveDraft, 2000, { maxWait: 5000 });
 $("#content").change(livePreview);
 
 function refreshServerNow() {
-  var content = aceAttached ? editor.getSession().getValue() : $("#content").val();
+  var content = getContent();
   var tags = $("#tags").val();
 
   refreshServer('@wid.wpath', content, tags);
@@ -617,6 +633,7 @@ function showDsl() {
 
 // toggle dsl
 function switchDsl(a,b,state) {
+  syncContent();
   if($('#weDsl').prop('checked')) {
     // show ACE
     $("#content").hide();

@@ -104,7 +104,7 @@ case class EMatch(cls: String, met: String, attrs: MatchAttrs, cond: Option[EIf]
       cole.map(_.plus(e.entity))
       if ("*" == met || e.met == met || regexm(met, e.met)) {
         cole.map(_.plus(e.met))
-        testA(e.attrs, attrs, cole) && cond.fold(true)(_.test(e, cole))
+        testA(e.attrs, attrs, cole) && cond.fold(true)(_.test(e.attrs, cole))
       } else false
     } else false
   }
@@ -122,7 +122,12 @@ case class EMatch(cls: String, met: String, attrs: MatchAttrs, cond: Option[EIf]
 /**
   * just a call to next - how to call next: wait => or no wait ==>
   */
-case class ENext (msg:EMsg, arrow:String) extends CanHtml {
+case class ENext (msg:EMsg, arrow:String, cond: Option[EIf] = None) extends CanHtml {
+  // todo match also the object parms if any and method parms if any
+  def test(cole: Option[MatchCollector] = None)(implicit ctx: ECtx) = {
+    cond.fold(true)(_.test(List.empty, cole))
+  }
+
   override def toHtml   = arrow + " " + msg.toHtml
   override def toString = arrow + " " + msg.toString
 }
@@ -133,7 +138,7 @@ case class ENext (msg:EMsg, arrow:String) extends CanHtml {
   * @param met
   * @param attrs
   */
-case class EMap(cls: String, met: String, attrs: Attrs, arrow:String="=>") extends CanHtml {
+case class EMap(cls: String, met: String, attrs: Attrs, arrow:String="=>", cond: Option[EIf] = None) extends CanHtml {
   var count = 0;
 
   def apply(in: EMsg, destSpec: Option[EMsg], pos:Option[EPos])(implicit ctx: ECtx): List[Any] = {
@@ -142,7 +147,8 @@ case class EMap(cls: String, met: String, attrs: Attrs, arrow:String="=>") exten
     e.spec = destSpec
     count += 1
 
-    if(arrow == "==>") List(ENext(e, arrow))
+    if(arrow == "==>" || cond.isDefined)
+      List(ENext(e, arrow, cond))
     else List(e)
   }
 
@@ -192,9 +198,9 @@ case class EMap(cls: String, met: String, attrs: Attrs, arrow:String="=>") exten
   })
 
 //  override def toHtml = "<b>=&gt;</b> " + ea(cls, met) + " " + attrs.map(_.toHtml).mkString("(", ",", ")")
-  override def toHtml = """<span class="glyphicon glyphicon-arrow-right"></span> """ + ea(cls, met) + " " + toHtmlAttrs(attrs)
+  override def toHtml = """<span class="glyphicon glyphicon-arrow-right"></span> """ + cond.map(_.toHtml+" ").mkString + ea(cls, met) + " " + toHtmlAttrs(attrs)
 
-  override def toString = "=> " + cls + "." + met + " " + attrs.mkString("(", ",", ")")
+  override def toString = "=> " + cond.map(_.toHtml+" ").mkString + cls + "." + met + " " + attrs.mkString("(", ",", ")")
 }
 
 import mod.diesel.model.parser.FlowExpr
@@ -332,17 +338,17 @@ case class EMsg(arch:String, entity: String, met: String, attrs: List[RDOM.P], r
 
 // a simple condition
 case class EIf(attrs: MatchAttrs) extends CanHtml {
-  def test(e: EMsg, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) =
-    testA(e.attrs, attrs, cole)
+  def test(e:Attrs, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) =
+    testA(e, attrs, cole)
 
-  override def toHtml = span("$if::") + attrs.mkString
+  override def toHtml = span("$if::") + attrs.mkString("<small>(", ", ", ")</small>")
 
   override def toString = "$if " + attrs.mkString
 }
 
 // a wrapper
 case class EMock(rule: ERule) extends CanHtml with HasPosition {
-  var pos : Option[EPos] = None
+  var pos : Option[EPos] = rule.pos
   override def toHtml = span(count.toString) + " " + rule.toHtml
 
   override def toString = count.toString + " " + rule.toString
@@ -370,8 +376,7 @@ case class EVal(p: RDOM.P) extends CanHtml with HasPosition {
       }.getOrElse(Map.empty)
     }
 
-  override def toHtml = kspan("val::") + p.toString
-
+  override def toHtml   = kspan("val::") + p.toHtml
   override def toString = "val: " + p.toString
 }
 

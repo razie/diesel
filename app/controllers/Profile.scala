@@ -1,27 +1,67 @@
 package controllers
 
-import mod.diesel.controllers.{DieselMsgString, DieselMsg}
+import com.google.inject._
+import mod.diesel.model.DieselMsgString
 import mod.snow._
 import razie.base.Audit
 import razie.db.{ROne, Txn}
-import razie.{Logging, cout, Snakk}
+import razie.{Logging, Snakk, cout}
 import razie.db.RMongo._
 import razie.wiki.Sec._
 import model._
-import org.bson.types.ObjectId
 import org.joda.time.DateTime
 import org.json.JSONObject
+import play.api.Configuration
 import play.api.data.Form
 import play.api.data.Forms.{mapping, nonEmptyText, tuple, _}
 import play.api.mvc.{Action, Request}
 import razie.OR._
 import razie.wiki.admin.SendEmail
-import razie.wiki.model.{WikiEvent, WikiIndex, Wikis, WID}
-import razie.wiki.{Services, Enc}
+import razie.wiki.model.{WID, WikiEvent, WikiIndex, Wikis}
+import razie.wiki.{Enc, Services}
 
-object Profile extends RazController with Logging {
+object Profile extends RazController {
+  val trusts = Array("Public", "Club", "Friends", "Private")
+  val notifiers = Array("Everything", "FriendsOnly", "None")
 
   final val cNoConsent = new Corr("Need consent!", """You need to <a href="/doe/consent">give your consent</a>!""");
+
+// TODO this shoud be private
+def updateUser(old: User, newU: User)(implicit request: Request[_]) = {
+  old.update(newU)
+  cleanAuth(Some(newU))
+  newU
+}
+
+  // TODO should be private
+  def createUser(u: User)(implicit request: Request[_], txn:Txn) = {
+    val created = {u.create(u.mkProfile); Some(u)}
+    created.foreach { x => RacerKidz.myself(x._id) }
+    UserTasks.verifyEmail(u).create
+    // TODO why the heck am i sleeping?
+    //              Thread.sleep(1000)
+    SendEmail.withSession { implicit mailSession =>
+      Tasks.sendEmailVerif(u)
+      val uname = (u.firstName + (if (u.lastName.length > 0) ("." + u.lastName) else "")).replaceAll("[^a-zA-Z0-9\\.]", ".").replaceAll("[\\.\\.]", ".")
+      Emailer.sendEmailUname(uname, u, false)
+      Emailer.tellRaz("New user", u.userName, u.email.dec)
+    }
+    created
+  }
+
+}
+
+/** temporary registration/login form */
+case class Registration(email: String, password: String, reemail:String="", repassword: String = "") {
+  def ename = email.replaceAll("@.*", "")
+}
+
+// create profile
+case class CrProfile(firstName: String, lastName: String, yob: Int, address: String, userType: String, accept: Boolean, g_recaptcha_response: String="", about:String="")
+
+@Singleton
+class Profile @Inject() (config:Configuration) extends RazController with Logging {
+
 
   val parentForm = Form(
     "parentEmail" -> text.verifying("Wrong format!", vldEmail(_)).verifying("Invalid characters", vldSpec(_)))
@@ -35,11 +75,6 @@ object Profile extends RazController with Logging {
         val (css, favQuote, weatherCode) = t
         true
       })
-  }
-
-  /** temporary registration/login form */
-  case class Registration(email: String, password: String, reemail:String="", repassword: String = "") {
-    def ename = email.replaceAll("@.*", "")
   }
 
   def registerForm (implicit request : Request[_]) = Form {
@@ -83,9 +118,6 @@ object Profile extends RazController with Logging {
   import play.api.data.Forms._
   import play.api.data._
 
-  // create profile
-  case class CrProfile(firstName: String, lastName: String, yob: Int, address: String, userType: String, accept: Boolean, g_recaptcha_response: String="", about:String="")
-
   def crProfileForm(implicit request: Request[_]) = Form {
     mapping(
       "firstName" -> nonEmptyText.verifying("Obscenity filter", !Wikis.hasBadWords(_)).verifying("Invalid characters", vldSpec(_)),
@@ -98,7 +130,7 @@ object Profile extends RazController with Logging {
       "about" -> text.verifying("Invalid characters", vldSpec(_))
       )(CrProfile.apply)(CrProfile.unapply) verifying
       ("CAPTCHA failed!", { cr: CrProfile =>
-        Recaptcha.verify2(cr.g_recaptcha_response, clientIp)
+        new Recaptcha(config).verify2(cr.g_recaptcha_response, clientIp)
       }) verifying
       ("Can't use last name for organizations!", { cr: CrProfile =>
         cr.userType != UserType.Organization.toString || cr.lastName.length <= 0
@@ -123,14 +155,11 @@ object Profile extends RazController with Logging {
           })
   }
 
-  val trusts = Array("Public", "Club", "Friends", "Private")
-  val notifiers = Array("Everything", "FriendsOnly", "None")
-
   // profile
   val edprofileForm2 = Form {
     tuple(
-      "trust" -> nonEmptyText.verifying("Please select one", ut => trusts.contains(ut)),
-      "notify" -> nonEmptyText.verifying("Please select one", ut => notifiers.contains(ut)))
+      "trust" -> nonEmptyText.verifying("Please select one", ut => Profile.trusts.contains(ut)),
+      "notify" -> nonEmptyText.verifying("Please select one", ut => Profile.notifiers.contains(ut)))
   }
 
   // todo stop messing with the routes again
@@ -216,13 +245,6 @@ object Profile extends RazController with Logging {
           }
         }
       })
-  }
-
-  // TODO this shoud be private
-  def updateUser(old: User, newU: User)(implicit request: Request[_]) = {
-    old.update(newU)
-    cleanAuth(Some(newU))
-    newU
   }
 
   /** login or start registration */
@@ -390,7 +412,7 @@ object Profile extends RazController with Logging {
 
               //realm new user flow
               Services ! DieselMsgString(
-                s"""$$msg user.joined(userName="${u.userName}", realm="${stok.realm}")""",
+                s"""$$msg rk.user.joined(userName="${u.userName}", realm="${stok.realm}")""",
                 WID.fromPath(s"${stok.realm}.Reactor:${stok.realm}#diesel").toList,
                 Nil)
 
@@ -408,22 +430,6 @@ object Profile extends RazController with Logging {
             unauthorized("Oops - cannot update this user [doeCreateProfile " + getFromSession("email", f + l + "@k.com") + "] - Please try again or send a suport request!").withNewSession
           }
       }) //fold
-  }
-
-  // TODO should be private
-  def createUser(u: User)(implicit request: Request[_], txn:Txn) = {
-    val created = {u.create(u.mkProfile); Some(u)}
-    created.foreach { x => RacerKidz.myself(x._id) }
-    UserTasks.verifyEmail(u).create
-    // TODO why the heck am i sleeping?
-    //              Thread.sleep(1000)
-    SendEmail.withSession { implicit mailSession =>
-      Tasks.sendEmailVerif(u)
-      val uname = (u.firstName + (if (u.lastName.length > 0) ("." + u.lastName) else "")).replaceAll("[^a-zA-Z0-9\\.]", ".").replaceAll("[\\.\\.]", ".")
-      Emailer.sendEmailUname(uname, u, false)
-      Emailer.tellRaz("New user", u.userName, u.email.dec)
-    }
-    created
   }
 
   /** show profile **/
@@ -478,7 +484,7 @@ object Profile extends RazController with Logging {
     formWithErrors => ROK.k badRequest {views.html.user.doeProfilePreferences(formWithErrors, auth.get)},
     {
       case (css, favQuote, weatherCode) => forActiveUser { au =>
-        val u = updateUser(au, au.copy(prefs=au.prefs ++
+        val u = Profile.updateUser(au, au.copy(prefs=au.prefs ++
           Seq("css" -> css, "favQuote" -> favQuote, "weatherCode" -> weatherCode)))
         //          val u = updateUser(au, User(au.userName, au.firstName, au.lastName, au.yob, au.email, au.pwd, au.status, au.roles, au.addr, au.prefs ++
         //            Seq("css" -> css, "favQuote" -> favQuote, "weatherCode" -> weatherCode),
@@ -571,7 +577,7 @@ object Profile extends RazController with Logging {
               },
               addr=u.addr, prefs=au.prefs ++ u.prefs)
 
-            updateUser(au, newu)
+            Profile.updateUser(au, newu)
             Emailer.withSession { implicit mailSession =>
               au.shouldEmailParent("Everything").map(parent => Emailer.sendEmailChildUpdatedProfile(parent, au))
             }
@@ -611,7 +617,7 @@ object Profile extends RazController with Logging {
               // the second form is hack to allow me to reset it
             }
           ) yield {
-            updateUser(au, au.copy(pwd=Enc(n)))
+            Profile.updateUser(au, au.copy(pwd=Enc(n)))
             Msg2("Ok, password changed!")
           }) getOrElse {
             verror("ERR_CANT_UPDATE_USER_PASSWORD ")
@@ -674,7 +680,7 @@ object Profile extends RazController with Logging {
           (for (
             au <- Users.findUserById(id)
           ) yield {
-              updateUser(au, au.copy(pwd=Enc(n)))
+              Profile.updateUser(au, au.copy(pwd=Enc(n)))
               Msg2("Ok, password changed! Please login.")
             }) getOrElse {
             verror("ERR_CANT_UPDATE_USER_PASSWORD ")

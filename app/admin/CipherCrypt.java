@@ -58,6 +58,8 @@ public class CipherCrypt {
     this(DEFAULT_KEY);
   }
 
+  public CipherCrypt(byte[] k) {this(getSecretKey(k)); }
+
   /** c-tor. 2 */
   public CipherCrypt(SecretKey key) {
     try {

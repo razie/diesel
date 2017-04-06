@@ -6,30 +6,31 @@
  */
 package controllers
 
-import admin.{Config}
-import mod.snow.{RkHistory, RacerKidz}
+import admin.Config
+import com.google.inject.{Inject, Singleton}
+import mod.snow.{RacerKidz, RkHistory}
 import razie.base.Audit
-
 import razie.db.RazSalatContext._
 import razie.db._
 import com.mongodb.casbah.Imports._
 import com.mongodb.DBObject
 import com.novus.salat._
 import org.joda.time.DateTime
-
 import com.typesafe.config.{ConfigObject, ConfigValue}
 import mod.diesel.model.Diesel
 import model._
 import org.bson.types.ObjectId
 import org.joda.time.DateTime
-import razie.wiki.{Services, Enc}
+import play.api.Configuration
+import razie.wiki.{Enc, Services}
 import razie.wiki.admin._
 import razie.wiki.dom.WikiDomain
 import razie.wiki.parser.WAST
 import razie.wiki.util.PlayTools
-import razie.{cout, clog, cdebug, Log}
+import razie.{Log, cdebug, clog, cout}
+
 import scala.Array.canBuildFrom
-import razie.db.{REntity, RazMongo, ROne, RMany}
+import razie.db.{REntity, RMany, ROne, RazMongo}
 import razie.db.RazSalatContext.ctx
 import razie.wiki.Sec.EncryptedS
 import play.api.data.Form
@@ -37,11 +38,14 @@ import play.api.data.Forms.mapping
 import play.api.data.Forms.nonEmptyText
 import play.api.data.Forms.text
 import play.api.data.Forms.tuple
-import play.api.mvc.{Result, AnyContent, Action, Request}
+import play.api.mvc.{Action, AnyContent, Request, Result}
 import razie.wiki.model._
 
-
 class WikieBase extends WikiBase {
+
+  case class LinkWiki(how: String, notif: String, markup: String, comment: String)
+
+  case class ReportWiki(reason: String)
 
   def before(e: WikiEntry, what: String)(implicit errCollector: VErrors = IgnoreErrors): Boolean = {
     WikiObservers.before(WikiEvent(what, "WikiEntry", e.wid.wpath, Some(e)))
@@ -66,7 +70,6 @@ class WikieBase extends WikiBase {
     })
   }
 
-  case class ReportWiki(reason: String)
 
   val reportForm = Form {
     mapping(
@@ -75,15 +78,14 @@ class WikieBase extends WikiBase {
     })
   }
 
-  case class LinkWiki(how: String, notif: String, markup: String, comment: String)
 
   def linkForm(implicit request: Request[_]) = Form {
     mapping(
       "how" -> nonEmptyText,
       "notif" -> nonEmptyText,
       "markup" -> text.verifying("Unknown!", request.queryString("wc").headOption.exists(_ == "0") || Wikis.markups.contains(_)),
-      "comment" -> text)(LinkWiki.apply)(LinkWiki.unapply) verifying (
-      "Your entry failed the obscenity filter", { ew: LinkWiki => !Wikis.hasBadWords(ew.comment)
+      "comment" -> text)(Wikil.LinkWiki.apply)(Wikil.LinkWiki.unapply) verifying (
+      "Your entry failed the obscenity filter", { ew: Wikil.LinkWiki => !Wikis.hasBadWords(ew.comment)
     })
   }
 
@@ -112,7 +114,8 @@ class WikieBase extends WikiBase {
 }
 
 /** wiki edits controller */
-object Wikie extends WikieBase {
+//@Singleton
+object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
   import Visibility._
 
   implicit def obtob(o: Option[Boolean]): Boolean = o.exists(_ == true)

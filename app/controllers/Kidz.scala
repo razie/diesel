@@ -17,6 +17,7 @@ import razie.wiki.model.{WikiLink, WID}
 
 import scala.util.Try
 
+/** manage kidz (persons) */
 object Kidz extends RazController {
 
   def doeUserKidz = FAUR { implicit stok=>

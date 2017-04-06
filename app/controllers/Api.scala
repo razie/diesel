@@ -1,42 +1,12 @@
 package controllers
 
-import java.lang.management.{ManagementFactory, OperatingSystemMXBean}
-import java.lang.reflect.Modifier
-import akka.cluster.Cluster
-import com.mongodb.casbah.Imports.{DBObject, IntOk}
-import com.mongodb.casbah.commons.MongoDBObject
-import com.mongodb.casbah.Imports._
-import com.novus.salat._
-import com.novus.salat.grater
-import difflib.DiffUtils
-import mod.notes.controllers.NotesLocker
-import org.json.{JSONArray, JSONObject}
-import play.api.libs.concurrent.Akka
-import play.api.libs.json.JsObject
-import play.twirl.api.Html
-import razie.db.{RMany, RazMongo}
-import razie.db.RazSalatContext.ctx
-import org.bson.types.ObjectId
-import org.joda.time.DateTime
-import play.api.data.Form
-import play.api.data.Forms.{mapping, nonEmptyText, number}
+import com.google.inject._
 import play.api.mvc._
-import razie.g.snakked
-import razie.wiki.util.PlayTools
-import razie.js
-import razie.wiki.Enc
-import razie.wiki.model.{WID, WikiEntry, Wikis}
-import razie.wiki.admin.{MailSession, GlobalData, SendEmail}
-import admin.MdbAuditService
 import model._
-import x.context
+import play.api.{Configuration, Play}
 
-import scala.util.Try
-import razie.Snakk._
-import razie.wiki.Sec._
-import scala.collection.JavaConversions._
-
-object Api extends AdminBase {
+@Singleton
+class Api @Inject() (val config:Configuration) extends AdminBase {
 
   class WeRequest[A] (val au:Option[User], val errCollector:VErrors, val request:Request[A])
     extends WrappedRequest[A] (request) {
@@ -55,11 +25,11 @@ object Api extends AdminBase {
   }
 
   def wix = NFAU {implicit request =>
-    Ok(api.wix(None, request.au, Map.empty, request.realm).json).as("text/json")
+    Ok(api.wix(None, request.au, Map.empty, request.realm).jsonBrowser).as("text/json")
   }
 
   def ownedPages(role: String, cat:String) = NFAU {implicit request =>
-    Ok(api.wix(None, request.au, Map.empty, request.realm).json).as("text/json")
+    Ok(api.wix(None, request.au, Map.empty, request.realm).jsonBrowser).as("text/json")
   }
 
   def user(id: String) = NFAU { implicit request =>

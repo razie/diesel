@@ -14,7 +14,7 @@ import play.api.libs.concurrent.Akka
 import play.mvc.Result
 import play.twirl.api.Html
 import razie.wiki.admin.SendEmail
-import controllers.Profile._
+import controllers.Profile.cNoConsent
 import controllers.Tasks._
 import razie.db.RMongo.as
 import razie.db._
@@ -882,7 +882,7 @@ regAdmin=$regAdmin
               Set(UserType.Organization))
 
             u = u.copy(clubSettings = Some(mkSettings(u, a)))
-            val p = new Profile(u._id)
+            val p = new model.Profile(u._id)
             u.create(p)
           }
           Msg2("Ok, boss, user created. Now edit the club...")

@@ -1,5 +1,6 @@
 package controllers
 
+import com.google.inject.Singleton
 import java.lang.management.{ManagementFactory, OperatingSystemMXBean}
 import java.lang.reflect.Modifier
 import akka.cluster.Cluster
@@ -80,7 +81,8 @@ class AdminBase extends RazController {
 }
 
 /** admin the mongo db directly */
-object AdminDb extends AdminBase {
+@Singleton
+class AdminDb extends AdminBase {
 
   /** view a table */
   def col(name: String) = FADR { implicit request =>
@@ -171,7 +173,8 @@ object Admin extends AdminBase {
   }
 }
 
-object AdminUser extends AdminBase {
+@Singleton
+class AdminUser extends AdminBase {
   def user(id: String) =
     FAD { implicit au => implicit errCollector => implicit request =>
       ROK.r admin { implicit stok => views.html.admin.adminUser(model.Users.findUserById(id)) }
@@ -396,9 +399,10 @@ object AdminUser extends AdminBase {
 }
 
 /** admin the audit tables directly */
-object AdminAudit extends AdminBase {
+@Singleton
+class AdminAudit extends AdminBase {
   def showAudit(msg: String) = FA { implicit request =>
-    ROK.r admin {implicit stok=> views.html.admin.adminAudit(if (msg.length > 0) Some(msg) else None)}
+    ROK.r admin { implicit stok => views.html.admin.adminAudit(if (msg.length > 0) Some(msg) else None) }
   }
 
   def clearaudit(id: String) = FA { implicit request =>
@@ -422,12 +426,13 @@ object AdminAudit extends AdminBase {
 
   def auditPurge1 = FA { implicit request =>
     val map = new scala.collection.mutable.HashMap[(String, String), Int]
+
     def count(t: String, s: String) = if (map.contains((s, t))) map.update((s, t), map((s, t)) + 1) else map.put((s, t), 1)
 
     RazMongo("AuditCleared").findAll().map(j => new DateTime(j.get("when"))).map(d => s"${d.getYear}-${d.getMonthOfYear}").foreach(count("ac", _))
     RazMongo("WikiAudit").findAll().map(j => new DateTime(j.get("crDtm"))).map(d => s"${d.getYear}-${d.getMonthOfYear}").foreach(count("w", _))
     RazMongo("UserEvent").findAll().map(j => new DateTime(j.get("when"))).map(d => s"${d.getYear}-${d.getMonthOfYear}").foreach(count("u", _))
-    ROK.r admin {implicit stok=> views.html.admin.adminAuditPurge1(map)}
+    ROK.r admin { implicit stok => views.html.admin.adminAuditPurge1(map) }
   }
 
   final val auditCols = Map("AuditCleared" -> "when", "WikiAudit" -> "crDtm", "UserEvent" -> "when")
@@ -437,7 +442,8 @@ object AdminAudit extends AdminBase {
       val Array(y, m, what) = ym.split("-")
       val (yi, mi) = (y.toInt, m.toInt)
       Ok(RazMongo(what).findAll().filter(j => {
-        val d = new DateTime(j.get(auditCols(what))); d.getYear() == yi && d.getMonthOfYear() == mi
+        val d = new DateTime(j.get(auditCols(what)));
+        d.getYear() == yi && d.getMonthOfYear() == mi
       }).take(20000).toList.map { x =>
         RazMongo(what).remove(Map("_id" -> x.get("_id").asInstanceOf[ObjectId]))
         x
@@ -448,7 +454,9 @@ object AdminAudit extends AdminBase {
   def auditReport(d: String, what: Int) = Action { implicit request =>
     forAdmin {
       val baseline = DateTime.now.minusDays(what)
+
       def f(j: DateTime) = j != null && (d == "d" && j.isAfter(baseline) || d == "y" && j.dayOfYear.get == baseline.dayOfYear.get)
+
       val sevents = {
         val events =
           (
@@ -486,7 +494,9 @@ object AdminAudit extends AdminBase {
         spages)
     }
   }
+}
 
+object AdminAudit {
   def auditSummary = {
     val x = RazMongo("Audit").findAll().toList
     RazMongo("Audit").findAll().toList.groupBy(_.get("msg")).map { t =>
@@ -496,7 +506,8 @@ object AdminAudit extends AdminBase {
 }
 
 /** admin the audit tables directly */
-object AdminSys extends AdminBase {
+@Singleton
+class AdminSys extends AdminBase {
   private def nice(l: Long) =
     if (l > 2L * (1024L * 1024L * 1024L))
       l / (1024L * 1024L * 1024L) + "G"
@@ -582,6 +593,7 @@ ClusterStatus=${GlobalData.clusterStatus}\n
 }
 
 /** Diff and sync remote wiki copies */
+//@Singleton
 object AdminDiff extends AdminBase {
 
   case class WEAbstract (id:String, cat:String, name:String, realm:String, ver:Int, updDtm:DateTime, hash:Int, tags:String) {
@@ -747,7 +759,8 @@ object AdminDiff extends AdminBase {
 }
 
 /** Diff and sync remote wiki copies */
-object AdminTest extends AdminBase {
+@Singleton
+class AdminTest extends AdminBase {
   def test() = FADR { implicit stok=>
       ROK.k admin { implicit stok => views.html.admin.adminTest() }
     }

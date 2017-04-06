@@ -1,9 +1,11 @@
 package controllers
 
-import razie.{Logging, Snakk, cout}
-import play.api.Play
+import admin.Config
+import com.google.inject._
+import razie.{Logging, Snakk}
+import play.api.{Configuration, Play}
 import razie.wiki.admin.SendEmail
-import razie.wiki.{Enc, Services}
+import razie.wiki.Services
 
 /** to use this put these in the application.conf
 
@@ -14,12 +16,13 @@ recaptcha {
 }
 
   */
-object Recaptcha extends Logging {
+@Singleton
+class Recaptcha @Inject() (config:Configuration) extends Logging {
 
-  final val RE_privatekey = Play.current.configuration.getString("recaptcha.privatekey").mkString
+  final val RE_privatekey = config.underlying.getString("recaptcha.privatekey").mkString
   final val RE_localhost = // true means bypass RE for localhost
-    Play.current.configuration.getString("recaptcha.localhost").getOrElse("true").toBoolean
-  final val RE2_secret = Play.current.configuration.getString("recaptcha.secret").mkString
+    config.underlying.getString("recaptcha.localhost").mkString.toBoolean
+  final val RE2_secret = config.underlying.getString("recaptcha.secret").mkString
 
   def verify(challenge: String, response: String, clientIp: String) =
     (Services.config.isLocalhost && RE_localhost || challenge == T.TESTCODE) || {

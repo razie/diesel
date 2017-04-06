@@ -41,6 +41,10 @@ trait WikiDomainParser extends WikiParserBase {
   import WAST._
 
   def ident: P = """\w+""".r
+  def qqident: P = """[\w.]+""" ~ rep("." ~> ident) ^^ {
+    case i ~ l => (i :: l).mkString(".")
+  }
+
   def qident: P = ident ~ rep("." ~> ident) ^^ {
     case i ~ l => (i :: l).mkString(".")
   }
@@ -171,16 +175,39 @@ trait WikiDomainParser extends WikiParserBase {
     case a => ("", "", a)
   }
 
-  /** assoc : role */
-  def clsMet: Parser[(String, String, List[RDOM.P])] = (ident | "*" | jsregex) ~ " *. *".r ~ (ident | "*" | jsregex) ~ optAttrs ^^ {
-    case cls ~ _ ~ role ~ a => (cls, role, a)
+  /** p.a.ent.met - qualified ent so at least two elements
+    * @return (ent, act, fullString) */
+  def qualified(qcm : List[String]) : (String, String, String) = {
+      val ea = qcm.mkString(".") //ent+"."+ac
+      val ent = qcm.dropRight(1).mkString(".")
+      val act = qcm.takeRight(1).mkString //ent+"."+ac
+      (ent, act, ea)
+  }
+
+  /** ent.met - qualified ent so at least two elements
+    * @return (ent, act, fullString) */
+  def qclsMet: Parser[(String, String, String)] = (ident | "*" | jsregex) ~ "." ~ (ident | "*" | jsregex) ~ rep("." ~> (ident | "*" | jsregex)) ^^ {
+    case i ~ _ ~ j ~ l => {
+      qualified(i :: j :: l)
+    }
+  }
+
+  /** ent.met */
+  def clsMet: Parser[(String, String, List[RDOM.P])] = (ident | "*" | jsregex) ~ " *. *".r ~ (ident | "*" | jsregex) ~ rep("." ~> (ident | "*" | jsregex)) ~ optAttrs ^^ {
+    case i ~ _ ~ j ~ l ~ a => {
+      val qcm = qualified(i :: j :: l)
+      (qcm._1, qcm._2, a)
+    }
   }
 
   def jsregex: P = """/[^/]*/""".r
 
-  /** assoc : role */
-  def clsMatch: Parser[(String, String, List[RDOM.PM])] = (ident | "*" | jsregex) ~ " *. *".r ~ (ident | "*" | jsregex) ~ optMatchAttrs ^^ {
-    case cls ~ _ ~ role ~ a => (cls, role, a)
+  /** pattern match for ent.met */
+  def clsMatch: Parser[(String, String, List[RDOM.PM])] = (ident | "*" | jsregex) ~ " *. *".r ~ (ident | "*" | jsregex) ~ rep("." ~> (ident | "*" | jsregex)) ~ optMatchAttrs ^^ {
+    case i ~ _ ~ j ~ l ~ a => {
+      val qcm = qualified(i :: j :: l)
+      (qcm._1, qcm._2, a)
+    }
   }
 
   /**
@@ -230,9 +257,9 @@ trait WikiDomainParser extends WikiParserBase {
     *  => z.role (attrs)
     */
   def pgen: Parser[EMap] =
-    ows ~> pArrow ~ ows ~ (clsMet | justAttrs) ^^ {
-      case  arrow ~ _ ~ Tuple3(zc, zm, za) => {
-        EMap(zc, zm, za, arrow)
+    ows ~> pArrow ~ ows ~ opt(pif) ~ ows ~ (clsMet | justAttrs) ^^ {
+      case  arrow ~ _ ~ cond ~ _ ~ Tuple3(zc, zm, za) => {
+        EMap(zc, zm, za, arrow, cond)
       }
     }
 
@@ -240,29 +267,17 @@ trait WikiDomainParser extends WikiParserBase {
    * .when a.role (attrs) => z.role (attrs)
    */
   def pwhen: PS =
-    keyw("""[.$]when""".r) ~ ws ~ clsMatch ~ ws ~ opt(pif) ~ rep(pgen) ^^ {
+    keyw("""[.$]when|[.$]mock""".r) ~ ws ~ clsMatch ~ ws ~ opt(pif) ~ rep(pgen) ^^ {
       case k ~ _ ~ Tuple3(ac, am, aa) ~ _ ~ cond ~ gens => {
         LazyState { (current, ctx) =>
           val x = EMatch(ac, am, aa, cond)
-          val f = ERule(x, gens)
-          f.pos = Some(EPos(ctx.we.map(_.wid.wpath).mkString, k.pos.line, k.pos.column))
+          val r = ERule(x, gens)
+          r.pos = Some(EPos(ctx.we.map(_.wid.wpath).mkString, k.pos.line, k.pos.column))
+          val f = if(k.s contains "when") r else EMock(r)
           addToDom(f).ifold(current, ctx)
         }
       }
     }
-//  def pwhen: PS =
-//      keyw("""[.$]when""".r) ~ ws ~ clsMatch ~ ws ~ opt(pif) ~ " *=>".r ~ ows ~ (clsMet | justAttrs) ^^ {
-//            case k ~ _ ~ Tuple3(ac, am, aa) ~ _ ~ cond ~ _ ~ _ ~ Tuple3(zc, zm, za) => {
-//        LazyState { (current, ctx) =>
-//          val x = EMatch(ac, am, aa, cond)
-//          val y = EMap(zc, zm, za)
-//          val f = ERule(x, List(y))
-//          f.pos = Some(EPos(ctx.we.map(_.wid.wpath).mkString, k.pos.line, k.pos.column))
-//          addToDom(f).ifold(current, ctx)
-//        }
-//      }
-//    }
-
 
   /**
    * .flow e.a => expr
@@ -283,14 +298,14 @@ trait WikiDomainParser extends WikiParserBase {
    * .mock a.role (attrs) => z.role (attrs)
    */
   def pmock: PS =
-    keyw("""[.$]mock""".r) ~ ws ~ clsMatch ~ opt(pif) ~ " *=>".r ~ ows ~ optAttrs ^^ {
+    keyw("""[.$]xmock""".r) ~ ws ~ clsMatch ~ opt(pif) ~ " *=>".r ~ ows ~ optAttrs ^^ {
       case k ~ _ ~ Tuple3(ac, am, aa) ~ cond ~ _ ~ _ ~ za => {
         LazyState { (current, ctx) =>
           val x = EMatch(ac, am, aa, cond)
           val y = EMap("", "", za)
           val f = EMock(ERule(x, List(y)))
-          f.pos = Some(EPos(ctx.we.map(_.wid.wpath).mkString, k.pos.line, k.pos.column))
           f.rule.pos = Some(EPos(ctx.we.map(_.wid.wpath).mkString, k.pos.line, k.pos.column))
+          f.pos = Some(EPos(ctx.we.map(_.wid.wpath).mkString, k.pos.line, k.pos.column))
           addToDom(f).ifold(current, ctx)
         }
       }
@@ -455,24 +470,23 @@ trait WikiDomainParser extends WikiParserBase {
    *
    * An NVP is either the spec or an instance of a function call, a message, a data object... whatever...
    */
-  def pmsg: PS = keyw("[.$]msg *".r) ~ opt("<" ~> "[^>]+".r <~ "> *".r) ~ (ident | "*" | jsregex) ~ " *. *".r ~ (ident | "*" | jsregex) ~ optAttrs ~ opt(" *(:|=>) *".r ~> optAttrs) ^^ {
-    case k ~ stype ~ ent ~ _ ~ ac ~ attrs ~ ret => {
+  def pmsg: PS = keyw("[.$]msg *".r) ~ opt("<" ~> "[^>]+".r <~ "> *".r) ~ qclsMet ~ optAttrs ~ opt(" *(:|=>) *".r ~> optAttrs) ^^ {
+    case k ~ stype ~ qcm ~ attrs ~ ret => {
       LazyState { (current, ctx) =>
 
-        val ea = ent+"."+ac
         val archn =
           if(stype.exists(_.length > 0)) stype.mkString.trim
           else {
             // todo snakkers need to be plugged in and insulated better
             // find snakker and import stype
-            val t = ctx.we.flatMap(_.templateSections.find(_.name == ea))
+            val t = ctx.we.flatMap(_.templateSections.find(_.name == qcm._3))
             val sc = t.map(_.content).mkString
             if("" != sc) Try {
               EESnakk.parseTemplate(t.map(new WikiDTemplate(_)), sc, attrs).method
             }.getOrElse("") else ""
           }
 
-        val f = EMsg("def", ent, ac, attrs, ret.toList.flatten(identity), archn)
+        val f = EMsg("def", qcm._1, qcm._2, attrs, ret.toList.flatten(identity), archn)
 
         f.pos = Some(EPos(ctx.we.map(_.wid.wpath).mkString, k.pos.line, k.pos.column))
         collectDom(f, ctx.we)
@@ -512,10 +526,10 @@ trait WikiDomainParser extends WikiParserBase {
   /**
    * .expect object.func (a,b)
    */
-  def pexpectm: PS = keyw("[.$]expect *[$]msg *".r) ~ ident ~ " *\\. *".r ~ ident ~ optMatchAttrs ~ opt(pif) ^^ {
-    case k ~ ent ~ _ ~ ac ~ attrs ~ cond => {
+  def pexpectm: PS = keyw("[.$]expect *[$]msg *".r) ~ qclsMet ~ optMatchAttrs ~ opt(pif) ^^ {
+    case k ~ qcm ~ attrs ~ cond => {
       LazyState { (current, ctx) =>
-        val f = ExpectM(EMatch(ent, ac, attrs, cond))
+        val f = ExpectM(EMatch(qcm._1, qcm._2, attrs, cond))
         f.pos = Some(EPos(ctx.we.map(_.wid.wpath).mkString, k.pos.line, k.pos.column))
         collectDom(f, ctx.we)
         SState(f.toHtml+"<br>")

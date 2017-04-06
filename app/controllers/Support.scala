@@ -1,14 +1,17 @@
 package controllers
 
+import com.google.inject._
 import play.api.data.Forms._
 import play.api.data._
 import play.api.mvc._
 import razie.base.Audit
 import razie.{Logging, cout}
 import org.joda.time.DateTime
+import play.api.Configuration
 
 /** support features */
-object Support extends RazController with Logging {
+@Singleton
+class Support @Inject() (config:Configuration) extends RazController with Logging {
 
   def supportForm1 = Form {
     tuple(
@@ -37,7 +40,7 @@ object Support extends RazController with Logging {
       {
         case t @ (e, n, desc, details, g_response) => {
           cdebug << t
-          if (auth.exists(_.isActive) || Recaptcha.verify2(g_response, clientIp)) {
+          if (auth.exists(_.isActive) || new Recaptcha(config).verify2(g_response, clientIp)) {
             Emailer.withSession(request.realm) { implicit mailSession =>
               Emailer.sendSupport("Support request", n, e, (auth.map("Username: " + _.userName + " ").mkString) + desc, details, page)
             }
@@ -67,7 +70,7 @@ object Support extends RazController with Logging {
       {
         case t @ (e, n, desc, details, g_response) => {
           cout << t
-            if (auth.exists(_.isActive) || Recaptcha.verify2(g_response, clientIp)) {
+            if (auth.exists(_.isActive) || new Recaptcha(config).verify2(g_response, clientIp)) {
             Emailer.withSession { implicit mailSession =>
               Emailer.sendSupport("Suggestion", n, e, (auth.map("Username: " + _.userName + " ").mkString) + desc, details, page)
             }

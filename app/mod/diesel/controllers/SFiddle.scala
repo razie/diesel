@@ -198,7 +198,7 @@ object SFiddles extends SFiddleBase with Logging {
 
   class MyCF extends ClassFilter {
     override def exposeToScripts(s: String): Boolean = {
-      if (s == "api.WixUtils") true;
+      if (s.startsWith("api." /* WixUtils" */)) true;
       else {
         Audit.logdb("ERR_DENIED", "js class access denied ", s)
         false

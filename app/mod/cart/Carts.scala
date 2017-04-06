@@ -3,7 +3,7 @@ package mod.cart
 import admin.Config
 import akka.actor.{Actor, Props}
 import controllers._
-import mod.diesel.controllers.DieselMsgString
+import mod.diesel.model.DieselMsgString
 import model._
 import org.bson.types.ObjectId
 import org.scalatest.path

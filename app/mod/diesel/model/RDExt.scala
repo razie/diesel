@@ -12,7 +12,7 @@ import java.util.regex.Pattern
 
 import com.razie.pub.comms.Comms
 import controllers.Wikil
-import mod.diesel.controllers.{DieselControl, DieselMsgString, SFiddles}
+import mod.diesel.controllers.{DieselControl, SFiddles}
 import model.Users
 import razie.db.RazSalatContext._
 import razie.db._
@@ -238,11 +238,11 @@ object RDExt {
 
 
   // the context persistence commands
-  object EEWiki extends EExecutor("wiki") {
+  object EEWiki extends EExecutor("rk.wiki") {
 
     override def isMock : Boolean = true
     override def test(m: EMsg, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) = {
-      m.entity == "wiki"
+      m.entity == "rk.wiki" || m.entity == "wiki"
     }
 
     override def apply(in: EMsg, destSpec: Option[EMsg])(implicit ctx: ECtx): List[Any] = {
@@ -261,7 +261,7 @@ object RDExt {
       }
     }
 
-    override def toString = "$executor::wiki "
+    override def toString = "$executor::rk.wiki "
     override val messages : List[EMsg] =
       EMsg("", "wiki", "follow", Nil) :: Nil
   }
@@ -301,9 +301,21 @@ object RDExt {
           //          contexts.put(ctx("kind") + ctx("id"), ctx.root) // should I save this one?
           Nil
         }
+        case "engineSync" => {
+          // turn the engine sync
+          ctx.root.asInstanceOf[DomEngECtx].engine.map(_.synchronous = true)
+          Nil
+        }
+        case "reset" => {
+//          ctx.root.asInstanceOf[DomEngECtx].reset
+          Nil
+        }
         case "echo" => {
           in.attrs.map {a=>
-            new EVal(a.name, a.dflt) // todo calc exprs
+            if(a.dflt != "")
+              new EVal(a.name, a.dflt) // todo calc exprs
+            else
+              new EVal(a.name, ctx(a.name)) // if not given, then find it
           }
         }
         case "sleep" => {
@@ -317,6 +329,9 @@ object RDExt {
           DieselAppContext.router.map(_ ! DEStartTimer("x",d,Nil))
           new EInfo("ctx.timer - start "+d) :: Nil
         }
+        case s@_ => {
+          new EError(s"ctx.$s - unknown activity ") :: Nil
+        }
       }
     }
 
@@ -327,6 +342,9 @@ object RDExt {
       EMsg("", "ctx", "log", Nil) ::
       EMsg("", "ctx", "echo", Nil) ::
       EMsg("", "ctx", "test", Nil) ::
+      EMsg("", "ctx", "engineSync", Nil) ::
+      EMsg("", "ctx", "storySync", Nil) ::    // processed by the story teller
+      EMsg("", "ctx", "storyAsync", Nil) ::    // processed by the story teller
       EMsg("", "ctx", "clear", Nil) :: Nil
   }
 
@@ -350,7 +368,7 @@ object RDExt {
 
             val q = in.attrs.map(t=>(t.name, t.dflt)).toMap
 
-            SFiddles.isfiddleMap(s, "js", None, None, q, Some(qTyped(q,f)))._2
+            SFiddles.isfiddleMap(s, "js", None, None, q+("diesel" -> ""), Some(qTyped(q,f) + ("diesel" -> new api.diesel.DieselJs(ctx))))._2
           } else
             "ABSTRACT FUNC"
         } catch {

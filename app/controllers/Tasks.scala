@@ -1,18 +1,22 @@
 package controllers
 
-import mod.snow.{RacerKidz, RK, RacerKidAssoc}
+import mod.snow.{RK, RacerKidAssoc, RacerKidz}
 import org.joda.time.DateTime
 import play.api.mvc.{Action, Request}
 import razie.Logging
 import model._
-import razie.wiki.admin.{SecLink, SendEmail, MailSession}
+import razie.wiki.admin.{MailSession, SecLink, SendEmail}
 import razie.wiki.model.WID
-import razie.wiki.{Services, EncUrl, Enc}
+import razie.wiki.{Enc, EncUrl, Services}
 import admin.Config
+import play.api.data.Form
+import play.api.data.Forms.{mapping, nonEmptyText, tuple, _}
 
 object Tasks extends RazController with Logging {
-  import controllers.Profile.parentForm
   import razie.wiki.Sec._
+
+  val parentForm = Form(
+    "parentEmail" -> text.verifying("Wrong format!", vldEmail(_)).verifying("Invalid characters", vldSpec(_)))
 
   lazy val cNotParent = new Corr("you're not the parent", "login with the parent account and try again")
 

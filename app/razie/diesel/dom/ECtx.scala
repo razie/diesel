@@ -1,7 +1,7 @@
 package razie.diesel.dom
 
 import razie.diesel.dom.RDOM.P
-import mod.diesel.model.{DomAst, DomEngineSettings}
+import mod.diesel.model.{DomAst, DomEngine, DomEngineSettings}
 
 /** uniquely identifies a piece of specification
   *
@@ -115,14 +115,24 @@ class SimpleECtx(val cur: List[P] = Nil, val base: Option[ECtx] = None, val curN
   def exists(f: scala.Function1[P, scala.Boolean]): scala.Boolean =
     cur.exists(f) || attrs.exists(f) || base.exists(_.exists(f))
 
+  /** we delegate on empty values - empty is the same as missing then
+    *
+    * this is relevant - current message won't work otherwise, like ctx.echo(parm)
+    * */
   def get(name: String): Option[String] =
-    cur.find(_.name == name).orElse(
-      attrs.find(_.name == name)).map(_.dflt).orElse(
+    cur.find(a=> a.name == name && a.dflt != "").orElse(
+      attrs.find(a=> a.name == name)).map(_.dflt).orElse(
       base.flatMap(_.get(name)))
 
-  def put(p: P): Unit = attrs = p :: attrs.filter(_.name != p.name)
+  /** propagates by default up - see the Scope context which will not */
+  def put(p: P): Unit =
+    if(base.isDefined) base.get.put(p)
+    else  attrs = p :: attrs.filter(_.name != p.name)
 
-  def putAll(p: List[P]): Unit = attrs = p ::: attrs.filter(x => !p.exists(_.name == x.name))
+  /** propagates by default up - see the Scope context which will not */
+  def putAll(p: List[P]): Unit =
+    if(base.isDefined) base.get.putAll(p)
+    else attrs = p ::: attrs.filter(x => !p.exists(_.name == x.name))
 
   def root: ECtx = base.map(_.root).getOrElse(this)
 
@@ -142,6 +152,10 @@ class StaticECtx(cur: List[P] = Nil, base: Option[ECtx] = None, curNode:Option[D
 class DomEngECtx(val settings:DomEngineSettings, cur: List[P] = Nil, base: Option[ECtx] = None) extends SimpleECtx(cur, base, None) {
   var overwritten: Option[ECtx] = None
   var persisted: Boolean = false
+  var engine : Option[DomEngine] = None
+
+  /** NOT for moving from engine to engine */
+  def withEngine(e:DomEngine) = { this.engine = Some(e); this}
 
   private def ps(name:String) : Option[String] = settings.postedContent.flatMap(_.get(name))
 
@@ -158,9 +172,11 @@ class DomEngECtx(val settings:DomEngineSettings, cur: List[P] = Nil, base: Optio
   override def exists(f: scala.Function1[P, scala.Boolean]): scala.Boolean =
     overwritten.map(_.exists(f)).orElse(settings.postedContent.map(_.exists(f))).getOrElse(super.exists(f))
 
+  /** used for instance when perssisting a context - will overwrite the defautl */
   def overwrite(ctx: ECtx) =
     if (this != ctx)
       overwritten = Some(ctx)
+
 }
 
 /** context for an internal scope - parent is scope or Eng
@@ -170,6 +186,11 @@ class DomEngECtx(val settings:DomEngineSettings, cur: List[P] = Nil, base: Optio
   * todo when loading context, how do I reover active scope contexts
   */
 class ScopeECtx(cur: List[P] = Nil, base: Option[ECtx] = None, curNode:Option[DomAst]=None) extends SimpleECtx(cur, base, curNode) {
+//  override def put(p: P): Unit =
+//    attrs = p :: attrs.filter(_.name != p.name)
+//
+//  override def putAll(p: List[P]): Unit =
+//    attrs = p ::: attrs.filter(x => !p.exists(_.name == x.name))
 }
 
 object ECtx {

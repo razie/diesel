@@ -4,7 +4,7 @@ import admin.Config
 import akka.actor.{Actor, Props}
 import controllers._
 import mod.cart
-import mod.diesel.controllers.DieselMsgString
+import mod.diesel.model.DieselMsgString
 import mod.snow.Regs
 import model._
 import org.bson.types.ObjectId

@@ -366,11 +366,12 @@ class DomEngine(
   val id:String = new ObjectId().toString) {
 
   var status = DomState.INIT
+  var synchronous = false
 
   val maxLevels = 15
 
   // setup the context for this eval
-  implicit val ctx = new DomEngECtx(settings).withDomain(dom).withSpecs(pages)
+  implicit val ctx = new DomEngECtx(settings).withEngine(this).withDomain(dom).withSpecs(pages)
 
   val rules = dom.moreElements.collect {
     case e:ERule => e
@@ -388,8 +389,12 @@ class DomEngine(
     engine
   }
 
+  /** process a list of continuations */
   def later (m:List[DEMsg]) = {
-    m.map(m=>DieselAppContext.router.map(_ ! m))
+    if(synchronous) {
+      m.map(processDEMsg)
+    } else
+      m.map(m=>DieselAppContext.router.map(_ ! m))
   }
 
   def collectValues[T] (f: PartialFunction[Any, T]) : List[T] =
@@ -591,24 +596,68 @@ class DomEngine(
     var newNodes : List[DomAst] = Nil // nodes generated this call collect here
     var msgs : List[DEMsg] = Nil // continuations from this cycle
 
+    /** reused */
+    def runRule (in:EMsg, r:ERule) = {
+      var result : List[DomAst] = Nil
+
+      // generate each gen/map
+      r.i.map { ri =>
+        // find the spec of the generated message, to ref
+        val spec = dom.moreElements.collect {
+          case x: EMsg if x.entity == ri.cls && x.met == ri.met => x
+        }.headOption
+
+        var newMsgs = ri.apply(in, spec, r.pos).collect {
+          // hack: if only values then collect resulting values and dump message
+                          case x: EMsg if x.entity == "" && x.met == "" => {
+                            a.children appendAll x.attrs.map(x => DomAst(EVal(x), AstKinds.GENERATED).withSpec(r))
+                            ctx putAll x.attrs
+                            None
+                          }
+          // else collect message
+          case x: EMsg => {
+            Some(DomAst(x, AstKinds.GENERATED).withSpec(r))
+          }
+          case x: ENext => {
+            Some(DomAst(x, AstKinds.GENERATED).withSpec(r))
+          }
+        }.filter(_.isDefined)
+
+        // if multiple results from a single map, default to sequence, i.e. make them dependent
+        newMsgs.drop(1).foldLeft(newMsgs.headOption.flatMap(identity))((a,b)=> {
+          Some(b.get.withPrereq(List(a.get.id)))
+        })
+
+        result = result ::: newMsgs.flatMap(_.toList)
+      }
+      result
+    }
+
     if (level >= maxLevels) {
       a.children append DomAst(TestResult("fail: Max-Level!", "You have a recursive rule generating this branch..."), "error")
     } else a.value match {
 
-      case next@ENext(m, "==>") => {
+      case next@ENext(m, "==>", cond) => {
         // start new engine/process
         // todo should find settings for target service  ?
         val eng = spawn(List(DomAst(m)))
         eng.process // start it up in the background
         a.children append DomAst(EInfo(s"""Spawn engine <a href="/diesel/engine/view/${eng.id}">${eng.id}</a>"""))//.withPos((m.get.pos)))
+        // no need to return anything - children have been decomposed
       }
 
-      case n1@ENext(m, arr) => {
-        msgs = rep(a, recurse, level, List(DomAst(m, AstKinds.GENERATED)))
+      case n1@ENext(m, arr, cond) => {
+        if(n1.test())
+          msgs = rep(a, recurse, level, List(DomAst(m, AstKinds.GENERATED)))
+      }
+
+      case x: EMsg if x.entity == "" && x.met == "" => {
+        a.children appendAll x.attrs.map(x => DomAst(EVal(x), AstKinds.GENERATED).withSpec(x))
+        ctx putAll x.attrs
       }
 
       case n: EMsg => {
-        // look for mocks
+        // 1. look for mocks
         var mocked = false
 
         if (settings.mockMode) {
@@ -620,18 +669,25 @@ class DomEngine(
             // plus mocks from spec dom
             case m: EMock if m.rule.e.test(n) && a.children.isEmpty => {
               mocked = true
-              // run the mock
-              val values = m.rule.i.flatMap(_.apply(n, None, m.pos)).collect {
-                // mocks onl generate values, not messages
-                // collect resulting values and dump message
-                case x: EMsg => {
-                  a.children appendAll x.attrs.map(x => DomAst(EVal(x).withPos(m.pos), AstKinds.MOCKED).withSpec(m))
-                  ctx putAll x.attrs
+
+              if(false) {
+                var newMsgs = m.rule.i.flatMap(_.apply(n, None, m.pos)).collect {
+                  // mocks onl generate values, not messages
+                  // collect resulting values and dump message
+                  case x: EMsg => {
+                    a.children appendAll x.attrs.map(x => DomAst(EVal(x).withPos(m.pos), AstKinds.MOCKED).withSpec(m))
+                    ctx putAll x.attrs
+                  }
                 }
               }
+
+              // run the mock
+              newNodes = newNodes ::: runRule(n, m.rule)
             }
           }
         }
+
+        // 2. rules
 
         var ruled = false
         // no mocks fit, so let's find rules
@@ -641,33 +697,11 @@ class DomEngine(
             // each matching rule
             ruled = true
 
-            // generate each gen/map
-            r.i.map { ri =>
-              // find the spec of the generated message, to ref
-              val spec = dom.moreElements.collect {
-                case x: EMsg if x.entity == ri.cls && x.met == ri.met => x
-              }.headOption
-
-              val newMsgs = ri.apply(n, spec, r.pos).collect {
-                // hack: if only values then collect resulting values and dump message
-                case x: EMsg if x.entity == "" && x.met == "" => {
-                  a.children appendAll x.attrs.map(x => DomAst(EVal(x), AstKinds.GENERATED).withSpec(r))
-                  ctx putAll x.attrs
-                  None
-                }
-                // else collect message
-                case x: EMsg => {
-                  Some(DomAst(x, AstKinds.GENERATED).withSpec(r))
-                }
-                case x: ENext => {
-                  Some(DomAst(x, AstKinds.GENERATED).withSpec(r))
-                }
-              }
-
-              newNodes = newNodes ::: newMsgs.flatMap(_.toList)
-            }
+            newNodes = newNodes ::: runRule(n, r)
           }
         }
+
+        // 3. executors
 
         // no mocks, let's try executing it
         // I run snaks even if rules fit - but not if mocked
@@ -694,7 +728,7 @@ class DomEngine(
           }
         }
 
-        //          /* NEED expects to have a match in and a match out...?
+        // 4. sketch
 
         // last ditch attempt, in sketch mode: if no mocks or rules, run the expects
         if (!mocked && settings.sketchMode) {
@@ -830,6 +864,19 @@ class DomEngine(
     }
   msgs
   }
+
+  /** main processing of next - called from actor in async and in thread when sync */
+  def processDEMsg (m:DEMsg) = {
+    m match {
+      case req@DEReq(eid, a, r, l) => {
+        this.req(a, r, l)
+      }
+
+      case rep@DERep(eid, a, r, l, results) => {
+        this.rep(a, r, l, results)
+      }
+    }
+  }
 }
 
 
@@ -894,13 +941,13 @@ class DomEngineActor (eng:DomEngine) extends Actor {
       //save refs for active engines
     }
 
-    case req @ DEReq(id, a, r, l) => {
-      if(eng.id == id) eng.req(a, r, l)
+    case req @ DEReq(eid, a, r, l) => {
+      if(eng.id == eid) eng.processDEMsg(req)
       else DieselAppContext.router.map(_ ! req)
     }
 
-    case rep @ DERep(id, a, r, l, results) => {
-      if(eng.id == id) eng.rep(a, r, l, results)
+    case rep @ DERep(eid, a, r, l, results) => {
+      if(eng.id == eid) eng.processDEMsg(rep)
       else DieselAppContext.router.map(_ ! rep)
     }
 

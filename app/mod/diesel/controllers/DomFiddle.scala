@@ -592,11 +592,24 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
   def addStoryToAst (root:DomAst, story:WikiEntry, justTests:Boolean=false, justMocks:Boolean=false) = {
     var lastMsg : Option[EMsg] = None
     var lastAst : List[DomAst] = Nil
+    var inSequence = true
     root.children appendAll WikiDomain.domFilter(story) {
       case o:O if o.name != "context" => List(DomAst(o, RECEIVED))
+      case v:EMsg if v.entity == "ctx" && v.met == "storySync" => {
+        inSequence = true
+        Nil
+      }
+      case v:EMsg if v.entity == "ctx" && v.met == "storyAsync" => {
+        inSequence = false
+        Nil
+      }
       case v:EMsg => {
         lastMsg = Some(v);
-        lastAst = if(!(justTests || justMocks)) List(DomAst(v, RECEIVED)) else Nil
+        // withPrereq will cause the story messages to be ran in sequence
+        lastAst = if(!(justTests || justMocks)) List(DomAst(v, RECEIVED).withPrereq({
+          if(inSequence) lastAst.map(_.id)
+          else Nil
+        })) else Nil
         lastAst
       }
       case v:EVal => List(DomAst(v, RECEIVED))
@@ -792,7 +805,7 @@ object DomFiddles extends mod.diesel.controllers.SFiddleBase  with Logging {
 
   /** execute message to given reactor
     *
-    * not in a context of a request
+    * not in a context of a request, but client-side API
     */
   def runDom(msg:String, specs:List[WID], stories:List[WID], settings:DomEngineSettings) : Future[Map[String,Any]] = {
     val realm = specs.headOption.map(_.getRealm).mkString
@@ -1295,6 +1308,4 @@ object DomWorker {
   }
 }
 
-case class DieselMsg (e:String, a:String, parms:Map[String,String], specs:List[WID], stories:List[WID])
-case class DieselMsgString (msg:String, specs:List[WID], stories:List[WID])
 
