@@ -1,6 +1,7 @@
 @**************
 debug a wiki page
 **************@
+@import razie.wiki.model.Perm
 @(wid:razie.wiki.model.WID, iname:Option[String], page:Option[razie.wiki.model.WikiEntry])(implicit stok: controllers.StateOk)
 @import razie.wiki.model.{WikiEntry, WID, Wikis, WikiCount, WikiLink, WikiEntryOld}
 @import model.{Website, User}
@@ -8,7 +9,7 @@ debug a wiki page
 
 @stok.title("WikiDebug: "+wid.cat +":"+ wid.name)
 
-@if(stok.au.exists(_.hasPerm(model.Perm.adminDb))) {
+@if(stok.au.exists(_.hasPerm(Perm.adminDb))) {
 <p>
   <a href="@routes.Wiki.wikieDebug(wid)"><em>debug</em></a>
   | <a href="@routes.Wiki.wikieUsage(wid)"><em>usage</em></a>

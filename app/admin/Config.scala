@@ -23,11 +23,10 @@ object Config extends WikiConfig {
   var isimulateHost = {
     //      "www.snowproapp.com"
 //      "www.racerkidz.com"    // for testing locally
-//      "www.effectiveskiing.com"    // for testing locally
+    //  "www.effectiveskiing.com"    // for testing locally
     "specs.dieselapps.com"    // for testing locally
 //        "www.dieselapps.com"    // for testing locally
 //    "wiki.dieselapps.com"    // for testing locally
-//    "ebaysim.dieselapps.com"    // for testing locally
 //    "catsim.dieselapps.com"    // for testing locally
 //    "www.coolscala.com"    // for testing locally
 //    "www.enduroschool.com"    // for testing locally
@@ -67,13 +66,13 @@ object Config extends WikiConfig {
   def reloadUrlMap = synchronized {
     println("========================== RELOADING URL MAP ==============================")
     for (c <- Array(SITECFG, TOPICRED, USERTYPES, BANURLS)) {
-      val urlmaps = Some(Wikis.find(WID("Admin", c)).toSeq map (_.content) flatMap parsep)
+      val urlmaps = Some(Seq(Wikis.find(WID("Admin", c)).map(_.content).getOrElse("")) flatMap parsep)
       val xurlmap = (urlmaps.map(se => HashMap[String, String](se: _*)))
       xurlmap.map(xconfig.put(c, _))
     }
 
     // concentrated all types in just one topic "urlcfg"
-    for (u <- Wikis.find(WID("Admin", URLCFG)).toSeq map (_.content) flatMap parsep) {
+    for (u <- Seq(Wikis.find(WID("Admin", URLCFG)).map(_.content).getOrElse("")) flatMap parsep) {
       val RE = """([^.]+)\.(.*)""".r
       val RE(pre, prop) = u._1
 
@@ -98,4 +97,3 @@ object Config extends WikiConfig {
   }
 
 }
-

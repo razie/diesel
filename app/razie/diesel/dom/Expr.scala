@@ -60,7 +60,7 @@ class AExprIdent (val expr:String) extends Expr {
   */
 case class CExpr (ee : String, ttype:String) extends Expr {
   val expr = ee.toString
-  override def apply (v:Any)(implicit ctx:ECtx) = ee
+  override def apply (v:Any)(implicit ctx:ECtx) = if(ttype == "Number") ee.toInt else ee
   override def toDsl = if(ttype == "String") ("\"" + expr + "\"") else expr
 }
 
@@ -74,6 +74,12 @@ case class AExpr (val expr : String) extends Expr {
 case class BlockExpr (ex : Expr) extends Expr {
   val expr = "( " + ex.toString + " )"
   override def apply (v:Any)(implicit ctx:ECtx) = ex.apply(v)
+}
+
+/** a json block */
+case class JBlockExpr (ex : String) extends Expr {
+  val expr = "{ " + ex.toString + " }"
+  override def apply (v:Any)(implicit ctx:ECtx) = expr//.apply(v)
 }
 
 

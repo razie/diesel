@@ -1,0 +1,8 @@
+RK=~/w/racerkidz
+
+cd $RK/docker/base
+
+docker build -t raz-base .
+
+cd $RK
+

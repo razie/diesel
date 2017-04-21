@@ -150,7 +150,7 @@ case class SnakCall (protocol:String, method:String, url:String, headers:Map[Str
 object RDExt {
 
   def init = {
-    EECtx :: EEWiki :: EESnakk :: EEFunc :: EETest :: Nil map Executors.add
+    EECtx :: EESimDb :: EEWiki :: EESnakk :: EEFunc :: EETest :: Nil map Executors.add
   }
 
   /** parse from/to json utils */
@@ -162,7 +162,7 @@ object RDExt {
       def l(x:String) = if(o.contains(x)) o(x).asInstanceOf[List[_]] else Nil
 
       def parms (name:String) = l(name).collect {
-        case m:Map[String, Any] => P(sm("name",m), "", "", "", sm("value",m))
+        case m:Map[String, Any] => P(sm("name",m), sm("value",m))
       }
 
       if(o.contains("class")) s("class") match {
@@ -176,7 +176,7 @@ object RDExt {
         ).withPos(if(o.contains("pos")) Some(new EPos(o("pos").asInstanceOf[Map[String, Any]])) else None)
 
         case "EVal" => EVal (P(
-          s("name"), "", "", "", s("value")
+          s("name"), s("value")
         )).withPos(if(o.contains("pos")) Some(new EPos(o("pos").asInstanceOf[Map[String, Any]])) else None)
 
         case "DomAst" => {
@@ -349,6 +349,59 @@ object RDExt {
   }
 
   // the context persistence commands
+  object EESimDb extends EExecutor("simdb") {
+
+    /** map of active contexts per transaction */
+    val tables = new mutable.HashMap[String, mutable.HashMap[String, Any]]()
+
+    override def isMock : Boolean = true
+    override def test(m: EMsg, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) = {
+      m.entity == "simdb"
+    }
+
+    override def apply(in: EMsg, destSpec: Option[EMsg])(implicit ctx: ECtx): List[Any] = {
+      in.met match {
+        case "get" => {
+          tables.get(ctx("table")).flatMap(_.get(ctx("id"))).map(x=>EVal(P("entity", x.toString))).toList
+        }
+        case cmd @ ("set" | "add") => {
+          if(!tables.contains(ctx("table")))
+            tables.put(ctx("table"), new mutable.HashMap[String, Any]())
+
+          val id = if(cmd == "set") ctx("id") else new ObjectId().toString
+
+          tables(ctx("table")).put(id, ctx("entity"))
+          EVal(P("id", id)) :: Nil
+        }
+        case "log" => {
+          val res = tables.keySet.map { k =>
+            "Table: " + k +
+            tables(k).keySet.map { id =>
+              id + " -> " + tables(k)(id).toString
+            }.mkString("  ", "\n", "")
+          }.mkString("\n")
+          EVal(P("result", res)) :: Nil
+        }
+        case "clear" => {
+          tables.clear()
+          Nil
+        }
+        case s@_ => {
+          new EError(s"ctx.$s - unknown activity ") :: Nil
+        }
+      }
+    }
+
+    override def toString = "$executor::simdb "
+
+    override val messages : List[EMsg] =
+      EMsg("", "simdb", "set", Nil) ::
+        EMsg("", "simdb", "get", Nil) ::
+        EMsg("", "simdb", "log", Nil) ::
+        EMsg("", "simdb", "clear", Nil) :: Nil
+  }
+
+  // the context persistence commands
   object EEFunc extends EExecutor("func") {
 
     // can execute even in mockMode
@@ -461,7 +514,7 @@ object RDExt {
       val x = (r \ "*").nodes collect {
          case j : JsonOWrapper => {
            razie.MOLD(j.j.keys).map(_.toString).map {n=>
-             P(n, "", "", "", r \ "*" \@@ n)
+             P(n, r \ "*" \@@ n)
            }
         }
       }
@@ -615,8 +668,8 @@ object RDExt {
             // http
             val x = url(
               prepUrl(stripQuotes(newurl),
-                P("subject", "", "", "", in.entity) ::
-                  P("verb", "", "", "", in.met) :: in.attrs),
+                P("subject", in.entity) ::
+                  P("verb", in.met) :: in.attrs),
               //            in.attrs.filter(_.name != "url").map(p=>(p.name -> p.dflt)).toMap,
               (
                 sc.headers ++ {
@@ -679,8 +732,8 @@ object RDExt {
             //          case class SnakCall (method:String, url:String, headers:Map[String,String], content:String) {
             val ux = url(
               prepUrl(stripQuotes(u.dflt),
-                P("subject", "", "", "", in.entity) ::
-                  P("verb", "", "", "", in.met) :: in.attrs)
+                P("subject", in.entity) ::
+                  P("verb", in.met) :: in.attrs)
               //            in.attrs.filter(_.name != "url").map(p=>(p.name -> p.dflt)).toMap,
               //            stype))
             )

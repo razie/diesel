@@ -2,6 +2,7 @@
 wiki fragment, used in another page
 **************@
 @(we: razie.wiki.model.WikiEntry, simple: Boolean = false, canEdit: Boolean = false, isSite: Boolean = false, print: Boolean = false)(implicit stok: controllers.StateOk)
+@import razie.wiki.model.Perm
 @import controllers.IgnoreErrors
 @import razie.wiki.model.{Wikis, WikiCount, WID, WikiEntry}
 @import _root_.razie.wiki.Services
@@ -57,29 +58,34 @@ wiki fragment, used in another page
 
     |
 
-      @if(stok.au.exists(_.isActive) && page.exists(p => !(p.likes contains stok.au.get._id.toString))) {
-        <a href="@routes.Wikie.like(wid, 1)" class="glyphicon glyphicon-thumbs-up" title="This topic is helpful"></a>
+      <span id="voteLike">
+          &nbsp;
+      @if(!stok.au.exists(_.isActive) || page.exists(p => !(p.likes contains stok.au.get._id.toString))) {
+        <a href="javascript:likeWiki(1)" class="glyphicon glyphicon-thumbs-up" title="This topic is helpful"></a>
       } else {
-        @if(stok.au.exists(_.isActive)) {
-          <span class="glyphicon glyphicon-thumbs-up" title="You already rated this topic"></span>
-        } else {
-          <span class="glyphicon glyphicon-thumbs-up" title="Need to login to rate topic"></span>
+        <span class="glyphicon glyphicon-thumbs-up" title="You already rated this topic"></span>
+      }
+
+      @if(stok.au.exists(_.isMod)) {
+        @if(page.exists(w => w.likes.size > 0 || w.likeCount > 0)) {
+          <span style="font-size: x-small">@{page.get.likes.size+page.get.likeCount}</span>
         }
       }
-      @if(page.exists(_.likes.size > 0)) {
-        <span style="font-size : x-small">(@page.get.likes.size)</span>
-      }
-      @**
-      @if(stok.au.exists(_.isActive)) {
-      &nbsp; <a href="@routes.Wikie.like(wid, 0)" class="glyphicon glyphicon-thumbs-down" title="This topic is not helpful"></a>
-      } else {
-      &nbsp; <span class="glyphicon glyphicon-thumbs-down" title="Need to login to rate topic"></span>
-      }
-      @if(page.exists(_.dislikes.size > 0)) {
-      <span style="font-size: x-small">(@page.get.dislikes.size)</span>
-      }
-      **@
 
+        &nbsp;
+      @if(!stok.au.exists(_.isActive) || page.exists(p => !(p.dislikes contains stok.au.get._id.toString))) {
+        <a href="javascript:likeWiki(0)" class="glyphicon glyphicon-thumbs-down" title="This topic is not helpful"></a>
+      } else {
+        <span class="glyphicon glyphicon-thumbs-down" title="You already rated this topic"></span>
+      }
+
+      @if(stok.au.exists(_.isMod)) {
+        @if(page.exists(w=> w.dislikes.size > 0 || w.dislikeCount>0)) {
+          <span style="font-size: x-small">@{page.get.dislikes.size+page.get.dislikeCount}</span>
+        }
+      }
+        <span class="voteLikeThanks label label-default" style="display:none"><small>Thank you!</small></span>
+      </span>
     </small>
 
     @if(stok.au.exists(_.isAdmin)) {
@@ -108,8 +114,8 @@ wiki fragment, used in another page
     }
     <small>
       (
-      @if(canEdit || stok.au.exists(_.hasPerm(model.Perm.adminDb))) {
-        @if(wid.cat != "Form" || stok.au.exists(_.hasPerm(model.Perm.adminDb))) {
+      @if(canEdit || stok.au.exists(_.hasPerm(Perm.adminDb))) {
+        @if(wid.cat != "Form" || stok.au.exists(_.hasPerm(Perm.adminDb))) {
           @if(wikiForm().isDefined) {
             <a href="@routes.Forms.doeFormEdit(page.get.wid)">Edit</a>
             @if(stok.au.exists(_.isAdmin)) {
@@ -125,7 +131,7 @@ wiki fragment, used in another page
         | <a href="@routes.Wikie.report(wid)">Report</a>
       }
       | <a href="@routes.Wiki.printWid(WID.cmdfromPath(wid.wpath).get, wid.getRealm)">Print</a>
-      @if(stok.au.exists(_.hasPerm(model.Perm.adminDb))) {
+      @if(stok.au.exists(_.hasPerm(Perm.adminDb))) {
         | <a href="@routes.Wiki.wikieDebug(wid)"><em>debug</em></a>
         | <a href="@routes.Wiki.wikieUsage(wid)"><em>usage</em></a>
       }
@@ -148,7 +154,7 @@ wiki fragment, used in another page
               | <a href="@routes.Wikie.wikieMove1(we._id.toString)">@wid.label("Move", "Move")</a>
             }
 
-            @if(we.isOwner(stok.au.get.id) || stok.au.exists(_.hasPerm(model.Perm.adminDb)) ||
+            @if(we.isOwner(stok.au.get.id) || stok.au.exists(_.hasPerm(Perm.adminDb)) ||
                 we.owner.exists(o => o.asInstanceOf[model.User].isClub &&
                     Club.findForUser(o.asInstanceOf[model.User]).flatMap(_.uregAdmin).exists(_._id == stok.au.get._id))) {
               | <a href="@routes.Wikie.manage(we._id.toString)">Manage</a>
@@ -186,4 +192,38 @@ wiki fragment, used in another page
 
 <script src="@routes.Assets.at("javascripts/weCommons.js")" type="text/javascript" charset="utf-8"></script>
 
+<script>
+
+$(".voteLike").html($("#voteLike").html())
+
+// simple protection for multiple clicks
+var wikiVoted=false;
+
+  function likeWiki (how) {
+    if(! wikiVoted) {
+    $.ajax(
+      '@routes.Wikie.like(wid)', {
+          type: 'POST',
+          data: $.param({
+            how : ''+how
+          }),
+          contentType: 'application/x-www-form-urlencoded',
+          success: function(data) {
+        // update data.likesCount and datadislikesCount
+          },
+          error  : function(x) {
+            console.log( "ERR "+JSON.stringify(x));
+          }
+        });
+      $(".voteLikeThanks").text("Thank you!");
+      $(".voteLikeThanks").show(2000);
+      $(".voteLikeThanks").hide(2000);
+      wikiVoted=true;
+    } else {
+      $(".voteLikeThanks").text("Already voted!");
+      $(".voteLikeThanks").show(2000);
+      $(".voteLikeThanks").hide(2000);
+    }
+  }
+</script>
 

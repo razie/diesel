@@ -17,7 +17,7 @@ import play.api.data.Forms.{mapping, nonEmptyText, tuple, _}
 import play.api.mvc.{Action, Request}
 import razie.OR._
 import razie.wiki.admin.SendEmail
-import razie.wiki.model.{WID, WikiEvent, WikiIndex, Wikis}
+import razie.wiki.model._
 import razie.wiki.{Enc, Services}
 
 object Profile extends RazController {

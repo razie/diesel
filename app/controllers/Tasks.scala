@@ -6,7 +6,7 @@ import play.api.mvc.{Action, Request}
 import razie.Logging
 import model._
 import razie.wiki.admin.{MailSession, SecLink, SendEmail}
-import razie.wiki.model.WID
+import razie.wiki.model.{Perm, WID}
 import razie.wiki.{Enc, EncUrl, Services}
 import admin.Config
 import play.api.data.Form

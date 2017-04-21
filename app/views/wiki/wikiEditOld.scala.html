@@ -1,6 +1,7 @@
 @**************
 edit a wiki page
 **************@
+@import razie.wiki.model.Perm
 @(wid:razie.wiki.model.WID, myForm:Form[controllers.Wikie.EditWiki], hasDraft:Boolean = false, noshow:String="")(implicit stok: controllers.StateOk)
 @import model.Website.realm
 @import razie.wiki.model.{Wikis, WID, WikiEntry}
@@ -66,7 +67,7 @@ Implicit.flash().put("bibi", "haha")
       <div id="weForm" class="col-md-12">
           <h2 style="padding-top: 40px; margin-top: -40px;">Editor
             <small> |
-              <a href="#" onclick="submitPlease()" class="btn btn-xs "><span id="floppy" class="glyphicon glyphicon-floppy-disk"></span> Save</a>
+              <button onclick="submitPlease();" class="btn btn-default btn-xs "><span id="floppy" class="glyphicon glyphicon-floppy-disk"></span> Save</button>
             </small>
             <div class="pull-right">
               @if(stok.au.exists(_.isMod)) {
@@ -75,7 +76,7 @@ Implicit.flash().put("bibi", "haha")
                   <input type="checkbox" xonclick="showDsl(); return false;" name="weDsl" id="weDsl" disabled>
                   dsl</a>
                 | <a href="#" onclick="showSettings()" class="btn btn-xs "><span id="showSettings" class="glyphicon glyphicon-list-alt"></span> Settings</a>
-                | <a href="#" onclick="resetView()" class="btn btn-xs "><span class="glyphicon glyphicon-th-large"></span> Layout</a>
+                | <a href="#" onclick="resetView()" class="btn btn-xs " title="Change editor window elements layout"><span class="glyphicon glyphicon-th-large"></span> Layout</a>
                 </small>
               }
               <span style="font-size: x-small">
@@ -152,7 +153,7 @@ PROBLEM: many places use label as name... via Wikis.formatName
     '_label -> "Notify followers",
     '_showConstraints -> false)
 
-  @if(stok.au.get.hasPerm(model.Perm.adminDb)) {
+  @if(stok.au.get.hasPerm(Perm.adminDb)) {
     <p>Reserved: @reserved(wid.page)
     @if(wid.page.isDefined) {
       <p><a href="@routes.Wikie.wikieDelete1(wid)">Delete it</a>
@@ -173,10 +174,25 @@ PROBLEM: many places use label as name... via Wikis.formatName
 }
       </div>
 
+
+@*********************** help / formatting ************************@
+
+<div id="mdHelp" style="display: none">
+@md {
+  Markdown help.
+
+  Type `*italic*` for *italic* and `**bold**` for **bold**.
+
+  See more at [[rk.Admin:Modified_Markdown_Syntax]].
+
+  ...
+}
+</div>
+
 @*********************** some validation ************************@
 
 <script>
-var realm = "@stok.realm";
+    var realm = "@stok.realm";
 
 $("#draft").change(checkDraft);
 
@@ -189,6 +205,15 @@ function checkDraft()  {
 if(localStorage.getItem("weDsl") != 'undefined')
   $('#'+"weDsl").prop('checked', localStorage.getItem("weDsl") === 'true');
 
+var label =
+    'Content <a href="javascript:popupHelp();" title="Help with markdown editor"><span class="glyphicon glyphicon-question-sign"></span></a>';
+
+$("#content_field > dt > label").html(label);
+$("#ace-label").html(label);
+
+function popupHelp() {
+  popupContent($("#mdHelp").html());
+}
 </script>
 
       @*********************** content assist ************************@
@@ -318,106 +343,32 @@ if(localStorage.getItem("weDsl") != 'undefined')
 <script>
   // --------------------------------------- ACE specifics
 
+var aceAttached = false; // true in ACE mode
+var aceEditor;    // set only when attached
+var aceTimer;
+
 var domContentAssist=[];
 var instContentAssist=[];
 
-function detachAce() {
-  aceAttached = false;
-  if(aceEditor) {
-    aceEditor.destroy();
-    aceEditor.remove();
-  }
-}
+var domChanged=true;
+var instChanged=false;
+var captureChanged=true;
 
-function attachAce() {
-  aceAttached = true;
+function myattachAce() {
+  aceEditor = attachAce("acec", textarea.val(), @stok.isLight.toString);
 
-  var langTools = ace.require("ace/ext/language_tools");
-  var editor = ace.edit("acec");
-  var textarea = $('textarea[name="content"]');
-
-  editor.getSession().setValue(textarea.val());
-
-//  editor.getSession().on('change', function(){
-//    textarea.val(editor.getSession().getValue());
-//  });
-
-  @if(stok.isLight) {
-    editor.setTheme ( "ace/theme/crimson_editor" ) ;
-  } else {
-    editor.setTheme ( "ace/theme/twilight" ) ;
-  }
-  editor.getSession().setMode("ace/mode/nvp1");
-
-  editor.setOptions({
-    enableBasicAutocompletion: true,
-    enableLiveAutocomplete:  true,
-    enableLiveAutocompletion:  true
-  });
-
-
-  //var dotTags = [];
-  //
-  //$('#content').textcomplete([
-  //  CA_TC_braTags (optsToDomain(braDomain)),
-  //  CA_TC_sqbraTags,
-  //  CA_TC_dotTags (optsToDomain(braDomain.concat(dotTags)))
-  // ]);
-
-
-  //todo can't have two editors with two completers...
-  //todo I could simulate it with an IF inside instCompletions
-  var domCompleter = {
-    getCompletions: domCompl(false)
-  };
-  var instCompleter = {
-    getCompletions: domCompl(true)
-  };
-
-  // delegate the keywords to the xtext generated completer
-  var keyWordCompleter = {
-    getCompletions: function(editor, session, pos, prefix, callback) {
-        var state = editor.session.getState(pos.row);
-        var completions = [];
-
-        // raz: not interested except in DSL lines
-//        if(session.getLine(pos.row).indexOf("$") == 0) {
-          completions = session.$mode.getCompletions(state, session, pos, prefix);
-//        }
-        callback(null, completions);
-    }
-  };
-
-  //  langTools.addCompleter(instCompleter);
-  langTools.setCompleters([keyWordCompleter, instCompleter]);
-
-  editor.commands.addCommand({
-    name: "gui",
-    bindKey: {win: "Ctrl-G", mac: "Command-G"},
-    exec: codeGui
-  });
-
-  var domChanged=true;
-  var instChanged=true;
-  var captureChanged=true;
-
-  editor.getSession().on('change', function(e) {
+  aceEditor.getSession().on('change', function(e) {
     instChanged=true;
   });
 
-  setInterval(function(){
+  aceTimer = setInterval(function(){
     if(instChanged) {
       instChanged=false;
       livePreview();
     }
   },500);
+}
 
-  aceEditor = editor;
-  }
-
-$(window).load (function() {
-//  $("ace_editor").css("height", "400px");
-});
 </script>
 
 <script>
@@ -615,9 +566,6 @@ function showSettings() {
   }
 }
 
-var aceAttached = false; // true in ACE mode
-var aceEditor;    // set only when attached
-
 // toggle dsl
 function showDsl() {
   if($('#weDsl').prop('checked')) {
@@ -640,7 +588,7 @@ function switchDsl(a,b,state) {
     $("#content_field").hide();
     $("#acec").show();
     $("#ace-label").show();
-    if(! aceAttached) attachAce();
+    if(! aceAttached) myattachAce();
   } else {
     // hide ACE
     $("#ace-label").hide();
@@ -696,4 +644,5 @@ switchDsl();
 
 </script>
 
+@util.oneModal()
 

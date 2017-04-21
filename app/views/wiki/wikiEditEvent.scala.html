@@ -1,6 +1,7 @@
 @**************
 edit a wiki page
 **************@
+@import razie.wiki.model.Perm
 @(wid:razie.wiki.model.WID, myForm:Form[controllers.Wikie.EditWiki], hasDraft:Boolean = false, noshow:String="")(implicit stok: controllers.StateOk)
 @import model.Website.realm
 @import razie.wiki.model.{Wikis, WID, WikiEntry}
@@ -161,7 +162,7 @@ PROBLEM: many places use label as name... via Wikis.formatName
     '_label -> "Notify followers",
     '_showConstraints -> false)
 
-  @if(stok.au.get.hasPerm(model.Perm.adminDb)) {
+  @if(stok.au.get.hasPerm(Perm.adminDb)) {
     <p>Reserved: @reserved(wid.page)
     @if(wid.page.isDefined) {
       <p><a href="@routes.Wikie.wikieDelete1(wid)">Delete it</a>

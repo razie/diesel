@@ -3,6 +3,7 @@ show/edit/capture a note
 
 context is passed back to the callback
 **************@
+@import razie.wiki.model.Perm
 @(myForm:Form[_], title:String, miniTitle:String, context:String, isAuto:Boolean=false, isReadOnly:Boolean=false, asap:Boolean=false, justCapture:Boolean=false, submit:String="")(implicit stok:mod.notes.controllers.NotesOk)
 @import routes.Assets
 @import mod.notes.controllers.NotesLocker
@@ -159,7 +160,7 @@ context is passed back to the callback
 var dotTags = [
 'shared to:who',
 'n name of this note',
-  @if(stok.au.hasPerm(model.Perm.codeMaster)) {
+  @if(stok.au.hasPerm(Perm.codeMaster)) {
     'sfiddle path',
   }
 //  'a to:who by:date description',

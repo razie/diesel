@@ -88,15 +88,13 @@ class Module extends AbstractModule {
         // upgrade if needed
         var curs = adb("Ver").find(Map("name" -> "version"))
         var ver = if(curs.hasNext) curs.next() else {
-          var dbVer = adb("Ver").findOne.map(_.get("ver").toString).map(_.toInt)
-          if(dbVer.isDefined) {
-            adb("Ver").remove(Map("ver" -> dbVer))
-          }
-          adb("Ver").insert(Map("name" -> "version", "ver" -> dbVer.getOrElse(1)))
+          // initialize new database, nothign to upgrade
+          // todo antipattern - should not auto-initialize the database
+          adb("Ver").insert(Map("name" -> "version", "ver" -> mongoDbVer))
           adb("Ver").find(Map("name" -> "version")).next
         }
 
-        var dbVer = Option(ver.get("ver").toString.toInt)
+        var dbVer : Option[Int] = Option(ver.get("ver").toString.toInt)
         if (UPGRADE_AGAIN) dbVer = dbVer.map(x => mongoDbVer - 1)
 
         var upgradingLoop = false // simple recursive protection

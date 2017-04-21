@@ -13,9 +13,10 @@ class DieselJs (val ctx:ECtx) {
     def engineId : String = ctx.root.asInstanceOf[DomEngECtx].engine.map(_.id).mkString
     def get (name:String) : String = ctx.apply(name)
     def set (name:String, value:String) : String = {
-      ctx.put(P(name, "", "", "", value))
+      ctx.put(P(name, value))
       value
     }
+
   def msg (msg:String) = "?" // todo implement to add new messages
 
   def log (msg:String) = razie.Log.log(msg)

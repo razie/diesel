@@ -2,7 +2,7 @@ package controllers
 
 import mod.msg.MsgThread
 import mod.snow.RacerKidz
-import model.{Perm, User, Users}
+import model.{User, Users}
 import org.bson.types.ObjectId
 import play.api.data.Form
 import play.api.data.Forms._

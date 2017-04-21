@@ -311,8 +311,6 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
 
   // clear all draft versions
   def saveDraft (w:WID) = FAUR { implicit stok=>
-    val q = stok.req.queryString.map(t=>(t._1, t._2.mkString))
-    val realm = w.realm.getOrElse(stok.realm)
     val content = stok.formParm("content")
     val tags = stok.formParm("tags")
 
@@ -325,8 +323,70 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
   }
 
   /** api to set content remotely - used by sync and such */
-  def setContent(wid: WID) = FAUR("setContent") {
-    /*implicit au => implicit errCollector =>*/ implicit request =>
+  def setSection(wid: WID) = FAUR("setSection", true) {
+    implicit request =>
+
+      val sType = request.formParm("sectionType")
+      val sName = request.formParm("sectionName")
+      val icontent = request.formParm("content")
+      val au = request.au.get
+
+      def mkC (oldContent:String, icontent:String) = {
+        // multiline non-greedy
+        val re = s"(?s)\\{\\{(\\.?)$sType $sName([^:}]*)\\}\\}((?>.*?(?=\\{\\{/)))\\{\\{/$sType\\s*\\}\\}".r
+        val re2 = s"(?s)\\{\\{(\\.?)$sType $sName([^}]*)\\}\\}(.*)\\{\\{/$sType\\s*\\}\\}".r
+        val res = re.replaceSomeIn(oldContent, {m=>
+          Some{
+            val c = icontent.replaceAll("""\\""", """\\\\""").replaceAll("\\$", "\\\\\\$")
+            val s = s"{{$$1$sType ${sName}$$2}}\n${c}\n{{/$sType}}"
+            s
+          }
+        })
+        res
+      }
+
+      val xx = Wikis.find(wid)
+      val yy = wid.page
+
+      (for(
+        w <- wid.page; //Wikis.find(wid).filter(wid.realm.isEmpty || _.realm == wid.realm.get) orErr "wiki not found "+wid.wpath  ;
+        _ <- au.hasPerm(Perm.uWiki) orCorr cNoPermission("uWiki");
+        _ <- canEdit(wid, auth, Some(w)) orErr "can't edit";
+        _ <- (au.isAdmin || au.quota.canUpdate) orCorr cNoQuotaUpdates;
+        newC <- Some(mkC(w.content, icontent));
+        newVerNo <- Some(w.ver + 1 );
+        newVer <- Some(w.copy(content = newC, ver = newVerNo, updDtm = DateTime.now()));
+        _ <- (w.content != newC) orErr ("no change");
+        _ <- before(newVer, WikiAudit.UPD_CONTENT) orErr ("Not allowerd")
+        ) yield {
+          log("Wiki.setSection " + wid)
+          var we = newVer
+
+          we = signScripts(we, au)
+
+          if (!we.scripts.filter(_.signature == "ADMIN").isEmpty && !(au.hasPerm(Perm.adminDb) || Services.config.isLocalhost)) {
+            noPerm(wid, "HACK_SCRIPTS1")
+          } else {
+            razie.db.tx("Wiki.setSection", request.userName) { implicit txn =>
+              WikiEntryOld(w, Some("setSection")).create
+              w.update(we, Some("setSection"))
+              clearDrafts(we.wid, au)
+              Emailer.withSession { implicit mailSession =>
+                au.quota.incUpdates
+                //                      au.shouldEmailParent("Everything").map(parent => Emailer.sendEmailChildUpdatedWiki(parent, au, WID(w.category, w.name)))
+              }
+            }
+            Services ! WikiAudit(WikiAudit.UPD_SET_CONTENT, w.wid.wpathFull, Some(au._id), None, Some(w))
+
+            Ok("ok, section updated")
+          }
+      })
+  }
+
+
+  /** api to set content remotely - used by sync and such */
+  def setContent(wid: WID) = FAUR("setContent", true) {
+    implicit request =>
 
       val au=request.au.get
 
@@ -1258,24 +1318,32 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
   }
 
   /** someone likes a wiki */
-  def like(wid: WID, how: Int) = FAU("wikie.like") {
-    implicit au => implicit errCollector => implicit request =>
-
-      log("Wiki.like " + wid)
-      val like    = if(how==1) Some(au) else None
-      val dislike = if(how==0)Some(au) else None
-      for (
-        au <- activeUser;
-        w <- Wikis.find(wid);
-        newVer <- Some(w.copy (likes=like.map(_._id.toString).toList ::: w.likes, dislikes=dislike.map(_._id.toString).toList ::: w.dislikes));
-        upd <- before(newVer, WikiAudit.UPD_LIKE) orErr ("Not allowed")
-      ) yield {
-        razie.db.tx("Wiki.like", au.userName) { implicit txn =>
-          RUpdate.noAudit[WikiEntry](Wikis(w.realm).weTables(wid.cat), Map("_id" -> newVer._id), newVer)
-        }
-        Wikie.after(newVer, WikiAudit.UPD_LIKE, Some(au))
-        Redirect(controllers.Wiki.w(wid))
+  def like(wid: WID) = RAction { implicit request =>
+    log("Wiki.like " + wid)
+    (for (
+      how <- request.fqhParm("how").map(_.toInt);
+      w <- Wikis.find(wid);
+      newVer <- activeUser.map { au=>
+        val like    = if(how==1) Some(au) else None
+        val dislike = if(how==0)Some(au) else None
+        (w.copy (likes=like.map(_._id.toString).toList ::: w.likes, dislikes=dislike.map(_._id.toString).toList ::: w.dislikes))
+      } orElse {
+        Some(w.copy (likeCount=w.likeCount+how, dislikeCount=w.dislikeCount+(if(how==0) 1 else 0)))
+      };
+      upd <- before(newVer, WikiAudit.UPD_LIKE) orErr ("Not allowed")
+    ) yield {
+      razie.db.tx("Wiki.like", auth.map(_.userName).getOrElse("Anonymous")) { implicit txn =>
+        RUpdate.noAudit[WikiEntry](Wikis(w.realm).weTables(wid.cat), Map("_id" -> newVer._id), newVer)
       }
+      Wikie.after(newVer, WikiAudit.UPD_LIKE, auth)
+      if(how==1)
+        Audit.logdb("VOTE.UP", ""+request.au.map(_.userName) + wid.wpath)
+      else
+        Audit.logdb("VOTE.DOWN", ""+request.au.map(_.userName)+wid.wpath)
+      Ok(s"{likeCount:${newVer.likeCount}, dislikeCount:${newVer.dislikeCount}").as("application/json")
+    }) getOrElse {
+      Unauthorized("")
+    }
   }
 
   /** move to new parent */

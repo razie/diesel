@@ -265,7 +265,7 @@ ${errCollector.mkString}
   def FAUR(f: RazRequest => Result) : Action[AnyContent] =
     FAUR("")(r=> Some(f(r)))
 
-  def FAUR(msg:String)(f: RazRequest => Option[Result]) : Action[AnyContent] = Action { implicit request =>
+  def FAUR(msg:String, isApi:Boolean=false)(f: RazRequest => Option[Result]) : Action[AnyContent] = Action { implicit request =>
     val req = razRequest
     (for (
       au <- req.au;
@@ -278,7 +278,10 @@ ${errCollector.mkString}
     }
     ).flatten getOrElse {
       val more = Website(request).flatMap(_.prop("msg.noPerm")).flatMap(WID.fromPath).flatMap(_.content).mkString
-      unauthorized(s"OOPS $more [$msg]", !isFromRobot)(request, req.errCollector)
+      if(isApi)
+        Unauthorized(s"OOPS $more [$msg]" + req.errCollector.mkString)
+      else
+        unauthorized(s"OOPS $more [$msg]", !isFromRobot)(request, req.errCollector)
     }
   }
 
@@ -286,7 +289,7 @@ ${errCollector.mkString}
   def FAU(f: User => VErrors => Request[AnyContent] => Result) : Action[AnyContent] =
     FAU(""){u:User => e:VErrors => r:Request[AnyContent] => Option(f(u)(e)(r))}
 
-  def FAU(msg:String)(f: User => VErrors => Request[AnyContent] => Option[Result]) : Action[AnyContent] = Action { implicit request =>
+  def FAU(msg:String, isApi:Boolean=false)(f: User => VErrors => Request[AnyContent] => Option[Result]) : Action[AnyContent] = Action { implicit request =>
     implicit val errCollector = new VErrors()
     (for (
       au <- activeUser;
@@ -298,7 +301,10 @@ ${errCollector.mkString}
     }
     ).flatten getOrElse {
       val more = Website(request).flatMap(_.prop("msg.noPerm")).flatMap(WID.fromPath).flatMap(_.content).mkString
-      unauthorized(s"OOPS [$msg] $more ", !isFromRobot)
+      if(isApi)
+        Unauthorized(s"OOPS $more [$msg]" + errCollector.mkString)
+      else
+        unauthorized(s"OOPS [$msg] $more ", !isFromRobot)
     }
   }
 

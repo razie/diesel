@@ -324,7 +324,7 @@ function WID(wpath) {
 
 //---------------- configuration
 
-var domEngineConfig = getEngConfig();
+// var domEngineConfig = getEngConfig();
 
 function getEngConfig() {
   $.ajax(
@@ -334,17 +334,17 @@ function getEngConfig() {
         domEngineConfig = data;
       },
       error  : function(x) {
-        console.log( "ERR "+x.toString());
+        console.log( "ERR can't load engine config: "+JSON.stringify(x));
       }
     });
 }
 
-function setEngConfig() {
+function setEngConfig(cfg) {
   $.ajax(
     '/diesel/engine/config/json', {
       type: 'POST',
       data: $.param({
-        domEngineConfig: domEngineConfig
+        domEngineConfig: cfg
       }),
       contentType: 'application/x-www-form-urlencoded',
       success: function (data) {

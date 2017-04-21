@@ -1,6 +1,7 @@
 @**************
 wiki fragment, used in another page
 **************@
+@import razie.wiki.model.Perm
 @(page: Option[razie.wiki.model.WikiEntry])(implicit stok:controllers.StateOk)
 @import controllers.IgnoreErrors
 @import razie.wiki.model.{Wikis, WikiCount, WID, WikiEntry}
@@ -28,7 +29,7 @@ wiki fragment, used in another page
     <h2>Manage @label</h2>
     <p>
 
-        @if(stok.au.exists(_.hasPerm(model.Perm.adminDb))) {
+        @if(stok.au.exists(_.hasPerm(Perm.adminDb))) {
         }
 
         @if(stok.au.isDefined && stok.au.get.isActive) {

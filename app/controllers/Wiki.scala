@@ -213,8 +213,8 @@ object Wiki extends WikiBase {
 
   //TODO optimize - index or whatever
   /** search all topics  provide either q or curTags */
-  def getList(irealm:String, q: String, scope:String, curTags:String="", max:Int=2000)(implicit request : Request[_]) = {
-    val realm = if("all" != irealm) getRealm(irealm) else irealm
+  def getList(realm:String, q: String, scope:String, curTags:String="", max:Int=2000)(implicit request : Request[_]) = {
+//    val realm = if("all" != irealm) getRealm(irealm) else irealm
 
     //TODO limit the number of searches - is this performance critical?
 
@@ -302,12 +302,26 @@ object Wiki extends WikiBase {
 
   //TODO optimize - index or whatever
   /** search all topics  provide either q or curTags */
-  def search(irealm:String, q: String, scope:String, curTags:String="") = Action { implicit request =>
-    val realm = if("all" != irealm) getRealm(irealm) else irealm
+  def search(irealm:String, iq: String, scope:String, curTags:String="") = Action { implicit request =>
+    var q = iq
+
+    // if the search start with a realm like ski:something then ignore the irealm
+    // todo should check permission or something?
+    val cidx = iq.indexOf(':')
+    val realm = if(cidx > 0) {
+      val r = q.substring(0, cidx)
+      q = if(cidx < iq.length-1) iq.substring(cidx+1, q.length) else ""
+
+      val res = if ("all" != r) getRealm(r) else r
+      if(res == Wikis.RK) getRealm(irealm) else res
+      } else {
+      if ("all" != irealm) getRealm(irealm) else irealm
+    }
+
     val qi = if(q.length > 0 && q(0) == '-') q.substring(1).toLowerCase else q.toLowerCase
     val qt = curTags.split("/").filter(_ != "tag").map(_.split(","))
 
-    val wl = getList(irealm, q, scope, curTags, 500)(request)
+    val wl = getList(realm, q, scope, curTags, 500)(request)
 
     if (wl.size == 1)
       Redirect(controllers.Wiki.w(wl.head.wid))

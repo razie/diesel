@@ -113,14 +113,16 @@ rule_Condition:
 
 
 rule_ExpectM:
-    '$expect' ('$msg' name=rule_QualifiedName attrs=rule_AttrSpecs?) (cond=rule_Condition)?NEWLINE
+//    '$expect' ('msg' name=QualifiedName attrs=AttrSpecs?) (cond=Condition?) NEWLINE
+    '$expect' (name=rule_QualifiedName attrs=rule_AttrSpecs?) (cond=rule_Condition)?NEWLINE
 ;
 
 
 
 
 rule_ExpectV:
-    '$expect' ('$val' p=rule_AttrSpec?) (cond=rule_Condition)?NEWLINE
+//    '$expect' ('val' p=AttrSpec?) (cond=Condition?) NEWLINE
+    '$expect' p=rule_AttrSpecs (cond=rule_Condition)?NEWLINE
 ;
 
 

@@ -155,7 +155,11 @@ object SFiddles extends SFiddleBase with Logging {
       } catch {
         case t: Throwable => {
           log(s"while executing script\n$jscript", t)
-          (false, t + "\n\n" + jscript)
+          // don't include the script body - security issue
+          if(au.exists(_.isActive))
+            (false, t /* + "\n\n" + jscript */)
+          else
+            (false, t /* + "\n\n" + jscript */)
         }
       } finally {
         c.stop()

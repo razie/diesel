@@ -3,19 +3,23 @@ an inline JS with HTML and CSS fiddle
 **************@
 @(wid:razie.wiki.model.WID,
   we:Option[razie.wiki.model.WikiEntry],
-   name:String,
-   args:Map[String,String],
-    content:String,
-   links:String,
-   xid:String = java.lang.System.currentTimeMillis().toString())
+  name:String,
+  kind:String,
+  args:Map[String,String],
+  content:String,
+  links:String,
+  anon:Boolean,
+  au:Option[razie.wiki.model.WikiUser],
+  xid:String = java.lang.System.currentTimeMillis().toString())
 
-@id()=@{if(name.length > 0) name else xid}
+@id()=@{if(name.length > 0) name+"_"+kind else xid}
 @reactor()=@{wid.getRealm}
 
 @** to JS multiline string - make generated JS code look nice **@
 @tos(s:String) = @{
-  s.replaceAll("\r", "").replaceAll("\n", "\\\\n'\n+'")
+  s.replaceAll("'", "\\\\'").replaceAll("\r", "").replaceAll("\n", "\\\\n'\n+'")
 }
+
 
 <script>
 var resettabs = function(lid, id) {
@@ -27,28 +31,83 @@ var resettabs = function(lid, id) {
 }
 
 var setpill = function(lid,id,s) {
-   if(lid == 'links_'+id) {
-     $('#code_'+id).html(s);
-   } else
-     $('#code_'+id).text(s);
-   resettabs(lid, id);
+  if(lid == 'links_'+id) {
+    $('#code_'+id).html(s);
+  } else
+    $('#code_'+id).text(s);
+  resettabs(lid, id);
+
+  if(lid == 'story_'+id) {
+    hiDiesel(document.getElementById('code'));
+  }
 }
 
 var story_@id = '@Html(tos(content))';
 var ast_@id  = '';
 var links_@id  = '@Html(tos(links))';
+var content_@id = '@Html(tos(content))';
 
 function setAst_@{id} () {
   ast_@id  = 'Loading...';
   setpill('ast_@id', '@id', ast_@id);
-  runpill2_@id ('@id');
-  setpill('ast_@id', '@id', ast_@id);
+
+  // run the first link and get html tree
+  var link = links_@id;
+  linkArray = link.split('\n');
+  link = linkArray[0];
+  if(link) {
+    var url = link.replace(/.*href="([^"]*).*/, "$1").replace(/resultMode=[^&]*/, "resultMode=treeHtml");
+    if(linkArray.length > 1) {
+      runpill2_@id ('@id', url);
+    } else {
+      OLDrunpill2_@id ('@id', url);
+    }
+  }
 }
 
-var runpill2_@id = function(id) {
+var debugThis;
+
+/** post the entire section contents to be ran against this page */
+var runpill2_@id = function(id, url) {
   var lastTime = new Date().getTime();
   $.ajax(
-    '/diesel/fiddle/fiddleStoryUpdated/'+id+'?@Html(mod.diesel.controllers.SFiddles.qtourl(args))', {
+      '/diesel/fiddle/fiddleStoryUpdated/'+id+'?@Html(mod.diesel.controllers.SFiddles.qtourl(args))', {
+        type: 'POST',
+        data: $.param({
+          saveMode : false,
+          sketchMode : false,
+          mockMode : true,
+          blenderMode : false,
+          draftMode : false,
+          reactor : '@reactor',
+          specWpath : '',
+          storyWpath : '@wid.wpath',
+          story : story_@id+"\n",
+          spec : ''
+        }),
+        contentType: 'application/x-www-form-urlencoded',
+        success: function(data) {
+          @*ast_@id = data.tree || ("ERR " + JSON.stringify(data));*@
+          debugThis=data;
+          ast_@id = data.res || ("ERR " + JSON.stringify(data));
+
+          // todo make sure it's still this tab that's focused
+          $('#code_'+id).html(ast_@id);
+//      var du = new Date().getTime() - lastTime;
+//      $('#roundtrip').text(du+' ms');
+        },
+        error  : function(x) {
+          ast_@id = "ERR " + JSON.stringify(x);
+          $('#code_'+id).text(ast_@id);
+          console.log( "ERR "+JSON.stringify(x));
+        }
+      });
+}
+
+var OLDrunpill2_@id = function(id, url) {
+  var lastTime = new Date().getTime();
+  $.ajax(
+    url, {
     type: 'POST',
     data: $.param({
       saveMode : false,
@@ -58,29 +117,23 @@ var runpill2_@id = function(id) {
       draftMode : false,
       reactor : '@reactor',
       specWpath : '',
-      storyWpath : '',
+      storyWpath : '@wid.wpath',
       story : story_@id,
       spec : ''
     }),
     contentType: 'application/x-www-form-urlencoded',
     success: function(data) {
-//      if($('#wikiMode').prop('checked'))
-//        $('#iframew_'+id).html(data.wiki);
-//        $('#code_'+id).html(data.wiki);
-//      else
-//        $('#iframe_'+id).html(data.res);
-        ast_@id = data.res;
+        ast_@id = data.tree || ("ERR " + JSON.stringify(data));
 
         // todo make sure it's still this tab that's focused
-        $('#code_'+id).html(data.res);
-//      instContentAssist = data.ca;
-//      setErrors(data.failureCount);
-      var du = new Date().getTime() - lastTime;
+      $('#code_'+id).html(ast_@id);
+//      var du = new Date().getTime() - lastTime;
 //      $('#roundtrip').text(du+' ms');
-//      storyChanged(data.storyChanged);
     },
     error  : function(x) {
-      console.log( "ERR "+x.toString());
+      ast_@id = "ERR " + JSON.stringify(x);
+      $('#code_'+id).text(ast_@id);
+      console.log( "ERR "+JSON.stringify(x));
     }
   });
 }
@@ -91,19 +144,44 @@ var runpill2_@id = function(id) {
     <li id="story_@id" class="active">
       <a  href="javascript:setpill('story_@id', '@id', story_@id)">
         <small>Story</small></a> </li>
-    <li id="ast_@id" >
-      <a href="javascript:setAst_@{id}()">
-        <small>AST</small></a> </li>
     <li id="links_@id">
       <a  href="javascript:setpill('links_@id', '@id', links_@id)">
         <small>REST</small></a> </li>
+    <li id="ast_@id" >
+      <a href="javascript:setAst_@{id}()">
+        <small>Trace</small></a> </li>
     <li id="play_@id" >
-      <a href="javascript:playpill_@{id}('@{id}')">
-        <small>Fiddle...</small></a> </li>
+<a href="javascript:editpill_@{id}('@{id}')" >
+ <small>Edit...</small></a> </li>
   </ul>
 
   <pre id="pre_@id" style="display:inline-block; width:98%; margin-bottom:0; border:0;"><code id="code_@id">@content</code></pre>
 <p></p>
+
+<div id="editor1" style="display: none">
+di:es:el editor
+
+<pre id="acec" style="height: 100px;">dsl here...</pre>
+
+@au.filter(_.isActive).map{u=>
+<a id="save_button" href="javascript:saveFiddle_()" class="btn btn-default btn-success">Save</a>
+}.getOrElse {
+<small>
+Change the name of the message <code>say.hi</code> or change the default value there, from <code>"Harry"</code> to <code>"me"</code>, or something.
+Then hit "Save" and play with it (hint: checkout the REST tab).
+</small>
+  <br>
+<br>
+<div class="alert alert-info">
+ <b>Note</b> that even though you are not logged in, you can play with this! Cool, huh?
+ <br>
+ <small>Your temporary "session" will expire in 5 minutes or so... if you mock it up, just refresh the page to start again.</small>
+ <p>
+ To edit this topic and fully explore this, just create an account!
+</div>
+<a id="save_button" href="javascript:anonSaveFiddle_()" class="btn btn-default btn-success">Use this !</a>
+}
+</div>
 
 <script>
 var upd_@id = function(id) {
@@ -111,18 +189,120 @@ var upd_@id = function(id) {
 
 var runpill_@id = function(id) {
   upd_@{id}(id);
-//  $('#ssform_'+id)[0].target = 'iframe_'+id;
-//  $('#ssform_'+id)[0].action = "/doe/tma/buildhtml/"+id;
-//  $('#ssform_'+id)[0].submit();
 }
 
-var playpill_@id = function(id) {
+var domContentAssist=[];
+var instContentAssist=[];
+
+var aceAttached = false;
+var aceEditor_@id;
+
+var sessionId = '';
+
+var editpill_@id = function(id) {
   upd_@{id}(id);
-//  $('#ssform_'+id)[0].target = '';
-//  $('#ssform_'+id)[0].action = "/doe/tma/playjs/"+id;
-//  $('#ssform_'+id)[0].submit();
+
+  var next = function() {
+    var s = $("#editor1").html();
+    popupContent(s.replace("acec", "acec1").replace("aveFiddle_()", "aveFiddle_@{id}()"));
+    aceEditor_@id = attachAce("acec1", content_@id, true);
+  }
+
+  @if(au.exists(_.isActive)) {
+    next();
+  } else {
+    @if(anon) {
+  if (sessionId.length <= 0) {
+    getSession("", function () {
+      next();
+    });
+  } else {
+    next();
+  }
+  } else {
+  popupContent("Anonymous editing is not permitted here... you'll need an account !");
+  }
+  }
 }
+
+/** update wiki with new fiddle content and refresh page */
+var saveFiddle_@id = function() {
+  oneModalHide();
+  saveSection('@we.map(_.wid.wpath).getOrElse(wid.wpath)', 'dfiddle', '@name:@kind', aceEditor_@{id}.getSession().getValue(), function(){
+    location.reload();
+  });
+}
+
+
+/** update wiki with new fiddle content and refresh page */
+var anonSaveFiddle_@id = function() {
+
+  var content = aceEditor_@{id}.getSession().getValue();
+  content_@id = content;
+
+  anonSaveSection('@wid.wpath', 'dfiddle', '@name:@kind', content, function(data,err){
+    if(data) {
+      oneModalHide();
+      story_@id = content;
+      setpill('story_@id', '@id', story_@id);
+      links_@id = data.links;
+      @*setpill('links_@id', '@id', links_@id);*@
+      console.log("OK - anon set section");
+    } else {
+      if(err.responseText && err.responseText.indexOf("no change") < 0) console.log("ignoring");
+      else showError("ERROR: Cannot save draft ["+JSON.stringify(err)+"]");
+    }
+  });
+}
+
+function showError(s) {
+  alert(s);
+  console.log(s);
+}
+
+function getSession(uid,callback) {
+  $.ajax(
+    '/diesel/anon/getSession', {
+        type: 'POST',
+        data: $.param({
+          nothin : ''
+        }),
+        contentType: 'application/x-www-form-urlencoded',
+        success: function(data) {
+          sessionId=data;
+
+          function setCookie(cname, cvalue, msec) {
+            var d = new Date();
+            d.setTime(d.getTime() + (msec));
+            var expires = "expires="+ d.toUTCString();
+            document.cookie = cname + "=" + cvalue + ";" + expires + ";path=/";
+          }
+
+          setCookie("dieselSessionId", sessionId, 10*60*1000);
+
+          callback(data);
+        },
+        error  : function(x) {
+          console.log( "ERR "+JSON.stringify(x));
+        }
+      });
+}
+
 </script>
+
+  <script src="@routes.Assets.at("javascripts/rk-contentassist-sqbr.js")"></script>
+  <script src="@routes.Assets.at("vendor/jquery.textcomplete.min.js")"></script>
+  <script src="@routes.Assets.at("javascripts/weCommons.js")"></script>
+  <script src="@routes.Assets.at("javascripts/rk-contentassist.js")"></script>
+
+  <script src="@routes.Assets.at("javascripts/weDieselDom.js")"></script>
+
+  <script src="@routes.Assets.at("ace-builds/src/ace.js")" type="text/javascript" charset="utf-8"></script>
+
+  <script src="@routes.Assets.at("ace-builds/src/mode-nvp1.js")" type="text/javascript" charset="utf-8"></script>
+  <script src="@routes.Assets.at("ace-builds/src/ext-language_tools.js")" type="text/javascript" charset="utf-8"></script>
+
+  <script src="@routes.Assets.at("javascripts/wikiEdit.js")"></script>
 
 <script>
 // set the current tab
@@ -140,4 +320,6 @@ var playpill_@id = function(id) {
    }
 }
 </script>
+
+@util.oneModal()
 

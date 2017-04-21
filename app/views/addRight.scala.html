@@ -4,28 +4,36 @@ The add on the right hand side
 @()(implicit stok: controllers.StateOk)
 @import _root_.razie.wiki.Services
 
+@p(s:String) = @{stok.website.prop(s)}
+
 @if(! (Services.config.noads || stok.au.exists(_.isUnder13))) {
 
+  <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
   @if(stok.css.contains("light")) {
-    <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-    <!-- RK-right-light -->
-    <ins class="adsbygoogle"
-    style="display:inline-block;width:160px;height:600px"
-    data-ad-client="ca-pub-5622141672958561"
-    data-ad-slot="9704195992"></ins>
-    <script>http://marketplace.eclipse.org/marketplace-client-intro?mpc_install=84
-    (adsbygoogle = window.adsbygoogle || []).push({});
-    </script>
-  } else {
-    <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-    <!-- RK-right-dark -->
-    <ins class="adsbygoogle"
-    style="display:inline-block;width:160px;height:600px"
-    data-ad-client="ca-pub-5622141672958561"
-    data-ad-slot="6640009738"></ins>
-    <script>
-    (adsbygoogle = window.adsbygoogle || []).push({});
-    </script>
+    @p("ads.right.light").orElse(p("ads.right.light")).orElse(p("ads.right")).map { s =>
+      @Html(s)
+    }.getOrElse {
+<!-- RK-right-light -->
+<ins class="adsbygoogle"
+style="display:inline-block;width:160px;height:600px"
+data-ad-client="ca-pub-5622141672958561"
+data-ad-slot="9704195992"></ins>
     }
+  } else {
+    @p("ads.right.dark").orElse(p("ads.right.dark")).orElse(p("ads.right")).map { s =>
+      @Html(s)
+    }.getOrElse {
+<!-- RK-right-dark -->
+<ins class="adsbygoogle"
+style="display:inline-block;width:160px;height:600px"
+data-ad-client="ca-pub-5622141672958561"
+data-ad-slot="6640009738"></ins>
+    }
+  }
+
+  <script>
+      (adsbygoogle = window.adsbygoogle || []).push({});
+  </script>
 }
 

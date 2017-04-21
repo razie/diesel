@@ -132,7 +132,7 @@ object WikiDomain {//extends WikiDomain (Wikis.RK) {
         WikiDomain.DOM_LIST,
         List(
           EVal(
-            P("error", "", "", "",  "ERROR: "+we.preprocessed.s))))
+            P("error", "ERROR: "+we.preprocessed.s))))
 
     val domList = we.cache.getOrElse(DOM_LIST, List[Any]()).asInstanceOf[List[Any]].reverse
 
@@ -180,7 +180,7 @@ object WikiDomain {//extends WikiDomain (Wikis.RK) {
         WikiDomain.DOM_LIST,
         List(
           EVal(
-            P("error", "", "", "",  "ERROR: "+we.preprocessed.s))))
+            P("error", "ERROR: "+we.preprocessed.s))))
 
     //    if(we.tags.contains(R_DOM) || we.tags.contains(DSL_DOM))
     we.cache.getOrElse(DOM_LIST, List[Any]()).asInstanceOf[List[Any]].reverse.collect {

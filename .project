@@ -15,11 +15,4 @@
 		<nature>org.scala-ide.sdt.core.scalanature</nature>
 		<nature>org.eclipse.jdt.core.javanature</nature>
 	</natures>
-	<linkedResources>
-		<link>
-			<name>coolscala/common</name>
-			<type>2</type>
-			<location>/Users/raz/w/coolscala/common/src/main/scala</location>
-		</link>
-	</linkedResources>
 </projectDescription>

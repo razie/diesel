@@ -6,6 +6,8 @@ eh
 @label()=@{ page.map(_.label).getOrElse(razie.wiki.model.Wikis(wid.getRealm).label(wid)) }
 @isSite()=@{Array("Site", "Page").contains(wid.cat) && page.isDefined}
 
+@*<div class="container">*@
+
   @wiki.layout.draft(page)
 
 @modules.diesel.wBrowser(stok.realm, page, "top")
@@ -13,6 +15,7 @@ eh
   @wiki.wikiFrag(wid,None,false,page, iname, false, true, canEdit)
 
 @modules.diesel.wBrowser(stok.realm, page, "bottom")
+  @*</div>*@
 
   <!-- layout div12FullPage -->
 <div class="container">

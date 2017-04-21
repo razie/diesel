@@ -8,7 +8,7 @@ package controllers
 
 import com.google.inject._
 import mod.snow._
-import model.{Perm, User, Users, Website}
+import model.{User, Users, Website}
 import razie.base.Audit
 import razie.wiki.{Enc, Services}
 import razie.wiki.admin.SendEmail

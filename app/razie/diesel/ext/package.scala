@@ -1,7 +1,8 @@
 package razie.diesel
 
-import razie.diesel.dom.{ECtx, EPos, RDOM}
-import razie.diesel.dom.RDOM.{PM, P}
+import mod.diesel.model.parser.BCMP2
+import razie.diesel.dom.{CExpr, ECtx, EPos, RDOM}
+import razie.diesel.dom.RDOM.{P, PM}
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
@@ -26,14 +27,13 @@ package object ext {
 
   /** check to match the arguments */
   def sketchAttrs(defs:MatchAttrs, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) : Attrs = {
-    defs.map(p=> P(p.name, p.ttype, p.ref, p.multi, p.dflt))
+    defs.map(p=> P(p.name, p.dflt, p.ttype, p.ref, p.multi))
   }
 
+  /** a single match, collected when looking for expectations */
   class SingleMatch(val x: Any) {
     var score = 0;
     val diffs = new mutable.HashMap[String, (Any, Any)]() // (found, expected)
-    var highestMatching: String = ""
-    var curTesting: String = ""
 
     def plus(s: String) = {
       score += 1
@@ -44,6 +44,7 @@ package object ext {
     }
   }
 
+  /** collects the intermediary tests for a match, when looknig for expectations */
   class MatchCollector {
     var cur = new SingleMatch("")
     var highestScore = 0;
@@ -68,13 +69,24 @@ package object ext {
     def minus(name: String, found: Any, expected:Any) = cur.minus(name, found, expected)
   }
 
-  def check (p:P, pm:PM) =
-    p.name == pm.name && {
-      if("==" == pm.op) p.dflt == pm.dflt
-      else if("!=" == pm.op) p.dflt != pm.dflt
-      else if("~=" == pm.op) p.dflt matches pm.dflt
-      else false
+  def check (in:P, pm:PM)(implicit ctx: ECtx) = {
+    in.name == pm.name && {
+      val r = new BCMP2(in.valExpr, pm.op, pm.valExpr).apply("")
+      if(! r) {
+        // name found but no value match - mark the name
+      }
+      r
+//      if ("==" == pm.op) in.dflt == pm.dflt
+//      else if ("!=" == pm.op) in.dflt != pm.dflt
+//      else if ("~=" == pm.op) in.dflt matches pm.dflt
+//      else if ("?=" == pm.op) in.dflt.length >= 0 // match anything with a sample
+//      else if (">" == pm.op) (in.dflt compareTo pm.dflt) > 0
+//      else if (">=" == pm.op) (in.dflt compareTo pm.dflt) >= 0
+//      else if ("<" == pm.op) (in.dflt compareTo pm.dflt) < 0
+//      else if ("<=" == pm.op) (in.dflt compareTo pm.dflt) <= 0
+//      else false
     }
+  }
 
   /**
    * matching attrs
@@ -84,19 +96,26 @@ package object ext {
    * (1,b,c) it occurs in position with value
    *
    * (a=1) it occurs with value
+   *
    */
-  def testA(in: Attrs, cond: MatchAttrs, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) = {
+  def testA(in: Attrs, cond: MatchAttrs, cole: Option[MatchCollector] = None, foundName:Option[RDOM.P => Unit]=None)(implicit ctx: ECtx) = {
+    // for each match
     cond.zipWithIndex.foldLeft(true)((a, b) => a && {
       var res = false
 
-      if (b._1.dflt.size > 0) {
+      // testing for name and value
+      if (b._1.dflt.size > 0 || b._1.expr.isDefined) {
         if (b._1.name.size > 0) {
           res = in.exists(x => check(x, b._1)) || ctx.exists(x => check(x, b._1))
+          if(!res) in.find(_.name == b._1.name).map {p=>
+            // mark it in the cole
+            foundName.map(_.apply(p))
+          }
           if (res) cole.map(_.plus(b._1.name + b._1.op + b._1.dflt))
           else cole.map(_.minus(b._1.name, in.find(_.name == b._1.name).mkString, b._1))
         }
       } else {
-        // check and record the name failure
+        // test just the name (presence): check and record the name failure
         if (b._1.name.size > 0) {
           res = in.exists(_.name == b._1.name) || ctx.exists(_.name == b._1.name)
           if (res) cole.map(_.plus(b._1.name))

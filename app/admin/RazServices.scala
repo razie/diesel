@@ -1,17 +1,17 @@
 package admin
 
-import controllers.{IgnoreErrors, VErrors, Admin}
+import controllers.{Admin, IgnoreErrors, VErrors}
 import model._
-import razie.base.{AuditService, Audit}
+import razie.base.{Audit, AuditService}
 import razie.db.{ROne, RazMongo}
 import razie.wiki.{Base64, Enc}
-import razie.wiki.model.WikiUser
+import razie.wiki.model.{Perm, WikiUser}
 import razie.wiki.util.AuthService
 import com.mongodb.casbah.Imports._
 import com.novus.salat.grater
 import org.bson.types.ObjectId
 import org.joda.time.DateTime
-import play.api.mvc.{RequestHeader, Request}
+import play.api.mvc.{Request, RequestHeader}
 import razie.Logging
 import razie.db.RazSalatContext.ctx
 import razie.wiki.Services

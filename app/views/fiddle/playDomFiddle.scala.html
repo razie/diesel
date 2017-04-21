@@ -273,6 +273,11 @@ var runpill2_@id = function(id) {
 @*<script type="text/javascript" src="/sfiddle/tempAsset/@id/gParser.js")"></script>*@
 
 <script>
+
+var domChanged=true;
+var instChanged=true;
+var captureChanged=true;
+
   var langTools = ace.require("ace/ext/language_tools");
 
   var editor = ace.edit("pre3_@id");
@@ -342,10 +347,6 @@ editor.commands.addCommand({
     bindKey: {win: "Ctrl-G", mac: "Command-G"},
     exec: codeGui
 });
-
-  var domChanged=true;
-  var instChanged=true;
-  var captureChanged=true;
 
   editor1.getSession().on('change', function(e) {
     domChanged=true;

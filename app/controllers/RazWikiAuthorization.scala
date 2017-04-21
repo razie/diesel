@@ -5,12 +5,7 @@ import javax.management.relation.RoleStatus
 import razie.wiki.Sec.EncryptedS
 import model._
 import razie.Logging
-import razie.wiki.model.WikiIndex
-import razie.wiki.model.Wikis
-import razie.wiki.model.WikiEntry
-import razie.wiki.model.WikiUser
-import razie.wiki.model.WID
-import razie.wiki.model.Visibility
+import razie.wiki.model._
 import razie.wiki.dom.WikiDomain
 
 /** wiki controller base stuff - file too large */

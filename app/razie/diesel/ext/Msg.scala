@@ -11,8 +11,8 @@ import razie.db._
 import com.mongodb.casbah.Imports._
 import com.mongodb.DBObject
 import com.novus.salat._
+import mod.diesel.model.DomAst
 import org.joda.time.DateTime
-
 import razie.diesel.dom._
 import razie.diesel.dom.RDOM._
 import razie.diesel._
@@ -42,7 +42,7 @@ trait EApplicable {
 
   /** do it !
     *
-    * @return a list of elements - these will be wrapped in DomAst and added to the tree
+    * @return a list of elements - these will be wrapped in DomAst and added to the tree, so a value should be EVal etc
     */
   def apply(in: EMsg, destSpec: Option[EMsg])(implicit ctx: ECtx): List[Any]
 }
@@ -85,8 +85,11 @@ case class ExpectV(pm:MatchAttrs) extends CanHtml with HasPosition {
   def withGuard (guard:Option[EMatch]) = { this.when = guard; this}
 
   /** check to match the arguments */
-  def test(a:Attrs, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) = {
-    testA(a, pm, cole)
+  def test(a:Attrs, cole: Option[MatchCollector] = None, nodes:List[DomAst])(implicit ctx: ECtx) = {
+    testA(a, pm, cole, Some({p=>
+      // start a new collector to mark this value
+      cole.foreach(c=>nodes.find(_.value.asInstanceOf[EVal].p.name == p.name).foreach(n=>c.newMatch(n)))
+    }))
   }
 
   /** check to match the arguments */
@@ -111,7 +114,12 @@ case class EMatch(cls: String, met: String, attrs: MatchAttrs, cond: Option[EIf]
 
   /** extract a message signature from the match */
   def asMsg = EMsg("", cls, met, attrs.map{p=>
-    P (p.name, p.ttype, p.ref, p.multi, p.dflt)
+    // extract the sample value
+    val df = if(p.dflt.nonEmpty) p.dflt else p.expr match {
+      case Some(CExpr(e, _)) => e
+      case _ => ""
+    }
+    P (p.name, df, p.ttype, p.ref, p.multi)
   })
 
   override def toHtml = ea(cls, met) + " " + toHtmlMAttrs(attrs)
@@ -194,7 +202,7 @@ case class EMap(cls: String, met: String, attrs: Attrs, arrow:String="=>", cond:
   }
 
   def asMsg = EMsg("", cls, met, attrs.map{p=>
-    P (p.name, p.ttype, p.ref, p.multi, p.dflt)
+    P (p.name, p.dflt, p.ttype, p.ref, p.multi)
   })
 
 //  override def toHtml = "<b>=&gt;</b> " + ea(cls, met) + " " + attrs.map(_.toHtml).mkString("(", ",", ")")
@@ -303,12 +311,12 @@ case class EMsg(arch:String, entity: String, met: String, attrs: List[RDOM.P], r
   }
 
   // local invocation url
-  def url1 (section:String="") = {
+  def url1 (section:String="", resultMode:String="value") = {
     var x = s"""/diesel/wiki/${pos.map(_.wpath).mkString}/react/$entity/$met?${attrsToUrl(attrs)}"""
     if (x.endsWith("&") || x.endsWith("?")) ""
     else if (x contains "?") x = x + "&"
     else x = x + "?"
-    x = x + "resultMode=debug"
+    x = x + "resultMode="+resultMode
 
     if(section != "") {
       x = x + "&dfiddle=" + section
@@ -317,12 +325,12 @@ case class EMsg(arch:String, entity: String, met: String, attrs: List[RDOM.P], r
   }
 
   // reactor invocation url
-  def url2 (section:String="") = {
+  def url2 (section:String="", resultMode:String="value") = {
     var x = s"""/diesel/fiddle/react/$entity/$met?${attrsToUrl(attrs)}"""
     if (x.endsWith("&") || x.endsWith("?")) ""
     else if (x contains "?") x = x + "&"
     else x = x + "?"
-    x = x + "resultMode=debug"
+    x = x + "resultMode="+resultMode
 
     if(section != "") {
       x = x + "&dfiddle=" + section
@@ -330,9 +338,14 @@ case class EMsg(arch:String, entity: String, met: String, attrs: List[RDOM.P], r
     x
   }
 
-  def toHref (section:String="") = {
-    var u = url1(section)
-    s"""<a href="$u">$entity.$met (${attrs.mkString(", ")})</a>"""
+  def toHref (section:String="", resultMode:String="debug") = {
+    var u = url1(section, resultMode)
+    s"""<a target="_blank" href="$u">$entity.$met(${attrs.mkString(", ")})</a>"""
+  }
+
+  def toHrefWith (text:String, section:String="", resultMode:String="debug") = {
+    var u = url1(section, resultMode)
+    s"""<a target="_blank" href="$u">$text</a>"""
   }
 }
 
@@ -358,7 +371,7 @@ case class EMock(rule: ERule) extends CanHtml with HasPosition {
 
 // just a wrapper for type
 case class EVal(p: RDOM.P) extends CanHtml with HasPosition {
-  def this(name:String, value:String) = this(P(name, "", "", "", value))
+  def this(name:String, value:String) = this(P(name, value))
 
   var pos : Option[EPos] = None
   def withPos(p:Option[EPos]) = {this.pos = p; this}

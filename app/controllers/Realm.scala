@@ -9,7 +9,7 @@ package controllers
 import com.mongodb.casbah.Imports._
 import com.typesafe.config.ConfigValue
 import controllers.Wikie._
-import model.{Users, UserWiki, Perm}
+import model.{Users, UserWiki}
 import org.bson.types.ObjectId
 import razie.base.Audit
 import razie.wiki.{Enc, Services}

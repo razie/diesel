@@ -3,6 +3,7 @@ show/edit/capture a note
 
 msg types are msg, err
 **************@
+@import razie.wiki.model.Perm
 @(myForm:Form[_], isAuto:Boolean=false, isReadOnly:Boolean=false)(implicit stok:mod.notes.controllers.NotesOk)
 @import routes.Assets
 @import mod.notes.controllers.NotesLocker
@@ -155,7 +156,7 @@ function changeName (element) {
 var dotTags = [
 'shared to:who',
 'n name of this note',
-  @if(stok.au.hasPerm(model.Perm.codeMaster)) {
+  @if(stok.au.hasPerm(Perm.codeMaster)) {
     'sfiddle path',
   }
 //  'a to:who by:date description',

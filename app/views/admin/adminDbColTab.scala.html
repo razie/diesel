@@ -67,7 +67,6 @@ DB Admin - admin a table in a table format
 
 @wkl(db:com.mongodb.casbah.Imports.DBObject, k:String, v:String) = {
 @k match {
-  case "from" => { @userId(v) }
   case "_id"  => { @adminDbEntity("WikiLink", v) }
   case _=> {
     @v

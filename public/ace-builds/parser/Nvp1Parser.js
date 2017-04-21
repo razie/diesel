@@ -1,4 +1,4 @@
-// $ANTLR 3.3 avr. 19, 2016 01:13:22 /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g 2017-04-04 11:12:42
+// $ANTLR 3.3 avr. 19, 2016 01:13:22 /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g 2017-04-10 11:01:06
 
 
 
@@ -1688,10 +1688,10 @@ org.antlr.lang.augmentObject(Nvp1Parser.prototype, {
             if ( (LA24_0==26) ) {
                 var LA24_1 = this.input.LA(2);
 
-                if ( (LA24_1==15) ) {
+                if ( (LA24_1==ID) ) {
                     alt24=1;
                 }
-                else if ( (LA24_1==27) ) {
+                else if ( (LA24_1==23) ) {
                     alt24=2;
                 }
                 else {
@@ -1829,7 +1829,7 @@ org.antlr.lang.augmentObject(Nvp1Parser.prototype, {
         return;
     })(),
 
-    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:115:1: rule_ExpectM : '$expect' ( '$msg' name= rule_QualifiedName (attrs= rule_AttrSpecs )? ) (cond= rule_Condition )? NEWLINE ;
+    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:115:1: rule_ExpectM : '$expect' (name= rule_QualifiedName (attrs= rule_AttrSpecs )? ) (cond= rule_Condition )? NEWLINE ;
     // $ANTLR start "rule_ExpectM"
     rule_ExpectM: function() {
         var retval = new Nvp1Parser.rule_ExpectM_return();
@@ -1838,38 +1838,32 @@ org.antlr.lang.augmentObject(Nvp1Parser.prototype, {
         var root_0 = null;
 
         var string_literal45 = null;
-        var string_literal46 = null;
-        var NEWLINE47 = null;
+        var NEWLINE46 = null;
          var name = null;
          var attrs = null;
          var cond = null;
 
         var string_literal45_tree=null;
-        var string_literal46_tree=null;
-        var NEWLINE47_tree=null;
+        var NEWLINE46_tree=null;
 
         try {
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:115:13: ( '$expect' ( '$msg' name= rule_QualifiedName (attrs= rule_AttrSpecs )? ) (cond= rule_Condition )? NEWLINE )
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:116:5: '$expect' ( '$msg' name= rule_QualifiedName (attrs= rule_AttrSpecs )? ) (cond= rule_Condition )? NEWLINE
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:115:13: ( '$expect' (name= rule_QualifiedName (attrs= rule_AttrSpecs )? ) (cond= rule_Condition )? NEWLINE )
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:117:5: '$expect' (name= rule_QualifiedName (attrs= rule_AttrSpecs )? ) (cond= rule_Condition )? NEWLINE
             root_0 = this.adaptor.nil();
 
-            string_literal45=this.match(this.input,26,Nvp1Parser.FOLLOW_26_in_rule_ExpectM503); 
+            string_literal45=this.match(this.input,26,Nvp1Parser.FOLLOW_26_in_rule_ExpectM504); 
             string_literal45_tree = this.adaptor.create(string_literal45);
             this.adaptor.addChild(root_0, string_literal45_tree);
 
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:116:15: ( '$msg' name= rule_QualifiedName (attrs= rule_AttrSpecs )? )
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:116:16: '$msg' name= rule_QualifiedName (attrs= rule_AttrSpecs )?
-            string_literal46=this.match(this.input,15,Nvp1Parser.FOLLOW_15_in_rule_ExpectM506); 
-            string_literal46_tree = this.adaptor.create(string_literal46);
-            this.adaptor.addChild(root_0, string_literal46_tree);
-
-            this.pushFollow(Nvp1Parser.FOLLOW_rule_QualifiedName_in_rule_ExpectM510);
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:117:15: (name= rule_QualifiedName (attrs= rule_AttrSpecs )? )
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:117:16: name= rule_QualifiedName (attrs= rule_AttrSpecs )?
+            this.pushFollow(Nvp1Parser.FOLLOW_rule_QualifiedName_in_rule_ExpectM509);
             name=this.rule_QualifiedName();
 
             this.state._fsp--;
 
             this.adaptor.addChild(root_0, name.getTree());
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:116:52: (attrs= rule_AttrSpecs )?
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:117:45: (attrs= rule_AttrSpecs )?
             var alt25=2;
             var LA25_0 = this.input.LA(1);
 
@@ -1878,8 +1872,8 @@ org.antlr.lang.augmentObject(Nvp1Parser.prototype, {
             }
             switch (alt25) {
                 case 1 :
-                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:116:52: attrs= rule_AttrSpecs
-                    this.pushFollow(Nvp1Parser.FOLLOW_rule_AttrSpecs_in_rule_ExpectM514);
+                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:117:45: attrs= rule_AttrSpecs
+                    this.pushFollow(Nvp1Parser.FOLLOW_rule_AttrSpecs_in_rule_ExpectM513);
                     attrs=this.rule_AttrSpecs();
 
                     this.state._fsp--;
@@ -1894,7 +1888,7 @@ org.antlr.lang.augmentObject(Nvp1Parser.prototype, {
 
 
 
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:116:70: (cond= rule_Condition )?
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:117:63: (cond= rule_Condition )?
             var alt26=2;
             var LA26_0 = this.input.LA(1);
 
@@ -1903,8 +1897,8 @@ org.antlr.lang.augmentObject(Nvp1Parser.prototype, {
             }
             switch (alt26) {
                 case 1 :
-                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:116:71: cond= rule_Condition
-                    this.pushFollow(Nvp1Parser.FOLLOW_rule_Condition_in_rule_ExpectM521);
+                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:117:64: cond= rule_Condition
+                    this.pushFollow(Nvp1Parser.FOLLOW_rule_Condition_in_rule_ExpectM520);
                     cond=this.rule_Condition();
 
                     this.state._fsp--;
@@ -1916,9 +1910,9 @@ org.antlr.lang.augmentObject(Nvp1Parser.prototype, {
 
             }
 
-            NEWLINE47=this.match(this.input,NEWLINE,Nvp1Parser.FOLLOW_NEWLINE_in_rule_ExpectM524); 
-            NEWLINE47_tree = this.adaptor.create(NEWLINE47);
-            this.adaptor.addChild(root_0, NEWLINE47_tree);
+            NEWLINE46=this.match(this.input,NEWLINE,Nvp1Parser.FOLLOW_NEWLINE_in_rule_ExpectM523); 
+            NEWLINE46_tree = this.adaptor.create(NEWLINE46);
+            this.adaptor.addChild(root_0, NEWLINE46_tree);
 
 
 
@@ -1954,7 +1948,7 @@ org.antlr.lang.augmentObject(Nvp1Parser.prototype, {
         return;
     })(),
 
-    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:122:1: rule_ExpectV : '$expect' ( '$val' (p= rule_AttrSpec )? ) (cond= rule_Condition )? NEWLINE ;
+    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:123:1: rule_ExpectV : '$expect' p= rule_AttrSpecs (cond= rule_Condition )? NEWLINE ;
     // $ANTLR start "rule_ExpectV"
     rule_ExpectV: function() {
         var retval = new Nvp1Parser.rule_ExpectV_return();
@@ -1962,67 +1956,40 @@ org.antlr.lang.augmentObject(Nvp1Parser.prototype, {
 
         var root_0 = null;
 
-        var string_literal48 = null;
-        var string_literal49 = null;
-        var NEWLINE50 = null;
+        var string_literal47 = null;
+        var NEWLINE48 = null;
          var p = null;
          var cond = null;
 
-        var string_literal48_tree=null;
-        var string_literal49_tree=null;
-        var NEWLINE50_tree=null;
+        var string_literal47_tree=null;
+        var NEWLINE48_tree=null;
 
         try {
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:122:13: ( '$expect' ( '$val' (p= rule_AttrSpec )? ) (cond= rule_Condition )? NEWLINE )
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:123:5: '$expect' ( '$val' (p= rule_AttrSpec )? ) (cond= rule_Condition )? NEWLINE
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:123:13: ( '$expect' p= rule_AttrSpecs (cond= rule_Condition )? NEWLINE )
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:125:5: '$expect' p= rule_AttrSpecs (cond= rule_Condition )? NEWLINE
             root_0 = this.adaptor.nil();
 
-            string_literal48=this.match(this.input,26,Nvp1Parser.FOLLOW_26_in_rule_ExpectV539); 
-            string_literal48_tree = this.adaptor.create(string_literal48);
-            this.adaptor.addChild(root_0, string_literal48_tree);
+            string_literal47=this.match(this.input,26,Nvp1Parser.FOLLOW_26_in_rule_ExpectV539); 
+            string_literal47_tree = this.adaptor.create(string_literal47);
+            this.adaptor.addChild(root_0, string_literal47_tree);
 
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:123:15: ( '$val' (p= rule_AttrSpec )? )
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:123:16: '$val' (p= rule_AttrSpec )?
-            string_literal49=this.match(this.input,27,Nvp1Parser.FOLLOW_27_in_rule_ExpectV542); 
-            string_literal49_tree = this.adaptor.create(string_literal49);
-            this.adaptor.addChild(root_0, string_literal49_tree);
+            this.pushFollow(Nvp1Parser.FOLLOW_rule_AttrSpecs_in_rule_ExpectV543);
+            p=this.rule_AttrSpecs();
 
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:123:24: (p= rule_AttrSpec )?
+            this.state._fsp--;
+
+            this.adaptor.addChild(root_0, p.getTree());
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:125:32: (cond= rule_Condition )?
             var alt27=2;
             var LA27_0 = this.input.LA(1);
 
-            if ( (LA27_0==ID) ) {
+            if ( (LA27_0==25) ) {
                 alt27=1;
             }
             switch (alt27) {
                 case 1 :
-                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:123:24: p= rule_AttrSpec
-                    this.pushFollow(Nvp1Parser.FOLLOW_rule_AttrSpec_in_rule_ExpectV546);
-                    p=this.rule_AttrSpec();
-
-                    this.state._fsp--;
-
-                    this.adaptor.addChild(root_0, p.getTree());
-
-
-                    break;
-
-            }
-
-
-
-
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:123:41: (cond= rule_Condition )?
-            var alt28=2;
-            var LA28_0 = this.input.LA(1);
-
-            if ( (LA28_0==25) ) {
-                alt28=1;
-            }
-            switch (alt28) {
-                case 1 :
-                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:123:42: cond= rule_Condition
-                    this.pushFollow(Nvp1Parser.FOLLOW_rule_Condition_in_rule_ExpectV553);
+                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:125:33: cond= rule_Condition
+                    this.pushFollow(Nvp1Parser.FOLLOW_rule_Condition_in_rule_ExpectV548);
                     cond=this.rule_Condition();
 
                     this.state._fsp--;
@@ -2034,9 +2001,9 @@ org.antlr.lang.augmentObject(Nvp1Parser.prototype, {
 
             }
 
-            NEWLINE50=this.match(this.input,NEWLINE,Nvp1Parser.FOLLOW_NEWLINE_in_rule_ExpectV556); 
-            NEWLINE50_tree = this.adaptor.create(NEWLINE50);
-            this.adaptor.addChild(root_0, NEWLINE50_tree);
+            NEWLINE48=this.match(this.input,NEWLINE,Nvp1Parser.FOLLOW_NEWLINE_in_rule_ExpectV551); 
+            NEWLINE48_tree = this.adaptor.create(NEWLINE48);
+            this.adaptor.addChild(root_0, NEWLINE48_tree);
 
 
 
@@ -2072,7 +2039,7 @@ org.antlr.lang.augmentObject(Nvp1Parser.prototype, {
         return;
     })(),
 
-    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:129:1: rule_Val : '$val' p= rule_AttrSpec NEWLINE ;
+    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:131:1: rule_Val : '$val' p= rule_AttrSpec NEWLINE ;
     // $ANTLR start "rule_Val"
     rule_Val: function() {
         var retval = new Nvp1Parser.rule_Val_return();
@@ -2080,31 +2047,31 @@ org.antlr.lang.augmentObject(Nvp1Parser.prototype, {
 
         var root_0 = null;
 
-        var string_literal51 = null;
-        var NEWLINE52 = null;
+        var string_literal49 = null;
+        var NEWLINE50 = null;
          var p = null;
 
-        var string_literal51_tree=null;
-        var NEWLINE52_tree=null;
+        var string_literal49_tree=null;
+        var NEWLINE50_tree=null;
 
         try {
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:129:9: ( '$val' p= rule_AttrSpec NEWLINE )
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:130:5: '$val' p= rule_AttrSpec NEWLINE
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:131:9: ( '$val' p= rule_AttrSpec NEWLINE )
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:132:5: '$val' p= rule_AttrSpec NEWLINE
             root_0 = this.adaptor.nil();
 
-            string_literal51=this.match(this.input,27,Nvp1Parser.FOLLOW_27_in_rule_Val571); 
-            string_literal51_tree = this.adaptor.create(string_literal51);
-            this.adaptor.addChild(root_0, string_literal51_tree);
+            string_literal49=this.match(this.input,27,Nvp1Parser.FOLLOW_27_in_rule_Val566); 
+            string_literal49_tree = this.adaptor.create(string_literal49);
+            this.adaptor.addChild(root_0, string_literal49_tree);
 
-            this.pushFollow(Nvp1Parser.FOLLOW_rule_AttrSpec_in_rule_Val575);
+            this.pushFollow(Nvp1Parser.FOLLOW_rule_AttrSpec_in_rule_Val570);
             p=this.rule_AttrSpec();
 
             this.state._fsp--;
 
             this.adaptor.addChild(root_0, p.getTree());
-            NEWLINE52=this.match(this.input,NEWLINE,Nvp1Parser.FOLLOW_NEWLINE_in_rule_Val577); 
-            NEWLINE52_tree = this.adaptor.create(NEWLINE52);
-            this.adaptor.addChild(root_0, NEWLINE52_tree);
+            NEWLINE50=this.match(this.input,NEWLINE,Nvp1Parser.FOLLOW_NEWLINE_in_rule_Val572); 
+            NEWLINE50_tree = this.adaptor.create(NEWLINE50);
+            this.adaptor.addChild(root_0, NEWLINE50_tree);
 
 
 
@@ -2140,7 +2107,7 @@ org.antlr.lang.augmentObject(Nvp1Parser.prototype, {
         return;
     })(),
 
-    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:136:1: rule_Option : '$opt' attr= rule_AttrSpec NEWLINE ;
+    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:138:1: rule_Option : '$opt' attr= rule_AttrSpec NEWLINE ;
     // $ANTLR start "rule_Option"
     rule_Option: function() {
         var retval = new Nvp1Parser.rule_Option_return();
@@ -2148,31 +2115,31 @@ org.antlr.lang.augmentObject(Nvp1Parser.prototype, {
 
         var root_0 = null;
 
-        var string_literal53 = null;
-        var NEWLINE54 = null;
+        var string_literal51 = null;
+        var NEWLINE52 = null;
          var attr = null;
 
-        var string_literal53_tree=null;
-        var NEWLINE54_tree=null;
+        var string_literal51_tree=null;
+        var NEWLINE52_tree=null;
 
         try {
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:136:12: ( '$opt' attr= rule_AttrSpec NEWLINE )
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:137:5: '$opt' attr= rule_AttrSpec NEWLINE
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:138:12: ( '$opt' attr= rule_AttrSpec NEWLINE )
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:139:5: '$opt' attr= rule_AttrSpec NEWLINE
             root_0 = this.adaptor.nil();
 
-            string_literal53=this.match(this.input,28,Nvp1Parser.FOLLOW_28_in_rule_Option592); 
-            string_literal53_tree = this.adaptor.create(string_literal53);
-            this.adaptor.addChild(root_0, string_literal53_tree);
+            string_literal51=this.match(this.input,28,Nvp1Parser.FOLLOW_28_in_rule_Option587); 
+            string_literal51_tree = this.adaptor.create(string_literal51);
+            this.adaptor.addChild(root_0, string_literal51_tree);
 
-            this.pushFollow(Nvp1Parser.FOLLOW_rule_AttrSpec_in_rule_Option596);
+            this.pushFollow(Nvp1Parser.FOLLOW_rule_AttrSpec_in_rule_Option591);
             attr=this.rule_AttrSpec();
 
             this.state._fsp--;
 
             this.adaptor.addChild(root_0, attr.getTree());
-            NEWLINE54=this.match(this.input,NEWLINE,Nvp1Parser.FOLLOW_NEWLINE_in_rule_Option598); 
-            NEWLINE54_tree = this.adaptor.create(NEWLINE54);
-            this.adaptor.addChild(root_0, NEWLINE54_tree);
+            NEWLINE52=this.match(this.input,NEWLINE,Nvp1Parser.FOLLOW_NEWLINE_in_rule_Option593); 
+            NEWLINE52_tree = this.adaptor.create(NEWLINE52);
+            this.adaptor.addChild(root_0, NEWLINE52_tree);
 
 
 
@@ -2208,7 +2175,7 @@ org.antlr.lang.augmentObject(Nvp1Parser.prototype, {
         return;
     })(),
 
-    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:143:1: rule_AttrSpec : name= rule_QualifiedName ( ':' ttype= rule_DataType )? ( '=' eexpr= rule_EXPR )? ;
+    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:145:1: rule_AttrSpec : name= rule_QualifiedName ( ':' ttype= rule_DataType )? ( '=' eexpr= rule_EXPR )? ;
     // $ANTLR start "rule_AttrSpec"
     rule_AttrSpec: function() {
         var retval = new Nvp1Parser.rule_AttrSpec_return();
@@ -2216,41 +2183,41 @@ org.antlr.lang.augmentObject(Nvp1Parser.prototype, {
 
         var root_0 = null;
 
-        var char_literal55 = null;
-        var char_literal56 = null;
+        var char_literal53 = null;
+        var char_literal54 = null;
          var name = null;
          var ttype = null;
          var eexpr = null;
 
-        var char_literal55_tree=null;
-        var char_literal56_tree=null;
+        var char_literal53_tree=null;
+        var char_literal54_tree=null;
 
         try {
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:143:14: (name= rule_QualifiedName ( ':' ttype= rule_DataType )? ( '=' eexpr= rule_EXPR )? )
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:144:3: name= rule_QualifiedName ( ':' ttype= rule_DataType )? ( '=' eexpr= rule_EXPR )?
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:145:14: (name= rule_QualifiedName ( ':' ttype= rule_DataType )? ( '=' eexpr= rule_EXPR )? )
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:146:3: name= rule_QualifiedName ( ':' ttype= rule_DataType )? ( '=' eexpr= rule_EXPR )?
             root_0 = this.adaptor.nil();
 
-            this.pushFollow(Nvp1Parser.FOLLOW_rule_QualifiedName_in_rule_AttrSpec613);
+            this.pushFollow(Nvp1Parser.FOLLOW_rule_QualifiedName_in_rule_AttrSpec608);
             name=this.rule_QualifiedName();
 
             this.state._fsp--;
 
             this.adaptor.addChild(root_0, name.getTree());
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:144:27: ( ':' ttype= rule_DataType )?
-            var alt29=2;
-            var LA29_0 = this.input.LA(1);
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:146:27: ( ':' ttype= rule_DataType )?
+            var alt28=2;
+            var LA28_0 = this.input.LA(1);
 
-            if ( (LA29_0==29) ) {
-                alt29=1;
+            if ( (LA28_0==29) ) {
+                alt28=1;
             }
-            switch (alt29) {
+            switch (alt28) {
                 case 1 :
-                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:144:28: ':' ttype= rule_DataType
-                    char_literal55=this.match(this.input,29,Nvp1Parser.FOLLOW_29_in_rule_AttrSpec616); 
-                    char_literal55_tree = this.adaptor.create(char_literal55);
-                    this.adaptor.addChild(root_0, char_literal55_tree);
+                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:146:28: ':' ttype= rule_DataType
+                    char_literal53=this.match(this.input,29,Nvp1Parser.FOLLOW_29_in_rule_AttrSpec611); 
+                    char_literal53_tree = this.adaptor.create(char_literal53);
+                    this.adaptor.addChild(root_0, char_literal53_tree);
 
-                    this.pushFollow(Nvp1Parser.FOLLOW_rule_DataType_in_rule_AttrSpec620);
+                    this.pushFollow(Nvp1Parser.FOLLOW_rule_DataType_in_rule_AttrSpec615);
                     ttype=this.rule_DataType();
 
                     this.state._fsp--;
@@ -2262,21 +2229,21 @@ org.antlr.lang.augmentObject(Nvp1Parser.prototype, {
 
             }
 
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:144:54: ( '=' eexpr= rule_EXPR )?
-            var alt30=2;
-            var LA30_0 = this.input.LA(1);
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:146:54: ( '=' eexpr= rule_EXPR )?
+            var alt29=2;
+            var LA29_0 = this.input.LA(1);
 
-            if ( (LA30_0==30) ) {
-                alt30=1;
+            if ( (LA29_0==30) ) {
+                alt29=1;
             }
-            switch (alt30) {
+            switch (alt29) {
                 case 1 :
-                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:144:55: '=' eexpr= rule_EXPR
-                    char_literal56=this.match(this.input,30,Nvp1Parser.FOLLOW_30_in_rule_AttrSpec625); 
-                    char_literal56_tree = this.adaptor.create(char_literal56);
-                    this.adaptor.addChild(root_0, char_literal56_tree);
+                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:146:55: '=' eexpr= rule_EXPR
+                    char_literal54=this.match(this.input,30,Nvp1Parser.FOLLOW_30_in_rule_AttrSpec620); 
+                    char_literal54_tree = this.adaptor.create(char_literal54);
+                    this.adaptor.addChild(root_0, char_literal54_tree);
 
-                    this.pushFollow(Nvp1Parser.FOLLOW_rule_EXPR_in_rule_AttrSpec629);
+                    this.pushFollow(Nvp1Parser.FOLLOW_rule_EXPR_in_rule_AttrSpec624);
                     eexpr=this.rule_EXPR();
 
                     this.state._fsp--;
@@ -2322,7 +2289,7 @@ org.antlr.lang.augmentObject(Nvp1Parser.prototype, {
         return;
     })(),
 
-    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:149:1: rule_Attr : name= ID ( ':' ttype= rule_DataType )? ( '=' eexpr= rule_EXPR )? ;
+    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:151:1: rule_Attr : name= ID ( ':' ttype= rule_DataType )? ( '=' eexpr= rule_EXPR )? ;
     // $ANTLR start "rule_Attr"
     rule_Attr: function() {
         var retval = new Nvp1Parser.rule_Attr_return();
@@ -2331,39 +2298,39 @@ org.antlr.lang.augmentObject(Nvp1Parser.prototype, {
         var root_0 = null;
 
         var name = null;
-        var char_literal57 = null;
-        var char_literal58 = null;
+        var char_literal55 = null;
+        var char_literal56 = null;
          var ttype = null;
          var eexpr = null;
 
         var name_tree=null;
-        var char_literal57_tree=null;
-        var char_literal58_tree=null;
+        var char_literal55_tree=null;
+        var char_literal56_tree=null;
 
         try {
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:149:10: (name= ID ( ':' ttype= rule_DataType )? ( '=' eexpr= rule_EXPR )? )
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:150:3: name= ID ( ':' ttype= rule_DataType )? ( '=' eexpr= rule_EXPR )?
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:151:10: (name= ID ( ':' ttype= rule_DataType )? ( '=' eexpr= rule_EXPR )? )
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:152:3: name= ID ( ':' ttype= rule_DataType )? ( '=' eexpr= rule_EXPR )?
             root_0 = this.adaptor.nil();
 
-            name=this.match(this.input,ID,Nvp1Parser.FOLLOW_ID_in_rule_Attr645); 
+            name=this.match(this.input,ID,Nvp1Parser.FOLLOW_ID_in_rule_Attr640); 
             name_tree = this.adaptor.create(name);
             this.adaptor.addChild(root_0, name_tree);
 
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:150:11: ( ':' ttype= rule_DataType )?
-            var alt31=2;
-            var LA31_0 = this.input.LA(1);
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:152:11: ( ':' ttype= rule_DataType )?
+            var alt30=2;
+            var LA30_0 = this.input.LA(1);
 
-            if ( (LA31_0==29) ) {
-                alt31=1;
+            if ( (LA30_0==29) ) {
+                alt30=1;
             }
-            switch (alt31) {
+            switch (alt30) {
                 case 1 :
-                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:150:12: ':' ttype= rule_DataType
-                    char_literal57=this.match(this.input,29,Nvp1Parser.FOLLOW_29_in_rule_Attr648); 
-                    char_literal57_tree = this.adaptor.create(char_literal57);
-                    this.adaptor.addChild(root_0, char_literal57_tree);
+                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:152:12: ':' ttype= rule_DataType
+                    char_literal55=this.match(this.input,29,Nvp1Parser.FOLLOW_29_in_rule_Attr643); 
+                    char_literal55_tree = this.adaptor.create(char_literal55);
+                    this.adaptor.addChild(root_0, char_literal55_tree);
 
-                    this.pushFollow(Nvp1Parser.FOLLOW_rule_DataType_in_rule_Attr652);
+                    this.pushFollow(Nvp1Parser.FOLLOW_rule_DataType_in_rule_Attr647);
                     ttype=this.rule_DataType();
 
                     this.state._fsp--;
@@ -2375,21 +2342,21 @@ org.antlr.lang.augmentObject(Nvp1Parser.prototype, {
 
             }
 
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:150:38: ( '=' eexpr= rule_EXPR )?
-            var alt32=2;
-            var LA32_0 = this.input.LA(1);
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:152:38: ( '=' eexpr= rule_EXPR )?
+            var alt31=2;
+            var LA31_0 = this.input.LA(1);
 
-            if ( (LA32_0==30) ) {
-                alt32=1;
+            if ( (LA31_0==30) ) {
+                alt31=1;
             }
-            switch (alt32) {
+            switch (alt31) {
                 case 1 :
-                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:150:39: '=' eexpr= rule_EXPR
-                    char_literal58=this.match(this.input,30,Nvp1Parser.FOLLOW_30_in_rule_Attr657); 
-                    char_literal58_tree = this.adaptor.create(char_literal58);
-                    this.adaptor.addChild(root_0, char_literal58_tree);
+                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:152:39: '=' eexpr= rule_EXPR
+                    char_literal56=this.match(this.input,30,Nvp1Parser.FOLLOW_30_in_rule_Attr652); 
+                    char_literal56_tree = this.adaptor.create(char_literal56);
+                    this.adaptor.addChild(root_0, char_literal56_tree);
 
-                    this.pushFollow(Nvp1Parser.FOLLOW_rule_EXPR_in_rule_Attr661);
+                    this.pushFollow(Nvp1Parser.FOLLOW_rule_EXPR_in_rule_Attr656);
                     eexpr=this.rule_EXPR();
 
                     this.state._fsp--;
@@ -2435,7 +2402,7 @@ org.antlr.lang.augmentObject(Nvp1Parser.prototype, {
         return;
     })(),
 
-    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:155:1: rule_EXPR : (parm= rule_QualifiedName | svalue= STRING | ivalue= INT );
+    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:157:1: rule_EXPR : (parm= rule_QualifiedName | svalue= STRING | ivalue= INT );
     // $ANTLR start "rule_EXPR"
     rule_EXPR: function() {
         var retval = new Nvp1Parser.rule_EXPR_return();
@@ -2451,31 +2418,31 @@ org.antlr.lang.augmentObject(Nvp1Parser.prototype, {
         var ivalue_tree=null;
 
         try {
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:155:10: (parm= rule_QualifiedName | svalue= STRING | ivalue= INT )
-            var alt33=3;
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:157:10: (parm= rule_QualifiedName | svalue= STRING | ivalue= INT )
+            var alt32=3;
             switch ( this.input.LA(1) ) {
             case ID:
-                alt33=1;
+                alt32=1;
                 break;
             case STRING:
-                alt33=2;
+                alt32=2;
                 break;
             case INT:
-                alt33=3;
+                alt32=3;
                 break;
             default:
                 var nvae =
-                    new org.antlr.runtime.NoViableAltException("", 33, 0, this.input);
+                    new org.antlr.runtime.NoViableAltException("", 32, 0, this.input);
 
                 throw nvae;
             }
 
-            switch (alt33) {
+            switch (alt32) {
                 case 1 :
-                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:156:3: parm= rule_QualifiedName
+                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:158:3: parm= rule_QualifiedName
                     root_0 = this.adaptor.nil();
 
-                    this.pushFollow(Nvp1Parser.FOLLOW_rule_QualifiedName_in_rule_EXPR677);
+                    this.pushFollow(Nvp1Parser.FOLLOW_rule_QualifiedName_in_rule_EXPR672);
                     parm=this.rule_QualifiedName();
 
                     this.state._fsp--;
@@ -2485,10 +2452,10 @@ org.antlr.lang.augmentObject(Nvp1Parser.prototype, {
 
                     break;
                 case 2 :
-                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:156:29: svalue= STRING
+                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:158:29: svalue= STRING
                     root_0 = this.adaptor.nil();
 
-                    svalue=this.match(this.input,STRING,Nvp1Parser.FOLLOW_STRING_in_rule_EXPR683); 
+                    svalue=this.match(this.input,STRING,Nvp1Parser.FOLLOW_STRING_in_rule_EXPR678); 
                     svalue_tree = this.adaptor.create(svalue);
                     this.adaptor.addChild(root_0, svalue_tree);
 
@@ -2496,10 +2463,10 @@ org.antlr.lang.augmentObject(Nvp1Parser.prototype, {
 
                     break;
                 case 3 :
-                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:156:45: ivalue= INT
+                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:158:45: ivalue= INT
                     root_0 = this.adaptor.nil();
 
-                    ivalue=this.match(this.input,INT,Nvp1Parser.FOLLOW_INT_in_rule_EXPR689); 
+                    ivalue=this.match(this.input,INT,Nvp1Parser.FOLLOW_INT_in_rule_EXPR684); 
                     ivalue_tree = this.adaptor.create(ivalue);
                     this.adaptor.addChild(root_0, ivalue_tree);
 
@@ -2539,7 +2506,7 @@ org.antlr.lang.augmentObject(Nvp1Parser.prototype, {
         return;
     })(),
 
-    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:162:1: rule_Attrs : '(' (attrs+= rule_Attr ( ',' attrs+= rule_Attr )* )? ')' ;
+    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:164:1: rule_Attrs : '(' (attrs+= rule_Attr ( ',' attrs+= rule_Attr )* )? ')' ;
     // $ANTLR start "rule_Attrs"
     rule_Attrs: function() {
         var retval = new Nvp1Parser.rule_Attrs_return();
@@ -2547,35 +2514,35 @@ org.antlr.lang.augmentObject(Nvp1Parser.prototype, {
 
         var root_0 = null;
 
+        var char_literal57 = null;
+        var char_literal58 = null;
         var char_literal59 = null;
-        var char_literal60 = null;
-        var char_literal61 = null;
         var list_attrs=null;
         var attrs = null;
+        var char_literal57_tree=null;
+        var char_literal58_tree=null;
         var char_literal59_tree=null;
-        var char_literal60_tree=null;
-        var char_literal61_tree=null;
 
         try {
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:162:11: ( '(' (attrs+= rule_Attr ( ',' attrs+= rule_Attr )* )? ')' )
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:163:5: '(' (attrs+= rule_Attr ( ',' attrs+= rule_Attr )* )? ')'
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:164:11: ( '(' (attrs+= rule_Attr ( ',' attrs+= rule_Attr )* )? ')' )
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:165:5: '(' (attrs+= rule_Attr ( ',' attrs+= rule_Attr )* )? ')'
             root_0 = this.adaptor.nil();
 
-            char_literal59=this.match(this.input,23,Nvp1Parser.FOLLOW_23_in_rule_Attrs706); 
-            char_literal59_tree = this.adaptor.create(char_literal59);
-            this.adaptor.addChild(root_0, char_literal59_tree);
+            char_literal57=this.match(this.input,23,Nvp1Parser.FOLLOW_23_in_rule_Attrs701); 
+            char_literal57_tree = this.adaptor.create(char_literal57);
+            this.adaptor.addChild(root_0, char_literal57_tree);
 
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:163:9: (attrs+= rule_Attr ( ',' attrs+= rule_Attr )* )?
-            var alt35=2;
-            var LA35_0 = this.input.LA(1);
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:165:9: (attrs+= rule_Attr ( ',' attrs+= rule_Attr )* )?
+            var alt34=2;
+            var LA34_0 = this.input.LA(1);
 
-            if ( (LA35_0==ID) ) {
-                alt35=1;
+            if ( (LA34_0==ID) ) {
+                alt34=1;
             }
-            switch (alt35) {
+            switch (alt34) {
                 case 1 :
-                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:163:10: attrs+= rule_Attr ( ',' attrs+= rule_Attr )*
-                    this.pushFollow(Nvp1Parser.FOLLOW_rule_Attr_in_rule_Attrs711);
+                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:165:10: attrs+= rule_Attr ( ',' attrs+= rule_Attr )*
+                    this.pushFollow(Nvp1Parser.FOLLOW_rule_Attr_in_rule_Attrs706);
                     attrs=this.rule_Attr();
 
                     this.state._fsp--;
@@ -2584,25 +2551,25 @@ org.antlr.lang.augmentObject(Nvp1Parser.prototype, {
                     if (org.antlr.lang.isNull(list_attrs)) list_attrs = [];
                     list_attrs.push(attrs.getTree());
 
-                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:163:27: ( ',' attrs+= rule_Attr )*
-                    loop34:
+                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:165:27: ( ',' attrs+= rule_Attr )*
+                    loop33:
                     do {
-                        var alt34=2;
-                        var LA34_0 = this.input.LA(1);
+                        var alt33=2;
+                        var LA33_0 = this.input.LA(1);
 
-                        if ( (LA34_0==31) ) {
-                            alt34=1;
+                        if ( (LA33_0==31) ) {
+                            alt33=1;
                         }
 
 
-                        switch (alt34) {
+                        switch (alt33) {
                         case 1 :
-                            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:163:28: ',' attrs+= rule_Attr
-                            char_literal60=this.match(this.input,31,Nvp1Parser.FOLLOW_31_in_rule_Attrs714); 
-                            char_literal60_tree = this.adaptor.create(char_literal60);
-                            this.adaptor.addChild(root_0, char_literal60_tree);
+                            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:165:28: ',' attrs+= rule_Attr
+                            char_literal58=this.match(this.input,31,Nvp1Parser.FOLLOW_31_in_rule_Attrs709); 
+                            char_literal58_tree = this.adaptor.create(char_literal58);
+                            this.adaptor.addChild(root_0, char_literal58_tree);
 
-                            this.pushFollow(Nvp1Parser.FOLLOW_rule_Attr_in_rule_Attrs718);
+                            this.pushFollow(Nvp1Parser.FOLLOW_rule_Attr_in_rule_Attrs713);
                             attrs=this.rule_Attr();
 
                             this.state._fsp--;
@@ -2616,7 +2583,7 @@ org.antlr.lang.augmentObject(Nvp1Parser.prototype, {
                             break;
 
                         default :
-                            break loop34;
+                            break loop33;
                         }
                     } while (true);
 
@@ -2626,9 +2593,9 @@ org.antlr.lang.augmentObject(Nvp1Parser.prototype, {
 
             }
 
-            char_literal61=this.match(this.input,24,Nvp1Parser.FOLLOW_24_in_rule_Attrs724); 
-            char_literal61_tree = this.adaptor.create(char_literal61);
-            this.adaptor.addChild(root_0, char_literal61_tree);
+            char_literal59=this.match(this.input,24,Nvp1Parser.FOLLOW_24_in_rule_Attrs719); 
+            char_literal59_tree = this.adaptor.create(char_literal59);
+            this.adaptor.addChild(root_0, char_literal59_tree);
 
 
 
@@ -2664,7 +2631,7 @@ org.antlr.lang.augmentObject(Nvp1Parser.prototype, {
         return;
     })(),
 
-    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:169:1: rule_AttrSpecs : '(' (attrs+= rule_AttrSpec ( ',' attrs+= rule_AttrSpec )* )? ')' ;
+    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:171:1: rule_AttrSpecs : '(' (attrs+= rule_AttrSpec ( ',' attrs+= rule_AttrSpec )* )? ')' ;
     // $ANTLR start "rule_AttrSpecs"
     rule_AttrSpecs: function() {
         var retval = new Nvp1Parser.rule_AttrSpecs_return();
@@ -2672,35 +2639,35 @@ org.antlr.lang.augmentObject(Nvp1Parser.prototype, {
 
         var root_0 = null;
 
+        var char_literal60 = null;
+        var char_literal61 = null;
         var char_literal62 = null;
-        var char_literal63 = null;
-        var char_literal64 = null;
         var list_attrs=null;
         var attrs = null;
+        var char_literal60_tree=null;
+        var char_literal61_tree=null;
         var char_literal62_tree=null;
-        var char_literal63_tree=null;
-        var char_literal64_tree=null;
 
         try {
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:169:15: ( '(' (attrs+= rule_AttrSpec ( ',' attrs+= rule_AttrSpec )* )? ')' )
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:170:4: '(' (attrs+= rule_AttrSpec ( ',' attrs+= rule_AttrSpec )* )? ')'
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:171:15: ( '(' (attrs+= rule_AttrSpec ( ',' attrs+= rule_AttrSpec )* )? ')' )
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:172:4: '(' (attrs+= rule_AttrSpec ( ',' attrs+= rule_AttrSpec )* )? ')'
             root_0 = this.adaptor.nil();
 
-            char_literal62=this.match(this.input,23,Nvp1Parser.FOLLOW_23_in_rule_AttrSpecs738); 
-            char_literal62_tree = this.adaptor.create(char_literal62);
-            this.adaptor.addChild(root_0, char_literal62_tree);
+            char_literal60=this.match(this.input,23,Nvp1Parser.FOLLOW_23_in_rule_AttrSpecs733); 
+            char_literal60_tree = this.adaptor.create(char_literal60);
+            this.adaptor.addChild(root_0, char_literal60_tree);
 
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:170:8: (attrs+= rule_AttrSpec ( ',' attrs+= rule_AttrSpec )* )?
-            var alt37=2;
-            var LA37_0 = this.input.LA(1);
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:172:8: (attrs+= rule_AttrSpec ( ',' attrs+= rule_AttrSpec )* )?
+            var alt36=2;
+            var LA36_0 = this.input.LA(1);
 
-            if ( (LA37_0==ID) ) {
-                alt37=1;
+            if ( (LA36_0==ID) ) {
+                alt36=1;
             }
-            switch (alt37) {
+            switch (alt36) {
                 case 1 :
-                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:170:9: attrs+= rule_AttrSpec ( ',' attrs+= rule_AttrSpec )*
-                    this.pushFollow(Nvp1Parser.FOLLOW_rule_AttrSpec_in_rule_AttrSpecs743);
+                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:172:9: attrs+= rule_AttrSpec ( ',' attrs+= rule_AttrSpec )*
+                    this.pushFollow(Nvp1Parser.FOLLOW_rule_AttrSpec_in_rule_AttrSpecs738);
                     attrs=this.rule_AttrSpec();
 
                     this.state._fsp--;
@@ -2709,25 +2676,25 @@ org.antlr.lang.augmentObject(Nvp1Parser.prototype, {
                     if (org.antlr.lang.isNull(list_attrs)) list_attrs = [];
                     list_attrs.push(attrs.getTree());
 
-                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:170:30: ( ',' attrs+= rule_AttrSpec )*
-                    loop36:
+                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:172:30: ( ',' attrs+= rule_AttrSpec )*
+                    loop35:
                     do {
-                        var alt36=2;
-                        var LA36_0 = this.input.LA(1);
+                        var alt35=2;
+                        var LA35_0 = this.input.LA(1);
 
-                        if ( (LA36_0==31) ) {
-                            alt36=1;
+                        if ( (LA35_0==31) ) {
+                            alt35=1;
                         }
 
 
-                        switch (alt36) {
+                        switch (alt35) {
                         case 1 :
-                            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:170:31: ',' attrs+= rule_AttrSpec
-                            char_literal63=this.match(this.input,31,Nvp1Parser.FOLLOW_31_in_rule_AttrSpecs746); 
-                            char_literal63_tree = this.adaptor.create(char_literal63);
-                            this.adaptor.addChild(root_0, char_literal63_tree);
+                            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:172:31: ',' attrs+= rule_AttrSpec
+                            char_literal61=this.match(this.input,31,Nvp1Parser.FOLLOW_31_in_rule_AttrSpecs741); 
+                            char_literal61_tree = this.adaptor.create(char_literal61);
+                            this.adaptor.addChild(root_0, char_literal61_tree);
 
-                            this.pushFollow(Nvp1Parser.FOLLOW_rule_AttrSpec_in_rule_AttrSpecs750);
+                            this.pushFollow(Nvp1Parser.FOLLOW_rule_AttrSpec_in_rule_AttrSpecs745);
                             attrs=this.rule_AttrSpec();
 
                             this.state._fsp--;
@@ -2741,7 +2708,7 @@ org.antlr.lang.augmentObject(Nvp1Parser.prototype, {
                             break;
 
                         default :
-                            break loop36;
+                            break loop35;
                         }
                     } while (true);
 
@@ -2751,9 +2718,9 @@ org.antlr.lang.augmentObject(Nvp1Parser.prototype, {
 
             }
 
-            char_literal64=this.match(this.input,24,Nvp1Parser.FOLLOW_24_in_rule_AttrSpecs756); 
-            char_literal64_tree = this.adaptor.create(char_literal64);
-            this.adaptor.addChild(root_0, char_literal64_tree);
+            char_literal62=this.match(this.input,24,Nvp1Parser.FOLLOW_24_in_rule_AttrSpecs751); 
+            char_literal62_tree = this.adaptor.create(char_literal62);
+            this.adaptor.addChild(root_0, char_literal62_tree);
 
 
 
@@ -2789,7 +2756,7 @@ org.antlr.lang.augmentObject(Nvp1Parser.prototype, {
         return;
     })(),
 
-    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:176:1: rule_Topic : '[[' name= rule_QualifiedName ( ':' t= rule_QualifiedName )? ']]' ;
+    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:178:1: rule_Topic : '[[' name= rule_QualifiedName ( ':' t= rule_QualifiedName )? ']]' ;
     // $ANTLR start "rule_Topic"
     rule_Topic: function() {
         var retval = new Nvp1Parser.rule_Topic_return();
@@ -2797,46 +2764,46 @@ org.antlr.lang.augmentObject(Nvp1Parser.prototype, {
 
         var root_0 = null;
 
+        var string_literal63 = null;
+        var char_literal64 = null;
         var string_literal65 = null;
-        var char_literal66 = null;
-        var string_literal67 = null;
          var name = null;
          var t = null;
 
+        var string_literal63_tree=null;
+        var char_literal64_tree=null;
         var string_literal65_tree=null;
-        var char_literal66_tree=null;
-        var string_literal67_tree=null;
 
         try {
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:176:11: ( '[[' name= rule_QualifiedName ( ':' t= rule_QualifiedName )? ']]' )
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:177:5: '[[' name= rule_QualifiedName ( ':' t= rule_QualifiedName )? ']]'
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:178:11: ( '[[' name= rule_QualifiedName ( ':' t= rule_QualifiedName )? ']]' )
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:179:5: '[[' name= rule_QualifiedName ( ':' t= rule_QualifiedName )? ']]'
             root_0 = this.adaptor.nil();
 
-            string_literal65=this.match(this.input,32,Nvp1Parser.FOLLOW_32_in_rule_Topic771); 
-            string_literal65_tree = this.adaptor.create(string_literal65);
-            this.adaptor.addChild(root_0, string_literal65_tree);
+            string_literal63=this.match(this.input,32,Nvp1Parser.FOLLOW_32_in_rule_Topic766); 
+            string_literal63_tree = this.adaptor.create(string_literal63);
+            this.adaptor.addChild(root_0, string_literal63_tree);
 
-            this.pushFollow(Nvp1Parser.FOLLOW_rule_QualifiedName_in_rule_Topic775);
+            this.pushFollow(Nvp1Parser.FOLLOW_rule_QualifiedName_in_rule_Topic770);
             name=this.rule_QualifiedName();
 
             this.state._fsp--;
 
             this.adaptor.addChild(root_0, name.getTree());
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:177:34: ( ':' t= rule_QualifiedName )?
-            var alt38=2;
-            var LA38_0 = this.input.LA(1);
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:179:34: ( ':' t= rule_QualifiedName )?
+            var alt37=2;
+            var LA37_0 = this.input.LA(1);
 
-            if ( (LA38_0==29) ) {
-                alt38=1;
+            if ( (LA37_0==29) ) {
+                alt37=1;
             }
-            switch (alt38) {
+            switch (alt37) {
                 case 1 :
-                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:177:35: ':' t= rule_QualifiedName
-                    char_literal66=this.match(this.input,29,Nvp1Parser.FOLLOW_29_in_rule_Topic778); 
-                    char_literal66_tree = this.adaptor.create(char_literal66);
-                    this.adaptor.addChild(root_0, char_literal66_tree);
+                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:179:35: ':' t= rule_QualifiedName
+                    char_literal64=this.match(this.input,29,Nvp1Parser.FOLLOW_29_in_rule_Topic773); 
+                    char_literal64_tree = this.adaptor.create(char_literal64);
+                    this.adaptor.addChild(root_0, char_literal64_tree);
 
-                    this.pushFollow(Nvp1Parser.FOLLOW_rule_QualifiedName_in_rule_Topic782);
+                    this.pushFollow(Nvp1Parser.FOLLOW_rule_QualifiedName_in_rule_Topic777);
                     t=this.rule_QualifiedName();
 
                     this.state._fsp--;
@@ -2848,9 +2815,9 @@ org.antlr.lang.augmentObject(Nvp1Parser.prototype, {
 
             }
 
-            string_literal67=this.match(this.input,33,Nvp1Parser.FOLLOW_33_in_rule_Topic786); 
-            string_literal67_tree = this.adaptor.create(string_literal67);
-            this.adaptor.addChild(root_0, string_literal67_tree);
+            string_literal65=this.match(this.input,33,Nvp1Parser.FOLLOW_33_in_rule_Topic781); 
+            string_literal65_tree = this.adaptor.create(string_literal65);
+            this.adaptor.addChild(root_0, string_literal65_tree);
 
 
 
@@ -2886,7 +2853,7 @@ org.antlr.lang.augmentObject(Nvp1Parser.prototype, {
         return;
     })(),
 
-    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:183:1: rule_Braq : '}' ;
+    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:185:1: rule_Braq : '}' ;
     // $ANTLR start "rule_Braq"
     rule_Braq: function() {
         var retval = new Nvp1Parser.rule_Braq_return();
@@ -2894,18 +2861,18 @@ org.antlr.lang.augmentObject(Nvp1Parser.prototype, {
 
         var root_0 = null;
 
-        var char_literal68 = null;
+        var char_literal66 = null;
 
-        var char_literal68_tree=null;
+        var char_literal66_tree=null;
 
         try {
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:183:10: ( '}' )
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:184:5: '}'
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:185:10: ( '}' )
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:186:5: '}'
             root_0 = this.adaptor.nil();
 
-            char_literal68=this.match(this.input,34,Nvp1Parser.FOLLOW_34_in_rule_Braq801); 
-            char_literal68_tree = this.adaptor.create(char_literal68);
-            this.adaptor.addChild(root_0, char_literal68_tree);
+            char_literal66=this.match(this.input,34,Nvp1Parser.FOLLOW_34_in_rule_Braq796); 
+            char_literal66_tree = this.adaptor.create(char_literal66);
+            this.adaptor.addChild(root_0, char_literal66_tree);
 
 
 
@@ -2941,7 +2908,7 @@ org.antlr.lang.augmentObject(Nvp1Parser.prototype, {
         return;
     })(),
 
-    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:193:1: rule_QualifiedNameWithWildCard : rule_QualifiedName ( '.*' )? ;
+    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:195:1: rule_QualifiedNameWithWildCard : rule_QualifiedName ( '.*' )? ;
     // $ANTLR start "rule_QualifiedNameWithWildCard"
     rule_QualifiedNameWithWildCard: function() {
         var retval = new Nvp1Parser.rule_QualifiedNameWithWildCard_return();
@@ -2949,35 +2916,35 @@ org.antlr.lang.augmentObject(Nvp1Parser.prototype, {
 
         var root_0 = null;
 
-        var string_literal70 = null;
-         var rule_QualifiedName69 = null;
+        var string_literal68 = null;
+         var rule_QualifiedName67 = null;
 
-        var string_literal70_tree=null;
+        var string_literal68_tree=null;
 
         try {
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:193:31: ( rule_QualifiedName ( '.*' )? )
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:194:5: rule_QualifiedName ( '.*' )?
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:195:31: ( rule_QualifiedName ( '.*' )? )
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:196:5: rule_QualifiedName ( '.*' )?
             root_0 = this.adaptor.nil();
 
-            this.pushFollow(Nvp1Parser.FOLLOW_rule_QualifiedName_in_rule_QualifiedNameWithWildCard819);
-            rule_QualifiedName69=this.rule_QualifiedName();
+            this.pushFollow(Nvp1Parser.FOLLOW_rule_QualifiedName_in_rule_QualifiedNameWithWildCard814);
+            rule_QualifiedName67=this.rule_QualifiedName();
 
             this.state._fsp--;
 
-            this.adaptor.addChild(root_0, rule_QualifiedName69.getTree());
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:194:24: ( '.*' )?
-            var alt39=2;
-            var LA39_0 = this.input.LA(1);
+            this.adaptor.addChild(root_0, rule_QualifiedName67.getTree());
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:196:24: ( '.*' )?
+            var alt38=2;
+            var LA38_0 = this.input.LA(1);
 
-            if ( (LA39_0==35) ) {
-                alt39=1;
+            if ( (LA38_0==35) ) {
+                alt38=1;
             }
-            switch (alt39) {
+            switch (alt38) {
                 case 1 :
-                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:194:24: '.*'
-                    string_literal70=this.match(this.input,35,Nvp1Parser.FOLLOW_35_in_rule_QualifiedNameWithWildCard821); 
-                    string_literal70_tree = this.adaptor.create(string_literal70);
-                    this.adaptor.addChild(root_0, string_literal70_tree);
+                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:196:24: '.*'
+                    string_literal68=this.match(this.input,35,Nvp1Parser.FOLLOW_35_in_rule_QualifiedNameWithWildCard816); 
+                    string_literal68_tree = this.adaptor.create(string_literal68);
+                    this.adaptor.addChild(root_0, string_literal68_tree);
 
 
 
@@ -3019,7 +2986,7 @@ org.antlr.lang.augmentObject(Nvp1Parser.prototype, {
         return;
     })(),
 
-    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:199:1: rule_QualifiedName : ID ( '.' ID )* ;
+    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:201:1: rule_QualifiedName : ID ( '.' ID )* ;
     // $ANTLR start "rule_QualifiedName"
     rule_QualifiedName: function() {
         var retval = new Nvp1Parser.rule_QualifiedName_return();
@@ -3027,51 +2994,51 @@ org.antlr.lang.augmentObject(Nvp1Parser.prototype, {
 
         var root_0 = null;
 
+        var ID69 = null;
+        var char_literal70 = null;
         var ID71 = null;
-        var char_literal72 = null;
-        var ID73 = null;
 
+        var ID69_tree=null;
+        var char_literal70_tree=null;
         var ID71_tree=null;
-        var char_literal72_tree=null;
-        var ID73_tree=null;
 
         try {
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:199:19: ( ID ( '.' ID )* )
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:200:5: ID ( '.' ID )*
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:201:19: ( ID ( '.' ID )* )
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:202:5: ID ( '.' ID )*
             root_0 = this.adaptor.nil();
 
-            ID71=this.match(this.input,ID,Nvp1Parser.FOLLOW_ID_in_rule_QualifiedName836); 
-            ID71_tree = this.adaptor.create(ID71);
-            this.adaptor.addChild(root_0, ID71_tree);
+            ID69=this.match(this.input,ID,Nvp1Parser.FOLLOW_ID_in_rule_QualifiedName831); 
+            ID69_tree = this.adaptor.create(ID69);
+            this.adaptor.addChild(root_0, ID69_tree);
 
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:200:8: ( '.' ID )*
-            loop40:
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:202:8: ( '.' ID )*
+            loop39:
             do {
-                var alt40=2;
-                var LA40_0 = this.input.LA(1);
+                var alt39=2;
+                var LA39_0 = this.input.LA(1);
 
-                if ( (LA40_0==36) ) {
-                    alt40=1;
+                if ( (LA39_0==36) ) {
+                    alt39=1;
                 }
 
 
-                switch (alt40) {
+                switch (alt39) {
                 case 1 :
-                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:200:9: '.' ID
-                    char_literal72=this.match(this.input,36,Nvp1Parser.FOLLOW_36_in_rule_QualifiedName839); 
-                    char_literal72_tree = this.adaptor.create(char_literal72);
-                    this.adaptor.addChild(root_0, char_literal72_tree);
+                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:202:9: '.' ID
+                    char_literal70=this.match(this.input,36,Nvp1Parser.FOLLOW_36_in_rule_QualifiedName834); 
+                    char_literal70_tree = this.adaptor.create(char_literal70);
+                    this.adaptor.addChild(root_0, char_literal70_tree);
 
-                    ID73=this.match(this.input,ID,Nvp1Parser.FOLLOW_ID_in_rule_QualifiedName841); 
-                    ID73_tree = this.adaptor.create(ID73);
-                    this.adaptor.addChild(root_0, ID73_tree);
+                    ID71=this.match(this.input,ID,Nvp1Parser.FOLLOW_ID_in_rule_QualifiedName836); 
+                    ID71_tree = this.adaptor.create(ID71);
+                    this.adaptor.addChild(root_0, ID71_tree);
 
 
 
                     break;
 
                 default :
-                    break loop40;
+                    break loop39;
                 }
             } while (true);
 
@@ -3109,7 +3076,7 @@ org.antlr.lang.augmentObject(Nvp1Parser.prototype, {
         return;
     })(),
 
-    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:203:1: rule_DataType : (string= 'String' | int= 'Int' | date= 'Date' );
+    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:205:1: rule_DataType : (string= 'String' | int= 'Int' | date= 'Date' );
     // $ANTLR start "rule_DataType"
     rule_DataType: function() {
         var retval = new Nvp1Parser.rule_DataType_return();
@@ -3126,31 +3093,31 @@ org.antlr.lang.augmentObject(Nvp1Parser.prototype, {
         var date_tree=null;
 
         try {
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:203:14: (string= 'String' | int= 'Int' | date= 'Date' )
-            var alt41=3;
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:205:14: (string= 'String' | int= 'Int' | date= 'Date' )
+            var alt40=3;
             switch ( this.input.LA(1) ) {
             case 37:
-                alt41=1;
+                alt40=1;
                 break;
             case 38:
-                alt41=2;
+                alt40=2;
                 break;
             case 39:
-                alt41=3;
+                alt40=3;
                 break;
             default:
                 var nvae =
-                    new org.antlr.runtime.NoViableAltException("", 41, 0, this.input);
+                    new org.antlr.runtime.NoViableAltException("", 40, 0, this.input);
 
                 throw nvae;
             }
 
-            switch (alt41) {
+            switch (alt40) {
                 case 1 :
-                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:204:2: string= 'String'
+                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:206:2: string= 'String'
                     root_0 = this.adaptor.nil();
 
-                    string=this.match(this.input,37,Nvp1Parser.FOLLOW_37_in_rule_DataType854); 
+                    string=this.match(this.input,37,Nvp1Parser.FOLLOW_37_in_rule_DataType849); 
                     string_tree = this.adaptor.create(string);
                     this.adaptor.addChild(root_0, string_tree);
 
@@ -3158,10 +3125,10 @@ org.antlr.lang.augmentObject(Nvp1Parser.prototype, {
 
                     break;
                 case 2 :
-                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:204:20: int= 'Int'
+                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:206:20: int= 'Int'
                     root_0 = this.adaptor.nil();
 
-                    int=this.match(this.input,38,Nvp1Parser.FOLLOW_38_in_rule_DataType860); 
+                    int=this.match(this.input,38,Nvp1Parser.FOLLOW_38_in_rule_DataType855); 
                     int_tree = this.adaptor.create(int);
                     this.adaptor.addChild(root_0, int_tree);
 
@@ -3169,10 +3136,10 @@ org.antlr.lang.augmentObject(Nvp1Parser.prototype, {
 
                     break;
                 case 3 :
-                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:204:32: date= 'Date'
+                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:206:32: date= 'Date'
                     root_0 = this.adaptor.nil();
 
-                    date=this.match(this.input,39,Nvp1Parser.FOLLOW_39_in_rule_DataType866); 
+                    date=this.match(this.input,39,Nvp1Parser.FOLLOW_39_in_rule_DataType861); 
                     date_tree = this.adaptor.create(date);
                     this.adaptor.addChild(root_0, date_tree);
 
@@ -3212,7 +3179,7 @@ org.antlr.lang.augmentObject(Nvp1Parser.prototype, {
         return;
     })(),
 
-    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:207:1: rule_MsgStereo : (gET= 'GET' | pOST= 'POST' | camel= 'Camel' | jS= 'JS' | java= 'Java' );
+    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:209:1: rule_MsgStereo : (gET= 'GET' | pOST= 'POST' | camel= 'Camel' | jS= 'JS' | java= 'Java' );
     // $ANTLR start "rule_MsgStereo"
     rule_MsgStereo: function() {
         var retval = new Nvp1Parser.rule_MsgStereo_return();
@@ -3233,37 +3200,37 @@ org.antlr.lang.augmentObject(Nvp1Parser.prototype, {
         var java_tree=null;
 
         try {
-            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:207:15: (gET= 'GET' | pOST= 'POST' | camel= 'Camel' | jS= 'JS' | java= 'Java' )
-            var alt42=5;
+            // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:209:15: (gET= 'GET' | pOST= 'POST' | camel= 'Camel' | jS= 'JS' | java= 'Java' )
+            var alt41=5;
             switch ( this.input.LA(1) ) {
             case 40:
-                alt42=1;
+                alt41=1;
                 break;
             case 41:
-                alt42=2;
+                alt41=2;
                 break;
             case 42:
-                alt42=3;
+                alt41=3;
                 break;
             case 43:
-                alt42=4;
+                alt41=4;
                 break;
             case 44:
-                alt42=5;
+                alt41=5;
                 break;
             default:
                 var nvae =
-                    new org.antlr.runtime.NoViableAltException("", 42, 0, this.input);
+                    new org.antlr.runtime.NoViableAltException("", 41, 0, this.input);
 
                 throw nvae;
             }
 
-            switch (alt42) {
+            switch (alt41) {
                 case 1 :
-                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:208:2: gET= 'GET'
+                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:210:2: gET= 'GET'
                     root_0 = this.adaptor.nil();
 
-                    gET=this.match(this.input,40,Nvp1Parser.FOLLOW_40_in_rule_MsgStereo877); 
+                    gET=this.match(this.input,40,Nvp1Parser.FOLLOW_40_in_rule_MsgStereo872); 
                     gET_tree = this.adaptor.create(gET);
                     this.adaptor.addChild(root_0, gET_tree);
 
@@ -3271,10 +3238,10 @@ org.antlr.lang.augmentObject(Nvp1Parser.prototype, {
 
                     break;
                 case 2 :
-                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:208:14: pOST= 'POST'
+                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:210:14: pOST= 'POST'
                     root_0 = this.adaptor.nil();
 
-                    pOST=this.match(this.input,41,Nvp1Parser.FOLLOW_41_in_rule_MsgStereo883); 
+                    pOST=this.match(this.input,41,Nvp1Parser.FOLLOW_41_in_rule_MsgStereo878); 
                     pOST_tree = this.adaptor.create(pOST);
                     this.adaptor.addChild(root_0, pOST_tree);
 
@@ -3282,10 +3249,10 @@ org.antlr.lang.augmentObject(Nvp1Parser.prototype, {
 
                     break;
                 case 3 :
-                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:208:28: camel= 'Camel'
+                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:210:28: camel= 'Camel'
                     root_0 = this.adaptor.nil();
 
-                    camel=this.match(this.input,42,Nvp1Parser.FOLLOW_42_in_rule_MsgStereo889); 
+                    camel=this.match(this.input,42,Nvp1Parser.FOLLOW_42_in_rule_MsgStereo884); 
                     camel_tree = this.adaptor.create(camel);
                     this.adaptor.addChild(root_0, camel_tree);
 
@@ -3293,10 +3260,10 @@ org.antlr.lang.augmentObject(Nvp1Parser.prototype, {
 
                     break;
                 case 4 :
-                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:208:44: jS= 'JS'
+                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:210:44: jS= 'JS'
                     root_0 = this.adaptor.nil();
 
-                    jS=this.match(this.input,43,Nvp1Parser.FOLLOW_43_in_rule_MsgStereo895); 
+                    jS=this.match(this.input,43,Nvp1Parser.FOLLOW_43_in_rule_MsgStereo890); 
                     jS_tree = this.adaptor.create(jS);
                     this.adaptor.addChild(root_0, jS_tree);
 
@@ -3304,10 +3271,10 @@ org.antlr.lang.augmentObject(Nvp1Parser.prototype, {
 
                     break;
                 case 5 :
-                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:208:54: java= 'Java'
+                    // /Users/raz/w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/Nvp1.g:210:54: java= 'Java'
                     root_0 = this.adaptor.nil();
 
-                    java=this.match(this.input,44,Nvp1Parser.FOLLOW_44_in_rule_MsgStereo901); 
+                    java=this.match(this.input,44,Nvp1Parser.FOLLOW_44_in_rule_MsgStereo896); 
                     java_tree = this.adaptor.create(java);
                     this.adaptor.addChild(root_0, java_tree);
 
@@ -3424,65 +3391,63 @@ org.antlr.lang.augmentObject(Nvp1Parser, {
     FOLLOW_rule_ExpectV_in_rule_Expect469: new org.antlr.runtime.BitSet([0x00000002, 0x00000000]),
     FOLLOW_25_in_rule_Condition484: new org.antlr.runtime.BitSet([0x00800000, 0x00000000]),
     FOLLOW_rule_AttrSpecs_in_rule_Condition488: new org.antlr.runtime.BitSet([0x00000002, 0x00000000]),
-    FOLLOW_26_in_rule_ExpectM503: new org.antlr.runtime.BitSet([0x00008000, 0x00000000]),
-    FOLLOW_15_in_rule_ExpectM506: new org.antlr.runtime.BitSet([0x00002040, 0x00000000]),
-    FOLLOW_rule_QualifiedName_in_rule_ExpectM510: new org.antlr.runtime.BitSet([0x02800020, 0x00000000]),
-    FOLLOW_rule_AttrSpecs_in_rule_ExpectM514: new org.antlr.runtime.BitSet([0x02000020, 0x00000000]),
-    FOLLOW_rule_Condition_in_rule_ExpectM521: new org.antlr.runtime.BitSet([0x00000020, 0x00000000]),
-    FOLLOW_NEWLINE_in_rule_ExpectM524: new org.antlr.runtime.BitSet([0x00000002, 0x00000000]),
-    FOLLOW_26_in_rule_ExpectV539: new org.antlr.runtime.BitSet([0x08000000, 0x00000000]),
-    FOLLOW_27_in_rule_ExpectV542: new org.antlr.runtime.BitSet([0x02002060, 0x00000000]),
-    FOLLOW_rule_AttrSpec_in_rule_ExpectV546: new org.antlr.runtime.BitSet([0x02000020, 0x00000000]),
-    FOLLOW_rule_Condition_in_rule_ExpectV553: new org.antlr.runtime.BitSet([0x00000020, 0x00000000]),
-    FOLLOW_NEWLINE_in_rule_ExpectV556: new org.antlr.runtime.BitSet([0x00000002, 0x00000000]),
-    FOLLOW_27_in_rule_Val571: new org.antlr.runtime.BitSet([0x00002040, 0x00000000]),
-    FOLLOW_rule_AttrSpec_in_rule_Val575: new org.antlr.runtime.BitSet([0x00000020, 0x00000000]),
-    FOLLOW_NEWLINE_in_rule_Val577: new org.antlr.runtime.BitSet([0x00000002, 0x00000000]),
-    FOLLOW_28_in_rule_Option592: new org.antlr.runtime.BitSet([0x00002040, 0x00000000]),
-    FOLLOW_rule_AttrSpec_in_rule_Option596: new org.antlr.runtime.BitSet([0x00000020, 0x00000000]),
-    FOLLOW_NEWLINE_in_rule_Option598: new org.antlr.runtime.BitSet([0x00000002, 0x00000000]),
-    FOLLOW_rule_QualifiedName_in_rule_AttrSpec613: new org.antlr.runtime.BitSet([0x60000002, 0x00000000]),
-    FOLLOW_29_in_rule_AttrSpec616: new org.antlr.runtime.BitSet([0x00000000, 0x000000E0]),
-    FOLLOW_rule_DataType_in_rule_AttrSpec620: new org.antlr.runtime.BitSet([0x40000002, 0x00000000]),
-    FOLLOW_30_in_rule_AttrSpec625: new org.antlr.runtime.BitSet([0x00002340, 0x00000000]),
-    FOLLOW_rule_EXPR_in_rule_AttrSpec629: new org.antlr.runtime.BitSet([0x00000002, 0x00000000]),
-    FOLLOW_ID_in_rule_Attr645: new org.antlr.runtime.BitSet([0x60000002, 0x00000000]),
-    FOLLOW_29_in_rule_Attr648: new org.antlr.runtime.BitSet([0x00000000, 0x000000E0]),
-    FOLLOW_rule_DataType_in_rule_Attr652: new org.antlr.runtime.BitSet([0x40000002, 0x00000000]),
-    FOLLOW_30_in_rule_Attr657: new org.antlr.runtime.BitSet([0x00002340, 0x00000000]),
-    FOLLOW_rule_EXPR_in_rule_Attr661: new org.antlr.runtime.BitSet([0x00000002, 0x00000000]),
-    FOLLOW_rule_QualifiedName_in_rule_EXPR677: new org.antlr.runtime.BitSet([0x00000002, 0x00000000]),
-    FOLLOW_STRING_in_rule_EXPR683: new org.antlr.runtime.BitSet([0x00000002, 0x00000000]),
-    FOLLOW_INT_in_rule_EXPR689: new org.antlr.runtime.BitSet([0x00000002, 0x00000000]),
-    FOLLOW_23_in_rule_Attrs706: new org.antlr.runtime.BitSet([0x01000040, 0x00000000]),
-    FOLLOW_rule_Attr_in_rule_Attrs711: new org.antlr.runtime.BitSet([0x81000000, 0x00000000]),
-    FOLLOW_31_in_rule_Attrs714: new org.antlr.runtime.BitSet([0x00000040, 0x00000000]),
-    FOLLOW_rule_Attr_in_rule_Attrs718: new org.antlr.runtime.BitSet([0x81000000, 0x00000000]),
-    FOLLOW_24_in_rule_Attrs724: new org.antlr.runtime.BitSet([0x00000002, 0x00000000]),
-    FOLLOW_23_in_rule_AttrSpecs738: new org.antlr.runtime.BitSet([0x01002040, 0x00000000]),
-    FOLLOW_rule_AttrSpec_in_rule_AttrSpecs743: new org.antlr.runtime.BitSet([0x81000000, 0x00000000]),
-    FOLLOW_31_in_rule_AttrSpecs746: new org.antlr.runtime.BitSet([0x00002040, 0x00000000]),
-    FOLLOW_rule_AttrSpec_in_rule_AttrSpecs750: new org.antlr.runtime.BitSet([0x81000000, 0x00000000]),
-    FOLLOW_24_in_rule_AttrSpecs756: new org.antlr.runtime.BitSet([0x00000002, 0x00000000]),
-    FOLLOW_32_in_rule_Topic771: new org.antlr.runtime.BitSet([0x00002040, 0x00000000]),
-    FOLLOW_rule_QualifiedName_in_rule_Topic775: new org.antlr.runtime.BitSet([0x20000000, 0x00000002]),
-    FOLLOW_29_in_rule_Topic778: new org.antlr.runtime.BitSet([0x00002040, 0x00000000]),
-    FOLLOW_rule_QualifiedName_in_rule_Topic782: new org.antlr.runtime.BitSet([0x00000000, 0x00000002]),
-    FOLLOW_33_in_rule_Topic786: new org.antlr.runtime.BitSet([0x00000002, 0x00000000]),
-    FOLLOW_34_in_rule_Braq801: new org.antlr.runtime.BitSet([0x00000002, 0x00000000]),
-    FOLLOW_rule_QualifiedName_in_rule_QualifiedNameWithWildCard819: new org.antlr.runtime.BitSet([0x00000002, 0x00000008]),
-    FOLLOW_35_in_rule_QualifiedNameWithWildCard821: new org.antlr.runtime.BitSet([0x00000002, 0x00000000]),
+    FOLLOW_26_in_rule_ExpectM504: new org.antlr.runtime.BitSet([0x00002040, 0x00000000]),
+    FOLLOW_rule_QualifiedName_in_rule_ExpectM509: new org.antlr.runtime.BitSet([0x02800020, 0x00000000]),
+    FOLLOW_rule_AttrSpecs_in_rule_ExpectM513: new org.antlr.runtime.BitSet([0x02000020, 0x00000000]),
+    FOLLOW_rule_Condition_in_rule_ExpectM520: new org.antlr.runtime.BitSet([0x00000020, 0x00000000]),
+    FOLLOW_NEWLINE_in_rule_ExpectM523: new org.antlr.runtime.BitSet([0x00000002, 0x00000000]),
+    FOLLOW_26_in_rule_ExpectV539: new org.antlr.runtime.BitSet([0x00800000, 0x00000000]),
+    FOLLOW_rule_AttrSpecs_in_rule_ExpectV543: new org.antlr.runtime.BitSet([0x02000020, 0x00000000]),
+    FOLLOW_rule_Condition_in_rule_ExpectV548: new org.antlr.runtime.BitSet([0x00000020, 0x00000000]),
+    FOLLOW_NEWLINE_in_rule_ExpectV551: new org.antlr.runtime.BitSet([0x00000002, 0x00000000]),
+    FOLLOW_27_in_rule_Val566: new org.antlr.runtime.BitSet([0x00002040, 0x00000000]),
+    FOLLOW_rule_AttrSpec_in_rule_Val570: new org.antlr.runtime.BitSet([0x00000020, 0x00000000]),
+    FOLLOW_NEWLINE_in_rule_Val572: new org.antlr.runtime.BitSet([0x00000002, 0x00000000]),
+    FOLLOW_28_in_rule_Option587: new org.antlr.runtime.BitSet([0x00002040, 0x00000000]),
+    FOLLOW_rule_AttrSpec_in_rule_Option591: new org.antlr.runtime.BitSet([0x00000020, 0x00000000]),
+    FOLLOW_NEWLINE_in_rule_Option593: new org.antlr.runtime.BitSet([0x00000002, 0x00000000]),
+    FOLLOW_rule_QualifiedName_in_rule_AttrSpec608: new org.antlr.runtime.BitSet([0x60000002, 0x00000000]),
+    FOLLOW_29_in_rule_AttrSpec611: new org.antlr.runtime.BitSet([0x00000000, 0x000000E0]),
+    FOLLOW_rule_DataType_in_rule_AttrSpec615: new org.antlr.runtime.BitSet([0x40000002, 0x00000000]),
+    FOLLOW_30_in_rule_AttrSpec620: new org.antlr.runtime.BitSet([0x00002340, 0x00000000]),
+    FOLLOW_rule_EXPR_in_rule_AttrSpec624: new org.antlr.runtime.BitSet([0x00000002, 0x00000000]),
+    FOLLOW_ID_in_rule_Attr640: new org.antlr.runtime.BitSet([0x60000002, 0x00000000]),
+    FOLLOW_29_in_rule_Attr643: new org.antlr.runtime.BitSet([0x00000000, 0x000000E0]),
+    FOLLOW_rule_DataType_in_rule_Attr647: new org.antlr.runtime.BitSet([0x40000002, 0x00000000]),
+    FOLLOW_30_in_rule_Attr652: new org.antlr.runtime.BitSet([0x00002340, 0x00000000]),
+    FOLLOW_rule_EXPR_in_rule_Attr656: new org.antlr.runtime.BitSet([0x00000002, 0x00000000]),
+    FOLLOW_rule_QualifiedName_in_rule_EXPR672: new org.antlr.runtime.BitSet([0x00000002, 0x00000000]),
+    FOLLOW_STRING_in_rule_EXPR678: new org.antlr.runtime.BitSet([0x00000002, 0x00000000]),
+    FOLLOW_INT_in_rule_EXPR684: new org.antlr.runtime.BitSet([0x00000002, 0x00000000]),
+    FOLLOW_23_in_rule_Attrs701: new org.antlr.runtime.BitSet([0x01000040, 0x00000000]),
+    FOLLOW_rule_Attr_in_rule_Attrs706: new org.antlr.runtime.BitSet([0x81000000, 0x00000000]),
+    FOLLOW_31_in_rule_Attrs709: new org.antlr.runtime.BitSet([0x00000040, 0x00000000]),
+    FOLLOW_rule_Attr_in_rule_Attrs713: new org.antlr.runtime.BitSet([0x81000000, 0x00000000]),
+    FOLLOW_24_in_rule_Attrs719: new org.antlr.runtime.BitSet([0x00000002, 0x00000000]),
+    FOLLOW_23_in_rule_AttrSpecs733: new org.antlr.runtime.BitSet([0x01002040, 0x00000000]),
+    FOLLOW_rule_AttrSpec_in_rule_AttrSpecs738: new org.antlr.runtime.BitSet([0x81000000, 0x00000000]),
+    FOLLOW_31_in_rule_AttrSpecs741: new org.antlr.runtime.BitSet([0x00002040, 0x00000000]),
+    FOLLOW_rule_AttrSpec_in_rule_AttrSpecs745: new org.antlr.runtime.BitSet([0x81000000, 0x00000000]),
+    FOLLOW_24_in_rule_AttrSpecs751: new org.antlr.runtime.BitSet([0x00000002, 0x00000000]),
+    FOLLOW_32_in_rule_Topic766: new org.antlr.runtime.BitSet([0x00002040, 0x00000000]),
+    FOLLOW_rule_QualifiedName_in_rule_Topic770: new org.antlr.runtime.BitSet([0x20000000, 0x00000002]),
+    FOLLOW_29_in_rule_Topic773: new org.antlr.runtime.BitSet([0x00002040, 0x00000000]),
+    FOLLOW_rule_QualifiedName_in_rule_Topic777: new org.antlr.runtime.BitSet([0x00000000, 0x00000002]),
+    FOLLOW_33_in_rule_Topic781: new org.antlr.runtime.BitSet([0x00000002, 0x00000000]),
+    FOLLOW_34_in_rule_Braq796: new org.antlr.runtime.BitSet([0x00000002, 0x00000000]),
+    FOLLOW_rule_QualifiedName_in_rule_QualifiedNameWithWildCard814: new org.antlr.runtime.BitSet([0x00000002, 0x00000008]),
+    FOLLOW_35_in_rule_QualifiedNameWithWildCard816: new org.antlr.runtime.BitSet([0x00000002, 0x00000000]),
+    FOLLOW_ID_in_rule_QualifiedName831: new org.antlr.runtime.BitSet([0x00000002, 0x00000010]),
+    FOLLOW_36_in_rule_QualifiedName834: new org.antlr.runtime.BitSet([0x00000040, 0x00000000]),
     FOLLOW_ID_in_rule_QualifiedName836: new org.antlr.runtime.BitSet([0x00000002, 0x00000010]),
-    FOLLOW_36_in_rule_QualifiedName839: new org.antlr.runtime.BitSet([0x00000040, 0x00000000]),
-    FOLLOW_ID_in_rule_QualifiedName841: new org.antlr.runtime.BitSet([0x00000002, 0x00000010]),
-    FOLLOW_37_in_rule_DataType854: new org.antlr.runtime.BitSet([0x00000002, 0x00000000]),
-    FOLLOW_38_in_rule_DataType860: new org.antlr.runtime.BitSet([0x00000002, 0x00000000]),
-    FOLLOW_39_in_rule_DataType866: new org.antlr.runtime.BitSet([0x00000002, 0x00000000]),
-    FOLLOW_40_in_rule_MsgStereo877: new org.antlr.runtime.BitSet([0x00000002, 0x00000000]),
-    FOLLOW_41_in_rule_MsgStereo883: new org.antlr.runtime.BitSet([0x00000002, 0x00000000]),
-    FOLLOW_42_in_rule_MsgStereo889: new org.antlr.runtime.BitSet([0x00000002, 0x00000000]),
-    FOLLOW_43_in_rule_MsgStereo895: new org.antlr.runtime.BitSet([0x00000002, 0x00000000]),
-    FOLLOW_44_in_rule_MsgStereo901: new org.antlr.runtime.BitSet([0x00000002, 0x00000000])
+    FOLLOW_37_in_rule_DataType849: new org.antlr.runtime.BitSet([0x00000002, 0x00000000]),
+    FOLLOW_38_in_rule_DataType855: new org.antlr.runtime.BitSet([0x00000002, 0x00000000]),
+    FOLLOW_39_in_rule_DataType861: new org.antlr.runtime.BitSet([0x00000002, 0x00000000]),
+    FOLLOW_40_in_rule_MsgStereo872: new org.antlr.runtime.BitSet([0x00000002, 0x00000000]),
+    FOLLOW_41_in_rule_MsgStereo878: new org.antlr.runtime.BitSet([0x00000002, 0x00000000]),
+    FOLLOW_42_in_rule_MsgStereo884: new org.antlr.runtime.BitSet([0x00000002, 0x00000000]),
+    FOLLOW_43_in_rule_MsgStereo890: new org.antlr.runtime.BitSet([0x00000002, 0x00000000]),
+    FOLLOW_44_in_rule_MsgStereo896: new org.antlr.runtime.BitSet([0x00000002, 0x00000000])
 });
 
 })();

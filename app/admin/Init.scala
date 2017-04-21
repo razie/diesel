@@ -1,5 +1,6 @@
 package admin
 
+import razie.wiki.model.Perm
 import model.{User, UserGroup, Users}
 import razie.Logging
 import razie.db.{RazMongo, tx}
@@ -43,14 +44,13 @@ object Init extends Logging {
         "WikiLink")
     ) RazMongo(t).drop
 
-    import model.Perm._
 
     RazMongo("Ver") += Map("ver" -> 1) // create a first ver entry
 
     val groups = List(
-      UserGroup("admin", Set(uProfile.plus, adminWiki.plus, uWiki.plus, adminDb.plus)),
-      UserGroup("Student", Set(uProfile.plus, uWiki.plus)),
-      UserGroup("Teacher", Set(uProfile.plus, uWiki.plus)))
+      UserGroup("admin", Set(Perm.uProfile.plus, Perm.adminWiki.plus, Perm.uWiki.plus, Perm.adminDb.plus)),
+      UserGroup("Student", Set(Perm.uProfile.plus, Perm.uWiki.plus)),
+      UserGroup("Teacher", Set(Perm.uProfile.plus, Perm.uWiki.plus)))
     groups map (_.create)
 
     val razie = User("razie", "Razvan", "Cojocaru", 1970, e("razie@razie.com"), e("asdf"), 'a', Set("admin"))

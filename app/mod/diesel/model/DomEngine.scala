@@ -33,17 +33,20 @@ import controllers.RazRequest
 
 import scala.concurrent.duration.Duration
 
+/** the kinds of nodes we understand */
 object AstKinds {
   final val ROOT = "root"
   final val RECEIVED = "received"
   final val SAMPLED = "sampled"
   final val GENERATED = "generated"
   final val SUBTRACE = "subtrace"
+  final val RULE = "rule"
   final val SKETCHED = "sketched"
   final val MOCKED = "mocked"
   final val TEST = "test"
 
-  def isGenerated (k:String) = GENERATED==k || SKETCHED==k || MOCKED==k
+  def isGenerated  (k:String) = GENERATED==k || SKETCHED==k || MOCKED==k
+  def shouldIgnore (k:String) = RULE==k
 }
 
 object DomState {
@@ -56,12 +59,14 @@ object DomState {
   def inProgress(s:String) = s startsWith "exec."
 }
 
+/** an application static - engine factory and cache */
 object DieselAppContext {
   private var appCtx : Option[DieselAppContext] = None
   var engMap = new mutable.HashMap[String,DomEngine]()
   var refMap = new mutable.HashMap[String,ActorRef]()
   var router : Option[ActorRef] = None
 
+  /** initialize the engine cache and actor infrastructure */
   def init (node:String="", app:String="") = {
     if(appCtx.isEmpty) appCtx = Some(new DieselAppContext(
       if(node.length > 0) node else Services.config.node,
@@ -76,6 +81,7 @@ object DieselAppContext {
     appCtx.get
   }
 
+  /** the static version - delegates to factory */
   def mkEngine(dom: RDomain, root: DomAst, settings: DomEngineSettings, pages : List[DSpec]) = {
     val eng = ctx.mkEngine(dom, root, settings, pages)
     val p = Props(new DomEngineActor(eng))
@@ -174,7 +180,8 @@ case class DomAst(
       case c:CanHtml if(html) => c.toHtml
       case x => x.toString
     }
-  }.lines.map(("  " * level) + _).mkString("\n") + moreDetails + "\n" + children.map(_.tos(level + 1, html)).mkString
+  }.lines.map(("  " * level) + _).mkString("\n") + moreDetails + "\n" +
+    children.filter(k=> !AstKinds.shouldIgnore(k.kind)).map(_.tos(level + 1, html)).mkString
 
   override def toString = tos(0, false)
   override def toHtml = tos(0, true)
@@ -192,7 +199,7 @@ case class DomAst(
       "details" -> moreDetails,
       "id" -> id,
       "status" -> status,
-      "children" -> children.map(_.toj).toList
+      "children" -> children.filter(k=> !AstKinds.shouldIgnore(k.kind)).map(_.toj).toList
     )
 
   def toJson = toj
@@ -230,10 +237,13 @@ object DomEngineSettings {
     val q = fromRequest(stok.req)
 
     // find the config tag (which configuration to use - default to userId
-    if(q.configTag.isEmpty && stok.au.isDefined) q.configTag = Some(stok.au.get._id.toString)
+    if(q.configTag.isEmpty && stok.au.isDefined)
+      q.configTag = Some(stok.au.get._id.toString)
 
     // todo should keep the original user or switch?
-    if(q.userId.isEmpty && stok.au.isDefined) q.userId = Some(stok.au.get._id.toString)
+    if(q.userId.isEmpty && stok.au.isDefined)
+      q.userId = Some(stok.au.get._id.toString)
+
     q
   }
 
@@ -368,7 +378,7 @@ class DomEngine(
   var status = DomState.INIT
   var synchronous = false
 
-  val maxLevels = 15
+  val maxLevels = 25
 
   // setup the context for this eval
   implicit val ctx = new DomEngECtx(settings).withEngine(this).withDomain(dom).withSpecs(pages)
@@ -609,11 +619,19 @@ class DomEngine(
 
         var newMsgs = ri.apply(in, spec, r.pos).collect {
           // hack: if only values then collect resulting values and dump message
-                          case x: EMsg if x.entity == "" && x.met == "" => {
-                            a.children appendAll x.attrs.map(x => DomAst(EVal(x), AstKinds.GENERATED).withSpec(r))
-                            ctx putAll x.attrs
-                            None
-                          }
+          // only for size 1 because otherwise they may be in sequence and can't be evaluated now
+          case x: EMsg if x.entity == "" && x.met == "" && r.i.size == 1 => {
+            a.children appendAll x.attrs.map(x => DomAst(EVal(x), AstKinds.GENERATED).withSpec(r))
+            ctx putAll x.attrs
+            None
+          }
+          case x: EMsg if x.entity == "" && x.met == "" && r.i.size > 1 => {
+            // can't execute now, but later
+//            a.children appendAll x.attrs.map(x => DomAst(EVal(x), AstKinds.GENERATED).withSpec(r))
+//            ctx putAll x.attrs
+            //            None
+            Some(DomAst(ENext(x, "=>"), AstKinds.GENERATED).withSpec(r))
+          }
           // else collect message
           case x: EMsg => {
             Some(DomAst(x, AstKinds.GENERATED).withSpec(r))
@@ -624,12 +642,18 @@ class DomEngine(
         }.filter(_.isDefined)
 
         // if multiple results from a single map, default to sequence, i.e. make them dependent
-        newMsgs.drop(1).foldLeft(newMsgs.headOption.flatMap(identity))((a,b)=> {
-          Some(b.get.withPrereq(List(a.get.id)))
-        })
+//        newMsgs.drop(1).foldLeft(newMsgs.headOption.flatMap(identity))((a,b)=> {
+//          Some(b.get.withPrereq(List(a.get.id)))
+//        })
 
         result = result ::: newMsgs.flatMap(_.toList)
       }
+      // if multiple results from a single map, default to sequence, i.e. make them dependent
+      if(result.size > 1) result.drop(1).foldLeft(result.head)((a,b)=> {
+        b.withPrereq(List(a.id))
+      })
+      else result
+
       result
     }
 
@@ -656,7 +680,23 @@ class DomEngine(
         ctx putAll x.attrs
       }
 
-      case n: EMsg => {
+      case in: EMsg => {
+
+        // if the message attrs were expressions, calculate their values
+        val n: EMsg = in.copy(
+          attrs = in.attrs.map {p=>
+            p.copy(
+              // only if not already calculated =likely in a different context=
+              dflt = if(p.dflt.nonEmpty) p.dflt else p.expr.map(_.apply("").toString).getOrElse(p.dflt),
+              ttype = if(p.ttype.nonEmpty) p.ttype else p.expr match {
+                case Some(CExpr(_, "String")) => "String"
+                case Some(CExpr(_, "Number")) => "Number"
+                case _ => p.ttype
+              }
+            )
+          }
+        )
+
         // 1. look for mocks
         var mocked = false
 
@@ -669,17 +709,6 @@ class DomEngine(
             // plus mocks from spec dom
             case m: EMock if m.rule.e.test(n) && a.children.isEmpty => {
               mocked = true
-
-              if(false) {
-                var newMsgs = m.rule.i.flatMap(_.apply(n, None, m.pos)).collect {
-                  // mocks onl generate values, not messages
-                  // collect resulting values and dump message
-                  case x: EMsg => {
-                    a.children appendAll x.attrs.map(x => DomAst(EVal(x).withPos(m.pos), AstKinds.MOCKED).withSpec(m))
-                    ctx putAll x.attrs
-                  }
-                }
-              }
 
               // run the mock
               newNodes = newNodes ::: runRule(n, m.rule)
@@ -712,7 +741,16 @@ class DomEngine(
             mocked = true
 
             val news = try {
-              r.apply(n, None)(new StaticECtx(n.attrs, Some(ctx), Some(a))).map(x =>
+              val xx = r.apply(n, None)(new StaticECtx(n.attrs, Some(ctx), Some(a)))
+                xx.collect{
+//              r.apply(n, None)(new StaticECtx(n.attrs, Some(ctx), Some(a))).collect{
+                // collect resulting values in the context as well
+                case v@EVal(p) => {
+                  ctx.put(p)
+                  v
+                }
+                case e@_ => e
+              }.map(x =>
                 DomAst(x,
                   (if (x.isInstanceOf[DieselTrace]) AstKinds.SUBTRACE
                   else AstKinds.GENERATED)
@@ -749,7 +787,6 @@ class DomEngine(
           // sketch values
           (collectValues {
             case x: ExpectV if x.when.exists(_.test(n)) => x
-            //            case x:ExpectV => x // expectV have no criteria
           }).map { e =>
             val news = e.sketch(None).map(x => EVal(x)).map(x => DomAst(x, AstKinds.SKETCHED).withSpec(e))
             mocked = true
@@ -806,19 +843,15 @@ class DomEngine(
 
           // did some rules succeed?
           if (a.children.isEmpty) {
-            //            if(! settings.sketchMode) {
             // oops - add test failure
             a.children append DomAst(
               TestResult(
                 "fail",
-                label("found", "danger") + " " + cole.highestMatching.map(_.diffs.values.map(_._1).toList.map(x => s"""<span style="color:red">$x</span>""").mkString(",")).mkString),
-              "test"
+                label("found", "warning") + " " +
+                  cole.highestMatching.map(_.diffs.values.map(_._1).toList.map(x => s"""<span style="color:red">$x</span>""").mkString(",")).mkString
+              ),
+              AstKinds.TEST
             ).withSpec(e)
-            //            } else {
-            //               or... fake it, sketch it
-            //              todo should i add the test as a warning?
-            //              a.children appendAll e.sketch(None).map(x => DomAst(x, AstKinds.GENERATED).withSpec(e))
-            //            }
           }
         }
       }
@@ -827,33 +860,63 @@ class DomEngine(
         val cole = new MatchCollector()
 
         // identify sub-trees that it applies to
-        val targets = if (e.when.isDefined) {
+        val subtrees = if (e.when.isDefined) {
           // find generated messages that should be tested
           root.collect {
             case d@DomAst(n: EMsg, k, _, _) if e.when.exists(_.test(n)) => d
           }
         } else List(root)
 
-        if (targets.size > 0) {
+        if (subtrees.size > 0) {
           // todo look at all possible targets - will need to create a matchCollector per etc
-          val vals = targets.flatMap(_.collect {
-            case d@DomAst(n: EVal, k, _, _) if AstKinds.isGenerated(k) => n.p
+          val vals = subtrees.flatMap(_.collect {
+            case d@DomAst(n: EVal, k, _, _) if AstKinds.isGenerated(k) => d
           })
 
           // test each generated value
-          if (e.test(vals, Some(cole)))
+          if (e.test(vals.map(_.value.asInstanceOf[EVal].p), Some(cole), vals))
             a.children append DomAst(TestResult("ok"), AstKinds.TEST).withSpec(e)
+
+          cole.done
 
           // did some rules succeed?
           if (a.children.isEmpty) {
             // oops - add test failure
-            //          if(! settings.sketchMode) {
-            a.children append DomAst(TestResult("fail"), AstKinds.TEST).withSpec(e)
-            //          } else {
-            // or... fake it, sketch it
-            //todo should i add the test as a warning?
-            //            a.children appendAll e.sketch(None).map(x=>EVal(x)).map(x => DomAst(x, "generated.sketched").withSpec(e))
-            //          }
+            a.children append DomAst(
+              TestResult(
+                "fail",
+                  cole.highestMatching.map(_.diffs.values.map(_._1).toList.map(x => s"""<span style="color:red">$x</span>""").mkString(",")).mkString
+              ),
+              AstKinds.TEST
+            ).withSpec(e)
+          }
+
+          // if it matched some name then highlight it there
+          // any match means a name matched ?
+          if (cole.highestMatching.exists(c =>
+            c.score >= 0 &&
+              c.diffs.values.nonEmpty &&
+              c.x.isInstanceOf[DomAst] &&
+              c.x.asInstanceOf[DomAst].value.isInstanceOf[EVal]
+          )) {
+            val c = cole.highestMatching.get
+            val d = c.x.asInstanceOf[DomAst]
+            val m = d.value.asInstanceOf[EVal]
+            val s = c.diffs.values.map(_._2).toList.map(x => s"""<span style="color:red">$x</span>""").mkString(",")
+            d.moreDetails = d.moreDetails + label("expected", "danger") + " " + s
+          }
+
+          // did some rules succeed?
+          if (a.children.isEmpty) {
+            // oops - add test failure
+            a.children append DomAst(
+              TestResult(
+                "fail",
+                label("found", "warning") + " " +
+                  cole.highestMatching.map(_.diffs.values.map(_._1).toList.map(x => s"""<span style="color:red">$x</span>""").mkString(",")).mkString
+              ),
+              AstKinds.TEST
+            ).withSpec(e)
           }
         }
       }

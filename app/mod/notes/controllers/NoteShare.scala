@@ -3,7 +3,7 @@ package mod.notes.controllers
 import com.mongodb.casbah.Imports.wrapDBObj
 import com.novus.salat.grater
 import mod.notes.controllers
-import model.{Perm, User, Users}
+import model.{User, Users}
 import org.bson.types.ObjectId
 import org.joda.time.DateTime
 import play.api.mvc._

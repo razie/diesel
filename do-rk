@@ -1,0 +1,23 @@
+rm -f RUNNING_PID
+RK=~/w/racerkidz
+
+#p compile package dist
+rm -rf $RK/target/universal/racerkidz-0.9.1-SNAPSHOT
+unzip -d $RK/target/universal target/universal/racerkidz-0.9.1-SNAPSHOT.zip >/dev/null
+
+
+# T=$RK/target/universal/racerkidz-0.9.1-SNAPSHOT/lib
+
+printf "\n\n#################### building image now...\n\n"
+printf ".."
+
+cd $RK/docker/rk
+
+rm -rf dist
+cp -r $RK/target/universal/racerkidz-0.9.1-SNAPSHOT .
+mv racerkidz-0.9.1-SNAPSHOT dist
+
+docker build -t raz-diesel .
+
+cd $RK
+

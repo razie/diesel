@@ -1,7 +1,6 @@
 package controllers
 
 import admin.Config
-import model.Perm
 import model.User
 import model.Users
 import play.api.data.Form
@@ -17,8 +16,10 @@ import play.api.mvc.Result
 import java.lang.management.OperatingSystemMXBean
 import java.lang.management.ManagementFactory
 import java.lang.reflect.Modifier
+
 import model.WikiScripster
 import omp._
+import razie.wiki.model.Perm
 
 object OmpCtrl extends RazController {
 
