@@ -8,36 +8,24 @@ package controllers
 
 import com.google.inject._
 import mod.snow._
-import model.{User, Users, Website}
-import razie.base.Audit
-import razie.wiki.{Enc, Services}
-import razie.wiki.admin.SendEmail
-
-import scala.Array.canBuildFrom
+import model.{User, Users}
 import org.joda.time.DateTime
-import com.mongodb.DBObject
 import play.api.Configuration
-import razie.db._
-import razie.db.RazSalatContext.ctx
-import razie.wiki.Sec.EncryptedS
 import play.api.data.Form
-import play.api.data.Forms.mapping
-import play.api.data.Forms.nonEmptyText
-import play.api.data.Forms.text
-import play.api.data.Forms.tuple
-import play.api.mvc.{Action, AnyContent, Request}
-import razie.{Logging, clog, cout}
+import play.api.data.Forms.{mapping, nonEmptyText, text}
+import play.api.mvc.{Action, Request}
+import razie.base.Audit
+import razie.db._
+import razie.wiki.Sec.EncryptedS
 import razie.wiki.model._
+import razie.wiki.{Enc, Services}
 
-
+/** controller for link ops */
 @Singleton
 class Wikil @Inject() (config:Configuration) extends WikieBase {
 
-  import Visibility._
-  import Wikil.{FollowerLinkWiki}
-  import Wikil.{hows, ilinkAccept, createLinkedUser}
-
-  implicit def obtob(o: Option[Boolean]): Boolean = o.exists(_ == true)
+  // import from companion object
+  import Wikil.{FollowerLinkWiki, hows, ilinkAccept}
 
   def followerLinkForm(implicit request: Request[_]) = Form {
     mapping(
@@ -484,7 +472,7 @@ object Wikil extends WikieBase {
     if (giveQuota && !user.quota.updates.exists(_ > 10))
       user.quota.reset(50)
 
-    Emailer.withSession(club.wid.realm.flatMap(Website.forRealm).map(_.label)) { implicit mailSession =>
+    Emailer.withSession(club.wid.getRealm) { implicit mailSession =>
       Emailer.sendEmailLinkOk(user, club.userName, club.msgWelcome)
       Emailer.tellRaz("User joined club", "Club: " + club.wid.wpath, "Role: " + how, s"User: ${user.firstName} ${user.lastName} (${user.userName} ${user.email.dec}")
       (Wikil.moderatorOf(club.wid).toList :::

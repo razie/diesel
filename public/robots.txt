@@ -18,4 +18,5 @@ Disallow: /admin/
 Disallow: /sfiddle/
 Disallow: /diesel/
 Disallow: /weapi/
+Disallow: /react/
 

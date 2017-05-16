@@ -1,0 +1,37 @@
+@**************
+just the actual list, nothing else
+**************@
+@(search:String, realm:String, curTags:String, pages:List[(razie.wiki.model.WID, String)])(implicit stok: controllers.StateOk)
+@import razie.wiki.model._
+
+@highlight(s:String)={
+  @if(search.length>1) {
+    @Html(s.replaceAll(s"(?i)(${search.replaceAllLiterally("{", "\\{")})", "<b>$1</b>"))
+  } else {
+    @s
+  }
+}
+
+@label(s:String, wid:WID) = @{if(s.isEmpty) wid.name else s}
+
+<table id="wlist" class="table table-condensed">
+  <thead>
+    <tr><td>Name</td><td>Category</td></tr>
+  </thead>
+  @pages.map{p=>
+    <tr>
+      <td>
+        <a href="@controllers.Wiki.w(p._1.cat, p._1.name, stok.realm)">@label(p._2, p._1)</a>
+      </td>
+      <td>
+        <small>&nbsp;  @p._1.cat</small>
+      </td>
+      @*<td>*@
+        @*<small><span title="wordcount"> @p.wordCount </span> </small>*@
+      @*</td>*@
+    </tr>
+  }
+</table>
+
+@util.dataTables("wlist")
+

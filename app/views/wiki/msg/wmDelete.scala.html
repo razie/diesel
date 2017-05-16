@@ -15,7 +15,7 @@ fragment: add more stuff to the current topic, including children, sub-topics et
   DELETE forever <b>@uwid.wid.get.wpath</b> - are you sure? TODO Wikientry.parent==me etc
 
   <small>
-  @defining(RMany[WikiLink]("to" -> uwid.grated)) { x =>
+  @defining(RMany[WikiLink]("to.id" -> uwid.id)) { x =>
 Links from others :
     @if(x.isEmpty) { None } else {
 <ul>
@@ -28,7 +28,7 @@ Links from others :
   </small>
 
   <small>
-  @defining(RMany[WikiLink]("from" -> uwid.grated)) { x =>
+  @defining(RMany[WikiLink]("from.id" -> uwid.id)) { x =>
 <p>Links to others :
       @if(x.isEmpty) { None} else {
 <ul>
@@ -70,7 +70,7 @@ Links from others :
   }
   </small>
 } else {
-  @defining(RMany[WikiLink]("to" -> uwid.grated, "how" -> "Child")) { x =>
+  @defining(RMany[WikiLink]("to.id" -> uwid.id, "how" -> "Child")) { x =>
 @if(x.isEmpty) {
 No children
 } else {

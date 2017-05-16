@@ -12,15 +12,17 @@ import com.mongodb.casbah.Imports._
 import com.mongodb.DBObject
 import com.novus.salat._
 import mod.diesel.model.DomAst
+import mod.diesel.model.RDExt.EError
 import org.joda.time.DateTime
 import razie.diesel.dom._
 import razie.diesel.dom.RDOM._
 import razie.diesel._
-import razie.js
+import razie.{clog, js}
 
 import scala.Option.option2Iterable
 import scala.collection.mutable
 import scala.collection.mutable.{HashMap, ListBuffer}
+import scala.util.Try
 
 /** an applicable - can execute a message */
 trait EApplicable {
@@ -150,14 +152,23 @@ case class EMap(cls: String, met: String, attrs: Attrs, arrow:String="=>", cond:
   var count = 0;
 
   def apply(in: EMsg, destSpec: Option[EMsg], pos:Option[EPos])(implicit ctx: ECtx): List[Any] = {
-    var e = EMsg("generated", cls, met, sourceAttrs(in, attrs, destSpec.map(_.attrs)))
-    e.pos = pos
-    e.spec = destSpec
+    var e = Try {
+      val m = EMsg("generated", cls, met, sourceAttrs(in, attrs, destSpec.map(_.attrs))).
+        withPos(pos).
+        withSpec(destSpec)
+
+      if(arrow == "==>" || cond.isDefined)
+        ENext(m, arrow, cond)
+      else m
+    }.recover {
+      case t:Throwable => {
+        razie.Log.log("trying to source message", t)
+        EError(t.getMessage, t.toString)
+      }
+    }.get
     count += 1
 
-    if(arrow == "==>" || cond.isDefined)
-      List(ENext(e, arrow, cond))
-    else List(e)
+    List(e)
   }
 
   def sourceAttrs(in: EMsg, spec: Attrs, destSpec: Option[Attrs])(implicit ctx: ECtx) = {
@@ -166,7 +177,7 @@ case class EMap(cls: String, met: String, attrs: Attrs, arrow:String="=>", cond:
 
     // solve an expression
     def expr(p: P) = {
-      p.expr.map(_.apply("")(myCtx).toString).getOrElse{
+      p.expr.map(_.apply("")(myCtx)/*.toString*/).getOrElse{
         val s = p.dflt
         s
         //          if (s.matches("[0-9]+")) s // num
@@ -184,7 +195,13 @@ case class EMap(cls: String, met: String, attrs: Attrs, arrow:String="=>", cond:
         ).getOrElse(
           "" // todo or somehow mark a missing parm?
         )
-      p.copy(dflt = v)
+
+      val tt =
+        if (p.ttype.isEmpty && !p.expr.exists(_.getType != "") && v.isInstanceOf[Int]) WTypes.NUMBER
+        else if (p.ttype.isEmpty) p.expr.map(_.getType).mkString
+        else p.ttype
+
+      p.copy(dflt = v.toString, ttype=tt)
     } else if (destSpec.exists(_.nonEmpty)) destSpec.get.map { p =>
       // when defaulting to spec, order changes
       val v = in.attrs.find(_.name == p.name).map(_.dflt).orElse(
@@ -192,7 +209,8 @@ case class EMap(cls: String, met: String, attrs: Attrs, arrow:String="=>", cond:
       ).getOrElse(
         expr(p)
       )
-      p.copy(dflt = v, expr=None)
+      val tt = if(p.ttype.isEmpty && v.isInstanceOf[Int]) WTypes.NUMBER else ""
+      p.copy(dflt = v.toString, expr=None, ttype=tt)
     } else {
       // if no map rules and no spec, then just copy/propagate all parms
       in.attrs.map {a=>
@@ -246,6 +264,7 @@ case class EMsg(arch:String, entity: String, met: String, attrs: List[RDOM.P], r
   var spec: Option[EMsg] = None
   var pos : Option[EPos] = None
   def withPos(p:Option[EPos]) = {this.pos = p; this}
+  def withSpec(p:Option[EMsg]) = {this.spec = p; this}
 
   def toj =
     Map (
@@ -279,27 +298,36 @@ case class EMsg(arch:String, entity: String, met: String, attrs: List[RDOM.P], r
     kspan("msg:", resolved, spec.flatMap(_.pos)) + span(stype, "info")
   )
 
-  /** color - if has executor */
-  private def resolved: String = spec.map(_.resolved).getOrElse(
-    if ((stype contains "GET") || (stype contains "POST") ||
-      Executors.all.exists(_.test(this)(ECtx.empty))
-    ) "default"
-    else "warning"
+  /** if has executor */
+  def hasExecutor:Boolean = Executors.all.exists(_.test(this)(ECtx.empty))
+
+  def isResolved:Boolean = if(spec.exists(_.isResolved)) true else (
+    if ((stype contains "GET") || (stype contains "POST") || hasExecutor ) true
+    else false
   )
+
+  /** color - if has executor */
+  private def resolved: String = if(isResolved) "default" else "warning"
 
   /** extract a match from this message signature */
   def asMatch = EMatch(entity, met, attrs.filter(_.dflt != "").map {p=>
     PM (p.name, p.ttype, p.ref, p.multi, "==", p.dflt)
   })
 
+  /** this html works well in a diesel fiddle, use toHtmlInPage elsewhere */
   override def toHtml = {
   /*span(arch+"::")+*/first + s""" ${ea(entity,met)} """ + toHtmlAttrs(attrs)
   }
 
+  /** as opposed to toHtml, this will produce an html that can be displayed in any page, not just the fiddle */
   def toHtmlInPage = hrefBtn2+hrefBtn1 + toHtml.replaceAllLiterally("weref", "wefiddle")
 
-  def hrefBtn2 = s"""<a href="${url2("")}" class="btn btn-xs btn-primary"><span class="glyphicon glyphicon-link"></span></a>"""
-  def hrefBtn1 = s"""<a href="${url1("")}" class="btn btn-xs btn-info"><span class="glyphicon glyphicon-th-list"></span></a>"""
+  def hrefBtn2 =
+    s"""<a href="${url2("")}" class="btn btn-xs btn-primary" title="global link">
+       |<span class="glyphicon glyphicon glyphicon-th-list"></span></a>""".stripMargin
+  def hrefBtn1 =
+    s"""<a href="${url1("")}" class="btn btn-xs btn-info"    title="local link in this topic">
+       |<span class="glyphicon glyphicon-list-alt"></span></a>""".stripMargin
 
   override def toString =
     s""" $entity.$met (${attrs.mkString(", ")})"""
@@ -312,7 +340,7 @@ case class EMsg(arch:String, entity: String, met: String, attrs: List[RDOM.P], r
 
   // local invocation url
   def url1 (section:String="", resultMode:String="value") = {
-    var x = s"""/diesel/wiki/${pos.map(_.wpath).mkString}/react/$entity/$met?${attrsToUrl(attrs)}"""
+    var x = s"""/diesel/wreact/${pos.map(_.wpath).mkString}/react/$entity/$met?${attrsToUrl(attrs)}"""
     if (x.endsWith("&") || x.endsWith("?")) ""
     else if (x contains "?") x = x + "&"
     else x = x + "?"

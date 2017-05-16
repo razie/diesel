@@ -6,14 +6,10 @@
  */
 package model
 
-import mod.diesel.model.parser.WikiDomainParser
-import play.api.mvc.Request
-import razie.wiki.WikiConfig
-import razie.wiki.parser.WikiParserNotes
-import razie.wiki.parser.WikiParserT
-import razie.wiki.model._
+import mod.diesel.model.parser.WikiDomParser
 import razie.wiki.dom.WikiDomain
-import razie.wiki.util.PlayTools
+import razie.wiki.model._
+import razie.wiki.parser.{WikiParserNotes, WikiParserT}
 
 /** use custom rk parser for wikis */
 class RkReactor (realm:String, fallBacks:List[Reactor], we:Option[WikiEntry]) extends Reactor (realm, Nil, we) {
@@ -25,7 +21,7 @@ class RkReactor (realm:String, fallBacks:List[Reactor], we:Option[WikiEntry]) ex
 class RkWikiInst(realm:String, fallBacks:List[WikiInst]) extends WikiInst(realm, fallBacks) {
   class WikiParserCls(val realm:String) extends WikiParserT
   with WikiDslParser with WikiCodeParser with WikiAdParser
-  with WikiDomainParser with WikiParserNotes with WikiDarkParser{
+  with WikiDomParser with WikiParserNotes with WikiDarkParser{
     withWikiProp(adWikiProps)
     withWikiProp(codeWikiProps)
     withWikiProp(dslWikiProps)

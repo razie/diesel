@@ -396,7 +396,7 @@ object RacerKidz {
   def rmHistory(id:ObjectId, role:String="post")(implicit txn:Txn) : Unit ={
     val c = RMany[RkHistory]("eId"->id, "role"->role).size
     RDelete[RkHistory]("eId"->id, "role"->role)
-    Audit.logdb("ENTITY_DELETE", s"$c RkHistory DELETED")
+    if(c > 0) Audit.logdb("ENTITY_DELETE", s"$c RkHistory DELETED")
   }
 
   final val JoeDoe = RacerKidInfo("Joe", "Doe", "", DateTime.parse("2000-01-15"), "M", Set.empty, RK.STATUS_ACTIVE, false, RK.noid, RK.noid)

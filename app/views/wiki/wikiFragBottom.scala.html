@@ -33,6 +33,8 @@ wiki fragment, used in another page
   if(u startsWith "http") u else s"http://${Services.config.hostport}$u"
 }
 
+<!-- debug simple=@simple print=@print isSite=@isSite canEdit=@canEdit -->
+
 @if(!simple && !print) {
   <div id="wikiBy">
     <small>
@@ -112,6 +114,10 @@ wiki fragment, used in another page
     @page.flatMap(x => WikiCount.findOne(x._id)).map { pw =>
       <p><small>Viewed <strong>@pw.count</strong> times</small>
     }
+
+<!-- debug errCollector:
+@stok.errCollector.mkString
+-->
     <small>
       (
       @if(canEdit || stok.au.exists(_.hasPerm(Perm.adminDb))) {
@@ -151,13 +157,13 @@ wiki fragment, used in another page
             }
 
             @if(isLinked && we.parent.isDefined) {
-              | <a href="@routes.Wikie.wikieMove1(we._id.toString)">@wid.label("Move", "Move")</a>
+              | <a href="@routes.WikieDebug.wikieMove1(we._id.toString)">@wid.label("Move", "Move")</a>
             }
 
             @if(we.isOwner(stok.au.get.id) || stok.au.exists(_.hasPerm(Perm.adminDb)) ||
                 we.owner.exists(o => o.asInstanceOf[model.User].isClub &&
                     Club.findForUser(o.asInstanceOf[model.User]).flatMap(_.uregAdmin).exists(_._id == stok.au.get._id))) {
-              | <a href="@routes.Wikie.manage(we._id.toString)">Manage</a>
+              | <a href="@routes.WikieDebug.manage(we._id.toString)">Manage</a>
             }
           }
         }
@@ -182,7 +188,7 @@ wiki fragment, used in another page
           <br>You cannot edit categories.
         }
         case _ => {
-          <br>This content is Copyrighted, all rights reserved.
+      @*<br>*@
         }
       }
       </div>

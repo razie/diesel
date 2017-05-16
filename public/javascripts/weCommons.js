@@ -180,3 +180,32 @@ function weIsBrowser() {
   return getCookie(weBrowserStorage) === "true";
 }
 
+//==================== fiddles
+
+/** this works from anywhere, to open the fiddle on an element */
+function wefiddle(wpath,line,col) {
+  if(wpath.includes("Spec:")) {
+    window.location.href='/diesel/fiddle/playDom'+'?line='+line+'&col='+col+'&spec='+wpath
+  } else if(wpath.includes("Story:")) {
+    window.location.href='/diesel/fiddle/playDom'+'?line='+line+'&col='+col+'&story='+wpath
+  }
+}
+
+/** add something after page loaded */
+function weOnLoad (f) {
+  if (window.addEventListener) {
+    window.addEventListener('load', f, false);
+  } else if (window.attachEvent)
+    window.attachEvent('onload', f);
+}
+
+
+//======================== widgets
+
+function weButton(b) {
+  var u = $(b).attr('href');
+  if(typeof u != 'undefined') window.location=u;
+  return false;
+}
+
+

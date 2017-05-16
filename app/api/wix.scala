@@ -37,6 +37,15 @@ class wix (owe: Option[WikiEntry], ou:Option[WikiUser], q:Map[String,String], r:
   }
 
   def ownedPages(realm:String, cat:String) = utils.wikiList(iuser.toList.flatMap(_.ownedPages(realm, cat)))
+  def ownedReactors(realm:String) = {
+    val wids = iuser.toList.flatMap(_.ownedPages(realm, "Reactor"))
+    if(wids.isEmpty) "<em>None</em>"
+    else
+      wids.map(r=>(r, Wikis(r.name).count))
+        .sortWith(_._2 > _._2)
+        .map(t=> s"""<a href="/wikie/switchRealm/${t._1.name}">${t._1.name}</a>""")
+        .mkString("", " <b>|</b> ", "")
+  }
 
   val user = new {
     def userName = iuser.get.userName
@@ -156,6 +165,7 @@ object wix {
 class WixUtils(w:wix) {
   def countRealmPages() = Wikis(w.realm.name).count
   def countForms() = wix.utils.countForms()
-  def wikiList(wids:List[WID]) = "<ul>"+wids.map(x=> "<li>"+ x.ahrefRelative() + "</li>").mkString("") + "</ul>"
+  def wikiList(wids:List[WID]) =
+    if(wids.isEmpty) "<em>None</em>" else "<ul>"+wids.map(x=> "<li>"+ x.ahrefRelative() + "</li>").mkString("") + "</ul>"
 }
 

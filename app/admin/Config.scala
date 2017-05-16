@@ -23,17 +23,14 @@ object Config extends WikiConfig {
   var isimulateHost = {
     //      "www.snowproapp.com"
 //      "www.racerkidz.com"    // for testing locally
-    //  "www.effectiveskiing.com"    // for testing locally
+//      "www.effectiveskiing.com"    // for testing locally
     "specs.dieselapps.com"    // for testing locally
-//        "www.dieselapps.com"    // for testing locally
+//    "www.dieselapps.com"    // for testing locally
 //    "wiki.dieselapps.com"    // for testing locally
 //    "catsim.dieselapps.com"    // for testing locally
-//    "www.coolscala.com"    // for testing locally
 //    "www.enduroschool.com"    // for testing locally
-//    "www.askicoach.com"    // for testing locally
 //    "www.glacierskiclub.com"    // for testing locally
 //    "notes.razie.com"    // for testing locally
-//    "www.dieselreactor.net"    // for testing locally
 //    "gsc.dieselapps.com"    // for testing locally
 //    "c52.dieselapps.com"    // for testing locally
   }

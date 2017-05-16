@@ -73,7 +73,7 @@ class WikiAsyncObservers extends Actor {
     }
 
     case EventNeedsQuota(s1, s2, _) =>
-      SendEmail.withSession { implicit mailSession =>
+      SendEmail.withSession("rk") { implicit mailSession =>
         Emailer.sendEmailNeedQuota(s1, s2)
       }
 

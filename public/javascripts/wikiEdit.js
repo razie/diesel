@@ -40,8 +40,10 @@ function preProcess(s) {
 
   var bottom = "";
 
-  if (s.match(/\{\{code/) || s.match(/```/))
+  if (s.match(/\{\{code/) || s.match(/```/)) {
     bottom = bottom + '<script src="/assets/vendor/hijs.js"></script>';
+    bottom = bottom + '<script src="/assets/vendor/hiscala.js"></script>';
+  }
 
   // [\s\S]*  matches anything across multi lines (including \n)
   // [\s\S]*? makes it non-greedy (so won't match and group 5 blocks into one

@@ -320,7 +320,7 @@ object NotesLocker extends RazController with Logging {
                   Services ! WikiAudit("CREATE_NOTE", we.wid.wpath, Some(au._id))
 
                   process(we)
-                  SendEmail.withSession { implicit mailSession =>
+                  SendEmail.withSession(("notes")) { implicit mailSession =>
                     au.quota.incUpdates
                     au.shouldEmailParent("Everything").map(parent => Emailer.sendEmailChildUpdatedWiki(parent, au, wid)) // ::: notifyFollowers (we)
                     //          if (notif == "Notify") notifyFollowersCreate(we, au)
@@ -395,7 +395,7 @@ object NotesLocker extends RazController with Logging {
                 nc.uId.map {uid=>
                   Inbox(uid, au._id, "Circle", Some(we._id), "Added to a circle", "", "u").create(tx.local("notes.inbox", "?"))
                 }
-                SendEmail.withSession { implicit mailSession =>
+                SendEmail.withSession(("notes")) { implicit mailSession =>
                   Emailer.circled(au.ename, nc.email, nc.nick, s"/note/id/${we._id}")
                 }
               }
@@ -409,7 +409,7 @@ object NotesLocker extends RazController with Logging {
                 if(ROne[NoteShare]("noteId"->we._id, "toId"->nc.uId.get).isEmpty) tx("notes.inbox", au.userName) {implicit txn=>
                   NoteShare(we._id, nc.uId.get, au._id).create
                   Inbox(nc.uId.get, au._id, "Share", Some(we._id), "Note shared with you", "", "u").create(tx.local("notes.inbox", "?"))
-                  SendEmail.withSession { implicit mailSession =>
+                  SendEmail.withSession(("notes")) { implicit mailSession =>
                     Emailer.noteShared(au.ename, nc.email, nc.nick, s"/note/id/${we._id}")
                   }
                 }

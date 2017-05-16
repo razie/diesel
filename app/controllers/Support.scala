@@ -1,13 +1,13 @@
 package controllers
 
 import com.google.inject._
+import model.Website
+import play.api.Configuration
 import play.api.data.Forms._
 import play.api.data._
 import play.api.mvc._
 import razie.base.Audit
 import razie.{Logging, cout}
-import org.joda.time.DateTime
-import play.api.Configuration
 
 /** support features */
 @Singleton
@@ -42,7 +42,7 @@ class Support @Inject() (config:Configuration) extends RazController with Loggin
           cdebug << t
           if (auth.exists(_.isActive) || new Recaptcha(config).verify2(g_response, clientIp)) {
             Emailer.withSession(request.realm) { implicit mailSession =>
-              Emailer.sendSupport("Support request", n, e, (auth.map("Username: " + _.userName + " ").mkString) + desc, details, page)
+              mailSession.sendSupport("Support request", n, e, (auth.map("Username: " + _.userName + " ").mkString) + desc, details, page)
             }
             Msg("Ok - support request sent. We will look into it asap.", HOME)
           } else {
@@ -71,8 +71,8 @@ class Support @Inject() (config:Configuration) extends RazController with Loggin
         case t @ (e, n, desc, details, g_response) => {
           cout << t
             if (auth.exists(_.isActive) || new Recaptcha(config).verify2(g_response, clientIp)) {
-            Emailer.withSession { implicit mailSession =>
-              Emailer.sendSupport("Suggestion", n, e, (auth.map("Username: " + _.userName + " ").mkString) + desc, details, page)
+            Emailer.withSession(Website.getRealm(request)) { implicit mailSession =>
+              mailSession.sendSupport("Suggestion", n, e, (auth.map("Username: " + _.userName + " ").mkString) + desc, details, page)
             }
             Msg("Ok - question/suggestion sent. We will try to answer it asap.", HOME)
           } else

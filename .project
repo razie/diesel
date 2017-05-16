@@ -15,4 +15,36 @@
 		<nature>org.scala-ide.sdt.core.scalanature</nature>
 		<nature>org.eclipse.jdt.core.javanature</nature>
 	</natures>
+	<linkedResources>
+		<link>
+			<name>cool-common-app</name>
+			<type>2</type>
+			<location>/Users/raz/w/coolscala/common/app</location>
+		</link>
+		<link>
+			<name>cool-core-scala</name>
+			<type>2</type>
+			<location>/Users/raz/w/coolscala/core/src/main/scala</location>
+		</link>
+		<link>
+			<name>cool-wiki-app</name>
+			<type>2</type>
+			<location>/Users/raz/w/coolscala/wiki/app</location>
+		</link>
+		<link>
+			<name>razbase-base-src</name>
+			<type>2</type>
+			<location>/Users/raz/w/razbase/base/src/main/scala</location>
+		</link>
+		<link>
+			<name>scripster-scala</name>
+			<type>2</type>
+			<location>/Users/raz/w/scripster/core/src/main/scala</location>
+		</link>
+		<link>
+			<name>snakked-scala</name>
+			<type>2</type>
+			<location>/Users/raz/w/snakked/core/src/main/scala</location>
+		</link>
+	</linkedResources>
 </projectDescription>

@@ -31,7 +31,7 @@ import razie.wiki.{Enc, Services}
 import razie.wiki.model.{Perm, WID, WikiEntry, Wikis}
 import razie.wiki.admin.{GlobalData, MailSession, SendEmail}
 import admin.{ClearAudits, MdbAuditService}
-import model.{User, Users, WikiScripster}
+import model.{User, Users, Website, WikiScripster}
 import x.context
 
 import scala.util.Try
@@ -768,11 +768,10 @@ class AdminTest extends AdminBase {
     }
 
   def testEmail() = FAD { implicit au => implicit errCollector => implicit request =>
-    SendEmail.withSession { implicit mailSession =>
-      SendEmail.notif("razie@razie.com", Services.config.SUPPORT, "TEST email Notify It's " + System.currentTimeMillis(), "nothing much herem eh")
-    }
-    SendEmail.withSession { implicit mailSession =>
-      SendEmail.send("razie@razie.com", Services.config.SUPPORT, "TEST email Send It's " + System.currentTimeMillis(), "nothing much herem eh")
+    SendEmail.withSession(Website.realm(request)) { implicit ms =>
+      val html1 = ms.text("testBody")
+      ms.notif("razie@razie.com", ms.SUPPORT, "TEST email Notify It's " + System.currentTimeMillis(), html1)
+      ms.send ("razie@razie.com", ms.SUPPORT, "TEST email Send It's " + System.currentTimeMillis(), html1)
     }
 
     Ok ("ok")

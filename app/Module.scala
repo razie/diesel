@@ -25,7 +25,7 @@ import razie.{Log, clog, cout}
 /** NOT WORKING !!!!!!!!!! */
 class Module extends AbstractModule {
   def configure() = {
-    clog << "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ configure"
+    clog << "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ configure rk Module"
 
     Services.auth = new RazAuthService ()
     bind(classOf[AuthService[_]]).toInstance(Services.auth)

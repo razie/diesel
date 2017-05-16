@@ -5,6 +5,7 @@ an inline JS with HTML and CSS fiddle
   we:Option[razie.wiki.model.WikiEntry],
   name:String,
   kind:String,
+  spec:String,
   args:Map[String,String],
   content:String,
   links:String,
@@ -38,10 +39,11 @@ var setpill = function(lid,id,s) {
   resettabs(lid, id);
 
   if(lid == 'story_'+id) {
-    hiDiesel(document.getElementById('code'));
+    hiDiesel('#code_'+id);
   }
 }
 
+var spec_@id = '@Html(tos(spec))';
 var story_@id = '@Html(tos(content))';
 var ast_@id  = '';
 var links_@id  = '@Html(tos(links))';
@@ -55,13 +57,17 @@ function setAst_@{id} () {
   var link = links_@id;
   linkArray = link.split('\n');
   link = linkArray[0];
-  if(link) {
+  if(link && link.indexOf('href=\"') > 0) {
     var url = link.replace(/.*href="([^"]*).*/, "$1").replace(/resultMode=[^&]*/, "resultMode=treeHtml");
-    if(linkArray.length > 1) {
+    if(linkArray.length > 1 || content_@{id}.indexOf('$expect') >= 0 ) {
+      // normal story
       runpill2_@id ('@id', url);
     } else {
+      // just aone line, could be a mock and these are ignored in storymode
       OLDrunpill2_@id ('@id', url);
     }
+  } else {
+    setpill('ast_@id', '@id', links_@id);
   }
 }
 
@@ -74,16 +80,16 @@ var runpill2_@id = function(id, url) {
       '/diesel/fiddle/fiddleStoryUpdated/'+id+'?@Html(mod.diesel.controllers.SFiddles.qtourl(args))', {
         type: 'POST',
         data: $.param({
-          saveMode : false,
-          sketchMode : false,
-          mockMode : true,
+          saveMode    : false,
+          sketchMode  : false,
+          mockMode    : true,
           blenderMode : false,
-          draftMode : false,
-          reactor : '@reactor',
-          specWpath : '',
-          storyWpath : '@wid.wpath',
-          story : story_@id+"\n",
-          spec : ''
+          draftMode   : false,
+          reactor     : '@reactor',
+          specWpath   : '',
+          storyWpath  : '@wid.wpath',
+          story       : story_@id+"\n",
+          spec        : spec_@id+"\n"
         }),
         contentType: 'application/x-www-form-urlencoded',
         success: function(data) {
@@ -143,7 +149,7 @@ var OLDrunpill2_@id = function(id, url) {
   <ul class="nav nav-tabs" style="margin-bottom:0;">
     <li id="story_@id" class="active">
       <a  href="javascript:setpill('story_@id', '@id', story_@id)">
-        <small>Story</small></a> </li>
+        <small>@kind.capitalize</small></a> </li>
     <li id="links_@id">
       <a  href="javascript:setpill('links_@id', '@id', links_@id)">
         <small>REST</small></a> </li>
@@ -155,7 +161,7 @@ var OLDrunpill2_@id = function(id, url) {
  <small>Edit...</small></a> </li>
   </ul>
 
-  <pre id="pre_@id" style="display:inline-block; width:98%; margin-bottom:0; border:0;"><code id="code_@id">@content</code></pre>
+  <pre id="pre_@id" style="display:inline-block; width:98%; margin-bottom:0; border:0;"><code id="code_@id" language="diesel">@content</code></pre>
 <p></p>
 
 <div id="editor1" style="display: none">
@@ -165,6 +171,7 @@ di:es:el editor
 
 @au.filter(_.isActive).map{u=>
 <a id="save_button" href="javascript:saveFiddle_()" class="btn btn-default btn-success">Save</a>
+<a id="cancel_button" href="javascript:oneModalHide()" class="btn btn-default btn-default">Nah</a>
 }.getOrElse {
 <small>
 Change the name of the message <code>say.hi</code> or change the default value there, from <code>"Harry"</code> to <code>"me"</code>, or something.
@@ -180,10 +187,15 @@ Then hit "Save" and play with it (hint: checkout the REST tab).
  To edit this topic and fully explore this, just create an account!
 </div>
 <a id="save_button" href="javascript:anonSaveFiddle_()" class="btn btn-default btn-success">Use this !</a>
+<a id="cancel_button" href="javascript:oneModalHide()" class="btn btn-default btn-default">Nah</a>
 }
 </div>
 
 <script>
+
+//not really needed anymore - hidiesel.js will color them when loading, later
+@*weOnLoad(function(){hiDiesel('#code_@id');});*@
+
 var upd_@id = function(id) {
 }
 

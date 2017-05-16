@@ -6,27 +6,18 @@
  */
 package controllers
 
-import admin.Config
-import mod.diesel.model.{WG}
+import mod.diesel.model.WG
 import mod.diesel.model.WG.WGraph
-import razie.diesel.dom.RDOM
-import razie.wiki.{Services, Enc, EncUrl}
-import razie.wiki.Sec.EncryptedS
 import play.api.mvc.Action
-import razie.Logging
-import razie.gg
-import org.json.JSONArray
+import razie.{Logging, js}
+import razie.wiki.Sec.EncryptedS
 import razie.wiki.dom.WikiDomain
-import razie.wiki.model.{WID, Wikis, WikiEntry}
-import razie.js
+import razie.wiki.model.WID
 import razie.wiki.util.PlayTools
-import scala.collection.mutable.ListBuffer
-import org.json.JSONObject
-import scala.collection.mutable.HashMap
+import razie.wiki.{Enc, Services}
 
 /** graph wiki controller */
 object Gapi extends RazController with Logging {
-  import play.api.libs.json._
 
   object retj {
     def <<(x: List[Any]) = Ok(js.tojsons(x, 0).toString).as("application/json")

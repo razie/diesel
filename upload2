@@ -1,12 +1,1 @@
-
-rm -f RUNNING_PID
-
-#### use this to zip up all other razie's projects when updating
-#scp `find ./lib_managed/jars/com.razie -name *.jar` razvanc@cloud3a.razie.com:rk/up/
-
-p package
-
-scp target/scala-2.10/racerkidz_2.10-0.1.3-SNAPSHOT.jar modules/wcommon/target/scala-2.10/wcommon_2.10-0.1.3-SNAPSHOT.jar modules/wiki/target/scala-2.10/wiki_2.10-0.1.3-SNAPSHOT.jar razvanc@cloud2a.razie.com:rk/up/
-
-ssh razvanc@cloud2a.razie.com ". ~/.bashrc; cd ~/rk; . ./update"
-
+. upload 2

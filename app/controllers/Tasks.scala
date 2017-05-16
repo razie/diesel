@@ -214,7 +214,7 @@ Please do that soon: it will expire in a few hours, for security reasons.
   }
 
   def sendEmailVerif(c: User)(implicit request: Request[_], mailSession: MailSession) = {
-    val from = Config.SUPPORT
+    val from = mailSession.SUPPORT
     val dt = DateTime.now().plusHours(1).toString()
     log("ENC_DT=" + dt)
     log("ENC_DT=" + dt.enc)
@@ -232,7 +232,7 @@ Please do that soon: it will expire in a few hours, for security reasons.
 
   /** reset pwd */
   def sendEmailReset(c: User)(implicit request: Request[_], mailSession: MailSession) = {
-    val from = Config.SUPPORT
+    val from = mailSession.SUPPORT
     val dt = DateTime.now().plusHours(1).toString()
     log("ENC_DT=" + dt)
     log("ENC_DT=" + dt.enc)

@@ -9,7 +9,7 @@ package mod.diesel.controllers
 import razie.wiki.model.WikiEntry
 import razie.wiki.mods.WikiMod
 
-/** diesel controller */
+/** wiki mod for diesel and js fiddles */
 class FiddleMod extends WikiMod {
   def modName:String = "FiddleMod"
 
@@ -26,7 +26,7 @@ class FiddleMod extends WikiMod {
   }
 }
 
-/** diesel controller */
+/** wiki mod */
 class DieselMod extends WikiMod {
   def modName:String = "DieselMod"
 

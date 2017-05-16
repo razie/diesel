@@ -5,10 +5,10 @@
 @import play.api.i18n.Messages.Implicits._
 
 
-@user.doePLayout(au, "Profile", 1) {
+@doePLayout(au, "Profile", 1) {
 
   <div class="col-sm-4">
-    @helper.form(action = routes.Profile.doeProfileUpdate(), 'class -> "well") {
+    @helper.form(action = routes.ProfileUpd.doeProfileUpdate(), 'class -> "well") {
       @util.razText(myForm, "firstName", "First name")
       @util.razText(myForm, "lastName", "Last name")
 

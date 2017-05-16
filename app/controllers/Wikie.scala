@@ -17,7 +17,10 @@ import com.mongodb.DBObject
 import com.novus.salat._
 import org.joda.time.DateTime
 import com.typesafe.config.{ConfigObject, ConfigValue}
+import difflib.{DiffUtils, Patch}
+import mod.diesel.controllers.DomWorker
 import mod.diesel.model.Diesel
+import mod.notes.controllers.DomC.retj
 import model._
 import org.bson.types.ObjectId
 import org.joda.time.DateTime
@@ -40,85 +43,11 @@ import play.api.data.Forms.text
 import play.api.data.Forms.tuple
 import play.api.mvc.{Action, AnyContent, Request, Result}
 import razie.wiki.model._
-
-class WikieBase extends WikiBase {
-
-  case class LinkWiki(how: String, notif: String, markup: String, comment: String)
-
-  case class ReportWiki(reason: String)
-
-  def before(e: WikiEntry, what: String)(implicit errCollector: VErrors = IgnoreErrors): Boolean = {
-    WikiObservers.before(WikiEvent(what, "WikiEntry", e.wid.wpath, Some(e)))
-  }
-  def after(e: WikiEntry, what: String, au:Option[User])(implicit errCollector: VErrors = IgnoreErrors): Unit = {
-    Services ! WikiAudit(what, e.wid.wpathFull, au.map(_._id), None, Some(e))
-  }
-
-  case class EditWiki(label: String, markup: String, content: String, visibility: String, edit: String, oldVer:String, tags: String, notif: String)
-
-  val editForm = Form {
-    mapping(
-      "label" -> nonEmptyText.verifying(vBadWords, vSpec),
-      "markup" -> nonEmptyText.verifying("Unknown!", {x:String=> Wikis.markups.contains(x)}),
-      "content" -> text,
-      "visibility" -> nonEmptyText,
-      "wvis" -> nonEmptyText,
-      "oldVer" -> nonEmptyText,
-      "tags" -> text.verifying(vBadWords, vSpec),
-      "draft" -> text.verifying(vBadWords, vSpec))(EditWiki.apply)(EditWiki.unapply) verifying (
-      "Your entry failed the obscenity filter", { ew: EditWiki => !Wikis.hasBadWords(ew.content)
-    })
-  }
-
-
-  val reportForm = Form {
-    mapping(
-      "reason" -> nonEmptyText)(ReportWiki.apply)(ReportWiki.unapply) verifying (
-      "Your entry failed the obscenity filter", { ew: ReportWiki => !Wikis.hasBadWords(ew.reason)
-    })
-  }
-
-
-  def linkForm(implicit request: Request[_]) = Form {
-    mapping(
-      "how" -> nonEmptyText,
-      "notif" -> nonEmptyText,
-      "markup" -> text.verifying("Unknown!", request.queryString("wc").headOption.exists(_ == "0") || Wikis.markups.contains(_)),
-      "comment" -> text)(Wikil.LinkWiki.apply)(Wikil.LinkWiki.unapply) verifying (
-      "Your entry failed the obscenity filter", { ew: Wikil.LinkWiki => !Wikis.hasBadWords(ew.comment)
-    })
-  }
-
-  val addForm = Form(
-    "name" -> nonEmptyText.verifying(vBadWords, vSpec))
-
-  def renameForm(wid:WID) = Form {
-    tuple(
-      "oldlabel" -> text.verifying("Obscenity filter", !Wikis.hasBadWords(_)).verifying("Invalid characters", vldSpec(_)),
-      "newlabel" -> text.verifying("Obscenity filter", !Wikis.hasBadWords(_)).verifying("Invalid characters", vldSpec(_))) verifying
-      ("Name in same category already in use", { t: (String, String) =>
-//        !Wikis(wid.getRealm).index.containsName(Wikis.formatName(t._2))
-        !Wikis(wid.getRealm).index.getWids(Wikis.formatName(t._2)).exists(_.cat == wid.cat)
-      })
-  }
-
-  def replaceAllForm = Form {
-    tuple(
-      "realm" -> text.verifying("Obscenity filter", !Wikis.hasBadWords(_)).verifying("Invalid characters", vldSpec(_)),
-      "old" -> text.verifying("Obscenity filter", !Wikis.hasBadWords(_)).verifying("Invalid characters", vldSpec(_)),
-      "new" -> text.verifying("Obscenity filter", !Wikis.hasBadWords(_)).verifying("Invalid characters", vldSpec(_)),
-      "action" -> text.verifying("Obscenity filter", !Wikis.hasBadWords(_)).verifying("Invalid characters", vldSpec(_))) verifying
-      ("haha", { t: (String, String, String, String) => true
-      })
-  }
-}
+import Visibility._
 
 /** wiki edits controller */
 //@Singleton
 object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
-  import Visibility._
-
-  implicit def obtob(o: Option[Boolean]): Boolean = o.exists(_ == true)
 
   /** when no pages found in 'any', i captured 'cat' in a form */
   def edit2 = FAU { implicit au => implicit errCollector => implicit request =>
@@ -133,11 +62,12 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
     }
   }
 
-  /** serve page for edit */
-  def wikieEditNew(wid: WID, noshow: String = "") =
-    wikieEdit(wid, "", noshow, true)
+  def wikieEditSimple(wid: WID) = wikieEdit(wid, "", "simple")
 
-  def wikieEdit(wid: WID, icontent: String = "", noshow:String="", old:Boolean=true) = FAU {
+  def wikieEditNew(wid: WID, noshow: String = "", tags:String="") =
+    wikieEdit(wid, "", noshow, true, tags)
+
+  def wikieEdit(wid: WID, icontent: String = "", noshow:String="", old:Boolean=true, tags:String="") = FAU {
     implicit au => implicit errCollector => implicit request =>
 
     val stok = ROK.s
@@ -153,7 +83,7 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
 
     cdebug << "wikieEdit " + wid
 
-    Wikis.clearCache(wid) // make sure it's loaded from db
+    Wikis.clearCache(wid, nwid) // make sure it's loaded from db
 
     val x = wid.page // better version, uses id version as well as name
     x.filter(wid.realm.isEmpty || _.realm == wid.realm.get) match {
@@ -206,6 +136,7 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
               }
           else
               ROK.s noLayout { implicit stok =>
+                if(noshow != "simple")
                 views.html.util.reactorLayout12FullPage(
                 views.html.wiki.wikiEdit(old, w.wid, editForm.fill(
                   EditWiki(w.label,
@@ -218,6 +149,17 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
                     w.props.get("draft").getOrElse("Silent"))), hasDraft, noshow),
                   Seq.empty
                 )
+                else
+                    views.html.wiki.wikiEditSimple(w.wid, editForm.fill(
+                      EditWiki(w.label,
+                        w.markup,
+                        draft("content"),
+                        w.props.get("visibility").orElse(WikiReactors(realm).props.prop("default.visibility")).getOrElse(PUBLIC),
+                        wvis(Some(w.props)).orElse(WikiReactors(realm).props.prop("default.wvis")).getOrElse(PUBLIC),
+                        w.ver.toString,
+                        draft("tags"),
+                        w.props.get("draft").getOrElse("Silent"))), hasDraft, noshow)
+
               }
         }) getOrElse
           noPerm(wid, "edit.wiki")
@@ -242,6 +184,12 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
           val wwvis = wvis(wid.findParent.map(_.props)).orElse(WikiReactors(realm).props.prop("default.wvis")).getOrElse(WikiReactors(realm).wiki.visibilityFor(wid.cat).headOption.getOrElse(PUBLIC))
           val draft =      wid.findParent.flatMap(_.contentProps.get("editMode")).orElse(Wikis(realm).category(wid.cat).flatMap(_.contentProps.get("editMode"))).orElse(WikiReactors(realm).props.prop("default.editMode")).getOrElse("Notify")
 
+          val ttt = if ("Topic" == wid.cat) "" else wid.cat.toLowerCase
+          val newTags =
+            (
+              List(ttt) ::: tags.split(",").toList
+            ).distinct.filter(_.length > 0).mkString(",")
+
             if(Wikis.isEvent(wid.cat))
               ROK.s noLayout { implicit stok =>
                 views.html.util.reactorLayout12FullPage(
@@ -252,13 +200,14 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
                       visibility,
                       wwvis,
                       "0",
-                      (if ("Topic" == wid.cat) "" else wid.cat.toLowerCase),
+                      newTags,
                       draft)), false,
                     noshow),
                   Seq.empty
                 )
               }
           else ROK.s noLayout  { implicit stok =>
+              if(noshow != "simple")
             views.html.util.reactorLayout12FullPage(
             views.html.wiki.wikiEdit(old, nwid, editForm.fill(
               EditWiki(wid.name.replaceAll("_", " "),
@@ -267,11 +216,22 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
                 visibility,
                 wwvis,
                 "0",
-                (if ("Topic" == wid.cat) "" else wid.cat.toLowerCase),
+                newTags,
                 draft)), false,
                 noshow),
               Seq.empty
             )
+              else
+                  views.html.wiki.wikiEditSimple(nwid, editForm.fill(
+                    EditWiki(wid.name.replaceAll("_", " "),
+                      Wikis.MD,
+                      contentFromTags + icontent,
+                      visibility,
+                      wwvis,
+                      "0",
+                      newTags,
+                      draft)), false,
+                    noshow)
           }
         }) getOrElse
           noPerm(wid, "create.wiki")
@@ -371,7 +331,8 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
               WikiEntryOld(w, Some("setSection")).create
               w.update(we, Some("setSection"))
               clearDrafts(we.wid, au)
-              Emailer.withSession { implicit mailSession =>
+              Wikis.clearCache(we.wid)
+              Emailer.withSession(request.realm) { implicit mailSession =>
                 au.quota.incUpdates
                 //                      au.shouldEmailParent("Everything").map(parent => Emailer.sendEmailChildUpdatedWiki(parent, au, WID(w.category, w.name)))
               }
@@ -427,7 +388,7 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
                   WikiEntryOld(w, Some("setContent")).create
                   w.update(we, Some("setContent"))
                   clearDrafts(we.wid, au)
-                  Emailer.withSession { implicit mailSession =>
+                  Emailer.withSession(request.realm) { implicit mailSession =>
                     au.quota.incUpdates
                     //                      au.shouldEmailParent("Everything").map(parent => Emailer.sendEmailChildUpdatedWiki(parent, au, WID(w.category, w.name)))
                   }
@@ -470,7 +431,6 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
         }
       }).flatten
   }
-
 
   /** POST new content to preview an edited wiki */
   def preview(wid: WID) = FAUR { implicit stok =>
@@ -606,7 +566,7 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
 
                 // do parents think it's draft?
               val plink = we.wid.parentWid.flatMap(_.uwid).flatMap { puwid =>
-                  ROne[WikiLink]("from" -> we.uwid.grated, "to" -> puwid.grated, "how" -> "Child")
+                  ROne[WikiLink]("from.id" -> we.uwid.id, "to.id" -> puwid.id, "how" -> "Child")
                 }
 
               // moved from draft to else
@@ -638,6 +598,7 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
                   // can only change label of links OR if the formatted name doesn't change
                   w.update(we)
                   clearDrafts(we.wid, au)
+                  Wikis.clearCache(we.wid)
                   Emailer.withSession(stok.realm) { implicit mailSession =>
                     au.quota.incUpdates
                     if (shouldPublish) notifyFollowersCreate(we, au, notif, true)
@@ -706,7 +667,7 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
                 // needs parent?
                 we.wid.parentWid.flatMap(_.uwid).foreach { puwid =>
                   val isd = if(we.props.contains("draft")) Some("y") else None
-                  val wl = ROne[WikiLink]("from" -> we.uwid.grated, "to" -> puwid.grated, "how" -> "Child")
+                  val wl = ROne[WikiLink]("from.id" -> we.uwid.id, "to.id" -> puwid.id, "how" -> "Child")
                   if(wl.isDefined)
                     wl.foreach(_.copy(draft=isd).update)
                   else
@@ -806,7 +767,7 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
       case we @ ReportWiki(reason) =>
         Wikis.flag(wid, "reported by user: " + auth.map(_.ename) + " BECAUSE " + reason)
         Emailer.withSession(request.realm) { implicit session =>
-          SendEmail.send(Config.SUPPORT, Config.SUPPORT, "WIKI_FLAGGED",
+          session.send(session.SUPPORT, session.SUPPORT, "WIKI_FLAGGED",
             "link: " + wid.ahref + "reported by user: " + auth.map(_.ename) + " BECAUSE " + reason)
         }
     })
@@ -814,12 +775,12 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
   }
 
   /** POSTed from category, has name -> create topic in edit mode */
-  def addWithName(cat: String) = FAU {
+  def addWithName(cat: String, tags:String) = FAU {
     implicit au => implicit errCollector => implicit request =>
     val realm = CAT.unapply(cat).flatMap(_.realm).getOrElse(getRealm())
     addForm.bindFromRequest.fold( formWithErrors =>
       ROK.s apply { implicit stok =>
-        views.html.wiki.wikieCreate(cat)
+        views.html.wiki.wikieCreate(cat, tags)
       },
     {
       case name: String => {
@@ -932,6 +893,23 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
         noPerm(wid, "ADMIN_DELETE1")
   }
 
+  /** calc the diff draft to original for story and spec */
+  def diffContent(wid: WID) = FAUPRAPI(true) { implicit stok =>
+    val wpath = stok.formParm("wpath")
+    val newc = stok.formParm("newc")
+    val oldc = wid.content.getOrElse("")
+
+    import scala.collection.JavaConversions._
+
+    def diffTable(p: Patch) = s"""<small>${views.html.admin.diffTable("", p, Some(("How", "Original", "Draft")))}</small>"""
+
+    def diffP = diffTable(DiffUtils.diff(oldc.lines.toList, newc.lines.toList))
+
+    retj << Map(
+      "diff" -> (if (wpath.length > 0) diffP else "")
+    )
+  }
+
   /** delete step 2: do it */
   def wikieDelete2(wid: WID) = FAU {
     implicit au => implicit errCollector => implicit request =>
@@ -940,10 +918,10 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
       var count = 0
 
       def del(w:WikiEntry)(implicit txn: Txn) : Unit = {
-        val children = RMany[WikiLink]("to" -> w.uwid.grated, "how" -> "Child").map(_.pageFrom).toList.flatMap(_.toList)
-        RMany[WikiLink]("to" -> w.uwid.grated).toList.foreach(_.delete)
-        RMany[WikiLink]("from" -> w.uwid.grated).toList.foreach(_.delete)
-        RMany[UserWiki]("uwid" -> w.uwid.grated).toList.foreach(wl => {
+        val children = RMany[WikiLink]("to.id" -> w.uwid.id, "how" -> "Child").map(_.pageFrom).toList.flatMap(_.toList)
+        RMany[WikiLink]("to.id" -> w.uwid.id).toList.foreach(_.delete)
+        RMany[WikiLink]("from.id" -> w.uwid.id).toList.foreach(_.delete)
+        RMany[UserWiki]("uwid.id" -> w.uwid.id).toList.foreach(wl => {
           wl.delete
           done = true
         })
@@ -976,6 +954,7 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
 //              clearDrafts(we.wid, au)
             }
             WikiReactors.reload(realm)
+            au.update(au.copy(realms=au.realms.filter(_ == wid.name)))
             Services ! WikiAudit(WikiAudit.DELETE_WIKI, w.wid.wpathFull, Some(au._id), None, Some(w), None, Some(w._id.toString))
             cleanAuth()
           }
@@ -1046,252 +1025,21 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
     }
   }
 
-  def wikieCreate(cats: String) = FAUR("create.wiki") {implicit stok =>
+  def wikieCreate(cats: String, tags:String) = FAUR("create.wiki") {implicit stok =>
       val name = ""
       for (
+        au <- stok.au;
+        isMember <- au.realms.contains(stok.realm) orErr "not a website member"; // member
+        can <- (stok.website.membersCanCreateTopics || au.isMod) orErr "members can't create topics"; // member
         cat <- CAT.unapply(cats);
-        w   <- Wikis(cat.realm getOrElse getRealm()).category(cat.cat)
+        w   <- Wikis(cat.realm getOrElse getRealm()).category(cat.cat) orErr s"category ${cat.cat} not found"
       ) yield {
         val realm = getRealm(cat.realm.mkString)
         ROK.k apply { implicit stok =>
           assert(stok.realm == (cat.realm getOrElse stok.realm))
-          views.html.wiki.wikieCreate(cat.cat)
+          views.html.wiki.wikieCreate(cat.cat, tags:String)
         }
       }
-  }
-
-  def manage(id: String) = FAU("manage.wiki") {
-    implicit au => implicit errCollector => implicit request =>
-    for (
-      w <- Wikis(getRealm()).findById(id)
-    ) yield {
-      ROK.s noLayout { implicit stok =>
-        views.html.wiki.wikieManage(Some(w))
-      }
-    }
-  }
-
-  /** move the posts of another blof to another or just one post if this is it */
-  def movePosts(sourceWid: WID) = FAUR { implicit request =>
-      val form = Form("newWid" -> nonEmptyText)
-
-      form.bindFromRequest.fold(
-      formWithErrors =>
-        Msg2(formWithErrors.toString + "Oops - the form is errored out, man!"),
-      {
-        case newWid =>
-          log("Wiki.movePosts " + sourceWid + ", " + newWid)
-          (for (
-            au <- request.au;
-            ok1 <- au.hasPerm(Perm.adminDb) orCorr cNoPermission;
-            sourceW <- Wikis.find(sourceWid);
-            destWid <- WID.fromPath(newWid) orErr "no source";
-            destW <- Wikis.find(destWid) orErr "no destination";
-//            isFromPost <- ArWikiDomain.aEnds(sourceW.wid.cat, "Child").contains("Post") orErr "source has no child Posts/Items";
-//            isToPost <- WikiDomain.aEnds(destW.wid.cat, "Child").contains("Post") orErr "dest has no child Posts/Items"
-//            upd <- before(newVer, WikiEntry.UPD_UOWNER) orErr ("Not allowerd")
-            nochange <- (sourceW.wid != destW.wid) orErr "no change"
-          ) yield {
-//            val links = RMany[WikiLink]("to" -> sourceW.uwid.grated, "how" -> "Child", "from.cat" -> "Post").toList
-//            val pages = RMany[WikiEntry]("parent" -> Some(sourceW.uwid.id), "category"->"Post").toList
-
-            val links =
-              if(sourceWid.cat == "Post")
-                ROne[WikiLink]("from" -> sourceW.uwid.grated, "how" -> "Child").orElse (
-                  Some(WikiLink(sourceW.uwid, destW.uwid, "Child")).map(x=>{x.create; x})).toList
-              else
-                RMany[WikiLink]("to" -> sourceW.uwid.grated, "how" -> "Child").toList
-
-            val pages =
-              if(sourceWid.cat == "Post")
-                List(sourceW)
-              else
-                RMany[WikiEntry]("parent" -> Some(sourceW.uwid.id)).toList
-            razie.db.tx("Wiki.movePosts", au.userName) { implicit txn =>
-              links.foreach { _.copy(to = destW.uwid).update }
-              pages.foreach{w=>
-                w.update(w.copy(parent=Some(destW.uwid.id)), Some("moved_posts"))
-                Services ! WikiAudit(WikiAudit.UPD_PARENT, sourceW.wid.wpathFull, Some(au._id))
-              }
-            }
-            val m = s" ${links.size} WikiLinks and ${pages.size} WikiEntry /posts from ${sourceW.wid.wpath} to ${destW.wid.wpath}"
-            Services ! WikiAudit(WikiAudit.MOVE_POSTS, sourceW.wid.wpathFull, Some(au._id), Some(m))
-            Msg2(s"Moved $m", Some(controllers.Wiki.w(sourceWid)))
-          }) getOrElse
-            noPerm(sourceWid, "ADMIN_MOVEPOSTS")
-      })
-  }
-
-  /** update parent */
-  def setParent(sourceWid: WID) = FAU {
-    implicit au => implicit errCollector => implicit request =>
-
-      val form = Form("newWid" -> nonEmptyText)
-
-      form.bindFromRequest.fold(
-      formWithErrors =>
-        Msg2(formWithErrors.toString + "Oops, can't add that quota!"),
-      {
-        case newWid if newWid == "n/a" =>
-          log("Wiki.setParent REMOVE" + sourceWid + ", " + newWid)
-          (for (
-            au <- activeUser;
-            ok1 <- au.hasPerm(Perm.adminDb) orCorr cNoPermission;
-            sourceW <- Wikis.find(sourceWid);
-            newVer <- Some(sourceW.copy(parent=None));
-            upd <- before(newVer, WikiAudit.UPD_SETP_PARENT) orErr ("Not allowerd")
-          ) yield {
-              razie.db.tx("Wiki.setparent", au.userName) { implicit txn =>
-                sourceW.update(newVer, Some("setParent"))
-                ROne[WikiLink]("from" -> sourceW.uwid.grated, "how" -> "Child").foreach(_.delete)
-              }
-              Services ! WikiAudit(WikiAudit.UPD_SETP_PARENT, sourceW.wid.wpathFull, Some(au._id), Some(newWid.toString))
-              Redirect(controllers.Wiki.w(sourceWid))
-            }) getOrElse
-            noPerm(sourceWid, "ADMIN_MOVEPOSTS")
-        case newWid =>
-          log("Wiki.setParent " + sourceWid + ", " + newWid)
-          (for (
-            au <- activeUser;
-            ok1 <- au.hasPerm(Perm.adminDb) orCorr cNoPermission;
-            sourceW <- Wikis.find(sourceWid);
-            destWid <- WID.fromPath(newWid) orErr "no dest found";
-            destW <- Wikis.find(destWid) orErr "no destination";
-            //            isFromPost <- ArWikiDomain.aEnds(sourceW.wid.cat, "Child").contains("Post") orErr "source has no child Posts/Items";
-            //            isToPost <- WikiDomain.aEnds(destW.wid.cat, "Child").contains("Post") orErr "dest has no child Posts/Items"
-            newVer <- Some(sourceW.copy(parent=Some(destW._id)));
-            upd <- before(newVer, WikiAudit.UPD_SETP_PARENT) orErr ("Not allowerd")
-          ) yield {
-            razie.db.tx("Wiki.setparent", au.userName) { implicit txn =>
-              sourceW.update(newVer, Some("setParent"))
-              val owl = ROne[WikiLink]("from" -> sourceW.uwid.grated, "how" -> "Child")
-              owl.foreach(_.delete)
-              WikiLink(
-                sourceW.uwid,
-                destW.uwid,
-                "Child",
-                owl.flatMap(_.draft),
-                owl.map(_.crDtm).getOrElse(DateTime.now())
-              ).create
-            }
-            Services ! WikiAudit(WikiAudit.UPD_SETP_PARENT, sourceW.wid.wpathFull, Some(au._id), Some(newWid.toString))
-            Redirect(controllers.Wiki.w(sourceWid))
-          }) getOrElse
-            noPerm(sourceWid, "ADMIN_MOVEPOSTS")
-      })
-  }
-
-  /** change owner */
-  def update(what:String, wid: WID) = FAU {
-    implicit au => implicit errCollector => implicit request =>
-
-    val uownerForm = Form("newvalue" -> nonEmptyText)
-
-    uownerForm.bindFromRequest.fold(
-    formWithErrors =>
-      Msg2(formWithErrors.toString + "Oops, can't add that quota!"),
-    {
-      case newvalue =>
-        what match {
-          case "owner" => {
-            log("Wiki.uowner " + wid + ", " + newvalue)
-            (for (
-              ok1 <- au.hasPerm(Perm.adminDb) orCorr cNoPermission;
-              w <- Wikis.find(wid);
-              newu <- WikiUsers.impl.findUserByUsername(newvalue) orErr (newvalue + " User not found");
-              nochange <- (!w.owner.exists(_.userName == newvalue)) orErr "no change";
-              newVer <- Some(w.cloneProps(w.props + ("owner" -> newu._id.toString), au._id));
-              upd <- before(newVer, WikiAudit.UPD_UOWNER) orErr "Not allowerd"
-            ) yield {
-              // can only change label of links OR if the formatted name doesn't change
-              razie.db.tx("Wiki.uowner", au.userName) { implicit txn =>
-                w.update(newVer)
-              }
-              Wikie.after(newVer, WikiAudit.UPD_UOWNER, Some(au))
-              Redirect(controllers.Wiki.w(wid))
-            }) getOrElse
-              noPerm(wid, "ADMIN_UOWNER")
-          }
-          case "category" => {
-            log("Wiki.category " + wid + ", " + newvalue)
-            (for (
-              ok1 <- au.hasPerm(Perm.adminDb) orCorr cNoPermission;
-              w <- Wikis.find(wid);
-              nochange <- (w.category != newvalue) orErr "no change";
-              newVer <- Some(w.copy(category=newvalue, ver = w.ver+1));
-              upd <- before(newVer, WikiAudit.UPD_UOWNER) orErr "Not allowerd"
-            ) yield {
-                // can only change label of links OR if the formatted name doesn't change
-                razie.db.tx("Wiki.ucategory", au.userName) { implicit txn =>
-                  w.update(newVer)
-                }
-                Wikie.after(newVer, WikiAudit.UPD_CATEGORY, Some(au))
-                Redirect(controllers.Wiki.w(newVer.wid))
-              }) getOrElse
-              noPerm(wid, "ADMIN_UCATEGORY")
-          }
-          case "counter" => {
-            log("Wiki.counter " + wid + ", " + newvalue)
-            (for (
-              ok1 <- au.hasPerm(Perm.adminDb) orCorr cNoPermission;
-              w <- Wikis.find(wid)
-            ) yield {
-                // can only change label of links OR if the formatted name doesn't change
-                razie.db.tx("Wiki.counter", au.userName) { implicit txn =>
-                  WikiCount.findOne(w._id).foreach(_.set(newvalue.toLong))
-                }
-                Redirect(controllers.Wiki.w(wid))
-              }) getOrElse
-              noPerm(wid, "ADMIN_UOWNER")
-          }
-          case "realm" => {
-            log("Wiki.urealm " + wid + ", " + newvalue)
-            (for (
-              ok1 <- au.hasPerm(Perm.adminDb) orCorr cNoPermission;
-              w <- Wikis.find(wid);
-              nochange <- (w.realm != newvalue) orErr "no change";
-              newVer <- Some(w.copy(realm=newvalue, ver = w.ver+1));
-              upd <- before(newVer, WikiAudit.UPD_UOWNER) orErr "Not allowerd"
-            ) yield {
-              // can only change label of links OR if the formatted name doesn't change
-              razie.db.tx("Wiki.urealm", au.userName) { implicit txn =>
-                w.update(newVer)
-              }
-              Wikie.after(newVer, WikiAudit.UPD_REALM, Some(au))
-              Redirect(controllers.Wiki.w(wid))
-            }) getOrElse
-              noPerm(wid, "ADMIN_UOWNER")
-          }
-          case "realmALL" => {
-            log("Wiki.urealmALL " + wid + ", " + newvalue)
-            (for (
-              ok1 <- au.hasPerm(Perm.adminDb) orCorr cNoPermission;
-              w <- Wikis.find(wid);
-//              nochange <- (w.realm != newvalue) orErr "no change";  // don't check nochange
-              newVer <- Some(w.copy(realm=newvalue, ver = w.ver+1));
-              upd <- before(newVer, WikiAudit.UPD_UOWNER) orErr "Not allowerd"
-            ) yield {
-              // can only change label of links OR if the formatted name doesn't change
-              razie.db.tx("Wiki.urealmALL", au.userName) { implicit txn =>
-                w.update(newVer)
-                RMany[WikiLink]("to" -> w.uwid.grated, "how"->"Child").toList.foreach{ link=>
-                  link.delete
-                  link.pageFrom.map{p=>
-                    val c = p.copy(realm=newvalue, ver = p.ver+1)
-                    p.update(c)
-                    link.copy(to = newVer.uwid, from = c.uwid).create
-                  } getOrElse {
-                    link.copy(to = newVer.uwid).create
-                  }
-                }
-              }
-              Wikie.after(newVer, WikiAudit.UPD_REALM, Some(au))
-              Redirect(controllers.Wiki.w(wid))
-            }) getOrElse
-              noPerm(wid, "ADMIN_UOWNER")
-          }
-        }
-    })
   }
 
   /** mark a wiki as reserved - only admin can edit */
@@ -1343,45 +1091,6 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
       Ok(s"{likeCount:${newVer.likeCount}, dislikeCount:${newVer.dislikeCount}").as("application/json")
     }) getOrElse {
       Unauthorized("")
-    }
-  }
-
-  /** move to new parent */
-  def wikieMove1(id:String, realm:String=Wikis.RK) =  FAU("wikie.move") {
-    implicit au => implicit errCollector => implicit request =>
-    for (
-      w <- Wikis(realm).findById(id)
-    ) yield {
-      val parentCats1 = WikiDomain(realm).zEnds(w.wid.cat, "Parent")
-      val parents = parentCats1.flatMap {c=>
-        Wikis(realm).pages(c).filter(w=>canEdit(w.wid, auth, Some(w)).exists(_ == true)).map(w=>(w.uwid, w.label))
-      }
-      if(parents.size > 0)
-        ROK.s apply { implicit stok =>
-          views.html.wiki.wikiMove(w.wid, w, parents)
-        }
-      else
-        Redirect(s"/wiki/id/$id")
-    }
-  }
-
-  /** move to new parent */
-  def wikieMove2(page:String, from:String, to:String, realm:String=Wikis.RK) = FAU("wikie.move") {
-    implicit au => implicit errCollector => implicit request =>
-    for (
-      pageW <- Wikis(realm).findById(page);
-      fromW <- Wikis(realm).findById(from);
-      toW <- Wikis(realm).findById(to);
-      hasP <- pageW.parent.exists(_.toString == from) orErr "does not have a parent"
-    ) yield {
-      razie.db.tx("Wiki.Move", au.userName) { implicit txn =>
-        pageW.update(pageW.copy(parent=Some(toW._id)))
-        RMany[WikiLink]("from" -> pageW.uwid.grated, "to" -> fromW.uwid.grated, "how"->"Child").toList.foreach{ link=>
-          link.delete
-          link.copy(to = toW.uwid).create
-        }
-      }
-      Redirect(controllers.Wiki.w(pageW.wid, false)).flashing("count" -> "0")
     }
   }
 

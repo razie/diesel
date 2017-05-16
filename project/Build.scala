@@ -29,16 +29,20 @@ object ApplicationBuild extends Build {
     "org.scalatest"      %% "scalatest"          % "2.1.3",
     "com.typesafe"        % "config"             % "1.2.1",
     "com.typesafe.akka"  %% "akka-cluster"       % "2.4.2",
+    "com.typesafe.akka"  %% "akka-cluster-tools" % "2.4.2",
     "com.typesafe.akka"  %% "akka-contrib"       % "2.4.2",
     "com.typesafe.akka"  %% "akka-slf4j"         % "2.4.2",
     "com.typesafe.akka"  %% "akka-camel"         % "2.4.2",
+
+//    "com.github.fge"      % "json-patch"    % "1.9",
 
 //    "org.apache.camel"   %% "camel-core"         % "2.18.3",
 
     "com.googlecode.java-diff-utils"        % "diffutils"             % "1.2.1",
 
 // for snakked
-   "org.json"       % "json"            % "20090211",
+//"org.json"       % "json"            % "20090211",
+   "org.json"       % "json"            % "20160810",
    "commons-jxpath" % "commons-jxpath"  % "1.3",
    "org.scala-lang.modules" %% "scala-xml" % "1.0.3",
 

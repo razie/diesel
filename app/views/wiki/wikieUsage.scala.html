@@ -57,8 +57,8 @@ debug a wiki page
        </ul>
       </div>
 
-@defining(RMany[WikiLink]("from" -> page.get.uwid.grated).toList) {linksFrom=>
-  @defining(RMany[WikiLink]("to" -> page.get.uwid.grated).toList) {linksTo=>
+@defining(RMany[WikiLink]("from.id" -> page.get.uwid.id).toList) {linksFrom=>
+  @defining(RMany[WikiLink]("to.id" -> page.get.uwid.id).toList) {linksTo=>
     @defining(RMany[WikiEntry]("parent" -> Some(page.get.uwid.id)).toList) {pages=>
 
       <div class="well">
@@ -101,7 +101,7 @@ debug a wiki page
 
       <div class="well">
         VERY BLOODY CAREFUL. Careful - no checking done, heh.
-        @helper.form(action=routes.Wikie.update("category", page.get.wid), 'class->"well form-inline") {
+        @helper.form(action=routes.WikieDebug.update("category", page.get.wid), 'class->"well form-inline") {
           <input type="text" class="input-large" name="newvalue" value="@page.map(_.category)">
           <button type="submit" class="btn btn-default">Update Category</button>
         }

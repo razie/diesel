@@ -13,7 +13,7 @@
 @user.doePLayout(au, "Password reset", 3) {
 
   <div class="col-sm-4">
-  @helper.form(action = routes.Profile.doeProfilePass2(), 'class -> "well") {
+  @helper.form(action = routes.ProfileUpd.doeProfilePass2(), 'class -> "well") {
     @helper.inputPassword(myForm("currpass"), '_label -> "Current Password",
       '_showConstraints -> false)
     @helper.inputPassword(

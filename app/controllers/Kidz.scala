@@ -211,7 +211,7 @@ object Kidz extends RazController {
 
               if (next.startsWith("invite:") && e.length > 0) {
                 //todo email invite
-                SendEmail.withSession { implicit mailSession =>
+                SendEmail.withSession(request.realm) { implicit mailSession =>
                   Emailer.sendEmailInvited(au, rk, role, "/doe/kid/acceptInvite/"+rka._id.toString)
                   Emailer.tellRaz("Invited", "user: " + au.userName, "club: " + clubName, "how: "+role)
                 }

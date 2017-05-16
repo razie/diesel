@@ -33,7 +33,7 @@ class Recaptcha @Inject() (config:Configuration) extends Logging {
       debug("CAPTCHCA RESP=" + resp)
 
       if (resp contains "invalid")
-        SendEmail.withSession { implicit mailSession =>
+        SendEmail.withSession() { implicit mailSession =>
           Emailer.tellRaz("ERROR CAPTCHA", "response is " + resp)
         }
 

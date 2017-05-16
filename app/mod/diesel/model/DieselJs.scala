@@ -9,6 +9,7 @@ package api.diesel
 import razie.diesel.dom._
 import razie.diesel.dom.RDOM._
 
+/** wrapper for JS scripts - this is the object `diesel` */
 class DieselJs (val ctx:ECtx) {
     def engineId : String = ctx.root.asInstanceOf[DomEngECtx].engine.map(_.id).mkString
     def get (name:String) : String = ctx.apply(name)

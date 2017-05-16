@@ -34,7 +34,7 @@ rule_AbstractElement:
 //-------------------- raz
 
 rule_Receive:
-    '$receive' ('<' stype=rule_MsgStereo '>')? name=rule_QualifiedName attrs=rule_AttrSpecs? NEWLINE
+    '$send' ('<' stype=rule_MsgStereo '>')? name=rule_QualifiedName attrs=rule_AttrSpecs? NEWLINE
 ;
 
 
@@ -77,27 +77,6 @@ rule_Flow:
 
 
 
-rule_FlowExprA:
-  a=rule_FlowExprP ( '+' b+=rule_FlowExprP)*
-;
-
-
-
-
-rule_FlowExprP:
-  a=rule_FlowExprT ('|' b+=rule_FlowExprT)*
-;
-
-
-
-
-rule_FlowExprT:
-  m=ID | '(' rule_FlowExprA ')'
-;
-
-
-
-
 rule_Expect:
     rule_ExpectM | rule_ExpectV
 ;
@@ -106,23 +85,21 @@ rule_Expect:
 
 
 rule_Condition:
-    '$if' attrs=rule_AttrSpecs
+    '$if' attrs=rule_AttrChecks
 ;
 
 
 
 
 rule_ExpectM:
-//    '$expect' ('msg' name=QualifiedName attrs=AttrSpecs?) (cond=Condition?) NEWLINE
-    '$expect' (name=rule_QualifiedName attrs=rule_AttrSpecs?) (cond=rule_Condition)?NEWLINE
+    '$expect' (name=rule_QualifiedName attrs=rule_AttrChecks?) (cond=rule_Condition)?NEWLINE
 ;
 
 
 
 
 rule_ExpectV:
-//    '$expect' ('val' p=AttrSpec?) (cond=Condition?) NEWLINE
-    '$expect' p=rule_AttrSpecs (cond=rule_Condition)?NEWLINE
+    '$expect' p=rule_AttrChecks (cond=rule_Condition)?NEWLINE
 ;
 
 
@@ -137,6 +114,37 @@ rule_Val:
 
 rule_Option:
     '$opt' attr=rule_AttrSpec NEWLINE
+;
+
+
+
+
+rule_AttrChecks:
+   '(' (attrs+=rule_AttrCheck (',' attrs+=rule_AttrCheck)*)? ')'
+;
+
+
+
+
+rule_AttrCheck:
+  name=rule_QualifiedName (':' ttype=rule_DataType)? (check=rule_CheckExpr)?
+;
+
+
+
+
+rule_CheckExpr:
+  (op=('=' | '!=' | '<' | '<=' | '>' | '>=' | '~=') eexpr=rule_EXPR) 
+  | ('is' 'number')
+  | ('is' eexpr=rule_EXPR)
+  | ('contains' eexpr=rule_EXPR)
+;
+
+
+
+
+rule_AttrSpecs:
+   '(' (attrs+=rule_AttrSpec (',' attrs+=rule_AttrSpec)*)? ')'
 ;
 
 
@@ -168,13 +176,6 @@ rule_Attrs:
 
 
 
-rule_AttrSpecs:
-   '(' (attrs+=rule_AttrSpec (',' attrs+=rule_AttrSpec)*)? ')'
-;
-
-
-
-
 rule_Topic:
     '[[' name=rule_QualifiedName (':' t=rule_QualifiedName)? ']]'
 ;
@@ -184,6 +185,27 @@ rule_Topic:
 
 rule_Braq:
     '}'
+;
+
+
+
+
+rule_FlowExprA:
+  a=rule_FlowExprP ( '+' b+=rule_FlowExprP)*
+;
+
+
+
+
+rule_FlowExprP:
+  a=rule_FlowExprT ('|' b+=rule_FlowExprT)*
+;
+
+
+
+
+rule_FlowExprT:
+  m=ID | '(' rule_FlowExprA ')'
 ;
 
 
@@ -203,7 +225,7 @@ rule_QualifiedName:
 
 
 rule_DataType:
-	string='String' | int='Int' | date='Date';
+	string='String' | int='Int' | date='Date' | number='Number';
 
 
 rule_MsgStereo:

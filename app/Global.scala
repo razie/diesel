@@ -51,7 +51,7 @@ object Global extends WithFilters(LoggingFilter) {
     val m = ("ERR_onError", "Current count: " + lastErrorCount + " Request:" + request.toString, "headers:" + request.headers, "ex:" + ex.toString).toString
     if (System.currentTimeMillis - lastErrorTime >= ERR_DELTA1) {
       if (errEmails <= ERR_EMAILS || System.currentTimeMillis - firstErrorTime >= ERR_DELTA2) {
-        SendEmail.withSession { implicit mailSession =>
+        SendEmail.withSession(Website.xrealm(request)) { implicit mailSession =>
           Emailer.tellRaz("ERR_onError",
             Services.auth.authUser (Request(request, "")).map(_.userName).mkString, m)
 

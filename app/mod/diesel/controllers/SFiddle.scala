@@ -1,45 +1,68 @@
 package mod.diesel.controllers
 
-import java.io.File
-import java.util
+import javax.script.ScriptEngineManager
+
 import controllers._
-import difflib.DiffUtils
 import jdk.nashorn.api.scripting.{ClassFilter, NashornScriptEngineFactory}
-import mod.diesel.model.RDExt._
-import mod.diesel.model._
-import mod.notes.controllers.{Notes, NotesTags, NotesLocker}
-import org.antlr.v4.tool.{ANTLRMessage, ANTLRToolListener}
-import admin._
+import mod.notes.controllers.{Notes, NotesLocker, NotesTags}
 import model._
+import org.antlr.v4.tool.{ANTLRMessage, ANTLRToolListener}
 import org.bson.types.ObjectId
-import org.scalatest.fixture
-import razie.base.Audit
-import razie.db._
-import razie.db.RazSalatContext.ctx
-import razie.diesel.dom.{RDomain, RDOM}
-import RDOM.O
-import razie.wiki.mods.WikiMods
-import razie.wiki.{Services, Enc}
-import razie.wiki.Sec.EncryptedS
 import play.api.mvc._
-import razie.wiki.dom.WikiDomain
-import razie.{CSTimer, js, cout, Logging}
-import javax.script.{ScriptEngineManager, ScriptEngine}
-import scala.Some
+import razie.base.Audit
+import razie.wiki.Services
+import razie.wiki.admin.Autosave
+import razie.wiki.model._
+import razie.{CSTimer, Logging}
+
 import scala.collection.mutable
-import scala.collection.mutable.ListBuffer
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.util.Try
-import scala.util.parsing.input.{CharArrayReader, Positional}
-import razie.wiki.model._
-import razie.wiki.admin.Autosave
 
 /** controller for server side fiddles / services */
 class SFiddleBase extends RazController {
 
-  import NotesTags._
-
   def test = "haha"
+
+  def FAUPR(f: RazRequest => Result) = FAUPRAPI(false)(f)
+
+  def FAUPRa(f: RazRequest => Future[Result]) = FAUPRaAPI(false)(f)
+  def FAUPRaAPI(isApi:Boolean)(f: RazRequest => Future[Result]) = Action.async { implicit request =>
+    implicit val stok = new RazRequest(request)
+    (for (
+      au <- stok.au;
+      isA <- checkActive(au);
+      ok <-
+      ((au hasPerm Perm.domFiddle) ||
+        (au hasPerm Perm.codeMaster) ||
+        (au hasPerm Perm.adminDb)) orCorr(cNoPermission)
+    ) yield f(stok)
+      ) getOrElse Future {
+      val more = Website(request).flatMap(_.prop("msg.noPerm")).flatMap(WID.fromPath).flatMap(_.content).mkString
+      if(isApi)
+        Unauthorized("You need more karma... " + stok.errCollector.mkString)
+      else
+        Msg("You need more karma...", "Open a karma request")
+    }
+  }
+
+  /** action builder that decomposes the request, extracting user and creating a simple error buffer */
+  def FAUP(f: User => VErrors => Request[AnyContent] => Result) = Action { implicit request =>
+    implicit val errCollector = new VErrors()
+    (for (
+      au <- activeUser;
+      isA <- checkActive(au);
+      ok <-
+      ((au hasPerm Perm.domFiddle) ||
+        (au hasPerm Perm.codeMaster) ||
+        (au hasPerm Perm.adminDb)) orCorr(cNoPermission)
+    ) yield f(au)(errCollector)(request)
+      ) getOrElse {
+      val more = Website(request).flatMap(_.prop("msg.noPerm")).flatMap(WID.fromPath).flatMap(_.content).mkString
+      Msg("You need more karma...", "Open a karma request")
+    }
+  }
 
   def typeSafe(v: String): String = {
     if (v.trim.startsWith("\"") || v.trim.startsWith("'") || v.trim.startsWith("{") || v.trim.startsWith("[")) v
@@ -68,6 +91,13 @@ class SFiddleBase extends RazController {
     def dec(s: String) = {
       s.replaceAll("scrRAZipt", "script").replaceAll("%3B", ";").replaceAll("%2B", "+").replaceAll("%27", "'")
     }
+  }
+
+  import razie.js
+
+  object retj {
+    def <<(x: List[Any]) = Ok(js.tojsons(x, 0).toString).as("application/json")
+    def <<(x: Map[String, Any]) = Ok(js.tojson(x).toString).as("application/json")
   }
 
 }

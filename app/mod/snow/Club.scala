@@ -481,7 +481,7 @@ regAdmin=$regAdmin
       u <- uw.user;
       msg <- request.queryString.get("msg") orErr "no message"
     ) yield {
-        SendEmail.withSession { implicit mailSession =>
+        SendEmail.withSession(Website.realm(request)) { implicit mailSession =>
           // notify user
           val link = club.reg(u) map { reg => routes.Club.doeClubUserReg(reg._id.toString).toString } getOrElse "http://www.racerkidz.com"
           Emailer.sendEmailClubRegHelp(u, clubName.name, link, msg.mkString)
@@ -526,7 +526,7 @@ regAdmin=$regAdmin
 
             // if status just changed to PENDING, send email invitation
             if (ooldreg.exists(how != _.regStatus) && how == RegStatus.PENDING) {
-              SendEmail.withSession { implicit mailSession =>
+              SendEmail.withSession(Website.realm(request)) { implicit mailSession =>
                 // notify user
                 Emailer.sendEmailClubRegStart(u, clubName.name, routes.Club.doeClubUserReg(reg._id.toString).toString)
               }
@@ -887,7 +887,7 @@ regAdmin=$regAdmin
           }
           Msg2("Ok, boss, user created. Now edit the club...")
         } else {
-          SendEmail.withSession { implicit mailSession =>
+          SendEmail.withSession(stok.realm) { implicit mailSession =>
             Emailer.tellRaz(
               "Requires club activate",
               "user: " + stok.au.map(_.userName),
@@ -1211,7 +1211,7 @@ regAdmin=$regAdmin
 
 
           //      3. start - notify user
-          SendEmail.withSession { implicit mailSession =>
+          SendEmail.withSession(Website.realm(request)) { implicit mailSession =>
             //        Emailer.sendEmailClubRegStart(au, au.userName, routes.Club.doeClubUserReg(reg._id.toString).toString)
             //        Emailer.tellRaz("Started registration", "user: " + au.userName, "club: " + clubName, "how: "+how)
             ////        TODO tell regAdmin so they know...
@@ -1284,7 +1284,7 @@ regAdmin=$regAdmin
               }
 
             // 3. start - notify user
-            SendEmail.withSession { implicit mailSession =>
+            SendEmail.withSession(Website.realm(request)) { implicit mailSession =>
               Emailer.sendEmailClubRegStart(au, au.userName, routes.Club.doeClubUserReg(reg._id.toString).toString)
               Emailer.tellRaz("Started registration", "user: " + au.userName, "club: " + clubName, "how: " + how)
               // TODO tell regAdmin so they know...

@@ -243,12 +243,12 @@ $fdata
                 w.update(we, Some("form_submitted"))
                 act.WikiWf.event("wikiFormSubmit", Map("wpath" -> we.wid.wpath, "userName" -> au.userName))
                 Wikie.after(we, WikiAudit.UPD_CONTENT, Some(au))
-                Emailer.withSession { implicit mailSession =>
+                Emailer.withSession(w.realm) { implicit mailSession =>
                   //                    au.quota.incUpdates
                   au.shouldEmailParent("Everything").map(parent => Emailer.sendEmailChildUpdatedWiki(parent, au, WID(w.category, w.name)))
 
                   if (data2.contains("submit_button")) {
-                    SendEmail.withSession { implicit mailSession =>
+                    SendEmail.withSession(Website.realm(request)) { implicit mailSession =>
                       //                  cout << Regs.findWid(wid)
                       //                  cout << Regs.findWid(wid).flatMap(x => Users.findUserByUsername(x.clubName))
                       //                  cout << Regs.findWid(wid).flatMap(x => Users.findUserByUsername(x.clubName)).map(Club(_).regAdmin)
@@ -270,7 +270,7 @@ $fdata
                       cdebug << r.deprecatedWids.filter(_.page.flatMap(_.form.formState).exists(_ == FormStatus.APPROVED)).size
                       if (r.deprecatedWids.filter(_.page.flatMap(_.form.formState).exists(_ == FormStatus.APPROVED)).size == r.deprecatedWids.size) {
                         r.updateRegStatus(RegStatus.ACCEPTED)
-                        SendEmail.withSession { implicit mailSession =>
+                        SendEmail.withSession(Website.realm(request)) { implicit mailSession =>
                           Emailer.sendEmailFormsAccepted(au, owner.asInstanceOf[User], r.clubName, r.fee(), club.msgFormsAccepted)
                         }
                       }
@@ -278,7 +278,7 @@ $fdata
                     // TODO send email with accepted
                     1 // TODO send email with reg. current
                   } else if (data2.contains("reject_button")) {
-                    SendEmail.withSession { implicit mailSession =>
+                    SendEmail.withSession(Website.realm(request)) { implicit mailSession =>
                       w.owner.foreach { owner =>
                         Regs.findWid(wid).foreach { r =>
                           Emailer.sendEmailFormRejected(au, owner.asInstanceOf[User], r.clubName, routes.Club.doeClubUserReg(r._id.toString).toString, data2.get("formRejected").getOrElse("Something's wrong...?"))
@@ -349,12 +349,12 @@ $fdata
                 w.update(we, Some("form_submitted"))
                 act.WikiWf.event("wikiFormSubmit", Map("wpath" -> we.wid.wpath, "userName" -> au.userName))
                 Wikie.after(we, WikiAudit.UPD_CONTENT, Some(au))
-                Emailer.withSession { implicit mailSession =>
+                Emailer.withSession(w.realm) { implicit mailSession =>
                   //                    au.quota.incUpdates
                   au.shouldEmailParent("Everything").map(parent => Emailer.sendEmailChildUpdatedWiki(parent, au, WID(w.category, w.name)))
 
                   if (data2.contains("submit_button")) {
-                    Emailer.withSession { implicit mailSession =>
+                    Emailer.withSession(w.realm) { implicit mailSession =>
                       //                  cout << Regs.findWid(wid)
                       //                  cout << Regs.findWid(wid).flatMap(x => Users.findUserByUsername(x.clubName))
                       //                  cout << Regs.findWid(wid).flatMap(x => Users.findUserByUsername(x.clubName)).map(Club(_).regAdmin)
@@ -376,6 +376,7 @@ $fdata
             }
           }) getOrElse
           Unauthorized(errCollector.mkString)
+
       case None =>
         val w = new WikiEntry(data2("category"), data2("name"), data2("category") + " - " +data2("name"), "md", data2("content"), auth.get._id, Seq(data2("tags")), data2("realm"))
         val wf = new WForm(w)
@@ -409,7 +410,7 @@ $fdata
                 we.create
                 act.WikiWf.event("wikiFormSubmit", Map("wpath" -> we.wid.wpath, "userName" -> au.userName))
                 Wikie.after(we, WikiAudit.UPD_CONTENT, Some(au))
-                Emailer.withSession { implicit mailSession =>
+                Emailer.withSession(w.realm) { implicit mailSession =>
                   //                    au.quota.incUpdates
                   au.shouldEmailParent("Everything").map(parent => Emailer.sendEmailChildUpdatedWiki(parent, au, WID(w.category, w.name)))
 

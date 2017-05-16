@@ -75,7 +75,7 @@ object Application extends RazController {
       log ("URL - Redirecting main page from "+Website.getHost + " TO "+host)
       Future.successful(Redirect(host))
 //    } orElse Website.getHost.flatMap(Website.apply).filter(w=> !Reactors.contains(w.reactor)).flatMap {x=>
-    } orElse Website.getHost.flatMap(Website.apply).filter(w=>
+    } orElse Website.getHost.flatMap(Website.forHost).filter(w=>
       w.we.exists(_.category == "Site") || w.homePage.isDefined/*exists(_.name != "Home")*/
     ).flatMap {x=>
       log ("URL - serve Website homePage for "+x.name)
@@ -219,8 +219,11 @@ object Application extends RazController {
   import razie.|>
 
   def listswitch = FAU { implicit au => implicit errCollector => implicit request =>
-    Ok(WikiReactors.reactors.values.map{r=> r.websiteProps.prop("domain")}.filter(_.isDefined).map(_.get).map(d=>
-      s"""<a href="/doe/www/$d">$d</a><br>""").mkString).as("html")
+    Ok(WikiReactors.reactors.values.map{r=>
+      r.websiteProps.prop("domain")}.filter(_.isDefined).map(_.get).map{d=>
+      s"""<a href="/doe/www/$d">$d</a><br>"""
+    }.mkString
+    ).as("html")
   }
 
   def switch(domain: String) = FAU { implicit au => implicit errCollector => implicit request =>

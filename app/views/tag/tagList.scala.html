@@ -8,6 +8,11 @@ tagPrefix is applied to browse another tag
 @tagpath(s:String) = @{ if(current=="" || Seq("none", "recent", "all", "archive").contains(current)) s else (current+"/"+s) }
 @browseTag(t:String)={@tagPrefix@tagpath(t)@tagSuffix}
 @browseAllTags()={"."}
+@curcat = @{ val x = current.replaceFirst("/.*", "").capitalize; if(x.isEmpty) "Topic" else x }
+
+<a href="@routes.Wikie.wikieCreate(curcat, current.replaceAllLiterally("/", ","))" class="btn btn-lg btn-info">New @curcat ...</a>
+<p>
+</p>
 
   @if(!tags.isEmpty && max > 5) {
     <input id="typeahead" xonkeypress="keyp(event)" autocomplete="off" type="text"

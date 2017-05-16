@@ -64,7 +64,7 @@ class WikiBase extends RazController with Logging with WikiAuthorization {
   def getRealm (irealm:String = UNKNOWN) (implicit request : Request[_]) = {
     // todo I think this function is obsoleted - reactors add themselves in Websites...?
     if(UNKNOWN == irealm) {
-      PlayTools.getHost.flatMap(x=>Website(x)).map(_.reactor).getOrElse(WikiReactors.RK)
+      PlayTools.getHost.flatMap(x=>Website.forHost(x)).map(_.reactor).getOrElse(WikiReactors.RK)
     } else irealm
   }
 
@@ -86,11 +86,6 @@ object Wiki extends WikiBase {
         s"""<b><a href="/wiki/tag/$t">$label</a></b>"""
       }
     }
-  }
-
-  /** show a global tag, no parent */
-  def showTagOld(tag: String, irealm:String) = Action { implicit request=>
-    Redirect(routes.Wiki.showTag(tag, irealm))
   }
 
   /** show a global tag, no parent */
@@ -301,7 +296,10 @@ object Wiki extends WikiBase {
   }
 
   //TODO optimize - index or whatever
-  /** search all topics  provide either q or curTags */
+  /** search all topics  provide either q or curTags
+    *
+    * @param iq initial query / search string
+    */
   def search(irealm:String, iq: String, scope:String, curTags:String="") = Action { implicit request =>
     var q = iq
 
@@ -323,7 +321,8 @@ object Wiki extends WikiBase {
 
     val wl = getList(realm, q, scope, curTags, 500)(request)
 
-    if (wl.size == 1)
+    if (wl.size == 1 && iq != "")
+      // if just one found and not a tag browsing
       Redirect(controllers.Wiki.w(wl.head.wid))
     else {
       // the list of tags, sorted by count of occurences
@@ -472,7 +471,7 @@ object Wiki extends WikiBase {
             log("    TO http://" + Services.config.hostport + "/wiki/" + cw.wpath.get)
   //          Redirect("http://" + Config.hostport + "/wiki/" + cw.wpath.get)
             Redirect(wid.url)
-          } else fhost.flatMap(x=>Website(x)).map { web=>
+          } else fhost.flatMap(x=>Website.forHost(x)).map { web=>
             show(wid, count).apply(request).value.get.get //todo what the heck is this?
           } getOrElse {
             // normal - continue showing the page
@@ -541,7 +540,7 @@ object Wiki extends WikiBase {
   }
 
   def show(iwid: WID, count: Int = 1, print: Boolean = false): Action[AnyContent] = RAction { implicit request =>
-    implicit val errCollector = new VErrors()
+//    implicit val errCollector = new VErrors()
     implicit val au = request.au
 
     def canSeeMaybe(wid: WID, au: Option[WikiUser], w: Option[WikiEntry]) = {
@@ -569,6 +568,8 @@ object Wiki extends WikiBase {
     // so they are available to scripts
     razie.NoStaticS.put(QueryParms(request.queryString))
 
+    def isSuperCat (cat:String) = Array("Blog", "Post", "Topic", "Page") contains cat
+
     // special pages
     if ("Page" == cat && "home" == name) Redirect("/")
     else if ("Admin" == cat && "home" == name) Redirect("/")
@@ -580,9 +581,14 @@ object Wiki extends WikiBase {
       // search for any name only if cat is missing OR there is no parent
 
       // TODO optimize to load just the WID - i'm redirecting anyways
-      val wl = Wikis(wid.getRealm).findAny(name).filter(page => canSeeMaybe(page.wid, au, Some(page))).toList
+      // todo trying first the index and then cache - did not think this through
+      // todo check canSee etc
+      val wl = Wikis(wid.getRealm).index.getWids(name).headOption.map(cachedPage(_, au).toList).getOrElse {
+        Wikis(wid.getRealm).findAny(name).toList
+      }.filter(page => canSeeMaybe(page.wid, au, Some(page))).toList
+//      val wl = Wikis(wid.getRealm).findAny(name).filter(page => canSeeMaybe(page.wid, au, Some(page))).toList
       if (wl.size == 1) {
-        if (Array("Blog", "Post", "Topic", "Page") contains wl.head.wid.cat) {
+        if (isSuperCat(wl.head.wid.cat)) {
           // Blogs and other topics are allowed nicer URLs, without category
           // search engines don't like URLs with colons etc
           show(wl.head.wid, count, print).apply(request.ireq.asInstanceOf[Request[AnyContent]]).value.get.get
@@ -606,10 +612,13 @@ object Wiki extends WikiBase {
           wikiPage(wid, Some(iwid.name), None, !shouldNotCount, au.isDefined && canEdit(wid, au, None).exists(identity))
       }
     } else {
-      // normal request with cat and name
+      // normal request with cat and name OR empty cat but has parent
 
       // the idea is that as pages are displayed *with a user*, the cache fills up
-      val w = cachedPage(wid, au)
+      val w = cachedPage(wid, au) orElse {
+        // if isSuperCat then usually the WID won't match, but index can still find it
+        Wikis(wid.getRealm).index.getWids(wid.name).headOption.flatMap(_.page)
+      }
 
       if (!w.isDefined && Config.config(Config.TOPICRED).exists(_.contains(wid.wpath))) {
         log("- redirecting TOPICRED " + wid.wpath)
@@ -773,7 +782,7 @@ object Wiki extends WikiBase {
         List.empty[WikiEntry].toIterator
 
     ROK.k apply {implicit stok=>
-      views.html.wiki.wikiAnalyze("", "", "", wl.toIterator)
+      views.html.wiki.wikiListAnalyze("", "", "", wl.toIterator)
     }
 
 //    Redirect("/wiki/analyze")
@@ -783,7 +792,7 @@ object Wiki extends WikiBase {
     val wl = getList(stok.realm, q, scope, tags)
 
     ROK.k apply {implicit stok=>
-      views.html.wiki.wikiAnalyze(q, tags, scope, wl.toIterator)
+      views.html.wiki.wikiListAnalyze(q, tags, scope, wl.toIterator)
     }
   }
 

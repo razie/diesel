@@ -11,7 +11,9 @@ create new page given a template
 
 <p>Fill in the required attributes below.</p>
 
-@helper.form(action=routes.Wikie.addWithSpec(cat, name, formWid.wpath, torspec:String, stok.realm), 'class->"well form-inline") {
+@helper.form(
+  action=routes.Wikie.addWithSpec(cat, name, formWid.wpath, torspec:String, stok.realm),
+  'class->"alert alert-info form-inline col-sm-12") {
 
   @** you can override the entire form in your template *@
   @if(!formPage.exists(_.form.fields.contains("name"))) {
@@ -24,13 +26,13 @@ create new page given a template
         Give it a name...
       }
     }
-    <p></p><p>Name: <input type="text" class="" name="name" placeholder="Name" value="@name">
+    <p></p><p>Name: <input type="text" class="input-lg" name="name" placeholder="Name" value="@name">
     <hr>
     <p>More particulars:</p>
   }
 
   @wiki.wikiFormInt(formWid, Some(name), formPage, errors, false, false, true)
-
+<hr>
   <button type="submit" class="btn btn-primary">Create Now!</button>
 }
 

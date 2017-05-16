@@ -179,7 +179,7 @@ object Comment extends RazController with Logging {
 
   // todo this entire can be async
   def notifyForEntity (pid:String, role:String, au:User, cs:CommentStream) = {
-    SendEmail.withSession { implicit mailSession =>
+    SendEmail.withSession() { implicit mailSession =>
     if("Wiki" == role) {
         // email creator and all other commenters
         Wikis.findById(pid).map { w =>

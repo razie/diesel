@@ -6,166 +6,27 @@
   **/
 package mod.diesel.model.parser
 
-import mod.diesel.model.RDExt
+import razie.diesel.dom.RDOM._
+import razie.diesel.dom.{RDOM, _}
 import razie.diesel.ext._
-import razie.clog
-import razie.diesel._
-import razie.diesel.dom._
-import razie.diesel.dom.RDOM
-import RDOM._
-import razie.wiki.{Enc, Services}
 import razie.wiki.dom.{WikiDTemplate, WikiDomain}
 import razie.wiki.model.WikiEntry
 import razie.wiki.parser.{WAST, WikiParserBase}
+import razie.wiki.{Enc, Services}
 
 import scala.Option.option2Iterable
 import scala.util.Try
 import scala.util.parsing.input.Positional
 
-class FlowExpr()
-
-case class SeqExpr(op: String, l: Seq[FlowExpr]) extends FlowExpr {
-  override def toString = l.mkString(op)
-}
-
-case class MsgExpr(ea: String) extends FlowExpr {
-  override def toString = ea
-}
-
-case class BFlowExpr(b: FlowExpr) extends FlowExpr {
-  override def toString = s"( $b )"
-}
-
 /** domain parser - for domain sections in a wiki */
-trait WikiDomainParser extends WikiParserBase {
+trait WikiDomParser extends WikiExprParser {
 
-  import RDExt._
   import RDOM._
   import WAST._
 
-  def ident: P = """\w+""".r
-
-  def qqident: P =
-    """[\w.]+""" ~ rep("." ~> ident) ^^ {
-      case i ~ l => (i :: l).mkString(".")
-    }
-
-  def qident: P = ident ~ rep("." ~> ident) ^^ {
-    case i ~ l => (i :: l).mkString(".")
-  }
-
-  def any: P = """.*""".r
-
-  //todo full expr with +-/* and XP
-  def value: P = qident | number | str
-
-  def number: P = """\d+""".r
-
-  // todo commented - if " not included in string, evaluation has trouble - see expr(s)
-  // todo see stripq and remove it everywhere when quotes die and proper type inference is used
-  def str: P = "\"" ~> """[^"]*""".r <~ "\""
-
-  //  def str: P = """"[^"]*"""".r
-
-  def domainBlocks = pobject | pclass | passoc | pfunc | pdfiddle | pwhen | pflow | pmatch | preceive | pmsg | pval | pexpectm | pexpectv | pexpect | pmock
+  def domainBlocks = pobject | pclass | passoc | pfunc | pdfiddle | pwhen | pflow | pmatch | psend | pmsg | pval | pexpectm | pexpectv | pexpect
 
   // todo replace $ with . i.e. .class
-
-  //------------ expressions and conditions
-
-  def expr: Parser[Expr] = ppexpr | pterm1
-
-  def ppexpr: Parser[Expr] = pterm1 ~ rep(ows ~> ("+" | "-" | "|") ~ ows ~ pterm1) ^^ {
-    case a ~ l if l.isEmpty => a
-    case a ~ l => l.foldLeft(a)((a, b) =>
-      b match {
-        case op ~ _ ~ p => AExpr2(a, op, p)
-      }
-    )
-  }
-
-  def pterm1: Parser[Expr] = numexpr | cexpr | aident | exregex | eblock | js
-
-  def eblock: Parser[Expr] = "(" ~ ows ~> expr <~ ows ~ ")" ^^ { case ex => BlockExpr(ex) }
-
-  def js: Parser[Expr] = "{" ~ ows ~> jexpr <~ ows ~ "}" ^^ { case ex => JBlockExpr(ex) }
-
-  def jblock: Parser[String] = "{" ~ ows ~> jexpr <~ ows ~ "}" ^^ { case ex => ex }
-
-  def jexpr1: Parser[String] = jother ~ jblock ~ jother ^^ { case a ~ b ~ c => a + b.toString + c }
-
-  def jexpr: Parser[String] = jblock | jexpr1 | jother ^^ { case ex => ex.toString }
-
-  def jother: Parser[String] = "[^{}]+".r ^^ { case ex => ex }
-
-  // a number
-  def numexpr: Parser[Expr] = number ^^ { case i => new CExpr(i, "Number") }
-
-  // string const
-  def cexpr: Parser[Expr] = "\"" ~> """[^"]*""".r <~ "\"" ^^ { case e => new CExpr(e, "String") }
-
-  // qualified identifier
-  def aident: Parser[Expr] = qident ^^ { case i => new AExprIdent(i) }
-
-  // regular expression, JS style
-  def exregex: Parser[Expr] =
-    """/[^/]*/""".r ^^ { case x => new CExpr(x, "Regex") }
-
-  //------------ conditions
-
-  def cond: Parser[BExpr] = boolexpr
-
-  def boolexpr: Parser[BExpr] = bterm1 | bterm1 ~ "||" ~ bterm1 ^^ { case a ~ s ~ b => bcmp(a, s.trim, b) }
-
-  def bterm1: Parser[BExpr] = bfactor1 | bfactor1 ~ "&&" ~ bfactor1 ^^ { case a ~ s ~ b => bcmp(a, s.trim, b) }
-
-  def bfactor1: Parser[BExpr] = eq | neq | lte | gte | lt | gt
-
-  def like: Parser[BExpr] = expr ~ "~=" ~ expr ^^ { case a ~ s ~ b => cmp(a, s.trim, b) }
-
-  def df: Parser[BExpr] = expr ~ "?=" ~ expr ^^ { case a ~ s ~ b => cmp(a, s.trim, b) }
-
-  def eq: Parser[BExpr] = expr ~ "==" ~ expr ^^ { case a ~ s ~ b => cmp(a, s.trim, b) }
-
-  def neq: Parser[BExpr] = expr ~ "!=" ~ expr ^^ { case a ~ s ~ b => cmp(a, s.trim, b) }
-
-  def lte: Parser[BExpr] = expr ~ "<=" ~ expr ^^ { case a ~ s ~ b => cmp(a, s.trim, b) }
-
-  def gte: Parser[BExpr] = expr ~ ">=" ~ expr ^^ { case a ~ s ~ b => cmp(a, s.trim, b) }
-
-  def lt: Parser[BExpr] = expr ~ "<" ~ expr ^^ { case a ~ s ~ b => cmp(a, s.trim, b) }
-
-  def gt: Parser[BExpr] = expr ~ ">" ~ expr ^^ { case a ~ s ~ b => cmp(a, s.trim, b) }
-
-  def bcmp(a: BExpr, s: String, b: BExpr) = new BCMP1(a, s, b)
-
-  def cmp(a: Expr, s: String, b: Expr) = new BCMP2(a, s, b)
-
-  // ---------------------- flow expressions
-
-  def flowexpr: Parser[FlowExpr] = seqexpr
-
-  def seqexpr: Parser[FlowExpr] = parexpr ~ rep(ows ~> ("+" | "-") ~ ows ~ parexpr) ^^ {
-    case a ~ l =>
-      SeqExpr("+", a :: l.collect {
-        case op ~ _ ~ p => p
-      })
-  }
-
-  def parexpr: Parser[FlowExpr] = parterm1 ~ rep(ows ~> ("|" | "||") ~ ows ~ parterm1) ^^ {
-    case a ~ l =>
-      SeqExpr("|", a :: l.collect {
-        case op ~ _ ~ p => p
-      })
-  }
-
-  def parterm1: Parser[FlowExpr] = parblock | msgterm1
-
-  def parblock: Parser[FlowExpr] = "(" ~ ows ~> seqexpr <~ ows ~ ")" ^^ {
-    case ex => BFlowExpr(ex)
-  }
-
-  def msgterm1: Parser[FlowExpr] = qident ^^ { case i => new MsgExpr(i) }
 
   // ----------------------
 
@@ -336,23 +197,6 @@ trait WikiDomainParser extends WikiParserBase {
     }
 
   /**
-    * .mock a.role (attrs) => z.role (attrs)
-    */
-  def pmock: PS =
-    keyw("""[.$]xmock""".r) ~ ws ~ clsMatch ~ opt(pif) ~ " *=>".r ~ ows ~ optAttrs ^^ {
-      case k ~ _ ~ Tuple3(ac, am, aa) ~ cond ~ _ ~ _ ~ za => {
-        LazyState { (current, ctx) =>
-          val x = EMatch(ac, am, aa, cond)
-          val y = EMap("", "", za)
-          val f = EMock(ERule(x, List(y)))
-          f.rule.pos = Some(EPos(ctx.we.map(_.wid.wpath).mkString, k.pos.line, k.pos.column))
-          f.pos = Some(EPos(ctx.we.map(_.wid.wpath).mkString, k.pos.line, k.pos.column))
-          addToDom(f).ifold(current, ctx)
-        }
-      }
-    }
-
-  /**
     * .assoc name a:role -> z:role
     */
   def passoc: PS =
@@ -459,9 +303,11 @@ trait WikiDomainParser extends WikiParserBase {
         case None => ("", None)
       }
       t match {
-        case Some(Some(ref) ~ tt ~ k) => P(name, tt + k.s, ref, multi.mkString, dflt, ex)
-        case Some(None ~ tt ~ k) => P(name, dflt, tt + k.s, "", multi.mkString, ex)
-        case None => P(name, dflt, "", "", multi.mkString, ex)
+          // k - kind is [String] etc
+        case Some(ref ~ tt ~ k) => // ref or no archetype
+          P(name, dflt, tt + k.s, ref.mkString, multi.mkString, ex)
+        case None => // infer type from expr
+          P(name, dflt, ex.map(_.getType).getOrElse(""), "", multi.mkString, ex)
       }
     }
   }
@@ -507,10 +353,10 @@ trait WikiDomainParser extends WikiParserBase {
     *
     * An NVP is either the spec or an instance of a function call, a message, a data object... whatever...
     */
-  def preceive: PS = keyw("[.$]receive *".r) ~ opt("<" ~> "[^>]+".r <~ "> *".r) ~ ident ~ " *\\. *".r ~ ident ~ optAttrs ~ opt(" *: *".r ~> optAttrs) ^^ {
-    case k ~ stype ~ ent ~ _ ~ ac ~ attrs ~ ret => {
+  def psend: PS = keyw("[.$]send *".r) ~ opt("<" ~> "[^>]+".r <~ "> *".r) ~ qclsMet ~ optAttrs ~ opt(" *: *".r ~> optAttrs) ^^ {
+    case k ~ stype ~ qcm ~ attrs ~ ret => {
       LazyState { (current, ctx) =>
-        val f = EMsg("receive", ent, ac, attrs, ret.toList.flatten(identity), stype.mkString.trim)
+        val f = EMsg("receive", qcm._1, qcm._2, attrs, ret.toList.flatten(identity), stype.mkString.trim)
         f.pos = Some(EPos(ctx.we.map(_.wid.wpath).mkString, k.pos.line, k.pos.column))
         collectDom(f, ctx.we)
         SState(CanHtml.span("receive::") + f.toHtmlInPage + "<br>")
@@ -553,7 +399,7 @@ trait WikiDomainParser extends WikiParserBase {
     *
     * An NVP is either the spec or an instance of a function call, a message, a data object... whatever...
     */
-  def linemsg(wpath: String) = keyw("[.$]msg *".r | "[.$]receive\\s*".r) ~ opt("<" ~> "[^>]+".r <~ "> *".r) ~ ident ~ " *\\. *".r ~ ident ~ optAttrs ~ opt(" *: *".r ~> optAttrs) ^^ {
+  def linemsg(wpath: String) = keyw("[.$]msg *".r | "[.$]send\\s*".r) ~ opt("<" ~> "[^>]+".r <~ "> *".r) ~ ident ~ " *\\. *".r ~ ident ~ optAttrs ~ opt(" *: *".r ~> optAttrs) ^^ {
     case k ~ stype ~ ent ~ _ ~ ac ~ attrs ~ ret => {
       val f = EMsg("def", ent, ac, attrs, ret.toList.flatten(identity), stype.mkString.trim)
       f.pos = Some(EPos(wpath, k.pos.line, k.pos.column))
@@ -565,11 +411,10 @@ trait WikiDomainParser extends WikiParserBase {
     * .mock a.role (attrs) => z.role (attrs)
     */
   def linemock(wpath: String) =
-    keyw("""[.$]mock""".r) ~ ws ~ clsMatch ~ opt(pif) ~ " *=> *".r ~ optAttrs ^^ {
-      case k ~ _ ~ Tuple3(ac, am, aa) ~ cond ~ _ ~ za => {
+    keyw("""[.$]mock""".r) ~ ws ~ clsMatch ~ ws ~ opt(pif) ~ pgen ^^ {
+      case k ~ _ ~ Tuple3(ac, am, aa) ~ _ ~ cond ~ gen => {
         val x = EMatch(ac, am, aa, cond)
-        val y = EMap("", "", za)
-        val f = EMock(ERule(x, List(y)))
+        val f = EMock(ERule(x, List(gen)))
         f.pos = Some(EPos(wpath, k.pos.line, k.pos.column))
         f.rule.pos = Some(EPos(wpath, k.pos.line, k.pos.column))
         f
@@ -704,7 +549,7 @@ trait WikiDomainParser extends WikiParserBase {
           //            args = args + ("tab" -> lang)
 
           var links = lines.s.lines.collect {
-            case l if l.startsWith("$msg") || l.startsWith("$receive") =>
+            case l if l.startsWith("$msg") || l.startsWith("$send") =>
               parseAll(linemsg(ctx.we.get.wid.wpath), l).map { st =>
                 st.toHref(name)
               }.getOrElse("???")
@@ -718,7 +563,16 @@ trait WikiDomainParser extends WikiParserBase {
 
           if (links == "") links = "no recognized messages"
 
-          SState(views.html.fiddle.inlineDomFiddle(ctx.we.get.wid, ctx.we, name, kind, args, trim(lines.s), links, args.contains("anon"), ctx.au).body)
+//          val spec = ctx.we.flatMap(_.section("dfiddle", name).filter(_.signature.toLowerCase == "spec")).map(_.content).filter(x=> kind.toLowerCase=="story").getOrElse("")
+val xx = ctx.we.get.sections.filter(x=> x.stype == "dfiddle" && x.name == name)
+          val spec = ctx.we.flatMap(
+            _.sections.filter(x=> x.stype == "dfiddle" && x.name == name)
+            .filter(_.signature.toLowerCase startsWith "spec")
+            .map(_.content)
+            .headOption
+          ).filter(x=> kind.toLowerCase=="story").getOrElse("")
+
+          SState(views.html.fiddle.inlineDomFiddle(ctx.we.get.wid, ctx.we, name, kind, spec, args, trim(lines.s), links, args.contains("anon"), ctx.au).body)
         }
       }
       catch {
@@ -727,7 +581,6 @@ trait WikiDomainParser extends WikiParserBase {
           SState(s"""<font style="color:red">[[BAD FIDDLE - check syntax: ${t.toString}]]</font>""")
       }
   }
-
 }
 
 class ExecValue(p: RDOM.P) extends EXEC {
@@ -742,82 +595,5 @@ class ExecCall(cls: String, func: String, args: List[P]) extends EXEC {
   def exec(ctx: Any, parms: Any*): Any = ""
 }
 
-
-// exprs
-
-/** boolean expressions */
-abstract class BExpr(e: String) extends HasDsl {
-  def apply(e: Any)(implicit ctx: ECtx): Boolean
-
-  override def toDsl = e
-}
-
-/** negated boolean expression */
-case class BCMPNot(a: BExpr) extends BExpr("") {
-  override def apply(e: Any)(implicit ctx: ECtx) = !a.apply(e)
-}
-
-/** composed boolean expression */
-case class BCMP1(a: BExpr, op: String, b: BExpr) extends BExpr(a.toDsl + " " + op + " " + b.toDsl) {
-  override def apply(in: Any)(implicit ctx: ECtx) = op match {
-    case "||" => a.apply(in) || b.apply(in)
-    case "&&" => a.apply(in) && b.apply(in)
-    case _ => {
-      clog << "[ERR Operator " + op + " UNKNOWN!!!]"; false
-    }
-  }
-
-  override def toString = a.toString + " " + op + " " + b.toString
-}
-
-/** simple boolean expression */
-case class BCMP2(a: Expr, op: String, b: Expr) extends BExpr(a.toDsl + " " + op + " " + b.toDsl) {
-  override def apply(in: Any)(implicit ctx: ECtx) = {
-    (a, b) match {
-      case (CExpr(aa, "Number"), CExpr(bb, "Number")) => {
-        val ai = aa.toInt
-        val bi = bb.toInt
-        op match {
-          case "?=" => true
-          case "==" => ai == bi
-          case "!=" => ai != bi
-          case "<=" => ai <= bi
-          case ">=" => ai >= bi
-          case "<" => ai < bi
-          case ">" => ai > bi
-          case _ => {
-            clog << "[ERR Operator " + op + " UNKNOWN!!!]";
-            false
-          }
-        }
-      }
-      case _ => {
-        val as = a(in).toString
-        val bs = b(in).toString
-        val x = as matches bs
-        op match {
-          case "?=" => a(in).toString.length >= 0 // anything with a default
-          case "==" => a(in) == b(in)
-          case "!=" => a(in) != b(in)
-          case "~=" => a(in).toString matches b(in).toString
-          case "<=" => a(in).toString <= b(in).toString
-          case ">=" => a(in).toString >= b(in).toString
-          case "<" => a(in).toString < b(in).toString
-          case ">" => a(in).toString > b(in).toString
-          case "contains" => a(in).toString contains b(in).toString
-          case "is" => {
-            // is nuber or is date or is string etc
-            a.isInstanceOf[CExpr] && b.isInstanceOf[AExprIdent] &&
-              a.asInstanceOf[CExpr].ttype.toLowerCase == b.asInstanceOf[AExprIdent].expr.toLowerCase
-          }
-          case _ => {
-            clog << "[ERR Operator " + op + " UNKNOWN!!!]";
-            false
-          }
-        }
-      }
-    }
-  }
-}
 
 

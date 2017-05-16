@@ -4,14 +4,17 @@ import razie.diesel.dom.RDOM.{A, C, D, F, O}
 
 import scala.collection.mutable.ListBuffer
 
-/** a domain or sub-domain specification. Think UML */
+/** a domain or sub-domain specification. Think UML.
+  *
+  * in DDD parlance, this is a bounded domain.
+  */
 class RDomain(val name: String, val classes: Map[String, C], val assocs: List[A], val diamonds:List[D] = List.empty, val objects: Map[String, O] = Map.empty, val funcs: Map[String, F] = Map.empty) {
   /** use this for other elements */
   val moreElements = new ListBuffer[Any]()
 
   def nz (s:String) = s != null && s.length > 0
 
-  /** compose domains parsed in differnt places */
+  /** compose domains parsed in different places */
   def plus(other: RDomain, newName:String=name) = {
     var x=new RDomain(newName, classes ++ other.classes, assocs ++ other.assocs, diamonds ++ other.diamonds, objects ++ other.objects, funcs ++ other.funcs)
     x.moreElements.appendAll(moreElements)
@@ -111,12 +114,17 @@ class RDomain(val name: String, val classes: Map[String, C], val assocs: List[A]
 
 }
 
+/** some helpers */
 object RDomain {
   final val DATA_TYPES = "String,Int,DateTime,JSON,XML,Image,URL,WID,UWID,WPATH".split(",")
 
   def isDataType (t:String) = t != null && (DATA_TYPES contains t)
 }
 
+/** base idea of a compiler - implement one per language and - I don't remember how they're plugged in
+  *
+  * todo compiler factory
+  */
 trait RCompiler {
   def lang : String
 
@@ -131,6 +139,8 @@ trait RCompiler {
   def call (f:F) : String
 }
 
+/** JS compiler - used for domain functionality defined in JS
+  */
 class RJSCompiler (val dom:RDomain) extends RCompiler {
   override def lang = "js"
 

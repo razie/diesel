@@ -1,7 +1,6 @@
 package razie.diesel
 
-import mod.diesel.model.parser.BCMP2
-import razie.diesel.dom.{CExpr, ECtx, EPos, RDOM}
+import razie.diesel.dom._
 import razie.diesel.dom.RDOM.{P, PM}
 
 import scala.collection.mutable
@@ -76,15 +75,6 @@ package object ext {
         // name found but no value match - mark the name
       }
       r
-//      if ("==" == pm.op) in.dflt == pm.dflt
-//      else if ("!=" == pm.op) in.dflt != pm.dflt
-//      else if ("~=" == pm.op) in.dflt matches pm.dflt
-//      else if ("?=" == pm.op) in.dflt.length >= 0 // match anything with a sample
-//      else if (">" == pm.op) (in.dflt compareTo pm.dflt) > 0
-//      else if (">=" == pm.op) (in.dflt compareTo pm.dflt) >= 0
-//      else if ("<" == pm.op) (in.dflt compareTo pm.dflt) < 0
-//      else if ("<=" == pm.op) (in.dflt compareTo pm.dflt) <= 0
-//      else false
     }
   }
 
@@ -178,11 +168,25 @@ package object ext {
       s"""<span class="label label-default" xstyle="background:lightgray" $t><span style="font-weight:bold; color:lightblue">$e</span>.<span class="" style="font-weight:bold; color:moccasin">$a</span></span>"""
     }
 
+    /** format an html element span
+      */
+    def token(s: String, title:String="", extra:String="") = {
+      val t = CanHtml.prepTitle(title)
+      s"""<span $t $extra>$s</span>"""
+    }
+
+    def tokenValue(s: String) =
+      "<code>"+token (s, "value", """ class="string" """)+"</code>"
+
     def toHtml: String
   }
 
   def toHtmlAttrs(attrs: Attrs)      = if(attrs.nonEmpty) s"""${attrs.map(_.toHtml).mkString("(", ", ", ")")}""" else ""
   def toHtmlMAttrs(attrs: MatchAttrs) = if(attrs.nonEmpty) s"""${attrs.map(_.toHtml).mkString("(", ", ", ")")}""" else ""
+
+  //todo when types are supported, remove this method and all its uses
+  def stripQuotes(s:String) =
+    if(s.startsWith("\"") && s.endsWith("\"")) s.substring(1,s.length-1) else s
 
 }
 

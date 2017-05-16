@@ -3,29 +3,35 @@ add data tables with sort pagination and search
 
 name is the ID of the table to upgrade
 **************@
-@(name:String, order:Seq[(Int,String)]=Seq.empty)
+@(name:String, order:Seq[(Int,String)]=Seq.empty, paging:String="false", pageLength:String="-1")(implicit stok: controllers.StateOk)
 
-<link  href="https://cdn.datatables.net/plug-ins/1.10.7/integration/bootstrap/3/dataTables.bootstrap.css" rel="stylesheet" />
-<script src="https://cdn.datatables.net/1.10.7/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/plug-ins/1.10.7/integration/bootstrap/3/dataTables.bootstrap.js"></script>
+@*todo should i serve from cdn when on the net?*@
 
-@**
+@*<link  href="https://cdn.datatables.net/plug-ins/1.10.7/integration/bootstrap/3/dataTables.bootstrap.css" rel="stylesheet" />*@
+@*<script src="https://cdn.datatables.net/1.10.7/js/jquery.dataTables.min.js"></script>*@
+@*<script src="https://cdn.datatables.net/plug-ins/1.10.7/integration/bootstrap/3/dataTables.bootstrap.js"></script>*@
+
 <link  href="@routes.Assets.at("vendor/dataTables1.10.7.bootstrap.css")" rel="stylesheet" />
-<script src="@routes.Assets.at("jquery.dataTables1.10.7.min.js")"></script>
-<script src="@routes.Assets.at("dataTables1.10.7.bootstrap.js")"></script>
-**@
+<script src="@routes.Assets.at("vendor/jquery.dataTables1.10.7.min.js")"></script>
+<script src="@routes.Assets.at("vendor/dataTables1.10.7.bootstrap.js")"></script>
 
 
 <script>
-  $(document).ready(function() {
+$(document).ready(function() {
   var @name = $('#@name').dataTable({
-    'paging' : false
+    'paging' : @paging ,
+    'lengthMenu': [ [10, 25, 50, -1], [10, 25, 50, "All"] ] ,
+    'pageLength': @pageLength ,
+    'order' : []
   });
-  $('#@name').dataTable().api().order(
+@if(order.size > 0) {
+  wlist.api().order(
   @order.map { t =>
     [@t._1, "@t._2"]
   }
-  ).draw();
+  );
+}
+  wlist.draw();
 });
 </script>
 

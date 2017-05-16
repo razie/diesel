@@ -9,10 +9,10 @@
 //
 
 // All elements which match this will be syntax highlighted.
-var selector = hijs || 'code';
+var selector = hijs || 'code[language="scala"]';
 
 var keywords = ('val var def if else for while break match case do new Nil null Unit Any '
-               +'class trait object package import private public '
+               +'class trait object package import private public map flatMap '
                +'return this self true false try throw catch typeOf instanceOf').split(' '),
     special  = ('NaN '
                +'extends this self').split(' ');
@@ -21,7 +21,7 @@ var keywords = ('val var def if else for while break match case do new Nil null 
 // The key becomes the class name of the <span>
 // around the matched block of code.
 var syntax = [
-  ['special', /(=>|<-)/g],
+  ['special', /(=>|->|<-)/g],
   ['comment', /(\/\*(?:[^*\n]|\*+[^\/*])*\*+\/)/g],
   ['comment', /(\/\/[^\n]*)/g],
   ['string' , /("(?:(?!")[^\\\n]|\\.)*"|'(?:(?!')[^\\\n]|\\.)*')/g],

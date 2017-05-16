@@ -67,18 +67,21 @@ Implicit.flash().put("bibi", "haha")
       <div id="weForm" class="col-md-12">
           <h2 style="padding-top: 40px; margin-top: -40px;">Editor
             <small> |
-              <button onclick="submitPlease();" class="btn btn-default btn-xs "><span id="floppy" class="glyphicon glyphicon-floppy-disk"></span> Save</button>
+              <button onclick="return submitPlease();" class="btn btn-default btn-xs "><span id="floppy" class="glyphicon glyphicon-floppy-disk"></span> Save</button>
             </small>
             <div class="pull-right">
               @if(stok.au.exists(_.isMod)) {
                 <small>
+                @if(wid.page.exists(_.tags.contains("dsl"))) {
                 <a href="#" onclick="showDsl(); return false;" class="btn btn-xs ">
                   <input type="checkbox" xonclick="showDsl(); return false;" name="weDsl" id="weDsl" disabled>
-                  dsl</a>
-                | <a href="#" onclick="showSettings()" class="btn btn-xs "><span id="showSettings" class="glyphicon glyphicon-list-alt"></span> Settings</a>
+                  dsl</a><span style="font-size:x-small">(<span id="roundtrip" >.. ms</span>)
+                  </span>
+                | }
+                }
+                  <a href="#" onclick="showSettings()" class="btn btn-xs "><span id="showSettings" class="glyphicon glyphicon-list-alt"></span> Settings</a>
                 | <a href="#" onclick="resetView()" class="btn btn-xs " title="Change editor window elements layout"><span class="glyphicon glyphicon-th-large"></span> Layout</a>
                 </small>
-              }
               <span style="font-size: x-small">
               </span>
             </div>
@@ -118,8 +121,10 @@ PROBLEM: many places use label as name... via Wikis.formatName
 
     <br>
     <div class="actions">
-      <button type="submit" class="btn btn-primary">Save</button>
+      <button onclick="return submitPlease();" class="btn btn-primary">Save</button>
+      @*<button type="submit" class="btn btn-primary">Save</button>*@
       <a href="@controllers.Wiki.wr(wid, stok.realm, false)" onclick="return cancel();" class="btn btn-default">Cancel</a>
+      <a href="javascript:popupDiff()" class="btn btn-default">Diff</a>
     </div>
 
   </div>
@@ -206,7 +211,7 @@ if(localStorage.getItem("weDsl") != 'undefined')
   $('#'+"weDsl").prop('checked', localStorage.getItem("weDsl") === 'true');
 
 var label =
-    'Content <a href="javascript:popupHelp();" title="Help with markdown editor"><span class="glyphicon glyphicon-question-sign"></span></a>';
+    'Content <a href="javascript:popupHelp();" title="Help with markdown editor\nA note on scrolling: if the editor is selected it will act better."><span class="glyphicon glyphicon-question-sign"></span></a>';
 
 $("#content_field > dt > label").html(label);
 $("#ace-label").html(label);
@@ -214,6 +219,26 @@ $("#ace-label").html(label);
 function popupHelp() {
   popupContent($("#mdHelp").html());
 }
+
+    function popupDiff() {
+      //todo get the diffs
+      $.ajax(
+          '/wikie/diffContent/@wid.wpath', {
+            type: 'POST',
+            data: $.param({
+              wpath : '@wid.wpath',
+              newc : getContent()
+            }),
+            contentType: 'application/x-www-form-urlencoded',
+            success: function(data) {
+              var tex = 'Local changes:' ;
+              popupContent(tex + data.diff);
+            },
+            error  : function(x) {
+              console.log( "ERR "+x.toString());
+            }
+          });
+    }
 </script>
 
       @*********************** content assist ************************@
@@ -293,17 +318,23 @@ function popupHelp() {
 <div class="well col-md-12" id="weOutput">
   <h2 style="padding-top: 40px; margin-top: -40px;">Preview
     <small>
-      | <input type="checkbox" name="weLive" id="weLive"> live preview <span id="rtrip"></span>
+      | <input type="checkbox" name="weLive" id="weLive"> preview<sup><span class="glyphicon glyphicon-question-sign" title="The preview may be imprecise when not in server mode"></span></sup>
+        <span id="rtrip"></span>
 @if(stok.au.exists(_.isMod)) {
       | <input type="checkbox" name="weServer" id="weServer"> server
 }
+        @if(wid.page.exists(_.tags.contains("dsl"))) {
+          | <input type="checkbox" id="wikiMode" title="Show the wiki instead of the tree" checked> wiki
+          }
+
     </small>
     <div class="pull-right">
       <a href="#" onclick="refreshServerNow()" class="btn btn-xs" title="Refresh preview from server"><span class="glyphicon glyphicon-refresh"></span> Refresh</a>
       </span>
     </div>
   </h2>
-  <div id="weOutputData">
+  <pre class="col-sm-12" id="iframeOut3_" style="padding:1px; Xtext-align: center; display: none;">Start typing...</pre>
+<div id="weOutputData">
 @wid.page.map{we=>
     @if(noshow.isEmpty) {
       @wiki.wikiFrag(wid,None, true, Some(we))
@@ -314,6 +345,7 @@ function popupHelp() {
   <div class="actions2">
     <button class="btn btn-primary" onclick="submitPlease()">Save</button>
     <a href="@controllers.Wiki.wr(wid, stok.realm, false)" class="btn btn-default">Cancel</a>
+    <a href="javascript:popupDiff()" class="btn btn-default">Diff</a>
   </div>
 
 </div>
@@ -372,6 +404,13 @@ function myattachAce() {
 </script>
 
 <script>
+
+@if(wid.page.exists(_.tags.contains("dsl"))) {
+var isDiesel = true;
+} else {
+var isDiesel = false;
+}
+
 @if(hasDraft) {
   $("#floppy").css("color", "green");
 }
@@ -397,7 +436,8 @@ function syncContent() {
 
 function submitPlease() {
   syncContent();
-  $("form").submit();
+  $("#editForm").submit();
+  return false;
 }
 
 useLocalStorageCheckbox("weLive", "weLive");
@@ -422,6 +462,7 @@ function refreshServerNow() {
 
 /** update the preview */
 function livePreview() {
+  refreshDsl();
   var content = aceAttached ? aceEditor.getSession().getValue() : $("#content").val();
   var tags = $("#tags").val();
 
@@ -431,7 +472,7 @@ function livePreview() {
       ! $('#weServer').prop('checked')
       ) parseAndRender();
     else {
-      $("#rtrip").text("(from server)");
+//      $("#rtrip").text("(from server)");
       refreshServer('@wid.wpath', content, tags);
     }
   }
@@ -501,9 +542,9 @@ function setTextAreaHeight() {
   var textHeight = aceAttached ? $("#acec").height() : textarea.height();
   var curOthers = $("#weForm9" ).height() - textHeight;
   if(aceAttached)
-    $("#acec").height(window.innerHeight-curOthers-120);
+    $("#acec").height(window.innerHeight-curOthers-130);
   else
-    textarea.height(window.innerHeight-curOthers-120);
+    textarea.height(window.innerHeight-curOthers-130);
 }
 
 function setView(currentLayout, newLayout) {
@@ -614,21 +655,16 @@ function resetView() {
 // prevent footer scrolling over editor
 $(document).ready(function() {
   footR=$('#weFooter').offset().top;
-  $(window).scroll(function() {
-    var formB=$('#weForm').height();
-    if(currentLayout=="9" || currentLayout=="6") {
-      var s = footR - $(window).scrollTop(); // dist to top of screen
-    // if want to scroll the top too (i.e. footer pushing top(
-    //    if(s <= $('#header').height()) {
-    //      $('#header').css({'top':''+(s-$('#header').height())+'px'});
-    //    }
-    //    else{
-    //      $('#header').css({'top':'0px'});
-    //    }
 
-    // if want to just stop scrolling bottom
+  $(window).scroll(function() {
+    footR=$('#weFooter').offset().top;
+    var formB=$('#weForm').height();
+    if(! $("#content").is(':focus') && (currentLayout=="9" || currentLayout=="6")) {
+      var s = footR - $(window).scrollTop(); // dist to top of screen
+
+      // if want to just stop scrolling bottom
       if(s <= formB) {
-    //      $('#header').css({'top':''+(s-$('#header').height())+'px'});
+        //      $('#header').css({'top':''+(s-$('#header').height())+'px'});
         $("#weFooter"  ).css("position", "fixed");
         $('#weFooter').css({'top':formB-100});
       }
@@ -636,6 +672,50 @@ $(document).ready(function() {
         $("#weFooter"  ).css("position", "static");
 //        $('#weFooter').css({'top':s});
       }
+
+      var wtop = $(window).scrollTop();    // dist to top of screen
+      var weh=$('#weOutputData').height(); // all content to scroll
+      var wh=$(window).height();           // visible height
+      var perc = wtop / (weh - wh + 220);  // deduct page height and add back the buttons
+
+      if(!aceAttached) {
+        var h1 = $('#content')[0].scrollHeight;
+        var h2 = $('#content').height();
+        var h3 = h1 - h2;
+        var newtop = Math.min(h1, Math.max(0, Math.ceil(perc * h3)));
+
+//        console.log("w " + h1 + " - " + newtop + " - " + (newtop/h3) + " - " + wtop + " - " + weh + " - " + perc);
+
+        // only if there's more content than visible
+        if(weh > wh)
+          $('#content').scrollTop(newtop);
+      } else {
+        var lines = getContent().split("\n");
+        var lineNum = Math.min(lines.length-1, Math.max(0, Math.ceil(perc * lines.length)));
+
+        var Range = ace.require('ace/range').Range;
+        editor1.scrollToLine(lineNum, true, true, function () {});
+        //editor1.gotoLine(lineNum, 10, true);
+//          editor1.session.addMarker(new Range(lineNum-1, 0, lineNum-1, 100), "ace-primaryline", "fullLine");
+      }
+    }
+  });
+
+  $("#content").scroll(function() {
+    if(false && $("#content").is(':focus') && (currentLayout=="9" || currentLayout=="6")) {
+      var wtop = $("#content").scrollTop();    // dist to top of screen
+      var weh= $('#content')[0].scrollHeight;
+      var wh=$("#content").height();           // visible height
+      var perc = wtop / (weh - wh);  // deduct page height and add back the buttons
+
+      var h1 = $('#weOutputData').height();
+      var h2 = $(window).height();    // dist to top of screen
+      var h3 = h1 - h2;
+      var newtop = Math.min(h1, Math.max(0, Math.ceil(perc * h3)));
+
+      console.log("t " + h1 + " - " + newtop + " - " + (newtop/h3) + " - " + wtop + " - " + weh + " - " + perc);
+
+      $(window).scrollTop(newtop);
     }
   });
 });
@@ -643,6 +723,71 @@ $(document).ready(function() {
 switchDsl();
 
 </script>
+
+  <script>
+useLocalStorageCheckbox("wikiMode", "domFiddleWikiMode");
+
+$('#wikiMode').change(function(){
+  showHideIframe();
+});
+
+function showHideIframe() {
+  if($('#wikiMode').prop('checked')) {
+    $('#iframeOut3_').hide();
+  } else if(isDiesel) {
+    $('#iframeOut3_').show();
+    runpill2('5');
+  }
+};
+
+function refreshDsl() {
+  if($('#wikiMode').prop('checked')) {
+  } else {
+    if(isDiesel) runpill2('5');
+  }
+};
+
+var runpill2 = function(id) {
+  var lastTime = new Date().getTime();
+  $.ajax(
+      '/diesel/fiddle/fiddleStoryUpdated/'+id+'?@Html(mod.diesel.controllers.SFiddles.qtourl(Map.empty))', {
+        type: 'POST',
+        data: $.param({
+          saveMode : true,
+          sketchMode : false, //$('#sketchMode').prop('checked'),
+          mockMode : true, //$('#mockMode').prop('checked'),
+          blenderMode : true, //$('#blenderMode').prop('checked'),
+          draftMode : false, //$('#draftMode').prop('checked'),
+          reactor : '@wid.getRealm',
+          specWpath : '', //specWpath,
+          storyWpath : '@wid.wpath', //storyWpath,
+          spec : '', //editor1.getValue(),
+          story : getContent(), //editor.getValue(),
+          capture : '' //editor5.getValue()
+        }),
+        contentType: 'application/x-www-form-urlencoded',
+        success: function(data) {
+          if($('#wikiMode').prop('checked'))
+              $('#divOut3_'+id).html(data.wiki);
+            else
+            $('#iframeOut3_').html(data.res.replace(/weref/g, 'wefiddle')+'\n');
+//            $('#iframeOut5_'+id).html(data.capture);
+          instContentAssist = data.ca;
+//            setErrors(data.failureCount);
+          var du = new Date().getTime() - lastTime;
+          $('#roundtrip').text(du+' ms');
+//            storyChanged(data.storyChanged);
+        },
+        error  : function(x) {
+          console.log( "ERR "+x.toString());
+        }
+      });
+}
+
+showHideIframe();
+
+</script>
+
 
 @util.oneModal()
 

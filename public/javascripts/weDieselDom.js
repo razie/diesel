@@ -23,7 +23,7 @@ function domCompl (i) {
     // => entity.action
     if(terms.indexOf('->') == terms.length-1 ||
       terms.indexOf('=>') == terms.length-1 ||
-      terms[0] && terms[0] == '$receive' ||
+      terms[0] && terms[0] == '$send' ||
       terms[0] && terms[0] == '$match' ||
       terms[0] && terms[0] == '$msg' ||
       terms[0] && terms[0] == '$when' ||
@@ -35,6 +35,7 @@ function domCompl (i) {
       var newTerms = ['msg', ''];
       if(isInBrackets(line,pos.column)) newTerms[0] = 'attr'; // looking for attr
 
+      // see comment below on ACE expansion
       var reduceDot = '';
       if(
         terms.indexOf('$msg') != terms.length-1 &&
@@ -57,7 +58,7 @@ function domCompl (i) {
         var xvalue = value.replace(/(\w)  .*/, '\$1');
         var aft = value.replace(/(.*)  /, '');
         var curr = aft.replace(line, '');
-        // ace will replace only back to  a dot, so we'll cut it out for them
+        // ACE will replace only back to  a dot, so we'll cut it out for them
         // otherwise they'll replace modem.cre with modem.modem.create
         curr = curr.replace(reduceDot, '');
         return {name: value, value: curr, score: 100, meta: "dom"}
@@ -153,7 +154,50 @@ var capWhen = {
   },
 
   fromgui : function () {
-    return '???';
+    var e1=$("#entity1").val();
+    var a1=$("#action1").val();
+    var p1=encParms($("#parms1").val());
+    var e2=$("#entity2").val();
+    var a2=$("#action2").val();
+    var p2=encParms($("#parms2").val());
+
+    return '$when '+e1+'.'+a1+' '+p1 + ' => ' + e2+'.'+a2+' '+p2; // +(r.length > 0 ? r : '');
+  }
+};
+
+//$when email.update (name,pwd) =>yahoo.upd_pwd (email,password=pwd)
+var capMock = {
+  togui : function (s) {
+    curCap='mock';
+    var m=/\$mock *([\w*]+)\.([\w*]+) *(\(([^)]*)\))? *=> *([\w*]+)\.([\w*]+) *(\(([^)]*)\))?/.exec(s);
+    var e1=z(m,1);
+    var a1=z(m,2);
+    var p1=z(m,4);
+    var e2=z(m,5);
+    var a2=z(m,6);
+    var p2=z(m,8);
+
+    return '<h3>When</h3>'+
+      fh+
+      field('entity1', 'Entity', 'value=\''+e1+'\'')+
+      field('action1', 'Action', 'value=\''+a1+'\'')+
+      field('parms1', 'Parms', 'value=\''+p1+'\'')+
+      '<hr>'+
+      field('entity2', 'Entity', 'value=\''+e2+'\'')+
+      field('action2', 'Action', 'value=\''+a2+'\'')+
+      field('parms2', 'Parms', 'value=\''+p2+'\'')+
+      fb;
+  },
+
+  fromgui : function () {
+    var e1=$("#entity1").val();
+    var a1=$("#action1").val();
+    var p1=encParms($("#parms1").val());
+    var e2=$("#entity2").val();
+    var a2=$("#action2").val();
+    var p2=encParms($("#parms2").val());
+
+    return '$mock '+e1+'.'+a1+' '+p1 + ' => ' + e2+'.'+a2+' '+p2; // +(r.length > 0 ? r : '');
   }
 };
 
@@ -189,11 +233,38 @@ var capMsg = {
   }
 }
 
+//$send billing.get_email (name, url="/bill/email") : (email)
+var capSend = {
+  togui : function capMsgTo(s) {
+    curCap='send';
+    var m=/\$send *(<\w+>)? *([\w*]+)\.([\w*]+) *(\(([^)]*)\))?/.exec(s);
+    var k=z(m,1);
+    var e=z(m,2);
+    var a=z(m,3);
+    var p=z(m,5);
+
+    return '<h3>Send Msg</h3>'+
+      fh+
+      field('entity', 'Entity', 'value=\''+e+'\'')+
+      field('action', 'Action', 'value=\''+a+'\'')+
+      field('parms',  'Parms', 'value=\''+p+'\'')+
+      fb;
+  },
+
+  fromgui : function () {
+    var e=$("#entity").val();
+    var a=$("#action").val();
+    var p=encParms($("#parms").val());
+
+    return '$send '+e+'.'+a+' '+p ;
+  }
+}
+
 //expect $msg <GET> billing.get_email (name, url="/bill/email") : (email)
 var capExpectM = {
   togui : function (s) {
     curCap='expect';
-    var m=/\$expect \$msg *(<\w+>)? *([\w*]+)\.([\w*]+) *(\([^)]*\))? *(:)? *(\([^)]*\))?/.exec(s);
+    var m=/\$expect *(<\w+>)? *([\w*]+)\.([\w*]+) *(\([^)]*\))? *(:)? *(\([^)]*\))?/.exec(s);
     var k=z(m,1);
     var e=z(m,2);
     var a=z(m,3);
@@ -214,14 +285,17 @@ var capExpectM = {
 }
 
 function capTo(s) {
-  if(s.match(/\$expect \$msg/)) return capExpectM.togui(s);
+  if(s.match(/\$expect/)) return capExpectM.togui(s);
   else if(s.match(/\$when/)) return capWhen.togui(s);
+  else if(s.match(/\$mock/)) return capMock.togui(s);
   else if(s.match(/\$msg/)) return capMsg.togui(s);
+  else if(s.match(/\$send/)) return capSend.togui(s);
   else return "?";
 };
 
 function capFrom() {
   if(curCap == 'msg') return capMsg.fromgui();
+  else if(curCap == 'send') return capSend.fromgui();
   else return "";
 };
 
@@ -284,15 +358,6 @@ function weref(wpath,line,col) {
     else weSelect(wpath, line, col);
   } else if(wpath.includes("Story:")) {
     weSelect(wpath, line, col);
-  }
-}
-
-/** this works from anywhere, to open the fiddle on an element */
-function wefiddle(wpath,line,col) {
-  if(wpath.includes("Spec:")) {
-    window.location.href='/diesel/fiddle/playDom/'+realm+'?line='+line+'&col='+col+'&spec='+wpath
-  } else if(wpath.includes("Story:")) {
-    window.location.href='/diesel/fiddle/playDom/'+realm+'?line='+line+'&col='+col+'&story='+wpath
   }
 }
 
@@ -426,4 +491,34 @@ function tagQueryTocb (tq) {
 
 }
 
+//====================== widgets <a onclick="weMsg('ctx.log','m='+m)"
+
+function weMsg(e,a,p) {
+  return iweMsg(e,a,p,'value', function(data){console.log(data);});
+}
+
+function weMsgPopup(e,a,p) {
+  return iweMsg(e,a,p,'value', function(data){alert(data);});
+}
+
+function iweMsg(e,a,p,what,succ) {
+  var u = '/diesel/fiddle/react/'+e+'/'+a+'?resultMode='+what+'&'+p
+  $.ajax(
+    u, {
+      type: 'POST',
+      data: $.param({
+        // xdomEngineConfig: domEngineConfig
+      }),
+      contentType: 'application/x-www-form-urlencoded',
+      success: function (data) {
+        if(typeof succ == 'function') succ(data);
+      },
+      error: function (x) {
+        // readyState=4  is failure to parse json reply
+        if(x.status == "200" && typeof succ == 'function') succ(x.responseText);
+        console.log("ERR " + JSON.stringify(x));
+      }
+    });
+  return false;
+}
 

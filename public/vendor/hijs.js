@@ -6,7 +6,7 @@
 //
 
 // All elements which match this will be syntax highlighted.
-var selector = hijs || 'code';
+var selector = hijs || 'code[language="js"], code[language="javascript"], code:not([language])';
 
 var keywords = ('var function if else for while break switch case do new null in with void '
                +'continue delete return this true false throw catch typeof with instanceof').split(' '),

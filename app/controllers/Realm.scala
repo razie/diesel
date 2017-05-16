@@ -6,16 +6,18 @@
  */
 package controllers
 
+import admin.Config
 import com.mongodb.casbah.Imports._
 import com.typesafe.config.ConfigValue
 import controllers.Wikie._
-import model.{Users, UserWiki}
+import model.{UserWiki, Users}
 import org.bson.types.ObjectId
 import razie.base.Audit
 import razie.wiki.{Enc, Services}
+
 import scala.Array.canBuildFrom
 import com.mongodb.DBObject
-import razie.db.{REntity, RazMongo, ROne, RMany}
+import razie.db.{REntity, RMany, ROne, RazMongo}
 import razie.db.RazSalatContext.ctx
 import razie.wiki.Sec.EncryptedS
 import play.api.data.Form
@@ -23,8 +25,8 @@ import play.api.data.Forms.mapping
 import play.api.data.Forms.nonEmptyText
 import play.api.data.Forms.text
 import play.api.data.Forms.tuple
-import play.api.mvc.{Result, AnyContent, Action, Request}
-import razie.{cout, Logging, clog}
+import play.api.mvc.{Action, AnyContent, Request, Result}
+import razie.{Logging, clog, cout}
 import razie.wiki.model._
 import razie.wiki.util.PlayTools
 import razie.wiki.admin.SendEmail
@@ -41,10 +43,10 @@ object Realm extends RazController with Logging {
     * @param templateWpath is the wpath to the template to use, usually a section
     * @param torspec is Spec vs Template
     */
-  def createR2(cat:String, templateWpath: String, torspec:String, realm:String="rk") = FAU {
-    implicit au => implicit errCollector => implicit request =>
+  def createR2(cat:String, templateWpath: String, torspec:String, realm:String="rk") = FAUR { implicit request =>
+    val au = request.au.get
 
-    val data = PlayTools.postData
+    val data = PlayTools.postData(request.req)
     val name = data("name")
 
       val wid =
@@ -163,39 +165,32 @@ object Realm extends RazController with Logging {
           mainPage.copy(realm=name).create // create first, before using the reactor just below
           WikiReactors.add(name, mainPage)
           pages = pages.filter(_.name != name) map (_.copy (realm=name))
+          au.update(au.copy(realms=au.realms+name))
         } else {
           mainPage.create // create first, before using the reactor just below
         }
-        cleanAuth()
+        cleanAuth(request.au)
         Services ! WikiAudit("CREATE_FROM_TEMPLATE", mainPage.wid.wpath, Some(au._id))
         pages foreach(_.create)
       }
 
-      SendEmail.withSession { implicit mailSession =>
+      SendEmail.withSession(request.realm) { implicit mailSession =>
         au.quota.incUpdates
         au.shouldEmailParent("Everything").map(parent => Emailer.sendEmailChildUpdatedWiki(parent, au, wid)) // ::: notifyFollowers (we)
 
         Emailer.tellRaz("New REACTOR", au.userName, wid.ahref)
       }
 
-
-        val x = addMods.toList
-        if(x.nonEmpty) {
-          x.map(m=>
-            addMod2(m, name).apply(request).value.get.get
-          )
-        }
-
-      val userHome = pages.find(_.name == "UserHome")
-      if(Services.config.isLocalhost)
-        Redirect(controllers.Wiki.w((userHome getOrElse mainPage).wid, true)).flashing("count" -> "0")
-      else {
-        val conn = request.session.get(Services.config.CONNECTED).mkString
-        val temp = new ObjectId().toString
-        ssoRequests.put(temp, conn)
-        // todo use temp not conn
-        Redirect(s"http://$name.dieselapps.com/sso/"+conn, SEE_OTHER)
+      val x = addMods.toList
+      if(x.nonEmpty) {
+        x.map(m=>
+          addMod2(m, name).apply(request.req).value.get.get
+        )
       }
+
+     cleanAuth(request.au)
+
+      Redirect(s"/wikie/switchRealm/$name", SEE_OTHER)
     }) getOrElse
       noPerm(wid, s"Cant' create your $cat ...")
   }
@@ -205,7 +200,7 @@ object Realm extends RazController with Logging {
 
   //todo make work in cluster...
   def sso(id:String) = Action { request =>
-//    val res = ssoRequests.get(id).flatMap {conn=>
+    //    val res = ssoRequests.get(id).flatMap {conn=>
     val res = Some(id).flatMap {conn=>
       val uid = Enc.fromSession(id)
       Users.findUserByEmail(uid).map { u =>
@@ -214,37 +209,56 @@ object Realm extends RazController with Logging {
         Redirect("/").withSession(Services.config.CONNECTED -> Enc.toSession(u.email))
       }
     } getOrElse Redirect("/")
-//    ssoRequests.remove(id)
+    //    ssoRequests.remove(id)
     res
   }
 
+  /** switch to new reactor and sso */
+  def switchRealm(realm:String) = RAction { implicit request =>
+    request.au.filter(_.isActive).map { u =>
+      // if active and owns target, then sso -
+      if(Services.config.isLocalhost) {
+        Config.isimulateHost = s"$realm.dieselapps.com"
+        Redirect("/", SEE_OTHER)
+      } else {
+        val conn = request.session.get(Services.config.CONNECTED).mkString
+        val temp = new ObjectId().toString
+        ssoRequests.put(temp, conn)
+        // todo use temp not conn
+        // todo find domain and redirect to domain
+        Redirect(s"http://$realm.dieselapps.com/wikie/sso/"+conn, SEE_OTHER)
+      }
+    }.getOrElse {
+      // otherwise use whatever session they had
+      Redirect("/")
+    }
+  }
+
   /** start wizard to add module to reactor */
-  def addMod1(realm:String) = FAU {
-    implicit au => implicit errCollector => implicit request =>
-      (for (
+  def addMod1(realm:String) = FAUR("add mod") { implicit request =>
+      for (
+        au <- request.au;
         can <- canEdit(WID("Reactor", realm), auth, None);
         r1 <- au.hasPerm(Perm.uWiki) orCorr cNoPermission;
         twid <- Some(WID("Reactor", realm).r(realm));
         uwid <- twid.uwid orErr s"template/spec $realm not found"
       ) yield {
-          ROK.s apply { implicit stok =>
+          ROK.k apply { implicit stok =>
             views.html.wiki.wikieAddModule(realm)
           }
-      }) getOrElse
-        Msg2("Can't find the reactor..." + errCollector.mkString)
+      }
   }
 
   /** POSTed - add module to a reactor
     * @param module is the mod to add
     * @param realm is the id of the reactor to add to
     */
-  def addMod2(module:String, realm:String) = FAU {
-    implicit au => implicit errCollector => implicit request =>
-
-    val data = PlayTools.postData
+  def addMod2(module:String, realm:String) = FAUR("adding mod") { implicit request =>
+    val data = PlayTools.postData(request.req)
     val wid = WID("Reactor", realm).r(realm)
 
-    (for (
+    for (
+      au <- request.au;
       twid <- WID.fromPath(module) orErr s"$module not a proper WID";
       tw <- Wikis.dflt.find(twid) orErr s"Module $twid not found";
       reactor <- Wikis.find(wid) orErr s"Reactor $realm not found";
@@ -299,7 +313,7 @@ object Realm extends RazController with Logging {
         pages foreach(_.create)
       }
 
-      SendEmail.withSession { implicit mailSession =>
+      SendEmail.withSession(request.realm) { implicit mailSession =>
         au.quota.incUpdates
         au.shouldEmailParent("Everything").map(parent => Emailer.sendEmailChildUpdatedWiki(parent, au, reactor.wid)) // ::: notifyFollowers (we)
 
@@ -307,8 +321,7 @@ object Realm extends RazController with Logging {
       }
 
       Redirect(controllers.Wiki.w(reactor.wid, true)).flashing("count" -> "0")
-    }) getOrElse
-      Msg2("Can't add module: " + errCollector.mkString)
+    }
   }
 }
 

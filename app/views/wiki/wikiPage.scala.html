@@ -5,7 +5,7 @@ render a regular wiki page - site pages are rendered with wikiSite.scala.html
 @import razie.wiki.model._
 
 @label()=@{ page.map(_.label).getOrElse(razie.wiki.model.Wikis(wid.getRealm).label(wid)) }
-@web()=@{model.Website.gets}
+@web()=@{stok.website}
 @isSite()=@{Array("Site", "Page").contains(wid.cat) && page.isDefined}
 @layout=@{page.flatMap(_.contentProps.get("layout")) getOrElse web().layout}
 

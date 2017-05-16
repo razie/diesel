@@ -1,15 +1,13 @@
 package controllers
 
-import mod.snow.{RacerKid, RacerKidInfo}
+import mod.snow.RacerKid
+import model.{TPersonInfo, User}
 import org.joda.time.DateTime
 import razie.Logging
-import razie.wiki.{Enc, EncUrl}
-import razie.wiki.model._
 import razie.wiki.admin.{MailSession, SecLink, SendEmail}
-import admin.Config
-import model.{TPersonInfo, User, Website}
-import razie.wiki.Services
-import Config.SUPPORT
+import razie.wiki.model._
+import razie.wiki.{Enc, EncUrl, Services}
+
 
 /** all emails sent by site */
 object Emailer extends RazController with Logging {
@@ -17,16 +15,15 @@ object Emailer extends RazController with Logging {
 
   def hostport = Services.config.hostport
 
-  def RK(implicit mailSession: MailSession) = mailSession.website.getOrElse(admin.Config.sitecfg("RacerKidz").getOrElse("RacerKidz"))
+  /** name of website, used in subject */
+  def RK(implicit mailSession: MailSession) = mailSession.RK
+  def SUPPORT(implicit mailSession: MailSession) = mailSession.SUPPORT
 
-  def bottom() = Wikis.rk.find("Admin", "template-emails-bottom").map(_.content).getOrElse("")
-  def text(name: String) = Wikis.rk.find("Admin", "template-emails").flatMap(_.section("template", name)).map(_.content+bottom).getOrElse("[ERROR] can't find Admin template-emails: " + name)
+  /** bottom section on each email */
+  def bottom(implicit mailSession: MailSession) = mailSession.bottom
 
-  def sendSupport(subj:String, name:String, e: String, desc: String, details: String, page:String)(implicit mailSession: MailSession) {
-    val html = text("supportrequested").format(name, e, desc, details, page)
-
-    SendEmail.notif(SUPPORT, SUPPORT, subj+": " + desc, html)
-  }
+  /** email body section template */
+  def text(name: String)(implicit mailSession: MailSession) = mailSession.text(name)
 
   def sendEmailChildUpdatedProfile(parent: User, child: User)(implicit mailSession: MailSession) = {
     val html1 = text("childupdatedprofile").format(parent.ename, child.userName);
@@ -53,7 +50,7 @@ object Emailer extends RazController with Logging {
   }
 
   /** invite to join on notes */
-  def makeNotesInvite(toName:String, validDays: Int, acceptUrl: String, u: User) = {
+  def makeNotesInvite(toName:String, validDays: Int, acceptUrl: String, u: User)(implicit mailSession: MailSession) = {
     val dt = DateTime.now().plusDays(validDays)
     val ds1 = SecLink(acceptUrl, Some("notes.razie.com"), 1, dt)
     text("notesInvite").format(toName, ds1.secUrl, u.ename)
@@ -257,15 +254,13 @@ object Emailer extends RazController with Logging {
   }
 
   /** see SendEmail.withSession - email is sent in a background thread */
-  def withSession[C](body: (MailSession) => C): C = SendEmail.withSession(body)
-  def withSession[C](web:Option[String])(body: (MailSession) => C): C = SendEmail.withSession(web)(body)
-  def withSession[C](realm:String)(body: (MailSession) => C): C = SendEmail.withSession(Website.forRealm(realm).map(_.label))(body)
+  def withSession[C](realm:String)(body: (MailSession) => C): C = SendEmail.withSession(realm)(body)
 }
 
 /** used to send a set of emails later */
-class Emailing(body: (MailSession) => Unit) {
+class Emailing(realm:String, body: (MailSession) => Unit) {
   def send {
-    Emailer.withSession (body)
+    SendEmail.withSession (realm)(body)
   }
 }
 

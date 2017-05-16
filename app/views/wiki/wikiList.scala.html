@@ -54,39 +54,10 @@ list of pages, with links etc - result of a query of some kind
         </h3>
 
       <div class="well">
-        @ads.addSquareTop(stok)
+@**        @ads.addSquareTop(stok)
+**@
+        @wikiListTable(search, realm, curTags, pages)
 
-        @if(pages.size > 0) {
-          <ul>
-          @pages.take(16).map { p=>
-            <li><a href="@controllers.Wiki.wr(p._1, realm)">@highlight(label(p._2, p._1))</a> <small>&nbsp;  @p._1.cat
-            @if(curTags.contains("-wordcount")) { <b> @p._1.page.map(_.wordCount).mkString </b>}
-              </small>
-          }
-
-          @if(pages.size>16) {
-            @ads.addSquareTop(stok)
-
-            @pages.drop(16).map { p=>
-              <li><a href="@controllers.Wiki.wr(p._1, realm)">@highlight(label(p._2, p._1))</a> <small>&nbsp;  @p._1.cat
-                @if(curTags.contains("-wordcount")) { <b> @p._1.page.map(_.wordCount).mkString </b>}
-              </small>
-            }
-
-            @if(pages.size < 27) {
-              @Range(1,27-pages.size).map{i=> <p>&nbsp;</p>}
-            }
-          }
-         </ul>
-        } else {
-          <h3>No results found...
-          @if(search.length < 4) { <p>WARN <small>search only name/label for short query: @search</small> }</h3>
-        }
-
-        @** leave room for ad **@
-        @if(pages.size < 13) {
-          @Range(1,13-pages.size).map{i=> <p>&nbsp;</p>}
-        }
         </div>
 <p>
   <a href="@routes.Wiki.analyze(search, curTags)">Analyze</a>

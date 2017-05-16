@@ -6,7 +6,7 @@ var hiDiesel = function (hijs) {
 //
 
 // All elements which match this will be syntax highlighted.
-  var selector = hijs || 'code';
+  var selector = hijs || 'code[language="diesel"]';
 
   var keywords = ('var val def if else '
     +'msg when mock expect receive send').split(' '),

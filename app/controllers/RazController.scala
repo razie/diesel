@@ -308,6 +308,22 @@ ${errCollector.mkString}
     }
   }
 
+  /** action builder that decomposes the request, extracting user and creating a simple error buffer */
+  def FAUPRAPI(isApi:Boolean=false)(f: RazRequest => Result) = Action { implicit request =>
+    implicit val stok = new RazRequest(request)
+    (for (
+      au <- stok.au;
+      isA <- checkActive(au)
+    ) yield f(stok)
+      ) getOrElse {
+      val more = Website(request).flatMap(_.prop("msg.noPerm")).flatMap(WID.fromPath).flatMap(_.content).mkString
+      if(isApi)
+        Unauthorized("You need more karma... " + stok.errCollector.mkString)
+      else
+        Msg("You need more karma...", "Open a karma request")
+    }
+  }
+
   // todo enhance this - collect robot suspicions and store them in a proposal table
   protected def isFromRobot(implicit request: RequestHeader) = {
     (request.headers.get("User-Agent").exists(ua => Config.robotUserAgents.exists(ua.contains(_))))
