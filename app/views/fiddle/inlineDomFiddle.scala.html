@@ -23,6 +23,15 @@ an inline JS with HTML and CSS fiddle
 
 
 <script>
+    function setCookie(cname, cvalue, msec) {
+      var d = new Date();
+      d.setTime(d.getTime() + (msec));
+      var expires = "expires="+ d.toUTCString();
+      document.cookie = cname + "=" + cvalue + ";" + expires + ";path=/";
+    }
+
+setCookie("dieselSessionId", "", 10*60*1000); // reset session on reload
+
 var resettabs = function(lid, id) {
    document.getElementById('story_'+id).className='';
    document.getElementById('ast_'+id).className='';
@@ -77,7 +86,12 @@ var debugThis;
 var runpill2_@id = function(id, url) {
   var lastTime = new Date().getTime();
   $.ajax(
-      '/diesel/fiddle/fiddleStoryUpdated/'+id+'?@Html(mod.diesel.controllers.SFiddles.qtourl(args))', {
+@if(au.isDefined) {
+'/diesel/fiddle/fiddleStoryUpdated/' + id + '?@Html(mod.diesel.controllers.SFiddles.qtourl(args))'
+  } else {
+'/diesel/anon/fiddle/@wid.wpath' +  '?dfiddle=@{name}&@Html(mod.diesel.controllers.SFiddles.qtourl(args))'
+}
+        , {
         type: 'POST',
         data: $.param({
           saveMode    : false,
@@ -211,13 +225,42 @@ var aceEditor_@id;
 
 var sessionId = '';
 
+var scriptsLoaded = false;
+
 var editpill_@id = function(id) {
   upd_@{id}(id);
 
+  // setup jquery to not reload scripts all the time
+  $.ajaxSetup({
+    cache: true
+  });
+
   var next = function() {
     var s = $("#editor1").html();
-    popupContent(s.replace("acec", "acec1").replace("aveFiddle_()", "aveFiddle_@{id}()"));
-    aceEditor_@id = attachAce("acec1", content_@id, true);
+
+    if(!scriptsLoaded) {
+    jQuery.getScript("@routes.Assets.at("javascripts/rk-contentassist-sqbr.js")", function(data, status, jqxhr) {
+      jQuery.getScript("@routes.Assets.at("vendor/jquery.textcomplete.min.js")", function(data, status, jqxhr) {
+        jQuery.getScript("@routes.Assets.at("javascripts/rk-contentassist.js")", function(data, status, jqxhr) {
+          jQuery.getScript("@routes.Assets.at("javascripts/weCommons.js")", function(data, status, jqxhr) {
+            jQuery.getScript("@routes.Assets.at("javascripts/weDieselDom.js")", function(data, status, jqxhr) {
+              jQuery.getScript("@routes.Assets.at("ace-builds/src/ace.js")", function(data, status, jqxhr) {
+                jQuery.getScript("@routes.Assets.at("ace-builds/src/mode-nvp1.js")", function(data, status, jqxhr) {
+                  jQuery.getScript("@routes.Assets.at("ace-builds/src/ext-language_tools.js")", function(data, status, jqxhr) {
+                    jQuery.getScript("@routes.Assets.at("javascripts/wikiEdit.js")", function(data, status, jqxhr) {
+                      scriptsLoaded=true;
+                      popupContent(s.replace("acec", "acec1").replace("aveFiddle_()", "aveFiddle_@{id}()"));
+                      aceEditor_@id = attachAce("acec1", content_@id, true);
+                    });
+                  });
+                });
+              });
+            });
+          });
+        });
+      });
+    });
+    }
   }
 
   @if(au.exists(_.isActive)) {
@@ -283,13 +326,6 @@ function getSession(uid,callback) {
         success: function(data) {
           sessionId=data;
 
-          function setCookie(cname, cvalue, msec) {
-            var d = new Date();
-            d.setTime(d.getTime() + (msec));
-            var expires = "expires="+ d.toUTCString();
-            document.cookie = cname + "=" + cvalue + ";" + expires + ";path=/";
-          }
-
           setCookie("dieselSessionId", sessionId, 10*60*1000);
 
           callback(data);
@@ -302,19 +338,7 @@ function getSession(uid,callback) {
 
 </script>
 
-  <script src="@routes.Assets.at("javascripts/rk-contentassist-sqbr.js")"></script>
-  <script src="@routes.Assets.at("vendor/jquery.textcomplete.min.js")"></script>
-  <script src="@routes.Assets.at("javascripts/weCommons.js")"></script>
-  <script src="@routes.Assets.at("javascripts/rk-contentassist.js")"></script>
-
-  <script src="@routes.Assets.at("javascripts/weDieselDom.js")"></script>
-
-  <script src="@routes.Assets.at("ace-builds/src/ace.js")" type="text/javascript" charset="utf-8"></script>
-
-  <script src="@routes.Assets.at("ace-builds/src/mode-nvp1.js")" type="text/javascript" charset="utf-8"></script>
-  <script src="@routes.Assets.at("ace-builds/src/ext-language_tools.js")" type="text/javascript" charset="utf-8"></script>
-
-  <script src="@routes.Assets.at("javascripts/wikiEdit.js")"></script>
+<script src="@routes.Assets.at("javascripts/weDieselDom.js")"></script>
 
 <script>
 // set the current tab

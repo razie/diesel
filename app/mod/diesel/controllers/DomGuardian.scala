@@ -11,11 +11,10 @@ import org.joda.time.DateTime
 import play.libs.Akka
 import razie.Logging
 import razie.diesel.dom.RDOM.O
-import razie.diesel.dom.SimpleECtx
+import razie.diesel.dom.{SimpleECtx, WikiDomain}
 import razie.diesel.ext._
 import razie.wiki.Services
 import razie.wiki.admin.Autosave
-import razie.wiki.dom.WikiDomain
 import razie.wiki.model._
 import razie.wiki.util.PlayTools
 
@@ -27,8 +26,20 @@ import scala.concurrent.Future
 /** this is the default engine per reactor and user, continuously running all the stories */
 object DomGuardian extends Logging {
 
-  // statically collecting the last 500 results sets
-  var asts: List[(String, String, DomAst)] = Nil
+  // statically collecting the last 100 results sets
+  private var asts: List[(String, String, DomAst)] = Nil
+
+  def withAsts[T] (f: List[(String,String,DomAst)] =>T) = asts.synchronized {
+    f(asts)
+  }
+
+  // statically collect more asts
+  def collectAst (stream:String, xid:String, root:DomAst) = synchronized {
+    if (asts.size > 100) asts = asts.take(99)
+    asts = (stream, xid, root) :: asts
+  }
+
+  // ----------------
 
   def setHostname(ctx: SimpleECtx)(implicit stok: RazRequest): Unit = {
     ctx._hostname =
@@ -303,12 +314,6 @@ object DomGuardian extends Logging {
 
   private var curRun : Option[(String,DomEngine, Future[DomGuardian.Report])] = None
 
-  // statically collect more asts
-  def collectAst (stream:String, xid:String, root:DomAst) = synchronized {
-      if (asts.size > 100) asts = asts.take(99)
-      asts = (stream, xid, root) :: asts
-  }
-
   /** if no test is currently running, start one */
   def runReq (au:Option[User], realm:String) = synchronized {
     if (!curRun.exists(_._1 == au.map(_.userName).mkString)) {
@@ -350,4 +355,3 @@ object DomGuardian extends Logging {
     }
   }
 }
-

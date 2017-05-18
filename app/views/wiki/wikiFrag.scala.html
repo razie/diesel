@@ -6,6 +6,7 @@ wiki fragment, used in another page
 @import razie.wiki.model.{Wikis, WikiCount, WID, WikiEntry}
 @import _root_.razie.wiki.Services
 @import razie.clog
+@import razie.diesel.dom.WikiDomain
 
 @nicename() = @{ iname.getOrElse(wid.name) }
 @rss = @{page.flatMap(_.contentProps.get("rss")).getOrElse(controllers.Wiki.w(wid)+"/rss.xml")}
@@ -56,13 +57,56 @@ wiki fragment, used in another page
             var cursorPosition = textarea.prop("selectionStart");
             textarea.scrollTop(tarea.selectionStart);
             </script>
+  <script>
+    // todo I don't think this is needed - using ACE now, for errors, right?
+function selectTextareaLine(tarea,lineNum) {
+  lineNum--; // array starts at 0
+  var lines = tarea.value.split("\n");
+
+  // calculate start/end
+  var startPos = 0, endPos = tarea.value.length;
+  for(var x = 0; x < lines.length; x++) {
+    if(x == lineNum) {
+      break;
+    }
+    startPos += (lines[x].length+1);
+  }
+
+  var endPos = lines[lineNum].length+startPos;
+
+  // do selection
+  // Chrome / Firefox
+
+  if(typeof(tarea.selectionStart) != "undefined") {
+    tarea.focus();
+    tarea.selectionStart = startPos;
+    tarea.selectionEnd = endPos;
+    return true;
+  }
+
+  // IE
+  if (document.selection && document.selection.createRange) {
+    tarea.focus();
+    tarea.select();
+    var range = document.selection.createRange();
+    range.collapse(true);
+    range.moveEnd("character", endPos);
+    range.moveStart("character", startPos);
+    range.select();
+    return true;
+  }
+
+  return false;
+}
+</script>
          """.stripMargin
         s"""<div style="color:red;font-weight:bold;" title="Problem with your content: $x">
           <small>[[Check content below at Line:$line Position:$col]]
             <p>Sorry, dumb program here! The content is not lost: try editing this topic... also, please open a support issue and copy/paste there the content.
           </small></div><p></p>""".stripMargin + s"""
             <pre id="$id" readonly="true" style="height:300px">${we.included}</pre>
-            <script>
+<script src="@routes.Assets.at("ace-builds/src/ace.js")" type="text/javascript" charset="utf-8"></script>
+<script>
   var langTools = ace.require("ace/ext/language_tools");
   var editor1 = ace.edit("$id");
   editor1.setTheme ( "ace/theme/crimson_editor" ) ;
@@ -174,7 +218,7 @@ wiki fragment, used in another page
 
         @if(ads && page.isDefined && !page.exists(_.contentProps.contains("noAds")) &&
                 """\{\{ad[:}]""".r.findFirstIn(page.get.content).isEmpty &&
-                page.get.content.length > 100 && razie.wiki.dom.WikiDomain(wid.getRealm).noAds(page.get.category) &&
+                page.get.content.length > 100 && WikiDomain(wid.getRealm).noAds(page.get.category) &&
                 ! _root_.razie.wiki.Services.config.noads) {
           <br>
           @Html(model.Ads.lederboard)
@@ -242,49 +286,6 @@ wiki fragment, used in another page
   }
 }
 
-  <script>
-    // todo I don't think this is needed - using ACE now, for errors, right?
-function selectTextareaLine(tarea,lineNum) {
-  lineNum--; // array starts at 0
-  var lines = tarea.value.split("\n");
-
-  // calculate start/end
-  var startPos = 0, endPos = tarea.value.length;
-  for(var x = 0; x < lines.length; x++) {
-    if(x == lineNum) {
-      break;
-    }
-    startPos += (lines[x].length+1);
-  }
-
-  var endPos = lines[lineNum].length+startPos;
-
-  // do selection
-  // Chrome / Firefox
-
-  if(typeof(tarea.selectionStart) != "undefined") {
-    tarea.focus();
-    tarea.selectionStart = startPos;
-    tarea.selectionEnd = endPos;
-    return true;
-  }
-
-  // IE
-  if (document.selection && document.selection.createRange) {
-    tarea.focus();
-    tarea.select();
-    var range = document.selection.createRange();
-    range.collapse(true);
-    range.moveEnd("character", endPos);
-    range.moveStart("character", startPos);
-    range.select();
-    return true;
-  }
-
-  return false;
-}
-  </script>
-
-  <script src="@routes.Assets.at("ace-builds/src/ace.js")" type="text/javascript" charset="utf-8"></script>
+  @*<script src="@routes.Assets.at("ace-builds/src/ace.js")" type="text/javascript" charset="utf-8"></script>*@
 
 

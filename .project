@@ -27,6 +27,11 @@
 			<location>/Users/raz/w/coolscala/core/src/main/scala</location>
 		</link>
 		<link>
+			<name>cool-diesel-app</name>
+			<type>2</type>
+			<location>/Users/raz/w/coolscala/diesel/app</location>
+		</link>
+		<link>
 			<name>cool-wiki-app</name>
 			<type>2</type>
 			<location>/Users/raz/w/coolscala/wiki/app</location>

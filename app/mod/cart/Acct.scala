@@ -5,7 +5,7 @@ import mod.snow.{Reg, Regs}
 import model.{UserId, Users}
 import org.bson.types.ObjectId
 import org.joda.time.DateTime
-import razie.base.Audit
+import razie.audit.Audit
 import razie.db._
 import razie.wiki.model.{UWID, WID}
 

@@ -1,11 +1,13 @@
 @****************
 fragment: add more stuff to the current topic, including children, sub-topics etc
 ****************@
-@(uwid: razie.wiki.model.UWID)
+@import razie.wiki.model.UWID
+@import razie.wiki.model.WikiLink
+@(uwid: UWID)
+
 @import controllers.IgnoreErrors
-@import razie.wiki.model.{Wikis, WID, WikiLink, WikiEntry, Comments, Comment, CommentStream}
+@import razie.wiki.model.{Comment, CommentStream, Comments, WID, WikiEntry, WikiLink, Wikis}
 @import model.UserWiki
-@import razie.wiki.dom.WikiDomain
 @import razie.wiki.model.UWID
 @import razie.db.RMany
 

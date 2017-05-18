@@ -4,11 +4,10 @@
  *   )   / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <     README.txt
  *  (_)\_)(__)(__)(____)(____)(____)(___/   (__)  (______)(____/    LICENSE.txt
  */
-package razie.wiki.dom
+package razie.diesel.dom
 
-import razie.diesel.dom._
-import razie.diesel.ext.EVal
 import razie.wiki.model._
+import razie.diesel.ext._
 
 import scala.collection.mutable.ListBuffer
 
@@ -124,6 +123,14 @@ object WikiDomain {//extends WikiDomain (Wikis.RK) {
 
   final val empty = new RDomain("EMPTY", Map.empty, Nil)
 
+  /** todo does it really need to start with one */
+  def domFrom (first:WikiEntry, pages:List[WikiEntry]) : RDomain = {
+    val dom = pages.flatMap(p=>
+      WikiDomain.domFrom(p).toList
+    ).foldLeft(WikiDomain.domFrom(first).get)((a, b) => a.plus(b)).revise.addRoot
+    dom
+  }
+
   /** crawl all domain pieces and build a domain */
   def domFrom (we:WikiEntry) : Option[RDomain] = {
     we.preprocessed
@@ -138,7 +145,7 @@ object WikiDomain {//extends WikiDomain (Wikis.RK) {
 
     //    if(we.tags.contains(R_DOM) || we.tags.contains(DSL_DOM))
     Some(
-      we.cache.getOrElseUpdate("dom", {
+      we.cache.getOrElseUpdate("razie/diesel/dom/dom", {
         var x=new RDomain("-",
           domList.collect {
             case c:C => (c.name, c)

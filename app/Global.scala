@@ -6,30 +6,32 @@
  */
 
 import java.util.Properties
+
 import admin._
 import com.google.inject.Guice
 import controllers._
 import mod.book.Progress
-import razie.base.Audit
 import razie.db._
 import model._
 import play.api.Application
 import play.api._
 import play.api.mvc._
 import razie.wiki.util.PlayTools
-import razie.{cout, Log, cdebug, clog}
+import razie.{Log, cdebug, clog, cout}
 import akka.actor._
-import com.mongodb.casbah.{MongoDB, MongoConnection}
+import com.mongodb.casbah.{MongoConnection, MongoDB}
 import com.mongodb.casbah.Imports._
 import java.io.File
-import services.{RkCqrs, InitAlligator}
+
+import services.{InitAlligator, RkCqrs}
 
 import scala.collection.mutable.ListBuffer
-import scala.concurrent.{Future, ExecutionContext}
+import scala.concurrent.{ExecutionContext, Future}
 import controllers.ViewService
+import razie.audit.Audit
 import razie.wiki.model._
 import razie.wiki.admin._
-import razie.wiki.{WikiConfig, EncryptService, Services}
+import razie.wiki.{EncryptService, Services, WikiConfig}
 import razie.wiki.Sec._
 
 import scala.util.Try

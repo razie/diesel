@@ -901,4 +901,11 @@ a.thumbnail:focus {
     color: #34caee;
 }
 
+.label-light {
+    background-color: #c4c4c4;
+}
+.label-light[href]:hover,
+.label-light[href]:focus {
+    background-color: #777;
+}
 

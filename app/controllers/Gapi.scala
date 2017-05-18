@@ -9,9 +9,9 @@ package controllers
 import mod.diesel.model.WG
 import mod.diesel.model.WG.WGraph
 import play.api.mvc.Action
+import razie.diesel.dom.WikiDomain
 import razie.{Logging, js}
 import razie.wiki.Sec.EncryptedS
-import razie.wiki.dom.WikiDomain
 import razie.wiki.model.WID
 import razie.wiki.util.PlayTools
 import razie.wiki.{Enc, Services}

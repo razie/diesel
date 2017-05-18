@@ -6,7 +6,6 @@ import play.api.i18n.Messages
 import play.api.i18n.MessagesApi
 import play.api.i18n.Messages.Implicits._
 import play.api.Play.current
-
 import admin.Config
 import akka.actor.{Actor, Props}
 import controllers.Wiki._
@@ -22,11 +21,12 @@ import model._
 import org.bson.types.ObjectId
 import org.joda.time.DateTime
 import play.api.mvc.{Action, Request}
-import razie.wiki.dom.WikiDomain
-import razie.wiki.{Dec, WikiConfig, EncUrl, Enc}
+import razie.diesel.dom.WikiDomain
+import razie.wiki.{Dec, Enc, EncUrl, WikiConfig}
 import razie.wiki.model._
-import razie.{clog, Logging, cout}
+import razie.{Logging, clog, cout}
 import views.html.club.doeClubRegsRepHtml
+
 import scala.Array.canBuildFrom
 import scala.Option.option2Iterable
 import razie.wiki.admin.SendEmail

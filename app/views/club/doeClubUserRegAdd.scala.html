@@ -2,11 +2,12 @@
   add a member to a registration
 ***********@
 @(kid:mod.snow.RacerKid, next:String, user:model.User, reg:mod.snow.Reg)(implicit stok:controllers.StateOk)
-@import mod.snow.{RK}
+
+@import razie.diesel.dom.WikiDomain
+@import mod.snow.RK
 @import mod.snow.RegStatus._
 @import razie.wiki.model.FormStatus._
 @import mod.snow.RK._
-@import razie.wiki.dom.WikiDomain
 
 @stok.title("Reg for " + stok.au.get.userName)
 

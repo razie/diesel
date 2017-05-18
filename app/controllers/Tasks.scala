@@ -136,7 +136,7 @@ object Tasks extends RazController with Logging {
   def sendToParentAdd(to: String, from: String, childEmail: String, childName: String, link: String)(implicit mailSession: MailSession) {
     val html = Emailer.text("parentadd").format(childName, childEmail.dec, EncUrl(to), EncUrl(to), link);
 
-    SendEmail.send(to, from, "Racer Kid parent - please activate your account", html.replaceAll("www.racerkidz.com", Services.config.hostport))
+    mailSession.send(to, from, "Racer Kid parent - please activate your account", html.replaceAll("www.racerkidz.com", Services.config.hostport))
   }
 
   /** step 3 - parent clicked on email link to add child */
@@ -251,13 +251,13 @@ Please do that soon: it will expire in a few hours, for security reasons.
   def sendToVerif1(email: String, from: String, name: String, h:String, link: String)(implicit mailSession: MailSession) = {
     val html = Emailer.text("emailverif").format(name, email, h, h, link);
 
-    SendEmail.send(email, from, "Racer Kid - please verify your email", html)
+    mailSession.send(email, from, "Racer Kid - please verify your email", html)
   }
 
   def sendToReset1(email: String, from: String, name: String, h:String, link: String)(implicit mailSession: MailSession) = {
     val html = Emailer.text("emailreset").format(name, link);
 
-    SendEmail.send(email, from, "Racer Kid - please reset your password", html)
+    mailSession.send(email, from, "Racer Kid - please reset your password", html)
   }
 
   val reloginForm = Form {

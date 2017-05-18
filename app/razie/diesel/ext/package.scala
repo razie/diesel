@@ -2,7 +2,6 @@ package razie.diesel
 
 import razie.diesel.dom._
 import razie.diesel.dom.RDOM.{P, PM}
-
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 

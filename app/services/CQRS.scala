@@ -1,18 +1,19 @@
 package services
 
 import mod.diesel.controllers.DomFiddles
-import mod.diesel.model.{DieselMsgString, DomEngineSettings}
+import mod.diesel.model.DomEngineSettings
 import razie.wiki.Services
 import akka.actor.{Actor, Props}
-import controllers.{Emailer, Emailing}
+import controllers.{Emailer}
 import model.EventNeedsQuota
-import razie.base.Audit
 import razie.{clog, cout}
 import razie.wiki.Services
 import play.libs.Akka
 import razie.wiki.admin.SendEmail
 import razie.wiki.model._
 import com.google.inject.Singleton
+import razie.audit.Audit
+import razie.diesel.model.{DieselMsg, DieselMsgString}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -77,11 +78,19 @@ class WikiAsyncObservers extends Actor {
         Emailer.sendEmailNeedQuota(s1, s2)
       }
 
-    case e: Emailing => e.send
-
-    case m@DieselMsgString(s, specs, stories) => {
+    case m@DieselMsgString(s, target) => {
+      // todo auth/auth
       cout << "======== DIESEL MSG: " + m.toString
-      DomFiddles.runDom(s, specs, stories, new DomEngineSettings()).map {res =>
+      DomFiddles.runDom(s, target.specs, target.stories, new DomEngineSettings()).map {res =>
+        cout << "======== DIESEL RES: " + res.toString
+        Audit.logdb("DIESEL_MSG", m.toString, res.toString)
+      }
+    }
+
+    case m@DieselMsg(e, a, p, target) => {
+      // todo auth/auth
+      cout << "======== DIESEL MSG: " + m.toString
+      DomFiddles.runDom(m.toMsgString.msg, target.specs, target.stories, new DomEngineSettings()).map {res =>
         cout << "======== DIESEL RES: " + res.toString
         Audit.logdb("DIESEL_MSG", m.toString, res.toString)
       }
@@ -140,4 +149,3 @@ class WikiPubSub extends Actor {
     case x@_ => Audit.logdb("DEBUG", "ERR_CLUSTER_BRUTE", x.getClass.getName)
   }
 }
-

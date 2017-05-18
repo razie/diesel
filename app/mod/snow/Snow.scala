@@ -7,9 +7,9 @@ import model._
 import org.bson.types.ObjectId
 import org.scalatest.path
 import play.api.mvc.Result
-import razie.base.Audit
+import razie.audit.Audit
 import razie.db.{ROne, tx}
-import razie.wiki.dom.WikiDomain
+import razie.diesel.dom.WikiDomain
 import razie.wiki.{Dec, Enc, EncUrl, WikiConfig}
 import razie.wiki.model._
 import razie.{Logging, clog, cout}

@@ -1,0 +1,55 @@
+/**
+  * ____    __    ____  ____  ____,,___     ____  __  __  ____
+  * (  _ \  /__\  (_   )(_  _)( ___)/ __)   (  _ \(  )(  )(  _ \           Read
+  * )   / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <     README.txt
+  * (_)\_)(__)(__)(____)(____)(____)(___/   (__)  (______)(____/    LICENSE.txt
+  **/
+package mod.diesel.model.exec
+
+import controllers.Wikil
+import mod.diesel.controllers.SFiddles
+import mod.diesel.model.RDExt.{EError, EInfo, spec}
+import mod.diesel.model.{DEStartTimer, DieselAppContext}
+import razie.clog
+import razie.diesel.dom.RDOM._
+import razie.diesel.dom._
+import razie.diesel.ext.{MatchCollector, _}
+
+import scala.collection.mutable
+
+// the context persistence commands
+class EEFunc extends EExecutor("func") {
+
+  // can execute even in mockMode
+  override def isMock = true
+
+  override def test(in: EMsg, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) = {
+    ctx.domain.exists(_.funcs.contains(in.entity + "." + in.met))
+  }
+
+  override def apply(in: EMsg, destSpec: Option[EMsg])(implicit ctx: ECtx): List[Any] = {
+    val res = ctx.domain.flatMap(_.funcs.get(in.entity + "." + in.met)).map { f =>
+      val res = try {
+        if (f.script != "") {
+          val c = ctx.domain.get.mkCompiler("js")
+          val x = c.compileAll(c.not { case fx: RDOM.F if fx.name == f.name => true })
+          val s = x + "\n" + f.script
+
+          val q = in.attrs.map(t => (t.name, t.dflt)).toMap
+
+          SFiddles.isfiddleMap(s, "js", None, None, q + ("diesel" -> ""), Some(qTyped(q, f) + ("diesel" -> new api.diesel.DieselJs(ctx))))._2
+        } else
+          "ABSTRACT FUNC"
+      } catch {
+        case e: Throwable => e.getMessage
+      }
+      res.toString
+    } getOrElse s"no func ${in.met} in domain"
+
+    in.ret.headOption.orElse(spec(in).flatMap(_.ret.headOption)).orElse(
+      Some(new P("result", ""))
+    ).map(_.copy(dflt = res)).map(x => EVal(x)).toList
+  }
+
+  override def toString = "$executor::func "
+}

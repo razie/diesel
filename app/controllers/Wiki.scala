@@ -14,12 +14,11 @@ import model._
 import org.bson.types.ObjectId
 import org.scalatest.path
 import play.twirl.api.Html
-import razie.base.Audit
 import razie.db.RazSalatContext._
 import com.mongodb.{BasicDBObject, DBObject}
 import razie.db.{ROne, RazMongo}
 import play.api.mvc.{Action, AnyContent, Request}
-import razie.diesel.dom.RDOM
+import razie.diesel.dom.{RDOM, WikiDomain}
 import razie.diesel.ext.{EMsg, ERule, ExpectM}
 import razie.wiki.util.PlayTools
 import razie.{Logging, cout, js}
@@ -27,12 +26,12 @@ import razie.wiki.model._
 
 import scala.Array.canBuildFrom
 import razie.wiki.{Enc, Services}
-import razie.wiki.dom.WikiDomain
 import razie.wiki.model.WikiAudit
 
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.Future
 import Visibility.PUBLIC
+import razie.audit.Audit
 
 import scala.util.Try
 
@@ -582,10 +581,12 @@ object Wiki extends WikiBase {
 
       // TODO optimize to load just the WID - i'm redirecting anyways
       // todo trying first the index and then cache - did not think this through
-      // todo check canSee etc
-      val wl = Wikis(wid.getRealm).index.getWids(name).headOption.map(cachedPage(_, au).toList).getOrElse {
-        Wikis(wid.getRealm).findAny(name).toList
-      }.filter(page => canSeeMaybe(page.wid, au, Some(page))).toList
+      var wl = Wikis(wid.getRealm).index.getWids(name).flatMap(x=>cachedPage(x, au) orElse Wikis(wid.getRealm).find(x))
+      if(wl.isEmpty)
+        wl = Wikis(wid.getRealm).findAny(name).toList
+
+      wl = wl.filter(page => canSeeMaybe(page.wid, au, Some(page))).toList
+
 //      val wl = Wikis(wid.getRealm).findAny(name).filter(page => canSeeMaybe(page.wid, au, Some(page))).toList
       if (wl.size == 1) {
         if (isSuperCat(wl.head.wid.cat)) {

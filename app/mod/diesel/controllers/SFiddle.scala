@@ -9,7 +9,7 @@ import model._
 import org.antlr.v4.tool.{ANTLRMessage, ANTLRToolListener}
 import org.bson.types.ObjectId
 import play.api.mvc._
-import razie.base.Audit
+import razie.audit.Audit
 import razie.wiki.Services
 import razie.wiki.admin.Autosave
 import razie.wiki.model._

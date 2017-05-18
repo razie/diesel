@@ -13,7 +13,7 @@ import mod.diesel.model.parser.{BFlowExpr, FlowExpr, MsgExpr, SeqExpr}
 import org.bson.types.ObjectId
 import play.libs.Akka
 import razie.clog
-import razie.diesel.dom._
+import razie.diesel.dom.{RDomain, _}
 import razie.diesel.ext._
 import razie.wiki.Services
 

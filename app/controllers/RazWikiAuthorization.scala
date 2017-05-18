@@ -5,8 +5,8 @@ import javax.management.relation.RoleStatus
 import razie.wiki.Sec.EncryptedS
 import model._
 import razie.Logging
+import razie.diesel.dom.WikiDomain
 import razie.wiki.model._
-import razie.wiki.dom.WikiDomain
 
 /** wiki controller base stuff - file too large */
 object RazWikiAuthorization extends RazController with Logging with WikiAuthorization {

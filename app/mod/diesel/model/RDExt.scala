@@ -8,9 +8,10 @@ package mod.diesel.model
 
 import java.util.regex.Pattern
 
+import mod.diesel.model.exec._
 import razie.Snakk
 import razie.diesel.dom.RDOM._
-import razie.diesel.dom._
+import razie.diesel.dom.{RDomain, _}
 import razie.diesel.ext._
 import razie.xp.JsonOWrapper
 
@@ -33,10 +34,10 @@ class InfoAccumulator (var eres : List[Any] = Nil) {
 
 /** RDOM extensions */
 object RDExt {
-  import mod.diesel.model.parser._
-
   def init = {
-    EECtx :: EEDieselMemDb :: EEDieselSharedDb :: EEWiki :: EESnakk :: EEFunc :: EETest :: Nil map Executors.add
+    new EECtx :: new EEDieselMemDb :: new EEDieselSharedDb ::
+      new EEWiki :: new EESnakk :: new EEFunc ::
+      new EETest :: Nil map Executors.add
   }
 
   /** parse from/to json utils */

@@ -1,9 +1,8 @@
 package mod.msg
 
 import org.bson.types
-import razie.base.{Audit, Auditor}
 import razie.db.Txn
-import razie.{Logging, cout, Snakk}
+import razie.{Logging, Snakk, cout}
 import razie.db.RMongo._
 import razie.wiki.Sec._
 import model._
@@ -18,7 +17,6 @@ import razie.wiki.util.PlayTools
 import razie.wiki.admin.SendEmail
 import razie.wiki.model._
 import razie.wiki.Enc
-
 import controllers.{Corr, RazController}
 import model._
 import org.joda.time.DateTime
@@ -26,12 +24,12 @@ import play.api.data.Form
 import razie.Logging
 import razie.db._
 import play.api.data.Forms._
-
 import org.bson.types.ObjectId
 import razie.{cdebug, clog}
 import com.mongodb.casbah.Imports._
 import com.novus.salat._
 import com.novus.salat.annotations._
+import razie.audit.{Audit, Auditor}
 import razie.db.RazSalatContext._
 import razie.wiki.admin._
 

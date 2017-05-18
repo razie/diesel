@@ -7,7 +7,7 @@ import org.bson.types
 import org.bson.types.ObjectId
 import play.api.mvc.Request
 import razie.db._
-import razie.diesel.dom.{RDomain, RDOM}
+import razie.diesel.dom.RDOM
 import RDOM.C
 import razie.wiki.model.WikiSection
 import razie.wiki.model.Wikis

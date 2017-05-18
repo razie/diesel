@@ -6,7 +6,7 @@ import play.twirl.sbt.Import.TwirlKeys
 
 object V {
   val version      = "0.9.1-SNAPSHOT"
-  val scalaVersion = "2.11.8" 
+  val scalaVersion = "2.11.8"
   val organization = "com.razie"
 
   def snap = (if (V.version endsWith "-SNAPSHOT") "-SNAPSHOT" else "")
@@ -63,6 +63,7 @@ object ApplicationBuild extends Build {
 //      unmanagedSourceDirectories in Compile += baseDirectory.value / "../coolscala/common/app",
 //      unmanagedSourceDirectories in Compile += baseDirectory.value / "../coolscala/wiki/app",
       sourceDirectories in Compile += baseDirectory.value / "../coolscala/common/app",
+      // sourceDirectories in Compile += baseDirectory.value / "../coolscala/diesel/app",
       sourceDirectories in Compile += baseDirectory.value / "../coolscala/wiki/app",
       RoutesKeys.routesImport  += "model.Binders._"
     )):_*
@@ -90,6 +91,7 @@ object ApplicationBuild extends Build {
       unmanagedSourceDirectories in Compile += baseDirectory.value / "../snakked/core/src/main/scala",
       unmanagedSourceDirectories in Compile += baseDirectory.value / "../scripster/src/main/scala",
       unmanagedSourceDirectories in Compile += baseDirectory.value / "../coolscala/common",
+      // unmanagedSourceDirectories in Compile += baseDirectory.value / "../coolscala/diesel",
       unmanagedSourceDirectories in Compile += baseDirectory.value / "../coolscala/wiki",
     sourceDirectories in (Compile, TwirlKeys.compileTemplates) += baseDirectory.value / "../coolscala/wiki/app",
 //      unmanagedSourceDirectories in TwirlKeys.compileTemplates += baseDirectory.value / "../coolscala/wiki/app",
@@ -127,4 +129,3 @@ object ApplicationBuild extends Build {
   )
 
 }
-

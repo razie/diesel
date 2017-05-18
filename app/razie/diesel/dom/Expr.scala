@@ -40,14 +40,6 @@ trait WFunc { // extends PartialFunc ?
   def getType : String = ""
 }
 
-/** expression types */
-object WTypes {
-  final val NUMBER="Number"
-  final val STRING="String"
-  final val JSON="JSON"
-  final val DATE="Date"
-}
-
 /** an expression */
 abstract class Expr extends WFunc with HasDsl with CanHtml {
   def expr : String

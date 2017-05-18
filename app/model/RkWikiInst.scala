@@ -7,7 +7,7 @@
 package model
 
 import mod.diesel.model.parser.WikiDomParser
-import razie.wiki.dom.WikiDomain
+import razie.diesel.dom.WikiDomain
 import razie.wiki.model._
 import razie.wiki.parser.{WikiParserNotes, WikiParserT}
 

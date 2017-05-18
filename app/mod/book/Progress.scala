@@ -1,19 +1,18 @@
 package mod.book
 
-import model.{Users, User, Website}
+import model.{User, Users, Website}
 import org.apache.commons.lang3.StringUtils
 import org.bson.types.ObjectId
 import play.api.mvc.Action
-import razie.base.Audit
 import razie.js
 import razie.wiki.Services
-import razie.wiki.mods.{WikiMods, WikiMod}
+import razie.wiki.mods.{WikiMod, WikiMods}
 import razie.wiki.parser.WAST
-import views.html.modules.book.{viewSections, prevNext, viewProgress, viewGuide}
-
+import views.html.modules.book.{prevNext, viewGuide, viewProgress, viewSections}
 import org.joda.time.DateTime
 import com.mongodb.casbah.Imports._
 import controllers._
+import razie.audit.Audit
 import razie.db._
 import razie.wiki.model._
 import razie.|>._

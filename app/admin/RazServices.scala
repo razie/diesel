@@ -2,7 +2,6 @@ package admin
 
 import controllers.{Admin, IgnoreErrors, VErrors}
 import model._
-import razie.base.{Audit, AuditService}
 import razie.db.{ROne, RazMongo}
 import razie.wiki.{Base64, Enc}
 import razie.wiki.model.{Perm, WikiUser}
@@ -13,6 +12,7 @@ import org.bson.types.ObjectId
 import org.joda.time.DateTime
 import play.api.mvc.{Request, RequestHeader}
 import razie.Logging
+import razie.audit.AuditService
 import razie.db.RazSalatContext.ctx
 import razie.wiki.Services
 

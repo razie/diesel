@@ -12,7 +12,6 @@ import com.typesafe.config.ConfigValue
 import controllers.Wikie._
 import model.{UserWiki, Users}
 import org.bson.types.ObjectId
-import razie.base.Audit
 import razie.wiki.{Enc, Services}
 
 import scala.Array.canBuildFrom
@@ -26,6 +25,7 @@ import play.api.data.Forms.nonEmptyText
 import play.api.data.Forms.text
 import play.api.data.Forms.tuple
 import play.api.mvc.{Action, AnyContent, Request, Result}
+import razie.audit.Audit
 import razie.{Logging, clog, cout}
 import razie.wiki.model._
 import razie.wiki.util.PlayTools

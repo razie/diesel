@@ -9,11 +9,13 @@ package mod.diesel.model
 import razie.Logging
 import razie.gg
 import org.json.JSONArray
-import razie.wiki.dom.WikiDomain
-import razie.wiki.model.{WID, Wikis, WikiEntry}
+import razie.wiki.model.{WID, WikiEntry, Wikis}
 import razie.js
+
 import scala.collection.mutable.ListBuffer
 import org.json.JSONObject
+import razie.diesel.dom.WikiDomain
+
 import scala.collection.mutable.HashMap
 
 /** graph wiki controller */

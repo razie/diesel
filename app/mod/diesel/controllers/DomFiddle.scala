@@ -5,7 +5,6 @@ import java.util.concurrent.TimeUnit
 import akka.actor.{Actor, Props, _}
 import DomGuardian.{addStoryToAst, collectAst, prepEngine, startCheck}
 import mod.diesel.controllers.DomUtils.{SAMPLE_SPEC, SAMPLE_STORY}
-import mod.diesel.controllers.DomWorker.AutosaveSet
 import mod.diesel.model.AstKinds._
 import mod.diesel.model.RDExt._
 import mod.diesel.model._
@@ -13,9 +12,9 @@ import model._
 import play.api.Play.current
 import play.api.mvc._
 import play.libs.Akka
+import razie.diesel.dom.WikiDomain
 import razie.wiki.Services
 import razie.wiki.admin.Autosave
-import razie.wiki.dom.WikiDomain
 import razie.wiki.model._
 import razie.{CSTimer, Logging, js}
 

@@ -24,16 +24,15 @@ import play.api.data.Forms.tuple
 import play.api.libs.json.Json
 import play.api.mvc.Action
 import play.api.mvc.Request
-import razie.{Audit, Logging, clog, cout}
+import razie.{Audit, Logging, audit, clog, cout}
 import admin.Config
 import mod.cart._
 import razie.db.RMongo
 import play.api.mvc.AnyContent
 import play.api.mvc.Result
 import razie.db.RDelete
-import razie.diesel.dom.ECtx
+import razie.diesel.dom.{ECtx, WikiDomain}
 import razie.diesel.ext.{EExecutor, EMsg, EVal, MatchCollector}
-import razie.wiki.dom.WikiDomain
 
 import scala.collection.mutable.ListBuffer
 
@@ -251,7 +250,7 @@ object ModRkExec extends EExecutor("modrk") {
                 reg =>
                   if (reg.state.exists(_ == ModRk.STATE_PAID)) {
                     msg = "Removed paid item !!"
-                    razie.base.Audit.logdb("MODRK_DEL", "Removed paid record", reg.grated.toString)
+                    audit.Audit.logdb("MODRK_DEL", "Removed paid record", reg.grated.toString)
                     reg.delete
                   } else
                     reg.delete

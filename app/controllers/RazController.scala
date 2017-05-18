@@ -1,13 +1,13 @@
 package controllers
 
-import admin.{Config}
+import admin.Config
 import com.mongodb.WriteResult
 import model._
 import play.api.data.validation.{Constraint, Invalid, Valid, ValidationError}
 import play.api.mvc._
-import razie.base.Audit
 import razie.db.Txn
-import razie.{Logging}
+import razie.Logging
+import razie.audit.Audit
 import razie.wiki.model._
 import razie.wiki.Services
 
@@ -37,7 +37,6 @@ class RazController extends RazControllerBase with Logging {
   }
 
   implicit def errCollector (implicit request : RazRequest) = request.errCollector
-//  implicit def stok (implicit req: RazRequest) = req.stok
 
   object BetterFAUR extends ActionBuilder[BetterRazRequest] with ActionTransformer[Request, BetterRazRequest] {
     def transform[A](request: Request[A]) = Future.successful {

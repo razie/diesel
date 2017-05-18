@@ -14,7 +14,7 @@ import play.api.Configuration
 import play.api.data.Form
 import play.api.data.Forms.{mapping, nonEmptyText, text}
 import play.api.mvc.{Action, Request}
-import razie.base.Audit
+import razie.audit.Audit
 import razie.db._
 import razie.wiki.Sec.EncryptedS
 import razie.wiki.model._

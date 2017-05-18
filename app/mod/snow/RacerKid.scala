@@ -5,12 +5,12 @@ import com.mongodb.casbah.Imports._
 import com.novus.salat._
 import controllers.Club
 import org.joda.time.DateTime
-import razie.base.Audit
 import razie.db._
 import razie.wiki.Sec._
-import razie.wiki.dom.WikiDomain
 import razie.wiki.model._
-import model.{Users, TPersonInfo, User}
+import model.{TPersonInfo, User, Users}
+import razie.audit.Audit
+import razie.diesel.dom.WikiDomain
 
 /** a history element
   *

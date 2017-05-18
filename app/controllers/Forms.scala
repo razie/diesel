@@ -3,10 +3,10 @@ package controllers
 import mod.snow._
 import model._
 import org.joda.time.DateTime
-import play.api.mvc.{Result, Action}
+import play.api.mvc.{Action, Result}
 import razie.db.{Txn, tx}
+import razie.diesel.dom.WikiDomain
 import razie.wiki.admin.SendEmail
-import razie.wiki.dom.WikiDomain
 import razie.wiki.model.FormStatus
 import razie.wiki.model.WID
 import razie.wiki.model.WikiEntry
@@ -548,17 +548,4 @@ object FormReg extends WikiBase with Logging {
   def doeCreateReg(iwid: WID) = Action { implicit request =>
     Ok("next step...")
   }
-
-  //  /** wid is the script name,his parent is the actual topic */
-  //  def wikieNextStep(id:String) = Action { implicit request =>
-  //    (for (
-  //      au <- auth orCorr cNoAuth
-  //    ) yield {
-  //      // default to category
-  //      Audit.logdb("WF_NEXT_STEP", id)
-  //      act.WikiWf.event("WF_NEXT_STEP", Map("id"->id))
-  //      Ok("next step...")
-  //    }) getOrElse
-  //      Unauthorized("You don't have permission to do this...")
-  //  }
 }

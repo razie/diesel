@@ -3,11 +3,12 @@ manage the list of kidz and/or their accounts
 ******@
 @(club:controllers.Club, role:String="", teams:List[razie.wiki.model.WikiLink],
     rks:List[(mod.snow.RacerKid, mod.snow.RacerKidAssoc)])(implicit stok:controllers.StateOk)
+
 @import mod.snow.{RacerKid, RacerKidAssoc, RacerKidz}
 @import mod.snow.RK
 @import mod.snow.RK._
+@import razie.diesel.dom.WikiDomain
 @import razie.wiki.model.Wikis
-@import razie.wiki.dom.WikiDomain
 
 @stok.title("Members for " + club.name)
 

@@ -134,7 +134,7 @@
     @if(rk.userId.isDefined) {account holder} else {parent acct: @rk.parentUsers.map(_.fullName).mkString(",")}
     | <a href="#" onclick="help(); return false;" title="More help" style="color:red">Help!</a>
   </small>
-  @notes.notesmsgDiv("histmsg")
+  @util.notesmsgDiv("histmsg")
 </h3>
 
   <p>
@@ -192,7 +192,7 @@
 }
 
 @defining(items().take(20)) { history =>
-  @notes.notesmsgShow("histmsg", Seq(("msg" -> ("Found "+history.size.toString+" items"))))
+  @util.notesmsgShow("histmsg", Seq(("msg" -> ("Found "+history.size.toString+" items"))))
 
 <div id="help" class="alert alert-success" style="display: none;">
   <p>This is your <b>main feed</b>.

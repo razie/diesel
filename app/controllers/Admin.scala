@@ -17,7 +17,6 @@ import org.json.{JSONArray, JSONObject}
 import play.api.libs.concurrent.Akka
 import play.api.libs.json.JsObject
 import play.twirl.api.Html
-import razie.base.Audit
 import razie.db.{RMany, RazMongo, WikiTrash}
 import razie.db.RazSalatContext.ctx
 import org.bson.types.ObjectId
@@ -30,12 +29,13 @@ import razie.js
 import razie.wiki.{Enc, Services}
 import razie.wiki.model.{Perm, WID, WikiEntry, Wikis}
 import razie.wiki.admin.{GlobalData, MailSession, SendEmail}
-import admin.{ClearAudits, MdbAuditService}
+import razie.audit.ClearAudits
 import model.{User, Users, Website, WikiScripster}
 import x.context
 
 import scala.util.Try
 import razie.Snakk._
+import razie.audit.{Audit, ClearAudits}
 import razie.wiki.Sec._
 
 import scala.collection.JavaConversions._

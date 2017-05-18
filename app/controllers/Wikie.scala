@@ -9,7 +9,6 @@ package controllers
 import admin.Config
 import com.google.inject.{Inject, Singleton}
 import mod.snow.{RacerKidz, RkHistory}
-import razie.base.Audit
 import razie.db.RazSalatContext._
 import razie.db._
 import com.mongodb.casbah.Imports._
@@ -27,7 +26,6 @@ import org.joda.time.DateTime
 import play.api.Configuration
 import razie.wiki.{Enc, Services}
 import razie.wiki.admin._
-import razie.wiki.dom.WikiDomain
 import razie.wiki.parser.WAST
 import razie.wiki.util.PlayTools
 import razie.{Log, cdebug, clog, cout}
@@ -44,6 +42,8 @@ import play.api.data.Forms.tuple
 import play.api.mvc.{Action, AnyContent, Request, Result}
 import razie.wiki.model._
 import Visibility._
+import razie.audit.Audit
+import razie.diesel.dom.WikiDomain
 
 /** wiki edits controller */
 //@Singleton

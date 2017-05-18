@@ -5,12 +5,13 @@ import org.bson.types.ObjectId
 import play.libs.Akka
 import razie.wiki.admin.Autosave
 
+/** an autosave request */
+case class AutosaveSet(name:String, userId: ObjectId, c:Map[String,String])
+
 /** speed up initial response - do backups and stuff in background */
 object DomWorker {
   // should be lazy because of akka's bootstrap
   lazy val worker = Akka.system.actorOf(Props[Worker], name = "DomWorker")
-
-  case class AutosaveSet(name:String, userId: ObjectId, c:Map[String,String])
 
   def later (autosaveSet: AutosaveSet) = {worker ! autosaveSet}
 
@@ -18,24 +19,12 @@ object DomWorker {
    * doing stuff later
     */
   private class Worker extends Actor {
+    // todo persistency - not a big deal if an autosave is lost
     def receive = {
       case a: AutosaveSet => {
         Autosave.set(a.name, a.userId, a.c)
       }
     }
-
-    // upon start, reload ALL messages to send - whatever was not sent last time
-//    override def preStart(): Unit = {
-//      Akka.system.scheduler.schedule(
-//        Duration.create(30, TimeUnit.SECONDS),
-//        Duration.create(30, TimeUnit.MINUTES),
-//        this.self,
-//        CMD_TICK)
-//      Akka.system.scheduler.scheduleOnce(
-//        Duration.create(10, TimeUnit.SECONDS),
-//        this.self,
-//        CMD_RESTARTED)
-//    }
   }
 }
 

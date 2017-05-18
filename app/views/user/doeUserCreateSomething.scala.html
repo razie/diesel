@@ -2,10 +2,9 @@
 from user home page - create something
 *****************@
 @()(implicit stok: controllers.StateOk)
+@import razie.diesel.dom.WikiDomain
 
 @htmlHeadBar("Creating something...")
-
-@import razie.wiki.dom.WikiDomain
 
 @noParent(x:razie.wiki.model.WikiEntry)=@{
   !WikiDomain("rk").needsParent(x.name)

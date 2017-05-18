@@ -12,8 +12,8 @@ import play.api.Configuration
 import play.api.data.Form
 import play.api.data.Forms.nonEmptyText
 import razie.db.{RMany, ROne}
+import razie.diesel.dom.WikiDomain
 import razie.wiki.Services
-import razie.wiki.dom.WikiDomain
 import razie.wiki.model._
 
 /** wiki edits controller */

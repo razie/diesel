@@ -1,9 +1,7 @@
 package controllers
 
 import com.google.inject._
-import mod.diesel.model.DieselMsgString
 import mod.snow._
-import razie.base.Audit
 import razie.db.{ROne, Txn}
 import razie.{Logging, Snakk, cout}
 import razie.db.RMongo._
@@ -16,6 +14,9 @@ import play.api.data.Form
 import play.api.data.Forms.{mapping, nonEmptyText, tuple, _}
 import play.api.mvc.{Action, Request}
 import razie.OR._
+import razie.audit.Audit
+import razie.diesel.model.DieselMsgString
+import razie.diesel.model.DieselTarget
 import razie.wiki.admin.SendEmail
 import razie.wiki.model._
 import razie.wiki.{Enc, Services}
@@ -405,8 +406,11 @@ class Profile @Inject() (config:Configuration) extends RazController with Loggin
               //realm new user flow
               Services ! DieselMsgString(
                 s"""$$msg rk.user.joined(userName="${u.userName}", realm="${stok.realm}")""",
-                WID.fromPath(s"${stok.realm}.Reactor:${stok.realm}#diesel").toList,
-                Nil)
+                DieselTarget(
+                  stok.realm,
+                  WID.fromPath(s"${stok.realm}.Reactor:${stok.realm}#diesel").toList,
+                  Nil)
+                )
 
               // process extra parms to determine what next
               request.session.get("extra") map { x =>
@@ -479,4 +483,3 @@ class Profile @Inject() (config:Configuration) extends RazController with Loggin
 object T {
   final val TESTCODE = "RazTesting"
 }
-

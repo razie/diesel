@@ -197,8 +197,12 @@ PROBLEM: many places use label as name... via Wikis.formatName
 @*********************** some validation ************************@
 
 <script>
-    var realm = "@stok.realm";
+var realm = "@stok.realm";
 
+// setup jquery to not reload scripts all the time
+$.ajaxSetup({
+  cache: true
+    });
 $("#draft").change(checkDraft);
 
 function checkDraft()  {

@@ -6,10 +6,11 @@
   **/
 package mod.diesel.model.parser
 
+import razie.diesel.dom.{WikiDTemplate, WikiDomain}
+import mod.diesel.model.exec.EESnakk
 import razie.diesel.dom.RDOM._
-import razie.diesel.dom.{RDOM, _}
+import razie.diesel.dom.{RDOM, WikiDTemplate, _}
 import razie.diesel.ext._
-import razie.wiki.dom.{WikiDTemplate, WikiDomain}
 import razie.wiki.model.WikiEntry
 import razie.wiki.parser.{WAST, WikiParserBase}
 import razie.wiki.{Enc, Services}
@@ -24,7 +25,7 @@ trait WikiDomParser extends WikiExprParser {
   import RDOM._
   import WAST._
 
-  def domainBlocks = pobject | pclass | passoc | pfunc | pdfiddle | pwhen | pflow | pmatch | psend | pmsg | pval | pexpectm | pexpectv | pexpect
+  def domainBlocks = pobject | pclass | passoc | pfunc | pdfiddle | pwhen | pflow | pmatch | psend | pmsg | pval | pexpect
 
   // todo replace $ with . i.e. .class
 
@@ -353,13 +354,13 @@ trait WikiDomParser extends WikiExprParser {
     *
     * An NVP is either the spec or an instance of a function call, a message, a data object... whatever...
     */
-  def psend: PS = keyw("[.$]send *".r) ~ opt("<" ~> "[^>]+".r <~ "> *".r) ~ qclsMet ~ optAttrs ~ opt(" *: *".r ~> optAttrs) ^^ {
+  def psend: PS = keyw("[.$]send *".r) ~ opt("<" ~> "[^>]+".r <~ "> *".r) ~ qclsMet ~ optAttrs ~ opt(" *: *".r ~> optAttrs) <~ " *".r ^^ {
     case k ~ stype ~ qcm ~ attrs ~ ret => {
       LazyState { (current, ctx) =>
         val f = EMsg("receive", qcm._1, qcm._2, attrs, ret.toList.flatten(identity), stype.mkString.trim)
         f.pos = Some(EPos(ctx.we.map(_.wid.wpath).mkString, k.pos.line, k.pos.column))
         collectDom(f, ctx.we)
-        SState(CanHtml.span("receive::") + f.toHtmlInPage + "<br>")
+        SState(CanHtml.span("receive::", "default") + f.toHtmlInPage + "<br>")
       }
     }
   }
@@ -369,7 +370,7 @@ trait WikiDomParser extends WikiExprParser {
     *
     * An NVP is either the spec or an instance of a function call, a message, a data object... whatever...
     */
-  def pmsg: PS = keyw("[.$]msg *".r) ~ opt("<" ~> "[^>]+".r <~ "> *".r) ~ qclsMet ~ optAttrs ~ opt(" *(:|=>) *".r ~> optAttrs) ^^ {
+  def pmsg: PS = keyw("[.$]msg *".r) ~ opt("<" ~> "[^>]+".r <~ "> *".r) ~ qclsMet ~ optAttrs ~ opt(" *(:|=>) *".r ~> optAttrs) <~ " *".r ^^ {
     case k ~ stype ~ qcm ~ attrs ~ ret => {
       LazyState { (current, ctx) =>
 
@@ -411,7 +412,7 @@ trait WikiDomParser extends WikiExprParser {
     * .mock a.role (attrs) => z.role (attrs)
     */
   def linemock(wpath: String) =
-    keyw("""[.$]mock""".r) ~ ws ~ clsMatch ~ ws ~ opt(pif) ~ pgen ^^ {
+    keyw("""[.$]mock""".r) ~ ws ~ clsMatch ~ ws ~ opt(pif) ~ pgen  <~ " *".r ^^ {
       case k ~ _ ~ Tuple3(ac, am, aa) ~ _ ~ cond ~ gen => {
         val x = EMatch(ac, am, aa, cond)
         val f = EMock(ERule(x, List(gen)))
@@ -424,39 +425,13 @@ trait WikiDomParser extends WikiExprParser {
   /**
     * .expect object.func (a,b)
     */
-  def pexpect: PS = keyw("[.$]expect".r <~ ws) ~ opt(qclsMet) ~ optMatchAttrs ~ opt(pif) ^^ {
-    case k ~ qcm ~ attrs ~ cond => {
+  def pexpect: PS = keyw("[.$]expect".r <~ ws) ~ opt("not" <~ ws) ~ opt(qclsMet) ~ optMatchAttrs ~ opt(pif) <~ " *".r ^^ {
+    case k ~ not ~ qcm ~ attrs ~ cond => {
       LazyState { (current, ctx) =>
         val pos = Some(EPos(ctx.we.map(_.wid.wpath).mkString, k.pos.line, k.pos.column))
-        val f = qcm.map(qcm => ExpectM(EMatch(qcm._1, qcm._2, attrs, cond)).withPos(pos)).getOrElse(ExpectV(attrs).withPos(pos))
-        collectDom(f, ctx.we)
-        SState(f.toHtml + "<br>")
-      }
-    }
-  }
-
-  /**
-    * todo obsolete
-    */
-  def pexpectm: PS = keyw("[.$]expect\\s+[$]msg\\s+".r) ~ qclsMet ~ optMatchAttrs ~ opt(pif) ^^ {
-    case k ~ qcm ~ attrs ~ cond => {
-      LazyState { (current, ctx) =>
-        val f = ExpectM(EMatch(qcm._1, qcm._2, attrs, cond))
-        f.pos = Some(EPos(ctx.we.map(_.wid.wpath).mkString, k.pos.line, k.pos.column))
-        collectDom(f, ctx.we)
-        SState(f.toHtml + "<br>")
-      }
-    }
-  }
-
-  /**
-    * todo obsolete
-    */
-  def pexpectv: PS = keyw("[.$]expect\\s+[$]val\\s+".r) ~ optMatchAttrs ^^ {
-    case k ~ a => {
-      LazyState { (current, ctx) =>
-        val f = ExpectV(a)
-        f.pos = Some(EPos(ctx.we.map(_.wid.wpath).mkString, k.pos.line, k.pos.column))
+        val f = qcm.map(qcm =>
+          ExpectM(not.isDefined, EMatch(qcm._1, qcm._2, attrs, cond)).withPos(pos))
+          .getOrElse(ExpectV(not.isDefined, attrs).withPos(pos))
         collectDom(f, ctx.we)
         SState(f.toHtml + "<br>")
       }

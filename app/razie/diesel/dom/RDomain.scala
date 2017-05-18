@@ -1,6 +1,6 @@
 package razie.diesel.dom
 
-import razie.diesel.dom.RDOM.{A, C, D, F, O}
+import razie.diesel.dom.RDOM._
 
 import scala.collection.mutable.ListBuffer
 
@@ -32,7 +32,7 @@ class RDomain(val name: String, val classes: Map[String, C], val assocs: List[A]
       }
     }
 
-    var x=new RDomain(name, classes, assocs ++ newAssocs, diamonds, objects, funcs)
+    val x=new RDomain(name, classes, assocs ++ newAssocs, diamonds, objects, funcs)
     x.moreElements.appendAll(moreElements)
     x
   }
@@ -79,7 +79,7 @@ class RDomain(val name: String, val classes: Map[String, C], val assocs: List[A]
       "objects" -> objects.values.toList.map { c =>
         Map(
           "name" -> c.name,
-          "parms" -> c.parms.toList.map { p =>
+          "parms" -> c.parms.map { p =>
             Map(
               "name" -> p.name,
               "value" -> p.value
@@ -90,7 +90,7 @@ class RDomain(val name: String, val classes: Map[String, C], val assocs: List[A]
       "funcs" -> funcs.values.toList.map { c =>
         Map(
           "name" -> c.name,
-          "parms" -> c.parms.toList.map { p =>
+          "parms" -> c.parms.map { p =>
             Map(
               "name" -> p.name,
               "t" -> p.ttype

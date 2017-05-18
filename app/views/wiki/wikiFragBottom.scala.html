@@ -198,9 +198,10 @@ wiki fragment, used in another page
 
 <script src="@routes.Assets.at("javascripts/weCommons.js")" type="text/javascript" charset="utf-8"></script>
 
-<script>
-
-$(".voteLike").html($("#voteLike").html())
+<script async>
+$(window).load (function() {
+  $(".voteLike").html($("#voteLike").html())
+});
 
 // simple protection for multiple clicks
 var wikiVoted=false;

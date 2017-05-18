@@ -12,7 +12,7 @@ import com.mongodb.casbah.Imports._
 import controllers.{ModRkExec, RazWikiAuthorization, RkViewService, ViewService}
 import mod.diesel.controllers.{DieselMod, FiddleMod}
 import model.WikiUsersImpl
-import razie.base.Audit
+import razie.audit.{Audit, MdbAuditService}
 import razie.db.{RMongo, RazMongo, UpgradeDb}
 import razie.diesel.ext.Executors
 import razie.wiki.admin.SendEmail

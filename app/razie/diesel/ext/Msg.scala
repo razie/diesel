@@ -6,22 +6,14 @@
  */
 package razie.diesel.ext
 
-import razie.db.RazSalatContext._
-import razie.db._
 import com.mongodb.casbah.Imports._
-import com.mongodb.DBObject
-import com.novus.salat._
 import mod.diesel.model.DomAst
 import mod.diesel.model.RDExt.EError
-import org.joda.time.DateTime
-import razie.diesel.dom._
 import razie.diesel.dom.RDOM._
-import razie.diesel._
-import razie.{clog, js}
+import razie.diesel.dom._
 
 import scala.Option.option2Iterable
-import scala.collection.mutable
-import scala.collection.mutable.{HashMap, ListBuffer}
+import scala.collection.mutable.ListBuffer
 import scala.util.Try
 
 /** an applicable - can execute a message */
@@ -50,7 +42,7 @@ trait EApplicable {
 }
 
 /** test - expect a message m. optional guard */
-case class ExpectM(m: EMatch) extends CanHtml with HasPosition {
+case class ExpectM(not:Boolean, m: EMatch) extends CanHtml with HasPosition {
   var when : Option[EMatch] = None
   var pos : Option[EPos] = None
   def withPos(p:Option[EPos]) = {this.pos = p; this}
@@ -74,7 +66,7 @@ case class ExpectM(m: EMatch) extends CanHtml with HasPosition {
 
 // todo use a EMatch and combine with ExpectM - empty e/a
 /** test - expect a value or more. optional guard */
-case class ExpectV(pm:MatchAttrs) extends CanHtml with HasPosition {
+case class ExpectV(not:Boolean, pm:MatchAttrs) extends CanHtml with HasPosition {
   var when : Option[EMatch] = None
   var pos : Option[EPos] = None
   def withPos(p:Option[EPos]) = {this.pos = p; this}
@@ -254,9 +246,9 @@ case class ERule(e: EMatch, i: List[EMap]) extends CanHtml with EApplicable with
   override def apply(in: EMsg, destSpec: Option[EMsg])(implicit ctx: ECtx): List[Any] =
     i.flatMap(_.apply(in, destSpec, pos))
 
-  override def toHtml = span("$when::") + s" ${e.toHtml} ${i.map(_.toHtml).mkString("<br>")} <br>"
+  override def toHtml = span("when::", "default") + s" ${e.toHtml} ${i.map(_.toHtml).mkString("<br>")} <br>"
 
-  override def toString = "$when:: " + e + " => " + i.mkString
+  override def toString = "when:: " + e + " => " + i.mkString
 }
 
 // a nvp - can be a spec or an event, message, function etc

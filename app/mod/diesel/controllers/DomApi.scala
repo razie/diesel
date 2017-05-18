@@ -3,7 +3,6 @@ package mod.diesel.controllers
 import difflib.{DiffUtils, Patch}
 import DomGuardian.{addStoryToAst, collectAst, prepEngine, startCheck}
 import mod.diesel.controllers.DomSessions.Over
-import mod.diesel.controllers.DomWorker.AutosaveSet
 import mod.diesel.model.RDExt._
 import mod.diesel.model._
 import model._
@@ -11,11 +10,10 @@ import org.bson.types.ObjectId
 import org.joda.time.DateTime
 import play.api.mvc._
 import play.twirl.api.Html
-import razie.base.Audit
-import razie.diesel.dom.WTypes
+import razie.audit.Audit
+import razie.diesel.dom.{WTypes, WikiDomain}
 import razie.diesel.ext._
 import razie.wiki.admin.Autosave
-import razie.wiki.dom.WikiDomain
 import razie.wiki.model._
 import razie.{Logging, js}
 
@@ -234,9 +232,7 @@ class DomApi extends DomApiBase  with Logging {
     val pages = (specs ::: stories).filter(_.section.isEmpty).flatMap(_.page)
 
     // to domain
-    val dom = pages.flatMap(p=>
-      WikiDomain.domFrom(p).toList
-    ).foldLeft(WikiDomain.domFrom(page).get)((a, b) => a.plus(b)).revise.addRoot
+    val dom = WikiDomain.domFrom(page, pages)
 
     // make up a story
     val FILTER = Array("sketchMode", "mockMode", "blenderMode", "draftMode")
@@ -331,8 +327,7 @@ class DomApi extends DomApiBase  with Logging {
 
   // view an AST from teh collection
   def viewAst(id: String, format: String) = FAUR { implicit stok =>
-    import DomGuardian.asts
-    asts.synchronized {
+    DomGuardian.withAsts {asts=>
       asts.find(_._2 == id).map { ast =>
         if (format == "html")
           Ok(ast._3.toHtml)
@@ -346,8 +341,7 @@ class DomApi extends DomApiBase  with Logging {
 
   // list the collected ASTS
   def listAst = FAUR { implicit stok =>
-    import DomGuardian.asts
-    asts.synchronized {
+    DomGuardian.withAsts {asts=>
       val x = js.tojsons(asts.map(_._1), 1)
       Ok(x.toString).as("application/json")
     }
@@ -570,7 +564,7 @@ class DomApi extends DomApiBase  with Logging {
       var we = newVer
 
       session.time = System.currentTimeMillis()
-      session.overrides.put(wid, Over(wid, newVer, icontent))
+      session.overrides.prepend(Over(wid, newVer, icontent, sType, sName))
 
       // just from the fiddle, not the entire page
       var links = WikiDomain.domFilter(newVer.copy(content = icontent + "\n")) {
@@ -599,12 +593,12 @@ class DomApi extends DomApiBase  with Logging {
     val sid = stok.fqhParm("dieselSessionId")
 
     (for (
-      // we expect the page to have done a getSession first
+    // we expect the page to have done a getSession first
       existingSession <- sid.flatMap(s => DomSessions.sessions.get(s)) orErr ("no session found: " + sid);
-      anyOverwrites <- cwid.wid.flatMap(wid => existingSession.overrides.get(wid)) orErr "no session override found"
+      anyOverwrites <- cwid.wid.flatMap(wid => existingSession.overrides.find(_.wid == wid)) orErr "no session override found"
     ) yield {
       //      val we = cwid.wid.map(stok.prepWid).flatMap(wid => session.overrides.get(wid)).get.page
-      val we = cwid.wid.flatMap(wid => existingSession.overrides.get(wid)).get.page
+      val we = cwid.wid.flatMap(wid => existingSession.overrides.find(_.wid == wid)).get.page
       val PAT = """([\w.]*)/(\w*)""".r
       val PAT(e, a) = cwid.rest
 
@@ -613,12 +607,93 @@ class DomApi extends DomApiBase  with Logging {
         else we.wid
 
       Audit.logdb("DIESEL_FIDDLE_RUN", stok.au.map(_.userName).getOrElse("Anon"))
-      irunDom(e, a, Some(nw), Some(we.copy(content = anyOverwrites.section))).apply(stok.req)
+      irunDom(e, a, Some(nw), Some(we.copy(content = anyOverwrites.newContent))).apply(stok.req)
     }).getOrElse {
       Future {
         Unauthorized("Session not found... it expired or there's too much load...")
       }
     }
+  }
+
+  /** anon fiddle - with tests etc */
+  def anonRunFiddle(cwid: CMDWID) = RActiona { implicit stok =>
+    // todo commonalities with fiddleStoryUpdated
+    val sid = stok.req.cookies.get("dieselSessionId")
+    val session = sid.flatMap(s => DomSessions.sessions.get(s.value))
+    val dfiddle = stok.query.get("dfiddle")
+    val anySpecOverwrites = session.flatMap { existingSession=>
+      cwid.wid.flatMap(wid => existingSession.overrides.find(o=>
+        o.wid == wid && o.sName == (dfiddle.mkString+":spec"))
+      )
+    }
+    val anyStoryOverwrites = session.flatMap { existingSession=>
+      cwid.wid.flatMap(wid => existingSession.overrides.find(o=>
+        o.wid == wid && o.sName == (dfiddle.mkString+":spec"))
+      )
+    }
+
+    Audit.logdb("DIESEL_FIDDLE_RUN", stok.au.map(_.userName).getOrElse("Anon"))
+
+    val settings = DomEngineSettings.from(stok)
+
+    val reactor = stok.formParm("reactor")
+    val specWpath = stok.formParm("specWpath")
+    val storyWpath = stok.formParm("storyWpath")
+    val spec = anySpecOverwrites.map(_.newContent) getOrElse stok.formParm("spec")
+    val story = anyStoryOverwrites.map(_.newContent) getOrElse stok.formParm("story")
+
+    val uid = stok.au.map(_._id).getOrElse(NOUSER)
+
+    val storyName = WID.fromPath(storyWpath).map(_.name).getOrElse("fiddle")
+    val specName = WID.fromPath(specWpath).map(_.name).getOrElse("fiddle")
+
+    val page = new WikiEntry("Spec", specName, specName, "md", spec, uid, Seq("dslObject"), stok.realm)
+    val pages = List(page)
+
+    // todo is adding page twice...
+    val dom = pages.flatMap(p=>
+      if(anySpecOverwrites.isDefined)
+        WikiDomain.domFrom(p).toList
+      else
+        SpecCache.orcached(p, WikiDomain.domFrom(p)).toList
+    ).foldLeft(
+      WikiDomain.empty
+    )((a,b) => a.plus(b)).revise.addRoot
+
+    val ipage = new WikiEntry("Story", storyName, storyName, "md", story, uid, Seq("dslObject"), stok.realm)
+
+    var res = ""
+    var captureTree = ""
+
+    val root = {
+      val d = DomAst("root", AstKinds.ROOT).withDetails("(from story)")
+      addStoryToAst(d, List(ipage))
+      d
+    }
+
+    val idom = WikiDomain.domFrom(ipage).get.revise addRoot
+
+    // start processing all elements
+    val engine = DieselAppContext.mkEngine(dom, root, settings, ipage :: pages map WikiDomain.spec)
+    setHostname(engine.ctx)
+
+    // decompose all tree or just testing? - if there is a capture, I will only test it
+    val fut =
+      engine.process
+
+    fut.map {engine =>
+      res += engine.root.toHtml
+
+      val m = Map(
+        "res" -> res,
+        "capture" -> captureTree,
+        "ca" -> RDExt.toCAjmap(dom plus idom), // in blenderMode dom is full
+        "failureCount" -> engine.failedTestCount
+      )
+
+      retj << m
+    }
+
   }
 
   def quickBadge(failed:Int, total:Int, duration:Long) = {
@@ -641,6 +716,7 @@ class DomApi extends DomApiBase  with Logging {
       }.getOrElse {
         // start a check in the background
         val eid = startCheck (stok.realm, stok.au)
+        clog << s"DIESEL startCheck ${stok.realm} for ${stok.au.map(_.userName)}"
         //        Ok(quickBadge(0,0))
         eid._2.map { r =>
           Ok(quickBadge(r.failed, r.total, r.duration))

@@ -3,8 +3,9 @@ fragment: add more stuff to the current topic, including children, sub-topics et
 ****************@
 @(wid:razie.wiki.model.WID, page:Option[razie.wiki.model.WikiEntry])(implicit stok: controllers.StateOk)
 @import controllers.IgnoreErrors
+
 @import razie.wiki.model.{Perm, WID, Wikis}
-@import razie.wiki.dom.WikiDomain
+@import razie.diesel.dom.WikiDomain
 
 @allassocs(wid:WID) = @{
   // all those I am parent to OR are children to me
