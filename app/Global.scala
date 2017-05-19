@@ -29,6 +29,7 @@ import scala.collection.mutable.ListBuffer
 import scala.concurrent.{ExecutionContext, Future}
 import controllers.ViewService
 import razie.audit.Audit
+import razie.hosting.Website
 import razie.wiki.model._
 import razie.wiki.admin._
 import razie.wiki.{EncryptService, Services, WikiConfig}

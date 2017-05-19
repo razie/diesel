@@ -30,9 +30,9 @@ import razie.wiki.{Enc, Services}
 import razie.wiki.model.{Perm, WID, WikiEntry, Wikis}
 import razie.wiki.admin.{GlobalData, MailSession, SendEmail}
 import razie.audit.ClearAudits
-import model.{User, Users, Website, WikiScripster}
+import model.{User, Users, WikiScripster}
 import x.context
-
+import razie.hosting.Website
 import scala.util.Try
 import razie.Snakk._
 import razie.audit.{Audit, ClearAudits}

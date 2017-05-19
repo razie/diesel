@@ -21,7 +21,7 @@ import razie.wiki.parser.ParserCommons
 import razie.js
 import razie.wiki.{Enc, Services, WikiConfig}
 import razie.{Logging, cout}
-
+import razie.hosting.Website
 import scala.util.parsing.input.Positional
 
 /** autosaved notes */

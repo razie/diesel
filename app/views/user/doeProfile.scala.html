@@ -17,7 +17,7 @@
       </small>
 
       @util.razSelect(myForm, "userType", "Add a role",
-        model.Website.userTypes(request.req).map(x=>(x.toString,model.Website.userTypeDesc(x.toString)(request.req))))
+        razie.hosting.Website.userTypes(request.req).map(x=>(x.toString,razie.hosting.Website.userTypeDesc(x.toString)(request.req))))
 
       @util.razSelect(myForm, "yob", "When you were born",
         (Range(2005, 1912, -1) map (y => (y.toString, y.toString))),

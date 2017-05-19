@@ -22,6 +22,7 @@ import org.bson.types.ObjectId
 import org.joda.time.DateTime
 import play.api.mvc.{Action, Request}
 import razie.diesel.dom.WikiDomain
+import razie.hosting.Website
 import razie.wiki.{Dec, Enc, EncUrl, WikiConfig}
 import razie.wiki.model._
 import razie.{Logging, clog, cout}

@@ -1,7 +1,7 @@
 package mod.diesel.controllers
 
 import controllers._
-import model.Website
+import razie.hosting.Website
 import org.bson.types.ObjectId
 import org.joda.time.DateTime
 import razie.Logging

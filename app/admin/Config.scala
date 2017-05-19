@@ -1,6 +1,6 @@
 package admin
 
-import model.Website
+import razie.hosting.Website
 import play.api.Play
 import play.api.mvc.Request
 import razie.wiki.model.WikiObservers

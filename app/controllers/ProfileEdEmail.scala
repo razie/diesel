@@ -5,7 +5,7 @@ import play.api.data.Form
 import play.api.data.Forms.{tuple, _}
 import razie.wiki.Sec._
 import razie.wiki.model._
-
+import razie.hosting.Website
 
 //@Singleton
 //class Profile @Inject() (config:Configuration) extends RazController with Logging {

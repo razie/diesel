@@ -25,7 +25,10 @@ trait WikiDomParser extends WikiExprParser {
   import RDOM._
   import WAST._
 
-  def domainBlocks = pobject | pclass | passoc | pfunc | pdfiddle | pwhen | pflow | pmatch | psend | pmsg | pval | pexpect
+  def domainBlocks =
+    pobject | pclass | passoc | pfunc |
+    pdfiddle |
+    pwhen | pflow | pmatch | psend | pmsg | pval | pexpect
 
   // todo replace $ with . i.e. .class
 
@@ -569,6 +572,3 @@ class ExecCall(cls: String, func: String, args: List[P]) extends EXEC {
 
   def exec(ctx: Any, parms: Any*): Any = ""
 }
-
-
-

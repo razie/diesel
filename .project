@@ -3,6 +3,8 @@
 	<name>racerkidz</name>
 	<comment></comment>
 	<projects>
+		<project>razbase</project>
+		<project>snakked</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>

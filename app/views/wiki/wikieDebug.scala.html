@@ -4,8 +4,9 @@ debug a wiki page
 @import razie.wiki.model.Perm
 @(wid:razie.wiki.model.WID, iname:Option[String], page:Option[razie.wiki.model.WikiEntry])(implicit stok: controllers.StateOk)
 @import razie.wiki.model.{WikiEntry, WID, Wikis, WikiCount, WikiLink, WikiEntryOld}
-@import model.{Website, User}
+@import model.{User}
 @import razie.db.{ROne, RMany, RUpdate}
+@import razie.hosting.Website
 
 @stok.title("WikiDebug: "+wid.cat +":"+ wid.name)
 

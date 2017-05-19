@@ -9,7 +9,8 @@ package mod.diesel.controllers
 import com.mongodb.casbah.Imports._
 import com.novus.salat._
 import controllers.{RazController, VErrors}
-import model.{Tags, Website}
+import razie.hosting.Website
+import model.{Tags}
 import razie.db.RazSalatContext._
 import com.mongodb.{BasicDBObject, DBObject}
 import razie.db.{RMany, ROne, RazMongo}

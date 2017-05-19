@@ -13,6 +13,7 @@ import razie.Logging
 import razie.diesel.dom.RDOM.O
 import razie.diesel.dom.{SimpleECtx, WikiDomain}
 import razie.diesel.ext._
+import razie.hosting.Website
 import razie.wiki.Services
 import razie.wiki.admin.Autosave
 import razie.wiki.model._

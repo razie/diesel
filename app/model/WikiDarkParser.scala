@@ -9,7 +9,7 @@ package model
 import razie.wiki.Services
 import razie.wiki.parser.{WAST, WikiParserBase}
 
-/** parse dsl, fiddles and code specific fragments */
+/** elemnts for dark/light backgrounds */
 trait WikiDarkParser extends WikiParserBase {
   import WAST._
   
@@ -21,7 +21,6 @@ trait WikiDarkParser extends WikiParserBase {
   def wikiPropImgDark: PS = "{{img" ~> """\.light|\.dark""".r ~ """[: ]""".r ~ """[^} ]*""".r ~ optargs <~ "}}" ^^ {
     case stype ~ _ ~ name ~ args => {
       LazyState {(current, ctx) =>
-//        val isDark = ctx.
         if(isDark && stype.contains("dark") || !isDark && stype.contains("light")) {
           val sargs = args.foldLeft(""){(c, a) => s""" $c ${a._1}="${a._2}" """}
           SState(s"""<img src="$name" $sargs />""")
@@ -33,7 +32,6 @@ trait WikiDarkParser extends WikiParserBase {
   }
 
   // to not parse the content, use slines instead of lines
-  /** {{section:name}}...{{/section}} */
   def htmlDark: PS = "{{" ~> opt(".") ~ """html.dark|html.light""".r ~ "}}" ~ lines <~ ("{{/" ~ """html""".r ~ "}}") ^^ {
     case hidden ~ stype ~ _ ~ lines => {
       LazyState {(current, ctx) =>

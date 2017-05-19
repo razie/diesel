@@ -28,8 +28,8 @@ person information
     if( next.startsWith("Club:") || next.startsWith("clubkidz:"))
       RK.RELATIONSHIPS.map(x => (x, x))
     else if(next.startsWith("invite:"))
-      model.Website.userTypes(stok.request.get).toArray.map(
-        x=> (x.toString, model.Website.userTypeDesc(x.toString)(stok.request.get))
+      razie.hosting.Website.userTypes(stok.request.get).toArray.map(
+        x=> (x.toString, razie.hosting.Website.userTypeDesc(x.toString)(stok.request.get))
       )
     else
       RK.RELATIONSHIPS.map(x => (x, x))

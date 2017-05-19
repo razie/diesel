@@ -1,7 +1,7 @@
 package controllers
 
 import com.google.inject._
-import model.Website
+import razie.hosting.Website
 import play.api.Configuration
 import play.api.data.Forms._
 import play.api.data._

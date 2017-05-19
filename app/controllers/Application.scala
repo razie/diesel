@@ -3,21 +3,18 @@ package controllers
 import java.io.File
 
 import admin.Config
-import mod.snow.{RacerKidInfo, RacerKidz}
-import org.joda.time.DateTime
 import com.mongodb.casbah.Imports._
+import mod.snow.{RacerKidInfo, RacerKidz, _}
 import model._
+import org.joda.time.DateTime
 import play.api.mvc.Action
-import play.api.mvc.Request
-import razie.db.RazMongo.RazMongoTable
-import razie.wiki.admin.BannedIps
-import razie.wiki.model._
-import razie.db.ROne
-import razie.wiki.util.PlayTools
-import razie.wiki.{Enc, Services}
-import razie.wiki.Sec._
-import mod.snow._
 import razie.audit.Audit
+import razie.db.ROne
+import razie.db.RazMongo.RazMongoTable
+import razie.hosting.{BannedIps, RkReactors, Website}
+import razie.wiki.Sec._
+import razie.wiki.model._
+import razie.wiki.{Enc, Services}
 
 import scala.concurrent.Future
 
@@ -216,8 +213,6 @@ object Application extends RazController {
     def link(s: String) = """<a href="/hosted/%s/index.html">%s</a>""".format(s, s)
     Msg2("Assets are: \n" + new File("public/hosted/").list().map(link(_)).mkString("<br>"))
   }
-
-  import razie.|>
 
   def listswitch = FAU { implicit au => implicit errCollector => implicit request =>
     Ok(WikiReactors.reactors.values.map{r=>

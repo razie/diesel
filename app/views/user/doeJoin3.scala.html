@@ -33,7 +33,7 @@ create account
   @util.razSelect(myForm, "userType",
     (if (stok.realm==razie.wiki.model.WikiReactors.NOTES) "Account type"
      else "What you are (guest or pro)"),
-    model.Website.userTypes(stok.request.get).map(x=>(x.toString,model.Website.userTypeDesc(x.toString)(stok.request.get))))
+    razie.hosting.Website.userTypes(stok.request.get).map(x=>(x.toString,razie.hosting.Website.userTypeDesc(x.toString)(stok.request.get))))
   </strong>
     </div>
 

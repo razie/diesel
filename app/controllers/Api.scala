@@ -4,6 +4,7 @@ import com.google.inject._
 import play.api.mvc._
 import model._
 import play.api.{Configuration, Play}
+import razie.hosting.Website
 
 @Singleton
 class Api @Inject() (val config:Configuration) extends AdminBase {

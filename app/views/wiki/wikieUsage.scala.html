@@ -3,7 +3,8 @@ debug a wiki page
 **************@
 @(wid:razie.wiki.model.WID, iname:Option[String], page:Option[razie.wiki.model.WikiEntry])(implicit stok: controllers.StateOk)
 @import razie.wiki.model.{WikiAudit, WikiEntry, WID, Wikis, CommentStream, WikiLink, WikiEntryOld}
-@import model.{Website, User}
+@import model.{User}
+@import razie.hosting.Website
 @import razie.db.{ROne, RMany, RUpdate}
 
 @stok.title("WikiUsage: "+wid.cat +":"+ wid.name)

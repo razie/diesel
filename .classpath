@@ -124,5 +124,7 @@
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry kind="lib" path="lib_managed/jars/com.typesafe.akka/akka-contrib_2.11/akka-contrib_2.11-2.4.2.jar"/>
 	<classpathentry kind="lib" path="lib_managed/jars/com.typesafe.akka/akka-cluster-tools_2.11/akka-cluster-tools_2.11-2.4.2.jar"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/razbase"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/snakked"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

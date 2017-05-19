@@ -13,6 +13,7 @@ import play.api.Play.current
 import play.api.mvc._
 import play.libs.Akka
 import razie.diesel.dom.WikiDomain
+import razie.hosting.Website
 import razie.wiki.Services
 import razie.wiki.admin.Autosave
 import razie.wiki.model._

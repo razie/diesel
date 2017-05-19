@@ -1,6 +1,6 @@
 package mod.book
 
-import model.Website
+import razie.hosting.Website
 import play.api.mvc.Action
 import razie.wiki.model.WikiRefined
 import razie.wiki.mods.{WikiMods, WikiMod}
