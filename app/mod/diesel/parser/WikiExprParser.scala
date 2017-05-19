@@ -7,25 +7,8 @@
 package mod.diesel.model.parser
 
 import razie.diesel.dom._
+import razie.diesel.ext.{BFlowExpr, FlowExpr, MsgExpr, SeqExpr}
 import razie.wiki.parser.WikiParserBase
-
-/** base class for flow expressions */
-class FlowExpr()
-
-/** either sequence or parallel */
-case class SeqExpr(op: String, l: Seq[FlowExpr]) extends FlowExpr {
-  override def toString = l.mkString(op)
-}
-
-/** a single message in a flow */
-case class MsgExpr(ea: String) extends FlowExpr {
-  override def toString = ea
-}
-
-/** a block of a flow expr, i.e. in brackets */
-case class BFlowExpr(b: FlowExpr) extends FlowExpr {
-  override def toString = s"( $b )"
-}
 
 /** expressions parser */
 trait WikiExprParser extends WikiParserBase {

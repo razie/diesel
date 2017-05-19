@@ -6,6 +6,7 @@
  */
 package controllers
 
+import razie.wiki.model.features.WikiCount
 import admin.Config
 import com.google.inject.{Inject, Singleton}
 import mod.snow.{RacerKidz, RkHistory}
@@ -1211,5 +1212,3 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
     wikis
   }
 }
-
-

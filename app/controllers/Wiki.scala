@@ -23,6 +23,7 @@ import razie.diesel.ext.{EMsg, ERule, ExpectM}
 import razie.wiki.util.{PlayTools, QueryParms}
 import razie.{Logging, cout, js}
 import razie.wiki.model._
+import razie.wiki.model.features.WikiCount
 
 import scala.Array.canBuildFrom
 import razie.wiki.{Enc, Services}
@@ -1133,4 +1134,3 @@ object WikiApiv1 extends WikiBase {
   }
 
 }
-

@@ -3,10 +3,11 @@ wiki fragment, used in another page
 **************@
 @(wid:razie.wiki.model.WID, altContent:Option[String]=None, simple:Boolean = false, page:Option[razie.wiki.model.WikiEntry]=None, iname:Option[String]=None, noTitle:Boolean=false, ads:Boolean=true, canEdit:Boolean=false, isSite:Boolean=false, print:Boolean=false)(implicit stok: controllers.StateOk)
 @import controllers.IgnoreErrors
-@import razie.wiki.model.{Wikis, WikiCount, WID, WikiEntry}
+@import razie.wiki.model.{Wikis, WID, WikiEntry}
 @import _root_.razie.wiki.Services
 @import razie.clog
 @import razie.diesel.dom.WikiDomain
+@import razie.wiki.model.features.WikiCount
 
 @nicename() = @{ iname.getOrElse(wid.name) }
 @rss = @{page.flatMap(_.contentProps.get("rss")).getOrElse(controllers.Wiki.w(wid)+"/rss.xml")}
@@ -287,5 +288,3 @@ function selectTextareaLine(tarea,lineNum) {
 }
 
   @*<script src="@routes.Assets.at("ace-builds/src/ace.js")" type="text/javascript" charset="utf-8"></script>*@
-
-

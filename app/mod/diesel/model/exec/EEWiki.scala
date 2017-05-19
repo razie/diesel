@@ -8,7 +8,7 @@ package mod.diesel.model.exec
 
 import controllers.Wikil
 import mod.diesel.controllers.SFiddles
-import mod.diesel.model.RDExt.{EError, EInfo, spec}
+import mod.diesel.model.RDExt.{spec}
 import mod.diesel.model.{DEStartTimer, DieselAppContext}
 import model.Users
 import razie.clog

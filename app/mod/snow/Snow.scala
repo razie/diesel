@@ -12,6 +12,7 @@ import razie.db.{ROne, tx}
 import razie.diesel.dom.WikiDomain
 import razie.wiki.{Dec, Enc, EncUrl, WikiConfig}
 import razie.wiki.model._
+import razie.wiki.model.features.WForm
 import razie.{Logging, clog, cout}
 
 import scala.Option.option2Iterable

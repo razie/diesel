@@ -7,7 +7,6 @@
 package mod.diesel.model.exec
 
 import com.mongodb.casbah.Imports._
-import mod.diesel.model.RDExt.EError
 import razie.diesel.dom.RDOM._
 import razie.diesel.dom._
 import razie.diesel.ext.{MatchCollector, _}

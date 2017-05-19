@@ -9,7 +9,7 @@ package mod.diesel.model
 import akka.actor.{ActorRef, Props}
 import mod.diesel.model.DomState._
 import mod.diesel.model.RDExt._
-import mod.diesel.model.parser.{BFlowExpr, FlowExpr, MsgExpr, SeqExpr}
+import razie.diesel.ext.{BFlowExpr, FlowExpr, MsgExpr, SeqExpr}
 import org.bson.types.ObjectId
 import play.libs.Akka
 import razie.clog

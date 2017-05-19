@@ -3,10 +3,11 @@ debug a wiki page
 **************@
 @import razie.wiki.model.Perm
 @(wid:razie.wiki.model.WID, iname:Option[String], page:Option[razie.wiki.model.WikiEntry])(implicit stok: controllers.StateOk)
-@import razie.wiki.model.{WikiEntry, WID, Wikis, WikiCount, WikiLink, WikiEntryOld}
+@import razie.wiki.model.{WikiEntry, WID, Wikis, WikiLink, WikiEntryOld}
 @import model.{User}
 @import razie.db.{ROne, RMany, RUpdate}
 @import razie.hosting.Website
+@import razie.wiki.model.features.WikiCount
 
 @stok.title("WikiDebug: "+wid.cat +":"+ wid.name)
 
@@ -263,5 +264,3 @@ AST:
       @Html(razie.wiki.model.Wikis.preprocess(wid, page.get.markup, Wikis.noBadWords(page.get.content), page).printHtml(1))
        </ul>
       </div>
-
-

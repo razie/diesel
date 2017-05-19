@@ -4,7 +4,7 @@ club admin manages user: membership, regsitration etc
 @(club:controllers.Club, myForm: Form[(String, String, String)], uw:model.UserWiki, ireg:Option[mod.snow.Reg]=None)(implicit stok:controllers.StateOk)
 @import mod.snow.{RK, Regs, RegStatus, RacerKidz}
 @import mod.snow.RegStatus._
-@import razie.wiki.model.FormStatus._
+@import razie.wiki.model.features.FormStatus._
 @import mod.snow.RK._
 @import controllers.Club
 
@@ -198,5 +198,3 @@ For all other forms, you should use the "family members not registered table" be
 <hr>
   @views.html.club.regStatusLegend()
   @views.html.club.formStatusLegend()
-
-

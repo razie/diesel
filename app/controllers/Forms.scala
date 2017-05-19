@@ -8,7 +8,7 @@ import razie.db.{Txn, tx}
 import razie.diesel.dom.WikiDomain
 import razie.hosting.Website
 import razie.wiki.admin.SendEmail
-import razie.wiki.model.FormStatus
+import razie.wiki.model.features._
 import razie.wiki.model.WID
 import razie.wiki.model.WikiEntry
 import razie.wiki.model.Wikis

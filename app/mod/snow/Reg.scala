@@ -10,6 +10,7 @@ import com.mongodb.util.JSON
 import razie.db._
 import scala.annotation.StaticAnnotation
 import razie.wiki.model._
+import razie.wiki.model.features._
 
 /** registration set for a family */
 @RTable
@@ -55,8 +56,8 @@ case class RegKid(
   regId: ObjectId,
   rkId: ObjectId,
   wids: Seq[WID],                // deprecated
-  roleWids: Seq[RoleWid]=Seq(),  
-  role: String,    
+  roleWids: Seq[RoleWid]=Seq(),
+  role: String,
   crDtm: DateTime = DateTime.now,
   _id: ObjectId = new ObjectId()) extends REntity[RegKid] {
 
@@ -190,4 +191,3 @@ object Regs {
     }
   }
 }
-

@@ -1,37 +1,27 @@
 package controllers
 
-import mod.snow._
-import mod.snow.RK
-import play.api.i18n.Messages
-import play.api.i18n.MessagesApi
-import play.api.i18n.Messages.Implicits._
-import play.api.Play.current
+import razie.wiki.model.features.WikiCount
 import admin.Config
-import akka.actor.{Actor, Props}
-import controllers.Wiki._
-import play.api.libs.concurrent.Akka
-import play.mvc.Result
-import play.twirl.api.Html
-import razie.wiki.admin.SendEmail
 import controllers.Profile.cNoConsent
-import controllers.Tasks._
-import razie.db.RMongo.as
-import razie.db._
+import mod.snow.{RK, _}
 import model._
 import org.bson.types.ObjectId
 import org.joda.time.DateTime
 import play.api.mvc.{Action, Request}
+import play.twirl.api.Html
+import razie.db.RMongo.as
+import razie.db._
 import razie.diesel.dom.WikiDomain
 import razie.hosting.Website
-import razie.wiki.{Dec, Enc, EncUrl, WikiConfig}
+import razie.wiki.admin.SendEmail
 import razie.wiki.model._
-import razie.{Logging, clog, cout}
+import razie.wiki.model.features._
+import razie.wiki.{Dec, Enc, WikiConfig}
+import razie.{Logging, cout}
 import views.html.club.doeClubRegsRepHtml
 
 import scala.Array.canBuildFrom
 import scala.Option.option2Iterable
-import razie.wiki.admin.SendEmail
-
 import scala.concurrent.Future
 
 /** just refactoring remains */
@@ -274,7 +264,6 @@ regAdmin=$regAdmin
 
   import play.api.data.Forms._
   import play.api.data._
-
   import play.api.libs.concurrent.Execution.Implicits.defaultContext
 
   def doeClubRegs(clubName: WID, details: String = "") = Action.async { implicit request =>
@@ -1527,4 +1516,3 @@ regAdmin=$regAdmin
   }
 
 }
-

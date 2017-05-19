@@ -30,6 +30,7 @@ import razie.{Logging, clog, cout}
 import razie.wiki.model._
 import razie.wiki.util.PlayTools
 import razie.wiki.admin.SendEmail
+import razie.wiki.model.features.WForm
 
 /** realm/reactor controller */
 object Realm extends RazController with Logging {

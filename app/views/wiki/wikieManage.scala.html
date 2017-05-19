@@ -4,8 +4,9 @@ wiki fragment, used in another page
 @import razie.wiki.model.Perm
 @(page: Option[razie.wiki.model.WikiEntry])(implicit stok:controllers.StateOk)
 @import controllers.IgnoreErrors
-@import razie.wiki.model.{Wikis, WikiCount, WID, WikiEntry}
+@import razie.wiki.model.{Wikis, WID, WikiEntry}
 @import _root_.razie.wiki.Services
+@import razie.wiki.model.features.WikiCount
 
 @label() = @{
     page.flatMap(_.contentProps.get("label")).orElse(page.map(_.label)).getOrElse(Wikis(wid.getRealm).label(wid))
@@ -54,5 +55,3 @@ wiki fragment, used in another page
 </div>
 
 <hr>
-
-

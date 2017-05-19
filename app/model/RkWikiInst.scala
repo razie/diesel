@@ -31,6 +31,11 @@ class RkWikiInst(realm:String, fallBacks:List[WikiInst]) extends WikiInstImpl (r
   }
 
   override def mkParser = new WikiParserCls(realm)
+
+  /** make a js object accessible to the scripts */
+  override def mkWixJson (owe: Option[WikiPage], ou:Option[WikiUser], q:Map[String,String], r:String) : String = {
+    api.wix(owe, ou, q, r).jsonBrowser
+  }
 }
 
 

@@ -5,7 +5,7 @@ import play.sbt.routes.RoutesKeys
 import play.twirl.sbt.Import.TwirlKeys
 
 object V {
-  val version      = "0.9.1-SNAPSHOT"
+  val version      = "0.9.2-SNAPSHOT"
   val scalaVersion = "2.11.8"
   val organization = "com.razie"
 
@@ -19,21 +19,6 @@ object ApplicationBuild extends Build {
   val appDependencies = Seq(
     //cache,
 
-    "commons-codec"       % "commons-codec"      % "1.4",
-    "javax.mail"          % "mail"               % "1.4.5",
-    "ch.qos.logback"      % "logback-classic"    % "1.0.13",
-    "org.mongodb"        %% "casbah"             % "2.8.2",
-    "com.novus"          %% "salat-core"         % "1.9.9",
-    "com.atlassian.commonmark"   % "commonmark"  % "0.7.0",
-    "org.scalaz"         %% "scalaz-core"        % "7.2.1",
-    "org.scalatest"      %% "scalatest"          % "2.1.3",
-    "com.typesafe"        % "config"             % "1.2.1",
-    "com.typesafe.akka"  %% "akka-cluster"       % "2.4.2",
-    "com.typesafe.akka"  %% "akka-cluster-tools" % "2.4.2",
-    "com.typesafe.akka"  %% "akka-contrib"       % "2.4.2",
-    "com.typesafe.akka"  %% "akka-slf4j"         % "2.4.2",
-    "com.typesafe.akka"  %% "akka-camel"         % "2.4.2",
-
 //    "com.github.fge"      % "json-patch"    % "1.9",
 
 //    "org.apache.camel"   %% "camel-core"         % "2.18.3",
@@ -41,14 +26,13 @@ object ApplicationBuild extends Build {
     "com.googlecode.java-diff-utils"        % "diffutils"             % "1.2.1",
 
 // for snakked
-//"org.json"       % "json"            % "20090211",
    "org.json"       % "json"            % "20160810",
    "commons-jxpath" % "commons-jxpath"  % "1.3",
    "org.scala-lang.modules" %% "scala-xml" % "1.0.3",
 
-//    "com.razie"          %% "base"               % "0.9.1",//-SNAPSHOT",
-//    "com.razie"          %% "snakked"            % "0.9.1",//-SNAPSHOT",
-//    "com.razie"          %% "scripster-core"     % "0.9.1"//-SNAPSHOT"
+//    "com.razie"          %% "base"               % "0.9.2-SNAPSHOT",
+//    "com.razie"          %% "snakked"            % "0.9.2-SNAPSHOT",
+//    "com.razie"          %% "scripster-core"     % "0.9.2-SNAPSHOT"
 
     "org.antlr" % "antlr4" % "4.5.3"
     )
@@ -87,9 +71,8 @@ object ApplicationBuild extends Build {
     (baseSettings ++ Seq(
       libraryDependencies ++= appDependencies,
 //      unmanagedSourceDirectories in Compile += baseDirectory.value / "../../w2/com.razie.dsl1/src-gen",
-      unmanagedSourceDirectories in Compile += baseDirectory.value / "../razbase//base/src/main/scala",
+      unmanagedSourceDirectories in Compile += baseDirectory.value / "../razbase/base/src/main/scala",
       unmanagedSourceDirectories in Compile += baseDirectory.value / "../snakked/core/src/main/scala",
-      unmanagedSourceDirectories in Compile += baseDirectory.value / "../scripster/src/main/scala",
       unmanagedSourceDirectories in Compile += baseDirectory.value / "../coolscala/common",
       // unmanagedSourceDirectories in Compile += baseDirectory.value / "../coolscala/diesel",
       unmanagedSourceDirectories in Compile += baseDirectory.value / "../coolscala/wiki",
@@ -125,7 +108,5 @@ object ApplicationBuild extends Build {
       "Typesafe Repository" at "http://repo.typesafe.com/typesafe/releases/",
       "Typesafe Snapshots" at "http://repo.typesafe.com/typesafe/snapshots/"
     )
-
   )
-
 }

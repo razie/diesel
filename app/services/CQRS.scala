@@ -14,7 +14,7 @@ import razie.wiki.model._
 import com.google.inject.Singleton
 import razie.audit.Audit
 import razie.diesel.model.{DieselMsg, DieselMsgString}
-
+import razie.wiki.model.features.WikiCount
 import scala.concurrent.ExecutionContext.Implicits.global
 
 /** main event dispatcher implementation */

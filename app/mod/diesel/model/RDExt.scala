@@ -124,29 +124,6 @@ object RDExt {
   }
 
 
-  /** some error, with a message and details */
-  case class EError (msg:String, details:String="") extends CanHtml {
-    override def toHtml =
-    if(details.length > 0)
-      span("error::", "danger", details, "style=\"cursor:help\"") + " " + msg
-    else
-      span("error::", "danger", details) + " " + msg
-    override def toString = "error::"+msg
-  }
-
-  /** a simple info node with a message and details - details are displayed as a popup */
-  case class EInfo (msg:String, details:String="") extends CanHtml with HasPosition {
-    var pos : Option[EPos] = None
-    def withPos(p:Option[EPos]) = {this.pos = p; this}
-
-    override def toHtml =
-      if(details.length > 0)
-        span("info::", "info", details, "style=\"cursor:help\"") + " " + msg
-      else
-        span("info::", "info", details) + " " + msg
-    override def toString = "info::"+msg
-  }
-
   // find the spec of the generated message, to ref
   def spec(m:EMsg)(implicit ctx: ECtx) =
     ctx.domain.flatMap(_.moreElements.collect {

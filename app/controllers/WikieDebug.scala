@@ -6,6 +6,7 @@
  */
 package controllers
 
+import razie.wiki.model.features.WikiCount
 import com.google.inject.{Inject, Singleton}
 import org.joda.time.DateTime
 import play.api.Configuration
@@ -290,5 +291,3 @@ class WikieDebug @Inject() (config:Configuration) extends WikieBase {
     }
   }
 }
-
-

@@ -6,16 +6,8 @@
   **/
 package mod.diesel.model.exec
 
-import controllers.Wikil
-import mod.diesel.controllers.SFiddles
-import mod.diesel.model.RDExt.{EError, EInfo, spec}
-import mod.diesel.model.{DEStartTimer, DieselAppContext}
-import razie.clog
-import razie.diesel.dom.RDOM._
 import razie.diesel.dom._
 import razie.diesel.ext.{MatchCollector, _}
-
-import scala.collection.mutable
 
 // execute tests
 class EETest extends EExecutor("test") {

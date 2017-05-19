@@ -4,9 +4,10 @@ wiki fragment, used in another page
 @(we: razie.wiki.model.WikiEntry, simple: Boolean = false, canEdit: Boolean = false, isSite: Boolean = false, print: Boolean = false)(implicit stok: controllers.StateOk)
 @import razie.wiki.model.Perm
 @import controllers.IgnoreErrors
-@import razie.wiki.model.{Wikis, WikiCount, WID, WikiEntry}
+@import razie.wiki.model.{Wikis, WID, WikiEntry}
 @import _root_.razie.wiki.Services
 @import razie.clog
+@import razie.wiki.model.features.WikiCount
 
 @page=@{Option(we)}
 @wid=@{we.wid}
@@ -233,4 +234,3 @@ var wikiVoted=false;
     }
   }
 </script>
-
