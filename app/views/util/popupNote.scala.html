@@ -29,7 +29,7 @@ simple popul modal confirmation for freaky stuff
 @modal("Add/edit note", "Done")
 
 <script>
-$("textarea").addClass("form-control");
+$('textarea:not([hidden])').addClass("form-control");
 
 function weNoteEditPopup(frm, name, content) {
   $("#modalNoteEdit").val(content);

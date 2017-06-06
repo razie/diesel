@@ -22,7 +22,7 @@ import model._
 import org.bson.types.ObjectId
 import org.joda.time.DateTime
 import play.api.mvc.{Action, Request}
-import razie.wiki.{Dec, WikiConfig, EncUrl, Enc}
+import razie.wiki.{WikiConfig, EncUrl, Enc}
 import razie.wiki.model._
 import razie.{clog, Logging, cout}
 import views.html.club.doeClubRegsRepHtml
@@ -173,7 +173,7 @@ object Vol extends RazController with Logging {
       if (user.isClub)
         RMany[VolunteerH]("approvedBy" -> None)
       else
-        RMany[VolunteerH]("approver" -> Some(user.email.dec), "approvedBy" -> None)
+        RMany[VolunteerH]("approver" -> Some(user.emailDec), "approvedBy" -> None)
     ROK s (user, request) apply { implicit stok =>(views.html.club.doeClubUserVolApprove(vhs.toList, user))}
   }
 

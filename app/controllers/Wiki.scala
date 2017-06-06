@@ -84,7 +84,7 @@ object Wiki extends WikiBase {
         s"""<b><a href="${wr(wid.parentWid.get, curRealm)}/tag/$t">$label</a></b>"""
       } else {
 //        s"""<b><a href="${routes.Wiki.showTag(t, wid.getRealm)}">$label</a></b>"""
-        s"""<b><a href="/wiki/tag/$t">$label</a></b>"""
+        s"""<b><a href="/tag/$t">$label</a></b>"""
       }
     }
   }
@@ -94,7 +94,7 @@ object Wiki extends WikiBase {
     // todo don't knwo why i do this redir
     // it's meant to work for other sites without reactors, that have no local tags
     if (PlayTools.getHost.exists(_ != Services.config.hostport) && !Services.config.isLocalhost && getRealm(irealm) == Wikis.RK)
-      Future.successful(Redirect("http://" + Services.config.hostport + "/wiki/tag/" + tag))
+      Future.successful(Redirect("http://" + Services.config.hostport + "/tag/" + tag))
     else
       search (getRealm(irealm), "", "", Enc.fromUrl(tag)).apply(request)
   }
@@ -115,187 +115,6 @@ object Wiki extends WikiBase {
     Ok("["+(c1).map(s=>s""" "${s.replaceAllLiterally("_", " ")}" """).mkString(",")+"]").as("text/json")
   }
 
-  /**
-   *
-   * @param category
-   * @param utags
-   * @param page
-   * @param qt - first array is and, second is or
-   * @return
-   */
-  def filterTags (category:String, utags:String, page:Option[WikiEntry], qt:Array[Array[String]]) = {
-    def checkT (b:String) = {
-      utags.contains(b) ||
-      b == "*" ||
-      category.toLowerCase == b ||
-      (b == "draft" && page.exists(_.isDraft)) ||
-      (b == "public" && page.exists(_.visibility == PUBLIC))
-    }
-
-    qt.size > 0 &&
-      qt.foldLeft(true)((a, b) => a && (
-        if(b(0).startsWith("-")) ! checkT(b(0).substring(1))
-        else b.foldLeft(false)((a, b) => a || checkT(b)))
-      )
-  }
-
-  /** extract associations from the page
-    * @return Tuple(left, middle, right, mkLink)
-    */
-  def extract (realm:String, page:Option[WikiEntry]) = {
-    // website prop p
-    def p(p:String) = Website.forRealm(realm).flatMap(_.prop(p)).mkString
-
-    if(p("wbrowser.query") == "dieselMsg") {
-      val domList = page.get.cache.getOrElse(WikiDomain.DOM_LIST, List[Any]()).asInstanceOf[List[Any]].reverse
-      val colEnt = new ListBuffer[(RDOM.A, String)]()
-      val colMsg = new ListBuffer[(RDOM.A, String)]()
-
-      val mkl = (s : String) => ""
-//      def mkLink (s:String) = routes.Wiki.wikiBrowse (s, path+"/"+s).toString()
-
-      val all = domList.collect {
-        case m:EMsg => {
-          colEnt append ((
-            RDOM.A(page.get.getLabel, page.get.name, m.entity, "me", "service"),
-            ""
-            ))
-          colMsg append ((
-            RDOM.A(page.get.getLabel, page.get.name, m.entity+"."+m.met, "me", "msg"),
-            ""
-          ))
-        }
-        case m:ExpectM => {
-          colEnt append ((
-            RDOM.A(page.get.getLabel, page.get.name, m.m.cls, "me", "service"),
-            ""
-          ))
-          colMsg append ((
-            RDOM.A(page.get.getLabel, page.get.name, m.m.cls + "." + m.m.met, "me", "msg"),
-            ""
-          ))
-        }
-      }
-      (colEnt.distinct.toList.map(_._1), colMsg.distinct.toList.map(_._1), Nil, mkl)
-    } else {
-      // normal browse mode tagQuery
-     val all = page.get.ilinks.distinct.collect {
-        case link if link.wid.page.isDefined =>
-          (RDOM.A(page.get.getLabel, page.get.name, link.wid.name, "me", link.role.mkString), link.wid.page.get.tags.mkString)
-      }
-
-      def qt(t:String) = {
-        t.split("[/&]").filter(_ != "tag").map(_.split("[,|]"))
-      }
-
-      def filter(cat:String, tags:String, s:String) = {
-        Wiki.filterTags(cat, tags, page, qt(p(s)))
-      }
-
-      // todo beef it up - include topic and stuff
-      val mkl = (s : String) => "/wiki/"+s
-//      def mkLink (s:String) = routes.Wiki.wikiBrowse (s, path+"/"+s).toString()
-//      def mkLink (s:String) = routes.Wiki.showWid (CMDWID(Option(s), none, "", ""), 1, "?").toString()
-
-      (
-        all.filter(x=>filter("", x._2, "wbrowser.left")).map(_._1),
-        all.filter(x=>filter("", x._2, "wbrowser.middle")).map(_._1),
-        all.filter(x=>filter("", x._2, "wbrowser.right")).map(_._1),
-        mkl
-      )
-    }
-  }
-
-
-  //TODO optimize - index or whatever
-  /** search all topics  provide either q or curTags */
-  def getList(realm:String, q: String, scope:String, curTags:String="", max:Int=2000)(implicit request : Request[_]) = {
-//    val realm = if("all" != irealm) getRealm(irealm) else irealm
-
-    //TODO limit the number of searches - is this performance critical?
-
-    val qi = if(q.length > 0 && q(0) == '-') q.substring(1).toLowerCase else q.toLowerCase
-    val doesNotContain = q.length > 0 && q(0) == '-'
-
-    def qnot(x:Boolean) = if(doesNotContain) !x else x
-
-    //todo only filter if first is tag ?
-    // array of array - first is AND second is OR
-    val qt = curTags.split("/").filter(_ != "tag").map(_.split(","))
-
-    //todo optimize: run query straight in the database ?
-    def filter (u:DBObject) = {
-      def uf(n:String) = if(u.containsField(n)) u.get(n).asInstanceOf[String] else ""
-
-      def hasTags = {
-        val utags = if(u.containsField("tags")) u.get("tags").toString.toLowerCase else ""
-
-        def checkT(b:String) = {
-          utags.contains(b) ||
-          b == "*" ||
-          (b == "draft" && u.containsField("props") && u.getAs[DBObject]("props").exists(_.containsField("draft"))) ||
-          (b == "public" && u.containsField("props") && u.getAs[DBObject]("props").exists(_.getAsOrElse[String]("visibility", PUBLIC) == PUBLIC)) ||
-          u.get("category").toString.toLowerCase == b
-        }
-
-        qt.size > 0 &&
-          u.containsField("tags") &&
-          qt.foldLeft(true)((a, b) => a && (
-            if(b(0).startsWith("-")) ! checkT(b(0).substring(1))
-            else b.foldLeft(false)((a, b) => a || checkT(b))
-            ))
-      }
-      if (qi.length <= 0) // just a tag search
-        hasTags
-      else
-        qnot((qi.length > 1 && uf("name").toLowerCase.contains(qi)) ||
-          (qi.length > 1 && uf("label").toLowerCase.contains(qi)) ||
-          ((qi.length() > 3 || auth.exists(_.isAdmin)) && uf("content").toLowerCase.contains(qi))
-        ) && hasTags
-    }
-
-    lazy val parent = WID.fromPath(scope).flatMap(x=>Wikis.find(x).orElse(Wikis(realm).findAnyOne(x.name)))
-
-    val REALM = if("all" == realm && auth.exists(_.isAdmin)) Map.empty[String,String] else Map("realm"->realm)
-    val wikis =
-      if(scope.length > 0 && parent.isDefined) {
-        val p = parent.get
-
-        def src (t:MongoCollection) = {
-          for (
-            u <- t.find(REALM ++ Map("parent" -> p._id)) if filter(u)
-          ) yield u
-        }.toList
-
-        if(WikiDomain(realm).zEnds(p.category, "Child").contains("Item"))
-          RazMongo.withDb(RazMongo("weItem").m, "query") (src)
-        else
-          RazMongo.withDb(RazMongo("WikiEntry").m, "query") (src)
-      } else {
-        RazMongo.withDb(RazMongo("WikiEntry").m, "query") { t =>
-          for (
-            u <- t.find(REALM) if filter(u)
-          ) yield u
-        }.toList
-      }
-
-
-    if(!isFromRobot) {
-      if(qi.length > 0) Audit.logdb("QUERY", q, s"Realm: $realm, Scope: $scope", "Results: " + wikis.size, "User-Agent: "+request.headers.get("User-Agent").mkString)
-      //      else Audit.logdb("QUERY_TAG", curTags, s"Realm: $realm, Scope: "+parent.map(_.wid.wpath).getOrElse(s"??? $scope"), "Results: " + wikis.size, "User-Agent: "+request.headers.get("User-Agent").mkString)
-    }
-
-    if (wikis.size == 1)
-      wikis.map(WikiEntry.grated _)
-    else {
-      val wl1 = wikis.map(WikiEntry.grated _).take(max)
-      //todo optimize - split and sort up-front, not as a separate step
-      val wl2 = wl1.partition(w=> qnot(w.name.toLowerCase.contains(qi) || w.label.toLowerCase.contains(qi)))
-      val wl = if(qi.length > 0) wl2._1.sortBy(_.name.length) ::: wl2._2 else wl1
-      wl
-    }
-  }
-
   //TODO optimize - index or whatever
   /** search all topics  provide either q or curTags
     *
@@ -311,16 +130,23 @@ object Wiki extends WikiBase {
       val r = q.substring(0, cidx)
       q = if(cidx < iq.length-1) iq.substring(cidx+1, q.length) else ""
 
-      val res = if ("all" != r) getRealm(r) else r
+      val res = if ("all" != r || !auth.exists(_.isAdmin)) getRealm(r) else r
       if(res == Wikis.RK) getRealm(irealm) else res
       } else {
-      if ("all" != irealm) getRealm(irealm) else irealm
+      if ("all" != irealm || !auth.exists(_.isAdmin)) getRealm(irealm) else irealm
     }
 
     val qi = if(q.length > 0 && q(0) == '-') q.substring(1).toLowerCase else q.toLowerCase
     val qt = curTags.split("/").filter(_ != "tag").map(_.split(","))
 
-    val wl = getList(realm, q, scope, curTags, 500)(request)
+    val wl : List[WikiEntry] =
+      if(qi.length() > 3 || auth.exists(_.isAdmin))
+        WikiSearch.getList(realm, q, scope, curTags, 500)
+      else
+        Nil
+
+    if(!isFromRobot && qi.length > 0)
+      Audit.logdb("QUERY", q, s"Realm: $realm, Scope: $scope", "Results: " + wl.size, "User-Agent: "+request.headers.get("User-Agent").mkString)
 
     if (wl.size == 1 && iq != "")
       // if just one found and not a tag browsing
@@ -334,7 +160,7 @@ object Wiki extends WikiBase {
           q, q, curTags, wl.map(w => (w.wid, w.label)), tags,
           (if(q.length>1) "/wikie/search/tag/"
           else if(scope.length > 0) s"/wiki/$scope/tag/"
-          else "/wiki/tag/"),
+          else "/tag/"),
           (if(q.length>1) "?q="+q else ""), realm)
       }
 
@@ -600,7 +426,7 @@ object Wiki extends WikiBase {
           Redirect(controllers.Wiki.wr(wl.head.wid, realm))
       } else if (wl.nonEmpty) {
         val tags = wl.flatMap(_.tags).filter(_ != Tags.ARCHIVE).filter(_ != "").groupBy(identity).map(t => (t._1, t._2.size)).toSeq.sortBy(_._2).reverse
-        ROK.k reactorLayout12 { implicit stok =>
+        ROK.k reactorLayout12 {
           views.html.wiki.wikiList("category any", "", "", wl.map(x => (x.wid, x.label)), tags, "./", "", wid.getRealm)
         }
       }
@@ -650,7 +476,7 @@ object Wiki extends WikiBase {
           val more = request.website.prop("msg.noPerm").flatMap(WID.fromPath).flatMap(_.content).mkString
           val teaser = request.website.prop("msg.err.teaserCategories").flatMap(_.split(",").find(_ == wid.cat)).flatMap(_ => w).map{
             page=> {
-              def tags = page.tags.map(t=>s"""<a href="/wiki/tag/$t"><b>$t</b></a>""").mkString(" | ")
+              def tags = page.tags.map(t=>s"""<a href="/tag/$t"><b>$t</b></a>""").mkString(" | ")
               s"""
                  |## ${page.getLabel} \n\n
                  |${page.getDescription} \n\n
@@ -792,7 +618,7 @@ object Wiki extends WikiBase {
   }
 
   def analyze(q: String, tags:String, scope:String) = RAction { implicit stok =>
-    val wl = getList(stok.realm, q, scope, tags)
+    val wl = WikiSearch.getList(stok.realm, q, scope, tags)
 
     ROK.k apply {implicit stok=>
       views.html.wiki.wikiListAnalyze(q, tags, scope, wl.toIterator)
@@ -838,7 +664,7 @@ object Wiki extends WikiBase {
       ) orElse Wikis(wid.getRealm).find(wid);
   }
 
-  def xpl(wid: WID, path: String, page: Option[WikiEntry] = None) = Action { implicit request =>
+  def xpl(wid: WID, path: String, page: Option[WikiEntry] = None) = RAction { implicit request =>
     implicit val errCollector = new VErrors()
     (for (
       worig <- xpRoot(wid, page);
@@ -855,7 +681,7 @@ object Wiki extends WikiBase {
         }
 
         val tags = res.flatMap(_._3).filter(_ != Tags.ARCHIVE).filter(_ != "").groupBy(identity).map(t => (t._1, t._2.size)).toSeq.sortBy(_._2).reverse
-        ROK.r reactorLayout12 { implicit stok =>
+        ROK.k reactorLayout12 {
           views.html.wiki.wikiList(path, "", "", res.map(t => (t._1, t._2)), tags, "./", "", wid.getRealm)
         }
       }) getOrElse
@@ -893,7 +719,7 @@ object Wiki extends WikiBase {
       // default to category
       val res = try {
         val sec = wid.name
-        val script = w.scripts.find(sec == _.name).orElse(Wikis.category(widp.cat) flatMap (_.scripts.find(sec == _.name)))
+        val script = w.scripts.find(sec == _.name).orElse(Wikis(wid.getRealm).category(widp.cat) flatMap (_.scripts.find(sec == _.name)))
         val res: String = script.filter(_.checkSignature(Some(au))).map(s => {
           model.WikiScripster.impl.runScript(s.content, "js", Some(w), Some(au), request.queryString.map(t => (t._1, t._2.mkString)))
         }) getOrElse ""
@@ -965,8 +791,13 @@ object Wiki extends WikiBase {
       can <- canSee(w.wid, auth, Some(w)) orErr "can't see"// TODO cascading aliases?
     ) yield {
         if(!isFromRobot) Audit.logdb("RSS", wid.wpath + "/rss/ " + " from: "+PlayTools.getHost)
-
-        Ok(views.xml.wiki.wikiRss(w, Wikis.linksTo(w.uwid).map(_.from).toList))
+      var links = Wikis.linksTo(w.uwid)
+        .filter(_.draft.isEmpty)
+        .toList
+        .sortWith((a,b)=>b.crDtm.isBefore(a.crDtm))
+        .take(30)
+        .map(_.from)
+        Ok(views.xml.wiki.wikiRss(w, links))
       }) getOrElse
       Ok("No feed found for " + wid + " TAGS " + path + "\n" + errCollector.mkString)
   }

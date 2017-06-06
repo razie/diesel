@@ -204,7 +204,7 @@ object Realm extends RazController with Logging {
     //    val res = ssoRequests.get(id).flatMap {conn=>
     val res = Some(id).flatMap {conn=>
       val uid = Enc.fromSession(id)
-      Users.findUserByEmail(uid).map { u =>
+      Users.findUserByEmailEnc(uid).map { u =>
         Audit.logdb("USER_LOGIN.SSO", u.userName, u.firstName + " " + u.lastName + " realm: " + request.host)
         debug("SSO.conn=" + (Services.config.CONNECTED -> Enc.toSession(u.email)))
         Redirect("/").withSession(Services.config.CONNECTED -> Enc.toSession(u.email))

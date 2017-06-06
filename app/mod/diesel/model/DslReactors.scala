@@ -1,18 +1,10 @@
 package mod.diesel.model
 
-import com.mongodb.casbah.Imports._
 import mod.diesel.controllers.SFiddles
 import model._
-import org.bson.types
-import org.bson.types.ObjectId
 import play.api.mvc.Request
-import razie.db._
-import razie.diesel.dom.RDOM
-import RDOM.C
-import razie.wiki.model.WikiSection
-import razie.wiki.model.Wikis
-import razie.wiki.model.UWID
-import razie.wiki.model.WikiEntry
+import razie.diesel.dom.RDOM.C
+import razie.wiki.model.{UWID, WikiEntry, WikiSection, Wikis}
 
 /** a reactor wiki model, from the wiki */
 class DslModule(
@@ -224,7 +216,8 @@ object Diesel {
         else if(p.ttype == "Image")
           s"""${p.name} </td>\n  <td> {{f:${p.name}:}} Image URL"""
         else
-          s"""${p.name} COMPLICATED</td>\n  <td>""" + p.ttype
+          ""
+//          s"""${p.name} COMPLICATED</td>\n  <td>""" + p.ttype
       )+"</td>\n  <td></td></tr>\n"
     }.mkString +
     "</table>\n\n" +

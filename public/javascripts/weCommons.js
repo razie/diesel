@@ -208,4 +208,45 @@ function weButton(b) {
   return false;
 }
 
+//====================== widgets <a onclick="weMsg('ctx.log','m='+m)"
+
+/** trigger message in background, log result
+* ea should be "pack.entity.action"
+*/
+function weMsg(ea,p) {
+  return iweMsg(ea.replace(/(.+)\.([^.]+)$/, "$1/$2"), p, 'value',
+    function(data){console.log(data);});
+}
+
+/** trigger message in background, popup result
+* ea should be "pack.entity.action"
+ */
+function weMsgPopup(ea,p) {
+  return iweMsg(ea.replace(/(.+)\.([^.]+)$/, "$1/$2"), p, 'value',
+    function(data){alert(data);});
+}
+
+/** run message in background
+ * ea should be "pack.entity/action"
+ */
+function iweMsg(ea,p,what,succ) {
+  var u = '/diesel/fiddle/react/'+ea+'?resultMode='+what+'&'+p
+  $.ajax(
+    u, {
+      type: 'POST',
+      data: $.param({
+        // xdomEngineConfig: domEngineConfig
+      }),
+      contentType: 'application/x-www-form-urlencoded',
+      success: function (data) {
+        if(typeof succ == 'function') succ(data);
+      },
+      error: function (x) {
+        // readyState=4  is failure to parse json reply
+        if(x.status == "200" && typeof succ == 'function') succ(x.responseText);
+        console.log("ERR " + JSON.stringify(x));
+      }
+    });
+  return false;
+}
 

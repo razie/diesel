@@ -98,6 +98,8 @@ case class RacerKidInfo(
   crDtm: DateTime = DateTime.now,
   _id: ObjectId = new ObjectId()) extends REntity[RacerKidInfo] with TPersonInfo {
 
+  def emailDec : String = email.dec
+
   def yob: Int = dob.getYear()
 }
 
@@ -174,10 +176,10 @@ case class RacerKid(
 //    (userId.toList ++ parents.toList).flatMap(_.as[User]) ++ List(info) filter(_.email.dec.length > 0)
     var x : List[TPersonInfo] = parents.toList.flatMap(_.as[User])
     val u = userId.toList.flatMap(_.as[User])
-    x = x ++ u.filter(u=> x.find(_.email.dec == u.email.dec).isEmpty)
-    if(x.find(_.email.dec == info.email.dec).isEmpty)
+    x = x ++ u.filter(u=> x.find(_.emailDec == u.emailDec).isEmpty)
+    if(x.find(_.emailDec == info.emailDec).isEmpty)
       x = info :: x
-    x.filter(_.email.dec.length > 0)
+    x.filter(_.emailDec.length > 0)
   }
 }
 

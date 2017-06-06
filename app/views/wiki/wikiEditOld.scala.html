@@ -194,6 +194,18 @@ PROBLEM: many places use label as name... via Wikis.formatName
 }
 </div>
 
+<div id="widgetHelp" style="display: none">
+@md {
+  Inside widgets, use WIDGET_ARGS or upper case arg names like MSG.
+
+  Call widgets with {{widget:name:MSG=lll}}
+
+  See more at [[rk.Admin:Modified_Markdown_Syntax]].
+
+  ...
+}
+</div>
+
 @*********************** some validation ************************@
 
 <script>
@@ -215,13 +227,20 @@ if(localStorage.getItem("weDsl") != 'undefined')
   $('#'+"weDsl").prop('checked', localStorage.getItem("weDsl") === 'true');
 
 var label =
-    'Content <a href="javascript:popupHelp();" title="Help with markdown editor\nA note on scrolling: if the editor is selected it will act better."><span class="glyphicon glyphicon-question-sign"></span></a>';
+    'Content <a href="javascript:popupHelp(\'mdHelp\');" title="Help with markdown editor\nA note on scrolling: if the editor is selected it will act better."><span class="glyphicon glyphicon-question-sign"></span></a> <span id="ehelp"></span>';
+
+var label1 =
+    ' <a href="javascript:popupHelp(\'widgetHelp\');" title="Help with widget editor">widget <span class="glyphicon glyphicon-question-sign"></span></a> <span id="ehelp"></span>';
 
 $("#content_field > dt > label").html(label);
 $("#ace-label").html(label);
 
-function popupHelp() {
-  popupContent($("#mdHelp").html());
+@if(wid.cat=="Admin" && wid.name.startsWith("widget_")) {
+  $("#ehelp").html(label1);
+}
+
+function popupHelp(id) {
+  popupContent($("#"+id).html());
 }
 
     function popupDiff() {
@@ -698,7 +717,7 @@ $(document).ready(function() {
         var lineNum = Math.min(lines.length-1, Math.max(0, Math.ceil(perc * lines.length)));
 
         var Range = ace.require('ace/range').Range;
-        editor1.scrollToLine(lineNum, true, true, function () {});
+        aceEditor.scrollToLine(lineNum, true, true, function () {});
         //editor1.gotoLine(lineNum, 10, true);
 //          editor1.session.addMarker(new Range(lineNum-1, 0, lineNum-1, 100), "ace-primaryline", "fullLine");
       }
@@ -763,11 +782,11 @@ var runpill2 = function(id) {
           blenderMode : true, //$('#blenderMode').prop('checked'),
           draftMode : false, //$('#draftMode').prop('checked'),
           reactor : '@wid.getRealm',
-          specWpath : '', //specWpath,
+          specWpath : '',
           storyWpath : '@wid.wpath', //storyWpath,
-          spec : '', //editor1.getValue(),
-          story : getContent(), //editor.getValue(),
-          capture : '' //editor5.getValue()
+          spec : '',
+          story : getContent(),
+          capture : ''
         }),
         contentType: 'application/x-www-form-urlencoded',
         success: function(data) {
@@ -775,12 +794,10 @@ var runpill2 = function(id) {
               $('#divOut3_'+id).html(data.wiki);
             else
             $('#iframeOut3_').html(data.res.replace(/weref/g, 'wefiddle')+'\n');
-//            $('#iframeOut5_'+id).html(data.capture);
           instContentAssist = data.ca;
 //            setErrors(data.failureCount);
           var du = new Date().getTime() - lastTime;
           $('#roundtrip').text(du+' ms');
-//            storyChanged(data.storyChanged);
         },
         error  : function(x) {
           console.log( "ERR "+x.toString());

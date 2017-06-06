@@ -122,7 +122,7 @@ object DieselControl extends RazController with Logging {
   }
 
   /** TOPIC - call a topic level function */
-  def splay(wpath: String, fname:String) = FAU { implicit au => implicit errCollector => implicit request=>
+  def splay(wpath: String, fname:String) = FAUR { implicit request=>
     val q = request.queryString.map(t=>(t._1, t._2.mkString))
     Audit("x", "DSL_FPLAY", s"$wpath with ${q.mkString}")
     (for(
@@ -135,7 +135,7 @@ object DieselControl extends RazController with Logging {
         // prepare the func body - put a return on it and stuff
        val s = f.script
 
-      ROK.s reactorLayout12 { implicit stok =>
+      ROK.k reactorLayout12 {
         views.html.fiddle.playServerFiddle("js", s, q, Some(we))
       }
     }) getOrElse NotFound("NotFound: "+wpath+" "+errCollector.mkString)
@@ -187,11 +187,9 @@ object DieselControl extends RazController with Logging {
 
     def mkLink (s:String) = routes.DieselControl.catBrowser (realm, s, path+"/"+s).toString()
 
-    val page = Wikis(realm).category(cat)
-
     ROK.r apply {implicit stok=>
       if(c.exists(_.stereotypes contains "wikiCategory"))
-        views.html.modules.diesel.catBrowser(realm, page, cat, base, left, right)(mkLink)
+        views.html.modules.diesel.catBrowser(realm, Wikis(realm).category(cat), cat, base, left, right)(mkLink)
       else
         views.html.modules.diesel.domCat(realm, cat, base, left, right)(mkLink)
     }
@@ -208,7 +206,7 @@ object DieselControl extends RazController with Logging {
   }
 
   /** list entities of cat from domain wpath */
-  def list2(cat:String, ipath:String) = Action { implicit request =>
+  def list2(cat:String, ipath:String) = RAction { implicit request =>
     val realm = Website.realm
     val rdom = WikiDomain(realm).rdom
     val left  = rdom.assocs.filter(_.z == cat).map(_.a)
@@ -218,13 +216,13 @@ object DieselControl extends RazController with Logging {
     val wl = Wikis(realm).pages(cat).toList
     val tags = wl.flatMap(_.tags).filter(_ != Tags.ARCHIVE).filter(_ != "").groupBy(identity).map(t => (t._1, t._2.size)).toSeq.sortBy(_._2).reverse
 
-    ROK.r reactorLayout12 {implicit stok=>
+    ROK.k reactorLayout12 {
       views.html.wiki.wikiList("list diesel entities", "", "", wl.map(x => (x.wid, x.label)), tags, "./", "", realm)
     }
   }
 
   /** list entities of cat from domain wpath */
-  def list(wpath:String, cat:String, ipath:String) = Action { implicit request =>
+  def list(wpath:String, cat:String, ipath:String) = RAction { implicit request =>
     val rdom = getrdom(wpath)
     val wid = WID.fromPath(wpath).get
     val path = if(ipath == "/") ipath+cat else ipath
@@ -232,7 +230,7 @@ object DieselControl extends RazController with Logging {
     val wl = Wikis(wid.getRealm).pages(cat).toList
     val tags = wl.flatMap(_.tags).filter(_ != Tags.ARCHIVE).filter(_ != "").groupBy(identity).map(t => (t._1, t._2.size)).toSeq.sortBy(_._2).reverse
 
-    ROK.r reactorLayout12 {implicit stok=>
+    ROK.k reactorLayout12 {
       views.html.wiki.wikiList("list diesel entities", "", "", wl.map(x => (x.wid, x.label)), tags, "./", "", wid.getRealm)
     }
   }

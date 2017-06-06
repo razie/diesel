@@ -24,6 +24,19 @@ import razie.{Log, clog, cout}
 
 /** NOT WORKING !!!!!!!!!! */
 class Module extends AbstractModule {
+
+  lazy val config = {
+    import com.typesafe.config.ConfigFactory
+    import play.api.Configuration
+
+    val config = new Configuration(ConfigFactory.load())
+    config
+  }
+
+  def secret() = {
+    config.getString("play.crypto.secret").getOrElse("")
+  }
+
   def configure() = {
     clog << "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ configure rk Module"
 
@@ -40,7 +53,8 @@ class Module extends AbstractModule {
 
     WikiUsers.impl = WikiUsersImpl
 
-    EncryptService.impl = admin.CypherEncryptService
+//    EncryptService.impl = new admin.CypherEncryptService(secret(), secret())
+    EncryptService.impl = new admin.CypherEncryptService("", "") // use default key
     ViewService.impl = RkViewService
     Services.wikiAuth = RazWikiAuthorization
 

@@ -11,6 +11,8 @@ a JS/SCALA server side fiddle
 
 <h2>Server fiddle (@lang) | <small>
   <input type="checkbox" id="refresh" checked> Real time (<span id="roundtrip"></span>)
+  | (<a href="/sfiddle/play3/js">js</a> | <a href="/sfiddle/play3/scala">scala</a>
+  | <a href="/sfiddle/play3/ruby">ruby</a>)
 </small></h2>
 
 @tos(s:String) = @{
@@ -37,6 +39,7 @@ var decscr = function (s) {
 
   <ul class="nav nav-tabs" style="margin-bottom:0">
     <li id="run_@id" > <a title="Works only on Chrome and Firefox" href="javascript:runpill_@{id}('@{id}')">Run &raquo;</a> </li>
+    <li id="pop_@id" class="pull-right"> <a title="" href="javascript:popup_@{id}('@{id}')">Popup &raquo;</a> </li>
   </ul>
 
   <div class="row" style="align-items:center;">
@@ -106,6 +109,9 @@ var runpill_@id = function(id) {
   $('#ssform_'+id)[0].action = '/sfiddle/sfiddle2/'+id+'?@Html(mod.diesel.controllers.SFiddles.qtourl(q))';
 //  $('#ssform_'+id)[0].submit();
 
+  @if(stok.au.nonEmpty) {
+    saveFiddle();
+  }
 
   lastTime = new Date().getTime();
 
@@ -128,7 +134,35 @@ var runpill_@id = function(id) {
   });
 
 //  data: $('#ssform_'+id).serialize(),
+}
 
+function saveFiddle() {
+  $.ajax(
+      '/sfiddle/saveFiddle/SFiddle/@stok.realm?wpath=@we.map(_.wid.wpath).mkString', {
+        type: 'POST',
+        data: $.param({
+          l : 'js',
+          tags : $("#tags").val(),
+          j : editor.getValue()
+        }),
+        contentType: 'application/x-www-form-urlencoded',
+        success: function(data) {
+          $("#autosave").hide();
+          $("#autosave").attr("title", "");
+          $("#autosave").text("autosaved");
+          $("#autosave").fadeIn();
+        },
+        error  : function(x) {
+          $("#autosave").attr("title", x.toString());
+          $("#autosave").text("autosave ERR");
+          console.log( "ERR "+x.toString());
+        }
+      });
+  }
+
+
+var popup_@id = function(id) {
+  alert($('#iframe_'+id).text());
 }
 
 </script>

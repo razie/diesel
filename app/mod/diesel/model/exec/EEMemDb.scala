@@ -112,9 +112,11 @@ class EEDieselMemDb extends EExecutor("diesel.memdb") {
 
     in.met match {
       case "get" => {
+        require(col.length > 0)
         tables.get(col).flatMap(_.entries.get(ctx("id"))).map(x => EVal(P("document", x.toString))).toList
       }
       case cmd@("upsert") => {
+        require(col.length > 0)
         if (tables.size > 5)
           throw new IllegalStateException("Too many collections (5)")
 

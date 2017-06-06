@@ -5,7 +5,7 @@ import play.sbt.routes.RoutesKeys
 import play.twirl.sbt.Import.TwirlKeys
 
 object V {
-  val version      = "0.9.2-SNAPSHOT"
+  val version      = "0.9.1-SNAPSHOT"
   val scalaVersion = "2.11.8"
   val organization = "com.razie"
 

@@ -42,7 +42,7 @@ object Init extends Logging {
         "WikiEntry",
         "WikiEntryOld",
         "WikiLink")
-    ) RazMongo(t).drop
+    ) {} //RazMongo(t).drop
 
 
     RazMongo("Ver") += Map("ver" -> 1) // create a first ver entry

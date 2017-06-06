@@ -21,7 +21,12 @@ class WikiDomainImpl (val realm:String, val wi:WikiInst) extends WikiDomain {
 
   def rdom : RDomain = synchronized {
     if (irdom == null)
-      irdom = Wikis(realm).pages("DslDomain").toList.flatMap(p=>WikiDomain.domFrom(p).toList).fold(createRDom)(_ plus _.revise)
+      irdom =
+        Wikis(realm)
+        .pages("DslDomain")
+        .toList
+        .flatMap(p=>WikiDomain.domFrom(p).toList)
+        .fold(createRDom)(_ plus _.revise)
     irdom
   }
 
@@ -61,9 +66,25 @@ class WikiDomainImpl (val realm:String, val wi:WikiInst) extends WikiDomain {
           t <- cat.contentProps if (t._1 startsWith "dom.base");
           r <- t._2.split(",")
         ) yield {
-        r
+          r
+        }
+      val props =
+        for (
+          t <- cat.contentProps if !(
+              t._1.startsWith("dom.base") ||
+              t._1.startsWith("roles:") ||
+              t._1.startsWith("name") ||
+              t._1.startsWith("label") ||
+              t._1.startsWith("id") ||
+              t._1.startsWith("url") ||
+              t._1.startsWith("category") ||
+              t._1.startsWith("tags") ||
+              t._2.length <= 0
+          )
+        ) yield {
+        P(t._1, t._2)
       }
-      C(cat.name, "", WIKI_CAT, base.toList, "", Nil, Nil, assocs.toList)
+      C(cat.name, "", WIKI_CAT, base.toList, "", Nil, Nil, assocs.toList, props.toList)
     }
 
     var x = new RDomain(realm, classes.map(c=>(c.name, c)).toMap, classes.flatMap(_.assocs).toList, List.empty, Map.empty)

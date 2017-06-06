@@ -7,6 +7,7 @@ link a user to a wiki: club membership etc
 @import play.api.Play.current
 @import play.api.i18n.Messages.Implicits._
 @import model.UW
+@import razie.diesel.dom.WikiDomain
 
 @how() = @{
   // can override roles in page or in category
@@ -15,7 +16,7 @@ link a user to a wiki: club membership etc
         s.split(",").toList
       }
       case None => {
-        Wikis.domain(to.getRealm).roles(to.cat, from.cat)
+        WikiDomain(to.getRealm).roles(to.cat, from.cat)
         // Wikis(to.getRealm).category(to.cat).flatMap(_.contentProps.get("roles:"+from.cat)) match
       }
   }

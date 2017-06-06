@@ -46,7 +46,7 @@ object RazWikiAuthorization extends RazController with Logging with WikiAuthoriz
       (!admin.isClub && admin.hasPerm(Perm.adminDb)) ||
       // admin is club admin
       (!admin.isClub && {
-        val aemail = admin.email.dec
+        val aemail = admin.emailDec
         clubs.exists(x1 => Users.findUserByUsername(x1.uwid.nameOrId).exists(
           u => u.prefs.get("regAdmin").exists(_ == aemail) ||
           Club(u).props.filter(_._1 startsWith "admin").exists(_._2 == aemail)
@@ -138,7 +138,7 @@ object RazWikiAuthorization extends RazController with Logging with WikiAuthoriz
         (wprops.flatMap(_.get("wvis")).isDefined && isVisible(u, wprops.get, "wvis")) ||
         wprops.flatMap(_.get("visibility")).exists(_.startsWith(Visibility.CLUB) && isVisible(u, wprops.get, "visibility")) ||
         !wvis(wprops).isDefined orErr ("Sorry - you are not the owner of this topic");
-      memod <- (we.flatMap(_.contentProps.get("moderator")).map(_ == au.email.dec).getOrElse(true)) orErr ("Sorry - this is moderated and you are not the moderator, are you?");
+      memod <- (we.flatMap(_.contentProps.get("moderator")).map(_ == au.emailDec).getOrElse(true)) orErr ("Sorry - this is moderated and you are not the moderator, are you?");
       noLevel <- wprops.flatMap(_.get("wvis")).filter(x=> isVisible(u, wprops.get, "wvis")) orErr "Not enough Karma";
       t <- true orErr ("can't")
     ) yield true)

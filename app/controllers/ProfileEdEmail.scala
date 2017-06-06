@@ -14,7 +14,7 @@ object EdEmail extends RazController {
     tuple(
       "curemail" -> text,
       "newemail" -> text.verifying(vSpec, vEmail)) verifying
-      ("Sorry - already in use", { t: (String, String) => !Users.findUserByEmail(t._2.enc).isDefined })
+      ("Sorry - already in use", { t: (String, String) => !Users.findUserByEmailDec(t._2).isDefined })
   }
 
   // change email
@@ -22,7 +22,7 @@ object EdEmail extends RazController {
     (for (
       au <- auth orCorr cNoAuth
     ) yield ROK.k noLayout {
-        views.html.user.doeProfileEmail(emailForm.fill(au.email.dec, ""), auth.get)
+        views.html.user.doeProfileEmail(emailForm.fill(au.emailDec, ""), auth.get)
       }
       ) getOrElse
       unauthorized("Oops - how did you get here? [step1]")

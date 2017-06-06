@@ -1,22 +1,18 @@
 package mod.snow
 
 import admin.Config
-import akka.actor.{Actor, Props}
 import controllers._
 import model._
 import org.bson.types.ObjectId
-import org.scalatest.path
-import play.api.mvc.Result
+import razie.Logging
 import razie.audit.Audit
 import razie.db.{ROne, tx}
 import razie.diesel.dom.WikiDomain
-import razie.wiki.{Dec, Enc, EncUrl, WikiConfig}
+import razie.wiki.Sec._
 import razie.wiki.model._
 import razie.wiki.model.features.WForm
-import razie.{Logging, clog, cout}
 
 import scala.Option.option2Iterable
-import scala.concurrent.Future
 
 case class RoleWid(role: String, wid: WID)
 
@@ -100,7 +96,7 @@ object Snow extends RazController with Logging {
 
     val wid = WID(cat, stok.au.get.userName).r(stok.realm)
     val name = wid.name
-    val email = Dec(stok.au.get.email)
+    val email = stok.au.get.emailDec
 
     val discipline=stok.formParm("discipline")
     val system=stok.formParm("system")
@@ -626,8 +622,6 @@ object Snow extends RazController with Logging {
         |<p></p>
       """.stripMargin)
   }
-
-  import razie.wiki.Sec._
 
   /** send a message to the team members */
   def doeSendMsgTeam(teamWpath:String, what:String) = FAUR { implicit request =>

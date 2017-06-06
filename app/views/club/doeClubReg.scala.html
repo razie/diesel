@@ -9,14 +9,12 @@ club admin manages user: membership, regsitration etc
 @import controllers.Club
 
 @how() = @{
-  razie.wiki.model.Wikis.category("Club").flatMap(_.contentProps.get("roles:"+"User")) match {
-    case Some(s) => {
-      s.split(",").filter(x => ! Array("Owner","Admin").contains(x)).map(x=>(x,x)).toSeq
-    }
-    case None => {
-      razie.wiki.model.Wikis.rk.pageNames("Link").map(x=>(x,x)).toList
-    }
-  }
+//  razie.wiki.model.Wikis(stok.realm).category("Club").flatMap(_.contentProps.get("roles:"+"User")) match
+  razie.diesel.dom.WikiDomain(stok.realm)
+      .roles("Club", "User")
+      .filter(x => ! Array("Owner","Admin").contains(x))
+      .map(x=>(x,x)).toSeq
+  //      s.split(",").filter(x => ! Array("Owner","Admin").contains(x)).map(x=>(x,x)).toSeq
 }
 
 @regs() = @{uw.user.toList.flatMap(u=>Regs.findClubUser(club.wid, u._id)).toList.filter(_.year == club.curYear)}

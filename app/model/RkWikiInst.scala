@@ -14,11 +14,12 @@ import razie.wiki.parser.{WikiParserNotes, WikiParserT}
 /** use custom rk parser for wikis */
 class RkReactor (realm:String, fallBacks:List[Reactor], we:Option[WikiEntry]) extends ReactorImpl (realm, Nil, we) {
   override val wiki : WikiInst = new RkWikiInst(realm, fallBacks.map(_.wiki))
-  override val domain : WikiDomain = new WikiDomainImpl(realm, wiki)
+  override val domain : WikiDomain = wiki.domain //new WikiDomainImpl(realm, wiki)
 }
 
 /** use custom rk parser for wikis */
-class RkWikiInst(realm:String, fallBacks:List[WikiInst]) extends WikiInstImpl (realm, fallBacks) {
+class RkWikiInst(realm:String, fallBacks:List[WikiInst])
+  extends WikiInstImpl (realm, fallBacks, {wi=>new WikiDomainImpl(realm, wi)}) {
   class WikiParserCls(val realm:String) extends WikiParserT
   with WikiDslParser with WikiCodeParser with WikiAdParser
   with WikiDomParser with WikiParserNotes with WikiDarkParser{

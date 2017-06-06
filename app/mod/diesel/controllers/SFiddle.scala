@@ -217,7 +217,7 @@ object SFiddles extends SFiddleBase with Logging {
       }
     } else if (lang == "scala") {
       try {
-        val res = WikiScripster.implScala.runScriptAny(lang, script, we, au, q, true)
+        val res = WikiScripster.implScala.runScriptAny(script, lang, we, au, q, true)
         Audit.logdb("SFIDDLE_EXEC", "scala", script)
         //        (true, res.toString)
         (true, res)
@@ -251,24 +251,20 @@ object SFiddles extends SFiddleBase with Logging {
       Some(1).filter(x => (au hasPerm Perm.codeMaster) || (au hasPerm Perm.adminDb)).fold(
         Ok(s"no sfiddle for ")
       ) { we =>
-        ROK.s reactorLayout12 { implicit stok =>
+        ROK.s reactorLayout12 {implicit stok=>
           views.html.fiddle.playServerFiddle(lang, "", q)
         }
       }
   }
 
   /** display the play sfiddle screen */
-  def play3(lang: String) = FAU { implicit au =>
-    implicit errCollector => implicit request =>
+  def play3(lang: String) = FAUPR { implicit request =>
       val q = request.queryString.map(t => (t._1, t._2.mkString))
 
-      Some(1).filter(x => (au hasPerm Perm.codeMaster) || (au hasPerm Perm.adminDb)).fold(
-        Ok(s"no sfiddle for ")
-      ) { we =>
-        ROK.s reactorLayout12 { implicit stok =>
-          views.html.fiddle.playServerFiddle(lang, "", q)
+        val f = Fiddle("SFiddle", lang, request.realm, "", request.au)
+        ROK.k reactorLayout12 {
+          views.html.fiddle.playServerFiddle(lang, f.content, request.query)
         }
-      }
   }
 
   /** represents a fiddle - can be autosaved and can be a topic/note */
@@ -323,7 +319,7 @@ object SFiddles extends SFiddleBase with Logging {
   def playInBrowser(lang: String, wpath: String) = RAction { implicit request =>
     // used in a blog, so no auth
     val f = Fiddle("JSFiddle", lang, request.realm, wpath, request.au)
-    ROK.k reactorLayout12 { implicit stok =>
+    ROK.k reactorLayout12 {
       views.html.fiddle.playBrowserFiddle(
         lang,
         f.content,
@@ -339,8 +335,9 @@ object SFiddles extends SFiddleBase with Logging {
   def updateFiddle(lang: String, wpath: String) = FAUR { implicit request =>
     val lang = request.formParm("l")
     val j = request.formParm("j")
+    val what = request.formParm("what")
     var tags = Tags(request.formParm("tags"))
-    val f = Fiddle("JSFiddle", lang, request.realm, wpath, request.au)
+    val f = Fiddle(what, lang, request.realm, wpath, request.au)
 
     if (!tags.contains("js")) tags = Seq("js") ++ tags
     if (!tags.contains("fiddle")) tags = Seq("fiddle") ++ tags
@@ -396,7 +393,7 @@ object SFiddles extends SFiddleBase with Logging {
         val g = "grammar g;\nmain: 'a'|'b' ;"
         val id = java.lang.System.currentTimeMillis().toString()
         val res = processDsl(id, g)
-        ROK.s reactorLayout12 { implicit stok =>
+        ROK.s reactorLayout12 {implicit stok=>
           views.html.fiddle.playDslFiddle("", q, ("", g, "", ""), auth, Some(res), id)
         }
       }
@@ -470,7 +467,7 @@ object SFiddles extends SFiddleBase with Logging {
 
         //          Ok(res);
 
-        ROK.s reactorLayout12 { implicit stok =>
+        ROK.s reactorLayout12 { implicit stok=>
           views.html.fiddle.playDslFiddle("", q, (hh, g, c, j), auth, Some(res))
         }
     })

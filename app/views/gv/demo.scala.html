@@ -1,7 +1,7 @@
 @**************
 demos for graphing/domain browsers
 **************@
-@()
+@()(implicit stok:controllers.StateOk)
 
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
@@ -18,8 +18,9 @@ demos for graphing/domain browsers
       <br>
     }
 
-    <h2>DOMain plays</h2>
+    <h2>JSon </h2>
     <hr>
+    @demo("http://localhost:9000/gapi/reactordomain/"+stok.realm)
     @demo("http://localhost:9000/gapi/samples/domA?url=rk")
     <h2>JSON extracts</h2>
     <hr>

@@ -21,7 +21,7 @@ import razie.base.scripting.RazScript
  * will cache the environment, including the parser instance.
  * That way things defined in one script are visible to the next
  */
-class ScalaScriptContext(parent: ActionContext = null) extends ScriptContextImpl(parent) {
+class ScalaScriptContext(parent: ActionContext = null) extends ScriptContextImpl(parent) with razie.Logging {
 
   private[this] val soon = razie.Threads.promise {
     val ppp = this mkParser err
@@ -63,15 +63,15 @@ class ScalaScriptContext(parent: ActionContext = null) extends ScriptContextImpl
     // TODO make this work for any managed classloader - it's hardcoded for sbt
     val env = {
       if (ScalaScript.getClass.getClassLoader.getResource("app.class.path") != null) {
-        razie.Debug("Scripster using app.class.path and boot.class.path")
+        debug("Scripster using app.class.path and boot.class.path")
         // see http://gist.github.com/404272
         val settings = new nsc.Settings(errLogger)
         settings embeddedDefaults getClass.getClassLoader
-        razie.Debug("Scripster using classpath: " + settings.classpath.value)
-        razie.Debug("Scripster using boot classpath: " + settings.bootclasspath.value)
+        debug("Scripster using classpath: " + settings.classpath.value)
+        debug("Scripster using boot classpath: " + settings.bootclasspath.value)
         settings
       } else {
-        razie.Debug("Scripster using java classpath")
+        debug("Scripster using java classpath")
         val env = new nsc.Settings(errLogger)
         env.usejavacp.value = true
         env
@@ -95,7 +95,7 @@ class ScalaScriptContext(parent: ActionContext = null) extends ScriptContextImpl
 
     ctx.foreach { (name, value) =>
       if ("ctx" != name && "parent" != name) {
-        razie.Debug("binding " + name + ":" + value.getClass.getName) // obj.toString causes a mess...
+        debug("binding " + name + ":" + value.getClass.getName) // obj.toString causes a mess...
 
         // this here reveals a screwed up handling of $$ class names in scala
         //        razie.Debug ("binding " + name + ":"+value.getClass.getSimpleName) // obj.toString causes a mess...
@@ -105,7 +105,7 @@ class ScalaScriptContext(parent: ActionContext = null) extends ScriptContextImpl
           p.bind(name, value.getClass.getName, value)
         } catch {
           case e: Exception => {
-            razie.Alarm("While binding variable: " + name + ":" + value.getClass.getName, e)
+            error("While binding variable: " + name + ":" + value.getClass.getName, e)
           }
         }
       }
@@ -142,7 +142,7 @@ class SBTScalaScriptContext(parent: ActionContext = null) extends ScalaScriptCon
             // HE HE HE started working when I collected this and parent
           case cl: java.net.URLClassLoader => cl.getURLs.toList //++
 ///*pre-2.4.6 */           cl.getParent.asInstanceOf[java.net.URLClassLoader].getURLs.toList
-          case a => sys.error("oops: I was expecting an URLClassLoader, foud a " + a.getClass)
+          case a => sys.error("oops: I was expecting an URLClassLoader, found a " + a.getClass)
         }
         val classpath = (urls map { _.toString })
 
@@ -150,7 +150,6 @@ class SBTScalaScriptContext(parent: ActionContext = null) extends ScalaScriptCon
 
         settings.bootclasspath.value = classpath.distinct.mkString(java.io.File.pathSeparator)
         settings.classpath.value = classpath.distinct.mkString(java.io.File.pathSeparator)
-        settings.bootclasspath.append("/Users/raz/w/racerkidz/lib_managed/jars/org.scala-lang/scala-library/scala-library-2.10.4.jar")
         settings.embeddedDefaults(cl) // or getClass.getClassLoader
       } else {
         // production - javacp is enough

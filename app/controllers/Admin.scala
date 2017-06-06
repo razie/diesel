@@ -17,7 +17,7 @@ import org.json.{JSONArray, JSONObject}
 import play.api.libs.concurrent.Akka
 import play.api.libs.json.JsObject
 import play.twirl.api.Html
-import razie.db.{RMany, RazMongo, WikiTrash}
+import razie.db.{RCreate, RMany, RazMongo, WikiTrash}
 import razie.db.RazSalatContext.ctx
 import org.bson.types.ObjectId
 import org.joda.time.DateTime
@@ -25,7 +25,7 @@ import play.api.data.Form
 import play.api.data.Forms.{mapping, nonEmptyText, number}
 import play.api.mvc.{Action, AnyContent, Request, Result}
 import razie.g.snakked
-import razie.js
+import razie.{cout, js}
 import razie.wiki.{Enc, Services}
 import razie.wiki.model.{Perm, WID, WikiEntry, Wikis}
 import razie.wiki.admin.{GlobalData, MailSession, SendEmail}
@@ -33,12 +33,14 @@ import razie.audit.ClearAudits
 import model.{User, Users, WikiScripster}
 import x.context
 import razie.hosting.Website
+
 import scala.util.Try
 import razie.Snakk._
 import razie.audit.{Audit, ClearAudits}
 import razie.wiki.Sec._
 
 import scala.collection.JavaConversions._
+import scala.concurrent.Future
 
 class AdminBase extends RazController {
   protected def forAdmin[T](body: => play.api.mvc.Result)(implicit request: Request[_]) = {
@@ -609,25 +611,29 @@ object AdminDiff extends AdminBase {
   }
 
   /** get list of pages - invoked by remote trying to sync */
-  def wlist(reactor:String, hostname:String, me:String) = FAD { implicit au =>
+  def wlist(reactor:String, hostname:String, me:String, cat:String) = FAD { implicit au =>
     implicit errCollector => implicit request =>
-    if (hostname.isEmpty) {
-      val l = RMany[WikiEntry]().filter(we=> reactor.isEmpty || reactor == "all" || we.realm == reactor).map(x=>new WEAbstract(x)).toList
-      val list = l.map(_.j)
-      Ok(js.tojson(list).toString).as("application/json")
-    } else if(hostname != me) {
-      val b = body(url(s"http://$hostname/razadmin/wlist/$reactor?me=${request.host}").basic("H-"+au.email.dec, "H-"+au.pwd.dec))
-      Ok(b).as("application/json")
-    }  else {
-      NotFound("same host again?")
-    }
+      if (hostname.isEmpty) {
+        val l =
+          if(cat.length == 0)
+            RMany[WikiEntry]().filter(we=> reactor.isEmpty || reactor == "all" || we.realm == reactor).map(x=>new WEAbstract(x)).toList
+          else
+            RMany[WikiEntry]().filter(we=> we.category == cat && (reactor.isEmpty || reactor == "all" || we.realm == reactor)).map(x=>new WEAbstract(x)).toList
+        val list = l.map(_.j)
+        Ok(js.tojson(list).toString).as("application/json")
+      } else if(hostname != me) {
+        val b = body(url(s"http://$hostname/razadmin/wlist/$reactor?me=${request.host}&cat=$cat").basic("H-"+au.emailDec, "H-"+au.pwd.dec))
+        Ok(b).as("application/json")
+      }  else {
+        NotFound("same host again?")
+      }
   }
 
   /** show the list of diffs to remote */
   def difflist(reactor:String, target:String) = FAD { implicit au =>
     implicit errCollector => implicit request =>
       try {
-        val b = body(url(s"http://$target/razadmin/wlist/$reactor").basic("H-"+au.email.dec, "H-"+au.pwd.dec))
+        val b = body(url(s"http://$target/razadmin/wlist/$reactor").basic("H-"+au.emailDec, "H-"+au.pwd.dec))
 
         val gd = new JSONArray(b)
         val ldest = js.fromArray(gd).collect {
@@ -700,7 +706,7 @@ object AdminDiff extends AdminBase {
         val b = body(
           url(s"http://$target/wikie/setContent/${wid.wpathFull}").
             form(Map("we" -> wid.page.get.grated.toString)).
-            basic("H-"+request.au.get.email.dec, "H-"+request.au.get.pwd.dec))
+            basic("H-"+request.au.get.emailDec, "H-"+request.au.get.pwd.dec))
 
         Ok(b + " <a href=\"" + s"http://$target${wid.urlRelative(request.realm)}" + "\">" + wid.wpath + "</a>")
       } catch {
@@ -715,7 +721,7 @@ object AdminDiff extends AdminBase {
         val b = body(
           url(s"http://$target/wikie/setContent/${wid.wpathFull}").
             form(Map("we" -> wid.page.get.grated.toString)).
-            basic("H-"+request.au.get.email.dec, "H-"+request.au.get.pwd.dec))
+            basic("H-"+request.au.get.emailDec, "H-"+request.au.get.pwd.dec))
 
         if(b contains "ok")
           //todo redirect to list
@@ -730,7 +736,7 @@ object AdminDiff extends AdminBase {
   // from remote
   def applyDiff2(target:String, wid:WID) = FADR {implicit request =>
       getWE(target, wid)(request.au.get).fold({t =>
-        val b = body(url(s"http://localhost:9000/wikie/setContent/${wid.wpathFull}").form(Map("we" -> t._2)).basic("H-"+request.au.get.email.dec, "H-"+request.au.get.pwd.dec))
+        val b = body(url(s"http://localhost:9000/wikie/setContent/${wid.wpathFull}").form(Map("we" -> t._2)).basic("H-"+request.au.get.emailDec, "H-"+request.au.get.pwd.dec))
         Ok(b + wid.ahrefRelative(request.realm))
       }, {err=>
         Ok ("ERR: "+err)
@@ -742,7 +748,7 @@ object AdminDiff extends AdminBase {
     try {
       val remote = s"http://$target/wikie/json/${wid.wpathFull}"
       val wes = body(
-        url(remote).basic("H-"+au.email.dec, "H-"+au.pwd.dec))
+        url(remote).basic("H-"+au.emailDec, "H-"+au.pwd.dec))
 
       if(! wes.isEmpty) {
         val dbo = com.mongodb.util.JSON.parse(wes).asInstanceOf[DBObject];
@@ -758,7 +764,146 @@ object AdminDiff extends AdminBase {
     }
   }
 
+  def remoteWids (source:String, realm:String, me:String, cat:String, au:User) = {
+    val b = body(url(s"http://$source/razadmin/wlist/$realm?me=$me&cat=$cat").basic("H-" + au.emailDec, "H-" + au.pwd.dec))
+
+    val gd = new JSONArray(b)
+    var ldest = js.fromArray(gd).collect {
+      case m: Map[_, _] => {
+        val x = m.asInstanceOf[Map[String, String]]
+        WEAbstract(x("id"), x("cat"), x("name"), x("realm"), x("ver").toInt, new DateTime(x("updDtm")), x("hash").toInt, x("tags"))
+      }
+    }.map(wea => WID(wea.cat, wea.name).r(wea.realm)).toList
+    ldest
+  }
+
+  //==================== initial setup and reactor import
+
+  // is this the first tiem in a new db ?
+  def isDbEmpty = RMany[User]().size <= 0
+
+  def importDb = Action { implicit request =>
+    cout << "ADMIN_IMPORT_DB"
+
+    if(! isDbEmpty) {
+      Ok ("ERR db not empty!").as("application/text")
+    } else {
+      lazy val query = request.queryString.map(t=>(t._1, t._2.mkString))
+      lazy val form = request.asInstanceOf[Request[AnyContent]].body.asFormUrlEncoded
+
+      def fParm(name:String) : Option[String] =
+        form.flatMap(_.getOrElse(name, Seq.empty).headOption)
+
+      def fqhParm(name:String) : Option[String] =
+        query.get(name).orElse(fParm(name)).orElse(request.headers.get(name))
+
+      val source = fqhParm("source").get
+      val email = fqhParm("email").get
+      val pwd = fqhParm("pwd").get
+      val realm = fqhParm("realm").get
+
+      val key = System.currentTimeMillis().toString + "87654321"
+
+      val u = body(url(s"http://$source/dmin-getu/$key", method = "GET").basic("H-" + email, "H-" + pwd))
+      val dbo = com.mongodb.util.JSON.parse(u).asInstanceOf[DBObject];
+      val pu = grater[PU].asObject(dbo)
+      val iau = pu.u
+      val e = new admin.CypherEncryptService("",key)
+      val au = iau.copy (email=e.enc(e.dec(iau.email)), pwd = e.enc(e.dec(iau.pwd)))
+      au.create(pu.p)
+
+      // init realms and cats
+
+      val ldest = List(
+        "rk.Reactor:rk",
+        "wiki.Reactor:wiki"
+      ).map(x=> WID.fromPath(x).get) :::
+        remoteWids (source, "rk", request.host, "Category", au) :::
+        remoteWids (source, "wiki", request.host, "Category", au) :::
+        remoteWids (source, realm, request.host, "", au)
+
+      var total = ldest.size
+
+      import scala.concurrent.ExecutionContext.Implicits.global
+      Future {
+        importRealm(au, request)
+      }
+
+      Ok(s"""$total""").as("application/text")
+    }
+  }
+
+  /** import a realm, if not already in local */
+  var lastImport : Option[String] = None
+
+  def getLastImport () = Action { implicit request =>
+    Ok(lastImport.getOrElse("No import operation performed..."))
+  }
+
+  def importRealm (au:User, request:Request[AnyContent]) = {
+    cout << "ADMIN_IMPORT_REALM"
+
+      lazy val query = request.queryString.map(t=>(t._1, t._2.mkString))
+      lazy val form = request.asInstanceOf[Request[AnyContent]].body.asFormUrlEncoded
+
+      def fParm(name:String) : Option[String] =
+        form.flatMap(_.getOrElse(name, Seq.empty).headOption)
+
+      def fqhParm(name:String) : Option[String] =
+        query.get(name).orElse(fParm(name)).orElse(request.headers.get(name))
+
+      val source = fqhParm("source").get
+      val email = fqhParm("email").get
+      val pwd = fqhParm("pwd").get
+      val realm = fqhParm("realm").get
+      val key = System.currentTimeMillis().toString
+
+      val ldest = List(
+        "rk.Reactor:rk",
+        "wiki.Reactor:wiki"
+      ).map(x=> WID.fromPath(x).get) :::
+        remoteWids (source, "rk", request.host, "Category", au) :::
+        remoteWids (source, "wiki", request.host, "Category", au) :::
+        remoteWids (source, realm, request.host, "", au)
+
+      var count = 0
+      var total = ldest.size
+      var countErr = 0
+
+      razie.db.tx ("importdb", email) { implicit txn =>
+        ldest.foreach { wid =>
+          getWE(source, wid)(au).fold({ t =>
+            count = count + 1
+            lastImport = Some(s"Importing $count of $total")
+            RCreate.noAudit(t._1)
+//            t._1.create
+          }, { err =>
+            countErr = countErr + 1
+            cout << "============ ERR-IMPORT DB: " + err
+          })
+        }
+      }
+
+      lastImport = Some(s"Done: imported... $count wikis, with $countErr errors. Please reboot the server!")
+  }
+
+
+  /** get list of pages - invoked by remote trying to sync */
+  def getu(key:String) = FAU { implicit au =>
+    implicit errCollector => implicit request =>
+
+    val e = new admin.CypherEncryptService(key,"")
+    val pu = PU(au.copy (email=e.enc(au.emailDec), pwd = e.enc(au.pwd.dec)), au.profile.get)
+
+    val j = grater[PU].asDBObject(pu).toString
+
+    Ok(j).as("application/json")
+  }
+
 }
+
+/** for transfering info */
+case class PU (u:User, p:model.Profile)
 
 /** Diff and sync remote wiki copies */
 @Singleton

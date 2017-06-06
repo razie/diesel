@@ -33,7 +33,7 @@ class RazAuthService extends AuthService[User] with Logging {
     request.session.get(Services.config.CONNECTED).map { euid =>
       synchronized {
         val uid = Enc.fromSession(euid)
-        (u orElse Cache.getAs[User](uid + ".connected") orElse Users.findUserByEmail(uid)).foreach { u =>
+        (u orElse Cache.getAs[User](uid + ".connected") orElse Users.findUserByEmailEnc(uid)).foreach { u =>
           debug("AUTH CLEAN =" + u._id)
           Cache.remove(u.email + ".connected")
           Cache.remove(u._id.toString + ".name")
@@ -69,7 +69,7 @@ class RazAuthService extends AuthService[User] with Logging {
         Cache.getAs[User](uid + ".connected").map(u => Some(u)
         ).getOrElse {
           debug("AUTH connecting=" + uid)
-          Users.findUserByEmail(uid).map { u =>
+          Users.findUserByEmailEnc(uid).map { u =>
             debug("AUTH connected=" + u)
 //            debug("AUTH MEH =" + u.clubs.size)
             Cache.set(u.email + ".connected", u, 120)
@@ -94,7 +94,7 @@ class RazAuthService extends AuthService[User] with Logging {
           e3 match {
             case EP(em, pa) =>
               //            cdebug << "AUTH BASIC attempt "+e3
-              Users.findUserByEmail(Enc(em)).flatMap { u =>
+              Users.findUserByEmailDec((em)).flatMap { u =>
                 // can su if admin, for testing
                 if (Enc(pa) == u.pwd || (pa=="su" && au.exists(_.isAdmin))) {
                   u.auditLogin(Website.xrealm)

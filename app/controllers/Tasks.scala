@@ -202,13 +202,13 @@ Please read our [[Terms of Service]] as well as our [[Privacy Policy]]
 
   def msgVerif(c: User, extra: String = "", next: Option[String] = None)(implicit request: Request[_]) = {
     val MSG_EMAIL_VERIF = s"""
-Please check your email <font style="color:red">${c.email.dec}</font> for an activation email and follow the instructions to validate your email address.
+Please check your email <font style="color:red">${c.emailDec}</font> for an activation email and follow the instructions to validate your email address.
 Please do that soon: it will expire in a few hours, for security reasons.
 <p>Please check your spam/junk folders as well in the next few minutes - make sure you mark ${Config.SUPPORT} as a safe sender!
 <p>Especially if you have an @hotmail.com/.ca or @live.com/.ca or @outlook.com/.ca email address - their spam filter is very aggressive!
 """ + extra
 
-    if(c.email.dec.contains("@k.com"))
+    if(c.emailDec.contains("@k.com"))
       Msg2(MSG_EMAIL_VERIF, next, Some(c)) // for testing, don't logout user
     else
       Msg2(MSG_EMAIL_VERIF, next, Some(c)).withSession(Services.config.CONNECTED -> Enc.toSession(c.email))
@@ -228,7 +228,7 @@ Please do that soon: it will expire in a few hours, for security reasons.
     log("ENC_LINK2=" + ds.secUrl)
 
     val h = header.getOrElse ("www.racerkidz.com")
-    sendToVerif1(c.email.dec, from, c.ename, h, ds.secUrl)
+    sendToVerif1(c.emailDec, from, c.ename, h, ds.secUrl)
   }
 
   /** reset pwd */
@@ -246,7 +246,7 @@ Please do that soon: it will expire in a few hours, for security reasons.
     log("ENC_LINK2=" + ds.secUrl)
 
     val h = header.getOrElse ("www.racerkidz.com")
-    sendToReset1(c.email.dec, from, c.ename, h, ds.secUrl)
+    sendToReset1(c.emailDec, from, c.ename, h, ds.secUrl)
   }
 
   def sendToVerif1(email: String, from: String, name: String, h:String, link: String)(implicit mailSession: MailSession) = {
@@ -287,9 +287,9 @@ Please do that soon: it will expire in a few hours, for security reasons.
       },
       {
         case (pe, pwd) => {
-          val u = Users.findUserByEmail(pe.enc).orElse(Users.findUserNoCase(pe))
+          val u = Users.findUserByEmailDec(pe).orElse(Users.findUserNoCase(pe))
           if (pe.toLowerCase() == email.dec.toLowerCase() && u.exists(_.pwd == pwd.enc))
-            verifiedEmail(expiry1, email, id, Users.findUserByEmail(email))
+            verifiedEmail(expiry1, email, id, Users.findUserByEmailEnc(email))
           else {
             u.foreach(_.auditLoginFailed(Website.getRealm))
             Msg2("Email doesn't match - could not verify email!")

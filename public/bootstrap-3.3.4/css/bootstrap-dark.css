@@ -2,6 +2,8 @@
 body {
     color: #DDDDDD;
     background-color: #222222; /*#272b30;*/
+    font-family: "Verdana", Verdana, Arial, sans-serif;
+    font-size: 18px;
 }
 
 .panel-info {
@@ -429,6 +431,7 @@ textarea[readonly] {
     border-color: #353535;
     padding-right: 14px;
     margin-left: 20px;
+    font-size: 16px;
 }
 
 .alert-cool:hover,

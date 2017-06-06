@@ -380,8 +380,11 @@ class DomEngine(
       }
 
       case n1@ENext(m, arr, cond) => {
-        if(n1.test())
-          msgs = rep(a, recurse, level, List(DomAst(m, AstKinds.GENERATED)))
+        if(n1.test()) {
+          val newnode = DomAst(m, AstKinds.GENERATED)
+//          a.children append newnode
+          msgs = rep(a, recurse, level, List(newnode))
+        }
       }
 
       case x: EMsg if x.entity == "" && x.met == "" => {
@@ -563,7 +566,8 @@ class DomEngine(
           case x: EMsg if x.entity == e.m.cls && x.met == e.m.met => x
         }.headOption
 
-        val news = e.sketch(None).map(x => DomAst(x, AstKinds.SKETCHED).withSpec(e))
+        val newctx = new StaticECtx(n.attrs, Some(ctx), Some(a))
+        val news = e.sketch(None)(newctx).map(x => DomAst(x, AstKinds.SKETCHED).withSpec(e))
         newNodes = newNodes ::: news
       }
 
@@ -571,7 +575,8 @@ class DomEngine(
       (collectValues {
         case x: ExpectV if x.when.exists(_.test(n)) => x
       }).map { e =>
-        val news = e.sketch(None).map(x => EVal(x)).map(x => DomAst(x, AstKinds.SKETCHED).withSpec(e))
+        val newctx = new StaticECtx(n.attrs, Some(ctx), Some(a))
+        val news = e.sketch(None)(newctx).map(x => EVal(x)).map(x => DomAst(x, AstKinds.SKETCHED).withSpec(e))
         mocked = true
 
         news.foreach { n =>
@@ -586,12 +591,13 @@ class DomEngine(
 
   private def expandExpectM(a: DomAst, e: ExpectM) = {
     val cole = new MatchCollector()
-    val targets = if (e.when.isDefined) {
+
+    val targets = e.target.map(List(_)).getOrElse(if (e.when.isDefined) {
       // find generated messages that should be tested
       root.collect {
         case d@DomAst(n: EMsg, k, _, _) if e.when.exists(_.test(n)) => d
       }
-    } else List(root)
+    } else List(root))
 
     if (targets.size > 0) {
       // todo look at all possible targets - will need to create a matchCollector per etc
@@ -637,22 +643,37 @@ class DomEngine(
     val cole = new MatchCollector()
 
     // identify sub-trees that it applies to
-    val subtrees = if (e.when.isDefined) {
+    val subtrees = e.target.map(List(_)).getOrElse(if (e.when.isDefined) {
       // find generated messages that should be tested
       root.collect {
         case d@DomAst(n: EMsg, k, _, _) if e.when.exists(_.test(n)) => d
       }
-    } else List(root)
+    } else List(root))
 
     if (subtrees.size > 0) {
       // todo look at all possible targets - will need to create a matchCollector per etc
-      val vals = subtrees.flatMap(_.collect {
-        case d@DomAst(n: EVal, k, _, _) if AstKinds.isGenerated(k) => d
-      })
+      val vals = subtrees.flatMap{n=>
+        n.collect {
+          case d@DomAst(n: EVal, k, _, _) if AstKinds.isGenerated(k) => d
+        }
+      }
+
+//      val vals = subtrees.flatMap{n=>
+      subtrees.foreach {n=>
+        val vvals = n.collect {
+          case d@DomAst(n: EVal, k, _, _) if AstKinds.isGenerated(k) => d
+        }
+
+        // include the message's values in its context
+        val newctx = new StaticECtx(n.value.asInstanceOf[EMsg].attrs, Some(ctx), Some(n))
+
+        if (vvals.size > 0 && e.test(vvals.map(_.value.asInstanceOf[EVal].p), Some(cole), vvals)(newctx))
+          a.children append DomAst(TestResult("ok"), AstKinds.TEST).withSpec(e)
+      }
 
       // test each generated value
-      if (e.test(vals.map(_.value.asInstanceOf[EVal].p), Some(cole), vals))
-        a.children append DomAst(TestResult("ok"), AstKinds.TEST).withSpec(e)
+//      if (e.test(vals.map(_.value.asInstanceOf[EVal].p), Some(cole), vals))
+//        a.children append DomAst(TestResult("ok"), AstKinds.TEST).withSpec(e)
 
       cole.done
 

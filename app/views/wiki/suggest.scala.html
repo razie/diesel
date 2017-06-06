@@ -14,7 +14,7 @@
 
 @if(stok.au.isDefined) {
   <input type="hidden" name="name" value="@stok.au.get.ename" />
-  <input type="hidden" name="email" value="@razie.wiki.Enc.unapply(stok.au.get.email)" />
+  <input type="hidden" name="email" value="@stok.au.get.emailDec" />
 } else {
   @helper.inputText(
     sForm("name"),

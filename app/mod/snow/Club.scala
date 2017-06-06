@@ -16,7 +16,8 @@ import razie.hosting.Website
 import razie.wiki.admin.SendEmail
 import razie.wiki.model._
 import razie.wiki.model.features._
-import razie.wiki.{Dec, Enc, WikiConfig}
+import razie.wiki.{Enc, WikiConfig}
+import razie.wiki.Sec._
 import razie.{Logging, cout}
 import views.html.club.doeClubRegsRepHtml
 
@@ -73,7 +74,7 @@ case class Club(userId: ObjectId, iwid: Option[WID] = None) {
 
   def isAdminEmail(s: String) = props.get("adminEmails").exists(_.split(",").contains(s))
 
-  def isClubAdmin(u: User) = u.isAdmin || isAdminEmail(Dec(u.email))
+  def isClubAdmin(u: User) = u.isAdmin || isAdminEmail(u.emailDec)
 
   def isClubCoach(u: User) = isMemberRole(u._id, "Coach") || isMemberRole(u._id, "Pro")
 
@@ -108,7 +109,7 @@ case class Club(userId: ObjectId, iwid: Option[WID] = None) {
 
   def regForm(role: String) = regForms.find(_.role == role)
 
-  def uregAdmin = Users.findUserByEmail(Enc(regAdmin))
+  def uregAdmin = Users.findUserByEmailDec(regAdmin)
 
   def reg(u: User) = Regs.findClubUserYear(wid, u._id, curYear)
 
@@ -222,9 +223,9 @@ regAdmin=$regAdmin
 
   def findForName(n: String) = Users.findUserByUsername(n).map(u => new Club(u._id).setU(u))
 
-  def findForAdmin(n: String, u: User) = findForName(n).filter(c => u.isAdmin || c.isAdminEmail(Dec(u.email)))
+  def findForAdmin(n: String, u: User) = findForName(n).filter(c => u.isAdmin || c.isAdminEmail(u.emailDec))
 
-  def findForAdmin(wid: WID, u: User) = apply(wid).filter(c => u.isAdmin || c.isAdminEmail(Dec(u.email)))
+  def findForAdmin(wid: WID, u: User) = apply(wid).filter(c => u.isAdmin || c.isAdminEmail(u.emailDec))
 
   // does the topic belong to a club (hierarchy) and is the user an admin
   def canAdmin(wid: WID, au: User) = {
@@ -292,7 +293,7 @@ regAdmin=$regAdmin
     tuple(
       "regType" -> nonEmptyText.verifying("Obscenity filter", !Wikis.hasBadWords(_)).verifying("Invalid characters", vldSpec(_)),
       "curYear" -> number(min = 2012, max = 2025),
-      "regAdmin" -> text.verifying("Invalid user", { x => Users.findUserByEmail(Enc(x)).isDefined }),
+      "regAdmin" -> text.verifying("Invalid user", { x => Users.findUserByEmailDec((x)).isDefined }),
       "dsl" -> text) verifying
       ("Please check reg forms and follows - some topics are not created", { t: (String, Int, String, String) =>
         val propSeq = WikiConfig parsep t._4
@@ -408,10 +409,10 @@ regAdmin=$regAdmin
 
   def doeClubRegsReportCsv(clubwid: WID, what: String, cols: String) = doeClubRegsReport(clubwid, what, cols, "csv")
 
-  def doeClubRegsReport(clubwid: WID, what: String, cols: String, format: String) = FAU { implicit au => implicit errCollector => implicit request =>
+  def doeClubRegsReport(clubwid: WID, what: String, cols: String, format: String) = FAUR { implicit request =>
     val DELIM = ","
     (for (
-      club <- Club.findForAdmin(clubwid, au) orCorr cNotAdmin(clubwid.wpath)
+      club <- Club.findForAdmin(clubwid, request.au.get) orCorr cNotAdmin(clubwid.wpath)
     ) yield {
         val (headers, data) = membersData(club, what, cols)
 
@@ -426,14 +427,15 @@ regAdmin=$regAdmin
   }
 
   // update user role
-  def doeClubMemberUpdate(clubwid: WID, uwid: String) = FAU { implicit au => implicit errCollector => implicit request =>
+  def doeClubMemberUpdate(clubwid: WID, uwid: String) = FAUR { implicit request =>
     (for (
+      au <- request.au;
       club <- Club.findForAdmin(clubwid, au) orCorr cNotAdmin(clubwid.wpath);
       olduw <- model.Users.findUserLinksTo(club.uwid).find(_._id.toString == uwid) orErr "user is not a member";
       u <- olduw.user orErr "no olduw user"
     ) yield {
       mngUserForm.bindFromRequest.fold(
-        formWithErrors => ROK.s badRequest { implicit stok =>
+        formWithErrors => ROK.k badRequest { implicit stok =>
           views.html.club.doeClubReg(club, formWithErrors, olduw)
         }, {
           case (r, s, p) =>
@@ -454,7 +456,7 @@ regAdmin=$regAdmin
                 reg.get.update
               }
 
-              ROK.s apply { implicit stok =>
+              ROK.k apply {
                 (views.html.club.doeClubReg(club, mngUserForm.fill(
                   (uw.role, reg.map(_.regStatus).getOrElse("n/a"), reg.map(_.paid).mkString)), uw))
               }
@@ -464,14 +466,15 @@ regAdmin=$regAdmin
   }
 
   /** send a help message */
-  def doeClubRegMsg(clubName: WID, uwid: String) = FAU { implicit au => implicit errCollector => implicit request =>
+  def doeClubRegMsg(clubName: WID, uwid: String) = FAUR { implicit request =>
     (for (
+      au <- request.au;
       club <- Club.findForAdmin(clubName, au) orCorr cNotAdmin(clubName.wpath);
       uw <- model.Users.findUserLinksTo(club.uwid).find(_._id.toString == uwid) orErr "user is not a member";
       u <- uw.user;
       msg <- request.queryString.get("msg") orErr "no message"
     ) yield {
-        SendEmail.withSession(Website.realm(request)) { implicit mailSession =>
+        SendEmail.withSession(request.realm) { implicit mailSession =>
           // notify user
           val link = club.reg(u) map { reg => routes.Club.doeClubUserReg(reg._id.toString).toString } getOrElse "http://www.racerkidz.com"
           Emailer.sendEmailClubRegHelp(u, clubName.name, link, msg.mkString)
@@ -481,9 +484,9 @@ regAdmin=$regAdmin
   }
 
   /** change registration status */
-  def doeClubUwRegstatusupd(clubName: WID, uwid: String, how: String) = FAU {
-    implicit au => implicit errCollector => implicit request =>
+  def doeClubUwRegstatusupd(clubName: WID, uwid: String, how: String) = FAUR {implicit request =>
     (for (
+      au <- request.au;
       club <- Club.findForAdmin(clubName, au) orCorr cNotAdmin(clubName.wpath);
       uw <- model.Users.findUserLinksTo(club.uwid).find(_._id.toString == uwid) orErr ("user is not a member");
       u <- uw.user
@@ -516,7 +519,7 @@ regAdmin=$regAdmin
 
             // if status just changed to PENDING, send email invitation
             if (ooldreg.exists(how != _.regStatus) && how == RegStatus.PENDING) {
-              SendEmail.withSession(Website.realm(request)) { implicit mailSession =>
+              SendEmail.withSession(request.realm) { implicit mailSession =>
                 // notify user
                 Emailer.sendEmailClubRegStart(u, clubName.name, routes.Club.doeClubUserReg(reg._id.toString).toString)
               }
@@ -529,8 +532,9 @@ regAdmin=$regAdmin
   }
 
   /** club admin add a kid to current registration */
-  def doeClubUwAddForm(clubName: WID, uwid: String, role: String) = FAU { implicit au => implicit errCollector => implicit request =>
+  def doeClubUwAddForm(clubName: WID, uwid: String, role: String) = FAUR { implicit request =>
     (for (
+      au <- request.au;
       c <- Club.findForAdmin(clubName, au) orCorr cNotAdmin(clubName.wpath);
       form <- c.regForm(role) orErr ("no reg form for role " + role);
       regAdmin <- c.uregAdmin orErr ("no regadmin");
@@ -798,7 +802,7 @@ regAdmin=$regAdmin
 
   def acthost = Form {
     tuple(
-      "regAdmin" -> text.verifying("Invalid user", { x => Users.findUserByEmail(Enc(x)).isDefined }),
+      "regAdmin" -> text.verifying("Invalid user", { x => Users.findUserByEmailDec((x)).isDefined }),
       "rel" -> text.verifying(vBadWords)
     ) verifying
       ("", { t: (String, String) =>
@@ -999,13 +1003,14 @@ regAdmin=$regAdmin
       }) getOrElse unauthorized();
   }
 
-  def doeClubKidzSetTeam(rkaid: String, club: WID, teamid: String) = FAU { implicit au => implicit errCollector => implicit request =>
+  def doeClubKidzSetTeam(rkaid: String, club: WID, teamid: String) = FAUR { implicit request =>
     (for (
+      au <- request.au;
       rka <- RacerKidz.findAssocById(rkaid);
       club <- Club.findForAdmin(club, au) orErr ("Not a club or you're not admin")
     ) yield {
       razie.db.tx("doeClubKidzSetTeam", au.userName) { implicit txn =>
-        val team = if (teamid != "-") Wikis.findById("Program", teamid) else None;
+        val team = if (teamid != "-") Wikis(request.realm).findById("Program", teamid) else None;
         val old = RacerKidz.findWikiAssocById(rka.to.toString, club.curYear, "Program").filter(
           _.uwid.wid.exists(_.parentWid.exists(_.name == club.userName))).toList.headOption
         if (old.isDefined) {

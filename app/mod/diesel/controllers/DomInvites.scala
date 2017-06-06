@@ -25,7 +25,7 @@ class DomInvites extends mod.diesel.controllers.SFiddleBase with Logging {
         if (au.realms contains realm)
           Redirect("/wiki/Admin:UserHome")
         else {
-          if (secLink.link contains Enc.toUrl(au.email.dec)) {
+          if (secLink.link contains Enc.toUrl(au.emailDec)) {
             //            au.profile.map { p =>
             //              p.update(p.addPerm('+' + Perm.domFiddle))
             au.update(au.copy(realms = au.realms + realm))

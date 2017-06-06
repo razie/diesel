@@ -16,6 +16,7 @@ import play.api.data.Forms.{mapping, nonEmptyText, text}
 import play.api.mvc.{Action, Request}
 import razie.audit.Audit
 import razie.db._
+import razie.diesel.dom.WikiDomain
 import razie.wiki.Sec.EncryptedS
 import razie.wiki.model._
 import razie.wiki.{Enc, Services}
@@ -56,7 +57,7 @@ class Wikil @Inject() (config:Configuration) extends WikieBase {
       uwid <- wid.uwid orErr ("can't find uwid");
       r1 <- au.hasPerm(Perm.uProfile) orCorr cNoPermission("uProfile - probably need to validate email")
     ) yield {
-      if (wid.domain.isA("Club", wid.cat) && really != "y") {
+      if (WikiDomain(wid.getRealm).isA("Club", wid.cat) && really != "y") {
         def hasRegs =
           if(Regs.findClubUser(wid, au._id).nonEmpty)
             """<span style="color:red">You have registrations for this club - they will not be deleted !</span>"""
@@ -78,11 +79,11 @@ class Wikil @Inject() (config:Configuration) extends WikieBase {
             Club.findForUserId(rka.from).exists(_.name == wid.name)
           ).toList.map(_.delete)
 
-          if (wid.domain.isA("Club", wid.cat)) {
+          if (WikiDomain(wid.getRealm).isA("Club", wid.cat)) {
             Club.userLeft(au, wid.name)(razie.db.tx.auto)
           }
 
-          if (wid.domain.isA("Club", wid.cat) && Regs.findClubUser(wid, au._id).nonEmpty) {
+          if (WikiDomain(wid.getRealm).isA("Club", wid.cat) && Regs.findClubUser(wid, au._id).nonEmpty) {
             // notify club admin
             Wikil.moderatorOf(wid).map {mod=>
               Emailer.withSession(stok.realm) { implicit mailSession =>
@@ -171,7 +172,7 @@ class Wikil @Inject() (config:Configuration) extends WikieBase {
       exists <- wid.page.isDefined orErr ("Cannot link to " + wid.name);
       // even new users that didn't verify their email can register for club
       //      isConsent <- au.profile.flatMap(_.consent).isDefined orCorr Profile.cNoConsent;
-      r1 <- (au.hasPerm(Perm.uProfile) || wid.domain.isA("Club", wid.cat)) orCorr cNotVerified
+      r1 <- (au.hasPerm(Perm.uProfile) || WikiDomain(wid.getRealm).isA("Club", wid.cat)) orCorr cNotVerified
     ) yield {
       def content = """[[User:%s | You]] -> [[%s:%s]]""".format(au.id, wid.cat, wid.name)
 
@@ -370,9 +371,9 @@ cleanAuth(auth)
           xxx <- Some("")
         ) yield {
           razie.db.tx("wiki.linkeduser", au.userName) { implicit txn =>
-            val mod = Wikil.moderatorOf(wid).flatMap(mid => { Users.findUserByEmail(Enc(mid)) })
+            val mod = Wikil.moderatorOf(wid).flatMap(mid => { Users.findUserByEmailDec((mid)) })
 
-            if (wid.domain.isA("Club", wid.cat)) {
+            if (WikiDomain(wid.getRealm).isA("Club", wid.cat)) {
               if (mod.isEmpty ||
                 Club(wid).exists(_.props.get("link.auto").mkString == "yes")) {
                 ilinkAccept(au, Club(wid).get, uwid, how, true)
@@ -424,9 +425,9 @@ object Wikil extends WikieBase {
       xxx <- Some("")
     ) yield {
       razie.db.tx("wiki.follow", au.userName) { implicit txn =>
-        val mod = moderatorOf(wid).flatMap(mid => { Users.findUserByEmail(Enc(mid)) })
+        val mod = moderatorOf(wid).flatMap(mid => { Users.findUserByEmailDec((mid)) })
 
-        if (wid.domain.isA("Club", wid.cat)) {
+        if (WikiDomain(wid.getRealm).isA("Club", wid.cat)) {
           if (mod.isEmpty ||
             Club(wid).exists(_.props.get("link.auto").mkString == "yes")) {
             ilinkAccept(au, Club(wid).get, uwid, how, false) // no quota
@@ -453,7 +454,7 @@ object Wikil extends WikieBase {
         s.split(",").toList
       }
       case None => {
-        Wikis.domain(to.getRealm).roles(to.cat, from)
+        WikiDomain(to.getRealm).roles(to.cat, from)
       }
     }
   }
@@ -474,11 +475,11 @@ object Wikil extends WikieBase {
 
     Emailer.withSession(club.wid.getRealm) { implicit mailSession =>
       Emailer.sendEmailLinkOk(user, club.userName, club.msgWelcome)
-      Emailer.tellRaz("User joined club", "Club: " + club.wid.wpath, "Role: " + how, s"User: ${user.firstName} ${user.lastName} (${user.userName} ${user.email.dec}")
+      Emailer.tellRaz("User joined club", "Club: " + club.wid.wpath, "Role: " + how, s"User: ${user.firstName} ${user.lastName} (${user.userName} ${user.emailDec}")
       (Wikil.moderatorOf(club.wid).toList :::
         club.props.filter(_._1.startsWith("link.notify.")).toList.map(_._2)
         ).distinct.foreach { email =>
-        Emailer.tell(email, "User connected to page", "Page: " + club.wid.wpath, "Role: " + how, s"User: ${user.firstName} ${user.lastName} (${user.userName} ${user.email.dec}")
+        Emailer.tell(email, "User connected to page", "Page: " + club.wid.wpath, "Role: " + how, s"User: ${user.firstName} ${user.lastName} (${user.userName} ${user.emailDec}")
       }
     }
   }
@@ -492,7 +493,7 @@ object Wikil extends WikieBase {
       WikiEntry("WikiLink", wl.wname, "You like " + Wikis.label(wid), mark, comment, au._id).cloneProps(Map("owner" -> au.id), au._id).create
     }
 
-    if (Wikis.domain(wid.getRealm).isA("Club", wid.cat))
+    if (WikiDomain(wid.getRealm).isA("Club", wid.cat))
       Club.linkedUser(au, wid, how)
 
     Services ! WikiEvent("AUTH_CLEAN", "User", au._id.toString)

@@ -3,6 +3,7 @@ create new page given a template
 ****************@
 @(cat:String, name:String, formWid:razie.wiki.model.WID, formPage:Option[razie.wiki.model.WikiEntry], torspec:String, errors:Map[String,String])(implicit stok:controllers.StateOk)
 @import controllers.IgnoreErrors
+@import razie.diesel.dom.WikiDomain
 @import razie.wiki.model.Wikis
 
 @stok.title("Create new with template")
@@ -17,7 +18,7 @@ create new page given a template
 
   @** you can override the entire form in your template *@
   @if(!formPage.exists(_.form.fields.contains("name"))) {
-    @Wikis(stok.realm).category(cat).flatMap(_.contentProps.get("label.createWithTemplate")).getOrElse {
+    @WikiDomain(stok.realm).prop(cat, "label.createWithTemplate").getOrElse {
       @if(cat == "Reactor") {
         Use
         a simple punchy single word, like "<b>mysite</b>" - your new website will be

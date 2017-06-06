@@ -43,7 +43,9 @@ trait WikiDomParser extends WikiExprParser {
     * .class X [T] (a,b:String) extends A,B {}
     */
   def pclass: PS =
-    """[.$]class""".r ~> ws ~> ident ~ opt(ows ~> "[" ~> ows ~> repsep(ident, ",") <~ "]") ~ optAttrs ~ opt(ws ~> "extends" ~> ws ~> repsep(ident, ",")) ~
+    """[.$]class""".r ~> ws ~>
+      ident ~ opt(ows ~> "[" ~> ows ~> repsep(ident, ",") <~ "]") ~ optAttrs ~
+      opt(ws ~> "extends" ~> ws ~> repsep(ident, ",")) ~
       opt(ws ~> "<" ~> ows ~> repsep(ident, ",") <~ ">") ~ " *".r ~ optClassBody ^^ {
       case name ~ tParm ~ attrs ~ ext ~ stereo ~ _ ~ funcs => {
         val c = C(name, "", stereo.map(_.mkString).mkString,
@@ -515,11 +517,14 @@ trait WikiDomParser extends WikiExprParser {
 
   private def trim(s: String) = s.replaceAll("\r", "").replaceAll("^\n|\n$", "") //.replaceAll("\n", "\\\\n'\n+'")
 
-  // {{diesel name:type
+  // {{diesel name:type args}}
   def pdfiddle: PS = "{{" ~> """dfiddle""".r ~ "[: ]+".r ~ """[^:}]*""".r ~ "[: ]*".r ~ """[^ :}]*""".r ~ optargs ~ "}}" ~ opt(CRLF1 | CRLF3 | CRLF2) ~ slines <~ "{{/dfiddle}}" ^^ {
     case d ~ _ ~ name ~ _ ~ kind ~ xargs ~ _ ~ _ ~ lines =>
       var args = xargs.toMap
       //      val name = args.getOrElse("name", "")
+
+      val urlArgs = "&" + args.filter(_._1 != "anon").map(t=>t._1+"="+t._2).mkString("&")
+      def ARGS(url:String) = url + (if(urlArgs != "&") urlArgs else "")
 
       try {
         LazyState { (current, ctx) =>
@@ -529,20 +534,18 @@ trait WikiDomParser extends WikiExprParser {
           var links = lines.s.lines.collect {
             case l if l.startsWith("$msg") || l.startsWith("$send") =>
               parseAll(linemsg(ctx.we.get.wid.wpath), l).map { st =>
-                st.toHref(name)
+                st.toHref(name, "value", ARGS)
               }.getOrElse("???")
             case l if l.startsWith("$mock") =>
               parseAll(linemock(ctx.we.get.wid.wpath), l).map { st =>
-                st.rule.e.asMsg.withPos(st.pos).toHref(name, "value") +
-                  " (" + st.rule.e.asMsg.withPos(st.pos).toHrefWith("json", name, "json") + ") " +
-                  " (" + st.rule.e.asMsg.withPos(st.pos).toHrefWith("trace", name, "debug") + ") "
+                st.rule.e.asMsg.withPos(st.pos).toHref(name, "value", ARGS) +
+                  " (" + st.rule.e.asMsg.withPos(st.pos).toHrefWith("json", name, "json", ARGS) + ") " +
+                  " (" + st.rule.e.asMsg.withPos(st.pos).toHrefWith("trace", name, "debug", ARGS) + ") "
               }.getOrElse("???")
           }.mkString("\n")
 
           if (links == "") links = "no recognized messages"
 
-//          val spec = ctx.we.flatMap(_.section("dfiddle", name).filter(_.signature.toLowerCase == "spec")).map(_.content).filter(x=> kind.toLowerCase=="story").getOrElse("")
-val xx = ctx.we.get.sections.filter(x=> x.stype == "dfiddle" && x.name == name)
           val spec = ctx.we.flatMap(
             _.sections.filter(x=> x.stype == "dfiddle" && x.name == name)
             .filter(_.signature.toLowerCase startsWith "spec")
@@ -572,3 +575,4 @@ class ExecCall(cls: String, func: String, args: List[P]) extends EXEC {
 
   def exec(ctx: Any, parms: Any*): Any = ""
 }
+

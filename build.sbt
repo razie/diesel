@@ -12,7 +12,10 @@ libraryDependencies ++= Seq(
   "ch.qos.logback"        % "logback-classic"    % "1.0.13",
   "org.mongodb"          %% "casbah"             % "2.8.2",
   "com.novus"            %% "salat-core"         % "1.9.9",
-  "com.atlassian.commonmark"   % "commonmark"    % "0.7.0",
+
+  "com.atlassian.commonmark"   % "commonmark"    % "0.9.0",
+  "com.atlassian.commonmark"   % "commonmark-ext-gfm-tables"    % "0.9.0",
+
   "org.scalaz"           %% "scalaz-core"        % "7.2.1",
   "org.scalatest"        %% "scalatest"          % "2.1.3",
   "com.typesafe.akka"    %% "akka-cluster"       % "2.4.2",

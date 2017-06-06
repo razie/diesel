@@ -1,7 +1,7 @@
 
 body {
   font-family: "Verdana", Verdana, Arial, sans-serif;
-  font-size: 16px;
+  font-size: 18px;
 }
 
 p {
@@ -54,7 +54,7 @@ h5 {
 }
 
 li {
-  line-height: 20px;
+  line-height: 24px;
 }
 
 h1 small {
@@ -90,6 +90,7 @@ textarea {
   border-color: #bce8f1;
   padding-right: 14px;
   margin-left: 20px;
+  font-size: 16px;
 }
 
 .alert-cool:hover,

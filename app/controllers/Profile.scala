@@ -46,7 +46,7 @@ object Profile extends RazController {
       Tasks.sendEmailVerif(u)
       val uname = (u.firstName + (if (u.lastName.length > 0) ("." + u.lastName) else "")).replaceAll("[^a-zA-Z0-9\\.]", ".").replaceAll("[\\.\\.]", ".")
       Emailer.sendEmailUname(uname, u, false)
-      Emailer.tellRaz("New user", u.userName, u.email.dec)
+      Emailer.tellRaz("New user", u.userName, u.emailDec)
     }
     created
   }
@@ -82,7 +82,7 @@ class Profile @Inject() (config:Configuration) extends RazController with Loggin
         //          println ("======="+reg.email.enc+"======="+reg.password.enc)
         if (reg.password.length > 0 && reg.repassword.length <= 0)
           // TODO optimize - we lookup users twice on loing
-          Users.findUserByEmail(reg.email.enc).orElse(Users.findUserNoCase(reg.email)).map { u =>
+          Users.findUserByEmailDec(reg.email).orElse(Users.findUserNoCase(reg.email)).map { u =>
             //          println ("======="+u.email+"======="+u.pwd)
             if (reg.password.enc == u.pwd) true
             else {
@@ -97,7 +97,7 @@ class Profile @Inject() (config:Configuration) extends RazController with Loggin
       }) verifying
       ("Email already registered - if you are logging in, type the password once!", { reg: Registration =>
         if (reg.password.length > 0 && reg.repassword.length > 0)
-          Users.findUserByEmail(reg.email.enc).map(u => false) getOrElse { true }
+          Users.findUserByEmailDec(reg.email).map(u => false) getOrElse { true }
         else true
       })
   }
@@ -202,7 +202,7 @@ class Profile @Inject() (config:Configuration) extends RazController with Loggin
           // allow this only for some minutes
           if (System.currentTimeMillis - g <= 120000 && request.session.get("gid").isDefined) {
             // associate user to google id and login
-            Users.findUserByEmail(Enc(reg.email)) orElse (Users.findUserNoCase(reg.email)) foreach {u =>
+            Users.findUserByEmailDec((reg.email)) orElse (Users.findUserNoCase(reg.email)) foreach {u =>
               u.update(u.copy(gid = request.session.get("gid")))
             }
             login(reg.email, reg.password, request.session.get("extra").mkString, request.session.get("gid").mkString)
@@ -220,7 +220,7 @@ class Profile @Inject() (config:Configuration) extends RazController with Loggin
     // TODO optimize - we lookup users twice on login
     val realm = Wikie.getRealm()
     val website = Website(request)
-    Users.findUserByEmail(Enc(email)) orElse (Users.findUserNoCase(email)) match {
+    Users.findUserByEmailDec((email)) orElse (Users.findUserNoCase(email)) match {
       case Some(u) =>
         if (
           (
@@ -232,6 +232,7 @@ class Profile @Inject() (config:Configuration) extends RazController with Loggin
             u.realms.contains(realm) ||
             realm=="rk" ||
             realm=="ski" ||
+            realm=="wiki" ||
             u.isAdmin )
         ) {
           Audit.logdb("USER_LOGIN", u.userName, u.firstName + " " + u.lastName + " realm: " + realm)
@@ -357,7 +358,7 @@ class Profile @Inject() (config:Configuration) extends RazController with Loggin
           (for (
             p <- getFromSession("pwd", T.TESTCODE) orErr ("psession corrupted");
             e <- getFromSession("email", f + l + "@k.com") orErr ("esession corrupted");
-            already <- (!Users.findUserByEmail(Enc(e)).isDefined) orCorr ("User already created" -> "patience, patience...");
+            already <- (!Users.findUserByEmailDec((e)).isDefined) orCorr ("User already created" -> "patience, patience...");
             iu <- Some(User(
               uname(f, l, y), f.trim, l.trim, y, Enc(e),
               Enc(p), 'a', Set(ut),
@@ -398,7 +399,7 @@ class Profile @Inject() (config:Configuration) extends RazController with Loggin
                   Tasks.sendEmailVerif(u)
                   if (!unameauto(u.yob))
                     Emailer.sendEmailUname(unameF(u.firstName, u.lastName), u)
-                  Emailer.tellRaz("New user", u.userName, u.email.dec, "realm: "+u.realms.mkString, "ABOUT: "+about)
+                  Emailer.tellRaz("New user", u.userName, u.emailDec, "realm: "+u.realms.mkString, "ABOUT: "+about)
                 }
               }
 
@@ -460,7 +461,7 @@ class Profile @Inject() (config:Configuration) extends RazController with Loggin
 
       if(id == res.getString("user_id") &&
         CLIENT_ID == res.getString("audience") ) {
-        Users.findUserByEmail(Enc(email)) orElse (Users.findUserNoCase(email)) match {
+        Users.findUserByEmailDec((email)) orElse (Users.findUserNoCase(email)) match {
           case Some(u) if (u.gid.exists(_.length > 0)) =>
             login(email, "", "", id)
           case Some(u) if (!u.gid.isDefined) =>

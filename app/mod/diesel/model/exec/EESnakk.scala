@@ -86,7 +86,7 @@ case class SnakCall(protocol: String, method: String, url: String, headers: Map[
       //      res = inp.readLine()
       //      res = res + Comms.readStream(ins)
 
-      try {
+//      try {
         val buff = new Array[Byte](1024);
         var ret_read = 0;
 
@@ -98,7 +98,7 @@ case class SnakCall(protocol: String, method: String, url: String, headers: Map[
           }
         }
         while (ret_read >= 0);
-      }
+//      }
 
       ibody = Some(res)
       iContentType = Some("application/text")

@@ -25,7 +25,11 @@ import memberHandlers._
       PublicRequest(
         l.referencedNames.map(_.decode),
         l.handlers.collect { case x: ValHandler => x.name }.map(_.decode),
-        try l.lineRep.callEither("$result").right.toOption catch { case _:Throwable => None },
+        try {
+          l.lineRep.callEither("$result").right.toOption
+        } catch {
+          case _:Throwable => None
+        },
 // 2.10        try l.lineRep.callOpt("$result") catch { case _:Throwable => None }, //l.extractionValue,  // TODO hides some errors
 //worked in 2.9.0-1        try l.getEval catch { case _:Throwable => None }, // TODO hides some errors
         errAccumulator.toList))
@@ -38,7 +42,6 @@ import memberHandlers._
     override def printMessage(msg: String) {
       errAccumulator append msg
       out println msg
-      //      out println clean(msg)
       out.flush()
     }
   }
@@ -99,7 +102,6 @@ import memberHandlers._
     ) {
       val xx = (x -> evalExpr[Any](x))
       razie.Debug("bound: " + xx)
-      //      ret += (x -> evalExpr[Any](x))
       ret += xx
     }
     ret

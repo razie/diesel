@@ -16,7 +16,7 @@ fragment: add more stuff to the current topic, including children, sub-topics et
 
 @createLabel(child:String)={
   @page.flatMap(_.contentProps.get("label.createChildren")).getOrElse {
-    Create a <a href="/wiki/Category:@child">@Wikis.category(child).map(_.label).getOrElse(child)</a>
+    Create a <a href="/wiki/Category:@child">@Wikis(wid.getRealm).category(child).map(_.label).getOrElse(child)</a>
   }
 }
 

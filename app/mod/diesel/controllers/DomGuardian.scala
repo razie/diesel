@@ -179,16 +179,18 @@ object DomGuardian extends Logging {
   /* extract more nodes to run from the story - add them to root */
   def addStoryToAst(root: DomAst, stories: List[WikiEntry], justTests: Boolean = false, justMocks: Boolean = false, addFiddles:Boolean=false) = {
     var lastMsg: Option[EMsg] = None
+    var lastMsgAst: Option[DomAst] = None
     var lastAst: List[DomAst] = Nil
     var inSequence = true
 
     def addMsg(v: EMsg) = {
       lastMsg = Some(v);
       // withPrereq will cause the story messages to be ran in sequence
-      lastAst = if (!(justTests || justMocks)) List(DomAst(v, RECEIVED).withPrereq({
+      lastMsgAst = if (!(justTests || justMocks)) Some(DomAst(v, RECEIVED).withPrereq({
         if (inSequence) lastAst.map(_.id)
         else Nil
-      })) else Nil
+      })) else None // need to reset it
+      lastAst = lastMsgAst.toList
       lastAst
     }
 
@@ -215,11 +217,11 @@ object DomGuardian extends Logging {
         case v: ERule => List(DomAst(v, RULE))
         case v: EMock => List(DomAst(v, RULE))
         case e: ExpectM if (!justMocks) => {
-          lastAst = List(DomAst(e.withGuard(lastMsg.map(_.asMatch)), "test").withPrereq(lastAst.map(_.id)))
+          lastAst = List(DomAst(e.withGuard(lastMsg.map(_.asMatch)).withTarget(lastMsgAst), "test").withPrereq(lastAst.map(_.id)))
           lastAst
         }
         case e: ExpectV if (!justMocks) => {
-          lastAst = List(DomAst(e.withGuard(lastMsg.map(_.asMatch)), "test").withPrereq(lastAst.map(_.id)))
+          lastAst = List(DomAst(e.withGuard(lastMsg.map(_.asMatch)).withTarget(lastMsgAst), "test").withPrereq(lastAst.map(_.id)))
           lastAst
         }
       }.flatten

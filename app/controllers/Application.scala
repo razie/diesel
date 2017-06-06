@@ -9,7 +9,7 @@ import model._
 import org.joda.time.DateTime
 import play.api.mvc.Action
 import razie.audit.Audit
-import razie.db.ROne
+import razie.db.{RMany, ROne}
 import razie.db.RazMongo.RazMongoTable
 import razie.hosting.{BannedIps, RkReactors, Website}
 import razie.wiki.Sec._
@@ -17,6 +17,7 @@ import razie.wiki.model._
 import razie.wiki.{Enc, Services}
 
 import scala.concurrent.Future
+import scala.util.Try
 
 /** main entry points */
 object Application extends RazController {
@@ -69,30 +70,53 @@ object Application extends RazController {
 
   /** serve the root of a website - figure out which and serve the main page */
   def root = Action.async { implicit request =>
-    Website.getHost.flatMap(Config.urlfwd(_)).map { host =>
-      log ("URL - Redirecting main page from "+Website.getHost + " TO "+host)
-      Future.successful(Redirect(host))
-//    } orElse Website.getHost.flatMap(Website.apply).filter(w=> !Reactors.contains(w.reactor)).flatMap {x=>
-    } orElse Website.getHost.flatMap(Website.forHost).filter(w=>
-      w.we.exists(_.category == "Site") || w.homePage.isDefined/*exists(_.name != "Home")*/
-    ).flatMap {x=>
-      log ("URL - serve Website homePage for "+x.name)
-      auth.map{au=>
-        au.roles.find(y=>(x wprop "userHome."+y).isDefined).flatMap { y =>
-          (x wprop "userHome." + y)
-        } orElse x.userHomePage
-      } getOrElse x.homePage
+    Try {
+      Website.getHost.flatMap(Config.urlfwd(_)).map { host =>
+        log ("URL - Redirecting main page from "+Website.getHost + " TO "+host)
+        Future.successful(Redirect(host))
+        //    } orElse Website.getHost.flatMap(Website.apply).filter(w=> !Reactors.contains(w.reactor)).flatMap {x=>
+      } orElse Website.getHost.flatMap(Website.forHost).filter(w=>
+        w.we.exists(_.category == "Site") || w.homePage.isDefined/*exists(_.name != "Home")*/
+      ).flatMap {x=>
+        log ("URL - serve Website homePage for "+x.name)
+        auth.map{au=>
+          au.roles.find(y=>(x wprop "userHome."+y).isDefined).flatMap { y =>
+            (x wprop "userHome." + y)
+          } orElse x.userHomePage
+        } getOrElse x.homePage
       }.map { home =>
         Wiki.show(home, 1).apply(request)
-    } getOrElse {
+      } getOrElse {
         val r = Wiki.getRealm()
         log ("URL - show default reactor main "+r)
-//        if (r != Reactors.RK)
+        val wid = WikiReactors(r).mainPage(auth)
+
+        // is this the first tiem in a new db ?
+        if(RMany[User]().size <= 0) {
+          Future.successful {
+            Ok(views.html.util.newDb())
+          }
+        } else {
           Wiki.show(WikiReactors(r).mainPage(auth), 1).apply(request)
-//        else  Future.successful(Application.idoeIndexItem(1))
-    } // RK main home screen
-    //todo un-hardcode that
+        }
+        //        else  Future.successful(Application.idoeIndexItem(1))
+      } // RK main home screen
+    } getOrElse {
+      // is this the first tiem in a new db ?
+      if (RMany[User]().size <= 0) {
+        Future.successful {
+          Ok(views.html.util.newDb())
+        }
+      } else Future.successful {
+        ServiceUnavailable("If you imported a new realm, please reboot this instance!")
+      }
+    }
   }
+
+  // is this the first tiem in a new db ?
+  def isDbEmpty =
+    WID("Admin", "Home").r("rk").page.isEmpty &&
+    RMany[User]().size <= 1
 
   def index = root
 

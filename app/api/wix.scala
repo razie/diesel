@@ -4,16 +4,17 @@ import mod.diesel.controllers.SFiddles
 import model._
 import controllers.{Club, XWrapper, XListWrapper}
 import razie.db.RazMongo
-import razie.wiki.{Services, Dec}
+import razie.wiki.{Services}
+import razie.wiki.Sec._
 import razie.wiki.model._
 import razie.wiki.util.M._
 
 /** this is available to scripts inside the wikis */
-class wix (owe: Option[WikiEntry], ou:Option[WikiUser], q:Map[String,String], r:String) {
+class wix (owe: Option[WikiPage], ou:Option[WikiUser], q:Map[String,String], r:String) {
   lazy val hostport:String = Services.config.hostport
 
   // hide actual app objects and give selective access via public objects below
-  private var ipage: Option[WikiEntry] = owe
+  private var ipage: Option[WikiPage] = owe
   private var iuser: Option[User] = ou.asInstanceOf[Option[User]]
   private var iquery: Map[String,String] = q
   private var irealm: String = if(r.isEmpty) owe.map(_.realm).mkString else r
@@ -26,7 +27,7 @@ class wix (owe: Option[WikiEntry], ou:Option[WikiUser], q:Map[String,String], r:
     def findAssocWithCat(cat:List[String]) = {
       def isc (c:String) = cat contains c
       ipage.find(cat contains _.category).orElse {
-        def flatten (page:WikiEntry):List[WikiEntry] = page :: page.parent.flatMap(Wikis.find).toList.flatMap(flatten)
+        def flatten (page:WikiPage):List[WikiPage] = page :: page.parent.flatMap(Wikis.find).toList.flatMap(flatten)
         ipage.toList.flatMap(flatten).find(cat contains _.category).orElse(
           ipage.toList.flatMap(w=> w.linksFrom.toList).flatMap(_.pageTo.toList).find(cat contains _.category)
         )
@@ -58,7 +59,7 @@ class wix (owe: Option[WikiEntry], ou:Option[WikiUser], q:Map[String,String], r:
     def isOwner = iuser.exists(u=> ipage.flatMap(_.owner).exists(_._id == u._id))
     def isClubAdmin = iuser.exists{u=>
       isDbAdmin ||
-        page.findAssocWithCat(List("Club", "Pro")).map(_.wid).flatMap(Club.apply).exists(_.isAdminEmail(Dec(u.email)))
+        page.findAssocWithCat(List("Club", "Pro")).map(_.wid).flatMap(Club.apply).exists(_.isAdminEmail(u.emailDec))
     }
     def isClubMember = iuser.exists{u=>
       page.findAssocWithCat(List("Club", "Pro")).map(_.wid).exists(name=>u.wikis.filter(_.wid.cat == "Club").exists(_.wid.name == name))
@@ -152,7 +153,7 @@ class wix (owe: Option[WikiEntry], ou:Option[WikiUser], q:Map[String,String], r:
 /** this is available to scripts inside the wikis */
 object wix {
 
-  def apply (owe: Option[WikiEntry], ou:Option[WikiUser], q:Map[String,String], r:String) = {
+  def apply (owe: Option[WikiPage], ou:Option[WikiUser], q:Map[String,String], r:String) = {
     new wix(owe, ou, q, r)
   }
 

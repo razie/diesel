@@ -154,7 +154,7 @@ $fdata
         "lastName" -> rk.info.lastName,
         "dob" -> fdate(rk.rki.map(_.dob).getOrElse(new DateTime(rk.info.yob, 1, 1, 1, 1))),
         "gender" -> rk.info.gender,
-        "email" -> rk.info.email.dec) ++
+        "email" -> rk.info.emailDec) ++
         (if (rk.userId.exists(_ == u._id)) u.profile.flatMap(_.contact).map(_.info).getOrElse(Map.empty) else Map.empty))
   }
 
@@ -313,7 +313,7 @@ $fdata
     val wid = WID(cat, name)
 
     val data = request.body.asFormUrlEncoded
-    val data2 = data.map(_.collect { case (k, v :: r) => (k, v) }).get // somehow i get list of values?
+    val data2 = data.map(_.collect { case (k, v) => (k, v.head) }).get // somehow i get list of values?
 
     // TODO this is copy paste from def save
     clog << "Wiki.FORM.save2 " + wid

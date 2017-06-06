@@ -750,18 +750,18 @@ object NotesLocker extends RazController with Logging {
             // first my end of it:
             if(ROne[NotesContact]("oId"->au._id, "uId"->o._id).isEmpty)
             //todo find the note fo this contact
-              NotesContact(au._id, o.email.dec, o.ename, Some(o._id), None).create
+              NotesContact(au._id, o.emailDec, o.ename, Some(o._id), None).create
             ROne[NotesContact]("oId"->o._id, "uId"->au._id) match {
               case Some(_) => Msg2("Already connected")
               case None =>
-                ROne[NotesContact]("oId"->o._id, "email"->au.email.dec) match {
+                ROne[NotesContact]("oId"->o._id, "email"->au.emailDec) match {
                   case Some(c) => {
                     c.copy(uId=Some(au._id)).update
                     Msg2("Contact updated")
                   }
                   case None => {
                     //todo find the note fo this contact
-                    NotesContact(o._id, au.email.dec, au.ename, Some(au._id), None).create
+                    NotesContact(o._id, au.emailDec, au.ename, Some(au._id), None).create
                     Msg2("Ok, connected - now he/she can share notes with you and you can <strong>.share to:"+au.ename+"</strong")
                   }
                 }

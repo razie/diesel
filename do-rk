@@ -1,7 +1,7 @@
 rm -f RUNNING_PID
 RK=~/w/racerkidz
 
-#p compile package dist
+p compile package dist
 rm -rf $RK/target/universal/racerkidz-0.9.1-SNAPSHOT
 unzip -d $RK/target/universal target/universal/racerkidz-0.9.1-SNAPSHOT.zip >/dev/null
 
@@ -16,8 +16,19 @@ cd $RK/docker/rk
 rm -rf dist
 cp -r $RK/target/universal/racerkidz-0.9.1-SNAPSHOT .
 mv racerkidz-0.9.1-SNAPSHOT dist
+rm dist/conf/application.conf
+mv dist/conf/application.docker.conf dist/conf/application.conf
+cp $RK/key.docker key
 
 docker build -t raz-diesel .
 
 cd $RK
+
+################## publishing
+
+# https://docs.docker.com/docker-cloud/builds/push-images/
+
+# docker tag raz-diesel razie/raz-diesel
+# docker push razie/raz-diesel
+
 

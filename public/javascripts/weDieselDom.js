@@ -491,34 +491,4 @@ function tagQueryTocb (tq) {
 
 }
 
-//====================== widgets <a onclick="weMsg('ctx.log','m='+m)"
-
-function weMsg(e,a,p) {
-  return iweMsg(e,a,p,'value', function(data){console.log(data);});
-}
-
-function weMsgPopup(e,a,p) {
-  return iweMsg(e,a,p,'value', function(data){alert(data);});
-}
-
-function iweMsg(e,a,p,what,succ) {
-  var u = '/diesel/fiddle/react/'+e+'/'+a+'?resultMode='+what+'&'+p
-  $.ajax(
-    u, {
-      type: 'POST',
-      data: $.param({
-        // xdomEngineConfig: domEngineConfig
-      }),
-      contentType: 'application/x-www-form-urlencoded',
-      success: function (data) {
-        if(typeof succ == 'function') succ(data);
-      },
-      error: function (x) {
-        // readyState=4  is failure to parse json reply
-        if(x.status == "200" && typeof succ == 'function') succ(x.responseText);
-        console.log("ERR " + JSON.stringify(x));
-      }
-    });
-  return false;
-}
 

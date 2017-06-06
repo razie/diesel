@@ -108,8 +108,8 @@ object Gapi extends RazController with Logging {
   }
 
   /** URL is /gapi/demo */
-  def demo = Action { implicit request =>
-    Ok(views.html.gv.demo())
+  def demo = RAction { implicit request =>
+    Ok(views.html.gv.demo()(request))
   }
 
 

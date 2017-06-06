@@ -27,7 +27,7 @@ class Support @Inject() (config:Configuration) extends RazController with Loggin
   def doeSupport(page: String, desc: String, details: String) = Action { implicit request =>
     import razie.wiki.Sec._
     ROK.r apply {implicit stok=> views.html.admin.support(supportForm1.fill((
-      auth.map(_.email.dec).getOrElse(""),
+      auth.map(_.emailDec).getOrElse(""),
       auth.map(_.ename).getOrElse(""),
       if (desc.length <= 0) "" else desc,
       details, "")), page)}
@@ -57,7 +57,7 @@ class Support @Inject() (config:Configuration) extends RazController with Loggin
     import razie.wiki.Sec._
     ROK.r noLayout { implicit stok =>
       views.html.wiki.suggest(supportForm1.fill((
-        auth.map(_.email.dec).getOrElse(""),
+        auth.map(_.emailDec).getOrElse(""),
         auth.map(_.ename).getOrElse(""),
         if (desc.length <= 0) "Oops!" else desc,
         details, "")), page)

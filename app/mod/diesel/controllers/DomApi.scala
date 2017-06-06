@@ -433,7 +433,7 @@ class DomApi extends DomApiBase  with Logging {
 
     val msgs = RDExt.summarize(engine.dom).toList
 
-    ROK.k reactorLayout12 { implicit stok =>
+    ROK.k reactorLayout12 {
       views.html.modules.diesel.navigateMsg(msgs)
     }
   }
@@ -506,13 +506,13 @@ class DomApi extends DomApiBase  with Logging {
           }
 
           case _ => {
-            ROK.k reactorLayout12 { implicit stok =>
+            ROK.k reactorLayout12 {
               views.html.modules.diesel.engineView(Some(eng))
             }
           }
         }
       } getOrElse {
-        ROK.k reactorLayout12 { implicit stok =>
+        ROK.k reactorLayout12 {
           views.html.modules.diesel.engineView(None)
         }
       }
@@ -738,7 +738,7 @@ class DomApi extends DomApiBase  with Logging {
       val total=12
       DomGuardian.findLastRun(stok.realm, au.userName).map {r=>
         Future.successful {
-          ROK.k reactorLayout12 {implicit stok=>
+          ROK.k reactorLayout12 {
             new Html(
 s"""
 Guardian report<a href="/wiki/Guardian_Guide" ><sup><span class="glyphicon glyphicon-question-sign"></span></a></sup>: <a href="/diesel/runCheck">Re-run check</a>  (${r.duration} msec) ${quickBadge(r.failed, r.total, r.duration)}<br>

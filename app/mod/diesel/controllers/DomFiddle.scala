@@ -75,7 +75,7 @@ object DomFiddles extends DomApi with Logging {
 
     val id = java.lang.System.currentTimeMillis().toString()
 
-    ROK.k reactorLayout12 {implicit stok=>
+    ROK.k reactorLayout12 {
       val wp = if(iSpecWpath.length > 1) iSpecWpath else iStoryWpath
       views.html.fiddle.playDomFiddle(reactor, stok.query, spec, story, capture, specWpath, storyWpath, (spw != story), (stw != story), Some(""), id, wp, line, col)
     }
@@ -102,7 +102,7 @@ object DomFiddles extends DomApi with Logging {
    */
   def startESP(reactor:String, id: String) = FAUPR { implicit stok =>
 
-    ROK.k reactorLayout12 {implicit stok=>
+    ROK.k reactorLayout12 {
       views.html.fiddle.playESPDomFiddle(reactor, stok.query, Some(""), id)
     }
   }
@@ -430,7 +430,7 @@ object DomFiddles extends DomApi with Logging {
       "content"  -> "Paste AST capture here"
     )).apply("content")
 
-    ROK.k reactorLayout12   {implicit stok=>
+    ROK.k reactorLayout12   {
       views.html.modules.diesel.streamSimulator()
     }
   }

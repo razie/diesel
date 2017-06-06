@@ -182,9 +182,15 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
           val props = preprocessed.props
           val contentFromTags = props.foldLeft("") { (x, t) => x + "{{" + t._1 + ":" + t._2 + "}}\n\n" }
 
-          val visibility = wid.findParent.flatMap(_.props.get("visibility")).orElse(WikiReactors(realm).props.prop("default.visibility")).getOrElse(WikiReactors(realm).wiki.visibilityFor(wid.cat).headOption.getOrElse(PUBLIC))
+          val visibility = wid.findParent
+            .flatMap(_.props.get("visibility"))
+            .orElse(WikiReactors(realm).props.prop("default.visibility"))
+            .getOrElse(WikiReactors(realm).wiki.visibilityFor(wid.cat).headOption.getOrElse(PUBLIC))
           val wwvis = wvis(wid.findParent.map(_.props)).orElse(WikiReactors(realm).props.prop("default.wvis")).getOrElse(WikiReactors(realm).wiki.visibilityFor(wid.cat).headOption.getOrElse(PUBLIC))
-          val draft =      wid.findParent.flatMap(_.contentProps.get("editMode")).orElse(Wikis(realm).category(wid.cat).flatMap(_.contentProps.get("editMode"))).orElse(WikiReactors(realm).props.prop("default.editMode")).getOrElse("Notify")
+          val draft =      wid.findParent
+            .flatMap(_.contentProps.get("editMode"))
+            .orElse(WikiDomain(realm).prop(wid.cat, "editMode"))
+            .orElse(WikiReactors(realm).props.prop("default.editMode")).getOrElse("Notify")
 
           val ttt = if ("Topic" == wid.cat) "" else wid.cat.toLowerCase
           val newTags =
@@ -583,7 +589,7 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
                     we = we.copy(props = we.props - "draft")
 
                   // update link to parent if any to non-draft
-                  plink.foreach( _.copy(draft=None).update )
+                  plink.foreach( _.copy(draft=None, crDtm = DateTime.now).update )
 
                   notif == "Notify" || notif == "Site" || notif.contains("History") // Silent means no notif
                 } else false
@@ -1031,7 +1037,7 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
       val name = ""
       for (
         au <- stok.au;
-        isMember <- au.realms.contains(stok.realm) orErr "not a website member"; // member
+        isMember <- (au.realms.contains(stok.realm) || au.isAdmin) orErr "not a website member"; // member
         can <- (stok.website.membersCanCreateTopics || au.isMod) orErr "members can't create topics"; // member
         cat <- CAT.unapply(cats);
         w   <- Wikis(cat.realm getOrElse getRealm()).category(cat.cat) orErr s"category ${cat.cat} not found"
@@ -1201,13 +1207,18 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
     def min(a:Int, b:Int) = if(a>b)b else a
     def max(a:Int, b:Int) = if(a>b)a else b
 
-    val wikis = Wikis(realm).cats.keys.toList.flatMap(cat=>Wikis(realm).pages(cat).toList).filter(_.tags.contains(qi)).take(500).map{ w=>
-      val m = PAT.findAllMatchIn(w.tags.mkString(",")).collectFirst({case x => x}).get
-      (w,
-        m.before.subSequence(0, m.before.length()),
-        m.matched,
-        m.after.subSequence(0,m.after.length))
-    }
+    val wikis = Wikis(realm)
+      .cats.keys.toList
+      .flatMap(cat=>Wikis(realm).pages(cat).toList)
+      .filter(_.tags.contains(qi))
+      .take(500)
+      .map{ w=>
+        val m = PAT.findAllMatchIn(w.tags.mkString(",")).collectFirst({case x => x}).get
+        (w,
+          m.before.subSequence(0, m.before.length()),
+          m.matched,
+          m.after.subSequence(0,m.after.length))
+      }
 
     wikis
   }

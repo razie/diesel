@@ -54,9 +54,7 @@ public class CipherCrypt {
   public static final SecretKey DEFAULT_KEY = getSecretKey(KEY);
 
   /** c-tor. 1 */
-  public CipherCrypt() {
-    this(DEFAULT_KEY);
-  }
+  public CipherCrypt() { this(DEFAULT_KEY); }
 
   public CipherCrypt(byte[] k) {this(getSecretKey(k)); }
 
@@ -165,9 +163,10 @@ public class CipherCrypt {
    * */
   @SuppressWarnings("serial")
   public static SecretKey getSecretKey(final byte[] b) {
+    final byte newb[] = b.length > 0 ? b : KEY;
     return new SecretKey() {
       public byte[] getEncoded() {
-        return (byte[]) b.clone();
+        return (byte[]) newb.clone();
       }
 
       public String getAlgorithm() {
@@ -178,13 +177,6 @@ public class CipherCrypt {
         return "RAW";
       }
     };
-  }
-
-  /**
-   * @return a default secret key that never changes.
-   * */
-  public static SecretKey getDefaultKey() {
-    return getSecretKey(KEY);
   }
 
 }

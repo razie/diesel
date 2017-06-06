@@ -12,7 +12,7 @@ included in mainUserC as the right hand side info box
 }
 
 @pendingVols=@{
-  val x = razie.db.RMany[VolunteerH]("status" -> VH.ST_WAITING, "approver" -> Enc.unapply(user.email)).toList
+  val x = razie.db.RMany[VolunteerH]("status" -> VH.ST_WAITING, "approver" -> user.emailDec).toList
   if(x.size > 0) Option(x.size) else None
 }
 

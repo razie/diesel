@@ -117,7 +117,7 @@ object Kidz extends RazController {
           views.html.user.doeUserKid(
             pId, rkId, role, associd, next,
             form(stok.au.get).fill((
-              k.firstName, k.lastName, k.email.dec,
+              k.firstName, k.lastName, k.emailDec,
               rk flatMap (_.rki) map (_.dob) getOrElse rk.map(rk => new DateTime(rk.info.yob, 1, 1, 1, 1)).getOrElse(RacerKidz.empty.dob),
               rki.gender,
               if (rkId.length > 3) k.roles.mkString else role,
@@ -191,7 +191,7 @@ object Kidz extends RazController {
             res
           } else {
             // create
-            if (RacerKidz.findByParentUser(new ObjectId(userId)).exists(x => x.info.firstName == f || (x.info.email.dec == e && e.length > 1)))
+            if (RacerKidz.findByParentUser(new ObjectId(userId)).exists(x => x.info.firstName == f || (x.info.emailDec == e && e.length > 1)))
             // is there already one with same name or email?
               Msg2("Kid with same first name or email already added", Some("/doe/user/kidz"))
             else {

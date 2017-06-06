@@ -97,7 +97,10 @@ object Global extends WithFilters(LoggingFilter) {
     /** get the host that was forwarded here - used for multi-site hosting */
 
     val host = PlayTools.getHost(request).orElse(Some(Services.config.hostport))
-    val redirected = host.flatMap(x => Config.urlrewrite(x + request.path))
+    val redirected = Try {
+      host.flatMap(x => Config.urlrewrite(x + request.path))
+    } getOrElse
+      None
 
     val res = redirected.map { x =>
       clog << ("URL - REDIRECTING? - " + host.mkString+request.path)
@@ -220,7 +223,11 @@ object LoggingFilter extends Filter {
 
   def apply(next: (RequestHeader) => scala.concurrent.Future[Result])(rh: RequestHeader) = {
     val start = System.currentTimeMillis
-    if (! rh.uri.startsWith( "/assets/") && !rh.uri.startsWith( "/razadmin/ping/shouldReload"))
+    if (
+      !rh.uri.startsWith( "/assets/") &&
+      !rh.uri.startsWith( "/razadmin/ping/shouldReload") &&
+      !rh.uri.startsWith("/diesel/status")
+    )
       cdebug << s"LF.START ${rh.method} ${rh.uri}"
     GlobalData.synchronized {
       GlobalData.serving = GlobalData.serving + 1
@@ -241,7 +248,7 @@ object LoggingFilter extends Filter {
 
     def logTime(rh:RequestHeader)(what: String)(result: Result): Result = {
       val time = System.currentTimeMillis - start
-      if (rh.uri.startsWith("/razadmin/ping/shouldReload") || isFromRobot(rh)) {} else {
+      if (rh.uri.startsWith("/razadmin/ping/shouldReload") || rh.uri.startsWith("/diesel/status") || isFromRobot(rh)) {} else {
         clog << s"LF.STOP.$what ${rh.method} ${rh.host}${rh.uri} took ${time}ms and returned ${result.header.status}"
       }
       if (! isAsset) servedPage
