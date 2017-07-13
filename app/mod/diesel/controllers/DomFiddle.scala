@@ -5,14 +5,16 @@ import java.util.concurrent.TimeUnit
 import akka.actor.{Actor, Props, _}
 import DomGuardian.{addStoryToAst, collectAst, prepEngine, startCheck}
 import mod.diesel.controllers.DomUtils.{SAMPLE_SPEC, SAMPLE_STORY}
-import mod.diesel.model.AstKinds._
-import mod.diesel.model.RDExt._
-import mod.diesel.model._
+import mod.diesel.model.DomEngineHelper
+import razie.diesel.dom.AstKinds._
+import razie.diesel.engine.RDExt._
+import razie.diesel.dom._
 import model._
 import play.api.Play.current
 import play.api.mvc._
 import play.libs.Akka
 import razie.diesel.dom.WikiDomain
+import razie.diesel.engine.{DieselAppContext, RDExt}
 import razie.hosting.Website
 import razie.wiki.Services
 import razie.wiki.admin.Autosave
@@ -209,7 +211,7 @@ object DomFiddles extends DomApi with Logging {
     val stimer = new CSTimer("buildDomStory", id)
     stimer start "heh"
 
-    val settings = DomEngineSettings.from(stok)
+    val settings = DomEngineHelper.settingsFrom(stok)
 
     val saveMode = stok.formParm("saveMode").toBoolean
     val reactor = stok.formParm("reactor")
@@ -263,7 +265,7 @@ object DomFiddles extends DomApi with Logging {
     val dom = pages.flatMap(p=>
       SpecCache.orcached(p, WikiDomain.domFrom(p)).toList
     ).foldLeft(
-      WikiDomain.empty
+      RDomain.empty
     )((a,b) => a.plus(b)).revise.addRoot
 
     stimer snap "2_parse_specs"

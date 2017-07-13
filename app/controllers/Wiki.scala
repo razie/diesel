@@ -24,6 +24,7 @@ import razie.wiki.util.{PlayTools, QueryParms}
 import razie.{Logging, cout, js}
 import razie.wiki.model._
 import razie.wiki.model.features.WikiCount
+import razie.wiki.model.WikiSearch
 
 import scala.Array.canBuildFrom
 import razie.wiki.{Enc, Services}
@@ -449,14 +450,7 @@ object Wiki extends WikiBase {
         Wikis(wid.getRealm).index.getWids(wid.name).headOption.flatMap(_.page)
       }
 
-      if (!w.isDefined && Config.config(Config.TOPICRED).exists(_.contains(wid.wpath))) {
-        log("- redirecting TOPICRED " + wid.wpath)
-        Redirect(controllers.Wiki.w(WID.fromPath(Config.config(Config.TOPICRED).get.apply(wid.wpath)).get))
-      } else if (!w.isDefined && Config.config(Config.TOPICRED).exists(_.contains(iwid.wpath))) {
-        // specifically when rules changes- the reformated wid not longer working, try original
-        log("- redirecting TOPICRED.iwid" + iwid.wpath)
-        Redirect(controllers.Wiki.wr(WID.fromPath(Config.config(Config.TOPICRED).get.apply(iwid.wpath)).get, realm))
-      } else if (!w.isDefined && Wikis(wid.getRealm).index.containsLower(wid.name.toLowerCase)) {
+      if (!w.isDefined && Wikis(wid.getRealm).index.containsLower(wid.name.toLowerCase)) {
         val newName = Wikis(wid.getRealm).index.getForLower(wid.name.toLowerCase).get
         // it may be in a mixin realm
         Wikis(wid.getRealm).index.getWids(newName).headOption.map {newWid=>

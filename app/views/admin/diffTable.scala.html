@@ -35,13 +35,15 @@
 }
 
   @heading.map{t=>
-    <table class="table table-striped">
+      @** having div and table here is correct *@
+    <table class="table table-striped" style="table-layout: fixed;">
       <thead>
         <td>@t._1</td>
         <td>@t._2</td>
         <td>@t._3</td>
       </thead>
   }
+
 @diff.getDeltas.map{d =>
   @d.getType.toString match {
       case "INSERT" => {
@@ -60,7 +62,7 @@
       <td>
           @d.getType<br><small>(R from L)</small>
       </td>
-<td>
+<td style="word-wrap:break-word">
           @fo(d).getPosition <br>
           @fo(d).getLines.zipWithIndex.map{s=>
             @if(fr(d).getLines.size > s._2) {
@@ -73,7 +75,7 @@
             <br>
           }
       </td>
-<td>
+<td style="word-wrap:break-word">
     @fr(d).getPosition <br>
   @fr(d).getLines.zipWithIndex.map{s=>
     @if(fo(d).getLines.size > s._2) {
@@ -90,6 +92,7 @@
 }
 
   @heading.map{t=>
-    </table>
+  </table>
   }
+
 

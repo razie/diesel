@@ -7,20 +7,13 @@
 package mod.diesel.model.exec
 
 import controllers.Wikil
-import mod.diesel.controllers.SFiddles
-import mod.diesel.model.RDExt.{spec}
-import mod.diesel.model.{DEStartTimer, DieselAppContext}
-import model.Users
 import razie.clog
-import razie.diesel.dom.RDOM._
 import razie.diesel.dom._
 import razie.diesel.ext._
-import razie.wiki.model._
-import mod.diesel.controllers.DomGuardian
 import razie.diesel.model.DieselMsgString
 import razie.wiki.Services
-
-import scala.collection.mutable
+import razie.wiki.model._
+import razie.diesel.ext.EVal
 
 // the context persistence commands
 class EEWiki extends EExecutor("rk.wiki") {

@@ -6,7 +6,7 @@
  */
 package model
 
-import mod.diesel.model.parser.WikiDomParser
+import mod.diesel.model.parser.{WikiDomFiddleParser, WikiDomParser}
 import razie.diesel.dom.{RDomain, WikiDomain, WikiDomainImpl}
 import razie.wiki.model._
 import razie.wiki.parser.{WikiParserNotes, WikiParserT}
@@ -22,12 +22,12 @@ class RkWikiInst(realm:String, fallBacks:List[WikiInst])
   extends WikiInstImpl (realm, fallBacks, {wi=>new WikiDomainImpl(realm, wi)}) {
   class WikiParserCls(val realm:String) extends WikiParserT
   with WikiDslParser with WikiCodeParser with WikiAdParser
-  with WikiDomParser with WikiParserNotes with WikiDarkParser{
+  with WikiDomFiddleParser with WikiParserNotes with WikiDarkParser{
     withWikiProp(adWikiProps)
     withWikiProp(codeWikiProps)
     withWikiProp(dslWikiProps)
     withDotProp(notesDotProps)
-    withBlocks(domainBlocks)
+    withBlocks(domainBlocks | dfiddleBlocks)
     withBlocks(darkHtml)
   }
 

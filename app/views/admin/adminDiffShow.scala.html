@@ -14,11 +14,12 @@ show diffs for a pair dest/src
 
 @stok.title("admin showDiff")
 
+  <div class="col-md-12">
     <h2>Diffs: @srcWe.getLabel</h2>
 <small>
-      <table class="table table-striped">
+      <table class="table table-striped" style="table-layout: fixed;">
           <thead>
-              <td>What (@side)</td>
+            <td class="col-sm-2">What (@side)</td>
             <td><span class="label label-@rowclsl"><b>Local</b></span></td>
             <td><span class="label label-@rowclsr"><b>Remote</b></span></td>
           </thead>
@@ -39,4 +40,5 @@ show diffs for a pair dest/src
 }
       </table>
 </small>
+  </div>
 

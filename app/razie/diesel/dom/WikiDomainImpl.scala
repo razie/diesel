@@ -47,6 +47,8 @@ class WikiDomainImpl (val realm:String, val wi:WikiInst) extends WikiDomain {
     // inherit and linearize classes in mixins
     val allClasses = new ListBuffer[WikiEntry]()
     allClasses appendAll wi.categories
+
+    // add all base classes from the mixins
     wi.fallBacks.foreach(
       _.categories.foreach(c=>
         if(!allClasses.exists(_.name == c.name)) allClasses.append(c)

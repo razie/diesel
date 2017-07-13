@@ -8,7 +8,7 @@ package mod.diesel.model.parser
 
 import razie.diesel.dom._
 import razie.diesel.ext.{BFlowExpr, FlowExpr, MsgExpr, SeqExpr}
-import razie.wiki.parser.WikiParserBase
+import razie.wiki.parser.{ParserCommons, WikiParserBase}
 
 /** expressions parser */
 trait WikiExprParser extends WikiParserBase {

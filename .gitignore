@@ -13,7 +13,7 @@ tmp
 dist
 dump
 dump*
-data
+/data
 modules
 node/dieselNode/node_modules
 /.target

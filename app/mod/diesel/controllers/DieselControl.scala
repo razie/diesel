@@ -17,11 +17,11 @@ import razie.db.{RMany, ROne, RazMongo}
 import mod.diesel.model._
 import play.api.mvc.{Action, AnyContent, Request}
 import razie.audit.Audit
-import razie.diesel.dom._
 import razie.wiki.model.{WID, WikiEntry, Wikis}
 import razie.wiki.util.PlayTools
 import razie.{Logging, cout}
 import razie.wiki.admin.Autosave
+import razie.diesel.dom._
 
 import scala.util.Try
 

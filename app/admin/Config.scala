@@ -24,7 +24,8 @@ object Config extends WikiConfig {
     //      "www.snowproapp.com"
 //      "www.racerkidz.com"    // for testing locally
 //      "www.effectiveskiing.com"    // for testing locally
-    "specs.dieselapps.com"    // for testing locally
+//    "specs.dieselapps.com"    // for testing locally
+    "urlfwd.www.funontrails.com"    // for testing locally
 //    "www.dieselapps.com"    // for testing locally
 //    "wiki.dieselapps.com"    // for testing locally
 //    "catsim.dieselapps.com"    // for testing locally
@@ -49,7 +50,7 @@ object Config extends WikiConfig {
       ) getOrElse ("light")
   }
 
-  final val CFG_PAGES = Array(SITECFG, TOPICRED, USERTYPES, BANURLS, URLCFG)
+  final val CFG_PAGES = Array(SITECFG, USERTYPES, BANURLS, URLCFG)
 
   WikiObservers mini {
     case WikiEvent(_, "WikiEntry", _, Some(x), _, _, _)
@@ -62,7 +63,7 @@ object Config extends WikiConfig {
   // todo remove the object and reload atomically the Services.config
   def reloadUrlMap = synchronized {
     println("========================== RELOADING URL MAP ==============================")
-    for (c <- Array(SITECFG, TOPICRED, USERTYPES, BANURLS)) {
+    for (c <- Array(SITECFG, USERTYPES, BANURLS)) {
       val urlmaps = Some(Seq(Wikis.find(WID("Admin", c)).map(_.content).getOrElse("")) flatMap parsep)
       val xurlmap = (urlmaps.map(se => HashMap[String, String](se: _*)))
       xurlmap.map(xconfig.put(c, _))

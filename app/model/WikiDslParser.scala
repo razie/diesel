@@ -6,9 +6,11 @@
  */
 package model
 
-import mod.diesel.model.{Diesel}
+import mod.diesel.model.Diesel
 import org.bson.types.ObjectId
-import razie.{cdebug, cout, clog}
+import razie.wiki.model.WikiEntry
+import razie.{cdebug, clog, cout}
+
 import scala.collection.mutable.ListBuffer
 import scala.util.Try
 import scala.util.matching.Regex.Match
@@ -109,7 +111,7 @@ trait WikiDslParser extends WikiParserBase {
       }
 
       if(hidden.isDefined) SState("")
-      else LazyState {(current, ctx) =>
+      else LazyState[WikiEntry] {(current, ctx) =>
         // try to figure out the language from the content parsed so far
         val lang = Diesel.findLang(current.props, ctx.we)
         val fid = ffiddle(lang)

@@ -15,6 +15,7 @@ import razie.js
 import scala.collection.mutable.ListBuffer
 import org.json.JSONObject
 import razie.diesel.dom.WikiDomain
+import razie.diesel.dom.RDomain
 
 import scala.collection.mutable.HashMap
 
@@ -162,7 +163,7 @@ object WG extends Logging {
       page <- wid.page;
       dom <- WikiDomain.domFrom(page)
     ) yield dom
-    ) getOrElse WikiDomain.empty
+    ) getOrElse RDomain.empty
 
     val rdom = if (addRoot) r.revise.addRoot else r.revise
 
@@ -186,4 +187,3 @@ object WG extends Logging {
     new WGraph("?", n("Domain"), nodes, (fakes ::: links).map { t => (n(t._1), n(t._2), t._3) })
   }
 }
-

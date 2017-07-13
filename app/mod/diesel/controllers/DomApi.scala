@@ -3,7 +3,7 @@ package mod.diesel.controllers
 import difflib.{DiffUtils, Patch}
 import DomGuardian.{addStoryToAst, collectAst, prepEngine, startCheck}
 import mod.diesel.controllers.DomSessions.Over
-import mod.diesel.model.RDExt._
+import razie.diesel.engine.RDExt._
 import mod.diesel.model._
 import model._
 import org.bson.types.ObjectId
@@ -11,7 +11,8 @@ import org.joda.time.DateTime
 import play.api.mvc._
 import play.twirl.api.Html
 import razie.audit.Audit
-import razie.diesel.dom.{WTypes, WikiDomain}
+import razie.diesel.dom._
+import razie.diesel.engine.{DieselAppContext, DieselTrace, DomEngineSettings, RDExt}
 import razie.diesel.ext._
 import razie.wiki.admin.Autosave
 import razie.wiki.model._
@@ -94,7 +95,7 @@ class DomApi extends DomApiBase  with Logging {
 
     Audit.logdb("DIESEL_FIDDLE_iRUNDOM", stok.au.map(_.userName).getOrElse("Anon"), s"EA : $e.$a", "spec: " + useThisSpec + " story: " + useThisStory)
 
-    val settings = DomEngineSettings.from(stok)
+    val settings = DomEngineHelper.settingsFrom(stok)
     val userId = settings.userId.map(new ObjectId(_)) orElse stok.au.map(_._id)
 
     val RES_API =
@@ -388,7 +389,7 @@ class DomApi extends DomApiBase  with Logging {
   /** proxy real service GET */
   def proxy(path: String) = RAction { implicit stok =>
     val engine = prepEngine(new ObjectId().toString,
-      DomEngineSettings.from(stok),
+      DomEngineHelper.settingsFrom(stok),
       stok.realm,
       None,
       false,
@@ -425,7 +426,7 @@ class DomApi extends DomApiBase  with Logging {
   def navigate() = FAUR { implicit stok =>
 
     val engine = prepEngine(new ObjectId().toString,
-      DomEngineSettings.from(stok),
+      DomEngineHelper.settingsFrom(stok),
       stok.realm,
       None,
       false,
@@ -441,7 +442,7 @@ class DomApi extends DomApiBase  with Logging {
   /** */
   def getEngineConfig() = FAUR { implicit stok =>
     val config = Autosave.OR("DomEngineConfig." + stok.realm, stok.au.get._id,
-      DomEngineSettings.fromRequest(stok.req).toJson
+      DomEngineHelper.settingsFromRequest(stok.req).toJson
     )
 
     retj << config
@@ -634,7 +635,7 @@ class DomApi extends DomApiBase  with Logging {
 
     Audit.logdb("DIESEL_FIDDLE_RUN", stok.au.map(_.userName).getOrElse("Anon"))
 
-    val settings = DomEngineSettings.from(stok)
+    val settings = DomEngineHelper.settingsFrom(stok)
 
     val reactor = stok.formParm("reactor")
     val specWpath = stok.formParm("specWpath")
@@ -657,7 +658,7 @@ class DomApi extends DomApiBase  with Logging {
       else
         SpecCache.orcached(p, WikiDomain.domFrom(p)).toList
     ).foldLeft(
-      WikiDomain.empty
+      RDomain.empty
     )((a,b) => a.plus(b)).revise.addRoot
 
     val ipage = new WikiEntry("Story", storyName, storyName, "md", story, uid, Seq("dslObject"), stok.realm)

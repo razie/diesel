@@ -14,6 +14,7 @@ import mod.diesel.controllers.{DieselMod, FiddleMod}
 import model.WikiUsersImpl
 import razie.audit.{Audit, MdbAuditService}
 import razie.db.{RMongo, RazMongo, UpgradeDb}
+import razie.diesel.engine.RDExt
 import razie.diesel.ext.Executors
 import razie.wiki.admin.SendEmail
 import razie.wiki.mods.WikiMods
@@ -63,11 +64,14 @@ class Module extends AbstractModule {
       Config.trustedSites.exists(x=>s.startsWith(x))
     }
 
-    mod.diesel.model.RDExt.init
+    RDExt.init
     WikiMods register new FiddleMod
     WikiMods register new DieselMod
 
     Executors.add (ModRkExec)
+
+    Executors.add (new mod.diesel.model.exec.EEFunc)
+    Executors.add (new mod.diesel.model.exec.EEWiki)
 
 //    WikiReactors.apply("rk") // weird stuff happens to diesel parser if I do this
     Audit.logdb("NODE_RESTARTED", Services.config.node)

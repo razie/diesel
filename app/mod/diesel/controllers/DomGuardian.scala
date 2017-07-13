@@ -1,17 +1,17 @@
 package mod.diesel.controllers
 
 import akka.actor.{Actor, Props}
-import controllers._
+import model.{User, Users}
+import controllers.RazRequest
 import mod.diesel.controllers.DomUtils.{SAMPLE_SPEC, SAMPLE_STORY}
-import mod.diesel.model.AstKinds._
-import mod.diesel.model._
-import model._
+import razie.diesel.dom.AstKinds._
 import org.bson.types.ObjectId
 import org.joda.time.DateTime
 import play.libs.Akka
 import razie.Logging
 import razie.diesel.dom.RDOM.O
-import razie.diesel.dom.{SimpleECtx, WikiDomain}
+import razie.diesel.dom.{DomAst, RDomain, SimpleECtx, WikiDomain}
+import razie.diesel.engine.{DieselAppContext, DomEngine, DomEngineSettings, RDExt}
 import razie.diesel.ext._
 import razie.hosting.Website
 import razie.wiki.Services
@@ -52,7 +52,8 @@ object DomGuardian extends Logging {
   }
 
   /** load all stories for reactor, either drafts or final */
-  def loadStories (settings:DomEngineSettings, reactor:String, au:Option[User], storyWpath:String) = {
+  def loadStories (settings:DomEngineSettings, reactor:String, userId:Option[ObjectId], storyWpath:String) = {
+    val uid = userId.getOrElse(new ObjectId())
     val pages =
       if (settings.blenderMode) {
         val list =
@@ -73,7 +74,7 @@ object DomGuardian extends Logging {
         val maybeDrafts = list.map { p =>
           //         if draft mode, find the auto-saved version if any
           if (settings.draftMode) {
-            val c = Autosave.find("DomFidStory." + reactor + "." + p.wid.wpath, au.get._id).flatMap(_.get("content")).mkString
+            val c = Autosave.find("DomFidStory." + reactor + "." + p.wid.wpath, uid).flatMap(_.get("content")).mkString
             if (c.length > 0) p.copy(content = c)
             else p
           } else p
@@ -82,11 +83,11 @@ object DomGuardian extends Logging {
       } else {
         val spw = WID.fromPath(storyWpath).flatMap(_.page).map(_.content).getOrElse(SAMPLE_SPEC)
         val specName = WID.fromPath(storyWpath).map(_.name).getOrElse("fiddle")
-        val spec = Autosave.OR("DomFidStory." + reactor + "." + storyWpath, au.get._id, Map(
+        val spec = Autosave.OR("DomFidStory." + reactor + "." + storyWpath, uid, Map(
           "content" -> spw
         )).apply("content")
 
-        val page = new WikiEntry("Story", specName, specName, "md", spec, au.get._id, Seq("dslObject"), reactor)
+        val page = new WikiEntry("Story", specName, specName, "md", spec, uid, Seq("dslObject"), reactor)
         List(page)
       }
     pages
@@ -102,8 +103,9 @@ object DomGuardian extends Logging {
                  au:Option[User],
                  useTheseStories:List[WikiEntry] = Nil,
                 addFiddles:Boolean=false) = {
+    val uid = au.map(_._id).getOrElse(new ObjectId())
 
-    val wids = Autosave.OR("DomFidPath." + reactor, au.get._id, Map(
+    val wids = Autosave.OR("DomFidPath." + reactor, uid, Map(
       "specWpath" -> """""",
       "storyWpath" -> """"""
     ))
@@ -113,7 +115,7 @@ object DomGuardian extends Logging {
     val stw = WID.fromPath(storyWpath).flatMap(_.page).map(_.content).getOrElse(SAMPLE_STORY)
     val storyName = WID.fromPath(storyWpath).map(_.name).getOrElse("fiddle")
 
-    val story = Autosave.OR("DomFidStory." + reactor + "." + storyWpath, au.get._id, Map(
+    val story = Autosave.OR("DomFidStory." + reactor + "." + storyWpath, uid, Map(
       "content" -> stw
     )).apply("content")
 
@@ -126,7 +128,7 @@ object DomGuardian extends Logging {
         val d = Wikis(reactor).pages("Spec").toList.map { p =>
           //         if draft mode, find the auto-saved version if any
           if (settings.draftMode) {
-            val c = Autosave.find("DomFidSpec." + reactor + "." + p.wid.wpath, au.get._id).flatMap(_.get("content")).mkString
+            val c = Autosave.find("DomFidSpec." + reactor + "." + p.wid.wpath, uid).flatMap(_.get("content")).mkString
             if (c.length > 0) p.copy(content = c)
             else p
           } else p
@@ -136,23 +138,23 @@ object DomGuardian extends Logging {
         var specWpath = wids("specWpath")
         val spw = WID.fromPath(specWpath).flatMap(_.page).map(_.content).getOrElse(SAMPLE_SPEC)
         val specName = WID.fromPath(specWpath).map(_.name).getOrElse("fiddle")
-        val spec = Autosave.OR("DomFidSpec." + reactor + "." + specWpath, au.get._id, Map(
+        val spec = Autosave.OR("DomFidSpec." + reactor + "." + specWpath, uid, Map(
           "content" -> spw
         )).apply("content")
 
-        val page = new WikiEntry("Spec", specName, specName, "md", spec, au.get._id, Seq("dslObject"), reactor)
+        val page = new WikiEntry("Spec", specName, specName, "md", spec, uid, Seq("dslObject"), reactor)
         List(page)
       }
 
     val dom = pages.flatMap(p =>
       SpecCache.orcached(p, WikiDomain.domFrom(p)).toList
     ).foldLeft(
-      WikiDomain.empty
+      RDomain.empty
     )((a, b) => a.plus(b)).revise.addRoot
 
     //    stimer snap "2_parse_specs"
 
-    val ipage = new WikiEntry("Story", storyName, storyName, "md", story, au.get._id, Seq("dslObject"), reactor)
+    val ipage = new WikiEntry("Story", storyName, storyName, "md", story, uid, Seq("dslObject"), reactor)
     val idom = WikiDomain.domFrom(ipage).get.revise addRoot
 
     //    stimer snap "3_parse_story"
@@ -178,72 +180,23 @@ object DomGuardian extends Logging {
 
   /* extract more nodes to run from the story - add them to root */
   def addStoryToAst(root: DomAst, stories: List[WikiEntry], justTests: Boolean = false, justMocks: Boolean = false, addFiddles:Boolean=false) = {
-    var lastMsg: Option[EMsg] = None
-    var lastMsgAst: Option[DomAst] = None
-    var lastAst: List[DomAst] = Nil
-    var inSequence = true
 
-    def addMsg(v: EMsg) = {
-      lastMsg = Some(v);
-      // withPrereq will cause the story messages to be ran in sequence
-      lastMsgAst = if (!(justTests || justMocks)) Some(DomAst(v, RECEIVED).withPrereq({
-        if (inSequence) lastAst.map(_.id)
-        else Nil
-      })) else None // need to reset it
-      lastAst = lastMsgAst.toList
-      lastAst
-    }
-
-    def addStory (story:WikiEntry) = {
-
-      if(stories.size > 1 || addFiddles)
-        root.children appendAll {
-          lastAst = List(DomAst(StoryNode(story.wid.wpath), "story").withPrereq(lastAst.map(_.id)))
-          lastAst
-        }
-
-      root.children appendAll WikiDomain.domFilter(story) {
-        case o: O if o.name != "context" => List(DomAst(o, RECEIVED))
-        case v: EMsg if v.entity == "ctx" && v.met == "storySync" => {
-          inSequence = true
-          Nil
-        }
-        case v: EMsg if v.entity == "ctx" && v.met == "storyAsync" => {
-          inSequence = false
-          Nil
-        }
-        case v: EMsg => addMsg(v)
-        case v: EVal => List(DomAst(v, RECEIVED))
-        case v: ERule => List(DomAst(v, RULE))
-        case v: EMock => List(DomAst(v, RULE))
-        case e: ExpectM if (!justMocks) => {
-          lastAst = List(DomAst(e.withGuard(lastMsg.map(_.asMatch)).withTarget(lastMsgAst), "test").withPrereq(lastAst.map(_.id)))
-          lastAst
-        }
-        case e: ExpectV if (!justMocks) => {
-          lastAst = List(DomAst(e.withGuard(lastMsg.map(_.asMatch)).withTarget(lastMsgAst), "test").withPrereq(lastAst.map(_.id)))
-          lastAst
-        }
-      }.flatten
-    }
-
-    if(!addFiddles) {
-      stories.foreach (addStory)
+    val allStories = if(!addFiddles) {
+      stories
     } else {
-      stories.foreach {story=>
-        addStory(story)
-
+      stories.flatMap {story=>
         // add sections - for each fake a page
-        story.sections.filter(s=>s.stype == "dfiddle" && (Array("spec","story") contains s.signature))
-        .foreach {sec=>
+        story :: story.sections.filter(s=>s.stype == "dfiddle" && (Array("spec","story") contains s.signature))
+        .map {sec=>
           val newPage = new WikiEntry(story.wid.cat, "fiddle", "fiddle", "md",
               sec.content,
               story.by, Seq("dslObject"), story.realm)
-
-          addStory(newPage)
+          newPage
         }
       }
     }
+
+    RDExt.addStoryToAst(root, allStories, justTests, justMocks, addFiddles)
   }
 
   /** start a check run. the first time, it will init the guardian and listeners */
@@ -328,7 +281,7 @@ object DomGuardian extends Logging {
 
       // run all stories not just the tests
       val engine = prepEngine(new ObjectId().toString, settings, realm, None, false, au,
-        loadStories (settings, realm, au, ""),
+        loadStories (settings, realm, au.map(_._id), ""),
         addFiddles
       )
 

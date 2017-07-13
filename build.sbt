@@ -1,11 +1,25 @@
+import play.PlayScala._
+import play.sbt.routes.RoutesKeys
+import play.twirl.sbt.Import.TwirlKeys
 
 scalaVersion := "2.11.8"
 
-retrieveManaged := true // copy libs in lib_managed
+name := "racerkidz"
 
 routesImport  ++= Seq("model.Binders._")
 
-libraryDependencies ++= Seq(
+lazy val commonSettings = Seq(
+  organization := "com.razie",
+  version := "0.9.2-SNAPSHOT",
+  scalaVersion := "2.11.8",
+
+  organizationName     := "Razie's Pub",
+  organizationHomepage := Some(url("http://www.razie.com")),
+  licenses := Seq("BSD-style" -> url("http://www.opensource.org/licenses/bsd-license.php")),
+  homepage := Some(url("http://www.razie.com"))
+)
+
+libraryDependencies in Global ++= Seq(
   cache,
   "commons-codec"         % "commons-codec"      % "1.4",
   "javax.mail"            % "mail"               % "1.4.5",
@@ -24,6 +38,74 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka"    %% "akka-slf4j"         % "2.4.2",
   "com.typesafe.akka"    %% "akka-camel"         % "2.4.2",
 
-  "com.typesafe"          % "config"             % "1.2.1" // last one, eh?
+    "com.googlecode.java-diff-utils"        % "diffutils"             % "1.2.1",
 
+// for snakked
+   "org.json"       % "json"            % "20160810",
+   "commons-jxpath" % "commons-jxpath"  % "1.3",
+   "org.scala-lang.modules" %% "scala-xml" % "1.0.3",
+
+    "org.antlr" % "antlr4" % "4.5.3",
+
+  "com.typesafe"          % "config"             % "1.2.1" // last one, eh?
 )
+
+lazy val root = (project in file(".")).enablePlugins(PlayScala)
+  .settings(
+    commonSettings,
+
+    unmanagedSourceDirectories in Compile += baseDirectory.value / "../snakked/base/src/main/scala",
+    unmanagedSourceDirectories in Compile += baseDirectory.value / "../snakked/core/src/main/scala",
+
+    unmanagedSourceDirectories in Compile += baseDirectory.value / "../coolscala/diesel/src/main/scala",
+    unmanagedSourceDirectories in Compile += baseDirectory.value / "../coolscala/common/app",
+    unmanagedSourceDirectories in Compile += baseDirectory.value / "../coolscala/wiki/app",
+
+    sourceDirectories in (Compile, TwirlKeys.compileTemplates) += baseDirectory.value / "../coolscala/wiki/app"
+  )//.aggregate(wcommon, wiki)
+
+/*lazy val wcommon = (project in file("modules/wcommon")).enablePlugins(PlayScala)
+  .settings(
+    commonSettings,
+
+    //unmanagedSourceDirectories in Compile += baseDirectory.value / "../snakked/base/src/main/scala",
+    //unmanagedSourceDirectories in Compile += baseDirectory.value / "../snakked/core/src/main/scala",
+
+    //unmanagedSourceDirectories in Compile += baseDirectory.value / "../coolscala/diesel/src/main/scala",
+    //unmanagedSourceDirectories in Compile += baseDirectory.value / "../coolscala/common/app",
+    //unmanagedSourceDirectories in Compile += baseDirectory.value / "../coolscala/wiki/app",
+
+    RoutesKeys.routesImport  += "model.Binders._"
+  )
+
+lazy val wiki = (project in file("modules/wiki")).enablePlugins(PlayScala)
+  .settings(
+    commonSettings,
+
+    //unmanagedSourceDirectories in Compile += baseDirectory.value / "../../snakked/base/src/main/scala",
+    //unmanagedSourceDirectories in Compile += baseDirectory.value / "../../snakked/core/src/main/scala",
+
+    //unmanagedSourceDirectories in Compile += baseDirectory.value / "../coolscala/diesel/src/main/scala",
+    //unmanagedSourceDirectories in Compile += baseDirectory.value / "../coolscala/common/app",
+    //unmanagedSourceDirectories in Compile += baseDirectory.value / "../coolscala/wiki/app"
+  )
+  .dependsOn(wcommon).aggregate(wcommon)*/
+
+resolvers +=
+  "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
+
+publishTo in Global := {
+  val nexus = "https://oss.sonatype.org/"
+  if (isSnapshot.value)
+    Some("snapshots" at nexus + "content/repositories/snapshots")
+  else
+    Some("releases"  at nexus + "service/local/staging/deploy/maven2")
+}
+
+publishMavenStyle := true
+
+publishArtifact in Test := false
+
+pomIncludeRepository := { x => false }
+
+

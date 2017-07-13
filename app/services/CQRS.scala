@@ -1,10 +1,9 @@
 package services
 
 import mod.diesel.controllers.DomFiddles
-import mod.diesel.model.DomEngineSettings
 import razie.wiki.Services
 import akka.actor.{Actor, Props}
-import controllers.{Emailer}
+import controllers.Emailer
 import model.EventNeedsQuota
 import razie.{clog, cout}
 import razie.wiki.Services
@@ -13,8 +12,10 @@ import razie.wiki.admin.SendEmail
 import razie.wiki.model._
 import com.google.inject.Singleton
 import razie.audit.Audit
+import razie.diesel.engine.DomEngineSettings
 import razie.diesel.model.{DieselMsg, DieselMsgString}
 import razie.wiki.model.features.WikiCount
+
 import scala.concurrent.ExecutionContext.Implicits.global
 
 /** main event dispatcher implementation */

@@ -1,26 +1,28 @@
 
+VER=0.9.2
+T=target/universal/racerkidz-${VER}-SNAPSHOT/lib
+
 rm -f RUNNING_PID
 
 p compile package dist
 
-rm -rf target/universal/racerkidz-0.9.1-SNAPSHOT
+rm -rf target/universal/racerkidz-${VER}-SNAPSHOT
 
 printf "\n\n####################unzipping...\n\n"
-unzip -d target/universal target/universal/racerkidz-0.9.1-SNAPSHOT.zip >/dev/null
+unzip -d target/universal target/universal/racerkidz-${VER}-SNAPSHOT.zip >/dev/null
 
-T=target/universal/racerkidz-0.9.1-SNAPSHOT/lib
 
 printf "\n\n####################copying remotely...\n\n"
 printf ".."
 
-## scp $T/com.razie.racerkidz-0.9.1-SNAPSHOT-sans-externalized.jar $T/com.razie.racerkidz-0.9.1-SNAPSHOT-assets.jar modules/wcommon/target/scala-2.11/wcommon_2.11-0.9.1-SNAPSHOT.jar modules/wiki/target/scala-2.11/wiki_2.11-0.9.1-SNAPSHOT.jar razvanc@cloud2a.razie.com:rk/up/
+## scp $T/com.razie.racerkidz-${VER}-SNAPSHOT-sans-externalized.jar $T/com.razie.racerkidz-${VER}-SNAPSHOT-assets.jar modules/wcommon/target/scala-2.11/wcommon_2.11-${VER}-SNAPSHOT.jar modules/wiki/target/scala-2.11/wiki_2.11-${VER}-SNAPSHOT.jar razvanc@cloud2a.razie.com:rk/up/
 
-scp $T/com.razie.racerkidz-0.9.1-SNAPSHOT-sans-externalized.jar $T/com.razie.racerkidz-0.9.1-SNAPSHOT-assets.jar $T/com.razie.wcommon-0.9.1-SNAPSHOT.jar $T/com.razie.wiki-0.9.1-SNAPSHOT.jar razvanc@cloud2a.razie.com:rk/up/
+scp $T/com.razie.racerkidz-${VER}-SNAPSHOT-sans-externalized.jar $T/com.razie.racerkidz-${VER}-SNAPSHOT-assets.jar $T/com.razie.wcommon-${VER}-SNAPSHOT.jar $T/com.razie.wiki-${VER}-SNAPSHOT.jar razvanc@cloud2a.razie.com:rk/up/
 
 if [ "$1" != "2" ]; then
   printf "\n\n####################copy from cloud2a to cloud3a...\n\n"
 
-  ssh razvanc@cloud2a.razie.com ". ~/.bashrc; scp ~/rk/up/com.razie.racerkidz-0.9.1-SNAPSHOT-sans-externalized.jar ~/rk/up/com.razie.racerkidz-0.9.1-SNAPSHOT-assets.jar ~/rk/up/com.razie.wcommon-0.9.1-SNAPSHOT.jar ~/rk/up/com.razie.wiki-0.9.1-SNAPSHOT.jar razvanc@cloud3a.razie.com:rk/up/"
+  ssh razvanc@cloud2a.razie.com ". ~/.bashrc; scp ~/rk/up/com.razie.racerkidz-${VER}-SNAPSHOT-sans-externalized.jar ~/rk/up/com.razie.racerkidz-${VER}-SNAPSHOT-assets.jar ~/rk/up/com.razie.wcommon-${VER}-SNAPSHOT.jar ~/rk/up/com.razie.wiki-${VER}-SNAPSHOT.jar razvanc@cloud3a.razie.com:rk/up/"
   
 fi
 
@@ -29,8 +31,6 @@ ssh razvanc@cloud2a.razie.com ". ~/.bashrc; cd ~/rk; . ./update"
 if [ "$1" != "2" ]; then
   ssh razvanc@cloud3a.razie.com ". ~/.bashrc; cd ~/rk; . ./update"
 fi
-
-
 
 ################### Docs
 #

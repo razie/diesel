@@ -6,16 +6,12 @@
   **/
 package mod.diesel.model.exec
 
-import controllers.Wikil
 import mod.diesel.controllers.SFiddles
-import mod.diesel.model.RDExt.{spec}
-import mod.diesel.model.{DEStartTimer, DieselAppContext}
-import razie.clog
 import razie.diesel.dom.RDOM._
 import razie.diesel.dom._
+import razie.diesel.engine.DieselJs
+import razie.diesel.engine.RDExt.spec
 import razie.diesel.ext.{MatchCollector, _}
-
-import scala.collection.mutable
 
 // the context persistence commands
 class EEFunc extends EExecutor("func") {
@@ -37,7 +33,7 @@ class EEFunc extends EExecutor("func") {
 
           val q = in.attrs.map(t => (t.name, t.dflt)).toMap
 
-          SFiddles.isfiddleMap(s, "js", None, None, q + ("diesel" -> ""), Some(qTyped(q, f) + ("diesel" -> new api.diesel.DieselJs(ctx))))._2
+          SFiddles.isfiddleMap(s, "js", None, None, q + ("diesel" -> ""), Some(qTyped(q, f) + ("diesel" -> new DieselJs(ctx))))._2
         } else
           "ABSTRACT FUNC"
       } catch {

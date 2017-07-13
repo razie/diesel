@@ -79,14 +79,14 @@ object Global extends WithFilters(LoggingFilter) {
   }
 
   override def onHandlerNotFound(request: RequestHeader)= {
-    clog << "ERR_onHandlerNotFound " + "request:" + request.toString + "headers:" + request.headers
-    Audit.logdb("ERR_onHandlerNotFound", "request:" + request.toString, "headers:" + request.headers)
+    clog << s"ERR_onHandlerNotFound " + "request:" + request.toString + "headers:" + request.headers
+    Audit.logdb("ERR_onHandlerNotFound", s"ip=${request.headers.get("X-Forwarded-For")}", "request:" + request.toString, "headers:" + request.headers)
     super.onHandlerNotFound(request)
   }
 
   override def onBadRequest(request: RequestHeader, error: String)= {
-    clog << ("ERR_onBadRequest " + "request:" + request.toString + "headers:" + request.headers + "error:" + error)
-    Audit.logdb("ERR_onBadRequest", "request:" + request.toString, "headers:" + request.headers, "error:" + error)
+    clog << (s"ERR_onBadRequest " + "request:" + request.toString + "headers:" + request.headers + "error:" + error)
+    Audit.logdb("ERR_onBadRequest", s"ip=${request.headers.get("X-Forwarded-For")}", "request:" + request.toString, "headers:" + request.headers, "error:" + error)
     super.onBadRequest(request, error)
   }
 
@@ -128,6 +128,12 @@ object Global extends WithFilters(LoggingFilter) {
       cdebug << ("ROUTE_REQ.STOP: " + request.toString)
 
     res
+  }
+
+  def isBadIp (request:RequestHeader) : Boolean = {
+    request.headers.get("X-Forwarded-For").exists(Config.badIps.contains(_)) ||
+      (request.toString startsWith "REMOTE HI_SRDK_DEV_")
+
   }
 
   override def onStart(app: Application) = {
@@ -228,7 +234,7 @@ object LoggingFilter extends Filter {
       !rh.uri.startsWith( "/razadmin/ping/shouldReload") &&
       !rh.uri.startsWith("/diesel/status")
     )
-      cdebug << s"LF.START ${rh.method} ${rh.uri}"
+      cdebug << s"LF.START ${rh.method} ${rh.host} ${rh.uri}"
     GlobalData.synchronized {
       GlobalData.serving = GlobalData.serving + 1
     }
@@ -258,9 +264,16 @@ object LoggingFilter extends Filter {
 
     def isAsset = rh.uri.startsWith( "/assets/") || rh.uri.startsWith("/favicon")
 
+    def getType =
+      if(isAsset) "ASSET"
+      else "PAGE"
+
     try {
       next(rh) map { res =>
-        logTime(rh)(if(isAsset) "ASSET" else "PAGE")(res)
+        if(res.header.status == 200)
+          logTime(rh)(getType)(res)
+        else
+          logTime(rh)(getType)(res)
       }
     } catch {
       case t: Throwable => {
