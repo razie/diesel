@@ -349,7 +349,7 @@ object DomFiddles extends DomApi with Logging {
     val spec = fParm("spec")
     val story = fParm("story")
 
-    if(!(stok.au.get.isAdmin && reactor=="specs")) {
+    if(!stok.au.get.isAdmin && reactor=="specs") {
       Msg("You can't save in this reactor - if you want to create stories, please create your own")
     } else {
     //1. which wids were you looking at last?
@@ -362,11 +362,11 @@ object DomFiddles extends DomApi with Logging {
 
     if(newName.length > 0) {
       if(what == "Spec") {
-        var we = WikiEntry("Spec", newName, newName, "md", spec, stok.au.get._id, Seq("spec", "dsl"), Website.realm, 1)
+        var we = WikiEntry("Spec", newName, newName, "md", spec, stok.au.get._id, Seq("spec", "dsl"), stok.realm, 1)
         we.create
         Services ! WikiAudit(WikiAudit.UPD_EDIT, we.wid.wpathFull, Some(stok.au.get._id), None, Some(we), None)
       } else if (what == "Story") {
-        var we = WikiEntry("Story", newName, newName, "md", story, stok.au.get._id, Seq("story", "dsl"), Website.realm, 1)
+        var we = WikiEntry("Story", newName, newName, "md", story, stok.au.get._id, Seq("story", "dsl"), stok.realm, 1)
         we.create
         Services ! WikiAudit(WikiAudit.UPD_EDIT, we.wid.wpathFull, Some(stok.au.get._id), None, Some(we), None)
       }
