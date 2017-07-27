@@ -1,12 +1,11 @@
 package services
 
 import mod.diesel.controllers.DomFiddles
-import razie.wiki.Services
 import akka.actor.{Actor, Props}
 import controllers.Emailer
 import model.EventNeedsQuota
 import razie.{clog, cout}
-import razie.wiki.Services
+import razie.wiki.{EventProcessor, Services}
 import play.libs.Akka
 import razie.wiki.admin.SendEmail
 import razie.wiki.model._
@@ -20,7 +19,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 /** main event dispatcher implementation */
 @Singleton
-class RkCqrs extends Services.EventProcessor {
+class RkCqrs extends EventProcessor {
   lazy val auditor = Akka.system.actorOf(Props[WikiAsyncObservers], name = "WikiAsyncObservers")
 
   def !(a: Any) {

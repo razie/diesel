@@ -38,6 +38,7 @@ import scala.util.Try
 import razie.Snakk._
 import razie.audit.{Audit, ClearAudits}
 import razie.wiki.Sec._
+import razie.wiki.util.DslProps
 
 import scala.collection.JavaConversions._
 import scala.concurrent.Future
@@ -611,7 +612,8 @@ object AdminDiff extends AdminBase {
   }
 
   /** get list of pages - invoked by remote trying to sync */
-  def wlist(reactor:String, hostname:String, me:String, cat:String) = FAD { implicit au =>
+  // todo auth that user belongs to realm
+  def wlist(reactor:String, hostname:String, me:String, cat:String) = FAU { implicit au =>
     implicit errCollector => implicit request =>
       if (hostname.isEmpty) {
         val l =
@@ -630,7 +632,8 @@ object AdminDiff extends AdminBase {
   }
 
   /** show the list of diffs to remote */
-  def difflist(reactor:String, target:String) = FAD { implicit au =>
+  // todo auth that user belongs to realm
+  def difflist(reactor:String, target:String) = FAU { implicit au =>
     implicit errCollector => implicit request =>
       try {
         val b = body(url(s"http://$target/razadmin/wlist/$reactor").basic("H-"+au.emailDec, "H-"+au.pwd.dec))
@@ -675,7 +678,8 @@ object AdminDiff extends AdminBase {
   }
 
   /** compute and show diff for a WID */
-  def showDiff(side:String, target:String, wid:WID) = FAD { implicit au =>
+  // todo auth that user belongs to realm
+  def showDiff(side:String, target:String, wid:WID) = FAU { implicit au =>
     implicit errCollector => implicit request =>
       getWE(target, wid).fold({t=>
         val remote = t._1.content
@@ -699,7 +703,8 @@ object AdminDiff extends AdminBase {
   }
 
   // create the remote
-  def applyDiffCr(target:String, wid:WID) = FADR { implicit request =>
+  // todo auth that user belongs to realm
+  def applyDiffCr(target:String, wid:WID) = FAUR { implicit request =>
       try {
         val content = wid.content.get
 
@@ -715,7 +720,8 @@ object AdminDiff extends AdminBase {
   }
 
   // to remote
-  def applyDiff(target:String, wid:WID) = FADR { implicit request =>
+  // todo auth that user belongs to realm
+  def applyDiff(target:String, wid:WID) = FAUR { implicit request =>
       try {
         val page = wid.page.get
         val b = body(
@@ -734,6 +740,7 @@ object AdminDiff extends AdminBase {
   }
 
   // from remote
+  // todo auth that user belongs to realm
   def applyDiff2(target:String, wid:WID) = FADR {implicit request =>
       getWE(target, wid)(request.au.get).fold({t =>
         val b = body(url(s"http://localhost:9000/wikie/setContent/${wid.wpathFull}").form(Map("we" -> t._2)).basic("H-"+request.au.get.emailDec, "H-"+request.au.get.pwd.dec))
@@ -764,7 +771,7 @@ object AdminDiff extends AdminBase {
     }
   }
 
-  def remoteWids (source:String, realm:String, me:String, cat:String, au:User) = {
+  def remoteWids (source:String, realm:String, me:String, cat:String, au:User) : List[WID] = {
     val b = body(url(s"http://$source/razadmin/wlist/$realm?me=$me&cat=$cat").basic("H-" + au.emailDec, "H-" + au.pwd.dec))
 
     val gd = new JSONArray(b)
@@ -814,6 +821,8 @@ object AdminDiff extends AdminBase {
 
       // init realms and cats
 
+      // todo count is not accurate: include mixins, see the import below
+
       val ldest = List(
         "rk.Reactor:rk",
         "wiki.Reactor:wiki"
@@ -858,13 +867,32 @@ object AdminDiff extends AdminBase {
       val realm = fqhParm("realm").get
       val key = System.currentTimeMillis().toString
 
+    // get mixins
+    cout << "============ get mixins"
+      val m = WID.fromPath(s"$realm.Reactor:$realm").map(wid=>getWE(source, wid)(au).fold({ t=>
+        val m = new DslProps(Some(t._1), "website")
+          .prop("mixins")
+          .getOrElse(realm)
+        cout << "============ mixins: "+ m
+        m + ","+realm // add itself to mixins
+  }, { err =>
+        cout << "============ ERR-IMPORT DB: " + err
+        ""
+      }
+    )).getOrElse(realm)
+
       val ldest = List(
         "rk.Reactor:rk",
         "wiki.Reactor:wiki"
       ).map(x=> WID.fromPath(x).get) :::
         remoteWids (source, "rk", request.host, "Category", au) :::
         remoteWids (source, "wiki", request.host, "Category", au) :::
-        remoteWids (source, realm, request.host, "", au)
+        (m.split(",")
+          .toList
+          .distinct
+          .filter(r=>r.length > 0 && !Array("rk", "wiki").contains(r))
+          .flatMap(r => remoteWids (source, r, request.host, "", au))
+          )
 
       var count = 0
       var total = ldest.size

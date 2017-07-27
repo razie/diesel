@@ -3,6 +3,7 @@ package mod.diesel.model
 import mod.diesel.controllers.SFiddles
 import model._
 import play.api.mvc.Request
+import model.MiniScripster
 import razie.diesel.dom.RDOM.C
 import razie.wiki.model.{UWID, WikiEntry, WikiSection, Wikis}
 
@@ -62,7 +63,7 @@ abstract class DieselReactor(
     val body = bodies.find(_.name == event)
     body.map { b =>
       assert(b.lang == dom.lang, "unknown language: "+b.lang + " domain lang is: "+dom.lang)
-      SFiddles.isfiddleMap(addImports(dom.script, b.script), b.lang, Some(b.we), Some(au), args)._2
+      MiniScripster.isfiddleMap(addImports(dom.script, b.script), b.lang, Some(b.we), Some(au), args)._2
     }.getOrElse("ERR - no body found for event: "+event+" in reactor: "+reactor.page.map(_.wid.wpath).mkString)
   }
 

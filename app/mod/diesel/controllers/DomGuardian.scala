@@ -34,7 +34,7 @@ object DomGuardian extends Logging {
     f(asts)
   }
 
-  // statically collect more asts
+  /** statically collect more asts */
   def collectAst (stream:String, xid:String, root:DomAst) = synchronized {
     if (asts.size > 100) asts = asts.take(99)
     asts = (stream, xid, root) :: asts
@@ -93,7 +93,8 @@ object DomGuardian extends Logging {
     pages
   }
 
-  /** prepare an engine
+  /**
+    * prepare an engine, loading an entire reactor/realm
     */
   def prepEngine(id: String,
                  settings: DomEngineSettings,

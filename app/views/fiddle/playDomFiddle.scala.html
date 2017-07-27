@@ -63,11 +63,12 @@ a JS with HTML and CSS fiddle
 
   <div class="row" style="align-items:center;">
     <div id="title3a_@id" class="col-sm-6" style="font-size: small">Story <span class="label label-default" onclick="openStory();">...</span>
-  </div>
+      <input type="checkbox" id="expandedStory" title="Expand/collapse story" checked> <small>(show/hide)</small>
+    </div>
     <div id="title3b_@id" class="col-sm-6" style="font-size: small">
   </div>
   </div>
-  <div class="row" style="align-items:center;">
+  <div id="storyRow" class="row" style="align-items:center;">
     <div id="divIn3_@id" class="col-sm-6" style="">
       <pre id="pre3_@id" style="height:228px; ">@story</pre>
     </div>
@@ -89,7 +90,8 @@ a JS with HTML and CSS fiddle
       <pre id="pre1_@id" style="height:228px; ">@spec</pre>
     </div>
     <div class="col-sm-6 well" id="divOut1_@id" style="overflow: scroll; margin-bottom:2px">
-  </div>
+    </div>
+    <pre class="col-sm-6" id="iframeOut1_@id" style="padding:1px; Xtext-align: center; display: none">Start typing...</pre>
   </div>
 
 
@@ -242,8 +244,10 @@ var runpill2_@id = function(id) {
     success: function(data) {
       if($('#wikiMode').prop('checked'))
         $('#divOut3_'+id).html(data.wiki);
-      else
-        $('#iframeOut3_'+id).html(data.res+'\n');
+      else {
+        $('#iframeOut3_' + id).html(data.res + '\n');
+        $('#iframeOut1_' + id).html(data.res + '\n');
+      }
       $('#iframeOut5_'+id).html(data.capture);
       instContentAssist = data.ca;
       setErrors(data.failureCount);
@@ -278,10 +282,15 @@ var domChanged=true;
 var instChanged=true;
 var captureChanged=true;
 
+var editor;
+var editor1;
+var editor5;
+
+function attachAce() {
   var langTools = ace.require("ace/ext/language_tools");
 
-  var editor = ace.edit("pre3_@id");
-  var editor1 = ace.edit("pre1_@id");
+  editor = ace.edit("pre3_@id");
+  editor1 = ace.edit("pre1_@id");
 
   @if(stok.isLight) {
   editor1.setTheme ( "ace/theme/crimson_editor" ) ;
@@ -293,7 +302,7 @@ var captureChanged=true;
   editor1.getSession().setMode("ace/mode/nvp1");
   editor.getSession().setMode("ace/mode/nvp1");
 
-  var editor5 = ace.edit("pre5_@id");
+  editor5 = ace.edit("pre5_@id");
   @if(stok.isLight) {
   editor5.setTheme ( "ace/theme/crimson_editor" ) ;
 } else {
@@ -359,6 +368,9 @@ editor.commands.addCommand({
   editor5.getSession().on('change', function(e) {
     captureChanged=true;
   });
+}
+
+attachAce();
 
 setInterval(function(){
    if(domChanged || captureChanged) {
@@ -514,17 +526,46 @@ function saveNew(what) {
 
 // it's on load because otherwise the div has no contents
 $(window).load (function() {
+  // make sure for new users it will be open
+  if(localStorage.getItem("domFiddleExpandedStory") == null)
+    localStorage.setItem("domFiddleExpandedStory", true);
+  if(localStorage.getItem("domFiddleExpandedSpec") == null)
+    localStorage.setItem("domFiddleExpandedSpec", true);
+
+  useLocalStorageCheckbox("expandedStory", "domFiddleExpandedStory", function (a,b,expanded) {
+    if(expanded) {
+      $("#storyRow").show();
+      $("#divIn1_@id").css("height", "228px");
+      $("#pre1_@id").css("height", "228px");
+      $("#divOut1_@id").show();
+      $("#iframeOut1_@id").css("max-height", "228px");
+      $("#iframeOut1_@id").hide();
+      attachAce();
+    } else {
+      $("#storyRow").hide();
+      $("#divIn1_@id").css("height", "428px");
+      $("#pre1_@id").css("height", "428px");
+      $("#divOut1_@id").hide();
+      $("#iframeOut1_@id").css("max-height", "428px");
+      $("#iframeOut1_@id").show();
+      attachAce();
+    }
+  });
   useLocalStorageCheckbox("expandedSpec", "domFiddleExpandedSpec", function (a,b,expanded) {
     if(expanded) {
       $("#specRow").show();
+      $("#divIn3_@id").css("height", "228px");
       $("#pre3_@id").css("height", "228px");
       $("#divOut3_@id").css("max-height", "228px");
       $("#iframeOut3_@id").css("max-height", "228px");
+      attachAce();
     } else {
       $("#specRow").hide();
+      $("#divIn3_@id").css("height", "428px");
       $("#pre3_@id").css("height", "428px");
       $("#divOut3_@id").css("max-height", "428px");
       $("#iframeOut3_@id").css("max-height", "428px");
+      attachAce();
     }
   });
 });

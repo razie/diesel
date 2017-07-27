@@ -6,9 +6,7 @@
  */
 package model
 
-import mod.diesel.controllers.SFiddles
-import razie.audit.Audit
-import razie.{CSTimer, csys}
+import model.MiniScripster
 import razie.wiki.model.WikiUser
 import razie.wiki.model.WikiEntry
 
@@ -22,7 +20,7 @@ trait WikiScripster {
 }
 
 /** simple scripts runner - I do customize it further only to setup some context available to the scripts... */
-object WikiScripster {
+object WikiScripster extends razie.Logging {
   var count = 0
   var impl: WikiScripster = new JSWikiScripster
   var implScala: WikiScripster = new CWikiScripster
@@ -34,7 +32,7 @@ object WikiScripster {
     /** run the given script in the context of the given page and user as well as the query map */
     def runScriptAny (s:String, lang: String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, String], devMode:Boolean=false): Any = synchronized {
       try {
-        val res = SFiddles.newsfiddleMap(s, lang, page, user, query, None, false)
+        val res = MiniScripster.newsfiddleMap(s, lang, page, user, query, None, false)
         if(res._1) res._2 else "ERR: " + res._2
       } catch {
         case ex: Throwable => { // any exceptions, get a new parser
@@ -51,51 +49,14 @@ object WikiScripster {
     }
   }
 
-  class CWikiScripster extends WikiScripster {
-
-    //TODO this must be initialized later, but i'm not taking advantage of doing it on separate threads...
-    var wikiCtx: Option[razie.base.scriptingx.NoBindSbtScalaContext] = None
-    private def ctx = {
-      if (!wikiCtx.isDefined) {
-        wikiCtx = Some(new razie.base.scriptingx.NoBindSbtScalaContext())
-      }
-      wikiCtx.get
-    }
+  class CWikiScripster extends WikiScripster with ScalaScripster {
 
     def mk = new CWikiScripster
 
     /** run the given script in the context of the given page and user as well as the query map */
-    def runScriptAny (s:String, lang: String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, String], devMode:Boolean=false): Any = synchronized {
-      import razie.base.scriptingx._
-
-      Audit.logdb("WIKI_SCRIPSTER", "exec", lang+":"+s)
-      try {
-        val c = new CSTimer("script", "?")
-        c.start()
-        val res = (ScalaScript(s).interactive(ctx) getOrElse "?")
-        ctx.clear // make sure there's nothing for hackers
-        c.stop()
-
-        // must get new parser every 50 times
-        count = count + 1
-        if (count % 20 == 0) {
-          impl = mk // separate promise will create in background
-          csys << "newParser"
-        }
-        res
-      } catch {
-        case ex: Throwable => { // any exceptions, get a new parser
-          wikiCtx = None
-          razie.Log.log("ERR WikiScripster: ", ex)
-          if(true || devMode) throw ex
-          else "?"
-        }
-      }
-    }
-
-    /** run the given script in the context of the given page and user as well as the query map */
-    def runScript(s:String, lang: String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, String], devMode:Boolean=false): String = synchronized {
+    def runScript(s:String, lang: String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, String], devMode:Boolean=false): String = {
       runScriptAny(s, lang, page, user, query, devMode).toString
     }
   }
+
 }

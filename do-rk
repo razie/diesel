@@ -1,12 +1,15 @@
-rm -f RUNNING_PID
+VER=0.9.2
 RK=~/w/racerkidz
+T=$RK/target/universal/racerkidz-${VER}-SNAPSHOT/lib
+
+rm -f RUNNING_PID
 
 p compile package dist
-rm -rf $RK/target/universal/racerkidz-0.9.1-SNAPSHOT
-unzip -d $RK/target/universal target/universal/racerkidz-0.9.1-SNAPSHOT.zip >/dev/null
 
+rm -rf target/universal/racerkidz-${VER}-SNAPSHOT
 
-# T=$RK/target/universal/racerkidz-0.9.1-SNAPSHOT/lib
+printf "\n\n####################unzipping...\n\n"
+unzip -d target/universal target/universal/racerkidz-${VER}-SNAPSHOT.zip >/dev/null
 
 printf "\n\n#################### building image now...\n\n"
 printf ".."
@@ -14,8 +17,8 @@ printf ".."
 cd $RK/docker/rk
 
 rm -rf dist
-cp -r $RK/target/universal/racerkidz-0.9.1-SNAPSHOT .
-mv racerkidz-0.9.1-SNAPSHOT dist
+cp -r $RK/target/universal/racerkidz-${VER}-SNAPSHOT .
+mv racerkidz-${VER}-SNAPSHOT dist
 rm dist/conf/application.conf
 mv dist/conf/application.docker.conf dist/conf/application.conf
 cp $RK/key.docker key

@@ -25,7 +25,7 @@ object Config extends WikiConfig {
 //      "www.racerkidz.com"    // for testing locally
 //      "www.effectiveskiing.com"    // for testing locally
 //    "specs.dieselapps.com"    // for testing locally
-    "urlfwd.www.funontrails.com"    // for testing locally
+    "herc-cc.dieselapps.com"    // for testing locally
 //    "www.dieselapps.com"    // for testing locally
 //    "wiki.dieselapps.com"    // for testing locally
 //    "catsim.dieselapps.com"    // for testing locally

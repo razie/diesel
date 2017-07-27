@@ -10,7 +10,7 @@ import com.mongodb.casbah.Imports._
 import com.novus.salat._
 import controllers.{RazController, VErrors}
 import razie.hosting.Website
-import model.{Tags}
+import model.Tags
 import razie.db.RazSalatContext._
 import com.mongodb.{BasicDBObject, DBObject}
 import razie.db.{RMany, ROne, RazMongo}
@@ -20,6 +20,7 @@ import razie.audit.Audit
 import razie.wiki.model.{WID, WikiEntry, Wikis}
 import razie.wiki.util.PlayTools
 import razie.{Logging, cout}
+import model.MiniScripster
 import razie.wiki.admin.Autosave
 import razie.diesel.dom._
 
@@ -88,7 +89,7 @@ object DieselControl extends RazController with Logging {
             val c = dom.mkCompiler("js")
             val x = c.compileAll ( c.not {case fx:RDOM.F if fx.name == f.name => true})
             val s = x + "\n" + f.script
-            SFiddles.isfiddleMap(s, "js", Some(we), stok.au, q, Some(qTyped(q,f)))._2
+            MiniScripster.isfiddleMap(s, "js", Some(we), stok.au, q, Some(qTyped(q,Some(f))))._2
           } else
             "ABSTRACT FUNC"
         } catch {

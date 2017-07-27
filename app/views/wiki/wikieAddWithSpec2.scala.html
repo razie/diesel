@@ -27,7 +27,24 @@ create new page given a template
         Give it a name...
       }
     }
-    <p></p><p>Name: <input type="text" class="input-lg" name="name" placeholder="Name" value="@name">
+
+    <p></p><p>
+      <div class="form-group">
+      <label for="name">Name:</label> <input type="text" class="input-lg" name="name" placeholder="Name" value="@name">
+  </div>
+
+    @if(cat == "Reactor") {
+  <p></p>
+      <div class="form-group">
+    <label for="access">Default access:</label>
+        <select name="access">
+          <option value="Public">Public - anyone can see content</option>
+          <option value="Member">Member - only members can see content</option>
+        </select>
+  </div>
+        @*<input type="text" class="input-lg" name="name" placeholder="Name" value="@name">*@
+    }
+
     <hr>
     <p>More particulars:</p>
   }

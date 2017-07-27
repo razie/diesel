@@ -7,7 +7,7 @@
  * inputId and storageName should be same... however, the storageName should have a pageId to avoid conflicts with other pages...
  */
 function useLocalStorageCheckbox (inputId, storageName, callback) {
-  if(localStorage.getItem(storageName) != 'undefined')
+  if(localStorage.getItem(storageName) != null)
     $('#'+inputId).prop('checked', localStorage.getItem(storageName) === 'true');
 
   function updConfirm() {
@@ -244,6 +244,27 @@ function iweMsg(ea,p,what,succ) {
       error: function (x) {
         // readyState=4  is failure to parse json reply
         if(x.status == "200" && typeof succ == 'function') succ(x.responseText);
+        console.log("ERR " + JSON.stringify(x));
+      }
+    });
+  return false;
+}
+
+
+/** add a bad ip to the list
+ */
+function weBadIp(ip) {
+  var u = '/doe/fiddle/react/'+ea+'?resultMode='+what+'&'+p
+  $.ajax(
+    u, {
+      type: 'POST',
+      data: $.param({
+        ip : ip
+      }),
+      contentType: 'application/x-www-form-urlencoded',
+      success: function (data) {
+      },
+      error: function (x) {
         console.log("ERR " + JSON.stringify(x));
       }
     });

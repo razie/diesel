@@ -8,7 +8,7 @@ package mod.diesel.model
 
 import controllers.RazRequest
 import razie.diesel.engine.RDExt._
-import play.api.mvc.{AnyContent, Request}
+import play.api.mvc.{AnyContent, Request, RequestHeader}
 import razie.diesel.engine._
 
 import scala.Option.option2Iterable
@@ -65,6 +65,38 @@ object DomEngineHelper {
           Some(new EEContent(request.body.asJson.mkString, request.contentType.get))
         } else None
       }
+    )
+  }
+
+  /** take the settings from request header */
+  def settingsFromRequestHeader(request:RequestHeader, cont:Option[EEContent]) = {
+    val q = request.queryString.map(t=>(t._1, t._2.mkString))
+
+    def fParm(name:String) : Option[String] = None
+
+    // from query or body
+    def fqParm(name:String, dflt:String) =
+      q.get(name).orElse(fParm(name)).getOrElse(dflt)
+
+    def fqhParm(name:String) =
+      q.get(name).orElse(fParm(name)).orElse(request.headers.get(name))
+
+    def fqhoParm(name:String, dflt:String) =
+      q.get(name).orElse(fParm(name)).orElse(request.headers.get(name)).getOrElse(dflt)
+
+    import DomEngineSettings._
+
+    new DomEngineSettings(
+      mockMode = fqhoParm(MOCK_MODE, "true").toBoolean,
+      blenderMode = fqhoParm(BLENDER_MODE, "true").toBoolean,
+      draftMode = fqhoParm(DRAFT_MODE, "true").toBoolean,
+      sketchMode = fqhoParm(SKETCH_MODE, "false").toBoolean,
+      execMode = fqhoParm(EXEC_MODE, "sync"),
+      resultMode = fqhoParm(RESULT_MODE, "json"),
+      parentNodeId = fqhParm("dieselNodeId"),
+      configTag = fqhParm("dieselConfigTag"),
+      userId = fqhParm("dieselUserId"),
+      cont
     )
   }
 }

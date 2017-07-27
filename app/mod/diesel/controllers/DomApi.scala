@@ -1,16 +1,20 @@
 package mod.diesel.controllers
 
+import java.util.regex.Pattern
+
 import difflib.{DiffUtils, Patch}
 import DomGuardian.{addStoryToAst, collectAst, prepEngine, startCheck}
 import mod.diesel.controllers.DomSessions.Over
 import razie.diesel.engine.RDExt._
 import mod.diesel.model._
+import mod.diesel.model.exec.EESnakk
 import model._
 import org.bson.types.ObjectId
 import org.joda.time.DateTime
 import play.api.mvc._
 import play.twirl.api.Html
 import razie.audit.Audit
+import razie.diesel.dom.RDOM.P
 import razie.diesel.dom._
 import razie.diesel.engine.{DieselAppContext, DieselTrace, DomEngineSettings, RDExt}
 import razie.diesel.ext._
@@ -20,7 +24,9 @@ import razie.{Logging, js}
 
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, Future}
+import scala.util.Try
 
 /** controller for server side fiddles / services */
 class DomApi extends DomApiBase  with Logging {
@@ -84,11 +90,10 @@ class DomApi extends DomApiBase  with Logging {
     irunDom(e, a, None).apply(request)
   }
 
-
   /** execute message to given reactor
     *
-    * @param useThisOne  if nonEmpty then will use this (find it first) plus blender
-    * @param useThisPage if nonEmpty then will use this plus blender
+    * @param useThisStory  if nonEmpty then will use this (find it first) plus blender
+    * @param useThisStoryPage if nonEmpty then will use this plus blender
     */
   private def irunDom(e: String, a: String, useThisStory: Option[WID], useThisStoryPage: Option[WikiEntry] = None, useThisSpec: Option[WID] = None, useThisSpecPage: Option[WikiEntry] = None) = RActiona { implicit stok =>
     val reactor = stok.realm
@@ -115,7 +120,7 @@ class DomApi extends DomApiBase  with Logging {
     val pages = if(settings.blenderMode) { // blend all specs and stories
       val stories = if(settings.sketchMode) Wikis(reactor).pages("Story")./*filter(_.name != stw.get.name).*/toList else Nil
       val specs = Wikis(reactor).pages("Spec").toList
-      val d = (specs./*filter(_.name != spw.get.name).*/toList ::: stories).map{ p=> // if draft mode, find the auto-saved version if any
+      val d = (specs ::: stories).map{ p=> // if draft mode, find the auto-saved version if any
         if(settings.draftMode) {
           val c = Autosave.find("DomFid"+p.category+"."+reactor+ "."+ p.wid.wpath, userId).flatMap(_.get("content")).mkString
           if(c.length > 0)  p.copy(content=c)
@@ -385,6 +390,134 @@ class DomApi extends DomApiBase  with Logging {
       Ok(js.tojsons(ret).toString).as("application/json")
     }
   }
+
+
+  /**
+    * deal with a REST request. use the in/out for message
+    *
+    * force the raw parser, to deal with all content types
+    */
+  def runRest(path: String, verb:String, mock:Boolean) = Action(parse.raw) { implicit request =>
+    val stok = razRequest
+
+    stok.qhParm("dieselHttpResponse").filter(_ != "200").map {code =>
+      new Status(code.toInt)
+        .apply("template not found for path: "+path)
+        .withHeaders("diesel-reason" -> s"client requested dieselHttpResponse $code in realm ${stok.realm}")
+    }.getOrElse {
+
+      val PAT = """(\w*)\.(\w*)""".r
+      val PAT(e, a) = path
+
+      val uid = stok.au.map(_._id).getOrElse(NOUSER)
+
+      val body = request.body.asBytes().map(a => new String(a)).getOrElse("")
+      val content = Some(new EEContent(body, request.contentType.mkString))
+
+      val settings = DomEngineHelper.settingsFromRequestHeader(stok.req, content)
+      settings.mockMode = mock
+
+      clog << s"RUN_REST_REQUEST verb:$verb mock:$mock path:$path realm:${stok.realm}\nheaders: ${request.headers}" + body
+
+      val engine = prepEngine(new ObjectId().toString,
+        settings,
+        stok.realm,
+        None,
+        false,
+        stok.au,
+        // empty story so nothing is added to root
+        List(new WikiEntry("Story", "temp", "temp", "md", "", uid, Seq("dslObject"), stok.realm))
+      )
+
+      // does the current request match the template?
+      def matchesRequest(tpath: String, rpath: String) = {
+        val a = rpath.split("/")
+        val b = tpath.split("/")
+
+        a.zip(b).foldLeft(true)((a, b) => a && b._1 == b._2 || b._2.matches("""\$\{([^\}]*)\}"""))
+      }
+
+      // message specified return mappings, if any
+      val inSpec = spec(e, a)(engine.ctx).toList.flatMap(_.attrs)
+      val outSpec = spec(e, a)(engine.ctx).toList.flatMap(_.ret)
+
+      // collect any parm specs
+      val inSpecs = inSpec.map(p => (p.name, p.dflt, p.expr.mkString))
+      val outSpecs = outSpec.map(p => (p.name, p.dflt, p.expr.mkString))
+
+      // find template
+      engine.ctx.findTemplate(path).map { template =>
+        val sc = EESnakk.parseTemplate(Some(template), template.content, Nil)
+
+        // turn template into regex
+        var re = sc.content.replaceAll("""\$\{(.+)\}""", "$1")
+        re = re.replaceAll("""\$(\w+)""", "(?<$1>.*)")
+        re = re.replaceAll("""[\r\n ]""", """\\s*""")
+        re = "(?sm)" + re + ".*"
+
+        // find and make message with parms
+        val jrex = Pattern.compile(re).matcher(body)
+        //          val hasit = jrex.find()
+        val parms = if (jrex.find())
+          (
+            for (g <- inSpecs)
+              yield (
+                g._1,
+                Try {
+                  jrex.group(g._1)
+                }.getOrElse(g._2)
+              )
+            ).toList
+        else Nil
+
+        // execute message
+        val msg = new EMsg("", e, a, parms.map(p => P(p._1, p._2)))
+
+        RDExt.addMsgToAst(engine.root, msg)
+
+        val res = engine.process.map { engine =>
+          //        val res = engine.extractValues(e, a)
+
+          // find output template and format output
+          val templateResp = engine.ctx.findTemplate(e + "." + a, "resp")
+          templateResp.map { t =>
+            //          val s = EESnakk.formatTemplate(t.content, ECtx(res))
+            // engine.ctx accumulates results and we add the input
+
+            // templates strt with a \n normally
+            val content = t.content.replaceFirst("^\\n", "")
+
+            val allValues = new StaticECtx(msg.attrs, Some(engine.ctx))
+            val s = EESnakk.formatTemplate(content, allValues)
+
+            clog << s"RUN_REST_REPLY $verb $mock $path\n" + s
+            val ctype = t.parms.find(_._1.compareToIgnoreCase("content-type") == 0).map(_._2).map(stripQuotes).getOrElse("text/plain")
+            Ok(s).as(ctype)
+          }.getOrElse {
+            clog << s"RUN_REST_REQUEST $verb $mock $path\n" + "No template"
+            Ok(s"No response template for $e $a")
+              .withHeaders("diesel-reason" -> s"response template not found for $path in realm ${stok.realm}")
+          }
+        }
+        Await.result(res, Duration("5seconds"))
+      } getOrElse {
+        //      Future.successful(
+        NotFound("template not found for path: " + path)
+          .withHeaders("diesel-reason" -> s"template not found for $path in realm ${stok.realm}")
+        //      )
+      }
+      //          val tpath = if(turl startsWith "http://") {
+      //            turl.replaceFirst("https?://", "").replaceFirst(".*/", "/")
+      //          } else turl
+      //          matchesRequest(tpath, stok.req.path)
+    }
+  }
+
+  def mock(path: String) = runRest(path, "GET", true)
+  def mockPost(path: String) = runRest(path, "POST", true)
+
+  def rest(path: String) = runRest(path, "GET", false)
+  def restPost(path: String) = runRest(path, "POST", false)
 
   /** proxy real service GET */
   def proxy(path: String) = RAction { implicit stok =>

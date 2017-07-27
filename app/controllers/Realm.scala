@@ -70,8 +70,10 @@ object Realm extends RazController with Logging {
           (
             if("Reactor" == cat) Map(
             "reactor"-> name,
-            "realm"-> name) else Map.empty
-            ) ++ Map(
+            "realm"-> name,
+            "access"-> data.getOrElse("access","Public")
+            ) else Map.empty
+          ) ++ Map(
             "name" -> name,
             "description"-> data.getOrElse("description","no description")
         ) ++ data
