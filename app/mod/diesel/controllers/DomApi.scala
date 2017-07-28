@@ -31,6 +31,43 @@ import scala.util.Try
 /** controller for server side fiddles / services */
 class DomApi extends DomApiBase  with Logging {
 
+  // the original message / request
+  case class DomReq (
+     uri:String,
+     protocol:String,
+     method:String,
+     contentType:String,
+     body:String
+     ) {
+    def this (req : Request[AnyContent]) =
+      this (
+        req.uri,
+        "http",
+        req.method,
+        req.contentType.mkString,
+        req.body.toString)
+
+    def toj = Map (
+      "uri" -> uri,
+      "protocol" -> protocol,
+      "method" -> method,
+      "contentType" -> contentType,
+      "body" -> body
+    )
+
+    override def toString = razie.js.tojsons(this.toj)
+
+    /** validate that incoming chars are parseable later */
+    def validate = {
+      Try {
+        val s = razie.js.tojsons(this.toj)
+        val j = razie.js.parse(s)
+      }
+    }
+
+    def addTo (e:ECtx) = e.put(P("request", this.toString).v(this))
+  }
+
   /** API msg sent to wiki#section */
   def wreact(cwid: CMDWID) = Action.async { implicit request =>
     val stok = ROK.r
@@ -402,7 +439,7 @@ class DomApi extends DomApiBase  with Logging {
 
     stok.qhParm("dieselHttpResponse").filter(_ != "200").map {code =>
       new Status(code.toInt)
-        .apply("template not found for path: "+path)
+        .apply("client requested code: "+code)
         .withHeaders("diesel-reason" -> s"client requested dieselHttpResponse $code in realm ${stok.realm}")
     }.getOrElse {
 
@@ -411,8 +448,9 @@ class DomApi extends DomApiBase  with Logging {
 
       val uid = stok.au.map(_._id).getOrElse(NOUSER)
 
-      val body = request.body.asBytes().map(a => new String(a)).getOrElse("")
-      val content = Some(new EEContent(body, request.contentType.mkString))
+      val raw = request.body.asBytes()
+      val body = raw.map(a => new String(a)).getOrElse("")
+      val content = Some(new EEContent(body, request.contentType.mkString, None, raw))
 
       val settings = DomEngineHelper.settingsFromRequestHeader(stok.req, content)
       settings.mockMode = mock
@@ -428,6 +466,8 @@ class DomApi extends DomApiBase  with Logging {
         // empty story so nothing is added to root
         List(new WikiEntry("Story", "temp", "temp", "md", "", uid, Seq("dslObject"), stok.realm))
       )
+
+      new DomReq(stok.req).addTo(engine.ctx)
 
       // does the current request match the template?
       def matchesRequest(tpath: String, rpath: String) = {
