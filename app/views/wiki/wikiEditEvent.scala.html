@@ -188,13 +188,14 @@ PROBLEM: many places use label as name... via Wikis.formatName
 <script>
 var realm = "@stok.realm";
 
-$("#draft").change(checkDraft);
+withJquery(function(){
+  function checkDraft()  {
+    if ($("#draft").val() == "Notify" && $("#visibility").val() != "Public")
+      confirm("Warning: publishing with visibility not Public reduces views!");
+  }
 
-
-function checkDraft()  {
-  if ($("#draft").val() == "Notify" && $("#visibility").val() != "Public")
-    confirm("Warning: publishing with visibility not Public reduces views!");
-}
+  $("#draft").change(checkDraft);
+});
 
 </script>
 
@@ -202,12 +203,10 @@ function checkDraft()  {
       @*********************** content assist ************************@
 
 <!-- for tags -->
-<script src="@routes.Assets.at("bootstrap-2.2.3/js/bootstrap-typeahead.js")"></script>
 <script>
 //from http://stackoverflow.com/questions/12662824/twitter-bootstrap-typeahead-multiple-values
 
-  var $tagsInput = $('#tags');
-
+razOnLoad(function(){
   //todo populate dynamically when user does need tag editing.. using /wikie/tagOptions
   // see CA_TC_sqbraTags for jquery load json example
   var userTags = [
@@ -220,7 +219,8 @@ function checkDraft()  {
     return '';
   }
 
-  $('#tags').typeahead({
+require(['jquery', 'bootstrap-typeahead'], function($){
+    $('#tags').typeahead({
     source: userTags,
     updater: function(item) {
       var idx = this.$element.context.selectionStart;
@@ -251,28 +251,35 @@ function checkDraft()  {
         })
       else return item;//+'s';
     }
+  });
+});
 });
 </script>
-
-<script src="@routes.Assets.at("javascripts/rk-contentassist-sqbr.js")"></script>
-<script src="@routes.Assets.at("vendor/jquery.textcomplete.min.js")"></script>
-<script src="@routes.Assets.at("javascripts/weCommons.js")"></script>
-<script src="@routes.Assets.at("javascripts/wikiEdit.js")"></script>
-<script src="@routes.Assets.at("javascripts/rk-contentassist.js")"></script>
 
 <script>
 var dotTags = [];
 
-$('#content').textcomplete([
-  CA_TC_braTags (optsToDomain(braDomain)),
-  CA_TC_sqbraTags,
-  CA_TC_dotTags (optsToDomain(braDomain.concat(dotTags)))
- ]);
+razOnLoad(function(){
+require(['jquery'
+  ,
+  "../vendor/jquery.textcomplete.min",
+  "weCommons",
+  "wikiEdit",
+  "rk-contentassist-sqbr",
+  "rk-contentassist"
+], function($) {
 
-$('#where').textcomplete([
-  CA_TC_wikifield("Venue")
- ]);
+                      $('#content').textcomplete([
+                        CA_TC_braTags(optsToDomain(braDomain)),
+                        CA_TC_sqbraTags,
+                        CA_TC_dotTags(optsToDomain(braDomain.concat(dotTags)))
+                      ]);
 
+                      $('#where').textcomplete([
+                        CA_TC_wikifield("Venue")
+                      ]);
+});
+});
 </script>
 
 <div id="weForm1" class="col-sm-4" style="display: none;"></div>
@@ -284,8 +291,8 @@ $('#where').textcomplete([
 
   @*<script src="https://cdnjs.cloudflare.com/ajax/libs/commonmark/0.25.1/commonmark.js"></script>*@
   @*<script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.12.0/lodash.min.js"></script>*@
-<script src="@routes.Assets.at("vendor/commonmark.25.1.js")"></script>
-<script src="@routes.Assets.at("vendor/lodash.4.12.0.min.js")"></script>
+@*<script src="@routes.Assets.at("vendor/commonmark.25.1.js")"></script>*@
+@*<script src="@routes.Assets.at("vendor/lodash.4.12.0.min.js")"></script>*@
 
 @formFix(Seq("when"))
 

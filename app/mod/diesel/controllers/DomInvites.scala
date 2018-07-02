@@ -1,6 +1,7 @@
 package mod.diesel.controllers
 
 import controllers._
+import model.{User, Users}
 import razie.hosting.Website
 import org.bson.types.ObjectId
 import org.joda.time.DateTime
@@ -8,43 +9,43 @@ import razie.Logging
 import razie.wiki.Enc
 import razie.wiki.Sec.EncryptedS
 import razie.wiki.admin.SecLink
+import views.html.wiki.genericForm
 
 /** manage invitations to realms */
 class DomInvites extends mod.diesel.controllers.SFiddleBase with Logging {
 
+  private def updRealm(au:User, realm:String) = {
+    au.update(au.copy(realms = (au.realms + realm)))
+  }
+
   /** */
   def invited = RAction { implicit request =>
+    request.flash.get(SecLink.HEADER).flatMap(SecLink.find).map { secLink =>
+      val email = secLink.props("email")
+      val invite = secLink.id
+      val realm = secLink.props("realm")
 
-    val email = request.fqParm("email", "").trim
-    val invite = request.fqParm("invitation", "").trim
-    val realm = request.fqParm("realm", "").trim
-
-    SecLink.find(invite).map { secLink =>
-      auth.map { au =>
-        //        if (au.hasPerm(Perm.domFiddle))
-        if (au.realms contains realm)
-          Redirect("/wiki/Admin:UserHome")
-        else {
-          if (secLink.link contains Enc.toUrl(au.emailDec)) {
-            //            au.profile.map { p =>
-            //              p.update(p.addPerm('+' + Perm.domFiddle))
-            au.update(au.copy(realms = au.realms + realm))
-            cleanAuth(Some(au))
-            Emailer.withSession(request.realm) { implicit mailSession =>
-              Emailer.tellRaz("realm invitation used", s"email: $email   invite: $invite    realm: $realm")
-            }
+      if (request.verifySecLink) {
+        auth.map { au =>
+          if (au.realms contains realm)
             Redirect("/wiki/Admin:UserHome")
-            //            } getOrElse Msg("No profile !!!???")
-          } else Msg("Not your invite...")
+          else {
+            if (email == au.emailDec) {
+              updRealm(au, realm)
+              cleanAuth(Some(au))
+              Emailer.withSession(realm) { implicit mailSession =>
+                Emailer.tellAdmin("realm invitation used", s"email: $email   invite: $invite    realm: $realm")
+              }
+              Redirect("/wiki/Admin:UserHome")
+            } else Msg("Not your invite or invitation already used...")
+          }
+        } getOrElse {
+          Redirect(controllers.routes.Profile.doeJoin()).withNewSession.flashing(SecLink.HEADER -> secLink.id)
         }
-      } getOrElse {
-        if (secLink.link contains Enc.toUrl(email))
-          Msg("Ok - please proceed to create an account", "...and then click this link again to activate it")
-        else
-          Msg("Not your invite...")
-      }
-    } getOrElse
-      Msg("No invitation found...")
+      } else
+          Msg(s"Invitation expired [$invite]...")
+      } getOrElse
+        Msg(s"No valid invitation found...")
   }
 
   /** request an invite for a realm */
@@ -55,22 +56,49 @@ class DomInvites extends mod.diesel.controllers.SFiddleBase with Logging {
 
     Emailer.withSession(request.realm) { implicit mailSession =>
       // todo tell the owner instead
-      Emailer.tellRaz("Specs invite request for realm", "email:", email, "why:", why, "realm:", realm)
+      Emailer.tellAdmin("Specs invite request for realm", "email:", email, "why:", why, "realm:", realm)
     }
 
     Msg("Ok... queued up - watch your inbox! Thank you for your interest!")
   }
 
   /** */
-  def createInvite(email: String, realm: String) = FAUR { implicit request =>
+  def createInvite1 = FAUR { implicit request =>
+    val email = request.fqParm("email", "").trim
+
     // todo not just admin, but realm owner too
     if (request.au.exists(_.isAdmin) && email != "-") {
-      val id = new ObjectId()
-      val link = "/diesel/invited?email=" + Enc.toUrl(email) + "&invitation=" + id.toString + "&realm=" + realm
-      val sec = SecLink(link, Some(Website.forRealm(realm).getOrElse(request.website).domain),
-        10, DateTime.now.plusDays(5), 0, DateTime.now, id)
-      Msg("Invite link: " + sec.secUrl, "   code: " + id.toString)
+      ROK.k apply {
+        genericForm(
+          routes.DomInvites.createInvite2().url,
+          "Create an invite",
+          "",
+          List("email")
+        )
+      }
+    } else
+      Msg("Ask an admin for an invite, please.")
+  }
+
+  /** */
+  def createInvite2 = FAUR { implicit request =>
+    val email = request.fqParm("email", "").trim
+
+    // todo not just admin, but realm owner too
+    if (request.au.exists(_.isAdmin) && email != "-") {
+      Users.findUserByEmailDec(email).map {user =>
+        updRealm(user, request.realm)
+        Msg(s"User ${user.ename} added to realm...")
+      } getOrElse {
+        val link = "/diesel/invited"
+        val sec = SecLink(link, Some(Website.forRealm(request.realm).getOrElse(request.website).domain),
+          10, DateTime.now.plusDays(5))
+          .withProp("email", email)
+          .withProp("realm", request.realm)
+        Msg("Invite link: " + sec.secUrl, "   code: " + sec.id)
+      }
     } else
       Msg("Ask an admin for an invite, please.")
   }
 }
+

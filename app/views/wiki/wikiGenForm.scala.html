@@ -10,10 +10,12 @@ a generic form
 
 @wiki.wikiFormSimple(page.wid, None, Some(page), errors, true, false, false, Some(next))
 
-<script>
-@page.attr("form.class").map{f=>
-  $("#wikiForm-@page._id").addClass("@f");
-}
+<script async>
+withJquery(function($){
+  @page.attr("form.class").map{f=>
+    $("#wikiForm-@page._id").addClass("@f");
+  }
+});
 </script>
 
 @if(stok.au.exists(_.isAdmin)) {

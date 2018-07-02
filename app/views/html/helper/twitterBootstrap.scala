@@ -1,6 +1,5 @@
 package views.html.helper
 
-import controllers.StateOk
 import play.api.i18n.Messages
 import play.api.i18n.MessagesApi
 import play.api.i18n.Messages.Implicits._

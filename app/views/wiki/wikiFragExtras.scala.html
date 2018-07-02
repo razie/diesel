@@ -15,7 +15,11 @@ extra html for wiki fragments, used in another page
       <span class="label label-default">Loading... </span>
     </div>
 
-    <script async>$("#modulereg").load("/doe/modrk/regs/WPATH".replace(/WPATH/, "@we.wid.wpath"));</script>
+    <script async>
+        require(['jquery'], function($){
+          $("#modulereg").load("/doe/modrk/regs/WPATH".replace(/WPATH/, "@we.wid.wpath"));
+        });
+    </script>
 
     }.getOrElse {
     <p> @alert("blue"){<strong>Registration: </strong>you need to <strong>log in</strong> to register to this event }

@@ -3,6 +3,7 @@
 #
 
 DT=`date | sed 's/ //g'`
+
 RKS=~/w/racerkidz/s
 
 cd $RKS
@@ -25,5 +26,4 @@ tar xvf dump.tar
 
 gzip dump.tar
 cd ..
-
 cd ..

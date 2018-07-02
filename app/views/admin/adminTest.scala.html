@@ -4,6 +4,7 @@ screen to admin one user
 @()(implicit stok: controllers.StateOk)
 
 @stok.title("admin testing")
+@stok.requireJs(false)
 
 <script src="@routes.Assets.at("javascripts/weTest.js")"></script>
 <script src="@routes.Assets.at("javascripts/weTestCases.js")"></script>

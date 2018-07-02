@@ -9,21 +9,24 @@ import admin._
 import com.google.inject.AbstractModule
 import com.mongodb.casbah.{MongoConnection, MongoDB}
 import com.mongodb.casbah.Imports._
-import controllers.{ModRkExec, RazWikiAuthorization, RkViewService, ViewService}
+import controllers._
+import mod.cart.{ModCartExecutor, ModUserExecutor}
 import mod.diesel.controllers.{DieselMod, FiddleMod}
+import mod.snow.ModSnowExecutor
 import model.WikiUsersImpl
-import razie.audit.{Audit, MdbAuditService}
-import razie.db.{RMongo, RazMongo, UpgradeDb}
+import razie.audit.{Audit, AuditService, MdbAuditService}
+import razie.db.{RMongo, ROne, RazMongo, UpgradeDb}
 import razie.diesel.engine.{DieselAppContext, RDExt}
 import razie.diesel.ext.Executors
 import razie.wiki.admin.SendEmail
 import razie.wiki.mods.WikiMods
-import razie.wiki.{EncryptService, Services}
+import razie.wiki.{EncryptService, Services, WikiConfig}
 import razie.wiki.model.{WikiReactors, WikiUsers}
 import razie.wiki.util.AuthService
 import razie.{Log, clog, cout}
+import services.AtomicCounter
 
-/** NOT WORKING !!!!!!!!!! */
+/** initialize this module */
 class Module extends AbstractModule {
 
   lazy val config = {
@@ -34,29 +37,48 @@ class Module extends AbstractModule {
     config
   }
 
-  def secret() = {
-    config.getString("play.crypto.secret").getOrElse("")
+  def prop(name:String, dflt:String="") = {
+    config.getString(name).getOrElse(dflt)
   }
+
+  def secret() = prop("play.crypto.secret")
 
   def configure() = {
     clog << "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ configure rk Module"
+    clog << "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ " + prop("wiki.home")
+
+    // todo how do i inject this? I get into all sorts of trouble if not initialized here...
+    WikiConfig.playConfig = config
+
+    // Use the system clock as the default implementation of Clock
+//    bind(classOf[Clock]).toInstance(Clock.systemDefaultZone)
+    // Ask Guice to create an instance of ApplicationTimer when the
+    // application starts.
+//    bind(classOf[ApplicationTimer]).asEagerSingleton()
+    // Set AtomicCounter as the implementation for Counter.
+//    bind(classOf[Counter]).to(classOf[AtomicCounter])
 
     Services.auth = new RazAuthService ()
-    bind(classOf[AuthService[_]]).toInstance(Services.auth)
+//    bind(classOf[AuthService[_]]).toInstance(new RazAuthService())
 
     Services.config = Config
+//    bind(classOf[WikiConfig]).toInstance(Config)
 
     mongoInit()
 
     // init after DB because it needs DB
     Audit.impl = new MdbAuditService
     RMongo.setInstance(Audit.impl)
+    bind(classOf[AuditService]).toInstance(Audit.impl)
 
     WikiUsers.impl = WikiUsersImpl
 
 //    EncryptService.impl = new admin.CypherEncryptService(secret(), secret())
     EncryptService.impl = new admin.CypherEncryptService("", "") // use default key
+
     ViewService.impl = RkViewService
+    bind(classOf[ViewService]).toInstance(RkViewService)
+
     Services.wikiAuth = RazWikiAuthorization
 
     //todo look these up in Website
@@ -65,13 +87,22 @@ class Module extends AbstractModule {
     }
 
     RDExt.init
+
     WikiMods register new FiddleMod
     WikiMods register new DieselMod
 
+    DieselAppContext.setActorSystemFactory(() => play.libs.Akka.system)
+
     DieselAppContext.localNode = Services.config.node
     Executors.add (ModRkExec)
-
+    Executors.add (ModUserExecutor)
+    Executors.add (ModCartExecutor)
+    Executors.add (ModSnowExecutor)
     Executors.add (new mod.diesel.model.exec.EEWiki)
+
+    DieselSettings.find("isimulateHost").map { s=>
+      Config.isimulateHost = s
+    }
 
 //    WikiReactors.apply("rk") // weird stuff happens to diesel parser if I do this
     Audit.logdb("NODE_RESTARTED", Services.config.node)
@@ -80,11 +111,13 @@ class Module extends AbstractModule {
   def mongoInit(): Unit = {
     /************** MONGO INIT *************/
     RazMongo.setInstance {
-      val UPGRADE_AGAIN = false // only the last upgrade
+
+      val UPGRADE_AGAIN = false // set to true in local dev to rerun only the last upgrade
+
       val mongoUpgrades: Map[Int, UpgradeDb] = Map(
           1 -> Upgrade1, 2 -> Upgrade2, 3 -> Upgrade3, 4 -> Upgrade4, 5 -> Upgrade5,
           6 -> U6, 7 -> U7, 8 -> U8, 9 -> U9, 10 -> U10, 11 -> U11, 12 -> U12, 13 -> U13,
-          14 -> U14, 15 -> U15, 16 -> U16, 17 -> U17) /* NOTE as soon as you list it here, it will apply */
+          14 -> U14, 15 -> U15, 16 -> U16, 17 -> U17, 18 -> U18) /* NOTE as soon as you list it here, it will apply */
 
       def mongoDbVer = mongoUpgrades.keySet.max + 1
 

@@ -51,12 +51,20 @@ club admin manages user: membership, regsitration etc
     'readOnly -> true,
     '_showConstraints -> false)
 
-  Payable: <b>@reg.map(_.fee()).mkString</b>
-
+@reg.map{r=>
+  Balance: <b>@r.acctBalance.amount</b><br>
+  Reg total: <b>@r.fee.amount</b> <br>
+  Reg due now: <b>@r.feeDue.amount</b><br>
+  Payable total: <b>@{(r.fee - r.acctBalance - r.amountPaid).orZero.amount}</b><br>
+  Payable now: <b>@{(r.feeDue - r.acctBalance - r.amountPaid).orZero.amount}</b>
+  <br>
+}
   @helper.inputText(
     myForm("paid"),
     '_label -> "Amount paid",
     '_showConstraints -> false)
+
+  Amount paid: <b>@reg.map(_.amountPaid).mkString</b>
 
   <button type="submit" class="btn btn-primary">Update membership!</button>
 
@@ -196,3 +204,6 @@ For all other forms, you should use the "family members not registered table" be
 <hr>
   @views.html.club.regStatusLegend()
   @views.html.club.formStatusLegend()
+
+  @util.confirmModal()
+

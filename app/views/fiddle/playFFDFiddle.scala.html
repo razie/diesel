@@ -1,0 +1,215 @@
+@**************
+a Mule soft FFD fiddle
+url is the refresh and update URL, both GET and POST
+**************@
+@import mod.diesel.controllers.Fiddle
+@import razie.wiki.model.features.WikiCount
+@(lang:String,
+    title:String,
+    url:String,
+    fiddles : Map[String,Fiddle],
+    q:Map[String,String] = Map.empty,
+    id:String = java.lang.System.currentTimeMillis().toString())(implicit stok:controllers.StateOk)
+
+<div style="margin-left: 20px; margin-right: 20px">
+@stok.title(title)
+@stok.requireJs(false)
+
+<style>
+.ace-primaryline {
+  background-color: yellow;
+  position:absolute;
+}
+</style>
+
+@content(s:String) = @{fiddles(s).content}
+
+<script src="@routes.Assets.at("javascripts/rk-contentassist-sqbr.js")"></script>
+<script src="@routes.Assets.at("javascripts/weCommons.js")"></script>
+<script src="@routes.Assets.at("javascripts/weFiddles.js")"></script>
+
+  <h3>Mule Dataweave fixed format schema fiddle</h3>
+
+  <div class="row" style="align-items:center;">
+    <div id="title3a_@id" class="col-sm-12" style="font-size: small">Input buffer (String)
+      <input type="checkbox" id="expandedStory" title="Expand/collapse story" checked> <small>(show/hide)</small>
+        <small>[<span id="inputLength" title="Length of input"> </span>] chars </small>
+    </div>
+  </div>
+  <div id="storyRow" class="row" style="align-items:center;">
+    <div id="divIn3_@id" class="col-sm-12" style="">
+      <pre id="pre3_@id" style="height:98px; ">@content("input")</pre>
+    </div>
+  </div>
+
+
+  <div class="row" style="align-items:center;">
+    <div id="title1a_@id" class="col-sm-6" style="font-size: small">Mock/Spec
+      <input type="checkbox" id="expandedSpec" title="Expand/collapse spec" checked> <small>(show/hide)</small>
+      <small>[<span id="schemaLength" title="Length of input"> </span>] total</small>
+    </div>
+    <div id="title1b_@id" class="col-sm-6" style="font-size: small">
+  </div>
+  </div>
+  <div id="specRow" class="row" style="align-items:center;">
+    <div id="divIn1_@id" class="col-sm-6" style="">
+      <pre id="pre1_@id" style="height:288px; ">@content("schema")</pre>
+    </div>
+    <pre class="col-sm-6 well" id="divOut1_@id" style="overflow: scroll; margin-bottom:2px">
+    </pre>
+  </div>
+
+
+@md{
+### Help
+
+Fiddle with Mulesoft Dataweave fixed format parsing.
+
+Paste your input buffer in the top editor and the DWL schema on the left. Change the input or the schema and see your changes **reflected** instantly.
+
+If you notice any problems, use the "Support" form at the bottom of the page and let me know.
+
+By creating a free account, you can save the fiddles and more!
+
+Enjoy!
+
+Notes:
+- the parser is minimal, make sure the syntax is clean
+- need a \n at the end of the last line
+}
+
+<small>Viewed <b>@WikiCount.findOneForTemplate("Play:playFFDFiddle").map(_.count).mkString</b> times</small>
+
+<script>
+// used in imported scripts
+var realm = '@stok.realm';
+var fiddleId = '@id';
+
+$('#divOut1_'+@id).css('max-height', $('#divIn1_@id').height()-10+'px');
+$('#divOut3_'+@id).css('max-height', $('#divIn3_@id').height()-10+'px');
+$('#iframeOut3_'+@id).css('max-height', $('#divIn3_@id').height()-10+'px');
+
+var runpill_@id = function(id) {
+  var lastTime = new Date().getTime();
+  $.ajax(
+    '@url', {
+    type: 'POST',
+    data: $.param({
+      reactor : '@stok.realm',
+      input : editor.getValue(),
+      schema : editor1.getValue()//,
+//      capture : editor5.getValue()
+    }),
+    contentType: 'application/x-www-form-urlencoded',
+    success: function(data) {
+      $('#divOut1_'+id).text(data.res);
+      $("#schemaLength").text(data.ffdcount);
+      var du = new Date().getTime() - lastTime;
+      $('#roundtrip').text(du+' ms');
+    },
+    error  : function(x) {
+      console.log( "ERR "+x.toString());
+    }
+  });
+}
+
+function setErrors (s) {
+  $('#errors').text(s + ' failed');
+  $('#errors').removeClass();
+  if(s == 0 || s == "0")
+    $('#errors').addClass("label label-success");
+  else
+    $('#errors').addClass("label label-danger");
+}
+
+</script>
+
+<script src="@routes.Assets.at("javascripts/weDieselDiffs.js")"></script>
+
+<script src="@routes.Assets.at("javascripts/rk-contentassist.js")"></script>
+<script src="@routes.Assets.at("javascripts/weDieselDom.js")"></script>
+
+<script src="@routes.Assets.at("ace-builds/src/ace.js")" type="text/javascript" charset="utf-8"></script>
+
+<script src="@routes.Assets.at("ace-builds/src/mode-nvp1.js")" type="text/javascript" charset="utf-8"></script>
+<script src="@routes.Assets.at("ace-builds/src/ext-language_tools.js")" type="text/javascript" charset="utf-8"></script>
+
+@*<script type="text/javascript" src="/sfiddle/tempAsset/@id/gLexer.js")"></script>*@
+@*<script type="text/javascript" src="/sfiddle/tempAsset/@id/gParser.js")"></script>*@
+
+<script>
+
+var domChanged=true;
+var instChanged=true;
+var captureChanged=true;
+
+var editor;
+var editor1;
+var editor5;
+
+function attachAce() {
+  var langTools = ace.require("ace/ext/language_tools");
+
+  editor = ace.edit("pre3_@id");
+  editor1 = ace.edit("pre1_@id");
+
+  @if(stok.isLight) {
+  editor1.setTheme ( "ace/theme/crimson_editor" ) ;
+  editor.setTheme ( "ace/theme/crimson_editor" ) ;
+} else {
+  editor1.setTheme ( "ace/theme/twilight" ) ;
+  editor.setTheme ( "ace/theme/twilight" ) ;
+}
+  editor1.getSession().setMode("ace/mode/nvp1");
+  editor.getSession().setMode("ace/mode/nvp1");
+
+  editor.getSession().setUseWrapMode(true);
+  editor.getSession().setUseSoftTabs(false);
+
+  @*editor5 = ace.edit("pre5_@id");*@
+//  @if(stok.isLight) {
+//  editor5.setTheme ( "ace/theme/crimson_editor" ) ;
+//} else {
+//  editor5.setTheme ( "ace/theme/twilight" ) ;
+//}
+
+  editor1.getSession().on('change', function(e) {
+    domChanged=true;
+  });
+
+  editor.getSession().on('change', function(e) {
+    instChanged=true;
+  });
+
+//  editor5.getSession().on('change', function(e) {
+//    captureChanged=true;
+//  });
+}
+
+attachAce();
+
+setInterval(function(){
+   if(domChanged || instChanged) {
+     domChanged=false; instChanged=false;
+     $("#inputLength").text(editor.getValue().length);
+     runpill_@{id}('@{id}');
+     }
+},500);
+
+</script>
+
+
+<script> // weDieselDiffs
+/** Diffs in story/spec for Diesel
+ *
+ * Created by razvanc on 02/05/2014.
+ */
+
+// it's on load because otherwise the div has no contents
+$(window).load (function() {
+  // make sure for new users it will be open
+});
+
+</script>
+
+</div>

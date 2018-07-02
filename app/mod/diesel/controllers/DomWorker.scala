@@ -6,7 +6,7 @@ import play.libs.Akka
 import razie.wiki.admin.Autosave
 
 /** an autosave request */
-case class AutosaveSet(name:String, userId: ObjectId, c:Map[String,String])
+case class AutosaveSet(what:String, realm:String, name:String, userId: ObjectId, c:Map[String,String])
 
 /** speed up initial response - do backups and stuff in background */
 object DomWorker {
@@ -22,7 +22,7 @@ object DomWorker {
     // todo persistency - not a big deal if an autosave is lost
     def receive = {
       case a: AutosaveSet => {
-        Autosave.set(a.name, a.userId, a.c)
+        Autosave.set(a.what, a.realm, a.name, a.userId, a.c)
       }
     }
   }

@@ -7,6 +7,7 @@ edit a wiki page
     myForm:Form[controllers.Wikie.EditWiki])(implicit stok: controllers.StateOk)
 @import razie.wiki.model.{Wikis, WID, WikiEntry, WikiReactors}
 
+@stok.requireJs(false)
 
   @**** FIDDLE STUFF ******@
 
@@ -200,17 +201,19 @@ PROBLEM: many places use label as name... via Wikis.formatName
         </form>
       </div>
 
-      <script>
-$('#sform_'+@id).hide();
-$('#content_'+@id).hide();
+<script>
+razOnLoad(function() {
+  $('#sform_' +@id).hide();
+  $('#content_' +@id).hide();
 
-var runpill_@id = function(id) {
-  $('#l_'+id)[0].value= "@lang";
-  $('#j_'+id)[0].value= editor.getValue();
-  $('#ssform_'+id)[0].target = 'iframe_'+id;
-  $('#ssform_'+id)[0].action = "/sfiddle/sfiddle2/"+id+"?@mod.diesel.controllers.SFiddles.qtourl(q)";
-  $('#ssform_'+id)[0].submit();
-}
+  var runpill_@id = function (id) {
+    $('#l_' + id)[0].value = "@lang";
+    $('#j_' + id)[0].value = editor.getValue();
+    $('#ssform_' + id)[0].target = 'iframe_' + id;
+    $('#ssform_' + id)[0].action = "/sfiddle/sfiddle2/" + id + "?@mod.diesel.controllers.SFiddles.qtourl(q)";
+    $('#ssform_' + id)[0].submit();
+  }
+});
 
 </script>
 

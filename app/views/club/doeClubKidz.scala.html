@@ -11,6 +11,7 @@ manage the list of kidz and/or their accounts
 @import razie.wiki.model.Wikis
 
 @stok.title("Members for " + club.name)
+@stok.requireJs(false)
 
 @roles()=@{
   WikiDomain(club.wid.getRealm).roles(club.wid.cat, "Person")
@@ -148,13 +149,11 @@ Source is
     "source" -> "Source",
     "button"->"Details"), Some(mnglink))
 
-<script src="@routes.Assets.at("javascripts/weCommons.js")"></script>
-
 <script>
 
-$("#saved").hide();
+  $("#saved").hide();
 
-function saved() {
+saved=function() {
   $("#saved").fadeIn(500, function() {
     $("#saved").fadeOut(500);
   });
@@ -162,11 +161,11 @@ function saved() {
 
 useLocalStorageCheckbox ("confirmChanges", "confirmChanges");
 
-function dontConfirm() {
+dontConfirm=function() {
   return $('#confirmChanges').prop('checked') ? false : true;
 }
 
-function setTeam(sel)  {
+setTeam=function(sel)  {
   if (dontConfirm() || confirm("Change the team ?")) {
     var tid=sel.value == "" ? "-" : sel.value;
     $.post( "/doe/club/kidz/setTeam/"+sel.getAttribute("rkaid")+"/"+tid+"/@club.wid.wpath", function( data ) {
@@ -180,7 +179,8 @@ function setTeam(sel)  {
 //    sel.value = sel.getAttribute("oldvalue");
   }
 }
-function setRole(sel)  {
+
+setRole=function(sel)  {
   if (dontConfirm() || confirm("Change the role to "+sel.value+" ?")) {
     $.post( "/doe/club/kidz/updRka/"+sel.getAttribute("rkaid")+"/role/" + sel.value, function( data ) {
       sel.setAttribute("oldvalue", sel.value)

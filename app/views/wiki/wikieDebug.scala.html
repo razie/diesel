@@ -18,12 +18,14 @@ debug a wiki page
   | <a href="@routes.Wiki.wikieReferences(wid)"><em>references</em></a>
 </p>
 }
-      <div class="well">
-          @wiki.wikiFrag(wid,None,false,page, iname)
-      </div>
+
+      @*<div class="well">*@
+          @*@wiki.wikiFrag(wid,None,false,page, iname)*@
+      @*</div>*@
 
         <div class="well">
             <ul>Settings
+              <li>version: @page.map(_.ver)</li>
                 <li>current realm: @stok.realm</li>
                 <li>page realm: @page.map(_.realm)</li>
                 <li>wid.realm: @wid.realm</li>
@@ -40,6 +42,11 @@ debug a wiki page
         }
        </ul>
       </div>
+
+  <div class="well">
+    json:<p></p>
+    @page.get.grated.toString
+  </div>
 
   <div class="well">
     <ul>props
@@ -79,7 +86,7 @@ debug a wiki page
       </div>
 
       <div class="well">
-        Add all club members as followers:
+        Add all club members as followers (by club WID) :
         @helper.form(action=routes.Club.doeAddClubFollowers(page.get.wid), 'class->"well form-inline") {
           <input type="text" class="input-large" name="newvalue" value="">
           <button type="submit" class="btn btn-default">ADD followers</button>
@@ -87,7 +94,7 @@ debug a wiki page
       </div>
 
       <div class="well">
-        Remove all club members as followers:
+        Remove all club members as followers (by club WID) :
       @helper.form(action=routes.Club.doeDelClubFollowers(page.get.wid), 'class->"well form-inline") {
         <input type="text" class="input-large" name="newvalue" value="">
         <button type="submit" class="btn btn-default">REMOVE followers</button>
@@ -96,8 +103,14 @@ debug a wiki page
 
       <div class="well">
         <ul>external followers
-        @model.Users.findFollowerLinksTo(page.get.uwid).toList.flatMap(_.follower).map {f=>
-          <li>@razie.wiki.Enc.unapply(f.email)</li>
+        @model.Users.findFollowerLinksTo(page.get.uwid).toList.map{fw=>
+          @fw.follower.map{f=>
+            <li>@razie.wiki.Enc.unapply(f.email) -
+            @if(stok.au.exists(_.isAdmin)) {
+              <a href="@routes.Wikil.unlinkExtFollower(fw._id.toString)">delete</a>
+            }
+            </li>
+          }
         }
        </ul>
       </div>
@@ -213,7 +226,7 @@ debug a wiki page
 
       <div class="well">
         <ul>cache
-        @page.get.cache.map { p=>
+        @page.get.collector.map { p=>
           <li>@p.toString</li>
         }
        </ul>

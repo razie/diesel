@@ -26,13 +26,14 @@ user manages registrations
 @tab = @{
   regs.iterator.map(reg =>
     Map(
-      "club" -> reg.clubName,
+      "club" -> reg.club.getLabel(),
       "year" -> reg.year,
       "role" -> reg.role,
       "regStatus" -> reg.regStatus,
       "id" -> reg._id.toString,
       "vol" -> controllers.Vol.volPerReg(reg),
-      "balance" -> mod.cart.Acct.findCurrent(reg.userId, reg.club).map(_.balance.toString).getOrElse("")
+      "balance" -> mod.cart.Acct.findCurrent(reg.userId, reg.club).map(_.balance.toString).getOrElse(""),
+      "details" -> ""
     ))
 }
 
@@ -43,7 +44,10 @@ user manages registrations
       }
       case "vol" => {
         @v
-        <a href="@routes.Vol.doeUserVolAdd(row.get("id").get).toString" class="btn btn-xs">Manage</a>
+        <a href="@routes.Vol.doeUserVolAdd(row.get("id").get).toString" class="btn btn-xs btn-info">Add / edit</a>
+      }
+      case "details" => {
+        <a href="@routes.Club.doeClubUserReg(row.get("id").get).toString" class="btn btn-primary btn-xs">&nbsp;&nbsp;<span class="glyphicon glyphicon-list-alt"></span>&nbsp;&nbsp;</a>
       }
       case _ => {
         @v
@@ -62,7 +66,7 @@ user manages registrations
       <div class="alert alert-info">
         <strong>No registrations!</strong>
         You have no registrations in progress - if you were looking for a specific club, then please follow this link to join it:
-        <b><a href="/wikie/link/Club">Join a club</a></b>
+        <b><a href="@routes.Wikie.wikieLike("Club")">Join a club</a></b>
         <p>
           Find your club there and if they have registrations open, you will see a red link to "start registration" right after joining the club.
       </div>
@@ -88,7 +92,8 @@ user manages registrations
           "role" -> "Role",
           "regStatus" -> "Status",
           "vol" -> "Volunteer",
-          "balance" -> "Balance"),
+          "balance" -> "Balance",
+          "details" -> "Forms"),
         Some(mnglink))
 
       <p></p>

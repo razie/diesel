@@ -59,9 +59,13 @@ list of pages, with links etc - result of a query of some kind
         @wikiListTable(search, realm, curTags, pages)
 
         </div>
-<p>
-  <a href="@routes.Wiki.analyze(search, curTags)">Analyze</a>
-</p>
+
+      @if(stok.au.exists(_.isAdmin)) {
+        <p>
+          <a href="@routes.Wiki.analyze(search, curTags)">Analyze</a>
+        </p>
+      }
+
     </div> <!-- /col-sm-9 -->
 
     <div class="col-sm-3">

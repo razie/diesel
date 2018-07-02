@@ -35,12 +35,12 @@ Manage: @roles.map { x => [/4us/manage/@wpath?role=@x @x] | }
 
 @if(wid.cat == "Club" || wid.cat.length <= 0) {
   More: [/doe/club/regs/@c.wid.wpath Registrations] |
-  @if(stok.au.exists(c.isClubAdmin)) { [/doe/club/regsettings/@wpath Settings] | [/doe/club/billing/@wpath Billing] | } [/doe/club/vol/@wpath Volunteers] | [/doe/4us/badge/@wpath Get badge]
+  @if(stok.au.exists(c.isClubAdmin)) { [/doe/club/regsettings/@wpath Settings] | [/doe/club/billing/view/@wpath Billing] | } [/doe/club/vol/@wpath Volunteers] | [/doe/4us/badge/@wpath Get badge]
 } else {
   @if(wid.cat == "Pro") {
-  More: @if(stok.au.exists(c.isClubAdmin)) { [/doe/club/regsettings/@wpath Settings] | [/doe/club/billing/@wpath Billing] | } [/doe/4us/badge/@wpath Get badge]
+  More: @if(stok.au.exists(c.isClubAdmin)) { [/doe/club/regsettings/@wpath Settings] | [/doe/club/billing/view/@wpath Billing] | } [/doe/4us/badge/@wpath Get badge]
   } else {
-  More: @if(stok.au.exists(c.isClubAdmin)) { [/doe/club/regs/@c.wid.wpath Registrations] | [/doe/club/regsettings/@wpath Settings] | [/doe/club/billing/@wpath Billing] | } [/doe/4us/badge/@wpath Get badge]
+  More: @if(stok.au.exists(c.isClubAdmin)) { [/doe/club/regs/@c.wid.wpath Registrations] | [/doe/club/regsettings/@wpath Settings] | [/doe/club/billing/view/@wpath Billing] | } [/doe/4us/badge/@wpath Get badge]
   }
   }
   @showteams()

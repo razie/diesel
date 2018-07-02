@@ -253,7 +253,10 @@ $fdata
                       //                  cout << Regs.findWid(wid)
                       //                  cout << Regs.findWid(wid).flatMap(x => Users.findUserByUsername(x.clubName))
                       //                  cout << Regs.findWid(wid).flatMap(x => Users.findUserByUsername(x.clubName)).map(Club(_).regAdmin)
-                      Regs.findWid(wid).flatMap(x => Users.findUserByUsername(x.clubName)).map(Club(_).regAdmin).foreach { reviewer =>
+                      Regs.findWid(wid).flatMap{r =>
+                        r.updFees.update
+                        Users.findUserByUsername(r.clubName)
+                      }.map(Club(_).regAdmin).foreach { reviewer =>
                         Emailer.sendEmailFormSubmitted(reviewer, au, Wiki.w(wid))
                       }
                       we.props.get("notifyUsers").toList.flatMap(_.split(",")).flatMap(Users.findUserById(_).toList).map{u=>
@@ -269,10 +272,12 @@ $fdata
                       owner <- w.owner
                     ) {
                       cdebug << r.deprecatedWids.filter(_.page.flatMap(_.form.formState).exists(_ == FormStatus.APPROVED)).size
-                      if (r.deprecatedWids.filter(_.page.flatMap(_.form.formState).exists(_ == FormStatus.APPROVED)).size == r.deprecatedWids.size) {
-                        r.updateRegStatus(RegStatus.ACCEPTED)
+                      if (r.deprecatedWids.filter(_.page.flatMap(_.form.formState).exists(_ == FormStatus.APPROVED)).size == r.deprecatedWids.size &&
+                        r.regStatus != RegStatus.CURRENT
+                      ) {
+                        r.updFees.updateRegStatus(RegStatus.ACCEPTED)
                         SendEmail.withSession(Website.realm(request)) { implicit mailSession =>
-                          Emailer.sendEmailFormsAccepted(au, owner.asInstanceOf[User], r.clubName, r.fee(), club.msgFormsAccepted)
+                          Emailer.sendEmailFormsAccepted(au, owner.asInstanceOf[User], r.clubName, r.totalFee.toString, club.msgFormsAccepted)
                         }
                       }
                     }

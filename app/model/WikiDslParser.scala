@@ -8,7 +8,8 @@ package model
 
 import mod.diesel.model.Diesel
 import org.bson.types.ObjectId
-import razie.wiki.model.WikiEntry
+import razie.tconf.parser.{LazyState, SState}
+import razie.wiki.model.{WikiEntry, WikiUser}
 import razie.{cdebug, clog, cout}
 
 import scala.collection.mutable.ListBuffer
@@ -18,11 +19,11 @@ import scala.util.parsing.combinator.RegexParsers
 import scala.Option.option2Iterable
 import scala.collection.mutable
 import razie.wiki.parser.WAST
-import razie.wiki.parser.WikiParserBase
+import razie.wiki.parser.ParserBase
 
 /** parse dsl, fiddles and code specific fragments */
-trait WikiDslParser extends WikiParserBase {
-  import WAST._
+trait WikiDslParser extends ParserBase {
+  import razie.wiki.parser._
   
   def dslWikiProps = wikiPropFiddle | wikiPropJsFiddle | wikiPropDsl
 
@@ -33,7 +34,9 @@ trait WikiDslParser extends WikiParserBase {
       var args = (if(xargs.isDefined) xargs.get._2 else List()).toMap
       val name = args.getOrElse("name", "")
 
-      SState(views.html.fiddle.inlineBrowserJsFiddle("", trim(lines.s), args, None).body) // trim EOLs
+      SState(
+        views.html.fiddle.inlineBrowserJsFiddle("", trim(lines.s), args, None).body,
+        Map("diesel.requireJs" -> "false")) // trim EOLs
   }
 
   def wikiPropFiddle: PS = "{{" ~> """fiddle""".r ~ "[: ]".r ~ """[^:}]*""".r ~ opt(":" ~ rep(arg <~ opt(","))) ~ "}}" ~ opt(CRLF1 | CRLF3 | CRLF2) ~ slines <~ "{{/fiddle}}" ^^ {
@@ -63,15 +66,27 @@ trait WikiDslParser extends WikiParserBase {
 
             // remove empty lines from parsing
 
-            SState(views.html.fiddle.inlineHtmlfiddle(name, args, (trim(hh), trim(h), trim(c), trim(j)), None).body)
+            SState(
+              views.html.fiddle.inlineHtmlfiddle(name, args, (trim(hh), trim(h), trim(c), trim(j)), None).body,
+              Map("diesel.requireJs" -> "false")
+            )
           }
           case "javascript" =>
-            SState(views.html.fiddle.inlineBrowserJsFiddle("", trim(ss.replaceFirst("\n", "")), args, None).body) // trim EOLs
+            SState(
+              views.html.fiddle.inlineBrowserJsFiddle("", trim(ss.replaceFirst("\n", "")), args, None).body,
+              Map("diesel.requireJs" -> "false")
+            ) // trim EOLs
 //            SState(views.html.fiddle.inlineHtmlfiddle(name, args, ("", "", "", trim("document.write(function(){ return " + ss.replaceFirst("\n", "") + "}())")), None).body)
           case "scala" =>
-            SState(views.html.fiddle.inlineScalaFiddle(name, args, lines.s, None).body)
+            SState(
+              views.html.fiddle.inlineScalaFiddle(name, args, lines.s, None).body,
+              Map("diesel.requireJs" -> "false")
+            )
           case _ =>
-            SState(views.html.fiddle.inlineScalaFiddle(name, args, lines.s, None).body)
+            SState(
+              views.html.fiddle.inlineScalaFiddle(name, args, lines.s, None).body,
+              Map("diesel.requireJs" -> "false")
+            )
         }
       }
       catch  {
@@ -111,7 +126,7 @@ trait WikiDslParser extends WikiParserBase {
       }
 
       if(hidden.isDefined) SState("")
-      else LazyState[WikiEntry] {(current, ctx) =>
+      else LazyState[WikiEntry,WikiUser] {(current, ctx) =>
         // try to figure out the language from the content parsed so far
         val lang = Diesel.findLang(current.props, ctx.we)
         val fid = ffiddle(lang)

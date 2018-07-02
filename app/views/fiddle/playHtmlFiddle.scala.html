@@ -6,7 +6,9 @@ a JS with HTML and CSS fiddle
    content:(String, String, String, String),
    id:String = java.lang.System.currentTimeMillis().toString())(implicit stok:controllers.StateOk)
 
-@htmlHeadBar("Learn Javascript and html")
+@stok.requireJs(false)
+
+  @htmlHeadBar("Learn Javascript and html")
 
 <div class="well">
 

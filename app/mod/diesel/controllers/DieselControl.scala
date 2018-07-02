@@ -74,7 +74,7 @@ object DieselControl extends RazController with Logging {
       wid <- WID.fromPath(wpath) orErr "bad wid";
       we <- wid.page.orElse {
         if( (wid.cat == "Spec" || wid.cat == "Story") && wid.name == "fiddle") {
-          val x = Autosave.find(s"DomFid${wid.cat}."+stok.realm+".", stok.au.map(_._id)).flatMap(_.get("content")).mkString
+          val x = Autosave.find(s"DomFid${wid.cat}",stok.realm,"", stok.au.map(_._id)).flatMap(_.get("content")).mkString
           val page = new WikiEntry(wid.cat, "fiddle", "fiddle", "md", x, stok.au.map(_._id).getOrElse(new ObjectId()), Seq("dslObject"), "")
           Some(page)
         } else None
@@ -186,7 +186,12 @@ object DieselControl extends RazController with Logging {
     val base = c.toList.flatMap(_.base)
     val path = if(ipath == "/") ipath+cat else ipath
 
-    def mkLink (s:String) = routes.DieselControl.catBrowser (realm, s, path+"/"+s).toString()
+    def mkLink (s:String) = {
+      val newPath =
+        if(path.split("/") contains s) s"/$s" // stop recursive traverses - some robots are stupid
+        else s"$path/$s"
+      routes.DieselControl.catBrowser (realm, s, newPath).toString()
+    }
 
     ROK.r apply {implicit stok=>
       if(c.exists(_.stereotypes contains "wikiCategory"))

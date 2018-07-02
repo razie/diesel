@@ -63,7 +63,9 @@
   </div>
 
   <script>
-    function testEmail() {
+    withJquery(function(){
+    testEmail=function() {
      $.post('/razadmin/testEmail');
     }
+    });
   </script>

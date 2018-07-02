@@ -35,6 +35,7 @@ an **inline** JS/SCALA client side fiddle
   </div>
 
 <script>
+console.log("scr1 @id");
 
 $('#pre3bdiv_'+@id).hide();
 
@@ -109,6 +110,7 @@ var jsh = function(id,code) {
 <script src="@routes.Assets.at("ace-builds/src/mode-javascript.js")" type="text/javascript" charset="utf-8"></script>
 <script src="@routes.Assets.at("ace-builds/src/ext-language_tools.js")" type="text/javascript" charset="utf-8"></script>
 <script>
+    console.log("scr2 @id");
   ace.require("ace/ext/language_tools");
   var editor_@{id} = ace.edit("pre3_@id");
   editor_@{id}.setOptions({

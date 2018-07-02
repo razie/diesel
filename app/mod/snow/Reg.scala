@@ -4,10 +4,13 @@ import com.mongodb.casbah.Imports._
 import org.joda.time.DateTime
 import com.novus.salat._
 import com.novus.salat.annotations._
-import razie.clog
+import razie.{clog}
+import razie.audit.Audit
 import razie.db.RazSalatContext._
 import com.mongodb.util.JSON
+import mod.cart.{Acct, Price}
 import razie.db._
+
 import scala.annotation.StaticAnnotation
 import razie.wiki.model._
 import razie.wiki.model.features._
@@ -17,17 +20,23 @@ import razie.wiki.model.features._
 case class Reg(
   userId: ObjectId,
   clubName: String,
-  club: WID=WID.empty,
+  club: WID,
   year: String,
   role: String,
   wids: Seq[WID],         // todo for old regs - remove eventually
   roleWids: Seq[RoleWid] = Seq(), // all forms in this reg
   regStatus: String,
   paid: String = "", // amount paid
+  amountPaid: Price = Price(0), // amount paid
+  rFee: Option[Price] = None, // amount paid
+  rFeeDue: Option[Price] = None, // amount paid
   crDtm: DateTime = DateTime.now,
   _id: ObjectId = new ObjectId()) extends REntity[Reg] {
 
   def deprecatedWids: Seq[WID] = roleWids.map(_.wid)
+
+  def allFormsSubmitted =
+    (deprecatedWids.filter(_.page.flatMap(_.form.formState).exists(s=> s == FormStatus.APPROVED || s == FormStatus.SUBMITTED)).size == deprecatedWids.size)
 
   def updateRegStatus(newStatus: String)(implicit txn:Txn) = this.copy(regStatus = newStatus).update
   def updateRole(newRole: String)(implicit txn:Txn) = this.copy(role = newRole).update
@@ -35,15 +44,33 @@ case class Reg(
   def kids = RMany[RegKid]("regId" -> _id)
   def roleOf (rkId : ObjectId) = kids.find(_.rkId == rkId).map(_.role)
 
+  def updFees = this.copy(rFee = Some(calculatePrice("fee")), rFeeDue = Some(calculatePrice("feeDue")))
+
   /** sum up all "fee" fields across all forms */
-  def fee() = {
-    try {
-      val num = deprecatedWids.flatMap(_.page.toList).flatMap(_.form.fields.get("fee").map(_.value)).filter(_.matches("\\d+")).toList.map(_.toInt).sum
-      f"$$ $num%,.2f"
-    } catch {
-      case _:Throwable => "ERR"
-    }
+  def calculatePrice(field:String) : Price = {
+      try {
+        val num = deprecatedWids.flatMap(_.page.toList).flatMap(_.form.fields.get(field).map(_.value)).filter(_.matches("\\d+")).toList.map(_.toInt).sum
+        // todo add currency from club's settings
+        Price(num)
+      } catch {
+        case t: Throwable => {
+          Audit.logdb("EXCEPTION while Reg.fee: ", t)
+          Price(0)
+        }
+      }
   }
+
+  /** sum up all "fee" fields across all forms */
+  def fee : Price = rFee.getOrElse(calculatePrice("fee"))
+
+  def feeDue : Price = rFeeDue.getOrElse(calculatePrice("feeDue"))
+
+  def totalFee : Price = {
+    // todo add currency from club's settings
+    feeDue - acctBalance
+  }
+
+  def acctBalance = Acct.findCurrent(userId, club).map(_.balance).getOrElse(Price(0))
 }
 
 /**
@@ -79,6 +106,8 @@ object RegStatus {
   final val PENDING = "pending" // forms have been submitted - waiting
   final val FAMILY = "family" // reg is filed by another member (parent or spouse)
   final val DELETE = "delete" // transient request - it will remove the record
+
+  def canCopy(r:Reg) = Array(CURRENT, ACCEPTED).contains(r.regStatus)
 }
 
 /** user factory and utils */

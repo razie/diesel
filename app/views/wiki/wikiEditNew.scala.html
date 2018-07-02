@@ -10,6 +10,7 @@ ACE based editor
 @import play.mvc.Http.Context.Implicit
 
 @stok.title("Editing "+wid.cat+":"+ wid.name)
+@stok.requireJs(false)
 
 @v(name:String) = @{
   myForm(name).value.getOrElse("?")
@@ -82,6 +83,7 @@ Implicit.flash().put("bibi", "haha")
               <span style="font-size: x-small">
               </span>
             </div>
+            @util.notesmsgDiv("notesmsg")
           </h2>
 
 @helper.form(action=routes.Wikie.save(wid.formatted), 'id -> "editForm", 'class -> "well") {
@@ -195,7 +197,8 @@ if(localStorage.getItem("weDsl") != 'undefined')
       @*********************** content assist ************************@
 
 <!-- for tags -->
-<script src="@routes.Assets.at("bootstrap-2.2.3/js/bootstrap-typeahead.js")"></script>
+@*<script async src="@routes.Assets.at("bootstrap-2.2.3/js/bootstrap-typeahead.js")"></script>*@
+<script async>require(['bootstrap-typeahead'], function(){});</script>
 
 @if(true) {
   @*these apply for ACE*@
@@ -375,7 +378,7 @@ function attachAce() {
     getCompletions: domCompl(true)
   };
 
-  // delegate the keywords to the xtext generated completer
+  /// optimizo/ delegate the keywords to the xtext generated completer
   var keyWordCompleter = {
     getCompletions: function(editor, session, pos, prefix, callback) {
         var state = editor.session.getState(pos.row);
@@ -492,6 +495,7 @@ function saveDraft() {
       $("#floppy").attr("title", "Draft saved!");
       $("#floppy").css("color", "green");
       $("#floppy").fadeIn(500);
+      notesMsgShow("ok", "save draft");
     },
     error  : function(x) {
       $("#floppy").fadeOut(500);
@@ -499,6 +503,7 @@ function saveDraft() {
       $("#floppy").css("color", "red");
       $("#floppy").fadeIn(500);
       console.log( "ERR "+x.toString());
+      notesMsgShow("err", "ERROR: Cannot save draft");
     }
   });
 }

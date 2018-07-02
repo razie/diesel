@@ -10,6 +10,7 @@ edit a wiki page
 @import play.mvc.Http.Context.Implicit
 
 @stok.title("Editing "+wid.cat+":"+ wid.name)
+@stok.requireJs(false)
 
 @v(name:String) = @{
   myForm(name).value.getOrElse("?")
@@ -67,7 +68,8 @@ Implicit.flash().put("bibi", "haha")
       <div id="weForm" class="col-md-12">
           <h2 style="padding-top: 40px; margin-top: -40px;">Editor
             <small> |
-              <button onclick="return submitPlease();" class="btn btn-default btn-xs "><span id="floppy" class="glyphicon glyphicon-floppy-disk"></span> Save</button>
+              <button onclick="return submitPlease();" id="btnSave" class="btn btn-default btn-xs"><span id="floppy" class="glyphicon glyphicon-floppy-disk"></span> Save</button>
+              <button onclick="return popupDiff();" id="btnDiff" class="btn btn-default btn-xs" style="color:limegreen" title="Show diff from original">&Delta;</button>
             </small>
             <div class="pull-right">
               @if(stok.au.exists(_.isMod)) {
@@ -84,7 +86,9 @@ Implicit.flash().put("bibi", "haha")
                 </small>
               <span style="font-size: x-small">
               </span>
+
             </div>
+            @util.notesmsgDiv("notesmsg")
           </h2>
 
 @helper.form(action=routes.Wikie.save(wid.formatted), 'id -> "editForm", 'class -> "well") {
@@ -211,39 +215,50 @@ PROBLEM: many places use label as name... via Wikis.formatName
 <script>
 var realm = "@stok.realm";
 
-// setup jquery to not reload scripts all the time
-$.ajaxSetup({
-  cache: true
-    });
-$("#draft").change(checkDraft);
-
-function checkDraft()  {
-  if ($("#draft").val() == "Notify" && $("#visibility").val() != "Public")
-    confirm("Warning: publishing with visibility not Public reduces views!");
-}
-
-//useLocalStorageCheckbox("weDsl", "weDsl", switchDsl);
-if(localStorage.getItem("weDsl") != 'undefined')
-  $('#'+"weDsl").prop('checked', localStorage.getItem("weDsl") === 'true');
-
 var label =
     'Content <a href="javascript:popupHelp(\'mdHelp\');" title="Help with markdown editor\nA note on scrolling: if the editor is selected it will act better."><span class="glyphicon glyphicon-question-sign"></span></a> <span id="ehelp"></span>';
 
 var label1 =
     ' <a href="javascript:popupHelp(\'widgetHelp\');" title="Help with widget editor">widget <span class="glyphicon glyphicon-question-sign"></span></a> <span id="ehelp"></span>';
 
-$("#content_field > dt > label").html(label);
-$("#ace-label").html(label);
+function hideSpinner() {
+  $('#spinner').hide();
+};
 
-@if(wid.cat=="Admin" && wid.name.startsWith("widget_")) {
+function showSpinner() {
+  $('#spinner').show();
+};
+
+withJquery(function($) {
+
+// setup jquery to not reload scripts all the time
+  $.ajaxSetup({
+    cache: true
+  });
+
+  $("#draft").change(checkDraft);
+
+  if (localStorage.getItem("weDsl") != 'undefined')
+    $('#' + "weDsl").prop('checked', localStorage.getItem("weDsl") === 'true');
+
+  $("#content_field > dt > label").html(label);
+  $("#ace-label").html(label);
+
+  @if(wid.cat=="Admin" && wid.name.startsWith("widget_")) {
   $("#ehelp").html(label1);
+  }
+});
+
+function checkDraft()  {
+  if ($("#draft").val() == "Notify" && $("#visibility").val() != "Public")
+    confirm("Warning: publishing with visibility not Public reduces views!");
 }
 
-function popupHelp(id) {
+function popupHelp (id) {
   popupContent($("#"+id).html());
 }
 
-    function popupDiff() {
+function popupDiff () {
       //todo get the diffs
       $.ajax(
           '/wikie/diffContent/@wid.wpath', {
@@ -266,24 +281,12 @@ function popupHelp(id) {
 
       @*********************** content assist ************************@
 
-<!-- for tags -->
-<script src="@routes.Assets.at("bootstrap-2.2.3/js/bootstrap-typeahead.js")"></script>
-
-@if(true) {
-  @*these apply for ACE*@
-<script src="@routes.Assets.at("javascripts/weDieselDom.js")"></script>
-
-<script src="@routes.Assets.at("ace-builds/src/ace.js")" type="text/javascript" charset="utf-8"></script>
-
-<script src="@routes.Assets.at("ace-builds/src/mode-nvp1.js")" type="text/javascript" charset="utf-8"></script>
-<script src="@routes.Assets.at("ace-builds/src/ext-language_tools.js")" type="text/javascript" charset="utf-8"></script>
-}
 
 <script>
 //from http://stackoverflow.com/questions/12662824/twitter-bootstrap-typeahead-multiple-values
 
-  var $tagsInput = $('#tags');
-
+razOnLoad(function() {
+  require(['jquery', 'bootstrap-typeahead'], function($){
   //todo populate dynamically when user does need tag editing.. using /wikie/tagOptions
   // see CA_TC_sqbraTags for jquery load json example
   var userTags = [
@@ -298,19 +301,19 @@ function popupHelp(id) {
 
   $('#tags').typeahead({
     source: userTags,
-    updater: function(item) {
+    updater: function (item) {
       var idx = this.$element.context.selectionStart;
       var query = this.$element.val();
-      if(idx && query.substring(0,idx).indexOf(',') >= 0) {
-        var cpre  = query.substring(0,idx).lastIndexOf(',');
+      if (idx && query.substring(0, idx).indexOf(',') >= 0) {
+        var cpre = query.substring(0, idx).lastIndexOf(',');
         var cpost = query.substring(idx).indexOf(',');
-        var pre   = query.substring(0, cpre+1);
-        var it    = cpost >= 0 ? query.substring(cpre+1,idx+cpost) : query.substring(cpre+1, idx);
-        var post  = cpost >= 0 ? query.substring(idx+query.substring(idx).indexOf(',')) : '';
+        var pre = query.substring(0, cpre + 1);
+        var it = cpost >= 0 ? query.substring(cpre + 1, idx + cpost) : query.substring(cpre + 1, idx);
+        var post = cpost >= 0 ? query.substring(idx + query.substring(idx).indexOf(',')) : '';
 
-        return pre + it.replace(/([^,]*)\w*$/,item) + post;
+        return pre + it.replace(/([^,]*)\w*$/, item) + post;
       } else {
-        return this.$element.val().replace(/([^,]*)\w*$/,item);
+        return this.$element.val().replace(/([^,]*)\w*$/, item);
       }
     },
     matcher: function (item) {
@@ -320,21 +323,17 @@ function popupHelp(id) {
     },
     highlighter: function (item) {
       var query = extractor(this.query, this.$element.context.selectionStart);
-      console.log('q '+query)
-      if(query.length>0)
+      console.log('q ' + query)
+      if (query.length > 0)
         return item.replace(new RegExp('(' + query + ')', 'ig'), function ($1, match) {
           return '<strong>' + match + '</strong>'
         })
       else return item;//+'s';
     }
+  });
+  });
 });
 </script>
-
-<script src="@routes.Assets.at("javascripts/rk-contentassist-sqbr.js")"></script>
-<script src="@routes.Assets.at("vendor/jquery.textcomplete.min.js")"></script>
-<script src="@routes.Assets.at("javascripts/weCommons.js")"></script>
-<script src="@routes.Assets.at("javascripts/wikiEdit.js")"></script>
-<script src="@routes.Assets.at("javascripts/rk-contentassist.js")"></script>
 
 <div id="weForm1" class="col-sm-4" style="display: none;"></div>
 
@@ -347,8 +346,11 @@ function popupHelp(id) {
       | <input type="checkbox" name="weServer" id="weServer"> server
 }
         @if(wid.page.exists(_.tags.contains("dsl"))) {
-          | <input type="checkbox" id="wikiMode" title="Show the wiki instead of the tree" checked> wiki
+          | <input type="checkbox" id="treeMode" title="Show the wiki instead of the tree" checked> tree
           }
+
+        &nbsp;
+        <span id="spinner" style="display: none"><img src="https://cdn.razie.com/Public/spinner.gif" height="24" width="24"></span>
 
     </small>
     <div class="pull-right">
@@ -378,22 +380,45 @@ function popupHelp(id) {
 
       @** todo make it nicely live like this http://spec.commonmark.org/dingus/ ***@
 
-  @*<script src="https://cdnjs.cloudflare.com/ajax/libs/commonmark/0.25.1/commonmark.js"></script>*@
-  @*<script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.12.0/lodash.min.js"></script>*@
 <script src="@routes.Assets.at("vendor/commonmark.25.1.js")"></script>
 <script src="@routes.Assets.at("vendor/lodash.4.12.0.min.js")"></script>
+
+<script async src="@routes.Assets.at("bootstrap-2.2.3/js/bootstrap-typeahead.js")"></script>
+  <script src="@routes.Assets.at("javascripts/rk-contentassist-sqbr.js")"></script>
+  <script src="@routes.Assets.at("vendor/jquery.textcomplete.min.js")"></script>
+  <script src="@routes.Assets.at("javascripts/weCommons.js")"></script>
+  <script src="@routes.Assets.at("javascripts/wikiEdit.js")"></script>
+  <script src="@routes.Assets.at("javascripts/rk-contentassist.js")"></script>
 
 <script>
     // only applies to old style tetarea
     var dotTags = [];
 
-    $('#content').textcomplete([
-      CA_TC_braTags (optsToDomain(braDomain)),
-      CA_TC_sqbraTags,
-      CA_TC_dotTags (optsToDomain(braDomain.concat(dotTags)))
-    ]);
-
+  razOnLoad(function(){
+    require(['jquery'
+      ,
+      "../vendor/jquery.textcomplete.min",
+      "weCommons",
+      "rk-contentassist-sqbr",
+      "rk-contentassist"
+    ], function($) {
+  $('#content').textcomplete([
+    CA_TC_braTags(optsToDomain(braDomain)),
+    CA_TC_sqbraTags,
+    CA_TC_dotTags(optsToDomain(braDomain.concat(dotTags)))
+  ]);
+    });
+});
 </script>
+
+
+@*these apply for ACE*@
+<script src="@routes.Assets.at("javascripts/weDieselDom.js")"></script>
+
+<script src="@routes.Assets.at("ace-builds/src/ace.js")"></script>
+
+<script src="@routes.Assets.at("ace-builds/src/mode-nvp1.js")"></script>
+<script src="@routes.Assets.at("ace-builds/src/ext-language_tools.js")"></script>
 
 <script>
   // --------------------------------------- ACE specifics
@@ -409,8 +434,32 @@ var domChanged=true;
 var instChanged=false;
 var captureChanged=true;
 
-function myattachAce() {
-  aceEditor = attachAce("acec", textarea.val(), @stok.isLight.toString);
+  @if(wid.page.exists(_.tags.contains("dsl"))) {
+  var isDiesel = true;
+  } else {
+  var isDiesel = false;
+  }
+
+var textarea = '';
+
+
+razOnLoad(function() {
+//  require(['jquery',
+//    '../vendor/commonmark.25.1',
+//    '../ace-builds/src/ace',
+//    '../vendor/lodash.4.12.0.min',
+//    'weDieselDom',
+//    'weCommons',
+//    'wikiEdit',
+//    '../ace-builds/src/mode-nvp1',
+//    '../ace-builds/src/ext-language_tools'
+//  ], function ($, commonmark, ace) {
+
+myattachAce = function() {
+  aceEditor = attachAce(ace, "acec", textarea.val(), @stok.isLight.toString);
+
+  aceEditor.getSession().setOption('indentedSoftWrap', false);
+  aceEditor.getSession().setUseWrapMode(true);
 
   aceEditor.getSession().on('change', function(e) {
     instChanged=true;
@@ -424,32 +473,24 @@ function myattachAce() {
   },500);
 }
 
-</script>
+textarea = $("#content");
 
-<script>
+  @if(hasDraft) {
+    $("#floppy").css("color", "LimeGreen");
+    $("#btnDiff").show();
+  } else {
+    $("#btnDiff").hide();
+  }
 
-@if(wid.page.exists(_.tags.contains("dsl"))) {
-var isDiesel = true;
-} else {
-var isDiesel = false;
-}
-
-@if(hasDraft) {
-  $("#floppy").css("color", "green");
-}
-
-var textarea = $("#content");
-
-$("#bigOne").css("min-height", $("#weForm").height());
-
+  $("#bigOne").css("min-height", $("#weForm").height());
 
 /** syc content between the two forms */
-function getContent() {
+getContent = function() {
   return aceAttached ? aceEditor.getSession().getValue() : $("#content").val();
 }
 
 /** syc content between the two forms */
-function syncContent() {
+syncContent = function() {
   if(aceAttached) {
     $("#content").val(aceEditor.getSession().getValue());
   } else if(typeof aceEditor != 'undefined') {
@@ -457,7 +498,7 @@ function syncContent() {
   }
 }
 
-function submitPlease() {
+submitPlease = function() {
   syncContent();
   $("#editForm").submit();
   return false;
@@ -468,15 +509,16 @@ useLocalStorageCheckbox("weLive", "weLive");
   useLocalStorageCheckbox("weServer", "weServer");
 }
 
-var preview = _.debounce(livePreview, 250, { maxWait: 500 });
-textarea.bind('input propertychange', preview);
-$("#tags").bind('input propertychange', preview);
+  var preview = _.debounce(livePreview, 250, {maxWait: 1000});
+  textarea.bind('input propertychange', preview);
+  $("#tags").bind('input propertychange', preview);
 
-var saveDraftDebounced = _.debounce(saveDraft, 2000, { maxWait: 5000 });
+  var saveDraftDebounced = _.debounce(saveDraft, 2000, {maxWait: 5000});
 
-$("#content").change(livePreview);
 
-function refreshServerNow() {
+  $("#content").change(livePreview);
+
+refreshServerNow = function() {
   var content = getContent();
   var tags = $("#tags").val();
 
@@ -485,7 +527,7 @@ function refreshServerNow() {
 
 /** update the preview */
 function livePreview() {
-  refreshDsl();
+  refreshDslDebounced();
   var content = aceAttached ? aceEditor.getSession().getValue() : $("#content").val();
   var tags = $("#tags").val();
 
@@ -493,9 +535,8 @@ function livePreview() {
     if(
       canRenderInPage('@wid.cat', '@wid.name', content, tags) &&
       ! $('#weServer').prop('checked')
-      ) parseAndRender();
+      ) parseAndRender(commonmark);
     else {
-//      $("#rtrip").text("(from server)");
       refreshServer('@wid.wpath', content, tags);
     }
   }
@@ -513,6 +554,7 @@ function saveDraft() {
     type: 'POST',
     data: $.param({
       content : content,
+      ver : @wid.page.map(_.ver).getOrElse(0),
       tags : tags
     }),
     timeout : 2000,
@@ -522,18 +564,25 @@ function saveDraft() {
       $("#floppy").attr("title", "Draft saved!");
       $("#floppy").css("color", "green");
       $("#floppy").fadeIn(500);
+      $("#btnDiff").show();
     },
     error  : function(x) {
       $("#floppy").fadeOut(500);
       $("#floppy").attr("title", "ERROR: Cannot save draft");
       $("#floppy").css("color", "red");
       $("#floppy").fadeIn(500);
-      console.log( "ERR "+x.toString());
+      console.log( "ERR "+JSON.stringify(x));
+      if(x.status && x.status == 409) {
+        notesMsgShow("err", "Conflict - " + x.responseText);
+        $("#floppy").attr("title", "Conflict - " + x.responseText);
+      }
+      else
+        notesMsgShow("err", "Cannot save draft");
     }
   });
 }
 
-function cancel() {
+cancel = function() {
   $.ajax(
     '/wikie/deleteDraft/@wid.wpath', {
     type: 'POST',
@@ -555,13 +604,15 @@ function cancel() {
 
 var currentLayout = "12";
 
-if(window.localStorage.getItem("weEditLayout") != null) {
-  currentLayout = window.localStorage.getItem("weEditLayout");
-}
+withJquery(function() {
+  if (window.localStorage.getItem("weEditLayout") != null) {
+    currentLayout = window.localStorage.getItem("weEditLayout");
+  }
 
-setView ("12", currentLayout);
+  setView("12", currentLayout);
+});
 
-function setTextAreaHeight() {
+function setTextAreaHeight () {
   var textHeight = aceAttached ? $("#acec").height() : textarea.height();
   var curOthers = $("#weForm9" ).height() - textHeight;
   if(aceAttached)
@@ -619,7 +670,7 @@ function setView(currentLayout, newLayout) {
 }
 
 // toggle weSettings
-function showSettings() {
+showSettings = function() {
   var wes = $("#weSettings");
   if(wes.is(":visible")) {
     $("#weSettings").hide();
@@ -631,7 +682,7 @@ function showSettings() {
 }
 
 // toggle dsl
-function showDsl() {
+showDsl = function() {
   if($('#weDsl').prop('checked')) {
     $('#weDsl').prop('checked', false);
   } else {
@@ -644,7 +695,7 @@ function showDsl() {
 }
 
 // toggle dsl
-function switchDsl(a,b,state) {
+switchDsl = function(a,b,state) {
   syncContent();
   if($('#weDsl').prop('checked')) {
     // show ACE
@@ -665,7 +716,7 @@ function switchDsl(a,b,state) {
 
 var layouts = ["12", "6", "9"];
 
-function resetView() {
+resetView = function() {
 
   var newLayout = layouts[(layouts.indexOf(currentLayout)+1) % layouts.length];
 
@@ -676,7 +727,7 @@ function resetView() {
 }
 
 // prevent footer scrolling over editor
-$(document).ready(function() {
+withJquery(function() {
   footR=$('#weFooter').offset().top;
 
   $(window).scroll(function() {
@@ -743,35 +794,38 @@ $(document).ready(function() {
   });
 });
 
-switchDsl();
+  switchDsl();
 
-</script>
 
-  <script>
-useLocalStorageCheckbox("wikiMode", "domFiddleWikiMode");
+  useLocalStorageCheckbox("treeMode", "domFiddleWikiMode");
 
-$('#wikiMode').change(function(){
+  $('#treeMode').change(function(){
+    showHideIframe();
+  });
+
   showHideIframe();
-});
 
 function showHideIframe() {
-  if($('#wikiMode').prop('checked')) {
-    $('#iframeOut3_').hide();
-  } else if(isDiesel) {
+  if($('#treeMode').prop('checked')) {
     $('#iframeOut3_').show();
+  } else if(isDiesel) {
+    $('#iframeOut3_').hide();
     runpill2('5');
   }
 };
 
-function refreshDsl() {
-  if($('#wikiMode').prop('checked')) {
-  } else {
+
+refreshDsl = function() {
+  if($('#treeMode').prop('checked')) {
     if(isDiesel) runpill2('5');
   }
 };
 
-var runpill2 = function(id) {
+  var refreshDslDebounced = _.debounce(refreshDsl, 2000, {maxWait: 5000});
+
+function runpill2 (id) {
   var lastTime = new Date().getTime();
+  showSpinner();
   $.ajax(
       '/diesel/fiddle/fiddleStoryUpdated/'+id+'?@Html(mod.diesel.controllers.SFiddles.qtourl(Map.empty))', {
         type: 'POST',
@@ -790,23 +844,41 @@ var runpill2 = function(id) {
         }),
         contentType: 'application/x-www-form-urlencoded',
         success: function(data) {
-          if($('#wikiMode').prop('checked'))
-              $('#divOut3_'+id).html(data.wiki);
-            else
+          hideSpinner();
+          if($('#treeMode').prop('checked'))
             $('#iframeOut3_').html(data.res.replace(/weref/g, 'wefiddle')+'\n');
+          else
+            $('#divOut3_'+id).html(data.wiki);
           instContentAssist = data.ca;
 //            setErrors(data.failureCount);
           var du = new Date().getTime() - lastTime;
           $('#roundtrip').text(du+' ms');
         },
         error  : function(x) {
+          hideSpinner();
           console.log( "ERR "+x.toString());
         }
       });
 }
 
-showHideIframe();
+  popupDiff = function() {
+    $.ajax(
+        '/wikie/draftDiff/@{wid.wpath}', {
+          type: 'POST',
+          data: $.param({
+          }),
+          contentType: 'application/x-www-form-urlencoded',
+          success: function(data) {
+            popupContent(data.diff);
+          },
+          error  : function(x) {
+            console.log( "ERR "+x.toString());
+          }
+        });
+  }
 
+//}); - if I remove these, it goes berserk
+}); // withJquery
 </script>
 
 

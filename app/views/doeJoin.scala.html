@@ -1,6 +1,9 @@
+
 @(registerForm:Form[controllers.Registration])(implicit stok:controllers.StateOk)
 
+@stok.requireJs(false)
 @htmlHeadBar("Login/register")
+
 
 <div class="container">
   <div class="jumbotron">
@@ -31,6 +34,7 @@
       <div class="col-sm-4">
 
 @import helper.twitterBootstrap._
+@import razie.wiki.admin.SecLink
 @import play.api.Play.current
 @import play.api.i18n.Messages.Implicits._
 
@@ -50,7 +54,7 @@
 
   <hr>
 
-  @if(stok.website.openMembership) {
+  @if(stok.website.openMembership || stok.request.exists(_.flash.get(SecLink.HEADER).exists(_.length > 5))) {
     <span style="color: red;
       font-size: smaller"> To <strong>create a new account</strong>, please confirm the chosen email and password: </span>
 
@@ -68,7 +72,8 @@
     <input name="reemail" style="display: none;"/>
     <input name="repassword" style="display: none;"/>
 
-    <div class="alert alert-danger">This website does not allow creating accounts... you can contact us via a Support request.</div>
+    <div class="alert alert-danger">
+      This website does not allow creating accounts... you can request or use an invitation below.</div>
     <hr>
   }
 
@@ -76,7 +81,7 @@
      <p style="color:red;font-weight:bold">@err.message</p>
   }
 
-  <p><small>By registering or logging in, you agree to the <a href="@controllers.Wiki.w("Admin", "Terms of Service-"+stok.realm, stok.realm)">Terms of Service</a></small><p>
+  <p><small>By registering or logging in, you agree to the <a href="@controllers.Wiki.w("Admin", "Terms of Service", stok.realm)">Terms of Service</a></small><p>
   }
 
        </div>
@@ -84,6 +89,48 @@
 
       </div>
     </div>
+
+@if(! stok.website.openMembership) {
+  <hr>
+  <br><br>
+
+  Do you have an invitation?
+  <div class="alert alert-success">
+
+  <form action="/diesel/invited" method="post" class="form col-md-6">
+Your email
+    <br>
+    <input name="email" type="email" class="input-lg" placeholder="Email">
+
+    <br>
+    <br>
+    Your invitation
+    <br>
+    <input name="invitation" type="text" class="input-lg" placeholder="Code">
+    <br><br>
+    <input type="submit" class="btn btn-primary btn-lg" value="Check it out">
+  </form>
+  </div>
+
+  <br>
+  <div class="alert alert-info">
+  Need an invitation?
+  <br><br>
+  <form action="/diesel/rqinvite?realm=specs" method="post" class="form col-md-6">
+Your email
+    <br>
+    <input name="email" type="email" class="input-lg" placeholder="Email">
+
+    <br>
+    <br>
+    Why?
+    <br>
+    <textarea name="why" class="xform-control input-lg" rows="5"  placeholder="Why are you interested in this preview?"></textarea>
+    <br><br>
+    <input type="submit" class="btn btn-primary btn-lg" value="Request Invitation">
+  </form>
+  </div>
+}
   <hr>
 
   <form action="/doe/join/gtoken" id="gform" method="POST">
@@ -95,7 +142,7 @@
   </form>
 
     <!-- Last part of BODY element in file index.html -->
-<script type="text/javascript">
+<script>
   var gauthResult="";
 
   function loadProfile(){

@@ -12,10 +12,11 @@ club admin manages list of users and registrations
         "firstName"->t._1.get.firstName,
         "lastName"->t._1.get.lastName,
         "role"->t._2.role,
-        "paid"->t._3.map(_.paid).getOrElse(""),
+        "paid"->t._3.map(_.amountPaid.amount.toString).getOrElse(""),
+        "due"->t._3.map(r=> (r.fee - r.amountPaid - r.acctBalance).orZero.amount.toString).getOrElse(""),
         "vol" -> (if(details == "2") t._3.map(controllers.Vol.volPerReg).getOrElse("-") else ""),
         "regStatus" -> t._3.map(_.regStatus).getOrElse("n/a"),
-        "balance" -> t._3.flatMap(reg=>mod.cart.Acct.findCurrent(reg.userId, reg.club)).map(_.balance.toString).getOrElse(""),
+        "balance" -> t._3.map(_.acctBalance.amount.toString).getOrElse(""),
         "uwId"->t._2._id.toString
       ))
   }
@@ -66,14 +67,15 @@ club admin manages list of users and registrations
 
 @util.utilSimpleTable(tab.filter(_.apply("role") != "Fan").iterator,
         Seq("userName" -> "",
-                "firstName"->"First",
-                "lastName"->"Last",
-                "role"->"Role",
-                "paid" -> "Paid",
-                "vol" -> "Hours",
-          "balance" -> "Balance",
+          "firstName"->"First",
+          "lastName"->"Last",
+          "role"->"Role",
+          "paid" -> "Paid",
+          "due" -> "Due",
+          "balance" -> "Credits",
+          "vol" -> "Hours",
           "regStatus" -> "Registration",
-                "uwId"->""), Some(mnglink))
+          "uwId"->""), Some(mnglink))
 
 <p>Send invitation to join club on RacerKidz for new members - copy this link and email it <br>
 <strong>http://@Services.config.hostport/wiki/Admin:Join_A_Club?club=@clubName</strong>
@@ -159,9 +161,8 @@ Add more from <a href="@routes.Club.doeClubKidz">here</a>
 <h2>Purging</h2>
 
 @mod.snow.Regs.findClub(clubName).toList.groupBy(_.year).toSeq.sortBy(_._1).map{t=>
-  <br><a href="@routes.Club.doePurgeRegs(clubName, t._1)">@t._1</a> - @t._2.size
-  RegKid @t._2.map(_.kids.size).sum
-  Forms @t._2.map(_.wids.size).sum
+  <br><a href="@routes.Club.doePurgeRegs(clubName, t._1)">@t._1</a> -
+  Registrations: @t._2.size
+  People(RacerKids): @t._2.map(_.kids.size).sum
+  Forms: @t._2.map(_.roleWids.size).sum
 }
-
-

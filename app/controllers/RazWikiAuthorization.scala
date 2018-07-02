@@ -60,27 +60,25 @@ object RazWikiAuthorization extends RazController with Logging with WikiAuthoriz
     // TODO optimize
     def uname(id: Option[String]) = id.flatMap(Users.findUserById(_)).map(_.userName).getOrElse(id.getOrElse(""))
 
+    val pvis = props.getOrElse(visibility, "")
+
     (!props.get(visibility).isDefined) || u.exists(_.hasPerm(Perm.adminDb)) ||
-      (props(visibility) == Visibility.PUBLIC) || // if changing while edit, it will have a value even when public
+      (pvis == Visibility.PUBLIC) || // if changing while edit, it will have a value even when public
       (u.isDefined orCorr cNoAuth).exists(_ == true) && // anything other than public needs logged in
       (
         props.get("owner") == Some(u.get.id) || // can see anything I am owner of - no need to check Visibility.PRIVATE
-        props(visibility) == Visibility.MEMBER || // any website member
-          (props(visibility) == Visibility.MODERATOR && u.get.hasPerm(Perm.Moderator)) ||
-          (props(visibility) == Visibility.PLATINUM && (u.get.hasPerm(Perm.Moderator) || u.get.hasPerm(Perm.Platinum))) ||
-          (props(visibility) == Visibility.GOLD && (u.get.hasPerm(Perm.Moderator) || u.get.hasPerm(Perm.Platinum) || u.get.hasPerm(Perm.Gold))) ||
-          (props(visibility) == Visibility.BASIC && (u.get.hasPerm(Perm.Moderator) || u.get.hasPerm(Perm.Platinum) || u.get.hasPerm(Perm.Gold) || u.get.hasPerm(Perm.Basic))) ||
+        u.get.hasMembershipLevel(pvis) ||
         (
-          props(visibility).startsWith(Visibility.CLUB) &&
+          pvis.startsWith(Visibility.CLUB) &&
             props.get("owner").flatMap(Users.findUserById(_)).exists(owner =>
               // hoping it's more likely members read blogs than register...
-              props(visibility) == Visibility.CLUB && isInSameClub(u.get, owner) ||
-                props(visibility) == Visibility.CLUB_COACH && isInSameClub(u.get, owner, "Coach") ||
-                props(visibility) == Visibility.CLUB_ADMIN && isClubAdmin(u.get, owner) ||
+              pvis == Visibility.CLUB && isInSameClub(u.get, owner) ||
+                pvis == Visibility.CLUB_COACH && isInSameClub(u.get, owner, "Coach") ||
+                pvis == Visibility.CLUB_ADMIN && isClubAdmin(u.get, owner) ||
                 // maybe the club created the parent topic (like forum/blog etc)?
-                props(visibility) == Visibility.CLUB &&
+                pvis == Visibility.CLUB &&
                   props.get("parentOwner").flatMap(Users.findUserById(_)).exists(parentOwner => isInSameClub(u.get, parentOwner)) ||
-                props(visibility) == Visibility.CLUB &&
+                pvis == Visibility.CLUB &&
                   we.flatMap(_.wid.findParent.flatMap(_.props.get("owner"))).flatMap(Users.findUserById(_)).exists(parentOwner => isInSameClub(u.get, parentOwner))
             ) orCorr
             cNotMember(uname(props.get("owner")))).getOrElse(

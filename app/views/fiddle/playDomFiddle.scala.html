@@ -18,7 +18,9 @@ a JS with HTML and CSS fiddle
     )(implicit stok:controllers.StateOk)
 @import razie.wiki.model.WID
 
+<div style="margin-left: 20px; margin-right: 20px">
 @stok.title("Diesel fiddle")
+@stok.requireJs(false)
 
 <style>
 .ace-primaryline {
@@ -31,8 +33,8 @@ a JS with HTML and CSS fiddle
 <script src="@routes.Assets.at("javascripts/weCommons.js")"></script>
 <script src="@routes.Assets.at("javascripts/weFiddles.js")"></script>
 
-  <h3>Diesel fiddle | <small>
-    <input type="checkbox" id="refresh" checked> Real time (<span id="roundtrip">.. ms</span>)
+  <h3 id="heading">Diesel fiddle<a href="/wiki/Diesel_Fiddle_Guide"><sup><span class="glyphicon glyphicon-question-sign"></span></sup></a> | <small>
+    <input type="checkbox" id="refresh" checked> <span title="real time preview">RT</span> (<span id="roundtrip" title="real time roundtrip response time">.. ms</span>)
     <span id="errors" class="label label-default">0 failed</span>
 
     <span onclick="setSpec('Story');" class="label label-primary" style="cursor:pointer"><span id="curStory">Story</span> <span class="glyphicon glyphicon-chevron-down">
@@ -58,6 +60,10 @@ a JS with HTML and CSS fiddle
     | <span onclick="startESP();" class="label label-primary" style="cursor:pointer">ESP
         <span class="glyphicon glyphicon-log-out"></span>
       </span>
+
+    &nbsp;
+    <span id="spinner" style="display: none"><img src="https://cdn.razie.com/Public/spinner.gif" height="24" width="24"></span>
+
   </small>
   </h3>
 
@@ -123,7 +129,6 @@ If you'd rather see the elements ($msg, $when etc) as a dialog, go to that line 
 }
 
 
-
 <script>
 // used in imported scripts
 var realm = '@reactor';
@@ -154,6 +159,14 @@ $('#divOut3_'+@id).css('max-height', $('#divIn3_@id').height()-10+'px');
 $('#iframeOut3_'+@id).css('max-height', $('#divIn3_@id').height()-10+'px');
 $('#iframeOut5_'+@id).css('max-height', $('#pre5box_@id').height()-10+'px');
 
+function hideSpinner() {
+  $('#spinner').hide();
+};
+
+function showSpinner() {
+  $('#spinner').show();
+};
+
 function showHideIframe() {
   if($('#wikiMode').prop('checked')) {
     $('#divOut3_@id').show();
@@ -182,6 +195,7 @@ if(storyWpath.length > 0) $("#curStory").text('(@WID.fromPath(storyWpath).map(_.
 
 var runpill_@id = function(id) {
   var lastTime = new Date().getTime();
+  showSpinner();
   $.ajax(
     '/diesel/fiddle/fiddleSpecUpdated/'+id+'?@Html(mod.diesel.controllers.SFiddles.qtourl(args))', {
     type: 'POST',
@@ -199,6 +213,7 @@ var runpill_@id = function(id) {
     }),
     contentType: 'application/x-www-form-urlencoded',
     success: function(data) {
+      hideSpinner();
       $('#divOut1_'+id).html(data.res);
       domContentAssist = data.ca;
       var du = new Date().getTime() - lastTime;
@@ -208,6 +223,7 @@ var runpill_@id = function(id) {
       runpill2_@{id}('@{id}');
     },
     error  : function(x) {
+      hideSpinner();
       console.log( "ERR "+x.toString());
     }
   });
@@ -224,6 +240,7 @@ function setErrors (s) {
 
 var runpill2_@id = function(id) {
   var lastTime = new Date().getTime();
+  showSpinner();
   $.ajax(
     '/diesel/fiddle/fiddleStoryUpdated/'+id+'?@Html(mod.diesel.controllers.SFiddles.qtourl(args))', {
     type: 'POST',
@@ -242,6 +259,7 @@ var runpill2_@id = function(id) {
     }),
     contentType: 'application/x-www-form-urlencoded',
     success: function(data) {
+      hideSpinner();
       if($('#wikiMode').prop('checked'))
         $('#divOut3_'+id).html(data.wiki);
       else {
@@ -256,6 +274,7 @@ var runpill2_@id = function(id) {
       storyChanged(data.storyChanged);
     },
     error  : function(x) {
+      hideSpinner();
       console.log( "ERR "+x.toString());
     }
   });
@@ -532,21 +551,28 @@ $(window).load (function() {
   if(localStorage.getItem("domFiddleExpandedSpec") == null)
     localStorage.setItem("domFiddleExpandedSpec", true);
 
+  // figure out the heights, depending on current window height
+  var h = $(window).height() - $("#heading").height() - $("nav").height();
+  var h1 = (h-70) > 300 ? (h-70) : 300; // if too small, force it 300 anyways
+  var h2 = (h1 / 2) + "px"; // 228 - when both stoore/spec open
+  var h3 = h1 + "px"; // 428 - when only spec open
+
   useLocalStorageCheckbox("expandedStory", "domFiddleExpandedStory", function (a,b,expanded) {
     if(expanded) {
       $("#storyRow").show();
-      $("#divIn1_@id").css("height", "228px");
-      $("#pre1_@id").css("height", "228px");
+      $("#divIn1_@id").css("height", h2);
+      $("#pre1_@id").css("height", h2);
+      $("#divOut1_@id").css("max-height", h2);
       $("#divOut1_@id").show();
-      $("#iframeOut1_@id").css("max-height", "228px");
+      $("#iframeOut1_@id").css("max-height", h2);
       $("#iframeOut1_@id").hide();
       attachAce();
     } else {
       $("#storyRow").hide();
-      $("#divIn1_@id").css("height", "428px");
-      $("#pre1_@id").css("height", "428px");
+      $("#divIn1_@id").css("height", h3);
+      $("#pre1_@id").css("height", h3);
       $("#divOut1_@id").hide();
-      $("#iframeOut1_@id").css("max-height", "428px");
+      $("#iframeOut1_@id").css("max-height", h3);
       $("#iframeOut1_@id").show();
       attachAce();
     }
@@ -554,17 +580,17 @@ $(window).load (function() {
   useLocalStorageCheckbox("expandedSpec", "domFiddleExpandedSpec", function (a,b,expanded) {
     if(expanded) {
       $("#specRow").show();
-      $("#divIn3_@id").css("height", "228px");
-      $("#pre3_@id").css("height", "228px");
-      $("#divOut3_@id").css("max-height", "228px");
-      $("#iframeOut3_@id").css("max-height", "228px");
+      $("#divIn3_@id").css("height", h2);
+      $("#pre3_@id").css("height", h2);
+      $("#divOut3_@id").css("max-height", h2);
+      $("#iframeOut3_@id").css("max-height", h2);
       attachAce();
     } else {
       $("#specRow").hide();
-      $("#divIn3_@id").css("height", "428px");
-      $("#pre3_@id").css("height", "428px");
-      $("#divOut3_@id").css("max-height", "428px");
-      $("#iframeOut3_@id").css("max-height", "428px");
+      $("#divIn3_@id").css("height", h3);
+      $("#pre3_@id").css("height", h3);
+      $("#divOut3_@id").css("max-height", h3);
+      $("#iframeOut3_@id").css("max-height", h3);
       attachAce();
     }
   });
@@ -617,6 +643,8 @@ function openSpec() {
   }, 500);
   </script>
 }
+
+</div>
 
 @util.oneModal()
 

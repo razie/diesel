@@ -17,10 +17,10 @@ class DomApiBase extends mod.diesel.controllers.SFiddleBase  with Logging {
 
   /** api - get content for a WID - either from page or autosaved */
   def getContent(what: String, wid: CMDWID) = FAUPR { implicit stok =>
-    val DFS = if (what.toLowerCase == "spec") "DomFidSpec." else "DomFidStory."
+    val DFS = if (what.toLowerCase == "spec") "DomFidSpec" else "DomFidStory"
     val spw = wid.wid.flatMap(_.page).map(_.content).getOrElse("")
 
-    val ospec = wid.wpath.flatMap(specWpath => Autosave.find(DFS + stok.realm + "." + specWpath, stok.au.get._id).map(_.apply("content")))
+    val ospec = wid.wpath.flatMap(specWpath => Autosave.find(DFS, stok.realm, specWpath, stok.au.get._id).map(_.apply("content")))
 
     Ok(ospec getOrElse spw)
   }

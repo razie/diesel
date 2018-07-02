@@ -9,11 +9,14 @@ package mod.diesel.model.exec
 import controllers.Wikil
 import razie.clog
 import razie.diesel.dom._
+import razie.diesel.engine.DomEngECtx
 import razie.diesel.ext._
 import razie.diesel.model.DieselMsgString
 import razie.wiki.Services
 import razie.wiki.model._
 import razie.diesel.ext.EVal
+
+import scala.collection.mutable.ListBuffer
 
 // the context persistence commands
 class EEWiki extends EExecutor("rk.wiki") {
@@ -21,11 +24,31 @@ class EEWiki extends EExecutor("rk.wiki") {
   override def isMock: Boolean = true
 
   override def test(m: EMsg, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) = {
-    m.entity == "rk.wiki" || m.entity == "wiki"
+    m.entity == "rk.wiki" || m.entity == "wiki" || m.entity == "diesel.wiki"
   }
 
   override def apply(in: EMsg, destSpec: Option[EMsg])(implicit ctx: ECtx): List[Any] = {
     in.met match {
+      case "content" => {
+        clog << "DIESEL.wiki.content"
+
+        val errors = new ListBuffer[Any]()
+        // todo auth
+        ctx
+          .get("wpath")
+          .flatMap(WID.fromPath(_, ctx.root.settings.realm.mkString))
+          .orElse{errors.append(EError("no wid")); None}
+          .map(_.r(ctx.root.settings.realm.mkString))
+          .map{wid=> errors.append(EInfo("final wid: "+wid)); wid}
+          .flatMap(Wikis.find)
+          .orElse{errors.append(EError("no wiki")); None}
+          .toList
+          .map{w=>
+            in.attrs.find(_.name == "result").map(_.calculatedValue).map { output=>
+              new EVal(output, w.content)
+            } getOrElse new EVal("payload", w.content)
+          } ::: errors.toList
+      }
       case "follow" => {
         //todo auth
         clog << "DIESEL.wiki.follow"
@@ -34,7 +57,7 @@ class EEWiki extends EExecutor("rk.wiki") {
           ctx("wpath"),
           ctx("how")
         )
-        List(new EVal("result", res))
+        List(new EVal("payload", res))
       }
       case _ => {
         Nil
@@ -58,6 +81,7 @@ class EEWiki extends EExecutor("rk.wiki") {
   override def toString = "$executor::rk.wiki "
 
   override val messages: List[EMsg] =
-    EMsg("", "wiki", "follow", Nil) ::
-    EMsg("", "wiki", "updated", Nil) :: Nil
+    EMsg("wiki", "content") ::
+    EMsg("wiki", "follow") ::
+    EMsg("wiki", "updated") :: Nil
 }

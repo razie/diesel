@@ -128,7 +128,7 @@ object ModRk extends RazController with Logging {
     ) yield razie.db.tx("doeModRkAdd", stok.userName) { implicit txn =>
       var e = ModRkEntry(new ObjectId(rkid), None, wid.uwid, role)
       if (wid.page.get.attr("price").exists(_.trim.length > 0) &&
-          !wid.page.get.attr("module.reg-excluded").exists(_.split(",") contains role)
+        !wid.page.get.findAttr("module.reg-excluded").exists(_.split(",") contains role)
       ) {
         val price = wid.page.get.attr("price").get.trim.toFloat
         e = e.copy(state = Some(STATE_INCART))
@@ -150,6 +150,8 @@ object ModRk extends RazController with Logging {
 
   /** remove a reg record and refund credits if Admin and paid */
   def doeModRkRemove(wid: WID, rkid: String) = FAUR { implicit stok =>
+    log (s"doeModRkRemove: wid=${wid.wpath} rkid=$rkid")
+
     var msg = ""
     razie.db.tx("doeModRkRemove", stok.userName) { implicit txn =>
       wid.uwid.map { uwid =>
@@ -233,7 +235,7 @@ object ModRkExec extends EExecutor("modrk") {
                     reg.copy(state = Some(ModRk.STATE_PAID)).update
               }
           }
-          List(new EVal("result", msg))
+          List(new EVal("payload", msg))
         }
 
         case "remove" => {
@@ -256,7 +258,7 @@ object ModRkExec extends EExecutor("modrk") {
                     reg.delete
               }
           }
-          List(new EVal("result", msg))
+          List(new EVal("payload", msg))
         }
 
         case _ => {

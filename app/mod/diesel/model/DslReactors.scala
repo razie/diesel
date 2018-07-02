@@ -184,8 +184,6 @@ object Diesel {
 
   class Rules
 
-  case class Wiki(name: String)
-
   def findRequires(content: String) = {
     val PAT = """diesel.requires\(['"]([^)]+)['"]\)""".r
     PAT.findAllMatchIn(content).map(_.group(1)).toList

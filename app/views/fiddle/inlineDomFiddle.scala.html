@@ -23,7 +23,7 @@ an inline JS with HTML and CSS fiddle
 
 
 <script>
-    function setCookie(cname, cvalue, msec) {
+function setCookie(cname, cvalue, msec) {
       var d = new Date();
       d.setTime(d.getTime() + (msec));
       var expires = "expires="+ d.toUTCString();
@@ -58,9 +58,11 @@ var ast_@id  = '';
 var links_@id  = '@Html(tos(links))';
 var content_@id = '@Html(tos(content))';
 
-function setAst_@{id} () {
+function setAst_@{id} (noreload) {
   ast_@id  = 'Loading...';
-  setpill('ast_@id', '@id', ast_@id);
+
+  if(noreload == undefined)
+    setpill('ast_@id', '@id', ast_@id);
 
   // run the first link and get html tree
   var link = links_@id;
@@ -68,22 +70,26 @@ function setAst_@{id} () {
   link = linkArray[0];
   if(link && link.indexOf('href=\"') > 0) {
     var url = link.replace(/.*href="([^"]*).*/, "$1").replace(/resultMode=[^&]*/, "resultMode=treeHtml");
-    if(linkArray.length > 1 || content_@{id}.indexOf('$expect') >= 0 ) {
+    if(content_@{id}.indexOf('$mock') == 0 ) {
+      // just aone line, could be a mock and these are ignored in storymode
+      OLDrunpill2_@id ('@id', url, noreload);
+    } else if(linkArray.length > 1 || content_@{id}.indexOf('$expect') >= 0 ) {
       // normal story
-      runpill2_@id ('@id', url);
+      runpill2_@id ('@id', url, noreload);
     } else {
       // just aone line, could be a mock and these are ignored in storymode
-      OLDrunpill2_@id ('@id', url);
+      OLDrunpill2_@id ('@id', url, noreload);
     }
   } else {
-    setpill('ast_@id', '@id', links_@id);
+    if(noreload == undefined)
+      setpill('ast_@id', '@id', links_@id);
   }
 }
 
 var debugThis;
 
 /** post the entire section contents to be ran against this page */
-var runpill2_@id = function(id, url) {
+var runpill2_@id = function(id, url, noreload) {
   var lastTime = new Date().getTime();
   $.ajax(
 @if(au.isDefined) {
@@ -111,20 +117,27 @@ var runpill2_@id = function(id, url) {
           debugThis=data;
           ast_@id = data.res || ("ERR " + JSON.stringify(data));
 
+          instContentAssist = data.ca;
+          domContentAssist = data.ca;
+
           // todo make sure it's still this tab that's focused
-          $('#code_'+id).html(ast_@id);
+          if(noreload == undefined)
+            $('#code_'+id).html(ast_@id);
+          $('#preout_'+id).html(ast_@id);
 //      var du = new Date().getTime() - lastTime;
 //      $('#roundtrip').text(du+' ms');
         },
         error  : function(x) {
           ast_@id = "ERR " + JSON.stringify(x);
-          $('#code_'+id).text(ast_@id);
+          if(noreload == undefined)
+            $('#code_'+id).text(ast_@id);
+          $('#preout_'+id).text(ast_@id);
           console.log( "ERR "+JSON.stringify(x));
         }
       });
 }
 
-var OLDrunpill2_@id = function(id, url) {
+var OLDrunpill2_@id = function(id, url, noreload) {
   var lastTime = new Date().getTime();
   $.ajax(
     url, {
@@ -145,14 +158,20 @@ var OLDrunpill2_@id = function(id, url) {
     success: function(data) {
         ast_@id = data.tree || ("ERR " + JSON.stringify(data));
 
-        // todo make sure it's still this tab that's focused
-      $('#code_'+id).html(ast_@id);
+      instContentAssist = data.ca;
+      domContentAssist = data.ca;
+      // todo make sure it's still this tab that's focused
+      if(noreload == undefined)
+        $('#code_'+id).html(ast_@id);
+      $('#preout_'+id).html(ast_@id);
 //      var du = new Date().getTime() - lastTime;
 //      $('#roundtrip').text(du+' ms');
     },
     error  : function(x) {
       ast_@id = "ERR " + JSON.stringify(x);
-      $('#code_'+id).text(ast_@id);
+      if(noreload == undefined)
+        $('#code_'+id).text(ast_@id);
+      $('#preout_'+id).text(ast_@id);
       console.log( "ERR "+JSON.stringify(x));
     }
   });
@@ -160,28 +179,33 @@ var OLDrunpill2_@id = function(id, url) {
 
 </script>
 
+<div class="">
+
   <ul class="nav nav-tabs" style="margin-bottom:0;">
     <li id="story_@id" class="active">
-      <a  href="javascript:setpill('story_@id', '@id', story_@id)">
+      <a  href="javascript:setpill('story_@id', '@id', story_@id)" title="See the specs">
         <small>@kind.capitalize</small></a> </li>
     <li id="links_@id">
-      <a  href="javascript:setpill('links_@id', '@id', links_@id)">
-        <small>REST</small></a> </li>
+      <a  href="javascript:setpill('links_@id', '@id', links_@id)" title="Get the links to this service">
+        <small><span class="glyphicon glyphicon-link"></span>REST</small></a> </li>
     <li id="ast_@id" >
-      <a href="javascript:setAst_@{id}()">
-        <small>Trace</small></a> </li>
+      <a href="javascript:setAst_@{id}()" title="Run this service and get a trace">
+        <small><span class="glyphicon glyphicon-play"></span>Run</small></a> </li>
     <li id="play_@id" >
-<a href="javascript:editpill_@{id}('@{id}')" >
- <small>Edit...</small></a> </li>
+<a href="javascript:editpill_@{id}('@{id}')" title="Edit this service">
+ <small><span class="glyphicon glyphicon-pencil"></span> Edit...</small></a> </li>
   </ul>
 
-  <pre id="pre_@id" style="display:inline-block; width:98%; margin-bottom:0; border:0;"><code id="code_@id" language="diesel">@content</code></pre>
+<div id="left_@id" style="padding-right:0">
+
+  <pre id="pre_@id" style="display:inline-block; width:100%; margin-bottom:0; border:0; padding-right:0"><code id="code_@id" language="diesel">@content</code></pre>
 <p></p>
 
 <div id="editor1" style="display: none">
 di:es:el editor
 
 <pre id="acec" style="height: 100px;">dsl here...</pre>
+
 
 @au.filter(_.isActive).map{u=>
 <a id="save_button" href="javascript:saveFiddle_()" class="btn btn-default btn-success">Save</a>
@@ -205,6 +229,15 @@ Then hit "Save" and play with it (hint: checkout the REST tab).
 }
 </div>
 
+</div>
+
+<div id="right_@id" class="col-sm-6" style="display: none; padding:0">
+   <pre id="preout_@id" style="display:inline-block; width:98%; margin-bottom:0; border:0; padding:0">result...</pre>
+</div>
+
+</div>
+
+
 <script>
 
 //not really needed anymore - hidiesel.js will color them when loading, later
@@ -217,18 +250,19 @@ var runpill_@id = function(id) {
   upd_@{id}(id);
 }
 
-var domContentAssist=[];
-var instContentAssist=[];
-
-var aceAttached = false;
 var aceEditor_@id;
 
 var sessionId = '';
 
 var scriptsLoaded = false;
 
+var domContentAssist=[];
+var instContentAssist=[];
+
 var editpill_@id = function(id) {
   upd_@{id}(id);
+
+  setAst_@{id} ("noreload");
 
   // setup jquery to not reload scripts all the time
   $.ajaxSetup({
@@ -239,6 +273,14 @@ var editpill_@id = function(id) {
     var s = $("#editor1").html();
 
     if(!scriptsLoaded) {
+      var savedRequire = require;
+      var savedRequireJs = typeof requirejs != "undefined" ? requirejs : (function () { return; })();
+      var savedDefine = typeof define != "undefined" ? define : (function () { return; })();
+      // this sets to undefined
+      require = (function () { return; })();
+      requirejs = (function () { return; })();
+      define = (function () { return; })();
+
     jQuery.getScript("@routes.Assets.at("javascripts/rk-contentassist-sqbr.js")", function(data, status, jqxhr) {
       jQuery.getScript("@routes.Assets.at("vendor/jquery.textcomplete.min.js")", function(data, status, jqxhr) {
         jQuery.getScript("@routes.Assets.at("javascripts/rk-contentassist.js")", function(data, status, jqxhr) {
@@ -250,7 +292,10 @@ var editpill_@id = function(id) {
                     jQuery.getScript("@routes.Assets.at("javascripts/wikiEdit.js")", function(data, status, jqxhr) {
                       scriptsLoaded=true;
                       popupContent(s.replace("acec", "acec1").replace("aveFiddle_()", "aveFiddle_@{id}()"));
-                      aceEditor_@id = attachAce("acec1", content_@id, true);
+                      aceEditor_@id = attachAce(ace, "acec1", content_@id, true);
+                      require = savedRequire;
+                      requirejs = savedRequireJs;
+                      define = savedDefine;
                     });
                   });
                 });
@@ -260,6 +305,9 @@ var editpill_@id = function(id) {
         });
       });
     });
+    } else {
+      popupContent(s.replace("acec", "acec1").replace("aveFiddle_()", "aveFiddle_@{id}()"));
+      aceEditor_@id = attachAce(ace, "acec1", content_@id, true);
     }
   }
 
@@ -279,6 +327,14 @@ var editpill_@id = function(id) {
   }
   }
 }
+
+@if("true" == args.getOrElse("sidebyside", "")) {
+  $('#left_@id').addClass("col-sm-6");
+  $('#right_@id').show();
+  setAst_@id ("noreload");
+  aceEditor_@id = attachAce(ace, "acec1", content_@id, true);
+}
+
 
 /** update wiki with new fiddle content and refresh page */
 var saveFiddle_@id = function() {

@@ -22,6 +22,11 @@ DB Admin - admin a record
 <form action="@routes.AdminDb.updcoldb(name,id)" class="form-inline" method="POST">
 Field: <input name="field">
 Value: <input name="value">
+Type:
+  <select id="type" name="type" class="input-small">
+    <option value="String" >String</option>
+    <option value="Number" >Number</option>
+  </select>
 <input type="submit" value="Update">
 </form>
 <hr>
@@ -35,5 +40,8 @@ Value: <input name="value">
 
 <h2>Usages</h2>
   <div id="usages"><span class="badge">...loading...</span></div>
-  <script async="">$("#usages").load("@routes.AdminDb.dbFind(id)");</script>
+  <script async="">razOnLoad(function(){
+    $("#usages").load("@routes.AdminDb.dbFind(id)");
+  });
+  </script>
 

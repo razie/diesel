@@ -1,6 +1,7 @@
 @**************
 wiki fragment, used in another page
 **************@
+@import razie.wiki.model.Visibility
 @(wid:razie.wiki.model.WID, altContent:Option[String]=None, simple:Boolean = false, page:Option[razie.wiki.model.WikiEntry]=None, iname:Option[String]=None, noTitle:Boolean=false, ads:Boolean=true, canEdit:Boolean=false, isSite:Boolean=false, print:Boolean=false)(implicit stok: controllers.StateOk)
 @import controllers.IgnoreErrors
 @import razie.wiki.model.{Wikis, WID, WikiEntry}
@@ -31,6 +32,28 @@ wiki fragment, used in another page
   @ww() = @{ Wikis(wid.getRealm).findAny(wid.name) }
 
   @label()=@{ page.flatMap(_.contentProps.get("label")).orElse(page.map(_.label)).getOrElse(Wikis(wid.getRealm).label(wid)) }
+
+@visColor()=@{page.map(_.visibility) match {
+  case Some(Visibility.PUBLIC) => "success"
+  case Some(Visibility.MEMBER) => "info"
+  case Some(Visibility.BASIC) => "info"
+  case Some(Visibility.GOLD) => "default"
+  case Some(Visibility.PLATINUM) => "danger"
+  case Some(Visibility.UNOBTANIUM) => "danger"
+  case _ => "warning"
+}
+}
+
+@visLabel()=@{page.map(_.visibility) match {
+  case Some(Visibility.PUBLIC) => "Public"
+  case Some(Visibility.MEMBER) => "members with free accounts"
+  case Some(Visibility.BASIC) => "basic/blue members"
+  case Some(Visibility.GOLD) => "gold/black/expert members"
+  case Some(Visibility.PLATINUM) => "racing/platinum members"
+  case Some(Visibility.UNOBTANIUM) => "unobtanium members"
+  case _ => "warning"
+}
+}
 
   @url() = @{
     val u = wid.url
@@ -106,7 +129,7 @@ function selectTextareaLine(tarea,lineNum) {
             <p>Sorry, dumb program here! The content is not lost: try editing this topic... also, please open a support issue and copy/paste there the content.
           </small></div><p></p>""".stripMargin + s"""
             <pre id="$id" readonly="true" style="height:300px">${we.included}</pre>
-<script src="@routes.Assets.at("ace-builds/src/ace.js")" type="text/javascript" charset="utf-8"></script>
+<script src="/assets/ace-builds/src/ace.js" type="text/javascript" charset="utf-8"></script>
 <script>
   var langTools = ace.require("ace/ext/language_tools");
   var editor1 = ace.edit("$id");
@@ -121,7 +144,7 @@ function selectTextareaLine(tarea,lineNum) {
       //editor1.gotoLine(line, 10, true);
     editor1.session.addMarker(new Range(line-1, 0, line-1, 100), "ace-primaryline", "fullLine");
   }, 100);
-            </script>
+</script>
          """.stripMargin
       } else {
         Wikis.divLater(x)
@@ -163,7 +186,15 @@ function selectTextareaLine(tarea,lineNum) {
                 }
               }
 
-              @if(!(Seq("WikiLink", "Form").contains(wid.cat) || page.exists(_.contentProps.contains("noSocial")))) {
+              @** page info **@
+              @** @if(stok.au.exists(_.isMod)) { **@
+                <span style="font-size: small; margin-top:8px" class="pull-right label label-@visColor()" title="Visible to: @visLabel()">
+                  <i class="glyphicon glyphicon-lock"></i> @page.get.visibility.substring(0,3)
+                </span>
+              @** } **@
+
+              @if(!(Seq("WikiLink", "Form").contains(wid.cat) ||
+                  page.exists(_.contentProps.contains("noSocial")))) {
                 <br>
                 <div class="addthis_inline_share_toolbox" style="display: inline-block"></div>
                 @*<a class="btn btn-xs btn-info" href="@routes.Wiki.social(label().toString, url())">Share <span class="glyphicon glyphicon-thumbs-up icon-white"></span></a>*@
@@ -210,7 +241,13 @@ function selectTextareaLine(tarea,lineNum) {
       }
 
       <p id="wikiFragP1"></p>
-      @Html(ccc(wid, we))
+
+      @if(Array(Wikis.TEXT, Wikis.JSON, Wikis.XML) contains we.markup) {
+        <pre id="wikiFragPre" style="word-wrap:normal; white-space:pre-wrap">@ccc(wid, we)</pre>
+      } else {
+        @Html(ccc(wid, we))
+      }
+
       <p id="wikiFragP2"></p>
 
       @wikiFragExtras(stok.au,page)
@@ -287,4 +324,3 @@ function selectTextareaLine(tarea,lineNum) {
   }
 }
 
-  @*<script src="@routes.Assets.at("ace-builds/src/ace.js")" type="text/javascript" charset="utf-8"></script>*@

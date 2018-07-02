@@ -35,14 +35,18 @@ for registration sequences - show prev/next
     }
   form (@(wids.indexOf(wid)+1) of @wids.size):
   @wids.splitAt(wids.indexOf(wid))._2.tail.headOption.map{x=>
-    <a href="@controllers.Wiki.w(x)" class="btn btn-xs">NEXT <font style="color:orange">&raquo;</font></a>
+  <a href="@controllers.Wiki.w(x)" class="btn btn-xs"><b>NEXT</b> <font style="color:orange">&raquo;</font></a>
     }.getOrElse {
       @reg.map{r=>
-        <a href="@routes.Club.doeClubUserReg(r._id.toString)" class="btn btn-xs">NEXT <font style="color : orange">&raquo;</font></a>
+      <a href="@routes.Club.doeClubUserReg(r._id.toString)" class="btn btn-xs"><b>NEXT <small>(to payment)</small></b> <font style="color : orange">&raquo;</font></a>
       }.getOrElse{
         <a href="#" class="btn btn-xs disabled">NEXT <font style="color : orange">&raquo;</font></a>
       }
     }
+&nbsp;
+@reg.map{r=>
+<a href="@routes.Club.doeClubUserReg(r._id.toString)" class="btn btn-xs">(See ALL)</a>
+}
 }
 
 <div class="container">

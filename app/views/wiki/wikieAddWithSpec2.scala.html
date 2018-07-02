@@ -8,20 +8,23 @@ create new page given a template
 
 @stok.title("Create new with template")
 
-<h3>Creating a new <em>@cat</em>, with <em>@formWid.name</em></h3>
+<h3>Creating a new
+  <em>@Html({if(cat == "Reactor") "Project (<small>Reactor</small>)" else cat})</em>
+  , with <em>@formWid.name</em></h3>
 
 <p>Fill in the required attributes below.</p>
 
 @helper.form(
   action=routes.Wikie.addWithSpec(cat, name, formWid.wpath, torspec:String, stok.realm),
-  'class->"alert alert-info form-inline col-sm-12") {
+  'id->"curForm",
+  'class->"alert alert-info col-sm-12") {
 
   @** you can override the entire form in your template *@
   @if(!formPage.exists(_.form.fields.contains("name"))) {
     @WikiDomain(stok.realm).prop(cat, "label.createWithTemplate").getOrElse {
       @if(cat == "Reactor") {
         Use
-        a simple punchy single word, like "<b>mysite</b>" - your new website will be
+        a simple punchy single word, like "<b>mysite</b>" - your new project website will be
         available at <b><small>http://mysite.dieselapps.com</small></b>
       } else {
         Give it a name...
@@ -29,20 +32,21 @@ create new page given a template
     }
 
     <p></p><p>
-      <div class="form-group">
-      <label for="name">Name:</label> <input type="text" class="input-lg" name="name" placeholder="Name" value="@name">
-  </div>
+
+    <div class="form-group">
+      <label for="name" class="control-label">Name:</label>
+      <input type="text" id="name" class="input-lg" name="name" placeholder="Name" value="@name">
+    </div> @* form-group *@
 
     @if(cat == "Reactor") {
-  <p></p>
+      <p></p>
       <div class="form-group">
-    <label for="access">Default access:</label>
+        <label for="access" class="control-label">Default access:</label>
         <select name="access">
           <option value="Public">Public - anyone can see content</option>
           <option value="Member">Member - only members can see content</option>
         </select>
-  </div>
-        @*<input type="text" class="input-lg" name="name" placeholder="Name" value="@name">*@
+      </div> @* form-group *@
     }
 
     <hr>
@@ -55,4 +59,26 @@ create new page given a template
 }
 
 <hr>
+
+  <script>
+      withJquery(
+          function ($) {
+            $('#curForm').submit(
+                function(event) {
+                  var n = $('#name').val();
+
+                  if (n.length > 15 || n.length < 3) {
+                    popupError("Name too short(<3) or too long (>15)...");
+                    event.preventDefault();
+                  } else if (!n.match(/^[A-Za-z][A-Za-z0-9-_]+[A-Za-z0-9]$/) ) {
+                    popupError("Name cannot contain special characters (!#$%^...)");
+                    event.preventDefault();
+                  }
+                }
+            );
+          }
+      );
+  </script>
+
+@util.oneModal()
 

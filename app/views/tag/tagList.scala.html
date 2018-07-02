@@ -32,9 +32,7 @@ tagPrefix is applied to browse another tag
     }
   </ul>
 
-<script src="@routes.Assets.at("bootstrap-2.2.3/js/bootstrap-typeahead.js")"></script>
-
-<script>
+<script async>
 function keyp(e){
   var key=e.keyCode || e.which;
   if (key==13){
@@ -53,13 +51,14 @@ return hardct.lastIndexOf('@current') >= 0 ? tag : '@current' + '/'+tag;
 //var items = [@Html(tags.map(x=>"\""+x._1+"\":\"/notes/tag/"+tagpath(x._1)+"\"").mkString(","))];
 var userTags = [@Html(tags.map(x=>"\""+x._1+"\"").mkString(","))];
 
+require(['jquery', 'bootstrap-typeahead'], function($){
 $('.typeahead').typeahead({
   source: userTags,
   updater: function (item) {
     window.location.href = '@tagPrefix'+t(item) + '@tagSuffix';
   }
-})
-
+});
+});
 </script>
 
 <style>

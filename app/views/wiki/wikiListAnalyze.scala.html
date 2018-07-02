@@ -10,7 +10,7 @@ list all topics in category
   <br>
   <table id="wlist" class="table table-condensed">
     <thead>
-      <tr><td>Name</td><td>Category</td><td>Word count</td></tr>
+      <tr><td>Name</td><td>Category</td><td>Word count</td><td>Views</td></tr>
       </thead>
       @list.map{p=>
         <tr>
@@ -22,6 +22,9 @@ list all topics in category
           </td>
           <td>
             <small><span title="wordcount"> @p.wordCount </span> </small>
+          </td>
+          <td>
+            <small><span title="viewcount"> @p.viewCount.getOrElse(0) </span> </small>
           </td>
         </tr>
     }

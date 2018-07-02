@@ -14,13 +14,16 @@ import razie.hosting.Website
 import razie.wiki.Services
 import razie.wiki.admin.Autosave
 import razie.wiki.model._
-import razie.{CSTimer, Logging }
+import razie.{CSTimer, Logging}
 import model.MiniScripster
+import razie.diesel.snakk.FFDPayload
+import razie.wiki.model.features.WikiCount
 
-import scala.collection.mutable
+import scala.collection.{SortedMap, mutable}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.util.Try
+import scala.util.parsing.combinator.RegexParsers
 
 /** controller for server side fiddles / services */
 class SFiddleBase extends RazController {
@@ -176,67 +179,78 @@ object SFiddles extends SFiddleBase with Logging {
 
   /** display the play sfiddle screen */
   def play3(lang: String) = FAUPR { implicit request =>
-      val q = request.queryString.map(t => (t._1, t._2.mkString))
+    val q = request.queryString.map(t => (t._1, t._2.mkString))
 
-        val f = Fiddle("SFiddle", lang, request.realm, "", request.au)
-        ROK.k reactorLayout12 {
-          views.html.fiddle.playServerFiddle(lang, f.content, request.query)
-        }
-  }
-
-  /** represents a fiddle - can be autosaved and can be a topic/note */
-  case class Fiddle (what:String, lang:String, realm:String, wpath:String, au:Option[User]) {
-    val we = WID.fromPath(wpath).flatMap(_.page)
-
-    private def defaults = Map(
-      "content" -> we.map(_.content).getOrElse("1+2"),
-      "tags" -> we.map(_.tags.mkString(",")).mkString
-    )
-
-    def script =
-      au.map(au =>
-        Autosave.OR(what+"." + lang + "." + realm+"."+wpath, au._id,
-          defaults
-        )).getOrElse(
-          defaults
-      )
-
-    def autosave (content:String, tags:String) =
-      au.map{au=>
-      Autosave.set(what + "." + lang + "." + realm+"."+wpath, au._id, Map(
-        "content" -> content,
-        "tags" -> tags
-      ))
-      }
-
-    def clearAutosave =
-      au.map{au=>
-        Autosave.delete(what + "." + lang + "." + realm+"."+wpath, au._id)
-      }
-
-    def content = script.getOrElse("content", "")
-    def tags = script.getOrElse("tags", "")
-
-    def isAuto = Autosave.find(what+"." + lang + "." + realm+"."+wpath, au.map(_._id)).isDefined
-
-    def mkWiki(au:User, content: String, realm:String, tags: Seq[String]) = {
-      val id = new ObjectId()
-      var we = WikiEntry(
-        "Note", id.toString, id.toString, "md",
-        content, au._id, tags.toSeq, "notes"
-      ).copy(_id = id)
-      we = we.cloneProps(we.props ++ Map("owner" -> au.id), au._id)
-      we = we.cloneProps(we.props ++ Map("visibility" -> Visibility.PRIVATE), au._id)
-      we = we.cloneProps(we.props ++ Map("wvis" -> Visibility.PRIVATE), au._id)
-      we
+    val f = Fiddle("SFiddle", lang, request.realm, "", request.au)
+    ROK.k reactorLayout12 {
+      views.html.fiddle.playServerFiddle(lang, f.content, request.query)
     }
   }
+
+  val DFLT_DWL=
+"""
+      |form: FIXEDWIDTH
+      |name: 'AUTH_REQUEST'
+      |values:
+      |- { name: 'Header Type', usage: M, type: String, length: 4 }
+      |- { name: 'Request Type', usage: M, type: String, length: 2 }
+      |- { name: 'Byte Offset to Data', usage: M, type: String, length: 4 }
+      |- { name: 'Packet Length', usage: M, type: String, length: 8 }
+      |""".stripMargin
+
+  val DFLT_DWL_INPUT =
+"""
+      |^^PSSR917999999999
+      |""".stripMargin
+
+  /** display the play sfiddle screen */
+  def playFFD(what:String) = RAction { implicit request =>
+    val f1 = Fiddle("SFiddle", "FFD-input", request.realm, "", request.au)
+      .withDefault(DFLT_DWL_INPUT)
+    val f2 = Fiddle("SFiddle", "FFD-schema", request.realm, "", request.au)
+      .withDefault(DFLT_DWL)
+
+    if(what == "play") {
+      WikiCount.findOneForTemplate("Play:playFFDFiddle").map (Services.!)
+
+      // paint the screen
+      ROK.k reactorLayout12FullPage  {
+        views.html.fiddle.playFFDFiddle(
+          "FFD",
+          "Mulesoft Dataweave Fixed Format fiddle",
+          "/sfiddle/playFFD?what=input",
+          Map(
+            "input" -> f1,
+            "schema" -> f2
+          )
+        )
+      }
+    } else {
+      // must have been posted
+      (for(
+        i <- request.fParm("input");
+        s <- request.fParm("schema")
+      ) yield {
+        Fiddle("SFiddle", "FFD-input", request.realm, "", request.au).autosave(i, "")
+        Fiddle("SFiddle", "FFD-schema", request.realm, "", request.au).autosave(s, "")
+
+        val ffd = new FFDPayload(i, s)
+        val res = ffd.show
+
+        retj << Map(
+          "res" -> res,
+          "ffdcount" -> ffd.fields.map(_.length).sum
+        )
+      }) getOrElse Unauthorized("input/schema missing")
+    }
+  }
+
 
   /** display the play sfiddle screen */
   def playInBrowser(lang: String, wpath: String) = RAction { implicit request =>
     // used in a blog, so no auth
     val f = Fiddle("JSFiddle", lang, request.realm, wpath, request.au)
-    ROK.k reactorLayout12 {
+    ROK.k reactorLayout12FullPage  {
       views.html.fiddle.playBrowserFiddle(
         lang,
         f.content,
@@ -262,12 +276,12 @@ object SFiddles extends SFiddleBase with Logging {
     if (wpath.isEmpty) {
       val we = f.mkWiki(request.au.get, j, request.realm, tags)
       we.create
-      Redirect(Wikis.w(we.wid))
+      Ok(we.wid.wpath)
     } else WID.fromPath(wpath).flatMap { wid =>
       wid.page.map { we =>
         we.update(we.copy(content = j, tags = tags.toSeq))
         f.clearAutosave
-        Ok(s"saved")
+        Ok(we.wid.wpath)
       }
     }.getOrElse(Ok("can't find WID to update"))
   }
@@ -494,6 +508,63 @@ $hx
     })
   }
 
+}
+
+/** represents a fiddle - can be autosaved and can be a topic/note */
+case class Fiddle (what:String, lang:String, realm:String, wpath:String, au:Option[User]) {
+  val we = WID.fromPath(wpath).flatMap(_.page)
+
+  private var default : Option[(String,String)] = None
+
+  def withDefault(content:String, tags:String="") = {
+    default = Some((content, tags))
+    this
+  }
+
+  private def defaults = Map(
+    "content" -> default.map(_._1).orElse(we.map(_.content)).getOrElse("1+2"),
+    "tags" -> default.map(_._2).orElse(we.map(_.tags.mkString(","))).mkString
+  )
+
+  def script =
+    au.map(au =>
+      Autosave.OR(what+"." + lang , realm,wpath, au._id,
+        defaults
+      )).getOrElse(
+      defaults
+    )
+
+  def autosave (content:String, tags:String) =
+    au.map{au=>
+      Autosave.set(what + "." + lang, realm, wpath, au._id, Map(
+        "content" -> content,
+        "tags" -> tags
+      ))
+    }
+
+  def clearAutosave =
+    au.map{au=>
+      Autosave.delete(what + "." + lang, realm, wpath, au._id)
+    }
+
+  def content = script.getOrElse("content", "")
+  def tags = script.getOrElse("tags", "")
+
+  def isAuto = Autosave.find(what+"." + lang, realm, wpath, au.map(_._id)).isDefined
+
+  /** make a wiki note to contain this fiddle */
+  def mkWiki(au:User, content: String, realm:String, tags: Seq[String]) = {
+    val id = new ObjectId()
+    var we = WikiEntry(
+      "Note", id.toString, id.toString, Wikis.JS,
+      content, au._id, tags.toSeq, "notes"
+    ).copy(_id = id)
+    we = we.cloneProps(we.props ++ Map("owner" -> au.id), au._id)
+    val vis = if(tags contains "public") Visibility.PUBLIC else Visibility.PRIVATE
+    we = we.cloneProps(we.props ++ Map("visibility" -> vis), au._id)
+    we = we.cloneProps(we.props ++ Map("wvis" -> Visibility.PRIVATE), au._id)
+    we
+  }
 }
 
 

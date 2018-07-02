@@ -37,9 +37,11 @@
     '_showConstraints -> false,
     'rows->5)
 
-<script>
-  $("textarea, input").addClass("form-control");
-</script>
+  <script async>
+      withJquery(function() {
+          $("textarea, input").addClass("form-control");
+      });
+  </script>
 
 @if(stok.au.isDefined) {
   <input type="hidden" name="g-recaptcha-response" />

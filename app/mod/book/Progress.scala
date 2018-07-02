@@ -305,6 +305,12 @@ object Progress extends RazController with WikiMod {
 
   def sayHi = Action {request=> Ok("hello")}
 
+  def pathwayNotStarted =
+    Ok(
+      """<b><small>{{ No pathway
+        |<span class="glyphicon glyphicon-info-sign" title="You need to login and start a progression to improve your skiing!"></span>
+        |}}</small></b>""".stripMargin)
+
   CodePills.addString (s"$PILL/sayhi") {implicit request=>
     "ok"
   }
@@ -325,7 +331,7 @@ object Progress extends RazController with WikiMod {
         ) yield {
             val n = tl.next(uwid,p)
             Ok(prevNext(n._1, p, uwid, n._2, n._3))
-          }) getOrElse Ok("<b>{{Pathway not started}}</b>")
+          }) getOrElse pathwayNotStarted
       }) getOrElse Ok(
         """
           |<div class="alert alert-warning">
@@ -365,7 +371,7 @@ object Progress extends RazController with WikiMod {
             val n = tl.next(uwid,p)
             p.addAndUpdate (uwid, None, st)
             Redirect(widTo.urlRelative(request.realm))
-          }) getOrElse Ok("<b>{{Pathway not started}}</b>")
+          }) getOrElse pathwayNotStarted
       }) getOrElse unauthorized("You need a free account to track your progress.")
   }
 
@@ -433,7 +439,7 @@ object Progress extends RazController with WikiMod {
             val disabled = if(p.isComplete(uwid, Some(wid.copy(section=Some(name))))) "disabled" else ""
             Ok(s"""<a class="btn btn-danger btn-xs $disabled" href="/pill/$PILL/section/done?status=s&section=$name&wid=${we.wid.wpath}">Skip</a>
                    <a class="btn btn-success btn-xs $disabled" href="/pill/$PILL/section/done?status=c&section=$name&wid=${we.wid.wpath}">Done</a>""")
-          }) getOrElse Ok("<b>{{Pathway not started}}</b>")
+          }) getOrElse pathwayNotStarted
       }) getOrElse Ok("""<b><span style="color:red">{{Login to track progress}}</span></b>""")
 //      unauthorized("You need a free account to track your progress.")
   }
@@ -464,7 +470,7 @@ object Progress extends RazController with WikiMod {
               p1.addAndUpdate (uwid, None, STATUS_COMPLETE)
 
             Ok(s"""Ok - completed $name""")
-          }) getOrElse Ok("<b>{{Pathway not started}}</b>")
+          }) getOrElse pathwayNotStarted
       }) getOrElse unauthorized("You need a free account to track your progress.")(request.ireq)
   }
 
@@ -482,9 +488,8 @@ object Progress extends RazController with WikiMod {
       Ok(
         s"""
           <div class="alert alert-warning">
-            You did not start the main pathway
-            <a class="btn btn-success" href="/improve/skiing/restart?pathway=$DFLT_PATHWAY">
-        Start it now!</a>
+            You did not start any pathway...
+            <a class="btn btn-success" href="/wiki/Category/Pathway">See the available pathways</a>
         <br>
         Following the main pathway will guide you through the topics and sessions, in order.
            |</div>
@@ -565,11 +570,11 @@ object Progress extends RazController with WikiMod {
   override def modProp (prop:String, value:String, we:Option[WikiEntry]) : String = {
     """<div id=""""+
       value+
-      """">div.later</div> <script>$("#"""+
+      """">div.later</div> <script>require(['jquery'],function($){$("#"""+
       value+
       s"""").load("/pill/$PILL/next?wpath="""+
       we.map(_.wid.wpath).mkString+
-      """");</script> """
+      """");});</script> """
   }
 
   WikiMods register this

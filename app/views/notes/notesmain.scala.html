@@ -24,8 +24,10 @@ msg types are msg, err
 </h3>
 
 <script>
-  if(localStorage.getItem("rkNoteUseName") == "1")
-    $("#useName").prop("checked", true);
+     withJquery(function() {
+       if (localStorage.getItem("rkNoteUseName") == "1")
+         $("#useName").prop("checked", true);
+     });
 
 function removePins() {
   setPinTags("");
@@ -56,7 +58,11 @@ function removePins() {
   <input type="text" id="name" name="name" value="@myForm("name").value.mkString" class="col-sm-12 " style="padding-left:5px; display:none" autocomplete="off" placeholder="Name">
 
 <script>
-  if(document.getElementById("useName").checked) {$("#name").show();}
+    withJquery(function() {
+      if (document.getElementById("useName").checked) {
+        $("#name").show();
+      }
+    });
 </script>
 
   @helper.textarea(
@@ -166,49 +172,50 @@ var dotTags = [
 </script>
 
 <script>
-$('#content')[0].focus();
+    withJquery(function() {
+      $('#content')[0].focus();
 
-@if(!stok.au.isActive) {
-  $('#submit')[0].disabled=true;
-  $('#content')[0].disabled=true;
-  $('#tags')[0].disabled=true;
-  $('#content')[0].title='You need an account to save notes, sorry!';
-  $('#tags')[0].title='You need an account to save notes, sorry!';
-}
+      @if(!stok.au.isActive) {
+      $('#submit')[0].disabled = true;
+      $('#content')[0].disabled = true;
+      $('#tags')[0].disabled = true;
+      $('#content')[0].title = 'You need an account to save notes, sorry!';
+      $('#tags')[0].title = 'You need an account to save notes, sorry!';
+      }
 
-  @if(isReadOnly) {
-    $ ( '#submit' )[ 0 ].disabled = true ;
-    $ ( '#submit' )[ 0 ].title = "Read only!" ;
-  }
+      @if(isReadOnly) {
+      $('#submit')[0].disabled = true ;
+      $('#submit')[0].title = "Read only!" ;
+      }
 
-var larger = function(s) {
-  var r = $('#content')[0].rows;
-  $('#content')[0].rows = r+5;
-  $('#content')[0].focus();
-}
+      larger = function (s) {
+        var r = $('#content')[0].rows;
+        $('#content')[0].rows = r + 5;
+        $('#content')[0].focus();
+      }
 
-var archive = function(s) {
-  var r = $('#tags')[0].value;
-  r = r.length > 0 ? r+',' : r
-  $('#tags')[0].value = r+'archive';
-}
+      archive = function (s) {
+        var r = $('#tags')[0].value;
+        r = r.length > 0 ? r + ',' : r
+        $('#tags')[0].value = r + 'archive';
+      }
 
-function isPublic(){
-  if($('#tags')[0].value.indexOf("public") >= 0) {
-    $("#ispublic").show(500);
-  } else {
-    $("#ispublic").hide(500);
-  }
-}
+      isPublic = function () {
+        if ($('#tags')[0].value.indexOf("public") >= 0) {
+          $("#ispublic").show(500);
+        } else {
+          $("#ispublic").hide(500);
+        }
+      }
 
-isPublic();
+      isPublic();
 
-$('#tags').bind("propertychange change click keyup input paste", isPublic);
+      $('#tags').bind("propertychange change click keyup input paste", isPublic);
 
-var saveit = function() {
-  document.location = '/notes/saved?tags='+document.getElementById('tags').value+'&n='+razuri(editor1.getValue());
-}
-
+      saveit = function () {
+        document.location = '/notes/saved?tags=' + document.getElementById('tags').value + '&n=' + razuri(editor1.getValue());
+      }
+    });
 </script>
 
 @**

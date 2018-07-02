@@ -38,6 +38,38 @@ wiki fragment, used in another page
 
 @if(!simple && !print) {
   <div id="wikiBy">
+    @******* likes *******@
+    <div id="voteLike" class="label label-info" style="padding: 10px">
+    <b>Was this useful? &nbsp;
+      @if(!stok.au.exists(_.isActive) || page.exists(p => !(p.likes contains stok.au.get._id.toString))) {
+        <a href="javascript:likeWiki(1)" class="glyphicon glyphicon-thumbs-up btn " style="font-size: large" title="This topic is helpful"></a>
+      } else {
+        <span class="glyphicon glyphicon-thumbs-up" title="You already rated this topic"></span>
+      }
+
+      @if(stok.au.exists(_.isMod)) {
+        @if(page.exists(w => w.likes.size > 0 || w.likeCount > 0)) {
+          <span style="font-size: x-small">@{page.get.likes.size+page.get.likeCount}</span>
+        }
+      }
+
+        &nbsp;
+      @if(!stok.au.exists(_.isActive) || page.exists(p => !(p.dislikes contains stok.au.get._id.toString))) {
+        <a href="javascript:likeWiki(0)" class="glyphicon glyphicon-thumbs-down btn " style="font-size: large" title="This topic is not helpful"></a>
+      } else {
+        <span class="glyphicon glyphicon-thumbs-down" title="You already rated this topic"></span>
+      }
+
+      @if(stok.au.exists(_.isMod)) {
+        @if(page.exists(w=> w.dislikes.size > 0 || w.dislikeCount>0)) {
+          <span style="font-size: x-small">@{page.get.dislikes.size+page.get.dislikeCount}</span>
+        }
+      }
+        </b>
+      <span class="voteLikeThanks label label-default" style="display:none"><small>Thank you!</small></span>
+    </div>
+      <br>
+
     <small>
       @if(!isSite) {
         <em>By</em>:
@@ -57,38 +89,6 @@ wiki fragment, used in another page
           @Html(controllers.Wiki.hrefTag(stok.realm, wid, t, t)) @if(t != page.get.tags.last) {,}
         }
       }
-      @******* likes *******@
-
-    |
-
-      <span id="voteLike">
-          &nbsp;
-      @if(!stok.au.exists(_.isActive) || page.exists(p => !(p.likes contains stok.au.get._id.toString))) {
-        <a href="javascript:likeWiki(1)" class="glyphicon glyphicon-thumbs-up" title="This topic is helpful"></a>
-      } else {
-        <span class="glyphicon glyphicon-thumbs-up" title="You already rated this topic"></span>
-      }
-
-      @if(stok.au.exists(_.isMod)) {
-        @if(page.exists(w => w.likes.size > 0 || w.likeCount > 0)) {
-          <span style="font-size: x-small">@{page.get.likes.size+page.get.likeCount}</span>
-        }
-      }
-
-        &nbsp;
-      @if(!stok.au.exists(_.isActive) || page.exists(p => !(p.dislikes contains stok.au.get._id.toString))) {
-        <a href="javascript:likeWiki(0)" class="glyphicon glyphicon-thumbs-down" title="This topic is not helpful"></a>
-      } else {
-        <span class="glyphicon glyphicon-thumbs-down" title="You already rated this topic"></span>
-      }
-
-      @if(stok.au.exists(_.isMod)) {
-        @if(page.exists(w=> w.dislikes.size > 0 || w.dislikeCount>0)) {
-          <span style="font-size: x-small">@{page.get.dislikes.size+page.get.dislikeCount}</span>
-        }
-      }
-        <span class="voteLikeThanks label label-default" style="display:none"><small>Thank you!</small></span>
-      </span>
     </small>
 
     @if(stok.au.exists(_.isAdmin)) {
@@ -110,8 +110,9 @@ wiki fragment, used in another page
   }
   }
 
-  <hr>
   <div id="wikiBottomMenu">
+    <hr>
+
     @page.flatMap(x => WikiCount.findOne(x._id)).map { pw =>
       <p><small>Viewed <strong>@pw.count</strong> times</small>
     }
@@ -121,8 +122,8 @@ wiki fragment, used in another page
 -->
     <small>
       (
-      @if(canEdit || stok.au.exists(_.hasPerm(Perm.adminDb))) {
-        @if(wid.cat != "Form" || stok.au.exists(_.hasPerm(Perm.adminDb))) {
+      @if(canEdit || stok.au.exists(_.isAdmin)) {
+        @if(wid.cat != "Form" || stok.au.exists(_.isAdmin)) {
           @if(wikiForm().isDefined) {
             <a href="@routes.Forms.doeFormEdit(page.get.wid)">Edit</a>
             @if(stok.au.exists(_.isAdmin)) {
@@ -138,7 +139,7 @@ wiki fragment, used in another page
         | <a href="@routes.Wikie.report(wid)">Report</a>
       }
       | <a href="@routes.Wiki.printWid(WID.cmdfromPath(wid.wpath).get, wid.getRealm)">Print</a>
-      @if(stok.au.exists(_.hasPerm(Perm.adminDb))) {
+      @if(stok.au.exists(_.isDev)) {
         | <a href="@routes.Wiki.wikieDebug(wid)"><em>debug</em></a>
         | <a href="@routes.Wiki.wikieUsage(wid)"><em>usage</em></a>
       }
@@ -197,40 +198,3 @@ wiki fragment, used in another page
   </div>
 } <!-- /simple -->
 
-<script src="@routes.Assets.at("javascripts/weCommons.js")" type="text/javascript" charset="utf-8"></script>
-
-<script async>
-$(window).load (function() {
-  $(".voteLike").html($("#voteLike").html())
-});
-
-// simple protection for multiple clicks
-var wikiVoted=false;
-
-  function likeWiki (how) {
-    if(! wikiVoted) {
-    $.ajax(
-      '@routes.Wikie.like(wid)', {
-          type: 'POST',
-          data: $.param({
-            how : ''+how
-          }),
-          contentType: 'application/x-www-form-urlencoded',
-          success: function(data) {
-        // update data.likesCount and datadislikesCount
-          },
-          error  : function(x) {
-            console.log( "ERR "+JSON.stringify(x));
-          }
-        });
-      $(".voteLikeThanks").text("Thank you!");
-      $(".voteLikeThanks").show(2000);
-      $(".voteLikeThanks").hide(2000);
-      wikiVoted=true;
-    } else {
-      $(".voteLikeThanks").text("Already voted!");
-      $(".voteLikeThanks").show(2000);
-      $(".voteLikeThanks").hide(2000);
-    }
-  }
-</script>

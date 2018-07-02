@@ -21,7 +21,7 @@ just the actual list, nothing else
   @pages.map{p=>
     <tr>
       <td>
-        <a href="@controllers.Wiki.w(p._1.cat, p._1.name, stok.realm)">@label(p._2, p._1)</a>
+        <a href="@controllers.Wiki.wr(p._1, stok.realm)">@label(p._2, p._1)</a>
       </td>
       <td>
         <small>&nbsp;  @p._1.cat</small>

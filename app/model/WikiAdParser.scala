@@ -6,22 +6,11 @@
  */
 package model
 
-import controllers.StateOk
-import org.bson.types.ObjectId
-import razie.wiki.model.WikiEntry
-import razie.{cdebug, cout, clog}
-import scala.collection.mutable.ListBuffer
-import scala.util.Try
-import scala.util.matching.Regex.Match
-import scala.util.parsing.combinator.RegexParsers
-import scala.Option.option2Iterable
-import scala.collection.mutable
-import razie.wiki.parser.WAST
-import razie.wiki.parser.WikiParserBase
+import razie.tconf.parser.SState
+import razie.wiki.parser.ParserBase
 
 /** parse dsl, fiddles and code specific fragments */
-trait WikiAdParser extends WikiParserBase {
-  import WAST._
+trait WikiAdParser extends ParserBase {
   
   def adWikiProps = wikiPropAds
 

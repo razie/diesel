@@ -3,7 +3,6 @@ package mod.diesel.controllers
 import java.util.concurrent.TimeUnit
 
 import akka.actor.{Actor, Props, _}
-import DomGuardian.{addStoryToAst, collectAst, prepEngine, startCheck}
 import mod.diesel.controllers.DomUtils.{SAMPLE_SPEC, SAMPLE_STORY}
 import mod.diesel.model.DomEngineHelper
 import razie.diesel.dom.AstKinds._
@@ -15,6 +14,7 @@ import play.api.mvc._
 import play.libs.Akka
 import razie.diesel.dom.WikiDomain
 import razie.diesel.engine.{DieselAppContext, RDExt}
+import razie.diesel.utils.SpecCache
 import razie.hosting.Website
 import razie.wiki.Services
 import razie.wiki.admin.Autosave
@@ -33,9 +33,9 @@ object DomFiddles extends DomApi with Logging {
     val reactor = stok.realm
 
     //1. which wids were you looking at last?
-    val wids = Autosave.OR("DomFidPath."+reactor, stok.au.get._id, Map(
-      "specWpath"  -> """""",
-      "storyWpath" -> """"""
+    val wids = Autosave.OR("DomFidPath", reactor, "", stok.au.get._id, Map(
+      "specWpath"  -> "",
+      "storyWpath" -> ""
     ))
 
     var specWpath = wids("specWpath")
@@ -43,7 +43,7 @@ object DomFiddles extends DomApi with Logging {
 
     // need settings?
     if(iSpecWpath != "?" && iSpecWpath != specWpath) {
-      DomWorker later AutosaveSet("DomFidPath."+reactor, stok.au.get._id, Map(
+      DomWorker later AutosaveSet("DomFidPath",reactor,"", stok.au.get._id, Map(
         "specWpath"  -> iSpecWpath,
         "storyWpath" -> storyWpath
       ))
@@ -52,7 +52,7 @@ object DomFiddles extends DomApi with Logging {
 
     // need saved?
     if(iStoryWpath != "?" && iStoryWpath != storyWpath) {
-      DomWorker later AutosaveSet("DomFidPath."+reactor, stok.au.get._id, Map(
+      DomWorker later AutosaveSet("DomFidPath", reactor, "", stok.au.get._id, Map(
         "specWpath"  -> specWpath,
         "storyWpath" -> iStoryWpath
       ))
@@ -63,21 +63,21 @@ object DomFiddles extends DomApi with Logging {
     val stw = WID.fromPath(storyWpath).flatMap(_.page).map(_.content).getOrElse(SAMPLE_STORY)
 
     //2 their contents
-    val spec = Autosave.OR("DomFidSpec."+reactor+"."+specWpath, stok.au.get._id, Map(
+    val spec = Autosave.OR("DomFidSpec",reactor,specWpath, stok.au.get._id, Map(
       "content"  -> spw
     )).apply("content")
 
-    val story = Autosave.OR("DomFidStory."+reactor+"."+storyWpath, stok.au.get._id, Map(
+    val story = Autosave.OR("DomFidStory",reactor,storyWpath, stok.au.get._id, Map(
       "content"  -> stw
     )).apply("content")
 
-    val capture = Autosave.OR("DomFidCapture."+reactor+"."+"", stok.au.get._id, Map(
+    val capture = Autosave.OR("DomFidCapture",reactor,"", stok.au.get._id, Map(
       "content"  -> "Paste AST capture here"
     )).apply("content")
 
     val id = java.lang.System.currentTimeMillis().toString()
 
-    ROK.k reactorLayout12 {
+    ROK.k reactorLayout12FullPage {
       val wp = if(iSpecWpath.length > 1) iSpecWpath else iStoryWpath
       views.html.fiddle.playDomFiddle(reactor, stok.query, spec, story, capture, specWpath, storyWpath, (spw != story), (stw != story), Some(""), id, wp, line, col)
     }
@@ -165,16 +165,16 @@ object DomFiddles extends DomApi with Logging {
     val capture = stok.formParm("capture")
 
     //autosave which wids were you looking at last?
-    DomWorker later AutosaveSet("DomFidPath."+reactor, stok.au.get._id, Map(
+    DomWorker later AutosaveSet("DomFidPath", reactor, "", stok.au.get._id, Map(
       "specWpath"  -> specWpath,
       "storyWpath" -> storyWpath
     ))
 
     //autosave their contents
-    DomWorker later AutosaveSet("DomFidSpec."+reactor+"."+specWpath, stok.au.get._id, Map(
+    DomWorker later AutosaveSet("DomFidSpec", reactor, specWpath, stok.au.get._id, Map(
       "content"  -> spec
     ))
-    DomWorker later AutosaveSet("DomFidCapture."+reactor+"."+"", stok.au.get._id, Map(
+    DomWorker later AutosaveSet("DomFidCapture", reactor, "", stok.au.get._id, Map(
       "content"  -> capture
     ))
 
@@ -207,7 +207,7 @@ object DomFiddles extends DomApi with Logging {
     * @param id - unique session / page Id, used to identify WebSocket customers too
     * @return
     */
-  def fiddleStoryUpdated(id: String) = RActiona { implicit stok=>
+  def fiddleStoryUpdated(id: String) = RAction.async { implicit stok=>
     val stimer = new CSTimer("buildDomStory", id)
     stimer start "heh"
 
@@ -224,16 +224,16 @@ object DomFiddles extends DomApi with Logging {
     val uid = stok.au.map(_._id).getOrElse(NOUSER)
 
     if(saveMode && stok.au.exists(_.isActive)) {
-      DomWorker later AutosaveSet("DomFidPath."+reactor, stok.au.get._id, Map(
+      DomWorker later AutosaveSet("DomFidPath", reactor, "", stok.au.get._id, Map(
         "specWpath"  -> specWpath,
         "storyWpath" -> storyWpath
       ))
 
       //2 their contents
-      DomWorker later AutosaveSet("DomFidStory."+reactor+"."+storyWpath, stok.au.get._id, Map(
+      DomWorker later AutosaveSet("DomFidStory", reactor,storyWpath, stok.au.get._id, Map(
         "content"  -> story
       ))
-      DomWorker later AutosaveSet("DomFidCapture."+reactor+"."+"", stok.au.get._id, Map(
+      DomWorker later AutosaveSet("DomFidCapture",reactor,"", stok.au.get._id, Map(
         "content"  -> capture
       ))
     }
@@ -252,11 +252,12 @@ object DomFiddles extends DomApi with Logging {
         val d = Wikis(reactor).pages("Spec").toList.map { p =>
           //         if draft mode, find the auto-saved version if any
           if (settings.draftMode) {
-            val c = Autosave.find("DomFidSpec." + reactor + "." + p.wid.wpath, uid).flatMap(_.get("content")).mkString
+            val c = Autosave.find("DomFidSpec", reactor, p.wid.wpath, uid).flatMap(_.get("content")).mkString
             if (c.length > 0) p.copy(content = c)
             else p
           } else p
         }
+
         d
       } else
         List(page)
@@ -278,6 +279,7 @@ object DomFiddles extends DomApi with Logging {
     var captureTree = ""
 
     val root = if(capture startsWith "{") {
+      // is this a captured tree?
       val m = js.parse(capture)
       // is teh map from a debug session or just the AST
       val d = (
@@ -297,7 +299,7 @@ object DomFiddles extends DomApi with Logging {
 
     // start processing all elements
     val engine = DieselAppContext.mkEngine(dom, root, settings, ipage :: pages map WikiDomain.spec)
-    setHostname(engine.ctx)
+    setHostname(engine.ctx.root)
 
     // decompose all tree or just testing? - if there is a capture, I will only test it
     val fut = if(capture startsWith "{") {
@@ -334,40 +336,49 @@ object DomFiddles extends DomApi with Logging {
 
   /** save the draft story/spec (what) to original, as new version */
   def save(id: String, what:String) = FAUPR { implicit stok=>
-    val q = stok.req.queryString.map(t=>(t._1, t._2.mkString))
-    /** get parm from formrequest body or empty string */
-    def fParm(name:String) =
-      razscr.dec(stok.req.body.asFormUrlEncoded.get.apply(name).mkString)
-
     //todo this
     //    Some(1).filter(x=>(au hasPerm Perm.codeMaster) || (au hasPerm Perm.adminDb)).fold(
 
-    val newName = fParm("newName")
-    val reactor = fParm("reactor")
-    val specWpath = fParm("specWpath")
-    val storyWpath = fParm("storyWpath")
-    val spec = fParm("spec")
-    val story = fParm("story")
+    val newName = stok.formParm("newName")
+    val reactor = stok.formParm("reactor")
+    val specWpath = stok.formParm("specWpath")
+    val storyWpath = stok.formParm("storyWpath")
+    val spec = stok.formParm("spec")
+    val story = stok.formParm("story")
 
     if(!stok.au.get.isAdmin && reactor=="specs") {
       Msg("You can't save in this reactor - if you want to create stories, please create your own")
     } else {
     //1. which wids were you looking at last?
-      DomWorker later AutosaveSet("DomFidPath."+reactor, stok.au.get._id, Map(
+      DomWorker later AutosaveSet("DomFidPath",reactor,"", stok.au.get._id, Map(
       "specWpath"  -> specWpath,
       "storyWpath" -> storyWpath
     ))
 
     import razie.db.tx.txn
 
+    def vis(p:WikiEntry) = {
+      var we = p
+      val vis = Wikis.mkVis(we.wid, we.realm)
+      val wvis = Wikis.mkwVis(we.wid, we.realm)
+
+      // visibility?
+      if (! we.props.get("visibility").exists(_ == vis))
+        we = we.cloneProps(we.props ++ Map("visibility" -> vis), stok.au.get._id)
+      if (! we.props.get("wvis").exists(_ == wvis))
+        we = we.cloneProps(we.props ++ Map("wvis" -> wvis), stok.au.get._id)
+
+      we
+    }
+
     if(newName.length > 0) {
       if(what == "Spec") {
         var we = WikiEntry("Spec", newName, newName, "md", spec, stok.au.get._id, Seq("spec", "dsl"), stok.realm, 1)
-        we.create
+        vis(we).create
         Services ! WikiAudit(WikiAudit.UPD_EDIT, we.wid.wpathFull, Some(stok.au.get._id), None, Some(we), None)
       } else if (what == "Story") {
         var we = WikiEntry("Story", newName, newName, "md", story, stok.au.get._id, Seq("story", "dsl"), stok.realm, 1)
-        we.create
+        vis(we).create
         Services ! WikiAudit(WikiAudit.UPD_EDIT, we.wid.wpathFull, Some(stok.au.get._id), None, Some(we), None)
       }
     } else {
@@ -388,6 +399,14 @@ object DomFiddles extends DomApi with Logging {
       }
     }
 
+    // delete the drafts
+
+    if(what == "Spec") {
+      Autosave.delete("DomFidSpec",reactor,specWpath, stok.au.get._id)
+    } else if (what == "Story") {
+      Autosave.delete("DomFidStory",reactor,storyWpath, stok.au.get._id)
+    }
+
     Ok("done")
     }
   }
@@ -404,31 +423,40 @@ object DomFiddles extends DomApi with Logging {
     val story = razscr.dec(stok.req.body.asFormUrlEncoded.get.apply("story").mkString)
 
     //1. which wids were you looking at last?
-    DomWorker later AutosaveSet("DomFidPath."+reactor, stok.au.get._id, Map(
+    DomWorker later AutosaveSet("DomFidPath",reactor, "", stok.au.get._id, Map(
       "specWpath"  -> specWpath,
       "storyWpath" -> storyWpath
     ))
 
+    // delete the drafts
+
     if(what == "Spec") {
-      //2 their contents
-      val spw = WID.fromPath(specWpath).flatMap(_.page).map(_.content).getOrElse(SAMPLE_SPEC)
-      DomWorker later AutosaveSet("DomFidSpec."+reactor+"."+specWpath, stok.au.get._id, Map(
-        "content"  -> spw
-      ))
+      Autosave.delete("DomFidSpec",reactor,specWpath, stok.au.get._id)
     } else if (what == "Story") {
-      //2 their contents
-      val stw = WID.fromPath(storyWpath).flatMap(_.page).map(_.content).getOrElse(SAMPLE_STORY)
-      DomWorker later AutosaveSet("DomFidStory."+reactor+"."+storyWpath, stok.au.get._id, Map(
-        "content"  -> stw
-      ))
+      Autosave.delete("DomFidStory",reactor,storyWpath, stok.au.get._id)
     }
+
+    // used to reset, but better to delete drafts?
+
+//    if(what == "Spec") {
+      //2 their contents
+//      DomWorker later AutosaveSet("DomFidSpec",reactor,specWpath, stok.au.get._id, Map(
+//        "content"  -> spw
+//      ))
+//    } else if (what == "Story") {
+      //2 their contents
+//      val stw = WID.fromPath(storyWpath).flatMap(_.page).map(_.content).getOrElse(SAMPLE_STORY)
+//      DomWorker later AutosaveSet("DomFidStory",reactor,storyWpath, stok.au.get._id, Map(
+//        "content"  -> stw
+//      ))
+//    }
 
     Ok("done")
   }
 
   def streamSimulator () = FAUR {implicit stok=>
     val id="aStream"
-    val content = Autosave.OR("DomFidSim."+stok.realm+"."+id, stok.au.get._id, Map(
+    val content = Autosave.OR("DomFidSim",stok.realm,id, stok.au.get._id, Map(
       "content"  -> "Paste AST capture here"
     )).apply("content")
 
@@ -439,7 +467,7 @@ object DomFiddles extends DomApi with Logging {
 
   /** fiddle screen - spec changed */
   def streamCapture(id: String) = FAUPR { implicit stok=>
-    val content = Autosave.OR("DomFidSim."+stok.realm+"."+id, stok.au.get._id, Map(
+    val content = Autosave.OR("DomFidSim",stok.realm,id, stok.au.get._id, Map(
       "content"  -> "Paste AST capture here"
     )).apply("content")
 
@@ -450,7 +478,7 @@ object DomFiddles extends DomApi with Logging {
   def streamUpdated(id: String) = FAUPR { implicit stok=>
     val capture = stok.formParm("capture")
 
-    DomWorker later AutosaveSet("DomFidSim."+stok.realm+"."+id, stok.au.get._id, Map(
+    DomWorker later AutosaveSet("DomFidSim",stok.realm,id, stok.au.get._id, Map(
       "content"  -> capture
     ))
 

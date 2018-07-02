@@ -60,7 +60,7 @@ class RazAuthService extends AuthService[User] with Logging {
     val authorization = request.headers.get("Authorization")
 
     import play.api.Play.current
-    debug("AUTH SESSION.connected=" + connected)
+//    debug("AUTH SESSION.connected=" + connected)
 
     synchronized {
       // from session

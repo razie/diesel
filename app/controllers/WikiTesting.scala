@@ -6,33 +6,9 @@
  */
 package controllers
 
-import admin._
 import com.mongodb.casbah.Imports._
-import com.novus.salat._
-import mod.diesel.controllers.DieselControl
-import model._
-import play.twirl.api.Html
-import razie.db.RazSalatContext._
-import com.mongodb.{BasicDBObject, DBObject}
-import razie.db.{ROne, RazMongo}
-import play.api.mvc.{Action, AnyContent, Request}
-import razie.diesel.dom.RDOM
-import razie.wiki.util.PlayTools
-import razie.{Logging, cout}
+import play.api.mvc.Action
 import razie.wiki.model._
-import views.html.wiki.wikieUsage
-
-import scala.Array.canBuildFrom
-import razie.wiki.{Enc, Services}
-import razie.diesel.dom.WikiDomain
-import razie.wiki.model.WikiAudit
-
-import scala.collection.mutable.ListBuffer
-import scala.concurrent.Future
-import Visibility.PUBLIC
-import razie.audit.Audit
-
-import scala.util.Try
 
 /** wiki controller */
 object WikiTesting extends WikiBase {

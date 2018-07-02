@@ -160,7 +160,7 @@ case class RacerKid(
     )
 
   def rka = RMany[RacerKidAssoc]("to" -> _id)
-  def rkwa = RMany[RacerKidWikiAssoc]("from" -> _id)
+  def rkwa = RMany[RacerKidWikiAssoc]("rkId" -> _id)
 
   def clubs =
    rka.map(_.from).toList.distinct.flatMap(Club.findForUserId).toList//.filter(_.curYear == rka.year)
@@ -360,7 +360,9 @@ object RacerKidz {
       val nrk = RacerKid(userId, Some(userId), None, None, Seq.empty, RK.KIND_MYSELF)
       nrk.create(tx.auto)
       RacerKidAssoc(userId, nrk._id, RK.ASSOC_MYSELF, RK.ASSOC_MYSELF, userId).create(tx.auto)
-      rk = ROne[RacerKid]("userId" -> Some(userId))
+      // sometimes I can't find the record right away...
+//      rk = ROne[RacerKid]("userId" -> Some(userId))
+      rk = Some(nrk)
     }
     rk.get
   }
@@ -403,4 +405,6 @@ object RacerKidz {
 
   final val JoeDoe = RacerKidInfo("Joe", "Doe", "", DateTime.parse("2000-01-15"), "M", Set.empty, RK.STATUS_ACTIVE, false, RK.noid, RK.noid)
   final val empty = RacerKidInfo("", "", "", DateTime.parse("2000-01-15"), "M", Set.empty, RK.STATUS_ACTIVE, true, RK.noid, RK.noid)
+
+//  CQRS.
 }

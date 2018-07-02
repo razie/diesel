@@ -1,3 +1,6 @@
+
+## Create/update the base image
+
 RK=~/w/racerkidz
 
 cd $RK/docker/base

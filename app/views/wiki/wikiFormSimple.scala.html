@@ -81,6 +81,7 @@ the actual form contents are in wikiFormInt
 @formFix(page.toList.flatMap(_.form.fields.values.filter(_.attributes.get("type").exists(_ == "date"))).map(_.name).toSeq)
 
 <script>
+  withJquery(function($) {
 @if(simple) {
 // this is the id of the form
   $('#wikiForm-@fid').submit(function(e) {
@@ -119,6 +120,6 @@ the actual form contents are in wikiFormInt
 @if(page.exists(_.fields.contains("weRedirectPlease"))) {
   $('#wikiForm-@fid').submit();
 }
-
+  });
 </script>
 

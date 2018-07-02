@@ -8,7 +8,8 @@ package controllers
 
 import com.google.inject._
 import mod.snow._
-import model.{User, Users}
+import model.{FollowerWiki, User, Users}
+import org.bson.types.ObjectId
 import org.joda.time.DateTime
 import play.api.Configuration
 import play.api.data.Form
@@ -18,8 +19,8 @@ import razie.audit.Audit
 import razie.db._
 import razie.diesel.dom.WikiDomain
 import razie.wiki.Sec.EncryptedS
+import razie.wiki.Services
 import razie.wiki.model._
-import razie.wiki.{Enc, Services}
 
 /** controller for link ops */
 @Singleton
@@ -51,9 +52,13 @@ class Wikil @Inject() (config:Configuration) extends WikieBase {
   }
 
   /** user unlikes page */
-  def unlinkUser(wid: WID, really: String = "n") = FAUR { implicit stok =>
+  def unlinkUser(wid: WID, really: String = "n", uid:String = "") = FAUR { implicit stok =>
     (for (
-      au <- stok.au;
+      au <- {
+        // if uid provided, then it's done by admin
+        if(uid.length > 0) Users.findUserById(uid).filter(x=> stok.au.exists(_.isAdmin))
+        else stok.au
+      };
       uwid <- wid.uwid orErr ("can't find uwid");
       r1 <- au.hasPerm(Perm.uProfile) orCorr cNoPermission("uProfile - probably need to validate email")
     ) yield {
@@ -69,7 +74,7 @@ class Wikil @Inject() (config:Configuration) extends WikieBase {
             |<p>$hasRegs
             |<p>Choose Leave only if certain.""".stripMargin,
           Some(Wiki.w(wid)),
-          Some("Leave" -> routes.Wikil.unlinkUser(wid, "y").toString))
+          Some("Leave" -> routes.Wikil.unlinkUser(wid, "y", uid).toString))
       } else {
         au.pages(wid.getRealm, wid.cat).find(_.uwid == uwid).toList.headOption.map { wl =>
           // two links: UserWiki and RacerKidAssoc
@@ -236,7 +241,7 @@ class Wikil @Inject() (config:Configuration) extends WikieBase {
           } else {
             Emailer.withSession(wid.getRealm) { implicit mailSession =>
               Emailer.sendEmailFollowerLink(email1, wid, comment)
-              Emailer.tellRaz("Subscribed", email1 + " ip=" + request.headers.get("X-Forwarded-For"), wid.ahref, comment)
+              Emailer.tellAdmin("Subscribed", email1 + " ip=" + request.headers.get("X-Forwarded-For"), wid.ahref, comment)
             }
             Msg2("You got an email with a link, to activate your subscription. Enjoy!", Some(wid.urlRelative))
           }
@@ -269,7 +274,7 @@ class Wikil @Inject() (config:Configuration) extends WikieBase {
         RCreate(model.FollowerWiki(f._id, comment.decUrl, uwid))
 cleanAuth(auth)
         Emailer.withSession(wid.getRealm) { implicit mailSession =>
-          Emailer.tellRaz("Subscription confirmed", email.dec, wid.ahref, comment.decUrl)
+          Emailer.tellAdmin("Subscription confirmed", email.dec, wid.ahref, comment.decUrl)
         }
 
         Msg2("Ok - you are subscribed to %s via email!".format(wid.page.map(_.label).getOrElse(wid.name)), Some(wid.urlRelative))
@@ -295,6 +300,27 @@ cleanAuth(auth)
       Msg2("Sorry - please submit a support request...", Some(wid.urlRelative))
     }) getOrElse {
       verror(s"""ERR_CANT_UPDATE_USER.unlinkFollower4 : $wid : ${request.session.get("email")}""")
+      unauthorized("Oops - cannot remove this subscription... ")
+    }
+  }
+
+  def unlinkExtFollower(id: String) = RAction { implicit request =>
+    (for (
+      _ <- ObjectId.isValid(id) orErr "id not valid";
+      fw <- ROne[FollowerWiki](new ObjectId(id)) orErr "no fwiki";
+      _ <- request.au.exists(_.isAdmin) orErr "not admin"
+    ) yield {
+      fw.delete(txn)
+      //            val mod = moderator(wid).flatMap(mid => { println(mid); Users.findUserByUsername(mid) })
+      //
+      //            val f = model.Follower(email1, "??")
+      //            this dbop f.create
+      //            this dbop model.FollowerWiki(f._id, wid).create
+      //
+      // TODO remove follower, possibly notify owner of topic or moderator
+      Msg2("Ok - done")
+    }) getOrElse {
+      verror(s"""ERR_CANT_UPDATE_USER.unlinkExtFollower : $id """)
       unauthorized("Oops - cannot remove this subscription... ")
     }
   }
@@ -475,7 +501,7 @@ object Wikil extends WikieBase {
 
     Emailer.withSession(club.wid.getRealm) { implicit mailSession =>
       Emailer.sendEmailLinkOk(user, club.userName, club.msgWelcome)
-      Emailer.tellRaz("User joined club", "Club: " + club.wid.wpath, "Role: " + how, s"User: ${user.firstName} ${user.lastName} (${user.userName} ${user.emailDec}")
+      Emailer.tellAdmin("User joined club", "Club: " + club.wid.wpath, "Role: " + how, s"User: ${user.firstName} ${user.lastName} (${user.userName} ${user.emailDec}")
       (Wikil.moderatorOf(club.wid).toList :::
         club.props.filter(_._1.startsWith("link.notify.")).toList.map(_._2)
         ).distinct.foreach { email =>

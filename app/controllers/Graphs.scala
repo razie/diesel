@@ -6,6 +6,8 @@
  */
 package razie.gg
 
+import scala.collection.mutable
+
 //---------------------------- smart graphs of nodes, each node is a sub-graph with embedded structure
 
 /**
@@ -105,7 +107,7 @@ trait GraphLike[N <: GNode[N, L], L <: GLink[N]] {
   }
 
   def filterNodes(f: N => Boolean): Seq[N] = {
-    val ret = razie.Listi[N]
+    val ret = mutable.ListBuffer[N]()
     foreach((x: N, v: Int) => { if (f(x)) ret append x }, (l: L, v: Int) => {})
     ret
   }

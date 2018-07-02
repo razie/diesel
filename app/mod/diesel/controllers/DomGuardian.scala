@@ -1,18 +1,24 @@
+/**
+  *   ____    __    ____  ____  ____,,___     ____  __  __  ____
+  *  (  _ \  /__\  (_   )(_  _)( ___)/ __)   (  _ \(  )(  )(  _ \           Read
+  *   )   / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <     README.txt
+  *  (_)\_)(__)(__)(____)(____)(____)(___/   (__)  (______)(____/    LICENSE.txt
+  */
 package mod.diesel.controllers
 
+import admin.Config
 import akka.actor.{Actor, Props}
-import model.{User, Users}
 import controllers.RazRequest
 import mod.diesel.controllers.DomUtils.{SAMPLE_SPEC, SAMPLE_STORY}
-import razie.diesel.dom.AstKinds._
+import model.{User, Users}
 import org.bson.types.ObjectId
 import org.joda.time.DateTime
 import play.libs.Akka
 import razie.Logging
-import razie.diesel.dom.RDOM.O
 import razie.diesel.dom.{DomAst, RDomain, SimpleECtx, WikiDomain}
 import razie.diesel.engine.{DieselAppContext, DomEngine, DomEngineSettings, RDExt}
 import razie.diesel.ext._
+import razie.diesel.utils.{DomCollector, SpecCache}
 import razie.hosting.Website
 import razie.wiki.Services
 import razie.wiki.admin.Autosave
@@ -27,21 +33,6 @@ import scala.concurrent.Future
 /** this is the default engine per reactor and user, continuously running all the stories */
 object DomGuardian extends Logging {
 
-  // statically collecting the last 100 results sets
-  private var asts: List[(String, String, DomAst)] = Nil
-
-  def withAsts[T] (f: List[(String,String,DomAst)] =>T) = asts.synchronized {
-    f(asts)
-  }
-
-  /** statically collect more asts */
-  def collectAst (stream:String, xid:String, root:DomAst) = synchronized {
-    if (asts.size > 100) asts = asts.take(99)
-    asts = (stream, xid, root) :: asts
-  }
-
-  // ----------------
-
   def setHostname(ctx: SimpleECtx)(implicit stok: RazRequest): Unit = {
     ctx._hostname =
       Some(
@@ -51,7 +42,7 @@ object DomGuardian extends Logging {
       )
   }
 
-  /** load all stories for reactor, either drafts or final */
+  /** load all stories for reactor, either drafts or final and return the list of wikis */
   def loadStories (settings:DomEngineSettings, reactor:String, userId:Option[ObjectId], storyWpath:String) = {
     val uid = userId.getOrElse(new ObjectId())
     val pages =
@@ -60,21 +51,28 @@ object DomGuardian extends Logging {
           settings.tagQuery.map {tagQuery=>
             // todo how can we optimize for large reactors: if it starts with "story" use the Story category?
             val tq = new TagQuery(tagQuery)
-            (if(tq.ltags.contains("Story"))
+
+            // todo optimize
+            val wl = (if(tq.ltags.contains("Story"))
               Wikis(reactor).pages("Story")
             else
               Wikis(reactor).pages("*")
             )
-            val x = Wikis(reactor).pages("*").filter(_.name contains "imple").toList
-            x.filter(w=>tq.matches(w.tags)).toList
+
+            // todo WTF is this imple?
+            val x = wl/*.filter(_.name contains "imple")*/.toList
+
+            x.filter(w=>tq.matches(w.tags))
           } getOrElse {
-            Wikis(reactor).pages("Story").toList
+            // todo optimize
+//            Wikis(reactor).pages("Story").toList
+            Wikis(reactor).pages("*").filter(w=> w.tags.contains("story")).toList
           }
 
         val maybeDrafts = list.map { p =>
           //         if draft mode, find the auto-saved version if any
           if (settings.draftMode) {
-            val c = Autosave.find("DomFidStory." + reactor + "." + p.wid.wpath, uid).flatMap(_.get("content")).mkString
+            val c = Autosave.find("DomFidStory", reactor, p.wid.wpath, uid).flatMap(_.get("content")).mkString
             if (c.length > 0) p.copy(content = c)
             else p
           } else p
@@ -83,7 +81,7 @@ object DomGuardian extends Logging {
       } else {
         val spw = WID.fromPath(storyWpath).flatMap(_.page).map(_.content).getOrElse(SAMPLE_SPEC)
         val specName = WID.fromPath(storyWpath).map(_.name).getOrElse("fiddle")
-        val spec = Autosave.OR("DomFidStory." + reactor + "." + storyWpath, uid, Map(
+        val spec = Autosave.OR("DomFidStory", reactor , storyWpath, uid, Map(
           "content" -> spw
         )).apply("content")
 
@@ -106,17 +104,24 @@ object DomGuardian extends Logging {
                 addFiddles:Boolean=false) = {
     val uid = au.map(_._id).getOrElse(new ObjectId())
 
-    val wids = Autosave.OR("DomFidPath." + reactor, uid, Map(
+    // is there a current fiddle in this reactor/user?
+    val wids = Autosave.OR("DomFidPath" , reactor, "", uid, Map(
       "specWpath" -> """""",
       "storyWpath" -> """"""
     ))
 
     var storyWpath = wids("storyWpath")
 
-    val stw = WID.fromPath(storyWpath).flatMap(_.page).map(_.content).getOrElse(SAMPLE_STORY)
+    val stw =
+      WID
+      .fromPath(storyWpath)
+      .flatMap(_.page)
+      .map(_.content)
+      .getOrElse(SAMPLE_STORY)
+
     val storyName = WID.fromPath(storyWpath).map(_.name).getOrElse("fiddle")
 
-    val story = Autosave.OR("DomFidStory." + reactor + "." + storyWpath, uid, Map(
+    val story = Autosave.OR("DomFidStory", reactor, storyWpath, uid, Map(
       "content" -> stw
     )).apply("content")
 
@@ -129,7 +134,9 @@ object DomGuardian extends Logging {
         val d = Wikis(reactor).pages("Spec").toList.map { p =>
           //         if draft mode, find the auto-saved version if any
           if (settings.draftMode) {
-            val c = Autosave.find("DomFidSpec." + reactor + "." + p.wid.wpath, uid).flatMap(_.get("content")).mkString
+            // todo uid here is always anonymous - do we use the reactor owner as default?
+            val a = Autosave.find("DomFidSpec", reactor, p.wid.wpath, uid)
+            val c = a.flatMap(_.get("content")).mkString
             if (c.length > 0) p.copy(content = c)
             else p
           } else p
@@ -139,7 +146,7 @@ object DomGuardian extends Logging {
         var specWpath = wids("specWpath")
         val spw = WID.fromPath(specWpath).flatMap(_.page).map(_.content).getOrElse(SAMPLE_SPEC)
         val specName = WID.fromPath(specWpath).map(_.name).getOrElse("fiddle")
-        val spec = Autosave.OR("DomFidSpec." + reactor + "." + specWpath, uid, Map(
+        val spec = Autosave.OR("DomFidSpec", reactor, specWpath, uid, Map(
           "content" -> spw
         )).apply("content")
 
@@ -147,11 +154,21 @@ object DomGuardian extends Logging {
         List(page)
       }
 
-    val dom = pages.flatMap(p =>
+    // from all the stories, we need to extract all the spec fiddles and add to the dom
+    val specFiddles = useTheseStories.flatMap {p=>
+      // add sections - for each fake a page
+      // todo instead - this shold be in RDExt.addStoryToAst with the addFiddles flag
+      p :: sectionsToPages(p, p.sections.filter(s=>s.stype == "dfiddle" && (Array("spec") contains s.signature)))
+    }
+
+    // finally build teh entire fom
+
+    val dom = (pages ::: specFiddles).flatMap(p =>
       SpecCache.orcached(p, WikiDomain.domFrom(p)).toList
     ).foldLeft(
       RDomain.empty
     )((a, b) => a.plus(b)).revise.addRoot
+
 
     //    stimer snap "2_parse_specs"
 
@@ -180,6 +197,17 @@ object DomGuardian extends Logging {
   }
 
   /* extract more nodes to run from the story - add them to root */
+  def sectionsToPages(story: WikiEntry, sections:List[WikiSection]) : List[WikiEntry] = {
+        sections
+          .map {sec=>
+            val newPage = new WikiEntry(story.wid.cat, story.wid.name+"#"+sec.name, "fiddle", "md",
+              sec.content,
+              story.by, Seq("dslObject"), story.realm)
+            newPage
+          }
+  }
+
+  /* extract more nodes to run from the story - add them to root */
   def addStoryToAst(root: DomAst, stories: List[WikiEntry], justTests: Boolean = false, justMocks: Boolean = false, addFiddles:Boolean=false) = {
 
     val allStories = if(!addFiddles) {
@@ -187,13 +215,8 @@ object DomGuardian extends Logging {
     } else {
       stories.flatMap {story=>
         // add sections - for each fake a page
-        story :: story.sections.filter(s=>s.stype == "dfiddle" && (Array("spec","story") contains s.signature))
-        .map {sec=>
-          val newPage = new WikiEntry(story.wid.cat, "fiddle", "fiddle", "md",
-              sec.content,
-              story.by, Seq("dslObject"), story.realm)
-          newPage
-        }
+        // todo instead - this shold be in RDExt.addStoryToAst with the addFiddles flag
+        story :: sectionsToPages(story, story.sections.filter(s=>s.stype == "dfiddle" && (Array("story") contains s.signature)))
       }
     }
 
@@ -215,10 +238,10 @@ object DomGuardian extends Logging {
             if (we.category == "Story" || we.tags.contains("story") ||
               we.category == "Spec" || we.tags.contains("spec")) {
 
-              // re run all tests
-              // todo use futures so we know if a test is already running
+              // re run all tests for current realm
               // todo also cancel existing workflows
-              DomGuardian.lastRuns.foreach {t=>
+//              DomGuardian.lastRuns.foreach {t=>
+              DomGuardian.lastRuns.filter(_._2.realm == we.realm).headOption.map {t=>
                 val re="(\\w*)\\.(\\w*)".r
                 val re(realm, uname) = t._1
                 startCheck(t._2.realm, Users.findUserByUsername(uname))
@@ -251,7 +274,9 @@ object DomGuardian extends Logging {
   // (realm.username,report)
   private val lastRun = new mutable.HashMap[String,Report]()
 
-  def stats = s"${lastRun.size} cached, ${curRun.size} in progress, ${asts.size} collected"
+  def stats = DomCollector.withAsts { asts =>
+    s"${lastRun.size} cached, ${curRun.size} in progress, ${asts.size} collected"
+  }
 
   def init = {
     val old = isInit
@@ -272,23 +297,44 @@ object DomGuardian extends Logging {
   private var curRun : Option[(String,DomEngine, Future[DomGuardian.Report])] = None
 
   /** if no test is currently running, start one */
-  def runReq (au:Option[User], realm:String) = synchronized {
+  def runReq (au:Option[User], realm:String): (String, Future[Report]) = synchronized {
     if (!curRun.exists(_._1 == au.map(_.userName).mkString)) {
       val started = System.currentTimeMillis()
 
       val settings = mkSettings()
       settings.tagQuery = Website.forRealm(realm).flatMap(_.prop("guardian.settings.query"))
+      settings.realm = Some(realm)
+
+      if(Config.isLocalhost)
+        settings.hostport = Some(Config.hostport)
+      else
+        settings.hostport = Website.forRealm(realm).map(_.domain)
+
       val addFiddles = Website.forRealm(realm).flatMap(_.bprop("guardian.settings.fiddles")).getOrElse(false)
 
+      val stories = loadStories (settings, realm, au.map(_._id), "")
+
+      // a reactor without tests... skip it
+      if(stories.size == 0) {
+        // return a random report
+        return ("", Future.successful(lastRun.values.head))
+      }
+
       // run all stories not just the tests
-      val engine = prepEngine(new ObjectId().toString, settings, realm, None, false, au,
-        loadStories (settings, realm, au.map(_._id), ""),
+      val engine  = prepEngine(
+        new ObjectId().toString,
+        settings,
+        realm,
+        None,
+        false,
+        au,
+        stories,
         addFiddles
       )
 
       // decompose all nodes, not just the tests
       val fut = engine.process.map { engine =>
-        collectAst("", engine.id, engine.root)
+        DomCollector.collectAst("guardian", engine.id, engine)
 
         val failed = engine.failedTestCount
         val success = engine.successTestCount
@@ -312,3 +358,4 @@ object DomGuardian extends Logging {
     }
   }
 }
+

@@ -1,5 +1,6 @@
 package controllers
 
+import admin.Config
 import mod.snow.RacerKid
 import model.{TPersonInfo, User}
 import org.joda.time.DateTime
@@ -8,8 +9,12 @@ import razie.wiki.admin.{MailSession, SecLink, SendEmail}
 import razie.wiki.model._
 import razie.wiki.{Enc, EncUrl, Services}
 
-
-/** all emails sent by site */
+/** all emails sent by site
+  *
+  * Emails are formatted using a set of templates configured as a wiki topic "Admin:template-emails".
+  *
+  * You can overwrite it in your realm.
+  */
 object Emailer extends RazController with Logging {
   import razie.wiki.Sec._
 
@@ -73,11 +78,13 @@ object Emailer extends RazController with Logging {
     val hc1 = """/doe/profile/unameAccept?expiry=%s&userId=%s&newusername=%s""".format(EncUrl(dt.toString), u.id, Enc.toUrl(newUsername))
     val hc2 = """/doe/profile/unameDeny?expiry=%s&userId=%s&newusername=%s""".format(EncUrl(dt.toString), u.id, Enc.toUrl(newUsername))
 
+    // to admin
     val html1 = text("usernamechangerequest1").format(u.userName, newUsername);
 
+    // to user
     val html2 = text("usernamechangerequest2").format(u.ename, u.userName, newUsername)
 
-    sendEmailRequest(SUPPORT, 1, "username change request", html1, (if(notifyUser) Some(html2) else None), hc1, hc2, u)
+    sendEmailRequest(SUPPORT, 1, "Welcome!", html1, (if(notifyUser) Some(html2) else None), hc1, hc2, u)
   }
 
   def sendEmailUnameOk(newUsername: String, u: User)(implicit mailSession: MailSession) = {
@@ -154,14 +161,15 @@ object Emailer extends RazController with Logging {
   }
 
   def sendEmailNewWiki(to: User, commenter: User, wpost: WikiEntry)(implicit mailSession: MailSession) = {
-    val avail = wpost.visibility match {
-      case Visibility.PUBLIC => "Visible to all"
-      case Visibility.MEMBER => "Visible to all members"
-      case Visibility.BASIC => "Visible to green/blue/black members"
-      case Visibility.GOLD => "Visible to black membership only"
-      case Visibility.PLATINUM => "Visible to racers only"
-      case _ => "Visible?"
-    }
+    val avail = "Visibility: " + (wpost.visibility match {
+      case Visibility.PUBLIC => "public"
+      case Visibility.MEMBER => "members only"
+      case Visibility.BASIC => "paid members only"
+      case Visibility.GOLD => "black/gold members only"
+      case Visibility.PLATINUM => "platinum members (racing level) only"
+      case Visibility.UNOBTANIUM => "unobtanium members (master level) only"
+      case _ => s"? (${wpost.visibility})"
+    })
 
     val html1 = text("newwiki").format(to.ename, commenter.userName,
       wpost.getLabel, wpost.getDescription, wpost.wid.url, avail);
@@ -241,12 +249,12 @@ object Emailer extends RazController with Logging {
     mailSession.send(email, SUPPORT, "Invitation from "+from.fullName, html1)
   }
 
-  def sendRaz(what: String, args: Any*)(implicit mailSession: MailSession) = {
-    mailSession.send("razie@razie.com", SUPPORT, RK + " - " + what, args.mkString("\n"))
+  def tellAdmin(what: String, args: Any*)(implicit mailSession: MailSession) = {
+    tell(Config.adminEmail, what, args:_*)
   }
 
-  def tellRaz(what: String, args: Any*)(implicit mailSession: MailSession) = {
-    tell("razie@razie.com", what, args:_*)
+  def tellSiteAdmin(what: String, args: Any*)(implicit mailSession: MailSession) = {
+    tell(Config.adminEmail, what, args:_*)
   }
 
   def tell(who:String, what: String, args: Any*)(implicit mailSession: MailSession) = {

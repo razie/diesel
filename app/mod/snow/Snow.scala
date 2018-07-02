@@ -259,7 +259,7 @@ object Snow extends RazController with Logging {
       }
 
       Emailer.withSession(stok.realm) { implicit mailSession =>
-        Emailer.tellRaz("ACTIVATED_PRO", "user: "+stok.au.get.fullName)
+        Emailer.tellAdmin("ACTIVATED_PRO", "user: "+stok.au.get.fullName)
       }
       cleanAuth()
 
@@ -300,7 +300,7 @@ object Snow extends RazController with Logging {
 
       Emailer.withSession(stok.realm) { implicit mailSession =>
         Emailer.sendEmailInvitePro(stok.au.get, name, email, desc)
-        Emailer.tellRaz("INVITED_PRO", "user: "+stok.au.get.fullName)
+        Emailer.tellAdmin("INVITED_PRO", "user: "+stok.au.get.fullName)
       }
 
       Msg("Thank you - invite sent")

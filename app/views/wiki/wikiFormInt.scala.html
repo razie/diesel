@@ -19,8 +19,6 @@ print form body - no header/footer - reuse in other screens
     </div>
   }
 
-  <script src="@routes.Assets.at("javascripts/weCommons.js")"></script>
-
   @wiki.wikiFrag(wid, None, simple, page, iname, true, false, canEdit, false, print)
 
   @if(!errors.isEmpty) {
@@ -38,8 +36,10 @@ print form body - no header/footer - reuse in other screens
   }
 
 <script>
-$("input, select").change(function(){
-  if(typeof weUpdateForm != "undefined") weUpdateForm('wikiForm-@fid');
+withJquery(function($) {
+  $("input, select").change(function(){
+    if(typeof weUpdateForm != "undefined") weUpdateForm('wikiForm-@fid');
+  });
 });
 </script>
 

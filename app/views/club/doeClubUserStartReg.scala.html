@@ -13,7 +13,7 @@ manage the list of kidz and/or their accounts
 @stok.title("Start registration for " + user.userName)
 
 @prevReg = @{
-  Club(clubwid).flatMap(c => mod.snow.Regs.findClubUser(c.wid, user._id).toList.sortBy(_.year).reverse.headOption)
+  Club(clubwid).flatMap(c => mod.snow.Regs.findClubUser(c.wid, user._id).toList.sortBy(_.year).reverse.headOption.filter(mod.snow.RegStatus.canCopy))
 }
 
 @if(!Club(clubwid).exists(_.isRegOpen)) {

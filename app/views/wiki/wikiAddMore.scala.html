@@ -4,7 +4,7 @@ fragment: add more stuff to the current topic, including children, sub-topics et
 @(wid:razie.wiki.model.WID, page:Option[razie.wiki.model.WikiEntry])(implicit stok: controllers.StateOk)
 @import controllers.IgnoreErrors
 
-@import razie.wiki.model.{Perm, WID, Wikis}
+@import razie.wiki.model.{Perm, WID, Wikis, WikiEntry, WikiReactors}
 @import razie.diesel.dom.WikiDomain
 
 @getRealm()=@{stok.realm /*wid.getRealm*/ }
@@ -22,14 +22,28 @@ fragment: add more stuff to the current topic, including children, sub-topics et
   }
 }
 
+@listPage(p:WikiEntry)={
+  <a href="@controllers.Wiki.wr(p.wid, stok.realm)">@p.label</a> |
+}
+
+@findPages()=@{
+  val base =
+    if(page.flatMap(_.findAttr("category.list.mixins")).exists(_ == "true")) {
+      Wikis(getRealm).fallBacks.flatMap(_.pages(wid.name).take(50).toList)
+    } else Nil
+
+  val mine = (base ::: Wikis(getRealm).pages(wid.name).take(50).toList).take(50)
+  mine
+}
+
 @if("Category" == wid.cat && WikiDomain.canCreateNew(getRealm, wid.name)) {
   <!-- list of pages in category -->
   @if(Wikis(getRealm).pageNames(wid.name).size > 0) {
     <div class="well">
       @wid.name pages:
 
-      @for(p <- Wikis(getRealm).pages(wid.name).take(50) if(controllers.Wiki.isVisible(stok.au, p.props))) {
-        <a href="@controllers.Wiki.wr(p.wid, stok.realm)">@p.label</a> |
+      @for(p <- findPages() if(controllers.Wiki.isVisible(stok.au, p.props))) {
+        @listPage(p)
       }
 
       @if(Wikis(getRealm).pageNames(wid.name).size > 50) {
@@ -109,8 +123,10 @@ fragment: add more stuff to the current topic, including children, sub-topics et
       @defining(Wikis.linksTo(child, page.get.uwid, "Child").toList) { allKids =>
       @defining(allKids.filter(_.draft.isEmpty)) { kids =>
         @if(kids.size > 0) {
-          <script>
-            $("#cr@child").css("margin-bottom", "0px");
+          <script async>
+              razOnLoad(function() {
+                $("#cr@child").css("margin-bottom", "0px");
+              });
           </script>
 
           <div id="ki@child" class="well">
@@ -125,9 +141,11 @@ fragment: add more stuff to the current topic, including children, sub-topics et
       }
         @defining(allKids.filter(_.draft.isDefined)) { kids =>
         @if(kids.size > 0) {
-          <script>
-            $("#cr@child").css("margin-bottom", "0px");
+          <script async>
+              razOnLoad(function() {
+                  $("#cr@child").css("margin-bottom", "0px");
             $("#ki@child").css("margin-bottom", "0px");
+              });
           </script>
 
           <div class="well">

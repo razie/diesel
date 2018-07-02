@@ -73,13 +73,22 @@ class wix (owe: Option[WikiPage], ou:Option[WikiUser], q:Map[String,String], r:S
 //    def map[T] (f: user.type => T) = if(isDefined) Some(f(user)) else None
 
     def isRegistered = iuser exists (u=> ipage >>> (x=>model.Users.findUserLinksTo(x.uwid).toList) exists (_.userId == u._id))
+
+    def getExtLink (systemId:String, instanceId:String) =
+      iuser.flatMap(_.profile).flatMap(_.getExtLink(systemId, instanceId)).map(_.extAccountId).mkString
   }
 
+  /**
+    * you can never remove from this or change behavior of these - there are scripts relying on this...
+    *
+    * @return
+    */
   def jsonBrowser = {
     """var wix = {
     """ +
    s"""
       "hostport" : "${hostport}",
+      "realm" : "${irealm}",
     """ +
       (if(ipage.isDefined) {
         s"""
@@ -109,6 +118,8 @@ class wix (owe: Option[WikiPage], ou:Option[WikiUser], q:Map[String,String], r:S
       "isRegistered" : ${user.isRegistered},
       "id" : "${iuser.get._id.toString}",
       "perms" : ["${iuser.get.perms.mkString("\",\"")}"],
+      "level" : "${iuser.get.membershipLevel}",
+      "levelDesc" : "${getLevelDesc}",
       "groups" : ["${iuser.get.groups.map(_.name).mkString("\",\"")}"]
     },
     """
@@ -125,6 +136,17 @@ class wix (owe: Option[WikiPage], ou:Option[WikiUser], q:Map[String,String], r:S
   def json = {
     jsonBrowser +
       """wix.utils = new (Java.type("api.WixUtils"))(wixj);"""
+  }
+
+  // todo  - customize per realm
+  def getLevelDesc = iuser.get.membershipLevel match {
+    case Perm.Unobtanium.s => " (expert content)"
+    case Perm.Platinum.s => " (expert and racing content)"
+    case Perm.Gold.s => " (black/expert content)"
+    case Perm.Basic.s => " (green&blue content)"
+    case Perm.Member.s => " (free content)"
+    case Perm.Moderator.s => " (local god)"
+    case _ => ""
   }
 
   def query: Map[String,String] = iquery
@@ -168,5 +190,7 @@ class WixUtils(w:wix) {
   def countForms() = wix.utils.countForms()
   def wikiList(wids:List[WID]) =
     if(wids.isEmpty) "<em>None</em>" else "<ul>"+wids.map(x=> "<li>"+ x.ahrefRelative() + "</li>").mkString("") + "</ul>"
+
+  def getExtLink (systemId:String, instanceId:String) = w.user.getExtLink(systemId, instanceId)
 }
 

@@ -55,7 +55,7 @@ object Global extends WithFilters(LoggingFilter) {
     if (System.currentTimeMillis - lastErrorTime >= ERR_DELTA1) {
       if (errEmails <= ERR_EMAILS || System.currentTimeMillis - firstErrorTime >= ERR_DELTA2) {
         SendEmail.withSession(Website.xrealm(request)) { implicit mailSession =>
-          Emailer.tellRaz("ERR_onError",
+          Emailer.tellAdmin("ERR_onError",
             Services.auth.authUser (Request(request, "")).map(_.userName).mkString, m)
 
           synchronized {
@@ -91,8 +91,12 @@ object Global extends WithFilters(LoggingFilter) {
   }
 
   override def onRouteRequest(request: RequestHeader): Option[Handler] = {
-    if (! request.path.startsWith( "/assets/") && !request.path.startsWith( "/razadmin/ping/shouldReload"))
-      cdebug << ("ROUTE_REQ.START: " + request.toString)
+    def shouldDebug =
+      !request.path.startsWith( "/assets/") &&
+      !request.path.startsWith( "/razadmin/ping/shouldReload") &&
+      !request.path.startsWith( "/diesel/status")
+
+    if (shouldDebug) cdebug << ("ROUTE_REQ.START: " + request.toString)
 
     /** get the host that was forwarded here - used for multi-site hosting */
 
@@ -102,11 +106,16 @@ object Global extends WithFilters(LoggingFilter) {
     } getOrElse
       None
 
+    val SPROXY = "snakkproxy.dieselapps.com"
+    val SSPROXY = "ssnakkproxy.dieselapps.com"
+
     val res = redirected.map { x =>
       clog << ("URL - REDIRECTING? - " + host.mkString+request.path)
       clog << ("URL -   TO         - " + redirected)
       EssentialAction {rh=>
       Action { rh:play.api.mvc.RequestHeader =>
+        // todo maybe change the header and process here (see proxy below)
+        // as this can be hacked to redirect to random sites...?
         Results.Redirect(x)
         }.apply(rh)
       }
@@ -119,13 +128,21 @@ object Global extends WithFilters(LoggingFilter) {
             Results.Unauthorized("heh")
           }.apply(rh)
         })
+      } else if(request.host.endsWith(SPROXY) || request.host.endsWith(SSPROXY)) {
+        // change request
+        val host =
+          if(request.host.endsWith(SSPROXY)) request.host.replaceFirst("."+SSPROXY, "")
+          else request.host.replaceFirst("."+SPROXY, "")
+        val protocol = if(request.host.endsWith(SSPROXY)) "https" else "http"
+        val rh = request.copy(path = "/snakk/proxy/"+protocol+"/"+host+request.path)
+        clog << ("SNAKKPROXY to " + request)
+        super.onRouteRequest(rh)
       } else {
         super.onRouteRequest(request)
       }
     }
 
-    if (! request.path.startsWith( "/assets/") && !request.path.startsWith( "/razadmin/ping/shouldReload"))
-      cdebug << ("ROUTE_REQ.STOP: " + request.toString)
+    if (shouldDebug) cdebug << ("ROUTE_REQ.STOP: " + request.toString)
 
     res
   }
@@ -161,20 +178,34 @@ object Global extends WithFilters(LoggingFilter) {
       }
     }
 
-    SendEmail.mkSession = (test:Boolean,debug:Boolean) => {
+    SendEmail.mkSession = (msession:BaseMailSession, test:Boolean,debug:Boolean)=> {
         val props = new Properties();
 
         val session = if(test) {
+
           props.put("mail.smtp.host", "localhost");
           javax.mail.Session.getInstance(props,
             new SMTPAuthenticator("your@email.com", "big secret"))
+
         } else {
-          props.put("mail.smtp.auth", "true");
-          props.put("mail.smtp.starttls.enable", "true");
-          props.put("mail.smtp.host", "smtp.gmail.com");
-          props.put("mail.smtp.port", "587");
+
+          val website = msession.realm.flatMap(Website.forRealm).getOrElse(Website.dflt)
+
+          def p(name:String, dflt:String) = website.prop(name).getOrElse(dflt)
+
+          props.put("mail.smtp.auth", p("mail.smtp.auth", "true"));
+          props.put("mail.smtp.starttls.enable", p("mail.smtp.starttls.enable", "true"));
+          props.put("mail.smtp.host", p("mail.smtp.host", "smtp.gmail.com"));
+          props.put("mail.smtp.port", p("mail.smtp.port", "587"));
+
           import razie.wiki.Sec._
-          javax.mail.Session.getInstance(props, new SMTPAuthenticator(Config.SUPPORT, "zlMMCe7HLnMYOvbjYpPp6w==".dec))
+
+//          javax.mail.Session.getInstance(props, new SMTPAuthenticator(Config.SUPPORT, "zlMMCe7HLnMYOvbjYpPp6w==".dec))
+
+          val user = website.prop("mail.smtp.user").getOrElse(Config.SUPPORT)
+          val pwd = website.prop("mail.smtp.pwd").getOrElse("zlMMCe7HLnMYOvbjYpPp6w==").dec
+
+          javax.mail.Session.getInstance(props, new SMTPAuthenticator(user, pwd))
         }
 
         session.setDebug(debug || test);

@@ -3,10 +3,11 @@ package admin
 import com.mongodb.casbah.Imports._
 import com.novus.salat._
 import com.novus.salat.annotations._
-import mod.snow.{RacerKidz, RK, RacerKidAssoc}
+import mod.snow.{RK, RacerKidAssoc, RacerKidz}
 import razie.wiki.Enc
 import razie.{clog, cout}
 import controllers.Club
+
 import scala.collection.mutable.ListBuffer
 import razie.db.RTable
 import razie.db.ROne
@@ -17,6 +18,7 @@ import razie.db.UpgradeDb
 import model.UserTask
 import model.Profile
 import razie.db.tx.txn
+import razie.wiki.admin.Autosave
 
 object Upgrade1 extends UpgradeDb {
   def upgrade(db: MongoDB) {}
@@ -690,6 +692,42 @@ object U17 extends UpgradeDb with razie.Logging {
     fix("UserWiki", "uwid")
 
     clog < s"""MISSED ${missed.size} : \n${missed.mkString("\n")} """
+    clog < s"UPGRADED $i entries"
+  }
+}
+
+// Autosave more explicit
+// realm to notes
+object U18 extends UpgradeDb with razie.Logging {
+  import razie.db.RazSalatContext._
+
+  def upgrade(db: MongoDB) {
+    var i = 0;
+
+    withDb(db("Autosave")) { implicit t =>
+      for (u <- t) {
+        cdebug << "UPGRADING " + t.name + u
+        val n =
+          if(u.containsField("oldname"))
+            u.get("oldname").toString
+        else
+            u.get("name").toString
+
+        val a = n.split ("\\.")
+
+        val name =
+          if(a.size > 2) a(2)
+          else ""
+
+        u.put("what", a(0))
+        u.put("realm", a(1))
+        u.put("name", name)
+        u.put("oldname", n)
+        t.save(u)
+        i = i+1
+      }
+    }
+
     clog < s"UPGRADED $i entries"
   }
 }

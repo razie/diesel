@@ -13,6 +13,10 @@ lazy val commonSettings = Seq(
   version := "0.9.2-SNAPSHOT",
   scalaVersion := "2.11.8",
 
+  publishArtifact in (Compile, packageDoc) := false,
+  publishArtifact in packageDoc := false,
+  sources in (Compile,doc) := Seq.empty,
+
   organizationName     := "Razie's Pub",
   organizationHomepage := Some(url("http://www.razie.com")),
   licenses := Seq("BSD-style" -> url("http://www.opensource.org/licenses/bsd-license.php")),

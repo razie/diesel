@@ -14,43 +14,47 @@ purge audit tables
 
 @stok.title("admin diff list")
 
-    <h2>Diffs from @target</h2>
+    <h2>
+      Diffs from @target <small>| Reactor:
+          <span >
+            <a href="javascript:selectRealm();" style="color:red;font-weight:bold;" title="localhost: current reactor">
+              @reactor
+                <span class="caret"></span>
+            </a>
+          </span>
+        <span id="realms" style="display: none">
+            @stok.au.toList.flatMap(x=> (x.ownedReactors.map(_.name) ::: x.realms.toList).distinct).map{t=>
+              <a href="/razadmin/difflist/@t/@target">@t</a><br>
+            }
+        </span>
+      </small>
+    </h2>
 
-    Removed local or new on remote (won't copy links!!):
-    <ul>
-    @lremoved.sortBy(_.realm).map { wea =>
-            <li>
-      @wea.realm <a href="http://@target@WID(wea.cat, wea.name).r(wea.realm).urlRelative">@wea.cat:@wea.name v@wea.ver</a>
-            &nbsp;&nbsp;&nbsp;<a href="@routes.AdminDiff.applyDiff2(target, WID(wea.cat, wea.name).r(wea.realm))" class="btn btn-xs btn-success">TO Local</a>
-    }
-    </ul>
-
-    <hr>
     Content diffs:
     <table class="table table-striped">
     @lchanged.filter(_._3 != "-").sortBy(x=> x._2.realm+x._3).map { t =>
       <tr id="row-@t._2.id">
         <td>
-          @if(t._3 == "R") {
-          <a id="b1-@t._2.id" xhref="#" onclick="applyDif('@t._2.id', '@routes.AdminDiff.applyDiff2(target, WID(t._2.cat, t._2.name).r(t._2.realm))')" class="btn btn-xs btn-success">USE REMOTE</a>
-          } else {
-          <a id="b1-@t._2.id" xhref="#" onclick="applyDif('@t._2.id', '@routes.AdminDiff.applyDiff2(target, WID(t._2.cat, t._2.name).r(t._2.realm))')" class="btn btn-xs btn-warning">USE REMOTE</a>
-          }
+        @if(t._3 == "L") {
+          <a id="b2-@t._2.id" xhref="#" onclick="applyDif('@t._2.id', '@routes.AdminDiff.applyDiff(reactor, target, WID(t._2.cat, t._2.name).r(t._2.realm))')" class="btn btn-xs btn-success">USE LOCAL</a>
+        } else {
+          <a id="b2-@t._2.id" xhref="#" onclick="applyDif('@t._2.id', '@routes.AdminDiff.applyDiff(reactor, target, WID(t._2.cat, t._2.name).r(t._2.realm))')" class="btn btn-xs btn-warning">USE LOCAL</a>
+        }
       </td>
         <td>
-          @t._2.realm <a href="@WID(t._1.cat, t._1.name).r(t._1.realm).url">@t._1.cat:@t._1.name</a> (<a href="/wikie/content/@wp(WID(t._1.cat, t._1.name).r(t._1.realm))">content</a>) TO
-        <a href="http://@{target}@WID(t._2.cat, t._2.name).r(t._2.realm).urlRelative">@t._2.cat:@t._2.name</a>
+          @t._1.realm <a href="@WID(t._1.cat, t._1.name).r(t._1.realm).url">@t._1.cat:@t._1.name</a> (<a href="/wikie/content/@wp(WID(t._1.cat, t._1.name).r(t._1.realm))">content</a>) TO
+        @t._2.realm <a href="http://@{target}@WID(t._2.cat, t._2.name).r(t._2.realm).urlRelative">@t._2.cat:@t._2.name</a>
         - see
-      <a href="@routes.AdminDiff.showDiff(t._3, target, WID(t._2.cat, t._2.name).r(t._2.realm))" class="btn btn-xs btn-info">>DIFF</a>
+      <a href="@routes.AdminDiff.showDiff(t._3, reactor, target, WID(t._2.cat, t._2.name).r(t._2.realm))" class="btn btn-xs btn-info">>DIFF</a>
         </td>
         <td>
           @t._3
         </td>
         <td>
-        @if(t._3 == "L") {
-            <a id="b2-@t._2.id" xhref="#" onclick="applyDif('@t._2.id', '@routes.AdminDiff.applyDiff(target, WID(t._2.cat, t._2.name).r(t._2.realm))')" class="btn btn-xs btn-success">USE LOCAL</a>
+          @if(t._3 == "R") {
+            <a id="b1-@t._2.id" xhref="#" onclick="applyDif('@t._2.id', '@routes.AdminDiff.applyDiff2(reactor, target, WID(t._2.cat, t._2.name).r(t._2.realm))')" class="btn btn-xs btn-success">USE REMOTE</a>
           } else {
-            <a id="b2-@t._2.id" xhref="#" onclick="applyDif('@t._2.id', '@routes.AdminDiff.applyDiff(target, WID(t._2.cat, t._2.name).r(t._2.realm))')" class="btn btn-xs btn-warning">USE LOCAL</a>
+            <a id="b1-@t._2.id" xhref="#" onclick="applyDif('@t._2.id', '@routes.AdminDiff.applyDiff2(reactor, target, WID(t._2.cat, t._2.name).r(t._2.realm))')" class="btn btn-xs btn-warning">USE REMOTE</a>
           }
         </td>
       </tr>
@@ -58,6 +62,16 @@ purge audit tables
     </table>
 
     <hr>
+  Removed local or new on remote (won't copy links!!):
+  <ul>
+  @lremoved.sortBy(_.realm).map { wea =>
+    <li>
+      @wea.realm <a href="http://@target@WID(wea.cat, wea.name).r(wea.realm).urlRelative">@wea.cat:@wea.name v@wea.ver</a>
+      &nbsp;&nbsp;&nbsp;<a href="@routes.AdminDiff.applyDiff2(reactor, target, WID(wea.cat, wea.name).r(wea.realm))" class="btn btn-xs btn-success">TO Local</a>
+  }
+  </ul>
+
+  <hr>
     New local or removed on remote: (won't copy over links)
     <table class="table table-striped">
     @lnew.sortBy(_.realm).map { wea =>
@@ -70,7 +84,7 @@ purge audit tables
         ( <a href="/wikie/content/@wp(WID(wea.cat, wea.name).r(wea.realm))">content </a> )
         </td>
         <td>
-      <a href="@routes.AdminDiff.applyDiffCr(target, WID(wea.cat, wea.name).r(wea.realm))" class="btn btn-xs btn-success">TO REMOTE</a>
+      <a href="@routes.AdminDiff.applyDiffCr(reactor, target, WID(wea.cat, wea.name).r(wea.realm))" class="btn btn-xs btn-success">TO REMOTE</a>
         </td>
       </tr>
     }
@@ -82,26 +96,27 @@ purge audit tables
     @lchanged.filter(_._3 == "-").sortBy(x=> x._2.realm+x._3).map { t =>
       <tr>
         <td>
-          <a href="@routes.AdminDiff.applyDiff2(target, WID(t._2.cat, t._2.name).r(t._2.realm))" class="btn btn-xs btn-default">USE REMOTE</a>
+          <a href="@routes.AdminDiff.applyDiff(reactor, target, WID(t._2.cat, t._2.name).r(t._2.realm))" class="btn btn-xs btn-default">USE LOCAL</a>
         </td>
         <td>
-          @t._2.realm <a href="@WID(t._1.cat, t._1.name).r(t._1.realm).url">@t._1.cat:@t._1.name</a> (<a href="/wikie/content/@wp(WID(t._1.cat, t._1.name).r(t._1.realm))">content</a>) TO
-          <a href="http://@target/@WID(t._2.cat, t._2.name).r(t._2.realm).urlRelative">@t._2.cat:@t._2.name</a>
+          @t._1.realm <a href="@WID(t._1.cat, t._1.name).r(t._1.realm).url">@t._1.cat:@t._1.name</a> (<a href="/wikie/content/@wp(WID(t._1.cat, t._1.name).r(t._1.realm))">content</a>) TO
+          @t._2.realm <a href="http://@target/@WID(t._2.cat, t._2.name).r(t._2.realm).urlRelative">@t._2.cat:@t._2.name</a>
           - see
-          <a href="@routes.AdminDiff.showDiff(t._3, target, WID(t._2.cat, t._2.name).r(t._2.realm))" class="btn btn-xs btn-info">>DIFF</a>
+          <a href="@routes.AdminDiff.showDiff(t._3, reactor, target, WID(t._2.cat, t._2.name).r(t._2.realm))" class="btn btn-xs btn-info">>DIFF</a>
         </td>
         <td>
         @t._3
         </td>
         <td>
-          <a href="@routes.AdminDiff.applyDiff(target, WID(t._2.cat, t._2.name).r(t._2.realm))" class="btn btn-xs btn-default">USE LOCAL</a>
+          <a href="@routes.AdminDiff.applyDiff2(reactor, target, WID(t._2.cat, t._2.name).r(t._2.realm))" class="btn btn-xs btn-default">USE REMOTE</a>
         </td>
       </tr>
     }
     </table>
 
-<script>
-function applyDif(id,url) {
+<script async>
+withJquery(function(){
+applyDif = function(id,url) {
   $.ajax(
     url, {
     type: 'GET',
@@ -120,5 +135,14 @@ function applyDif(id,url) {
   });
 
 }
+
+selectRealm = function() {
+  popupContent("Select remote realm to compare against" + "<br><br>" + $("#realms").html());
+}
+
+
+  });
 </script>
+
+@util.oneModal()
 

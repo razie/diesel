@@ -119,7 +119,11 @@ screen to admin one user
   <ul>Links
   @user.map {u=>
     @u.wikis.map {uw=>
-      <li> @uw._id - @uw.role - <a href="/wiki/@uw.wid.wpath">@uw.wid</a>
+      <li> [
+        @if(uw.role != "Owner") {
+          <a href="@routes.Wikil.unlinkUser(uw.wid, "y", u.id)" class="label label-danger">unfollow</a>
+          }
+        ] @uw._id - @uw.role - <a href="/wiki/@uw.wid.wpath">@uw.wid</a>
     }
   }
   </ul>

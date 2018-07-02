@@ -6,10 +6,10 @@
  */
 package model
 
-import razie.wiki.parser.{WikiDomFiddleParser, WikiDomParser}
+import razie.wiki.parser.{DomFiddleParser, DomParser}
 import razie.diesel.dom.{RDomain, WikiDomain, WikiDomainImpl}
 import razie.wiki.model._
-import razie.wiki.parser.{WikiDomFiddleParser, WikiParserNotes, WikiParserT}
+import razie.wiki.parser.{DomFiddleParser, WikiParserNotes, WikiParserT}
 
 /** use custom rk parser for wikis */
 class RkReactor (realm:String, fallBacks:List[Reactor], we:Option[WikiEntry]) extends ReactorImpl (realm, Nil, we) {
@@ -22,7 +22,7 @@ class RkWikiInst(realm:String, fallBacks:List[WikiInst])
   extends WikiInstImpl (realm, fallBacks, {wi=>new WikiDomainImpl(realm, wi)}) {
   class WikiParserCls(val realm:String) extends WikiParserT
   with WikiDslParser with WikiCodeParser with WikiAdParser
-  with WikiDomFiddleParser with WikiParserNotes with WikiDarkParser{
+  with DomFiddleParser with WikiParserNotes with WikiDarkParser{
     withWikiProp(adWikiProps)
     withWikiProp(codeWikiProps)
     withWikiProp(dslWikiProps)

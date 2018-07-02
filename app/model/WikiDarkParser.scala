@@ -6,23 +6,25 @@
  */
 package model
 
+import razie.tconf.parser.{LazyState, SState}
 import razie.wiki.Services
 import razie.wiki.model.WikiEntry
-import razie.wiki.parser.{WAST, WikiParserBase}
+import razie.wiki.model.WikiUser
+import razie.wiki.parser.{WAST, ParserBase}
 
 /** elemnts for dark/light backgrounds */
-trait WikiDarkParser extends WikiParserBase {
-  import WAST._
+trait WikiDarkParser extends ParserBase {
+  import razie.wiki.parser._
   
   def darkHtml = wikiPropImgDark | htmlDark
 
   // todo remove this - relies on statics
-  private def isDark = !Services.config.oldisLight
+  private def isDark(au:Option[WikiUser]) = !Services.config.oldisLight(au)
 
   def wikiPropImgDark: PS = "{{img" ~> """\.light|\.dark""".r ~ """[: ]""".r ~ """[^} ]*""".r ~ optargs <~ "}}" ^^ {
     case stype ~ _ ~ name ~ args => {
-      LazyState[WikiEntry] {(current, ctx) =>
-        if(isDark && stype.contains("dark") || !isDark && stype.contains("light")) {
+      LazyState[WikiEntry,WikiUser] {(current, ctx) =>
+        if(isDark(ctx.au) && stype.contains("dark") || !isDark(ctx.au) && stype.contains("light")) {
           val sargs = args.foldLeft(""){(c, a) => s""" $c ${a._1}="${a._2}" """}
           SState(s"""<img src="$name" $sargs />""")
         } else {
@@ -35,8 +37,8 @@ trait WikiDarkParser extends WikiParserBase {
   // to not parse the content, use slines instead of lines
   def htmlDark: PS = "{{" ~> opt(".") ~ """html.dark|html.light""".r ~ "}}" ~ lines <~ ("{{/" ~ """html""".r ~ "}}") ^^ {
     case hidden ~ stype ~ _ ~ lines => {
-      LazyState[WikiEntry] {(current, ctx) =>
-        if(isDark && stype.contains("dark") || !isDark && stype.contains("light")) {
+      LazyState[WikiEntry,WikiUser] {(current, ctx) =>
+        if(isDark(ctx.au) && stype.contains("dark") || !isDark(ctx.au) && stype.contains("light")) {
           lines.fold(ctx)
         } else {
           SState.EMPTY

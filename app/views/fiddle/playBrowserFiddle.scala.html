@@ -10,7 +10,9 @@ a JS/SCALA client side fiddle, **full page**
   moreContext:String="",
   id:String = java.lang.System.currentTimeMillis().toString())(implicit stok:controllers.StateOk)@import razie.wiki.model.Perm
 
-@stok.title("Fiddle, fiddle")
+<div style="margin-left: 20px; margin-right: 20px">
+@stok.title("Javascript browser fiddle")
+@stok.requireJs(false)
 
 <h2>Browser fiddle (@lang)
   | <small>
@@ -45,7 +47,6 @@ a JS/SCALA client side fiddle, **full page**
     }
     <small><span id="autosave">@if(isAuto) { (autosave) }</span></small>
 </div>
-
 
 <br>
 
@@ -97,6 +98,12 @@ var id = '@id';
 $('#resultdiv_'+@id).css('max-height', $('#pre3box_@id').height()+'px');
 var output = "";
 
+// resize editor to window
+var wh=$(window).height();           // visible height
+
+if(wh - 350 > 228)
+  $("#pre3_@id").height((wh - 350) + "px");
+
 var seqNum_@id = 0;
 
 @if(stok.au.isEmpty) {
@@ -118,7 +125,13 @@ function updateFiddle () {
       }),
       contentType: 'application/x-www-form-urlencoded',
       success: function(data) {
-        alert("Fiddle saved");
+        console.log("Fiddle saved " + data);
+        var x = '@we.map(_.wid.wpath)';
+
+        if(x == '') x = data;
+
+        if(x.indexOf('Note:') >= 0)
+          window.location.replace('/sfiddle/playinbrowser/js?wpath=' + x);
       },
       error  : function(x) {
         console.log( "ERR "+x.toString());
@@ -288,4 +301,4 @@ setInterval(function(){
 
 </script>
 
-
+</div>
