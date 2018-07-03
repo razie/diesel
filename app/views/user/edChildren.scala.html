@@ -7,66 +7,67 @@
 @user.doePLayout(au, "Privacy settings for kidz", 6) {
 
   <div class="container col-sm-8">
-        <div class="col-sm-12">
-          <h2>Privacy settings for @model.Users.findUserById(child).get.ename</h2>
+    <div class="col-sm-12">
+      <h2>Privacy settings for @model.Users.findUserById(child).get.ename</h2>
 
-          @helper.form(action = routes.ProfileUpd.profile2u(child), 'class -> "well") {
-            @helper.select(
-              myForm("trust"),
-              controllers.Profile.trusts.map(x => (x, x)),
-              '_label -> "Trust level",
-              '_showConstraints -> false)
+      @helper.form(action = routes.ProfileUpd.profile2u(child), 'class -> "well") {
+        @helper.select(
+          myForm("trust"),
+          controllers.Profile.trusts.map(x => (x, x)),
+          '_label -> "Trust level",
+          '_showConstraints -> false)
 
-            @helper.select(
-              myForm("notify"),
-              controllers.Profile.notifiers.map(x => (x, x)),
-              '_label -> "Notify you on",
-              '_showConstraints -> false)
+        @helper.select(
+          myForm("notify"),
+          controllers.Profile.notifiers.map(x => (x, x)),
+          '_label -> "Notify you on",
+          '_showConstraints -> false)
 
-            <button type="submit" class="btn btn-primary">
-              Update!
-            </button>
+        <button type="submit" class="btn btn-primary">
+          Update!
+        </button>
 
-            @myForm.globalError.map { err =>
-              <p style="color : red ; font-weight : bold">@err.message</p>
-            }
+        @myForm.globalError.map { err =>
+          <p style="color: red ;
+            font-weight: bold">@err.message</p>
+        }
 
-            <p><small>By maintaining a profile, you agree to the <a href="@controllers.Wiki.w("Terms of Service")">
-              Terms of Service</a></small> <p>
-            }
+        <p><small>By maintaining a profile, you agree to the <a href="@controllers.Wiki.w("Terms of Service")">
+          Terms of Service</a></small> <p>
+      }
 
-          <p>The trust levels for children, in order, are:
-        <ul>
-          <li><strong>Public</strong>
-            - they maintain a public profile, can create, edit and comment on any public topic. You may choose to be notified about the their activity.</li>
-          <li><strong>Friends</strong>
-            - they are visible only to his/her friends (including profile, activity and comments). You may choose to be notified about the their activity and friend requests. The child may <strong>
-              NOT</strong>
-            create or edit any public topic. He/she may comment on such topics but their comments are only visible to their accepted friends.</li>
-          @**********
-          <li><strong>Club</strong> - they are visible only to other members of the same clubs (including profile, activity and comments). You may choose to be notified about the their activity and club membership changes . The child may <strong>NOT</strong> create or edit any public topics. He/she may comment on such topics but their comments are only visible to their fellow members.</li>
-          <li><strong>Moderated</strong> - child's activity is moderated - this is the default setting</li>
-          <li><strong>ParentModerated</strong> - child's activity is moderated by you</li>
-          **********@
-          <li><strong>Private</strong>
-            - the profile and all of the child's activity and information is completely private. The child may <strong>
-              NOT</strong> create, edit or comment on any public topic.</li>
-        </ul>
+      <p>The trust levels for children, in order, are:
+    <ul>
+      <li><strong>Public</strong>
+        - they maintain a public profile, can create, edit and comment on any public topic. You may choose to be notified about the their activity.</li>
+      <li><strong>Friends</strong>
+        - they are visible only to his/her friends (including profile, activity and comments). You may choose to be notified about the their activity and friend requests. The child may <strong>
+          NOT</strong>
+        create or edit any public topic. He/she may comment on such topics but their comments are only visible to their accepted friends.</li>
+      @**********
+      <li><strong>Club</strong> - they are visible only to other members of the same clubs (including profile, activity and comments). You may choose to be notified about the their activity and club membership changes . The child may <strong>NOT</strong> create or edit any public topics. He/she may comment on such topics but their comments are only visible to their fellow members.</li>
+      <li><strong>Moderated</strong> - child's activity is moderated - this is the default setting</li>
+      <li><strong>ParentModerated</strong> - child's activity is moderated by you</li>
+      **********@
+      <li><strong>Private</strong>
+        - the profile and all of the child's activity and information is completely private. The child may <strong>
+          NOT</strong> create, edit or comment on any public topic.</li>
+    </ul>
 
-          <p>Notification levels are:
-        <ul>
-          <li><strong>Everything</strong> - notify you by email of any activity of the child</li>
-          @**********
-          <li><strong>Content</strong> - notify you when the child modifies any actual content and comments, friends etc</li>
-          **********@
-          <li><strong>FriendsOnly</strong>
-            - notify you only about the child's friends requests: new friends, friend requests etc</li>
-          <li><strong>None</strong> - no notifications of the child's activity</li>
-        </ul>
-          <p>
-            Note that the above only apply to their activities and information maintained on this site. If they can link a facebook profile for instance, we cannot control what they do or share on these other sites.
-          <p>Read more details in our <a href="@controllers.Wiki.w("Privacy Policy")">Privacy Policy</a></small><p>
-        </div>
-      </div>
+      <p>Notification levels are:
+    <ul>
+      <li><strong>Everything</strong> - notify you by email of any activity of the child</li>
+      @**********
+      <li><strong>Content</strong> - notify you when the child modifies any actual content and comments, friends etc</li>
+      **********@
+      <li><strong>FriendsOnly</strong>
+        - notify you only about the child's friends requests: new friends, friend requests etc</li>
+      <li><strong>None</strong> - no notifications of the child's activity</li>
+    </ul>
+      <p>
+        Note that the above only apply to their activities and information maintained on this site. If they can link a facebook profile for instance, we cannot control what they do or share on these other sites.
+    <p>Read more details in our <a href="@controllers.Wiki.w("Privacy Policy")">Privacy Policy</a></small><p>
+    </div>
+  </div>
 
 }

@@ -1,30 +1,20 @@
 package mod.cart
 
-import admin.Config
-import akka.actor.{Actor, Props}
 import controllers._
-import mod.cart
 import mod.snow.Regs
-import model._
 import org.bson.types.ObjectId
-import org.scalatest.path
-import play.api.mvc.{Action, Result}
+import razie.Logging
 import razie.audit.Audit
-import razie.db.{REntity, ROne, tx}
-import razie.wiki._
 import razie.wiki.model._
-import razie.{Logging, clog, cout}
-import views.html.modules.cart.{doeAcct, doeCart, doeClubBilling}
+import views.html.modules.cart.{doeAcct, doeClubBilling}
 
-import scala.Option.option2Iterable
-import scala.concurrent.Future
 import scala.util.Try
 
-/** controller for club management */
+/** controller for billing management */
 object Accts extends RazController with Logging {
 
   /** list accounts and manage billing */
-  def clubBilling(cwid:WID) = FAUR { implicit request=>
+  def doeClubBillingView(cwid:WID) = FAUR { implicit request=>
     (for (
       club <- Club.findForAdmin(cwid, request.au.get) orErr ("Not a club or you're not admin")
     ) yield {
@@ -32,6 +22,50 @@ object Accts extends RazController with Logging {
       val users = club.activeMembers
       ROK.r apply {
         doeClubBilling(club, users, regs)
+      }
+    }) getOrElse {
+      unauthorized("ACCT_ERR can't find account")
+    }
+  }
+
+  /** list accounts and manage billing */
+  def doeClubBillingReport(cwid:WID) = FAUR { implicit request=>
+    (for (
+      club <- Club.findForAdmin(cwid, request.au.get) orErr ("Not a club or you're not admin")
+    ) yield {
+      val regs = Regs.findClubYear(cwid, club.curYear).toList//.sortBy(x => x._1.map(y => y.lastName + y.firstName).mkString)
+      val users = club.activeMembers
+      ROK.r apply {
+        views.html.modules.cart.doeClubBillingReport(club, users, regs)
+      }
+    }) getOrElse {
+      unauthorized("ACCT_ERR can't find account")
+    }
+  }
+
+  /** list accounts and manage billing */
+  def doeClubBillingPurge(cwid:WID) = FAUR { implicit request=>
+    (for (
+      club <- Club.findForAdmin(cwid, request.au.get) orErr ("Not a club or you're not admin")
+    ) yield {
+      val regs = Regs.findClubYear(cwid, club.curYear).toList//.sortBy(x => x._1.map(y => y.lastName + y.firstName).mkString)
+      val users = club.activeMembers
+
+      var counter = 0
+
+      users.map { uw =>
+        Acct.findCurrent(uw.userId, club.wid).map { acct =>
+          acct.txns.map { t =>
+            t.deleteNoAudit
+            counter = counter+1
+          }
+        }
+      }
+
+      Audit.logdb("removed acct transactions", counter + " records")
+
+      ROK.r apply {
+        views.html.modules.cart.doeClubBillingReport(club, users, regs)
       }
     }) getOrElse {
       unauthorized("ACCT_ERR can't find account")
@@ -88,23 +122,23 @@ object Accts extends RazController with Logging {
     (for(
       acct <- Acct.findById(new ObjectId(id));
       club <- Club.findForAdmin(acct.clubWid.wid.get, request.au.get) orErr s"club not found ${acct.clubWid.nameOrId}"
-      ) yield {
+    ) yield {
       try {
 
-      val paid = Price(
-        Try {request.formParm("amount").toFloat} getOrElse 0,
-        request.formParm("currency")
-      )
+        val paid = Price(
+          Try {request.formParm("amount").toFloat} getOrElse 0,
+          request.formParm("currency")
+        )
 
-      acct.add (AcctTxn(
-        request.au.get.userName,
-        request.au.get._id,
-        acct._id,
-        paid,
-        request.formParm("what"),
-        request.formParm("desc"),
-        Acct.STATE_CREDIT
-      ))
+        acct.add (AcctTxn(
+          request.au.get.userName,
+          request.au.get._id,
+          acct._id,
+          paid,
+          request.formParm("what"),
+          request.formParm("desc"),
+          Acct.STATE_CREDIT
+        ))
 
       } catch {
         case t : Throwable =>
@@ -112,6 +146,27 @@ object Accts extends RazController with Logging {
       }
 
       ROK.r.msg("ok" -> "Credit applied") apply {
+        doeAcct(acct,club)
+      }
+    }) getOrElse {
+      unauthorized("ACCT_ERR can't find account")
+    }
+  }
+
+  def updateDiscount(id:String) = FAUR { implicit request=>
+    (for(
+      acct <- Acct.findById(new ObjectId(id));
+      club <- Club.findForAdmin(acct.clubWid.wid.get, request.au.get) orErr s"club not found ${acct.clubWid.nameOrId}"
+      ) yield {
+        val x = Try {
+          request.formParm("discount").toInt
+        }.toOption
+
+      acct.copy(discount= (if(x.exists(_ == 0)) None else x)).update
+
+      Audit.logdb("BILLING", "DISCOUNT updated", x, id )
+
+      ROK.r.msg("ok" -> ("Discount updated to "+x.toString)) apply {
         doeAcct(acct,club)
       }
     }) getOrElse {

@@ -6,81 +6,82 @@ create account
 
 @stok.title("Create an account / Register")
 
-    <div class="container">
+<div class="container">
 
-      <!-- Main hero unit for a primary marketing message or call to action -->
-      <div class="jumbotron">
+    <!-- Main hero unit for a primary marketing message or call to action -->
+  <div class="jumbotron">
 
-      <div class="row">
-        <div class="col-sm-6">
-          @WID.fromPath("Admin:page-join3-"+stok.realm).flatMap(_.page).orElse(
-            WID.fromPath("Admin:page-join3-rk").flatMap(_.page)
-          ).map{page=>
-            @wiki.wikiFrag(page.wid,None,true,Some(page))
-          }
-        </div>
+    <div class="row">
+      <div class="col-sm-6">
+      @WID.fromPath("Admin:page-join3-" + stok.realm).flatMap(_.page).orElse(
+        WID.fromPath("Admin:page-join3-rk").flatMap(_.page)
+      ).map { page =>
+        @wiki.wikiFrag(page.wid, None, true, Some(page))
+      }
+      </div>
 
-        <div class="col-sm-6">
+      <div class="col-sm-6">
 
-@import helper.twitterBootstrap._
-@import play.api.Play.current
-@import play.api.i18n.Messages.Implicits._
+        @import helper.twitterBootstrap._
+        @import play.api.Play.current
+        @import play.api.i18n.Messages.Implicits._
 
-@helper.form(action=routes.Profile.doeCreateProfile(), 'class->"") {
+        @helper.form(action = routes.Profile.doeCreateProfile(), 'class -> "") {
 
-  <div class="alert alert-info alert-link" style="margin-bottom: 0px">
-    <strong>
-  @util.razSelect(myForm, "userType",
-    (if (stok.realm==razie.wiki.model.WikiReactors.NOTES) "Account type"
-     else "What you are (guest or pro)"),
-    razie.hosting.Website.userTypes(stok.request.get).map(x=>(x.toString,razie.hosting.Website.userTypeDesc(x.toString)(stok.request.get))))
-  </strong>
+          <div class="alert alert-info alert-link" style="margin-bottom: 0px">
+            <strong>
+            @util.razSelect(myForm, "userType",
+              (if(stok.realm == razie.wiki.model.WikiReactors.NOTES) "Account type"
+              else "What type of user are you"),
+              razie.hosting.Website.userTypes(stok.request.get).map(x => (x.toString, razie.hosting.Website.userTypeDesc(x.toString)(stok.request.get))))
+            </strong>
+          </div>
+
+          <div class="alert alert-info">
+            @util.razText(myForm, "firstName", "First name")
+            @util.razText(myForm, "lastName", "Last name")
+            @util.razSelect(myForm, "yob", "When you were born",
+              Seq("" -> "") ++ (Range(2005, 1912, -1) map (y => (y.toString, y.toString))),
+              'style -> "width: 100px")
+            @util.razText(myForm, "address", "City, province/state, country")
+
+            @helper.textarea(
+              myForm("about"),
+              '_label -> "Tell us about yourself",
+              '_showConstraints -> false,
+              'placeholder -> "... so we can help direct you: current certifications, what are you looking to get out of this website, etc",
+              'class -> "form-control col-sm-12",
+              'rows -> 5)
+
+            @helper.checkbox(
+              myForm("accept"),
+              '_text -> Html(
+                if(stok.realm == razie.wiki.model.WikiReactors.NOTES)
+                  """I accept the <a href="/wiki/Terms of Service-notes">Terms of Service</a>"""
+                else
+                  """I accept the <a href="/wiki/Terms of Service">Terms of Service</a>"""
+              ),
+              '_label -> "",
+              '_showConstraints -> false)
+
+            @***** recaptcha ********@
+            @util.recaptcha()
+
+            @myForm.globalError.map { err =>
+              <p style="color: red;
+                font-weight: bold">@err.message</p>
+            }
+            <br>
+
+            <button type="submit" class="btn btn-primary">That's it - create account!</button>
+          </div>
+
+        }
+        @formFix()
+
+      </div>
     </div>
 
-  <div class="alert alert-info">
-  @util.razText(myForm, "firstName", "First name")
-  @util.razText(myForm, "lastName", "Last name")
-  @util.razSelect(myForm, "yob", "When you were born",
-    Seq("" -> "") ++ (Range(2005, 1912, -1) map (y=>(y.toString,y.toString))),
-    'style -> "width: 100px" )
-  @util.razText(myForm, "address", "City, province/state, country")
-
-  @helper.textarea(
-    myForm("about"),
-    '_label -> "Tell us about yourself",
-    '_showConstraints -> false,
-    'placeholder -> "... so we can help direct you: current certifications, what are you looking to get out of this website, etc",
-    'class -> "form-control col-sm-12",
-    'rows->5)
-
-  @helper.checkbox(
-    myForm("accept"),
-    '_text -> Html(
-    if (stok.realm==razie.wiki.model.WikiReactors.NOTES)
-      """I accept the <a href="/wiki/Terms of Service-notes">Terms of Service</a>"""
-    else
-      """I accept the <a href="/wiki/Terms of Service">Terms of Service</a>"""
-    ),
-    '_label -> "",
-    '_showConstraints -> false)
-
-    @***** recaptcha ********@
-
-  @util.recaptcha()
-
-  @myForm.globalError.map { err=>
-     <p style="color:red;font-weight:bold">@err.message</p>
-  }
-<br>
-
-  <button type="submit" class="btn btn-primary">That's it - create account!</button>
   </div>
-
-}
-          @formFix()
-
-       </div>
-      </div>
-
-      </div>
+</div>
 

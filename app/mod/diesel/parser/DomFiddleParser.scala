@@ -6,12 +6,14 @@
   **/
 package razie.wiki.parser
 
-import razie.diesel.dom.{RDOM}
+import razie.diesel.dom.RDOM
+import razie.tconf.parser.{LazyState, SState}
 import razie.wiki.model.WikiEntry
-import razie.wiki.{Services}
+import razie.wiki.model.WikiUser
+import razie.wiki.Services
 
 /** domain parser - for domain sections in a wiki */
-trait WikiDomFiddleParser extends WikiDomParser {
+trait DomFiddleParser extends DomParser {
 
   import RDOM._
   import WAST._
@@ -21,20 +23,15 @@ trait WikiDomFiddleParser extends WikiDomParser {
   private def trim(s: String) = s.replaceAll("\r", "").replaceAll("^\n|\n$", "") //.replaceAll("\n", "\\\\n'\n+'")
 
   // {{diesel name:type args}}
-  def pdfiddle: PS = "{{" ~> """dfiddle""".r ~ "[: ]+".r ~ """[^:}]*""".r ~ "[: ]*".r ~ """[^ :}]*""".r ~ optargs ~ "}}" ~ opt(CRLF1 | CRLF3 | CRLF2) ~ slines <~ "{{/dfiddle}}" ^^ {
+  def pdfiddle: PS = "{{" ~> """dfiddle""".r ~ "[: ]+".r ~ """[^:}]*""".r ~ "[: ]*".r ~ """[^ :}]*""".r ~ optargs ~ "}}" ~ opt(CRLF1 | CRLF3 | CRLF2) ~ slinesUntil("dfiddle") <~ "{{/dfiddle}}" ^^ {
     case d ~ _ ~ name ~ _ ~ kind ~ xargs ~ _ ~ _ ~ lines =>
       var args = xargs.toMap
-      //      val name = args.getOrElse("name", "")
-
       val urlArgs = "&" + args.filter(_._1 != "anon").map(t=>t._1+"="+t._2).mkString("&")
 
       def ARGS(url:String) = url + (if(urlArgs != "&") urlArgs else "")
 
       try {
-        LazyState[WikiEntry] { (current, ctx) =>
-          //          if (!(args contains "tab"))
-          //            args = args + ("tab" -> lang)
-
+        LazyState[WikiEntry,WikiUser] { (current, ctx) =>
           var links = lines.s.lines.collect {
             case l if l.startsWith("$msg") || l.startsWith("$send") =>
               parseAll(linemsg(ctx.we.get.specPath.wpath), l).map { st =>
@@ -57,7 +54,10 @@ trait WikiDomFiddleParser extends WikiDomParser {
               .headOption
           ).filter(x=> kind.toLowerCase=="story").getOrElse("")
 
-          SState(views.html.fiddle.inlineDomFiddle(ctx.we.get.wid, ctx.we, name, kind, spec, args, trim(lines.s), links, args.contains("anon"), ctx.au).body)
+          SState(
+            views.html.fiddle.inlineDomFiddle(ctx.we.get.wid, ctx.we, name, kind, spec, args, trim(lines.s), links, args.contains("anon"), ctx.au).body,
+            Map("diesel.requireJs" -> "false")
+          )
         }
       }
       catch {

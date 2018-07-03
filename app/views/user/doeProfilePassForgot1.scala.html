@@ -1,3 +1,6 @@
+@***
+profile - reset password
+***@
 @(myForm: Form[_])(implicit stok: RazRequest)
 
 @import helper.twitterBootstrap._
@@ -15,6 +18,13 @@
       '_showConstraints -> false,
       '_error -> myForm.error("email"))
 
+    <input type="hidden" name="token" value="@myForm("token").value"/>
+
+    @***** recaptcha ********@
+    @util.recaptcha()
+
+    <br><br>
+
     <button type="submit" class="btn btn-primary">Continue </button>
 
     @user.agree()
@@ -25,7 +35,9 @@
   }
 
 <script>
-  $("input").addClass("input-lg")
+    withJquery(function($) {
+      $("input").addClass("input-lg")
+    });
 </script>
 
 <p>If your email was in our database, you will receive an email with a password reset link in the next few minutes. That link will expire quickly, please use it asap.</p>

@@ -1,15 +1,12 @@
 package mod.cart
 
 import controllers.Club
-import mod.snow.{Reg, Regs}
-import model.{UserId, Users}
+import model.Users
 import org.bson.types.ObjectId
 import org.joda.time.DateTime
 import razie.audit.Audit
 import razie.db._
 import razie.wiki.model.{UWID, WID}
-
-import scala.util.Try
 
 /**
   * an account maintains a balance and a list of transactions, per user per club/group
@@ -21,6 +18,7 @@ case class Acct
   regId  : Option[ObjectId], // attached to a reg id
   clubWid : UWID,            // and/or a club
   balance : Price = Price(0, "CAD"),
+  discount : Option[Int] = None,
   lastTxnId : Option[ObjectId] = None,
   props : Map[String,String] = Map.empty,
   _id     : ObjectId = new ObjectId()
@@ -40,11 +38,14 @@ case class Acct
   }
 
   def payable (cartTotal : Price) = {
-    if(cartTotal.amount > balance.amount) {
-      Price(cartTotal.amount - balance.amount, balance.currency)
-    } else
-      Price(0, balance.currency)
+    var total = if(cartTotal.amount > balance.amount) cartTotal.amount - balance.amount else 0
+
+    total = discount.map(total - _ * total/100).getOrElse(total)
+
+    Price(total, cartTotal.currency)
   }
+
+  lazy val user = Users.findUserById(userId)
 }
 
 /**
@@ -66,19 +67,21 @@ case class AcctTxn
   ) extends REntity[AcctTxn] {
 }
 
+/** Account utilities */
 object Acct {
-  final val STATE_CREATED = "open.created"
+  final val STATE_CREATED    = "open.created"
   final val STATE_CHECKEDOUT = "open.checkedout"
-  final val STATE_PAID = "done.paid"
-  final val STATE_CANCEL = "done.cancelled"
-  final val STATE_CREDIT = "done.credit"
-  final val STATE_REFUND = "done.refund"
+  final val STATE_PAID       = "done.paid"
+  final val STATE_CANCEL     = "done.cancelled"
+  final val STATE_CREDIT     = "done.credit"
+  final val STATE_REFUND     = "done.refund"
 
   // if None, means no registration found
   def createOrFind (userId:ObjectId, clubWid:WID) : Option[Acct] = {
     Club(clubWid).map { club=>
       ROne[Acct]("userId" -> userId, "clubWid" -> club.uwid.grated).getOrElse {
-          val c = Acct(Users.nameOf(userId), userId, None, clubWid.uwid.get)
+        val curr = club.props.getOrElse("currency", "CAD")
+          val c = Acct(Users.nameOf(userId), userId, None, clubWid.uwid.get, Price(0, curr))
           c.create(tx.auto)
           c
       }

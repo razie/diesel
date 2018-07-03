@@ -1,7 +1,9 @@
 package controllers
 
+import com.google.inject._
 import model._
 import org.joda.time.DateTime
+import play.api.Configuration
 import play.api.data.Form
 import play.api.data.Forms.{tuple, _}
 import play.api.mvc.Action
@@ -11,9 +13,8 @@ import razie.wiki.admin.SendEmail
 import razie.wiki.model._
 import razie.wiki.{Enc, Services}
 
-//@Singleton
-//class Profile @Inject() (config:Configuration) extends RazController with Logging {
-object EdUsername extends RazController {
+@Singleton
+class EdUsername @Inject() (config:Configuration) extends RazController {
   // profile
   val chgusernameform = Form {
     tuple(

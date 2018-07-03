@@ -1,16 +1,14 @@
 @(club: Option[controllers.Club], rk: mod.snow.RacerKid, settings: String)(implicit stok: controllers.StateOk)
 @import model.User
-@import mod.snow.RK
 @import mod.snow.RacerKid
 @import razie.wiki.model.Visibility
-@import org.bson.types.ObjectId
-@import controllers.RKU
-@import util.razText
-@import razie.wiki.model.{WID, WikiEntry, Wikis}
+@import razie.wiki.model.{WID, WikiEntry}
 @import mod.snow.RkHistory
 @import mod.snow.Snow.ROLES
 @import razie.wiki.Services
 @import helper.twitterBootstrap._
+
+@stok.requireJs(false)
 
 @help()= @{
 }
@@ -18,6 +16,10 @@
 @*Coaches: @mod.snow.Snow.findCoaches(club.map(_.wid), rk._id.toString).map{x=>*@
   @** @x._1, @model.Users.findUserById(x._2.userId.get).get.fullName)*@
 @*}*@
+
+@isGood(we: WikiEntry) = @{
+  we.category != "-"
+}
 
 @renderContent(wid: WID, we: WikiEntry, c:Option[String]=None) = {
  @{
@@ -33,6 +35,15 @@
 }
 
   @paint(h: RkHistory, we:WikiEntry) = {
+
+    <!--
+      we: Html(we.toString)
+
+    ------------
+
+    h : Html(h.toJsonNice)
+    -->
+
    @if(h.eKind != "Comment") {
       <div class="panel panel-@pnelColor(h, we)" id="@h._id.toString" style="border-radius : 9 px ; margin-bottom : 10 px;">
         <div class="panel-heading"
@@ -40,10 +51,12 @@
           <small>
             @model.Users.nameOf(we.by) |
             @we.crDtm.toString("YYYY-MM-dd hh:mm a").toLowerCase()
-            @if(canEdit(h,we)) {
-              [<a href="@mod.notes.controllers.routes.NotesLocker.noteById(we._id.toString)"><strong>Edit</strong>]</a>
+            @if(isGood(we)) {
+              @if(canEdit(h,we)) {
+                [<a href="@mod.notes.controllers.routes.NotesLocker.noteById(we._id.toString)"><strong>Edit</strong>]</a>
+              }
+              [<a href="@mod.notes.controllers.routes.NotesLocker.viewNoteById(we._id.toString)"><strong>View</strong></a>]
             }
-            [<a href="@mod.notes.controllers.routes.NotesLocker.viewNoteById(we._id.toString)"><strong>View</strong></a>]
           </small>
 
           <div style="float : right ;">
@@ -64,33 +77,33 @@
 
         <div class="panel-body alert-@pnelColor(h,we)" style="background-color: #fCf8eb; color:black">
         @*<div class="panel-body alert-@pnelColor(h,we)" style="color:black">*@
-          @if(we.category != "Note" && h.eKind != "memo") {
+          @if(we.category != "Note" && h.eKind != "memo" && isGood(we)) {
             @Html(we.wid.ahrefNice(stok.realm))<br>
           }
 
           @if(stok.au.exists(_.isAdmin) || Services.config.isDebugMode) {
-            <button type="button" class="close" aria-label="Info" title="@{h.toJsonNice}">
+            <button type="button" class="close" aria-label="Info" title="@{h.toJsonNice}" style="margin-left:10px">
               <span class="glyphicon glyphicon-question-sign"></span>
             </button>
           }
 
-          @if(h.role == "post" || club.exists(c=>stok.au.exists(c.isClubAdmin(_)))) {
+          @if(h.role.toLowerCase == "post" || club.exists(c=>stok.au.exists(c.isClubAdmin(_)))) {
             @** should admin see delete for all ? **@
           }
 
-          @if(h.role == "post" || h.role == "message") {
-            &nbsp;&nbsp;<button type="button" class="close" aria-label="Dismiss" onclick="dismissPost('@h._id.toString', '@h.eId.mkString')" title="Dismiss this alert">
+          @if(h.role.toLowerCase == "post" || h.role.toLowerCase == "message" || canEdit(h,we)) {
+            <button type="button" class="close" aria-label="Dismiss" onclick="dismissPost('@h._id.toString', '@h.eId.mkString')" title="Dismiss this alert" style="margin-left:10px">
               <span aria-hidden="true">&times;</span>
             </button>
           }
 
-          @if(h.role != "post" && stok.au.exists(x=> h.authorId.exists(_ != x._id)) ) {
-            <button type="button" class="close" aria-label="Dismiss" onclick="addReply('@h._id.toString', '@h.eId.mkString')" title="Reply to this message">
+          @if(h.role.toLowerCase != "post" && stok.au.exists(x=> h.authorId.exists(_ != x._id)) ) {
+            <button type="button" class="close" aria-label="Dismiss" onclick="addReply('@h._id.toString', '@h.eId.mkString')" title="Reply to this message" style="margin-left:10px">
               <span style="font-weight: bold" class="glyphicon glyphicon-share"></span>
             </button>
           }
 
-          @if(h.role == "post") {
+          @if(h.role.toLowerCase == "post") {
             <p>@renderContent(we.wid, we,
                 h.content.orElse(we.getFirstParagraph).map(para=>
                 para +
@@ -111,9 +124,9 @@
 @pnelColor(h:RkHistory, we:WikiEntry) = @{
   // todo notes are always private
   if(we.tags.contains("coach-only")) "success"
-  else if(h.role == "Message") "info"
+  else if(h.role.toLowerCase == "message") "info"
   else if(we.tags.contains("private") || we.visibility == Visibility.PRIVATE ) "success"
-  else if(h.role == "post" || we.tags.contains("post") || we.tags.contains("item")) "warning"
+  else if(h.role.toLowerCase == "post" || we.tags.contains("post") || we.tags.contains("item")) "warning"
   else "info"
 }
 
@@ -122,7 +135,7 @@
   // todo why am I second guessing canEdit for history?
   if(we.ownerId.exists(_ == stok.au.get._id)) true
   else if(we.tags.contains("private") /*|| we.visibility == Visibility.PRIVATE*/) we.ownerId.exists(_ == stok.au.get._id)
-  else if(t.role=="post") false
+  else if(t.role.toLowerCase=="post") false
   else if(we.tags.contains("coaching") || we.visibility == Visibility.CLUB_COACH) club.exists(_.isClubCoach(stok.au.get))
   else !Array("private", "insight").exists(we.tags.contains)
 }
@@ -133,6 +146,18 @@
   <small>|
     @if(rk.userId.isDefined) {account holder} else {parent acct: @rk.parentUsers.map(_.fullName).mkString(",")}
     | <a href="#" onclick="help(); return false;" title="More help" style="color:red">Help!</a>
+    @if(stok.au.exists(_.isMod) && rk.userId.isDefined) {
+      @rk.userId.flatMap(model.Users.findUserById).map { u =>
+        | @u.roles
+       | @u.profile.map(_.perms)
+      }
+    }
+    @if(stok.au.exists(_.isAdmin) && rk.userId.isDefined) {
+      | <a href="/razadmin/user/@{rk.userId.mkString}">details</a>
+    }
+    @if(club.exists(c=>stok.au.exists(_.canAdmin(c.wid))) && rk.userId.isDefined) {
+      | <a href="@mod.cart.routes.Accts.create2(rk.userId.mkString, club.get.wid)">billing</a>
+    }
   </small>
   @util.notesmsgDiv("histmsg")
 </h3>
@@ -166,25 +191,28 @@
 @goodItems(rk:RacerKid, au:User) = @{
   rk.history.items(30).map(h=>
     (h,
-     h.eId.flatMap(razie.wiki.model.Wikis.findById(h.eKind, _)).filter
-            (! _.tags.contains("archive")).filter
-            (filterForCoach(rk,h,au)))
+     h.eId.flatMap(razie.wiki.model.Wikis.findById(h.eKind, _))
+         .filter (! _.tags.contains("archive"))
+         .filter (filterForCoach(rk,h,au))
+    )
   ).filter(x=>x._2.isDefined || x._1.eId.isEmpty)
 }
 
 @filterForCoach(rk:RacerKid,t:RkHistory,au:User)(we:WikiEntry) = @{
   // no 1 - only coaches see insight
-  if(we.tags.contains("coach-only"))
+  if(stok.au.exists(_.isAdmin)) true
+  else if(we.tags.contains("coach-only"))
     club.exists(_.isClubCoach(stok.au.get))
   // I see my own and my posts
   else if(we.tags.contains("private") /*|| we.visibility == Visibility.PRIVATE*/)
     we.ownerId.exists(_ == stok.au.get._id)
-  else if(t.role=="post")
+  else if(t.role.toLowerCase=="post") // include parents?
       rk.usersToNotify.exists(_ == au._id)
   else if(we.visibility == Visibility.CLUB_COACH) (
-          club.exists(_.isClubCoach(stok.au.get)) ||
-          rk.usersToNotify.exists(_ == au._id))
-  else !Array("private", "coach-only").exists(we.tags.contains)
+    club.exists(_.isClubCoach(stok.au.get)) ||
+    rk.usersToNotify.exists(_ == au._id))
+  else
+        !Array("private", "coach-only").exists(we.tags.contains)
   }
 
 @items()=@{
@@ -232,18 +260,22 @@
 
   @if((history.size == 0 || rk.history.firstTime.isDefined) &&
       rk.userId.exists(uid=> stok.au.exists(_._id == uid))) {
-    <script>
+    <script async>
     // don't show when looking at someone else's history
-    $("#help").show();
+    withJquery(function($){
+      $("#help").show();
+    });
     </script>
   }
 }
 
 @justContent(h:RkHistory)=@{
   // make up a wiki from a message
-  WikiEntry("-", "-", "-", "md", h.content.getOrElse(h.ctx), h.authorId.getOrElse(stok.au.get._id), Seq(h.role) ++ h.tags.toSeq.flatMap(_.split(",").toSeq)).copy(
+  val w = WikiEntry("-", "-", "-", "md", h.content.getOrElse(h.ctx), h.authorId.getOrElse(stok.au.get._id), Seq(h.role.toLowerCase) ++ h.tags.toSeq.flatMap(_.split(",").toSeq)).copy(
     crDtm = h.crDtm
   )
+  w.cacheable = false
+  w
 }
 
 @tagSelect(what:String, s:String)=@{
@@ -472,21 +504,23 @@ function weNotifyFormSubmitted(wpath) {
   </div><!-- /.modal-dialog -->
 </div><!-- /.modal -->
 
-<script>
+<script async>
     // clear modal contents on close
-    $('#selectModal').on('hidden.bs.modal', function (e) {
-        $("#selectModal > div > div > div.modal-body").html('...');
-    })
+require(['jquery'], function($) {
+  $('#selectModal').on('hidden.bs.modal', function (e) {
+    $("#selectModal > div > div > div.modal-body").html('...');
+  })
 
   $("#selectModal").css("max-height", "");
   $("#selectModal").css("overflow-y", "");
+});
 
-
-   function showSelectModal(url)
-    {
-        $("#selectModal > div > div > div.modal-body").load(url);
-        $("#selectModal").modal('show');
-    }
+function showSelectModal(url) {
+  require(['jquery'], function($) {
+    $("#selectModal > div > div > div.modal-body").load(url);
+    $("#selectModal").modal('show');
+  });
+}
 </script>
 
 

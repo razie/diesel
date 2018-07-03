@@ -141,14 +141,15 @@ object Tasks extends RazController with Logging {
   }
 
   /** step 3 - parent clicked on email link to add child */
-  def addParent3(expiry1: String, parentEmail: String, childEmail: String, childId: String) = Action { implicit request =>
+  def addParent3(expiry1: String, parentEmail: String, childEmail: String, childId: String) = RAction { implicit request =>
     implicit val errCollector = new VErrors()
     (expiry1, parentEmail, childEmail, childId) match {
       case (Enc(expiry), pe, ce, cid) => {
         for (
           // play 2.0 workaround - remove in play 2.1
           date <- (try { Option(DateTime.parse(expiry)) } catch { case _: Throwable => (try { Option(DateTime.parse(expiry1.replaceAll(" ", "+").dec)) } catch { case _: Throwable => None }) }) orErr ("token faked or expired");
-          notExpired <- date.isAfterNow orCorr cExpired;
+          _ <- date.isAfterNow orCorr cExpired;
+          _ <- request.verifySecLink orCorr SecLink.EXPIRED;
           p <- auth orCorr cNoAuth;
           a <- (if (p.email == pe) Some(true) else None) orCorr cNotParent;
           pro <- p.profile orCorr cNoProfile;
@@ -252,13 +253,13 @@ Please do that soon: it will expire in a few hours, for security reasons.
   def sendToVerif1(email: String, from: String, name: String, h:String, link: String)(implicit mailSession: MailSession) = {
     val html = Emailer.text("emailverif").format(name, email, h, h, link);
 
-    mailSession.send(email, from, "Racer Kid - please verify your email", html)
+    mailSession.send(email, from, "Please verify your email", html)
   }
 
   def sendToReset1(email: String, from: String, name: String, h:String, link: String)(implicit mailSession: MailSession) = {
     val html = Emailer.text("emailreset").format(name, link);
 
-    mailSession.send(email, from, "Racer Kid - please reset your password", html)
+    mailSession.send(email, from, "Please reset your password", html)
   }
 
   val reloginForm = Form {
@@ -331,7 +332,7 @@ Please do that soon: it will expire in a few hours, for security reasons.
           }
 
           Msg2("""
-Ok, email verified. You can now edit topics.
+Ok, email verified - your account is now active!
 
 Please read our [[Terms of Service]] as well as our [[Privacy Policy]]
 """, Some("/")).withSession(Services.config.CONNECTED -> Enc.toSession(email))

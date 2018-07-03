@@ -22,7 +22,9 @@ eh
       @if(page.isDefined && !print) {
         @wiki.wikiAddMore(wid, page)
         @wid.page.map {we =>
-          @wiki.wikiFragBottom(we, false, canEdit, isSite, print)
+            @if(!page.flatMap(_.contentProps.get("nobottom")).isDefined) {
+              @wiki.wikiFragBottom(we, false, canEdit, isSite, print)
+            }
         }
         @wiki.wikiPageComments(wid, page, stok.au)
       }
@@ -36,9 +38,11 @@ eh
       }
 </div>
 
-    <script language="JavaScript">
-        $("#wikiFragP1").remove();
-        $("#wikiBy").css("text-align", "center");
-        $("#wikiBottomMenu").css("text-align", "center");
-        $("#wikiBottomCopyright").css("text-align", "center");
-    </script>
+<script async>
+withJquery(function($){
+  $("#wikiFragP1").remove();
+  $("#wikiBy").css("text-align", "center");
+  $("#wikiBottomMenu").css("text-align", "center");
+  $("#wikiBottomCopyright").css("text-align", "center");
+});
+</script>

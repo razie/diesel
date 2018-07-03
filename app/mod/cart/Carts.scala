@@ -158,11 +158,21 @@ object Carts extends RazController with Logging {
           postbal
         )
 
+        // todo could validate the payment ID - if what=="PayPal" then id ~= paypalId : PAY-0G0662193T022332ELBXJPRA
+
         actxn.create
         Audit.logdb("BILLING", "CART_PAID." + what, txn)
 
         c.items.map { i =>
-          Services ! DieselMsgString(i.doneAction)
+          Services ! DieselMsgString(i.doneAction).withContext(
+            Map(
+              "userName" -> request.au.get.userName,
+              "userId" -> request.au.get._id.toString,
+              "paymentId" -> request.formParm("id"),
+              "paymentAmount" -> request.formParm("amount"),
+              "paymentCurrency" -> request.formParm("currency")
+            )
+          )
         }
 
         c.update
@@ -196,6 +206,63 @@ object Carts extends RazController with Logging {
     } getOrElse {
       unauthorized("no active cart...", false)
     }
+  }
+
+  // user starting to pay from reg: create cart and redirect to it
+  def addToCart(clubWpath: String) = FAUR { implicit stok =>
+    (for (
+      wid <- WID.fromPath(clubWpath) orErr "no wid";
+      uwid <- wid.uwid orErr "no uwid";
+      pCategory <- stok.fqhParm("category") orErr "api: no category";
+      pDesc <- stok.fqhParm("desc") orErr "api: no desc";
+      pLink <- stok.fqhParm("link") orErr "api: no link";
+      pOk <- stok.fqhParm("ok") orErr "api: no ok";
+      pPrereq <- stok.fqhParm("prereq").orElse(Some(""));
+      pCancel <- stok.fqhParm("cancel") orErr "api: no cancel";
+      pAmount <- stok.fqhParm("amount") orErr "api: no amount";
+      pCurrency <- stok.fqhParm("currency") orErr "api: no currency";
+      pId <- stok.fqhParm("id") orErr "api: no id"
+    ) yield razie.db.tx("addToCart", stok.userName) { implicit txn =>
+      // remove any other of the same category (i.e. registration)
+      val pCartRedirect = stok.fqParm("cartRedirect", "");
+
+      var cart = Cart.createOrFind(stok.au.get._id, uwid)
+      cart = cart.copy(items = cart.items.filterNot(_.category.exists(_ == pCategory && pCategory.length > 0)))
+
+      if(pCartRedirect.length > 0)
+        cart = cart.copy(cartRedirect = Some(pCartRedirect))
+
+      val isShould = true
+//      pPrereq.isEmpty || {
+//        DieselMsgString(pPrereq).withContext(
+//          Map(
+//            "userName" -> stok.au.get.userName,
+//            "userId" -> stok.au.get._id.toString,
+//            "paymentId" -> stok.formParm("id"),
+//            "paymentAmount" -> stok.formParm("amount"),
+//            "paymentCurrency" -> stok.formParm("currency")
+//          )
+//        )
+//      }
+
+      cart.add(CartItem(
+        pDesc,
+        pLink,
+        pId,
+        pOk,
+        pCancel,
+        ItemPrice(Some(Price(pAmount.toFloat, pCurrency)))
+      )
+        .copy(category=if(pCategory.length > 0) Some(pCategory) else None)
+      )
+
+      val pRedirect = stok.fqParm("redirect", "");
+
+      if (pRedirect.length > 0)
+        Ok(pRedirect)
+      else
+        Ok(mod.cart.routes.Carts.cart().url)
+    }) getOrElse unauthorized("haha")
   }
 
 }

@@ -22,9 +22,7 @@ profile - change email
 
       @user.agree()
 
-      @myForm.globalError.map { err =>
-        <p style="color : red ; font-weight : bold">@err.message</p>
-      }
+      @formErrors(myForm)
 
     }
 

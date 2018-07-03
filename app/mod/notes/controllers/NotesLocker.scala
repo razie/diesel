@@ -324,7 +324,7 @@ object NotesLocker extends RazController with Logging {
                     au.quota.incUpdates
                     au.shouldEmailParent("Everything").map(parent => Emailer.sendEmailChildUpdatedWiki(parent, au, wid)) // ::: notifyFollowers (we)
                     //          if (notif == "Notify") notifyFollowersCreate(we, au)
-                    //          Emailer.tellRaz("New Locker", au.userName, wid.ahref)
+                    //          Emailer.tellAdmin("New Locker", au.userName, wid.ahref)
                   }
                 }
               }
@@ -937,7 +937,7 @@ case class NotesOk(curTag: String, tags: model.Tags.Tags, msg: Seq[(String, Stri
 
   val realm = Website.realm(request)
 
-  def stok = new StateOk(realm, Option(au), Option(request))
+  val stok = new StateOk(realm, Option(au), Option(request))
 
   def css = {
     val ret =

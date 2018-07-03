@@ -6,46 +6,102 @@
  */
 package controllers
 
-import razie.wiki.model.features.WikiCount
 import admin.Config
-import com.google.inject.{Inject, Singleton}
-import mod.snow.{RacerKidz, RkHistory}
-import razie.db.RazSalatContext._
-import razie.db._
-import com.mongodb.casbah.Imports._
 import com.mongodb.DBObject
+import com.mongodb.casbah.Imports._
 import com.novus.salat._
-import org.joda.time.DateTime
-import com.typesafe.config.{ConfigObject, ConfigValue}
 import difflib.{DiffUtils, Patch}
-import mod.diesel.controllers.DomWorker
 import mod.diesel.model.Diesel
 import mod.notes.controllers.DomC.retj
+import mod.snow.RacerKidz
 import model._
 import org.bson.types.ObjectId
 import org.joda.time.DateTime
-import play.api.Configuration
-import razie.wiki.{Enc, Services}
-import razie.wiki.admin._
-import razie.wiki.parser.WAST
-import razie.wiki.util.{PlayTools, Stage, Staged}
-import razie.{Log, cdebug, clog, cout}
-
-import scala.Array.canBuildFrom
-import razie.db.{REntity, RMany, ROne, RazMongo}
-import razie.db.RazSalatContext.ctx
-import razie.wiki.Sec.EncryptedS
-import play.api.data.Form
-import play.api.data.Forms.mapping
-import play.api.data.Forms.nonEmptyText
-import play.api.data.Forms.text
-import play.api.data.Forms.tuple
-import play.api.mvc.{Action, AnyContent, Request, Result}
-import razie.wiki.model._
-import Visibility._
+import play.api.mvc.Request
 import razie.audit.Audit
+import razie.cout
+import razie.db.RazSalatContext.ctx
+import razie.db.{REntity, RMany, ROne, RazMongo, _}
 import razie.diesel.dom.WikiDomain
 import razie.hosting.Website
+import razie.wiki.Sec.EncryptedS
+import razie.wiki.admin._
+import razie.wiki.model.Visibility._
+import razie.wiki.model._
+import razie.wiki.model.features.WikiCount
+import razie.wiki.parser.WAST
+import razie.wiki.util.{PlayTools, Stage, Staged}
+import razie.wiki.{Enc, Services}
+
+/** a simple edit lock
+  *
+  * // todo candidate for a different temporary store, other than Mongodb
+  *
+  * @param uwid for existing pages, quick lookup
+  * @param wpath for new pages
+  */
+@RTable
+case class EditLock(uwid:UWID, wpath:String, ver:Int, uid:ObjectId, uname:String, dtm:DateTime=DateTime.now(), _id:ObjectId=new ObjectId()) extends REntity[EditLock] {
+
+  def isLockedFor(userId:ObjectId) = dtm.plusSeconds(300).isAfterNow && uid != userId
+
+  /** extend the lock for another period, on autosave etc */
+  def extend = {
+    this.copy(dtm=DateTime.now()).updateNoAudit(tx.auto)
+  }
+}
+
+object EditLock {
+  implicit def txn = tx.auto
+
+  /** lock a page by a user */
+  def lock (uwid:UWID, wpath:String, ver:Int, editor:User) : Boolean = {
+    if(isLocked(uwid, wpath, editor)) false
+    else {
+      unlock(uwid, wpath, editor)
+      EditLock(uwid, wpath, ver, editor._id, editor.userName).createNoAudit
+      true
+    }
+  }
+
+  /** unlock a page when saving etc */
+  def unlock (uwid:UWID, wpath:String, u:User) = {
+    if(isLocked(uwid, wpath, u)) throw new IllegalStateException("page is locked: "+wpath)
+
+    find(uwid, wpath).map(_.deleteNoAudit)
+    keepClean()
+  }
+
+  def canSave (uwid:UWID, wpath:String, u:User) = {
+    // locked by someone else
+    if(isLocked(uwid, wpath, u)) false
+    else {
+      true
+    }
+  }
+
+  def find (uwid:UWID, wpath:String) =
+    if(uwid == UWID.empty)
+      ROne[EditLock] ("wpath" -> wpath)
+    else
+      ROne[EditLock] ("uwid.id" -> uwid.id)
+
+  def isLocked (uwid:UWID, wpath:String, u:User) =
+    find(uwid, wpath)
+      .exists(_.isLockedFor(u._id))
+
+  def who (uwid:UWID, wpath:String) =
+    find(uwid, wpath)
+        .map(_.uname).mkString
+
+  /** sometimes they stay behind - we'll keep this clean and fast */
+  def keepClean() = {
+    // todo spawn async task
+    val threshold = DateTime.now().minusHours(2)
+    val x = RMany[EditLock]().filter(_.dtm.isBefore(threshold)).toList
+    x.map(_.deleteNoAudit)
+  }
+}
 
 /** wiki edits controller */
 //@Singleton
@@ -95,14 +151,15 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
         (for (
           can <- canEdit(wid, Some(au), Some(w));
           hasQuota <- (au.isAdmin || au.quota.canUpdate) orCorr cNoQuotaUpdates;
-          r1 <- au.hasPerm(Perm.uWiki) orCorr cNoPermission("uWiki")
+          r1 <- au.hasPerm(Perm.uWiki) orCorr cNoPermission("uWiki");
+          lock <- EditLock.lock(w.uwid, w.wid.wpath, w.ver, au) orErr s"Page edited by ${EditLock.find(w.uwid, w.wid.wpath).map(_.uname).mkString}"
         ) yield {
             //look for drafts
-            val draft = Autosave.OR("wikie."+w.wid.wpath, stok.au.get._id, Map(
+            val draft = Autosave.OR("wikie", w.realm, w.wid.wpath, stok.au.get._id, Map(
               "content"  -> w.content,
               "tags" -> w.tags.mkString(",")
             ))
-            val hasDraft = Autosave.find("wikie."+w.wid.wpath, stok.au.get._id).isDefined
+            val hasDraft = Autosave.find("wikie",w.realm, w.wid.wpath, stok.au.get._id).isDefined
 
             if(w.markup == Wikis.JS || w.markup == Wikis.JSON || w.markup == Wikis.SCALA)
               ROK.s noLayout { implicit stok =>
@@ -173,7 +230,8 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
           can <- canEdit(wid, Some(au), None, parentProps);
           r3 <- ("any" != wid.cat) orErr ("can't create in category any");
           w <- WikiDomain(realm).rdom.classes.get(wid.cat) orErr (s"cannot find the category ${wid.cat} realm $realm");
-          r1 <- au.hasPerm(Perm.uWiki) orCorr cNoPermission("uWiki")
+          r1 <- au.hasPerm(Perm.uWiki) orCorr cNoPermission("uWiki");
+          lock <- EditLock.lock(UWID.empty, wid.wpath, 0, au) orErr s"Page also being created by ${EditLock.find(UWID.empty, wid.wpath).map(_.uname).mkString}"
         ) yield {
           Audit.missingPage("wiki " + wid);
 
@@ -182,12 +240,11 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
           val props = preprocessed.props
           val contentFromTags = props.foldLeft("") { (x, t) => x + "{{" + t._1 + ":" + t._2 + "}}\n\n" }
 
-          val visibility = wid.findParent
-            .flatMap(_.props.get("visibility"))
-            .orElse(WikiReactors(realm).props.prop("default.visibility"))
-            .getOrElse(WikiReactors(realm).wiki.visibilityFor(wid.cat).headOption.getOrElse(PUBLIC))
-          val wwvis = wvis(wid.findParent.map(_.props)).orElse(WikiReactors(realm).props.prop("default.wvis")).getOrElse(WikiReactors(realm).wiki.visibilityFor(wid.cat).headOption.getOrElse(PUBLIC))
-          val draft =      wid.findParent
+          val visibility = Wikis.mkVis(wid, realm)
+
+          val wwvis = Wikis.mkwVis(wid, realm)
+
+          val draft = wid.findParent
             .flatMap(_.contentProps.get("editMode"))
             .orElse(WikiDomain(realm).prop(wid.cat, "editMode"))
             .orElse(WikiReactors(realm).props.prop("default.editMode")).getOrElse("Notify")
@@ -247,17 +304,21 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
   }
 
   private def signScripts (iwe:WikiEntry, au:User) = {
+    /** pattern for all sections requiring signing - (?s) means multi-line */
+    val PATTSIGN = """(?s)\{\{(\.?)(template|def|lambda|inline)[: ]*([^:}]*)(:SIG[^}]*)\}\}((?>.*?(?=\{\{/)))\{\{/(template|def|lambda|inline)?\}\}""".r //?s means DOTALL - multiline
+
     var we = iwe
+
     if (au.hasPerm(Perm.adminDb)) {
-      if (!we.scripts.filter(_.signature startsWith "REVIEW").isEmpty) {
+      if (!we.scripts.filter(_.signature startsWith "SIG").isEmpty) {
         var c2 = we.content
-        for (s <- we.scripts.filter(_.signature startsWith "REVIEW")) {
+        for (s <- we.scripts.filter(_.signature startsWith "SIG")) {
           def sign(s: String) = Enc apply Enc.hash(s)
 
-          c2 = we.PATTSIGN.replaceSomeIn(c2, { m =>
+          c2 = PATTSIGN.replaceSomeIn(c2, { m =>
             clog << "SIGNING:" << m << m.groupNames.mkString
             if (s.name == (m group 3)) Some("{{%s:%s:%s}}%s{{/%s}}".format(
-              (m group 1)+(m group 2), m group 3, sign(s.content), s.content.replaceAll("""\\""", """\\\\""").replaceAll("\\$", "\\\\\\$"), m group 2))
+              (m group 1)+(m group 2), m group 3, "SIG"+sign(s.content), s.content.replaceAll("""\\""", """\\\\""").replaceAll("\\$", "\\\\\\$"), m group 2))
             else None
           })
         }
@@ -269,25 +330,53 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
 
   // clear all draft versions
   private def clearDrafts (w:WID, au:User) = {
-    Autosave.delete("wikie."+w.wpath, au._id)
+    Autosave.delete("wikie",w.getRealm, w.wpath, au._id)
   }
 
-  def deleteDraft (w:WID) = FAUR { stok=>
-    Autosave.delete("wikie."+w.wpath, stok.au.get._id)
+  def deleteDraft (wid:WID) = FAUR { stok=>
+    EditLock.unlock(wid.uwid.getOrElse(UWID.empty), wid.wpath, stok.au.get)
+
+    Autosave.delete("wikie", wid.getRealm, wid.wpath, stok.au.get._id)
     Ok("")
   }
 
-  // clear all draft versions
-  def saveDraft (w:WID) = FAUR { implicit stok=>
+  def saveDraft (wid:WID) = FAUR { implicit stok=>
     val content = stok.formParm("content")
     val tags = stok.formParm("tags")
 
-    Autosave.set("wikie."+w.wpath, stok.au.get._id,
-    Map(
-      "content"  -> content,
-      "tags" -> tags
-    ))
-    Ok("saved")
+    // extend lock
+    EditLock.find(wid.uwid.getOrElse(UWID.empty), wid.wpath)
+      .filter(_.uid == stok.au.get._id)
+      .map(_.extend)
+
+    Autosave.set("wikie", stok.realm, wid.wpath, stok.au.get._id,
+      Map(
+        "content"  -> content,
+        "tags" -> tags
+      ))
+
+    if(EditLock.isLocked(wid.uwid.getOrElse(UWID.empty), wid.wpath, stok.au.get))
+      Conflict(s"edited by ${EditLock.who(wid.uwid.getOrElse(UWID.empty), wid.wpath)}")
+    else
+      Ok("saved")
+  }
+
+  /** calc the diff draft to original for story and spec */
+  def draftDiff(wid: WID) = FAUR { implicit stok =>
+
+    val w = wid.page.map(_.content).getOrElse("?")
+
+    val draft = Autosave.find("wikie",wid.getRealm,wid.wpath, stok.au.get._id).flatMap(_.get("content")).getOrElse("?")
+
+    import scala.collection.JavaConversions._
+
+    def diffTable(p: Patch) = s"""<small>${views.html.admin.diffTable("", p, Some(("How", "Original", "Autosaved")))}</small>"""
+
+    def diff = diffTable(DiffUtils.diff(w.lines.toList, draft.lines.toList))
+
+    retj << Map(
+      "diff" -> diff
+    )
   }
 
   /** api to set content remotely - used by sync and such */
@@ -321,7 +410,7 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
         _ <- au.hasPerm(Perm.uWiki) orCorr cNoPermission("uWiki");
         _ <- canEdit(wid, auth, Some(w)) orErr "can't edit";
         _ <- (au.isAdmin || au.quota.canUpdate) orCorr cNoQuotaUpdates;
-        newC <- Some(mkC(w.content, icontent));
+        newC <- Some(mkC(w.content, icontent).replaceAll("\r", ""));
         newVerNo <- Some(w.ver + 1 );
         newVer <- Some(w.copy(content = newC, ver = newVerNo, updDtm = DateTime.now()));
         _ <- (w.content != newC) orErr ("no change");
@@ -381,11 +470,20 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
                 if (w.ver < remote.ver) remote.ver // normal: remote is newer, so reset version to it
                 else w.ver + 1 // remote overwrites local, just keep increasing local ver
               );
-              nochange <- (w.content != remote.content || w.tags != remote.tags || w.props != remote.props) orErr ("no change");
-              newVer <- Some(w.copy(content = remote.content, tags = remote.tags, props = remote.props, ver = newVerNo, updDtm = remote.updDtm));
+              nochange <- (w.content != remote.content || w.tags != remote.tags || w.props != remote.props || w.markup != remote.markup) orErr ("no change");
+              newVer <- Some(w.copy(
+                content = remote.content,
+                tags = remote.tags,
+                props = remote.props,
+                ver = newVerNo,
+                markup = remote.markup,
+                updDtm = remote.updDtm
+              ));
               upd <- before(newVer, WikiAudit.UPD_CONTENT) orErr ("Not allowerd")
             ) yield {
               var we = newVer
+
+              // todo check lock
 
               we = signScripts(we, au)
 
@@ -420,6 +518,8 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
             ) yield {
               var we = newVer
 
+              // todo check lock
+
               we = signScripts(we, au)
 
               if (!we.scripts.filter(_.signature == "ADMIN").isEmpty && !(au.hasPerm(Perm.adminDb) || Services.config.isLocalhost)) {
@@ -444,7 +544,16 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
   def preview(wid: WID) = FAUR { implicit stok =>
     val content = stok.formParm("content")
     val tags = stok.formParm("tags")
-    val page = WikiEntry(wid.cat, wid.name, wid.name, "md", content, stok.au.get._id, Tags(tags))
+    var markup = stok.formParm("markup")
+    if(markup.length <= 0) markup="md"
+
+    var page = WikiEntry(wid.cat, wid.name, wid.name, markup, content, stok.au.get._id, Tags(tags), stok.realm)
+
+    // sign scripts temporarily, so they run in preview
+    page = signScripts(page, stok.au.get)
+
+//    if (!we.scripts.filter(_.signature == "ADMIN").isEmpty && !(au.hasPerm(Perm.adminDb) || Services.config.isLocalhost)) {
+//      noPerm(wid, "HACK_SCRIPTS1")
 
     ROK.k noLayout {implicit stok=>
       // important to pass altContent, so it will bypass format caches
@@ -460,30 +569,30 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
 
       def setEventProps(w:WikiEntry) = {
         var we = w
-      if(Wikis.isEvent(wid.cat)) {
-        val r = stok.formParm("reg")
-        if("on" == r)
-          we = we.cloneProps(we.props ++ Map("module:reg" -> "yes"), au._id)
-        else
-          we = we.cloneProps(we.props ++ Map("module:reg" -> "no"), au._id)
-        val rx = stok.formParm("regopen")
-        if("on" == stok.formParm("regopen"))
-          we = we.cloneProps(we.props ++ Map("module:reg-open" -> "yes"), au._id)
-        else
-          we = we.cloneProps(we.props ++ Map("module:reg-open" -> "no"), au._id)
-        var d = stok.formParm("when")
-        if(d.length > 0)
-          we = we.cloneProps(we.props ++ Map("date" -> d), au._id)
-        var v = stok.formParm("where")
-        if(v.length > 0)
-          we = we.cloneProps(we.props ++ Map("venue" -> v), au._id)
-        var p = stok.formParm("price")
-        if(p.length > 0)
-          we = we.cloneProps(we.props ++ Map("price" -> p), au._id)
-      }
+
+        if(Wikis.isEvent(wid.cat)) {
+          val r = stok.formParm("reg")
+          if("on" == r)
+            we = we.cloneProps(we.props ++ Map("module:reg" -> "yes"), au._id)
+          else
+            we = we.cloneProps(we.props ++ Map("module:reg" -> "no"), au._id)
+          val rx = stok.formParm("regopen")
+          if("on" == stok.formParm("regopen"))
+            we = we.cloneProps(we.props ++ Map("module:reg-open" -> "yes"), au._id)
+          else
+            we = we.cloneProps(we.props ++ Map("module:reg-open" -> "no"), au._id)
+          var d = stok.formParm("when")
+          if(d.length > 0)
+            we = we.cloneProps(we.props ++ Map("date" -> d), au._id)
+          var v = stok.formParm("where")
+          if(v.length > 0)
+            we = we.cloneProps(we.props ++ Map("venue" -> v), au._id)
+          var p = stok.formParm("price")
+          if(p.length > 0)
+            we = we.cloneProps(we.props ++ Map("price" -> p), au._id)
+        }
         we
       }
-
 
     editForm.bindFromRequest()(stok.req).fold(
     formWithErrors => {
@@ -525,6 +634,8 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
 
         if(newContent.length == 0) newContent = "no description"
 
+        newContent = newContent.replaceAll("\r", "")
+
         Wikis.find(wid).filter(wid.realm.isEmpty || _.realm == wid.realm.get) match {
           case Some(w) =>
             // edited topic
@@ -542,12 +653,14 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
                 (au.isMod && notif == "Draft" && !w.props.contains("draft")) ||
                 w.tags.mkString(",") != tags) orErr ("no change");
               conflict <- (oldVer == w.ver.toString) orCorr new Corr ("Topic modified in between", "Edit this last vesion and make your changes again.");
-            //todo make this better: lock for editing or some kind of locks
+              stillLocked <- EditLock.canSave(w.uwid, w.wid.wpath, stok.au.get) orErr "You lost the lock on this page, to ?";
               newlab <- Some(if ("WikiLink" == wid.cat || "User" == wid.cat) l else if (wid.name == Wikis.formatName(l)) l else w.label);
               newVer <- Some(w.cloneNewVer(newlab, m, newContent, au._id));
               upd <- before(newVer, WikiAudit.UPD_CONTENT) orErr ("Not allowerd")
             ) yield {
               var we = newVer
+
+              EditLock.unlock(w.uwid, w.wid.wpath, stok.au.get)
 
               // visibility?
               if (! we.props.get("visibility").exists(_ == vis))
@@ -629,11 +742,13 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
               hasQuota <- (au.isAdmin || au.quota.canUpdate) orCorr cNoQuotaUpdates;
               r3 <- ("any" != wid.cat) orErr ("can't create in category any");
               w <- WikiDomain(wid.realm getOrElse getRealm()).rdom.classes.get(wid.cat) orErr (s"cannot find the category ${wid.cat} realm ${wid.getRealm}");
-              r1 <- (au.hasPerm(Perm.uWiki)) orCorr cNoPermission("uWiki")
+              r1 <- (au.hasPerm(Perm.uWiki)) orCorr cNoPermission("uWiki");
+              stillLocked <- EditLock.canSave(wid.uwid.getOrElse(UWID.empty), wid.wpath, stok.au.get) orErr "You lost the lock on this page, to ?"
             ) yield {
               //todo find the right realm from the url or something like Config.realm
-              import razie.OR._
               var we = WikiEntry(wid.cat, newName, newLabel, m, newContent, au._id, Seq(), parent.map(_.realm) orElse wid.realm getOrElse getRealm(), 1, wid.parent)
+
+              EditLock.unlock(wid.uwid.getOrElse(UWID.empty), wid.wpath, stok.au.get)
 
               if (we.tags.mkString(",") != tags)
                 we = we.withTags(Tags(tags), au._id)
@@ -700,7 +815,7 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
                   au.quota.incUpdates
                   au.shouldEmailParent("Everything").map(parent => Emailer.sendEmailChildUpdatedWiki(parent, au, wid)) // ::: notifyFollowers (we)
                   if (notif == "Notify" || notif == "Site" || notif.contains("History")) notifyFollowersCreate(we, au, notif, false)
-                  Emailer.tellRaz("New Wiki", au.userName, wid.ahref)
+                  Emailer.tellAdmin("New Wiki", au.userName, wid.ahref)
                 }
               }
 
@@ -720,7 +835,8 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
     val list =
       (wpost.parent flatMap (Wikis(wpost.realm).find)) orElse
         ((
-          if(notif contains "Site")
+          // if "Notify" and no parent, default to entire site
+          if((notif contains "Site") || ((notif contains "Notify") && wpost.parent.isEmpty))
             Website.forRealm(wpost.realm).flatMap(_.notifyList)
           else None
           ) flatMap (Wikis(wpost.realm).find)
@@ -811,7 +927,7 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
     })
   }
 
-  // from category - add a ...
+  // create something with a category and template and spec
   def addWithSpec(cat: String, iname:String, templateWpath:String, torspec:String, realm:String) = FAU {
     implicit au => implicit errCollector => implicit request =>
       val name = PlayTools.postData.getOrElse("name", iname)
@@ -975,7 +1091,9 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
 
             if (done) cleanAuth() // it probably belongs to the current user, cached...
           }
-          Msg2(s"DELETED forever - no way back! Deleted $count topics")
+          w.findParent.map(w=>
+            Msg(s"DELETED forever - no way back! Deleted $count topics", w.wid)
+          ) getOrElse Msg(s"DELETED forever - no way back! Deleted $count topics")
         }
       } getOrElse
         noPerm(wid, "ADMIN_DELETE2")
@@ -1223,3 +1341,5 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
     wikis
   }
 }
+
+

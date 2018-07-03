@@ -1,3 +1,6 @@
+@***
+profile - reset password
+***@
 @(myForm: Form[_], id:String)(implicit stok: RazRequest)
 
 @import helper.twitterBootstrap._
@@ -21,6 +24,7 @@
       '_error -> myForm.error("repass"))
 
   <input type="hidden" name="currpass" value="" />
+  <input type="hidden" name="token" value="@myForm("token").value"/>
 
     <button type="submit" class="btn btn-primary">Change !</button>
 
@@ -32,7 +36,9 @@
   }
 
 <script>
-  $("input").addClass("input-lg")
+    withJquery(function($) {
+      $("input").addClass("input-lg")
+    });
 </script>
 
   @formFix()

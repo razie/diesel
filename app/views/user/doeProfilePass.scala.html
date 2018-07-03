@@ -1,3 +1,6 @@
+@***
+profile - password
+***@
 @(myForm: Form[_], au: model.User)(implicit request: controllers.RazRequest)
 
 @salutation() = @{
@@ -27,13 +30,12 @@
       '_showConstraints -> false,
       '_error -> myForm.error("repass"))
 
+    <input type="hidden" name="token" value="@myForm("token").value"/>
     <button type="submit" class="btn btn-primary">Change !</button>
 
     @user.agree()
 
-    @myForm.globalError.map { err =>
-      <p style="color : red ; font-weight : bold">@err.message</p>
-    }
+    @formErrors(myForm)
   }
   </div>
 

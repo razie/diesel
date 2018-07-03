@@ -17,6 +17,7 @@ var braDomain = [
   {'nocomments' : ['true']},
   {'noTitle' : ['true']},
   {'noAds' : ['true']},
+  {'nobottom' : ['true']},
   {'test1' : [
     {'squaretop' : ['a', 'b']},
     'squareright'
@@ -114,29 +115,40 @@ var CA_TC_braTags = function(braTags) {
 var sqbraStatics = [
   'include:WID',
   'includeWithSection:WID',
-  'alias:WID'
+  'alias:WID',
+  'step:'
 ];
 
 // this is not a constructor - it will get its domain from remote
 var CA_TC_sqbraTags = { // sqbraTags
-  match: /(\[\[)([\w| .]*)$/,
+  match: /(\[\[)([\w| .| ::]*)$/,
 
   search: function (term, callback) {
     var lterm = term.toLowerCase();
-    var r = (term.indexOf(".") == term.length-1 && term.length > 0) ? term.substring(0, term.length-1) : realm;
+    var r = (term.indexOf('.') == term.length-1 && term.length > 0) ? term.substring(0, term.length-1) : realm;
+    var assoc = (term.indexOf('::') > 0 && term.length > 0) ? term.substring(0, term.indexOf('::')) : '';
+
+    if(assoc != '')
+      lterm = lterm.substr(lterm.indexOf('::') + 2, lterm.length - 2 - assoc.length);
 
     var prefix = function(value) {
-      return r+'.'+value;
+      return r + '.' + value;
     };
+
+    var addAssoc = function(value) {
+      return (assoc == '' ? '' : assoc + '::') + value;
+    };
+
     var filterTopics = function(value, j) {
       return ltopics[j].indexOf(lterm) >= 0;
     };
+
     var filterStatics = function(value, j) {
       return sqbraStatics[j].indexOf(lterm) >= 0;
     };
 
-    // bring options
-    if(topics.length <= 0 || term.indexOf(".") == term.length-1 && term.length > 0) {
+    // bring options - either starting or just typed a realm
+    if(topics.length <= 0 || term.indexOf(".") == term.length-1 && term.length > 0 || term.indexOf("::") == term.length-2 && term.length > 0) {
       //$.getJSON('/wikie/options', { q: term , realm : realm })
       $.getJSON('/wikie/options', { q: '' , realm : r })
         .done(function (resp) {
@@ -144,12 +156,20 @@ var CA_TC_sqbraTags = { // sqbraTags
           else topics = resp;
 
           for(i=0; i<topics.length; i++) ltopics[i] = topics[i].toLowerCase();
-          callback(topics.filter(filterTopics).concat(sqbraStatics.filter(filterStatics)));
+
+          var x = topics.filter(filterTopics).map(addAssoc);//.concat(sqbraStatics.filter(filterStatics)).map(addAssoc);
+
+          if(assoc != '')
+            callback(topics.filter(filterTopics).map(addAssoc).concat(sqbraStatics.filter(filterStatics)));
+          else
+            callback(topics.filter(filterTopics).concat(sqbraStatics.filter(filterStatics)));
         })
         .fail(function (){ callback([]); });
     } else {
-      callback(
-        topics.filter(filterTopics).concat(sqbraStatics.filter(filterStatics)) );//, false);
+      if(assoc != '')
+        callback(topics.filter(filterTopics).map(addAssoc).concat(sqbraStatics.filter(filterStatics)));
+      else
+        callback(topics.filter(filterTopics).concat(sqbraStatics.filter(filterStatics)));//, false);
       // false means this array is all the data
     }
   },

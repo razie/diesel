@@ -5,6 +5,7 @@
 /** tie a floating checkbox to localStorage
  *
  * inputId and storageName should be same... however, the storageName should have a pageId to avoid conflicts with other pages...
+ * x
  */
 function useLocalStorageCheckbox (inputId, storageName, callback) {
   if(localStorage.getItem(storageName) != null)
@@ -163,14 +164,16 @@ var weBrowserStorage = "weBrowser";
 
 /** toggle the we browser on and off */
 function weToggleBrowser() {
-  if(getCookie(weBrowserStorage) == null) setCookie(weBrowserStorage, "false")
+  if(getCookie(weBrowserStorage) == null)
+    setCookie(weBrowserStorage, "false")
 
   if(getCookie(weBrowserStorage) === "true") {
-    setCookie(weBrowserStorage, "false")
+    setCookie(weBrowserStorage, "false");
+    $("#wikiBrowser").hide(500);
   } else {
-    setCookie(weBrowserStorage, "true")
+    setCookie(weBrowserStorage, "true");
+    window.location.reload();
   }
-  window.location.reload();
 }
 
 /** is the we browser on */
@@ -211,15 +214,18 @@ function weButton(b) {
 //====================== widgets <a onclick="weMsg('ctx.log','m='+m)"
 
 /** trigger message in background, log result
-* ea should be "pack.entity.action"
-*/
-function weMsg(ea,p) {
-  return iweMsg(ea.replace(/(.+)\.([^.]+)$/, "$1/$2"), p, 'value',
-    function(data){console.log(data);});
+ * invoke a message get the return value and tehn invoke next with the data
+ * ea should be "pack.entity.action"
+ * p should be the attributes in url form
+ */
+function weMsg(ea,p,next) {
+  var n = typeof next == 'function' ? next : function(data){console.log(data);} ;
+
+  return iweMsg(ea.replace(/(.+)\.([^.]+)$/, "$1/$2"), p, 'value', n);
 }
 
 /** trigger message in background, popup result
-* ea should be "pack.entity.action"
+ * ea should be "pack.entity.action"
  */
 function weMsgPopup(ea,p) {
   return iweMsg(ea.replace(/(.+)\.([^.]+)$/, "$1/$2"), p, 'value',
@@ -271,3 +277,47 @@ function weBadIp(ip) {
   return false;
 }
 
+var dieselCart = {
+
+  addItem: function (clubWpath, category, desc, amount, currency, link, id, ok, cancel, prereq, cartRedirect, redirect) {
+  var u = '/doe/cart/addToCart/'+clubWpath;
+  $.ajax(
+    u, {
+      type: 'POST',
+      data: $.param({
+        category: category,
+        desc: desc,
+        amount: amount,
+        currency: currency,
+        link: link,
+        id: id,
+        ok: ok,
+        prereq: prereq,
+        cancel: cancel,
+        redirect: redirect,
+        cartRedirect: cartRedirect
+      }),
+      contentType: 'application/x-www-form-urlencoded',
+      success: function (data) {
+        window.location.assign(data);
+      },
+      error: function (x) {
+        // readyState=4  is failure to parse json reply
+        console.log("ERR " + JSON.stringify(x));
+        alert('OOPS - Some Error occurred - please send us this info\n'+JSON.stringify(x));
+      }
+    });
+}
+
+};
+
+/** log and set value when clicking on diesel nodes */
+function dieselNodeLog(s) {
+  console.log('dieselValue = '+s);
+  dieselValueText = s;
+  try {
+    dieselValueJson = JSON.parse(s);
+  } catch (err) {
+    dieselValueJson = {err : err};
+  }
+}

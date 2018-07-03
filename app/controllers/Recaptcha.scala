@@ -3,7 +3,7 @@ package controllers
 import admin.Config
 import com.google.inject._
 import razie.{Logging, Snakk}
-import play.api.{Configuration, Play}
+import play.api.{Configuration}
 import razie.wiki.admin.SendEmail
 import razie.wiki.Services
 
@@ -34,7 +34,7 @@ class Recaptcha @Inject() (config:Configuration) extends Logging {
 
       if (resp contains "invalid")
         SendEmail.withSession() { implicit mailSession =>
-          Emailer.tellRaz("ERROR CAPTCHA", "response is " + resp)
+          Emailer.tellAdmin("ERROR CAPTCHA", "response is " + resp)
         }
 
       resp.startsWith("true")
@@ -51,7 +51,7 @@ class Recaptcha @Inject() (config:Configuration) extends Logging {
 
 //      if (resp contains "invalid")
 //        SendEmail.withSession { implicit mailSession =>
-//          Emailer.tellRaz("ERROR CAPTCHA", "response is " + resp)
+//          Emailer.tellAdmin("ERROR CAPTCHA", "response is " + resp)
 //        }
 
       resp \@ "success" == "true"

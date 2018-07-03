@@ -20,7 +20,9 @@ eh
       @if(page.isDefined && !print) {
         @wiki.wikiAddMore(wid, page)
         @wid.page.map {we =>
-          @wiki.wikiFragBottom(we, false, canEdit, false, print)
+          @if(!page.flatMap(_.contentProps.get("nobottom")).isDefined) {
+            @wiki.wikiFragBottom(we, false, canEdit, false, print)
+          }
         }
         @wiki.wikiPageComments(wid, page,  stok.au)
       }

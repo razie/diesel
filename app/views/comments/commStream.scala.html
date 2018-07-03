@@ -1,5 +1,5 @@
 @**************
-list all topics in category
+comments - list of comments
 **************@
 @(ostream:Option[razie.wiki.model.CommentStream], pid:String, role:String, canAdd:Boolean)(implicit stok:controllers.StateOk)
 @import razie.wiki.model._
@@ -50,7 +50,7 @@ list all topics in category
         }
         <br>
         <br>
-        @Html(Wikis.format(WID.empty, "md", c.content, None, stok.au))
+        @Html(Wikis.format(WID.empty.r(stok.realm), "md", c.content, None, stok.au))
       </div>
     }
 }

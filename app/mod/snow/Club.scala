@@ -3,6 +3,8 @@ package controllers
 import razie.wiki.model.features.WikiCount
 import admin.Config
 import controllers.Profile.cNoConsent
+import mod.cart.Carts.Redirect
+import mod.cart._
 import mod.snow.{RK, _}
 import model._
 import org.bson.types.ObjectId
@@ -12,6 +14,7 @@ import play.twirl.api.Html
 import razie.db.RMongo.as
 import razie.db._
 import razie.diesel.dom.WikiDomain
+import razie.diesel.ext.EExecutor
 import razie.hosting.Website
 import razie.wiki.admin.SendEmail
 import razie.wiki.model._
@@ -234,15 +237,15 @@ regAdmin=$regAdmin
   }
 
   // need to do some stuff when creating new clubs
-//  WikiObservers mini {
-//    case ev@WikiEvent(
-//      WikiAudit.CREATE_WIKI,
-//      "WikiEntry",
-//      wpath,
-//      entity: Option[WikiEntry],
-//      _, _, _) => {
-//    }
-//  }
+  //  WikiObservers mini {
+  //    case ev@WikiEvent(
+  //      WikiAudit.CREATE_WIKI,
+  //      "WikiEntry",
+  //      wpath,
+  //      entity: Option[WikiEntry],
+  //      _, _, _) => {
+  //    }
+  //  }
 
   // manage user screen
   def membersData(club: Club, what: String, cols: String): (List[String], List[List[String]]) = {
@@ -269,23 +272,30 @@ regAdmin=$regAdmin
 
   def doeClubRegs(clubName: WID, details: String = "") = Action.async { implicit request =>
     Future {
+      val x = new razie.CSTimer("REGS", "")
+      x.start("1")
       implicit val errCollector = new VErrors()
       (for (
         au <- activeUser;
         c <- Club.findForAdmin(clubName, au) orErr ("Not a club or you're not admin")
       ) yield {
-          Regs.upgradeAllRegs1
+        Regs.upgradeAllRegs1
+        x.snap("2")
 
-          val members =
-            model.Users.findUserLinksTo(c.uwid).map(uw =>
-              (model.Users.findUserById(uw.userId),
-                uw,
-                Regs.findClubUserYear(clubName, uw.userId, c.curYear))).toList.sortBy(x => x._1.map(y => y.lastName + y.firstName).mkString)
+        val members =
+          model.Users.findUserLinksTo(c.uwid).map(uw =>
+            (model.Users.findUserById(uw.userId),
+              uw,
+              Regs.findClubUserYear(clubName, uw.userId, c.curYear))).toList.sortBy(x => x._1.map(y => y.lastName + y.firstName).mkString)
+        x.snap("3")
 
-          ROK.r apply { implicit stok =>
-            views.html.club.doeClubRegs(clubName, c, details, members)
-          }
-        }) getOrElse Msg2("CAN'T SEE PROFILE " + errCollector.mkString)
+        val y = ROK.r apply { implicit stok =>
+          views.html.club.doeClubRegs(clubName, c, details, members)
+        }
+
+        x.snap("4")
+        y
+      }) getOrElse Msg2("CAN'T SEE PROFILE " + errCollector.mkString)
     }
   }
 
@@ -323,27 +333,27 @@ regAdmin=$regAdmin
 
   def doeClubUpdateRegSettings(club: WID) = FAUR { implicit request =>
     edRegForm.bindFromRequest()(request.ireq).fold(
-    formWithErrors => ROK.k badRequest { implicit stok =>
-      views.html.club.doeClubRegSettings(club, formWithErrors)
-    }, {
-      case (t, y, a, d) => {
-        Club.findForAdmin(club.name, request.au.get).map { c =>
-          val s = "curYear=" + y + "\nregType=" + t + "\nregAdmin=" + a + "\n" + d
-          val newu = c.user.copy(clubSettings = Some(s))
-          c.user.update(newu)
-          cleanAuth()
-          val newc = Club(newu)
+      formWithErrors => ROK.k badRequest { implicit stok =>
+        views.html.club.doeClubRegSettings(club, formWithErrors)
+      }, {
+        case (t, y, a, d) => {
+          Club.findForAdmin(club.name, request.au.get).map { c =>
+            val s = "curYear=" + y + "\nregType=" + t + "\nregAdmin=" + a + "\n" + d
+            val newu = c.user.copy(clubSettings = Some(s))
+            c.user.update(newu)
+            cleanAuth()
+            val newc = Club(newu)
 
-          ROK.k apply { implicit stok =>
-            stok.msg("ok" -> "[Settings saved]")
-            views.html.club.doeClubRegSettings(club, edRegForm.fill(
-              (newc.regType, newc.curYear.toInt, newc.regAdmin, newc.dsl)))
+            ROK.k apply { implicit stok =>
+              stok.msg("ok" -> "[Settings saved]")
+              views.html.club.doeClubRegSettings(club, edRegForm.fill(
+                (newc.regType, newc.curYear.toInt, newc.regAdmin, newc.dsl)))
+            }
+          } getOrElse {
+            unauthorized("Only club admin can change settings")
           }
-        } getOrElse {
-          unauthorized("Only club admin can change settings")
         }
-      }
-    })
+      })
   }
 
   ////////////////////// manage user
@@ -364,10 +374,10 @@ regAdmin=$regAdmin
         au.isAdmin || c.isClubCoach(au) || c.isClubAdmin(au)
         ) orErr "can't see"
     ) yield {
-        ROK.k noLayout { implicit stok =>
-          views.html.club.doeClubAdminPanel(c, club)
-        }
-      }) getOrElse Unauthorized("") // use this one to get no audit
+      ROK.k noLayout { implicit stok =>
+        views.html.club.doeClubAdminPanel(c, club)
+      }
+    }) getOrElse Unauthorized("") // use this one to get no audit
   }
 
   // manage user screen
@@ -414,16 +424,16 @@ regAdmin=$regAdmin
     (for (
       club <- Club.findForAdmin(clubwid, request.au.get) orCorr cNotAdmin(clubwid.wpath)
     ) yield {
-        val (headers, data) = membersData(club, what, cols)
+      val (headers, data) = membersData(club, what, cols)
 
-        if ("csv" == format)
-          Ok(
-            headers.mkString(DELIM) +
-              "\n" +
-              data.map(_.map(escNL).mkString(DELIM)).mkString("\n")).as("text/csv")
-        else
-          Ok(Json.toJson(headers :: data))
-      }) getOrElse Msg2("CAN'T : " + errCollector.mkString)
+      if ("csv" == format)
+        Ok(
+          headers.mkString(DELIM) +
+            "\n" +
+            data.map(_.map(escNL).mkString(DELIM)).mkString("\n")).as("text/csv")
+      else
+        Ok(Json.toJson(headers :: data))
+    }) getOrElse Msg2("CAN'T : " + errCollector.mkString)
   }
 
   // update user role
@@ -452,7 +462,7 @@ regAdmin=$regAdmin
 
               var reg = club.reg(u)
               if (reg.exists(_.paid != p)) {
-                reg = Some(reg.get.copy(paid = p))
+                reg = Some(reg.get.copy(paid = p, amountPaid = Price(p.toFloat, reg.get.amountPaid.currency)))
                 reg.get.update
               }
 
@@ -462,7 +472,7 @@ regAdmin=$regAdmin
               }
             }
         })
-      }) getOrElse Msg2("CAN'T SEE PROFILE " + errCollector.mkString)
+    }) getOrElse Msg2("CAN'T SEE PROFILE " + errCollector.mkString)
   }
 
   /** send a help message */
@@ -474,13 +484,13 @@ regAdmin=$regAdmin
       u <- uw.user;
       msg <- request.queryString.get("msg") orErr "no message"
     ) yield {
-        SendEmail.withSession(request.realm) { implicit mailSession =>
-          // notify user
-          val link = club.reg(u) map { reg => routes.Club.doeClubUserReg(reg._id.toString).toString } getOrElse "http://www.racerkidz.com"
-          Emailer.sendEmailClubRegHelp(u, clubName.name, link, msg.mkString)
-        }
-        Redirect(routes.Club.doeClubReg(clubName, uwid))
-      }) getOrElse Msg2("OOPS" + errCollector.mkString)
+      SendEmail.withSession(request.realm) { implicit mailSession =>
+        // notify user
+        val link = club.reg(u) map { reg => routes.Club.doeClubUserReg(reg._id.toString).toString } getOrElse "http://www.racerkidz.com"
+        Emailer.sendEmailClubRegHelp(u, clubName.name, link, msg.mkString)
+      }
+      Redirect(routes.Club.doeClubReg(clubName, uwid))
+    }) getOrElse Msg2("OOPS" + errCollector.mkString)
   }
 
   /** change registration status */
@@ -509,12 +519,12 @@ regAdmin=$regAdmin
         } else {
           if (ooldreg.isEmpty && how == RegStatus.FAMILY) {
             val r = Reg(u._id, clubName.name, club.wid, club.curYear, uw.role, Seq(), Seq(), how)
-            r.create
+            r.updFees.create
             r
           }
 
           ooldreg.foreach { oldreg =>
-            oldreg.copy(regStatus = how).update
+            oldreg.copy(regStatus = how).updFees.update
             val reg = club.reg(u).get
 
             // if status just changed to PENDING, send email invitation
@@ -528,7 +538,7 @@ regAdmin=$regAdmin
           Redirect(routes.Club.doeClubReg(clubName, uwid))
         }
       }
-      }) getOrElse Msg2("OOPS" + errCollector.mkString)
+    }) getOrElse Msg2("OOPS" + errCollector.mkString)
   }
 
   /** club admin add a kid to current registration */
@@ -544,8 +554,8 @@ regAdmin=$regAdmin
     ) yield {
       implicit val txn = razie.db.tx.local("doeClubUwAddForm", au.userName  )
       addForm(u, c, reg, regAdmin, role)
-        Redirect(routes.Club.doeClubReg(clubName, uwid.toString))
-      }) getOrElse Msg2("OOPS" + errCollector.mkString)
+      Redirect(routes.Club.doeClubReg(clubName, uwid.toString))
+    }) getOrElse Msg2("OOPS" + errCollector.mkString)
   }
 
   // remove a year in the form 20xx
@@ -642,7 +652,7 @@ regAdmin=$regAdmin
               s"""${rk.info.firstName} was already added as <em>${before.get.role}</em> - please click continue, then remove her/him from the registration with the red <span class="label label-important">x</span> button and then re-add with the different role. <p>Note that any forms filled for his role will be <em>removed</em>!""",
               Some(nextPage.url))
         }
-        }) getOrElse Msg2("OOPS" + errCollector.mkString)
+      }) getOrElse Msg2("OOPS" + errCollector.mkString)
   }
 
   /** remove a kid from the current registration */
@@ -659,14 +669,14 @@ regAdmin=$regAdmin
         notCompleted <- (!regkid.deprecatedwids.flatMap(x => Wikis.find(x).flatMap(_.formState).toList).exists(_ == FormStatus.APPROVED)) orErr
           ("some forms have been approved for this person")
       ) yield {
-          def sex1 = if (rk.info.gender.toLowerCase startsWith "m") "his" else "her"
-          def sex2 = if (rk.info.gender.toLowerCase startsWith "m") "him" else "her"
-          Msg2(
-            s"""This will remove ${rk.info.firstName} from your family and this registration.
+        def sex1 = if (rk.info.gender.toLowerCase startsWith "m") "his" else "her"
+        def sex2 = if (rk.info.gender.toLowerCase startsWith "m") "him" else "her"
+        Msg2(
+          s"""This will remove ${rk.info.firstName} from your family and this registration.
     <p>Note that any forms filled for $sex1 role will be <em>removed</em>! You can then re-add $sex2 back, with the same or different role.
     <p>If you don't want to remove $sex2, just go back... otherwise click Continue below.""",
-            Some(routes.Club.doeClubUwRmFormKid1(regId, rkId, uwid, role).url))
-        }) getOrElse Msg2("OOPS" + errCollector.mkString)
+          Some(routes.Club.doeClubUwRmFormKid1(regId, rkId, uwid, role).url))
+      }) getOrElse Msg2("OOPS" + errCollector.mkString)
   }
 
   def doeClubUwRmFormKid1(regId: String, rkId: String, uwid: String, role: String) = FAU { implicit au =>
@@ -708,7 +718,7 @@ regAdmin=$regAdmin
 
           Redirect(next)
         }
-        }) getOrElse Msg2("CAN'T remove registration: " + errCollector.mkString,
+      }) getOrElse Msg2("CAN'T remove registration: " + errCollector.mkString,
         Some(next.toString))
   }
 
@@ -727,11 +737,11 @@ regAdmin=$regAdmin
         regkid <- RMany[RegKid]("regId" -> reg._id).find(_.deprecatedwids.exists(_.name == formWid.name)).isEmpty orErr "this form belongs to a regKid: remove the kid from the list of Racers";
         notCompleted <- form.formState != FormStatus.APPROVED orErr "form has been approved !"
       ) yield {
-          Msg2(
-            s"""This will remove Form: ${formWid.name} from this registration.
+        Msg2(
+          s"""This will remove Form: ${formWid.name} from this registration.
     <p>If you don't want to remove Form: ${formWid.name}, just go back... otherwise click Continue below.""",
-            Some(routes.Club.doeClubUwRmFormSeq1(regId, rkId, uwid, seq).url))
-        }) getOrElse Msg2("OOPS" + errCollector.mkString)
+          Some(routes.Club.doeClubUwRmFormSeq1(regId, rkId, uwid, seq).url))
+      }) getOrElse Msg2("OOPS" + errCollector.mkString)
   }
 
   /** remove a single form from the current registration */
@@ -766,7 +776,7 @@ regAdmin=$regAdmin
           r.update
           Redirect(next)
         }
-        }) getOrElse Msg2("CAN'T remove form: " + errCollector.mkString,
+      }) getOrElse Msg2("CAN'T remove form: " + errCollector.mkString,
         Some(next.toString))
   }
 
@@ -794,10 +804,10 @@ regAdmin=$regAdmin
         c <- Club.findForName(reg.clubName) orErr "club not found";
         can <- canModifyReg(au, reg, c)
       ) yield {
-          ROK.s apply { implicit stok =>
-            views.html.club.doeClubUserRegAdd(rk, next, u, reg)
-          }
-        }) getOrElse unauthorized()
+        ROK.s apply { implicit stok =>
+          views.html.club.doeClubUserRegAdd(rk, next, u, reg)
+        }
+      }) getOrElse unauthorized()
   }
 
   def acthost = Form {
@@ -814,17 +824,17 @@ regAdmin=$regAdmin
     (for (
       au <- activeUser(stok.req)
     ) yield {
-        if (Users.findUserByUsername(wid.name).isDefined) Ok("")
-        else Ok(
-          s"""<div class="alert alert-info">
-             |Activate hosting, registration and events for this club.
-             |<a href="/doe/club/activateHosting/${wid.wpath}" class="btn btn-success">Request activation</a>
-             |
+      if (Users.findUserByUsername(wid.name).isDefined) Ok("")
+      else Ok(
+        s"""<div class="alert alert-info">
+           |Activate free hosting, registration and events management for this club.
+           |<a href="/doe/club/activateHosting/${wid.wpath}" class="btn btn-success">Request activation</a>
+           |
             |</div>""".stripMargin)
-      }) getOrElse {
+    }) getOrElse {
       Ok(
         s"""<div class="alert alert-warning">
-           |Inquire about hosting options.
+           |Inquire about free hosting options.
            |You will need an active account to start hosting for this club.
            |</div>""".stripMargin
       )
@@ -835,16 +845,16 @@ regAdmin=$regAdmin
     (for (
       au <- activeUser(stok.req)
     ) yield {
-        ROK.k apply { implicit stok =>
-          views.html.club.doeClubActivateHosting(
-            wid,
-            acthost.fill(
-              "",
-              ""
-            )
+      ROK.k apply { implicit stok =>
+        views.html.club.doeClubActivateHosting(
+          wid,
+          acthost.fill(
+            "",
+            ""
           )
-        }
-      }) getOrElse {
+        )
+      }
+    }) getOrElse {
       Ok(
         """<div class="alert alert-warning">
           |Inquire about hosting options. You will need an active account to start hosting for this club.
@@ -855,44 +865,44 @@ regAdmin=$regAdmin
 
   def doeClubActivateHosting1(wid: WID) = RAction { implicit stok =>
     acthost.bindFromRequest()(stok.ireq).fold(
-    formWithErrors => ROK.k badRequest { implicit stok =>
-      views.html.club.doeClubActivateHosting(wid, formWithErrors)
-    }, {
-      case (a, r) => {
-        if (stok.au.get.isAdmin && r == "admin") {
-          Users.findUserByUsername(wid.name).map { u =>
-            audit("CREATING_CLUB EXISTING USER" + wid.name)
-            u.update(u.copy(roles = u.roles + UserType.Organization, clubSettings = Some(mkSettings(u, a))))
-          }.getOrElse {
-            audit("CREATING_CLUB NEW USER" + wid.name)
-            var u = User(
-              wid.name,
-              wid.name,
-              "",
-              Config.curYear.toInt,
-              Enc(wid.name + "@nobody.com"),
-              Enc("nopassword"),
-              's',
-              Set(UserType.Organization))
+      formWithErrors => ROK.k badRequest { implicit stok =>
+        views.html.club.doeClubActivateHosting(wid, formWithErrors)
+      }, {
+        case (a, r) => {
+          if (stok.au.get.isAdmin && r == "admin") {
+            Users.findUserByUsername(wid.name).map { u =>
+              audit("CREATING_CLUB EXISTING USER" + wid.name)
+              u.update(u.copy(roles = u.roles + UserType.Organization, clubSettings = Some(mkSettings(u, a))))
+            }.getOrElse {
+              audit("CREATING_CLUB NEW USER" + wid.name)
+              var u = User(
+                wid.name,
+                wid.name,
+                "",
+                Config.curYear.toInt,
+                Enc(wid.name + "@nobody.com"),
+                Enc("nopassword"),
+                's',
+                Set(UserType.Organization))
 
-            u = u.copy(clubSettings = Some(mkSettings(u, a)))
-            val p = new model.Profile(u._id)
-            u.create(p)
+              u = u.copy(clubSettings = Some(mkSettings(u, a)))
+              val p = new model.Profile(u._id)
+              u.create(p)
+            }
+            Msg2("Ok, boss, user created. Now edit the club...")
+          } else {
+            SendEmail.withSession(stok.realm) { implicit mailSession =>
+              Emailer.tellAdmin(
+                "Requires club activate",
+                "user: " + stok.au.map(_.userName),
+                "admin: " + a,
+                "club: " + wid.name,
+                "relation: " + r)
+            }
+            Msg2("Ok, request sent. You'll be notified by email asap.")
           }
-          Msg2("Ok, boss, user created. Now edit the club...")
-        } else {
-          SendEmail.withSession(stok.realm) { implicit mailSession =>
-            Emailer.tellRaz(
-              "Requires club activate",
-              "user: " + stok.au.map(_.userName),
-              "admin: " + a,
-              "club: " + wid.name,
-              "relation: " + r)
-          }
-          Msg2("Ok, request sent. You'll be notified by email asap.")
         }
-      }
-    })
+      })
   }
 
   /** list members */
@@ -901,10 +911,10 @@ regAdmin=$regAdmin
     (for (
       isConsent <- au.profile.flatMap(_.consent).isDefined orCorr cNoConsent
     ) yield {
-        ROK.s apply { implicit stok =>
-          views.html.club.doeClubUserRegs()
-        }
-      }) getOrElse unauthorized()
+      ROK.s apply { implicit stok =>
+        views.html.club.doeClubUserRegs()
+      }
+    }) getOrElse unauthorized()
   }
 
   /** */
@@ -914,17 +924,17 @@ regAdmin=$regAdmin
       isConsent <- au.profile.flatMap(_.consent).isDefined orCorr cNoConsent;
       reg <- Regs.findId(regid) orErr ("no reg found")
     ) yield {
-        ROK.s apply { implicit stok =>
-          views.html.club.doeClubUserReg(
-            reg,
-            //            RacerKidz.findForUser(reg.userId).toList)
-            RacerKidz.findAssocForUser(reg.userId).map { rka =>
-              (rka, RacerKidz.findById(rka.to))
-            }.filter(_._2.isDefined).map(
-              t => (t._1, t._2.get)
-            ).toList)
-        }
-      }) getOrElse unauthorized()
+      ROK.s apply { implicit stok =>
+        views.html.club.doeClubUserReg(
+          reg,
+          //            RacerKidz.findForUser(reg.userId).toList)
+          RacerKidz.findAssocForUser(reg.userId).map { rka =>
+            (rka, RacerKidz.findById(rka.to))
+          }.filter(_._2.isDefined).map(
+            t => (t._1, t._2.get)
+          ).toList)
+      }
+    }) getOrElse unauthorized()
   }
 
   // find and redirect to the reg form
@@ -937,8 +947,8 @@ regAdmin=$regAdmin
       regk <- RMany[RegKid]("rkId" -> rka.to).find(_.reg.exists(_.year == c.curYear)) orErr "no regk";
       form <- regk.roleWids.find(_.role == "Racer.Info").map(_.wid) orErr "no form"
     ) yield {
-        Redirect(form.urlRelative(stok.realm))
-      }) getOrElse unauthorized()
+      Redirect(form.urlRelative(stok.realm))
+    }) getOrElse unauthorized()
   }
 
   // parms optional
@@ -948,14 +958,14 @@ regAdmin=$regAdmin
       au <- stok.au;
       ism <- c.isMember(au) orCorr cNotMember(club.name)
     ) yield {
-        val rks = (for (a <- c.rka(role);
-                        k <- RacerKidz.findById(a.to)) yield
+      val rks = (for (a <- c.rka(role);
+                      k <- RacerKidz.findById(a.to)) yield
         (k, a)).toList.sortBy(x => x._1.info.lastName + x._1.info.firstName)
 
-        ROK.k apply {
-          views.html.club.doeClubKidz(c, role, Wikis.linksTo("Program", c.uwid, "Child").toList /*.sortBy(_.from.nameOrId)*/ , rks) // U8 is bigger than U10... ugh
-        }
-      }) getOrElse unauthorized()
+      ROK.k apply {
+        views.html.club.doeClubKidz(c, role, Wikis.linksTo("Program", c.uwid, "Child").toList /*.sortBy(_.from.nameOrId)*/ , rks) // U8 is bigger than U10... ugh
+      }
+    }) getOrElse unauthorized()
   }
 
   // insert
@@ -968,23 +978,23 @@ regAdmin=$regAdmin
       c <- team.parentOf(WikiDomain(team.getRealm).isA("Club", _)).flatMap(Club.apply) orErr "Club not found";
       ism <- c.isMember(au) orCorr cNotMember(c.userName)
     ) yield {
-        if ((!c.props.get("memberCanSeeOthers").exists(_ == "no") ||
-          au.isAdmin || c.isClubCoach(au) || c.isClubAdmin(au)
-          )) {
-          // show members only to coaches and admins
-          ROK.r noLayout { implicit stok =>
-            views.html.club.doeClubKidzTeam(c, "", team)
-          }
-        } else {
-          // show that they are members or nothing
-          if (c.activeTeamMembers(team).exists(_._1.userId.exists(_ == au._id)))
-            ROK.r.noLayout { implicit stok =>
-              Html("<div class=\"alert alert-warning\">You are a member</div>") // return ok as this is an insert
-            }
-          else
-            Ok("")
+      if ((!c.props.get("memberCanSeeOthers").exists(_ == "no") ||
+        au.isAdmin || c.isClubCoach(au) || c.isClubAdmin(au)
+        )) {
+        // show members only to coaches and admins
+        ROK.r noLayout { implicit stok =>
+          views.html.club.doeClubKidzTeam(c, "", team)
         }
-      }) getOrElse ROK.r.noLayout { implicit stok =>
+      } else {
+        // show that they are members or nothing
+        if (c.activeTeamMembers(team).exists(_._1.userId.exists(_ == au._id)))
+          ROK.r.noLayout { implicit stok =>
+            Html("<div class=\"alert alert-warning\">You are a member</div>") // return ok as this is an insert
+          }
+        else
+          Ok("")
+      }
+    }) getOrElse ROK.r.noLayout { implicit stok =>
       Html("<div class=\"alert alert-warning\">" + errCollector.mkString + "</div>") // return ok as this is an insert
     }
   }
@@ -1000,7 +1010,7 @@ regAdmin=$regAdmin
             rka.copy(role = value).update
         Ok("ok")
       }
-      }) getOrElse unauthorized();
+    }) getOrElse unauthorized();
   }
 
   def doeClubKidzSetTeam(rkaid: String, club: WID, teamid: String) = FAUR { implicit request =>
@@ -1021,8 +1031,8 @@ regAdmin=$regAdmin
           new RacerKidWikiAssoc(rka.to, team.uwid, club.curYear, rka.role).create
         }
       }
-        Ok("ok")
-      }) getOrElse unauthorized()
+      Ok("ok")
+    }) getOrElse unauthorized()
   }
 
   def doeMergeKid(todie: String, tolive: String) = Action { implicit request =>
@@ -1034,23 +1044,23 @@ regAdmin=$regAdmin
       dies <- ROne[RacerKidAssoc]("_id" -> new ObjectId(todie));
       lives <- ROne[RacerKidAssoc]("_id" -> new ObjectId(tolive))
     ) yield {
-        val liverka = lives.copy(hours = lives.hours + dies.hours)
-        var liverk = lives.rk.get
-        var dierk = dies.rk.get
+      val liverka = lives.copy(hours = lives.hours + dies.hours)
+      var liverk = lives.rk.get
+      var dierk = dies.rk.get
 
-        // gets a record - has gender, better birth date etc
-        if (!lives.rk.get.rkiId.isDefined && dies.rk.get.rkiId.isDefined)
-          liverk = liverk.copy(rkiId = dies.rk.get.rkiId)
+      // gets a record - has gender, better birth date etc
+      if (!lives.rk.get.rkiId.isDefined && dies.rk.get.rkiId.isDefined)
+        liverk = liverk.copy(rkiId = dies.rk.get.rkiId)
 
-        // if the one that dies had better info, update it
-        if (!lives.rk.get.userId.isDefined && dies.rk.get.userId.isDefined)
-          liverk = liverk.copy(userId = dies.rk.get.userId)
+      // if the one that dies had better info, update it
+      if (!lives.rk.get.userId.isDefined && dies.rk.get.userId.isDefined)
+        liverk = liverk.copy(userId = dies.rk.get.userId)
 
-        if (liverk._id != dierk._id) {
-          // different record, old one id old, new one is new
-          liverk = liverk.copy(oldRkId = lives.rk.get.oldRkId ++ Seq(dies.rk.get._id) ++ dies.rk.get.oldRkId)
-          dierk = dierk.copy(newRkId = Option(liverk._id))
-        }
+      if (liverk._id != dierk._id) {
+        // different record, old one id old, new one is new
+        liverk = liverk.copy(oldRkId = lives.rk.get.oldRkId ++ Seq(dies.rk.get._id) ++ dies.rk.get.oldRkId)
+        dierk = dierk.copy(newRkId = Option(liverk._id))
+      }
 
       razie.db.tx("doeMergeKid", au.userName) { implicit txn =>
         // override with email from user account
@@ -1066,9 +1076,9 @@ regAdmin=$regAdmin
         dies.moveTo(liverka) // also moves hours and wikiassocs
       }
 
-        if (au.isClub) Redirect("/") //routes.Club.doeClubKidz("",""))
-        else Redirect(routes.Kidz.doeUserKidz)
-      }) getOrElse Msg2("CAN'T SEE PROFILE " + errCollector.mkString)
+      if (au.isClub) Redirect("/") //routes.Club.doeClubKidz("",""))
+      else Redirect(routes.Kidz.doeUserKidz)
+    }) getOrElse Msg2("CAN'T SEE PROFILE " + errCollector.mkString)
   }
 
   // new user linked to club - give it access to forums
@@ -1139,84 +1149,84 @@ regAdmin=$regAdmin
       isConsent <- au.profile.flatMap(_.consent).isDefined orCorr cNoConsent;
       isSame <- (prevReg.year != c.curYear) orErr ("Can't copy this year's registration: " + prevRegId)
     ) yield {
-        // 1. expire
-        razie.db.tx("userStartRegCopy", au.userName) { implicit txn =>
-          //        cout << "OLD REG: " << prevReg
-          var reg = prevReg.copy(_id = new ObjectId(), year = c.curYear, regStatus = RegStatus.PENDING, paid = "")
+      // 1. expire
+      razie.db.tx("userStartRegCopy", au.userName) { implicit txn =>
+        //        cout << "OLD REG: " << prevReg
+        var reg = prevReg.copy(_id = new ObjectId(), year = c.curYear, regStatus = RegStatus.PENDING, paid = "", amountPaid = Price(0), rFee=None, rFeeDue = None)
 
-          //        cout << "REG: " << reg
+        //        cout << "REG: " << reg
 
-          val widNameMap = new collection.mutable.HashMap[String, String]()
+        val widNameMap = new collection.mutable.HashMap[String, String]()
 
-          val newWids = reg.deprecatedWids.zipWithIndex.map { t =>
-            val (wid, seqNum) = t
+        val newWids = reg.deprecatedWids.zipWithIndex.map { t =>
+          val (wid, seqNum) = t
 
-            //          cout << "  proc " << wid
-            val oldW = Wikis.find(wid).get
+          //          cout << "  proc " << wid
+          val oldW = Wikis.find(wid).get
 
-            // find and upgrade the year
-            val PAT = "([^-]+)-([^-]+)-([^-]+)(-.*)?-([^-]+)-([^-]+)".r
-            val PAT(name, role, id, kkid, y, num) = oldW.wid.name
-            val kid = Option(kkid) getOrElse ""
-            val kidName = if (kid startsWith "-") kid.substring(1) else kid
+          // find and upgrade the year
+          val PAT = "([^-]+)-([^-]+)-([^-]+)(-.*)?-([^-]+)-([^-]+)".r
+          val PAT(name, role, id, kkid, y, num) = oldW.wid.name
+          val kid = Option(kkid) getOrElse ""
+          val kidName = if (kid startsWith "-") kid.substring(1) else kid
 
-            // new form spec
-            val newForm = c.regForms.find(_.wid.name == name).getOrElse {
-              val newname = name.replaceFirst(prevReg.year, reg.year)
-              c.regForms.find(_.wid.name == newname).getOrElse {
-                c.regForms.find(_.role == role).get // todo kaboom - not nice
-              }
+          // new form spec
+          val newForm = c.regForms.find(_.wid.name == name).getOrElse {
+            val newname = name.replaceFirst(prevReg.year, reg.year)
+            c.regForms.find(_.wid.name == newname).getOrElse {
+              c.regForms.find(_.role == role).get // todo kaboom - not nice
             }
-
-            // reset seq numbers
-            val newfwid = WID("Form", s"${newForm.wid.name}-${role}-${id + kid}-${reg.year}-${seqNum}")
-
-            widNameMap put(oldW.wid.name, newfwid.name)
-
-            //    // have to create form ?
-            if (!Wikis.find(newfwid).isDefined) {
-              var label = removeYear(s"${newForm.wid.name.replaceAll("_", " ")}")
-              if (!label.contains(reg.year))
-                label = label.trim + s" for $kidName season ${reg.year}"
-              val newW = controllers.Forms.copyForm(user, oldW, newfwid.name, label, newForm, c.filterRegFields)
-            }
-
-            RoleWid(role, newfwid)
           }
 
-          reg = reg.copy(
-            //          wids = newWids.map(_.wid),
-            roleWids = newWids
-          )
+          // reset seq numbers
+          val newfwid = WID("Form", s"${newForm.wid.name}-${role}-${id + kid}-${reg.year}-${seqNum}")
 
-          reg.create
+          widNameMap put(oldW.wid.name, newfwid.name)
 
-          // copy kid regs with new form names as well
-          prevReg.kids.toList.map { ork =>
-            val rk = ork.copy(
-              _id = new ObjectId(),
-              regId = reg._id,
-              //            wids=ork.deprecatedwids.map(ow => WID(ow.cat, widNameMap(ow.name))),
-              roleWids = ork.roleWids.map(rw => RoleWid(rw.role, WID(rw.wid.cat, widNameMap(rw.wid.name)))),
-              crDtm = DateTime.now()
-            )
-            rk.create
-            assoc(c, rk.rk.get, mod.snow.RK.ASSOC_REGD, rk.role, au, c.curYear)
+          //    // have to create form ?
+          if (!Wikis.find(newfwid).isDefined) {
+            var label = removeYear(s"${newForm.wid.name.replaceAll("_", " ")}")
+            if (!label.contains(reg.year))
+              label = label.trim + s" for $kidName season ${reg.year}"
+            val newW = controllers.Forms.copyForm(user, oldW, newfwid.name, label, newForm, c.filterRegFields)
           }
 
-
-          //      3. start - notify user
-          SendEmail.withSession(Website.realm(request)) { implicit mailSession =>
-            //        Emailer.sendEmailClubRegStart(au, au.userName, routes.Club.doeClubUserReg(reg._id.toString).toString)
-            //        Emailer.tellRaz("Started registration", "user: " + au.userName, "club: " + clubName, "how: "+how)
-            ////        TODO tell regAdmin so they know...
-            //
-            //        UserTask(au._id, UserTasks.START_REGISTRATION).delete
-            //      }
-            Redirect(routes.Club.doeClubUserReg(reg._id.toString))
-          }
+          RoleWid(role, newfwid)
         }
-      }) getOrElse {
+
+        reg = reg.copy(
+          //          wids = newWids.map(_.wid),
+          roleWids = newWids
+        )
+
+        reg.create
+
+        // copy kid regs with new form names as well
+        prevReg.kids.toList.map { ork =>
+          val rk = ork.copy(
+            _id = new ObjectId(),
+            regId = reg._id,
+            //            wids=ork.deprecatedwids.map(ow => WID(ow.cat, widNameMap(ow.name))),
+            roleWids = ork.roleWids.map(rw => RoleWid(rw.role, WID(rw.wid.cat, widNameMap(rw.wid.name)))),
+            crDtm = DateTime.now()
+          )
+          rk.create
+          assoc(c, rk.rk.get, mod.snow.RK.ASSOC_REGD, rk.role, au, c.curYear)
+        }
+
+
+        //      3. start - notify user
+        SendEmail.withSession(Website.realm(request)) { implicit mailSession =>
+          //        Emailer.sendEmailClubRegStart(au, au.userName, routes.Club.doeClubUserReg(reg._id.toString).toString)
+          //        Emailer.tellAdmin("Started registration", "user: " + au.userName, "club: " + clubName, "how: "+how)
+          ////        TODO tell regAdmin so they know...
+          //
+          //        UserTask(au._id, UserTasks.START_REGISTRATION).delete
+          //      }
+          Redirect(routes.Club.doeClubUserReg(reg._id.toString))
+        }
+      }
+    }) getOrElse {
       if (activeUser.isDefined && !activeUser.get.profile.flatMap(_.consent).isDefined)
         ROK.r apply { implicit stok =>
           views.html.user.doeConsent()
@@ -1227,68 +1237,75 @@ regAdmin=$regAdmin
   }
 
   /** called by user not the club */
-  def doeStartRegSimple(clubName: WID) = FAU { implicit au => implicit errCollector => implicit request =>
+  def doeStartRegSimple(clubWid: WID) = FAUR { implicit stok=>
     (for (
-      c <- Club(clubName);
+      c <- Club(clubWid);
       regAdmin <- c.uregAdmin orErr ("Registration is not open yet! [no regadmin]");
       isOpen <- c.isRegOpen orErr ("Registration is not open yet!");
-      isConsent <- au.profile.flatMap(_.consent).isDefined orCorr cNoConsent
+      isConsent <- stok.au.get.profile.flatMap(_.consent).isDefined orCorr cNoConsent
     ) yield {
-        Regs.findClubUserYear(clubName, au._id, c.curYear).map { reg =>
-          UserTask(au._id, UserTasks.START_REGISTRATION).delete(tx.auto)
-          Msg2("Registration already in progress for club " + clubName, Some(routes.Club.doeClubUserReg(reg._id.toString).url))
-        }.getOrElse {
-          ROK.s apply { implicit stok => views.html.club.doeClubUserStartReg(clubName) }
-        }
-      }) getOrElse {
+      Regs.findClubUserYear(clubWid, stok.au.get._id, c.curYear).map { reg =>
+        UserTask(stok.au.get._id, UserTasks.START_REGISTRATION).delete(tx.auto)
+        Msg2("Registration already in progress for club " + clubWid, Some(routes.Club.doeClubUserReg(reg._id.toString).url))
+      }.getOrElse {
+        if(Regs.findClubUser(c.wid, stok.au.get._id).size > 0 ||
+           c.props.get("reg.newMembers").exists(_ == "yes"))
+          ROK.k apply views.html.club.doeClubUserStartReg(clubWid)
+        else
+          Msg2("Registration not open yet for club " + clubWid)
+      }
+    }) getOrElse {
       if (activeUser.isDefined && !activeUser.get.profile.flatMap(_.consent).isDefined)
-        ROK.s apply { implicit stok => views.html.user.doeConsent(routes.Club.doeStartRegSimple(clubName).url) }
+        ROK.k apply views.html.user.doeConsent(routes.Club.doeStartRegSimple(clubWid).url)
       else
         Msg2("CAN'T START REGISTRATION " + errCollector.mkString)
     }
   }
 
-  /** called by user not the club */
-  def doeStartReg(clubName: WID, how: String) = Action { implicit request =>
+  /** called by user not the club
+    *
+    * todo finish the code - it's meant to allow reg when is not open
+    */
+  def doeStartReg(clubWid: WID, how: String, code:String) = Action { implicit request =>
     implicit val errCollector = new VErrors()
     (for (
       au <- activeUser;
-      c <- Club(clubName);
+      c <- Club(clubWid);
       regAdmin <- c.uregAdmin orErr ("Registration is not open yet! [no regadmin]");
-      isOpen <- c.isRegOpen orErr ("Registration is not open yet!");
+      isOpen <- (c.isRegOpen || code.length == 7) orErr ("Registration is not open yet!");
       isConsent <- au.profile.flatMap(_.consent).isDefined orCorr cNoConsent
     ) yield {
-        // current registration?
-        razie.db.tx("userStartReg", au.userName) { implicit txn =>
-          if ("None" == how) {
-            UserTask(au._id, UserTasks.START_REGISTRATION).delete
-            Redirect("/")
-          } else Regs.findClubUserYear(clubName, au._id, c.curYear).map { reg =>
-            Msg2("Registration already in progress for club " + clubName, Some(routes.Club.doeClubUserReg(reg._id.toString).url))
-          } getOrElse {
-            // 1. expire
-            var reg = Reg(au._id, clubName.name, c.wid, c.curYear, RK.ROLE_MEMBER, Seq(), Seq(), RegStatus.PENDING)
-            reg.create
+      // current registration?
+      razie.db.tx("userStartReg", au.userName) { implicit txn =>
+        if ("None" == how) {
+          UserTask(au._id, UserTasks.START_REGISTRATION).delete
+          Redirect("/")
+        } else Regs.findClubUserYear(clubWid, au._id, c.curYear).map { reg =>
+          Msg2("Registration already in progress for club " + clubWid, Some(routes.Club.doeClubUserReg(reg._id.toString).url))
+        } getOrElse {
+          // 1. expire
+          var reg = Reg(au._id, clubWid.name, c.wid, c.curYear, RK.ROLE_MEMBER, Seq(), Seq(), RegStatus.PENDING)
+          reg.create
 
-            // 2. add family
-            cout << "3 " + c.regForms.filter(_.role startsWith how).mkString
-            if (how == "Family")
-              c.regForms.filter(_.role startsWith how).foreach { rw =>
-                addForm(au, c, reg, regAdmin, rw.role)
-                reg = Regs.findClubUserYear(clubName, au._id, c.curYear).get
-              }
-
-            // 3. start - notify user
-            SendEmail.withSession(Website.realm(request)) { implicit mailSession =>
-              Emailer.sendEmailClubRegStart(au, au.userName, routes.Club.doeClubUserReg(reg._id.toString).toString)
-              Emailer.tellRaz("Started registration", "user: " + au.userName, "club: " + clubName, "how: " + how)
-              // TODO tell regAdmin so they know...
-              UserTask(au._id, UserTasks.START_REGISTRATION).delete
-              Redirect(routes.Club.doeClubUserReg(reg._id.toString))
+          // 2. add family
+          cout << "3 " + c.regForms.filter(_.role startsWith how).mkString
+          if (how == "Family")
+            c.regForms.filter(_.role startsWith how).foreach { rw =>
+              addForm(au, c, reg, regAdmin, rw.role)
+              reg = Regs.findClubUserYear(clubWid, au._id, c.curYear).get
             }
+
+          // 3. start - notify user
+          SendEmail.withSession(Website.realm(request)) { implicit mailSession =>
+            Emailer.sendEmailClubRegStart(au, au.userName, routes.Club.doeClubUserReg(reg._id.toString).toString)
+            Emailer.tellAdmin("Started registration", "user: " + au.userName, "club: " + clubWid, "how: " + how)
+            // TODO tell regAdmin so they know...
+            UserTask(au._id, UserTasks.START_REGISTRATION).delete
+            Redirect(routes.Club.doeClubUserReg(reg._id.toString))
           }
         }
-      }) getOrElse {
+      }
+    }) getOrElse {
       if (activeUser.isDefined && !activeUser.get.profile.flatMap(_.consent).isDefined)
         ROK.r apply { implicit stok =>
           views.html.user.doeConsent()
@@ -1306,13 +1323,13 @@ regAdmin=$regAdmin
       uw <- model.Users.findUserLinksTo(club.uwid).find(_._id.toString == uwid) orErr ("user is not a member");
       u <- uw.user
     ) yield {
-        // current registration?
-        razie.db.tx("userStartReg", au.userName) { implicit txn =>
-          if (!u.tasks.exists(_.name == UserTasks.START_REGISTRATION))
-            UserTask(u._id, UserTasks.START_REGISTRATION, Map("club" -> cwid.wpath)).create
-        }
-        Redirect(routes.Club.doeClubReg(cwid, uwid))
-      }) getOrElse {
+      // current registration?
+      razie.db.tx("userStartReg", au.userName) { implicit txn =>
+        if (!u.tasks.exists(_.name == UserTasks.START_REGISTRATION))
+          UserTask(u._id, UserTasks.START_REGISTRATION, Map("club" -> cwid.wpath)).create
+      }
+      Redirect(routes.Club.doeClubReg(cwid, uwid))
+    }) getOrElse {
       Msg2("CAN'T " + errCollector.mkString)
     }
   }
@@ -1324,17 +1341,18 @@ regAdmin=$regAdmin
       val sForm = Form("newvalue" -> nonEmptyText)
 
       sForm.bindFromRequest.fold(
-      formWithErrors =>
-        Msg2(formWithErrors.toString + "Oops, bad newValue"), {
-        case newvalue =>
-          log("Club.addFollowers " + wid + ", " + newvalue)
-          (for (
-            c <- Users.findUserByUsername(newvalue);
-            isClub <- c.isClub orErr "registration only for a club";
-            club <- Some(Club(c));
-            ok1 <- au.hasPerm(Perm.adminDb) orCorr cNoPermission;
-            w <- Wikis.find(wid)
-          ) yield {
+        formWithErrors =>
+          Msg2(formWithErrors.toString + "Oops, bad newValue"), {
+          case newvalue =>
+            log("Club.addFollowers " + wid + ", " + newvalue)
+            (for (
+              c <- WID.fromPath(newvalue);
+//              c <- Users.findUserByUsername(newvalue);
+//              isClub <- c.isClub orErr "registration only for a club";
+              club <- Club(c);
+              ok1 <- au.hasPerm(Perm.adminDb) orCorr cNoPermission;
+              w <- Wikis.find(wid)
+            ) yield {
               // can only change label of links OR if the formatted name doesn't change
               razie.db.tx("Club.addFollowers", au.userName) { implicit txn =>
                 club.userLinks.foreach { uw =>
@@ -1343,8 +1361,8 @@ regAdmin=$regAdmin
               }
               Redirect(controllers.Wiki.w(wid))
             }) getOrElse
-            noPerm(wid, "ADMIN_UADD_FOLLOWERS")
-      })
+              noPerm(wid, "ADMIN_UADD_FOLLOWERS")
+        })
   }
 
   /** */
@@ -1354,17 +1372,18 @@ regAdmin=$regAdmin
       val sForm = Form("newvalue" -> nonEmptyText)
 
       sForm.bindFromRequest.fold(
-      formWithErrors =>
-        Msg2(formWithErrors.toString + "Oops, bad newValue"), {
-        case newvalue =>
-          log("Club.delFollowers " + wid + ", " + newvalue)
-          (for (
-            c <- Users.findUserByUsername(newvalue);
-            isClub <- c.isClub orErr "registration only for a club";
-            club <- Some(Club(c));
-            ok1 <- au.hasPerm(Perm.adminDb) orCorr cNoPermission;
-            page <- Wikis.find(wid)
-          ) yield {
+        formWithErrors =>
+          Msg2(formWithErrors.toString + "Oops, bad newValue"), {
+          case newvalue =>
+            log("Club.delFollowers " + wid + ", " + newvalue)
+            (for (
+              c <- WID.fromPath(newvalue);
+//              c <- Users.findUserByUsername(newvalue);
+//              isClub <- c.isClub orErr "registration only for a club";
+              club <- Club(c);
+              ok1 <- au.hasPerm(Perm.adminDb) orCorr cNoPermission;
+              page <- Wikis.find(wid)
+            ) yield {
               // can only change label of links OR if the formatted name doesn't change
               razie.db.tx("Club.delFollowers", au.userName) { implicit txn =>
                 val l = model.Users.findUserLinksTo(page.uwid).toList
@@ -1372,8 +1391,8 @@ regAdmin=$regAdmin
               }
               Redirect(controllers.Wiki.w(wid))
             }) getOrElse
-            noPerm(wid, "ADMIN_UDEL_FOLLOWERS")
-      })
+              noPerm(wid, "ADMIN_UDEL_FOLLOWERS")
+        })
   }
 
   /** */
@@ -1385,13 +1404,13 @@ regAdmin=$regAdmin
         ok1 <- au.hasPerm(Perm.adminDb) orCorr cNoPermission;
         page <- Wikis.find(wid)
       ) yield {
-          // can only change label of links OR if the formatted name doesn't change
-          razie.db.tx("Wikie.delFollowers", au.userName) { implicit txn =>
-            val l = model.Users.findUserLinksTo(page.uwid).toList
-            l.foreach(_.deleteNoAudit)
-          }
-          Redirect(controllers.Wiki.w(wid))
-        }) getOrElse
+        // can only change label of links OR if the formatted name doesn't change
+        razie.db.tx("Wikie.delFollowers", au.userName) { implicit txn =>
+          val l = model.Users.findUserLinksTo(page.uwid).toList
+          l.foreach(_.deleteNoAudit)
+        }
+        Redirect(controllers.Wiki.w(wid))
+      }) getOrElse
         noPerm(wid, "ADMIN_UDEL_ALL_FOLLOWERS")
   }
 
@@ -1438,21 +1457,21 @@ regAdmin=$regAdmin
         au <- activeUser;
         c <- Club.findForAdmin(clubName, au) orErr ("Not a club or you're not admin")
       ) yield {
-          val members =
-            model.Users.findUserLinksTo(c.uwid).map(uw =>
-              (model.Users.findUserById(uw.userId),
-                uw,
-                Regs.findClubUserYear(clubName, uw.userId, year))).toList.sortBy(x => x._1.map(y => y.lastName + y.firstName).mkString
-            )
-          val regs = Regs.findClubYear(clubName, year).toList
-          val rks = RMany[ModRkEntry]("curYear" -> year).filter(_.wpath contains clubName).toList
-          val rkas = RMany[RacerKidAssoc]("from" -> c.userId, "year" -> year).toList //.filter(_.assoc == "Registered").toList
-          //          val rkas = RMany[RacerKidAssoc]("year" -> year).toList//.filter(_.assoc == "Registered").toList
+        val members =
+          model.Users.findUserLinksTo(c.uwid).map(uw =>
+            (model.Users.findUserById(uw.userId),
+              uw,
+              Regs.findClubUserYear(clubName, uw.userId, year))).toList.sortBy(x => x._1.map(y => y.lastName + y.firstName).mkString
+          )
+        val regs = Regs.findClubYear(clubName, year).toList
+        val rks = RMany[ModRkEntry]("curYear" -> year).filter(_.wpath contains clubName).toList
+        val rkas = RMany[RacerKidAssoc]("from" -> c.userId, "year" -> year).toList //.filter(_.assoc == "Registered").toList
+        //          val rkas = RMany[RacerKidAssoc]("year" -> year).toList//.filter(_.assoc == "Registered").toList
 
-          ROK.r apply { implicit stok =>
-            views.html.club.doeClubPurgeRegs(clubName, au, year, members, regs, rks, rkas)
-          }
-        }) getOrElse Msg2("CAN'T SEE PROFILE " + errCollector.mkString)
+        ROK.r apply { implicit stok =>
+          views.html.club.doeClubPurgeRegs(clubName, au, year, members, regs, rks, rkas)
+        }
+      }) getOrElse Msg2("CAN'T SEE PROFILE " + errCollector.mkString)
     }
   }
 
@@ -1464,45 +1483,7 @@ regAdmin=$regAdmin
         can <- au.isAdmin orErr "not admin";
         c <- Club.findForAdmin(clubName, au) orErr ("Not a club or you're not admin")
       ) yield {
-          {
-            val members =
-              model.Users.findUserLinksTo(c.uwid).map(uw =>
-                (model.Users.findUserById(uw.userId),
-                  uw,
-                  Regs.findClubUserYear(clubName, uw.userId, year))).toList.sortBy(x => x._1.map(y => y.lastName + y.firstName).mkString
-              )
-            val regs = Regs.findClubYear(clubName, year).toList
-            val rks = RMany[ModRkEntry]("curYear" -> year).filter(_.wpath contains clubName).toList
-            val rkas = RMany[RacerKidAssoc]("year" -> year).filter(_.assoc == "Registered").toList
-
-            razie.db.tx("doeDoPurgeRegs", au.userName) { implicit txn =>
-              what match {
-                case "WikiCount" =>
-                  regs.map(_.deprecatedWids.flatMap(_.uwid.toSeq).flatMap { uw =>
-                    RMany[WikiCount]("pid" -> uw.id).toSeq
-                  }.foreach(_.trash(au.id)))
-                case "WikiLink" =>
-                  regs.map(_.deprecatedWids.flatMap(_.uwid.toSeq).flatMap { uw =>
-                    RMany[WikiLink]("from.id" -> uw.id).toSeq ++
-                      RMany[WikiLink]("to.id" -> uw.id).toSeq
-                  }.foreach(_.trash(au.id)))
-                case "UserWiki" =>
-                  regs.map(_.deprecatedWids.flatMap(_.uwid.toSeq).flatMap { uw =>
-                    RMany[UserWiki]("uwid.id" -> uw.id).toSeq
-                  }.foreach(_.trash(au.id)))
-                case "ModRkEntry" => rks.foreach(_.trash(au.id))
-                case "RacerKidAssoc" => rkas.foreach(_.trash(au.id))
-                case "Form" => regs.foreach(_.deprecatedWids.flatMap(_.page.toSeq).foreach(_.delete(au.id)))
-                case "RegKid" => regs.map(_.kids.foreach(_.trash(au.id)))
-                case "Reg" => regs.foreach(_.trash(au.id))
-                case "VolunteerH" =>
-                  rkas.foreach { x =>
-                    RacerKidz.findVolByRkaId(x._id.toString).foreach(_.trash(au.id))
-                  }
-              }
-            }
-          }
-
+        {
           val members =
             model.Users.findUserLinksTo(c.uwid).map(uw =>
               (model.Users.findUserById(uw.userId),
@@ -1513,11 +1494,82 @@ regAdmin=$regAdmin
           val rks = RMany[ModRkEntry]("curYear" -> year).filter(_.wpath contains clubName).toList
           val rkas = RMany[RacerKidAssoc]("year" -> year).filter(_.assoc == "Registered").toList
 
-          ROK.r apply { implicit stok =>
-            views.html.club.doeClubPurgeRegs(clubName, au, year, members, regs, rks, rkas)
+          razie.db.tx("doeDoPurgeRegs", au.userName) { implicit txn =>
+            what match {
+              case "WikiCount" =>
+                regs.map(_.deprecatedWids.flatMap(_.uwid.toSeq).flatMap { uw =>
+                  RMany[WikiCount]("pid" -> uw.id).toSeq
+                }.foreach(_.trash(au.id)))
+              case "WikiLink" =>
+                regs.map(_.deprecatedWids.flatMap(_.uwid.toSeq).flatMap { uw =>
+                  RMany[WikiLink]("from.id" -> uw.id).toSeq ++
+                    RMany[WikiLink]("to.id" -> uw.id).toSeq
+                }.foreach(_.trash(au.id)))
+              case "UserWiki" =>
+                regs.map(_.deprecatedWids.flatMap(_.uwid.toSeq).flatMap { uw =>
+                  RMany[UserWiki]("uwid.id" -> uw.id).toSeq
+                }.foreach(_.trash(au.id)))
+              case "ModRkEntry" => rks.foreach(_.trash(au.id))
+              case "RacerKidAssoc" => rkas.foreach(_.trash(au.id))
+              case "Form" => regs.foreach(_.deprecatedWids.flatMap(_.page.toSeq).foreach(_.delete(au.id)))
+              case "RegKid" => regs.map(_.kids.foreach(_.trash(au.id)))
+              case "Reg" => regs.foreach(_.trash(au.id))
+              case "VolunteerH" =>
+                rkas.foreach { x =>
+                  RacerKidz.findVolByRkaId(x._id.toString).foreach(_.trash(au.id))
+                }
+            }
           }
-        }) getOrElse Msg2("CAN'T SEE PROFILE " + errCollector.mkString)
+        }
+
+        val members =
+          model.Users.findUserLinksTo(c.uwid).map(uw =>
+            (model.Users.findUserById(uw.userId),
+              uw,
+              Regs.findClubUserYear(clubName, uw.userId, year))).toList.sortBy(x => x._1.map(y => y.lastName + y.firstName).mkString
+          )
+        val regs = Regs.findClubYear(clubName, year).toList
+        val rks = RMany[ModRkEntry]("curYear" -> year).filter(_.wpath contains clubName).toList
+        val rkas = RMany[RacerKidAssoc]("year" -> year).filter(_.assoc == "Registered").toList
+
+        ROK.r apply { implicit stok =>
+          views.html.club.doeClubPurgeRegs(clubName, au, year, members, regs, rks, rkas)
+        }
+      }) getOrElse Msg2("CAN'T SEE PROFILE " + errCollector.mkString)
     }
   }
 
+  // user starting to pay from reg: create cart and redirect to it
+  def doeClubRegStartPay(regid: String, what:String) = FAUR { implicit stok =>
+    //regStatus should be ACCEPTED right now
+    (for (
+      reg <- Regs.findId(regid) orErr ("no reg found");
+      club <- Club(reg.club) orErr "Club not found";
+      ism <- club.isMember(stok.au.get) orCorr cNotMember(club.name)
+    ) yield razie.db.tx("doeClubRegStartPay", stok.userName) { implicit txn =>
+        //        e = e.copy(state = Some(STATE_INCART))
+        val cart = Cart.createOrFind(stok.au.get._id, club.uwid)
+        //        val name = RacerKidz.findByIds(rkid).map(_.info.ename).getOrElse("??")
+        // todo items added to cart etc
+        val newFailState = reg.regStatus
+
+        // the cart checkout will take current balance into account
+        val price =
+          if(what == "total") (reg.fee - reg.amountPaid).orZero
+          else (reg.feeDue - reg.amountPaid).orZero
+
+        cart.add(CartItem(
+          s"Registration for ${club.name} for ${club.curYear}",
+          regid,
+          regid,
+          s"""$$msg modsnow.updregstatus(regid="$regid", status="${RegStatus.CURRENT}", paid="${price.amount}")""",
+          s"""$$msg modsnow.updregstatus(regid="$regid", status="$newFailState")""",
+          ItemPrice(Some(price))
+        ))
+        Redirect(mod.cart.routes.Carts.cart())
+    }) getOrElse unauthorizedPOST()
+  }
+
 }
+
+

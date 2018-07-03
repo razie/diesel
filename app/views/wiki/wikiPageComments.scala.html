@@ -10,6 +10,7 @@
 }
 
 
+@if(!page.flatMap(_.contentProps.get("nocomments")).isDefined) {
   @if(user.isDefined) {
     @if(page.map(_.isReserved).getOrElse(true)) {
       You can't comment on reserved pages, sorry!
@@ -17,9 +18,6 @@
       @if(!user.get.canHasProfile) {
         You can't comment on public pages, sorry!
       } else {
-        @if(!page.flatMap(_.contentProps.get("nocomments")).isDefined) {
-
-          }
         }
       }
     } else {
@@ -28,4 +26,5 @@
 
 @comments.commStream(page.flatMap(p=>Comments.findForWiki(p._id)), page.get._id.toString, "Wiki", canComment())
 
+}
 

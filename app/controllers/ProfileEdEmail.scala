@@ -1,15 +1,17 @@
 package controllers
 
+import com.google.inject._
 import model._
+import play.api.Configuration
 import play.api.data.Form
 import play.api.data.Forms.{tuple, _}
 import razie.wiki.Sec._
 import razie.wiki.model._
-import razie.hosting.Website
 
-//@Singleton
-//class Profile @Inject() (config:Configuration) extends RazController with Logging {
-object EdEmail extends RazController {
+/** edit email in profile */
+@Singleton
+class EdEmail @Inject() (config:Configuration) extends RazController {
+
   val emailForm = Form {
     tuple(
       "curemail" -> text,
@@ -18,18 +20,14 @@ object EdEmail extends RazController {
   }
 
   // change email
-  def doeProfileEmail() = RAction { implicit request =>
-    (for (
-      au <- auth orCorr cNoAuth
-    ) yield ROK.k noLayout {
-        views.html.user.doeProfileEmail(emailForm.fill(au.emailDec, ""), auth.get)
+  def doeProfileEmail() = FAUR { implicit request =>
+    ROK.k noLayout {
+        views.html.user.doeProfileEmail(emailForm.fill(request.au.get.emailDec, ""), auth.get)
       }
-      ) getOrElse
-      unauthorized("Oops - how did you get here? [step1]")
   }
 
   // change email
-  def doeProfileEmail2() = RAction { implicit request =>
+  def doeProfileEmail2() = FAUR { implicit request =>
     implicit val errCollector = new VErrors()
     emailForm.bindFromRequest.fold(
       formWithErrors => ROK.k badRequest {views.html.user.doeProfileEmail(formWithErrors, auth.get)},

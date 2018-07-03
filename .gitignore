@@ -24,5 +24,6 @@ node/dieselNode/node_modules
 /BACKUP
 /s
 bootstrap.zip
-
+docker/db/
 /app.OLD/
+gen/

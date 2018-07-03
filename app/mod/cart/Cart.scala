@@ -3,6 +3,7 @@ package mod.cart
 import model.UserId
 import org.bson.types.ObjectId
 import org.joda.time.DateTime
+import razie.audit.Audit
 import razie.db.{REntity, RMany, ROne, Txn}
 import razie.wiki.model.UWID
 
@@ -13,11 +14,12 @@ import scala.util.Try
   */
 case class Cart (
   userId  : ObjectId,     // per user
-  clubWid : UWID,         // per club or whatever
+  clubWid : UWID,         // per club or whatever - NEEDed for paypal credentials from settings
   items   : Seq[CartItem] = Seq.empty,
   props : Map[String,String] = Map.empty,
   state : String = Cart.STATE_CREATED,
   archived : Boolean = false,
+  cartRedirect : Option[String] = None, // redirect at end of payment.
   crDtm   : DateTime = DateTime.now,
   updDtm  : DateTime = DateTime.now,
   _id     : ObjectId = new ObjectId()
@@ -26,6 +28,7 @@ case class Cart (
   def isOpen = state startsWith "open."
 
   def add (item:CartItem)(implicit txn:Txn) = {
+    Audit.logdb("CART", "ADD_ITEM", s"cartid=${_id.toString}", item)
     val c = copy(items = items ++ Seq(item), updDtm = DateTime.now)
     c.update
   }
@@ -70,6 +73,7 @@ case class CartItem (
   props : Map[String,String] = Map.empty,
   state : String = Cart.STATE_CREATED,
   quantity: Option[Int] = None,
+  category : Option[String] = None,
   _id : ObjectId = new ObjectId()
   ) {
 
@@ -86,8 +90,23 @@ case class Price (
     Price (amount + other.amount, this.currency)
   }
 
+  def - (other : Price) = {
+    if(other.currency != this.currency) throw new IllegalArgumentException("currency does not match")
+    Price (amount - other.amount, this.currency)
+  }
+
+  def < (other : Price) = {
+    if(other.currency != this.currency) throw new IllegalArgumentException("currency does not match")
+    amount < other.amount
+  }
+
+  def orZero =
+    if(amount < 0) this.copy(amount=0)
+    else this
+
   def reverse = Price (0 - amount, this.currency)
 }
+
 
 case class ItemPrice (
   oneTime : Option[Price] = None,

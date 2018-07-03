@@ -2,8 +2,8 @@
  * Created by razvanc on 02/05/2014.
  */
 
-function parseAndRender() {
-  var commonmark = window.commonmark;
+function parseAndRender(commonmark) {
+  // var commonmark = window.commonmark;
   var reader = new commonmark.Parser();
   var writer = new commonmark.HtmlRenderer();
 
@@ -18,7 +18,8 @@ function parseAndRender() {
 function refreshServer(wp, content, tags) {
   // var content = $("#content").val();
   // var tags = $("#tags").val();
-  $.post("/wikie/preview/"+wp, {'content' : content, 'tags' : tags}, function(data) {
+  var markup = $("#markup").val();
+  $.post("/wikie/preview/"+wp, {'content' : content, 'tags' : tags, 'markup' : markup}, function(data) {
     $("#weOutputData").html(data);
   })
 }
@@ -121,7 +122,7 @@ function anonSaveSection(wpath,sectionType,sectionName,content,callback) {
 
 ////////////////////////// ACE
 
-function attachAce(id, content, light, onChange) {
+function attachAce(ace, id, content, light, onChange) {
   aceAttached = true;
 
   var langTools = ace.require("ace/ext/language_tools");

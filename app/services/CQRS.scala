@@ -78,10 +78,14 @@ class WikiAsyncObservers extends Actor {
         Emailer.sendEmailNeedQuota(s1, s2)
       }
 
-    case m@DieselMsgString(s, target) => {
+    case m@DieselMsgString(s, target, _) => {
       // todo auth/auth
       cout << "======== DIESEL MSG: " + m.toString
-      DomFiddles.runDom(s, target.specs, target.stories, new DomEngineSettings()).map {res =>
+      val settings = new DomEngineSettings()
+      settings.realm = Some(target.realm)
+
+      import WID.fromSpecPath
+      DomFiddles.runDom(m.mkMsgString, target.specs, target.stories, settings).map {res =>
         cout << "======== DIESEL RES: " + res.toString
         Audit.logdb("DIESEL_MSG", m.toString, res.toString)
       }
@@ -90,14 +94,18 @@ class WikiAsyncObservers extends Actor {
     case m@DieselMsg(e, a, p, target) => {
       // todo auth/auth
       cout << "======== DIESEL MSG: " + m.toString
-      DomFiddles.runDom(m.toMsgString.msg, target.specs, target.stories, new DomEngineSettings()).map {res =>
+      val settings = new DomEngineSettings()
+      settings.realm = Some(target.realm)
+
+      DomFiddles.runDom(m.toMsgString.mkMsgString, target.specs, target.stories, settings).map {res =>
         cout << "======== DIESEL RES: " + res.toString
         Audit.logdb("DIESEL_MSG", m.toString, res.toString)
       }
     }
 
-    case x@_ =>
+    case x@_ => {
       Audit.logdb("ERR_ALLIGATOR", x.getClass.getName)
+    }
   }
 
   def clusterize(ev: WikiEvent[_]) = {

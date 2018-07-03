@@ -37,9 +37,7 @@ profile - edit contact info
       <button type="submit" class="btn btn-primary">Update account!</button>
       @user.agree()
 
-      @myForm.globalError.map { err =>
-        <p style="color : red ; font-weight : bold">@err.message</p>
-      }
+    @formErrors(myForm)
     }
     </div>
 

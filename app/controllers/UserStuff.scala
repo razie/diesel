@@ -19,7 +19,7 @@ import razie.wiki.model.UWID
 import razie.wiki.model.WikiXpSolver
 import razie.wiki.model.Wikis
 import razie.wiki.model.WikiWrapper
-import razie.wiki.parser.ParserSettings
+import razie.tconf.parser.ParserSettings
 import razie.wiki.model.ILink
 import razie.wiki.model.WikiLink
 import razie.wiki.model.WID
@@ -47,15 +47,19 @@ object UserStuff extends RazController {
     Wikis.find(WID("User", realm+"-"+uid)) orElse Wikis.find(WID("User", uid))
 
   // serve public profile
-  def pub(id: String) = Action { implicit request =>
-      val au = auth
-      val user = Users.findUserByUsername(id)
-      if(au.isDefined && user.isDefined) {
-        ROK.r apply { implicit stok =>
-          views.html.user.userInfo(user.get)
-        }
-      } else
-        Msg2 ("This user does not have a public profile!")
+  def pub(id: String) = RAction { implicit stok =>
+    val user = Users.findUserByUsername(id)
+    val w = user.flatMap(u => findPublicProfile(stok.realm, u.userName))
+
+    w.flatMap(_.alias).map { wid =>
+      Redirect(Wiki.wr(wid, stok.realm))
+    } orElse user.map {u=>
+      ROK.r apply { implicit stok =>
+        views.html.user.userInfo(u)
+      }
+    } getOrElse {
+      Msg2(s"No public profile for user $id")
+    }
   }
 
   def wiki(id: String, cat: String, name: String) =

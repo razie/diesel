@@ -136,7 +136,10 @@ person information
           '_label -> "Invitation",
           '_error -> myForm.error("invite"),
           '_showConstraints -> false)
-        <script>$("textarea").attr("rows", "5");</script>
+        <script>require(['jquery'], function($) {
+          $("textarea").attr("rows", "5");
+        });
+        </script>
       } else {
         <input type="hidden" name="invite" value="@myForm("invite").value" />
       }

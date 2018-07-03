@@ -42,7 +42,7 @@ class Support @Inject() (config:Configuration) extends RazController with Loggin
           cdebug << t
           if (auth.exists(_.isActive) || new Recaptcha(config).verify2(g_response, clientIp)) {
             Emailer.withSession(request.realm) { implicit mailSession =>
-              mailSession.sendSupport("Support request", n, e, (auth.map("Username: " + _.userName + " ").mkString) + desc, details, page)
+              mailSession.sendSupport(s"Support request realm ${request.realm}", n, e, (auth.map("Username: " + _.userName + " ").mkString) + desc, details, page)
             }
             Msg("Ok - support request sent. We will look into it asap.", HOME)
           } else {

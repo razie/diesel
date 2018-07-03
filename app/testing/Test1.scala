@@ -1,14 +1,12 @@
 package testing
 
-import org.scalatest.FlatSpec
+import org.scalatest.{FlatSpec, Matchers}
 import org.scalatest.matchers.ShouldMatchers
-
 import com.razie.pub.comms.CommRtException
-
 import razie.Snakk
 import razie.UrlTester
 
-class Test1 extends FlatSpec with ShouldMatchers with UrlTester {
+class Test1 extends FlatSpec with Matchers with UrlTester {
   implicit val hostport = "http://localhost:9000"
   val (u,p) = ("H-joe@razie.com", "H-321mm321mm")
 
@@ -65,7 +63,7 @@ class Test1 extends FlatSpec with ShouldMatchers with UrlTester {
 //    ("/wikie/edit/Venue:Some New Note", u, p) sok "venue"
 }
 
-class Test1Edit extends FlatSpec with ShouldMatchers with UrlTester {
+class Test1Edit extends FlatSpec with Matchers with UrlTester {
   implicit val hostport = "http://localhost:9000"
 
   val (u,p) = ("H-joe@razie.com", "H-321mm321mm")
@@ -83,7 +81,7 @@ class Test1Edit extends FlatSpec with ShouldMatchers with UrlTester {
 //  ("/wiki/Note:Joe_Private_Note_"+milis).url.basic(u,p) sok "Private" // now check
 }
 
-class Test1Forms extends FlatSpec with ShouldMatchers with UrlTester {
+class Test1Forms extends FlatSpec with Matchers with UrlTester {
   implicit val hostport = "http://localhost:9000"
 
   val s = "/wikie/form/Note:test_forms"

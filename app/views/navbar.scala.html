@@ -1,0 +1,222 @@
+@***
+creates the navigation bar
+***@
+@import razie.wiki.model.Perm
+@(user:Option[razie.wiki.model.WikiUser], realm:String=razie.wiki.model.Wikis.RK, mobile:Boolean = false, barTitle: String="Bar Title", logo:Option[String]=None, url:Option[String]=Some("/"), isSite:Boolean=false, club:String="")(implicit stok: controllers.StateOk)
+@import razie.wiki.Services
+@import razie.wiki.model.Wikis
+
+@web()=@{stok.website}
+
+@css() = @{
+  stok.css
+}
+
+@searchUrl()=@{
+  s"/wikie/search?realm=$realm"
+}
+
+@if(Services.config.getTheme(stok.au, stok.request).contains("light")) {
+  <nav class="navbar navbar-fixed-top navbar-inverse">
+    @*<nav class="navbar navbar-fixed-top navbar-default">*@
+  } else {
+  <nav class="navbar navbar-fixed-top navbar-inverse">
+  }
+
+@*<div class="navbar-inner">*@
+<div class="container" style="margin-left: 0px; margin-right : 0px ; width:auto">
+    <!-- Brand and toggle get grouped for better mobile display -->
+  <div class="navbar-header">
+    <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar">
+      <span class="sr-only">Toggle navigation</span>
+      <span class="icon-bar"></span>
+      <span class="icon-bar"></span>
+      <span class="icon-bar"></span>
+    </button>
+
+
+      @web().navBrand.fold {
+        <a class="navbar-brand" style="padding: 8px 20px 5px; margin-left: -20px;" href="@url.getOrElse("http://"+Services.config.hostport)">
+          <img class="" src="@logo.orElse(web().logo).getOrElse(routes.Assets.at("images/racerKids-small.gif"))" height="32" width="152" alt="RacerKidz logo"/>
+        </a>
+      } {b=>
+        @Html(b)
+      }
+  </div>
+
+    <!-- Collect the nav links, forms, and other content for toggling -->
+  <div class="navbar-collapse collapse" id="navbar">
+    <ul class="nav navbar-nav navbar-left">
+
+    @if(!isSite) {
+      <li class="divider-vertical"></li>
+      @web().navMenu.map{t=>
+        @if(! t._1.startsWith("user.") && ! t._1.startsWith("admin.") ||
+            t._1.startsWith("user.") && stok.au.isDefined ||
+            t._1.startsWith("admin.") && stok.au.exists(_.isAdmin) ) {
+          @defining(if(t._1.startsWith("user.")) t._1.replaceFirst("user.", "") else
+            if(t._1.startsWith("admin.")) t._1.replaceFirst("admin.", "") else t._1) {label=>
+            @if(label.startsWith("badge")) {
+              <li id="nav-@label">
+              </li>
+<script async>
+var ok_@label = true;
+var update_@label = function(){};
+
+doEditThis = function() {
+  window.location.href = window.location.href.replace(/\?.*/, '') + "/edit";
+};
+
+require(['jquery'], function($){
+  update_@label = function() {
+    $("#nav-@label").load("@t._2", function(resp, status, jqXHR) {
+      if(jqXHR.status != 200 && location.href.indexOf("localhost") >= 0) {
+        ok_@label = false; // stop from reloading
+        console.log("Badge returns error code, will stop refreshing!")
+      }
+    });
+    @if(label.startsWith("badgeRefresh")) {
+    if(ok_@label) setTimeout(update_@label, 5000);
+    }
+  };
+
+  window.addEventListener('load', function(){
+    update_@{label}();
+  });
+
+});
+
+</script>
+          } else {
+            <li>
+              <a href="@t._2">@Html(label)</a>
+            </li>
+          }
+          }
+        }
+      }
+    }
+      @stok.au.map(_._id).flatMap(mod.cart.Cart.find).map {cart=>
+        <li>
+          <a href="/doe/cart">
+            <span class="badge" style="background-color: red" title="cart items">
+              <span class="glyphicon glyphicon-shopping-cart"> </span>
+              @cart.items.size</span>
+          </a>
+        </li>
+      }
+    </ul>
+@**
+
+    =================================   user preferences and menu
+
+**@
+    <ul class="nav navbar-nav pull-right">
+
+    @user match {
+
+      case Some(joe) => {
+
+        <li class="dropdown">
+          <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">
+            @if(Services.config.getTheme(stok.au, stok.request).contains("light")) {
+              <span class="glyphicon glyphicon-lock"></span>
+            } else {
+              <span class="glyphicon glyphicon-lock"></span>
+            }
+            @joe.ename <span class="caret"></span>
+          </a>
+
+          <ul class="dropdown-menu" role="menu">
+            @if(! web().navrMenuRemove.contains("Preferences")) {
+              <li><a href="@routes.ProfileUpd.doeHelp"><i class="icon-edit"></i> Preferences</a></li>
+            }
+            @if(! web().navrMenuRemove.contains("Messages")) {
+              <li><a href="@mod.msg.routes.Messaging.doePM"><i class="icon-edit"></i> Messages</a></li>
+            }
+
+            @if(stok.au.exists(u=> u.isDev || u.isAdmin)) {
+              <li><a href="/wiki/Reactor:@realm"><i class="icon-edit"></i> Admin</a></li>
+            }
+
+            @if(!web().navrMenu.filter(! _._1.startsWith("remove.")).isEmpty) {
+              <li class="divider"></li>
+              @web().navrMenu.filter(! _._1.startsWith("remove.")).map{t=>
+                <li><a href="@t._2">@t._1</a></li>
+              }
+            }
+
+            @if(! web().navrMenuRemove.contains("Fiddles") && (stok.au.exists(u=> u.isDev || u.isAdmin))) {
+              <li class="divider"></li>
+              <li><a href="/sfiddle/playFFD">FFD-Fiddle</a></li>
+              <li><a href="/sfiddle/play3/js">SFiddle</a></li>
+              <li><a href="/sfiddle/playinbrowser/js">JS-Fiddle</a></li>
+              <li><a href="/sfiddle/playDsl/js">DSL-Fiddle</a></li>
+              <li><a href="/gapi/demo">GAPI demo</a></li>
+            }
+
+            @if(! web().navrMenuRemove.contains("Diffs") && stok.au.exists(u=> u.isMod)) {
+              <li class="divider"></li>
+              <li><a href="/razadmin/drafts/@stok.realm">Drafts</a></li>
+              <li><a href="/razadmin/difflist/@stok.realm/www.racerkidz.com">Diffs</a></li>
+              <li><a href="/razadmin/difflist/all/www.racerkidz.com">Diffs-all</a></li>
+              <li class="divider"></li>
+              <li>
+                <a href="javascript:doEditThis();">Edit</a>
+              </li>
+              }
+
+          <li class="divider"></li>
+
+            @if(! web().navrMenuRemove.contains("Theme")) {
+              <li><a href="/doe/theme?css=light" title="Select light theme">Light</a></li>
+              <li><a href="/doe/theme?css=dark" title="Select drk theme">Dark</a></li>
+            }
+
+            <li><a href="/do/signout" title="Log off"><i class="icon-off"></i> Sign out</a></li>
+          </ul>
+        </li>
+      }
+
+      case None => {
+        <li><a href="@web().join">Login</a></li>
+      }
+    }
+    </ul>
+
+    @**
+
+    =================================   search
+
+    **@
+
+    <form class="navbar-form pull-right" role="search" action="@searchUrl()" method="GET">
+      <input type="text" class="form-control search-query" style="padding: 4px 4px 4px 4px; height: 26px; margin-top: 5px"
+      placeholder="Search" id="q" name="q" title="Search box"/>
+    </form>
+
+    @**
+
+    ====================== for admins and devs, quick access to switch current reactor
+
+    **@
+
+    @if(stok.au.exists(_.isMod)) {
+      <ul class="nav navbar-nav pull-right">
+        <li class="dropdown">
+          <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false" style="color:red;font-weight:bold;font-size: small" title="localhost: current reactor">
+            @stok.realm <span class="caret"></span>
+          </a>
+          <ul class="dropdown-menu" role="menu">
+            @stok.au.toList.flatMap(x=> (x.ownedReactors.map(_.name) ::: x.realms.toList).distinct).map{t=>
+              <li><a href="/wikie/switchRealm/@t">@t</a></li>
+            }
+         </ul>
+       </li>
+      </ul>
+    }
+
+  </div>
+</div><!-- /.navbar-collapse -->
+</nav>
+

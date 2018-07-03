@@ -8,8 +8,12 @@ var hiDiesel = function (hijs) {
 // All elements which match this will be syntax highlighted.
   var selector = hijs || 'code[language="diesel"]';
 
-  var keywords = ('var val def if else '
-    +'msg when mock expect receive send').split(' '),
+  const dieselKeywords = 'var val def if else msg when mock expect send'.split(' ');
+
+  var keywords = (
+    'var val def if else msg when mock expect send template ' +
+    'POST GET PUT DELETE'
+    ).split(' '),
     special  = ('eval window document undefined NaN Infinity parseInt parseFloat '
     +'encodeURI decodeURI encodeURIComponent decodeURIComponent').split(' ');
 
@@ -18,13 +22,14 @@ var hiDiesel = function (hijs) {
 // around the matched block of code.
   var syntax = [
     ['comment', /(\/\*(?:[^*\n]|\*+[^\/*])*\*+\/)/g],
-    ['keyword', /(=>)/g],
+    ['keyword', /(=>|\{\{|\}\}|template)/g],
     ['comment', /(\/\/[^\n]*)/g],
     ['string' , /("(?:(?!")[^\\\n]|\\.)*"|'(?:(?!')[^\\\n]|\\.)*')/g],
     ['regexp' , /(\/.+\/[mgi]*)(?!\s*\w)/g],
-    ['class'  , /\b([A-Z][a-zA-Z]+)\b/g],
+    ['msg'  , /\b((\w+[.])+\w+)\b/g],
+    // ['class'  , /\b([A-Z][a-zA-Z]+)\b/g],
     ['number' , /\b([0-9]+(?:\.[0-9]+)?)\b/g],
-    ['keyword', new(RegExp)('\\b(' + keywords.join('|') + ')\\b', 'g')],
+    ['keyword', new(RegExp)('[\\b\\$](' + keywords.join('|') + ')\\b', 'g')],
     ['special', new(RegExp)('\\b(' + special.join('|') + ')\\b', 'g')]
   ];
   var nodes, table = {};
@@ -46,13 +51,14 @@ var hiDiesel = function (hijs) {
       code = children[j];
 
       if (code.length >= 0) { // It's a text node
+
         // Don't highlight command-line snippets
         if (! /^\$\$/.test(code.nodeValue.trim())) {
           syntax.forEach(function (s) {
             var k = s[0], v = s[1];
             code.nodeValue = code.nodeValue.replace(v, function (_, m) {
               return '\u00ab' + encode(k) + '\u00b7'
-                + encode(m) +
+                + encodek(m,k) +
                 '\u00b7' + encode(k) + '\u00bb';
             });
           });
@@ -60,6 +66,7 @@ var hiDiesel = function (hijs) {
       }
     }
   }
+
   for (var i = 0; i < nodes.length; i++) {
     nodes[i].innerHTML =
       nodes[i].innerHTML.replace(/\u00ab(.+?)\u00b7(.+?)\u00b7\1\u00bb/g, function (_, name, value) {
@@ -73,13 +80,25 @@ var hiDiesel = function (hijs) {
   }
 
 // Encode ASCII characters to, and from Braille
+  function encodek (istr,k) {
+    // RAZ our keywords start with $
+    var str = k == "keyword" && dieselKeywords.indexOf(istr) >= 0 ? '$'+istr : istr;
+
+    return encode(str);
+  }
+
+// Encode ASCII characters to, and from Braille
   function encode (str, encoded) {
+    // raz our keywords start with $
+    //  var str = istr.charAt(0) == '$' ? istr.substr(1) : istr;
+
     table[encoded = str.split('').map(function (s) {
       if (s.charCodeAt(0) > 127) { return s }
       return String.fromCharCode(s.charCodeAt(0) + 0x2800);
     }).join('')] = str;
     return encoded;
   }
+
   function decode (str) {
     if (str in table) {
       return table[str];

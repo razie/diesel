@@ -9,6 +9,14 @@ Disallow: /we/
 Disallow: /admin/
 Disallow: /sfiddle/
 Disallow: /weapi/
+Disallow: /diesel/fcall/
+Disallow: /diesel/react/
+Disallow: /diesel/fiddle/react/
+Disallow: /diesel/rest/
+Disallow: /diesel/mock/
+Disallow: /diesel/proxy/
+Disallow: /diesel/wreact/
+Disallow: /notes/
 
 User-agent: *
 Disallow: /doe/
@@ -19,4 +27,12 @@ Disallow: /sfiddle/
 Disallow: /diesel/
 Disallow: /weapi/
 Disallow: /react/
+Disallow: /diesel/fcall/
+Disallow: /diesel/react/
+Disallow: /diesel/fiddle/react/
+Disallow: /diesel/rest/
+Disallow: /diesel/mock/
+Disallow: /diesel/proxy/
+Disallow: /diesel/wreact/
+Disallow: /notes/
 
