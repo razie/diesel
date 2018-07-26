@@ -168,7 +168,11 @@ class DomApi extends DomApiBase  with Logging {
 
   /** API msg sent to reactor */
   def react(e: String, a: String) = Filter(noRobots).async { implicit stok =>
-    irunDom(e + "." + a, None)
+    // insert a dot only if needed
+    val ea = (
+      if(e.length > 0 && a.length > 0) e + "." + a else e+a
+      ).replaceAllLiterally("/", ".")
+    irunDom(ea, None)
   }
 
   /** execute message to given reactor
