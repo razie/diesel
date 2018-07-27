@@ -19,13 +19,13 @@ case class RoleWid(role: String, wid: WID)
 /** controller for club management */
 object Snow extends RazController with Logging {
 
-  def invite(wid:WID, role:String) = FAU { implicit au => implicit errCollector => implicit request =>
+  def invite(wid:WID, role:String) = FAUR { implicit request =>
     val club = Club(wid).get
     Redirect(controllers.routes.Kidz.doeUserKid(club.userId.toString, "11", role, "-", "invite:"+club.wid.wpath))
   }
 
-  def manage(club:WID, role:String) = FAU { implicit au => implicit errCollector => implicit request =>
-    Redirect(controllers.routes.Club.doeClubKidz(club, role))
+  def manage(club:WID, role:String, team:String) = FAUR { implicit request =>
+    Redirect(controllers.routes.Club.doeClubKidz(club, role, team))
   }
 
   // list of clubs and teams with links

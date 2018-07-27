@@ -1,7 +1,7 @@
 @******
 manage the list of kidz and/or their accounts
 ******@
-@(club:controllers.Club, role:String="", teams:List[razie.wiki.model.WikiLink],
+@(club:controllers.Club, role:String="", team:String, teams:List[razie.wiki.model.WikiLink],
     rks:List[(mod.snow.RacerKid, mod.snow.RacerKidAssoc)])(implicit stok:controllers.StateOk)
 
 @import mod.snow.{RacerKid, RacerKidAssoc, RacerKidz}
@@ -17,8 +17,11 @@ manage the list of kidz and/or their accounts
   WikiDomain(club.wid.getRealm).roles(club.wid.cat, "Person")
 }
 
-@rksactive = @{rksmap((k,a)=> k.info.status != STATUS_FORMER && a.role != ROLE_FAN)}
-@rksformer = @{rksmap((k,a)=> k.info.status == STATUS_FORMER || a.role == ROLE_FAN)}
+@rksactive = @{rksactivei.filter(x=>team.isEmpty || x("team") == team || team == "Unassigned" && x("team").isEmpty)}
+@rksformer = @{rksformeri.filter(x=>team.isEmpty || x("team") == team || team == "Unassigned" && x("team").isEmpty)}
+
+@rksactivei = @{rksmap((k,a)=> k.info.status != STATUS_FORMER && a.role != ROLE_FAN)}
+@rksformeri = @{rksmap((k,a)=> k.info.status == STATUS_FORMER || a.role == ROLE_FAN)}
 
 @rksmap(f:(RacerKid, RacerKidAssoc) =>Boolean) = @{
   for ((k,a) <- rks if(f(k, a))) yield
@@ -97,21 +100,27 @@ manage the list of kidz and/or their accounts
 
 <h2>Members of @club.name</h2>
 
+<small>
 <p>Some records are created by the parents (see the "Source"). For those that did not register online, you can create records here, for team management etc. See at the bottom for correlations.
+</small>
 
 @if(role != "") {
 <span class="label label-default">Invite more <a href="/4us/invite/@club.wid.wpath?role=@role">@{role}s</a></span>
+}
+
+@mngLink(team:String, label:String)={
+  <a href="/4us/manage/@{club.wid.wpath}?role=@role&team=@team">@label</a>
 }
 
 <div>
   <div style="display: inline-block">
   <b>Summary:</b>
     @rks.filter(t=> t._1.info.status != STATUS_FORMER && t._2.role != ROLE_FAN).toList.groupBy(_._2.role).map {x=>
-      @x._2.size <small>x</small> @x._1  ;
+      <b>@x._2.size</b> <small>x</small> @mngLink("", x._1) |
     }
     <br>
     @teamSummary.map {x=>
-      @x._2.size<small>x</small>@x._1  ;
+      <b>@x._2.size</b><small>x</small>@mngLink(x._1, x._1)  |
     }
   </div>
   <div  style="display: inline-block" class="pull-right">

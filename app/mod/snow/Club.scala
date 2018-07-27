@@ -952,7 +952,7 @@ regAdmin=$regAdmin
   }
 
   // parms optional
-  def doeClubKidz(club: WID, role: String) = FAUR { implicit stok =>
+  def doeClubKidz(club: WID, role: String, team:String="") = FAUR { implicit stok =>
     (for (
       c <- Club(club);
       au <- stok.au;
@@ -962,8 +962,10 @@ regAdmin=$regAdmin
                       k <- RacerKidz.findById(a.to)) yield
         (k, a)).toList.sortBy(x => x._1.info.lastName + x._1.info.firstName)
 
+      val teams = Wikis.linksTo("Program", c.uwid, "Child").toList /*.sortBy(_.from.nameOrId)*/ // U8 is bigger than U10... ugh
+
       ROK.k apply {
-        views.html.club.doeClubKidz(c, role, Wikis.linksTo("Program", c.uwid, "Child").toList /*.sortBy(_.from.nameOrId)*/ , rks) // U8 is bigger than U10... ugh
+        views.html.club.doeClubKidz(c, role, team, teams , rks) // U8 is bigger than U10... ugh
       }
     }) getOrElse unauthorized()
   }

@@ -1282,8 +1282,22 @@ Guardian report<a href="/wiki/Guardian_Guide" ><sup><span class="glyphicon glyph
             new Html(
               s"""
 <a href="/diesel/runCheckAll">Re-run all checks</a> (may have to wait a while)...
-<hr>
 """ +
+
+"""<hr><h2>Abstract</h2>""" +
+
+/* abstract */
+                DomGuardian.lastRuns.map {t=>
+                  val r = t._2
+                  s"""Realm: ${r.realm}""" +
+                    s"""
+Guardian report<a href="/wiki/Guardian_Guide" ><sup><span class="glyphicon glyphicon-question-sign"></span></a></sup>: <a href="/diesel/runCheck">Re-run check</a>  (${r.duration} msec) ${quickBadge(r.failed, r.total, r.duration)}<br>
+""".stripMargin
+                }.toList.mkString +
+
+"""<hr><h2>Details</h2>""" +
+
+/* details */
 
   DomGuardian.lastRuns.map {t=>
     val r = t._2

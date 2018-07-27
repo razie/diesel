@@ -28,7 +28,7 @@ class EEWiki extends EExecutor("rk.wiki") {
   }
 
   override def apply(in: EMsg, destSpec: Option[EMsg])(implicit ctx: ECtx): List[Any] = {
-    in.met match {
+    val res = in.met match {
       case "content" => {
         clog << "DIESEL.wiki.content"
 
@@ -63,6 +63,7 @@ class EEWiki extends EExecutor("rk.wiki") {
         Nil
       }
     }
+    res
   }
 
   // listen to topic changes and send event
