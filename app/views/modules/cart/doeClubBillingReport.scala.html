@@ -1,0 +1,52 @@
+@******
+cart and checkout
+******@
+@(club:controllers.Club, uws:List[model.UserWiki], regs:List[mod.snow.Reg])(implicit stok: controllers.StateOk)
+@import mod.cart._
+
+Club billing report (all transactions)
+
+<p>Copy this table into Excel and save it before purging it!</p>
+
+<h3>Transactions</h3>
+
+<table class="table table-striped">
+  <tr>
+    <th>Account</th>
+    <th>Who</th>
+    <th>Amount</th>
+    <th>Currency</th>
+    <th>What</th>
+    <th>When</th>
+    <th>Description</th>
+  </tr>
+
+  @uws.map { uw =>
+
+    @Acct.findCurrent(uw.userId, club.wid).map { acct =>
+
+      @acct.txns.map { t =>
+        <tr>
+          <td>@acct.userName</td>
+          <td>@t.userName</td>
+          <td>@t.amount.amount</td>
+          <td>@t.amount.currency</td>
+          <td>@t.what</td>
+          <td>@t.crDtm.toLocalDate</td>
+          <td>@t.desc</td>
+        </tr>
+      }
+    }
+
+  }
+</table>
+
+
+<div class="alert alert-danger">
+Careful - make sure you saved these in an Excel before purging below!
+<p>There is no going back after pressing this button</p>
+  @if(stok.au.exists(_.isAdmin)) {
+    <a class="btn btn-danger" href="@routes.Accts.doeClubBillingPurge(club.wid)">Purge all</a>
+  }
+</div>
+

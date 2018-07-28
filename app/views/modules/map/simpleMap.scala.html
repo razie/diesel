@@ -1,0 +1,20 @@
+@*******
+included in mainUserC as the right hand side info box
+*********@
+@()(implicit stok:controllers.StateOk)
+@import controllers.XListWrapper
+@import razie.wiki.model.Wikis
+
+
+@locs() = @{
+  {controllers.UserStuff.events(stok.au.get) flatMap { _._5 \ "Venue" \@ "loc"}}.filter(! _.isEmpty).map(_.replaceFirst("ll:",""))
+//  {controllers.UserStuff.xp(user, "Calendar") \ UserStuff.Race \ "Venue" \@ "loc"}.filter(! _.isEmpty).map(_.replaceFirst("ll:",""))
+}
+
+@modules.map.utilMap(
+  (controllers.UserStuff.xp(Wikis.DFLT, stok.au.get, "Calendar") \ UserStuff.Race \ "Venue").asInstanceOf[XListWrapper[_]],
+  stok.au.get.ll
+  )
+
+Map not centered correctly? Please update your location in your <a href="/doe/profile">profile</a>!
+

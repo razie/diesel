@@ -1,0 +1,60 @@
+@**
+engine configuration popup
+**@
+@(title:String, tags:List[String], curTagQuery:String)(implicit stok: controllers.StateOk)
+
+<div>
+  <h4>@title</h4>
+
+<table class="table table-condensed">
+  <tr><th>+</th><th>&</th><th>-</th><th>tag</th></tr>
+
+  @tags.map { tag =>
+      <tr>
+        <td>
+          <input type="checkbox" id="cbp@tag" title="@tag">
+        </td>
+        <td>
+          <input type="checkbox" id="cba@tag" title="@tag">
+        </td>
+        <td>
+          <input type="checkbox" id="cbm@tag" title="@tag">
+        </td>
+        <td>
+          @tag
+        </td>
+      </tr>
+  }
+  </table>
+
+  <div class="input-group">
+    <span class="input-group-addon" id="basic-addon1">Query: </span>
+      <small><input class="col-sm-12 input-sm" type="text" id="tagQuery"></small>
+  </div>
+
+</div>
+
+@*<script src="@routes.Assets.at("javascripts/weDieselDom.js")"></script>*@
+
+<script>
+
+
+$(':checkbox').change(function(){
+  console.log(this);
+  cbToTagQuery(this);
+});
+
+$('#tagQuery').change(function(){
+  tagQueryTocb ($("#tagQuery").val());
+});
+
+$('#tagQuery').on('input', function() {
+  tagQueryTocb ($(this).val());
+});
+
+tagQueryTocb ('@curTagQuery');
+
+$("#tagQuery").val('@curTagQuery');
+
+</script>
+

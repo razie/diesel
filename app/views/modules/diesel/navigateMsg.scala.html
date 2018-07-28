@@ -1,0 +1,52 @@
+@**************
+browse a domain
+**************@
+@import razie.diesel.engine.RDExt
+@(msgs : List[RDExt.MsgCol])(implicit stok: controllers.StateOk)
+
+@stok.title("Diesel summary")
+
+<h2>All messages, inferred</h2>
+
+This is the outline of all messages in the realm, collected from all the stories and specs.
+<p></p>
+
+@defining(msgs.filter(x=>x.e.length > 0 && x.a.length > 0 && x.e != "*" && x.a != "*")) { msl =>
+Stats: @msl.filter(x=> x.m.isResolved).size / @msl.size resolved (@msl.filter(_.m.hasExecutor).size executors)
+}
+
+<table class="table">
+@msgs.filter(x=>x.e.length > 0 && x.a.length > 0 && x.e != "*" && x.a != "*").sortBy(_.e).map { msg =>
+    <tr>
+      <td style="border:none">
+  <b>@Html(msg.toHtml)</b>
+      </td>
+      <td style="border:none">
+  @if(msg.in.nonEmpty) {
+    In:
+    <ul>
+    @msg.in.map { p =>
+      <li>@Html(p.p.toHtml)</li>
+    }
+    </ul>
+  }
+      </td>
+      <td style="border:none">
+  @if(msg.out.nonEmpty) {
+    Out:
+    <ul>
+    @msg.out.map { p =>
+      <li>@Html(p.p.toHtml)</li>
+    }
+    </ul>
+  }
+    </td>
+    </tr>
+
+}
+  </table>
+
+<script src="@routes.Assets.at("javascripts/weCommons.js")"></script>
+<script src="@routes.Assets.at("javascripts/weFiddles.js")"></script>
+<script src="@routes.Assets.at("javascripts/weDieselDom.js")"></script>
+

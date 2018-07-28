@@ -1,0 +1,36 @@
+@(clubName:String, myForm: Form[(String, String)])(implicit stok:controllers.StateOk)
+
+@stok.title("Season for "+clubName)
+
+<h2>Season</h2>
+<p>
+
+@import helper.twitterBootstrap._
+@import play.api.Play.current
+@import play.api.i18n.Messages.Implicits._
+
+@helper.form(action=mod.snow.routes.SeasonCtl.doeUpdateSeason(clubName), 'class->"well") {
+  @helper.select(
+    myForm("year"),
+    Range(2021, 2012, -1) map (y=>(y.toString,y.toString)),
+    '_label -> "Year for current registration process",
+    '_showConstraints -> false)
+  @helper.select(
+    myForm("season"),
+     Seq("Fall"->"Fall"),
+    '_label -> "Year for current registration process",
+    '_showConstraints -> false)
+  @helper.inputText(
+    myForm("label"),
+    '_label -> "Nicer label",
+    '_showConstraints -> false)
+
+  @formFix()
+
+  <button type="submit" class="btn btn-primary">Update/create season!</button>
+
+  @myForm.globalError.map { err=>
+     <p style="color:red;font-weight:bold">@err.message</p>
+  }
+}
+

@@ -1,0 +1,71 @@
+@**************
+list all topics in category
+**************@
+@(threads:List[mod.msg.MsgThread])(implicit stok:controllers.StateOk)
+@import mod.msg._
+
+@stok.title("Private messages")
+
+@messages(threads:List[MsgThread]) = {
+  <div class="well">
+  @if(threads.size <= 0) {
+    No messages...
+  } else {
+  <table class="table table-striped">
+    <tr>
+      <th>Date</th>
+      <th>From</th>
+      <th width="70%">Title</th>
+    </tr>
+    @threads.sortWith((a,b)=>a.crDtm.compareTo(b.crDtm) >= 0).map { msg =>
+      <tr><td><small>
+        @msg.crDtm.toLocalDate<br>
+        @msg.crDtm.toLocalTime.getHourOfDay:@msg.crDtm.toLocalTime.getMinuteOfHour
+      </small>
+      </td><td>
+      @msg.from.map {from=>
+        @model.Users.nameOf(from)<br>
+      }
+      </td>
+        <td>
+          @if(!msg.isRead(stok.au.get._id)) {<b>}
+          <a href="@routes.Messaging.doeThread(msg._id.toString)">@msg.title</a>
+          @if(!msg.isRead(stok.au.get._id)) {</b>}
+        </td></tr>
+    }
+  </table>
+  }
+  </div>
+}
+
+@defining(threads.filter(_.users.exists(x=>x.userId == stok.au.get._id && x.role=="to"))) {mto=>
+<h3>Received messages
+  <small>
+  @if(mto.count(! _.isRead(stok.au.get._id)) > 0) {
+    (@mto.count(! _.isRead(stok.au.get._id)) unread)
+  } else {
+    (No new messages)
+  }
+  </small>
+</h3>
+<p></p>
+@messages(mto)
+}
+
+@defining(threads.filter(_.users.exists(x=>x.userId == stok.au.get._id && x.role=="from"))) {mfrom=>
+<h3>Sent messages
+  <small>
+  @if(mfrom.count(! _.isRead(stok.au.get._id)) > 0) {
+    (@mfrom.count(! _.isRead(stok.au.get._id)) unread)
+  } else {
+    (No new messages)
+  }
+  </small>
+</h3>
+  <p></p>
+@messages(mfrom)
+}
+  <hr>
+
+  <small>Note: this does not include conversations you're part of.</small>
+

@@ -1,0 +1,196 @@
+@**************
+list all topics in category
+**************@
+@(p: Option[mod.book.Progress], tl: mod.book.TopicList, ipath: String)(implicit stok: controllers.StateOk)
+@import razie.wiki.model.{Perm, WID, WikiEntry, WikiSection, Wikis}
+@import mod.book._
+
+@PILL()=@{mod.book.Progress.PILL}
+
+@stok.title("View progress")
+
+@more() = @{
+  stok.au.toList.flatMap(u=> Progress.findForUser(u._id).filter(_.status == Progress.STATUS_PAUSED).toList)
+}
+
+@paintStatus(s: String) = {
+  @s match {
+    case Progress.STATUS_SKIPPED => {
+      <span class="glyphicon glyphicon-remove" title="Skipped"></span>
+    }
+    case Progress.STATUS_READ => {
+      <span class="glyphicon glyphicon-check" title="Read - drills pending"></span>
+    }
+    case Progress.STATUS_PASSED => { Passed }
+    case Progress.STATUS_COMPLETE => {
+      <span class="glyphicon glyphicon-ok" title="Complete"></span>
+    }
+    case Progress.STATUS_IN_PROGRESS => { In progress }
+    case _ => {
+      <span class="glyphicon glyphicon-envelope" title="Not Started"></span>
+    }
+  }
+}
+
+@disabled() = @{
+  stok.au.map(x => "").getOrElse("disabled")
+}
+
+<h2>Pathways and contents</h2>
+
+@if(p.isEmpty) {
+  <hr>
+  <a class="btn btn-success @disabled()" href="/improve/skiing/restart?pathway=@tl.ownerTopic.wid.get.wpath">
+    Start regular pathway</a>
+  <a class="btn btn-warning @disabled()" href="/improve/skiing/restart?pathway=ski.Pathway:Effective_Racer">
+    Start racing pathway</a> (<a href="/wiki/Category:Pathway">View all pathways</a>)
+  <br>
+  Start a pathway to be guided through the topics.
+  @if(stok.au.isEmpty) {
+    <br> <br>
+    <span style="font-weight : bold ; color : red">
+      You need a <i>free</i> account to track progress - <a href="/doe/join">Join now</a>!
+    </span>
+  }
+  <p></p>
+  <small>
+    (No progress found for @tl.page.map { p =>
+    <b>@p.category : @p.name</b>
+  }
+      )
+  </small>
+}
+
+@if(stok.au.isDefined && !stok.au.exists(u => u.hasMembershipLevel(Perm.Basic.s))) {
+  <span style="font-size : smaller ; font-weight : normal ; color : red">
+    <br>Enjoy your complimentary access to the Intro and Preview. <br>
+    If you find it helpful, please take a look at the <b><a href="/wiki/Admin:Memberships">available memberships</a></b>, to get full access to all talks and on-snow sessions!
+  </span>
+}
+
+@tl.traverse(p, ipath) {
+  case (TLFolder(t), pl, path) if t.uwid == tl.uwid => { @** root folder **@
+    @t.page.map { page =>
+    <hr>
+      @page.category: <b>@page.label</b>
+      @pl.flatMap(_.rec(t.ownerTopic, Progress.STATUS_IN_PROGRESS)).map { pll =>
+        <small>(<b>@p.get.percentage</b>) started on @pll.dtm.toDate </small>
+      }
+      &nbsp;
+
+      @defining(more.filter(_.ownerTopic != tl.uwid)) {others=>
+        @if(others.size > 0 && pl.flatMap(_.rec(t.ownerTopic, Progress.STATUS_IN_PROGRESS)).nonEmpty) {
+          <br>
+          <small>
+            <div class="dropdown">
+              <span class="glyphicon glyphicon-pause"></span>
+              You have paused pathways:
+              <button class="btn btn-info dropdown-toggle btn-xs" type="button" id="dropdownMenu1" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+                Switch to:
+                <span class="caret"></span>
+              </button>
+              <ul class="dropdown-menu" aria-labelledby="dropdownMenu1">
+
+            @others.map {pp=>
+              <li><a href="@routes.Progress.switchTo(pp.pathway)" class="xbtn xbtn-default xbtn-xs" >
+                <span class="glyphicon glyphicon-play"></span> @WID.fromPath(pp.pathway).map(_.name).mkString (<b>@pp.percentage</b>)
+              </a>
+              </li>
+            }
+              </ul>
+                &nbsp; See <a href="/wiki/Category:Pathway">other pathways</a>(racing, etc)
+            </div>
+          </small>
+        } else {
+          See <a href="/wiki/Category:Pathway">all pathways</a>(racing, etc)
+        }
+
+        <hr>
+      }
+
+    }.getOrElse {
+      Not available yet...
+    }
+
+    @if(pl.exists(_.isInProgress(t.ownerTopic))) {
+      @p.flatMap(tl.current(_)).map { cur =>
+        <a class="btn btn-success" href="@cur.wid.get.urlRelative(stok.realm)">Continue reading</a>
+        with @cur.page.map { page =>
+        @page.category : <b><a href="@page.wid.urlRelative(stok.realm)">@page.label</a></b>
+      }
+        <p></p>
+      }
+
+      @**
+      Or see the exercises only:
+      <a class="btn btn-default btn-xs" href="/pill/@PILL/sections?section=GETUP&pathway=@path">Dryland</a>
+
+      <a class="btn btn-primary btn-xs" href="/pill/@PILL/sections?section=ONSNOW&pathway=@path">On snow</a>
+
+      <br> <br>
+      **@
+
+      <a href="/improve/skiing/guide" class="btn btn-primary">Guidance</a>
+
+      <div align="right">
+          Careful: <a class="btn btn-xs btn-danger" href="/improve/skiing/restart?pathway=@tl.ownerTopic.wid.get.wpath">
+        RESTART pathway</a>
+      </div>
+      <hr>
+    }
+
+    <p></p>
+    <table>
+  }
+
+  case (TLFolder(t), pl, path) if t.uwid != tl.uwid => {
+
+    @if(! stok.stuff.contains("closedRoot")) { @** do I have to close the root table ? **@
+      @{
+        stok.stuff = "closedRoot" :: stok.stuff
+      }
+      </table>
+    }
+
+    @t.page.map { page =>
+    <hr>
+      @page.category: <b>@page.label</b>
+      &nbsp;
+
+    <p></p>
+    }.getOrElse {
+      Not available yet...
+    }
+    <table>
+  }
+
+  case (TLFolderEnd(t), pl, path) => {
+    @if(t.uwid != tl.uwid || !stok.stuff.contains("closedRoot")) {
+      </table>
+    }
+  }
+
+  case (TLTopic(t), p, path) => {
+    @t.page.map { page =>
+        <tr>
+          <td class="hidden-xs" width="50px">
+          </td>
+          <td>
+            @paintStatus(p.flatMap(_.rec(t)).map(_.status).getOrElse(""))
+      @page.category &nbsp;
+          </td>
+          <td>
+          <b><a href="@page.wid.urlRelative(stok.realm)">@page.label</a></b>
+            @if(stok.au.exists(_.isAdmin) && page.isDraft) {
+              &nbsp;(draft)
+            }
+          </td>
+        </tr>
+    }.getOrElse { @** pages not written yet **@
+      <span class="glyphicon glyphicon-pencil" title="Not public yet"></span>
+      @t.cat : <b><a href="@t.wid">@t.nameOrId</a></b>
+      <br>
+    }
+  }
+}
+

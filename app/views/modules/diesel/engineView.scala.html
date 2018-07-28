@@ -1,0 +1,19 @@
+@**
+engine configuration popup
+**@
+@(eng:Option[razie.diesel.engine.DomEngine])(implicit stok: controllers.StateOk)
+
+<script src="@routes.Assets.at("javascripts/weCommons.js")"></script>
+
+@eng.map { eng =>
+
+  <a href="@eng.href("json")">Json</a>
+
+  <pre>
+    @Html(eng.root.toHtmlInPage)
+  </div>
+
+}.getOrElse {
+  Engine not found...
+}
+

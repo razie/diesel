@@ -14,7 +14,7 @@ dist
 dump
 dump*
 /data
-modules
+/modules
 node/dieselNode/node_modules
 /.target
 /bin

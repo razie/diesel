@@ -1,0 +1,48 @@
+@**************
+list all topics in category
+**************@
+@(thread:mod.msg.MsgThread)(implicit stok:controllers.StateOk)
+
+@stok.title("Message thread")
+
+<h2>
+@thread.role match {
+  case "PM" => {
+    A private message.
+  }
+  case "MA" => {
+    An MA thread - add a video/photo below.
+  }
+  case _ => {
+    A message thread.
+  }
+}
+</h2>
+
+<table>
+  <tr>
+    <td>Title:</td>
+    <td>
+      <b>@thread.title</b> <br>
+    </td>
+  </tr>
+@thread.from.map { u =>
+  <tr>
+    <td>From:</td>
+    <td>
+    <b>@model.Users.nameOf(u)</b>
+    </td>
+  </tr>
+}
+<tr>
+  <td>On:</td>
+  <td>
+  <b>@thread.crDtm.toLocalDate</b> at: <b>@thread.crDtm.toLocalTime</b>
+  </td>
+</tr>
+</table>
+
+<hr>
+@comments.commStream(thread.stream, thread._id.toString, "PM", true)
+
+

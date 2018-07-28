@@ -1,0 +1,29 @@
+@**************
+the relationships of a page
+**************@
+@import razie.diesel.dom.RDOM
+@import razie.wiki.model.WikiEntry
+@import controllers.Wiki
+@import razie.wiki.model.WikiSearch
+@(realm:String, page:Option[WikiEntry], location:String)(implicit stok:controllers.StateOk)@import razie.wiki.model.WikiSearch
+
+@if(stok.au.isDefined &&
+    stok.request.get.cookies.find(_.name == "weBrowser").map(_.value).mkString == "true" &&
+    (stok.website.prop("wbrowser.location").exists(x=> x == location) || location == "browse")) {
+  @page.map{we=>
+    @defining(WikiSearch.extractAssocs(stok.realm, page)) { tup=>
+      @modules.diesel.wBrowserInt(realm,
+        tup._1,
+        tup._2,
+        tup._3,
+        stok.website.prop("wbrowser.labels.left").mkString,
+        stok.website.prop("wbrowser.labels.middle").mkString,
+        stok.website.prop("wbrowser.labels.right").mkString
+        )(tup._4)
+      }
+  }
+}
+
+
+
+  
