@@ -342,7 +342,7 @@ class DomApi extends DomApiBase  with Logging {
     val realm = settings.realm getOrElse specs.headOption.map(_.getRealm).mkString
     val page = new WikiEntry("Spec", "fiddle", "fiddle", "md", "", NOUSER, Seq("dslObject"), realm)
 
-    Audit.logdb("DIESEL_FIDDLE_RUNDOM")
+    Audit.logdb("DIESEL_FIDDLE_RUNDOM ", msg)
     val pages = (specs ::: stories).filter(_.section.isEmpty).flatMap(_.page)
 
     // to domain

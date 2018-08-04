@@ -55,7 +55,7 @@ object ModUserExecutor extends EExecutor("mod.user") {
           val userId = ctx("userId")
 
           Emailer.withSession(realm) { implicit mailSession =>
-            if (paymentId.startsWith("PAY-") && paymentId.length > 20) {
+            if (paymentId.startsWith("PAY") && paymentId.length > 20) {
               // ok, update
               Users.findUserById(userId).map {u=>
                 val perm = level match {
