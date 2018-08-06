@@ -2,6 +2,7 @@
 .idea
 .idea_modules
 .settings
+.cache-*
 *~
 *.log
 logs
