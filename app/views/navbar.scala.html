@@ -158,8 +158,8 @@ require(['jquery'], function($){
             @if(! web().navrMenuRemove.contains("Diffs") && stok.au.exists(u=> u.isMod)) {
               <li class="divider"></li>
               <li><a href="/razadmin/drafts/@stok.realm">Drafts</a></li>
-              <li><a href="/razadmin/difflist/@stok.realm/www.racerkidz.com">Diffs</a></li>
-              <li><a href="/razadmin/difflist/all/www.racerkidz.com">Diffs-all</a></li>
+              <li><a href="/razadmin/difflist/@stok.realm/www.dieselapps.com">Diffs</a></li>
+              <li><a href="/razadmin/difflist/all/www.dieselapps.com">Diffs-all</a></li>
               <li class="divider"></li>
               <li>
                 <a href="javascript:doEditThis();">Edit</a>
@@ -201,7 +201,7 @@ require(['jquery'], function($){
 
     **@
 
-    @if(stok.au.exists(_.isMod)) {
+    @if(stok.au.exists(_.isMod) || stok.isLocalhost) {
       <ul class="nav navbar-nav pull-right">
         <li class="dropdown">
           <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false" style="color:red;font-weight:bold;font-size: small" title="localhost: current reactor">

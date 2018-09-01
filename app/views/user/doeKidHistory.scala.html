@@ -149,7 +149,7 @@
     @if(stok.au.exists(_.isMod) && rk.userId.isDefined) {
       @rk.userId.flatMap(model.Users.findUserById).map { u =>
         | @u.roles
-       | @u.profile.map(_.perms)
+       | @u.perms
       }
     }
     @if(stok.au.exists(_.isAdmin) && rk.userId.isDefined) {

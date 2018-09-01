@@ -28,11 +28,28 @@ class DomApiBase extends mod.diesel.controllers.SFiddleBase  with Logging {
   /** list cats */
   def domListCat(cat: String, reactor: String) = FAUR { implicit stok =>
     val what = cat.toLowerCase
+    val names = Wikis(reactor).pageNames(cat).toList.sorted
+
+    val isStory = ("Story" == cat)
+
+    def spec (n:String) =
+      if("Story" == cat) Wikis(reactor).find("Spec", n) else None
+
+    def hasDraft (w:WID):String =
+      if(Autosave.findAll(stok.realm, w.wpath, stok.au.get._id)
+        .exists(x=> w.content.exists(_ != x.contents("content")))) " (*)" else ""
+
+    // list the storyes anskipd specs side by side
     Ok(
-      s"""<a href="/diesel/fiddle/playDom?$what=">none (fiddle)</a><br>""" +
-        Wikis(reactor).pageNames(cat).map(s =>
-          s"""<a href="/diesel/fiddle/playDom?$what=$reactor.$cat:$s">$s</a>"""
-        ).mkString("<br>")
+        (s"""<tr><td><a href="/diesel/fiddle/playDom?$what=">none (fiddle)</a></td></tr>""" ::
+       names.map(s =>
+          s"""<tr><td><a href="/diesel/fiddle/playDom?$what=$reactor.$cat:$s">$s</a></td>""" +
+          spec(s.replaceFirst("story", "spec")).map(sp=>
+            s"""<td><a href="/diesel/fiddle/playDom?$what=$reactor.$cat:$s&spec=$reactor.Spec:${sp.name}">${sp.name}</a></td>"""
+          ).getOrElse("<td></td>") + "</tr>"
+//        ).mkString("<br>") +
+        )
+          ).mkString("""<table class="table table-condensed">""", "", "</table>")
     )
   }
 

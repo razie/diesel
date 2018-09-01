@@ -75,7 +75,7 @@ class wix (owe: Option[WikiPage], ou:Option[WikiUser], q:Map[String,String], r:S
     def isRegistered = iuser exists (u=> ipage >>> (x=>model.Users.findUserLinksTo(x.uwid).toList) exists (_.userId == u._id))
 
     def getExtLink (systemId:String, instanceId:String) =
-      iuser.flatMap(_.profile).flatMap(_.getExtLink(systemId, instanceId)).map(_.extAccountId).mkString
+      iuser.flatMap(_.profile).flatMap(_.getExtLink(irealm, systemId, instanceId)).map(_.extAccountId).mkString
   }
 
   /**

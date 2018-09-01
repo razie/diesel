@@ -2,10 +2,11 @@
 
 package wiki
 
-import com.mongodb.casbah.MongoConnection
+import com.mongodb.DBObject
+import com.mongodb.casbah.{Imports, MongoConnection}
 import play.api.mvc.WithFilters
 import razie.db.RazMongo
-import razie.wiki.model.{Reactor, WikiInst}
+import razie.wiki.model._
 import razie.wiki.parser.WikiParserT
 import razie.wiki.{SampleConfig, Services, WikiConfig}
 
@@ -13,7 +14,7 @@ import razie.wiki.{SampleConfig, Services, WikiConfig}
 object TestInit extends WithFilters {
 
   System.setProperty("rk.properties", "/Users/raz/w/racerkidz/rk.properties")
-  Services.config = SampleConfig
+  Services.config = new SampleConfig
 
   def init = {
     Services.config = new WikiConfig {
@@ -58,16 +59,20 @@ object TestInit extends WithFilters {
 }
 
 /** OPTIONAL: my own reactor - customize the customizables */
-class MyReactor(realm: String) extends Reactor(realm, Nil, None) {
+class MyReactor(override val realm: String) extends ReactorImpl(realm, Nil, None) {
+
+  override val wiki: WikiInst = new MyWikiInst(realm)
 
   /** my wiki - used to compose my own parser */
-  class MyWikiInst(realm: String) extends WikiInst(realm, Nil) {
+  class MyWikiInst(override val realm: String) extends WikiInstImpl(realm, Nil, (x=> null)) {
+
     class MyWikiParserCls(val realm: String) extends WikiParserT {
     }
 
     override def mkParser = new MyWikiParserCls(realm)
+
   }
 
-  override val wiki: WikiInst = new MyWikiInst(realm)
+  override def domain = ???
 }
 

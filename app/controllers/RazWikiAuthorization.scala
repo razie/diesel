@@ -55,6 +55,26 @@ object RazWikiAuthorization extends RazController with Logging with WikiAuthoriz
       )
   }
 
+  /** specific to clubs - can comment out whenever */
+  private def isClubVisible(u: Option[WikiUser], props: Map[String, String], visibility: String = "visibility", we: Option[WikiEntry]=None)(implicit errCollector: VErrors = IgnoreErrors) = {
+    val pvis = props.getOrElse(visibility, "")
+
+    props
+      .get("owner")
+      .flatMap(Users.findUserById(_))
+      .exists(owner =>
+         // hoping it's more likely members read blogs than register...
+         pvis == Visibility.CLUB && isInSameClub(u.get, owner) ||
+         pvis == Visibility.CLUB_COACH && isInSameClub(u.get, owner, "Coach") ||
+         pvis == Visibility.CLUB_ADMIN && isClubAdmin(u.get, owner) ||
+         // maybe the club created the parent topic (like forum/blog etc)?
+         pvis == Visibility.CLUB &&
+         props.get("parentOwner").flatMap(Users.findUserById(_)).exists(parentOwner => isInSameClub(u.get, parentOwner)) ||
+         pvis == Visibility.CLUB &&
+         we.flatMap(_.wid.findParent.flatMap(_.props.get("owner"))).flatMap(Users.findUserById(_)).exists(parentOwner => isInSameClub(u.get, parentOwner))
+      )
+  }
+
   /** can user see a topic with the given properties? */
   def isVisible(u: Option[WikiUser], props: Map[String, String], visibility: String = "visibility", we: Option[WikiEntry]=None)(implicit errCollector: VErrors = IgnoreErrors): Boolean = {
     // TODO optimize
@@ -69,20 +89,12 @@ object RazWikiAuthorization extends RazController with Logging with WikiAuthoriz
         props.get("owner") == Some(u.get.id) || // can see anything I am owner of - no need to check Visibility.PRIVATE
         u.get.hasMembershipLevel(pvis) ||
         (
-          pvis.startsWith(Visibility.CLUB) &&
-            props.get("owner").flatMap(Users.findUserById(_)).exists(owner =>
-              // hoping it's more likely members read blogs than register...
-              pvis == Visibility.CLUB && isInSameClub(u.get, owner) ||
-                pvis == Visibility.CLUB_COACH && isInSameClub(u.get, owner, "Coach") ||
-                pvis == Visibility.CLUB_ADMIN && isClubAdmin(u.get, owner) ||
-                // maybe the club created the parent topic (like forum/blog etc)?
-                pvis == Visibility.CLUB &&
-                  props.get("parentOwner").flatMap(Users.findUserById(_)).exists(parentOwner => isInSameClub(u.get, parentOwner)) ||
-                pvis == Visibility.CLUB &&
-                  we.flatMap(_.wid.findParent.flatMap(_.props.get("owner"))).flatMap(Users.findUserById(_)).exists(parentOwner => isInSameClub(u.get, parentOwner))
-            ) orCorr
-            cNotMember(uname(props.get("owner")))).getOrElse(
-            false))
+          pvis.startsWith(Visibility.CLUB) && isClubVisible(u, props, visibility, we)
+          orCorr cNotMember(uname(props.get("owner")))
+        ).getOrElse(
+            false
+      )
+    )
   }
 
   /**
@@ -96,11 +108,19 @@ object RazWikiAuthorization extends RazController with Logging with WikiAuthoriz
     val cat = wid.cat
     val name = wid.name
     (for (
-      pubProfile <- ("User" != cat || WikiIndex.withIndex(wid.getRealm)(_.get1k(name).exists(_.cat == cat)) || au.map(name == _.userName).getOrElse(isAdmin)) orErr ("Sorry - profile not found or is private! %s : %s".format(cat, name));
-      mine2 <- (!we.isDefined || isVisible(au, we.get.props, "visibility", we)) orErr ("Sorry - topic is not visible!"); // TODO report
+      pubProfile <- (
+        "User" != cat ||
+        WikiIndex.withIndex(wid.getRealm)(_.get1k(name).exists(_.cat == cat)) ||
+        au.map(name == _.userName).getOrElse(isAdmin)
+        ) orErr (
+        "Sorry - profile not found or is private! %s : %s".format(cat, name)
+        );
+      mine2 <- (
+        !we.isDefined ||
+          isVisible(au, we.get.props, "visibility", we)
+        ) orErr ("Sorry - topic is not visible!"); // TODO report
       t <- true orErr ("just can't, eh")
     ) yield true)
-    // TODO parent can see child's profile
   }
 
   final val corrVerified = new Corr("not verified", """Sorry - you need to <a href="/user/task/verifyEmail">verify your email address</a>, to create or edit public topics.\n If you already did, please describe the issue in a  <a href="/doe/support?desc=email+already+verified">support request</a> below.""");
@@ -137,7 +157,7 @@ object RazWikiAuthorization extends RazController with Logging with WikiAuthoriz
         wprops.flatMap(_.get("visibility")).exists(_.startsWith(Visibility.CLUB) && isVisible(u, wprops.get, "visibility")) ||
         !wvis(wprops).isDefined orErr ("Sorry - you are not the owner of this topic");
       memod <- (we.flatMap(_.contentProps.get("moderator")).map(_ == au.emailDec).getOrElse(true)) orErr ("Sorry - this is moderated and you are not the moderator, are you?");
-      noLevel <- wprops.flatMap(_.get("wvis")).filter(x=> isVisible(u, wprops.get, "wvis")) orErr "Not enough Karma";
+      noLevel <- (wprops.isEmpty || wprops.flatMap(_.get("wvis")).filter(x=> isVisible(u, wprops.get, "wvis")).exists(_ == true)) orErr "Not enough Karma";
       t <- true orErr ("can't")
     ) yield true)
   }

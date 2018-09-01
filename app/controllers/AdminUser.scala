@@ -48,8 +48,8 @@ class AdminUser extends AdminBase {
   val ADUSER = routes.AdminUser.user(_)
 
   def user(id: String) =
-    FAD { implicit au => implicit errCollector => implicit request =>
-      ROK.r admin { implicit stok => views.html.admin.adminUser(model.Users.findUserById(id)) }
+    FADR { implicit stok =>
+      ROK.r admin { implicit stok => views.html.admin.adminUser(model.Users.findUserById(id).map(_.forRealm(stok.realm))) }
     }
 
   def udelete1(id: String) =
@@ -72,14 +72,12 @@ class AdminUser extends AdminBase {
       Redirect("/razadmin")
     }
 
-  def ustatus(id: String, s: String) =
-    FAD { implicit au => implicit errCollector => implicit request =>
+  def ustatus(id: String, s: String) = FADR { implicit stok =>
       (for (
         goodS <- s.length == 1 && ("as" contains s(0)) orErr ("bad status");
         u <- Users.findUserById(id)
       ) yield {
-          //        Profile.updateUser(u, User(u.userName, u.firstName, u.lastName, u.yob, u.email, u.pwd, s(0), u.roles, u.addr, u.prefs, u._id))
-          Profile.updateUser(u, u.copy(status = s(0)))
+          Profile.updateUser(u, u.setStatus(stok.realm, s))
           Redirect(ADUSER(id))
         }) getOrElse {
         error("ERR_ADMIN_CANT_UPDATE_USER ustatus " + id + " " + errCollector.mkString)
@@ -119,6 +117,8 @@ class AdminUser extends AdminBase {
 
   def uperm(id: String) =
     FAD { implicit au => implicit errCollector => implicit request =>
+      val realm = Website.getRealm
+
       permForm.bindFromRequest.fold(
       formWithErrors =>
         Msg2(formWithErrors.toString + "Oops, can't add that perm!"), {
@@ -131,12 +131,13 @@ class AdminUser extends AdminBase {
               // remove/flip existing permission or add a new one?
             val sperm = perm.substring(1)
 
-              pro.update(
-                if (perm(0) == '-' && (pro.perms.contains("+" + sperm))) {
-                  pro.removePerm("+" + sperm)
-                } else if (perm(0) == '+' && (pro.perms.contains("-" + sperm))) {
-                  pro.removePerm("-" + sperm)
-                } else pro.addPerm(perm))
+              u.update(
+                if (perm(0) == '-' && (u.perms.contains("+" + sperm))) {
+                  u.removePerm(realm, "+" + sperm)
+                } else if (perm(0) == '+' && (u.perms.contains("-" + sperm))) {
+                  u.removePerm(realm, "-" + sperm)
+                } else u.addPerm(realm, perm))
+
               cleanAuth(Some(u))
               Redirect(ADUSER(id))
             }) getOrElse {
@@ -169,22 +170,21 @@ class AdminUser extends AdminBase {
       })
     }
 
-  def umodnotes(id: String) = FAD { implicit au => implicit errCollector => implicit request =>
+  def umodnotes(id: String) = FADR { implicit stok =>
     OneForm.bindFromRequest.fold(
     formWithErrors =>
-      Msg2(formWithErrors.toString + "Oops, can't add that quota!"), {
+      Msg2(formWithErrors.toString + "Oops, can't add that note!"), {
       case uname =>
         (for (
           u <- Users.findUserById(id);
           pro <- u.profile
         ) yield {
             var ok=true
-            // TODO transaction
-            razie.db.tx("umodnote", au.userName) { implicit txn =>
+            razie.db.tx("umodnote", stok.au.get.userName) { implicit txn =>
                 if(uname startsWith "+")
-                  Profile.updateUser(u, u.copy(modNotes = u.modNotes ++ Seq(uname.drop(1))) )
+                  Profile.updateUser(u, u.addModNote(stok.realm, uname))
                 else if(uname startsWith "-")
-                  Profile.updateUser(u, u.copy(modNotes = u.modNotes.filter(_ != uname.drop(1))) )
+                  Profile.updateUser(u, u.removeModNote(stok.realm, uname))
                 else
                   ok=false
               cleanAuth(Some(u))
@@ -210,7 +210,6 @@ class AdminUser extends AdminBase {
           pro <- u.profile;
           already <- !(u.userName == uname) orErr "Already updated"
         ) yield {
-            // TODO transaction
             razie.db.tx("uname", au.userName) { implicit txn =>
               Profile.updateUser(u, u.copy(userName = uname))
               Wikis.updateUserName(u.userName, uname)
@@ -224,10 +223,8 @@ class AdminUser extends AdminBase {
     })
   }
 
-  def urealms(id: String) = FAD { implicit au =>
-    implicit errCollector => implicit request =>
-
-      OneForm.bindFromRequest.fold(
+  def updUser(id:String, f: (User, String, RazRequest) => User) = FADR {implicit stok=>
+    OneForm.bindFromRequest.fold(
       formWithErrors =>
         Msg2(formWithErrors.toString + "Oops, can't !"), {
         case uname =>
@@ -235,40 +232,23 @@ class AdminUser extends AdminBase {
             u <- Users.findUserById(id);
             pro <- u.profile
           ) yield {
-              // TODO transaction
-              razie.db.tx("urealms", au.userName) { implicit txn =>
-                Profile.updateUser(u, u.copy(realms = uname.split("[, ]").toSet))
-                cleanAuth(Some(u))
-              }
-              Redirect(ADUSER(id))
-            }) getOrElse {
+            razie.db.tx("urealms", stok.au.get.userName) { implicit txn =>
+              Profile.updateUser(u, f(u, uname, stok))
+              cleanAuth(Some(u))
+            }
+            Redirect(ADUSER(id))
+          }) getOrElse {
             error("ERR_ADMIN_CANT_UPDATE_USER.urealms " + id + " " + errCollector.mkString)
             Unauthorized("ERR_ADMIN_CANT_UPDATE_USER.urealms " + id + " " + errCollector.mkString)
           }
       })
   }
 
-  def uroles(id: String) = FAD { implicit au =>
-    implicit errCollector => implicit request =>
+  def urealms(id: String) = {
+    updUser (id, {(u, uname, stok) => u.setRealms(stok.realm, uname)})
+  }
 
-      OneForm.bindFromRequest.fold(
-      formWithErrors =>
-        Msg2(formWithErrors.toString + "Oops, can't !"), {
-        case uname =>
-          (for (
-            u <- Users.findUserById(id);
-            pro <- u.profile
-          ) yield {
-              // TODO transaction
-              razie.db.tx("uroles", au.userName) { implicit txn =>
-                Profile.updateUser(u, u.copy(roles = uname.split("[, ]").toSet))
-                cleanAuth(Some(u))
-              }
-              Redirect(ADUSER(id))
-            }) getOrElse {
-            error("ERR_ADMIN_CANT_UPDATE_USER.uroles " + id + " " + errCollector.mkString)
-            Unauthorized("ERR_ADMIN_CANT_UPDATE_USER.uroles " + id + " " + errCollector.mkString)
-          }
-      })
+  def uroles(id: String) = {
+    updUser (id, {(u, uname, stok) => u.setRoles(stok.realm, uname)})
   }
 }

@@ -5,6 +5,7 @@ import model._
 import play.api.Configuration
 import play.api.data.Form
 import play.api.data.Forms.{tuple, _}
+import razie.hosting.Website
 import razie.wiki.Sec._
 import razie.wiki.model._
 
@@ -37,11 +38,11 @@ class EdEmail @Inject() (config:Configuration) extends RazController {
             au <- activeUser
           ) yield {
             razie.db.tx("change.email", au.userName) { implicit txn =>
-              val newu = au.copy(email = n.enc)
-              //            val newu = User(au.userName, au.firstName, au.lastName, au.yob, n.enc, au.pwd, au.status, u.roles, u.addr, u.prefs, u._id)
+              val realm = Website.getRealm
+              var newu = au.copy(email = n.enc).removePerm(realm, "+" + Perm.eVerified.s)
               Profile.updateUser(au, newu)
               val pro = newu.profile.getOrElse(newu.mkProfile)
-              pro.update(pro.removePerm("+" + Perm.eVerified.s))
+              pro.update(pro)
               UserTasks.verifyEmail(newu).create
 
               Emailer.withSession(request.realm) { implicit mailSession =>

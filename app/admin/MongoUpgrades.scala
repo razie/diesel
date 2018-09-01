@@ -3,22 +3,25 @@ package admin
 import com.mongodb.casbah.Imports._
 import com.novus.salat._
 import com.novus.salat.annotations._
-import mod.snow.{RK, RacerKidAssoc, RacerKidz}
+import mod.snow.{RK, RacerKidAssoc, RacerKidz, RoleWid}
 import razie.wiki.Enc
 import razie.{clog, cout}
 import controllers.Club
 
 import scala.collection.mutable.ListBuffer
-import razie.db.RTable
-import razie.db.ROne
-import razie.db.RMany
+import razie.db._
 import razie.wiki.model._
-import razie.db.RUpdate
-import razie.db.UpgradeDb
-import model.UserTask
-import model.Profile
+import model._
 import razie.db.tx.txn
 import razie.wiki.admin.Autosave
+
+import scala.collection.mutable
+
+/******************************************
+  *
+  *
+  *
+  *****************************************/
 
 object Upgrade1 extends UpgradeDb {
   def upgrade(db: MongoDB) {}
@@ -98,14 +101,14 @@ object Upgrade5 extends UpgradeDb with razie.Logging {
       }
     }
 
-    withDb(db("Profile")) { t =>
-      for (
-        po <- t;
-        p <- Some(grater[Profile].asObject(po)) if (!p.perms.contains("+eVerified"))
-      ) {
-        db("UserTask") += grater[UserTask].asDBObject(UserTask(p.userId, "verifyEmail"))
-      }
-    }
+//    withDb(db("Profile")) { t =>
+//      for (
+//        po <- t;
+//        p <- Some(grater[Profile].asObject(po)) if (!p.perms.contains("+eVerified"))
+//      ) {
+//        db("UserTask") += grater[UserTask].asDBObject(UserTask(p.userId, "verifyEmail"))
+//      }
+//    }
 
     //    withDb(db("User")) { t =>
     //      for ( u <- t if(!u.containsKey("email"))) {
@@ -733,3 +736,21 @@ object U18 extends UpgradeDb with razie.Logging {
 }
 
 
+object MoreUpgrades {
+
+  def sayHi = razie.cout << "Applying more upgrades"
+
+  razie.db.tx("upgrades", "?") { implicit txn =>
+
+    RazMongo.upgradeMaybe("upgradeUserRealms3", Array.empty) {
+      RMany[User]().foreach { u =>
+
+        val newUser = u.copy(
+          perms = Set()
+        )
+        RUpdate.noAudit(newUser)
+      }
+    }
+  }
+
+  }

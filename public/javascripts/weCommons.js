@@ -237,6 +237,10 @@ function weMsgPopup(ea,p) {
  */
 function iweMsg(ea,p,what,succ) {
   var u = '/diesel/fiddle/react/'+ea+'?resultMode='+what+'&'+p
+
+  if(typeof dieselHost != "undefined")
+    u = dieselHost + u;
+
   $.ajax(
     u, {
       type: 'POST',
@@ -320,4 +324,5 @@ function dieselNodeLog(s) {
   } catch (err) {
     dieselValueJson = {err : err};
   }
+  alert(s);
 }

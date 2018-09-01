@@ -161,7 +161,8 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
             ))
             val hasDraft = Autosave.find("wikie",w.realm, w.wid.wpath, stok.au.get._id).isDefined
 
-            if(w.markup == Wikis.JS || w.markup == Wikis.JSON || w.markup == Wikis.SCALA)
+          // todo this is not ready yet
+            if(false && (w.markup == Wikis.JS || w.markup == Wikis.JSON || w.markup == Wikis.SCALA))
               ROK.s noLayout { implicit stok =>
                 views.html.util.reactorLayout12FullPage(
                 views.html.wiki.wikiEditJS(w.wid,
@@ -227,7 +228,7 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
 
         val parentProps = wid.findParent.map(_.props)
         (for (
-          can <- canEdit(wid, Some(au), None, parentProps);
+          can <- canEdit(wid, Some(au), None, parentProps) orErr ("Can't edit");
           r3 <- ("any" != wid.cat) orErr ("can't create in category any");
           w <- WikiDomain(realm).rdom.classes.get(wid.cat) orErr (s"cannot find the category ${wid.cat} realm $realm");
           r1 <- au.hasPerm(Perm.uWiki) orCorr cNoPermission("uWiki");
@@ -512,11 +513,22 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
             (for (
               can <- canEdit(wid, auth, None) orErr "can't edit";
               wej <- data.get("we") orErr "bad we";
-              w <- fromJ(wej) orErr "can't J";
-              newVer <- Some(w.copy(ver = 1, updDtm = DateTime.now)); // not copying over history so reset to now
+              source <- fromJ(wej) orErr "can't J";
+              newVer <- Some(source.copy(
+                ver = 1,
+                realm=wid.getRealm,
+                updDtm = DateTime.now )
+              ); // not copying over history so reset to now
               upd <- before(newVer, WikiAudit.UPD_CONTENT) orErr ("Not allowerd")
             ) yield {
               var we = newVer
+
+              // if on the same host but differnt realm, gets a new id
+              if(wid.getRealm != source.realm) {
+                we = we.copy (
+                  _id = new ObjectId()
+                )
+              }
 
               // todo check lock
 
@@ -1151,7 +1163,7 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
     }
   }
 
-  def wikieCreate(cats: String, tags:String) = FAUR("create.wiki") {implicit stok =>
+  def wikieCreate(cats: String, tags:String) = FAUR("wikieCreate") {implicit stok =>
       val name = ""
       for (
         au <- stok.au;

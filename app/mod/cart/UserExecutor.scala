@@ -65,11 +65,12 @@ object ModUserExecutor extends EExecutor("mod.user") {
                   case _ => None
                 }
 
-                if(perm.isDefined && !u.hasMembershipLevel(perm.get)) u.profile.map { p =>
-                  p.update(p.addPerm("+"+perm.get.s))
-                }
+                if(perm.isDefined && !u.hasMembershipLevel(perm.get)) u.update(u.addPerm(realm, "+"+perm.get.s))
 
-                val newu = u.copy(modNotes = u.modNotes ++ Seq(s"${DateTime.now().toString} - membership upgraded to $level with payment $paymentId amount $amount"))
+                val newu = u.addModNote(
+                  realm,
+                  s"${DateTime.now().toString} - membership upgraded to $level with payment $paymentId amount $amount"
+                )
                 u.update(newu)
                 Services.auth.cleanAuth2(u)
 

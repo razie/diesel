@@ -24,7 +24,7 @@
       <a href="@routes.Club.doeClubUserRegs" class="btn btn-lg btn-info">Registrations</a>
     }
 
-    @if(!au.profile.flatMap(_.consent).isDefined) {
+    @if(!au.consent.isDefined) {
       <a href="@routes.Profile.doeConsent()" class="btn btn-lg btn-danger">Need Consent!</a>
     }
   }

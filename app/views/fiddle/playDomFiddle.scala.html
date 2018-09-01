@@ -3,7 +3,9 @@ a JS with HTML and CSS fiddle
 **************@
 @(reactor:String,
     args:Map[String,String],
+    origSpec:String,
     spec:String,
+    origStory:String,
     story:String,
     capture:String,
     specWpath:String,
@@ -34,7 +36,7 @@ a JS with HTML and CSS fiddle
 <script src="@routes.Assets.at("javascripts/weFiddles.js")"></script>
 
   <h3 id="heading">Diesel fiddle<a href="/wiki/Diesel_Fiddle_Guide"><sup><span class="glyphicon glyphicon-question-sign"></span></sup></a> | <small>
-    <input type="checkbox" id="refresh" checked> <span title="real time preview">RT</span> (<span id="roundtrip" title="real time roundtrip response time">.. ms</span>)
+    <input type="checkbox" id="realTime" checked> <span title="real time preview">RT</span> (<span id="roundtrip" title="real time roundtrip response time">.. ms</span>)
     <span id="errors" class="label label-default">0 failed</span>
 
     <span onclick="setSpec('Story');" class="label label-primary" style="cursor:pointer"><span id="curStory">Story</span> <span class="glyphicon glyphicon-chevron-down">
@@ -114,6 +116,9 @@ a JS with HTML and CSS fiddle
   @*<div class="col-sm-6 well" id="pre6_@id" style="overflow: scroll; margin-bottom:2px">*@
   @*</div>*@
   <pre class="col-sm-6" id="iframeOut5_@id" style="padding:1px; Xtext-align: center">Start typing...</pre>
+
+  <pre id="origStory_@id" style="display:none">@story</pre>
+  <pre id="origSpec_@id" style="display:none">@spec</pre>
 </div>
 
 
@@ -139,9 +144,10 @@ useLocalStorageCheckbox("mockMode", "domFiddleMockMode");
 useLocalStorageCheckbox("blenderMode", "domFiddleBlenderMode");
 useLocalStorageCheckbox("draftMode", "domFiddleDraftsMode");
 useLocalStorageCheckbox("wikiMode", "domFiddleWikiMode");
+useLocalStorageCheckbox("realTime", "domFiddleRealTime");
 
 
-$('#sketchMode, #mockMode, #blenderMode, #draftMode').change(function(){
+$('#sketchMode, #mockMode, #blenderMode, #draftMode, #realTime').change(function(){
       runpill2_@{id}('@{id}');
 });
 
@@ -190,12 +196,19 @@ var instContentAssist=[];
 var specWpath='@specWpath';
 var storyWpath='@storyWpath';
 
-if(specWpath.length > 0) $("#curSpec").text('(@WID.fromPath(specWpath).map(_.name))');
-if(storyWpath.length > 0) $("#curStory").text('(@WID.fromPath(storyWpath).map(_.name))');
+if(specWpath.length > 0) $("#curSpec").text('@WID.fromPath(specWpath).map(_.name)');
+if(storyWpath.length > 0) $("#curStory").text('@WID.fromPath(storyWpath).map(_.name)');
+
+var RT = function () { return $('#realTime').prop('checked');}
 
 var runpill_@id = function(id) {
   var lastTime = new Date().getTime();
+
   showSpinner();
+
+  // set this before going to backend which could take a long time
+  @*specChanged(!(editor1.getValue() === $("#origSpec_@id").text()));*@
+
   $.ajax(
     '/diesel/fiddle/fiddleSpecUpdated/'+id+'?@Html(mod.diesel.controllers.SFiddles.qtourl(args))', {
     type: 'POST',
@@ -209,11 +222,13 @@ var runpill_@id = function(id) {
       storyWpath : storyWpath,
       spec : editor1.getValue(),
       story : editor.getValue(),
-      capture : editor5.getValue()
+      capture : editor5.getValue(),
+      realTime : RT()
     }),
     contentType: 'application/x-www-form-urlencoded',
     success: function(data) {
       hideSpinner();
+
       $('#divOut1_'+id).html(data.res);
       domContentAssist = data.ca;
       var du = new Date().getTime() - lastTime;
@@ -238,9 +253,19 @@ function setErrors (s) {
     $('#errors').addClass("label label-danger");
 }
 
+var encAmp = function(s) {
+  return s
+      .replace(/&lt;/g, '〈')
+      .replace(/&gt;/g, '〉');
+}
+
 var runpill2_@id = function(id) {
   var lastTime = new Date().getTime();
   showSpinner();
+
+  // set this before going to backend which could take a long time
+  @*storyChanged(!(editor.getValue() === $("#origStory_@id").text()));*@
+
   $.ajax(
     '/diesel/fiddle/fiddleStoryUpdated/'+id+'?@Html(mod.diesel.controllers.SFiddles.qtourl(args))', {
     type: 'POST',
@@ -255,16 +280,25 @@ var runpill2_@id = function(id) {
       storyWpath : storyWpath,
       spec : editor1.getValue(),
       story : editor.getValue(),
-      capture : editor5.getValue()
+      capture : editor5.getValue(),
+      realTime : RT()
     }),
     contentType: 'application/x-www-form-urlencoded',
     success: function(data) {
       hideSpinner();
+
       if($('#wikiMode').prop('checked'))
         $('#divOut3_'+id).html(data.wiki);
       else {
-        $('#iframeOut3_' + id).html(data.res + '\n');
-        $('#iframeOut1_' + id).html(data.res + '\n');
+        // console.log("TREE: "+data.res);
+
+        // jquery.html will expan the escaped html, we need to escape again with encAmp
+        // if i don't do this, html values will mess up the current page
+        // if(RT())
+        if(data.realTime) { // was not executed
+          $('#iframeOut3_' + id).html(encAmp(data.res) + '\n');
+          $('#iframeOut1_' + id).html(encAmp(data.res) + '\n');
+        }
       }
       $('#iframeOut5_'+id).html(data.capture);
       instContentAssist = data.ca;
@@ -408,18 +442,20 @@ setInterval(function(){
 <script> // weDieselDiffs
 /** Diffs in story/spec for Diesel
  *
- * Created by razvanc on 02/05/2014.
  */
+
+specChanged("@specChanged");
+storyChanged("@storyChanged");
 
 function specChanged(spec) {
   $('#specChanged').removeClass();
-  if(spec === "true") $("#specChanged").addClass("label label-warning");
+  if(spec === "true" || spec === true) $("#specChanged").addClass("label label-warning");
   else $("#specChanged").addClass("label label-success");
 }
 
 function storyChanged(story) {
   $('#storyChanged').removeClass();
-  if(story === "true") $("#storyChanged").addClass("label label-warning");
+  if(story === "true" || story === true) $("#storyChanged").addClass("label label-warning");
   else $("#storyChanged").addClass("label label-success");
 }
 

@@ -66,6 +66,8 @@ class Module extends AbstractModule {
 
     mongoInit()
 
+    MoreUpgrades.sayHi
+
     // init after DB because it needs DB
     Audit.impl = new MdbAuditService
     RMongo.setInstance(Audit.impl)

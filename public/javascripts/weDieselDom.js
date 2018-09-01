@@ -376,9 +376,9 @@ function loadSpec (wpath, rest) {
 }
 
 function WID(wpath) {
-  var r = wpath.indexOf(":") > 0 ? wpath.replace(/(\w*)?\..*/, '\$1') : "";
-  var c = wpath.indexOf(":") > 0 ? wpath.replace(/(\w*\.)?(\w*):.*/, '\$2') : "";
-  var n = wpath.indexOf(":") > 0 ? wpath.replace(/(\w*\.)?(\w*):(\w*)/, '\$3') : wpath;
+  var r = wpath.indexOf(":") > 0 ? wpath.replace(/([\w-]*)?\..*/, '\$1') : "";
+  var c = wpath.indexOf(":") > 0 ? wpath.replace(/([\w-]*\.)?([\w-]*):.*/, '\$2') : "";
+  var n = wpath.indexOf(":") > 0 ? wpath.replace(/([\w-]*\.)?([\w-]*):(.*)/, '\$3') : wpath;
   return {
     realm : r,
     cat : c,

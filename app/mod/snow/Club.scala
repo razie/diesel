@@ -872,7 +872,10 @@ regAdmin=$regAdmin
           if (stok.au.get.isAdmin && r == "admin") {
             Users.findUserByUsername(wid.name).map { u =>
               audit("CREATING_CLUB EXISTING USER" + wid.name)
-              u.update(u.copy(roles = u.roles + UserType.Organization, clubSettings = Some(mkSettings(u, a))))
+              u.update(
+                u.copy(clubSettings = Some(mkSettings(u, a)))
+                .setRoles(stok.realm, u.roles + UserType.Organization)
+              )
             }.getOrElse {
               audit("CREATING_CLUB NEW USER" + wid.name)
               var u = User(
@@ -909,7 +912,7 @@ regAdmin=$regAdmin
   def doeClubUserRegs = FAU { implicit au => implicit errCollector => implicit request =>
     implicit val errCollector = new VErrors()
     (for (
-      isConsent <- au.profile.flatMap(_.consent).isDefined orCorr cNoConsent
+      isConsent <- au.consent.isDefined orCorr cNoConsent
     ) yield {
       ROK.s apply { implicit stok =>
         views.html.club.doeClubUserRegs()
@@ -921,7 +924,7 @@ regAdmin=$regAdmin
   def doeClubUserReg(regid: String) = FAU { implicit au => implicit errCollector => implicit request =>
     implicit val errCollector = new VErrors()
     (for (
-      isConsent <- au.profile.flatMap(_.consent).isDefined orCorr cNoConsent;
+      isConsent <- au.consent.isDefined orCorr cNoConsent;
       reg <- Regs.findId(regid) orErr ("no reg found")
     ) yield {
       ROK.s apply { implicit stok =>
@@ -1148,7 +1151,7 @@ regAdmin=$regAdmin
       // either mine or i'm the club
       isMine <- (prevReg.userId == au._id && prevReg.clubName == clubName.name || prevReg.clubName == au.userName) orErr ("Not your registration: " + prevRegId);
       user <- Users.findUserById(prevReg.userId) orErr ("Cant find user: " + prevReg.userId);
-      isConsent <- au.profile.flatMap(_.consent).isDefined orCorr cNoConsent;
+      isConsent <- au.consent.isDefined orCorr cNoConsent;
       isSame <- (prevReg.year != c.curYear) orErr ("Can't copy this year's registration: " + prevRegId)
     ) yield {
       // 1. expire
@@ -1229,7 +1232,7 @@ regAdmin=$regAdmin
         }
       }
     }) getOrElse {
-      if (activeUser.isDefined && !activeUser.get.profile.flatMap(_.consent).isDefined)
+      if (activeUser.isDefined && !activeUser.get.consent.isDefined)
         ROK.r apply { implicit stok =>
           views.html.user.doeConsent()
         }
@@ -1244,7 +1247,7 @@ regAdmin=$regAdmin
       c <- Club(clubWid);
       regAdmin <- c.uregAdmin orErr ("Registration is not open yet! [no regadmin]");
       isOpen <- c.isRegOpen orErr ("Registration is not open yet!");
-      isConsent <- stok.au.get.profile.flatMap(_.consent).isDefined orCorr cNoConsent
+      isConsent <- stok.au.get.consent.isDefined orCorr cNoConsent
     ) yield {
       Regs.findClubUserYear(clubWid, stok.au.get._id, c.curYear).map { reg =>
         UserTask(stok.au.get._id, UserTasks.START_REGISTRATION).delete(tx.auto)
@@ -1257,7 +1260,7 @@ regAdmin=$regAdmin
           Msg2("Registration not open yet for club " + clubWid)
       }
     }) getOrElse {
-      if (activeUser.isDefined && !activeUser.get.profile.flatMap(_.consent).isDefined)
+      if (activeUser.isDefined && !activeUser.get.consent.isDefined)
         ROK.k apply views.html.user.doeConsent(routes.Club.doeStartRegSimple(clubWid).url)
       else
         Msg2("CAN'T START REGISTRATION " + errCollector.mkString)
@@ -1275,7 +1278,7 @@ regAdmin=$regAdmin
       c <- Club(clubWid);
       regAdmin <- c.uregAdmin orErr ("Registration is not open yet! [no regadmin]");
       isOpen <- (c.isRegOpen || code.length == 7) orErr ("Registration is not open yet!");
-      isConsent <- au.profile.flatMap(_.consent).isDefined orCorr cNoConsent
+      isConsent <- au.consent.isDefined orCorr cNoConsent
     ) yield {
       // current registration?
       razie.db.tx("userStartReg", au.userName) { implicit txn =>
@@ -1308,7 +1311,7 @@ regAdmin=$regAdmin
         }
       }
     }) getOrElse {
-      if (activeUser.isDefined && !activeUser.get.profile.flatMap(_.consent).isDefined)
+      if (activeUser.isDefined && !activeUser.get.consent.isDefined)
         ROK.r apply { implicit stok =>
           views.html.user.doeConsent()
         } else

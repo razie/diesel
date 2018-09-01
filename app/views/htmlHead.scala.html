@@ -321,11 +321,11 @@ img.rklogo {
 @** optional realm-level stylesheet **@
 
 @stok.map(_.realm).orElse(request.map(r=>Website.realm(r))).orElse(page.map(_.wid.getRealm)).flatMap(Website.forRealm).flatMap(_.stylesheet).flatMap(_.content).map{c=>
+    <!--  optional realm-level stylesheet  -->
   <style type="text/css">
   @c
   </style>
 }
-
 
   </head>
 

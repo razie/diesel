@@ -68,11 +68,19 @@ object AdminDiff extends AdminBase {
     l = l.filter(_.name != "")
 
     // filter those with content similar
-    l = l.filter(x=> WID.fromPath(x.name).exists(_.content.exists(_ != x.contents)))
+    val ok = l.filter(x=> WID.fromPath(x.name).exists(_.content.exists(_ != x.contents("content"))))
+    val neq = l.filter(x=> WID.fromPath(x.name).exists(_.content.exists(_ == x.contents("content"))))
+    val non = l.filter(x=> WID.fromPath(x.name).flatMap(_.page).isEmpty)
 
-    var list = l.map(x=>(x.what, x.realm, x.name, WID.fromPath(x.name).map(_.url + "  ").mkString ))
+    val lok = ok.map(x=>(x.what, x.realm, x.name, WID.fromPath(x.name).map(_.url + "  ").mkString ))
+    val lneq = neq.map(x=>(x.what, x.realm, x.name, WID.fromPath(x.name).map(_.url + "  ").mkString ))
+    val lnon = non.map(x=>(x.what, x.realm, x.name, WID.fromPath(x.name).map(_.url + "  ").mkString ))
 
-    Ok(Wikis.sformat(list.size + "\n- " + list.mkString("\n- "))).as("text/html")
+    Ok(
+      Wikis.sformat(lok.size + "\n- " + lok.mkString("\n- "))+
+      Wikis.sformat("neq: "+lneq.size + "\n- " + lneq.mkString("\n- "))+
+      Wikis.sformat("non: "+lnon.size + "\n- " + lnon.mkString("\n- "))
+    ).as("text/html")
   }
 
   /** get list of pages - invoked by remote trying to sync */
@@ -162,15 +170,17 @@ object AdminDiff extends AdminBase {
 
   /** show the list of diffs to remote
     *
-    * @param reactor - remote reactor, "all" for all
-    * @param target
+    * diff THIS realm with remote realm. If remote is ALL, then we diff ALL realms
+    *
+    * @param toRealm - remote reactor, "all" for all
+    * @param remote
     * @return
     */
   // todo auth that user belongs to realm
-  def difflist(reactor:String, target:String) = FAUR { implicit request =>
+  def difflist(toRealm:String, remote:String) = FAUR { implicit request =>
       try {
         // get remote list
-        val b = body(url(s"http://$target/razadmin/wlist/$reactor").basic("H-"+request.au.get.emailDec, "H-"+request.au.get.pwd.dec))
+        val b = body(url(s"http://$remote/razadmin/wlist/$toRealm").basic("H-"+request.au.get.emailDec, "H-"+request.au.get.pwd.dec))
 
         val gd = new JSONArray(b)
         val ldest = js.fromArray(gd).collect {
@@ -181,10 +191,10 @@ object AdminDiff extends AdminBase {
         }
 
         // local list
-        val lsrc = RMany[WikiEntry]().filter(we=> reactor.isEmpty || reactor == "all" || we.realm == request.realm).map(x=>new WEAbstract(x)).toList
+        val lsrc = RMany[WikiEntry]().filter(we=> toRealm.isEmpty || toRealm == "all" || we.realm == request.realm).map(x=>new WEAbstract(x)).toList
 
         val (lnew, lchanged, lremoved) =
-          if(reactor == "all" || reactor == request.realm)
+          if(toRealm == "all" || toRealm == request.realm)
             // diff to remote
             diffById(lsrc, ldest)
           else
@@ -192,7 +202,7 @@ object AdminDiff extends AdminBase {
             diffByName(lsrc, ldest)
 
         ROK.r admin {implicit stok=>
-          views.html.admin.adminDifflist(reactor, target, lnew, lremoved, lchanged.sortBy(_._3))
+          views.html.admin.adminDifflist(toRealm, remote, lnew, lremoved, lchanged.sortBy(_._3))
         }
       } catch {
         case x : Throwable => {
@@ -204,7 +214,7 @@ object AdminDiff extends AdminBase {
 
   /** compute and show diff for a WID */
   // todo auth that user belongs to realm
-  def showDiff(side:String, realm:String, target:String, iwid:WID) = FAUR { implicit request =>
+  def showDiff(onlyContent:String, side:String, realm:String, target:String, iwid:WID) = FAUR { implicit request =>
     val localWid = iwid.r(if(realm == "all") iwid.getRealm else request.realm)
     val remoteWid = iwid.r(if(realm == "all") iwid.getRealm else iwid.getRealm)
 
@@ -215,25 +225,30 @@ object AdminDiff extends AdminBase {
           DiffUtils.diff(localWid.content.get.lines.toList, remote.lines.toList)
         else
           DiffUtils.diff(localWid.content.get.lines.toList, remote.lines.toList)
-//          DiffUtils.diff(remote.lines.toList, wid.content.get.lines.toList)
 
-        ROK.r admin {implicit stok=>
-          if(side=="R")
+        def x = {
+          if (side == "R")
             views.html.admin.adminDiffShow(side, localWid.content.get, remote, patch, localWid.page.get, t._1)
           else
             views.html.admin.adminDiffShow(side, localWid.content.get, remote, patch, localWid.page.get, t._1)
-//            views.html.admin.adminDiffShow(side, remote, wid.content.get, patch, t._1, wid.page.get)
         }
+
+        if("yes" == onlyContent.toLowerCase)
+          ROK.r noLayout {implicit stok=> x }
+        else
+          ROK.r admin {implicit stok=> x }
+
       },{err=>
         Ok ("ERR: " + err)
       })
   }
 
-  // create the remote
+  /** create the local page on remote
+    */
   // todo auth that user belongs to realm
-  def applyDiffCr(realm:String, target:String, iwid:WID) = FAUR { implicit request =>
-    val localWid = iwid.r(if(realm == "all") iwid.getRealm else request.realm)
-    val remoteWid = iwid.r(if(realm == "all") iwid.getRealm else iwid.getRealm)
+  def applyDiffCr(toRealm:String, target:String, iwid:WID) = FAUR { implicit request =>
+    val localWid = iwid.r(if(toRealm == "all") iwid.getRealm else request.realm)
+    val remoteWid = iwid.r(if(toRealm == "all") iwid.getRealm else toRealm)
 
       try {
         val content = localWid.content.get
@@ -243,7 +258,7 @@ object AdminDiff extends AdminBase {
             form(Map("we" -> localWid.page.get.grated.toString)).
             basic("H-"+request.au.get.emailDec, "H-"+request.au.get.pwd.dec))
 
-        Ok(b + " <a href=\"" + s"http://$target${remoteWid.urlRelative(realm)}" + "\">" + remoteWid.wpath + "</a>")
+        Ok(b + " <a href=\"" + s"http://$target${remoteWid.urlRelative(toRealm)}" + "\">" + remoteWid.wpath + "</a>")
       } catch {
         case x : Throwable => Ok ("error " + x)
       }

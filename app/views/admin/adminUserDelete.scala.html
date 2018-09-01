@@ -8,7 +8,6 @@ Admin user - confirm delete
 <br>userId: @p.userId
 <br>location: @p.loc
 <br>  tags: @p.tags
-<br>  perms: @p.perms
 <br>  aboutMe: @p.aboutMe
 <br>  relationships: @p.relationships.map { r =>
       <a href="/razadmin/user/@r._1">@r._1</a> - @r._2 <br>
@@ -31,6 +30,7 @@ Admin user - confirm delete
     <br>  email: @u.emailDec
     <br>  emailenc: @u.email
     <br>  pwd: @u.pwd
+    <br>  perms: @u.perms
     <br>  status: @u.status
     <br>  roles: @u.roles
     <br>  _id: @u.id

@@ -182,12 +182,15 @@ object Kidz extends RazController {
             // update
             val rk = RacerKidz.findById(new ObjectId(rkId)).get
             val rki = rk.rki.get
-            rki.copy(firstName = f, lastName = l, email = e.enc, dob = d,
-              gender = g, status = status charAt 0, roles = Set(r)).update
-//              if (associd.length > 2) new ObjectId(associd).as[RacerKidAssoc].foreach { rka =>
-//                if (ar != rka.role)
-//                  rka.copy(role = ar).update
-//              }
+            rki.copy(
+              firstName = f,
+              lastName = l,
+              email = e.enc,
+              dob = d,
+              gender = g,
+              status = status charAt 0,
+              roles=Set(r)
+            ).update
             res
           } else {
             // create

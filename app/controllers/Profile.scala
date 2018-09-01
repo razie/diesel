@@ -44,7 +44,9 @@ object Profile extends RazController {
 
   // TODO should be private
   def createUser(u: User, about:String = "")(implicit request: Request[_], txn:Txn) = {
+    val realm = Website.getRealm
     val pro = u.mkProfile
+
     val created = {u.create(pro); Some(u)}
 
     // todo decouple with the event below
@@ -58,8 +60,8 @@ object Profile extends RazController {
     if(! Services.config.isLocalhost) {
       UserTasks.verifyEmail(u).create
     } else {
-      val ppp = pro.addPerm("+" + Perm.eVerified.s).addPerm("+" + Perm.uWiki.s)
-      pro.update(if (u.isUnder13) ppp else ppp.addPerm("+" + Perm.uProfile.s))
+      val pu = u.addPerm(realm, "+" + Perm.eVerified.s).addPerm(realm, "+" + Perm.uWiki.s)
+      u.update(if (u.isUnder13) pu else pu.addPerm(realm, "+" + Perm.uProfile.s))
     }
 
     if (u.isClub) {
@@ -315,7 +317,7 @@ class Profile @Inject() (config:Configuration) extends RazController with Loggin
             }
           }
 
-          (if(u.profile.flatMap(_.consent).isDefined) {
+          (if(u.hasConsent(realm)) {
             if(next.isDefined)
               Msg2( s"""Click below to continue joining the $club.""", next)
             else
@@ -365,7 +367,7 @@ class Profile @Inject() (config:Configuration) extends RazController with Loggin
 
   // accepted consent, record it
   def doeConsent2 (ver:String, next:String) = FAUR { implicit request =>
-      request.au.get.profile.map(p => p.update(p.consented(ver)))
+      request.au.get.update(request.au.get.consented(request.realm, ver))
       UserEvent(request.au.get._id, "CONSENTED " + ver).create
       cleanAuth()
       Msg2("Thank you!", Some(next))
@@ -390,9 +392,9 @@ class Profile @Inject() (config:Configuration) extends RazController with Loggin
       realm == request.realm && request.au.exists(_.isMod)
     ) {
       Users.findUsersForRealm(realm).foreach {u =>
-        u.profile.foreach {p=>
+        u.realmSet.get(request.realm).foreach {p=>
           UserEvent(u._id, "CONSENT CLEARED - old: " + p.consent.mkString).create
-          p.update (p.copy(consent = None))
+          u.update (u.clearConsent(request.realm))
           cnt += 1
         }
       }
@@ -427,8 +429,7 @@ class Profile @Inject() (config:Configuration) extends RazController with Loggin
   private def dfltCss = Services.config.sitecfg("dflt.css") getOrElse "light"
 
   /** join step 4 - after captcha: create profile and send emails */
-  def doeCreateProfile(testcode: String) = Action { implicit request =>
-    implicit val errCollector = new VErrors()
+  def doeCreateProfile(testcode: String) = RAction { implicit request =>
 
     def getFromSession(s: String, d: String) =
       if (testcode != T.TESTCODE) request.session.get(s)
@@ -471,7 +472,7 @@ class Profile @Inject() (config:Configuration) extends RazController with Loggin
             if (u.isUnder13 && !u.isClub) {
               Redirect(routes.Tasks.addParent1).withSession("ujson" -> u.toJson, "extra" -> request.session.get("extra").mkString, "gid" -> request.flash.get("gid").mkString)
             } else {
-              if(about.length > 0) u = u.copy(prefs = u.prefs + ("about" -> about))
+              if(about.length > 0) u = u.setPrefs(request.realm, u.prefs + ("about" -> about))
 
               razie.db.tx("doeCreateProfile", u.userName) { implicit txn =>
                 Profile.createUser(u, about)
@@ -546,7 +547,7 @@ class Profile @Inject() (config:Configuration) extends RazController with Loggin
         }
 
         val p = u.profile.get
-        val newp = p.upsertExtLink(ExtSystemUserLink(esid, eiid, eaid))
+        val newp = p.upsertExtLink(stok.realm, ExtSystemUserLink(stok.realm, esid, eiid, eaid))
         p.update(newp)
       }
 
@@ -569,7 +570,7 @@ class Profile @Inject() (config:Configuration) extends RazController with Loggin
       razie.db.tx("doeCreateExt", u.userName) { implicit txn =>
         val newu = Profile.createUser(u)
         val p = newu.get.profile.get
-        val newp = p.upsertExtLink(ExtSystemUserLink(esid, eiid, eaid))
+        val newp = p.upsertExtLink(stok.realm, ExtSystemUserLink(stok.realm, esid, eiid, eaid))
         p.update(newp)
       }
 

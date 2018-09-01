@@ -59,6 +59,8 @@ class RazAuthService extends AuthService[User] with Logging {
     val connected = request.session.get(Services.config.CONNECTED)
     val authorization = request.headers.get("Authorization")
 
+    val realm = Website.xrealm
+
     import play.api.Play.current
 //    debug("AUTH SESSION.connected=" + connected)
 
@@ -110,7 +112,8 @@ class RazAuthService extends AuthService[User] with Logging {
           }
         }
 
-      au
+      // todo hack -
+      au.map(_.forRealm(realm))
     }
   }
 

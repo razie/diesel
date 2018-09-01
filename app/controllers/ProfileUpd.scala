@@ -38,12 +38,20 @@ class ProfileUpd @Inject() (config:Configuration) extends RazController with Log
   // profile
   def edProfileForm(implicit request: Request[_]) = Form {
     mapping(
-      "firstName" -> nonEmptyText.verifying("Obscenity filter", !Wikis.hasBadWords(_)).verifying("Invalid characters", vldSpec(_)),
-      "lastName" -> text.verifying("Obscenity filter", !Wikis.hasBadWords(_)).verifying("Invalid characters", vldSpec(_)),
-      "userType" -> nonEmptyText.verifying("Please select one", ut => Website.userTypes.contains(ut)),
+      "firstName" -> nonEmptyText
+        .verifying("Obscenity filter", !Wikis.hasBadWords(_))
+        .verifying("Invalid characters", vldSpec(_)),
+      "lastName" -> text
+        .verifying("Obscenity filter", !Wikis.hasBadWords(_))
+        .verifying("Invalid characters", vldSpec(_)),
+      "userType" -> nonEmptyText
+        .verifying("Please select one", ut => Website.userTypes.contains(ut)),
       "yob" -> number(min = 1900, max = 2012),
-      "about" -> text.verifying("Obscenity filter", !Wikis.hasBadWords(_)).verifying("Invalid characters", vldSpec(_)),
-      "address" -> text.verifying("Invalid characters", vldSpec(_)))(
+      "about" -> text
+        .verifying("Obscenity filter", !Wikis.hasBadWords(_))
+        .verifying("Invalid characters", vldSpec(_)),
+      "address" -> text
+        .verifying("Invalid characters", vldSpec(_)))(
         (f, l, t, y, about, a) =>
           User("kuku", f, l, y, "noemail", "nopwd", 'a', Set(t), Set(), (if (a != null && a.length > 0) Some(a) else None), Map("about"-> about))
     )(
@@ -114,11 +122,9 @@ class ProfileUpd @Inject() (config:Configuration) extends RazController with Log
     formWithErrors => ROK.k badRequest {views.html.user.doeProfilePreferences(formWithErrors, request.au.get)},
     {
       case (css, favQuote, weatherCode) => {
-        val u = Profile.updateUser(au, au.copy(prefs=au.prefs ++
-          Seq("css" -> css, "favQuote" -> favQuote, "weatherCode" -> weatherCode)))
-        //          val u = updateUser(au, User(au.userName, au.firstName, au.lastName, au.yob, au.email, au.pwd, au.status, au.roles, au.addr, au.prefs ++
-        //            Seq("css" -> css, "favQuote" -> favQuote, "weatherCode" -> weatherCode),
-        //            au._id))
+        val u = Profile.updateUser(au, au.setPrefs(request.realm,
+          Map("css" -> css, "favQuote" -> favQuote, "weatherCode" -> weatherCode)))
+
         Emailer.withSession(request.realm) { implicit mailSession =>
           au.shouldEmailParent("Everything").map(parent => Emailer.sendEmailChildUpdatedProfile(parent, au))
         }
@@ -150,12 +156,21 @@ class ProfileUpd @Inject() (config:Configuration) extends RazController with Log
       {
         case u: User =>
           forActiveUser { au =>
-            val newu = au.copy(firstName=u.firstName, lastName=u.lastName, yob=u.yob,
-              roles= {
+            val newu = au.copy(
+              firstName=u.firstName,
+              lastName=u.lastName,
+              yob=u.yob,
+              addr=u.addr
+            ).setRoles(
+              request.realm,
+              (
                 if(au.roles.mkString == u.roles.mkString) au.roles
                 else (au.roles ++ u.roles)
-              },
-              addr=u.addr, prefs=au.prefs ++ u.prefs)
+              )
+            ).setPrefs(
+              request.realm,
+              au.prefs ++ u.prefs
+            )
 
             Profile.updateUser(au, newu)
             Emailer.withSession(request.realm) { implicit mailSession =>
@@ -250,7 +265,7 @@ class ProfileUpd @Inject() (config:Configuration) extends RazController with Log
         } getOrElse {
           Audit.logdb("ERR_RESET_PWD", "token not found " + e)
           // todo ban the IP
-          Msg2("Please check your email!")
+          Msg2("Please check your email in the next few minutes! <br><small>Take a look at the junk folders if you don't see it in the inbox!</small>")
         }
     })
   }

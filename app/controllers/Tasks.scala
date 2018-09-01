@@ -306,6 +306,7 @@ Please do that soon: it will expire in a few hours, for security reasons.
 
   /** step 2 - user clicked on email link to verify email */
   def verifiedEmail(expiry1: String, email: String, id: String, user: Option[User])(implicit request: Request[_]) = {
+    val realm = Website.getRealm
     implicit val errCollector = new VErrors()
     (expiry1, email, id) match {
       case (Enc(expiry), ce, cid) => {
@@ -320,8 +321,8 @@ Please do that soon: it will expire in a few hours, for security reasons.
           razie.db.tx("verifiedEmail", p.userName) { implicit txn =>
             if (!p.hasPerm(Perm.eVerified)) {
               // TODO transaction
-              val ppp = pro.addPerm("+" + Perm.eVerified.s).addPerm("+" + Perm.uWiki.s)
-              pro.update(if (p.isUnder13) ppp else ppp.addPerm("+" + Perm.uProfile.s))
+              val pu = p.addPerm(realm, "+" + Perm.eVerified.s).addPerm(realm, "+" + Perm.uWiki.s)
+              p.update(if (p.isUnder13) pu else pu.addPerm(realm, "+" + Perm.uProfile.s))
 
               // replace in cache
               Users.findUserById(p._id).map { u =>

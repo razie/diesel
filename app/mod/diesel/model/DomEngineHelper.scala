@@ -66,7 +66,7 @@ object DomEngineHelper {
       postedContent = {
         if(request.body.isInstanceOf[AnyContentAsRaw]) {
           val raw = request.body.asRaw.flatMap(_.asBytes())
-          Some(new EEContent(raw.map(a => new String(a)).getOrElse(""), request.contentType.get, None, raw))
+          Some(new EEContent(raw.map(a => new String(a)).getOrElse(""), request.contentType.get, request.headers.toSimpleMap, None, raw))
         } else if(request.contentType.exists(c=> c == "application/json")) {
           Some(new EEContent(request.body.asJson.mkString, request.contentType.get))
         } else None

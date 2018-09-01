@@ -23,6 +23,7 @@ import razie.{CSTimer, Logging, js}
 
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 import scala.concurrent.duration.Duration
 
 /** controller for server side fiddles / services */
@@ -59,16 +60,16 @@ object DomFiddles extends DomApi with Logging {
       storyWpath = iStoryWpath
     }
 
-    val spw = WID.fromPath(specWpath).flatMap(_.page).map(_.content).getOrElse(SAMPLE_SPEC)
-    val stw = WID.fromPath(storyWpath).flatMap(_.page).map(_.content).getOrElse(SAMPLE_STORY)
+    val origSpec = WID.fromPath(specWpath).flatMap(_.page).map(_.content).getOrElse(SAMPLE_SPEC)
+    val origStory = WID.fromPath(storyWpath).flatMap(_.page).map(_.content).getOrElse(SAMPLE_STORY)
 
     //2 their contents
     val spec = Autosave.OR("DomFidSpec",reactor,specWpath, stok.au.get._id, Map(
-      "content"  -> spw
+      "content"  -> origSpec
     )).apply("content")
 
     val story = Autosave.OR("DomFidStory",reactor,storyWpath, stok.au.get._id, Map(
-      "content"  -> stw
+      "content"  -> origStory
     )).apply("content")
 
     val capture = Autosave.OR("DomFidCapture",reactor,"", stok.au.get._id, Map(
@@ -79,7 +80,23 @@ object DomFiddles extends DomApi with Logging {
 
     ROK.k reactorLayout12FullPage {
       val wp = if(iSpecWpath.length > 1) iSpecWpath else iStoryWpath
-      views.html.fiddle.playDomFiddle(reactor, stok.query, spec, story, capture, specWpath, storyWpath, (spw != story), (stw != story), Some(""), id, wp, line, col)
+      views.html.fiddle.playDomFiddle(
+        reactor,
+        stok.query,
+        origSpec,
+        spec,
+        origStory,
+        story,
+        capture,
+        specWpath,
+        storyWpath,
+        (origSpec != spec),
+        (origStory != story),
+        Some(""),
+        id,
+        wp,
+        line,
+        col)
     }
   }
 
@@ -207,7 +224,7 @@ object DomFiddles extends DomApi with Logging {
     * @param id - unique session / page Id, used to identify WebSocket customers too
     * @return
     */
-  def fiddleStoryUpdated(id: String) = RAction.async { implicit stok=>
+  def fiddleStoryUpdated(id: String) : Action[AnyContent] = RAction.async { implicit stok=>
     val stimer = new CSTimer("buildDomStory", id)
     stimer start "heh"
 
@@ -220,6 +237,7 @@ object DomFiddles extends DomApi with Logging {
     val spec = stok.formParm("spec")
     val story = stok.formParm("story")
     val capture = stok.formParm("capture")
+    val realTime = stok.formParm("realTime").toBoolean
 
     val uid = stok.au.map(_._id).getOrElse(NOUSER)
 
@@ -302,11 +320,17 @@ object DomFiddles extends DomApi with Logging {
     setHostname(engine.ctx.root)
 
     // decompose all tree or just testing? - if there is a capture, I will only test it
-    val fut = if(capture startsWith "{") {
-      engine.processTests
-    } else {
-      engine.process
-    }
+    val fut =
+      if(! realTime) {
+        // don't process or wait
+        Future.successful(engine)
+      } else {
+        if (capture startsWith "{") {
+          engine.processTests
+        } else {
+          engine.process
+        }
+      }
 
     fut.map {engine =>
       res += engine.root.toHtml
@@ -325,7 +349,8 @@ object DomFiddles extends DomApi with Logging {
         "wiki" -> wiki,
         "ca" -> RDExt.toCAjmap(dom plus idom), // in blenderMode dom is full
         "failureCount" -> engine.failedTestCount,
-        "storyChanged" -> (storyWpath.length > 0 && stw.replaceAllLiterally("\r", "") != story)
+        "storyChanged" -> (storyWpath.length > 0 && stw.replaceAllLiterally("\r", "") != story),
+        "realTime" -> realTime
       )
 
       clients.get(id).foreach(_ ! m)
