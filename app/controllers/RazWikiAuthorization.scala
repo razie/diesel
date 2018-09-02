@@ -82,7 +82,7 @@ object RazWikiAuthorization extends RazController with Logging with WikiAuthoriz
 
     val pvis = props.getOrElse(visibility, "")
 
-    (!props.get(visibility).isDefined) || u.exists(_.hasPerm(Perm.adminDb)) ||
+    val res = (!props.get(visibility).isDefined) || u.exists(_.hasPerm(Perm.adminDb)) ||
       (pvis == Visibility.PUBLIC) || // if changing while edit, it will have a value even when public
       (u.isDefined orCorr cNoAuth).exists(_ == true) && // anything other than public needs logged in
       (
@@ -95,6 +95,8 @@ object RazWikiAuthorization extends RazController with Logging with WikiAuthoriz
             false
       )
     )
+
+    res
   }
 
   /**
@@ -134,10 +136,11 @@ object RazWikiAuthorization extends RazController with Logging with WikiAuthoriz
     val cat = wid.cat
     val name = wid.name
     lazy val we = w orElse wid.page
-    lazy val wprops = if (we.isDefined) we.map(_.props) else props
-    if (u.exists(_.hasPerm(Perm.adminDb)))
-      Some(true)
-    else if(u.exists(Club.canAdmin(wid, _)))
+    val wprops = if (we.isDefined) we.map(_.props) else props
+
+    if (
+      u.exists(_.hasPerm(Perm.adminDb)) ||
+      u.exists(Club.canAdmin(wid, _)))
       Some(true)
     else (for (
       cansee <- canSee(wid, u, w);
@@ -156,8 +159,18 @@ object RazWikiAuthorization extends RazController with Logging with WikiAuthoriz
         (wprops.flatMap(_.get("wvis")).isDefined && isVisible(u, wprops.get, "wvis")) ||
         wprops.flatMap(_.get("visibility")).exists(_.startsWith(Visibility.CLUB) && isVisible(u, wprops.get, "visibility")) ||
         !wvis(wprops).isDefined orErr ("Sorry - you are not the owner of this topic");
-      memod <- (we.flatMap(_.contentProps.get("moderator")).map(_ == au.emailDec).getOrElse(true)) orErr ("Sorry - this is moderated and you are not the moderator, are you?");
-      noLevel <- (wprops.isEmpty || wprops.flatMap(_.get("wvis")).filter(x=> isVisible(u, wprops.get, "wvis")).exists(_ == true)) orErr "Not enough Karma";
+      memod <- (
+        we
+          .flatMap(_.contentProps.get("moderator"))
+          .map(_ == au.emailDec)
+          .getOrElse(true)) orErr ("Sorry - this is moderated and you are not the moderator, are you?");
+      noLevel <- (
+        wprops.isEmpty ||
+          wprops
+            .flatMap(_.get("wvis"))
+            .map(x=> isVisible(u, wprops.get, "wvis"))
+            .exists(_ == true)
+        ) orErr "Not enough Karma";
       t <- true orErr ("can't")
     ) yield true)
   }
