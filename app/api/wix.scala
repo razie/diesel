@@ -37,14 +37,16 @@ class wix (owe: Option[WikiPage], ou:Option[WikiUser], q:Map[String,String], r:S
 //    def map[T] (f: page.type => T) = if(isDefined) Some(f(page)) else None
   }
 
-  def ownedPages(realm:String, cat:String) = utils.wikiList(iuser.toList.flatMap(_.ownedPages(realm, cat)))
+  def ownedPages(realm:String, cat:String) =
+    utils.wikiList(iuser.toList.flatMap(_.ownedPages(realm, cat)))
+
   def ownedReactors(realm:String) = {
-    val wids = iuser.toList.flatMap(_.ownedPages(realm, "Reactor"))
-    if(wids.isEmpty) "<em>None</em>"
+    val names = iuser.toList.flatMap(_.memberReactors)
+    if(names.isEmpty) "<em>None</em>"
     else
-      wids.map(r=>(r, Wikis(r.name).count))
+      names.map(r=>(r, Wikis(r).count))
         .sortWith(_._2 > _._2)
-        .map(t=> s"""<a href="/wikie/switchRealm/${t._1.name}">${t._1.name}</a>""")
+        .map(t=> s"""<a href="/wikie/switchRealm/${t._1}">${t._1}</a>""")
         .mkString("", " <b>|</b> ", "")
   }
 

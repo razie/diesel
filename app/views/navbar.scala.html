@@ -201,14 +201,14 @@ require(['jquery'], function($){
 
     **@
 
-    @if(stok.au.exists(_.isMod) || stok.isLocalhost) {
+    @if(stok.au.exists(_.isMod) || stok.isLocalhost || stok.au.exists(_.realms.size > 1)) {
       <ul class="nav navbar-nav pull-right">
         <li class="dropdown">
           <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false" style="color:red;font-weight:bold;font-size: small" title="localhost: current reactor">
             @stok.realm <span class="caret"></span>
           </a>
           <ul class="dropdown-menu" role="menu">
-            @stok.au.toList.flatMap(x=> (x.ownedReactors.map(_.name) ::: x.realms.toList).distinct).map{t=>
+            @stok.au.toList.flatMap(x=> x.memberReactors).map{t=>
               <li><a href="/wikie/switchRealm/@t">@t</a></li>
             }
          </ul>
