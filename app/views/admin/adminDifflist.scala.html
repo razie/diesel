@@ -17,14 +17,21 @@ purge audit tables
     <h2>
       Diffs from <small>
         <span >
-          <b>@stok.hostPort</b> | Reactor:
-          <a href="x" style="color:red;font-weight:bold;" title="localhost: current reactor">
+          <a href="#" style="font-weight:bold;" title="local site">
+          @stok.hostPort
+          </a>
+
+            | Reactor:
+
+          <a href="#" style="color:red;font-weight:bold;" title="localhost: current reactor">
             <b>@stok.realm</b>
           </a>
+
         </span>
 &nbsp; .vs. &nbsp;
         <span >
-          <a href="javascript:selectRemote();" style="font-weight:bold;" title="localhost: current reactor">
+
+          <a href="javascript:selectRemote();" style="font-weight:bold;" title="remote site">
             @remote
           <span class="caret"></span>
           </a>
@@ -44,7 +51,7 @@ purge audit tables
             <a href="/razadmin/difflist/@toRealm/@t">@t</a><br>
           }
         <span id="realms" style="display: none">
-            @stok.au.toList.flatMap(x=> (x.ownedReactors.map(_.name) ::: x.realms.toList).distinct).map{t=>
+            @stok.au.toList.flatMap(x=> x.memberReactors).map{t=>
               <a href="/razadmin/difflist/@t/@remote">@t</a><br>
             }
         </span>
@@ -56,11 +63,13 @@ purge audit tables
     @lchanged.filter(_._3 != "-").sortBy(x=> x._2.realm+x._3).map { t =>
       <tr id="row-@t._2.id">
         <td>
+        @if(t._1.cat != "ReactorMod") {
           <a
           xhref="#"
-          onclick="applyDif('@t._2.id', '@routes.AdminDiff.applyDiff(toRealm, remote, WID(t._2.cat, t._2.name).r(t._2.realm))')"
+          onclick="applyDif('@t._2.id', '@routes.AdminDiff.applyDiffToRemote(toRealm, remote, WID(t._2.cat, t._2.name).r(t._2.realm))')"
           class="btn btn-xs btn-@{if(t._3=="L") "success" else "warning"}"
           >USE LOCAL &raquo;</a>
+        }
       </td>
         <td>
           @t._1.realm <a href="@WID(t._1.cat, t._1.name).r(t._1.realm).url">@t._1.cat:@t._1.name</a> (<a href="/wikie/content/@wp(WID(t._1.cat, t._1.name).r(t._1.realm))">content</a>)
@@ -76,11 +85,13 @@ purge audit tables
           @t._3
         </td>
         <td>
+        @if(t._1.cat != "ReactorMod") {
           <a
           xhref="#"
-          onclick="applyDif('@t._2.id', '@routes.AdminDiff.applyDiff2(toRealm, remote, WID(t._2.cat, t._2.name).r(t._2.realm))')"
+          onclick="applyDif('@t._2.id', '@routes.AdminDiff.applyDiffFromRemote(toRealm, remote, WID(t._2.cat, t._2.name).r(t._2.realm))')"
           class="btn btn-xs btn-@{if(t._3=="R") "success" else "warning"}"
           >	&laquo; USE REMOTE</a>
+        }
         </td>
       </tr>
     }
@@ -92,20 +103,24 @@ purge audit tables
    @lremoved.sortBy(_.realm).map { wea =>
     <tr id="row-@wea.id">
       <td>
+      @if(wea.cat != "Reactor") {
         <a
         xhref="x"
         class="btn btn-xs btn-default"
         >USE LOCAL &raquo;</a>
+      }
       </td>
       <td>
         @wea.realm
         <a href="http://@remote@WID(wea.cat, wea.name).r(wea.realm).urlRelative">@wea.cat:@wea.name v@wea.ver</a>
       </td>
       <td>
+      @if(wea.cat != "Reactor") {
           <a
-          onclick="applyDif('@wea.id', '@routes.AdminDiff.applyDiff2(toRealm, remote, WID(wea.cat, wea.name).r(wea.realm))')"
+          onclick="applyDif('@wea.id', '@routes.AdminDiff.applyDiffFromRemote(toRealm, remote, WID(wea.cat, wea.name).r(wea.realm))')"
           class="btn btn-xs btn-success"
           >	&laquo; USE REMOTE</a>
+      }
       </td>
     </tr>
   }
@@ -120,22 +135,26 @@ purge audit tables
     @lnew.sortBy(_.realm).map { wea =>
       <tr id="row-@wea.id">
         <td>
+        @if(wea.cat != "Reactor") {
           <a
           xhref="x"
-          onclick="applyDif('@wea.id', '@routes.AdminDiff.applyDiffCr(toRealm, remote, WID(wea.cat, wea.name).r(wea.realm))')"
+          onclick="applyDif('@wea.id', '@routes.AdminDiff.applyDiffToRemote(toRealm, remote, WID(wea.cat, wea.name).r(wea.realm))')"
           class="btn btn-xs btn-success"
           >USE LOCAL &raquo;</a>
+        }
         </td>
         <td>
         @wea.realm <a href="@controllers.Wiki.w(wea.cat, wea.name, wea.realm)">@wea.cat:w/@wea.name v@wea.ver </a>
         ( <a href="/wikie/content/@wp(WID(wea.cat, wea.name).r(wea.realm))">content </a> )
         </td>
         <td>
+          @if(wea.cat != "Reactor") {
           <a
           xhref="#"
           onclick="applyDif('@wea.id', '@routes.Wikie.wikieDelete1(WID(wea.cat, wea.name).r(wea.realm))')"
           class="btn btn-xs btn-danger"
           >	&laquo; DELETE LOCAL</a>
+          }
         </td>
       </tr>
     }
@@ -160,9 +179,6 @@ purge audit tables
         class="btn btn-xs btn-info"
         >&laquo; DIFF &raquo;</a>
           @t._2.realm <a href="http://@remote/@WID(t._2.cat, t._2.name).r(t._2.realm).urlRelative">@t._2.cat:@t._2.name</a>
-        </td>
-        <td>
-        @t._3
         </td>
         <td>
           <a
@@ -206,5 +222,18 @@ applyDif = function(id,url) {
   });
 </script>
 
+  @*overwriting this to allow the dialog to be large...*@
+
+  <style>
+    .modal-dialog{
+      position: relative;
+      display: table; /* This is important */
+      overflow-y: auto;
+      overflow-x: auto;
+      width: auto;
+      min-width: 300px;
+      max-height: 600px;
+    }
+  </style>
 @util.oneModal()
 

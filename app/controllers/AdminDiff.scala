@@ -41,6 +41,7 @@ import razie.wiki.Sec._
 import razie.wiki.util.DslProps
 
 import scala.collection.JavaConversions._
+import scala.collection.mutable
 import scala.concurrent.Future
 import scala.reflect.macros.whitebox
 
@@ -64,6 +65,8 @@ object AdminDiff extends AdminBase {
 
     var l = Autosave.activeDrafts(stok.au.get._id).toList
 
+    def toHtml (x:Autosave) = (x.what, x.realm, x.name, WID.fromPath(x.name).map(_.url + "  ").mkString )
+
     // filter some internal states
     l = l.filter(_.name != "")
 
@@ -72,14 +75,32 @@ object AdminDiff extends AdminBase {
     val neq = l.filter(x=> WID.fromPath(x.name).exists(_.content.exists(_ == x.contents("content"))))
     val non = l.filter(x=> WID.fromPath(x.name).flatMap(_.page).isEmpty)
 
-    val lok = ok.map(x=>(x.what, x.realm, x.name, WID.fromPath(x.name).map(_.url + "  ").mkString ))
-    val lneq = neq.map(x=>(x.what, x.realm, x.name, WID.fromPath(x.name).map(_.url + "  ").mkString ))
-    val lnon = non.map(x=>(x.what, x.realm, x.name, WID.fromPath(x.name).map(_.url + "  ").mkString ))
+    val lok = ok.map(toHtml)
+    val lneq = neq.map(toHtml)
+    val lnon = non.map(toHtml)
 
-    Ok(
+    // collect duplos
+    val d = new mutable.HashMap [String, List[String]]()
+    // check that there's no screwup
+    RMany[WikiEntry]().toList.foreach {we=>
+      val k = we.wid.wpathFull
+
+      if(d.contains(k)) {
+        d.put(k, (we._id.toString) :: d(k))
+      } else {
+        d.put(k, (we._id.toString) :: Nil)
+      }
+    }
+
+    val duplos = d.filter(_._2.size > 1)
+
+      Ok(
       Wikis.sformat(lok.size + "\n- " + lok.mkString("\n- "))+
       Wikis.sformat("neq: "+lneq.size + "\n- " + lneq.mkString("\n- "))+
-      Wikis.sformat("non: "+lnon.size + "\n- " + lnon.mkString("\n- "))
+      Wikis.sformat("non: "+lnon.size + "\n- " + lnon.mkString("\n- ")) +
+      Wikis.sformat("duplos: "+duplos.size + s" of ${d.size} " + "\n- " +
+        duplos.map(t=>(t._1, t._2.map(x=> s"[/wiki/$x] and [/razadmin/db/entity/WikiEntry/$x]"))).mkString("\n- ")
+      )
     ).as("text/html")
   }
 
@@ -233,68 +254,58 @@ object AdminDiff extends AdminBase {
             views.html.admin.adminDiffShow(side, localWid.content.get, remote, patch, localWid.page.get, t._1)
         }
 
-        if("yes" == onlyContent.toLowerCase)
-          ROK.r noLayout {implicit stok=> x }
-        else
-          ROK.r admin {implicit stok=> x }
+        def diffTable = s"""<small>${views.html.admin.diffTable(side, patch, Some(("How", "Local", "Remote")))}</small>"""
+
+        if("yes" == onlyContent.toLowerCase) {
+          val url = routes.AdminDiff.showDiff("no", side, realm, target, iwid)
+          Ok(
+            s"""<a href="$url">See separate</a><br>""" + diffTable
+          )
+        } else {
+          ROK.r admin { implicit stok => x }
+        }
 
       },{err=>
         Ok ("ERR: " + err)
       })
   }
 
-  /** create the local page on remote
-    */
-  // todo auth that user belongs to realm
-  def applyDiffCr(toRealm:String, target:String, iwid:WID) = FAUR { implicit request =>
+  // to remote
+  def applyDiffToRemote(toRealm:String, target:String, iwid:WID) = FAUR { implicit request =>
     val localWid = iwid.r(if(toRealm == "all") iwid.getRealm else request.realm)
     val remoteWid = iwid.r(if(toRealm == "all") iwid.getRealm else toRealm)
 
-      try {
-        val content = localWid.content.get
-
-        val b = body(
-          url(s"http://$target/wikie/setContent/${remoteWid.wpathFull}").
-            form(Map("we" -> localWid.page.get.grated.toString)).
-            basic("H-"+request.au.get.emailDec, "H-"+request.au.get.pwd.dec))
-
-        Ok(b + " <a href=\"" + s"http://$target${remoteWid.urlRelative(toRealm)}" + "\">" + remoteWid.wpath + "</a>")
-      } catch {
-        case x : Throwable => Ok ("error " + x)
-      }
-  }
-
-  // to remote
-  // todo auth that user belongs to realm
-  def applyDiff(realm:String, target:String, iwid:WID) = FAUR { implicit request =>
-    val localWid = iwid.r(if(realm == "all") iwid.getRealm else request.realm)
-    val remoteWid = iwid.r(if(realm == "all") iwid.getRealm else iwid.getRealm)
-
+    if(request.au.exists(_.realms.contains(toRealm)) || request.au.exists(_.isAdmin)) {
       try {
         val page = localWid.page.get
+
         val b = body(
           url(s"http://$target/wikie/setContent/${remoteWid.wpathFull}").
-            form(Map("we" -> localWid.page.get.grated.toString)).
+            form(Map("we" -> page.grated.toString)).
             basic("H-"+request.au.get.emailDec, "H-"+request.au.get.pwd.dec))
 
-        if(b contains "ok")
-          //todo redirect to list
-          Ok(b + " <a href=\"" + s"http://$target${remoteWid.urlRelative(request.realm)}" + "\">" + remoteWid.wpath + "</a>")
-        else
-          Ok(b + " <a href=\"" + s"http://$target${remoteWid.urlRelative(request.realm)}" + "\">" + remoteWid.wpath + "</a>")
+        // b contains ok - is important
+        Ok(b + " <a href=\"" + s"http://$target${remoteWid.urlRelative(request.realm)}" + "\">" + remoteWid.wpath + "</a>")
       } catch {
         case x : Throwable => Ok ("error " + x)
       }
+    } else {
+      Unauthorized(s"You are not a member or project $toRealm...")
+    }
   }
 
   // from remote
   // todo auth that user belongs to realm
-  def applyDiff2(realm:String, target:String, iwid:WID) = FADR {implicit request =>
-    val localWid = iwid.r(if(realm == "all") iwid.getRealm else request.realm)
-    val remoteWid = iwid.r(if(realm == "all") iwid.getRealm else iwid.getRealm)
+  def applyDiffFromRemote(fromRealm:String, target:String, iwid:WID) = FADR {implicit request =>
+    val localWid = iwid.r(if(fromRealm == "all") iwid.getRealm else request.realm)
+    val remoteWid = iwid.r(if(fromRealm == "all") iwid.getRealm else fromRealm)
 
       getWE(target, remoteWid)(request.au.get).fold({t =>
-        val b = body(url(s"http://localhost:9000/wikie/setContent/${localWid.wpathFull}").form(Map("we" -> t._2)).basic("H-"+request.au.get.emailDec, "H-"+request.au.get.pwd.dec))
+        val b = body(
+          url(s"http://localhost:9000/wikie/setContent/${localWid.wpathFull}")
+            .form(Map("we" -> t._2))
+            .basic("H-"+request.au.get.emailDec, "H-"+request.au.get.pwd.dec)
+        )
         Ok(b + localWid.ahrefRelative(request.realm))
       }, {err=>
         Ok ("ERR: "+err)
@@ -400,6 +411,7 @@ object AdminDiff extends AdminBase {
     Ok(lastImport.getOrElse("No import operation performed..."))
   }
 
+  /** import a realm from remote */
   def importRealm (au:User, request:Request[AnyContent]) = {
     cout << "ADMIN_IMPORT_REALM"
 
@@ -421,7 +433,7 @@ object AdminDiff extends AdminBase {
     // get mixins
     cout << "============ get mixins"
       val m = WID.fromPath(s"$realm.Reactor:$realm").map(wid=>getWE(source, wid)(au).fold({ t=>
-        val m = new DslProps(Some(t._1), "website")
+        val m = new DslProps(Some(t._1), "website,properties")
           .prop("mixins")
           .getOrElse(realm)
         cout << "============ mixins: "+ m

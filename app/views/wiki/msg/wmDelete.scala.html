@@ -57,8 +57,9 @@ Links from others :
   }
   </small>
 
+@*if name != realm it's a mistake...*@
 
-@if(uwid.cat == "Reactor") {
+@if(uwid.cat == "Reactor" && uwid.findWid.exists(x=> x.getRealm == x.name)) {
   <h2>It is a reactor, here are the topics to delete:</h2>
 
   <small>
