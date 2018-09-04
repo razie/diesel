@@ -187,6 +187,11 @@ object DomFiddles extends DomApi with Logging {
       "storyWpath" -> storyWpath
     ))
 
+    val spw = WID.fromPath(specWpath).flatMap(_.page).map(_.content).getOrElse(SAMPLE_SPEC)
+    val stw = WID.fromPath(storyWpath).flatMap(_.page).map(_.content).getOrElse(SAMPLE_STORY)
+    val storyName = WID.fromPath(storyWpath).map(_.name).getOrElse("fiddle")
+    val specName = WID.fromPath(specWpath).map(_.name).getOrElse("fiddle")
+
     //autosave their contents
     DomWorker later AutosaveSet("DomFidSpec", reactor, specWpath, stok.au.get._id, Map(
       "content"  -> spec
@@ -194,11 +199,6 @@ object DomFiddles extends DomApi with Logging {
     DomWorker later AutosaveSet("DomFidCapture", reactor, "", stok.au.get._id, Map(
       "content"  -> capture
     ))
-
-    val spw = WID.fromPath(specWpath).flatMap(_.page).map(_.content).getOrElse(SAMPLE_SPEC)
-    val stw = WID.fromPath(storyWpath).flatMap(_.page).map(_.content).getOrElse(SAMPLE_STORY)
-    val storyName = WID.fromPath(storyWpath).map(_.name).getOrElse("fiddle")
-    val specName = WID.fromPath(specWpath).map(_.name).getOrElse("fiddle")
 
     val page = new WikiEntry("Spec", specName, specName, "md", spec, stok.au.get._id, Seq("dslObject"), stok.realm)
     val dom = WikiDomain.domFrom(page).get.revise addRoot
@@ -321,16 +321,16 @@ object DomFiddles extends DomApi with Logging {
 
     // decompose all tree or just testing? - if there is a capture, I will only test it
     val fut =
-      if(! realTime) {
+//      if(! realTime) {
         // don't process or wait
-        Future.successful(engine)
-      } else {
+//        Future.successful(engine)
+//      } else {
         if (capture startsWith "{") {
           engine.processTests
         } else {
           engine.process
         }
-      }
+//      }
 
     fut.map {engine =>
       res += engine.root.toHtml
