@@ -161,6 +161,8 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
             ))
             val hasDraft = Autosave.find("wikie",w.realm, w.wid.wpath, stok.au.get._id).isDefined
 
+          val atags = draft.getOrElse("tags", w.tags.mkString(",")) // when the autosave was created by fiddles without tags
+
           // todo this is not ready yet
             if(false && (w.markup == Wikis.JS || w.markup == Wikis.JSON || w.markup == Wikis.SCALA))
               ROK.s noLayout { implicit stok =>
@@ -174,7 +176,7 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
                       w.props.get("visibility").orElse(WikiReactors(wid.getRealm).props.prop("default.visibility")).getOrElse(PUBLIC),
                       wvis(Some(w.props)).orElse(WikiReactors(wid.getRealm).props.prop("default.wvis")).getOrElse(PUBLIC),
                       w.ver.toString,
-                      draft("tags"),
+                      atags,
                       w.props.get("draft").getOrElse("Silent")))),
                 Seq.empty
                 )
@@ -189,7 +191,7 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
                       w.props.get("visibility").orElse(WikiReactors(realm).props.prop("default.visibility")).getOrElse(PUBLIC),
                       wvis(Some(w.props)).orElse(WikiReactors(realm).props.prop("default.wvis")).getOrElse(PUBLIC),
                       w.ver.toString,
-                      draft("tags"),
+                      atags,
                       w.props.get("draft").getOrElse("Silent"))), hasDraft, noshow),
                   Seq.empty
                 )
@@ -205,7 +207,7 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
                     w.props.get("visibility").orElse(WikiReactors(realm).props.prop("default.visibility")).getOrElse(PUBLIC),
                     wvis(Some(w.props)).orElse(WikiReactors(realm).props.prop("default.wvis")).getOrElse(PUBLIC),
                     w.ver.toString,
-                    draft("tags"),
+                    atags,
                     w.props.get("draft").getOrElse("Silent"))), hasDraft, noshow),
                   Seq.empty
                 )
@@ -217,7 +219,7 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
                         w.props.get("visibility").orElse(WikiReactors(realm).props.prop("default.visibility")).getOrElse(PUBLIC),
                         wvis(Some(w.props)).orElse(WikiReactors(realm).props.prop("default.wvis")).getOrElse(PUBLIC),
                         w.ver.toString,
-                        draft("tags"),
+                        atags,
                         w.props.get("draft").getOrElse("Silent"))), hasDraft, noshow)
 
               }
@@ -256,48 +258,48 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
               List(ttt) ::: tags.split(",").toList
             ).distinct.filter(_.length > 0).mkString(",")
 
-            if(Wikis.isEvent(wid.cat))
-              ROK.s noLayout { implicit stok =>
-                views.html.util.reactorLayout12FullPage(
-                  views.html.wiki.wikiEditEvent(nwid, editForm.fill(
-                    EditWiki(wid.name.replaceAll("_", " "),
-                      Wikis.MD,
-                      contentFromTags + icontent,
-                      visibility,
-                      wwvis,
-                      "0",
-                      newTags,
-                      draft)), false,
-                    noshow),
-                  Seq.empty
-                )
-              }
-          else ROK.s noLayout  { implicit stok =>
-              if(noshow != "simple")
-            views.html.util.reactorLayout12FullPage(
-            views.html.wiki.wikiEdit(old, nwid, editForm.fill(
-              EditWiki(wid.name.replaceAll("_", " "),
-                Wikis.MD,
-                contentFromTags + icontent,
-                visibility,
-                wwvis,
-                "0",
-                newTags,
-                draft)), false,
-                noshow),
-              Seq.empty
-            )
-              else
-                  views.html.wiki.wikiEditSimple(nwid, editForm.fill(
-                    EditWiki(wid.name.replaceAll("_", " "),
-                      Wikis.MD,
-                      contentFromTags + icontent,
-                      visibility,
-                      wwvis,
-                      "0",
-                      newTags,
-                      draft)), false,
-                    noshow)
+          if (Wikis.isEvent(wid.cat))
+            ROK.s noLayout { implicit stok =>
+              views.html.util.reactorLayout12FullPage(
+                views.html.wiki.wikiEditEvent(nwid, editForm.fill(
+                  EditWiki(wid.name.replaceAll("_", " "),
+                    Wikis.MD,
+                    contentFromTags + icontent,
+                    visibility,
+                    wwvis,
+                    "0",
+                    newTags,
+                    draft)), false,
+                  noshow),
+                Seq.empty
+              )
+            }
+          else ROK.s noLayout { implicit stok =>
+            if (noshow != "simple")
+              views.html.util.reactorLayout12FullPage(
+                views.html.wiki.wikiEdit(old, nwid, editForm.fill(
+                  EditWiki(wid.name.replaceAll("_", " "),
+                    Wikis.MD,
+                    contentFromTags + icontent,
+                    visibility,
+                    wwvis,
+                    "0",
+                    newTags,
+                    draft)), false,
+                  noshow),
+                Seq.empty
+              )
+            else
+              views.html.wiki.wikiEditSimple(nwid, editForm.fill(
+                EditWiki(wid.name.replaceAll("_", " "),
+                  Wikis.MD,
+                  contentFromTags + icontent,
+                  visibility,
+                  wwvis,
+                  "0",
+                  newTags,
+                  draft)), false,
+                noshow)
           }
         }) getOrElse
           noPerm(wid, "create.wiki")
@@ -444,10 +446,11 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
 
 
   /** api to set content remotely - used by sync and such */
-  def setContent(wid: WID) = FAUR("setContent", true) {
+  def setContent(iwid: WID) = FAUR("setContent", true) {
     implicit request =>
 
       val au=request.au.get
+
 
       def fromJ (s:String) = {
         val dbo = com.mongodb.util.JSON.parse(s).asInstanceOf[DBObject];
@@ -462,8 +465,17 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
         wej <- data.get("we") orErr "bad we";
         remote <- fromJ (wej) orErr "can't J"
       ) yield {
+        // make sure wid has realm
+        val toRealm = iwid.realm.getOrElse(remote.realm)
+        val wid = iwid.r(toRealm)
+
         log("Wiki.setContent " + wid)
-        Wikis.find(wid).orElse(Wikis.findById(remote._id.toString)).filter(wid.realm.isEmpty || _.realm == wid.realm.get) match {
+        Wikis
+          .find(wid)
+          .orElse(Wikis.findById(remote._id.toString))
+        match {
+
+            // existing page
           case Some(w) =>
             (for (
               can <- canEdit(wid, auth, Some(w)) orErr "can't edit";
@@ -505,11 +517,9 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
                 Ok("ok")
               }
             })
-          //          getOrElse
-          //            Unauthorized("oops - " + errCollector.mkString)
 
+          // new wiki: create it
           case None => {
-            // new wiki: create it
             (for (
               can <- canEdit(wid, auth, None) orErr "can't edit";
               wej <- data.get("we") orErr "bad we";
@@ -523,30 +533,37 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
             ) yield {
               var we = newVer
 
-              // if on the same host but differnt realm, gets a new id
-              if(wid.getRealm != source.realm) {
-                we = we.copy (
-                  _id = new ObjectId()
-                )
-              }
-
-              // todo check lock
-
-              we = signScripts(we, au)
-
-              if (!we.scripts.filter(_.signature == "ADMIN").isEmpty && !(au.hasPerm(Perm.adminDb) || Services.config.isLocalhost)) {
-                noPerm(wid, "HACK_SCRIPTS1")
+              // check that there's no screwup
+              if(Wikis(toRealm)
+                .weTable(wid.cat)
+                .find(Map("realm" -> toRealm,  "name" -> Wikis.formatName(wid.name), "category" -> wid.cat))
+                .size > 0) {
+                Unauthorized("Page exists already - internal error - contact support !")
               } else {
-                razie.db.tx("Wiki.setContent", request.userName) { implicit txn =>
-                  we.create
-                  Services ! WikiAudit(WikiAudit.CREATE_API, we.wid.wpathFull, Some(au._id), None, Some(we))
+
+                // if on the same host but differnt realm, gets a new id
+                if (wid.getRealm != source.realm) {
+                  we = we.copy(
+                    _id = new ObjectId()
+                  )
                 }
 
-                Ok("ok")
+                // todo check lock
+
+                we = signScripts(we, au)
+
+                if (!we.scripts.filter(_.signature == "ADMIN").isEmpty && !(au.hasPerm(Perm.adminDb) || Services.config.isLocalhost)) {
+                  noPerm(wid, "HACK_SCRIPTS1")
+                } else {
+                  razie.db.tx("Wiki.setContent", request.userName) { implicit txn =>
+                    we.create
+                    Services ! WikiAudit(WikiAudit.CREATE_API, we.wid.wpathFull, Some(au._id), None, Some(we))
+                  }
+
+                  Ok("ok")
+                }
               }
             })
-            //          getOrElse
-            //            Unauthorized("oops - " + errCollector.mkString)
           }
         }
       }).flatten
@@ -562,10 +579,8 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
     var page = WikiEntry(wid.cat, wid.name, wid.name, markup, content, stok.au.get._id, Tags(tags), stok.realm)
 
     // sign scripts temporarily, so they run in preview
+    // todo is this some kind of security threat? answer here so i remember
     page = signScripts(page, stok.au.get)
-
-//    if (!we.scripts.filter(_.signature == "ADMIN").isEmpty && !(au.hasPerm(Perm.adminDb) || Services.config.isLocalhost)) {
-//      noPerm(wid, "HACK_SCRIPTS1")
 
     ROK.k noLayout {implicit stok=>
       // important to pass altContent, so it will bypass format caches
@@ -628,8 +643,6 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
             var n = if(l contains "{{") l.replaceAll(" *\\{\\{date[^}]*\\}\\}", "") else l
             var d = stok.formParm("when")
             if(d.length > 0) n = n+s" {{date $d}}"
-//            var v = stok.formParm("where")
-//            if(v.length > 0) n = n+s" {{at $v}}"
             n
         } else l
 
@@ -1078,8 +1091,8 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
 
       log("Wiki.delete2 " + wid)
       if (wid.cat != "Club") canDelete(wid).collect {
-        // delete all reactor pages
-        case (au, w) if wid.cat == "Reactor" => {
+        // delete all reactor pages. if realm != name it's a mistake, should allow deleete without all pages
+        case (au, w) if wid.cat == "Reactor" && wid.getRealm == wid.name => {
           val realm = wid.name
           razie.db.tx("Wiki.delete", au.userName) { implicit txn =>
             RMany[WikiEntry]("realm" -> wid.name).toList.map {we=>
