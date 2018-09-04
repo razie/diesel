@@ -9,13 +9,18 @@ import razie.Logging
 import razie.wiki.Enc
 import razie.wiki.Sec.EncryptedS
 import razie.wiki.admin.SecLink
+import razie.wiki.model.Perm
 import views.html.wiki.genericForm
 
 /** manage invitations to realms */
 class DomInvites extends mod.diesel.controllers.SFiddleBase with Logging {
 
   private def updRealm(au:User, realm:String) = {
-    au.update(au.copy(realms = (au.realms + realm)))
+    var u = au.copy(realms = (au.realms + realm))
+    if (u.realmSet.exists(_._2.perms.contains(Perm.uProfile))) u = u.addPerm(realm, Perm.uProfile)
+    if (u.realmSet.exists(_._2.perms.contains(Perm.eVerified))) u = u.addPerm(realm, Perm.eVerified)
+    if (u.realmSet.exists(_._2.perms.contains(Perm.uWiki))) u = u.addPerm(realm, Perm.uWiki)
+    au.update(u)
   }
 
   /** */
@@ -72,7 +77,7 @@ class DomInvites extends mod.diesel.controllers.SFiddleBase with Logging {
         genericForm(
           routes.DomInvites.createInvite2().url,
           "Create an invite",
-          "",
+          "If user exists, this realm will be added - you'll need to update permissions<br>",
           List("email")
         )
       }
