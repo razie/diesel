@@ -60,8 +60,10 @@ object Profile extends RazController {
     if(! Services.config.isLocalhost) {
       UserTasks.verifyEmail(u).create
     } else {
-      val pu = u.addPerm(realm, "+" + Perm.eVerified.s).addPerm(realm, "+" + Perm.uWiki.s)
-      u.update(if (u.isUnder13) pu else pu.addPerm(realm, "+" + Perm.uProfile.s))
+      // localhost
+      var pu = u.addPerm(realm, Perm.eVerified.s).addPerm(realm, Perm.uWiki.s)
+      pu = pu.addModNote(realm, "Localhost - no email verif")
+      u.update(if (u.isUnder13) pu else pu.addPerm(realm, Perm.uProfile.s))
     }
 
     if (u.isClub) {

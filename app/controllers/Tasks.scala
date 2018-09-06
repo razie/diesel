@@ -321,8 +321,8 @@ Please do that soon: it will expire in a few hours, for security reasons.
           razie.db.tx("verifiedEmail", p.userName) { implicit txn =>
             if (!p.hasPerm(Perm.eVerified)) {
               // TODO transaction
-              val pu = p.addPerm(realm, "+" + Perm.eVerified.s).addPerm(realm, "+" + Perm.uWiki.s)
-              p.update(if (p.isUnder13) pu else pu.addPerm(realm, "+" + Perm.uProfile.s))
+              val pu = p.addPerm("*", Perm.eVerified.s).addPerm("*", Perm.uWiki.s)
+              p.update(if (p.isUnder13) pu else pu.addPerm("*", Perm.uProfile.s))
 
               // replace in cache
               Users.findUserById(p._id).map { u =>

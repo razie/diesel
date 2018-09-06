@@ -24,7 +24,7 @@ import play.api.data.Forms.tuple
 import play.api.libs.json.Json
 import play.api.mvc.Action
 import play.api.mvc.Request
-import razie.{Audit, Logging, audit, clog, cout}
+import razie.{Logging, audit, clog, cout}
 import admin.Config
 import mod.cart._
 import razie.db.RMongo

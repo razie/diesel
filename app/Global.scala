@@ -226,17 +226,8 @@ object Global extends WithFilters(LoggingFilter) {
           Audit.logdb("DEBUG", "event.cleansite", we.wid.wpath)
           Website.clean(we.name)
         }
-
-        if("Reactor" == we.category) {
-          Audit.logdb("DEBUG", "event.reloadreactor", we.wid.wpath)
-          WikiReactors.reload(we.name);
-          Website.clean (we.name+".dieselapps.com")
-          new Website(we).prop("domain").map (Website.clean)
-        }
       }
-    }
 
-    WikiObservers mini {
       case WikiEvent("AUTH_CLEAN", "User", id, _, _, _, _) => {
         Services.auth.cleanAuth2(Users.findUserById(new ObjectId(id)).get)
       }

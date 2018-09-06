@@ -17,9 +17,9 @@ class DomInvites extends mod.diesel.controllers.SFiddleBase with Logging {
 
   private def updRealm(au:User, realm:String) = {
     var u = au.copy(realms = (au.realms + realm))
-    if (u.realmSet.exists(_._2.perms.contains(Perm.uProfile))) u = u.addPerm(realm, Perm.uProfile)
-    if (u.realmSet.exists(_._2.perms.contains(Perm.eVerified))) u = u.addPerm(realm, Perm.eVerified)
-    if (u.realmSet.exists(_._2.perms.contains(Perm.uWiki))) u = u.addPerm(realm, Perm.uWiki)
+    if (u.realmSet.exists(_._2.perms.contains(Perm.uProfile))) u = u.addPerm(realm, Perm.uProfile.s)
+    if (u.realmSet.exists(_._2.perms.contains(Perm.eVerified))) u = u.addPerm(realm, Perm.eVerified.s)
+    if (u.realmSet.exists(_._2.perms.contains(Perm.uWiki))) u = u.addPerm(realm, Perm.uWiki.s)
     au.update(u)
   }
 
