@@ -23,16 +23,16 @@ import razie.diesel.ext._
 import razie.diesel.utils.{DomCollector, SpecCache}
 import razie.hosting.Website
 import razie.tconf.DTemplate
-import razie.wiki.Services
 import razie.wiki.admin.Autosave
 import razie.wiki.model._
-import razie.{Logging, Snakk, js}
+import razie.{Logging, js}
 
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future}
 import scala.util.Try
+import mod.diesel.controllers.DomGuardian.catPages
 
 /** the incoming message / request
   *
@@ -204,8 +204,8 @@ class DomApi extends DomApiBase  with Logging {
       val userId = settings.userId.map(new ObjectId(_)) orElse stok.au.map(_._id)
 
       val pages = if (settings.blenderMode) { // blend all specs and stories
-        val stories = if (settings.sketchMode) Wikis(reactor).pages("Story"). /*filter(_.name != stw.get.name).*/ toList else Nil
-        val specs = Wikis(reactor).pages("Spec").toList
+        val stories = if (settings.sketchMode) catPages("Story", reactor). /*filter(_.name != stw.get.name).*/ toList else Nil
+        val specs = catPages("Spec", reactor).toList
         val d = (specs ::: stories).map { p => // if draft mode, find the auto-saved version if any
           if (settings.draftMode) {
             val c = Autosave.find("DomFid" + p.category, reactor, p.wid.wpath, userId).flatMap(_.get("content")).mkString
@@ -282,18 +282,22 @@ class DomApi extends DomApiBase  with Logging {
 
       // is message visible?
       if (msg.isDefined && !isMsgVisible(msg.get, reactor, website)) {
+        info(s"Unauthorized msg access (diesel.visibility:${stok.website.dieselVisiblity}, ${stok.au.map(_.ename).mkString})")
+
         Future.successful(
           Unauthorized(s"Unauthorized msg access (diesel.visibility:${stok.website.dieselVisiblity}, ${stok.au.map(_.ename).mkString})")
         )
-      } else if (
+      } else if (!msg.exists(isMsgPublic(_, reactor, website)) &&
         !isMemberOrTrusted(msg, reactor, website) &&
         xapikey.isDefined && xapikey.exists { x =>
          x.length > 0 && x != stok.qhParm("X-Api-Key").mkString
         }
       ) {
         // good security keys for non-members (devs if logged in don't need security)
+        info(s"Unauthorized msg access (key) for ${msg.map(m=>m.entity+m.met)}")
+
         Future.successful(
-          Unauthorized(s"Unauthorized msg access (key)")
+          Unauthorized(s"Unauthorized msg access (key) for ${msg.map(m=>m.entity+m.met)}")
         )
       } else {
 
@@ -990,6 +994,12 @@ class DomApi extends DomApiBase  with Logging {
   }
 
   /** can user execute message */
+  def isMsgPublic (m:EMsg, reactor:String, website:Website)(implicit stok:RazRequest) = {
+    m.isPublic ||
+    website.dieselVisiblity == "public"
+  }
+
+  /** can user execute message */
   def isMsgVisible (m:EMsg, reactor:String, website:Website)(implicit stok:RazRequest) = {
     m.isPublic ||
     website.dieselVisiblity == "public" ||
@@ -1283,7 +1293,7 @@ class DomApi extends DomApiBase  with Logging {
   }
 
   /** status badge for current realm */
-  def status = RAction.async { implicit stok =>
+  def status= RAction.async { implicit stok =>
     stok.au.map {au=>
       DomGuardian.findLastRun(stok.realm, au.userName).map {r=>
         Future.successful {
@@ -1291,11 +1301,16 @@ class DomApi extends DomApiBase  with Logging {
         }
       }.getOrElse {
         // start a check in the background
-        val eid = startCheck (stok.realm, stok.au)
         clog << s"DIESEL startCheck ${stok.realm} for ${stok.au.map(_.userName)}"
-        //        Ok(quickBadge(0,0))
-        eid._2.map { r =>
-          Ok(quickBadge(r.failed, r.total, r.duration))
+        val eid = startCheck (stok.realm, stok.au)
+        // used to wait for the check - we shouldn't since we're grabbing useful threads, i guess
+//        eid._2.map { r =>
+//          Ok(quickBadge(r.failed, r.total, r.duration))
+//        }
+
+        // just return right away
+        Future.successful {
+          Ok("...")
         }
       }
     }.getOrElse {
@@ -1318,9 +1333,8 @@ class DomApi extends DomApiBase  with Logging {
       }
   }
 
-  // todo implement and optimize
   def report = Filter(activeUser).async { implicit stok =>
-    // simulate - this should run all the time when stories change
+    // todo this should run all the time when stories change
       DomGuardian.findLastRun(stok.realm, stok.au.get.userName).map {r=>
         Future.successful {
           ROK.k reactorLayout12 {
@@ -1335,9 +1349,16 @@ Guardian report<a href="/wiki/Guardian_Guide" ><sup><span class="glyphicon glyph
         }
       }.getOrElse {
         val eid = startCheck (stok.realm, stok.au)
-        eid._2.map { engine =>
-          Ok(s"""no run available - check this later - <a href="/diesel/engine/view/${eid._1}">report</a>""").as("text/html")
+
+        // new
+        Future.successful{
+          Ok(s"""no run available - check this later """).as("text/html")
         }
+
+        //old used to wait...
+//        eid.map { r =>
+//          Ok(s"""no run available - check this later - <a href="/diesel/engine/view/${r.engine.id}">report</a>""").as("text/html")
+//        }
       }
   }
 
@@ -1372,7 +1393,10 @@ Guardian report<a href="/wiki/Guardian_Guide" ><sup><span class="glyphicon glyph
 Guardian report<a href="/wiki/Guardian_Guide" ><sup><span class="glyphicon glyphicon-question-sign"></span></a></sup>: <a href="/diesel/runCheck">Re-run check</a>  (${r.duration} msec) ${quickBadge(r.failed, r.total, r.duration)}<br>
 <small>${DomGuardian.stats} (<a href="/diesel/listAst">list all</a>)(<a href="/diesel/cleanAst">clean all</a>) </small><br><br>""".stripMargin +
               views.html.modules.diesel.engineView(Some(r.engine))(stok).toString
-  }.toList.mkString
+  }.toList.mkString +
+
+"""<hr><h2>Current engines report</h2>""" +
+            DieselAppContext.report
               )
           }
         }
@@ -1381,7 +1405,7 @@ Guardian report<a href="/wiki/Guardian_Guide" ><sup><span class="glyphicon glyph
   /** run another check current reactor */
   def runCheck = Filter(activeUser).async { implicit stok =>
     val eid = startCheck (stok.realm, stok.au)
-    eid._2.map { engine =>
+    eid.map { engine =>
       Redirect(s"""/diesel/report""")
     }
   }
@@ -1391,7 +1415,7 @@ Guardian report<a href="/wiki/Guardian_Guide" ><sup><span class="glyphicon glyph
     Future.sequence(
       WikiReactors.allReactors.keys.map {k=>
         startCheck (k, stok.au)
-      }.map(_._2)
+      }
     ).map {x=>
       Redirect(s"""/diesel/reportAll""")
     }

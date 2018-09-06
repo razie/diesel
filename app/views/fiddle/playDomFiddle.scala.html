@@ -36,7 +36,6 @@ a JS with HTML and CSS fiddle
 <script src="@routes.Assets.at("javascripts/weFiddles.js")"></script>
 
   <h3 id="heading">Diesel fiddle<a href="/wiki/Diesel_Fiddle_Guide"><sup><span class="glyphicon glyphicon-question-sign"></span></sup></a> | <small>
-    <input type="checkbox" id="realTime" checked> <span title="real time preview">RT</span> (<span id="roundtrip" title="real time roundtrip response time">.. ms</span>)
     <span id="errors" class="label label-default">0 failed</span>
 
     <span onclick="setSpec('Story');" class="label label-primary" style="cursor:pointer"><span id="curStory">Story</span> <span class="glyphicon glyphicon-chevron-down">
@@ -49,9 +48,13 @@ a JS with HTML and CSS fiddle
       <span class="glyphicon glyphicon-floppy-disk"> </span>
     </span>&nbsp;
 
+    | <span id="realTimeBox" class="label label-default" >
+       <input type="checkbox" id="realTime" > <span title="real time preview">RT/</span><span onclick="configSim();" style="cursor:pointer" >Sim <span class="glyphicon glyphicon-chevron-down"></span></span></span>
+
     | <span class="label label-default" >
         <input type="checkbox" id="mockMode" title="Use the mocks" checked>
           <span onclick="configMock();" style="cursor:pointer" >Mocks <span class="glyphicon glyphicon-chevron-down"></span></span></span>
+
     | <input type="checkbox" id="sketchMode" title="Not used yet"> Sketch
 
     | <span class="label label-default" style="cursor:pointer">
@@ -63,6 +66,8 @@ a JS with HTML and CSS fiddle
         <span class="glyphicon glyphicon-log-out"></span>
       </span>
 
+      &nbsp;
+    (<span id="roundtrip" title="real time roundtrip response time">.. ms</span>)
     &nbsp;
     <span id="spinner" style="display: none"><img src="https://cdn.razie.com/Public/spinner.gif" height="24" width="24"></span>
 
@@ -74,7 +79,8 @@ a JS with HTML and CSS fiddle
       <input type="checkbox" id="expandedStory" title="Expand/collapse story" checked> <small>(show/hide)</small>
     </div>
     <div id="title3b_@id" class="col-sm-6" style="font-size: small">
-  </div>
+      <input type="checkbox" id="debugStory" title="Expand/collaps debug nodes" checked> <small>(debug)</small>
+    </div>
   </div>
   <div id="storyRow" class="row" style="align-items:center;">
     <div id="divIn3_@id" class="col-sm-6" style="">
@@ -91,7 +97,8 @@ a JS with HTML and CSS fiddle
       <input type="checkbox" id="expandedSpec" title="Expand/collapse spec" checked> <small>(show/hide)</small>
     </div>
     <div id="title1b_@id" class="col-sm-6" style="font-size: small">
-  </div>
+      <input type="checkbox" id="debugSpec" title="Expand/collaps debug nodes" checked> <small>(debug)</small>
+    </div>
   </div>
   <div id="specRow" class="row" style="align-items:center;">
     <div id="divIn1_@id" class="col-sm-6" style="">
@@ -145,11 +152,25 @@ useLocalStorageCheckbox("blenderMode", "domFiddleBlenderMode");
 useLocalStorageCheckbox("draftMode", "domFiddleDraftsMode");
 useLocalStorageCheckbox("wikiMode", "domFiddleWikiMode");
 useLocalStorageCheckbox("realTime", "domFiddleRealTime");
+useLocalStorageCheckbox("realTime", "domFiddleRealTime");
 
 
 $('#sketchMode, #mockMode, #blenderMode, #draftMode, #realTime').change(function(){
-      runpill2_@{id}('@{id}');
+  runpill2_@{id}('@{id}');
 });
+
+var RT = function () { return $('#realTime').prop('checked');}
+
+var updRT = function() {
+  $("#realTimeBox").removeClass();
+    if (RT())
+      $("#realTimeBox").addClass("label label-warning");
+    else
+      $("#realTimeBox").addClass("label label-default");
+}
+
+$('#realTime').change(updRT);
+updRT();
 
 function startESP() {
   window.open('/diesel/fiddle/startESP/@reactor/@id');
@@ -199,7 +220,6 @@ var storyWpath='@storyWpath';
 if(specWpath.length > 0) $("#curSpec").text('@WID.fromPath(specWpath).map(_.name)');
 if(storyWpath.length > 0) $("#curStory").text('@WID.fromPath(storyWpath).map(_.name)');
 
-var RT = function () { return $('#realTime').prop('checked');}
 
 var runpill_@id = function(id) {
   var lastTime = new Date().getTime();
@@ -298,6 +318,7 @@ var runpill2_@id = function(id) {
         if(data.realTime) { // was not executed
           $('#iframeOut3_' + id).html(encAmp(data.res) + '\n');
           $('#iframeOut1_' + id).html(encAmp(data.res) + '\n');
+          hideDebug($('#debugStory').prop('checked'));
         }
       }
       $('#iframeOut5_'+id).html(data.capture);
@@ -387,11 +408,7 @@ function attachAce() {
     getCompletions: function(editor, session, pos, prefix, callback) {
         var state = editor.session.getState(pos.row);
         var completions = [];
-
-        // raz: not interested except in DSL lines
-//        if(session.getLine(pos.row).indexOf("$") == 0) {
-          completions = session.$mode.getCompletions(state, session, pos, prefix);
-//        }
+        completions = session.$mode.getCompletions(state, session, pos, prefix);
         callback(null, completions);
     }
   };
@@ -434,7 +451,7 @@ setInterval(function(){
      instChanged=false;
      runpill2_@{id}('@{id}');
      }
-},500);
+},2000);
 
 </script>
 
@@ -579,6 +596,14 @@ function saveNew(what) {
     });
 }
 
+function hideDebug(expanded) {
+  if (expanded) {
+    $("div[kind='debug']").show();
+  } else {
+    $("div[kind='debug']").hide();
+  }
+}
+
 // it's on load because otherwise the div has no contents
 $(window).load (function() {
   // make sure for new users it will be open
@@ -613,6 +638,7 @@ $(window).load (function() {
       attachAce();
     }
   });
+
   useLocalStorageCheckbox("expandedSpec", "domFiddleExpandedSpec", function (a,b,expanded) {
     if(expanded) {
       $("#specRow").show();
@@ -629,6 +655,14 @@ $(window).load (function() {
       $("#iframeOut3_@id").css("max-height", h3);
       attachAce();
     }
+  });
+
+  useLocalStorageCheckbox("debugSpec", "domFiddleDebugSpec", function (a,b,expanded) {
+    hideDebug(expanded);
+  });
+
+  useLocalStorageCheckbox("debugStory", "domFiddleDebugStory", function (a,b,expanded) {
+    hideDebug(expanded);
   });
 });
 
@@ -650,6 +684,11 @@ function configTagQuery (title,tq,cback) {
           cback(tq, x);
         }
       });
+}
+
+function configSim() {
+  configTagQuery("Sim config", "sub|fibe/spec/-dsl", function (tq,err) {
+  });
 }
 
 function configMock() {

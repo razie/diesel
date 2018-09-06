@@ -265,9 +265,7 @@ object DomFiddles extends DomApi with Logging {
 
     val pages =
       if(settings.blenderMode) {
-        //        val spw = WID.fromPath(specWpath)
-        //        val d = Wikis(reactor).pages("Spec").filter(_.name != spw.map(_.name).mkString).toList.map { p =>
-        val d = Wikis(reactor).pages("Spec").toList.map { p =>
+        val d = DomGuardian.catPages("Spec", reactor).toList.map { p =>
           //         if draft mode, find the auto-saved version if any
           if (settings.draftMode) {
             val c = Autosave.find("DomFidSpec", reactor, p.wid.wpath, uid).flatMap(_.get("content")).mkString
