@@ -465,7 +465,7 @@ function cbToTagQuery (obj) {
 
 /** update the tag query from checkboxes */
 function tagQueryTocb (tq) {
-  $(':checkbox').prop('checked', false);
+  $(":checkbox[tqcfg='yes']").prop('checked', false);
 
   function el(s) {
     var ors = s.split('|'); // or elements

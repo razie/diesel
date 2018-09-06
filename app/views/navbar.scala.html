@@ -60,6 +60,7 @@ creates the navigation bar
               <li id="nav-@label">
               </li>
 <script async>
+var updating_@label = false;
 var ok_@label = true;
 var update_@label = function(){};
 
@@ -69,6 +70,15 @@ doEditThis = function() {
 
 require(['jquery'], function($){
   update_@label = function() {
+
+    // prevent clobbering the server when it's slow to respond
+    // todo smarter backoff
+    if(updating_@label) {
+      return;
+    }
+
+    updating_@label = true;
+
     $("#nav-@label").load("@t._2", function(resp, status, jqXHR) {
       if(jqXHR.status != 200 && location.href.indexOf("localhost") >= 0) {
         ok_@label = false; // stop from reloading
@@ -76,7 +86,9 @@ require(['jquery'], function($){
       }
     });
     @if(label.startsWith("badgeRefresh")) {
-    if(ok_@label) setTimeout(update_@label, 5000);
+    if(ok_@label) setTimeout(update_@label, 7000);
+
+    updating_@label = false;
     }
   };
 
@@ -135,7 +147,7 @@ require(['jquery'], function($){
               <li><a href="@mod.msg.routes.Messaging.doePM"><i class="icon-edit"></i> Messages</a></li>
             }
 
-            @if(stok.au.exists(u=> u.isDev || u.isAdmin)) {
+            @if(stok.au.exists(u=> u.isDev || u.isMod)) {
               <li><a href="/wiki/Reactor:@realm"><i class="icon-edit"></i> Admin</a></li>
             }
 
@@ -190,10 +202,14 @@ require(['jquery'], function($){
 
     **@
 
-    <form class="navbar-form pull-right" role="search" action="@searchUrl()" method="GET">
-      <input type="text" class="form-control search-query" style="padding: 4px 4px 4px 4px; height: 26px; margin-top: 5px"
-      placeholder="Search" id="q" name="q" title="Search box"/>
-    </form>
+    @if(! web().navrMenuRemove.contains("Search")) {
+      <form class="navbar-form pull-right" role="search" action="@searchUrl()" method="GET">
+        <input type="text" class="form-control search-query" style="padding: 4px 4px 4px 4px;
+          height: 26px;
+          margin-top: 5px"
+        placeholder="Search" id="q" name="q" title="Search box"/>
+      </form>
+    }
 
     @**
 
@@ -201,19 +217,23 @@ require(['jquery'], function($){
 
     **@
 
-    @if(stok.au.exists(_.isMod) || stok.isLocalhost || stok.au.exists(_.realms.size > 1)) {
-      <ul class="nav navbar-nav pull-right">
-        <li class="dropdown">
-          <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false" style="color:red;font-weight:bold;font-size: small" title="localhost: current reactor">
-            @stok.realm <span class="caret"></span>
-          </a>
-          <ul class="dropdown-menu" role="menu">
-            @stok.au.toList.flatMap(x=> x.memberReactors).map{t=>
+    @if(! web().navrMenuRemove.contains("Search")) {
+      @if(stok.au.exists(_.isMod) || stok.isLocalhost || stok.au.exists(_.realms.size > 1)) {
+        <ul class="nav navbar-nav pull-right">
+          <li class="dropdown">
+            <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false" style="color: red;
+              font-weight: bold;
+              font-size: small" title="localhost: current reactor">
+              @stok.realm <span class="caret"></span>
+            </a>
+            <ul class="dropdown-menu" role="menu">
+            @stok.au.toList.flatMap(x => x.memberReactors).map { t =>
               <li><a href="/wikie/switchRealm/@t">@t</a></li>
             }
-         </ul>
-       </li>
-      </ul>
+            </ul>
+          </li>
+        </ul>
+      }
     }
 
   </div>

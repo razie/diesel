@@ -12,13 +12,13 @@ engine configuration popup
   @tags.map { tag =>
       <tr>
         <td>
-          <input type="checkbox" id="cbp@tag" title="@tag">
+          <input type="checkbox" id="cbp@tag" tqcfg="yes" title="@tag">
         </td>
         <td>
-          <input type="checkbox" id="cba@tag" title="@tag">
+          <input type="checkbox" id="cba@tag"  tqcfg="yes" title="@tag">
         </td>
         <td>
-          <input type="checkbox" id="cbm@tag" title="@tag">
+          <input type="checkbox" id="cbm@tag"  tqcfg="yes" title="@tag">
         </td>
         <td>
           @tag
@@ -39,7 +39,7 @@ engine configuration popup
 <script>
 
 
-$(':checkbox').change(function(){
+$(":checkbox[tqcfg='yes']").change(function(){
   console.log(this);
   cbToTagQuery(this);
 });
