@@ -195,8 +195,10 @@ object DieselControl extends RazController with Logging {
 
     ROK.r apply {implicit stok=>
       if(c.exists(_.stereotypes contains "wikiCategory"))
+        // real Category
         views.html.modules.diesel.catBrowser(realm, Wikis(realm).category(cat), cat, base, left, right)(mkLink)
       else
+        // parsed Class
         views.html.modules.diesel.domCat(realm, cat, base, left, right)(mkLink)
     }
   }

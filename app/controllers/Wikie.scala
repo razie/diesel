@@ -927,6 +927,7 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
   def addWithName(cat: String, tags:String) = FAU {
     implicit au => implicit errCollector => implicit request =>
     val realm = CAT.unapply(cat).flatMap(_.realm).getOrElse(getRealm())
+
     addForm.bindFromRequest.fold( formWithErrors =>
       ROK.s apply { implicit stok =>
         views.html.wiki.wikieCreate(cat, tags)
@@ -947,7 +948,7 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
         WikiDomain(realm).assocsWhereTheyHaveRole(cat, "Spec").headOption.map { t =>
           ROK.s apply { implicit stok =>(views.html.wiki.wikieAddWithSpec(cat, name, "Spec", t, realm))}
         } getOrElse
-          Redirect(routes.Wikie.wikieEditNew(WID(cat, name).r(realm), ""))
+          Redirect(routes.Wikie.wikieEditNew(WID(cat, name).r(realm), "", tags))
       }
     })
   }
@@ -1183,12 +1184,13 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
         isMember <- (au.realms.contains(stok.realm) || au.isAdmin) orErr "not a website member"; // member
         can <- (stok.website.membersCanCreateTopics || au.isMod) orErr "members can't create topics"; // member
         cat <- CAT.unapply(cats);
-        w   <- Wikis(cat.realm getOrElse getRealm()).category(cat.cat) orErr s"category ${cat.cat} not found"
+        wcat<- Wikis(cat.realm getOrElse getRealm()).category(cat.cat) orElse Wikis(cat.realm getOrElse getRealm()).category("Topic") orErr s"category ${cat.cat} not found"
       ) yield {
         val realm = getRealm(cat.realm.mkString)
         ROK.k apply { implicit stok =>
           assert(stok.realm == (cat.realm getOrElse stok.realm))
-          views.html.wiki.wikieCreate(cat.cat, tags:String)
+          // use whatever cat I found...
+          views.html.wiki.wikieCreate(wcat.name, tags:String)
         }
       }
   }

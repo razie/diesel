@@ -62,8 +62,7 @@ object DomGuardian extends Logging {
               Wikis(reactor).pages("*")
               )
 
-            // todo WTF is this imple?
-            val x = wl /*.filter(_.name contains "imple")*/ .toList
+            val x = wl.toList
 
             x.filter(w => tq.matches(w.tags))
           } getOrElse {

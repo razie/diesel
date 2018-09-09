@@ -19,14 +19,21 @@ class WikiDomainImpl (val realm:String, val wi:WikiInst) extends WikiDomain {
 
   private var irdom : RDomain = null
 
+  @volatile var isLoading : Boolean = false
+
   def rdom : RDomain = synchronized {
-    if (irdom == null)
+    if (irdom == null) {
+      isLoading = true
+
       irdom =
-        Wikis(realm)
-        .pages("DslDomain")
-        .toList
-        .flatMap(p=>WikiDomain.domFrom(p).toList)
-        .fold(createRDom)(_ plus _.revise)
+        WikiSearch.getList(realm, "", "", WikiDomain.domTagQuery.tags)
+//        Wikis(realm).pages("DslDomain")
+          .toList
+          .flatMap(p => WikiDomain.domFrom(p).toList)
+          .fold(createRDom)(_ plus _.revise)
+
+      isLoading = false
+    }
     irdom
   }
 
