@@ -1,0 +1,7 @@
+cd ../coolscala
+echo "-----------coolscala"
+git commit $*
+echo "-----------rk"
+cd ../racerkidz
+git commit $*
+

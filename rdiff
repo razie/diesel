@@ -1,0 +1,7 @@
+cd ../coolscala
+echo "-----------coolscala"
+git diff
+cd ../racerkidz
+echo "-----------racerkidz"
+git diff
+

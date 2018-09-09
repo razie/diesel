@@ -1,0 +1,7 @@
+cd ../coolscala
+echo "-----------coolscala"
+git push
+echo "-----------rk"
+cd ../racerkidz
+git push
+
