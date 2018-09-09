@@ -65,12 +65,14 @@ object ModUserExecutor extends EExecutor("mod.user") {
                   case _ => None
                 }
 
-                if(perm.isDefined && !u.hasMembershipLevel(perm.get)) u.update(u.addPerm(realm, "+"+perm.get.s))
-
-                val newu = u.addModNote(
+                var newu = u.addModNote(
                   realm,
                   s"${DateTime.now().toString} - membership upgraded to $level with payment $paymentId amount $amount"
                 )
+
+                if(perm.isDefined && !u.hasMembershipLevel(perm.get))
+                  newu = newu.addPerm(realm, "+"+perm.get.s)
+
                 u.update(newu)
                 Services.auth.cleanAuth2(u)
 
