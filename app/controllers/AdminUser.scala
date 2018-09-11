@@ -59,14 +59,44 @@ class AdminUser extends AdminBase {
 
   def udelete2(id: String) =
     FAD { implicit au => implicit errCollector => implicit request =>
+      val uid = new ObjectId(id)
       razie.db.tx("udelete2", au.userName) { implicit txn =>
-        RazMongo("User").findOne(Map("_id" -> new ObjectId(id))).map { u =>
+        RazMongo("User").findOne(Map("_id" -> uid)).map { u =>
           WikiTrash("User", u, auth.get.userName, txn.id).create
-          RazMongo("User").remove(Map("_id" -> new ObjectId(id)))
+          RazMongo("User").remove(Map("_id" -> uid))
+          RazMongo("UserOld").remove(Map("_id" -> uid))
+          RazMongo("UserQuota").remove(Map("userId" -> uid))
+          RazMongo("UserWiki").remove(Map("userId" -> uid))
+          RazMongo("UserEvent").remove(Map("userId" -> uid))
+          RazMongo("Comment").remove(Map("userId" -> uid))
+          RazMongo("ParentChild").remove(Map("parentId" -> uid))
+          RazMongo("ParentChild").remove(Map("childId" -> uid))
+          RazMongo("Account").find(Map("userId" -> uid)).map { u =>
+            RazMongo("Account").remove(Map("userId" -> uid))
+            RazMongo("AcctTxn").remove(Map("userId" -> uid))
+            RazMongo("Cart").remove(Map("userId" -> uid))
+          }
         }
-        RazMongo("Profile").findOne(Map("userId" -> new ObjectId(id))).map { u =>
+        RazMongo("Profile").findOne(Map("userId" -> uid)).map { u =>
           WikiTrash("Profile", u, auth.get.userName, txn.id).create
-          RazMongo("Profile").remove(Map("userId" -> new ObjectId(id)))
+          RazMongo("Profile").remove(Map("userId" -> (uid)))
+        }
+        (RazMongo("RacerKidAssoc").find(Map("from" -> (uid))).toList :::
+          RazMongo("RacerKidAssoc").find(Map("owner" -> (uid))).toList).map { u =>
+          WikiTrash("RacerKidAssoc", u, auth.get.userName, txn.id).create
+          RazMongo("RacerKidAssoc").remove(Map("_id" -> u._id))
+        }
+        RazMongo("RacerKidInfo").find(Map("ownerId" -> (uid))).map { u =>
+          WikiTrash("RacerKidInfo", u, auth.get.userName, txn.id).create
+          RazMongo("RacerKidInfo").remove(Map("_id" -> u._id))
+        }
+        (RazMongo("RacerKid").find(Map("userId" -> (uid))).toList :::
+          RazMongo("RacerKid").find(Map("ownerId" -> (uid))).toList).map { u =>
+          WikiTrash("RacerKid", u, auth.get.userName, txn.id).create
+          RazMongo("RacerKid").remove(Map("_id" -> u._id))
+          RazMongo("RkHistoryFeed").remove(Map("rkId" -> u._id))
+          RazMongo("ModRkEntry").remove(Map("rkId" -> u._id))
+          RazMongo("RacerKidWikiAssoc").remove(Map("rkId" -> u._id))
         }
       }
       Redirect("/razadmin")

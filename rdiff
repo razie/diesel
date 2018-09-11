@@ -1,3 +1,6 @@
+cd ../snakked
+echo "-----------snakked"
+git diff
 cd ../coolscala
 echo "-----------coolscala"
 git diff

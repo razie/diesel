@@ -3,6 +3,7 @@ fragment: add more stuff to the current topic, including children, sub-topics et
 ****************@
 @import razie.wiki.model.UWID
 @import razie.wiki.model.WikiLink
+@import model.User
 @(uwid: UWID)
 
 @import controllers.IgnoreErrors
@@ -59,8 +60,19 @@ Links from others :
 
 @*if name != realm it's a mistake...*@
 
+  @*------------------------- REACTOR -------------------------- *@
+
 @if(uwid.cat == "Reactor" && uwid.findWid.exists(x=> x.getRealm == x.name)) {
   <h2>It is a reactor, here are the topics to delete:</h2>
+
+  <small>
+  @defining(RMany[User]().filter(_.realms.contains(uwid.wid.get.name))) { x =>
+<p>Users: @x.size
+<ul>
+@x.map { u => <li>@u.userName | @u.role</li> }
+</ul>
+}
+  </small>
 
   <small>
   @defining(RMany[WikiEntry]("realm" -> uwid.wid.get.name)) { x =>

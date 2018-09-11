@@ -1091,7 +1091,9 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
       }
 
       log("Wiki.delete2 " + wid)
+
       if (wid.cat != "Club") canDelete(wid).collect {
+
         // delete all reactor pages. if realm != name it's a mistake, should allow deleete without all pages
         case (au, w) if wid.cat == "Reactor" && wid.getRealm == wid.name => {
           val realm = wid.name
@@ -1103,9 +1105,15 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
               RacerKidz.rmHistory(we._id)
 //              clearDrafts(we.wid, au)
             }
+
             WikiReactors.reload(realm)
-            au.update(au.copy(realms=au.realms.filter(_ == wid.name)))
+
+            RMany[User]().filter(_.realms.contains(wid.name)).map {u=>
+              u.update(u.copy(realms=u.realms.filter(_ != wid.name), realmSet = u.realmSet.filter(_._1 != wid.name)))
+            }
+
             Services ! WikiAudit(WikiAudit.DELETE_WIKI, w.wid.wpathFull, Some(au._id), None, Some(w), None, Some(w._id.toString))
+
             cleanAuth()
           }
           Msg2(s"REACTOR DELETED forever - no way back! Deleted $count topics")
