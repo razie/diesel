@@ -1,7 +1,7 @@
 @**************
 wiki fragment, used in another page
 **************@
-@(we: razie.wiki.model.WikiEntry, simple: Boolean = false, canEdit: Boolean = false, isSite: Boolean = false, print: Boolean = false)(implicit stok: controllers.StateOk)
+@(we: razie.wiki.model.WikiEntry, simple: Boolean = false, canEdit: Boolean = false, print: Boolean = false)(implicit stok: controllers.StateOk)
 @import razie.wiki.model.Perm
 @import controllers.IgnoreErrors
 @import razie.wiki.model.{Wikis, WID, WikiEntry}
@@ -34,7 +34,7 @@ wiki fragment, used in another page
   if(u startsWith "http") u else s"http://${Services.config.hostport}$u"
 }
 
-<!-- debug simple=@simple print=@print isSite=@isSite canEdit=@canEdit -->
+<!-- debug simple=@simple print=@print canEdit=@canEdit -->
 
 @if(!simple && !print) {
   <div id="wikiBy">
@@ -71,7 +71,6 @@ wiki fragment, used in another page
       <br>
 
     <small>
-      @if(!isSite) {
         <em>By</em>:
         @**todo use separate page for missing users **@
         <a href="/user/@model.Users.nameOf(page.get.by)">@model.Users.nameOf(page.get.by)</a>
@@ -79,7 +78,7 @@ wiki fragment, used in another page
           @page.get.crDtm.toLocalDate().toString
           @if(page.get.updDtm.toLocalDate != page.get.crDtm.toLocalDate) { .. @page.get.updDtm.toLocalDate().toString}
         </small>
-      }
+
       @******* tags *******@
 
       @** todo tag-based browsing **@

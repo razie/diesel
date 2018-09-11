@@ -4,7 +4,6 @@ a nicer div12
 @(wid:razie.wiki.model.WID, iname:Option[String], page:Option[razie.wiki.model.WikiEntry], canEdit:Boolean, print:Boolean=false)(implicit stok: controllers.StateOk)
 
 @label()=@{ page.map(_.label).getOrElse(razie.wiki.model.Wikis(wid.getRealm).label(wid)) }
-@isSite()=@{Array("Page").contains(wid.cat) && page.isDefined}
 
   <!-- layout div12Cool -->
 <div class="container">
@@ -25,7 +24,7 @@ a nicer div12
 
         @wid.page.map {we =>
           @if(!page.flatMap(_.contentProps.get("nobottom")).isDefined) {
-            @wiki.wikiFragBottom(we, false, canEdit, isSite, print)
+            @wiki.wikiFragBottom(we, false, canEdit, print)
           }
         }
 
@@ -35,7 +34,6 @@ a nicer div12
       <hr>
       @if(!print) {
           @htmlFooter(ads = stok.showBottomAds(page),
-              false,
               wid.getRealm,
               stok.request)
       }

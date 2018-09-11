@@ -1,7 +1,7 @@
 cd ../coolscala
 echo "-----------coolscala"
-git commit $*
+git commit "$@"
 echo "-----------rk"
 cd ../racerkidz
-git commit $*
+git commit "$@"
 

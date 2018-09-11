@@ -21,12 +21,12 @@ Classic layout
     @modules.diesel.wBrowser(stok.realm, page, "top")
 
       <div class="well">
-        @wiki.wikiFrag(wid, None, false, page, iname, false, true, canEdit, false, false)
+        @wiki.wikiFrag(wid, None, false, page, iname, false, true, canEdit, false)
 
         @modules.diesel.wBrowser(stok.realm, page, "top")
 
         @wid.page.map {we =>
-          @wiki.wikiFragBottom(we, false, canEdit, false, print)
+          @wiki.wikiFragBottom(we, false, canEdit, print)
         }
       </div>
 
@@ -60,7 +60,6 @@ Classic layout
   </div> <!-- row -->
       @if(!print) {
           @htmlFooter(ads = stok.showBottomAds(page),
-              false,
               wid.getRealm,
               stok.request)
       }

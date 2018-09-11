@@ -1,7 +1,7 @@
 @**************
 the footer of every page...
 **************@
-@(ads:Boolean=false, isSite:Boolean=false, realm:String=razie.wiki.model.Wikis.RK, request:Option[Request[_]]=None)(implicit stok:controllers.StateOk)
+@(ads:Boolean=false, realm:String=razie.wiki.model.Wikis.RK, request:Option[Request[_]]=None)(implicit stok:controllers.StateOk)
 
 @web()=@{request.flatMap(x=>razie.hosting.Website.apply(x)).getOrElse(stok.website)}
 

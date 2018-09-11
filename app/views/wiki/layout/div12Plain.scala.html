@@ -21,7 +21,7 @@ eh
         @wiki.wikiAddMore(wid, page)
         @wid.page.map {we =>
           @if(!page.flatMap(_.contentProps.get("nobottom")).isDefined) {
-            @wiki.wikiFragBottom(we, false, canEdit, false, print)
+            @wiki.wikiFragBottom(we, false, canEdit, print)
           }
         }
         @wiki.wikiPageComments(wid, page,  stok.au)
@@ -30,7 +30,6 @@ eh
       <hr>
       @if(!print) {
           @htmlFooter(ads = stok.showBottomAds(page),
-              false,
               wid.getRealm,
               stok.request)
       }

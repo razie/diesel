@@ -27,7 +27,7 @@ eh
         @wiki.wikiAddMore(wid, page)
 
         @wid.page.map {we =>
-          @wiki.wikiFragBottom(we, false, canEdit, false, print)
+          @wiki.wikiFragBottom(we, false, canEdit, print)
         }
 
         @wiki.wikiPageComments(wid, page,  stok.au)
@@ -57,7 +57,6 @@ eh
   </div> <!-- row -->
       @if(!print) {
           @htmlFooter(ads = stok.showBottomAds(page),
-              false,
               wid.getRealm,
               stok.request)
       }

@@ -25,7 +25,7 @@ just a div12 full page, no right side
         @wiki.wikiAddMore(wid, page)
 
         @wid.page.map {we =>
-          @wiki.wikiFragBottom(we, false, canEdit, false, print)
+          @wiki.wikiFragBottom(we, false, canEdit, print)
         }
 
         @wiki.wikiPageComments(wid, page, stok.au)
@@ -34,7 +34,6 @@ just a div12 full page, no right side
       <hr>
       @if(!print) {
         @htmlFooter(ads = stok.showBottomAds(page),
-            false,
             wid.getRealm,
             stok.request)
       }

@@ -2,7 +2,7 @@
 creates the navigation bar
 ***@
 @import razie.wiki.model.Perm
-@(user:Option[razie.wiki.model.WikiUser], realm:String=razie.wiki.model.Wikis.RK, mobile:Boolean = false, barTitle: String="Bar Title", logo:Option[String]=None, url:Option[String]=Some("/"), isSite:Boolean=false, club:String="")(implicit stok: controllers.StateOk)
+@(user:Option[razie.wiki.model.WikiUser], realm:String=razie.wiki.model.Wikis.RK, mobile:Boolean = false, barTitle: String="Bar Title", logo:Option[String]=None, url:Option[String]=Some("/"), club:String="")(implicit stok: controllers.StateOk)
 @import razie.wiki.Services
 @import razie.wiki.model.Wikis
 
@@ -48,7 +48,6 @@ creates the navigation bar
   <div class="navbar-collapse collapse" id="navbar">
     <ul class="nav navbar-nav navbar-left">
 
-    @if(!isSite) {
       <li class="divider-vertical"></li>
       @web().navMenu.map{t=>
         @if(! t._1.startsWith("user.") && ! t._1.startsWith("admin.") ||
@@ -107,7 +106,7 @@ require(['jquery'], function($){
           }
         }
       }
-    }
+
       @stok.au.map(_._id).flatMap(mod.cart.Cart.find).map {cart=>
         <li>
           <a href="/doe/cart">

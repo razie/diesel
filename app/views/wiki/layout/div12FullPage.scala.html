@@ -4,7 +4,6 @@ eh
 @(wid:razie.wiki.model.WID, iname:Option[String], page:Option[razie.wiki.model.WikiEntry], canEdit:Boolean, print:Boolean=false)(implicit stok: controllers.StateOk)
 
 @label()=@{ page.map(_.label).getOrElse(razie.wiki.model.Wikis(wid.getRealm).label(wid)) }
-@isSite()=@{Array("Page").contains(wid.cat) && page.isDefined}
 
 @*<div class="container">*@
 
@@ -23,7 +22,7 @@ eh
         @wiki.wikiAddMore(wid, page)
         @wid.page.map {we =>
             @if(!page.flatMap(_.contentProps.get("nobottom")).isDefined) {
-              @wiki.wikiFragBottom(we, false, canEdit, isSite, print)
+              @wiki.wikiFragBottom(we, false, canEdit, print)
             }
         }
         @wiki.wikiPageComments(wid, page, stok.au)
@@ -32,7 +31,6 @@ eh
     <hr>
       @if(!print) {
           @htmlFooter(ads = stok.showBottomAds(page),
-              false,
               wid.getRealm,
               stok.request)
       }
