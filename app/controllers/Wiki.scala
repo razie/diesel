@@ -568,12 +568,7 @@ object Wiki extends WikiBase {
       page.map(_.preprocess(stok.au)) // just make sure it's processed
       //    cdebug << "B"
 
-      if (Array("Site").contains(wid.cat) && page.isDefined)
-        ROK.k noLayout { implicit stok =>
-          views.html.wiki.wikiSite(wid, iname, page)
-        }
-      //    Ok(views.html.wiki.wikiPage(wid, iname, page, canEdit, print))
-      else if (page.exists(_.fields.nonEmpty)) {
+      if (page.exists(_.fields.nonEmpty)) {
         showForm(wid, iname, page, stok.au, shouldCount, Map.empty, canEdit, print)
       } else {
         //    cdebug << "C"

@@ -4,7 +4,7 @@ a nicer div12
 @(wid:razie.wiki.model.WID, iname:Option[String], page:Option[razie.wiki.model.WikiEntry], canEdit:Boolean, print:Boolean=false)(implicit stok: controllers.StateOk)
 
 @label()=@{ page.map(_.label).getOrElse(razie.wiki.model.Wikis(wid.getRealm).label(wid)) }
-@isSite()=@{Array("Site", "Page").contains(wid.cat) && page.isDefined}
+@isSite()=@{Array("Page").contains(wid.cat) && page.isDefined}
 
   <!-- layout div12Cool -->
 <div class="container">

@@ -220,14 +220,6 @@ object Global extends WithFilters(LoggingFilter) {
     Services.initCqrs(new RkCqrs)
 
     WikiObservers mini {
-      case event @ WikiEvent(_, "WikiEntry", _, Some(x), _, _, _) => {
-        val we = x.asInstanceOf[WikiEntry]
-        if("Site" == we.category) {
-          Audit.logdb("DEBUG", "event.cleansite", we.wid.wpath)
-          Website.clean(we.name)
-        }
-      }
-
       case WikiEvent("AUTH_CLEAN", "User", id, _, _, _, _) => {
         Services.auth.cleanAuth2(Users.findUserById(new ObjectId(id)).get)
       }

@@ -36,7 +36,7 @@ object Application extends RazController {
       } orElse getHost.flatMap(Website.forHost).filter(w=>
 
         // is there reactor and home page?
-        w.we.exists(_.category == "Site") || w.homePage.isDefined
+        w.homePage.isDefined
 
       ).flatMap {x=>
 

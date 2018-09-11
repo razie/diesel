@@ -6,7 +6,7 @@ render a regular wiki page - site pages are rendered with wikiSite.scala.html
 
 @label()=@{ page.map(_.label).getOrElse(razie.wiki.model.Wikis(wid.getRealm).label(wid)) }
 @web()=@{stok.website}
-@isSite()=@{Array("Site", "Page").contains(wid.cat) && page.isDefined}
+@isSite()=@{Array("Page").contains(wid.cat) && page.isDefined}
 @layout=@{page.flatMap(_.contentProps.get("layout")) getOrElse web().layout}
 
 @if(page.exists(_.attr("diesel.requireJs").exists(_ == "false"))) {
