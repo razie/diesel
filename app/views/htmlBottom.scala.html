@@ -38,16 +38,19 @@
   <div align="center">
   <table>
     <tr>
+    @if(!web().bottomMenu("More").exists(_._1 == "hide")) {
       <td style="width:200px;vertical-align: top">
         <strong class="razbots">More</strong> <br>
         <a class="razbot" href="/">Home</a> <br>
         @if(web().about.isDefined) {
           <a class="razbot" href="@web().about.getOrElse("/wiki/Admin:About")">About</a> <br>
         }
-        @web().bottomMenu("More").map{t=>
+        @web().bottomMenu("More").filter(x=>x._1 != "About" && x._2 != "").map{t=>
           <a class="razbot" href="@t._2">@t._1</a><br>
         }
       </td>
+    }
+      @if(!web().bottomMenu("Support").exists(_._1 == "hide")) {
       <td style="width:200px;vertical-align: top">
         <strong class="razbots">Support</strong> <br>
         <a class="razbot" href="@web().supportUrl">Support</a> <br>
@@ -57,25 +60,20 @@
         @if(web().privacy.length > 0) {
           <a class="razbot" href="@web().privacy">Privacy Policy</a> <br>
         }
-        @web().bottomMenu("Support").map{t=>
+        @web().bottomMenu("Support").filter(x=>x._1 != "Support" && x._2 != "").map{t=>
           <a class="razbot" href="@t._2">@t._1</a><br>
         }
       </td>
+      }
+
+      @if(!web().bottomMenu("Connect").exists(_._1 == "hide")) {
       <td style="width:200px;vertical-align: top">
-        <strong class="razbots">Social</strong><br>
-        @if(web().twitter.length > 0) {
-          <a class="razbot" href="http://twitter.com/@web().twitter">Twitter</a><br>
-        }
-        @if(web().blog.length > 0) {
-          <a class="razbot" href="@web().blog">Blog</a> <br>
-        }
-        @web().gplus.map{g=>
-          <a class="razbot" href="@g">Google+</a><br>
-        }
-        @web().bottomMenu("Social").map{t=>
+        <strong class="razbots">Connect</strong><br>
+        @web().bottomMenu("Connect").filter(_._2 != "").map{t=>
           <a class="razbot" href="@t._2">@t._1</a><br>
         }
       </td>
+      }
     </tr>
   </table>
   <div style="height:20px"></div>

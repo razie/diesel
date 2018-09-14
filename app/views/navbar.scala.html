@@ -216,7 +216,7 @@ require(['jquery'], function($){
 
     **@
 
-    @if(! web().navrMenuRemove.contains("Search")) {
+    @if(! web().navrMenuRemove.contains("Search") || stok.au.exists(_.isMod) && stok.isLocalhost ) {
       @if(stok.au.exists(_.isMod) || stok.isLocalhost || stok.au.exists(_.realms.size > 1)) {
         <ul class="nav navbar-nav pull-right">
           <li class="dropdown">
