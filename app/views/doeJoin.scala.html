@@ -49,13 +49,18 @@
     '_showConstraints -> false,
     '_error->registerForm.error("password"))
 
-  <button type="submit" class="btn btn-success">Login</button>
-  <a href="@routes.ProfileUpd.doeForgotPass()" class="btn btn-info">Forgot password!</a>
+  <button id="loginBtn" type="submit" class="btn btn-success">Login</button>
+  <a id="forgotBtn" href="@routes.ProfileUpd.doeForgotPass()" class="btn btn-info">Forgot password!</a>
+
+  <br>
+  <br>
+  <button id="createBtn1" onclick="showCreate()" class="btn btn-warning xbtn-xs">Create new account</button>
 
   <hr>
 
+    <span id="createArea" style="display:none;">
   @if(stok.website.openMembership || stok.request.exists(_.flash.get(SecLink.HEADER).exists(_.length > 5))) {
-    <span style="color: red;
+      <span style="color: red;
       font-size: smaller"> To <strong>create a new account</strong>, please confirm the chosen email and password: </span>
 
     @helper.inputText(
@@ -76,6 +81,7 @@
       This website does not allow creating accounts... you can request or use an invitation below.</div>
     <hr>
   }
+</span>
 
   @registerForm.globalError.map { err=>
      <p style="color:red;font-weight:bold">@err.message</p>
@@ -191,6 +197,16 @@ Your email
       }
 
     }
+
+    function showCreate() {
+      if($("#createArea").is(":hidden")) {
+        $("#createArea").show();
+        $("#createBtn1").prop('disabled', true);
+        $("#loginBtn").prop('disabled', true);
+        $("#forgotBtn").prop('disabled', true);
+      }
+    }
+
     </script>
 
   @htmlFooter(false, stok.realm)

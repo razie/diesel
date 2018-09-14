@@ -1,7 +1,10 @@
+cd ../snakked
+echo "-----------snakked"
+git "$@"
 cd ../coolscala
 echo "-----------coolscala"
-git commit "$@"
+git "$@"
 echo "-----------rk"
 cd ../racerkidz
-git commit "$@"
+git "$@"
 
