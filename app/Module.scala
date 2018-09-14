@@ -18,6 +18,7 @@ import razie.audit.{Audit, AuditService, MdbAuditService}
 import razie.db.{RMongo, ROne, RazMongo, UpgradeDb}
 import razie.diesel.engine.{DieselAppContext, RDExt}
 import razie.diesel.ext.Executors
+import razie.hosting.Website
 import razie.wiki.admin.SendEmail
 import razie.wiki.mods.WikiMods
 import razie.wiki.{EncryptService, Services, WikiConfig}
@@ -84,8 +85,14 @@ class Module extends AbstractModule {
     Services.wikiAuth = RazWikiAuthorization
 
     //todo look these up in Website
-    Services.isSiteTrusted = {s=>
-      Config.trustedSites.exists(x=>s.startsWith(x))
+    Services.isSiteTrusted = {(r,s)=>
+      val y = Website.forRealm(r).toList.flatMap(_.trustedSites.toList)
+
+      Config.trustedSites.exists(x=>s.startsWith(x)) ||
+        (
+          r.length > 0 &&
+            Website.forRealm(r).exists(_.trustedSites.exists(x=> s.startsWith(x)))
+        )
     }
 
     RDExt.init

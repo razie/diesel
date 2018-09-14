@@ -29,3 +29,4 @@ docker/db/
 /app.OLD/
 gen/
 ncart
+*.swp

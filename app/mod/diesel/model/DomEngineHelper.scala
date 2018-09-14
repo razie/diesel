@@ -72,6 +72,7 @@ object DomEngineHelper {
         } else None
       },
       tagQuery = fqhParm(TAG_QUERY),
+      simMode = fqhoParm(SIM_MODE, "false").toBoolean,
       hostport = Some(request.host)
     )
   }
@@ -104,7 +105,8 @@ object DomEngineHelper {
       parentNodeId = fqhParm("dieselNodeId"),
       configTag = fqhParm("dieselConfigTag"),
       userId = fqhParm("dieselUserId"),
-      cont
+      cont,
+      simMode = fqhoParm(SIM_MODE, "false").toBoolean
     )
   }
 

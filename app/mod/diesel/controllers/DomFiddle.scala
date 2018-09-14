@@ -237,7 +237,6 @@ object DomFiddles extends DomApi with Logging {
     val spec = stok.formParm("spec")
     val story = stok.formParm("story")
     val capture = stok.formParm("capture")
-    val realTime = stok.formParm("realTime").toBoolean
 
     val uid = stok.au.map(_._id).getOrElse(NOUSER)
 
@@ -347,8 +346,7 @@ object DomFiddles extends DomApi with Logging {
         "wiki" -> wiki,
         "ca" -> RDExt.toCAjmap(dom plus idom), // in blenderMode dom is full
         "failureCount" -> engine.failedTestCount,
-        "storyChanged" -> (storyWpath.length > 0 && stw.replaceAllLiterally("\r", "") != story),
-        "realTime" -> realTime
+        "storyChanged" -> (storyWpath.length > 0 && stw.replaceAllLiterally("\r", "") != story)
       )
 
       clients.get(id).foreach(_ ! m)

@@ -57,9 +57,9 @@ a JS with HTML and CSS fiddle
 
     | <input type="checkbox" id="sketchMode" title="Not used yet"> Sketch
 
-    | <span class="label label-default" style="cursor:pointer">
-      <input type="checkbox" id="blenderMode" title="Blend all specs together">
-    <span onclick="configBlender();">Blender <span class="glyphicon glyphicon-chevron-down"></span></span></span>
+    | <span id="blenderBox" class="label label-default" style="cursor:pointer">
+      <input type="checkbox" id="blenderMode" title="Mix all specs together"> <span onclick="configBlender();">Blender <span class="glyphicon glyphicon-chevron-down"></span></span></span>
+
     | <input type="checkbox" id="draftMode" title="Use autosaved drafts not originals" checked> Drafts
     | <input type="checkbox" id="wikiMode" title="Show the wiki instead of the tree" > Wiki
     | <span onclick="startESP();" class="label label-primary" style="cursor:pointer">ESP
@@ -152,25 +152,35 @@ useLocalStorageCheckbox("blenderMode", "domFiddleBlenderMode");
 useLocalStorageCheckbox("draftMode", "domFiddleDraftsMode");
 useLocalStorageCheckbox("wikiMode", "domFiddleWikiMode");
 useLocalStorageCheckbox("realTime", "domFiddleRealTime");
-useLocalStorageCheckbox("realTime", "domFiddleRealTime");
 
 
 $('#sketchMode, #mockMode, #blenderMode, #draftMode, #realTime').change(function(){
   runpill2_@{id}('@{id}');
 });
 
-var RT = function () { return $('#realTime').prop('checked');}
+var simMode = function () { return ! $('#realTime').prop('checked');}
 
 var updRT = function() {
   $("#realTimeBox").removeClass();
-    if (RT())
-      $("#realTimeBox").addClass("label label-warning");
+  if (simMode())
+    $("#realTimeBox").addClass("label label-default");
+  else
+    $("#realTimeBox").addClass("label label-warning");
+}
+
+var updBlender = function() {
+  $("#blenderBox").removeClass();
+    if ($('#blenderMode').prop('checked'))
+      $("#blenderBox").addClass("label label-default");
     else
-      $("#realTimeBox").addClass("label label-default");
+      $("#blenderBox").addClass("label label-danger");
 }
 
 $('#realTime').change(updRT);
 updRT();
+
+$('#blenderMode').change(updBlender);
+updBlender();
 
 function startESP() {
   window.open('/diesel/fiddle/startESP/@reactor/@id');
@@ -243,7 +253,7 @@ var runpill_@id = function(id) {
       spec : editor1.getValue(),
       story : editor.getValue(),
       capture : editor5.getValue(),
-      realTime : RT()
+      simMode : simMode()
     }),
     contentType: 'application/x-www-form-urlencoded',
     success: function(data) {
@@ -301,7 +311,7 @@ var runpill2_@id = function(id) {
       spec : editor1.getValue(),
       story : editor.getValue(),
       capture : editor5.getValue(),
-      realTime : RT()
+      simMode : simMode()
     }),
     contentType: 'application/x-www-form-urlencoded',
     success: function(data) {
@@ -314,12 +324,11 @@ var runpill2_@id = function(id) {
 
         // jquery.html will expan the escaped html, we need to escape again with encAmp
         // if i don't do this, html values will mess up the current page
-        // if(RT())
-        if(data.realTime) { // was not executed
+        // if(! data.simMode) { // was not executed
           $('#iframeOut3_' + id).html(encAmp(data.res) + '\n');
           $('#iframeOut1_' + id).html(encAmp(data.res) + '\n');
           hideDebug($('#debugStory').prop('checked'));
-        }
+        // }
       }
       $('#iframeOut5_'+id).html(data.capture);
       instContentAssist = data.ca;
