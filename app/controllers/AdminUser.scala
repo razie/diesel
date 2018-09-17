@@ -41,6 +41,7 @@ import razie.wiki.Sec._
 import razie.wiki.util.DslProps
 
 import scala.collection.JavaConversions._
+import scala.collection.mutable.ListBuffer
 import scala.concurrent.Future
 
 @Singleton
@@ -60,46 +61,87 @@ class AdminUser extends AdminBase {
   def udelete2(id: String) =
     FAD { implicit au => implicit errCollector => implicit request =>
       val uid = new ObjectId(id)
+      var res:List[String] = Nil
+
       razie.db.tx("udelete2", au.userName) { implicit txn =>
-        RazMongo("User").findOne(Map("_id" -> uid)).map { u =>
+
+        val tod = ListBuffer[(String, String, ObjectId)]()
+        def del (table:String, field:String, id:ObjectId) = {
+          tod.append((table, field, id))
+        }
+
+        RazMongo("User").findOne(Map("_id" -> uid)).foreach { u =>
           WikiTrash("User", u, auth.get.userName, txn.id).create
-          RazMongo("User").remove(Map("_id" -> uid))
-          RazMongo("UserOld").remove(Map("_id" -> uid))
-          RazMongo("UserQuota").remove(Map("userId" -> uid))
-          RazMongo("UserWiki").remove(Map("userId" -> uid))
-          RazMongo("UserEvent").remove(Map("userId" -> uid))
-          RazMongo("Comment").remove(Map("userId" -> uid))
-          RazMongo("ParentChild").remove(Map("parentId" -> uid))
-          RazMongo("ParentChild").remove(Map("childId" -> uid))
-          RazMongo("Account").find(Map("userId" -> uid)).map { u =>
-            RazMongo("Account").remove(Map("userId" -> uid))
-            RazMongo("AcctTxn").remove(Map("userId" -> uid))
-            RazMongo("Cart").remove(Map("userId" -> uid))
-          }
+          del("User", "_id", uid)
+          del("UserOld", "_id", uid)
         }
-        RazMongo("Profile").findOne(Map("userId" -> uid)).map { u =>
+
+        del("UserQuota", "userId",  uid)
+        del("UserWiki", "userId", uid)
+        del("UserEvent", "userId", uid)
+        del("Comment", "userId", uid)
+        del("ParentChild", "parentId", uid)
+        del("ParentChild", "childId", uid)
+
+        RazMongo("Acct").find(Map("userId" -> uid)).foreach { a =>
+          del("Acct", "userId", uid)
+          del("AcctTxn", "acctId", a._id.get)
+          del("AcctTxn", "userId", uid)
+        }
+        del("Cart", "userId", uid)
+        del("AcctPayTxn", "userId", uid)
+
+        del("AutoSave", "userId", uid)
+        // leave Comment
+        del("EditLock", "uid", uid)
+
+        del("Progress", "ownerId", uid)
+
+        RazMongo("Profile").findOne(Map("userId" -> uid)).foreach { u =>
           WikiTrash("Profile", u, auth.get.userName, txn.id).create
-          RazMongo("Profile").remove(Map("userId" -> (uid)))
+          del("Profile", "userId", (uid))
         }
+
+        del("Inbox", "toId", uid)
+        del("Inbox", "fromId" ,uid)
+        del("NoteShare", "toId", uid)
+        del("NoteShare", "ownerId", uid)
+        del("NoteContact", "uid", uid)
+        del("NoteContact", "oid", uid)
+        del("weNote", "by" ,uid)
+        del("weForm", "by" ,uid)
+
         (RazMongo("RacerKidAssoc").find(Map("from" -> (uid))).toList :::
-          RazMongo("RacerKidAssoc").find(Map("owner" -> (uid))).toList).map { u =>
-          WikiTrash("RacerKidAssoc", u, auth.get.userName, txn.id).create
-          RazMongo("RacerKidAssoc").remove(Map("_id" -> u._id))
+          RazMongo("RacerKidAssoc").find(Map("owner" -> (uid))).toList).foreach { u =>
+//          WikiTrash("RacerKidAssoc", u, auth.get.userName, txn.id).create
+          del("RacerKidAssoc", "_id", u._id.get)
+          del("VolunteerH", "rkaId", u._id.get)
         }
-        RazMongo("RacerKidInfo").find(Map("ownerId" -> (uid))).map { u =>
-          WikiTrash("RacerKidInfo", u, auth.get.userName, txn.id).create
-          RazMongo("RacerKidInfo").remove(Map("_id" -> u._id))
+
+        RazMongo("RacerKidInfo").find(Map("ownerId" -> (uid))).foreach { u =>
+//          WikiTrash("RacerKidInfo", u, auth.get.userName, txn.id).create
+          del("RacerKidInfo", "_id", u._id.get)
         }
+
         (RazMongo("RacerKid").find(Map("userId" -> (uid))).toList :::
-          RazMongo("RacerKid").find(Map("ownerId" -> (uid))).toList).map { u =>
-          WikiTrash("RacerKid", u, auth.get.userName, txn.id).create
-          RazMongo("RacerKid").remove(Map("_id" -> u._id))
-          RazMongo("RkHistoryFeed").remove(Map("rkId" -> u._id))
-          RazMongo("ModRkEntry").remove(Map("rkId" -> u._id))
-          RazMongo("RacerKidWikiAssoc").remove(Map("rkId" -> u._id))
+          RazMongo("RacerKid").find(Map("ownerId" -> (uid))).toList).foreach { u =>
+//          WikiTrash("RacerKid", u, auth.get.userName, txn.id).create
+          del("RacerKid", "_id", u._id.get)
+          del("RkHistoryFeed", "rkId", u._id.get)
+          del("RkHistory", "rkId", u._id.get)
+          del("ModRkEntry", "rkId", u._id.get)
+          del("RacerKidWikiAssoc", "rkId", u._id.get)
+          del("RacerKidInfo", "rkId", u._id.get)
         }
+
+        res = tod.toList.map {t=>
+          razie.cout << "Removing: " + t.toString
+          RazMongo(t._1).remove(Map(t._2 -> t._3))
+          "Removing: " + t.toString
+        }
+
       }
-      Redirect("/razadmin")
+      Ok(res.mkString("\n"))
     }
 
   def ustatus(id: String, s: String) = FADR { implicit stok =>

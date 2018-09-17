@@ -19,7 +19,7 @@ import razie.db.{RMongo, ROne, RazMongo, UpgradeDb}
 import razie.diesel.engine.{DieselAppContext, RDExt}
 import razie.diesel.ext.Executors
 import razie.hosting.Website
-import razie.wiki.admin.SendEmail
+import razie.wiki.admin.{SecLink, SendEmail}
 import razie.wiki.mods.WikiMods
 import razie.wiki.{EncryptService, Services, WikiConfig}
 import razie.wiki.model.{WikiReactors, WikiUsers}
@@ -113,6 +113,8 @@ class Module extends AbstractModule {
       Config.isimulateHost = s
     }
 
+    SecLink.purge
+
 //    WikiReactors.apply("rk") // weird stuff happens to diesel parser if I do this
     Audit.logdb("NODE_RESTARTED", Services.config.node)
   }
@@ -126,7 +128,8 @@ class Module extends AbstractModule {
       val mongoUpgrades: Map[Int, UpgradeDb] = Map(
           1 -> Upgrade1, 2 -> Upgrade2, 3 -> Upgrade3, 4 -> Upgrade4, 5 -> Upgrade5,
           6 -> U6, 7 -> U7, 8 -> U8, 9 -> U9, 10 -> U10, 11 -> U11, 12 -> U12, 13 -> U13,
-          14 -> U14, 15 -> U15, 16 -> U16, 17 -> U17, 18 -> U18) /* NOTE as soon as you list it here, it will apply */
+          14 -> U14, 15 -> U15, 16 -> U16, 17 -> U17, 18 -> U18, 19 -> U19)
+      /* NOTE as soon as you list it here, it will apply */
 
       def mongoDbVer = mongoUpgrades.keySet.max + 1
 

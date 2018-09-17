@@ -19,7 +19,9 @@ import scala.collection.mutable
 
 /******************************************
   *
+  * YOU CANNOT DELETE THEESE
   *
+  * the reason is that you can restore old databases...
   *
   *****************************************/
 
@@ -713,7 +715,7 @@ object U18 extends UpgradeDb with razie.Logging {
         val n =
           if(u.containsField("oldname"))
             u.get("oldname").toString
-        else
+          else
             u.get("name").toString
 
         val a = n.split ("\\.")
@@ -726,6 +728,29 @@ object U18 extends UpgradeDb with razie.Logging {
         u.put("realm", a(1))
         u.put("name", name)
         u.put("oldname", n)
+        t.save(u)
+        i = i+1
+      }
+    }
+
+    clog < s"UPGRADED $i entries"
+  }
+}
+
+object U19 extends UpgradeDb with razie.Logging {
+  import razie.db.RazSalatContext._
+
+  def upgrade(db: MongoDB) {
+    var i = 0;
+
+    withDb(db("Comment")) { implicit t =>
+      for (u <- t) {
+        cdebug << "UPGRADING " + t.name + u
+        val n =
+            u.get("userId").toString
+
+        val s = db("User").findOneByID(new ObjectId(n)).map(_.get("userName").toString)
+        u.put("userName", s)
         t.save(u)
         i = i+1
       }
@@ -751,6 +776,8 @@ object MoreUpgrades {
         RUpdate.noAudit(newUser)
       }
     }
+
+    // end of upgrades
   }
 
   }

@@ -13,7 +13,7 @@ comments - list of comments
 
     @stream.comments.map { c =>
       <div class="well">
-        <b>By: <a href="/user/@model.Users.nameOf(c.userId)">@model.Users.nameOf(c.userId)</a></b>
+        <b>By: <a href="/user/@c.userName">@(c.userName)</a></b>
           &nbsp; <a href="@routes.Comment.startComment(pid, role, {new com.mongodb.casbah.Imports.ObjectId().toString}, "text")" class="btn btn-xs btn-success">Reply</a>
           &nbsp; <a href="" class="btn btn-xs btn-warning">Report</a>
         @if(controllers.Comment.canEdit(c,stok.au)) {
