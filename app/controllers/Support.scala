@@ -24,9 +24,9 @@ class Support @Inject() (config:Configuration) extends RazController with Loggin
   }
 
   // display the form
-  def doeSupport(page: String, desc: String, details: String) = Action { implicit request =>
+  def doeSupport(page: String, desc: String, details: String) = RAction { implicit request =>
     import razie.wiki.Sec._
-    ROK.r apply {implicit stok=> views.html.admin.support(supportForm1.fill((
+    ROK.k apply {implicit stok=> views.html.admin.support(supportForm1.fill((
       auth.map(_.emailDec).getOrElse(""),
       auth.map(_.ename).getOrElse(""),
       if (desc.length <= 0) "" else desc,
@@ -53,12 +53,12 @@ class Support @Inject() (config:Configuration) extends RazController with Loggin
       })
   }
 
-  def suggest(page: String, desc: String, details: String) = Action { implicit request =>
+  def suggest(page: String, desc: String, details: String) = RAction { implicit stok =>
     import razie.wiki.Sec._
-    ROK.r noLayout { implicit stok =>
+    ROK.k noLayout { implicit stok =>
       views.html.wiki.suggest(supportForm1.fill((
-        auth.map(_.emailDec).getOrElse(""),
-        auth.map(_.ename).getOrElse(""),
+        stok.au.map(_.emailDec).getOrElse(""),
+        stok.au.map(_.ename).getOrElse(""),
         if (desc.length <= 0) "Oops!" else desc,
         details, "")), page)
     }

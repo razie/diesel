@@ -236,7 +236,7 @@ function weMsgPopup(ea,p) {
  * ea should be "pack.entity/action"
  */
 function iweMsg(ea,p,what,succ) {
-  var u = '/diesel/fiddle/react/'+ea+'?resultMode='+what+'&'+p
+  var u = '/diesel/react/'+ea+'?resultMode='+what+'&'+p
 
   if(typeof dieselHost != "undefined")
     u = dieselHost + u;
@@ -264,7 +264,7 @@ function iweMsg(ea,p,what,succ) {
 /** add a bad ip to the list
  */
 function weBadIp(ip) {
-  var u = '/doe/fiddle/react/'+ea+'?resultMode='+what+'&'+p
+  var u = '/doe/react/'+ea+'?resultMode='+what+'&'+p
   $.ajax(
     u, {
       type: 'POST',

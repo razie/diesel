@@ -486,7 +486,7 @@ regAdmin=$regAdmin
     ) yield {
       SendEmail.withSession(request.realm) { implicit mailSession =>
         // notify user
-        val link = club.reg(u) map { reg => routes.Club.doeClubUserReg(reg._id.toString).toString } getOrElse "http://www.racerkidz.com"
+        val link = club.reg(u) map { reg => routes.Club.doeClubUserReg(reg._id.toString).toString } getOrElse "http://www.dieselapps.com"
         Emailer.sendEmailClubRegHelp(u, clubName.name, link, msg.mkString)
       }
       Redirect(routes.Club.doeClubReg(clubName, uwid))

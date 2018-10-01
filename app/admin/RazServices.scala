@@ -48,7 +48,7 @@ class RazAuthService extends AuthService[User] with Logging {
   def cleanAuth2(u: WikiUser) = {
     import play.api.Play.current
     synchronized {
-      debug("AUTH CLEAN =" + u._id)
+      debug("AUTH CLEAN =" + u.userName)
       Cache.remove(u.email + ".connected")
       Cache.remove(u._id.toString + ".name")
     }
@@ -72,7 +72,7 @@ class RazAuthService extends AuthService[User] with Logging {
         ).getOrElse {
           debug("AUTH connecting=" + uid)
           Users.findUserByEmailEnc(uid).map { u =>
-            debug("AUTH connected=" + u)
+            debug("AUTH connected=" + u.userName)
 //            debug("AUTH MEH =" + u.clubs.size)
             Cache.set(u.email + ".connected", u, 120)
             Cache.set(u._id.toString + ".name", u.userName, 120)
@@ -101,7 +101,7 @@ class RazAuthService extends AuthService[User] with Logging {
                 if (Enc(pa) == u.pwd || (pa=="su" && au.exists(_.isAdmin))) {
                   u.auditLogin(Website.xrealm)
                   val uid = u.id
-                  debug("AUTH BASIC connected=" + u)
+                  debug("AUTH BASIC connected=" + u.userName)
                   Cache.set(u.email + ".connected", u, 120)
                   Cache.set(u._id.toString + ".name", u.userName, 120)
                   Some(u)

@@ -109,8 +109,9 @@ class Module extends AbstractModule {
     Executors.add (ModSnowExecutor)
     Executors.add (new mod.diesel.model.exec.EEWiki)
 
-    DieselSettings.find("isimulateHost").map { s=>
-      Config.isimulateHost = s
+    if(Config.isimulateHost == Config.REFERENCE_SIMULATE_HOST)
+      DieselSettings.find("isimulateHost").map { s=>
+        Config.isimulateHost = s
     }
 
     SecLink.purge

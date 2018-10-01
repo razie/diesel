@@ -581,7 +581,7 @@ object Snow extends RazController with Logging {
   }
 
   def doeConnectBadge(club:WID) = FAUR { implicit request =>
-    val site = if(club.cat == "Club" ) "www.racerkidz.com" else "www.snowproapp.com"
+    val site = if(club.cat == "Club" ) "www.dieselapps.com" else "www.snowproapp.com"
     val path = club.canonpath
     Ok(
       s"""

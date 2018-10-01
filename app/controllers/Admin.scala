@@ -27,7 +27,7 @@ import play.api.mvc.{Action, AnyContent, Request, Result}
 import razie.g.snakked
 import razie.{cout, js}
 import razie.wiki.{Enc, Services}
-import razie.wiki.model.{Perm, WID, WikiEntry, Wikis}
+import razie.wiki.model._
 import razie.wiki.admin.{GlobalData, MailSession, SendEmail}
 import razie.audit.ClearAudits
 import model.{User, Users, WikiScripster}
@@ -140,6 +140,10 @@ SendEmail.state=${SendEmail.state}\n
 \n
 Threads=${defaultContext.toString}\n
 ClusterStatus=${GlobalData.clusterStatus}\n
+\n
+allReactors=${WikiReactors.allReactors.keys.mkString(",")}\n
+loadedReactors=${WikiReactors.reactors.keys.mkString(",")}\n
+\n
 """
   }
 

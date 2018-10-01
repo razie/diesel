@@ -1,7 +1,5 @@
 package controllers
 
-import java.io.File
-
 import admin.Config
 import com.mongodb.casbah.Imports._
 import mod.snow.{RacerKidInfo, RacerKidz, _}
@@ -33,12 +31,13 @@ object Application extends RazController {
         log ("URL - Redirecting main page from "+getHost + " TO "+host)
         Future.successful(Redirect(host))
 
-      } orElse getHost.flatMap(Website.forHost).filter(w=>
+      } orElse getHost.flatMap(Website.forHost).filter{w=>
+        debug ("Is home page defined: " + w.homePage.isDefined)
 
         // is there reactor and home page?
         w.homePage.isDefined
 
-      ).flatMap {x=>
+      }.flatMap {x=>
 
         // found reactor and home page
 
@@ -198,7 +197,7 @@ object Application extends RazController {
   // the point is to list all the canonical forms for this realm
   def sitemap = RAction { implicit request =>
     Ok(Wikis(request.realm).index.withIndex {idx=>
-      val hostName = WikiReactors(request.realm).websiteProps.prop("url").getOrElse("http://www.racerkidz.com")
+      val hostName = WikiReactors(request.realm).websiteProps.prop("url").getOrElse("http://www.dieselapps.com")
 
       idx.idx.map {e=>
         // copy the wid so it doesn't cache the page

@@ -23,7 +23,7 @@ class EdEmail @Inject() (config:Configuration) extends RazController {
   // change email
   def doeProfileEmail() = FAUR { implicit request =>
     ROK.k noLayout {
-        views.html.user.doeProfileEmail(emailForm.fill(request.au.get.emailDec, ""), auth.get)
+        views.html.user.doeProfileEmail(emailForm.fill(request.au.get.emailDec, ""), request.au.get)
       }
   }
 
@@ -31,7 +31,7 @@ class EdEmail @Inject() (config:Configuration) extends RazController {
   def doeProfileEmail2() = FAUR { implicit request =>
     implicit val errCollector = new VErrors()
     emailForm.bindFromRequest.fold(
-      formWithErrors => ROK.k badRequest {views.html.user.doeProfileEmail(formWithErrors, auth.get)},
+      formWithErrors => ROK.k badRequest {views.html.user.doeProfileEmail(formWithErrors, request.au.get)},
       {
         case (o, n) =>
           (for (

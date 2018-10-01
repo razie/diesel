@@ -228,7 +228,7 @@ Please do that soon: it will expire in a few hours, for security reasons.
     val ds = SecLink(hc1, header)
     log("ENC_LINK2=" + ds.secUrl)
 
-    val h = header.getOrElse ("www.racerkidz.com")
+    val h = header.getOrElse ("www.dieselapps.com")
     sendToVerif1(c.emailDec, from, c.ename, h, ds.secUrl)
   }
 
@@ -246,7 +246,7 @@ Please do that soon: it will expire in a few hours, for security reasons.
     val ds = SecLink(hc1, header, 1, DateTime.now.plusHours(1))
     log("ENC_LINK2=" + ds.secUrl)
 
-    val h = header.getOrElse ("www.racerkidz.com")
+    val h = header.getOrElse ("www.dieselapps.com")
     sendToReset1(c.emailDec, from, c.ename, h, ds.secUrl)
   }
 
