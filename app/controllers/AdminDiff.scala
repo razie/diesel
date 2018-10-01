@@ -302,8 +302,8 @@ object AdminDiff extends AdminBase {
 
       getWE(target, remoteWid)(request.au.get).fold({t =>
         val b = body(
-          url(s"http://localhost:9000/wikie/setContent/${localWid.wpathFull}")
-            .form(Map("we" -> t._2))
+          url(request.hostUrlBase + s"/wikie/setContent/${localWid.wpathFull}")
+            .form(Map("we" -> t._2, "remote" -> target))
             .basic("H-"+request.au.get.emailDec, "H-"+request.au.get.pwd.dec)
         )
         Ok(b + localWid.ahrefRelative(request.realm))

@@ -201,11 +201,11 @@ applyDif = function(id,url) {
       if(data.indexOf("ok") == 0) {
         $('#row-'+id).fadeOut(250);
       } else {
-      alert ("ERROR: "+data)
+      alert ("ERROR: "+JSON.stringify(data))
       }
     },
     error  : function(x) {
-      alert( "ERR "+x.toString());
+      alert( "ERR "+JSON.stringify(x.responseText));
     }
   });
 
