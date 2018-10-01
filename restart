@@ -8,5 +8,5 @@ sleep 3
 curl http://cloud3a.razie.com:9000/wiki/Club:Glacier_Ski_Club
 
 # prime it
-curl http://www.racerkidz.com/wiki/Club:Glacier_Ski_Club
+curl http://www.dieselapps.com/
 

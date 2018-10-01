@@ -164,7 +164,7 @@ class WikieDebug @Inject() (config:Configuration) extends WikieBase {
               razie.db.tx("Wiki.uowner", au.userName) { implicit txn =>
                 w.update(newVer)
               }
-              Wikie.after(newVer, WikiAudit.UPD_UOWNER, Some(au))
+              Wikie.after(Some(w), newVer, WikiAudit.UPD_UOWNER, Some(au))
               Redirect(controllers.Wiki.w(wid))
             }) getOrElse
               noPerm(wid, "ADMIN_UOWNER")
@@ -182,7 +182,7 @@ class WikieDebug @Inject() (config:Configuration) extends WikieBase {
                 razie.db.tx("Wiki.ucategory", au.userName) { implicit txn =>
                   w.update(newVer)
                 }
-                Wikie.after(newVer, WikiAudit.UPD_CATEGORY, Some(au))
+                Wikie.after(Some(w), newVer, WikiAudit.UPD_CATEGORY, Some(au))
                 Redirect(controllers.Wiki.w(newVer.wid))
               }) getOrElse
               noPerm(wid, "ADMIN_UCATEGORY")
@@ -214,7 +214,7 @@ class WikieDebug @Inject() (config:Configuration) extends WikieBase {
               razie.db.tx("Wiki.urealm", au.userName) { implicit txn =>
                 w.update(newVer)
               }
-              Wikie.after(newVer, WikiAudit.UPD_REALM, Some(au))
+              Wikie.after(Some(w), newVer, WikiAudit.UPD_REALM, Some(au))
               Redirect(controllers.Wiki.w(wid))
             }) getOrElse
               noPerm(wid, "ADMIN_UOWNER")
@@ -242,7 +242,7 @@ class WikieDebug @Inject() (config:Configuration) extends WikieBase {
                   }
                 }
               }
-              Wikie.after(newVer, WikiAudit.UPD_REALM, Some(au))
+              Wikie.after(Some(w), newVer, WikiAudit.UPD_REALM, Some(au))
               Redirect(controllers.Wiki.w(wid))
             }) getOrElse
               noPerm(wid, "ADMIN_UOWNER")

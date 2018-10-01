@@ -284,7 +284,7 @@ object NotesLocker extends RazController with Logging {
                 razie.db.tx("notes.Save", au.userName) { implicit txn =>
                   ROne[AutosavedNote]("nid"->id) foreach (_.delete)
                   we.update(we)
-                  Wikie.after(we, WikiAudit.UPD_CONTENT, Some(au))
+                  Wikie.after(Some(w), we, WikiAudit.UPD_CONTENT, Some(au))
                   //            Emailer.laterSession { implicit mailSession =>
                   //              au.quota.incUpdates
                   //              if (shouldPublish) notifyFollowersCreate(we, au)

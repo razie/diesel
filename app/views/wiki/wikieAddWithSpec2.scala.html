@@ -23,31 +23,64 @@ create new page given a template
   @if(!formPage.exists(_.form.fields.contains("name"))) {
     @WikiDomain(stok.realm).prop(cat, "label.createWithTemplate").getOrElse {
       @if(cat == "Reactor") {
-        Use
-        a simple punchy single word, like "<b>mysite</b>" - your new project website will be
+
+        The project name is made of three parts: environment (dev/qa/prod), application name and organization name
+        <hr>
+
+        <div class="form-group">
+          <label for="app" class="control-label">Application (Use a simple punchy single word, like "<b>mysite</b>")</label>
+          <input type="text" id="app" class="input-lg" name="app" placeholder="App"  onchange="updName()" value="app">
+        </div> @* form-group *@
+
+        <div class="form-group">
+          <label for="kind" class="control-label">Type:</label>
+          <select id="kind" name="kind" onchange="updName()">
+            <option value="dev">Development</option>
+            <option value="qa">QA / UAT</option>
+            <option value="prod">Production</option>
+          </select>
+        </div> @* form-group *@
+
+        <div class="form-group">
+          <label for="org" class="control-label">Organization: (company or client)</label>
+          <input type="text" id="org" class="input-lg" name="org" placeholder="Org" onchange="updName()" value="org">
+        </div> @* form-group *@
+
+        <hr>
+
+        <div class="alert alert-warning">
+        Your new project website will be
         available at <b><small>http://mysite.dieselapps.com</small></b>
+
+        <div class="form-group">
+          <label for="name" class="control-label">Name:</label>
+          <input type="text" id="name" class="input-lg" name="name" placeholder="Name" value="@name" disabled>
+        </div> @* form-group *@
+        </div>
+
+          <p></p>
+          <hr>
+          <div class="form-group">
+            <label for="access" class="control-label">Default access:</label>
+            <select name="access">
+              <option value="Member">Members only - only members can see content</option>
+              <option value="Public">Public - anyone can see content</option>
+            </select>
+          </div> @* form-group *@
+
       } else {
+
         Give it a name...
+
+        <div class="form-group">
+          <label for="name" class="control-label">Name:</label>
+          <input type="text" id="name" class="input-lg" name="name" placeholder="Name" value="@name">
+        </div> @* form-group *@
+
       }
     }
 
     <p></p><p>
-
-    <div class="form-group">
-      <label for="name" class="control-label">Name:</label>
-      <input type="text" id="name" class="input-lg" name="name" placeholder="Name" value="@name">
-    </div> @* form-group *@
-
-    @if(cat == "Reactor") {
-      <p></p>
-      <div class="form-group">
-        <label for="access" class="control-label">Default access:</label>
-        <select name="access">
-          <option value="Member">Members only - only members can see content</option>
-          <option value="Public">Public - anyone can see content</option>
-        </select>
-      </div> @* form-group *@
-    }
 
     <hr>
     <p>More particulars:</p>
@@ -61,23 +94,46 @@ create new page given a template
 <hr>
 
   <script>
+            var updName = function () {
+              withJquery(function($){
+              var k = $('#kind').val();
+              var a = $('#app').val();
+              var o = $('#org').val();
+              var n = (k === "prod" ? "" : k) + a + o;
+
+              $('#name').val(n);
+              });
+            };
+
       withJquery(
           function ($) {
+
+            $('#kind,#app,#org').bind('input', function() {
+              updName();
+            });
+
             $('#curForm').submit(
                 function(event) {
                   var n = $('#name').val();
 
-                  if (n.length > 15 || n.length < 3) {
-                    popupError("Name too short(<3) or too long (>15)...");
+                  if (n.length > 25 || n.length < 3) {
+                    popupError("Name too short(<3) or too long (>25)...");
                     event.preventDefault();
                   } else if (!n.match(/^[A-Za-z][A-Za-z0-9-_]+[A-Za-z0-9]$/) ) {
                     popupError("Name cannot contain special characters (!#$%^...)");
                     event.preventDefault();
+                  } else {
+                    $("#name").prop('disabled', false);
                   }
+
                 }
             );
           }
+
       );
+
+      updName();
+
   </script>
 
 @util.oneModal()

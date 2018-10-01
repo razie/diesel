@@ -280,29 +280,17 @@ class DomApi extends DomApiBase  with Logging {
         content = engine.settings.postedContent,
         stok.req.contentType)
 
-      // is message visible?
-      if (msg.isDefined && !isMsgVisible(msg.get, reactor, website)) {
-        info(s"Unauthorized msg access (diesel.visibility:${stok.website.dieselVisiblity}, ${stok.au.map(_.ename).mkString})")
+      val xx = stok.qhParm("X-Api-Key").mkString
 
-        Future.successful(
-          Unauthorized(s"Unauthorized msg access (diesel.visibility:${stok.website.dieselVisiblity}, ${stok.au.map(_.ename).mkString})")
-        )
-      } else if (!msg.exists(isMsgPublic(_, reactor, website)) &&
-        !isMemberOrTrusted(msg, reactor, website) &&
+      if (
+        msg.exists(isMsgPublic(_, reactor, website)) ||
+        isMemberOrTrusted(msg, reactor, website) ||
         xapikey.isDefined && xapikey.exists { x =>
-         x.length > 0 && x != stok.qhParm("X-Api-Key").mkString
+          x.length > 0 && x == stok.qhParm("X-Api-Key").mkString
         }
       ) {
-        // good security keys for non-members (devs if logged in don't need security)
-        info(s"Unauthorized msg access (key) for ${msg.map(m=>m.entity+m.met)}")
-
-        Future.successful(
-          Unauthorized(s"Unauthorized msg access (key) for ${msg.map(m=>m.entity+m.met)}")
-        )
-      } else {
 
         msg.map { msg =>
-
           RDExt.addMsgToAst(engine.root, msg)
         }
 
@@ -360,6 +348,22 @@ class DomApi extends DomApiBase  with Logging {
               Ok(js.tojsons(m).toString).as("application/json")
           }
         }
+
+        // is message visible?
+      } else if (msg.isDefined && !isMsgVisible(msg.get, reactor, website)) {
+          info(s"Unauthorized msg access (diesel.visibility:${stok.website.dieselVisiblity}, ${stok.au.map(_.ename).mkString})")
+
+          Future.successful(
+            Unauthorized(s"Unauthorized msg access (diesel.visibility:${stok.website.dieselVisiblity}, ${stok.au.map(_.ename).mkString})")
+          )
+
+      } else {
+        // good security keys for non-members (devs if logged in don't need security)
+        info(s"Unauthorized msg access (key) for ${msg.map(m=>m.entity+m.met)}")
+
+        Future.successful(
+          Unauthorized(s"Unauthorized msg access (key) for ${msg.map(m=>m.entity+m.met)}")
+        )
       }
     }
   }
@@ -1418,6 +1422,13 @@ Guardian report<a href="/wiki/Guardian_Guide" ><sup><span class="glyphicon glyph
       }
     ).map {x=>
       Redirect(s"""/diesel/reportAll""")
+    }
+  }
+
+  def pluginAction (plugin:String, action:String, epath:String) = Filter(activeUser).async { implicit stok =>
+    Future.successful {
+      val url = "http" + (if(stok.secure) "s" else "") + "://" + stok.hostPort
+      Ok(RDomainPlugins.plugins.find(_.name == plugin).map(_.doAction(WikiDomain(stok.realm).rdom, action, url, epath)).mkString)
     }
   }
 

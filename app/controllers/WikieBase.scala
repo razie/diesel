@@ -24,8 +24,8 @@ class WikieBase extends WikiBase {
   def before(e: WikiEntry, what: String)(implicit errCollector: VErrors = IgnoreErrors): Boolean = {
     WikiObservers.before(WikiEvent(what, "WikiEntry", e.wid.wpath, Some(e)))
   }
-  def after(e: WikiEntry, what: String, au:Option[User])(implicit errCollector: VErrors = IgnoreErrors): Unit = {
-    Services ! WikiAudit(what, e.wid.wpathFull, au.map(_._id), None, Some(e))
+  def after(old:Option[WikiEntry], e: WikiEntry, what: String, au:Option[User])(implicit errCollector: VErrors = IgnoreErrors): Unit = {
+    Services ! WikiAudit(what, e.wid.wpathFull, au.map(_._id), None, Some(e), old)
   }
 
   case class EditWiki(label: String, markup: String, content: String, visibility: String, edit: String, oldVer:String, tags: String, notif: String)

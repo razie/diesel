@@ -3,13 +3,13 @@ package mod.book
 import razie.hosting.Website
 import play.api.mvc.Action
 import razie.wiki.model.WikiRefined
-import razie.wiki.mods.{WikiMods, WikiMod}
+import razie.wiki.mods.{WikiMod, WikiMods}
 import razie.wiki.parser.WAST
-import views.html.modules.book.{viewSections, prevNext, viewProgress}
-
+import views.html.modules.book.{prevNext, viewProgress, viewSections}
 import org.joda.time.DateTime
 import com.mongodb.casbah.Imports._
 import controllers._
+import razie.{cdebug, cout}
 import razie.db.REntity
 import razie.db.RMany
 import razie.db.ROne
@@ -43,6 +43,8 @@ case class TopicList (
 
     def ilinks = res.ilinks.filter(_.isInstanceOf[ILink]).asInstanceOf[List[ILink]]
 
+//    cdebug << "TOPICLIST: " + wid.wpathFull + "\n" + ilinks.mkString(" \n ")
+
     ilinks.filter(_.role.exists(_ == "step")).flatMap(_.wid.uwid).toSeq
   })
 
@@ -52,6 +54,9 @@ case class TopicList (
     */
   def traverse[B] (p:Option[Progress], path:String)
                   (f:PartialFunction[(TLNode,Option[Progress], String), B]) : List[B] = {
+
+//    cdebug << "TT-TOPICLIST: " + ownerTopic.wid.get.wpathFull + "\n" + topics.flatMap(_.page.map(_.wid.wpathFull).toList).mkString(" \n ")
+
     (
       if(f.isDefinedAt(TLFolder(this), p, path))
         List(f(TLFolder(this), p, path))

@@ -361,16 +361,16 @@ object Wiki extends WikiBase {
   def w(we: UWID):String = we.wid.map(wid=>w(wid)).getOrElse("ERR_NO_URL_FOR_"+we.toString)
 
   /** @deprecated use the one with fromREalm */
-  def w(we: WID, shouldCount: Boolean = true):String = Config.urlmap(we.urlRelative + (if (!shouldCount) "?count=0" else ""))
+  def w(we: WID, shouldCount: Boolean = true):String = we.urlRelative + (if (!shouldCount) "?count=0" else "")
   def wr(wid: WID, fromRealm:String, shouldCount: Boolean = true):String =
-    Config.urlmap(wid.urlRelative(fromRealm) + (if (!shouldCount) "?count=0" else ""))
+    wid.urlRelative(fromRealm) + (if (!shouldCount) "?count=0" else "")
 
   /** @deprecated use the one with fromREalm */
   def w(cat: String, name: String, realm:String) =
-      Config.urlmap(WID(cat, name).r(realm).urlRelative)
+      WID(cat, name).r(realm).urlRelative
 
   /** @deprecated use the realm version */
-  def w(name: String) = Config.urlmap(s"/wiki/$name") //todo remove
+  def w(name: String) = s"/wiki/$name" //todo remove
 
   def call[A, B](value: A)(f: A => B) = f(value)
 
@@ -487,7 +487,7 @@ object Wiki extends WikiBase {
           val teaser = request.website.prop("msg.err.teaserCategories").flatMap(_.split(",").find(_ == wid.cat)).flatMap(_ => w).map{
             page=> {
               def hostNameForRealm={
-                WikiReactors(page.wid.getRealm).websiteProps.prop("url").getOrElse("http://www.racerkidz.com")
+                WikiReactors(page.wid.getRealm).websiteProps.prop("url").getOrElse("http://www.dieselapps.com")
               }
 
               request.canonicalLink = Some(page).flatMap(p=> Services.config.urlcanon(p.wid.wpath, Some(page.tags))).orElse {

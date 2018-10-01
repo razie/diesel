@@ -3,6 +3,7 @@ browse a domain
 **************@
 @import razie.diesel.dom.RDOM
 @(realm:String, cat:String, middle:List[String], left:List[RDOM.A], right:List[RDOM.A])(mkLink:String=>String)(implicit stok: controllers.StateOk)
+@import razie.diesel.dom.RDomainPlugins
 @import razie.diesel.dom.WikiDomain
 
 @stok.title("Category browser: "+cat)
@@ -11,8 +12,8 @@ browse a domain
 
 <div class="col-sm-12">
   @WikiDomain(realm).rdom.classes.get(cat).map { c =>
-    <div align="right"><small><a href="/diesel/list2/@c.name">list</a> | <a href="/doe/diesel/create/@c.name">new</a>
-      </small></div><div class="well">
+  <div align="right"><small>@Html(RDomainPlugins.htmlActions(c))</small></div>
+      <div class="well">
       @Html(c.fullHtml)
       </div>
     @wiki.wikiAddMore(razie.wiki.model.WID("Category", cat).r(realm), None)

@@ -448,9 +448,7 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
   /** api to set content remotely - used by sync and such */
   def setContent(iwid: WID) = FAUR("setContent", true) {
     implicit request =>
-
       val au=request.au.get
-
 
       def fromJ (s:String) = {
         val dbo = com.mongodb.util.JSON.parse(s).asInstanceOf[DBObject];
@@ -463,22 +461,31 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
         r1 <- au.hasPerm(Perm.uWiki) orCorr cNoPermission("uWiki");
         hasQuota <- (au.isAdmin || au.quota.canUpdate) orCorr cNoQuotaUpdates;
         wej <- data.get("we") orErr "bad we";
+        remoteHostPort <- data.get("remote").orElse(Some("")); // orElse for tmeporary compatibility
         remote <- fromJ (wej) orErr "can't J"
       ) yield {
         // make sure wid has realm
         val toRealm = iwid.realm.getOrElse(remote.realm)
         val wid = iwid.r(toRealm)
 
-        log("Wiki.setContent " + wid)
-        Wikis
-          .find(wid)
-          .orElse(Wikis.findById(remote._id.toString))
+        log(s"Wiki.setContent $wid | ? | $remoteHostPort | ${request.hostPort}")
+
+        Wikis(toRealm)
+          .ifind(wid)
+          .map(grater[WikiEntry].asObject(_)) // use ifind so no fallbacks
+          .orElse(
+            Wikis
+              .findById(remote._id.toString) // look by ID so this works with diffAll as well
+              .filter(x=> request.hostPort == remoteHostPort.mkString) // but only if same server
+          )
         match {
 
             // existing page
-          case Some(w) =>
+          case Some(w) => {
+            debug("  found: " + w.wid.wpathFull)
+
             (for (
-              can <- canEdit(wid, auth, Some(w)) orErr "can't edit";
+              can <- canEdit(wid, request.au, Some(w)) orErr "can't edit";
               newVerNo <- Some(
                 if (w.ver < remote.ver) remote.ver // normal: remote is newer, so reset version to it
                 else w.ver + 1 // remote overwrites local, just keep increasing local ver
@@ -517,11 +524,14 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
                 Ok("ok")
               }
             })
+          }
 
           // new wiki: create it
           case None => {
+            debug("  no topics found - create new one")
+
             (for (
-              can <- canEdit(wid, auth, None) orErr "can't edit";
+              can <- canEdit(wid, request.au, None) orErr "can't edit";
               wej <- data.get("we") orErr "bad we";
               source <- fromJ(wej) orErr "can't J";
               newVer <- Some(source.copy(
@@ -959,10 +969,10 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
       val name = PlayTools.postData.getOrElse("name", iname)
       val E = " - go back and try another name..."
       val e =
-        if(name.length < 3 && !au.isAdmin) "Name too short"
-      else if (name.length > 12 && !au.isAdmin) "Name too long"
-      else if (Config.reservedNames.contains(name)) "Name is reserved"
-      else if (!name.matches("(?![-_])[A-Za-z0-9-_]{1,63}(?<![-_])")) "Name cannot contain special characters"
+        if(name.length < 3 && !au.isAdmin) s"Name ($name) too short"
+      else if (name.length > 12 && !au.isAdmin) s"Name ($name) too long"
+      else if (Config.reservedNames.contains(name)) s"Name ($name) is reserved"
+      else if (!name.matches("(?![-_])[A-Za-z0-9-_]{1,63}(?<![-_])")) s"Name ($name) cannot contain special characters"
       else ""
 
       if(e.isEmpty) Realm.createR2(cat, templateWpath, torspec:String, realm).apply(request).value.get.get
@@ -1221,7 +1231,7 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
       razie.db.tx("Wiki.Reserve", au.userName) { implicit txn =>
         w.update(newVer, Some("reserve"))
       }
-      Wikie.after(newVer, WikiAudit.UPD_TOGGLE_RESERVED, Some(au))
+      Wikie.after(Some(w), newVer, WikiAudit.UPD_TOGGLE_RESERVED, Some(au))
       Redirect(controllers.Wiki.w(wid))
     }
   }
@@ -1244,7 +1254,7 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
       razie.db.tx("Wiki.like", auth.map(_.userName).getOrElse("Anonymous")) { implicit txn =>
         RUpdate.noAudit[WikiEntry](Wikis(w.realm).weTables(wid.cat), Map("_id" -> newVer._id), newVer)
       }
-      Wikie.after(newVer, WikiAudit.UPD_LIKE, auth)
+      Wikie.after(Some(w), newVer, WikiAudit.UPD_LIKE, auth)
       if(how==1)
         Audit.logdb("VOTE.UP", ""+request.au.map(_.userName) + wid.wpath)
       else
