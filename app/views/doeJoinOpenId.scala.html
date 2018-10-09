@@ -1,0 +1,123 @@
+@** joining with google - capture more details after signing into ggoogle
+**@
+@(registerForm:Form[controllers.Registration])(implicit stok:controllers.StateOk)
+
+@stok.requireJs(false)
+@htmlHeadBar("Login/register with open id")
+
+<div class="container">
+  <div class="jumbotron">
+    <div class="row">
+      <div class="col-sm-6">
+        <h1>Welcome!</h1>
+        <br>
+        @wiki.wikiFragInt("Admin:page-join-google", None)
+      </div>
+
+      <div class="col-sm-4">
+
+@import helper.twitterBootstrap._
+@import play.api.Play.current
+@import play.api.i18n.Messages.Implicits._
+
+@helper.form(action=routes.Profile.doeJoin2Openid, 'class->"well") {
+  @helper.inputText(
+    registerForm("email"),
+    '_label -> "Email",
+    '_showConstraints -> false)
+  @helper.inputPassword(
+    registerForm("password"),
+    '_label -> "Password",
+    '_showConstraints -> false,
+    '_error->registerForm.error("password"))
+
+  <button type="submit" class="btn btn-primary">Login</button>
+
+  <input type="hidden" type="text" name="repassword">
+
+  @registerForm.globalError.map { err=>
+     <p style="color:red;font-weight:bold">@err.message</p>
+  }
+
+  <p><small>By registering or logging in, you agree to the <a href="@controllers.Wiki.w("Admin", "Terms of Service-"+stok.realm, stok.realm)">Terms of Service</a></small><p>
+  }
+
+       </div>
+      </div>
+    </div>
+  <hr>
+
+    <!-- Last part of BODY element in file index.html -->
+    <script>
+      var gauthResult="";
+
+    function loadProfile(){
+       var request = gapi.client.plus.people.get( {'userId' : 'me'} );
+       request.execute(loadProfileCallback);
+     }
+    function loadProfileCallback(obj) {
+    profile = obj;
+
+    // Filter the emails object to find the user's primary account, which might
+    // not always be the first in the array. The filter() method supports IE9+.
+    email = obj['emails'].filter(function(v) {
+        return v.type === 'account'; // Filter out the primary email
+    })[0].value; // get the email from the filtered results, should always be defined.
+
+    console.log(profile);
+    console.log(email);
+    console.log(gauthResult);
+
+    // Send the code to the server
+    $.ajax({
+      type: 'POST',
+      url: '/doe/join/gtoken',
+    //        contentType: 'application/octet-stream; charset=utf-8',
+//      contentType: 'text/plain; charset=utf-8',
+      success: function(result) {
+    // Handle or verify the server response if necessary.
+
+    // Prints the list of people that the user has allowed the app to know
+    // to the console.
+
+        if (result['profile'] && result['people']){
+          $('#results').html('Hello ' + result['profile']['displayName'] + '. You successfully made a server side call to people.get and people.list');
+        } else {
+          $('#results').html('Failed to make a server-side call. Check your configuration and console.');
+        }
+      },
+//      processData: false,
+    data: {
+    code : gauthResult['code'],
+    email:email,
+    name:profile.displayName,
+    access_token:gauthResult.access_token,
+    id:profile.id,
+    }
+      });
+  }
+
+    function signInCallback(authResult) {
+      if (authResult['code']) {
+
+        // Hide the sign-in button now that the user is authorized, for example:
+        $('#signinButton').attr('style', 'display: none');
+
+      gauthResult = authResult;
+
+      gapi.client.load('plus','v1', loadProfile);  // Trigger request to get the email address.
+
+      } else if (gauthResult['error']) {
+      // There was an error.
+      // Possible error codes:
+      //   "access_denied" - User denied access to your app
+      //   "immediate_failed" - Could not automatially log in the user
+      console.log('There was an error: ' + gauthResult['error']);
+      }
+
+    }
+    </script>
+
+  @htmlFooter(false, stok.realm)
+</div> <!-- /container -->
+@htmlBottom()

@@ -193,6 +193,30 @@ class Profile @Inject() (config:Configuration) extends RazController with Loggin
     (ROK.r noLayout {implicit stok=> views.html.doeJoinGoogle(registerForm)}).withSession("gaga" -> request.session.get("gaga").mkString, "extra" -> request.session.get("extra").mkString,  "gid" -> request.session.get("gid").mkString)
   } // continue with register()
 
+  def doeJoin1Openid = Action {implicit request=>
+    val server="https://dcagroup.okta.com"
+    val me = "http://localhost:9000/doe/join-oid".encUrl
+//    Redirect (
+//      Map(
+//        "client_id" -> "0oa279k9b2uNpsNCA356",
+//        "response_type" -> "token",
+//        "scope" -> "openid",
+//        "redirect_uri" -> me,
+//        "state" -> "state123",
+//        "nonce" -> "foo"
+//      )
+//    )
+    val r =
+// okta?
+s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token&"+
+//custom server - see bottom ofhttps://developer.okta.com/authentication-guide/auth-overview/
+//s"$server/api/v1/authorizationServers/default/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token&"+
+         s"scope=openid&redirect_uri=$me&state=state123&nonce=foo"
+
+    log("OID Redirect to: "+r)
+    Redirect (r)
+  }
+
   /** join with email */
   def doeJoinWith(email: String) = Action {implicit request=>
     auth // clean theme
@@ -246,6 +270,72 @@ class Profile @Inject() (config:Configuration) extends RazController with Loggin
 
   // join step 2 with google - link to existing account
   def doeJoin2Google = RAction { implicit request =>
+    auth // clean theme
+    registerForm.bindFromRequest.fold(
+      formWithErrors => {
+        cout << formWithErrors
+        (ROK.r badRequest {implicit stok=> views.html.doeJoinGoogle(formWithErrors)}).withSession("gaga" -> request.session.get("gaga").mkString,
+          "extra" -> request.session.get("extra").mkString, "gid" -> request.session.get("gid").mkString)
+      },
+      {
+        case reg @ Registration(e, p, _, _) => {
+          val g = try {
+            (request.session.get("gaga").map(identity).getOrElse("1")).toLong
+          } catch {
+            case _: Throwable => 1
+          }
+
+          // allow this only for some minutes
+          if (System.currentTimeMillis - g <= 120000 && request.session.get("gid").isDefined) {
+            // associate user to google id and login
+            Users.findUserByEmailDec((reg.email)) orElse (Users.findUserNoCase(reg.email)) foreach {u =>
+              u.update(u.copy(gid = request.session.get("gid")))
+            }
+            login(reg.email, reg.password, request.session.get("extra").mkString, request.session.get("gid").mkString)
+          } else {
+            Msg2(
+              """Session expired - please <a href="/doe/join">start again</a>.
+                |<p>Please make sure your browser allows cookies for this website, thank you!""".stripMargin, Some("/doe/join")).withNewSession
+          }
+        }
+      })
+  }
+
+  // join step 2 with google - link to existing account
+  def doeJoin2Openid = RAction { implicit request =>
+    auth // clean theme
+    registerForm.bindFromRequest.fold(
+      formWithErrors => {
+        cout << formWithErrors
+        (ROK.r badRequest {implicit stok=> views.html.doeJoinGoogle(formWithErrors)}).withSession("gaga" -> request.session.get("gaga").mkString,
+          "extra" -> request.session.get("extra").mkString, "gid" -> request.session.get("gid").mkString)
+      },
+      {
+        case reg @ Registration(e, p, _, _) => {
+          val g = try {
+            (request.session.get("gaga").map(identity).getOrElse("1")).toLong
+          } catch {
+            case _: Throwable => 1
+          }
+
+          // allow this only for some minutes
+          if (System.currentTimeMillis - g <= 120000 && request.session.get("gid").isDefined) {
+            // associate user to google id and login
+            Users.findUserByEmailDec((reg.email)) orElse (Users.findUserNoCase(reg.email)) foreach {u =>
+              u.update(u.copy(gid = request.session.get("gid")))
+            }
+            login(reg.email, reg.password, request.session.get("extra").mkString, request.session.get("gid").mkString)
+          } else {
+            Msg2(
+              """Session expired - please <a href="/doe/join">start again</a>.
+                |<p>Please make sure your browser allows cookies for this website, thank you!""".stripMargin, Some("/doe/join")).withNewSession
+          }
+        }
+      })
+  }
+
+  // join step 2 with google - link to existing account
+  def doeJoin2OpenidRedirect = RAction { implicit request =>
     auth // clean theme
     registerForm.bindFromRequest.fold(
       formWithErrors => {
