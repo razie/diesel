@@ -24,30 +24,12 @@ import razie.wiki.Sec._
  */
 object Forms extends WikiBase with Logging {
 
-  /** create the data section */
-  def mkFormData(spec: WikiEntry, defaults: Map[String, String] = Map.empty) = {
-    // build the defaults - cross check with formSpec
-    var defaultStr = ""
-    defaults.filter(x=> spec.form.fields.contains(x._1)).map { t =>
-      val (k, v) = t
-      defaultStr = defaultStr + s""", "$k":"$v" """
-    }
-
-    val content = s"""
-{{.section:formData}}
-{"formState":"created" $defaultStr }
-{{/section}}
-"""
-
-  content
-  }
-
   /** create a new form instance for a user */
   def crForm(u: User, formSpec: WID, formData: WID, label: String, reviewer: User, formRole: Option[String], defaults: Map[String, String] = Map.empty)(implicit txn: Txn) = {
     val wid = formData
 
     // build the defaults - cross check with formSpec
-    var fdata =mkFormData(formSpec.page.get, defaults)
+    var fdata =Wikis.mkFormData(formSpec.page.get, defaults)
 
     val content = s"""
 [[include:${formSpec.wpath}]]
@@ -513,7 +495,7 @@ $fdata
         "a_form",
         "A form",
         "md",
-        content + "\n\n"+Forms.mkFormData(spec),
+        content + "\n\n"+Wikis.mkFormData(spec),
         stok.au.get._id
       )
 

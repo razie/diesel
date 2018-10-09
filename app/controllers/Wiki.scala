@@ -417,7 +417,7 @@ object Wiki extends WikiBase {
     else if ("Admin" == cat && "Private_Messages" == name) Redirect("/doe/msg/PM")
 //    else if ("Reactor" == cat && iwid.name != Wikis.RK && !iwid.realm.exists(_ != Wikis.RK)) Redirect("/w/"+wid.name+"/wiki/"+wid.wpath)
     else if ("Category" == cat && !Wikis(iwid.getRealm).categories.exists(_.name == name))
-      DieselControl.catBrowser(iwid.getRealm, name, "").apply(request.ireq.asInstanceOf[Request[AnyContent]]).value.get.get
+      DieselControl.catBrowser("diesel", iwid.getRealm, iwid.getRealm, name, "").apply(request.ireq.asInstanceOf[Request[AnyContent]]).value.get.get
     else if ("any" == cat || (cat.isEmpty && wid.parent.isEmpty)) {
       // search for any name only if cat is missing OR there is no parent
 
@@ -600,6 +600,7 @@ object Wiki extends WikiBase {
         //          cout << "FIELDs " + page.get.fields.toString
       }
     }
+
     ROK.k noLayout { implicit stok =>
       views.html.wiki.wikiForm(wid, iname, page, user, errors, canEdit, print)
     }
@@ -775,33 +776,6 @@ object Wiki extends WikiBase {
       .withCookies(
         Cookie("weBrowser", "true").copy(httpOnly = false)
       )
-/*
-    val realm = getRealm()
-    (for (
-      we <- WID.fromPath(wpath).flatMap(Wikis(realm).find) orErr "cannot find page"
-    ) yield {
-      we.preprocess(request.au) // setup user
-      val ilinks = we.ilinks
-
-      //todo page.get null
-      val all  = we.ilinks.distinct.collect {
-        case link if link.wid.page.isDefined =>
-          (RDOM.A(we.getLabel, we.name, link.wid.name, "me", link.role.mkString), link.wid.page.get.tags.mkString)
-      }
-
-      val left   = all.filter(x=>x._2.contains("wiki") && !x._2.contains("talk")).map(_._1)
-      val right  = all.filter(_._2.contains("drill")).map(_._1)
-      val middle = all.filter(x=> (!x._2.contains("wiki") || x._2.contains("talk")) && !x._2.contains("drill")).map(_._1)
-
-      val path = if(ipath == "/") ipath+wpath else ipath
-
-      def mkLink (s:String) = routes.Wiki.wikiBrowse (s, path+"/"+s).toString()
-
-      ROK.k apply {implicit stok=>
-        views.html.modules.diesel.wikiBrowser(realm, Some(we))(mkLink)
-      }
-    }) getOrElse unauthorized()
-*/
   }
 
   /** try to link to something - find it */

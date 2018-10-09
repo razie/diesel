@@ -2,19 +2,21 @@
 browse a domain
 **************@
 @import razie.diesel.dom.RDOM
-@(realm:String, cat:String, middle:List[String], left:List[RDOM.A], right:List[RDOM.A])(mkLink:String=>String)(implicit stok: controllers.StateOk)
+@(realm:String, cat:String, middle:List[String], left:List[RDOM.A], right:List[RDOM.A], o:Option[RDOM.O]=None)(mkLink:(String,String,Option[RDOM.A])=>String)(implicit stok: controllers.StateOk)
 @import razie.diesel.dom.RDomainPlugins
 @import razie.diesel.dom.WikiDomain
 
 @stok.title("Category browser: "+cat)
 
-@modules.diesel.browser(realm, cat, middle, left, right)(mkLink)
+<script src="@routes.Assets.at("javascripts/weDieselDom.js")"></script>
+
+@modules.diesel.browser("diesel", realm, realm, cat, middle, left, right)(mkLink)
 
 <div class="col-sm-12">
   @WikiDomain(realm).rdom.classes.get(cat).map { c =>
-  <div align="right"><small>@Html(RDomainPlugins.htmlActions(c))</small></div>
+  <div align="right"><small>@Html(RDomainPlugins.htmlActions(realm, c))</small></div>
       <div class="well">
-      @Html(c.fullHtml)
+      @Html(o.map(_.fullHtml).getOrElse(c.fullHtml))
       </div>
     @wiki.wikiAddMore(razie.wiki.model.WID("Category", cat).r(realm), None)
   }.getOrElse{
@@ -25,4 +27,8 @@ browse a domain
 
 
 </div>
+
+<small>object:@o.isDefined</small>
+
+@util.oneModal() // popup
 

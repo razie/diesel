@@ -2,29 +2,35 @@
 browse a domain
 **************@
 @import razie.diesel.dom.RDOM
-@(realm:String, cat:String, middle:List[String], left:List[RDOM.A], right:List[RDOM.A])(mkLink:String=>String)
+@(plugin:String, conn:String, realm:String, cat:String, middle:List[String], left:List[RDOM.A], right:List[RDOM.A])(mkLink:(String,String,Option[RDOM.A])=>String)
+
+  @height()=@{
+    if(left.size < 3 && middle.size < 3 && right.size < 3) "80px"
+    else if(left.size > 5 || middle.size > 5 || right.size > 5) "200px"
+    else "130px"
+  }
 
 <div class="row">
-  <div class="col-sm-4 alert alert-info" style="height: 120px; overflow-y: auto; vertical-align: middle; text-align: right;">
+  <div class="col-sm-4 alert alert-info" style="height: @height(); overflow-y: auto; vertical-align: middle; text-align: right;">
           @left.distinct.map { assoc =>
             @if(assoc.aRole.length > 0) {
               <small>(@assoc.aRole)</small>
             }
-            <a href="@mkLink(assoc.a)"><b>@assoc.a</b></a><br>
+            <a href="@mkLink(assoc.a, "from", Some(assoc))"><b>@assoc.a</b></a><br>
           }
   </div>
 
-  <div class="col-sm-4 alert alert-info" style="height: 120px; vertical-align: middle; text-align: center;">
+  <div class="col-sm-4 alert alert-info" style="height: @height(); vertical-align: middle; text-align: center;">
     @middle.distinct.map { a =>
-    <a href="@mkLink(a)"><b>@a</b></a><br>
+    <a href="@mkLink(a, "", None)"><b>@a</b></a><br>
     }
 
 <span style="top: 30px; position:relative"><b>@cat</b></span>
   </div>
 
-  <div class="col-sm-4 alert alert-info" style="height: 120px; overflow-y: auto; vertical-align: middle; text-align: left;">
+  <div class="col-sm-4 alert alert-info" style="height: @height(); overflow-y: auto; vertical-align: middle; text-align: left;">
         @right.distinct.map { assoc =>
-          <a href="@mkLink(assoc.z)"><b>@assoc.z</b></a>
+          <a href="@mkLink(assoc.z, "to", Some(assoc))"><b>@assoc.z</b></a>
           @if(assoc.zRole.length > 0) {
             <small>(@assoc.zRole)</small>
           }

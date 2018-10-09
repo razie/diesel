@@ -2,12 +2,12 @@
 browse a domain
 **************@
 @import razie.diesel.dom.{RDOM, RDomain}
-@(realm:String, cat:String, left:List[RDOM.A], right:List[RDOM.A], rdom:RDomain, errors:Map[String,String])(mkLink:String=>String)(implicit stok: controllers.StateOk)
+@(realm:String, cat:String, left:List[RDOM.A], right:List[RDOM.A], rdom:RDomain, errors:Map[String,String])(mkLink:(String,String,Option[RDOM.A])=>String)(implicit stok: controllers.StateOk)
 @import mod.diesel.model.Diesel
 
 @stok.title("Category browser: "+cat)
 
-@modules.diesel.browser(realm, cat, Nil, left, right)(mkLink)
+@modules.diesel.browser("diesel", realm, realm, cat, Nil, left, right)(mkLink)
 
 
 <div class="col-sm-12">

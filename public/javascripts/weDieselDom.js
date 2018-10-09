@@ -106,7 +106,6 @@ function domCompl (i) {
 };
 
 
-
 function z(m,i) {
   return m && m.length >= i && m[i] ? m[i] : "";
 }
@@ -489,6 +488,37 @@ function tagQueryTocb (tq) {
     ands.map(el);
   }
 
+}
+
+/** this works IN the fiddle only */
+
+function weDomQuery(plugin,conn,cls,parm) {
+  var gui = '<h3>Search '+cls+' by '+parm+'</h3>'+
+    fh+
+    field('Search', 'Search', 'value=\''+''+'\'')+
+    fb;
+
+  popupContent(gui +
+    '<hr><button class="btn btn-primary" onclick="weDomQuery2(\''+plugin+'\', \''+conn+'\', \''+cls+'\', \''+parm+'\')">Search</button>'+
+    '<hr>To list all, use "*".'
+  );
+}
+
+function weDomQuery2(plugin,conn,cls,parm) {
+  var s=$("#Search").val();
+  console.log("searching: " + cls + parm + s);
+
+  window.location.href = '/diesel/objBrowserByQuery/'+plugin+'/'+conn+'/'+cls+'/'+parm+'/\'' + s + '\'';
+
+  // GET   :realm/:dom/:cat/:parm/:value   mod.diesel.controllers.DieselControl.objBrowserByQuery(realm:String, cat:String, dom:String, parm:String, value:String, path:String?="/")
+  // GET   /diesel/objBrowserById/:realm/:dom/:cat/:id   mod.diesel.controllers.DieselControl.objBrowserById(realm:String, cat:String, dom:String, id:String, path:String?="/")
+
+
+  // $.ajax( '/diesel/plugin/d365odata/findByQuery/'+cls+'/'+parm+'/\'' + s + '\'', {
+  //   success: function (data) {
+  //     alert(data);
+  //   }
+  // });
 }
 
 

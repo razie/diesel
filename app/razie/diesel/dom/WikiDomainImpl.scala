@@ -6,6 +6,7 @@
  */
 package razie.diesel.dom
 
+import razie.diesel.dom.RDOM.DE
 import razie.wiki.model._
 import razie.diesel.ext._
 
@@ -16,6 +17,9 @@ import scala.collection.mutable.ListBuffer
   * extracts the domain from a reactor and activates it
   */
 class WikiDomainImpl (val realm:String, val wi:WikiInst) extends WikiDomain {
+
+  // be a lazy val to avoid screwy init loops
+  lazy val plugins = RDomainPlugins.pluginFactories.flatMap(_.mkInstance(realm, wi))
 
   private var irdom : RDomain = null
 
@@ -100,6 +104,5 @@ class WikiDomainImpl (val realm:String, val wi:WikiInst) extends WikiDomain {
     x
   }
 }
-
 
 

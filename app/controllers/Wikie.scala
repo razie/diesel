@@ -811,26 +811,7 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
 
               razie.db.tx("wiki.create", stok.userName) { implicit txn =>
                 // anything staged for this?
-                for (s <- Staged.find("WikiLinkStaged").filter(x => x.content.get("from").asInstanceOf[DBObject].get("cat") == wid.cat && x.content.get("from").asInstanceOf[DBObject].get("name") == wid.name)) {
-                  val wls = Wikis.fromGrated[WikiLinkStaged](s.content)
-                  for(ufrom <- wls.from.uwid;
-                      uto <- wls.to.uwid) {
-                    val wl = WikiLink(ufrom, uto, wls.how)
-                    wl.create
-                  }
-                  we = we.copy(parent = Wikis.find(wls.to).map(_._id), updDtm = DateTime.now) // add parent
-                  s.delete
-                }
-
-                // needs parent?
-                we.wid.parentWid.flatMap(_.uwid).foreach { puwid =>
-                  val isd = if(we.props.contains("draft")) Some("y") else None
-                  val wl = ROne[WikiLink]("from.id" -> we.uwid.id, "to.id" -> puwid.id, "how" -> "Child")
-                  if(wl.isDefined)
-                    wl.foreach(_.copy(draft=isd).update)
-                  else
-                    WikiLink(we.uwid, puwid, "Child", isd).create
-                }
+                we = applyStagedLinks(wid, we)
 
                 // WTF
 //                we = we.cloneProps(we.props ++ Map("titi" -> "t"), au._id)
@@ -860,6 +841,42 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
         }
       }
     })
+  }
+
+  /** create links to parents or other wikis, based on staged WikiLinkStaged */
+  def applyStagedLinks(wid:WID, w:WikiEntry)(implicit txn:Txn) : WikiEntry = {
+    var we = w
+
+    for (s <- Staged.find("WikiLinkStaged").filter{x =>
+      val from = x.content.get("from").asInstanceOf[DBObject]
+      from.get("cat") == wid.cat && from.get("name") == wid.name
+    }) {
+      val wls = Wikis.fromGrated[WikiLinkStaged](s.content)
+
+      //todo this nevet actually works because the we is not created yet...??
+      // todo so i should use we.uwid insted - i know it's from anyways
+      //but then it will be replicated for parent below - will need to prevent duplicates
+      for(ufrom <- wls.from.uwid;
+          uto <- wls.to.uwid) {
+        val wl = WikiLink(ufrom, uto, wls.how)
+        wl.create
+      }
+
+      we = we.copy(parent = Wikis.find(wls.to).map(_._id), updDtm = DateTime.now) // add parent
+      s.delete
+    }
+
+    // needs parent?
+    we.wid.parentWid.flatMap(_.uwid).foreach { puwid =>
+      val isd = if(we.props.contains("draft")) Some("y") else None
+      val wl = ROne[WikiLink]("from.id" -> we.uwid.id, "to.id" -> puwid.id, "how" -> "Child")
+      if(wl.isDefined)
+        wl.foreach(_.copy(draft=isd).update)
+      else
+        WikiLink(we.uwid, puwid, "Child", isd).create
+    }
+
+    we
   }
 
   /** notify all followers of new topic/post */
@@ -954,9 +971,10 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
         Wikis(realm).category(cat).filter(_.sections.find(_.name == "form").isDefined).map{we=>
             Redirect(routes.Wikie.addWithSpec2(cat, name, we.wid.wpath, "Template", realm))
         } orElse
-//          WikiDomain(realm).zEnds(cat, "Spec").headOption.map { t =>
         WikiDomain(realm).assocsWhereTheyHaveRole(cat, "Spec").headOption.map { t =>
-          ROK.s apply { implicit stok =>(views.html.wiki.wikieAddWithSpec(cat, name, "Spec", t, realm))}
+          ROK.s apply { implicit stok =>
+            (views.html.wiki.wikieAddWithSpec(cat, name, "Spec", t, realm))
+          }
         } getOrElse
           Redirect(routes.Wikie.wikieEditNew(WID(cat, name).r(realm), "", tags))
       }
@@ -1015,16 +1033,21 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
   /** add a child/related to another topic - this stages the link and begins creation of kid.
     *
     * At the end, the staged link is persisted */
-  def addLinked(cat: String, pwid: WID, role: String) = FAU {
-    implicit au => implicit errCollector => implicit request =>
+  def addLinked(cat: String, pwid: WID, role: String) = FAUR {implicit request =>
     addForm.bindFromRequest.fold(
     formWithErrors => Msg2("Oops, can't add that name!", Some(pwid.urlRelative)),
     {
       case xname: String => {
         val name = xname.replaceAll("/", "_") // it messes up a lot of stuff... can't have it
         val n = Wikis.formatName(WID(cat, name).r(pwid.getRealm))
-        Stage("WikiLinkStaged", WikiLinkStaged(WID(cat, n, pwid.findId).r(pwid.getRealm), pwid, role).grated, au.userName).create
-        Redirect(routes.Wikie.wikieEditNew(WID(cat, name, pwid.findId).r(pwid.getRealm), ""))
+        Stage("WikiLinkStaged", WikiLinkStaged(WID(cat, n, pwid.findId).r(pwid.getRealm), pwid, role).grated, request.au.get.userName).create
+
+        WikiDomain(request.realm).assocsWhereTheyHaveRole(cat, "Spec").headOption.map { t =>
+          ROK.r apply { implicit stok =>
+            views.html.wiki.wikieAddWithSpec(cat, name, "Spec", t, request.realm)
+          }
+        } getOrElse
+          Redirect(routes.Wikie.wikieEditNew(WID(cat, name, pwid.findId).r(pwid.getRealm), ""))
       }
     })
   }

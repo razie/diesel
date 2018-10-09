@@ -36,6 +36,8 @@ import scala.concurrent.{Future, Promise}
 /** this is the default engine per reactor and user, continuously running all the stories */
 object DomGuardian extends Logging {
 
+  val DISABLED = true // todo make it conf somewhere, so we can turn it off online too
+
   def setHostname(ctx: SimpleECtx)(implicit stok: RazRequest): Unit = {
     ctx._hostname =
       Some(
@@ -210,13 +212,6 @@ object DomGuardian extends Logging {
     engine
   }
 
-  /** nice links to stories in AST trees */
-  case class StoryNode(wpath: String) extends CanHtml {
-    override def toHtml = "Story " + WID.fromPath(wpath).map(_.ahref).getOrElse(wpath)
-
-    override def toString = "Story " + wpath
-  }
-
   /* extract more nodes to run from the story - add them to root */
   def sectionsToPages(story: WikiEntry, sections: List[WikiSection]): List[WikiEntry] = {
     sections
@@ -248,29 +243,33 @@ object DomGuardian extends Logging {
   def startCheck(realm: String, au: Option[User]) : Future[Report] = {
     if (!DomGuardian.init) {
 
-      // listen to topic changes and re-run
-      WikiObservers mini {
-        case ev@WikiEvent(action, "WikiEntry", _, entity, oldEntity, _, _) => {
-          val wid = WID.fromPath(ev.id).get
-          val oldWid = ev.oldId.flatMap(WID.fromPath)
+      if(! DISABLED) {
+        // listen to topic changes and re-run
+        WikiObservers mini {
+          case ev@WikiEvent(action, "WikiEntry", _, entity, oldEntity, _, _) => {
+            val wid = WID.fromPath(ev.id).get
+            val oldWid = ev.oldId.flatMap(WID.fromPath)
 
-          if (entity.isDefined && entity.get.isInstanceOf[WikiEntry]) {
-            val we = entity.get.asInstanceOf[WikiEntry]
-            if (we.category == "Story" || we.tags.contains("story") ||
-              we.category == "Spec" || we.tags.contains("spec")) {
+            if (entity.isDefined && entity.get.isInstanceOf[WikiEntry]) {
+              val we = entity.get.asInstanceOf[WikiEntry]
+              if (we.category == "Story" || we.tags.contains("story") ||
+                we.category == "Spec" || we.tags.contains("spec")) {
 
-              // re run all tests for current realm
-              // todo also cancel existing workflows
-              DomGuardian.lastRuns.filter(_._2.realm == we.realm).headOption.map { t =>
-                val re = "(\\w*)\\.(\\w*)".r
-                val re(realm, uname) = t._1
-                startCheck(t._2.realm, Users.findUserByUsername(uname))
+                // re run all tests for current realm
+                // todo also cancel existing workflows
+                DomGuardian.lastRuns.filter(_._2.realm == we.realm).headOption.map { t =>
+                  val re = "(\\w*)\\.(\\w*)".r
+                  val re(realm, uname) = t._1
+                  startCheck(t._2.realm, Users.findUserByUsername(uname))
+                }
               }
             }
           }
         }
       }
     }
+
+    if(DISABLED) throw new IllegalStateException("GUARDIAN IS DISABLED")
 
     DomGuardian.runReq(au, realm)
   }

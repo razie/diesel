@@ -32,7 +32,9 @@ the actual form contents are in wikiFormInt
   <h1 style="color:blue">Processing the form... please wait!</h1>
 }
 
-<form id="wikiForm-@fid" action="@getaction" method="POST">
+@page.exists(_.form.canEdit)
+
+  <form id="wikiForm-@fid" action="@getaction" method="POST">
 
   @wiki.wikiFormInt(wid, iname, page, errors, canEdit, print, simple)
   <hr>

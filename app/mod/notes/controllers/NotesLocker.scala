@@ -692,7 +692,7 @@ object NotesLocker extends RazController with Logging {
     initial.map(_.preprocess(Some(au)))
 
     if(initial.exists(_.fields.nonEmpty)) {
-      content = content + "\n" + _root_.controllers.Forms.mkFormData(initial.get.wid.page.get)
+      content = content + "\n" + razie.wiki.model.Wikis.mkFormData(initial.get.wid.page.get)
     }
 
     NOK ("", autags, Seq.empty, false) noLayout {implicit stok=>

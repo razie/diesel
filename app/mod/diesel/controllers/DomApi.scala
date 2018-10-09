@@ -272,7 +272,7 @@ class DomApi extends DomApiBase  with Logging {
         path,
         Nil,
         Map.empty,
-        "GET",
+        stok.req.method,
         stok,
         e,
         a,
@@ -281,13 +281,15 @@ class DomApi extends DomApiBase  with Logging {
         stok.req.contentType)
 
       val xx = stok.qhParm("X-Api-Key").mkString
+      def needsApiKey = xapikey.isDefined
+      def isApiKeyGood = xapikey.isDefined && xapikey.exists { x =>
+        x.length > 0 && x == xx
+      }
 
       if (
         msg.exists(isMsgPublic(_, reactor, website)) ||
         isMemberOrTrusted(msg, reactor, website) ||
-        xapikey.isDefined && xapikey.exists { x =>
-          x.length > 0 && x == stok.qhParm("X-Api-Key").mkString
-        }
+        needsApiKey && isApiKeyGood
       ) {
 
         msg.map { msg =>
@@ -945,13 +947,18 @@ class DomApi extends DomApiBase  with Logging {
       // no template
       val headers = DomEngineHelper.parmsFromRequestHeader(stok.req, content)
 
+      // extract parms from request
       if(verb == "GET" || verb == "POST") {
         val p = if (verb == "GET") {
+          // query parms for GET
           stok.query.filter(x => !DomEngineSettings.FILTER.contains(x._1))
         } else if (verb == "POST") {
           if (requestContentType.exists(_ == "text/plain") && !body.trim.startsWith("{")) {
             // plain text - see who can parse this later, snakkers etc
             Map("request" -> body)
+          } else if (requestContentType.exists(_ == "application/x-www-form-urlencoded")) {
+            // normal form - each parm
+            stok.formParms.filter(x => !DomEngineSettings.FILTER.contains(x._1))
           } else {
             // assume it's json with a bunch of input parms
             try {
@@ -982,11 +989,20 @@ class DomApi extends DomApiBase  with Logging {
 
     msg.map {m=>
       // find spec - so we cann check archetypes, permissions etc
-      m.withSpec(RDExt.spec(m)(engine.ctx))
+      val spec = RDExt.spec(m)(engine.ctx)
+
+      m.typecastParms(spec).withSpec(spec)
     }
   }
 
-  /** member of diesel realm or member of trusted realm */
+ /** member of diesel realm or member of trusted realm
+    *
+    * @param m message to check
+    * @param reactor message belongs to this, possibly different from the users's
+    * @param website website - website the message belongs to, possibly not this website
+    * @param stok
+    * @return
+    */
   def isMemberOrTrusted (m:Option[EMsg], reactor:String, website:Website)(implicit stok:RazRequest) = {
       stok.au.exists(u=>
         // is member of diesel realm
@@ -1306,7 +1322,7 @@ class DomApi extends DomApiBase  with Logging {
       }.getOrElse {
         // start a check in the background
         clog << s"DIESEL startCheck ${stok.realm} for ${stok.au.map(_.userName)}"
-        val eid = startCheck (stok.realm, stok.au)
+        if(! DomGuardian.DISABLED) startCheck (stok.realm, stok.au)
         // used to wait for the check - we shouldn't since we're grabbing useful threads, i guess
 //        eid._2.map { r =>
 //          Ok(quickBadge(r.failed, r.total, r.duration))
@@ -1373,7 +1389,11 @@ Guardian report<a href="/wiki/Guardian_Guide" ><sup><span class="glyphicon glyph
             new Html(
               s"""
 <a href="/diesel/runCheckAll">Re-run all checks</a> (may have to wait a while)...
-""" +
+<br>""" +
+s"""
+<br>
+Guardian report<a href="/wiki/Guardian_Guide" ><sup><span class="glyphicon glyphicon-question-sign"></span></a></sup>:
+<small>${DomGuardian.stats} (<a href="/diesel/listAst">list all</a>)(<a href="/diesel/cleanAst">clean all</a>) </small><br><br>""".stripMargin +
 
 """<hr><h2>Abstract</h2>""" +
 
@@ -1408,27 +1428,33 @@ Guardian report<a href="/wiki/Guardian_Guide" ><sup><span class="glyphicon glyph
 
   /** run another check current reactor */
   def runCheck = Filter(activeUser).async { implicit stok =>
-    val eid = startCheck (stok.realm, stok.au)
-    eid.map { engine =>
+    if(! DomGuardian.DISABLED) startCheck (stok.realm, stok.au).map { engine =>
       Redirect(s"""/diesel/report""")
     }
+    else Future.successful(Ok("GUARDIAN DISABLED"))
   }
 
   /** run another check all reactors */
   def runCheckAll = Filter(adminUser).async { implicit stok =>
-    Future.sequence(
+    if(! DomGuardian.DISABLED) Future.sequence(
       WikiReactors.allReactors.keys.map {k=>
         startCheck (k, stok.au)
       }
     ).map {x=>
       Redirect(s"""/diesel/reportAll""")
     }
+    else Future.successful(Ok("GUARDIAN DISABLED"))
   }
 
   def pluginAction (plugin:String, action:String, epath:String) = Filter(activeUser).async { implicit stok =>
     Future.successful {
       val url = "http" + (if(stok.secure) "s" else "") + "://" + stok.hostPort
-      Ok(RDomainPlugins.plugins.find(_.name == plugin).map(_.doAction(WikiDomain(stok.realm).rdom, action, url, epath)).mkString)
+      val c = WikiDomain(stok.realm).plugins.find(_.name == plugin).map(_.doAction(WikiDomain(stok.realm).rdom, action, url, epath)).mkString
+
+      if(c.startsWith("<"))
+        Ok(c).as("text/html")
+      else
+        Ok(c)
     }
   }
 

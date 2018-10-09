@@ -16,6 +16,7 @@ import mod.snow.ModSnowExecutor
 import model.WikiUsersImpl
 import razie.audit.{Audit, AuditService, MdbAuditService}
 import razie.db.{RMongo, ROne, RazMongo, UpgradeDb}
+import razie.diesel.dom.{RDomainPlugin, RDomainPlugins, WikiDomain}
 import razie.diesel.engine.{DieselAppContext, RDExt}
 import razie.diesel.ext.Executors
 import razie.hosting.Website
@@ -108,6 +109,10 @@ class Module extends AbstractModule {
     Executors.add (ModCartExecutor)
     Executors.add (ModSnowExecutor)
     Executors.add (new mod.diesel.model.exec.EEWiki)
+
+    RDomainPlugins.plugins = { x: String =>
+      WikiDomain(x).plugins
+    }
 
     if(Config.isimulateHost == Config.REFERENCE_SIMULATE_HOST)
       DieselSettings.find("isimulateHost").map { s=>

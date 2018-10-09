@@ -110,7 +110,10 @@ object DomEngineHelper {
     )
   }
 
-  /** other attributes in the request not related to settings - use these as input */
+  /** other attributes in the request not related to settings - use these as input
+    *
+    * combine the queryParms with the posted form parms
+    */
   def parmsFromRequestHeader(request:RequestHeader, cont:Option[EEContent]) : Map[String,String] = {
     val q = request.queryString.map(t=>(t._1, t._2.mkString))
 

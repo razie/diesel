@@ -93,48 +93,49 @@ create new page given a template
 
 <hr>
 
-  <script>
-            var updName = function () {
-              withJquery(function($){
-              var k = $('#kind').val();
-              var a = $('#app').val();
-              var o = $('#org').val();
-              var n = (k === "prod" ? "" : k) + a + o;
+  @if(cat == "Reactor") {
+    <script>
+        var updName = function () {
+          withJquery(function ($) {
+            var k = $('#kind').val();
+            var a = $('#app').val();
+            var o = $('#org').val();
+            var n = (k === "prod" ? "" : k) + a + o;
 
-              $('#name').val(n);
+            $('#name').val(n);
+          });
+        };
+
+        withJquery(
+            function ($) {
+
+              $('#kind,#app,#org').bind('input', function () {
+                updName();
               });
-            };
 
-      withJquery(
-          function ($) {
+              $('#curForm').submit(
+                  function (event) {
+                    var n = $('#name').val();
 
-            $('#kind,#app,#org').bind('input', function() {
-              updName();
-            });
+                    if (n.length > 25 || n.length < 3) {
+                      popupError("Name too short(<3) or too long (>25)...");
+                      event.preventDefault();
+                    } else if (!n.match(/^[A-Za-z][A-Za-z0-9-_]+[A-Za-z0-9]$/)) {
+                      popupError("Name cannot contain special characters (!#$%^...)");
+                      event.preventDefault();
+                    } else {
+                      $("#name").prop('disabled', false);
+                    }
 
-            $('#curForm').submit(
-                function(event) {
-                  var n = $('#name').val();
-
-                  if (n.length > 25 || n.length < 3) {
-                    popupError("Name too short(<3) or too long (>25)...");
-                    event.preventDefault();
-                  } else if (!n.match(/^[A-Za-z][A-Za-z0-9-_]+[A-Za-z0-9]$/) ) {
-                    popupError("Name cannot contain special characters (!#$%^...)");
-                    event.preventDefault();
-                  } else {
-                    $("#name").prop('disabled', false);
                   }
+              );
+            }
+        );
 
-                }
-            );
-          }
+        updName();
 
-      );
-
-      updName();
-
-  </script>
+    </script>
+  }
 
 @util.oneModal()
 
