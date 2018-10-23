@@ -147,7 +147,7 @@
     @if(rk.userId.isDefined) {account holder} else {parent acct: @rk.parentUsers.map(_.fullName).mkString(",")}
     | <a href="#" onclick="help(); return false;" title="More help" style="color:red">Help!</a>
     @if(stok.au.exists(_.isMod) && rk.userId.isDefined) {
-      @rk.userId.flatMap(model.Users.findUserById).map { u =>
+      @rk.userId.flatMap(model.Users.findUserById).map(_.forRealm(stok.realm)).map { u =>
         | @u.roles
        | @u.perms
       }
