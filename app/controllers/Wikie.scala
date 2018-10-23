@@ -313,9 +313,11 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
     var we = iwe
 
     if (au.hasPerm(Perm.adminDb)) {
-      if (!we.scripts.filter(_.signature startsWith "SIG").isEmpty) {
+      val weScripts = we.scriptsNoInclude
+
+      if (!weScripts.filter(_.signature startsWith "SIG").isEmpty) {
         var c2 = we.content
-        for (s <- we.scripts.filter(_.signature startsWith "SIG")) {
+        for (s <- weScripts.filter(_.signature startsWith "SIG")) {
           def sign(s: String) = Enc apply Enc.hash(s)
 
           c2 = PATTSIGN.replaceSomeIn(c2, { m =>
@@ -672,6 +674,7 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
         newContent = newContent.replaceAll("\r", "")
 
         Wikis.find(wid).filter(wid.realm.isEmpty || _.realm == wid.realm.get) match {
+
           case Some(w) =>
             // edited topic
             (for (

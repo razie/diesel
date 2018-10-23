@@ -69,9 +69,36 @@
         <meta name="@t._1" content="@t._2">
     }
 
-    <!-- RK scripts -->
+
 <script>
 var realm = '@reactor';
+
+// intercept JS errors
+    window.onerror = function(msg, url, line, col, error) {
+      // Note that col & error are new to the HTML 5 spec and may not be
+      // supported in every browser.  It worked for me in Chrome.
+      var extra = !col ? '' : '\ncolumn: ' + col;
+      extra += !error ? '' : '\nerror: ' + error;
+
+      // You can view the information in an alert to see things working like this:
+      var msg = "JS-Error in page - check your scripts:\n" + msg + "\nurl: " + url + "\nline: " + line + extra;
+      console.log ("JS ERR: " + msg);
+
+      if(typeof na === 'undefined') {
+        lastJSErrorMsg = msg;
+      } else {
+        $("#navJsError").show();
+        $("#navJsError").attr("title", msg);
+      }
+
+      // TODO: Report this error via ajax so you can keep track
+      //       of what pages have JS issues
+
+      var suppressErrorAlert = false;
+      // If you return true, then error alerts (like in older versions of
+      // Internet Explorer) will be suppressed.
+      return suppressErrorAlert;
+    };
 </script>
     <!-- todo optimize this - don't need teh entire file -->
 
@@ -121,6 +148,14 @@ var realm = '@reactor';
 
     <!-- leave room for navbar but none at bottom (for gray links) -->
     <style type="text/css">
+.blink {
+  animation: blinker 1s linear infinite;
+}
+
+@@keyframes blinker {
+  85% { opacity: 0.0; }
+}
+
       body {
         padding-top: 60px;
         padding-bottom: 0px;

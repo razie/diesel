@@ -116,6 +116,14 @@ require(['jquery'], function($){
           </a>
         </li>
       }
+
+      <li>
+        <a href="#">
+        <span style="display:none; color:red; font-weight:bold" id="navJsError" class="glyphicon glyphicon-warning-sign blink">
+        </span>
+        </a>
+      </li>
+
     </ul>
 @**
 
@@ -193,7 +201,10 @@ require(['jquery'], function($){
         <li><a href="@web().join">Login</a></li>
       }
     }
+
+
     </ul>
+
 
     @**
 
@@ -238,4 +249,16 @@ require(['jquery'], function($){
   </div>
 </div><!-- /.navbar-collapse -->
 </nav>
+
+<script async>
+require(['jquery'], function($){
+    if(typeof lastJSErrorMsg != "undefined") {
+    $("#navJsError").show();
+    $("#navJsError").attr("title", lastJSErrorMsg);
+  }
+
+  navBarInitialized = true;
+});
+
+</script>
 
