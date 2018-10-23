@@ -14,7 +14,7 @@ import org.json.JSONObject
 import play.api.Configuration
 import play.api.data.Form
 import play.api.data.Forms.{mapping, nonEmptyText, tuple, _}
-import play.api.mvc.{Action, Call, Request}
+import play.api.mvc.{Action, Call, Cookie, Request}
 import razie.OR._
 import razie.audit.Audit
 import razie.diesel.model.DieselMsgString
@@ -383,7 +383,7 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
         if (
           (
             Enc(pass) == u.pwd ||
-            u.gid.exists(_ == gid)
+            u.gid.exists(_ == gid && gid.length > 2)
           ) &&
           (
             website.openMembership ||
@@ -422,16 +422,24 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
         } else {
           u.auditLoginFailed(realm)
 
-          if(Enc(pass) == u.pwd || u.gid.exists(_ == gid) ) {
+          if(Enc(pass) == u.pwd || u.gid.exists(_ == gid && gid.length > 2) ) {
             // user is ok but not member
             Msg2C (
               s"""Oops... you are not a member of this site/project. To join, open a support request.<br>
                  |<br>
                  |<small>Translation: even though you do have an account here, you're not a member of this particular site!</small>
-               """.stripMargin, Some(Call("GET", loginUrl))).withNewSession
+               """.stripMargin, Some(Call("GET", loginUrl)))
+              .withNewSession
+              .withCookies(
+                Cookie("error", "Username or password did not match".encUrl).copy(httpOnly = false)
+              )
           } else {
             // user not ok, try again
-            Redirect(loginUrl).withNewSession
+            Redirect(loginUrl)
+              .withNewSession
+              .withCookies(
+                Cookie("error", "Username or password did not match".encUrl).copy(httpOnly = false)
+              )
           }
         }
       case None => // capture basic profile and create profile
@@ -441,7 +449,12 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
           ))
           Redirect(routes.Profile.doeJoin3).flashing("email" -> email, "pwd" -> pass, "gid"->gid, "extra" -> extra)
         else
-          Msg2 (s"""This website ($realm) does not allow new accounts""")
+        // user not ok, try again
+          Redirect(loginUrl)
+            .withNewSession
+            .withCookies(
+              Cookie("error", "Username or password did not match".encUrl).copy(httpOnly = false)
+            )
     }
   }
 
