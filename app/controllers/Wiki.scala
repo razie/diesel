@@ -507,9 +507,9 @@ object Wiki extends WikiBase {
 //          if (isFromRobot(request)) Audit.logdb("ROBOT", wid.wpath)
 
           if(teaser.isEmpty)
-            noPerm(wid, "SHOW " + more, !isFromRobot(request.ireq))
+            noPerm(wid, more, !isFromRobot(request.ireq), "", None, false)
           else
-            noPerm(wid, more, false, teaser, Some(request))
+            noPerm(wid, more, false, teaser, Some(request), false)
         } else {
         //        cout << "2"
           // alternative public page

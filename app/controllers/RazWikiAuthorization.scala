@@ -115,12 +115,12 @@ object RazWikiAuthorization extends RazController with Logging with WikiAuthoriz
         WikiIndex.withIndex(wid.getRealm)(_.get1k(name).exists(_.cat == cat)) ||
         au.map(name == _.userName).getOrElse(isAdmin)
         ) orErr (
-        "Sorry - profile not found or is private! %s : %s".format(cat, name)
+        "Profile not found or is private! %s : %s".format(cat, name)
         );
       mine2 <- (
         !we.isDefined ||
           isVisible(au, we.get.props, "visibility", we)
-        ) orErr ("Sorry - topic is not visible!"); // TODO report
+        ) orErr ("Page is not visible!"); // TODO report
       t <- true orErr ("just can't, eh")
     ) yield true)
   }
