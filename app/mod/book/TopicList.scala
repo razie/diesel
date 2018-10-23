@@ -26,9 +26,9 @@ case class TLTopic(x:UWID)  extends TLNode
 case class TLFolderEnd(x:TopicList)  extends TLNode
 case class TLFolderEndRoot(x:TopicList)  extends TLNode
 
-/** a list of topics, picked up from another topic/section.
+/** a list of topics, picked up from another topic/section. useful for Progress tracking, table of contents etc
   *
-  * this is cached, so not mingled with statuses
+  * this is cached, so not mingled with statuses, see Progress
   */
 case class TopicList (
   ownerTopic: UWID, // like book/section/course

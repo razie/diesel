@@ -502,6 +502,18 @@ function weDomQuery(plugin,conn,cls,parm) {
     '<hr><button class="btn btn-primary" onclick="weDomQuery2(\''+plugin+'\', \''+conn+'\', \''+cls+'\', \''+parm+'\')">Search</button>'+
     '<hr>To list all, use "*".'
   );
+
+  // search on enter
+  // $("#"+'Search').keyup(function(e) {
+  // todo this is not working
+  $(document).keyup(function(e) {
+    if (e.keyCode == 13) {
+      alert("haha");
+      $("#oneModal").modal('hide');
+      weDomQuery2(plugin,conn,cls,parm);
+    }
+  });
+
 }
 
 function weDomQuery2(plugin,conn,cls,parm) {
