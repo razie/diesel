@@ -146,13 +146,16 @@ If you'd rather see the elements ($msg, $when etc) as a dialog, go to that line 
 var realm = '@reactor';
 var fiddleId = '@id';
 
+// current debounce before running the scripts - goes up if results come slowly
+var currDebounce = 2000;
+
+
 useLocalStorageCheckbox("sketchMode", "domFiddleSketchMode");
 useLocalStorageCheckbox("mockMode", "domFiddleMockMode");
 useLocalStorageCheckbox("blenderMode", "domFiddleBlenderMode");
 useLocalStorageCheckbox("draftMode", "domFiddleDraftsMode");
 useLocalStorageCheckbox("wikiMode", "domFiddleWikiMode");
 useLocalStorageCheckbox("realTime", "domFiddleRealTime");
-
 
 $('#sketchMode, #mockMode, #blenderMode, #draftMode, #realTime').change(function(){
   runpill2_@{id}('@{id}');
@@ -335,6 +338,17 @@ var runpill2_@id = function(id) {
       setErrors(data.failureCount);
       var du = new Date().getTime() - lastTime;
       $('#roundtrip').text(du+' ms');
+
+      // automatic backoff
+      if(du > 10000)
+        currDebounce = 15000;
+      else if(du > 5000)
+        currDebounce = 10000;
+      if(du > 2000)
+        currDebounce = 5000;
+      else
+        currDebounce = 2000;
+
       storyChanged(data.storyChanged);
     },
     error  : function(x) {
@@ -460,7 +474,7 @@ setInterval(function(){
      instChanged=false;
      runpill2_@{id}('@{id}');
      }
-},2000);
+},currDebounce);
 
 </script>
 
