@@ -53,12 +53,12 @@ class AdminUser extends AdminBase {
       ROK.r admin { implicit stok => views.html.admin.adminUser(model.Users.findUserById(id).map(_.forRealm(stok.realm))) }
     }
 
-  def udelete1(id: String) =
+  def userDelete1(id: String) =
     FAD { implicit au => implicit errCollector => implicit request =>
       ROK.r admin { implicit stok => views.html.admin.adminUserDelete(model.Users.findUserById(id)) }
     }
 
-  def udelete2(id: String) =
+  def userDelete2(id: String) =
     FAD { implicit au => implicit errCollector => implicit request =>
       val uid = new ObjectId(id)
       var res:List[String] = Nil
@@ -144,7 +144,7 @@ class AdminUser extends AdminBase {
       Ok(res.mkString("\n"))
     }
 
-  def ustatus(id: String, s: String) = FADR { implicit stok =>
+  def userStatus(id: String, s: String) = FADR { implicit stok =>
       (for (
         goodS <- s.length == 1 && ("as" contains s(0)) orErr ("bad status");
         u <- Users.findUserById(id)
@@ -187,7 +187,7 @@ class AdminUser extends AdminBase {
 
   }
 
-  def uperm(id: String) =
+  def userPerm(id: String) =
     FAD { implicit au => implicit errCollector => implicit request =>
       val realm = Website.getRealm
 
@@ -203,12 +203,15 @@ class AdminUser extends AdminBase {
               // remove/flip existing permission or add a new one?
             val sperm = perm.substring(1)
 
-              u.update(
-                if (perm(0) == '-' && (u.perms.contains("+" + sperm))) {
+              u.update{
+                val ur = u.forRealm(realm)
+
+                if (perm(0) == '-' && (ur.perms.contains("+" + sperm))) {
                   u.removePerm(realm, "+" + sperm)
-                } else if (perm(0) == '+' && (u.perms.contains("-" + sperm))) {
+                } else if (perm(0) == '+' && (ur.perms.contains("-" + sperm))) {
                   u.removePerm(realm, "-" + sperm)
-                } else u.addPerm(realm, perm))
+                } else u.addPerm(realm, perm)
+              }
 
               cleanAuth(Some(u))
               Redirect(ADUSER(id))
@@ -222,7 +225,7 @@ class AdminUser extends AdminBase {
   val quotaForm = Form(
     "quota" -> number(-1, 1000, true))
 
-  def uquota(id: String) =
+  def userQuota(id: String) =
     FAD { implicit au => implicit errCollector => implicit request =>
       quotaForm.bindFromRequest.fold(
       formWithErrors =>
@@ -242,7 +245,7 @@ class AdminUser extends AdminBase {
       })
     }
 
-  def umodnotes(id: String) = FADR { implicit stok =>
+  def userModnotes(id: String) = FADR { implicit stok =>
     OneForm.bindFromRequest.fold(
     formWithErrors =>
       Msg2(formWithErrors.toString + "Oops, can't add that note!"), {
@@ -272,7 +275,7 @@ class AdminUser extends AdminBase {
     })
   }
 
-  def uname(id: String) = FAD { implicit au => implicit errCollector => implicit request =>
+  def userUname(id: String) = FAD { implicit au => implicit errCollector => implicit request =>
     OneForm.bindFromRequest.fold(
     formWithErrors =>
       Msg2(formWithErrors.toString + "Oops, can't add that quota!"), {
@@ -316,11 +319,11 @@ class AdminUser extends AdminBase {
       })
   }
 
-  def urealms(id: String) = {
+  def userRealms(id: String) = {
     updUser (id, {(u, uname, stok) => u.setRealms(stok.realm, uname)})
   }
 
-  def uroles(id: String) = {
+  def userRoles(id: String) = {
     updUser (id, {(u, uname, stok) => u.setRoles(stok.realm, uname)})
   }
 }

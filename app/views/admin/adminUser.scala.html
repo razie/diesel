@@ -86,33 +86,33 @@ screen to admin one user
     }
 
   </p>
-      @helper.form(action=routes.AdminUser.uperm(user.get.id), 'class->"well form-inline") {
+      @helper.form(action=routes.AdminUser.userPerm(user.get.id), 'class->"well form-inline") {
         <input type="text" class="input-xlarge" name="perm" placeholder="+Perm">
         <button type="submit" class="btn btn-default">+/-Perm</button>
   adminWiki uWiki uProfile eVerified apiCall domFiddle codeMaster | Member Basic Gold Platinum Moderator
   }
 
-@helper.form(action=routes.AdminUser.uquota(user.get.id), 'class->"well form-inline") {
+@helper.form(action=routes.AdminUser.userQuota(user.get.id), 'class->"well form-inline") {
   <input type="text" class="input" name="quota" placeholder="+Quota">
   <button type="submit" class="btn btn-default">+/-Quota</button>
 }
 
-      @helper.form(action=routes.AdminUser.umodnotes(user.get.id), 'class->"well form-inline") {
+      @helper.form(action=routes.AdminUser.userModnotes(user.get.id), 'class->"well form-inline") {
         <input type="text" class="input col-xs-8" name="val" placeholder="+/-Note">
         <button type="submit" class="btn btn-default">+/-Note</button>
       }
 
-      @helper.form(action=routes.AdminUser.uname(user.get.id), 'class->"well form-inline") {
+      @helper.form(action=routes.AdminUser.userUname(user.get.id), 'class->"well form-inline") {
         <input type="text" class="input" name="val" placeholder="username">
         <button type="submit" class="btn btn-default">Username</button>
       }
 
-@helper.form(action=routes.AdminUser.uroles(user.get.id), 'class->"well form-inline") {
+@helper.form(action=routes.AdminUser.userRoles(user.get.id), 'class->"well form-inline") {
   <input type="text" class="input-xlarge" name="val" placeholder="Roles">
   <button type="submit" class="btn btn-default">Set roles</button>
 }
 
-      @helper.form(action=routes.AdminUser.urealms(user.get.id), 'class->"well form-inline") {
+      @helper.form(action=routes.AdminUser.userRealms(user.get.id), 'class->"well form-inline") {
         <input type="text" class="input-xlarge" name="val" placeholder="Realms">
         <button type="submit" class="btn btn-default">Set Realms</button>
       }
