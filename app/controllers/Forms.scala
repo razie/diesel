@@ -224,7 +224,6 @@ $fdata
 
               razie.db.tx("forms.submitted", au.userName) { implicit txn =>
                 w.update(we, Some("form_submitted"))
-                act.WikiWf.event("wikiFormSubmit", Map("wpath" -> we.wid.wpath, "userName" -> au.userName))
                 Wikie.after(Some(w), we, WikiAudit.UPD_CONTENT, Some(au))
                 Emailer.withSession(w.realm) { implicit mailSession =>
                   //                    au.quota.incUpdates
@@ -335,7 +334,6 @@ $fdata
 
               razie.db.tx("forms.submitted", au.userName) { implicit txn =>
                 w.update(we, Some("form_submitted"))
-                act.WikiWf.event("wikiFormSubmit", Map("wpath" -> we.wid.wpath, "userName" -> au.userName))
                 Wikie.after(Some(w), we, WikiAudit.UPD_CONTENT, Some(au))
                 Emailer.withSession(w.realm) { implicit mailSession =>
                   //                    au.quota.incUpdates
@@ -396,7 +394,6 @@ $fdata
 
               razie.db.tx("forms.submitted", au.userName) { implicit txn =>
                 we.create
-                act.WikiWf.event("wikiFormSubmit", Map("wpath" -> we.wid.wpath, "userName" -> au.userName))
                 Wikie.after(None, we, WikiAudit.UPD_CONTENT, Some(au))
                 Emailer.withSession(w.realm) { implicit mailSession =>
                   //                    au.quota.incUpdates
@@ -448,7 +445,6 @@ $fdata
 
               razie.db.tx("forms.submitted", au.userName) { implicit txn =>
 
-                act.WikiWf.event("wikiFormSubmit", Map("wpath" -> we.wid.wpath, "userName" -> au.userName))
                 Wikie.after(None, we, WikiAudit.UPD_CONTENT, Some(au))
                   if (data2.contains("submit_button")) {
                   } else {

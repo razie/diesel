@@ -1,3 +1,4 @@
+// scala compiler hackery
 package model
 
 import java.io.StringWriter

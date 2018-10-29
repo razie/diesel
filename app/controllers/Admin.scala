@@ -1,47 +1,23 @@
 package controllers
 
-import com.google.inject.Singleton
 import java.lang.management.{ManagementFactory, OperatingSystemMXBean}
 import java.lang.reflect.Modifier
 
-import akka.cluster.Cluster
-import com.mongodb.casbah.Imports.{DBObject, IntOk}
-import com.mongodb.casbah.commons.MongoDBObject
-import com.mongodb.casbah.Imports._
-import com.novus.salat._
+import com.google.inject.Singleton
+import com.mongodb.casbah.Imports.DBObject
 import com.novus.salat.grater
-import difflib.DiffUtils
 import mod.notes.controllers.NotesLocker
-import mod.snow.RK
-import org.json.{JSONArray, JSONObject}
-import play.api.libs.concurrent.Akka
-import play.api.libs.json.JsObject
-import play.twirl.api.Html
-import razie.db.{RCreate, RMany, RazMongo, WikiTrash}
-import razie.db.RazSalatContext.ctx
+import model.WikiScripster
 import org.bson.types.ObjectId
 import org.joda.time.DateTime
-import play.api.data.Form
-import play.api.data.Forms.{mapping, nonEmptyText, number}
-import play.api.mvc.{Action, AnyContent, Request, Result}
-import razie.g.snakked
-import razie.{cout, js}
-import razie.wiki.{Enc, Services}
-import razie.wiki.model._
-import razie.wiki.admin.{GlobalData, MailSession, SendEmail}
-import razie.audit.ClearAudits
-import model.{User, Users, WikiScripster}
-import x.context
+import play.api.mvc.Action
+import razie.audit.Audit
+import razie.db.RazMongo
+import razie.db.RazSalatContext.ctx
 import razie.hosting.Website
-
-import scala.util.Try
-import razie.Snakk._
-import razie.audit.{Audit, ClearAudits}
-import razie.wiki.Sec._
-import razie.wiki.util.DslProps
-
-import scala.collection.JavaConversions._
-import scala.concurrent.Future
+import razie.wiki.Services
+import razie.wiki.admin.{GlobalData, SendEmail}
+import razie.wiki.model._
 
 object Admin extends AdminBase {
   // routes do/:page
@@ -209,19 +185,6 @@ class AdminTest extends AdminBase {
     }
     Ok ("")
   }
-
-//  def setContentFromDiff(target:String, wid:WID) = FAD { implicit au =>
-//    implicit errCollector => implicit request =>
-//      try {
-//        val b = body(url(s"http://$target/wikie/content/${wid.wpathFull}").basic("H-"+au.email.dec, "H-"+au.pwd.dec))
-//
-//        val p = DiffUtils.diff(b.lines.toList, wid.content.get.lines.toList)
-//
-//        Ok(views.html.admin.admin_showDiff(b, wid.content.get, p)(auth))
-//      } catch {
-//        case x : Throwable => Ok ("error " + x)
-//      }
-//  }
 }
 
 // TODO should I backup old removed entries ?

@@ -755,19 +755,6 @@ object Wiki extends WikiBase {
     }) getOrElse unauthorized()
   }
 
-  /** wid is the script name,his parent is the actual topic */
-  def wikieNextStep(id: String) = Action { implicit request =>
-    implicit val errCollector = new VErrors()
-    (for (
-      au <- activeUser
-    ) yield {
-      // default to category
-      Audit.logdb("WF_NEXT_STEP", id)
-      act.WikiWf.event("WF_NEXT_STEP", Map("id" -> id))
-      Ok("next step...")
-    }) getOrElse unauthorized()
-  }
-
   /**
     *
     */
