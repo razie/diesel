@@ -1,9 +1,8 @@
 
-@(registerForm:Form[controllers.Registration])(implicit stok:controllers.StateOk)
+@(registerForm:Form[controllers.Registration], crNew:Boolean=false)(implicit stok:controllers.StateOk)
 
 @stok.requireJs(false)
 @htmlHeadBar("Login/register")
-
 
 <div class="container">
   <div class="jumbotron">
@@ -208,6 +207,13 @@ Your email
     }
 
     </script>
+
+  @if(crNew) {
+    <script>
+      showCreate();
+    </script>
+  }
+
 
   @htmlFooter(false, stok.realm)
 </div> <!-- /container -->

@@ -31,3 +31,9 @@ render a regular wiki page - site pages are rendered with wikiSite.scala.html
 @if(!print) {
   @htmlBottom(stok.request)
 }
+
+@if(page.exists(_.attr("mod.popup").exists(_ != "false"))) {
+  @util.oneModal()
+}
+
+

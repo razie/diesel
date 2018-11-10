@@ -170,16 +170,21 @@ class Profile @Inject() (config:Configuration) extends RazController with Loggin
   // todo stop messing with the routes again
   def doeJoinAlso = doeJoin("", "", "")
 
+  def doeJoin   (club: String, role: String, next: String) = doeJoinInt(club, role, next, false)
+  def doeJoinNew(club: String, role: String, next: String) = doeJoinInt(club, role, next, true)
+
   // join step 1
-  def doeJoin(club: String, role: String, next: String) = RAction {implicit request=>
+  def doeJoinInt(club: String, role: String, next: String, crNew:Boolean=false) = RAction {implicit request=>
     auth // clean theme
     val reg = request.flash.get(SecLink.HEADER).flatMap(SecLink.find).map {sl=>
       Registration(sl.props("email"),"", "", "")
     }.getOrElse (Registration("",""))
 
-    val res = (ROK.r noLayout {implicit stok=> views.html.doeJoin(registerForm.fill(
+    val res = (ROK.r noLayout {implicit stok=>
+      views.html.doeJoin(registerForm.fill(
       reg
-    ))}).withSession(
+    ), crNew)
+    }).withSession(
       "gaga" -> System.currentTimeMillis.toString,
       "extra" -> "%s,%s,%s".format(club, role, next))
 

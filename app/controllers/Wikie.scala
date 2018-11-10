@@ -750,14 +750,18 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
 
                 we = signScripts(we, au)
 
+              // clean with this realm too - when mixins find a base realm topic, will be cached with current realm
+              Wikis.clearCache(we.wid, we.wid.r(stok.realm))
+
               if (!we.scripts.filter(_.signature == "ADMIN").isEmpty && !(au.hasPerm(Perm.adminDb) || Services.config.isLocalhost)) {
                 noPerm(wid, "HACK_SCRIPTS1")
               } else {
                 razie.db.tx("Wiki.Save", stok.userName) { implicit txn =>
                   // can only change label of links OR if the formatted name doesn't change
                   w.update(we)
+                  // clean with this realm too - when mixins find a base realm topic, will be cached with current realm
+                  Wikis.clearCache(we.wid, we.wid.r(stok.realm))
                   clearDrafts(we.wid, au)
-                  Wikis.clearCache(we.wid)
                   Emailer.withSession(stok.realm) { implicit mailSession =>
                     au.quota.incUpdates
                     if (shouldPublish) notifyFollowersCreate(we, au, notif, true)
