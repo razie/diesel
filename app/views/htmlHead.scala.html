@@ -87,7 +87,8 @@ var realm = '@reactor';
       var msg = "JS-Error in page - check your scripts:\n" + msg + "\nurl: " + url + "\nline: " + line + extra;
       console.log ("JS ERR: " + msg);
 
-      if(typeof na === 'undefined') {
+      // navBarInitialized - maybe this error occurs before the navbar was displayed...?
+      if(typeof navBarInitialized === 'undefined') {
         lastJSErrorMsg = msg;
       } else {
         $("#navJsError").show();

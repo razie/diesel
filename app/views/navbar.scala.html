@@ -250,15 +250,15 @@ require(['jquery'], function($){
 </div><!-- /.navbar-collapse -->
 </nav>
 
+
+  <!-- show blinker for JS errors in page, if it occured before painting this -->
 <script async>
-require(['jquery'], function($){
-    if(typeof lastJSErrorMsg != "undefined") {
-    $("#navJsError").show();
-    $("#navJsError").attr("title", lastJSErrorMsg);
-  }
+    require(['jquery'], function($){
+      if(typeof lastJSErrorMsg != "undefined") {
+        $("#navJsError").show();
+        $("#navJsError").attr("title", lastJSErrorMsg);
+      }
 
-  navBarInitialized = true;
-});
-
+      navBarInitialized = true;
+    });
 </script>
-
