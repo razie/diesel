@@ -36,7 +36,11 @@ import scala.concurrent.{Future, Promise}
 /** this is the default engine per reactor and user, continuously running all the stories */
 object DomGuardian extends Logging {
 
-  val DISABLED = true // todo make it conf somewhere, so we can turn it off online too
+  val ENABLED = true // todo make it conf somewhere, so we can turn it off online too
+  val ONAUTO = false // todo make it conf somewhere, so we can turn it off online too
+
+  def enabled(realm:String) = ENABLED
+  def onAuto(realm:String) = ONAUTO
 
   def setHostname(ctx: SimpleECtx)(implicit stok: RazRequest): Unit = {
     ctx._hostname =
@@ -243,7 +247,7 @@ object DomGuardian extends Logging {
   def startCheck(realm: String, au: Option[User]) : Future[Report] = {
     if (!DomGuardian.init) {
 
-      if(! DISABLED) {
+      if(enabled(realm) && onAuto(realm)) {
         // listen to topic changes and re-run
         WikiObservers mini {
           case ev@WikiEvent(action, "WikiEntry", _, entity, oldEntity, _, _) => {
@@ -257,7 +261,7 @@ object DomGuardian extends Logging {
 
                 // re run all tests for current realm
                 // todo also cancel existing workflows
-                DomGuardian.lastRuns.filter(_._2.realm == we.realm).headOption.map { t =>
+                if(enabled(realm) && onAuto(realm)) DomGuardian.lastRuns.filter(_._2.realm == we.realm).headOption.map { t =>
                   val re = "(\\w*)\\.(\\w*)".r
                   val re(realm, uname) = t._1
                   startCheck(t._2.realm, Users.findUserByUsername(uname))
@@ -269,12 +273,15 @@ object DomGuardian extends Logging {
       }
     }
 
-    if(DISABLED) throw new IllegalStateException("GUARDIAN IS DISABLED")
+    if(! enabled(realm)) throw new IllegalStateException("GUARDIAN IS DISABLED")
 
+    clog << s"DIESEL startCheck ${realm} for ${au.map(_.userName)}"
     DomGuardian.runReq(au, realm)
   }
 
   case class Report(userName: String, engine: DomEngine, realm: String, failed: Int, total: Int, duration: Long, when: DateTime = DateTime.now())
+
+  final val EMPTY_REPORT = Report("DISABLED", null, "DISABLED", 0, 0, 0, DateTime.now())
 
   case class RunReq(au:Option[User], userName: String, realm: String, when: DateTime = DateTime.now()) {
     def run : Future[Report]  = DomGuardian.synchronized {

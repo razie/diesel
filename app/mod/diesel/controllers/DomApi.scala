@@ -1309,7 +1309,7 @@ class DomApi extends DomApiBase  with Logging {
     else if(total > 0)
       s"""<a href="/diesel/report$all"><span class="badge" style="background-color: green" title="Guardian: all tests passed ($duration msec)">$total </span></a>"""
     else
-      s"""<a href="/diesel/report$all"><span class="badge" style="background-color: orange" title="Guardian is offline!">... </span></a>"""
+      s"""<a href="/diesel/report$all"><span class="badge" style="background-color: orange" title="Guardian is offline!"><small>... </small></span></a>"""
   }
 
   /** status badge for current realm */
@@ -1321,21 +1321,16 @@ class DomApi extends DomApiBase  with Logging {
         }
       }.getOrElse {
         // start a check in the background
-        clog << s"DIESEL startCheck ${stok.realm} for ${stok.au.map(_.userName)}"
-        if(! DomGuardian.DISABLED) startCheck (stok.realm, stok.au)
-        // used to wait for the check - we shouldn't since we're grabbing useful threads, i guess
-//        eid._2.map { r =>
-//          Ok(quickBadge(r.failed, r.total, r.duration))
-//        }
+        if(DomGuardian.enabled(stok.realm) && DomGuardian.onAuto(stok.realm)) startCheck (stok.realm, stok.au)
 
         // just return right away
         Future.successful {
-          Ok("...")
+          Ok(quickBadge(-1, -1, -1, ""))
         }
       }
     }.getOrElse {
       Future.successful {
-        Ok("")
+        Ok("") // todo when no user, don't call this
       }
     }
   }
@@ -1368,11 +1363,11 @@ Guardian report<a href="/wiki/Guardian_Guide" ><sup><span class="glyphicon glyph
           //          Redirect(s"""/diesel/engine/view/${r.engine.id}""")
         }
       }.getOrElse {
-        val eid = startCheck (stok.realm, stok.au)
+        if(DomGuardian.enabled(stok.realm) && DomGuardian.onAuto(stok.realm)) startCheck (stok.realm, stok.au)
 
         // new
         Future.successful{
-          Ok(s"""no run available - check this later """).as("text/html")
+          Ok(s"""no run available - check this later <a href="/diesel/runCheck">Re-run check</a> """).as("text/html")
         }
 
         //old used to wait...
@@ -1428,7 +1423,7 @@ Guardian report<a href="/wiki/Guardian_Guide" ><sup><span class="glyphicon glyph
 
   /** run another check current reactor */
   def runCheck = Filter(activeUser).async { implicit stok =>
-    if(! DomGuardian.DISABLED) startCheck (stok.realm, stok.au).map { engine =>
+    if(DomGuardian.enabled(stok.realm)) startCheck (stok.realm, stok.au).map { engine =>
       Redirect(s"""/diesel/report""")
     }
     else Future.successful(Ok("GUARDIAN DISABLED"))
@@ -1436,9 +1431,10 @@ Guardian report<a href="/wiki/Guardian_Guide" ><sup><span class="glyphicon glyph
 
   /** run another check all reactors */
   def runCheckAll = Filter(adminUser).async { implicit stok =>
-    if(! DomGuardian.DISABLED) Future.sequence(
+    if(DomGuardian.ENABLED) Future.sequence(
       WikiReactors.allReactors.keys.map {k=>
-        startCheck (k, stok.au)
+        if(DomGuardian.enabled(k)) startCheck (k, stok.au)
+        else Future.successful(DomGuardian.EMPTY_REPORT)
       }
     ).map {x=>
       Redirect(s"""/diesel/reportAll""")
