@@ -32,7 +32,7 @@ the actual form contents are in wikiFormInt
   <h1 style="color:blue">Processing the form... please wait!</h1>
 }
 
-@page.exists(_.form.canEdit)
+<!-- canEdit: @page.exists(_.form.canEdit) -->
 
   <form id="wikiForm-@fid" action="@getaction" method="POST">
 
@@ -53,7 +53,7 @@ the actual form contents are in wikiFormInt
         } else {
           <input type="submit" name="save_button" value="Save for later" class="btn btn-info">
           <input type="submit" name="submit_button" value="Submit for approval" class="btn btn-success">
-          <strong>Please <font style="color : red">save or submit</font> before leaving this page!</strong>
+          <strong>Please <font style="color : red">save </font> before leaving this page!</strong>
         }
       } else {
         @** coach can edit questionaire *@
@@ -83,8 +83,9 @@ the actual form contents are in wikiFormInt
 @formFix(page.toList.flatMap(_.form.fields.values.filter(_.attributes.get("type").exists(_ == "date"))).map(_.name).toSeq)
 
 <script>
-  withJquery(function($) {
-@if(simple) {
+withJquery(function($) {
+
+  @if(simple) {
 // this is the id of the form
   $('#wikiForm-@fid').submit(function(e) {
     var sub1 = $("#wikiForm-@fid > input[type=submit][clicked=true]").attr("name");
@@ -118,7 +119,7 @@ the actual form contents are in wikiFormInt
 
 }
 
-  // submit automatically after validation
+// submit automatically after validation
 @if(page.exists(_.fields.contains("weRedirectPlease"))) {
   $('#wikiForm-@fid').submit();
 }

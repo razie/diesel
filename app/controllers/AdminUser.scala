@@ -257,7 +257,7 @@ class AdminUser extends AdminBase {
             var ok=true
             razie.db.tx("umodnote", stok.au.get.userName) { implicit txn =>
                 if(uname startsWith "+")
-                  Profile.updateUser(u, u.addModNote(stok.realm, uname))
+                  Profile.updateUser(u, u.addModNote(stok.realm, uname.drop(1)))
                 else if(uname startsWith "-")
                   Profile.updateUser(u, u.removeModNote(stok.realm, uname))
                 else

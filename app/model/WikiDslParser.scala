@@ -10,20 +10,10 @@ import mod.diesel.model.Diesel
 import org.bson.types.ObjectId
 import razie.tconf.parser.{LazyState, SState}
 import razie.wiki.model.{WikiEntry, WikiUser}
-import razie.{cdebug, clog, cout}
-
-import scala.collection.mutable.ListBuffer
-import scala.util.Try
-import scala.util.matching.Regex.Match
-import scala.util.parsing.combinator.RegexParsers
-import scala.Option.option2Iterable
-import scala.collection.mutable
-import razie.wiki.parser.WAST
 import razie.wiki.parser.ParserBase
 
 /** parse dsl, fiddles and code specific fragments */
 trait WikiDslParser extends ParserBase {
-  import razie.wiki.parser._
   
   def dslWikiProps = wikiPropFiddle | wikiPropJsFiddle | wikiPropDsl
 

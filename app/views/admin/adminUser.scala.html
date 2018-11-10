@@ -36,7 +36,9 @@ screen to admin one user
 <br>  realms: @u.realms.mkString(",")
 <br>  prefs: @u.prefs | @u.forRealm(stok.realm).prefs
 <br>  _id: @u.id
-  <br> ur: @u.realmSet.mkString("<br>")
+  <br> ur: <br> @u.realmSet.map{t=>
+  <b>@t._1</b> -> @t._2 <br>
+  }
 }
 <p>
 @user.map(_.profile)
