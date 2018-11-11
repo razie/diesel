@@ -35,11 +35,13 @@ class AdminAudit extends AdminBase {
   }
 
   def clearauditAll(msg: String) = FA { implicit request =>
+    val MAX = 3000
+
     //filter or all
     if (msg.length > 0)
-      RazMongo("Audit").find(Map("msg" -> msg)).sort(MongoDBObject("when" -> -1)).take(1000).map(_.get("_id").toString).toList.foreach(ClearAudits.clearAudit(_, auth.get.id))
+      RazMongo("Audit").find(Map("msg" -> msg)).sort(MongoDBObject("when" -> -1)).take(MAX).map(_.get("_id").toString).toList.foreach(ClearAudits.clearAudit(_, auth.get.id))
     else
-      RazMongo("Audit").findAll().sort(MongoDBObject("when" -> -1)).take(1000).map(_.get("_id").toString).toList.foreach(ClearAudits.clearAudit(_, auth.get.id))
+      RazMongo("Audit").findAll().sort(MongoDBObject("when" -> -1)).take(MAX).map(_.get("_id").toString).toList.foreach(ClearAudits.clearAudit(_, auth.get.id))
     Redirect("/razadmin/audit#bottom")
   }
 

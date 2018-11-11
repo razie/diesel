@@ -40,7 +40,12 @@ object DomGuardian extends Logging {
   val ONAUTO = false // todo make it conf somewhere, so we can turn it off online too
 
   def enabled(realm:String) = ENABLED
-  def onAuto(realm:String) = ONAUTO
+
+  def onAuto(realm:String) = realm match {
+    case "specs" | "wiki" | "XXXherc-cc" => true
+
+    case _ => ONAUTO
+  }
 
   def setHostname(ctx: SimpleECtx)(implicit stok: RazRequest): Unit = {
     ctx._hostname =
@@ -128,6 +133,7 @@ object DomGuardian extends Logging {
                  iroot: Option[DomAst],
                  justTests: Boolean,
                  au: Option[User],
+                 description:String,
                  useTheseStories: List[WikiEntry] = Nil,
                  addFiddles: Boolean = false) = {
     val uid = au.map(_._id).getOrElse(new ObjectId())
@@ -209,7 +215,7 @@ object DomGuardian extends Logging {
     addStoryToAst(root, stories, justTests, false, addFiddles)
 
     // start processing all elements
-    val engine = DieselAppContext.mkEngine(dom, root, settings, ipage :: pages map WikiDomain.spec)
+    val engine = DieselAppContext.mkEngine(dom, root, settings, ipage :: pages map WikiDomain.spec, description )
     //    engine.ctx._hostname = settings.node
     //    setHostname(engine.ctx)
 
@@ -320,6 +326,7 @@ object DomGuardian extends Logging {
         None,
         false,
         au,
+        "Guardian:"+realm,
         stories,
         addFiddles
       )

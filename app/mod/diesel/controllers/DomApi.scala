@@ -257,7 +257,8 @@ class DomApi extends DomApiBase  with Logging {
         root,
         settings,
         // storyPage may be a temp fiddle, so first try the story WID
-        ipage :: pages ::: useThisSpecPage ::: useThisStory.flatMap(_.page).orElse(useThisStoryPage).toList map WikiDomain.spec
+        ipage :: pages ::: useThisSpecPage ::: useThisStory.flatMap(_.page).orElse(useThisStoryPage).toList map WikiDomain.spec,
+        "irunDom:"+path
       )
 
       setHostname(engine.ctx.root)
@@ -405,7 +406,7 @@ class DomApi extends DomApiBase  with Logging {
     addStoryToAst(root, List(ipage))
 
     // start processing all elements
-    val engine = DieselAppContext.mkEngine(dom plus idom, root, settings, ipage :: pages map WikiDomain.spec)
+    val engine = DieselAppContext.mkEngine(dom plus idom, root, settings, ipage :: pages map WikiDomain.spec, "runDom:"+msg)
 
     engine.process.map { engine =>
 
@@ -487,6 +488,7 @@ class DomApi extends DomApiBase  with Logging {
         None,
         false,
         stok.au,
+        "DomApi.runRest:"+path,
         // empty story so nothing is added to root
         List(new WikiEntry("Story", "temp", "temp", "md", "", uid, Seq("dslObject"), reactor))
       )
@@ -657,7 +659,8 @@ class DomApi extends DomApiBase  with Logging {
       stok.realm,
       None,
       false,
-      stok.au)
+      stok.au,
+    "DomApi.proxy")
 
     val q = stok.req.queryString.map(t => (t._1, t._2.mkString))
 
@@ -740,7 +743,10 @@ class DomApi extends DomApiBase  with Logging {
       val x =
         asts.map(a=>
           s"""
-             |<td><a href="/diesel/viewAst/${a.id}">${a.id}</a></td><td>${a.stream}</td><td>${a.dtm}</td>
+             |<td><a href="/diesel/viewAst/${a.id}">${a.id}</a></td>
+             |<td>${a.stream}</td>
+             |<td>${a.dtm}</td>
+             |<td>${a.engine.description}</td>
              |""".stripMargin).mkString(
           s"""
              |<table>
@@ -784,7 +790,7 @@ class DomApi extends DomApiBase  with Logging {
       execMode = "sync"
     )
 
-    val engine = prepEngine(xid, settings, reactor, Some(root), true, stok.au)
+    val engine = prepEngine(xid, settings, reactor, Some(root), true, stok.au, "DomApi.postAst")
 
     // decompose test nodes and wait
     engine.processTests.map { engine =>
@@ -1034,7 +1040,8 @@ class DomApi extends DomApiBase  with Logging {
       stok.realm,
       None,
       false,
-    stok.au)
+    stok.au,
+    "DomApi.navigate")
 
     val msgs = RDExt.summarize(engine.dom).toList
 
@@ -1281,7 +1288,7 @@ class DomApi extends DomApiBase  with Logging {
     val idom = WikiDomain.domFrom(ipage).get.revise addRoot
 
     // start processing all elements
-    val engine = DieselAppContext.mkEngine(dom, root, settings, ipage :: pages map WikiDomain.spec)
+    val engine = DieselAppContext.mkEngine(dom, root, settings, ipage :: pages map WikiDomain.spec, "anonRunFiddle")
     setHostname(engine.ctx.root)
 
     // decompose all tree or just testing? - if there is a capture, I will only test it
@@ -1442,10 +1449,10 @@ Guardian report<a href="/wiki/Guardian_Guide" ><sup><span class="glyphicon glyph
     else Future.successful(Ok("GUARDIAN DISABLED"))
   }
 
-  def pluginAction (plugin:String, action:String, epath:String) = Filter(activeUser).async { implicit stok =>
+  def pluginAction (plugin:String, conn:String, action:String, epath:String) = Filter(activeUser).async { implicit stok =>
     Future.successful {
       val url = "http" + (if(stok.secure) "s" else "") + "://" + stok.hostPort
-      val c = WikiDomain(stok.realm).plugins.find(_.name == plugin).map(_.doAction(WikiDomain(stok.realm).rdom, action, url, epath)).mkString
+      val c = WikiDomain(stok.realm).plugins.find(_.name == plugin).map(_.doAction(WikiDomain(stok.realm).rdom, conn, action, url, epath)).mkString
 
       if(c.startsWith("<"))
         Ok(c).as("text/html")

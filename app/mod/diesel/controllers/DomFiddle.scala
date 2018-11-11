@@ -313,7 +313,7 @@ object DomFiddles extends DomApi with Logging {
     val idom = WikiDomain.domFrom(ipage).get.revise addRoot
 
     // start processing all elements
-    val engine = DieselAppContext.mkEngine(dom, root, settings, ipage :: pages map WikiDomain.spec)
+    val engine = DieselAppContext.mkEngine(dom, root, settings, ipage :: pages map WikiDomain.spec, "fiddleStoryUpdated")
     setHostname(engine.ctx.root)
 
     // decompose all tree or just testing? - if there is a capture, I will only test it
