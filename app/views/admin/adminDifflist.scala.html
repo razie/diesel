@@ -66,7 +66,7 @@ purge audit tables
         @if(t._1.cat != "ReactorMod" || t._1.realm == t._2.realm) {
           <a
           xhref="#"
-          onclick="applyDif('@t._2.id', '@routes.AdminDiff.applyDiffToRemote(toRealm, remote, WID(t._2.cat, t._2.name).r(t._2.realm))')"
+          onclick="applyDif('@t._2.id', '@routes.AdminDiff.applyDiffTo(toRealm, remote, WID(t._2.cat, t._2.name).r(t._2.realm))')"
           class="btn btn-xs btn-@{if(t._3=="L") "success" else "warning"}"
           >USE LOCAL &raquo;</a>
         }
@@ -88,7 +88,7 @@ purge audit tables
         @if(t._1.cat != "ReactorMod") {
           <a
           xhref="#"
-          onclick="applyDif('@t._2.id', '@routes.AdminDiff.applyDiffFromRemote(toRealm, remote, WID(t._2.cat, t._2.name).r(t._2.realm))')"
+          onclick="applyDif('@t._2.id', '@routes.AdminDiff.applyDiffFrom(toRealm, remote, WID(t._2.cat, t._2.name).r(t._2.realm))')"
           class="btn btn-xs btn-@{if(t._3=="R") "success" else "warning"}"
           >	&laquo; USE REMOTE</a>
         }
@@ -117,7 +117,7 @@ purge audit tables
       <td>
       @if(wea.cat != "Reactor") {
           <a
-          onclick="applyDif('@wea.id', '@routes.AdminDiff.applyDiffFromRemote(toRealm, remote, WID(wea.cat, wea.name).r(wea.realm))')"
+          onclick="applyDif('@wea.id', '@routes.AdminDiff.applyDiffFrom(toRealm, remote, WID(wea.cat, wea.name).r(wea.realm))')"
           class="btn btn-xs btn-success"
           >	&laquo; USE REMOTE</a>
       }
@@ -138,7 +138,7 @@ purge audit tables
         @if(wea.cat != "Reactor") {
           <a
           xhref="x"
-          onclick="applyDif('@wea.id', '@routes.AdminDiff.applyDiffToRemote(toRealm, remote, WID(wea.cat, wea.name).r(wea.realm))')"
+          onclick="applyDif('@wea.id', '@routes.AdminDiff.applyDiffTo(toRealm, remote, WID(wea.cat, wea.name).r(wea.realm))')"
           class="btn btn-xs btn-success"
           >USE LOCAL &raquo;</a>
         }

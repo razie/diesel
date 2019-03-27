@@ -11,6 +11,8 @@ import scala.util.Try
 
 /**
   * Created by raz on 2016-12-21.
+  *
+  * todo save the discount in the cart, as a record, on checkout
   */
 case class Cart (
   userId  : ObjectId,     // per user
@@ -20,6 +22,7 @@ case class Cart (
   state : String = Cart.STATE_CREATED,
   archived : Boolean = false,
   cartRedirect : Option[String] = None, // redirect at end of payment.
+  discount : Option[Int] = None, // discount perc, if any
   crDtm   : DateTime = DateTime.now,
   updDtm  : DateTime = DateTime.now,
   _id     : ObjectId = new ObjectId()

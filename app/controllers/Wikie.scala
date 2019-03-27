@@ -957,6 +957,24 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
     Msg("OK, page " + wid.wpath + " reported!", wid)
   }
 
+  def wikieCreate(cats: String, tags:String) = FAUR("wikieCreate") {implicit stok =>
+    val name = ""
+    for (
+      au <- stok.au;
+      isMember <- (au.realms.contains(stok.realm) || au.isAdmin) orErr "not a website member"; // member
+      can <- (stok.website.membersCanCreateTopics || au.isMod) orErr "members can't create topics"; // member
+      cat <- CAT.unapply(cats);
+      wcat<- Wikis(cat.realm getOrElse getRealm()).category(cat.cat) orElse Wikis(cat.realm getOrElse getRealm()).category("Topic") orErr s"category ${cat.cat} not found"
+    ) yield {
+      val realm = getRealm(cat.realm.mkString)
+      ROK.k apply { implicit stok =>
+        assert(stok.realm == (cat.realm getOrElse stok.realm))
+        // use whatever cat I found...
+        views.html.wiki.wikieCreate(wcat.name, tags:String)
+      }
+    }
+  }
+
   /** POSTed from category, has name -> create topic in edit mode */
   def addWithName(cat: String, tags:String) = FAU {
     implicit au => implicit errCollector => implicit request =>
@@ -1223,24 +1241,6 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
         views.html.wiki.wikieLike(w.wid, Some(w))
       }
     }
-  }
-
-  def wikieCreate(cats: String, tags:String) = FAUR("wikieCreate") {implicit stok =>
-      val name = ""
-      for (
-        au <- stok.au;
-        isMember <- (au.realms.contains(stok.realm) || au.isAdmin) orErr "not a website member"; // member
-        can <- (stok.website.membersCanCreateTopics || au.isMod) orErr "members can't create topics"; // member
-        cat <- CAT.unapply(cats);
-        wcat<- Wikis(cat.realm getOrElse getRealm()).category(cat.cat) orElse Wikis(cat.realm getOrElse getRealm()).category("Topic") orErr s"category ${cat.cat} not found"
-      ) yield {
-        val realm = getRealm(cat.realm.mkString)
-        ROK.k apply { implicit stok =>
-          assert(stok.realm == (cat.realm getOrElse stok.realm))
-          // use whatever cat I found...
-          views.html.wiki.wikieCreate(wcat.name, tags:String)
-        }
-      }
   }
 
   /** mark a wiki as reserved - only admin can edit */

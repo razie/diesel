@@ -23,7 +23,7 @@ context is passed back to the callback
 @rows = @{
   val line = myForm("content").value.getOrElse("")
   val k = line.length() - line.replace("\n", "").length()
-  if(k > 10) 15 else if(k > 5) 10 else 5
+  if(k > 10) 15 else 10 //if(k > 5) 10 else 5
 }
 
 @saveLabel()=@{

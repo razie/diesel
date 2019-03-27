@@ -211,7 +211,7 @@ class ProfileUpd @Inject() (config:Configuration) extends RazController with Log
             t <- SecLink.findAndDelete(t);
             pwdCorrect <- {
               // sometimes the password plus ADMIN doesn't work...
-              (if (Enc(o) == au.pwd || ("ADMIN" + au._id.toString.reverse == o)) Some(true) else None) orErr ("Password incorrect!")
+              (if (Enc(o) == au.pwd || ("ADMIN" + au._id.toString == o)) Some(true) else None) orErr ("Password incorrect!")
               // the second form is hack to allow me to reset it
             }
           ) yield {
@@ -228,7 +228,7 @@ class ProfileUpd @Inject() (config:Configuration) extends RazController with Log
       })
   }
 
-  def forgot(implicit request: Request[_]) = Form {
+  def forgotForm(implicit request: Request[_]) = Form {
     tuple(
       "email" -> text.verifying("Wrong format!", vldEmail(_)).verifying("Invalid characters", vldSpec(_)),
       "token" -> text,
@@ -241,12 +241,12 @@ class ProfileUpd @Inject() (config:Configuration) extends RazController with Log
 
   def doeForgotPass = RAction { implicit stok =>
     ROK.k apply {
-      views.html.user.doeProfilePassForgot1(forgot.fill("", SecLink("forgotpass").token, ""))
+      views.html.user.doeProfilePassForgot1(forgotForm.fill("", SecLink("forgotpass").token, ""))
     }
   }
 
   def doeForgotPass2 = RAction { implicit stok =>
-    forgot.bindFromRequest.fold(
+    forgotForm.bindFromRequest.fold(
       formWithErrors => ROK.k badRequest {
         views.html.user.doeProfilePassForgot1(formWithErrors)
       },
@@ -255,13 +255,14 @@ class ProfileUpd @Inject() (config:Configuration) extends RazController with Log
         SecLink.findAndDelete(t).map { sl =>
           Users.findUserByEmailDec(e).map { au =>
             Emailer.withSession(stok.realm) { implicit mailSession =>
-              Audit.logdb("RESET_PWD", "request for " + e)
+              Audit.logdb("RESET_PWD_SENT", "request for " + e)
               Tasks.sendEmailReset(au)
             }
+            Msg2("Please check your email!")
           } getOrElse {
             Audit.logdb("ERR_RESET_PWD", "email not found " + e)
+            Msg2("If you don't receive an email shortly, this email is likely not registered - please verify the email or create an account! If you need some help, please send us a note via Support, below!")
           }
-          Msg2("Please check your email!")
         } getOrElse {
           Audit.logdb("ERR_RESET_PWD", "token not found " + e)
           // todo ban the IP
@@ -308,7 +309,7 @@ class ProfileUpd @Inject() (config:Configuration) extends RazController with Log
             au <- Users.findUserById(id)
           ) yield {
               Profile.updateUser(au, au.copy(pwd=Enc(n)))
-            Audit.logdb("RESET_PWD_DONE", "request for " + au.userName)
+            Audit.logdb("RESET_PWD_DONE", "request for " + au.emailDec + " - " + au.userName)
             Emailer.withSession(stok.realm) { implicit mailSession =>
               // todo use email template
               mailSession.send(au.emailDec, Config.SUPPORT, "Password was changed", "Your password was changed!")

@@ -9,6 +9,8 @@ edit a wiki page
 
 @import play.mvc.Http.Context.Implicit
 
+<!-- wikiEditOld -->
+
 @stok.title("Editing "+wid.cat+":"+ wid.name)
 @stok.requireJs(false)
 
@@ -431,6 +433,7 @@ var domContentAssist=[];
 var instContentAssist=[];
 
 var domChanged=true;
+var firstPreview=true;
 var instChanged=false;
 var captureChanged=true;
 
@@ -465,8 +468,11 @@ myattachAce = function() {
     instChanged=true;
   });
 
+  console.log("tick " + firstPreview);
+
   aceTimer = setInterval(function(){
-    if(instChanged) {
+    if(firstPreview || instChanged) {
+      firstPreview=false;
       instChanged=false;
       livePreview();
     }
@@ -876,6 +882,13 @@ function runpill2 (id) {
           }
         });
   }
+
+// setInterval(function(){
+    if(firstPreview) {
+      firstPreview=false;
+      livePreview();
+    }
+  // },100);
 
 //}); - if I remove these, it goes berserk
 }); // withJquery

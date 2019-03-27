@@ -60,7 +60,7 @@ class Wikil @Inject() (config:Configuration) extends WikieBase {
         else stok.au
       };
       uwid <- wid.uwid orErr ("can't find uwid");
-      r1 <- au.hasPerm(Perm.uProfile) orCorr cNoPermission("uProfile - probably need to validate email")
+      r1 <- (au.hasPerm(Perm.uProfile) || stok.au.exists(_.isAdmin)) orCorr cNoPermission("uProfile - probably need to validate email")
     ) yield {
       if (WikiDomain(wid.getRealm).isA("Club", wid.cat) && really != "y") {
         def hasRegs =

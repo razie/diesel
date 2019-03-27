@@ -1,12 +1,10 @@
 package mod.diesel.controllers
 
-import java.util.regex.Pattern
-
-import difflib.{DiffUtils, Patch}
-import DomGuardian.{addStoryToAst, prepEngine, startCheck}
 import controllers.RazRequest
+import difflib.{DiffUtils, Patch}
+import mod.diesel.controllers.DomGuardian.{addStoryToAst, catPages, prepEngine, startCheck}
+import razie.diesel.utils.DomHtml.quickBadge
 import mod.diesel.controllers.DomSessions.Over
-import razie.diesel.engine.RDExt._
 import mod.diesel.model._
 import mod.diesel.model.exec.EESnakk
 import model._
@@ -18,6 +16,7 @@ import play.twirl.api.Html
 import razie.audit.Audit
 import razie.diesel.dom.RDOM.{NVP, P}
 import razie.diesel.dom._
+import razie.diesel.engine.RDExt._
 import razie.diesel.engine._
 import razie.diesel.ext._
 import razie.diesel.utils.{DomCollector, SpecCache}
@@ -32,7 +31,6 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future}
 import scala.util.Try
-import mod.diesel.controllers.DomGuardian.catPages
 
 /** the incoming message / request
   *
@@ -157,6 +155,7 @@ class DomApi extends DomApiBase  with Logging {
         // multiple values as json
         var m = Map(
           "values" -> Map.empty,
+          "totalCount" -> 0,
           "failureCount" -> 0,
           "errors" -> errors.toList
         )
@@ -310,7 +309,7 @@ class DomApi extends DomApiBase  with Logging {
 
           if (oattrs.isEmpty) {
             val msgFound = if (omsgs.isEmpty) "msg NOT found" else "message found"
-            errors append s"Can't find the spec for $e.$a return type ($msgFound) !"
+            errors append s"WARNING - Can't find the spec for $e.$a return type ($msgFound) !"
           }
 
           import razie.diesel.ext.stripQuotes
@@ -332,6 +331,7 @@ class DomApi extends DomApiBase  with Logging {
             // multiple values as json
             var m = Map(
               "values" -> values.toMap,
+              "totalCount" -> (engine.totalTestCount),
               "failureCount" -> engine.failedTestCount,
               "errors" -> errors.toList,
               "dieselTrace" -> DieselTrace(root, settings.node, engine.id, "diesel", "runDom", settings.parentNodeId).toJson
@@ -433,6 +433,7 @@ class DomApi extends DomApiBase  with Logging {
       var m = Map(
         "value" -> values.headOption.map(_._2).map(stripQuotes).getOrElse(""),
         "values" -> values.toMap,
+        "totalCount" -> (engine.totalTestCount),
         "failureCount" -> engine.failedTestCount,
         "errors" -> errors.toList,
         "root" -> root,
@@ -545,10 +546,10 @@ class DomApi extends DomApiBase  with Logging {
       } else msg.map {msg=>
 
         RDExt.addMsgToAst(engine.root, msg)
+        DomCollector.collectAst("runRest", engine.id, engine, stok.uri)
 
         // process message
         val res = engine.process.map { engine =>
-          DomCollector.collectAst("runRest", engine.id, engine, stok.uri)
 
           clog << s"Engine done ... ${engine.id}"
 
@@ -745,6 +746,7 @@ class DomApi extends DomApiBase  with Logging {
           s"""
              |<td><a href="/diesel/viewAst/${a.id}">${a.id}</a></td>
              |<td>${a.stream}</td>
+             |<td>${a.engine.status}</td>
              |<td>${a.dtm}</td>
              |<td>${a.engine.description}</td>
              |""".stripMargin).mkString(
@@ -791,13 +793,14 @@ class DomApi extends DomApiBase  with Logging {
     )
 
     val engine = prepEngine(xid, settings, reactor, Some(root), true, stok.au, "DomApi.postAst")
+    DomCollector.collectAst(stream, xid, engine)
 
     // decompose test nodes and wait
     engine.processTests.map { engine =>
-      DomCollector.collectAst(stream, xid, engine)
 
       var ret = Map(
         "ok" -> "true",
+        "totalCount" -> (engine.totalTestCount),
         "failureCount" -> engine.failedTestCount,
         "successCount" -> engine.successTestCount
       )
@@ -955,10 +958,9 @@ class DomApi extends DomApiBase  with Logging {
 
       // extract parms from request
       if(verb == "GET" || verb == "POST") {
-        val p = if (verb == "GET") {
-          // query parms for GET
-          stok.query.filter(x => !DomEngineSettings.FILTER.contains(x._1))
-        } else if (verb == "POST") {
+        // query parms for GET
+        val pQuery = stok.query.filter(x => !DomEngineSettings.FILTER.contains(x._1))
+        var pPost = if (verb == "POST") {
           if (requestContentType.exists(_ == "text/plain") && !body.trim.startsWith("{")) {
             // plain text - see who can parse this later, snakkers etc
             Map("request" -> body)
@@ -987,7 +989,13 @@ class DomApi extends DomApiBase  with Logging {
 
         } else Map.empty
 
-        val parms = p ++ DomEngineHelper.parmsFromRequestHeader(stok.req, content)
+        // if it's a fiddle, filter more stuff
+        if(stok.query.contains("dfiddle")) {
+          val f = Array("storyWpath", "reactor", "story", "spec", "specWpath")
+          pPost = pPost.filter(x => !f.contains(x._1))
+        }
+
+        val parms = pQuery ++ pPost ++ DomEngineHelper.parmsFromRequestHeader(stok.req, content)
         parms.map(p => engine.ctx.put(P(p._1, p._2)))
         Some(new EMsg(e, a, parms.map(p => P(p._1, p._2)).toList))
       } else None
@@ -1107,6 +1115,7 @@ class DomApi extends DomApiBase  with Logging {
           case "json" => {
             var m = Map(
               //      "values" -> values.toMap,
+              "totalCount" -> (eng.totalTestCount),
               "failureCount" -> eng.failedTestCount,
               //      "errors" -> errors.toList,
               "dieselTrace" -> DieselTrace(eng.root, eng.settings.node, eng.id, "diesel", "runDom", eng.settings.parentNodeId).toJson,
@@ -1302,21 +1311,13 @@ class DomApi extends DomApiBase  with Logging {
         "res" -> res,
         "capture" -> captureTree,
         "ca" -> RDExt.toCAjmap(dom plus idom), // in blenderMode dom is full
+        "totalCount" -> (engine.totalTestCount),
         "failureCount" -> engine.failedTestCount
       )
 
       retj << m
     }
 
-  }
-
-  def quickBadge(failed:Int, total:Int, duration:Long, all:String="") = {
-    if (failed > 0)
-      s"""<a href="/diesel/report$all"><span class="badge" style="background-color: red" title="Guardian: tests failed ($duration msec)">$failed / $total </span></a>"""
-    else if(total > 0)
-      s"""<a href="/diesel/report$all"><span class="badge" style="background-color: green" title="Guardian: all tests passed ($duration msec)">$total </span></a>"""
-    else
-      s"""<a href="/diesel/report$all"><span class="badge" style="background-color: orange" title="Guardian is offline!"><small>... </small></span></a>"""
   }
 
   /** status badge for current realm */
@@ -1438,7 +1439,7 @@ Guardian report<a href="/wiki/Guardian_Guide" ><sup><span class="glyphicon glyph
 
   /** run another check all reactors */
   def runCheckAll = Filter(adminUser).async { implicit stok =>
-    if(DomGuardian.ENABLED) Future.sequence(
+    if(DomGuardian.ISENABLED) Future.sequence(
       WikiReactors.allReactors.keys.map {k=>
         if(DomGuardian.enabled(k)) startCheck (k, stok.au)
         else Future.successful(DomGuardian.EMPTY_REPORT)

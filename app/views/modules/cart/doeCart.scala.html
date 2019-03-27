@@ -120,6 +120,15 @@ Items:
                     currency : '@acct.balance.currency'
                   },
                   }
+                  @acct.discount.map {discount=>
+                  {
+                    name : 'Discount applied',
+                    description : 'Discount: @discount %',
+                    quantity : '1',
+                    price : '@{(-acct.calcDiscount(cart.total).amount).toString}',
+                    currency : '@cart.currency'
+                  },
+                  }
                   {
                     name : 'Nothing',
                     description : 'Just balancing things out',

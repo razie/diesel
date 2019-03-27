@@ -72,7 +72,7 @@ class WikieBase extends WikiBase {
       "newlabel" -> text.verifying("Obscenity filter", !Wikis.hasBadWords(_)).verifying("Invalid characters", vldSpec(_))) verifying
       ("Name in same category already in use", { t: (String, String) =>
 //        !Wikis(wid.getRealm).index.containsName(Wikis.formatName(t._2))
-        !Wikis(wid.getRealm).index.getWids(Wikis.formatName(t._2)).exists(_.cat == wid.cat)
+        !Wikis(wid.getRealm).index.getWids(Wikis.formatName(t._2)).exists(w=> w.cat == wid.cat && w.getRealm == wid.getRealm)
       })
   }
 

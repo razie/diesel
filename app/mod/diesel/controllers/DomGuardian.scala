@@ -36,15 +36,25 @@ import scala.concurrent.{Future, Promise}
 /** this is the default engine per reactor and user, continuously running all the stories */
 object DomGuardian extends Logging {
 
-  val ENABLED = true // todo make it conf somewhere, so we can turn it off online too
-  val ONAUTO = false // todo make it conf somewhere, so we can turn it off online too
+  // todo optimize so we don't parse every time
+  def autoRealms = Config.prop("diesel.guardian.auto.realms", "wiki,specs").split(",")
+  def enabledRealms = Config.prop("diesel.guardian.enabled.realms", "wiki,specs").split(",")
 
-  def enabled(realm:String) = ENABLED
+  def ISAUTO = Config.prop("diesel.guardian.auto", "true").toBoolean
+  def ISENABLED = Config.prop("diesel.guardian.enabled", "true").toBoolean
 
-  def onAuto(realm:String) = realm match {
-    case "specs" | "wiki" | "XXXherc-cc" => true
+  def enabled(realm:String) = ISENABLED && {
+    realm match {
+      case "specs" | "wiki" => true
+      case _ => enabledRealms.contains(realm)
+    }
+  }
 
-    case _ => ONAUTO
+  def onAuto(realm:String) = ISAUTO && {
+    realm match {
+      case "specs" | "wiki" => true
+      case _ => ISAUTO && autoRealms.contains(realm)
+    }
   }
 
   def setHostname(ctx: SimpleECtx)(implicit stok: RazRequest): Unit = {
@@ -267,7 +277,8 @@ object DomGuardian extends Logging {
 
                 // re run all tests for current realm
                 // todo also cancel existing workflows
-                if(enabled(realm) && onAuto(realm)) DomGuardian.lastRuns.filter(_._2.realm == we.realm).headOption.map { t =>
+                if(enabled(realm) && onAuto(realm))
+                  DomGuardian.lastRuns.filter(_._2.realm == we.realm).headOption.map { t =>
                   val re = "(\\w*)\\.(\\w*)".r
                   val re(realm, uname) = t._1
                   startCheck(t._2.realm, Users.findUserByUsername(uname))
@@ -279,9 +290,13 @@ object DomGuardian extends Logging {
       }
     }
 
-    if(! enabled(realm)) throw new IllegalStateException("GUARDIAN IS DISABLED")
+    if(! enabled(realm)) {
+      throw new IllegalStateException("GUARDIAN IS DISABLED")
+    }
 
     clog << s"DIESEL startCheck ${realm} for ${au.map(_.userName)}"
+
+    // these are debounced in there...
     DomGuardian.runReq(au, realm)
   }
 
@@ -293,7 +308,7 @@ object DomGuardian extends Logging {
     def run : Future[Report]  = DomGuardian.synchronized {
       val started = System.currentTimeMillis()
 
-      log("RunReq.run() start")
+      log(s"RunReq.run() start $realm")
 
       val settings = mkSettings()
       settings.tagQuery = Website.forRealm(realm).flatMap(_.prop("guardian.settings.query"))
@@ -326,14 +341,15 @@ object DomGuardian extends Logging {
         None,
         false,
         au,
-        "Guardian:"+realm,
+        s"Guardian:${realm}.${au.map(_.userName).mkString}",
         stories,
         addFiddles
       )
 
+      DomCollector.collectAst("guardian", engine.id, engine)
+
       // decompose all nodes, not just the tests
       val fut = engine.process.map { engine =>
-        DomCollector.collectAst("guardian", engine.id, engine)
 
         val failed = engine.failedTestCount
         val success = engine.successTestCount
@@ -390,19 +406,26 @@ object DomGuardian extends Logging {
 
   /** if no test is currently running, start one */
   def runReq(au: Option[User], realm: String): Future[Report] = DomGuardian.synchronized {
-    logger.debug("GuardianActor received a RunReq")
     val rr = RunReq (au, au.map(_.userName).mkString, realm)
     val k = rr.realm + "." + rr.userName
+    logger.debug(s"GuardianActor received a RunReq $k")
 
-    debouncer.find(_._1 == k).filter(! _._3.isCompleted).map {rr=>
+    logger.debug("GuardianActor - debouncer before: " + debouncer.map(x=> x._1 + ":done=" + x._3.isCompleted).mkString(" , "))
+
+    val ret = debouncer.find(_._1 == k).filter(! _._3.isCompleted).map {rr=>
+      logger.debug(s"GuardianActor.RunReq ${rr._1} - reused in progress ")
       rr._3 // one in progress, return its Future
     } getOrElse {
+      logger.debug(s"GuardianActor.RunReq ${rr.realm}.${rr.userName} - append to debouncer")
       // maybe clean
-      debouncer = debouncer.filter(_._1 == k)
+      debouncer = debouncer.filter(_._1 != k)
       val fut = rr.run
       debouncer.append((k, rr, fut))
       fut
     }
+
+    logger.debug("GuardianActor - debouncer after: " + debouncer.map(x=> x._1 + ":done=" + x._3.isCompleted).mkString(" , "))
+    ret
   }
 
   lazy val worker = Akka.system.actorOf(Props[GuardianActor], name = "GuardianActor")
@@ -431,7 +454,8 @@ object DomGuardian extends Logging {
         lastRun.put(r.realm + "." + r.userName, r)
 
         val k = r.realm+"."+r.userName
-        debouncer = debouncer.filter(_._1 == k)
+        debouncer = debouncer.filter(_._1 != k)
+        logger.debug("GuardianActor - debouncer after report: " + debouncer.map(x=> x._1 + ":done=" + x._3.isCompleted).mkString(" , "))
       }
     }
   }

@@ -111,9 +111,7 @@ class WikiAsyncObservers extends Actor {
   def clusterize(ev: WikiEvent[_]) = {
     if (
       Services.config.clusterMode == "yes" &&
-        ev.action == WikiAudit.CREATE_WIKI ||
-        ev.action == WikiAudit.DELETE_WIKI ||
-        ev.action == WikiAudit.UPD_EDIT    ||
+        WikiAudit.isUpd(ev.action) ||
         ev.action == "AUTH_CLEAN"
     )
       pubSub ! BCast(ev)

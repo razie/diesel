@@ -137,7 +137,7 @@ object Tasks extends RazController with Logging {
   def sendToParentAdd(to: String, from: String, childEmail: String, childName: String, link: String)(implicit mailSession: MailSession) {
     val html = Emailer.text("parentadd").format(childName, childEmail.dec, EncUrl(to), EncUrl(to), link);
 
-    mailSession.send(to, from, "Racer Kid parent - please activate your account", html.replaceAll("www.racerkidz.com", Services.config.hostport))
+    mailSession.send(to, from, "Racer Kid parent - please activate your account", html.replaceAll("www.razie.com", Services.config.hostport))
   }
 
   /** step 3 - parent clicked on email link to add child */

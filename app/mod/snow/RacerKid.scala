@@ -30,6 +30,7 @@ case class RkHistory (
   content:Option[String]=None, // reply to eId
   tags:Option[String]=None, // reply to eId
   crDtm: DateTime = DateTime.now,
+  toRkId: Option[ObjectId] = None, // If this is a not/message TO someone, then this is to whom
   _id: ObjectId = new ObjectId()) extends REntity[RkHistory] {
 }
 
@@ -97,6 +98,8 @@ case class RacerKidInfo(
   ownerId: ObjectId, // owner user id - user that created/owns this info: parent or club or ... even club admin?
   crDtm: DateTime = DateTime.now,
   _id: ObjectId = new ObjectId()) extends REntity[RacerKidInfo] with TPersonInfo {
+
+  def organization : Option[String] = None
 
   def emailDec : String = email.dec
 

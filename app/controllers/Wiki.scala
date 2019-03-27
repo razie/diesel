@@ -111,6 +111,9 @@ object Wiki extends WikiBase {
     Ok("["+(c1).map(s=>s""" "${s.replaceAllLiterally("_", " ")}" """).mkString(",")+"]").as("text/json")
   }
 
+  /** max size returned from searches */
+  def MAX_LIST = Config.prop("wiki.search.max", "1000").toInt
+
   //TODO optimize - index or whatever
   /** search all topics - provide either q or curTags
     *
@@ -140,7 +143,7 @@ object Wiki extends WikiBase {
 
     val wl : List[WikiEntry] =
       if(qi.length() > 3 || isTagOnly || auth.exists(_.isAdmin))
-        WikiSearch.getList(realm, q, scope, curTags, 500)
+        WikiSearch.getList(realm, q, scope, curTags, MAX_LIST)
       else
         Nil
 

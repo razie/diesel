@@ -71,7 +71,7 @@ function setAst_@{id} (noreload) {
   if(link && link.indexOf('href=\"') > 0) {
     var url = link.replace(/.*href="([^"]*).*/, "$1").replace(/resultMode=[^&]*/, "resultMode=treeHtml");
     if(content_@{id}.indexOf('$mock') == 0 ) {
-      // just aone line, could be a mock and these are ignored in storymode
+      // just one line, could be a mock and these are ignored in storymode
       OLDrunpill2_@id ('@id', url, noreload);
     } else if(linkArray.length > 1 || content_@{id}.indexOf('$expect') >= 0 ) {
       // normal story

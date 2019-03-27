@@ -15,33 +15,34 @@ screen to admin one user
 <br>  _id: @p._id
 }
 
+@stok.title("admin user")
 
-  @stok.title("admin user")
+<h2>User</h2>
 
-    <h2>User</h2>
-
-@user.toString
-<p>
 @user.map {u=>
-<br>userName:@u.userName
-<br>firstName:@u.firstName
-<br> lastName:@u.lastName
-<br> yob: @u.yob
-<br>  email: @razie.wiki.Enc.unapply(u.email)
-<br>  emailenc: @u.email
-<br>  pwd: @u.pwd
-<br>  status: @u.status
-<br>  perms: @u.perms | @u.forRealm(stok.realm).perms
-<br>  roles: @u.roles.mkString(",") | @u.forRealm(stok.realm).roles.mkString(",")
-<br>  realms: @u.realms.mkString(",")
-<br>  prefs: @u.prefs | @u.forRealm(stok.realm).prefs
-<br>  _id: @u.id
+  <br>userName:@u.userName
+  <br>Name:@u.firstName @u.lastName
+  <br>yob: @u.yob
+  <br>email: @razie.wiki.Enc.unapply(u.email)
+  <br>About: @u.prefs.get("about")
+  <br>
+  <br>status: @u.status
+  <br>  perms: @u.perms | @u.forRealm(stok.realm).perms
+  <br>  roles: @u.roles.mkString(",") | @u.forRealm(stok.realm).roles.mkString(",")
+  <br>  realms: @u.realms.mkString(",")
+  <br>  prefs: @u.prefs | @u.forRealm(stok.realm).prefs
+  <br>  _id: @u.id
   <br> ur: <br> @u.realmSet.map{t=>
-  <b>@t._1</b> -> @t._2 <br>
+    <b>@t._1</b> -> @t._2 <br>
   }
 }
+
 <p>
-@user.map(_.profile)
+<b>toString: </b> @user.toString
+
+<p>
+<b>Profile: </b> @user.map(_.profile)
+
 <p>
 @user.flatMap(_.profile).map(pro(_))
 

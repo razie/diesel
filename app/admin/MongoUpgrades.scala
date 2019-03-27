@@ -114,7 +114,7 @@ object Upgrade5 extends UpgradeDb with razie.Logging {
 
     //    withDb(db("User")) { t =>
     //      for ( u <- t if(!u.containsKey("email"))) {
-    //        u.put("email", Enc("r@racerkidz.com"))
+    //        u.put("email", Enc("r@razie.com"))
     //        t.save(u)
     //      }
     //    }

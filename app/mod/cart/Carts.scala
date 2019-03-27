@@ -99,7 +99,7 @@ object Carts extends RazController with Logging {
   def cartpaid(id: String) = FAUR { implicit request =>
     Cart.findById(new ObjectId(id)).filter(_.state != Cart.STATE_PAID).map { cart =>
       razie.db.tx("cartpaid", request.userName) { implicit txn =>
-        val c = cart.copy(
+        var c = cart.copy(
           items = cart.items.map(_.copy(state = Cart.STATE_PAID)),
           state = Cart.STATE_PAID,
           archived = true
@@ -118,6 +118,10 @@ object Carts extends RazController with Logging {
               request.formParm("amount").toFloat
             } getOrElse 0,
             request.formParm("currency")
+          )
+
+          c = c.copy(
+            discount = acct.discount
           )
 
           acct = acct.add(AcctTxn(

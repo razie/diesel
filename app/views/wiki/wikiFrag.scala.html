@@ -276,12 +276,18 @@ function selectTextareaLine(tarea,lineNum) {
         }
         No entry for a <strong>@wid.cat</strong> named <strong>@nicename</strong> ... <a href="@routes.Wikie.wikieEdit(wid.copy(name=nicename))">create one</a></b>
       } else {
-        <strong>No entry for @wid.name ... you could create one:</strong>
+        @if("Name" equals wid.name) {
+          <strong>Edit the name below and choose a category <br>
+            <small>(Topic is the most common wiki category)</small></strong>
+        } else {
+          <strong>No entry for @wid.name ... you could create one:</strong>
+        }
 
+        <br><br>
         <form action="@routes.Wikie.edit2" method="GET" class="well form-inline">
           <input type="text" name="name" id="name" value="@nicename">
           <select id="cat" name="cat" class="input-small">
-          @prepend(razie.wiki.model.Wikis(wid.getRealm).pageNames("Category").toList.filter(_ != favoriteCat).sortWith(_ < _), favoriteCat).map{x=>
+          @prepend(razie.wiki.model.Wikis(wid.getRealm).cats.keys.toList.filter(_ != favoriteCat).sortWith(_ < _), favoriteCat).map{x=>
             <option value="@x" >@x</option>
           }
           </select>

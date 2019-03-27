@@ -2,12 +2,14 @@ package controllers
 
 import com.google.inject.Singleton
 import com.mongodb.casbah.Imports.IntOk
+import com.mongodb.casbah.MongoCursor
 import com.mongodb.casbah.commons.MongoDBObject
 import org.bson.types.ObjectId
 import org.joda.time.DateTime
 import play.api.mvc.Action
 import razie.audit.ClearAudits
 import razie.db.RazMongo
+import razie.db.RazMongo.RazMongoTable
 
 /** admin the audit tables directly */
 @Singleton
@@ -29,8 +31,16 @@ class AdminAudit extends AdminBase {
     Redirect(routes.AdminAudit.showAudit(""))
   }
 
+  def sortIfCan [T <: MongoCursor] (c : T) = {
+    if(RazMongo("Audit").size < 30000) {
+      c.sort(MongoDBObject("when" -> -1))
+    } else {
+      c
+    }
+  }
+
   def clearauditSome(howMany: Int) = FA { implicit request =>
-    RazMongo("Audit").findAll().sort(MongoDBObject("when" -> -1)).take(howMany).map(_.get("_id").toString).toList.foreach(ClearAudits.clearAudit(_, auth.get.id))
+    sortIfCan(RazMongo("Audit").findAll()).take(howMany).map(_.get("_id").toString).toList.foreach(ClearAudits.clearAudit(_, auth.get.id))
     Redirect(routes.AdminAudit.showAudit(""))
   }
 
@@ -39,9 +49,9 @@ class AdminAudit extends AdminBase {
 
     //filter or all
     if (msg.length > 0)
-      RazMongo("Audit").find(Map("msg" -> msg)).sort(MongoDBObject("when" -> -1)).take(MAX).map(_.get("_id").toString).toList.foreach(ClearAudits.clearAudit(_, auth.get.id))
+      sortIfCan(RazMongo("Audit").find(Map("msg" -> msg))).take(MAX).map(_.get("_id").toString).toList.foreach(ClearAudits.clearAudit(_, auth.get.id))
     else
-      RazMongo("Audit").findAll().sort(MongoDBObject("when" -> -1)).take(MAX).map(_.get("_id").toString).toList.foreach(ClearAudits.clearAudit(_, auth.get.id))
+      sortIfCan(RazMongo("Audit").findAll()).take(MAX).map(_.get("_id").toString).toList.foreach(ClearAudits.clearAudit(_, auth.get.id))
     Redirect("/razadmin/audit#bottom")
   }
 

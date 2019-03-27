@@ -37,10 +37,21 @@ case class Acct
     // todo check that the previous one was done - update lastTxnId and check that it was last
   }
 
-  def payable (cartTotal : Price) = {
-    var total = if(cartTotal.amount > balance.amount) cartTotal.amount - balance.amount else 0
+  /** calc discount to substrct from total */
+  def calcDiscount (cartTotal : Price) = {
+    var total = cartTotal.amount
+    total = discount.map(_ * cartTotal.amount/100).getOrElse(0)
+    Price(total, cartTotal.currency)
+  }
 
+  def payable (cartTotal : Price) = {
+    var total = cartTotal.amount
+
+    // first apply discounts
     total = discount.map(total - _ * total/100).getOrElse(total)
+
+    // then deduct credit balance
+    if(total > balance.amount) total = total - balance.amount else 0
 
     Price(total, cartTotal.currency)
   }

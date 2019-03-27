@@ -14,7 +14,7 @@ import play.api.mvc._
 import play.libs.Akka
 import razie.diesel.dom.WikiDomain
 import razie.diesel.engine.{DieselAppContext, RDExt}
-import razie.diesel.utils.SpecCache
+import razie.diesel.utils.{DomCollector, SpecCache}
 import razie.hosting.Website
 import razie.wiki.Services
 import razie.wiki.admin.Autosave
@@ -172,7 +172,7 @@ object DomFiddles extends DomApi with Logging {
     }
   }
 
-  /** fiddle screen - spec changed, rerun and resend new tree */
+  /** fiddle screen - spec changed, parse spec and send new tree */
   def fiddleSpecUpdated(id: String) = FAUPRAPI(true) { implicit stok=>
     val reactor = stok.formParm("reactor")
     val specWpath = stok.formParm("specWpath")
@@ -315,6 +315,7 @@ object DomFiddles extends DomApi with Logging {
     // start processing all elements
     val engine = DieselAppContext.mkEngine(dom, root, settings, ipage :: pages map WikiDomain.spec, "fiddleStoryUpdated")
     setHostname(engine.ctx.root)
+    DomCollector.collectAst("fiddle", engine.id, engine, stok.uri)
 
     // decompose all tree or just testing? - if there is a capture, I will only test it
     val fut =
@@ -345,6 +346,7 @@ object DomFiddles extends DomApi with Logging {
         "capture" -> captureTree,
         "wiki" -> wiki,
         "ca" -> RDExt.toCAjmap(dom plus idom), // in blenderMode dom is full
+        "totalCount" -> (engine.totalTestCount),
         "failureCount" -> engine.failedTestCount,
         "storyChanged" -> (storyWpath.length > 0 && stw.replaceAllLiterally("\r", "") != story)
       )

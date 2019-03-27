@@ -146,14 +146,14 @@ object RazWikiAuthorization extends RazController with Logging with WikiAuthoriz
       cansee <- canSee(wid, u, w);
       au <- u orCorr cNoAuth;
       isA <- checkActive(au);
-      r1 <- ("Category" != cat || au.hasPerm(Perm.adminWiki)) orErr ("no permission to edit a Category");
-      r2 <- ("Admin" != cat || au.hasPerm(Perm.adminWiki) || we.exists(_.isOwner(au.id))) orErr ("no permission to edit an Admin entry");
-      mine <- ("User" != cat || name == au.userName) orErr ("Can only edit your own public profile!");
+      r1 <- ("Category" != cat || au.isAdmin) orErr ("no permission to edit a Category");
+      r2 <- ("Admin" != cat || au.isMod || we.exists(_.isOwner(au.id))) orErr ("no permission to edit an Admin entry");
+      mine <- ("User" != cat || name == au.userName || au.isAdmin) orErr ("Can only edit your own public profile!");
       mine1 <- ("User" != cat || au.canHasProfile) orErr ("Sorry - you cannot have a public profile - either no parent added or parent does not allow it! \n If you think you should have one, please describe the issue in a  <a href=\"/doe/support?desc=parent+should+allow\">support request</a> below.");
       mine2 <- ("WikiLink" == cat || au.canHasProfile) orErr ("Sorry - you cannot create or edit public topics - either no parent added or parent does not allow it! \n If you think you should have one, please describe the issue in a  <a href=\"/doe/support?desc=cannot+have+public+profile\">support request</a> below.");
       pro <- au.profile orCorr cNoProfile;
       verif <- ("WikiLink" == cat || "User" == cat || au.hasPerm(Perm.eVerified)) orCorr corrVerified;
-      res <- (!w.exists(_.isReserved) || au.hasPerm(Perm.adminWiki) || "User" == wid.cat) orErr ("Category is reserved");
+      res <- (!w.exists(_.isReserved) || au.isAdmin || "User" == wid.cat) orErr ("Category is reserved");
       owner <- !(WikiDomain(wid.getRealm).needsOwner(cat)) ||
         we.exists(_.isOwner(au.id)) ||
         (wprops.flatMap(_.get("wvis")).isDefined && isVisible(u, wprops.get, "wvis")) ||

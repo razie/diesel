@@ -104,7 +104,7 @@ case class Registration(email: String, password: String, reemail:String="", repa
 }
 
 // create profile
-case class CrProfile(firstName: String, lastName: String, yob: Int, address: String, userType: String, accept: Boolean, g_recaptcha_response: String="", about:String="")
+case class CrProfile(firstName: String, lastName: String, company:String, yob: Int, address: String, userType: String, accept: Boolean, g_recaptcha_response: String="", about:String="")
 
 @Singleton
 class Profile @Inject() (config:Configuration) extends RazController with Logging {
@@ -124,7 +124,7 @@ class Profile @Inject() (config:Configuration) extends RazController with Loggin
         if (reg.password.length > 0 && reg.repassword.length > 0 && reg.password != reg.repassword) false
         else true
       }) verifying
-      ("Wrong email or password - please type again. (To register a new account, enter the password twice...)", { reg: Registration =>
+      ("Bad email or password - please type again! To register a new account, use the Create button and if you forgot your email, use the Forgot button", { reg: Registration =>
         //          println ("======="+reg.email.enc+"======="+reg.password.enc)
         if (reg.password.length > 0 && reg.repassword.length <= 0)
           // TODO optimize - we lookup users twice on loing
@@ -152,6 +152,11 @@ class Profile @Inject() (config:Configuration) extends RazController with Loggin
     mapping(
       "firstName" -> nonEmptyText.verifying("Obscenity filter", !Wikis.hasBadWords(_)).verifying("Invalid characters", vldSpec(_)),
       "lastName" -> text.verifying("Obscenity filter", !Wikis.hasBadWords(_)).verifying("Invalid characters", vldSpec(_)),
+      "company" -> text
+        .verifying("Obscenity filter", !Wikis.hasBadWords(_))
+        .verifying("Invalid characters", vldSpec(_))
+        .verifying("Too short (should be more then 3)", _.length >= 4)
+        .verifying("Too long (less than 10)", _.length <= 10),
       "yob" -> number(min = 1900, max = 2012),
       "address" -> text.verifying("Invalid characters", vldSpec(_)),
       "userType" -> nonEmptyText.verifying("Please select one", ut => Website.userTypes.contains(ut)),
@@ -522,9 +527,12 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
       p <- request.flash.get("pwd") orElse request.flash.get("gid")
     ) yield
       (ROK.r reactorLayout12  {implicit stok=>
-        views.html.user.doeJoin3(crProfileForm.fill(
-          CrProfile("", "", 13, "", "racer", false)))})
-        .withSession(
+        views.html.user.doeJoin3(
+          crProfileForm.fill(
+            CrProfile("", "", "", 13, "", "racer", false)
+          )
+        )
+      }).withSession(
           "pwd" -> p,
           "email" -> e,
           "extra" -> request.flash.get("extra").mkString,
@@ -562,7 +570,7 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
       },
       {
         //  case class CrProfile (firstName:String, lastName:String, yob:Int, email:String, userType:String)
-        case CrProfile(f, l, y, addr, ut, accept, _, about) =>
+        case CrProfile(f, l, org, y, addr, ut, accept, _, about) =>
 
           (for (
             p <- getFromSession("pwd", T.TESTCODE) orErr ("psession corrupted");
@@ -570,12 +578,20 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
             already <- (!Users.findUserByEmailDec((e)).isDefined) orCorr ("User already created" -> "patience, patience...");
             isOk <- (DateTime.now.year.get - y > 15) orErr ("You can only create an account if you are 16 or older");
             iu <- Some(User(
-              uniqueUsername(uname(f, l, y)), f.trim, l.trim, y, Enc(e),
-              Enc(p), 'a', Set(ut),
+              uniqueUsername(uname(f, l, y)),
+              f.trim,
+              l.trim,
+              y,
+              Enc(e),
+              Enc(p),
+              'a',
+              Set(ut),
               Set(Website.realm),
               (if (addr != null && addr.length > 0) Some(addr) else None),
               Map("css" -> dfltCss, "favQuote" -> "Do one thing every day that scares you - Eleanor Roosevelt", "weatherCode" -> "caon0696"),
-              request.flash.get("gid") orElse request.session.get("gid")))
+              request.flash.get("gid") orElse request.session.get("gid")
+            ).copy(organization = Some(org))
+            )
           ) yield {
             // finally created a new account/profile
             var u = iu

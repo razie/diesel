@@ -94,7 +94,7 @@ case class Progress (
     if (rec(uwid, status).isDefined)
       this
     else {
-      Services ! Audit("?", "PROGRESS_REC", s"User: ${ownerId.as[User].map(_.userName).mkString} Topic: ${uwid.nameOrId} Status: $status")
+      Services ! Audit("?", "PROGRESS_REC", s"User: ${ownerId.as[User].map(_.userName).mkString} Topic: ${uwid.nameOrId} Section: ${section.mkString} Status: $status")
       val t = copy(records = new ProgressRecord(uwid, section, status) +: records)
       t.updateNoAudit(tx.auto)
       t
@@ -363,9 +363,12 @@ object Progress extends RazController with WikiMod {
             var st = q("status");
 
             //if there are no drills incomplete then mark as complete
-            if(st == STATUS_READ && page.sections.filter{s=>
-              SECTIONS.keys.exists(s.signature startsWith _) && !p.isDone(page.uwid, Some(s.wid))
-            }.isEmpty)
+            if(
+              st == STATUS_READ &&
+              page.sections.filter{s=>
+                SECTIONS.keys.exists(s.signature startsWith _) && !p.isDone(page.uwid, Some(s.wid))
+              }.isEmpty
+            )
               st = STATUS_COMPLETE
 
             val n = tl.next(uwid,p)
@@ -460,18 +463,29 @@ object Progress extends RazController with WikiMod {
         ) yield {
             val st = q("status");
 
-            val p1 = p.addAndUpdate (uwid, Some(wid.copy(section=Some(name))), st)
+          // mark section as done
+          val p1 = p.addAndUpdate (uwid, Some(wid.copy(section=Some(name))), st)
 
-            // re-evaluate the topic and mark it done if no other sections outstanding
-            //if there are no drills incomplete then mark as complete
-            if(st == STATUS_COMPLETE && p.rec(uwid, STATUS_READ).isDefined && page.sections.filter{s=>
-              Array("GETUP", "ONSNOW").exists(s.signature startsWith _) && !p1.isComplete(page.uwid, Some(s.wid))
-            }.isEmpty)
-              p1.addAndUpdate (uwid, None, STATUS_COMPLETE)
+          // re-evaluate the topic and mark it done if no other sections outstanding
+          // if there are no drills incomplete then mark as complete
+          if(
+            st == STATUS_COMPLETE &&
+            p.rec(uwid, STATUS_READ).isDefined &&
+            page.sections.filter{s=>
+              Array("GETUP", "ONSNOW").exists(s.signature startsWith _) &&
+              !p1.isComplete(page.uwid, Some(s.wid))
+            }.isEmpty
+          )
+            p1.addAndUpdate (uwid, None, STATUS_COMPLETE)
 
-            Ok(s"""Ok - completed $name""")
-          }) getOrElse pathwayNotStarted
-      }) getOrElse unauthorized("You need a free account to track your progress.")(request.ireq)
+          val completed = if(st == STATUS_COMPLETE) "completed" else "skipped"
+          Ok(s"""Ok - $completed $name""")
+
+        }) getOrElse
+          pathwayNotStarted
+
+    }) getOrElse
+      unauthorized("You need a free account to track your progress.")(request.ireq)
   }
 
   CodePills.add(s"$PILL/misc/hasMain") {implicit stok=>
@@ -499,6 +513,13 @@ object Progress extends RazController with WikiMod {
   CodePills.add("api/wix/realm/count") {implicit stok=>
     Ok(api.wix(None, stok.au, Map.empty, stok.realm).realm.count.toString).withHeaders("Access-Control-Allow-Origin" -> "*")
     // allow is for cross-site scripting
+  }
+
+  CodePills.add("api/wix/realm/tagcount") {implicit stok=>
+    stok.fqhParm("tag").map { tag=>
+      Ok(api.wix(None, stok.au, Map.empty, stok.realm).realm.count.toString).withHeaders("Access-Control-Allow-Origin" -> "*")
+    } getOrElse
+      Ok("").withHeaders("Access-Control-Allow-Origin" -> "*").withHeaders("Error" -> "you need to pass in a tag in query")
   }
 
 
@@ -541,7 +562,7 @@ object Progress extends RazController with WikiMod {
 //        ""
 //      else
         s"""<span id="$name">...</span>\n"""+
-        Wikis.propLater(name, s"/pill/$PILL/section/buttons?section=$name&wid=${we.wid.wpath}}}")
+        Wikis.propLater(name, s"/pill/$PILL/section/buttons?section=$name&wid=${we.wid.wpath}")
     }
 
     PATT1.replaceSomeIn(c, {m=>

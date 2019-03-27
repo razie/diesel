@@ -1,5 +1,6 @@
 @(club: Option[controllers.Club], rk: mod.snow.RacerKid, settings: String)(implicit stok: controllers.StateOk)
 @import model.User
+@import mod.snow.RacerKidz
 @import mod.snow.RacerKid
 @import razie.wiki.model.Visibility
 @import razie.wiki.model.{WID, WikiEntry}
@@ -34,14 +35,27 @@
   }
 }
 
+@findNameFrom(h:RkHistory, we:WikiEntry) = @{
+  model.Users.nameOf(h.authorId.getOrElse(we.by))
+}
+
+@findNameTo(h:RkHistory) = @{
+  h.toRkId.flatMap(RacerKidz.findById).flatMap(_.userId).map(model.Users.nameOf)
+}
+
+@uhLink(n:String) = @{
+  if(n.length > 0) s"""<a href="#">$n</a>"""
+  else "?"
+}
+
   @paint(h: RkHistory, we:WikiEntry) = {
 
     <!--
-      we: Html(we.toString)
+      we: @Html(we.toString)
 
     ------------
 
-    h : Html(h.toJsonNice)
+    h : @Html(h.toJsonNice)
     -->
 
    @if(h.eKind != "Comment") {
@@ -49,7 +63,8 @@
         <div class="panel-heading"
         style="pading:5px 5px; padding-top: 3px; padding-right: 5px; padding-bottom: 3px; padding-left: 5px;">
           <small>
-            @model.Users.nameOf(we.by) |
+            <!-- @model.Users.nameOf(we.by) | -->
+            @findNameFrom(h,we) > @findNameTo(h) |
             @we.crDtm.toString("YYYY-MM-dd hh:mm a").toLowerCase()
             @if(isGood(we)) {
               @if(canEdit(h,we)) {
@@ -81,6 +96,12 @@
             @Html(we.wid.ahrefNice(stok.realm))<br>
           }
 
+          @if(h.role.toLowerCase == "post" || h.role.toLowerCase == "message" || canEdit(h,we)) {
+            <button type="button" class="close" aria-label="Dismiss" onclick="dismissPost('@h._id.toString', '@h.eId.mkString')" title="Dismiss this alert" style="margin-left:10px">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          }
+
           @if(stok.au.exists(_.isAdmin) || Services.config.isDebugMode) {
             <button type="button" class="close" aria-label="Info" title="@{h.toJsonNice}" style="margin-left:10px">
               <span class="glyphicon glyphicon-question-sign"></span>
@@ -91,15 +112,15 @@
             @** should admin see delete for all ? **@
           }
 
-          @if(h.role.toLowerCase == "post" || h.role.toLowerCase == "message" || canEdit(h,we)) {
-            <button type="button" class="close" aria-label="Dismiss" onclick="dismissPost('@h._id.toString', '@h.eId.mkString')" title="Dismiss this alert" style="margin-left:10px">
-              <span aria-hidden="true">&times;</span>
-            </button>
-          }
-
           @if(h.role.toLowerCase != "post" && stok.au.exists(x=> h.authorId.exists(_ != x._id)) ) {
             <button type="button" class="close" aria-label="Dismiss" onclick="addReply('@h._id.toString', '@h.eId.mkString')" title="Reply to this message" style="margin-left:10px">
               <span style="font-weight: bold" class="glyphicon glyphicon-share"></span>
+            </button>
+          }
+
+          @if(stok.au.exists(_.isMod) && stok.au.exists(x=> h.authorId.exists(_ != x._id)) ) {
+            <button type="button" class="close" aria-label="Dismiss" onclick="seeKidHistory('@h.authorId.mkString', '@{club.map(_.wid.wpath).mkString}')" title="See history" style="margin-left:10px">
+              <span style="font-weight: bold" class="glyphicon glyphicon-list"></span>
             </button>
           }
 
@@ -258,6 +279,8 @@
     @history.map(t=> paint(t._1, t._2.getOrElse(justContent(t._1))))
   }
 
+  <!-- help -->
+
   @if((history.size == 0 || rk.history.firstTime.isDefined) &&
       rk.userId.exists(uid=> stok.au.exists(_._id == uid))) {
     <script async>
@@ -317,6 +340,10 @@ function addInsight() {
 function addMsg() {
   $("#info").text("Message");
   Extra("@mod.notes.controllers.routes.NotesLocker.embed(ROLES.MESSAGE, "message", "message", ROLES.MESSAGE, "", false, true, "Send it")");
+}
+
+function seeKidHistory(id1, club) {
+  window.location.href = "/doe/kid/history/" + id1 + '?club=' + club;
 }
 
 function addReply(id1,id2) {

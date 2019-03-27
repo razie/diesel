@@ -20,7 +20,9 @@ trait WikiCodeParser extends ParserBase {
 
     case hidden ~ stype ~ _ ~ name ~ _ ~ sign ~ _ ~ lines => {
       // inlines still need to be called with a call - but will be expanded right there
-      if ("lambda" == stype || "inline" == stype)
+      if ("lambda" == stype)
+        SState(s"`{{call:#$name}}`") // lambdas are executed right there...
+      else if ("inline" == stype && hidden.length <= 0)
         SState(s"`{{call:#$name}}`") // lambdas are executed right there...
       else if(hidden.length <= 0)
         SState(s"`{{$stype:$name}}`") // defs are expanded in pre-processing and executed in display

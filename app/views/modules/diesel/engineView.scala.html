@@ -2,16 +2,24 @@
 engine configuration popup
 **@
 @(eng:Option[razie.diesel.engine.DomEngine])(implicit stok: controllers.StateOk)
+@import razie.diesel.dom.DomAst
 
 <script src="@routes.Assets.at("javascripts/weCommons.js")"></script>
 
-@eng.map { eng =>
+@eng.map{ e=>
 
-  <a href="@eng.href("json")">Json</a>
+  @if(e.root.children.exists(x=> x.kind == "story")) {
+<b>Summary:</b><br>
+<pre>
+@Html(e.root.storySummary)
+</pre>
+  }
 
-  <pre>
-    @Html(eng.root.toHtmlInPage)
-  </div>
+  <a href="@e.href("json")">Json</a>
+
+<pre>
+@Html(e.root.toHtmlInPage)
+</pre>
 
 }.getOrElse {
   Engine not found...

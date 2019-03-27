@@ -36,7 +36,7 @@ a JS with HTML and CSS fiddle
 <script src="@routes.Assets.at("javascripts/weFiddles.js")"></script>
 
   <h3 id="heading">Diesel fiddle<a href="/wiki/Diesel_Fiddle_Guide"><sup><span class="glyphicon glyphicon-question-sign"></span></sup></a> | <small>
-    <span id="errors" class="label label-default">0 failed</span>
+    <span id="errors" class="label label-default">0/? failed</span>
 
     <span onclick="setSpec('Story');" class="label label-primary" style="cursor:pointer"><span id="curStory">Story</span> <span class="glyphicon glyphicon-chevron-down">
     </span></span><span id="storyChanged" class="label label-success" onclick="popupMenu1('Story');" style="cursor:pointer" title="Current draft differs from original">
@@ -80,6 +80,7 @@ a JS with HTML and CSS fiddle
     </div>
     <div id="title3b_@id" class="col-sm-6" style="font-size: small">
       <input type="checkbox" id="debugStory" title="Expand/collaps debug nodes" checked> <small>(debug)</small>
+      <input type="checkbox" id="generatedStory" title="Expand/collaps generated nodes" checked> <small>(generated)</small>
     </div>
   </div>
   <div id="storyRow" class="row" style="align-items:center;">
@@ -98,6 +99,7 @@ a JS with HTML and CSS fiddle
     </div>
     <div id="title1b_@id" class="col-sm-6" style="font-size: small">
       <input type="checkbox" id="debugSpec" title="Expand/collaps debug nodes" checked> <small>(debug)</small>
+      <input type="checkbox" id="generatedSpec" title="Expand/collaps generated nodes" checked> <small>(generated)</small>
     </div>
   </div>
   <div id="specRow" class="row" style="align-items:center;">
@@ -149,6 +151,8 @@ var fiddleId = '@id';
 // current debounce before running the scripts - goes up if results come slowly
 var currDebounce = 2000;
 
+// the current request or null - if this is something, we won't run new ones
+var curDomRequest = null;
 
 useLocalStorageCheckbox("sketchMode", "domFiddleSketchMode");
 useLocalStorageCheckbox("mockMode", "domFiddleMockMode");
@@ -233,14 +237,20 @@ var storyWpath='@storyWpath';
 if(specWpath.length > 0) $("#curSpec").text('@WID.fromPath(specWpath).map(_.name)');
 if(storyWpath.length > 0) $("#curStory").text('@WID.fromPath(storyWpath).map(_.name)');
 
+// am I waiting for a refresh now? this counts how many
+var isRefreshing = 0;
+var isRefreshing2 = 0;
+
 
 var runpill_@id = function(id) {
-  var lastTime = new Date().getTime();
-
+  isRefreshing += 1;
   showSpinner();
+  console.log("run isRefreshing="+isRefreshing);
 
   // set this before going to backend which could take a long time
   @*specChanged(!(editor1.getValue() === $("#origSpec_@id").text()));*@
+
+  var lastTime = new Date().getTime();
 
   $.ajax(
     '/diesel/fiddle/fiddleSpecUpdated/'+id+'?@Html(mod.diesel.controllers.SFiddles.qtourl(args))', {
@@ -260,6 +270,7 @@ var runpill_@id = function(id) {
     }),
     contentType: 'application/x-www-form-urlencoded',
     success: function(data) {
+      isRefreshing -= 1;
       hideSpinner();
 
       $('#divOut1_'+id).html(data.res);
@@ -271,14 +282,15 @@ var runpill_@id = function(id) {
       runpill2_@{id}('@{id}');
     },
     error  : function(x) {
+      isRefreshing -= 1;
       hideSpinner();
       console.log( "ERR "+x.toString());
     }
   });
 }
 
-function setErrors (s) {
-  $('#errors').text(s + ' failed');
+function setErrors (s,t) {
+  $('#errors').text(s + '/' + t + ' failed');
   $('#errors').removeClass();
   if(s == 0 || s == "0")
     $('#errors').addClass("label label-success");
@@ -293,11 +305,21 @@ var encAmp = function(s) {
 }
 
 var runpill2_@id = function(id) {
-  var lastTime = new Date().getTime();
+  isRefreshing2 += 1;
   showSpinner();
+  console.log("run isRefreshing2="+isRefreshing2);
 
   // set this before going to backend which could take a long time
   @*storyChanged(!(editor.getValue() === $("#origStory_@id").text()));*@
+
+  if(curDomRequest != null) {
+    console.log ("Ignore request - already in progress: " + curDomRequest);
+    return;
+  }
+
+  curDomRequest = "yes";
+
+  var lastTime = new Date().getTime();
 
   $.ajax(
     '/diesel/fiddle/fiddleStoryUpdated/'+id+'?@Html(mod.diesel.controllers.SFiddles.qtourl(args))', {
@@ -318,6 +340,7 @@ var runpill2_@id = function(id) {
     }),
     contentType: 'application/x-www-form-urlencoded',
     success: function(data) {
+      isRefreshing2 -= 1;
       hideSpinner();
 
       if($('#wikiMode').prop('checked'))
@@ -331,29 +354,33 @@ var runpill2_@id = function(id) {
           $('#iframeOut3_' + id).html(encAmp(data.res) + '\n');
           $('#iframeOut1_' + id).html(encAmp(data.res) + '\n');
           hideDebug($('#debugStory').prop('checked'));
+          hideGenerated($('#generatedStory').prop('checked'));
         // }
       }
       $('#iframeOut5_'+id).html(data.capture);
       instContentAssist = data.ca;
-      setErrors(data.failureCount);
+      setErrors(data.failureCount, data.totalCount);
       var du = new Date().getTime() - lastTime;
       $('#roundtrip').text(du+' ms');
 
       // automatic backoff
-      if(du > 10000)
-        currDebounce = 15000;
+      if(du > 7000)
+        currDebounce = 7000;
       else if(du > 5000)
-        currDebounce = 10000;
-      if(du > 2000)
+        currDebounce = 7000;
+      else if(du > 2000)
         currDebounce = 5000;
       else
         currDebounce = 2000;
 
+      curDomRequest = null;
       storyChanged(data.storyChanged);
     },
     error  : function(x) {
+      isRefreshing2 -= 1;
       hideSpinner();
       console.log( "ERR "+x.toString());
+      curDomRequest = null;
     }
   });
 }
@@ -378,6 +405,14 @@ var runpill2_@id = function(id) {
 var domChanged=true;
 var instChanged=true;
 var captureChanged=true;
+
+// how long to wait to consider he stopped typing
+var CUR_TYPING_MAX=1000;
+
+// last time runpill updated
+var lastUpdateMillis = Date.now() - 50000; // to make it refresh the first time
+// last time content changed
+var lastChangeMillis = Date.now() - 50000;
 
 var editor;
 var editor1;
@@ -452,29 +487,45 @@ editor.commands.addCommand({
 
   editor1.getSession().on('change', function(e) {
     domChanged=true;
+    lastChangeMillis = Date.now();
   });
 
   editor.getSession().on('change', function(e) {
     instChanged=true;
+    lastChangeMillis = Date.now();
   });
 
   editor5.getSession().on('change', function(e) {
     captureChanged=true;
+    lastChangeMillis = Date.now();
   });
 }
 
 attachAce();
 
 setInterval(function(){
-   if(domChanged || captureChanged) {
-     domChanged=false; captureChanged=false;
-     runpill_@{id}('@{id}');
-     }
-   if(instChanged) {
-     instChanged=false;
-     runpill2_@{id}('@{id}');
-     }
-},currDebounce);
+  var curMillis = Date.now();
+
+  // if still typing, wait
+  if(curMillis - lastChangeMillis < CUR_TYPING_MAX) {
+    // console.log("still typing " + lastChangeMillis + " - " + curMillis);
+    return;
+  }
+
+  // if changed and last updated a while ago, refresh
+  if((domChanged || captureChanged) && curMillis - lastUpdateMillis > currDebounce) {
+    domChanged=false; captureChanged=false;
+    lastUpdateMillis = curMillis;
+    runpill_@{id}('@{id}');
+    }
+
+  // if changed and last updated a while ago, refresh
+  if(instChanged && curMillis - lastUpdateMillis > currDebounce) {
+    instChanged=false;
+    lastUpdateMillis = curMillis;
+    runpill2_@{id}('@{id}');
+    }
+},500);
 
 </script>
 
@@ -620,12 +671,21 @@ function saveNew(what) {
 }
 
 function hideDebug(expanded) {
+  hideKind(expanded, 'debug');
+}
+
+function hideGenerated(expanded) {
+  hideKind(expanded, 'generated');
+}
+
+function hideKind(expanded, debug) {
   if (expanded) {
-    $("div[kind='debug']").show();
+    $("div[kind='"+debug+"']").show();
   } else {
-    $("div[kind='debug']").hide();
+    $("div[kind='"+debug+"']").hide();
   }
 }
+
 
 // it's on load because otherwise the div has no contents
 $(window).load (function() {
@@ -686,6 +746,14 @@ $(window).load (function() {
 
   useLocalStorageCheckbox("debugStory", "domFiddleDebugStory", function (a,b,expanded) {
     hideDebug(expanded);
+  });
+
+  useLocalStorageCheckbox("generatedSpec", "domFiddleGeneratedSpec", function (a,b,expanded) {
+    hideGenerated(expanded);
+  });
+
+  useLocalStorageCheckbox("generatedStory", "domFiddleGeneratedStory", function (a,b,expanded) {
+    hideGenerated(expanded);
   });
 });
 

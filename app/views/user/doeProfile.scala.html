@@ -29,7 +29,8 @@
         myForm("about"),
         '_label -> "Tell us about yourself",
         '_showConstraints -> false,
-        'placeholder -> "... so we can help direct you: current certifications, what are you looking to get out of this website, etc",
+        'placeholder -> request.website.propDflt("user.join.about.placeholder",
+          "... anything you deem interesting, what are you looking to get out of this service?"),
         'class -> "form-control col-sm-12",
         'rows->5)
 

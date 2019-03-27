@@ -102,7 +102,8 @@ class wix (owe: Option[WikiPage], ou:Option[WikiUser], q:Map[String,String], r:S
       "isEmpty" : ${ipage.isEmpty},
       "wid" : "${ipage.get.wid.wpath}",
       "wpath" : "${ipage.get.wid.wpath}",
-      "wpathnocats" : "${ipage.get.wid.wpathnocats}"
+      "wpathnocats" : "${ipage.get.wid.wpathnocats}",
+      "visibility" : "${ipage.get.visibility}"
     },
     """
       } else "") +

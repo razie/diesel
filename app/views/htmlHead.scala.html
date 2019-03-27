@@ -42,9 +42,13 @@ the head of every page...
     }
 
 @hostNameForRealm=@{
-  WikiReactors(page.get.wid.getRealm).websiteProps.prop("url").getOrElse("http://www.racerkidz.com")
+  WikiReactors(page.get.wid.getRealm).websiteProps.prop("url").getOrElse("http://www.razie.com")
 }
 
+<!--
+  X-FORWARDED-HOST: @stok.flatMap(_.request).orElse(request).map(r=>r.headers.get("X-FORWARDED-HOST"))
+  website: @stok.map(_.website)
+-->
     <title>@title</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
@@ -469,6 +473,12 @@ img.rklogo {
 
     </script>
   }
+
+<script async>
+doEditThis = function() {
+  window.location.href = window.location.href.replace(/\?.*/, '') + "/edit";
+};
+  </script>
 
   <body onload="dorazOnLoad()">
 

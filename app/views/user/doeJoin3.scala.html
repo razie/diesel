@@ -13,7 +13,9 @@ create account
 
     <div class="row">
       <div class="col-sm-6">
-      @WID.fromPath("Admin:page-join3-" + stok.realm).flatMap(_.page).orElse(
+      @WID.fromPath("Admin:page-join3").flatMap(_.page).orElse(
+        WID.fromPath("Admin:page-join3-" + stok.realm).flatMap(_.page)
+      ).orElse(
         WID.fromPath("Admin:page-join3-rk").flatMap(_.page)
       ).map { page =>
         @wiki.wikiFrag(page.wid, None, true, Some(page))
@@ -40,6 +42,8 @@ create account
           <div class="alert alert-info">
             @util.razText(myForm, "firstName", "First name")
             @util.razText(myForm, "lastName", "Last name")
+            @util.razText(myForm, "company", "Company/Organization")
+
             @util.razSelect(myForm, "yob", "When you were born",
               Seq("" -> "") ++ (Range(2005, 1912, -1) map (y => (y.toString, y.toString))),
               'style -> "width: 100px")
@@ -49,7 +53,8 @@ create account
               myForm("about"),
               '_label -> "Tell us about yourself",
               '_showConstraints -> false,
-              'placeholder -> "... so we can help direct you: current certifications, what are you looking to get out of this website, etc",
+              'placeholder -> stok.website.propDflt("user.join.about.placeholder",
+                "... anything you deem interesting, what are you looking to get out of this service?"),
               'class -> "form-control col-sm-12",
               'rows -> 5)
 
