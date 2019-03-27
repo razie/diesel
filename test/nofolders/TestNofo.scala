@@ -35,7 +35,7 @@ trait NofoTester extends RkTester { self: FlatSpec with ShouldMatchers =>
 /** test the basic test utils */
 class TestNofo extends FlatSpec with ShouldMatchers with NofoTester {
   implicit val hostport = "http://localhost:9000"
-  //  implicit val hostport = "http://test.racerkidz.com"
+  //  implicit val hostport = "http://test.razie.com"
   val (joe, pjoe) = ("H-joe@razie.com", "H-321mm321mm")
 
   def milis = System.currentTimeMillis.toString

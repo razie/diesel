@@ -6,7 +6,7 @@ import razie.cout
 
 class TestStress extends FlatSpec with ShouldMatchers with razie.UrlTester {
   implicit val hostport = "http://localhost:9000"
-//  implicit val hostport = "http://test.racerkidz.com"
+//  implicit val hostport = "http://test.razie.com"
 
   "site" should "be stable" in {
     cout << "priming the server"

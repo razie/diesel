@@ -17,7 +17,7 @@ import controllers.T
 class TestNofoPerf extends FlatSpec with ShouldMatchers with NofoTester {
   /** test the basic test utils */
   implicit val hostport = "http://localhost:9000"
-  //  implicit val hostport = "http://test.racerkidz.com"
+  //  implicit val hostport = "http://test.razie.com"
   val (joe, pjoe) = ("H-joe@razie.com", "H-321mm321mm")
 
   import T._

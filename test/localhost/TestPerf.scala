@@ -6,7 +6,7 @@ import razie.cout
 
 class TestPerf extends FlatSpec with ShouldMatchers with RkTester {
 //  implicit val hostport = "http://localhost:9000"
-  implicit val hostport = "http://test.racerkidz.com"
+  implicit val hostport = "http://test.razie.com"
 //  implicit val hostport = "http://cloud2a.razie.com:9000"
 
   "site" should "be fast" in {
