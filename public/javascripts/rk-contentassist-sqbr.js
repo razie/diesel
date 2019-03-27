@@ -84,6 +84,7 @@ var byTags = [
 
 var topics=[]; // populate with options for topics
 var ltopics=[]; // topics lowercase
+var MAX_TOPICS = 500;
 
 var CA_TC_braTags = function(braTags) {
   return { // braTags
@@ -147,16 +148,17 @@ var CA_TC_sqbraTags = { // sqbraTags
       return sqbraStatics[j].indexOf(lterm) >= 0;
     };
 
-    // bring options - either starting or just typed a realm
-    if(topics.length <= 0 || term.indexOf(".") == term.length-1 && term.length > 0 || term.indexOf("::") == term.length-2 && term.length > 0) {
-      //$.getJSON('/wikie/options', { q: term , realm : realm })
+    // get all topics from server
+    var getTopics = function () {
       $.getJSON('/wikie/options', { q: '' , realm : r })
         .done(function (resp) {
+          // if different realm, add realm as prefix
           if(r != realm) topics = resp.map(prefix);
           else topics = resp;
 
           for(i=0; i<topics.length; i++) ltopics[i] = topics[i].toLowerCase();
 
+          // those that match
           var x = topics.filter(filterTopics).map(addAssoc);//.concat(sqbraStatics.filter(filterStatics)).map(addAssoc);
 
           if(assoc != '')
@@ -165,6 +167,14 @@ var CA_TC_sqbraTags = { // sqbraTags
             callback(topics.filter(filterTopics).concat(sqbraStatics.filter(filterStatics)));
         })
         .fail(function (){ callback([]); });
+    }
+
+    // bring options - either starting or just typed a realm
+    if(topics.length <= 0 || term.indexOf(".") == term.length-1 && term.length > 0 ||
+       term.indexOf("::") == term.length-2 && term.length > 0) {
+
+      getTopics();
+
     } else {
       if(assoc != '')
         callback(topics.filter(filterTopics).map(addAssoc).concat(sqbraStatics.filter(filterStatics)));
@@ -180,6 +190,7 @@ var CA_TC_sqbraTags = { // sqbraTags
 
   cache: false
 };
+
 
 // this is not a constructor - it will get its domain from remote
 var CA_TC_wikifield = function(cat) { // sqbraTags
