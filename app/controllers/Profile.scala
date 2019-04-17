@@ -599,7 +599,7 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
             // finally created a new account/profile
             var u = iu
             if (u.isUnder13 && !u.isClub) {
-              Redirect(routes.Tasks.addParent1).withSession("ujson" -> u.toJson, "extra" -> request.session.get("extra").mkString, "gid" -> request.flash.get("gid").mkString)
+              unauthorized("Oops - we do not accept this account!")
             } else {
               if(about.length > 0) u = u.setPrefs(request.realm, u.prefs + ("about" -> about))
 

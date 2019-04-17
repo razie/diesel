@@ -59,7 +59,6 @@ object Init extends Logging {
 
 
     val tasks = List(
-      model.Task("addParent", "Add a parent to your account"),
       model.Task("verifyEmail", "Verify your email address"))
     tasks map (ug => Users.create(ug))
 
@@ -75,7 +74,6 @@ object Init extends Logging {
       wr("Category", "Admin", "Reserved pages "),
       wr("Category", "Topic", "Reserved pages "),
 
-      wr("Task", "addParent", "You need to add a parent to your account before you can do a bunch of stuff..."),
       wr("Task", "verifyEmail", "You need to verify your email address before using your account further..."),
 
       wr("Page", "Nothing"),
