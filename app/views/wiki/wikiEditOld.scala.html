@@ -371,7 +371,7 @@ razOnLoad(function() {
  <br>
   <div class="actions2">
     <button class="btn btn-primary" onclick="submitPlease()">Save</button>
-    <a href="@controllers.Wiki.wr(wid, stok.realm, false)" class="btn btn-default">Cancel</a>
+    <a href="@controllers.Wiki.wr(wid, stok.realm, false)" onclick="return cancel();" class="btn btn-default">Cancel</a>
     <a href="javascript:popupDiff()" class="btn btn-default">Diff</a>
   </div>
 

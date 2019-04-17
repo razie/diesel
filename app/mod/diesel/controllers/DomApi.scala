@@ -286,9 +286,14 @@ class DomApi extends DomApiBase  with Logging {
         x.length > 0 && x == xx
       }
 
+      val isPublic = msg.exists(isMsgPublic(_, reactor, website))
+      val isTrusted = isMemberOrTrusted(msg, reactor, website)
+
+      clog << s"Message: $msg isPublic=$isPublic isTrusted=$isTrusted needsApiKey=$needsApiKey isApiKeyGood=$isApiKeyGood"
+
       if (
-        msg.exists(isMsgPublic(_, reactor, website)) ||
-        isMemberOrTrusted(msg, reactor, website) ||
+        isPublic ||
+        isTrusted ||
         needsApiKey && isApiKeyGood
       ) {
 
@@ -496,14 +501,6 @@ class DomApi extends DomApiBase  with Logging {
 
       new DomReq(stok.req).addTo(engine.ctx)
 
-      // does the current request match the template?
-      def matchesRequest(tpath: String, rpath: String) = {
-        val a = rpath.split("/")
-        val b = tpath.split("/")
-
-        a.zip(b).foldLeft(true)((a, b) => a && b._1 == b._2 || b._2.matches("""\$\{([^\}]*)\}"""))
-      }
-
       // find template matching the input message, to parse attrs
       val t@(trequest, e, a) = findEA(path, engine)
 
@@ -532,9 +529,11 @@ class DomApi extends DomApiBase  with Logging {
         content,
         requestContentType)
 
+      clog << s"Message found: $msg xapikey=$xapikey"
+
       // is message visible?
       if (msg.isDefined && !isMsgVisible(msg.get, reactor, website)) {
-          Unauthorized(s"Unauthorized msg access (diesel.visibility:${stok.website.dieselVisiblity}, ${stok.au.map(_.ename).mkString})")
+        Unauthorized(s"Unauthorized msg access (diesel.visibility:${stok.website.dieselVisiblity}, ${stok.au.map(_.ename).mkString})")
       } else if (
         !isMemberOrTrusted(msg, reactor, website) &&
         xapikey.isDefined && xapikey.exists { x =>
@@ -542,7 +541,8 @@ class DomApi extends DomApiBase  with Logging {
         }
         ) {
         // good security keys for non-members (devs if logged in don't need security)
-            Unauthorized(s"Unauthorized msg access (key)")
+          Unauthorized(s"Unauthorized msg access (key, dieselTrust)").withHeaders(
+          )
       } else msg.map {msg=>
 
         RDExt.addMsgToAst(engine.root, msg)
@@ -618,7 +618,16 @@ class DomApi extends DomApiBase  with Logging {
 
             clog << s"RUN_REST_REPLY $verb $mock $path\n$s as $ctype"
 
-            response.getOrElse(mkStatus(s, engine).as(ctype))
+            response.map {res=>
+              // add template parms as headers
+              val headers = t.parms
+                .filter(_._1.toLowerCase.trim != "content-type")
+                .filter(_._1.startsWith("http.header"))
+                .map(t=>(t._1.replaceFirst("http.header.", ""), t._2))
+                .toSeq
+
+              res.withHeaders(headers: _*)
+            }.getOrElse(mkStatus(s, engine).as(ctype))
 
           }.getOrElse {
             val res = s"No response template for $e $a\n" + engine.root.toString
@@ -843,6 +852,7 @@ class DomApi extends DomApiBase  with Logging {
     val trequest =
       engine
         .ctx
+        // first try  with e.a
         .findTemplate(path, direction)
         .map {t=>
           // found template by path name, so parse as entity/action
@@ -946,7 +956,7 @@ class DomApi extends DomApiBase  with Logging {
           engine.root.children.appendAll({
             EError("Error parsing: " + template.specPath, t.toString) ::
               new EError("Exception : ", t) :: Nil
-          }.map(DomAst(_, AstKinds.GENERATED))
+          }.map(DomAst(_, AstKinds.ERROR))
           )
           None
         }
@@ -980,7 +990,7 @@ class DomApi extends DomApiBase  with Logging {
                   EError("No template found: " ) ::
                   EError("Error parsing: " + body, t.toString) ::
                     new EError("Exception : ", t) :: Nil
-                }.map(DomAst(_, AstKinds.GENERATED))
+                }.map(DomAst(_, AstKinds.ERROR))
                 )
                 Map.empty
               }

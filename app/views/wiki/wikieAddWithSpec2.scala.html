@@ -28,12 +28,12 @@ create new page given a template
         <hr>
 
         <div class="form-group">
-          <label for="app" class="control-label">Application (Use a simple punchy single word, like "<b>mysite</b>")</label>
+          <label for="app" class="control-label">Application (Use a simple punchy single word, like "<b>mysite</b>" &nbsp;&nbsp;<code class="pull-right">$${{app}}</code></label>
           <input type="text" id="app" class="input-lg" name="app" placeholder="App"  onchange="updName()" value="app">
         </div> @* form-group *@
 
         <div class="form-group">
-          <label for="kind" class="control-label">Type:</label>
+          <label for="kind" class="control-label">Kind &nbsp;&nbsp;<code class="pull-right">$${{kind}}</code></label>
           <select id="kind" name="kind" onchange="updName()">
             <option value="dev">Development</option>
             <option value="qa">QA / UAT</option>
@@ -42,7 +42,7 @@ create new page given a template
         </div> @* form-group *@
 
         <div class="form-group">
-          <label for="org" class="control-label">Organization: (company or client)</label>
+          <label for="org" class="control-label">Organization: (company or client) &nbsp;&nbsp;<code class="pull-right">$${{org}}</code></label>
           <input type="text" id="org" class="input-lg" name="org" placeholder="Org" onchange="updName()" value="org">
         </div> @* form-group *@
 
@@ -50,7 +50,7 @@ create new page given a template
 
         <div class="alert alert-warning">
         Your new project website will be
-        available at <b><small>http://mysite.dieselapps.com</small></b>
+          available at <b><small>http://<span id="siteName">mysite</span>.dieselapps.com</small></b>
 
         <div class="form-group">
           <label for="name" class="control-label">Name:</label>
@@ -103,6 +103,7 @@ create new page given a template
             var n = (k === "prod" ? "" : k) + a + o;
 
             $('#name').val(n);
+            $('#siteName').text(n);
           });
         };
 

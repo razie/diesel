@@ -26,12 +26,14 @@ trait DomFiddleParser extends DomParser {
   def pdfiddle: PS = "{{" ~> """dfiddle""".r ~ "[: ]+".r ~ """[^:}]*""".r ~ "[: ]*".r ~ """[^ :}]*""".r ~ optargs ~ "}}" ~ opt(CRLF1 | CRLF3 | CRLF2) ~ slinesUntil("dfiddle") <~ "{{/dfiddle}}" ^^ {
     case d ~ _ ~ name ~ _ ~ kind ~ xargs ~ _ ~ _ ~ lines =>
       var args = xargs.toMap
-      val urlArgs = "&" + args.filter(_._1 != "anon").map(t=>t._1+"="+t._2).mkString("&")
+      val urlArgs = "&" + args.filter(_._1 != "anon").filter(_._1 != "spec").map(t=>t._1+"="+t._2).mkString("&")
 
       def ARGS(url:String) = url + (if(urlArgs != "&") urlArgs else "")
 
       try {
         LazyState[WikiEntry,WikiUser] { (current, ctx) =>
+
+          // see if we recognize some actionables to create links for them
           var links = lines.s.lines.collect {
             case l if l.startsWith("$msg") || l.startsWith("$send") =>
               parseAll(linemsg(ctx.we.get.specPath.wpath), l).map { st =>
@@ -47,8 +49,9 @@ trait DomFiddleParser extends DomParser {
 
           if (links == "") links = "no recognized messages"
 
+          val specName = args.get("spec").getOrElse(name)
           val spec = ctx.we.flatMap(
-            _.sections.filter(x=> x.stype == "dfiddle" && x.name == name)
+            _.sections.filter(x=> x.stype == "dfiddle" && x.name == specName)
               .filter(_.signature.toLowerCase startsWith "spec")
               .map(_.content)
               .headOption
