@@ -44,7 +44,7 @@ class Support @Inject() (config:Configuration) extends RazController with Loggin
             Emailer.withSession(request.realm) { implicit mailSession =>
               mailSession.sendSupport(s"Support request realm ${request.realm}", n, e, (auth.map("Username: " + _.userName + " ").mkString) + desc, details, page)
             }
-            Msg("Ok - support request sent. We will look into it asap.", HOME)
+            Msg("Thank you - support request sent. We will look into it asap.", HOME)
           } else {
             Audit.logdb("BAD_MATH", List("request:" + request.toString, "headers:" + request.headers, "body:" + request.req.body).mkString("<br>"))
             Msg("Human verification fail...", HOME)

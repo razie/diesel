@@ -20,6 +20,7 @@ class RkReactor (realm:String, fallBacks:List[Reactor], we:Option[WikiEntry]) ex
 /** use custom rk parser for wikis */
 class RkWikiInst(realm:String, fallBacks:List[WikiInst])
   extends WikiInstImpl (realm, fallBacks, {wi=>new WikiDomainImpl(realm, wi)}) {
+
   class WikiParserCls(val realm:String) extends WikiParserT
   with WikiDslParser with WikiCodeParser with WikiAdParser
   with DomFiddleParser with WikiParserNotes with WikiDarkParser{

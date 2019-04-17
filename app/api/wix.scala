@@ -2,12 +2,14 @@ package api
 
 import mod.diesel.controllers.SFiddles
 import model._
-import controllers.{Club, XWrapper, XListWrapper}
+import controllers.{Club, XListWrapper, XWrapper}
 import razie.db.RazMongo
-import razie.wiki.{Services}
-import razie.wiki.Sec._
+import razie.wiki.{Sec, Services}
 import razie.wiki.model._
 import razie.wiki.util.M._
+
+import scala.collection.immutable.ListMap
+import scala.util.parsing.json.JSONObject
 
 /** this is available to scripts inside the wikis */
 class wix (owe: Option[WikiPage], ou:Option[WikiUser], q:Map[String,String], r:String) {
@@ -85,12 +87,30 @@ class wix (owe: Option[WikiPage], ou:Option[WikiUser], q:Map[String,String], r:S
     *
     * @return
     */
-  def jsonBrowser = {
+  def OLD_DELETE_jsonBrowser = {
     """var wix = {
     """ +
    s"""
       "hostport" : "${hostport}",
-      "realm" : "${irealm}",
+    """ +
+      s"""
+    "realm" : {
+      "name" : "${irealm}"
+      """ +
+      (if(ipage.exists(_.included.contains("wix.realm.props"))) {
+        // we can't use contentProps in the condition above, because inline expressions can use wix and start recursing
+        ", \"props\" : {\n" +
+        realm.props.toSeq.map {t =>
+          val escaped = t._2.replaceAll("\"", "\\\\\"")
+          s"""
+             "${t._1}" : "$escaped}" """.stripMargin
+        }.mkString (",") +
+        """
+          }
+        """.stripMargin
+      } else "") +
+      """
+    },
     """ +
       (if(ipage.isDefined) {
         s"""
@@ -136,6 +156,68 @@ class wix (owe: Option[WikiPage], ou:Option[WikiUser], q:Map[String,String], r:S
       """
   }
 
+  /**
+    * you can never remove from this or change behavior of these - there are scripts relying on this...
+    *
+    * @return
+    */
+  def jsonBrowser = {
+    val res = "var wix = " + razie.js.tojsons( ListMap( // preserve order to have query at end - no particular reason
+
+      "hostport" -> hostport,
+
+      "realm" -> Map (
+        "name" -> irealm,
+        "props" -> (
+          if(ipage.exists(_.included.contains("wix.realm.props"))) {
+            // we can't use contentProps in the condition above, because inline expressions can use wix and start recursing
+//            realm.props
+            realm.props.map {t =>
+              val escaped = t._2 //org.json.JSONObject.quote(t._2) //._2.replaceAll("\"", "\\\\\"")
+              (t._1, escaped)
+            }
+          } else "undefined"
+          )
+      ),
+
+      "page" -> (if(ipage.isDefined) Map(
+        "name" -> ipage.get.name,
+        "category" -> ipage.get.category,
+        "isModerated" -> ipage.flatMap(_.attr("moderator")).exists(_.length > 0),
+        "isDefined" -> ipage.isDefined,
+        "isEmpty" -> ipage.isEmpty,
+        "wid" -> ipage.get.wid.wpath,
+        "wpath" -> ipage.get.wid.wpath,
+        "wpathnocats" -> ipage.get.wid.wpathnocats,
+        "visibility" -> ipage.get.visibility
+      ) else "undefined"
+        ),
+
+      "user" -> (if(iuser.isDefined) Map(
+        "userName" -> iuser.get.userName,
+        "firstName" -> iuser.get.firstName,
+        "ename" -> iuser.get.ename,
+        "isDefined" -> iuser.isDefined,
+        "isEmpty" -> iuser.isEmpty,
+        "isClubMember" -> user.isClubMember,
+        "isClubAdmin" -> user.isClubAdmin,
+        "isClubCoach" -> user.isClubCoach,
+        "isRegistered" -> user.isRegistered,
+        "id" -> iuser.get._id.toString,
+        "perms" -> iuser.get.perms.toList,
+        "level" -> iuser.get.membershipLevel,
+        "levelDesc" -> getLevelDesc,
+        "groups" -> iuser.get.groups.map(_.name).toList
+      ) else "undefined"
+        ),
+
+      "query" -> query
+    )) + ";\n"
+//    )).toString(2) + ";\n"
+    res
+  }
+
+
   def json = {
     jsonBrowser +
       """wix.utils = new (Java.type("api.WixUtils"))(wixj);"""
@@ -157,6 +239,7 @@ class wix (owe: Option[WikiPage], ou:Option[WikiUser], q:Map[String,String], r:S
   object realm {
     def count = Wikis(irealm).count
     def name = irealm
+    def props = WikiReactors.apply(irealm).props.props
   }
 
   /** start xp from the current page */
@@ -195,5 +278,7 @@ class WixUtils(w:wix) {
     if(wids.isEmpty) "<em>None</em>" else "<ul>"+wids.map(x=> "<li>"+ x.ahrefRelative() + "</li>").mkString("") + "</ul>"
 
   def getExtLink (systemId:String, instanceId:String) = w.user.getExtLink(systemId, instanceId)
+
+  def enc(s:String) = Sec.enc(s)
 }
 

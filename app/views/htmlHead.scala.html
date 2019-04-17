@@ -82,6 +82,9 @@ var realm = '@reactor';
 
 // intercept JS errors
     window.onerror = function(msg, url, line, col, error) {
+      // ignore the stupid
+      if(url.indexOf("worker-nvp1.js") > 0) return;
+
       // Note that col & error are new to the HTML 5 spec and may not be
       // supported in every browser.  It worked for me in Chrome.
       var extra = !col ? '' : '\ncolumn: ' + col;

@@ -14,7 +14,7 @@ import org.json.JSONObject
 import play.api.Configuration
 import play.api.data.Form
 import play.api.data.Forms.{mapping, nonEmptyText, tuple, _}
-import play.api.mvc.{Action, Call, Cookie, Request}
+import play.api.mvc._
 import razie.OR._
 import razie.audit.Audit
 import razie.diesel.model.DieselMsgString
@@ -429,6 +429,9 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
               views.html.user.doeConsent(next.getOrElse("/"))
             })
           ).withSession(Services.config.CONNECTED -> Enc.toSession(u.email))
+           .discardingCookies(
+             DiscardingCookie("error")
+           )
         } else {
           u.auditLoginFailed(realm)
 
