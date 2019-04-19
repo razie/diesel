@@ -37,6 +37,10 @@
 @import play.api.Play.current
 @import play.api.i18n.Messages.Implicits._
 
+      <div class="alert alert-danger" style="display:none" id="errBox">
+        <span id="errText"></span>
+      </div>
+
 @helper.form(action=routes.Profile.doeJoin2, 'class->"well alert alert-info") {
   @helper.inputText(
     registerForm("email"),
@@ -148,6 +152,15 @@ Your email
 
     <!-- Last part of BODY element in file index.html -->
 <script>
+
+  var error = getCookie("error");
+  console.log("err=" + error);
+
+  if (error != null && error.length > 0) {
+    $("#errText").text(error.replace(/[+]/g, " "));
+    $("#errBox").show();
+  }
+
   var gauthResult="";
 
   function loadProfile(){

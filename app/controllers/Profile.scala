@@ -419,15 +419,25 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
             }
           }
 
+          if(website.bprop("requireEmailVerification").exists(_ == true) &&
+            ! u.forRealm(realm).hasPerm(Perm.eVerified)
+          ) {
+            // realm wants him to verify email first
+            Redirect(loginUrl)
+              .withNewSession
+              .withCookies(
+                Cookie("error", "Please check your email for an activation link!".encUrl).copy(httpOnly = false)
+              )
+          } else
           (if(u.hasConsent(realm)) {
             if(next.isDefined)
               Msg2( s"""Click below to continue joining the $club.""", next)
             else
               Redirect("/")
           } else
-            (ROK.r apply {implicit stok=>
-              views.html.user.doeConsent(next.getOrElse("/"))
-            })
+              (ROK.r apply { implicit stok =>
+                views.html.user.doeConsent(next.getOrElse("/"))
+              })
           ).withSession(Services.config.CONNECTED -> Enc.toSession(u.email))
            .discardingCookies(
              DiscardingCookie("error")
@@ -623,7 +633,7 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
       }) //fold
   }
 
-  /** create profile for an external user - simplified
+  /** create profile for an external user - simplified FOR PORTALS
     *
     * @param realmcd - specific realm code, to validate calls came from realm
     */
