@@ -876,9 +876,10 @@ var oop = require("../lib/oop");
 var Mirror = require("../worker/mirror").Mirror;
 var nvp1parse = require("../mode/nvp1/nvp1parse");
 
-importScripts("../parser/antlr-all-min.js");
-importScripts("../parser/Nvp1Lexer.js");
-importScripts("../parser/Nvp1Parser.js");
+// RAZ these were relative before - new ACE likes them absolute... dargh
+importScripts(window.location.origin+"/assets/ace-builds/parser/antlr-all-min.js");
+importScripts(window.location.origin+"/assets/ace-builds/parser/Nvp1Lexer.js");
+importScripts(window.location.origin+"/assets/ace-builds/parser/Nvp1Parser.js");
 
 var Worker = exports.Worker = function(sender) {
     Mirror.call(this, sender);
@@ -1306,17 +1307,19 @@ var Document = function(text) {
     this.applyDeltas = function(deltas) {
         for (var i=0; i<deltas.length; i++) {
             var delta = deltas[i];
-            if(delta.range) {
-            var range = Range.fromPoints(delta.range.start, delta.range.end);
 
-            if (delta.action == "insertLines")
-                this.insertLines(range.start.row, delta.lines);
-            else if (delta.action == "insertText")
-                this.insert(range.start, delta.text);
-            else if (delta.action == "removeLines")
-                this._removeLines(range.start.row, range.end.row - 1);
-            else if (delta.action == "removeText")
-                this.remove(range);
+            if(delta.range) {
+                var range = Range.fromPoints(delta.range.start, delta.range.end);
+
+                if (delta.action == "insertLines")
+                    this.insertLines(range.start.row, delta.lines);
+                else if (delta.action == "insertText")
+                    this.insert(range.start, delta.text);
+                else if (delta.action == "removeLines")
+                    this._removeLines(range.start.row, range.end.row - 1);
+                else if (delta.action == "removeText")
+                    this.remove(range);
+            }
         }
     };
     this.revertDeltas = function(deltas) {
