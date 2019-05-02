@@ -6,8 +6,10 @@
   **/
 package razie.wiki.parser
 
+import model.Tags.Tags
 import razie.diesel.dom.RDOM
-import razie.tconf.parser.{LazyState, SState}
+import razie.diesel.ext.{EMock, EMsg}
+import razie.tconf.parser.{LazyAstNode, StrAstNode}
 import razie.wiki.model.WikiEntry
 import razie.wiki.model.WikiUser
 import razie.wiki.Services
@@ -24,28 +26,42 @@ trait DomFiddleParser extends DomParser {
 
   // {{diesel name:type args}}
   def pdfiddle: PS = "{{" ~> """dfiddle""".r ~ "[: ]+".r ~ """[^:}]*""".r ~ "[: ]*".r ~ """[^ :}]*""".r ~ optargs ~ "}}" ~ opt(CRLF1 | CRLF3 | CRLF2) ~ slinesUntil("dfiddle") <~ "{{/dfiddle}}" ^^ {
-    case d ~ _ ~ name ~ _ ~ kind ~ xargs ~ _ ~ _ ~ lines =>
+    case d ~ _ ~ name ~ _ ~ ltags ~ xargs ~ _ ~ _ ~ lines =>
       var args = xargs.toMap
       val urlArgs = "&" + args.filter(_._1 != "anon").filter(_._1 != "spec").map(t=>t._1+"="+t._2).mkString("&")
 
       def ARGS(url:String) = url + (if(urlArgs != "&") urlArgs else "")
 
       try {
-        LazyState[WikiEntry,WikiUser] { (current, ctx) =>
+        LazyAstNode[WikiEntry,WikiUser] { (current, ctx) =>
+
+          val tags = model.Tags.apply(ltags.toLowerCase)
 
           // see if we recognize some actionables to create links for them
-          var links = lines.s.lines.collect {
-            case l if l.startsWith("$msg") || l.startsWith("$send") =>
-              parseAll(linemsg(ctx.we.get.specPath.wpath), l).map { st =>
-                st.toHref(name, "value", ARGS)
-              }.getOrElse("???")
-            case l if l.startsWith("$mock") =>
-              parseAll(linemock(ctx.we.get.specPath.wpath), l).map { st =>
+          var links = parseAll(fiddleLines(ctx.we.get.specPath.wpath), lines.s).map { l =>
+            l.collect {
+              case m: EMsg => m.toHref(name, "value", ARGS)
+              case st: EMock =>
                 st.rule.e.asMsg.withPos(st.pos).toHref(name, "value", ARGS) +
                   " (" + st.rule.e.asMsg.withPos(st.pos).toHrefWith("json", name, "json", ARGS) + ") " +
                   " (" + st.rule.e.asMsg.withPos(st.pos).toHrefWith("trace", name, "debug", ARGS) + ") "
-              }.getOrElse("???")
-          }.mkString("\n")
+//              case s@_ => "???-"+s.toString
+            }.mkString("\n")
+          }.getOrElse("???")
+
+          // todo delete this is the above works
+//          var links = lines.s.lines.collect {
+//            case l if l.startsWith("$msg") || l.startsWith("$send") =>
+//              parseAll(linemsg(ctx.we.get.specPath.wpath), l).map { st =>
+//                st.toHref(name, "value", ARGS)
+//              }.getOrElse("???")
+//            case l if l.startsWith("$mock") =>
+//              parseAll(linemock(ctx.we.get.specPath.wpath), l).map { st =>
+//                st.rule.e.asMsg.withPos(st.pos).toHref(name, "value", ARGS) +
+//                  " (" + st.rule.e.asMsg.withPos(st.pos).toHrefWith("json", name, "json", ARGS) + ") " +
+//                  " (" + st.rule.e.asMsg.withPos(st.pos).toHrefWith("trace", name, "debug", ARGS) + ") "
+//              }.getOrElse("???")
+//          }.mkString("\n")
 
           if (links == "") links = "no recognized messages"
 
@@ -55,10 +71,10 @@ trait DomFiddleParser extends DomParser {
               .filter(_.signature.toLowerCase startsWith "spec")
               .map(_.content)
               .headOption
-          ).filter(x=> kind.toLowerCase=="story").getOrElse("")
+          ).filter(x=> tags.contains("story")).getOrElse("")
 
-          SState(
-            views.html.fiddle.inlineDomFiddle(ctx.we.get.wid, ctx.we, name, kind, spec, args, trim(lines.s), links, args.contains("anon"), ctx.au).body,
+          StrAstNode(
+            views.html.fiddle.inlineDomFiddle(ctx.we.get.wid, ctx.we, name, tags, spec, args, trim(lines.s), links, args.contains("anon") || tags.contains("anon"), ctx.au).body,
             Map("diesel.requireJs" -> "false")
           )
         }
@@ -66,7 +82,7 @@ trait DomFiddleParser extends DomParser {
       catch {
         case t: Throwable =>
           if (Services.config.isLocalhost) throw t // debugging
-          SState(s"""<font style="color:red">[[BAD FIDDLE - check syntax: ${t.toString}]]</font>""")
+          StrAstNode(s"""<font style="color:red">[[BAD FIDDLE - check syntax: ${t.toString}]]</font>""")
       }
   }
 }

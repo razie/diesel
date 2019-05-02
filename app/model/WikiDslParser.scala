@@ -8,7 +8,7 @@ package model
 
 import mod.diesel.model.Diesel
 import org.bson.types.ObjectId
-import razie.tconf.parser.{LazyState, SState}
+import razie.tconf.parser.{LazyAstNode, StrAstNode}
 import razie.wiki.model.{WikiEntry, WikiUser}
 import razie.wiki.parser.ParserBase
 
@@ -24,7 +24,7 @@ trait WikiDslParser extends ParserBase {
       var args = (if(xargs.isDefined) xargs.get._2 else List()).toMap
       val name = args.getOrElse("name", "")
 
-      SState(
+      StrAstNode(
         views.html.fiddle.inlineBrowserJsFiddle("", trim(lines.s), args, None).body,
         Map("diesel.requireJs" -> "false")) // trim EOLs
   }
@@ -56,24 +56,24 @@ trait WikiDslParser extends ParserBase {
 
             // remove empty lines from parsing
 
-            SState(
+            StrAstNode(
               views.html.fiddle.inlineHtmlfiddle(name, args, (trim(hh), trim(h), trim(c), trim(j)), None).body,
               Map("diesel.requireJs" -> "false")
             )
           }
           case "javascript" =>
-            SState(
+            StrAstNode(
               views.html.fiddle.inlineBrowserJsFiddle("", trim(ss.replaceFirst("\n", "")), args, None).body,
               Map("diesel.requireJs" -> "false")
             ) // trim EOLs
 //            SState(views.html.fiddle.inlineHtmlfiddle(name, args, ("", "", "", trim("document.write(function(){ return " + ss.replaceFirst("\n", "") + "}())")), None).body)
           case "scala" =>
-            SState(
+            StrAstNode(
               views.html.fiddle.inlineScalaFiddle(name, args, lines.s, None).body,
               Map("diesel.requireJs" -> "false")
             )
           case _ =>
-            SState(
+            StrAstNode(
               views.html.fiddle.inlineScalaFiddle(name, args, lines.s, None).body,
               Map("diesel.requireJs" -> "false")
             )
@@ -82,7 +82,7 @@ trait WikiDslParser extends ParserBase {
       catch  {
         case t : Throwable =>
           if(razie.wiki.Services.config.isLocalhost) throw t // debugging
-          SState(s"""<font style="color:red">[[BAD FIDDLE - check syntax: ${t.toString}]]</font>""")
+          StrAstNode(s"""<font style="color:red">[[BAD FIDDLE - check syntax: ${t.toString}]]</font>""")
       }
   }
 
@@ -115,12 +115,12 @@ trait WikiDslParser extends ParserBase {
         }
       }
 
-      if(hidden.isDefined) SState("")
-      else LazyState[WikiEntry,WikiUser] {(current, ctx) =>
+      if(hidden.isDefined) StrAstNode("")
+      else LazyAstNode[WikiEntry,WikiUser] { (current, ctx) =>
         // try to figure out the language from the content parsed so far
         val lang = Diesel.findLang(current.props, ctx.we)
         val fid = ffiddle(lang)
-        SState(s"""<div><b><small>DSL ${stype.replaceFirst("dsl.","")}</b> ($name):</small><br>$fid}</div>""")//, Map.empty, List.empty, List(wffiddle))
+        StrAstNode(s"""<div><b><small>DSL ${stype.replaceFirst("dsl.","")}</b> ($name):</small><br>$fid}</div>""")//, Map.empty, List.empty, List(wffiddle))
       }
     }
   }

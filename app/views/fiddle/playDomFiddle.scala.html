@@ -49,7 +49,7 @@ a JS with HTML and CSS fiddle
     </span>&nbsp;
 
     | <span id="realTimeBox" class="label label-default" >
-       <input type="checkbox" id="realTime" > <span title="real time preview">RT/</span><span onclick="configSim();" style="cursor:pointer" >Sim <span class="glyphicon glyphicon-chevron-down"></span></span></span>
+       <input type="checkbox" id="realTime" checked> <span title="real time preview">RT/</span><span onclick="configSim();" style="cursor:pointer" >Sim <span class="glyphicon glyphicon-chevron-down"></span></span></span>
 
     | <span class="label label-default" >
         <input type="checkbox" id="mockMode" title="Use the mocks" checked>
@@ -58,7 +58,7 @@ a JS with HTML and CSS fiddle
     | <input type="checkbox" id="sketchMode" title="Not used yet"> Sketch
 
     | <span id="blenderBox" class="label label-default" style="cursor:pointer">
-      <input type="checkbox" id="blenderMode" title="Mix all specs together"> <span onclick="configBlender();">Blender <span class="glyphicon glyphicon-chevron-down"></span></span></span>
+      <input type="checkbox" id="blenderMode" title="Mix all specs together" checked> <span onclick="configBlender();">Blender <span class="glyphicon glyphicon-chevron-down"></span></span></span>
 
     | <input type="checkbox" id="draftMode" title="Use autosaved drafts not originals" checked> Drafts
     | <input type="checkbox" id="wikiMode" title="Show the wiki instead of the tree" > Wiki
@@ -74,15 +74,20 @@ a JS with HTML and CSS fiddle
   </small>
   </h3>
 
+  @*story - buttons*@
+
   <div class="row" style="align-items:center;">
-    <div id="title3a_@id" class="col-sm-6" style="font-size: small">Story <span class="label label-default" onclick="openStory();">...</span>
-      <input type="checkbox" id="expandedStory" title="Expand/collapse story" checked> <small>(show/hide)</small>
+    <div id="title3a_@id" class="col-sm-6" style="font-size: small">Story <span class="" style="font-face:bold" onclick="openStory();"><span class="glyphicon glyphicon-new-window"></span></span>
+      &nbsp;<input type="checkbox" id="expandedStory" title="Expand/collapse story" checked> <small>(show/hide)</small>
     </div>
     <div id="title3b_@id" class="col-sm-6" style="font-size: small">
       <input type="checkbox" id="debugStory" title="Expand/collaps debug nodes" checked> <small>(debug)</small>
       <input type="checkbox" id="generatedStory" title="Expand/collaps generated nodes" checked> <small>(generated)</small>
+      <button id="ferrStory" title="Find first error" onclick="ferrStory()" class="btn btn-default btn-xs"> <small><span class="glyphicon glyphicon-menu-down"></span> (first error)</small>
     </div>
-  </div>
+
+  @*story - editors*@
+
   <div id="storyRow" class="row" style="align-items:center;">
     <div id="divIn3_@id" class="col-sm-6" style="">
       <pre id="pre3_@id" style="height:228px; ">@story</pre>
@@ -93,24 +98,32 @@ a JS with HTML and CSS fiddle
   </div>
 
 
+  @*spec row - buttons*@
+
   <div class="row" style="align-items:center;">
-    <div id="title1a_@id" class="col-sm-6" style="font-size: small">Mock/Spec <span class="label label-default" onclick="openSpec();">...</span>
-      <input type="checkbox" id="expandedSpec" title="Expand/collapse spec" checked> <small>(show/hide)</small>
+    <div id="title1a_@id" class="col-sm-6" style="font-size: small">Mock/Spec <span class="" style="font-face:bold"  onclick="openSpec();"><span class="glyphicon glyphicon-new-window"></span></span>
+      &nbsp;<input type="checkbox" id="expandedSpec" title="Expand/collapse spec" checked> <small>(show/hide)</small>
     </div>
     <div id="title1b_@id" class="col-sm-6" style="font-size: small">
-      <input type="checkbox" id="debugSpec" title="Expand/collaps debug nodes" checked> <small>(debug)</small>
-      <input type="checkbox" id="generatedSpec" title="Expand/collaps generated nodes" checked> <small>(generated)</small>
+      @*<input type="checkbox" id="debugSpec" title="Expand/collaps debug nodes" checked> <small>(debug)</small>*@
+      @*<input type="checkbox" id="generatedSpec" title="Expand/collaps generated nodes" checked> <small>(generated)</small>*@
+      @*<button id="ferrSpec" title="Find first error" onclick="ferrSpec()" class="btn btn-default btn-xs"> <small>(first error)</small>*@
     </div>
   </div>
+
+  @*spec row - editors*@
+
   <div id="specRow" class="row" style="align-items:center;">
     <div id="divIn1_@id" class="col-sm-6" style="">
       <pre id="pre1_@id" style="height:228px; ">@spec</pre>
     </div>
-    <div class="col-sm-6 well" id="divOut1_@id" style="overflow: scroll; margin-bottom:2px">
+    <div class="col-sm-6 well" id="divOutSpec_@id" style="overflow: scroll; margin-bottom:2px">
     </div>
-    <pre class="col-sm-6" id="iframeOut1_@id" style="padding:1px; Xtext-align: center; display: none">Start typing...</pre>
+    <pre class="col-sm-6" id="iframeOutSpec_@id" style="padding:1px; Xtext-align: center; display: none">Start typing...</pre>
   </div>
 
+
+    @*capture row*@
 
   <div class="row" style="align-items:center;">
   <div id="title5a_@id" class="col-sm-6" style="font-size: small">Capture
@@ -198,7 +211,7 @@ function startESP() {
   }, 500);
 }
 
-$('#divOut1_'+@id).css('max-height', $('#divIn1_@id').height()-10+'px');
+$('#divOutSpec_'+@id).css('max-height', $('#divIn1_@id').height()-10+'px');
 $('#divOut3_'+@id).css('max-height', $('#divIn3_@id').height()-10+'px');
 $('#iframeOut3_'+@id).css('max-height', $('#divIn3_@id').height()-10+'px');
 $('#iframeOut5_'+@id).css('max-height', $('#pre5box_@id').height()-10+'px');
@@ -248,7 +261,7 @@ var runpill_@id = function(id) {
   console.log("run isRefreshing="+isRefreshing);
 
   // set this before going to backend which could take a long time
-  @*specChanged(!(editor1.getValue() === $("#origSpec_@id").text()));*@
+  @*specChanged(!(specEditor.getValue() === $("#origSpec_@id").text()));*@
 
   var lastTime = new Date().getTime();
 
@@ -263,8 +276,8 @@ var runpill_@id = function(id) {
       reactor : '@reactor',
       specWpath : specWpath,
       storyWpath : storyWpath,
-      spec : editor1.getValue(),
-      story : editor.getValue(),
+      spec : specEditor.getValue(),
+      story : storyEditor.getValue(),
       capture : editor5.getValue(),
       simMode : simMode()
     }),
@@ -273,11 +286,15 @@ var runpill_@id = function(id) {
       isRefreshing -= 1;
       hideSpinner();
 
-      $('#divOut1_'+id).html(data.res);
+      $('#divOutSpec_'+id).html(data.res);
       domContentAssist = data.ca;
       var du = new Date().getTime() - lastTime;
       $('#roundtrip').text(du+' ms');
       specChanged(data.specChanged);
+
+      if(specEditor) updateMarkers(specEditor, data.ast);
+      console.log("MARK spec");
+
       // also trigger inst update
       runpill2_@{id}('@{id}');
     },
@@ -289,13 +306,21 @@ var runpill_@id = function(id) {
   });
 }
 
-function setErrors (s,t) {
-  $('#errors').text(s + '/' + t + ' failed');
+function setErrors (s,e,t) {
+  $('#errors').text(s + '/' + e + '/' + t);
   $('#errors').removeClass();
-  if(s == 0 || s == "0")
-    $('#errors').addClass("label label-success");
-  else
+  if(s == 0 || s == "0") {
+    if(e == 0 || e == "0") {
+      $('#errors').prop("title", "no errors");
+      $('#errors').addClass("label label-success");
+    } else {
+      $('#errors').prop("title", "no failures, but some exceptions");
+      $('#errors').addClass("label label-warning");
+    }
+  } else {
+    $('#errors').prop("title", "some tests failed");
     $('#errors').addClass("label label-danger");
+  }
 }
 
 var encAmp = function(s) {
@@ -310,7 +335,7 @@ var runpill2_@id = function(id) {
   console.log("run isRefreshing2="+isRefreshing2);
 
   // set this before going to backend which could take a long time
-  @*storyChanged(!(editor.getValue() === $("#origStory_@id").text()));*@
+  @*storyChanged(!(specEditor.getValue() === $("#origStory_@id").text()));*@
 
   if(curDomRequest != null) {
     console.log ("Ignore request - already in progress: " + curDomRequest);
@@ -333,10 +358,11 @@ var runpill2_@id = function(id) {
       reactor : '@reactor',
       specWpath : specWpath,
       storyWpath : storyWpath,
-      spec : editor1.getValue(),
-      story : editor.getValue(),
+      spec : specEditor.getValue(),
+      story : storyEditor.getValue(),
       capture : editor5.getValue(),
-      simMode : simMode()
+      simMode : simMode(),
+      runEngine : ! $('#wikiMode').prop('checked')
     }),
     contentType: 'application/x-www-form-urlencoded',
     success: function(data) {
@@ -352,16 +378,19 @@ var runpill2_@id = function(id) {
         // if i don't do this, html values will mess up the current page
         // if(! data.simMode) { // was not executed
           $('#iframeOut3_' + id).html(encAmp(data.res) + '\n');
-          $('#iframeOut1_' + id).html(encAmp(data.res) + '\n');
+          $('#iframeOutSpec_' + id).html(encAmp(data.res) + '\n');
           hideDebug($('#debugStory').prop('checked'));
           hideGenerated($('#generatedStory').prop('checked'));
         // }
       }
       $('#iframeOut5_'+id).html(data.capture);
       instContentAssist = data.ca;
-      setErrors(data.failureCount, data.totalCount);
+      setErrors(data.failureCount, data.errorCount, data.totalCount);
       var du = new Date().getTime() - lastTime;
       $('#roundtrip').text(du+' ms');
+
+      if(storyEditor) updateMarkers(storyEditor, data.ast);
+      console.log("MARK story");
 
       // automatic backoff
       if(du > 7000)
@@ -402,9 +431,9 @@ var runpill2_@id = function(id) {
 
 <script>
 
-var domChanged=true;
-var instChanged=true;
-var captureChanged=true;
+var domChanged=true;        // this triggers the first fiddle update
+var instChanged=false;      //
+var captureChanged=false;
 
 // how long to wait to consider he stopped typing
 var CUR_TYPING_MAX=1000;
@@ -414,25 +443,25 @@ var lastUpdateMillis = Date.now() - 50000; // to make it refresh the first time
 // last time content changed
 var lastChangeMillis = Date.now() - 50000;
 
-var editor;
-var editor1;
+var storyEditor;
+var specEditor;
 var editor5;
 
 function attachAce() {
   var langTools = ace.require("ace/ext/language_tools");
 
-  editor = ace.edit("pre3_@id");
-  editor1 = ace.edit("pre1_@id");
+  storyEditor = ace.edit("pre3_@id");
+  specEditor = ace.edit("pre1_@id");
 
   @if(stok.isLight) {
-  editor1.setTheme ( "ace/theme/crimson_editor" ) ;
-  editor.setTheme ( "ace/theme/crimson_editor" ) ;
+  specEditor.setTheme ( "ace/theme/crimson_editor" ) ;
+  storyEditor.setTheme ( "ace/theme/crimson_editor" ) ;
 } else {
-  editor1.setTheme ( "ace/theme/twilight" ) ;
-  editor.setTheme ( "ace/theme/twilight" ) ;
+  specEditor.setTheme ( "ace/theme/twilight" ) ;
+  storyEditor.setTheme ( "ace/theme/twilight" ) ;
 }
-  editor1.getSession().setMode("ace/mode/nvp1");
-  editor.getSession().setMode("ace/mode/nvp1");
+  specEditor.getSession().setMode("ace/mode/nvp1");
+  storyEditor.getSession().setMode("ace/mode/nvp1");
 
   editor5 = ace.edit("pre5_@id");
   @if(stok.isLight) {
@@ -441,16 +470,22 @@ function attachAce() {
   editor5.setTheme ( "ace/theme/twilight" ) ;
 }
 
-  editor1.setOptions({
+  specEditor.setOptions({
     enableBasicAutocompletion: true,
-    enableLiveAutocomplete:  true,
+    // enableLiveAutocomplete:  true,
     enableLiveAutocompletion:  true
   });
-  editor.setOptions({
+  storyEditor.setOptions({
     enableBasicAutocompletion: true,
-    enableLiveAutocomplete:  true,
+    // enableLiveAutocomplete:  true,
     enableLiveAutocompletion:  true
   });
+
+  storyEditor.getSession().setOption('indentedSoftWrap', false);
+  storyEditor.getSession().setUseWrapMode(true);
+
+  specEditor.getSession().setOption('indentedSoftWrap', false);
+  specEditor.getSession().setUseWrapMode(true);
 
   //todo can't have two editors with two completers...
   //todo I could simulate it with an IF inside instCompletions
@@ -474,23 +509,23 @@ function attachAce() {
   //  langTools.addCompleter(instCompleter);
   langTools.setCompleters([keyWordCompleter, instCompleter]);
 
-editor1.commands.addCommand({
+specEditor.commands.addCommand({
     name: "gui",
     bindKey: {win: "Ctrl-G", mac: "Command-G"},
     exec: codeGui
 });
-editor.commands.addCommand({
+storyEditor.commands.addCommand({
     name: "gui",
     bindKey: {win: "Ctrl-G", mac: "Command-G"},
     exec: codeGui
 });
 
-  editor1.getSession().on('change', function(e) {
+  specEditor.getSession().on('change', function(e) {
     domChanged=true;
     lastChangeMillis = Date.now();
   });
 
-  editor.getSession().on('change', function(e) {
+  storyEditor.getSession().on('change', function(e) {
     instChanged=true;
     lastChangeMillis = Date.now();
   });
@@ -503,8 +538,16 @@ editor.commands.addCommand({
 
 attachAce();
 
+var ignoreFirstTime = true;
+
 setInterval(function(){
   var curMillis = Date.now();
+
+  // some timing issues with the ACE setup?
+  if(ignoreFirstTime) {
+    ignoreFirstTime = false;
+    return;
+  }
 
   // if still typing, wait
   if(curMillis - lastChangeMillis < CUR_TYPING_MAX) {
@@ -572,8 +615,8 @@ function popupMenu1(what) {
         reactor : '@reactor',
         specWpath : specWpath,
         storyWpath : storyWpath,
-        spec : editor1.getValue(),
-        story : editor.getValue()
+        spec : specEditor.getValue(),
+        story : storyEditor.getValue()
       }),
       contentType: 'application/x-www-form-urlencoded',
       success: function(data) {
@@ -606,8 +649,8 @@ function revertOrig(what) {
         reactor : '@reactor',
         specWpath : specWpath,
         storyWpath : storyWpath,
-        spec : editor1.getValue(),
-        story : editor.getValue()
+        spec : specEditor.getValue(),
+        story : storyEditor.getValue()
       }),
       contentType: 'application/x-www-form-urlencoded',
       success: function(data) {
@@ -631,15 +674,16 @@ function saveOrig(what) {
         reactor : '@reactor',
         specWpath : specWpath,
         storyWpath : storyWpath,
-        spec : editor1.getValue(),
-        story : editor.getValue()
+        spec : specEditor.getValue(),
+        story : storyEditor.getValue()
       }),
       contentType: 'application/x-www-form-urlencoded',
       success: function(data) {
         location.reload(true);
       },
       error  : function(x) {
-        console.log( "ERR "+x.toString());
+        alert("ERR - can't save: " + x.statusText + " : " + x.responseText);
+        console.log( "ERR "+JSON.stringify(x));
       }
     });
 }
@@ -656,8 +700,8 @@ function saveNew(what) {
         reactor : '@reactor',
         specWpath : specWpath,
         storyWpath : storyWpath,
-        spec : editor1.getValue(),
-        story : editor.getValue()
+        spec : specEditor.getValue(),
+        story : storyEditor.getValue()
       }),
       contentType: 'application/x-www-form-urlencoded',
       success: function(data) {
@@ -665,7 +709,8 @@ function saveNew(what) {
         //location = '/diesel/fiddle/playDom?what='+newName
       },
       error  : function(x) {
-        console.log( "ERR "+x.toString());
+        alert("ERR - can't save: " + x.statusText + " : " + x.responseText);
+        console.log( "ERR "+JSON.stringify(x));
       }
     });
 }
@@ -684,6 +729,13 @@ function hideKind(expanded, debug) {
   } else {
     $("div[kind='"+debug+"']").hide();
   }
+}
+
+function ferrStory() {
+  var x = $("div[kind='error']")[0];//.scrollIntoView();
+  var parent = $('#iframeOut3_'+@id)[0];
+  if(typeof x != "undefined")
+    parent.scrollTop = x.offsetTop;
 }
 
 
@@ -706,18 +758,18 @@ $(window).load (function() {
       $("#storyRow").show();
       $("#divIn1_@id").css("height", h2);
       $("#pre1_@id").css("height", h2);
-      $("#divOut1_@id").css("max-height", h2);
-      $("#divOut1_@id").show();
-      $("#iframeOut1_@id").css("max-height", h2);
-      $("#iframeOut1_@id").hide();
+      $("#divOutSpec_@id").css("max-height", h2);
+      $("#divOutSpec_@id").show();
+      $("#iframeOutSpec_@id").css("max-height", h2);
+      $("#iframeOutSpec_@id").hide();
       attachAce();
     } else {
       $("#storyRow").hide();
       $("#divIn1_@id").css("height", h3);
       $("#pre1_@id").css("height", h3);
-      $("#divOut1_@id").hide();
-      $("#iframeOut1_@id").css("max-height", h3);
-      $("#iframeOut1_@id").show();
+      $("#divOutSpec_@id").hide();
+      $("#iframeOutSpec_@id").css("max-height", h3);
+      $("#iframeOutSpec_@id").show();
       attachAce();
     }
   });
@@ -740,17 +792,17 @@ $(window).load (function() {
     }
   });
 
-  useLocalStorageCheckbox("debugSpec", "domFiddleDebugSpec", function (a,b,expanded) {
-    hideDebug(expanded);
-  });
+  // useLocalStorageCheckbox("debugSpec", "domFiddleDebugSpec", function (a,b,expanded) {
+  //   hideDebug(expanded);
+  // });
 
   useLocalStorageCheckbox("debugStory", "domFiddleDebugStory", function (a,b,expanded) {
     hideDebug(expanded);
   });
 
-  useLocalStorageCheckbox("generatedSpec", "domFiddleGeneratedSpec", function (a,b,expanded) {
-    hideGenerated(expanded);
-  });
+  // useLocalStorageCheckbox("generatedSpec", "domFiddleGeneratedSpec", function (a,b,expanded) {
+  //   hideGenerated(expanded);
+  // });
 
   useLocalStorageCheckbox("generatedStory", "domFiddleGeneratedStory", function (a,b,expanded) {
     hideGenerated(expanded);
@@ -766,7 +818,7 @@ function configTagQuery (title,tq,cback) {
           title : title,
           tq : tq
         }),
-        contentType: 'application/x-www-form-urlencoded',
+        contentType: 'application/x-www-form-urlenGcoded',
         success: function(data) {
           popupContent(data);
         },
@@ -804,6 +856,7 @@ function openSpec() {
 
 @if(line.length > 0 && col.length > 0) {
   <script>
+    // when you got here by navigating something, select it and highlight it
   setTimeout(function(){
     weSelect('@wpath', @line, @col);
   }, 500);

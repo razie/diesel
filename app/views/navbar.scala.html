@@ -16,6 +16,11 @@ creates the navigation bar
   s"/wikie/search?realm=$realm"
 }
 
+@menuBadges()=@{
+  if(stok.au.exists(_.isAdmin)) web().navMenu ++ Seq("admin.badgeRefreshAllTests" -> "/diesel/statusAll")
+  else web().navMenu
+}
+
 @if(Services.config.getTheme(stok.au, stok.request).contains("light")) {
   <nav class="navbar navbar-fixed-top navbar-inverse">
     @*<nav class="navbar navbar-fixed-top navbar-default">*@
@@ -33,15 +38,11 @@ creates the navigation bar
       <span class="icon-bar"></span>
       <span class="icon-bar"></span>
     </button>
-
-
-      @web().navBrand.fold {
-        <a class="navbar-brand" style="padding: 8px 20px 5px; margin-left: -20px;" href="@url.getOrElse("http://"+Services.config.hostport)">
-          <img class="" src="@logo.orElse(web().logo).getOrElse(routes.Assets.at("images/racerKids-small.gif"))" height="32" width="152" alt="RacerKidz logo"/>
-        </a>
-      } {b=>
-        @Html(b)
-      }
+@web().navBrand.fold {
+<a href="/" style="text-decoration:none"><img class="" src="@logo.orElse(web().logo).getOrElse("http://cdn.razie.com/Public/diesel/diesel3.png")" height="52" width="150" alt="logo"></a>
+} {b=>
+@Html(b)
+}
   </div>
 
     <!-- Collect the nav links, forms, and other content for toggling -->
@@ -49,7 +50,7 @@ creates the navigation bar
     <ul class="nav navbar-nav navbar-left">
 
       <li class="divider-vertical"></li>
-      @web().navMenu.map{t=>
+      @menuBadges().map{t=>
         @if(! t._1.startsWith("user.") && ! t._1.startsWith("admin.") ||
             t._1.startsWith("user.") && stok.au.isDefined ||
             t._1.startsWith("admin.") && stok.au.exists(_.isAdmin) ) {
@@ -173,9 +174,11 @@ require(['jquery'], function($){
 
             @if(! web().navrMenuRemove.contains("Diffs") && stok.au.exists(u=> u.isMod)) {
               <li class="divider"></li>
-              <li><a href="/razadmin/drafts/@stok.realm">Drafts</a></li>
-              <li><a href="/razadmin/difflist/@stok.realm/www.dieselapps.com">Diffs</a></li>
-              <li><a href="/razadmin/difflist/all/www.dieselapps.com">Diffs-all</a></li>
+              <li><a href="/admin/drafts/@stok.realm">Drafts</a></li>
+              <li><a href="/admin/difflist/@stok.realm/www.dieselapps.com">Diffs</a></li>
+              @if(! web().navrMenuRemove.contains("Diffs") && stok.au.exists(u=> u.isAdmin)) {
+                <li><a href="/admin/difflist/all/www.dieselapps.com">Diffs-all</a></li>
+              }
               <li class="divider"></li>
               <li> <a href="javascript:doEditThis();">Edit</a> </li>
               <li> <a href="/wikie/show/Name">Create</a> </li>
@@ -195,7 +198,6 @@ require(['jquery'], function($){
 
       case None => {
         <li>
-          <span class="glyphicon glyphicon-lock"></span>
           <a href="@web().join">Log in</a>
         </li>
       }
@@ -236,7 +238,9 @@ require(['jquery'], function($){
               @stok.realm <span class="caret"></span>
             </a>
             <ul class="dropdown-menu" role="menu">
-            @stok.au.toList.flatMap(x => x.memberReactors).map { t =>
+              <li><a href="/wikie/switchRealm/wiki">wiki</a></li>
+              <li><a href="/wikie/switchRealm/specs">specs</a></li>
+            @stok.au.toList.flatMap(x => x.memberReactors).filter(x=> !Array("wiki","specs").contains(x)).sorted.map { t =>
               <li><a href="/wikie/switchRealm/@t">@t</a></li>
             }
             </ul>

@@ -3,7 +3,7 @@ package wiki
 
 import org.scalatest.FlatSpec
 import org.scalatest.matchers.ShouldMatchers
-import razie.tconf.parser.SState
+import razie.tconf.parser.StrAstNode
 import razie.wiki.model.{WID, Wikis}
 import razie.wiki.parser.{WAST, WikiParserT}
 
@@ -49,7 +49,7 @@ class TestParser extends FlatSpec with ShouldMatchers {
     "aa\nbb" === (applys("aa\nbb"))
     "{{Date 2011-07-24}}" === (applys("{{when:2011-07-24}}"))
     "haha {{Date 2011-07-24}}\nhehe" === (applys("haha {{when:2011-07-24}}\nhehe"))
-    SState("haha Date: 2011-07-24\nhehe", Map("when" -> "2011-07-24")) === (nWikiParser.apply("haha {{when:2011-07-24}}\nhehe"))
+    StrAstNode("haha Date: 2011-07-24\nhehe", Map("when" -> "2011-07-24")) === (nWikiParser.apply("haha {{when:2011-07-24}}\nhehe"))
 
     "_____habibi__" === Wikis.formatName("[] /:habibi{}")
     //

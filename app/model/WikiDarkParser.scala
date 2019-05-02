@@ -6,7 +6,7 @@
  */
 package model
 
-import razie.tconf.parser.{LazyState, SState}
+import razie.tconf.parser.{LazyAstNode, StrAstNode}
 import razie.wiki.Services
 import razie.wiki.model.WikiEntry
 import razie.wiki.model.WikiUser
@@ -23,12 +23,12 @@ trait WikiDarkParser extends ParserBase {
 
   def wikiPropImgDark: PS = "{{img" ~> """\.light|\.dark""".r ~ """[: ]""".r ~ """[^} ]*""".r ~ optargs <~ "}}" ^^ {
     case stype ~ _ ~ name ~ args => {
-      LazyState[WikiEntry,WikiUser] {(current, ctx) =>
+      LazyAstNode[WikiEntry,WikiUser] { (current, ctx) =>
         if(isDark(ctx.au) && stype.contains("dark") || !isDark(ctx.au) && stype.contains("light")) {
           val sargs = args.foldLeft(""){(c, a) => s""" $c ${a._1}="${a._2}" """}
-          SState(s"""<img src="$name" $sargs />""")
+          StrAstNode(s"""<img src="$name" $sargs />""")
         } else {
-          SState("")
+          StrAstNode("")
         }
       }
     }
@@ -37,11 +37,11 @@ trait WikiDarkParser extends ParserBase {
   // to not parse the content, use slines instead of lines
   def htmlDark: PS = "{{" ~> opt(".") ~ """html.dark|html.light""".r ~ "}}" ~ lines <~ ("{{/" ~ """html""".r ~ "}}") ^^ {
     case hidden ~ stype ~ _ ~ lines => {
-      LazyState[WikiEntry,WikiUser] {(current, ctx) =>
+      LazyAstNode[WikiEntry,WikiUser] { (current, ctx) =>
         if(isDark(ctx.au) && stype.contains("dark") || !isDark(ctx.au) && stype.contains("light")) {
           lines.fold(ctx)
         } else {
-          SState.EMPTY
+          StrAstNode.EMPTY
         }
       }
     }

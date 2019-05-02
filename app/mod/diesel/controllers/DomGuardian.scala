@@ -37,23 +37,25 @@ import scala.concurrent.{Future, Promise}
 object DomGuardian extends Logging {
 
   // todo optimize so we don't parse every time
-  def autoRealms = Config.prop("diesel.guardian.auto.realms", "wiki,specs").split(",")
-  def enabledRealms = Config.prop("diesel.guardian.enabled.realms", "wiki,specs").split(",")
+  def autoRealms = Config.prop("diesel.guardian.auto.realms.regex", "wiki|specs")
+  def enabledRealms = Config.prop("diesel.guardian.enabled.realms.regex", ".*")
+  def excludedRealms = Config.prop("diesel.guardian.excluded.realms.regex", "nobody")
+  def excludedAutoRealms = Config.prop("diesel.guardian.excluded.auto.realms.regex", "wiki|specs")
 
   def ISAUTO = Config.prop("diesel.guardian.auto", "true").toBoolean
   def ISENABLED = Config.prop("diesel.guardian.enabled", "true").toBoolean
 
   def enabled(realm:String) = ISENABLED && {
     realm match {
-      case "specs" | "wiki" => true
-      case _ => enabledRealms.contains(realm)
+      case "specs" | "wiki" => true // always these two
+      case _ => realm.matches(enabledRealms) && !realm.matches(excludedRealms)
     }
   }
 
   def onAuto(realm:String) = ISAUTO && {
     realm match {
-      case "specs" | "wiki" => true
-      case _ => ISAUTO && autoRealms.contains(realm)
+      case "specs" | "wiki" => true // always these two
+      case _ => ISAUTO && realm.matches(autoRealms) && !realm.matches(excludedAutoRealms)
     }
   }
 
@@ -95,7 +97,7 @@ object DomGuardian extends Logging {
         val maybeDrafts = list.map { p =>
           //         if draft mode, find the auto-saved version if any
           if (settings.draftMode) {
-            val c = Autosave.find("DomFidStory", reactor, p.wid.wpath, uid).flatMap(_.get("content")).mkString
+            val c = Autosave.find("wikie", p.wid.defaultRealmTo(reactor), uid).flatMap(_.get("content")).mkString
             if (c.length > 0) p.copy(content = c)
             else p
           } else p
@@ -104,7 +106,7 @@ object DomGuardian extends Logging {
       } else {
         val spw = WID.fromPath(storyWpath).flatMap(_.page).map(_.content).getOrElse(SAMPLE_SPEC)
         val specName = WID.fromPath(storyWpath).map(_.name).getOrElse("fiddle")
-        val spec = Autosave.OR("DomFidStory", reactor, storyWpath, uid, Map(
+        val spec = Autosave.OR("wikie", WID.fromPathWithRealm(storyWpath, reactor).get, uid, Map(
           "content" -> spw
         )).apply("content")
 
@@ -114,12 +116,14 @@ object DomGuardian extends Logging {
     pages
   }
 
-  /** inherit specs from mixins */
+  /** all pages of category
+    * - inherit ALL specs from mixins
+    */
   def catPages (cat:String, realm:String): List[WikiEntry] = {
     if("Spec" == cat) {
       val w = Wikis(realm)
       val l = (w.pages(cat).toList ::: w.mixins.flatten.flatMap(_.pages(cat).toList))
-      // distinct
+      // distinct in order - so I overwrite mixins
       val b = ListBuffer[WikiEntry]()
       val seen = mutable.HashSet[WikiEntry]()
       for (x <- l) {
@@ -149,7 +153,7 @@ object DomGuardian extends Logging {
     val uid = au.map(_._id).getOrElse(new ObjectId())
 
     // is there a current fiddle in this reactor/user?
-    val wids = Autosave.OR("DomFidPath", reactor, "", uid, Map(
+    val wids = Autosave.OR("DomFidPath", WID("","").r(reactor), uid, Map(
       "specWpath" -> """""",
       "storyWpath" -> """"""
     ))
@@ -165,7 +169,7 @@ object DomGuardian extends Logging {
 
     val storyName = WID.fromPath(storyWpath).map(_.name).getOrElse("fiddle")
 
-    val story = Autosave.OR("DomFidStory", reactor, storyWpath, uid, Map(
+    val story = Autosave.OR("wikie", WID.fromPathWithRealm(storyWpath, reactor).get, uid, Map(
       "content" -> stw
     )).apply("content")
 
@@ -177,7 +181,7 @@ object DomGuardian extends Logging {
           //         if draft mode, find the auto-saved version if any
           if (settings.draftMode) {
             // todo uid here is always anonymous - do we use the reactor owner as default?
-            val a = Autosave.find("DomFidSpec", reactor, p.wid.wpath, uid)
+            val a = Autosave.find("wikie", p.wid.defaultRealmTo(reactor), uid)
             val c = a.flatMap(_.get("content")).mkString
             if (c.length > 0) p.copy(content = c)
             else p
@@ -188,7 +192,7 @@ object DomGuardian extends Logging {
         var specWpath = wids("specWpath")
         val spw = WID.fromPath(specWpath).flatMap(_.page).map(_.content).getOrElse(SAMPLE_SPEC)
         val specName = WID.fromPath(specWpath).map(_.name).getOrElse("fiddle")
-        val spec = Autosave.OR("DomFidSpec", reactor, specWpath, uid, Map(
+        val spec = Autosave.OR("wikie", WID.fromPathWithRealm(specWpath,reactor).get, uid, Map(
           "content" -> spw
         )).apply("content")
 
@@ -346,7 +350,7 @@ object DomGuardian extends Logging {
         addFiddles
       )
 
-      DomCollector.collectAst("guardian", engine.id, engine)
+      DomCollector.collectAst("guardian", realm, engine.id, au.map(_.id), engine)
 
       // decompose all nodes, not just the tests
       val fut = engine.process.map { engine =>

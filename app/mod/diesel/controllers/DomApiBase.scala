@@ -17,10 +17,9 @@ class DomApiBase extends mod.diesel.controllers.SFiddleBase  with Logging {
 
   /** api - get content for a WID - either from page or autosaved */
   def getContent(what: String, wid: CMDWID) = FAUPR { implicit stok =>
-    val DFS = if (what.toLowerCase == "spec") "DomFidSpec" else "DomFidStory"
     val spw = wid.wid.flatMap(_.page).map(_.content).getOrElse("")
 
-    val ospec = wid.wpath.flatMap(specWpath => Autosave.find(DFS, stok.realm, specWpath, stok.au.get._id).map(_.apply("content")))
+    val ospec = wid.wpath.flatMap(specWpath => Autosave.find("wikie", WID.fromPathWithRealm(specWpath, stok.realm).get, stok.au.get._id).map(_.apply("content")))
 
     Ok(ospec getOrElse spw)
   }
@@ -36,7 +35,7 @@ class DomApiBase extends mod.diesel.controllers.SFiddleBase  with Logging {
       if("Story" == cat) Wikis(reactor).find("Spec", n) else None
 
     def hasDraft (w:WID):String =
-      if(Autosave.findAll(stok.realm, w.wpath, stok.au.get._id)
+      if(Autosave.findAll("wikie", w, stok.au.get._id)
         .exists(x=> w.content.exists(_ != x.contents("content")))) " (*)" else ""
 
     // list the storyes anskipd specs side by side

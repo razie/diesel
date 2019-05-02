@@ -6,7 +6,7 @@
  */
 package model
 
-import razie.tconf.parser.SState
+import razie.tconf.parser.StrAstNode
 import razie.wiki.parser.ParserBase
 
 /** parse dsl, fiddles and code specific fragments */
@@ -21,25 +21,25 @@ trait WikiCodeParser extends ParserBase {
     case hidden ~ stype ~ _ ~ name ~ _ ~ sign ~ _ ~ lines => {
       // inlines still need to be called with a call - but will be expanded right there
       if ("lambda" == stype)
-        SState(s"`{{call:#$name}}`") // lambdas are executed right there...
+        StrAstNode(s"`{{call:#$name}}`") // lambdas are executed right there...
       else if ("inline" == stype && hidden.length <= 0)
-        SState(s"`{{call:#$name}}`") // lambdas are executed right there...
+        StrAstNode(s"`{{call:#$name}}`") // lambdas are executed right there...
       else if(hidden.length <= 0)
-        SState(s"`{{$stype:$name}}`") // defs are expanded in pre-processing and executed in display
-      else SState.EMPTY
+        StrAstNode(s"`{{$stype:$name}}`") // defs are expanded in pre-processing and executed in display
+      else StrAstNode.EMPTY
     }
   }
 
   def wikiPropCall: PS = "{{" ~> """call""".r ~ "[: ]".r ~ opt("""[^#}]*""".r) ~ "#" ~ """[^}]*""".r <~ "}}" ^^ {
     case stype ~ _ ~ page ~ _ ~ name => {
-      SState("`{{" + stype + ":" + (page getOrElse "") + "#" + name + "}}`")
+      StrAstNode("`{{" + stype + ":" + (page getOrElse "") + "#" + name + "}}`")
       // calls are executed in display
     }
   }
 
   def wikiPropExpr: PS = "{{" ~> ( "e" | "e.js" | "e.scala") ~ "[: ]".r ~ """[^}]*""".r <~ "}}" ^^ {
     case stype ~ _ ~ body => {
-      SState("`{{" + stype + ":" + body + "}}`") // are evaluated on display - just check syntax here
+      StrAstNode("`{{" + stype + ":" + body + "}}`") // are evaluated on display - just check syntax here
       // calls are executed in display
     }
   }

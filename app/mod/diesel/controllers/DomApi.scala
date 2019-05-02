@@ -91,7 +91,7 @@ class DomApi extends DomApiBase  with Logging {
     cwid.wid.map(stok.prepWid).flatMap(wid => wid.page.orElse {
       // 1. figure out the specs
       if ((wid.cat == "Spec" || wid.cat == "Story") && wid.name == "fiddle") {
-        val x = Autosave.find(s"DomFid${wid.cat}", stok.realm, "", stok.au.map(_._id)).flatMap(_.get("content")).mkString
+        val x = Autosave.find(s"wikie", WID("","").r(stok.realm), stok.au.map(_._id)).flatMap(_.get("content")).mkString
         val page = new WikiEntry(
           wid.cat,
           "fiddle",
@@ -207,7 +207,7 @@ class DomApi extends DomApiBase  with Logging {
         val specs = catPages("Spec", reactor).toList
         val d = (specs ::: stories).map { p => // if draft mode, find the auto-saved version if any
           if (settings.draftMode) {
-            val c = Autosave.find("DomFid" + p.category, reactor, p.wid.wpath, userId).flatMap(_.get("content")).mkString
+            val c = Autosave.find("wikie", p.wid.defaultRealmTo(reactor), userId).flatMap(_.get("content")).mkString
             if (c.length > 0) p.copy(content = c)
             else p
           } else p
@@ -216,7 +216,7 @@ class DomApi extends DomApiBase  with Logging {
       } else { //no blender - use either specified or fiddle
         val spec =
           if (useThisSpecPage.nonEmpty) "" else { // use the contents of the fiddle
-            Autosave.find("DomFidSpec", reactor, "", userId).flatMap(_.get("content")).mkString
+            Autosave.find("wikie", WID("", "").r(reactor), userId).flatMap(_.get("content")).mkString
           }
         val page = new WikiEntry("Spec", "fiddle", "fiddle", "md", spec, stok.au.map(_._id).getOrElse(NOUSER), Seq("dslObject"), reactor)
         List(page)
@@ -230,9 +230,9 @@ class DomApi extends DomApiBase  with Logging {
       val story2 = if (settings.sketchMode && useThisStoryPage.isEmpty) { // in sketch mode, add the temp fiddle tests - filter out messages, as we already have one
         useThisStory.map { p =>
           Autosave
-            .find("DomFidStory", reactor, p.wpath, userId)
+            .find("wikie", p.defaultRealmTo(reactor), userId)
             .flatMap(_.get("content")) getOrElse p.content.mkString
-        } getOrElse Autosave.find("DomFidStory", reactor, "", userId).flatMap(_.get("content")).mkString
+        } getOrElse Autosave.find("wikie", WID("","").r(reactor), userId).flatMap(_.get("content")).mkString
       } else if (useThisStory.isDefined) {
         useThisStoryPage.map(_.content).getOrElse(useThisStory.get.content.mkString)
       } else ""
@@ -325,7 +325,11 @@ class DomApi extends DomApiBase  with Logging {
           }
           val values = valuesp.map(p => (p.name, p.dflt))
 
-          if ("value" == settings.resultMode || "" == settings.resultMode && oattrs.size == 1) {
+          if (
+            "value" == settings.resultMode || "" == settings.resultMode &&
+            (oattrs.size == 1 || oattrs.size == 0 && values.size == 1)
+            // either found msg def OR no msg def but just one value calculated... (payload)
+          ) {
             // one value - take last so we can override within the sequence
             val res = values.lastOption.map(_._2).getOrElse("")
             if (valuesp.lastOption.exists(_.ttype == WTypes.JSON))
@@ -453,7 +457,7 @@ class DomApi extends DomApiBase  with Logging {
     *
     * force the raw parser, to deal with all content types
     */
-  def runRest(path: String, verb:String, mock:Boolean) : Action[RawBuffer] = Action(parse.raw) { implicit request =>
+  def runRest(path: String, verb:String, mock:Boolean, imsg:Option[EMsg] = None, custom:Option[DomEngine => DomEngine] = None) : Action[RawBuffer] = Action(parse.raw) { implicit request =>
     implicit val stok = razRequest
 
     val reactor = stok.website.dieselReactor
@@ -488,7 +492,7 @@ class DomApi extends DomApiBase  with Logging {
 
       clog << s"RUN_REST_REQUEST verb:$verb mock:$mock path:$path realm:${reactor}\nheaders: ${stok.req.headers}" + body
 
-      val engine = prepEngine(new ObjectId().toString,
+      var engine = prepEngine(new ObjectId().toString,
         settings,
         reactor,
         None,
@@ -501,8 +505,13 @@ class DomApi extends DomApiBase  with Logging {
 
       new DomReq(stok.req).addTo(engine.ctx)
 
+      if(custom.isDefined)
+        engine = custom.get.apply(engine)
+
       // find template matching the input message, to parse attrs
-      val t@(trequest, e, a) = findEA(path, engine)
+      val t@(trequest, e, a) =
+        imsg.map(x=>(None, x.entity, x.met))
+          .getOrElse(findEA(path, engine))
 
       // message specified return mappings, if any
       val inSpec = spec(e, a)(engine.ctx).toList.flatMap(_.attrs)
@@ -515,7 +524,7 @@ class DomApi extends DomApiBase  with Logging {
       val incomingMetas = stok.headers.toSimpleMap
 
       // incoming message
-      val msg : Option[EMsg] = findMessage (
+      val msg : Option[EMsg] = imsg orElse findMessage (
         trequest,
         engine,
         path,
@@ -546,7 +555,7 @@ class DomApi extends DomApiBase  with Logging {
       } else msg.map {msg=>
 
         RDExt.addMsgToAst(engine.root, msg)
-        DomCollector.collectAst("runRest", engine.id, engine, stok.uri)
+        DomCollector.collectAst("runRest", stok.realm, engine.id, stok.au.map(_.id), engine, stok.uri)
 
         // process message
         val res = engine.process.map { engine =>
@@ -558,12 +567,15 @@ class DomApi extends DomApiBase  with Logging {
           // find output template and format output
           val templateResp =
             engine.ctx.findTemplate(e + "." + a, "response").orElse {
-              // see if there is only one message child... and it has an output template
+              // see if there is only one message child... and it has an output template - we'll use that one
               val m = engine
                 .root
                 .children
-                // without hardcoded engine messages
-                .filterNot(x=> x.value.isInstanceOf[EMsg] && x.value.asInstanceOf[EMsg].entity == "diesel")
+                // without hardcoded engine messages - diesel.rest is allowed
+                .filterNot(x=>
+                    x.value.isInstanceOf[EMsg] &&
+                      x.value.asInstanceOf[EMsg].entity == "diesel" &&
+                      x.value.asInstanceOf[EMsg].met != "rest")
                 .head
                 .children
                 .find(_.children.headOption.exists(_.value.isInstanceOf[EMsg]) )
@@ -659,8 +671,20 @@ class DomApi extends DomApiBase  with Logging {
   def mock(path: String) = runRest(path, "GET", true)
   def mockPost(path: String) = runRest(path, "POST", true)
 
-  def rest(path: String) = runRest(path, "GET", false)
-  def restPost(path: String) = runRest(path, "POST", false)
+  def rest(path: String) = runRestPath(path, "GET")
+  def restPost(path: String) = runRestPath(path, "POST")
+
+  private def runRestPath(path: String, verb:String) = {
+    runRest(
+      path,
+      "GET",
+      true,
+      Some(EMsg("diesel", "rest", List(
+        P("path", "/" + path),
+        P("verb", verb)
+      )))
+    )
+  }
 
   /** proxy real service GET */
   def proxy(path: String) = Filter(noRobots) { implicit stok =>
@@ -749,17 +773,33 @@ class DomApi extends DomApiBase  with Logging {
 
   // list the collected ASTS
   def listAst = FAUR { implicit stok =>
+    val un = stok.userName + (if(stok.au.exists(_.isAdmin)) " admin - sees all" else " - regular user")
+
     DomCollector.withAsts {asts=>
       val x =
-        asts.map(a=>
+        asts
+          .filter(a=> stok.au.exists(_.isAdmin) ||
+            a.realm == stok.realm &&
+              (
+                a.userId.isEmpty ||
+                a.userId.exists(_ == stok.au.map(_.id).mkString))
+              )
+          .map{a=>
+
+          val uname = a.userId.map(u=> Users.nameOf(new ObjectId(u))).getOrElse("[auto]")
+
           s"""
              |<td><a href="/diesel/viewAst/${a.id}">${a.id}</a></td>
              |<td>${a.stream}</td>
+             |<td>${a.realm}</td>
+             |<td>${uname}</td>
              |<td>${a.engine.status}</td>
              |<td>${a.dtm}</td>
              |<td>${a.engine.description}</td>
-             |""".stripMargin).mkString(
+             |""".stripMargin
+          }.mkString(
           s"""
+             |Traces captured for realm: ${stok.realm} and user $un<br><br>
              |<table>
              |<tr>
              |""".stripMargin,
@@ -774,8 +814,11 @@ class DomApi extends DomApiBase  with Logging {
   }
 
   def cleanAst = FAUR { implicit stok =>
-    DomCollector.cleanAst
+    if(stok.au.exists(_.isAdmin)) {
+      DomCollector.cleanAst
       Ok("ok").as("text/html")
+    } else
+      Unauthorized("no permission")
   }
 
   def postAst(stream: String, id: String, parentId: String) = FAUPRaAPI(true) { implicit stok =>
@@ -802,7 +845,7 @@ class DomApi extends DomApiBase  with Logging {
     )
 
     val engine = prepEngine(xid, settings, reactor, Some(root), true, stok.au, "DomApi.postAst")
-    DomCollector.collectAst(stream, xid, engine)
+    DomCollector.collectAst(stream, reactor, xid, stok.au.map(_.id), engine)
 
     // decompose test nodes and wait
     engine.processTests.map { engine =>
@@ -895,8 +938,10 @@ class DomApi extends DomApiBase  with Logging {
         }
 
     // materialize the laziness, so e/a are calculated
-    if(trequest.isEmpty) {
-      val PAT = """([\w./]+)[./](\w+)""".r
+    val PATS = """([\w./]+)[./](\w+)"""
+
+    if(trequest.isEmpty && path.matches(PATS)) {
+      val PAT = PATS.r
       val PAT(ee, aa) = path
 
       // replace a/b/c/d with a.b.c.d
@@ -1070,7 +1115,7 @@ class DomApi extends DomApiBase  with Logging {
 
   /** */
   def getEngineConfig() = FAUR { implicit stok =>
-    val config = Autosave.OR("DomEngineConfig", stok.realm, "", stok.au.get._id,
+    val config = Autosave.OR("DomEngineConfig", WID("", "").r(stok.realm), stok.au.get._id,
       DomEngineHelper.settingsFrom(stok).toJson
     )
 
@@ -1083,6 +1128,9 @@ class DomApi extends DomApiBase  with Logging {
     val jmap = js.parse(jconfig)
     //    val cfg = DomEngineSettings.fromRequest(stok.req)
     val cfg = DomEngineSettings.fromJson(jmap.asInstanceOf[Map[String, String]])
+
+    // make sure it has a realm
+    if(cfg.realm.isEmpty) cfg.realm = Some(stok.realm)
 
     DomWorker later AutosaveSet("DomEngineConfig", stok.realm, "", stok.au.get._id,
       cfg.toJson
@@ -1322,7 +1370,8 @@ class DomApi extends DomApiBase  with Logging {
         "capture" -> captureTree,
         "ca" -> RDExt.toCAjmap(dom plus idom), // in blenderMode dom is full
         "totalCount" -> (engine.totalTestCount),
-        "failureCount" -> engine.failedTestCount
+        "failureCount" -> engine.failedTestCount,
+        "ast" -> DomFiddles.getAstInfo(ipage)
       )
 
       retj << m

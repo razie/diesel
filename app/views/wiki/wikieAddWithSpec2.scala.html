@@ -43,7 +43,7 @@ create new page given a template
 
         <div class="form-group">
           <label for="org" class="control-label">Organization: (company or client) &nbsp;&nbsp;<code class="pull-right">$${{org}}</code></label>
-          <input type="text" id="org" class="input-lg" name="org" placeholder="Org" onchange="updName()" value="org">
+          <input type="text" id="org" class="input-lg" name="org" placeholder="Org" onchange="updName()" value="@stok.au.flatMap(_.organization.map(_.replaceAll("[^a-zA-Z0-9]", ""))).getOrElse("org")">
         </div> @* form-group *@
 
         <hr>

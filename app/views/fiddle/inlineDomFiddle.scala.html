@@ -4,7 +4,7 @@ an inline JS with HTML and CSS fiddle
 @(wid:razie.wiki.model.WID,
   we:Option[razie.wiki.model.WikiEntry],
   name:String,
-  kind:String,
+  tags:Seq[String],
   spec:String,
   args:Map[String,String],
   content:String,
@@ -13,7 +13,8 @@ an inline JS with HTML and CSS fiddle
   au:Option[razie.wiki.model.WikiUser],
   xid:String = java.lang.System.currentTimeMillis().toString())
 
-@id()=@{if(name.length > 0) name+"_"+kind else xid}
+@id()=@{if(name.length > 0) name+"_"+tags.mkString("_") else xid}
+@kind()=@{tags.mkString(",")}
 @reactor()=@{wid.getRealm}
 
 @** to JS multiline string - make generated JS code look nice **@
@@ -109,7 +110,8 @@ var runpill2_@id = function(id, url, noreload) {
           specWpath   : '',
           storyWpath  : '@wid.wpath',
           story       : story_@id+"\n",
-          spec        : spec_@id+"\n"
+          spec        : spec_@id+"\n",
+          runEngine   : true
         }),
         contentType: 'application/x-www-form-urlencoded',
         success: function(data) {
@@ -124,6 +126,9 @@ var runpill2_@id = function(id, url, noreload) {
           if(noreload == undefined)
             $('#code_'+id).html(ast_@id);
           $('#preout_'+id).html(ast_@id);
+
+          //if(aceEditor_@{id}) updateMarkers(aceEditor_@{id} , data.ast);
+
 //      var du = new Date().getTime() - lastTime;
 //      $('#roundtrip').text(du+' ms');
         },
@@ -184,7 +189,7 @@ var OLDrunpill2_@id = function(id, url, noreload) {
   <ul class="nav nav-tabs" style="margin-bottom:0;">
     <li id="story_@id" class="active">
       <a  href="javascript:setpill('story_@id', '@id', story_@id)" title="See the specs">
-        <small>@kind.capitalize</small></a> </li>
+        <small>@tags.headOption.map(_.capitalize)</small></a> </li>
     <li id="links_@id">
       <a  href="javascript:setpill('links_@id', '@id', links_@id)" title="Get the links to this service">
         <small><span class="glyphicon glyphicon-link"></span>REST</small></a> </li>

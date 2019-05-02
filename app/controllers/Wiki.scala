@@ -542,13 +542,13 @@ object Wiki extends WikiBase {
         import play.api.cache._
         import play.api.Play.current
 
-        WikiCache.getEntry(wid.wpath+".page").map { x =>
+        WikiCache.getEntry(wid.wpathFull+".page").map { x =>
           x
         }.orElse {
           val n = wid.page
           n.map(_.preprocess(au))
           if (n.exists(w=> w.cacheable && w.category != "-" && w.category != "")) {
-            WikiCache.set(n.get.wid.wpath + ".page", n.get, 300) // 10 miuntes
+            WikiCache.set(n.get.wid.wpathFull + ".page", n.get, 300) // 10 miuntes
           }
           n
         }

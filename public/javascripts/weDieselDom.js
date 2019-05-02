@@ -331,19 +331,17 @@ var lastMarker=null;
 function weSelect(wpath,line,col) {
   var Range = ace.require('ace/range').Range;
   if(lastMarker != null) {
-    editor.session.removeMarker(lastMarker);
-    editor1.session.removeMarker(lastMarker);
+    specEditor.session.removeMarker(lastMarker);
+    storyEditor.session.removeMarker(lastMarker);
     lastMarker = null;
   }
 
   if(wpath.includes("Spec:")) {
-    editor1.scrollToLine(line, true, true, function () {});
-    //editor1.gotoLine(line, 10, true);
-    lastMarker = editor1.session.addMarker(new Range(line-1, 0, line-1, 100), "ace-primaryline", "fullLine");
+    specEditor.scrollToLine(line, true, true, function () {});
+    lastMarker = specEditor.session.addMarker(new Range(line-1, 0, line-1, 100), "ace-primaryline", "fullLine");
   } else if(wpath.includes("Story:")) {
-    editor.scrollToLine(line, true, true, function () {});
-    //editor.gotoLine(line, 10, true);
-    lastMarker = editor.session.addMarker(new Range(line-1, 0, line-1, 100), "ace-primaryline", "fullLine");
+    storyEditor.scrollToLine(line, true, true, function () {});
+    lastMarker = storyEditor.session.addMarker(new Range(line-1, 0, line-1, 100), "ace-primaryline", "fullLine");
   }
 }
 
@@ -366,8 +364,8 @@ function loadSpec (wpath, rest) {
   $("#curSpec").text(WID(wpath).name);
   $.ajax( '/diesel/content/Spec/'+wpath, {
     success: function (data) {
-      editor1.setValue(data);
-      editor1.selection.clearSelection();
+      specEditor.setValue(data);
+      storyEditor.selection.clearSelection();
       rest();
     },
     error  : rest
@@ -533,4 +531,35 @@ function weDomQuery2(plugin,conn,cls,parm) {
   // });
 }
 
+// call this only if aceAttached
+function updateMarkers (aceEditor, astList) {
+  var markers = [];
+
+  var lines = aceEditor.getSession().doc.getAllLines();
+
+  for (var i = 0; i <= lines.length; i++) {
+    if(lines[i] && lines[i].startsWith("$")) {
+      if(astList.filter(function(e){return e.row-1 == i;}).length > 0) {
+        markers.push({
+          row: i,
+          column: 0,
+          text: "$ expression",
+          type: "info" // also warning and information
+        });
+      } else {
+        markers.push({
+          row: i,
+          column: 0,
+          text: "$ expression not recognized",
+          type: "error" // also warning and information
+        });
+      }
+    }
+  }
+
+  astList.map(function(a){
+  });
+
+  aceEditor.getSession().setAnnotations(markers);
+}
 

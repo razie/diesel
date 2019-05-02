@@ -428,6 +428,7 @@ razOnLoad(function() {
 var aceAttached = false; // true in ACE mode
 var aceEditor;    // set only when attached
 var aceTimer;
+var Range;
 
 var domContentAssist=[];
 var instContentAssist=[];
@@ -459,6 +460,8 @@ razOnLoad(function() {
 //  ], function ($, commonmark, ace) {
 
 myattachAce = function() {
+  Range = ace.require('ace/range').Range;
+
   aceEditor = attachAce(ace, "acec", textarea.val(), @stok.isLight.toString);
 
   aceEditor.getSession().setOption('indentedSoftWrap', false);
@@ -467,6 +470,18 @@ myattachAce = function() {
   aceEditor.getSession().on('change', function(e) {
     instChanged=true;
   });
+
+  // aceEditor.getSession().on('changeFrontMarker', function(e) {
+  //   console.log('changeFrontMarker');
+  // });
+  //
+  // aceEditor.getSession().on('changeBackMarker', function(e) {
+  //   console.log('changeBackMarker');
+  // });
+  //
+  // aceEditor.getSession().on('changeBreakpoint', function(e) {
+  //   console.log('changeBreakpoint');
+  // });
 
   console.log("tick " + firstPreview);
 
@@ -588,10 +603,12 @@ function saveDraft() {
   });
 }
 
+
 cancel = function() {
   $.ajax(
     '/wikie/deleteDraft/@wid.wpath', {
     type: 'POST',
+    async: false,
     data: $.param({
       nothing : ''
     }),
@@ -822,9 +839,10 @@ function showHideIframe() {
 
 
 refreshDsl = function() {
-  if($('#treeMode').prop('checked')) {
+  // run all the time not just when tree is checked - now we use syntax markers
+  // if($('#treeMode').prop('checked')) {
     if(isDiesel) runpill2('5');
-  }
+  // }
 };
 
   var refreshDslDebounced = _.debounce(refreshDsl, 2000, {maxWait: 5000});
@@ -846,19 +864,26 @@ function runpill2 (id) {
           storyWpath : '@wid.wpath', //storyWpath,
           spec : '',
           story : getContent(),
-          capture : ''
+          capture : '',
+          runEngine : $('#treeMode').prop('checked')
         }),
         contentType: 'application/x-www-form-urlencoded',
         success: function(data) {
+
           hideSpinner();
+
           if($('#treeMode').prop('checked'))
             $('#iframeOut3_').html(data.res.replace(/weref/g, 'wefiddle')+'\n');
           else
             $('#divOut3_'+id).html(data.wiki);
+
           instContentAssist = data.ca;
+
 //            setErrors(data.failureCount);
           var du = new Date().getTime() - lastTime;
           $('#roundtrip').text(du+' ms');
+
+          if(aceAttached) updateMarkers(aceEditor, data.ast);
         },
         error  : function(x) {
           hideSpinner();
@@ -892,6 +917,45 @@ function runpill2 (id) {
 
 //}); - if I remove these, it goes berserk
 }); // withJquery
+
+
+  // annotations are like erorrs etc
+  // aceEditor.getSession().addGutterDecoration(2, "bold");
+  // setTimeout(function(){
+
+    // aceEditor.getSession().setAnnotations([{
+    //   row: 1,
+    //   column: 10,
+    //   text: "Strange error",
+    //   type: "error" // also warning and information
+    // },
+    //   {
+    //     row: 2,
+    //     column: 10,
+    //     text: "Strange error",
+    //     type: "warning" // also warning and information
+    //   },
+    // {
+    //   row: 3,
+    //   column: 10,
+    //   text: "Strange error",
+    //   type: "info" // also warning and information
+    // }
+    // ]);
+    //
+
+    // markers are added to the content text - could be underline, bold, background etc
+    // I can remember the markers
+    // var markerId = ...addMarker...
+
+    // ace_active-line, ace_line-hover
+    // fullLine, screenLine, text
+    // aceEditor.getSession().addMarker(new Range(5, 0, 6, 0), "ace-primaryline", "fullLine");
+
+    // aceEditor.getSession().addMarker(new Range(8, 0, 8, 0), 'activeBreakpoint', 'line'); - no working, found online
+
+  // },2000);
+
 </script>
 
 

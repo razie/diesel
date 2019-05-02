@@ -48,11 +48,11 @@ purge audit tables
 
         <span id="remotes" style="display: none">
           @Array("www.dieselapps.com", _root_.admin.Config.hostport).map{t=>
-            <a href="/razadmin/difflist/@toRealm/@t">@t</a><br>
+            <a href="/admin/difflist/@toRealm/@t">@t</a><br>
           }
         <span id="realms" style="display: none">
             @stok.au.toList.flatMap(x=> x.memberReactors).map{t=>
-              <a href="/razadmin/difflist/@t/@remote">@t</a><br>
+              <a href="/admin/difflist/@t/@remote">@t</a><br>
             }
         </span>
       </small>
@@ -235,5 +235,6 @@ applyDif = function(id,url) {
       max-height: 600px;
     }
   </style>
+
 @util.oneModal()
 

@@ -22,8 +22,8 @@ import razie.wiki.util.PlayTools
 import razie.{Logging, cout}
 import model.MiniScripster
 import razie.diesel.dom.RDOM.{A, O}
-import razie.wiki.admin.Autosave
 import razie.diesel.dom._
+import razie.wiki.admin.Autosave
 
 import scala.util.Try
 
@@ -75,7 +75,7 @@ object DieselControl extends RazController with Logging {
       wid <- WID.fromPath(wpath) orErr "bad wid";
       we <- wid.page.orElse {
         if( (wid.cat == "Spec" || wid.cat == "Story") && wid.name == "fiddle") {
-          val x = Autosave.find(s"DomFid${wid.cat}",stok.realm,"", stok.au.map(_._id)).flatMap(_.get("content")).mkString
+          val x = Autosave.find(s"wikie",WID("","").r(stok.realm), stok.au.map(_._id)).flatMap(_.get("content")).mkString
           val page = new WikiEntry(wid.cat, "fiddle", "fiddle", "md", x, stok.au.map(_._id).getOrElse(new ObjectId()), Seq("dslObject"), "")
           Some(page)
         } else None

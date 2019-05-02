@@ -50,12 +50,18 @@ class ProfileUpd @Inject() (config:Configuration) extends RazController with Log
       "about" -> text
         .verifying("Obscenity filter", !Wikis.hasBadWords(_))
         .verifying("Invalid characters", vldSpec(_)),
+      "company" -> text
+        .verifying("Obscenity filter", !Wikis.hasBadWords(_))
+        .verifying("Invalid characters", vldSpec(_)),
       "address" -> text
         .verifying("Invalid characters", vldSpec(_)))(
-        (f, l, t, y, about, a) =>
+        (f, l, t, y, c, about, a) =>
           User("kuku", f, l, y, "noemail", "nopwd", 'a', Set(t), Set(), (if (a != null && a.length > 0) Some(a) else None), Map("about"-> about))
+          .copy(organization = (if (c != null && c.length > 0) Some(c) else None))
     )(
-          (u: User) => Some(u.firstName, u.lastName, u.roles.head, u.yob, u.getPrefs("about", ""), u.addr.map(identity).getOrElse(""))) verifying
+          (u: User) => Some(u.firstName, u.lastName, u.roles.head, u.yob, u.getPrefs("about", ""),
+            u.organization.map(identity).getOrElse(""),
+            u.addr.map(identity).getOrElse(""))) verifying
           ("Can't use last name for organizations!", { u: User =>
             (!(auth.get.isClub)) || u.lastName.length <= 0
           })

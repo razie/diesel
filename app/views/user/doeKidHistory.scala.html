@@ -35,12 +35,16 @@
   }
 }
 
-@findNameFrom(h:RkHistory, we:WikiEntry) = @{
-  model.Users.nameOf(h.authorId.getOrElse(we.by))
+@clubQWpath() = @{
+  club.map("?club=" + _.wid.wpathFull).getOrElse("")
 }
 
-@findNameTo(h:RkHistory) = @{
-  h.toRkId.flatMap(RacerKidz.findById).flatMap(_.userId).map(model.Users.nameOf)
+@findNameFrom(h:RkHistory, we:WikiEntry) = {
+  <a href="/doe/kid/history/@{RacerKidz.findByUserId(h.authorId.getOrElse(we.by))._id.toString}@clubQWpath()">@model.Users.nameOf(h.authorId.getOrElse(we.by))</a>
+}
+
+@findNameTo(h:RkHistory) = {
+  <a href="/doe/kid/history/@{h.toRkId}@clubQWpath()">@h.toRkId.flatMap(RacerKidz.findById).flatMap(_.userId).map(model.Users.nameOf)</a>
 }
 
 @uhLink(n:String) = @{

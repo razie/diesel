@@ -86,6 +86,7 @@ class RazAuthService extends AuthService[User] with Logging {
         log("AUTH OVERRIDE NONE")
         au = None
       } else if (authorization.exists(_.startsWith("Basic ")) && (au.isEmpty || au.exists(_.isAdmin)))
+        // todo this can be subject to brute force attacks. Limit somehow
         au = authorization.flatMap { euid =>
           // from basic http auth headers, for testing and API
           val e2 = euid.replaceFirst("Basic ", "")

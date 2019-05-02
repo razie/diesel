@@ -6,7 +6,7 @@
  */
 package model
 
-import razie.tconf.parser.SState
+import razie.tconf.parser.StrAstNode
 import razie.wiki.parser.ParserBase
 
 /** parse dsl, fiddles and code specific fragments */
@@ -17,11 +17,11 @@ trait WikiAdParser extends ParserBase {
   private def wikiPropAds: PS = "{{" ~> "ad" ~> opt("[: ]".r ~> """[^}]*""".r) <~ "}}" ^^ {
     case what => {
       what match {
-        case Some("lederboard") => SState(Ads.lederboard)
-        case Some("square") | Some("squaretop") => SState(Ads.squaretop)
-        case Some("squareright") => SState(Ads.squareright)
-        case Some("squarenofloat") | Some("squareinline") => SState(Ads.squareinline)
-        case _ => SState(Ads.lederboard)
+        case Some("lederboard") => StrAstNode(Ads.lederboard)
+        case Some("square") | Some("squaretop") => StrAstNode(Ads.squaretop)
+        case Some("squareright") => StrAstNode(Ads.squareright)
+        case Some("squarenofloat") | Some("squareinline") => StrAstNode(Ads.squareinline)
+        case _ => StrAstNode(Ads.lederboard)
       }
     }
   }

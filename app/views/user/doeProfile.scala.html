@@ -23,6 +23,7 @@
         (Range(2005, 1912, -1) map (y => (y.toString, y.toString))),
         'style -> "width: 100px")
 
+      @util.razText(myForm, "company", "Company/Organization")
       @util.razText(myForm, "address", "City, Prov/State, Country")
 
       @helper.textarea(

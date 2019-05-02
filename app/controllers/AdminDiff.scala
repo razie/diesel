@@ -45,6 +45,10 @@ object AdminDiff extends AdminBase {
     // filter some internal states
     l = l.filter(_.name != "")
 
+    // only I see all realms
+    if(! stok.au.exists(_.isAdmin))
+      l = l.filter(_.realm == reactor)
+
     // filter those with content similar
     val ok = l.filter(x=> WID.fromPath(x.name).exists(_.content.exists(_ != x.contents("content"))))
     val neq = l.filter(x=> WID.fromPath(x.name).exists(_.content.exists(_ == x.contents("content"))))
@@ -69,15 +73,34 @@ object AdminDiff extends AdminBase {
 
     val duplos = d.filter(_._2.size > 1)
 
-      Ok(
-      Wikis.sformat(lok.size + "\n- " + lok.mkString("\n- "))+
-      Wikis.sformat("neq: "+lneq.size + "\n- " + lneq.mkString("\n- "))+
-      Wikis.sformat("non: "+lnon.size + "\n- " + lnon.mkString("\n- ")) +
-      Wikis.sformat("duplos: "+duplos.size + s" of ${d.size} " + "\n- " +
-        duplos.map(t=>(t._1, t._2.map(x=> s"[/wiki/$x] and [/razadmin/db/entity/WikiEntry/$x]"))).mkString("\n- ")
-      )
-    ).as("text/html")
+    ROK.r admin {implicit stok=>
+      views.html.admin.adminDrafts(lok.sortBy(_._2), lneq, lnon, duplos)
+    }
   }
+
+  /** get list of pages - invoked by remote trying to sync */
+  // todo auth that user belongs to realm
+  def draftsCleanAll = FAUR { implicit stok =>
+
+    if(! stok.au.exists(_.isAdmin)) Unauthorized ("ONly for admins...")
+    else {
+
+      var l = Autosave.activeDrafts(stok.au.get._id).toList
+
+      // filter some internal states
+      l = l.filter(_.name != "")
+
+      // filter those with content similar
+      val ok = l.filter(x => WID.fromPath(x.name).exists(_.content.exists(_ != x.contents("content"))))
+      val neq = l.filter(x => WID.fromPath(x.name).exists(_.content.exists(_ == x.contents("content"))))
+      val non = l.filter(x => WID.fromPath(x.name).flatMap(_.page).isEmpty)
+
+      neq.map (_.delete)
+      non.map (_.delete)
+
+      Redirect("/admin/drafts/"+stok.realm)
+    }
+ }
 
   /** get list of pages - invoked by remote trying to sync */
   // todo auth that user belongs to realm
@@ -346,13 +369,16 @@ object AdminDiff extends AdminBase {
       val pwd = fqhParm("pwd").get
       val realm = fqhParm("realm").get
 
+      // key used to encrypt/decrypt transfer
       val key = System.currentTimeMillis().toString + "87654321"
 
+      // first get the user and profile and create them locally
       val u = body(url(s"http://$source/dmin-getu/$key", method = "GET").basic("H-" + email, "H-" + pwd))
       val dbo = com.mongodb.util.JSON.parse(u).asInstanceOf[DBObject];
       val pu = grater[PU].asObject(dbo)
       val iau = pu.u
       val e = new admin.CypherEncryptService("",key)
+      // re=encrypt passworkd with the local key
       val au = iau.copy (email=e.enc(e.dec(iau.email)), pwd = e.enc(e.dec(iau.pwd)))
       au.create(pu.p)
 
@@ -450,7 +476,16 @@ object AdminDiff extends AdminBase {
         }
       }
 
-      lastImport = Some(s"Done: imported... $count wikis, with $countErr errors. Please reboot the server!")
+    // remember who I am supposed to be
+    DieselSettings("isimulateHost", realm).set
+
+    lastImport = Some(
+        s"""Done: imported... $count wikis, with $countErr errors. Please reboot the server!
+           |<br>
+           |To reboot the server, go back to the docker terminal where you started this container,
+           |stop it (^C) and start it again.
+         """.stripMargin
+      )
   }
 
 

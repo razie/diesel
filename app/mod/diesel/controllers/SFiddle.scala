@@ -1,7 +1,6 @@
 package mod.diesel.controllers
 
 import javax.script.ScriptEngineManager
-
 import controllers._
 import jdk.nashorn.api.scripting.{ClassFilter, NashornScriptEngineFactory}
 import mod.notes.controllers.{Notes, NotesLocker, NotesTags}
@@ -12,11 +11,11 @@ import play.api.mvc._
 import razie.audit.Audit
 import razie.hosting.Website
 import razie.wiki.Services
-import razie.wiki.admin.Autosave
 import razie.wiki.model._
 import razie.{CSTimer, Logging}
 import model.MiniScripster
 import razie.diesel.snakk.FFDPayload
+import razie.wiki.admin.Autosave
 import razie.wiki.model.features.WikiCount
 
 import scala.collection.{SortedMap, mutable}
@@ -513,6 +512,7 @@ $hx
 /** represents a fiddle - can be autosaved and can be a topic/note */
 case class Fiddle (what:String, lang:String, realm:String, wpath:String, au:Option[User]) {
   val we = WID.fromPath(wpath).flatMap(_.page)
+  def wid = WID.fromPath(wpath).get.defaultRealmTo(realm)
 
   private var default : Option[(String,String)] = None
 
@@ -528,7 +528,7 @@ case class Fiddle (what:String, lang:String, realm:String, wpath:String, au:Opti
 
   def script =
     au.map(au =>
-      Autosave.OR(what+"." + lang , realm,wpath, au._id,
+      Autosave.OR(what+"." + lang , wid, au._id,
         defaults
       )).getOrElse(
       defaults
@@ -536,7 +536,7 @@ case class Fiddle (what:String, lang:String, realm:String, wpath:String, au:Opti
 
   def autosave (content:String, tags:String) =
     au.map{au=>
-      Autosave.set(what + "." + lang, realm, wpath, au._id, Map(
+      Autosave.set(what + "." + lang, wid, au._id, Map(
         "content" -> content,
         "tags" -> tags
       ))
@@ -544,13 +544,13 @@ case class Fiddle (what:String, lang:String, realm:String, wpath:String, au:Opti
 
   def clearAutosave =
     au.map{au=>
-      Autosave.delete(what + "." + lang, realm, wpath, au._id)
+      Autosave.delete(what + "." + lang, wid, au._id)
     }
 
   def content = script.getOrElse("content", "")
   def tags = script.getOrElse("tags", "")
 
-  def isAuto = Autosave.find(what+"." + lang, realm, wpath, au.map(_._id)).isDefined
+  def isAuto = Autosave.find(what+"." + lang, wid, au.map(_._id)).isDefined
 
   /** make a wiki note to contain this fiddle */
   def mkWiki(au:User, content: String, realm:String, tags: Seq[String]) = {

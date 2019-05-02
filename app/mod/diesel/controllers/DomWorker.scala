@@ -4,6 +4,7 @@ import akka.actor.{Actor, Props, _}
 import org.bson.types.ObjectId
 import play.libs.Akka
 import razie.wiki.admin.Autosave
+import razie.wiki.model.WID
 
 /** an autosave request */
 case class AutosaveSet(what:String, realm:String, name:String, userId: ObjectId, c:Map[String,String])
@@ -22,7 +23,7 @@ object DomWorker {
     // todo persistency - not a big deal if an autosave is lost
     def receive = {
       case a: AutosaveSet => {
-        Autosave.set(a.what, a.realm, a.name, a.userId, a.c)
+        Autosave.set(a.what, WID("", a.name).defaultRealmTo(a.realm), a.userId, a.c)
       }
     }
   }

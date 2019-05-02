@@ -59,16 +59,23 @@ object DomEngineHelper {
       draftMode = fqhoParm(DRAFT_MODE, "true").toBoolean,
       sketchMode = fqhoParm(SKETCH_MODE, "false").toBoolean,
       execMode = fqhoParm(EXEC_MODE, "sync"),
-      resultMode = fqhoParm(RESULT_MODE, "json"),
+      resultMode = fqhoParm(RESULT_MODE, ""),
       parentNodeId = fqhParm("dieselNodeId"),
       configTag = fqhParm("dieselConfigTag"),
       userId = fqhParm("dieselUserId"),
       postedContent = {
         if(request.body.isInstanceOf[AnyContentAsRaw]) {
           val raw = request.body.asRaw.flatMap(_.asBytes())
-          Some(new EEContent(raw.map(a => new String(a)).getOrElse(""), request.contentType.get, request.headers.toSimpleMap, None, raw))
+          Some(new EEContent(
+            raw.map(a => new String(a) ).getOrElse(""),
+            request.contentType.mkString,
+            request.headers.toSimpleMap,
+            None,
+            raw))
         } else if(request.contentType.exists(c=> c == "application/json")) {
-          Some(new EEContent(request.body.asJson.mkString, request.contentType.get))
+          Some(new EEContent(
+            request.body.asJson.mkString,
+            request.contentType.mkString))
         } else None
       },
       tagQuery = fqhParm(TAG_QUERY),
@@ -101,7 +108,7 @@ object DomEngineHelper {
       draftMode = fqhoParm(DRAFT_MODE, "true").toBoolean,
       sketchMode = fqhoParm(SKETCH_MODE, "false").toBoolean,
       execMode = fqhoParm(EXEC_MODE, "sync"),
-      resultMode = fqhoParm(RESULT_MODE, "json"),
+      resultMode = fqhoParm(RESULT_MODE, ""),
       parentNodeId = fqhParm("dieselNodeId"),
       configTag = fqhParm("dieselConfigTag"),
       userId = fqhParm("dieselUserId"),

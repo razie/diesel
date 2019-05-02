@@ -155,11 +155,11 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
           lock <- EditLock.lock(w.uwid, w.wid.wpath, w.ver, au) orErr s"Page edited by ${EditLock.find(w.uwid, w.wid.wpath).map(_.uname).mkString}"
         ) yield {
             //look for drafts
-            val draft = Autosave.OR("wikie", w.realm, w.wid.wpath, stok.au.get._id, Map(
+            val draft = Autosave.OR("wikie", w.wid, stok.au.get._id, Map(
               "content"  -> w.content,
               "tags" -> w.tags.mkString(",")
             ))
-            val hasDraft = Autosave.find("wikie",w.realm, w.wid.wpath, stok.au.get._id).isDefined
+            val hasDraft = Autosave.find("wikie",w.wid, stok.au.get._id).isDefined
 
           val atags = draft.getOrElse("tags", w.tags.mkString(",")) // when the autosave was created by fiddles without tags
 
@@ -335,13 +335,13 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
 
   // clear all draft versions
   private def clearDrafts (w:WID, au:User) = {
-    Autosave.delete("wikie",w.getRealm, w.wpath, au._id)
+    Autosave.delete("wikie",w, au._id)
   }
 
   def deleteDraft (wid:WID) = FAUR { stok=>
     EditLock.unlock(wid.uwid.getOrElse(UWID.empty), wid.wpath, stok.au.get)
 
-    Autosave.delete("wikie", wid.getRealm, wid.wpath, stok.au.get._id)
+    Autosave.delete("wikie", wid, stok.au.get._id)
     Ok("")
   }
 
@@ -354,7 +354,7 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
       .filter(_.uid == stok.au.get._id)
       .map(_.extend)
 
-    Autosave.set("wikie", stok.realm, wid.wpath, stok.au.get._id,
+    Autosave.set("wikie", wid, stok.au.get._id,
       Map(
         "content"  -> content,
         "tags" -> tags
@@ -371,7 +371,7 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
 
     val w = wid.page.map(_.content).getOrElse("?")
 
-    val draft = Autosave.find("wikie",wid.getRealm,wid.wpath, stok.au.get._id).flatMap(_.get("content")).getOrElse("?")
+    val draft = Autosave.find("wikie",wid, stok.au.get._id).flatMap(_.get("content")).getOrElse("?")
 
     import scala.collection.JavaConversions._
 
@@ -1009,13 +1009,20 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
   // create something with a category and template and spec
   def addWithSpec(cat: String, iname:String, templateWpath:String, torspec:String, realm:String) = FAU {
     implicit au => implicit errCollector => implicit request =>
+
       val name = PlayTools.postData.getOrElse("name", iname)
+      val kind = PlayTools.postData.getOrElse("kind", "prod")
+
       val E = " - go back and try another name..."
       val e =
         if(name.length < 3 && !au.isAdmin) s"Name ($name) too short"
-      else if (name.length > 12 && !au.isAdmin) s"Name ($name) too long"
+      else if (name.length > 20 && !au.isAdmin) s"Name ($name) too long"
       else if (Config.reservedNames.contains(name)) s"Name ($name) is reserved"
       else if (!name.matches("(?![-_])[A-Za-z0-9-_]{1,63}(?<![-_])")) s"Name ($name) cannot contain special characters"
+      else if (
+          ! "dev,qa".split(",").contains(kind) &&
+          ! au.hasMembershipLevel(Perm.Basic.s)
+        ) s"With a free account you can only create dev or qa projects..."
       else ""
 
       if(e.isEmpty) Realm.createR2(cat, templateWpath, torspec:String, realm).apply(request).value.get.get
@@ -1168,6 +1175,8 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
 
             RMany[User]().filter(_.realms.contains(wid.name)).map {u=>
               u.update(u.copy(realms=u.realms.filter(_ != wid.name), realmSet = u.realmSet.filter(_._1 != wid.name)))
+
+              // todo remove this realm from all users.x.
             }
 
             Services ! WikiAudit(WikiAudit.DELETE_WIKI, w.wid.wpathFull, Some(au._id), None, Some(w), None, Some(w._id.toString))
@@ -1193,12 +1202,13 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
         Msg2("Can't delete a " + wid.cat)
   }
 
-  private def canRename(wid: WID)(implicit errCollector: VErrors, request: Request[_]) = {
+  private def canRename(wid: WID)(implicit errCollector: VErrors, stok: RazRequest) = {
     for (
       au <- activeUser;
       ok <- ("WikiLink" != wid.cat && "User" != wid.cat) orErr ("can't rename this category");
       w <- Wikis.find(wid) orErr ("topic not found");
-      ok2 <- canEdit(wid, Some(au), Some(w))
+      ok2 <- canEdit(wid, Some(au), Some(w));
+      noDrafts <- Autosave.find(wid, stok.au.map(_._id)).isEmpty orErr ("This topic has drafts - please edit and cancel first, that will clear the drafts!")
     ) yield (au, w)
   }
 

@@ -55,6 +55,14 @@ object RazWikiAuthorization extends RazController with Logging with WikiAuthoriz
       )
   }
 
+  /** are you emember inthe same reactor */
+  private def member(u: Option[WikiUser], vis:String, r:Option[String])(implicit errCollector: VErrors = IgnoreErrors) = {
+    u.map(_.asInstanceOf[User]).map {u=>
+      (r.isEmpty || u.realms.contains(r.get)) &&
+        r.map(r=> u.forRealm(r)).getOrElse(u).hasMembershipLevel(vis)
+    }.exists(_ == true)
+  }
+
   /** specific to clubs - can comment out whenever */
   private def isClubVisible(u: Option[WikiUser], props: Map[String, String], visibility: String = "visibility", we: Option[WikiEntry]=None)(implicit errCollector: VErrors = IgnoreErrors) = {
     val pvis = props.getOrElse(visibility, "")
@@ -87,7 +95,7 @@ object RazWikiAuthorization extends RazController with Logging with WikiAuthoriz
       (u.isDefined orCorr cNoAuth).exists(_ == true) && // anything other than public needs logged in
       (
         props.get("owner") == Some(u.get.id) || // can see anything I am owner of - no need to check Visibility.PRIVATE
-        u.get.hasMembershipLevel(pvis) ||
+        member(u, pvis, we.map(_.realm)) ||
         (
           pvis.startsWith(Visibility.CLUB) && isClubVisible(u, props, visibility, we)
           orCorr cNotMember(uname(props.get("owner")))
@@ -168,7 +176,7 @@ object RazWikiAuthorization extends RazController with Logging with WikiAuthoriz
         wprops.isEmpty ||
           wprops
             .flatMap(_.get("wvis"))
-            .map(x=> isVisible(u, wprops.get, "wvis"))
+            .map(x=> isVisible(u, wprops.get, "wvis", w))
             .exists(_ == true)
         ) orErr "Not enough Karma";
       t <- true orErr ("can't")

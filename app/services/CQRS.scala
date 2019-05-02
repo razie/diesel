@@ -143,13 +143,16 @@ class WikiPubSub extends Actor {
       mediator ! Publish(TOPIC, ev)
     }
 
-    // actual work
+    // actual work - message came from another node
     case ev1: WikiEventBase if (sender.compareTo(self) != 0) => {
       clog << s"CLUSTER_BRUTE_RECEIVED ${ev1.toString} from $self"
       if (maxCount > 0) {
         maxCount -= 1
         Audit.logdb("DEBUG", "exec.event", "me: " + self.path + " from: " + sender.path, ev1.toString().take(250))
         WikiObservers.after(ev1)
+      } else if(maxCount > -23) {
+        maxCount -= 1
+        Audit.logdb("WARNING", "maxCount messed up - event skipped", "me: " + self.path + " from: " + sender.path, ev1.toString().take(250))
       }
     }
     case x@_ => Audit.logdb("DEBUG", "ERR_CLUSTER_BRUTE", x.getClass.getName)
