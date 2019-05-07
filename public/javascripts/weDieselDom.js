@@ -63,7 +63,11 @@ function domCompl (i) {
         curr = curr.replace(reduceDot, '');
         return {name: value, value: curr, score: 100, meta: "dom"}
       }));
-    } else if(terms[terms.length-1].match(/\[\[[^\]]*/)) {
+
+      // [[x]] or [[
+    // } else if(terms[terms.length-1].match(/\[\[[^\]]*/) || terms[terms.length-1].match(/\[\[/)) {
+    } else if(terms[terms.length-1].match(/\[\[[^\]]*(\]\])?/)) {
+
       // CA for wikis
       var top = terms[terms.length-1].match(/\[\[([^\]]*)/)[1];
       console.log('[[]]');
@@ -72,7 +76,10 @@ function domCompl (i) {
           return {name: value, value: value, score: 100, meta: "topic"}
         }));
       });
+
+      // {{x}} or {{
     } else if(terms[terms.length-1].match(/\{\{[^\]]*(\}\})?/)) {
+
       // CA for props
       var top = terms[terms.length-1].match(/\{\{([^\]]*)(\}\})?/)[1];
       console.log('{{}}');
@@ -81,7 +88,9 @@ function domCompl (i) {
           return {name: value, value: value, score: 100, meta: "tags"}
         }));
       });
+
     } else {
+
       var opts = getOptions(contentAssist, terms, 0); // options
 //      callback(null, opts);
       callback(null, opts.map(function(value) {

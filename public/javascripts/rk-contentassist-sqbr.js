@@ -37,11 +37,13 @@ var braDomain = [
   'feed.rss URL',
   'tag name',
   'xpl path-expression',
-  'section',
+  'section name:tags params',
+  'template name:tags params',
+  'dfiddle name:tags params',
+  'fiddle name:tags params',
   'code [language]',
   'red text-to-redify',
   'roles ',
-  'fiddle',
   'by', 'club',
   'where', 'at', 'place', 'venue',
   'loc:ll|s|url',
@@ -51,7 +53,6 @@ var braDomain = [
   'f',
   'r1.delimited',
   'r1.table',
-  'template',
   'red',
   'def name:signature',
   'lambda name:signature',
@@ -68,7 +69,7 @@ var braDomain = [
     'Platinum',
     'Moderator'
   ]},
-  '/section','/alert','/if', '/visible'
+  '/section', '/template', '/alert', '/if', '/visible', '/dfiddle'
 ];
 
 
@@ -86,6 +87,7 @@ var topics=[]; // populate with options for topics
 var ltopics=[]; // topics lowercase
 var MAX_TOPICS = 500;
 
+/** deal with the content assisst with the curly braces */
 var CA_TC_braTags = function(braTags) {
   return { // braTags
     match: /(\{\{)([\w /]*)$/,
@@ -120,7 +122,9 @@ var sqbraStatics = [
   'step:'
 ];
 
-// this is not a constructor - it will get its domain from remote
+/** deal with the content assisst with the curly braces
+ this is not a constructor - it will get its domain from remote
+ */
 var CA_TC_sqbraTags = { // sqbraTags
   match: /(\[\[)([\w| .| ::]*)$/,
 

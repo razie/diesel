@@ -304,40 +304,22 @@ class DomApi extends DomApiBase  with Logging {
         engine.process.map { engine =>
           val errors = new ListBuffer[String]()
 
-          // find the spec and check its result
-          // then find the resulting value.. if not, then json
-          val omsgs = dom.moreElements.collect {
-            case n: EMsg if n.entity == e && n.met == a => n
-          }.headOption.toList
-
-          val oattrs = omsgs.flatMap(_.ret)
-
-          if (oattrs.isEmpty) {
-            val msgFound = if (omsgs.isEmpty) "msg NOT found" else "message found"
-            errors append s"WARNING - Can't find the spec for $e.$a return type ($msgFound) !"
-          }
-
-          import razie.diesel.ext.stripQuotes
-
-          // collect values
-          val valuesp = root.collect {
-            case d@DomAst(EVal(p), /*AstKinds.GENERATED*/ _, _, _) if oattrs.isEmpty || oattrs.find(_.name == p.name).isDefined => p
-          }
-          val values = valuesp.map(p => (p.name, p.dflt))
-
           if (
-            "value" == settings.resultMode || "" == settings.resultMode &&
-            (oattrs.size == 1 || oattrs.size == 0 && values.size == 1)
-            // either found msg def OR no msg def but just one value calculated... (payload)
+            "value" == settings.resultMode || "" == settings.resultMode
           ) {
-            // one value - take last so we can override within the sequence
-            val res = values.lastOption.map(_._2).getOrElse("")
-            if (valuesp.lastOption.exists(_.ttype == WTypes.JSON))
-              Ok(stripQuotes(res)).as("application/json")
+            val resp = engine.extractFinalValue(e,a)
+            val resValue = resp.map(_.dflt).getOrElse("")
+
+            if (resp.exists(_.ttype == WTypes.JSON))
+              Ok(stripQuotes(resValue)).as("application/json")
             else
-              Ok(stripQuotes(res))
+              Ok(stripQuotes(resValue))
+
           } else {
             // multiple values as json
+            val valuesp = engine.extractValues(e,a)
+            val values = valuesp.map(p => (p.name, p.dflt))
+
             var m = Map(
               "values" -> values.toMap,
               "totalCount" -> (engine.totalTestCount),
@@ -677,7 +659,7 @@ class DomApi extends DomApiBase  with Logging {
   private def runRestPath(path: String, verb:String) = {
     runRest(
       path,
-      "GET",
+      verb,
       true,
       Some(EMsg("diesel", "rest", List(
         P("path", "/" + path),

@@ -324,5 +324,11 @@ function dieselNodeLog(s) {
   } catch (err) {
     dieselValueJson = {err : err};
   }
-  alert(s);
+  popupContent('<pre style="overflow-x: auto;\n' +
+    'white-space: pre-wrap;' +
+    'white-space: -moz-pre-wrap;' +
+    'white-space: -pre-wrap;' +
+    'white-space: -o-pre-wrap;' +
+    'word-wrap: break-word;">' + s + '</pre>');
+  // alert(s);
 }

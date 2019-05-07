@@ -287,11 +287,13 @@ object DomFiddles extends DomApi with Logging with WikiAuthorization {
     val storyName = WID.fromPath(storyWpath).map(_.name).getOrElse("fiddle")
     val specName = WID.fromPath(specWpath).map(_.name).getOrElse("fiddle")
 
+    // add the engine spec to be included in content assist
+    val engSpec = WID.fromPath("specs.Spec:Default_executors").flatMap(_.page).toList
     val page = new WikiEntry("Spec", specName, specName, "md", spec, uid, Seq("dslObject"), stok.realm)
 
     val pages =
       if(settings.blenderMode) {
-        val d = DomGuardian.catPages("Spec", reactor).toList.map { p =>
+        val d = engSpec ::: DomGuardian.catPages("Spec", reactor).toList.map { p =>
           //         if draft mode, find the auto-saved version if any
           if (settings.draftMode) {
             val c = Autosave.find("wikie", p.wid, uid).flatMap(_.get("content")).mkString
@@ -302,7 +304,7 @@ object DomFiddles extends DomApi with Logging with WikiAuthorization {
 
         d
       } else
-        List(page)
+        engSpec ::: List(page)
 
     // todo is adding page twice...
     val dom = pages.flatMap(p=>

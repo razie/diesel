@@ -184,6 +184,10 @@ var OLDrunpill2_@id = function(id, url, noreload) {
 
 </script>
 
+  @hiderun() = @{
+    if(tags.map(_.toLowerCase).contains("story")) "" else "display:none"
+  }
+
 <div class="">
 
   <ul class="nav nav-tabs" style="margin-bottom:0;">
@@ -193,7 +197,7 @@ var OLDrunpill2_@id = function(id, url, noreload) {
     <li id="links_@id">
       <a  href="javascript:setpill('links_@id', '@id', links_@id)" title="Get the links to this service">
         <small><span class="glyphicon glyphicon-link"></span>REST</small></a> </li>
-    <li id="ast_@id" >
+    <li id="ast_@id" style="@hiderun()">
       <a href="javascript:setAst_@{id}()" title="Run this service and get a trace">
         <small><span class="glyphicon glyphicon-play"></span>Run</small></a> </li>
     <li id="play_@id" >
