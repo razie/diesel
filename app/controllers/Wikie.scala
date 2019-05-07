@@ -773,7 +773,8 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
                 Redirect(controllers.Wiki.wr(we.wid, getRealm(), true)).flashing("count" -> "0")
               }
             }) getOrElse
-              Redirect(controllers.Wiki.wr(wid, getRealm(), false)) // no change
+                Msg("Can't edit topic: " + errCollector.mkString, wid)
+//              Redirect(controllers.Wiki.wr(wid, getRealm(), false)) // no change
 
           case None =>    // create a new topic
 

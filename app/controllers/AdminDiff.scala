@@ -477,7 +477,7 @@ object AdminDiff extends AdminBase {
       }
 
     // remember who I am supposed to be
-    DieselSettings("isimulateHost", realm).set
+    DieselSettings("isimulateHost", s"$realm.dieselapps.com").set
 
     lastImport = Some(
         s"""Done: imported... $count wikis, with $countErr errors. Please reboot the server!
