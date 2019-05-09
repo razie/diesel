@@ -153,7 +153,7 @@ require(['jquery'], function($){
             }
 
             @if(stok.au.exists(u=> u.isDev || u.isMod)) {
-              <li><a href="/wiki/Reactor:@realm"><i class="icon-edit"></i> Admin</a></li>
+              <li><a href="/wiki/Reactor:@realm"><i class="icon-edit"></i> Settings</a></li>
             }
 
             @if(!web().navrMenu.filter(! _._1.startsWith("remove.")).isEmpty) {
@@ -240,8 +240,42 @@ require(['jquery'], function($){
             <ul class="dropdown-menu" role="menu">
               <li><a href="/wikie/switchRealm/wiki">wiki</a></li>
               <li><a href="/wikie/switchRealm/specs">specs</a></li>
-            @stok.au.toList.flatMap(x => x.memberReactors).filter(x=> !Array("wiki","specs").contains(x)).sorted.map { t =>
-              <li><a href="/wikie/switchRealm/@t">@t</a></li>
+              @myReactors().sorted.map { t =>
+                <li><a href="/wikie/switchRealm/@t">@t</a></li>
+              }
+            </ul>
+          </li>
+        </ul>
+      }
+    }
+
+@myReactors()=@{
+  stok.au.toList
+  .flatMap(x => x.memberReactors)
+  .filter(x=> !Array("wiki","specs").contains(x))
+  .filter(x=> razie.wiki.model.WikiReactors.allLowercase.contains(x))
+  // last one is because in localhost mode, not all my reactors are here...
+  // todo optimize this somehow?
+}
+
+    @**
+
+    ====================== for admins and devs, environment setting
+
+    **@
+
+    @if(! web().navrMenuRemove.contains("Search") || stok.au.exists(_.isMod) && stok.isLocalhost ) {
+      @if((stok.au.exists(_.isMod) || stok.isLocalhost) && web().prop("diesel.envList").isDefined) {
+        <ul class="nav navbar-nav pull-right">
+          <li class="dropdown">
+            <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false" style="color: orange;
+              font-weight: bold;
+              font-size: small" title="change environment">
+              @api.wix.dieselEnvFor(stok.realm, stok.au) <span class="caret"></span>
+            </a>
+            <ul class="dropdown-menu" role="menu">
+            @web().dieselEnvList.split(",").map { t =>
+              <li><a href="javascript:doSetEnv('@t')">@t</a></li>
             }
             </ul>
           </li>
@@ -263,5 +297,19 @@ require(['jquery'], function($){
       }
 
       navBarInitialized = true;
+
+      // set env and refresh this same page...
+      doSetEnv = function(r) {
+        $.ajax(
+            '/diesel/setEnv/' + r, {
+              type: 'GET',
+              success: function(data) {
+                location.reload();
+              },
+              error  : function(x) {
+                location.reload();
+              }
+            });
+      };
     });
 </script>

@@ -32,7 +32,7 @@ Builds an embedable map given a list of topics
       });""".format(x,y,venue._2, Wiki.w("Venue", venue._3, "rk"))
       }
       case "s" => {
-        controllers.Maps.latlong(ll).map {case (x,y) =>
+        razie.wiki.util.Maps.latlong(ll).map {case (x,y) =>
         """marker = new google.maps.Marker({
         position: new google.maps.LatLng(%s,%s),
         map: map,

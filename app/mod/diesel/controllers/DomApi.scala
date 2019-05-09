@@ -1,6 +1,6 @@
 package mod.diesel.controllers
 
-import controllers.RazRequest
+import controllers.{DieselSettings, Profile, RazRequest}
 import difflib.{DiffUtils, Patch}
 import mod.diesel.controllers.DomGuardian.{addStoryToAst, catPages, prepEngine, startCheck}
 import razie.diesel.utils.DomHtml.quickBadge
@@ -8,6 +8,7 @@ import mod.diesel.controllers.DomSessions.Over
 import mod.diesel.model._
 import mod.diesel.model.exec.EESnakk
 import model._
+import org.apache.xml.serialize.LineSeparator
 import org.bson.types.ObjectId
 import org.joda.time.DateTime
 import org.json.JSONObject
@@ -1501,6 +1502,14 @@ Guardian report<a href="/wiki/Guardian_Guide" ><sup><span class="glyphicon glyph
       else
         Ok(c)
     }
+  }
+
+  def setEnv (env:String) = Filter(isMod).async { implicit stok =>
+    val au = stok.au.get
+    val u = Profile.updateUser(au, au.setPrefs(stok.realm, Map("dieselEnv" -> env)))
+    cleanAuth()
+    // it's not actually redirecting, see client
+    Future.successful(Redirect("/", SEE_OTHER))
   }
 
 }

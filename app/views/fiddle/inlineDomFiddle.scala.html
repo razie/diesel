@@ -127,6 +127,9 @@ var runpill2_@id = function(id, url, noreload) {
             $('#code_'+id).html(ast_@id);
           $('#preout_'+id).html(ast_@id);
 
+          // hide trace nodes
+          $("div[kind='trace']").hide();
+
           //if(aceEditor_@{id}) updateMarkers(aceEditor_@{id} , data.ast);
 
 //      var du = new Date().getTime() - lastTime;

@@ -82,9 +82,10 @@ a JS with HTML and CSS fiddle
       &nbsp;<input type="checkbox" id="expandedStory" title="Expand/collapse story" checked> <small>(show/hide)</small>
     </div>
     <div id="title3b_@id" class="col-sm-6" style="font-size: small">
+      <input type="checkbox" id="traceStory" title="Expand/collaps trace nodes" > <small>(trace)</small>
       <input type="checkbox" id="debugStory" title="Expand/collaps debug nodes" checked> <small>(debug)</small>
       <input type="checkbox" id="generatedStory" title="Expand/collaps generated nodes" checked> <small>(generated)</small>
-      <button id="ferrStory" title="Find first error" onclick="ferrStory()" class="btn btn-default btn-xs"> <small><span class="glyphicon glyphicon-menu-down"></span> (first error)</small>
+      <button id="ferrStory" title="Find first error" onclick="ferrStory()" class="btn btn-default btn-xs"> <small><span class="glyphicon glyphicon-menu-down"></span> (first error)</small></button>
     </div>
 
   @*story - editors*@
@@ -386,6 +387,7 @@ var runpill2_@id = function(id) {
         // if(! data.simMode) { // was not executed
           $('#iframeOut3_' + id).html(encAmp(data.res) + '\n');
           $('#iframeOutSpec_' + id).html(encAmp(data.res) + '\n');
+        hideTrace($('#traceStory').prop('checked'));
           hideDebug($('#debugStory').prop('checked'));
           hideGenerated($('#generatedStory').prop('checked'));
         // }
@@ -724,6 +726,10 @@ function saveNew(what) {
     });
 }
 
+function hideTrace(expanded) {
+  hideKind(expanded, 'trace');
+}
+
 function hideDebug(expanded) {
   hideKind(expanded, 'debug');
 }
@@ -804,6 +810,10 @@ $(window).load (function() {
   // useLocalStorageCheckbox("debugSpec", "domFiddleDebugSpec", function (a,b,expanded) {
   //   hideDebug(expanded);
   // });
+
+  useLocalStorageCheckbox("traceStory", "domFiddleTraceStory", function (a,b,expanded) {
+    hideTrace(expanded);
+  });
 
   useLocalStorageCheckbox("debugStory", "domFiddleDebugStory", function (a,b,expanded) {
     hideDebug(expanded);

@@ -29,11 +29,14 @@ docker build -t raz-diesel .
 
 cd $RK
 
+docker tag raz-diesel razie/raz-diesel
+
 ################## publishing
 
 # https://docs.docker.com/docker-cloud/builds/push-images/
 
 # docker tag raz-diesel razie/raz-diesel
+# docker login -u razie
 # docker push razie/raz-diesel
 
 

@@ -7,12 +7,14 @@ import play.api.data.Forms._
 import play.api.mvc._
 import play.api._
 import razie.Snakk
+
 import scala.util.parsing.combinator.RegexParsers
 import org.joda.time.DateTime
 import razie.XP
 import razie.XpSolver
 import razie.Snakk._
 import org.bson.types.ObjectId
+
 import scala.Some
 import razie.wiki.model.WWrapper
 import razie.wiki.model.UWID
@@ -23,6 +25,7 @@ import razie.tconf.parser.ParserSettings
 import razie.wiki.model.ILink
 import razie.wiki.model.WikiLink
 import razie.wiki.model.WID
+import razie.wiki.util.Maps
 
 class UserStuff (val realm:String, val user:User) {
   lazy val events = UserStuff.events(realm, user)

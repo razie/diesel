@@ -101,6 +101,7 @@ create new page given a template
             var a = $('#app').val();
             var o = $('#org').val();
             var n = (k === "prod" ? "" : k) + a + o;
+            n = n.toLowerCase();
 
             $('#name').val(n);
             $('#siteName').text(n);

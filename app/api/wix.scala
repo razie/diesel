@@ -2,7 +2,7 @@ package api
 
 import mod.diesel.controllers.SFiddles
 import model._
-import controllers.{Club, XListWrapper, XWrapper}
+import controllers.{Club, DieselSettings, XListWrapper, XWrapper}
 import razie.db.RazMongo
 import razie.wiki.{Sec, Services}
 import razie.wiki.model._
@@ -21,6 +21,13 @@ class wix (owe: Option[WikiPage], ou:Option[WikiUser], q:Map[String,String], r:S
   private var iquery: Map[String,String] = q
   private var irealm: String = if(r.isEmpty) owe.map(_.realm).mkString else r
 
+  // so you can do wix.diesel.env
+  val diesel = new {
+    // todo slow db lookup - cache in user
+    def env = wix.dieselEnvFor(irealm, ou)
+  }
+
+  // so you can do wix.page.name
   val page = new {
     def name = ipage.get.name
     def isDefined = ipage.isDefined
@@ -52,6 +59,7 @@ class wix (owe: Option[WikiPage], ou:Option[WikiUser], q:Map[String,String], r:S
         .mkString("", " <b>|</b> ", "")
   }
 
+  // so you can do wix.user.isOwner
   val user = new {
     def userName = iuser.get.userName
     def firstName = iuser.get.firstName
@@ -267,8 +275,9 @@ object wix {
 
   object utils {
     def countForms() = RazMongo("weForm").size
-
   }
+
+  def dieselEnvFor (realm:String, ou:Option[WikiUser]) = dwix.dieselEnvFor(realm, ou)
 }
 
 class WixUtils(w:wix) {

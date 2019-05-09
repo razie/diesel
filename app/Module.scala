@@ -115,7 +115,7 @@ class Module extends AbstractModule {
     }
 
     if(Config.isimulateHost == Config.REFERENCE_SIMULATE_HOST)
-      DieselSettings.find("isimulateHost").map { s=>
+      DieselSettings.find(None, None, "isimulateHost").map { s=>
         Config.isimulateHost = s
     }
 
