@@ -24,47 +24,49 @@ import scala.concurrent.Future
 //@Singleton
 object AdminDiff extends AdminBase {
 
-  case class WEAbstract (id:String, cat:String, name:String, realm:String, ver:Int, updDtm:DateTime, hash:Int, tags:String) {
-    def this (we:WikiEntry) = this(we._id.toString, we.category, we.name, we.realm, we.ver, we.updDtm, we.content.hashCode, we.tags.mkString)
-    def j = js.tojson(Map("id"->id, "cat"->cat, "name"->name, "realm"->realm, "ver"->ver, "updDtm" -> updDtm, "hash" -> hash.toString, "tags" -> tags))
+  case class WEAbstract(id: String, cat: String, name: String, realm: String, ver: Int, updDtm: DateTime, hash: Int, tags: String) {
+    def this(we: WikiEntry) = this(we._id.toString, we.category, we.name, we.realm, we.ver, we.updDtm, we.content.hashCode, we.tags.mkString)
+
+    def j = js.tojson(Map("id" -> id, "cat" -> cat, "name" -> name, "realm" -> realm, "ver" -> ver, "updDtm" -> updDtm, "hash" -> hash.toString, "tags" -> tags))
   }
 
-  def wput(reactor:String) = FAD { implicit au =>
-    implicit errCollector => implicit request =>
-      Ok("")
+  def wput(reactor: String) = FAD { implicit au =>
+    implicit errCollector =>
+      implicit request =>
+        Ok("")
   }
 
   /** get list of pages - invoked by remote trying to sync */
   // todo auth that user belongs to realm
-  def drafts(reactor:String) = FAUR { implicit stok =>
+  def drafts(reactor: String) = FAUR { implicit stok =>
 
     var l = Autosave.activeDrafts(stok.au.get._id).toList
 
-    def toHtml (x:Autosave) = (x.what, x.realm, x.name, WID.fromPath(x.name).map(_.url + "  ").mkString )
+    def toHtml(x: Autosave) = (x.what, x.realm, x.name, WID.fromPath(x.name).map(_.url + "  ").mkString)
 
     // filter some internal states
     l = l.filter(_.name != "")
 
     // only I see all realms
-    if(! stok.au.exists(_.isAdmin))
+    if (!stok.au.exists(_.isAdmin))
       l = l.filter(_.realm == reactor)
 
     // filter those with content similar
-    val ok = l.filter(x=> WID.fromPath(x.name).exists(_.content.exists(_ != x.contents("content"))))
-    val neq = l.filter(x=> WID.fromPath(x.name).exists(_.content.exists(_ == x.contents("content"))))
-    val non = l.filter(x=> WID.fromPath(x.name).flatMap(_.page).isEmpty)
+    val ok = l.filter(x => WID.fromPath(x.name).exists(_.content.exists(_ != x.contents("content"))))
+    val neq = l.filter(x => WID.fromPath(x.name).exists(_.content.exists(_ == x.contents("content"))))
+    val non = l.filter(x => WID.fromPath(x.name).flatMap(_.page).isEmpty)
 
     val lok = ok.map(toHtml)
     val lneq = neq.map(toHtml)
     val lnon = non.map(toHtml)
 
     // collect duplos
-    val d = new mutable.HashMap [String, List[String]]()
+    val d = new mutable.HashMap[String, List[String]]()
     // check that there's no screwup
-    RMany[WikiEntry]().toList.foreach {we=>
+    RMany[WikiEntry]().toList.foreach { we =>
       val k = we.wid.wpathFull
 
-      if(d.contains(k)) {
+      if (d.contains(k)) {
         d.put(k, (we._id.toString) :: d(k))
       } else {
         d.put(k, (we._id.toString) :: Nil)
@@ -73,7 +75,7 @@ object AdminDiff extends AdminBase {
 
     val duplos = d.filter(_._2.size > 1)
 
-    ROK.r admin {implicit stok=>
+    ROK.r admin { implicit stok =>
       views.html.admin.adminDrafts(lok.sortBy(_._2), lneq, lnon, duplos)
     }
   }
@@ -82,7 +84,7 @@ object AdminDiff extends AdminBase {
   // todo auth that user belongs to realm
   def draftsCleanAll = FAUR { implicit stok =>
 
-    if(! stok.au.exists(_.isAdmin)) Unauthorized ("ONly for admins...")
+    if (!stok.au.exists(_.isAdmin)) Unauthorized("ONly for admins...")
     else {
 
       var l = Autosave.activeDrafts(stok.au.get._id).toList
@@ -95,39 +97,39 @@ object AdminDiff extends AdminBase {
       val neq = l.filter(x => WID.fromPath(x.name).exists(_.content.exists(_ == x.contents("content"))))
       val non = l.filter(x => WID.fromPath(x.name).flatMap(_.page).isEmpty)
 
-      neq.map (_.delete)
-      non.map (_.delete)
+      neq.map(_.delete)
+      non.map(_.delete)
 
-      Redirect("/admin/drafts/"+stok.realm)
+      Redirect("/admin/drafts/" + stok.realm)
     }
- }
+  }
 
   /** get list of pages - invoked by remote trying to sync */
   // todo auth that user belongs to realm
-  def wlist(reactor:String, hostname:String, me:String, cat:String) = FAUR { implicit request =>
-      if (hostname.isEmpty) {
-        val l =
-          if(cat.length == 0)
-            RMany[WikiEntry]().filter(we=> reactor.isEmpty || reactor == "all" || we.realm == reactor).map(x=>new WEAbstract(x)).toList
-          else
-            RMany[WikiEntry]().filter(we=> we.category == cat && (reactor.isEmpty || reactor == "all" || we.realm == reactor)).map(x=>new WEAbstract(x)).toList
-        val list = l.map(_.j)
-        Ok(js.tojson(list).toString).as("application/json")
-      } else if(hostname != me) {
-        val b = body(url(s"http://$hostname/razadmin/wlist/$reactor?me=${request.req.host}&cat=$cat").basic("H-"+request.au.get.emailDec, "H-"+request.au.get.pwd.dec))
-        Ok(b).as("application/json")
-      }  else {
-        NotFound("same host again?")
-      }
+  def wlist(reactor: String, hostname: String, me: String, cat: String) = FAUR { implicit request =>
+    if (hostname.isEmpty) {
+      val l =
+        if (cat.length == 0)
+          RMany[WikiEntry]().filter(we => reactor.isEmpty || reactor == "all" || we.realm == reactor).map(x => new WEAbstract(x)).toList
+        else
+          RMany[WikiEntry]().filter(we => we.category == cat && (reactor.isEmpty || reactor == "all" || we.realm == reactor)).map(x => new WEAbstract(x)).toList
+      val list = l.map(_.j)
+      Ok(js.tojson(list).toString).as("application/json")
+    } else if (hostname != me) {
+      val b = body(url(s"http://$hostname/razadmin/wlist/$reactor?me=${request.req.host}&cat=$cat").basic("H-" + request.au.get.emailDec, "H-" + request.au.get.pwd.dec))
+      Ok(b).as("application/json")
+    } else {
+      NotFound("same host again?")
+    }
   }
 
   /** show the list of diffs to remote */
-  private def diffById(lsrc:List[WEAbstract], ldest:List[WEAbstract]) = {
+  private def diffById(lsrc: List[WEAbstract], ldest: List[WEAbstract]) = {
     try {
-      val lnew = lsrc.filter(x=> ldest.find(y=> y.id == x.id).isEmpty)
-      val lremoved = ldest.filter(x=> lsrc.find(y=> y.id == x.id).isEmpty)
+      val lnew = lsrc.filter(x => ldest.find(y => y.id == x.id).isEmpty)
+      val lremoved = ldest.filter(x => lsrc.find(y => y.id == x.id).isEmpty)
 
-      val lchanged = for(
+      val lchanged = for (
         x <- lsrc;
         y <- ldest if y.id == x.id &&
           (
@@ -141,48 +143,48 @@ object AdminDiff extends AdminBase {
       ) yield
         (x,
           y,
-          if(x.hash == y.hash && x.tags == y.tags) "-" else if (x.ver > y.ver || x.updDtm.isAfter(y.updDtm)) "L" else "R"
+          if (x.hash == y.hash && x.tags == y.tags) "-" else if (x.ver > y.ver || x.updDtm.isAfter(y.updDtm)) "L" else "R"
         )
 
-      (lnew,lchanged,lremoved)
+      (lnew, lchanged, lremoved)
     } catch {
-      case x : Throwable => {
+      case x: Throwable => {
         audit("ERROR getting remote diffs", x)
-        (Nil,Nil,Nil)
+        (Nil, Nil, Nil)
       }
     }
   }
 
   /** show the list of diffs to remote */
-  private def diffByName(lsrc:List[WEAbstract], ldest:List[WEAbstract]) = {
+  private def diffByName(lsrc: List[WEAbstract], ldest: List[WEAbstract]) = {
     try {
-      val lnew = lsrc.filter(x=> !ldest.exists(y=> y.name == x.name && y.cat == x.cat))
-      val lremoved = ldest.filter(x=> !lsrc.exists(y=> y.name == x.name && y.cat == x.cat))
+      val lnew = lsrc.filter(x => !ldest.exists(y => y.name == x.name && y.cat == x.cat))
+      val lremoved = ldest.filter(x => !lsrc.exists(y => y.name == x.name && y.cat == x.cat))
 
-      val lchanged = for(
+      val lchanged = for (
         x <- lsrc;
         y <- ldest if y.name == x.name && y.cat == x.cat &&
           (
             x.ver != y.ver ||
               x.updDtm.compareTo(y.updDtm) != 0
-//              x.name != y.name ||
-//              x.cat != y.cat ||
-//              x.realm != y.realm
+            //              x.name != y.name ||
+            //              x.cat != y.cat ||
+            //              x.realm != y.realm
             // todo compare properties as well
             )
       ) yield
         (x,
           y,
-          if(x.hash == y.hash && x.tags == y.tags) "-"
+          if (x.hash == y.hash && x.tags == y.tags) "-"
           else if (x.ver > y.ver || x.updDtm.isAfter(y.updDtm)) "L"
           else "R"
         )
 
-      (lnew,lchanged,lremoved)
+      (lnew, lchanged, lremoved)
     } catch {
-      case x : Throwable => {
+      case x: Throwable => {
         audit("ERROR getting remote diffs", x)
-        (Nil,Nil,Nil)
+        (Nil, Nil, Nil)
       }
     }
   }
@@ -196,96 +198,96 @@ object AdminDiff extends AdminBase {
     * @return
     */
   // todo auth that user belongs to realm
-  def difflist(toRealm:String, remote:String) = FAUR { implicit request =>
-      try {
-        // get remote list
-        val b = body(url(s"http://$remote/razadmin/wlist/$toRealm").basic("H-"+request.au.get.emailDec, "H-"+request.au.get.pwd.dec))
+  def difflist(toRealm: String, remote: String) = FAUR { implicit request =>
+    try {
+      // get remote list
+      val b = body(url(s"http://$remote/razadmin/wlist/$toRealm").basic("H-" + request.au.get.emailDec, "H-" + request.au.get.pwd.dec))
 
-        val gd = new JSONArray(b)
-        val ldest = js.fromArray(gd).collect {
-          case m : Map[_, _] => {
-            val x = m.asInstanceOf[Map[String,String]]
-            WEAbstract(x("id"), x("cat"), x("name"), x("realm"), x("ver").toInt, new DateTime(x("updDtm")), x("hash").toInt, x("tags"))
-          }
-        }
-
-        // local list
-        val lsrc = RMany[WikiEntry]().filter(we=> toRealm.isEmpty || toRealm == "all" || we.realm == request.realm).map(x=>new WEAbstract(x)).toList
-
-        val (lnew, lchanged, lremoved) =
-          if(toRealm == "all" || toRealm == request.realm)
-            // diff to remote
-            diffById(lsrc, ldest)
-          else
-            // diff to another reactor
-            diffByName(lsrc, ldest)
-
-        ROK.r admin {implicit stok=>
-          views.html.admin.adminDifflist(toRealm, remote, lnew, lremoved, lchanged.sortBy(_._3))
-        }
-      } catch {
-        case x : Throwable => {
-          audit("ERROR getting remote diffs", x)
-          Ok ("error " + x)
+      val gd = new JSONArray(b)
+      val ldest = js.fromArray(gd).collect {
+        case m: Map[_, _] => {
+          val x = m.asInstanceOf[Map[String, String]]
+          WEAbstract(x("id"), x("cat"), x("name"), x("realm"), x("ver").toInt, new DateTime(x("updDtm")), x("hash").toInt, x("tags"))
         }
       }
+
+      // local list
+      val lsrc = RMany[WikiEntry]().filter(we => toRealm.isEmpty || toRealm == "all" || we.realm == request.realm).map(x => new WEAbstract(x)).toList
+
+      val (lnew, lchanged, lremoved) =
+        if (toRealm == "all" || toRealm == request.realm)
+        // diff to remote
+          diffById(lsrc, ldest)
+        else
+        // diff to another reactor
+          diffByName(lsrc, ldest)
+
+      ROK.r admin { implicit stok =>
+        views.html.admin.adminDifflist(toRealm, remote, lnew, lremoved, lchanged.sortBy(_._3))
+      }
+    } catch {
+      case x: Throwable => {
+        audit("ERROR getting remote diffs", x)
+        Ok("error " + x)
+      }
+    }
   }
 
   /** compute and show diff for a WID */
   // todo auth that user belongs to realm
-  def showDiff(onlyContent:String, side:String, realm:String, target:String, iwid:WID) = FAUR { implicit request =>
-    val localWid = iwid.r(if(realm == "all") iwid.getRealm else request.realm)
-    val remoteWid = iwid.r(if(realm == "all") iwid.getRealm else iwid.getRealm)
+  def showDiff(onlyContent: String, side: String, realm: String, target: String, iwid: WID) = FAUR { implicit request =>
+    val localWid = iwid.r(if (realm == "all") iwid.getRealm else request.realm)
+    val remoteWid = iwid.r(if (realm == "all") iwid.getRealm else iwid.getRealm)
 
-      getWE(target, remoteWid)(request.au.get).fold({t=>
-        val remote = t._1.content
-        val patch =
-        if(side=="R")
+    getWE(target, remoteWid)(request.au.get).fold({ t =>
+      val remote = t._1.content
+      val patch =
+        if (side == "R")
           DiffUtils.diff(localWid.content.get.lines.toList, remote.lines.toList)
         else
           DiffUtils.diff(localWid.content.get.lines.toList, remote.lines.toList)
 
-        def x = {
-          if (side == "R")
-            views.html.admin.adminDiffShow(side, localWid.content.get, remote, patch, localWid.page.get, t._1)
-          else
-            views.html.admin.adminDiffShow(side, localWid.content.get, remote, patch, localWid.page.get, t._1)
-        }
+      def x = {
+        if (side == "R")
+          views.html.admin.adminDiffShow(side, localWid.content.get, remote, patch, localWid.page.get, t._1)
+        else
+          views.html.admin.adminDiffShow(side, localWid.content.get, remote, patch, localWid.page.get, t._1)
+      }
 
-        def diffTable = s"""<small>${views.html.admin.diffTable(side, patch, Some(("How", "Local", "Remote")))}</small>"""
+      def diffTable = s"""<small>${views.html.admin.diffTable(side, patch, Some(("How", "Local", "Remote")))}</small>"""
 
-        if("yes" == onlyContent.toLowerCase) {
-          val url = routes.AdminDiff.showDiff("no", side, realm, target, iwid)
-          Ok(
-            s"""<a href="$url">See separate</a><br>""" + diffTable
-          )
-        } else {
-          ROK.r admin { implicit stok => x }
-        }
+      if ("yes" == onlyContent.toLowerCase) {
+        val url = routes.AdminDiff.showDiff("no", side, realm, target, iwid)
+        Ok(
+          s"""<a href="$url">See separate</a><br>""" + diffTable
+        )
+      } else {
+        ROK.r admin { implicit stok => x }
+      }
 
-      },{err=>
-        Ok ("ERR: " + err)
-      })
+    }, { err =>
+      Ok("ERR: " + err)
+    })
   }
 
   // to remote
-  def applyDiffTo(toRealm:String, target:String, iwid:WID) = FAUR { implicit request =>
-    val localWid = iwid.r(if(toRealm == "all") iwid.getRealm else request.realm)
-    val remoteWid = iwid.r(if(toRealm == "all") iwid.getRealm else toRealm)
+  def applyDiffTo(toRealm: String, target: String, iwid: WID) = FAUR { implicit request =>
+    val localWid = iwid.r(if (toRealm == "all") iwid.getRealm else request.realm)
+    val remoteWid = iwid.r(if (toRealm == "all") iwid.getRealm else toRealm)
 
-    if(request.au.exists(_.realms.contains(toRealm)) || request.au.exists(_.isAdmin)) {
+    if (request.au.exists(_.realms.contains(toRealm)) || request.au.exists(_.isAdmin)) {
       try {
         val page = localWid.page.get
 
         val b = body(
           url(s"http://$target/wikie/setContent/${remoteWid.wpathFull}").
             form(Map("we" -> page.grated.toString)).
-            basic("H-"+request.au.get.emailDec, "H-"+request.au.get.pwd.dec))
+            basic("H-" + request.au.get.emailDec, "H-" + request.au.get.pwd.dec))
 
         // b contains ok - is important
         Ok(b + " <a href=\"" + s"http://$target${remoteWid.urlRelative(request.realm)}" + "\">" + remoteWid.wpath + "</a>")
       } catch {
-        case x : Throwable => Ok ("error " + x)
+        case x: Throwable => Ok("error " + x)
       }
     } else {
       Unauthorized(s"You are not a member or project $toRealm...")
@@ -294,30 +296,30 @@ object AdminDiff extends AdminBase {
 
   // from remote
   // todo auth that user belongs to realm
-  def applyDiffFrom(fromRealm:String, target:String, iwid:WID) = FADR {implicit request =>
-    val localWid = iwid.r(if(fromRealm == "all") iwid.getRealm else request.realm)
-    val remoteWid = iwid.r(if(fromRealm == "all") iwid.getRealm else fromRealm)
+  def applyDiffFrom(fromRealm: String, target: String, iwid: WID) = FADR { implicit request =>
+    val localWid = iwid.r(if (fromRealm == "all") iwid.getRealm else request.realm)
+    val remoteWid = iwid.r(if (fromRealm == "all") iwid.getRealm else fromRealm)
 
-      getWE(target, remoteWid)(request.au.get).fold({t =>
-        val b = body(
-          url(request.hostUrlBase + s"/wikie/setContent/${localWid.wpathFull}")
-            .form(Map("we" -> t._2, "remote" -> target))
-            .basic("H-"+request.au.get.emailDec, "H-"+request.au.get.pwd.dec)
-        )
-        Ok(b + localWid.ahrefRelative(request.realm))
-      }, {err=>
-        Ok ("ERR: "+err)
-      })
+    getWE(target, remoteWid)(request.au.get).fold({ t =>
+      val b = body(
+        url(request.hostUrlBase + s"/wikie/setContent/${localWid.wpathFull}")
+          .form(Map("we" -> t._2, "remote" -> target))
+          .basic("H-" + request.au.get.emailDec, "H-" + request.au.get.pwd.dec)
+      )
+      Ok(b + localWid.ahrefRelative(request.realm))
+    }, { err =>
+      Ok("ERR: " + err)
+    })
   }
 
   /** fetch remote WE */
-  private def getWE(target:String, wid:WID)(implicit au:User):Either[(WikiEntry, String), String] = {
+  private def getWE(target: String, wid: WID)(implicit au: User): Either[(WikiEntry, String), String] = {
     try {
       val remote = s"http://$target/wikie/json/${wid.wpathFull}"
       val wes = body(
-        url(remote).basic("H-"+au.emailDec, "H-"+au.pwd.dec))
+        url(remote).basic("H-" + au.emailDec, "H-" + au.pwd.dec))
 
-      if(! wes.isEmpty) {
+      if (!wes.isEmpty) {
         val dbo = com.mongodb.util.JSON.parse(wes).asInstanceOf[DBObject];
         val remote = grater[WikiEntry].asObject(dbo)
         Left((remote -> wes))
@@ -325,22 +327,24 @@ object AdminDiff extends AdminBase {
         Right("Couldnot read remote content from: " + remote)
       }
     } catch {
-      case x : Throwable => {
+      case x: Throwable => {
         Right("error " + x)
       }
     }
   }
 
-  def remoteWids (source:String, realm:String, me:String, cat:String, au:User) : List[WID] = {
+  def remoteWids(source: String, realm: String, me: String, cat: String, au: User): List[WID] = {
     val b = body(url(s"http://$source/razadmin/wlist/$realm?me=$me&cat=$cat").basic("H-" + au.emailDec, "H-" + au.pwd.dec))
 
     val gd = new JSONArray(b)
+    cdebug << s"remoteWids JS $realm: \n  " + gd.toString(2)
     var ldest = js.fromArray(gd).collect {
       case m: Map[_, _] => {
         val x = m.asInstanceOf[Map[String, String]]
         WEAbstract(x("id"), x("cat"), x("name"), x("realm"), x("ver").toInt, new DateTime(x("updDtm")), x("hash").toInt, x("tags"))
       }
     }.map(wea => WID(wea.cat, wea.name).r(wea.realm)).toList
+    cdebug << s"remoteWids $realm: \n  " + ldest.mkString("\n  ")
     ldest
   }
 
@@ -352,16 +356,16 @@ object AdminDiff extends AdminBase {
   def importDb = Action { implicit request =>
     cout << "ADMIN_IMPORT_DB"
 
-    if(! isDbEmpty) {
-      Ok ("ERR db not empty!").as("application/text")
+    if (!isDbEmpty) {
+      Ok("ERR db not empty!").as("application/text")
     } else {
-      lazy val query = request.queryString.map(t=>(t._1, t._2.mkString))
+      lazy val query = request.queryString.map(t => (t._1, t._2.mkString))
       lazy val form = request.asInstanceOf[Request[AnyContent]].body.asFormUrlEncoded
 
-      def fParm(name:String) : Option[String] =
+      def fParm(name: String): Option[String] =
         form.flatMap(_.getOrElse(name, Seq.empty).headOption)
 
-      def fqhParm(name:String) : Option[String] =
+      def fqhParm(name: String): Option[String] =
         query.get(name).orElse(fParm(name)).orElse(request.headers.get(name))
 
       val source = fqhParm("source").get
@@ -377,9 +381,10 @@ object AdminDiff extends AdminBase {
       val dbo = com.mongodb.util.JSON.parse(u).asInstanceOf[DBObject];
       val pu = grater[PU].asObject(dbo)
       val iau = pu.u
-      val e = new admin.CypherEncryptService("",key)
+      val e = new admin.CypherEncryptService("", key)
       // re=encrypt passworkd with the local key
-      val au = iau.copy (email=e.enc(e.dec(iau.email)), pwd = e.enc(e.dec(iau.pwd)))
+      val au = iau.copy(email = e.enc(e.dec(iau.email)), pwd = e.enc(e.dec(iau.pwd)))
+
       au.create(pu.p)
 
       // init realms and cats
@@ -389,10 +394,12 @@ object AdminDiff extends AdminBase {
       val ldest = List(
         "rk.Reactor:rk",
         "wiki.Reactor:wiki"
-      ).map(x=> WID.fromPath(x).get) :::
-        remoteWids (source, "rk", request.host, "Category", au) :::
-        remoteWids (source, "wiki", request.host, "Category", au) :::
-        remoteWids (source, realm, request.host, "", au)
+      ).map(x => WID.fromPath(x).get) :::
+//        remoteWids(source, "rk", request.host, "Category", au) :::
+//        remoteWids(source, "wiki", request.host, "Category", au) :::
+        remoteWids(source, "rk", request.host, "", au) :::
+        remoteWids(source, "wiki", request.host, "", au) :::
+        remoteWids(source, realm, request.host, "", au)
 
       var total = ldest.size
 
@@ -406,102 +413,105 @@ object AdminDiff extends AdminBase {
   }
 
   /** import a realm, if not already in local */
-  var lastImport : Option[String] = None
+  var lastImport: Option[String] = None
 
-  def getLastImport () = Action { implicit request =>
+  def getLastImport() = Action { implicit request =>
     Ok(lastImport.getOrElse("No import operation performed..."))
   }
 
   /** import a realm from remote */
-  def importRealm (au:User, request:Request[AnyContent]) = {
+  def importRealm(au: User, request: Request[AnyContent]) = {
     cout << "ADMIN_IMPORT_REALM"
 
-      lazy val query = request.queryString.map(t=>(t._1, t._2.mkString))
-      lazy val form = request.asInstanceOf[Request[AnyContent]].body.asFormUrlEncoded
+    lazy val query = request.queryString.map(t => (t._1, t._2.mkString))
+    lazy val form = request.asInstanceOf[Request[AnyContent]].body.asFormUrlEncoded
 
-      def fParm(name:String) : Option[String] =
-        form.flatMap(_.getOrElse(name, Seq.empty).headOption)
+    def fParm(name: String): Option[String] =
+      form.flatMap(_.getOrElse(name, Seq.empty).headOption)
 
-      def fqhParm(name:String) : Option[String] =
-        query.get(name).orElse(fParm(name)).orElse(request.headers.get(name))
+    def fqhParm(name: String): Option[String] =
+      query.get(name).orElse(fParm(name)).orElse(request.headers.get(name))
 
-      val source = fqhParm("source").get
-      val email = fqhParm("email").get
-      val pwd = fqhParm("pwd").get
-      val realm = fqhParm("realm").get
-      val key = System.currentTimeMillis().toString
+    val source = fqhParm("source").get
+    val email = fqhParm("email").get
+    val pwd = fqhParm("pwd").get
+    val realm = fqhParm("realm").get
+    val key = System.currentTimeMillis().toString
 
     // get mixins
     cout << "============ get mixins"
-      val m = WID.fromPath(s"$realm.Reactor:$realm").map(wid=>getWE(source, wid)(au).fold({ t=>
-        val m = new DslProps(Some(t._1), "website,properties")
-          .prop("mixins")
-          .getOrElse(realm)
-        cout << "============ mixins: "+ m
-        m + ","+realm // add itself to mixins
-  }, { err =>
-        cout << "============ ERR-IMPORT DB: " + err
-        ""
-      }
+    val reactors = WID.fromPath(s"$realm.Reactor:$realm").map(wid => getWE(source, wid)(au).fold({ t =>
+      val m = new DslProps(Some(t._1), "website,properties")
+        .prop("mixins")
+        .getOrElse(realm)
+      cout << "============ mixins: " + m
+      m + "," + realm // add itself to mixins
+    }, { err =>
+      cout << "============ ERR-IMPORT DB: " + err
+      ""
+    }
     )).getOrElse(realm)
 
-      val ldest = List(
-        "rk.Reactor:rk",
-        "wiki.Reactor:wiki"
-      ).map(x=> WID.fromPath(x).get) :::
-        remoteWids (source, "rk", request.host, "Category", au) :::
-        remoteWids (source, "wiki", request.host, "Category", au) :::
-        (m.split(",")
-          .toList
-          .distinct
-          .filter(r=>r.length > 0 && !Array("rk", "wiki").contains(r))
-          .flatMap(r => remoteWids (source, r, request.host, "", au))
-          )
+    val ldest = List(
+      "rk.Reactor:rk",
+      "wiki.Reactor:wiki"
+    ).map(x => WID.fromPath(x).get) :::
+//      remoteWids(source, "rk", request.host, "Category", au) :::
+//      remoteWids(source, "wiki", request.host, "Category", au) :::
+      remoteWids(source, "rk", request.host, "", au) :::
+      remoteWids(source, "wiki", request.host, "", au) :::
+      (reactors.split(",")
+        .toList
+        .distinct
+        .filter(r => r.length > 0 && !Array("rk", "wiki").contains(r))
+        .flatMap(r => remoteWids(source, r, request.host, "", au))
+        )
 
-      var count = 0
-      var total = ldest.size
-      var countErr = 0
+    var count = 0
+    var total = ldest.size
+    var countErr = 0
 
-      razie.db.tx ("importdb", email) { implicit txn =>
-        ldest.foreach { wid =>
-          getWE(source, wid)(au).fold({ t =>
-            count = count + 1
-            lastImport = Some(s"Importing $count of $total")
-            RCreate.noAudit(t._1)
-//            t._1.create
-          }, { err =>
-            countErr = countErr + 1
-            cout << "============ ERR-IMPORT DB: " + err
-          })
-        }
+    razie.db.tx("importdb", email) { implicit txn =>
+      ldest.foreach { wid =>
+        getWE(source, wid)(au).fold({ t =>
+          count = count + 1
+          lastImport = Some(s"Importing $count of $total (rk,wiki,$reactors)")
+          RCreate.noAudit(t._1)
+          //            t._1.create
+        }, { err =>
+          countErr = countErr + 1
+          cout << "============ ERR-IMPORT DB: " + err
+        })
       }
+    }
 
     // remember who I am supposed to be
-    DieselSettings("isimulateHost", s"$realm.dieselapps.com").set
+    DieselSettings(None, None, "isimulateHost", s"$realm.dieselapps.com").set
 
     lastImport = Some(
-        s"""Done: imported... $count wikis, with $countErr errors. Please reboot the server!
-           |<br>
-           |To reboot the server, go back to the docker terminal where you started this container,
-           |stop it (^C) and start it again.
+      s"""Done: imported... $count wikis, with $countErr errors. Please reboot the server!
+         |<br>
+         |To reboot the server, go back to the docker terminal where you started this container,
+         |stop it (^C) and start it again.
          """.stripMargin
-      )
+    )
   }
 
 
   /** get list of pages - invoked by remote trying to sync */
-  def getu(key:String) = FAU { implicit au =>
-    implicit errCollector => implicit request =>
+  def getu(key: String) = FAU { implicit au =>
+    implicit errCollector =>
+      implicit request =>
 
-    val e = new admin.CypherEncryptService(key,"")
-    val pu = PU(au.copy (email=e.enc(au.emailDec), pwd = e.enc(au.pwd.dec)), au.profile.get)
+        val e = new admin.CypherEncryptService(key, "")
+        val pu = PU(au.copy(email = e.enc(au.emailDec), pwd = e.enc(au.pwd.dec)), au.profile.get)
 
-    val j = grater[PU].asDBObject(pu).toString
+        val j = grater[PU].asDBObject(pu).toString
 
-    Ok(j).as("application/json")
+        Ok(j).as("application/json")
   }
 
 }
 
 /** for transfering info */
-case class PU (u:User, p:model.Profile)
+case class PU(u: User, p: model.Profile)
