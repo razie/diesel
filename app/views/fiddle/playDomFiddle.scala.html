@@ -35,7 +35,7 @@ a JS with HTML and CSS fiddle
 <script src="@routes.Assets.at("javascripts/weCommons.js")"></script>
 <script src="@routes.Assets.at("javascripts/weFiddles.js")"></script>
 
-  <h3 id="heading">Diesel fiddle<a href="/wiki/Diesel_Fiddle_Guide"><sup><span class="glyphicon glyphicon-question-sign"></span></sup></a> | <small>
+  <h3 id="heading">Diesel fiddle<a href="/wiki/Diesel_Fiddle_Guide" title="Click for detailed help"><sup><span class="glyphicon glyphicon-question-sign"></span></sup></a> | <small>
     <span id="errors" class="label label-default">0/? failed</span>
 
     <span onclick="setSpec('Story');" class="label label-primary" style="cursor:pointer"><span id="curStory">Story</span> <span class="glyphicon glyphicon-chevron-down">
@@ -528,6 +528,17 @@ storyEditor.commands.addCommand({
     bindKey: {win: "Ctrl-G", mac: "Command-G"},
     exec: codeGui
 });
+  specEditor.commands.addCommand({
+    name: "gui",
+    bindKey: {win: "Ctrl-B", mac: "Command-B"},
+    exec: findSpecInTree
+  });
+
+  storyEditor.commands.addCommand({
+    name: "gui",
+    bindKey: {win: "Ctrl-B", mac: "Command-B"},
+    exec: findStoryInTree
+  });
 
   specEditor.getSession().on('change', function(e) {
     domChanged=true;
@@ -544,6 +555,25 @@ storyEditor.commands.addCommand({
     lastChangeMillis = Date.now();
   });
 }
+
+/** scroll from story to results */
+var findSpecInTree = function(editor) { findInTree(specWpath, editor); }
+
+/** scroll from story to results */
+var findStoryInTree = function(editor) { findInTree(storyWpath, editor); }
+
+/** scroll from story to results */
+var findInTree = function(wp, editor) {
+  var row = editor.selection.getCursor().row + 1;
+
+  console.log("Navigate to: "+wp + " : " + row);
+
+  var x = $("span[posw='"+wp+"'][posr="+row+"]")[0];//.scrollIntoView();
+  var parent = $('#iframeOut3_'+@id)[0];
+  if(typeof x != "undefined")
+    parent.scrollTop = x.offsetTop;
+}
+
 
 attachAce();
 

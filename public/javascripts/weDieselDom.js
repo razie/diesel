@@ -335,7 +335,6 @@ var SPEC="SPEC";
 var STORY="STORY";
 var lastMarker=null;
 
-
 /** this works IN the fiddle only */
 function weSelect(wpath,line,col) {
   var Range = ace.require('ace/range').Range;
