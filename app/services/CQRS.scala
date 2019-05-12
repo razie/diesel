@@ -1,5 +1,7 @@
 package services
 
+import java.util.concurrent.TimeUnit
+
 import mod.diesel.controllers.DomFiddles
 import akka.actor.{Actor, Props}
 import controllers.Emailer
@@ -10,12 +12,14 @@ import play.libs.Akka
 import razie.wiki.admin.SendEmail
 import razie.wiki.model._
 import com.google.inject.Singleton
+import mod.diesel.guard.DomGuardian.worker
 import razie.audit.Audit
 import razie.diesel.engine.DomEngineSettings
-import razie.diesel.model.{DieselMsg, DieselMsgString}
+import razie.diesel.model.{DieselMsg, DieselMsgString, ScheduledDieselMsg}
 import razie.wiki.model.features.WikiCount
 
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration.{Duration, FiniteDuration}
 
 /** main event dispatcher implementation */
 @Singleton
@@ -58,7 +62,7 @@ class WikiAsyncObservers extends Actor {
 
     case ev1: WikiEvent[_] => {
       WikiObservers.after(ev1)
-      clusterize(ev1.copy(node=nodeName.mkString))
+      clusterize(ev1.copy(node = nodeName.mkString))
     }
 
     case a: Audit => {
@@ -84,10 +88,14 @@ class WikiAsyncObservers extends Actor {
       val settings = new DomEngineSettings()
       settings.realm = Some(target.realm)
 
-      import WID.fromSpecPath
-      DomFiddles.runDom(m.mkMsgString, target.specs, target.stories, settings).map {res =>
-        cout << "======== DIESEL RES: " + res.toString
-        Audit.logdb("DIESEL_MSG", m.toString, res.toString)
+      val ms = m.mkMsgString
+      DomFiddles.runDom(ms, target.specs, target.stories, settings).map { res =>
+          // don't audit these frequent ones
+          if(
+            ms startsWith DieselMsg.WIKI_UPDATED
+          ) {}
+        else
+        Audit.logdb("DIESEL_MSG", m.toString, res.get("value").mkString)
       }
     }
 
@@ -97,10 +105,21 @@ class WikiAsyncObservers extends Actor {
       val settings = new DomEngineSettings()
       settings.realm = Some(target.realm)
 
-      DomFiddles.runDom(m.toMsgString.mkMsgString, target.specs, target.stories, settings).map {res =>
-        cout << "======== DIESEL RES: " + res.toString
-        Audit.logdb("DIESEL_MSG", m.toString, res.toString)
-      }
+      DomFiddles
+        .runDom(m.toMsgString.mkMsgString, target.specs, target.stories, settings)
+        .map { res =>
+          clog << "DIESEL_MSG: " + m.toMsgString + " : RESULT: " + res.get("value").mkString
+        }
+    }
+
+    case m@ScheduledDieselMsg(s, msgforLater) => {
+      // todo auth/auth
+      clog << s"======== SCHEDULE DIESEL MSG: $s - $m"
+      context.system.scheduler.scheduleOnce(
+        Duration.apply(s).asInstanceOf[FiniteDuration],
+        this.self,
+        msgforLater
+      )
     }
 
     case x@_ => {
@@ -139,7 +158,7 @@ class WikiPubSub extends Actor {
     // to broadcast
     case pub@BCast(ev) => {
       clog << "CLUSTER_BRUTE_BCAST " + ev.toString
-//      Audit.logdb("DEBUG", "event.bcast", "me: " + self.path + " from: " + sender.path, ev.toString().take(150))
+      //      Audit.logdb("DEBUG", "event.bcast", "me: " + self.path + " from: " + sender.path, ev.toString().take(150))
       mediator ! Publish(TOPIC, ev)
     }
 
@@ -150,7 +169,7 @@ class WikiPubSub extends Actor {
         maxCount -= 1
         Audit.logdb("DEBUG", "exec.event", "me: " + self.path + " from: " + sender.path, ev1.toString().take(250))
         WikiObservers.after(ev1)
-      } else if(maxCount > -23) {
+      } else if (maxCount > -23) {
         maxCount -= 1
         Audit.logdb("WARNING", "maxCount messed up - event skipped", "me: " + self.path + " from: " + sender.path, ev1.toString().take(250))
       }

@@ -1,29 +1,24 @@
 package mod.diesel.controllers
 
-import java.util.concurrent.TimeUnit
-
 import akka.actor.{Actor, Props, _}
 import controllers.{IgnoreErrors, VErrors, WikiAuthorization}
-import mod.diesel.controllers.DomUtils.{SAMPLE_SPEC, SAMPLE_STORY}
+import java.util.concurrent.TimeUnit
+import razie.diesel.utils.DomUtils.{SAMPLE_SPEC, SAMPLE_STORY}
 import mod.diesel.model.DomEngineHelper
-import razie.diesel.dom.AstKinds._
-import razie.diesel.engine.RDExt._
-import razie.diesel.dom._
-import model._
 import play.api.Play.current
 import play.api.mvc._
 import play.libs.Akka
+import razie.diesel.dom.AstKinds._
 import razie.diesel.dom.RDomain.DOM_LIST
-import razie.diesel.dom.WikiDomain
+import razie.diesel.dom.{WikiDomain, _}
+import razie.diesel.engine.RDExt._
 import razie.diesel.engine.{DieselAppContext, RDExt}
-import razie.diesel.ext.HasPosition
+import razie.diesel.ext.{EnginePrep, HasPosition}
 import razie.diesel.utils.{DomCollector, SpecCache}
-import razie.hosting.Website
 import razie.wiki.Services
 import razie.wiki.admin.Autosave
 import razie.wiki.model._
 import razie.{CSTimer, Logging, js}
-
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -42,7 +37,7 @@ object DomFiddles extends DomApi with Logging with WikiAuthorization {
     Services.wikiAuth.canEdit(wid, u, w, props)(errCollector)
 
   /** display the play sfiddle screen */
-  def playDom(iSpecWpath:String, iStoryWpath:String, line:String, col:String) = FAUPRAPI(true) { implicit stok =>
+  def playDom(iSpecWpath:String, iStoryWpath:String, line:String, col:String) = FAUR { implicit stok =>
     val reactor = stok.realm
 
     //1. which wids were you looking at last?
@@ -241,6 +236,8 @@ object DomFiddles extends DomApi with Logging with WikiAuthorization {
     )
   }
 
+  val WPATH_DEFAULT_EXECUTORS = "specs.Spec:Default_executors"
+
   /** fiddle screen - story changed
     *
     * todo perf: DB - parsing about 50-50
@@ -288,12 +285,12 @@ object DomFiddles extends DomApi with Logging with WikiAuthorization {
     val specName = WID.fromPath(specWpath).map(_.name).getOrElse("fiddle")
 
     // add the engine spec to be included in content assist
-    val engSpec = WID.fromPath("specs.Spec:Default_executors").flatMap(_.page).toList
+    val engSpec = WID.fromPath(WPATH_DEFAULT_EXECUTORS).flatMap(_.page).toList
     val page = new WikiEntry("Spec", specName, specName, "md", spec, uid, Seq("dslObject"), stok.realm)
 
     val pages =
       if(settings.blenderMode) {
-        val d = engSpec ::: DomGuardian.catPages("Spec", reactor).toList.map { p =>
+        val d = engSpec ::: EnginePrep.catPages("Spec", reactor).toList.map { p =>
           //         if draft mode, find the auto-saved version if any
           if (settings.draftMode) {
             val c = Autosave.find("wikie", p.wid, uid).flatMap(_.get("content")).mkString
@@ -317,6 +314,8 @@ object DomFiddles extends DomApi with Logging with WikiAuthorization {
 
     val ipage = new WikiEntry("Story", storyName, storyName, "md", story, uid, Seq("dslObject"), stok.realm)
 
+    val idom = WikiDomain.domFrom(ipage).get.revise addRoot
+
     stimer snap "3_parse_story"
 
     var res = ""
@@ -331,15 +330,15 @@ object DomFiddles extends DomApi with Logging with WikiAuthorization {
         else DieselJsonFactory.fromj(m).asInstanceOf[DomAst]
         ).withDetails("(from capture)")
       captureTree = d.toHtml
-      addStoryToAst(d, List(ipage), true)
+      EnginePrep.addStoriesToAst(d, List(ipage), true)
       d
     } else {
       val d = DomAst("root", ROOT).withDetails("(from story)")
-      addStoryToAst(d, List(ipage))
+      EnginePrep.addStoriesToAst(d, List(ipage))
       d
     }
 
-    val idom = WikiDomain.domFrom(ipage).get.revise addRoot
+    stimer snap "4_build_dom_root"
 
     // start processing all elements
     val engine = DieselAppContext.mkEngine(dom, root, settings, ipage :: pages map WikiDomain.spec, "fiddleStoryUpdated")
@@ -368,11 +367,9 @@ object DomFiddles extends DomApi with Logging with WikiAuthorization {
 
       val stw = WID.fromPath(storyWpath).flatMap(_.page).map(_.content).getOrElse("Sample story\n\n$msg home.guest_arrived(name=\"Jane\")\n\n$expect $msg lights.on\n")
 
-      stimer snap "4_engine_expand"
+      stimer snap "5_engine_expand"
 
       val wiki = Wikis.format(ipage.wid, ipage.markup, null, Some(ipage), stok.au)
-
-      stimer snap "5_format_page"
 
       val m = Map(
         "res" -> res,
@@ -385,6 +382,8 @@ object DomFiddles extends DomApi with Logging with WikiAuthorization {
         "storyChanged" -> (storyWpath.length > 0 && stw.replaceAllLiterally("\r", "") != story),
         "ast" -> getAstInfo(ipage)
       )
+
+      stimer snap "6_format_response"
 
       clients.get(id).foreach(_ ! m)
       clients.values.foreach(_ ! m) // todo WTF am I broadcasting?

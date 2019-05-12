@@ -2,9 +2,10 @@ package mod.diesel.controllers
 
 import controllers.{DieselSettings, Profile, RazRequest}
 import difflib.{DiffUtils, Patch}
-import mod.diesel.controllers.DomGuardian.{addStoryToAst, catPages, prepEngine, startCheck}
+import mod.diesel.guard.DomGuardian.startCheck
 import razie.diesel.utils.DomHtml.quickBadge
 import mod.diesel.controllers.DomSessions.Over
+import mod.diesel.guard.DomGuardian
 import mod.diesel.model._
 import mod.diesel.model.exec.EESnakk
 import model._
@@ -19,14 +20,14 @@ import razie.diesel.dom.RDOM.{NVP, P}
 import razie.diesel.dom._
 import razie.diesel.engine.RDExt._
 import razie.diesel.engine._
-import razie.diesel.ext._
+import razie.diesel.ext.{EnginePrep, _}
+import razie.diesel.model.DieselMsg
 import razie.diesel.utils.{DomCollector, SpecCache}
 import razie.hosting.Website
 import razie.tconf.DTemplate
 import razie.wiki.admin.Autosave
 import razie.wiki.model._
-import razie.{Logging, js}
-
+import razie.{Logging, ctrace, js}
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
@@ -114,21 +115,8 @@ class DomApi extends DomApiBase  with Logging {
         val newWid = we.wid.copy(section = stok.query.get("dfiddle"))
         val fidName = stok.query.get("dfiddle").mkString
 
-        // if the page had existed, remove the current fiddle from it and use this page as a source
-        var newSpecPage =
-          if (we.name == "fiddle") None
-          else
-          Some(new WikiEntry(we.wid.cat, /*we.wid.name+"#"+newWid.section.mkString*/"yyfiddle", "fiddle", "md",
-            mkC(we.content, "", "dfiddle", fidName+""),
-            // todo replace the spec and the fiddle individually when todo in mkC greedy is fixed
-//            mkC(we.content, "", "dfiddle", fidName+":spec"),
-            stok.au.map(_._id).getOrElse(new ObjectId()), Seq("dslObject"), stok.realm))
-
-        // new - why was I using the page when I entangle the fiddles anyways?
-        newSpecPage = None
-
         // add all entangled fiddles too
-        val pspec = DomGuardian.sectionsToPages(
+        val pspec = EnginePrep.sectionsToPages(
           we,
           we.sections.filter(s=>s.stype == "dfiddle" && (Array("spec") contains s.signature) && (
             s.name == fidName ||  // entangle same name
@@ -136,10 +124,10 @@ class DomApi extends DomApiBase  with Logging {
             ))
         )
 
-        irunDom(path, Some(newWid), None, newSpecPage.toList ::: pspec)
+        irunDom(path, Some(newWid), None, pspec)
       } else {
         // normal full page / section - include all sections
-        val pspec = DomGuardian.sectionsToPages(
+        val pspec = EnginePrep.sectionsToPages(
           we,
           we.sections.filter(s=>s.stype == "dfiddle" && (Array("spec") contains s.signature))
         )
@@ -166,6 +154,21 @@ class DomApi extends DomApiBase  with Logging {
 
       Future.successful(ret)
     }
+  }
+
+  /** API msg sent to reactor */
+  def start(e: String, a: String) = Filter(noRobots).async { implicit stok =>
+      if(stok.au.exists(_.isActive)) {
+        // insert a dot only if needed
+        val ea = (
+            if (e.length > 0 && a.length > 0) e + "." + a else e + a
+            ).replaceAllLiterally("/", ".")
+        irunDom(ea, None)
+      } else {
+        Future.successful(
+          unauthorized ("Can't start a message without an active account...")
+        )
+      }
   }
 
   /** API msg sent to reactor */
@@ -204,8 +207,8 @@ class DomApi extends DomApiBase  with Logging {
       val userId = settings.userId.map(new ObjectId(_)) orElse stok.au.map(_._id)
 
       val pages = if (settings.blenderMode) { // blend all specs and stories
-        val stories = if (settings.sketchMode) catPages("Story", reactor). /*filter(_.name != stw.get.name).*/ toList else Nil
-        val specs = catPages("Spec", reactor).toList
+        val stories = if (settings.sketchMode) EnginePrep.catPages("Story", reactor). /*filter(_.name != stw.get.name).*/ toList else Nil
+        val specs = EnginePrep.catPages("Spec", reactor).toList
         val d = (specs ::: stories).map { p => // if draft mode, find the auto-saved version if any
           if (settings.draftMode) {
             val c = Autosave.find("wikie", p.wid.defaultRealmTo(reactor), userId).flatMap(_.get("content")).mkString
@@ -222,6 +225,8 @@ class DomApi extends DomApiBase  with Logging {
         val page = new WikiEntry("Spec", "fiddle", "fiddle", "md", spec, stok.au.map(_._id).getOrElse(NOUSER), Seq("dslObject"), reactor)
         List(page)
       }
+
+      cdebug << "irunDom.specs: \n  " + pages.map(_.wid.wpathFull).mkString("\n  ")
 
       // to domain
       val dom =
@@ -290,7 +295,7 @@ class DomApi extends DomApiBase  with Logging {
       val isPublic = msg.exists(isMsgPublic(_, reactor, website))
       val isTrusted = isMemberOrTrusted(msg, reactor, website)
 
-      clog << s"Message: $msg isPublic=$isPublic isTrusted=$isTrusted needsApiKey=$needsApiKey isApiKeyGood=$isApiKeyGood"
+      clog << s"irunDom: Message: $msg isPublic=$isPublic isTrusted=$isTrusted needsApiKey=$needsApiKey isApiKeyGood=$isApiKeyGood"
 
       if (
         isPublic ||
@@ -299,7 +304,7 @@ class DomApi extends DomApiBase  with Logging {
       ) {
 
         msg.map { msg =>
-          RDExt.addMsgToAst(engine.root, msg)
+          EnginePrep.addMsgToAst(engine.root, msg)
         }
 
         engine.process.map { engine =>
@@ -371,7 +376,14 @@ class DomApi extends DomApiBase  with Logging {
     val realm = settings.realm getOrElse specs.headOption.map(_.getRealm).mkString
     val page = new WikiEntry("Spec", "fiddle", "fiddle", "md", "", NOUSER, Seq("dslObject"), realm)
 
-    Audit.logdb("DIESEL_FIDDLE_RUNDOM ", msg)
+    // don't audit diesel messages - too many
+    if(
+      msg.startsWith(DieselMsg.REALM_LOADED) ||
+      msg.startsWith(DieselMsg.GUARDIAN_POLL)
+    ) {}
+    else
+      Audit.logdb("DIESEL_FIDDLE_RUNDOM ", msg)
+
     val pages = (specs ::: stories).filter(_.section.isEmpty).flatMap(_.page)
 
     // to domain
@@ -380,7 +392,7 @@ class DomApi extends DomApiBase  with Logging {
     // make up a story
     val FILTER = Array("sketchMode", "mockMode", "blenderMode", "draftMode")
     var story = if (msg.trim.startsWith("$msg") || msg.trim.startsWith("$send")) msg else "$msg " + msg
-    clog << "STORY: " + story
+    ctrace << "STORY: " + story
 
     // todo this has no EPos - I'm loosing the epos on sections
     // put together all sections
@@ -395,7 +407,7 @@ class DomApi extends DomApiBase  with Logging {
     var res = ""
 
     val root = DomAst("root", "root")
-    addStoryToAst(root, List(ipage))
+    EnginePrep.addStoriesToAst(root, List(ipage))
 
     // start processing all elements
     val engine = DieselAppContext.mkEngine(dom plus idom, root, settings, ipage :: pages map WikiDomain.spec, "runDom:"+msg)
@@ -423,7 +435,8 @@ class DomApi extends DomApiBase  with Logging {
       }
 
       var m = Map(
-        "value" -> values.headOption.map(_._2).map(stripQuotes).getOrElse(""),
+//                   "value" -> values.headOption.map(_._2).map(stripQuotes).getOrElse(""),
+        "value" -> engine.resultingValue,
         "values" -> values.toMap,
         "totalCount" -> (engine.totalTestCount),
         "failureCount" -> engine.failedTestCount,
@@ -456,7 +469,7 @@ class DomApi extends DomApiBase  with Logging {
 
       // more testing options
       stok.qhParm("dieselSleep").map { code =>
-        clog << s"MOCK DIESEL SLEEPING... $code ms"
+        ctrace << s"MOCK DIESEL SLEEPING... $code ms"
         Thread.sleep(code.toInt)
       }
 
@@ -466,22 +479,23 @@ class DomApi extends DomApiBase  with Logging {
 
       val raw = request.body.asBytes()
       val body = raw.map(a => new String(a)).getOrElse("")
-      val content = Some(new EEContent(body, stok.req.contentType.mkString, Map.empty, None, raw))
+      val content = Some(new EContent(body, stok.req.contentType.mkString, Map.empty, None, raw))
 
       // todo sort out this mess
       val settings = DomEngineHelper.settingsFromRequestHeader(stok.req, content).copy(realm=Some(reactor))
       settings.mockMode = mock
       val q = stok.req.queryString.map(t=>(t._1, t._2.mkString))
 
-      clog << s"RUN_REST_REQUEST verb:$verb mock:$mock path:$path realm:${reactor}\nheaders: ${stok.req.headers}" + body
+      ctrace << s"RUN_REST_REQUEST verb:$verb mock:$mock path:$path realm:${reactor}\nheaders: ${stok.req.headers}" + body
 
-      var engine = prepEngine(new ObjectId().toString,
+      var engine = EnginePrep.prepEngine(new ObjectId().toString,
         settings,
         reactor,
         None,
         false,
         stok.au,
         "DomApi.runRest:"+path,
+        None,
         // empty story so nothing is added to root
         List(new WikiEntry("Story", "temp", "temp", "md", "", uid, Seq("dslObject"), reactor))
       )
@@ -521,7 +535,7 @@ class DomApi extends DomApiBase  with Logging {
         content,
         requestContentType)
 
-      clog << s"Message found: $msg xapikey=$xapikey"
+      ctrace << s"Message found: $msg xapikey=$xapikey"
 
       // is message visible?
       if (msg.isDefined && !isMsgVisible(msg.get, reactor, website)) {
@@ -537,13 +551,13 @@ class DomApi extends DomApiBase  with Logging {
           )
       } else msg.map {msg=>
 
-        RDExt.addMsgToAst(engine.root, msg)
+        EnginePrep.addMsgToAst(engine.root, msg)
         DomCollector.collectAst("runRest", stok.realm, engine.id, stok.au.map(_.id), engine, stok.uri)
 
         // process message
         val res = engine.process.map { engine =>
 
-          clog << s"Engine done ... ${engine.id}"
+          cdebug << s"Engine done ... ${engine.id}"
 
           //        val res = engine.extractValues(e, a)
 
@@ -569,7 +583,7 @@ class DomApi extends DomApiBase  with Logging {
               }
             }
 
-          clog << engine.root.toString
+          ctrace << engine.root.toString
 
           var response : Option[Result] = None
 
@@ -585,7 +599,7 @@ class DomApi extends DomApiBase  with Logging {
             // templates strt with a \n normally
             val content = t.content.replaceFirst("^\\r?\\n", "")
 
-            clog << s"Found templateResp... ${t.name}"
+            ctrace << s"Found templateResp... ${t.name}"
 
             val s = if(content.length > 0) {
               val allValues = new StaticECtx(msg.attrs, Some(engine.ctx))
@@ -611,7 +625,7 @@ class DomApi extends DomApiBase  with Logging {
               }.getOrElse("no msg recognized, no result, no response template")
             }
 
-            clog << s"RUN_REST_REPLY $verb $mock $path\n$s as $ctype"
+            ctrace << s"RUN_REST_REPLY $verb $mock $path\n$s as $ctype"
 
             response.map {res=>
               // add template parms as headers
@@ -626,7 +640,7 @@ class DomApi extends DomApiBase  with Logging {
 
           }.getOrElse {
             val res = s"No response template for $e $a\n" + engine.root.toString
-            clog << s"RUN_REST_REPLY $verb $mock $path\n" + res
+            ctrace << s"RUN_REST_REPLY $verb $mock $path\n" + res
             val response = engine.ctx.get("payload").getOrElse(res)
 
             mkStatus(response, engine).as(ctype)
@@ -671,7 +685,7 @@ class DomApi extends DomApiBase  with Logging {
 
   /** proxy real service GET */
   def proxy(path: String) = Filter(noRobots) { implicit stok =>
-    val engine = prepEngine(new ObjectId().toString,
+    val engine = EnginePrep.prepEngine(new ObjectId().toString,
       DomEngineHelper.settingsFrom(stok),
       stok.realm,
       None,
@@ -738,110 +752,6 @@ class DomApi extends DomApiBase  with Logging {
       "specDiff" -> (if (specWpath.length > 0) diffP else ""),
       "storyDiff" -> (if (storyWpath.length > 0) diffT else "")
     )
-  }
-
-  // view an AST from teh collection
-  def viewAst(id: String, format: String) = FAUR { implicit stok =>
-    DomCollector.withAsts {asts=>
-      asts.find(_.id == id).map { ast =>
-        if (format == "html")
-          Ok(ast.engine.root.toHtml)
-        else
-          engineView(id).apply(stok.req).value.get.get
-      }.getOrElse {
-        NotFound("ast not found")
-      }
-    }
-  }
-
-  // list the collected ASTS
-  def listAst = FAUR { implicit stok =>
-    val un = stok.userName + (if(stok.au.exists(_.isAdmin)) " admin - sees all" else " - regular user")
-
-    DomCollector.withAsts {asts=>
-      val x =
-        asts
-          .filter(a=> stok.au.exists(_.isAdmin) ||
-            a.realm == stok.realm &&
-              (
-                a.userId.isEmpty ||
-                a.userId.exists(_ == stok.au.map(_.id).mkString))
-              )
-          .map{a=>
-
-          val uname = a.userId.map(u=> Users.nameOf(new ObjectId(u))).getOrElse("[auto]")
-
-          s"""
-             |<td><a href="/diesel/viewAst/${a.id}">${a.id}</a></td>
-             |<td>${a.stream}</td>
-             |<td>${a.realm}</td>
-             |<td>${uname}</td>
-             |<td>${a.engine.status}</td>
-             |<td>${a.dtm}</td>
-             |<td>${a.engine.description}</td>
-             |""".stripMargin
-          }.mkString(
-          s"""
-             |Traces captured for realm: ${stok.realm} and user $un<br><br>
-             |<table>
-             |<tr>
-             |""".stripMargin,
-          "</tr><tr>",
-          s"""
-             |</tr>
-             |</table>
-             |""".stripMargin
-        )
-      Ok(x).as("text/html")
-    }
-  }
-
-  def cleanAst = FAUR { implicit stok =>
-    if(stok.au.exists(_.isAdmin)) {
-      DomCollector.cleanAst
-      Ok("ok").as("text/html")
-    } else
-      Unauthorized("no permission")
-  }
-
-  def postAst(stream: String, id: String, parentId: String) = FAUPRaAPI(true) { implicit stok =>
-    val reactor = stok.website.dieselReactor
-    val capture = stok.formParm("capture")
-    val m = js.parse(capture)
-    //    val root = DieselJsonFactory.fromj(m).asInstanceOf[DomAst].withDetails("(POSTed ast)")
-    // is teh map from a debug session or just the AST
-    val root = (
-      if (m contains "tree") DieselJsonFactory.fromj(m("tree").asInstanceOf[Map[String, Any]]).asInstanceOf[DomAst]
-      else DieselJsonFactory.fromj(m).asInstanceOf[DomAst]
-      ).withDetails("(from capture)")
-
-    Audit.logdb("DIESEL_FIDDLE_POSTAST", stok.au.map(_.userName).getOrElse("Anon"))
-
-    val xid = if (id == "-") new ObjectId().toString else id
-
-    var settings = new DomEngineSettings(
-      mockMode = true,
-      blenderMode = false,
-      draftMode = true,
-      sketchMode = false,
-      execMode = "sync"
-    )
-
-    val engine = prepEngine(xid, settings, reactor, Some(root), true, stok.au, "DomApi.postAst")
-    DomCollector.collectAst(stream, reactor, xid, stok.au.map(_.id), engine)
-
-    // decompose test nodes and wait
-    engine.processTests.map { engine =>
-
-      var ret = Map(
-        "ok" -> "true",
-        "totalCount" -> (engine.totalTestCount),
-        "failureCount" -> engine.failedTestCount,
-        "successCount" -> engine.successTestCount
-      )
-
-      Ok(js.tojsons(ret).toString).as("application/json")
-    }
   }
 
 
@@ -946,7 +856,7 @@ class DomApi extends DomApiBase  with Logging {
                            e:String,
                            a:String,
                            body:String,
-                           content:Option[EEContent],
+                           content:Option[EContent],
                            requestContentType:Option[String]) : Option[EMsg] = {
     // incoming message
     val msg : Option[EMsg] = trequest.flatMap { template =>
@@ -973,7 +883,7 @@ class DomApi extends DomApiBase  with Logging {
 
         val parms = mergeMaps (incParms, mergeMaps( hparms, urlParms))
 
-        clog << "PARSED incoming PARMS: " + parms.mkString
+        ctrace << "PARSED incoming PARMS: " + parms.mkString
 
         // add parms to context, so they're available to all inside
         parms.map(p => engine.ctx.put(P(p._1, p._2)))
@@ -1076,109 +986,6 @@ class DomApi extends DomApiBase  with Logging {
     m.isPublic ||
     website.dieselVisiblity == "public" ||
     isMemberOrTrusted(Some(m), reactor, website)
-  }
-
-  /** roll up and navigate the definitions */
-  def navigate() = FAUR { implicit stok =>
-
-    val engine = prepEngine(new ObjectId().toString,
-      DomEngineHelper.settingsFrom(stok),
-      stok.realm,
-      None,
-      false,
-    stok.au,
-    "DomApi.navigate")
-
-    val msgs = RDExt.summarize(engine.dom).toList
-
-    ROK.k reactorLayout12 {
-      views.html.modules.diesel.navigateMsg(msgs)
-    }
-  }
-
-  /** */
-  def getEngineConfig() = FAUR { implicit stok =>
-    val config = Autosave.OR("DomEngineConfig", WID("", "").r(stok.realm), stok.au.get._id,
-      DomEngineHelper.settingsFrom(stok).toJson
-    )
-
-    retj << config
-  }
-
-  /** roll up and navigate the definitions */
-  def setEngineConfig() = FAUR { implicit stok =>
-    val jconfig = stok.formParm("DomEngineConfig")
-    val jmap = js.parse(jconfig)
-    //    val cfg = DomEngineSettings.fromRequest(stok.req)
-    val cfg = DomEngineSettings.fromJson(jmap.asInstanceOf[Map[String, String]])
-
-    // make sure it has a realm
-    if(cfg.realm.isEmpty) cfg.realm = Some(stok.realm)
-
-    DomWorker later AutosaveSet("DomEngineConfig", stok.realm, "", stok.au.get._id,
-      cfg.toJson
-    )
-
-    Ok("ok, later")
-  }
-
-  /** roll up and navigate the definitions */
-  def engineConfig() = FAUR { implicit stok =>
-    ROK.k noLayout { implicit stok =>
-      views.html.modules.diesel.engineConfig()
-    }
-  }
-
-  /** roll up and navigate the definitions */
-  def engineConfigTags() = FAUR { implicit stok =>
-    val title = stok.fqParm("title", "TQ Configuration")
-    val tq = stok.fqParm("tq", "sub|fibe/spec/-dsl")
-
-    ROK.k noLayout { implicit stok =>
-      Wikis(stok.realm).index.withIndex { idx => }
-      val tags = Wikis(stok.realm).index.usedTags.keySet.toList
-      views.html.modules.diesel.engineConfigTags(title, tags, tq)
-    }
-  }
-
-  /** roll up and navigate the definitions */
-  def engineView(id: String) = FAUR { implicit stok =>
-    if (!ObjectId.isValid(id)) {
-      // list all engines
-      Ok(DomCollector.withAsts(_.map { e =>
-        s"""<a href="/diesel/engine/view/${e.id}">${e.id}</a><br> """
-      }.mkString)).as("text/html")
-    } else {
-      DomCollector.withAsts(_.find(_.id == id).map(_.engine).map { eng =>
-
-        stok.fqhoParm("format", "html").toLowerCase() match {
-
-          case "json" => {
-            var m = Map(
-              //      "values" -> values.toMap,
-              "totalCount" -> (eng.totalTestCount),
-              "failureCount" -> eng.failedTestCount,
-              //      "errors" -> errors.toList,
-              "dieselTrace" -> DieselTrace(eng.root, eng.settings.node, eng.id, "diesel", "runDom", eng.settings.parentNodeId).toJson,
-              "settings" -> eng.settings.toJson,
-              "specs" -> eng.pages.map(_.specPath)
-            )
-
-            Ok(js.tojsons(m).toString).as("application/json")
-          }
-
-          case _ => {
-            ROK.k reactorLayout12 {
-              views.html.modules.diesel.engineView(Some(eng))
-            }
-          }
-        }
-      }) getOrElse {
-        ROK.k reactorLayout12 {
-          views.html.modules.diesel.engineView(None)
-        }
-      }
-    }
   }
 
   /** replace in oldContent the given section with iContent (escaped)
@@ -1331,7 +1138,7 @@ class DomApi extends DomApiBase  with Logging {
 
     val root = {
       val d = DomAst("root", AstKinds.ROOT).withDetails("(from story)")
-      addStoryToAst(d, List(ipage))
+      EnginePrep.addStoriesToAst(d, List(ipage))
       d
     }
 
@@ -1360,136 +1167,6 @@ class DomApi extends DomApiBase  with Logging {
       retj << m
     }
 
-  }
-
-  /** status badge for current realm */
-  def status= RAction.async { implicit stok =>
-    stok.au.map {au=>
-      DomGuardian.findLastRun(stok.realm, au.userName).map {r=>
-        Future.successful {
-          Ok(quickBadge(r.failed, r.total, r.duration))
-        }
-      }.getOrElse {
-        // start a check in the background
-        if(DomGuardian.enabled(stok.realm) && DomGuardian.onAuto(stok.realm)) startCheck (stok.realm, stok.au)
-
-        // just return right away
-        Future.successful {
-          Ok(quickBadge(-1, -1, -1, ""))
-        }
-      }
-    }.getOrElse {
-      Future.successful {
-        Ok("") // todo when no user, don't call this
-      }
-    }
-  }
-
-  /** status badge for all realms */
-  def statusAll = Filter(activeUser).async { implicit stok =>
-      val t = (0, 0, 0L)
-
-      val x = DomGuardian.lastRuns.values.map { r =>
-        (r.failed, r.total, r.duration)
-      }.foldLeft(t)((a,b) => (a._1+b._1, a._2+b._2, a._3+b._3))
-
-      Future.successful {
-        Ok(quickBadge(x._1, x._2, x._3, "All"))
-      }
-  }
-
-  def report = Filter(activeUser).async { implicit stok =>
-    // todo this should run all the time when stories change
-      DomGuardian.findLastRun(stok.realm, stok.au.get.userName).map {r=>
-        Future.successful {
-          ROK.k reactorLayout12 {
-            new Html(
-              s"""
-Guardian report<a href="/wiki/Guardian_Guide" ><sup><span class="glyphicon glyphicon-question-sign"></span></a></sup>: <a href="/diesel/runCheck">Re-run check</a>  (${r.duration} msec) ${quickBadge(r.failed, r.total, r.duration)}<br>
-<small>${DomGuardian.stats} (<a href="/diesel/listAst">list all</a>)(<a href="/diesel/cleanAst">clean all</a>) </small><br><br>""".stripMargin +
-                views.html.modules.diesel.engineView(Some(r.engine))(stok).toString
-            )
-          }
-          //          Redirect(s"""/diesel/engine/view/${r.engine.id}""")
-        }
-      }.getOrElse {
-        if(DomGuardian.enabled(stok.realm) && DomGuardian.onAuto(stok.realm)) startCheck (stok.realm, stok.au)
-
-        // new
-        Future.successful{
-          Ok(s"""no run available - check this later <a href="/diesel/runCheck">Re-run check</a> """).as("text/html")
-        }
-
-        //old used to wait...
-//        eid.map { r =>
-//          Ok(s"""no run available - check this later - <a href="/diesel/engine/view/${r.engine.id}">report</a>""").as("text/html")
-//        }
-      }
-  }
-
-  // todo implement and optimize
-  def reportAll = Filter(adminUser).async { implicit stok =>
-        Future.successful {
-          ROK.k reactorLayout12 {
-            new Html(
-              s"""
-<a href="/diesel/runCheckAll">Re-run all checks</a> (may have to wait a while)...
-<br>""" +
-s"""
-<br>
-Guardian report<a href="/wiki/Guardian_Guide" ><sup><span class="glyphicon glyphicon-question-sign"></span></a></sup>:
-<small>${DomGuardian.stats} (<a href="/diesel/listAst">list all</a>)(<a href="/diesel/cleanAst">clean all</a>) </small><br><br>""".stripMargin +
-
-"""<hr><h2>Abstract</h2>""" +
-
-/* abstract */
-                DomGuardian.lastRuns.map {t=>
-                  val r = t._2
-                  s"""Realm: ${r.realm}""" +
-                    s"""
-Guardian report<a href="/wiki/Guardian_Guide" ><sup><span class="glyphicon glyphicon-question-sign"></span></a></sup>: <a href="/diesel/runCheck">Re-run check</a>  (${r.duration} msec) ${quickBadge(r.failed, r.total, r.duration)}<br>
-""".stripMargin
-                }.toList.mkString +
-
-"""<hr><h2>Details</h2>""" +
-
-/* details */
-
-  DomGuardian.lastRuns.map {t=>
-    val r = t._2
-    s"""<p>Realm: ${r.realm}</p>""" +
-    s"""
-Guardian report<a href="/wiki/Guardian_Guide" ><sup><span class="glyphicon glyphicon-question-sign"></span></a></sup>: <a href="/diesel/runCheck">Re-run check</a>  (${r.duration} msec) ${quickBadge(r.failed, r.total, r.duration)}<br>
-<small>${DomGuardian.stats} (<a href="/diesel/listAst">list all</a>)(<a href="/diesel/cleanAst">clean all</a>) </small><br><br>""".stripMargin +
-              views.html.modules.diesel.engineView(Some(r.engine))(stok).toString
-  }.toList.mkString +
-
-"""<hr><h2>Current engines report</h2>""" +
-            DieselAppContext.report
-              )
-          }
-        }
-  }
-
-  /** run another check current reactor */
-  def runCheck = Filter(activeUser).async { implicit stok =>
-    if(DomGuardian.enabled(stok.realm)) startCheck (stok.realm, stok.au).map { engine =>
-      Redirect(s"""/diesel/report""")
-    }
-    else Future.successful(Ok("GUARDIAN DISABLED"))
-  }
-
-  /** run another check all reactors */
-  def runCheckAll = Filter(adminUser).async { implicit stok =>
-    if(DomGuardian.ISENABLED) Future.sequence(
-      WikiReactors.allReactors.keys.map {k=>
-        if(DomGuardian.enabled(k)) startCheck (k, stok.au)
-        else Future.successful(DomGuardian.EMPTY_REPORT)
-      }
-    ).map {x=>
-      Redirect(s"""/diesel/reportAll""")
-    }
-    else Future.successful(Ok("GUARDIAN DISABLED"))
   }
 
   def pluginAction (plugin:String, conn:String, action:String, epath:String) = Filter(activeUser).async { implicit stok =>

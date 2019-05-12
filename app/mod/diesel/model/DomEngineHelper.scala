@@ -66,14 +66,14 @@ object DomEngineHelper {
       postedContent = {
         if(request.body.isInstanceOf[AnyContentAsRaw]) {
           val raw = request.body.asRaw.flatMap(_.asBytes())
-          Some(new EEContent(
+          Some(new EContent(
             raw.map(a => new String(a) ).getOrElse(""),
             request.contentType.mkString,
             request.headers.toSimpleMap,
             None,
             raw))
         } else if(request.contentType.exists(c=> c == "application/json")) {
-          Some(new EEContent(
+          Some(new EContent(
             request.body.asJson.mkString,
             request.contentType.mkString))
         } else None
@@ -85,7 +85,7 @@ object DomEngineHelper {
   }
 
   /** take the settings from request header */
-  def settingsFromRequestHeader(request:RequestHeader, cont:Option[EEContent]) = {
+  def settingsFromRequestHeader(request:RequestHeader, cont:Option[EContent]) = {
     val q = request.queryString.map(t=>(t._1, t._2.mkString))
 
     def fParm(name:String) : Option[String] = None
@@ -121,7 +121,7 @@ object DomEngineHelper {
     *
     * combine the queryParms with the posted form parms
     */
-  def parmsFromRequestHeader(request:RequestHeader, cont:Option[EEContent]) : Map[String,String] = {
+  def parmsFromRequestHeader(request:RequestHeader, cont:Option[EContent]) : Map[String,String] = {
     val q = request.queryString.map(t=>(t._1, t._2.mkString))
 
     import DomEngineSettings._
