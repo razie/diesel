@@ -1011,7 +1011,7 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
   def addWithSpec(cat: String, iname:String, templateWpath:String, torspec:String, realm:String) = FAU {
     implicit au => implicit errCollector => implicit request =>
 
-      val name = PlayTools.postData.getOrElse("name", iname)
+      val name = PlayTools.postData.getOrElse("name", iname).toLowerCase
       val kind = PlayTools.postData.getOrElse("kind", "prod")
 
       val E = " - go back and try another name..."

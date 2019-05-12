@@ -262,7 +262,8 @@ object Emailer extends RazController with Logging {
   }
 
   /** see SendEmail.withSession - email is sent in a background thread */
-  def withSession[C](realm:String)(body: (MailSession) => C): C = SendEmail.withSession(realm)(body)
+  def withSession[C](realm:String)(body: (MailSession) => C): C =
+    SendEmail.withSession(realm)(body)
 }
 
 

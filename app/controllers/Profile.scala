@@ -84,7 +84,7 @@ object Profile extends RazController {
     //realm new user flow
     Services ! DieselMsgString(
       s"""$$msg rk.user.joined(userName="${u.userName}", realm="${stok.realm}")""",
-      DieselTarget(
+      DieselTarget.from(
         stok.realm,
         WID.fromPath(s"${stok.realm}.Reactor:${stok.realm}#diesel").map(_.toSpecPath).toList,
         Nil)
