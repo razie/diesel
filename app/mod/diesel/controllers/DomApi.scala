@@ -263,7 +263,7 @@ class DomApi extends DomApiBase  with Logging {
         settings,
         // storyPage may be a temp fiddle, so first try the story WID
         ipage :: pages ::: useThisSpecPage ::: useThisStory.flatMap(_.page).orElse(useThisStoryPage).toList map WikiDomain.spec,
-        "irunDom:"+path
+        DieselMsg.irunDom+path
       )
 
       setHostname(engine.ctx.root)
@@ -410,7 +410,12 @@ class DomApi extends DomApiBase  with Logging {
     EnginePrep.addStoriesToAst(root, List(ipage))
 
     // start processing all elements
-    val engine = DieselAppContext.mkEngine(dom plus idom, root, settings, ipage :: pages map WikiDomain.spec, "runDom:"+msg)
+    val engine = DieselAppContext.mkEngine(
+      dom plus idom,
+      root,
+      settings,
+      ipage :: pages map WikiDomain.spec,
+      DieselMsg.runDom+msg)
 
     engine.process.map { engine =>
 

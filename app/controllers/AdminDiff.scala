@@ -27,7 +27,7 @@ object AdminDiff extends AdminBase {
   case class WEAbstract(id: String, cat: String, name: String, realm: String, ver: Int, updDtm: DateTime, hash: Int, tags: String) {
     def this(we: WikiEntry) = this(we._id.toString, we.category, we.name, we.realm, we.ver, we.updDtm, we.content.hashCode, we.tags.mkString)
 
-    def j = js.tojson(Map("id" -> id, "cat" -> cat, "name" -> name, "realm" -> realm, "ver" -> ver, "updDtm" -> updDtm, "hash" -> hash.toString, "tags" -> tags))
+    def j = js.tojson(Map("id" -> id, "cat" -> cat, "name" -> name, "realm" -> realm, "ver" -> ver.toString, "updDtm" -> updDtm, "hash" -> hash.toString, "tags" -> tags))
   }
 
   def wput(reactor: String) = FAD { implicit au =>
@@ -110,9 +110,13 @@ object AdminDiff extends AdminBase {
     if (hostname.isEmpty) {
       val l =
         if (cat.length == 0)
-          RMany[WikiEntry]().filter(we => reactor.isEmpty || reactor == "all" || we.realm == reactor).map(x => new WEAbstract(x)).toList
+          RMany[WikiEntry]()
+              .filter(we => reactor.isEmpty || reactor == "all" || we.realm == reactor)
+              .map(x => new WEAbstract(x)).toList
         else
-          RMany[WikiEntry]().filter(we => we.category == cat && (reactor.isEmpty || reactor == "all" || we.realm == reactor)).map(x => new WEAbstract(x)).toList
+          RMany[WikiEntry]()
+              .filter(we => we.category == cat && (reactor.isEmpty || reactor == "all" || we.realm == reactor))
+              .map(x => new WEAbstract(x)).toList
       val list = l.map(_.j)
       Ok(js.tojson(list).toString).as("application/json")
     } else if (hostname != me) {
@@ -206,8 +210,15 @@ object AdminDiff extends AdminBase {
       val gd = new JSONArray(b)
       val ldest = js.fromArray(gd).collect {
         case m: Map[_, _] => {
-          val x = m.asInstanceOf[Map[String, String]]
-          WEAbstract(x("id"), x("cat"), x("name"), x("realm"), x("ver").toInt, new DateTime(x("updDtm")), x("hash").toInt, x("tags"))
+          try {
+            val x = m.asInstanceOf[Map[String, String]]
+            WEAbstract(x("id"), x("cat"), x("name"), x("realm"), x("ver").toInt, new DateTime(x("updDtm")),
+              x("hash").toInt, x("tags"))
+          } catch {
+            case e : Throwable =>
+              error("Can't parse from remote: "+m.mkString, e)
+              throw e
+          }
         }
       }
 

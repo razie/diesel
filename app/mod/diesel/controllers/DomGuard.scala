@@ -168,11 +168,14 @@ class DomGuard extends DomApiBase with Logging {
         asts.filter(a => stok.au.exists(_.isAdmin) ||
             a.realm == stok.realm &&
                 (a.userId.isEmpty || a.userId.exists(_ == stok.au.map(_.id).mkString))
-        ).map { a =>
+        ).zipWithIndex.map { z =>
+            val a = z._1
+          val i = z._2
           val uname = a.userId.map(u => Users.nameOf(new ObjectId(u))).getOrElse("[auto]")
 
           // todo this is mean
           s"""
+             |<td>${i}</td>
              |<td><a href="/diesel/viewAst/${a.id}">${a.id}</a></td>
              |<td>${a.stream}</td>
              |<td>${a.realm}</td>
@@ -188,6 +191,17 @@ class DomGuard extends DomApiBase with Logging {
              |Traces captured for realm: ${stok.realm} and user $un<br><br>
              |<table>
              |<tr>
+             |<th>No</th>
+             |<th>Id</th>
+             |<th>Stream</th>
+             |<th>Realm</th>
+             |<th>User</th>
+             |<th>Status</th>
+             |<th>dtm</th>
+             |<th>Desc</th>
+             |<th>Result</th>
+             |<th></th>
+             |</tr>
              |""".stripMargin,
           "</tr><tr>",
           s"""

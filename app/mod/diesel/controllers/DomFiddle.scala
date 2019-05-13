@@ -14,6 +14,7 @@ import razie.diesel.dom.{WikiDomain, _}
 import razie.diesel.engine.RDExt._
 import razie.diesel.engine.{DieselAppContext, RDExt}
 import razie.diesel.ext.{EnginePrep, HasPosition}
+import razie.diesel.model.DieselMsg
 import razie.diesel.utils.{DomCollector, SpecCache}
 import razie.wiki.Services
 import razie.wiki.admin.Autosave
@@ -341,7 +342,12 @@ object DomFiddles extends DomApi with Logging with WikiAuthorization {
     stimer snap "4_build_dom_root"
 
     // start processing all elements
-    val engine = DieselAppContext.mkEngine(dom, root, settings, ipage :: pages map WikiDomain.spec, "fiddleStoryUpdated")
+    val engine = DieselAppContext.mkEngine(
+      dom,
+      root,
+      settings,
+      ipage :: pages map WikiDomain.spec,
+      DieselMsg.fiddleStoryUpdated)
     setHostname(engine.ctx.root)
     DomCollector.collectAst("fiddle", stok.realm, engine.id, stok.au.map(_.id), engine, stok.uri)
 
