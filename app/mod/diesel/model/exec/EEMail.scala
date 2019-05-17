@@ -32,17 +32,18 @@ class EEMail extends EExecutor("diesel.mail") {
     in.met match {
 
       case "send" => {
-        val to = ctx("to")
+        val to = ctx("to").split(",").toList
         val subject = ctx("subject")
         val body = ctx("body")
 
         if(
-          nzlen(to) &&
           nzlen(subject) &&
           nzlen(body)
         ) {
           Emailer.withSession(ctx.root.settings.realm.get) { mailSession =>
-            mailSession.send(to, mailSession.SUPPORT, subject, body)
+            to.filter(nzlen).map { addr =>
+              mailSession.send(addr, mailSession.SUPPORT, subject, body)
+            }
           }
           EInfo("Sent...") :: Nil
         } else {
