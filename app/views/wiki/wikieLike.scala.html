@@ -14,7 +14,7 @@ link(like) a wiki: select or create from categoyr
       @Html(
         Wikis.sformat(
           Config.sitecfg("regClubs.list").toList.flatMap(_.split(",")).map(x => s"<b>[[Club:$x]]</b>").mkString(" | "),
-          "md", stok.au))
+          "md", stok.realm, stok.au))
     </div>
   <div class="alert alert-warning">
 @md {
