@@ -269,7 +269,7 @@ class DomApi extends DomApiBase  with Logging {
       setHostname(engine.ctx.root)
 
       // find template matching the input message, to parse attrs
-      val t@(trequest, e, a) = findEA(path, engine, useThisStory)
+      val t@(trequest, e, a, matchedParms) = findEA(path, engine, useThisStory)
 
       // incoming message
       val msg: Option[EMsg] = findMessage(
@@ -285,6 +285,8 @@ class DomApi extends DomApiBase  with Logging {
         body = engine.settings.postedContent.map(_.body).mkString,
         content = engine.settings.postedContent,
         stok.req.contentType)
+       .map (msg=> if(matchedParms.isDefined) msg.copy(attrs = msg.attrs ::: matchedParms.get.toList.map(t=>P(t._1, t._2))) else msg)
+      // added matched parms
 
       val xx = stok.qhParm("X-Api-Key").mkString
       def needsApiKey = xapikey.isDefined
@@ -351,18 +353,18 @@ class DomApi extends DomApiBase  with Logging {
 
         // is message visible?
       } else if (msg.isDefined && !isMsgVisible(msg.get, reactor, website)) {
-          info(s"Unauthorized msg access (diesel.visibility:${stok.website.dieselVisiblity}, ${stok.au.map(_.ename).mkString})")
+          info(s"Unauthorized msg access [irundom] (diesel.visibility:${stok.website.dieselVisiblity}, ${stok.au.map(_.ename).mkString})")
 
           Future.successful(
-            Unauthorized(s"Unauthorized msg access (diesel.visibility:${stok.website.dieselVisiblity}, ${stok.au.map(_.ename).mkString})")
+            Unauthorized(s"Unauthorized msg access [irundom] (diesel.visibility:${stok.website.dieselVisiblity}, ${stok.au.map(_.ename).mkString})")
           )
 
       } else {
         // good security keys for non-members (devs if logged in don't need security)
-        info(s"Unauthorized msg access (key) for ${msg.map(m=>m.entity+m.met)}")
+        info(s"Unauthorized msg access (key) [irundom] for ${msg.map(m=>m.entity+m.met)}")
 
         Future.successful(
-          Unauthorized(s"Unauthorized msg access (key) for ${msg.map(m=>m.entity+m.met)}")
+          Unauthorized(s"Unauthorized msg access (key) [irundom] for ${msg.map(m=>m.entity+m.met)}")
         )
       }
     }
@@ -457,6 +459,8 @@ class DomApi extends DomApiBase  with Logging {
     * deal with a REST request. use the in/out for message
     *
     * force the raw parser, to deal with all content types
+    *
+    * mock is important - no template matching for mock
     */
   def runRest(path: String, verb:String, mock:Boolean, imsg:Option[EMsg] = None, custom:Option[DomEngine => DomEngine] = None) : Action[RawBuffer] = Action(parse.raw) { implicit request =>
     implicit val stok = razRequest
@@ -511,9 +515,16 @@ class DomApi extends DomApiBase  with Logging {
         engine = custom.get.apply(engine)
 
       // find template matching the input message, to parse attrs
-      val t@(trequest, e, a) =
-        imsg.map(x=>(None, x.entity, x.met))
-          .getOrElse(findEA(path, engine))
+      val t@(trequest, e, a, matchedParms) = {
+        val fea = findEA(path, engine)
+        fea._1
+            .map { x => fea }
+            .orElse {
+              imsg.map(x => (None, x.entity, x.met, None))
+            }.getOrElse {
+          fea
+        }
+      }
 
       // message specified return mappings, if any
       val inSpec = spec(e, a)(engine.ctx).toList.flatMap(_.attrs)
@@ -525,8 +536,8 @@ class DomApi extends DomApiBase  with Logging {
       // stuff like incoming content-type
       val incomingMetas = stok.headers.toSimpleMap
 
-      // incoming message
-      val msg : Option[EMsg] = imsg orElse findMessage (
+      // try to match incoming
+      def findIt = findMessage (
         trequest,
         engine,
         path,
@@ -540,11 +551,23 @@ class DomApi extends DomApiBase  with Logging {
         content,
         requestContentType)
 
-      ctrace << s"Message found: $msg xapikey=$xapikey"
+      // incoming message
+      // first templates already matched, then imsg (diesel.rest) else e.a
+      val msg : Option[EMsg] = (trequest.flatMap(_ => findIt) orElse imsg orElse findIt)
+          .map (msg=> if(matchedParms.isDefined) msg.copy(attrs = msg.attrs ::: matchedParms.get.toList.map(t=>P(t._1, t._2))) else msg)
+
+      if(msg.isDefined && !msg.exists(_.spec.isDefined)) {
+        // try to find a spec
+        msg.get.spec = spec(msg.get.entity, msg.get.met)(engine.ctx)
+      }
+
+      cdebug << s"Message found: $msg xapikey=$xapikey"
 
       // is message visible?
       if (msg.isDefined && !isMsgVisible(msg.get, reactor, website)) {
-        Unauthorized(s"Unauthorized msg access (diesel.visibility:${stok.website.dieselVisiblity}, ${stok.au.map(_.ename).mkString})")
+        info(s"Unauthorized msg access [runrest] (diesel.visibility:${stok.website.dieselVisiblity}, ${stok.au.map(_.ename).mkString})")
+        info(s"msg: $msg - ${msg.get.isPublic} - ${msg.get.spec.toString} - reactor: $reactor")
+        Unauthorized(s"Unauthorized msg access [runrest] (diesel.visibility:${stok.website.dieselVisiblity}, ${stok.au.map(_.ename).mkString})")
       } else if (
         !isMemberOrTrusted(msg, reactor, website) &&
         xapikey.isDefined && xapikey.exists { x =>
@@ -552,7 +575,9 @@ class DomApi extends DomApiBase  with Logging {
         }
         ) {
         // good security keys for non-members (devs if logged in don't need security)
-          Unauthorized(s"Unauthorized msg access (key, dieselTrust)").withHeaders(
+          info(s"Unauthorized msg access [runrest] (key, dieselTrust)")
+          info(s"msg: $msg - reactor: $reactor")
+          Unauthorized(s"Unauthorized msg access [runrest] (key, dieselTrust)").withHeaders(
           )
       } else msg.map {msg=>
 
@@ -670,11 +695,11 @@ class DomApi extends DomApiBase  with Logging {
     }
   }
 
-  def mock(path: String) = runRest(path, "GET", true)
-  def mockPost(path: String) = runRest(path, "POST", true)
+  def mock(path: String) = runRest("/" + path, "GET", true)
+  def mockPost(path: String) = runRest("/" + path, "POST", true)
 
-  def rest(path: String) = runRestPath(path, "GET")
-  def restPost(path: String) = runRestPath(path, "POST")
+  def rest(path: String) = runRestPath("/" + path, "GET")
+  def restPost(path: String) = runRestPath("/" + path, "POST")
 
   private def runRestPath(path: String, verb:String) = {
     runRest(
@@ -682,7 +707,7 @@ class DomApi extends DomApiBase  with Logging {
       verb,
       true,
       Some(EMsg("diesel", "rest", List(
-        P("path", "/" + path),
+        P("path", path),
         P("verb", verb)
       )))
     )
@@ -784,21 +809,23 @@ class DomApi extends DomApiBase  with Logging {
   /** find e/a in engine, either e.a or matching template URL
     * @param dieselUri "wreact" or else..
     */
-  private def findEA (path:String, engine:DomEngine, useThisStory:Option[WID]=None) : (Option[DTemplate], String, String) = {
+  private def findEA (path:String, engine:DomEngine, useThisStory:Option[WID]=None) : (Option[DTemplate], String, String, Option[Map[String,String]]) = {
     var e = ""
     var a = ""
+    var m : Option[Map[String,String]] = None
 
     val direction = "request"
+    val eapath  = if (path.startsWith("/")) path.substring(1) else path
 
     val trequest =
       engine
         .ctx
         // first try  with e.a
-        .findTemplate(path, direction)
+        .findTemplate(eapath, direction)
         .map {t=>
           // found template by path name, so parse as entity/action
           val PAT = """([\w.]+)[./](\w+)""".r
-          val PAT(ee, aa) = path
+          val PAT(ee, aa) = eapath
           e = ee
           a = aa
 
@@ -812,13 +839,15 @@ class DomApi extends DomApiBase  with Logging {
               val content = t.content.replaceFirst("^\n", "") // multiline template start with \n
 
               // is it http?
-              (t.parmStr.startsWith(direction)) && {
+              (t.tags.contains(direction)) &&
+                  // if tagged with out, don't match for in
+              !t.tags.contains("out") && {
                 (content.startsWith ("GET") ||
                   content.startsWith ("POST") ||
                   content.startsWith ("PUT") ||
                   content.startsWith ("DELETE")) &&
                   // todo add and compare request header parms
-                  EESnakk.templateMatchesUrl(t, "*", path, t.content) &&
+                  EESnakk.templateMatchesUrl(t, "*", path, t.content).isDefined &&
                   (
                     !useThisStory.exists(w=> ! (t.specPath.wpath startsWith w.wpath)) // startsWith becase tspec includes #section
                   )
@@ -831,6 +860,8 @@ class DomApi extends DomApiBase  with Logging {
               e = ee
               a = aa
 
+              // todo perf I'm doing this twice - expensive
+              m = EESnakk.templateMatchesUrl(t, "*", path, t.content)
               t
             }
         }
@@ -840,14 +871,19 @@ class DomApi extends DomApiBase  with Logging {
 
     if(trequest.isEmpty && path.matches(PATS)) {
       val PAT = PATS.r
-      val PAT(ee, aa) = path
+      var PAT(ee, aa) = path
+
+      // root starts with /, so remove it...
+      if(ee.startsWith("/"))
+        ee = ee.replaceFirst("/", "")
 
       // replace a/b/c/d with a.b.c.d
       e = ee.replace('/', '.')
       a = aa.replace('/', '.')
+
     }
 
-    (trequest, e, a)
+    (trequest, e, a, m)
   }
 
   /** create a message from the incoming request - find what that may be */
@@ -928,9 +964,9 @@ class DomApi extends DomApiBase  with Logging {
               js.keys.asScala.toList.map(k => (k, js.get(k).toString)).toMap
             } catch {
               case t: Throwable => {
-                razie.Log.log("NO TEMPLATE found - error trying to pars body as json", t)
+                razie.Log.log("NO TEMPLATE found - error trying to parse body as json", t)
                 engine.root.children.appendAll({
-                  EError("No template found: " ) ::
+                  EError("No template found for path: " +path ) ::
                   EError("Error parsing: " + body, t.toString) ::
                     new EError("Exception : ", t) :: Nil
                 }.map(DomAst(_, AstKinds.ERROR))
@@ -1096,25 +1132,31 @@ class DomApi extends DomApiBase  with Logging {
     // todo commonalities with fiddleStoryUpdated
     val sid = stok.req.cookies.get("dieselSessionId")
     val session = sid.flatMap(s => DomSessions.sessions.get(s.value))
-    val dfiddle = stok.query.get("dfiddle")
+    val dfiddle = stok.query.get("dfiddle").mkString
+
     val anySpecOverwrites = session.flatMap { existingSession=>
       cwid.wid.flatMap(wid => existingSession.overrides.find(o=>
-        o.wid == wid && o.sName == (dfiddle.mkString+":spec"))
+        o.wid == wid && o.sName == (dfiddle + ":spec"))
       )
     }
     val anyStoryOverwrites = session.flatMap { existingSession=>
       cwid.wid.flatMap(wid => existingSession.overrides.find(o=>
-        o.wid == wid && o.sName == (dfiddle.mkString+":spec"))
+        o.wid == wid && o.sName == (dfiddle + ":spec"))
       )
     }
 
-    Audit.logdb("DIESEL_FIDDLE_RUN", stok.au.map(_.userName).getOrElse("Anon"))
+    val origPage = cwid.wid.flatMap(_.page)
+    val origFiddle = origPage.flatMap(_.section("dfiddle", dfiddle))
+
+    Audit.logdb("DIESEL_FIDDLE_RUN", stok.au.map(_.userName).getOrElse("anon"))
 
     val settings = DomEngineHelper.settingsFrom(stok)
 
     val reactor = stok.formParm("reactor")
     val specWpath = stok.formParm("specWpath")
     val storyWpath = stok.formParm("storyWpath")
+
+    // page sends the spec text and story text here
     val spec = anySpecOverwrites.map(_.newContent) getOrElse stok.formParm("spec")
     val story = anyStoryOverwrites.map(_.newContent) getOrElse stok.formParm("story")
 
@@ -1124,6 +1166,7 @@ class DomApi extends DomApiBase  with Logging {
     val specName = WID.fromPath(specWpath).map(_.name).getOrElse("fiddle")
 
     val page = new WikiEntry("Spec", specName, specName, "md", spec, uid, Seq("dslObject"), stok.realm)
+    // add other fiddles
     val pages = List(page)
 
     // todo is adding page twice...
