@@ -506,13 +506,14 @@ $hx
           "X-WebKit-CSP" -> "unsafe-inline,unsafe-eval")
     })
   }
-
 }
 
 /** represents a fiddle - can be autosaved and can be a topic/note */
 case class Fiddle (what:String, lang:String, realm:String, wpath:String, au:Option[User]) {
   val we = WID.fromPath(wpath).flatMap(_.page)
-  def wid = WID.fromPath(wpath).get.defaultRealmTo(realm)
+  def wid = WID.fromPath(wpath).map(_.defaultRealmTo(realm)).getOrElse(
+    WID("Fiddle", what+"."+lang).r(realm)
+  )
 
   private var default : Option[(String,String)] = None
 
