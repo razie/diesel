@@ -35,7 +35,39 @@ a JS with HTML and CSS fiddle
 <script src="@routes.Assets.at("javascripts/weCommons.js")"></script>
 <script src="@routes.Assets.at("javascripts/weFiddles.js")"></script>
 
-  <h3 id="heading">Diesel fiddle<a href="/wiki/Diesel_Fiddle_Guide" title="Click for detailed help"><sup><span class="glyphicon glyphicon-question-sign"></span></sup></a> | <small>
+<div id="helpText" style="display: none">
+@md {
+<small>
+Quick reference (Ctrl- on Win, Cmd- on Mac):
+
+- Cmd-G = graphical editor for the current line
+- Cmd-B = find the current rule in the output trace
+- green/yellow/red floppy indicates current draft save state
+- click yellow floppy to show diffs
+- click story/spec dropdown to see other or create new
+- refresh icon - click to re-run
+</small>
+
+See [[Diesel Fiddle Guide]] for details, the [[DSL Reference]] for language or go through the entire [[Diesel Academy]].
+
+<font size="-1">
+Command reference (see more about [[specs.Topic:Expressions_and_pattern_matching | expressions]]):
+
+- `$send` entity.action (parm=expr, parm=expr)
+- `$expect` entity.action (parm == match, parm == match)
+- `$expect` (parm == match, parm == match)
+- `$mock` entity.action (parm == match, parm == match)
+- `$when` entity.action (parm == match, parm == match)
+- `$when` ... `$if` (bool expr) // condition is different from match
+- `=>` entity.action (parm = expr, parm = expr)
+- `=>` (parm = expr, parm = expr) // just set these parms in the current context
+
+</font>
+
+}
+</div>
+
+  <h3 id="heading">Diesel fiddle<a href="javascript:showHelp();" title="Click for detailed help"><sup><span class="glyphicon glyphicon-question-sign"></span></sup></a> | <small>
     <span id="errors" class="label label-default">0/? failed</span>
 
     <span onclick="setSpec('Story');" class="label label-primary" style="cursor:pointer"><span id="curStory">Story</span> <span class="glyphicon glyphicon-chevron-down">
@@ -230,6 +262,10 @@ function showSpinner() {
 
 function refresher() {
   runpill2_@{id}('@{id}');
+};
+
+function showHelp() {
+  popupContent($("#helpText").html());
 };
 
 function showHideIframe() {
@@ -519,23 +555,25 @@ function attachAce() {
   langTools.setCompleters([keyWordCompleter, instCompleter]);
 
 specEditor.commands.addCommand({
-    name: "gui",
-    bindKey: {win: "Ctrl-G", mac: "Command-G"},
-    exec: codeGui
+  name: "Gui",
+  description: "Popup GUI for this",
+  bindKey: {win: "Ctrl-G", mac: "Command-G"},
+  exec: codeGui
 });
 storyEditor.commands.addCommand({
-    name: "gui",
-    bindKey: {win: "Ctrl-G", mac: "Command-G"},
-    exec: codeGui
+  name: "Gui",
+  description: "Popup GUI for this",
+  bindKey: {win: "Ctrl-G", mac: "Command-G"},
+  exec: codeGui
 });
   specEditor.commands.addCommand({
-    name: "gui",
+    name: "Usage",
     bindKey: {win: "Ctrl-B", mac: "Command-B"},
     exec: findSpecInTree
   });
 
   storyEditor.commands.addCommand({
-    name: "gui",
+    name: "Usage",
     bindKey: {win: "Ctrl-B", mac: "Command-B"},
     exec: findStoryInTree
   });
