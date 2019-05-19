@@ -17,12 +17,14 @@ printf ".."
 
 ## scp $T/com.razie.racerkidz-${VER}-SNAPSHOT-sans-externalized.jar $T/com.razie.racerkidz-${VER}-SNAPSHOT-assets.jar modules/wcommon/target/scala-2.11/wcommon_2.11-${VER}-SNAPSHOT.jar modules/wiki/target/scala-2.11/wiki_2.11-${VER}-SNAPSHOT.jar razvanc@cloud2a.razie.com:rk/up/
 
-scp $T/com.razie.racerkidz-${VER}-SNAPSHOT-sans-externalized.jar $T/com.razie.racerkidz-${VER}-SNAPSHOT-assets.jar $T/com.razie.wcommon-${VER}-SNAPSHOT.jar $T/com.razie.wiki-${VER}-SNAPSHOT.jar razvanc@cloud2a.razie.com:rk/up/
+## scp $T/com.razie.racerkidz-${VER}-SNAPSHOT-sans-externalized.jar $T/com.razie.racerkidz-${VER}-SNAPSHOT-assets.jar $T/com.razie.wcommon-${VER}-SNAPSHOT.jar $T/com.razie.wiki-${VER}-SNAPSHOT.jar razvanc@cloud2a.razie.com:rk/up/
+
+scp $T/com.razie.racerkidz-${VER}-SNAPSHOT-sans-externalized.jar $T/com.razie.racerkidz-${VER}-SNAPSHOT-assets.jar razvanc@cloud2a.razie.com:rk/up/
 
 if [ "$1" != "2" ]; then
   printf "\n\n####################copy from cloud2a to cloud3a...\n\n"
 
-  ssh razvanc@cloud2a.razie.com ". ~/.bashrc; scp ~/rk/up/com.razie.racerkidz-${VER}-SNAPSHOT-sans-externalized.jar ~/rk/up/com.razie.racerkidz-${VER}-SNAPSHOT-assets.jar ~/rk/up/com.razie.wcommon-${VER}-SNAPSHOT.jar ~/rk/up/com.razie.wiki-${VER}-SNAPSHOT.jar razvanc@cloud3a.razie.com:rk/up/"
+  ssh razvanc@cloud2a.razie.com ". ~/.bashrc; scp ~/rk/up/com.razie.racerkidz-${VER}-SNAPSHOT-sans-externalized.jar ~/rk/up/com.razie.racerkidz-${VER}-SNAPSHOT-assets.jar razvanc@cloud3a.razie.com:rk/up/"
   
 fi
 

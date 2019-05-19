@@ -2,7 +2,7 @@ import play.PlayScala._
 import play.sbt.routes.RoutesKeys
 import play.twirl.sbt.Import.TwirlKeys
 
-scalaVersion := "2.11.8"
+scalaVersion := "2.11.12"
 
 name := "racerkidz"
 
@@ -11,7 +11,7 @@ routesImport  ++= Seq("model.Binders._")
 lazy val commonSettings = Seq(
   organization := "com.razie",
   version := "0.9.2-SNAPSHOT",
-  scalaVersion := "2.11.8",
+  scalaVersion := "2.11.12",
 
   publishArtifact in (Compile, packageDoc) := false,
   publishArtifact in packageDoc := false,

@@ -27,6 +27,9 @@ cp $RK/key.docker key
 
 docker build -t raz-diesel .
 
+## cleanup
+rm -rf dist
+
 cd $RK
 
 docker tag raz-diesel razie/raz-diesel
