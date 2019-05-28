@@ -307,8 +307,18 @@ var dieselCart = {
       },
       error: function (x) {
         // readyState=4  is failure to parse json reply
-        console.log("ERR " + JSON.stringify(x));
-        alert('OOPS - Some Error occurred - please send us this info\n'+JSON.stringify(x));
+        try {
+          if (x.status == 401) {
+            alert("It seems you are not logged in - please log in to use the cart!");
+          } else {
+            console.log("ERR " + JSON.stringify(x));
+            alert('xOOPS - Some Error occurred - please send us this info\n' + JSON.stringify(x));
+          }
+        } catch (err) {
+          console.log("ERR x=" + JSON.stringify(x));
+          console.log("ERR err=" + JSON.stringify(err));
+          alert('yOOPS - Some Error occurred - please send us this info\n'+JSON.stringify(x));
+        }
       }
     });
 }

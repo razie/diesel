@@ -770,6 +770,12 @@ function saveOrig(what) {
 function saveNew(what) {
   console.log("saveNEW.."+what);
   var name = $("#news").val();
+
+  if(name.trim().length <= 0) {
+    alert("Need to give it a name first...");
+    return;
+  }
+
   //todo get the diffs
   $.ajax(
     '/diesel/fiddle/save/@id/'+what, {

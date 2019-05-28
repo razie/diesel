@@ -15,9 +15,9 @@ import razie.wiki.admin.Autosave
 import razie.wiki.model.{WID, WikiEntry, Wikis}
 import razie.wiki.util.DslProps
 import razie.{cout, js}
-
 import scala.collection.JavaConversions._
 import scala.collection.mutable
+import scala.collection.mutable.ListBuffer
 import scala.concurrent.Future
 
 /** Diff and sync remote wiki copies */
@@ -361,11 +361,11 @@ object AdminDiff extends AdminBase {
 
   //==================== initial setup and reactor import
 
-  // is this the first tiem in a new db ?
-  def isDbEmpty = RMany[User]().size <= 0
+  // is this the first time in a new db ?
+  def isDbEmpty:Boolean = RMany[User]().size <= 0
 
   def importDb = Action { implicit request =>
-    cout << "ADMIN_IMPORT_DB"
+    clog << "ADMIN_IMPORT_DB"
 
     if (!isDbEmpty) {
       Ok("ERR db not empty!").as("application/text")
@@ -432,7 +432,7 @@ object AdminDiff extends AdminBase {
 
   /** import a realm from remote */
   def importRealm(au: User, request: Request[AnyContent]) = {
-    cout << "ADMIN_IMPORT_REALM"
+    clog << "ADMIN_IMPORT_REALM"
 
     lazy val query = request.queryString.map(t => (t._1, t._2.mkString))
     lazy val form = request.asInstanceOf[Request[AnyContent]].body.asFormUrlEncoded
@@ -450,15 +450,15 @@ object AdminDiff extends AdminBase {
     val key = System.currentTimeMillis().toString
 
     // get mixins
-    cout << "============ get mixins"
+    clog << "============ get mixins"
     val reactors = WID.fromPath(s"$realm.Reactor:$realm").map(wid => getWE(source, wid)(au).fold({ t =>
       val m = new DslProps(Some(t._1), "website,properties")
         .prop("mixins")
         .getOrElse(realm)
-      cout << "============ mixins: " + m
+      clog << "============ mixins: " + m
       m + "," + realm // add itself to mixins
     }, { err =>
-      cout << "============ ERR-IMPORT DB: " + err
+      clog << "============ ERR-IMPORT DB: " + err
       ""
     }
     )).getOrElse(realm)
@@ -482,16 +482,22 @@ object AdminDiff extends AdminBase {
     var total = ldest.size
     var countErr = 0
 
+    // wid, error
+    val errors = new ListBuffer[(WID, String)]()
+
     razie.db.tx("importdb", email) { implicit txn =>
       ldest.foreach { wid =>
         getWE(source, wid)(au).fold({ t =>
+            // success
           count = count + 1
           lastImport = Some(s"Importing $count of $total (rk,wiki,$reactors)")
           RCreate.noAudit(t._1)
           //            t._1.create
         }, { err =>
+            // failure
+          errors.append((wid, err))
           countErr = countErr + 1
-          cout << "============ ERR-IMPORT DB: " + err
+          clog << "============ ERR-IMPORT DB: " + err
         })
       }
     }
@@ -504,6 +510,11 @@ object AdminDiff extends AdminBase {
          |<br>
          |To reboot the server, go back to the docker terminal where you started this container,
          |stop it (^C) and start it again.
+         |<br><br>
+         |Warnings and errors (permission errors are ok):<br>
+         |<small>
+         |${errors.mkString("<br>")}
+         |</small>
          """.stripMargin
     )
   }
