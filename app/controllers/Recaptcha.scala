@@ -17,7 +17,7 @@ recaptcha {
 
   */
 @Singleton
-class Recaptcha @Inject() (config:Configuration) extends Logging {
+class Recaptcha @Inject() (config:Configuration) extends RazController {
 
   final val RE_privatekey = config.underlying.getString("recaptcha.privatekey").mkString
   final val RE_localhost = // true means bypass RE for localhost
@@ -56,5 +56,10 @@ class Recaptcha @Inject() (config:Configuration) extends Logging {
 
       resp \@ "success" == "true"
     }
+
+  // new one, simpler
+  def check(response: String) = RAction {implicit request=>
+    Ok(verify2(response, clientIp).toString)
+  }
 
 }

@@ -73,8 +73,10 @@ object Profile extends RazController {
 
     SendEmail.withSession(Website.realm(request)) { implicit mailSession =>
       Tasks.sendEmailVerif(u)
-      Emailer.sendEmailUname(unameF(u.firstName, u.lastName), u)
+      // to user - why notify of default username?
+      //Emailer.sendEmailUname(unameF(u.firstName, u.lastName), u)
       val uname = (u.firstName + (if (u.lastName.length > 0) ("." + u.lastName) else "")).replaceAll("[^a-zA-Z0-9\\.]", ".").replaceAll("[\\.\\.]", ".")
+      //this one's to admin
       Emailer.sendEmailUname(uname, u, false)
       Emailer.tellAdmin("New user", u.userName, u.emailDec, "realm: "+u.realms.mkString, "ABOUT: "+about)
     }
@@ -155,7 +157,7 @@ class Profile @Inject() (config:Configuration) extends RazController with Loggin
       "company" -> text
         .verifying("Obscenity filter", !Wikis.hasBadWords(_))
         .verifying("Invalid characters", vldSpec(_))
-        .verifying("Too short (should be more then 3)", _.length >= 4)
+        .verifying("Too short (should be more then 3)", (x=> x.length == 0 || x.length >= 4))
         .verifying("Too long (less than 10)", _.length <= 10),
       "yob" -> number(min = 1900, max = 2012),
       "address" -> text.verifying("Invalid characters", vldSpec(_)),
@@ -275,7 +277,21 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
     auth // clean theme
     val email = request.formParm("email")
     val pass = request.formParm("password")
-    login(email, pass, "")
+    val g_recaptcha_response = request.formParm("g-recaptcha-response")
+    cdebug << "g-recaptcha-response: " + g_recaptcha_response
+
+    if(new Recaptcha(config).verify2(g_recaptcha_response, clientIp)) {
+      clog << "passed recaptch"
+      login(email, pass, "")
+    } else {
+      clog << "reCAPTCHA failed"
+      val loginUrl = request.website.prop("join").getOrElse(routes.Profile.doeJoin().url)
+      Redirect(loginUrl)
+          .withNewSession
+          .withCookies(
+            Cookie("error", "reCAPTCHA failed".encUrl).copy(httpOnly = false)
+          )
+    }
   }
 
   // join step 2 with google - link to existing account
@@ -657,11 +673,23 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
     val eiid = stok.formParm("extInstanceId").trim
     val eaid = stok.formParm("extAccountId").trim
 
+    val currUrl = stok.formParm("currUrl").trim
+
     logger.info (n, f, l, e, p, y, esid, eiid, eaid)
 
     logger.info (stok.formParms.mkString)
 
-    if(realmcd != "hcvalue") {
+    val g_recaptcha_response = stok.formParm("g-recaptcha-response")
+    cdebug << "g-recaptcha-response: " + g_recaptcha_response
+
+    if(! new Recaptcha(config).verify2(g_recaptcha_response, clientIp)) {
+      clog << "reCAPTCHA failed"
+      Redirect(currUrl)
+          .withNewSession
+          .withCookies(
+            Cookie("error", "reCAPTCHA failed".encUrl).copy(httpOnly = false)
+          )
+    } else if(realmcd != "hcvalue") {
       Unauthorized("")
    } else if(
       f.isEmpty ||

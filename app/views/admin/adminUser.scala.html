@@ -78,7 +78,7 @@ screen to admin one user
 }
 
   <p>
-    @if(!user.exists(_.realmSet.containsKey(stok.realm))) {
+    @if(!user.exists(_.realmSet.contains(stok.realm))) {
       <div class="alert alert-danger">
         Current user is not of this realm !! You should manage him/her from the proper realm.
       <br>

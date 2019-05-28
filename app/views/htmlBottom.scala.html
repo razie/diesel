@@ -38,7 +38,8 @@
   <div align="center">
   <table>
     <tr>
-    @if(!web().bottomMenu("More").exists(_._1 == "hide")) {
+      @** bottom.More.hide=true **@
+    @if(!web().bottomMenu("More").exists(_._1.trim == "hide")) {
       <td style="width:200px;vertical-align: top">
         <strong class="razbots">More</strong> <br>
         <a class="razbot" href="/">Home</a> <br>
@@ -50,7 +51,8 @@
         }
       </td>
     }
-      @if(!web().bottomMenu("Support").exists(_._1 == "hide")) {
+      @** bottom.Support.hide=true **@
+      @if(!web().bottomMenu("Support").exists(_._1.trim == "hide")) {
       <td style="width:200px;vertical-align: top">
         <strong class="razbots">Support</strong> <br>
         <a class="razbot" href="@web().supportUrl">Support</a> <br>
@@ -66,7 +68,8 @@
       </td>
       }
 
-      @if(!web().bottomMenu("Connect").exists(_._1 == "hide")) {
+      @** bottom.Connect.hide=true **@
+      @if(!web().bottomMenu("Connect").exists(_._1.trim == "hide")) {
       <td style="width:200px;vertical-align: top">
         <strong class="razbots">Connect</strong><br>
         @web().bottomMenu("Connect").filter(_._2 != "").map{t=>

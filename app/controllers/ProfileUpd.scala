@@ -214,7 +214,7 @@ class ProfileUpd @Inject() (config:Configuration) extends RazController with Log
       {
         case (o, n, _, t) =>
           (for (
-            t <- SecLink.findAndDelete(t);
+            t <- SecLink.findAndDelete(t) orErr "security error" ;
             pwdCorrect <- {
               // sometimes the password plus ADMIN doesn't work...
               (if (Enc(o) == au.pwd || ("ADMIN" + au._id.toString == o)) Some(true) else None) orErr ("Password incorrect!")

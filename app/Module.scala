@@ -14,6 +14,7 @@ import mod.cart.{ModCartExecutor, ModUserExecutor}
 import mod.diesel.controllers.{DieselMod, FiddleMod}
 import mod.diesel.guard.EEGuardian
 import mod.snow.ModSnowExecutor
+import mod.wiki.CaptchaMod
 import model.WikiUsersImpl
 import razie.audit.{Audit, AuditService, MdbAuditService}
 import razie.db.{RMongo, ROne, RazMongo, UpgradeDb}
@@ -101,6 +102,7 @@ class Module extends AbstractModule {
 
     WikiMods register new FiddleMod
     WikiMods register new DieselMod
+    WikiMods register new CaptchaMod
 
     DieselAppContext.setActorSystemFactory(() => play.libs.Akka.system)
 
