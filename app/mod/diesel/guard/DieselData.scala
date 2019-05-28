@@ -37,6 +37,12 @@ object DieselData {
         .map(x => x.copy(contents = c, ver = x.ver + 1, updDtm = DateTime.now).update)
         .getOrElse(DieselData(what, realm, key, userId, c).create)
 
+  /** create or update */
+  def update(what: String, realm: String, key: String, userId: Option[ObjectId], c: Map[String, String]) =
+    rec(what, realm, key, userId)
+        .map(x => x.copy(contents = x.contents ++ c, ver = x.ver + 1, updDtm = DateTime.now).update)
+        .getOrElse(DieselData(what, realm, key, userId, c).create)
+
   /** each user has its own draft */
   def find(what: String, realm: String, key: String, userId: Option[ObjectId]=None) = {
     rec(what, realm, key, userId)

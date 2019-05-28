@@ -6,6 +6,7 @@
   **/
 package mod.diesel.guard
 
+import mod.diesel.guard.DomGuardian.GUARDIAN_POLL
 import model.Users
 import razie.Logging
 import razie.diesel.dom.RDOM.P
@@ -44,33 +45,65 @@ class EEGuardian extends EExecutor("diesel.guardian") with Logging {
         Nil
       }
 
-      case "ends" => { // avoid error if not ruled
+      case "ends" => {
+        // guardian ends a run - record and notify
         def url = Website.forRealm(ctx.root.settings.realm.mkString).map(_.url).mkString
 
         ctx.root.engine.toList.flatMap { engine =>
-          if (engine.failedTestCount > 0) {
-            val m = ext.EMsg(
-              DieselMsg.GUARDIAN.ENTITY,
-              DieselMsg.GUARDIAN.NOTIFY,
-              List(
-                P("realm", ctx("realm")),
-                P("env", ctx("env")),
-                P("errors", engine.failedTestCount.toString),
-                P("report", s"""See details: <a href=\"$url/diesel/viewAst/${engine.id}\">${engine.id}</a></td>""")
-              ))
+          val realm = ctx("realm")
+          val env = ctx("env")
+          var newStatus = ""
+
+          var oldStatus = DieselData
+              .find(GUARDIAN_POLL, realm, realm + "-" + env)
+              .flatMap(t=> t.contents.get("status"))
+              .getOrElse("Success")
+
+          info(s"Guardian - ends $realm-$env - newStatus $newStatus vs oldStatus $oldStatus")
+
+          // save new status
+          DieselData.update(GUARDIAN_POLL, realm, realm + "-" + env, None, Map("status" -> newStatus))
+
+          // lazy to capture the newStatus
+          def m = ext.EMsg(
+            DieselMsg.GUARDIAN.ENTITY,
+            DieselMsg.GUARDIAN.NOTIFY,
+            List(
+              P("realm", ctx("realm")),
+              P("env", ctx("env")),
+              P("oldStatus", oldStatus),
+              P("newStatus", newStatus),
+              P("errors", engine.failedTestCount.toString),
+              P("report", s"""See details: <a href=\"$url/diesel/viewAst/${engine.id}\">${engine.id}</a></td>""")
+            ))
+
+          val res = if (engine.failedTestCount > 0) {
+            newStatus = "Fail"
             EInfo(s"Guardian - failed ${engine.id} count: ${engine.failedTestCount}") ::
                 m :: Nil
           } else {
-            EInfo(s"Guardian - success ${engine.id} count: ${engine.failedTestCount}") :: Nil
+            newStatus = "Success"
+            // only send notification if it failed last time
+            val mList = if(oldStatus == "Fail") m :: Nil else Nil
+            EInfo(s"Guardian - success ${engine.id} count: ${engine.failedTestCount}") ::
+                mList
           }
+
+          // save new status
+          DieselData.update(GUARDIAN_POLL, realm, realm + "-" + env, None, Map("status" -> newStatus))
+
+          res
         }
       }
 
       case "polled" => {
-        val stamp = ctx.get("payload").get
+        //it was polled and here's the new stamp - shall we start a new check?
+        val stamp = ctx.get("stamp").get
         val env = ctx.get("env").get
+        val tq = ctx.get("tagQuery").mkString
         val settings = ctx.root.settings
-        val res = DomGuardian.polled(settings.realm.get, env, stamp, settings.userId.flatMap(Users.findUserById))
+        val res = DomGuardian.polled(settings.realm.get, env, stamp, settings.userId.flatMap(Users.findUserById), tq)
+
         EVal(P("payload", res)) :: Nil
       }
 

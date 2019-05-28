@@ -43,7 +43,7 @@ object DomGuardian extends Logging {
 
   def ISAUTO = Config.prop("diesel.guardian.auto", "true").toBoolean
 
-  def ISENABLED = Config.prop("diesel.guardian.enabled", "true").toBoolean
+  def ISENABLED = false && Config.prop("diesel.guardian.enabled", "true").toBoolean
 
   def enabled(realm: String) = ISENABLED && {
     realm match {
@@ -171,6 +171,7 @@ object DomGuardian extends Logging {
       val me = new WikiEntry("Story", "temp", "temp", "md",
         s"""
            |$$send diesel.guardian.starts(realm="$realm", env="$env")
+           |$$send ctx.set(diesel.env="$env")
            |$$send diesel.setEnv(env="$env", user="")
  """.stripMargin,
         new ObjectId(), Seq("dslObject"), realm)
@@ -359,22 +360,37 @@ object DomGuardian extends Logging {
     }
   }
 
+  final val GUARDIAN_POLL = "GuardianPoll"
+
   /** if the poll is different, run tests */
-  def polled(realm: String, env: String, tstamp: String, au: Option[User]) = {
-    val oldTstamp = DieselData.find("GuardianPoll", realm, realm + "-" + env).flatMap(_.contents.get("value"))
+  def polled(realm: String, env: String, tstamp: String, au: Option[User], tquery:String) = {
+    val old =
+      DieselData
+          .find(GUARDIAN_POLL, realm, realm + "-" + env)
+
+    val oldTstamp = old
+        .flatMap(t=> t.contents.get("value"))
         .getOrElse("initialValueNothingLikeThisEh")
 
-    info(s"Guardian - polled $realm-$env - new $tstamp vs old $oldTstamp")
+    val oldStatus = old
+          .flatMap(t=> t.contents.get("status"))
+          .getOrElse("Success")
+
+    info(s"Guardian - polled $realm-$env - new $tstamp vs old $oldTstamp oldStatus $oldStatus")
 
     if (oldTstamp != tstamp) {
+      // save new stamp
+      DieselData.set(GUARDIAN_POLL, realm, realm + "-" + env, None, Map("value" -> tstamp))
+
       info(s"Guardian - starting a run $realm-$env - new $tstamp vs old $oldTstamp")
+
       Services ! DieselMsg(
         "diesel.guardian",
         "run",
         Map("realm" -> realm, "env" -> env),
         DieselTarget.ENV(realm)
       )
-      DieselData.set("GuardianPoll", realm, realm + "-" + env, None, Map("value" -> tstamp))
+
       s"Change detected - starting a run... ($tstamp)"
     } else {
       s"No change ($tstamp)"
