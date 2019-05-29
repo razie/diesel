@@ -1027,7 +1027,7 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
       else ""
 
       if(e.isEmpty) Realm.createR2(cat, templateWpath, torspec:String, realm).apply(request).value.get.get
-      else Msg2("Error: " + Corr(e, Some(E)).toString)
+      else Msg("Error: " + Corr(e, Some(E)).toString)
   }
 
   // create reactor
@@ -1060,7 +1060,7 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
           views.html.wiki.wikieAddWithSpec2(cat, name, wid, formPage, torspec, Map.empty)
         }
       } getOrElse
-        Msg2(s"Can't find template [[$templateWpath]]")
+        Msg(s"Can't find template [[$templateWpath]]")
   }
 
   /** add a child/related to another topic - this stages the link and begins creation of kid.
@@ -1184,7 +1184,7 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
 
             cleanAuth()
           }
-          Msg2(s"REACTOR DELETED forever - no way back! Deleted $count topics")
+          Msg(s"REACTOR DELETED forever - no way back! Deleted $count topics")
         }
 
         case (au, w) => {
@@ -1200,7 +1200,7 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
       } getOrElse
         noPerm(wid, "ADMIN_DELETE2")
       else
-        Msg2("Can't delete a " + wid.cat)
+        Msg("Can't delete a " + wid.cat)
   }
 
   private def canRename(wid: WID)(implicit errCollector: VErrors, stok: RazRequest) = {
@@ -1314,7 +1314,7 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
   /** DO find and replace content in pages */
   def replaceAll3() = FAUR { implicit request =>
       replaceAllForm.bindFromRequest()(request.ireq).fold(
-      formWithErrors => Msg2(formWithErrors.toString + "Oops, can't !"), {
+      formWithErrors => Msg(formWithErrors.toString + "Oops, can't !"), {
         case (realm, q, news, action) =>
           log("replace all " + q + " -> " + news)
 
@@ -1337,7 +1337,7 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
   /** DO find and replace content in pages */
   def replaceAllTag3() = FAUR { implicit request =>
       replaceAllForm.bindFromRequest()(request.ireq).fold(
-        formWithErrors => Msg2(formWithErrors.toString + "Oops, can't !"), {
+        formWithErrors => Msg(formWithErrors.toString + "Oops, can't !"), {
         case (realm, q, news, action) =>
           log("replace all tag" + q + " -> " + news)
 

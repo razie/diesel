@@ -318,7 +318,7 @@ cleanAuth(auth)
       //            this dbop model.FollowerWiki(f._id, wid).create
       //
       // TODO remove follower, possibly notify owner of topic or moderator
-      Msg2("Ok - done")
+      Msg("Ok - done")
     }) getOrElse {
       verror(s"""ERR_CANT_UPDATE_USER.unlinkExtFollower : $id """)
       unauthorized("Oops - cannot remove this subscription... ")

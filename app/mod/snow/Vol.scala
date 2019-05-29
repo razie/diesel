@@ -161,7 +161,7 @@ object Vol extends RazController with Logging {
         Redirect(routes.Vol.doeVolAdd(wid, rkaId))
       } else
         Redirect(routes.Vol.doeUserVolAdd(rkaId))
-    }) getOrElse Msg2("CAN'T SEE PROFILE " + errCollector.mkString)
+    }) getOrElse Msg("CAN'T SEE PROFILE " + errCollector.mkString)
   }
 
   import razie.wiki.Sec._
@@ -194,7 +194,7 @@ object Vol extends RazController with Logging {
         vh.copy(approvedBy = Some(au._id), status=VH.ST_REJECTED).update
       }
       Redirect ("/user/task/approveVolunteerHours")
-    }) getOrElse Msg2("CAN'T SEE PROFILE " + errCollector.mkString)
+    }) getOrElse Msg("CAN'T SEE PROFILE " + errCollector.mkString)
   }
 
   // rollup per family/reg

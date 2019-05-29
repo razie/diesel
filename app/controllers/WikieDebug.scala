@@ -35,7 +35,7 @@ class WikieDebug @Inject() (config:Configuration) extends WikieBase {
 
       form.bindFromRequest.fold(
       formWithErrors =>
-        Msg2(formWithErrors.toString + "Oops - the form is errored out, man!"),
+        Msg(formWithErrors.toString + "Oops - the form is errored out, man!"),
       {
         case newWid =>
           log("Wiki.movePosts " + sourceWid + ", " + newWid)
@@ -87,7 +87,7 @@ class WikieDebug @Inject() (config:Configuration) extends WikieBase {
 
       form.bindFromRequest.fold(
       formWithErrors =>
-        Msg2(formWithErrors.toString + "Oops, can't add that quota!"),
+        Msg(formWithErrors.toString + "Oops, can't add that quota!"),
       {
         case newWid if newWid == "n/a" =>
           log("Wiki.setParent REMOVE" + sourceWid + ", " + newWid)
@@ -146,7 +146,7 @@ class WikieDebug @Inject() (config:Configuration) extends WikieBase {
 
     uownerForm.bindFromRequest.fold(
     formWithErrors =>
-      Msg2(formWithErrors.toString + "Oops, can't add that quota!"),
+      Msg(formWithErrors.toString + "Oops, can't add that quota!"),
     {
       case newvalue =>
         what match {

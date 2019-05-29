@@ -61,7 +61,7 @@ object UserStuff extends RazController {
         views.html.user.userInfo(u)
       }
     } getOrElse {
-      Msg2(s"No public profile for user $id")
+      Msg(s"No public profile for user $id")
     }
   }
 
