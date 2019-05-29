@@ -45,13 +45,13 @@ libraryDependencies in Global ++= Seq(
   "com.googlecode.java-diff-utils"        % "diffutils"             % "1.2.1",
 
 // for snakked
-   "org.json"       % "json"            % "20160810",
-   "commons-jxpath" % "commons-jxpath"  % "1.3",
-   "org.scala-lang.modules" %% "scala-xml" % "1.0.3",
+   "org.json"                % "json"            % "20160810",
+   "commons-jxpath"          % "commons-jxpath"  % "1.3",
+   "org.scala-lang.modules" %% "scala-xml"       % "1.0.3",
 
-   "org.antlr" % "antlr4" % "4.5.3",
+   "org.antlr"               % "antlr4"          % "4.5.3",
 
-   "com.typesafe"          % "config"             % "1.2.1" // last one, eh?
+   "com.typesafe"            % "config"          % "1.2.1" // last one, eh?
 )
 
 lazy val root = (project in file(".")).enablePlugins(PlayScala)
@@ -62,7 +62,6 @@ lazy val root = (project in file(".")).enablePlugins(PlayScala)
     unmanagedSourceDirectories in Compile += baseDirectory.value / "../snakked/core/src/main/scala",
 
     unmanagedSourceDirectories in Compile += baseDirectory.value / "../coolscala/diesel/src/main/scala",
-    unmanagedSourceDirectories in Compile += baseDirectory.value / "../coolscala/common/app",
     unmanagedSourceDirectories in Compile += baseDirectory.value / "../coolscala/wiki/app",
 
 //    unmanagedSourceDirectories in Test += baseDirectory.value / "../coolscala/diesel/src/test/scala",
