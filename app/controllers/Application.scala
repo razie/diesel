@@ -264,7 +264,7 @@ object Application extends RazController {
           Redirect("/").withSession(Config.CONNECTED -> Enc.toSession(u.email), "css" -> css)
       }) getOrElse {
         Audit.logdb("ERR_HARRY", "account is missing???")
-        Msg2("Can't find Harry Potter - sorry!")
+        Msg("Can't find Harry Potter - sorry!")
       }
     }
   }

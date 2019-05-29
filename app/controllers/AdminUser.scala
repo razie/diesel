@@ -193,7 +193,7 @@ class AdminUser extends AdminBase {
 
       permForm.bindFromRequest.fold(
       formWithErrors =>
-        Msg2(formWithErrors.toString + "Oops, can't add that perm!"), {
+        Msg(formWithErrors.toString + "Oops, can't add that perm!"), {
         case we@AddPerm(perm) =>
           (for (
             goodS <- ("+-" contains perm(0)) && Perm.all.contains(perm.substring(1)) orErr ("bad perm");
@@ -229,7 +229,7 @@ class AdminUser extends AdminBase {
     FAD { implicit au => implicit errCollector => implicit request =>
       quotaForm.bindFromRequest.fold(
       formWithErrors =>
-        Msg2(formWithErrors.toString + "Oops, can't add that quota!"), {
+        Msg(formWithErrors.toString + "Oops, can't add that quota!"), {
         case quota =>
           (for (
             u <- Users.findUserById(id);
@@ -248,7 +248,7 @@ class AdminUser extends AdminBase {
   def userModnotes(id: String) = FADR { implicit stok =>
     OneForm.bindFromRequest.fold(
     formWithErrors =>
-      Msg2(formWithErrors.toString + "Oops, can't add that note!"), {
+      Msg(formWithErrors.toString + "Oops, can't add that note!"), {
       case uname =>
         (for (
           u <- Users.findUserById(id);
@@ -267,7 +267,7 @@ class AdminUser extends AdminBase {
             if(ok)
               Redirect(ADUSER(id))
             else
-              Msg2("Go back and use +/- to indicate add/remove")
+              Msg("Go back and use +/- to indicate add/remove")
           }) getOrElse {
           error("ERR_ADMIN_CANT_UPDATE_USER.uname " + id + " " + errCollector.mkString)
           Unauthorized("ERR_ADMIN_CANT_UPDATE_USER.uname " + id + " " + errCollector.mkString)
@@ -278,7 +278,7 @@ class AdminUser extends AdminBase {
   def userUname(id: String) = FAD { implicit au => implicit errCollector => implicit request =>
     OneForm.bindFromRequest.fold(
     formWithErrors =>
-      Msg2(formWithErrors.toString + "Oops, can't add that quota!"), {
+      Msg(formWithErrors.toString + "Oops, can't add that quota!"), {
       case uname =>
         (for (
           u <- Users.findUserById(id);
@@ -301,7 +301,7 @@ class AdminUser extends AdminBase {
   def updUser(id:String, f: (User, String, RazRequest) => User) = FADR {implicit stok=>
     OneForm.bindFromRequest.fold(
       formWithErrors =>
-        Msg2(formWithErrors.toString + "Oops, can't !"), {
+        Msg(formWithErrors.toString + "Oops, can't !"), {
         case uname =>
           (for (
             u <- Users.findUserById(id);

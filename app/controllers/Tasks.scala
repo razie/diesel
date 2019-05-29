@@ -23,7 +23,7 @@ object Tasks extends RazController with Logging {
     razie.db.tx("usernamechgDenied", auth.get.userName) { implicit txn =>
       UserTasks.userNameChgDenied(auth.get).delete
     }
-    Msg2("Your request to change username has been denied!")
+    Msg("Your request to change username has been denied!")
   }
 
   /** step 1 - send verification email */
@@ -135,7 +135,7 @@ Please do that soon: it will expire in a few hours, for security reasons.
             verifiedEmail(expiry1, email, id, Users.findUserByEmailEnc(email))
           else {
             u.foreach(_.auditLoginFailed(Website.getRealm))
-            Msg2("Email doesn't match - could not verify email!")
+            Msg("Email doesn't match - could not verify email!")
           }
         }
       })
@@ -207,7 +207,7 @@ Please read our [[Terms of Service]] as well as our [[Privacy Policy]]
 //          Redirect(routes.Club.doeVolApprover(auth.get))
         }
         case _ => {
-          Msg2("?")
+          Msg("?")
         }
       }
     }
@@ -219,7 +219,7 @@ Please read our [[Terms of Service]] as well as our [[Privacy Policy]]
       razie.db.tx("someok", au.userName) { implicit txn =>
         t.delete
       }
-      Msg2(t.desc + " Completed!")
+      Msg(t.desc + " Completed!")
     }
   }
 

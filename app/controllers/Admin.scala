@@ -58,7 +58,7 @@ object Admin extends AdminBase {
           if ("yeah" == System.getProperty("devmode") || !RazMongo("User").exists) {
             admin.Init.initDb()
             Redirect("/")
-          } else Msg2("Nope - hehe")
+          } else Msg("Nope - hehe")
         }
 
         case _ => {

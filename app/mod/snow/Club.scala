@@ -295,7 +295,7 @@ regAdmin=$regAdmin
 
         x.snap("4")
         y
-      }) getOrElse Msg2("CAN'T SEE PROFILE " + errCollector.mkString)
+      }) getOrElse Msg("CAN'T SEE PROFILE " + errCollector.mkString)
     }
   }
 
@@ -433,7 +433,7 @@ regAdmin=$regAdmin
             data.map(_.map(escNL).mkString(DELIM)).mkString("\n")).as("text/csv")
       else
         Ok(Json.toJson(headers :: data))
-    }) getOrElse Msg2("CAN'T : " + errCollector.mkString)
+    }) getOrElse Msg("CAN'T : " + errCollector.mkString)
   }
 
   // update user role
@@ -472,7 +472,7 @@ regAdmin=$regAdmin
               }
             }
         })
-    }) getOrElse Msg2("CAN'T SEE PROFILE " + errCollector.mkString)
+    }) getOrElse Msg("CAN'T SEE PROFILE " + errCollector.mkString)
   }
 
   /** send a help message */
@@ -490,7 +490,7 @@ regAdmin=$regAdmin
         Emailer.sendEmailClubRegHelp(u, clubName.name, link, msg.mkString)
       }
       Redirect(routes.Club.doeClubReg(clubName, uwid))
-    }) getOrElse Msg2("OOPS" + errCollector.mkString)
+    }) getOrElse Msg("OOPS" + errCollector.mkString)
   }
 
   /** change registration status */
@@ -538,7 +538,7 @@ regAdmin=$regAdmin
           Redirect(routes.Club.doeClubReg(clubName, uwid))
         }
       }
-    }) getOrElse Msg2("OOPS" + errCollector.mkString)
+    }) getOrElse Msg("OOPS" + errCollector.mkString)
   }
 
   /** club admin add a kid to current registration */
@@ -555,7 +555,7 @@ regAdmin=$regAdmin
       implicit val txn = razie.db.tx.local("doeClubUwAddForm", au.userName  )
       addForm(u, c, reg, regAdmin, role)
       Redirect(routes.Club.doeClubReg(clubName, uwid.toString))
-    }) getOrElse Msg2("OOPS" + errCollector.mkString)
+    }) getOrElse Msg("OOPS" + errCollector.mkString)
   }
 
   // remove a year in the form 20xx
@@ -652,7 +652,7 @@ regAdmin=$regAdmin
               s"""${rk.info.firstName} was already added as <em>${before.get.role}</em> - please click continue, then remove her/him from the registration with the red <span class="label label-important">x</span> button and then re-add with the different role. <p>Note that any forms filled for his role will be <em>removed</em>!""",
               Some(nextPage.url))
         }
-      }) getOrElse Msg2("OOPS" + errCollector.mkString)
+      }) getOrElse Msg("OOPS" + errCollector.mkString)
   }
 
   /** remove a kid from the current registration */
@@ -676,7 +676,7 @@ regAdmin=$regAdmin
     <p>Note that any forms filled for $sex1 role will be <em>removed</em>! You can then re-add $sex2 back, with the same or different role.
     <p>If you don't want to remove $sex2, just go back... otherwise click Continue below.""",
           Some(routes.Club.doeClubUwRmFormKid1(regId, rkId, uwid, role).url))
-      }) getOrElse Msg2("OOPS" + errCollector.mkString)
+      }) getOrElse Msg("OOPS" + errCollector.mkString)
   }
 
   def doeClubUwRmFormKid1(regId: String, rkId: String, uwid: String, role: String) = FAU { implicit au =>
@@ -741,7 +741,7 @@ regAdmin=$regAdmin
           s"""This will remove Form: ${formWid.name} from this registration.
     <p>If you don't want to remove Form: ${formWid.name}, just go back... otherwise click Continue below.""",
           Some(routes.Club.doeClubUwRmFormSeq1(regId, rkId, uwid, seq).url))
-      }) getOrElse Msg2("OOPS" + errCollector.mkString)
+      }) getOrElse Msg("OOPS" + errCollector.mkString)
   }
 
   /** remove a single form from the current registration */
@@ -892,7 +892,7 @@ regAdmin=$regAdmin
               val p = new model.Profile(u._id)
               u.create(p)
             }
-            Msg2("Ok, boss, user created. Now edit the club...")
+            Msg("Ok, boss, user created. Now edit the club...")
           } else {
             SendEmail.withSession(stok.realm) { implicit mailSession =>
               Emailer.tellAdmin(
@@ -902,7 +902,7 @@ regAdmin=$regAdmin
                 "club: " + wid.name,
                 "relation: " + r)
             }
-            Msg2("Ok, request sent. You'll be notified by email asap.")
+            Msg("Ok, request sent. You'll be notified by email asap.")
           }
         }
       })
@@ -1083,7 +1083,7 @@ regAdmin=$regAdmin
 
       if (au.isClub) Redirect("/") //routes.Club.doeClubKidz("",""))
       else Redirect(routes.Kidz.doeUserKidz)
-    }) getOrElse Msg2("CAN'T SEE PROFILE " + errCollector.mkString)
+    }) getOrElse Msg("CAN'T SEE PROFILE " + errCollector.mkString)
   }
 
   // new user linked to club - give it access to forums
@@ -1237,7 +1237,7 @@ regAdmin=$regAdmin
           views.html.user.doeConsent()
         }
       else
-        Msg2("CAN'T START REGISTRATION " + errCollector.mkString)
+        Msg("CAN'T START REGISTRATION " + errCollector.mkString)
     }
   }
 
@@ -1257,13 +1257,13 @@ regAdmin=$regAdmin
            c.props.get("reg.newMembers").exists(_ == "yes"))
           ROK.k apply views.html.club.doeClubUserStartReg(clubWid)
         else
-          Msg2("Registration not open yet for club " + clubWid)
+          Msg("Registration not open yet for club " + clubWid)
       }
     }) getOrElse {
       if (activeUser.isDefined && !activeUser.get.consent.isDefined)
         ROK.k apply views.html.user.doeConsent(routes.Club.doeStartRegSimple(clubWid).url)
       else
-        Msg2("CAN'T START REGISTRATION " + errCollector.mkString)
+        Msg("CAN'T START REGISTRATION " + errCollector.mkString)
     }
   }
 
@@ -1315,7 +1315,7 @@ regAdmin=$regAdmin
         ROK.r apply { implicit stok =>
           views.html.user.doeConsent()
         } else
-        Msg2("CAN'T START REGISTRATION " + errCollector.mkString)
+        Msg("CAN'T START REGISTRATION " + errCollector.mkString)
     }
   }
 
@@ -1335,7 +1335,7 @@ regAdmin=$regAdmin
       }
       Redirect(routes.Club.doeClubReg(cwid, uwid))
     }) getOrElse {
-      Msg2("CAN'T " + errCollector.mkString)
+      Msg("CAN'T " + errCollector.mkString)
     }
   }
 
@@ -1347,7 +1347,7 @@ regAdmin=$regAdmin
 
       sForm.bindFromRequest.fold(
         formWithErrors =>
-          Msg2(formWithErrors.toString + "Oops, bad newValue"), {
+          Msg(formWithErrors.toString + "Oops, bad newValue"), {
           case newvalue =>
             log("Club.addFollowers " + wid + ", " + newvalue)
             (for (
@@ -1378,7 +1378,7 @@ regAdmin=$regAdmin
 
       sForm.bindFromRequest.fold(
         formWithErrors =>
-          Msg2(formWithErrors.toString + "Oops, bad newValue"), {
+          Msg(formWithErrors.toString + "Oops, bad newValue"), {
           case newvalue =>
             log("Club.delFollowers " + wid + ", " + newvalue)
             (for (
@@ -1476,7 +1476,7 @@ regAdmin=$regAdmin
         ROK.r apply { implicit stok =>
           views.html.club.doeClubPurgeRegs(clubName, au, year, members, regs, rks, rkas)
         }
-      }) getOrElse Msg2("CAN'T SEE PROFILE " + errCollector.mkString)
+      }) getOrElse Msg("CAN'T SEE PROFILE " + errCollector.mkString)
     }
   }
 
@@ -1540,7 +1540,7 @@ regAdmin=$regAdmin
         ROK.r apply { implicit stok =>
           views.html.club.doeClubPurgeRegs(clubName, au, year, members, regs, rks, rkas)
         }
-      }) getOrElse Msg2("CAN'T SEE PROFILE " + errCollector.mkString)
+      }) getOrElse Msg("CAN'T SEE PROFILE " + errCollector.mkString)
     }
   }
 

@@ -543,7 +543,7 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
         }
       }
 
-      Msg2(s"Updated $cnt profiles!")
+      Msg(s"Updated $cnt profiles!")
     } else
       Msg(s"No permission to do that! (clearConsent2 on realm $realm)")
   }

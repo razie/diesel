@@ -349,7 +349,11 @@ object Wiki extends WikiBase {
   }
   def showId(id: String, irealm:String) = Action { implicit request =>
     val realm = getRealm(irealm)
-    (for (w <- Wikis(realm).findById(id)) yield Redirect(controllers.Wiki.wr(w.wid, realm))) getOrElse Msg2("Oops - id not found")
+    (
+        for (w <- Wikis(realm).findById(id)) yield
+          Redirect(controllers.Wiki.wr(w.wid, realm))
+    ) getOrElse
+        Msg("Oops - id not found")
   }
 
   def contentById(cat:String, id: String, irealm:String) = Action { implicit request =>
@@ -625,7 +629,7 @@ object Wiki extends WikiBase {
         ROK.s apply {implicit stok=> views.html.wiki.wikieUsage(w.wid, Some(iwid.name), y)}
       case y @ Some(w) =>
         ROK.s apply {implicit stok=> views.html.wiki.wikieDebug(w.wid, Some(iwid.name), y)}
-      case None => Msg2 (s"${wid.wpath} not found")
+      case None => Msg (s"${wid.wpath} not found")
     }
   }
 

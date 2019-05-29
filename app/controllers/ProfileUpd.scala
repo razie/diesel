@@ -226,7 +226,7 @@ class ProfileUpd @Inject() (config:Configuration) extends RazController with Log
               // todo use email template
               mailSession.send(au.emailDec, Config.SUPPORT, "Password was changed", "Your password was changed!")
             }
-            Msg2("Ok, password changed!")
+            Msg("Ok, password changed!")
           }) getOrElse {
             verror("ERR_CANT_UPDATE_USER_PASSWORD ")
             unauthorized("Oops - cannot update this user [ERR_CANT_UPDATE_USER_PASSWORD]... ")
@@ -264,15 +264,15 @@ class ProfileUpd @Inject() (config:Configuration) extends RazController with Log
               Audit.logdb("RESET_PWD_SENT", "request for " + e)
               Tasks.sendEmailReset(au)
             }
-            Msg2("Please check your email!")
+            Msg("Please check your email!")
           } getOrElse {
             Audit.logdb("ERR_RESET_PWD", "email not found " + e)
-            Msg2("If you don't receive an email shortly, this email is likely not registered - please verify the email or create an account! If you need some help, please send us a note via Support, below!")
+            Msg("If you don't receive an email shortly, this email is likely not registered - please verify the email or create an account! If you need some help, please send us a note via Support, below!")
           }
         } getOrElse {
           Audit.logdb("ERR_RESET_PWD", "token not found " + e)
           // todo ban the IP
-          Msg2("Please check your email in the next few minutes! <br><small>Take a look at the junk folders if you don't see it in the inbox!</small>")
+          Msg("Please check your email in the next few minutes! <br><small>Take a look at the junk folders if you don't see it in the inbox!</small>")
         }
     })
   }
@@ -299,7 +299,7 @@ class ProfileUpd @Inject() (config:Configuration) extends RazController with Log
         views.html.user.doeProfilePassForgot2(chgpassform.fill("", "", "", SecLink("chgpassform").token), id)
       }) getOrElse {
       Audit.logdb("ERR_USER_RESET_PWD", stok.errCollector.mkString)
-      Msg2("Link expired!")
+      Msg("Link expired!")
     }
   }
 
@@ -320,7 +320,7 @@ class ProfileUpd @Inject() (config:Configuration) extends RazController with Log
               // todo use email template
               mailSession.send(au.emailDec, Config.SUPPORT, "Password was changed", "Your password was changed!")
             }
-              Msg2("Ok, password changed! Please login.")
+              Msg("Ok, password changed! Please login.")
             }) getOrElse {
             verror("ERR_CANT_UPDATE_USER_PASSWORD ")
             unauthorized("Oops - cannot update this user [ERR_CANT_UPDATE_USER_PASSWORD]... ")

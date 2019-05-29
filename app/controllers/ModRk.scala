@@ -117,7 +117,7 @@ object ModRk extends RazController with Logging {
       ROK.k noLayout {
         views.html.modules.doeModRkRegs(request.au.get, page, ModRkReg(page.wid), regd, rks)
       }
-    }) getOrElse Msg2("CAN'T see Registrations " + errCollector.mkString)
+    }) getOrElse Msg("CAN'T see Registrations " + errCollector.mkString)
   }
 
   //post

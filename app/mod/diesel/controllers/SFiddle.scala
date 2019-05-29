@@ -391,7 +391,7 @@ object SFiddles extends SFiddleBase with Logging {
     //    Some(1).filter(x=>(au hasPerm Perm.codeMaster) || (au hasPerm Perm.adminDb)).fold(
 
     lform.bindFromRequest.fold(
-    formWithErrors => Msg2(formWithErrors.toString + "Oops! some error"), {
+    formWithErrors => Msg(formWithErrors.toString + "Oops! some error"), {
       case (hh, g, c, j) =>
         var res = processDsl(id, g)
 
@@ -420,7 +420,7 @@ object SFiddles extends SFiddleBase with Logging {
   def buildhtml(id: String) = Action { implicit request =>
     lform.bindFromRequest.fold(
     formWithErrors =>
-      Msg2(formWithErrors.toString + "Oops! some error"), {
+      Msg(formWithErrors.toString + "Oops! some error"), {
       case (hh, h, c, j) =>
         xbuildhtml(id, hh, h, c, j)
     })
@@ -473,7 +473,7 @@ $hx
   def playjs(id: String) = Action { implicit request =>
     lform.bindFromRequest.fold(
     formWithErrors =>
-      Msg2(formWithErrors.toString + "Oops! some error"), {
+      Msg(formWithErrors.toString + "Oops! some error"), {
       case (hh, h, c, j) =>
         ROK.r noLayout { implicit stok =>
           views.html.fiddle.playHtmlFiddle("", Map(), (hh, h, c, j))
@@ -497,7 +497,7 @@ $hx
   def jsechof = Action { implicit request =>
     OneForm.bindFromRequest.fold(
     formWithErrors =>
-      Msg2(formWithErrors.toString + "Oops! some error"), {
+      Msg(formWithErrors.toString + "Oops! some error"), {
       case content =>
         Ok(razscr dec content).as("text/html").withHeaders(
           "Content-Security-Policy" -> "unsafe-inline,unsafe-eval",
