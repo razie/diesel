@@ -21,11 +21,12 @@ import razie.db.{RMongo, ROne, RazMongo, UpgradeDb}
 import razie.diesel.dom.{RDomainPlugin, RDomainPlugins, WikiDomain}
 import razie.diesel.engine.{DieselAppContext, RDExt}
 import razie.diesel.ext.Executors
-import razie.hosting.Website
+import razie.hosting.{Website, WikiReactors}
+import razie.tconf.hosting.Reactors
 import razie.wiki.admin.{SecLink, SendEmail}
 import razie.wiki.mods.WikiMods
 import razie.wiki.{EncryptService, Services, WikiConfig}
-import razie.wiki.model.{WikiReactors, WikiUsers}
+import razie.wiki.model.{WikiUsers}
 import razie.wiki.util.AuthService
 import razie.{Log, clog, cout}
 import services.AtomicCounter
@@ -77,7 +78,8 @@ class Module extends AbstractModule {
     RMongo.setInstance(Audit.impl)
     bind(classOf[AuditService]).toInstance(Audit.impl)
 
-    WikiUsers.impl = WikiUsersImpl
+    WikiUsers.setImpl (WikiUsersImpl)
+    Reactors.impl = WikiReactors
 
 //    EncryptService.impl = new admin.CypherEncryptService(secret(), secret())
     EncryptService.impl = new admin.CypherEncryptService("", "") // use default key
