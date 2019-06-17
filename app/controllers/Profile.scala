@@ -455,9 +455,7 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
                 views.html.user.doeConsent(next.getOrElse("/"))
               })
           ).withSession(Services.config.CONNECTED -> Enc.toSession(u.email))
-           .discardingCookies(
-             DiscardingCookie("error")
-           )
+           .discardingCookies(DiscardingCookie("error"))
         } else {
           u.auditLoginFailed(realm)
 
@@ -702,7 +700,9 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
       eaid.isEmpty
     ) {
       // you must have validated this data previously
-      Msg ("Data is invalid, please try again");
+      Msg ("Data is invalid, please try again")
+          .withNewSession
+          .discardingCookies(DiscardingCookie("error"))
     } else if(Users.findUserByEmailDec((e)).isDefined) {
       Users.findUserByEmailDec((e)).map {u=>
         if(! u.realms.contains(stok.realm)) {
@@ -718,7 +718,9 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
         p.update(newp)
       }
 
-      Msg ("User already registered... please proceed to login.");
+      Msg ("User already registered... please proceed to login.")
+        .withNewSession
+          .discardingCookies(DiscardingCookie("error"))
     } else {
       val u = User(
         uniqueUsername(uname(f, l, y)), f.trim, l.trim, y, Enc(e),
@@ -744,6 +746,8 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
       // todo consent
 //      Tasks.msgVerif(u, "", Some(routes.Profile.doeConsent().url))
       Msg2("Registration accepted... please continue to the login page...", Some("/"))
+          .withNewSession
+          .discardingCookies(DiscardingCookie("error"))
       }
   }
 

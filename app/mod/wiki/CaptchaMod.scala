@@ -9,10 +9,9 @@ class CaptchaMod extends WikiMod {
 
   def modProps:Seq[String] = Seq("mod.captcha")
 
-  def isInterested (we:WikiEntry) : Boolean =
-//    we.tags.contains("fiddle") && we.tags.contains("js")
-    we.content.contains("mod.captcha")
   // todo smarter - wiki already parsed, don't look at content, just the contentprops or smth
+  def isInterested (we:WikiEntry) : Boolean =
+    we.content.contains("mod.captcha")
 
   /** modify a prop - during parsing, if you recognize this property, you can transform its value
     *
@@ -20,9 +19,6 @@ class CaptchaMod extends WikiMod {
     * the on.snow modules for mod.book
     */
   override def modProp (prop:String, value:String, we:Option[WikiEntry]) : String = {
-
-//  override def modPostHtml (we:WikiEntry, html:String) : String = {
-//    html.replaceAllLiterally("mod.captcha",
     s"""
        |<script type="text/javascript">
        |  var onloadCallback = function() {
@@ -39,6 +35,5 @@ class CaptchaMod extends WikiMod {
        |</script>
     """.stripMargin
     // todo share code with recaptcha.scala.html
-//  )
   }
 }
