@@ -24,10 +24,34 @@ import scala.concurrent.Future
 //@Singleton
 object AdminDiff extends AdminBase {
 
-  case class WEAbstract(id: String, cat: String, name: String, realm: String, ver: Int, updDtm: DateTime, hash: Int, tags: String) {
-    def this(we: WikiEntry) = this(we._id.toString, we.category, we.name, we.realm, we.ver, we.updDtm, we.content.hashCode, we.tags.mkString)
+  /** metadata about a we */
+  case class WEAbstract(id: String, cat: String, name: String, realm: String, ver: Int, updDtm: DateTime, hash: Int, tags: String, drafts:Int) {
 
-    def j = js.tojson(Map("id" -> id, "cat" -> cat, "name" -> name, "realm" -> realm, "ver" -> ver.toString, "updDtm" -> updDtm, "hash" -> hash.toString, "tags" -> tags))
+    def this(we: WikiEntry) = this(
+      we._id.toString,
+      we.category,
+      we.name,
+      we.realm,
+      we.ver,
+      we.updDtm,
+      we.content.hashCode,
+      we.tags.mkString,
+      Autosave.allDrafts(we.wid).toList.size
+    )
+
+    def this(x: Map[String, String]) = this(
+      x("id"),
+      x("cat"),
+      x("name"),
+      x("realm"),
+      x("ver").toInt,
+      new DateTime(x("updDtm")),
+      x("hash").toInt,
+      x("tags"),
+      x("drafts").toInt
+    )
+
+    def j = js.tojson(Map("id" -> id, "cat" -> cat, "name" -> name, "realm" -> realm, "ver" -> ver.toString, "updDtm" -> updDtm, "hash" -> hash.toString, "tags" -> tags, "drafts" -> drafts.toString))
   }
 
   def wput(reactor: String) = FAD { implicit au =>
@@ -212,8 +236,7 @@ object AdminDiff extends AdminBase {
         case m: Map[_, _] => {
           try {
             val x = m.asInstanceOf[Map[String, String]]
-            WEAbstract(x("id"), x("cat"), x("name"), x("realm"), x("ver").toInt, new DateTime(x("updDtm")),
-              x("hash").toInt, x("tags"))
+            new WEAbstract(x)
           } catch {
             case e : Throwable =>
               error("Can't parse from remote: "+m.mkString, e)
@@ -352,7 +375,7 @@ object AdminDiff extends AdminBase {
     var ldest = js.fromArray(gd).collect {
       case m: Map[_, _] => {
         val x = m.asInstanceOf[Map[String, String]]
-        WEAbstract(x("id"), x("cat"), x("name"), x("realm"), x("ver").toInt, new DateTime(x("updDtm")), x("hash").toInt, x("tags"))
+        new WEAbstract(x)
       }
     }.map(wea => WID(wea.cat, wea.name).r(wea.realm)).toList
     cdebug << s"remoteWids $realm: \n  " + ldest.mkString("\n  ")
