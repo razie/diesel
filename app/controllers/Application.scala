@@ -9,11 +9,10 @@ import play.api.mvc.Action
 import razie.audit.Audit
 import razie.db.{RMany, ROne}
 import razie.db.RazMongo.RazMongoTable
-import razie.hosting.{BannedIps, RkReactors, Website}
+import razie.hosting.{BannedIps, RkReactors, Website, WikiReactors}
 import razie.wiki.Sec._
 import razie.wiki.model._
 import razie.wiki.{Enc, Services}
-
 import scala.concurrent.Future
 import scala.util.Try
 

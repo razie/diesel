@@ -5,6 +5,7 @@ import com.mongodb.casbah.Imports._
 import org.bson.types.ObjectId
 import razie.audit.Audit
 import razie.db.RazMongo
+import razie.hosting.WikiReactors
 import razie.wiki.model._
 
 /** admin the mongo db directly */

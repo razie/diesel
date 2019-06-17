@@ -5,7 +5,8 @@ edit a wiki page
 @(wid:razie.wiki.model.WID,
     q:Map[String,String],
     myForm:Form[controllers.Wikie.EditWiki])(implicit stok: controllers.StateOk)
-@import razie.wiki.model.{Wikis, WID, WikiEntry, WikiReactors}
+@import razie.wiki.model.{Wikis, WID, WikiEntry}
+@import razie.hosting.{WikiReactors}
 
 @stok.requireJs(false)
 

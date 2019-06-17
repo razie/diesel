@@ -23,7 +23,7 @@ import razie.cout
 import razie.db.RazSalatContext.ctx
 import razie.db.{REntity, RMany, ROne, RazMongo, _}
 import razie.diesel.dom.WikiDomain
-import razie.hosting.Website
+import razie.hosting.{Website, WikiReactors}
 import razie.wiki.Sec.EncryptedS
 import razie.wiki.admin._
 import razie.wiki.model.Visibility._

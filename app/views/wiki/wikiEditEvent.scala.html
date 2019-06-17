@@ -5,7 +5,7 @@ edit a wiki page
 @(wid:razie.wiki.model.WID, myForm:Form[controllers.Wikie.EditWiki], hasDraft:Boolean = false, noshow:String="")(implicit stok: controllers.StateOk)
 @import razie.hosting.Website.realm
 @import razie.wiki.model.{Wikis, WID, WikiEntry}
-@import razie.wiki.model.WikiReactors
+@import razie.hosting.WikiReactors
 
 @stok.title("Editing event "+wid.cat+":"+ wid.name)
 

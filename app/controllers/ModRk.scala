@@ -69,6 +69,7 @@ case class ModRkEntry
     case None => role
     case Some(ModRk.STATE_PAID) => role
     case Some(ModRk.STATE_INCART) => """<a href="/doe/cart" class="btn btn-warning">In shopping cart</a>"""
+    case _ => throw new IllegalArgumentException("no match for: "+state)
   }
 
   // optimize access to User object

@@ -24,7 +24,7 @@ import razie.diesel.engine.RDExt._
 import razie.diesel.engine._
 import razie.diesel.ext.{EnginePrep, _}
 import razie.diesel.utils.{DomCollector, SpecCache}
-import razie.hosting.Website
+import razie.hosting.{Website, WikiReactors}
 import razie.tconf.DTemplate
 import razie.wiki.admin.Autosave
 import razie.wiki.model._
@@ -403,7 +403,7 @@ Guardian report<a href="/wiki/Guardian_Guide" ><sup><span class="glyphicon glyph
   /** run another check all reactors */
   def runCheckAll = Filter(adminUser).async { implicit stok =>
     if (DomGuardian.ISENABLED) Future.sequence(
-      WikiReactors.allReactors.keys.map { k =>
+       WikiReactors.allReactors.keys.map { k =>
         if (DomGuardian.enabled(k)) startCheck(k, stok.au)
         else Future.successful(DomGuardian.EMPTY_REPORT)
       }

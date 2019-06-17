@@ -2,7 +2,6 @@ package controllers
 
 import java.lang.management.{ManagementFactory, OperatingSystemMXBean}
 import java.lang.reflect.Modifier
-
 import com.google.inject.Singleton
 import com.mongodb.casbah.Imports.DBObject
 import com.novus.salat.grater
@@ -14,7 +13,7 @@ import play.api.mvc.Action
 import razie.audit.Audit
 import razie.db.RazMongo
 import razie.db.RazSalatContext.ctx
-import razie.hosting.Website
+import razie.hosting.{Website, WikiReactors}
 import razie.wiki.Services
 import razie.wiki.admin.{GlobalData, SendEmail}
 import razie.wiki.model._

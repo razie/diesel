@@ -11,7 +11,7 @@ import razie.diesel.dom.WikiDomain
 import razie.wiki.Sec._
 import razie.wiki.model._
 import razie.wiki.model.features.WForm
-
+import razie.hosting.WikiReactors
 import scala.Option.option2Iterable
 
 case class RoleWid(role: String, wid: WID)

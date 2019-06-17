@@ -253,7 +253,7 @@ require(['jquery'], function($){
   stok.au.toList
   .flatMap(x => x.memberReactors)
   .filter(x=> !Array("wiki","specs").contains(x))
-  .filter(x=> razie.wiki.model.WikiReactors.allLowercase.contains(x))
+  .filter(x=> razie.hosting.WikiReactors.allLowercase.contains(x))
   // last one is because in localhost mode, not all my reactors are here...
   // todo optimize this somehow?
 }
