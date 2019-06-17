@@ -209,7 +209,7 @@ useLocalStorageCheckbox("wikiMode", "domFiddleWikiMode");
 useLocalStorageCheckbox("realTime", "domFiddleRealTime");
 
 $('#sketchMode, #mockMode, #blenderMode, #draftMode, #realTime').change(function(){
-  runpill2_@{id}('@{id}');
+  runpill2_@{id}('@{id}', false);
 });
 
 var simMode = function () { return ! $('#realTime').prop('checked');}
@@ -241,7 +241,7 @@ function startESP() {
 
   setTimeout(function(){
     // populate/update the ESP screen
-    runpill2_@{id}('@{id}');
+    runpill2_@{id}('@{id}', false);
   }, 500);
 }
 
@@ -261,7 +261,7 @@ function showSpinner() {
 };
 
 function refresher() {
-  runpill2_@{id}('@{id}');
+  runpill2_@{id}('@{id}', false);
 };
 
 function showHelp() {
@@ -282,7 +282,7 @@ showHideIframe();
 
 $('#wikiMode').change(function(){
   showHideIframe();
-  runpill2_@{id}('@{id}');
+  runpill2_@{id}('@{id}', false);
 });
 
 var domContentAssist=[];
@@ -340,7 +340,7 @@ var runpill_@id = function(id) {
       console.log("MARK spec");
 
       // also trigger inst update
-      runpill2_@{id}('@{id}');
+      runpill2_@{id}('@{id}', false);
     },
     error  : function(x) {
       isRefreshing -= 1;
@@ -373,7 +373,7 @@ var encAmp = function(s) {
       .replace(/&gt;/g, '〉');
 }
 
-var runpill2_@id = function(id) {
+var runpill2_@id = function(id,compileOnly, next) {
   isRefreshing2 += 1;
   showSpinner();
   console.log("run isRefreshing2="+isRefreshing2);
@@ -391,72 +391,80 @@ var runpill2_@id = function(id) {
   var lastTime = new Date().getTime();
 
   $.ajax(
-    '/diesel/fiddle/fiddleStoryUpdated/'+id+'?@Html(mod.diesel.controllers.SFiddles.qtourl(args))', {
-    type: 'POST',
-    data: $.param({
-      saveMode : true,
-      sketchMode : $('#sketchMode').prop('checked'),
-      mockMode : $('#mockMode').prop('checked'),
-      blenderMode : $('#blenderMode').prop('checked'),
-      draftMode : $('#draftMode').prop('checked'),
-      reactor : '@reactor',
-      specWpath : specWpath,
-      storyWpath : storyWpath,
-      spec : specEditor.getValue(),
-      story : storyEditor.getValue(),
-      capture : editor5.getValue(),
-      simMode : simMode(),
-      runEngine : ! $('#wikiMode').prop('checked')
-    }),
-    contentType: 'application/x-www-form-urlencoded',
-    success: function(data) {
-      isRefreshing2 -= 1;
-      hideSpinner();
+      '/diesel/fiddle/fiddleStoryUpdated/'+id+'?@Html(mod.diesel.controllers.SFiddles.qtourl(args))', {
+        type: 'POST',
+        data: $.param({
+          saveMode : true,
+          sketchMode : $('#sketchMode').prop('checked'),
+          mockMode : $('#mockMode').prop('checked'),
+          blenderMode : $('#blenderMode').prop('checked'),
+          draftMode : $('#draftMode').prop('checked'),
+          reactor : '@reactor',
+          specWpath : specWpath,
+          storyWpath : storyWpath,
+          spec : specEditor.getValue(),
+          story : storyEditor.getValue(),
+          capture : editor5.getValue(),
+          simMode : simMode(),
+          compileOnly : compileOnly,
+          runEngine : ! $('#wikiMode').prop('checked')
+        }),
+        contentType: 'application/x-www-form-urlencoded',
+        success: function(data) {
+          isRefreshing2 -= 1;
+          hideSpinner();
 
-      if($('#wikiMode').prop('checked'))
-        $('#divOut3_'+id).html(data.wiki);
-      else {
-        // console.log("TREE: "+data.res);
+          if($('#wikiMode').prop('checked'))
+            $('#divOut3_'+id).html(data.wiki);
+          else if(!compileOnly) {
+            // console.log("TREE: "+data.res);
 
-        // jquery.html will expan the escaped html, we need to escape again with encAmp
-        // if i don't do this, html values will mess up the current page
-        // if(! data.simMode) { // was not executed
-          $('#iframeOut3_' + id).html(encAmp(data.res) + '\n');
-          $('#iframeOutSpec_' + id).html(encAmp(data.res) + '\n');
-        hideTrace($('#traceStory').prop('checked'));
-          hideDebug($('#debugStory').prop('checked'));
-          hideGenerated($('#generatedStory').prop('checked'));
-        // }
-      }
-      $('#iframeOut5_'+id).html(data.capture);
-      instContentAssist = data.ca;
-      setErrors(data.failureCount, data.errorCount, data.totalCount);
-      var du = new Date().getTime() - lastTime;
-      $('#roundtrip').text(du+' ms');
+            // jquery.html will expan the escaped html, we need to escape again with encAmp
+            // if i don't do this, html values will mess up the current page
+            // if(! data.simMode) { // was not executed
+            $('#iframeOut3_' + id).html(encAmp(data.res) + '\n');
+            $('#iframeOutSpec_' + id).html(encAmp(data.res) + '\n');
+            hideTrace($('#traceStory').prop('checked'));
+            hideDebug($('#debugStory').prop('checked'));
+            hideGenerated($('#generatedStory').prop('checked'));
+            // }
+          }
 
-      if(storyEditor) updateMarkers(storyEditor, data.ast);
-      console.log("MARK story");
+          if(!compileOnly) {
+            $('#iframeOut5_' + id).html(data.capture);
+            instContentAssist = data.ca;
+            setErrors(data.failureCount, data.errorCount, data.totalCount);
+            var du = new Date().getTime() - lastTime;
+            $('#roundtrip').text(du + ' ms');
 
-      // automatic backoff
-      if(du > 7000)
-        currDebounce = 7000;
-      else if(du > 5000)
-        currDebounce = 7000;
-      else if(du > 2000)
-        currDebounce = 5000;
-      else
-        currDebounce = 2000;
+            // automatic backoff
+            if(du > 9000)
+              currDebounce = 7000;
+            else if(du > 7000)
+              currDebounce = 5000;
+            else if(du > 2000)
+              currDebounce = 3000;
+            else
+              currDebounce = 2000;
+          }
 
-      curDomRequest = null;
-      storyChanged(data.storyChanged);
-    },
-    error  : function(x) {
-      isRefreshing2 -= 1;
-      hideSpinner();
-      console.log( "ERR "+x.toString());
-      curDomRequest = null;
-    }
-  });
+          if(storyEditor) updateMarkers(storyEditor, data.ast);
+          console.log("MARK story");
+
+          curDomRequest = null;
+          storyChanged(data.storyChanged);
+
+          if(typeof next === "function") {
+            next();
+          }
+        },
+        error  : function(x) {
+          isRefreshing2 -= 1;
+          hideSpinner();
+          console.log( "ERR "+x.toString());
+          curDomRequest = null;
+        }
+      });
 }
 
 </script>
@@ -476,7 +484,7 @@ var runpill2_@id = function(id) {
 
 <script>
 
-var domChanged=true;        // this triggers the first fiddle update
+var domChanged=true;        // true triggers the first fiddle update
 var instChanged=false;      //
 var captureChanged=false;
 
@@ -484,7 +492,7 @@ var captureChanged=false;
 var CUR_TYPING_MAX=1000;
 
 // last time runpill updated
-var lastUpdateMillis = Date.now() - 50000; // to make it refresh the first time
+var lastUpdateMillis = Date.now() - 50000; // -5k to make it refresh the first time
 // last time content changed
 var lastChangeMillis = Date.now() - 50000;
 
@@ -633,18 +641,25 @@ setInterval(function(){
   }
 
   // if changed and last updated a while ago, refresh
-  if((domChanged || captureChanged) && curMillis - lastUpdateMillis > currDebounce) {
+  if((domChanged || captureChanged) && curMillis - lastChangeMillis > currDebounce) {
+    console.log("UPDATING " + curMillis + " - " + lastChangeMillis + " = " + (curMillis - lastChangeMillis))
     domChanged=false; captureChanged=false;
-    lastUpdateMillis = curMillis;
+    lastChangeMillis = curMillis;
     runpill_@{id}('@{id}');
     }
 
   // if changed and last updated a while ago, refresh
-  if(instChanged && curMillis - lastUpdateMillis > currDebounce) {
+  if(instChanged && curMillis - lastChangeMillis > currDebounce) {
+    console.log("UPDATING " + curMillis + " - " + lastChangeMillis + " = " + (curMillis - lastChangeMillis))
     instChanged=false;
-    lastUpdateMillis = curMillis;
-    runpill2_@{id}('@{id}');
-    }
+    lastChangeMillis = curMillis;
+
+    // todo this needs optimized somehow - likely start the second one and just get it
+    //  in the second call, since the parsing was done
+    runpill2_@{id}('@{id}', true, function() {
+      runpill2_@{id}('@{id}', false);
+    });
+  }
 },500);
 
 </script>

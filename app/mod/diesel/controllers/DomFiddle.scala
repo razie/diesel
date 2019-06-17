@@ -262,6 +262,8 @@ object DomFiddles extends DomApi with Logging with WikiAuthorization {
     val story = stok.formParm("story")
     val capture = stok.formParm("capture")
     val runEngine = stok.formParm("runEngine").toBoolean
+    val scompileOnly = stok.formParm("compileOnly")
+    val compileOnly = scompileOnly != "" && scompileOnly.toBoolean
 
     val uid = stok.au.map(_._id).getOrElse(NOUSER)
 
@@ -357,16 +359,16 @@ object DomFiddles extends DomApi with Logging with WikiAuthorization {
         // don't process or wait
 //        Future.successful(engine)
 //      } else {
-          if(! runEngine) {
+          if(compileOnly || !runEngine) {
 //     don't process or wait
             Future.successful(engine)
           } else {
-        if (capture startsWith "{") {
-          engine.processTests
-        } else {
-          engine.process
-        }
-      }
+            if (capture startsWith "{") {
+              engine.processTests
+            } else {
+              engine.process
+            }
+          }
 
     fut.map {engine =>
       res += engine.root.toHtml

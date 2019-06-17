@@ -7,7 +7,7 @@ import razie.diesel.utils.DomHtml.quickBadge
 import mod.diesel.controllers.DomSessions.Over
 import mod.diesel.guard.DomGuardian
 import mod.diesel.model._
-import mod.diesel.model.exec.EESnakk
+import mod.diesel.model.exec.{EECtx, EESnakk}
 import model._
 import org.apache.xml.serialize.LineSeparator
 import org.bson.types.ObjectId
@@ -18,6 +18,7 @@ import play.twirl.api.Html
 import razie.audit.Audit
 import razie.diesel.dom.RDOM.{NVP, P}
 import razie.diesel.dom._
+import razie.diesel.engine.DomEngineSettings.DIESEL_USER_ID
 import razie.diesel.engine.RDExt._
 import razie.diesel.engine._
 import razie.diesel.ext.{EnginePrep, _}
@@ -285,8 +286,12 @@ class DomApi extends DomApiBase  with Logging {
         body = engine.settings.postedContent.map(_.body).mkString,
         content = engine.settings.postedContent,
         stok.req.contentType)
-       .map (msg=> if(matchedParms.isDefined) msg.copy(attrs = msg.attrs ::: matchedParms.get.toList.map(t=>P(t._1, t._2))) else msg)
-      // added matched parms
+       .map (msg=>
+         // add matched parms
+           // todo why map matched parms and not keep type/value what abt numbers, escaped json etc?
+         if(matchedParms.isDefined) msg.copy(attrs = msg.attrs ::: matchedParms.get.toList.map(t=>P(t._1, t._2)))
+         else msg
+       )
 
       val xx = stok.qhParm("X-Api-Key").mkString
       def needsApiKey = xapikey.isDefined
@@ -304,6 +309,8 @@ class DomApi extends DomApiBase  with Logging {
         isTrusted ||
         needsApiKey && isApiKeyGood
       ) {
+
+        setApiKeyUser(needsApiKey, isApiKeyGood, website, engine)
 
         msg.map { msg =>
           EnginePrep.addMsgToAst(engine.root, msg)
@@ -465,6 +472,7 @@ class DomApi extends DomApiBase  with Logging {
   def runRest(path: String, verb:String, mock:Boolean, imsg:Option[EMsg] = None, custom:Option[DomEngine => DomEngine] = None) : Action[RawBuffer] = Action(parse.raw) { implicit request =>
     implicit val stok = razRequest
 
+    // not always the same as the request...
     val reactor = stok.website.dieselReactor
     val website = Website.forRealm(reactor).getOrElse(stok.website)
     val xapikey = website.prop("diesel.xapikey")
@@ -488,7 +496,7 @@ class DomApi extends DomApiBase  with Logging {
 
       val raw = request.body.asBytes()
       val body = raw.map(a => new String(a)).getOrElse("")
-      val content = Some(new EContent(body, stok.req.contentType.mkString, Map.empty, None, raw))
+      val content = Some(new EContent(body, stok.req.contentType.mkString, 200, Map.empty, None, raw))
 
       // todo sort out this mess
       val settings = DomEngineHelper.settingsFromRequestHeader(stok.req, content).copy(realm=Some(reactor))
@@ -554,7 +562,12 @@ class DomApi extends DomApiBase  with Logging {
       // incoming message
       // first templates already matched, then imsg (diesel.rest) else e.a
       val msg : Option[EMsg] = (trequest.flatMap(_ => findIt) orElse imsg orElse findIt)
-          .map (msg=> if(matchedParms.isDefined) msg.copy(attrs = msg.attrs ::: matchedParms.get.toList.map(t=>P(t._1, t._2))) else msg)
+          .map (msg=>
+            // add matched parms
+            // todo why map matched parms and not keep type/value what abt numbers, escaped json etc?
+            if(matchedParms.isDefined) msg.copy(attrs = msg.attrs ::: matchedParms.get.toList.map(t=>P(t._1, t._2)))
+            else msg
+          )
 
       if(msg.isDefined && !msg.exists(_.spec.isDefined)) {
         // try to find a spec
@@ -563,6 +576,12 @@ class DomApi extends DomApiBase  with Logging {
 
       cdebug << s"Message found: $msg xapikey=$xapikey"
 
+      val xx = stok.qhParm("X-Api-Key").mkString
+      def needsApiKey = xapikey.isDefined
+      def isApiKeyGood = xapikey.isDefined && xapikey.exists { x =>
+        x.length > 0 && x == xx
+      }
+
       // is message visible?
       if (msg.isDefined && !isMsgVisible(msg.get, reactor, website)) {
         info(s"Unauthorized msg access [runrest] (diesel.visibility:${stok.website.dieselVisiblity}, ${stok.au.map(_.ename).mkString})")
@@ -570,9 +589,8 @@ class DomApi extends DomApiBase  with Logging {
         Unauthorized(s"Unauthorized msg access [runrest] (diesel.visibility:${stok.website.dieselVisiblity}, ${stok.au.map(_.ename).mkString})")
       } else if (
         !isMemberOrTrusted(msg, reactor, website) &&
-        xapikey.isDefined && xapikey.exists { x =>
-          x.length > 0 && x != stok.qhParm("X-Api-Key").mkString
-        }
+        needsApiKey &&
+        isApiKeyGood
         ) {
         // good security keys for non-members (devs if logged in don't need security)
           info(s"Unauthorized msg access [runrest] (key, dieselTrust)")
@@ -580,6 +598,8 @@ class DomApi extends DomApiBase  with Logging {
           Unauthorized(s"Unauthorized msg access [runrest] (key, dieselTrust)").withHeaders(
           )
       } else msg.map {msg=>
+
+        setApiKeyUser(needsApiKey, isApiKeyGood, website, engine)
 
         EnginePrep.addMsgToAst(engine.root, msg)
         DomCollector.collectAst("runRest", stok.realm, engine.id, stok.au.map(_.id), engine, stok.uri)
@@ -646,7 +666,7 @@ class DomApi extends DomApiBase  with Logging {
                     case x : Array[Byte] =>
                       response = Some(Ok(x).as(ctype))
                     case _ =>
-                      response = Some(Ok(p.value.get.value.toString).as(ctype))
+                      response = Some(Ok(p.value.get.asString).as(ctype))
                   }
 
                   ""
@@ -707,8 +727,8 @@ class DomApi extends DomApiBase  with Logging {
       verb,
       true,
       Some(EMsg("diesel", "rest", List(
-        P("path", path),
-        P("verb", verb)
+        P.fromTypedValue("path", path),
+        P.fromTypedValue("verb", verb)
       )))
     )
   }
@@ -913,7 +933,7 @@ class DomApi extends DomApiBase  with Logging {
 
         val urlParms = sc.parseUrl(u, path, inSpec, incomingMetas)
 
-        // merge but not overwrite not empty values
+        /** merge but not overwrite not empty values */
         def mergeMaps (a:Map[_ <: String,String], b:Map[String,String]) = {
           (a.toSeq ++ b.toSeq).groupBy(_._1).map (t => t._1 -> t._2.find(_._2 != "").map(_._2).getOrElse(""))
         }
@@ -927,6 +947,7 @@ class DomApi extends DomApiBase  with Logging {
         ctrace << "PARSED incoming PARMS: " + parms.mkString
 
         // add parms to context, so they're available to all inside
+        // todo how to handle typed numbers and json parms?
         parms.map(p => engine.ctx.put(P(p._1, p._2)))
         Some(new EMsg(e, a, parms.map(p => P(p._1, p._2)).toList))
       } catch {
@@ -985,6 +1006,7 @@ class DomApi extends DomApiBase  with Logging {
         }
 
         val parms = pQuery ++ pPost ++ DomEngineHelper.parmsFromRequestHeader(stok.req, content)
+        // todo how to handle typed numbers and jsong and other parms?
         parms.map(p => engine.ctx.put(P(p._1, p._2)))
         Some(new EMsg(e, a, parms.map(p => P(p._1, p._2)).toList))
       } else None
@@ -1014,6 +1036,14 @@ class DomApi extends DomApiBase  with Logging {
         m.exists(_.isPublic) &&
           u.hasRealm(stok.realm) && website.dieselTrust.contains(stok.realm)
       )
+  }
+
+  def setApiKeyUser (needsApiKey:Boolean, isApiKeyGood:Boolean, website:Website, engine:DomEngine)(implicit stok:RazRequest) = {
+    if(stok.au.isEmpty && engine.settings.userId.isEmpty && needsApiKey && isApiKeyGood) {
+      // no user in request, but xapikey passed - set the default test user
+      (new EECtx).setAuthUser(engine.ctx)
+      engine.settings.userId = engine.ctx.get(DIESEL_USER_ID)
+    }
   }
 
   /** can user execute message */
