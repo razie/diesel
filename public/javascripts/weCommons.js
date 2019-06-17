@@ -229,7 +229,7 @@ function weMsg(ea,p,next) {
  */
 function weMsgPopup(ea,p) {
   return iweMsg(ea.replace(/(.+)\.([^.]+)$/, "$1/$2"), p, 'value',
-    function(data){alert(data);});
+    function(data){alert(JSON.stringify(data));});
 }
 
 /** run message in background

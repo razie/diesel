@@ -69,6 +69,7 @@ object DomEngineHelper {
           Some(new EContent(
             raw.map(a => new String(a) ).getOrElse(""),
             request.contentType.mkString,
+            200,
             request.headers.toSimpleMap,
             None,
             raw))

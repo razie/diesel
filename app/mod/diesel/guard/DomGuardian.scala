@@ -3,6 +3,7 @@ package mod.diesel.guard
 import java.util.concurrent.TimeUnit
 import admin.Config
 import akka.actor.{Actor, Cancellable, Props}
+import api.dwix
 import controllers.RazRequest
 import java.net.InetAddress
 import model.{User, Users}
@@ -11,7 +12,7 @@ import org.joda.time.DateTime
 import play.libs.Akka
 import razie.{Logging, Snakk}
 import razie.diesel.dom.SimpleECtx
-import razie.diesel.engine.{DomEngine, DomEngineSettings}
+import razie.diesel.engine.{DomEngECtx, DomEngine, DomEngineSettings}
 import razie.diesel.ext.EnginePrep
 import razie.diesel.model.{DieselMsg, DieselTarget}
 import razie.diesel.utils.DomCollector
@@ -43,7 +44,7 @@ object DomGuardian extends Logging {
 
   def ISAUTO = Config.prop("diesel.guardian.auto", "true").toBoolean
 
-  def ISENABLED = false && Config.prop("diesel.guardian.enabled", "true").toBoolean
+  def ISENABLED = Config.prop("diesel.guardian.enabled", "true").toBoolean
 
   def enabled(realm: String) = ISENABLED && {
     realm match {
@@ -74,18 +75,12 @@ object DomGuardian extends Logging {
   def startCheck(realm: String, au: Option[User]): Future[Report] = {
     if (!DomGuardian.init) {
 
+      // first time, init the guardian
+
       if (enabled(realm) && onAuto(realm)) {
         // listen to topic changes and re-run
         WikiObservers mini {
-          case ev@WikiEvent(
-          action,
-          "WikiEntry",
-          _,
-          entity,
-          oldEntity,
-          _,
-          _
-          ) => {
+          case ev@WikiEvent( action, "WikiEntry", _, entity, oldEntity, _, _ ) => {
             val wid = WID.fromPath(ev.id).get
             val oldWid = ev.oldId.flatMap(WID.fromPath)
 
@@ -95,15 +90,18 @@ object DomGuardian extends Logging {
                   we.category == "Spec" || we.tags.contains("spec")) {
 
                 // re run all tests for current realm
+
                 // todo also cancel existing workflows
+
+                // todo optimize to rnu just the one story if only one changed and replace it in reports
+                // that may require story dependencies etc
+
                 if (enabled(realm) && onAuto(realm))
                   DomGuardian.lastRuns
                       .filter(_._2.realm == we.realm)
                       .headOption
                       .map { t =>
-                        val re = "(\\w*)\\.(\\w*)".r
-                        val re(realm, uname) = t._1
-                        startCheck(t._2.realm, Users.findUserByUsername(uname))
+                        startCheck(t._2.realm, Users.findUserByUsername(t._2.userName))
                       }
               }
             }
@@ -141,9 +139,11 @@ object DomGuardian extends Logging {
   case class RunReq(au: Option[User],
                     userName: String,
                     realm: String,
-                    env: String,
+                    ienv: String,
                     auto:Boolean = false, // autos will send emails
                     when: DateTime = DateTime.now()) {
+
+    def env = if (ienv.nonEmpty) ienv else dwix.dieselEnvFor(realm, au)
 
     def key = realm + "." + env + "." + userName
 

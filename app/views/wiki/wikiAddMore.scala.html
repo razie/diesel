@@ -4,7 +4,8 @@ fragment: add more stuff to the current topic, including children, sub-topics et
 @(wid:razie.wiki.model.WID, page:Option[razie.wiki.model.WikiEntry])(implicit stok: controllers.StateOk)
 @import controllers.IgnoreErrors
 
-@import razie.wiki.model.{Perm, WID, Wikis, WikiEntry, WikiReactors}
+@import razie.wiki.model.{Perm, WID, Wikis, WikiEntry}
+@import razie.hosting.{WikiReactors}
 @import razie.diesel.dom.WikiDomain
 
 @getRealm()=@{stok.realm /*wid.getRealm*/ }
@@ -103,7 +104,8 @@ fragment: add more stuff to the current topic, including children, sub-topics et
   @** not a category - regular page, find possible children **@
   <!-- list of child pages -->
   @allassocs(wid).distinct.map {child=>
-    @if(page.isDefined && controllers.Wiki.canEdit(wid, stok.au, page)(IgnoreErrors)) {
+      @** todo remove the hardcoded check for User - should only appear if this cat owns child *@
+    @if(wid.cat != "User" && page.isDefined && controllers.Wiki.canEdit(wid, stok.au, page)(IgnoreErrors)) {
       @helper.form(action=routes.Wikie.addLinked(child,wid,"Child"), 'class->"form-inline") {
         <div id="cr@child" class="alert alert-success">
             <label>@createLabel(child)</label>

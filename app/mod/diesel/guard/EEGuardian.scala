@@ -19,10 +19,10 @@ import razie.hosting.Website
 /** guardian actions */
 class EEGuardian extends EExecutor("diesel.guardian") with Logging {
 
-  final val DG = "diesel.guardian"
+  final val DG = DieselMsg.GUARDIAN.ENTITY
 
   override def test(m: EMsg, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) = {
-    m.entity startsWith DG
+    m.entity.startsWith(DG)
   }
 
   override def apply(in: EMsg, destSpec: Option[EMsg])(implicit ctx: ECtx): List[Any] = synchronized {
@@ -34,7 +34,7 @@ class EEGuardian extends EExecutor("diesel.guardian") with Logging {
           ctx.root.settings.realm.get,
           ctx.get("env").get
         )
-        EVal(P("payload", res)) :: Nil
+        EVal(P.fromTypedValue("payload", res)) :: Nil
       }
 
       case "starts" => { // avoid error if not ruled
@@ -84,7 +84,8 @@ class EEGuardian extends EExecutor("diesel.guardian") with Logging {
           } else {
             newStatus = "Success"
             // only send notification if it failed last time
-            val mList = if(oldStatus == "Fail") m :: Nil else Nil
+            // or send them every time it detects a change, even if successful, to have a record of it having run?
+            val mList = if(true || oldStatus == "Fail") m :: Nil else Nil
             EInfo(s"Guardian - success ${engine.id} count: ${engine.failedTestCount}") ::
                 mList
           }
@@ -139,6 +140,11 @@ class EEGuardian extends EExecutor("diesel.guardian") with Logging {
         ???
       }
 
+      case DieselMsg.GUARDIAN.NOTIFY => {
+        // default sink for notify, if user didn't confg something
+        Nil
+      }
+
       case s@_ => {
         new EError(s"$DG.$s - unknown activity ") :: Nil
       }
@@ -155,6 +161,7 @@ class EEGuardian extends EExecutor("diesel.guardian") with Logging {
         EMsg(DG, "schedule") ::
         EMsg(DG, "stats") ::
         EMsg(DG, "starts") ::
+        EMsg(DG, DieselMsg.GUARDIAN.NOTIFY) ::
         EMsg(DG, "clear") :: Nil
 }
 
