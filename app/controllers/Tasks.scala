@@ -157,7 +157,7 @@ Please do that soon: it will expire in a few hours, for security reasons.
           date <- (try { Option(DateTime.parse(expiry)) } catch { case _: Throwable => (try { Option(DateTime.parse(expiry1.replaceAll(" ", "+").dec)) } catch { case _: Throwable => None }) }) orErr ("token faked or expired");
           notExpired <- date.isAfterNow orCorr cExpired;
           p <- user orCorr cNoAuth;
-          a <- (if (p.email == ce) Some(true) else None) logging ("ERR neq", p.email, ce) orErr "Not same user";
+          a <- (if (p.email == ce) Some(true) else None) logging ("ERR neq", p.email, ce) orErr "Validation link for a different user than the one logged in!";
           pro <- p.profile orCorr cNoProfile
         ) yield {
           razie.db.tx("verifiedEmail", p.userName) { implicit txn =>

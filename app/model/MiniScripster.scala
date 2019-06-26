@@ -6,7 +6,6 @@
  */
 package model
 
-import api.dwix
 import javax.script.ScriptEngineManager
 import jdk.nashorn.api.scripting.{ClassFilter, NashornScriptEngineFactory}
 import razie.audit.Audit
@@ -34,7 +33,7 @@ object MiniScripster extends Logging {
                        doAudit: Boolean = true) = {
     val wix = api.wix(we, au, q, "")
     val c = new CSTimer("script", "?")
-    c.start()
+    c.start("MiniScripster.newsfiddleMap")
 
     if (lang == "js") {
 

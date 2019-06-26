@@ -33,7 +33,7 @@ create account
           <div class="alert alert-info alert-link" style="margin-bottom: 0px">
             <strong>
             @util.razSelect(myForm, "userType",
-              (if(stok.realm == razie.wiki.model.WikiReactors.NOTES) "Account type"
+              (if(stok.realm == razie.hosting.WikiReactors.NOTES) "Account type"
               else "What type of user are you"),
               razie.hosting.Website.userTypes(stok.request.get).map(x => (x.toString, razie.hosting.Website.userTypeDesc(x.toString)(stok.request.get))))
             </strong>
@@ -61,7 +61,7 @@ create account
             @helper.checkbox(
               myForm("accept"),
               '_text -> Html(
-                if(stok.realm == razie.wiki.model.WikiReactors.NOTES)
+                if(stok.realm == razie.hosting.WikiReactors.NOTES)
                   """I accept the <a href="/wiki/Terms of Service-notes">Terms of Service</a>"""
                 else
                   """I accept the <a href="/wiki/Terms of Service">Terms of Service</a>"""

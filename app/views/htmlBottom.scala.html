@@ -77,6 +77,15 @@
         }
       </td>
       }
+
+      @** if all 3 sections hidden, add something to get a thicker bar... *@
+      @if(web().bottomMenu("More").exists(_._1.trim == "hide") &&
+      web().bottomMenu("Support").exists(_._1.trim == "hide") &&
+      web().bottomMenu("Connect").exists(_._1.trim == "hide")) {
+        <td style="width:200px;vertical-align: top">
+          <br><br><br>
+        </td>
+      }
     </tr>
   </table>
   <div style="height:20px"></div>

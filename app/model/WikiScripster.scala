@@ -6,7 +6,6 @@
  */
 package model
 
-import model.MiniScripster
 import razie.wiki.model.WikiUser
 import razie.wiki.model.WikiEntry
 
