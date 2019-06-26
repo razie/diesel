@@ -264,7 +264,7 @@ class ProfileUpd @Inject() (config:Configuration) extends RazController with Log
               Audit.logdb("RESET_PWD_SENT", "request for " + e)
               Tasks.sendEmailReset(au)
             }
-            Msg("Please check your email!")
+            Msg(MSG_EMAIL)
           } getOrElse {
             Audit.logdb("ERR_RESET_PWD", "email not found " + e)
             Msg("If you don't receive an email shortly, this email is likely not registered - please verify the email or create an account! If you need some help, please send us a note via Support, below!")
@@ -272,10 +272,18 @@ class ProfileUpd @Inject() (config:Configuration) extends RazController with Log
         } getOrElse {
           Audit.logdb("ERR_RESET_PWD", "token not found " + e)
           // todo ban the IP
-          Msg("Please check your email in the next few minutes! <br><small>Take a look at the junk folders if you don't see it in the inbox!</small>")
+          Msg(MSG_EMAIL)
         }
     })
   }
+
+  val MSG_EMAIL= s"""
+Please check your email in the next few minutes and follow the instructions.
+<p>
+<small>Please do that soon: it will expire in a few hours, for security reasons.
+<br>Please check your spam/junk folders as well in the next few minutes.
+</small>
+"""
 
   /** step 2 - user clicked on email link to verify email */
   def doeForgotPass3(expiry:String, id:String) = RAction { implicit stok =>

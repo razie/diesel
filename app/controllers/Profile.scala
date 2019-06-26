@@ -111,6 +111,8 @@ case class CrProfile(firstName: String, lastName: String, company:String, yob: I
 @Singleton
 class Profile @Inject() (config:Configuration) extends RazController with Logging {
 
+  final val INVALID_LOGIN = "Invalid username and/or password"
+
   def registerForm (implicit request : Request[_]) = Form {
     mapping(
       "email" -> nonEmptyText.verifying("Wrong format!", vldEmail(_)).verifying("Invalid characters", vldSpec(_)),
@@ -280,18 +282,20 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
     val g_recaptcha_response = request.formParm("g-recaptcha-response")
     cdebug << "g-recaptcha-response: " + g_recaptcha_response
 
-    if(new Recaptcha(config).verify2(g_recaptcha_response, clientIp)) {
-      clog << "passed recaptch"
-      login(email, pass, "")
-    } else {
-      clog << "reCAPTCHA failed"
-      val loginUrl = request.website.prop("join").getOrElse(routes.Profile.doeJoin().url)
-      Redirect(loginUrl)
-          .withNewSession
-          .withCookies(
-            Cookie("error", "reCAPTCHA failed".encUrl).copy(httpOnly = false)
-          )
-    }
+    login(email, pass, "")
+
+//    if(new Recaptcha(config).verify2(g_recaptcha_response, clientIp)) {
+//      clog << "passed recaptch"
+//      login(email, pass, "")
+//    } else {
+//      clog << "reCAPTCHA failed"
+//      val loginUrl = request.website.prop("join").getOrElse(routes.Profile.doeJoin().url)
+//      Redirect(loginUrl)
+//          .withNewSession
+//          .withCookies(
+//            Cookie("error", "reCAPTCHA failed".encUrl).copy(httpOnly = false)
+//          )
+//    }
   }
 
   // join step 2 with google - link to existing account
@@ -468,14 +472,14 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
                """.stripMargin, Some(Call("GET", loginUrl)))
               .withNewSession
               .withCookies(
-                Cookie("error", "Username or password did not match".encUrl).copy(httpOnly = false)
+                Cookie("error", INVALID_LOGIN.encUrl).copy(httpOnly = false)
               )
           } else {
             // user not ok, try again
             Redirect(loginUrl)
               .withNewSession
               .withCookies(
-                Cookie("error", "Username or password did not match".encUrl).copy(httpOnly = false)
+                Cookie("error", INVALID_LOGIN.encUrl).copy(httpOnly = false)
               )
           }
         }
@@ -490,7 +494,7 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
           Redirect(loginUrl)
             .withNewSession
             .withCookies(
-              Cookie("error", "Username or password did not match".encUrl).copy(httpOnly = false)
+              Cookie("error", INVALID_LOGIN.encUrl).copy(httpOnly = false)
             )
     }
   }
