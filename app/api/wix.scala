@@ -180,7 +180,12 @@ class wix (owe: Option[WikiPage], ou:Option[WikiUser], q:Map[String,String], r:S
           if(ipage.exists(_.included.contains("wix.realm.props"))) {
             // we can't use contentProps in the condition above, because inline expressions can use wix and start recursing
 //            realm.props
-            realm.props.map {t =>
+            realm
+                .props
+                .filter(t=> ! t._1.contains("pwd"))
+                .filter(t=> ! t._1.contains("password"))
+                .filter(t=> ! t._1.contains("secret"))
+                .map {t =>
               val escaped = t._2 //org.json.JSONObject.quote(t._2) //._2.replaceAll("\"", "\\\\\"")
               (t._1, escaped)
             }
