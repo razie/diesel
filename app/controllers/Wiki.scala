@@ -118,6 +118,7 @@ object Wiki extends WikiBase {
     */
   def search(irealm:String, iq: String, scope:String, curTags:String="") = Action { implicit request =>
     var q = iq
+    var allRealms = "all" == irealm // changed below
 
     // if the search start with a realm like ski:something then ignore the irealm
     // todo should check permission or something?
@@ -127,7 +128,9 @@ object Wiki extends WikiBase {
       val r = q.substring(0, cidx)
       q = if(cidx < iq.length-1) iq.substring(cidx+1, q.length) else ""
 
-      val res = if ("all" != r || !auth.exists(_.isAdmin)) getRealm(r) else r
+      allRealms = "all" == r
+
+      val res = if (!allRealms || !auth.exists(_.isAdmin)) getRealm(r) else r
       if(res == Wikis.RK) getRealm(irealm) else res
       } else {
       if ("all" != irealm || !auth.exists(_.isAdmin)) getRealm(irealm) else irealm
@@ -165,11 +168,17 @@ object Wiki extends WikiBase {
 
       val result = { implicit stok:StateOk =>
         views.html.wiki.wikiList(
-          q, q, curTags, wl.map(w => (w.wid, w.label)), tags,
+          q,
+          q,
+          curTags,
+          wl.map(w => (w.wid, w.label)),
+          tags,
           (if(q.length>1) "/wikie/search/tag/"
           else if(scope.length > 0) s"/wiki/$scope/tag/"
           else "/tag/"),
-          (if(q.length>1) "?q="+q else ""), realm)
+          (if(q.length>1) "?q="+q else ""),
+          realm,
+          allRealms) // showRealm if looking in all
       }
 
       if(wl.nonEmpty) ROK.r reactorLayout12 result

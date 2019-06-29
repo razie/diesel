@@ -1,7 +1,7 @@
 @**************
 just the actual list, nothing else
 **************@
-@(search:String, realm:String, curTags:String, pages:List[(razie.wiki.model.WID, String)])(implicit stok: controllers.StateOk)
+@(search:String, realm:String, curTags:String, pages:List[(razie.wiki.model.WID, String)], showRealm:Boolean = false)(implicit stok: controllers.StateOk)
 @import razie.wiki.model._
 
 @highlight(s:String)={
@@ -16,10 +16,19 @@ just the actual list, nothing else
 
 <table id="wlist" class="table table-condensed">
   <thead>
-    <tr><td>Name</td><td>Category</td></tr>
+    <tr>
+      @if(showRealm) {
+        <td><small><small>Realm</small></small></td>
+      }
+      <td>Name</td>
+      <td>Category</td>
+    </tr>
   </thead>
   @pages.map{p=>
     <tr>
+      @if(showRealm) {
+        <td><small><small>@p._1.realm</small></small></td>
+      }
       <td>
         <a href="@controllers.Wiki.wr(p._1, stok.realm)">@label(p._2, p._1)</a>
       </td>

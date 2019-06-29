@@ -1,7 +1,7 @@
 @**************
 list of pages, with links etc - result of a query of some kind
 **************@
-@(title:String, search:String, curTags:String, pages:List[(razie.wiki.model.WID, String)], tags:model.Tags.Tags, tagPrefix:String="./", tagSuffix:String="", realm:String)(implicit stok: controllers.StateOk)
+@(title:String, search:String, curTags:String, pages:List[(razie.wiki.model.WID, String)], tags:model.Tags.Tags, tagPrefix:String="./", tagSuffix:String="", realm:String, showRealm:Boolean=false)(implicit stok: controllers.StateOk)
 @import razie.wiki.model._
 
 @stok.title("Results for: " + title + curTags)
@@ -56,7 +56,7 @@ list of pages, with links etc - result of a query of some kind
       <div class="well">
 @**        @ads.addSquareTop(stok)
 **@
-        @wikiListTable(search, realm, curTags, pages)
+        @wikiListTable(search, realm, curTags, pages, showRealm)
 
         </div>
 
