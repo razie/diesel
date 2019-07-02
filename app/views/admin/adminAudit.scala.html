@@ -15,6 +15,9 @@ purge audit tables
     case "msg" => {
       <a href="@routes.AdminAudit.showAudit(v)">@v</a>
     }
+    case "details" => {
+      @Html(db.get("details").toString.replaceAll("""\[\[([^:]+):([^]]+)\]\]""", """[[<a href="/diesel/asset/$1/$2">$1:$2</a>]]"""))
+    }
     case _ => {
       @v
     }

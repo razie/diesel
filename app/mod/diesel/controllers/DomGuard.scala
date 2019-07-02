@@ -156,7 +156,7 @@ class DomGuard extends DomApiBase with Logging {
         else
           engineView(id).apply(stok.req).value.get.get
       }
-    }
+    }.orElse(Some(NotFound("Engine trace not found - We only store a limited amount of traces...")))
   }
 
   // list the collected ASTS

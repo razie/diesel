@@ -456,6 +456,7 @@ class DomApi extends DomApiBase  with Logging {
         "failureCount" -> engine.failedTestCount,
         "errors" -> errors.toList,
         "root" -> root,
+        "engineId" -> engine.id,
         "dieselTrace" -> DieselTrace(root, settings.node, engine.id, "diesel", "runDom", settings.parentNodeId).toJson
       )
       m
