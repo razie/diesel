@@ -3,15 +3,12 @@ render a regular wiki page - site pages are rendered with wikiSite.scala.html
 **************@
 @(wid:razie.wiki.model.WID, iname:Option[String], page:Option[razie.wiki.model.WikiEntry], canEdit:Boolean, print:Boolean=false)(implicit stok: controllers.StateOk)
 @import razie.wiki.model._
-
 @label()=@{ page.map(_.label).getOrElse(razie.wiki.model.Wikis(wid.getRealm).label(wid)) }
 @web()=@{stok.website}
 @layout=@{page.flatMap(_.contentProps.get("layout")) getOrElse web().layout}
-
 @if(page.exists(_.attr("diesel.requireJs").exists(_ == "false"))) {
   @stok.requireJs(false)
 }
-
 @htmlHead(page.flatMap(_.contentProps.get("title")).getOrElse(/*wid.cat + ": "+*/ label), Some(stok), page)(Map.empty, stok.au, stok.request)
 
 @if(!print) {@navbar(stok.au, wid.getRealm)}

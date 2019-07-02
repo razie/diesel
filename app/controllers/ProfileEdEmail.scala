@@ -46,7 +46,7 @@ class EdEmail @Inject() (config:Configuration) extends RazController {
               UserTasks.verifyEmail(newu).create
 
               Emailer.withSession(request.realm) { implicit mailSession =>
-                Tasks.sendEmailVerif(newu)
+                Tasks.sendEmailVerif(newu, request.headers.get("X-Forwarded-Host").orElse(Some(request.website.domain)))
                 Tasks.msgVerif(newu)
               }
             }

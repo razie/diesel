@@ -61,9 +61,6 @@ create account
             @helper.checkbox(
               myForm("accept"),
               '_text -> Html(
-                if(stok.realm == razie.hosting.WikiReactors.NOTES)
-                  """I accept the <a href="/wiki/Terms of Service-notes">Terms of Service</a>"""
-                else
                   """I accept the <a href="/wiki/Terms of Service">Terms of Service</a>"""
               ),
               '_label -> "",

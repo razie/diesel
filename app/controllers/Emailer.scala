@@ -249,6 +249,10 @@ object Emailer extends RazController with Logging {
     mailSession.send(email, SUPPORT, "Invitation from "+from.fullName, html1)
   }
 
+  def tellRaz(what: String, args: Any*)(implicit mailSession: MailSession) = {
+    tell("razie@razie.com", what, args:_*)
+  }
+
   def tellAdmin(what: String, args: Any*)(implicit mailSession: MailSession) = {
     tell(Config.adminEmail, what, args:_*)
   }

@@ -16,7 +16,7 @@ import razie.db._
 import razie.diesel.dom.WikiDomain
 import razie.wiki.Sec.EncryptedS
 import razie.wiki.admin.SendEmail
-import razie.wiki.model._
+import razie.wiki.model.{TagQuery, _}
 import razie.wiki.parser.ParserCommons
 import razie.js
 import razie.wiki.{Enc, Services, WikiConfig}

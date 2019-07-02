@@ -206,7 +206,7 @@ object ModRk extends RazController with Logging {
 }
 
 
-object ModRkExec extends EExecutor("modrk") {
+object EEModRkExec extends EExecutor("modrk") {
 
   override def isMock: Boolean = true
 

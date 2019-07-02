@@ -2,15 +2,13 @@ package controllers
 
 import mod.snow.{RK, RacerKidAssoc, RacerKidz}
 import org.joda.time.DateTime
-import play.api.mvc.{Action, Request}
+import play.api.mvc.{Action, DiscardingCookie, Request}
 import razie.Logging
 import model._
 import razie.wiki.admin.{MailSession, SecLink, SendEmail}
 import razie.wiki.model.{Perm, WID}
 import razie.wiki.{Enc, EncUrl, Services}
 import admin.Config
-import play.api.data.Form
-import play.api.data.Forms.{mapping, nonEmptyText, tuple, _}
 import razie.hosting.Website
 
 object Tasks extends RazController with Logging {
@@ -36,7 +34,7 @@ object Tasks extends RazController with Logging {
     (for (
       c <- auth orCorr cNoAuth
     ) yield Emailer.withSession(request.realm) { implicit mailSession =>
-      sendEmailVerif(c)
+      sendEmailVerif(c, request.headers.get("X-Forwarded-Host").orElse(Some(request.website.domain)))
       msgVerif(c)
     }) getOrElse {
       ERR
@@ -57,27 +55,28 @@ Please do that soon: it will expire in a few hours, for security reasons.
       Msg2(MSG_EMAIL_VERIF, next, Some(c)).withSession(Services.config.CONNECTED -> Enc.toSession(c.email))
   }
 
-  def sendEmailVerif(c: User)(implicit request: Request[_], mailSession: MailSession) = {
+  def sendEmailVerif(c: User, host:Option[String])(implicit mailSession: MailSession) = {
     val from = mailSession.SUPPORT
     val dt = DateTime.now().plusHours(1).toString()
     log("ENC_DT=" + dt)
     log("ENC_DT=" + dt.enc)
     log("ENC_DT=" + dt.enc.dec)
     log("ENC_DT=" + EncUrl(dt))
-    val header = request.headers.get("X-Forwarded-Host")
+
     val hc1 = """/user/task/verifyEmail2?expiry=%s&email=%s&id=%s""".format(EncUrl(dt), Enc.toUrl(c.email), c.id)
     log("ENC_LINK1=" + hc1)
-    val ds = SecLink(hc1, header)
+    val ds = SecLink(hc1, host)
     log("ENC_LINK2=" + ds.secUrl)
 
-    val h = header.getOrElse ("www.dieselapps.com")
+    val h = host.getOrElse ("www.dieselapps.com")
     sendToVerif1(c.emailDec, from, c.ename, h, ds.secUrl)
   }
 
   /** reset pwd */
   def sendEmailReset(c: User)(implicit request: Request[_], mailSession: MailSession) = {
     val from = mailSession.SUPPORT
-    val dt = DateTime.now().plusHours(1).toString()
+    // can't use 1 hour - wtf
+    val dt = DateTime.now().plusHours(8).toString()
     log("ENC_DT=" + dt)
     log("ENC_DT=" + dt.enc)
     log("ENC_DT=" + dt.enc.dec)
@@ -113,10 +112,33 @@ Please do that soon: it will expire in a few hours, for security reasons.
   /** step 2 - user clicked on email link to verify email */
   def verifyEmail2(expiry1: String, email: String, id: String) = Action { implicit request =>
     val odate = (try { Option(DateTime.parse(expiry1.dec)) } catch { case _: Throwable => (try { Option(DateTime.parse(expiry1.replaceAll(" ", "+").dec)) } catch { case _: Throwable => None }) }) orErr ("token faked or expired")
-    if (odate.isDefined && odate.get.isAfterNow && !auth.isDefined)
-      ROK.r noLayout {implicit stok=>
+
+    val pe = email.dec
+    // if date is ok and not logged in, but ID matches email
+    if (
+      odate.isDefined
+          && odate.get.isAfterNow
+          && !auth.isDefined
+          && Users.findUserByEmailDec(pe).orElse(Users.findUserNoCase(pe)).exists(_.id == id)
+    )
+      verifyEmail3a(
+        expiry1,
+        email,
+        id,
+        Users.findUserByEmailDec(pe).orElse(Users.findUserNoCase(pe))
+      )
+//      (ROK.r noLayout {implicit stok=>
+//        views.html.tasks.verifEmail3(reloginForm.fill(("", "")), expiry1, email, id)
+//      }).withNewSession
+    else if (
+      odate.isDefined
+          && odate.get.isAfterNow
+          && !auth.isDefined
+      // emails don't match id ... why?
+    )
+      (ROK.r noLayout {implicit stok=>
         views.html.tasks.verifEmail3(reloginForm.fill(("", "")), expiry1, email, id)
-      }
+      }).withNewSession
     else
       verifyEmail3a(expiry1, email, id)
   }
@@ -141,12 +163,12 @@ Please do that soon: it will expire in a few hours, for security reasons.
       })
   }
 
-  /** doing it */
-  private def verifyEmail3a(expiry1: String, email: String, id: String)(implicit request: Request[_]) = {
-    verifiedEmail(expiry1, email, id, auth)
+  /** done - verify it */
+  private def verifyEmail3a(expiry1: String, email: String, id: String, user:Option[User] = None)(implicit request: Request[_]) = {
+    verifiedEmail(expiry1, email, id, user.orElse(auth))
   }
 
-  /** step 2 - user clicked on email link to verify email */
+  /** done - verify it */
   def verifiedEmail(expiry1: String, email: String, id: String, user: Option[User])(implicit request: Request[_]) = {
     val realm = Website.getRealm
     implicit val errCollector = new VErrors()
@@ -156,15 +178,19 @@ Please do that soon: it will expire in a few hours, for security reasons.
           // play 2.0 workaround - remove in play 2.1
           date <- (try { Option(DateTime.parse(expiry)) } catch { case _: Throwable => (try { Option(DateTime.parse(expiry1.replaceAll(" ", "+").dec)) } catch { case _: Throwable => None }) }) orErr ("token faked or expired");
           notExpired <- date.isAfterNow orCorr cExpired;
-          p <- user orCorr cNoAuth;
-          a <- (if (p.email == ce) Some(true) else None) logging ("ERR neq", p.email, ce) orErr "Validation link for a different user than the one logged in!";
-          pro <- p.profile orCorr cNoProfile
+          op <- user orCorr cNoAuth;
+          a <- (if (op.email == ce) Some(true) else None) logging ("ERR neq", op.email, ce) orErr "Validation link for a different user than the one logged in!";
+          pro <- op.profile orCorr cNoProfile
         ) yield {
+          val p = op.forRealm(realm)
           razie.db.tx("verifiedEmail", p.userName) { implicit txn =>
             if (!p.hasPerm(Perm.eVerified)) {
-              // TODO transaction
-              val pu = p.addPerm("*", Perm.eVerified.s).addPerm("*", Perm.uWiki.s)
-              p.update(if (p.isUnder13) pu else pu.addPerm("*", Perm.uProfile.s))
+              // need to create first this realm - sometimes it's not created, if user doesn't try to login
+              var pu = p.addPerm(realm, Perm.eVerified.s).addPerm(realm, Perm.uWiki.s)
+              pu = pu.addPerm("*", Perm.eVerified.s).addPerm("*", Perm.uWiki.s)
+              pu = if (p.isUnder13) pu else pu.addPerm(realm, Perm.uProfile.s)
+              pu = if (p.isUnder13) pu else pu.addPerm("*", Perm.uProfile.s)
+              p.update(pu)
 
               // replace in cache
               Users.findUserById(p._id).map { u =>
@@ -174,11 +200,19 @@ Please do that soon: it will expire in a few hours, for security reasons.
             UserTasks.verifyEmail(p).delete
           }
 
-          Msg2("""
+//          (if(op.hasConsent(realm)) {
+            Msg2("""
 Ok, email verified - your account is now active!
 
 Please read our [[Terms of Service]] as well as our [[Privacy Policy]]
-""", Some("/")).withSession(Services.config.CONNECTED -> Enc.toSession(email))
+""", Some("/")
+//            )
+//          } else
+//            (ROK.r apply { implicit stok =>
+//              views.html.user.doeConsent(next.getOrElse("/"))
+//            })
+              )//DO NOT LOGG HIM IN... .withSession(Services.config.CONNECTED -> Enc.toSession(u.email))
+              .discardingCookies(DiscardingCookie("error"))
         }
       } getOrElse
         {
