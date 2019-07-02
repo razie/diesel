@@ -155,7 +155,6 @@ object RazWikiAuthorization extends RazController with Logging with WikiAuthoriz
       au <- u orCorr cNoAuth;
       isA <- checkActive(au);
       r1 <- ("Category" != cat || au.isAdmin) orErr ("no permission to edit a Category");
-      r2 <- ("Admin" != cat || au.isMod || we.exists(_.isOwner(au.id))) orErr ("no permission to edit an Admin entry");
       mine <- ("User" != cat || name == au.userName || au.isAdmin) orErr ("Can only edit your own public profile!");
       mine1 <- ("User" != cat || au.canHasProfile) orErr ("Sorry - you cannot have a public profile - either no parent added or parent does not allow it! \n If you think you should have one, please describe the issue in a  <a href=\"/doe/support?desc=parent+should+allow\">support request</a> below.");
       mine2 <- ("WikiLink" == cat || au.canHasProfile) orErr ("Sorry - you cannot create or edit public topics - either no parent added or parent does not allow it! \n If you think you should have one, please describe the issue in a  <a href=\"/doe/support?desc=cannot+have+public+profile\">support request</a> below.");

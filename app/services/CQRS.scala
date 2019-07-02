@@ -1,7 +1,6 @@
 package services
 
 import java.util.concurrent.TimeUnit
-
 import mod.diesel.controllers.DomFiddles
 import akka.actor.{Actor, Props}
 import controllers.Emailer
@@ -15,9 +14,8 @@ import com.google.inject.Singleton
 import mod.diesel.guard.DomGuardian.worker
 import razie.audit.Audit
 import razie.diesel.engine.DomEngineSettings
-import razie.diesel.model.{DieselMsg, DieselMsgString, ScheduledDieselMsg}
+import razie.diesel.model.{DieselMsg, DieselMsgString, DieselTarget, ScheduledDieselMsg}
 import razie.wiki.model.features.WikiCount
-
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.{Duration, FiniteDuration}
 
@@ -83,33 +81,11 @@ class WikiAsyncObservers extends Actor {
       }
 
     case m@DieselMsgString(s, target, _) => {
-      // todo auth/auth
-      cout << "======== DIESEL MSG: " + m.toString
-      val settings = new DomEngineSettings()
-      settings.realm = Some(target.realm)
-
-      val ms = m.mkMsgString
-      DomFiddles.runDom(ms, target.specs, target.stories, settings).map { res =>
-          // don't audit these frequent ones
-          if(
-            ms startsWith DieselMsg.WIKI_UPDATED
-          ) {}
-        else
-        Audit.logdb("DIESEL_MSG", m.toString, res.get("value").mkString)
-      }
+      runMsg(m, target)
     }
 
     case m@DieselMsg(e, a, p, target) => {
-      // todo auth/auth
-      cout << "======== DIESEL MSG: " + m.toString
-      val settings = new DomEngineSettings()
-      settings.realm = Some(target.realm)
-
-      DomFiddles
-        .runDom(m.toMsgString.mkMsgString, target.specs, target.stories, settings)
-        .map { res =>
-          clog << "DIESEL_MSG: " + m.toMsgString + " : RESULT: " + res.get("value").mkString
-        }
+      runMsg(m.toMsgString, target)
     }
 
     case m@ScheduledDieselMsg(s, msgforLater) => {
@@ -126,6 +102,36 @@ class WikiAsyncObservers extends Actor {
       Audit.logdb("ERR_ALLIGATOR", x.getClass.getName)
     }
   }
+
+  def runMsg(m:DieselMsgString, target:DieselTarget) = {
+    // todo auth/auth
+    cout << "======== DIESEL MSG: " + m
+    val settings = new DomEngineSettings()
+    settings.realm = Some(target.realm)
+
+    val ms = m.mkMsgString
+
+    DomFiddles
+        .runDom(ms, target.specs, target.stories, settings)
+        .map { res =>
+          clog << "DIESEL_MSG: " + m + " : RESULT: " + res.get("value").mkString
+      // don't audit these frequent ones
+      if(
+        m.msg.startsWith(DieselMsg.WIKI_UPDATED) ||
+false//        m.msg.startsWith(DieselMsg.REALM_LOADED)
+      ) {}
+      else {
+        val id = res.get("engineId").mkString
+        Audit.logdb(
+          "DIESEL_MSG",
+          m.toString,
+          s"[[DieselEngine:$id]]",
+          res.get("value").mkString
+        )
+      }
+    }
+  }
+
 
   def clusterize(ev: WikiEvent[_]) = {
     if (

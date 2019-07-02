@@ -88,8 +88,14 @@ create new page given a template
 
   @wiki.wikiFormInt(formWid, Some(name), formPage, errors, false, false, true)
 <hr>
-  <button type="submit" class="btn btn-primary">Create Now!</button>
+  <span>
+    <input type="checkbox" id="accept" name="accept"> I accept the <a href="/wiki/rk.Terms of Service">Terms of Service</a>
+  </span>
+  <br>
+  <br>
+
 }
+  <button class="btn btn-primary" onclick="sendForm()">Create Now!</button>
 
 <hr>
 
@@ -138,6 +144,18 @@ create new page given a template
 
     </script>
   }
+
+<script>
+sendForm = function () {
+  if($("input[name='accept']").prop("checked") != true) {
+    alert("You need to accept the terms and conditions to continue...");
+    return false;
+  } else {
+    document.getElementById('curForm').submit();
+    return true;
+  }
+}
+</script>
 
 @util.oneModal()
 

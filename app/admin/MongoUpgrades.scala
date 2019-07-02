@@ -2,20 +2,16 @@ package admin
 
 import com.mongodb.casbah.Imports._
 import com.novus.salat._
-import com.novus.salat.annotations._
-import mod.snow.{RK, RacerKidAssoc, RacerKidz, RoleWid}
-import razie.wiki.Enc
-import razie.{clog, cout}
 import controllers.Club
-
-import scala.collection.mutable.ListBuffer
-import razie.db._
-import razie.wiki.model._
+import mod.snow.{RK, RacerKidAssoc, RacerKidz}
 import model._
+import razie.cout
+import razie.db._
 import razie.db.tx.txn
-import razie.wiki.admin.Autosave
-
-import scala.collection.mutable
+import razie.hosting.WikiReactors
+import razie.wiki.Enc
+import razie.wiki.model._
+import scala.collection.mutable.ListBuffer
 
 /******************************************
   *
@@ -85,8 +81,6 @@ object Upgrade5 extends UpgradeDb with razie.Logging {
   def name(u: DBObject) = u.get("name").asInstanceOf[String]
   def nameo(u: DBObject) = u.get("entry").asInstanceOf[DBObject].get("name").asInstanceOf[String]
 
-  import razie.db.RazSalatContext._
-
   def upgrade(db: MongoDB) {
     withDb(db("WikiEntry")) { t =>
       for (u <- t if ("WikiLink" != u.get("category") && Wikis.formatName(name(u)) != name(u))) {
@@ -124,7 +118,6 @@ object Upgrade5 extends UpgradeDb with razie.Logging {
 
 // change base64 encoding to url safe
 object U6 extends UpgradeDb with razie.Logging {
-  import razie.db.RazSalatContext._
 
   def upgrade(db: MongoDB) {
     withDb(db("User")) { t =>
@@ -139,7 +132,6 @@ object U6 extends UpgradeDb with razie.Logging {
 
 // add "role" to UserWiki
 object U7 extends UpgradeDb with razie.Logging {
-  import razie.db.RazSalatContext._
 
   def upgrade(db: MongoDB) {
     withDb(db("UserWiki")) { t =>
@@ -170,7 +162,6 @@ object U8 extends UpgradeDb with razie.Logging {
 
 // rename Season category to Calendar
 object U9 extends UpgradeDb with razie.Logging {
-  import razie.db.RazSalatContext._
 
   final val S = "Season"
   final val C = "Calendar"
@@ -249,8 +240,6 @@ object U10 extends UpgradeDb with razie.Logging {
   def uid(uname: String) = users.get(uname) orElse users.get("Razie")
   val users = scala.collection.mutable.Map[String, ObjectId]()
 
-  import razie.db.RazSalatContext._
-
   def upgrade(db: MongoDB) {
 
     withDb(db("User")) { t =>
@@ -290,8 +279,6 @@ object U11 extends UpgradeDb with razie.Logging {
   val users = scala.collection.mutable.Map[ObjectId, String]()
 
   var ran = false
-
-  import razie.db.RazSalatContext._
 
   def upgrade(db: MongoDB) {
     ran = true
@@ -426,7 +413,6 @@ object U11 extends UpgradeDb with razie.Logging {
 
 // add tags, realm
 object U12 extends UpgradeDb with razie.Logging {
-  import razie.db.RazSalatContext._
 
   def upgrade(db: MongoDB) {
 
@@ -460,7 +446,6 @@ object U12 extends UpgradeDb with razie.Logging {
 
 // Notes become Old notes
 object U13 extends UpgradeDb with razie.Logging {
-  import razie.db.RazSalatContext._
 
   def upgrade(db: MongoDB) {
 
@@ -489,7 +474,6 @@ object U13 extends UpgradeDb with razie.Logging {
 
 // rename Season category to Calendar
 object RenameCat extends UpgradeDb with razie.Logging {
-  import razie.db.RazSalatContext._
 
   def upgrade(db: MongoDB) {throw new IllegalArgumentException(); }
 
@@ -624,7 +608,6 @@ object U14 extends UpgradeDb with razie.Logging {
 
 // share tag to shared
 object U15 extends UpgradeDb with razie.Logging {
-  import razie.db.RazSalatContext._
 
   def upgrade(db: MongoDB) {
     var i = 0;
@@ -645,7 +628,6 @@ object U15 extends UpgradeDb with razie.Logging {
 
 // realm to notes
 object U16 extends UpgradeDb with razie.Logging {
-  import razie.db.RazSalatContext._
 
   def upgrade(db: MongoDB) {
     var i = 0;
@@ -704,7 +686,6 @@ object U17 extends UpgradeDb with razie.Logging {
 // Autosave more explicit
 // realm to notes
 object U18 extends UpgradeDb with razie.Logging {
-  import razie.db.RazSalatContext._
 
   def upgrade(db: MongoDB) {
     var i = 0;
@@ -738,7 +719,6 @@ object U18 extends UpgradeDb with razie.Logging {
 }
 
 object U19 extends UpgradeDb with razie.Logging {
-  import razie.db.RazSalatContext._
 
   def upgrade(db: MongoDB) {
     var i = 0;

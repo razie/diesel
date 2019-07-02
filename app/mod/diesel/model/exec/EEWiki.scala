@@ -19,7 +19,7 @@ import razie.diesel.ext.EVal
 import scala.collection.mutable.ListBuffer
 
 // the context persistence commands
-class EEWiki extends EExecutor("rk.wiki") {
+class EEWiki extends EExecutor("diesel.wiki") {
 
   override def isMock: Boolean = true
 
@@ -30,7 +30,7 @@ class EEWiki extends EExecutor("rk.wiki") {
   override def apply(in: EMsg, destSpec: Option[EMsg])(implicit ctx: ECtx): List[Any] = {
     val res = in.met match {
       case "content" => {
-        clog << "DIESEL.wiki.content"
+        clog << "diesel.wiki.content"
 
         val errors = new ListBuffer[Any]()
         // todo auth
@@ -51,7 +51,7 @@ class EEWiki extends EExecutor("rk.wiki") {
       }
       case "follow" => {
         //todo auth
-        clog << "DIESEL.wiki.follow"
+        clog << "diesel.wiki.follow"
         val res = Wikil.wikiFollow(
           ctx("userName"),
           ctx("wpath"),
@@ -74,7 +74,7 @@ class EEWiki extends EExecutor("rk.wiki") {
 
       if (entity.isDefined && entity.get.isInstanceOf[WikiEntry]) {
         val we = entity.get.asInstanceOf[WikiEntry]
-        Services ! DieselMsgString(s"""$$msg rk.wiki.updated (wpath="${we.wid.wpath}", realm="${we.realm}", event="${ev.action}")""")
+        Services ! DieselMsgString(s"""$$msg diesel.wiki.updated (wpath="${we.wid.wpath}", realm="${we.realm}", event="${ev.action}")""")
       }
     }
   }

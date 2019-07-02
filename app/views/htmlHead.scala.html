@@ -5,28 +5,22 @@ the head of every page...
 @import razie.hosting.WikiReactors
 @import razie.wiki.Services
 @import razie.hosting.Website
-
-@props() = @{
-  request.flatMap(razie.hosting.Website.apply(_))
-}
-
+@props() = @{ request.flatMap(razie.hosting.Website.apply(_)) }
 @title() = @{
   if(pageTitle.length==0)
     stok.map(_._title).getOrElse(props.flatMap(_.title) getOrElse ("Wiki"))
   else pageTitle
 }
-
-@css() = @{
-  stok.getOrElse(new controllers.StateOk("", au, request)).css
-}
-
-@reactor=@{
-  stok.map(_.realm).orElse(request.map(r=>Website.realm(r))).orElse(page.map(_.wid.getRealm)).getOrElse("")
-}
-
+@css() = @{ stok.getOrElse(new controllers.StateOk("", au, request)).css }
+@reactor=@{ stok.map(_.realm).orElse(request.map(r=>Website.realm(r))).orElse(page.map(_.wid.getRealm)).getOrElse("") }
 <!DOCTYPE html>
 <html lang="en">
   <head>
+<!--
+  WID: @page.map(_.wid.wpathFull)
+  X-FORWARDED-HOST: @stok.flatMap(_.request).orElse(request).map(r=>r.headers.get("X-FORWARDED-HOST"))
+  website: @stok.map(_.website.reactor)
+-->
     <meta charset="utf-8">
 
     @*** keep google happy using Admin:urlcanon ***@
@@ -45,10 +39,6 @@ the head of every page...
   WikiReactors(page.get.wid.getRealm).websiteProps.prop("url").getOrElse("http://www.razie.com")
 }
 
-<!--
-  X-FORWARDED-HOST: @stok.flatMap(_.request).orElse(request).map(r=>r.headers.get("X-FORWARDED-HOST"))
-  website: @stok.map(_.website)
--->
     <title>@title</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
