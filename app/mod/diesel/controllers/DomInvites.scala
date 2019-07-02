@@ -15,14 +15,6 @@ import views.html.wiki.genericForm
 /** manage invitations to realms */
 class DomInvites extends mod.diesel.controllers.SFiddleBase with Logging {
 
-  private def updRealm(au:User, realm:String) = {
-    var u = au.copy(realms = (au.realms + realm))
-    if (u.realmSet.exists(_._2.perms.contains(Perm.uProfile))) u = u.addPerm(realm, Perm.uProfile.s)
-    if (u.realmSet.exists(_._2.perms.contains(Perm.eVerified))) u = u.addPerm(realm, Perm.eVerified.s)
-    if (u.realmSet.exists(_._2.perms.contains(Perm.uWiki))) u = u.addPerm(realm, Perm.uWiki.s)
-    au.update(u)
-  }
-
   /** */
   def invited = RAction { implicit request =>
     request.flash.get(SecLink.HEADER).flatMap(SecLink.find).map { secLink =>
@@ -36,7 +28,7 @@ class DomInvites extends mod.diesel.controllers.SFiddleBase with Logging {
             Redirect("/wiki/Admin:UserHome")
           else {
             if (email == au.emailDec) {
-              updRealm(au, realm)
+              au.update(Users.updRealm(au, realm))
               cleanAuth(Some(au))
               Emailer.withSession(realm) { implicit mailSession =>
                 Emailer.tellAdmin("realm invitation used", s"email: $email   invite: $invite    realm: $realm")
@@ -92,7 +84,7 @@ class DomInvites extends mod.diesel.controllers.SFiddleBase with Logging {
     // todo not just admin, but realm owner too
     if (request.au.exists(_.isAdmin) && email != "-") {
       Users.findUserByEmailDec(email).map {user =>
-        updRealm(user, request.realm)
+        user.update(Users.updRealm(user, request.realm))
         Msg(s"User ${user.ename} added to realm...")
       } getOrElse {
         val link = "/diesel/invited"

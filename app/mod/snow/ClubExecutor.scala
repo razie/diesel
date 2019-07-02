@@ -9,7 +9,7 @@ import razie.diesel.dom.ECtx
 import razie.diesel.ext.{EExecutor, EMsg, EVal, MatchCollector}
 import razie.wiki.model._
 
-object ModSnowExecutor extends EExecutor("modsnow") {
+object EEModSnowExecutor extends EExecutor("modsnow") {
 
   override def isMock: Boolean = true
 

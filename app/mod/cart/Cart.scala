@@ -1,13 +1,10 @@
 package mod.cart
 
-import model.UserId
 import org.bson.types.ObjectId
 import org.joda.time.DateTime
 import razie.audit.Audit
 import razie.db.{REntity, RMany, ROne, Txn}
 import razie.wiki.model.UWID
-
-import scala.util.Try
 
 /**
   * Created by raz on 2016-12-21.

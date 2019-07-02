@@ -1,25 +1,20 @@
 package mod.cart
 
-import controllers.Emailer
-import model.Users
-import org.joda.time.DateTime
 import razie.clog
 import razie.diesel.dom.ECtx
-import razie.diesel.ext.{EExecutor, EMsg, EVal, MatchCollector}
-import razie.wiki.Services
-import razie.wiki.model._
+import razie.diesel.ext.{EExecutor, EMsg, MatchCollector}
 
-object ModCartExecutor extends EExecutor("diesel.cart") {
+object EEModCartExecutor extends EExecutor("diesel.cart") {
 
   override def isMock: Boolean = true
 
   override def test(m: EMsg, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) = {
-    m.entity == "mod.user"
+    m.entity == "diesel.mod.cart"
   }
 
   override def apply(in: EMsg, destSpec: Option[EMsg])(implicit ctx: ECtx): List[Any] = {
     razie.db.tx("ModCartExec", "?") { implicit txn =>
-      clog << "mod.cart.addItem"
+      clog << "diesel.mod.cart.addItem"
 
       in.met match {
         case _ => {
@@ -30,5 +25,11 @@ object ModCartExecutor extends EExecutor("diesel.cart") {
   }
 
   override def toString = "$executor::diesel.cart"
+
+  override val messages: List[EMsg] = List(
+    "canstatus",
+    "updstatus",
+    "createuser"
+  ).map (EMsg("diesel.mod.cart", _))
 }
 

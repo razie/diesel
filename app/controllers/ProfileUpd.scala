@@ -7,7 +7,7 @@ import org.joda.time.DateTime
 import play.api.Configuration
 import play.api.data.Form
 import play.api.data.Forms.{nonEmptyText, tuple, _}
-import play.api.mvc.{Action, Request}
+import play.api.mvc.{Action, DiscardingCookie, Request}
 import razie.Logging
 import razie.audit.Audit
 import razie.hosting.Website
@@ -246,9 +246,11 @@ class ProfileUpd @Inject() (config:Configuration) extends RazController with Log
   }
 
   def doeForgotPass = RAction { implicit stok =>
-    ROK.k apply {
+    (ROK.k apply {
       views.html.user.doeProfilePassForgot1(forgotForm.fill("", SecLink("forgotpass").token, ""))
-    }
+    })
+        .withNewSession
+        .discardingCookies(DiscardingCookie("error"))
   }
 
   def doeForgotPass2 = RAction { implicit stok =>
@@ -267,7 +269,7 @@ class ProfileUpd @Inject() (config:Configuration) extends RazController with Log
             Msg(MSG_EMAIL)
           } getOrElse {
             Audit.logdb("ERR_RESET_PWD", "email not found " + e)
-            Msg("If you don't receive an email shortly, this email is likely not registered - please verify the email or create an account! If you need some help, please send us a note via Support, below!")
+            Msg(MSG_EMAIL)
           }
         } getOrElse {
           Audit.logdb("ERR_RESET_PWD", "token not found " + e)
@@ -302,15 +304,17 @@ Please check your email in the next few minutes and follow the instructions.
       _ <- date.isAfterNow orCorr cExpired;
       _ <- stok.verifySecLink orCorr SecLink.EXPIRED;
       p <- Users.findUserById(id) orCorr cNoAuth
-    ) yield
+    ) yield {
+      stok.req.flash.get(SecLink.HEADER).flatMap(SecLink.find).foreach(_.done)
       ROK.r apply {
         views.html.user.doeProfilePassForgot2(chgpassform.fill("", "", "", SecLink("chgpassform").token), id)
-      }) getOrElse {
+      }}) getOrElse {
       Audit.logdb("ERR_USER_RESET_PWD", stok.errCollector.mkString)
       Msg("Link expired!")
     }
   }
 
+  /** submitted form with new password */
   def doeForgotPass4(id:String) = RAction { implicit stok =>
       chgpassform.bindFromRequest.fold(
       formWithErrors => ROK.k badRequest {
@@ -326,7 +330,10 @@ Please check your email in the next few minutes and follow the instructions.
             Audit.logdb("RESET_PWD_DONE", "request for " + au.emailDec + " - " + au.userName)
             Emailer.withSession(stok.realm) { implicit mailSession =>
               // todo use email template
-              mailSession.send(au.emailDec, Config.SUPPORT, "Password was changed", "Your password was changed!")
+              val html = Emailer.text("passwordchanged").format(au.ename);
+              mailSession.send(au.emailDec, mailSession.SUPPORT,
+                "Password was changed",
+                html)
             }
               Msg("Ok, password changed! Please login.")
             }) getOrElse {

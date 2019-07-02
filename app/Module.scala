@@ -10,10 +10,10 @@ import com.google.inject.AbstractModule
 import com.mongodb.casbah.{MongoConnection, MongoDB}
 import com.mongodb.casbah.Imports._
 import controllers._
-import mod.cart.{ModCartExecutor, ModUserExecutor}
+import mod.cart.{EEModCartExecutor, EEModUserExecutor}
 import mod.diesel.controllers.{DieselMod, FiddleMod}
 import mod.diesel.guard.EEGuardian
-import mod.snow.ModSnowExecutor
+import mod.snow.{EEModSnowExecutor}
 import mod.wiki.CaptchaMod
 import model.WikiUsersImpl
 import razie.audit.{Audit, AuditService, MdbAuditService}
@@ -26,7 +26,7 @@ import razie.tconf.hosting.Reactors
 import razie.wiki.admin.{SecLink, SendEmail}
 import razie.wiki.mods.WikiMods
 import razie.wiki.{EncryptService, Services, WikiConfig}
-import razie.wiki.model.{WikiUsers}
+import razie.wiki.model.WikiUsers
 import razie.wiki.util.AuthService
 import razie.{Log, clog, cout}
 import services.AtomicCounter
@@ -109,10 +109,10 @@ class Module extends AbstractModule {
     DieselAppContext.setActorSystemFactory(() => play.libs.Akka.system)
 
     DieselAppContext.localNode = Services.config.node
-    Executors.add (ModRkExec)
-    Executors.add (ModUserExecutor)
-    Executors.add (ModCartExecutor)
-    Executors.add (ModSnowExecutor)
+    Executors.add (EEModRkExec)
+    Executors.add (EEModUserExecutor)
+    Executors.add (EEModCartExecutor)
+    Executors.add (EEModSnowExecutor)
     Executors.add (new mod.diesel.model.exec.EEWiki)
     Executors.add (new mod.diesel.model.exec.EEMail)
     Executors.add (new EEGuardian)

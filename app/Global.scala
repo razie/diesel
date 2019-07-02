@@ -6,7 +6,6 @@
  */
 
 import java.util.Properties
-
 import admin._
 import com.google.inject.Guice
 import controllers._
@@ -22,19 +21,16 @@ import akka.actor._
 import com.mongodb.casbah.{MongoConnection, MongoDB}
 import com.mongodb.casbah.Imports._
 import java.io.File
-
 import services.{InitAlligator, RkCqrs}
-
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.{ExecutionContext, Future}
 import controllers.ViewService
 import razie.audit.Audit
-import razie.hosting.Website
+import razie.hosting.{Website, WikiReactors}
 import razie.wiki.model._
 import razie.wiki.admin._
 import razie.wiki.{EncryptService, Services, WikiConfig}
 import razie.wiki.Sec._
-
 import scala.util.Try
 
 /** customize some global handling errors */
