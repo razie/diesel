@@ -17,8 +17,7 @@ import play.api.data.Forms.{mapping, nonEmptyText, tuple, _}
 import play.api.mvc._
 import razie.OR._
 import razie.audit.Audit
-import razie.diesel.model.DieselMsgString
-import razie.diesel.model.DieselTarget
+import razie.diesel.model.{DieselMsg, DieselMsgString, DieselTarget}
 import razie.hosting.Website
 import razie.wiki.admin.{SecLink, SendEmail}
 import razie.wiki.model._
@@ -43,8 +42,8 @@ object Profile extends RazController {
   }
 
   // TODO should be private
-  def createUser(u: User, about:String = "")(implicit request: Request[_], txn:Txn) = {
-    val realm = Website.getRealm
+  def createUser(u: User, about:String = "", realm:String, host:Option[String])(implicit txn:Txn) = {
+    val website = Website.forRealm(realm).get
     val pro = u.mkProfile
 
     val created = {u.create(pro); Some(u)}
@@ -56,8 +55,8 @@ object Profile extends RazController {
       Services ! UserCreatedEvent(x._id.toString, Config.node)
     }
 
-    // when testing, skip email verification
-    if(! Services.config.isLocalhost) {
+    // when testing, skip email verification - unless the site needs it
+    if(! Services.config.isLocalhost || website.bprop("requireEmailVerification").exists(_ == true)) {
       UserTasks.verifyEmail(u).create
     } else {
       // localhost
@@ -71,8 +70,8 @@ object Profile extends RazController {
       UserTasks.setupRegistration(u).create
     }
 
-    SendEmail.withSession(Website.realm(request)) { implicit mailSession =>
-      Tasks.sendEmailVerif(u)
+    SendEmail.withSession(realm) { implicit mailSession =>
+      Tasks.sendEmailVerif(u, host.orElse(Some(website.domain)))
       // to user - why notify of default username?
       //Emailer.sendEmailUname(unameF(u.firstName, u.lastName), u)
       val uname = (u.firstName + (if (u.lastName.length > 0) ("." + u.lastName) else "")).replaceAll("[^a-zA-Z0-9\\.]", ".").replaceAll("[\\.\\.]", ".")
@@ -81,21 +80,15 @@ object Profile extends RazController {
       Emailer.tellAdmin("New user", u.userName, u.emailDec, "realm: "+u.realms.mkString, "ABOUT: "+about)
     }
 
-    val stok = ROK.r
-
     //realm new user flow
     Services ! DieselMsgString(
-      s"""$$msg rk.user.joined(userName="${u.userName}", realm="${stok.realm}")""",
-      DieselTarget.from(
-        stok.realm,
-        WID.fromPath(s"${stok.realm}.Reactor:${stok.realm}#diesel").map(_.toSpecPath).toList,
-        Nil)
+      DieselMsg.USER_JOINED + s"""(userName="${u.userName}", realm="${realm}")""",
+      DieselTarget.REALMDIESEL(realm)
     )
 
     created
   }
 
-  def unameF (f:String,l:String) = (f + (if (l.length > 0) ("." + l) else "")).replaceAll("[^a-zA-Z0-9\\.]", ".").replaceAll("[\\.\\.]", ".")
 }
 
 case class UserCreatedEvent (uid:String, node:String) extends WikiEventBase
@@ -159,8 +152,8 @@ class Profile @Inject() (config:Configuration) extends RazController with Loggin
       "company" -> text
         .verifying("Obscenity filter", !Wikis.hasBadWords(_))
         .verifying("Invalid characters", vldSpec(_))
-        .verifying("Too short (should be more then 3)", (x=> x.length == 0 || x.length >= 4))
-        .verifying("Too long (less than 10)", _.length <= 10),
+        .verifying("Too short (should be more then 3)", (x=> x.length == 0 || x.length >= 4)),
+//        .verifying("Too long (less than 10)", _.length <= 10),
       "yob" -> number(min = 1900, max = 2012),
       "address" -> text.verifying("Invalid characters", vldSpec(_)),
       "userType" -> nonEmptyText.verifying("Please select one", ut => Website.userTypes.contains(ut)),
@@ -443,10 +436,19 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
             ! u.forRealm(realm).hasPerm(Perm.eVerified)
           ) {
             // realm wants him to verify email first
-            Redirect(loginUrl)
+
+            // resend activation link
+            Emailer.withSession(request.realm) { implicit mailSession =>
+              Tasks.sendEmailVerif(u, request.headers.get("X-Forwarded-Host").orElse(Some(website.domain)))
+            }
+
+            val msg = "Please check your email for an activation link!"
+
+            Msg2(MSG_REGD, Some(loginUrl))
+//            Redirect(loginUrl)
               .withNewSession
               .withCookies(
-                Cookie("error", "Please check your email for an activation link!".encUrl).copy(httpOnly = false)
+                Cookie("error", msg.encUrl).copy(httpOnly = false)
               )
           } else
           (if(u.hasConsent(realm)) {
@@ -584,7 +586,7 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
       if (testcode != T.TESTCODE) request.session.get(s)
       else Some(d)
 
-    def uname (f:String,l:String,yob:Int) = Profile.unameF(f.trim,l.trim)
+    def uname (f:String,l:String,yob:Int) = Users.unameF(f.trim,l.trim)
 
     auth // clean theme
 
@@ -609,7 +611,7 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
             already <- (!Users.findUserByEmailDec((e)).isDefined) orCorr ("User already created" -> "patience, patience...");
             isOk <- (DateTime.now.year.get - y > 15) orErr ("You can only create an account if you are 16 or older");
             iu <- Some(User(
-              uniqueUsername(uname(f, l, y)),
+              Users.uniqueUsername(uname(f, l, y)),
               f.trim,
               l.trim,
               y,
@@ -632,7 +634,7 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
               if(about.length > 0) u = u.setPrefs(request.realm, u.prefs + ("about" -> about))
 
               razie.db.tx("doeCreateProfile", u.userName) { implicit txn =>
-                Profile.createUser(u, about)
+                Profile.createUser(u, about, request.realm, request.headers.get("X-Forwarded-Host"))
               }
 
               // process extra parms to determine what next
@@ -657,7 +659,7 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
     */
   def doeCreateExt() = RAction { implicit stok =>
 
-    def uname (f:String,l:String,yob:Int) = Profile.unameF(f.trim,l.trim)
+    def uname (f:String,l:String,yob:Int) = Users.unameF(f.trim,l.trim)
 
     auth // clean theme
 
@@ -722,12 +724,12 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
         p.update(newp)
       }
 
-      Msg ("User already registered... please proceed to login.")
+      Msg ("User registered... please proceed to login.")
         .withNewSession
           .discardingCookies(DiscardingCookie("error"))
     } else {
       val u = User(
-        uniqueUsername(uname(f, l, y)), f.trim, l.trim, y, Enc(e),
+        Users.uniqueUsername(uname(f, l, y)), f.trim, l.trim, y, Enc(e),
         Enc(p),
         'a',
         Set(Users.ROLE_MEMBER),
@@ -741,7 +743,7 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
       )
 
       razie.db.tx("doeCreateExt", u.userName) { implicit txn =>
-        val newu = Profile.createUser(u)
+        val newu = Profile.createUser(u, "", stok.realm, stok.headers.get("X-Forwarded-Host"))
         val p = newu.get.profile.get
         val newp = p.upsertExtLink(stok.realm, ExtSystemUserLink(stok.realm, esid, eiid, eaid))
         p.update(newp)
@@ -749,24 +751,21 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
 
       // todo consent
 //      Tasks.msgVerif(u, "", Some(routes.Profile.doeConsent().url))
-      Msg2("Registration accepted... please continue to the login page...", Some("/"))
+      Msg2(MSG_REGD, Some("/"))
           .withNewSession
           .discardingCookies(DiscardingCookie("error"))
       }
   }
 
-  def uniqueUsername (initial:String) = {
-    var cur = initial
-    var n = 0
-
-    while(n < 20 && Users.findUserByUsername(cur).isDefined) {
-      n = n+1
-      cur = initial + "." + n
-    }
-
-    if (n >= 20) cur = initial + "." + System.currentTimeMillis()
-    cur
-  }
+  val MSG_REGD= s"""
+Your registration has been accepted. We have sent an email with a confirmation link to your email address.
+<p>
+<small>
+Please allow a few minutes for this message to arrive.
+<br>Don't forget to check your junk or spam folder if you do not receive the email.
+<br>Click the verification link in the email to confirm your account and proceed to the Login page.
+</small>
+"""
 
   // user chose to login with google
   def doeJoinGtoken = RAction { implicit request =>
