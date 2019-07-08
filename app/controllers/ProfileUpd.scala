@@ -25,9 +25,10 @@ class ProfileUpd @Inject() (config:Configuration) extends RazController with Log
     tuple(
       "css" -> nonEmptyText.verifying("Wrong value!", Array("dark", "light").contains(_)).verifying("Invalid characters", vldSpec(_)),
       "favQuote" -> text.verifying("Invalid characters", vldSpec(_)),
+      "apiKey" -> text,
       "weatherCode" -> text.verifying("Invalid characters", vldSpec(_))) verifying
-      ("Password mismatch - please type again", { t: (String, String, String) =>
-        val (css, favQuote, weatherCode) = t
+      ("Password mismatch - please type again", { t: (String, String, String, String) =>
+        val (css, favQuote, apiKey, weatherCode) = t
         true
       })
   }
@@ -127,7 +128,7 @@ class ProfileUpd @Inject() (config:Configuration) extends RazController with Log
     prefsForm.bindFromRequest.fold(
     formWithErrors => ROK.k badRequest {views.html.user.doeProfilePreferences(formWithErrors, request.au.get)},
     {
-      case (css, favQuote, weatherCode) => {
+      case (css, favQuote, apiKey, weatherCode) => {
         val u = Profile.updateUser(au, au.setPrefs(request.realm,
           Map("css" -> css, "favQuote" -> favQuote, "weatherCode" -> weatherCode)))
 
@@ -145,6 +146,7 @@ class ProfileUpd @Inject() (config:Configuration) extends RazController with Log
         views.html.user.doeProfilePreferences(prefsForm.fill((
         au.getPrefs("css",dfltCss),
         au.getPrefs("favQuote",""),
+        au.apiKey.mkString,
         au.getPrefs("weatherCode",""))),
         au)
       }

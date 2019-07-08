@@ -174,7 +174,9 @@ object EEModUserExecutor extends EExecutor("diesel.mod.user") {
                   newu.update(newu)
                 }
 
-              } else {
+                Emailer.tellSiteAdmin(s"Auto-created User ${u.userName}  email: $e")
+                Emailer.tellRaz(s"Auto-created User ${u.userName} email: $e")
+              } else if(! ou.get.hasRealm(inRealm)) {
                 //existing user - add to realm
                 val u = ou.get
 
@@ -187,8 +189,7 @@ object EEModUserExecutor extends EExecutor("diesel.mod.user") {
                 u.update(newu)
                 Services.auth.cleanAuth2(u)
 
-                Emailer.tellSiteAdmin(s"Auto-added User ${u.userName}  email: $e")
-                Emailer.tellRaz(s"Auto-added User ${u.userName} email: $e")
+                Emailer.tellRaz(s"Auto-updadded User ${u.userName} email: $e")
               }
               msg="ok"
             } else {

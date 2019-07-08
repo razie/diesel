@@ -32,6 +32,14 @@ profile - other preferences
       '_showConstraints -> false,
       '_showConstraints -> false)
 
+    @helper.inputText(
+      myForm("apiKey"),
+      '_disabled -> true,
+      '_label -> "API key",
+      '_error -> myForm.error("apiKey"),
+      '_showConstraints -> false,
+      '_showConstraints -> false)
+
     <button type="submit" class="btn btn-primary">Update preferences !</button>
 
     @formErrors(myForm)
@@ -50,6 +58,9 @@ profile - other preferences
     <p><b>Favorite quote</b> is just that - your favorite quote
     <p><b>Weather code</b>
       is the weather code you want displayed in your main page - obtained from theweathernetwork.com - for instance Toronto is caon0696
+  <p><b>API Key</b>
+    will allow API access as yourself
+
 
   </div>
   @formFix()

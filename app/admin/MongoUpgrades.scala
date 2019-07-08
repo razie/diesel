@@ -757,6 +757,16 @@ object MoreUpgrades {
       }
     }
 
+    RazMongo.upgradeMaybe("upgradeUserApiKey", Array.empty) {
+      RMany[User]().foreach { u =>
+
+        val newUser = u.copy(
+          apiKey = Some(new ObjectId().toString)
+        )
+        RUpdate.noAudit(newUser)
+      }
+    }
+
     // end of upgrades
   }
 
