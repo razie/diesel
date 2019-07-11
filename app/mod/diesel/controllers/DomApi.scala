@@ -971,6 +971,7 @@ class DomApi extends DomApiBase  with Logging {
       if(verb == "GET" || verb == "POST") {
         // query parms for GET
         val pQuery = stok.query.filter(x => !DomEngineSettings.FILTER.contains(x._1))
+        // if POST, see if there's something coming in
         var pPost = if (verb == "POST") {
           if (requestContentType.exists(_ == "text/plain") && !body.trim.startsWith("{")) {
             // plain text - see who can parse this later, snakkers etc
@@ -978,8 +979,8 @@ class DomApi extends DomApiBase  with Logging {
           } else if (requestContentType.exists(_ == "application/x-www-form-urlencoded")) {
             // normal form - each parm
             stok.formParms.filter(x => !DomEngineSettings.FILTER.contains(x._1))
-          } else {
-            // assume it's json with a bunch of input parms
+          } else if(body.trim.length > 0) {
+            // if any body sent in, assume it's json with a bunch of input parms
             try {
               val js = new JSONObject(body)
               import scala.collection.JavaConverters._
@@ -988,15 +989,15 @@ class DomApi extends DomApiBase  with Logging {
               case t: Throwable => {
                 razie.Log.log("NO TEMPLATE found - error trying to parse body as json", t)
                 engine.root.children.appendAll({
-                  EError("No template found for path: " +path ) ::
-                  EError("Error parsing: " + body, t.toString) ::
-                    new EError("Exception : ", t) :: Nil
+                  EWarning("No template found for path: " +path ) ::
+                  EWarning("Error parsing: " + body, t.toString) ::
+                  new EWarning("Exception : ", t) :: Nil
                 }.map(DomAst(_, AstKinds.ERROR))
                 )
                 Map.empty
               }
             }
-          }
+          } else Map.empty
 
         } else Map.empty
 
