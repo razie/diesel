@@ -274,6 +274,6 @@ Html:
 
 AST:
       <div class="well">
-      @Html(razie.wiki.model.Wikis.preprocess(wid, page.get.markup, Wikis.noBadWords(page.get.content), page).printHtml(1))
+      @Html(razie.wiki.model.Wikis.preprocess(wid, page.get.markup, Wikis.noBadWords(page.get.content), page)._1.printHtml(1))
        </ul>
       </div>

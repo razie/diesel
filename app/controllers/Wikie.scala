@@ -239,7 +239,7 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
           Audit.missingPage("wiki " + wid);
 
           // try to parse the name for tags - then add them to the content
-          val preprocessed = Wikis.preprocess(wid, Wikis.MD, wid.name, None).fold(WAST.context(None))
+          val preprocessed = Wikis.preprocess(wid, Wikis.MD, wid.name, None)._1.fold(WAST.context(None))
           val props = preprocessed.props
           val contentFromTags = props.foldLeft("") { (x, t) => x + "{{" + t._1 + ":" + t._2 + "}}\n\n" }
 
