@@ -12,8 +12,8 @@ import com.mongodb.casbah.Imports._
 import controllers._
 import mod.cart.{EEModCartExecutor, EEModUserExecutor}
 import mod.diesel.controllers.{DieselMod, FiddleMod}
-import mod.diesel.guard.EEGuardian
-import mod.snow.{EEModSnowExecutor}
+import mod.diesel.guard.{EEDieselCron, EEGuardian}
+import mod.snow.EEModSnowExecutor
 import mod.wiki.CaptchaMod
 import model.WikiUsersImpl
 import razie.audit.{Audit, AuditService, MdbAuditService}
@@ -115,6 +115,7 @@ class Module extends AbstractModule {
     Executors.add (EEModSnowExecutor)
     Executors.add (new mod.diesel.model.exec.EEWiki)
     Executors.add (new mod.diesel.model.exec.EEMail)
+    Executors.add (new EEDieselCron)
     Executors.add (new EEGuardian)
 
     RDomainPlugins.plugins = { x: String =>

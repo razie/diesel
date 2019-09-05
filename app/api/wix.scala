@@ -16,10 +16,10 @@ class wix (owe: Option[WikiPage], ou:Option[WikiUser], q:Map[String,String], r:S
   lazy val hostport:String = Services.config.hostport
 
   // hide actual app objects and give selective access via public objects below
-  private var ipage: Option[WikiPage] = owe
-  private var iuser: Option[User] = ou.asInstanceOf[Option[User]]
-  private var iquery: Map[String,String] = q
-  private var irealm: String = if(r.isEmpty) owe.map(_.realm).mkString else r
+  protected var ipage: Option[WikiPage] = owe
+  protected var iuser: Option[User] = ou.asInstanceOf[Option[User]]
+  protected var iquery: Map[String,String] = q
+  protected var irealm: String = if(r.isEmpty) owe.map(_.realm).mkString else r
 
   // so you can do wix.diesel.env
   val diesel = new {
@@ -63,6 +63,7 @@ class wix (owe: Option[WikiPage], ou:Option[WikiUser], q:Map[String,String], r:S
   val user = new {
     def userName = iuser.get.userName
     def firstName = iuser.get.firstName
+    def email = iuser.get.emailDec
     def ename = iuser.get.ename
     def isDefined = iuser.isDefined
     def isEmpty = iuser.isEmpty
@@ -96,7 +97,7 @@ class wix (owe: Option[WikiPage], ou:Option[WikiUser], q:Map[String,String], r:S
     * @return
     */
   def OLD_DELETE_jsonBrowser = {
-    """var wix = {
+    """wix = {
     """ +
    s"""
       "hostport" : "${hostport}",
@@ -170,7 +171,7 @@ class wix (owe: Option[WikiPage], ou:Option[WikiUser], q:Map[String,String], r:S
     * @return
     */
   def jsonBrowser = {
-    val res = "var wix = " + razie.js.tojsons( ListMap( // preserve order to have query at end - no particular reason
+    val res = "wix = " + razie.js.tojsons( ListMap( // preserve order to have query at end - no particular reason
 
       "hostport" -> hostport,
 
@@ -210,6 +211,7 @@ class wix (owe: Option[WikiPage], ou:Option[WikiUser], q:Map[String,String], r:S
         "userName" -> iuser.get.userName,
         "firstName" -> iuser.get.firstName,
         "ename" -> iuser.get.ename,
+        "email" -> iuser.get.emailDec,
         "isDefined" -> iuser.isDefined,
         "isEmpty" -> iuser.isEmpty,
         "isClubMember" -> user.isClubMember,
@@ -294,5 +296,9 @@ class WixUtils(w:wix) {
   def getExtLink (systemId:String, instanceId:String) = w.user.getExtLink(systemId, instanceId)
 
   def enc(s:String) = Sec.enc(s)
+  def dec(s:String) = {
+    if(w.user.isDbAdmin) Sec.dec(s)
+    else "No permission"
+  }
 }
 
