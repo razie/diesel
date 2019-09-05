@@ -95,7 +95,7 @@ create new page given a template
   <br>
 
 }
-  <button class="btn btn-primary" onclick="sendForm()">Create Now!</button>
+  <button class="btn btn-primary" type="submit" form="curForm">Create Now!</button>
 
 <hr>
 
@@ -131,6 +131,9 @@ create new page given a template
                     } else if (!n.match(/^[A-Za-z][A-Za-z0-9-_]+[A-Za-z0-9]$/)) {
                       popupError("Name cannot contain special characters (!#$%^...)");
                       event.preventDefault();
+                    } else if($("input[name='accept']").prop("checked") != true) {
+                      popupError("You need to accept the terms and conditions to continue...");
+                      event.preventDefault();
                     } else {
                       $("#name").prop('disabled', false);
                     }
@@ -145,17 +148,6 @@ create new page given a template
     </script>
   }
 
-<script>
-sendForm = function () {
-  if($("input[name='accept']").prop("checked") != true) {
-    alert("You need to accept the terms and conditions to continue...");
-    return false;
-  } else {
-    document.getElementById('curForm').submit();
-    return true;
-  }
-}
-</script>
 
 @util.oneModal()
 

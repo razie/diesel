@@ -67,42 +67,47 @@ Command reference (see more about [[specs.Topic:Expressions_and_pattern_matching
 }
 </div>
 
-  <h3 id="heading">Diesel fiddle<a href="javascript:showHelp();" title="Click for detailed help"><sup><span class="glyphicon glyphicon-question-sign"></span></sup></a> | <small>
-    <span id="errors" class="label label-default">0/? failed</span>
+  <h3 id="heading">Diesel fiddle<a href="javascript:showHelp();" title="Click for detailed help"><sup><span class="glyphicon glyphicon-question-sign"></span></sup></a>
+    | <small>
 
-    <span onclick="setSpec('Story');" class="label label-primary" style="cursor:pointer"><span id="curStory">Story</span> <span class="glyphicon glyphicon-chevron-down">
+    <span onclick="setSpec('Story');" class="label label-primary" style="cursor:pointer" title="Change the current story"><span id="curStory">Story</span> <span class="glyphicon glyphicon-chevron-down">
     </span></span><span id="storyChanged" class="label label-success" onclick="popupMenu1('Story');" style="cursor:pointer" title="Current draft differs from original">
       <span class="glyphicon glyphicon-floppy-disk"> </span>
   </span>&nbsp;
 
-    <span onclick="setSpec('Spec');" class="label label-primary" style="cursor:pointer"><span id="curSpec">Spec</span> <span class="glyphicon glyphicon-chevron-down">
+    <span onclick="setSpec('Spec');" class="label label-primary" style="cursor:pointer" title="Change the current spec"><span id="curSpec">Spec</span> <span class="glyphicon glyphicon-chevron-down">
     </span></span><span id="specChanged" class="label label-success" onclick="popupMenu1('Spec');" style="cursor:pointer" title="Current draft differs from original">
       <span class="glyphicon glyphicon-floppy-disk"> </span>
     </span>&nbsp;
 
-    | <span id="realTimeBox" class="label label-default" >
-       <input type="checkbox" id="realTime" checked> <span title="real time preview">RT/</span><span onclick="configSim();" style="cursor:pointer" >Sim <span class="glyphicon glyphicon-chevron-down"></span></span></span>
-
-    | <span class="label label-default" >
-        <input type="checkbox" id="mockMode" title="Use the mocks" checked>
+    <span id="mockBox" class="label label-default" title="Use mocks or rules in the selected specs" >
+        <input type="checkbox" id="mockMode" checked>
           <span onclick="configMock();" style="cursor:pointer" >Mocks <span class="glyphicon glyphicon-chevron-down"></span></span></span>
 
-    | <input type="checkbox" id="sketchMode" title="Not used yet"> Sketch
+    <span id="sketchBox" class="label label-default" title="Run in sketch mode - use the tests as specs" >
+      <input type="checkbox" id="sketchMode" >
+      <span onclick="toggleBox('sketchMode');" style="cursor:pointer" >Sketch</span></span>
+    <span id="blenderBox" class="label label-default" style="cursor:pointer" title="Mix-in the specs in this reactor, not just the current one" >
+      <input type="checkbox" id="blenderMode" checked>
+      <span onclick="configBlender();">Blender <span class="glyphicon glyphicon-chevron-down"></span></span></span>
+    <span id="draftsBox" class="label label-default" title="Use autosaved drafts not originals" >
+      <input type="checkbox" id="draftMode" checked>
+      <span onclick="toggleBox('draftMode');" style="cursor:pointer" >Drafts</span></span>
+    <span id="wikiBox" class="label label-default" title="Show the wiki instead of the diesel trace" >
+      <input type="checkbox" id="wikiMode" >
+      <span onclick="toggleBox('wikiMode');" style="cursor:pointer" >Wiki</span></span>
+    <span onclick="startESP();" class="label label-primary" style="cursor:pointer">ESP <span class="glyphicon glyphicon-log-out"></span></span>
 
-    | <span id="blenderBox" class="label label-default" style="cursor:pointer">
-      <input type="checkbox" id="blenderMode" title="Mix all specs together" checked> <span onclick="configBlender();">Blender <span class="glyphicon glyphicon-chevron-down"></span></span></span>
+    | <span id="realTimeBox" class="label label-default" >
+    <input type="checkbox" id="realTime" checked>
+      <span title="real time preview">RT/</span>
+      <span onclick="configRTSim();" style="cursor:pointer" >Sim <span class="glyphicon glyphicon-chevron-down"></span></span></span>
 
-    | <input type="checkbox" id="draftMode" title="Use autosaved drafts not originals" checked> Drafts
-    | <input type="checkbox" id="wikiMode" title="Show the wiki instead of the tree" > Wiki
-    | <span onclick="startESP();" class="label label-primary" style="cursor:pointer">ESP
-        <span class="glyphicon glyphicon-log-out"></span>
-      </span>
+    <span id="refresher" onclick="javascript:refresher()"><span style="font-weight:bold" class="glyphicon glyphicon-refresh"></span></span>
+      <span id="spinner" style="display: none"><img src="https://cdn.razie.com/Public/spinner.gif" height="20" width="20"></span>
+      <small><small>(<span id="roundtrip" title="real time roundtrip response time">.. ms</span>)</small></small>
 
-    &nbsp; | &nbsp; <span id="refresher" onclick="javascript:refresher()"><span style="font-weight:bold" class="glyphicon glyphicon-refresh"></span></span>
-    <span id="spinner" style="display: none"><img src="https://cdn.razie.com/Public/spinner.gif" height="20" width="20"></span>
-      &nbsp;
-      (<span id="roundtrip" title="real time roundtrip response time">.. ms</span>)
-    &nbsp;
+    <span id="errors" class="label label-default">0/? failed</span>
 
   </small>
   </h3>
@@ -110,8 +115,13 @@ Command reference (see more about [[specs.Topic:Expressions_and_pattern_matching
   @*story - buttons*@
 
   <div class="row" style="align-items:center;">
-    <div id="title3a_@id" class="col-sm-6" style="font-size: small">Story <span class="" style="font-face:bold" onclick="openStory();"><span class="glyphicon glyphicon-new-window"></span></span>
-      &nbsp;<input type="checkbox" id="expandedStory" title="Expand/collapse story" checked> <small>(show/hide)</small>
+    <div id="title3a_@id" class="col-sm-6" style="font-size: small">
+      Story <span class="" style="font-face:bold" onclick="openStory();"><span class="glyphicon glyphicon-new-window"></span></span>
+      &nbsp;<input type="checkbox" id="expandedStory" title="Expand/collapse story" checked>
+        &nbsp;&nbsp;Mock/Spec <span class="" style="font-face:bold"  onclick="openSpec();">
+        <span class="glyphicon glyphicon-new-window"></span></span>
+            &nbsp;<input type="checkbox" id="expandedSpec" title="Expand/collapse spec" checked>
+        <small>(show/hide)</small>
     </div>
     <div id="title3b_@id" class="col-sm-6" style="font-size: small">
       <input type="checkbox" id="traceStory" title="Expand/collaps trace nodes" > <small>(trace)</small>
@@ -136,7 +146,7 @@ Command reference (see more about [[specs.Topic:Expressions_and_pattern_matching
 
   <div class="row" style="align-items:center;">
     <div id="title1a_@id" class="col-sm-6" style="font-size: small">Mock/Spec <span class="" style="font-face:bold"  onclick="openSpec();"><span class="glyphicon glyphicon-new-window"></span></span>
-      &nbsp;<input type="checkbox" id="expandedSpec" title="Expand/collapse spec" checked> <small>(show/hide)</small>
+      &nbsp;<input type="checkbox" id="expandedSpec1" title="Expand/collapse spec" checked> <small>(show/hide)</small>
     </div>
     <div id="title1b_@id" class="col-sm-6" style="font-size: small">
       @*<input type="checkbox" id="debugSpec" title="Expand/collaps debug nodes" checked> <small>(debug)</small>*@
@@ -212,22 +222,44 @@ $('#sketchMode, #mockMode, #blenderMode, #draftMode, #realTime').change(function
   runpill2_@{id}('@{id}', false);
 });
 
+function toggleBox (name) {
+  var is = $('#' + name).prop('checked');
+  $('#'+name).prop('checked', !is);
+  $('#'+name).trigger("change");
+}
+
 var simMode = function () { return ! $('#realTime').prop('checked');}
 
 var updRT = function() {
   $("#realTimeBox").removeClass();
   if (simMode())
-    $("#realTimeBox").addClass("label label-default");
+    $("#realTimeBox").addClass("label label-danger");
   else
     $("#realTimeBox").addClass("label label-warning");
 }
 
 var updBlender = function() {
-  $("#blenderBox").removeClass();
-    if ($('#blenderMode').prop('checked'))
-      $("#blenderBox").addClass("label label-default");
+  updBox("#blenderBox", '#blenderMode', "default", "danger");
+}
+
+var updMock = function() {
+  updBox("#mockBox", '#mockMode', "warning", "default");
+}
+
+var updDrafts = function() {
+  updBox("#draftsBox", '#draftMode', "warning", "default");
+}
+
+var updWiki = function() {
+  updBox("#wikiBox", '#wikiMode', "danger", "default");
+}
+
+var updBox = function(box, mode,labelon, labeloff) {
+  $(box).removeClass();
+    if ($(mode).prop('checked'))
+      $(box).addClass("label label-"+labelon);
     else
-      $("#blenderBox").addClass("label label-danger");
+      $(box).addClass("label label-"+labeloff);
 }
 
 $('#realTime').change(updRT);
@@ -235,6 +267,15 @@ updRT();
 
 $('#blenderMode').change(updBlender);
 updBlender();
+
+$('#mockMode').change(updMock);
+updMock();
+
+$('#draftMode').change(updDrafts);
+updDrafts();
+
+$('#wikiMode').change(updWiki);
+updWiki();
 
 function startESP() {
   window.open('/diesel/fiddle/startESP/@reactor/@id');
@@ -419,14 +460,14 @@ var runpill2_@id = function(id,compileOnly, next) {
           else if(!compileOnly) {
             // console.log("TREE: "+data.res);
 
-            // jquery.html will expan the escaped html, we need to escape again with encAmp
+            // jquery.html will expand the escaped html, we need to escape again with encAmp
             // if i don't do this, html values will mess up the current page
             // if(! data.simMode) { // was not executed
             $('#iframeOut3_' + id).html(encAmp(data.res) + '\n');
             $('#iframeOutSpec_' + id).html(encAmp(data.res) + '\n');
-            hideTrace($('#traceStory').prop('checked'));
-            hideDebug($('#debugStory').prop('checked'));
-            hideGenerated($('#generatedStory').prop('checked'));
+            dieselHideTrace($('#traceStory').prop('checked'));
+            dieselHideDebug($('#debugStory').prop('checked'));
+            dieselHideGenerated($('#generatedStory').prop('checked'));
             // }
           }
 
@@ -815,26 +856,6 @@ function saveNew(what) {
     });
 }
 
-function hideTrace(expanded) {
-  hideKind(expanded, 'trace');
-}
-
-function hideDebug(expanded) {
-  hideKind(expanded, 'debug');
-}
-
-function hideGenerated(expanded) {
-  hideKind(expanded, 'generated');
-}
-
-function hideKind(expanded, debug) {
-  if (expanded) {
-    $("div[kind='"+debug+"']").show();
-  } else {
-    $("div[kind='"+debug+"']").hide();
-  }
-}
-
 function ferrStory() {
   var x = $("[kind='error']")[0];//.scrollIntoView();
   var parent = $('#iframeOut3_'+@id)[0];
@@ -879,21 +900,28 @@ $(window).load (function() {
   });
 
   useLocalStorageCheckbox("expandedSpec", "domFiddleExpandedSpec", function (a,b,expanded) {
-    if(expanded) {
-      $("#specRow").show();
-      $("#divIn3_@id").css("height", h2);
-      $("#pre3_@id").css("height", h2);
-      $("#divOut3_@id").css("max-height", h2);
-      $("#iframeOut3_@id").css("max-height", h2);
-      attachAce();
-    } else {
-      $("#specRow").hide();
-      $("#divIn3_@id").css("height", h3);
-      $("#pre3_@id").css("height", h3);
-      $("#divOut3_@id").css("max-height", h3);
-      $("#iframeOut3_@id").css("max-height", h3);
-      attachAce();
-    }
+      $('#expandedSpec1').prop('checked', expanded);
+      if(expanded) {
+        $("#specRow").show();
+        $("#divIn3_@id").css("height", h2);
+        $("#pre3_@id").css("height", h2);
+        $("#divOut3_@id").css("max-height", h2);
+        $("#iframeOut3_@id").css("max-height", h2);
+        attachAce();
+      } else {
+        $("#specRow").hide();
+        $("#divIn3_@id").css("height", h3);
+        $("#pre3_@id").css("height", h3);
+        $("#divOut3_@id").css("max-height", h3);
+        $("#iframeOut3_@id").css("max-height", h3);
+        attachAce();
+      }
+  });
+
+  // second box tied to first
+  $('#expandedSpec1').change(function(){
+    $('#expandedSpec').prop('checked', $('#expandedSpec1').prop('checked'));
+    $('#expandedSpec').trigger("change");
   });
 
   // useLocalStorageCheckbox("debugSpec", "domFiddleDebugSpec", function (a,b,expanded) {
@@ -901,11 +929,11 @@ $(window).load (function() {
   // });
 
   useLocalStorageCheckbox("traceStory", "domFiddleTraceStory", function (a,b,expanded) {
-    hideTrace(expanded);
+    dieselHideTrace(expanded);
   });
 
   useLocalStorageCheckbox("debugStory", "domFiddleDebugStory", function (a,b,expanded) {
-    hideDebug(expanded);
+    dieselHideDebug(expanded);
   });
 
   // useLocalStorageCheckbox("generatedSpec", "domFiddleGeneratedSpec", function (a,b,expanded) {
@@ -913,20 +941,21 @@ $(window).load (function() {
   // });
 
   useLocalStorageCheckbox("generatedStory", "domFiddleGeneratedStory", function (a,b,expanded) {
-    hideGenerated(expanded);
+    dieselHideGenerated(expanded);
   });
 });
 
 /** popup config TQ */
-function configTagQuery (title,tq,cback) {
+function configTagQuery (title,desc,tq,cback) {
   $.ajax(
       '/diesel/engine/configTags', {
         type: 'POST',
         data: $.param({
           title : title,
+          desc : desc,
           tq : tq
         }),
-        contentType: 'application/x-www-form-urlenGcoded',
+        contentType: 'application/x-www-form-urlencoded',
         success: function(data) {
           popupContent(data);
         },
@@ -937,18 +966,21 @@ function configTagQuery (title,tq,cback) {
       });
 }
 
-function configSim() {
-  configTagQuery("Sim config", "sub|fibe/spec/-dsl", function (tq,err) {
+function configRTSim() {
+  configTagQuery("RT/Sim tag query", "The stories matching this tag query will be executed - others will be simulated",
+      "story/dsl|fibe|-p2", function (tq,err) {
   });
 }
 
 function configMock() {
-  configTagQuery("Mock config", "sub|fibe/spec/-dsl", function (tq,err) {
+  configTagQuery("Mock tag query", "The specs matching this tag query will be used in mock mode",
+      "sub|fibe/spec/-p2", function (tq,err) {
   });
 }
 
 function configBlender() {
-  configTagQuery("Blender config", "sub|fibe/spec/-dsl", function (tq,err) {
+  configTagQuery("Blender tag query", "Only the specs matching this tag query will be mixed in by the engine",
+      "spec/dsl|fibe|-p2", function (tq,err) {
   });
 }
 

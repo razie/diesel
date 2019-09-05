@@ -1,50 +1,50 @@
 package mod.diesel.controllers
 
-import admin.Config
-import controllers.{DieselSettings, Profile, RazRequest}
-import difflib.{DiffUtils, Patch}
+import controllers.Profile
 import java.net.InetAddress
-import mod.diesel.guard.DomGuardian.startCheck
-import razie.diesel.utils.DomHtml.quickBadge
-import mod.diesel.controllers.DomSessions.Over
 import mod.diesel.guard.DomGuardian
+import mod.diesel.guard.DomGuardian.startCheck
 import mod.diesel.model._
-import mod.diesel.model.exec.EESnakk
 import model._
-import org.apache.xml.serialize.LineSeparator
 import org.bson.types.ObjectId
-import org.joda.time.DateTime
-import org.json.JSONObject
-import play.api.mvc._
 import play.twirl.api.Html
 import razie.audit.Audit
-import razie.diesel.dom.RDOM.{NVP, P}
 import razie.diesel.dom._
 import razie.diesel.engine.RDExt._
 import razie.diesel.engine._
-import razie.diesel.ext.{EnginePrep, _}
-import razie.diesel.utils.{DomCollector, SpecCache}
-import razie.hosting.{Website, WikiReactors}
-import razie.tconf.DTemplate
+import razie.diesel.ext.EnginePrep
+import razie.diesel.utils.DomCollector
+import razie.diesel.utils.DomHtml.quickBadge
+import razie.hosting.WikiReactors
 import razie.wiki.admin.Autosave
 import razie.wiki.model._
 import razie.{Logging, js}
-import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, Future}
-import scala.util.Try
+import scala.concurrent.Future
 
 /** controller for server side fiddles / services */
 class DomGuard extends DomApiBase with Logging {
 
-  /** roll up and navigate the definitions */
-  def engineView(id: String) = FAUR { implicit stok =>
+  /** canel a running engine */
+  def dieselEngineCancel(id: String) = FAUR { implicit stok =>
     if (!ObjectId.isValid(id)) {
-      // list all engines
-      Ok(DomCollector.withAsts(_.map { e =>
-        s"""<a href="/diesel/engine/view/${e.id}">${e.id}</a><br> """
-      }.mkString)).as("text/html")
+      Redirect("/diesel/listAst")
+    } else {
+      DomCollector.withAsts(_.find(_.id == id).map(_.engine).map { eng =>
+          eng.stopNow
+          Redirect(mod.diesel.controllers.routes.DomGuard.dieselEngineView(id).url)
+      }) getOrElse {
+        ROK.k reactorLayout12 {
+          views.html.modules.diesel.engineView(None)
+        }
+      }
+    }
+  }
+
+  /** view an engine or AST collected */
+  def dieselEngineView(id: String) = FAUR { implicit stok =>
+    if (!ObjectId.isValid(id)) {
+      Redirect("/diesel/listAst")
     } else {
       DomCollector.withAsts(_.find(_.id == id).map(_.engine).map { eng =>
 
@@ -80,7 +80,7 @@ class DomGuard extends DomApiBase with Logging {
   }
 
   /** roll up and navigate the definitions */
-  def navigate() = FAUR { implicit stok =>
+  def dieselNavigate() = FAUR { implicit stok =>
 
     val engine = EnginePrep.prepEngine(
       new ObjectId().toString,
@@ -136,17 +136,18 @@ class DomGuard extends DomApiBase with Logging {
   /** roll up and navigate the definitions */
   def engineConfigTags() = FAUR { implicit stok =>
     val title = stok.fqParm("title", "TQ Configuration")
+    val desc = stok.fqParm("desc", "You can add a description here...")
     val tq = stok.fqParm("tq", "sub|fibe/spec/-dsl")
 
     ROK.k noLayout { implicit stok =>
       Wikis(stok.realm).index.withIndex { idx => }
       val tags = Wikis(stok.realm).index.usedTags.keySet.toList
-      views.html.modules.diesel.engineConfigTags(title, tags, tq)
+      views.html.modules.diesel.engineConfigTags(title, desc, tags, tq)
     }
   }
 
   // view an AST from teh collection
-  def viewAst(id: String, format: String) = FAUR ("viewAst") { implicit stok =>
+  def dieselViewAst(id: String, format: String) = FAUR ("viewAst") { implicit stok =>
     DomCollector.withAsts { asts =>
         for(
           ast <- asts.find(_.id == id) orCorr ("ID not found" -> "We only store a limited amount of traces...")
@@ -154,13 +155,13 @@ class DomGuard extends DomApiBase with Logging {
         if (format == "html")
           Ok(ast.engine.root.toHtml)
         else
-          engineView(id).apply(stok.req).value.get.get
+          dieselEngineView(id).apply(stok.req).value.get.get
       }
     }.orElse(Some(NotFound("Engine trace not found - We only store a limited amount of traces...")))
   }
 
   // list the collected ASTS
-  def listAst = FAUR { implicit stok =>
+  def dieselListAst = FAUR { implicit stok =>
     val un = stok.userName + (if (stok.au.exists(_.isAdmin)) " admin - sees all" else " - regular user")
 
     DomCollector.withAsts { asts =>
@@ -172,24 +173,27 @@ class DomGuard extends DomApiBase with Logging {
             val a = z._1
           val i = z._2
           val uname = a.userId.map(u => Users.nameOf(new ObjectId(u))).getOrElse("[auto]")
+          val duration = a.engine.root.tend - a.engine.root.tstart
 
           // todo this is mean
           s"""
              |<td>${i}</td>
-             |<td><a href="/diesel/viewAst/${a.id}">${a.id}</a></td>
+             |<td><a href="/diesel/viewAst/${a.id}">...${a.id.takeRight(4)}</a></td>
              |<td>${a.stream}</td>
              |<td>${a.realm}</td>
              |<td>${uname}</td>
              |<td>${a.engine.status}</td>
-             |<td>${a.dtm}</td>
-             |<td>${a.engine.description}</td>
-             |<td>RES=${a.engine.resultingValue.take(50)}</td>
+             |<td>${a.dtm.toString("HH:mm:ss.SS")}</td>
+             |<td align="right">$duration</td>
+             |<td><small>${a.engine.description}</small></td>
+             |<td><small>${a.engine.resultingValue.take(100)}</small></td>
              |<td> </td>
              |""".stripMargin
         }.mkString(
           s"""
              |Traces captured for realm: ${stok.realm} and user $un<br><br>
-             |<table>
+             |<small>
+             |<table class="table table-condensed">
              |<tr>
              |<th>No</th>
              |<th>Id</th>
@@ -198,6 +202,7 @@ class DomGuard extends DomApiBase with Logging {
              |<th>User</th>
              |<th>Status</th>
              |<th>dtm</th>
+             |<th class="text-right">Msec</th>
              |<th>Desc</th>
              |<th>Result</th>
              |<th></th>
@@ -207,13 +212,19 @@ class DomGuard extends DomApiBase with Logging {
           s"""
              |</tr>
              |</table>
+             |</small>
              |""".stripMargin
         )
-      Ok(x).as("text/html")
+//      Ok(x).as("text/html")
+      ROK.k reactorLayout12FullPage  {
+        new Html(
+          x
+        )
+      }
     }
   }
 
-  def cleanAst = FAUR { implicit stok =>
+  def dieselCleanAst = FAUR { implicit stok =>
     if (stok.au.exists(_.isAdmin)) {
       DomCollector.cleanAst
       Ok("ok").as("text/html")
@@ -221,7 +232,7 @@ class DomGuard extends DomApiBase with Logging {
       Unauthorized("no permission")
   }
 
-  def postAst(stream: String, id: String, parentId: String) = FAUPRaAPI(true) { implicit stok =>
+  def dieselPostAst(stream: String, id: String, parentId: String) = FAUPRaAPI(true) { implicit stok =>
     val reactor = stok.website.dieselReactor
     val capture = stok.formParm("capture")
     val m = js.parse(capture)
@@ -266,7 +277,7 @@ class DomGuard extends DomApiBase with Logging {
   }
 
   /** status badge for current realm */
-  def status = RAction.async { implicit stok =>
+  def dieselStatus = RAction.async { implicit stok =>
     stok.au.map { au =>
       DomGuardian.findLastRun(stok.realm, au.userName).map { r =>
         Future.successful {
@@ -289,7 +300,7 @@ class DomGuard extends DomApiBase with Logging {
   }
 
   /** status badge for all realms */
-  def statusAll = Filter(activeUser).async { implicit stok =>
+  def dieselStatusAll = Filter(activeUser).async { implicit stok =>
     val t = (0, 0, 0L)
 
     val x = DomGuardian.lastRuns.values.map { r =>
@@ -301,7 +312,7 @@ class DomGuard extends DomApiBase with Logging {
     }
   }
 
-  def report = Filter(activeUser).async { implicit stok =>
+  def dieselReport = Filter(activeUser).async { implicit stok =>
     // todo this should run all the time when stories change
 
     val runs = stok.website.dieselEnvList.split(",").map { e =>
@@ -313,8 +324,8 @@ class DomGuard extends DomApiBase with Logging {
         ROK.k reactorLayout12 {
           new Html(
             s"""
-               | Guardian report<a href="/wiki/Guardian_Guide" ><sup><span class="glyphicon glyphicon-question-sign"></span></a></sup>: <a href="/diesel/runCheck">Re-run check</a>  (${r.duration} msec)
-               | ${quickBadge(r.failed, r.total, r.duration)}<br>
+               | Guardian report<a href="/wiki/Guardian_Guide" ><sup><span class="glyphicon glyphicon-question-sign"></span></a></sup>: <a href="/diesel/runCheck">Re-run check</a>  (${r.duration} msec) | ${quickBadge(r.failed, r.total, r.duration)}<br>
+               | <small>Guardian - enabled:${DomGuardian.enabled(stok.realm)} auto:${DomGuardian.onAuto(stok.realm)}</small>
                | <small>${DomGuardian.stats} (<a href="/diesel/listAst">list all</a>)(<a href="/diesel/cleanAst">clean all</a>) </small><br>
                | $runs<br><br>
                | """.stripMargin +
@@ -323,7 +334,11 @@ class DomGuard extends DomApiBase with Logging {
         }
       }
     }.getOrElse {
-      if (DomGuardian.enabled(stok.realm) && DomGuardian.onAuto(stok.realm)) startCheck(stok.realm, stok.au)
+      var started = "Can't auto-start one"
+      if (DomGuardian.enabled(stok.realm) && DomGuardian.onAuto(stok.realm)) {
+        startCheck(stok.realm, stok.au)
+        started = "One just auto-started"
+      }
 
       // new
       Future.successful {
@@ -333,29 +348,37 @@ class DomGuard extends DomApiBase with Logging {
             (t._1, t._2.realm, t._2.engine.description, t._2.failed)
           }.mkString("<br>")
 
-        Ok(
-          s"""
-             |no run available - check this later <a href="/diesel/runCheck">Re-run check</a>
-             | (<a href="/diesel/listAst">list all</a>)
-             | $runs
-             |<br>Other in realm:<br>$otherInRealm""".stripMargin
-        ).as("text/html")
+        ROK.k reactorLayout12 {
+          new Html(
+            s"""
+               |no run available (<b>$started</b>) - check this later <a href="/diesel/runCheck">Re-run check</a>
+               | (<a href="/diesel/listAst">list all</a>)
+               | $runs
+
+               |<br>
+               | <small>Guardian - enabled:${DomGuardian.enabled(stok.realm)} auto:${DomGuardian.onAuto(stok.realm)}</small>
+               |<br>
+               |Other in realm:<br>$otherInRealm""".
+                stripMargin
+            )
+          }
       }
     }
   }
 
   // todo implement and optimize
-  def reportAll = Filter(adminUser).async { implicit stok =>
+  def dieselReportAll = Filter(adminUser).async { implicit stok =>
     Future.successful {
       ROK.k reactorLayout12 {
         new Html(
           s"""
 <a href="/diesel/runCheckAll">Re-run all checks</a> (may have to wait a while)...
-<br>""" +
-              s"""
+<br>
+<small>Guardian - enabled:${DomGuardian.enabled(stok.realm)} auto:${DomGuardian.onAuto(stok.realm)}</small>
 <br>
 Guardian report<a href="/wiki/Guardian_Guide" ><sup><span class="glyphicon glyphicon-question-sign"></span></a></sup>:
-<small>${DomGuardian.stats} (<a href="/diesel/listAst">list all</a>)(<a href="/diesel/cleanAst">clean all</a>) </small><br><br>""".stripMargin +
+<small>${DomGuardian.stats} (<a href="/diesel/listAst">list all</a>)(<a href="/diesel/cleanAst">clean all</a>) </small><br><br>
+""".stripMargin +
 
               """<hr><h2>Abstract</h2>""" +
 
@@ -393,7 +416,7 @@ Guardian report<a href="/wiki/Guardian_Guide" ><sup><span class="glyphicon glyph
   }
 
   /** run another check current reactor */
-  def runCheck = Filter(activeUser).async { implicit stok =>
+  def dieselRunCheck = Filter(activeUser).async { implicit stok =>
     if (DomGuardian.enabled(stok.realm)) startCheck(stok.realm, stok.au).map { engine =>
       Redirect(s"""/diesel/report""")
     }
@@ -401,7 +424,7 @@ Guardian report<a href="/wiki/Guardian_Guide" ><sup><span class="glyphicon glyph
   }
 
   /** run another check all reactors */
-  def runCheckAll = Filter(adminUser).async { implicit stok =>
+  def dieselRunCheckAll = Filter(adminUser).async { implicit stok =>
     if (DomGuardian.ISENABLED) Future.sequence(
        WikiReactors.allReactors.keys.map { k =>
         if (DomGuardian.enabled(k)) startCheck(k, stok.au)

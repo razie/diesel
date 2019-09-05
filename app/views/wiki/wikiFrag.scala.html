@@ -287,7 +287,8 @@ function selectTextareaLine(tarea,lineNum) {
         <form action="@routes.Wikie.edit2" method="GET" class="well form-inline">
           <input type="text" name="name" id="name" value="@nicename">
           <select id="cat" name="cat" class="input-small">
-          @prepend(razie.wiki.model.Wikis(wid.getRealm).cats.keys.toList.filter(_ != favoriteCat).sortWith(_ < _), favoriteCat).map{x=>
+
+          @prepend(razie.diesel.dom.WikiDomain.rootCats(wid.getRealm).filter(_ != favoriteCat).sortWith(_ < _), favoriteCat).map{x=>
             <option value="@x" >@x</option>
           }
           </select>

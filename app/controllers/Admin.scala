@@ -5,6 +5,7 @@ import java.lang.reflect.Modifier
 import com.google.inject.Singleton
 import com.mongodb.casbah.Imports.DBObject
 import com.novus.salat.grater
+import mod.diesel.guard.{DieselCron, DomGuardian}
 import mod.notes.controllers.NotesLocker
 import model.WikiScripster
 import org.bson.types.ObjectId
@@ -13,6 +14,7 @@ import play.api.mvc.Action
 import razie.audit.Audit
 import razie.db.RazMongo
 import razie.db.RazSalatContext.ctx
+import razie.diesel.utils.DomCollector
 import razie.hosting.{Website, WikiReactors}
 import razie.wiki.Services
 import razie.wiki.admin.{GlobalData, SendEmail}
@@ -112,6 +114,10 @@ Global.startedDtm=${GlobalData.startedDtm}\n
 \n
 SendEmail.curCount=${SendEmail.curCount}\n
 SendEmail.state=${SendEmail.state}\n
+\n
+DieselCron.size=${DieselCron.realmSchedules.size}\n
+DomGuardian.size=${DomGuardian.lastRuns.size}\n
+DomCollector.size=${DomCollector.withAsts(_.size)}\n
 \n
 Threads=${defaultContext.toString}\n
 ClusterStatus=${GlobalData.clusterStatus}\n

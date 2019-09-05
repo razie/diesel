@@ -84,9 +84,13 @@ object Wiki extends WikiBase {
 
   /** show a global tag, no parent */
   def showTag(tag: String, irealm:String) = Action.async { implicit request=>
-    // todo don't knwo why i do this redir
+    // why i do this redir
     // it's meant to work for other sites without reactors, that have no local tags
-    if (PlayTools.getHost.exists(_ != Services.config.hostport) && !Services.config.isLocalhost && getRealm(irealm) == Wikis.RK)
+    // todo is it still needed? I don't think I have sites without reactors anymore
+    if (
+      PlayTools.getHost.exists(_ != Services.config.hostport) &&
+          !Services.config.isLocalhost &&
+          getRealm(irealm) == Wikis.RK)
       Future.successful(Redirect("http://" + Services.config.hostport + "/tag/" + tag))
     else
       search (getRealm(irealm), "", "", Enc.fromUrl(tag)).apply(request)
@@ -182,7 +186,7 @@ object Wiki extends WikiBase {
       }
 
       if(wl.nonEmpty) ROK.r reactorLayout12 result
-      else ROK.r notFound result // Google likes 404 here or reports it as a "soft 404"
+      else            ROK.r notFound12      result // Google likes 404 here or reports it as a "soft 404"
     }
   }
 
@@ -458,16 +462,16 @@ object Wiki extends WikiBase {
         ROK.k reactorLayout12 {
           views.html.wiki.wikiList("category any", "", "", wl.map(x => (x.wid, x.label)), tags, "./", "", wid.getRealm)
         }
-      }
-      else {
+      } else {
         // last attempt: index contains lowercase name
         Wikis(wid.getRealm).index.getForLower(wid.name.toLowerCase).flatMap {newName=>
           log("- redirecting lower case: " + iwid.wpath)
           Wikis(wid.getRealm).index.getWids(newName).headOption.map { newWid =>
             Redirect(controllers.Wiki.wr(newWid, realm)) // perhaps different class name
           }
-        } getOrElse
+        } getOrElse {
           wikiPage(wid, Some(iwid.name), None, !shouldNotCount, au.isDefined && canEdit(wid, au, None).exists(identity))
+        }
       }
     } else {
       // normal request with cat and name OR empty cat but has parent

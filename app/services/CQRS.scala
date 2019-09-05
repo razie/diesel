@@ -108,13 +108,15 @@ class WikiAsyncObservers extends Actor {
     cout << "======== DIESEL MSG: " + m
     val settings = new DomEngineSettings()
     settings.realm = Some(target.realm)
+    // important to use None here, to let the engines use the envList setting otherwise
+    settings.env = if(target.env == DieselTarget.DEFAULT) None else Some(target.env)
 
     val ms = m.mkMsgString
 
     DomFiddles
         .runDom(ms, target.specs, target.stories, settings)
         .map { res =>
-          clog << "DIESEL_MSG: " + m + " : RESULT: " + res.get("value").mkString
+          clog << "DIESEL_MSG: " + m + " : RESULT: " + res.get("value").mkString.take(1000)
       // don't audit these frequent ones
       if(
         m.msg.startsWith(DieselMsg.WIKI_UPDATED) ||

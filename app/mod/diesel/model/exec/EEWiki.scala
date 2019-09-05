@@ -15,7 +15,7 @@ import razie.diesel.model.DieselMsgString
 import razie.wiki.Services
 import razie.wiki.model._
 import razie.diesel.ext.EVal
-
+import razie.diesel.dom.RDOM.P
 import scala.collection.mutable.ListBuffer
 
 // the context persistence commands
@@ -44,9 +44,15 @@ class EEWiki extends EExecutor("diesel.wiki") {
           .orElse{errors.append(EError("no wiki")); None}
           .toList
           .map{w=>
+              // typed value?
+              val p =
+                if(in.attrs.exists(_.name == "type"))
+                  P.fromTypedValue("", w.content, ctx.getRequired("type"))
+                else P("", w.content)
+
             in.attrs.find(_.name == "result").map(_.calculatedValue).map { output=>
-              new EVal(output, w.content)
-            } getOrElse new EVal("payload", w.content)
+              new EVal(p.copy(name = output))
+            } getOrElse new EVal(p.copy(name="payload"))
           } ::: errors.toList
       }
       case "follow" => {

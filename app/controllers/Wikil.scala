@@ -31,8 +31,8 @@ class Wikil @Inject() (config:Configuration) extends WikieBase {
 
   def followerLinkForm(implicit request: Request[_]) = Form {
     mapping(
-      "email1" -> nonEmptyText.verifying("Wrong format!", vldEmail(_)).verifying("Invalid characters", vldSpec(_)),
-      "email2" -> nonEmptyText.verifying("Wrong format!", vldEmail(_)).verifying("Invalid characters", vldSpec(_)),
+      "email1" -> nonEmptyText.verifying("Wrong email format!", vldEmail(_)).verifying("Invalid characters", vldSpec(_)),
+      "email2" -> nonEmptyText.verifying("Wrong email format!", vldEmail(_)).verifying("Invalid characters", vldSpec(_)),
       "comment" -> play.api.data.Forms.text,
       "g-recaptcha-response" -> text
     )(FollowerLinkWiki.apply)(FollowerLinkWiki.unapply) verifying

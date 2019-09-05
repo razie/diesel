@@ -213,10 +213,15 @@ object DomFiddles extends DomApi with Logging with WikiAuthorization {
     val storyName = WID.fromPath(storyWpath).map(_.name).getOrElse("fiddle")
     val specName = WID.fromPath(specWpath).map(_.name).getOrElse("fiddle")
 
-    //autosave their contents
-    DomWorker later AutosaveSet("wikie", reactor, specWpath, stok.au.get._id, Map(
-      "content"  -> spec
+    val auto = AutosaveSet("wikie", reactor, specWpath, stok.au.get._id, Map(
+      "content" -> spec
     ))
+
+    //autosave draft - if none and there are changes
+    if(auto.find.nonEmpty || spec != spw ) {
+      DomWorker later auto
+    }
+
     DomWorker later AutosaveSet("DomFidCapture", reactor, "", stok.au.get._id, Map(
       "content"  -> capture
     ))
@@ -260,6 +265,7 @@ object DomFiddles extends DomApi with Logging with WikiAuthorization {
     val storyWpath = stok.formParm("storyWpath")
     val spec = stok.formParm("spec")
     val story = stok.formParm("story")
+    val stw = WID.fromPath(storyWpath).flatMap(_.page).map(_.content).getOrElse(SAMPLE_STORY)
     val capture = stok.formParm("capture")
     val runEngine = stok.formParm("runEngine").toBoolean
     val scompileOnly = stok.formParm("compileOnly")
@@ -273,10 +279,15 @@ object DomFiddles extends DomApi with Logging with WikiAuthorization {
         "storyWpath" -> storyWpath
       ))
 
-      //2 their contents
-      DomWorker later AutosaveSet("wikie", reactor,storyWpath, stok.au.get._id, Map(
-        "content"  -> story
-      ))
+      //autosave draft - if none and there are changes
+      val auto = AutosaveSet("wikie", reactor,storyWpath, stok.au.get._id, Map(
+          "content"  -> story
+        ))
+
+      if(auto.find.nonEmpty || story != stw ) {
+        DomWorker later auto
+      }
+
       DomWorker later AutosaveSet("DomFidCapture",reactor,"", stok.au.get._id, Map(
         "content"  -> capture
       ))

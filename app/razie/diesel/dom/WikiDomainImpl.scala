@@ -47,7 +47,8 @@ class WikiDomainImpl (val realm:String, val wi:WikiInst) extends WikiDomain {
 
   import RDOM._
 
-  def isWikiCategory(cat: String): Boolean = rdom.classes.values.exists(c=> c.name == cat && c.stereotypes.contains(WIKI_CAT))
+  def isWikiCategory(cat: String): Boolean =
+    rdom.classes.values.exists(c=> c.name == cat && c.stereotypes.contains(WikiDomain.WIKI_CAT))
 
   /** parse categories into domain model */
   def createRDom : RDomain = {
@@ -97,7 +98,7 @@ class WikiDomainImpl (val realm:String, val wi:WikiInst) extends WikiDomain {
         ) yield {
         P(t._1, t._2)
       }
-      C(cat.name, "", WIKI_CAT, base.toList, "", Nil, Nil, assocs.toList, props.toList)
+      C(cat.name, "", WikiDomain.WIKI_CAT, base.toList, "", Nil, Nil, assocs.toList, props.toList)
     }
 
     var x = new RDomain(realm, classes.map(c=>(c.name, c)).toMap, classes.flatMap(_.assocs).toList, List.empty, Map.empty)

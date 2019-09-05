@@ -11,9 +11,9 @@ DB Admin - admin a table/doc
 <ul>
   @db.keySet.map { k =>
     @if(k == "_id") {
-      <li>@k : @admin.adminDbEntity(name,db.get(k).toString)</li>
+      <li>@k : @admin.adminDbEntity(name,""+db.get(k))</li>
     } else {
-      <li>@k : @admin.adminDbRelationship(name,k, db.get(k).toString)</li>
+      <li>@k : @admin.adminDbRelationship(name,k, ""+db.get(k))</li>
     }
   }
 

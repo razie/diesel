@@ -1,15 +1,23 @@
 @**
-engine configuration popup
+view an engine
 **@
 @(eng:Option[razie.diesel.engine.DomEngine])(implicit stok: controllers.StateOk)
 @import razie.diesel.dom.DomAst
+@import razie.diesel.dom.DomState
 
 <script src="@routes.Assets.at("javascripts/weCommons.js")"></script>
+<script src="@routes.Assets.at("javascripts/weDieselDom.js")"></script>
 
 @eng.map{ e=>
+  @if(!DomState.isDone(e.status)) {
+    In progress... @e.progress
+    <a href="@mod.diesel.controllers.routes.DomGuard.dieselEngineCancel(e.id)">Cancel</a>
+    <br>
+  }
 
   @if(e.root.children.exists(x=> x.kind == "story")) {
-<b>Summary:</b><br>
+<b>Summary:</b> @e.failedTestCount / @e.successTestCount / @e.totalTestCount (fail/succ/total)
+<br>
 <pre>
 @Html(e.root.storySummary)
 </pre>
@@ -17,13 +25,42 @@ engine configuration popup
 
   <a href="@e.href("json")">Json</a>
 
-<pre>
+  <div id="title3b" class="col-sm-6" style="font-size: small">
+    <input type="checkbox" id="traceStory" title="Expand/collaps trace nodes" > <small>(trace)</small>
+    <input type="checkbox" id="debugStory" title="Expand/collaps debug nodes" checked> <small>(debug)</small>
+    <input type="checkbox" id="generatedStory" title="Expand/collaps generated nodes" checked> <small>(generated)</small>
+    <button id="ferrStory" title="Find first error" onclick="ferrStory()" class="btn btn-default btn-xs"> <small><span class="glyphicon glyphicon-menu-down"></span> (first error)</small></button>
+  </div>
+
+  <pre>
 @Html(e.root.toHtmlInPage)
 </pre>
 
 }.getOrElse {
   Engine not found...
 }
+
+<script>
+withJquery(function ($) {
+  $(window).load(function () {
+    useLocalStorageCheckbox("traceStory", "domFiddleTraceStory", function (a, b, expanded) {
+      dieselHideTrace(expanded);
+    });
+
+    useLocalStorageCheckbox("debugStory", "domFiddleDebugStory", function (a, b, expanded) {
+      dieselHideDebug(expanded);
+    });
+
+    // useLocalStorageCheckbox("generatedSpec", "domFiddleGeneratedSpec", function (a,b,expanded) {
+    //   hideGenerated(expanded);
+    // });
+
+    useLocalStorageCheckbox("generatedStory", "domFiddleGeneratedStory", function (a, b, expanded) {
+      dieselHideGenerated(expanded);
+    });
+  });
+});
+</script>
 
 @util.oneModal()
 

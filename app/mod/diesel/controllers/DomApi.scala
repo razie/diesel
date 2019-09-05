@@ -82,7 +82,9 @@ case class DomReq (
 /** controller for server side fiddles / services */
 class DomApi extends DomApiBase  with Logging {
 
-  /** API msg sent to wiki#section
+  /** /diesel/wreact/wpath
+    *
+    * API msg sent to wiki#section
     *
     * find the named fiddles, make an engine and run the requested message on that engine
     */
@@ -157,7 +159,9 @@ class DomApi extends DomApiBase  with Logging {
     }
   }
 
-  /** API msg sent to reactor */
+  /** /diesel/start/ea
+    * API msg sent to reactor
+    */
   def start(e: String, a: String) = Filter(noRobots).async { implicit stok =>
       if(stok.au.exists(_.isActive)) {
         // insert a dot only if needed
@@ -172,7 +176,9 @@ class DomApi extends DomApiBase  with Logging {
       }
   }
 
-  /** API msg sent to reactor */
+  /** /diesel/fiddle/react/ea
+    * API msg sent to reactor
+    */
   def react(e: String, a: String) = Filter(noRobots).async { implicit stok =>
     // insert a dot only if needed
     val ea = (
@@ -323,7 +329,7 @@ class DomApi extends DomApiBase  with Logging {
             "value" == settings.resultMode || "" == settings.resultMode
           ) {
             val resp = engine.extractFinalValue(e,a)
-            val resValue = resp.map(_.dflt).getOrElse("")
+            val resValue = resp.map(_.currentStringValue).getOrElse("")
 
             if (resp.exists(_.ttype == WTypes.JSON))
               Ok(stripQuotes(resValue)).as("application/json")
@@ -333,7 +339,7 @@ class DomApi extends DomApiBase  with Logging {
           } else {
             // multiple values as json
             val valuesp = engine.extractValues(e,a)
-            val values = valuesp.map(p => (p.name, p.dflt))
+            val values = valuesp.map(p => (p.name, p.currentStringValue))
 
             var m = Map(
               "values" -> values.toMap,
@@ -387,7 +393,7 @@ class DomApi extends DomApiBase  with Logging {
 
     // don't audit diesel messages - too many
     if(
-      msg.startsWith(DieselMsg.REALM_LOADED) ||
+      msg.startsWith(DieselMsg.REALM.REALM_LOADED_MSG) ||
       msg.startsWith(DieselMsg.GUARDIAN_POLL)
     ) {}
     else
@@ -445,7 +451,7 @@ class DomApi extends DomApiBase  with Logging {
 
       // collect values
       val values = root.collect {
-        case d@DomAst(EVal(p), /*AstKinds.GENERATED*/ _, _, _) if oattrs.isEmpty || oattrs.find(_.name == p.name).isDefined => (p.name, p.dflt)
+        case d@DomAst(EVal(p), /*AstKinds.GENERATED*/ _, _, _) if oattrs.isEmpty || oattrs.find(_.name == p.name).isDefined => (p.name, p.currentStringValue)
       }
 
       var m = Map(
@@ -540,7 +546,7 @@ class DomApi extends DomApiBase  with Logging {
       val outSpec = spec(e, a)(engine.ctx).toList.flatMap(_.ret)
 
       // collect any parm specs
-      val outSpecs = outSpec.map(p => (p.name, p.dflt, p.expr.mkString))
+      val outSpecs = outSpec.map(p => (p.name, p.currentStringValue, p.expr.mkString))
 
       // stuff like incoming content-type
       val incomingMetas = stok.headers.toSimpleMap
@@ -690,9 +696,10 @@ class DomApi extends DomApiBase  with Logging {
             }.getOrElse(mkStatus(s, engine).as(ctype))
 
           }.getOrElse {
-            val res = s"No response template for $e $a\n" + engine.root.toString
+            val res = s"No response template for ${e}.${a}\n" + engine.root.toString
             ctrace << s"RUN_REST_REPLY $verb $mock $path\n" + res
             val response = engine.ctx.get("payload").getOrElse(res)
+            // todo set ctype based on payload if found
 
             mkStatus(response, engine).as(ctype)
               .withHeaders("diesel-reason" -> s"response template not found for $path in realm ${stok.realm}")
@@ -716,9 +723,11 @@ class DomApi extends DomApiBase  with Logging {
     }
   }
 
+  /** /diesel/mock/ path  */
   def mock(path: String) = runRest("/" + path, "GET", true)
   def mockPost(path: String) = runRest("/" + path, "POST", true)
 
+  /** /diesel/rest/ path  */
   def rest(path: String) = runRestPath("/" + path, "GET")
   def restPost(path: String) = runRestPath("/" + path, "POST")
 
@@ -734,7 +743,7 @@ class DomApi extends DomApiBase  with Logging {
     )
   }
 
-  /** proxy real service GET */
+  /** /diesel/proxy/path   proxy real service GET */
   def proxy(path: String) = Filter(noRobots) { implicit stok =>
     val engine = EnginePrep.prepEngine(new ObjectId().toString,
       DomEngineHelper.settingsFrom(stok),

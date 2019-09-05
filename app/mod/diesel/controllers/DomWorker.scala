@@ -7,7 +7,16 @@ import razie.wiki.admin.Autosave
 import razie.wiki.model.WID
 
 /** an autosave request */
-case class AutosaveSet(what:String, realm:String, name:String, userId: ObjectId, c:Map[String,String])
+case class AutosaveSet(what:String, realm:String, name:String, userId: ObjectId, c:Map[String,String]) {
+  def set() = {
+    Autosave.set(what, WID("", name).defaultRealmTo(realm), userId, c)
+  }
+
+  def find = {
+    Autosave.find(what, WID("", name).defaultRealmTo(realm), userId)
+  }
+
+}
 
 /** speed up initial response - do backups and stuff in background */
 object DomWorker {
@@ -23,7 +32,7 @@ object DomWorker {
     // todo persistency - not a big deal if an autosave is lost
     def receive = {
       case a: AutosaveSet => {
-        Autosave.set(a.what, WID("", a.name).defaultRealmTo(a.realm), a.userId, a.c)
+        a.set()
       }
     }
   }

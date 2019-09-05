@@ -31,24 +31,31 @@ class EEMail extends EExecutor("diesel.mail") {
 
     in.met match {
 
-      case "send" => {
-        val to = ctx("to").split(",").toList
-        val subject = ctx("subject")
-        val body = ctx("body")
+      case "new" => {
+        val host = ctx.getRequired("host")
+        val port = ctx.getRequired("port")
+        val name = ctx.getRequired("name")
+        val user = ctx.get("user")
+        val pass = ctx.get("pass")
 
-        if(
-          nzlen(subject) &&
-          nzlen(body)
-        ) {
+//          Emailer.withSession(ctx.root.settings.realm.get) { mailSession =>
+//            to.filter(nzlen).map { addr =>
+//              mailSession.send(addr, mailSession.SUPPORT, subject, body)
+//            }
+//          }
+          EVal(P(name, "")) :: Nil
+      }
+
+      case "send" => {
+        val to = ctx.getRequired("to").split(",").toList
+        val subject = ctx.getRequired("subject")
+        val body = ctx.getRequired("body")
           Emailer.withSession(ctx.root.settings.realm.get) { mailSession =>
             to.filter(nzlen).map { addr =>
               mailSession.send(addr, mailSession.SUPPORT, subject, body)
             }
           }
           EInfo("Sent...") :: Nil
-        } else {
-          EError("missing parm: to,subject,body") :: Nil
-        }
       }
 
       case s@_ => {

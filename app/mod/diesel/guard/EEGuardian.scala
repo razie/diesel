@@ -14,10 +14,11 @@ import razie.diesel.dom._
 import razie.diesel.ext
 import razie.diesel.ext.{MatchCollector, _}
 import razie.diesel.model.DieselMsg
+import razie.diesel.utils.DieselData
 import razie.hosting.Website
 
 /** guardian actions */
-class EEGuardian extends EExecutor("diesel.guardian") with Logging {
+class EEGuardian extends EExecutor(DieselMsg.GUARDIAN.ENTITY) with Logging {
 
   final val DG = DieselMsg.GUARDIAN.ENTITY
 
@@ -30,14 +31,15 @@ class EEGuardian extends EExecutor("diesel.guardian") with Logging {
 
       case "schedule" => {
         val res = DomGuardian.createPollSchedule(
-          ctx.get("schedule").get,
+          ctx.getRequired("schedule"),
           ctx.root.settings.realm.get,
-          ctx.get("env").get
+          ctx.getRequired("env"),
+          ctx.get("inLocal").mkString
         )
         EVal(P.fromTypedValue("payload", res)) :: Nil
       }
 
-      case "starts" => { // avoid error if not ruled
+      case DieselMsg.GUARDIAN.STARTS => { // avoid error if not ruled
         Nil
       }
 
@@ -57,12 +59,9 @@ class EEGuardian extends EExecutor("diesel.guardian") with Logging {
           var oldStatus = DieselData
               .find(GUARDIAN_POLL, realm, realm + "-" + env)
               .flatMap(t=> t.contents.get("status"))
-              .getOrElse("Success")
+              .getOrElse("Fail")
 
           info(s"Guardian - ends $realm-$env - newStatus $newStatus vs oldStatus $oldStatus")
-
-          // save new status
-          DieselData.update(GUARDIAN_POLL, realm, realm + "-" + env, None, Map("status" -> newStatus))
 
           // lazy to capture the newStatus
           def m = ext.EMsg(
@@ -74,6 +73,7 @@ class EEGuardian extends EExecutor("diesel.guardian") with Logging {
               P("oldStatus", oldStatus),
               P("newStatus", newStatus),
               P("errors", engine.failedTestCount.toString),
+              P("total", engine.totalTestCount.toString),
               P("report", s"""See details: <a href=\"$url/diesel/viewAst/${engine.id}\">${engine.id}</a></td>""")
             ))
 
@@ -99,8 +99,8 @@ class EEGuardian extends EExecutor("diesel.guardian") with Logging {
 
       case "polled" => {
         //it was polled and here's the new stamp - shall we start a new check?
-        val stamp = ctx.get("stamp").get
-        val env = ctx.get("env").get
+        val env = ctx.getRequired("env")
+        val stamp = ctx.getRequired("stamp")
         val tq = ctx.get("tagQuery").mkString
         val settings = ctx.root.settings
         val res = DomGuardian.polled(settings.realm.get, env, stamp, settings.userId.flatMap(Users.findUserById), tq)
@@ -109,8 +109,8 @@ class EEGuardian extends EExecutor("diesel.guardian") with Logging {
       }
 
       case "run" => {
-        val realm = ctx.get("realm").get // altho you can only run your for now
-        val env = ctx.get("env").get
+        val env = ctx.getRequired("env")
+        val realm = ctx.getRequired("realm") // altho you can only run your for now
         val settings = ctx.root.settings
 
         // admins get to run anywhere they want
@@ -122,18 +122,11 @@ class EEGuardian extends EExecutor("diesel.guardian") with Logging {
         else settings.realm.mkString
 
         DomGuardian.runReq(settings.userId.flatMap(Users.findUserById), inrealm, env, true)
-        EVal(P("payload", "scheduled new run...")) :: Nil
+        EVal(P("payload", "scheduled new run... <a href=\"/diesel/listAst\">list all</a>")) :: Nil
       }
 
       case "stats" => {
         EVal(P("payload", DomGuardian.stats)) :: Nil
-      }
-
-      case "schedules" => {
-        EVal(P(
-          "payload",
-          DomSchedules.realmSchedules.map(_._2.toString).mkString("\n")
-        )) :: Nil
       }
 
       case "clear" => {
@@ -160,7 +153,7 @@ class EEGuardian extends EExecutor("diesel.guardian") with Logging {
         EMsg(DG, "report") ::
         EMsg(DG, "schedule") ::
         EMsg(DG, "stats") ::
-        EMsg(DG, "starts") ::
+        EMsg(DG, DieselMsg.GUARDIAN.STARTS) ::
         EMsg(DG, DieselMsg.GUARDIAN.NOTIFY) ::
         EMsg(DG, "clear") :: Nil
 }

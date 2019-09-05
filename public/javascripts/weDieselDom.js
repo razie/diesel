@@ -460,7 +460,7 @@ function cbToTagQuery (obj) {
   });
 
   if(ors.length > 0) {
-    var x = ors.reduce(function(acc,val){return acc.length <= 0 ? val : acc + '|' + val;})
+    var x = ors.reduce(function(acc,val){return acc.length <= 0 ? val : acc + ',' + val;})
     tq = tq.length <= 0 ? x : x + '/' + tq;
   }
 
@@ -473,7 +473,7 @@ function tagQueryTocb (tq) {
   $(":checkbox[tqcfg='yes']").prop('checked', false);
 
   function el(s) {
-    var ors = s.split('|'); // or elements
+    var ors = s.split(/[|,]/); // or elements
 
     if(ors.length > 1) {
       ors.map(function(val) {
@@ -571,3 +571,24 @@ function updateMarkers (aceEditor, astList) {
   aceEditor.getSession().setAnnotations(markers);
 }
 
+// used in showing engines
+
+function dieselHideTrace(expanded) {
+  dieselHideKind(expanded, 'trace');
+}
+
+function dieselHideDebug(expanded) {
+  dieselHideKind(expanded, 'debug');
+}
+
+function dieselHideGenerated(expanded) {
+  dieselHideKind(expanded, 'generated');
+}
+
+function dieselHideKind(expanded, debug) {
+  if (expanded) {
+    $("div[kind='"+debug+"']").show();
+  } else {
+    $("div[kind='"+debug+"']").hide();
+  }
+}

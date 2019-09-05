@@ -261,24 +261,24 @@ function popupHelp (id) {
 }
 
 function popupDiff () {
-      //todo get the diffs
-      $.ajax(
-          '/wikie/diffContent/@wid.wpath', {
-            type: 'POST',
-            data: $.param({
-              wpath : '@wid.wpath',
-              newc : getContent()
-            }),
-            contentType: 'application/x-www-form-urlencoded',
-            success: function(data) {
-              var tex = 'Local changes:' ;
-              popupContent(tex + data.diff);
-            },
-            error  : function(x) {
-              console.log( "ERR "+x.toString());
-            }
-          });
-    }
+  //todo get the diffs
+  $.ajax(
+      '/wikie/diffContent/@wid.wpath', {
+        type: 'POST',
+        data: $.param({
+          wpath : '@wid.wpath',
+          newc : getContent()
+        }),
+        contentType: 'application/x-www-form-urlencoded',
+        success: function(data) {
+          var tex = 'Local changes:' ;
+          popupContent(tex + data.diff);
+        },
+        error  : function(x) {
+          console.log( "ERR "+x.toString());
+        }
+      });
+}
 </script>
 
       @*********************** content assist ************************@
@@ -536,7 +536,6 @@ useLocalStorageCheckbox("weLive", "weLive");
 
   var saveDraftDebounced = _.debounce(saveDraft, 2000, {maxWait: 5000});
 
-
   $("#content").change(livePreview);
 
 refreshServerNow = function() {
@@ -549,7 +548,7 @@ refreshServerNow = function() {
 /** update the preview */
 function livePreview() {
   refreshDslDebounced();
-  var content = aceAttached ? aceEditor.getSession().getValue() : $("#content").val();
+  var content = getContent();
   var tags = $("#tags").val();
 
   if($('#weLive').prop('checked')) {
@@ -565,42 +564,52 @@ function livePreview() {
   saveDraftDebounced();
 }
 
+@if(hasDraft) {
+  lastDraftContent = "nothinglikethis"; // it will differ
+  } else {
+  lastDraftContent = getContent();
+  }
+
 /** save the draft on the backend */
 function saveDraft() {
-  var content = aceAttached ? aceEditor.getSession().getValue() : $("#content").val();
+  var content = getContent();
   var tags = $("#tags").val();
 
-  $.ajax(
-    '/wikie/saveDraft/@wid.wpath', {
-    type: 'POST',
-    data: $.param({
-      content : content,
-      ver : @wid.page.map(_.ver).getOrElse(0),
-      tags : tags
-    }),
-    timeout : 2000,
-    contentType: 'application/x-www-form-urlencoded',
-    success: function(data) {
-      $("#floppy").fadeOut(500);
-      $("#floppy").attr("title", "Draft saved!");
-      $("#floppy").css("color", "green");
-      $("#floppy").fadeIn(500);
-      $("#btnDiff").show();
-    },
-    error  : function(x) {
-      $("#floppy").fadeOut(500);
-      $("#floppy").attr("title", "ERROR: Cannot save draft");
-      $("#floppy").css("color", "red");
-      $("#floppy").fadeIn(500);
-      console.log( "ERR "+JSON.stringify(x));
-      if(x.status && x.status == 409) {
-        notesMsgShow("err", "Conflict - " + x.responseText);
-        $("#floppy").attr("title", "Conflict - " + x.responseText);
+  if(content != lastDraftContent) {
+    lastDraftContent = content;
+
+    $.ajax(
+      '/wikie/saveDraft/@wid.wpath', {
+      type: 'POST',
+      data: $.param({
+        content : content,
+        ver : @wid.page.map(_.ver).getOrElse(0),
+        tags : tags
+      }),
+      timeout : 2000,
+      contentType: 'application/x-www-form-urlencoded',
+      success: function(data) {
+        $("#floppy").fadeOut(500);
+        $("#floppy").attr("title", "Draft saved!");
+        $("#floppy").css("color", "green");
+        $("#floppy").fadeIn(500);
+        $("#btnDiff").show();
+      },
+      error  : function(x) {
+        $("#floppy").fadeOut(500);
+        $("#floppy").attr("title", "ERROR: Cannot save draft");
+        $("#floppy").css("color", "red");
+        $("#floppy").fadeIn(500);
+        console.log( "ERR "+JSON.stringify(x));
+        if(x.status && x.status == 409) {
+          notesMsgShow("err", "Conflict - " + x.responseText);
+          $("#floppy").attr("title", "Conflict - " + x.responseText);
+        }
+        else
+          notesMsgShow("err", "Cannot save draft");
       }
-      else
-        notesMsgShow("err", "Cannot save draft");
-    }
-  });
+    });
+  }
 }
 
 

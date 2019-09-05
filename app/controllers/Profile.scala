@@ -108,7 +108,7 @@ class Profile @Inject() (config:Configuration) extends RazController with Loggin
 
   def registerForm (implicit request : Request[_]) = Form {
     mapping(
-      "email" -> nonEmptyText.verifying("Wrong format!", vldEmail(_)).verifying("Invalid characters", vldSpec(_)),
+      "email" -> nonEmptyText.verifying("Wrong email format!", vldEmail(_)).verifying("Invalid characters", vldSpec(_)),
       "password" -> nonEmptyText.verifying("Too short!", p => (p.length == 0 || p.length >= 4)),
       "reemail" -> text,
       "repassword" -> text

@@ -154,12 +154,13 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
           r1 <- au.hasPerm(Perm.uWiki) orCorr cNoPermission("uWiki");
           lock <- EditLock.lock(w.uwid, w.wid.wpath, w.ver, au) orErr s"Page edited by ${EditLock.find(w.uwid, w.wid.wpath).map(_.uname).mkString}"
         ) yield {
-            //look for drafts
-            val draft = Autosave.OR("wikie", w.wid, stok.au.get._id, Map(
-              "content"  -> w.content,
-              "tags" -> w.tags.mkString(",")
-            ))
-            val hasDraft = Autosave.find("wikie",w.wid, stok.au.get._id).isDefined
+
+          //look for drafts
+          val draft = Autosave.OR("wikie", w.wid, stok.au.get._id, Map(
+            "content"  -> w.content,
+            "tags" -> w.tags.mkString(",")
+          ))
+          val hasDraft = Autosave.find("wikie",w.wid, stok.au.get._id).isDefined
 
           val atags = draft.getOrElse("tags", w.tags.mkString(",")) // when the autosave was created by fiddles without tags
 
@@ -196,11 +197,26 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
                   Seq.empty
                 )
               }
-          else
-              ROK.s noLayout { implicit stok =>
-                if(noshow != "simple")
-                views.html.util.reactorLayout12FullPage(
+          else if(noshow != "simple")
+            ROK.s noLayout { implicit stok =>
+              views.html.util.reactorLayout12FullPage(
                 views.html.wiki.wikiEdit(old, w.wid, editForm.fill(
+                  EditWiki(w.label,
+                    w.markup,
+                    draft("content"),
+                    w.props.get("visibility").orElse(WikiReactors(realm).props.prop("default.visibility")).getOrElse(
+                      PUBLIC),
+                    wvis(Some(w.props)).orElse(WikiReactors(realm).props.prop("default.wvis")).getOrElse(PUBLIC),
+                    w.ver.toString,
+                    atags,
+                    w.props.get("draft").getOrElse("Silent"))), hasDraft, noshow),
+                Seq.empty
+              )
+            }
+          else
+            ROK.s noLayout { implicit stok =>
+              views.html.util.reactorLayout12FullPage(
+                views.html.wiki.wikiEditSimple(w.wid, editForm.fill(
                   EditWiki(w.label,
                     w.markup,
                     draft("content"),
@@ -209,20 +225,9 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
                     w.ver.toString,
                     atags,
                     w.props.get("draft").getOrElse("Silent"))), hasDraft, noshow),
-                  Seq.empty
-                )
-                else
-                    views.html.wiki.wikiEditSimple(w.wid, editForm.fill(
-                      EditWiki(w.label,
-                        w.markup,
-                        draft("content"),
-                        w.props.get("visibility").orElse(WikiReactors(realm).props.prop("default.visibility")).getOrElse(PUBLIC),
-                        wvis(Some(w.props)).orElse(WikiReactors(realm).props.prop("default.wvis")).getOrElse(PUBLIC),
-                        w.ver.toString,
-                        atags,
-                        w.props.get("draft").getOrElse("Silent"))), hasDraft, noshow)
-
-              }
+                    Seq.empty
+              )
+            }
         }) getOrElse
           noPerm(wid, "edit.wiki")
 
@@ -1016,7 +1021,7 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
 
       val E = " - go back and try another name..."
       val e =
-        if(name.length < 3 && !au.isAdmin) s"Name ($name) too short"
+        if(name.length < 3) s"Name ($name) too short"
       else if (name.length > 20 && !au.isAdmin) s"Name ($name) too long"
       else if (Config.reservedNames.contains(name)) s"Name ($name) is reserved"
       else if (!name.matches("(?![-_])[A-Za-z0-9-_]{1,63}(?<![-_])")) s"Name ($name) cannot contain special characters"
@@ -1026,7 +1031,14 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
         ) s"With a free account you can only create dev or qa projects..."
       else ""
 
-      if(e.isEmpty) Realm.createR2(cat, templateWpath, torspec:String, realm).apply(request).value.get.get
+      if(e.isEmpty) {
+        Profile.updateUser(au, au.addModNote(
+          realm,
+          s"${DateTime.now().toString} - user accepted terms and condtions for creating new project named:$name"
+        ))
+
+        Realm.createR2(cat, templateWpath, torspec:String, realm).apply(request).value.get.get
+      }
       else Msg("Error: " + Corr(e, Some(E)).toString)
   }
 

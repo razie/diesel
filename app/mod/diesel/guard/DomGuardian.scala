@@ -15,7 +15,7 @@ import razie.diesel.dom.SimpleECtx
 import razie.diesel.engine.{DomEngECtx, DomEngine, DomEngineSettings}
 import razie.diesel.ext.EnginePrep
 import razie.diesel.model.{DieselMsg, DieselTarget}
-import razie.diesel.utils.DomCollector
+import razie.diesel.utils.{DieselData, DomCollector}
 import razie.hosting.Website
 import razie.tconf.SpecPath
 import razie.wiki.Services
@@ -277,7 +277,7 @@ object DomGuardian extends Logging {
 
   /** if no test is currently running, start one */
   def runReq(au: Option[User], realm: String, env: String, auto:Boolean = false): Future[Report] =
-    if(isMasterNode(Website.forRealm(realm).get)) {
+    if(DieselCron.isMasterNode(Website.forRealm(realm).get)) {
       DomGuardian.synchronized {
         val rr = RunReq(au, au.map(_.userName).mkString, realm, env, auto)
         val k = rr.key
@@ -352,11 +352,6 @@ object DomGuardian extends Logging {
                 .mkString(" , ")
           )
         }
-
-      case sc @ DomSchedule (id, expr, msg, r, e, ak) => {
-        info(s"DomSchedule: $sc")
-        Services ! msg
-      }
     }
   }
 
@@ -374,18 +369,21 @@ object DomGuardian extends Logging {
 
     val oldStatus = old
           .flatMap(t=> t.contents.get("status"))
-          .getOrElse("Success")
+          .getOrElse("")
 
     info(s"Guardian - polled $realm-$env - new $tstamp vs old $oldTstamp oldStatus $oldStatus")
 
-    if (oldTstamp != tstamp) {
+    // if tstamp different or nothing found last time - meaning no run completed
+    if (oldTstamp != tstamp || oldStatus.isEmpty ) {
       // save new stamp
       DieselData.set(GUARDIAN_POLL, realm, realm + "-" + env, None, Map("value" -> tstamp))
+      // we don't set a state - so if the first run bombs, there will be another etc
+      // todo what about poison pills if the first run always bombs?
 
       info(s"Guardian - starting a run $realm-$env - new $tstamp vs old $oldTstamp")
 
       Services ! DieselMsg(
-        "diesel.guardian",
+        DieselMsg.GUARDIAN.ENTITY,
         "run",
         Map("realm" -> realm, "env" -> env),
         DieselTarget.ENV(realm)
@@ -398,40 +396,27 @@ object DomGuardian extends Logging {
   }
 
   /** create a guardian poller schedule */
-  def createPollSchedule(schedExpr:String, realm: String, env: String) = {
+  def createPollSchedule(schedExpr:String, realm: String, env: String, inLocal:String) = {
     if (
       "local" == env && !Config.isLocalhost ||
-          "local" != env && Config.isLocalhost ||
+          "local" != env && Config.isLocalhost && "yes" != inLocal ||
 //          "sandbox" != env || // testing
           false
     ) {
-      val msg = s"Cannot create guardian schedule for env=$env for realm $realm - isLocalhost?"
+      val msg = s"isLocalhost? Cannot create guardian schedule for env=$env for realm $realm "
       error(msg)
       msg
     } else {
-      DomSchedules.createSchedule(s"guardian.auto-$realm-$env", schedExpr, realm, env,
+      DieselCron.createSchedule(s"guardian.auto-$realm-$env", schedExpr, realm, env, -1,
         DieselMsg(
-          "diesel.guardian",
-          "poll",
+          DieselMsg.GUARDIAN.ENTITY,
+          DieselMsg.GUARDIAN.POLL,
           Map("realm" -> realm, "env" -> env),
-          DieselTarget.ENV(realm)
+          DieselTarget.ENV(realm, env)
         )
       )
     }
   }
 
-  /** cheap hot/cold singleton - is it me that Apache deems main? */
-  def isMasterNode(w:Website) = {
-    val me = InetAddress.getLocalHost.getHostName
-    val url =
-      (if(Config.isLocalhost) "http://" + Config.hostport
-    else
-      w.url) + "/diesel/engine/whoami"
-
-    val active = Snakk.body(Snakk.url(url))
-    val res = me equals active
-    debug(s"isMasterNode: $res $me =? $active url = ${w.url}")
-    me equals active
-  }
 }
 

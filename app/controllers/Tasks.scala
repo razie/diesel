@@ -105,7 +105,7 @@ Please do that soon: it will expire in a few hours, for security reasons.
 
   val reloginForm = Form {
     tuple(
-      "email" -> text.verifying("Wrong format!", vldEmail(_)).verifying("Invalid characters", vldSpec(_)),
+      "email" -> text.verifying("Wrong email format!", vldEmail(_)).verifying("Invalid characters", vldSpec(_)),
       "password" -> text)
   }
 
