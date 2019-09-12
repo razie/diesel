@@ -226,7 +226,7 @@ object AdminDiff extends AdminBase {
     * @return
     */
   // todo auth that user belongs to realm
-  def difflist(toRealm: String, remote: String) = FAUR { implicit request =>
+  def difflist(localRealm:String, toRealm: String, remote: String) = FAUR { implicit request =>
     try {
       // get remote list
       val b = body(url(s"http://$remote/razadmin/wlist/$toRealm").basic("H-" + request.au.get.emailDec, "H-" + request.au.get.pwd.dec))
@@ -246,10 +246,10 @@ object AdminDiff extends AdminBase {
       }
 
       // local list
-      val lsrc = RMany[WikiEntry]().filter(we => toRealm.isEmpty || toRealm == "all" || we.realm == request.realm).map(x => new WEAbstract(x)).toList
+      val lsrc = RMany[WikiEntry]().filter(we => toRealm.isEmpty || toRealm == "all" || we.realm == localRealm).map(x => new WEAbstract(x)).toList
 
       val (lnew, lchanged, lremoved) =
-        if (toRealm == "all" || toRealm == request.realm)
+        if (toRealm == "all" || toRealm == localRealm)
         // diff to remote
           diffById(lsrc, ldest)
         else
@@ -257,7 +257,7 @@ object AdminDiff extends AdminBase {
           diffByName(lsrc, ldest)
 
       ROK.r admin { implicit stok =>
-        views.html.admin.adminDifflist(toRealm, remote, lnew, lremoved, lchanged.sortBy(_._3))
+        views.html.admin.adminDifflist(localRealm, toRealm, remote, lnew, lremoved, lchanged.sortBy(_._3))
       }
     } catch {
       case x: Throwable => {
@@ -269,9 +269,9 @@ object AdminDiff extends AdminBase {
 
   /** compute and show diff for a WID */
   // todo auth that user belongs to realm
-  def showDiff(onlyContent: String, side: String, realm: String, target: String, iwid: WID) = FAUR { implicit request =>
-    val localWid = iwid.r(if (realm == "all") iwid.getRealm else request.realm)
-    val remoteWid = iwid.r(if (realm == "all") iwid.getRealm else iwid.getRealm)
+  def showDiff(onlyContent: String, side: String, localRealm:String, toRealm: String, target: String, iwid: WID) = FAUR { implicit request =>
+    val localWid = iwid.r(if (toRealm == "all") iwid.getRealm else localRealm)
+    val remoteWid = iwid.r(if (toRealm == "all") iwid.getRealm else toRealm)
 
     getWE(target, remoteWid)(request.au.get).fold({ t =>
       val remote = t._1.content
@@ -291,7 +291,7 @@ object AdminDiff extends AdminBase {
       def diffTable = s"""<small>${views.html.admin.diffTable(side, patch, Some(("How", "Local", "Remote")))}</small>"""
 
       if ("yes" == onlyContent.toLowerCase) {
-        val url = routes.AdminDiff.showDiff("no", side, realm, target, iwid)
+        val url = routes.AdminDiff.showDiff("no", side, localRealm, toRealm, target, iwid)
         Ok(
           s"""<a href="$url">See separate</a><br>""" + diffTable
         )
@@ -305,8 +305,8 @@ object AdminDiff extends AdminBase {
   }
 
   // to remote
-  def applyDiffTo(toRealm: String, target: String, iwid: WID) = FAUR { implicit request =>
-    val localWid = iwid.r(if (toRealm == "all") iwid.getRealm else request.realm)
+  def applyDiffTo(localRealm:String, toRealm: String, target: String, iwid: WID) = FAUR { implicit request =>
+    val localWid = iwid.r(if (toRealm == "all") iwid.getRealm else localRealm)
     val remoteWid = iwid.r(if (toRealm == "all") iwid.getRealm else toRealm)
 
     if (request.au.exists(_.realms.contains(toRealm)) || request.au.exists(_.isAdmin)) {
@@ -330,9 +330,9 @@ object AdminDiff extends AdminBase {
 
   // from remote
   // todo auth that user belongs to realm
-  def applyDiffFrom(fromRealm: String, target: String, iwid: WID) = FADR { implicit request =>
-    val localWid = iwid.r(if (fromRealm == "all") iwid.getRealm else request.realm)
-    val remoteWid = iwid.r(if (fromRealm == "all") iwid.getRealm else fromRealm)
+  def applyDiffFrom(localRealm: String, toRealm:String, target: String, iwid: WID) = FADR { implicit request =>
+    val localWid = iwid.r(if (localRealm == "all") iwid.getRealm else localRealm)
+    val remoteWid = iwid.r(if (localRealm == "all") iwid.getRealm else toRealm)
 
     getWE(target, remoteWid)(request.au.get).fold({ t =>
       val b = body(

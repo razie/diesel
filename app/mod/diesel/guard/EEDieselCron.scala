@@ -13,6 +13,7 @@ import java.util.concurrent.TimeUnit
 import play.libs.Akka
 import razie.diesel.dom.RDOM.P
 import razie.diesel.dom._
+import razie.diesel.engine.DomEngineSettings
 import razie.diesel.ext.{MatchCollector, _}
 import razie.diesel.model.{DieselMsg, DieselTarget}
 import razie.hosting.Website
@@ -175,14 +176,19 @@ class EEDieselCron extends EExecutor("diesel.cron") {
         val scount = ctx.get("count").mkString
         val desc = ctx.get("description").mkString
         val tq = ctx.get("tquery").mkString
+        val collect = ctx.get("collect").map(_.toInt).filter(_ < 50).getOrElse(10) // keep 10 default for cron jobs
         val count = if (scount.length == 0) -1l else scount.toLong
+
+        val settings = new DomEngineSettings()
+        settings.collect = Some(collect)
 
         val cid = DieselCron.createSchedule(name, schedule, realm, env, count,
           DieselMsg(
             DieselMsg.CRON.ENTITY,
             DieselMsg.CRON.TICK,
             Map("name" -> name, "realm" -> realm, "env" -> env),
-            DieselTarget.TQSPECS(realm, env, new TagQuery(tq))
+            DieselTarget.TQSPECS(realm, env, new TagQuery(tq)),
+            Some(settings)
           )
         )
 

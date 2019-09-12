@@ -1,7 +1,7 @@
 @***
 purge audit tables
 ***@
-@(toRealm:String, remote:String, lnew:List[controllers.AdminDiff.WEAbstract], lremoved:List[controllers.AdminDiff.WEAbstract], lchanged:List[(controllers.AdminDiff.WEAbstract, controllers.AdminDiff.WEAbstract, String)])(implicit stok: controllers.StateOk)
+@(localRealm:String, toRealm:String, remote:String, lnew:List[controllers.AdminDiff.WEAbstract], lremoved:List[controllers.AdminDiff.WEAbstract], lchanged:List[(controllers.AdminDiff.WEAbstract, controllers.AdminDiff.WEAbstract, String)])(implicit stok: controllers.StateOk)
 @import razie.wiki.model.WID
 
 
@@ -23,9 +23,12 @@ purge audit tables
 
             | Reactor:
 
-          <a href="#" style="color:red;font-weight:bold;" title="localhost: current reactor">
-            <b>@stok.realm</b>
-          </a>
+          <span >
+            <a href="javascript:selectFromRealm();" style="color:red;font-weight:bold;" title="current reactor">
+              @localRealm
+            <span class="caret"></span>
+            </a>
+          </span>
 
         </span>
 &nbsp; .vs. &nbsp;
@@ -40,7 +43,7 @@ purge audit tables
         | Reactor:
 
           <span >
-            <a href="javascript:selectRealm();" style="color:red;font-weight:bold;" title="remote reactor">
+            <a href="javascript:selectToRealm();" style="color:red;font-weight:bold;" title="remote reactor">
               @toRealm
                 <span class="caret"></span>
             </a>
@@ -48,11 +51,16 @@ purge audit tables
 
         <span id="remotes" style="display: none">
           @Array("www.dieselapps.com", _root_.admin.Config.hostport).map{t=>
-            <a href="/admin/difflist/@toRealm/@t">@t</a><br>
+            <a href="/admin/difflist/@localRealm/@toRealm/@t">@t</a><br>
           }
-        <span id="realms" style="display: none">
+        <span id="localRealms" style="display: none">
+        @stok.au.toList.flatMap(x=> x.memberReactors).map{t=>
+          <a href="/admin/difflist/@t/@toRealm/@remote">@t</a><br>
+        }
+        </span>
+        <span id="toRealms" style="display: none">
             @stok.au.toList.flatMap(x=> x.memberReactors).map{t=>
-              <a href="/admin/difflist/@t/@remote">@t</a><br>
+              <a href="/admin/difflist/@localRealm/@t/@remote">@t</a><br>
             }
         </span>
       </small>
@@ -66,7 +74,7 @@ purge audit tables
         @if(t._1.cat != "ReactorMod" || t._1.realm == t._2.realm) {
           <a
           xhref="#"
-          onclick="applyDif('@t._2.id', '@routes.AdminDiff.applyDiffTo(toRealm, remote, WID(t._2.cat, t._2.name).r(t._2.realm))')"
+          onclick="applyDif('@t._2.id', '@routes.AdminDiff.applyDiffTo(localRealm, toRealm, remote, WID(t._2.cat, t._2.name).r(t._2.realm))')"
           class="btn btn-xs btn-@{if(t._3=="L") "success" else "warning"}"
           >USE LOCAL &raquo;</a>
 
@@ -83,7 +91,7 @@ purge audit tables
           @t._1.realm <a href="@WID(t._1.cat, t._1.name).r(t._1.realm).url">@t._1.cat:@t._1.name</a> (<a href="/wikie/content/@wp(WID(t._1.cat, t._1.name).r(t._1.realm))">content</a>)
 
           <a
-          href="javascript:popupUrl('@routes.AdminDiff.showDiff("yes", t._3, toRealm, remote, WID(t._2.cat, t._2.name).r(t._2.realm))');"
+          href="javascript:popupUrl('@routes.AdminDiff.showDiff("yes", t._3, localRealm, toRealm, remote, WID(t._2.cat, t._2.name).r(t._2.realm))');"
           class="btn btn-xs btn-info"
           >&laquo; DIFF &raquo;</a>
 
@@ -97,7 +105,7 @@ purge audit tables
         @if(t._1.cat != "ReactorMod") {
           <a
           xhref="#"
-          onclick="applyDif('@t._2.id', '@routes.AdminDiff.applyDiffFrom(toRealm, remote, WID(t._2.cat, t._2.name).r(t._2.realm))')"
+          onclick="applyDif('@t._2.id', '@routes.AdminDiff.applyDiffFrom(localRealm, toRealm, remote, WID(t._2.cat, t._2.name).r(t._2.realm))')"
           class="btn btn-xs btn-@{if(t._3=="R") "success" else "warning"}"
           >	&laquo; USE REMOTE</a>
 
@@ -134,7 +142,7 @@ purge audit tables
       <td>
       @if(wea.cat != "Reactor") {
           <a
-          onclick="applyDif('@wea.id', '@routes.AdminDiff.applyDiffFrom(toRealm, remote, WID(wea.cat, wea.name).r(wea.realm))')"
+          onclick="applyDif('@wea.id', '@routes.AdminDiff.applyDiffFrom(localRealm, toRealm, remote, WID(wea.cat, wea.name).r(wea.realm))')"
           class="btn btn-xs btn-success"
           >	&laquo; USE REMOTE</a>
       }
@@ -155,7 +163,7 @@ purge audit tables
         @if(wea.cat != "Reactor") {
           <a
           xhref="x"
-          onclick="applyDif('@wea.id', '@routes.AdminDiff.applyDiffTo(toRealm, remote, WID(wea.cat, wea.name).r(wea.realm))')"
+          onclick="applyDif('@wea.id', '@routes.AdminDiff.applyDiffTo(localRealm, toRealm, remote, WID(wea.cat, wea.name).r(wea.realm))')"
           class="btn btn-xs btn-success"
           >USE LOCAL &raquo;</a>
         }
@@ -192,7 +200,7 @@ purge audit tables
           @t._1.realm <a href="@WID(t._1.cat, t._1.name).r(t._1.realm).url">@t._1.cat:@t._1.name</a> (<a href="/wikie/content/@wp(WID(t._1.cat, t._1.name).r(t._1.realm))">content</a>)
 
         <a
-        href="javascript:popupUrl('@routes.AdminDiff.showDiff("yes", t._3, toRealm, remote, WID(t._2.cat, t._2.name).r(t._2.realm))')"
+        href="javascript:popupUrl('@routes.AdminDiff.showDiff("yes", t._3, localRealm, toRealm, remote, WID(t._2.cat, t._2.name).r(t._2.realm))')"
         class="btn btn-xs btn-info"
         >&laquo; DIFF &raquo;</a>
           @t._2.realm <a href="http://@remote/@WID(t._2.cat, t._2.name).r(t._2.realm).urlRelative">@t._2.cat:@t._2.name</a>
@@ -232,8 +240,11 @@ applyDif = function(id,url) {
     popupContent("Select remote host to compare against" + "<br><br>" + $("#remotes").html());
   }
 
-  selectRealm = function() {
-    popupContent("Select remote realm to compare against" + "<br><br>" + $("#realms").html());
+  selectFromRealm = function() {
+    popupContent("Select local realm to compare " + "<br><br>" + $("#localRealms").html());
+  }
+  selectToRealm = function() {
+    popupContent("Select remote realm to compare against" + "<br><br>" + $("#toRealms").html());
   }
 
   });
