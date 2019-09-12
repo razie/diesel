@@ -518,7 +518,11 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
       request.au.get.update(request.au.get.consented(request.realm, ver))
       UserEvent(request.au.get._id, "CONSENTED " + ver).create
       cleanAuth()
+    if(request.website.bprop("consent.thankyou").exists(x=> !x)) {
+      Redirect(next)
+    } else {
       Msg2("Thank you!", Some(next))
+    }
   }
 
   // display consent
