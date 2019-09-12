@@ -84,8 +84,8 @@ class WikiAsyncObservers extends Actor {
       runMsg(m, target)
     }
 
-    case m@DieselMsg(e, a, p, target) => {
-      runMsg(m.toMsgString, target)
+    case m@DieselMsg(e, a, p, target, osettings) => {
+      runMsg(m.toMsgString, target, osettings)
     }
 
     case m@ScheduledDieselMsg(s, msgforLater) => {
@@ -103,10 +103,10 @@ class WikiAsyncObservers extends Actor {
     }
   }
 
-  def runMsg(m:DieselMsgString, target:DieselTarget) = {
+  def runMsg(m:DieselMsgString, target:DieselTarget, osettings:Option[DomEngineSettings] = None) = {
     // todo auth/auth
     cout << "======== DIESEL MSG: " + m
-    val settings = new DomEngineSettings()
+    val settings = osettings.getOrElse(new DomEngineSettings())
     settings.realm = Some(target.realm)
     // important to use None here, to let the engines use the envList setting otherwise
     settings.env = if(target.env == DieselTarget.DEFAULT) None else Some(target.env)
