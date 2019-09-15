@@ -5,7 +5,6 @@ package controllers
 
 import mod.snow._
 import razie.wiki.model.{UWID, WID}
-
 import scala.Array.canBuildFrom
 import scala.Array.fallbackCanBuildFrom
 import scala.Option.option2Iterable
@@ -32,8 +31,8 @@ import play.api.mvc.AnyContent
 import play.api.mvc.Result
 import razie.db.RDelete
 import razie.diesel.dom.{ECtx, WikiDomain}
-import razie.diesel.ext.{EExecutor, EMsg, EVal, MatchCollector}
-
+import razie.diesel.exec.EExecutor
+import razie.diesel.ext.{EMsg, EVal, MatchCollector}
 import scala.collection.mutable.ListBuffer
 
 /** per topic reg */

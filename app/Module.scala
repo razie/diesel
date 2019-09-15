@@ -20,7 +20,7 @@ import razie.audit.{Audit, AuditService, MdbAuditService}
 import razie.db.{RMongo, ROne, RazMongo, UpgradeDb}
 import razie.diesel.dom.{RDomainPlugin, RDomainPlugins, WikiDomain}
 import razie.diesel.engine.{DieselAppContext, RDExt}
-import razie.diesel.ext.Executors
+import razie.diesel.exec.Executors
 import razie.hosting.{Website, WikiReactors}
 import razie.tconf.hosting.Reactors
 import razie.wiki.admin.{SecLink, SendEmail}

@@ -16,6 +16,7 @@ import razie.wiki.Services
 import razie.wiki.model._
 import razie.diesel.ext.EVal
 import razie.diesel.dom.RDOM.P
+import razie.diesel.exec.EExecutor
 import scala.collection.mutable.ListBuffer
 
 // the context persistence commands

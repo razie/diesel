@@ -25,6 +25,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.{Duration, FiniteDuration}
 import akka.pattern.ask
 import akka.util.Timeout
+import razie.diesel.exec.EExecutor
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 

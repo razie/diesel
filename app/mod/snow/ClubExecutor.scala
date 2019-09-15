@@ -6,7 +6,8 @@ import razie.audit
 import razie.clog
 import razie.db._
 import razie.diesel.dom.ECtx
-import razie.diesel.ext.{EExecutor, EMsg, EVal, MatchCollector}
+import razie.diesel.exec.EExecutor
+import razie.diesel.ext.{EMsg, EVal, MatchCollector}
 import razie.wiki.model._
 
 object EEModSnowExecutor extends EExecutor("modsnow") {

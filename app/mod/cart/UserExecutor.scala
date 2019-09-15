@@ -6,7 +6,8 @@ import model.{ExtSystemUserLink, User, Users}
 import org.joda.time.DateTime
 import razie.clog
 import razie.diesel.dom.ECtx
-import razie.diesel.ext.{EExecutor, EMsg, EVal, MatchCollector}
+import razie.diesel.exec.EExecutor
+import razie.diesel.ext.{EMsg, EVal, MatchCollector}
 import razie.wiki.{Enc, Services}
 import razie.wiki.model._
 

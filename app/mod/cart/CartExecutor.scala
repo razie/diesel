@@ -2,7 +2,8 @@ package mod.cart
 
 import razie.clog
 import razie.diesel.dom.ECtx
-import razie.diesel.ext.{EExecutor, EMsg, MatchCollector}
+import razie.diesel.exec.EExecutor
+import razie.diesel.ext.{EMsg, MatchCollector}
 
 object EEModCartExecutor extends EExecutor("diesel.cart") {
 

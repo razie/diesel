@@ -14,7 +14,7 @@ import play.twirl.api.Html
 import razie.db.RMongo.as
 import razie.db._
 import razie.diesel.dom.WikiDomain
-import razie.diesel.ext.EExecutor
+import razie.diesel.exec.EExecutor
 import razie.hosting.Website
 import razie.wiki.admin.SendEmail
 import razie.wiki.model._
@@ -23,7 +23,6 @@ import razie.wiki.{Enc, WikiConfig}
 import razie.wiki.Sec._
 import razie.{Logging, cout}
 import views.html.club.doeClubRegsRepHtml
-
 import scala.Array.canBuildFrom
 import scala.Option.option2Iterable
 import scala.concurrent.Future
