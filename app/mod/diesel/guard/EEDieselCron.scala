@@ -7,7 +7,7 @@
 package mod.diesel.guard
 
 import admin.Config
-import akka.actor.{Actor, Cancellable, Props}
+import akka.actor.{Actor, ActorRef, Cancellable, Props}
 import java.net.InetAddress
 import java.util.concurrent.TimeUnit
 import play.libs.Akka
@@ -23,6 +23,33 @@ import razie.{Logging, Snakk}
 import scala.collection.mutable.HashMap
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.{Duration, FiniteDuration}
+import akka.pattern.ask
+import akka.util.Timeout
+import scala.concurrent.duration._
+import scala.concurrent.{Await, Future}
+
+/** in-mem representation of an on-going schedule */
+case class DomSchedule (
+  schedId: String,
+  schedExpr: String,
+  msg:DieselMsg,
+  realm: String,
+  env: String,
+  count:Long = 0l,
+  singleton:Boolean = true,
+  ref: Option[Cancellable] = None) {
+  var currCount:Long = 0l
+
+  def toJson = Map(
+    "realm" -> realm,
+    "env" -> env,
+    "schedId" -> schedId,
+    "schedExpr" -> schedExpr,
+    "count" -> count,
+    "currCount" -> currCount,
+    "msg" -> msg.toJson
+  )
+}
 
 /** generic scheduler, using akka schedules
   *
@@ -31,20 +58,24 @@ import scala.concurrent.duration.{Duration, FiniteDuration}
   * this is so that running the same logic all the time won't create million schedules
   * */
 object DieselCron extends Logging {
+  implicit val timeout = Timeout(2 seconds)
 
   val realmSchedules = new HashMap[String, DomSchedule]
 
-  lazy val worker =
-    Akka.system.actorOf(Props[CronActor], name = "CronActor")
+  lazy val worker = Akka.system.actorOf(Props[CronActor], name = "CronActor")
+
+  case class Cancel(schedId:String)
+  case class CreateSchedule(schedId: String, schedExpr: String, realm: String, env: String, count:Long, msg: DieselMsg)
 
   /** actually does the work */
   class CronActor extends Actor {
 
     def receive = {
+
       case sc @ DomSchedule (id, expr, msg, r, e, c, singleton, ak) => {
         info(s"DomSchedule: $sc")
 
-        if(realmSchedules.contains(id)) { // it's still ok
+        if(realmSchedules.contains(id)) { // wasn't cancelled or something
           val curr = realmSchedules(id)
           curr.currCount = curr.currCount + 1
 
@@ -67,58 +98,65 @@ object DieselCron extends Logging {
           }
         }
       }
+
+      case CreateSchedule(schedId: String, schedExpr: String, realm: String, env: String, count:Long, msg: DieselMsg) => {
+        val removed = realmSchedules.remove(schedId)
+
+        removed.toList.map {
+          _.ref.foreach(_.cancel())
+        }
+
+        // free realms at least 5min
+        var d = Duration.apply(schedExpr).asInstanceOf[FiniteDuration]
+        val d5 = Duration.create(5, TimeUnit.MINUTES)
+        val d30 = Duration.create(30, TimeUnit.SECONDS)
+        val myRealms = "wiki,specs,oss,herc-cc,devblinq" // todo better for me and paid realms
+        var sexpr = schedExpr
+        if (d < d5 && !myRealms.contains(realm)) {
+          d = d5
+          sexpr = "5 minutes"
+        } else if (d < d30) {
+          d = d30
+          sexpr = "30 seconds"
+        }
+
+        // initial object
+        var sc = DomSchedule(schedId, sexpr, msg, realm, env, count)
+
+        // start in a random time from now, but not too far in the future
+        val akkaRef = Akka.system.scheduler.schedule(
+          Duration.create(/*30 + */ (Math.random() * 30).toInt, TimeUnit.SECONDS),
+          d,
+          DieselCron.worker,
+          sc
+        )
+
+        sc = sc.copy(ref = Some(akkaRef))
+        removed.foreach{r=> sc.currCount = r.currCount} // copy old count
+
+        realmSchedules.put(schedId, sc)
+        sender ! s"Schedule $schedId for $realm-$env at $schedExpr"
+      }
+
+      case Cancel(id) => {
+        val remove = realmSchedules.remove(id)
+        remove.flatMap(_.ref).foreach(_.cancel())
+        sender ! remove
+      }
     }
   }
+
+  def await[S] (a : ActorRef, message: Any) : S = Await.result(
+    (worker ? message),
+    2 seconds
+  ).asInstanceOf[S]
 
   /** create a schedule for a realm - should be called once per realm */
-  def cancelSchedule(schedId: String) = {
-    // remove existing
-    // todo use actor for sync - this is unsafe
-    val remove = realmSchedules.remove(schedId)
-
-    remove.toList.map {
-      _.ref.foreach(_.cancel())
-    }
-
-    s"Cron cancelled: $remove"
-  }
+  def cancelSchedule(schedId: String) = await[Option[DomSchedule]](worker, Cancel(schedId))
 
   /** create a schedule for a realm - should be called once per realm */
   def createSchedule(schedId: String, schedExpr: String, realm: String, env: String, count:Long, msg: DieselMsg) = {
-    // remove existing
-    // todo use actor for sync - this is unsafe
-    val remove = realmSchedules.remove(schedId)
-
-    remove.toList.map {
-      _.ref.foreach(_.cancel())
-    }
-
-    // free realms at least 5min
-    var d = Duration.apply(schedExpr).asInstanceOf[FiniteDuration]
-    val d5 = Duration.create(5, TimeUnit.MINUTES)
-    val d30 = Duration.create(30, TimeUnit.SECONDS)
-    val myRealms = "wiki,specs,oss,herc-cc,devblinq" // todo better for me and paid realms
-    var sexpr = schedExpr
-    if (d < d5 && !myRealms.contains(realm)) {
-      d = d5
-      sexpr = "5 minutes"
-    } else if (d < d30) {
-      d = d30
-      sexpr = "30 seconds"
-    }
-
-    val sc = DomSchedule(schedId, sexpr, msg, realm, env, count)
-
-    // start in a random time from now, but not too far in the future
-    val akkaRef = Akka.system.scheduler.schedule(
-      Duration.create(/*30 + */ (Math.random() * 30).toInt, TimeUnit.SECONDS),
-      d,
-      DieselCron.worker,
-      sc
-    )
-
-    realmSchedules.put(schedId, sc.copy(ref = Some(akkaRef)))
-    s"Schedule $schedId for $realm-$env at $schedExpr"
+    await[String](worker, CreateSchedule(schedId, schedExpr, realm, env, count, msg))
   }
 
   /** cheap hot/cold singleton - is it me that Apache deems main? assumes proxy in +H mode */
@@ -137,26 +175,13 @@ object DieselCron extends Logging {
   }
 }
 
-// realm, env, CMD, schedStr, cancellable
-case class DomSchedule(
-  schedId: String,
-  schedExpr: String,
-  msg:DieselMsg,
-  realm: String,
-  env: String,
-  count:Long = 0l,
-  singleton:Boolean = true,
-  ref: Option[Cancellable] = None) {
-
-  var currCount:Long = 0l
-}
-
 
 /** actual share table. Collection model:
   * coll
   * */
 class EEDieselCron extends EExecutor("diesel.cron") {
   final val DT = "diesel.cron"
+  final val DFLT_COLLECT = 5
 
   override def isMock: Boolean = true
 
@@ -176,7 +201,7 @@ class EEDieselCron extends EExecutor("diesel.cron") {
         val scount = ctx.get("count").mkString
         val desc = ctx.get("description").mkString
         val tq = ctx.get("tquery").mkString
-        val collect = ctx.get("collect").map(_.toInt).filter(_ < 50).getOrElse(10) // keep 10 default for cron jobs
+        val collect = ctx.get("collect").map(_.toInt).filter(_ < 50).getOrElse(DFLT_COLLECT) // keep 10 default for cron jobs
         val count = if (scount.length == 0) -1l else scount.toLong
 
         val settings = new DomEngineSettings()
@@ -199,8 +224,8 @@ class EEDieselCron extends EExecutor("diesel.cron") {
 
       case "list" => {
         EVal(P.fromTypedValue(
-          "payload",
-          DieselCron.realmSchedules.map(_._2.toString).toList
+          razie.diesel.Diesel.PAYLOAD,
+          DieselCron.realmSchedules.map(o=> o._2.toJson).toList
         )) :: Nil
       }
 
@@ -209,7 +234,7 @@ class EEDieselCron extends EExecutor("diesel.cron") {
         List(
           EVal(P(
             "payload",
-            DieselCron.cancelSchedule(name)
+            s"schedule cancelled: ${DieselCron.cancelSchedule(name).mkString}"
           ))
         )
       }
@@ -224,6 +249,7 @@ class EEDieselCron extends EExecutor("diesel.cron") {
 
   override val messages: List[EMsg] =
     EMsg(DT, "set") ::
+    EMsg(DT, "cancel") ::
         EMsg(DT, "list") :: Nil
 }
 

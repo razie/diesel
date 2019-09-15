@@ -116,19 +116,23 @@ class WikiAsyncObservers extends Actor {
     DomFiddles
         .runDom(ms, target.specs, target.stories, settings)
         .map { res =>
-          clog << "DIESEL_MSG: " + m + " : RESULT: " + res.get("value").mkString.take(1000)
       // don't audit these frequent ones
       if(
         m.msg.startsWith(DieselMsg.WIKI_UPDATED) ||
+        m.msg.startsWith(DieselMsg.CRON_TICK) ||
+        m.msg.startsWith(DieselMsg.GUARDIAN_POLL) ||
 false//        m.msg.startsWith(DieselMsg.REALM_LOADED)
-      ) {}
-      else {
+      ) {
+        clog << "DIESEL_MSG: " + m + " : RESULT: " + res.get("value").mkString.take(500)
+      } else {
         val id = res.get("engineId").mkString
+        // this will also clog it - no need to clog it
         Audit.logdb(
           "DIESEL_MSG",
           m.toString,
           s"[[DieselEngine:$id]]",
-          res.get("value").mkString
+          "result-length: "+res.get("value").mkString.length,
+          res.get("value").mkString.take(500)
         )
       }
     }

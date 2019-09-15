@@ -328,11 +328,11 @@ object AdminDiff extends AdminBase {
     }
   }
 
-  // from remote
+  // from remote to local
   // todo auth that user belongs to realm
   def applyDiffFrom(localRealm: String, toRealm:String, target: String, iwid: WID) = FADR { implicit request =>
-    val localWid = iwid.r(if (localRealm == "all") iwid.getRealm else localRealm)
-    val remoteWid = iwid.r(if (localRealm == "all") iwid.getRealm else toRealm)
+    val localWid = iwid.r(if (toRealm == "all") iwid.getRealm else localRealm)
+    val remoteWid = iwid.r(if (toRealm == "all") iwid.getRealm else toRealm)
 
     getWE(target, remoteWid)(request.au.get).fold({ t =>
       val b = body(

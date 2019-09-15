@@ -21,14 +21,16 @@ import razie.diesel.dom._
 import razie.diesel.engine.DomEngineSettings.DIESEL_USER_ID
 import razie.diesel.engine.RDExt._
 import razie.diesel.engine._
+import razie.diesel.exec.SnakkCall
 import razie.diesel.ext.{EnginePrep, _}
 import razie.diesel.model.DieselMsg
 import razie.diesel.utils.{DomCollector, SpecCache}
 import razie.hosting.Website
 import razie.tconf.DTemplate
+import razie.wiki.Enc
 import razie.wiki.admin.Autosave
 import razie.wiki.model._
-import razie.{Logging, ctrace, js}
+import razie.{Logging, Snakk, ctrace, js}
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
@@ -331,11 +333,8 @@ class DomApi extends DomApiBase  with Logging {
             val resp = engine.extractFinalValue(e,a)
             val resValue = resp.map(_.currentStringValue).getOrElse("")
 
-            if (resp.exists(_.ttype == WTypes.JSON))
-              Ok(stripQuotes(resValue)).as("application/json")
-            else
-              Ok(stripQuotes(resValue))
-
+            val ctype = resp.map(p=>WTypes.getContentType(p.ttype)).getOrElse("text/plain")
+            Ok(stripQuotes(resValue)).as(ctype)
           } else {
             // multiple values as json
             val valuesp = engine.extractValues(e,a)
@@ -366,18 +365,19 @@ class DomApi extends DomApiBase  with Logging {
 
         // is message visible?
       } else if (msg.isDefined && !isMsgVisible(msg.get, reactor, website)) {
-          info(s"Unauthorized msg access [irundom] (diesel.visibility:${stok.website.dieselVisiblity}, ${stok.au.map(_.ename).mkString})")
+        val infomsg = s"Unauthorized msg access [irundom] (diesel.visibility:${stok.website.dieselVisiblity}, ${stok.au.map(_.ename).mkString})"
+        info(infomsg)
 
           Future.successful(
-            Unauthorized(s"Unauthorized msg access [irundom] (diesel.visibility:${stok.website.dieselVisiblity}, ${stok.au.map(_.ename).mkString})")
+            Unauthorized(infomsg)
           )
-
       } else {
         // good security keys for non-members (devs if logged in don't need security)
-        info(s"Unauthorized msg access (key) [irundom] for ${msg.map(m=>m.entity+m.met)}")
+        val infomsg = s"Unauthorized msg access (key) [irundom] for ${msg.map(m=>m.entity+m.met)}"
+        info(infomsg)
 
         Future.successful(
-          Unauthorized(s"Unauthorized msg access (key) [irundom] for ${msg.map(m=>m.entity+m.met)}")
+          Unauthorized(infomsg)
         )
       }
     }
@@ -394,8 +394,14 @@ class DomApi extends DomApiBase  with Logging {
     // don't audit diesel messages - too many
     if(
       msg.startsWith(DieselMsg.REALM.REALM_LOADED_MSG) ||
-      msg.startsWith(DieselMsg.GUARDIAN_POLL)
-    ) {}
+      msg.startsWith(DieselMsg.GUARDIAN_RUN) ||
+      msg.startsWith(DieselMsg.GUARDIAN_POLL) ||
+      msg.startsWith(DieselMsg.WIKI_UPDATED) ||
+      msg.startsWith(DieselMsg.CRON_TICK) ||
+      false
+    ) {
+      // clog?
+    }
     else
       Audit.logdb("DIESEL_FIDDLE_RUNDOM ", msg)
 
@@ -640,6 +646,7 @@ class DomApi extends DomApiBase  with Logging {
               }
             }
 
+          // todo optimize
           ctrace << engine.root.toString
 
           var response : Option[Result] = None
@@ -667,7 +674,7 @@ class DomApi extends DomApiBase  with Logging {
 
               engine.ctx.getp("payload").map {p=>
                 if(p.value.isDefined) {
-                  ctype=p.value.get.contentType
+                  ctype = WTypes.getContentType(p.value.get.contentType)
 
                   p.value.get.value match {
                     case x : Array[Byte] =>
@@ -744,40 +751,25 @@ class DomApi extends DomApiBase  with Logging {
   }
 
   /** /diesel/proxy/path   proxy real service GET */
-  def proxy(path: String) = Filter(noRobots) { implicit stok =>
-    val engine = EnginePrep.prepEngine(new ObjectId().toString,
-      DomEngineHelper.settingsFrom(stok),
-      stok.realm,
-      None,
-      false,
-      stok.au,
-    "DomApi.proxy")
-
-    val q = stok.req.queryString.map(t => (t._1, t._2.mkString))
-
-    // does the current request match the template?
-    def matchesRequest(tpath: String, rpath: String) = {
-      val a = rpath.split("/")
-      val b = tpath.split("/")
-
-      a.zip(b).foldLeft(true)((a, b) => a && b._1 == b._2 || b._2.matches("""\$\{([^\}]*)\}"""))
-    }
-
-    //    val template = engine.ctx.specs.flatMap(_.templateSections.filter{t=>
-    //      val turl = EESnakk.parseTemplate(t.content).url
-    //      val tpath = if(turl startsWith "http://") {
-    //        turl.replaceFirst("https?://", "").replaceFirst(".*/", "/")
-    //      } else turl
-    //      matchesRequest(tpath, stok.req.path)
-    //    }).headOption
-    //    val body = body("")
-
-    Ok("haha").as("application/json")
+  def proxy(ipath: String) = Filter(noRobots) { implicit stok =>
+    val  path = Enc.fromUrl(ipath + "?") + stok.ireq.rawQueryString
+    clog << "diesel/proxy GET " + path
+    val sc = SnakkCall("http", "GET", path, Map.empty, "").setUrl(Snakk.url(path))
+    val ec = sc.eContent
+    Ok(ec.body)
+        .as(ec.contentType)
+        .withHeaders("Access-Control-Allow-Origin" -> "*")
   }
 
   /** proxy real service GET */
-  def proxyPost(path: String) = RAction { implicit stok =>
-    Ok("haha").as("application/json")
+  def proxyPost(ipath: String) = RAction { implicit stok =>
+    val  path = Enc.fromUrl(ipath + "?" + stok.ireq.rawQueryString)
+    clog << "diesel/proxy POST " + path
+    val sc = SnakkCall("http", "POST", path, Map.empty, "")
+    val ec = sc.eContent
+    Ok(ec.body)
+        .as(ec.contentType)
+        .withHeaders("Access-Control-Allow-Origin" -> "*")
   }
 
   /** calc the diff draft to original for story and spec */
@@ -1043,8 +1035,8 @@ class DomApi extends DomApiBase  with Logging {
       stok.au.exists(u=>
         // is member of diesel realm
         u.isAdmin || u.hasRealm(reactor) ||
-        // is member from trusted realm, for public messages
-        m.exists(_.isPublic) &&
+        // is member from trusted realm, for protected messages
+//        m.exists(_.isProtected) &&
           u.hasRealm(stok.realm) && website.dieselTrust.contains(stok.realm)
       )
   }
@@ -1065,8 +1057,7 @@ class DomApi extends DomApiBase  with Logging {
 
   /** can user execute message */
   def isMsgVisible (m:EMsg, reactor:String, website:Website)(implicit stok:RazRequest) = {
-    m.isPublic ||
-    website.dieselVisiblity == "public" ||
+    isMsgPublic(m, reactor, website) ||
     isMemberOrTrusted(Some(m), reactor, website)
   }
 
