@@ -13,7 +13,7 @@ creates the navigation bar
 }
 
 @searchUrl()=@{
-  s"/wikie/search?realm=$realm"
+  s"/wikie/search?realm=${stok.realm}"
 }
 
 @menuBadges()=@{
@@ -153,7 +153,7 @@ require(['jquery'], function($){
             }
 
             @if(stok.au.exists(u=> u.isDev || u.isMod)) {
-              <li><a href="/wiki/Reactor:@realm"><i class="icon-edit"></i> Settings</a></li>
+              <li><a href="/wiki/Reactor:@stok.realm"><i class="icon-edit"></i> Settings</a></li>
             }
 
             @if(!web().navrMenu.filter(! _._1.startsWith("remove.")).isEmpty) {
