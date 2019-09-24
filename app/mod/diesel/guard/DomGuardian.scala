@@ -72,7 +72,7 @@ object DomGuardian extends Logging {
   }
 
   /** start a check run. the first time, it will init the guardian and listeners */
-  def startCheck(realm: String, au: Option[User]): Future[Report] = {
+  def startCheck(realm: String, au: Option[User]): (Future[Report], DomEngine) = {
     if (!DomGuardian.init) {
 
       // first time, init the guardian
@@ -147,7 +147,7 @@ object DomGuardian extends Logging {
 
     def key = realm + "." + env + "." + userName
 
-    def run: Future[Report] = DomGuardian.synchronized {
+    def run: (Future[Report], DomEngine) = DomGuardian.synchronized {
       val started = System.currentTimeMillis()
 
       log(s"RunReq.run() start $realm")
@@ -178,7 +178,7 @@ object DomGuardian extends Logging {
 
       // a reactor without tests... skip it
       if (stories.size == 0) {
-        return Future.successful(Report(Some(this), "?", null, "?", "?", 0, 0, 0))
+        return (Future.successful(Report(Some(this), "?", null, "?", "?", 0, 0, 0)), null)
         // return a random report
 //        if (lastRun.values.head != null)
 //          return ("", Future.successful(lastRun.values.head))
@@ -231,7 +231,7 @@ object DomGuardian extends Logging {
 
       curRun = Some((engine.id, engine, fut))
 
-      fut
+      (fut, engine)
     }
   }
 
@@ -276,7 +276,7 @@ object DomGuardian extends Logging {
     None
 
   /** if no test is currently running, start one */
-  def runReq(au: Option[User], realm: String, env: String, auto:Boolean = false): Future[Report] =
+  def runReq(au: Option[User], realm: String, env: String, auto:Boolean = false): (Future[Report], DomEngine) =
     if(DieselCron.isMasterNode(Website.forRealm(realm).get)) {
       DomGuardian.synchronized {
         val rr = RunReq(au, au.map(_.userName).mkString, realm, env, auto)
@@ -291,16 +291,16 @@ object DomGuardian extends Logging {
 
         val ret = debouncer.find(_._1 == k).filter(!_._3.isCompleted).map { rr =>
           debug(s"GuardianActor.RunReq ${rr._1} - reused in progress ")
-          rr._3 // one in progress, return its Future
+          (rr._3, rr._4) // one in progress, return its Future
         } getOrElse {
           debug(
             s"GuardianActor.RunReq ${rr.realm}.${rr.userName} - append to debouncer"
           )
           // maybe clean
           debouncer = debouncer.filter(_._1 != k)
-          val fut = rr.run
-          debouncer.append((k, rr, fut))
-          fut
+          val x @ (fut, engine) = rr.run
+          debouncer.append((k, rr, fut, engine))
+          x
         }
 
         debug(
@@ -311,14 +311,14 @@ object DomGuardian extends Logging {
         ret
       }
     } else {
-      Future.failed(new IllegalStateException("I'm not the active guardian!"))
+      (Future.failed(new IllegalStateException("I'm not the active guardian!")), null)
     }
 
   lazy val worker =
     Akka.system.actorOf(Props[GuardianActor], name = "GuardianActor")
 
   private var debouncer =
-    new mutable.ListBuffer[(String, RunReq, Future[Report])]()
+    new mutable.ListBuffer[(String, RunReq, Future[Report], DomEngine)]()
 
   /** actually does the work */
   class GuardianActor extends Actor {

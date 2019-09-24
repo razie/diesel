@@ -5,6 +5,7 @@ import mod.snow.RacerKid
 import model.{TPersonInfo, User}
 import org.joda.time.DateTime
 import razie.Logging
+import razie.tconf.Visibility
 import razie.wiki.admin.{MailSession, SecLink, SendEmail}
 import razie.wiki.model._
 import razie.wiki.{Enc, EncUrl, Services}

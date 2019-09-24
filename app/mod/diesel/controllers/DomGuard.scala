@@ -417,7 +417,7 @@ Guardian report<a href="/wiki/Guardian_Guide" ><sup><span class="glyphicon glyph
 
   /** run another check current reactor */
   def dieselRunCheck = Filter(activeUser).async { implicit stok =>
-    if (DomGuardian.enabled(stok.realm)) startCheck(stok.realm, stok.au).map { engine =>
+    if (DomGuardian.enabled(stok.realm)) startCheck(stok.realm, stok.au)._1.map { engine =>
       Redirect(s"""/diesel/report""")
     }
     else Future.successful(Ok("GUARDIAN DISABLED"))
@@ -427,7 +427,7 @@ Guardian report<a href="/wiki/Guardian_Guide" ><sup><span class="glyphicon glyph
   def dieselRunCheckAll = Filter(adminUser).async { implicit stok =>
     if (DomGuardian.ISENABLED) Future.sequence(
        WikiReactors.allReactors.keys.map { k =>
-        if (DomGuardian.enabled(k)) startCheck(k, stok.au)
+        if (DomGuardian.enabled(k)) startCheck(k, stok.au)._1
         else Future.successful(DomGuardian.EMPTY_REPORT)
       }
     ).map { x =>

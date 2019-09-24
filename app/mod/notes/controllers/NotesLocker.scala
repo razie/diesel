@@ -232,7 +232,7 @@ object NotesLocker extends RazController with Logging {
       },
       {
         case (next, name, ids, ver, content, tags) =>
-          import Visibility._
+          import razie.tconf.Visibility._
 
           val id = if (ids.length > 0) new ObjectId(ids) else new ObjectId()
           val wid = WID(CAT, (if(name.trim.length == 0) id.toString else name) )

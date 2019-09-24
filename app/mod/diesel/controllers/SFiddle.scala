@@ -15,9 +15,9 @@ import razie.wiki.model._
 import razie.{CSTimer, Logging}
 import model.MiniScripster
 import razie.diesel.snakk.FFDPayload
+import razie.tconf.Visibility
 import razie.wiki.admin.Autosave
 import razie.wiki.model.features.WikiCount
-
 import scala.collection.{SortedMap, mutable}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
