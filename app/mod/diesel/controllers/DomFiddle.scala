@@ -5,6 +5,7 @@ import controllers.{IgnoreErrors, VErrors, WikiAuthorization}
 import java.util.concurrent.TimeUnit
 import razie.diesel.utils.DomUtils.{SAMPLE_SPEC, SAMPLE_STORY}
 import mod.diesel.model.DomEngineHelper
+import org.joda.time.DateTime
 import play.api.Play.current
 import play.api.mvc._
 import play.libs.Akka
@@ -198,9 +199,30 @@ object DomFiddles extends DomApi with Logging with WikiAuthorization {
     val reactor = stok.formParm("reactor")
     val specWpath = stok.formParm("specWpath")
     val storyWpath = stok.formParm("storyWpath")
-    val spec = stok.formParm("spec")
-    val story = stok.formParm("story")
+    val spec = stok.formParm("spec")              // current text in textbox
+    val story = stok.formParm("story")            // current text in textbox
     val capture = stok.formParm("capture")
+    var timeStamp = stok.formParm("timeStamp")
+
+    val spw = WID.fromPath(specWpath).flatMap(_.page).map(_.content).getOrElse(SAMPLE_SPEC)
+    val stw = WID.fromPath(storyWpath).flatMap(_.page).map(_.content).getOrElse(SAMPLE_STORY)
+    val storyName = WID.fromPath(storyWpath).map(_.name).getOrElse("fiddle")
+    val specName = WID.fromPath(specWpath).map(_.name).getOrElse("fiddle")
+
+    val now = DateTime.now
+    val auto = AutosaveSet("wikie", reactor, specWpath, stok.au.get._id, Map(
+      "content" -> spec
+    ), Some(now)) // detect stale updates
+
+    val autoRec = auto.rec // is there a draft ?
+
+    // first check if it's newer - if the user clicks "back", a stale editor may overwrite a newer draft
+    if (autoRec.exists(_.updDtm.isAfter(new DateTime(timeStamp.toLong)))) {
+      // don't change "staleid" - used as search
+      throw new IllegalArgumentException (s"staleid - please refresh page... $timeStamp - ${autoRec.get.updDtm.toInstant.getMillis}")
+    } else {
+      timeStamp = now.toInstant.getMillis.toString
+    }
 
     //autosave which wids were you looking at last?
     DomWorker later AutosaveSet("DomFidPath", reactor, "", stok.au.get._id, Map(
@@ -208,17 +230,8 @@ object DomFiddles extends DomApi with Logging with WikiAuthorization {
       "storyWpath" -> storyWpath
     ))
 
-    val spw = WID.fromPath(specWpath).flatMap(_.page).map(_.content).getOrElse(SAMPLE_SPEC)
-    val stw = WID.fromPath(storyWpath).flatMap(_.page).map(_.content).getOrElse(SAMPLE_STORY)
-    val storyName = WID.fromPath(storyWpath).map(_.name).getOrElse("fiddle")
-    val specName = WID.fromPath(specWpath).map(_.name).getOrElse("fiddle")
-
-    val auto = AutosaveSet("wikie", reactor, specWpath, stok.au.get._id, Map(
-      "content" -> spec
-    ))
-
-    //autosave draft - if none and there are changes
-    if(auto.find.nonEmpty || spec != spw ) {
+    //autosave draft - if none OR there are changes
+    if(autoRec.nonEmpty || spec != spw ) {
       DomWorker later auto
     }
 
@@ -238,7 +251,8 @@ object DomFiddles extends DomApi with Logging with WikiAuthorization {
       // todo should respect blenderMode ?
       "ca" -> RDExt.toCAjmap(specDom plus storyDom), // C.assist options
       "specChanged" -> (specWpath.length > 0 && spw.replaceAllLiterally("\r", "") != spec),
-      "ast" -> getAstInfo(specPage)
+      "ast" -> getAstInfo(specPage),
+      "timeStamp" -> timeStamp
     )
   }
 
@@ -270,6 +284,7 @@ object DomFiddles extends DomApi with Logging with WikiAuthorization {
     val runEngine = stok.formParm("runEngine").toBoolean
     val scompileOnly = stok.formParm("compileOnly")
     val compileOnly = scompileOnly != "" && scompileOnly.toBoolean
+    var timeStamp = stok.formParm("timeStamp")
 
     val uid = stok.au.map(_._id).getOrElse(NOUSER)
 
@@ -279,12 +294,23 @@ object DomFiddles extends DomApi with Logging with WikiAuthorization {
         "storyWpath" -> storyWpath
       ))
 
+      val now = DateTime.now
       //autosave draft - if none and there are changes
-      val auto = AutosaveSet("wikie", reactor,storyWpath, stok.au.get._id, Map(
+      val auto = AutosaveSet("wikie", reactor, storyWpath, stok.au.get._id, Map(
           "content"  -> story
-        ))
+      ), Some(now)) // detect stale updates
 
-      if(auto.find.nonEmpty || story != stw ) {
+      val autoRec = auto.rec // is there a draft ?
+
+      // first check if it's newer - if the user clicks "back", a stale editor may overwrite a newer draft
+      if (autoRec.exists(_.updDtm.isAfter(new DateTime(timeStamp.toLong)))) {
+        // don't change "staleid" - used as search
+        throw new IllegalArgumentException (s"staleid - please refresh page... $timeStamp - ${autoRec.get.updDtm.toInstant.getMillis}")
+      } else {
+        timeStamp = now.toInstant.getMillis.toString
+      }
+
+      if(autoRec.nonEmpty || story != stw ) {
         DomWorker later auto
       }
 
@@ -374,10 +400,10 @@ object DomFiddles extends DomApi with Logging with WikiAuthorization {
 //     don't process or wait
             Future.successful(engine)
           } else {
-            if (capture startsWith "{") {
+            if (capture startsWith "{") { // process tests on capture
               engine.processTests
             } else {
-              engine.process
+              engine.process // normal processing
             }
           }
 
@@ -399,7 +425,8 @@ object DomFiddles extends DomApi with Logging with WikiAuthorization {
         "failureCount" -> engine.failedTestCount,
         "errorCount" -> engine.errorCount,
         "storyChanged" -> (storyWpath.length > 0 && stw.replaceAllLiterally("\r", "") != story),
-        "ast" -> getAstInfo(ipage)
+        "ast" -> getAstInfo(ipage),
+        "timeStamp" -> timeStamp
       )
 
       stimer snap "6_format_response"
