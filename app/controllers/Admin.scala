@@ -115,7 +115,7 @@ Global.startedDtm=${GlobalData.startedDtm}\n
 SendEmail.curCount=${SendEmail.curCount}\n
 SendEmail.state=${SendEmail.state}\n
 \n
-DieselCron.size=${DieselCron.realmSchedules.size}\n
+DieselCron.size=${DieselCron.withRealmSchedules(_.size)}\n
 DomGuardian.size=${DomGuardian.lastRuns.size}\n
 DomCollector.size=${DomCollector.withAsts(_.size)}\n
 \n

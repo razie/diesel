@@ -2,7 +2,10 @@
 edit a wiki page
 **************@
 @import razie.wiki.model.Perm
-@(wid:razie.wiki.model.WID, myForm:Form[controllers.Wikie.EditWiki], hasDraft:Boolean = false, noshow:String="")(implicit stok: controllers.StateOk)
+@(wid:razie.wiki.model.WID,
+  myForm:Form[controllers.Wikie.EditWiki],
+  hasDraft:Boolean = false,
+  noshow:String="")(implicit stok: controllers.StateOk)
 @import razie.hosting.Website.realm
 @import razie.wiki.model.{Wikis, WID, WikiEntry}
 @import razie.hosting.WikiReactors
@@ -215,6 +218,9 @@ PROBLEM: many places use label as name... via Wikis.formatName
 @*********************** some validation ************************@
 
 <script>
+// this is used to prevent stale pages (back browser button or older tabs) from overwriting newer drafts
+var timeStamp = @{System.currentTimeMillis().toString} ;
+
 var realm = "@stok.realm";
 
 var label =
@@ -584,7 +590,8 @@ function saveDraft() {
       data: $.param({
         content : content,
         ver : @wid.page.map(_.ver).getOrElse(0),
-        tags : tags
+        tags : tags,
+        timeStamp: timeStamp
       }),
       timeout : 2000,
       contentType: 'application/x-www-form-urlencoded',
@@ -594,6 +601,8 @@ function saveDraft() {
         $("#floppy").css("color", "green");
         $("#floppy").fadeIn(500);
         $("#btnDiff").show();
+        console.log("savedraft ts old "+timeStamp + " new "+data.timeStamp);
+        if(timeStamp < data.timeStamp) timeStamp = data.timeStamp;
       },
       error  : function(x) {
         $("#floppy").fadeOut(500);
@@ -607,6 +616,11 @@ function saveDraft() {
         }
         else
           notesMsgShow("err", "Cannot save draft");
+
+        if(JSON.stringify(x).indexOf("staleid") >= 0) {
+          alert("saveDraft - Stale page - please refresh to get the latest saved draft!!!");
+          location.reload();
+        }
       }
     });
   }
@@ -863,7 +877,7 @@ function runpill2 (id) {
       '/diesel/fiddle/fiddleStoryUpdated/'+id+'?@Html(mod.diesel.controllers.SFiddles.qtourl(Map.empty))', {
         type: 'POST',
         data: $.param({
-          saveMode : true,
+          saveMode : false,
           sketchMode : false, //$('#sketchMode').prop('checked'),
           mockMode : true, //$('#mockMode').prop('checked'),
           blenderMode : true, //$('#blenderMode').prop('checked'),
@@ -874,7 +888,8 @@ function runpill2 (id) {
           spec : '',
           story : getContent(),
           capture : '',
-          runEngine : $('#treeMode').prop('checked')
+          runEngine : $('#treeMode').prop('checked'),
+          timeStamp: timeStamp
         }),
         contentType: 'application/x-www-form-urlencoded',
         success: function(data) {
@@ -892,11 +907,18 @@ function runpill2 (id) {
           var du = new Date().getTime() - lastTime;
           $('#roundtrip').text(du+' ms');
 
+          console.log("fiddle ts old "+timeStamp + " new "+data.timeStamp);
+          if(timeStamp < data.timeStamp) timeStamp = data.timeStamp;
+
           if(aceAttached) updateMarkers(aceEditor, data.ast);
         },
         error  : function(x) {
           hideSpinner();
           console.log( "ERR "+x.toString());
+          if(JSON.stringify(x).indexOf("staleid") >= 0) {
+            alert("Stale page - please refresh to get the latest saved draft!!!");
+            location.reload();
+          }
         }
       });
 }

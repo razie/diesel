@@ -80,8 +80,8 @@ class WikiAsyncObservers extends Actor {
         Emailer.sendEmailNeedQuota(s1, s2)
       }
 
-    case m@DieselMsgString(s, target, _) => {
-      runMsg(m, target)
+    case m@DieselMsgString(s, target, _, set) => {
+      runMsg(m, target, set)
     }
 
     case m@DieselMsg(e, a, p, target, osettings) => {

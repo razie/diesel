@@ -2,14 +2,28 @@ package mod.diesel.controllers
 
 import akka.actor.{Actor, Props, _}
 import org.bson.types.ObjectId
+import org.joda.time.DateTime
 import play.libs.Akka
 import razie.wiki.admin.Autosave
 import razie.wiki.model.WID
 
-/** an autosave request */
-case class AutosaveSet(what:String, realm:String, name:String, userId: ObjectId, c:Map[String,String]) {
+/** an autosave request
+  *
+  * @param what
+  * @param realm
+  * @param name
+  * @param userId
+  * @param c
+  * @param editorMsec if passed, it will be used as the updDtm - use it to detect stale - see uses
+  */
+case class AutosaveSet(what:String, realm:String, name:String, userId: ObjectId, c:Map[String,String], editorMsec:Option[DateTime] = None) {
   def set() = {
-    Autosave.set(what, WID("", name).defaultRealmTo(realm), userId, c)
+    Autosave.set(what, WID("", name).defaultRealmTo(realm), userId, c, editorMsec)
+  }
+
+  def rec = {
+    val wid = WID("", name).defaultRealmTo(realm)
+    Autosave.rec(what, wid.getRealm, wid.wpath, userId)
   }
 
   def find = {

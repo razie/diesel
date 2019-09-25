@@ -201,6 +201,9 @@ If you'd rather see the elements ($msg, $when etc) as a dialog, go to that line 
 
 
 <script>
+// this is used to prevent stale pages (back browser button or older tabs) from overwriting newer drafts
+var timeStamp = @id ;
+
 // used in imported scripts
 var realm = '@reactor';
 var fiddleId = '@id';
@@ -364,7 +367,8 @@ var runpill_@id = function(id) {
       spec : specEditor.getValue(),
       story : storyEditor.getValue(),
       capture : editor5.getValue(),
-      simMode : simMode()
+      simMode : simMode(),
+      timeStamp: timeStamp
     }),
     contentType: 'application/x-www-form-urlencoded',
     success: function(data) {
@@ -380,6 +384,8 @@ var runpill_@id = function(id) {
       if(specEditor) updateMarkers(specEditor, data.ast);
       console.log("MARK spec");
 
+      timeStamp = data.timeStamp;
+
       // also trigger inst update
       runpill2_@{id}('@{id}', false);
     },
@@ -387,6 +393,10 @@ var runpill_@id = function(id) {
       isRefreshing -= 1;
       hideSpinner();
       console.log( "ERR "+x.toString());
+      if(JSON.stringify(x).indexOf("staleid") >= 0) {
+        alert("Stale page - please refresh to get the latest saved draft!!!");
+        location.reload();
+      }
     }
   });
 }
@@ -448,7 +458,8 @@ var runpill2_@id = function(id,compileOnly, next) {
           capture : editor5.getValue(),
           simMode : simMode(),
           compileOnly : compileOnly,
-          runEngine : ! $('#wikiMode').prop('checked')
+          runEngine : ! $('#wikiMode').prop('checked'),
+          timeStamp: timeStamp
         }),
         contentType: 'application/x-www-form-urlencoded',
         success: function(data) {
@@ -495,6 +506,8 @@ var runpill2_@id = function(id,compileOnly, next) {
           curDomRequest = null;
           storyChanged(data.storyChanged);
 
+          timeStamp = data.timeStamp;
+
           if(typeof next === "function") {
             next();
           }
@@ -504,6 +517,10 @@ var runpill2_@id = function(id,compileOnly, next) {
           hideSpinner();
           console.log( "ERR "+x.toString());
           curDomRequest = null;
+          if(JSON.stringify(x).indexOf("staleid") >= 0) {
+            alert("Stale page - please refresh to get the latest saved draft!!!");
+            location.reload();
+          }
         }
       });
 }
