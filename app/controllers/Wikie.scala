@@ -8,9 +8,10 @@ package controllers
 
 import admin.Config
 import com.mongodb.DBObject
-import com.mongodb.casbah.Imports._
+import com.mongodb.casbah.Imports.{ObjectId, _}
 import com.novus.salat._
 import difflib.{DiffUtils, Patch}
+import mod.diesel.controllers.AutosaveSet
 import mod.diesel.model.Diesel
 import mod.notes.controllers.DomC.retj
 import mod.snow.RacerKidz
@@ -26,7 +27,8 @@ import razie.diesel.dom.WikiDomain
 import razie.hosting.{Website, WikiReactors}
 import razie.wiki.Sec.EncryptedS
 import razie.wiki.admin._
-import razie.wiki.model.Visibility._
+import razie.tconf.Visibility._
+import razie.wiki.admin.Autosave.rec
 import razie.wiki.model._
 import razie.wiki.model.features.WikiCount
 import razie.wiki.parser.WAST
@@ -353,22 +355,37 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
   def saveDraft (wid:WID) = FAUR { implicit stok=>
     val content = stok.formParm("content")
     val tags = stok.formParm("tags")
+    var timeStamp = stok.formParm("timeStamp")
 
     // extend lock
     EditLock.find(wid.uwid.getOrElse(UWID.empty), wid.wpath)
       .filter(_.uid == stok.au.get._id)
       .map(_.extend)
 
-    Autosave.set("wikie", wid, stok.au.get._id,
-      Map(
-        "content"  -> content,
-        "tags" -> tags
-      ))
+    val now = DateTime.now
+
+    //autosave draft - if none and there are changes
+
+    val autoRec = Autosave.rec("wikie", wid.getRealm, wid.wpath, stok.au.get._id)
+
+    // first check if it's newer - if the user clicks "back", a stale editor may overwrite a newer draft
+    if (autoRec.exists(_.updDtm.isAfter(new DateTime(timeStamp.toLong)))) {
+      // don't change "staleid" - used as search
+      throw new IllegalArgumentException (s"staleid - please refresh page... $timeStamp - ${autoRec.get.updDtm.toInstant.getMillis}")
+    } else {
+      timeStamp = now.toInstant.getMillis.toString
+    }
+
+      Autosave.set("wikie", wid, stok.au.get._id,
+        Map(
+          "content"  -> content,
+          "tags" -> tags
+        ), Some(now))
 
     if(EditLock.isLocked(wid.uwid.getOrElse(UWID.empty), wid.wpath, stok.au.get))
       Conflict(s"edited by ${EditLock.who(wid.uwid.getOrElse(UWID.empty), wid.wpath)}")
     else
-      Ok("saved")
+      Ok(s"""{"message":"ok, saved", "timeStamp":"$timeStamp"}""").as("application/json")
   }
 
   /** calc the diff draft to original for story and spec */
