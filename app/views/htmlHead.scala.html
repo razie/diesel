@@ -19,7 +19,8 @@ the head of every page...
 <!--
   WID: @page.map(_.wid.wpathFull)
   X-FORWARDED-HOST: @stok.flatMap(_.request).orElse(request).map(r=>r.headers.get("X-FORWARDED-HOST"))
-  website: @stok.map(_.website.reactor)
+  stok.realm: @stok.map(_.realm)
+  stok.website: @stok.map(_.website.reactor)
 -->
     <meta charset="utf-8">
 
@@ -394,6 +395,9 @@ img.rklogo {
         else  require(['jquery'], f);
       };
 
+      diesel = {
+        onLoad : razOnLoad
+      };
   </script>
 
   @if(stok.isDefined && stok.exists(! _.requireJs)) {
@@ -439,6 +443,10 @@ img.rklogo {
   </script>
 
   @if(Services.config.isLocalhost) {
+
+    <!--
+    in localhost, for development, refresh all the time...
+    -->
 
     <script async>
         var tstamp = @System.currentTimeMillis();

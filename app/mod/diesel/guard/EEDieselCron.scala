@@ -28,6 +28,7 @@ import akka.util.Timeout
 import razie.diesel.exec.EExecutor
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
+import razie.cdebug
 
 /** in-mem representation of an on-going schedule */
 case class DomSchedule (
@@ -64,13 +65,13 @@ object DieselCron extends Logging {
   // todo privatize and synchronize
   private val realmSchedules = new HashMap[String, DomSchedule]
 
-  def withRealmSchedules[T] (f:HashMap[String, DomSchedule] => T) : T = synchronized {
+  def withRealmSchedules[T] (f:HashMap[String, DomSchedule] => T) : T = /*synchronized*/ {
     f(realmSchedules)
   }
 
   lazy val worker = Akka.system.actorOf(Props[CronActor], name = "CronActor")
 
-  case class Cancel(schedId:String)
+  case class Cancel(realm:String, schedId:String)
   case class CreateSchedule(schedId: String,
                             schedExpr: String,
                             realm: String,
@@ -84,7 +85,7 @@ object DieselCron extends Logging {
 
     def receive = {
 
-      case sc @ DomSchedule (id, expr, msg, r, e, c, singleton, ak) => DieselCron.synchronized {
+      case sc @ DomSchedule (id, expr, msg, r, e, c, singleton, ak) => /*DieselCron.synchronized*/ {
         info(s"DomSchedule: $sc")
 
         if(realmSchedules.contains(id)) { // wasn't cancelled or something
@@ -111,7 +112,7 @@ object DieselCron extends Logging {
         }
       }
 
-      case CreateSchedule(schedId, schedExpr, realm, env, count, msg) => DieselCron.synchronized {
+      case CreateSchedule(schedId, schedExpr, realm, env, count, msg) => /*DieselCron.synchronized*/ {
         val removed = realmSchedules.remove(schedId)
 
         removed.toList.map {
@@ -150,10 +151,12 @@ object DieselCron extends Logging {
         sender ! s"Schedule $schedId for $realm-$env at $schedExpr"
       }
 
-      case Cancel(id) => DieselCron.synchronized {
-        val remove = realmSchedules.remove(id)
-        remove.flatMap(_.ref).foreach(_.cancel())
-        sender ! remove
+      case Cancel(r, id) => /*DieselCron.synchronized*/ {
+        if(realmSchedules.get(id).exists(_.realm == r)) {
+          val remove = realmSchedules.remove(id)
+          remove.flatMap(_.ref).foreach(_.cancel())
+          sender ! remove
+        }
       }
     }
   }
@@ -164,7 +167,7 @@ object DieselCron extends Logging {
   ).asInstanceOf[S]
 
   /** create a schedule for a realm - should be called once per realm */
-  def cancelSchedule(schedId: String) = await[Option[DomSchedule]](worker, Cancel(schedId))
+  def cancelSchedule(realm:String, schedId: String) = await[Option[DomSchedule]](worker, Cancel(realm, schedId))
 
   /** create a schedule for a realm - should be called once per realm */
   def createSchedule(schedId: String, schedExpr: String, realm: String, env: String, count:Long, msg: Either[DieselMsg, DieselMsgString]) = {
@@ -201,8 +204,10 @@ class EEDieselCron extends EExecutor("diesel.cron") {
     m.entity == DT
   }
 
-  override def apply(in: EMsg, destSpec: Option[EMsg])(implicit ctx: ECtx): List[Any] = synchronized {
+  override def apply(in: EMsg, destSpec: Option[EMsg])(implicit ctx: ECtx): List[Any] =  {
     val realm = ctx.root.settings.realm.mkString
+
+    cdebug << "EEDiselCron: apply " + in
 
     in.met match {
 
@@ -237,7 +242,9 @@ class EEDieselCron extends EExecutor("diesel.cron") {
         ))
         }
 
+        cdebug << "EEDiselCron: set 1"
         val cid = DieselCron.createSchedule(name, schedule, realm, env, count, msg)
+        cdebug << "EEDiselCron: set 2"
 
         List(
           EVal(P.fromTypedValue("cronId", cid))
@@ -247,18 +254,23 @@ class EEDieselCron extends EExecutor("diesel.cron") {
       case "list" => {
         val name = ctx.get("name").mkString
 
-        EVal(P.fromTypedValue(
+        cdebug << "EEDiselCron: list 1"
+        val res = EVal(P.fromTypedValue(
           razie.diesel.Diesel.PAYLOAD,
-          DieselCron.withRealmSchedules(_.filter(x=> "" == name || name == x._1).map(o=> o._2.toJson).toList)
+          // need to filter by realm
+          DieselCron.withRealmSchedules(_.filter(_._2.realm == realm).filter(x=> "" == name || name == x._1).map(o=> o._2.toJson).toList)
         )) :: Nil
+        cdebug << "EEDiselCron: list 2"
+        res
       }
 
       case "cancel" => {
         val name = ctx.getRequired("name")
+        val res = DieselCron.cancelSchedule(realm, name).mkString
         List(
           EVal(P(
             "payload",
-            s"schedule cancelled: ${DieselCron.cancelSchedule(name).mkString}"
+            s"schedule cancelled: $res"
           ))
         )
       }
