@@ -103,34 +103,31 @@ class AdminSys extends AdminBase {
       } // if
     } // for
     import play.api.libs.concurrent.Execution.Implicits.defaultContext
-    s"""$s\n\nwikis=${RazMongo("WikiEntry").size}\n
-scriptsRun=${WikiScripster.count}\n
-Global.serving=${GlobalData.serving}\n
-Global.served=${GlobalData.served}\n
-Global.wikiOptions=${GlobalData.wikiOptions}\n
-NotesLocker.autosaved=${NotesLocker.autosaved}\n
-Global.servedPages=${GlobalData.servedPages}\n
-Global.startedDtm=${GlobalData.startedDtm}\n
-\n
-SendEmail.curCount=${SendEmail.curCount}\n
-SendEmail.state=${SendEmail.state}\n
-\n
-DieselCron.size=${DieselCron.withRealmSchedules(_.size)}\n
-DomGuardian.size=${DomGuardian.lastRuns.size}\n
-DomCollector.size=${DomCollector.withAsts(_.size)}\n
-\n
-Threads=${defaultContext.toString}\n
-ClusterStatus=${GlobalData.clusterStatus}\n
-\n
-allReactors=${WikiReactors.allReactors.keys.mkString(",")}\n
-loadedReactors=${WikiReactors.reactors.keys.mkString(",")}\n
-\n
-"""
+
+    razie.js.tojsons(Map(
+    "wikis" -> RazMongo("WikiEntry").size,
+    "scriptsRun" -> WikiScripster.count,
+    "Global.serving" -> GlobalData.serving,
+    "Global.served" -> GlobalData.served,
+    "Global.wikiOptions" -> GlobalData.wikiOptions,
+    "NotesLocker.autosaved" -> NotesLocker.autosaved,
+    "Global.servedPages" -> GlobalData.servedPages,
+    "Global.startedDtm" -> GlobalData.startedDtm,
+    "SendEmail.curCount" -> SendEmail.curCount,
+    "SendEmail.state" -> SendEmail.state,
+    "DieselCron.size" -> DieselCron.withRealmSchedules(_.size),
+    "DomGuardian.size" -> DomGuardian.lastRuns.size,
+    "DomCollector.size" -> DomCollector.withAsts(_.size),
+    "Threads" -> defaultContext.toString,
+    "ClusterStatus" -> GlobalData.clusterStatus,
+    "allReactors" -> WikiReactors.allReactors.keys.mkString(","),
+    "loadedReactors" -> WikiReactors.reactors.keys.mkString(",")
+    ))
   }
 
   def system(what: String) = Action { implicit request =>
     forAdmin {
-      Ok(osusage)
+      Ok(osusage).as("application/json")
     }
   }
 
@@ -143,7 +140,7 @@ loadedReactors=${WikiReactors.reactors.keys.mkString(",")}\n
       case "shouldReload" => {
         Ok(reloadt.toString).as("application/text")
       }
-      case _ => Ok(osusage)
+      case _ => Ok(osusage).as("application/json")
     }
   }
 
