@@ -352,15 +352,15 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
     Ok("")
   }
 
-  def saveDraft (wid:WID) = FAUR { implicit stok=>
+  def saveDraft (wid:WID) = FAUR { implicit stok =>
     val content = stok.formParm("content")
     val tags = stok.formParm("tags")
     var timeStamp = stok.formParm("timeStamp")
 
     // extend lock
     EditLock.find(wid.uwid.getOrElse(UWID.empty), wid.wpath)
-      .filter(_.uid == stok.au.get._id)
-      .map(_.extend)
+        .filter(_.uid == stok.au.get._id)
+        .map(_.extend)
 
     val now = DateTime.now
 
@@ -371,21 +371,21 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
     // first check if it's newer - if the user clicks "back", a stale editor may overwrite a newer draft
     if (autoRec.exists(_.updDtm.isAfter(new DateTime(timeStamp.toLong)))) {
       // don't change "staleid" - used as search
-      throw new IllegalArgumentException (s"staleid - please refresh page... $timeStamp - ${autoRec.get.updDtm.toInstant.getMillis}")
+      Conflict(s"staleid - please refresh page... $timeStamp - ${autoRec.get.updDtm.toInstant.getMillis}")
     } else {
       timeStamp = now.toInstant.getMillis.toString
-    }
 
       Autosave.set("wikie", wid, stok.au.get._id,
         Map(
-          "content"  -> content,
+          "content" -> content,
           "tags" -> tags
         ), Some(now))
 
-    if(EditLock.isLocked(wid.uwid.getOrElse(UWID.empty), wid.wpath, stok.au.get))
-      Conflict(s"edited by ${EditLock.who(wid.uwid.getOrElse(UWID.empty), wid.wpath)}")
-    else
-      Ok(s"""{"message":"ok, saved", "timeStamp":"$timeStamp"}""").as("application/json")
+      if (EditLock.isLocked(wid.uwid.getOrElse(UWID.empty), wid.wpath, stok.au.get))
+        Conflict(s"edited by ${EditLock.who(wid.uwid.getOrElse(UWID.empty), wid.wpath)}")
+      else
+        Ok(s"""{"message":"ok, saved", "timeStamp":"$timeStamp"}""").as("application/json")
+    }
   }
 
   /** calc the diff draft to original for story and spec */
