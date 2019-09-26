@@ -219,41 +219,43 @@ object DomFiddles extends DomApi with Logging with WikiAuthorization {
     // first check if it's newer - if the user clicks "back", a stale editor may overwrite a newer draft
     if (autoRec.exists(_.updDtm.isAfter(new DateTime(timeStamp.toLong)))) {
       // don't change "staleid" - used as search
-      throw new IllegalArgumentException (s"staleid - please refresh page... $timeStamp - ${autoRec.get.updDtm.toInstant.getMillis}")
+      Conflict(s"staleid - please refresh page... $timeStamp - ${autoRec.get.updDtm.toInstant.getMillis}")
     } else {
       timeStamp = now.toInstant.getMillis.toString
+
+      //autosave which wids were you looking at last?
+      DomWorker later AutosaveSet("DomFidPath", reactor, "", stok.au.get._id, Map(
+        "specWpath" -> specWpath,
+        "storyWpath" -> storyWpath
+      ))
+
+      //autosave draft - if none OR there are changes
+      if (autoRec.nonEmpty || spec != spw) {
+        DomWorker later auto
+      }
+
+      DomWorker later AutosaveSet("DomFidCapture", reactor, "", stok.au.get._id, Map(
+        "content" -> capture
+      ))
+
+      val specPage = new WikiEntry("Spec", specName, specName, "md", spec, stok.au.get._id, Seq("dslObject"),
+        stok.realm)
+      val specDom = WikiDomain.domFrom(specPage).get.revise addRoot
+
+      val storyPage = new WikiEntry("Story", storyName, storyName, "md", story, stok.au.get._id, Seq("dslObject"),
+        stok.realm)
+      val storyDom = WikiDomain.domFrom(storyPage).get.revise addRoot
+
+      var res = Wikis.format(specPage.wid, specPage.markup, null, Some(specPage), stok.au)
+      retj << Map(
+        "res" -> res,
+        // todo should respect blenderMode ?
+        "ca" -> RDExt.toCAjmap(specDom plus storyDom), // C.assist options
+        "specChanged" -> (specWpath.length > 0 && spw.replaceAllLiterally("\r", "") != spec),
+        "ast" -> getAstInfo(specPage),
+        "timeStamp" -> timeStamp
+      )
     }
-
-    //autosave which wids were you looking at last?
-    DomWorker later AutosaveSet("DomFidPath", reactor, "", stok.au.get._id, Map(
-      "specWpath"  -> specWpath,
-      "storyWpath" -> storyWpath
-    ))
-
-    //autosave draft - if none OR there are changes
-    if(autoRec.nonEmpty || spec != spw ) {
-      DomWorker later auto
-    }
-
-    DomWorker later AutosaveSet("DomFidCapture", reactor, "", stok.au.get._id, Map(
-      "content"  -> capture
-    ))
-
-    val specPage = new WikiEntry("Spec", specName, specName, "md", spec, stok.au.get._id, Seq("dslObject"), stok.realm)
-    val specDom = WikiDomain.domFrom(specPage).get.revise addRoot
-
-    val storyPage = new WikiEntry("Story", storyName, storyName, "md", story, stok.au.get._id, Seq("dslObject"), stok.realm)
-    val storyDom = WikiDomain.domFrom(storyPage).get.revise addRoot
-
-    var res = Wikis.format(specPage.wid, specPage.markup, null, Some(specPage), stok.au)
-    retj << Map(
-      "res" -> res,
-      // todo should respect blenderMode ?
-      "ca" -> RDExt.toCAjmap(specDom plus storyDom), // C.assist options
-      "specChanged" -> (specWpath.length > 0 && spw.replaceAllLiterally("\r", "") != spec),
-      "ast" -> getAstInfo(specPage),
-      "timeStamp" -> timeStamp
-    )
   }
 
   val WPATH_DEFAULT_EXECUTORS = "specs.Spec:Default_executors"
@@ -288,152 +290,154 @@ object DomFiddles extends DomApi with Logging with WikiAuthorization {
 
     val uid = stok.au.map(_._id).getOrElse(NOUSER)
 
-    if(saveMode && stok.au.exists(_.isActive)) {
-      DomWorker later AutosaveSet("DomFidPath", reactor, "", stok.au.get._id, Map(
-        "specWpath"  -> specWpath,
-        "storyWpath" -> storyWpath
-      ))
+    val now = DateTime.now
+    //autosave draft - if none and there are changes
+    val auto = AutosaveSet("wikie", reactor, storyWpath, stok.au.get._id, Map(
+      "content"  -> story
+    ), Some(now)) // detect stale updates
 
-      val now = DateTime.now
-      //autosave draft - if none and there are changes
-      val auto = AutosaveSet("wikie", reactor, storyWpath, stok.au.get._id, Map(
-          "content"  -> story
-      ), Some(now)) // detect stale updates
+    val autoRec = auto.rec // is there a draft ?
 
-      val autoRec = auto.rec // is there a draft ?
+    // first check if it's newer - if the user clicks "back", a stale editor may overwrite a newer draft
+    if (autoRec.exists(_.updDtm.isAfter(new DateTime(timeStamp.toLong)))) {
+      // don't change "staleid" - used as search
+      Future.successful(Conflict(s"staleid - please refresh page... $timeStamp - ${autoRec.get.updDtm.toInstant.getMillis}"))
+    } else {
+      timeStamp = now.toInstant.getMillis.toString
 
-      // first check if it's newer - if the user clicks "back", a stale editor may overwrite a newer draft
-      if (autoRec.exists(_.updDtm.isAfter(new DateTime(timeStamp.toLong)))) {
-        // don't change "staleid" - used as search
-        throw new IllegalArgumentException (s"staleid - please refresh page... $timeStamp - ${autoRec.get.updDtm.toInstant.getMillis}")
-      } else {
-        timeStamp = now.toInstant.getMillis.toString
-      }
+      if (saveMode && stok.au.exists(_.isActive)) {
+        DomWorker later AutosaveSet("DomFidPath", reactor, "", stok.au.get._id, Map(
+          "specWpath" -> specWpath,
+          "storyWpath" -> storyWpath
+        ))
 
-      if(autoRec.nonEmpty || story != stw ) {
-        DomWorker later auto
-      }
-
-      DomWorker later AutosaveSet("DomFidCapture",reactor,"", stok.au.get._id, Map(
-        "content"  -> capture
-      ))
-    }
-
-    stimer snap "1_parse_req"
-
-    val storyName = WID.fromPath(storyWpath).map(_.name).getOrElse("fiddle")
-    val specName = WID.fromPath(specWpath).map(_.name).getOrElse("fiddle")
-
-    // add the engine spec to be included in content assist
-    val engSpec = WID.fromPath(WPATH_DEFAULT_EXECUTORS).flatMap(_.page).toList
-    val page = new WikiEntry("Spec", specName, specName, "md", spec, uid, Seq("dslObject"), stok.realm)
-
-    val pages =
-      if(settings.blenderMode) {
-        val d = engSpec ::: EnginePrep.catPages("Spec", reactor).toList.map { p =>
-          //         if draft mode, find the auto-saved version if any
-          if (settings.draftMode) {
-            val c = Autosave.find("wikie", p.wid, uid).flatMap(_.get("content")).mkString
-            if (c.length > 0) p.copy(content = c)
-            else p
-          } else p
+        if (autoRec.nonEmpty || story != stw) {
+          DomWorker later auto
         }
 
-        d
-      } else
-        engSpec ::: List(page)
+        DomWorker later AutosaveSet("DomFidCapture", reactor, "", stok.au.get._id, Map(
+          "content" -> capture
+        ))
+      }
 
-    // todo is adding page twice...
-    val dom = pages.flatMap(p=>
-      SpecCache.orcached(p, WikiDomain.domFrom(p)).toList
-    ).foldLeft(
-      RDomain.empty
-    )((a,b) => a.plus(b)).revise.addRoot
+      stimer snap "1_parse_req"
 
-    stimer snap "2_parse_specs"
+      val storyName = WID.fromPath(storyWpath).map(_.name).getOrElse("fiddle")
+      val specName = WID.fromPath(specWpath).map(_.name).getOrElse("fiddle")
 
-    val ipage = new WikiEntry("Story", storyName, storyName, "md", story, uid, Seq("dslObject"), stok.realm)
+      // add the engine spec to be included in content assist
+      val engSpec = WID.fromPath(WPATH_DEFAULT_EXECUTORS).flatMap(_.page).toList
+      val page = new WikiEntry("Spec", specName, specName, "md", spec, uid, Seq("dslObject"), stok.realm)
 
-    val idom = WikiDomain.domFrom(ipage).get.revise addRoot
-
-    stimer snap "3_parse_story"
-
-    var res = ""
-    var captureTree = ""
-
-    val root = if(capture startsWith "{") {
-      // is this a captured tree?
-      val m = js.parse(capture)
-      // is teh map from a debug session or just the AST
-      val d = (
-        if(m contains "tree") DieselJsonFactory.fromj(m("tree").asInstanceOf[Map[String,Any]]).asInstanceOf[DomAst]
-        else DieselJsonFactory.fromj(m).asInstanceOf[DomAst]
-        ).withDetails("(from capture)")
-      captureTree = d.toHtml
-      EnginePrep.addStoriesToAst(d, List(ipage), true)
-      d
-    } else {
-      val d = DomAst("root", ROOT).withDetails("(from story)")
-      EnginePrep.addStoriesToAst(d, List(ipage))
-      d
-    }
-
-    stimer snap "4_build_dom_root"
-
-    // start processing all elements
-    val engine = DieselAppContext.mkEngine(
-      dom,
-      root,
-      settings,
-      ipage :: pages map WikiDomain.spec,
-      DieselMsg.fiddleStoryUpdated)
-    setHostname(engine.ctx.root)
-    DomCollector.collectAst("fiddle", stok.realm, engine.id, stok.au.map(_.id), engine, stok.uri)
-
-    // decompose all tree or just testing? - if there is a capture, I will only test it
-    val fut =
-//      if(! realTime) {
-        // don't process or wait
-//        Future.successful(engine)
-//      } else {
-          if(compileOnly || !runEngine) {
-//     don't process or wait
-            Future.successful(engine)
-          } else {
-            if (capture startsWith "{") { // process tests on capture
-              engine.processTests
-            } else {
-              engine.process // normal processing
-            }
+      val pages =
+        if (settings.blenderMode) {
+          val d = engSpec ::: EnginePrep.catPages("Spec", reactor).toList.map { p =>
+            //         if draft mode, find the auto-saved version if any
+            if (settings.draftMode) {
+              val c = Autosave.find("wikie", p.wid, uid).flatMap(_.get("content")).mkString
+              if (c.length > 0) p.copy(content = c)
+              else p
+            } else p
           }
 
-    fut.map {engine =>
-      res += engine.root.toHtml
+          d
+        } else
+          engSpec ::: List(page)
 
-      val stw = WID.fromPath(storyWpath).flatMap(_.page).map(_.content).getOrElse("Sample story\n\n$msg home.guest_arrived(name=\"Jane\")\n\n$expect $msg lights.on\n")
+      // todo is adding page twice...
+      val dom = pages.flatMap(p =>
+        SpecCache.orcached(p, WikiDomain.domFrom(p)).toList
+      ).foldLeft(
+        RDomain.empty
+      )((a, b) => a.plus(b)).revise.addRoot
 
-      stimer snap "5_engine_expand"
+      stimer snap "2_parse_specs"
 
-      val wiki = Wikis.format(ipage.wid, ipage.markup, null, Some(ipage), stok.au)
+      val ipage = new WikiEntry("Story", storyName, storyName, "md", story, uid, Seq("dslObject"), stok.realm)
 
-      val m = Map(
-        "res" -> res,
-        "capture" -> captureTree,
-        "wiki" -> wiki,
-        "ca" -> RDExt.toCAjmap(dom plus idom), // in blenderMode dom is full
-        "totalCount" -> (engine.totalTestCount),
-        "failureCount" -> engine.failedTestCount,
-        "errorCount" -> engine.errorCount,
-        "storyChanged" -> (storyWpath.length > 0 && stw.replaceAllLiterally("\r", "") != story),
-        "ast" -> getAstInfo(ipage),
-        "timeStamp" -> timeStamp
-      )
+      val idom = WikiDomain.domFrom(ipage).get.revise addRoot
 
-      stimer snap "6_format_response"
+      stimer snap "3_parse_story"
 
-      clients.get(id).foreach(_ ! m)
-      clients.values.foreach(_ ! m) // todo WTF am I broadcasting?
-      retj << m
+      var res = ""
+      var captureTree = ""
+
+      val root = if (capture startsWith "{") {
+        // is this a captured tree?
+        val m = js.parse(capture)
+        // is teh map from a debug session or just the AST
+        val d = (
+            if (m contains "tree") DieselJsonFactory.fromj(
+              m("tree").asInstanceOf[Map[String, Any]]).asInstanceOf[DomAst]
+            else DieselJsonFactory.fromj(m).asInstanceOf[DomAst]
+            ).withDetails("(from capture)")
+        captureTree = d.toHtml
+        EnginePrep.addStoriesToAst(d, List(ipage), true)
+        d
+      } else {
+        val d = DomAst("root", ROOT).withDetails("(from story)")
+        EnginePrep.addStoriesToAst(d, List(ipage))
+        d
+      }
+
+      stimer snap "4_build_dom_root"
+
+      // start processing all elements
+      val engine = DieselAppContext.mkEngine(
+        dom,
+        root,
+        settings,
+        ipage :: pages map WikiDomain.spec,
+        DieselMsg.fiddleStoryUpdated)
+      setHostname(engine.ctx.root)
+      DomCollector.collectAst("fiddle", stok.realm, engine.id, stok.au.map(_.id), engine, stok.uri)
+
+      // decompose all tree or just testing? - if there is a capture, I will only test it
+      val fut =
+//      if(! realTime) {
+      // don't process or wait
+//        Future.successful(engine)
+//      } else {
+        if (compileOnly || !runEngine) {
+//     don't process or wait
+          Future.successful(engine)
+        } else {
+          if (capture startsWith "{") { // process tests on capture
+            engine.processTests
+          } else {
+            engine.process // normal processing
+          }
+        }
+
+      fut.map { engine =>
+        res += engine.root.toHtml
+
+        val stw = WID.fromPath(storyWpath).flatMap(_.page).map(_.content).getOrElse(
+          "Sample story\n\n$msg home.guest_arrived(name=\"Jane\")\n\n$expect $msg lights.on\n")
+
+        stimer snap "5_engine_expand"
+
+        val wiki = Wikis.format(ipage.wid, ipage.markup, null, Some(ipage), stok.au)
+
+        val m = Map(
+          "res" -> res,
+          "capture" -> captureTree,
+          "wiki" -> wiki,
+          "ca" -> RDExt.toCAjmap(dom plus idom), // in blenderMode dom is full
+          "totalCount" -> (engine.totalTestCount),
+          "failureCount" -> engine.failedTestCount,
+          "errorCount" -> engine.errorCount,
+          "storyChanged" -> (storyWpath.length > 0 && stw.replaceAllLiterally("\r", "") != story),
+          "ast" -> getAstInfo(ipage),
+          "timeStamp" -> timeStamp
+        )
+
+        stimer snap "6_format_response"
+
+        clients.get(id).foreach(_ ! m)
+        clients.values.foreach(_ ! m) // todo WTF am I broadcasting?
+        retj << m
+      }
     }
   }
 
