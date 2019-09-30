@@ -1,6 +1,5 @@
 package mod.cart
 
-import admin.Config
 import akka.actor.{Actor, Props}
 import controllers._
 import model._
@@ -10,11 +9,10 @@ import play.api.mvc.{Action, Result}
 import razie.audit.Audit
 import razie.db.{REntity, ROne, Txn, tx}
 import razie.diesel.model.DieselMsgString
-import razie.wiki._
+import razie.wiki.{Config, _}
 import razie.wiki.model._
 import razie.{Logging, clog, cout}
 import views.html.modules.cart.doeCart
-
 import scala.Option.option2Iterable
 import scala.concurrent.Future
 import scala.util.Try

@@ -127,7 +127,7 @@ Command reference (see more about [[specs.Topic:Expressions_and_pattern_matching
       <input type="checkbox" id="traceStory" title="Expand/collaps trace nodes" > <small>(trace)</small>
       <input type="checkbox" id="debugStory" title="Expand/collaps debug nodes" checked> <small>(debug)</small>
       <input type="checkbox" id="generatedStory" title="Expand/collaps generated nodes" checked> <small>(generated)</small>
-      <button id="ferrStory" title="Find first error" onclick="ferrStory()" class="btn btn-default btn-xs"> <small><span class="glyphicon glyphicon-menu-down"></span> (first error)</small></button>
+      <button id="ferrStory" title="Find first error" onclick="ferrStory('@id')" class="btn btn-default btn-xs"> <small><span class="glyphicon glyphicon-menu-down"></span> (first error)</small></button>
     </div>
 
   @*story - editors*@
@@ -871,13 +871,6 @@ function saveNew(what) {
         console.log( "ERR "+JSON.stringify(x));
       }
     });
-}
-
-function ferrStory() {
-  var x = $("[kind='error']")[0];//.scrollIntoView();
-  var parent = $('#iframeOut3_'+@id)[0];
-  if(typeof x != "undefined")
-    parent.scrollTop = x.offsetTop;
 }
 
 

@@ -1,7 +1,6 @@
 package controllers
 
 import razie.wiki.model.features.WikiCount
-import admin.Config
 import controllers.Profile.cNoConsent
 import mod.cart.Carts.Redirect
 import mod.cart._
@@ -19,7 +18,7 @@ import razie.hosting.Website
 import razie.wiki.admin.SendEmail
 import razie.wiki.model._
 import razie.wiki.model.features._
-import razie.wiki.{Enc, WikiConfig}
+import razie.wiki.{Config, Enc, WikiConfig}
 import razie.wiki.Sec._
 import razie.{Logging, cout}
 import views.html.club.doeClubRegsRepHtml

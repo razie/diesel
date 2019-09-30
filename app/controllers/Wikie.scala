@@ -6,12 +6,10 @@
  */
 package controllers
 
-import admin.Config
 import com.mongodb.DBObject
 import com.mongodb.casbah.Imports.{ObjectId, _}
 import com.novus.salat._
 import difflib.{DiffUtils, Patch}
-import mod.diesel.controllers.AutosaveSet
 import mod.diesel.model.Diesel
 import mod.notes.controllers.DomC.retj
 import mod.snow.RacerKidz
@@ -24,6 +22,7 @@ import razie.cout
 import razie.db.RazSalatContext.ctx
 import razie.db.{REntity, RMany, ROne, RazMongo, _}
 import razie.diesel.dom.WikiDomain
+import razie.diesel.utils.AutosaveSet
 import razie.hosting.{Website, WikiReactors}
 import razie.wiki.Sec.EncryptedS
 import razie.wiki.admin._
@@ -33,7 +32,7 @@ import razie.wiki.model._
 import razie.wiki.model.features.WikiCount
 import razie.wiki.parser.WAST
 import razie.wiki.util.{PlayTools, Stage, Staged}
-import razie.wiki.{Enc, Services}
+import razie.wiki.{Config, Enc, Services}
 
 /** a simple edit lock
   *
@@ -461,7 +460,7 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
                 //                      au.shouldEmailParent("Everything").map(parent => Emailer.sendEmailChildUpdatedWiki(parent, au, WID(w.category, w.name)))
               }
             }
-            Services ! WikiAudit(WikiAudit.UPD_SET_CONTENT, w.wid.wpathFull, Some(au._id), None, Some(w))
+            Services ! WikiAudit(WikiAudit.UPD_SET_CONTENT, w.wid.wpathFull, Some(au._id), None, Some(we), Some(w))
 
             Ok("ok, section updated")
           }
@@ -543,7 +542,7 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
                     //                      au.shouldEmailParent("Everything").map(parent => Emailer.sendEmailChildUpdatedWiki(parent, au, WID(w.category, w.name)))
                   }
                 }
-                Services ! WikiAudit(WikiAudit.UPD_SET_CONTENT, w.wid.wpathFull, Some(au._id), None, Some(w))
+                Services ! WikiAudit(WikiAudit.UPD_SET_CONTENT, w.wid.wpathFull, Some(au._id), None, Some(we), Some(w))
 
                 Ok("ok")
               }

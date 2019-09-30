@@ -1,31 +1,25 @@
 package mod.diesel.guard
 
-import java.util.concurrent.TimeUnit
-import admin.Config
-import akka.actor.{Actor, Cancellable, Props}
+import akka.actor.{Actor, Props}
 import api.dwix
 import controllers.RazRequest
-import java.net.InetAddress
 import model.{User, Users}
 import org.bson.types.ObjectId
 import org.joda.time.DateTime
 import play.libs.Akka
-import razie.{Logging, Snakk}
+import razie.Logging
 import razie.diesel.dom.SimpleECtx
-import razie.diesel.engine.{DomEngECtx, DomEngine, DomEngineSettings}
+import razie.diesel.engine.{DomEngine, DomEngineSettings}
 import razie.diesel.ext.EnginePrep
 import razie.diesel.model.{DieselMsg, DieselTarget}
 import razie.diesel.utils.{DieselData, DomCollector}
 import razie.hosting.Website
-import razie.tconf.SpecPath
-import razie.wiki.Services
+import razie.wiki.{Config, Services}
 import razie.wiki.model._
 import razie.wiki.util.PlayTools
 import scala.collection.mutable
-import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import scala.concurrent.duration.{Duration, FiniteDuration}
 
 /** this is the default engine per reactor and user, continuously running all the stories */
 object DomGuardian extends Logging {

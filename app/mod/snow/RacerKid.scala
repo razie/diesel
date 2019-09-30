@@ -1,6 +1,5 @@
 package mod.snow
 
-import admin.Config
 import com.mongodb.casbah.Imports._
 import com.novus.salat._
 import controllers.Club
@@ -11,6 +10,7 @@ import razie.wiki.model._
 import model.{TPersonInfo, User, Users}
 import razie.audit.Audit
 import razie.diesel.dom.WikiDomain
+import razie.wiki.Config
 
 /** a history element
   *

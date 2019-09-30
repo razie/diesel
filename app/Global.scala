@@ -29,7 +29,7 @@ import razie.audit.Audit
 import razie.hosting.{Website, WikiReactors}
 import razie.wiki.model._
 import razie.wiki.admin._
-import razie.wiki.{EncryptService, Services, WikiConfig}
+import razie.wiki.{Config, EncryptService, Services, WikiConfig}
 import razie.wiki.Sec._
 import scala.util.Try
 

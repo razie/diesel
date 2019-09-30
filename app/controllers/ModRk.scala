@@ -24,7 +24,6 @@ import play.api.libs.json.Json
 import play.api.mvc.Action
 import play.api.mvc.Request
 import razie.{Logging, audit, clog, cout}
-import admin.Config
 import mod.cart._
 import razie.db.RMongo
 import play.api.mvc.AnyContent
@@ -33,6 +32,7 @@ import razie.db.RDelete
 import razie.diesel.dom.{ECtx, WikiDomain}
 import razie.diesel.exec.EExecutor
 import razie.diesel.ext.{EMsg, EVal, MatchCollector}
+import razie.wiki.Config
 import scala.collection.mutable.ListBuffer
 
 /** per topic reg */

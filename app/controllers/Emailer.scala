@@ -1,6 +1,5 @@
 package controllers
 
-import admin.Config
 import mod.snow.RacerKid
 import model.{TPersonInfo, User}
 import org.joda.time.DateTime
@@ -8,7 +7,7 @@ import razie.Logging
 import razie.tconf.Visibility
 import razie.wiki.admin.{MailSession, SecLink, SendEmail}
 import razie.wiki.model._
-import razie.wiki.{Enc, EncUrl, Services}
+import razie.wiki.{Config, Enc, EncUrl, Services}
 
 /** all emails sent by site
   *

@@ -9,14 +9,15 @@ import org.joda.time.DateTime
 import play.api.Play.current
 import play.api.mvc._
 import play.libs.Akka
-import razie.diesel.dom.AstKinds._
+import razie.diesel.engine.AstKinds._
+import razie.diesel.engine._
 import razie.diesel.dom.RDomain.DOM_LIST
 import razie.diesel.dom.{WikiDomain, _}
 import razie.diesel.engine.RDExt._
 import razie.diesel.engine.{DieselAppContext, RDExt}
 import razie.diesel.ext.{EnginePrep, HasPosition}
 import razie.diesel.model.DieselMsg
-import razie.diesel.utils.{DomCollector, SpecCache}
+import razie.diesel.utils.{AutosaveSet, DomCollector, DomWorker, SpecCache}
 import razie.wiki.Services
 import razie.wiki.admin.Autosave
 import razie.wiki.model._

@@ -7,21 +7,20 @@ import play.api.data.Forms._
 import play.api.mvc._
 import play.api._
 import razie.Snakk
-
 import scala.util.parsing.combinator.RegexParsers
 import org.joda.time.DateTime
 import razie.XP
 import razie.XpSolver
 import razie.Snakk._
 import org.bson.types.ObjectId
-
 import scala.Some
 import razie.wiki.model.WWrapper
 import razie.wiki.model.UWID
 import razie.wiki.model.WikiXpSolver
 import razie.wiki.model.Wikis
 import razie.wiki.model.WikiWrapper
-import razie.tconf.parser.ParserSettings
+import razie.tconf.parser.SpecParserSettings
+import razie.wiki.Config
 import razie.wiki.model.ILink
 import razie.wiki.model.WikiLink
 import razie.wiki.model.WID
@@ -72,7 +71,7 @@ object UserStuff extends RazController {
         Action { implicit request => Redirect (Wiki.w (cat, name, Website.realm)) }
       )
 
-  def Race = admin.Config.sitecfg("racecat").getOrElse("Race")
+  def Race = Config.sitecfg("racecat").getOrElse("Race")
 
   def events(u: User): List[(ILink, String, DateTime, ILink, Snakk.Wrapper[WWrapper])] =
     events("*", u)
@@ -131,7 +130,7 @@ object DateParser extends RegexParsers {
   type PS = Parser[DateTime]
   def apply(input: String) = parseAll(dates, input)
 
-  import ParserSettings.{mth1, mth2}
+  import SpecParserSettings.{mth1, mth2}
 
   def dates = date1 | date2
   def date1 = """\d\d\d\d""".r ~ "-" ~ """\d\d""".r ~ "-" ~ """\d\d""".r ^^ {

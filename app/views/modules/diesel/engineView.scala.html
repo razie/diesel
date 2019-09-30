@@ -1,9 +1,10 @@
 @**
 view an engine
 **@
+@import razie.diesel.engine.DomEngineView
 @(eng:Option[razie.diesel.engine.DomEngine])(implicit stok: controllers.StateOk)
-@import razie.diesel.dom.DomAst
-@import razie.diesel.dom.DomState
+@import razie.diesel.engine.DomAst
+@import razie.diesel.engine.DomState
 
 <script src="@routes.Assets.at("javascripts/weCommons.js")"></script>
 <script src="@routes.Assets.at("javascripts/weDieselDom.js")"></script>
@@ -19,7 +20,7 @@ view an engine
 <b>Summary:</b> @e.failedTestCount / @e.successTestCount / @e.totalTestCount (fail/succ/total)
 <br>
 <pre>
-@Html(e.root.storySummary)
+@Html(DomEngineView.storySummary(e.root))
 </pre>
   }
 

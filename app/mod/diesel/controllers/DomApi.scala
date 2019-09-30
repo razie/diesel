@@ -24,7 +24,7 @@ import razie.diesel.engine._
 import razie.diesel.exec.SnakkCall
 import razie.diesel.ext.{EnginePrep, _}
 import razie.diesel.model.DieselMsg
-import razie.diesel.utils.{DomCollector, SpecCache}
+import razie.diesel.utils.{AutosaveSet, DomCollector, DomWorker, SpecCache}
 import razie.hosting.Website
 import razie.tconf.DTemplate
 import razie.wiki.Enc
@@ -333,7 +333,7 @@ class DomApi extends DomApiBase  with Logging {
             val resp = engine.extractFinalValue(e,a)
             val resValue = resp.map(_.currentStringValue).getOrElse("")
 
-            val ctype = resp.map(p=>WTypes.getContentType(p.ttype)).getOrElse("text/plain")
+            val ctype = resp.map(p=>WTypes.getContentType(p.ttype)).getOrElse(WTypes.Mime.textPlain)
             Ok(stripQuotes(resValue)).as(ctype)
           } else {
             // multiple values as json
@@ -352,14 +352,14 @@ class DomApi extends DomApiBase  with Logging {
             if ("treeJson" == settings.resultMode) m = m + ("tree" -> root.toJson)
 
             if ("debug" == settings.resultMode) {
-              Ok(root.toString).as("application/text")
+              Ok(root.toString).as(WTypes.Mime.appText)
             } else if ("dieselTree" == settings.resultMode) {
               val m = root.toj
               val y = DieselJsonFactory.fromj(m).asInstanceOf[DomAst]
               val x = js.tojsons(y.toj).toString
-              Ok(x).as("application/json")
+              Ok(x).as(WTypes.Mime.appJson)
             } else
-              Ok(js.tojsons(m).toString).as("application/json")
+              Ok(js.tojsons(m).toString).as(WTypes.Mime.appJson)
           }
         }
 

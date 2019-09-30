@@ -1,6 +1,5 @@
 package controllers
 
-import admin.Config
 import com.google.inject._
 import model._
 import org.joda.time.DateTime
@@ -14,7 +13,7 @@ import razie.hosting.Website
 import razie.wiki.Sec._
 import razie.wiki.admin.SecLink
 import razie.wiki.model._
-import razie.wiki.{Enc, Services}
+import razie.wiki.{Config, Enc, Services}
 
 @Singleton
 class ProfileUpd @Inject() (config:Configuration) extends RazController with Logging {

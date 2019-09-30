@@ -1,15 +1,20 @@
+/**
+  *   ____    __    ____  ____  ____,,___     ____  __  __  ____
+  *  (  _ \  /__\  (_   )(_  _)( ___)/ __)   (  _ \(  )(  )(  _ \           Read
+  *   )   / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <     README.txt
+  *  (_)\_)(__)(__)(____)(____)(____)(___/   (__)  (______)(____/    LICENSE.txt
+  */
 package api
 
+import controllers.{Club, XListWrapper}
 import mod.diesel.controllers.SFiddles
 import model._
-import controllers.{Club, DieselSettings, XListWrapper, XWrapper}
 import razie.db.RazMongo
 import razie.hosting.WikiReactors
-import razie.wiki.{Sec, Services}
 import razie.wiki.model._
 import razie.wiki.util.M._
+import razie.wiki.{Sec, Services}
 import scala.collection.immutable.ListMap
-import scala.util.parsing.json.JSONObject
 
 /** this is available to scripts inside the wikis */
 class wix (owe: Option[WikiPage], ou:Option[WikiUser], q:Map[String,String], r:String) {

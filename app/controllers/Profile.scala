@@ -1,6 +1,5 @@
 package controllers
 
-import admin.Config
 import com.google.inject._
 import mod.snow.{RacerKidz, _}
 import razie.db.{ROne, Txn}
@@ -21,7 +20,7 @@ import razie.diesel.model.{DieselMsg, DieselMsgString, DieselTarget}
 import razie.hosting.Website
 import razie.wiki.admin.{SecLink, SendEmail}
 import razie.wiki.model._
-import razie.wiki.{Enc, Services}
+import razie.wiki.{Config, Enc, Services}
 import play.api.data.Forms._
 import play.api.data._
 

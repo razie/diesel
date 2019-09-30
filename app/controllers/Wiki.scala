@@ -23,7 +23,7 @@ import razie.wiki.model._
 import razie.wiki.model.features.WikiCount
 import razie.wiki.model.WikiSearch
 import scala.Array.canBuildFrom
-import razie.wiki.{Enc, Services}
+import razie.wiki.{Config, Enc, Services}
 import razie.wiki.model.WikiAudit
 import scala.concurrent.Future
 import razie.audit.Audit
@@ -218,13 +218,16 @@ object Wiki extends WikiBase {
    * show conetnt of current version
    * todo interesting: if auth permissions changed in the mean time - should I use old or new perms?
    */
-  def showWidContent(cw: CMDWID, irealm:String) = RAction { implicit request =>
+  def wikieContent(cw: CMDWID, irealm:String) = RAction { implicit request =>
+     val awid = request.qhParm("wpath").flatMap (WID.fromPath).map(_.r(irealm)).orElse(prepWid(cw, irealm))
     (for (
-      wid <- prepWid(cw, irealm);
-      w <- wid.page;
+      wid <- awid;
+//      w <- wid.page;
+      w <- wid.page orErr s"page not found: $wid";
+      content <- wid.content orErr s"no content for $wid";
       can <- canSee(wid, request.au, Some(w)) orCorr cNoPermission
     ) yield {
-        Ok(w.content)
+        Ok(content)
       }) getOrElse {
       noPerm(cw.wid.get, "SHOW.CONTENT")
     }

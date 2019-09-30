@@ -1,12 +1,11 @@
 /**
-  * ____    __    ____  ____  ____,,___     ____  __  __  ____
+  *  ____    __    ____  ____  ____,,___     ____  __  __  ____
   * (  _ \  /__\  (_   )(_  _)( ___)/ __)   (  _ \(  )(  )(  _ \           Read
-  * )   / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <     README.txt
-  * (_)\_)(__)(__)(____)(____)(____)(___/   (__)  (______)(____/    LICENSE.txt
+  *  )   / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <    /README.txt
+  * (_)\_)(__)(__)(____)(____)(____)(___/   (__)  (______)(____/   /LICENSE.txt
   **/
 package mod.diesel.guard
 
-import admin.Config
 import akka.actor.{Actor, ActorRef, Cancellable, Props}
 import java.net.InetAddress
 import java.util.concurrent.TimeUnit
@@ -15,10 +14,10 @@ import razie.diesel.dom.RDOM.P
 import razie.diesel.dom._
 import razie.diesel.engine.DomEngineSettings
 import razie.diesel.ext.{MatchCollector, _}
-import razie.diesel.model.{DieselMsg, DieselTarget, DieselMsgString}
+import razie.diesel.model.{DieselMsg, DieselMsgString, DieselTarget}
 import razie.hosting.Website
 import razie.tconf.TagQuery
-import razie.wiki.Services
+import razie.wiki.{Config, Services}
 import razie.{Logging, Snakk}
 import scala.collection.mutable.HashMap
 import scala.concurrent.ExecutionContext.Implicits.global

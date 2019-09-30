@@ -1,6 +1,5 @@
 package mod.snow
 
-import admin.Config
 import controllers._
 import model._
 import org.bson.types.ObjectId
@@ -13,6 +12,7 @@ import razie.wiki.model._
 import razie.wiki.model.features.WForm
 import razie.hosting.WikiReactors
 import razie.tconf.Visibility
+import razie.wiki.Config
 import scala.Option.option2Iterable
 
 case class RoleWid(role: String, wid: WID)

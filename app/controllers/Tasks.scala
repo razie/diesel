@@ -7,8 +7,7 @@ import razie.Logging
 import model._
 import razie.wiki.admin.{MailSession, SecLink, SendEmail}
 import razie.wiki.model.{Perm, WID}
-import razie.wiki.{Enc, EncUrl, Services}
-import admin.Config
+import razie.wiki.{Config, Enc, EncUrl, Services}
 import razie.hosting.Website
 
 object Tasks extends RazController with Logging {

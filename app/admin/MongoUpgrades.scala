@@ -9,7 +9,7 @@ import razie.cout
 import razie.db._
 import razie.db.tx.txn
 import razie.hosting.WikiReactors
-import razie.wiki.Enc
+import razie.wiki.{Config, Enc}
 import razie.wiki.model._
 import scala.collection.mutable.ListBuffer
 

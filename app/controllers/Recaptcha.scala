@@ -1,11 +1,10 @@
 package controllers
 
-import admin.Config
 import com.google.inject._
 import razie.{Logging, Snakk}
-import play.api.{Configuration}
+import play.api.Configuration
 import razie.wiki.admin.SendEmail
-import razie.wiki.Services
+import razie.wiki.{Config, Services}
 
 /** to use this put these in the application.conf
 

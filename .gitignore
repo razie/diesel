@@ -32,3 +32,5 @@ ncart
 *.swp
 SSLPoke.class
 bootstrap-datepicker-1.6.1-dist.zip
+.bloop
+.metals

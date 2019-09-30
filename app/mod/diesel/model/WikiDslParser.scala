@@ -1,12 +1,11 @@
 /**
- *   ____    __    ____  ____  ____,,___     ____  __  __  ____
- *  (  _ \  /__\  (_   )(_  _)( ___)/ __)   (  _ \(  )(  )(  _ \           Read
- *   )   / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <     README.txt
- *  (_)\_)(__)(__)(____)(____)(____)(___/   (__)  (______)(____/    LICENSE.txt
- */
-package model
+  * ____    __    ____  ____  ____,,___     ____  __  __  ____
+  * (  _ \  /__\  (_   )(_  _)( ___)/ __)   (  _ \(  )(  )(  _ \           Read
+  * )   / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <     README.txt
+  * (_)\_)(__)(__)(____)(____)(____)(___/   (__)  (______)(____/    LICENSE.txt
+  **/
+package mod.diesel.model
 
-import mod.diesel.model.Diesel
 import org.bson.types.ObjectId
 import razie.tconf.parser.{LazyAstNode, StrAstNode}
 import razie.wiki.model.{WikiEntry, WikiUser}
@@ -14,7 +13,7 @@ import razie.wiki.parser.ParserBase
 
 /** parse dsl, fiddles and code specific fragments */
 trait WikiDslParser extends ParserBase {
-  
+
   def dslWikiProps = wikiPropFiddle | wikiPropJsFiddle | wikiPropDsl
 
   private def trim (s:String) = s.replaceAll("\r", "").replaceAll("^\n|\n$","")//.replaceAll("\n", "\\\\n'\n+'")
@@ -125,5 +124,3 @@ trait WikiDslParser extends ParserBase {
     }
   }
 }
-
-

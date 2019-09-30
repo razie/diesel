@@ -13,7 +13,7 @@ import razie.diesel.dom._
 import razie.diesel.engine.RDExt._
 import razie.diesel.engine._
 import razie.diesel.ext.EnginePrep
-import razie.diesel.utils.DomCollector
+import razie.diesel.utils.{AutosaveSet, DomCollector, DomWorker}
 import razie.diesel.utils.DomHtml.quickBadge
 import razie.hosting.WikiReactors
 import razie.wiki.admin.Autosave

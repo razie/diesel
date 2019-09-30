@@ -25,10 +25,10 @@ import razie.hosting.{Website, WikiReactors}
 import razie.tconf.hosting.Reactors
 import razie.wiki.admin.{SecLink, SendEmail}
 import razie.wiki.mods.WikiMods
-import razie.wiki.{EncryptService, Services, WikiConfig}
+import razie.wiki.{Config, EncryptService, Services, WikiConfig}
 import razie.wiki.model.WikiUsers
 import razie.wiki.util.AuthService
-import razie.{Log, clog, cout}
+import razie.{Log, clog, cout, wiki}
 import services.AtomicCounter
 
 /** initialize this module */
@@ -74,9 +74,9 @@ class Module extends AbstractModule {
     MoreUpgrades.sayHi
 
     // init after DB because it needs DB
-    Audit.impl = new MdbAuditService
-    RMongo.setInstance(Audit.impl)
-    bind(classOf[AuditService]).toInstance(Audit.impl)
+    Audit.setInstance(new MdbAuditService)
+    RMongo.setInstance(Audit.getInstance)
+    bind(classOf[AuditService]).toInstance(Audit.getInstance)
 
     WikiUsers.setImpl (WikiUsersImpl)
     Reactors.impl = WikiReactors
@@ -147,7 +147,7 @@ class Module extends AbstractModule {
 
       def mongoDbVer = mongoUpgrades.keySet.max + 1
 
-      lazy val conn = MongoConnection(admin.Config.mongohost)
+      lazy val conn = MongoConnection(wiki.Config.mongohost)
 
       /** the actual database - done this way to run upgrades before other code uses it */
       com.mongodb.casbah.commons.conversions.scala.RegisterConversionHelpers()
@@ -155,7 +155,7 @@ class Module extends AbstractModule {
 
       // authenticate
       val db = conn(Config.mongodb)
-      if (!db.authenticate(Config.mongouser, admin.Config.mongopass)) {
+      if (!db.authenticate(Config.mongouser, Config.mongopass)) {
         clog << "ERR_MONGO_AUTHD"
         throw new Exception("Cannot authenticate. Login failed.")
       }

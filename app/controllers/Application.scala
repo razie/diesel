@@ -1,6 +1,5 @@
 package controllers
 
-import admin.Config
 import com.mongodb.casbah.Imports._
 import mod.snow.{RacerKidInfo, RacerKidz, _}
 import model._
@@ -13,7 +12,7 @@ import razie.hosting.{BannedIps, RkReactors, Website, WikiReactors}
 import razie.tconf.Visibility
 import razie.wiki.Sec._
 import razie.wiki.model._
-import razie.wiki.{Enc, Services}
+import razie.wiki.{Config, Enc, Services, WikiConfig}
 import scala.concurrent.Future
 import scala.util.Try
 
@@ -139,7 +138,7 @@ object Application extends RazController {
 // next - is it banned?
 
     } getOrElse {
-      val c = Config.config(Config.BANURLS)
+      val c = Config.config(WikiConfig.BANURLS)
 
       if (c.exists(_.contains(path))) {
         val ip = request.headers.get("X-Forwarded-For")

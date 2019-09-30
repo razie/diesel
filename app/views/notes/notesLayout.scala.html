@@ -3,6 +3,7 @@ show/edit/capture a note
 
 msg types are msg, err
 **************@
+@import razie.wiki.Config
 @(content: Html, tag: String, tags: model.Tags.Tags, msg: Seq[(String, String)])(implicit stok: mod.notes.controllers.NotesOk)
 
 @stok.stok.requireJs(false)
@@ -30,7 +31,7 @@ msg types are msg, err
   </div> <!-- /container -->
 
   <p></p>
-  @if(_root_.admin.Config.getTheme(Some(stok.au), Some(stok.request)) contains "light") {
+  @if(Config.getTheme(Some(stok.au), Some(stok.request)) contains "light") {
     <div style="background-color:#4E4D4D">
     } else {
     <div style="background-color:#4E4D4D">

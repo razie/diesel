@@ -1,6 +1,7 @@
 @***
 purge audit tables
 ***@
+@import razie.wiki.Config
 @(localRealm:String, toRealm:String, remote:String, lnew:List[controllers.AdminDiff.WEAbstract], lremoved:List[controllers.AdminDiff.WEAbstract], lchanged:List[(controllers.AdminDiff.WEAbstract, controllers.AdminDiff.WEAbstract, String)])(implicit stok: controllers.StateOk)
 @import razie.wiki.model.WID
 
@@ -50,7 +51,7 @@ purge audit tables
           </span>
 
         <span id="remotes" style="display: none">
-          @Array("www.dieselapps.com", _root_.admin.Config.hostport).map{t=>
+          @Array("www.dieselapps.com", Config.hostport).map{t=>
             <a href="/admin/difflist/@localRealm/@toRealm/@t">@t</a><br>
           }
         <span id="localRealms" style="display: none">

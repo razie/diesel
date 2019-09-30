@@ -1,6 +1,5 @@
 package mod.cart
 
-import admin.Config
 import controllers.{Emailer, Profile}
 import model.{ExtSystemUserLink, User, Users}
 import org.joda.time.DateTime
@@ -8,7 +7,7 @@ import razie.clog
 import razie.diesel.dom.ECtx
 import razie.diesel.exec.EExecutor
 import razie.diesel.ext.{EMsg, EVal, MatchCollector}
-import razie.wiki.{Enc, Services}
+import razie.wiki.{Config, Enc, Services}
 import razie.wiki.model._
 
 object EEModUserExecutor extends EExecutor("diesel.mod.user") {

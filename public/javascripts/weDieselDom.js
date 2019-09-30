@@ -573,6 +573,14 @@ function updateMarkers (aceEditor, astList) {
 
 // used in showing engines
 
+/** navigate the first error node */
+function ferrStory(id) {
+  var x = $("[kind='error']")[0];//.scrollIntoView();
+  var parent = $('#iframeOut3_'+id)[0];
+  if(typeof x != "undefined")
+    parent.scrollTop = x.offsetTop;
+}
+
 function dieselHideTrace(expanded) {
   dieselHideKind(expanded, 'trace');
 }
