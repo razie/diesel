@@ -1,36 +1,16 @@
 package controllers
 
-import mod.snow._
-import mod.snow.RK
-import play.api.i18n.Messages
-import play.api.i18n.MessagesApi
-import play.api.i18n.Messages.Implicits._
-import play.api.Play.current
-import akka.actor.{Actor, Props}
-import controllers.Wiki._
-import play.api.libs.concurrent.Akka
-import play.mvc.Result
-import play.twirl.api.Html
-import razie.wiki.admin.SendEmail
-import controllers.Profile._
-import controllers.Tasks._
-import razie.db.RMongo.as
-import razie.db.{REntity, RMany, ROne, RTable}
+import mod.snow.{RK, _}
 import model._
 import org.bson.types.ObjectId
-import org.joda.time.DateTime
-import play.api.mvc.{Action, Request}
-import razie.wiki.{Config, Enc, EncUrl, WikiConfig}
-import razie.wiki.model._
-import razie.{Logging, clog, cout}
-import views.html.club.doeClubRegsRepHtml
-import scala.Array.canBuildFrom
-import scala.Option.option2Iterable
-import razie.wiki.admin.SendEmail
-import razie.db.Txn
-import scala.concurrent.Future
 import play.api.data.Forms._
 import play.api.data._
+import play.api.mvc.{Action, Request}
+import razie.Logging
+import razie.db.RMongo.as
+import razie.db.{RMany, ROne}
+import razie.wiki.model._
+import scala.Option.option2Iterable
 
 /** controller for club management */
 object Vol extends RazController with Logging {
@@ -160,8 +140,6 @@ object Vol extends RazController with Logging {
         Redirect(routes.Vol.doeUserVolAdd(rkaId))
     }) getOrElse Msg("CAN'T SEE PROFILE " + errCollector.mkString)
   }
-
-  import razie.wiki.Sec._
 
   /** capture volunteer hour record */
   def doeVolApprover(user:User) (implicit request:Request[_]) = {

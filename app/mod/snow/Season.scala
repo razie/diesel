@@ -1,5 +1,6 @@
 package mod.snow
 
+import com.google.inject._
 import controllers.{Club, RazController}
 import org.bson.types.ObjectId
 import play.api.data.Forms._
@@ -7,9 +8,8 @@ import play.api.data._
 import play.api.mvc.Request
 import razie.Logging
 import razie.db.{REntity, ROne, RTable}
-import razie.wiki.model.WID
-import com.google.inject._
 import razie.wiki.Config
+import razie.wiki.model.WID
 
 
 /** an element is an object and a role. Kind maps to the mongo table of it */

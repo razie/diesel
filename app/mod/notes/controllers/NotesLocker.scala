@@ -34,11 +34,7 @@ case class AutosavedNote(
   ver:Int,
   content: String,
   tags: String,
-  _id: ObjectId = new ObjectId()) extends REntity[AutosavedNote] {
-
-  override def create(implicit txn: Txn) = RCreate.noAudit[AutosavedNote](this)
-  override def update (implicit txn: Txn) = RUpdate.noAudit(Map("_id" -> _id), this)
-  override def delete(implicit txn: Txn) = RDelete.noAudit[AutosavedNote](this)
+  _id: ObjectId = new ObjectId()) extends REntityNoAudit[AutosavedNote] {
 }
 
 /** special tags */

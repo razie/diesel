@@ -1,22 +1,7 @@
 package mod.book
 
-import razie.hosting.Website
-import play.api.mvc.Action
-import razie.wiki.model.WikiRefined
-import razie.wiki.mods.{WikiMod, WikiMods}
+import razie.wiki.model.{WikiRefined, _}
 import razie.wiki.parser.WAST
-import views.html.modules.book.{prevNext, viewProgress, viewSections}
-import org.joda.time.DateTime
-import com.mongodb.casbah.Imports._
-import controllers._
-import razie.{cdebug, cout}
-import razie.db.REntity
-import razie.db.RMany
-import razie.db.ROne
-import razie.db.RTable
-import razie.wiki.model._
-import razie.|>._
-
 import scala.collection.mutable.ListBuffer
 
 // for traversal - type of visit callback
