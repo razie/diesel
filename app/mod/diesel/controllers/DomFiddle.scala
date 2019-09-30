@@ -22,10 +22,13 @@ import razie.wiki.Services
 import razie.wiki.admin.Autosave
 import razie.wiki.model._
 import razie.{CSTimer, Logging, js}
+import scala.collection.concurrent.TrieMap
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.concurrent.duration.Duration
+import scala.concurrent.duration._
+import scala.util.Success
 
 /** controller for server side fiddles / services */
 object DomFiddles extends DomApi with Logging with WikiAuthorization {
@@ -120,7 +123,7 @@ object DomFiddles extends DomApi with Logging with WikiAuthorization {
     */
 
   // active clients, for broadcasting
-  val clients = new mutable.HashMap[String, ActorRef]()
+  val clients = new TrieMap[String, ActorRef]()
 
   /**
    * 1. split a page. the page will then open a channel espOpenClient
@@ -360,7 +363,6 @@ object DomFiddles extends DomApi with Logging with WikiAuthorization {
 
       stimer snap "3_parse_story"
 
-      var res = ""
       var captureTree = ""
 
       val root = if (capture startsWith "{") {
@@ -400,7 +402,8 @@ object DomFiddles extends DomApi with Logging with WikiAuthorization {
 //        Future.successful(engine)
 //      } else {
         if (compileOnly || !runEngine) {
-//     don't process or wait
+          // don't process or wait
+          engine.discard
           Future.successful(engine)
         } else {
           if (capture startsWith "{") { // process tests on capture
@@ -410,8 +413,10 @@ object DomFiddles extends DomApi with Logging with WikiAuthorization {
           }
         }
 
-      fut.map { engine =>
-        res += engine.root.toHtml
+      def sendResult (engine:DomEngine) = {
+        val st = engine.status // copy so that if it completes wuile here, I'll still send again
+
+        var res = engine.root.toHtml
 
         val stw = WID.fromPath(storyWpath).flatMap(_.page).map(_.content).getOrElse(
           "Sample story\n\n$msg home.guest_arrived(name=\"Jane\")\n\n$expect $msg lights.on\n")
@@ -421,6 +426,7 @@ object DomFiddles extends DomApi with Logging with WikiAuthorization {
         val wiki = Wikis.format(ipage.wid, ipage.markup, null, Some(ipage), stok.au)
 
         val m = Map(
+          "clientId" -> id,
           "res" -> res,
           "capture" -> captureTree,
           "wiki" -> wiki,
@@ -430,13 +436,58 @@ object DomFiddles extends DomApi with Logging with WikiAuthorization {
           "errorCount" -> engine.errorCount,
           "storyChanged" -> (storyWpath.length > 0 && stw.replaceAllLiterally("\r", "") != story),
           "ast" -> getAstInfo(ipage),
-          "timeStamp" -> timeStamp
+          "timeStamp" -> timeStamp,
+          "engineId" -> engine.id,
+          "engineStatus" -> st,
+          "engineDone" -> DomState.isDone(st),
+          "compileOnly" -> compileOnly
         )
 
         stimer snap "6_format_response"
 
-        clients.get(id).foreach(_ ! m)
-        clients.values.foreach(_ ! m) // todo WTF am I broadcasting?
+        if(!compileOnly && DomState.isDone(st)) {
+          log("  fiddleSU - sending WS: " + DomState.isDone(engine.status))
+          clients.get(id).foreach(_ ! m)
+          clients.values.foreach(_ ! m) // todo WTF am I broadcasting?
+        }
+
+        m
+      }
+
+      // wait at most 1 sec
+
+      val delayedFuture = {
+        akka.pattern.after(
+          1000 millis,
+          using = DieselAppContext.getActorSystem.scheduler)(Future.successful(engine))
+      }
+
+      val timeoutFuture = if(compileOnly) fut else Future firstCompletedOf Seq(fut, delayedFuture)
+
+      // send if not sent already
+      @volatile var sentWS = false
+
+      if(! compileOnly) fut.onComplete {
+        case Success(v) => {
+          log("  fiddleSU - onComplete: " + DomState.isDone(engine.status))
+          if(!sentWS) {
+            sentWS = true
+            sendResult(engine)
+          }
+          else {
+            log("    fiddleSU - sent already")
+          }
+        }
+      }
+
+      timeoutFuture.map { engine =>
+        val st = engine.status
+        log("  fiddleSU - result: " + DomState.isDone(st))
+        val m =  sendResult(engine)
+
+        // dont' send WS again later
+        if(DomState.isDone(st)) sentWS = true
+
         retj << m
       }
     }

@@ -78,7 +78,7 @@ $('#iframe_'+@id).css('max-height', $('#pre3box_@id').height()-10+'px');
 
 var id = '@id';
 
-    var WS = window['MozWebSocket'] ? MozWebSocket : WebSocket
+    var WS = window['MozWebSocket'] ? MozWebSocket : WebSocket;
     @*var dateSocket = new WS('ws://localhost:9000/diesel/fiddle/espOpen/@reactor/@id');*@
     var dateSocket = new WS('@mod.diesel.controllers.routes.DomFiddles.espOpen(reactor,id).webSocketURL()(stok.request.get)');
 

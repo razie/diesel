@@ -424,6 +424,8 @@ var encAmp = function(s) {
       .replace(/&gt;/g, '〉');
 }
 
+var lastTime = new Date().getTime();
+
 var runpill2_@id = function(id,compileOnly, next) {
   isRefreshing2 += 1;
   showSpinner();
@@ -432,14 +434,14 @@ var runpill2_@id = function(id,compileOnly, next) {
   // set this before going to backend which could take a long time
   @*storyChanged(!(specEditor.getValue() === $("#origStory_@id").text()));*@
 
-  if(curDomRequest != null) {
+  if(curDomRequest != null && !compileOnly) {
     console.log ("Ignore request - already in progress: " + curDomRequest);
     return;
   }
 
-  curDomRequest = "yes";
+  if(!compileOnly) curDomRequest = "yes";
 
-  var lastTime = new Date().getTime();
+  lastTime = new Date().getTime();
 
   $.ajax(
       '/diesel/fiddle/fiddleStoryUpdated/'+id+'?@Html(mod.diesel.controllers.SFiddles.qtourl(args))', {
@@ -463,68 +465,110 @@ var runpill2_@id = function(id,compileOnly, next) {
         }),
         contentType: 'application/x-www-form-urlencoded',
         success: function(data) {
-          isRefreshing2 -= 1;
-          hideSpinner();
-
-          if($('#wikiMode').prop('checked'))
-            $('#divOut3_'+id).html(data.wiki);
-          else if(!compileOnly) {
-            // console.log("TREE: "+data.res);
-
-            // jquery.html will expand the escaped html, we need to escape again with encAmp
-            // if i don't do this, html values will mess up the current page
-            // if(! data.simMode) { // was not executed
-            $('#iframeOut3_' + id).html(encAmp(data.res) + '\n');
-            $('#iframeOutSpec_' + id).html(encAmp(data.res) + '\n');
-            dieselHideTrace($('#traceStory').prop('checked'));
-            dieselHideDebug($('#debugStory').prop('checked'));
-            dieselHideGenerated($('#generatedStory').prop('checked'));
-            // }
-          }
-
-          if(!compileOnly) {
-            $('#iframeOut5_' + id).html(data.capture);
-            instContentAssist = data.ca;
-            setErrors(data.failureCount, data.errorCount, data.totalCount);
-            var du = new Date().getTime() - lastTime;
-            $('#roundtrip').text(du + ' ms');
-
-            // automatic backoff
-            if(du > 9000)
-              currDebounce = 7000;
-            else if(du > 7000)
-              currDebounce = 5000;
-            else if(du > 2000)
-              currDebounce = 3000;
-            else
-              currDebounce = 2000;
-          }
-
-          if(storyEditor) updateMarkers(storyEditor, data.ast);
-          console.log("MARK story");
-
-          curDomRequest = null;
-          storyChanged(data.storyChanged);
-
           timeStamp = data.timeStamp;
-
-          if(typeof next === "function") {
-            next();
-          }
+          processEngineResult(id, data, compileOnly, lastTime, next);
         },
         error  : function(x) {
           isRefreshing2 -= 1;
           hideSpinner();
           console.log( "ERR "+x.toString());
-          curDomRequest = null;
+          if(!compileOnly) curDomRequest = null;
           if(JSON.stringify(x).indexOf("staleid") >= 0) {
             alert("Stale page - please refresh to get the latest saved draft!!!");
             location.reload();
           }
         }
       });
-}
+};
 
+function processEngineResult(id, data, compileOnly, lastTime, next) {
+  if(data.engineDone) {
+    console.log("RESULT engine.done - processing");
+    processFinalEngineResult(id, data, compileOnly, lastTime, next);
+  } else {
+    // engine not done yet - wait for websocket response
+    console.log("RESULT NOT engine.done - waiting");
+    $('#roundtrip').text("wait");
+    processPartialEngineResult(id, data, compileOnly, lastTime, next);
+  }
+};
+
+/** partial response - engine not complete, but story compiled - update markers */
+function processPartialEngineResult(id, data, compileOnly, lastTime, next) {
+  if(storyEditor) updateMarkers(storyEditor, data.ast);
+  console.log("MARK story");
+
+  storyChanged(data.storyChanged);
+};
+
+/** final response - engine complete - update everything */
+function processFinalEngineResult(id, data, compileOnly, lastTime, next) {
+  isRefreshing2 -= 1;
+  hideSpinner();
+
+  if($('#wikiMode').prop('checked')) {
+    $('#divOut3_' + id).html(data.wiki);
+  } else if(!compileOnly) {
+    // console.log("TREE: "+data.res);
+
+    // jquery.html will expand the escaped html, we need to escape again with encAmp
+    // if i don't do this, html values will mess up the current page
+    // if(! data.simMode) { // was not executed
+    $('#iframeOut3_' + id).html(encAmp(data.res) + '\n');
+    $('#iframeOutSpec_' + id).html(encAmp(data.res) + '\n');
+    dieselHideTrace($('#traceStory').prop('checked'));
+    dieselHideDebug($('#debugStory').prop('checked'));
+    dieselHideGenerated($('#generatedStory').prop('checked'));
+    // }
+  }
+
+  if(!compileOnly) {
+    $('#iframeOut5_' + id).html(data.capture);
+    instContentAssist = data.ca;
+    setErrors(data.failureCount, data.errorCount, data.totalCount);
+    var du = new Date().getTime() - lastTime;
+    $('#roundtrip').text(du + ' ms');
+
+    // automatic backoff
+    if(du > 9000)
+      currDebounce = 7000;
+    else if(du > 7000)
+      currDebounce = 5000;
+    else if(du > 2000)
+      currDebounce = 3000;
+    else
+      currDebounce = 2000;
+  }
+
+  if(storyEditor) updateMarkers(storyEditor, data.ast);
+  console.log("MARK story");
+
+  if(!compileOnly) curDomRequest = null;
+  storyChanged(data.storyChanged);
+
+  if(typeof next === "function") {
+    next();
+  }
+};
+
+</script>
+
+<!-- websockets for results -->
+<script>
+    var WS = window['MozWebSocket'] ? MozWebSocket : WebSocket;
+    @*var dateSocket = new WS('ws://localhost:9000/diesel/fiddle/espOpen/@reactor/@id');*@
+    var dateSocket = new WS('@mod.diesel.controllers.routes.DomFiddles.espOpen(reactor,id).webSocketURL()(stok.request.get)');
+
+    dateSocket.onmessage = function(event) {
+      var data = JSON.parse(event.data);
+
+      if(data.ping || data.ping =="true") {
+        console.log("WS ping: " + data.msg);
+      } else  {
+        console.log("WS result: ");// + JSON.stringify(data));
+        processEngineResult('@id', data, data.compileOnly, lastTime);
+      }
+    }
 </script>
 
 <script src="@routes.Assets.at("javascripts/weDieselDiffs.js")"></script>
@@ -711,6 +755,8 @@ setInterval(function(){
     console.log("UPDATING " + curMillis + " - " + lastChangeMillis + " = " + (curMillis - lastChangeMillis))
     instChanged=false;
     lastChangeMillis = curMillis;
+
+    // now calling twice: 1 to save and 2 to run
 
     // todo this needs optimized somehow - likely start the second one and just get it
     //  in the second call, since the parsing was done
