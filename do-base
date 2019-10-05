@@ -1,5 +1,6 @@
 
-## Create/update the base image
+## Create/update base container image with core, Java, vim, Mongo
+## NO need to re-create often
 
 RK=~/w/racerkidz
 

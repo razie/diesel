@@ -713,23 +713,38 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
           .withNewSession
           .discardingCookies(DiscardingCookie("error"))
     } else if(Users.findUserByEmailDec((e)).isDefined) {
-      Users.findUserByEmailDec((e)).map {u=>
-        if(! u.realms.contains(stok.realm)) {
-          clog << "user exists but has no realm, adding realm to user"
-          val newu = u.copy(realms = u.realms + stok.realm)
-          u.update(newu)
 
+      // user exists
+
+      val u = Users.findUserByEmailDec((e)).get
+
+      if(u.pwd != Enc(p)) {
+        clog << "User createExt password does not match"
+        Redirect(currUrl)
+            .withNewSession
+            .withCookies(
+              Cookie(
+                "error",
+                "This email is associated with a different password. Please use the same password!".encUrl
+              ).copy(httpOnly = false)
+            )
+      } else {
+        if (!u.realms.contains(stok.realm)) {
+          clog << "user exists but has no realm, adding realm to user and updating password"
+          var newu = u.copy(realms = u.realms + stok.realm)
+
+          u.update(newu)
           cleanAuth(Some(u))
         }
 
-        val p = u.profile.get
-        val newp = p.upsertExtLink(stok.realm, ExtSystemUserLink(stok.realm, esid, eiid, eaid))
-        p.update(newp)
-      }
+        val pro = u.profile.get
+        val newp = pro.upsertExtLink(stok.realm, ExtSystemUserLink(stok.realm, esid, eiid, eaid))
+        pro.update(newp)
 
-      Msg ("User registered... please proceed to login.")
-        .withNewSession
-          .discardingCookies(DiscardingCookie("error"))
+        Msg("User registered... please proceed to login.")
+            .withNewSession
+            .discardingCookies(DiscardingCookie("error"))
+      }
     } else {
       val u = User(
         Users.uniqueUsername(uname(f, l, y)), f.trim, l.trim, y, Enc(e),
