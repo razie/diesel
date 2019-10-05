@@ -31,7 +31,7 @@ object Application extends RazController {
         Future.successful(Redirect(host))
 
       } orElse getHost.flatMap(Website.forHost).filter{w=>
-        debug ("Is home page defined: " + w.homePage.isDefined)
+        debug ("Is home page defined: " + w.homePage.isDefined + " - " + w.homePage.mkString)
 
         // is there reactor and home page?
         w.homePage.isDefined
@@ -150,6 +150,14 @@ object Application extends RazController {
         // TODO emulate some well known wiki error response to throw them off
         Future.successful(NotFound(""))
 
+      } else if(path == "ads.txt") {
+        // google ads - serve website settings or default from rk
+        val we = RkReactors(request).map(Wikis.apply).flatMap {
+              _.find("Admin", path)
+            } orElse Wikis.rk.find("Admin", path)
+
+        Future.successful(Ok(we.get.content).as("text/plain"))
+
       } else {
 
 // next - find reactor it belongs to
@@ -183,8 +191,7 @@ object Application extends RazController {
             }
           } getOrElse
             Future.successful(Redirect("/"))
-        }
-      }
+        }}
     }
   }
 

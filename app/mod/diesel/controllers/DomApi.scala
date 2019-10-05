@@ -846,8 +846,7 @@ class DomApi extends DomApiBase  with Logging {
         .findTemplate(eapath, direction)
         .map {t=>
           // found template by path name, so parse as entity/action
-          val PAT = """([\w.]+)[./](\w+)""".r
-          val PAT(ee, aa) = eapath
+          val EMsg.REGEX(ee, aa) = eapath
           e = ee
           a = aa
 
@@ -877,8 +876,7 @@ class DomApi extends DomApiBase  with Logging {
             }
             .map {t=>
               // found template by path URL , so parse its name as entity/action
-              val PAT = """([\w.]+)[./](\w+)""".r
-              val PAT(ee, aa) = t.name//.split(":").head
+              val EMsg.REGEX(ee, aa) = t.name//.split(":").head
               e = ee
               a = aa
 
@@ -889,7 +887,7 @@ class DomApi extends DomApiBase  with Logging {
         }
 
     // materialize the laziness, so e/a are calculated
-    val PATS = """([\w./]+)[./](\w+)"""
+    val PATS = """([\w./]+)[./](\w+)""" // THIS IS different from Emsg.REGEX - accepts path style
 
     if(trequest.isEmpty && path.matches(PATS)) {
       val PAT = PATS.r

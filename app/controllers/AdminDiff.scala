@@ -387,12 +387,9 @@ object AdminDiff extends AdminBase {
   // is this the first time in a new db ?
   def isDbEmpty:Boolean = RMany[User]().size <= 0
 
-  def importDb = Action { implicit request =>
-    clog << "ADMIN_IMPORT_DB"
+  def importDbImpl(implicit request:Request[AnyContent]) = {
+    clog << "ADMIN_IMPORT_DB_IMPL"
 
-    if (!isDbEmpty) {
-      Ok("ERR db not empty!").as("application/text")
-    } else {
       lazy val query = request.queryString.map(t => (t._1, t._2.mkString))
       lazy val form = request.asInstanceOf[Request[AnyContent]].body.asFormUrlEncoded
 
@@ -431,18 +428,47 @@ object AdminDiff extends AdminBase {
       ).map(x => WID.fromPath(x).get) :::
 //        remoteWids(source, "rk", request.host, "Category", au) :::
 //        remoteWids(source, "wiki", request.host, "Category", au) :::
-        remoteWids(source, "rk", request.host, "", au) :::
-        remoteWids(source, "wiki", request.host, "", au) :::
-        remoteWids(source, realm, request.host, "", au)
+          remoteWids(source, "rk", request.host, "", au) :::
+          remoteWids(source, "wiki", request.host, "", au) :::
+          remoteWids(source, realm, request.host, "", au)
 
       var total = ldest.size
 
       import scala.concurrent.ExecutionContext.Implicits.global
-      Future {
-        importRealm(au, request)
-      }
+      (
+        total,
+        Future {
+          importRealm(au, request)
+        }
+      )
+  }
 
-      Ok(s"""$total""").as("application/text")
+  def importDbSync = Action.async { implicit request =>
+    clog << "ADMIN_IMPORT_DB"
+
+    if (!isDbEmpty) {
+      Future.successful {
+        Ok("ERR db not empty!").as("application/text")
+      }
+    } else {
+      val res = importDbImpl(request)
+
+      import scala.concurrent.ExecutionContext.Implicits.global
+      res._2.map { i=>
+        Ok(s"""$i errors""").as("application/text")
+      }
+    }
+  }
+
+  def importDb = Action { implicit request =>
+    clog << "ADMIN_IMPORT_DB"
+
+    if (!isDbEmpty) {
+      Ok("ERR db not empty!").as("application/text")
+    } else {
+      val res = importDbImpl(request)
+
+      Ok(s"""${res._1}""").as("application/text")
     }
   }
 
@@ -540,6 +566,7 @@ object AdminDiff extends AdminBase {
          |</small>
          """.stripMargin
     )
+    countErr
   }
 
 
