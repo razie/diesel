@@ -20,7 +20,7 @@ import razie.audit.{Audit, AuditService, MdbAuditService}
 import razie.db.{RMongo, ROne, RazMongo, UpgradeDb}
 import razie.diesel.dom.{RDomainPlugin, RDomainPlugins, WikiDomain}
 import razie.diesel.engine.{DieselAppContext, RDExt}
-import razie.diesel.exec.Executors
+import razie.diesel.exec.{EEDieselDT, EEDieselMemDb, EEDieselMongodDb, EEDieselSharedDb, Executors}
 import razie.hosting.{Website, WikiReactors}
 import razie.tconf.hosting.Reactors
 import razie.wiki.admin.{SecLink, SendEmail}
@@ -100,15 +100,13 @@ class Module extends AbstractModule {
         )
     }
 
-    RDExt.init
-
-    WikiMods register new FiddleMod
-    WikiMods register new DieselMod
-    WikiMods register new CaptchaMod
-
     DieselAppContext.setActorSystemFactory(() => play.libs.Akka.system)
+    DieselAppContext.initExecutors
+//    DieselAppContext.init(Services.config.node)
 
     DieselAppContext.localNode = Services.config.node
+
+    Executors.add (EEModRkExec)
     Executors.add (EEModRkExec)
     Executors.add (EEModUserExecutor)
     Executors.add (EEModCartExecutor)
@@ -117,6 +115,10 @@ class Module extends AbstractModule {
     Executors.add (new mod.diesel.model.exec.EEMail)
     Executors.add (new EEDieselCron)
     Executors.add (new EEGuardian)
+    Executors.add (new EEDieselDT)
+    Executors.add (new EEDieselMemDb)
+    Executors.add (new EEDieselSharedDb)
+    Executors.add (new EEDieselMongodDb)
 
     RDomainPlugins.plugins = { x: String =>
       WikiDomain(x).plugins
@@ -126,6 +128,10 @@ class Module extends AbstractModule {
       DieselSettings.find(None, None, "isimulateHost").map { s=>
         Config.isimulateHost = s
     }
+
+    WikiMods register new FiddleMod
+    WikiMods register new DieselMod
+    WikiMods register new CaptchaMod
 
     SecLink.purge
 
