@@ -401,7 +401,7 @@ object DomGuardian extends Logging {
       error(msg)
       msg
     } else {
-      DieselCron.createSchedule(s"guardian.auto-$realm-$env", schedExpr, realm, env, -1,
+      DieselCron.createSchedule(s"guardian.auto-$realm-$env", schedExpr, "", realm, env, -1,
         Left(DieselMsg(
           DieselMsg.GUARDIAN.ENTITY,
           DieselMsg.GUARDIAN.POLL,

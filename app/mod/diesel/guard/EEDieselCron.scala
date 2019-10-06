@@ -24,15 +24,18 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.{Duration, FiniteDuration}
 import akka.pattern.ask
 import akka.util.Timeout
+import org.joda.time.DateTime
 import razie.diesel.exec.EExecutor
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 import razie.cdebug
+import razie.diesel.Diesel
 
 /** in-mem representation of an on-going schedule */
 case class DomSchedule (
   schedId: String,
   schedExpr: String,
+  timeExpr: String,
   msg:Either[DieselMsg,DieselMsgString],
   realm: String,
   env: String,
@@ -40,12 +43,17 @@ case class DomSchedule (
   singleton:Boolean = true,
   ref: Option[Cancellable] = None) {
   var currCount:Long = 0l
+  var actualSched = "?"
+
+  def isOnce = timeExpr.nonEmpty && schedExpr.isEmpty
 
   def toJson = Map(
     "realm" -> realm,
     "env" -> env,
     "schedId" -> schedId,
     "schedExpr" -> schedExpr,
+    "timeExpr" -> timeExpr,
+    "actualSched" -> actualSched,
     "count" -> count,
     "currCount" -> currCount,
     "msg" -> msg.fold(_.toJson, _.toString)
@@ -73,6 +81,7 @@ object DieselCron extends Logging {
   case class Cancel(realm:String, schedId:String)
   case class CreateSchedule(schedId: String,
                             schedExpr: String,
+                            time: String,
                             realm: String,
                             env: String,
                             count:Long,
@@ -84,7 +93,8 @@ object DieselCron extends Logging {
 
     def receive = {
 
-      case sc @ DomSchedule (id, expr, msg, r, e, c, singleton, ak) => /*DieselCron.synchronized*/ {
+      // schedule triggered - should we send the message?
+      case sc @ DomSchedule (id, expr, time, msg, r, e, c, singleton, ak) => /*DieselCron.synchronized*/ {
         info(s"DomSchedule: $sc")
 
         if(realmSchedules.contains(id)) { // wasn't cancelled or something
@@ -108,42 +118,70 @@ object DieselCron extends Logging {
               DieselTarget.ENV(r, e)
             )
           }
+
+          if(curr.isOnce) {
+            realmSchedules.remove(id)
+          }
         }
       }
 
-      case CreateSchedule(schedId, schedExpr, realm, env, count, msg) => /*DieselCron.synchronized*/ {
+      case CreateSchedule(schedId, schedExpr, time, realm, env, count, msg) => /*DieselCron.synchronized*/ {
         val removed = realmSchedules.remove(schedId)
 
         removed.toList.map {
           _.ref.foreach(_.cancel())
         }
 
-        // free realms at least 5min
-        var d = Duration.apply(schedExpr).asInstanceOf[FiniteDuration]
-        val d5 = Duration.create(5, TimeUnit.MINUTES)
-        val d30 = Duration.create(30, TimeUnit.SECONDS)
-        val myRealms = "wiki,specs,oss,herc-cc,devblinq" // todo better for me and paid realms
         var sexpr = schedExpr
-        if (d < d5 && !myRealms.contains(realm)) {
-          d = d5
-          sexpr = "5 minutes"
-        } else if (d < d30) {
-          d = d30
-          sexpr = "30 seconds"
+        var d = Duration.Zero
+
+        if(schedExpr.nonEmpty) {
+          // free realms at least 5min
+          d = Duration.apply(schedExpr).asInstanceOf[FiniteDuration]
+          val d5 = Duration.create(5, TimeUnit.MINUTES)
+          val d30 = Duration.create(30, TimeUnit.SECONDS)
+          val myRealms = "wiki,specs,oss,herc-cc,devblinq" // todo better for me and paid realms
+
+          if (d < d5 && !myRealms.contains(realm)) {
+            d = d5
+            sexpr = "5 minutes"
+          } else if (d < d30) {
+            d = d30
+            sexpr = "30 seconds"
+          }
         }
 
         // initial object
-        var sc = DomSchedule(schedId, sexpr, msg, realm, env, count)
+        var sc = DomSchedule(schedId, sexpr, time, msg, realm, env, count)
 
         // start in a random time from now, but not too far in the future
-        val akkaRef = Akka.system.scheduler.schedule(
-          Duration.create(/*30 + */ (Math.random() * 30).toInt, TimeUnit.SECONDS),
-          d,
-          DieselCron.worker,
-          sc
-        )
+        val akkaRef = if(schedExpr.nonEmpty) {
+          sc.actualSched = d.toString
+          Akka.system.scheduler.schedule(
+            Duration.create(/*30 + */ (Math.random() * 30).toInt, TimeUnit.SECONDS),
+            d,
+            DieselCron.worker,
+            sc
+          )
+        } else if(time.nonEmpty) {
+          val sec = org.joda.time.Seconds.secondsBetween(DateTime.now, DateTime.parse(time))
+          var seconds = sec.getSeconds
+          if (seconds < 0) seconds = 5 // if in past but was accepted, do it now
 
+          sc.actualSched = seconds + " Seconds"
+          Akka.system.scheduler.scheduleOnce(
+            Duration.create(seconds, TimeUnit.SECONDS),
+            DieselCron.worker,
+            sc
+          )
+        } else {
+          throw new IllegalArgumentException("either schedule or time should be non-empty")
+        }
+
+        val as = sc.actualSched
         sc = sc.copy(ref = Some(akkaRef))
+        sc.actualSched = as
+
         removed.foreach{r=> sc.currCount = r.currCount} // copy old count
 
         realmSchedules.put(schedId, sc)
@@ -155,6 +193,8 @@ object DieselCron extends Logging {
           val remove = realmSchedules.remove(id)
           remove.flatMap(_.ref).foreach(_.cancel())
           sender ! remove
+        } else {
+          sender ! None
         }
       }
     }
@@ -162,15 +202,15 @@ object DieselCron extends Logging {
 
   def await[S] (a : ActorRef, message: Any) : S = Await.result(
     (worker ? message),
-    2 seconds
+    5 seconds
   ).asInstanceOf[S]
 
   /** create a schedule for a realm - should be called once per realm */
   def cancelSchedule(realm:String, schedId: String) = await[Option[DomSchedule]](worker, Cancel(realm, schedId))
 
   /** create a schedule for a realm - should be called once per realm */
-  def createSchedule(schedId: String, schedExpr: String, realm: String, env: String, count:Long, msg: Either[DieselMsg, DieselMsgString]) = {
-    await[String](worker, CreateSchedule(schedId, schedExpr, realm, env, count, msg))
+  def createSchedule(schedId: String, schedExpr: String, time:String, realm: String, env: String, count:Long, msg: Either[DieselMsg, DieselMsgString]) = {
+    await[String](worker, CreateSchedule(schedId, schedExpr, time, realm, env, count, msg))
   }
 
   /** cheap hot/cold singleton - is it me that Apache deems main? assumes proxy in +H mode */
@@ -212,8 +252,8 @@ class EEDieselCron extends EExecutor("diesel.cron") {
 
       case "set" => {
         val name = ctx.getRequired("name")
-        val schedule = ctx.getRequired("schedule")
         val env = ctx.get("env").mkString
+        val acceptPast = ctx.getp("acceptPast").map(_.calculatedTypedValue.asBoolean).getOrElse(false)
         val scount = ctx.get("count").mkString
         val desc = ctx.get("description").mkString
         val tq = ctx.get("tquery").mkString
@@ -221,33 +261,42 @@ class EEDieselCron extends EExecutor("diesel.cron") {
         val count = if (scount.length == 0) -1l else scount.toLong
         val cronMsg = ctx.get("cronMsg")
 
-        val settings = new DomEngineSettings()
-        settings.collect = Some(collect)
+        val schedule = ctx.get("schedule").mkString
+        val time = ctx.get("time").mkString
 
-        val msg:Either[DieselMsg,DieselMsgString] = cronMsg.map{ s=>
-          Right(DieselMsgString(
-            s,
-            DieselTarget.TQSPECS(realm, env, new TagQuery(tq)),
-            Map("name" -> name, "realm" -> realm, "env" -> env),
-            Some(settings)
-          ))
-        }.getOrElse{
-          Left(DieselMsg(
-            DieselMsg.CRON.ENTITY,
-            DieselMsg.CRON.TICK,
-            Map("name" -> name, "realm" -> realm, "env" -> env),
-            DieselTarget.TQSPECS(realm, env, new TagQuery(tq)),
-            Some(settings)
-        ))
+        if(schedule.isEmpty && time.isEmpty) {
+          List(EVal(P(Diesel.PAYLOAD, "Either schedule or time needs to be provided", WTypes.EXCEPTION)))
+        } else if(!acceptPast && time.nonEmpty && DateTime.parse(time).compareTo(DateTime.now()) <= 0) {
+          List(EVal(P(Diesel.PAYLOAD, "Time is in the past", WTypes.EXCEPTION)))
+        } else {
+          val settings = new DomEngineSettings()
+          settings.collect = Some(collect)
+
+          val msg: Either[DieselMsg, DieselMsgString] = cronMsg.map { s =>
+            Right(DieselMsgString(
+              s,
+              DieselTarget.TQSPECS(realm, env, new TagQuery(tq)),
+              Map("name" -> name, "realm" -> realm, "env" -> env),
+              Some(settings)
+            ))
+          }.getOrElse {
+            Left(DieselMsg(
+              DieselMsg.CRON.ENTITY,
+              DieselMsg.CRON.TICK,
+              Map("name" -> name, "realm" -> realm, "env" -> env),
+              DieselTarget.TQSPECS(realm, env, new TagQuery(tq)),
+              Some(settings)
+            ))
+          }
+
+          cdebug << "EEDiselCron: set 1"
+          val cid = DieselCron.createSchedule(name, schedule, time, realm, env, count, msg)
+          cdebug << "EEDiselCron: set 2"
+
+          List(
+            EVal(P.fromTypedValue("cronId", cid))
+          )
         }
-
-        cdebug << "EEDiselCron: set 1"
-        val cid = DieselCron.createSchedule(name, schedule, realm, env, count, msg)
-        cdebug << "EEDiselCron: set 2"
-
-        List(
-          EVal(P.fromTypedValue("cronId", cid))
-        )
       }
 
       case "list" => {
