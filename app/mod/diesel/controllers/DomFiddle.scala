@@ -160,6 +160,9 @@ object DomFiddles extends DomApi with Logging with WikiAuthorization {
     * see playESPDomFiddle
     */
   class MyWebSocketActor(out: ActorRef, id:String, client:Boolean) extends Actor {
+    // was there another? don't leak them...
+    clients.remove(id).map(DieselAppContext.getActorSystem.stop)
+
     clients.put(id, self)
 
     def receive = {
@@ -172,7 +175,7 @@ object DomFiddles extends DomApi with Logging with WikiAuthorization {
     // ping myself on a timer to clear dead connections
     override def preStart(): Unit = {
       import scala.concurrent.ExecutionContext.Implicits.global
-      Akka.system.scheduler.schedule(
+      DieselAppContext.getActorSystem.scheduler.schedule(
         Duration.create(30, TimeUnit.SECONDS),
         Duration.create(30, TimeUnit.SECONDS),
         this.self,
@@ -181,7 +184,9 @@ object DomFiddles extends DomApi with Logging with WikiAuthorization {
 
     override def postStop() = {
       // socket closed
-      clients.remove(id)
+      if(clients.get(id).exists(_ eq this)) {
+        clients.remove(id)
+      }
     }
   }
 
