@@ -256,11 +256,17 @@ object Wiki extends WikiBase {
   /**
    * show full entry as JSON
    */
-  def showWidJson(cw: CMDWID, irealm:String) = RAction { implicit request =>
+  def wikieJson(cw: CMDWID, irealm:String) = RAction { implicit request =>
     (for (
       wid <- prepWid(cw, irealm);
       w <- wid.page;
-      can <- canSee(wid, request.au, Some(w)) orCorr cNoPermission
+      can <- canSee(wid, request.au, Some(w)).orElse{
+        // users can import common realms
+        Some(
+          request.au.exists(_.isActive) &&
+          Array("rk", "wiki", "specs").contains(wid.realm)
+        )
+      } orCorr cNoPermission
     ) yield {
         Ok(w.grated.toString).as("application/json")
       }) getOrElse {
