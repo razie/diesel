@@ -564,9 +564,11 @@ function processFinalEngineResult(id, data, compileOnly, lastTime, next) {
 
       if(data.ping || data.ping =="true") {
         console.log("WS ping: " + data.msg);
-      } else  {
+      } else if(data.clientId == '@id') {
         console.log("WS result: ");// + JSON.stringify(data));
         processEngineResult('@id', data, data.compileOnly, lastTime);
+      } else  {
+        console.log("WS result NOT MINE: ");// + JSON.stringify(data));
       }
     }
 </script>
