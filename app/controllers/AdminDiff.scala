@@ -455,7 +455,22 @@ object AdminDiff extends AdminBase {
 
       import scala.concurrent.ExecutionContext.Implicits.global
       res._2.map { i=>
-        Ok(s"""$i errors""").as("application/text")
+          Future {
+            Thread.sleep(2)
+            System.exit(7)
+          }
+        Ok(
+          s"""
+             |
+             |********************************************************
+             |*                                                      *
+             |*      IMPORTED CONFIGURATION FROM REMOTE...           *
+             |*                                                      *
+             |*      $i errors... RESTARTING THE PROCESS...           *
+             |*                                                      *
+             |********************************************************
+             |
+             |""".stripMargin).as("application/text")
       }
     }
   }
