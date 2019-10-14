@@ -42,4 +42,11 @@ docker tag raz-diesel razie/raz-diesel
 # docker login -u razie
 # docker push razie/raz-diesel
 
-
+# to run just the container and debug it:
+# # docker run -p 127.0.0.1:9003:9000 -v/Users/raz/w/racerkidz/docker/db:/data/db -it --entrypoint=/bin/bash razie/raz-diesel
+# #
+# # then just run the container:
+# # docker run -p 127.0.0.1:9003:9000 -v/Users/raz/w/racerkidz/docker/db:/data/db -it razie/raz-diesel
+# #
+# # and point the browser to localhost:9003
+#
