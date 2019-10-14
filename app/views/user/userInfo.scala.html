@@ -8,8 +8,6 @@ user info as displayed to public
 
 User: @user.userName
 
-<a href="@mod.msg.routes.Messaging.doeStartThread("PM", user._id.toString)">Start PM</a>
-
 <hr>
 
 @defining(controllers.UserStuff.findPublicProfile(stok.realm, user.userName)) {w=>
