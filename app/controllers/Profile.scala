@@ -31,8 +31,6 @@ object Profile extends RazController {
   val trusts = Array("Public", "Club", "Friends", "Private")
   val notifiers = Array("Everything", "FriendsOnly", "None")
 
-  final val cNoConsent = new Corr("Need consent!", """You need to <a href="/doe/consent">give your consent</a>!""");
-
   // TODO this shoud be private
   def updateUser(old: User, newU: User)(implicit request: Request[_]) = {
     old.update(newU)
@@ -450,15 +448,16 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
                 Cookie("error", msg.encUrl).copy(httpOnly = false)
               )
           } else
-          (if(u.hasConsent(realm)) {
-            if(next.isDefined)
-              Msg2( s"""Click below to continue joining the $club.""", next)
-            else
-              Redirect("/")
-          } else
-              (ROK.r apply { implicit stok =>
-                views.html.user.doeConsent(next.getOrElse("/"))
-              })
+          (
+              if(u.hasConsent(realm) || !request.website.needsConsent) {
+                if(next.isDefined)
+                  Msg2( s"""Click below to continue joining the $club.""", next)
+                else
+                  Redirect("/")
+              } else
+                  ROK.r apply { implicit stok =>
+                    views.html.user.doeConsent(next.getOrElse("/"))
+                  }
           ).withSession(Services.config.CONNECTED -> Enc.toSession(u.email))
            .discardingCookies(DiscardingCookie("error"))
         } else {
