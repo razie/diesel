@@ -255,6 +255,7 @@ object DomFiddles extends DomApi with Logging with WikiAuthorization {
         stok.realm)
       val storyDom = WikiDomain.domFrom(storyPage).get.revise addRoot
 
+      //fiddleSpec only parses it, never runs it - it's a spec, afterall
       var res = Wikis.format(specPage.wid, specPage.markup, null, Some(specPage), stok.au)
       retj << Map(
         "res" -> res,
@@ -262,7 +263,9 @@ object DomFiddles extends DomApi with Logging with WikiAuthorization {
         "ca" -> RDExt.toCAjmap(specDom plus storyDom), // C.assist options
         "specChanged" -> (specWpath.length > 0 && spw.replaceAllLiterally("\r", "") != spec),
         "ast" -> getAstInfo(specPage),
-        "timeStamp" -> timeStamp
+        "info" -> Map( // just like fiddleUpdated
+          "timeStamp" -> s"$timeStamp"
+        )
       )
     }
   }
@@ -300,7 +303,9 @@ object DomFiddles extends DomApi with Logging with WikiAuthorization {
     val uid = stok.au.map(_._id).getOrElse(NOUSER)
 
     val now = DateTime.now
-    //autosave draft - if none and there are changes
+
+    //  autosave draft - if none and there are changes
+    // this doesn't acytually save it now, but later
     val auto = AutosaveSet("wikie", reactor, storyWpath, stok.au.get._id, Map(
       "content"  -> story
     ), Some(now)) // detect stale updates
@@ -308,11 +313,12 @@ object DomFiddles extends DomApi with Logging with WikiAuthorization {
     val autoRec = auto.rec // is there a draft ?
 
     // first check if it's newer - if the user clicks "back", a stale editor may overwrite a newer draft
-    if (autoRec.exists(_.updDtm.isAfter(new DateTime(timeStamp.toLong)))) {
+    if (saveMode && autoRec.exists(_.updDtm.isAfter(new DateTime(timeStamp.toLong)))) {
       // don't change "staleid" - used as search
       Future.successful(Conflict(s"staleid - please refresh page... $timeStamp - ${autoRec.get.updDtm.toInstant.getMillis}"))
     } else {
-      timeStamp = now.toInstant.getMillis.toString
+      // when not saving, no change in timestamp
+      if(saveMode) timeStamp = now.toInstant.getMillis.toString
 
       if (saveMode && stok.au.exists(_.isActive)) {
         DomWorker later AutosaveSet("DomFidPath", reactor, "", stok.au.get._id, Map(
@@ -431,21 +437,26 @@ object DomFiddles extends DomApi with Logging with WikiAuthorization {
         val wiki = Wikis.format(ipage.wid, ipage.markup, null, Some(ipage), stok.au)
 
         val m = Map(
+          // flags in map for easy logging
+          "info" -> Map(
+            "clientId" -> id,
+            "compileOnly" -> compileOnly,
+            "timeStamp" -> timeStamp,
+            "totalCount" -> (engine.totalTestCount),
+            "failureCount" -> engine.failedTestCount,
+            "errorCount" -> engine.errorCount,
+            "engineId" -> engine.id,
+            "engineStatus" -> st,
+            "engineDone" -> DomState.isDone(st)
+          ),
           "clientId" -> id,
           "res" -> res,
           "capture" -> captureTree,
           "wiki" -> wiki,
-          "ca" -> RDExt.toCAjmap(dom plus idom), // in blenderMode dom is full
-          "totalCount" -> (engine.totalTestCount),
-          "failureCount" -> engine.failedTestCount,
-          "errorCount" -> engine.errorCount,
           "storyChanged" -> (storyWpath.length > 0 && stw.replaceAllLiterally("\r", "") != story),
-          "ast" -> getAstInfo(ipage),
-          "timeStamp" -> timeStamp,
-          "engineId" -> engine.id,
-          "engineStatus" -> st,
-          "engineDone" -> DomState.isDone(st),
-          "compileOnly" -> compileOnly
+          "ca" -> RDExt.toCAjmap(dom plus idom), // in blenderMode dom is full
+          "failureCount" -> engine.failedTestCount,
+          "ast" -> getAstInfo(ipage)
         )
 
         stimer snap "6_format_response"
@@ -453,7 +464,8 @@ object DomFiddles extends DomApi with Logging with WikiAuthorization {
         if(!compileOnly && DomState.isDone(st)) {
           log("  fiddleSU - sending WS: " + DomState.isDone(engine.status))
           clients.get(id).foreach(_ ! m)
-          clients.values.foreach(_ ! m) // todo WTF am I broadcasting?
+          // todo WTF am I broadcasting?
+          //  clients.values.foreach(_ ! m)
         }
 
         m
@@ -495,6 +507,53 @@ object DomFiddles extends DomApi with Logging with WikiAuthorization {
 
         retj << m
       }
+    }
+  }
+
+  /** check engine id
+    *
+    * @param id - unique session / page Id, used to identify WebSocket customers too
+    * @return
+    */
+  def checkfiddleStoryUpdated(id: String) : Action[AnyContent] = RAction { implicit stok=>
+    val stimer = new CSTimer("buildDomStory", id)
+    stimer start "heh"
+
+    var timeStamp = stok.formParm("timeStamp")
+    val engineId = stok.formParm("engineId")
+    val engine = DomCollector.withAsts { asts =>
+      asts.find(_.id == engineId)
+    }
+
+      def sendResult (engine:DomEngine) = {
+        val st = engine.status // copy so that if it completes wuile here, I'll still send again
+
+        var res = engine.root.toHtml
+
+        val m = Map(
+          // flags in map for easy logging
+          "info" -> Map(
+            "clientId" -> id,
+            "timeStamp" -> timeStamp,
+            "totalCount" -> (engine.totalTestCount),
+            "failureCount" -> engine.failedTestCount,
+            "errorCount" -> engine.errorCount,
+            "engineId" -> engine.id,
+            "engineStatus" -> st,
+            "engineDone" -> DomState.isDone(st)
+          ),
+          "clientId" -> id,
+          "res" -> res,
+          "failureCount" -> engine.failedTestCount
+        )
+
+        m
+      }
+
+    engine.map {e=>
+      retj << sendResult(e.engine)
+    }.getOrElse {
+      NotFound(s"Engine id $engineId not found")
     }
   }
 

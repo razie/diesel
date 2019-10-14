@@ -477,6 +477,13 @@ myattachAce = function() {
     instChanged=true;
   });
 
+  aceEditor.setOptions({
+    tabSize: 2,
+    enableBasicAutocompletion: true,
+    enableLiveAutocomplete:  true,
+    enableLiveAutocompletion:  true
+  });
+
   // aceEditor.getSession().on('changeFrontMarker', function(e) {
   //   console.log('changeFrontMarker');
   // });
@@ -554,6 +561,7 @@ refreshServerNow = function() {
 /** update the preview */
 function livePreview() {
   refreshDslDebounced();
+
   var content = getContent();
   var tags = $("#tags").val();
 
@@ -601,21 +609,23 @@ function saveDraft() {
         $("#floppy").css("color", "green");
         $("#floppy").fadeIn(500);
         $("#btnDiff").show();
-        console.log("savedraft ts old "+timeStamp + " new "+data.timeStamp);
-        if(timeStamp < data.timeStamp) timeStamp = data.timeStamp;
+        console.log("savedraft ts old "+timeStamp + " new "+data.info.timeStamp + " diff: " + (timeStamp - data.info.timeStamp));
+        if(timeStamp < data.info.timeStamp) timeStamp = data.info.timeStamp;
       },
       error  : function(x) {
         $("#floppy").fadeOut(500);
         $("#floppy").attr("title", "ERROR: Cannot save draft");
         $("#floppy").css("color", "red");
         $("#floppy").fadeIn(500);
+
         console.log( "ERR "+JSON.stringify(x));
+
         if(x.status && x.status == 409) {
           notesMsgShow("err", "Conflict - " + x.responseText);
           $("#floppy").attr("title", "Conflict - " + x.responseText);
-        }
-        else
+        } else {
           notesMsgShow("err", "Cannot save draft");
+        }
 
         if(JSON.stringify(x).indexOf("staleid") >= 0) {
           alert("saveDraft - Stale page - please refresh to get the latest saved draft!!!");
@@ -903,12 +913,12 @@ function runpill2 (id) {
 
           instContentAssist = data.ca;
 
-//            setErrors(data.failureCount);
+//            setErrors(data.info.failureCount);
           var du = new Date().getTime() - lastTime;
           $('#roundtrip').text(du+' ms');
 
-          console.log("fiddle ts old "+timeStamp + " new "+data.timeStamp);
-          if(timeStamp < data.timeStamp) timeStamp = data.timeStamp;
+          console.log("fiddle ts old "+timeStamp + " new "+data.info.timeStamp + " diff: " + (timeStamp - data.info.timeStamp));
+          if(timeStamp < data.info.timeStamp) timeStamp = data.info.timeStamp;
 
           if(aceAttached) updateMarkers(aceEditor, data.ast);
         },

@@ -383,7 +383,12 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
       if (EditLock.isLocked(wid.uwid.getOrElse(UWID.empty), wid.wpath, stok.au.get))
         Conflict(s"edited by ${EditLock.who(wid.uwid.getOrElse(UWID.empty), wid.wpath)}")
       else
-        Ok(s"""{"message":"ok, saved", "timeStamp":"$timeStamp"}""").as("application/json")
+        retj << Map(
+          "message" -> "ok, saved",
+          "info" -> Map( // just like fiddleUpdated
+            "timeStamp" -> s"$timeStamp"
+          )
+      )
     }
   }
 

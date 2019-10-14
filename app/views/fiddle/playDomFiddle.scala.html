@@ -382,9 +382,9 @@ var runpill_@id = function(id) {
       specChanged(data.specChanged);
 
       if(specEditor) updateMarkers(specEditor, data.ast);
-      console.log("MARK spec");
+      console.log("  updateMarkers spec");
 
-      timeStamp = data.timeStamp;
+      timeStamp = data.info.timeStamp;
 
       // also trigger inst update
       runpill2_@{id}('@{id}', false);
@@ -392,7 +392,7 @@ var runpill_@id = function(id) {
     error  : function(x) {
       isRefreshing -= 1;
       hideSpinner();
-      console.log( "ERR "+x.toString());
+      console.log( "ERR "+JSON.stringify(x));
       if(JSON.stringify(x).indexOf("staleid") >= 0) {
         alert("Stale page - please refresh to get the latest saved draft!!!");
         location.reload();
@@ -447,7 +447,7 @@ var runpill2_@id = function(id,compileOnly, next) {
       '/diesel/fiddle/fiddleStoryUpdated/'+id+'?@Html(mod.diesel.controllers.SFiddles.qtourl(args))', {
         type: 'POST',
         data: $.param({
-          saveMode : true,
+          saveMode : compileOnly,
           sketchMode : $('#sketchMode').prop('checked'),
           mockMode : $('#mockMode').prop('checked'),
           blenderMode : $('#blenderMode').prop('checked'),
@@ -465,13 +465,15 @@ var runpill2_@id = function(id,compileOnly, next) {
         }),
         contentType: 'application/x-www-form-urlencoded',
         success: function(data) {
-          timeStamp = data.timeStamp;
+          timeStamp = data.info.timeStamp;
           processEngineResult(id, data, compileOnly, lastTime, next);
         },
         error  : function(x) {
           isRefreshing2 -= 1;
           hideSpinner();
-          console.log( "ERR "+x.toString());
+
+          console.log( "ERR "+JSON.stringify(x));
+
           if(!compileOnly) curDomRequest = null;
           if(JSON.stringify(x).indexOf("staleid") >= 0) {
             alert("Stale page - please refresh to get the latest saved draft!!!");
@@ -481,13 +483,57 @@ var runpill2_@id = function(id,compileOnly, next) {
       });
 };
 
+var currEngineId = null;
+
+var checkpill2_@id = function(id) {
+  console.log("checkpill2 run isRefreshing2="+isRefreshing2);
+
+  if(currEngineId == null) {
+    console.log ("Ignore request - was done: " + curDomRequest);
+    return;
+  }
+
+  lastTime = new Date().getTime();
+
+  $.ajax(
+      '/diesel/fiddle/checkfiddleStoryUpdated/'+id+'?@Html(mod.diesel.controllers.SFiddles.qtourl(args))', {
+        type: 'POST',
+        data: $.param({
+          engineId : currEngineId
+        }),
+        contentType: 'application/x-www-form-urlencoded',
+        success: function(data) {
+          timeStamp = data.info.timeStamp;
+          processEngineResult(id, data, false, lastTime);
+        },
+        error  : function(x) {
+          isRefreshing2 -= 1;
+          hideSpinner();
+
+          console.log( "ERR "+JSON.stringify(x));
+
+          curDomRequest = null;
+          if(JSON.stringify(x).indexOf("staleid") >= 0) {
+            alert("Stale page - please refresh to get the latest saved draft!!!");
+            location.reload();
+          }
+        }
+      });
+};
+
 function processEngineResult(id, data, compileOnly, lastTime, next) {
-  if(data.engineDone) {
-    console.log("RESULT engine.done - processing");
+  console.log("RES: engineId:"+data.info.engineId);
+  console.log("  RES data: " +JSON.stringify(data.info));
+
+  currEngineId = data.info.engineId;
+
+  if(data.info.engineDone) {
+    console.log("  RESULT engine.done - processing");
     processFinalEngineResult(id, data, compileOnly, lastTime, next);
+    currEngineId = null;
   } else {
     // engine not done yet - wait for websocket response
-    console.log("RESULT NOT engine.done - waiting");
+    console.log("  RESULT NOT engine.done - waiting");
     $('#roundtrip').text("wait");
     processPartialEngineResult(id, data, compileOnly, lastTime, next);
   }
@@ -495,10 +541,16 @@ function processEngineResult(id, data, compileOnly, lastTime, next) {
 
 /** partial response - engine not complete, but story compiled - update markers */
 function processPartialEngineResult(id, data, compileOnly, lastTime, next) {
-  if(storyEditor) updateMarkers(storyEditor, data.ast);
-  console.log("MARK story");
+  if(storyEditor && typeof data.ast != "undefined") updateMarkers(storyEditor, data.ast);
+  console.log("  updateMarkers story");
 
-  storyChanged(data.storyChanged);
+  if(typeof data.storyChanged != "undefined") storyChanged(data.storyChanged);
+
+  if(! wsActive) {
+    setTimeout(function () {
+      checkpill2_@{id}('@{id}');
+    }, 500);
+  }
 };
 
 /** final response - engine complete - update everything */
@@ -525,7 +577,7 @@ function processFinalEngineResult(id, data, compileOnly, lastTime, next) {
   if(!compileOnly) {
     $('#iframeOut5_' + id).html(data.capture);
     instContentAssist = data.ca;
-    setErrors(data.failureCount, data.errorCount, data.totalCount);
+    setErrors(data.failureCount, data.info.errorCount, data.info.totalCount);
     var du = new Date().getTime() - lastTime;
     $('#roundtrip').text(du + ' ms');
 
@@ -540,11 +592,11 @@ function processFinalEngineResult(id, data, compileOnly, lastTime, next) {
       currDebounce = 2000;
   }
 
-  if(storyEditor) updateMarkers(storyEditor, data.ast);
-  console.log("MARK story");
+  if(storyEditor && typeof data.ast != "undefined") updateMarkers(storyEditor, data.ast);
+  console.log("  updateMarkers story");
 
   if(!compileOnly) curDomRequest = null;
-  storyChanged(data.storyChanged);
+  if(typeof data.storyChanged != "undefined") storyChanged(data.storyChanged);
 
   if(typeof next === "function") {
     next();
@@ -556,21 +608,33 @@ function processFinalEngineResult(id, data, compileOnly, lastTime, next) {
 <!-- websockets for results -->
 <script>
     var WS = window['MozWebSocket'] ? MozWebSocket : WebSocket;
-    @*var dateSocket = new WS('ws://localhost:9000/diesel/fiddle/espOpen/@reactor/@id');*@
-    var dateSocket = new WS('@mod.diesel.controllers.routes.DomFiddles.espOpen(reactor,id).webSocketURL()(stok.request.get)');
+    @*var dateSocket = new WS('ws://localhost:9000/ws/diesel/fiddle/espOpen/@reactor/@id');*@
+    var dateSocket;
+    var wsActive=false;
 
-    dateSocket.onmessage = function(event) {
-      var data = JSON.parse(event.data);
+    // false for testing
+    if(true) try {
+      dateSocket = new WS('@mod.diesel.controllers.routes.DomFiddles.espOpen(reactor,id).webSocketURL()(stok.request.get)');
+      wsActive = true;
+      console.log("WS - done setup WS... ");
 
-      if(data.ping || data.ping =="true") {
-        console.log("WS ping: " + data.msg);
-      } else if(data.clientId == '@id') {
-        console.log("WS result: ");// + JSON.stringify(data));
-        processEngineResult('@id', data, data.compileOnly, lastTime);
-      } else  {
-        console.log("WS result NOT MINE: ");// + JSON.stringify(data));
+      dateSocket.onmessage = function(event) {
+        var data = JSON.parse(event.data);
+
+        if(data.ping || data.ping =="true") {
+          console.log("WS ping: " + data.msg);
+        } else if(data.clientId == '@id') {
+          console.log("WS result: " + JSON.stringify(data.info));
+          processEngineResult('@id', data, data.info.compileOnly, lastTime);
+        } else  {
+          console.log("WS result NOT MINE: ");// + JSON.stringify(data));
+        }
       }
+    } catch (error) {
+      wsActive = false;
+      console.log("WS - ERROR can't setup WS: " + JSON.stringify(error));
     }
+
 </script>
 
 <script src="@routes.Assets.at("javascripts/weDieselDiffs.js")"></script>
@@ -628,11 +692,13 @@ function attachAce() {
 }
 
   specEditor.setOptions({
+    tabSize: 2,
     enableBasicAutocompletion: true,
     // enableLiveAutocomplete:  true,
     enableLiveAutocompletion:  true
   });
   storyEditor.setOptions({
+    tabSize: 2,
     enableBasicAutocompletion: true,
     // enableLiveAutocomplete:  true,
     enableLiveAutocompletion:  true
