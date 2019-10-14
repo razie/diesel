@@ -1,6 +1,5 @@
 package controllers
 
-import mod.msg.MsgThread
 import mod.snow.RacerKidz
 import model.{User, Users}
 import org.bson.types.ObjectId
@@ -190,22 +189,15 @@ object Comment extends RazController with Logging {
             // topic owner and all that commented on it
             Users.findUserById(w.by).map(_._id).toList ++
               cs.comments.map(_.userId)
-          ).distinct.filter(_ != au._id).map {uid =>
+          ).distinct
+              /*.filter(_ != au._id)*/  // but not the commenter
+              .map {uid =>
             Users.findUserById(uid).filter(_.isActive).map {u =>
               Emailer.sendEmailNewComment(u, au, w.wid)
               RacerKidz.myself(u._id).history.post(w, au, Some("New comment posted by "+au.fullName))
             }
           }
         }
-    } else if("PM" == role || "Msg" == role || "MA" == role)
-      ROne[MsgThread](new ObjectId(pid)).map {msg=>
-        var newMsg = msg
-        // will email only once, not every time comment is added - also whenteh first comment is added
-        msg.users.filter(x=> x.userId != au._id && (x.read || cs.comments.size == 1)).map(_.userId).distinct.flatMap(uid=>Users.findUserById(uid)).filter(_.isActive).foreach {user=>
-          Emailer.sendEmailNewComment(user, au, WID("Admin", "Private Messages"))
-          newMsg = msg.readNow(user._id, false)
-        }
-        newMsg.update(tx.auto)
       }
     }
   }
@@ -214,16 +206,13 @@ object Comment extends RazController with Logging {
   def redirect (pid:String, role:String) = {
     if("Wiki" == role)
       Redirect(controllers.Wiki.w(Wikis.find(new ObjectId(pid)).get.wid, false))
-    else if("PM" == role || "Msg" == role)
-      Redirect(mod.msg.routes.Messaging.doeThread(pid))
     else
       Redirect("/")
   }
 
   /** validate the parent entity */
   def checkEntity (pid:String, role:String) = {
-    (role == "Wiki" && Wikis.findById(pid).isDefined) ||
-      ((role == "PM" || role == "Msg" || role == "MA") && ROne[MsgThread](new ObjectId(pid)).isDefined)
+    role == "Wiki" && Wikis.findById(pid).isDefined
   }
 
   /** start to add a video/photo comment **/

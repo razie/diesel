@@ -149,7 +149,7 @@ require(['jquery'], function($){
               <li><a href="@routes.ProfileUpd.doeHelp"><i class="icon-edit"></i> Preferences</a></li>
             }
             @if(! web().navrMenuRemove.contains("Messages")) {
-              <li><a href="@mod.msg.routes.Messaging.doePM"><i class="icon-edit"></i> Messages</a></li>
+              <li><a href="/doe/history"><i class="icon-edit"></i> Messages</a></li>
             }
 
             @if(stok.au.exists(u=> u.isDev || u.isMod)) {
