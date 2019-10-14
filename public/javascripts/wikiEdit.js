@@ -138,6 +138,7 @@ function attachAce(ace, id, content, light, onChange) {
   editor.getSession().setMode("ace/mode/nvp1");
 
   editor.setOptions({
+    tabSize: 2,
     enableBasicAutocompletion: true,
     enableLiveAutocomplete:  true,
     enableLiveAutocompletion:  true
