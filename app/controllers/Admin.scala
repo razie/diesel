@@ -140,6 +140,9 @@ class AdminSys extends AdminBase {
       case "shouldReload" => {
         Ok(reloadt.toString).as("application/text")
       }
+      case "buildTimestamp" => {
+        Ok(reloadt.toString).as("application/text")
+      }
       case _ => Ok(osusage).as("application/json")
     }
   }
