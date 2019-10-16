@@ -93,7 +93,7 @@ class DomApi extends DomApiBase  with Logging {
   def wreact(cwid: CMDWID) = Filter(noRobots).async { implicit stok =>
     val errors = new ListBuffer[String]()
 
-    val resultMode = stok.query.getOrElse("resultMode", "")
+    val resultMode = stok.query.getOrElse("resultMode", "value")
 
     cwid.wid.map(stok.prepWid).flatMap(wid => wid.page.orElse {
       // 1. figure out the specs
@@ -189,13 +189,22 @@ class DomApi extends DomApiBase  with Logging {
     irunDom(ea, None)
   }
 
+  private def irunDom(path: String, useThisStory: Option[WID], useThisStoryPage: Option[WikiEntry] = None, useThisSpecPage: List[WikiEntry] = Nil) (implicit stok:RazRequest) : Future[Result] = {
+    val x = Try {
+      irunDomInt(path, useThisStory, useThisStoryPage, useThisSpecPage)
+    } recover {
+      case e : Throwable => Future.successful(BadRequest("ERROR: " + e.getMessage))
+    }
+    x.get
+  }
+
   /** execute message to given reactor
     *
     * @param is the useful path (without prefix). Either an e.a or e/a or template match
     * @param useThisStory  if nonEmpty then will use this (find it first) plus blender
     * @param useThisStoryPage if nonEmpty then will use this plus blender
     */
-  private def irunDom(path: String, useThisStory: Option[WID], useThisStoryPage: Option[WikiEntry] = None, useThisSpecPage: List[WikiEntry] = Nil) (implicit stok:RazRequest) : Future[Result] = {
+  private def irunDomInt(path: String, useThisStory: Option[WID], useThisStoryPage: Option[WikiEntry] = None, useThisSpecPage: List[WikiEntry] = Nil) (implicit stok:RazRequest) : Future[Result] = {
 
     val reactor = stok.website.dieselReactor
     val website = Website.forRealm(reactor).getOrElse(stok.website)
