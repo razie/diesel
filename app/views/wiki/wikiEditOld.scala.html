@@ -75,6 +75,7 @@ Implicit.flash().put("bibi", "haha")
             <small> |
               <button onclick="return submitPlease();" id="btnSave" class="btn btn-default btn-xs"><span id="floppy" class="glyphicon glyphicon-floppy-disk"></span> Save</button>
               <button onclick="return popupDiff();" id="btnDiff" class="btn btn-default btn-xs" style="color:limegreen" title="Show diff from original">&Delta;</button>
+              <a href="@controllers.Wiki.wr(wid, stok.realm, false)" onclick="return cancel();" class="btn btn-default btn-xs"><span id="fla" class="glyphicon glyphicon-floppy-remove"></span> Cancel</a>
             </small>
             <div class="pull-right">
               @if(stok.au.exists(_.isMod)) {
