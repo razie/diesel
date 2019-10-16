@@ -94,6 +94,13 @@ class DomApi extends DomApiBase  with Logging {
     val errors = new ListBuffer[String]()
 
     val resultMode = stok.query.getOrElse("resultMode", "value")
+    val sketchMode = stok.query.getOrElse("sketchMode", "false").toBoolean
+
+    // in sketch mode we include the stories as well
+    def applies(s:WikiSection) = {
+      (Array("spec") contains s.signature) ||
+      (Array("story") contains s.signature) && sketchMode
+    }
 
     cwid.wid.map(stok.prepWid).flatMap(wid => wid.page.orElse {
       // 1. figure out the specs
@@ -123,7 +130,7 @@ class DomApi extends DomApiBase  with Logging {
         // add all entangled fiddles too
         val pspec = EnginePrep.sectionsToPages(
           we,
-          we.sections.filter(s=>s.stype == "dfiddle" && (Array("spec") contains s.signature) && (
+          we.sections.filter(s=>s.stype == "dfiddle" && applies(s) && (
             s.name == fidName ||  // entangle same name
             s.args.get("includeFor").exists(pat=> fidName.matches(pat)) // or if it's meant to be included
             ))
@@ -134,7 +141,7 @@ class DomApi extends DomApiBase  with Logging {
         // normal full page / section - include all sections
         val pspec = EnginePrep.sectionsToPages(
           we,
-          we.sections.filter(s=>s.stype == "dfiddle" && (Array("spec") contains s.signature))
+          we.sections.filter(s=>s.stype == "dfiddle" && applies(s))
         )
 
         irunDom(path, Some(we.wid), None, pspec)

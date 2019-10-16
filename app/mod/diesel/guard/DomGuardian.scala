@@ -141,6 +141,7 @@ object DomGuardian extends Logging {
 
     def key = realm + "." + env + "." + userName
 
+    // actually run a reactor test
     def run: (Future[Report], DomEngine) = DomGuardian.synchronized {
       val started = System.currentTimeMillis()
 
@@ -292,7 +293,10 @@ object DomGuardian extends Logging {
           )
           // maybe clean
           debouncer = debouncer.filter(_._1 != k)
+
+          // run it
           val x @ (fut, engine) = rr.run
+
           debouncer.append((k, rr, fut, engine))
           x
         }
