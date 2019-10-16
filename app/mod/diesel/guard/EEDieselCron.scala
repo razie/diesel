@@ -248,9 +248,9 @@ class EEDieselCron extends EExecutor("diesel.cron") {
 
     cdebug << "EEDiselCron: apply " + in
 
-    in.met match {
+    in.ea match {
 
-      case "set" => {
+      case "diesel.cron.set" => {
         val name = ctx.getRequired("name")
         val env = ctx.get("env").mkString
         val acceptPast = ctx.getp("acceptPast").map(_.calculatedTypedValue.asBoolean).getOrElse(false)
@@ -299,7 +299,7 @@ class EEDieselCron extends EExecutor("diesel.cron") {
         }
       }
 
-      case "list" => {
+      case "diesel.cron.list" => {
         val name = ctx.get("name").mkString
 
         cdebug << "EEDiselCron: list 1"
@@ -312,7 +312,7 @@ class EEDieselCron extends EExecutor("diesel.cron") {
         res
       }
 
-      case "cancel" => {
+      case "diesel.cron.cancel" => {
         val name = ctx.getRequired("name")
         val res = DieselCron.cancelSchedule(realm, name).mkString
         List(
