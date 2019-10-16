@@ -334,7 +334,8 @@ function dieselNodeLog(s) {
   } catch (err) {
     dieselValueJson = {err : err};
   }
-  popupContent('<pre style="overflow-x: auto;\n' +
+  // popupContent()
+  popupLargeDialog('<pre style="overflow-x: auto;\n' +
     'white-space: pre-wrap;' +
     'white-space: -moz-pre-wrap;' +
     'white-space: -pre-wrap;' +
