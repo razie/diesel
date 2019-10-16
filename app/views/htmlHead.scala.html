@@ -366,6 +366,15 @@ img.rklogo {
   </style>
 }
 
+@** optional page-level stylesheet **@
+
+@page.flatMap(_.findSection("stylesheet")).map(_.content).map{c=>
+    <!--  optional page-level stylesheet  -->
+  <style type="text/css">
+  @c
+  </style>
+}
+
   </head>
 
 
