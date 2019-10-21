@@ -690,7 +690,7 @@ class DomApi extends DomApiBase  with Logging {
 
               engine.ctx.getp("payload").map {p=>
                 if(p.value.isDefined) {
-                  ctype = WTypes.getContentType(p.value.get.contentType)
+                  ctype = WTypes.getContentType(p.value.get.cType)
 
                   p.value.get.value match {
                     case x : Array[Byte] =>
