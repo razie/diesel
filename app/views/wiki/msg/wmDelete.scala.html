@@ -4,6 +4,9 @@ fragment: add more stuff to the current topic, including children, sub-topics et
 @import razie.wiki.model.UWID
 @import razie.wiki.model.WikiLink
 @import model.User
+@import razie.diesel.utils.DieselData
+@import razie.db.RazMongo
+@import razie.wiki.admin.Autosave
 @(uwid: UWID)
 
 @import controllers.IgnoreErrors
@@ -66,7 +69,12 @@ Links from others :
   <h2>It is a reactor, here are the topics to delete:</h2>
 
   <small>
-  @defining(RMany[User]().filter(_.realms.contains(uwid.wid.get.name))) { x =>
+    Autosave: @RMany[Autosave]("realm" -> uwid.wid.get.name).size <br>
+    DieselSettings: @RMany[DieselSettings]("realm" -> uwid.wid.get.name).size <br>
+    DieselData: @RMany[DieselData]("realm" -> uwid.wid.get.name).size <br>
+    DieselDb:   @RazMongo("DieselDb").find(Map("realm" -> uwid.wid.get.name)).size <br>
+<br>
+    @defining(RMany[User]().filter(_.realms.contains(uwid.wid.get.name))) { x =>
 <p>Users: @x.size
 <ul>
 @x.map { u => <li>@u.userName | @u.role</li> }

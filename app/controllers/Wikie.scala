@@ -22,7 +22,7 @@ import razie.cout
 import razie.db.RazSalatContext.ctx
 import razie.db.{REntity, RMany, ROne, RazMongo, _}
 import razie.diesel.dom.WikiDomain
-import razie.diesel.utils.AutosaveSet
+import razie.diesel.utils.{AutosaveSet, DieselData}
 import razie.hosting.{Website, WikiReactors}
 import razie.wiki.Sec.EncryptedS
 import razie.wiki.admin._
@@ -1193,7 +1193,7 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
 
       if (wid.cat != "Club") canDelete(wid).collect {
 
-        // delete all reactor pages. if realm != name it's a mistake, should allow deleete without all pages
+        // delete all reactor pages. if realm != name it's a mistake, should allow delete without all pages
         case (au, w) if wid.cat == "Reactor" && wid.getRealm == wid.name => {
           val realm = wid.name
           razie.db.tx("Wiki.delete", au.userName) { implicit txn =>
@@ -1206,6 +1206,11 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
             }
 
             WikiReactors.reload(realm)
+
+            RDelete[Autosave]("realm" -> realm)
+            RDelete[DieselSettings]("realm" -> realm)
+            RDelete[DieselData]("realm" -> realm)
+            RazMongo("DieselDb").remove(Map("realm" -> realm))
 
             RMany[User]().filter(_.realms.contains(wid.name)).map {u=>
               u.update(u.copy(realms=u.realms.filter(_ != wid.name), realmSet = u.realmSet.filter(_._1 != wid.name)))
