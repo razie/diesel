@@ -265,15 +265,16 @@ class EEDieselCron extends EExecutor("diesel.cron") {
         val time = ctx.get("time").mkString
 
         if(schedule.isEmpty && time.isEmpty) {
-          List(EVal(P(Diesel.PAYLOAD, "Either schedule or time needs to be provided", WTypes.EXCEPTION)))
+          List(EVal(P(Diesel.PAYLOAD, "Either schedule or time needs to be provided", WTypes.wt.EXCEPTION)))
         } else if(!acceptPast && time.nonEmpty && DateTime.parse(time).compareTo(DateTime.now()) <= 0) {
-          List(EVal(P(Diesel.PAYLOAD, "Time is in the past", WTypes.EXCEPTION)))
+          List(EVal(P(Diesel.PAYLOAD, "Time is in the past", WTypes.wt.EXCEPTION)))
         } else {
           val settings = new DomEngineSettings()
           settings.collect = Some(collect)
 
           val msg: Either[DieselMsg, DieselMsgString] = cronMsg.map { s =>
             Right(DieselMsgString(
+              // todo should escape unescaped double quotes?
               s,
               DieselTarget.TQSPECS(realm, env, new TagQuery(tq)),
               Map("name" -> name, "realm" -> realm, "env" -> env),

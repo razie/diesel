@@ -126,7 +126,7 @@ class EEDieselMongodDb extends EExecutor("diesel.db.col") {
 
             Some(P.fromTypedValue("document", j, WTypes.JSON))
           } else {
-            Some(P("document", "", WTypes.UNDEFINED))
+            Some(P("document", "", WTypes.wt.UNDEFINED))
           }
         }.toList
 
@@ -154,7 +154,7 @@ class EEDieselMongodDb extends EExecutor("diesel.db.col") {
         val p = res.map(x =>
           P.fromTypedValue("document", x.getAs[Map[String,Object]]("content").get, WTypes.JSON)
         ).getOrElse(
-          P("document", "", WTypes.UNDEFINED)
+          P("document", "", WTypes.wt.UNDEFINED)
         )
 
         List(
