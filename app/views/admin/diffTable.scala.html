@@ -8,12 +8,12 @@
 @colorl=@{if(side=="L") "green" else "red"}
 @colorr=@{if(side=="R") "green" else "red"}
 
-@fo(c:difflib.Delta)=@{
+@foriginal(c:difflib.Delta)=@{
 //  if(side=="R") c.getOriginal else c.getRevised
   c.getOriginal
 }
 
-@fr(c:difflib.Delta)=@{
+@frevised(c:difflib.Delta)=@{
 //  if(side=="L") c.getOriginal else c.getRevised
   c.getRevised
 }
@@ -63,28 +63,32 @@
           @d.getType<br><small>(R from L)</small>
       </td>
 <td style="word-wrap:break-word">
-          @fo(d).getPosition <br>
-          @fo(d).getLines.zipWithIndex.map{s=>
-            @if(fr(d).getLines.size > s._2) {
-            @computeDiff(s._1.toString,
-              (if(fr(d).getLines.size > s._2) fr(d).getLines().get(s._2).toString else ""),
+
+  <b>@foriginal(d).getPosition</b> <br>
+
+          @foriginal(d).getLines.zipWithIndex.map{s=>
+            @if(frevised(d).getLines.size > s._2) {
+          <KK>   @computeDiff(s._1.toString,
+              (if(frevised(d).getLines.size > s._2) frevised(d).getLines().get(s._2).toString else ""),
               colorl)
             } else {
-              @s
+             @s._1
             }
             <br>
           }
-      </td>
+</td>
 <td style="word-wrap:break-word">
-    @fr(d).getPosition <br>
-  @fr(d).getLines.zipWithIndex.map{s=>
-    @if(fo(d).getLines.size > s._2) {
-      @computeDiff(s._1.toString,
-      (if(fo(d).getLines.size > s._2) fo(d).getLines().get(s._2).toString else ""),
-      colorr)
-    } else {
-      @s
-    }
+
+  <b>@frevised(d).getPosition</b> <br>
+
+    @frevised(d).getLines.zipWithIndex.map{s=>
+      @if(foriginal(d).getLines.size > s._2) {
+        <KK> @computeDiff(s._1.toString,
+        (if(foriginal(d).getLines.size > s._2) foriginal(d).getLines().get(s._2).toString else ""),
+        colorr)
+      } else {
+        @s._1
+      }
     <br>
   }
 </td>
