@@ -33,9 +33,10 @@ cart and checkout
     <td>Account discount:</td><td> <b>@acct.discount.mkString</b>%</td>
 </tr>
   }
-  <tr>
-    <td>Total payable:</td><td> <b>@acct.payable(cart.total)</b></td>
-</tr>
+  <tr><td>Total payable:</td><td> <b>@acct.payable(cart.total)</b></td></tr>
+    @Some(cart.rectotal).filter(_.amount > 0).map {p=>
+      <tr><td>Recurring:</td><td> <b>@p</b> (Yearly)</td></tr>
+    }
 </table>
 
   <p> </p>
@@ -48,7 +49,7 @@ cart and checkout
   </span>
 
 
-@if(acct.payable(cart.total).amount <= 0) {
+@if(acct.payable(cart.total).amount <= 0 && cart.rectotal.amount <= 0) {
   <button class="btn btn-success" onclick="noPayment()">Complete order<br><small>(no payment needed)</small></button>
 } else {
 <div id="paypal-button"></div>
@@ -62,8 +63,11 @@ cart and checkout
     <p>
     <b>Use the paypal button above!</b>
     </p>
-    <p><b>Note</b> that sometimes the paypal payment is slower to proceess and <b>you must wait for the paypal confirmation</b>, after submitting all info! Please do not close this page until the paypal confirmation!</b>
+    <p><b>Note</b> that sometimes the paypal payment is slower to process and <b>you must wait for the paypal
+      confirmation</b>, after submitting all info! Please do not close this page until the paypal confirmation!</b>
     </p>
+    <p>You can cancel any recurring payments at any time, from paypal, your membership page,
+      or via a support request</p>
   </div>
 <p></p>
 Items:

@@ -644,7 +644,7 @@ function processFinalEngineResult(id, data, compileOnly, lastTime, next) {
 
 <script src="@routes.Assets.at("ace-builds/src/ace.js")" type="text/javascript" charset="utf-8"></script>
 
-<script src="@routes.Assets.at("ace-builds/src/mode-nvp1.js")" type="text/javascript" charset="utf-8"></script>
+<script src="@routes.Assets.at("ace-builds/src/mode-nvp2.js")" type="text/javascript" charset="utf-8"></script>
 <script src="@routes.Assets.at("ace-builds/src/ext-language_tools.js")" type="text/javascript" charset="utf-8"></script>
 
 @*<script type="text/javascript" src="/sfiddle/tempAsset/@id/gLexer.js")"></script>*@
@@ -681,8 +681,8 @@ function attachAce() {
   specEditor.setTheme ( "ace/theme/twilight" ) ;
   storyEditor.setTheme ( "ace/theme/twilight" ) ;
 }
-  specEditor.getSession().setMode("ace/mode/nvp1");
-  storyEditor.getSession().setMode("ace/mode/nvp1");
+  specEditor.getSession().setMode("ace/mode/nvp2");
+  storyEditor.getSession().setMode("ace/mode/nvp2");
 
   editor5 = ace.edit("pre5_@id");
   @if(stok.isLight) {

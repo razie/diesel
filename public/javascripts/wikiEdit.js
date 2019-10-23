@@ -135,7 +135,7 @@ function attachAce(ace, id, content, light, onChange) {
   } else {
     editor.setTheme ( "ace/theme/twilight" ) ;
   }
-  editor.getSession().setMode("ace/mode/nvp1");
+  editor.getSession().setMode("ace/mode/nvp2");
 
   editor.setOptions({
     tabSize: 2,
