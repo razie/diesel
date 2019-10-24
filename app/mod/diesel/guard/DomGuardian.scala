@@ -38,9 +38,10 @@ object DomGuardian extends Logging {
 
   def ISAUTO = Config.prop("diesel.guardian.auto", "true").toBoolean
 
+  def ISENABLED_LOCALHOST = false
   def ISENABLED = Config.prop("diesel.guardian.enabled", "true").toBoolean
 
-  def enabled(realm: String) = ISENABLED && {
+  def enabled(realm: String) = (!Config.isLocalhost && DomGuardian.ISENABLED || DomGuardian.ISENABLED_LOCALHOST) && {
     realm match {
       case "specs" | "wiki" => true // always these two
       case _ => realm.matches(enabledRealms) && !realm.matches(excludedRealms)
