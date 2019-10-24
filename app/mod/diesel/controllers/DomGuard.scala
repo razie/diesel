@@ -16,6 +16,7 @@ import razie.diesel.ext.EnginePrep
 import razie.diesel.utils.{AutosaveSet, DomCollector, DomWorker}
 import razie.diesel.utils.DomHtml.quickBadge
 import razie.hosting.WikiReactors
+import razie.wiki.Config
 import razie.wiki.admin.Autosave
 import razie.wiki.model._
 import razie.{Logging, js}
@@ -425,7 +426,7 @@ Guardian report<a href="/wiki/Guardian_Guide" ><sup><span class="glyphicon glyph
 
   /** run another check all reactors */
   def dieselRunCheckAll = Filter(adminUser).async { implicit stok =>
-    if (DomGuardian.ISENABLED) Future.sequence(
+    if (!Config.isLocalhost && DomGuardian.ISENABLED || DomGuardian.ISENABLED_LOCALHOST) Future.sequence(
        WikiReactors.allReactors.keys.map { k =>
         if (DomGuardian.enabled(k)) startCheck(k, stok.au)._1
         else Future.successful(DomGuardian.EMPTY_REPORT)
