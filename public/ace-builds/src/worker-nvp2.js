@@ -1414,10 +1414,15 @@ define('ace/mode/nvp2_worker', ['require', 'exports', 'module' , 'ace/lib/oop', 
 	var oop = require("../lib/oop");
 	var Mirror = require("../worker/mirror").Mirror;
 	var nvp2parse = require("../mode/nvp2/nvp2parse");
-	
-	importScripts("../parser/antlr-all-min.js");
-	importScripts("../parser/Nvp2Lexer.js");
-	importScripts("../parser/Nvp2Parser.js");
+
+// RAZ these were relative before - new ACE likes them absolute... dargh
+    importScripts(window.location.origin+"/assets/ace-builds/parser/antlr-all-min.js");
+    importScripts(window.location.origin+"/assets/ace-builds/parser/Nvp2Lexer.js");
+    importScripts(window.location.origin+"/assets/ace-builds/parser/Nvp2Parser.js");
+
+	// importScripts("../parser/antlr-all-min.js");
+	// importScripts("../parser/Nvp2Lexer.js");
+	// importScripts("../parser/Nvp2Parser.js");
 	
 	var Worker = exports.Worker = function(sender) {
 	    Mirror.call(this, sender);
