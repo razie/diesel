@@ -16,13 +16,29 @@ unzip -d target/universal target/universal/racerkidz-${VER}-SNAPSHOT.zip >/dev/n
 printf "\n\n#################### building image now...\n\n"
 printf ".."
 
-cd $RK/docker/rk
+echo "########################## LIBS"
+
+cd $RK/docker/rk-libs
 
 rm -rf dist
 cp -r $RK/target/universal/racerkidz-${VER}-SNAPSHOT .
 mv racerkidz-${VER}-SNAPSHOT dist
 rm dist/conf/application.conf
 mv dist/conf/application.docker.conf dist/conf/application.conf
+
+mkdir -p ../rk/dist/lib
+mv dist/lib/com.razie.* ../rk/dist/lib
+
+docker build -t raz-diesel-libs .
+docker tag raz-diesel-libs razie/raz-diesel-libs
+
+## cleanup
+rm -rf dist
+
+echo "########################## RK"
+
+cd $RK/docker/rk
+
 cp $RK/key.docker key
 
 docker build -t raz-diesel .
