@@ -12,7 +12,7 @@ import java.util.concurrent.TimeUnit
 import play.libs.Akka
 import razie.diesel.dom.RDOM.P
 import razie.diesel.dom._
-import razie.diesel.engine.DomEngineSettings
+import razie.diesel.engine.{DieselAppContext, DomEngineSettings}
 import razie.diesel.ext.{MatchCollector, _}
 import razie.diesel.model.{DieselMsg, DieselMsgString, DieselTarget}
 import razie.hosting.Website
@@ -20,10 +20,10 @@ import razie.tconf.TagQuery
 import razie.wiki.{Config, Services}
 import razie.{Logging, Snakk}
 import scala.collection.mutable.HashMap
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.{Duration, FiniteDuration}
 import akka.pattern.ask
 import akka.util.Timeout
+import com.razie.pub.comms.CommRtException
 import org.joda.time.DateTime
 import razie.diesel.exec.EExecutor
 import scala.concurrent.duration._
@@ -67,6 +67,11 @@ case class DomSchedule (
   * this is so that running the same logic all the time won't create million schedules
   * */
 object DieselCron extends Logging {
+
+  def ISENABLED = DieselDebug.Cron.ISENABLED
+
+  import DieselAppContext.executionContext
+
   implicit val timeout = Timeout(2 seconds)
 
   // todo privatize and synchronize
@@ -76,7 +81,8 @@ object DieselCron extends Logging {
     f(realmSchedules)
   }
 
-  lazy val worker = Akka.system.actorOf(Props[CronActor], name = "CronActor")
+  lazy val worker = DieselAppContext.actorOf(Props[CronActor], name = "CronActor")
+  val realmActors = new scala.collection.concurrent.TrieMap[String, ActorRef]()
 
   case class Cancel(realm:String, schedId:String)
   case class CreateSchedule(schedId: String,
@@ -88,7 +94,6 @@ object DieselCron extends Logging {
                             msg: Either[DieselMsg, DieselMsgString]
                            )
 
-  /** actually does the work */
   class CronActor extends Actor {
 
     def receive = {
@@ -97,32 +102,15 @@ object DieselCron extends Logging {
       case sc @ DomSchedule (id, expr, time, msg, r, e, c, singleton, ak) => /*DieselCron.synchronized*/ {
         info(s"DomSchedule: $sc")
 
-        if(realmSchedules.contains(id)) { // wasn't cancelled or something
-          val curr = realmSchedules(id)
-          curr.currCount = curr.currCount + 1
-
-          if(curr.count < 0 || curr.currCount <= curr.count) { // fine... trigger it
-            if(!singleton || DieselCron.isMasterNode(Website.forRealm(r).get)) {
-              msg.fold(Services ! _ , Services ! _ )
-            } else {
-              clog << "DieselCron - not on master node for job: " + sc
-            }
-          } else {
-            // todo need to stop the akka schedule
-            curr.ref.map(_.cancel())
-
-            Services ! DieselMsg(
-              DieselMsg.CRON.ENTITY,
-              DieselMsg.CRON.STOP,
-              Map("name" -> id, "realm" -> r, "env" -> e, "count" -> curr.count),
-              DieselTarget.ENV(r, e)
-            )
-          }
-
-          if(curr.isOnce) {
-            realmSchedules.remove(id)
-          }
+        if(!realmActors.contains(r)) {
+          info(s"Creating realmActor for: $r")
+          val ra = DieselAppContext.actorOf(Props(new CronRealmActor(r)), name = "CronRealmActor-"+r)
+          realmActors.put(r, ra)
         }
+
+        // dispatch it to realm actor
+        debug(s"  Dispatching to realmActor for: $r")
+        realmActors.get(r).map (_ ! sc)
       }
 
       case CreateSchedule(schedId, schedExpr, time, realm, env, count, msg) => /*DieselCron.synchronized*/ {
@@ -200,6 +188,55 @@ object DieselCron extends Logging {
     }
   }
 
+  /** this is one per realm - make sure ticks go in sequence and wait */
+  class CronRealmActor(val realm:String) extends Actor {
+
+    def receive = {
+
+      // schedule triggered - should we send the message?
+      case sc @ DomSchedule (id, expr, time, msg, r, e, c, singleton, ak) => /*DieselCron.synchronized*/ {
+        info(s"DomSchedule: $sc")
+
+        if(realmSchedules.contains(id)) { // wasn't cancelled or something
+          val curr = realmSchedules(id)
+          curr.currCount = curr.currCount + 1
+
+          if(curr.count < 0 || curr.currCount <= curr.count) { // fine... trigger it
+            if(!singleton || DieselCron.isMasterNode(Website.forRealm(r).get)) {
+              if(ISENABLED) {
+                val fs = msg.fold(
+                _.toMsgString.startMsg,
+                _.startMsg
+                )
+
+                // just wait... this makes it sync
+                val result = Await.result(fs, Duration.create(5, TimeUnit.MINUTES))
+              } else {
+                clog << "DieselCron - not enabled job: " + sc
+              }
+            } else {
+              clog << "DieselCron - not on master node for job: " + sc
+            }
+          } else {
+            // todo need to stop the akka schedule
+            curr.ref.map(_.cancel())
+
+            Services ! DieselMsg(
+              DieselMsg.CRON.ENTITY,
+              DieselMsg.CRON.STOP,
+              Map("name" -> id, "realm" -> r, "env" -> e, "count" -> curr.count),
+              DieselTarget.ENV(r, e)
+            )
+          }
+
+          if(curr.isOnce) {
+            realmSchedules.remove(id)
+          }
+        }
+      }
+    }
+  }
+
   def await[S] (a : ActorRef, message: Any) : S = Await.result(
     (worker ? message),
     5 seconds
@@ -222,7 +259,22 @@ object DieselCron extends Logging {
       else
         w.url) + "/diesel/engine/whoami"
 
-    val active = Snakk.body(Snakk.url(url))
+    var active = ""
+
+    try {
+      active = Snakk.body(Snakk.url(url))
+    } catch {
+      case ex:CommRtException if ex.httpCode == 302 => {
+        // redirect
+        log("================ REDIRECTING... " + ex.httpCode + ex.location302)
+        active = Snakk.body(Snakk.url(ex.location302))
+      }
+      case ex:CommRtException => {
+        log("================ SOME ERROR..." + ex.httpCode + ex.location302)
+        throw ex
+      }
+    }
+
     val res = me equals active
     debug(s"isMasterNode: $res $me =? $active url = ${w.url}")
     me equals active
@@ -268,6 +320,8 @@ class EEDieselCron extends EExecutor("diesel.cron") {
           List(EVal(P(Diesel.PAYLOAD, "Either schedule or time needs to be provided", WTypes.wt.EXCEPTION)))
         } else if(!acceptPast && time.nonEmpty && DateTime.parse(time).compareTo(DateTime.now()) <= 0) {
           List(EVal(P(Diesel.PAYLOAD, "Time is in the past", WTypes.wt.EXCEPTION)))
+        } else if(!DieselCron.ISENABLED) {
+          List(EVal(P(Diesel.PAYLOAD, "DieselCron is DISABLED", WTypes.wt.EXCEPTION)))
         } else {
           val settings = new DomEngineSettings()
           settings.collect = Some(collect)

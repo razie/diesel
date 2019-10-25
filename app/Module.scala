@@ -6,6 +6,7 @@
  */
 
 import admin._
+import akka.actor.ActorSystem
 import com.google.inject.AbstractModule
 import com.mongodb.casbah.{MongoConnection, MongoDB}
 import com.mongodb.casbah.Imports._
@@ -29,6 +30,7 @@ import razie.wiki.{Config, EncryptService, Services, WikiConfig}
 import razie.wiki.model.WikiUsers
 import razie.wiki.util.AuthService
 import razie.{Log, clog, cout, wiki}
+import scala.concurrent.ExecutionContext
 import services.AtomicCounter
 
 /** initialize this module */
@@ -100,7 +102,15 @@ class Module extends AbstractModule {
         )
     }
 
-    DieselAppContext.setActorSystemFactory(() => play.libs.Akka.system)
+    // setup diesel actors
+
+    DieselAppContext.withActorSystemFactory(() => play.libs.Akka.system)
+//    DieselAppContext.setActorSystemFactory{() =>
+//      val ec = DieselAppContext.ec
+//      val a = ActorSystem.apply("diesel", None, None, Some(ec))
+//       a
+//    }
+
     DieselAppContext.initExecutors
 //    DieselAppContext.init(Services.config.node)
 

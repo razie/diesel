@@ -100,11 +100,12 @@ class EEGuardian extends EExecutor(DieselMsg.GUARDIAN.ENTITY) with Logging {
 
       case "polled" => {
         //it was polled and here's the new stamp - shall we start a new check?
+        val settings = ctx.root.settings
         val env = ctx.getRequired("env")
         val stamp = ctx.getRequired("stamp")
         val tq = ctx.get("tagQuery").mkString
-        val settings = ctx.root.settings
-        val res = DomGuardian.polled(settings.realm.get, env, stamp, settings.userId.flatMap(Users.findUserById), tq)
+        val inRealm = ctx.get("inRealm").getOrElse(settings.realm.get)
+        val res = DomGuardian.polled(inRealm, env, stamp, settings.userId.flatMap(Users.findUserById), tq)
 
         EVal(P("payload", res)) :: Nil
       }

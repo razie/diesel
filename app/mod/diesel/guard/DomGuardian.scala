@@ -9,7 +9,7 @@ import org.joda.time.DateTime
 import play.libs.Akka
 import razie.Logging
 import razie.diesel.dom.SimpleECtx
-import razie.diesel.engine.{DomEngine, DomEngineSettings}
+import razie.diesel.engine.{DieselAppContext, DomEngine, DomEngineSettings}
 import razie.diesel.ext.EnginePrep
 import razie.diesel.model.{DieselMsg, DieselTarget}
 import razie.diesel.utils.{DieselData, DomCollector}
@@ -36,10 +36,10 @@ object DomGuardian extends Logging {
   def excludedAutoRealms =
     Config.prop("diesel.guardian.excluded.auto.realms.regex", "wiki|specs")
 
-  def ISAUTO = Config.prop("diesel.guardian.auto", "true").toBoolean
+  def ISAUTO = DieselDebug.Guardian.ISAUTO
 
-  def ISENABLED_LOCALHOST = false
-  def ISENABLED = Config.prop("diesel.guardian.enabled", "true").toBoolean
+  def ISENABLED_LOCALHOST = DieselDebug.Guardian.ISENABLED_LOCALHOST
+  def ISENABLED = DieselDebug.Guardian.ISENABLED
 
   def enabled(realm: String) = (!Config.isLocalhost && DomGuardian.ISENABLED || DomGuardian.ISENABLED_LOCALHOST) && {
     realm match {
@@ -130,6 +130,9 @@ object DomGuardian extends Logging {
 
   final val EMPTY_REPORT =
     Report(None, "DISABLED", null, "DISABLED", "?", 0, 0, 0, DateTime.now())
+
+  final val NOT_ACTIVE_REPORT =
+    Report(None, "I'm not the active Guardian", null, "not active", "?", 0, 0, 0, DateTime.now())
 
   case class RunReq(au: Option[User],
                     userName: String,
@@ -310,11 +313,12 @@ object DomGuardian extends Logging {
         ret
       }
     } else {
-      (Future.failed(new IllegalStateException("I'm not the active guardian!")), null)
+//      (Future.failed(new IllegalStateException("I'm not the active guardian!")), null)
+      (Future.successful(NOT_ACTIVE_REPORT), null)
     }
 
   lazy val worker =
-    Akka.system.actorOf(Props[GuardianActor], name = "GuardianActor")
+    DieselAppContext.actorOf(Props[GuardianActor], name = "GuardianActor")
 
   private var debouncer =
     new mutable.ListBuffer[(String, RunReq, Future[Report], DomEngine)]()
