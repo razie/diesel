@@ -131,9 +131,6 @@ class ProfileUpd @Inject() (config:Configuration) extends RazController with Log
         val u = Profile.updateUser(au, au.setPrefs(request.realm,
           Map("css" -> css, "favQuote" -> favQuote, "weatherCode" -> weatherCode)))
 
-        Emailer.withSession(request.realm) { implicit mailSession =>
-          au.shouldEmailParent("Everything").map(parent => Emailer.sendEmailChildUpdatedProfile(parent, au))
-        }
         Redirect(routes.ProfileUpd.doeProfilePreferences)
       }
     })
@@ -180,9 +177,6 @@ class ProfileUpd @Inject() (config:Configuration) extends RazController with Log
             )
 
             Profile.updateUser(au, newu)
-            Emailer.withSession(request.realm) { implicit mailSession =>
-              au.shouldEmailParent("Everything").map(parent => Emailer.sendEmailChildUpdatedProfile(parent, au))
-            }
             cleanAuth()
             Redirect(routes.ProfileUpd.doeProfile)
           }
@@ -411,9 +405,6 @@ Please check your email in the next few minutes and follow the instructions.
           au.profile.map(p => p.update(p.setContact(c)))
           au.profile.map(_.setContact(c))
 
-          Emailer.withSession(request.realm) { implicit mailSession =>
-            au.shouldEmailParent("Everything").map(parent => Emailer.sendEmailChildUpdatedProfile(parent, au))
-          }
           cleanAuth()
           if(regid.length > 1) Redirect(routes.Club.doeClubUserReg(regid))
           else Redirect(routes.ProfileUpd.doeContact("-"))

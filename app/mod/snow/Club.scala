@@ -1,8 +1,5 @@
 package controllers
 
-import razie.wiki.model.features.WikiCount
-import controllers.Profile.cNoConsent
-import mod.cart.Carts.Redirect
 import mod.cart._
 import mod.snow.{RK, _}
 import model._
@@ -13,18 +10,16 @@ import play.twirl.api.Html
 import razie.db.RMongo.as
 import razie.db._
 import razie.diesel.dom.WikiDomain
-import razie.diesel.exec.EExecutor
 import razie.hosting.Website
 import razie.wiki.admin.SendEmail
 import razie.wiki.model._
-import razie.wiki.model.features._
+import razie.wiki.model.features.{WikiCount, _}
 import razie.wiki.{Config, Enc, WikiConfig}
-import razie.wiki.Sec._
 import razie.{Logging, cout}
-import views.html.club.doeClubRegsRepHtml
 import scala.Array.canBuildFrom
 import scala.Option.option2Iterable
 import scala.concurrent.Future
+import views.html.club.doeClubRegsRepHtml
 
 /** just refactoring remains */
 case class Club(userId: ObjectId, iwid: Option[WID] = None) {
@@ -191,6 +186,8 @@ case class RKU(user: User) {
 
 /** controller for club management */
 object Club extends RazController with Logging {
+
+  final val cNoConsent = new Corr("Need consent!", """You need to <a href="/doe/consent">give your consent</a>!""");
 
   def mkSettings(u: User, regAdmin: String) =
     s"""

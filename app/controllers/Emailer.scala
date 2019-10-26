@@ -30,16 +30,17 @@ object Emailer extends RazController with Logging {
   /** email body section template */
   def text(name: String)(implicit mailSession: MailSession) = mailSession.text(name)
 
-  def sendEmailChildUpdatedProfile(parent: User, child: User)(implicit mailSession: MailSession) = {
-    val html1 = text("childupdatedprofile").format(parent.ename, child.userName);
+  /** make it simpler to call - we need to preserve order */
+  def expand (name:String, attrs:List[(String,String)])(implicit mailSession: MailSession) : String =
+    expanda(name, attrs.map(t=> P(t._1, t._2)))
 
-    mailSession.notif(parent.emailDec, SUPPORT, RK + " - child updated their profile", html1)
-  }
-
-  def sendEmailChildUpdatedPublicProfile(parent: User, child: User)(implicit mailSession: MailSession) = {
-    val html1 = text("childupdatedpublicprofile").format(parent.ename, child.userName);
-
-    mailSession.notif(parent.emailDec, SUPPORT, RK + " - child updated their profile", html1)
+  /** find and expand email template with name */
+  def expanda (name:String, attrs:Attrs)(implicit mailSession: MailSession): String  = {
+    val str = text(name)
+    if(str contains "${")
+        EESnakk.prepStr2(str, attrs)(new StaticECtx(attrs))
+    else
+      str.format(attrs.map(_.currentStringValue):_*)
   }
 
   def noteShared(from:String, toEmail:String, toName:String, url:String)(implicit mailSession: MailSession) = {
@@ -142,18 +143,6 @@ object Emailer extends RazController with Logging {
     mailSession.send(u.emailDec, SUPPORT, RK + " :( club membership denied", html1)
   }
 
-  def sendEmailChildUpdatedWiki(parent: User, child: User, wiki: WID)(implicit mailSession: MailSession) = {
-    val html1 = text("childupdatedwiki").format(parent.ename, child.userName, wiki.url, wiki.cat, wiki.name);
-
-    mailSession.notif(parent.emailDec, SUPPORT, RK + " - child updated public topic", html1)
-  }
-
-  def sendEmailChildCommentWiki(parent: User, child: User, wiki: WID)(implicit mailSession: MailSession) = {
-    val html1 = text("childcommentedwiki").format(parent.ename, child.userName, wiki.url, wiki.cat, wiki.name);
-
-    mailSession.notif(parent.emailDec, SUPPORT, RK + " - child commented on public topic", html1)
-  }
-
   def sendEmailNewComment(to: User, commenter: User, wid: WID)(implicit mailSession: MailSession) = {
     val html1 = text("newcomment").format(to.ename, commenter.userName, wid.url, wid.cat, wid.name);
 
@@ -197,6 +186,33 @@ object Emailer extends RazController with Logging {
     mailSession.send(rk.info.email, SUPPORT, "Invitation to join " + u.userName, html1)
   }
 
+  def sendEmailNewNote(what:String, to: TPersonInfo, by:User, link: String, role:String, memo:String)(implicit mailSession: MailSession) = {
+    val sub = s" - $what note for you"
+    val r = if(role.length > 0) role else "form"
+    val html1 = text("newNote").format(to.ename, r, by.ename, link, memo);
+    mailSession.notif(to.emailDec, SUPPORT, RK + sub, html1)
+  }
+
+
+  //=========================================== children
+
+
+  def sendEmailChildUpdatedWiki(parent: User, child: User, wiki: WID)(implicit mailSession: MailSession) = {
+    val html1 = text("childupdatedwiki").format(parent.ename, child.userName, wiki.url, wiki.cat, wiki.name);
+
+    mailSession.notif(parent.emailDec, SUPPORT, RK + " - child updated public topic", html1)
+  }
+
+  def sendEmailChildCommentWiki(parent: User, child: User, wiki: WID)(implicit mailSession: MailSession) = {
+    val html1 = text("childcommentedwiki").format(parent.ename, child.userName, wiki.url, wiki.cat, wiki.name);
+
+    mailSession.notif(parent.emailDec, SUPPORT, RK + " - child commented on public topic", html1)
+  }
+
+
+  //=========================================== clubs and forms
+
+
   def sendEmailClubRegStart(u: User, club: String, link: String)(implicit mailSession: MailSession) = {
     val html1 = text("regstart").format(u.ename, club, "http://" + hostport + link);
     mailSession.send(u.emailDec, SUPPORT, club + " - registration forms", html1)
@@ -205,13 +221,6 @@ object Emailer extends RazController with Logging {
   def sendEmailClubRegHelp(u: User, club: String, link: String, msg:String)(implicit mailSession: MailSession) = {
     val html1 = text("reghelp").format(u.ename, club, msg, "http://" + hostport + link);
     mailSession.send(u.emailDec, SUPPORT, club + " - registration help", html1)
-  }
-
-  def sendEmailNewNote(what:String, to: TPersonInfo, by:User, link: String, role:String, memo:String)(implicit mailSession: MailSession) = {
-    val sub = s" - $what note for you"
-    val r = if(role.length > 0) role else "form"
-    val html1 = text("newNote").format(to.ename, r, by.ename, link, memo);
-    mailSession.notif(to.emailDec, SUPPORT, RK + sub, html1)
   }
 
   def sendEmailFormAssigned(to: TPersonInfo, by:User, link: String, role:String)(implicit mailSession: MailSession) = {
