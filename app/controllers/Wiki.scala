@@ -421,8 +421,10 @@ object Wiki extends WikiBase {
     val cat = if (iwid.cat.endsWith(":")) iwid.cat.substring(0, iwid.cat.length - 1) else iwid.cat
     val name = Wikis.formatName(WID(cat, iwid.name))
 
+    val realm = request.realm //getRealm(UNKNOWN)(request.ireq) // todo request.realm
+
     // optimize - don't reload some crap already in the iwid
-    val wid =
+    val wid = {
       if (ObjectId.isValid(iwid.name)) {
         // todo I do two lookups to serve by ID
         val wn = UWID(cat, new ObjectId(iwid.name), iwid.realm).findWid.map(_.name).getOrElse(UNKNOWN)
@@ -430,8 +432,8 @@ object Wiki extends WikiBase {
       }
       else if (cat == iwid.cat && name == iwid.name) iwid
       else WID(cat, name, iwid.parent, iwid.section, iwid.realm)
+    }.defaultRealmTo(realm)
 
-    val realm = getRealm(UNKNOWN)(request.ireq) // todo request.realm
     // so they are available to scripts
     razie.NoStaticS.put(QueryParms(request.queryString))
 
