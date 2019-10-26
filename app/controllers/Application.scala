@@ -13,112 +13,133 @@ import razie.tconf.Visibility
 import razie.wiki.Sec._
 import razie.wiki.model._
 import razie.wiki.{Config, Enc, Services, WikiConfig}
-import scala.concurrent.Future
-import scala.util.Try
+import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.util.{Random, Try}
 
 /** main entry points */
 object Application extends RazController {
 
+  val rand = new Random()
+
   /** serve the root of a website - figure out which and serve the main page */
   def root = Action.async { implicit request =>
-    Try {
-      val getHost = Website.getHost
+//    WikiReactors.apply("wiki")
 
-      // 1. url forward?
+    // make sure realms are loaded
+//    WikiReactors.reactorsLoadedF flatMap {b=>
+    Future.successful(true).flatMap {b=>
 
-      getHost.flatMap(Config.urlfwd(_)).map { host =>
-        log ("URL - Redirecting main page from "+getHost + " TO "+host)
-        Future.successful(Redirect(host))
+      Try {
+        val getHost = Website.getHost
 
-      } orElse getHost.flatMap(Website.forHost).filter{w=>
-        debug ("Is home page defined: " + w.homePage.isDefined + " - " + w.homePage.mkString)
+        // 1. url forward?
 
-        // is there reactor and home page?
-        w.homePage.isDefined
+        getHost.flatMap(Config.urlfwd(_)).map { host =>
+          log ("URL - Redirecting main page from "+getHost + " TO "+host)
+          Future.successful(Redirect(host))
 
-      }.flatMap {x=>
+          // 2 home page?
 
-        // found reactor and home page
+        } orElse getHost.flatMap(Website.forHost).filter{w=>
+          debug ("Is home page defined: " + w.homePage.nonEmpty + " - " + w.homePage.mkString)
 
-        log ("URL - serve Website homePage for "+x.name)
+          // is there reactor and home page?
+          w.homePage.nonEmpty
 
-        auth.map{au=>
-          au.roles.find(y=>(x wprop "userHome."+y).isDefined).flatMap { y =>
-            (x wprop "userHome." + y)
-          } orElse x.userHomePage
-        } getOrElse x.homePage
+        }.flatMap {x=>
 
-      }.map { home =>
-        Wiki.show(home, 1).apply(request)
+          // found reactor and home page
+
+          log ("URL - serve Website homePage for "+x.name)
+
+          auth.map{au=>
+            au.roles.find(y=>(x wprop "userHome."+y).isDefined).flatMap { y =>
+              (x wprop "userHome." + y)
+            } orElse x.userHomePage
+          } getOrElse {
+
+            // choose home page - are there A/B options?
+            val hp = x.homePage
+            WID.fromPath(hp.apply(rand.nextInt(hp.size))._2)
+
+          }
+
+        }.map { home =>
+
+          Wiki.show(home, 1).apply(request)
+
+        } getOrElse {
+
+          // 3 - no known host
+
+          var r = Wiki.getRealm()
+
+          // no longer default to RK, but WIKI - no weird skier pages
+
+          if(r == "" || r == WikiReactors.RK)
+            r = WikiReactors.WIKI
+
+          debug (s"URL - show default reactor main $r current host=$getHost")
+
+          // print not found...
+
+          val hostedDomains = Config.prop("wiki.hostedDomains", "dieselapps.com").split(",").map("." + _)
+
+          // is this the first time in a new db ?
+          if(RMany[User]().size <= 0) {
+            Future.successful {
+              Ok(views.html.util.newDb())
+            }
+
+          } else {
+
+            val res =
+
+              if(!Config.isLocalhost && getHost.exists(h=> hostedDomains.exists(d=> h.endsWith(d)))) {
+                // does it have a different domain?
+                val w = Website.forRealm(r)
+
+                val dom = w.flatMap(_.prop("domain"))
+
+                log(s"### - $r - $dom - ${w.isDefined}")
+
+                if(!dom.exists(h=> hostedDomains.exists(d=> h.endsWith(d)))) {
+                  // had another domain - redirect
+                  log(s"Redirecting to ${w.flatMap(_.prop("url")).mkString}")
+                  Future.successful {
+                    Redirect(w.flatMap(_.prop("url")).mkString)
+                  }
+                } else
+                // if a hosted reactor domain, print a generic project not found message
+                  Wiki.show(
+                    WID("Admin", "WebsiteNotFound").r(WikiReactors.WIKI).page.map(_.wid) getOrElse WikiReactors(r).mainPage(auth),
+                    1).apply(request)
+              }
+              else
+              // if nice URL - don't just redirect to dieselapps - just print a generic message
+                Wiki.show(
+                  WikiReactors(r).mainPage(auth),
+                  1).apply(request)
+            res
+          }
+          //        else  Future.successful(Application.idoeIndexItem(1))
+        } // RK main home screen
 
       } getOrElse {
 
-        // no known host
-
-        var r = Wiki.getRealm()
-
-        // no longer default to RK, but WIKI - no weird skier pages
-
-        if(r == "" || r == WikiReactors.RK)
-          r = WikiReactors.WIKI
-
-        log (s"URL - show default reactor main $r current host=$getHost")
-
-        // print not found...
-
-        val hostedDomains = Config.prop("wiki.hostedDomains", "dieselapps.com").split(",").map("." + _)
-
         // is this the first tiem in a new db ?
-        if(RMany[User]().size <= 0) {
+
+        if (RMany[User]().size <= 0) {
           Future.successful {
             Ok(views.html.util.newDb())
           }
-        } else {
-
-          val res =
-
-            if(!Config.isLocalhost && getHost.exists(h=> hostedDomains.exists(d=> h.endsWith(d)))) {
-              // does it have a different domain?
-              val w = Website.forRealm(r)
-
-              val dom = w.flatMap(_.prop("domain"))
-
-              log(s"### - $r - $dom - ${w.isDefined}")
-
-              if(!dom.exists(h=> hostedDomains.exists(d=> h.endsWith(d)))) {
-                // had another domain - redirect
-                log(s"Redirecting to ${w.flatMap(_.prop("url")).mkString}")
-                Future.successful {
-                  Redirect(w.flatMap(_.prop("url")).mkString)
-                }
-              } else
-                // if a hosted reactor domain, print a generic project not found message
-                Wiki.show(
-                  WID("Admin", "WebsiteNotFound").r(WikiReactors.WIKI).page.map(_.wid) getOrElse WikiReactors(r).mainPage(auth),
-                  1).apply(request)
-            }
-            else
-            // if nice URL - don't just redirect to dieselapps - just print a generic message
-              Wiki.show(
-                WikiReactors(r).mainPage(auth),
-                1).apply(request)
-          res
+        } else Future.successful {
+          ServiceUnavailable("If you imported a new realm, please reboot this instance!")
         }
-        //        else  Future.successful(Application.idoeIndexItem(1))
-      } // RK main home screen
-
-    } getOrElse {
-
-      // is this the first tiem in a new db ?
-
-      if (RMany[User]().size <= 0) {
-        Future.successful {
-          Ok(views.html.util.newDb())
-        }
-      } else Future.successful {
-        ServiceUnavailable("If you imported a new realm, please reboot this instance!")
       }
     }
+//    }
   }
 
   // serve any URL other than routes matches - try the forward list...
@@ -127,71 +148,79 @@ object Application extends RazController {
 
 // first look for rewrites and host redirection
 
-    Website.getHost.orElse(Some(Services.config.hostport)).flatMap(x =>
-      Config.urlrewrite(x + "/" + path) orElse
-      Config.urlfwd(x + "/" + path)
+//    WikiReactors.apply("wiki")
+    // make sure realms are loaded
+//    WikiReactors.reactorsLoadedF flatMap { b =>
+    Future.successful(true).flatMap {b=>
+      Website.getHost.orElse(Some(Services.config.hostport)).flatMap(x =>
+        Config.urlrewrite(x + "/" + path) orElse
+            Config.urlfwd(x + "/" + path)
 
-    ).map { host =>
-      log("  REDIRECTED TO - " + host)
-      Future.successful(Redirect(host))
+      ).map { host =>
+        log("  REDIRECTED TO - " + host)
+        Future.successful(Redirect(host))
 
 // next - is it banned?
 
-    } getOrElse {
-      val c = Config.config(WikiConfig.BANURLS)
+      } getOrElse {
+        val c = Config.config(WikiConfig.BANURLS)
 
-      if (c.exists(_.contains(path))) {
-        val ip = request.headers.get("X-Forwarded-For")
+        if (c.exists(_.contains(path))) {
+          val ip = request.headers.get("X-Forwarded-For")
 
-        if (ip.isDefined && BannedIps.isBanned(ip)) {
-          Audit.logdb("BANNED_IP", List("request:" + request.toString, "headers:" + request.headers, "body:" + request.body).mkString("<br>"))
-          BannedIps.ban(ip.get, request.method + " " + path)
-        }
-        // TODO emulate some well known wiki error response to throw them off
-        Future.successful(NotFound(""))
+          if (ip.isDefined && BannedIps.isBanned(ip)) {
+            Audit.logdb("BANNED_IP",
+              List("request:" + request.toString, "headers:" + request.headers, "body:" + request.body).mkString(
+                "<br>"))
+            BannedIps.ban(ip.get, request.method + " " + path)
+          }
+          // TODO emulate some well known wiki error response to throw them off
+          Future.successful(NotFound(""))
 
-      } else if(path == "ads.txt") {
-        // google ads - serve website settings or default from rk
-        val we = RkReactors(request).map(Wikis.apply).flatMap {
-              _.find("Admin", path)
-            } orElse Wikis.rk.find("Admin", path)
+        } else if (path == "ads.txt") {
+          // google ads - serve website settings or default from rk
+          val we = RkReactors(request).map(Wikis.apply).flatMap {
+            _.find("Admin", path)
+          } orElse Wikis.rk.find("Admin", path)
 
-        Future.successful(Ok(we.get.content).as("text/plain"))
+          Future.successful(Ok(we.get.content).as("text/plain"))
 
-      } else {
+        } else {
 
 // next - find reactor it belongs to
 
-        Audit.missingPage("URL - NO ROUTE FOR: " + path)
+          Audit.missingPage("URL - NO ROUTE FOR: " + path)
 
-        RkReactors(request).map(Wikis.apply).flatMap {wiki=>
+          RkReactors(request).map(Wikis.apply).flatMap { wiki =>
 
-          // found reactor - look for a simple name first
+            // found reactor - look for a simple name first
 
-          wiki.find("Admin", path) orElse wiki.find("Page", path) map { we =>
-            Wiki.showWid(CMDWID(Some(we.wid.wpath), Some(we.wid), "", ""), 1, wiki.realm).apply(request)
-          }
-        }.getOrElse {
-
-          // no simple name match - check for /cat/name
-
-          val e = path.split("/")
-
-          WID.PATHCATS.find(s=>(e(0) == s.toLowerCase || e(0) == s)).map {cat=>
-            if(e.size > 1) {
-              // normal /Topic/name
-              val wid = WID(cat, e(1))
-              val rewritten = path.replace(s"${e(0)}/${e(1)}", wid.wpath)
-              val cmd = WID.cmdfromPath(rewritten).get
-              Wiki.showWid(cmd, 1, "?").apply(request)
-            } else {
-              // just /Topic
-              val cmd = WID.cmdfromPath("Category:"+e(0)).get
-              Wiki.showWid(cmd, 1, "?").apply(request)
+            wiki.find("Admin", path) orElse wiki.find("Page", path) map { we =>
+              Wiki.showWid(CMDWID(Some(we.wid.wpath), Some(we.wid), "", ""), 1, wiki.realm).apply(request)
             }
-          } getOrElse
-            Future.successful(Redirect("/"))
-        }}
+          }.getOrElse {
+
+            // no simple name match - check for /cat/name
+
+            val e = path.split("/")
+
+            WID.PATHCATS.find(s => (e(0) == s.toLowerCase || e(0) == s)).map { cat =>
+              if (e.size > 1) {
+                // normal /Topic/name
+                val wid = WID(cat, e(1))
+                val rewritten = path.replace(s"${e(0)}/${e(1)}", wid.wpath)
+                val cmd = WID.cmdfromPath(rewritten).get
+                Wiki.showWid(cmd, 1, "?").apply(request)
+              } else {
+                // just /Topic
+                val cmd = WID.cmdfromPath("Category:" + e(0)).get
+                Wiki.showWid(cmd, 1, "?").apply(request)
+              }
+            } getOrElse
+                Future.successful(Redirect("/"))
+          }
+        }
+      }
     }
   }
 
@@ -231,32 +260,6 @@ object Application extends RazController {
     RMany[User]().size <= 1
 
   def index = root
-
-  /** randomly redirect to a topic
-    * todo not used anymore */
-  def lucky = Action { implicit request =>
-
-    val au = auth
-    var w: Option[WID] = None
-    var wpage: Option[WikiEntry] = None
-    var i = 0
-    do {
-      w = Wikis(Wikis.DFLT).index.random
-      i = i + 1
-      wpage = w flatMap(_.page)
-    } while ((w.isEmpty || !Wiki.canSee(w.get, au, wpage)(IgnoreErrors).exists(identity)) && i < 100)
-
-    w.map { wid =>
-      Audit.logdb("LUCKY", "wpath", wid.wpath)
-      Config.urlcanon(wid.wpath, wid.page.map(_.tags)).map { canon =>
-        Redirect(canon)
-      } getOrElse {
-        Redirect(Wiki.w(wid))
-      }
-    } getOrElse {
-      Redirect("/")
-    }
-  }
 
   // login as harry p.
   def doeHarry(css: String) = Action { implicit request =>

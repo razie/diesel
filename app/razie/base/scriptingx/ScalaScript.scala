@@ -28,6 +28,7 @@ class ScalaScriptContext(parent: ActionContext = null) extends ScriptContextImpl
     ppp.evalExpr[Any]("1+2") // prime the parser
     ppp
   }
+
   lazy val parser = soon.get() // blocking call on Future
 
   lazy val comp = new nsc.interpreter.JLineCompletion(parser)
