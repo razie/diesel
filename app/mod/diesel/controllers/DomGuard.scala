@@ -421,7 +421,7 @@ Guardian report<a href="/wiki/Guardian_Guide" ><sup><span class="glyphicon glyph
     if (DomGuardian.enabled(stok.realm)) startCheck(stok.realm, stok.au)._1.map { engine =>
       Redirect(s"""/diesel/report""")
     }
-    else Future.successful(Ok("GUARDIAN DISABLED"))
+    else Future.successful(Ok("GUARDIAN DISABLED in realm: "+stok.realm))
   }
 
   /** run another check all reactors */

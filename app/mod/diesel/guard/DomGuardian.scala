@@ -26,15 +26,17 @@ object DomGuardian extends Logging {
 
   // todo optimize so we don't parse every time
   def autoRealms =
-    Config.prop("diesel.guardian.auto.realms.regex", "wiki|specs")
+    Config.weprop("diesel.guardian.auto.realms.regex", "wiki|specs")
 
   def enabledRealms = Config.prop("diesel.guardian.enabled.realms.regex", ".*")
 
+  /** excluding these */
   def excludedRealms =
-    Config.prop("diesel.guardian.excluded.realms.regex", "nobody")
+    Config.weprop("diesel.guardian.excluded.realms.regex", "nobody")
 
+  /** excluding these */
   def excludedAutoRealms =
-    Config.prop("diesel.guardian.excluded.auto.realms.regex", "wiki|specs")
+    Config.weprop("diesel.guardian.excluded.auto.realms.regex", "nobody")
 
   def ISAUTO = DieselDebug.Guardian.ISAUTO
 
