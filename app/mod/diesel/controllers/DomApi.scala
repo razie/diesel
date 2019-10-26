@@ -24,6 +24,7 @@ import razie.diesel.engine._
 import razie.diesel.exec.SnakkCall
 import razie.diesel.ext.{EnginePrep, _}
 import razie.diesel.model.DieselMsg
+import razie.diesel.samples.DomEngineUtils
 import razie.diesel.utils.{AutosaveSet, DomCollector, DomWorker, SpecCache}
 import razie.hosting.Website
 import razie.tconf.DTemplate
@@ -399,98 +400,6 @@ class DomApi extends DomApiBase  with Logging {
     }
   }
 
-  /** execute message to given reactor
-    *
-    * this is only used from the CQRS, internally - notice no request
-    */
-  def runDom(msg:String, specs:List[WID], stories: List[WID], settings:DomEngineSettings) : Future[Map[String,Any]] = {
-    val realm = settings.realm getOrElse specs.headOption.map(_.getRealm).mkString
-    val page = new WikiEntry("Spec", "fiddle", "fiddle", "md", "", NOUSER, Seq("dslObject"), realm)
-
-    // don't audit diesel messages - too many
-    if(
-      msg.startsWith(DieselMsg.REALM.REALM_LOADED_MSG) ||
-      msg.startsWith(DieselMsg.GUARDIAN_RUN) ||
-      msg.startsWith(DieselMsg.GUARDIAN_POLL) ||
-      msg.startsWith(DieselMsg.WIKI_UPDATED) ||
-      msg.startsWith(DieselMsg.CRON_TICK) ||
-      false
-    ) {
-      // clog?
-    }
-    else
-      Audit.logdb("DIESEL_FIDDLE_RUNDOM ", msg)
-
-    val pages = (specs ::: stories).filter(_.section.isEmpty).flatMap(_.page)
-
-    // to domain
-    val dom = WikiDomain.domFrom(page, pages)
-
-    // make up a story
-    val FILTER = Array("sketchMode", "mockMode", "blenderMode", "draftMode")
-    var story = if (msg.trim.startsWith("$msg") || msg.trim.startsWith("$send")) msg else "$msg " + msg
-    ctrace << "STORY: " + story
-
-    // todo this has no EPos - I'm loosing the epos on sections
-    // put together all sections
-    val story2 = (specs ::: stories).filter(_.section.isDefined).flatMap(_.content).mkString("\n")
-    story = story + "\n" + story2.lines.filterNot(x =>
-      x.trim.startsWith("$msg") || x.trim.startsWith("$send")
-    ).mkString("\n") + "\n"
-
-    val ipage = new WikiEntry("Story", "fiddle", "fiddle", "md", story, NOUSER, Seq("dslObject"), realm)
-    val idom = WikiDomain.domFrom(ipage).get.revise addRoot
-
-    var res = ""
-
-    val root = DomAst("root", "root")
-    EnginePrep.addStoriesToAst(root, List(ipage))
-
-    // start processing all elements
-    val engine = DieselAppContext.mkEngine(
-      dom plus idom,
-      root,
-      settings,
-      ipage :: pages map WikiDomain.spec,
-      DieselMsg.runDom+msg)
-
-    engine.process.map { engine =>
-
-      val errors = new ListBuffer[String]()
-
-      // find the spec and check its result
-      // then find the resulting value.. if not, then json
-      val oattrs = dom.moreElements.collect {
-        //      case n:EMsg if n.entity == e && n.met == a => n
-        case n: EMsg if msg.startsWith(n.entity + "." + n.met) => n
-      }.headOption.toList.flatMap(_.ret)
-
-      if (oattrs.isEmpty) {
-        errors append s"Can't find the spec for $msg"
-      }
-
-      import razie.diesel.ext.stripQuotes
-
-      // collect values
-      val values = root.collect {
-        case d@DomAst(EVal(p), /*AstKinds.GENERATED*/ _, _, _) if oattrs.isEmpty || oattrs.find(_.name == p.name).isDefined => (p.name, p.currentStringValue)
-      }
-
-      var m = Map(
-//                   "value" -> values.headOption.map(_._2).map(stripQuotes).getOrElse(""),
-        "value" -> engine.resultingValue,
-        "values" -> values.toMap,
-        "totalCount" -> (engine.totalTestCount),
-        "failureCount" -> engine.failedTestCount,
-        "errors" -> errors.toList,
-        "root" -> root,
-        "engineId" -> engine.id,
-        "dieselTrace" -> DieselTrace(root, settings.node, engine.id, "diesel", "runDom", settings.parentNodeId).toJson
-      )
-      m
-    }
-  }
-
   /**
     * deal with a REST request. use the in/out for message
     *
@@ -732,6 +641,7 @@ class DomApi extends DomApiBase  with Logging {
 
         // must allow for ctx.sleeps
         // todo why 50 sec
+        import DieselAppContext.executionContext
         Await.result(res, Duration("50seconds"))
       } getOrElse {
         //      Future.successful(

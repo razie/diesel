@@ -81,11 +81,11 @@ class WikiAsyncObservers extends Actor {
       }
 
     case m@DieselMsgString(s, target, _, set) => {
-      runMsg(m, target, set)
+      m.startMsg
     }
 
     case m@DieselMsg(e, a, p, target, osettings) => {
-      runMsg(m.toMsgString, target, osettings)
+      m.toMsgString.startMsg
     }
 
     case m@ScheduledDieselMsg(s, msgforLater) => {
@@ -102,42 +102,6 @@ class WikiAsyncObservers extends Actor {
       Audit.logdb("ERR_ALLIGATOR", x.getClass.getName)
     }
   }
-
-  def runMsg(m:DieselMsgString, target:DieselTarget, osettings:Option[DomEngineSettings] = None) = {
-    // todo auth/auth
-    cout << "======== DIESEL MSG: " + m
-    val settings = osettings.getOrElse(new DomEngineSettings())
-    settings.realm = Some(target.realm)
-    // important to use None here, to let the engines use the envList setting otherwise
-    settings.env = if(target.env == DieselTarget.DEFAULT) None else Some(target.env)
-
-    val ms = m.mkMsgString
-
-    DomFiddles
-        .runDom(ms, target.specs, target.stories, settings)
-        .map { res =>
-      // don't audit these frequent ones
-      if(
-        m.msg.startsWith(DieselMsg.WIKI_UPDATED) ||
-        m.msg.startsWith(DieselMsg.CRON_TICK) ||
-        m.msg.startsWith(DieselMsg.GUARDIAN_POLL) ||
-false//        m.msg.startsWith(DieselMsg.REALM_LOADED)
-      ) {
-        clog << "DIESEL_MSG: " + m + " : RESULT: " + res.get("value").mkString.take(500)
-      } else {
-        val id = res.get("engineId").mkString
-        // this will also clog it - no need to clog it
-        Audit.logdb(
-          "DIESEL_MSG",
-          m.toString,
-          s"[[DieselEngine:$id]]",
-          "result-length: "+res.get("value").mkString.length,
-          res.get("value").mkString.take(500)
-        )
-      }
-    }
-  }
-
 
   def clusterize(ev: WikiEvent[_]) = {
     if (
