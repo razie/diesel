@@ -446,6 +446,7 @@ object DomFiddles extends DomApi with Logging with WikiAuthorization {
             "failureCount" -> engine.failedTestCount,
             "errorCount" -> engine.errorCount,
             "engineId" -> engine.id,
+            "progress" -> engine.progress,
             "engineStatus" -> st,
             "engineDone" -> DomState.isDone(st)
           ),
@@ -539,6 +540,7 @@ object DomFiddles extends DomApi with Logging with WikiAuthorization {
             "failureCount" -> engine.failedTestCount,
             "errorCount" -> engine.errorCount,
             "engineId" -> engine.id,
+            "progress" -> engine.progress,
             "engineStatus" -> st,
             "engineDone" -> DomState.isDone(st)
           ),

@@ -534,7 +534,6 @@ function processEngineResult(id, data, compileOnly, lastTime, next) {
   } else {
     // engine not done yet - wait for websocket response
     console.log("  RESULT NOT engine.done - waiting");
-    $('#roundtrip').text("wait");
     processPartialEngineResult(id, data, compileOnly, lastTime, next);
   }
 };
@@ -544,13 +543,16 @@ function processPartialEngineResult(id, data, compileOnly, lastTime, next) {
   if(storyEditor && typeof data.ast != "undefined") updateMarkers(storyEditor, data.ast);
   console.log("  updateMarkers story");
 
+  $('#roundtrip').html('<span class="glyphicon glyphicon-hourglass"></span>' + data.info.progress+'');
+
   if(typeof data.storyChanged != "undefined") storyChanged(data.storyChanged);
 
-  if(! wsActive) {
+  // we check all the time, to update progress, anyways...
+  // if(! wsActive) {
     setTimeout(function () {
       checkpill2_@{id}('@{id}');
     }, 500);
-  }
+  // }
 };
 
 /** final response - engine complete - update everything */
@@ -615,10 +617,10 @@ function processFinalEngineResult(id, data, compileOnly, lastTime, next) {
     // false for testing
     if(true) try {
       dateSocket = new WS('@mod.diesel.controllers.routes.DomFiddles.espOpen(reactor,id).webSocketURL()(stok.request.get)');
-      wsActive = true;
       console.log("WS - done setup WS... ");
 
       dateSocket.onmessage = function(event) {
+        wsActive = true;
         var data = JSON.parse(event.data);
 
         if(data.ping || data.ping =="true") {
