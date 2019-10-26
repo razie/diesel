@@ -550,6 +550,7 @@ class DomApi extends DomApiBase  with Logging {
           //        val res = engine.extractValues(e, a)
 
           // find output template and format output
+          // todo this is weird - need something more regular...
           val templateResp =
             engine.ctx.findTemplate(e + "." + a, "response").orElse {
               // see if there is only one message child... and it has an output template - we'll use that one
@@ -557,10 +558,13 @@ class DomApi extends DomApiBase  with Logging {
                 .root
                 .children
                 // without hardcoded engine messages - diesel.rest is allowed
-                .filterNot(x=>
+                  .filterNot(x=>
                     x.value.isInstanceOf[EMsg] &&
-                      x.value.asInstanceOf[EMsg].entity == "diesel" &&
-                      x.value.asInstanceOf[EMsg].met != "rest")
+                        x.value.asInstanceOf[EMsg].entity == "diesel" &&
+                        x.value.asInstanceOf[EMsg].met != "rest")
+                .filter(x=>
+                    // skip debug infos and other stuff = we need the first message
+                    x.value.isInstanceOf[EMsg])
                 .head
                 .children
                 .find(_.children.headOption.exists(_.value.isInstanceOf[EMsg]) )
