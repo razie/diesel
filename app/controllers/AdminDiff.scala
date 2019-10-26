@@ -163,6 +163,7 @@ object AdminDiff extends AdminBase {
           (
             x.ver != y.ver ||
               x.updDtm.compareTo(y.updDtm) != 0 ||
+                x.hash != y.hash ||
               x.name != y.name ||
               x.realm != y.realm ||
               x.cat != y.cat
@@ -194,7 +195,8 @@ object AdminDiff extends AdminBase {
         y <- ldest if y.name == x.name && y.cat == x.cat &&
           (
             x.ver != y.ver ||
-              x.updDtm.compareTo(y.updDtm) != 0
+              x.updDtm.compareTo(y.updDtm) != 0 ||
+              x.hash != y.hash
             //              x.name != y.name ||
             //              x.cat != y.cat ||
             //              x.realm != y.realm
