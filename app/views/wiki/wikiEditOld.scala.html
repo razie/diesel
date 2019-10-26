@@ -80,7 +80,7 @@ Implicit.flash().put("bibi", "haha")
             <div class="pull-right">
               @if(stok.au.exists(_.isMod)) {
                 <small>
-                @if(wid.page.exists(_.tags.contains("dsl"))) {
+                @if(true || wid.page.exists(_.tags.contains("dsl"))) {
                 <a href="#" onclick="showDsl(); return false;" class="btn btn-xs ">
                   <input type="checkbox" xonclick="showDsl(); return false;" name="weDsl" id="weDsl" disabled>
                   dsl</a><span style="font-size:x-small">(<span id="roundtrip" >.. ms</span>)
