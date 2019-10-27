@@ -72,7 +72,7 @@ class EEDieselMemDb extends EExecutor("diesel.db.memdb") {
         if (!tables.contains(col))
           tables.put(col, Col(col))
 
-        val id = if (ctx.getRequired("id").length > 0) ctx.getRequired("id") else new ObjectId().toString
+        val id = if (ctx.get("id").exists(_.length > 0)) ctx.apply("id") else new ObjectId().toString
 
         if (tables(col).entries.size > 15)
           throw new IllegalStateException("Too many entries in collection (15)")
