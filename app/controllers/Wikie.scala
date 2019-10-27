@@ -124,6 +124,9 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
   def wikieEditSimple(wid: WID) = wikieEdit(wid, "", "simple")
 
   def wikieEditNew(wid: WID, noshow: String = "", tags:String="") =
+    wikieEdit(wid, "", noshow, false, tags)
+
+  def wikieEditOld(wid: WID, noshow: String = "", tags:String="") =
     wikieEdit(wid, "", noshow, true, tags)
 
   def wikieEdit(wid: WID, icontent: String = "", noshow:String="", old:Boolean=true, tags:String="") = FAU {

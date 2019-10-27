@@ -1,5 +1,5 @@
 /**
-  * ____    __    ____  ____  ____,,___     ____  __  __  ____
+  *  ____    __    ____  ____  ____,,___     ____  __  __  ____
   * (  _ \  /__\  (_   )(_  _)( ___)/ __)   (  _ \(  )(  )(  _ \           Read
   * )   / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <     README.txt
   * (_)\_)(__)(__)(____)(____)(____)(___/   (__)  (______)(____/    LICENSE.txt
@@ -39,12 +39,7 @@ class EEMail extends EExecutor("diesel.mail") {
         val user = ctx.get("user")
         val pass = ctx.get("pass")
 
-//          Emailer.withSession(ctx.root.settings.realm.get) { mailSession =>
-//            to.filter(nzlen).map { addr =>
-//              mailSession.send(addr, mailSession.SUPPORT, subject, body)
-//            }
-//          }
-          EVal(P(name, "")) :: Nil
+        EVal(P(name, "")) :: Nil
       }
 
       case "send" => {

@@ -474,6 +474,14 @@ myattachAce = function() {
   aceEditor.getSession().setOption('indentedSoftWrap', false);
   aceEditor.getSession().setUseWrapMode(true);
 
+  @if(stok.isLight) {
+      aceEditor.setTheme ( "ace/theme/crimson_editor" ) ;
+  } else {
+      aceEditor.setTheme ( "ace/theme/twilight" ) ;
+  }
+
+  // aceEditor.getSession().setMode("ace/mode/nvp2");
+
   aceEditor.getSession().on('change', function(e) {
     instChanged=true;
   });

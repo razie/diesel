@@ -133,6 +133,8 @@ class AdminSys extends AdminBase {
 
   val reloadt=System.currentTimeMillis(); // reset when classloader reloads
 
+  def ping2(what: String) = ping(what)
+
   // unsecured ping for
   def ping(what: String) = Action { implicit request =>
     what match {

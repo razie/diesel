@@ -1,5 +1,5 @@
 /**
-  * ____    __    ____  ____  ____,,___     ____  __  __  ____
+  *  ____    __    ____  ____  ____,,___     ____  __  __  ____
   * (  _ \  /__\  (_   )(_  _)( ___)/ __)   (  _ \(  )(  )(  _ \           Read
   * )   / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <     README.txt
   * (_)\_)(__)(__)(____)(____)(____)(___/   (__)  (______)(____/    LICENSE.txt
@@ -8,15 +8,13 @@ package mod.diesel.model.exec
 
 import controllers.Wikil
 import razie.clog
+import razie.diesel.dom.RDOM.P
 import razie.diesel.dom._
-import razie.diesel.engine.DomEngECtx
-import razie.diesel.ext._
+import razie.diesel.exec.EExecutor
+import razie.diesel.ext.{EVal, _}
 import razie.diesel.model.DieselMsgString
 import razie.wiki.Services
 import razie.wiki.model._
-import razie.diesel.ext.EVal
-import razie.diesel.dom.RDOM.P
-import razie.diesel.exec.EExecutor
 import scala.collection.mutable.ListBuffer
 
 // the context persistence commands
