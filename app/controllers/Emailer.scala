@@ -1,9 +1,18 @@
+/**   ____    __    ____  ____  ____,,___     ____  __  __  ____
+  *  (  _ \  /__\  (_   )(_  _)( ___)/ __)   (  _ \(  )(  )(  _ \           Read
+  *   )   / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <     README.txt
+  *  (_)\_)(__)(__)(____)(____)(____)(___/   (__)  (______)(____/    LICENSE.txt
+  **/
 package controllers
 
+import mod.diesel.model.exec.EESnakk
 import mod.snow.RacerKid
 import model.{TPersonInfo, User}
 import org.joda.time.DateTime
 import razie.Logging
+import razie.diesel.dom.RDOM.P
+import razie.diesel.dom.StaticECtx
+import razie.diesel.ext.Attrs
 import razie.tconf.Visibility
 import razie.wiki.admin.{MailSession, SecLink, SendEmail}
 import razie.wiki.model._
@@ -144,7 +153,12 @@ object Emailer extends RazController with Logging {
   }
 
   def sendEmailNewComment(to: User, commenter: User, wid: WID)(implicit mailSession: MailSession) = {
-    val html1 = text("newcomment").format(to.ename, commenter.userName, wid.url, wid.cat, wid.name);
+    val html1 = expand("newcomment", List(
+      "to" -> to.ename,
+      "commenter" -> commenter.userName,
+      "url" -> wid.url,
+      "cat" -> wid.cat,
+      "name" -> wid.name))
 
     mailSession.notif(to.emailDec, SUPPORT, RK + " - new comment posted", html1)
   }
