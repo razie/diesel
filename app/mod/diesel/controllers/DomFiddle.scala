@@ -1,6 +1,7 @@
 package mod.diesel.controllers
 
 import akka.actor.{Actor, Props, _}
+import com.google.inject.Singleton
 import controllers.{IgnoreErrors, VErrors, WikiAuthorization}
 import java.util.concurrent.TimeUnit
 import razie.diesel.utils.DomUtils.{SAMPLE_SPEC, SAMPLE_STORY}
@@ -30,8 +31,25 @@ import scala.concurrent.duration.Duration
 import scala.concurrent.duration._
 import scala.util.Success
 
+object DomFiddles {
+  def getAstInfo(ipage:WikiEntry) = {
+    val domList = ipage.collector.getOrElse(DOM_LIST, List[Any]()).asInstanceOf[List[Any]].reverse
+    val ast = domList.collect {
+      case h: HasPosition if h.pos.isDefined => Map(
+        "row" -> h.pos.get.line,
+        "col" -> h.pos.get.col,
+        "text" -> "?"
+      )
+    }.toList
+
+    ast
+  }
+}
+
 /** controller for server side fiddles / services */
-object DomFiddles extends DomApi with Logging with WikiAuthorization {
+@Singleton
+class DomFiddles extends DomApi with Logging with WikiAuthorization {
+  import DomFiddles.getAstInfo
 
   def isVisible(u: Option[WikiUser], props: Map[String, String], visibility: String = "visibility", we: Option[WikiEntry] = None)(implicit errCollector: VErrors = IgnoreErrors): Boolean =
     Services.wikiAuth.isVisible(u, props, visibility)(errCollector)
@@ -190,19 +208,6 @@ object DomFiddles extends DomApi with Logging with WikiAuthorization {
     }
   }
 
-  def getAstInfo(ipage:WikiEntry) = {
-    val domList = ipage.collector.getOrElse(DOM_LIST, List[Any]()).asInstanceOf[List[Any]].reverse
-    val ast = domList.collect {
-      case h: HasPosition if h.pos.isDefined => Map(
-        "row" -> h.pos.get.line,
-        "col" -> h.pos.get.col,
-        "text" -> "?"
-      )
-    }.toList
-
-    ast
-  }
-
   /** fiddle screen - spec changed, parse spec and send new tree */
   def fiddleSpecUpdated(id: String) = FAUPRAPI(true) { implicit stok=>
     val reactor = stok.formParm("reactor")
@@ -264,7 +269,7 @@ object DomFiddles extends DomApi with Logging with WikiAuthorization {
         "specChanged" -> (specWpath.length > 0 && spw.replaceAllLiterally("\r", "") != spec),
         "ast" -> getAstInfo(specPage),
         "info" -> Map( // just like fiddleUpdated
-          "timeStamp" -> s"$timeStamp"
+          "timeStamp" -> timeStamp
         )
       )
     }

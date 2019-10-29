@@ -1,3 +1,8 @@
+/**   ____    __    ____  ____  ____,,___     ____  __  __  ____
+  *  (  _ \  /__\  (_   )(_  _)( ___)/ __)   (  _ \(  )(  )(  _ \           Read
+  *   )   / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <     README.txt
+  *  (_)\_)(__)(__)(____)(____)(____)(___/   (__)  (______)(____/    LICENSE.txt
+  **/
 package controllers
 
 import java.lang.management.{ManagementFactory, OperatingSystemMXBean}
@@ -20,7 +25,9 @@ import razie.wiki.Services
 import razie.wiki.admin.{GlobalData, SendEmail}
 import razie.wiki.model._
 
-object Admin extends AdminBase {
+//@Singleton
+class Admin extends AdminBase {
+
   // routes do/:page
   def show(page: String) = FAD { implicit au =>
     implicit errCollector => implicit request =>

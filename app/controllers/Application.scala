@@ -1,5 +1,6 @@
 package controllers
 
+import com.google.inject.Singleton
 import com.mongodb.casbah.Imports._
 import mod.snow.{RacerKidInfo, RacerKidz, _}
 import model._
@@ -17,8 +18,15 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.{Random, Try}
 
+
+object ApplicationUtils {
+  var razSu = "nothing" // if I su, this is the email of who I su'd as
+  var razSuTime = 0L // if I su, this is the email of who I su'd as
+}
+
 /** main entry points */
-object Application extends RazController {
+@Singleton
+class Application extends RazController {
 
   val rand = new Random()
 
@@ -298,21 +306,12 @@ object Application extends RazController {
     ROK.r noLayout { implicit stok=> views.html.user.doeSpin() }
   }
 
-  import Admin.StokAdmin
-
-  def doeSelectTheme = Action { implicit request =>
-    ROK.r admin {implicit stok=> views.html.user.doeSelectTheme()}
-  }
-
   // TODO better mobile display
   def mobile(m: Boolean) = Action { implicit request =>
     Redirect("/").withSession(
       if (m) request.session + ("mobile" -> "yes")
       else request.session - "mobile")
   }
-
-  var razSu = "nothing" // if I su, this is the email of who I su'd as
-  var razSuTime = 0L // if I su, this is the email of who I su'd as
 
   def show(page: String) = {
     page match {
@@ -325,10 +324,10 @@ object Application extends RazController {
         auth map (_.auditLogout(Website.getRealm))
         cleanAuth(auth)
         if (au.isDefined &&
-          System.currentTimeMillis - razSuTime < 15 * 60 * 1000 &&
-          request.session.get("extra").exists(_ == razSu)) {
-          val me = razSu
-          razSu = "no"
+          System.currentTimeMillis - ApplicationUtils.razSuTime < 15 * 60 * 1000 &&
+          request.session.get("extra").exists(_ == ApplicationUtils.razSu)) {
+          val me = ApplicationUtils.razSu
+          ApplicationUtils.razSu = "no"
           Audit.logdb("ADMIN_SU_RAZIE", "sure?")
           Redirect("/").withSession(Config.CONNECTED -> Enc.toSession(me))
         } else {
@@ -386,7 +385,7 @@ object Application extends RazController {
         "ok"
       case "verifyUserById" =>
         val email = ROne[model.User]("_id" -> data.aso).map(_.email.toString).get
-        controllers.Tasks.verifiedEmail(DateTime.now().plusHours(1).toString().enc, email, data, auth)
+        (new controllers.Tasks()).verifiedEmail(DateTime.now().plusHours(1).toString().enc, email, data, auth)
         "ok"
       case "auth" =>
         auth.toString

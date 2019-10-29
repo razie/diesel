@@ -14,17 +14,17 @@ comments - list of comments
     @stream.comments.map { c =>
       <div class="well">
         <b>By: <a href="/user/@c.userName">@(c.userName)</a></b>
-          &nbsp; <a href="@routes.Comment.startComment(pid, role, {new com.mongodb.casbah.Imports.ObjectId().toString}, "text")" class="btn btn-xs btn-success">Reply</a>
+          &nbsp; <a href="@routes.CommentControl.startComment(pid, role, {new com.mongodb.casbah.Imports.ObjectId().toString}, "text")" class="btn btn-xs btn-success">Reply</a>
           &nbsp; <a href="" class="btn btn-xs btn-warning">Report</a>
-        @if(controllers.Comment.canEdit(c,stok.au)) {
-            &nbsp; <a href="@routes.Comment.edit(pid,role,c._id.toString)" class="btn btn-xs btn-info">Edit</a>
+        @if(controllers.CommentUtils.canEdit(c,stok.au)) {
+            &nbsp; <a href="@routes.CommentControl.edit(pid,role,c._id.toString)" class="btn btn-xs btn-info">Edit</a>
         }
-        @if(controllers.Comment.canRemove(c,stok.au)) {
-            &nbsp; <a href="@routes.Comment.remove(pid,role,c._id.toString)" class="btn btn-xs btn-danger">Remove</a>
+        @if(controllers.CommentUtils.canRemove(c,stok.au)) {
+            &nbsp; <a href="@routes.CommentControl.remove(pid,role,c._id.toString)" class="btn btn-xs btn-danger">Remove</a>
         }
 
         @if(stok.au.exists(_.isActive) && !(c.likes contains stok.au.get._id.toString)) {
-            &nbsp; <a href="@routes.Comment.like(pid, role, c._id.toString, 1)" class="glyphicon glyphicon-thumbs-up" title="This comment is helpful"></a>
+            &nbsp; <a href="@routes.CommentControl.like(pid, role, c._id.toString, 1)" class="glyphicon glyphicon-thumbs-up" title="This comment is helpful"></a>
         } else {
           @if(stok.au.exists(_.isActive)) {
             &nbsp; <span class="glyphicon glyphicon-thumbs-up" title="You already rated this comment"></span>
@@ -37,7 +37,7 @@ comments - list of comments
         }
 
         @if(stok.au.exists(_.isActive) && !(c.dislikes contains stok.au.get._id.toString)) {
-          &nbsp; <a href="@routes.Comment.like(pid,role,c._id.toString, 0)" class="glyphicon glyphicon-thumbs-down" title="This comment is not helpful"></a>
+          &nbsp; <a href="@routes.CommentControl.like(pid,role,c._id.toString, 0)" class="glyphicon glyphicon-thumbs-down" title="This comment is not helpful"></a>
         } else {
           @if(stok.au.exists(_.isActive)) {
             &nbsp;  <span class="glyphicon glyphicon-thumbs-down" title="You already rated this comment"></span>
@@ -60,10 +60,10 @@ comments - list of comments
  @** add new comments **@
 @commentBar() = {
 @if(canAdd) {
-  <a href="@routes.Comment.startComment(pid, role, {new com.mongodb.casbah.Imports.ObjectId().toString}, "text")" class="btn btn-default"><span style="color:orange">+</span>Comment</a>
-  <a href="@routes.Comment.startComment(pid, role, {new com.mongodb.casbah.Imports.ObjectId().toString}, "video")" class="btn btn-default"><span style="color:orange">+</span>Video</a>
-  <a href="@routes.Comment.startComment(pid, role, {new com.mongodb.casbah.Imports.ObjectId().toString}, "photo")" class="btn btn-default"><span style="color:orange">+</span>Photo</a>
-  <a href="@routes.Comment.startComment(pid, role, {new com.mongodb.casbah.Imports.ObjectId().toString}, "slideshow")" class="btn btn-default"><span style="color:orange">+</span>Slideshow</a>
+  <a href="@routes.CommentControl.startComment(pid, role, {new com.mongodb.casbah.Imports.ObjectId().toString}, "text")" class="btn btn-default"><span style="color:orange">+</span>Comment</a>
+  <a href="@routes.CommentControl.startComment(pid, role, {new com.mongodb.casbah.Imports.ObjectId().toString}, "video")" class="btn btn-default"><span style="color:orange">+</span>Video</a>
+  <a href="@routes.CommentControl.startComment(pid, role, {new com.mongodb.casbah.Imports.ObjectId().toString}, "photo")" class="btn btn-default"><span style="color:orange">+</span>Photo</a>
+  <a href="@routes.CommentControl.startComment(pid, role, {new com.mongodb.casbah.Imports.ObjectId().toString}, "slideshow")" class="btn btn-default"><span style="color:orange">+</span>Slideshow</a>
 
   &nbsp;&nbsp;
 

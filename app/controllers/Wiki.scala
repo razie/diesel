@@ -1,4 +1,4 @@
-/**
+/*
  *   ____    __    ____  ____  ____,,___     ____  __  __  ____
  *  (  _ \  /__\  (_   )(_  _)( ___)/ __)   (  _ \(  )(  )(  _ \           Read
  *   )   / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <     README.txt
@@ -52,7 +52,6 @@ class WikiBase extends RazController with Logging with WikiAuthorization {
     * todo isn't this just a redirect to Website.getRealm
     *
     * @param irealm - the realm hint from request, if any
-    * @param request
     * @return
     */
   def getRealm (irealm:String = UNKNOWN) (implicit request : Request[_]) = {
@@ -66,7 +65,7 @@ class WikiBase extends RazController with Logging with WikiAuthorization {
 
 /** wiki controller */
 object Wiki extends WikiBase {
-  implicit def obtob(o: Option[Boolean]): Boolean = o.exists(_ == true)
+  implicit def obtob(o: Option[Boolean]): Boolean = o.contains(true)
 
   /** make a relative href for the given tag. give more tags with 1/2/3 */
   def hrefTag(curRealm:String, wid:WID, t:String,label:String) = {
@@ -348,7 +347,7 @@ object Wiki extends WikiBase {
 
   /** show a page */
   def printWid(cw: CMDWID, irealm:String) = Action { implicit request =>
-    show(prepWid(cw, irealm).get, 0, true).apply(request).value.get.get
+    show(prepWid(cw, irealm).get, 0, print = true).apply(request).value.get.get
   }
 
   /** POST against a page - perhaps a trackback */
@@ -359,7 +358,7 @@ object Wiki extends WikiBase {
     //    } else {
     //      admin.Audit.logdb("POST", List("request:" + request.toString, "headers:" + request.headers, "body:" + request.body).mkString("<br>"))
     //    Services.audit.unauthorized(s"POST Referer=${request.headers.get("Referer")} - X-Forwarde-For: ${request.headers.get("X-Forwarded-For")}")
-    unauthorized("Oops - can't POST here", false)
+    unauthorized("Oops - can't POST here", shouldAudit = false)
     //    }
   }
 
@@ -616,12 +615,14 @@ object Wiki extends WikiBase {
     res
   }
 
+  import collection.JavaConverters._
+
   def showForm(wid: WID, iname: Option[String], page: Option[WikiEntry], user: Option[User], shouldCount: Boolean, errors: Map[String, String], canEdit: Boolean, print: Boolean = false)(implicit stok:RazRequest) = {
     // form design
     page.flatMap(_.section("section", "formData")).foreach { s =>
       // parse form data
       val data = razie.Snakk.jsonParsed(s.content)
-      razie.MOLD(data.keys).map(_.toString).map { name =>
+      data.keys.asScala.map(_.toString).map { name =>
         val x = data.getString(name)
         //          cout << "FIELD " + name + "="+x
         page.get.fields.get(name).foreach(f => page.get.fields.put(f.name, f.withValue(x)))

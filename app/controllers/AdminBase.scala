@@ -1,3 +1,8 @@
+/**   ____    __    ____  ____  ____,,___     ____  __  __  ____
+  *  (  _ \  /__\  (_   )(_  _)( ___)/ __)   (  _ \(  )(  )(  _ \           Read
+  *   )   / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <     README.txt
+  *  (_)\_)(__)(__)(____)(____)(____)(___/   (__)  (______)(____/    LICENSE.txt
+  **/
 package controllers
 
 import model.User
@@ -5,6 +10,7 @@ import play.api.mvc.{Action, AnyContent, Request, Result}
 import play.twirl.api.Html
 import razie.wiki.model.Perm
 
+/** admin utilities shared by admin controllers */
 class AdminBase extends RazController {
   protected def forAdmin[T](body: => play.api.mvc.Result)(implicit request: Request[_]) = {
     if (auth.map(_.hasPerm(Perm.adminDb)) getOrElse false) body

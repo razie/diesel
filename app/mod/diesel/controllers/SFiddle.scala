@@ -1,28 +1,25 @@
 package mod.diesel.controllers
 
-import javax.script.ScriptEngineManager
+import com.google.inject.Singleton
 import controllers._
-import jdk.nashorn.api.scripting.{ClassFilter, NashornScriptEngineFactory}
 import mod.notes.controllers.{Notes, NotesLocker, NotesTags}
-import model._
+import model.{MiniScripster, _}
 import org.antlr.v4.tool.{ANTLRMessage, ANTLRToolListener}
 import org.bson.types.ObjectId
 import play.api.mvc._
+import razie.Logging
 import razie.audit.Audit
-import razie.hosting.Website
-import razie.wiki.Services
-import razie.wiki.model._
-import razie.{CSTimer, Logging}
-import model.MiniScripster
 import razie.diesel.snakk.FFDPayload
+import razie.hosting.Website
 import razie.tconf.Visibility
+import razie.wiki.Services
 import razie.wiki.admin.Autosave
+import razie.wiki.model._
 import razie.wiki.model.features.WikiCount
-import scala.collection.{SortedMap, mutable}
+import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.util.Try
-import scala.util.parsing.combinator.RegexParsers
 
 /** controller for server side fiddles / services */
 class SFiddleBase extends RazController {
@@ -68,15 +65,6 @@ class SFiddleBase extends RazController {
     }
   }
 
-  def typeSafe(v: String): String = {
-    if (v.trim.startsWith("\"") || v.trim.startsWith("'") || v.trim.startsWith("{") || v.trim.startsWith("[")) v
-    else Try {
-      v.toInt.toString
-    } getOrElse {
-      "'" + v + "'"
-    }
-  }
-
   def jstypeSafe(v: String): Any = {
     if (v.trim.startsWith("\"") || v.trim.startsWith("'")) v.replaceFirst("[\"']([^\"']*)[\"']", "$1")
     else if (v.trim.startsWith("{") || v.trim.startsWith("[")) v
@@ -86,10 +74,6 @@ class SFiddleBase extends RazController {
       v
     } //"'"+v+"'" }
   }
-
-  def qtojson(q: Map[String, String]) = "{" + q.map(t => s"""${t._1} : ${typeSafe(t._2)} """).mkString(",") + "}"
-
-  def qtourl(q: Map[String, String]) = q.map(t => s"""${t._1}=${t._2}""").mkString("&")
 
   object razscr {
     def dec(s: String) = {
@@ -103,12 +87,27 @@ class SFiddleBase extends RazController {
     def <<(x: List[Any]) = Ok(js.tojsons(x, 0).toString).as("application/json")
     def <<(x: Map[String, Any]) = Ok(js.tojson(x).toString).as("application/json")
   }
+}
 
+/** this is not the controller... */
+object SFiddles {
+  def typeSafe(v: String): String = {
+    if (v.trim.startsWith("\"") || v.trim.startsWith("'") || v.trim.startsWith("{") || v.trim.startsWith("[")) v
+    else Try {
+      v.toInt.toString
+    } getOrElse {
+      "'" + v + "'"
+    }
+  }
+
+  def qtojson(q: Map[String, String]) = "{" + q.map(t => s"""${t._1} : ${typeSafe(t._2)} """).mkString(",") + "}"
+
+  def qtourl(q: Map[String, String]) = q.map(t => s"""${t._1}=${t._2}""").mkString("&")
 }
 
 /** controller for server side fiddles / services */
-object SFiddles extends SFiddleBase with Logging {
-
+@Singleton
+class SFiddles extends SFiddleBase with Logging {
   import NotesTags._
 
   /** run sfiddles by name, as REST services */

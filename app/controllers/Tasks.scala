@@ -1,5 +1,6 @@
 package controllers
 
+import com.google.inject.Singleton
 import mod.snow.{RK, RacerKidAssoc, RacerKidz}
 import org.joda.time.DateTime
 import play.api.mvc.{Action, DiscardingCookie, Request}
@@ -10,35 +11,9 @@ import razie.wiki.model.{Perm, WID}
 import razie.wiki.{Config, Enc, EncUrl, Services}
 import razie.hosting.Website
 
+// NOTE this is not actually a controller - leave it object, the one below is...
 object Tasks extends RazController with Logging {
   import razie.wiki.Sec._
-
-  import play.api.data.Forms._
-  import play.api.data._
-
-  def userNameChgDenied = Action { implicit request =>
-    razie.db.tx("usernamechgDenied", auth.get.userName) { implicit txn =>
-      UserTasks.userNameChgDenied(auth.get).delete
-    }
-    Msg("Your request to change username has been denied!")
-  }
-
-  /** step 1 - send verification email */
-  def verifyEmail1 = RAction { implicit request =>
-    def ERR = {
-      verror("ERR_CANT_UPDATE_USER.verifyEmail1 " + request.session.get("email") + " REQUEST: "+request.req.toString)
-      Unauthorized("Oops - cannot update this user....verifyEmail1 " + request.errCollector.mkString)
-    }
-
-    (for (
-      c <- auth orCorr cNoAuth
-    ) yield Emailer.withSession(request.realm) { implicit mailSession =>
-      sendEmailVerif(c, request.headers.get("X-Forwarded-Host").orElse(Some(request.website.domain)))
-      msgVerif(c)
-    }) getOrElse {
-      ERR
-    }
-  }
 
   def msgVerif(c: User, extra: String = "", next: Option[String] = None)(implicit request: Request[_]) = {
     val MSG_EMAIL_VERIF = s"""
@@ -100,6 +75,40 @@ Please do that soon: it will expire in a few hours, for security reasons.
     val html = Emailer.text("emailreset").format(name, link);
 
     mailSession.send(email, from, "Please reset your password", html)
+  }
+
+
+}
+
+@Singleton
+class Tasks extends RazController with Logging {
+  import razie.wiki.Sec._
+
+  import play.api.data.Forms._
+  import play.api.data._
+
+  def userNameChgDenied = Action { implicit request =>
+    razie.db.tx("usernamechgDenied", auth.get.userName) { implicit txn =>
+      UserTasks.userNameChgDenied(auth.get).delete
+    }
+    Msg("Your request to change username has been denied!")
+  }
+
+  /** step 1 - send verification email */
+  def verifyEmail1 = RAction { implicit request =>
+    def ERR = {
+      verror("ERR_CANT_UPDATE_USER.verifyEmail1 " + request.session.get("email") + " REQUEST: "+request.req.toString)
+      Unauthorized("Oops - cannot update this user....verifyEmail1 " + request.errCollector.mkString)
+    }
+
+    (for (
+      c <- auth orCorr cNoAuth
+    ) yield Emailer.withSession(request.realm) { implicit mailSession =>
+      Tasks.sendEmailVerif(c, request.headers.get("X-Forwarded-Host").orElse(Some(request.website.domain)))
+      Tasks.msgVerif(c)
+    }) getOrElse {
+      ERR
+    }
   }
 
   val reloginForm = Form {

@@ -1,20 +1,15 @@
 package mod.diesel.controllers
 
-import controllers.{DieselSettings, Profile, RazRequest}
+import com.google.inject.Singleton
+import controllers.{Profile, RazRequest}
 import difflib.{DiffUtils, Patch}
-import mod.diesel.guard.DomGuardian.startCheck
-import razie.diesel.utils.DomHtml.quickBadge
-import mod.diesel.controllers.DomSessions.Over
-import mod.diesel.guard.DomGuardian
 import mod.diesel.model._
 import mod.diesel.model.exec.{EECtx, EESnakk}
 import model._
-import org.apache.xml.serialize.LineSeparator
 import org.bson.types.ObjectId
 import org.joda.time.DateTime
 import org.json.JSONObject
 import play.api.mvc._
-import play.twirl.api.Html
 import razie.audit.Audit
 import razie.diesel.dom.RDOM.{NVP, P}
 import razie.diesel.dom._
@@ -24,7 +19,6 @@ import razie.diesel.engine._
 import razie.diesel.exec.SnakkCall
 import razie.diesel.ext.{EnginePrep, _}
 import razie.diesel.model.DieselMsg
-import razie.diesel.samples.DomEngineUtils
 import razie.diesel.utils.{AutosaveSet, DomCollector, DomWorker, SpecCache}
 import razie.hosting.Website
 import razie.tconf.DTemplate
@@ -83,6 +77,7 @@ case class DomReq (
 }
 
 /** controller for server side fiddles / services */
+@Singleton
 class DomApi extends DomApiBase  with Logging {
 
   /** /diesel/wreact/wpath
@@ -645,7 +640,6 @@ class DomApi extends DomApiBase  with Logging {
 
         // must allow for ctx.sleeps
         // todo why 50 sec
-        import DieselAppContext.executionContext
         Await.result(res, Duration("50seconds"))
       } getOrElse {
         //      Future.successful(
@@ -1038,7 +1032,7 @@ class DomApi extends DomApiBase  with Logging {
       var we = newVer
 
       session.time = System.currentTimeMillis()
-      session.overrides.prepend(Over(wid, newVer, icontent, sType, sName))
+      session.overrides.prepend(OverSession(wid, newVer, icontent, sType, sName))
 
       // just from the fiddle, not the entire page
       var links = WikiDomain.domFilter(newVer.copy(content = icontent + "\n")) {

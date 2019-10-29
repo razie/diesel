@@ -1,14 +1,12 @@
 package controllers
 
-import javax.management.relation.RoleStatus
-import razie.wiki.Sec.EncryptedS
 import model._
 import razie.Logging
 import razie.diesel.dom.WikiDomain
 import razie.tconf.Visibility
 import razie.wiki.model._
 
-/** wiki controller base stuff - file too large */
+/** this is not really a controller... */
 object RazWikiAuthorization extends RazController with Logging with WikiAuthorization {
 
   implicit def toU (wu:WikiUser) : User = wu.asInstanceOf[User]

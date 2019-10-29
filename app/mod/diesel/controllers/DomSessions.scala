@@ -5,31 +5,38 @@
   */
 package mod.diesel.controllers
 
+import com.google.inject.Singleton
 import org.bson.types.ObjectId
 import razie.Logging
 import razie.audit.Audit
 import razie.wiki.model._
 import scala.collection.mutable
 
+object DomSessions {
+  val sessions = new mutable.HashMap[String,DieselSession]()
+}
+
+/** overwriting a section in a page, for an anon session */
+case class OverSession (wid:WID, page:WikiEntry, newContent:String, sType:String, sName:String)
+
+/** an anon session */
+case class DieselSession (uid:String, id:String) {
+  var time = System.currentTimeMillis()
+  var overrides = mutable.ListBuffer[OverSession]()
+}
+
 /** controller for sessions
   *
   * anon sessions expire in 10 min
   * */
-object DomSessions extends mod.diesel.controllers.SFiddleBase  with Logging {
+@Singleton
+class DomSessions extends mod.diesel.controllers.SFiddleBase  with Logging {
+  import DomSessions.sessions
+
   // todo replicate sessions in cluster, ehcache etc
 
   val MAX_SESSIONS=100
   val EXPIRY=5*1000 // 5 sec
-  val sessions = new mutable.HashMap[String,DieselSession]()
-
-  /** overwriting a section in a page, for an anon session */
-  case class Over (wid:WID, page:WikiEntry, newContent:String, sType:String, sName:String)
-
-  /** an anon session */
-  case class DieselSession (uid:String, id:String) {
-    var time = System.currentTimeMillis()
-    var overrides = mutable.ListBuffer[Over]()
-  }
 
   // todo distribute notifications in cluster or something when expiring sessions
   def cleanSessions = {

@@ -1,0 +1,10 @@
+
+ssh razvanc@cloud2a.razie.com "cd ~/rk/logs; gzip -c log.log >log.log.gz"
+
+scp razvanc@cloud2a.razie.com:rk/logs/log.log.gz log.log.gz
+
+ssh razvanc@cloud2a.razie.com "cd ~/rk/logs; rm log.log.gz"
+
+gunzip -c -f log.log.gz >log.log2
+
+less log.log2

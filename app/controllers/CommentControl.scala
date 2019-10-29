@@ -1,5 +1,11 @@
+/**   ____    __    ____  ____  ____,,___     ____  __  __  ____
+  *  (  _ \  /__\  (_   )(_  _)( ___)/ __)   (  _ \(  )(  )(  _ \           Read
+  *   )   / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <     README.txt
+  *  (_)\_)(__)(__)(____)(____)(____)(___/   (__)  (______)(____/    LICENSE.txt
+  **/
 package controllers
 
+import com.google.inject.Singleton
 import mod.snow.RacerKidz
 import model.{User, Users}
 import org.bson.types.ObjectId
@@ -11,7 +17,24 @@ import razie.db.{ROne, tx}
 import razie.wiki.admin.SendEmail
 import razie.wiki.model._
 
-object Comment extends RazController with Logging {
+
+object CommentUtils {
+  /** is mine or i am amdin */
+  def canEdit(comm: Comment, auth: Option[User]) = {
+    auth.exists(au => comm.userId == au._id || au.hasPerm(Perm.adminDb))
+  }
+
+  /** is mine or i am amdin */
+  def canRemove(comm: Comment, auth: Option[User]) = {
+    auth.exists(_.hasPerm(Perm.adminDb))
+  }
+
+}
+
+@Singleton
+class CommentControl extends RazController with Logging {
+  import CommentUtils._
+
   val commentForm = Form {
     tuple(
       "link" -> text.verifying(vSpec, vBadWords),
@@ -67,16 +90,6 @@ object Comment extends RazController with Logging {
             Unauthorized("Oops - cannot add comment... " + errCollector.mkString)
           }
       })
-  }
-
-  /** is mine or i am amdin */
-  def canEdit(comm: Comment, auth: Option[User]) = {
-    auth.exists(au => comm.userId == au._id || au.hasPerm(Perm.adminDb))
-  }
-
-  /** is mine or i am amdin */
-  def canRemove(comm: Comment, auth: Option[User]) = {
-    auth.exists(_.hasPerm(Perm.adminDb))
   }
 
   /** split a comment back into a photo/video etc */

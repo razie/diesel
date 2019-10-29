@@ -1,3 +1,8 @@
+/**   ____    __    ____  ____  ____,,___     ____  __  __  ____
+  *  (  _ \  /__\  (_   )(_  _)( ___)/ __)   (  _ \(  )(  )(  _ \           Read
+  *   )   / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <     README.txt
+  *  (_)\_)(__)(__)(____)(____)(____)(___/   (__)  (______)(____/    LICENSE.txt
+  **/
 package controllers
 
 import com.google.inject.Singleton
@@ -9,9 +14,11 @@ import org.joda.time.DateTime
 import play.api.mvc.Action
 import razie.audit.ClearAudits
 import razie.db.RazMongo
-import razie.db.RazMongo.RazMongoTable
 
-/** admin the audit tables directly */
+/** admin the audit tables directly
+  *
+  * todo admin ops validated and filtered by realm, for realm mods
+  */
 @Singleton
 class AdminAudit extends AdminBase {
   def showAudit(msg: String) = FA { implicit request =>
@@ -52,7 +59,8 @@ class AdminAudit extends AdminBase {
       sortIfCan(RazMongo("Audit").find(Map("msg" -> msg))).take(MAX).map(_.get("_id").toString).toList.foreach(ClearAudits.clearAudit(_, auth.get.id))
     else
       sortIfCan(RazMongo("Audit").findAll()).take(MAX).map(_.get("_id").toString).toList.foreach(ClearAudits.clearAudit(_, auth.get.id))
-    Redirect("/razadmin/audit#bottom")
+//    Redirect(routes.AdminAudit.showAudit("").withFragment("bottom"))
+    Redirect(routes.AdminAudit.showAudit("").url + "#bottom")
   }
 
   def auditPurge1 = FA { implicit request =>
@@ -127,6 +135,7 @@ class AdminAudit extends AdminBase {
   }
 }
 
+/** utilities for audits */
 object AdminAudit {
   def auditSummary = {
     val x = RazMongo("Audit").findAll().toList

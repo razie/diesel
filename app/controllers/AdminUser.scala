@@ -1,3 +1,8 @@
+/**   ____    __    ____  ____  ____,,___     ____  __  __  ____
+  *  (  _ \  /__\  (_   )(_  _)( ___)/ __)   (  _ \(  )(  )(  _ \           Read
+  *   )   / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <     README.txt
+  *  (_)\_)(__)(__)(____)(____)(____)(___/   (__)  (______)(____/    LICENSE.txt
+  **/
 package controllers
 
 import com.google.inject.Singleton
@@ -163,8 +168,8 @@ class AdminUser extends AdminBase {
         u <- Users.findUserById(id)
       ) yield {
           Audit.logdb("ADMIN_SU", u.userName)
-          Application.razSu = au.email
-          Application.razSuTime = System.currentTimeMillis()
+          ApplicationUtils.razSu = au.email
+          ApplicationUtils.razSuTime = System.currentTimeMillis()
           Redirect("/").withSession(
             Services.config.CONNECTED -> Enc.toSession(u.email),
             "extra" -> au.email

@@ -9,7 +9,7 @@ comments - edit
 @import play.api.Play.current
 @import play.api.i18n.Messages.Implicits._
 
-@helper.form(action=routes.Comment.save(pid, role, cid, kind), 'class->"well form-inline") {
+@helper.form(action=routes.CommentControl.save(pid, role, cid, kind), 'class->"well form-inline") {
 
   @if(Array("video","photo","slideshow").contains(kind)) {
 

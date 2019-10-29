@@ -5,9 +5,7 @@ wiki fragment, used in another page
 @import controllers.IgnoreErrors
 @import razie.wiki.model.{Wikis, WID, WikiEntry}
 @import _root_.razie.wiki.Services
-@import razie.clog
 @import razie.diesel.dom.WikiDomain
-@import razie.wiki.model.features.WikiCount
 @import razie.tconf.Visibility
 
 @nicename() = @{ iname.getOrElse(wid.name) }
@@ -224,7 +222,7 @@ function selectTextareaLine(tarea,lineNum) {
 
       @if(!simple && Seq("Item").contains(wid.cat)) {
         @if(canComment) {
-          <a href="@routes.Comment.startComment(we._id.toString, "Wiki", {new com.mongodb.casbah.Imports.ObjectId().toString}, "text")" class="btn btn-lg btn-success"><span style="color:orange">+</span>Reply/comment</a>
+          <a href="@routes.CommentControl.startComment(we._id.toString, "Wiki", {new com.mongodb.casbah.Imports.ObjectId().toString}, "text")" class="btn btn-lg btn-success"><span style="color:orange">+</span>Reply/comment</a>
         }
         @if(stok.au.exists(x=> x.canHasProfile &&
             (we.isOwner(x.id) ||
