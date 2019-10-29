@@ -511,7 +511,6 @@ var checkpill2_@id = function(id) {
           processEngineResult(id, data, false, lastTime);
         },
         error  : function(x) {
-          isRefreshing2 -= 1;
           hideSpinner();
 
           console.log( "ERR "+JSON.stringify(x));

@@ -1,6 +1,6 @@
 package admin
 
-import controllers.{Admin, IgnoreErrors, VErrors}
+import controllers.{Admin, IgnoreErrors, VErrors, Validation}
 import model._
 import razie.db.{ROne, RazMongo}
 import razie.wiki.{Base64, Enc}
@@ -23,7 +23,7 @@ import play.api.cache._
 
 
 /** statics and utilities for authentication cache */
-class RazAuthService extends AuthService[User] with Logging {
+class RazAuthService extends AuthService[User] with Logging with Validation {
 
   implicit def toU(wu: WikiUser): User = wu.asInstanceOf[User]
 
@@ -120,11 +120,11 @@ class RazAuthService extends AuthService[User] with Logging {
 
   /** check that the user is active and can thus use basic functionality */
   def checkActive(au: WikiUser)(implicit errCollector: VErrors = IgnoreErrors) =
-    controllers.Admin.toON2(au.isActive) orCorr (
+    au.isActive orCorr (
       if (au.userName == "HarryPotter")
-        Admin.cDemoAccount
+        cDemoAccount
       else
-        Admin.cAccountNotActive)
+        cAccountNotActive)
 
   /** sign this content, using a server-specific key */
   def sign(content: String): String = Enc apply Enc.hash(content)
@@ -139,5 +139,4 @@ class RazAuthService extends AuthService[User] with Logging {
         )
       )
 }
-
 
