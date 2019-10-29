@@ -12,8 +12,12 @@ view an engine
 @eng.map{ e=>
   @if(!DomState.isDone(e.status)) {
     In progress... @e.progress
-    <a href="@mod.diesel.controllers.routes.DomGuard.dieselEngineCancel(e.id)">Cancel</a>
-    <br>
+    <a class="label label-danger" href="@mod.diesel.controllers.routes.DomGuard.dieselEngineCancel(e.id)">Cancel</a>
+
+    <span id="refreshBox" class="label label-default" title="Keep refreshing..." >
+      <input type="checkbox" id="refreshMode" checked>
+      <span onclick="setRefreshMode();" style="cursor:pointer" >Refresh </span></span>
+    <br><br>
   }
 
   @if(e.root.children.exists(x=> x.kind == "story")) {
@@ -42,8 +46,27 @@ view an engine
 }
 
 <script>
+var refreshMode = true;
+var done = true;
+
+@if(eng.exists(e=>DomState.isDone(e.status))) {
+done = true;
+} else {
+done = false;
+}
+
+function setRefreshMode () {
+  refreshMode = $('#refreshMode').prop('checked');
+  $('#refreshMode').prop('checked', !refreshMode);
+  $('#refreshMode').trigger("change");
+};
+
 withJquery(function ($) {
   $(window).load(function () {
+    useLocalStorageCheckbox("refreshMode", "domFiddleRefreshMode", function (a, b, expanded) {
+      refreshMode = expanded;
+    });
+
     useLocalStorageCheckbox("traceStory", "domFiddleTraceStory", function (a, b, expanded) {
       dieselHideTrace(expanded);
     });
@@ -61,6 +84,11 @@ withJquery(function ($) {
     });
   });
 });
+
+setInterval(function(){
+  if(refreshMode && !done)  window.location.reload();
+}, 3000);
+
 </script>
 
 @util.oneModal()
