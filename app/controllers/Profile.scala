@@ -506,9 +506,13 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
 
   // display consent
   def doeConsent (next:String) = FAUR { implicit request =>
-    ROK.k apply {implicit stok=>
-      views.html.user.doeConsent(next)
-    }
+      if(request.au.exists(_.hasConsent(request.realm)) || !request.website.needsConsent) {
+        Redirect(next).withNewSession
+      } else {
+        ROK.k apply { implicit stok =>
+          views.html.user.doeConsent(next)
+        }
+      }
   }
 
   // accepted consent, record it
