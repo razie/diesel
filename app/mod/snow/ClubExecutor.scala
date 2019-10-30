@@ -5,8 +5,8 @@ import org.bson.types.ObjectId
 import razie.audit
 import razie.clog
 import razie.db._
-import razie.diesel.dom.ECtx
 import razie.diesel.exec.EExecutor
+import razie.diesel.expr.ECtx
 import razie.diesel.ext.{EMsg, EVal, MatchCollector}
 import razie.wiki.model._
 

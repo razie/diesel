@@ -110,7 +110,7 @@ class Application extends RazController {
 
                 val dom = w.flatMap(_.prop("domain"))
 
-                log(s"### - $r - $dom - ${w.isDefined}")
+                log(s"### - $r - $dom - ${w.isDefined} - $getHost - ${hostedDomains.mkString}")
 
                 if(!dom.exists(h=> hostedDomains.exists(d=> h.endsWith(d)))) {
                   // had another domain - redirect

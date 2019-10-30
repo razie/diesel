@@ -11,7 +11,7 @@ import model.{TPersonInfo, User}
 import org.joda.time.DateTime
 import razie.Logging
 import razie.diesel.dom.RDOM.P
-import razie.diesel.dom.StaticECtx
+import razie.diesel.expr.StaticECtx
 import razie.diesel.ext.Attrs
 import razie.tconf.Visibility
 import razie.wiki.admin.{MailSession, SecLink, SendEmail}

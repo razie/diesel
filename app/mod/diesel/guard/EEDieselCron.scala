@@ -30,6 +30,7 @@ import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 import razie.cdebug
 import razie.diesel.Diesel
+import razie.diesel.expr.ECtx
 
 /** in-mem representation of an on-going schedule */
 case class DomSchedule (

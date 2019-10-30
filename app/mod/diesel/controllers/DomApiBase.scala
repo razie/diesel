@@ -4,7 +4,7 @@ import controllers._
 import model._
 import org.bson.types.ObjectId
 import razie.Logging
-import razie.diesel.dom.SimpleECtx
+import razie.diesel.expr.SimpleECtx
 import razie.wiki.Services
 import razie.wiki.admin.Autosave
 import razie.wiki.model._

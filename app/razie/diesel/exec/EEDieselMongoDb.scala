@@ -10,6 +10,7 @@ import com.mongodb.casbah.Imports._
 import razie.db._
 import razie.diesel.dom.RDOM._
 import razie.diesel.dom._
+import razie.diesel.expr.ECtx
 import razie.diesel.ext.{MatchCollector, _}
 
 

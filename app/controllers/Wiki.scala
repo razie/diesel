@@ -296,7 +296,7 @@ object Wiki extends WikiBase {
   def showWid(cw: CMDWID, count: Int, irealm:String) = Action {implicit request=>
     prepWid(cw, irealm).map {wid=>
     cw.cmd match {
-        
+
         // NOTE - these must be listed in WID.cmdfromPath
 
       case "content" => wid.page.map(w=> Ok(w.content).as("text/plain")).getOrElse(NotFound("WID not found:"+wid.wpath))

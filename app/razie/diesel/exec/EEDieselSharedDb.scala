@@ -9,6 +9,7 @@ package razie.diesel.exec
 import com.mongodb.casbah.Imports._
 import razie.diesel.dom.RDOM._
 import razie.diesel.dom._
+import razie.diesel.expr.ECtx
 import razie.diesel.ext.{MatchCollector, _}
 import scala.collection.concurrent.TrieMap
 import scala.collection.mutable

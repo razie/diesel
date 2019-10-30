@@ -29,8 +29,9 @@ import razie.db.RMongo
 import play.api.mvc.AnyContent
 import play.api.mvc.Result
 import razie.db.RDelete
-import razie.diesel.dom.{ECtx, WikiDomain}
+import razie.diesel.dom.WikiDomain
 import razie.diesel.exec.EExecutor
+import razie.diesel.expr.ECtx
 import razie.diesel.ext.{EMsg, EVal, MatchCollector}
 import razie.wiki.Config
 import scala.collection.mutable.ListBuffer
