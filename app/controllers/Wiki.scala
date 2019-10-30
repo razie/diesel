@@ -296,6 +296,11 @@ object Wiki extends WikiBase {
   def showWid(cw: CMDWID, count: Int, irealm:String) = Action {implicit request=>
     prepWid(cw, irealm).map {wid=>
     cw.cmd match {
+        
+        // NOTE - these must be listed in WID.cmdfromPath
+
+      case "content" => wid.page.map(w=> Ok(w.content).as("text/plain")).getOrElse(NotFound("WID not found:"+wid.wpath))
+      case "included" => wid.page.map(w=> Ok(w.included).as("text/plain")).getOrElse(NotFound("WID not found:"+wid.wpath))
       case "xp"  => xp(wid, cw.rest).apply(request).value.get.get
       case "xpl" => xpl(wid, cw.rest).apply(request).value.get.get
       case "edit" => Redirect(routes.Wikie.wikieEdit(wid))
