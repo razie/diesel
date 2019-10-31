@@ -247,6 +247,8 @@ withJquery(function($) {
 
   $("#draft").change(checkDraft);
 
+  console.log("START - timeStamp:"+timeStamp+" - hasDraft:"+@hasDraft + " - ver:" + @{wid.page.map(_.ver)} );
+
   if (localStorage.getItem("weDsl") != 'undefined')
     $('#' + "weDsl").prop('checked', localStorage.getItem("weDsl") === 'true');
 
@@ -873,6 +875,7 @@ withJquery(function() {
 function showHideIframe() {
   if($('#treeMode').prop('checked')) {
     $('#iframeOut3_').show();
+    runpill2('5');
   } else if(isDiesel) {
     $('#iframeOut3_').hide();
     runpill2('5');

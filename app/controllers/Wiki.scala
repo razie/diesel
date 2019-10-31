@@ -15,6 +15,10 @@ import org.bson.types.ObjectId
 import play.twirl.api.Html
 import razie.db.RazSalatContext._
 import com.mongodb.DBObject
+import controllers.Wiki.w
+import controllers.Wikie.{ROK, editForm, wvis}
+import play.api.data.Form
+import play.api.data.Forms.{mapping, nonEmptyText, text}
 import razie.db.ROne
 import play.api.mvc.{Action, AnyContent, Cookie, Request}
 import razie.wiki.util.{PlayTools, QueryParms}
@@ -28,6 +32,7 @@ import razie.wiki.model.WikiAudit
 import scala.concurrent.Future
 import razie.audit.Audit
 import razie.hosting.{Website, WikiReactors}
+import razie.tconf.Visibility.PUBLIC
 import scala.util.Try
 
 /** reused in other controllers */
@@ -292,6 +297,23 @@ object Wiki extends WikiBase {
       }
   }
 
+  case class EditWiki(label: String, markup: String, content: String, visibility: String, edit: String, oldVer:String, tags: String, notif: String)
+
+  val editForm = Form {
+    mapping(
+      "label" -> nonEmptyText.verifying(vBadWords, vSpec),
+      "markup" -> nonEmptyText.verifying("Unknown!", {x:String=> Wikis.markups.contains(x)}),
+      "content" -> text,
+      "visibility" -> nonEmptyText,
+      "wvis" -> nonEmptyText,
+      "oldVer" -> nonEmptyText,
+      "tags" -> text.verifying(vBadWords, vSpec),
+      "draft" -> text.verifying(vBadWords, vSpec))(EditWiki.apply)(EditWiki.unapply) verifying (
+        "Your entry failed the obscenity filter", { ew: EditWiki => !Wikis.hasBadWords(ew.content)
+    })
+  }
+
+
   /** show a page */
   def showWid(cw: CMDWID, count: Int, irealm:String) = Action {implicit request=>
     prepWid(cw, irealm).map {wid=>
@@ -305,6 +327,24 @@ object Wiki extends WikiBase {
       case "xpl" => xpl(wid, cw.rest).apply(request).value.get.get
       case "edit" => Redirect(routes.Wikie.wikieEdit(wid))
       case "rss.xml" => rss(wid, cw.rest).apply(request).value.get.get
+      case "dualView"  => {
+        wid.page.map(w=>
+          ROK.r noLayout { implicit stok =>
+            views.html.util.reactorLayout12FullPage(
+              views.html.wiki.wikiDualView(w.wid, w, editForm.fill(
+                EditWiki(w.label,
+                  w.markup,
+                  w.content,
+                  PUBLIC,
+                  PUBLIC,
+                  w.ver.toString,
+                  "",
+                  w.props.get("draft").getOrElse("Silent"))) ),
+              Seq.empty
+            )
+          }
+        ).getOrElse(NotFound("WID not found:"+wid.wpath))
+      }
       case "debug" | "usage" => {//Action.async { implicit request =>
         val realm = getRealm(irealm)
         val wid = cw.wid.get.r(realm)

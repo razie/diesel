@@ -719,7 +719,10 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
                 // temp allow admin to reset to draft
                 (au.isMod && notif == "Draft" && !w.props.contains("draft")) ||
                 w.tags.mkString(",") != tags) orErr ("no change");
-              conflict <- (oldVer == w.ver.toString) orCorr new Corr ("Topic modified in between", "Edit this last vesion and make your changes again.");
+              conflict <- (oldVer == w.ver.toString) orCorr
+                  new Corr (
+                    s"Topic modified in between ($oldVer ${w.ver})",
+                    "Edit this last vesion and make your changes again.");
               stillLocked <- EditLock.canSave(w.uwid, w.wid.wpath, stok.au.get) orErr "You lost the lock on this page, to ?";
               newlab <- Some(if ("WikiLink" == wid.cat || "User" == wid.cat) l else if (wid.name == Wikis.formatName(l)) l else w.label);
               newVer <- Some(w.cloneNewVer(newlab, m, newContent, au._id));
