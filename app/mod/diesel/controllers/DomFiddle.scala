@@ -286,9 +286,11 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
     * @param id - unique session / page Id, used to identify WebSocket customers too
     * @return
     */
-  def fiddleStoryUpdated(id: String) : Action[AnyContent] = RAction.async { implicit stok=>
+  def fiddleStoryUpdated(id: String) : Action[AnyContent] = RAction.withAuth.noRobots.async { implicit stok=>
     val stimer = new CSTimer("buildDomStory", id)
     stimer start "heh"
+
+    // todo need better auth - verify wid auth, user belongs to realm etc
 
     val settings = DomEngineHelper.settingsFrom(stok)
 

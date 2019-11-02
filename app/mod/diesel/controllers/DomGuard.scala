@@ -337,8 +337,8 @@ class DomGuard extends DomApiBase with Logging {
     }.getOrElse {
       var started = "Can't auto-start one"
       if (DomGuardian.enabled(stok.realm) && DomGuardian.onAuto(stok.realm)) {
-        startCheck(stok.realm, stok.au)
-        started = "One just auto-started"
+        val (f, e) = startCheck(stok.realm, stok.au)
+        started = s"""One just auto-started <a href="/diesel/viewAst/${e.id}">view</a> """
       }
 
       // new

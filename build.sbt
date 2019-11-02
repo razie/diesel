@@ -117,4 +117,12 @@ publishArtifact in Test := false
 
 pomIncludeRepository := { x => false }
 
+val printTests = taskKey[Unit]("something")
+
+printTests := {
+  val tests = (definedTests in Test).value
+  tests map { t =>
+    println(t.name)
+  }
+}
 

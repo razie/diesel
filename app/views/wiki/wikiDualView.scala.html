@@ -119,8 +119,6 @@ edit a wiki page
 
         </div>
 
-        <div id="weSettings" class="form-group col-sm-3 alert alert-info">
-        </div>
       </div>
 
       @myForm.globalError.map { err=>
@@ -302,7 +300,7 @@ edit a wiki page
           | <input type="checkbox" name="weServer" id="weServer"> server
         }
         @if(wid.page.exists(_.tags.contains("dsl"))) {
-          | <input type="checkbox" id="treeMode" title="Run this and show the trace" checked> <span class="glyphicon glyphicon-signal"></span> diesel
+          | <input type="checkbox" id="treeMode" title="Run this and show the trace" > <span class="glyphicon glyphicon-signal"></span> diesel
         }
 
         &nbsp;
@@ -501,14 +499,10 @@ edit a wiki page
 
 //////////////////////// resizing layout
 
-      var currentLayout = "12";
+      currentLayout = "6";
 
       withJquery(function() {
-        if (window.localStorage.getItem("weEditLayout") != null) {
-          currentLayout = window.localStorage.getItem("weEditLayout");
-        }
-
-        setView("12", currentLayout);
+        setView("0", currentLayout);
       });
 
       function setTextAreaHeight () {
@@ -556,12 +550,10 @@ edit a wiki page
           // 1/3 editor 2/3 preview
           $("#weForm"  ).addClass("col-sm-4");
           $("#weForm"  ).css("position", "fixed");
-//    $("#weForm"  ).css("height", window.innerHeight+"px);
           $("#weForm1"  ).addClass("col-sm-4");
           $("#weForm1"  ).show();
           $("#weOutput").addClass("col-sm-8");
           $("#weForm9" ).addClass("form-group col-sm-12");
-//    $("#editForm"     ).addClass("well");
           $("#weSettings").hide();
           $("#label_field").hide();
           setTextAreaHeight();
@@ -613,13 +605,11 @@ edit a wiki page
         setTextAreaHeight();
       }
 
-      var layouts = ["12", "6", "9"];
+      var layouts = ["6", "9", "12"];
 
       resetView = function() {
 
         var newLayout = layouts[(layouts.indexOf(currentLayout)+1) % layouts.length];
-
-        window.localStorage.setItem("weEditLayout", newLayout);
 
         setView(currentLayout, newLayout);
         currentLayout = newLayout;
@@ -643,7 +633,6 @@ edit a wiki page
             }
             else{
               $("#weFooter"  ).css("position", "static");
-//        $('#weFooter').css({'top':s});
             }
 
             var wtop = $(window).scrollTop();    // dist to top of screen
@@ -657,8 +646,6 @@ edit a wiki page
               var h3 = h1 - h2;
               var newtop = Math.min(h1, Math.max(0, Math.ceil(perc * h3)));
 
-//        console.log("w " + h1 + " - " + newtop + " - " + (newtop/h3) + " - " + wtop + " - " + weh + " - " + perc);
-
               // only if there's more content than visible
               if(weh > wh)
                 $('#content').scrollTop(newtop);
@@ -668,8 +655,6 @@ edit a wiki page
 
               var Range = ace.require('ace/range').Range;
               aceEditor.scrollToLine(lineNum, true, true, function () {});
-              //editor1.gotoLine(lineNum, 10, true);
-//          editor1.session.addMarker(new Range(lineNum-1, 0, lineNum-1, 100), "ace-primaryline", "fullLine");
             }
           }
         });
@@ -696,8 +681,6 @@ edit a wiki page
       switchDsl();
 
 
-      useLocalStorageCheckbox("treeMode", "domFiddleWikiMode");
-
       $('#treeMode').change(function(){
         showHideIframe();
       });
@@ -713,7 +696,6 @@ edit a wiki page
           runpill2('5');
         }
       };
-
 
       refreshDsl = function() {
         // run all the time not just when tree is checked - now we use syntax markers
@@ -787,7 +769,6 @@ edit a wiki page
       }
       // },100);
 
-//}); - if I remove these, it goes berserk
     }); // withJquery
 
 </script>
