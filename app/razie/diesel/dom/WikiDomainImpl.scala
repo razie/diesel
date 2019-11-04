@@ -6,10 +6,7 @@
  */
 package razie.diesel.dom
 
-import razie.diesel.dom.RDOM.DE
 import razie.wiki.model._
-import razie.diesel.ext._
-
 import scala.collection.mutable.ListBuffer
 
 /** encapsulates the knowledge to use the wiki-defined domain model

@@ -6,10 +6,9 @@
  */
 
 import admin._
-import akka.actor.ActorSystem
 import com.google.inject.AbstractModule
-import com.mongodb.casbah.{MongoConnection, MongoDB}
 import com.mongodb.casbah.Imports._
+import com.mongodb.casbah.{MongoConnection, MongoDB}
 import controllers._
 import mod.cart.{EEModCartExecutor, EEModUserExecutor}
 import mod.diesel.controllers.{DieselMod, FiddleMod}
@@ -18,20 +17,17 @@ import mod.snow.EEModSnowExecutor
 import mod.wiki.CaptchaMod
 import model.WikiUsersImpl
 import razie.audit.{Audit, AuditService, MdbAuditService}
-import razie.db.{RMongo, ROne, RazMongo, UpgradeDb}
-import razie.diesel.dom.{RDomainPlugin, RDomainPlugins, WikiDomain}
-import razie.diesel.engine.{DieselAppContext, RDExt}
-import razie.diesel.exec.{EEDieselDT, EEDieselMemDb, EEDieselMongodDb, EEDieselSharedDb, Executors}
+import razie.db.{RMongo, RazMongo, UpgradeDb}
+import razie.diesel.dom.{RDomainPlugins, WikiDomain}
+import razie.diesel.engine.DieselAppContext
+import razie.diesel.engine.exec._
 import razie.hosting.{Website, WikiReactors}
 import razie.tconf.hosting.Reactors
-import razie.wiki.admin.{SecLink, SendEmail}
+import razie.wiki.admin.SecLink
+import razie.wiki.model.WikiUsers
 import razie.wiki.mods.WikiMods
 import razie.wiki.{Config, EncryptService, Services, WikiConfig}
-import razie.wiki.model.WikiUsers
-import razie.wiki.util.AuthService
 import razie.{Log, clog, cout, wiki}
-import scala.concurrent.ExecutionContext
-import services.AtomicCounter
 
 /** initialize this module */
 class Module extends AbstractModule {

@@ -8,7 +8,7 @@ package razie.wiki.parser
 
 import model.Tags.Tags
 import razie.diesel.dom.RDOM
-import razie.diesel.ext.{EMock, EMsg}
+import razie.diesel.engine.nodes.{EMock, EMsg}
 import razie.tconf.parser.{LazyAstNode, StrAstNode}
 import razie.wiki.model.WikiEntry
 import razie.wiki.model.WikiUser

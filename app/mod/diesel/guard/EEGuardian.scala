@@ -11,10 +11,9 @@ import model.Users
 import razie.Logging
 import razie.diesel.dom.RDOM.P
 import razie.diesel.dom._
-import razie.diesel.exec.EExecutor
+import razie.diesel.engine.exec.EExecutor
+import razie.diesel.engine.nodes._
 import razie.diesel.expr.ECtx
-import razie.diesel.ext
-import razie.diesel.ext.{MatchCollector, _}
 import razie.diesel.model.DieselMsg
 import razie.diesel.utils.DieselData
 import razie.hosting.Website
@@ -66,7 +65,7 @@ class EEGuardian extends EExecutor(DieselMsg.GUARDIAN.ENTITY) with Logging {
           info(s"Guardian - ends $realm-$env - newStatus $newStatus vs oldStatus $oldStatus")
 
           // lazy to capture the newStatus
-          def m = ext.EMsg(
+          def m = EMsg(
             DieselMsg.GUARDIAN.ENTITY,
             DieselMsg.GUARDIAN.NOTIFY,
             List(
@@ -125,7 +124,7 @@ class EEGuardian extends EExecutor(DieselMsg.GUARDIAN.ENTITY) with Logging {
         else settings.realm.mkString
 
         val x @ (f, e) = DomGuardian.runReq(settings.userId.flatMap(Users.findUserById), inrealm, env, true)
-        EVal(P("payload", s"""scheduled new run... <a href="/diesel/viewAst/${e.id}">view</a>""", WTypes.HTML)) :: Nil
+        EVal(P("payload", s"""scheduled new run... <a href="/diesel/viewAst/${e.id}">view</a>""", WTypes.wt.HTML)) :: Nil
       }
 
       case "stats" => {

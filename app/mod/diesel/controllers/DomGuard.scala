@@ -12,7 +12,7 @@ import razie.audit.Audit
 import razie.diesel.dom._
 import razie.diesel.engine.RDExt._
 import razie.diesel.engine._
-import razie.diesel.ext.EnginePrep
+import razie.diesel.engine.nodes.EnginePrep
 import razie.diesel.utils.{AutosaveSet, DomCollector, DomWorker}
 import razie.diesel.utils.DomHtml.quickBadge
 import razie.hosting.WikiReactors

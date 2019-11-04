@@ -5,14 +5,14 @@
   **/
 package controllers
 
-import mod.diesel.model.exec.EESnakk
 import mod.snow.RacerKid
 import model.{TPersonInfo, User}
 import org.joda.time.DateTime
 import razie.Logging
 import razie.diesel.dom.RDOM.P
+import razie.diesel.engine.exec.EESnakk
+import razie.diesel.engine.nodes.Attrs
 import razie.diesel.expr.StaticECtx
-import razie.diesel.ext.Attrs
 import razie.tconf.Visibility
 import razie.wiki.admin.{MailSession, SecLink, SendEmail}
 import razie.wiki.model._

@@ -8,9 +8,9 @@ import org.bson.types.ObjectId
 import org.joda.time.DateTime
 import play.libs.Akka
 import razie.Logging
+import razie.diesel.engine.nodes.EnginePrep
 import razie.diesel.engine.{DieselAppContext, DomEngine, DomEngineSettings}
 import razie.diesel.expr.SimpleECtx
-import razie.diesel.ext.EnginePrep
 import razie.diesel.model.{DieselMsg, DieselTarget}
 import razie.diesel.utils.{DieselData, DomCollector}
 import razie.hosting.Website

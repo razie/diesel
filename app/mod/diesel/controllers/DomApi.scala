@@ -4,7 +4,6 @@ import com.google.inject.Singleton
 import controllers.{Profile, RazRequest}
 import difflib.{DiffUtils, Patch}
 import mod.diesel.model._
-import mod.diesel.model.exec.{EECtx, EESnakk}
 import model._
 import org.bson.types.ObjectId
 import org.joda.time.DateTime
@@ -16,9 +15,9 @@ import razie.diesel.dom._
 import razie.diesel.engine.DomEngineSettings.DIESEL_USER_ID
 import razie.diesel.engine.RDExt._
 import razie.diesel.engine._
-import razie.diesel.exec.SnakkCall
+import razie.diesel.engine.exec.{EECtx, EESnakk, SnakkCall}
+import razie.diesel.engine.nodes._
 import razie.diesel.expr.{ECtx, StaticECtx}
-import razie.diesel.ext.{EnginePrep, _}
 import razie.diesel.model.DieselMsg
 import razie.diesel.utils.{AutosaveSet, DomCollector, DomWorker, SpecCache}
 import razie.hosting.Website
@@ -878,7 +877,7 @@ class DomApi extends DomApiBase  with Logging {
       } catch {
         case t: Throwable => {
           razie.Log.log("error parsing", t)
-          engine.root.children.appendAll({
+          engine.root.childrenCol.appendAll({
             EError("Error parsing: " + template.specPath, t.toString) ::
               new EError("Exception : ", t) :: Nil
           }.map(DomAst(_, AstKinds.ERROR))
@@ -912,7 +911,7 @@ class DomApi extends DomApiBase  with Logging {
             } catch {
               case t: Throwable => {
                 razie.Log.log("NO TEMPLATE found - error trying to parse body as json", t)
-                engine.root.children.appendAll({
+                engine.root.childrenCol.appendAll({
                   EWarning("No template found for path: " +path ) ::
                   EWarning("Error parsing: " + body, t.toString) ::
                   new EWarning("Exception : ", t) :: Nil
