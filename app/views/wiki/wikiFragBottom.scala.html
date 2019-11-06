@@ -43,7 +43,7 @@ wiki fragment, used in another page
     <div id="voteLike" class="label label-info" style="padding: 10px">
     <b>Was this useful? &nbsp;
       @if(!stok.au.exists(_.isActive) || page.exists(p => !(p.likes contains stok.au.get._id.toString))) {
-        <a href="javascript:likeWiki(1)" class="glyphicon glyphicon-thumbs-up btn " style="font-size: large" title="This topic is helpful"></a>
+        <a href="javascript:likeWikiFunc(1)" class="glyphicon glyphicon-thumbs-up btn " style="font-size: large" title="This topic is helpful"></a>
       } else {
         <span class="glyphicon glyphicon-thumbs-up" title="You already rated this topic"></span>
       }
@@ -56,7 +56,7 @@ wiki fragment, used in another page
 
         &nbsp;
       @if(!stok.au.exists(_.isActive) || page.exists(p => !(p.dislikes contains stok.au.get._id.toString))) {
-        <a href="javascript:likeWiki(0)" class="glyphicon glyphicon-thumbs-down btn " style="font-size: large" title="This topic is not helpful"></a>
+        <a href="javascript:likeWikiFunc(0)" class="glyphicon glyphicon-thumbs-down btn " style="font-size: large" title="This topic is not helpful"></a>
       } else {
         <span class="glyphicon glyphicon-thumbs-down" title="You already rated this topic"></span>
       }
@@ -198,3 +198,36 @@ wiki fragment, used in another page
   </div>
 } <!-- /simple -->
 
+  <script>
+      // simple protection for multiple clickskA
+      // DO NOT move this function - rrequires wid
+      function likeWikiFunc (how) {
+        require(['jquery'], function($){
+          if(! wikiVoted) {
+            $.ajax(
+                "@routes.Wikie.like(wid)", {
+                  type: 'POST',
+                  data: $.param({
+                    how : ''+how
+                  }),
+                  contentType: 'application/x-www-form-urlencoded',
+                  success: function(data) {
+                    // update data.likesCount and datadislikesCount
+                  },
+                  error  : function(x) {
+                    console.log( "ERR "+JSON.stringify(x));
+                  }
+                });
+            $(".voteLikeThanks").text("Thank you!");
+            $(".voteLikeThanks").show(2000);
+            $(".voteLikeThanks").hide(2000);
+            wikiVoted=true;
+          } else {
+            $(".voteLikeThanks").text("Already voted!");
+            $(".voteLikeThanks").show(2000);
+            $(".voteLikeThanks").hide(2000);
+          }
+        });
+      };
+
+  </script>

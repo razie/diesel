@@ -176,6 +176,10 @@ class DomGuard extends DomApiBase with Logging {
           val uname = a.userId.map(u => Users.nameOf(new ObjectId(u))).getOrElse("[auto]")
           val duration = a.engine.root.tend - a.engine.root.tstart
 
+          val st =
+            if(DomState.isDone(a.engine.status)) a.engine.status
+            else s"<b>${a.engine.status}</b>"
+
           // todo this is mean
           s"""
              |<td>${i}</td>
@@ -183,7 +187,7 @@ class DomGuard extends DomApiBase with Logging {
              |<td>${a.stream}</td>
              |<td>${a.realm}</td>
              |<td>${uname}</td>
-             |<td>${a.engine.status}</td>
+             |<td>$st</td>
              |<td>${a.dtm.toString("HH:mm:ss.SS")}</td>
              |<td align="right">$duration</td>
              |<td><small>${a.engine.description}</small></td>
