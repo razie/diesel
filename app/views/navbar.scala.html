@@ -103,7 +103,11 @@ require(['jquery'], function($){
 </script>
           } else {
             <li>
-              <a href="@t._2">@Html(label)</a>
+              @if(t._2.startsWith("javascript:")) {
+                  <a href onclick="@t._2">@Html(label)</a>
+              } else {
+                  <a href="@t._2">@Html(label)</a>
+              }
             </li>
           }
           }
