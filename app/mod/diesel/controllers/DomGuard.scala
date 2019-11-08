@@ -1,9 +1,11 @@
 package mod.diesel.controllers
 
+import akka.actor.ActorRef
 import controllers.Profile
 import java.net.InetAddress
+import mod.diesel.guard.DieselCron.worker
 import mod.diesel.guard.DomGuardian
-import mod.diesel.guard.DomGuardian.startCheck
+import mod.diesel.guard.DomGuardian.{Report, startCheck}
 import mod.diesel.model._
 import model._
 import org.bson.types.ObjectId
@@ -19,9 +21,17 @@ import razie.hosting.WikiReactors
 import razie.wiki.Config
 import razie.wiki.admin.Autosave
 import razie.wiki.model._
-import razie.{Logging, js}
+import razie.{Logging, clog, js}
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.{Await, Future}
+import scala.util.Try
+import scala.concurrent.duration.{Duration, FiniteDuration}
+import akka.pattern.ask
+import akka.util.Timeout
+import java.util.concurrent.atomic.AtomicInteger
+import razie.wiki.util.NoAuthService
+import scala.concurrent.{Await, Future}
+import scala.concurrent.duration._
 
 /** controller for server side fiddles / services */
 class DomGuard extends DomApiBase with Logging {
@@ -304,6 +314,61 @@ class DomGuard extends DomApiBase with Logging {
     }
   }
 
+  @inline class cs() {
+    val sb = new StringBuilder()
+    def <<(x: Any) = { (sb append x + "\n"); this }
+
+    override def toString = sb.toString
+  }
+
+  def dieselPerf(threads:Int, cycles:Int) = Filter(activeUser).async { implicit stok =>
+    val start = System.currentTimeMillis()
+    val flowCount = new AtomicInteger(0)
+    val testCount = new AtomicInteger(0)
+    val failCount = new AtomicInteger(0)
+
+    // use the play pool
+    import scala.concurrent.ExecutionContext.Implicits.global
+
+    Future {
+
+      razie.Threads.forkjoin(Range(0, threads).toList) { i =>
+        Range(0, cycles).toList.foreach { j =>
+          val fut = DomGuardian.runReqUnsafe(Some(NoAuthService.harry), "specs", "", Some("Story/-noperf"))._1
+
+          val fe = Await.result(
+            fut,
+            15 minutes
+          )
+
+          flowCount.incrementAndGet()
+          testCount.addAndGet(fe.engine.totalTestCount)
+          failCount.addAndGet(fe.engine.failedTestCount)
+
+//          assert(fe.engine.resultingValue contains s"Greetings, Jane$i-$j")
+        }
+      }
+
+      val end = System.currentTimeMillis()
+      val dur = (end-start)/1000
+
+      val cs = new cs()
+      cs << "==========================================="
+      cs << DieselAppContext.activeEngines.values.toList.mkString("\n")
+
+//      assert(DieselAppContext.activeEngines.size == 0)
+//      assert(DieselAppContext.activeActors.size == 0)
+
+      val perf = if(dur > 0) flowCount.get() / dur else -1
+      cs << s"T O T A L  $testCount tests"
+      cs << s"F A I L    $failCount tests"
+      cs << s"T O T A L  $flowCount flows in $dur seconds meaning $perf per sec"
+
+      clog << cs.toString
+      Ok("done... " + cs.toString)
+    }
+  }
+
   /** status badge for all realms */
   def dieselStatusAll = Filter(activeUser).async { implicit stok =>
     val t = (0, 0, 0L)
@@ -339,11 +404,17 @@ class DomGuard extends DomApiBase with Logging {
         }
       }
     }.getOrElse {
-      var started = "Can't auto-start one"
-      if (DomGuardian.enabled(stok.realm) && DomGuardian.onAuto(stok.realm)) {
-        val (f, e) = startCheck(stok.realm, stok.au)
-        started = s"""One just auto-started <a href="/diesel/viewAst/${e.id}">view</a> """
-      }
+      var started =
+        Try {
+          if (DomGuardian.enabled(stok.realm) && DomGuardian.onAuto(stok.realm)) {
+            val (f, e) = startCheck(stok.realm, stok.au)
+            s"""One just auto-started <a href="/diesel/viewAst/${e.id}">view</a> """
+          } else
+            "Can't auto-start one"
+        }.recover {
+          case throwable: Throwable => throwable.getMessage
+        }
+
 
       // new
       Future.successful {

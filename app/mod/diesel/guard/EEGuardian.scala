@@ -80,14 +80,14 @@ class EEGuardian extends EExecutor(DieselMsg.GUARDIAN.ENTITY) with Logging {
 
           val res = if (engine.failedTestCount > 0) {
             newStatus = "Fail"
-            EInfo(s"Guardian - failed ${engine.id} count: ${engine.failedTestCount}") ::
+            EVal(P("guardianResult", s"Guardian - failed: ${engine.progress}")) ::
                 m :: Nil
           } else {
             newStatus = "Success"
             // only send notification if it failed last time
             // or send them every time it detects a change, even if successful, to have a record of it having run?
             val mList = if(true || oldStatus == "Fail") m :: Nil else Nil
-            EInfo(s"Guardian - success ${engine.id} count: ${engine.failedTestCount}") ::
+            EVal(P("guardianResult", s"Guardian - success: ${engine.progress}")) ::
                 mList
           }
 

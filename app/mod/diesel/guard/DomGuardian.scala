@@ -14,6 +14,7 @@ import razie.diesel.expr.SimpleECtx
 import razie.diesel.model.{DieselMsg, DieselTarget}
 import razie.diesel.utils.{DieselData, DomCollector}
 import razie.hosting.Website
+import razie.tconf.TagQuery
 import razie.wiki.{Config, Services}
 import razie.wiki.model._
 import razie.wiki.util.PlayTools
@@ -136,11 +137,12 @@ object DomGuardian extends Logging {
   final val NOT_ACTIVE_REPORT =
     Report(None, "I'm not the active Guardian", null, "not active", "?", 0, 0, 0, DateTime.now())
 
-  case class RunReq(au: Option[User],
+  case class RunReq(au: Option[WikiUser],
                     userName: String,
                     realm: String,
                     ienv: String,
                     auto:Boolean = false, // autos will send emails
+                   tq:Option[String] = None,
                     when: DateTime = DateTime.now()) {
 
     def env = if (ienv.nonEmpty) ienv else dwix.dieselEnvFor(realm, au)
@@ -154,8 +156,7 @@ object DomGuardian extends Logging {
       log(s"RunReq.run() start $realm")
 
       val settings = mkSettings()
-      settings.tagQuery =
-          Website.forRealm(realm).flatMap(_.prop("guardian.settings.query"))
+      settings.tagQuery = tq.orElse(Website.forRealm(realm).flatMap(_.prop("guardian.settings.query")))
       settings.realm = Some(realm)
 
       if (Config.isLocalhost)
@@ -276,8 +277,25 @@ object DomGuardian extends Logging {
   private var curRun: Option[(String, DomEngine, Future[DomGuardian.Report])] =
     None
 
+  /** just run, no checks */
+  def runReqUnsafe(au: Option[WikiUser], realm: String, env: String, tq:Option[String]=None): (Future[Report], DomEngine) = {
+    DomGuardian.synchronized {
+      val rr = RunReq(au, au.map(_.userName).mkString, realm, env, false, tq)
+      val k = rr.key
+      debug(s"GuardianActor received a RunReqUnsafe $k")
+
+      debug(
+        s"GuardianActor.RunReq ${rr.realm}.${rr.userName} - append to debouncer"
+      )
+
+      val x@(fut, engine) = rr.run
+//      debouncer.append((k, rr, fut, engine))
+      x
+    }
+  }
+
   /** if no test is currently running, start one */
-  def runReq(au: Option[User], realm: String, env: String, auto:Boolean = false): (Future[Report], DomEngine) =
+  def runReq(au: Option[WikiUser], realm: String, env: String, auto:Boolean = false): (Future[Report], DomEngine) = {
     if(DieselCron.isMasterNode(Website.forRealm(realm).get)) {
       DomGuardian.synchronized {
         val rr = RunReq(au, au.map(_.userName).mkString, realm, env, auto)
@@ -315,9 +333,9 @@ object DomGuardian extends Logging {
         ret
       }
     } else {
-//      (Future.failed(new IllegalStateException("I'm not the active guardian!")), null)
-      (Future.successful(NOT_ACTIVE_REPORT), null)
+      throw new IllegalStateException("I'm not the active Guardian")
     }
+  }
 
   lazy val worker =
     DieselAppContext.actorOf(Props[GuardianActor], name = "GuardianActor")
