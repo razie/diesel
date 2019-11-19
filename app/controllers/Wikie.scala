@@ -455,9 +455,6 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
 
           we = signScripts(we, au)
 
-          if (!we.scripts.filter(_.signature == "ADMIN").isEmpty && !(au.hasPerm(Perm.adminDb) || Services.config.isLocalhost)) {
-            noPerm(wid, "HACK_SCRIPTS1")
-          } else {
             razie.db.tx("Wiki.setSection", request.userName) { implicit txn =>
               WikiEntryOld(w, Some("setSection")).create
               w.update(we, Some("setSection"))
@@ -471,7 +468,6 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
             Services ! WikiAudit(WikiAudit.UPD_SET_CONTENT, w.wid.wpathFull, Some(au._id), None, Some(we), Some(w))
 
             Ok("ok, section updated")
-          }
       })
   }
 
@@ -538,9 +534,6 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
 
               we = signScripts(we, au)
 
-              if (!we.scripts.filter(_.signature == "ADMIN").isEmpty && !(au.hasPerm(Perm.adminDb) || Services.config.isLocalhost)) {
-                noPerm(wid, "HACK_SCRIPTS1")
-              } else {
                 razie.db.tx("Wiki.setContent", request.userName) { implicit txn =>
                   WikiEntryOld(w, Some("setContent")).create
                   w.update(we, Some("setContent"))
@@ -553,7 +546,6 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
                 Services ! WikiAudit(WikiAudit.UPD_SET_CONTENT, w.wid.wpathFull, Some(au._id), None, Some(we), Some(w))
 
                 Ok("ok")
-              }
             })
           }
 
@@ -593,16 +585,12 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
 
                 we = signScripts(we, au)
 
-                if (!we.scripts.filter(_.signature == "ADMIN").isEmpty && !(au.hasPerm(Perm.adminDb) || Services.config.isLocalhost)) {
-                  noPerm(wid, "HACK_SCRIPTS1")
-                } else {
                   razie.db.tx("Wiki.setContent", request.userName) { implicit txn =>
                     we.create
                     Services ! WikiAudit(WikiAudit.CREATE_API, we.wid.wpathFull, Some(au._id), None, Some(we))
                   }
 
                   Ok("ok")
-                }
               }
             })
           }
@@ -785,9 +773,6 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
               // clean with this realm too - when mixins find a base realm topic, will be cached with current realm
               Wikis.clearCache(we.wid, we.wid.r(stok.realm))
 
-              if (!we.scripts.filter(_.signature == "ADMIN").isEmpty && !(au.hasPerm(Perm.adminDb) || Services.config.isLocalhost)) {
-                noPerm(wid, "HACK_SCRIPTS1")
-              } else {
                 razie.db.tx("Wiki.Save", stok.userName) { implicit txn =>
                   // can only change label of links OR if the formatted name doesn't change
                   w.update(we)
@@ -803,7 +788,6 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
                 Services ! WikiAudit(WikiAudit.UPD_EDIT, w.wid.wpathFull, Some(au._id), None, Some(we), Some(w))
 
                 Redirect(controllers.Wiki.wr(we.wid, getRealm(), true)).flashing("count" -> "0")
-              }
             }) getOrElse
                 Msg("Can't edit topic: " + errCollector.mkString, wid)
 //              Redirect(controllers.Wiki.wr(wid, getRealm(), false)) // no change

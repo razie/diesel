@@ -130,13 +130,15 @@ class RazAuthService extends AuthService[User] with Logging with Validation {
   def sign(content: String): String = Enc apply Enc.hash(content)
 
   /** check that the signatures match - there's a trick here, heh */
-  def checkSignature(sign: String, signature: String, au: Option[WikiUser]): Boolean =
-    sign == signature ||
-      ("ADMIN" == signature &&
-        (
-          au.map(_.asInstanceOf[User]).exists(_.hasPerm(Perm.adminDb)) ||
-          Services.config.isLocalhost
-        )
-      )
+//  def checkSignature(realm:String, sign: String, signature: String, au: Option[WikiUser]): Boolean =
+//    sign == signature ||
+//      ("ADMIN" == signature &&
+//        (
+//          // on localhost you do what you want?
+//          au.map(_.asInstanceOf[User]).exists(_.hasPerm(Perm.adminDb)) ||
+//          au.map(_.asInstanceOf[User]).exists(_.forRealm(realm).isDev) ||
+//          Services.config.isLocalhost
+//        )
+//      )
 }
 
