@@ -164,34 +164,6 @@ class DomApi extends DomApiBase  with Logging {
     }
   }
 
-  /** /diesel/start/ea
-    * API msg sent to reactor
-    */
-  def start(e: String, a: String) = Filter(noRobots).async { implicit stok =>
-      if(stok.au.exists(_.isActive)) {
-        // insert a dot only if needed
-        val ea = (
-            if (e.length > 0 && a.length > 0) e + "." + a else e + a
-            ).replaceAllLiterally("/", ".")
-        irunDom(ea, None)
-      } else {
-        Future.successful(
-          unauthorized ("Can't start a message without an active account...")
-        )
-      }
-  }
-
-  /** /diesel/fiddle/react/ea
-    * API msg sent to reactor
-    */
-  def react(e: String, a: String) = Filter(noRobots).async { implicit stok =>
-    // insert a dot only if needed
-    val ea = (
-      if(e.length > 0 && a.length > 0) e + "." + a else e+a
-      ).replaceAllLiterally("/", ".")
-    irunDom(ea, None)
-  }
-
   private def irunDom(path: String, useThisStory: Option[WID], useThisStoryPage: Option[WikiEntry] = None, useThisSpecPage: List[WikiEntry] = Nil) (implicit stok:RazRequest) : Future[Result] = {
     val x = Try {
       irunDomInt(path, useThisStory, useThisStoryPage, useThisSpecPage)
@@ -408,7 +380,20 @@ class DomApi extends DomApiBase  with Logging {
     // not always the same as the request...
     val reactor = stok.website.dieselReactor
     val website = Website.forRealm(reactor).getOrElse(stok.website)
-    val xapikey = website.prop("diesel.xapikey")
+    val apiKey = website.prop("diesel.xapikey")
+
+    // make the diesel.rest message
+    def mkDieselRest = {
+      val qparams = DomEngineHelper.parmsFromRequestHeader(request)
+      val qFlat = qparams.map(t => P.fromTypedValue(t._1, t._2, WTypes.wt.STRING)).toList
+      val qJson = P.fromTypedValue("dieselQuery", qparams, WTypes.wt.JSON)
+
+        Some(EMsg(DieselMsg.ENGINE.DIESEL_REST, qJson :: List(
+          P.fromTypedValue("path", path),
+          P.fromTypedValue("verb", verb)
+        ) ::: qparams.map(t => P.fromTypedValue(t._1, t._2, WTypes.wt.STRING)).toList
+        ))
+    }
 
     // see if client wanted to force a response code
     stok.qhParm("dieselHttpResponse").filter(_ != "200").map {code =>
@@ -456,20 +441,26 @@ class DomApi extends DomApiBase  with Logging {
         engine = custom.get.apply(engine)
 
       // find template matching the input message, to parse attrs
-      val t@(trequest, e, a, matchedParms) = {
+      val t@(trequest, e:String, a:String, matchedParms) = {
         val fea = findEA(path, engine)
         fea._1
             .map { x => fea }
             .orElse {
+              // if a message exists, map to it
+              spec(fea._2, fea._3)(engine.ctx).map(x => fea)
+            }.orElse {
               imsg.map(x => (None, x.entity, x.met, None))
+            }.orElse {
+              mkDieselRest.map(x => (None, x.entity, x.met, None))
             }.getOrElse {
           fea
         }
       }
 
       // message specified return mappings, if any
-      val inSpec = spec(e, a)(engine.ctx).toList.flatMap(_.attrs)
-      val outSpec = spec(e, a)(engine.ctx).toList.flatMap(_.ret)
+      val msgSpec = spec(e, a)(engine.ctx)
+      val inSpec = msgSpec.toList.flatMap(_.attrs)
+      val outSpec = msgSpec.toList.flatMap(_.ret)
 
       // collect any parm specs
       val outSpecs = outSpec.map(p => (p.name, p.currentStringValue, p.expr.mkString))
@@ -493,8 +484,12 @@ class DomApi extends DomApiBase  with Logging {
         requestContentType)
 
       // incoming message
-      // first templates already matched, then imsg (diesel.rest) else e.a
-      val msg : Option[EMsg] = (trequest.flatMap(_ => findIt) orElse imsg orElse findIt)
+      // first templates already matched,
+      // then if there was a spec, findIt
+      // then imsg (diesel.rest)
+      // else diesel.rest
+      // else e.a
+      val msg : Option[EMsg] = (trequest.flatMap(_ => findIt) orElse msgSpec.flatMap(_ => findIt) orElse imsg orElse mkDieselRest orElse findIt )
           .map (msg=>
             // add matched parms
             // todo why map matched parms and not keep type/value what abt numbers, escaped json etc?
@@ -507,30 +502,17 @@ class DomApi extends DomApiBase  with Logging {
         msg.get.spec = spec(msg.get.entity, msg.get.met)(engine.ctx)
       }
 
-      cdebug << s"Message found: $msg xapikey=$xapikey"
+      cdebug << s"Message found: $msg xapikey=$apiKey"
 
       val xx = stok.qhParm("X-Api-Key").mkString
-      def needsApiKey = xapikey.isDefined
-      def isApiKeyGood = xapikey.isDefined && xapikey.exists { x =>
+      val needsApiKey = apiKey.isDefined
+      val isApiKeyGood = apiKey.isDefined && apiKey.exists { x =>
         x.length > 0 && x == xx
       }
 
       // is message visible?
-      if (msg.isDefined && !isMsgVisible(msg.get, reactor, website)) {
-        info(s"Unauthorized msg access [runrest] (diesel.visibility:${stok.website.dieselVisiblity}, ${stok.au.map(_.ename).mkString})")
-        info(s"msg: $msg - ${msg.get.isPublic} - ${msg.get.spec.toString} - reactor: $reactor")
-        Unauthorized(s"Unauthorized msg access [runrest] (diesel.visibility:${stok.website.dieselVisiblity}, ${stok.au.map(_.ename).mkString})")
-      } else if (
-        !isMemberOrTrusted(msg, reactor, website) &&
-        needsApiKey &&
-        isApiKeyGood
-        ) {
-        // good security keys for non-members (devs if logged in don't need security)
-          info(s"Unauthorized msg access [runrest] (key, dieselTrust)")
-          info(s"msg: $msg - reactor: $reactor")
-          Unauthorized(s"Unauthorized msg access [runrest] (key, dieselTrust)").withHeaders(
-          )
-      } else msg.map {msg=>
+      if (msg.isDefined && isMsgVisible(msg.get, reactor, website) || isMemberOrTrusted(msg, reactor, website) || needsApiKey && isApiKeyGood) {
+        msg.map {msg=>
 
         setApiKeyUser(needsApiKey, isApiKeyGood, website, engine)
 
@@ -555,7 +537,7 @@ class DomApi extends DomApiBase  with Logging {
                 // without hardcoded engine messages - diesel.rest is allowed
                   .filterNot(x=>
                     x.value.isInstanceOf[EMsg] &&
-                        x.value.asInstanceOf[EMsg].entity == "diesel" &&
+                        x.value.asInstanceOf[EMsg].entity == DieselMsg.ENGINE.ENTITY &&
                         x.value.asInstanceOf[EMsg].met != "rest")
                 .filter(x=>
                     // skip debug infos and other stuff = we need the first message
@@ -651,6 +633,11 @@ class DomApi extends DomApiBase  with Logging {
       //            turl.replaceFirst("https?://", "").replaceFirst(".*/", "/")
       //          } else turl
       //          matchesRequest(tpath, stok.req.path)
+    } else {
+        info(s"Unauthorized msg access [runrest] (diesel.visibility:${stok.website.dieselVisiblity}, ${stok.au.map(_.ename).mkString})")
+        info(s"msg: $msg - ${msg.get.isPublic} - ${msg.get.spec.toString} - reactor: $reactor")
+        Unauthorized(s"Unauthorized msg access [runrest] (diesel.visibility:${stok.website.dieselVisiblity}, ${stok.au.map(_.ename).mkString})")
+      }
     }
   }
 
@@ -659,19 +646,52 @@ class DomApi extends DomApiBase  with Logging {
   def mockPost(path: String) = runRest("/" + path, "POST", true)
 
   /** /diesel/rest/ path  */
-  def rest(path: String) = runRestPath("/" + path, "GET")
-  def restPost(path: String) = runRestPath("/" + path, "POST")
+  def rest(path: String) = runRest("/" + path, "GET", mock=true)
+  def restPost(path: String) = runRest("/" + path, "POST", mock=true)
 
-  private def runRestPath(path: String, verb:String) = {
+  /** /diesel/start/ea
+    * API msg sent to reactor
+    */
+  def start(e: String, a: String) = Filter(noRobots).async { implicit stok =>
+    if(stok.au.exists(_.isActive)) {
+      // insert a dot only if needed
+      val ea = (
+          if (e.length > 0 && a.length > 0) e + "." + a else e + a
+          ).replaceAllLiterally("/", ".")
+      irunDom(ea, None)
+    } else {
+      Future.successful(
+        unauthorized ("Can't start a message without an active account...")
+      )
+    }
+  }
+
+  /** /diesel/fiddle/react/ea
+    * API msg sent to reactor
+    */
+  def react(e: String, a: String) = Filter(noRobots).async { implicit stok =>
+    // insert a dot only if needed
+    val ea = (
+        if(e.length > 0 && a.length > 0) e + "." + a else e+a
+        ).replaceAllLiterally("/", ".")
+    irunDom(ea, None)
+  }
+
+  private def XXXrunRestPath(path: String, verb:String) = Action(parse.raw) { implicit request =>
+    val qparams = DomEngineHelper.parmsFromRequestHeader(request)
+    val qFlat = qparams.map(t=>P.fromTypedValue(t._1, t._2, WTypes.wt.STRING)).toList
+    val qJson = P.fromTypedValue("dieselQuery", qparams, WTypes.wt.JSON)
+
     runRest(
       path,
       verb,
       true,
-      Some(EMsg("diesel", "rest", List(
+      Some(EMsg(DieselMsg.ENGINE.DIESEL_REST, qJson :: List(
         P.fromTypedValue("path", path),
         P.fromTypedValue("verb", verb)
-      )))
-    )
+      ) ::: qparams.map(t=>P.fromTypedValue(t._1, t._2, WTypes.wt.STRING)).toList
+      ))
+    ).apply(request).value.get.get
   }
 
   /** /diesel/proxy/path   proxy real service GET */
