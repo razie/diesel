@@ -182,7 +182,7 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
     def receive = {
       case msg: String =>
         out ! (js.tojson(Map("ping" -> true, "msg" -> msg)).toString)
-      case m : Map[_,_] => //      case m: Map[String,Any] =>
+      case m : collection.Map[_,_] => //      case m: Map[String,Any] =>
         out ! (js.tojson(m).toString)
     }
 
@@ -386,7 +386,7 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
         val d = (
             if (m contains "tree") DieselJsonFactory.fromj(
               m("tree").asInstanceOf[Map[String, Any]]).asInstanceOf[DomAst]
-            else DieselJsonFactory.fromj(m).asInstanceOf[DomAst]
+            else DieselJsonFactory.fromj(m.toMap).asInstanceOf[DomAst]
             ).withDetails("(from capture)")
         captureTree = d.toHtml
         EnginePrep.addStoriesToAst(d, List(ipage), true)
@@ -716,7 +716,7 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
       "content"  -> "Paste AST capture here"
     )).apply("content")
 
-    Ok(js.tojsons(js.parse(content))).as("application/text")
+    Ok(js.tojsons(js.parse(content).toMap)).as("application/text")
   }
 
   /** fiddle screen - spec changed */

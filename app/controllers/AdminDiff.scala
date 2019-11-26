@@ -41,7 +41,7 @@ case class WEAbstract(id: String, cat: String, name: String, realm: String, ver:
     Autosave.allDrafts(we.wid).toList.size
   )
 
-  def this(x: Map[String, String]) = this(
+  def this(x: collection.Map[String, String]) = this(
     x("id"),
     x("cat"),
     x("name"),
@@ -72,7 +72,15 @@ class AdminDiff extends AdminBase {
 
     var l = Autosave.activeDrafts(stok.au.get._id).toList
 
-    def toHtml(x: Autosave) = (x.what, x.realm, x.name, WID.fromPath(x.name).map(_.url + "  ").mkString)
+    def toHtml(x: Autosave) =
+      (
+          x.what,
+          x.realm,
+          x.name,
+          WID.fromPath(x.name).map(_.url + "  ").mkString,
+          if(stok.au.exists(_.isAdmin)) s"""  (**[/razadmin/db/col/del/Autosave/${x._id.toString} del]**)"""
+          else ""
+      )
 
     // filter some internal states
     l = l.filter(_.name != "")
@@ -241,9 +249,9 @@ class AdminDiff extends AdminBase {
 
       val gd = new JSONArray(b)
       val ldest = js.fromArray(gd).collect {
-        case m: Map[_, _] => {
+        case m: collection.Map[_, _] => {
           try {
-            val x = m.asInstanceOf[Map[String, String]]
+            val x = m.asInstanceOf[collection.Map[String, String]]
             new WEAbstract(x)
           } catch {
             case e : Throwable =>
@@ -251,7 +259,7 @@ class AdminDiff extends AdminBase {
               throw e
           }
         }
-      }
+      }.toList
 
       // local list
       val lsrc = RMany[WikiEntry]().filter(we => toRealm.isEmpty || toRealm == "all" || we.realm == localRealm).map(x => new WEAbstract(x)).toList
@@ -381,8 +389,8 @@ class AdminDiff extends AdminBase {
     val gd = new JSONArray(b)
     cdebug << s"remoteWids JS $realm: \n  " + gd.toString(2)
     var ldest = js.fromArray(gd).collect {
-      case m: Map[_, _] => {
-        val x = m.asInstanceOf[Map[String, String]]
+      case m: collection.Map[_, _] => {
+        val x = m.asInstanceOf[collection.Map[String, String]]
         new WEAbstract(x)
       }
     }.map(wea => WID(wea.cat, wea.name).r(wea.realm)).toList

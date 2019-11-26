@@ -3,9 +3,9 @@ purge audit tables
 ***@
 @import razie.wiki.admin.Autosave
 @(
-    lok:List[(String,String,String,String)],
-    lneq:List[(String,String,String,String)],
-    lnon:List[(String,String,String,String)],
+    lok:List[(String,String,String,String, String)],
+    lneq:List[(String,String,String,String, String)],
+    lnon:List[(String,String,String,String, String)],
     duplos:scala.collection.mutable.HashMap [String, List[String]]
 )(implicit stok: controllers.StateOk)
 @import razie.wiki.model.WID

@@ -255,7 +255,7 @@ class DomGuard extends DomApiBase with Logging {
     // is teh map from a debug session or just the AST
     val root = (
         if (m contains "tree") DieselJsonFactory.fromj(m("tree").asInstanceOf[Map[String, Any]]).asInstanceOf[DomAst]
-        else DieselJsonFactory.fromj(m).asInstanceOf[DomAst]
+        else DieselJsonFactory.fromj(m.toMap).asInstanceOf[DomAst]
         ).withDetails("(from capture)")
 
     Audit.logdb("DIESEL_FIDDLE_POSTAST", stok.au.map(_.userName).getOrElse("Anon"))

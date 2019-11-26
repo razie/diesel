@@ -33,7 +33,7 @@ Type:
 
 @col.map { db =>
     <pre>
-  @js.tojsons(js.parse(db.toString))
+  @js.tojsons(js.parse(db.toString).toMap)
     </pre>
   <hr>@db.toString
    }

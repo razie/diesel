@@ -123,7 +123,7 @@ object DomEngineHelper {
     *
     * combine the queryParms with the posted form parms
     */
-  def parmsFromRequestHeader(request:RequestHeader, cont:Option[EContent]) : Map[String,String] = {
+  def parmsFromRequestHeader(request:RequestHeader, cont:Option[EContent] = None) : Map[String,String] = {
     val q = request.queryString.map(t=>(t._1, t._2.mkString))
 
     import DomEngineSettings._
