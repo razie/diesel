@@ -88,9 +88,13 @@ class EEDieselMongodDb extends EExecutor("diesel.db.col") {
 
         val p = P.fromTypedValue(
           "documents",
-          res.map(x =>
-            x.getAs[Map[String,Any]]("content").get
-          ).toList
+          res.map{x =>
+//            val s = x.getAs[String]("content").get
+            val s = x.get("content").toString
+//            x.getAs[Map[String,Any]]("content").get
+            val m = razie.js.parse(s)
+            m
+          }.toList
         )
 
         List(
@@ -164,17 +168,24 @@ class EEDieselMongodDb extends EExecutor("diesel.db.col") {
       }
 
       case "clear" => {
+        val others = in
+            .attrs
+            .filter(_.name != "collection")
+            .filter(_.name != "key")
+            .map(p=>("content." + p.name, p.calculatedValue))
+            .toMap
+
         val res = RazMongo(TBL).count(Map(
           "coll" -> coll,
           "realm" -> realm,
           "userId" -> userId
-        ))
+        ) ++ others)
 
         RazMongo(TBL).remove(Map(
           "coll" -> coll,
           "realm" -> realm,
           "userId" -> userId
-        ))
+        ) ++ others)
 
         List(EInfo("Deleted "+res+" docs"))
       }
