@@ -54,7 +54,7 @@ object RazWikiAuthorization extends RazController with Logging with WikiAuthoriz
   }
 
   /** are you emember inthe same reactor */
-  private def member(u: Option[WikiUser], vis:String, r:Option[String])(implicit errCollector: VErrors = IgnoreErrors) = {
+  private def checkMembershipLevel(u: Option[WikiUser], vis:String, r:Option[String])(implicit errCollector: VErrors = IgnoreErrors) = {
     u.map(_.asInstanceOf[User]).map {u=>
       (r.isEmpty || u.realms.contains(r.get)) &&
         r.map(r=> u.forRealm(r)).getOrElse(u).hasMembershipLevel(vis)
@@ -90,17 +90,17 @@ object RazWikiAuthorization extends RazController with Logging with WikiAuthoriz
 
     val res = (!props.get(visibility).isDefined) || u.exists(_.hasPerm(Perm.adminDb)) ||
       (pvis == Visibility.PUBLIC) || // if changing while edit, it will have a value even when public
+      (pvis == Visibility.MODERATOR && (u.exists(x=> x.isMod || x.isAdmin) orErr ("Visibility: Moderator")).exists(_ == true)) || // mods for mods - this is reused for canedit as well
       (u.isDefined orCorr cNoAuth).exists(_ == true) && // anything other than public needs logged in
       (
         props.get("owner") == Some(u.get.id) || // can see anything I am owner of - no need to check Visibility.PRIVATE
-        member(u, pvis, we.map(_.realm)) ||
-        (
-          pvis.startsWith(Visibility.CLUB) && isClubVisible(u, props, visibility, we)
-          orCorr cNotMember(uname(props.get("owner")))
-        ).getOrElse(
-            false
+
+        checkMembershipLevel(u, pvis, we.map(_.realm)) ||
+
+        // expensive so only if is Club
+        pvis.startsWith(Visibility.CLUB) &&
+            (isClubVisible(u, props, visibility, we) orCorr cNotMember(uname(props.get("owner")))).exists(_ == true)
       )
-    )
 
     res
   }
@@ -158,7 +158,7 @@ object RazWikiAuthorization extends RazController with Logging with WikiAuthoriz
       mine2 <- ("WikiLink" == cat || au.canHasProfile) orErr ("Sorry - you cannot create or edit public topics - either no parent added or parent does not allow it! \n If you think you should have one, please describe the issue in a  <a href=\"/doe/support?desc=cannot+have+public+profile\">support request</a> below.");
       pro <- au.profile orCorr cNoProfile;
       verif <- ("WikiLink" == cat || "User" == cat || au.hasPerm(Perm.eVerified)) orCorr corrVerified;
-      res <- (!w.exists(_.isReserved) || au.isAdmin || "User" == wid.cat) orErr ("Category is reserved");
+      res <- (!w.exists(_.isReserved) || au.isMod || au.isAdmin || "User" == wid.cat) orErr ("Category is reserved");
       owner <- !(WikiDomain(wid.getRealm).needsOwner(cat)) ||
         we.exists(_.isOwner(au.id)) ||
         (wprops.flatMap(_.get("wvis")).isDefined && isVisible(u, wprops.get, "wvis")) ||
