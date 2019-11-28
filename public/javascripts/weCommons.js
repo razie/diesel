@@ -283,7 +283,7 @@ function weBadIp(ip) {
 
 var dieselCart = {
 
-  addItem: function (clubWpath, category, desc, amount, currency, link, id, ok, cancel, prereq, cartRedirect, redirect) {
+  addItem: function (clubWpath, category, desc, amount, recamount, currency, link, id, ok, cancel, prereq, cartRedirect, redirect) {
   var u = '/doe/cart/addToCart/'+clubWpath;
   $.ajax(
     u, {
@@ -292,6 +292,7 @@ var dieselCart = {
         category: category,
         desc: desc,
         amount: amount,
+        recamount: recamount,
         currency: currency,
         link: link,
         id: id,

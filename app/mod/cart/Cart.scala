@@ -51,9 +51,17 @@ case class Cart (
     if(items.size > 0) cur == currency
     else true
 
+  /** one time total  */
   def total : Price = {
     var sum1 =
       items.flatMap(_.price.oneTime.toList).map(_.amount).sum
+    Price (sum1, currency)
+  }
+
+  /** recurring total */
+  def rectotal : Price = {
+    var sum1 =
+      items.flatMap(_.price.recurring.toList).map(_.amount).sum
     Price (sum1, currency)
   }
 
@@ -61,7 +69,7 @@ case class Cart (
 }
 
 /**
-  * Created by raz on 2016-12-21.
+  * an item in the cart
   */
 case class CartItem (
   desc : String,           // what
@@ -70,15 +78,16 @@ case class CartItem (
   doneAction : String,     //create/edit/delete
   cancelAction : String,   //create/edit/delete
   price:ItemPrice = ItemPrice(),
+  recInterval:Option[String] = None,
   props : Map[String,String] = Map.empty,
   state : String = Cart.STATE_CREATED,
   quantity: Option[Int] = None,
   category : Option[String] = None,
   _id : ObjectId = new ObjectId()
   ) {
-
 }
 
+/** price abstraction */
 case class Price (
   amount : Float,
   currency : String = "CAD"
@@ -107,7 +116,7 @@ case class Price (
   def reverse = Price (0 - amount, this.currency)
 }
 
-
+/** price of an item */
 case class ItemPrice (
   oneTime : Option[Price] = None,
   recurring : Option[Price] = None,
@@ -117,6 +126,7 @@ case class ItemPrice (
     oneTime.mkString
 }
 
+/** utilities */
 object Cart {
   final val STATE_CREATED = "open.created"
   final val STATE_CHECKEDOUT = "open.checkedout"
@@ -142,9 +152,7 @@ object Cart {
     RMany[Cart] ("userId" -> userId)
 
   def cartCanceled (id:ObjectId) {
-
   }
-
 }
 
 

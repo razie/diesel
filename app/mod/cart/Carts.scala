@@ -100,6 +100,12 @@ object Carts extends RazController with Logging {
         )
 
         val what = request.formParm("what")
+        val paymentId = request.formParm("id")
+//          val userName" -> request.au.get.userName,
+//          "userId" -> request.au.get._id.toString,
+//        "paymentAmount" -> request.formParm("amount"),
+//        "paymentCurrency" -> request.formParm("currency")
+
         var prebal = Price(0)
         var postbal = Price(0)
 
@@ -134,7 +140,7 @@ object Carts extends RazController with Logging {
             acct._id,
             Price(paid.amount, paid.currency),
             "credit",
-            "payment " + what,
+            s"payment $what - $paymentId",
             Acct.STATE_PAID
           ))
 
@@ -218,6 +224,7 @@ object Carts extends RazController with Logging {
       pPrereq <- stok.fqhParm("prereq").orElse(Some(""));
       pCancel <- stok.fqhParm("cancel") orErr "api: no cancel";
       pAmount <- stok.fqhParm("amount") orErr "api: no amount";
+      pRecAmount <- stok.fqhParm("recamount") orErr "api: no recamount";
       pCurrency <- stok.fqhParm("currency") orErr "api: no currency";
       pId <- stok.fqhParm("id") orErr "api: no id"
     ) yield razie.db.tx("addToCart", stok.userName) { implicit txn =>
@@ -243,13 +250,21 @@ object Carts extends RazController with Logging {
 //        )
 //      }
 
+      // todo enable subscriptions
+      // see https://developer.paypal.com/docs/subscriptions/integrate/#3-create-a-plan
+      // and https://developer.paypal.com/docs/api/quickstart/create-webhook/#
+      val rec = None //if(pRecAmount.toFloat == 0) None else Some(Price(pRecAmount.toFloat, pCurrency))
+
       cart.add(CartItem(
         pDesc,
         pLink,
         pId,
         pOk,
         pCancel,
-        ItemPrice(Some(Price(pAmount.toFloat, pCurrency)))
+        ItemPrice(
+          Some(Price(pAmount.toFloat, pCurrency)),
+          rec
+        )
       )
         .copy(category=if(pCategory.length > 0) Some(pCategory) else None)
       )
