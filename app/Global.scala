@@ -26,7 +26,7 @@ import scala.collection.mutable.ListBuffer
 import scala.concurrent.{ExecutionContext, Future}
 import controllers.ViewService
 import razie.audit.Audit
-import razie.hosting.{Website, WikiReactors}
+import razie.hosting.{BannedIp, BannedIps, Website, WikiReactors}
 import razie.wiki.model._
 import razie.wiki.admin._
 import razie.wiki.{Config, EncryptService, Services, WikiConfig}
@@ -116,7 +116,16 @@ object Global extends WithFilters(LoggingFilter) {
         }.apply(rh)
       }
     } orElse {
-      if(request.headers.get("X-Forwarded-For").exists(Config.badIps.contains(_))) {
+      if(request.path.contains("removebadip")) { // && Services.auth.authUser(request).isDefined) { // in case i ban myself
+        request.headers.get("X-Forwarded-For").flatMap(BannedIps.findIp).map(_.delete(tx.auto))
+        Audit.logdb("BANNED_IP_REMOVED",
+          List("request:" + request.toString, "headers:" + request.headers).mkString("<br>"))
+        Some(EssentialAction {rh=>
+          Action { rh:play.api.mvc.RequestHeader =>
+            Results.Unauthorized("deh")
+          }.apply(rh)
+        })
+      } else if(request.headers.get("X-Forwarded-For").exists(Config.badIps.contains(_))) {
         clog << "ERR_BADIP " + "request:" + request.toString + "headers:" + request.headers
         Audit.logdb("ERR_BADIP", "request:" + request.toString, "headers:" + request.headers)
         Some(EssentialAction {rh=>

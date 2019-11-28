@@ -53,7 +53,7 @@ object Profile extends RazController {
     }
 
     // when testing, skip email verification - unless the site needs it
-    if(! Services.config.isLocalhost || website.bprop("requireEmailVerification").exists(_ == true)) {
+    if(! Services.config.isDevMode || website.bprop("requireEmailVerification").exists(_ == true)) {
       UserTasks.verifyEmail(u).create
     } else {
       // localhost
