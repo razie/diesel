@@ -311,7 +311,7 @@ class EEDieselCron extends EExecutor("diesel.cron") {
         val scount = ctx.get("count").mkString
         val desc = ctx.get("description").mkString
         val tq = ctx.get("tquery").mkString
-        val collect = ctx.get("collect").map(_.toInt).filter(_ < 50).getOrElse(DFLT_COLLECT) // keep 10 default for cron jobs
+        val collectCount = ctx.get("collectCount").map(_.toInt).filter(_ < 50).getOrElse(DFLT_COLLECT) // keep 10 default for cron jobs
         val count = if (scount.length == 0) -1l else scount.toLong
         val cronMsg = ctx.get("cronMsg")
 
@@ -326,7 +326,7 @@ class EEDieselCron extends EExecutor("diesel.cron") {
           List(EVal(P(Diesel.PAYLOAD, "DieselCron is DISABLED", WTypes.wt.EXCEPTION)))
         } else {
           val settings = new DomEngineSettings()
-          settings.collect = Some(collect)
+          settings.collectCount = Some(collectCount)
 
           val msg: Either[DieselMsg, DieselMsgString] = cronMsg.map { s =>
             Right(DieselMsgString(
