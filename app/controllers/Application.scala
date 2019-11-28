@@ -172,18 +172,17 @@ class Application extends RazController {
 
       } getOrElse {
         val c = Config.config(WikiConfig.BANURLS)
-
-        if (c.exists(_.contains(path))) {
+        val p = "/" + path
+        if (c.exists(m=> m.exists(t=>p.matches(t._1)))) {
           val ip = request.headers.get("X-Forwarded-For")
 
-          if (ip.isDefined && BannedIps.isBanned(ip)) {
+          if (ip.isDefined && !BannedIps.isBanned(ip)) {
             Audit.logdb("BANNED_IP",
-              List("request:" + request.toString, "headers:" + request.headers, "body:" + request.body).mkString(
-                "<br>"))
+              List("ip:"+ip, "request:" + request.toString, "headers:" + request.headers, "body:" + request.body).mkString("<br>"))
             BannedIps.ban(ip.get, request.method + " " + path)
           }
           // TODO emulate some well known wiki error response to throw them off
-          Future.successful(NotFound(""))
+          Future.successful(Ok("haha"))
 
         } else if (path == "ads.txt") {
           // google ads - serve website settings or default from rk
