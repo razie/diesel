@@ -1,6 +1,7 @@
 package controllers
 
 import com.google.inject._
+import controllers.Emailer.expand
 import model._
 import org.joda.time.DateTime
 import play.api.Configuration
@@ -275,10 +276,10 @@ class ProfileUpd @Inject() (config:Configuration) extends RazController with Log
   }
 
   val MSG_EMAIL= s"""
-Please check your email in the next few minutes and follow the instructions.
+Please check your email and follow the instructions.
 <p>
-<small>Please do that soon: it will expire in a few hours, for security reasons.
-<br>Please check your spam/junk folders as well in the next few minutes.
+<small>
+<br>If you don't see the email, please check your spam/junk folders.
 </small>
 """
 
