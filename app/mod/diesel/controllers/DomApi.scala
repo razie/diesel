@@ -1,6 +1,7 @@
 package mod.diesel.controllers
 
 import com.google.inject.Singleton
+import controllers.Wiki.ROK
 import controllers.{Profile, RazRequest}
 import difflib.{DiffUtils, Patch}
 import mod.diesel.model._
@@ -9,6 +10,7 @@ import org.bson.types.ObjectId
 import org.joda.time.DateTime
 import org.json.JSONObject
 import play.api.mvc._
+import play.twirl.api.Html
 import razie.audit.Audit
 import razie.diesel.dom.RDOM.{NVP, P}
 import razie.diesel.dom._
@@ -16,6 +18,7 @@ import razie.diesel.engine.DomEngineSettings.DIESEL_USER_ID
 import razie.diesel.engine.RDExt._
 import razie.diesel.engine._
 import razie.diesel.engine.exec.{EECtx, EESnakk, SnakkCall}
+import razie.diesel.engine.nodes.EnginePrep.catPages
 import razie.diesel.engine.nodes._
 import razie.diesel.expr.{ECtx, StaticECtx}
 import razie.diesel.model.DieselMsg
@@ -677,23 +680,6 @@ class DomApi extends DomApiBase  with Logging {
     irunDom(ea, None)
   }
 
-  private def XXXrunRestPath(path: String, verb:String) = Action(parse.raw) { implicit request =>
-    val qparams = DomEngineHelper.parmsFromRequestHeader(request)
-    val qFlat = qparams.map(t=>P.fromTypedValue(t._1, t._2, WTypes.wt.STRING)).toList
-    val qJson = P.fromTypedValue("dieselQuery", qparams, WTypes.wt.JSON)
-
-    runRest(
-      path,
-      verb,
-      true,
-      Some(EMsg(DieselMsg.ENGINE.DIESEL_REST, qJson :: List(
-        P.fromTypedValue("path", path),
-        P.fromTypedValue("verb", verb)
-      ) ::: qparams.map(t=>P.fromTypedValue(t._1, t._2, WTypes.wt.STRING)).toList
-      ))
-    ).apply(request).value.get.get
-  }
-
   /** /diesel/proxy/path   proxy real service GET */
   def proxy(ipath: String) = Filter(noRobots) { implicit stok =>
     val  path = Enc.fromUrl(ipath + "?") + stok.ireq.rawQueryString
@@ -926,8 +912,7 @@ class DomApi extends DomApiBase  with Logging {
             // if any body sent in, assume it's json with a bunch of input parms
             try {
               val js = new JSONObject(body)
-              import scala.collection.JavaConverters._
-              js.keys.asScala.toList.map(k => (k, js.get(k).toString)).toMap
+              razie.js.fromObject(js)
             } catch {
               case t: Throwable => {
                 razie.Log.log("NO TEMPLATE found - error trying to parse body as json", t)
@@ -952,8 +937,10 @@ class DomApi extends DomApiBase  with Logging {
 
         val parms = pQuery ++ pPost ++ DomEngineHelper.parmsFromRequestHeader(stok.req, content)
         // todo how to handle typed numbers and jsong and other parms?
-        parms.map(p => engine.ctx.put(P(p._1, p._2)))
-        Some(new EMsg(e, a, parms.map(p => P(p._1, p._2)).toList))
+        val plist = parms.map(p => P.fromTypedValue(p._1, p._2)).toList
+        plist.map(engine.ctx.put)
+//        parms.map(p => engine.ctx.put(P(p._1, p._2)))
+        Some(new EMsg(e, a, plist))
       } else None
     }
 
@@ -1209,6 +1196,46 @@ class DomApi extends DomApiBase  with Logging {
     cleanAuth()
     // it's not actually redirecting, see client
     Future.successful(Redirect("/", SEE_OTHER))
+  }
+
+  /** todo this will parse all specs to find the object and link to it... OPTIMIZE ?? */
+  def msg (ea:String) = RAction.async { implicit stok =>
+      // todo use drafts??
+    val d = catPages("Spec", stok.realm)
+    val dom = d.flatMap(p =>
+      SpecCache.orcached(p, WikiDomain.domFrom(p)).toList
+    ).foldLeft(
+      RDomain.empty
+    )((a, b) => a.plus(b)).revise.addRoot
+
+    val m = dom.moreElements.collectFirst {
+      case m:EMsg if (m.ea == ea) => m
+    }
+
+    Future.successful(
+      m.flatMap(_.specPos).orElse(m.flatMap(_.pos)).map {pos=>
+          val href = if(pos.wpath.contains("Spec:")) {
+            "/diesel/fiddle/playDom"+"?line="+pos.line+"&col="+pos.col+"&spec="+pos.wpath
+          } else if(pos.wpath.contains("Story:")) {
+            "/diesel/fiddle/playDom"+"?line="+pos.line+"&col="+pos.col+"&story="+pos.wpath
+          } else {
+            "/"
+          }
+
+        Redirect(href, SEE_OTHER)
+//        ROK.k noLayout {implicit stok=>
+//          Html(
+//            s"""
+//               |${m.toHtmlInPage}
+//               |<script src="/public/assets/javascripts/weDieselDom.js")"></script>
+//               |<script src="/public/assets/javascripts/weFiddles.js")"></script>
+//               |
+//               |""".stripMargin)
+//        }
+      }.getOrElse {
+        Ok("Msg not found")
+      }
+    )
   }
 
 }
