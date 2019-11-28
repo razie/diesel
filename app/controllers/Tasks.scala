@@ -1,15 +1,15 @@
 package controllers
 
 import com.google.inject.Singleton
-import mod.snow.{RK, RacerKidAssoc, RacerKidz}
+import controllers.Emailer.expand
+import model._
 import org.joda.time.DateTime
 import play.api.mvc.{Action, DiscardingCookie, Request}
 import razie.Logging
-import model._
-import razie.wiki.admin.{MailSession, SecLink, SendEmail}
+import razie.hosting.Website
+import razie.wiki.admin.{MailSession, SecLink}
 import razie.wiki.model.{Perm, WID}
 import razie.wiki.{Config, Enc, EncUrl, Services}
-import razie.hosting.Website
 
 // NOTE this is not actually a controller - leave it object, the one below is...
 object Tasks extends RazController with Logging {
@@ -65,14 +65,26 @@ Please do that soon: it will expire in a few hours, for security reasons.
     sendToReset1(c.emailDec, from, c.ename, h, ds.secUrl)
   }
 
-  def sendToVerif1(email: String, from: String, name: String, h:String, link: String)(implicit mailSession: MailSession) = {
-    val html = Emailer.text("emailverif").format(name, email, h, h, link);
+  def sendToVerif1(email: String, from: String, ename: String, header:String, link: String)(implicit mailSession: MailSession) = {
+//    val html = Emailer.text("emailverif").format(ename, email, header, header, link);
+    val html = expand("emailverif", List(
+      "ename" -> ename,
+      "email" -> email,
+      "header" -> header,
+      "header" -> header,
+      "url" -> link
+    ))
 
     mailSession.send(email, from, "Please verify your email", html)
   }
 
-  def sendToReset1(email: String, from: String, name: String, h:String, link: String)(implicit mailSession: MailSession) = {
-    val html = Emailer.text("emailreset").format(name, link);
+  def sendToReset1(email: String, from: String, ename: String, h:String, link: String)(implicit mailSession: MailSession) = {
+//    val html = Emailer.text("emailreset").format(name, link);
+    val html = expand("emailreset", List(
+      "ename" -> ename,
+      "url" -> link
+    ))
+
 
     mailSession.send(email, from, "Please reset your password", html)
   }
@@ -82,10 +94,9 @@ Please do that soon: it will expire in a few hours, for security reasons.
 
 @Singleton
 class Tasks extends RazController with Logging {
-  import razie.wiki.Sec._
-
   import play.api.data.Forms._
   import play.api.data._
+  import razie.wiki.Sec._
 
   def userNameChgDenied = Action { implicit request =>
     razie.db.tx("usernamechgDenied", auth.get.userName) { implicit txn =>

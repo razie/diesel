@@ -32,6 +32,7 @@ object Emailer extends RazController with Logging {
   /** name of website, used in subject */
   def RK(implicit mailSession: MailSession) = mailSession.RK
   def SUPPORT(implicit mailSession: MailSession) = mailSession.SUPPORT
+  def ADMIN(implicit mailSession: MailSession) = mailSession.ADMIN
 
   /** bottom section on each email */
   def bottom(implicit mailSession: MailSession) = mailSession.bottom
@@ -76,7 +77,12 @@ object Emailer extends RazController with Logging {
     val ds1 = SecLink(acceptUrl, None, 1, dt)
     val ds2 = SecLink(denyUrl, None, 1, dt)
 
-    val html1 = text("emailrequest").format(description, ds1.secUrl, ds2.secUrl);
+//    val html1 = text("emailrequest").format(description, ds1.secUrl, ds2.secUrl);
+    val html1 = expand("emailrequest", List(
+      "desc" -> description,
+      "acceptUrl" -> ds1.secUrl,
+      "denyUrl" -> ds2.secUrl
+      ))
 
     mailSession.send(to, SUPPORT, "RacerKidz - " + task, html1)
 
@@ -89,16 +95,28 @@ object Emailer extends RazController with Logging {
     val hc2 = """/doe/profile/unameDeny?expiry=%s&userId=%s&newusername=%s""".format(EncUrl(dt.toString), u.id, Enc.toUrl(newUsername))
 
     // to admin
-    val html1 = text("usernamechangerequest1").format(u.userName, newUsername);
+//    val html1 = text("usernamechangerequest1").format(u.userName, newUsername);
+    val html1 = expand("usernamechangerequest1", List(
+      "userName" -> u.userName,
+      "newUsername" -> newUsername
+    ))
 
     // to user
-    val html2 = text("usernamechangerequest2").format(u.ename, u.userName, newUsername)
-
-    sendEmailRequest(SUPPORT, 1, "Welcome!", html1, (if(notifyUser) Some(html2) else None), hc1, hc2, u)
+//    val html2 = text("usernamechangerequest2").format(u.ename, u.userName, newUsername)
+    val html2 = expand("usernamechangerequest2", List(
+      "ename" -> u.ename,
+      "userName" -> u.userName,
+      "newUsername" -> newUsername
+      ))
+   sendEmailRequest(ADMIN, 1, "Welcome!", html1, (if(notifyUser) Some(html2) else None), hc1, hc2, u)
   }
 
   def sendEmailUnameOk(newUsername: String, u: User)(implicit mailSession: MailSession) = {
-    val html1 = text("unameok").format(u.ename, newUsername);
+//    val html1 = text("unameok").format(u.ename, newUsername);
+    val html1 = expand("unameok", List(
+      "ename" -> u.ename,
+      "newUsername" -> newUsername
+    ))
 
     mailSession.send(u.emailDec, SUPPORT, RK + " :) username change approved", html1)
   }
@@ -190,7 +208,7 @@ object Emailer extends RazController with Logging {
   def sendEmailNeedQuota(uName: String, uId: String)(implicit mailSession: MailSession) = {
     val html1 = text("needquota").format(uName + " - " + uId, "http://" + hostport + "/razadmin/user/" + uId);
 
-    mailSession.notif(SUPPORT, SUPPORT, RK + " - NEEDS QUOTA", html1)
+    mailSession.notif(ADMIN, SUPPORT, RK + " - NEEDS QUOTA", html1)
   }
 
   def sendEmailInvited(u: User, rk:RacerKid, role: String, link: String)(implicit mailSession: MailSession) = {
@@ -281,7 +299,7 @@ object Emailer extends RazController with Logging {
   }
 
   def tellSiteAdmin(what: String, args: Any*)(implicit mailSession: MailSession) = {
-    tell(Config.adminEmail, what, args:_*)
+    tell(ADMIN, what, args:_*)
   }
 
   def tell(who:String, what: String, args: Any*)(implicit mailSession: MailSession) = {

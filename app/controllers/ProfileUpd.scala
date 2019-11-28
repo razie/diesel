@@ -326,7 +326,10 @@ Please check your email and follow the instructions.
             Audit.logdb("RESET_PWD_DONE", "request for " + au.emailDec + " - " + au.userName)
             Emailer.withSession(stok.realm) { implicit mailSession =>
               // todo use email template
-              val html = Emailer.text("passwordchanged").format(au.ename);
+//              val html = Emailer.text("passwordchanged").format(au.ename);
+              val html = Emailer.expand("passwordchanged", List(
+                "ename" -> au.ename
+              ))
               mailSession.send(au.emailDec, mailSession.SUPPORT,
                 "Password was changed",
                 html)
