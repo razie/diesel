@@ -28,7 +28,7 @@ import razie.wiki.model._
 //@Singleton
 class Admin extends AdminBase {
 
-  // routes do/:page
+  // routes razadmin/page/:page
   def show(page: String) = FAD { implicit au =>
     implicit errCollector => implicit request =>
       page match {

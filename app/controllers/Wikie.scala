@@ -168,11 +168,12 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
 
           val atags = draft.getOrElse("tags", w.tags.mkString(",")) // when the autosave was created by fiddles without tags
 
-          // todo this is not ready yet
+          // JS, JSON etc
             if(false && (w.markup == Wikis.JS || w.markup == Wikis.JSON || w.markup == Wikis.SCALA))
               ROK.s noLayout { implicit stok =>
                 views.html.util.reactorLayout12FullPage(
-                views.html.wiki.wikiEditJS(w.wid,
+                views.html.wiki.wikiEditJS(
+                  w.wid,
                   Map.empty,
                   editForm.fill(
                     EditWiki(w.label,
@@ -186,6 +187,7 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
                 Seq.empty
                 )
               }
+            // EVENT
             else if(Wikis.isEvent(wid.cat))
               ROK.s noLayout { implicit stok =>
                 views.html.util.reactorLayout12FullPage(
@@ -201,6 +203,7 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
                   Seq.empty
                 )
               }
+          // normal - default
           else if(noshow != "simple")
             ROK.s noLayout { implicit stok =>
               views.html.util.reactorLayout12FullPage(
@@ -217,6 +220,7 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
                 Seq.empty
               )
             }
+          // simple
           else
             ROK.s noLayout { implicit stok =>
               views.html.util.reactorLayout12FullPage(
