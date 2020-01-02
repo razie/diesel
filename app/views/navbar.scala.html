@@ -17,7 +17,7 @@ creates the navigation bar
   Array("dev", "qa", "sandbox").find(s.startsWith).map(x=> s.replaceFirst(x, "")).getOrElse(s)
 }
 
-  @searchUrl()=@{
+@searchUrl()=@{
   s"/wikie/search?realm=${stok.realm}"
 }
 
@@ -26,9 +26,8 @@ creates the navigation bar
   else web().navMenu
 }
 
-@if(Services.config.getTheme(stok.au, stok.request).contains("light")) {
-  <nav class="navbar navbar-fixed-top navbar-inverse">
-    @*<nav class="navbar navbar-fixed-top navbar-default">*@
+@if(web().prop("theme.navbar").exists(_.contains("light"))) {
+  <nav class="navbar navbar-fixed-top navbar-default">
   } else {
   <nav class="navbar navbar-fixed-top navbar-inverse">
   }
