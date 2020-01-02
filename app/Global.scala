@@ -205,10 +205,8 @@ object Global extends WithFilters(LoggingFilter) {
 
           import razie.wiki.Sec._
 
-//          javax.mail.Session.getInstance(props, new SMTPAuthenticator(Config.SUPPORT, "zlMMCe7HLnMYOvbjYpPp6w==".dec))
-
           val user = website.prop("mail.smtp.user").getOrElse(Config.SUPPORT)
-          val pwd = website.prop("mail.smtp.pwd").getOrElse("zlMMCe7HLnMYOvbjYpPp6w==").dec
+          val pwd = website.prop("mail.smtp.pwd").getOrElse("1mrTyLJfbe4VoG2jXu4vdg").dec
 
           javax.mail.Session.getInstance(props, new SMTPAuthenticator(user, pwd))
         }
