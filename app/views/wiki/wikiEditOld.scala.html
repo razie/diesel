@@ -128,7 +128,9 @@ PROBLEM: many places use label as name... via Wikis.formatName
     'class -> "form-control col-sm-12",
     'rows->20)
 
-    <span style="font-size: small" id="ace-label" style="display:none;">Content</span><br>
+    <span style="font-size: small" id="ace-label" style="display:none;">Content</span>
+    <span id="errMsg" class="label label-danger" style="display:none;"></span>
+    <br>
     @*<textarea xstyle="display:none;" name="content" id="content" class="form-control col-sm-12" rows="20">@myForm("content").value</textarea>*@
     <pre style="display:none;" id="acec" style="height: 200px;">@myForm("content").value<</pre>
 
@@ -239,6 +241,12 @@ var label =
 
 var label1 =
     ' <a href="javascript:popupHelp(\'widgetHelp\');" title="Help with widget editor">widget <span class="glyphicon glyphicon-question-sign"></span></a> <span id="ehelp"></span>';
+
+function errMsg(text) {
+  $('#errMsg').html('<strong>'+text+'</strong>');
+  $('#errMsg').show();
+  $('#errMsg').fadeOut(5000);
+};
 
 function hideSpinner() {
   $('#spinner').hide();
@@ -649,8 +657,9 @@ function saveDraft() {
         }
 
         if(JSON.stringify(x).indexOf("staleid") >= 0) {
-          alert("saveDraft - Stale page - please refresh to get the latest saved draft!!!");
-          location.reload();
+          console.log("saveDraft - Stale page, cannot be saved! Please copy changes and refresh to get the latest saved draft!!!");
+          errMsg("Stale page, cannot be saved! Please copy changes and refresh to get the latest saved draft!!!");
+          // location.reload();
         }
       }
     });
