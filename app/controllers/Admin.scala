@@ -10,6 +10,7 @@ import java.lang.reflect.Modifier
 import com.google.inject.Singleton
 import com.mongodb.casbah.Imports.DBObject
 import com.novus.salat.grater
+import java.nio.file.{Files, Paths}
 import mod.diesel.guard.{DieselCron, DomGuardian}
 import mod.notes.controllers.NotesLocker
 import model.WikiScripster
@@ -24,6 +25,7 @@ import razie.hosting.{Website, WikiReactors}
 import razie.wiki.Services
 import razie.wiki.admin.{GlobalData, SendEmail}
 import razie.wiki.model._
+import scala.io.Source
 
 //@Singleton
 class Admin extends AdminBase {
@@ -74,6 +76,12 @@ class Admin extends AdminBase {
           Redirect("/")
         }
       }
+  }
+
+  def showImage(file: String) = Action { implicit request =>
+    log("Showing image: " + file)
+    val f = Files.readAllBytes(Paths.get("/" + file))
+    Ok(f).as("image/jpeg")
   }
 }
 
