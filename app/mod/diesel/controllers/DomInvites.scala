@@ -1,11 +1,14 @@
 package mod.diesel.controllers
 
+import com.google.inject.{Inject, Singleton}
 import controllers._
 import model.{User, Users}
 import razie.hosting.Website
 import org.bson.types.ObjectId
 import org.joda.time.DateTime
+import play.api.Configuration
 import razie.Logging
+import razie.diesel.dom.RDOM.A
 import razie.wiki.Enc
 import razie.wiki.Sec.EncryptedS
 import razie.wiki.admin.SecLink
@@ -13,7 +16,8 @@ import razie.wiki.model.Perm
 import views.html.wiki.genericForm
 
 /** manage invitations to realms */
-class DomInvites extends mod.diesel.controllers.SFiddleBase with Logging {
+@Singleton
+class DomInvites @Inject() (config:Configuration) extends mod.diesel.controllers.SFiddleBase with Logging {
 
   /** */
   def invited = RAction { implicit request =>
@@ -51,12 +55,18 @@ class DomInvites extends mod.diesel.controllers.SFiddleBase with Logging {
     val email = request.fqParm("email", "").trim
     val why = request.fqParm("why", "").trim
 
-    Emailer.withSession(request.realm) { implicit mailSession =>
-      // todo tell the owner instead
-      Emailer.tellAdmin("Specs invite request for realm", "email:", email, "why:", why, "realm:", realm)
-    }
+    val recap = request.fqParm("g-recaptcha-response", "").trim
 
-    Msg("Ok... queued up - watch your inbox! Thank you for your interest!")
+    if(! new Recaptcha(config).verify2(recap, clientIp)) {
+      Unauthorized("Are you human?")
+    } else {
+      Emailer.withSession(request.realm) { implicit mailSession =>
+        // todo tell the owner instead
+        Emailer.tellAdmin("Specs invite request for realm", "email:", email, "why:", why, "realm:", realm)
+      }
+
+      Msg("Ok... queued up - watch your inbox! Thank you for your interest!")
+    }
   }
 
   /** */

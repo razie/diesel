@@ -79,8 +79,8 @@ class WikieBase extends WikiBase {
   def replaceAllForm = Form {
     tuple(
       "realm" -> text.verifying("Obscenity filter", !Wikis.hasBadWords(_)).verifying("Invalid characters", vldSpec(_)),
-      "old" -> text.verifying("Obscenity filter", !Wikis.hasBadWords(_)).verifying("Invalid characters", vldSpec(_)),
-      "new" -> text.verifying("Obscenity filter", !Wikis.hasBadWords(_)).verifying("Invalid characters", vldSpec(_)),
+      "old" -> text.verifying("Obscenity filter", !Wikis.hasBadWords(_)),
+      "new" -> text.verifying("Obscenity filter", !Wikis.hasBadWords(_)),
       "action" -> text.verifying("Obscenity filter", !Wikis.hasBadWords(_)).verifying("Invalid characters", vldSpec(_))) verifying
       ("haha", { t: (String, String, String, String) => true
       })
