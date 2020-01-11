@@ -133,7 +133,13 @@ class AdminDiff extends AdminBase {
       // filter those with content similar
       val ok = l.filter(x => WID.fromPath(x.name).exists(_.content.exists(_ != x.contents("content"))))
       val neq = l.filter(x => WID.fromPath(x.name).exists(_.content.exists(_ == x.contents("content"))))
-      val non = l.filter(x => WID.fromPath(x.name).flatMap(_.page).isEmpty)
+      val non = l
+          .filter(x =>
+            WID
+                .fromPath(x.name)
+                .filter(_.cat != "Fiddle")
+                .filter(_.cat != "Fiddle")
+                .flatMap(_.page).isEmpty)
 
       neq.map(_.delete)
       non.map(_.delete)
