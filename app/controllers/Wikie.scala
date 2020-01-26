@@ -375,7 +375,7 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
     val autoRec = Autosave.rec("wikie", wid.getRealm, wid.wpath, stok.au.get._id)
 
     // first check if it's newer - if the user clicks "back", a stale editor may overwrite a newer draft
-    if (autoRec.exists(_.updDtm.isAfter(new DateTime(timeStamp.toLong)))) {
+    if (timeStamp.nonEmpty && autoRec.exists(_.updDtm.isAfter(new DateTime(timeStamp.toLong)))) {
       // don't change "staleid" - used as search
       Conflict(s"staleid - please refresh page... $timeStamp - ${autoRec.get.updDtm.toInstant.getMillis}")
     } else {
