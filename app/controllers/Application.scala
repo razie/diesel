@@ -233,7 +233,13 @@ class Application extends RazController {
 
   //todo implement options
   def options(path: String) = Action { implicit request =>
-    Status(400) // bad request
+//    Status(400) // bad request
+    Ok("").withHeaders(
+      "Access-Control-Allow-Origin" -> "*",
+      "Access-Control-Allow-Methods" -> "OPTIONS, GET, POST, PUT, DELETE",
+      "Access-Control-Allow-Headers" -> "*",
+      "Access-Control-Allow-Credentials" -> "true"
+    )
   }
 
   // the point is to list all the canonical forms for this realm
