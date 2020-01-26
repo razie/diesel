@@ -8,6 +8,7 @@ package controllers
 import com.google.inject.Singleton
 import com.mongodb.casbah.Imports.{DBObject, _}
 import com.novus.salat.grater
+import com.razie.pub.comms.CommRtException
 import difflib.DiffUtils
 import model.User
 import org.joda.time.DateTime
@@ -282,9 +283,17 @@ class AdminDiff extends AdminBase {
         views.html.admin.adminDifflist(localRealm, toRealm, remote, lnew, lremoved, lchanged.sortBy(_._3))
       }
     } catch {
+      case x: CommRtException if x.httpCode == 401 => {
+        audit(s"ERROR getting remote diffs ${x.getMessage} ", x)
+        Ok(s"error HTTP 401 (Unauthorized) - did you change your password locally or remotely?\n\nError details: $x ")
+      }
+      case x: CommRtException => {
+        audit(s"ERROR getting remote diffs ${x.getMessage} ", x)
+        Ok(s"error HTTP ${x.httpCode} \n\nerror details: $x ")
+      }
       case x: Throwable => {
         audit("ERROR getting remote diffs", x)
-        Ok("error " + x)
+        Ok("Unknown error\n\ndetails: " + x)
       }
     }
   }
