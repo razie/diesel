@@ -417,10 +417,10 @@ class DomApi extends DomApiBase  with Logging {
 
       val raw = request.body.asBytes()
       val body = raw.map(a => new String(a)).getOrElse("")
-      val content = Some(new EContent(body, stok.req.contentType.mkString, 200, Map.empty, None, raw))
+      val postedContent = Some(new EContent(body, stok.req.contentType.mkString, 200, Map.empty, None, raw))
 
       // todo sort out this mess
-      val settings = DomEngineHelper.settingsFromRequestHeader(stok.req, content).copy(realm=Some(reactor))
+      val settings = DomEngineHelper.settingsFromRequestHeader(stok.req, postedContent).copy(realm=Some(reactor))
       settings.mockMode = mock
       val q = stok.req.queryString.map(t=>(t._1, t._2.mkString))
 
@@ -432,7 +432,7 @@ class DomApi extends DomApiBase  with Logging {
         None,
         false,
         stok.au,
-        "DomApi.runRest:"+path,
+        s"DomApi.runRest:$verb:$path",
         None,
         // empty story so nothing is added to root
         List(new WikiEntry("Story", "temp", "temp", "md", "", uid, Seq("dslObject"), reactor))
@@ -483,7 +483,7 @@ class DomApi extends DomApiBase  with Logging {
         e,
         a,
         body,
-        content,
+        postedContent,
         requestContentType)
 
       // incoming message
@@ -893,15 +893,17 @@ class DomApi extends DomApiBase  with Logging {
       }
     } orElse {
 
-      // no template
+      // no template found - match a message?
       val headers = DomEngineHelper.parmsFromRequestHeader(stok.req, content)
 
       // extract parms from request
       if(verb == "GET" || verb == "POST") {
         // query parms for GET
         val pQuery = stok.query.filter(x => !DomEngineSettings.FILTER.contains(x._1))
+
         // if POST, see if there's something coming in
         var pPost = if (verb == "POST") {
+
           if (requestContentType.exists(_ == "text/plain") && !body.trim.startsWith("{")) {
             // plain text - see who can parse this later, snakkers etc
             Map("request" -> body)

@@ -33,7 +33,7 @@ class AdminBase extends RazController {
     }) getOrElse unauthorized("CAN'T")
   }
 
-  /** action builder that decomposes the request, extracting user and creating a simple error buffer */
+  /** for admin user */
   def FADR(f: RazRequest => Result) = Action { implicit request =>
     val req = razRequest
     (for (
