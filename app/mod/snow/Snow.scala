@@ -366,6 +366,7 @@ object Snow extends RazController with Logging {
   def doeAddNote(clubWid:CMDWID, noteid:String, role:String, rkid:String) = FAUR { implicit request =>
     val created = request.formParm("created") == "true"
     var memo = request.formParm("content")
+    var toRkId : Option[ObjectId] = None
 
     if(canHistory(clubWid.wid, rkid)) RacerKidz.findByIds(rkid).foreach { rk =>
       val club = clubWid.wid.map(Club.apply)
@@ -445,6 +446,7 @@ object Snow extends RazController with Logging {
           Emailer.withSession(request.realm) { implicit mailSession =>
             coaches.flatMap(Users.findUserById(_).toList).filter(_.isActive).map { u =>
               val rk = RacerKidz.myself(u._id)
+              toRkId = Some(rk._id)
               rk.history.add(
                 RkHistory(
                   rk._id,
@@ -453,7 +455,9 @@ object Snow extends RazController with Logging {
                   "Note",
                   role,
                   clubWid.wid.map(_.wpath).mkString
-                ).copy(toRkId = Some(rk._id)))
+                ).copy(
+                  toRkId = toRkId
+                ))
               Emailer.sendEmailNewNote(role, u, request.au.get, /*link(we)*/linkH, role, memo)
             }
           }
@@ -482,6 +486,8 @@ object Snow extends RazController with Logging {
               toUser.flatMap(Users.findUserById).filter(_.isActive).map { u =>
                 var respondTo = RacerKidz.myself(u._id)
                 var tork = RacerKidz.myself(u._id)
+                toRkId = Some(respondTo._id)
+
                 if(tork._id == rk._id) tork=RacerKidz.myself(request.au.get._id) //was looking at the other's history, force this copy to mine
                 tork.history.add(
                   RkHistory(
@@ -491,7 +497,9 @@ object Snow extends RazController with Logging {
                     "Note",
                     hrole,
                     clubWid.wid.map(_.wpath).mkString
-                  ).copy(toRkId = Some(respondTo._id)))
+                  ).copy(
+                    toRkId = toRkId
+                  ))
                 Emailer.sendEmailNewNote(ROLES.REPLY, u, request.au.get, /*link(we)*/linkH, hrole, memo)
               }
             }
@@ -502,6 +510,8 @@ object Snow extends RazController with Logging {
             toUser.flatMap(Users.findUserById).filter(_.isActive).map { u =>
               var respondTo = RacerKidz.myself(u._id)
               var tork = RacerKidz.myself(u._id)
+              toRkId = Some(respondTo._id)
+
               if(tork._id == rk._id) tork=RacerKidz.myself(request.au.get._id) //was looking at the other's history, force this copy to mine
               tork.history.add(
                 RkHistory(
@@ -512,7 +522,7 @@ object Snow extends RazController with Logging {
                   hrole,
                   clubWid.wid.map(_.wpath).mkString
                 ).copy(
-                  toRkId = Some(respondTo._id),
+                  toRkId = toRkId,
                   content = Some(request.formParm("content")),
                   tags = Some(request.formParm("tags"))
                 ))
@@ -540,7 +550,9 @@ object Snow extends RazController with Logging {
             "Note",
             hrole,
             clubWid.wid.map(_.wpath).mkString
-          ).copy(toRkId = Some(rk._id)), shouldBadge)
+          ).copy(
+            toRkId = Some(rk._id)
+          ), shouldBadge)
       } else {
         rk.history.add(
           RkHistory(
@@ -551,7 +563,7 @@ object Snow extends RazController with Logging {
             hrole,
             clubWid.wid.map(_.wpath).mkString
           ).copy(
-            toRkId = Some(rk._id),
+            toRkId = toRkId,
             content = Some(request.formParm("content")),
             tags = Some(request.formParm("tags"))
           ), shouldBadge)
