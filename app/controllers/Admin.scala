@@ -31,6 +31,16 @@ import scala.io.Source
 class Admin extends AdminBase {
 
   // routes razadmin/page/:page
+  def showRealmUsers = FAU { implicit au =>
+    implicit errCollector => implicit request =>
+        if(au.isAdmin || au.isMod)
+          ROK.s admin { implicit stok => views.html.admin.adminRealmUsers(stok.realm) }
+        else {
+        unauthorized("CAN'T")
+        }
+  }
+
+  // routes razadmin/page/:page
   def show(page: String) = FAD { implicit au =>
     implicit errCollector => implicit request =>
       page match {
