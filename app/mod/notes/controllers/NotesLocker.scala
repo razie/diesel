@@ -261,6 +261,7 @@ object NotesLocker extends RazController with Logging {
             we
           }
 
+          // existing note updated
           Notes.wiki.find(id) match {
             case Some(w) => {
               msg = ("msg" -> "[Updated]")
@@ -293,6 +294,7 @@ object NotesLocker extends RazController with Logging {
               }
             }
 
+              // no existing note
             case None => {
               if (content.trim.isEmpty)
                 msg = ("err" -> "[Empty note...]")
@@ -679,6 +681,8 @@ object NotesLocker extends RazController with Logging {
   }
 
   /** the embedded version of new note creation
+    *
+    * LOOK for a function called noteAdded on the page that the embed is used - that's the callback after note creation...
     *
     * @param asap will cause it to create the note on the spot, no editing required
     */

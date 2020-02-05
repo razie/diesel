@@ -275,7 +275,7 @@ object Kidz extends RazController {
     "This is only for coaches of club "+clubName,
     "")
 
-  def doeKidHistory(club:String, rkId: String, settings:String) = FAUR { implicit stok=>
+  def doeKidHistory(club:String, rkId: String, settings:String, skip:Int) = FAUR { implicit stok=>
     (for (
       rk <- RacerKidz.findById(new ObjectId(rkId)) orErr "No Person records found";
       c <- Club(club) orElse Kidz.findAllClubs(stok.au.get, rk).headOption orErr s"Club not found ($club)";
@@ -287,11 +287,11 @@ object Kidz extends RazController {
           RacerKidz.rka(au).toList.find(_.to.toString == rkId).isDefined
         ) {
           ROK.k apply {
-            views.html.user.doeKidHistory(Some(c), rk, settings)
+            views.html.user.doeKidHistory(Some(c), rk, settings, skip)
           }
         } else {
           if(c.isClubAdmin(au) || c.isMemberRole(au._id, RK.ROLE_COACH))
-            ROK.k apply { views.html.user.doeKidHistory(Some(c), rk, settings) }
+            ROK.k apply { views.html.user.doeKidHistory(Some(c), rk, settings, skip) }
           else unauthorized("This info is private (not coach)")
         }
       }) getOrElse unauthorized("This info is private")
@@ -314,12 +314,12 @@ object Kidz extends RazController {
   }
 
   /** entry point from badge - my own history */
-  def doeHistory(settings:String) = FAUR { implicit stok=>
+  def doeHistory(settings:String, skip:Int) = FAUR { implicit stok=>
     val rk = RacerKidz.myself(stok.au.get._id)
     // todo only supports one club - validations in doeKidHistory
     val c = Kidz.findAllClubs(stok.au.get, rk).headOption
     ROK.k apply {
-      val x = views.html.user.doeKidHistory(c, rk, settings)
+      val x = views.html.user.doeKidHistory(c, rk, settings, skip)
       // if me - reset me news badge
       // AFTER the screen is rendered
       val h = rk.history

@@ -1,4 +1,4 @@
-@(club: Option[controllers.Club], rk: mod.snow.RacerKid, settings: String)(implicit stok: controllers.StateOk)
+@(club: Option[controllers.Club], rk: mod.snow.RacerKid, settings: String, skip:Int)(implicit stok: controllers.StateOk)
 @import model.User
 @import mod.snow.RacerKidz
 @import mod.snow.RacerKid
@@ -10,6 +10,8 @@
 @import razie.tconf.Visibility
 
 @stok.requireJs(false)
+
+@PAGE()= @{30}
 
 @help()= @{
 }
@@ -36,15 +38,15 @@
 }
 
 @clubQWpath() = @{
-  club.map("?club=" + _.wid.wpathFull).getOrElse("")
+  club.map("club=" + _.wid.wpathFull).getOrElse("")
 }
 
 @findNameFrom(h:RkHistory, we:WikiEntry) = {
-  <a href="/doe/kid/history/@{RacerKidz.findByUserId(h.authorId.getOrElse(we.by))._id.toString}@clubQWpath()">@model.Users.nameOf(h.authorId.getOrElse(we.by))</a>
+  <a href="/doe/kid/history/@{RacerKidz.findByUserId(h.authorId.getOrElse(we.by))._id.toString}?@clubQWpath()">@model.Users.nameOf(h.authorId.getOrElse(we.by))</a>
 }
 
 @findNameTo(h:RkHistory) = {
-  <a href="/doe/kid/history/@{h.toRkId}@clubQWpath()">@h.toRkId.flatMap(RacerKidz.findById).flatMap(_.userId).map(model.Users.nameOf)</a>
+  <a href="/doe/kid/history/@{h.toRkId}?@clubQWpath()">@h.toRkId.flatMap(RacerKidz.findById).flatMap(_.userId).map(model.Users.nameOf)</a>
 }
 
 @uhLink(n:String) = @{
@@ -106,7 +108,7 @@
             </button>
           }
 
-          @if(stok.au.exists(_.isAdmin) || Services.config.isDebugMode) {
+          @if(stok.au.exists(_.isAdmin) || Services.config.isDevMode) {
             <button type="button" class="close" aria-label="Info" title="@{h.toJsonNice}" style="margin-left:10px">
               <span class="glyphicon glyphicon-question-sign"></span>
             </button>
@@ -196,7 +198,7 @@
   <input type="checkbox" name="grouped" onchange="changeGrouped(this);"/> Grouped
 }
   | <a href="#" class="btn btn-xs btn-success" onclick="deletePosts(); return false;"      title="Delete all the post notifications">Clear posts</a>
-  |
+  | <b>Create:&nbsp;</b>
 
 @if(rk.userId.exists(a=> stok.au.exists(_._id == a))) {
   <span onclick="startPersonal(); return false;" class="label label-primary" style="cursor:pointer"><span id="curNote">Personal notes</span> <span class="glyphicon glyphicon-chevron-down"></span>
@@ -214,7 +216,7 @@
 <div id="extra"></div>
 
 @goodItems(rk:RacerKid, au:User) = @{
-  rk.history.items(30).map(h=>
+  rk.history.items(PAGE, skip).map(h=>
     (h,
      h.eId.flatMap(razie.wiki.model.Wikis.findById(h.eKind, _))
          .filter (! _.tags.contains("archive"))
@@ -244,7 +246,7 @@
   goodItems(rk, stok.au.get)
 }
 
-@defining(items().take(20)) { history =>
+@defining(items().take(PAGE)) { history =>
   @util.notesmsgShow("histmsg", Seq(("msg" -> ("Found "+history.size.toString+" items"))))
 
 <div id="help" class="alert alert-success" style="display: none;">
@@ -294,6 +296,21 @@
     });
     </script>
   }
+}
+
+
+@if(stok.au.map(_._id).mkString == rk.userId.mkString) {
+@*  lookint at myself*@
+  <a
+    href="/doe/history?skip=@{skip+PAGE}"
+    class="btn btn-info"
+  >SEE MORE ITEMS...</a>
+} else {
+@*  looking at a kid*@
+  <a
+  href="/doe/kid/history/@{rk._id.toString}?skip=@{skip+PAGE}&@clubQWpath()"
+  class="btn btn-info"
+  >SEE MORE ITEMS...</a>
 }
 
 @justContent(h:RkHistory)=@{

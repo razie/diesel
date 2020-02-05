@@ -30,7 +30,7 @@ case class RkHistory (
   content:Option[String]=None, // reply to eId
   tags:Option[String]=None, // reply to eId
   crDtm: DateTime = DateTime.now,
-  toRkId: Option[ObjectId] = None, // If this is a not/message TO someone, then this is to whom
+  toRkId: Option[ObjectId] = None, // If this is a note/message TO someone, then this is to whom
   _id: ObjectId = new ObjectId()) extends REntity[RkHistory] {
 }
 
@@ -41,8 +41,8 @@ case class RkHistoryFeed (
   firstTime:Option[Boolean]=None, // this is set in rk.history
   _id: ObjectId = new ObjectId()) extends REntity[RkHistoryFeed] {
 
-  def items (howMany:Int = -1) :List[RkHistory] =
-    RMany.sortLimit[RkHistory](Map("rkId" -> rkId), Map("crDtm" -> -1), howMany)
+  def items (howMany:Int = -1, skip:Int=0) :List[RkHistory] =
+    RMany.sortLimit[RkHistory](Map("rkId" -> rkId), Map("crDtm" -> -1), howMany, skip)
 
 //        .toList.sortWith((a,b)=>a.crDtm.compareTo(b.crDtm) >= 0).toList.take(howMany)
 
