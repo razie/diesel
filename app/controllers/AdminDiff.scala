@@ -17,6 +17,7 @@ import play.api.mvc.{Action, AnyContent, Request}
 import razie.Snakk._
 import razie.db.RazSalatContext.ctx
 import razie.db.{RCreate, RMany}
+import razie.wiki.Config
 import razie.wiki.Sec._
 import razie.wiki.admin.Autosave
 import razie.wiki.model.{WID, WikiEntry, Wikis}
@@ -361,13 +362,17 @@ class AdminDiff extends AdminBase {
 
   // from remote to local
   // todo auth that user belongs to realm
-  def applyDiffFrom(localRealm: String, toRealm:String, target: String, iwid: WID) = FADR { implicit request =>
+  def applyDiffFrom(localRealm: String, toRealm:String, target: String, iwid: WID) = FAUR { implicit request =>
     val localWid = iwid.r(if (toRealm == "all") iwid.getRealm else localRealm)
     val remoteWid = iwid.r(if (toRealm == "all") iwid.getRealm else toRealm)
 
     getWE(target, remoteWid)(request.au.get).fold({ t =>
+      val protocol = if(request.hostUrlBase.startsWith("https")) "https" else "http"
       val b = body(
-        url(request.hostUrlBase + s"/wikie/setContent/${localWid.wpathFull}")
+//        url(request.hostUrlBase + s"/wikie/setContent/${localWid.wpathFull}")
+        // local url may be different from outside mappings and routings - it's accessed from this same server backend
+        // todo still have an issue of http vs https - should this be configured?
+        url(protocol + "://" + Config.hostport + s"/wikie/setContent/${localWid.wpathFull}")
           .form(Map("we" -> t._2, "remote" -> target))
           .basic("H-" + request.au.get.emailDec, "H-" + request.au.get.pwd.dec)
       )
