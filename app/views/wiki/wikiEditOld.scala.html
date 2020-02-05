@@ -20,7 +20,7 @@ myForm.ver: @myForm.data.get("oldVer")
 myForm.draft: @myForm.data.get("draft")
 
 
-  wid.page: @Html(wid.page.map(_.grated).mkString)
+  wid.page: @(wid.page.map(_.grated).mkString)
 
 -->
 
