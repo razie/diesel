@@ -968,7 +968,7 @@ regAdmin=$regAdmin
     }) getOrElse unauthorized()
   }
 
-  // insert
+  // list the kidz in a team
   def doeClubKidzTeam(teamWpath: String) = Action { implicit request =>
     implicit val errCollector = new VErrors()
     (for (

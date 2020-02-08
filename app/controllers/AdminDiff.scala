@@ -502,7 +502,7 @@ class AdminDiff extends AdminBase {
              |*                                                      *
              |*      IMPORTED CONFIGURATION FROM REMOTE...           *
              |*                                                      *
-             |*      $i errors... RESTARTING THE PROCESS...           *
+             |*      $i errors... RESTARTING THE PROCESS...          *
              |*                                                      *
              |********************************************************
              |

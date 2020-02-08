@@ -78,6 +78,7 @@ class EEDieselMongodDb extends EExecutor("diesel.db.col") {
             .attrs
             .filter(_.name != "collection")
             .filter(_.name != "key")
+            .filter (_.ttype != WTypes.UNDEFINED)
             .map(p=>("content." + p.name, p.calculatedValue))
             .toMap
 

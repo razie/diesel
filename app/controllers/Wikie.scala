@@ -499,7 +499,7 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
         val toRealm = iwid.realm.getOrElse(remote.realm)
         val wid = iwid.r(toRealm)
 
-        log(s"Wiki.setContent $wid | ? | $remoteHostPort | ${request.hostPort}")
+        log(s"Wiki.setContent toRealm: $toRealm | remote: $remoteHostPort / ${remote.wid} | local: ${request.hostPort} / $wid")
 
         Wikis(toRealm)
           .ifind(wid)
@@ -508,6 +508,7 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
             Wikis
               .findById(remote._id.toString) // look by ID so this works with diffAll as well
               .filter(x=> request.hostPort == remoteHostPort.mkString) // but only if same server
+              .filter(x=> remote.realm == toRealm) // and same realm (across realms can't share IDs)
           )
         match {
 

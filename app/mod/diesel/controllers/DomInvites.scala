@@ -2,17 +2,12 @@ package mod.diesel.controllers
 
 import com.google.inject.{Inject, Singleton}
 import controllers._
-import model.{User, Users}
-import razie.hosting.Website
-import org.bson.types.ObjectId
+import model.Users
 import org.joda.time.DateTime
 import play.api.Configuration
 import razie.Logging
-import razie.diesel.dom.RDOM.A
-import razie.wiki.Enc
-import razie.wiki.Sec.EncryptedS
+import razie.hosting.Website
 import razie.wiki.admin.SecLink
-import razie.wiki.model.Perm
 import views.html.wiki.genericForm
 
 /** manage invitations to realms */
@@ -58,7 +53,7 @@ class DomInvites @Inject() (config:Configuration) extends mod.diesel.controllers
     val recap = request.fqParm("g-recaptcha-response", "").trim
 
     if(! new Recaptcha(config).verify2(recap, clientIp)) {
-      Unauthorized("Are you human?")
+      Unauthorized("Are you human? If so, please use the support link at the bottom of the previous page...")
     } else {
       Emailer.withSession(request.realm) { implicit mailSession =>
         // todo tell the owner instead
