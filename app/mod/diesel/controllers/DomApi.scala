@@ -20,7 +20,7 @@ import razie.diesel.engine._
 import razie.diesel.engine.exec.{EECtx, EESnakk, SnakkCall}
 import razie.diesel.engine.nodes.EnginePrep.catPages
 import razie.diesel.engine.nodes._
-import razie.diesel.expr.{ECtx, StaticECtx}
+import razie.diesel.expr.{ECtx, SimpleECtx, StaticECtx}
 import razie.diesel.model.DieselMsg
 import razie.diesel.utils.{AutosaveSet, DomCollector, DomWorker, SpecCache}
 import razie.hosting.Website
@@ -385,18 +385,8 @@ class DomApi extends DomApiBase  with Logging {
     val website = Website.forRealm(reactor).getOrElse(stok.website)
     val apiKey = website.prop("diesel.xapikey")
 
-    // make the diesel.rest message
-    def mkDieselRest = {
-      val qparams = DomEngineHelper.parmsFromRequestHeader(request)
-      val qFlat = qparams.map(t => P.fromTypedValue(t._1, t._2, WTypes.wt.STRING)).toList
-      val qJson = P.fromTypedValue("dieselQuery", qparams, WTypes.wt.JSON)
-
-        Some(EMsg(DieselMsg.ENGINE.DIESEL_REST, qJson :: List(
-          P.fromTypedValue("path", path),
-          P.fromTypedValue("verb", verb)
-        ) ::: qparams.map(t => P.fromTypedValue(t._1, t._2, WTypes.wt.STRING)).toList
-        ))
-    }
+    val postDetails1 = verb + " " + path
+    val postDetails2 = stok.headers
 
     // see if client wanted to force a response code
     stok.qhParm("dieselHttpResponse").filter(_ != "200").map {code =>
@@ -405,12 +395,6 @@ class DomApi extends DomApiBase  with Logging {
         .withHeaders("diesel-reason" -> s"client requested dieselHttpResponse $code in realm ${stok.realm}")
     }.getOrElse {
 
-      // more testing options
-      stok.qhParm("dieselSleep").map { code =>
-        ctrace << s"MOCK DIESEL SLEEPING... $code ms"
-        Thread.sleep(code.toInt)
-      }
-
       val requestContentType = stok.req.contentType
 
       val uid = stok.au.map(_._id).getOrElse(NOUSER)
@@ -418,6 +402,31 @@ class DomApi extends DomApiBase  with Logging {
       val raw = request.body.asBytes()
       val body = raw.map(a => new String(a)).getOrElse("")
       val postedContent = Some(new EContent(body, stok.req.contentType.mkString, 200, Map.empty, None, raw))
+
+      // make the diesel.rest message
+      def mkDieselRest = {
+        val qparams = DomEngineHelper.parmsFromRequestHeader(request)
+        val qFlat = qparams.map(t => P.fromTypedValue(t._1, t._2, WTypes.wt.STRING)).toList
+        val qJson = P.fromTypedValue("dieselQuery", qparams, WTypes.wt.JSON)
+
+        // looking at the posted content now...
+        val posted =
+          if("POST".equals(verb) && postedContent.isDefined)
+            postedContent.get.asDieselParams(new SimpleECtx())
+          else Nil
+
+        Some(EMsg(DieselMsg.ENGINE.DIESEL_REST, qJson :: List(
+          P.fromTypedValue("path", path),
+          P.fromTypedValue("verb", verb)
+        ) ::: qparams.map(t => P.fromTypedValue(t._1, t._2, WTypes.wt.STRING)).toList ::: posted
+        ))
+      }
+
+      // more testing options
+      stok.qhParm("dieselSleep").map { code =>
+        ctrace << s"MOCK DIESEL SLEEPING... $code ms"
+        Thread.sleep(code.toInt)
+      }
 
       // todo sort out this mess
       val settings = DomEngineHelper.settingsFromRequestHeader(stok.req, postedContent).copy(realm=Some(reactor))
@@ -513,6 +522,10 @@ class DomApi extends DomApiBase  with Logging {
         x.length > 0 && x == xx
       }
 
+      // add a debug point with the post info
+      val desc = (DomAst(EInfo(postDetails1, postDetails2.toString), AstKinds.DEBUG).withStatus(DomState.SKIPPED))
+//      engine.root.append(desc)(engine)
+
       // is message visible?
       if (msg.isDefined && isMsgVisible(msg.get, reactor, website) || isMemberOrTrusted(msg, reactor, website) || needsApiKey && isApiKeyGood) {
         msg.map {msg=>
@@ -566,6 +579,8 @@ class DomApi extends DomApiBase  with Logging {
               .getOrElse("text/plain") // or plain
 
           templateResp.map { t =>
+              // we have a response template
+
             //          val s = EESnakk.formatTemplate(t.content, ECtx(res))
             // engine.ctx accumulates results and we add the input
 
@@ -612,6 +627,8 @@ class DomApi extends DomApiBase  with Logging {
             }.getOrElse(mkStatus(s, engine).as(ctype))
 
           }.getOrElse {
+            // no response template - send the payload
+
             val res = s"No response template for ${e}.${a}\n" + engine.root.toString
             ctrace << s"RUN_REST_REPLY $verb $mock $path\n" + res
             val response = engine.ctx.get("payload").getOrElse(res)
@@ -645,12 +662,12 @@ class DomApi extends DomApiBase  with Logging {
   }
 
   /** /diesel/mock/ path  */
-  def mock(path: String) = runRest("/" + path, "GET", true)
-  def mockPost(path: String) = runRest("/" + path, "POST", true)
+  def dieselMock(path: String) = runRest("/" + path, "GET", true)
+  def dieselMockPost(path: String) = runRest("/" + path, "POST", true)
 
   /** /diesel/rest/ path  */
-  def rest(path: String) = runRest("/" + path, "GET", mock=true)
-  def restPost(path: String) = runRest("/" + path, "POST", mock=true)
+  def dieselRest(path: String) = runRest("/" + path, "GET", mock=false)
+  def dieselRestPost(path: String) = runRest("/" + path, "POST", mock=false)
 
   /** /diesel/start/ea
     * API msg sent to reactor
@@ -740,7 +757,7 @@ class DomApi extends DomApiBase  with Logging {
   /** did the flow have a preferrred http response status/headers? */
   def mkStatus(s:String, engine:DomEngine) = {
     // is there a desired status
-    var ok = engine.ctx.get("diesel.response.http.status").filter(_.length > 0).map {st=>
+    var ok = engine.ctx.get(DieselMsg.HTTP.STATUS).filter(_.length > 0).map {st=>
       Status(st.toInt)
     } getOrElse
       Ok(s)

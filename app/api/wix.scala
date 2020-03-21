@@ -293,6 +293,7 @@ object wix {
 }
 
 class WixUtils(w:wix) {
+  def countRealmUsers() = Users.findUsersForRealm(w.realm.name).size
   def countRealmPages() = Wikis(w.realm.name).count
   def countForms() = wix.utils.countForms()
   def wikiList(wids:List[WID]) =

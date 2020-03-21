@@ -50,6 +50,11 @@ cd $RK
 
 docker tag raz-diesel razie/raz-diesel
 
+echo "publishing"
+echo "docker tag raz-diesel razie/raz-diesel"
+echo "docker login -u razie"
+echo "docker push razie/raz-diesel"
+
 ################## publishing
 
 # https://docs.docker.com/docker-cloud/builds/push-images/
