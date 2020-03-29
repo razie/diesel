@@ -1,6 +1,7 @@
 @******
 manage the list of kidz and/or their accounts
 ******@
+@import views.html.club.groupMessaging
 @(club:controllers.Club, role:String, team:razie.wiki.model.WID)(implicit stok:controllers.StateOk)
 @import mod.snow.RK
 @import mod.snow.{RacerKidAssoc, RacerKid}
@@ -25,7 +26,8 @@ manage the list of kidz and/or their accounts
   for ((k,a) <- rks if(f(k, a))) yield
     Map("rkaid"->a._id.toString,
         "fname"->k.info.firstName,
-        "lname"->k.info.lastName,
+      "lname"->k.info.lastName,
+      "date"->k.crDtm.toDate.toString,
         "role" -> a.role,
         "associd" -> a._id.toString,
       "notes"->k._id.toString,
@@ -58,7 +60,7 @@ manage the list of kidz and/or their accounts
     }
 
   @util.utilSimpleTable(rksactive.iterator,
-    Seq("fname" -> "F.Name", "lname"->"L.Name", "role" -> "Role", "details"->"Details", "notes"->"History"), Some(mnglink))
+    Seq("fname" -> "F.Name", "lname"->"L.Name", "date"-> "crDate", "role" -> "Role", "details"->"Details", "notes"->"History"), Some(mnglink))
 
   }
 

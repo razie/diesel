@@ -172,6 +172,7 @@ trait ScalaScripster {
     try {
       val c = new CSTimer("script", "?")
       c.start()
+      ctx.clear // make sure there's nothing for hackers
       val res = (ScalaScript(s).interactive(ctx) getOrElse "?")
       ctx.clear // make sure there's nothing for hackers
       c.stop()

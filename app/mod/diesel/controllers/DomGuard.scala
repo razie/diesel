@@ -526,14 +526,6 @@ Guardian report<a href="/wiki/Guardian_Guide" ><sup><span class="glyphicon glyph
     }
   }
 
-  def setEnv(env: String) = Filter(isMod).async { implicit stok =>
-    val au = stok.au.get
-    val u = Profile.updateUser(au, au.setPrefs(stok.realm, Map("dieselEnv" -> env)))
-    cleanAuth()
-    // it's not actually redirecting, see client
-    Future.successful(Redirect("/", SEE_OTHER))
-  }
-
   /** run another check current reactor */
   def whoami = RAction{ implicit stok =>
     Ok(InetAddress.getLocalHost.getHostName)

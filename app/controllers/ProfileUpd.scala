@@ -222,7 +222,7 @@ class ProfileUpd @Inject() (config:Configuration) extends RazController with Log
               // todo use email template
               mailSession.send(au.emailDec, Config.SUPPORT, "Password was changed", "Your password was changed!")
             }
-            Msg("Ok, password changed!")
+            Msg("Your password has successfully changed.")
           }) getOrElse {
             verror("ERR_CANT_UPDATE_USER_PASSWORD ")
             unauthorized("Oops - cannot update this user [ERR_CANT_UPDATE_USER_PASSWORD]... ")
@@ -334,7 +334,7 @@ Please check your email and follow the instructions.
                 "Password was changed",
                 html)
             }
-              Msg("Ok, password changed! Please login.")
+              Msg("Your password has successfully changed.")
             }) getOrElse {
             verror("ERR_CANT_UPDATE_USER_PASSWORD ")
             unauthorized("Oops - cannot update this user [ERR_CANT_UPDATE_USER_PASSWORD]... ")

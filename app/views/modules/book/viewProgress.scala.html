@@ -65,6 +65,11 @@ list all topics in category
   <span style="font-size : smaller ; font-weight : normal ; color : red">
     <br>Enjoy your complimentary access to the Intro and Preview. <br>
     If you find it helpful, please take a look at the <b><a href="/wiki/Admin:Memberships">available memberships</a></b>, to get full access to all talks and on-snow sessions!
+
+    @if(stok.au.isDefined && stok.au.exists(u => u.hasMembershipLevel(Perm.Expired.s))) {
+        <br>Your membership has expired!. <br>
+    }
+
   </span>
 }
 

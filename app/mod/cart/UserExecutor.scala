@@ -30,7 +30,7 @@ object EEModUserExecutor extends EExecutor("diesel.mod.user") {
           val level = ctx("level")
           val userId = ctx("userId")
 
-          Users.findUserById(userId).map {u=>
+          Users.findUserById(userId).map(_.forRealm(realm)).map {u=>
             val perm = level match {
               case "renew:blue" => u.hasPerm(Perm.Basic)
               case "renew:black" => u.hasPerm(Perm.Basic) || u.hasPerm(Perm.Gold)     // can upgrage this way
@@ -58,7 +58,7 @@ object EEModUserExecutor extends EExecutor("diesel.mod.user") {
           Emailer.withSession(realm) { implicit mailSession =>
             if (paymentId.startsWith("PAY") && paymentId.length > 20) {
               // ok, update
-              Users.findUserById(userId).map {u=>
+              Users.findUserById(userId).map(_.forRealm(realm)).map {u=>
                 val perm = level match {
                   case "blue" | "renew:blue" | Perm.Basic.s => Some(Perm.Basic)
                   case "black" | "renew:black" | Perm.Gold.s => Some(Perm.Gold)
@@ -73,6 +73,9 @@ object EEModUserExecutor extends EExecutor("diesel.mod.user") {
 
                 if(perm.isDefined && !u.hasMembershipLevel(perm.get))
                   newu = newu.addPerm(realm, "+"+perm.get.s)
+
+                // in case it was expired
+                newu = newu.removePerm(realm, "+"+Perm.Expired.s)
 
                 u.update(newu)
                 Services.auth.cleanAuth2(u)

@@ -276,7 +276,7 @@ require(['jquery'], function($){
 
     **@
 
-    @if(! web().navrMenuRemove.contains("Search") || stok.au.exists(_.isMod) && stok.isLocalhost ) {
+    @if(! web().navrMenuRemove.contains("Search") || stok.au.exists(_.isMod) &&  stok.isLocalhost ) {
       @if((stok.au.exists(_.isMod) || stok.isLocalhost) && web().prop("diesel.envList").isDefined) {
         <ul class="nav navbar-nav pull-right">
           <li class="dropdown">

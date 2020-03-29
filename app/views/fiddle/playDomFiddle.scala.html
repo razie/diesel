@@ -40,12 +40,18 @@ a JS with HTML and CSS fiddle
 <small>
 Quick reference (Ctrl- on Win, Cmd- on Mac):
 
+Left editors:
+
 - Cmd-G = graphical editor for the current line
 - Cmd-B = find the current rule in the output trace
 - green/yellow/red floppy indicates current draft save state
 - click yellow floppy to show diffs
 - click story/spec dropdown to see other or create new
 - refresh icon - click to re-run
+
+Right-side output trace:
+
+- click on nodes with a hand hover to navigate to spec
 </small>
 
 See [[Diesel Fiddle Guide]] for details, the [[DSL Reference]] for language or go through the entire [[Diesel Academy]].
@@ -67,7 +73,8 @@ Command reference (see more about [[specs.Topic:Expressions_and_pattern_matching
 }
 </div>
 
-  <h3 id="heading">Diesel fiddle<a href="javascript:showHelp();" title="Click for detailed help"><sup><span class="glyphicon glyphicon-question-sign"></span></sup></a>
+  <h3 id="heading">
+    Diesel fiddle<a href="javascript:showHelp();" title="Click for detailed help"><sup><span class="glyphicon glyphicon-question-sign"></span></sup></a>
     | <small>
 
     <span onclick="setSpec('Story');" class="label label-primary" style="cursor:pointer" title="Change the current story"><span id="curStory">Story</span> <span class="glyphicon glyphicon-chevron-down">
@@ -122,6 +129,7 @@ Command reference (see more about [[specs.Topic:Expressions_and_pattern_matching
         <span class="glyphicon glyphicon-new-window"></span></span>
             &nbsp;<input type="checkbox" id="expandedSpec" title="Expand/collapse spec" checked>
         <small>(show/hide)</small>
+        <span id="errMsg" class="label label-danger" style="display:none;"></span>
     </div>
     <div id="title3b_@id" class="col-sm-6" style="font-size: small">
       <input type="checkbox" id="traceStory" title="Expand/collaps trace nodes" > <small>(trace)</small>
@@ -224,6 +232,12 @@ useLocalStorageCheckbox("realTime", "domFiddleRealTime");
 $('#sketchMode, #mockMode, #blenderMode, #draftMode, #realTime').change(function(){
   runpill2_@{id}('@{id}', false);
 });
+
+function errMsg(text) {
+  $('#errMsg').html('<strong>'+text+'</strong>');
+  $('#errMsg').show();
+  $('#errMsg').fadeOut(5000);
+};
 
 function toggleBox (name) {
   var is = $('#' + name).prop('checked');
@@ -395,8 +409,9 @@ var runpill_@id = function(id) {
       hideSpinner();
       console.log( "ERR "+JSON.stringify(x));
       if(JSON.stringify(x).indexOf("staleid") >= 0) {
-        alert("Stale page - please refresh to get the latest saved draft!!!");
-        location.reload();
+        console.log("saveDraft-=Stale page - please refresh to get the latest saved draft!!!");
+        errMsg("Stale page - please refresh to get the latest saved draft!!!");
+        // location.reload();
       }
     }
   });
@@ -478,7 +493,7 @@ var runpill2_@id = function(id,compileOnly, next) {
 
           if(!compileOnly) curDomRequest = null;
           if(JSON.stringify(x).indexOf("staleid") >= 0) {
-            alert("Stale page - please refresh to get the latest saved draft!!!");
+            errMsg("Stale page - please refresh to get the latest saved draft!!!");
             location.reload();
           }
         }

@@ -251,6 +251,7 @@ class wix (owe: Option[WikiPage], ou:Option[WikiUser], q:Map[String,String], r:S
     case Perm.Basic.s => " (green&blue content)"
     case Perm.Member.s => " (free content)"
     case Perm.Moderator.s => " (local god)"
+    case Perm.Expired.s => " (expired)"
     case _ => ""
   }
 

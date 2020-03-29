@@ -28,7 +28,10 @@ profile - reset password
 
     <button type="submit" class="btn btn-primary">Change !</button>
 
+@** Quadlogic doesn't like this
+
     @user.agree()
+**@
 
     @myForm.globalError.map { err =>
       <p style="color : red ; font-weight : bold">@err.message</p>

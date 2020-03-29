@@ -30,13 +30,12 @@ import scala.io.Source
 //@Singleton
 class Admin extends AdminBase {
 
-  // routes razadmin/page/:page
-  def showRealmUsers = FAU { implicit au =>
+  def realmUsers = FAU { implicit au =>
     implicit errCollector => implicit request =>
         if(au.isAdmin || au.isMod)
           ROK.s admin { implicit stok => views.html.admin.adminRealmUsers(stok.realm) }
         else {
-        unauthorized("CAN'T")
+          unauthorized("CAN'T")
         }
   }
 

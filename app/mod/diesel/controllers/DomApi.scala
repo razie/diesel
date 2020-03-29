@@ -1209,7 +1209,8 @@ class DomApi extends DomApiBase  with Logging {
     }
   }
 
-  def setEnv (env:String) = Filter(isMod).async { implicit stok =>
+  /** set user's preferred current environment */
+  def setEnv (env:String) = Filter(activeUser).async { implicit stok =>
     val au = stok.au.get
     val u = Profile.updateUser(au, au.setPrefs(stok.realm, Map("dieselEnv" -> env)))
     cleanAuth()
