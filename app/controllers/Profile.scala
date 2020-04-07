@@ -779,12 +779,11 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
   }
 
   val MSG_REGD= s"""
-Your registration has been accepted. We have sent an email with a confirmation link to your email address.
+Your registration was successful. A verification email with a confirmation link has been sent to your email address.
 <p>
 <small>
-Please allow a few minutes for this message to arrive.
-<br>Don't forget to check your junk or spam folder if you do not receive the email.
-<br>Click the verification link in the email to confirm your account and proceed to the Login page.
+Please allow a few minutes for this message to arrive and don't forget to check your junk or spam folder, if you do not see the email.
+<br>Please follow the instructions from the email.
 </small>
 """
 

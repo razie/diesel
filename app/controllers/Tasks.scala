@@ -221,9 +221,7 @@ class Tasks extends RazController with Logging {
 
 //          (if(op.hasConsent(realm)) {
             Msg2("""
-Ok, email verified - your account is now active!
-
-Please read our [[Terms of Service]] as well as our [[Privacy Policy]]
+Email verified. Your account is now active!
 """, Some("/")
 //            )
 //          } else

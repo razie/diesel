@@ -169,6 +169,13 @@ class AdminSys extends AdminBase {
       case "buildTimestamp" => {
         Ok(reloadt.toString).as("application/text")
       }
+      case "timeout.please" => {
+        Thread.sleep(60)
+        RequestTimeout("as asked")
+      }
+      case x:String if x.forall(_.isDigit) => {
+        Status(x.toInt).apply("as asked")
+      }
       case _ => Ok(osusage).as("application/json")
     }
   }

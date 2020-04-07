@@ -6,6 +6,9 @@ Admin user - list of users
 
 @fufu(db:com.mongodb.casbah.Imports.DBObject, k:String, v:String) = {
 @k match {
+  case "extId" => {
+    @razie.wiki.Enc.unapply(v)
+  }
   case "email" => {
     @razie.wiki.Enc.unapply(v)
   }
@@ -46,6 +49,7 @@ Admin user - list of users
     "firstName" -> "First Name",
     "lastName" -> "Last Name",
     "yob" -> "YOB",
+    "extId" -> "extId",
     "realms" -> "Realms"), None, None, Some(fufu),
   Some(filter)
 )

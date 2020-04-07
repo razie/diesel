@@ -334,7 +334,7 @@ Please check your email and follow the instructions.
                 "Password was changed",
                 html)
             }
-              Msg("Your password has successfully changed.")
+              Msg("Your password was successfully changed.")
             }) getOrElse {
             verror("ERR_CANT_UPDATE_USER_PASSWORD ")
             unauthorized("Oops - cannot update this user [ERR_CANT_UPDATE_USER_PASSWORD]... ")

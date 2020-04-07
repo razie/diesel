@@ -10,12 +10,16 @@ import razie.diesel.expr.ECtx
 import razie.wiki.model._
 import razie.wiki.{Config, Enc, Services}
 
+/** user management
+  *
+  * todo these should be signed and authorized?
+  */
 object EEModUserExecutor extends EExecutor("diesel.mod.user") {
 
   override def isMock: Boolean = true
 
   override def test(m: EMsg, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) = {
-    m.entity == "diesel.mod.user"
+    m.entity == "diesel.mod.user" || m.entity == "mod.user"
   }
 
   override def apply(in: EMsg, destSpec: Option[EMsg])(implicit ctx: ECtx): List[Any] = {
