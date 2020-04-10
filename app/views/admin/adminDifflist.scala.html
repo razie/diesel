@@ -73,6 +73,7 @@ purge audit tables
     <table class="table table-striped">
     @lchanged.filter(_._3 != "-").sortBy(x=> x._2.realm+x._3).map { t =>
       <tr id="row-@t._2.id">
+
         <td>
         @if(t._1.cat != "ReactorMod" || t._1.realm == t._2.realm) {
           <!--
@@ -87,15 +88,16 @@ purge audit tables
 
           @if(t._1.drafts > 0) {
             <small>
-              <a href="@{WID(t._1.cat, t._1.name).r(t._1.realm).url}/edit">
+              <a href="@{WID(t._1.cat, t._1.name).r(t._1.realm).urlRelative}/edit">
                 <span style="color:red" class="glyphicon glyphicon-warning-sign" title="has drafts - either save or cancel before merging..."></span>
               </a>
             </small>
           }
         }
       </td>
+
         <td>
-          @t._1.realm <a href="@WID(t._1.cat, t._1.name).r(t._1.realm).url">@t._1.cat:@t._1.name</a> (<a href="/wikie/content/@wp(WID(t._1.cat, t._1.name).r(t._1.realm))">content</a>)
+          @t._1.realm <a href="@WID(t._1.cat, t._1.name).r(t._1.realm).urlRelative">@t._1.cat:@t._1.name</a> (<a href="/wikie/content/@wp(WID(t._1.cat, t._1.name).r(t._1.realm))">content</a>)
 
           <a
           href="javascript:popupUrl('@routes.AdminDiff.showDiff("yes", t._3, localRealm, toRealm, remote, WID(t._2.cat, t._2.name).r(t._2.realm))');"
@@ -105,9 +107,11 @@ purge audit tables
           @** @t._2.realm <a href="http://@{remote}@WID(t._2.cat, t._2.name).r(t._2.realm).urlRelative">@t._2.cat:@t._2.name</a> *@
         @t._2.realm <a href="@WID(t._2.cat, t._2.name).r(t._2.realm).urlRemote">@t._2.cat:@t._2.name</a>
         </td>
+
         <td>
           @t._3
         </td>
+
         <td>
         @if(t._1.cat != "ReactorMod") {
           <a
@@ -126,6 +130,7 @@ purge audit tables
           }
         }
         </td>
+
       </tr>
     }
     </table>
@@ -139,24 +144,24 @@ purge audit tables
    @lremoved.sortBy(_.realm).map { wea =>
     <tr id="row-@wea.id">
       <td>
-      @if(wea.cat != "Reactor") {
+@*//      @if(wea.cat != "Reactor") {*@
         <a
         xhref="x"
         class="btn btn-xs btn-default"
         >USE LOCAL &raquo;</a>
-      }
+@*//      }*@
       </td>
       <td>
         @wea.realm
         <a href="http://@remote@WID(wea.cat, wea.name).r(wea.realm).urlRelative">@wea.cat:@wea.name v@wea.ver</a>
       </td>
       <td>
-      @if(wea.cat != "Reactor") {
+@*//      @if(wea.cat != "Reactor") {*@
           <a
           onclick="applyDif('@wea.id', '@routes.AdminDiff.applyDiffFrom(localRealm, toRealm, remote, WID(wea.cat, wea.name).r(wea.realm))')"
           class="btn btn-xs btn-success"
           >	&laquo; USE REMOTE</a>
-      }
+@*//      }*@
       </td>
     </tr>
   }
@@ -174,13 +179,13 @@ purge audit tables
     @lnew.sortBy(_.realm).map { wea =>
       <tr id="row-@wea.id">
         <td>
-        @if(wea.cat != "Reactor") {
+@*//        @if(wea.cat != "Reactor") {*@
           <a
           xhref="x"
           onclick="applyDif('@wea.id', '@routes.AdminDiff.applyDiffTo(localRealm, toRealm, remote, WID(wea.cat, wea.name).r(wea.realm))')"
           class="btn btn-xs btn-success"
           >USE LOCAL &raquo;</a>
-        }
+@*//        }*@
         </td>
         <td>
         @wea.realm <a href="@controllers.Wiki.w(wea.cat, wea.name, wea.realm)">@wea.cat:w/@wea.name v@wea.ver </a>
