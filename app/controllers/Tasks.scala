@@ -2,6 +2,7 @@ package controllers
 
 import com.google.inject.Singleton
 import controllers.Emailer.expand
+import controllers.Realm.{FAUR, ROK, auth}
 import model._
 import org.joda.time.DateTime
 import play.api.mvc.{Action, DiscardingCookie, Request}
@@ -220,7 +221,7 @@ class Tasks extends RazController with Logging {
           }
 
 //          (if(op.hasConsent(realm)) {
-            Msg2("""
+          Msg2("""
 Email verified. Your account is now active!
 """, Some("/")
 //            )
@@ -228,15 +229,49 @@ Email verified. Your account is now active!
 //            (ROK.r apply { implicit stok =>
 //              views.html.user.doeConsent(next.getOrElse("/"))
 //            })
-              )//DO NOT LOGG HIM IN... .withSession(Services.config.CONNECTED -> Enc.toSession(u.email))
+          )//DO NOT LOGG HIM IN... .withSession(Services.config.CONNECTED -> Enc.toSession(u.email))
               .discardingCookies(DiscardingCookie("error"))
         }
       } getOrElse
-        {
-          verror("ERR_CANT_UPDATE_USER.verifiedEmail " + Enc.unapply(email))
-          Unauthorized("Oops - cannot update this user....verifiedEmail " + errCollector.mkString)
-        }
+          {
+            verror("ERR_CANT_UPDATE_USER.verifiedEmail " + Enc.unapply(email))
+            Unauthorized("Oops - cannot update this user....verifiedEmail " + errCollector.mkString)
+          }
     }
+  }
+
+  /** force verify email */
+  def forceVerified(id: String) = FAUR("force verif") { implicit request =>
+      val realm = request.realm
+
+      for (
+        au <- request.au;
+        can <- au.isMod orErr "No permission";
+        r1 <- au.hasPerm(Perm.uWiki) orCorr cNoPermission;
+        u <- Users.findUserById(id).map(_.forRealm(request.realm)) orCorr cNoAuth;
+        p <- u.profile orCorr cNoProfile
+      ) yield {
+        razie.db.tx("verifiedEmail", u.userName) { implicit txn =>
+          if (!u.hasPerm(Perm.eVerified)) {
+            // need to create first this realm - sometimes it's not created, if user doesn't try to login
+            var pu = u.addPerm(realm, Perm.eVerified.s).addPerm(realm, Perm.uWiki.s)
+            pu = pu.addPerm("*", Perm.eVerified.s).addPerm("*", Perm.uWiki.s)
+            pu = if (u.isUnder13) pu else pu.addPerm(realm, Perm.uProfile.s)
+            pu = if (u.isUnder13) pu else pu.addPerm("*", Perm.uProfile.s)
+            pu = pu.addModNote(realm, "Verified by mod")
+            u.update(pu)
+
+            // replace in cache
+            Users.findUserById(p._id).map { u =>
+              cleanAuth(Some(u))
+            }
+            Msg2("""Email verified by admin. The account is now active!""", None)
+          } else {
+            Msg2("""Accoutn was already active!""", None)
+          }
+        }
+//          UserTasks.verifyEmail(p).delete
+      }
   }
 
   def some(what: String) = Action { implicit request =>

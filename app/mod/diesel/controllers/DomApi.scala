@@ -12,19 +12,22 @@ import org.json.JSONObject
 import play.api.mvc._
 import play.twirl.api.Html
 import razie.audit.Audit
+import razie.diesel.Diesel
 import razie.diesel.dom.RDOM.{NVP, P}
 import razie.diesel.dom._
 import razie.diesel.engine.DomEngineSettings.DIESEL_USER_ID
 import razie.diesel.engine.RDExt._
 import razie.diesel.engine._
 import razie.diesel.engine.exec.{EECtx, EESnakk, SnakkCall}
-import razie.diesel.engine.nodes.EnginePrep.catPages
+import razie.diesel.engine.nodes.EnginePrep.{catPages, listStoriesWithFiddles}
 import razie.diesel.engine.nodes._
 import razie.diesel.expr.{ECtx, SimpleECtx, StaticECtx}
 import razie.diesel.model.DieselMsg
+import razie.diesel.model.DieselMsg.HTTP
+import razie.diesel.samples.DomEngineUtils
 import razie.diesel.utils.{AutosaveSet, DomCollector, DomWorker, SpecCache}
 import razie.hosting.Website
-import razie.tconf.DTemplate
+import razie.tconf.{DTemplate, EPos}
 import razie.wiki.Enc
 import razie.wiki.admin.Autosave
 import razie.wiki.model._
@@ -184,6 +187,7 @@ class DomApi extends DomApiBase  with Logging {
     */
   private def irunDomInt(path: String, useThisStory: Option[WID], useThisStoryPage: Option[WikiEntry] = None, useThisSpecPage: List[WikiEntry] = Nil) (implicit stok:RazRequest) : Future[Result] = {
 
+    // not always the same as the request...
     val reactor = stok.website.dieselReactor
     val website = Website.forRealm(reactor).getOrElse(stok.website)
     val xapikey = website.prop("diesel.xapikey")
@@ -229,7 +233,8 @@ class DomApi extends DomApiBase  with Logging {
         ((pages ::: useThisSpecPage).flatMap(p => SpecCache.orcached(p, WikiDomain.domFrom(p)).toList))
           .foldLeft(RDomain.empty)((a, b) => a.plus(b)).revise.addRoot
 
-      val story2 = if (settings.sketchMode && useThisStoryPage.isEmpty) { // in sketch mode, add the temp fiddle tests - filter out messages, as we already have one
+      val story2 = if (settings.sketchMode && useThisStoryPage.isEmpty) {
+        // in sketch mode, add the temp fiddle tests - filter out messages, as we already have one
         useThisStory.map { p =>
           Autosave
             .find("wikie", p.defaultRealmTo(reactor), userId)

@@ -154,7 +154,7 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
 
         (for (
           can <- canEdit(wid, Some(au), Some(w));
-          hasQuota <- (au.isAdmin || au.quota.canUpdate) orCorr cNoQuotaUpdates;
+          hasQuota <- (au.isAdmin || au.isMod ||au.quota.canUpdate) orCorr cNoQuotaUpdates;
           r1 <- au.hasPerm(Perm.uWiki) orCorr cNoPermission("uWiki");
           lock <- EditLock.lock(w.uwid, w.wid.wpath, w.ver, au) orErr s"Page edited by ${EditLock.find(w.uwid, w.wid.wpath).map(_.uname).mkString}"
         ) yield {
@@ -447,7 +447,7 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
         w <- wid.page; //Wikis.find(wid).filter(wid.realm.isEmpty || _.realm == wid.realm.get) orErr "wiki not found "+wid.wpath  ;
         _ <- au.hasPerm(Perm.uWiki) orCorr cNoPermission("uWiki");
         _ <- canEdit(wid, auth, Some(w)) orErr "can't edit";
-        _ <- (au.isAdmin || au.quota.canUpdate) orCorr cNoQuotaUpdates;
+        _ <- (au.isAdmin || au.isMod ||au.quota.canUpdate) orCorr cNoQuotaUpdates;
         newC <- Some(mkC(w.content, icontent).replaceAll("\r", ""));
         newVerNo <- Some(w.ver + 1 );
         newVer <- Some(w.copy(content = newC, ver = newVerNo, updDtm = DateTime.now()));
@@ -490,7 +490,7 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
 
       (for(
         r1 <- au.hasPerm(Perm.uWiki) orCorr cNoPermission("uWiki");
-        hasQuota <- (au.isAdmin || au.quota.canUpdate) orCorr cNoQuotaUpdates;
+        hasQuota <- (au.isAdmin || au.isMod || au.quota.canUpdate) orCorr cNoQuotaUpdates;
         wej <- data.get("we") orErr "bad we";
         remoteHostPort <- data.get("remote").orElse(Some("")); // orElse for tmeporary compatibility
         remote <- fromJ (wej) orErr "can't J"
@@ -702,7 +702,7 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
             (for (
               can <- canEdit(wid, auth, Some(w));
               r1 <- au.hasPerm(Perm.uWiki) orCorr cNoPermission("uWiki");
-              hasQuota <- (au.isAdmin || au.quota.canUpdate) orCorr cNoQuotaUpdates;
+              hasQuota <- (au.isAdmin || au.isMod ||au.quota.canUpdate) orCorr cNoQuotaUpdates;
               nochange <- (w.label != newLabel || w.markup != m || w.content != newContent ||
                 (!w.props.get("visibility").exists(_ == vis)) ||
                 (!w.props.get("wvis").exists(_ == wvis)) ||
@@ -803,7 +803,7 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
             val parentProps = parent.map(_.props)
             (for (
               can <- canEdit(wid, auth, None, parentProps);
-              hasQuota <- (au.isAdmin || au.quota.canUpdate) orCorr cNoQuotaUpdates;
+              hasQuota <- (au.isAdmin || au.isMod ||au.quota.canUpdate) orCorr cNoQuotaUpdates;
               r3 <- ("any" != wid.cat) orErr ("can't create in category any");
               w <- WikiDomain(wid.realm getOrElse getRealm()).rdom.classes.get(wid.cat) orErr (s"cannot find the category ${wid.cat} realm ${wid.getRealm}");
               r1 <- (au.hasPerm(Perm.uWiki)) orCorr cNoPermission("uWiki");

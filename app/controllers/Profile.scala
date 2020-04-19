@@ -715,11 +715,11 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
       Msg ("Data is invalid, please try again")
           .withNewSession
           .discardingCookies(DiscardingCookie("error"))
-    } else if(Users.findUserByEmailDec((e)).isDefined) {
+    } else if(Users.findUserNoCase((e)).isDefined) {
 
       // user exists
 
-      val u = Users.findUserByEmailDec((e)).get
+      val u = Users.findUserNoCase((e)).get
 
       if(u.pwd != Enc(p)) {
         clog << "User createExt password does not match"
@@ -782,7 +782,7 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
 Your registration was successful. A verification email with a confirmation link has been sent to your email address.
 <p>
 <small>
-Please allow a few minutes for this message to arrive and don't forget to check your junk or spam folder, if you do not see the email.
+Please allow a few minutes for this message to arrive and don't forget to check your junk or spam folder if you do not see the email.
 <br>Please follow the instructions from the email.
 </small>
 """
