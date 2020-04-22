@@ -312,21 +312,60 @@ class DomApi extends DomApiBase  with Logging {
 
         setApiKeyUser(needsApiKey, isApiKeyGood, website, engine)
 
-        msg.map { msg =>
+        val msgAst = msg.map { msg =>
           EnginePrep.addMsgToAst(engine.root, msg)
         }
 
+        val RETURN501 = true // per realm setting?
+
+        var body:String = ""
+
         engine.process.map { engine =>
+          cdebug << s"Engine done 1 ... ${engine.id}"
           val errors = new ListBuffer[String]()
 
-          if (
+          // no rules matched
+          val ok = if(RETURN501 && (msgAst.isEmpty ||
+             msgAst.get.children.headOption
+                 .exists(x=>
+                   x.value.isInstanceOf[EWarning] &&
+                   x.value.asInstanceOf[EWarning].code == DieselMsg.ENGINE.ERR_NORULESMATCH)
+              )) {
+            // no rules applied - 501 - prevents us from returning settings values when nothing matched
+            body = s"No rules matched for path: (${path}) message: (${msg.get.ea})"
+            info(body)
+
+            Status(NOT_IMPLEMENTED)(body)
+                .withHeaders("diesel-reason" -> body)
+
+          } else if(RETURN501 && (msgAst.isEmpty ||
+                // it was a diesel.rest but nothing matched underneath
+                msgAst.get.children
+                    .exists(
+                        a=> a.kind == AstKinds.RECEIVED &&
+                        a.value.isInstanceOf[EMsg] &&
+                        a.value.asInstanceOf[EMsg].ea == DieselMsg.ENGINE.DIESEL_REST &&
+                        ! a.children.exists(x=>
+                          x.kind == AstKinds.GENERATED)
+                    )
+                )) {
+              // no rules applied - 501 - prevents us from returning settings values when nothing matched
+              body = s"No rules matched for path: (${path}) message: (${msg.get.ea})"
+              info(body)
+
+              Status(NOT_IMPLEMENTED)(body)
+                  .withHeaders("diesel-reason" -> body)
+
+          } else if (
             "value" == settings.resultMode || "" == settings.resultMode
           ) {
             val resp = engine.extractFinalValue(e,a)
             val resValue = resp.map(_.currentStringValue).getOrElse("")
 
             val ctype = resp.map(p=>WTypes.getContentType(p.ttype)).getOrElse(WTypes.Mime.textPlain)
-            Ok(stripQuotes(resValue)).as(ctype)
+
+            body = stripQuotes(resValue)
+            Ok(body).as(ctype)
           } else {
             // multiple values as json
             val valuesp = engine.extractValues(e,a)
@@ -344,15 +383,22 @@ class DomApi extends DomApiBase  with Logging {
             if ("treeJson" == settings.resultMode) m = m + ("tree" -> root.toJson)
 
             if ("debug" == settings.resultMode) {
-              Ok(root.toString).as(WTypes.Mime.appText)
+              body = root.toString
+              Ok(body).as(WTypes.Mime.appText)
             } else if ("dieselTree" == settings.resultMode) {
               val m = root.toj
               val y = DieselJsonFactory.fromj(m).asInstanceOf[DomAst]
               val x = js.tojsons(y.toj).toString
-              Ok(x).as(WTypes.Mime.appJson)
+              body = x
+              Ok(body).as(WTypes.Mime.appJson)
             } else
-              Ok(js.tojsons(m).toString).as(WTypes.Mime.appJson)
+              body = js.tojsons(m).toString
+              Ok(body).as(WTypes.Mime.appJson)
           }
+
+          engine.addResponseInfo(ok.header.status, body, ok.header.headers)
+
+          ok
         }
 
         // is message visible?
@@ -408,6 +454,9 @@ class DomApi extends DomApiBase  with Logging {
       val body = raw.map(a => new String(a)).getOrElse("")
       val postedContent = Some(new EContent(body, stok.req.contentType.mkString, 200, Map.empty, None, raw))
 
+      // save to check results later
+      var dieselRestMsg: Option[EMsg] = None
+
       // make the diesel.rest message
       def mkDieselRest = {
         val qparams = DomEngineHelper.parmsFromRequestHeader(request)
@@ -416,15 +465,21 @@ class DomApi extends DomApiBase  with Logging {
 
         // looking at the posted content now...
         val posted =
-          if("POST".equals(verb) && postedContent.isDefined)
+          if(
+            ("POST".equals(verb) ||
+            "PUT".equals(verb) ||
+            "PATCH".equals(verb))
+                && postedContent.isDefined) {
             postedContent.get.asDieselParams(new SimpleECtx())
-          else Nil
+          } else Nil
 
-        Some(EMsg(DieselMsg.ENGINE.DIESEL_REST, qJson :: List(
+        dieselRestMsg = Some(EMsg(DieselMsg.ENGINE.DIESEL_REST, qJson :: List(
           P.fromTypedValue("path", path),
           P.fromTypedValue("verb", verb)
         ) ::: qparams.map(t => P.fromTypedValue(t._1, t._2, WTypes.wt.STRING)).toList ::: posted
         ))
+
+        dieselRestMsg
       }
 
       // more testing options
@@ -506,7 +561,8 @@ class DomApi extends DomApiBase  with Logging {
       // then imsg (diesel.rest)
       // else diesel.rest
       // else e.a
-      val msg : Option[EMsg] = (trequest.flatMap(_ => findIt) orElse msgSpec.flatMap(_ => findIt) orElse imsg orElse mkDieselRest orElse findIt )
+      val msg : Option[EMsg] =
+      (trequest.flatMap(_ => findIt) orElse msgSpec.flatMap(_ => findIt) orElse imsg orElse mkDieselRest orElse findIt )
           .map (msg=>
             // add matched parms
             // todo why map matched parms and not keep type/value what abt numbers, escaped json etc?
@@ -537,7 +593,7 @@ class DomApi extends DomApiBase  with Logging {
 
         setApiKeyUser(needsApiKey, isApiKeyGood, website, engine)
 
-        EnginePrep.addMsgToAst(engine.root, msg)
+        val msgAst = EnginePrep.addMsgToAst(engine.root, msg)
         DomCollector.collectAst("runRest", stok.realm, engine.id, stok.au.map(_.id), engine, stok.uri)
 
         // process message
@@ -595,11 +651,11 @@ class DomApi extends DomApiBase  with Logging {
             ctrace << s"Found templateResp... ${t.name}"
 
             val s = if(content.length > 0) {
+              // template has content - format it
               val allValues = new StaticECtx(msg.attrs, Some(engine.ctx))
               EESnakk.formatTemplate(content, allValues)
-            }
-            else {
-              //              engine.ctx.get("payload").getOrElse("no msg recognized, no result, no response template")
+            } else {
+              // engine.ctx.get("payload").getOrElse("no msg recognized, no result, no response template")
 
               engine.ctx.getp("payload").map {p=>
                 if(p.value.isDefined) {
@@ -615,31 +671,36 @@ class DomApi extends DomApiBase  with Logging {
                   ""
                 } else
                   engine.ctx.get("payload").getOrElse("no msg recognized, no result, no response template")
-              }.getOrElse("no msg recognized, no result, no response template")
+              }.getOrElse(
+                "no msg recognized, no result, no response template"
+              )
             }
 
             ctrace << s"RUN_REST_REPLY $verb $mock $path\n$s as $ctype"
 
             response.map {res=>
-              // add template parms as headers
+              // found a response template and made the response - add template parms as headers
               val headers = t.parms
                 .filter(_._1.toLowerCase.trim != "content-type")
-                .filter(_._1.startsWith("http.header"))
+                .filter(_._1.startsWith("http.header."))
                 .map(t=>(t._1.replaceFirst("http.header.", ""), t._2))
                 .toSeq
 
               res.withHeaders(headers: _*)
-            }.getOrElse(mkStatus(s, engine).as(ctype))
+            }.getOrElse {
+              // no response formatting found
+              mkStatus(Some(P.fromSmartTypedValue("x", s)), engine).as(ctype)
+            }
 
           }.getOrElse {
             // no response template - send the payload
 
             val res = s"No response template for ${e}.${a}\n" + engine.root.toString
             ctrace << s"RUN_REST_REPLY $verb $mock $path\n" + res
-            val response = engine.ctx.get("payload").getOrElse(res)
+            val response = engine.ctx.getp(Diesel.PAYLOAD).filter(_.ttype != WTypes.wt.UNDEFINED)
             // todo set ctype based on payload if found
 
-            mkStatus(response, engine).as(ctype)
+            mkStatus(response, engine, Some(msgAst)).as(ctype)
               .withHeaders("diesel-reason" -> s"response template not found for $path in realm ${stok.realm}")
               .withHeaders("diesel-trace-id" -> s"engine id: ${engine.id}")
           }
@@ -667,12 +728,18 @@ class DomApi extends DomApiBase  with Logging {
   }
 
   /** /diesel/mock/ path  */
-  def dieselMock(path: String) = runRest("/" + path, "GET", true)
-  def dieselMockPost(path: String) = runRest("/" + path, "POST", true)
+  def dieselMockGET(path: String) = runRest("/" + path, "GET", true)
+  def dieselMockPOST(path: String) = runRest("/" + path, "POST", true)
+  def dieselMockPUT(path: String) = runRest("/" + path, "PUT", true)
+  def dieselMockPATCH(path: String) = runRest("/" + path, "PATCH", true)
+  def dieselMockDELETE(path: String) = runRest("/" + path, "DELETE", true)
 
   /** /diesel/rest/ path  */
-  def dieselRest(path: String) = runRest("/" + path, "GET", mock=false)
-  def dieselRestPost(path: String) = runRest("/" + path, "POST", mock=false)
+  def dieselRestGET(path: String) = runRest("/" + path, "GET", mock=false)
+  def dieselRestPOST(path: String) = runRest("/" + path, "POST", mock=false)
+  def dieselRestPUT(path: String) = runRest("/" + path, "PUT", mock=false)
+  def dieselRestPATCH(path: String) = runRest("/" + path, "PATCH", mock=false)
+  def dieselRestDELETE(path: String) = runRest("/" + path, "DELETE", mock=false)
 
   /** /diesel/start/ea
     * API msg sent to reactor
@@ -758,24 +825,75 @@ class DomApi extends DomApiBase  with Logging {
     )
   }
 
-
   /** did the flow have a preferrred http response status/headers? */
-  def mkStatus(s:String, engine:DomEngine) = {
+  def mkStatus(response:Option[P], engine:DomEngine, msgAst:Option[DomAst] = None) = {
+    var body:String = ""
+
     // is there a desired status
     var ok = engine.ctx.get(DieselMsg.HTTP.STATUS).filter(_.length > 0).map {st=>
       Status(st.toInt)
-    } getOrElse
-      Ok(s)
+    } getOrElse {
+
+      val RETURN501 = true // per realm setting?
+
+        val errors = new ListBuffer[String]()
+
+        // no rules matched
+        if (RETURN501 && (
+            msgAst.flatMap(_.children.headOption)
+                .exists(x =>
+                  x.value.isInstanceOf[EWarning] &&
+                      x.value.asInstanceOf[EWarning].code == DieselMsg.ENGINE.ERR_NORULESMATCH)
+            )) {
+          // no rules applied - 501 - prevents us from returning settings values when nothing matched
+          body= s"No rules matched for: (${engine.description}) message: (${msgAst.map(_.value.toString)})"
+          info(body)
+
+          Status(NOT_IMPLEMENTED)(body)
+              .withHeaders("diesel-reason" -> body)
+
+        } else if (RETURN501 && (
+            // it was a diesel.rest but nothing matched underneath
+            msgAst
+                .exists(
+                  a => a.kind == AstKinds.RECEIVED &&
+                      a.value.isInstanceOf[EMsg] &&
+                      a.value.asInstanceOf[EMsg].ea == DieselMsg.ENGINE.DIESEL_REST &&
+                      a.find(_.kind == AstKinds.GENERATED).isEmpty
+                )
+            )) {
+          // no rules applied - 501 - prevents us from returning settings values when nothing matched
+          body = s"No rules matched for: (${engine.description}) message: (${msgAst.map(_.value.toString)})"
+          info(body)
+
+          Status(NOT_IMPLEMENTED)(body)
+              .withHeaders("diesel-reason" -> body)
+
+        } else {
+          // generic inferred statuses
+//      if(p.isEmpty || p.get.ttype == WTypes.wt.UNDEFINED)
+          // payload is undefined - not found
+//        NotFound
+//      else
+
+          body = response.map(_.currentStringValue).mkString
+          Ok(body)
+        }
+    }
 
     // add headers
-    engine.ctx.listAttrs.filter(_.name startsWith "diesel.http.response.header.").map {p=>
-      ok = ok.withHeaders(p.name.replace("diesel.response.http.header.", "") -> p.calculatedValue(engine.ctx))
+    engine.ctx.listAttrs.filter(_.name startsWith HTTP.HEADER_PREFIX).map {p=>
+      ok = ok.withHeaders(p.name.replace(HTTP.HEADER_PREFIX, "") -> p.calculatedValue(engine.ctx))
     }
 
     // or from json
-    engine.ctx.getp("diesel.http.response").filter(_.ttype == "JSON").map {p=>
-      ok = ok.withHeaders(p.name.replace("diesel.response.http.header.", "") -> p.calculatedValue(engine.ctx))
-    }
+//    engine.ctx.getp(HTTP.RESPONSE).filter(_.ttype == "JSON").map {p=>
+//      ok = ok.withHeaders(
+//        p.name.replace("diesel.response.http.header.", "") -> p.calculatedValue(engine.ctx)
+//      )
+//    }
+
+    engine.addResponseInfo(ok.header.status, body, ok.header.headers)
 
     ok
   }
