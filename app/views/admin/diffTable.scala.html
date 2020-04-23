@@ -64,7 +64,7 @@
       </td>
 <td style="word-wrap:break-word">
 
-  <b>@foriginal(d).getPosition</b> <br>
+  <b>@(foriginal(d).getPosition+1)</b> <br>
 
           @foriginal(d).getLines.zipWithIndex.map{s=>
             @if(frevised(d).getLines.size > s._2) {
@@ -79,7 +79,7 @@
 </td>
 <td style="word-wrap:break-word">
 
-  <b>@frevised(d).getPosition</b> <br>
+  <b>@(frevised(d).getPosition+1)</b> <br>
 
     @frevised(d).getLines.zipWithIndex.map{s=>
       @if(foriginal(d).getLines.size > s._2) {
