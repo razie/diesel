@@ -333,23 +333,21 @@ var codeGui = function(editor) {
 
 var SPEC="SPEC";
 var STORY="STORY";
-var lastMarker=null;
+var lastMarkerSpec=null;
+var lastMarkerStory=null;
 
-/** this works IN the fiddle only */
+/** navigation: select given line - this works IN the fiddle only */
 function weSelect(wpath,line,col) {
   var Range = ace.require('ace/range').Range;
-  if(lastMarker != null) {
-    specEditor.session.removeMarker(lastMarker);
-    storyEditor.session.removeMarker(lastMarker);
-    lastMarker = null;
-  }
 
   if(wpath.includes("Spec:")) {
+    if(lastMarkerSpec != null) specEditor.session.removeMarker(lastMarkerSpec);
     specEditor.scrollToLine(line, true, true, function () {});
-    lastMarker = specEditor.session.addMarker(new Range(line-1, 0, line-1, 100), "ace-primaryline", "fullLine");
+    lastMarkerSpec = specEditor.session.addMarker(new Range(line-1, 0, line-1, 100), "ace-primaryline", "fullLine");
   } else if(wpath.includes("Story:")) {
+    if(lastMarkerStory != null)  storyEditor.session.removeMarker(lastMarkerStory);
     storyEditor.scrollToLine(line, true, true, function () {});
-    lastMarker = storyEditor.session.addMarker(new Range(line-1, 0, line-1, 100), "ace-primaryline", "fullLine");
+    lastMarkerStory = storyEditor.session.addMarker(new Range(line-1, 0, line-1, 100), "ace-primaryline", "fullLine");
   }
 }
 
