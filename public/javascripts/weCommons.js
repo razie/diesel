@@ -328,7 +328,7 @@ var dieselCart = {
 
 /** log and set value when clicking on diesel nodes */
 function dieselNodeLog(s) {
-  console.log('dieselValue = '+s);
+  console.log('dieselValue = '+decAmp(s));
   dieselValueText = s;
   try {
     dieselValueJson = JSON.parse(s);
@@ -343,5 +343,11 @@ function dieselNodeLog(s) {
     'white-space: -o-pre-wrap;' +
     'word-wrap: break-word;">' + s + '</pre>');
   // alert(s);
+}
+
+var decAmp = function(s) {
+  return s
+    .replace(/〈/g, '<')
+    .replace(/〉/g, '>');
 }
 
