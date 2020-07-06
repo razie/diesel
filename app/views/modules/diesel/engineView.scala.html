@@ -64,7 +64,7 @@ function setRefreshMode () {
 };
 
 withJquery(function ($) {
-  $(window).load(function () {
+  $(window).on('load', function () {
     useLocalStorageCheckbox("refreshMode", "domFiddleRefreshMode", function (a, b, expanded) {
       refreshMode = expanded;
     });

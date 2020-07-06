@@ -1030,7 +1030,7 @@ function saveNew(what) {
 
 
 // it's on load because otherwise the div has no contents
-$(window).load (function() {
+$(window).on('load', function() {
   // make sure for new users it will be open
   if(localStorage.getItem("domFiddleExpandedStory") == null)
     localStorage.setItem("domFiddleExpandedStory", true);
