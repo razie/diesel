@@ -23,9 +23,7 @@ a nicer div12
 
 
         @wid.page.map {we =>
-          @if(!page.flatMap(_.contentProps.get("nobottom")).isDefined) {
-            @wiki.wikiFragBottom(we, false, canEdit, print)
-          }
+          @wiki.wikiFragBottom(we, false, canEdit, print)
         }
 
         @wiki.wikiPageComments(wid, page, stok.au)
