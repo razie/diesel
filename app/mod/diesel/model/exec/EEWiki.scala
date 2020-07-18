@@ -12,7 +12,7 @@ import razie.diesel.dom.RDOM.P
 import razie.diesel.engine.exec.EExecutor
 import razie.diesel.engine.nodes._
 import razie.diesel.expr.ECtx
-import razie.diesel.model.DieselMsgString
+import razie.diesel.model.{DieselMsgString, DieselTarget}
 import razie.wiki.Services
 import razie.wiki.model._
 import scala.collection.mutable.ListBuffer
@@ -79,7 +79,10 @@ class EEWiki extends EExecutor("diesel.wiki") {
 
       if (entity.isDefined && entity.get.isInstanceOf[WikiEntry]) {
         val we = entity.get.asInstanceOf[WikiEntry]
-        Services ! DieselMsgString(s"""$$msg diesel.wiki.updated (wpath="${we.wid.wpath}", realm="${we.realm}", event="${ev.action}")""")
+        Services ! DieselMsgString(
+          s"""$$msg diesel.wiki.updated (wpath="${we.wid.wpath}", realm="${we.realm}", event="${ev.action}")""",
+          DieselTarget.ENV(we.realm)
+        )
       }
     }
   }

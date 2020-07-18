@@ -33,7 +33,7 @@ class EEDieselProps extends EExecutor("diesel.props") {
   override def apply(in: EMsg, destSpec: Option[EMsg])(implicit ctx: ECtx): List[Any] =  {
     val realm = ctx.root.settings.realm.mkString
 
-    cdebug << "EEDiselProps: apply " + in
+    cdebug << "EEDieselProps: apply " + in
 
     in.ea match {
 
@@ -53,7 +53,7 @@ class EEDieselProps extends EExecutor("diesel.props") {
         val m = if(Config.isLocalhost) {
           System.getProperties.asScala
         } else {
-          Map("error" -> "No permission")
+          throw new IllegalArgumentException("Error: No permission")
         }
 
         List(
@@ -71,7 +71,8 @@ class EEDieselProps extends EExecutor("diesel.props") {
 
           p.asScala
         } else {
-          Map("error" -> "No permission")
+          throw new IllegalArgumentException("Error: No permission")
+//          Map("error" -> "No permission")
         }
 
         List(
@@ -87,7 +88,8 @@ class EEDieselProps extends EExecutor("diesel.props") {
           val s = Source.fromInputStream(new FileInputStream(name)).mkString
           razie.js.parse(s)
         } else {
-          Map("error" -> "No permission")
+          throw new IllegalArgumentException("Error: No permission")
+//          Map("error" -> "No permission")
         }
 
         List(
