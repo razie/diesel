@@ -46,22 +46,23 @@ class DomInvites @Inject() (config:Configuration) extends mod.diesel.controllers
 
   /** request an invite for a realm */
   def rqinvite(realm: String) = RAction { implicit request =>
+//    val email = request.fqParm("email", "").trim
+//    val why = request.fqParm("why", "").trim
+//
+//    val recap = request.fqParm("g-recaptcha-response", "").trim
+//
+//    if(! new Recaptcha(config).verify2(recap, clientIp)) {
+//      Unauthorized("Are you human? If so, please use the support link at the bottom of the previous page...")
+//    } else {
+//      Emailer.withSession(request.realm) { implicit mailSession =>
+//         todo tell the owner instead
+//        Emailer.tellAdmin("Specs invite request for realm", "email:", email, "why:", why, "realm:", realm)
+//      }
+//
+//      Msg("Ok... queued up - watch your inbox! Thank you for your interest!")
+//    }
 
-    val email = request.fqParm("email", "").trim
-    val why = request.fqParm("why", "").trim
-
-    val recap = request.fqParm("g-recaptcha-response", "").trim
-
-    if(! new Recaptcha(config).verify2(recap, clientIp)) {
-      Unauthorized("Are you human? If so, please use the support link at the bottom of the previous page...")
-    } else {
-      Emailer.withSession(request.realm) { implicit mailSession =>
-        // todo tell the owner instead
-        Emailer.tellAdmin("Specs invite request for realm", "email:", email, "why:", why, "realm:", realm)
-      }
-
-      Msg("Ok... queued up - watch your inbox! Thank you for your interest!")
-    }
+      Unauthorized("Please use the support link at the bottom of the previous page...")
   }
 
   /** */
