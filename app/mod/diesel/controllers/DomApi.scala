@@ -501,18 +501,28 @@ class DomApi extends DomApiBase  with Logging {
 
       ctrace << s"RUN_REST_REQUEST verb:$verb mock:$mock path:$path realm:${reactor}\nheaders: ${stok.req.headers}" + body
 
+      var description = s"DomApi.runRest:$verb:$path"
+      if(stok.req.rawQueryString.trim.length > 0) {
+        description = description + s"?${stok.req.rawQueryString}"
+      }
+
       var engine = EnginePrep.prepEngine(new ObjectId().toString,
         settings,
         reactor,
         None,
         false,
         stok.au,
-        s"DomApi.runRest:$verb:$path?${stok.req.rawQueryString}",
+        description,
         None,
         // empty story so nothing is added to root
         List(new WikiEntry("Story", "temp", "temp", "md", "", uid, Seq("dslObject"), reactor))
       )
 
+      // add query parms
+      val q = stok.req.queryString.map(t=>(t._1, t._2.mkString))
+      engine.ctx.putAll(q.map(t => P(t._1, t._2)).toList)
+
+      // add the request
       new DomReq(stok.req).addTo(engine.ctx)
 
       if(custom.isDefined)
