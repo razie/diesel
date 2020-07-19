@@ -4,6 +4,7 @@ import com.google.inject.Singleton
 import controllers.Wiki.ROK
 import controllers.{Profile, RazRequest}
 import difflib.{DiffUtils, Patch}
+import java.net.URLDecoder
 import mod.diesel.model._
 import model._
 import org.bson.types.ObjectId
@@ -51,7 +52,8 @@ case class DomReq (
                     protocol:String,
                     method:String,
                     contentType:String,
-                    body:String
+                    body:String,
+                    rawQueryString:String
                   ) {
   def this (req : Request[AnyContent]) =
     this (
@@ -59,14 +61,16 @@ case class DomReq (
       "http",
       req.method,
       req.contentType.mkString,
-      req.body.toString)
+      req.body.toString,
+      req.rawQueryString)
 
   def toj = Map (
     "uri" -> uri,
     "protocol" -> protocol,
     "method" -> method,
     "contentType" -> contentType,
-    "body" -> body
+    "body" -> body,
+    "rawQueryString" -> rawQueryString
   )
 
   override def toString = razie.js.tojsons(this.toj)
@@ -475,7 +479,10 @@ class DomApi extends DomApiBase  with Logging {
 
         dieselRestMsg = Some(EMsg(DieselMsg.ENGINE.DIESEL_REST, qJson :: List(
           P.fromTypedValue("path", path),
-          P.fromTypedValue("verb", verb)
+          P.fromTypedValue("verb", verb),
+          P.fromTypedValue("queryStringEncoded", stok.req.rawQueryString),
+          P.fromTypedValue("queryString", URLDecoder.decode(stok.req.rawQueryString)
+          )
         ) ::: qparams.map(t => P.fromTypedValue(t._1, t._2, WTypes.wt.STRING)).toList ::: posted
         ))
 
@@ -491,7 +498,6 @@ class DomApi extends DomApiBase  with Logging {
       // todo sort out this mess
       val settings = DomEngineHelper.settingsFromRequestHeader(stok.req, postedContent).copy(realm=Some(reactor))
       settings.mockMode = mock
-      val q = stok.req.queryString.map(t=>(t._1, t._2.mkString))
 
       ctrace << s"RUN_REST_REQUEST verb:$verb mock:$mock path:$path realm:${reactor}\nheaders: ${stok.req.headers}" + body
 
@@ -501,7 +507,7 @@ class DomApi extends DomApiBase  with Logging {
         None,
         false,
         stok.au,
-        s"DomApi.runRest:$verb:$path",
+        s"DomApi.runRest:$verb:$path?${stok.req.rawQueryString}",
         None,
         // empty story so nothing is added to root
         List(new WikiEntry("Story", "temp", "temp", "md", "", uid, Seq("dslObject"), reactor))
