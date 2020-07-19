@@ -1,7 +1,6 @@
 package mod.diesel.controllers
 
 import com.google.inject.Singleton
-import controllers.Wiki.ROK
 import controllers.{Profile, RazRequest}
 import difflib.{DiffUtils, Patch}
 import java.net.URLDecoder
@@ -11,7 +10,6 @@ import org.bson.types.ObjectId
 import org.joda.time.DateTime
 import org.json.JSONObject
 import play.api.mvc._
-import play.twirl.api.Html
 import razie.audit.Audit
 import razie.diesel.Diesel
 import razie.diesel.dom.RDOM.{NVP, P}
@@ -25,7 +23,6 @@ import razie.diesel.engine.nodes._
 import razie.diesel.expr.{ECtx, SimpleECtx, StaticECtx}
 import razie.diesel.model.DieselMsg
 import razie.diesel.model.DieselMsg.HTTP
-import razie.diesel.samples.DomEngineUtils
 import razie.diesel.utils.{AutosaveSet, DomCollector, DomWorker, SpecCache}
 import razie.hosting.Website
 import razie.tconf.{DTemplate, EPos}
@@ -33,19 +30,15 @@ import razie.wiki.Enc
 import razie.wiki.admin.Autosave
 import razie.wiki.model._
 import razie.{Logging, Snakk, ctrace, js}
+import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future}
 import scala.util.Try
 
-/** the incoming message / request
-  *
-  * @param uri
-  * @param protocol
-  * @param method
-  * @param contentType
-  * @param body
+/**
+  * the incoming message / request
   */
 case class DomReq (
                     uri:String,
@@ -79,11 +72,13 @@ case class DomReq (
   def validate = {
     Try {
       val s = razie.js.tojsons(this.toj)
-      val j = razie.js.parse(s)
+      razie.js.parse(s)
     }
   }
 
-  def addTo (e:ECtx) = e.put(P("request", this.toString).withValue(this))
+  def addTo (e:ECtx) {
+    e.put(P("request", this.toString).withValue(this))
+  }
 }
 
 /** controller for server side fiddles / services */
@@ -160,7 +155,7 @@ class DomApi extends DomApiBase  with Logging {
         Ok("")
       } else {
         // multiple values as json
-        var m = Map(
+        val m = Map(
           "values" -> Map.empty,
           "totalCount" -> 0,
           "failureCount" -> 0,
@@ -185,7 +180,7 @@ class DomApi extends DomApiBase  with Logging {
 
   /** execute message to given reactor
     *
-    * @param is the useful path (without prefix). Either an e.a or e/a or template match
+    * @param path is the useful path (without prefix). Either an e.a or e/a or template match
     * @param useThisStory  if nonEmpty then will use this (find it first) plus blender
     * @param useThisStoryPage if nonEmpty then will use this plus blender
     */
@@ -212,7 +207,7 @@ class DomApi extends DomApiBase  with Logging {
 
       val pages = if (settings.blenderMode) { // blend all specs and stories
         val stories = if (settings.sketchMode) EnginePrep.catPages("Story", reactor). /*filter(_.name != stw.get.name).*/ toList else Nil
-        val specs = EnginePrep.catPages("Spec", reactor).toList
+        val specs = EnginePrep.catPages("Spec", reactor)
         val d = (specs ::: stories).map { p => // if draft mode, find the auto-saved version if any
           if (settings.draftMode) {
             val c = Autosave.find("wikie", p.wid.defaultRealmTo(reactor), userId).flatMap(_.get("content")).mkString
@@ -234,7 +229,7 @@ class DomApi extends DomApiBase  with Logging {
 
       // to domain
       val dom =
-        ((pages ::: useThisSpecPage).flatMap(p => SpecCache.orcached(p, WikiDomain.domFrom(p)).toList))
+        (pages ::: useThisSpecPage).flatMap(p => SpecCache.orcached(p, WikiDomain.domFrom(p)).toList)
           .foldLeft(RDomain.empty)((a, b) => a.plus(b)).revise.addRoot
 
       val story2 = if (settings.sketchMode && useThisStoryPage.isEmpty) {
@@ -253,7 +248,7 @@ class DomApi extends DomApiBase  with Logging {
       ).mkString("\n") + "\n"
 
       val ipage = new WikiEntry("Story", "xxfiddle", "fiddle", "md", story, stok.au.map(_._id).getOrElse(NOUSER), Seq("dslObject"), reactor)
-      val idom = WikiDomain.domFrom(ipage).get.revise addRoot
+      val idom = WikiDomain.domFrom(ipage).get.revise.addRoot
 
       var res = ""
 
@@ -377,7 +372,7 @@ class DomApi extends DomApiBase  with Logging {
 
             var m = Map(
               "values" -> values.toMap,
-              "totalCount" -> (engine.totalTestCount),
+              "totalCount" -> engine.totalTestCount,
               "failureCount" -> engine.failedTestCount,
               "errors" -> errors.toList,
               "dieselTrace" -> DieselTrace(root, settings.node, engine.id, "diesel", "runDom", settings.parentNodeId).toJson
@@ -392,12 +387,12 @@ class DomApi extends DomApiBase  with Logging {
             } else if ("dieselTree" == settings.resultMode) {
               val m = root.toj
               val y = DieselJsonFactory.fromj(m).asInstanceOf[DomAst]
-              val x = js.tojsons(y.toj).toString
+              val x = js.tojsons(y.toj)
               body = x
               Ok(body).as(WTypes.Mime.appJson)
             } else
-              body = js.tojsons(m).toString
-              Ok(body).as(WTypes.Mime.appJson)
+              body = js.tojsons(m)
+            Ok(body).as(WTypes.Mime.appJson)
           }
 
           engine.addResponseInfo(ok.header.status, body, ok.header.headers)
@@ -1206,7 +1201,7 @@ class DomApi extends DomApiBase  with Logging {
         case st: EMock =>
           st.rule.e.asMsg.withPos(st.pos).toHref(sName, "value") +
             " (" + st.rule.e.asMsg.withPos(st.pos).toHrefWith("json", sName, "json") + ") " +
-            " (" + st.rule.e.asMsg.withPos(st.pos).toHrefWith("debug", sName, "debug") + ") "
+            " (" + st.rule.e.asMsg.withPos(st.pos).toHrefWith("debug", sName) + ") "
       }.map { l =>
         l.replaceAll(
           "href=\"/diesel/wreact/([^\"]+)\"",
