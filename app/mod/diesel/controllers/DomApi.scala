@@ -534,6 +534,7 @@ class DomApi extends DomApiBase  with Logging {
             }.orElse {
               imsg.map(x => (None, x.entity, x.met, None))
             }.orElse {
+              // we're going to make a diesel.rest message later
               mkDieselRest.map(x => (None, x.entity, x.met, None))
             }.getOrElse {
           fea
@@ -541,7 +542,12 @@ class DomApi extends DomApiBase  with Logging {
       }
 
       // message specified return mappings, if any
-      val msgSpec = spec(e, a)(engine.ctx)
+      val msgSpec = spec(e, a)(engine.ctx).filter( m=>
+        // see msgSpec usage below - we need to not do for diesel.rest - if someone does `$msg diesel.rest` it will
+        // find a spec for it and mess up badly later...
+        ("diesel" != m.entity || "rest" != m.met)
+      )
+
       val inSpec = msgSpec.toList.flatMap(_.attrs)
       val outSpec = msgSpec.toList.flatMap(_.ret)
 
