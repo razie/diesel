@@ -26,6 +26,10 @@ mv racerkidz-${VER}-SNAPSHOT dist
 rm dist/conf/application.conf
 mv dist/conf/application.docker.conf dist/conf/application.conf
 
+rm dist/conf/logback-test.xml
+rm dist/conf/logback.xml
+#rm dist/conf/reference.conf
+
 mkdir -p ../rk/dist/lib
 mv dist/lib/com.razie.* ../rk/dist/lib
 
@@ -60,8 +64,9 @@ echo "docker push razie/raz-diesel"
 # https://docs.docker.com/docker-cloud/builds/push-images/
 
 # docker tag raz-diesel razie/raz-diesel
+ docker tag raz-diesel razie/raz-diesel:2.1.5-latest
 # docker login -u razie
-# docker push razie/raz-diesel
+ docker push razie/raz-diesel
 
 # to run just the container and debug it:
 # # docker run -p 127.0.0.1:9003:9000 -v/Users/raz/w/racerkidz/docker/db:/data/db -it --entrypoint=/bin/bash razie/raz-diesel
