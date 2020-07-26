@@ -23,6 +23,7 @@ import razie.wiki.model._
 import razie.wiki.{Config, Enc, Services}
 import play.api.data.Forms._
 import play.api.data._
+import scala.collection.mutable.HashMap
 
 
 /** this is NOT the controller */
@@ -99,7 +100,31 @@ case class Registration(email: String, password: String, reemail:String="", repa
 case class CrProfile(firstName: String, lastName: String, company:String, yob: Int, address: String, userType: String, accept: Boolean, g_recaptcha_response: String="", about:String="")
 
 @Singleton
-class Profile @Inject() (config:Configuration) extends RazController with Logging {
+class Profile @Inject() (config:Configuration, adminDiff:AdminDiff) extends RazController with Logging {
+
+  // keep last attempts, 3 seconds, 10 seconds (email - (count,last systime))
+  val lastAttempts = new HashMap[String, (Int, Long)]()
+
+  /** check for repeated attempts */
+  def tooManyAttempts (email:String) : Boolean = {
+    var count = 0
+    val now = System.currentTimeMillis()
+
+    val v = lastAttempts.get(email)
+    v.foreach(v=> count = v._1)
+    lastAttempts.put(email, (count+1, now))
+
+    // 2 seconds per count - exponential waiting
+    v.filter( v => v._1 >= 3 && (now - v._2 < 2000 * count)).isDefined
+  }
+
+  /** check for repeated attempts */
+  def countAttempts (email:String) : Int = {
+    var count = 0
+    val v = lastAttempts.get(email)
+    v.foreach(v=> count = v._1)
+    count
+  }
 
   final val INVALID_LOGIN = "Invalid username and/or password"
 
@@ -120,20 +145,32 @@ class Profile @Inject() (config:Configuration) extends RazController with Loggin
       }) verifying
       ("Bad email or password - please type again! To register a new account, use the Create button and if you forgot your email, use the Forgot button", { reg: Registration =>
         //          println ("======="+reg.email.enc+"======="+reg.password.enc)
-        if (reg.password.length > 0 && reg.repassword.length <= 0)
+        if (tooManyAttempts(reg.email)) {
+          Audit.logdb("TOO_MANY_ATTEMPTS", reg.email, lastAttempts.get(reg.email).map(_._1).mkString)
+          false
+        } else if (reg.password.length > 0 && reg.repassword.length <= 0)
           // TODO optimize - we lookup users twice on loing
           Users.findUserByEmailDec(reg.email).orElse(Users.findUserNoCase(reg.email)).map { u =>
             //          println ("======="+u.email+"======="+u.pwd)
             if (reg.password.enc == u.pwd) true
             else {
-              u.auditLoginFailed (Website.getRealm)
+              u.auditLoginFailed (Website.getRealm, countAttempts(reg.email))
               false
             }
           } getOrElse {
-            Audit.wrongLogin(reg.email, reg.password)
+            Audit.wrongLogin(reg.email, reg.password, countAttempts(reg.email))
+            cdebug << "should I download remote user? isLocal: " << Config.isLocalhost
+
+            if(Config.isLocalhost && adminDiff.isRemoteUser(reg.email, reg.password)) {
+              cdebug << "should I download remote user?"
+              adminDiff.importRemoteUser(reg.email, reg.password)
+            }
+
             false
           }
-        else true
+        else {
+          true
+        }
       }) verifying
       ("Email already registered - if you are logging in, type the password once!", { reg: Registration =>
         if (reg.password.length > 0 && reg.repassword.length > 0)
@@ -272,7 +309,27 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
     val g_recaptcha_response = request.formParm("g-recaptcha-response")
     cdebug << "g-recaptcha-response: " + g_recaptcha_response
 
-    login(email, pass, "")
+    if(! tooManyAttempts(email)) {
+      if(!
+          Users.findUserByEmailDec(email).orElse(
+            Users.findUserNoCase(email)).isDefined
+      ) {
+        cdebug << "should I download remote user? isLocal: " << Config.isLocalhost
+        if(
+          Config.isLocalhost &&
+          adminDiff.isRemoteUser(email, pass)) {
+          adminDiff.importRemoteUser(email, pass)
+        }
+      }
+      login(email, pass, "")
+    } else {
+      val loginUrl = request.website.prop("join").getOrElse(routes.Profile.doeJoin().url)
+      Redirect(loginUrl)
+          .withNewSession
+          .withCookies(
+            Cookie("error", "too many attempts - try again later".encUrl).copy(httpOnly = false)
+          )
+    }
 
 //    if(new Recaptcha(config).verify2(g_recaptcha_response, clientIp)) {
 //      clog << "passed recaptch"

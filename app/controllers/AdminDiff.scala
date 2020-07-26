@@ -27,6 +27,7 @@ import scala.collection.JavaConversions._
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.Future
+import scala.util.Try
 
 /** metadata about a we */
 case class WEAbstract(id: String, cat: String, name: String, realm: String, ver: Int, updDtm: DateTime, hash: Int, tags: String, drafts:Int) {
@@ -418,6 +419,45 @@ class AdminDiff extends AdminBase {
   // is this the first time in a new db ?
   def isDbEmpty:Boolean = RMany[User]().size <= 0
 
+  /** is this a remote user - email and password match something on remote? */
+  def isRemoteUser(email:String, pwd:String) = {
+    clog << "ADMIN_isRemoteUser"
+
+    val source = "www.dieselapps.com"
+
+    // key used to encrypt/decrypt transfer
+    val key = System.currentTimeMillis().toString + "87654321"
+
+    // first get the user and profile and create them locally
+    Try {
+      val u = body(url(s"http://$source/dmin-isu/$key", method = "GET").basic("H-" + email, "H-" + pwd))
+      u.contains("yes")
+    }.getOrElse(false)
+  }
+
+  /** import a remote user if the email and password match */
+  def importRemoteUser(email:String, pwd:String) = {
+    clog << "ADMIN_importRemoteUser"
+
+    val source = "www.dieselapps.com"
+
+    // key used to encrypt/decrypt transfer
+    val key = System.currentTimeMillis().toString + "87654321"
+
+    // first get the user and profile and create them locally
+    val u = body(url(s"http://$source/dmin-getu/$key", method = "GET").basic("H-" + email, "H-" + pwd))
+    val dbo = com.mongodb.util.JSON.parse(u).asInstanceOf[DBObject];
+    val pu = grater[PU].asObject(dbo)
+    val iau = pu.u
+    val e = new admin.CypherEncryptService("", key)
+    // re=encrypt passworkd with the local key
+    val au = iau.copy(email = e.enc(e.dec(iau.email)), pwd = e.enc(e.dec(iau.pwd)))
+
+    au.create(pu.p)
+
+    true
+  }
+
   def importDbImpl(implicit request:Request[AnyContent]) = {
     clog << "ADMIN_IMPORT_DB_IMPL"
 
@@ -617,7 +657,14 @@ class AdminDiff extends AdminBase {
   }
 
 
-  /** get list of pages - invoked by remote trying to sync */
+  /** is current user active here - used with basic auth from remote, to verify before import */
+  def isu(key: String) = FAU { implicit au =>
+    implicit errCollector =>
+      implicit request =>
+        Ok("yes")
+  }
+
+  /** get the profile of the current user, encrypted */
   def getu(key: String) = FAU { implicit au =>
     implicit errCollector =>
       implicit request =>
