@@ -714,12 +714,32 @@ class DomApi extends DomApiBase  with Logging {
 
             val res = s"No response template for ${e}.${a}\n" + engine.root.toString
             ctrace << s"RUN_REST_REPLY $verb $mock $path\n" + res
-            val response = engine.ctx.getp(Diesel.PAYLOAD).filter(_.ttype != WTypes.wt.UNDEFINED)
+            val payload = engine.ctx.getp(Diesel.PAYLOAD).filter(_.ttype != WTypes.wt.UNDEFINED)
             // todo set ctype based on payload if found
 
-            mkStatus(response, engine, Some(msgAst)).as(ctype)
-              .withHeaders("diesel-reason" -> s"response template not found for $path in realm ${stok.realm}")
+            payload.map { p =>
+              if (p.value.isDefined) {
+                ctype = WTypes.getContentType(p.value.get.cType)
+
+                p.value.get.value match {
+                  case x: Array[Byte] =>
+                    response = Some(Ok(x).as(ctype))
+                  case _ =>
+                    response = Some(Ok(p.value.get.asString).as(ctype))
+                }
+              }
+            }
+
+            val result = mkStatus(payload, engine, Some(msgAst)).as(ctype)
               .withHeaders("diesel-trace-id" -> s"engine id: ${engine.id}")
+
+            // don't show this for diesel.rest
+            dieselRestMsg
+                .map(x=> result)
+                .getOrElse {
+                  result
+                      .withHeaders("diesel-reason" -> s"response template not found for $path in realm ${stok.realm}")
+                }
           }
         }
 
@@ -830,7 +850,7 @@ class DomApi extends DomApiBase  with Logging {
 
     import scala.collection.JavaConversions._
 
-    def diffTable(p: Patch) = s"""<small>${views.html.admin.diffTable("", p, Some(("How", "Orig", "Autosaved")))}</small>"""
+    def diffTable(p: Patch) = s"""<small>${views.html.admin.diffTable("", p, Some(("How", "Autosaved", "Orig")))}</small>"""
 
     def diffT = diffTable(DiffUtils.diff(stw.lines.toList, story.lines.toList))
 
@@ -846,10 +866,7 @@ class DomApi extends DomApiBase  with Logging {
   def mkStatus(response:Option[P], engine:DomEngine, msgAst:Option[DomAst] = None) = {
     var body:String = ""
 
-    // is there a desired status
-    var ok = engine.ctx.get(DieselMsg.HTTP.STATUS).filter(_.length > 0).map {st=>
-      Status(st.toInt)
-    } getOrElse {
+    var ok = {
 
       val RETURN501 = true // per realm setting?
 
@@ -894,9 +911,16 @@ class DomApi extends DomApiBase  with Logging {
 //      else
 
           body = response.map(_.currentStringValue).mkString
-          Ok(body)
+
+          // is there a desired status
+          engine.ctx.get(DieselMsg.HTTP.STATUS).filter(_.length > 0).map {st=>
+            Status(st.toInt)(body)
+          } getOrElse {
+            Ok(body)
+          }
         }
     }
+
 
     // add headers
     engine.ctx.listAttrs.filter(_.name startsWith HTTP.HEADER_PREFIX).map {p=>
@@ -916,7 +940,6 @@ class DomApi extends DomApiBase  with Logging {
   }
 
   /** find e/a in engine, either e.a or matching template URL
-    * @param dieselUri "wreact" or else..
     */
   private def findEA (path:String, engine:DomEngine, useThisStory:Option[WID]=None) : (Option[DTemplate], String, String, Option[Map[String,String]]) = {
     var e = ""
