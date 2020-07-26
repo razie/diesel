@@ -308,27 +308,22 @@ class AdminDiff extends AdminBase {
     getWE(target, remoteWid)(request.au.get).fold({ t =>
       val remote = t._1.content
       val patch =
-        if (side == "R")
           DiffUtils.diff(localWid.content.get.lines.toList, remote.lines.toList)
-        else
-          DiffUtils.diff(localWid.content.get.lines.toList, remote.lines.toList)
-
-      def x = {
-        if (side == "R")
-          views.html.admin.adminDiffShow(side, localWid.content.get, remote, patch, localWid.page.get, t._1)
-        else
-          views.html.admin.adminDiffShow(side, localWid.content.get, remote, patch, localWid.page.get, t._1)
-      }
 
       def diffTable = s"""<small>${views.html.admin.diffTable(side, patch, Some(("How", "Local", "Remote")))}</small>"""
 
       if ("yes" == onlyContent.toLowerCase) {
+        // only content diff, using diffTable
         val url = routes.AdminDiff.showDiff("no", side, localRealm, toRealm, target, iwid)
         Ok(
           s"""<a href="$url">See separate</a><br>""" + diffTable
         )
       } else {
-        ROK.r admin { implicit stok => x }
+        // full diff, not just content
+        ROK.r admin { implicit stok => {
+          views.html.admin.adminDiffShow(side, localWid.content.get, remote, patch, localWid.page.get, t._1)
+        }
+        }
       }
 
     }, { err =>

@@ -54,6 +54,7 @@ purge audit tables
           @Array("www.dieselapps.com", Config.hostport).map{t=>
             <a href="/admin/difflist/@localRealm/@toRealm/@t">@t</a><br>
           }
+        </span>
         <span id="localRealms" style="display: none">
         @stok.au.toList.flatMap(x=> x.memberReactors).map{t=>
           <a href="/admin/difflist/@t/@toRealm/@remote">@t</a><br>
@@ -69,7 +70,7 @@ purge audit tables
 
 @* ********************  CONTENT DIFFS   *@
 
-  <h3>Content diffs:</h3>
+  <h3>Content diffs| <small>The green side was changed more recently</small></h3>
     <table class="table table-striped">
     @lchanged.filter(_._3 != "-").sortBy(x=> x._2.realm+x._3).map { t =>
       <tr id="row-@t._2.id">
@@ -89,7 +90,7 @@ purge audit tables
           @if(t._1.drafts > 0) {
             <small>
               <a href="@{WID(t._1.cat, t._1.name).r(t._1.realm).urlRelative}/edit">
-                <span style="color:red" class="glyphicon glyphicon-warning-sign" title="has drafts - either save or cancel before merging..."></span>
+                <span style="color:red" class="glyphicon glyphicon-warning-sign" title="has drafts - click to save or cancel before merging..."></span>
               </a>
             </small>
           }
@@ -97,15 +98,22 @@ purge audit tables
       </td>
 
         <td>
-          @t._1.realm <a href="@WID(t._1.cat, t._1.name).r(t._1.realm).urlRelative">@t._1.cat:@t._1.name</a> (<a href="/wikie/content/@wp(WID(t._1.cat, t._1.name).r(t._1.realm))">content</a>)
+          <small>
+            @t._1.realm <a href="@WID(t._1.cat, t._1.name).r(t._1.realm).urlRelative">@t._1.cat:@t._1.name</a> (<a href="/wikie/content/@wp(WID(t._1.cat, t._1.name).r(t._1.realm))">content</a>)
+            </small>
 
+        </td>
+        <td>
           <a
           href="javascript:popupUrl('@routes.AdminDiff.showDiff("yes", t._3, localRealm, toRealm, remote, WID(t._2.cat, t._2.name).r(t._2.realm))');"
           class="btn btn-xs btn-info"
           >&laquo; DIFF &raquo;</a>
+        </td>
 
-          @** @t._2.realm <a href="http://@{remote}@WID(t._2.cat, t._2.name).r(t._2.realm).urlRelative">@t._2.cat:@t._2.name</a> *@
+        <td>
+          <small>
         @t._2.realm <a href="@WID(t._2.cat, t._2.name).r(t._2.realm).urlRemote">@t._2.cat:@t._2.name</a>
+            </small>
         </td>
 
         <td>
@@ -124,7 +132,7 @@ purge audit tables
           @if(t._2.drafts > 0) {
             <small>
               <a href="@{WID(t._2.cat, t._2.name).r(t._2.realm).urlRemote}/edit">
-                <span style="color:red" class="glyphicon glyphicon-warning-sign" title="has drafts - either save or cancel before merging..."></span>
+                <span style="color:red" class="glyphicon glyphicon-warning-sign" title="has drafts - click to save or cancel before merging..."></span>
               </a>
             </small>
           }
@@ -152,8 +160,11 @@ purge audit tables
 @*//      }*@
       </td>
       <td>
+      <small>
         @wea.realm
-        <a href="http://@remote@WID(wea.cat, wea.name).r(wea.realm).urlRelative">@wea.cat:@wea.name v@wea.ver</a>
+@*        <a href="http://@remote@WID(wea.cat, wea.name).r(wea.realm).urlRelative">@wea.cat:@wea.name v@wea.ver</a>*@
+        <a href="@WID(wea.cat, wea.name).r(wea.realm).urlRemote">@wea.cat:@wea.name v@wea.ver</a>
+      </small>
       </td>
       <td>
 @*//      @if(wea.cat != "Reactor") {*@
@@ -188,8 +199,10 @@ purge audit tables
 @*//        }*@
         </td>
         <td>
+        <small>
         @wea.realm <a href="@controllers.Wiki.w(wea.cat, wea.name, wea.realm)">@wea.cat:w/@wea.name v@wea.ver </a>
         ( <a href="/wikie/content/@wp(WID(wea.cat, wea.name).r(wea.realm))">content </a> )
+        </small>
         </td>
         <td>
           @if(wea.cat != "Reactor") {
@@ -205,7 +218,10 @@ purge audit tables
     </table>
 
     <hr>
-  <h3>Minor diffs <small> | (same content, different versions - possibly already sync'd):</small></h3>
+
+@* ********************  MINOR DIFFS   *@
+
+<h3>Minor diffs <small> | (same content, different versions - possibly already sync'd):</small></h3>
     <table class="table table-striped table-condensed">
     @lchanged.filter(_._3 == "-").sortBy(x=> x._2.realm+x._3).map { t =>
       <tr>
@@ -216,13 +232,21 @@ purge audit tables
           >USE LOCAL</a>
         </td>
         <td>
+          <small>
           @t._1.realm <a href="@WID(t._1.cat, t._1.name).r(t._1.realm).url">@t._1.cat:@t._1.name</a> (<a href="/wikie/content/@wp(WID(t._1.cat, t._1.name).r(t._1.realm))">content</a>)
+          </small>
+        </td>
 
+      <td>
         <a
         href="javascript:popupUrl('@routes.AdminDiff.showDiff("yes", t._3, localRealm, toRealm, remote, WID(t._2.cat, t._2.name).r(t._2.realm))')"
         class="btn btn-xs btn-info"
         >&laquo; DIFF &raquo;</a>
-          @t._2.realm <a href="http://@remote/@WID(t._2.cat, t._2.name).r(t._2.realm).urlRelative">@t._2.cat:@t._2.name</a>
+      </td>
+        <td>
+        <small>
+          @t._2.realm <a href="@WID(t._2.cat, t._2.name).r(t._2.realm).urlRemote">@t._2.cat:@t._2.name</a>
+          </small>
         </td>
         <td>
           <a

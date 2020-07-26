@@ -408,7 +408,7 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
 
     import scala.collection.JavaConversions._
 
-    def diffTable(p: Patch) = s"""<small>${views.html.admin.diffTable("", p, Some(("How", "Original", "Autosaved")))}</small>"""
+    def diffTable(p: Patch) = s"""<small>${views.html.admin.diffTable("R", p, Some(("How", "Original", "Autosaved")))}</small>"""
 
     def diff = diffTable(DiffUtils.diff(w.lines.toList, draft.lines.toList))
 
@@ -1135,23 +1135,6 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
             Some(routes.Wikie.wikieDelete2(wid)))
       } getOrElse
         noPerm(wid, "ADMIN_DELETE1")
-  }
-
-  /** calc the diff draft to original for story and spec */
-  def diffContent(wid: WID) = FAUPRAPI(true) { implicit stok =>
-    val wpath = stok.formParm("wpath")
-    val newc = stok.formParm("newc")
-    val oldc = wid.content.getOrElse("")
-
-    import scala.collection.JavaConversions._
-
-    def diffTable(p: Patch) = s"""<small>${views.html.admin.diffTable("", p, Some(("How", "Original", "Draft")))}</small>"""
-
-    def diffP = diffTable(DiffUtils.diff(oldc.lines.toList, newc.lines.toList))
-
-    retj << Map(
-      "diff" -> (if (wpath.length > 0) diffP else "")
-    )
   }
 
   /** delete step 2: do it */
