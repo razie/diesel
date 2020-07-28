@@ -302,12 +302,15 @@ var editpill_@id = function(id) {
                 jQuery.getScript("@routes.Assets.at("ace-builds/src/mode-nvp1.js")", function(data, status, jqxhr) {
                   jQuery.getScript("@routes.Assets.at("ace-builds/src/ext-language_tools.js")", function(data, status, jqxhr) {
                     jQuery.getScript("@routes.Assets.at("javascripts/wikiEdit.js")", function(data, status, jqxhr) {
+                      //jQuery.getScript("@routes.Assets.at("ace-builds/src/theme-crimson_editor.js")", function(data, status, jqxhr) {
                       scriptsLoaded=true;
                       popupContent(s.replace("acec", "acec1").replace("aveFiddle_()", "aveFiddle_@{id}()"));
+                      // ace.config.set('basePath', '/assets/ace-builds/src');
                       aceEditor_@id = attachAce(ace, "acec1", content_@id, true);
                       require = savedRequire;
                       requirejs = savedRequireJs;
                       define = savedDefine;
+                      // });
                     });
                   });
                 });

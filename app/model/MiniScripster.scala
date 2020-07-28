@@ -193,4 +193,36 @@ trait ScalaScripster {
       }
     }
   }
+
+  /** run the given script in the context of the given page and user as well as the query map */
+  def runScriptAnyBinding (s:String, lang: String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, Any], devMode:Boolean=false): Any = synchronized {
+
+    Audit.logdb("DIESEL_SCRIPSTER", "exec", lang+":"+s)
+    try {
+      val c = new CSTimer("script", "?")
+      c.start()
+      ctx.clear // make sure there's nothing for hackers
+      val res = (ScalaScript(s).interactive(ctx) getOrElse "?")
+      ctx.clear // make sure there's nothing for hackers
+      c.stop()
+
+      // must get new parser every 50 times
+      count = count + 1
+      if (count % 20 == 0) {
+        wikiCtx = None
+        csys << "newParser"
+      }
+      res
+    } catch {
+      case ex: Throwable => { // any exceptions, get a new parser
+        wikiCtx = None
+        razie.Log.log("ERR WikiScripster: ", ex)
+        if(true || devMode) throw ex
+        else "?"
+      }
+    }
+  }
+
 }
+
+

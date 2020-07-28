@@ -773,18 +773,20 @@ function attachAce() {
   //  langTools.addCompleter(instCompleter);
   langTools.setCompleters([keyWordCompleter, instCompleter]);
 
-specEditor.commands.addCommand({
-  name: "Gui",
-  description: "Popup GUI for this",
-  bindKey: {win: "Ctrl-G", mac: "Command-G"},
-  exec: codeGui
-});
-storyEditor.commands.addCommand({
-  name: "Gui",
-  description: "Popup GUI for this",
-  bindKey: {win: "Ctrl-G", mac: "Command-G"},
-  exec: codeGui
-});
+  specEditor.commands.addCommand({
+    name: "Gui",
+    description: "Popup GUI for this",
+    bindKey: {win: "Ctrl-G", mac: "Command-G"},
+    exec: codeGui
+  });
+
+  storyEditor.commands.addCommand({
+    name: "Gui",
+    description: "Popup GUI for this",
+    bindKey: {win: "Ctrl-G", mac: "Command-G"},
+    exec: codeGui
+  });
+
   specEditor.commands.addCommand({
     name: "Usage",
     bindKey: {win: "Ctrl-B", mac: "Command-B"},
@@ -795,6 +797,18 @@ storyEditor.commands.addCommand({
     name: "Usage",
     bindKey: {win: "Ctrl-B", mac: "Command-B"},
     exec: findStoryInTree
+  });
+
+  specEditor.commands.addCommand({
+    name: "FindUsage",
+    bindKey: {win: "Ctrl-K", mac: "Command-K"},
+    exec: findUsagesSpec
+  });
+
+  storyEditor.commands.addCommand({
+    name: "FindUsage",
+    bindKey: {win: "Ctrl-K", mac: "Command-K"},
+    exec: findUsagesStory
   });
 
   specEditor.getSession().on('change', function(e) {
@@ -811,6 +825,10 @@ storyEditor.commands.addCommand({
     captureChanged=true;
     lastChangeMillis = Date.now();
   });
+
+  storyEditor.getSession().on("gutterclick", function(e){
+    console.log(e)
+  })
 }
 
 /** scroll from story to results */
@@ -829,6 +847,55 @@ var findInTree = function(wp, editor) {
   var parent = $('#iframeOut3_'+@id)[0];
   if(typeof x != "undefined")
     parent.scrollTop = x.offsetTop;
+}
+
+/** */
+var findUsagesStory = function(editor) { findUsages(storyWpath, editor); }
+var findUsagesSpec = function(editor) { findUsages(specWpath, editor); }
+
+/** popup usages */
+var findUsages = function(wp, editor) {
+  var row = editor.selection.getCursor().row + 1;
+  var col = editor.selection.getCursor().col;
+
+  alert("TODO - implement findUsages...");
+
+  console.log("Navigate to: "+wp + " : " + row);
+
+  var x = $("span[posw='"+wp+"'][posr="+row+"]")[0];//.scrollIntoView();
+  var parent = $('#iframeOut3_'+@id)[0];
+
+  if(typeof x != "undefined")
+    parent.scrollTop = x.offsetTop;
+
+
+    //todo get the diffs
+    $.ajax(
+        '/diesel/findUsages/@id', {
+          type: 'POST',
+          data: $.param({
+            reactor : '@reactor',
+            specWpath : specWpath,
+            storyWpath : storyWpath
+          }),
+          contentType: 'application/x-www-form-urlencoded',
+          success: function(data) {
+            var tex = "Save/revert "+what+"<br>"+cant+"<br>"+
+                '<a href="#" onclick="revertOrig(\''+what+'\'); return false;">Revert</a> | ' +
+                '<a href="#" onclick="saveOrig(\''+what+'\'); return false;">Save</a> | ' +
+                '<a href="#" onclick="saveNew(\''+what+'\'); return false;">Save as</a> ' +
+                '<input name="news" id="news" type="text" placeholder="new topic name"></input>' +
+                '<hr>Local changes:' ;
+            if(what == "Spec") {
+              popupContent(tex + data.specDiff);
+            } else if(what == "Story") {
+              popupContent(tex + data.storyDiff);
+            }
+          },
+          error  : function(x) {
+            console.log( "ERR "+x.toString());
+          }
+        });
 }
 
 

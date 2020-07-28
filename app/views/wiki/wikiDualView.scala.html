@@ -212,19 +212,15 @@ edit a wiki page
         popupContent($("#"+id).html());
       }
 
-      function popupDiff () {
-        //todo get the diffs
+      popupDiff = function() {
         $.ajax(
-            '/wikie/diffContent/@wid.wpath', {
+            '/wikie/draftDiff/@{wid.wpath}', {
               type: 'POST',
               data: $.param({
-                wpath : '@wid.wpath',
-                newc : getContent()
               }),
               contentType: 'application/x-www-form-urlencoded',
               success: function(data) {
-                var tex = 'Local changes:' ;
-                popupContent(tex + data.diff);
+                popupContent(data.diff);
               },
               error  : function(x) {
                 console.log( "ERR "+x.toString());
