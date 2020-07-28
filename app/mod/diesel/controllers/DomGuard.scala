@@ -1,11 +1,9 @@
 package mod.diesel.controllers
 
-import akka.actor.ActorRef
-import controllers.Profile
 import java.net.InetAddress
-import mod.diesel.guard.DieselCron.worker
+import java.util.concurrent.atomic.AtomicInteger
 import mod.diesel.guard.DomGuardian
-import mod.diesel.guard.DomGuardian.{Report, startCheck}
+import mod.diesel.guard.DomGuardian.startCheck
 import mod.diesel.model._
 import model._
 import org.bson.types.ObjectId
@@ -15,23 +13,18 @@ import razie.diesel.dom._
 import razie.diesel.engine.RDExt._
 import razie.diesel.engine._
 import razie.diesel.engine.nodes.EnginePrep
-import razie.diesel.utils.{AutosaveSet, DomCollector, DomWorker}
 import razie.diesel.utils.DomHtml.quickBadge
+import razie.diesel.utils.{AutosaveSet, DomCollector, DomWorker}
 import razie.hosting.WikiReactors
 import razie.wiki.Config
 import razie.wiki.admin.Autosave
 import razie.wiki.model._
-import razie.{Logging, clog, js}
+import razie.wiki.util.NoAuthService
+import razie.{Logging, js}
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 import scala.util.Try
-import scala.concurrent.duration.{Duration, FiniteDuration}
-import akka.pattern.ask
-import akka.util.Timeout
-import java.util.concurrent.atomic.AtomicInteger
-import razie.wiki.util.NoAuthService
-import scala.concurrent.{Await, Future}
-import scala.concurrent.duration._
 
 /** controller for server side fiddles / services */
 class DomGuard extends DomApiBase with Logging {
@@ -493,10 +486,13 @@ Guardian report<a href="/wiki/Guardian_Guide" ><sup><span class="glyphicon glyph
 
   /** run another check current reactor */
   def dieselRunCheck = Filter(activeUser).async { implicit stok =>
-    if (DomGuardian.enabled(stok.realm)) startCheck(stok.realm, stok.au)._1.map { engine =>
-      Redirect(s"""/diesel/report""")
+    if (DomGuardian.enabled(stok.realm)) {
+      val x @ (f,e) = startCheck(stok.realm, stok.au)
+      Future.successful(
+        Redirect(s"""/diesel/viewAst/${e.id}"""))
     }
-    else Future.successful(Ok("GUARDIAN DISABLED in realm: "+stok.realm))
+    else Future.successful(
+      Ok("GUARDIAN DISABLED in realm: "+stok.realm))
   }
 
   /** run another check all reactors */
