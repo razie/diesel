@@ -2,6 +2,8 @@
 Admin user - list of users
 ***@
 @import model.Users
+@import java.time.format.DateTimeFormatter
+@import org.joda.time.format.DateTimeFormat
 @(realm:String)(implicit stok: controllers.StateOk)
 @import com.mongodb.casbah.Imports._
 
@@ -13,7 +15,8 @@ Admin user - list of users
     }
   }
   case "date" => {
-    @Users.findUserById(db.get("_id").toString).flatMap(_.realmSet.get(stok.realm)).flatMap(_.crDtm).map(_.formatted("YYY-MM-DD"))
+    @Users.findUserById(db.get("_id").toString).flatMap(_.realmSet.get(stok.realm)).flatMap(_.crDtm).map(d=>DateTimeFormat.forPattern("yyyy-MM-dd").print(d))
+@*//    @Users.findUserById(db.get("_id").toString).flatMap(_.).map(_.formatted("YYYY-MM-DD"))*@
   }
   case "email" => {
     @razie.wiki.Enc.unapply(v)
