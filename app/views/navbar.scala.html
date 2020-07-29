@@ -173,9 +173,11 @@ require(['jquery'], function($){
 
             @if(! web().navrMenuRemove.contains("Fiddles") && (stok.au.exists(u=> u.isDev || u.isAdmin))) {
               <li class="divider"></li>
+              <li><a href="/sfiddle/restFiddle">RestFiddle</a></li>
+              <li><a href="/sfiddle/stringFiddle">Str-Fiddle</a></li>
+              <li><a href="/sfiddle/playinbrowser/js">JS-Fiddle</a></li>
               <li><a href="/sfiddle/playFFD">FFD-Fiddle</a></li>
               <li><a href="/sfiddle/play3/js">SFiddle</a></li>
-              <li><a href="/sfiddle/playinbrowser/js">JS-Fiddle</a></li>
               <li><a href="/sfiddle/playDsl/js">DSL-Fiddle</a></li>
               <li><a href="/gapi/demo">GAPI demo</a></li>
             }

@@ -1,8 +1,7 @@
 @**************
 a JS/SCALA client side fiddle, **full page**
 **************@
-@(
-  what:String,
+@(what:String,
   lang:String,
   content:String,
   tags:String,
@@ -13,10 +12,10 @@ a JS/SCALA client side fiddle, **full page**
   id:String = java.lang.System.currentTimeMillis().toString())(implicit stok:controllers.StateOk)@import razie.wiki.model.Perm
 
 <div style="margin-left: 20px; margin-right: 20px">
-@stok.title("Javascript browser fiddle")
+@stok.title("String fiddle")
 @stok.requireJs(false)
 
-<h2>Browser fiddle (@lang)
+<h2>String fiddle (@lang)
   | <small>
   <input type="checkbox" id="refresh" checked> Real time (<span id="roundtrip"></span>)
   | <input type="checkbox" id="raphael" > Raphael
@@ -30,17 +29,29 @@ a JS/SCALA client side fiddle, **full page**
 </pre>
 
 <div class="row" style="align-items:center;">
-  <div id="pre3box_@id" class="col-sm-8" style="">
+  <div id="pre3box_@id" class="col-sm-5" style="">
     <pre id="pre3_@id" style="height:228px; ">@content.trim.replaceAll("\n$", "")</pre>
   </div>
-  <div class="col-sm-4" id="resultdiv_@id" style="overflow-y:auto">
-    <pre id="iframe_@id" name="iframe_@id" style="padding:1px; text-align: center">Start typing...</pre>
+  <div class="col-sm-5" id="resultdiv_@id" style="overflow-y:auto">
+    <pre id="iframe_@id" name="iframe_@id" style="height:228px; ">Start typing...</pre>
     <pre id="log_@id" name="log_@id" style="padding:1px; text-align: left"></pre>
   </div>
+
+  <div>
+    <a id="stringStats" href="#" onclick="setMode('stringStats'); return false;" class="btn btn-info btn-xs">stringStats</a><br>
+    <a id="jsonFormat" href="#" onclick="setMode('jsonFormat'); return false;" class="btn btn-info btn-xs">jsonFormat</a><br>
+    <a id="jsEval" href="#" onclick="setMode('jsEval'); return false;" class="btn btn-info btn-xs">jsEval</a><br>
+  </div>
+
 </div>
 
-<div>
-   <input type="text" name="tags" id="tags" class="col-sm-6 input-sm" placeholder="Tags, comma-separated" value="@tags"/>
+  <div>
+    <small>Stats: <span id="strStats"></span></small>
+  </div>
+
+
+  <div>
+   <input type="text" name="tags" id="tags" class="col-sm-4 input-sm" placeholder="Tags, comma-separated" value="@tags"/>
   &nbsp;
     @if(we.isDefined) {
       <a id="update" href="#" onclick="updateFiddle(); return false;" class="btn btn-info btn-xs">Update fiddle</a>
@@ -95,6 +106,12 @@ a JS/SCALA client side fiddle, **full page**
 useLocalStorageCheckbox("refresh", "browserFiddleRefreshMode");
 useLocalStorageCheckbox("raphael", "browserFiddleRaphaelMode");
 
+var curMode = 'stringStats';
+
+function setMode(m) {
+  curMode=m;
+}
+
 var id = '@id';
 
 $('#resultdiv_'+@id).css('max-height', $('#pre3box_@id').height()+'px');
@@ -111,6 +128,19 @@ var seqNum_@id = 0;
 @if(stok.au.isEmpty) {
   $('#update').attr("disabled","disabled");
   $('#update').attr("title","You need an account to save");
+}
+
+function breakWords(s){
+  s = s.replace(/(^\s*)|(\s*$)/gi,"");//exclude  start and end white-space
+  s = s.replace(/\W/gi, " "); // exclude newline with a start spacing
+  s = s.replace(/[ ]{2,}/gi," ");//2 or more space to 1
+  s = s.replace(/\n /,"\n"); // exclude newline with a start spacing
+  return s.split(' ').filter(function(str){return str!="";});
+  //return s.split(' ').filter(String).length; - this can also be used
+}
+
+function countWords(s){
+  return breakWords(s).length;
 }
 
 function updateFiddle () {
@@ -140,72 +170,100 @@ var runpill_@id = function(id) {
 
   var res = "";
 
-  try {
+  try { // save if user logged in
 @if(stok.au.nonEmpty) {
-    $.ajax(
-      '/sfiddle/saveFiddle/@what/@stok.realm?wpath=@we.map(_.wid.wpath).mkString', {
-      type: 'POST',
-      data: $.param({
-        l : '@lang',
-        tags : $("#tags").val(),
-        j : code
-      }),
-      contentType: 'application/x-www-form-urlencoded',
-      success: function(data) {
-        $("#autosave").hide();
-        $("#autosave").attr("title", "");
-        $("#autosave").text("autosaved");
-        $("#autosave").css("color", "green");
-        $("#autosave").fadeIn();
-      },
-      error  : function(x) {
-        $("#autosave").attr("title", x.toString());
-        $("#autosave").text("autosave ERR");
-        $("#autosave").css("color", "red");
-        console.log( "ERR "+x.toString());
-      }
-    });
+    doSaveFiddle (code, "@what", "@lang", "@we.map(_.wid.wpath).mkString", $("#tags").val(),
+        function(data) {
+          $("#autosave").hide();
+          $("#autosave").attr("title", "@we.map(_.wid.wpath).mkString");
+          $("#autosave").text("autosaved");
+          $("#autosave").css("color", "green");
+          $("#autosave").fadeIn();
+        },
+        function(x) {
+          $("#autosave").attr("title", x.toString());
+          $("#autosave").text("autosave ERR");
+          $("#autosave").css("color", "red");
+          console.log( "ERR "+x.toString());
+        });
 }
 
   seqNum_@id = seqNum_@id +1;
   var closureSeq = seqNum_@id;
 
-  limitEval(moreContext+preamble+"\n"+code, function(success, returnValue, outputStr) {
-    if(closureSeq != seqNum_@id) {
-      console.log("ignored old result: "+closureSeq+' current: '+seqNum_@id);
-      return;
-    }
+    // code is the input
 
-    if (success) {
-      res = returnValue;
-      paintErr(false);
-    }
-    else {
+  if(curMode == 'stringStats') {
+
+    res = breakWords(code);
+    $('#iframe_'+id).text(res);
+    $('#log_'+id).hide();
+
+  } else if(curMode == 'jsonFormat') {
+
+    try {
+      res = JSON.parse(code);
+      res = JSON.stringify(res, null, 2);
+      $('#iframe_'+id).text(res);
+      $('#log_'+id).hide();
+
+    } catch (e) {
       paintErr(true);
-      res = returnValue || 'TIMEOUT - infinite loop?';
+      $('#log_'+id).text(e);
+      console.log("EXC: " + e);
+      $('#log_'+id).show();
     }
 
-    if(typeof res != 'undefined' && res != null) res = res.toString();
-    else if(typeof res == 'undefined') res = "";
-    var finalres = res;
-    if(code.length > 0 && !raphael) {
-      $('#iframe_'+id).html(finalres);
-      if(typeof outputStr != 'undefined' && outputStr != null) {
-        $('#log_'+id).html(outputStr);
-        $('#log_'+id).show();
-      } else {
-        $('#log_'+id).hide();
-      }
-      }
-    else if(!raphael)
-      $('#iframe_'+id).text("Start typing...");
-  }, 3000);
+  } else if(curMode == 'jsEval') {
+
+      limitEval(moreContext+preamble+"\n"+code, function(success, returnValue, outputStr) {
+        if(closureSeq != seqNum_@id) {
+          console.log("ignored old result: "+closureSeq+' current: '+seqNum_@id);
+          return;
+        }
+
+        if (success) {
+          res = returnValue;
+          paintErr(false);
+        }
+        else {
+          paintErr(true);
+          res = returnValue || 'TIMEOUT - infinite loop?';
+        }
+
+        if(typeof res != 'undefined' && res != null) res = res.toString();
+        else if(typeof res == 'undefined') res = "";
+        var finalres = res;
+        if(code.length > 0 && !raphael) {
+          $('#iframe_'+id).html(finalres);
+          if(typeof outputStr != 'undefined' && outputStr != null) {
+            $('#log_'+id).html(outputStr);
+            $('#log_'+id).show();
+          } else {
+            $('#log_'+id).hide();
+          }
+        }
+        else if(!raphael)
+          $('#iframe_'+id).text("Start typing...");
+      }, 3000);
+    }
 
     paintErr(false);
   } catch (e) {
     paintErr(true);
+    console.log("EXC:" +e );
   }
 }
+
+
+function calcOutput(inStr) {
+
+}
+
+function calcOutput(inStr) {
+
+}
+
 
 function paintErr(isErr) {
   $('#iframe_'+@id).toggleClass("panel panel-success", !isErr);
@@ -215,25 +273,42 @@ function paintErr(isErr) {
 
 <script type="text/javascript" src="@routes.Assets.at("vendor/jshint.js")"></script>
 <script>
-var checkCode = function(code) {
-  JSHINT(code, {expr: true, asi:true}); // enable expression mode and don't warn semicolons
-  var ret = JSHINT.data();
 
-  if(JSHINT.data().errors) {
-    var er = 'Line\t\tReason\n';
-    JSHINT.data().errors.forEach(function(e){
-      er = er+e.line + '\t\t'+e.reason+'\n';
-    })
+  // check and hint on code
+var jsh = function(code) {
+  if(curMode == 'stringStats') {
+
+    var er = 'Stat\t\tValue\n';
+    var stat = code.length;
+    er = er+'Chars\t\t'+stat+'\n';
+
+    stat = countWords(code);
+    er = er+'Words\t\t'+stat+'\n';
+
     document.getElementById('pre3b_@id').innerText = er;
-    paintErr(true);
-    return false;
-  } else {
-  document.getElementById('pre3b_@id').innerText = "";
-    paintErr(false);
-    return true;
-  }
 
-  document.getElementById('pre3b_@id').innerText = er;
+  } else if(curMode == 'jsonFormat' || curMode == 'jsEval') {
+
+    JSHINT(code, {expr: true, asi:true}); // enable expression mode and don't warn semicolons
+    var ret = JSHINT.data();
+
+    if(JSHINT.data().errors) {
+      var er = 'Line\t\tReason\n';
+      JSHINT.data().errors.forEach(function(e){
+        er = er+e.line + '\t\t'+e.reason+'\n';
+      })
+      document.getElementById('pre3b_@id').innerText = er;
+      paintErr(true);
+      return false;
+    } else {
+      document.getElementById('pre3b_@id').innerText = "";
+      paintErr(false);
+      return true;
+    }
+  }
+  return true;
+
+  @*document.getElementById('pre3b_@id').innerText = er;*@
 }
 </script>
 
@@ -245,6 +320,7 @@ var checkCode = function(code) {
 <script>
   ace.require("ace/ext/language_tools");
   var editor = ace.edit("pre3_@id");
+  var outAce = ace.edit("iframe_@id");
   editor.setOptions({
 //    maxLines: 10,
 //    highlightActiveLine: false,
@@ -253,28 +329,39 @@ var checkCode = function(code) {
     enableLiveAutocomplete: true
   });
 
+  outAce.setOptions({
+//    highlightActiveLine: false,
+    enableBasicAutocompletion: true,
+    enableSnippets: false,
+    enableLiveAutocomplete: true
+  });
+  outAce.setReadOnly(true);
+
   @if(stok.isLight) {
   editor.setTheme ( "ace/theme/solarized_light" ) ;
+  outAce.setTheme ( "ace/theme/solarized_light" ) ;
   //editor.setTheme ( "ace/theme/crimson_editor" ) ;
 } else {
   editor.setTheme ( "ace/theme/twilight" ) ;
+  outAce.setTheme ( "ace/theme/twilight" ) ;
 }
   editor.getSession().setMode("ace/mode/javascript");
+  outAce.getSession().setMode("ace/mode/javascript");
 
-  //checkCode(editor.getValue());
+  //jsh(editor.getValue());
 
   var razChanged=true;
 
   editor.getSession().on('change', function(e) {
     razChanged=true;
     //var j=editor.getValue();
-    //checkCode(j);
+    //jsh(j);
   });
 
 setInterval(function(){
    if(razChanged) {
      var j=editor.getValue();
-     if(checkCode(j)) runpill_@{id}('@{id}');
+     if(jsh(j)) runpill_@{id}('@{id}');
      razChanged=false;
      }
 },500);

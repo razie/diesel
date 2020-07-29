@@ -14,6 +14,74 @@ var decscr = function (s) {
   return s.replace(/%27/g,'\'');
 };
 
+/** post to update fiddle on server */
+function doRunFiddle (code, url, verb, what, lang, wpath, tags, doSuccess, doError) {
+  $.ajax(
+    '/sfiddle/runFiddle/'+what+'/'+realm+'?wpath='+wpath, {
+      type: 'POST',
+      data: $.param({
+        l : lang,
+        tags : tags,
+        u: url,
+        v: verb,
+        j : code
+      }),
+      contentType: 'application/x-www-form-urlencoded',
+      success: doSuccess,
+      error  : doError
+    });
+};
+
+
+/** post to update fiddle on server */
+function doSaveFiddle (code, what, lang, wpath, tags, doSuccess, doError) {
+  $.ajax(
+    '/sfiddle/saveFiddle/'+what+'/'+realm+'?wpath='+wpath, {
+      type: 'POST',
+      data: $.param({
+        l : lang,
+        tags : tags,
+        j : code
+      }),
+      contentType: 'application/x-www-form-urlencoded',
+      success: doSuccess,
+      error  : doError
+    });
+};
+
+
+
+/** post to update fiddle on server */
+function doUpdateFiddle (code, what, lang, wpath, tags) {
+  $.ajax(
+    '/sfiddle/updateFiddle/'+what+'?wpath='+wpath, {
+      type: 'POST',
+      data: $.param({
+        l : lang,
+        what : what,
+        tags : tags,
+        j : code
+      }),
+      contentType: 'application/x-www-form-urlencoded',
+      success: function(data) {
+        console.log("Fiddle saved " + data);
+        var x = wpath;
+
+        if(x == '') x = data;
+
+        if(x.indexOf('Note:') >= 0)
+          window.location.replace('/sfiddle/playinbrowser/js?wpath=' + x);
+      },
+      error  : function(x) {
+        console.log( "ERR "+x.toString());
+        alert("Fiddle NOT saved - ERROR: "+x.toString());
+      }
+    });
+};
+
+
+
+
 /** Enhanced from http://cwestblog.com/2016/03/16/javascript-detecting-infinite-loops/
  *
  * See

@@ -2,12 +2,13 @@ package mod.diesel.controllers
 
 import com.google.inject.Singleton
 import controllers._
+import java.net.URL
 import mod.notes.controllers.{Notes, NotesLocker, NotesTags}
 import model.{MiniScripster, _}
 import org.antlr.v4.tool.{ANTLRMessage, ANTLRToolListener}
 import org.bson.types.ObjectId
 import play.api.mvc._
-import razie.Logging
+import razie.{Logging, Snakk, SnakkUrl}
 import razie.audit.Audit
 import razie.diesel.snakk.FFDPayload
 import razie.hosting.Website
@@ -245,12 +246,48 @@ class SFiddles extends SFiddleBase with Logging {
 
 
   /** display the play sfiddle screen */
+  def restFiddle(lang:String, wpath: String) = RAction { implicit request =>
+    val url = Fiddle("RestFiddleUrl", "snakk", request.realm, wpath, request.au)
+        .withDefault("http://localhost:4041/simMappedData?deviceType=enb&deviceId=MAC&section=system")
+    val f = Fiddle("RestFiddle", "snakk", request.realm, wpath, request.au)
+    ROK.k reactorLayout12FullPage  {
+      views.html.fiddle.playRestFiddle(
+        "RestFiddle",
+        "snakk",
+        url.content,
+        f.content,
+        f.tags,
+        request.query,
+        f.isAuto,
+        f.we
+      )
+    }
+  }
+
+  /** display the play sfiddle screen */
+  def stringFiddle(lang:String, wpath: String) = RAction { implicit request =>
+    val f = Fiddle("StringFiddle", "string", request.realm, wpath, request.au)
+    ROK.k reactorLayout12FullPage  {
+      views.html.fiddle.playStringFiddle(
+        "StringFiddle",
+        "string",
+        f.content,
+        f.tags,
+        request.query,
+        f.isAuto,
+        f.we
+      )
+    }
+  }
+
+  /** display the play sfiddle screen */
   def playInBrowser(lang: String, wpath: String) = RAction { implicit request =>
     // used in a blog, so no auth
     val f = Fiddle("JSFiddle", lang, request.realm, wpath, request.au)
     ROK.k reactorLayout12FullPage  {
       views.html.fiddle.playBrowserFiddle(
-        lang,
+        "JSFiddle",
+        "js",
         f.content,
         f.tags,
         request.query,
@@ -293,12 +330,31 @@ class SFiddles extends SFiddleBase with Logging {
 
     val f = Fiddle (what, lang, reactor, wpath, stok.au)
 
-      Some(1).filter(x => (au hasPerm Perm.codeMaster) || (au hasPerm Perm.adminDb)).fold(
-        Ok(s"no sfiddle for ")
-      ) { we =>
-        f.autosave(j, t)
-        Ok(s"saved")
-      }
+    Some(1).filter(x => (au hasPerm Perm.codeMaster) || (au hasPerm Perm.adminDb)).fold(
+      Ok(s"no sfiddle for ")
+    ) { we =>
+      f.autosave(j, t)
+      Ok(s"saved")
+    }
+  }
+
+  /** display the play sfiddle screen */
+  def runFiddle(reactor: String, what: String, wpath:String) = FAUR { implicit stok=>
+    val lang = stok.formParm("l")
+    val j = stok.formParm("j")
+    val u = stok.formParm("u")
+    val v = stok.formParm("v")
+    val t = stok.formParm("tags")
+    val au = stok.au.get
+
+    try {
+      clog << "snakking " + v + " - " + u
+      val res = Snakk.body(Snakk.url(u, Map.empty, v), Some(j))
+      clog << "snakked: " + res
+      Ok(res)
+    } catch {
+      case e : Exception => Ok("ERROR: " + e)
+    }
   }
 
   //[id [asset, content]]
