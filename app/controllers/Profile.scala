@@ -99,9 +99,7 @@ case class Registration(email: String, password: String, reemail:String="", repa
 // create profile
 case class CrProfile(firstName: String, lastName: String, company:String, yob: Int, address: String, userType: String, accept: Boolean, g_recaptcha_response: String="", about:String="")
 
-@Singleton
-class Profile @Inject() (config:Configuration, adminDiff:AdminDiff) extends RazController with Logging {
-
+object AttemptCounter {
   // keep last attempts, 3 seconds, 10 seconds (email - (count,last systime))
   val lastAttempts = new HashMap[String, (Int, Long)]()
 
@@ -125,6 +123,12 @@ class Profile @Inject() (config:Configuration, adminDiff:AdminDiff) extends RazC
     v.foreach(v=> count = v._1)
     count
   }
+}
+
+@Singleton
+class Profile @Inject() (config:Configuration, adminDiff:AdminDiff) extends RazController with Logging {
+
+  import AttemptCounter._
 
   final val INVALID_LOGIN = "Invalid username and/or password"
 
@@ -716,9 +720,8 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
       }) //fold
   }
 
-  /** create profile for an external user - simplified FOR PORTALS
-    *
-    * @param realmcd - specific realm code, to validate calls came from realm
+  /**
+    *  create profile for an external user - simplified FOR PORTALS
     */
   def doeCreateExt() = RAction { implicit stok =>
 

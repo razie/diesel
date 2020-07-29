@@ -11,7 +11,7 @@ import com.novus.salat.grater
 import org.bson.types.ObjectId
 import org.joda.time.DateTime
 import play.api.mvc.{Request, RequestHeader}
-import razie.Logging
+import razie.{Log, Logging}
 import razie.audit.AuditService
 import razie.db.RazSalatContext.ctx
 import razie.hosting.Website
@@ -91,23 +91,61 @@ class RazAuthService extends AuthService[User] with Logging with Validation {
           // from basic http auth headers, for testing and API
           val e2 = euid.replaceFirst("Basic ", "")
           val e3 = new String(Base64 dec e2) //new sun.misc.BASE64Decoder().decodeBuffer(e2)
-        val EP =
-          """H-([^:]*):H-(.*)""".r
+
+        val EP = """H-([^:]*):H-(.*)""".r
+
+        val EP2 = """([^:]*):(.*)""".r
+
+        import controllers.AttemptCounter._
 
           e3 match {
-            case EP(em, pa) =>
-              //            cdebug << "AUTH BASIC attempt "+e3
-              Users.findUserByEmailDec((em)).flatMap { u =>
-                // can su if admin, for testing
-                if (Enc(pa) == u.pwd || (pa=="su" && au.exists(_.isAdmin))) {
-                  u.auditLogin(Website.xrealm)
-                  val uid = u.id
-                  debug("AUTH BASIC connected=" + u.userName)
-                  Cache.set(u.email + ".connected", u, 120)
-                  Cache.set(u._id.toString + ".name", u.userName, 120)
-                  Some(u)
-                } else None
+              // todo remove if not used - it may still be used when export/import realms
+            case EP(em, pa) => {
+              cdebug << "AUTH BASIC attempt "+em
+              if(! tooManyAttempts(em)) {
+                Users.findUserByEmailDec((em)).flatMap { u =>
+                  // can su if admin, for testing
+                  if (Enc(pa) == u.pwd || (pa == "su" && au.exists(_.isAdmin))) {
+                    u.auditLogin(Website.xrealm)
+                    val uid = u.id
+                    debug("AUTH BASIC connected=" + u.userName)
+                    Cache.set(u.email + ".connected", u, 120)
+                    Cache.set(u._id.toString + ".name", u.userName, 120)
+                    Some(u)
+                  } else {
+                    u.auditLoginFailed(realm, countAttempts(em))
+                    None
+                  }
+                }
+              } else {
+                Log.audit(s"USER_LOGIN_FAILED $em - realm: $realm - count: ${countAttempts(em)}")
+                None
               }
+            }
+
+            case EP2(em, pa) => {
+              cdebug << "AUTH BASIC attempt "+em
+              if(! tooManyAttempts(em)) {
+                Users.findUserByEmailDec((em)).flatMap { u =>
+                  // can su if admin, for testing
+                  if (Enc(pa) == u.pwd || (pa == "su" && au.exists(_.isAdmin))) {
+                    u.auditLogin(Website.xrealm)
+                    val uid = u.id
+                    debug("AUTH BASIC connected=" + u.userName)
+                    Cache.set(u.email + ".connected", u, 120)
+                    Cache.set(u._id.toString + ".name", u.userName, 120)
+                    Some(u)
+                  } else {
+                    u.auditLoginFailed(realm, countAttempts(em))
+                    None
+                  }
+                }
+              } else {
+                Log.audit(s"USER_LOGIN_FAILED $em - realm: $realm - count: ${countAttempts(em)}")
+                None
+              }
+            }
+
 
             case _ => println("ERR_AUTH wrong Basic auth encoding..."); None
           }

@@ -13,9 +13,11 @@ import com.novus.salat.grater
 import java.nio.file.{Files, Paths}
 import mod.diesel.guard.{DieselCron, DomGuardian}
 import mod.notes.controllers.NotesLocker
-import model.WikiScripster
+import mod.snow.Regs
+import model.{Users, WikiScripster}
 import org.bson.types.ObjectId
 import org.joda.time.DateTime
+import org.joda.time.format.DateTimeFormat
 import play.api.mvc.Action
 import razie.audit.Audit
 import razie.db.RazMongo
@@ -30,13 +32,51 @@ import scala.io.Source
 //@Singleton
 class Admin extends AdminBase {
 
-  def realmUsers = FAU { implicit au =>
-    implicit errCollector => implicit request =>
-        if(au.isAdmin || au.isMod)
-          ROK.s admin { implicit stok => views.html.admin.adminRealmUsers(stok.realm) }
-        else {
+  private def escNL(s:String) = s.replaceAllLiterally("\n", " - ").replaceAllLiterally(",", " - ")
+
+  def realmUsers = FAU { implicit au => implicit errCollector => implicit request =>
+      val stok = razRequest
+        if(stok.au.get.isAdmin || stok.au.get.isMod) {
+          if(stok.req.getQueryString("format").contains("csv")) {
+            val (headers, data) = usersData(stok.realm)
+              Ok(
+                headers.mkString(",") +
+                    "\n" +
+                    data.map(
+                      _.map(escNL)
+                          .mkString(",")
+                    ).mkString("\n")
+              ).as("text/csv")
+          } else {
+            ROK.s admin { implicit stok =>
+              views.html.admin.adminRealmUsers(stok.realm)
+            }
+          }
+        } else {
           unauthorized("CAN'T")
         }
+  }
+
+  def usersData(realm: String): (List[String], List[List[String]]) = {
+    val users = Users.findUsersForRealm(realm)
+    val cols = "userName,_id,date,email,firstName,lastName,yob,extId,perms".split(",").toList
+
+    // actual rows L[L[String]]
+    val res = users.map(_.forRealm(realm)).map { u =>
+      List(
+        u.userName,
+        u._id.toString,
+        u.realmSet.get(realm).flatMap(_.crDtm).map(d=>DateTimeFormat.forPattern("yyyy-MM-dd").print(d)).mkString,
+        u.emailDec,
+        u.firstName,
+        u.lastName,
+        u.yob.toString,
+        u.profile.flatMap(_.newExtLinks.find(_.realm == realm)).map{_.extAccountId}.mkString,
+        u.perms.mkString(" ") // not ,
+      )
+    }.toList
+
+    (cols, res)
   }
 
   // routes razadmin/page/:page
