@@ -90,45 +90,51 @@ class RazAuthService extends AuthService[User] with Logging with Validation {
         au = authorization.flatMap { euid =>
           // from basic http auth headers, for testing and API
           val e2 = euid.replaceFirst("Basic ", "")
-          val e3 = new String(Base64 dec e2) //new sun.misc.BASE64Decoder().decodeBuffer(e2)
+          val e3 = new String(Base64 dec e2)
 
-        val EP = """H-([^:]*):H-(.*)""".r
-
-        val EP2 = """([^:]*):(.*)""".r
 
         import controllers.AttemptCounter._
 
+        if(e3.startsWith("H-")) {
+          val EP = """H-([^:]*):H-(.*)""".r
           e3 match {
-              // todo remove if not used - it may still be used when export/import realms
+            // todo remove if not used - it may still be used when export/import realms
             case EP(em, pa) => {
-              cdebug << "AUTH BASIC attempt "+em
-              if(! tooManyAttempts(em)) {
-                Users.findUserByEmailDec((em)).flatMap { u =>
-                  // can su if admin, for testing
-                  if (Enc(pa) == u.pwd || (pa == "su" && au.exists(_.isAdmin))) {
-                    u.auditLogin(Website.xrealm)
-                    val uid = u.id
-                    debug("AUTH BASIC connected=" + u.userName)
-                    Cache.set(u.email + ".connected", u, 120)
-                    Cache.set(u._id.toString + ".name", u.userName, 120)
-                    Some(u)
-                  } else {
-                    u.auditLoginFailed(realm, countAttempts(em))
-                    None
-                  }
+              cdebug << "AUTH BASIC attempt " + em
+//              if(! tooManyAttempts(em)) {
+              Users.findUserByEmailDec((em)).flatMap { u =>
+                // can su if admin, for testing
+                if (Enc(pa) == u.pwd || (pa == "su" && au.exists(_.isAdmin))) {
+                  u.auditLogin(Website.xrealm)
+                  success(em);
+                  val uid = u.id
+                  debug("AUTH BASIC connected=" + u.userName)
+                  Cache.set(u.email + ".connected", u, 120)
+                  Cache.set(u._id.toString + ".name", u.userName, 120)
+                  Some(u)
+                } else {
+                  u.auditLoginFailed(realm, countAttempts(em))
+                  None
                 }
-              } else {
-                Log.audit(s"USER_LOGIN_FAILED $em - realm: $realm - count: ${countAttempts(em)}")
-                None
               }
+//              } else {
+//                Log.audit(s"USER_LOGIN_FAILED $em - realm: $realm - count: ${countAttempts(em)}")
+//                None
+//              }
             }
 
+            case _ => println("ERR_AUTH wrong Basic auth encoding..."); None
+          }
+        } else {
+          val EP2 = """([^:]*):(.*)""".r
+          e3 match {
             case EP2(em, pa) => {
               cdebug << "AUTH BASIC attempt "+em
               if(! tooManyAttempts(em)) {
                 Users.findUserByEmailDec((em)).flatMap { u =>
                   // can su if admin, for testing
                   if (Enc(pa) == u.pwd || (pa == "su" && au.exists(_.isAdmin))) {
+                    success(em);
                     u.auditLogin(Website.xrealm)
                     val uid = u.id
                     debug("AUTH BASIC connected=" + u.userName)
@@ -141,15 +147,14 @@ class RazAuthService extends AuthService[User] with Logging with Validation {
                   }
                 }
               } else {
-                Log.audit(s"USER_LOGIN_FAILED $em - realm: $realm - count: ${countAttempts(em)}")
+                Log.audit(s"USER_LOGIN_FAILED TOO_MANY $em - realm: $realm - count: ${countAttempts(em)}")
                 None
               }
             }
-
-
             case _ => println("ERR_AUTH wrong Basic auth encoding..."); None
           }
         }
+      }
 
       // todo hack -
       au.map(_.forRealm(realm))
