@@ -2,13 +2,11 @@ package mod.diesel.controllers
 
 import com.google.inject.Singleton
 import controllers._
-import java.net.URL
 import mod.notes.controllers.{Notes, NotesLocker, NotesTags}
 import model.{MiniScripster, _}
 import org.antlr.v4.tool.{ANTLRMessage, ANTLRToolListener}
 import org.bson.types.ObjectId
 import play.api.mvc._
-import razie.{Logging, Snakk, SnakkUrl}
 import razie.audit.Audit
 import razie.diesel.snakk.FFDPayload
 import razie.hosting.Website
@@ -17,6 +15,7 @@ import razie.wiki.Services
 import razie.wiki.admin.Autosave
 import razie.wiki.model._
 import razie.wiki.model.features.WikiCount
+import razie.{Logging, Snakk}
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -248,7 +247,9 @@ class SFiddles extends SFiddleBase with Logging {
   /** display the play sfiddle screen */
   def restFiddle(lang:String, wpath: String) = RAction { implicit request =>
     val url = Fiddle("RestFiddleUrl", "snakk", request.realm, wpath, request.au)
-        .withDefault("http://localhost:4041/simMappedData?deviceType=enb&deviceId=MAC&section=system")
+//        .withDefault("http://localhost:4041/simMappedData?deviceType=enb&deviceId=MAC&section=system")
+        .withDefault(
+          "http://192.168.5.118:4041/enb/simMappedData?deviceType=enb&deviceId=0c:a1:38:00:04:24&section=system")
     val f = Fiddle("RestFiddle", "snakk", request.realm, wpath, request.au)
     ROK.k reactorLayout12FullPage  {
       views.html.fiddle.playRestFiddle(
@@ -321,7 +322,7 @@ class SFiddles extends SFiddleBase with Logging {
     }.getOrElse(Ok("can't find WID to update"))
   }
 
-  /** display the play sfiddle screen */
+  /** save the fiddle from client */
   def saveFiddle(reactor: String, what: String, wpath:String) = FAUR { implicit stok=>
     val lang = stok.formParm("l")
     val j = stok.formParm("j")

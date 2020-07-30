@@ -31,13 +31,34 @@ class EEGuardian extends EExecutor(DieselMsg.GUARDIAN.ENTITY) with Logging {
     in.met match {
 
       case "schedule" => {
-        val res = DomGuardian.createPollSchedule(
-          ctx.getRequired("schedule"),
-          ctx.root.settings.realm.get,
-          ctx.getRequired("env"),
-          ctx.get("inLocal").mkString
-        )
-        EVal(P.fromTypedValue("payload", res)) :: Nil
+        var res : List[Any] = Nil
+
+        // allow different realm only if trusted
+        var realm = ctx
+            .get("inRealm")
+            .filter { x =>
+              val ok = Website.forRealm(ctx.root.settings.realm.get)
+                  .exists(_.dieselTrust.split(",").contains(x))
+              if(!ok)
+                res = EError(s"Can't trust realm $x") :: Nil
+              ok
+            }
+            .getOrElse(ctx.root.settings.realm.get)
+
+        if(! DomGuardian.ISAUTO) {
+          res = EError(s"Guardian not on auto") :: Nil
+        } else {
+          val result = DomGuardian.createPollSchedule(
+            ctx.getRequired("schedule"),
+            realm,
+            ctx.getRequired("env"),
+            ctx.get("inLocal").mkString
+          )
+
+          res = res ::: EVal(P.fromTypedValue("payload", result)) :: Nil
+        }
+
+        res
       }
 
       case DieselMsg.GUARDIAN.STARTS => { // avoid error if not ruled
@@ -105,7 +126,19 @@ class EEGuardian extends EExecutor(DieselMsg.GUARDIAN.ENTITY) with Logging {
         val stamp = ctx.getRequired("stamp")
         val tq = ctx.get("tagQuery").mkString
         val inRealm = ctx.get("inRealm").getOrElse(settings.realm.get)
-        val res = DomGuardian.polled(inRealm, env, stamp, settings.userId.flatMap(Users.findUserById), tq)
+        var res : List[Any] = Nil
+
+        // allow different realm only if trusted
+        var r = ctx
+            .get("inRealm")
+            .filter { x =>
+              val ok = Website.forRealm(ctx.root.settings.realm.get)
+                  .exists(_.dieselTrust.split(",").contains(x))
+              if(!ok)
+                res = EError(s"Can't trust realm $x") :: Nil
+              ok
+            }
+            .getOrElse(settings.realm.get)
 
         EVal(P("payload", res)) :: Nil
       }

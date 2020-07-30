@@ -1,16 +1,16 @@
 @**************
 a JS/SCALA client side fiddle, **full page**
 **************@
-@(what:String,
-  lang:String,
-  url:String,
-  content:String,
-  tags:String,
-  q:Map[String,String],
-  isAuto:Boolean=false,
-  we:Option[razie.wiki.model.WikiEntry]=None,
-  moreContext:String="",
-  id:String = java.lang.System.currentTimeMillis().toString())(implicit stok:controllers.StateOk)@import razie.wiki.model.Perm
+@(what: String,
+  lang: String,
+  url: String,
+  content: String,
+  tags: String,
+  q: Map[String, String],
+  isAuto: Boolean = false,
+  we: Option[razie.wiki.model.WikiEntry] = None,
+  moreContext: String = "",
+  id: String = java.lang.System.currentTimeMillis().toString())(implicit stok: controllers.StateOk)
 
 <div style="margin-left: 20px; margin-right: 20px">
 @stok.title("REST fiddle")
@@ -39,7 +39,6 @@ a JS/SCALA client side fiddle, **full page**
   </div>
   <div class="col-sm-6" id="resultdiv_@id" style="overflow-y:auto">
     <pre id="iframe_@id" name="iframe_@id" style="height:228px; ">Start typing...</pre>
-    <pre id="log_@id" name="log_@id" style="padding:1px; text-align: left"></pre>
   </div>
 
 </div>
@@ -114,20 +113,23 @@ $("#tags,#url,#verb").change(function(){
 
 var id = '@id';
 
-$('#resultdiv_'+@id).css('max-height', $('#pre3box_@id').height()+'px');
+@*$('#resultdiv_'+@id).css('max-height', $('#pre3box_@id').height()+'px');*@
 var output = "";
 
 // resize editor to window
 var wh=$(window).height();           // visible height
 
-if(wh - 350 > 228)
+if(wh - 350 > 228) {
   $("#pre3_@id").height((wh - 350) + "px");
+  $("#iframe_@id").height((wh - 350) + "px");
+}
 
 var seqNum_@id = 0;
 
 @if(stok.au.isEmpty) {
-  $('#update').attr("disabled","disabled");
-  $('#update').attr("title","You need an account to save");
+  $('#update').attr("disabled", "disabled");
+  $('#update').attr("title", "You need an account to save");
+  $('#autosave').text("You need an account to save");
 }
 
 function breakWords(s){
@@ -234,19 +236,12 @@ var runpill_@id = function(id) {
 
           if(code.length > 0 && !raphael) {
             $('#iframe_'+id).html(finalres);
-            if(typeof outputStr != 'undefined' && outputStr != null) {
-              $('#log_'+id).html(outputStr);
-              $('#log_'+id).show();
-            } else {
-              $('#log_'+id).hide();
-            }
           }
           else if(!raphael)
             $('#iframe_'+id).text("Start typing...");
         },
         function(x) {
           paintErr(true);
-          res = returnValue || 'TIMEOUT - infinite loop?';
           console.log( "ERR "+x.toString());
         });
 
@@ -299,7 +294,7 @@ var jsh = function(code) {
 <script>
   ace.require("ace/ext/language_tools");
   var editor = ace.edit("pre3_@id");
-  var outAce = ace.edit("iframe_@id");
+  @*var outAce = ace.edit("iframe_@id");*@
   editor.setOptions({
 //    maxLines: 10,
 //    highlightActiveLine: false,
@@ -308,25 +303,28 @@ var jsh = function(code) {
     enableLiveAutocomplete: true
   });
 
-  outAce.setOptions({
-//    highlightActiveLine: false,
-    enableBasicAutocompletion: true,
-    enableSnippets: false,
-    enableLiveAutocomplete: true
-  });
-  outAce.setReadOnly(true);
-  outAce.getSession().setUseWrapMode(true);
+  // outAce.setOptions({
+  //   enableBasicAutocompletion: true,
+  //   enableSnippets: false,
+  //   enableLiveAutocomplete: true,
+  //   wrap: true
+  // });
+  // outAce.setReadOnly(true);
 
   @if(stok.isLight) {
   editor.setTheme ( "ace/theme/solarized_light" ) ;
-  outAce.setTheme ( "ace/theme/solarized_light" ) ;
-  //editor.setTheme ( "ace/theme/crimson_editor" ) ;
+  // outAce.setTheme ( "ace/theme/solarized_light" ) ;
 } else {
   editor.setTheme ( "ace/theme/twilight" ) ;
-  outAce.setTheme ( "ace/theme/twilight" ) ;
+  // outAce.setTheme ( "ace/theme/twilight" ) ;
 }
   editor.getSession().setMode("ace/mode/javascript");
-  outAce.getSession().setMode("ace/mode/javascript");
+  // outAce.getSession().setMode("ace/mode/javascript");
+
+  // outAce.getSession().setUseWrapMode(true);
+  // outAce.getSession().setOption("wrap", true);
+  // outAce.getSession().setWrapLimit(50);
+  // outAce.getSession().setWrapBehavioursEnabled();
 
   //jsh(editor.getValue());
 

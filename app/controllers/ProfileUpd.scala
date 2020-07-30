@@ -203,6 +203,7 @@ class ProfileUpd @Inject() (config:Configuration) extends RazController with Log
     Ok(views.html.user.doeProfilePass(chgpassform.fill("", "", "", SecLink("chgpassform").token), request.au.get))
   }
 
+  /** user updates password from preferences */
   def doeProfilePass2 = FAUR { implicit request =>
     val au = request.au.get
     chgpassform.bindFromRequest.fold(
