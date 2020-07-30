@@ -30,7 +30,12 @@ class AdminBase extends RazController {
       can <- au.hasPerm(Perm.adminDb) orErr "no permission"
     ) yield {
       f(au)(errCollector)(request)
-    }) getOrElse unauthorized("CAN'T")
+    }) getOrElse {
+      log("UNAUTHORIZED ADMIN USER: " +
+          activeUser.map(_.userName).mkString + " - " +
+          activeUser.map(_.perms).mkString)
+      unauthorized("CAN'T")
+    }
   }
 
   /** for admin user */

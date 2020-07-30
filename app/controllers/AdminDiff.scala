@@ -10,6 +10,7 @@ import com.mongodb.casbah.Imports.{DBObject, _}
 import com.novus.salat.grater
 import com.razie.pub.comms.CommRtException
 import difflib.DiffUtils
+import java.io.{BufferedWriter, File, FileWriter, IOException}
 import model.User
 import org.joda.time.DateTime
 import org.json.JSONArray
@@ -20,9 +21,9 @@ import razie.db.{RCreate, RMany}
 import razie.wiki.Config
 import razie.wiki.Sec._
 import razie.wiki.admin.Autosave
-import razie.wiki.model.{WID, WikiEntry, Wikis}
+import razie.wiki.model.{WID, WikiEntry}
 import razie.wiki.util.DslProps
-import razie.{cout, js}
+import razie.{Logging, js}
 import scala.collection.JavaConversions._
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
@@ -61,7 +62,7 @@ case class WEAbstract(id: String, cat: String, name: String, realm: String, ver:
 
 /** Diff and sync remote wiki copies */
 @Singleton
-class AdminDiff extends AdminBase {
+class AdminDiff extends AdminBase with Logging {
 
   def wput(reactor: String) = FAD { implicit au =>
     implicit errCollector =>
@@ -151,7 +152,7 @@ class AdminDiff extends AdminBase {
     }
   }
 
-  /** get list of pages - invoked by remote trying to sync */
+  /** get list of pages for realm - invoked by remote trying to sync */
   // todo auth that user belongs to realm
   def wlist(reactor: String, hostname: String, me: String, cat: String) = FAUR { implicit request =>
     if (hostname.isEmpty) {
@@ -399,8 +400,25 @@ class AdminDiff extends AdminBase {
     }
   }
 
+  def wlist(source: String, realm: String, me: String, cat: String, au: User): List[WID] = {
+    val b = body(
+      url(s"http://$source/razadmin/wlist/$realm?me=$me&cat=$cat").basic("H-" + au.emailDec, "H-" + au.pwd.dec))
+
+    val gd = new JSONArray(b)
+    cdebug << s"remoteWids JS $realm: \n  " + gd.toString(2)
+    var ldest = js.fromArray(gd).collect {
+      case m: collection.Map[_, _] => {
+        val x = m.asInstanceOf[collection.Map[String, String]]
+        new WEAbstract(x)
+      }
+    }.map(wea => WID(wea.cat, wea.name).r(wea.realm)).toList
+    cdebug << s"remoteWids $realm: \n  " + ldest.mkString("\n  ")
+    ldest
+  }
+
   def remoteWids(source: String, realm: String, me: String, cat: String, au: User): List[WID] = {
-    val b = body(url(s"http://$source/razadmin/wlist/$realm?me=$me&cat=$cat").basic("H-" + au.emailDec, "H-" + au.pwd.dec))
+    val b = body(
+      url(s"http://$source/razadmin/wlist/$realm?me=$me&cat=$cat").basic("H-" + au.emailDec, "H-" + au.pwd.dec))
 
     val gd = new JSONArray(b)
     cdebug << s"remoteWids JS $realm: \n  " + gd.toString(2)
@@ -439,6 +457,8 @@ class AdminDiff extends AdminBase {
   def importRemoteUser(email:String, pwd:String) = {
     clog << "ADMIN_importRemoteUser"
 
+    log("IMPORT USER")
+
     val source = "www.dieselapps.com"
 
     // key used to encrypt/decrypt transfer
@@ -461,57 +481,59 @@ class AdminDiff extends AdminBase {
   def importDbImpl(implicit request:Request[AnyContent]) = {
     clog << "ADMIN_IMPORT_DB_IMPL"
 
-      lazy val query = request.queryString.map(t => (t._1, t._2.mkString))
-      lazy val form = request.asInstanceOf[Request[AnyContent]].body.asFormUrlEncoded
+    log("IMPORT DB")
 
-      def fParm(name: String): Option[String] =
-        form.flatMap(_.getOrElse(name, Seq.empty).headOption)
+    lazy val query = request.queryString.map(t => (t._1, t._2.mkString))
+    lazy val form = request.asInstanceOf[Request[AnyContent]].body.asFormUrlEncoded
 
-      def fqhParm(name: String): Option[String] =
-        query.get(name).orElse(fParm(name)).orElse(request.headers.get(name))
+    def fParm(name: String): Option[String] =
+      form.flatMap(_.getOrElse(name, Seq.empty).headOption)
 
-      val source = fqhParm("source").get
-      val email = fqhParm("email").get
-      val pwd = fqhParm("pwd").get
-      val realm = fqhParm("realm").get
+    def fqhParm(name: String): Option[String] =
+      query.get(name).orElse(fParm(name)).orElse(request.headers.get(name))
 
-      // key used to encrypt/decrypt transfer
-      val key = System.currentTimeMillis().toString + "87654321"
+    val source = fqhParm("source").get
+    val email = fqhParm("email").get
+    val pwd = fqhParm("pwd").get
+    val realm = fqhParm("realm").get
 
-      // first get the user and profile and create them locally
-      val u = body(url(s"http://$source/dmin-getu/$key", method = "GET").basic("H-" + email, "H-" + pwd))
-      val dbo = com.mongodb.util.JSON.parse(u).asInstanceOf[DBObject];
-      val pu = grater[PU].asObject(dbo)
-      val iau = pu.u
-      val e = new admin.CypherEncryptService("", key)
-      // re=encrypt passworkd with the local key
-      val au = iau.copy(email = e.enc(e.dec(iau.email)), pwd = e.enc(e.dec(iau.pwd)))
+    // key used to encrypt/decrypt transfer
+    val key = System.currentTimeMillis().toString + "87654321"
 
-      au.create(pu.p)
+    // first get the user and profile and create them locally
+    val u = body(url(s"http://$source/dmin-getu/$key", method = "GET").basic("H-" + email, "H-" + pwd))
+    val dbo = com.mongodb.util.JSON.parse(u).asInstanceOf[DBObject];
+    val pu = grater[PU].asObject(dbo)
+    val iau = pu.u
+    val e = new admin.CypherEncryptService("", key)
+    // re=encrypt passworkd with the local key
+    val au = iau.copy(email = e.enc(e.dec(iau.email)), pwd = e.enc(e.dec(iau.pwd)))
 
-      // init realms and cats
+    au.create(pu.p)
 
-      // todo count is not accurate: include mixins, see the import below
+    // init realms and cats
 
-      val ldest = List(
-        "rk.Reactor:rk",
-        "wiki.Reactor:wiki"
-      ).map(x => WID.fromPath(x).get) :::
+    // todo count is not accurate: include mixins, see the import below
+
+    val ldest = List(
+      "rk.Reactor:rk",
+      "wiki.Reactor:wiki"
+    ).map(x => WID.fromPath(x).get) :::
 //        remoteWids(source, "rk", request.host, "Category", au) :::
 //        remoteWids(source, "wiki", request.host, "Category", au) :::
-          remoteWids(source, "rk", request.host, "", au) :::
-          remoteWids(source, "wiki", request.host, "", au) :::
-          remoteWids(source, realm, request.host, "", au)
+        remoteWids(source, "rk", request.host, "", au) :::
+        remoteWids(source, "wiki", request.host, "", au) :::
+        remoteWids(source, realm, request.host, "", au)
 
-      var total = ldest.size
+    var total = ldest.size
 
-      import scala.concurrent.ExecutionContext.Implicits.global
-      (
+    import scala.concurrent.ExecutionContext.Implicits.global
+    (
         total,
         Future {
           importRealm(au, request)
         }
-      )
+    )
   }
 
   def importDbSync = Action.async { implicit request =>
@@ -525,18 +547,19 @@ class AdminDiff extends AdminBase {
       val res = importDbImpl(request)
 
       import scala.concurrent.ExecutionContext.Implicits.global
-      res._2.map { i=>
-          Future {
-            Thread.sleep(2)
-            System.exit(7)
-          }
+
+      res._2.map { i =>
+        Future {
+          Thread.sleep(2)
+          System.exit(7)
+        }
         Ok(
           s"""
              |
              |********************************************************
              |*                                                      *
              |*      IMPORTED CONFIGURATION FROM REMOTE...           *
-             |*                                                      *
+             |*            Total ${res._1}  wikis                    *
              |*      $i errors... RESTARTING THE PROCESS...          *
              |*                                                      *
              |********************************************************
@@ -567,7 +590,6 @@ class AdminDiff extends AdminBase {
 
   /** import a realm from remote */
   def importRealm(au: User, request: Request[AnyContent]) = {
-    clog << "ADMIN_IMPORT_REALM"
 
     lazy val query = request.queryString.map(t => (t._1, t._2.mkString))
     lazy val form = request.asInstanceOf[Request[AnyContent]].body.asFormUrlEncoded
@@ -584,12 +606,14 @@ class AdminDiff extends AdminBase {
     val realm = fqhParm("realm").get
     val key = System.currentTimeMillis().toString
 
+    clog << s"ADMIN_IMPORT_REALM $realm from source:$source"
+
     // get mixins
     clog << "============ get mixins"
     val reactors = WID.fromPath(s"$realm.Reactor:$realm").map(wid => getWE(source, wid)(au).fold({ t =>
       val m = new DslProps(Some(t._1), "website,properties")
-        .prop("mixins")
-        .getOrElse(realm)
+          .prop("mixins")
+          .getOrElse(realm)
       clog << "============ mixins: " + m
       m + "," + realm // add itself to mixins
     }, { err =>
@@ -604,14 +628,14 @@ class AdminDiff extends AdminBase {
     ).map(x => WID.fromPath(x).get) :::
 //      remoteWids(source, "rk", request.host, "Category", au) :::
 //      remoteWids(source, "wiki", request.host, "Category", au) :::
-      remoteWids(source, "rk", request.host, "", au) :::
-      remoteWids(source, "wiki", request.host, "", au) :::
-      (reactors.split(",")
-        .toList
-        .distinct
-        .filter(r => r.length > 0 && !Array("rk", "wiki").contains(r))
-        .flatMap(r => remoteWids(source, r, request.host, "", au))
-        )
+        remoteWids(source, "rk", request.host, "", au) :::
+        remoteWids(source, "wiki", request.host, "", au) :::
+        (reactors.split(",")
+            .toList
+            .distinct
+            .filter(r => r.length > 0 && !Array("rk", "wiki").contains(r))
+            .flatMap(r => remoteWids(source, r, request.host, "", au))
+            )
 
     var count = 0
     var total = ldest.size
@@ -622,15 +646,18 @@ class AdminDiff extends AdminBase {
 
     razie.db.tx("importdb", email) { implicit txn =>
       ldest.foreach { wid =>
+
+        log("IMPORTING: " + wid.wpath)
+
         getWE(source, wid)(au).fold({ t =>
-            // success
+          // success
           count = count + 1
           val realms = "rk,wiki,$reactors".split(",").distinct.mkString(",")
           lastImport = Some(s"Importing $count of $total ($realms)")
           RCreate.noAudit(t._1)
           //            t._1.create
         }, { err =>
-            // failure
+          // failure
           errors.append((wid, err))
           countErr = countErr + 1
           clog << "============ ERR-IMPORT DB: " + err
@@ -658,10 +685,8 @@ class AdminDiff extends AdminBase {
 
 
   /** is current user active here - used with basic auth from remote, to verify before import */
-  def isu(key: String) = FAU { implicit au =>
-    implicit errCollector =>
-      implicit request =>
-        Ok("yes")
+  def isu(key: String) = FAUR { implicit request =>
+    Ok("yes") // getting here means he's auth
   }
 
   /** get the profile of the current user, encrypted */

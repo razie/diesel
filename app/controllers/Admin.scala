@@ -36,8 +36,8 @@ class Admin extends AdminBase {
 
   def realmUsers = FAU { implicit au => implicit errCollector => implicit request =>
       val stok = razRequest
-        if(stok.au.get.isAdmin || stok.au.get.isMod) {
-          if(stok.req.getQueryString("format").contains("csv")) {
+        if(au.isAdmin || au.isMod) {
+          if(request.getQueryString("format").contains("csv")) {
             val (headers, data) = usersData(stok.realm)
               Ok(
                 headers.mkString(",") +

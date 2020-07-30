@@ -1,28 +1,23 @@
 package controllers
 
 import com.google.inject._
-import mod.snow.{RacerKidz, _}
-import razie.db.{ROne, Txn}
-import razie.{Logging, Snakk, cout}
-import razie.db.RMongo._
-import razie.wiki.Sec._
+import mod.snow.RacerKidz
 import model._
-import org.bson.types.ObjectId
 import org.joda.time.DateTime
 import org.json.JSONObject
 import play.api.Configuration
 import play.api.data.Form
-import play.api.data.Forms.{mapping, nonEmptyText, tuple, _}
+import play.api.data.Forms.{mapping, nonEmptyText, _}
 import play.api.mvc._
-import razie.OR._
 import razie.audit.Audit
+import razie.db.Txn
 import razie.diesel.model.{DieselMsg, DieselMsgString, DieselTarget}
 import razie.hosting.Website
+import razie.wiki.Sec._
 import razie.wiki.admin.{SecLink, SendEmail}
 import razie.wiki.model._
 import razie.wiki.{Config, Enc, Services}
-import play.api.data.Forms._
-import play.api.data._
+import razie.{Logging, Snakk, cout}
 import scala.collection.mutable.HashMap
 
 
@@ -109,18 +104,23 @@ object AttemptCounter {
     val now = System.currentTimeMillis()
 
     val v = lastAttempts.get(email)
-    v.foreach(v=> count = v._1)
-    lastAttempts.put(email, (count+1, now))
+    v.foreach(v => count = v._1)
+    lastAttempts.put(email, (count + 1, now))
 
     // 2 seconds per count - exponential waiting
-    v.filter( v => v._1 >= 3 && (now - v._2 < 2000 * count)).isDefined
+    v.filter(v => v._1 >= 3 && (now - v._2 < 2000 * count)).isDefined
   }
 
   /** check for repeated attempts */
-  def countAttempts (email:String) : Int = {
+  def success(email: String) {
+    lastAttempts.remove(email)
+  }
+
+  /** check for repeated attempts */
+  def countAttempts(email: String): Int = {
     var count = 0
     val v = lastAttempts.get(email)
-    v.foreach(v=> count = v._1)
+    v.foreach(v => count = v._1)
     count
   }
 }
@@ -149,6 +149,7 @@ class Profile @Inject() (config:Configuration, adminDiff:AdminDiff) extends RazC
       }) verifying
       ("Bad email or password - please type again! To register a new account, use the Create button and if you forgot your email, use the Forgot button", { reg: Registration =>
         //          println ("======="+reg.email.enc+"======="+reg.password.enc)
+        clog << "login test: " + reg.email
         if (tooManyAttempts(reg.email)) {
           Audit.logdb("TOO_MANY_ATTEMPTS", reg.email, lastAttempts.get(reg.email).map(_._1).mkString)
           false
@@ -162,16 +163,20 @@ class Profile @Inject() (config:Configuration, adminDiff:AdminDiff) extends RazC
               false
             }
           } getOrElse {
-            Audit.wrongLogin(reg.email, reg.password, countAttempts(reg.email))
-            cdebug << "should I download remote user? isLocal: " << Config.isLocalhost
+          Audit.wrongLogin(reg.email, reg.password, countAttempts(reg.email))
 
-            if(Config.isLocalhost && adminDiff.isRemoteUser(reg.email, reg.password)) {
-              cdebug << "should I download remote user?"
-              adminDiff.importRemoteUser(reg.email, reg.password)
-            }
+          clog << "should I download remote user? isLocal: " << Config.isLocalhost
 
-            false
+          if (
+            Config.isLocalhost &&
+                adminDiff.isRemoteUser(reg.email, reg.password)) {
+
+            adminDiff.importRemoteUser(reg.email, reg.password)
+            AttemptCounter.success(reg.email)
           }
+
+          false
+        }
         else {
           true
         }
@@ -318,11 +323,12 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
           Users.findUserByEmailDec(email).orElse(
             Users.findUserNoCase(email)).isDefined
       ) {
-        cdebug << "should I download remote user? isLocal: " << Config.isLocalhost
+        cdebug << "should I download remote user? isLocal: " + Config.isLocalhost
         if(
           Config.isLocalhost &&
           adminDiff.isRemoteUser(email, pass)) {
           adminDiff.importRemoteUser(email, pass)
+          AttemptCounter.success(email)
         }
       }
       login(email, pass, "")
@@ -474,13 +480,17 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
             realm=="wiki" ||
             u.isAdmin )
         ) {
+
+          // clear counters
+          AttemptCounter.success(email)
+
           Audit.logdb("USER_LOGIN", u.userName, u.firstName + " " + u.lastName + " realm: " + realm)
           u.auditLogin(realm)
           debug("SEss.conn=" + (Services.config.CONNECTED -> Enc.toSession(u.email)))
 
           // process extra parms to determine what next
-          var next : Option[String] = None
-          var club : String = ""
+          var next: Option[String] = None
+          var club: String = ""
           request.session.get("extra") map { x =>
             val s = x split ","
             if (s.size > 0 && s(0).length > 0) {
@@ -544,6 +554,7 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
               )
           }
         }
+
       case None => // capture basic profile and create profile
         if(request.website.openMembership ||
           (secLink.exists(_.props("realm") == request.realm) &&
