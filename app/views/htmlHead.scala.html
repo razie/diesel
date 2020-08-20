@@ -71,6 +71,8 @@ the head of every page...
 <script>
 var realm = '@reactor';
 
+var dieselRefresh = true; // set to false to stop all refreshes in a page
+
 // intercept JS errors
     window.onerror = function(msg, url, line, col, error) {
       // ignore the stupid
@@ -467,6 +469,7 @@ img.rklogo {
 
           window.addEventListener('load', function () {
             shouldReloadTimer = setInterval(function () {
+              if(!dieselRefresh) {return;};
               $.get("/razadmin/ping/shouldReload", function (data) {
                 if (data > tstamp) {
                   tstamp = data;
