@@ -18,6 +18,7 @@ import play.api.mvc.{Action, AnyContent, Request}
 import razie.Snakk._
 import razie.db.RazSalatContext.ctx
 import razie.db.{RCreate, RMany}
+import razie.tconf.hosting.Reactors
 import razie.wiki.Config
 import razie.wiki.Sec._
 import razie.wiki.admin.Autosave
@@ -153,18 +154,24 @@ class AdminDiff extends AdminBase with Logging {
   }
 
   /** get list of pages for realm - invoked by remote trying to sync */
+  private def localwlist(reactor: String, cat: String) = {
+        val l =
+          if (cat.length == 0)
+            RMany[WikiEntry]()
+                .filter(we => reactor.isEmpty || reactor == "all" || we.realm == reactor)
+          else
+            RMany[WikiEntry]()
+                .filter(we => we.category == cat && (reactor.isEmpty || reactor == "all" || we.realm == reactor))
+        l.toList
+  }
+
+  /** get list of pages for realm - invoked by remote trying to sync */
   // todo auth that user belongs to realm
-  def wlist(reactor: String, hostname: String, me: String, cat: String) = FAUR { implicit request =>
+  def wlist(reactor: String, hostname: String, me: String, cat: String) = FAUPRAPI(isApi=true) {
+    implicit request =>
     if (hostname.isEmpty) {
-      val l =
-        if (cat.length == 0)
-          RMany[WikiEntry]()
-              .filter(we => reactor.isEmpty || reactor == "all" || we.realm == reactor)
-              .map(x => new WEAbstract(x)).toList
-        else
-          RMany[WikiEntry]()
-              .filter(we => we.category == cat && (reactor.isEmpty || reactor == "all" || we.realm == reactor))
-              .map(x => new WEAbstract(x)).toList
+      val l = localwlist(reactor, cat)
+          .map(x => new WEAbstract(x)).toList
       val list = l.map(_.j)
       Ok(js.tojson(list).toString).as("application/json")
     } else if (hostname != me) {
@@ -402,7 +409,8 @@ class AdminDiff extends AdminBase with Logging {
 
   def wlist(source: String, realm: String, me: String, cat: String, au: User): List[WID] = {
     val b = body(
-      url(s"http://$source/razadmin/wlist/$realm?me=$me&cat=$cat").basic("H-" + au.emailDec, "H-" + au.pwd.dec))
+      url(s"http://$source/razadmin/wlist/$realm?me=$me&cat=$cat")
+          .basic("H-" + au.emailDec, "H-" + au.pwd.dec))
 
     val gd = new JSONArray(b)
     cdebug << s"remoteWids JS $realm: \n  " + gd.toString(2)
@@ -418,7 +426,8 @@ class AdminDiff extends AdminBase with Logging {
 
   def remoteWids(source: String, realm: String, me: String, cat: String, au: User): List[WID] = {
     val b = body(
-      url(s"http://$source/razadmin/wlist/$realm?me=$me&cat=$cat").basic("H-" + au.emailDec, "H-" + au.pwd.dec))
+      url(s"http://$source/razadmin/wlist/$realm?me=$me&cat=$cat")
+          .basic("H-" + au.emailDec, "H-" + au.pwd.dec))
 
     val gd = new JSONArray(b)
     cdebug << s"remoteWids JS $realm: \n  " + gd.toString(2)
@@ -683,6 +692,47 @@ class AdminDiff extends AdminBase with Logging {
     countErr
   }
 
+  /** import a realm from remote */
+  def listTopics(realm:String, only:String) = FAUPRAPI(isApi=true) {implicit request=>
+    // get mixins
+    clog << "============ get mixins"
+
+    var reactors = WID
+        .fromPath(s"$realm.Reactor:$realm")
+        .flatMap(_.page)
+        .map { we =>
+      val m = new DslProps(Some(we), "website,properties")
+          .prop("mixins")
+          .getOrElse(realm)
+      clog << "============ mixins: " + m
+      m + "," + realm // add itself to mixins
+    }
+        .getOrElse(realm)
+
+    // not all mixins, just top reactor
+    reactors = realm
+
+    val ldest =
+      // not all mixins, just top reactor
+//      List(
+//      "rk.Reactor:rk",
+//      "wiki.Reactor:wiki"
+//    ).map(x => WID.fromPath(x).get) :::
+//        localwlist("rk", "").map(_.wid) :::
+//        localwlist("wiki", "").map(_.wid) :::
+        (
+            reactors
+                .split(",")
+                .toList
+                .distinct
+                .filter(r => r.length > 0 && !Array("rk", "wiki").contains(r))
+            .flatMap(r =>
+              localwlist(r, "").map(_.wid)
+            )
+        )
+
+    Ok(ldest.map(_.wpathFull).mkString("\n"))
+  }
 
   /** is current user active here - used with basic auth from remote, to verify before import */
   def isu(key: String) = FAUR { implicit request =>
