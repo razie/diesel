@@ -349,6 +349,10 @@ var instContentAssist=[];
 var specWpath='@specWpath';
 var storyWpath='@storyWpath';
 
+@if(specWpath.length > 0) {
+  @stok.title("Diesel fiddle - " + WID.fromPath(specWpath).map(_.name).mkString)
+}
+
 if(specWpath.length > 0) $("#curSpec").text('@WID.fromPath(specWpath).map(_.name)');
 if(storyWpath.length > 0) $("#curStory").text('@WID.fromPath(storyWpath).map(_.name)');
 
