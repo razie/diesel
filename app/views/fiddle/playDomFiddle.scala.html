@@ -103,7 +103,7 @@ Command reference (see more about [[specs.Topic:Expressions_and_pattern_matching
     <span id="wikiBox" class="label label-default" title="Show the wiki instead of the diesel trace" >
       <input type="checkbox" id="wikiMode" >
       <span onclick="toggleBox('wikiMode');" style="cursor:pointer" >Wiki</span></span>
-    <span onclick="startESP();" class="label label-primary" style="cursor:pointer">ESP <span class="glyphicon glyphicon-log-out"></span></span>
+    <span onclick="startESP();" class="label label-primary" title="Spawn multi-screen mode" style="cursor:pointer">ESP <span class="glyphicon glyphicon-log-out"></span></span>
 
     | <span id="realTimeBox" class="label label-default" >
     <input type="checkbox" id="realTime" checked>
@@ -713,6 +713,8 @@ var storyEditor;
 var specEditor;
 var editor5;
 
+var ctrlDown = false;
+
 function attachAce() {
   var langTools = ace.require("ace/ext/language_tools");
 
@@ -793,27 +795,33 @@ function attachAce() {
 
   specEditor.commands.addCommand({
     name: "Usage",
-    bindKey: {win: "Ctrl-B", mac: "Command-B"},
+    bindKey: {win: "Ctrl-K", mac: "Command-K"},
     exec: findSpecInTree
   });
 
   storyEditor.commands.addCommand({
     name: "Usage",
-    bindKey: {win: "Ctrl-B", mac: "Command-B"},
+    bindKey: {win: "Ctrl-K", mac: "Command-K"},
     exec: findStoryInTree
   });
 
   specEditor.commands.addCommand({
     name: "FindUsage",
-    bindKey: {win: "Ctrl-K", mac: "Command-K"},
+    bindKey: {win: "Ctrl-B", mac: "Command-B"},
     exec: findUsagesSpec
   });
 
   storyEditor.commands.addCommand({
     name: "FindUsage",
-    bindKey: {win: "Ctrl-K", mac: "Command-K"},
+    bindKey: {win: "Ctrl-B", mac: "Command-B"},
     exec: findUsagesStory
   });
+
+  // specEditor.on("click", function(e){
+  //   if(ctrlDown) {
+  //     findUsagesSpec(e.editor);
+  //   };
+  // });
 
   specEditor.getSession().on('change', function(e) {
     domChanged=true;
@@ -853,30 +861,26 @@ var findInTree = function(wp, editor) {
     parent.scrollTop = x.offsetTop;
 }
 
-/** */
 var findUsagesStory = function(editor) { findUsages(storyWpath, editor); }
 var findUsagesSpec = function(editor) { findUsages(specWpath, editor); }
 
+
 /** popup usages */
 var findUsages = function(wp, editor) {
-  var row = editor.selection.getCursor().row + 1;
-  var col = editor.selection.getCursor().col;
+  // var row = editor.selection.getCursor().row + 1;
+  var row = editor.getCursorPosition().row;
+  var col = editor.getCursorPosition().column;
+  var line = editor.session.getLine(editor.selection.getCursor().row);
 
-  alert("TODO - implement findUsages...");
+  console.log("Click in: "+wp + " : " + row + " : " + col);
+  console.log("Line: "+line);
+  var ea = findIdAtPos(line, col);
+  console.log("ea: "+ea);
 
-  console.log("Navigate to: "+wp + " : " + row);
-
-  var x = $("span[posw='"+wp+"'][posr="+row+"]")[0];//.scrollIntoView();
-  var parent = $('#iframeOut3_'+@id)[0];
-
-  if(typeof x != "undefined")
-    parent.scrollTop = x.offsetTop;
-
-
-    //todo get the diffs
+  if(typeof ea != "undefined")
     $.ajax(
-        '/diesel/findUsages/@id', {
-          type: 'POST',
+        '/diesel/findUsages/' + ea, {
+          type: 'GET',
           data: $.param({
             reactor : '@reactor',
             specWpath : specWpath,
@@ -884,20 +888,10 @@ var findUsages = function(wp, editor) {
           }),
           contentType: 'application/x-www-form-urlencoded',
           success: function(data) {
-            var tex = "Save/revert "+what+"<br>"+cant+"<br>"+
-                '<a href="#" onclick="revertOrig(\''+what+'\'); return false;">Revert</a> | ' +
-                '<a href="#" onclick="saveOrig(\''+what+'\'); return false;">Save</a> | ' +
-                '<a href="#" onclick="saveNew(\''+what+'\'); return false;">Save as</a> ' +
-                '<input name="news" id="news" type="text" placeholder="new topic name"></input>' +
-                '<hr>Local changes:' ;
-            if(what == "Spec") {
-              popupContent(tex + data.specDiff);
-            } else if(what == "Story") {
-              popupContent(tex + data.storyDiff);
-            }
+            popupLargeDialog(data);
           },
           error  : function(x) {
-            console.log( "ERR "+x.toString());
+            popupContent(JSON.stringify(x));
           }
         });
 }

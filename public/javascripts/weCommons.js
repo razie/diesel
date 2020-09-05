@@ -351,3 +351,26 @@ var decAmp = function(s) {
     .replace(/〉/g, '>');
 }
 
+/** find the current ID in text line at position col */
+function findIdAtPos (line, col) {
+  var bc, ec;
+  for (var i = col; i < line.length; i++) {
+    bc = line[i];
+    if(bc >= 'a' && bc <= 'z' || bc >= 'A' && bc <= 'Z' || bc == '.') {
+    } else {
+      break;
+    }
+  }
+
+  for (var j = col; j > 0; j--) {
+    ec = line[j];
+    if(ec >= 'a' && ec <= 'z' || ec >= 'A' && ec <= 'Z' || ec == '.') {
+    } else {
+      break;
+    }
+  }
+
+  var id = line.substring(j+1,i);
+  return id;
+}
+

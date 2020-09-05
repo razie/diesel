@@ -329,6 +329,11 @@ var jsh = function(code) {
     enableLiveAutocomplete: true
   });
 
+  editor.getSession().setOption('indentedSoftWrap', false);
+  editor.getSession().setUseWrapMode(true);
+  editor.getSession().setOption("wrap", true);
+  editor.getSession().setUseWrapMode(true);
+
   outAce.setOptions({
 //    highlightActiveLine: false,
     enableBasicAutocompletion: true,

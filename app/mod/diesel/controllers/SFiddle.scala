@@ -249,7 +249,7 @@ class SFiddles extends SFiddleBase with Logging {
     val url = Fiddle("RestFiddleUrl", "snakk", request.realm, wpath, request.au)
 //        .withDefault("http://localhost:4041/simMappedData?deviceType=enb&deviceId=MAC&section=system")
         .withDefault(
-          "http://192.168.5.118:4041/enb/simMappedData?deviceType=enb&deviceId=0c:a1:38:00:04:24&section=system")
+          "http://spark:4041/enb/simMappedData?deviceType=enb&deviceId=0c:a1:38:00:04:24&section=system")
     val f = Fiddle("RestFiddle", "snakk", request.realm, wpath, request.au)
     ROK.k reactorLayout12FullPage  {
       views.html.fiddle.playRestFiddle(

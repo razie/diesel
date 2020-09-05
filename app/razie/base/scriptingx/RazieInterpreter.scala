@@ -116,8 +116,7 @@ object Main34 extends App {
     case _ => ""
   }
   println(res)
-  res
-  
+
   val pr = ("xxxxxxxxxxinterpret" + (for (i <- (0 until 5).toList) yield (razie.Timer {
     println("yyy " + ctx.parser.interpret("1+2"))
     })).mkString("\n")+"\n") ::

@@ -66,6 +66,7 @@ echo "docker push razie/raz-diesel"
 # docker tag raz-diesel razie/raz-diesel
  docker tag raz-diesel razie/raz-diesel:2.1.5-latest
 # docker login -u razie
+
  docker push razie/raz-diesel
 
 # to run just the container and debug it:

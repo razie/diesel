@@ -27,7 +27,8 @@ manage the list of kidz and/or their accounts
   for ((k,a) <- rks if(f(k, a))) yield
     Map("rkaid"->a._id.toString,
         "fname"->k.info.firstName,
-        "lname"->k.info.lastName,
+      "email"->k.info.emailDec,
+      "lname"->k.info.lastName,
         "role" -> a.role,
         "source" -> a.assoc,
       "notes"->k._id.toString,
@@ -130,7 +131,16 @@ manage the list of kidz and/or their accounts
 </div>
 
 @util.utilSimpleTable(rksactive.iterator,
-  Seq("fname" -> "F.Name", "lname"->"L.Name", "role" -> "Role", "source" -> "Source", "team"->"Program", "button"->"Details", "notes"->"History"), Some(mnglink))
+  Seq(
+    "fname" -> "F.Name",
+    "lname"->"L.Name",
+    "email" -> "Email",
+    "role" -> "Role",
+    "source" -> "Source",
+    "team"->"Program",
+    "button"->"Details",
+    "notes"->"History"
+  ), Some(mnglink))
 
 @if(stok.au.exists(club.isClubAdmin)) {
 @club.wid.cat
@@ -152,11 +162,14 @@ Source is
 <strong>Former members</strong>
 
 @util.utilSimpleTable(rksformer.iterator,
-        Seq("fname" -> "F.Name",
+  Seq(
+    "fname" -> "F.Name",
     "lname"->"L.Name",
+    "email" -> "Email",
     "role" -> "Role",
     "source" -> "Source",
-    "button"->"Details"), Some(mnglink))
+    "button"->"Details"
+  ), Some(mnglink))
 
 <script>
 

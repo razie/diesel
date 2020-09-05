@@ -1,42 +1,11 @@
 @***
   print a nice table of text diffs
 ***@
-@(side:String, diff:difflib.Patch, heading:Option[(String,String,String)]=None)
-
-@rowclsi=@{if(side=="R") "success" else "error"}
-@rowclsd=@{if(side=="L") "success" else "error"}
-@colorl=@{if(side=="L") "green" else "red"}
-@colorr=@{if(side=="R") "green" else "red"}
-
-@foriginal(c:difflib.Delta)=@{
-//  if(side=="R") c.getOriginal else c.getRevised
-  c.getOriginal
-}
-
-@frevised(c:difflib.Delta)=@{
-//  if(side=="L") c.getOriginal else c.getRevised
-  c.getRevised
-}
-
-@computeDiff(s1:String, s2:String,color:String)={
-@defining(org.apache.commons.lang3.StringUtils.indexOfDifference(s1, s2)) { d =>
-  @defining(s1.length - org.apache.commons.lang3.StringUtils.indexOfDifference(s1.reverse, s2.reverse)) { d2 =>
-    @if(d >= 0 && d < s1.length) {
-      @if(d2 >= d && d2 < s1.length-1) {
-        @s1.substring(0, d)<span style="color:@color; background-color: #f5ffb3">@s1.substring(d, d2+1)</span>@s1.substring(d2+1)
-      } else {
-        @s1.substring(0, d)<span style="color:@color; background-color: #f5ffb3">@s1.substring(d)</span>
-      }
-    } else {
-      @s1
-    }
-  }
-}
-}
+@(usages:List[Map[String,Object]], heading:Option[(String,String,String)]=None)
 
   @heading.map{t=>
       @** having div and table here is correct *@
-    <table class="table table-striped" style="table-layout: fixed;">
+    <table class="table table-striped table-condensed" style="table-layout: auto;">
       <thead>
         <td>@t._1</td>
         <td>@t._2</td>
@@ -44,59 +13,31 @@
       </thead>
   }
 
-@diff.getDeltas.map{d =>
-  @d.getType.toString match {
-      case "INSERT" => {
-          <tr class="@rowclsi">
-          }
-      case "DELETE" => {
-          <tr class="@rowclsd">
-          }
-      case "CHANGE" => {
-          <tr class="">
-          }
-     case _ => {
-         <tr>
-         }
-      }
-      <td>
-          @d.getType<br><small>(R from L)</small>
-      </td>
-<td style="word-wrap:break-word">
-
-  <b>@foriginal(d).getPosition</b> <br>
-
-          @foriginal(d).getLines.zipWithIndex.map{s=>
-            @if(frevised(d).getLines.size > s._2) {
-          <KK>   @computeDiff(s._1.toString,
-              (if(frevised(d).getLines.size > s._2) frevised(d).getLines().get(s._2).toString else ""),
-              colorl)
-            } else {
-             @s._1
-            }
-            <br>
-          }
+@usages.map{u =>
+<tr>
+<td>
+  <small>
+    <a href="/wiki/@u.get("wpath")">@u.get("topic")</a>
+  </small>
+</td>
+<td>
+  <span style="color:blue">
+  @u.get("type")<br><small></small>
+  </span>
 </td>
 <td style="word-wrap:break-word">
-
-  <b>@frevised(d).getPosition</b> <br>
-
-    @frevised(d).getLines.zipWithIndex.map{s=>
-      @if(foriginal(d).getLines.size > s._2) {
-        <KK> @computeDiff(s._1.toString,
-        (if(foriginal(d).getLines.size > s._2) foriginal(d).getLines().get(s._2).toString else ""),
-        colorr)
-      } else {
-        @s._1
-      }
-    <br>
-  }
+<small>
+  <a href="javascript:@u.get("fiddle")">@u.get("msg")</a>
+  <br>
+  <small>
+  @u.get("line")
+</small>
+</small>
 </td>
-  </tr>
+</tr>
 }
 
-  @heading.map{t=>
-  </table>
-  }
-
+@heading.map{t=>
+</table>
+}
 

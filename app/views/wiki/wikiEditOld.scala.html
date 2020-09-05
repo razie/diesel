@@ -494,6 +494,8 @@ myattachAce = function() {
 
   aceEditor.getSession().setOption('indentedSoftWrap', false);
   aceEditor.getSession().setUseWrapMode(true);
+  aceEditor.getSession().setOption("wrap", true);
+  aceEditor.getSession().setUseWrapMode(true);
 
   @if(stok.isLight) {
       aceEditor.setTheme ( "ace/theme/crimson_editor" ) ;

@@ -459,8 +459,10 @@ class DomApi extends DomApiBase  with Logging {
       // make the diesel.rest message
       def mkDieselRest = {
         val qparams = DomEngineHelper.parmsFromRequestHeader(request)
+        val hparams = DomEngineHelper.headers(request)
         val qFlat = qparams.map(t => P.fromTypedValue(t._1, t._2, WTypes.wt.STRING)).toList
         val qJson = P.fromTypedValue("dieselQuery", qparams, WTypes.wt.JSON)
+        val hJson = P.fromTypedValue("dieselHeaders", hparams, WTypes.wt.JSON)
 
         // looking at the posted content now...
         val posted =
@@ -472,11 +474,13 @@ class DomApi extends DomApiBase  with Logging {
             postedContent.get.asDieselParams(new SimpleECtx())
           } else Nil
 
-        dieselRestMsg = Some(EMsg(DieselMsg.ENGINE.DIESEL_REST, qJson :: List(
-          P.fromTypedValue("path", path),
-          P.fromTypedValue("verb", verb),
-          P.fromTypedValue("queryStringEncoded", stok.req.rawQueryString),
-          P.fromTypedValue("queryString", URLDecoder.decode(stok.req.rawQueryString)
+        dieselRestMsg = Some(EMsg(
+          DieselMsg.ENGINE.DIESEL_REST,
+          hJson :: qJson :: List(
+            P.fromTypedValue("path", path),
+            P.fromTypedValue("verb", verb),
+            P.fromTypedValue("queryStringEncoded", stok.req.rawQueryString),
+            P.fromTypedValue("queryString", URLDecoder.decode(stok.req.rawQueryString)
           )
         ) ::: qparams.map(t => P.fromTypedValue(t._1, t._2, WTypes.wt.STRING)).toList ::: posted
         ))
@@ -778,6 +782,81 @@ class DomApi extends DomApiBase  with Logging {
   def dieselRestPATCH(path: String) = runRest("/" + path, "PATCH", mock=false)
   def dieselRestDELETE(path: String) = runRest("/" + path, "DELETE", mock=false)
 
+  /** /diesel/findUsage/ea
+    * API msg sent to reactor
+    */
+  def findUsages(em: String) = Filter(noRobots).async { implicit stok =>
+    if(stok.au.exists(_.isActive)) {
+      val ea = em.replaceAllLiterally("/", ".")
+      try {
+        val EMsg.REGEX(e, a) = em
+
+        val uid = stok.au.map(_._id).getOrElse(NOUSER)
+        val settings = new DomEngineSettings()
+        settings.realm = Some(stok.realm)
+
+        val engine = EnginePrep.prepEngine(
+          new ObjectId().toString,
+          settings,
+          stok.realm,
+          None,
+          false,
+          stok.au,
+          s"DomApi.findUsage:$e:$a",
+          None,
+          // empty story so nothing is added to root
+          List(new WikiEntry("Story", "temp", "temp", "md", "", uid, Seq("dslObject"), stok.realm))
+        )
+
+        // 1. stories usage
+        val stories = EnginePrep.loadStories(settings, stok.realm, stok.au.map(_._id), "")
+        val allStories = listStoriesWithFiddles(stories, addFiddles = true)
+
+        val u1 = usagesStories(e, a, allStories)(engine.ctx)
+
+        // 2.
+        val u2 = usagesSpecs(e, a)(engine.ctx)
+
+        /** mesg to entry */
+        def addm(t: String, msg: String, p: Option[EPos], line:String) = {
+          Map(
+            "type" -> t,
+            "msg" -> msg,
+            "line" -> line,
+            "topic" -> p.map(_.wpath).flatMap(WID.fromPath).map(_.name)
+          ) ++
+              p.map { p =>
+                Map(
+                  "ref" -> p.toRef,
+                  "wpath" -> p.wpath,
+                  "fiddle" -> p.toFiddle
+                )
+              }.getOrElse(Map.empty)
+        }
+
+        val m = (u1 ::: u2).map(u => addm(u._1, u._2, u._3, u._4))
+
+        val html = views.html.fiddle.usageTable(m, Some(("Type", "e-a", "Topic")))
+
+        Future.successful(
+          Ok(html)
+//        retj << Map(
+//          "usages" -> m
+//        )
+        )
+      } catch {
+        case e : Exception =>
+          Future.successful(
+            InternalServerError ("Error: " + e.getMessage)
+          )
+      }
+    } else {
+      Future.successful(
+        unauthorized ("Can't start a message without an active account...")
+      )
+    }
+  }
+
   /** /diesel/start/ea
     * API msg sent to reactor
     */
@@ -869,6 +948,8 @@ class DomApi extends DomApiBase  with Logging {
     var ok = {
 
       val RETURN501 = true // per realm setting?
+
+      val RETURNEXC = true // per realm setting?
 
         val errors = new ListBuffer[String]()
 
