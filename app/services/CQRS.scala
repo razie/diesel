@@ -43,6 +43,8 @@ class WikiAsyncObservers extends Actor {
   lazy val pubSub = Akka.system.actorOf(Props[WikiPubSub], name = "WikiPubSub")
 
   def nodeName = Some(Services.config.node) //Play.current.actorSystem.name)
+  def localQuiet = Services.config.localQuiet
+  def localhost = Services.config.isLocalhost
 
   def receive = {
     case wc: WikiConfigChanged => {
@@ -52,19 +54,32 @@ class WikiAsyncObservers extends Actor {
     }
 
     case wa: WikiAudit => {
+
       val ev = wa.copy(node = nodeName)
-      ev.create
+
+      if(!localQuiet || !localhost) {
+        ev.create
+      } else {
+        clog << "localQuiet !! WikiAudit"
+      }
+
       WikiObservers.after(ev.toEvent)
       clusterize(ev.toEvent)
     }
 
     case ev1: WikiEvent[_] => {
+
       WikiObservers.after(ev1)
       clusterize(ev1.copy(node = nodeName.mkString))
     }
 
     case a: Audit => {
-      a.copy(node = nodeName).create
+
+      if(!localQuiet || !localhost) {
+        a.copy(node = nodeName).create
+      } else {
+        clog << "localQuiet !! Audit"
+      }
     }
 
     case wc: WikiCount => wc.inc
