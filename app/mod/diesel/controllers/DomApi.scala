@@ -358,10 +358,18 @@ class DomApi extends DomApiBase  with Logging {
           } else if (
             "value" == settings.resultMode || "" == settings.resultMode
           ) {
-            val resp = engine.extractFinalValue(e,a)
+            val payload = engine.ctx.getp(Diesel.PAYLOAD).filter(_.ttype != WTypes.wt.UNDEFINED)
+            val resp = payload.orElse(
+              engine.extractFinalValue(e,a)
+            )
             val resValue = resp.map(_.currentStringValue).getOrElse("")
 
-            val ctype = resp.map(p=>WTypes.getContentType(p.ttype)).getOrElse(WTypes.Mime.textPlain)
+            val ctype =
+            // is there a desired type
+              engine.ctx.get(DieselMsg.HTTP.CTYPE).filter(_.length > 0)
+                  .getOrElse(
+                    resp.map(p=>WTypes.getContentType(p.ttype)).getOrElse(WTypes.Mime.textPlain)
+                  )
 
             body = stripQuotes(resValue)
             Ok(body).as(ctype)
@@ -658,7 +666,11 @@ class DomApi extends DomApiBase  with Logging {
           var ctype =
             templateResp.flatMap(_.parm("content-type")) // response ctype
               .orElse(trequest.flatMap(_.parm("content-type"))) // or request ctype
-              .getOrElse("text/plain") // or plain
+                .orElse {
+                  // is there a desired type
+                  engine.ctx.get(DieselMsg.HTTP.CTYPE).filter(_.length > 0)
+                }
+                .getOrElse("text/plain") // or plain
 
           templateResp.map { t =>
               // we have a response template
@@ -723,7 +735,13 @@ class DomApi extends DomApiBase  with Logging {
 
             payload.map { p =>
               if (p.value.isDefined) {
-                ctype = WTypes.getContentType(p.value.get.cType)
+                ctype =
+                    // is there a desired type
+                    engine.ctx.get(DieselMsg.HTTP.CTYPE).filter(_.length > 0)
+                        .getOrElse(
+                          // if not, infer from data
+                          WTypes.getContentType(p.value.get.cType)
+                        )
 
                 p.value.get.value match {
                   case x: Array[Byte] =>

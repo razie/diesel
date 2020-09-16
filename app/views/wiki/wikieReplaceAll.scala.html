@@ -67,7 +67,7 @@ ALERT: you can't undo this!
     <table class="table table-striped">
     @results.map {t=>
       <tr>
-        <td>@Html(t._1.wid.ahref)</td>
+        <td>@Html(t._1.wid.ahrefRelative(""))</td>
         <td>@t._2 <span style="color : red ; font-weight : bold">@t._3</span> @t._4</td>
         <td>@t._2 <span style="color : red ; font-weight : bold">@repl(t._2.toString, t._3, myForm("old").value.mkString, myForm("new").value.mkString, t._4.toString)</span> @t._4</td>
       </tr>
