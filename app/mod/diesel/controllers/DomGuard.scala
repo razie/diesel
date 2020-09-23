@@ -14,7 +14,7 @@ import razie.diesel.engine.RDExt._
 import razie.diesel.engine._
 import razie.diesel.engine.nodes.EnginePrep
 import razie.diesel.utils.DomHtml.quickBadge
-import razie.diesel.utils.{AutosaveSet, DomCollector, DomWorker}
+import razie.diesel.utils.{AutosaveSet, DomCollector, DomWorker, SpecCache}
 import razie.hosting.WikiReactors
 import razie.wiki.Config
 import razie.wiki.admin.Autosave
@@ -84,18 +84,30 @@ class DomGuard extends DomApiBase with Logging {
   }
 
   /** roll up and navigate the definitions */
-  def dieselNavigate() = FAUR { implicit stok =>
+  def dieselNavigate(scope:String) = FAUR { implicit stok =>
 
-    val engine = EnginePrep.prepEngine(
-      new ObjectId().toString,
-      DomEngineHelper.settingsFrom(stok),
-      stok.realm,
-      None,
-      false,
-      stok.au,
-      "DomApi.navigate")
+      val msgs = if(scope == "local") {
+        val pages = Wikis(stok.realm).pages("Spec").toList
 
-    val msgs = RDExt.summarize(engine.dom).toList
+        val dom = pages.flatMap(p =>
+          SpecCache.orcached(p, WikiDomain.domFrom(p)).toList
+        ).foldLeft(
+          RDomain.empty
+        )((a, b) => a.plus(b)).revise.addRoot
+
+        RDExt.summarize(dom).toList
+      } else {
+        val engine = EnginePrep.prepEngine(
+          new ObjectId().toString,
+          DomEngineHelper.settingsFrom(stok),
+          stok.realm,
+          None,
+          false,
+          stok.au,
+          "DomApi.navigate")
+
+        RDExt.summarize(engine.dom).toList
+      }
 
     ROK.k reactorLayout12 {
       views.html.modules.diesel.navigateMsg(msgs)
