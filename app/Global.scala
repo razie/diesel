@@ -5,6 +5,7 @@
  *  (_)\_)(__)(__)(____)(____)(____)(___/   (__)  (______)(____/    LICENSE.txt
  */
 
+import Global.{RATELIMIT, isApiRequest, isShouldDebug}
 import java.util.Properties
 import admin._
 import com.google.inject.Guice
@@ -43,6 +44,9 @@ object Global extends WithFilters(LoggingFilter) {
   var lastErrorTime = System.currentTimeMillis - ERR_DELTA1 // time last error email went out - just one every 5 min, eh
   var firstErrorTime = System.currentTimeMillis - ERR_DELTA2 // time first error email went out - just one every 5 min, eh
   var lastErrorCount = 0 // time last error email went out - just one every 5 min, eh
+
+  val RATELIMIT = true // rate limit API requests
+
 
   override def onError(request: RequestHeader, ex: Throwable) = {
     clog << "ERR_onError - trying to log/audit in DB... " + "request:" + request.toString + "headers:" + request.headers + "ex:" + ex.toString
@@ -86,11 +90,24 @@ object Global extends WithFilters(LoggingFilter) {
     super.onBadRequest(request, error)
   }
 
+  /** some requests are too frequent and safe, no debug to inflate logs */
+  def isShouldDebug (path:String) =
+    !path.startsWith( "/assets/") &&
+        !path.startsWith( "/razadmin/ping/shouldReload") &&
+        !path.startsWith( "/diesel/status")
+
+  /** API requests may be rate limited separately */
+  def isApiRequest (path:String) =
+    path.startsWith( "/diesel/rest/") ||
+        path.startsWith( "/diesel/mock/") ||
+        path.startsWith( "/diesel/react/") ||
+        path.startsWith( "/diesel/start/") ||
+        path.startsWith( "/diesel/fiddle/react/") ||
+        path.startsWith( "/diesel/wreact/")
+
+  /** intercepting routing of requests to see about forwards and proxies */
   override def onRouteRequest(request: RequestHeader): Option[Handler] = {
-    def shouldDebug =
-      !request.path.startsWith( "/assets/") &&
-      !request.path.startsWith( "/razadmin/ping/shouldReload") &&
-      !request.path.startsWith( "/diesel/status")
+    val shouldDebug = isShouldDebug(request.path)
 
     if (shouldDebug) cdebug << ("ROUTE_REQ.START: " + request.toString)
 
@@ -116,6 +133,7 @@ object Global extends WithFilters(LoggingFilter) {
         }.apply(rh)
       }
     } orElse {
+
       if(request.path.contains("removebadip")) { // && Services.auth.authUser(request).isDefined) { // in case i ban myself
         request.headers.get("X-Forwarded-For").flatMap(BannedIps.findIp).map(_.delete(tx.auto))
         Audit.logdb("BANNED_IP_REMOVED",
@@ -125,6 +143,7 @@ object Global extends WithFilters(LoggingFilter) {
             Results.Unauthorized("deh")
           }.apply(rh)
         })
+
       } else if(request.headers.get("X-Forwarded-For").exists(Config.badIps.contains(_))) {
         clog << "ERR_BADIP " + "request:" + request.toString + "headers:" + request.headers
         Audit.logdb("ERR_BADIP", "request:" + request.toString, "headers:" + request.headers)
@@ -133,6 +152,7 @@ object Global extends WithFilters(LoggingFilter) {
             Results.Unauthorized("heh")
           }.apply(rh)
         })
+
       } else if(request.host.endsWith(SPROXY) || request.host.endsWith(SSPROXY)) {
         // change request
         val host =
@@ -142,6 +162,22 @@ object Global extends WithFilters(LoggingFilter) {
         val rh = request.copy(path = "/snakk/proxy/"+protocol+"/"+host+request.path)
         clog << ("SNAKKPROXY to " + request)
         super.onRouteRequest(rh)
+
+      } else if(isApiRequest(request.path)) {
+        val curr = GlobalData.servingApiRequests
+        if(RATELIMIT && curr > 15) {
+          Some(EssentialAction {rh=>
+            Action { rh:play.api.mvc.RequestHeader =>
+              GlobalData.synchronized {
+                GlobalData.limitedApiRequests = GlobalData.limitedApiRequests + 1
+              }
+              Audit.logdb("ERR_RATE_LIMIT", "curr:" + curr, "request:" + request.toString, "headers:" + request.headers)
+              Results.TooManyRequest("Rate limiting - in progress: " + curr)
+            }.apply(rh)
+          })
+        } else {
+          super.onRouteRequest(request)
+        }
       } else {
         super.onRouteRequest(request)
       }
@@ -246,35 +282,55 @@ object LoggingFilter extends Filter {
 
   def apply(next: (RequestHeader) => scala.concurrent.Future[Result])(rh: RequestHeader) = {
     val start = System.currentTimeMillis
-    if (
-      !rh.uri.startsWith( "/assets/") &&
-      !rh.uri.startsWith( "/razadmin/ping/shouldReload") &&
-      !rh.uri.startsWith("/diesel/status")
-    )
+    val shouldDebug = isShouldDebug(rh.uri)
+    val apiRequest = isApiRequest(rh.uri)
+
+    if (shouldDebug) {
       cdebug << s"LF.START ${rh.method} ${rh.host} ${rh.uri}"
+    }
+
     GlobalData.synchronized {
       GlobalData.serving = GlobalData.serving + 1
+
+      if(apiRequest) {
+        GlobalData.servingApiRequests = GlobalData.servingApiRequests + 1
+      }
     }
 
     def served {
       GlobalData.synchronized {
-        GlobalData.served = GlobalData.served + 1
+        if(GlobalData.serving > GlobalData.maxServing) {
+          GlobalData.maxServing = GlobalData.serving;
+        }
+
+        if(GlobalData.servingApiRequests > GlobalData.maxServingApiRequests) {
+          GlobalData.maxServingApiRequests = GlobalData.servingApiRequests;
+        }
+
         GlobalData.serving = GlobalData.serving - 1
+        GlobalData.served = GlobalData.served + 1
+
+        if(apiRequest) {
+          GlobalData.servingApiRequests = GlobalData.servingApiRequests - 1
+          GlobalData.servedApiRequests = GlobalData.servedApiRequests + 1
+        }
       }
     }
 
     def servedPage {
       GlobalData.synchronized {
-        GlobalData.servedPages = GlobalData.servedPages + 1
+        GlobalData.servedRequests = GlobalData.servedRequests + 1
       }
     }
 
     def logTime(rh:RequestHeader)(what: String)(result: Result): Result = {
       val time = System.currentTimeMillis - start
-      if (rh.uri.startsWith("/razadmin/ping/shouldReload") || rh.uri.startsWith("/diesel/status") || isFromRobot(rh)) {} else {
+
+      if (!shouldDebug && !isFromRobot(rh)) {
         clog << s"LF.STOP.$what ${rh.method} ${rh.host}${rh.uri} took ${time}ms and returned ${result.header.status}"
       }
-      if (! isAsset) servedPage
+
+      if (!isAsset && !apiRequest) servedPage
       served
       result.withHeaders("Request-Time" -> time.toString)
     }
@@ -286,7 +342,22 @@ object LoggingFilter extends Filter {
       else "PAGE"
 
     try {
-      next(rh) map { res =>
+      val curr = GlobalData.servingApiRequests
+      val executed = if(RATELIMIT && apiRequest && curr >= 20) {
+        // rate limiting API requests
+        Future.successful {
+            GlobalData.synchronized {
+              GlobalData.limitedApiRequests = GlobalData.limitedApiRequests + 1
+            }
+            Audit.logdb("ERR_RATE_LIMIT2", "curr:" + curr, "request:" + rh.toString, "headers:" + rh.headers)
+            Results.TooManyRequest("Rate limiting 2 - in progress: " + curr)
+          }
+      } else {
+        // run the executor that was meant to be
+        next(rh)
+      }
+
+        executed map { res =>
         if(res.header.status == 200)
           logTime(rh)(getType)(res)
         else
