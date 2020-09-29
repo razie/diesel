@@ -806,11 +806,11 @@ a.thumbnail:focus {
 }
 
 
-.label,
-.badge {
-    color: #52575c;
-    background-color: #757c82;
-}
+/*.label,*/
+/*.badge {*/
+/*    color: #52575c;*/
+/*    background-color: #757c82;*/
+/*}*/
 
 .label-inverse,
 .badge-inverse {

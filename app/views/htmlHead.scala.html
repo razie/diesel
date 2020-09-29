@@ -184,7 +184,9 @@ require.config({
     bootstrap : '../bootstrap-3.3.4/js/bootstrap.min',
     datatables : '../vendor/jquery.dataTables1.10.7.min',
     ace : '../ace-builds/src',
-    "bootstrap-typeahead" : "../bootstrap-2.2.3/js/bootstrap-typeahead"
+    // "bootstrap-typeahead" : "../bootstrap-3.3.4/js/typeahead"
+    // "bootstrap-typeahead" : "../bootstrap-2.2.3/js/bootstrap-typeahead"
+    "bootstrap-typeahead" : "../bootstrap-3.3.4/js/bootstrap3-typeahead"
   }
 });
 
@@ -359,6 +361,13 @@ img.rklogo {
 }
 </style>
 
+<style>
+.scrollable-menu {
+  height: auto;
+  max-height: 80%;/* 80%; */
+  overflow-x: hidden;
+}
+</style>
 
 @** optional realm-level stylesheet **@
 
@@ -493,6 +502,10 @@ img.rklogo {
 <script async>
 doEditThis = function() {
   window.location.href = window.location.href.replace(/\?.*/, '') + "/edit";
+};
+
+doResetEditor = function() {
+  window.localStorage.setItem("weEditLayout", "12");
 };
   </script>
 

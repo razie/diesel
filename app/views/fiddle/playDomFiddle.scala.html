@@ -42,8 +42,9 @@ Quick reference (Ctrl- on Win, Cmd- on Mac):
 
 Left editors:
 
+- Cmd-B = find usages of the current message
+- Cmd-K = find the current rule in the output trace
 - Cmd-G = graphical editor for the current line
-- Cmd-B = find the current rule in the output trace
 - green/yellow/red floppy indicates current draft save state
 - click yellow floppy to show diffs
 - click story/spec dropdown to see other or create new
@@ -78,12 +79,12 @@ Command reference (see more about [[specs.Topic:Expressions_and_pattern_matching
     | <small>
 
     <span onclick="setSpec('Story');" class="label label-primary" style="cursor:pointer" title="Change the current story"><span id="curStory">Story</span> <span class="glyphicon glyphicon-chevron-down">
-    </span></span><span id="storyChanged" class="label label-success" onclick="popupMenu1('Story');" style="cursor:pointer" title="Current draft differs from original">
+    </span></span><span id="storyChanged" class="label label-success" onclick="popupMenu1('Story');" style="cursor:pointer" title="No change to save">
       <span class="glyphicon glyphicon-floppy-disk"> </span>
   </span>&nbsp;
 
     <span onclick="setSpec('Spec');" class="label label-primary" style="cursor:pointer" title="Change the current spec"><span id="curSpec">Spec</span> <span class="glyphicon glyphicon-chevron-down">
-    </span></span><span id="specChanged" class="label label-success" onclick="popupMenu1('Spec');" style="cursor:pointer" title="Current draft differs from original">
+    </span></span><span id="specChanged" class="label label-success" onclick="popupMenu1('Spec');" style="cursor:pointer" title="No change to save">
       <span class="glyphicon glyphicon-floppy-disk"> </span>
     </span>&nbsp;
 
@@ -128,7 +129,6 @@ Command reference (see more about [[specs.Topic:Expressions_and_pattern_matching
         &nbsp;&nbsp;Mock/Spec <span class="" style="font-face:bold"  onclick="openSpec();">
         <span class="glyphicon glyphicon-new-window"></span></span>
             &nbsp;<input type="checkbox" id="expandedSpec" title="Expand/collapse spec" checked>
-        <small>(show/hide)</small>
         <span id="errMsg" class="label label-danger" style="display:none;"></span>
     </div>
     <div id="title3b_@id" class="col-sm-6" style="font-size: small">
@@ -397,6 +397,8 @@ var runpill_@id = function(id) {
       domContentAssist = data.ca;
       var du = new Date().getTime() - lastTime;
       $('#roundtrip').text(du+' ms');
+      $('#roundtrip').prop('title', "real time roundtrip response time");
+
       specChanged(data.specChanged);
 
       if(specEditor) updateMarkers(specEditor, data.ast);
@@ -587,6 +589,7 @@ function processPartialEngineResult(id, data, compileOnly, lastTime, next) {
   console.log("  updateMarkers story");
 
   $('#roundtrip').html('<span class="glyphicon glyphicon-remove" onclick="javascript:cancelFlow()" style="cursor:pointer; color:red" ></span>' + data.info.progress+'');
+  $('#roundtrip').prop('title', "failed/total/todo");
 
   if(typeof data.storyChanged != "undefined") storyChanged(data.storyChanged);
 
@@ -625,6 +628,7 @@ function processFinalEngineResult(id, data, compileOnly, lastTime, next) {
     setErrors(data.failureCount, data.info.errorCount, data.info.totalCount);
     var du = new Date().getTime() - lastTime;
     $('#roundtrip').text(du + ' ms');
+    $('#roundtrip').prop('title', "real time roundtrip response time");
 
     // automatic backoff
     if(du > 9000)
@@ -865,38 +869,6 @@ var findUsagesStory = function(editor) { findUsages(storyWpath, editor); }
 var findUsagesSpec = function(editor) { findUsages(specWpath, editor); }
 
 
-/** popup usages */
-var findUsages = function(wp, editor) {
-  // var row = editor.selection.getCursor().row + 1;
-  var row = editor.getCursorPosition().row;
-  var col = editor.getCursorPosition().column;
-  var line = editor.session.getLine(editor.selection.getCursor().row);
-
-  console.log("Click in: "+wp + " : " + row + " : " + col);
-  console.log("Line: "+line);
-  var ea = findIdAtPos(line, col);
-  console.log("ea: "+ea);
-
-  if(typeof ea != "undefined")
-    $.ajax(
-        '/diesel/findUsages/' + ea, {
-          type: 'GET',
-          data: $.param({
-            reactor : '@reactor',
-            specWpath : specWpath,
-            storyWpath : storyWpath
-          }),
-          contentType: 'application/x-www-form-urlencoded',
-          success: function(data) {
-            popupLargeDialog(data);
-          },
-          error  : function(x) {
-            popupContent(JSON.stringify(x));
-          }
-        });
-}
-
-
 attachAce();
 
 var ignoreFirstTime = true;
@@ -953,14 +925,24 @@ storyChanged("@storyChanged");
 
 function specChanged(spec) {
   $('#specChanged').removeClass();
-  if(spec === "true" || spec === true) $("#specChanged").addClass("label label-warning");
-  else $("#specChanged").addClass("label label-success");
+  if(spec === "true" || spec === true) {
+    $("#specChanged").addClass("label label-warning");
+    $("#specChanged").prop('title', "Current draft differs from original - save it");
+  } else {
+    $("#specChanged").addClass("label label-success");
+    $("#specChanged").prop('title', "No change to save");
+  }
 }
 
 function storyChanged(story) {
   $('#storyChanged').removeClass();
-  if(story === "true" || story === true) $("#storyChanged").addClass("label label-warning");
-  else $("#storyChanged").addClass("label label-success");
+  if(story === "true" || story === true) {
+    $("#storyChanged").addClass("label label-warning");
+    $("#storyChanged").prop('title', "Current draft differs from original - save it");
+  } else {
+    $("#storyChanged").addClass("label label-success");
+    $("#storyChanged").prop('title', "No change to save");
+  }
 }
 
 function setSpec(what) {
