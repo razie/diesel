@@ -6,9 +6,11 @@ edit a wiki page
   myForm:Form[controllers.Wikie.EditWiki],
   hasDraft:Boolean = false,
   noshow:String="")(implicit stok: controllers.StateOk)
+@import razie.hosting.Website.realm
+@import razie.wiki.model.{Wikis, WID, WikiEntry}
+@import razie.hosting.WikiReactors
+
 @import play.mvc.Http.Context.Implicit
-  import razie.hosting.WikiReactors
-  import razie.wiki.model.WikiEntry
 
 <!--
 wikiEditOld
@@ -73,18 +75,17 @@ Implicit.flash().put("bibi", "haha")
   }
 }
 
+@import helper.twitterBootstrap._
 @import play.api.Play.current
-  import play.api.i18n.Messages.Implicits._
+@import play.api.i18n.Messages.Implicits._
 
   <div id="bigOne">
-    <div id="weForm" class="col-md-12">
-      <h2 style="padding-top: 40px;
-        margin-top: -40px;">Editor
-        <small> |
-          <button onclick="return submitPlease();" id="btnSave" class="btn btn-default btn-xs"><span id="floppy" class="glyphicon glyphicon-check"></span>
-            Save</button>
-          <button onclick="return popupDiff();" id="btnDiff" class="btn btn-default btn-xs" style="color: limegreen" title="Show diff from original">&Delta;</button>
-          <a href="@controllers.Wiki.wr(wid, stok.realm, false)" onclick="return cancel();" class="btn btn-default btn-xs"><span id="fla" class="glyphicon glyphicon-floppy-remove"></span> Cancel</a>
+      <div id="weForm" class="col-md-12">
+          <h2 style="padding-top: 40px; margin-top: -40px;">Editor
+            <small> |
+              <button onclick="return submitPlease();" id="btnSave" class="btn btn-default btn-xs"><span id="floppy" class="glyphicon glyphicon-check"></span> Save</button>
+              <button onclick="return popupDiff();" id="btnDiff" class="btn btn-default btn-xs" style="color:limegreen" title="Show diff from original">&Delta;</button>
+              <a href="@controllers.Wiki.wr(wid, stok.realm, false)" onclick="return cancel();" class="btn btn-default btn-xs"><span id="fla" class="glyphicon glyphicon-floppy-remove"></span> Cancel</a>
             </small>
             <div class="pull-right">
               @if(stok.au.exists(_.isMod)) {
@@ -546,10 +547,10 @@ myattachAce = function() {
   textarea = $("#content");
 
   @if(hasDraft) {
-  $("#floppy").css("color", "LimeGreen");
-  $("#btnDiff").show();
+    $("#floppy").css("color", "LimeGreen");
+    $("#btnDiff").show();
   } else {
-  $("#btnDiff").hide();
+    $("#btnDiff").hide();
   }
 
   $("#bigOne").css("min-height", $("#weForm").height());
