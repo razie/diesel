@@ -133,6 +133,20 @@ object DomEngineHelper {
     q.filter(t=> !(fil contains t._1))
 
   }
+
+  /** other attributes in the request not related to settings - use these as input
+    *
+    * combine the queryParms with the posted form parms
+    */
+  def headers(request:RequestHeader, cont:Option[EContent] = None) : Map[String,String] = {
+    val q = request.headers.toSimpleMap
+
+    import DomEngineSettings._
+
+    val fil = FILTER ++ Array("dieselNodeId", "dieselConfigTag", "dieselUserId")
+
+    q.filter(t=> !(fil contains t._1))
+  }
 }
 
 

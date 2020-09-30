@@ -29,7 +29,7 @@ class EEWiki extends EExecutor("diesel.wiki") {
   override def apply(in: EMsg, destSpec: Option[EMsg])(implicit ctx: ECtx): List[Any] = {
     val res = in.met match {
       case "content" => {
-        clog << "diesel.wiki.content"
+        clog << "diesel.wiki.content wpath=" + ctx.get("wpath").mkString
 
         val errors = new ListBuffer[Any]()
         // todo auth
@@ -40,7 +40,7 @@ class EEWiki extends EExecutor("diesel.wiki") {
           .map(_.r(ctx.root.settings.realm.mkString))
           .map{wid=> errors.append(EInfo("final wid: "+wid)); wid}
           .flatMap(Wikis.find)
-          .orElse{errors.append(EError("no wiki")); None}
+          .orElse{errors.append(EError("ERR - No wiki found for "+ctx.get("wpath"))); None}
           .toList
           .map{w=>
               // typed value?

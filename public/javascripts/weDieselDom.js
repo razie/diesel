@@ -371,6 +371,7 @@ function loadSpec (wpath, rest) {
   $.ajax( '/diesel/content/Spec/'+wpath, {
     success: function (data) {
       specEditor.setValue(data);
+      specEditor.selection.clearSelection();
       storyEditor.selection.clearSelection();
       rest();
     },
@@ -600,8 +601,43 @@ function dieselHideGenerated(expanded) {
 
 function dieselHideKind(expanded, debug) {
   if (expanded) {
-    $("div[kind='"+debug+"']").show();
+    $("div[kind='" + debug + "']").show();
   } else {
-    $("div[kind='"+debug+"']").hide();
+    $("div[kind='" + debug + "']").hide();
   }
 }
+
+/*
+ * =================== ACE helpers
+*/
+
+/** popup usages */
+var findUsages = function (wp, editor) {
+  // var row = editor.selection.getCursor().row + 1;
+  var row = editor.getCursorPosition().row;
+  var col = editor.getCursorPosition().column;
+  var line = editor.session.getLine(editor.selection.getCursor().row);
+
+  console.log("Click in: " + wp + " : " + row + " : " + col);
+  console.log("Line: " + line);
+  var ea = findIdAtPos(line, col);
+  console.log("ea: " + ea);
+
+  if (typeof ea != "undefined")
+    $.ajax(
+      '/diesel/findUsages/' + ea, {
+        type: 'GET',
+        data: $.param({
+          reactor: '@reactor'
+        }),
+        contentType: 'application/x-www-form-urlencoded',
+        success: function (data) {
+          popupLargeDialog(data);
+        },
+        error: function (x) {
+          popupContent(JSON.stringify(x));
+        }
+      });
+}
+
+

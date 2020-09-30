@@ -589,7 +589,7 @@ function processPartialEngineResult(id, data, compileOnly, lastTime, next) {
   console.log("  updateMarkers story");
 
   $('#roundtrip').html('<span class="glyphicon glyphicon-remove" onclick="javascript:cancelFlow()" style="cursor:pointer; color:red" ></span>' + data.info.progress+'');
-  $('#roundtrip').prop('title', "failed/total/todo");
+  $('#roundtrip').prop('title', "failed/tested/todo");
 
   if(typeof data.storyChanged != "undefined") storyChanged(data.storyChanged);
 

@@ -26,11 +26,10 @@ import razie.diesel.model.DieselMsg.HTTP
 import razie.diesel.utils.{AutosaveSet, DomCollector, DomWorker, SpecCache}
 import razie.hosting.Website
 import razie.tconf.{DTemplate, EPos}
-import razie.wiki.Enc
 import razie.wiki.admin.Autosave
 import razie.wiki.model._
+import razie.wiki.{Enc, WikiConfig}
 import razie.{Logging, Snakk, ctrace, js}
-import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
@@ -83,7 +82,7 @@ case class DomReq (
 
 /** controller for server side fiddles / services */
 @Singleton
-class DomApi extends DomApiBase  with Logging {
+class DomApi extends DomApiBase with Logging {
 
   /** /diesel/wreact/wpath
     *
@@ -757,7 +756,7 @@ class DomApi extends DomApiBase  with Logging {
 
             // don't show this for diesel.rest
             dieselRestMsg
-                .map(x=> result)
+                .map(x => result)
                 .getOrElse {
                   result
                       .withHeaders("diesel-reason" -> s"response template not found for $path in realm ${stok.realm}")
@@ -765,9 +764,19 @@ class DomApi extends DomApiBase  with Logging {
           }
         }
 
-        // must allow for ctx.sleeps
-        // todo why 50 sec
-        Await.result(res, Duration("50seconds"))
+          // must allow for ctx.sleeps
+          // todo why 50 sec
+          val dur = WikiConfig.prop("diesel.timeout", "50seconds")
+          val tcode = WikiConfig.prop("diesel.timeoutCode", "504")
+          try {
+            Await.result(res, Duration(dur))
+          } catch {
+            case e: java.util.concurrent.TimeoutException => {
+              engine.stopNow
+              new Status(Integer.parseInt(tcode))("Workflow took too long - not enough resources?")
+                  .withHeaders("diesel-reason" -> s"flow didn't response in 50 seconds")
+            }
+          }
       } getOrElse {
         //      Future.successful(
         NotFound(s"ERR Realm(${reactor}): Template or message not found for path: " + path)
@@ -806,7 +815,12 @@ class DomApi extends DomApiBase  with Logging {
   def findUsages(em: String) = Filter(noRobots).async { implicit stok =>
     if(stok.au.exists(_.isActive)) {
       val ea = em.replaceAllLiterally("/", ".")
-      try {
+
+      if (!em.matches(EMsg.REGEX.pattern.pattern())) {
+        Future.successful(
+          InternalServerError("Not a message: " + em)
+        )
+      } else try {
         val EMsg.REGEX(e, a) = em
 
         val uid = stok.au.map(_._id).getOrElse(NOUSER)
@@ -852,7 +866,7 @@ class DomApi extends DomApiBase  with Logging {
               }.getOrElse(Map.empty)
         }
 
-        val m = (u1 ::: u2).map(u => addm(u._1, u._2, u._3, u._4))
+        val m = (u2 ::: u1).map(u => addm(u._1, u._2, u._3, u._4))
 
         val html = views.html.fiddle.usageTable(m, Some(("Type", "e-a", "Topic")))
 

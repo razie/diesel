@@ -18,6 +18,7 @@ import play.api.mvc.{Action, AnyContent, Request}
 import razie.Snakk._
 import razie.db.RazSalatContext.ctx
 import razie.db.{RCreate, RMany}
+import razie.hosting.WikiReactors
 import razie.tconf.hosting.Reactors
 import razie.wiki.Config
 import razie.wiki.Sec._
@@ -487,38 +488,39 @@ class AdminDiff extends AdminBase with Logging {
     true
   }
 
-  def importDbImpl(implicit request:Request[AnyContent]) = {
+  /** actual import implementation */
+  def importDbImpl(implicit stok:RazRequest) = {
+
     clog << "ADMIN_IMPORT_DB_IMPL"
 
     log("IMPORT DB")
 
-    lazy val query = request.queryString.map(t => (t._1, t._2.mkString))
-    lazy val form = request.asInstanceOf[Request[AnyContent]].body.asFormUrlEncoded
+    val realm = stok.fqhParm("realm").get
+    val source = stok.fqhParm("source").get
+    val email = stok.au.map(_.emailDec).orElse(stok.fqhParm("email")).get
+    val pwd = stok.au.map(_.pwd.dec).orElse(stok.fqhParm("pwd")).get
 
-    def fParm(name: String): Option[String] =
-      form.flatMap(_.getOrElse(name, Seq.empty).headOption)
-
-    def fqhParm(name: String): Option[String] =
-      query.get(name).orElse(fParm(name)).orElse(request.headers.get(name))
-
-    val source = fqhParm("source").get
-    val email = fqhParm("email").get
-    val pwd = fqhParm("pwd").get
-    val realm = fqhParm("realm").get
-
-    // key used to encrypt/decrypt transfer
+    // temp key used to encrypt/decrypt transfer
     val key = System.currentTimeMillis().toString + "87654321"
 
-    // first get the user and profile and create them locally
-    val u = body(url(s"http://$source/dmin-getu/$key", method = "GET").basic("H-" + email, "H-" + pwd))
-    val dbo = com.mongodb.util.JSON.parse(u).asInstanceOf[DBObject];
-    val pu = grater[PU].asObject(dbo)
-    val iau = pu.u
-    val e = new admin.CypherEncryptService("", key)
-    // re=encrypt passworkd with the local key
-    val au = iau.copy(email = e.enc(e.dec(iau.email)), pwd = e.enc(e.dec(iau.pwd)))
+    // user already local or import from remote?
+    val au = if(stok.au.isEmpty) {
+      clog << "ADMIN_IMPORT_DB_IMPL import user"
 
-    au.create(pu.p)
+      // first get the user and profile and create them locally
+      val u = body(url(s"http://$source/dmin-getu/$key", method = "GET").basic("H-" + email, "H-" + pwd))
+      val dbo = com.mongodb.util.JSON.parse(u).asInstanceOf[DBObject];
+      val pu = grater[PU].asObject(dbo)
+      val iau = pu.u
+      val e = new admin.CypherEncryptService("", key)
+      // re=encrypt passworkd with the local key
+      val au = iau.copy(email = e.enc(e.dec(iau.email)), pwd = e.enc(e.dec(iau.pwd)))
+
+      au.create(pu.p)
+      au
+    } else {
+      stok.au.get
+    }
 
     // init realms and cats
 
@@ -530,9 +532,9 @@ class AdminDiff extends AdminBase with Logging {
     ).map(x => WID.fromPath(x).get) :::
 //        remoteWids(source, "rk", request.host, "Category", au) :::
 //        remoteWids(source, "wiki", request.host, "Category", au) :::
-        remoteWids(source, "rk", request.host, "", au) :::
-        remoteWids(source, "wiki", request.host, "", au) :::
-        remoteWids(source, realm, request.host, "", au)
+        remoteWids(source, "rk", stok.req.host, "", au) :::
+        remoteWids(source, "wiki", stok.req.host, "", au) :::
+        remoteWids(source, realm, stok.req.host, "", au)
 
     var total = ldest.size
 
@@ -540,7 +542,7 @@ class AdminDiff extends AdminBase with Logging {
     (
         total,
         Future {
-          importRealm(au, request)
+          importRealm(au, stok)
         }
     )
   }
@@ -553,7 +555,7 @@ class AdminDiff extends AdminBase with Logging {
         Ok("ERR db not empty!").as("application/text")
       }
     } else {
-      val res = importDbImpl(request)
+      val res = importDbImpl(new RazRequest(request))
 
       import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -584,7 +586,7 @@ class AdminDiff extends AdminBase with Logging {
     if (!isDbEmpty) {
       Ok("ERR db not empty!").as("application/text")
     } else {
-      val res = importDbImpl(request)
+      val res = importDbImpl(new RazRequest(request))
 
       Ok(s"""${res._1}""").as("application/text")
     }
@@ -598,21 +600,12 @@ class AdminDiff extends AdminBase with Logging {
   }
 
   /** import a realm from remote */
-  def importRealm(au: User, request: Request[AnyContent]) = {
+  def importRealm(au: User, stok: RazRequest) = {
 
-    lazy val query = request.queryString.map(t => (t._1, t._2.mkString))
-    lazy val form = request.asInstanceOf[Request[AnyContent]].body.asFormUrlEncoded
-
-    def fParm(name: String): Option[String] =
-      form.flatMap(_.getOrElse(name, Seq.empty).headOption)
-
-    def fqhParm(name: String): Option[String] =
-      query.get(name).orElse(fParm(name)).orElse(request.headers.get(name))
-
-    val source = fqhParm("source").get
-    val email = fqhParm("email").get
-    val pwd = fqhParm("pwd").get
-    val realm = fqhParm("realm").get
+    val source = stok.fqhParm("source").get
+    val realm = stok.fqhParm("realm").get
+    val email = stok.au.map(_.emailDec).orElse(stok.fqhParm("email")).get
+    val pwd = stok.au.map(_.pwd.dec).orElse(stok.fqhParm("pwd")).get
     val key = System.currentTimeMillis().toString
 
     clog << s"ADMIN_IMPORT_REALM $realm from source:$source"
@@ -635,16 +628,19 @@ class AdminDiff extends AdminBase with Logging {
       "rk.Reactor:rk",
       "wiki.Reactor:wiki"
     ).map(x => WID.fromPath(x).get) :::
-//      remoteWids(source, "rk", request.host, "Category", au) :::
-//      remoteWids(source, "wiki", request.host, "Category", au) :::
-        remoteWids(source, "rk", request.host, "", au) :::
-        remoteWids(source, "wiki", request.host, "", au) :::
-        (reactors.split(",")
-            .toList
-            .distinct
-            .filter(r => r.length > 0 && !Array("rk", "wiki").contains(r))
-            .flatMap(r => remoteWids(source, r, request.host, "", au))
+        (
+            "rk" :: "wiki" :: (reactors.split(",").toList)
             )
+            .distinct
+            .filter(r => r.length > 0 && {
+              // filter out already local reactors
+              val res = WikiReactors.findWikiEntry(r).isEmpty
+              if(res) {
+                clog << s"*************** SKIPPING $r - already local"
+              }
+              res
+            })
+            .flatMap(r => remoteWids(source, r, stok.req.host, "", au))
 
     var count = 0
     var total = ldest.size

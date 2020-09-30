@@ -1,7 +1,7 @@
 package mod.diesel.controllers
 
 import akka.actor.{Actor, Props, _}
-import com.google.inject.Singleton
+import com.google.inject.{Inject, Singleton}
 import controllers.{IgnoreErrors, VErrors, WikiAuthorization}
 import java.util.concurrent.TimeUnit
 import mod.diesel.model.DomEngineHelper
@@ -17,7 +17,7 @@ import razie.diesel.engine.{DieselAppContext, RDExt, _}
 import razie.diesel.model.DieselMsg
 import razie.diesel.utils.DomUtils.{SAMPLE_SPEC, SAMPLE_STORY}
 import razie.diesel.utils.{AutosaveSet, DomCollector, DomWorker, SpecCache}
-import razie.wiki.Services
+import razie.wiki.{Services, WikiConfig}
 import razie.wiki.admin.Autosave
 import razie.wiki.model._
 import razie.{CSTimer, Logging, js}
