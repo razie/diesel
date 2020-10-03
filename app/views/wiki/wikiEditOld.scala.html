@@ -85,7 +85,7 @@ Implicit.flash().put("bibi", "haha")
             <small> |
               <button onclick="return submitPlease();" id="btnSave" class="btn btn-default btn-xs"><span id="floppy" class="glyphicon glyphicon-check"></span> Save</button>
               <button onclick="return popupDiff();" id="btnDiff" class="btn btn-default btn-xs" style="color:limegreen" title="Show diff from original">&Delta;</button>
-              <a href="@controllers.Wiki.wr(wid, stok.realm, false)" onclick="return cancel();" class="btn btn-default btn-xs"><span id="fla" class="glyphicon glyphicon-floppy-remove"></span> Cancel</a>
+              <a onclick="return deleteDraft();" class="btn btn-default btn-xs"><span id="fla" class="glyphicon glyphicon-floppy-remove"></span> Cancel</a>
             </small>
             <div class="pull-right">
               @if(stok.au.exists(_.isMod)) {
@@ -145,7 +145,7 @@ PROBLEM: many places use label as name... via Wikis.formatName
     <div class="actions">
       <button onclick="return submitPlease();" class="btn btn-primary">Save</button>
       @*<button type="submit" class="btn btn-primary">Save</button>*@
-      <a href="@controllers.Wiki.wr(wid, stok.realm, false)" onclick="return cancel();" class="btn btn-default">Cancel</a>
+      <a onclick="return deleteDraft();" class="btn btn-default">Cancel</a>
       <a href="javascript:popupDiff()" class="btn btn-default">Diff</a>
     </div>
 
@@ -399,7 +399,7 @@ razOnLoad(function() {
  <br>
   <div class="actions2">
     <button class="btn btn-primary" onclick="submitPlease()">Save</button>
-    <a href="@controllers.Wiki.wr(wid, stok.realm, false)" onclick="return cancel();" class="btn btn-default">Cancel</a>
+    <a onclick="return deleteDraft();" class="btn btn-default">Cancel</a>
     <a href="javascript:popupDiff()" class="btn btn-default">Diff</a>
   </div>
 
@@ -679,7 +679,7 @@ function saveDraft() {
 }
 
 
-cancel = function() {
+deleteDraft = function() {
   $.ajax(
     '/wikie/deleteDraft/@wid.wpath', {
     type: 'POST',
@@ -689,6 +689,7 @@ cancel = function() {
     }),
     contentType: 'application/x-www-form-urlencoded',
     success: function(data) {
+      window.location = "@controllers.Wiki.wr(wid, stok.realm, false)";
     },
     error  : function(x) {
       console.log( "ERR "+x.toString());

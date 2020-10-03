@@ -354,7 +354,7 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
   def deleteDraft (wid:WID) = FAUR { stok=>
     EditLock.unlock(wid.uwid.getOrElse(UWID.empty), wid.wpath, stok.au.get)
 
-    Autosave.delete("wikie", wid, stok.au.get._id)
+    Autosave.deleteDraft(wid, stok.au.get._id)
     Ok("")
   }
 
@@ -372,7 +372,7 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
 
     //autosave draft - if none and there are changes
 
-    val autoRec = Autosave.rec("wikie", wid.getRealm, wid.wpath, stok.au.get._id)
+    val autoRec = Autosave.recDraft(wid, stok.au.get._id)
 
     // first check if it's newer - if the user clicks "back", a stale editor may overwrite a newer draft
     if (timeStamp.nonEmpty && autoRec.exists(_.updDtm.isAfter(new DateTime(timeStamp.toLong)))) {
@@ -1428,17 +1428,17 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
     def max(a:Int, b:Int) = if(a>b)a else b
 
     val wikis = Wikis(realm)
-      .cats.keys.toList
-      .flatMap(cat=>Wikis(realm).pages(cat).toList)
-      .filter(_.tags.contains(qi))
-      .take(500)
-      .map{ w=>
-        val m = PAT.findAllMatchIn(w.tags.mkString(",")).collectFirst({case x => x}).get
-        (w,
-          m.before.subSequence(0, m.before.length()),
-          m.matched,
-          m.after.subSequence(0,m.after.length))
-      }
+        .cats.keys.toList
+        .flatMap(cat => Wikis(realm).pages(cat).toList)
+        .filter(_.tags.contains(qi))
+        .take(500)
+        .map { w =>
+          val m = PAT.findAllMatchIn(w.tags.mkString(",")).collectFirst({ case x => x }).get
+          (w,
+              m.before.subSequence(0, m.before.length()),
+              m.matched,
+              m.after.subSequence(0, m.after.length))
+        }
 
     wikis
   }

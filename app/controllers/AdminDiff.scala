@@ -74,7 +74,7 @@ class AdminDiff extends AdminBase with Logging {
 
   /** get list of pages - invoked by remote trying to sync */
   // todo auth that user belongs to realm
-  def drafts(reactor: String) = FAUR { implicit stok =>
+  def adminDrafts(reactor: String) = FAUR { implicit stok =>
 
     var l = Autosave.activeDrafts(stok.au.get._id).toList
 
@@ -83,8 +83,8 @@ class AdminDiff extends AdminBase with Logging {
           x.what,
           x.realm,
           x.name,
-          WID.fromPath(x.name).map(_.url + "  ").mkString,
-          if(stok.au.exists(_.isAdmin)) s"""  (**[/razadmin/db/col/del/Autosave/${x._id.toString} del]**)"""
+          WID.fromPath(x.name).map("[" + _.urlForEdit + "]  ").mkString,
+          if (stok.au.exists(_.isAdmin)) s"""  (**[/razadmin/db/col/del/Autosave/${x._id.toString} del]**)"""
           else ""
       )
 
@@ -126,7 +126,7 @@ class AdminDiff extends AdminBase with Logging {
 
   /** get list of pages - invoked by remote trying to sync */
   // todo auth that user belongs to realm
-  def draftsCleanAll = FAUR { implicit stok =>
+  def adminDraftsCleanAll = FAUR { implicit stok =>
 
     if (!stok.au.exists(_.isAdmin)) Unauthorized("ONly for admins...")
     else {
@@ -272,15 +272,18 @@ class AdminDiff extends AdminBase with Logging {
             val x = m.asInstanceOf[collection.Map[String, String]]
             new WEAbstract(x)
           } catch {
-            case e : Throwable =>
-              error("Can't parse from remote: "+m.mkString, e)
+            case e: Throwable =>
+              error("Can't parse from remote: " + m.mkString, e)
               throw e
           }
         }
       }.toList
 
       // local list
-      val lsrc = RMany[WikiEntry]().filter(we => toRealm.isEmpty || toRealm == "all" || we.realm == localRealm).map(x => new WEAbstract(x)).toList
+      val lsrc = RMany[WikiEntry]()
+          .filter(we => toRealm.isEmpty || toRealm == "all" || we.realm == localRealm)
+          .map(x => new WEAbstract(x))
+          .toList
 
       val (lnew, lchanged, lremoved) =
         if (toRealm == "all" || toRealm == localRealm)
@@ -709,23 +712,23 @@ class AdminDiff extends AdminBase with Logging {
     reactors = realm
 
     val ldest =
-      // not all mixins, just top reactor
+    // not all mixins, just top reactor
 //      List(
 //      "rk.Reactor:rk",
 //      "wiki.Reactor:wiki"
 //    ).map(x => WID.fromPath(x).get) :::
 //        localwlist("rk", "").map(_.wid) :::
 //        localwlist("wiki", "").map(_.wid) :::
-        (
-            reactors
-                .split(",")
-                .toList
-                .distinct
-                .filter(r => r.length > 0 && !Array("rk", "wiki").contains(r))
-            .flatMap(r =>
-              localwlist(r, "").map(_.wid)
-            )
-        )
+      (
+          reactors
+              .split(",")
+              .toList
+              .distinct
+              .filter(r => r.length > 0 && !Array("rk", "wiki").contains(r))
+              .flatMap(r =>
+                localwlist(r, "").map(_.wid)
+              )
+          )
 
     Ok(ldest.map(_.wpathFull).mkString("\n"))
   }
