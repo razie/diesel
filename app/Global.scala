@@ -6,33 +6,26 @@
  */
 
 import Global.{RATELIMIT, isApiRequest, isShouldDebug}
-import java.util.Properties
 import admin._
-import com.google.inject.Guice
+import com.mongodb.casbah.Imports._
 import controllers._
+import java.io.File
+import java.util.Properties
 import mod.book.Progress
-import razie.db._
 import model._
 import play.api.Application
-import play.api._
 import play.api.mvc._
-import razie.wiki.util.PlayTools
-import razie.{Log, cdebug, clog, cout}
-import akka.actor._
-import com.mongodb.casbah.{MongoConnection, MongoDB}
-import com.mongodb.casbah.Imports._
-import java.io.File
-import services.{InitAlligator, RkCqrs}
-import scala.collection.mutable.ListBuffer
-import scala.concurrent.{ExecutionContext, Future}
-import controllers.ViewService
 import razie.audit.Audit
-import razie.hosting.{BannedIp, BannedIps, Website, WikiReactors}
-import razie.wiki.model._
+import razie.db._
+import razie.hosting.{BannedIps, Website, WikiReactors}
 import razie.wiki.admin._
-import razie.wiki.{Config, EncryptService, Services, WikiConfig}
-import razie.wiki.Sec._
+import razie.wiki.model._
+import razie.wiki.util.PlayTools
+import razie.wiki.{Config, Services}
+import razie.{cdebug, clog}
+import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
+import services.{InitAlligator, RkCqrs}
 
 /** customize some global handling errors */
 object Global extends WithFilters(LoggingFilter) {
@@ -326,7 +319,7 @@ object LoggingFilter extends Filter {
     def logTime(rh:RequestHeader)(what: String)(result: Result): Result = {
       val time = System.currentTimeMillis - start
 
-      if (!shouldDebug && !isFromRobot(rh)) {
+      if (shouldDebug && !isFromRobot(rh)) {
         clog << s"LF.STOP.$what ${rh.method} ${rh.host}${rh.uri} took ${time}ms and returned ${result.header.status}"
       }
 
