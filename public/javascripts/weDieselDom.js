@@ -21,8 +21,10 @@ function domCompl (i) {
     var terms = line.slice(0, pos.column).split(' ');
 
     // => entity.action
-    if(terms.indexOf('->') == terms.length-1 ||
-      terms.indexOf('=>') == terms.length-1 ||
+    if (terms.indexOf('->') == terms.length - 1 ||
+      terms.indexOf('=>') == terms.length - 1 ||
+      terms.indexOf('==>') == terms.length - 1 ||
+      terms.indexOf('<=>') == terms.length - 1 ||
       terms[0] && terms[0] == '$send' ||
       terms[0] && terms[0] == '$match' ||
       terms[0] && terms[0] == '$msg' ||
@@ -30,6 +32,8 @@ function domCompl (i) {
       terms[0] && terms[0] == '$expect' ||
       terms[0] && terms[0] == '$flow' ||
       terms[0] && terms[0] == '=>' ||
+      terms[0] && terms[0] == '==>' ||
+      terms[0] && terms[0] == '<=>' ||
       terms[0] && terms[0] == '$mock') {
 
       var newTerms = ['msg', ''];
@@ -37,15 +41,17 @@ function domCompl (i) {
 
       // see comment below on ACE expansion
       var reduceDot = '';
-      if(
-        terms.indexOf('$msg') != terms.length-1 &&
-        terms.indexOf('$mock') != terms.length-1 &&
-        terms.indexOf('->') != terms.length-1 &&
-        terms.indexOf('=>') != terms.length-1) {
+      if (
+        terms.indexOf('$msg') != terms.length - 1 &&
+        terms.indexOf('$mock') != terms.length - 1 &&
+        terms.indexOf('->') != terms.length - 1 &&
+        terms.indexOf('==>') != terms.length - 1 &&
+        terms.indexOf('<=>') != terms.length - 1 &&
+        terms.indexOf('=>') != terms.length - 1) {
         // last is probably a part of it
-        newTerms[1] = terms[terms.length-1]
-        if(newTerms[1].lastIndexOf('.') > -1)
-          reduceDot = newTerms[1].slice(0, newTerms[1].lastIndexOf('.')+1)
+        newTerms[1] = terms[terms.length - 1]
+        if (newTerms[1].lastIndexOf('.') > -1)
+          reduceDot = newTerms[1].slice(0, newTerms[1].lastIndexOf('.') + 1)
       }
 
       if(newTerms[0] == 'attr') newTerms[1] = newTerms[1].replace(/.*[,()]/, '');

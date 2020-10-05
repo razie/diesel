@@ -8,11 +8,11 @@ var hiDiesel = function (hijs) {
 // All elements which match this will be syntax highlighted.
   var selector = hijs || 'code[language="diesel"]';
 
-  const dieselKeywords = 'var val def msg when mock expect send class def'.split(' ');
+  const dieselKeywords = 'var val def msg when mock expect send class def flow'.split(' ');
 
   var keywords = (
-    'var val def if else msg when mock expect send template ' +
-    'POST GET PUT DELETE'
+      'var val def if else msg when mock expect send template flow ' +
+      'POST GET PUT DELETE'
     ).split(' '),
     special  = ('eval window document undefined NaN Infinity parseInt parseFloat '
     +'encodeURI decodeURI encodeURIComponent decodeURIComponent'
