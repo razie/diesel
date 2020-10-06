@@ -1,9 +1,9 @@
 /**
- *    ____    __    ____  ____  ____,,___     ____  __  __  ____
- *   (  _ \  /__\  (_   )(_  _)( ___)/ __)   (  _ \(  )(  )(  _ \           Read
- *   )   / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <     README.txt
- *  (_)\_)(__)(__)(____)(____)(____)(___/   (__)  (______)(____/    LICENSE.txt
- */
+  * ____    __    ____  ____  ____,,___     ____  __  __  ____
+  * (  _ \  /__\  (_   )(_  _)( ___)/ __)   (  _ \(  )(  )(  _ \           Read
+  * )   / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <     README.txt
+  * (_)\_)(__)(__)(____)(____)(____)(___/   (__)  (______)(____/    LICENSE.txt
+  */
 
 import Global.{RATELIMIT, isApiRequest, isShouldDebug}
 import admin._
@@ -35,16 +35,20 @@ object Global extends WithFilters(LoggingFilter) {
   val ERR_EMAILS = 5 // per DELTA2
   var errEmails = 0 // sent per DELTA2
   var lastErrorTime = System.currentTimeMillis - ERR_DELTA1 // time last error email went out - just one every 5 min, eh
-  var firstErrorTime = System.currentTimeMillis - ERR_DELTA2 // time first error email went out - just one every 5 min, eh
+  var firstErrorTime = System.currentTimeMillis - ERR_DELTA2 // time first error email went out - just one every 5
+  // min, eh
   var lastErrorCount = 0 // time last error email went out - just one every 5 min, eh
 
   val RATELIMIT = true // rate limit API requests
+  val RATE = true // rate limit API requests
 
 
   override def onError(request: RequestHeader, ex: Throwable) = {
-    clog << "ERR_onError - trying to log/audit in DB... " + "request:" + request.toString + "headers:" + request.headers + "ex:" + ex.toString
+    clog << "ERR_onError - trying to log/audit in DB... " + "request:" + request.toString + "headers:" + request
+        .headers + "ex:" + ex.toString
     Audit.logdb("ERR_onError", "request:" + request.toString, "headers:" + request.headers, "ex:" + ex.toString)
-    val m = ("ERR_onError", "Current count: " + lastErrorCount + " Request:" + request.toString, "headers:" + request.headers, "ex:" + ex.toString).toString
+    val m = ("ERR_onError", "Current count: " + lastErrorCount + " Request:" + request.toString, "headers:" + request
+        .headers, "ex:" + ex.toString).toString
     if (System.currentTimeMillis - lastErrorTime >= ERR_DELTA1) {
       if (errEmails <= ERR_EMAILS || System.currentTimeMillis - firstErrorTime >= ERR_DELTA2) {
         SendEmail.withSession(Website.xrealm(request)) { implicit mailSession =>

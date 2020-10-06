@@ -960,10 +960,11 @@ regAdmin=$regAdmin
                       k <- RacerKidz.findById(a.to)) yield
         (k, a)).toList.sortBy(x => x._1.info.lastName + x._1.info.firstName)
 
-      val teams = Wikis.linksTo("Program", c.uwid, "Child").toList /*.sortBy(_.from.nameOrId)*/ // U8 is bigger than U10... ugh
+      val teams = Wikis.linksTo("Program", c.uwid,
+        "Child").toList /*.sortBy(_.from.nameOrId)*/ // U8 is bigger than U10... ugh
 
-      ROK.k apply {
-        views.html.club.doeClubKidz(c, role, team, teams , rks) // U8 is bigger than U10... ugh
+      ROK.k reactorLayout12 {
+        views.html.club.doeClubKidz(c, role, team, teams, rks) // U8 is bigger than U10... ugh
       }
     }) getOrElse unauthorized()
   }

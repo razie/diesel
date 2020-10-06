@@ -107,7 +107,6 @@ class Module extends AbstractModule {
 //       a
 //    }
 
-    DieselAppContext.initExecutors
 //    DieselAppContext.init(Services.config.node)
 
     DieselAppContext.localNode = Services.config.node
@@ -126,6 +125,7 @@ class Module extends AbstractModule {
     Executors.add (new EEDieselMemDb)
     Executors.add (new EEDieselSharedDb)
     Executors.add (new EEDieselMongodDb)
+    Executors.add (new EEDieselElasticDb)
 
     RDomainPlugins.plugins = { x: String =>
       WikiDomain(x).plugins
