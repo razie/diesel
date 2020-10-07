@@ -261,9 +261,13 @@ class DomApi extends DomApiBase with Logging {
         root,
         settings,
         // storyPage may be a temp fiddle, so first try the story WID
-        ipage :: pages ::: useThisSpecPage ::: useThisStory.flatMap(_.page).orElse(useThisStoryPage).toList map WikiDomain.spec,
-        DieselMsg.irunDom+path
+        ipage :: pages ::: useThisSpecPage ::: useThisStory.flatMap(_.page).orElse(
+          useThisStoryPage).toList map WikiDomain.spec,
+        DieselMsg.irunDom + path
       )
+
+      engine.root.childrenCol.append(DomAst(EInfo("HTTP Request details",
+        printRequest(stok.req, engine.settings.postedContent.map(_.body).mkString)), AstKinds.DEBUG))
 
       setHostname(engine.ctx.root)
 
@@ -417,7 +421,7 @@ class DomApi extends DomApiBase with Logging {
           )
       } else {
         // good security keys for non-members (devs if logged in don't need security)
-        val infomsg = s"Unauthorized msg access (key) [irundom] for ${msg.map(m=>m.entity+m.met)}"
+        val infomsg = s"Unauthorized msg access (key) [irundom] for ${msg.map(m => m.entity + m.met)}"
         info(infomsg)
 
         Future.successful(
@@ -427,6 +431,24 @@ class DomApi extends DomApiBase with Logging {
     }
   }
 
+  def printRequest(implicit request: Request[_], rawBody: String = "") = {
+    implicit val stok = razRequest
+
+    // make the diesel.rest message
+    val qparams = DomEngineHelper.parmsFromRequestHeader(request)
+    val hparams = DomEngineHelper.headers(request)
+
+    val m = Map(
+      "path" -> request.path,
+      "verb" -> request.method,
+      "queryString" -> URLDecoder.decode(request.rawQueryString),
+      "headers" -> hparams,
+      "queryParams" -> qparams
+    )
+
+    razie.js.tojsons(m) + "---------------body-------------\n" + rawBody
+  }
+
   /**
     * deal with a REST request. use the in/out for message
     *
@@ -434,7 +456,9 @@ class DomApi extends DomApiBase with Logging {
     *
     * mock is important - no template matching for mock
     */
-  def runRest(path: String, verb:String, mock:Boolean, imsg:Option[EMsg] = None, custom:Option[DomEngine => DomEngine] = None) : Action[RawBuffer] = Action(parse.raw) { implicit request =>
+  def runRest(path: String, verb: String, mock: Boolean, imsg: Option[EMsg] = None, custom: Option[DomEngine =>
+      DomEngine] = None): Action[RawBuffer] = Action(
+    parse.raw) { implicit request =>
     implicit val stok = razRequest
 
     // not always the same as the request...
@@ -524,14 +548,18 @@ class DomApi extends DomApiBase with Logging {
         List(new WikiEntry("Story", "temp", "temp", "md", "", uid, Seq("dslObject"), reactor))
       )
 
+      engine.root.childrenCol.append(DomAst(
+        EInfo("HTTP Request details",
+          printRequest(request, body)), AstKinds.DEBUG))
+
       // add query parms
-      val q = stok.req.queryString.map(t=>(t._1, t._2.mkString))
+      val q = stok.req.queryString.map(t => (t._1, t._2.mkString))
       engine.ctx.putAll(q.map(t => P(t._1, t._2)).toList)
 
       // add the request
       new DomReq(stok.req).addTo(engine.ctx)
 
-      if(custom.isDefined)
+      if (custom.isDefined)
         engine = custom.get.apply(engine)
 
       // find template matching the input message, to parse attrs
