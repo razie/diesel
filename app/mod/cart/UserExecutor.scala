@@ -4,6 +4,7 @@ import controllers.{Emailer, Profile}
 import model.{ExtSystemUserLink, User, Users}
 import org.joda.time.DateTime
 import razie.clog
+import razie.diesel.engine.DomAst
 import razie.diesel.engine.exec.EExecutor
 import razie.diesel.engine.nodes.{EMsg, EVal, MatchCollector}
 import razie.diesel.expr.ECtx
@@ -18,7 +19,7 @@ object EEModUserExecutor extends EExecutor("diesel.mod.user") {
 
   override def isMock: Boolean = true
 
-  override def test(m: EMsg, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) = {
+  override def test(ast: DomAst, m: EMsg, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) = {
     m.entity == "diesel.mod.user" || m.entity == "mod.user"
   }
 

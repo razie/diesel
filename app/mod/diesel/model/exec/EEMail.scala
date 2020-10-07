@@ -8,6 +8,7 @@ package mod.diesel.model.exec
 
 import controllers.Emailer
 import razie.diesel.dom.RDOM._
+import razie.diesel.engine.DomAst
 import razie.diesel.engine.exec.EExecutor
 import razie.diesel.engine.nodes._
 import razie.diesel.expr.ECtx
@@ -23,7 +24,7 @@ class EEMail extends EExecutor("diesel.mail") {
 
   override def isMock: Boolean = true
 
-  override def test(m: EMsg, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) = {
+  override def test(ast: DomAst, m: EMsg, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) = {
     m.entity == DM
   }
 

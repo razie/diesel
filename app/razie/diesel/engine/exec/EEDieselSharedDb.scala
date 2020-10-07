@@ -7,6 +7,7 @@ package razie.diesel.engine.exec
 
 import com.mongodb.casbah.Imports._
 import razie.diesel.dom.RDOM._
+import razie.diesel.engine.DomAst
 import razie.diesel.engine.nodes.{EError, EMsg, EVal, MatchCollector}
 import razie.diesel.expr.ECtx
 import scala.collection.concurrent.TrieMap
@@ -21,7 +22,7 @@ class EEDieselSharedDb extends EExecutor("diesel.db.shareddb") {
 
   override def isMock: Boolean = true
 
-  override def test(m: EMsg, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) = {
+  override def test(ast: DomAst, m: EMsg, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) = {
     m.entity == SHAREDDB
   }
 

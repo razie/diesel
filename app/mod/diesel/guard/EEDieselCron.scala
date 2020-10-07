@@ -7,41 +7,38 @@
 package mod.diesel.guard
 
 import akka.actor.{Actor, ActorRef, Cancellable, Props}
+import akka.pattern.ask
+import akka.util.Timeout
+import com.razie.pub.comms.CommRtException
 import java.net.InetAddress
 import java.util.concurrent.TimeUnit
+import org.joda.time.DateTime
 import play.libs.Akka
+import razie.diesel.Diesel
 import razie.diesel.dom.RDOM.P
 import razie.diesel.dom._
-import razie.diesel.engine.{DieselAppContext, DomEngineSettings}
-import razie.diesel.engine.nodes._
+import razie.diesel.engine.exec.EExecutor
+import razie.diesel.engine.nodes.{EError, EMsg, EVal, _}
+import razie.diesel.engine.{DieselAppContext, DomAst, DomEngineSettings}
+import razie.diesel.expr.ECtx
 import razie.diesel.model.{DieselMsg, DieselMsgString, DieselTarget}
 import razie.hosting.Website
 import razie.tconf.TagQuery
 import razie.wiki.{Config, Services}
-import razie.{Logging, Snakk}
+import razie.{Logging, Snakk, cdebug}
 import scala.collection.mutable.HashMap
-import scala.concurrent.duration.{Duration, FiniteDuration}
-import akka.pattern.ask
-import akka.util.Timeout
-import com.razie.pub.comms.CommRtException
-import org.joda.time.DateTime
-import scala.concurrent.duration._
-import scala.concurrent.{Await, Future}
-import razie.cdebug
-import razie.diesel.Diesel
-import razie.diesel.engine.exec.EExecutor
-import razie.diesel.engine.nodes.{EError, EMsg, EVal}
-import razie.diesel.expr.ECtx
+import scala.concurrent.Await
+import scala.concurrent.duration.{Duration, FiniteDuration, _}
 
 /** in-mem representation of an on-going schedule */
-case class DomSchedule (
+case class DomSchedule(
   schedId: String,
   schedExpr: String,
   timeExpr: String,
-  msg:Either[DieselMsg,DieselMsgString],
+  msg: Either[DieselMsg, DieselMsgString],
   realm: String,
   env: String,
-  count:Long = 0l,
+  count: Long = 0l,
   singleton:Boolean = true,
   ref: Option[Cancellable] = None) {
   var currCount:Long = 0l
@@ -293,7 +290,7 @@ class EEDieselCron extends EExecutor("diesel.cron") {
 
   override def isMock: Boolean = true
 
-  override def test(m: EMsg, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) = {
+  override def test(ast: DomAst, m: EMsg, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) = {
     m.entity == DT
   }
 

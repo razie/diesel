@@ -5,6 +5,7 @@
  */
 package razie.diesel.engine.exec
 
+import razie.diesel.engine.DomAst
 import razie.diesel.engine.nodes.{EError, EMsg, MatchCollector}
 import razie.diesel.expr.ECtx
 
@@ -17,7 +18,7 @@ class EEDieselDT extends EExecutor("diesel.dt") {
 
   override def isMock: Boolean = true
 
-  override def test(m: EMsg, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) = {
+  override def test(ast: DomAst, m: EMsg, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) = {
     m.entity == DT
   }
 

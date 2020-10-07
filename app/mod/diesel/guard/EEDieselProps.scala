@@ -10,6 +10,7 @@ import java.io.FileInputStream
 import java.util.Properties
 import razie.cdebug
 import razie.diesel.dom.RDOM.P
+import razie.diesel.engine.DomAst
 import razie.diesel.engine.exec.EExecutor
 import razie.diesel.engine.nodes.{EError, EMsg, EVal, _}
 import razie.diesel.expr.ECtx
@@ -26,7 +27,7 @@ class EEDieselProps extends EExecutor("diesel.props") {
 
   override def isMock: Boolean = true
 
-  override def test(m: EMsg, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) = {
+  override def test(ast: DomAst, m: EMsg, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) = {
     m.entity == DieselMsg.PROPS.ENTITY
   }
 

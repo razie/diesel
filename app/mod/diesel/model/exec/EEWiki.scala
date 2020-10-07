@@ -9,6 +9,7 @@ package mod.diesel.model.exec
 import controllers.Wikil
 import razie.clog
 import razie.diesel.dom.RDOM.P
+import razie.diesel.engine.DomAst
 import razie.diesel.engine.exec.EExecutor
 import razie.diesel.engine.nodes._
 import razie.diesel.expr.ECtx
@@ -22,7 +23,7 @@ class EEWiki extends EExecutor("diesel.wiki") {
 
   override def isMock: Boolean = true
 
-  override def test(m: EMsg, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) = {
+  override def test(ast: DomAst, m: EMsg, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) = {
     m.entity == "rk.wiki" || m.entity == "wiki" || m.entity == "diesel.wiki"
   }
 

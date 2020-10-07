@@ -2,6 +2,7 @@ package mod.snow
 
 import mod.cart.Price
 import razie.clog
+import razie.diesel.engine.DomAst
 import razie.diesel.engine.exec.EExecutor
 import razie.diesel.engine.nodes.{EMsg, EVal, MatchCollector}
 import razie.diesel.expr.ECtx
@@ -10,7 +11,7 @@ object EEModSnowExecutor extends EExecutor("modsnow") {
 
   override def isMock: Boolean = true
 
-  override def test(m: EMsg, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) = {
+  override def test(ast: DomAst, m: EMsg, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) = {
     m.entity == "modsnow"
   }
 

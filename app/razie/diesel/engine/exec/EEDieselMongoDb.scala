@@ -9,7 +9,8 @@ import com.mongodb.casbah.Imports._
 import razie.db._
 import razie.diesel.dom.RDOM._
 import razie.diesel.dom._
-import razie.diesel.engine.nodes.{EError, EInfo, EMsg, EVal, MatchCollector}
+import razie.diesel.engine.DomAst
+import razie.diesel.engine.nodes._
 import razie.diesel.expr.ECtx
 
 
@@ -22,7 +23,7 @@ class EEDieselMongodDb extends EExecutor("diesel.db.col") {
 
   override def isMock: Boolean = true
 
-  override def test(m: EMsg, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) = {
+  override def test(ast: DomAst, m: EMsg, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) = {
     m.entity == MONGODB
   }
 

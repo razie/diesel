@@ -8,6 +8,7 @@ import mod.snow._
 import org.bson.types.ObjectId
 import razie.db.{REntity, RMany, ROne, RTable}
 import razie.diesel.dom.WikiDomain
+import razie.diesel.engine.DomAst
 import razie.diesel.engine.exec.EExecutor
 import razie.diesel.engine.nodes.{EMsg, EVal, MatchCollector}
 import razie.diesel.expr.ECtx
@@ -191,7 +192,7 @@ object EEModRkExec extends EExecutor("modrk") {
 
   override def isMock: Boolean = true
 
-  override def test(m: EMsg, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) = {
+  override def test(ast: DomAst, m: EMsg, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) = {
     m.entity == "modrk"
   }
 

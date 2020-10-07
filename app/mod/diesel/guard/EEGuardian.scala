@@ -11,6 +11,7 @@ import model.Users
 import razie.Logging
 import razie.diesel.dom.RDOM.P
 import razie.diesel.dom._
+import razie.diesel.engine.DomAst
 import razie.diesel.engine.exec.EExecutor
 import razie.diesel.engine.nodes._
 import razie.diesel.expr.ECtx
@@ -23,7 +24,7 @@ class EEGuardian extends EExecutor(DieselMsg.GUARDIAN.ENTITY) with Logging {
 
   final val DG = DieselMsg.GUARDIAN.ENTITY
 
-  override def test(m: EMsg, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) = {
+  override def test(ast: DomAst, m: EMsg, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) = {
     m.entity.startsWith(DG)
   }
 
@@ -134,7 +135,7 @@ class EEGuardian extends EExecutor(DieselMsg.GUARDIAN.ENTITY) with Logging {
             .filter { x =>
               val ok = Website.forRealm(ctx.root.settings.realm.get)
                   .exists(_.dieselTrust.split(",").contains(x))
-              if(!ok)
+              if (!ok)
                 res = EError(s"Can't trust realm $x") :: Nil
               ok
             }
