@@ -446,7 +446,7 @@ class DomApi extends DomApiBase with Logging {
       "queryParams" -> qparams
     )
 
-    razie.js.tojsons(m) + "---------------body-------------\n" + rawBody
+    razie.js.tojsons(m) + "\n***************** body *****************\n" + rawBody
   }
 
   /**
@@ -989,7 +989,8 @@ class DomApi extends DomApiBase with Logging {
 
     import scala.collection.JavaConversions._
 
-    def diffTable(p: Patch) = s"""<small>${views.html.admin.diffTable("", p, Some(("How", "Autosaved", "Orig")))}</small>"""
+    def diffTable(p: Patch) = s"""<small>${views.html.admin.diffTable("", p, Some(("How", "Original", "Draft")))
+    }</small>"""
 
     def diffT = diffTable(DiffUtils.diff(stw.lines.toList, story.lines.toList))
 
