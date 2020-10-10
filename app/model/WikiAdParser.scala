@@ -17,51 +17,8 @@ trait WikiAdParser extends ParserBase {
   private def wikiPropAds: PS = "{{" ~> "ad" ~> opt("[: ]".r ~> """[^}]*""".r) <~ "}}" ^^ {
     case what => {
       what match {
-        case Some("lederboard") => StrAstNode(Ads.lederboard)
-        case Some("square") | Some("squaretop") => StrAstNode(Ads.squaretop)
-        case Some("squareright") => StrAstNode(Ads.squareright)
-        case Some("squarenofloat") | Some("squareinline") => StrAstNode(Ads.squareinline)
-        case _ => StrAstNode(Ads.lederboard)
+        case _ => StrAstNode("")
       }
     }
   }
 }
-
-object Ads {
-  class Type
-  case object Lederboad extends Type
-  case object Square extends Type
-  case object None extends Type
-
-  val lederboard = """
-<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-<!-- 728x90all -->
-<ins class="adsbygoogle"
-style="display:inline-block;width:728px;height:90px"
-data-ad-client="ca-pub-5622141672958561"
-data-ad-slot="3920300830"></ins>
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-<p>
-                   """
-
-  private val squarebase = """
-<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-<!-- square -->
-<ins class="adsbygoogle"
-style="display:inline-block;width:336px;height:280px"
-data-ad-client="ca-pub-5622141672958561"
-data-ad-slot="4940326420"></ins>
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-</div>
-                   """
-  val squareinline = """<div style="margin: 10px 5px 0px 5px">""" + squarebase
-  val squaretopx = """ <div style="float:right;margin: -25px 5px 0px 5px"> """ + squarebase
-  val squareright = """<div style="float:right">""" + squareinline + """</div>"""
-  val squaretop = """<div style="float:right">""" + squaretopx + """</div>"""
-
-}
-

@@ -23,22 +23,4 @@ the footer of every page...
 
   </p>
 
-@if(ads && ! (Services.config.noads || stok.au.isUnder13)) {
-
-  @if(stok.isLight) {
-      <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-          <!-- RK-bottom-light -->
-      <ins class="adsbygoogle"
-      style="display:inline-block;width:728px;height:90px"
-      data-ad-client="ca-pub-5622141672958561"
-      data-ad-slot="6461721220"></ins>
-      <script>
-      (adsbygoogle = window.adsbygoogle || []).push({});
-      </script>
-  } else {
-    @Html(model.Ads.lederboard)
-  }
-}
 </footer>
-
-

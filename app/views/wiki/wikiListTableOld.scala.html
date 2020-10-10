@@ -14,8 +14,6 @@ just the actual list, nothing else
 
 @label(s:String, wid:WID) = @{if(s.isEmpty) wid.name else s}
 
-        @ads.addSquareTop(stok)
-
         @if(pages.size > 0) {
           <ul>
           @pages.take(16).map { p=>
@@ -25,7 +23,6 @@ just the actual list, nothing else
           }
 
           @if(pages.size>16) {
-            @ads.addSquareTop(stok)
 
             @pages.drop(16).map { p=>
               <li><a href="@controllers.Wiki.wr(p._1, realm)">@highlight(label(p._2, p._1))</a> <small>&nbsp;  @p._1.cat

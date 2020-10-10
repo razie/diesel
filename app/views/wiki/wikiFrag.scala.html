@@ -251,18 +251,7 @@ function selectTextareaLine(tarea,lineNum) {
       @wikiFragExtras(stok.au,page)
 
       @if(!simple && !print) {
-
-        @if(ads && page.isDefined && !page.exists(_.contentProps.contains("noAds")) &&
-                """\{\{ad[:}]""".r.findFirstIn(page.get.content).isEmpty &&
-                page.get.content.length > 100 && WikiDomain(wid.getRealm).noAds(page.get.category) &&
-                ! _root_.razie.wiki.Services.config.noads) {
-          <br>
-          @Html(model.Ads.lederboard)
-        }
-
         <p>
-
-
       } <!-- /simple -->
     }
 
