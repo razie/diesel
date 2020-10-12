@@ -60,7 +60,7 @@ class DomGuard extends DomApiBase with Logging {
               "totalCount" -> (eng.totalTestCount),
               "failureCount" -> eng.failedTestCount,
               //      "errors" -> errors.toList,
-              "dieselTrace" -> DieselTrace(eng.root, eng.settings.node, eng.id, "diesel", "runDom",
+              DieselTrace.dieselTrace -> DieselTrace(eng.root, eng.settings.node, eng.id, "diesel", "runDom",
                 eng.settings.parentNodeId).toJson,
               "settings" -> eng.settings.toJson,
               "specs" -> eng.pages.map(_.specPath)

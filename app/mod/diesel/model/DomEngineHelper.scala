@@ -7,10 +7,9 @@
 package mod.diesel.model
 
 import controllers.RazRequest
-import razie.diesel.engine.RDExt._
 import play.api.mvc._
+import razie.diesel.engine.DomEngineSettings
 import razie.diesel.engine._
-
 import scala.Option.option2Iterable
 
 object DomEngineHelper {
@@ -110,9 +109,9 @@ object DomEngineHelper {
       sketchMode = fqhoParm(SKETCH_MODE, "false").toBoolean,
       execMode = fqhoParm(EXEC_MODE, "sync"),
       resultMode = fqhoParm(RESULT_MODE, ""),
-      parentNodeId = fqhParm("dieselNodeId"),
-      configTag = fqhParm("dieselConfigTag"),
-      userId = fqhParm("dieselUserId"),
+      parentNodeId = fqhParm(dieselNodeId),
+      configTag = fqhParm(dieselConfigTag),
+      userId = fqhParm(dieselUserId),
       cont,
       simMode = fqhoParm(SIM_MODE, "false").toBoolean,
       hostport = Some(request.host)
@@ -126,27 +125,33 @@ object DomEngineHelper {
   def parmsFromRequestHeader(request:RequestHeader, cont:Option[EContent] = None) : Map[String,String] = {
     val q = request.queryString.map(t=>(t._1, t._2.mkString))
 
-    import DomEngineSettings._
-
-    val fil = FILTER ++ Array("dieselNodeId", "dieselConfigTag", "dieselUserId")
-
-    q.filter(t=> !(fil contains t._1))
-
+    q.filter(t => !(HEADERS_FILTER contains t._1))
   }
 
   /** other attributes in the request not related to settings - use these as input
     *
     * combine the queryParms with the posted form parms
     */
-  def headers(request:RequestHeader, cont:Option[EContent] = None) : Map[String,String] = {
+  def headers(request: RequestHeader, cont: Option[EContent] = None): Map[String, String] = {
     val q = request.headers.toSimpleMap
 
-    import DomEngineSettings._
-
-    val fil = FILTER ++ Array("dieselNodeId", "dieselConfigTag", "dieselUserId")
-
-    q.filter(t=> !(fil contains t._1))
+    q
+        .filter(t => !(HEADERS_FILTER contains t._1))
+        .map(t => if (HEADERS_SCRAMBLE contains t._1) (t._1, "*******") else t)
   }
+
+  // these headers are filtered
+  val HEADERS_FILTER = DomEngineSettings.FILTER ++
+      Array(dieselNodeId, dieselConfigTag, dieselUserId)
+
+  // these headers are scrambled
+  val HEADERS_SCRAMBLE = Array("X-Api-Key", "Authorization")
+
+  final val dieselNodeId = "dieselNodeId"
+  final val dieselConfigTag = "dieselConfigTag"
+  final val dieselUserId = "dieselUserId"
+  final val dieselFlowId = "dieselFlowId"
+  final val dieselTrace = "dieselTrace"
 }
 
 

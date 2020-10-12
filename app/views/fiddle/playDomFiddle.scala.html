@@ -415,27 +415,27 @@ var runpill_@id = function(id) {
       hideSpinner();
       console.log( "ERR "+JSON.stringify(x));
       if(JSON.stringify(x).indexOf("staleid") >= 0) {
-        console.log("saveDraft-=Stale page - please refresh to get the latest saved draft!!!");
-        errMsg("Stale page - please refresh to get the latest saved draft!!!");
+        console.log("Stale page");
+        errMsg("STALE DRAT - last changes not saved! SAVE topic or refresh and loose latest Changes!");
         // location.reload();
       }
     }
   });
 }
 
-function setErrors (s,e,t) {
-  $('#errors').text(s + '/' + e + '/' + t);
+function setErrors (nfailed,nerrors,ntotal) {
+  $('#errors').text(nfailed + '/' + nerrors + '/' + ntotal);
   $('#errors').removeClass();
-  if(s == 0 || s == "0") {
-    if(e == 0 || e == "0") {
-      $('#errors').prop("title", "no errors");
+  if(nfailed == 0 || nfailed == "0") {
+    if(nerrors == 0 || nerrors == "0") {
+      $('#errors').prop("title", "all tests ok!");
       $('#errors').addClass("label label-success");
     } else {
       $('#errors').prop("title", "no failures, but some exceptions");
       $('#errors').addClass("label label-warning");
     }
   } else {
-    $('#errors').prop("title", "some tests failed");
+    $('#errors').prop("title", "failed/errors/total");
     $('#errors').addClass("label label-danger");
   }
 }

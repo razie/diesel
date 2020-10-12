@@ -346,26 +346,33 @@ var lastMarkerStory=null;
 function weSelect(wpath,line,col) {
   var Range = ace.require('ace/range').Range;
 
-  if(wpath.includes("Spec:")) {
-    if(lastMarkerSpec != null) specEditor.session.removeMarker(lastMarkerSpec);
-    specEditor.scrollToLine(line, true, true, function () {});
-    lastMarkerSpec = specEditor.session.addMarker(new Range(line-1, 0, line-1, 100), "ace-primaryline", "fullLine");
-  } else if(wpath.includes("Story:")) {
-    if(lastMarkerStory != null)  storyEditor.session.removeMarker(lastMarkerStory);
-    storyEditor.scrollToLine(line, true, true, function () {});
-    lastMarkerStory = storyEditor.session.addMarker(new Range(line-1, 0, line-1, 100), "ace-primaryline", "fullLine");
+  if (wpath.includes("Spec:")) {
+    if (lastMarkerSpec != null) specEditor.session.removeMarker(lastMarkerSpec);
+    specEditor.scrollToLine(line, true, true, function () {
+    });
+    lastMarkerSpec = specEditor.session.addMarker(new Range(line - 1, 0, line - 1, 100), "ace-primaryline", "fullLine");
+  } else if (wpath.includes("Story:")) {
+    if (lastMarkerStory != null) storyEditor.session.removeMarker(lastMarkerStory);
+    storyEditor.scrollToLine(line, true, true, function () {
+    });
+    lastMarkerStory = storyEditor.session.addMarker(new Range(line - 1, 0, line - 1, 100), "ace-primaryline", "fullLine");
   }
 }
 
 /** this works IN the fiddle only */
-function weref(wpath,line,col) {
-  if(wpath.includes("Spec:")) {
+function welink(url) {
+  popupLargeUrl("/" + url);// + "?format=html");
+}
+
+/** this works IN the fiddle only */
+function weref(wpath, line, col) {
+  if (wpath.includes("Spec:")) {
     // is it a different spec?
-    if(wpath != specWpath) loadSpec(wpath, function () {
-        weSelect(wpath, line, col)
-      });
+    if (wpath != specWpath) loadSpec(wpath, function () {
+      weSelect(wpath, line, col)
+    });
     else weSelect(wpath, line, col);
-  } else if(wpath.includes("Story:")) {
+  } else if (wpath.includes("Story:")) {
     weSelect(wpath, line, col);
   }
 }

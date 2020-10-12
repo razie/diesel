@@ -61,7 +61,7 @@ class Module extends AbstractModule {
     // Set AtomicCounter as the implementation for Counter.
 //    bind(classOf[Counter]).to(classOf[AtomicCounter])
 
-    Services.auth = new RazAuthService ()
+    Services.auth = new RazAuthService()
 //    bind(classOf[AuthService[_]]).toInstance(new RazAuthService())
 
     Services.config = Config

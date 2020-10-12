@@ -1,12 +1,10 @@
 package services
 
-import java.util.concurrent.TimeUnit
-import mod.diesel.controllers.DomFiddles
 import akka.actor.{Actor, Props}
 import controllers.Emailer
 import model.EventNeedsQuota
 import razie.{clog, cout}
-import razie.wiki.{EventProcessor, Services}
+import razie.wiki.{Config, EventProcessor, Services, WikiConfig}
 import play.libs.Akka
 import razie.wiki.admin.SendEmail
 import razie.wiki.model._
@@ -47,8 +45,8 @@ class WikiAsyncObservers extends Actor {
   def localhost = Services.config.isLocalhost
 
   def receive = {
-    case wc: WikiConfigChanged => {
-      val ev = new WikiConfigChanged(nodeName.mkString)
+    case WikiConfigChanged(_, c) => {
+      val ev = new WikiConfigChanged(nodeName.mkString, c)
       WikiObservers.after(ev)
       pubSub ! BCast(ev)
     }
@@ -57,7 +55,7 @@ class WikiAsyncObservers extends Actor {
 
       val ev = wa.copy(node = nodeName)
 
-      if(!localQuiet || !localhost) {
+      if (!localQuiet || !localhost) {
         ev.create
       } else {
         clog << "localQuiet !! WikiAudit"
@@ -159,12 +157,32 @@ class WikiPubSub extends Actor {
       if (maxCount > 0) {
         maxCount -= 1
         Audit.logdb("DEBUG", "exec.event", "me: " + self.path + " from: " + sender.path, ev1.toString().take(250))
+
         WikiObservers.after(ev1)
+
       } else if (maxCount > -23) {
         maxCount -= 1
-        Audit.logdb("WARNING", "maxCount messed up - event skipped", "me: " + self.path + " from: " + sender.path, ev1.toString().take(250))
+        Audit.logdb("WARNING", "maxCount messed up - event skipped", "me: " + self.path + " from: " + sender.path,
+          ev1.toString().take(250))
       }
     }
+
+    // actual work - message came from another node
+    case ev1: WikiConfigChanged if (sender.compareTo(self) != 0) => {
+      clog << s"CLUSTER_BRUTE_RECEIVED ${ev1.toString} from $self"
+      if (maxCount > 0) {
+        maxCount -= 1
+        Audit.logdb("DEBUG", "exec.event", "me: " + self.path + " from: " + sender.path, ev1.toString().take(250))
+
+        Config.reloadUrlMap // this will regenerate locally
+
+      } else if (maxCount > -23) {
+        maxCount -= 1
+        Audit.logdb("WARNING", "maxCount messed up - event skipped", "me: " + self.path + " from: " + sender.path,
+          ev1.toString().take(250))
+      }
+    }
+
     case x@_ => Audit.logdb("DEBUG", "ERR_CLUSTER_BRUTE", x.getClass.getName)
   }
 }

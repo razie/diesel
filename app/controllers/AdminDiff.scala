@@ -19,7 +19,6 @@ import razie.Snakk._
 import razie.db.RazSalatContext.ctx
 import razie.db.{RCreate, RMany}
 import razie.hosting.WikiReactors
-import razie.tconf.hosting.Reactors
 import razie.wiki.Config
 import razie.wiki.Sec._
 import razie.wiki.admin.Autosave
@@ -550,6 +549,20 @@ class AdminDiff extends AdminBase with Logging {
     )
   }
 
+  /** main entry point for importing a remote db */
+  def importDbApi = Action { implicit request =>
+    clog << "ADMIN_IMPORT_DB"
+
+    if (!isDbEmpty) {
+      Ok("ERR db not empty!").as("application/text")
+    } else {
+      val res = importDbImpl(new RazRequest(request))
+
+      Ok(s"""${res._1}""").as("application/text")
+    }
+  }
+
+  /** import remote db - called from curl, prints nice */
   def importDbSync = Action.async { implicit request =>
     clog << "ADMIN_IMPORT_DB"
 
@@ -563,9 +576,11 @@ class AdminDiff extends AdminBase with Logging {
       import scala.concurrent.ExecutionContext.Implicits.global
 
       res._2.map { i =>
-        Future {
-          Thread.sleep(2)
-          System.exit(7)
+        if (!(razRequest(request).fqParm("restart", "yes") == "no")) {
+          Future {
+            Thread.sleep(2)
+            System.exit(7)
+          }
         }
         Ok(
           s"""
@@ -583,15 +598,51 @@ class AdminDiff extends AdminBase with Logging {
     }
   }
 
-  def importDb = Action { implicit request =>
-    clog << "ADMIN_IMPORT_DB"
+  /** importing a remote realm, in an existing local db */
+  def importRealmApi = FAUR { implicit request =>
+    clog << "ADMIN_IMPORT_REALM"
+    val res = importRealm(request.au.get, request, false)
+    Ok(s"""ERRORS: ${res}""").as("application/text")
+  }
 
-    if (!isDbEmpty) {
-      Ok("ERR db not empty!").as("application/text")
+  /** importing a remote realm, in an existing local db */
+  def importRealmSync = RAction.async { implicit request =>
+    clog << "ADMIN_IMPORT_REALM"
+
+    if (isDbEmpty) {
+      Future.successful {
+        Ok("ERR db is empty!").as("application/text")
+      }
     } else {
-      val res = importDbImpl(new RazRequest(request))
 
-      Ok(s"""${res._1}""").as("application/text")
+      import scala.concurrent.ExecutionContext.Implicits.global
+      val res = Future {
+        importRealm(request.au.get, request, false)
+      }
+
+      import scala.concurrent.ExecutionContext.Implicits.global
+
+      res.map { i =>
+        if (!(request.fqParm("restart", "yes") == "no")) {
+          Future {
+            Thread.sleep(2)
+            System.exit(7)
+          }
+        }
+
+        Ok(
+          s"""
+             |
+             |********************************************************
+             |*                                                      *
+             |*      IMPORTED CONFIGURATION FROM REMOTE...           *
+             |*            Total {res._1}  wikis                    *
+             |*      $i errors... RESTARTING THE PROCESS...          *
+             |*                                                      *
+             |********************************************************
+             |
+             |""".stripMargin).as("application/text")
+      }
     }
   }
 
@@ -603,7 +654,7 @@ class AdminDiff extends AdminBase with Logging {
   }
 
   /** import a realm from remote */
-  def importRealm(au: User, stok: RazRequest) = {
+  def importRealm(au: User, stok: RazRequest, setAsDefault: Boolean = true) = {
 
     val source = stok.fqhParm("source").get
     val realm = stok.fqhParm("realm").get
@@ -674,7 +725,9 @@ class AdminDiff extends AdminBase with Logging {
     }
 
     // remember who I am supposed to be
-    DieselSettings(None, None, "isimulateHost", s"$realm.dieselapps.com").set
+    if (setAsDefault) {
+      DieselSettings(None, None, "isimulateHost", s"$realm.dieselapps.com").set
+    }
 
     lastImport = Some(
       s"""Done: imported... $count wikis, with $countErr errors. Please reboot the server!
@@ -734,21 +787,23 @@ class AdminDiff extends AdminBase with Logging {
   }
 
   /** is current user active here - used with basic auth from remote, to verify before import */
-  def isu(key: String) = FAUR { implicit request =>
-    Ok("yes") // getting here means he's auth
+  def isu(key: String) = FAUR {
+    implicit request =>
+      Ok("yes") // getting here means he's auth
   }
 
   /** get the profile of the current user, encrypted */
-  def getu(key: String) = FAU { implicit au =>
-    implicit errCollector =>
-      implicit request =>
+  def getu(key: String) = FAU {
+    implicit au =>
+      implicit errCollector =>
+        implicit request =>
 
-        val e = new admin.CypherEncryptService(key, "")
-        val pu = PU(au.copy(email = e.enc(au.emailDec), pwd = e.enc(au.pwd.dec)), au.profile.get)
+          val e = new admin.CypherEncryptService(key, "")
+          val pu = PU(au.copy(email = e.enc(au.emailDec), pwd = e.enc(au.pwd.dec)), au.profile.get)
 
-        val j = grater[PU].asDBObject(pu).toString
+          val j = grater[PU].asDBObject(pu).toString
 
-        Ok(j).as("application/json")
+          Ok(j).as("application/json")
   }
 
 }

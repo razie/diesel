@@ -266,8 +266,13 @@ class DomApi extends DomApiBase with Logging {
         DieselMsg.irunDom + path
       )
 
-      engine.root.childrenCol.append(DomAst(EInfo("HTTP Request details",
-        printRequest(stok.req, engine.settings.postedContent.map(_.body).mkString)), AstKinds.DEBUG))
+      engine.root.childrenCol.append(
+        DomAst(
+          EInfo(
+            "HTTP Request details",
+            printRequest(stok.req,
+              engine.settings.postedContent.map(_.body).mkString)),
+          AstKinds.DEBUG))
 
       setHostname(engine.ctx.root)
 
@@ -327,11 +332,11 @@ class DomApi extends DomApiBase with Logging {
           val errors = new ListBuffer[String]()
 
           // no rules matched
-          val ok = if(RETURN501 && (msgAst.isEmpty ||
-             msgAst.get.children.headOption
-                 .exists(x=>
-                   x.value.isInstanceOf[EWarning] &&
-                   x.value.asInstanceOf[EWarning].code == DieselMsg.ENGINE.ERR_NORULESMATCH)
+          var ok = if (RETURN501 && (msgAst.isEmpty ||
+              msgAst.get.children.headOption
+                  .exists(x =>
+                    x.value.isInstanceOf[EWarning] &&
+                        x.value.asInstanceOf[EWarning].code == DieselMsg.ENGINE.ERR_NORULESMATCH)
               )) {
             // no rules applied - 501 - prevents us from returning settings values when nothing matched
             body = s"No rules matched for path: (${path}) message: (${msg.get.ea})"
@@ -340,8 +345,8 @@ class DomApi extends DomApiBase with Logging {
             Status(NOT_IMPLEMENTED)(body)
                 .withHeaders("diesel-reason" -> body)
 
-          } else if(RETURN501 && (msgAst.isEmpty ||
-                // it was a diesel.rest but nothing matched underneath
+          } else if (RETURN501 && (msgAst.isEmpty ||
+              // it was a diesel.rest but nothing matched underneath
                 msgAst.get.children
                     .exists(
                         a=> a.kind == AstKinds.RECEIVED &&
@@ -386,7 +391,8 @@ class DomApi extends DomApiBase with Logging {
               "totalCount" -> engine.totalTestCount,
               "failureCount" -> engine.failedTestCount,
               "errors" -> errors.toList,
-              "dieselTrace" -> DieselTrace(root, settings.node, engine.id, "diesel", "runDom", settings.parentNodeId).toJson
+              DieselTrace.dieselTrace -> DieselTrace(root, settings.node, engine.id, "diesel", "runDom",
+                settings.parentNodeId).toJson
             )
 
             if ("treeHtml" == settings.resultMode) m = m + ("tree" -> root.toHtml)
@@ -405,6 +411,8 @@ class DomApi extends DomApiBase with Logging {
               body = js.tojsons(m)
             Ok(body).as(WTypes.Mime.appJson)
           }
+
+          ok = ok.withHeaders(DomEngineHelper.dieselFlowId -> engine.id)
 
           engine.addResponseInfo(ok.header.status, body, ok.header.headers)
 
@@ -431,6 +439,7 @@ class DomApi extends DomApiBase with Logging {
     }
   }
 
+  /** request to string */
   def printRequest(implicit request: Request[_], rawBody: String = "") = {
     implicit val stok = razRequest
 
@@ -780,7 +789,6 @@ class DomApi extends DomApiBase with Logging {
             }
 
             val result = mkStatus(payload, engine, Some(msgAst)).as(ctype)
-              .withHeaders("diesel-trace-id" -> s"engine id: ${engine.id}")
 
             // don't show this for diesel.rest
             dieselRestMsg
@@ -874,11 +882,11 @@ class DomApi extends DomApiBase with Logging {
 
         val u1 = usagesStories(e, a, allStories)(engine.ctx)
 
-        // 2.
-        val u2 = usagesSpecs(e, a)(engine.ctx)
+        // 2. specs, put $when first
+        val u2 = usagesSpecs(e, a)(engine.ctx).sortBy(x => if (x._1 == "$when") 0 else 1)
 
         /** mesg to entry */
-        def addm(t: String, msg: String, p: Option[EPos], line:String) = {
+        def addm(t: String, msg: String, p: Option[EPos], line: String) = {
           Map(
             "type" -> t,
             "msg" -> msg,
@@ -1063,11 +1071,12 @@ class DomApi extends DomApiBase with Logging {
         }
     }
 
-
     // add headers
-    engine.ctx.listAttrs.filter(_.name startsWith HTTP.HEADER_PREFIX).map {p=>
+    engine.ctx.listAttrs.filter(_.name startsWith HTTP.HEADER_PREFIX).map { p =>
       ok = ok.withHeaders(p.name.replace(HTTP.HEADER_PREFIX, "") -> p.calculatedValue(engine.ctx))
     }
+
+    ok = ok.withHeaders(DomEngineHelper.dieselFlowId -> engine.id)
 
     // or from json
 //    engine.ctx.getp(HTTP.RESPONSE).filter(_.ttype == "JSON").map {p=>

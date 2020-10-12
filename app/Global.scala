@@ -5,7 +5,7 @@
   * (_)\_)(__)(__)(____)(____)(____)(___/   (__)  (______)(____/    LICENSE.txt
   */
 
-import Global.{RATELIMIT, isApiRequest, isShouldDebug}
+import Global.{LIMIT_API, LIMIT_API_UPPER, RATELIMIT, isApiRequest, isShouldDebug}
 import admin._
 import com.mongodb.casbah.Imports._
 import controllers._
@@ -18,11 +18,13 @@ import play.api.mvc._
 import razie.audit.Audit
 import razie.db._
 import razie.hosting.{BannedIps, Website, WikiReactors}
+import razie.wiki.Config.reloadUrlMap
 import razie.wiki.admin._
 import razie.wiki.model._
 import razie.wiki.util.PlayTools
-import razie.wiki.{Config, Services}
+import razie.wiki.{Config, Services, WikiConfig}
 import razie.{cdebug, clog}
+import scala.collection.concurrent.TrieMap
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 import services.{InitAlligator, RkCqrs}
@@ -39,9 +41,22 @@ object Global extends WithFilters(LoggingFilter) {
   // min, eh
   var lastErrorCount = 0 // time last error email went out - just one every 5 min, eh
 
-  val RATELIMIT = true // rate limit API requests
-  val RATE = true // rate limit API requests
+  var RATELIMIT = true // rate limit API requests
+  var LIMIT_API_UPPER = 80 //20
+  var LIMIT_API = 80 //15
 
+  // rate limit groups
+  val rateLimits = new TrieMap[String, RateLimitGroup]()
+  val rateCurrent = new TrieMap[String, Int]()
+  val rateStats = new TrieMap[String, RateLimitStats]()
+
+  WikiObservers mini {
+    case WikiConfigChanged(node, config) => {
+      Global.RATELIMIT = config.prop("diesel.staticRateLimiting", "true").toBoolean
+      Global.LIMIT_API = config.prop("diesel.staticRateLimit", "20").toInt
+      Global.LIMIT_API_UPPER = config.prop("diesel.staticRateLimit", "20").toInt
+    }
+  }
 
   override def onError(request: RequestHeader, ex: Throwable) = {
     clog << "ERR_onError - trying to log/audit in DB... " + "request:" + request.toString + "headers:" + request
@@ -88,19 +103,20 @@ object Global extends WithFilters(LoggingFilter) {
   }
 
   /** some requests are too frequent and safe, no debug to inflate logs */
-  def isShouldDebug (path:String) =
-    !path.startsWith( "/assets/") &&
-        !path.startsWith( "/razadmin/ping/shouldReload") &&
-        !path.startsWith( "/diesel/status")
+  def isShouldDebug(path: String) =
+    !path.startsWith("/assets/") &&
+        !path.startsWith("/razadmin/ping/shouldReload") &&
+        !path.startsWith("/diesel/status")
 
   /** API requests may be rate limited separately */
-  def isApiRequest (path:String) =
-    path.startsWith( "/diesel/rest/") ||
-        path.startsWith( "/diesel/mock/") ||
-        path.startsWith( "/diesel/react/") ||
-        path.startsWith( "/diesel/start/") ||
-        path.startsWith( "/diesel/fiddle/react/") ||
-        path.startsWith( "/diesel/wreact/")
+  def isApiRequest(path: String) =
+    path.contains("/elkpt/")
+//    path.startsWith( "/diesel/rest/") ||
+//        path.startsWith( "/diesel/mock/") ||
+//        path.startsWith( "/diesel/react/") ||
+//        path.startsWith( "/diesel/start/") ||
+//        path.startsWith( "/diesel/fiddle/react/") ||
+//        path.startsWith( "/diesel/wreact/")
 
   /** intercepting routing of requests to see about forwards and proxies */
   override def onRouteRequest(request: RequestHeader): Option[Handler] = {
@@ -161,10 +177,13 @@ object Global extends WithFilters(LoggingFilter) {
         super.onRouteRequest(rh)
 
       } else if(isApiRequest(request.path)) {
+
+        // request limiting here will avoid overloading the internal execution queue as well
         val curr = GlobalData.servingApiRequests
-        if(RATELIMIT && curr > 15) {
-          Some(EssentialAction {rh=>
-            Action { rh:play.api.mvc.RequestHeader =>
+
+        if (RATELIMIT && curr > LIMIT_API) {
+          Some(EssentialAction { rh =>
+            Action { rh: play.api.mvc.RequestHeader =>
               GlobalData.synchronized {
                 GlobalData.limitedApiRequests = GlobalData.limitedApiRequests + 1
               }
@@ -270,6 +289,7 @@ object Global extends WithFilters(LoggingFilter) {
 
 }
 
+/** this filter is called to execute the request, we can handle before and after */
 object LoggingFilter extends Filter {
   import ExecutionContext.Implicits.global
 
@@ -284,14 +304,6 @@ object LoggingFilter extends Filter {
 
     if (shouldDebug) {
       cdebug << s"LF.START ${rh.method} ${rh.host} ${rh.uri}"
-    }
-
-    GlobalData.synchronized {
-      GlobalData.serving = GlobalData.serving + 1
-
-      if(apiRequest) {
-        GlobalData.servingApiRequests = GlobalData.servingApiRequests + 1
-      }
     }
 
     def served {
@@ -338,31 +350,64 @@ object LoggingFilter extends Filter {
       if(isAsset) "ASSET"
       else "PAGE"
 
+    // execute or filter out
     try {
-      val curr = GlobalData.servingApiRequests
-      val executed = if(RATELIMIT && apiRequest && curr >= 20) {
-        // rate limiting API requests
-        Future.successful {
-            GlobalData.synchronized {
-              GlobalData.limitedApiRequests = GlobalData.limitedApiRequests + 1
-            }
-            Audit.logdb("ERR_RATE_LIMIT2", "curr:" + curr, "request:" + rh.toString, "headers:" + rh.headers)
+
+      var err: Option[Result] = None
+      var curr = GlobalData.servingApiRequests
+
+      // first check rate limiting - if limited, populate err
+      GlobalData.synchronized {
+
+        curr = GlobalData.servingApiRequests
+        if (RATELIMIT && apiRequest && curr >= LIMIT_API_UPPER) {
+          // rate limiting API requests
+          GlobalData.limitedApiRequests = GlobalData.limitedApiRequests + 1
+
+          err = Some(
             Results.TooManyRequest("Rate limiting 2 - in progress: " + curr)
+          )
+        } else {
+          // already under sync
+          GlobalData.serving = GlobalData.serving + 1
+
+          if (apiRequest) {
+            GlobalData.servingApiRequests = GlobalData.servingApiRequests + 1
           }
-      } else {
-        // run the executor that was meant to be
-        next(rh)
+        }
       }
 
+      // more expensive stuff outside the sync block
+      if (err.nonEmpty) {
+        // rate limiting API requests
+        Future.successful {
+          GlobalData.synchronized {
+            GlobalData.limitedApiRequests = GlobalData.limitedApiRequests + 1
+          }
+          Audit.logdb("ERR_RATE_LIMIT2", "curr:" + curr, "request:" + rh.toString,
+            "headers:" + rh.headers)
+
+          clog << s"LF.ERR.429 ${rh.method} ${rh.uri}"
+          err.get // return the err
+        }
+      } else {
+        // actually serving it
+
+        // run the executor that was meant to be
+        val executed = next(rh)
+
         executed map { res =>
-        if(res.header.status == 200)
-          logTime(rh)(getType)(res)
-        else
-          logTime(rh)(getType)(res)
+          if (res.header.status == 200)
+            logTime(rh)(getType)(res)
+          else
+            logTime(rh)(getType)(res)
+        }
       }
     } catch {
       case t: Throwable => {
-        clog << s"LF.STOP.EXCEPTION ${rh.method} ${rh.uri} threw ${t.toString} \n ${com.razie.pub.base.log.Log.getStackTraceAsString(t)}"
+        clog <<
+            s"""LF.ERR.EXCEPTION ${rh.method} ${rh.uri} threw ${t.toString} \n
+               | ${com.razie.pub.base.log.Log.getStackTraceAsString(t)}""".stripMargin
         served
         throw t
       }
