@@ -48,7 +48,6 @@ view an engine
 }
 
 <script>
-var refreshMode = true;
 var done = true;
 
 @if(eng.exists(e=>DomState.isDone(e.status))) {
@@ -57,6 +56,7 @@ done = true;
 done = false;
 }
 
+var refreshMode = true;
 function setRefreshMode () {
   refreshMode = $('#refreshMode').prop('checked');
   $('#refreshMode').prop('checked', !refreshMode);
