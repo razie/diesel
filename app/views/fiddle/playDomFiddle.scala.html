@@ -135,6 +135,7 @@ Command reference (see more about [[specs.Topic:Expressions_and_pattern_matching
       <input type="checkbox" id="traceStory" title="Expand/collaps trace nodes" > <small>(trace)</small>
       <input type="checkbox" id="debugStory" title="Expand/collaps debug nodes" checked> <small>(debug)</small>
       <input type="checkbox" id="generatedStory" title="Expand/collaps generated nodes" checked> <small>(generated)</small>
+      <input type="checkbox" id="payloadOnly" title="Show payload"> <small>(payload)</small>
       <button id="ferrStory" title="Find first error" onclick="ferrStory('@id')" class="btn btn-default btn-xs"> <small><span class="glyphicon glyphicon-menu-down"></span> (first error)</small></button>
     </div>
 
@@ -507,6 +508,7 @@ var runpill2_@id = function(id,compileOnly, next) {
 };
 
 var currEngineId = null;
+var currEngineData = null;
 
 var checkpill2_@id = function(id) {
   console.log("checkpill2 run isRefreshing2="+isRefreshing2);
@@ -571,10 +573,11 @@ function processEngineResult(id, data, compileOnly, lastTime, next) {
   console.log("  RES data.info: " +JSON.stringify(data.info));
 
   currEngineId = data.info.engineId;
+  currEngineData = data;
 
   if(data.info.engineDone) {
     console.log("  RESULT engine.done - processing");
-    processFinalEngineResult(id, data, compileOnly, lastTime, next);
+    processFinalEngineResult(id, currEngineData, compileOnly, lastTime, next);
     currEngineId = null;
   } else {
     // engine not done yet - wait for websocket response
@@ -602,6 +605,25 @@ function processPartialEngineResult(id, data, compileOnly, lastTime, next) {
 };
 
 /** final response - engine complete - update everything */
+function showFinalEngineResult() {
+  var data = currEngineData;
+  var id = '@id';
+  var ponly = $('#payloadOnly').prop('checked');
+
+  if(ponly) {
+    $('#iframeOut3_' + id).html(encAmp(data.payload) + '\n');
+    $('#iframeOutSpec_' + id).html(encAmp(data.payload) + '\n');
+  } else {
+    $('#iframeOut3_' + id).html(encAmp(data.res) + '\n');
+    $('#iframeOutSpec_' + id).html(encAmp(data.res) + '\n');
+
+    dieselHideTrace($('#traceStory').prop('checked'));
+    dieselHideDebug($('#debugStory').prop('checked'));
+    dieselHideGenerated($('#generatedStory').prop('checked'));
+  }
+}
+
+/** final response - engine complete - update everything */
 function processFinalEngineResult(id, data, compileOnly, lastTime, next) {
   isRefreshing2 -= 1;
   hideSpinner();
@@ -613,13 +635,7 @@ function processFinalEngineResult(id, data, compileOnly, lastTime, next) {
 
     // jquery.html will expand the escaped html, we need to escape again with encAmp
     // if i don't do this, html values will mess up the current page
-    // if(! data.simMode) { // was not executed
-    $('#iframeOut3_' + id).html(encAmp(data.res) + '\n');
-    $('#iframeOutSpec_' + id).html(encAmp(data.res) + '\n');
-    dieselHideTrace($('#traceStory').prop('checked'));
-    dieselHideDebug($('#debugStory').prop('checked'));
-    dieselHideGenerated($('#generatedStory').prop('checked'));
-    // }
+    showFinalEngineResult(); // from curEngineData
   }
 
   if(!compileOnly) {
@@ -1136,24 +1152,32 @@ $(window).on('load', function() {
     $('#expandedSpec').trigger("change");
   });
 
-  // useLocalStorageCheckbox("debugSpec", "domFiddleDebugSpec", function (a,b,expanded) {
-  //   hideDebug(expanded);
-  // });
+
+  // todo could optimize and not showFinal every time trace/debug but only if payload was on
 
   useLocalStorageCheckbox("traceStory", "domFiddleTraceStory", function (a,b,expanded) {
+    if(expanded) $('#payloadOnly').prop('checked', false);
+    if(currEngineData != null) showFinalEngineResult(); // repaint
     dieselHideTrace(expanded);
   });
 
   useLocalStorageCheckbox("debugStory", "domFiddleDebugStory", function (a,b,expanded) {
+    if(expanded) $('#payloadOnly').prop('checked', false);
+    if(currEngineData != null) showFinalEngineResult(); // repaint
     dieselHideDebug(expanded);
   });
 
-  // useLocalStorageCheckbox("generatedSpec", "domFiddleGeneratedSpec", function (a,b,expanded) {
-  //   hideGenerated(expanded);
-  // });
-
   useLocalStorageCheckbox("generatedStory", "domFiddleGeneratedStory", function (a,b,expanded) {
+    if(expanded) $('#payloadOnly').prop('checked', false);
+    if(currEngineData != null) showFinalEngineResult(); // repaint
     dieselHideGenerated(expanded);
+  });
+
+  useLocalStorageCheckbox("payloadOnly", "domFiddlePayloadOnly", function (a,b,expanded) {
+    if(expanded) $('#traceStory').prop('checked', false);
+    if(expanded) $('#debugStory').prop('checked', false);
+    if(expanded) $('#generatedStory').prop('checked', false);
+    if(currEngineData != null) showFinalEngineResult(); // repaint
   });
 });
 

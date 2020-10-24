@@ -1,13 +1,14 @@
 package mod.diesel.controllers
 
 import akka.actor.{Actor, Props, _}
-import com.google.inject.{Inject, Singleton}
+import com.google.inject.Singleton
 import controllers.{IgnoreErrors, VErrors, WikiAuthorization}
 import java.util.concurrent.TimeUnit
 import mod.diesel.model.DomEngineHelper
 import org.joda.time.DateTime
 import play.api.Play.current
 import play.api.mvc._
+import razie.diesel.Diesel
 import razie.diesel.dom.RDomain.DOM_LIST
 import razie.diesel.dom.{WikiDomain, _}
 import razie.diesel.engine.AstKinds._
@@ -17,7 +18,7 @@ import razie.diesel.engine.{DieselAppContext, RDExt, _}
 import razie.diesel.model.DieselMsg
 import razie.diesel.utils.DomUtils.{SAMPLE_SPEC, SAMPLE_STORY}
 import razie.diesel.utils.{AutosaveSet, DomCollector, DomWorker, SpecCache}
-import razie.wiki.{Services, WikiConfig}
+import razie.wiki.Services
 import razie.wiki.admin.Autosave
 import razie.wiki.model._
 import razie.{CSTimer, Logging, js}
@@ -27,8 +28,11 @@ import scala.concurrent.Future
 import scala.concurrent.duration.{Duration, _}
 import scala.util.Success
 
+/** utilities for fiddling */
 object DomFiddles {
-  def getAstInfo(ipage:WikiEntry) = {
+
+  /** get the parsed AST info to paint the markers in the page */
+  def getAstInfo(ipage: WikiEntry) = {
     val domList = ipage.collector.getOrElse(DOM_LIST, List[Any]()).asInstanceOf[List[Any]].reverse
     val ast = domList.collect {
       case h: HasPosition if h.pos.isDefined => Map(
@@ -257,7 +261,7 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
       val storyDom = WikiDomain.domFrom(storyPage).get.revise addRoot
 
       //fiddleSpec only parses it, never runs it - it's a spec, afterall
-      var res = Wikis.format(specPage.wid, specPage.markup, null, Some(specPage), stok.au)
+      val res = Wikis.format(specPage.wid, specPage.markup, null, Some(specPage), stok.au)
       retj << Map(
         "res" -> res,
         // todo should respect blenderMode ?
@@ -277,14 +281,19 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
     *
     * todo perf: DB - parsing about 50-50
     * todo perf actor for async queued DB updates
-    * todo perf specialized parser with just the DOM rules and no wiki/markdown, using WikiParserMini instead of WikiParserT
+    * todo perf specialized parser with just the DOM rules and no wiki/markdown, using WikiParserMini instead of
+    * WikiParserT
     *
     * @param id - unique session / page Id, used to identify WebSocket customers too
     * @return
     */
-  def fiddleStoryUpdated(id: String) : Action[AnyContent] = RAction.withAuth.noRobots.async { implicit stok=>
+  def fiddleStoryUpdated(id: String): Action[AnyContent] = RAction.withAuth.noRobots.async { implicit stok =>
+    log(s"fiddleStoryUpdated ${stok.realm}")
+    val specWpath = stok.formParm("specWpath")
+    val storyWpath = stok.formParm("storyWpath")
+
     val stimer = new CSTimer("buildDomStory", id)
-    stimer start "heh"
+    stimer start s"spec=$specWpath story=$storyWpath"
 
     // todo need better auth - verify wid auth, user belongs to realm etc
 
@@ -292,8 +301,6 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
 
     val saveMode = stok.formParm("saveMode").toBoolean
     val reactor = stok.formParm("reactor")
-    val specWpath = stok.formParm("specWpath")
-    val storyWpath = stok.formParm("storyWpath")
     val spec = stok.formParm("spec")
     val story = stok.formParm("story")
     val stw = WID.fromPath(storyWpath).flatMap(_.page).map(_.content).getOrElse(SAMPLE_STORY)
@@ -430,7 +437,11 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
       def sendResult (engine:DomEngine) = {
         val st = engine.status // copy so that if it completes wuile here, I'll still send again
 
-        var res = engine.root.toHtml
+        val res = engine.root.toHtml
+        // todo save engine ea on creation and use to extractfinalvalue
+        val payload = engine.ctx.getp(Diesel.PAYLOAD).filter(_.ttype != WTypes.wt.UNDEFINED)
+            .map(_.currentStringValue)
+            .getOrElse(engine.extractFinalValue("", true))
 
         val stw = WID.fromPath(storyWpath).flatMap(_.page).map(_.content).getOrElse(
           "Sample story\n\n$msg home.guest_arrived(name=\"Jane\")\n\n$expect $msg lights.on\n")
@@ -455,6 +466,7 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
           ),
           "clientId" -> id,
           "res" -> res,
+          "payload" -> payload,
           "capture" -> captureTree,
           "wiki" -> wiki,
           "storyChanged" -> (storyWpath.length > 0 && stw.replaceAllLiterally("\r", "") != story),
@@ -466,7 +478,7 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
         stimer snap "6_format_response"
 
         if(!compileOnly && DomState.isDone(st)) {
-          log("  fiddleSU - sending WS: " + DomState.isDone(engine.status))
+          debug("  fiddleSU - sending WS: " + DomState.isDone(engine.status))
           clients.get(id).foreach(_ ! m)
           // todo WTF am I broadcasting?
           //  clients.values.foreach(_ ! m)
@@ -490,20 +502,20 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
 
       if(! compileOnly) fut.onComplete {
         case Success(v) => {
-          log("  fiddleSU - onComplete: " + DomState.isDone(engine.status))
+          debug("  fiddleSU - onComplete: " + DomState.isDone(engine.status))
           if(!sentWS) {
             sentWS = true
             sendResult(engine)
           }
           else {
-            log("    fiddleSU - sent already")
+            debug("    fiddleSU - sent already")
           }
         }
       }
 
       timeoutFuture.map { engine =>
         val st = engine.status
-        log("  fiddleSU - result: " + DomState.isDone(st))
+        trace("  fiddleSU - result: " + DomState.isDone(st))
         val m =  sendResult(engine)
 
         // dont' send WS again later
@@ -520,7 +532,7 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
     * @return
     */
   def checkfiddleStoryUpdated(id: String) : Action[AnyContent] = RAction { implicit stok=>
-    val stimer = new CSTimer("buildDomStory", id)
+    val stimer = new CSTimer("checkfiddleStoryUpdated", id)
     stimer start "heh"
 
     var timeStamp = stok.formParm("timeStamp")
@@ -529,31 +541,36 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
       asts.find(_.id == engineId)
     }
 
-      def sendResult (engine:DomEngine) = {
-        val st = engine.status // copy so that if it completes wuile here, I'll still send again
+    def sendResult(engine: DomEngine) = {
+      val st = engine.status // copy so that if it completes wuile here, I'll still send again
 
-        var res = engine.root.toHtml
+      val res = engine.root.toHtml
+      // todo save engine ea on creation and use to extractfinalvalue
+      val payload = engine.ctx.getp(Diesel.PAYLOAD).filter(_.ttype != WTypes.wt.UNDEFINED)
+          .map(_.currentStringValue)
+          .getOrElse(engine.extractFinalValue("", true))
 
-        val m = Map(
-          // flags in map for easy logging
-          "info" -> Map(
-            "clientId" -> id,
-            "timeStamp" -> timeStamp,
-            "totalCount" -> (engine.totalTestCount),
-            "failureCount" -> engine.failedTestCount,
-            "errorCount" -> engine.errorCount,
-            "engineId" -> engine.id,
-            "progress" -> engine.progress,
-            "engineStatus" -> st,
-            "engineDone" -> DomState.isDone(st)
-          ),
+      val m = Map(
+        // flags in map for easy logging
+        "info" -> Map(
           "clientId" -> id,
-          "res" -> res,
-          "failureCount" -> engine.failedTestCount
-        )
+          "timeStamp" -> timeStamp,
+          "totalCount" -> (engine.totalTestCount),
+          "failureCount" -> engine.failedTestCount,
+          "errorCount" -> engine.errorCount,
+          "engineId" -> engine.id,
+          "progress" -> engine.progress,
+          "engineStatus" -> st,
+          "engineDone" -> DomState.isDone(st)
+        ),
+        "clientId" -> id,
+        "res" -> res,
+        "payload" -> payload,
+        "failureCount" -> engine.failedTestCount
+      )
 
-        m
-      }
+      m
+    }
 
     engine.map {e=>
       retj << sendResult(e.engine)

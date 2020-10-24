@@ -17,7 +17,7 @@ import razie.diesel.utils.DomHtml.quickBadge
 import razie.diesel.utils.{AutosaveSet, DomCollector, DomWorker, SpecCache}
 import razie.hosting.WikiReactors
 import razie.wiki.Config
-import razie.wiki.admin.Autosave
+import razie.wiki.admin.{Autosave, GlobalData}
 import razie.wiki.model._
 import razie.wiki.util.NoAuthService
 import razie.{Logging, js}
@@ -63,7 +63,7 @@ class DomGuard extends DomApiBase with Logging {
               DieselTrace.dieselTrace -> DieselTrace(eng.root, eng.settings.node, eng.id, "diesel", "runDom",
                 eng.settings.parentNodeId).toJson,
               "settings" -> eng.settings.toJson,
-              "specs" -> eng.pages.map(_.specPath)
+              "specs" -> eng.pages.map(_.specRef)
             )
 
             Ok(js.tojsons(m).toString).as("application/json")
@@ -185,69 +185,72 @@ class DomGuard extends DomApiBase with Logging {
   // list the collected ASTS
   def dieselListAst = FAUR { implicit stok =>
     val un = stok.userName + (if (stok.au.exists(_.isAdmin)) " admin - sees all" else " - regular user")
+    val r = if (stok.au.exists(_.isAdmin)) "all" else stok.realm
 
     DomCollector.withAsts { asts =>
-      val x =
+      val list =
         asts.filter(a => stok.au.exists(_.isAdmin) ||
             a.realm == stok.realm &&
                 (a.userId.isEmpty || a.userId.exists(_ == stok.au.map(_.id).mkString))
-        ).zipWithIndex.map { z =>
-          Try {
-            val a = z._1
-            val i = z._2
-            val uname = a.userId.map(u => findUname(u)).getOrElse("[auto]")
-            val duration = a.engine.root.tend - a.engine.root.tstart
+        )
 
-            val st =
-              if (DomState.isDone(a.engine.status)) a.engine.status
-              else s"<b>${a.engine.status}</b>"
+      val total = GlobalData.dieselEnginesTotal.get()
 
-            // todo this is mean
-            s"""
-               |<td>${i}</td>
-               |<td><a href="/diesel/viewAst/${a.id}">...${a.id.takeRight(4)}</a></td>
-               |<td>${a.stream}</td>
-               |<td>${a.realm}</td>
-               |<td>${uname}</td>
-               |<td>$st</td>
-               |<td>${a.dtm.toString("HH:mm:ss.SS")}</td>
-               |<td align="right">$duration</td>
-               |<td><small>${a.engine.description}</small></td>
-               |<td><small>${a.engine.resultingValue.take(100)}</small></td>
-               |<td> </td>
-               |""".stripMargin
-          }.getOrElse("??")
-        }.mkString(
+      val table = list.zipWithIndex.map { z =>
+        Try {
+          val a = z._1
+          val i = z._2
+          val uname = a.userId.map(u => findUname(u)).getOrElse("[auto]")
+          val duration = a.engine.root.tend - a.engine.root.tstart
+
+          val st =
+            if (DomState.isDone(a.engine.status)) a.engine.status
+            else s"<b>${a.engine.status}</b>"
+
+          // todo this is mean
           s"""
-             |Traces captured for realm: ${stok.realm} and user $un<br><br>
-             |<small>
-             |<table class="table table-condensed">
-             |<tr>
-             |<th>No</th>
-             |<th>Id</th>
-             |<th>Stream</th>
-             |<th>Realm</th>
-             |<th>User</th>
-             |<th>Status</th>
-             |<th>dtm</th>
-             |<th class="text-right">Msec</th>
-             |<th>Desc</th>
-             |<th>Result</th>
-             |<th></th>
-             |</tr>
-             |""".stripMargin,
-          "</tr><tr>",
-          s"""
-             |</tr>
-             |</table>
-             |</small>
+             |<td>${i}</td>
+             |<td><a href="/diesel/viewAst/${a.id}">...${a.id.takeRight(4)}</a></td>
+             |<td>${a.stream}</td>
+             |<td>${a.realm}</td>
+             |<td>${uname}</td>
+             |<td>$st</td>
+             |<td>${a.dtm.toString("HH:mm:ss.SS")}</td>
+             |<td align="right">$duration</td>
+             |<td><small>${a.engine.description}</small></td>
+             |<td><small>${a.engine.resultingValue.take(100)}</small></td>
+             |<td> </td>
              |""".stripMargin
-        )
-//      Ok(x).as("text/html")
-      ROK.k reactorLayout12FullPage  {
-        new Html(
-          x
-        )
+        }.getOrElse("??")
+      }.mkString(
+        s"""
+           |<small>
+           |<table class="table table-condensed">
+           |<tr>
+           |<th>No</th>
+           |<th>Id</th>
+           |<th>Stream</th>
+           |<th>Realm</th>
+           |<th>User</th>
+           |<th>Status</th>
+           |<th>dtm</th>
+           |<th class="text-right">Msec</th>
+           |<th>Desc</th>
+           |<th>Result</th>
+           |<th></th>
+           |</tr>
+           |""".stripMargin,
+        "</tr><tr>",
+        s"""
+           |</tr>
+           |</table>
+           |</small>
+           |""".stripMargin
+      )
+      //      Ok(x).as("text/html")
+      val title = s"""Flow history realm: $r showing ${list.size} of $total and user $un"""
+      ROK.k reactorLayout12FullPage {
+        views.html.modules.diesel.engineListAst(title, table)
       }
     }
   }
