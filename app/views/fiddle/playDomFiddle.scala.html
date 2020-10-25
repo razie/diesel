@@ -129,6 +129,7 @@ Command reference (see more about [[specs.Topic:Expressions_and_pattern_matching
         &nbsp;&nbsp;Mock/Spec <span class="" style="font-face:bold"  onclick="openSpec();">
         <span class="glyphicon glyphicon-new-window"></span></span>
             &nbsp;<input type="checkbox" id="expandedSpec" title="Expand/collapse spec" checked>
+        Preview &nbsp;<input type="checkbox" id="expandedPreviewSpec" title="Expand/collapse spec preview" checked>
         <span id="errMsg" class="label label-danger" style="display:none;"></span>
     </div>
     <div id="title3b_@id" class="col-sm-6" style="font-size: small">
@@ -145,9 +146,9 @@ Command reference (see more about [[specs.Topic:Expressions_and_pattern_matching
     <div id="divIn3_@id" class="col-sm-6" style="">
       <pre id="pre3_@id" style="height:228px; ">@story</pre>
     </div>
-    <div class="col-sm-6 well" id="divOut3_@id" style="overflow: scroll; margin-bottom:2px">
+    <div class="col-sm-6 well" id="divOutStory_@id" style="overflow: scroll; margin-bottom:2px">
     </div>
-    <pre class="col-sm-6" id="iframeOut3_@id" style="padding:1px; Xtext-align: center">Start typing...</pre>
+    <pre class="col-sm-6" id="iframeOutStory_@id" style="padding:1px; Xtext-align: center">Start typing...</pre>
   </div>
 
 
@@ -305,8 +306,8 @@ function startESP() {
 }
 
 $('#divOutSpec_'+@id).css('max-height', $('#divIn1_@id').height()-10+'px');
-$('#divOut3_'+@id).css('max-height', $('#divIn3_@id').height()-10+'px');
-$('#iframeOut3_'+@id).css('max-height', $('#divIn3_@id').height()-10+'px');
+$('#divOutStory_'+@id).css('max-height', $('#divIn3_@id').height()-10+'px');
+$('#iframeOutStory_'+@id).css('max-height', $('#divIn3_@id').height()-10+'px');
 $('#iframeOut5_'+@id).css('max-height', $('#pre5box_@id').height()-10+'px');
 
 function hideSpinner() {
@@ -329,11 +330,11 @@ function showHelp() {
 
 function showHideIframe() {
   if($('#wikiMode').prop('checked')) {
-    $('#divOut3_@id').show();
-    $('#iframeOut3_'+@id).hide();
+    $('#divOutStory_@id').show();
+    $('#iframeOutStory_'+@id).hide();
   } else {
-    $('#divOut3_@id').hide();
-    $('#iframeOut3_@id').show();
+    $('#divOutStory_@id').hide();
+    $('#iframeOutStory_@id').show();
   }
 };
 
@@ -611,10 +612,10 @@ function showFinalEngineResult() {
   var ponly = $('#payloadOnly').prop('checked');
 
   if(ponly) {
-    $('#iframeOut3_' + id).html(encAmp(data.payload) + '\n');
+    $('#iframeOutStory_' + id).html(encAmp(data.payload) + '\n');
     $('#iframeOutSpec_' + id).html(encAmp(data.payload) + '\n');
   } else {
-    $('#iframeOut3_' + id).html(encAmp(data.res) + '\n');
+    $('#iframeOutStory_' + id).html(encAmp(data.res) + '\n');
     $('#iframeOutSpec_' + id).html(encAmp(data.res) + '\n');
 
     dieselHideTrace($('#traceStory').prop('checked'));
@@ -629,7 +630,7 @@ function processFinalEngineResult(id, data, compileOnly, lastTime, next) {
   hideSpinner();
 
   if($('#wikiMode').prop('checked')) {
-    $('#divOut3_' + id).html(data.wiki);
+    $('#divOutStory_' + id).html(data.wiki);
   } else if(!compileOnly) {
     // console.log("TREE: "+data.res);
 
@@ -876,7 +877,7 @@ var findInTree = function(wp, editor) {
   console.log("Navigate to: "+wp + " : " + row);
 
   var x = $("span[posw='"+wp+"'][posr="+row+"]")[0];//.scrollIntoView();
-  var parent = $('#iframeOut3_'+@id)[0];
+  var parent = $('#iframeOutStory_'+@id)[0];
   if(typeof x != "undefined")
     parent.scrollTop = x.offsetTop;
 }
@@ -1128,22 +1129,36 @@ $(window).on('load', function() {
   });
 
   useLocalStorageCheckbox("expandedSpec", "domFiddleExpandedSpec", function (a,b,expanded) {
-      $('#expandedSpec1').prop('checked', expanded);
-      if(expanded) {
-        $("#specRow").show();
-        $("#divIn3_@id").css("height", h2);
-        $("#pre3_@id").css("height", h2);
-        $("#divOut3_@id").css("max-height", h2);
-        $("#iframeOut3_@id").css("max-height", h2);
-        attachAce();
-      } else {
-        $("#specRow").hide();
-        $("#divIn3_@id").css("height", h3);
-        $("#pre3_@id").css("height", h3);
-        $("#divOut3_@id").css("max-height", h3);
-        $("#iframeOut3_@id").css("max-height", h3);
-        attachAce();
-      }
+    const preview = $('#expandedPreviewSpec').prop('checked');
+    const storyHeight = preview ? h2:h3;
+
+    $('#expandedSpec1').prop('checked', expanded);
+    if(expanded) {
+      $("#specRow").show();
+      $("#divIn3_@id").css("height", h2);
+      $("#pre3_@id").css("height", h2);
+      $("#divOutStory_@id").css("max-height", storyHeight);
+      $("#iframeOutStory_@id").css("max-height", storyHeight);
+      attachAce();
+    } else {
+      $("#specRow").hide();
+      $("#divIn3_@id").css("height", h3);
+      $("#pre3_@id").css("height", h3);
+      $("#divOutStory_@id").css("max-height", storyHeight);
+      $("#iframeOutStory_@id").css("max-height", storyHeight);
+      attachAce();
+    }
+  });
+
+  useLocalStorageCheckbox("expandedPreviewSpec", "domFiddleExpandedPreviewSpec", function (a,b,expanded) {
+    const storyHeight = expanded ? h2:h3;
+    $("#divOutStory_@id").css("max-height", storyHeight);
+    $("#iframeOutStory_@id").css("max-height", storyHeight);
+    if(expanded) {
+      $("#divOutSpec_@id").show();
+    } else {
+      $("#divOutSpec_@id").hide();
+    }
   });
 
   // second box tied to first
@@ -1154,7 +1169,6 @@ $(window).on('load', function() {
 
 
   // todo could optimize and not showFinal every time trace/debug but only if payload was on
-
   useLocalStorageCheckbox("traceStory", "domFiddleTraceStory", function (a,b,expanded) {
     if(expanded) $('#payloadOnly').prop('checked', false);
     if(currEngineData != null) showFinalEngineResult(); // repaint
