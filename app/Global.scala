@@ -92,13 +92,17 @@ object Global extends WithFilters(LoggingFilter) {
 
   override def onHandlerNotFound(request: RequestHeader)= {
     clog << s"ERR_onHandlerNotFound " + "request:" + request.toString + "headers:" + request.headers
-    Audit.logdb("ERR_onHandlerNotFound", s"ip=${request.headers.get("X-Forwarded-For")}", "request:" + request.toString, "headers:" + request.headers)
+    Audit.logdb(
+      "ERR_onHandlerNotFound", s"ip=${request.headers.get("X-Forwarded-For")}",
+      "request:" + request.toString, "headers:" + request.headers)
     super.onHandlerNotFound(request)
   }
 
   override def onBadRequest(request: RequestHeader, error: String)= {
     clog << (s"ERR_onBadRequest " + "request:" + request.toString + "headers:" + request.headers + "error:" + error)
-    Audit.logdb("ERR_onBadRequest", s"ip=${request.headers.get("X-Forwarded-For")}", "request:" + request.toString, "headers:" + request.headers, "error:" + error)
+    Audit.logdb(
+      "ERR_onBadRequest", s"ip=${request.headers.get("X-Forwarded-For")}",
+      "request:" + request.toString, "headers:" + request.headers, "error:" + error)
     super.onBadRequest(request, error)
   }
 
@@ -147,32 +151,33 @@ object Global extends WithFilters(LoggingFilter) {
       }
     } orElse {
 
-      if(request.path.contains("removebadip")) { // && Services.auth.authUser(request).isDefined) { // in case i ban myself
+      if (request.path.contains(
+        "removebadip")) { // && Services.auth.authUser(request).isDefined) { // in case i ban myself
         request.headers.get("X-Forwarded-For").flatMap(BannedIps.findIp).map(_.delete(tx.auto))
         Audit.logdb("BANNED_IP_REMOVED",
           List("request:" + request.toString, "headers:" + request.headers).mkString("<br>"))
-        Some(EssentialAction {rh=>
-          Action { rh:play.api.mvc.RequestHeader =>
+        Some(EssentialAction { rh =>
+          Action { rh: play.api.mvc.RequestHeader =>
             Results.Unauthorized("deh")
           }.apply(rh)
         })
 
-      } else if(request.headers.get("X-Forwarded-For").exists(Config.badIps.contains(_))) {
+      } else if (request.headers.get("X-Forwarded-For").exists(Config.badIps.contains(_))) {
         clog << "ERR_BADIP " + "request:" + request.toString + "headers:" + request.headers
         Audit.logdb("ERR_BADIP", "request:" + request.toString, "headers:" + request.headers)
-        Some(EssentialAction {rh=>
-          Action { rh:play.api.mvc.RequestHeader =>
+        Some(EssentialAction { rh =>
+          Action { rh: play.api.mvc.RequestHeader =>
             Results.Unauthorized("heh")
           }.apply(rh)
         })
 
-      } else if(request.host.endsWith(SPROXY) || request.host.endsWith(SSPROXY)) {
+      } else if (request.host.endsWith(SPROXY) || request.host.endsWith(SSPROXY)) {
         // change request
         val host =
-          if(request.host.endsWith(SSPROXY)) request.host.replaceFirst("."+SSPROXY, "")
-          else request.host.replaceFirst("."+SPROXY, "")
-        val protocol = if(request.host.endsWith(SSPROXY)) "https" else "http"
-        val rh = request.copy(path = "/snakk/proxy/"+protocol+"/"+host+request.path)
+          if (request.host.endsWith(SSPROXY)) request.host.replaceFirst("." + SSPROXY, "")
+          else request.host.replaceFirst("." + SPROXY, "")
+        val protocol = if (request.host.endsWith(SSPROXY)) "https" else "http"
+        val rh = request.copy(path = "/snakk/proxy/" + protocol + "/" + host + request.path)
         clog << ("SNAKKPROXY to " + request)
         super.onRouteRequest(rh)
 
@@ -216,6 +221,7 @@ object Global extends WithFilters(LoggingFilter) {
     super.onStart(app)
 
     Services ! new InitAlligator
+    Await.result(GlobalData.reactorsLoadedF, Duration("1 minute"))
 
     // todo  SendEmail.initialize
   }
