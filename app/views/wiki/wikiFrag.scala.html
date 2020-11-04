@@ -15,7 +15,7 @@ wiki fragment, used in another page
     stok.au.isDefined &&
     !page.exists(_.isReserved) &&
     stok.au.get.canHasProfile &&
-    !page.flatMap(_.contentProps.get("nocomments")).isDefined
+    !page.flatMap(_.contentProps.get("noComments")).isDefined
 }
 
   @favoriteCat = @{ "Topic" }

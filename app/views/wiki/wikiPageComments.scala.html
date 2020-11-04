@@ -1,16 +1,7 @@
 @(wid:razie.wiki.model.WID, page:Option[razie.wiki.model.WikiEntry], user:Option[model.User])(implicit stok: controllers.StateOk)
 @import razie.wiki.model._
 
-@** add new comments **@
-@canComment() = @{
-  user.isDefined &&
-  !page.exists(_.isReserved) &&
-  user.get.canHasProfile &&
-  !page.flatMap(_.contentProps.get("nocomments")).isDefined
-}
-
-
-@if(!page.flatMap(_.contentProps.get("nocomments")).isDefined) {
+@if(!page.flatMap(_.contentProps.get("noComments")).isDefined) {
   @if(user.isDefined) {
     @if(page.map(_.isReserved).getOrElse(true)) {
       You can't comment on reserved pages, sorry!
@@ -24,7 +15,11 @@
       You need to log in to post a comment!
   }
 
-@comments.commStream(page.flatMap(p=>Comments.findForWiki(p._id)), page.get._id.toString, "Wiki", canComment())
+@comments.commStream(
+  page.flatMap(p=>Comments.findForWiki(p._id)),
+  page.get._id.toString,
+  "Wiki",
+  controllers.CommentUtils.canComment(stok.au, page)
+)
 
 }
-

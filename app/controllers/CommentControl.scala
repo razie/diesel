@@ -11,9 +11,7 @@ import model.{User, Users}
 import org.bson.types.ObjectId
 import play.api.data.Form
 import play.api.data.Forms._
-import play.api.mvc.Action
 import razie.Logging
-import razie.db.{ROne, tx}
 import razie.wiki.admin.SendEmail
 import razie.wiki.model._
 
@@ -21,12 +19,21 @@ import razie.wiki.model._
 object CommentUtils {
   /** is mine or i am amdin */
   def canEdit(comm: Comment, auth: Option[User]) = {
-    auth.exists(au => comm.userId == au._id || au.hasPerm(Perm.adminDb))
+    auth.exists(au => comm.userId == au._id || au.isMod)
   }
 
   /** is mine or i am amdin */
   def canRemove(comm: Comment, auth: Option[User]) = {
-    auth.exists(_.hasPerm(Perm.adminDb))
+    auth.exists(_.isMod)
+  }
+
+  def canComment(user: Option[User], page: Option[WikiEntry]) = {
+    user.exists(_.isMod) ||
+        user.isDefined &&
+            !page.exists(_.isReserved) &&
+            user.get.canHasProfile &&
+            !page.flatMap(_.contentProps.get("noComments")).isDefined &&
+            !page.flatMap(_.contentProps.get("noMoreComments")).isDefined
   }
 
 }
@@ -107,14 +114,17 @@ class CommentControl extends RazController with Logging {
 
       (for (
         comm <- Comments.findCommentById(cid) orErr ("bad comment id?");
+        can2 <- canComment(Some(au), Comments.findStreamById(comm.streamId).flatMap(
+          _.findWikiEntry())) orErr "comments have been disabled for this topic";
         can <- canEdit(comm, auth) orErr ("can only edit your comments")
       ) yield {
-          val (link, content) = split (comm.content, comm.kind.getOrElse("text"))
-          ROK.r noLayout { implicit stok =>
-            views.html.comments.commEdit(pid, role, cid, comm.kind.getOrElse("text"), commentForm.fill(link, content.trim))
-          }
-        }) getOrElse
-        unauthorized()
+        val (link, content) = split(comm.content, comm.kind.getOrElse("text"))
+        ROK.r reactorLayout12 { implicit stok =>
+          views.html.comments.commEdit(pid, role, cid, comm.kind.getOrElse("text"),
+            commentForm.fill(link, content.trim))
+        }
+      }) getOrElse
+          unauthorized()
   }
 
   def like(pid: String, role:String, cid: String, yes:Int) = FAU {
@@ -134,6 +144,8 @@ class CommentControl extends RazController with Logging {
 
     (for (
       comm <- Comments.findCommentById(cid) orErr ("bad comment id?");
+      can2 <- canComment(Some(au), Comments.findStreamById(comm.streamId).flatMap(
+        _.findWikiEntry())) orErr "comments have been disabled for this topic";
       can <- canRemove(comm, auth) orErr ("Only admins can remove comments")
     ) yield {
         comm.delete
