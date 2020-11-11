@@ -38,7 +38,7 @@ trait DomFiddleParser extends DomParser {
           val tags = model.Tags.apply(ltags.toLowerCase)
 
           // see if we recognize some actionables to create links for them
-          var links = parseAll(fiddleLines(ctx.we.get.specPath.wpath), lines.s).map { l =>
+          var links = parseAll(fiddleLines(ctx.we.get.specRef.wpath), lines.s).map { l =>
             l.collect {
               case m: EMsg => m.toHref(name, "value", ARGS)
               case st: EMock =>
@@ -52,11 +52,11 @@ trait DomFiddleParser extends DomParser {
           // todo delete this is the above works
 //          var links = lines.s.lines.collect {
 //            case l if l.startsWith("$msg") || l.startsWith("$send") =>
-//              parseAll(linemsg(ctx.we.get.specPath.wpath), l).map { st =>
+//              parseAll(linemsg(ctx.we.get.specRef.wpath), l).map { st =>
 //                st.toHref(name, "value", ARGS)
 //              }.getOrElse("???")
 //            case l if l.startsWith("$mock") =>
-//              parseAll(linemock(ctx.we.get.specPath.wpath), l).map { st =>
+//              parseAll(linemock(ctx.we.get.specRef.wpath), l).map { st =>
 //                st.rule.e.asMsg.withPos(st.pos).toHref(name, "value", ARGS) +
 //                  " (" + st.rule.e.asMsg.withPos(st.pos).toHrefWith("json", name, "json", ARGS) + ") " +
 //                  " (" + st.rule.e.asMsg.withPos(st.pos).toHrefWith("trace", name, "debug", ARGS) + ") "

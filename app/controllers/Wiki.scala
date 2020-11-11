@@ -458,6 +458,7 @@ object Wiki extends WikiBase {
       canSee(wid, au, w).getOrElse(false) || w.exists(_.contentProps.contains("publicAlternative"))
     }
 
+    // since some test a lot, try to be fair with counting
     val shouldNotCount = request.flash.get("count").exists("0" == _) || (count == 0) ||
       isFromRobot(request.ireq) || au.exists("Razie" == _.userName) || au.exists("Ileana" == _.userName) || au.exists("Admin" == _.userName)
 

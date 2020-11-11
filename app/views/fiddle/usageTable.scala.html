@@ -13,6 +13,13 @@
       </thead>
   }
 
+@parent(u:Map[String,Object])={
+@if(u.get("parent").mkString.length > 0) {
+  <small>  from:<b>@u.get("parent")</b></small>
+} else {
+}
+}
+
 @usages.map{u =>
 <tr>
 <td>
@@ -27,7 +34,7 @@
 </td>
 <td style="word-wrap:break-word">
 <small>
-  <a href="javascript:@u.get("fiddle")">@u.get("msg")</a>
+  <a href="javascript:@u.get("fiddle")">@u.get("msg")</a> @parent(u)
   <br>
   <small>
   @u.get("line")

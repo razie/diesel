@@ -143,8 +143,8 @@ Command reference (see more about [[specs.Topic:Expressions_and_pattern_matching
   @*story - editors*@
 
   <div id="storyRow" class="row" style="align-items:center;">
-    <div id="divIn3_@id" class="col-sm-6" style="">
-      <pre id="pre3_@id" style="height:228px; ">@story</pre>
+    <div id="divInStory_@id" class="col-sm-6" style="">
+      <pre id="preStory_@id" style="height:228px; ">@story</pre>
     </div>
     <div class="col-sm-6 well" id="divOutStory_@id" style="overflow: scroll; margin-bottom:2px">
     </div>
@@ -168,8 +168,8 @@ Command reference (see more about [[specs.Topic:Expressions_and_pattern_matching
   @*spec row - editors*@
 
   <div id="specRow" class="row" style="align-items:center;">
-    <div id="divIn1_@id" class="col-sm-6" style="">
-      <pre id="pre1_@id" style="height:228px; ">@spec</pre>
+    <div id="divInSpec_@id" class="col-sm-6" style="">
+      <pre id="preSpec_@id" style="height:228px; ">@spec</pre>
     </div>
     <div class="col-sm-6 well" id="divOutSpec_@id" style="overflow: scroll; margin-bottom:2px">
     </div>
@@ -305,9 +305,9 @@ function startESP() {
   }, 500);
 }
 
-$('#divOutSpec_'+@id).css('max-height', $('#divIn1_@id').height()-10+'px');
-$('#divOutStory_'+@id).css('max-height', $('#divIn3_@id').height()-10+'px');
-$('#iframeOutStory_'+@id).css('max-height', $('#divIn3_@id').height()-10+'px');
+$('#divOutSpec_'+@id).css('max-height', $('#divInSpec_@id').height()-10+'px');
+$('#divOutStory_'+@id).css('max-height', $('#divInStory_@id').height()-10+'px');
+$('#iframeOutStory_'+@id).css('max-height', $('#divInStory_@id').height()-10+'px');
 $('#iframeOut5_'+@id).css('max-height', $('#pre5box_@id').height()-10+'px');
 
 function hideSpinner() {
@@ -612,8 +612,8 @@ function showFinalEngineResult() {
   var ponly = $('#payloadOnly').prop('checked');
 
   if(ponly) {
-    $('#iframeOutStory_' + id).html(encAmp(data.payload) + '\n');
-    $('#iframeOutSpec_' + id).html(encAmp(data.payload) + '\n');
+    $('#iframeOutStory_' + id).text((data.payload) + '\n');
+    $('#iframeOutSpec_' + id).text((data.payload) + '\n');
   } else {
     $('#iframeOutStory_' + id).html(encAmp(data.res) + '\n');
     $('#iframeOutSpec_' + id).html(encAmp(data.res) + '\n');
@@ -739,8 +739,8 @@ var ctrlDown = false;
 function attachAce() {
   var langTools = ace.require("ace/ext/language_tools");
 
-  storyEditor = ace.edit("pre3_@id");
-  specEditor = ace.edit("pre1_@id");
+  storyEditor = ace.edit("preStory_@id");
+  specEditor = ace.edit("preSpec_@id");
 
   @if(stok.isLight) {
   specEditor.setTheme ( "ace/theme/crimson_editor" ) ;
@@ -1110,8 +1110,8 @@ $(window).on('load', function() {
   useLocalStorageCheckbox("expandedStory", "domFiddleExpandedStory", function (a,b,expanded) {
     if(expanded) {
       $("#storyRow").show();
-      $("#divIn1_@id").css("height", h2);
-      $("#pre1_@id").css("height", h2);
+      $("#divInSpec_@id").css("height", h2);
+      $("#preSpec_@id").css("height", h2);
       $("#divOutSpec_@id").css("max-height", h2);
       $("#divOutSpec_@id").show();
       $("#iframeOutSpec_@id").css("max-height", h2);
@@ -1119,8 +1119,8 @@ $(window).on('load', function() {
       attachAce();
     } else {
       $("#storyRow").hide();
-      $("#divIn1_@id").css("height", h3);
-      $("#pre1_@id").css("height", h3);
+      $("#divInSpec_@id").css("height", h3);
+      $("#preSpec_@id").css("height", h3);
       $("#divOutSpec_@id").hide();
       $("#iframeOutSpec_@id").css("max-height", h3);
       $("#iframeOutSpec_@id").show();
@@ -1135,15 +1135,15 @@ $(window).on('load', function() {
     $('#expandedSpec1').prop('checked', expanded);
     if(expanded) {
       $("#specRow").show();
-      $("#divIn3_@id").css("height", h2);
-      $("#pre3_@id").css("height", h2);
+      $("#divInStory_@id").css("height", h2);
+      $("#preStory_@id").css("height", h2);
       $("#divOutStory_@id").css("max-height", storyHeight);
       $("#iframeOutStory_@id").css("max-height", storyHeight);
       attachAce();
     } else {
       $("#specRow").hide();
-      $("#divIn3_@id").css("height", h3);
-      $("#pre3_@id").css("height", h3);
+      $("#divInStory_@id").css("height", h3);
+      $("#preStory_@id").css("height", h3);
       $("#divOutStory_@id").css("max-height", storyHeight);
       $("#iframeOutStory_@id").css("max-height", storyHeight);
       attachAce();
@@ -1170,27 +1170,29 @@ $(window).on('load', function() {
 
   // todo could optimize and not showFinal every time trace/debug but only if payload was on
   useLocalStorageCheckbox("traceStory", "domFiddleTraceStory", function (a,b,expanded) {
-    if(expanded) $('#payloadOnly').prop('checked', false);
+    if(expanded) $('#payloadOnly').prop('checked', false).change(); // change triggers the callback
     if(currEngineData != null) showFinalEngineResult(); // repaint
     dieselHideTrace(expanded);
   });
 
   useLocalStorageCheckbox("debugStory", "domFiddleDebugStory", function (a,b,expanded) {
-    if(expanded) $('#payloadOnly').prop('checked', false);
+    if(expanded) $('#payloadOnly').prop('checked', false).change(); // change triggers the callback
     if(currEngineData != null) showFinalEngineResult(); // repaint
     dieselHideDebug(expanded);
   });
 
   useLocalStorageCheckbox("generatedStory", "domFiddleGeneratedStory", function (a,b,expanded) {
-    if(expanded) $('#payloadOnly').prop('checked', false);
+    if(expanded) $('#payloadOnly').prop('checked', false).change(); // change triggers the callback
     if(currEngineData != null) showFinalEngineResult(); // repaint
     dieselHideGenerated(expanded);
   });
 
   useLocalStorageCheckbox("payloadOnly", "domFiddlePayloadOnly", function (a,b,expanded) {
-    if(expanded) $('#traceStory').prop('checked', false);
-    if(expanded) $('#debugStory').prop('checked', false);
-    if(expanded) $('#generatedStory').prop('checked', false);
+    if(expanded) {
+      $('#traceStory').prop('checked', false).change(); // change triggers the callback
+      $('#debugStory').prop('checked', false).change(); // change triggers the callback
+      $('#generatedStory').prop('checked', false).change(); // change triggers the callback
+    }
     if(currEngineData != null) showFinalEngineResult(); // repaint
   });
 });

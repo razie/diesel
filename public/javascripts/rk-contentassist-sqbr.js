@@ -13,23 +13,27 @@ var braDomain = [
   'photo.small URL',
   'photo.medium URL',
   'photo.large URL',
-  {'noSocial' : ['true']},
-  {'nocomments' : ['true']},
-  {'noTitle' : ['true']},
-  {'noAds' : ['true']},
-  {'nobottom' : ['true']},
-  {'test1' : [
-    {'squaretop' : ['a', 'b']},
-    'squareright'
-  ]},
-  {'layout' : [
-    'Play:wiki.layout.div12',
-    'Play:wiki.layout.div12FullPage',
-    'Play:wiki.layout.div12Cool',
-    'Play:wiki.layout.div12Plain',
-    'Play:wiki.layout.div9Plain',
-    'Play:wiki.layout.div9Ad'
-  ]},
+  {'noSocial': ['true']},
+  {'noComments': ['true']},
+  {'noTitle': ['true']},
+  {'noAds': ['true']},
+  {'noBottom': ['true']},
+  {
+    'test1': [
+      {'squaretop': ['a', 'b']},
+      'squareright'
+    ]
+  },
+  {
+    'layout': [
+      'Play:wiki.layout.div12',
+      'Play:wiki.layout.div12FullPage',
+      'Play:wiki.layout.div12Cool',
+      'Play:wiki.layout.div12Plain',
+      'Play:wiki.layout.div9Plain',
+      'Play:wiki.layout.div9Ad'
+    ]
+  },
   'ad [squaretop|squareright]',
   'video URL',
   'slideshow URL',

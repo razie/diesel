@@ -1,19 +1,18 @@
 package services
 
 import akka.actor.{Actor, Props}
+import com.google.inject.Singleton
 import controllers.Emailer
 import model.EventNeedsQuota
-import razie.{clog, cout}
-import razie.wiki.{Config, EventProcessor, Services, WikiConfig}
 import play.libs.Akka
+import razie.audit.Audit
+import razie.clog
+import razie.diesel.model.{DieselMsg, DieselMsgString, ScheduledDieselMsg}
+import razie.hosting.WikiReactors
 import razie.wiki.admin.SendEmail
 import razie.wiki.model._
-import com.google.inject.Singleton
-import mod.diesel.guard.DomGuardian.worker
-import razie.audit.Audit
-import razie.diesel.engine.DomEngineSettings
-import razie.diesel.model.{DieselMsg, DieselMsgString, DieselTarget, ScheduledDieselMsg}
 import razie.wiki.model.features.WikiCount
+import razie.wiki.{Config, EventProcessor, Services}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.{Duration, FiniteDuration}
 
@@ -86,6 +85,7 @@ class WikiAsyncObservers extends Actor {
       //todo why do i need this?
       clog << self.path
       clog << pubSub.path
+      WikiReactors.apply()
     }
 
     case EventNeedsQuota(s1, s2, _) =>
@@ -93,7 +93,7 @@ class WikiAsyncObservers extends Actor {
         Emailer.sendEmailNeedQuota(s1, s2)
       }
 
-    case m@DieselMsgString(s, target, _, set) => {
+    case m@DieselMsgString(s, target, _, set, _) => {
       m.startMsg
     }
 

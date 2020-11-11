@@ -278,6 +278,7 @@ class DomApi extends DomApiBase with Logging {
 
       // find template matching the input message, to parse attrs
       val t@(trequest, e, a, matchedParms) = findEA(path, engine, useThisStory)
+      val ea = e + "." + a
 
       // incoming message
       val msg: Option[EMsg] = findMessage(
@@ -368,7 +369,7 @@ class DomApi extends DomApiBase with Logging {
           ) {
             val payload = engine.ctx.getp(Diesel.PAYLOAD).filter(_.ttype != WTypes.wt.UNDEFINED)
             val resp = payload.orElse(
-              engine.extractFinalValue(e,a)
+              engine.extractFinalValue(ea)
             )
             val resValue = resp.map(_.currentStringValue).getOrElse("")
 
@@ -886,10 +887,11 @@ class DomApi extends DomApiBase with Logging {
         val u2 = usagesSpecs(e, a)(engine.ctx).sortBy(x => if (x._1 == "$when") 0 else 1)
 
         /** mesg to entry */
-        def addm(t: String, msg: String, p: Option[EPos], line: String) = {
+        def addm(t: String, msg: String, p: Option[EPos], line: String, parent: String = "") = {
           Map(
             "type" -> t,
             "msg" -> msg,
+            "parent" -> parent,
             "line" -> line,
             "topic" -> p.map(_.wpath).flatMap(WID.fromPath).map(_.name)
           ) ++
@@ -902,9 +904,9 @@ class DomApi extends DomApiBase with Logging {
               }.getOrElse(Map.empty)
         }
 
-        val m = (u2 ::: u1).map(u => addm(u._1, u._2, u._3, u._4))
+        val m = (u2 ::: u1).map(u => addm(u._1, u._2, u._3, u._4, u._5))
 
-        val html = views.html.fiddle.usageTable(m, Some(("Type", "e-a", "Topic")))
+        val html = views.html.fiddle.usageTable(m, Some(("Topic", "Kind", "Details")))
 
         Future.successful(
           Ok(html)
@@ -1124,15 +1126,16 @@ class DomApi extends DomApiBase with Logging {
               (t.tags.contains(direction)) &&
                   // if tagged with out, don't match for in
               !t.tags.contains("out") && {
-                (content.startsWith ("GET") ||
-                  content.startsWith ("POST") ||
-                  content.startsWith ("PUT") ||
-                  content.startsWith ("DELETE")) &&
-                  // todo add and compare request header parms
-                  EESnakk.templateMatchesUrl(t, "*", path, t.content).isDefined &&
-                  (
-                    !useThisStory.exists(w=> ! (t.specPath.wpath startsWith w.wpath)) // startsWith becase tspec includes #section
-                  )
+                (content.startsWith("GET") ||
+                    content.startsWith("POST") ||
+                    content.startsWith("PUT") ||
+                    content.startsWith("DELETE")) &&
+                    // todo add and compare request header parms
+                    EESnakk.templateMatchesUrl(t, "*", path, t.content).isDefined &&
+                    (
+                        !useThisStory.exists(
+                          w => !(t.specRef.wpath startsWith w.wpath)) // startsWith becase tspec includes #section
+                        )
               }
             }
             .map {t=>
@@ -1215,8 +1218,8 @@ class DomApi extends DomApiBase with Logging {
         case t: Throwable => {
           razie.Log.log("error parsing", t)
           engine.root.childrenCol.appendAll({
-            EError("Error parsing: " + template.specPath, t.toString) ::
-              new EError("Exception : ", t) :: Nil
+            EError("Error parsing: " + template.specRef, t.toString) ::
+                new EError("Exception : ", t) :: Nil
           }.map(DomAst(_, AstKinds.ERROR))
           )
           None

@@ -61,7 +61,7 @@ purge audit tables
         }
         </span>
         <span id="toRealms" style="display: none">
-            @stok.au.toList.flatMap(x=> x.memberReactors).map{t=>
+            @stok.au.toList.flatMap(x=> x.memberReactorsSameOrg(localRealm)).map{t=>
               <a href="/admin/difflist/@localRealm/@t/@remote">@t</a><br>
             }
         </span>

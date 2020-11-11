@@ -5,15 +5,14 @@
   **/
 package controllers
 
-import java.lang.management.{ManagementFactory, OperatingSystemMXBean}
-import java.lang.reflect.Modifier
 import com.google.inject.Singleton
 import com.mongodb.casbah.Imports.DBObject
 import com.novus.salat.grater
+import java.lang.management.{ManagementFactory, OperatingSystemMXBean}
+import java.lang.reflect.Modifier
 import java.nio.file.{Files, Paths}
 import mod.diesel.guard.{DieselCron, DomGuardian}
 import mod.notes.controllers.NotesLocker
-import mod.snow.Regs
 import model.{Users, WikiScripster}
 import org.bson.types.ObjectId
 import org.joda.time.DateTime
@@ -26,8 +25,6 @@ import razie.diesel.utils.DomCollector
 import razie.hosting.{Website, WikiReactors}
 import razie.wiki.Services
 import razie.wiki.admin.{GlobalData, SendEmail}
-import razie.wiki.model._
-import scala.io.Source
 
 //@Singleton
 class Admin extends AdminBase {
@@ -169,8 +166,8 @@ class AdminSys extends AdminBase {
     import play.api.libs.concurrent.Execution.Implicits.defaultContext
 
     razie.js.tojsons(Map(
-    "wikis" -> RazMongo("WikiEntry").size,
-    "scriptsRun" -> WikiScripster.count,
+      "wikis" -> RazMongo("WikiEntry").size,
+      "scriptsRun" -> WikiScripster.count,
       "Global.serving" -> GlobalData.serving,
       "Global.served" -> GlobalData.served,
       "Global.servingApiRequests" -> GlobalData.servingApiRequests,
@@ -178,19 +175,21 @@ class AdminSys extends AdminBase {
       "Global.limitedApiRequests" -> GlobalData.limitedApiRequests,
       "Global.maxServing" -> GlobalData.maxServing,
       "Global.maxServingApiRequests" -> GlobalData.maxServingApiRequests,
-    "Global.wikiOptions" -> GlobalData.wikiOptions,
-    "NotesLocker.autosaved" -> NotesLocker.autosaved,
-    "Global.servedPages" -> GlobalData.servedRequests,
-    "Global.startedDtm" -> GlobalData.startedDtm,
-    "SendEmail.curCount" -> SendEmail.curCount,
-    "SendEmail.state" -> SendEmail.state,
-    "DieselCron.size" -> DieselCron.withRealmSchedules(_.size),
-    "DomGuardian.size" -> DomGuardian.lastRuns.size,
-    "DomCollector.size" -> DomCollector.withAsts(_.size),
-    "Threads" -> defaultContext.toString,
-    "ClusterStatus" -> GlobalData.clusterStatus,
-    "allReactors" -> WikiReactors.allReactors.keys.mkString(","),
-    "loadedReactors" -> WikiReactors.reactors.keys.mkString(",")
+      "Global.dieselEnginesTotal" -> GlobalData.dieselEnginesTotal.get(),
+      "Global.dieselEnginesActive" -> GlobalData.dieselEnginesActive.get(),
+      "Global.wikiOptions" -> GlobalData.wikiOptions,
+      "NotesLocker.autosaved" -> NotesLocker.autosaved,
+      "Global.servedPages" -> GlobalData.servedRequests,
+      "Global.startedDtm" -> GlobalData.startedDtm,
+      "SendEmail.curCount" -> SendEmail.curCount,
+      "SendEmail.state" -> SendEmail.state,
+      "DieselCron.size" -> DieselCron.withRealmSchedules(_.size),
+      "DomGuardian.size" -> DomGuardian.lastRuns.size,
+      "DomCollector.size" -> DomCollector.withAsts(_.size),
+      "Threads" -> defaultContext.toString,
+      "ClusterStatus" -> GlobalData.clusterStatus,
+      "allReactors" -> WikiReactors.allReactors.keys.mkString(","),
+      "loadedReactors" -> WikiReactors.reactors.keys.mkString(",")
     ))
   }
 
