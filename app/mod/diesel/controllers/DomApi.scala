@@ -235,9 +235,9 @@ class DomApi extends DomApiBase with Logging {
         // in sketch mode, add the temp fiddle tests - filter out messages, as we already have one
         useThisStory.map { p =>
           Autosave
-            .find("wikie", p.defaultRealmTo(reactor), userId)
-            .flatMap(_.get("content")) getOrElse p.content.mkString
-        } getOrElse Autosave.find("wikie", WID("","").r(reactor), userId).flatMap(_.get("content")).mkString
+              .find("wikie", p.defaultRealmTo(reactor), userId)
+              .flatMap(_.get("content")) getOrElse p.content.mkString
+        } getOrElse Autosave.find("wikie", WID("", "").r(reactor), userId).flatMap(_.get("content")).mkString
       } else if (useThisStory.isDefined) {
         useThisStoryPage.map(_.content).getOrElse(useThisStory.get.content.mkString)
       } else ""
@@ -246,7 +246,10 @@ class DomApi extends DomApiBase with Logging {
         x.trim.startsWith("$msg") || x.trim.startsWith("$receive")
       ).mkString("\n") + "\n"
 
-      val ipage = new WikiEntry("Story", "xxfiddle", "fiddle", "md", story, stok.au.map(_._id).getOrElse(NOUSER), Seq("dslObject"), reactor)
+      val sname = useThisStoryPage.map(_.wid).orElse(useThisStory).map(_.name + "-Fiddle").getOrElse("runDomFiddle")
+
+      val ipage = new WikiEntry("Story", sname, "fiddle", "md", story, stok.au.map(_._id).getOrElse(NOUSER),
+        Seq("dslObject"), reactor)
       val idom = WikiDomain.domFrom(ipage).get.revise.addRoot
 
       var res = ""
@@ -413,7 +416,11 @@ class DomApi extends DomApiBase with Logging {
             Ok(body).as(WTypes.Mime.appJson)
           }
 
-          ok = ok.withHeaders(DomEngineHelper.dieselFlowId -> engine.id)
+          ok = ok.withHeaders(
+            DomEngineHelper.dieselFlowId -> engine.id,
+            DomEngineSettings.DIESEL_HOST -> engine.settings.dieselHost.mkString,
+            DomEngineSettings.DIESEL_NODE_ID -> engine.settings.node
+          )
 
           engine.addResponseInfo(ok.header.status, body, ok.header.headers)
 
@@ -1078,7 +1085,11 @@ class DomApi extends DomApiBase with Logging {
       ok = ok.withHeaders(p.name.replace(HTTP.HEADER_PREFIX, "") -> p.calculatedValue(engine.ctx))
     }
 
-    ok = ok.withHeaders(DomEngineHelper.dieselFlowId -> engine.id)
+    ok = ok.withHeaders(
+      DomEngineHelper.dieselFlowId -> engine.id,
+      DomEngineSettings.DIESEL_HOST -> engine.settings.dieselHost.mkString,
+      DomEngineSettings.DIESEL_NODE_ID -> engine.settings.node
+    )
 
     // or from json
 //    engine.ctx.getp(HTTP.RESPONSE).filter(_.ttype == "JSON").map {p=>

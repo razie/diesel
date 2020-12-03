@@ -8,22 +8,22 @@ package mod.diesel.model
 
 import controllers.RazRequest
 import play.api.mvc._
-import razie.diesel.engine.DomEngineSettings
-import razie.diesel.engine._
+import razie.diesel.engine.DomEngineSettings.{DIESEL_CONFIG_TAG, DIESEL_HOST, DIESEL_NODE_ID, DIESEL_USER_ID}
+import razie.diesel.engine.{DomEngineSettings, _}
 import scala.Option.option2Iterable
 
 object DomEngineHelper {
 
   /** */
-  def settingsFrom(stok:RazRequest) = {
+  def settingsFrom(stok: RazRequest) = {
     val q = settingsFromRequest(stok.req)
 
     // find the config tag (which configuration to use - default to userId
-    if(q.configTag.isEmpty && stok.au.isDefined)
+    if (q.configTag.isEmpty && stok.au.isDefined)
       q.configTag = Some(stok.au.get._id.toString)
 
     // todo should keep the original user or switch?
-    if(q.userId.isEmpty && stok.au.isDefined)
+    if (q.userId.isEmpty && stok.au.isDefined)
       q.userId = Some(stok.au.get._id.toString)
 
     q.realm = Some(stok.realm)
@@ -44,13 +44,15 @@ object DomEngineHelper {
     def fqParm(name:String, dflt:String) =
       q.get(name).orElse(fParm(name)).getOrElse(dflt)
 
-    def fqhParm(name:String) =
+    def fqhParm(name: String) =
       q.get(name).orElse(fParm(name)).orElse(request.headers.get(name))
 
-    def fqhoParm(name:String, dflt:String) =
+    def fqhoParm(name: String, dflt: String) =
       q.get(name).orElse(fParm(name)).orElse(request.headers.get(name)).getOrElse(dflt)
 
     import DomEngineSettings._
+
+    val hp = (if (request.secure) "https" else "http") + "://" + request.host
 
     new DomEngineSettings(
       mockMode = fqhoParm(MOCK_MODE, "true").toBoolean,
@@ -59,20 +61,20 @@ object DomEngineHelper {
       sketchMode = fqhoParm(SKETCH_MODE, "false").toBoolean,
       execMode = fqhoParm(EXEC_MODE, "sync"),
       resultMode = fqhoParm(RESULT_MODE, ""),
-      parentNodeId = fqhParm("dieselNodeId"),
-      configTag = fqhParm("dieselConfigTag"),
-      userId = fqhParm("dieselUserId"),
+      parentNodeId = fqhParm(DIESEL_NODE_ID),
+      configTag = fqhParm(DIESEL_CONFIG_TAG),
+      userId = fqhParm(DIESEL_USER_ID),
       postedContent = {
-        if(request.body.isInstanceOf[AnyContentAsRaw]) {
+        if (request.body.isInstanceOf[AnyContentAsRaw]) {
           val raw = request.body.asRaw.flatMap(_.asBytes())
           Some(new EContent(
-            raw.map(a => new String(a) ).getOrElse(""),
+            raw.map(a => new String(a)).getOrElse(""),
             request.contentType.mkString,
             200,
             request.headers.toSimpleMap,
             None,
             raw))
-        } else if(request.contentType.exists(c=> c == "application/json")) {
+        } else if (request.contentType.exists(c => c == "application/json")) {
           Some(new EContent(
             request.body.asJson.mkString,
             request.contentType.mkString))
@@ -80,7 +82,7 @@ object DomEngineHelper {
       },
       tagQuery = fqhParm(TAG_QUERY),
       simMode = fqhoParm(SIM_MODE, "false").toBoolean,
-      hostport = Some(request.host)
+      dieselHost = Some(hp)
     )
   }
 
@@ -109,12 +111,12 @@ object DomEngineHelper {
       sketchMode = fqhoParm(SKETCH_MODE, "false").toBoolean,
       execMode = fqhoParm(EXEC_MODE, "sync"),
       resultMode = fqhoParm(RESULT_MODE, ""),
-      parentNodeId = fqhParm(dieselNodeId),
-      configTag = fqhParm(dieselConfigTag),
-      userId = fqhParm(dieselUserId),
+      parentNodeId = fqhParm(DIESEL_NODE_ID),
+      configTag = fqhParm(DIESEL_CONFIG_TAG),
+      userId = fqhParm(DIESEL_USER_ID),
       cont,
       simMode = fqhoParm(SIM_MODE, "false").toBoolean,
-      hostport = Some(request.host)
+      dieselHost = Some(request.host)
     )
   }
 
@@ -142,16 +144,13 @@ object DomEngineHelper {
 
   // these headers are filtered
   val HEADERS_FILTER = DomEngineSettings.FILTER ++
-      Array(dieselNodeId, dieselConfigTag, dieselUserId)
+      Array(DIESEL_NODE_ID, DIESEL_CONFIG_TAG, DIESEL_USER_ID, DIESEL_HOST, dieselSourceHost)
 
   // these headers are scrambled
   val HEADERS_SCRAMBLE = Array("X-Api-Key", "Authorization")
 
-  final val dieselNodeId = "dieselNodeId"
-  final val dieselConfigTag = "dieselConfigTag"
-  final val dieselUserId = "dieselUserId"
   final val dieselFlowId = "dieselFlowId"
-  final val dieselTrace = "dieselTrace"
+  final val dieselSourceHost = "dieselSourceHost"
 }
 
 
