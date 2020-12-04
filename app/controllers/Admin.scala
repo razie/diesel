@@ -156,39 +156,28 @@ class AdminSys extends AdminBase {
           case e: Exception => e.toString
         } // try
         val vn = try {
-            v.toLong
-          } catch {
-            case e: Exception => -1
-          } // try
+          v.toLong
+        } catch {
+          case e: Exception => -1
+        } // try
         s = s + (method.getName() -> (if (vn == -1) v else (nice(vn) + " - " + v))) + "\n";
       } // if
     } // for
     import play.api.libs.concurrent.Execution.Implicits.defaultContext
 
-    razie.js.tojsons(Map(
-      "wikis" -> RazMongo("WikiEntry").size,
-      "scriptsRun" -> WikiScripster.count,
-      "Global.serving" -> GlobalData.serving,
-      "Global.served" -> GlobalData.served,
-      "Global.servingApiRequests" -> GlobalData.servingApiRequests,
-      "Global.servedApiRequests" -> GlobalData.servedApiRequests,
-      "Global.limitedApiRequests" -> GlobalData.limitedApiRequests,
-      "Global.maxServing" -> GlobalData.maxServing,
-      "Global.maxServingApiRequests" -> GlobalData.maxServingApiRequests,
-      "Global.dieselEnginesTotal" -> GlobalData.dieselEnginesTotal.get(),
-      "Global.dieselEnginesActive" -> GlobalData.dieselEnginesActive.get(),
-      "Global.wikiOptions" -> GlobalData.wikiOptions,
-      "NotesLocker.autosaved" -> NotesLocker.autosaved,
-      "Global.servedPages" -> GlobalData.servedRequests,
-      "Global.startedDtm" -> GlobalData.startedDtm,
-      "SendEmail.curCount" -> SendEmail.curCount,
-      "SendEmail.state" -> SendEmail.state,
-      "DieselCron.size" -> DieselCron.withRealmSchedules(_.size),
-      "DomGuardian.size" -> DomGuardian.lastRuns.size,
-      "DomCollector.size" -> DomCollector.withAsts(_.size),
-      "Threads" -> defaultContext.toString,
-      "ClusterStatus" -> GlobalData.clusterStatus,
-      "allReactors" -> WikiReactors.allReactors.keys.mkString(","),
+    razie.js.tojsons(
+      GlobalData.toMap() ++
+          Map(
+            "wikis" -> RazMongo("WikiEntry").size,
+            "scriptsRun" -> WikiScripster.count,
+            "NotesLocker.autosaved" -> NotesLocker.autosaved,
+            "SendEmail.curCount" -> SendEmail.curCount,
+            "SendEmail.state" -> SendEmail.state,
+            "DieselCron.size" -> DieselCron.withRealmSchedules(_.size),
+            "DomGuardian.size" -> DomGuardian.lastRuns.size,
+            "DomCollector.size" -> DomCollector.withAsts(_.size),
+            "Threads" -> defaultContext.toString,
+            "allReactors" -> WikiReactors.allReactors.keys.mkString(","),
       "loadedReactors" -> WikiReactors.reactors.keys.mkString(",")
     ))
   }

@@ -162,7 +162,7 @@ object DomGuardian extends Logging {
       if (Config.isLocalhost)
         settings.hostport = Some(Config.hostport)
       else
-        settings.hostport = Website.forRealm(realm).map(_.domain)
+        settings.dieselHost = Website.forRealm(realm).map(_.url)
 
       val addFiddles = Website
           .forRealm(realm)

@@ -684,11 +684,12 @@ class DomApi extends DomApiBase with Logging {
               val m = engine
                 .root
                 .children
-                // without hardcoded engine messages - diesel.rest is allowed
-                  .filterNot(x=>
+                // without hardcoded engine messages - diesel.rest and ping is allowed
+                  .filterNot(x =>
                     x.value.isInstanceOf[EMsg] &&
                         x.value.asInstanceOf[EMsg].entity == DieselMsg.ENGINE.ENTITY &&
-                        x.value.asInstanceOf[EMsg].met != "rest")
+                        x.value.asInstanceOf[EMsg].met != "rest" &&
+                        x.value.asInstanceOf[EMsg].met != "ping")
                 .filter(x=>
                     // skip debug infos and other stuff = we need the first message
                     x.value.isInstanceOf[EMsg])
