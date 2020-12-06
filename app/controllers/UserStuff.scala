@@ -1,36 +1,26 @@
 package controllers
 
-import razie.hosting.Website
-import razie.RString._
+import com.google.inject.{Inject, Singleton}
+import controllers.UserStuff.findPublicProfile
 import model._
-import play.api.data.Forms._
-import play.api.mvc._
-import play.api._
-import razie.Snakk
-import scala.util.parsing.combinator.RegexParsers
-import org.joda.time.DateTime
-import razie.XP
-import razie.XpSolver
-import razie.Snakk._
 import org.bson.types.ObjectId
-import scala.Some
-import razie.wiki.model.WWrapper
-import razie.wiki.model.UWID
-import razie.wiki.model.WikiXpSolver
-import razie.wiki.model.Wikis
-import razie.wiki.model.WikiWrapper
+import org.joda.time.DateTime
+import play.api.mvc._
+import razie.Snakk._
+import razie.hosting.Website
 import razie.tconf.parser.SpecParserSettings
 import razie.wiki.Config
-import razie.wiki.model.ILink
-import razie.wiki.model.WikiLink
-import razie.wiki.model.WID
+import razie.wiki.model._
 import razie.wiki.util.Maps
+import razie.{Snakk, XpSolver}
+import scala.util.parsing.combinator.RegexParsers
 
-class UserStuff (val realm:String, val user:User) {
+class UserStuff(val realm: String, val user: User) {
   lazy val events = UserStuff.events(realm, user)
   private lazy val alocs = events flatMap (_._5 \ "Venue" \@ "loc")
-  lazy val locs = alocs.filter (! _.isEmpty).map(_.replaceFirst("ll:",""))
-    //xp(user, "Calendar") \ UserStuff.Race \ "Venue" \@ "loc"}.filter(! _.isEmpty).map(_.replaceFirst("ll:",""))
+
+  lazy val locs = alocs.filter(!_.isEmpty).map(_.replaceFirst("ll:", ""))
+  //xp(user, "Calendar") \ UserStuff.Race \ "Venue" \@ "loc"}.filter(! _.isEmpty).map(_.replaceFirst("ll:",""))
 
   def comingUp = {
     events.filter(_._3.isAfter(DateTime.now))
@@ -45,8 +35,51 @@ class UserStuff (val realm:String, val user:User) {
 /** profile related control */
 object UserStuff extends RazController {
 
-  def findPublicProfile(realm:String, uid:String) =
-    Wikis.find(WID("User", realm+"-"+uid)) orElse Wikis.find(WID("User", uid))
+  def findPublicProfile(realm: String, uid: String) =
+    Wikis.find(WID("User", realm + "-" + uid)) orElse Wikis.find(WID("User", uid))
+
+  def Race = Config.sitecfg("racecat").getOrElse("Race")
+
+  def events(u: User): List[(ILink, String, DateTime, ILink, Snakk.Wrapper[WWrapper])] =
+    events("*", u)
+
+  /** user / Calendar / Race / Venue
+    *
+    * @return (what,when)
+    */
+  def events(realm: String, u: User): List[(ILink, String, DateTime, ILink, Snakk.Wrapper[WWrapper])] = {
+    val dates = u.pages(realm, "Calendar").flatMap { uw =>
+      val node = new WikiWrapper(uw.uwid.wid.get)
+      val root = new razie.Snakk.Wrapper(node, WikiXpSolver)
+
+      // TODO optimize this - lots of lookups...
+      val races = (root \ "*" \ Race) ++ (root \ "*" \ "Event") ++ (root \ "*" \ "Training")
+      val dates = races.map { race =>
+        val wr = new Snakk.Wrapper(race, races.ctx)
+        (race.mkLink,
+            wr \@ "date",
+            new ILink(WID("Venue", wr \@ "venue")),
+            wr
+        )
+      }.filter(_._2 != "")
+      // filter those that parse successfuly
+      dates.map(x => (x._1, x._2, DateParser.apply(x._2), x._3, x._4)).filter(_._3.successful).map(
+        t => (t._1, t._2, t._3.get, t._4, t._5)
+      )
+    }
+    dates.sortWith((a, b) => a._3 isBefore b._3)
+  }
+
+  def xp(realm: String, u: User, cat: String) = {
+    new XListWrapper(
+      u.pages(realm, cat).map { uw => new WikiWrapper(WID(cat, uw.uwid.nameOrId).r(realm)) },
+      WikiXpSolver)
+  }
+}
+
+/** profile related control */
+@Singleton
+class UserStuffCtl @Inject()(wikiCtl: Wiki) extends RazController {
 
   // serve public profile
   def pub(id: String) = RAction { implicit stok =>
@@ -54,8 +87,8 @@ object UserStuff extends RazController {
     val w = user.flatMap(u => findPublicProfile(stok.realm, u.userName))
 
     w.flatMap(_.alias).map { wid =>
-      Redirect(Wiki.wr(wid, stok.realm))
-    } orElse user.map {u=>
+      Redirect(WikiUtil.wr(wid, stok.realm))
+    } orElse user.map { u =>
       ROK.r apply { implicit stok =>
         views.html.user.userInfo(u)
       }
@@ -66,46 +99,10 @@ object UserStuff extends RazController {
 
   def wiki(id: String, cat: String, name: String) =
     WikiLink(UWID("User", new ObjectId(id)), WID(cat, name).uwid.get, "").page.map(w =>
-        Wiki.show (WID("WikiLink", w.name))
+      wikiCtl.show(WID("WikiLink", w.name))
       ).getOrElse(
-        Action { implicit request => Redirect (Wiki.w (cat, name, Website.realm)) }
+      Action { implicit request => Redirect(WikiUtil.w(cat, name, Website.realm)) }
       )
-
-  def Race = Config.sitecfg("racecat").getOrElse("Race")
-
-  def events(u: User): List[(ILink, String, DateTime, ILink, Snakk.Wrapper[WWrapper])] =
-    events("*", u)
-
-  /** user / Calendar / Race / Venue
-   * @return (what,when)
-   */
-  def events(realm:String, u: User): List[(ILink, String, DateTime, ILink, Snakk.Wrapper[WWrapper])] = {
-    val dates = u.pages(realm, "Calendar").flatMap{ uw =>
-      val node = new WikiWrapper(uw.uwid.wid.get)
-      val root = new razie.Snakk.Wrapper(node, WikiXpSolver)
-
-      // TODO optimize this - lots of lookups...
-      val races = (root \ "*" \ Race) ++ (root \ "*" \ "Event") ++ (root \ "*" \ "Training")
-      val dates = races.map { race =>
-        val wr = new Snakk.Wrapper(race, races.ctx)
-        (race.mkLink,
-        wr \@ "date",
-        new ILink(WID("Venue", wr \@ "venue")),
-        wr
-        )
-      }.filter(_._2 != "")
-      // filter those that parse successfuly
-      dates.map(x => (x._1, x._2, DateParser.apply(x._2), x._3, x._4)).filter(_._3.successful).map(t => (t._1, t._2, t._3.get, t._4, t._5)
-          )
-    }
-    dates.sortWith((a, b) => a._3 isBefore b._3)
-  }
-
-  def xp(realm:String, u: User, cat: String) = {
-    new XListWrapper(
-      u.pages(realm, cat).map { uw => new WikiWrapper(WID(cat, uw.uwid.nameOrId).r(realm)) },
-      WikiXpSolver)
-  }
 
   // serve public profile
   def doeUserCreateSomething = Action { implicit request =>

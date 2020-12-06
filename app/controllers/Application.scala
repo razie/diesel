@@ -1,21 +1,21 @@
 package controllers
 
-import com.google.inject.Singleton
+import com.google.inject.{Inject, Singleton}
 import com.mongodb.casbah.Imports._
 import mod.snow.{RacerKidInfo, RacerKidz, _}
 import model._
 import org.joda.time.DateTime
 import play.api.mvc.Action
 import razie.audit.Audit
-import razie.db.{RMany, ROne}
 import razie.db.RazMongo.RazMongoTable
+import razie.db.{RMany, ROne}
 import razie.hosting.{BannedIps, RkReactors, Website, WikiReactors}
 import razie.tconf.Visibility
 import razie.wiki.Sec._
 import razie.wiki.model._
 import razie.wiki.{Config, Enc, Services, WikiConfig}
-import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 import scala.util.{Random, Try}
 
 
@@ -26,7 +26,7 @@ object ApplicationUtils {
 
 /** main entry points */
 @Singleton
-class Application extends RazController {
+class Application @Inject()(wikiCtl: Wiki) extends RazController {
 
   val rand = new Random()
 
@@ -36,7 +36,7 @@ class Application extends RazController {
 
     // make sure realms are loaded
 //    WikiReactors.reactorsLoadedF flatMap {b=>
-    Future.successful(true).flatMap {b=>
+    Future.successful(true).flatMap { b =>
 
       Try {
         val getHost = Website.getHost
@@ -44,7 +44,7 @@ class Application extends RazController {
         // 1. url forward?
 
         getHost.flatMap(Config.urlfwd(_)).map { host =>
-          log ("URL - Redirecting main page from "+getHost + " TO "+host)
+          log("URL - Redirecting main page from " + getHost + " TO " + host)
           Future.successful(Redirect(host))
 
           // 2 home page?
@@ -75,13 +75,13 @@ class Application extends RazController {
 
         }.map { home =>
 
-          Wiki.show(home, 1).apply(request)
+          wikiCtl.show(home, 1).apply(request)
 
         } getOrElse {
 
           // 3 - no known host
 
-          var r = Wiki.getRealm()
+          var r = wikiCtl.getRealm()
 
           // no longer default to RK, but WIKI - no weird skier pages
 
@@ -112,7 +112,7 @@ class Application extends RazController {
 
                 log(s"### - $r - $dom - ${w.isDefined} - $getHost - ${hostedDomains.mkString}")
 
-                if(!dom.exists(h=> hostedDomains.exists(d=> h.endsWith(d)))) {
+                if (!dom.exists(h => hostedDomains.exists(d => h.endsWith(d)))) {
                   // had another domain - redirect
                   log(s"Redirecting to ${w.flatMap(_.prop("url")).mkString}")
                   Future.successful {
@@ -120,13 +120,14 @@ class Application extends RazController {
                   }
                 } else
                 // if a hosted reactor domain, print a generic project not found message
-                  Wiki.show(
-                    WID("Admin", "WebsiteNotFound").r(WikiReactors.WIKI).page.map(_.wid) getOrElse WikiReactors(r).mainPage(auth),
+                  wikiCtl.show(
+                    WID("Admin", "WebsiteNotFound").r(WikiReactors.WIKI).page.map(_.wid) getOrElse WikiReactors(
+                      r).mainPage(auth),
                     1).apply(request)
               }
               else
               // if nice URL - don't just redirect to dieselapps - just print a generic message
-                Wiki.show(
+                wikiCtl.show(
                   WikiReactors(r).mainPage(auth),
                   1).apply(request)
             res
@@ -203,7 +204,7 @@ class Application extends RazController {
             // found reactor - look for a simple name first
 
             wiki.find("Admin", path) orElse wiki.find("Page", path) map { we =>
-              Wiki.showWid(CMDWID(Some(we.wid.wpath), Some(we.wid), "", ""), 1, wiki.realm).apply(request)
+              wikiCtl.showWid(CMDWID(Some(we.wid.wpath), Some(we.wid), "", ""), 1, wiki.realm).apply(request)
             }
           }.getOrElse {
 
@@ -217,11 +218,11 @@ class Application extends RazController {
                 val wid = WID(cat, e(1))
                 val rewritten = path.replace(s"${e(0)}/${e(1)}", wid.wpath)
                 val cmd = WID.cmdfromPath(rewritten).get
-                Wiki.showWid(cmd, 1, "?").apply(request)
+                wikiCtl.showWid(cmd, 1, "?").apply(request)
               } else {
                 // just /Topic
                 val cmd = WID.cmdfromPath("Category:" + e(0)).get
-                Wiki.showWid(cmd, 1, "?").apply(request)
+                wikiCtl.showWid(cmd, 1, "?").apply(request)
               }
             } getOrElse
                 Future.successful(Redirect("/"))

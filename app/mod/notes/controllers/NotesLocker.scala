@@ -4,25 +4,22 @@ import _root_.controllers._
 import com.mongodb.casbah.Imports.wrapDBObj
 import com.novus.salat.grater
 import mod.diesel.model.WG
-import mod.notes.controllers
 import model._
 import org.bson.types.ObjectId
-import org.joda.time.DateTime
 import play.api.mvc._
 import play.twirl.api.Html
 import razie.audit.Audit
 import razie.db.RazSalatContext.ctx
 import razie.db._
 import razie.diesel.dom.WikiDomain
+import razie.hosting.Website
+import razie.tconf.TagQuery
 import razie.wiki.Sec.EncryptedS
 import razie.wiki.admin.SendEmail
 import razie.wiki.model._
 import razie.wiki.parser.ParserCommons
-import razie.js
 import razie.wiki.{Enc, Services, WikiConfig}
-import razie.{Logging, cout}
-import razie.hosting.Website
-import razie.tconf.TagQuery
+import razie.{Logging, cout, js}
 import scala.util.parsing.input.Positional
 
 /** autosaved notes */
@@ -502,7 +499,8 @@ object NotesLocker extends RazController with Logging {
   def showWid(wpath:model.CMDWID, count:Int) = FUH { implicit au =>
     implicit errCollector => implicit request =>
 
-      val wl = wpath.wid.flatMap(_.page).filter(page => Wiki.canSee(page.wid, Option(au), Some(page)).getOrElse(false))
+      val wl = wpath.wid.flatMap(_.page).filter(
+        page => WikiUtil.canSee(page.wid, Option(au), Some(page)).getOrElse(false))
 
       wl.map { n =>
         NOK ("", autags, "msg" -> s"[view]") apply {implicit stok=>

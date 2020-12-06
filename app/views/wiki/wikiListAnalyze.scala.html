@@ -15,7 +15,7 @@ list all topics in category
       @list.map{p=>
         <tr>
           <td>
-            <a href="@controllers.Wiki.w(p.category, p.name, stok.realm)">@p.label</a>
+            <a href="@controllers.WikiUtil.w(p.category, p.name, stok.realm)">@p.label</a>
           </td>
           <td>
             <small>&nbsp;  @p.category</small>

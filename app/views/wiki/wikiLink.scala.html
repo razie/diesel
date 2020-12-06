@@ -72,7 +72,7 @@ link a user to a wiki: club membership etc
 
     <div class="actions">
       <button type="submit" class="btn btn-success">Ok</button>
-      <a href="@controllers.Wiki.w(to)" class="btn btn-danger">Nah-Cancel</a>
+      <a href="@controllers.WikiUtil.w(to)" class="btn btn-danger">Nah-Cancel</a>
     @if(withComment) {
       <a href="@routes.Wikil.linkUser(to,false)" class="btn btn-default">Remove the note!</a>
     } else {

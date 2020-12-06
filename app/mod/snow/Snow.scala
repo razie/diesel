@@ -7,12 +7,11 @@ import razie.Logging
 import razie.audit.Audit
 import razie.db.{ROne, tx}
 import razie.diesel.dom.WikiDomain
-import razie.wiki.Sec._
-import razie.wiki.model._
-import razie.wiki.model.features.WForm
 import razie.hosting.WikiReactors
 import razie.tconf.Visibility
 import razie.wiki.Config
+import razie.wiki.model._
+import razie.wiki.model.features.WForm
 import scala.Option.option2Iterable
 
 case class RoleWid(role: String, wid: WID)
@@ -20,9 +19,9 @@ case class RoleWid(role: String, wid: WID)
 /** controller for club management */
 object Snow extends RazController with Logging {
 
-  def invite(wid:WID, role:String) = FAUR { implicit request =>
+  def invite(wid: WID, role: String) = FAUR { implicit request =>
     val club = Club(wid).get
-    Redirect(controllers.routes.Kidz.doeUserKid(club.userId.toString, "11", role, "-", "invite:"+club.wid.wpath))
+    Redirect(controllers.routes.Kidz.doeUserKid(club.userId.toString, "11", role, "-", "invite:" + club.wid.wpath))
   }
 
   def manage(club:WID, role:String, team:String) = FAUR { implicit request =>
@@ -399,7 +398,7 @@ object Snow extends RazController with Logging {
         weNote.map { we =>
           Emailer.withSession(request.realm) { implicit mailSession =>
             rk.personsToNotify.map { u =>
-              Emailer.sendEmailNewNote(role, u, request.au.get, Wiki.w(we.wid), role,memo)
+              Emailer.sendEmailNewNote(role, u, request.au.get, we.wid.w, role, memo)
             }
           }
         }

@@ -6,44 +6,42 @@
  */
 package controllers
 
-import admin._
+import com.google.inject.{Inject, Singleton}
+import com.mongodb.DBObject
 import com.mongodb.casbah.Imports._
 import com.novus.salat._
 import mod.diesel.controllers.DieselControl
 import model._
 import org.bson.types.ObjectId
-import play.twirl.api.Html
-import razie.db.RazSalatContext._
-import com.mongodb.DBObject
-import controllers.Wiki.w
-import controllers.Wikie.{ROK, editForm, wvis}
 import play.api.data.Form
 import play.api.data.Forms.{mapping, nonEmptyText, text}
-import razie.db.ROne
 import play.api.mvc.{Action, AnyContent, Cookie, Request}
-import razie.wiki.util.{PlayTools, QueryParms}
-import razie.{Logging, js}
-import razie.wiki.model._
-import razie.wiki.model.features.WikiCount
-import razie.wiki.model.WikiSearch
-import scala.Array.canBuildFrom
-import razie.wiki.{Config, Enc, Services}
-import razie.wiki.model.WikiAudit
-import scala.concurrent.Future
+import play.twirl.api.Html
 import razie.audit.Audit
+import razie.db.ROne
+import razie.db.RazSalatContext._
 import razie.hosting.{Website, WikiReactors}
 import razie.tconf.Visibility.PUBLIC
+import razie.wiki.model.features.WikiCount
+import razie.wiki.model.{WikiAudit, WikiSearch, _}
+import razie.wiki.util.{PlayTools, QueryParms}
+import razie.wiki.{Config, Enc, Services}
+import razie.{Logging, js}
+import scala.Array.canBuildFrom
+import scala.concurrent.Future
 import scala.util.Try
 
 /** reused in other controllers */
 class WikiBase extends RazController with Logging with WikiAuthorization {
-  def isVisible(u: Option[WikiUser], props: Map[String, String], visibility: String = "visibility", we: Option[WikiEntry] = None)(implicit errCollector: VErrors = IgnoreErrors): Boolean =
+  def isVisible(u: Option[WikiUser], props: Map[String, String], visibility: String = "visibility",
+                we: Option[WikiEntry] = None)(implicit errCollector: VErrors = IgnoreErrors): Boolean =
     Services.wikiAuth.isVisible(u, props, visibility)(errCollector)
 
   def canSee(wid: WID, au: Option[WikiUser], w: Option[WikiEntry])(implicit errCollector: VErrors): Option[Boolean] =
     Services.wikiAuth.canSee(wid, au, w)(errCollector)
 
-  def canEdit(wid: WID, u: Option[WikiUser], w: Option[WikiEntry], props: Option[Map[String, String]] = None)(implicit errCollector: VErrors): Option[Boolean] =
+  def canEdit(wid: WID, u: Option[WikiUser], w: Option[WikiEntry], props: Option[Map[String, String]] = None)
+             (implicit errCollector: VErrors): Option[Boolean] =
     Services.wikiAuth.canEdit(wid, u, w, props)(errCollector)
 
   val RK: String = Wikis.RK
@@ -59,35 +57,46 @@ class WikiBase extends RazController with Logging with WikiAuthorization {
     * @param irealm - the realm hint from request, if any
     * @return
     */
-  def getRealm (irealm:String = UNKNOWN) (implicit request : Request[_]) = {
+  def getRealm(irealm: String = UNKNOWN)(implicit request: Request[_]) = {
     // todo I think this function is obsoleted - reactors add themselves in Websites...?
-    if(UNKNOWN == irealm) {
-      PlayTools.getHost.flatMap(x=>Website.forHost(x)).map(_.reactor).getOrElse(WikiReactors.RK)
+    if (UNKNOWN == irealm) {
+      PlayTools.getHost.flatMap(x => Website.forHost(x)).map(_.reactor).getOrElse(WikiReactors.RK)
     } else irealm
+  }
+
+  import collection.JavaConverters._
+
+  def showForm(wid: WID, iname: Option[String], page: Option[WikiEntry], user: Option[User], shouldCount: Boolean,
+               errors: Map[String, String], canEdit: Boolean, print: Boolean = false)(implicit stok: RazRequest) = {
+    // form design
+    page.flatMap(_.section("section", "formData")).foreach { s =>
+      // parse form data
+      val data = razie.Snakk.jsonParsed(s.content)
+      data.keys.asScala.map(_.toString).map { name =>
+        val x = data.getString(name)
+        //          cout << "FIELD " + name + "="+x
+        page.get.fields.get(name).foreach(f => page.get.fields.put(f.name, f.withValue(x)))
+        //          cout << "FIELDs " + page.get.fields.toString
+      }
+    }
+
+    ROK.k noLayout { implicit stok =>
+      views.html.wiki.wikiForm(wid, iname, page, user, errors, canEdit, print)
+    }
   }
 
 }
 
 /** wiki controller */
-object Wiki extends WikiBase {
+@Singleton
+class Wiki @Inject()(dieselControl: DieselControl) extends WikiBase {
+
+  import WikiUtil._
+
   implicit def obtob(o: Option[Boolean]): Boolean = o.contains(true)
 
-  /** make a relative href for the given tag. give more tags with 1/2/3 */
-  def hrefTag(curRealm:String, wid:WID, t:String,label:String) = {
-    if(Array("Blog","Forum") contains wid.cat) {
-      s"""<b><a href="${wr(wid, curRealm)}/tag/$t">$label</a></b>"""
-    } else {
-      if(wid.parentWid.isDefined) {
-        s"""<b><a href="${wr(wid.parentWid.get, curRealm)}/tag/$t">$label</a></b>"""
-      } else {
-//        s"""<b><a href="${routes.Wiki.showTag(t, wid.getRealm)}">$label</a></b>"""
-        s"""<b><a href="/tag/$t">$label</a></b>"""
-      }
-    }
-  }
-
   /** show a global tag, no parent */
-  def showTag(tag: String, irealm:String) = Action.async { implicit request=>
+  def showTag(tag: String, irealm: String) = Action.async { implicit request =>
     // why i do this redir
     // it's meant to work for other sites without reactors, that have no local tags
     // todo is it still needed? I don't think I have sites without reactors anymore
@@ -160,7 +169,7 @@ object Wiki extends WikiBase {
 
     if (wl.size == 1 && iq != "")
       // if just one found and not a tag browsing
-      Redirect(controllers.Wiki.w(wl.head.wid))
+      Redirect(controllers.WikiUtil.w(wl.head.wid))
     else {
       // the list of tags, sorted by count of occurences
       val tags = wl
@@ -297,7 +306,6 @@ object Wiki extends WikiBase {
       }
   }
 
-  case class EditWiki(label: String, markup: String, content: String, visibility: String, edit: String, oldVer:String, tags: String, notif: String)
 
   val editForm = Form {
     mapping(
@@ -414,7 +422,7 @@ object Wiki extends WikiBase {
     val realm = getRealm(irealm)
     (
         for (w <- Wikis(realm).findById(id)) yield
-          Redirect(controllers.Wiki.wr(w.wid, realm))
+          Redirect(controllers.WikiUtil.wr(w.wid, realm))
     ) getOrElse
         Msg("Oops - id not found")
   }
@@ -425,22 +433,6 @@ object Wiki extends WikiBase {
       ) getOrElse NotFound("wiki not found")
   }
 
-  def w(we: UWID, fromRealm:String):String = we.wid.map(wid=>wr(wid, fromRealm)).getOrElse("ERR_NO_URL_FOR_"+we.toString)
-
-  /** @deprecated use the one with fromREalm */
-  def w(we: UWID):String = we.wid.map(wid=>w(wid)).getOrElse("ERR_NO_URL_FOR_"+we.toString)
-
-  /** @deprecated use the one with fromREalm */
-  def w(we: WID, shouldCount: Boolean = true):String = we.urlRelative + (if (!shouldCount) "?count=0" else "")
-  def wr(wid: WID, fromRealm:String, shouldCount: Boolean = true):String =
-    wid.urlRelative(fromRealm) + (if (!shouldCount) "?count=0" else "")
-
-  /** @deprecated use the one with fromREalm */
-  def w(cat: String, name: String, realm:String) =
-      WID(cat, name).r(realm).urlRelative
-
-  /** @deprecated use the realm version */
-  def w(name: String) = s"/wiki/$name" //todo remove
 
   def call[A, B](value: A)(f: A => B) = f(value)
 
@@ -490,20 +482,22 @@ object Wiki extends WikiBase {
     else if ("Admin" == cat && "Private_Messages" == name) Redirect("/doe/msg/PM")
 //    else if ("Reactor" == cat && iwid.name != Wikis.RK && !iwid.realm.exists(_ != Wikis.RK)) Redirect("/w/"+wid.name+"/wiki/"+wid.wpath)
     else if ("Category" == cat && !Wikis(iwid.getRealm).categories.exists(_.name == name))
-      DieselControl.catBrowser("diesel", iwid.getRealm, iwid.getRealm, name, "").apply(request.ireq.asInstanceOf[Request[AnyContent]]).value.get.get
+      dieselControl.catBrowser("diesel", iwid.getRealm, iwid.getRealm, name, "").apply(
+        request.ireq.asInstanceOf[Request[AnyContent]]).value.get.get
     else if ("any" == cat || (cat.isEmpty && wid.parent.isEmpty)) {
       // search for any name only if cat is missing OR there is no parent
 
       // TODO optimize to load just the WID - i'm redirecting anyways
       // todo trying first the index and then cache - did not think this through
-      var wl = Wikis(wid.getRealm).index.getWids(name).flatMap(x=>cachedPage(x, au) orElse Wikis(wid.getRealm).find(x))
-      if(wl.isEmpty)
+      var wl = Wikis(wid.getRealm).index.getWids(name).flatMap(
+        x => cachedPage(x, au) orElse Wikis(wid.getRealm).find(x))
+      if (wl.isEmpty)
 
         wl = Wikis(wid.getRealm)
-          .findAny(name)
-          .toList
+            .findAny(name)
+            .toList
 
-        wl = wl.filter(page => canSeeMaybe(page.wid, au, Some(page)))
+      wl = wl.filter(page => canSeeMaybe(page.wid, au, Some(page)))
 
       if (wl.size == 1) {
         if (isSuperCat(wl.head.wid.cat)) {
@@ -512,7 +506,7 @@ object Wiki extends WikiBase {
           show(wl.head.wid, count, print).apply(request.ireq.asInstanceOf[Request[AnyContent]]).value.get.get
         } else
         // redirect to use the proper Category display
-          Redirect(controllers.Wiki.wr(wl.head.wid, realm))
+          Redirect(controllers.WikiUtil.wr(wl.head.wid, realm))
       } else if (wl.nonEmpty) {
         val tags = wl.flatMap(_.tags).filter(_ != Tags.ARCHIVE).filter(_ != "").groupBy(identity).map(t => (t._1, t._2.size)).toSeq.sortBy(_._2).reverse
         ROK.k reactorLayout12 {
@@ -523,7 +517,7 @@ object Wiki extends WikiBase {
         Wikis(wid.getRealm).index.getForLower(wid.name.toLowerCase).flatMap {newName=>
           log("- redirecting lower case: " + iwid.wpath)
           Wikis(wid.getRealm).index.getWids(newName).headOption.map { newWid =>
-            Redirect(controllers.Wiki.wr(newWid, realm)) // perhaps different class name
+            Redirect(controllers.WikiUtil.wr(newWid, realm)) // perhaps different class name
           }
         } getOrElse {
           wikiPage(wid, Some(iwid.name), None, !shouldNotCount, au.isDefined && canEdit(wid, au, None).exists(identity))
@@ -541,13 +535,13 @@ object Wiki extends WikiBase {
       if (!w.isDefined && Wikis(wid.getRealm).index.containsLower(wid.name.toLowerCase)) {
         val newName = Wikis(wid.getRealm).index.getForLower(wid.name.toLowerCase).get
         // it may be in a mixin realm
-        Wikis(wid.getRealm).index.getWids(newName).headOption.map {newWid=>
+        Wikis(wid.getRealm).index.getWids(newName).headOption.map { newWid =>
           log(s"- redirecting lower case FOUND: ${iwid.wpath} -> ${newWid.wpath}")
-          Redirect(controllers.Wiki.wr(newWid, realm)) // perhaps different class name
+          Redirect(controllers.WikiUtil.wr(newWid, realm)) // perhaps different class name
         } getOrElse {
-          val newWid = wid.copy(name=newName)
+          val newWid = wid.copy(name = newName)
           log(s"- redirecting lower case WHO?: ${iwid.wpath} -> ${newWid.wpath}")
-          Redirect(controllers.Wiki.wr(newWid, realm)) // gave up - maybe... whatever
+          Redirect(controllers.WikiUtil.wr(newWid, realm)) // gave up - maybe... whatever
         }
       } else {
         // finally there!!
@@ -593,7 +587,7 @@ object Wiki extends WikiBase {
             w.map { w =>
               // redirect a simple alias with no other content
               w.alias.map { wid =>
-                Redirect(controllers.Wiki.wr(wid.formatted, realm))
+                Redirect(controllers.WikiUtil.wr(wid.formatted, realm))
               } orElse w.redirect.map { url =>
                   Redirect(url)
               } getOrElse
@@ -604,28 +598,6 @@ object Wiki extends WikiBase {
         }
       }
     }
-  }
-
-  def cachedPage(wid:WID, au:Option[User]) = {
-    val w = {
-      if (Services.config.cacheWikis) {
-        import play.api.cache._
-        import play.api.Play.current
-
-        WikiCache.getEntry(wid.wpathFull+".page").map { x =>
-          x
-        }.orElse {
-          val n = wid.page
-          n.map(_.preprocess(au))
-          if (n.exists(w=> w.cacheable && w.category != "-" && w.category != "")) {
-            WikiCache.set(n.get.wid.wpathFull + ".page", n.get, 300) // 10 miuntes
-          }
-          n
-        }
-      } else
-        wid.page
-    }
-    w
   }
 
   // this has been already authorized - will not check anymore
@@ -659,26 +631,6 @@ object Wiki extends WikiBase {
     }
 
     res
-  }
-
-  import collection.JavaConverters._
-
-  def showForm(wid: WID, iname: Option[String], page: Option[WikiEntry], user: Option[User], shouldCount: Boolean, errors: Map[String, String], canEdit: Boolean, print: Boolean = false)(implicit stok:RazRequest) = {
-    // form design
-    page.flatMap(_.section("section", "formData")).foreach { s =>
-      // parse form data
-      val data = razie.Snakk.jsonParsed(s.content)
-      data.keys.asScala.map(_.toString).map { name =>
-        val x = data.getString(name)
-        //          cout << "FIELD " + name + "="+x
-        page.get.fields.get(name).foreach(f => page.get.fields.put(f.name, f.withValue(x)))
-        //          cout << "FIELDs " + page.get.fields.toString
-      }
-    }
-
-    ROK.k noLayout { implicit stok =>
-      views.html.wiki.wikiForm(wid, iname, page, user, errors, canEdit, print)
-    }
   }
 
   def wikieReferences(iwid: WID) = wikieDebug (iwid, "references")
@@ -724,8 +676,6 @@ object Wiki extends WikiBase {
       views.html.wiki.wikiListAnalyze(q, tags, scope, wl.toIterator)
     }
   }
-
-  import play.api.libs.json._
 
   def xp(wid: WID, path: String, page: Option[WikiEntry] = None) = Action { implicit request =>
     implicit val errCollector = new VErrors()
@@ -892,25 +842,6 @@ object Wiki extends WikiBase {
     }
   }
 
-  class WTReport (val tag:String, val realm:String) {
-    // value, list of wikis
-    val rep = new collection.mutable.HashMap[String, List[WID]]()
-
-    Wikis(realm).foreach { dbo=>
-      val we = grater[WikiEntry].asObject(dbo)
-
-      val PATT = ("""(?s)\{\{""" + tag + """(\.\w*)?([: ])?([^ }]*)?""").r
-
-      for (m <- PATT.findAllMatchIn(we.content)) {
-        val url = m.group(3)
-        if(!rep.contains(url))
-          rep.put(url, List(we.wid))
-        else
-          rep.put(url, we.wid :: rep(url))
-      }
-    }
-  }
-
   //todo be a separate mod
   def wikiPropFeedRss(xurl:String) = Action { implicit request =>
     import razie.Snakk._
@@ -942,8 +873,6 @@ object Wiki extends WikiBase {
 /** wiki controller */
 object WikiApiv1 extends WikiBase {
   implicit def obtob(o: Option[Boolean]): Boolean = o.exists(_ == true)
-
-  import razie.js
 
   /** prepare the wid to be fully defined with realm and whatnot */
   def prepWid (cw:CMDWID, irealm:String)(f: WID=>play.api.mvc.Result) (implicit request:Request[_]) =
@@ -1028,6 +957,100 @@ object WikiApiv1 extends WikiBase {
           Unauthorized(s"Can't see wpath ${wid.wpath}")
       }
     }
+  }
+
+}
+
+object WikiUtil {
+
+  case class EditWiki(label: String, markup: String, content: String, visibility: String, edit: String,
+                      oldVer: String, tags: String, notif: String)
+
+  def w(we: UWID, fromRealm: String): String = we.wid.map(wid => wr(wid, fromRealm)).getOrElse(
+    "ERR_NO_URL_FOR_" + we.toString)
+
+  /** @deprecated use the one with fromREalm */
+  def w(we: UWID): String = we.wid.map(wid => w(wid)).getOrElse("ERR_NO_URL_FOR_" + we.toString)
+
+  /** @deprecated use the one with fromREalm */
+  def w(we: WID): String = we.w
+
+  def w(we: WID, shouldCount: Boolean): String = we.w(shouldCount)
+
+  def wr(wid: WID, fromRealm: String, shouldCount: Boolean = true): String =
+    wid.urlRelative(fromRealm) + (if (!shouldCount) "?count=0" else "")
+
+  /** @deprecated use the one with fromREalm */
+  def w(cat: String, name: String, realm: String) =
+    WID(cat, name).r(realm).urlRelative
+
+  /** @deprecated use the realm version */
+  def w(name: String) = s"/wiki/$name" //todo remove
+
+// todo duplicates from WikiBase
+
+  def isVisible(u: Option[WikiUser], props: Map[String, String], visibility: String = "visibility",
+                we: Option[WikiEntry] = None)(implicit errCollector: VErrors = IgnoreErrors): Boolean =
+    Services.wikiAuth.isVisible(u, props, visibility)(errCollector)
+
+  def canSee(wid: WID, au: Option[WikiUser], w: Option[WikiEntry])(implicit errCollector: VErrors): Option[Boolean] =
+    Services.wikiAuth.canSee(wid, au, w)(errCollector)
+
+  def canEdit(wid: WID, u: Option[WikiUser], w: Option[WikiEntry], props: Option[Map[String, String]] = None)
+             (implicit errCollector: VErrors): Option[Boolean] =
+    Services.wikiAuth.canEdit(wid, u, w, props)(errCollector)
+
+  class WTReport(val tag: String, val realm: String) {
+    // value, list of wikis
+    val rep = new collection.mutable.HashMap[String, List[WID]]()
+
+    Wikis(realm).foreach { dbo =>
+      val we = grater[WikiEntry].asObject(dbo)
+
+      val PATT = ("""(?s)\{\{""" + tag + """(\.\w*)?([: ])?([^ }]*)?""").r
+
+      for (m <- PATT.findAllMatchIn(we.content)) {
+        val url = m.group(3)
+        if (!rep.contains(url))
+          rep.put(url, List(we.wid))
+        else
+          rep.put(url, we.wid :: rep(url))
+      }
+    }
+  }
+
+  /** make a relative href for the given tag. give more tags with 1/2/3 */
+  def hrefTag(curRealm: String, wid: WID, t: String, label: String) = {
+    if (Array("Blog", "Forum") contains wid.cat) {
+      s"""<b><a href="${wr(wid, curRealm)}/tag/$t">$label</a></b>"""
+    } else {
+      if (wid.parentWid.isDefined) {
+        s"""<b><a href="${wr(wid.parentWid.get, curRealm)}/tag/$t">$label</a></b>"""
+      } else {
+//        s"""<b><a href="${routes.Wiki.showTag(t, wid.getRealm)}">$label</a></b>"""
+        s"""<b><a href="/tag/$t">$label</a></b>"""
+      }
+    }
+  }
+
+  def cachedPage(wid: WID, au: Option[User]) = {
+    val w = {
+      if (Services.config.cacheWikis) {
+
+        WikiCache.getEntry(wid.wpathFull + ".page").map { x =>
+          x
+        }.orElse {
+          val n = wid.page
+          n.map(_.preprocess(au))
+          if (n.exists(w => w.cacheable && w.category != "-" && w.category != "")) {
+            WikiCache.set(n.get.wid.wpathFull + ".page", n.get, 300) // 10 miuntes
+          }
+          n
+        }
+      } else
+        wid.page
+    }
+    w
   }
 
 }

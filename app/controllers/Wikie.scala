@@ -7,7 +7,7 @@
 package controllers
 
 import com.mongodb.DBObject
-import com.mongodb.casbah.Imports.{ObjectId, _}
+import com.mongodb.casbah.Imports._
 import com.novus.salat._
 import difflib.{DiffUtils, Patch}
 import mod.diesel.model.Diesel
@@ -22,12 +22,11 @@ import razie.cout
 import razie.db.RazSalatContext.ctx
 import razie.db.{REntity, RMany, ROne, RazMongo, _}
 import razie.diesel.dom.WikiDomain
-import razie.diesel.utils.{AutosaveSet, DieselData}
+import razie.diesel.utils.DieselData
 import razie.hosting.{Website, WikiReactors}
+import razie.tconf.Visibility._
 import razie.wiki.Sec.EncryptedS
 import razie.wiki.admin._
-import razie.tconf.Visibility._
-import razie.wiki.admin.Autosave.rec
 import razie.wiki.model._
 import razie.wiki.model.features.WikiCount
 import razie.wiki.parser.WAST
@@ -792,10 +791,10 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
                 }
                 Services ! WikiAudit(WikiAudit.UPD_EDIT, w.wid.wpathFull, Some(au._id), None, Some(we), Some(w))
 
-                Redirect(controllers.Wiki.wr(we.wid, getRealm(), true)).flashing("count" -> "0")
+              Redirect(controllers.WikiUtil.wr(we.wid, getRealm(), true)).flashing("count" -> "0")
             }) getOrElse
                 Msg("Can't edit topic: " + errCollector.mkString, wid)
-//              Redirect(controllers.Wiki.wr(wid, getRealm(), false)) // no change
+//              Redirect(controllers.WikiUtil.wr(wid, getRealm(), false)) // no change
 
           case None =>    // create a new topic
 
@@ -864,7 +863,7 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
                 }
               }
 
-              Redirect(controllers.Wiki.wr(we.wid, getRealm(), true)).flashing("count" -> "0")
+              Redirect(controllers.WikiUtil.wr(we.wid, getRealm(), true)).flashing("count" -> "0")
             }) getOrElse
               noPerm(wid, "HACK_SAVEEDIT")
         }
@@ -959,7 +958,7 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
       case None => {
         clog << "need logged in to report a wiki"
         val msg = "You need to be logged in to report a page! If you really must, please create a support request at the bottom of this page..."
-        Ok(views.html.util.utilErr(msg, controllers.Wiki.w(wid)))
+        Ok(views.html.util.utilErr(msg, controllers.WikiUtil.w(wid)))
       }
     }
   }
@@ -1289,7 +1288,7 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
         w.update(newVer, Some("reserve"))
       }
       Wikie.after(Some(w), newVer, WikiAudit.UPD_TOGGLE_RESERVED, Some(au))
-      Redirect(controllers.Wiki.w(wid))
+      Redirect(controllers.WikiUtil.w(wid))
     }
   }
 
@@ -1442,6 +1441,28 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
 
     wikis
   }
+
+  /** rename step 1: form for new name */
+  def wikieTag(realm: String, name: String) = FAUR("wikie.tag.show") { implicit stok =>
+    WikiTag.find(realm, name).map { wtag =>
+      ROK.k apply {
+        views.html.wiki.wikiTag(wtag)
+      }
+    }.orElse {
+      Some(Ok("Create"))
+    }
+  }
+
+  /** create or update tag */
+  def wikieTagUpsert(realm: String, name: String) = FAUR("wikie.tag.create") { implicit stok =>
+    val wtag = WikiTag.update(realm, name)
+    Some(
+      ROK.k apply {
+        views.html.wiki.wikiTag(wtag)
+      }
+    )
+  }
+
 }
 
 

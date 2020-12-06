@@ -18,7 +18,7 @@ included in mainUserC as the right hand side info box
     <a class="btn btn-default btn-xs" href="/wikie/like/Blog">Blogs &raquo;</a>)</p>
     <ul>
     @for(w <- blogs.filter(_.role != "Owner")) {
-      <li><a href="@controllers.Wiki.w(w.wid)">@razie.wiki.model.Wikis.label(w.wid)</a></li>
+      <li><a href="@controllers.WikiUtil.w(w.wid)">@razie.wiki.model.Wikis.label(w.wid)</a></li>
     }
   </ul>
   } else {
@@ -32,7 +32,7 @@ included in mainUserC as the right hand side info box
     <a class="btn btn-default btn-xs" href="/wikie/create/Blog">Blogs &raquo;</a>)</p>
     <ul>
       @for(w <- blogs.filter(_.role == "Owner")) {
-        <li><a href="@controllers.Wiki.w(w.wid)">@razie.wiki.model.Wikis.label(w.wid)</a></li>
+        <li><a href="@controllers.WikiUtil.w(w.wid)">@razie.wiki.model.Wikis.label(w.wid)</a></li>
       }
     </ul>
   } else {

@@ -24,7 +24,7 @@ fragment: add more stuff to the current topic, including children, sub-topics et
 }
 
 @listPage(p:WikiEntry)={
-  <a href="@controllers.Wiki.wr(p.wid, stok.realm)">@p.label</a> |
+  <a href="@controllers.WikiUtil.wr(p.wid, stok.realm)">@p.label</a> |
 }
 
 @findPages()=@{
@@ -43,7 +43,7 @@ fragment: add more stuff to the current topic, including children, sub-topics et
     <div class="well">
       @wid.name pages:
 
-      @for(p <- findPages() if(controllers.Wiki.isVisible(stok.au, p.props))) {
+      @for(p <- findPages() if(controllers.WikiUtil.isVisible(stok.au, p.props))) {
         @listPage(p)
       }
 
@@ -105,7 +105,7 @@ fragment: add more stuff to the current topic, including children, sub-topics et
   <!-- list of child pages -->
   @allassocs(wid).distinct.map {child=>
       @** todo remove the hardcoded check for User - should only appear if this cat owns child *@
-    @if(wid.cat != "User" && page.isDefined && controllers.Wiki.canEdit(wid, stok.au, page)(IgnoreErrors)) {
+    @if(wid.cat != "User" && page.isDefined && controllers.WikiUtil.canEdit(wid, stok.au, page)(IgnoreErrors)) {
       @helper.form(action=routes.Wikie.addLinked(child,wid,"Child"), 'class->"form-inline") {
         <div id="cr@child" class="alert alert-success">
             <label>@createLabel(child)</label>
@@ -135,7 +135,7 @@ fragment: add more stuff to the current topic, including children, sub-topics et
             @child (s) :
             <ul>
             @kids.reverse.take(200).sortWith((a,b)=>b.crDtm.isBefore(a.crDtm)).map(_.from).map { p=>
-              <li><a href="@controllers.Wiki.w(p, stok.realm)">@Wikis.label(p)</a>
+              <li><a href="@controllers.WikiUtil.w(p, stok.realm)">@Wikis.label(p)</a>
             }
             </ul>
           </div>
@@ -154,7 +154,7 @@ fragment: add more stuff to the current topic, including children, sub-topics et
             DRAFT @child (s) :
             <ul>
             @kids.reverse.take(200).sortWith((a,b)=>b.crDtm.isBefore(a.crDtm)).map(_.from).map { p=>
-              <li><a href="@controllers.Wiki.w(p, stok.realm)">@Wikis.label(p)</a>
+              <li><a href="@controllers.WikiUtil.w(p, stok.realm)">@Wikis.label(p)</a>
             }
             </ul>
           </div>

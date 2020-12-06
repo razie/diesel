@@ -17,7 +17,7 @@ just the actual list, nothing else
         @if(pages.size > 0) {
           <ul>
           @pages.take(16).map { p=>
-            <li><a href="@controllers.Wiki.wr(p._1, realm)">@highlight(label(p._2, p._1))</a> <small>&nbsp;  @p._1.cat
+            <li><a href="@controllers.WikiUtil.wr(p._1, realm)">@highlight(label(p._2, p._1))</a> <small>&nbsp;  @p._1.cat
             @if(curTags.contains("-wordcount")) { <b> @p._1.page.map(_.wordCount).mkString </b>}
               </small>
           }
@@ -25,7 +25,7 @@ just the actual list, nothing else
           @if(pages.size>16) {
 
             @pages.drop(16).map { p=>
-              <li><a href="@controllers.Wiki.wr(p._1, realm)">@highlight(label(p._2, p._1))</a> <small>&nbsp;  @p._1.cat
+              <li><a href="@controllers.WikiUtil.wr(p._1, realm)">@highlight(label(p._2, p._1))</a> <small>&nbsp;  @p._1.cat
                 @if(curTags.contains("-wordcount")) { <b> @p._1.page.map(_.wordCount).mkString </b>}
               </small>
             }

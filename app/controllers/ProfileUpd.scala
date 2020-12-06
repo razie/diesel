@@ -1,7 +1,6 @@
 package controllers
 
 import com.google.inject._
-import controllers.Emailer.expand
 import model._
 import org.joda.time.DateTime
 import play.api.Configuration
@@ -346,7 +345,7 @@ Please check your email and follow the instructions.
   def publicProfile = Action { implicit request =>
     forUser { au =>
       if (WikiIndex.withIndex(Wikis.RK)(_.get2(au.userName, WID("User", au.userName)).isDefined))
-        Redirect(controllers.Wiki.w(WID("User", au.userName)))
+        Redirect(controllers.WikiUtil.w(WID("User", au.userName)))
       else
         Redirect(routes.Wikie.wikieEdit(WID("User", au.userName)))
     }

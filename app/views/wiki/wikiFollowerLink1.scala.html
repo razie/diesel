@@ -20,7 +20,7 @@
       <div class="col-sm-6">
 
         @Wikil.moderatorOf(to).map {mu=>
-          Note that the @to.cat.toLowerCase is moderated by <a href="@controllers.Wiki.w("User", mu, to.getRealm)">@mu</a> - we'll ask for permission!
+          Note that the @to.cat.toLowerCase is moderated by <a href="@controllers.WikiUtil.w("User", mu, to.getRealm)">@mu</a> - we'll ask for permission!
         }
 
         @helper.form(action=routes.Wikil.linkFollower2(to), 'class->"well") {
@@ -51,10 +51,10 @@
 
           <div class="actions">
             <button type="submit" class="btn btn-primary">Ok, subscribe!</button>
-            <a href="@controllers.Wiki.w(to)" class="btn btn-default">Nah</a>
+            <a href="@controllers.WikiUtil.w(to)" class="btn btn-default">Nah</a>
           </div>
 
-          <br><small>By sending this form, you agree to the <a href="@controllers.Wiki.w("Terms of Service")">Terms of Service</a></small>
+          <br><small>By sending this form, you agree to the <a href="@controllers.WikiUtil.w("Terms of Service")">Terms of Service</a></small>
         }
       </div>
 

@@ -22,14 +22,14 @@
 
     <div class="actions">
       <button type="submit" class="btn btn-primary">Report it!</button>
-      <a href="@controllers.Wiki.w(wid)" class="btn btn-default">Nah</a>
+      <a href="@controllers.WikiUtil.w(wid)" class="btn btn-default">Nah</a>
   </div>
 
   @myForm.globalError.map { err=>
      <p style="color:red;font-weight:bold">@err.message</p>
   }
 
-  <br><small>By updating this page, you agree to the <a href="@controllers.Wiki.w("Terms of Service")Wiki.w("Terms of Service")">Terms of Service</a></small>
+  <br><small>By updating this page, you agree to the <a href="@controllers.WikiUtil.w("Terms of Service")">Terms of Service</a></small>
 }
 </div>
 

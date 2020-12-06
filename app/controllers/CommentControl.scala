@@ -230,7 +230,7 @@ class CommentControl extends RazController with Logging {
   /** redirect to the parent entity */
   def redirect (pid:String, role:String) = {
     if("Wiki" == role)
-      Redirect(controllers.Wiki.w(Wikis.find(new ObjectId(pid)).get.wid, false))
+      Redirect(controllers.WikiUtil.w(Wikis.find(new ObjectId(pid)).get.wid, false))
     else
       Redirect("/")
   }

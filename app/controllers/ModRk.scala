@@ -127,7 +127,7 @@ object ModRk extends RazController with Logging {
         ))
       }
       e.create
-      Redirect(Wiki.w(wid))
+      Redirect(wid.w)
     }) getOrElse unauthorizedPOST()
   }
 
@@ -182,7 +182,7 @@ object ModRk extends RazController with Logging {
       if (msg.length > 0)
         Msg(msg, wid)
       else
-        Redirect(Wiki.w(wid))
+        Redirect(wid.w)
     }
   }
 }

@@ -65,7 +65,7 @@ debug a wiki page
       <div class="well">
         <ul>children (pages with parent=me) @pages.size
         @pages.map{ p=>
-          <li>@controllers.Wiki.w(p.wid)</li>
+          <li>@controllers.WikiUtil.w(p.wid)</li>
         }
         </ul>
       </div>

@@ -70,10 +70,10 @@ class Wikil @Inject() (config:Configuration) extends WikieBase {
 
         Msg3(
           s"""Are you certain you want to leave club?
-            |You will not be able to follow calendars, register or see any of the forums etc...
-            |<p>$hasRegs
-            |<p>Choose Leave only if certain.""".stripMargin,
-          Some(Wiki.w(wid)),
+             |You will not be able to follow calendars, register or see any of the forums etc...
+             |<p>$hasRegs
+             |<p>Choose Leave only if certain.""".stripMargin,
+          Some(wid.w),
           Some("Leave" -> routes.Wikil.unlinkUser(wid, "y", uid).toString))
       } else {
         au.pages(wid.getRealm, wid.cat).find(_.uwid == uwid).toList.headOption.map { wl =>
@@ -120,7 +120,7 @@ class Wikil @Inject() (config:Configuration) extends WikieBase {
     ) yield {
       if (really != "y") {
         Msg3(really + "Are you certain you want to unlink all members?<p>Choose Unlink only if certain.",
-          Some(Wiki.w(wid)),
+          Some(wid.w),
           Some("Unlink" -> s"/wikie/unlinkAll/${wid.wpath}?really=y"))
       } else {
         val followers = Users.findUserLinksTo(page.uwid).toList
@@ -150,7 +150,7 @@ class Wikil @Inject() (config:Configuration) extends WikieBase {
     ) yield {
       if (really != "y") {
         Msg3(really + "Are you certain you want to link all members?<p>Choose LINK only if certain.",
-          Some(Wiki.w(wid)),
+          Some(wid.w),
           Some("LINK" -> s"/wikie/linkAll/${wid.wpath}?really=y"))
       } else {
         def content = """[[User:%s | You]] -> [[%s:%s]]""".format(au.id, wid.cat, wid.name)

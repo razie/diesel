@@ -1360,7 +1360,7 @@ regAdmin=$regAdmin
                   new UserWiki(uw.userId, w.uwid, "Fan").create
                 }
               }
-              Redirect(controllers.Wiki.w(wid))
+              Redirect(wid.w)
             }) getOrElse
               noPerm(wid, "ADMIN_UADD_FOLLOWERS")
         })
@@ -1390,7 +1390,7 @@ regAdmin=$regAdmin
                 val l = model.Users.findUserLinksTo(page.uwid).toList
                 l.filter(_.user.exists(club.isMember)).foreach(_.deleteNoAudit)
               }
-              Redirect(controllers.Wiki.w(wid))
+              Redirect(wid.w)
             }) getOrElse
               noPerm(wid, "ADMIN_UDEL_FOLLOWERS")
         })
@@ -1410,7 +1410,7 @@ regAdmin=$regAdmin
           val l = model.Users.findUserLinksTo(page.uwid).toList
           l.foreach(_.deleteNoAudit)
         }
-        Redirect(controllers.Wiki.w(wid))
+        Redirect(wid.w)
       }) getOrElse
         noPerm(wid, "ADMIN_UDEL_ALL_FOLLOWERS")
   }

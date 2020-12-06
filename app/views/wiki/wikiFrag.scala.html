@@ -9,7 +9,7 @@ wiki fragment, used in another page
 @import razie.tconf.Visibility
 
 @nicename() = @{ iname.getOrElse(wid.name) }
-@rss = @{page.flatMap(_.contentProps.get("rss")).getOrElse(controllers.Wiki.w(wid)+"/rss.xml")}
+@rss = @{page.flatMap(_.contentProps.get("rss")).getOrElse(controllers.WikiUtil.w(wid)+"/rss.xml")}
 
 @canComment() = @{
     stok.au.isDefined &&
@@ -22,7 +22,7 @@ wiki fragment, used in another page
 
   @w(c:String) = @{
     if(page.isDefined) page
-    else controllers.Wiki.cachedPage(wid, stok.au)//wid.page
+    else controllers.WikiUtil.cachedPage(wid, stok.au)//wid.page
   }
 
   @prepend(l:List[String], c:String) = @{ c :: l }
@@ -297,7 +297,7 @@ function selectTextareaLine(tarea,lineNum) {
     Multiple options:
     <ul>
     @ww.map { we =>
-      <li><a href="@controllers.Wiki.w(we.wid)">@we.category @we.name</a></li>
+      <li><a href="@controllers.WikiUtil.w(we.wid)">@we.category @we.name</a></li>
     }
     </ul>
   }

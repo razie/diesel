@@ -21,13 +21,13 @@ reused in several screens to show the list of forms
   }
 
   @if(links) {
-    </td><td><a href="@controllers.Wiki.w(t._1)">@t._1.page.map(_.label).getOrElse(t._1.name)</a>
+    </td><td><a href="@controllers.WikiUtil.w(t._1)">@t._1.page.map(_.label).getOrElse(t._1.name)</a>
   } else {
         </td><td>@t._1.page.map(_.label).getOrElse(t._1.name)
   }
 
   </td><td>
-  @club.formStatusColored(t._1.page.flatMap(_.form.formState).getOrElse("n/a"), if(links) Some(controllers.Wiki.w(t._1)) else None)
+  @club.formStatusColored(t._1.page.flatMap(_.form.formState).getOrElse("n/a"), if(links) Some(controllers.WikiUtil.w(t._1)) else None)
   </td>
   @buttons.map {f=> <td align="right">@f(t._1, t._2)</td> }
   </tr>

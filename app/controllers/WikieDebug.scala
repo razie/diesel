@@ -6,7 +6,6 @@
  */
 package controllers
 
-import razie.wiki.model.features.WikiCount
 import com.google.inject.{Inject, Singleton}
 import org.joda.time.DateTime
 import play.api.Configuration
@@ -16,6 +15,7 @@ import razie.db.{RMany, ROne}
 import razie.diesel.dom.WikiDomain
 import razie.wiki.Services
 import razie.wiki.model._
+import razie.wiki.model.features.WikiCount
 
 /** wiki edits controller */
 @Singleton
@@ -74,7 +74,7 @@ class WikieDebug @Inject() (config:Configuration) extends WikieBase {
             }
             val m = s" ${links.size} WikiLinks and ${pages.size} WikiEntry /posts from ${sourceW.wid.wpath} to ${destW.wid.wpath}"
             Services ! WikiAudit(WikiAudit.MOVE_POSTS, sourceW.wid.wpathFull, Some(au._id), Some(m))
-            Msg2(s"Moved $m", Some(controllers.Wiki.w(sourceWid)))
+            Msg2(s"Moved $m", Some(controllers.WikiUtil.w(sourceWid)))
           }) getOrElse
             noPerm(sourceWid, "ADMIN_MOVEPOSTS")
       })
@@ -103,7 +103,7 @@ class WikieDebug @Inject() (config:Configuration) extends WikieBase {
                 ROne[WikiLink]("from.id" -> sourceW.uwid.id, "how" -> "Child").foreach(_.delete)
               }
               Services ! WikiAudit(WikiAudit.UPD_SETP_PARENT, sourceW.wid.wpathFull, Some(au._id), Some(newWid.toString))
-              Redirect(controllers.Wiki.w(sourceWid))
+            Redirect(controllers.WikiUtil.w(sourceWid))
             }) getOrElse
             noPerm(sourceWid, "ADMIN_MOVEPOSTS")
         case newWid =>
@@ -132,7 +132,7 @@ class WikieDebug @Inject() (config:Configuration) extends WikieBase {
               ).create
             }
             Services ! WikiAudit(WikiAudit.UPD_SETP_PARENT, sourceW.wid.wpathFull, Some(au._id), Some(newWid.toString))
-            Redirect(controllers.Wiki.w(sourceWid))
+            Redirect(controllers.WikiUtil.w(sourceWid))
           }) getOrElse
             noPerm(sourceWid, "ADMIN_MOVEPOSTS")
       })
@@ -165,7 +165,7 @@ class WikieDebug @Inject() (config:Configuration) extends WikieBase {
                 w.update(newVer)
               }
               Wikie.after(Some(w), newVer, WikiAudit.UPD_UOWNER, Some(au))
-              Redirect(controllers.Wiki.w(wid))
+              Redirect(wid.w)
             }) getOrElse
               noPerm(wid, "ADMIN_UOWNER")
           }
@@ -178,13 +178,13 @@ class WikieDebug @Inject() (config:Configuration) extends WikieBase {
               newVer <- Some(w.copy(category=newvalue, ver = w.ver+1));
               upd <- before(newVer, WikiAudit.UPD_UOWNER) orErr "Not allowerd"
             ) yield {
-                // can only change label of links OR if the formatted name doesn't change
-                razie.db.tx("Wiki.ucategory", au.userName) { implicit txn =>
-                  w.update(newVer)
-                }
-                Wikie.after(Some(w), newVer, WikiAudit.UPD_CATEGORY, Some(au))
-                Redirect(controllers.Wiki.w(newVer.wid))
-              }) getOrElse
+              // can only change label of links OR if the formatted name doesn't change
+              razie.db.tx("Wiki.ucategory", au.userName) { implicit txn =>
+                w.update(newVer)
+              }
+              Wikie.after(Some(w), newVer, WikiAudit.UPD_CATEGORY, Some(au))
+              Redirect(newVer.wid.w)
+            }) getOrElse
               noPerm(wid, "ADMIN_UCATEGORY")
           }
           case "counter" => {
@@ -193,12 +193,12 @@ class WikieDebug @Inject() (config:Configuration) extends WikieBase {
               ok1 <- au.hasPerm(Perm.adminDb) orCorr cNoPermission;
               w <- Wikis.find(wid)
             ) yield {
-                // can only change label of links OR if the formatted name doesn't change
-                razie.db.tx("Wiki.counter", au.userName) { implicit txn =>
-                  WikiCount.findOne(w._id).foreach(_.set(newvalue.toLong))
-                }
-                Redirect(controllers.Wiki.w(wid))
-              }) getOrElse
+              // can only change label of links OR if the formatted name doesn't change
+              razie.db.tx("Wiki.counter", au.userName) { implicit txn =>
+                WikiCount.findOne(w._id).foreach(_.set(newvalue.toLong))
+              }
+              Redirect(wid.w)
+            }) getOrElse
               noPerm(wid, "ADMIN_UOWNER")
           }
           case "realm" => {
@@ -215,7 +215,7 @@ class WikieDebug @Inject() (config:Configuration) extends WikieBase {
                 w.update(newVer)
               }
               Wikie.after(Some(w), newVer, WikiAudit.UPD_REALM, Some(au))
-              Redirect(controllers.Wiki.w(wid))
+              Redirect(wid.w)
             }) getOrElse
               noPerm(wid, "ADMIN_UOWNER")
           }
@@ -243,7 +243,7 @@ class WikieDebug @Inject() (config:Configuration) extends WikieBase {
                 }
               }
               Wikie.after(Some(w), newVer, WikiAudit.UPD_REALM, Some(au))
-              Redirect(controllers.Wiki.w(wid))
+              Redirect(wid.w)
             }) getOrElse
               noPerm(wid, "ADMIN_UOWNER")
           }
@@ -281,13 +281,13 @@ class WikieDebug @Inject() (config:Configuration) extends WikieBase {
       hasP <- pageW.parent.exists(_.toString == from) orErr "does not have a parent"
     ) yield {
       razie.db.tx("Wiki.Move", au.userName) { implicit txn =>
-        pageW.update(pageW.copy(parent=Some(toW._id)))
-        RMany[WikiLink]("from.id" -> pageW.uwid.id, "to.id" -> fromW.uwid.id, "how"->"Child").toList.foreach{ link=>
+        pageW.update(pageW.copy(parent = Some(toW._id)))
+        RMany[WikiLink]("from.id" -> pageW.uwid.id, "to.id" -> fromW.uwid.id, "how" -> "Child").toList.foreach { link =>
           link.delete
           link.copy(to = toW.uwid).create
         }
       }
-      Redirect(controllers.Wiki.w(pageW.wid, false)).flashing("count" -> "0")
+      Redirect(pageW.wid.w).flashing("count" -> "0")
     }
   }
 }

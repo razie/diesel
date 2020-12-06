@@ -18,7 +18,7 @@ wiki fragment, used in another page
 }
 
 @rss = @{
-  page.flatMap(_.contentProps.get("rss")).getOrElse(controllers.Wiki.w(wid) + "/rss.xml")
+  page.flatMap(_.contentProps.get("rss")).getOrElse(controllers.WikiUtil.w(wid) + "/rss.xml")
 }
 
 @prepend(l: List[String], c: String) = @{
@@ -86,7 +86,7 @@ wiki fragment, used in another page
       @if(page.exists(_.tags.size > 0)) {
         | <em>Tags</em>:
         @page.get.tags.map { t =>
-          @Html(controllers.Wiki.hrefTag(stok.realm, wid, t, t)) @if(t != page.get.tags.last) {,}
+          @Html(controllers.WikiUtil.hrefTag(stok.realm, wid, t, t)) @if(t != page.get.tags.last) {,}
         }
       }
     </small>
@@ -103,7 +103,7 @@ wiki fragment, used in another page
 
   @wid.parentWid.map { pwid =>
     <hr>
-  See more in: <strong><a href="@controllers.Wiki.w(pwid)">@pwid.getLabel</a> </strong>
+  See more in: <strong><a href="@pwid.w">@pwid.getLabel</a> </strong>
   @if(stok.au.isEmpty && pwid.cat == "Blog") {
     <a class="btn btn-info" title="Subscribe to updates via email" href="@routes.Wikil.linkFollower1(pwid)"><i class="icon-envelope icon-white"></i>
       Subscribe</a>

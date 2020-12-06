@@ -3,7 +3,7 @@ edit a wiki page
 **************@
 @import razie.wiki.model.Perm
 @(wid:razie.wiki.model.WID, w:razie.wiki.model.WikiEntry,
-  myForm:Form[controllers.Wiki.EditWiki],
+  myForm:Form[controllers.WikiUtil.EditWiki],
   hasDraft:Boolean = false,
   noshow:String="")(implicit stok: controllers.StateOk)
 @import razie.hosting.Website.realm
@@ -126,7 +126,7 @@ edit a wiki page
       }
 
       <p><small>See the <a href="/wiki/rk.Admin:Quick Guide">quick guide</a>.</small>
-        <br><small>By updating this page, you agree to the <a href="@controllers.Wiki.w("Terms of Service")">Terms of Service</a></small>
+        <br><small>By updating this page, you agree to the <a href="@controllers.WikiUtil.w("Terms of Service")">Terms of Service</a></small>
         <br><small>Please do not replicate information already contained in other reference places like
           Wikipedia, just link to them. Use [[[Main_Page]]] to link to wikipedia.</small>
         }

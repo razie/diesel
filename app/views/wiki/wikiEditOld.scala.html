@@ -195,7 +195,7 @@ PROBLEM: many places use label as name... via Wikis.formatName
   }
 
   <p><small>See the <a href="/wiki/rk.Admin:Quick Guide">quick guide</a>.</small>
-  <br><small>By updating this page, you agree to the <a href="@controllers.Wiki.w("Terms of Service")">Terms of Service</a></small>
+  <br><small>By updating this page, you agree to the <a href="@controllers.WikiUtil.w("Terms of Service")">Terms of Service</a></small>
   <br><small>Please do not replicate information already contained in other reference places like
       Wikipedia, just link to them. Use [[[Main_Page]]] to link to wikipedia.</small>
 }
@@ -689,7 +689,7 @@ deleteDraft = function() {
     }),
     contentType: 'application/x-www-form-urlencoded',
     success: function(data) {
-      window.location = "@controllers.Wiki.wr(wid, stok.realm, false)";
+      window.location = "@controllers.WikiUtil.wr(wid, stok.realm, false)";
     },
     error  : function(x) {
       console.log( "ERR "+x.toString());

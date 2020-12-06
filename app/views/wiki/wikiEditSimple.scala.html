@@ -126,7 +126,7 @@ edit a wiki page
           <br>
           <div class="actions">
             <button type="submit" class="btn btn-primary">Save</button>
-            <a href="@controllers.Wiki.wr(wid, stok.realm, false)" onclick="return cancel();" class="btn btn-default">Cancel</a>
+            <a href="@controllers.WikiUtil.wr(wid, stok.realm, false)" onclick="return cancel();" class="btn btn-default">Cancel</a>
           </div>
 
         </div>
@@ -175,7 +175,7 @@ edit a wiki page
       }
 
       <p><small>See the <a href="/wiki/rk.Admin:Quick Guide">quick guide</a>.</small>
-        <br><small>By updating this page, you agree to the <a href="@controllers.Wiki.w("Terms of Service")">Terms of Service</a></small>
+        <br><small>By updating this page, you agree to the <a href="@controllers.WikiUtil.w("Terms of Service")">Terms of Service</a></small>
         <br><small>Please do not replicate information already contained in other reference places like
           Wikipedia, just link to them. Use [[[Main_Page]]] to link to wikipedia.</small>
         }

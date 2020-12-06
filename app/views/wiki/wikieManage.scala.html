@@ -19,7 +19,7 @@ wiki fragment, used in another page
 }
 
 @url() = @{
-    val u = controllers.Wiki.w(page.get.wid)
+    val u = page.get.wid.w
     if(u startsWith "http") u else s"http://${Services.config.hostport}$u"
 }
 

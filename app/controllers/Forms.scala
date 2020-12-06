@@ -14,12 +14,8 @@ import razie.diesel.dom.WikiDomain
 import razie.hosting.Website
 import razie.wiki.admin.SendEmail
 import razie.wiki.model.features._
-import razie.wiki.model.WID
-import razie.wiki.model.WikiEntry
-import razie.wiki.model.Wikis
-import razie.wiki.model._
+import razie.wiki.model.{WID, WikiEntry, Wikis, _}
 import razie.{Logging, cout}
-import razie.wiki.Sec._
 
 /**
  * wiki controller
@@ -69,7 +65,7 @@ $fdata
     we.create
     WikiAudit("CREATE", we.wid.wpath, Some(u._id)).create
 
-    Redirect(controllers.Wiki.w(we.wid, true)).flashing("count" -> "0")
+    Redirect(controllers.WikiUtil.w(we.wid, true)).flashing("count" -> "0")
   }
 
     /** copy an old form data for new formSpec
@@ -218,7 +214,7 @@ $fdata
               clog << "Wiki.FORM.Errors: " + errors.toString
               cout << "new content:" + newVer.content
               newVer.preprocess(Some(au))
-              Wiki.showForm(wid, None, Some(newVer), Some(au), false, Map() ++ errors, can)(ROK.r)
+              showForm(wid, None, Some(newVer), Some(au), false, Map() ++ errors, can)(ROK.r)
             } else {
               // save the wiki page?
 
@@ -243,10 +239,10 @@ $fdata
                         r.updFees.update
                         Users.findUserByUsername(r.clubName)
                       }.map(Club(_).regAdmin).foreach { reviewer =>
-                        Emailer.sendEmailFormSubmitted(reviewer, au, Wiki.w(wid))
+                        Emailer.sendEmailFormSubmitted(reviewer, au, wid.w)
                       }
                       we.props.get("notifyUsers").toList.flatMap(_.split(",")).flatMap(Users.findUserById(_).toList).map{u=>
-                        Emailer.sendEmailFormNotify(u, au, Wiki.w(wid), we.props.getOrElse("role", ""))
+                        Emailer.sendEmailFormNotify(u, au, wid.w, we.props.getOrElse("role", ""))
                       }
                     }
                   } else if (data2.contains("approve_button")) {
@@ -273,10 +269,14 @@ $fdata
                     SendEmail.withSession(Website.realm(request)) { implicit mailSession =>
                       w.owner.foreach { owner =>
                         Regs.findWid(wid).foreach { r =>
-                          Emailer.sendEmailFormRejected(au, owner.asInstanceOf[User], r.clubName, routes.Club.doeClubUserReg(r._id.toString).toString, data2.get("formRejected").getOrElse("Something's wrong...?"))
+                          Emailer.sendEmailFormRejected(au, owner.asInstanceOf[User], r.clubName,
+                            routes.Club.doeClubUserReg(r._id.toString).toString,
+                            data2.get("formRejected").getOrElse("Something's wrong...?"))
 
                           // if it was ok and one rejected, then reset status of the entire reg to pending
-                          if (r.regStatus != RegStatus.PENDING && r.deprecatedWids.filter(_.page.flatMap(_.form.formState).exists(_ == FormStatus.APPROVED)).size != r.deprecatedWids.size)
+                          if (r.regStatus != RegStatus.PENDING && r.deprecatedWids.filter(
+                            _.page.flatMap(_.form.formState).exists(
+                              _ == FormStatus.APPROVED)).size != r.deprecatedWids.size)
                             r.updateRegStatus(RegStatus.PENDING)
                         }
                       }
@@ -286,7 +286,7 @@ $fdata
 
                 WikiAudit("EDIT_FORM", w.wid.wpath, Some(au._id)).create
               }
-              Redirect(controllers.Wiki.w(we.wid, true)).flashing("count" -> "0")
+              Redirect(controllers.WikiUtil.w(we.wid, true)).flashing("count" -> "0")
             }
           }) getOrElse
           Unauthorized(errCollector.mkString)
@@ -330,7 +330,7 @@ $fdata
               clog << "Wiki.FORM.Errors: " + errors.toString
               cout << "new content:" + newVer.content
               newVer.preprocess(Some(au))
-              Wiki.showForm(wid, None, Some(newVer), Some(au), false, Map() ++ errors, can)(ROK.r)
+              showForm(wid, None, Some(newVer), Some(au), false, Map() ++ errors, can)(ROK.r)
             } else {
               var we = newVer
 
@@ -348,13 +348,16 @@ $fdata
                     Emailer.withSession(w.realm) { implicit mailSession =>
                       //                  cout << Regs.findWid(wid)
                       //                  cout << Regs.findWid(wid).flatMap(x => Users.findUserByUsername(x.clubName))
-                      //                  cout << Regs.findWid(wid).flatMap(x => Users.findUserByUsername(x.clubName)).map(Club(_).regAdmin)
-                      Regs.findWid(wid).flatMap(x => Users.findUserByUsername(x.clubName)).map(Club(_).regAdmin).foreach { reviewer =>
-                        Emailer.sendEmailFormSubmitted(reviewer, au, Wiki.w(wid))
+                      //                  cout << Regs.findWid(wid).flatMap(x => Users.findUserByUsername(x.clubName)
+                      //                  ).map(Club(_).regAdmin)
+                      Regs.findWid(wid).flatMap(x => Users.findUserByUsername(x.clubName)).map(Club(_).regAdmin).foreach
+                      { reviewer =>
+                        Emailer.sendEmailFormSubmitted(reviewer, au, wid.w)
                       }
-                      we.props.get("notifyUsers").toList.flatMap(_.split(",")).flatMap(Users.findUserById(_).toList).map{u=>
-                        Emailer.sendEmailFormNotify(u, au, Wiki.w(wid), we.props.getOrElse("role", ""))
-                      }
+                      we.props.get("notifyUsers").toList.flatMap(_.split(",")).flatMap(Users.findUserById(_).toList)
+                          .map { u =>
+                            Emailer.sendEmailFormNotify(u, au, wid.w, we.props.getOrElse("role", ""))
+                          }
                     }
                   } else {
                     throw new IllegalArgumentException("")
@@ -363,7 +366,7 @@ $fdata
 
                 WikiAudit("EDIT_FORM", w.wid.wpath, Some(au._id)).create
               }
-              Redirect(controllers.Wiki.w(we.wid, true)).flashing("count" -> "0")
+              Redirect(controllers.WikiUtil.w(we.wid, true)).flashing("count" -> "0")
             }
           }) getOrElse
           Unauthorized(errCollector.mkString)
@@ -390,7 +393,7 @@ $fdata
               clog << "Wiki.FORM.Errors: " + errors.toString
               cout << "new content:" + newVer.content
               newVer.preprocess(Some(au))
-              Wiki.showForm(wid, None, Some(newVer), Some(au), false, Map() ++ errors, can)(ROK.r)
+              showForm(wid, None, Some(newVer), Some(au), false, Map() ++ errors, can)(ROK.r)
             } else {
               var we = newVer
 
@@ -402,7 +405,8 @@ $fdata
                 Wikie.after(None, we, WikiAudit.UPD_CONTENT, Some(au))
                 Emailer.withSession(w.realm) { implicit mailSession =>
                   //                    au.quota.incUpdates
-                  au.shouldEmailParent("Everything").map(parent => Emailer.sendEmailChildUpdatedWiki(parent, au, WID(w.category, w.name)))
+                  au.shouldEmailParent("Everything").map(
+                    parent => Emailer.sendEmailChildUpdatedWiki(parent, au, WID(w.category, w.name)))
 
                   if (data2.contains("submit_button")) {
                   } else {
@@ -412,7 +416,7 @@ $fdata
 
                 WikiAudit("EDIT_FORM", w.wid.wpath, Some(au._id)).create
               }
-              Redirect(controllers.Wiki.w(we.wid, true)).flashing("count" -> "0")
+              Redirect(controllers.WikiUtil.w(we.wid, true)).flashing("count" -> "0")
             }
           }) getOrElse
           Unauthorized(errCollector.mkString)
@@ -441,7 +445,7 @@ $fdata
               clog << "Wiki.FORM.Errors: " + errors.toString
               cout << "new content:" + newVer.content
               newVer.preprocess(Some(au))
-              Wiki.showForm(iwid, None, Some(newVer), Some(au), false, Map() ++ errors, true)(ROK.r)
+              showForm(iwid, None, Some(newVer), Some(au), false, Map() ++ errors, true)(ROK.r)
             } else {
               var we = newVer
 
@@ -460,7 +464,7 @@ $fdata
               }
               we.fields.put("weNextUrl", FieldDef("weNextUrl", data2("weNextUrl"), Map.empty))
               we.fields.put("weRedirectPlease", FieldDef("weRedirectPlease", "yes", Map.empty))
-              Wiki.showForm(iwid, None, Some(we), Some(au), false, Map(), true)(ROK.r)
+              showForm(iwid, None, Some(we), Some(au), false, Map(), true)(ROK.r)
             }
       }) getOrElse
           Unauthorized(errCollector.mkString)
