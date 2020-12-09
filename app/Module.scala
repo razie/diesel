@@ -91,27 +91,29 @@ class Module extends AbstractModule {
       val y = Website.forRealm(r).toList.flatMap(_.trustedSites.toList)
 
       Config.trustedSites.exists(x=>s.startsWith(x)) ||
-        (
-          r.length > 0 &&
-            Website.forRealm(r).exists(_.trustedSites.exists(x=> s.startsWith(x)))
-        )
+          (
+              r.length > 0 &&
+                  Website.forRealm(r).exists(_.trustedSites.exists(x => s.startsWith(x)))
+              )
     }
 
     // setup diesel actors
 
+    // using default akka system
     DieselAppContext.withActorSystemFactory(() => play.libs.Akka.system)
+
+    // todo why can't i use this separate pool?
+
 //    DieselAppContext.setActorSystemFactory{() =>
 //      val ec = DieselAppContext.ec
 //      val a = ActorSystem.apply("diesel", None, None, Some(ec))
 //       a
 //    }
 
-//    DieselAppContext.init(Services.config.node)
-
     DieselAppContext.localNode = Services.config.node
 
-    Executors.add (EEModRkExec)
-    Executors.add (EEModRkExec)
+    Executors.add(EEModRkExec)
+    Executors.add(EEModRkExec)
     Executors.add (EEModUserExecutor)
     Executors.add (EEModCartExecutor)
     Executors.add (EEModSnowExecutor)
