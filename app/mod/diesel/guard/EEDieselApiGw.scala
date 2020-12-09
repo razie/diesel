@@ -27,12 +27,40 @@ class EEDieselApiGw extends EExecutor(DieselMsg.APIGW.ENTITY) {
     m.entity == DieselMsg.APIGW.ENTITY
   }
 
+  private def OK = List(
+    EVal(P.fromTypedValue(Diesel.PAYLOAD, "ok"))
+  )
+
   override def apply(in: EMsg, destSpec: Option[EMsg])(implicit ctx: ECtx): List[Any] = {
     val realm = ctx.root.settings.realm.mkString
 
     cdebug << "EEDieselApiGW: apply " + in
 
     in.ea match {
+
+      case "diesel.apigw.limit.static" => {
+        if (Config.isLocalhost) {
+          DieselRateLimiter.LIMIT_API = ctx.getRequired("limit").toInt
+
+          OK
+        } else {
+          List(
+            EVal(P.fromTypedValue(Diesel.PAYLOAD, "ERR - not isLocalhost"))
+          )
+        }
+      }
+
+      case "diesel.apigw.limit.rate" => {
+        if (Config.isLocalhost) {
+          DieselRateLimiter.RATELIMIT = ctx.getRequired("limit").toBoolean
+
+          OK
+        } else {
+          List(
+            EVal(P.fromTypedValue(Diesel.PAYLOAD, "ERR - not isLocalhost"))
+          )
+        }
+      }
 
       case "diesel.apigw.limit.path" | "diesel.apigw.limit.header" => {
         val groupName = ctx.getRequired("group")
@@ -60,9 +88,7 @@ class EEDieselApiGw extends EExecutor(DieselMsg.APIGW.ENTITY) {
           throw new IllegalArgumentException("Error: No permission")
         }
 
-        List(
-          EVal(P.fromTypedValue(Diesel.PAYLOAD, "ok"))
-        )
+        OK
       }
 
       case "diesel.apigw.limit.groups" => {
