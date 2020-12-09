@@ -141,7 +141,10 @@ class EEGuardian extends EExecutor(DieselMsg.GUARDIAN.ENTITY) with Logging {
             }
             .getOrElse(settings.realm.get)
 
-        EVal(P("payload", res)) :: Nil
+        val result = "NOPE"//DomGuardian.polled(inRealm, env, stamp, settings.userId.flatMap(Users.findUserById), tq)
+
+        res = res ::: EVal(P("payload", result)) :: Nil
+        res
       }
 
       case "run" => {

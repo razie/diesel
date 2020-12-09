@@ -18,7 +18,6 @@ import mod.wiki.CaptchaMod
 import model.WikiUsersImpl
 import razie.audit.{Audit, AuditService, MdbAuditService}
 import razie.db.{RMongo, RazMongo, UpgradeDb}
-import razie.diesel.dom.{RDomainPlugins, WikiDomain}
 import razie.diesel.engine.DieselAppContext
 import razie.diesel.engine.exec._
 import razie.hosting.{Website, WikiReactors}
@@ -125,11 +124,8 @@ class Module extends AbstractModule {
     Executors.add (new EEDieselMemDb)
     Executors.add (new EEDieselSharedDb)
     Executors.add (new EEDieselMongodDb)
-    Executors.add (new EEDieselElasticDb)
-
-    RDomainPlugins.plugins = { x: String =>
-      WikiDomain(x).plugins
-    }
+    Executors.add(new EEDieselElasticDb)
+    Executors.add(new EEDomInventory)
 
     if(Config.isimulateHost == Config.REFERENCE_SIMULATE_HOST)
       DieselSettings.find(None, None, "isimulateHost").map { s=>

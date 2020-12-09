@@ -1526,18 +1526,6 @@ class DomApi extends DomApiBase with Logging {
 
   }
 
-  def pluginAction (plugin:String, conn:String, action:String, epath:String) = Filter(activeUser).async { implicit stok =>
-    Future.successful {
-      val url = "http" + (if(stok.secure) "s" else "") + "://" + stok.hostPort
-      val c = WikiDomain(stok.realm).plugins.find(_.name == plugin).map(_.doAction(WikiDomain(stok.realm).rdom, conn, action, url, epath)).mkString
-
-      if(c.startsWith("<"))
-        Ok(c).as("text/html")
-      else
-        Ok(c)
-    }
-  }
-
   /** set user's preferred current environment */
   def setEnv (env:String) = Filter(activeUser).async { implicit stok =>
     val au = stok.au.get

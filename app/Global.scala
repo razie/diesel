@@ -5,7 +5,7 @@
   * (_)\_)(__)(__)(____)(____)(____)(___/   (__)  (______)(____/    LICENSE.txt
   */
 
-import Global.{LIMIT_API, LIMIT_API_UPPER, RATELIMIT, isApiRequest, isShouldDebug}
+import Global.isShouldDebug
 import admin._
 import com.mongodb.casbah.Imports._
 import controllers._
@@ -17,15 +17,15 @@ import play.api.Application
 import play.api.mvc._
 import razie.audit.Audit
 import razie.db._
+import razie.diesel.DieselRateLimiter
 import razie.hosting.{BannedIps, Website, WikiReactors}
-import razie.wiki.Config.reloadUrlMap
 import razie.wiki.admin._
 import razie.wiki.model._
 import razie.wiki.util.PlayTools
-import razie.wiki.{Config, Services, WikiConfig}
+import razie.wiki.{Config, Services}
 import razie.{cdebug, clog}
-import scala.collection.concurrent.TrieMap
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.util.Try
 import services.{InitAlligator, RkCqrs}
 
@@ -40,23 +40,6 @@ object Global extends WithFilters(LoggingFilter) {
   var firstErrorTime = System.currentTimeMillis - ERR_DELTA2 // time first error email went out - just one every 5
   // min, eh
   var lastErrorCount = 0 // time last error email went out - just one every 5 min, eh
-
-  var RATELIMIT = true // rate limit API requests
-  var LIMIT_API_UPPER = 80 //20
-  var LIMIT_API = 80 //15
-
-  // rate limit groups
-  val rateLimits = new TrieMap[String, RateLimitGroup]()
-  val rateCurrent = new TrieMap[String, Int]()
-  val rateStats = new TrieMap[String, RateLimitStats]()
-
-  WikiObservers mini {
-    case WikiConfigChanged(node, config) => {
-      Global.RATELIMIT = config.prop("diesel.staticRateLimiting", "true").toBoolean
-      Global.LIMIT_API = config.prop("diesel.staticRateLimit", "20").toInt
-      Global.LIMIT_API_UPPER = config.prop("diesel.staticRateLimit", "20").toInt
-    }
-  }
 
   override def onError(request: RequestHeader, ex: Throwable) = {
     clog << "ERR_onError - trying to log/audit in DB... " + "request:" + request.toString + "headers:" + request
@@ -111,16 +94,6 @@ object Global extends WithFilters(LoggingFilter) {
     !path.startsWith("/assets/") &&
         !path.startsWith("/razadmin/ping/shouldReload") &&
         !path.startsWith("/diesel/status")
-
-  /** API requests may be rate limited separately */
-  def isApiRequest(path: String) =
-    path.contains("/elkpt/")
-//    path.startsWith( "/diesel/rest/") ||
-//        path.startsWith( "/diesel/mock/") ||
-//        path.startsWith( "/diesel/react/") ||
-//        path.startsWith( "/diesel/start/") ||
-//        path.startsWith( "/diesel/fiddle/react/") ||
-//        path.startsWith( "/diesel/wreact/")
 
   /** intercepting routing of requests to see about forwards and proxies */
   override def onRouteRequest(request: RequestHeader): Option[Handler] = {
@@ -181,27 +154,18 @@ object Global extends WithFilters(LoggingFilter) {
         clog << ("SNAKKPROXY to " + request)
         super.onRouteRequest(rh)
 
-      } else if(isApiRequest(request.path)) {
-
-        // request limiting here will avoid overloading the internal execution queue as well
-        val curr = GlobalData.servingApiRequests
-
-        if (RATELIMIT && curr > LIMIT_API) {
+      } else
+        DieselRateLimiter.serveOrLimit(request, true)(rh => {
+          super.onRouteRequest(request)
+        })((group, count) => {
+          // request limiting here will avoid overloading the internal execution queue as well
           Some(EssentialAction { rh =>
             Action { rh: play.api.mvc.RequestHeader =>
-              GlobalData.synchronized {
-                GlobalData.limitedApiRequests = GlobalData.limitedApiRequests + 1
-              }
-              Audit.logdb("ERR_RATE_LIMIT", "curr:" + curr, "request:" + request.toString, "headers:" + request.headers)
-              Results.TooManyRequest("Rate limiting - in progress: " + curr)
+              Audit.logdb("ERR_RATE_LIMIT", s"group: $group curr: $count request: $request headers: ${request.headers}")
+              Results.TooManyRequest("Rate limiting - in progress: " + count)
             }.apply(rh)
           })
-        } else {
-          super.onRouteRequest(request)
-        }
-      } else {
-        super.onRouteRequest(request)
-      }
+        })
     }
 
     if (shouldDebug) cdebug << ("ROUTE_REQ.STOP: " + request.toString)
@@ -306,36 +270,33 @@ object LoggingFilter extends Filter {
   def apply(next: (RequestHeader) => scala.concurrent.Future[Result])(rh: RequestHeader) = {
     val start = System.currentTimeMillis
     val shouldDebug = isShouldDebug(rh.uri)
-    val apiRequest = isApiRequest(rh.uri)
+    val apiRequest = DieselRateLimiter.isApiRequest(rh.uri)
+    val isAsset = rh.uri.startsWith("/assets/") || rh.uri.startsWith("/favicon")
 
     if (shouldDebug) {
       cdebug << s"LF.START ${rh.method} ${rh.host} ${rh.uri}"
     }
 
     def served {
-      GlobalData.synchronized {
-        if(GlobalData.serving > GlobalData.maxServing) {
-          GlobalData.maxServing = GlobalData.serving;
-        }
+      if (GlobalData.serving.get() > GlobalData.maxServing.get()) {
+        GlobalData.maxServing.set(GlobalData.serving.get())
+      }
 
-        if(GlobalData.servingApiRequests > GlobalData.maxServingApiRequests) {
-          GlobalData.maxServingApiRequests = GlobalData.servingApiRequests;
-        }
+      if (GlobalData.servingApiRequests.get() > GlobalData.maxServingApiRequests.get()) {
+        GlobalData.maxServingApiRequests.set(GlobalData.servingApiRequests.get())
+      }
 
-        GlobalData.serving = GlobalData.serving - 1
-        GlobalData.served = GlobalData.served + 1
+      GlobalData.serving.decrementAndGet()
+      GlobalData.served.incrementAndGet()
 
-        if(apiRequest) {
-          GlobalData.servingApiRequests = GlobalData.servingApiRequests - 1
-          GlobalData.servedApiRequests = GlobalData.servedApiRequests + 1
-        }
+      if (apiRequest) {
+        GlobalData.servingApiRequests.decrementAndGet()
+        GlobalData.servedApiRequests.incrementAndGet()
       }
     }
 
     def servedPage {
-      GlobalData.synchronized {
-        GlobalData.servedRequests = GlobalData.servedRequests + 1
-      }
+      GlobalData.servedRequests.incrementAndGet()
     }
 
     def logTime(rh:RequestHeader)(what: String)(result: Result): Result = {
@@ -345,12 +306,10 @@ object LoggingFilter extends Filter {
         clog << s"LF.STOP.$what ${rh.method} ${rh.host}${rh.uri} took ${time}ms and returned ${result.header.status}"
       }
 
-      if (!isAsset && !apiRequest) servedPage
       served
+
       result.withHeaders("Request-Time" -> time.toString)
     }
-
-    def isAsset = rh.uri.startsWith( "/assets/") || rh.uri.startsWith("/favicon")
 
     def getType =
       if(isAsset) "ASSET"
@@ -360,40 +319,29 @@ object LoggingFilter extends Filter {
     try {
 
       var err: Option[Result] = None
-      var curr = GlobalData.servingApiRequests
 
       // first check rate limiting - if limited, populate err
-      GlobalData.synchronized {
-
-        curr = GlobalData.servingApiRequests
-        if (RATELIMIT && apiRequest && curr >= LIMIT_API_UPPER) {
-          // rate limiting API requests
-          GlobalData.limitedApiRequests = GlobalData.limitedApiRequests + 1
-
-          err = Some(
-            Results.TooManyRequest("Rate limiting 2 - in progress: " + curr)
-          )
-        } else {
-          // already under sync
-          GlobalData.serving = GlobalData.serving + 1
-
-          if (apiRequest) {
-            GlobalData.servingApiRequests = GlobalData.servingApiRequests + 1
-          }
-        }
-      }
-
-      // more expensive stuff outside the sync block
-      if (err.nonEmpty) {
+      err = DieselRateLimiter.serveOrLimit(rh)(rh => {
+        None.asInstanceOf[Option[Result]]
+      })((group, count) => {
+        // more expensive stuff outside the sync block
         // rate limiting API requests
-        Future.successful {
-          GlobalData.synchronized {
-            GlobalData.limitedApiRequests = GlobalData.limitedApiRequests + 1
-          }
-          Audit.logdb("ERR_RATE_LIMIT2", "curr:" + curr, "request:" + rh.toString,
-            "headers:" + rh.headers)
+        Audit.logdb("ERR_RATE_LIMIT2", s"group: $group count: $count request: $rh headers: + ${rh.headers}")
 
-          clog << s"LF.ERR.429 ${rh.method} ${rh.uri}"
+        // log LF.STOP here as well so it matches STARTS even for errors
+        if (shouldDebug && !isFromRobot(rh)) {
+          clog << s"LF.STOP.WITH-ERR ${rh.method} ${rh.host}${rh.uri}"
+        }
+
+        clog << s"LF.ERR.429 ${rh.method} ${rh.uri}"
+
+        Some(
+          Results.TooManyRequest("Rate limiting 2 - in progress group: $group count: $count")
+        )
+      })
+
+      if (err.nonEmpty) {
+        Future.successful {
           err.get // return the err
         }
       } else {

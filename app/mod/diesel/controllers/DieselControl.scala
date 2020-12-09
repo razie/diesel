@@ -6,48 +6,44 @@
  */
 package mod.diesel.controllers
 
+import com.google.inject.Singleton
 import com.mongodb.casbah.Imports._
-import com.novus.salat._
 import controllers.{RazController, VErrors}
-import razie.hosting.Website
-import model.Tags
-import razie.db.RazSalatContext._
-import com.mongodb.{BasicDBObject, DBObject}
-import razie.db.{RMany, ROne, RazMongo}
 import mod.diesel.model._
+import model.{MiniScripster, Tags}
 import play.api.mvc.{Action, AnyContent, Request}
+import razie.Logging
 import razie.audit.Audit
-import razie.wiki.model.{WID, WikiEntry, Wikis}
-import razie.wiki.util.PlayTools
-import razie.{Logging, cout}
-import model.MiniScripster
 import razie.diesel.dom.RDOM.{A, O}
 import razie.diesel.dom._
+import razie.hosting.Website
+import razie.tconf.SpecRef
 import razie.wiki.admin.Autosave
-
-import scala.util.Try
+import razie.wiki.model.{WID, WikiEntry, Wikis}
+import scala.concurrent.Future
 
 /** diesel controller */
-object DieselControl extends RazController with Logging {
+@Singleton
+class DieselControl extends RazController with Logging {
   implicit def obtob(o: Option[Boolean]): Boolean = o.exists(_ == true)
 
   // todo eliminate stupidity
-  var re:Option[DieselReactor] = None
-  var dbr:Option[DslModule] = None
+  var re: Option[DieselReactor] = None
+  var dbr: Option[DslModule] = None
 
   /** load and initialize a reactor */
-  private def iload(mod: String, realm:String) = {
-    if(dbr.isEmpty) dbr = Diesel.find(mod, realm) map Diesel.apply
-    if(re.isEmpty) re = dbr map (_.load)
+  private def iload(mod: String, realm: String) = {
+    if (dbr.isEmpty) dbr = Diesel.find(mod, realm) map Diesel.apply
+    if (re.isEmpty) re = dbr map (_.load)
     re
   }
 
   /** (re)load a reactor */
-  def load(imod: String) = Action { implicit request=>
-    val mod = if(imod == "") Website.realm else imod
+  def load(imod: String) = Action { implicit request =>
+    val mod = if (imod == "") Website.realm else imod
     Audit("x", "DSL_LOAD", s"$mod")
-    dbr=None
-    re=None
+    dbr = None
+    re = None
     iload(mod, Website.realm) map (_.activate)
     Ok(re.mkString)
   }
@@ -179,6 +175,7 @@ object DieselControl extends RazController with Logging {
     }) getOrElse NotFound(errCollector.mkString)
   }
 
+  /** page for looking and navigating among categories */
   def catBrowser(plugin:String, conn:String, realm:String, cat:String, ipath:String, o:Option[O]=None) = Action { implicit request =>
     val rdom  = WikiDomain(realm).rdom
     val c  = rdom.classes.get(cat)
@@ -189,43 +186,54 @@ object DieselControl extends RazController with Logging {
 
     def mkLink (s:String, dir:String, assoc:Option[A]=None) = {
       val newPath =
-        if(path.split("/") contains s) s"/$s" // stop recursive traverses - some robots are stupid
+        if (path.split("/") contains s) s"/$s" // stop recursive traverses - some robots are stupid
         else s"$path/$s"
 
-      // if class is found and I'm browing one to many object
-      rdom.classes.get(s).filter(x=> o.isDefined && dir=="from").flatMap(_.parms.find(p=> p.isRef && p.ttype == o.get.base)).map{sc=>
+      // if class is found and I'm browsing one to many object
+      rdom.classes.get(s).filter(x =>
+        o.isDefined && dir == "from").flatMap(_.parms.find(p => p.isRef && p.ttype == o.get.base)).map { sc =>
         // find ref parm from s to o
         val as = assoc.map(_.zRole).getOrElse(sc.name)
         s"/diesel/objBrowserByQuery/$plugin/$conn/$s/_${as}_value/${o.get.name}"
       } getOrElse
-        routes.DieselControl.catBrowser (plugin, conn, realm, s, newPath).toString()
+          routes.DieselControl.catBrowser(plugin, conn, realm, s, newPath).toString()
     }
 
-    ROK.r apply {implicit stok=>
-      if(c.exists(_.stereotypes contains "wikiCategory"))
+    ROK.r apply { implicit stok =>
+      if (c.exists(_.stereotypes contains "wikiCategory"))
       // real Category
-        views.html.modules.diesel.catBrowser(plugin, conn, realm, Wikis(realm).category(cat), cat, base, left, right)(mkLink)
+        views.html.modules.diesel.catBrowser(plugin, conn, realm, Wikis(realm).category(cat), cat, base, left, right)(
+          mkLink)
       else
       // parsed Class
         views.html.modules.diesel.domCat(realm, cat, base, left, right, o)(mkLink)
     }
   }
 
-  def objBrowserById(plugin:String, conn:String, cat:String, id:String, ipath:String, o:Option[O]=None) = RAction { implicit request =>
-    val wdom  = WikiDomain(request.realm)
-    val o  = wdom.plugins.find(_.name == plugin).flatMap(_.findByRef(wdom.rdom, cat+"/"+id))
+  def objBrowserById(plugin: String, conn: String, cat: String, id: String, ipath: String, o: Option[O] = None) =
+    RAction {
+      implicit request =>
+        val dov = DomInventories.findByRef(SpecRef.make(request.realm, plugin, conn, cat, id))
 
-    catBrowser(plugin, conn, request.realm, cat, ipath, o).apply(request.ireq.asInstanceOf[Request[AnyContent]]).value.get.get
-  }
+        val o = dov.map(_.value.asInstanceOf[O])
 
-  def objBrowserByQuery(plugin:String, conn:String, cat:String, parm:String, value:String, ipath:String, o:Option[O]=None) = RAction { implicit request =>
-    val wdom  = WikiDomain(request.realm)
-    val list  = wdom.plugins.filter(_.name == plugin).flatMap(_.findByQuery(wdom.rdom, cat+"/"+parm+"/"+value))
+        catBrowser(plugin, conn, request.realm, cat, ipath, o).apply(
+          request.ireq.asInstanceOf[Request[AnyContent]]).value.get.get
+    }
 
-    if(list.size <= 1) {
-      catBrowser(plugin, conn, request.realm, cat, ipath, list.headOption).apply(request.ireq.asInstanceOf[Request[AnyContent]]).value.get.get
+  def objBrowserByQuery(plugin: String, conn: String, cat: String, parm: String, value: String, ipath: String,
+                        o: Option[O
+                        ] = None) = RAction { implicit request =>
+    val ref = SpecRef.make(request.realm, plugin, conn, cat, "")
+    val list = DomInventories.findByQuery(ref, cat + "/" + parm + "/" + value)
+
+    if (list.size <= 1) {
+      val o = list.headOption.flatMap(_.getValueO)
+      catBrowser(plugin, conn, request.realm, cat, ipath, o).apply(
+        request.ireq.asInstanceOf[Request[AnyContent]]).value.get.get
     } else {
-      val s = list.map {o=>
+      val s = list.map { dov =>
+        val o = dov.value.asInstanceOf[O]
         val u = routes.DieselControl.objBrowserById(plugin, conn, cat, o.name, ipath).url
         s"""<a href="$u">${o.name}</a> ${o.getDisplayName}"""
       }
@@ -277,16 +285,31 @@ object DieselControl extends RazController with Logging {
   def create(cat:String, ipath:String) = FAU { implicit au => implicit errCollector => implicit request =>
     val realm = Website.realm
     val rdom = WikiDomain(realm).rdom
-    val left  = rdom.assocs.filter(_.z == cat)
+    val left = rdom.assocs.filter(_.z == cat)
     val right = rdom.assocs.filter(_.a == cat)
-    val path = if(ipath == "/") ipath+cat else ipath
+    val path = if (ipath == "/") ipath + cat else ipath
 
-    def mkLink (s:String, dir:String,assoc:Option[RDOM.A]) = {
-      routes.DieselControl.catBrowser ("diesel", realm, realm, s, path+"/"+s).toString()
+    def mkLink(s: String, dir: String, assoc: Option[RDOM.A]) = {
+      routes.DieselControl.catBrowser("diesel", realm, realm, s, path + "/" + s).toString()
     }
 
-    ROK.r apply {implicit stok=>
+    ROK.r apply { implicit stok =>
       views.html.modules.diesel.createDD(realm, cat, left, right, rdom, Map.empty)(mkLink)
+    }
+  }
+
+  /** generic domain plugin actions */
+  def pluginAction(plugin: String, conn: String, action: String, epath: String) = Filter(activeUser).async
+  { implicit stok =>
+    Future.successful {
+      val url = "http" + (if (stok.secure) "s" else "") + "://" + stok.hostPort
+      val c = WikiDomain(stok.realm).findPlugins(plugin, conn).map(
+        _.doAction(WikiDomain(stok.realm).rdom, conn, action, url, epath)).mkString
+
+      if (c.startsWith("<"))
+        Ok(c).as("text/html")
+      else
+        Ok(c)
     }
   }
 

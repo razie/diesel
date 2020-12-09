@@ -165,15 +165,25 @@ class DomGuard extends DomApiBase with Logging {
   // view an AST from teh collection
   def dieselViewAst(id: String, format: String) = FAUR ("viewAst") { implicit stok =>
     DomCollector.withAsts { asts =>
-        for (
-          ast <- asts.find(_.id == id) orCorr ("ID not found" -> "We only store a limited amount of traces...")
-        ) yield {
-          if (format == "html")
-            Ok(ast.engine.root.toHtml)
-          else
-            dieselEngineView(id).apply(stok.req).value.get.get
-        }
-    }.orElse(Some(NotFound("Engine trace not found - We only store a limited amount of traces...")))
+      for (
+        ast <- asts.find(_.id == id) orCorr ("ID not found" -> "We only store a limited amount of traces...")
+      ) yield {
+        if (format == "html")
+          Ok(ast.engine.root.toHtml)
+        else
+          dieselEngineView(id).apply(stok.req).value.get.get
+      }
+    }.orElse(
+      DieselAppContext.synchronized {
+        DieselAppContext.activeEngines.get(id).map(e =>
+          ROK.k reactorLayout12 {
+            views.html.modules.diesel.engineView(Some(e))
+          }
+        )
+      }
+    ).orElse(
+      Some(NotFound("Engine trace not found - We only store a limited amount of traces..."))
+    )
   }
 
   private def findUname(u: String): String = {
@@ -196,7 +206,7 @@ class DomGuard extends DomApiBase with Logging {
 
       val total = GlobalData.dieselEnginesTotal.get()
 
-      val table = list.zipWithIndex.map { z =>
+      var table = list.zipWithIndex.map { z =>
         Try {
           val a = z._1
           val i = z._2
@@ -248,6 +258,21 @@ class DomGuard extends DomApiBase with Logging {
            |""".stripMargin
       )
       //      Ok(x).as("text/html")
+
+      if (stok.au.exists(_.isAdmin)) {
+        // add active engines to debug things that get stuck
+        val a =
+          """<p>----------------active engines------------------</p>""" + {
+            DieselAppContext.synchronized {
+              DieselAppContext.activeEngines.map(t =>
+                s"""<br><a href="/diesel/viewAst/${t._1}">...${t._1}</a>"""
+              )
+            }.mkString("")
+          }
+
+        table = table + a
+      }
+
       val title = s"""Flow history realm: $r showing ${list.size} of $total and user $un"""
       ROK.k reactorLayout12FullPage {
         views.html.modules.diesel.engineListAst(title, table)
@@ -532,7 +557,7 @@ Guardian report<a href="/wiki/Guardian_Guide" ><sup><span class="glyphicon glyph
   /** run another check all reactors */
   def dieselRunCheckAll = Filter(adminUser).async { implicit stok =>
     if (!Config.isLocalhost && DomGuardian.ISENABLED || DomGuardian.ISENABLED_LOCALHOST) Future.sequence(
-       WikiReactors.allReactors.keys.map { k =>
+      WikiReactors.allReactors.keys.map { k =>
         if (DomGuardian.enabled(k)) startCheck(k, stok.au)._1
         else Future.successful(DomGuardian.EMPTY_REPORT)
       }
@@ -542,22 +567,8 @@ Guardian report<a href="/wiki/Guardian_Guide" ><sup><span class="glyphicon glyph
     else Future.successful(Ok("GUARDIAN DISABLED"))
   }
 
-  def pluginAction(plugin: String, conn: String, action: String, epath: String) = Filter(activeUser).async
-  { implicit stok =>
-    Future.successful {
-      val url = "http" + (if (stok.secure) "s" else "") + "://" + stok.hostPort
-      val c = WikiDomain(stok.realm).plugins.find(_.name == plugin).map(
-        _.doAction(WikiDomain(stok.realm).rdom, conn, action, url, epath)).mkString
-
-      if (c.startsWith("<"))
-        Ok(c).as("text/html")
-      else
-        Ok(c)
-    }
-  }
-
   /** run another check current reactor */
-  def whoami = RAction{ implicit stok =>
+  def whoami = RAction { implicit stok =>
     Ok(InetAddress.getLocalHost.getHostName)
   }
 

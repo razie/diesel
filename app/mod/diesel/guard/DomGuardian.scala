@@ -6,7 +6,6 @@ import controllers.RazRequest
 import model.{User, Users}
 import org.bson.types.ObjectId
 import org.joda.time.DateTime
-import play.libs.Akka
 import razie.Logging
 import razie.diesel.engine.nodes.EnginePrep
 import razie.diesel.engine.{DieselAppContext, DomEngine, DomEngineSettings}
@@ -14,10 +13,9 @@ import razie.diesel.expr.SimpleECtx
 import razie.diesel.model.{DieselMsg, DieselTarget}
 import razie.diesel.utils.{DieselData, DomCollector}
 import razie.hosting.Website
-import razie.tconf.TagQuery
-import razie.wiki.{Config, Services}
 import razie.wiki.model._
 import razie.wiki.util.PlayTools
+import razie.wiki.{Config, Services}
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -160,7 +158,7 @@ object DomGuardian extends Logging {
       settings.realm = Some(realm)
 
       if (Config.isLocalhost)
-        settings.hostport = Some(Config.hostport)
+        settings.dieselHost = Some("http://" + Config.hostport)
       else
         settings.dieselHost = Website.forRealm(realm).map(_.url)
 
