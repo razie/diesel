@@ -6,7 +6,8 @@ import razie.wiki.Config
 object DieselDebug {
 
   val ALLENABLED = true
-  val AUTO = true
+  val AUTO       = false
+
   def DEVMODE = Config.isDevMode
 
 
