@@ -18,6 +18,7 @@ import play.api.mvc._
 import razie.audit.Audit
 import razie.db._
 import razie.diesel.DieselRateLimiter
+import razie.diesel.model.{DieselMsg, DieselTarget, ScheduledDieselMsg}
 import razie.hosting.{BannedIps, Website, WikiReactors}
 import razie.wiki.admin._
 import razie.wiki.model._
@@ -185,12 +186,24 @@ object Global extends WithFilters(LoggingFilter) {
     super.onStart(app)
 
     Services ! new InitAlligator
+
     Try {
+      clog << "Awaiting for reactors to load..."
       Await.result(GlobalData.reactorsLoadedF, Duration("1 minute"))
     }
 
     // reset all settings
+    DieselRateLimiter.RATELIMIT // just access it to initialize the object - we're sending it an update
+    clog << "sending WikiConfigChanged..."
     Services ! new WikiConfigChanged("", Config)
+
+    // not needed - just example for starting stuff
+//    Services ! ScheduledDieselMsg("10 seconds", DieselMsg(
+//      "diesel.props",
+//      "configReload",
+//      Map("realm" -> "wiki"),
+//      DieselTarget.ENV("wiki")
+//    ))
 
     // todo  SendEmail.initialize
   }

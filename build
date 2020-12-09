@@ -36,8 +36,8 @@ rm dist/conf/logback.xml
 mkdir -p ../rk/dist/lib
 mv dist/lib/com.razie.* ../rk/dist/lib
 
-docker build -t raz-diesel-libs1 .
-docker tag raz-diesel-libs1 razie/raz-diesel-libs1
+docker build -t raz-diesel-libs2 .
+docker tag raz-diesel-libs2 razie/raz-diesel-libs2:latest
 
 ## cleanup
 rm -rf dist
@@ -55,12 +55,12 @@ rm -rf dist
 
 cd $RK
 
-docker tag raz-diesel razie/raz-diesel
+docker tag raz-diesel razie/raz-diesel:latest
 
-echo "publishing"
-echo "docker tag raz-diesel razie/raz-diesel"
-echo "docker login -u razie"
-echo "docker push razie/raz-diesel"
+#echo "publishing"
+#echo "docker tag raz-diesel razie/raz-diesel"
+#echo "docker login -u razie"
+#echo "docker push razie/raz-diesel"
 
 ################## publishing
 
@@ -68,8 +68,8 @@ echo "docker push razie/raz-diesel"
 
 # docker tag raz-diesel razie/raz-diesel
 docker tag raz-diesel razie/raz-diesel:2.1.6-t2b
-docker tag raz-diesel1 razie/raz-diesel:latest
-docker tag raz-diesel1 razie/raz-diesel:razlatest
+docker tag raz-diesel razie/raz-diesel:latest
+docker tag raz-diesel razie/raz-diesel:razlatest
 
 # docker login -u razie
 

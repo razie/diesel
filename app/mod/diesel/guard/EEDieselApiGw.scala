@@ -126,7 +126,9 @@ class EEDieselApiGw extends EExecutor(DieselMsg.APIGW.ENTITY) {
   override def toString = "$executor::diesel.apigw "
 
   override val messages: List[EMsg] =
-    EMsg(DT, "limit.path") ::
+    EMsg(DT, "limit.static") ::
+        EMsg(DT, "limit.rate") ::
+        EMsg(DT, "limit.path") ::
         EMsg(DT, "limit.header") ::
         EMsg(DT, "stats") ::
         EMsg(DT, "groups") :: Nil

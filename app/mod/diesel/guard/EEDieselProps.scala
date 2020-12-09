@@ -8,7 +8,7 @@ package mod.diesel.guard
 
 import java.io.FileInputStream
 import java.util.Properties
-import razie.cdebug
+import razie.diesel.Diesel
 import razie.diesel.dom.RDOM.P
 import razie.diesel.engine.DomAst
 import razie.diesel.engine.exec.EExecutor
@@ -16,7 +16,9 @@ import razie.diesel.engine.nodes.{EError, EMsg, EVal, _}
 import razie.diesel.expr.ECtx
 import razie.diesel.model.DieselMsg
 import razie.hosting.Website
-import razie.wiki.Config
+import razie.wiki.model.WikiConfigChanged
+import razie.wiki.{Config, Services}
+import razie.{cdebug, clog}
 import scala.collection.JavaConverters._
 import scala.io.Source
 
@@ -37,6 +39,16 @@ class EEDieselProps extends EExecutor("diesel.props") {
     cdebug << "EEDieselProps: apply " + in
 
     in.ea match {
+
+      case "diesel.props.configReload" => {
+        // reset all settings
+        clog << "diesel.props.configReload sending WikiConfigChanged..."
+        Services ! new WikiConfigChanged("", Config)
+
+        List(
+          EVal(P.fromTypedValue(Diesel.PAYLOAD, "OK"))
+        )
+      }
 
       case "diesel.props.realm" => {
         val result = ctx.get("result").getOrElse("payload")
@@ -108,7 +120,8 @@ class EEDieselProps extends EExecutor("diesel.props") {
 
   override val messages: List[EMsg] =
     EMsg(DT, "system") ::
-    EMsg(DT, "jsonFile") ::
-    EMsg(DT, "file") :: Nil
+        EMsg(DT, "configReload") ::
+        EMsg(DT, "jsonFile") ::
+        EMsg(DT, "file") :: Nil
 }
 

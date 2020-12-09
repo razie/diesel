@@ -636,7 +636,7 @@ class AdminDiff extends AdminBase with Logging {
              |********************************************************
              |*                                                      *
              |*      IMPORTED CONFIGURATION FROM REMOTE...           *
-             |*            Total {res._1}  wikis                    *
+             |*            Total ??? wikis                           *
              |*      $i errors... RESTARTING THE PROCESS...          *
              |*                                                      *
              |********************************************************
@@ -653,7 +653,13 @@ class AdminDiff extends AdminBase with Logging {
     Ok(lastImport.getOrElse("No import operation performed..."))
   }
 
-  /** import a realm from remote */
+  /** import a realm from remote
+    *
+    * @param au
+    * @param stok
+    * @param setAsDefault
+    * @return the error count
+    */
   def importRealm(au: User, stok: RazRequest, setAsDefault: Boolean = true) = {
 
     val source = stok.fqhParm("source").get

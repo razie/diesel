@@ -6,7 +6,7 @@ RK=~/w/racerkidz
 
 cd $RK/docker/base
 
-docker build --no-cache -t raz-base .
+docker build --no-cache -t raz-base2 .
 
 cd $RK
 
