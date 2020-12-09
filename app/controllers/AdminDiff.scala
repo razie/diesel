@@ -786,6 +786,143 @@ class AdminDiff extends AdminBase with Logging {
     Ok(ldest.map(_.wpathFull).mkString("\n"))
   }
 
+  // WIP
+  def exportDbSync: Action[AnyContent] = Action.async { implicit request =>
+    val au = auth(request).filter(_.isActive)
+
+    clog << "ADMIN_EXPORT_DB"
+
+    val realm = request.queryString.map(t => (t._1, t._2.mkString)).get("realm").toString
+
+    if (au.isEmpty || realm.length <= 0 || !au.exists(_.realms.contains(realm))) {
+      Future.successful {
+        Ok(s"NO ACTIVE USER for REALM $realm!").as("application/text")
+      }
+    } else {
+      val res = exportRealm(au.get, request)
+
+      Future.successful(
+        Ok(
+          s"""
+             |
+             |********************************************************
+             |*                                                      *
+             |*      EXPORTED CONFIGURATION FROM REMOTE...           *
+             |*            Total ${res._1}  wikis                    *
+             |*      ${res._2} errors...                                    *
+             |*                                                      *
+             |********************************************************
+             |
+             |""".stripMargin).as("application/text")
+      )
+    }
+  }
+
+  /** export a realm to a folder */
+  def exportRealm(au: User, request: Request[AnyContent]) = {
+
+    lazy val query = request.queryString.map(t => (t._1, t._2.mkString))
+    lazy val form = request.asInstanceOf[Request[AnyContent]].body.asFormUrlEncoded
+
+    def fParm(name: String): Option[String] =
+      form.flatMap(_.getOrElse(name, Seq.empty).headOption)
+
+    def fqhParm(name: String): Option[String] =
+      query.get(name).orElse(fParm(name)).orElse(request.headers.get(name))
+
+    val source = fqhParm("source").get
+    val email = fqhParm("email").get
+    val pwd = fqhParm("pwd").get
+    val realm = fqhParm("realm").get
+    val folder = fqhParm("folder").get
+    val mixins = fqhParm("mixins").get
+    val key = System.currentTimeMillis().toString
+
+// we should not save mixins - just local realm
+
+    clog << s"ADMIN_EXPORT_REALM $realm"
+
+// get mixins
+    clog << "============ get mixins"
+    val rmixins = "rk" :: "wiki" :: WID.fromPath(s"$realm.Reactor:$realm").flatMap(_.page).map({
+      t =>
+        val m = new DslProps(Some(t), "website,properties")
+            .prop("mixins")
+            .getOrElse(realm)
+        clog << "============ mixins: " + m
+        m
+    }
+    ).getOrElse(realm).split(",").toList ::: Nil
+
+    val reactors = if ("yes" == mixins) realm :: rmixins else List(realm)
+
+    // export all local entries
+    val ldest = RMany[WikiEntry]()
+        .filter(we => reactors.contains(we.realm))
+        .toList
+
+//    val ldest = List(
+//      "rk.Reactor:rk",
+//      "wiki.Reactor:wiki"
+//    ).map(x => WID.fromPath(x).get) :::
+//      remoteWids(source, "rk", request.host, "", au) :::
+//      remoteWids(source, "wiki", request.host, "", au) :::
+//      (reactors.split(",")
+//        .toList
+//        .distinct
+//        .filter(r => r.length > 0 && !Array("rk", "wiki").contains(r))
+//        .flatMap(r => remoteWids(source, r, request.host, "", au))
+//        )
+
+    var count = 0
+    var total = ldest.size
+    var countErr = 0
+
+    // wid, error
+    val errors = new ListBuffer[(WID, String)]()
+
+    razie.db.tx("exportDb", email) {
+      implicit txn =>
+        ldest.foreach {
+          we =>
+
+            log("EXPORT: " + we.wid.wpath)
+
+            writeFile(
+              we.content,
+              folder + "/" + realm,
+              we.realm + "." + we.category + "." + we.name
+            )
+
+//          errors.append((wid, err))
+//          countErr = countErr + 1
+//          clog << "============ ERR-IMPORT DB: " + err
+        }
+    }
+
+    (total, countErr)
+  }
+
+  /** write a file, make dir struct etc */
+  private def writeFile(value: String, directoryName: String, fileName: String) {
+    val directory = new File(directoryName)
+
+    if (!directory.exists) {
+      directory.mkdirs
+    }
+
+    val file = new File(directoryName + "/" + fileName)
+    try {
+      val fw = new FileWriter(file.getAbsoluteFile)
+      val bw = new BufferedWriter(fw)
+//      bw.write(value)
+//      bw.close()
+    } catch {
+      case e: IOException =>
+        e.printStackTrace()
+    }
+  }
+
   /** is current user active here - used with basic auth from remote, to verify before import */
   def isu(key: String) = FAUR {
     implicit request =>

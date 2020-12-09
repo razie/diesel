@@ -99,7 +99,7 @@ object AttemptCounter {
   val lastAttempts = new HashMap[String, (Int, Long)]()
 
   /** check for repeated attempts */
-  def tooManyAttempts (email:String) : Boolean = {
+  def tooManyAttempts(email: String): Boolean = synchronized {
     var count = 0
     val now = System.currentTimeMillis()
 
@@ -108,16 +108,23 @@ object AttemptCounter {
     lastAttempts.put(email, (count + 1, now))
 
     // 2 seconds per count - exponential waiting
-    v.filter(v => v._1 >= 3 && (now - v._2 < 2000 * count)).isDefined
+    val res = v.filter(v => v._1 >= 5 && (now - v._2 < 2000 * count)).isDefined
+
+    if (res) {
+      cout << s"TOO MANY ATTEMPTS ($count) for $email"
+      Audit.logdb("TOO_MANY_ATTEMPTS", email, lastAttempts.get(email).map(_._1).mkString)
+    }
+
+    false || res
   }
 
   /** check for repeated attempts */
-  def success(email: String) {
+  def success(email: String) = synchronized {
     lastAttempts.remove(email)
   }
 
   /** check for repeated attempts */
-  def countAttempts(email: String): Int = {
+  def countAttempts(email: String): Int = synchronized {
     var count = 0
     val v = lastAttempts.get(email)
     v.foreach(v => count = v._1)
@@ -151,7 +158,6 @@ class Profile @Inject() (config:Configuration, adminDiff:AdminDiff) extends RazC
         //          println ("======="+reg.email.enc+"======="+reg.password.enc)
         clog << "login test: " + reg.email
         if (tooManyAttempts(reg.email)) {
-          Audit.logdb("TOO_MANY_ATTEMPTS", reg.email, lastAttempts.get(reg.email).map(_._1).mkString)
           false
         } else if (reg.password.length > 0 && reg.repassword.length <= 0)
           // TODO optimize - we lookup users twice on loing

@@ -181,11 +181,16 @@ object Global extends WithFilters(LoggingFilter) {
 
   override def onStart(app: Application) = {
     // automated restart / patch / update handling
-    Try { new File("../updating").delete() }.isSuccess
+    Try {new File("../updating").delete()}.isSuccess
     super.onStart(app)
 
     Services ! new InitAlligator
-    Await.result(GlobalData.reactorsLoadedF, Duration("1 minute"))
+    Try {
+      Await.result(GlobalData.reactorsLoadedF, Duration("1 minute"))
+    }
+
+    // reset all settings
+    Services ! new WikiConfigChanged("", Config)
 
     // todo  SendEmail.initialize
   }
