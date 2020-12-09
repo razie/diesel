@@ -16,22 +16,33 @@ import scala.collection.mutable.ListBuffer
 class WikiDomainImpl (val realm:String, val wi:WikiInst) extends WikiDomain {
 
   // be a lazy val to avoid screwy init loops
-  lazy val plugins = RDomainPlugins.pluginFactories.flatMap(_.mkInstance(realm, wi))
+  // all plugins registered for this domain/realm - in this list:
+  //
+  lazy val _allPlugins = new ListBuffer[DomInventory]().++=:(
+    DomInventories.pluginFactories.flatMap(x => x.mkInstance(realm, "", wi, x.name))
+  )
 
-  private var irdom : RDomain = null
+  def allPlugins = _allPlugins.toList
 
-  @volatile var isLoading : Boolean = false
+  def addPlugin(inv: DomInventory): List[DomInventory] = {
+    _allPlugins += inv
+    allPlugins
+  }
 
-  def rdom : RDomain = synchronized {
+  private var irdom: RDomain = null
+
+  @volatile var isLoading: Boolean = false
+
+  def rdom: RDomain = synchronized {
     if (irdom == null) {
       isLoading = true
 
       irdom =
-        WikiSearch.getList(realm, "", "", WikiDomain.domTagQuery.tags)
+          WikiSearch.getList(realm, "", "", WikiDomain.domTagQuery.tags)
 //        Wikis(realm).pages("DslDomain")
-          .toList
-          .flatMap(p => WikiDomain.domFrom(p).toList)
-          .fold(createRDom)(_ plus _.revise)
+              .toList
+              .flatMap(p => WikiDomain.domFrom(p).toList)
+              .fold(createRDom)(_ plus _.revise)
 
       isLoading = false
     }
