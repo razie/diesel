@@ -588,7 +588,7 @@ function updateMarkers (aceEditor, astList) {
 /** navigate the first error node */
 function ferrStory(id) {
   var x = $("[kind='error']")[0];//.scrollIntoView();
-  var parent = $('#iframeOut3_'+id)[0];
+  var parent = $('#iframeOutStory_' + id)[0];
   if(typeof x != "undefined") {
     if(typeof parent != "undefined") {
       parent.scrollTop = x.offsetTop;

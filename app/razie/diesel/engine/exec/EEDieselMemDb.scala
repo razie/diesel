@@ -6,6 +6,7 @@
 package razie.diesel.engine.exec
 
 import com.mongodb.casbah.Imports._
+import razie.diesel.Diesel
 import razie.diesel.dom.RDOM._
 import razie.diesel.engine.DomAst
 import razie.diesel.engine.nodes.{EError, EMsg, EVal, MatchCollector}
@@ -61,6 +62,13 @@ class EEDieselMemDb extends EExecutor("diesel.db.memdb") {
         val col = ctx.getRequired("collection")
         require(col.length > 0)
         tables.get(col).flatMap(_.entries.get(ctx.getRequired("id"))).map(x => EVal(P("document", x.toString))).toList
+      }
+
+      case "listAll" => {
+        val col = ctx.getRequired("collection")
+        require(col.length > 0)
+        val x = tables.get(col).toList.flatMap(_.entries).map(x => P("document", x.toString))
+        EVal(P.fromSmartTypedValue(Diesel.PAYLOAD, x)) :: Nil
       }
 
       case cmd@("upsert") => {
