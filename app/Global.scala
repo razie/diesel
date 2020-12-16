@@ -198,6 +198,8 @@ object Global extends WithFilters(LoggingFilter) {
     Services ! new WikiConfigChanged("", Config)
 
     // not needed - just example for starting stuff
+    // WARNING - this may have caused some weird issues because it was ran during startup ?
+    // - not sure. Test well if using!
 //    Services ! ScheduledDieselMsg("10 seconds", DieselMsg(
 //      "diesel.props",
 //      "configReload",

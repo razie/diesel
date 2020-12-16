@@ -343,7 +343,7 @@ class DomApi extends DomApiBase with Logging {
                         x.value.asInstanceOf[EWarning].code == DieselMsg.ENGINE.ERR_NORULESMATCH)
               )) {
             // no rules applied - 501 - prevents us from returning settings values when nothing matched
-            body = s"No rules matched for path: (${path}) message: (${msg.get.ea})"
+            body = s"No rules matched for path: (${path}) message: (${msg.get.ea})" + s" info: ${engine.settings.realm}"
             info(body)
 
             Status(NOT_IMPLEMENTED)(body)
@@ -361,7 +361,7 @@ class DomApi extends DomApiBase with Logging {
                     )
                 )) {
               // no rules applied - 501 - prevents us from returning settings values when nothing matched
-              body = s"No rules matched for path: (${path}) message: (${msg.get.ea})"
+            body = s"No rules matched for path: (${path}) message: (${msg.get.ea})" + s" info: ${engine.settings.realm}"
               info(body)
 
               Status(NOT_IMPLEMENTED)(body)
@@ -1040,7 +1040,9 @@ class DomApi extends DomApiBase with Logging {
                       x.value.asInstanceOf[EWarning].code == DieselMsg.ENGINE.ERR_NORULESMATCH)
             )) {
           // no rules applied - 501 - prevents us from returning settings values when nothing matched
-          body= s"No rules matched for: (${engine.description}) message: (${msgAst.map(_.value.toString)})"
+          body = s"No rules matched for: (${engine.description}) message: (${
+            msgAst.map(_.value.toString)
+          })" + s" info: ${engine.settings.realm}"
           info(body)
 
           Status(NOT_IMPLEMENTED)(body)
@@ -1057,7 +1059,9 @@ class DomApi extends DomApiBase with Logging {
                 )
             )) {
           // no rules applied - 501 - prevents us from returning settings values when nothing matched
-          body = s"No rules matched for: (${engine.description}) message: (${msgAst.map(_.value.toString)})"
+          body = s"No rules matched for: (${engine.description}) message: (${
+            msgAst.map(_.value.toString)
+          })" + s" info: ${engine.settings.realm}"
           info(body)
 
           Status(NOT_IMPLEMENTED)(body)

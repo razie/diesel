@@ -236,25 +236,36 @@ object DieselCron extends Logging {
     }
   }
 
-  def await[S] (a : ActorRef, message: Any) : S = Await.result(
+  def await[S](a: ActorRef, message: Any): S = Await.result(
     (worker ? message),
     5 seconds
   ).asInstanceOf[S]
 
   /** create a schedule for a realm - should be called once per realm */
-  def cancelSchedule(realm:String, schedId: String) = await[Option[DomSchedule]](worker, Cancel(realm, schedId))
+  def cancelSchedule(realm: String, schedId: String) = await[Option[DomSchedule]](worker, Cancel(realm, schedId))
 
-  /** create a schedule for a realm - should be called once per realm */
-  def createSchedule(schedId: String, schedExpr: String, time:String, realm: String, env: String, count:Long, msg: Either[DieselMsg, DieselMsgString]) = {
+  /** create a schedule for a realm - should be called once per realm
+    *
+    * @param schedId
+    * @param schedExpr
+    * @param time
+    * @param realm
+    * @param env
+    * @param count
+    * @param msg
+    * @return
+    */
+  def createSchedule(schedId: String, schedExpr: String, time: String, realm: String, env: String, count: Long,
+                     msg: Either[DieselMsg, DieselMsgString]) = {
     await[String](worker, CreateSchedule(schedId, schedExpr, time, realm, env, count, msg))
   }
 
   /** cheap hot/cold singleton - is it me that Apache deems main? assumes proxy in +H mode */
-  def isMasterNode(w:Website) = {
+  def isMasterNode(w: Website) = {
     // todo use akka singleton or something
     val me = InetAddress.getLocalHost.getHostName
     val url =
-      (if(Config.isLocalhost) "http://" + Config.hostport
+      (if (Config.isLocalhost) "http://" + Config.hostport
       else
         w.url) + "/diesel/engine/whoami"
 
