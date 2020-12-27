@@ -380,11 +380,27 @@ class DomApi extends DomApiBase with Logging {
             // is there a desired type
               engine.ctx.get(DieselMsg.HTTP.CTYPE).filter(_.length > 0)
                   .getOrElse(
-                    resp.map(p=>WTypes.getContentType(p.ttype)).getOrElse(WTypes.Mime.textPlain)
+                    resp.map(p => WTypes.getContentType(p.ttype)).getOrElse(WTypes.Mime.textPlain)
                   )
 
             body = stripQuotes(resValue)
-            Ok(body).as(ctype)
+
+            // exception?
+            val code = resp
+                .filter(_.isOfType(WTypes.wt.EXCEPTION))
+                .map(_.calculatedTypedValue(engine.ctx).value)
+                .filter(_.isInstanceOf[DieselException])
+                .flatMap(_.asInstanceOf[DieselException].code)
+
+            // is there a desired status
+            code.orElse(
+              engine.ctx.get(DieselMsg.HTTP.STATUS).filter(_.length > 0).map(_.toInt)
+            ).map { st =>
+              Status(st)(body)
+            } getOrElse {
+              Ok(body)
+            }.as(ctype)
+
           } else {
             // multiple values as json
             val valuesp = engine.extractValues(e,a)
@@ -733,14 +749,14 @@ class DomApi extends DomApiBase with Logging {
               val allValues = new StaticECtx(msg.attrs, Some(engine.ctx))
               EESnakk.formatTemplate(content, allValues)
             } else {
-              // engine.ctx.get("payload").getOrElse("no msg recognized, no result, no response template")
+              // engine.ctx.get(Diesel.PAYLOAD).getOrElse("no msg recognized, no result, no response template")
 
-              engine.ctx.getp("payload").map {p=>
-                if(p.value.isDefined) {
+              engine.ctx.getp(Diesel.PAYLOAD).map { p =>
+                if (p.value.isDefined) {
                   ctype = WTypes.getContentType(p.value.get.cType)
 
                   p.value.get.value match {
-                    case x : Array[Byte] =>
+                    case x: Array[Byte] =>
                       response = Some(Ok(x).as(ctype))
                     case _ =>
                       response = Some(Ok(p.value.get.asString).as(ctype))
@@ -748,7 +764,7 @@ class DomApi extends DomApiBase with Logging {
 
                   ""
                 } else
-                  engine.ctx.get("payload").getOrElse("no msg recognized, no result, no response template")
+                  engine.ctx.get(Diesel.PAYLOAD).getOrElse("no msg recognized, no result, no response template")
               }.getOrElse(
                 "no msg recognized, no result, no response template"
               )
