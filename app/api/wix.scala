@@ -146,6 +146,7 @@ class wix (owe: Option[WikiPage], ou:Option[WikiUser], q:Map[String,String], r:S
     "user" : {
       "userName" : "${iuser.get.userName}",
       "firstName" : "${iuser.get.firstName}",
+      "organization" : "${iuser.get.organization.mkString}",
       "ename" : "${iuser.get.ename}",
       "isDefined" : ${iuser.isDefined},
       "isEmpty" : ${iuser.isEmpty},
