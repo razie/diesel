@@ -1,5 +1,6 @@
 package mod.diesel.controllers
 
+import controllers.RazRequest
 import java.net.InetAddress
 import java.util.concurrent.atomic.AtomicInteger
 import mod.diesel.guard.DomGuardian
@@ -474,38 +475,45 @@ class DomGuard extends DomApiBase with Logging {
 
         ROK.k reactorLayout12 {
           new Html(
-            s"""
-               | Guardian menu <a href="/wiki/Guardian" ><sup><span class="glyphicon
-               | glyphicon-question-sign"></span></a></sup>:
-               | (<b><a href="/diesel/listAst">list all traces</a></b>)
-               |<br>
-               | <small>
-               | Guardian - enabled:${DomGuardian.enabled(stok.realm)} auto:${DomGuardian.onAuto(stok.realm)}
-               | </small>
-               |<br>No run available yet (<b>$started</b>) - check this later
-               |  <br><b><a href="/diesel/runCheck">Re-run check</a></b>
-               | $runs
-               |<br>
-               |Other in realm:<br>$otherInRealm""".
-                stripMargin
-            )
-          }
+            guardianMenu +
+                s"""
+                   |No run available yet (<b>$started</b>) - check this later
+                   |  <br><b><a href="/diesel/runCheck">Re-run check</a></b>
+                   | $runs
+                   |<br>
+                   |Other in realm:<br>$otherInRealm""".
+                    stripMargin
+          )
+        }
       }
     }
   }
+
+  def guardianMenu(implicit stok: RazRequest) =
+    s"""
+       | Guardian menu <a href="/wiki/Guardian" ><sup><span class="glyphicon
+       | glyphicon-question-sign"></span></a></sup>:
+       | (<b><a href="/diesel/listAst">list all traces</a></b>)
+       |<br>
+       | <small>
+       | Guardian - enabled:${DomGuardian.enabled(stok.realm)} auto:${DomGuardian.onAuto(stok.realm)}
+       | </small>
+       |<br>
+       |Guardian report<a href="/wiki/Guardian" ><sup><span class="glyphicon
+       |glyphicon-question-sign"></span></a></sup>:
+       |<small>${DomGuardian.stats} (<a href="/diesel/listAst"><b>list all</b></a>)(<a href="/diesel/cleanAst">clean
+       |all</a>)
+       |</small><br><br>
+       | """.stripMargin
 
   // todo implement and optimize
   def dieselReportAll = Filter(adminUser).async { implicit stok =>
     Future.successful {
       ROK.k reactorLayout12 {
         new Html(
-          s"""
+          guardianMenu +
+              s"""
 <a href="/diesel/runCheckAll">Re-run all checks</a> (may have to wait a while)...
-<br>
-<small>Guardian - enabled:${DomGuardian.enabled(stok.realm)} auto:${DomGuardian.onAuto(stok.realm)}</small>
-<br>
-Guardian report<a href="/wiki/Guardian_Guide" ><sup><span class="glyphicon glyphicon-question-sign"></span></a></sup>:
-<small>${DomGuardian.stats} (<a href="/diesel/listAst">list all</a>)(<a href="/diesel/cleanAst">clean all</a>) </small><br><br>
 """.stripMargin +
 
               """<hr><h2>Abstract</h2>""" +
