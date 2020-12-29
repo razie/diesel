@@ -44,9 +44,14 @@ create account
             @util.razText(myForm, "lastName", "Last name")
             @util.razText(myForm, "company", "Company/Organization")
 
-            @util.razSelect(myForm, "yob", "When you were born",
+          @if(stok.website.propDflt("user.join.age", "true").equals("true")) {
+            @util.razSelect(myForm, "yob", "When were you born",
               Seq("" -> "") ++ (Range(2005, 1912, -1) map (y => (y.toString, y.toString))),
               'style -> "width: 100px")
+          } else {
+    <input name="yob" style="display:none" value="1900">
+          }
+
             @util.razText(myForm, "address", "City, province/state, country")
 
             @helper.textarea(

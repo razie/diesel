@@ -52,28 +52,19 @@
     '_showConstraints -> false,
     '_error->registerForm.error("password"))
 
-  <button id="loginBtn" type="submit" class="btn btn-success">Login</button>
-  <a id="forgotBtn" href="@routes.ProfileUpd.doeForgotPass()" class="btn btn-info">Forgot password!</a>
-
-  <br>
-  <br>
-  <button id="createBtn1" type=button onclick="showCreate()" class="btn btn-warning xbtn-xs">Create new account</button>
-
-  <hr>
-
-    <span id="createArea" style="display:none;">
+  <span id="createArea" style="display:none;">
   @if(stok.website.openMembership || stok.request.exists(_.flash.get(SecLink.HEADER).exists(_.length > 5))) {
-      <span style="color: red;
+    <span style="color: red;
       font-size: smaller"> To <strong>create a new account</strong>, please confirm the chosen email and password: </span>
 
     @helper.inputText(
       registerForm("reemail"),
-      '_label -> "Repeat email",
+      '_label -> "Verify email",
       '_showConstraints -> false)
 
     @helper.inputPassword(
       registerForm("repassword"),
-      '_label -> "Repeat password")
+      '_label -> "Verify password")
 
     <button type="submit" class="btn btn-warning">Create new account</button>
   }else{
@@ -83,8 +74,17 @@
     <div class="alert alert-danger">
       This website does not allow creating accounts... you can request or use an invitation below.</div>
     <hr>
-  }
-</span>
+    }
+  </span>
+
+  <button id="loginBtn" type="submit" class="btn btn-success">Login</button>
+  <a id="forgotBtn" href="@routes.ProfileUpd.doeForgotPass()" class="btn btn-info">Forgot password!</a>
+
+  <br>
+  <br>
+  <button id="createBtn1" type=button onclick="showCreate()" class="btn btn-warning xbtn-xs">Create new account</button>
+
+  <hr>
 
   @registerForm.globalError.map { err=>
      <p style="color:red;font-weight:bold">@err.message</p>
@@ -218,7 +218,9 @@ Your email
       if($("#createArea").is(":hidden")) {
         $("#createArea").show();
         $("#createBtn1").prop('disabled', true);
+        $("#createBtn1").hide();
         $("#loginBtn").prop('disabled', true);
+        $("#loginBtn").hide();
         // $("#forgotBtn").prop('disabled', true);
         $("#forgotBtn").hide();
       }

@@ -14,7 +14,7 @@ import views.html.wiki.genericForm
 @Singleton
 class DomInvites @Inject() (config:Configuration) extends mod.diesel.controllers.SFiddleBase with Logging {
 
-  /** */
+  /** user was invited - clicks and ends here */
   def invited = RAction { implicit request =>
     request.flash.get(SecLink.HEADER).flatMap(SecLink.find).map { secLink =>
       val email = secLink.props("email")
@@ -36,7 +36,13 @@ class DomInvites @Inject() (config:Configuration) extends mod.diesel.controllers
             } else Msg("Not your invite or invitation already used...")
           }
         } getOrElse {
-          Redirect(controllers.routes.Profile.doeJoin()).withNewSession.flashing(SecLink.HEADER -> secLink.id)
+          // send to join but flash secLink.id
+          val call = if (Users.findUserByEmailDec(email).isDefined) controllers.routes.Profile.doeJoin()
+          else controllers.routes.Profile.doeJoinNew()
+
+          Redirect(call)
+              .withNewSession
+              .flashing(SecLink.HEADER -> secLink.id)
         }
       } else
           Msg(s"Invitation expired [$invite]...")
@@ -65,7 +71,7 @@ class DomInvites @Inject() (config:Configuration) extends mod.diesel.controllers
       Unauthorized("Please use the support link at the bottom of the previous page...")
   }
 
-  /** */
+  /** display invite form */
   def createInvite1 = FAUR { implicit request =>
     val email = request.fqParm("email", "").trim
 
@@ -75,7 +81,7 @@ class DomInvites @Inject() (config:Configuration) extends mod.diesel.controllers
         genericForm(
           routes.DomInvites.createInvite2().url,
           "Create an invite",
-          "If user exists, this realm will be added - you'll need to update permissions<br>",
+          "If user exists, this realm will be added - you'll need to update permissions",
           List("email")
         )
       }
@@ -83,21 +89,20 @@ class DomInvites @Inject() (config:Configuration) extends mod.diesel.controllers
       Msg("Ask an admin for an invite, please.")
   }
 
-  /** */
+  /** process an invite form submit */
   def createInvite2 = FAUR { implicit request =>
     val email = request.fqParm("email", "").trim
 
-    // todo not just admin, but realm owner too
-    if (request.au.exists(_.isAdmin) && email != "-") {
-      Users.findUserByEmailDec(email).map {user =>
+    if (request.au.exists(_.isMod) && email != "-") {
+      Users.findUserByEmailDec(email).map { user =>
         user.update(Users.updRealm(user, request.realm))
-        Msg(s"User ${user.ename} added to realm...")
+        Msg(s"User ${user.ename} exists, added to realm...")
       } getOrElse {
         val link = "/diesel/invited"
         val sec = SecLink(link, Some(Website.forRealm(request.realm).getOrElse(request.website).domain),
           10, DateTime.now.plusDays(5))
-          .withProp("email", email)
-          .withProp("realm", request.realm)
+            .withProp("email", email)
+            .withProp("realm", request.realm)
         Msg("Invite link: " + sec.secUrl, "   code: " + sec.id)
       }
     } else
