@@ -44,8 +44,8 @@ create account
             @util.razText(myForm, "lastName", "Last name")
             @util.razText(myForm, "company", "Company/Organization")
 
-          @if(stok.website.propDflt("user.join.age", "true").equals("true")) {
-            @util.razSelect(myForm, "yob", "When were you born",
+          @if(stok.website.propDflt("user.join.yob", "true").equals("true")) {
+            @util.razSelect(myForm, "yob", stok.website.propDflt("user.join.yob.label", "When were you born"),
               Seq("" -> "") ++ (Range(2005, 1912, -1) map (y => (y.toString, y.toString))),
               'style -> "width: 100px")
           } else {
