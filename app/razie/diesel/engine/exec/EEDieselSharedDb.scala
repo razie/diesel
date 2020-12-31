@@ -6,16 +6,20 @@
 package razie.diesel.engine.exec
 
 import com.mongodb.casbah.Imports._
+import razie.diesel.Diesel
 import razie.diesel.dom.RDOM._
+import razie.diesel.dom.WTypes
 import razie.diesel.engine.DomAst
 import razie.diesel.engine.nodes.{EError, EMsg, EVal, MatchCollector}
 import razie.diesel.expr.ECtx
 import scala.collection.concurrent.TrieMap
 import scala.collection.mutable
 
-// same as memdb, but it is shared across all users, like a real micro-service would behave
-class EEDieselSharedDb extends EExecutor("diesel.db.shareddb") {
-  final val SHAREDDB = "diesel.db.shareddb"
+/**
+  * same as memdb, but it is shared across all users, like a real micro-service would behave
+  */
+class EEDieselSharedDb extends EExecutor("diesel.db.shared") {
+  final val SHAREDDB = "diesel.db.shared"
 
   /** map of active contexts per transaction */
   val tables = new TrieMap[String, mutable.HashMap[String, P]]()
@@ -29,10 +33,32 @@ class EEDieselSharedDb extends EExecutor("diesel.db.shareddb") {
   override def apply(in: EMsg, destSpec: Option[EMsg])(implicit ctx: ECtx): List[Any] = synchronized {
     val col = ctx("collection")
 
+    def upsert(col: String, id: String, doc: P) = {
+      if (!tables.contains(col))
+        tables.put(col, new mutable.HashMap[String, P]())
+
+      val id = if (ctx("id").length > 0) ctx("id") else new ObjectId().toString
+
+      tables(col).put(id, doc)
+    }
+
     in.met match {
 
-      case "get" => {
-        tables.get(col).flatMap(_.get(ctx("id"))).map(x => EVal(x)).toList
+      case "get" | "getsert" => {
+        val id = ctx.getRequired("id")
+        tables.get(col)
+            .flatMap(_.get(id))
+            .orElse {
+              ctx.getp("default").map { doc =>
+                upsert(col, id, doc)
+                doc
+              }
+            }
+            .orElse {
+              Some(P.undefined(Diesel.PAYLOAD))
+            }
+            .map(x => EVal(x.copy(name = Diesel.PAYLOAD)))
+            .toList
       }
 
       case "remove" => {
@@ -42,25 +68,42 @@ class EEDieselSharedDb extends EExecutor("diesel.db.shareddb") {
       }
 
       case "upsert" => {
-        if (!tables.contains(col))
-          tables.put(col, new mutable.HashMap[String, P]())
-
         val id = if (ctx("id").length > 0) ctx("id") else new ObjectId().toString
+        upsert(col, id, ctx.getRequiredp("document"))
+        EVal(P(Diesel.PAYLOAD, id)) :: Nil
+      }
 
-        ctx.getp("document").map(p=>
-          tables(col).put(id, p)
+      case "query" => {
+        val col = ctx.getRequired("collection")
+        val others = in
+            .attrs
+            .filter(_.name != "collection")
+            .filter(_.name != "id")
+            .filter(_.ttype != WTypes.UNDEFINED)
+
+        val res = tables.get(col).toList.flatMap(_.values.toList.filter(x =>
+          // parse docs and filter by attr
+          if (x.isOfType(WTypes.wt.JSON)) {
+            val m = x.calculatedTypedValue.asJson
+            others.foldRight(true)((a, b) => b && m.contains(a.name) && m.get(a.name).exists(_ == a.calculatedValue))
+          } else {
+            true
+          }
+        ))
+
+        List(
+          EVal(P.fromSmartTypedValue(Diesel.PAYLOAD, res))
         )
-        EVal(P("id", id)) :: Nil
       }
 
       case "log" => {
         val res = tables.keySet.map { k =>
           "Collection: " + k + "\n" +
-            tables(k).keySet.map { id =>
-              "  " + id + " -> " + tables(k)(id).toString
-            }.mkString("  ", "\n", "")
+              tables(k).keySet.map { id =>
+                "  " + id + " -> " + tables(k)(id).toString
+              }.mkString("  ", "\n", "")
         }.mkString("\n")
-        EVal(P("payload", res)) :: Nil
+        EVal(P(Diesel.PAYLOAD, res)) :: Nil
       }
 
       case "clear" => {

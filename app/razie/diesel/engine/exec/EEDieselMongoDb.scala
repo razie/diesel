@@ -7,6 +7,7 @@ package razie.diesel.engine.exec
 
 import com.mongodb.casbah.Imports._
 import razie.db._
+import razie.diesel.Diesel
 import razie.diesel.dom.RDOM._
 import razie.diesel.dom._
 import razie.diesel.engine.DomAst
@@ -31,8 +32,14 @@ class EEDieselMongodDb extends EExecutor("diesel.db.col") {
     val col = ctx("collection")
 
     def realm = ctx.root.settings.realm.mkString
+
     def coll = ctx.getRequired("collection")
-    def key = ctx.getRequired("key")
+
+    def key = {
+      // backward compliant for a while. Want to use id now not key
+      ctx.get("id").getOrElse(ctx.get("key").getOrElse(ctx.getRequired("id"))) // funky to report missing id not key
+    }
+
     def userId = None//ctx.root.settings.userId
 
     in.met match {
@@ -69,7 +76,6 @@ class EEDieselMongodDb extends EExecutor("diesel.db.col") {
         }
 
         List(
-          EVal(P.fromTypedValue("id", id.toString)),
           EVal(P.fromTypedValue("payload", id.toString))
         )
       }
@@ -78,7 +84,7 @@ class EEDieselMongodDb extends EExecutor("diesel.db.col") {
         val others = in
             .attrs
             .filter(_.name != "collection")
-            .filter(_.name != "key")
+            .filter(_.name != "id")
             .filter (_.ttype != WTypes.UNDEFINED)
             .map(p=>("content." + p.name, p.calculatedValue))
             .toMap
@@ -101,7 +107,7 @@ class EEDieselMongodDb extends EExecutor("diesel.db.col") {
 
         List(
           EVal(p),
-          EVal(p.copy(name="payload"))
+          EVal(p.copy(name = Diesel.PAYLOAD))
         )
       }
 
@@ -138,8 +144,7 @@ class EEDieselMongodDb extends EExecutor("diesel.db.col") {
 
         p.toList.flatMap{p=>
           List(
-            EVal(p),
-            EVal(p.copy(name="payload"))
+            EVal(p.copy(name = Diesel.PAYLOAD))
           )
         }
       }
@@ -164,7 +169,6 @@ class EEDieselMongodDb extends EExecutor("diesel.db.col") {
         )
 
         List(
-          EVal(p),
           EVal(p.copy(name="payload"))
         )
       }
@@ -173,7 +177,7 @@ class EEDieselMongodDb extends EExecutor("diesel.db.col") {
         val others = in
             .attrs
             .filter(_.name != "collection")
-            .filter(_.name != "key")
+            .filter(_.name != "id")
             .map(p=>("content." + p.name, p.calculatedValue))
             .toMap
 

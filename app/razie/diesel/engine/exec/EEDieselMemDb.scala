@@ -6,23 +6,28 @@
 package razie.diesel.engine.exec
 
 import com.mongodb.casbah.Imports._
+import razie.db.RazMongo
 import razie.diesel.Diesel
 import razie.diesel.dom.RDOM._
+import razie.diesel.dom.WTypes
 import razie.diesel.engine.DomAst
 import razie.diesel.engine.nodes.{EError, EMsg, EVal, MatchCollector}
 import razie.diesel.expr.ECtx
 import scala.collection.concurrent.TrieMap
 import scala.collection.mutable
 
-// the context persistence commands - isolated per user and/or anon session
+/** built-in in-memory document db */
 class EEDieselMemDb extends EExecutor("diesel.db.memdb") {
   final val DB = "diesel.db.memdb"
 
+  /** a collection */
+  case class Col(name: String, entries: mutable.HashMap[String, P] = new mutable.HashMap[String, P]())
+
+  /** a session, per user or per engine (when anonymous) */
+  case class Session(name: String, var time: Long = System.currentTimeMillis(), tables: mutable.HashMap[String, Col]
+  = new mutable.HashMap[String, Col]())
+
   /** map of active contexts per transaction */
-  case class Col(name: String, entries: mutable.HashMap[String, Any] = new mutable.HashMap[String, Any]())
-
-  case class Session(name: String, var time: Long = System.currentTimeMillis(), tables: mutable.HashMap[String, Col] = new mutable.HashMap[String, Col]())
-
   val sessions = new TrieMap[String, Session]()
 
   override def isMock: Boolean = true
@@ -50,10 +55,23 @@ class EEDieselMemDb extends EExecutor("diesel.db.memdb") {
     def log = {
       tables.keySet.map { k =>
         "Collection: " + k + "\n" +
-          tables(k).entries.keySet.map { id =>
-            "  " + id + " -> " + tables(k).entries(id).toString
-          }.mkString("  ", "\n", "")
+            tables(k).entries.keySet.map { id =>
+              "  " + id + " -> " + tables(k).entries(id).toString
+            }.mkString("  ", "\n", "")
       }.mkString("\n")
+    }
+
+    def upsert(col: String, id: String, doc: P) = {
+      if (tables.size > 10)
+        throw new IllegalStateException("Too many collections (10)")
+
+      if (!tables.contains(col))
+        tables.put(col, Col(col))
+
+      if (tables(col).entries.size > 15)
+        throw new IllegalStateException("Too many entries in collection (15)")
+
+      tables(col).entries.put(id, doc)
     }
 
     in.met match {
@@ -61,12 +79,31 @@ class EEDieselMemDb extends EExecutor("diesel.db.memdb") {
       case "get" | "getsert" => {
         val col = ctx.getRequired("collection")
         require(col.length > 0)
-        tables.get(col).flatMap(_.entries.get(ctx.getRequired("id"))).map(x => EVal(P("document", x.toString))).toList
+        val id = ctx.getRequired("id")
+
+        tables.get(col)
+            .flatMap(_.entries.get(id))
+            .orElse {
+              ctx.getp("default").map { doc =>
+                upsert(col, id, doc)
+                doc
+              }
+            }
+            .orElse {
+              Some(P.undefined(Diesel.PAYLOAD))
+            }
+            .toList
+            .flatMap(x =>
+              List(
+                EVal(x),
+                EVal(x.copy(name = Diesel.PAYLOAD))
+              ))
       }
 
       case "listAll" => {
         val col = ctx.getRequired("collection")
         require(col.length > 0)
+
         val x = tables.get(col).toList.flatMap(_.entries).map(x => P("document", x.toString))
         EVal(P.fromSmartTypedValue(Diesel.PAYLOAD, x)) :: Nil
       }
@@ -74,28 +111,45 @@ class EEDieselMemDb extends EExecutor("diesel.db.memdb") {
       case cmd@("upsert") => {
         val col = ctx.getRequired("collection")
         require(col.length > 0)
-        if (tables.size > 10)
-          throw new IllegalStateException("Too many collections (10)")
-
-        if (!tables.contains(col))
-          tables.put(col, Col(col))
-
         val id = if (ctx.get("id").exists(_.length > 0)) ctx.apply("id") else new ObjectId().toString
 
-        if (tables(col).entries.size > 15)
-          throw new IllegalStateException("Too many entries in collection (15)")
+        upsert(col, id, ctx.getRequiredp("document"))
 
-        tables(col).entries.put(id, ctx("document"))
-        EVal(P("id", id)) :: Nil
+        EVal(P(Diesel.PAYLOAD, id)) :: Nil
+      }
+
+      case "query" => {
+        val col = ctx.getRequired("collection")
+        val others = in
+            .attrs
+            .filter(_.name != "collection")
+            .filter(_.name != "id")
+            .filter(_.ttype != WTypes.UNDEFINED)
+
+        val res = tables.get(col).toList.flatMap(_.entries.values.toList.filter(x =>
+          // parse docs and filter by attr
+          true
+        ))
+
+        List(
+          EVal(P.fromSmartTypedValue(Diesel.PAYLOAD, res))
+        )
+      }
+
+      case "remove" => {
+        val col = ctx.getRequired("collection")
+        tables.get(col).flatMap(_.entries.remove(ctx("id"))).map(
+          x => EVal(x)
+        ).toList
       }
 
       case "logAll" => {
         val res = s"Sessions: ${sessions.size}\n" + log
-        EVal(P("payload", res)) :: Nil
+        EVal(P(Diesel.PAYLOAD, res)) :: Nil
       }
 
       case "log" => {
-        EVal(P("payload", log)) :: Nil
+        EVal(P(Diesel.PAYLOAD, log)) :: Nil
       }
 
       case "clear" => {
@@ -103,7 +157,7 @@ class EEDieselMemDb extends EExecutor("diesel.db.memdb") {
         Nil
       }
       case s@_ => {
-        new EError(s"ctx.$s - unknown activity ") :: Nil
+        new EError(s"$DB.$s - unknown activity ") :: Nil
       }
     }
   }
