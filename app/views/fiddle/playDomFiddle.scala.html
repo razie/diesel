@@ -1130,7 +1130,7 @@ $(window).on('load', function() {
 
   useLocalStorageCheckbox("expandedSpec", "domFiddleExpandedSpec", function (a,b,expanded) {
     const preview = $('#expandedPreviewSpec').prop('checked');
-    const storyHeight = preview ? h2:h3;
+    const storyHeight = preview ? h2 : h3;
 
     $('#expandedSpec1').prop('checked', expanded);
     if(expanded) {
@@ -1151,9 +1151,11 @@ $(window).on('load', function() {
   });
 
   useLocalStorageCheckbox("expandedPreviewSpec", "domFiddleExpandedPreviewSpec", function (a,b,expanded) {
-    const storyHeight = expanded ? h2:h3;
+    const storyHeight = expanded ? h3 : h2;
+
     $("#divOutStory_@id").css("max-height", storyHeight);
     $("#iframeOutStory_@id").css("max-height", storyHeight);
+
     if(expanded) {
       $("#divOutSpec_@id").show();
     } else {
