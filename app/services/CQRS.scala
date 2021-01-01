@@ -7,6 +7,7 @@ import model.EventNeedsQuota
 import play.libs.Akka
 import razie.audit.Audit
 import razie.clog
+import razie.diesel.engine.exec.EEDbEvent
 import razie.diesel.model.{DieselMsg, DieselMsgString, ScheduledDieselMsg}
 import razie.hosting.WikiReactors
 import razie.wiki.admin.SendEmail
@@ -26,6 +27,10 @@ class RkCqrs extends EventProcessor {
   }
 }
 
+object StaticsEh {
+  lazy val pubSub = Akka.system.actorOf(Props[WikiPubSub], name = "WikiPubSub")
+}
+
 class InitAlligator
 
 /** a request to broadcast another event */
@@ -37,10 +42,12 @@ case class BCast(ev: WikiEventBase)
   */
 class WikiAsyncObservers extends Actor {
 
-  lazy val pubSub = Akka.system.actorOf(Props[WikiPubSub], name = "WikiPubSub")
+  // todo someone initializes this twice...
+  lazy val pubSub = StaticsEh.pubSub
 
   def nodeName = Some(Services.config.node) //Play.current.actorSystem.name)
   def localQuiet = Services.config.localQuiet
+
   def localhost = Services.config.isLocalhost
 
   def receive = {
@@ -66,13 +73,23 @@ class WikiAsyncObservers extends Actor {
 
     case ev1: WikiEvent[_] => {
 
-      WikiObservers.after(ev1)
+      if (!ev1.consumedAlready) {
+        WikiObservers.after(ev1)
+      }
       clusterize(ev1.copy(node = nodeName.mkString))
+    }
+
+    case ev1: EEDbEvent => {
+
+      if (!ev1.consumedAlready) {
+        WikiObservers.after(ev1)
+      }
+      clusterize(ev1)
     }
 
     case a: Audit => {
 
-      if(!localQuiet || !localhost) {
+      if (!localQuiet || !localhost) {
         a.copy(node = nodeName).create
       } else {
         clog << "localQuiet !! Audit"
@@ -116,11 +133,17 @@ class WikiAsyncObservers extends Actor {
     }
   }
 
-  def clusterize(ev: WikiEvent[_]) = {
+  def clusterize(ev: WikiEventBase) = {
     if (
       Services.config.clusterMode == "yes" &&
-        WikiAudit.isUpd(ev.action) ||
-        ev.action == "AUTH_CLEAN"
+          (
+              ev.isInstanceOf[WikiEvent[_]] && {
+                val ee = ev.asInstanceOf[WikiEvent[_]]
+                WikiAudit.isUpd(ee.action) ||
+                    ee.action == "AUTH_CLEAN"
+              } ||
+                  !ev.isInstanceOf[WikiEvent[_]]
+              )// some other events
     )
       pubSub ! BCast(ev)
   }
@@ -147,7 +170,7 @@ class WikiPubSub extends Actor {
     // to broadcast
     case pub@BCast(ev) => {
       clog << "CLUSTER_BRUTE_BCAST " + ev.toString
-      //      Audit.logdb("DEBUG", "event.bcast", "me: " + self.path + " from: " + sender.path, ev.toString().take(150))
+//      Audit.logdb("DEBUG", "event.bcast", "me: " + self.path + " from: " + sender.path, ev.toString().take(150))
       mediator ! Publish(TOPIC, ev)
     }
 

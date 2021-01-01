@@ -6,13 +6,13 @@
 package razie.diesel.engine.exec
 
 import com.mongodb.casbah.Imports._
-import razie.db.RazMongo
 import razie.diesel.Diesel
 import razie.diesel.dom.RDOM._
 import razie.diesel.dom.WTypes
 import razie.diesel.engine.DomAst
 import razie.diesel.engine.nodes.{EError, EMsg, EVal, MatchCollector}
 import razie.diesel.expr.ECtx
+import razie.wiki.model.WikiEventBase
 import scala.collection.concurrent.TrieMap
 import scala.collection.mutable
 
@@ -21,6 +21,20 @@ object EEDieselDb {
   final val MAX_TABLES = 10
   final val MAX_ENTRIES = 10
   final val EXPIRY_MSEC = 10 * 60 * 1000 // 10 min
+}
+
+/** clustered events */
+case class EEDbEvent(
+  op: String,
+  db: String,
+  sessionId: String,
+  col: String,
+  id: String,
+  doc: P
+) extends WikiEventBase {
+  override def node = ""
+
+  override def consumedAlready: Boolean = true
 }
 
 /** built-in in-memory document db */
@@ -57,22 +71,44 @@ class EEDieselMemDbBase(name: String) extends EExecutor(name) {
     for (elem <- oldies) sessions.remove(elem._1)
   }
 
-  /** process messages */
-  override def apply(in: EMsg, destSpec: Option[EMsg])(implicit ctx: ECtx): List[Any] = synchronized {
-    cleanup
-    val sessionId = getSessionId(ctx)
+  def upsert(session: Session, col: String, id: String, doc: P, toclusterize: Boolean = true) = {
+    val tables = session.tables
+    if (tables.size > MAX_TABLES)
+      throw new IllegalStateException("Too many collections (10)")
 
-    val session = sessions.get(sessionId).getOrElse {
+    if (!tables.contains(col))
+      tables.put(col, Col(col))
+
+    if (tables(col).entries.size > MAX_ENTRIES)
+      throw new IllegalStateException("Too many entries in collection (15)")
+
+    tables(col).entries.put(id, doc)
+
+    if (toclusterize) {
+      clusterize(EEDbEvent("upsert", DB, session.name, col, id, doc))
+    }
+  }
+
+  def clusterize(event: EEDbEvent) = {}
+
+  def getSession(sessionId: String) = {
+    sessions.get(sessionId).getOrElse {
       if (sessions.size > 400)
         throw new IllegalStateException("Too many in-mem db sessions")
 
       val x = Session(sessionId)
       sessions.put(sessionId, x)
+      x.time = System.currentTimeMillis() // should I or not? this prevents expiry when used
       x
     }
-    session.time = System.currentTimeMillis() // should I or not?
-    val tables = session.tables
+  }
 
+  /** process messages */
+  override def apply(in: EMsg, destSpec: Option[EMsg])(implicit ctx: ECtx): List[Any] = synchronized {
+    cleanup
+    val sessionId = getSessionId(ctx)
+    val session = getSession(sessionId)
+    val tables = session.tables
 
     def log = {
       tables.keySet.map { k =>
@@ -83,19 +119,6 @@ class EEDieselMemDbBase(name: String) extends EExecutor(name) {
       }.mkString("\n")
     }
 
-    def upsert(col: String, id: String, doc: P) = {
-      if (tables.size > MAX_TABLES)
-        throw new IllegalStateException("Too many collections (10)")
-
-      if (!tables.contains(col))
-        tables.put(col, Col(col))
-
-      if (tables(col).entries.size > MAX_ENTRIES)
-        throw new IllegalStateException("Too many entries in collection (15)")
-
-      tables(col).entries.put(id, doc)
-    }
-
     in.met match {
 
       case cmd@("upsert") => {
@@ -103,7 +126,7 @@ class EEDieselMemDbBase(name: String) extends EExecutor(name) {
         require(col.length > 0)
         val id = if (ctx.get("id").exists(_.length > 0)) ctx.apply("id") else new ObjectId().toString
 
-        upsert(col, id, ctx.getRequiredp("document"))
+        upsert(session, col, id, ctx.getRequiredp("document"))
 
         EVal(P(Diesel.PAYLOAD, id)) :: Nil
       }
@@ -117,7 +140,7 @@ class EEDieselMemDbBase(name: String) extends EExecutor(name) {
             .flatMap(_.entries.get(id))
             .orElse {
               ctx.getp("default").map { doc =>
-                upsert(col, id, doc)
+                upsert(session, col, id, doc)
                 doc
               }
             }
