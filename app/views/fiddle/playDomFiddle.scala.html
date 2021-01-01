@@ -120,62 +120,99 @@ Command reference (see more about [[specs.Topic:Expressions_and_pattern_matching
   </small>
   </h3>
 
-  @*story - buttons*@
+  @*story - spec area *@
 
-  <div class="row" style="align-items:center;">
-    <div id="title3a_@id" class="col-sm-6" style="font-size: small">
+  <div id="ssRow" class="row" style="align-items:center;">
+
+  <div id="ssCol1" class="col-sm-6" style="">
+
+      @*story - buttons*@
+
+    <div class="row" style="align-items:center;">
+      <div id="title3a_@id" class="col-sm-12" style="font-size: small">
       Story <span class="" style="font-face:bold" onclick="openStory();"><span class="glyphicon glyphicon-new-window"></span></span>
-      &nbsp;<input type="checkbox" id="expandedStory" title="Expand/collapse story" checked>
-        &nbsp;&nbsp;Mock/Spec <span class="" style="font-face:bold"  onclick="openSpec();">
+          &nbsp;<input type="checkbox" id="expandedStory" title="Expand/collapse story" checked>
+          &nbsp;&nbsp;Mock/Spec <span class="" style="font-face:bold"  onclick="openSpec();">
         <span class="glyphicon glyphicon-new-window"></span></span>
-            &nbsp;<input type="checkbox" id="expandedSpec" title="Expand/collapse spec" checked>
-        Preview &nbsp;<input type="checkbox" id="expandedPreviewSpec" title="Expand/collapse spec preview" checked>
+          &nbsp;<input type="checkbox" id="expandedSpec" title="Expand/collapse spec" checked>
+        Story only &nbsp;<input type="checkbox" id="expandedPreviewSpec" title="Expand/collapse spec preview" checked>
         <span id="errMsg" class="label label-danger" style="display:none;"></span>
     </div>
-    <div id="title3b_@id" class="col-sm-6" style="font-size: small">
-      <input type="checkbox" id="traceStory" title="Expand/collaps trace nodes" > <small>(trace)</small>
-      <input type="checkbox" id="debugStory" title="Expand/collaps debug nodes" checked> <small>(debug)</small>
-      <input type="checkbox" id="generatedStory" title="Expand/collaps generated nodes" checked> <small>(generated)</small>
-      <input type="checkbox" id="payloadOnly" title="Show payload"> <small>(payload)</small>
-      <button id="ferrStory" title="Find first error" onclick="ferrStory('@id')" class="btn btn-default btn-xs"> <small><span class="glyphicon glyphicon-menu-down"></span> (first error)</small></button>
     </div>
 
-  @*story - editors*@
+      @*story - editors*@
 
-  <div id="storyRow" class="row" style="align-items:center;">
-    <div id="divInStory_@id" class="col-sm-6" style="">
-      <pre id="preStory_@id" style="height:228px; ">@story</pre>
+    <div id="storyRow1" class="row" style="align-items:center;">
+      <div id="divInStory_@id" class="col-sm-12" style="">
+        <pre id="preStory_@id" style="height:228px; ">@story</pre>
+      </div>
     </div>
-    <div class="col-sm-6 well" id="divOutStory_@id" style="overflow: scroll; margin-bottom:2px">
+
+      @*spec row - buttons*@
+
+    <div class="row" style="align-items:center;">
+      <div id="title1a_@id" class="col-sm-6" style="font-size: small">Mock/Spec <span class="" style="font-face:bold"  onclick="openSpec();"><span class="glyphicon glyphicon-new-window"></span></span>
+          &nbsp;<input type="checkbox" id="expandedSpec1" title="Expand/collapse spec" checked> <small>(show/hide)</small>
     </div>
-    <pre class="col-sm-6" id="iframeOutStory_@id" style="padding:1px; Xtext-align: center">Start typing...</pre>
-  </div>
-
-
-  @*spec row - buttons*@
-
-  <div class="row" style="align-items:center;">
-    <div id="title1a_@id" class="col-sm-6" style="font-size: small">Mock/Spec <span class="" style="font-face:bold"  onclick="openSpec();"><span class="glyphicon glyphicon-new-window"></span></span>
-      &nbsp;<input type="checkbox" id="expandedSpec1" title="Expand/collapse spec" checked> <small>(show/hide)</small>
+      <div id="title1b_@id" class="col-sm-6" style="font-size: small">
+        @*<input type="checkbox" id="debugSpec" title="Expand/collaps debug nodes" checked> <small>(debug)</small>*@
+        @*<input type="checkbox" id="generatedSpec" title="Expand/collaps generated nodes" checked> <small>(generated)</small>*@
+        @*<button id="ferrSpec" title="Find first error" onclick="ferrSpec()" class="btn btn-default btn-xs"> <small>(first error)</small>*@
+      </div>
     </div>
-    <div id="title1b_@id" class="col-sm-6" style="font-size: small">
-      @*<input type="checkbox" id="debugSpec" title="Expand/collaps debug nodes" checked> <small>(debug)</small>*@
-      @*<input type="checkbox" id="generatedSpec" title="Expand/collaps generated nodes" checked> <small>(generated)</small>*@
-      @*<button id="ferrSpec" title="Find first error" onclick="ferrSpec()" class="btn btn-default btn-xs"> <small>(first error)</small>*@
-    </div>
-  </div>
 
-  @*spec row - editors*@
+      @*spec row - editors*@
 
-  <div id="specRow" class="row" style="align-items:center;">
-    <div id="divInSpec_@id" class="col-sm-6" style="">
-      <pre id="preSpec_@id" style="height:228px; ">@spec</pre>
-    </div>
-    <div class="col-sm-6 well" id="divOutSpec_@id" style="overflow: scroll; margin-bottom:2px">
-    </div>
-    <pre class="col-sm-6" id="iframeOutSpec_@id" style="padding:1px; Xtext-align: center; display: none">Start typing...</pre>
-  </div>
+    <div id="specRow1" class="row" style="align-items:center;">
+      <div id="divInSpec_@id" class="col-sm-12" style="">
+        <pre id="preSpec_@id" style="height:228px; ">@spec</pre>
+      </div>
+      </div>
 
+  </div> @* col1 *@
+
+  <div id="ssCol2" class="col-sm-6" style="">
+
+    @*story - buttons*@
+
+    <div class="row" style="align-items:center;">
+      <div id="title3b_@id" class="col-sm-12" style="font-size: small">
+        <input type="checkbox" id="traceStory" title="Expand/collaps trace nodes" > <small>(trace)</small>
+        <input type="checkbox" id="debugStory" title="Expand/collaps debug nodes" checked> <small>(debug)</small>
+        <input type="checkbox" id="generatedStory" title="Expand/collaps generated nodes" checked> <small>(generated)</small>
+        <input type="checkbox" id="payloadOnly" title="Show payload"> <small>(payload)</small>
+        <button id="ferrStory" title="Find first error" onclick="ferrStory('@id')" class="btn btn-default btn-xs"> <small><span class="glyphicon glyphicon-menu-down"></span> (first error)</small></button>
+      </div>
+    </div>
+
+      @*story - editors*@
+
+      <div id="storyRow2" class="row" style="align-items:center;">
+        <div class="col-sm-12 well" id="divOutStory_@id" style="overflow: scroll; margin-bottom:2px"> </div>
+        <pre class="col-sm-12" id="iframeOutStory_@id" style="padding:1px; Xtext-align: center">Start typing...</pre>
+      </div>
+
+      @*spec row - buttons*@
+
+@*      <div class="row" style="align-items:center;">
+        <div id="title1a_@id" class="col-sm-6" style="font-size: small">Mock/Spec <span class="" style="font-face:bold"  onclick="openSpec();"><span class="glyphicon glyphicon-new-window"></span></span>
+         &nbsp;<input type="checkbox" id="expandedSpec1" title="Expand/collapse spec" checked> <small>(show/hide)</small>
+        </div>
+        <div id="title1b_@id" class="col-sm-6" style="font-size: small">
+        </div>
+      </div>
+*@
+
+          @*spec row - editors*@
+
+      <div id="specRow2" class="row" style="align-items:center;">
+        <div class="col-sm-12 well" id="divOutSpec_@id" style="overflow: scroll; margin-bottom:2px"> </div>
+        <pre class="col-sm-12" id="iframeOutSpec_@id" style="padding:1px; Xtext-align: center; display: none">Start typing...</pre>
+      </div>
+
+  </div> @* col2 *@
+
+  </div> @* ssRow *@
 
     @*capture row*@
 
@@ -1104,63 +1141,62 @@ $(window).on('load', function() {
   // figure out the heights, depending on current window height
   var h = $(window).height() - $("#heading").height() - $("nav").height();
   var h1 = (h-70) > 300 ? (h-70) : 300; // if too small, force it 300 anyways
-  var h2 = (h1 / 2) + "px"; // 228 - when both stoore/spec open
-  var h3 = h1 + "px"; // 428 - when only spec open
+  var hHalf = (h1 / 2) + "px"; // 228 - when both stoore/spec open
+  var hFull = h1 + "px"; // 428 - when only spec open
+
+  var resetView = function () {
+    const viewSt = $('#expandedStory').prop('checked');
+    const viewSp = $('#expandedSpec').prop('checked');
+    const preview = $('#expandedPreviewSpec').prop('checked');
+
+    if(viewSt) {
+      $("#storyRow1").show();
+      $("#storyRow2").show();
+
+      $("#divInStory_@id").css("height", viewSp ? hHalf : hFull);
+      $("#preStory_@id").css("height", viewSp ? hHalf : hFull);
+
+      const storyHeight = (preview || !viewSp) ? hFull : hHalf;
+      $("#divOutStory_@id").css("max-height", storyHeight);
+      $("#iframeOutStory_@id").css("max-height", storyHeight);
+      $("#divOutStory_@id").css("height", storyHeight);
+      $("#iframeOutStory_@id").css("height", storyHeight);
+    } else {
+      $("#storyRow1").hide();
+      $("#storyRow2").hide();
+    }
+
+    if(viewSp) {
+      $("#specRow1").show();
+      if(!preview) $("#specRow2").show();
+      else $("#specRow2").hide();
+
+      $("#divInSpec_@id").css("height", viewSt ? hHalf : hFull);
+      $("#preSpec_@id").css("height", viewSt ? hHalf : hFull);
+
+      const storyHeight = viewSt ? hHalf : hFull;
+      $("#divOutSpec_@id").css("max-height", storyHeight);
+      $("#iframeOutSpec_@id").css("max-height", storyHeight);
+      $("#divOutSpec_@id").css("height", storyHeight);
+      $("#iframeOutSpec_@id").css("height", storyHeight);
+    } else {
+      $("#specRow1").hide();
+      $("#specRow2").hide();
+    }
+
+    attachAce();
+  };
 
   useLocalStorageCheckbox("expandedStory", "domFiddleExpandedStory", function (a,b,expanded) {
-    if(expanded) {
-      $("#storyRow").show();
-      $("#divInSpec_@id").css("height", h2);
-      $("#preSpec_@id").css("height", h2);
-      $("#divOutSpec_@id").css("max-height", h2);
-      $("#divOutSpec_@id").show();
-      $("#iframeOutSpec_@id").css("max-height", h2);
-      $("#iframeOutSpec_@id").hide();
-      attachAce();
-    } else {
-      $("#storyRow").hide();
-      $("#divInSpec_@id").css("height", h3);
-      $("#preSpec_@id").css("height", h3);
-      $("#divOutSpec_@id").hide();
-      $("#iframeOutSpec_@id").css("max-height", h3);
-      $("#iframeOutSpec_@id").show();
-      attachAce();
-    }
+    resetView();
   });
 
   useLocalStorageCheckbox("expandedSpec", "domFiddleExpandedSpec", function (a,b,expanded) {
-    const preview = $('#expandedPreviewSpec').prop('checked');
-    const storyHeight = preview ? h2 : h3;
-
-    $('#expandedSpec1').prop('checked', expanded);
-    if(expanded) {
-      $("#specRow").show();
-      $("#divInStory_@id").css("height", h2);
-      $("#preStory_@id").css("height", h2);
-      $("#divOutStory_@id").css("max-height", storyHeight);
-      $("#iframeOutStory_@id").css("max-height", storyHeight);
-      attachAce();
-    } else {
-      $("#specRow").hide();
-      $("#divInStory_@id").css("height", h3);
-      $("#preStory_@id").css("height", h3);
-      $("#divOutStory_@id").css("max-height", storyHeight);
-      $("#iframeOutStory_@id").css("max-height", storyHeight);
-      attachAce();
-    }
+    resetView();
   });
 
   useLocalStorageCheckbox("expandedPreviewSpec", "domFiddleExpandedPreviewSpec", function (a,b,expanded) {
-    const storyHeight = expanded ? h3 : h2;
-
-    $("#divOutStory_@id").css("max-height", storyHeight);
-    $("#iframeOutStory_@id").css("max-height", storyHeight);
-
-    if(expanded) {
-      $("#divOutSpec_@id").show();
-    } else {
-      $("#divOutSpec_@id").hide();
-    }
+    resetView();
   });
 
   // second box tied to first
