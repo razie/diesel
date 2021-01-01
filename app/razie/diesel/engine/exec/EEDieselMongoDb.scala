@@ -22,6 +22,8 @@ class EEDieselMongodDb extends EExecutor("diesel.db.col") {
   final val MONGODB = "diesel.db.col"
   final val TBL = "DieselDb"
 
+  import EEDieselDb._
+
   override def isMock: Boolean = true
 
   override def test(ast: DomAst, m: EMsg, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) = {
@@ -37,7 +39,7 @@ class EEDieselMongodDb extends EExecutor("diesel.db.col") {
 
     def key = {
       // backward compliant for a while. Want to use id now not key
-      ctx.get("id").getOrElse(ctx.get("key").getOrElse(ctx.getRequired("id"))) // funky to report missing id not key
+      ctx.get("id").orElse(ctx.get("key")).getOrElse(ctx.getRequired("id")) // funky to report missing id not key
     }
 
     def userId = None//ctx.root.settings.userId
@@ -66,6 +68,13 @@ class EEDieselMongodDb extends EExecutor("diesel.db.col") {
             res.get
           )
         } else {
+          val count = RazMongo(TBL).count(Map(
+            "realm" -> realm
+          ))
+
+          if (count > MAX_TABLES * MAX_ENTRIES) {
+            throw new IllegalStateException("Too many entries or collections (10*10)")
+          }
           RazMongo(TBL) += Map(
             "coll" -> coll,
             "key" -> key,
@@ -73,6 +82,7 @@ class EEDieselMongodDb extends EExecutor("diesel.db.col") {
             "content" -> j,
             "_id" -> id
           )
+
         }
 
         List(
@@ -183,14 +193,14 @@ class EEDieselMongodDb extends EExecutor("diesel.db.col") {
 
         val res = RazMongo(TBL).count(Map(
           "coll" -> coll,
-          "realm" -> realm,
-          "userId" -> userId
+//          "userId" -> userId,
+          "realm" -> realm
         ) ++ others)
 
         RazMongo(TBL).remove(Map(
           "coll" -> coll,
-          "realm" -> realm,
-          "userId" -> userId
+//          "userId" -> userId,
+          "realm" -> realm
         ) ++ others)
 
         List(EInfo("Deleted "+res+" docs"))
@@ -202,11 +212,13 @@ class EEDieselMongodDb extends EExecutor("diesel.db.col") {
     }
   }
 
-  override def toString = "$executor::mongodb "
+  override def toString = "$executor::diesel.db.col "
 
   override val messages: List[EMsg] =
     EMsg(MONGODB, "upsert") ::
         EMsg(MONGODB, "get") ::
+        EMsg(MONGODB, "getsert") ::
+        EMsg(MONGODB, "query") ::
         EMsg(MONGODB, "remove") ::
         EMsg(MONGODB, "clear") :: Nil
 }
