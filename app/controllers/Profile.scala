@@ -66,11 +66,10 @@ object Profile extends RazController {
     SendEmail.withSession(realm) { implicit mailSession =>
       Tasks.sendEmailVerif(u, host.orElse(Some(website.domain)))
       // to user - why notify of default username?
-      //Emailer.sendEmailUname(unameF(u.firstName, u.lastName), u)
       val uname = (u.firstName + (if (u.lastName.length > 0) ("." + u.lastName) else "")).replaceAll("[^a-zA-Z0-9\\.]", ".").replaceAll("[\\.\\.]", ".")
-      //this one's to admin
+
       Emailer.sendEmailUname(uname, u, false)
-      Emailer.tellAdmin("New user", u.userName, u.emailDec, "realm: "+u.realms.mkString, "ABOUT: "+about)
+//      Emailer.tellAdmin("New user", u.userName, u.emailDec, "realm: "+u.realms.mkString, "ABOUT: "+about)
     }
 
     //realm new user flow

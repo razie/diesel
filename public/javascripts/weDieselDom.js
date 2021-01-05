@@ -538,6 +538,7 @@ function weDomQuery2(plugin,conn,cls,parm) {
   var s=$("#Search").val();
   console.log("searching: " + cls + parm + s);
 
+  // todo why is the value in quotes?
   window.location.href = '/diesel/objBrowserByQuery/'+plugin+'/'+conn+'/'+cls+'/'+parm+'/\'' + s + '\'';
 
   // GET   :realm/:dom/:cat/:parm/:value   mod.diesel.controllers.DieselControl.objBrowserByQuery(realm:String, cat:String, dom:String, parm:String, value:String, path:String?="/")

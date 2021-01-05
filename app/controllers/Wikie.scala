@@ -1017,7 +1017,7 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
         Wikis(realm).category(cat).filter(_.sections.find(_.name == "form").isDefined).map{we=>
             Redirect(routes.Wikie.addWithSpec2(cat, name, we.wid.wpath, "Template", realm))
         } orElse
-        WikiDomain(realm).assocsWhereTheyHaveRole(cat, "Spec").headOption.map { t =>
+        WikiDomain(realm).rdom.assocsWhereTheyHaveRole(cat, "Spec").headOption.map { t =>
           ROK.s apply { implicit stok =>
             (views.html.wiki.wikieAddWithSpec(cat, name, "Spec", t, realm))
           }
@@ -1102,7 +1102,7 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
         val n = Wikis.formatName(WID(cat, name).r(pwid.getRealm))
         Stage("WikiLinkStaged", WikiLinkStaged(WID(cat, n, pwid.findId).r(pwid.getRealm), pwid, role).grated, request.au.get.userName).create
 
-        WikiDomain(request.realm).assocsWhereTheyHaveRole(cat, "Spec").headOption.map { t =>
+        WikiDomain(request.realm).rdom.assocsWhereTheyHaveRole(cat, "Spec").headOption.map { t =>
           ROK.r apply { implicit stok =>
             views.html.wiki.wikieAddWithSpec(cat, name, "Spec", t, request.realm)
           }

@@ -17,7 +17,7 @@ import razie.audit.Audit
 import razie.diesel.dom.RDOM.{A, O}
 import razie.diesel.dom._
 import razie.hosting.Website
-import razie.tconf.SpecRef
+import razie.tconf.{FullSpecRef, SpecRef}
 import razie.wiki.admin.Autosave
 import razie.wiki.model.{WID, WikiEntry, Wikis}
 import scala.concurrent.Future
@@ -184,6 +184,7 @@ class DieselControl extends RazController with Logging {
     val base = c.toList.flatMap(_.base)
     val path = if(ipath == "/") ipath+cat else ipath
 
+    // context aware linking for the cat browser at the top
     def mkLink (s:String, dir:String, assoc:Option[A]=None) = {
       val newPath =
         if (path.split("/") contains s) s"/$s" // stop recursive traverses - some robots are stupid
@@ -201,11 +202,11 @@ class DieselControl extends RazController with Logging {
 
     ROK.r apply { implicit stok =>
       if (c.exists(_.stereotypes contains "wikiCategory"))
-      // real Category
+      // real wiki Category
         views.html.modules.diesel.catBrowser(plugin, conn, realm, Wikis(realm).category(cat), cat, base, left, right)(
           mkLink)
       else
-      // parsed Class
+      // parsed Class from domain
         views.html.modules.diesel.domCat(realm, cat, base, left, right, o)(mkLink)
     }
   }
@@ -215,15 +216,15 @@ class DieselControl extends RazController with Logging {
       implicit request =>
         val dov = DomInventories.findByRef(SpecRef.make(request.realm, plugin, conn, cat, id))
 
-        val o = dov.map(_.value.asInstanceOf[O])
+        val o = dov.flatMap(_.getValueO)
 
         catBrowser(plugin, conn, request.realm, cat, ipath, o).apply(
           request.ireq.asInstanceOf[Request[AnyContent]]).value.get.get
     }
 
   def objBrowserByQuery(plugin: String, conn: String, cat: String, parm: String, value: String, ipath: String,
-                        o: Option[O
-                        ] = None) = RAction { implicit request =>
+                        o: Option[O] = None) = RAction { implicit request =>
+
     val ref = SpecRef.make(request.realm, plugin, conn, cat, "")
     val list = DomInventories.findByQuery(ref, cat + "/" + parm + "/" + value)
 
@@ -232,52 +233,102 @@ class DieselControl extends RazController with Logging {
       catBrowser(plugin, conn, request.realm, cat, ipath, o).apply(
         request.ireq.asInstanceOf[Request[AnyContent]]).value.get.get
     } else {
-      val s = list.map { dov =>
-        val o = dov.value.asInstanceOf[O]
-        val u = routes.DieselControl.objBrowserById(plugin, conn, cat, o.name, ipath).url
-        s"""<a href="$u">${o.name}</a> ${o.getDisplayName}"""
-      }
+      val s = list
+          .flatMap(_.getValueO.toList)
+          .map { dov =>
+            val o = dov //.getValueO //value.asInstanceOf[O]
+            val u = routes.DieselControl.objBrowserById(plugin, conn, cat, o.name, ipath).url
+            s"""<a href="$u">${o.name}</a> ${o.getDisplayName}"""
+          }
+      Ok(s.mkString("<br>")).as("text/html")
+    }
+  }
+
+  def listAll(plugin: String, conn: String, cat: String, ipath: String,
+              start: Long, limit: Long) = RAction { implicit request =>
+
+    val ref = SpecRef.make(request.realm, plugin, conn, cat, "")
+    val list = DomInventories.listAll(ref, start, limit)
+
+    if (list.size <= 1) {
+      val o = list.headOption.flatMap(_.getValueO)
+      catBrowser(plugin, conn, request.realm, cat, ipath, o).apply(
+        request.ireq.asInstanceOf[Request[AnyContent]]).value.get.get
+    } else {
+      val s = list
+          .flatMap(_.getValueO.toList)
+          .map { dov =>
+            val o = dov //.getValueO //value.asInstanceOf[O]
+            val u = routes.DieselControl.objBrowserById(plugin, conn, cat, o.name, ipath).url
+            s"""<a href="$u">${o.name}</a> ${o.getDisplayName}"""
+          }
       Ok(s.mkString("<br>")).as("text/html")
     }
   }
 
   private def getrdom(wpath:String) = {
+
     val wid = WID.fromPath(wpath).get
     if(wid.cat == "Realm" || wid.cat == "Reactor") {
-      WikiDomain(wid.name).rdom
+      Some(WikiDomain(wid.name).rdom)
     } else {
       val page = wid.page
-      page.flatMap(WikiDomain.domFrom).get.revise addRoot
+      page.flatMap(WikiDomain.domFrom).map(_.revise addRoot)
     }
   }
 
   /** list entities of cat from domain wpath */
   def list2(cat:String, ipath:String) = RAction { implicit request =>
+
     val realm = Website.realm
     val rdom = WikiDomain(realm).rdom
-    val left  = rdom.assocs.filter(_.z == cat).map(_.a)
-    val right = rdom.assocs.filter(_.a == cat).map(_.z)
-    val path = if(ipath == "/") ipath+cat else ipath
+//    val left = rdom.assocs.filter(_.z == cat).map(_.a)
+//    val right = rdom.assocs.filter(_.a == cat).map(_.z)
+//    val path = if (ipath == "/") ipath + cat else ipath
 
-    val wl = Wikis(realm).pages(cat).toList
-    val tags = wl.flatMap(_.tags).filter(_ != Tags.ARCHIVE).filter(_ != "").groupBy(identity).map(t => (t._1, t._2.size)).toSeq.sortBy(_._2).reverse
+    if (WikiDomain(realm).isWikiCategory(cat)) {
 
-    ROK.k reactorLayout12 {
-      views.html.wiki.wikiList("list diesel entities", "", "", wl.map(x => (x.wid, x.label)), tags, "./", "", realm)
+      val wl = Wikis(realm).pages(cat).toList
+      val tags = wl.flatMap(_.tags).filter(_ != Tags.ARCHIVE).filter(_ != "").groupBy(identity).map(
+        t => (t._1, t._2.size)).toSeq.sortBy(_._2).reverse
+
+      ROK.k reactorLayout12 {
+        views.html.wiki.wikiList("list diesel entities", "", "", wl.map(x => (x.wid, x.label)), tags, "./", "", realm)
+      }
+    } else {
+
+      val p = WikiDomain(realm).findPluginsForClass(rdom.classes.get(cat).get).head
+      val ref = SpecRef.make(request.realm, p.name, p.conn, cat, "")
+      val list = DomInventories.listAll(ref, start = 0, limit = 100)
+
+      // todo find tags for assets
+//      val tags = wl.flatMap(_.tags).filter(_ != Tags.ARCHIVE).filter(_ != "").groupBy(identity).map(
+//        t => (t._1, t._2.size)).toSeq.sortBy(_._2).reverse
+
+      ROK.k reactorLayout12 {
+        views.html.wiki.wikiListAssets("list diesel entities", "", "", list.map { x =>
+          val ref = x.ref.asInstanceOf[FullSpecRef]
+          (ref, ref.key)
+        }, Nil, "./", "", realm)
+      }
     }
   }
 
+  // todo delete this?
   /** list entities of cat from domain wpath */
   def list(wpath:String, cat:String, ipath:String) = RAction { implicit request =>
-    val rdom = getrdom(wpath)
+
+    val rdom = getrdom(wpath).getOrElse(WikiDomain(request.realm).rdom)
     val wid = WID.fromPath(wpath).get
-    val path = if(ipath == "/") ipath+cat else ipath
+    val path = if (ipath == "/") ipath + cat else ipath
 
     val wl = Wikis(wid.getRealm).pages(cat).toList
-    val tags = wl.flatMap(_.tags).filter(_ != Tags.ARCHIVE).filter(_ != "").groupBy(identity).map(t => (t._1, t._2.size)).toSeq.sortBy(_._2).reverse
+    val tags = wl.flatMap(_.tags).filter(_ != Tags.ARCHIVE).filter(_ != "").groupBy(identity).map(
+      t => (t._1, t._2.size)).toSeq.sortBy(_._2).reverse
 
     ROK.k reactorLayout12 {
-      views.html.wiki.wikiList("list diesel entities", "", "", wl.map(x => (x.wid, x.label)), tags, "./", "", wid.getRealm)
+      views.html.wiki.wikiList("list diesel entities", "", "", wl.map(x => (x.wid, x.label)), tags, "./", "",
+        wid.getRealm)
     }
   }
 
@@ -303,13 +354,17 @@ class DieselControl extends RazController with Logging {
   { implicit stok =>
     Future.successful {
       val url = "http" + (if (stok.secure) "s" else "") + "://" + stok.hostPort
-      val c = WikiDomain(stok.realm).findPlugins(plugin, conn).map(
-        _.doAction(WikiDomain(stok.realm).rdom, conn, action, url, epath)).mkString
+      val wd = WikiDomain(stok.realm)
+      val p = wd.findPlugins(plugin, conn)
+      val c = p.map(_.doAction(wd.rdom, conn, action, url, epath)).mkString
 
-      if (c.startsWith("<"))
+      val res = if (c.startsWith("<"))
         Ok(c).as("text/html")
       else
         Ok(c)
+
+      if (p.isEmpty) res.withHeaders("dieselError" -> "Plugin not found")
+      else res
     }
   }
 

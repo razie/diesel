@@ -161,7 +161,7 @@ class EEDieselMemDbBase(name: String) extends EExecutor(name) {
             .attrs
             .filter(_.name != "collection")
             .filter(_.name != "id")
-            .filter(_.ttype != WTypes.UNDEFINED)
+            .filter(x => !x.isUndefined)
 
         val res = tables.get(col).toList.flatMap(_.entries.values.toList.filter(x =>
           // parse docs and filter by attr

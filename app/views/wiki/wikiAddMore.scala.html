@@ -12,9 +12,9 @@ fragment: add more stuff to the current topic, including children, sub-topics et
 
 @allassocs(wid:WID) = @{
   // all those I am parent to OR are children to me
-  WikiDomain(getRealm).zEnds(wid.cat, "Child") :::
-  WikiDomain(getRealm).aEnds(wid.cat, "Parent") :::
-  WikiDomain(getRealm).assocsWhereIHaveRole(wid.cat, "Parent")
+  WikiDomain(getRealm).rdom.zEnds(wid.cat, "Child") :::
+  WikiDomain(getRealm).rdom.aEnds(wid.cat, "Parent") :::
+  WikiDomain(getRealm).rdom.assocsWhereIHaveRole(wid.cat, "Parent")
 }
 
 @createLabel(child:String)={
