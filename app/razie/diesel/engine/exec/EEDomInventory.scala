@@ -7,21 +7,24 @@ package razie.diesel.engine.exec
 
 import razie.diesel.Diesel
 import razie.diesel.dom.RDOM.{C, P}
-import razie.diesel.dom.{DefaultRDomainPlugin, DieselAsset, DomInventories, WikiDomain}
+import razie.diesel.dom.{DomInvWikiPlugin, DieselAsset, DomInventories, RDomain, WikiDomain}
 import razie.diesel.engine.DomAst
-import razie.diesel.engine.nodes.{EMsg, EVal, MatchCollector}
+import razie.diesel.engine.nodes.{EInfo, EMsg, EVal, EWarning, MatchCollector}
 import razie.diesel.expr.ECtx
 import razie.tconf.FullSpecRef
+import scala.collection.mutable
 
 /* executors for inventories */
 class EEDomInventory extends EExecutor("diesel.inv") {
   final val DB = "diesel.inv"
 
   final val TESTC = "diesel.inv.testConnection"
-  final val CREATE = "diesel.inv.upsert"
+  final val UPSERT = "diesel.inv.upsert"
   final val REG = "diesel.inv.register"
   final val CONNECT = "diesel.inv.connect"
+  final val LISTALL = "diesel.inv.listAll"
   final val FIND = "diesel.inv.find"
+  final val REMOVE = "diesel.inv.remove"
   final val QUERY = "diesel.inv.query"
 
   override def isMock: Boolean = true
@@ -33,13 +36,14 @@ class EEDomInventory extends EExecutor("diesel.inv") {
   override def apply(in: EMsg, destSpec: Option[EMsg])(implicit ctx: ECtx): List[Any] = {
     val settings = ctx.root.engine.get.settings
     val realm = ctx.root.engine.get.settings.realm.get
+    val dom = WikiDomain(realm)
 
     in.ea match {
 
       case REG => {
         val inv = ctx.getRequired("inventory")
         ctx.getRequired("classes").split(",").foreach(
-          DomInventories.invRegistry.put(_, inv)
+          DomInventories.registerPlugin(realm, _, inv)
         )
         Nil
       }
@@ -50,7 +54,6 @@ class EEDomInventory extends EExecutor("diesel.inv") {
         val conn = ctx.get("connection").getOrElse("")
         val sup = ctx.get("super")
         val env = ctx.get("env").orElse(settings.env).mkString
-        val dom = WikiDomain(realm)
 
         val i = dom.allPlugins.filter(_.name == inv)
         var pci = i.find(_.conn == conn || conn.length == 0)
@@ -63,7 +66,7 @@ class EEDomInventory extends EExecutor("diesel.inv") {
                     .find(x => x.name == inv || sup.isDefined && sup.get == x.name)
               )
               .orElse(
-                dom.allPlugins.find(_.isInstanceOf[DefaultRDomainPlugin])
+                dom.allPlugins.find(_.isInstanceOf[DomInvWikiPlugin])
               )
               .flatMap(_.mkInstance(realm, conn, dom.wi, inv).headOption)
           pci.map(dom.addPlugin)
@@ -81,7 +84,6 @@ class EEDomInventory extends EExecutor("diesel.inv") {
       }
 
       case TESTC => {
-        val dom = WikiDomain(realm)
         val plugin = DomInventories.getPlugin(
           realm,
           ctx.getRequired("inventory"),
@@ -101,14 +103,14 @@ class EEDomInventory extends EExecutor("diesel.inv") {
         List(res)
       }
 
-      case CREATE => {
+      case UPSERT => {
         val entity = ctx.getp("entity").orElse(ctx.getp(Diesel.PAYLOAD))
         val conn = ctx.get("connection").getOrElse("")
         val cls = ctx.get("class").getOrElse(entity.get.ttype.schema)
-        val dom = WikiDomain(realm)
 
         // if class not known, make it up
         // todo or blow up?
+        val cc = dom.rdom.classes.get(cls)
         val c = dom.rdom.classes.get(cls).getOrElse(new C(cls))
 
         val j = entity.get.value.get.asJson
@@ -116,36 +118,39 @@ class EEDomInventory extends EExecutor("diesel.inv") {
         val k = ctx.get("key")
             .orElse(
               j.get("assetRef")
-                  .filter(_.isInstanceOf[Map[String, _]])
-                  .map(_.asInstanceOf[Map[String, _]])
+                  .filter(_.isInstanceOf[collection.Map[_, _]])
+                  .map(_.asInstanceOf[collection.Map[String, Any]])
                   .flatMap(_.get("key"))
             ).orElse(
           j.get("key")
         ).mkString
 
+        val t = c.props.find(_.name == "table").map(_.calculatedValue(ECtx.empty)).getOrElse(c.name)
+        //          val o = DomInventories.oFromJ("x", jo, c, t, Array[String]())
+        val plugin = DomInventories.getPluginForClass(realm, c, conn)
         val ref = FullSpecRef(
-          ctx.get("inventory").getOrElse(""),
-          conn,
+          plugin.map(_.name).orElse(ctx.get("inventory")).mkString,
+          plugin.map(_.conn).getOrElse(conn),
           cls,
           k,
           ctx.get("section").getOrElse(""),
           ctx.root.engine.get.settings.realm.get
         )
-
-        val t = c.props.find(_.name == "table").map(_.calculatedValue(ECtx.empty)).getOrElse(c.name)
-        //          val o = DomInventories.oFromJ("x", jo, c, t, Array[String]())
         val a = new DieselAsset[P](ref, entity.get)
-        val plugin = DomInventories.getPluginForClass(realm, c, conn)
-        val res = plugin.map(_.upsert(dom.rdom, ref, a)
-            .fold(
-              oda => {
-                oda.map(x => EVal(x.getValueP)).getOrElse(
-                  EVal(P.undefined(Diesel.PAYLOAD))
+
+        val res = plugin
+            .map(_.upsert(dom.rdom, ref, a)
+                .fold(
+                  oda => {
+                    oda.map(x => EVal(x.getValueP)).getOrElse(
+                      EVal(P.undefined(Diesel.PAYLOAD))
+                    )
+                  },
+                  m => m
                 )
-              },
-              m => m
-            )).getOrElse(
-          EVal(P.undefined(Diesel.PAYLOAD))
+            ).getOrElse(
+          EVal(P.undefined(Diesel.PAYLOAD)
+          )
         )
 
 //        }).getOrElse(
@@ -155,21 +160,118 @@ class EEDomInventory extends EExecutor("diesel.inv") {
         List(res)
       }
 
-      case FIND => {
+      case LISTALL => {
+        val conn = ctx.get("connection").getOrElse("")
+        val cls = ctx.getRequired("class")
+        val start = ctx.get("start").getOrElse("0").toLong
+        val limit = ctx.get("limit").getOrElse("100").toLong
+
+        // if class not known, make it up
+        // todo or blow up?
+        val c = dom.rdom.classes.get(cls).getOrElse(new C(cls))
+        val t = c.props.find(_.name == "table").map(_.calculatedValue(ECtx.empty)).getOrElse(c.name)
+
+        val plugin = DomInventories.getPluginForClass(realm, c, conn)
+
         val ref = FullSpecRef(
-          ctx.get("inventory").getOrElse("diesel"),
-          ctx.get("connection").getOrElse(""),
-          ctx.getRequired("class"),
-          ctx.getRequired("key"),
+          plugin.map(_.name).orElse(ctx.get("inventory")).mkString,
+          plugin.map(_.conn).getOrElse(conn),
+          cls,
+          "",
+          "",
+          ctx.root.engine.get.settings.realm.get
+        )
+
+        val res = plugin.map(_.listAll(dom.rdom, ref, start, limit)
+            .fold(
+              lda => {
+                List(EVal(
+                  P.fromSmartTypedValue(
+                    Diesel.PAYLOAD,
+                    lda.map(x => EVal(x.getValueP))
+                  )))
+              },
+              m => List(m)
+            )).getOrElse(
+          List(
+            EWarning("No inventory found for class: " + ref.cls),
+            EVal(P.undefined(Diesel.PAYLOAD))
+          )
+        )
+
+        res
+      }
+
+      case FIND => {
+        val conn = ctx.get("connection").getOrElse("")
+        val cls = ctx.getRequired("class")
+        val k = ctx.getRequired("key")
+
+        val c = dom.rdom.classes.get(cls).getOrElse(new C(cls))
+        val t = c.props.find(_.name == "table").map(_.calculatedValue(ECtx.empty)).getOrElse(c.name)
+        val plugin = DomInventories.getPluginForClass(realm, c, conn)
+
+        val ref = FullSpecRef(
+          plugin.map(_.name).orElse(ctx.get("inventory")).mkString,
+          plugin.map(_.conn).getOrElse(conn),
+          cls,
+          k,
           ctx.get("section").getOrElse(""),
           ctx.root.engine.get.settings.realm.get
         )
 
-        val res = DomInventories.findByRef(ref)
-        res
-            .map(x => P.of(Diesel.PAYLOAD, List(x)))
-            .getOrElse(P.of(Diesel.PAYLOAD, Nil)) ::
-            Nil
+        val res = plugin.map(_.findByRef(dom.rdom, ref)
+            .fold(
+              oda => {
+                oda.map(x => EVal(x.getValueP)).getOrElse(
+                  EVal(P.undefined(Diesel.PAYLOAD))
+                )
+              },
+              m => m
+            )).getOrElse(
+          List(
+            EWarning("No inventory found for class: " + ref.cls),
+            EVal(P.undefined(Diesel.PAYLOAD))
+          )
+        )
+
+        List(res)
+      }
+
+      case REMOVE => {
+        val conn = ctx.get("connection").getOrElse("")
+        val cls = ctx.getRequired("class")
+        val k = ctx.getRequired("key")
+
+        val c = dom.rdom.classes.get(cls).getOrElse(new C(cls))
+        val t = c.props.find(_.name == "table").map(_.calculatedValue(ECtx.empty)).getOrElse(c.name)
+        val plugin = DomInventories.getPluginForClass(realm, c, conn)
+
+        val ref = FullSpecRef(
+          plugin.map(_.name).orElse(ctx.get("inventory")).mkString,
+          plugin.map(_.conn).getOrElse(conn),
+          cls,
+          k,
+          ctx.get("section").getOrElse(""),
+          ctx.root.engine.get.settings.realm.get
+        )
+
+        val res = plugin.map(_.remove(dom.rdom, ref)
+            .fold(
+              oda => {
+                oda.map(x => EVal(x.getValueP)).getOrElse(
+                  EVal(P.undefined(Diesel.PAYLOAD))
+                )
+              },
+              m => m
+            )).getOrElse(
+          List(
+            EWarning("No inventory found for class: " + ref.cls),
+            EVal(P.undefined(Diesel.PAYLOAD))
+          )
+        )
+
+        List(res)
       }
 
       case QUERY => {
@@ -181,6 +283,8 @@ class EEDomInventory extends EExecutor("diesel.inv") {
           ctx.get("section").getOrElse(""),
           ctx.root.engine.get.settings.realm.get
         )
+
+
         val res = DomInventories.findByQuery(ref, "?")
         P.of(Diesel.PAYLOAD, res) :: Nil
       }
