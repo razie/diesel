@@ -11,7 +11,7 @@ import com.novus.salat.grater
 import java.lang.management.{ManagementFactory, OperatingSystemMXBean}
 import java.lang.reflect.Modifier
 import java.nio.file.{Files, Paths}
-import mod.diesel.guard.{DieselCron, DomGuardian}
+import mod.diesel.guard.{DieselCron, DomGuardian, EEDieselExecutors}
 import mod.notes.controllers.NotesLocker
 import model.{Users, WikiScripster}
 import org.bson.types.ObjectId
@@ -134,52 +134,20 @@ class Admin extends AdminBase {
 /** admin the audit tables directly */
 @Singleton
 class AdminSys extends AdminBase {
-  private def nice(l: Long) =
-    if (l > 2L * (1024L * 1024L * 1024L))
-      l / (1024L * 1024L * 1024L) + "G"
-    else if (l > 2 * (1024L * 1024L))
-      l / (1024L * 1024L) + "M"
-    else if (l > 1024)
-      l / 1024 + "K"
-    else
-      l.toString
-
   def osusage = {
-    var s = ""
-    val osm: OperatingSystemMXBean = ManagementFactory.getOperatingSystemMXBean();
-    for (method <- osm.getClass().getDeclaredMethods()) {
-      method.setAccessible(true);
-      if (method.getName().startsWith("get") && Modifier.isPublic(method.getModifiers())) {
-        val v = try {
-          method.invoke(osm).toString;
-        } catch {
-          case e: Exception => e.toString
-        } // try
-        val vn = try {
-          v.toLong
-        } catch {
-          case e: Exception => -1
-        } // try
-        s = s + (method.getName() -> (if (vn == -1) v else (nice(vn) + " - " + v))) + "\n";
-      } // if
-    } // for
     import play.api.libs.concurrent.Execution.Implicits.defaultContext
 
     razie.js.tojsons(
-      GlobalData.toMap() ++
+      EEDieselExecutors.getAllData() ++
           Map(
             "wikis" -> RazMongo("WikiEntry").size,
-            "scriptsRun" -> WikiScripster.count,
             "NotesLocker.autosaved" -> NotesLocker.autosaved,
             "SendEmail.curCount" -> SendEmail.curCount,
             "SendEmail.state" -> SendEmail.state,
-            "DieselCron.size" -> DieselCron.withRealmSchedules(_.size),
-            "DomGuardian.size" -> DomGuardian.lastRuns.size,
-            "DomCollector.size" -> DomCollector.withAsts(_.size),
             "Threads" -> defaultContext.toString,
             "allReactors" -> WikiReactors.allReactors.keys.mkString(","),
-      "loadedReactors" -> WikiReactors.reactors.keys.mkString(",")
-    ))
+            "loadedReactors" -> WikiReactors.reactors.keys.mkString(",")
+          ))
   }
 
   def system(what: String) = Action { implicit request =>

@@ -7,33 +7,44 @@
 package mod.diesel.guard
 
 import java.io.FileInputStream
+import java.lang.management.{ManagementFactory, OperatingSystemMXBean}
+import java.lang.reflect.Modifier
 import java.util.Properties
+import mod.diesel.guard.EEDieselExecutors.getAllData
+import mod.notes.controllers.NotesLocker
+import model.WikiScripster
+import play.api.libs.concurrent.Execution.Implicits.defaultContext
+import razie.db.RazMongo
 import razie.diesel.Diesel
 import razie.diesel.dom.RDOM.P
-import razie.diesel.engine.DomAst
+import razie.diesel.engine.{AstKinds, DomAst}
 import razie.diesel.engine.exec.EExecutor
 import razie.diesel.engine.nodes.{EError, EMsg, EVal, _}
 import razie.diesel.expr.ECtx
 import razie.diesel.model.DieselMsg
-import razie.hosting.Website
+import razie.diesel.utils.DomCollector
+import razie.hosting.{Website, WikiReactors}
+import razie.wiki.admin.{GlobalData, SendEmail}
 import razie.wiki.model.WikiConfigChanged
 import razie.wiki.{Config, Services}
 import razie.{cdebug, clog}
 import scala.collection.JavaConverters._
+import scala.collection.mutable.HashMap
 import scala.io.Source
 
 /** properties - from system or file
   */
-class EEDieselProps extends EExecutor("diesel.props") {
+class EEDieselExecutors extends EExecutor("diesel.props") {
   val DT = DieselMsg.PROPS.ENTITY
 
   override def isMock: Boolean = true
 
   override def test(ast: DomAst, m: EMsg, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) = {
-    m.entity == DieselMsg.PROPS.ENTITY
+    m.entity == DieselMsg.PROPS.ENTITY ||
+        m.ea == DieselMsg.ENGINE.DIESEL_PING
   }
 
-  override def apply(in: EMsg, destSpec: Option[EMsg])(implicit ctx: ECtx): List[Any] =  {
+  override def apply(in: EMsg, destSpec: Option[EMsg])(implicit ctx: ECtx): List[Any] = {
     val realm = ctx.root.settings.realm.mkString
 
     cdebug << "EEDieselProps: apply " + in
@@ -97,7 +108,7 @@ class EEDieselProps extends EExecutor("diesel.props") {
         val result = ctx.get("result").getOrElse("payload")
         val name = ctx.getRequired("path")
 
-        val m = if(Config.isLocalhost) {
+        val m = if (Config.isLocalhost) {
           val s = Source.fromInputStream(new FileInputStream(name)).mkString
           razie.js.parse(s)
         } else {
@@ -107,6 +118,15 @@ class EEDieselProps extends EExecutor("diesel.props") {
 
         List(
           EVal(P.fromTypedValue(result, m))
+        )
+      }
+
+      case DieselMsg.ENGINE.DIESEL_PING => {
+        List(
+          EVal(P.fromSmartTypedValue(
+            Diesel.PAYLOAD,
+            getAllData())
+          )
         )
       }
 
@@ -125,3 +145,58 @@ class EEDieselProps extends EExecutor("diesel.props") {
         EMsg(DT, "file") :: Nil
 }
 
+object EEDieselExecutors {
+  def getAllData() = {
+    val osm: OperatingSystemMXBean = ManagementFactory.getOperatingSystemMXBean();
+
+    GlobalData.toMap() ++
+        Map(
+          "scriptsRun" -> WikiScripster.count,
+          "DieselCron.size" -> DieselCron.withRealmSchedules(_.size),
+          "DomGuardian.size" -> DomGuardian.lastRuns.size,
+          "DomCollector.size" -> DomCollector.withAsts(_.size)
+        ) ++ osusage
+  }
+
+  def osusage = {
+    val s = new HashMap[String, Any]
+
+    val osm: OperatingSystemMXBean = ManagementFactory.getOperatingSystemMXBean();
+    for (method <- osm.getClass().getDeclaredMethods()) {
+      method.setAccessible(true);
+      if (method.getName().startsWith("get") && Modifier.isPublic(method.getModifiers())) {
+        val v = try {
+          method.invoke(osm).toString;
+        } catch {
+          case e: Exception => e.toString
+        } // try
+        val vn = try {
+          v.toLong
+        } catch {
+          case e: Exception => -1
+        } // try
+        s.put(
+          "os." + method.getName(),
+          v
+        )
+        if (vn != -1)
+          s.put(
+            "os.nice." + method.getName(),
+            nice(vn)
+          )
+      } // if
+    } // for
+    s
+  }
+
+  def nice(l: Long) =
+    if (l > 2L * (1024L * 1024L * 1024L))
+      l / (1024L * 1024L * 1024L) + "G"
+    else if (l > 2 * (1024L * 1024L))
+      l / (1024L * 1024L) + "M"
+    else if (l > 1024)
+      l / 1024 + "K"
+    else
+      l.toString
+
+}
