@@ -269,7 +269,7 @@ class DomApi extends DomApiBase with Logging {
         DieselMsg.irunDom + path
       )
 
-      engine.root.childrenCol.append(
+      engine.root.childrenCol.prepend(
         DomAst(
           EInfo(
             "HTTP Request details",
@@ -581,9 +581,10 @@ class DomApi extends DomApiBase with Logging {
         List(new WikiEntry("Story", "temp", "temp", "md", "", uid, Seq("dslObject"), reactor))
       )
 
-      engine.root.childrenCol.append(DomAst(
-        EInfo("HTTP Request details",
-          printRequest(request, body)), AstKinds.DEBUG))
+      engine.root.childrenCol.prepend(
+        DomAst(
+          EInfo("HTTP Request details2",
+            printRequest(request, body)), AstKinds.DEBUG))
 
       // add query parms
       val q = stok.req.queryString.map(t => (t._1, t._2.mkString))

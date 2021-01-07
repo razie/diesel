@@ -7,10 +7,10 @@ package razie.diesel.engine.exec
 
 import razie.diesel.Diesel
 import razie.diesel.dom.RDOM.{C, P}
-import razie.diesel.dom.{DomInvWikiPlugin, DieselAsset, DomInventories, RDomain, WikiDomain}
+import razie.diesel.dom.{DieselAsset, DomInvWikiPlugin, DomInventories, RDomain, WikiDomain}
 import razie.diesel.engine.DomAst
 import razie.diesel.engine.nodes.{EInfo, EMsg, EVal, EWarning, MatchCollector}
-import razie.diesel.expr.ECtx
+import razie.diesel.expr.{DieselExprException, ECtx}
 import razie.tconf.FullSpecRef
 import scala.collection.mutable
 
@@ -137,6 +137,8 @@ class EEDomInventory extends EExecutor("diesel.inv") {
           ctx.root.engine.get.settings.realm.get
         )
         val a = new DieselAsset[P](ref, entity.get)
+
+        if (plugin.isEmpty) throw new DieselExprException(s"Inventory not found for $cls")
 
         val res = plugin
             .map(_.upsert(dom.rdom, ref, a)

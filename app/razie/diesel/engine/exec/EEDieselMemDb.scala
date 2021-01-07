@@ -12,6 +12,7 @@ import razie.diesel.dom.WTypes
 import razie.diesel.engine.DomAst
 import razie.diesel.engine.nodes.{EError, EMsg, EVal, MatchCollector}
 import razie.diesel.expr.ECtx
+import razie.wiki.Config
 import razie.wiki.model.WikiEventBase
 import scala.collection.concurrent.TrieMap
 import scala.collection.mutable
@@ -73,13 +74,13 @@ class EEDieselMemDbBase(name: String) extends EExecutor(name) {
 
   def upsert(session: Session, col: String, id: String, doc: P, toclusterize: Boolean = true) = {
     val tables = session.tables
-    if (tables.size > MAX_TABLES)
+    if (tables.size > MAX_TABLES && !Config.isLocalhost)
       throw new IllegalStateException("Too many collections (10)")
 
     if (!tables.contains(col))
       tables.put(col, Col(col))
 
-    if (tables(col).entries.size > MAX_ENTRIES)
+    if (tables(col).entries.size > MAX_ENTRIES && !Config.isLocalhost)
       throw new IllegalStateException("Too many entries in collection (15)")
 
     tables(col).entries.put(id, doc)
@@ -161,7 +162,7 @@ class EEDieselMemDbBase(name: String) extends EExecutor(name) {
             .attrs
             .filter(_.name != "collection")
             .filter(_.name != "id")
-            .filter(x => !x.isUndefined)
+            .filter(x => !x.isUndefinedOrEmpty)
 
         val res = tables.get(col).toList.flatMap(_.entries.values.toList.filter(x =>
           // parse docs and filter by attr

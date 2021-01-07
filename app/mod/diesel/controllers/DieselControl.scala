@@ -244,6 +244,7 @@ class DieselControl extends RazController with Logging {
     }
   }
 
+  // todo deprecate - list2 works well now
   def listAll(plugin: String, conn: String, cat: String, ipath: String,
               start: Long, limit: Long) = RAction { implicit request =>
 
