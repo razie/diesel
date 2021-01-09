@@ -135,7 +135,7 @@ Command reference (see more about [[specs.Topic:Expressions_and_pattern_matching
           &nbsp;&nbsp;Mock/Spec <span class="" style="font-face:bold"  onclick="openSpec();">
         <span class="glyphicon glyphicon-new-window"></span></span>
           &nbsp;<input type="checkbox" id="expandedSpec" title="Expand/collapse spec" checked>
-        Out&nbsp;<input type="checkbox" id="expandedPreviewSpec" title="Expand/collapse spec preview" checked>
+        BigTree&nbsp;<input type="checkbox" id="expandedPreviewSpec" title="Expand/collapse spec preview" checked>
         <span id="errMsg" class="label label-danger" style="display:none;"></span>
     </div>
     </div>
@@ -750,6 +750,8 @@ function processFinalEngineResult(id, data, compileOnly, lastTime, next) {
 <script src="@routes.Assets.at("ace-builds/src/mode-nvp2.js")" type="text/javascript" charset="utf-8"></script>
 <script src="@routes.Assets.at("ace-builds/src/ext-language_tools.js")" type="text/javascript" charset="utf-8"></script>
 
+<script src="@routes.Assets.at("ace-builds/src/ext-linking.js")" type="text/javascript" charset="utf-8"></script>
+
 @*<script type="text/javascript" src="/sfiddle/tempAsset/@id/gLexer.js")"></script>*@
 @*<script type="text/javascript" src="/sfiddle/tempAsset/@id/gParser.js")"></script>*@
 
@@ -796,14 +798,17 @@ function attachAce() {
   editor5.setTheme ( "ace/theme/twilight" ) ;
 }
 
-  specEditor.setOptions({
+  storyEditor.setOptions({
     tabSize: 2,
+    enableLinking: true,
     enableBasicAutocompletion: true,
     // enableLiveAutocomplete:  true,
     enableLiveAutocompletion:  true
   });
-  storyEditor.setOptions({
+
+  specEditor.setOptions({
     tabSize: 2,
+    enableLinking: true,
     enableBasicAutocompletion: true,
     // enableLiveAutocomplete:  true,
     enableLiveAutocompletion:  true
@@ -880,6 +885,14 @@ function attachAce() {
   //     findUsagesSpec(e.editor);
   //   };
   // });
+
+  storyEditor.on("linkClick", function(e){
+    findUsagesSpec(storyEditor);
+  });
+
+  specEditor.on("linkClick", function(e){
+    findUsagesSpec(specEditor);
+  });
 
   specEditor.getSession().on('change', function(e) {
     domChanged=true;
@@ -1149,6 +1162,19 @@ $(window).on('load', function() {
     const viewSp = $('#expandedSpec').prop('checked');
     const preview = $('#expandedPreviewSpec').prop('checked');
 
+    // resize them regarldess of flags
+    const storyHeight = (preview || !viewSp) ? hFull : hHalf;
+    $("#divOutStory_@id").css("max-height", storyHeight);
+    $("#iframeOutStory_@id").css("max-height", storyHeight);
+    $("#divOutStory_@id").css("height", storyHeight);
+    $("#iframeOutStory_@id").css("height", storyHeight);
+
+    const specHeight = viewSt ? hHalf : hFull;
+    $("#divOutSpec_@id").css("max-height", specHeight);
+    $("#iframeOutSpec_@id").css("max-height", specHeight);
+    $("#divOutSpec_@id").css("height", specHeight);
+    $("#iframeOutSpec_@id").css("height", specHeight);
+
     if(viewSt) {
       $("#storyRow1").show();
       $("#storyRow2").show();
@@ -1156,11 +1182,6 @@ $(window).on('load', function() {
       $("#divInStory_@id").css("height", viewSp ? hHalf : hFull);
       $("#preStory_@id").css("height", viewSp ? hHalf : hFull);
 
-      const storyHeight = (preview || !viewSp) ? hFull : hHalf;
-      $("#divOutStory_@id").css("max-height", storyHeight);
-      $("#iframeOutStory_@id").css("max-height", storyHeight);
-      $("#divOutStory_@id").css("height", storyHeight);
-      $("#iframeOutStory_@id").css("height", storyHeight);
     } else {
       $("#storyRow1").hide();
       $("#storyRow2").hide();
@@ -1171,14 +1192,12 @@ $(window).on('load', function() {
       if(!preview) $("#specRow2").show();
       else $("#specRow2").hide();
 
+      // special case to show out story in spec only mode
+      if(preview) $("#storyRow2").show();
+
       $("#divInSpec_@id").css("height", viewSt ? hHalf : hFull);
       $("#preSpec_@id").css("height", viewSt ? hHalf : hFull);
 
-      const storyHeight = viewSt ? hHalf : hFull;
-      $("#divOutSpec_@id").css("max-height", storyHeight);
-      $("#iframeOutSpec_@id").css("max-height", storyHeight);
-      $("#divOutSpec_@id").css("height", storyHeight);
-      $("#iframeOutSpec_@id").css("height", storyHeight);
     } else {
       $("#specRow1").hide();
       $("#specRow2").hide();
