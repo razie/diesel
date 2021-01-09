@@ -226,7 +226,7 @@ class DieselControl extends RazController with Logging {
                         o: Option[O] = None) = RAction { implicit request =>
 
     val ref = SpecRef.make(request.realm, plugin, conn, cat, "")
-    val list = DomInventories.findByQuery(ref, cat + "/" + parm + "/" + value)
+    val list = DomInventories.findByQuery(ref, Left(cat + "/" + parm + "/" + value))
 
     if (list.size <= 1) {
       val o = list.headOption.flatMap(_.getValueO)

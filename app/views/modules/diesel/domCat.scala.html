@@ -25,8 +25,11 @@ browse a domain
     } @* defining *@
   }.getOrElse{
     <span style="color:red">(realm: @realm) Absolutely nothing found about <b>@cat</b> - it is most likely inferred!</span>
-    <p>
-    <a href="/wikie/edit/@{realm}.Category:@cat">Create <b>@cat</b></a><br><br>
+    <br><br>
+    <a href="/wikie/edit/@{realm}.Category:@cat">Create Wiki Category for <b>@cat</b></a><br><br>
+    <div class="alert alert-warning">
+      For <a href="/Topic/Domain_Modelling">domain modelling</a>, make sure the topic containing the models is tagged "DslDomain", to have it loaded automatically!
+  </div>
   }
 }
 
