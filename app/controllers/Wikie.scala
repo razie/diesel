@@ -1297,13 +1297,18 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
     log("Wiki.like " + wid)
     (for (
       how <- request.fqhParm("how").map(_.toInt);
+      reason <- request.fqhParm("reason");
       w <- Wikis.find(wid);
-      newVer <- activeUser.map { au=>
-        val like    = if(how==1) Some(au) else None
-        val dislike = if(how==0)Some(au) else None
-        (w.copy (likes=like.map(_._id.toString).toList ::: w.likes, dislikes=dislike.map(_._id.toString).toList ::: w.dislikes))
+      newVer <- activeUser.map { au =>
+        val like = if (how == 1) Some(au) else None
+        val dislike = if (how == 0) Some(au) else None
+        (w.copy(
+          likes = like.map(_._id.toString).toList ::: w.likes,
+          dislikes = dislike.map(_._id.toString).toList ::: w.dislikes,
+          dislikeReasons = (if (how == 1 || reason.trim.isEmpty) Nil else List(reason)) ::: w.dislikeReasons
+        ))
       } orElse {
-        Some(w.copy (likeCount=w.likeCount+how, dislikeCount=w.dislikeCount+(if(how==0) 1 else 0)))
+        Some(w.copy(likeCount = w.likeCount + how, dislikeCount = w.dislikeCount + (if (how == 0) 1 else 0)))
       };
       upd <- before(newVer, WikiAudit.UPD_LIKE) orErr ("Not allowed")
     ) yield {
@@ -1311,10 +1316,11 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
         RUpdate.noAudit[WikiEntry](Wikis(w.realm).weTables(wid.cat), Map("_id" -> newVer._id), newVer)
       }
       Wikie.after(Some(w), newVer, WikiAudit.UPD_LIKE, auth)
-      if(how==1)
-        Audit.logdb("VOTE.UP", ""+request.au.map(_.userName) + wid.wpath)
-      else
-        Audit.logdb("VOTE.DOWN", ""+request.au.map(_.userName)+wid.wpath)
+      if (how == 1)
+        Audit.logdb("VOTE.UP", "" + request.au.map(_.userName) + wid.wpath)
+      else {
+        Audit.logdb("VOTE.DOWN", "" + request.au.map(_.userName) + " WHY: [" + reason + "] " + wid.wpath)
+      }
       Ok(s"{likeCount:${newVer.likeCount}, dislikeCount:${newVer.dislikeCount}").as("application/json")
     }) getOrElse {
       Unauthorized("")

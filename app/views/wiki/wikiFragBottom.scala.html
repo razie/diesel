@@ -203,12 +203,14 @@ wiki fragment, used in another page
       // DO NOT move this function - rrequires wid
       function likeWikiFunc (how) {
         require(['jquery'], function($){
+          var reason = how == 0 ? prompt ("Please give us some feedback to improve this topic...", "") : "";
           if(! wikiVoted) {
             $.ajax(
                 "@routes.Wikie.like(wid)", {
                   type: 'POST',
                   data: $.param({
-                    how : ''+how
+                    how : ''+how,
+                    reason : reason
                   }),
                   contentType: 'application/x-www-form-urlencoded',
                   success: function(data) {
