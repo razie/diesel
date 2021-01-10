@@ -6,6 +6,7 @@
  */
 package controllers
 
+import controllers.WikiUtil.{EditWiki, LinkWiki, ReportWiki}
 import model._
 import play.api.data.Form
 import play.api.data.Forms.{mapping, nonEmptyText, text, tuple}
@@ -16,19 +17,6 @@ import razie.wiki.model._
 class WikieBase extends WikiBase {
 
   implicit def obtob(o: Option[Boolean]): Boolean = o.exists(_ == true)
-
-  case class LinkWiki(how: String, notif: String, markup: String, comment: String)
-
-  case class ReportWiki(reason: String)
-
-  def before(e: WikiEntry, what: String)(implicit errCollector: VErrors = IgnoreErrors): Boolean = {
-    WikiObservers.before(WikiEvent(what, "WikiEntry", e.wid.wpath, Some(e)))
-  }
-  def after(old:Option[WikiEntry], e: WikiEntry, what: String, au:Option[User])(implicit errCollector: VErrors = IgnoreErrors): Unit = {
-    Services ! WikiAudit(what, e.wid.wpathFull, au.map(_._id), None, Some(e), old)
-  }
-
-  case class EditWiki(label: String, markup: String, content: String, visibility: String, edit: String, oldVer:String, tags: String, notif: String)
 
   val editForm = Form {
     mapping(
@@ -57,9 +45,10 @@ class WikieBase extends WikiBase {
     mapping(
       "how" -> nonEmptyText,
       "notif" -> nonEmptyText,
-      "markup" -> text.verifying("Unknown!", request.queryString("wc").headOption.exists(_ == "0") || Wikis.markups.contains(_)),
-      "comment" -> text)(Wikil.LinkWiki.apply)(Wikil.LinkWiki.unapply) verifying (
-      "Your entry failed the obscenity filter", { ew: Wikil.LinkWiki => !Wikis.hasBadWords(ew.comment)
+      "markup" -> text.verifying("Unknown!",
+        request.queryString("wc").headOption.exists(_ == "0") || Wikis.markups.contains(_)),
+      "comment" -> text)(LinkWiki.apply)(LinkWiki.unapply) verifying(
+        "Your entry failed the obscenity filter", { ew: LinkWiki => !Wikis.hasBadWords(ew.comment)
     })
   }
 

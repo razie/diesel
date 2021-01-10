@@ -7,18 +7,21 @@ import razie.Logging
 import razie.audit.Audit
 import razie.wiki.model._
 import views.html.modules.cart.{doeAcct, doeClubBilling}
+import com.google.inject.Singleton
 
 import scala.util.Try
 
 /** controller for billing management */
-object Accts extends RazController with Logging {
+@Singleton
+class Accts extends RazController with Logging {
 
   /** list accounts and manage billing */
-  def doeClubBillingView(cwid:WID) = FAUR { implicit request=>
+  def doeClubBillingView(cwid: WID) = FAUR { implicit request =>
     (for (
       club <- Club.findForAdmin(cwid, request.au.get) orErr ("Not a club or you're not admin")
     ) yield {
-      val regs = Regs.findClubYear(cwid, club.curYear).toList//.sortBy(x => x._1.map(y => y.lastName + y.firstName).mkString)
+      val regs = Regs.findClubYear(cwid,
+        club.curYear).toList //.sortBy(x => x._1.map(y => y.lastName + y.firstName).mkString)
       val users = club.activeMembers
       ROK.r apply {
         doeClubBilling(club, users, regs)

@@ -60,7 +60,7 @@ ALERT: you can't undo this!
 
 
 @if(! tags) {
-  @defining(controllers.Wikie.searchAll(myForm("old").value.mkString, myForm("realm").value.mkString)) {results=>
+  @defining(controllers.WikiUtil.searchAll(myForm("old").value.mkString, myForm("realm").value.mkString)) {results=>
     <div class="well">
       @results.size results:
 
@@ -79,7 +79,7 @@ ALERT: you can't undo this!
     <hr>
 }
 } else {
-  @defining(controllers.Wikie.searchAllTag(myForm("old").value.mkString, myForm("realm").value.mkString)) {results=>
+  @defining(controllers.WikiUtil.searchAllTag(myForm("old").value.mkString, myForm("realm").value.mkString)) {results=>
     <div class="well">
       @results.size results:
 

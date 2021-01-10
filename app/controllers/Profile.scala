@@ -22,7 +22,7 @@ import scala.collection.mutable.HashMap
 
 
 /** this is NOT the controller */
-object Profile extends RazController {
+object Profile extends WikieBase {
 
   val trusts = Array("Public", "Club", "Friends", "Private")
   val notifiers = Array("Everything", "FriendsOnly", "None")
@@ -132,27 +132,27 @@ object AttemptCounter {
 }
 
 @Singleton
-class Profile @Inject() (config:Configuration, adminDiff:AdminDiff) extends RazController with Logging {
+class Profile @Inject()(config: Configuration, adminDiff: AdminDiff) extends WikieBase with Logging {
 
   import AttemptCounter._
 
   final val INVALID_LOGIN = "Invalid username and/or password"
 
-  def registerForm (implicit request : Request[_]) = Form {
+  def registerForm(implicit request: Request[_]) = Form {
     mapping(
       "email" -> nonEmptyText.verifying("Wrong email format!", vldEmail(_)).verifying("Invalid characters", vldSpec(_)),
       "password" -> nonEmptyText.verifying("Too short!", p => (p.length == 0 || p.length >= 4)),
       "reemail" -> text,
       "repassword" -> text
-      )(Registration.apply)(Registration.unapply) verifying
-      ("Email mismatch - please type again", { reg: Registration =>
-        if (reg.reemail.length > 0 && reg.email.length > 0 && reg.email != reg.reemail) false
-        else true
-      }) verifying
-      ("Password mismatch - please type again", { reg: Registration =>
-        if (reg.password.length > 0 && reg.repassword.length > 0 && reg.password != reg.repassword) false
-        else true
-      }) verifying
+    )(Registration.apply)(Registration.unapply) verifying
+        ("Email mismatch - please type again", { reg: Registration =>
+          if (reg.reemail.length > 0 && reg.email.length > 0 && reg.email != reg.reemail) false
+          else true
+        }) verifying
+        ("Password mismatch - please type again", { reg: Registration =>
+          if (reg.password.length > 0 && reg.repassword.length > 0 && reg.password != reg.repassword) false
+          else true
+        }) verifying
       ("Bad email or password - please type again! To register a new account, use the Create button and if you forgot your email, use the Forgot button", { reg: Registration =>
         //          println ("======="+reg.email.enc+"======="+reg.password.enc)
         clog << "login test: " + reg.email
@@ -462,7 +462,7 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
   /** login or start registration */
   def login(email: String, pass:String, extra: String, gid:String="") (implicit request:RazRequest) = {
     // TODO optimize - we lookup users twice on login
-    val realm = Wikie.getRealm()
+    val realm = getRealm()
     val website = request.website
     val secLink = request.session.get(SecLink.HEADER).flatMap(SecLink.find)
 

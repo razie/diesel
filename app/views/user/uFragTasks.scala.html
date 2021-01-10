@@ -34,10 +34,6 @@ included in mainUserC as the right hand side info box
 
       @vols
 
-    @for( vsz <- vols; t <- Some(model.UserTasks.approveVolunteerHours(user._id))) {
-      <li><a style="color:red;font-weight:bold" href="/user/task/@t.name">@t.desc (@vsz)</a></li>
-      @*<li><a style="color:red;font-weight:bold" href="@routes.Vol.doeClubUserReg(t._id.toString)">Need to approve some volunteer hours (@vsz)</a></li>*@
-    }
     </ul>
 
     @if(quiet.contains("alert")) {

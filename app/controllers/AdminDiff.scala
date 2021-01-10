@@ -1,8 +1,8 @@
-/**   ____    __    ____  ____  ____,,___     ____  __  __  ____
-  *  (  _ \  /__\  (_   )(_  _)( ___)/ __)   (  _ \(  )(  )(  _ \           Read
-  *   )   / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <     README.txt
-  *  (_)\_)(__)(__)(____)(____)(____)(___/   (__)  (______)(____/    LICENSE.txt
-  **/
+/** ____    __    ____  ____  ____,,___     ____  __  __  ____
+  * (  _ \  /__\  (_   )(_  _)( ___)/ __)   (  _ \(  )(  )(  _ \           Read
+  * )   / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <     README.txt
+  * (_)\_)(__)(__)(____)(____)(____)(___/   (__)  (______)(____/    LICENSE.txt
+  * */
 package controllers
 
 import com.google.inject.Singleton
@@ -12,10 +12,9 @@ import com.razie.pub.comms.CommRtException
 import difflib.DiffUtils
 import java.io.{BufferedWriter, File, FileWriter, IOException}
 import model.User
-import org.joda.time.DateTime
 import org.json.JSONArray
 import play.api.mvc.{Action, AnyContent, Request}
-import razie.Snakk._
+import razie.Snakk.{url, _}
 import razie.db.RazSalatContext.ctx
 import razie.db.{RCreate, RMany}
 import razie.hosting.WikiReactors
@@ -30,36 +29,7 @@ import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.Future
 import scala.util.Try
-
-/** metadata about a we */
-case class WEAbstract(id: String, cat: String, name: String, realm: String, ver: Int, updDtm: DateTime, hash: Int, tags: String, drafts:Int) {
-
-  def this(we: WikiEntry) = this(
-    we._id.toString,
-    we.category,
-    we.name,
-    we.realm,
-    we.ver,
-    we.updDtm,
-    we.content.hashCode,
-    we.tags.mkString,
-    Autosave.allDrafts(we.wid).toList.size
-  )
-
-  def this(x: collection.Map[String, String]) = this(
-    x("id"),
-    x("cat"),
-    x("name"),
-    x("realm"),
-    x("ver").toInt,
-    new DateTime(x("updDtm")),
-    x("hash").toInt,
-    x("tags"),
-    x("drafts").toInt
-  )
-
-  def j = js.tojson(Map("id" -> id, "cat" -> cat, "name" -> name, "realm" -> realm, "ver" -> ver.toString, "updDtm" -> updDtm, "hash" -> hash.toString, "tags" -> tags, "drafts" -> drafts.toString))
-}
+import special.CypherEncryptService
 
 /** Diff and sync remote wiki copies */
 @Singleton
@@ -155,31 +125,32 @@ class AdminDiff extends AdminBase with Logging {
 
   /** get list of pages for realm - invoked by remote trying to sync */
   private def localwlist(reactor: String, cat: String) = {
-        val l =
-          if (cat.length == 0)
-            RMany[WikiEntry]()
-                .filter(we => reactor.isEmpty || reactor == "all" || we.realm == reactor)
-          else
-            RMany[WikiEntry]()
-                .filter(we => we.category == cat && (reactor.isEmpty || reactor == "all" || we.realm == reactor))
-        l.toList
+    val l =
+      if (cat.length == 0)
+        RMany[WikiEntry]()
+            .filter(we => reactor.isEmpty || reactor == "all" || we.realm == reactor)
+      else
+        RMany[WikiEntry]()
+            .filter(we => we.category == cat && (reactor.isEmpty || reactor == "all" || we.realm == reactor))
+    l.toList
   }
 
   /** get list of pages for realm - invoked by remote trying to sync */
   // todo auth that user belongs to realm
-  def wlist(reactor: String, hostname: String, me: String, cat: String) = FAUPRAPI(isApi=true) {
+  def wlist(reactor: String, hostname: String, me: String, cat: String) = FAUPRAPI(isApi = true) {
     implicit request =>
-    if (hostname.isEmpty) {
-      val l = localwlist(reactor, cat)
-          .map(x => new WEAbstract(x)).toList
-      val list = l.map(_.j)
-      Ok(js.tojson(list).toString).as("application/json")
-    } else if (hostname != me) {
-      val b = body(url(s"http://$hostname/razadmin/wlist/$reactor?me=${request.req.host}&cat=$cat").basic("H-" + request.au.get.emailDec, "H-" + request.au.get.pwd.dec))
-      Ok(b).as("application/json")
-    } else {
-      NotFound("same host again?")
-    }
+      if (hostname.isEmpty) {
+        val l = localwlist(reactor, cat)
+            .map(x => new WEAbstract(x)).toList
+        val list = l.map(_.j)
+        Ok(js.tojson(list).toString).as("application/json")
+      } else if (hostname != me) {
+        val b = body(url(s"http://$hostname/razadmin/wlist/$reactor?me=${request.req.host}&cat=$cat").basic(
+          "H-" + request.au.get.emailDec, "H-" + request.au.get.pwd.dec))
+        Ok(b).as("application/json")
+      } else {
+        NotFound("same host again?")
+      }
   }
 
   /** show the list of diffs to remote */
@@ -191,19 +162,20 @@ class AdminDiff extends AdminBase with Logging {
       val lchanged = for (
         x <- lsrc;
         y <- ldest if y.id == x.id &&
-          (
-            x.ver != y.ver ||
-              x.updDtm.compareTo(y.updDtm) != 0 ||
-                x.hash != y.hash ||
-              x.name != y.name ||
-              x.realm != y.realm ||
-              x.cat != y.cat
-            // todo compare properties as well
-            )
+            (
+                x.ver != y.ver ||
+                    x.updDtm.compareTo(y.updDtm) != 0 ||
+                    x.hash != y.hash ||
+                    x.name != y.name ||
+                    x.realm != y.realm ||
+                    x.cat != y.cat
+                // todo compare properties as well
+                )
       ) yield
         (x,
-          y,
-          if (x.hash == y.hash && x.tags == y.tags) "-" else if (x.ver > y.ver || x.updDtm.isAfter(y.updDtm)) "L" else "R"
+            y,
+            if (x.hash == y.hash && x.tags == y.tags) "-" else if (x.ver > y.ver || x.updDtm.isAfter(
+              y.updDtm)) "L" else "R"
         )
 
       (lnew, lchanged, lremoved)
@@ -224,21 +196,21 @@ class AdminDiff extends AdminBase with Logging {
       val lchanged = for (
         x <- lsrc;
         y <- ldest if y.name == x.name && y.cat == x.cat &&
-          (
-            x.ver != y.ver ||
-              x.updDtm.compareTo(y.updDtm) != 0 ||
-              x.hash != y.hash
-            //              x.name != y.name ||
-            //              x.cat != y.cat ||
-            //              x.realm != y.realm
-            // todo compare properties as well
-            )
+            (
+                x.ver != y.ver ||
+                    x.updDtm.compareTo(y.updDtm) != 0 ||
+                    x.hash != y.hash
+                //              x.name != y.name ||
+                //              x.cat != y.cat ||
+                //              x.realm != y.realm
+                // todo compare properties as well
+                )
       ) yield
         (x,
-          y,
-          if (x.hash == y.hash && x.tags == y.tags) "-"
-          else if (x.ver > y.ver || x.updDtm.isAfter(y.updDtm)) "L"
-          else "R"
+            y,
+            if (x.hash == y.hash && x.tags == y.tags) "-"
+            else if (x.ver > y.ver || x.updDtm.isAfter(y.updDtm)) "L"
+            else "R"
         )
 
       (lnew, lchanged, lremoved)
@@ -259,10 +231,11 @@ class AdminDiff extends AdminBase with Logging {
     * @return
     */
   // todo auth that user belongs to realm
-  def difflist(localRealm:String, toRealm: String, remote: String) = FAUR { implicit request =>
+  def difflist(localRealm: String, toRealm: String, remote: String) = FAUR { implicit request =>
     try {
       // get remote list
-      val b = body(url(s"http://$remote/razadmin/wlist/$toRealm").basic("H-" + request.au.get.emailDec, "H-" + request.au.get.pwd.dec))
+      val b = body(url(s"http://$remote/razadmin/wlist/$toRealm").basic("H-" + request.au.get.emailDec,
+        "H-" + request.au.get.pwd.dec))
 
       val gd = new JSONArray(b)
       val ldest = js.fromArray(gd).collect {
@@ -313,14 +286,15 @@ class AdminDiff extends AdminBase with Logging {
 
   /** compute and show diff for a WID */
   // todo auth that user belongs to realm
-  def showDiff(onlyContent: String, side: String, localRealm:String, toRealm: String, target: String, iwid: WID) = FAUR { implicit request =>
+  def showDiff(onlyContent: String, side: String, localRealm: String, toRealm: String, target: String, iwid: WID) = FAUR
+  { implicit request =>
     val localWid = iwid.r(if (toRealm == "all") iwid.getRealm else localRealm)
     val remoteWid = iwid.r(if (toRealm == "all") iwid.getRealm else toRealm)
 
     getWE(target, remoteWid)(request.au.get).fold({ t =>
       val remote = t._1.content
       val patch =
-          DiffUtils.diff(localWid.content.get.lines.toList, remote.lines.toList)
+        DiffUtils.diff(localWid.content.get.lines.toList, remote.lines.toList)
 
       def diffTable = s"""<small>${views.html.admin.diffTable(side, patch, Some(("How", "Local", "Remote")))}</small>"""
 
@@ -344,7 +318,7 @@ class AdminDiff extends AdminBase with Logging {
   }
 
   // to remote
-  def applyDiffTo(localRealm:String, toRealm: String, target: String, iwid: WID) = FAUR { implicit request =>
+  def applyDiffTo(localRealm: String, toRealm: String, target: String, iwid: WID) = FAUR { implicit request =>
     val localWid = iwid.r(if (toRealm == "all") iwid.getRealm else localRealm)
     val remoteWid = iwid.r(if (toRealm == "all") iwid.getRealm else toRealm)
 
@@ -354,11 +328,13 @@ class AdminDiff extends AdminBase with Logging {
 
         val b = body(
           url(s"http://$target/wikie/setContent/${remoteWid.wpathFull}").
-            form(Map("we" -> page.grated.toString)).
-            basic("H-" + request.au.get.emailDec, "H-" + request.au.get.pwd.dec))
+              form(Map("we" -> page.grated.toString)).
+              basic("H-" + request.au.get.emailDec, "H-" + request.au.get.pwd.dec))
 
         // b contains ok - is important
-        Ok(b + " <a href=\"" + s"http://$target${remoteWid.urlRelative(request.realm)}" + "\">" + remoteWid.wpath + "</a>")
+        Ok(b + " <a href=\"" + s"http://$target${
+          remoteWid.urlRelative(request.realm)
+        }" + "\">" + remoteWid.wpath + "</a>")
       } catch {
         case x: CommRtException => {
           Ok("error " + x.httpCode + " " + x.details)
@@ -372,19 +348,19 @@ class AdminDiff extends AdminBase with Logging {
 
   // from remote to local
   // todo auth that user belongs to realm
-  def applyDiffFrom(localRealm: String, toRealm:String, target: String, iwid: WID) = FAUR { implicit request =>
+  def applyDiffFrom(localRealm: String, toRealm: String, target: String, iwid: WID) = FAUR { implicit request =>
     val localWid = iwid.r(if (toRealm == "all") iwid.getRealm else localRealm)
     val remoteWid = iwid.r(if (toRealm == "all") iwid.getRealm else toRealm)
 
     getWE(target, remoteWid)(request.au.get).fold({ t =>
-      val protocol = if(request.hostUrlBase.startsWith("https")) "https" else "http"
+      val protocol = if (request.hostUrlBase.startsWith("https")) "https" else "http"
       val b = body(
 //        url(request.hostUrlBase + s"/wikie/setContent/${localWid.wpathFull}")
         // local url may be different from outside mappings and routings - it's accessed from this same server backend
         // todo still have an issue of http vs https - should this be configured?
         url(protocol + "://" + Config.hostport + s"/wikie/setContent/${localWid.wpathFull}")
-          .form(Map("we" -> t._2, "remote" -> target))
-          .basic("H-" + request.au.get.emailDec, "H-" + request.au.get.pwd.dec)
+            .form(Map("we" -> t._2, "remote" -> target))
+            .basic("H-" + request.au.get.emailDec, "H-" + request.au.get.pwd.dec)
       )
       Ok(b + localWid.ahrefRelative(request.realm))
     }, { err =>
@@ -450,10 +426,10 @@ class AdminDiff extends AdminBase with Logging {
   //==================== initial setup and reactor import
 
   // is this the first time in a new db ?
-  def isDbEmpty:Boolean = RMany[User]().size <= 0
+  def isDbEmpty: Boolean = RMany[User]().size <= 0
 
   /** is this a remote user - email and password match something on remote? */
-  def isRemoteUser(email:String, pwd:String) = {
+  def isRemoteUser(email: String, pwd: String) = {
     clog << "ADMIN_isRemoteUser"
 
     val source = "www.dieselapps.com"
@@ -469,7 +445,7 @@ class AdminDiff extends AdminBase with Logging {
   }
 
   /** import a remote user if the email and password match */
-  def importRemoteUser(email:String, pwd:String) = {
+  def importRemoteUser(email: String, pwd: String) = {
     clog << "ADMIN_importRemoteUser"
 
     log("IMPORT USER")
@@ -484,7 +460,7 @@ class AdminDiff extends AdminBase with Logging {
     val dbo = com.mongodb.util.JSON.parse(u).asInstanceOf[DBObject];
     val pu = grater[PU].asObject(dbo)
     val iau = pu.u
-    val e = new admin.CypherEncryptService("", key)
+    val e = new CypherEncryptService("", key)
     // re=encrypt passworkd with the local key
     val au = iau.copy(email = e.enc(e.dec(iau.email)), pwd = e.enc(e.dec(iau.pwd)))
 
@@ -494,7 +470,7 @@ class AdminDiff extends AdminBase with Logging {
   }
 
   /** actual import implementation */
-  def importDbImpl(implicit stok:RazRequest) = {
+  def importDbImpl(implicit stok: RazRequest) = {
 
     clog << "ADMIN_IMPORT_DB_IMPL"
 
@@ -509,7 +485,7 @@ class AdminDiff extends AdminBase with Logging {
     val key = System.currentTimeMillis().toString + "87654321"
 
     // user already local or import from remote?
-    val au = if(stok.au.isEmpty) {
+    val au = if (stok.au.isEmpty) {
       clog << "ADMIN_IMPORT_DB_IMPL import user"
 
       // first get the user and profile and create them locally
@@ -517,7 +493,7 @@ class AdminDiff extends AdminBase with Logging {
       val dbo = com.mongodb.util.JSON.parse(u).asInstanceOf[DBObject];
       val pu = grater[PU].asObject(dbo)
       val iau = pu.u
-      val e = new admin.CypherEncryptService("", key)
+      val e = new CypherEncryptService("", key)
       // re=encrypt passworkd with the local key
       val au = iau.copy(email = e.enc(e.dec(iau.email)), pwd = e.enc(e.dec(iau.pwd)))
 
@@ -698,7 +674,7 @@ class AdminDiff extends AdminBase with Logging {
             .filter(r => r.length > 0 && {
               // filter out already local reactors
               val res = WikiReactors.findWikiEntry(r).isEmpty
-              if(res) {
+              if (res) {
                 clog << s"*************** SKIPPING $r - already local"
               }
               res
@@ -754,7 +730,7 @@ class AdminDiff extends AdminBase with Logging {
   }
 
   /** import a realm from remote */
-  def listTopics(realm:String, only:String) = FAUPRAPI(isApi=true) {implicit request=>
+  def listTopics(realm: String, only: String) = FAUPRAPI(isApi = true) { implicit request =>
     // get mixins
     clog << "============ get mixins"
 
@@ -762,12 +738,12 @@ class AdminDiff extends AdminBase with Logging {
         .fromPath(s"$realm.Reactor:$realm")
         .flatMap(_.page)
         .map { we =>
-      val m = new DslProps(Some(we), "website,properties")
-          .prop("mixins")
-          .getOrElse(realm)
-      clog << "============ mixins: " + m
-      m + "," + realm // add itself to mixins
-    }
+          val m = new DslProps(Some(we), "website,properties")
+              .prop("mixins")
+              .getOrElse(realm)
+          clog << "============ mixins: " + m
+          m + "," + realm // add itself to mixins
+        }
         .getOrElse(realm)
 
     // not all mixins, just top reactor
@@ -944,7 +920,7 @@ class AdminDiff extends AdminBase with Logging {
       implicit errCollector =>
         implicit request =>
 
-          val e = new admin.CypherEncryptService(key, "")
+          val e = new CypherEncryptService(key, "")
           val pu = PU(au.copy(email = e.enc(au.emailDec), pwd = e.enc(au.pwd.dec)), au.profile.get)
 
           val j = grater[PU].asDBObject(pu).toString

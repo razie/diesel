@@ -5,6 +5,7 @@ import controllers.UserStuff.findPublicProfile
 import model._
 import org.bson.types.ObjectId
 import org.joda.time.DateTime
+import play.api.Configuration
 import play.api.mvc._
 import razie.Snakk._
 import razie.hosting.Website
@@ -32,8 +33,7 @@ class UserStuff(val realm: String, val user: User) {
 
 }
 
-/** profile related control */
-object UserStuff extends RazController {
+object UserStuff {
 
   def findPublicProfile(realm: String, uid: String) =
     Wikis.find(WID("User", realm + "-" + uid)) orElse Wikis.find(WID("User", uid))

@@ -31,7 +31,7 @@ user manages registrations
       "role" -> reg.role,
       "regStatus" -> reg.regStatus,
       "id" -> reg._id.toString,
-      "vol" -> controllers.Vol.volPerReg(reg),
+      "vol" -> "",
       "balance" -> mod.cart.Acct.findCurrent(reg.userId, reg.club).map(_.balance.toString).getOrElse(""),
       "details" -> ""
     ))
@@ -44,7 +44,6 @@ user manages registrations
       }
       case "vol" => {
         @v
-        <a href="@routes.Vol.doeUserVolAdd(row.get("id").get).toString" class="btn btn-xs btn-info">Add / edit</a>
       }
       case "details" => {
         <a href="@routes.Club.doeClubUserReg(row.get("id").get).toString" class="btn btn-primary btn-xs">&nbsp;&nbsp;<span class="glyphicon glyphicon-list-alt"></span>&nbsp;&nbsp;</a>

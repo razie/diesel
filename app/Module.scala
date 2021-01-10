@@ -27,6 +27,7 @@ import razie.wiki.model.WikiUsers
 import razie.wiki.mods.WikiMods
 import razie.wiki.{Config, EncryptService, Services, WikiConfig}
 import razie.{Log, clog, cout, wiki}
+import special.{CypherEncryptService, RazAuthService}
 
 /** initialize this module */
 class Module extends AbstractModule {
@@ -75,11 +76,11 @@ class Module extends AbstractModule {
     RMongo.setInstance(Audit.getInstance)
     bind(classOf[AuditService]).toInstance(Audit.getInstance)
 
-    WikiUsers.setImpl (WikiUsersImpl)
+    WikiUsers.setImpl(WikiUsersImpl)
     Reactors.impl = WikiReactors
 
 //    EncryptService.impl = new admin.CypherEncryptService(secret(), secret())
-    EncryptService.impl = new admin.CypherEncryptService("", "") // use default key
+    EncryptService.impl = new CypherEncryptService("", "") // use default key
 
     ViewService.impl = RkViewService
     bind(classOf[ViewService]).toInstance(RkViewService)
@@ -87,10 +88,10 @@ class Module extends AbstractModule {
     Services.wikiAuth = RazWikiAuthorization
 
     //todo look these up in Website
-    Services.isSiteTrusted = {(r,s)=>
+    Services.isSiteTrusted = { (r, s) =>
       val y = Website.forRealm(r).toList.flatMap(_.trustedSites.toList)
 
-      Config.trustedSites.exists(x=>s.startsWith(x)) ||
+      Config.trustedSites.exists(x => s.startsWith(x)) ||
           (
               r.length > 0 &&
                   Website.forRealm(r).exists(_.trustedSites.exists(x => s.startsWith(x)))
@@ -151,8 +152,6 @@ class Module extends AbstractModule {
       val UPGRADE_AGAIN = false // set to true in local dev to rerun only the last upgrade
 
       val mongoUpgrades: Map[Int, UpgradeDb] = Map(
-          1 -> Upgrade1, 2 -> Upgrade2, 3 -> Upgrade3, 4 -> Upgrade4, 5 -> Upgrade5,
-          6 -> U6, 7 -> U7, 8 -> U8, 9 -> U9, 10 -> U10, 11 -> U11, 12 -> U12, 13 -> U13,
           14 -> U14, 15 -> U15, 16 -> U16, 17 -> U17, 18 -> U18, 19 -> U19)
       /* NOTE as soon as you list it here, it will apply */
 

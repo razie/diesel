@@ -32,22 +32,27 @@ import razie.wiki.model.features.WikiCount
 import razie.wiki.parser.WAST
 import razie.wiki.util.{PlayTools, Stage, Staged}
 import razie.wiki.{Config, Enc, Services}
+import com.google.inject._
+import controllers.WikiUtil.{EditWiki, ReportWiki, after, applyStagedLinks, before}
+import play.api.Configuration
+
 
 /** a simple edit lock
   *
   * // todo candidate for a different temporary store, other than Mongodb
   *
-  * @param uwid for existing pages, quick lookup
+  * @param uwid  for existing pages, quick lookup
   * @param wpath for new pages
   */
 @RTable
-case class EditLock(uwid:UWID, wpath:String, ver:Int, uid:ObjectId, uname:String, dtm:DateTime=DateTime.now(), _id:ObjectId=new ObjectId()) extends REntity[EditLock] {
+case class EditLock(uwid: UWID, wpath: String, ver: Int, uid: ObjectId, uname: String, dtm: DateTime = DateTime.now()
+                    , _id: ObjectId = new ObjectId()) extends REntity[EditLock] {
 
-  def isLockedFor(userId:ObjectId) = dtm.plusSeconds(300).isAfterNow && uid != userId
+  def isLockedFor(userId: ObjectId) = dtm.plusSeconds(300).isAfterNow && uid != userId
 
   /** extend the lock for another period, on autosave etc */
   def extend = {
-    this.copy(dtm=DateTime.now()).updateNoAudit(tx.auto)
+    this.copy(dtm = DateTime.now()).updateNoAudit(tx.auto)
   }
 }
 
@@ -104,20 +109,22 @@ object EditLock {
 }
 
 /** wiki edits controller */
-//@Singleton
-object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
+@Singleton
+class Wikie @Inject()(config: Configuration) extends WikieBase {
 
   /** when no pages found in 'any', i captured 'cat' in a form */
-  def edit2 = FAU { implicit au => implicit errCollector => implicit request =>
-    (for (
-      cat <- request.queryString.get("cat").flatMap(_.headOption);
-      name <- request.queryString.get("name").flatMap(_.headOption)
-    ) yield {
+  def edit2 = FAU { implicit au =>
+    implicit errCollector =>
+      implicit request =>
+        (for (
+          cat <- request.queryString.get("cat").flatMap(_.headOption);
+          name <- request.queryString.get("name").flatMap(_.headOption)
+        ) yield {
           wikieEdit(WID(cat, name)).apply(request).value.get.get
-      }) getOrElse {
-      error("ERR_HACK Wiki.email2")
-      Unauthorized("Oops - cannot create this link... " + errCollector.mkString)
-    }
+        }) getOrElse {
+          error("ERR_HACK Wiki.email2")
+          Unauthorized("Oops - cannot create this link... " + errCollector.mkString)
+        }
   }
 
   def wikieEditSimple(wid: WID) = wikieEdit(wid, "", "simple")
@@ -874,42 +881,6 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
     })
   }
 
-  /** create links to parents or other wikis, based on staged WikiLinkStaged */
-  def applyStagedLinks(wid:WID, w:WikiEntry)(implicit txn:Txn) : WikiEntry = {
-    var we = w
-
-    for (s <- Staged.find("WikiLinkStaged").filter{x =>
-      val from = x.content.get("from").asInstanceOf[DBObject]
-      from.get("cat") == wid.cat && from.get("name") == wid.name
-    }) {
-      val wls = Wikis.fromGrated[WikiLinkStaged](s.content)
-
-      //todo this nevet actually works because the we is not created yet...??
-      // todo so i should use we.uwid insted - i know it's from anyways
-      //but then it will be replicated for parent below - will need to prevent duplicates
-      for(ufrom <- wls.from.uwid;
-          uto <- wls.to.uwid) {
-        val wl = WikiLink(ufrom, uto, wls.how)
-        wl.create
-      }
-
-      we = we.copy(parent = Wikis.find(wls.to).map(_._id), updDtm = DateTime.now) // add parent
-      s.delete
-    }
-
-    // needs parent?
-    we.wid.parentWid.flatMap(_.uwid).foreach { puwid =>
-      val isd = if(we.props.contains("draft")) Some("y") else None
-      val wl = ROne[WikiLink]("from.id" -> we.uwid.id, "to.id" -> puwid.id, "how" -> "Child")
-      if(wl.isDefined)
-        wl.foreach(_.copy(draft=isd).update)
-      else
-        WikiLink(we.uwid, puwid, "Child", isd).create
-    }
-
-    we
-  }
-
   /** notify all followers of new topic/post */
   private def notifyFollowersCreate(wpost: WikiEntry, au: User, notif:String, edited:Boolean)(implicit mailSession: MailSession) = {
     // 1. followers of this topic or followers of parent
@@ -1290,7 +1261,7 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
       razie.db.tx("Wiki.Reserve", au.userName) { implicit txn =>
         w.update(newVer, Some("reserve"))
       }
-      Wikie.after(Some(w), newVer, WikiAudit.UPD_TOGGLE_RESERVED, Some(au))
+      after(Some(w), newVer, WikiAudit.UPD_TOGGLE_RESERVED, Some(au))
       Redirect(controllers.WikiUtil.w(wid))
     }
   }
@@ -1318,7 +1289,7 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
       razie.db.tx("Wiki.like", auth.map(_.userName).getOrElse("Anonymous")) { implicit txn =>
         RUpdate.noAudit[WikiEntry](Wikis(w.realm).weTables(wid.cat), Map("_id" -> newVer._id), newVer)
       }
-      Wikie.after(Some(w), newVer, WikiAudit.UPD_LIKE, auth)
+      after(Some(w), newVer, WikiAudit.UPD_LIKE, auth)
       if (how == 1)
         Audit.logdb("VOTE.UP", "" + request.au.map(_.userName) + wid.wpath)
       else {
@@ -1350,7 +1321,7 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
 
           if("replace" == action && request.au.get.isAdmin) {
             for (
-              (u, m) <- isearch(q, realm, Some(update))
+              (u, m) <- WikiUtil.isearch(q, realm, Some(update))
             ) {
             }
           }
@@ -1389,66 +1360,6 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
             }
           Ok(views.html.wiki.wikieReplaceAll(replaceAllForm.fill(realm, q, news, ""), true))
       })
-  }
-
-  /** search string AND update content if update function present */
-  private def isearch(qi: String, realm:String, update:Option[DBObject=>DBObject]=None) = {
-    val PAT = qi.r
-    val table = RazMongo("WikiEntry")
-
-    val wikis =
-        for (
-          u <- table.findAll() if qi.length >= 3 && (realm.length == 0 || u.get("realm") == realm);
-//          m <- (tag.isDefined && u.get("tags").asInstanceOf[Seq[String]].contains(tag.get) ||
-//            PAT.findAllMatchIn(u.get("content").asInstanceOf[String]))
-          m <- PAT.findAllMatchIn(u.get("content").asInstanceOf[String])
-        ) yield {
-          if(update.isDefined) {
-            table.save(update.get.apply(u))
-          }
-          (u, m)
-        }
-    wikis
-  }
-
-  /** simple search for all realms */
-  def searchAll(qi: String, realm:String) = {
-    val PAT = qi.r
-    def min(a:Int, b:Int) = if(a>b)b else a
-    def max(a:Int, b:Int) = if(a>b)a else b
-
-    val wikis = isearch(qi, realm).map{t=>
-      val (u,m) = t
-      (WikiEntry grated u,
-        m.before.subSequence(max(0,m.before.length()-5), m.before.length()),
-        m.matched,
-        m.after.subSequence(0,min(5,m.after.length)))
-    }
-
-    val wl = wikis.take(500).toList
-    wl
-  }
-
-  /** simple search for all realms */
-  def searchAllTag(qi: String, realm:String) = {
-    val PAT = qi.r
-    def min(a:Int, b:Int) = if(a>b)b else a
-    def max(a:Int, b:Int) = if(a>b)a else b
-
-    val wikis = Wikis(realm)
-        .cats.keys.toList
-        .flatMap(cat => Wikis(realm).pages(cat).toList)
-        .filter(_.tags.contains(qi))
-        .take(500)
-        .map { w =>
-          val m = PAT.findAllMatchIn(w.tags.mkString(",")).collectFirst({ case x => x }).get
-          (w,
-              m.before.subSequence(0, m.before.length()),
-              m.matched,
-              m.after.subSequence(0, m.after.length))
-        }
-
-    wikis
   }
 
   /** rename step 1: form for new name */

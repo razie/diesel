@@ -5,6 +5,7 @@
   **/
 package controllers
 
+import controllers.WikiUtil.{after, before}
 import mod.snow._
 import model._
 import org.joda.time.DateTime
@@ -202,7 +203,7 @@ $fdata
           r1 <- au.hasPerm(Perm.uWiki) orCorr cNoPermission;
           hasQuota <- (au.isAdmin || au.quota.canUpdate) orCorr cNoQuotaUpdates;
           isFormData <- (w.content.contains("section:formData}}") orErr "Not a form");
-          upd <- Wikie.before(w, WikiAudit.UPD_CONTENT) orErr ("Not allowerd")
+          upd <- before(w, WikiAudit.UPD_CONTENT) orErr ("Not allowerd")
         ) yield {
             val (newData, errors) = wf.validate(data2)
 
@@ -225,23 +226,26 @@ $fdata
 
               razie.db.tx("forms.submitted", au.userName) { implicit txn =>
                 w.update(we, Some("form_submitted"))
-                Wikie.after(Some(w), we, WikiAudit.UPD_CONTENT, Some(au))
+                after(Some(w), we, WikiAudit.UPD_CONTENT, Some(au))
                 Emailer.withSession(w.realm) { implicit mailSession =>
                   //                    au.quota.incUpdates
-                  au.shouldEmailParent("Everything").map(parent => Emailer.sendEmailChildUpdatedWiki(parent, au, WID(w.category, w.name)))
+                  au.shouldEmailParent("Everything").map(
+                    parent => Emailer.sendEmailChildUpdatedWiki(parent, au, WID(w.category, w.name)))
 
                   if (data2.contains("submit_button")) {
                     SendEmail.withSession(Website.realm(request)) { implicit mailSession =>
                       //                  cout << Regs.findWid(wid)
                       //                  cout << Regs.findWid(wid).flatMap(x => Users.findUserByUsername(x.clubName))
-                      //                  cout << Regs.findWid(wid).flatMap(x => Users.findUserByUsername(x.clubName)).map(Club(_).regAdmin)
-                      Regs.findWid(wid).flatMap{r =>
+                      //                  cout << Regs.findWid(wid).flatMap(x => Users.findUserByUsername(x.clubName)
+                      //                  ).map(Club(_).regAdmin)
+                      Regs.findWid(wid).flatMap { r =>
                         r.updFees.update
                         Users.findUserByUsername(r.clubName)
                       }.map(Club(_).regAdmin).foreach { reviewer =>
                         Emailer.sendEmailFormSubmitted(reviewer, au, wid.w)
                       }
-                      we.props.get("notifyUsers").toList.flatMap(_.split(",")).flatMap(Users.findUserById(_).toList).map{u=>
+                      we.props.get("notifyUsers").toList.flatMap(_.split(",")).flatMap(Users.findUserById(_).toList).map
+                      { u =>
                         Emailer.sendEmailFormNotify(u, au, wid.w, we.props.getOrElse("role", ""))
                       }
                     }
@@ -318,7 +322,7 @@ $fdata
           r1 <- au.hasPerm(Perm.uWiki) orCorr cNoPermission;
           hasQuota <- (au.isAdmin || au.quota.canUpdate) orCorr cNoQuotaUpdates;
           isFormData <- (w.content.contains("section:formData}}") orErr "Not a form");
-          upd <- Wikie.before(w, WikiAudit.UPD_CONTENT) orErr ("Not allowerd")
+          upd <- before(w, WikiAudit.UPD_CONTENT) orErr ("Not allowerd")
         ) yield {
             val (newData, errors) = wf.validate(data2)
 
@@ -339,10 +343,11 @@ $fdata
 
               razie.db.tx("forms.submitted", au.userName) { implicit txn =>
                 w.update(we, Some("form_submitted"))
-                Wikie.after(Some(w), we, WikiAudit.UPD_CONTENT, Some(au))
+                after(Some(w), we, WikiAudit.UPD_CONTENT, Some(au))
                 Emailer.withSession(w.realm) { implicit mailSession =>
                   //                    au.quota.incUpdates
-                  au.shouldEmailParent("Everything").map(parent => Emailer.sendEmailChildUpdatedWiki(parent, au, WID(w.category, w.name)))
+                  au.shouldEmailParent("Everything").map(
+                    parent => Emailer.sendEmailChildUpdatedWiki(parent, au, WID(w.category, w.name)))
 
                   if (data2.contains("submit_button")) {
                     Emailer.withSession(w.realm) { implicit mailSession =>
@@ -381,7 +386,7 @@ $fdata
           //          club <- Club.findForReviewer(au);
           hasQuota <- (au.isAdmin || au.quota.canUpdate) orCorr cNoQuotaUpdates;
           isFormData <- (w.content.contains("section:formData}}") orErr "Not a form");
-          upd <- Wikie.before(w, WikiAudit.UPD_CONTENT) orErr ("Not allowerd")
+          upd <- before(w, WikiAudit.UPD_CONTENT) orErr ("Not allowerd")
         ) yield {
             val (newData, errors) = wf.validate(data2 - "content")
 
@@ -402,7 +407,7 @@ $fdata
 
               razie.db.tx("forms.submitted", au.userName) { implicit txn =>
                 we.create
-                Wikie.after(None, we, WikiAudit.UPD_CONTENT, Some(au))
+                after(None, we, WikiAudit.UPD_CONTENT, Some(au))
                 Emailer.withSession(w.realm) { implicit mailSession =>
                   //                    au.quota.incUpdates
                   au.shouldEmailParent("Everything").map(
@@ -454,7 +459,7 @@ $fdata
 
               razie.db.tx("forms.submitted", au.userName) { implicit txn =>
 
-                Wikie.after(None, we, WikiAudit.UPD_CONTENT, Some(au))
+                after(None, we, WikiAudit.UPD_CONTENT, Some(au))
                   if (data2.contains("submit_button")) {
                   } else {
                     throw new IllegalArgumentException("")

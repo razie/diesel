@@ -32,10 +32,7 @@ class Application @Inject()(wikiCtl: Wiki) extends RazController {
 
   /** serve the root of a website - figure out which and serve the main page */
   def root = Action.async { implicit request =>
-//    WikiReactors.apply("wiki")
 
-    // make sure realms are loaded
-//    WikiReactors.reactorsLoadedF flatMap {b=>
     Future.successful(true).flatMap { b =>
 
       Try {
@@ -157,9 +154,6 @@ class Application @Inject()(wikiCtl: Wiki) extends RazController {
 
 // first look for rewrites and host redirection
 
-//    WikiReactors.apply("wiki")
-    // make sure realms are loaded
-//    WikiReactors.reactorsLoadedF flatMap { b =>
     Future.successful(true).flatMap {b=>
       Website.getHost.orElse(Some(Services.config.hostport)).flatMap(x =>
         Config.urlrewrite(x + "/" + path) orElse
@@ -400,8 +394,6 @@ class Application @Inject()(wikiCtl: Wiki) extends RazController {
         ROne[RacerKidInfo]("firstName" -> f, "lastName" -> l).map(_.rkId.toString).mkString
       case "rkForUserId" =>
         RacerKidz.findAllForUser(data.aso).map(_._id).toList.mkString(",")
-//      case "crUser" =>
-//        RkTe
       case "testCycle" => {
         def apply(table: String) = new RazMongoTable(table)
         val c = apply("Ver").findOne(Map("name" -> "TestCycle"))

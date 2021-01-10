@@ -7,6 +7,7 @@
 package controllers
 
 import com.google.inject.{Inject, Singleton}
+import controllers.WikiUtil.{after, before}
 import org.joda.time.DateTime
 import play.api.Configuration
 import play.api.data.Form
@@ -45,9 +46,6 @@ class WikieDebug @Inject() (config:Configuration) extends WikieBase {
             sourceW <- Wikis.find(sourceWid);
             destWid <- WID.fromPath(newWid) orErr "no source";
             destW <- Wikis.find(destWid) orErr "no destination";
-//            isFromPost <- ArWikiDomain.aEnds(sourceW.wid.cat, "Child").contains("Post") orErr "source has no child Posts/Items";
-//            isToPost <- WikiDomain.aEnds(destW.wid.cat, "Child").contains("Post") orErr "dest has no child Posts/Items"
-//            upd <- before(newVer, WikiEntry.UPD_UOWNER) orErr ("Not allowerd")
             nochange <- (sourceW.wid != destW.wid) orErr "no change"
           ) yield {
 //            val links = RMany[WikiLink]("to" -> sourceW.uwid.grated, "how" -> "Child", "from.cat" -> "Post").toList
@@ -164,7 +162,7 @@ class WikieDebug @Inject() (config:Configuration) extends WikieBase {
               razie.db.tx("Wiki.uowner", au.userName) { implicit txn =>
                 w.update(newVer)
               }
-              Wikie.after(Some(w), newVer, WikiAudit.UPD_UOWNER, Some(au))
+              after(Some(w), newVer, WikiAudit.UPD_UOWNER, Some(au))
               Redirect(wid.w)
             }) getOrElse
               noPerm(wid, "ADMIN_UOWNER")
@@ -182,7 +180,7 @@ class WikieDebug @Inject() (config:Configuration) extends WikieBase {
               razie.db.tx("Wiki.ucategory", au.userName) { implicit txn =>
                 w.update(newVer)
               }
-              Wikie.after(Some(w), newVer, WikiAudit.UPD_CATEGORY, Some(au))
+              after(Some(w), newVer, WikiAudit.UPD_CATEGORY, Some(au))
               Redirect(newVer.wid.w)
             }) getOrElse
               noPerm(wid, "ADMIN_UCATEGORY")
@@ -214,7 +212,7 @@ class WikieDebug @Inject() (config:Configuration) extends WikieBase {
               razie.db.tx("Wiki.urealm", au.userName) { implicit txn =>
                 w.update(newVer)
               }
-              Wikie.after(Some(w), newVer, WikiAudit.UPD_REALM, Some(au))
+              after(Some(w), newVer, WikiAudit.UPD_REALM, Some(au))
               Redirect(wid.w)
             }) getOrElse
               noPerm(wid, "ADMIN_UOWNER")
@@ -233,8 +231,8 @@ class WikieDebug @Inject() (config:Configuration) extends WikieBase {
                 w.update(newVer)
                 RMany[WikiLink]("to.id" -> w.uwid.id, "how"->"Child").toList.foreach{ link=>
                   link.delete
-                  link.pageFrom.map{p=>
-                    val c = p.copy(realm=newvalue, ver = p.ver+1)
+                  link.pageFrom.map { p =>
+                    val c = p.copy(realm = newvalue, ver = p.ver + 1)
                     p.update(c)
                     link.copy(to = newVer.uwid, from = c.uwid).create
                   } getOrElse {
@@ -242,7 +240,7 @@ class WikieDebug @Inject() (config:Configuration) extends WikieBase {
                   }
                 }
               }
-              Wikie.after(Some(w), newVer, WikiAudit.UPD_REALM, Some(au))
+              after(Some(w), newVer, WikiAudit.UPD_REALM, Some(au))
               Redirect(wid.w)
             }) getOrElse
               noPerm(wid, "ADMIN_UOWNER")

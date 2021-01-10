@@ -3,6 +3,7 @@ package mod.notes.controllers
 import _root_.controllers._
 import com.mongodb.casbah.Imports.wrapDBObj
 import com.novus.salat.grater
+import controllers.WikiUtil.{after, before}
 import mod.diesel.model.WG
 import model._
 import org.bson.types.ObjectId
@@ -272,14 +273,14 @@ object NotesLocker extends RazController with Logging {
                 tooold <- (ver >= w.ver) orErr { msg = ("err" -> "[Old auto-saved content...]"); "old autosaved" };
                 nocontent <- ("" != content) orErr { msg = ("err" -> "[No content...]"); "no content" };
                 newVer <- Some(w.cloneNewVer(w.label, "md", content, au._id));
-                upd <- Wikie.before(newVer, WikiAudit.UPD_CONTENT) orErr { msg = ("err" -> "[Not allowed...]"); "Not allowed" }
+                upd <- before(newVer, WikiAudit.UPD_CONTENT) orErr {msg = ("err" -> "[Not allowed...]"); "Not allowed"}
               ) {
                 var we = preprocess(newVer, true)
 
                 razie.db.tx("notes.Save", au.userName) { implicit txn =>
                   ROne[AutosavedNote]("nid"->id) foreach (_.delete)
                   we.update(we)
-                  Wikie.after(Some(w), we, WikiAudit.UPD_CONTENT, Some(au))
+                  after(Some(w), we, WikiAudit.UPD_CONTENT, Some(au))
                   //            Emailer.laterSession { implicit mailSession =>
                   //              au.quota.incUpdates
                   //              if (shouldPublish) notifyFollowersCreate(we, au)

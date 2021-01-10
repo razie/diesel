@@ -43,11 +43,6 @@ club  @clubwid.wpath   @clubwid.uwid
 <br><button onclick="doPurge('ModRkEntry')" >purge now</button> ModRkEntry @rks.size
 <br><button onclick="doPurge('RacerKidAssoc')" >purge now</button> RacerKidAssoc @rkas.size
 
-@*<br><button onclick="doPurge('VolunteerH')" >purge now</button> VolunteerH @{rkas.toList.map{x=>*@
-  @*RacerKidz.findVolByRkaId(x._id.toString).toSeq.size*@
-@*}.sum*@
-@*}*@
-
 @tabrkas=@{
   rkas.map(x=> Map(
     "from" -> x.from.toString,
@@ -110,7 +105,7 @@ club  @clubwid.wpath   @clubwid.uwid
       "lastName"->t._1.get.lastName,
       "role"->t._2.role,
       "paid"->t._3.map(_.paid).getOrElse(""),
-      "vol" -> (if(details == "2") t._3.map(controllers.Vol.volPerReg).getOrElse("-") else ""),
+      "vol" -> "",
       "regStatus" -> t._3.map(_.regStatus).getOrElse("n/a"),
       "uwId"->t._2._id.toString))
 }

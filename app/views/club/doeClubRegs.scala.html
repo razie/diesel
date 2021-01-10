@@ -14,7 +14,7 @@ club admin manages list of users and registrations
         "role"->t._2.role,
         "paid"->t._3.map(_.amountPaid.amount.toString).getOrElse(""),
         "due"->t._3.map(r=> (r.fee - r.amountPaid - r.acctBalance).orZero.amount.toString).getOrElse(""),
-        "vol" -> (if(details == "2") t._3.map(controllers.Vol.volPerReg).getOrElse("-") else ""),
+        "vol" -> "",
         "regStatus" -> t._3.map(_.regStatus).getOrElse("n/a"),
         "balance" -> t._3.map(_.acctBalance.amount.toString).getOrElse(""),
         "uwId"->t._2._id.toString
@@ -82,43 +82,6 @@ club admin manages list of users and registrations
 
 <br>
 <br>
-
-@***
-<div class="well">
-<strong>Members not registered</strong> do not have accounts on the site and/or are not included in a registration.
-
-@model.RacerKidz.checkMyself(club._id)
-
-@rks=@{
-  model.RacerKidz.findAssocForUser(club._id).filter(_.assoc == ASSOC_PARENT).map(x=>(x,x.rk.get)).map(t=>
-    Map("fname"->t._2.info.firstName,
-        "lname"->t._2.info.lastName,
-        "role" -> t._2.info.role,
-        "button"->t._2._id.toString,
-        "associd"->t._1._id.toString,
-        "id" -> t._2._id.toString))
-}
-
-@kidlink(row:Map[String,String],k:String,v:String)={
-  @k match {
-        case "button" => {
-      <a href="@routes.Kidz.doeUserKid(club._id.toString, v, "-", row("associd"), "Club")" class="btn btn-xs">More...</a>
-      }
-    case _ => {@v}
-  }
-}
-
-@util.utilSimpleTable(rks,
-        Seq("fname" -> "First Name",
-                "lname"->"Last Name",
-                "role" -> "Role",
-                "button"->"Details"), Some(kidlink))
-
-Add more from <a href="@routes.Club.doeClubKidz">here</a>
-
-</div>
-
-***@
 
 <hr>
 @views.html.club.regStatusLegend()

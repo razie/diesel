@@ -1515,10 +1515,6 @@ regAdmin=$regAdmin
               case "Form" => regs.foreach(_.deprecatedWids.flatMap(_.page.toSeq).foreach(_.delete(au.id)))
               case "RegKid" => regs.map(_.kids.foreach(_.trash(au.id)))
               case "Reg" => regs.foreach(_.trash(au.id))
-              case "VolunteerH" =>
-                rkas.foreach { x =>
-                  RacerKidz.findVolByRkaId(x._id.toString).foreach(_.trash(au.id))
-                }
             }
           }
         }

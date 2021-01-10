@@ -13,18 +13,19 @@ import com.novus.salat._
 import mod.diesel.controllers.DieselControl
 import model._
 import org.bson.types.ObjectId
+import org.joda.time.DateTime
 import play.api.data.Form
 import play.api.data.Forms.{mapping, nonEmptyText, text}
 import play.api.mvc.{Action, AnyContent, Cookie, Request}
 import play.twirl.api.Html
 import razie.audit.Audit
-import razie.db.ROne
+import razie.db.{ROne, RazMongo, Txn}
 import razie.db.RazSalatContext._
 import razie.hosting.{Website, WikiReactors}
 import razie.tconf.Visibility.PUBLIC
 import razie.wiki.model.features.WikiCount
 import razie.wiki.model.{WikiAudit, WikiSearch, _}
-import razie.wiki.util.{PlayTools, QueryParms}
+import razie.wiki.util.{PlayTools, QueryParms, Staged}
 import razie.wiki.{Config, Enc, Services}
 import razie.{Logging, js}
 import scala.Array.canBuildFrom
@@ -963,6 +964,19 @@ object WikiApiv1 extends WikiBase {
 
 object WikiUtil {
 
+  def before(e: WikiEntry, what: String)(implicit errCollector: VErrors = IgnoreErrors): Boolean = {
+    WikiObservers.before(WikiEvent(what, "WikiEntry", e.wid.wpath, Some(e)))
+  }
+
+  def after(old: Option[WikiEntry], e: WikiEntry, what: String, au: Option[User])(implicit errCollector: VErrors =
+  IgnoreErrors): Unit = {
+    Services ! WikiAudit(what, e.wid.wpathFull, au.map(_._id), None, Some(e), old)
+  }
+
+  case class LinkWiki(how: String, notif: String, markup: String, comment: String)
+
+  case class ReportWiki(reason: String)
+
   case class EditWiki(label: String, markup: String, content: String, visibility: String, edit: String,
                       oldVer: String, tags: String, notif: String)
 
@@ -1051,6 +1065,106 @@ object WikiUtil {
         wid.page
     }
     w
+  }
+
+  /** create links to parents or other wikis, based on staged WikiLinkStaged */
+  def applyStagedLinks(wid: WID, w: WikiEntry)(implicit txn: Txn): WikiEntry = {
+    var we = w
+
+    for (s <- Staged.find("WikiLinkStaged").filter { x =>
+      val from = x.content.get("from").asInstanceOf[DBObject]
+      from.get("cat") == wid.cat && from.get("name") == wid.name
+    }) {
+      val wls = Wikis.fromGrated[WikiLinkStaged](s.content)
+
+      //todo this nevet actually works because the we is not created yet...??
+      // todo so i should use we.uwid insted - i know it's from anyways
+      //but then it will be replicated for parent below - will need to prevent duplicates
+      for (ufrom <- wls.from.uwid;
+           uto <- wls.to.uwid) {
+        val wl = WikiLink(ufrom, uto, wls.how)
+        wl.create
+      }
+
+      we = we.copy(parent = Wikis.find(wls.to).map(_._id), updDtm = DateTime.now) // add parent
+      s.delete
+    }
+
+    // needs parent?
+    we.wid.parentWid.flatMap(_.uwid).foreach { puwid =>
+      val isd = if (we.props.contains("draft")) Some("y") else None
+      val wl = ROne[WikiLink]("from.id" -> we.uwid.id, "to.id" -> puwid.id, "how" -> "Child")
+      if (wl.isDefined)
+        wl.foreach(_.copy(draft = isd).update)
+      else
+        WikiLink(we.uwid, puwid, "Child", isd).create
+    }
+
+    we
+  }
+
+  /** simple search for all realms */
+  def searchAll(qi: String, realm: String) = {
+    val PAT = qi.r
+
+    def min(a: Int, b: Int) = if (a > b) b else a
+
+    def max(a: Int, b: Int) = if (a > b) a else b
+
+    val wikis = isearch(qi, realm).map { t =>
+      val (u, m) = t
+      (WikiEntry grated u,
+          m.before.subSequence(max(0, m.before.length() - 5), m.before.length()),
+          m.matched,
+          m.after.subSequence(0, min(5, m.after.length)))
+    }
+
+    val wl = wikis.take(500).toList
+    wl
+  }
+
+  /** simple search for all realms */
+  def searchAllTag(qi: String, realm: String) = {
+    val PAT = qi.r
+
+    def min(a: Int, b: Int) = if (a > b) b else a
+
+    def max(a: Int, b: Int) = if (a > b) a else b
+
+    val wikis = Wikis(realm)
+        .cats.keys.toList
+        .flatMap(cat => Wikis(realm).pages(cat).toList)
+        .filter(_.tags.contains(qi))
+        .take(500)
+        .map { w =>
+          val m = PAT.findAllMatchIn(w.tags.mkString(",")).collectFirst({ case x => x }).get
+          (w,
+              m.before.subSequence(0, m.before.length()),
+              m.matched,
+              m.after.subSequence(0, m.after.length))
+        }
+
+    wikis
+  }
+
+  /** search string AND update content if update function present */
+  def isearch(qi: String, realm: String, update: Option[DBObject => DBObject] = None) = {
+    val PAT = qi.r
+    val table = RazMongo("WikiEntry")
+
+    val wikis =
+      for (
+        u <- table.findAll() if qi.length >= 3 && (realm.length == 0 || u.get("realm") == realm);
+//          m <- (tag.isDefined && u.get("tags").asInstanceOf[Seq[String]].contains(tag.get) ||
+//            PAT.findAllMatchIn(u.get("content").asInstanceOf[String]))
+        m <- PAT.findAllMatchIn(u.get("content").asInstanceOf[String])
+      ) yield {
+        if (update.isDefined) {
+          table.save(update.get.apply(u))
+        }
+        (u, m)
+      }
+    wikis
   }
 
 }

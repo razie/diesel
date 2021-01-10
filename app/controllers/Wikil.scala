@@ -193,7 +193,7 @@ class Wikil @Inject() (config:Configuration) extends WikieBase {
           views.html.wiki.wikiLink(
             WID("User", au.id),
             wid,
-            linkForm.fill(Wikil.LinkWiki("Enjoy", model.UW.EMAIL_EACH, Wikis.MD, content)), withComment)
+            linkForm.fill(WikiUtil.LinkWiki("Enjoy", model.UW.EMAIL_EACH, Wikis.MD, content)), withComment)
         }
       }
     }) getOrElse
@@ -384,7 +384,7 @@ cleanAuth(auth)
         views.html.wiki.wikiLink(WID("User", au.id), wid, formWithErrors, withComment)
       }),
     {
-      case we @ Wikil.LinkWiki(how, notif, mark, comment) =>
+      case we@WikiUtil.LinkWiki(how, notif, mark, comment) =>
         (for (
           hasuwid <- wid.uwid.isDefined orErr "cannot find a uwid";
           uwid <- wid.uwid;

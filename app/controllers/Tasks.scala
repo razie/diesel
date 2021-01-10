@@ -287,11 +287,6 @@ Email verified. Your account is now active!
           val ut = au.tasks.find(_.name == UserTasks.START_REGISTRATION)
           Redirect(routes.Club.doeStartRegSimple(WID.fromPath(ut.map(_.args("club")).mkString).get))
         }
-        case UserTasks.APPROVE_VOL => {
-          val ut = au.tasks.find(_.name == UserTasks.APPROVE_VOL)
-                    Vol.doeVolApprover(auth.get)
-//          Redirect(routes.Club.doeVolApprover(auth.get))
-        }
         case _ => {
           Msg("?")
         }
