@@ -204,7 +204,7 @@ wiki fragment, used in another page
       function likeWikiFunc (how) {
         require(['jquery'], function($){
           var reason = how == 0 ? prompt ("Please give us some feedback to improve this topic...", "") : "";
-          if(! wikiVoted) {
+          if( !wikiVoted && (reason == 1 || reason.length > 1) ) {
             $.ajax(
                 "@routes.Wikie.like(wid)", {
                   type: 'POST',
