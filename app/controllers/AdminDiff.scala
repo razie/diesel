@@ -360,6 +360,9 @@ class AdminDiff extends AdminBase with Logging {
         // b contains ok - is important
         Ok(b + " <a href=\"" + s"http://$target${remoteWid.urlRelative(request.realm)}" + "\">" + remoteWid.wpath + "</a>")
       } catch {
+        case x: CommRtException => {
+          Ok("error " + x.httpCode + " " + x.details)
+        }
         case x: Throwable => Ok("error " + x)
       }
     } else {

@@ -775,11 +775,7 @@ object NotesLocker extends RazController with Logging {
   // format a note into html - customized to manage sfiddles
   def format(wid: WID, markup: String, icontent: String, iwe: Option[WikiEntry] = None, au:Option[model.User]) = {
     iwe.filter(x=>
-      (
-        (au exists (_ hasPerm Perm.codeMaster)) ||
-        (au exists (_ hasPerm Perm.adminDb))
-      ) &&
-      icontent.lines.find(_ startsWith ".sfiddle").isDefined
+      au.exists(_.isDev) && icontent.lines.find(_ startsWith ".sfiddle").isDefined
     ).fold(
         (
           if(icontent.lines.find(_ startsWith ".sfiddle").isDefined)

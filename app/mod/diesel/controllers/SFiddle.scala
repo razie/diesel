@@ -34,10 +34,7 @@ class SFiddleBase extends RazController {
     (for (
       au <- stok.au;
       isA <- checkActive(au);
-      ok <-
-      ((au hasPerm Perm.domFiddle) ||
-        (au hasPerm Perm.codeMaster) ||
-        (au hasPerm Perm.adminDb)) orCorr(cNoPermission)
+      ok <- au.isDev orCorr (cNoPermission)
     ) yield f(stok)
       ) getOrElse Future {
       val more = Website(request).flatMap(_.prop("msg.noPerm")).flatMap(WID.fromPath).flatMap(_.content).mkString
@@ -54,10 +51,7 @@ class SFiddleBase extends RazController {
     (for (
       au <- activeUser;
       isA <- checkActive(au);
-      ok <-
-      ((au hasPerm Perm.domFiddle) ||
-        (au hasPerm Perm.codeMaster) ||
-        (au hasPerm Perm.adminDb)) orCorr(cNoPermission)
+      ok <- au.isDev orCorr (cNoPermission)
     ) yield f(au)(errCollector)(request)
       ) getOrElse {
       val more = Website(request).flatMap(_.prop("msg.noPerm")).flatMap(WID.fromPath).flatMap(_.content).mkString
@@ -118,7 +112,7 @@ class SFiddles extends SFiddleBase with Logging {
       val notes = (Notes.notesForTag(NotesLocker.book, au._id, SFIDDLE).toList ::: Notes.sharedNotesByTag(au._id, SFIDDLE).toList).filter(_.content contains s".sfiddle $path")
       val q = request.queryString.map(t => (t._1, t._2.mkString))
 
-      notes.headOption.filter(x => (au hasPerm Perm.codeMaster) || (au hasPerm Perm.adminDb)).fold(
+      notes.headOption.filter(x => au.isDev).fold(
         Ok(s"no sfiddle for $path")
       ) { we =>
         val script = we.content.lines.filterNot(_ startsWith ".").mkString("\n")
@@ -135,19 +129,19 @@ class SFiddles extends SFiddleBase with Logging {
       au <- activeUser;
       isA <- checkActive(au)
     ) yield {
-        Some(1).filter(x => (au hasPerm Perm.codeMaster) || (au hasPerm Perm.adminDb)).fold(
-          Future.successful(Ok(s"no sfiddle for id $id"))
-        ) { we =>
-          val lang = request.body.asFormUrlEncoded.get.apply("l").mkString
-          val j = razscr.dec(request.body.asFormUrlEncoded.get.apply("j").mkString)
-          val (_, res) = isfiddle(j, lang)(request, au)
-          // special stuff for calling actions
-          // todo is this a security hole?
-          if (res.isInstanceOf[Action[_]])
-            res.asInstanceOf[Action[_]](request).run
-          else
-            Future.successful(Ok(res.toString))
-        }
+      Some(1).filter(x => au.isDev).fold(
+        Future.successful(Ok(s"no sfiddle for id $id"))
+      ) { we =>
+        val lang = request.body.asFormUrlEncoded.get.apply("l").mkString
+        val j = razscr.dec(request.body.asFormUrlEncoded.get.apply("j").mkString)
+        val (_, res) = isfiddle(j, lang)(request, au)
+        // special stuff for calling actions
+        // todo is this a security hole?
+        if (res.isInstanceOf[Action[_]])
+          res.asInstanceOf[Action[_]](request).run
+        else
+          Future.successful(Ok(res.toString))
+      }
 
       }
       ) getOrElse Future.successful(unauthorized("CAN'T"))
@@ -166,7 +160,7 @@ class SFiddles extends SFiddleBase with Logging {
       val j = razscr.dec(request.body.asFormUrlEncoded.get.apply("j").mkString)
       val q = request.queryString.map(t => (t._1, t._2.mkString))
 
-      Some(1).filter(x => (au hasPerm Perm.codeMaster) || (au hasPerm Perm.adminDb)).fold(
+      Some(1).filter(x => au.isDev).fold(
         Ok(s"no sfiddle for ")
       ) { we =>
         ROK.s reactorLayout12 {implicit stok=>
@@ -331,7 +325,7 @@ class SFiddles extends SFiddleBase with Logging {
 
     val f = Fiddle (what, lang, reactor, wpath, stok.au)
 
-    Some(1).filter(x => (au hasPerm Perm.codeMaster) || (au hasPerm Perm.adminDb)).fold(
+    Some(1).filter(x => au.isDev).fold(
       Ok(s"no sfiddle for ")
     ) { we =>
       f.autosave(j, t)
@@ -373,7 +367,7 @@ class SFiddles extends SFiddleBase with Logging {
     implicit errCollector => implicit request =>
       val q = request.queryString.map(t => (t._1, t._2.mkString))
 
-      Some(1).filter(x => (au hasPerm Perm.codeMaster) || (au hasPerm Perm.adminDb)).fold(
+      Some(1).filter(x => au.isDev).fold(
         Ok(s"no sfiddle for ")
       ) { we =>
         val g = "grammar g;\nmain: 'a'|'b' ;"

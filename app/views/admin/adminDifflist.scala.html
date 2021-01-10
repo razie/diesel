@@ -145,6 +145,42 @@ purge audit tables
 
     <hr>
 
+  @* ********************  NEW LOCAL   *@
+
+  <h3>New local <small> | or removed on remote: (won't copy over links)</small></h3>
+    <table class="table table-striped table-condensed">
+    @lnew.sortBy(_.realm).map { wea =>
+      <tr id="row-@wea.id">
+        <td>
+@*//        @if(wea.cat != "Reactor") {*@
+          <a
+          xhref="x"
+          onclick="applyDif('@wea.id', '@routes.AdminDiff.applyDiffTo(localRealm, toRealm, remote, WID(wea.cat, wea.name).r(wea.realm))')"
+          class="btn btn-xs btn-success"
+          >USE LOCAL &raquo;</a>
+@*//        }*@
+         </td>
+        <td>
+        <small>
+        @wea.realm <a href="@controllers.WikiUtil.w(wea.cat, wea.name, wea.realm)">@wea.cat:w/@wea.name v@wea.ver </a>
+        ( <a href="/wikie/content/@wp(WID(wea.cat, wea.name).r(wea.realm))">content </a> )
+        </small>
+        </td>
+        <td>
+          @if(wea.cat != "Reactor") {
+          <a
+          xhref="#"
+          onclick="applyDif('@wea.id', '@routes.Wikie.wikieDelete1(WID(wea.cat, wea.name).r(wea.realm))')"
+          class="btn btn-xs btn-danger"
+          >	&laquo; DELETE LOCAL</a>
+          }
+        </td>
+      </tr>
+    }
+    </table>
+
+    <hr>
+
   @* ********************  REMOVED LOCAL *@
 
   <h3>Removed local <small> | or new on remote (won't copy links!!):</small></h3>
@@ -182,42 +218,6 @@ purge audit tables
   </ul>
 
   <hr>
-
-  @* ********************  NEW LOCAL   *@
-
-  <h3>New local <small> | or removed on remote: (won't copy over links)</small></h3>
-    <table class="table table-striped table-condensed">
-    @lnew.sortBy(_.realm).map { wea =>
-      <tr id="row-@wea.id">
-        <td>
-@*//        @if(wea.cat != "Reactor") {*@
-          <a
-          xhref="x"
-          onclick="applyDif('@wea.id', '@routes.AdminDiff.applyDiffTo(localRealm, toRealm, remote, WID(wea.cat, wea.name).r(wea.realm))')"
-          class="btn btn-xs btn-success"
-          >USE LOCAL &raquo;</a>
-@*//        }*@
-        </td>
-        <td>
-        <small>
-        @wea.realm <a href="@controllers.WikiUtil.w(wea.cat, wea.name, wea.realm)">@wea.cat:w/@wea.name v@wea.ver </a>
-        ( <a href="/wikie/content/@wp(WID(wea.cat, wea.name).r(wea.realm))">content </a> )
-        </small>
-        </td>
-        <td>
-          @if(wea.cat != "Reactor") {
-          <a
-          xhref="#"
-          onclick="applyDif('@wea.id', '@routes.Wikie.wikieDelete1(WID(wea.cat, wea.name).r(wea.realm))')"
-          class="btn btn-xs btn-danger"
-          >	&laquo; DELETE LOCAL</a>
-          }
-        </td>
-      </tr>
-    }
-    </table>
-
-    <hr>
 
 @* ********************  MINOR DIFFS   *@
 

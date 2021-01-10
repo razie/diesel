@@ -478,24 +478,26 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
   /** api to set content remotely - used by sync and such */
   def setContent(iwid: WID) = FAUR("setContent", true) {
     implicit request =>
-      val au=request.au.get
+      def getRealm(remote: WikiEntry) = iwid.realm.getOrElse(remote.realm)
 
-      def fromJ (s:String) = {
+
+      def fromJ(s: String) = {
         val dbo = com.mongodb.util.JSON.parse(s).asInstanceOf[DBObject];
         Some(grater[WikiEntry].asObject(dbo))
       }
 
       val data = PlayTools.postData(request.req)
 
-      (for(
-        r1 <- au.hasPerm(Perm.uWiki) orCorr cNoPermission("uWiki");
-        hasQuota <- (au.isAdmin || au.isMod || au.quota.canUpdate) orCorr cNoQuotaUpdates;
+      (for (
         wej <- data.get("we") orErr "bad we";
         remoteHostPort <- data.get("remote").orElse(Some("")); // orElse for tmeporary compatibility
-        remote <- fromJ (wej) orErr "can't J"
+        remote <- fromJ(wej) orErr "can't J";
+        au <- request.au.map(_.forRealm(getRealm(remote)));
+        r1 <- (au.hasPerm(Perm.uWiki) || au.isDev) orCorr cNoPermission("uWiki,dev");
+        hasQuota <- (au.isMod || au.quota.canUpdate) orCorr cNoQuotaUpdates
       ) yield {
+        val toRealm = getRealm(remote)
         // make sure wid has realm
-        val toRealm = iwid.realm.getOrElse(remote.realm)
         val wid = iwid.r(toRealm)
 
         log(s"Wiki.setContent toRealm: $toRealm | remote: $remoteHostPort / ${remote.wid} | local: ${request.hostPort} / $wid")
@@ -516,12 +518,13 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
             debug("  found: " + w.wid.wpathFull)
 
             (for (
-              can <- canEdit(wid, request.au, Some(w)) orErr "can't edit";
+              can <- canEdit(wid, Some(au), Some(w)) orErr "can't edit";
               newVerNo <- Some(
                 if (w.ver < remote.ver) remote.ver // normal: remote is newer, so reset version to it
                 else w.ver + 1 // remote overwrites local, just keep increasing local ver
               );
-              nochange <- (w.content != remote.content || w.tags != remote.tags || w.props != remote.props || w.markup != remote.markup) orErr ("no change");
+              nochange <- (w.content != remote.content || w.tags != remote.tags || w.props != remote.props || w
+                  .markup != remote.markup) orErr ("no change");
               newVer <- Some(w.copy(
                 content = remote.content,
                 tags = remote.tags,
@@ -558,13 +561,13 @@ object Wikie /* @Inject() (config:Configuration)*/ extends WikieBase {
             debug("  no topics found - create new one")
 
             (for (
-              can <- canEdit(wid, request.au, None) orErr "can't edit";
+              can <- canEdit(wid, Some(au), None) orErr "can't edit";
               wej <- data.get("we") orErr "bad we";
               source <- fromJ(wej) orErr "can't J";
               newVer <- Some(source.copy(
                 ver = 1,
-                realm=wid.getRealm,
-                updDtm = DateTime.now )
+                realm = wid.getRealm,
+                updDtm = DateTime.now)
               ); // not copying over history so reset to now
               upd <- before(newVer, WikiAudit.UPD_CONTENT) orErr ("Not allowerd")
             ) yield {

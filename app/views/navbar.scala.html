@@ -182,7 +182,7 @@ require(['jquery'], function($){
               <li><a href="/gapi/demo">GAPI demo</a></li>
             }
 
-            @if(! web().navrMenuRemove.contains("Diffs") && stok.au.exists(u=> u.isMod)) {
+            @if(! web().navrMenuRemove.contains("Diffs") && stok.au.exists(u=> u.isDev)) {
               <li class="divider"></li>
               <li><a href="/admin/drafts/@stok.realm">Drafts</a></li>
                   @if(Config.isLocalhost) {
