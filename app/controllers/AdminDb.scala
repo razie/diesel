@@ -8,6 +8,7 @@ package controllers
 import com.google.inject.Singleton
 import com.mongodb.casbah.Imports._
 import org.bson.types.ObjectId
+import org.json.JSONArray
 import razie.audit.Audit
 import razie.db.RazMongo
 import razie.hosting.WikiReactors
@@ -56,6 +57,10 @@ class AdminDb extends AdminBase {
       ttype match {
         case "Number" =>
           clog << RazMongo(table).update(Map("_id" -> new ObjectId(id)), Map("$set" -> Map(field -> value.toFloat)))
+        case "Array" => {
+          val l = razie.js.fromArray(new JSONArray(value))
+          clog << RazMongo(table).update(Map("_id" -> new ObjectId(id)), Map("$set" -> Map(field -> l)))
+        }
         case _ =>
           clog << RazMongo(table).update(Map("_id" -> new ObjectId(id)), Map("$set" -> Map(field -> value)))
       }
