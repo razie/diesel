@@ -398,11 +398,9 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
             else DieselJsonFactory.fromj(m.toMap).asInstanceOf[DomAst]
             ).withDetails("(from capture)")
         captureTree = d.toHtml
-        EnginePrep.addStoriesToAst(d, List(ipage), true)
         d
       } else {
         val d = DomAst("root", ROOT).withDetails("(from story)")
-        EnginePrep.addStoriesToAst(d, List(ipage))
         d
       }
 
@@ -416,6 +414,9 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
         ipage :: pages map WikiDomain.spec,
         DieselMsg.fiddleStoryUpdated)
       setHostname(engine.ctx.root)
+
+      EnginePrep.addStoriesToAst(engine, List(ipage), capture startsWith "{")
+
       DomCollector.collectAst("fiddle", stok.realm, engine.id, stok.au.map(_.id), engine, stok.uri)
 
       // let ESP clients know we start...

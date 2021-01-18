@@ -1507,30 +1507,28 @@ class DomApi extends DomApiBase with Logging {
         SpecCache.orcached(p, WikiDomain.domFrom(p)).toList
     ).foldLeft(
       RDomain.empty
-    )((a,b) => a.plus(b)).revise.addRoot
+    )((a, b) => a.plus(b)).revise.addRoot
 
     val ipage = new WikiEntry("Story", storyName, storyName, "md", story, uid, Seq("dslObject"), stok.realm)
 
     var res = ""
     var captureTree = ""
 
-    val root = {
-      val d = DomAst("root", AstKinds.ROOT).withDetails("(from story)")
-      EnginePrep.addStoriesToAst(d, List(ipage))
-      d
-    }
-
     val idom = WikiDomain.domFrom(ipage).get.revise addRoot
+
+    val root = DomAst("root", AstKinds.ROOT).withDetails("(from story)")
 
     // start processing all elements
     val engine = DieselAppContext.mkEngine(dom, root, settings, ipage :: pages map WikiDomain.spec, "anonRunFiddle")
     setHostname(engine.ctx.root)
 
+    EnginePrep.addStoriesToAst(engine, List(ipage))
+
     // decompose all tree or just testing? - if there is a capture, I will only test it
     val fut =
       engine.process
 
-    fut.map {engine =>
+    fut.map { engine =>
       res += engine.root.toHtml
 
       val m = Map(
