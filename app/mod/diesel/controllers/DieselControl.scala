@@ -161,31 +161,49 @@ class DieselControl extends RazController with Logging {
       dom <- WikiDomain.domFrom(page) orErr "no dom"
     ) yield {
       val rdom = dom.revise addRoot
-      val left  = rdom.assocs.filter(_.z == cat)
+      val left = rdom.assocs.filter(_.z == cat)
       val right = rdom.assocs.filter(_.a == cat)
-      val path = if(ipath == "/") ipath+cat else ipath
-      val c  = rdom.classes.get(cat)
+      val path = if (ipath == "/") ipath + cat else ipath
+      val c = rdom.classes.get(cat)
       val base = c.toList.flatMap(_.base)
 
-      def mkLink (s:String,dir:String,assoc:Option[RDOM.A]) = routes.DieselControl.dslDomBrowser (wpath, s, path+"/"+s).toString()
+      def mkLink(s: String, dir: String, assoc: Option[RDOM.A]) = routes.DieselControl.dslDomBrowser(wpath, s,
+        path + "/" + s).toString()
 
-      ROK.r apply {implicit stok=>
-        views.html.modules.diesel.catBrowser("diesel", wid.getRealm, wid.getRealm, Some(page), cat, base, left, right)(mkLink)
+      ROK.r apply { implicit stok =>
+        views.html.modules.diesel.catBrowser("diesel", wid.getRealm, wid.getRealm, Some(page), cat, base, left, right)(
+          mkLink)
       }
     }) getOrElse NotFound(errCollector.mkString)
   }
 
-  /** page for looking and navigating among categories */
-  def catBrowser(plugin:String, conn:String, realm:String, cat:String, ipath:String, o:Option[O]=None) = Action { implicit request =>
-    val rdom  = WikiDomain(realm).rdom
-    val c  = rdom.classes.get(cat)
-    val left  = rdom.assocs.filter(_.z == cat)
+  /** page for looking and navigating among categories
+    *
+    * @param plugin
+    * @param conn
+    * @param realm
+    * @param cat class to find
+    * @param ipath
+    * @param o
+    * @return
+    */
+  def catBrowser(plugin: String, conn: String, realm: String, cat: String, ipath: String, o: Option[O] = None) = Action
+  { implicit request =>
+    val rdom = WikiDomain(realm).rdom
+    val c = rdom.classes.get(cat)
+    val left = rdom.assocs.filter(_.z == cat)
     val right = rdom.assocs.filter(_.a == cat)
     val base = c.toList.flatMap(_.base)
-    val path = if(ipath == "/") ipath+cat else ipath
+    val path = if (ipath == "/") ipath + cat else ipath
 
-    // context aware linking for the cat browser at the top
-    def mkLink (s:String, dir:String, assoc:Option[A]=None) = {
+    /** context aware linking for the cat browser at the top
+      *
+      * @param s class to find
+      * @param dir
+      * @param assoc
+      * @return
+      */
+    def mkLink(s: String, dir: String, assoc: Option[A] = None) = {
       val newPath =
         if (path.split("/") contains s) s"/$s" // stop recursive traverses - some robots are stupid
         else s"$path/$s"
@@ -195,7 +213,17 @@ class DieselControl extends RazController with Logging {
         o.isDefined && dir == "from").flatMap(_.parms.find(p => p.isRef && p.ttype == o.get.base)).map { sc =>
         // find ref parm from s to o
         val as = assoc.map(_.zRole).getOrElse(sc.name)
-        s"/diesel/objBrowserByQuery/$plugin/$conn/$s/_${as}_value/${o.get.name}"
+        val ref = new FullSpecRef(
+          plugin,
+          conn,
+          cat,
+          o.get.name,
+          "",
+          realm
+        )
+        // we're navigating backwards a many to one association
+//        s"/diesel/objBrowserByQuery/$plugin/$conn/$s/_${as}_value/${o.get.name}"
+        s"/diesel/objBrowserByQuery/$plugin/$conn/$s/${as}/${o.get.name}"
       } getOrElse
           routes.DieselControl.catBrowser(plugin, conn, realm, s, newPath).toString()
     }
@@ -233,14 +261,12 @@ class DieselControl extends RazController with Logging {
       catBrowser(plugin, conn, request.realm, cat, ipath, o).apply(
         request.ireq.asInstanceOf[Request[AnyContent]]).value.get.get
     } else {
-      val s = list
-          .flatMap(_.getValueO.toList)
-          .map { dov =>
-            val o = dov //.getValueO //value.asInstanceOf[O]
-            val u = routes.DieselControl.objBrowserById(plugin, conn, cat, o.name, ipath).url
-            s"""<a href="$u">${o.name}</a> ${o.getDisplayName}"""
-          }
-      Ok(s.mkString("<br>")).as("text/html")
+      ROK.k reactorLayout12 {
+        views.html.wiki.wikiListAssets("list diesel entities", "", "", list.map { x =>
+          val ref = x.ref.asInstanceOf[FullSpecRef]
+          (ref, ref.key)
+        }, Nil, "./", "", request.realm)
+      }
     }
   }
 

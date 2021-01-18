@@ -320,17 +320,22 @@ class EEDomInventory extends EExecutor("diesel.inv") {
 
         res
       }
+
+      case _ => throw new DieselExprException("Msg not known: " + in.ea)
     }
   }
 
   override def toString = "$executor::diesel.inv "
 
   override val messages: List[EMsg] =
-    EMsg(DB, "testConnection") ::
-        EMsg(DB, "findByRef") ::
-        EMsg(DB, "findByQuery") ::
-        EMsg(DB, "listAll") ::
+    EMsg(DB, "register") ::
         EMsg(DB, "connect") ::
-        EMsg(DB, "register") :: Nil
+        EMsg(DB, "testConnection") ::
+        EMsg(DB, "upsert") ::
+        EMsg(DB, "find") ::
+        EMsg(DB, "query") ::
+        EMsg(DB, "remove") ::
+        EMsg(DB, "listAll") ::
+        Nil
 }
 
