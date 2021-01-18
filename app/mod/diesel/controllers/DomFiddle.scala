@@ -141,7 +141,7 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
     */
 
   // active clients, for broadcasting
-  val clients = new TrieMap[String, ActorRef]()
+  val espClients = new TrieMap[String, ActorRef]()
 
   /**
    * 1. split a page. the page will then open a channel espOpenClient
@@ -179,14 +179,16 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
     */
   class MyWebSocketActor(out: ActorRef, id:String, client:Boolean) extends Actor {
     // was there another? don't leak them...
-    clients.remove(id).map(DieselAppContext.getActorSystem.stop)
+    espClients.remove(id).map(DieselAppContext.getActorSystem.stop)
 
-    clients.put(id, self)
+    espClients.put(id, self)
 
     def receive = {
+      case msg: String if msg == "ping" =>
+        out ! (js.tojson(Map("pingMsg" -> msg)).toString)
       case msg: String =>
-        out ! (js.tojson(Map("ping" -> true, "msg" -> msg)).toString)
-      case m : collection.Map[_,_] => //      case m: Map[String,Any] =>
+        out ! (js.tojson(Map("pingMsg" -> msg)).toString)
+      case m: collection.Map[_, _] => //      case m: Map[String,Any] =>
         out ! (js.tojson(m).toString)
     }
 
@@ -202,8 +204,8 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
 
     override def postStop() = {
       // socket closed
-      if(clients.get(id).exists(_ eq this)) {
-        clients.remove(id)
+      if (espClients.get(id).exists(_ eq this)) {
+        espClients.remove(id)
       }
     }
   }
@@ -416,6 +418,9 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
       setHostname(engine.ctx.root)
       DomCollector.collectAst("fiddle", stok.realm, engine.id, stok.au.map(_.id), engine, stok.uri)
 
+      // let ESP clients know we start...
+      espClients.get(id).foreach(_ ! "start")
+
       // decompose all tree or just testing? - if there is a capture, I will only test it
       val fut =
 //      if(! realTime) {
@@ -479,9 +484,7 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
 
         if(!compileOnly && DomState.isDone(st)) {
           debug("  fiddleSU - sending WS: " + DomState.isDone(engine.status))
-          clients.get(id).foreach(_ ! m)
-          // todo WTF am I broadcasting?
-          //  clients.values.foreach(_ ! m)
+          espClients.get(id).foreach(_ ! m)
         }
 
         m
@@ -497,12 +500,13 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
 
       val timeoutFuture = if(compileOnly) fut else Future firstCompletedOf Seq(fut, delayedFuture)
 
-      // send if not sent already
+      // send only once
       @volatile var sentWS = false
 
       if(! compileOnly) fut.onComplete {
         case Success(v) => {
           debug("  fiddleSU - onComplete: " + DomState.isDone(engine.status))
+          // if not sent by the timeout future
           if(!sentWS) {
             sentWS = true
             sendResult(engine)

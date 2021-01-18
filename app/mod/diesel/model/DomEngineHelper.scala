@@ -45,7 +45,7 @@ object DomEngineHelper {
       q.get(name).orElse(fParm(name)).getOrElse(dflt)
 
     def fqhParm(name: String) =
-      q.get(name).orElse(fParm(name)).orElse(request.headers.get(name))
+      q.get(name).orElse(fParm(name)).orElse(request.headers.get(name)).filter(_.trim.length > 0)
 
     def fqhoParm(name: String, dflt: String) =
       q.get(name).orElse(fParm(name)).orElse(request.headers.get(name)).getOrElse(dflt)
@@ -63,7 +63,7 @@ object DomEngineHelper {
       resultMode = fqhoParm(RESULT_MODE, ""),
       parentNodeId = fqhParm(DIESEL_NODE_ID),
       configTag = fqhParm(DIESEL_CONFIG_TAG),
-      userId = fqhParm(DIESEL_USER_ID),
+      userId = fqhParm(DIESEL_USER_ID).filter(_.trim.length > 5),
       postedContent = {
         if (request.body.isInstanceOf[AnyContentAsRaw]) {
           val raw = request.body.asRaw.flatMap(_.asBytes())
@@ -97,7 +97,7 @@ object DomEngineHelper {
       q.get(name).orElse(fParm(name)).getOrElse(dflt)
 
     def fqhParm(name:String) =
-      q.get(name).orElse(fParm(name)).orElse(request.headers.get(name))
+      q.get(name).orElse(fParm(name)).orElse(request.headers.get(name)).filter(_.trim.length > 0)
 
     def fqhoParm(name:String, dflt:String) =
       q.get(name).orElse(fParm(name)).orElse(request.headers.get(name)).getOrElse(dflt)
