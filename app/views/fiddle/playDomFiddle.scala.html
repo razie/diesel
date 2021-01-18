@@ -333,7 +333,18 @@ updDrafts();
 $('#wikiMode').change(updWiki);
 updWiki();
 
+var isESP = false;
+
+/** expand story here and move spec to new window */
 function startESP() {
+  isESP = true;
+
+  $('#expandedStory').prop('checked', true);
+  $('#expandedSpec').prop('checked', false);
+  localStorage.setItem("domFiddleExpandedStory", true);
+  localStorage.setItem("domFiddleExpandedSpec", false);
+  resetView();
+
   window.open('/diesel/fiddle/startESP/@reactor/@id');
 
   setTimeout(function(){
@@ -545,9 +556,6 @@ var runpill2_@id = function(id,compileOnly, next) {
       });
 };
 
-var currEngineId = null;
-var currEngineData = null;
-
 var checkpill2_@id = function(id) {
   console.log("checkpill2 run isRefreshing2="+isRefreshing2);
 
@@ -643,25 +651,6 @@ function processPartialEngineResult(id, data, compileOnly, lastTime, next) {
 };
 
 /** final response - engine complete - update everything */
-function showFinalEngineResult() {
-  var data = currEngineData;
-  var id = '@id';
-  var ponly = $('#payloadOnly').prop('checked');
-
-  if(ponly) {
-    $('#iframeOutStory_' + id).text((data.payload) + '\n');
-    $('#iframeOutSpec_' + id).text((data.payload) + '\n');
-  } else {
-    $('#iframeOutStory_' + id).html(encAmp(data.res) + '\n');
-    $('#iframeOutSpec_' + id).html(encAmp(data.res) + '\n');
-
-    dieselHideTrace($('#traceStory').prop('checked'));
-    dieselHideDebug($('#debugStory').prop('checked'));
-    dieselHideGenerated($('#generatedStory').prop('checked'));
-  }
-}
-
-/** final response - engine complete - update everything */
 function processFinalEngineResult(id, data, compileOnly, lastTime, next) {
   isRefreshing2 -= 1;
   hideSpinner();
@@ -673,7 +662,7 @@ function processFinalEngineResult(id, data, compileOnly, lastTime, next) {
 
     // jquery.html will expand the escaped html, we need to escape again with encAmp
     // if i don't do this, html values will mess up the current page
-    showFinalEngineResult(); // from curEngineData
+    showFinalEngineResult('@id'); // from curEngineData
   }
 
   if(!compileOnly) {
@@ -1143,13 +1132,11 @@ function saveNew(what) {
 }
 
 
-// it's on load because otherwise the div has no contents
-$(window).on('load', function() {
-  // make sure for new users it will be open
-  if(localStorage.getItem("domFiddleExpandedStory") == null)
-    localStorage.setItem("domFiddleExpandedStory", true);
-  if(localStorage.getItem("domFiddleExpandedSpec") == null)
-    localStorage.setItem("domFiddleExpandedSpec", true);
+/** reset the size of panels on screen based on switches and window size */
+var resetView = function () {
+  const viewSt = $('#expandedStory').prop('checked');
+  const viewSp = $('#expandedSpec').prop('checked');
+  const preview = $('#expandedPreviewSpec').prop('checked');
 
   // figure out the heights, depending on current window height
   var h = $(window).height() - $("#heading").height() - $("nav").height();
@@ -1157,23 +1144,37 @@ $(window).on('load', function() {
   var hHalf = (h1 / 2) + "px"; // 228 - when both stoore/spec open
   var hFull = h1 + "px"; // 428 - when only spec open
 
-  var resetView = function () {
-    const viewSt = $('#expandedStory').prop('checked');
-    const viewSp = $('#expandedSpec').prop('checked');
-    const preview = $('#expandedPreviewSpec').prop('checked');
+  // resize them regarldess of flags
+  const storyHeight = (preview || !viewSp) ? hFull : hHalf;
+  $("#divOutStory_@id").css("max-height", storyHeight);
+  $("#iframeOutStory_@id").css("max-height", storyHeight);
+  $("#divOutStory_@id").css("height", storyHeight);
+  $("#iframeOutStory_@id").css("height", storyHeight);
 
-    // resize them regarldess of flags
-    const storyHeight = (preview || !viewSp) ? hFull : hHalf;
-    $("#divOutStory_@id").css("max-height", storyHeight);
-    $("#iframeOutStory_@id").css("max-height", storyHeight);
-    $("#divOutStory_@id").css("height", storyHeight);
-    $("#iframeOutStory_@id").css("height", storyHeight);
+  const specHeight = viewSt ? hHalf : hFull;
+  $("#divOutSpec_@id").css("max-height", specHeight);
+  $("#iframeOutSpec_@id").css("max-height", specHeight);
+  $("#divOutSpec_@id").css("height", specHeight);
+  $("#iframeOutSpec_@id").css("height", specHeight);
 
-    const specHeight = viewSt ? hHalf : hFull;
-    $("#divOutSpec_@id").css("max-height", specHeight);
-    $("#iframeOutSpec_@id").css("max-height", specHeight);
-    $("#divOutSpec_@id").css("height", specHeight);
-    $("#iframeOutSpec_@id").css("height", specHeight);
+  if(isESP) {
+
+    $("#storyRow1").show();
+    $("#storyRow2").show();
+    $("#divInStory_@id").css("height", hFull);
+    $("#preStory_@id").css("height", hFull);
+    $("#divOutStory_@id").hide();
+    $("#iframeOutStory_@id").hide();
+
+    $("#specRow1").hide();
+    $("#specRow2").hide();
+
+    $("#divInSpec_@id").prependTo("#storyRow2");
+    $("#preSpec_@id").prependTo("#storyRow2");
+    $("#divInSpec_@id").css("height", hFull);
+    $("#preSpec_@id").css("height", hFull);
+
+  } else {
 
     if(viewSt) {
       $("#storyRow1").show();
@@ -1202,9 +1203,18 @@ $(window).on('load', function() {
       $("#specRow1").hide();
       $("#specRow2").hide();
     }
+  }
 
-    attachAce();
-  };
+  attachAce();
+};
+
+// it's on load because otherwise the div has no contents
+$(window).on('load', function() {
+  // make sure for new users it will be open
+  if(localStorage.getItem("domFiddleExpandedStory") == null)
+    localStorage.setItem("domFiddleExpandedStory", true);
+  if(localStorage.getItem("domFiddleExpandedSpec") == null)
+    localStorage.setItem("domFiddleExpandedSpec", true);
 
   useLocalStorageCheckbox("expandedStory", "domFiddleExpandedStory", function (a,b,expanded) {
     resetView();
@@ -1228,19 +1238,19 @@ $(window).on('load', function() {
   // todo could optimize and not showFinal every time trace/debug but only if payload was on
   useLocalStorageCheckbox("traceStory", "domFiddleTraceStory", function (a,b,expanded) {
     if(expanded) $('#payloadOnly').prop('checked', false).change(); // change triggers the callback
-    if(currEngineData != null) showFinalEngineResult(); // repaint
+    if(currEngineData != null) showFinalEngineResult('@id'); // repaint
     dieselHideTrace(expanded);
   });
 
   useLocalStorageCheckbox("debugStory", "domFiddleDebugStory", function (a,b,expanded) {
     if(expanded) $('#payloadOnly').prop('checked', false).change(); // change triggers the callback
-    if(currEngineData != null) showFinalEngineResult(); // repaint
+    if(currEngineData != null) showFinalEngineResult('@id'); // repaint
     dieselHideDebug(expanded);
   });
 
   useLocalStorageCheckbox("generatedStory", "domFiddleGeneratedStory", function (a,b,expanded) {
     if(expanded) $('#payloadOnly').prop('checked', false).change(); // change triggers the callback
-    if(currEngineData != null) showFinalEngineResult(); // repaint
+    if(currEngineData != null) showFinalEngineResult('@id'); // repaint
     dieselHideGenerated(expanded);
   });
 
@@ -1250,7 +1260,7 @@ $(window).on('load', function() {
       $('#debugStory').prop('checked', false).change(); // change triggers the callback
       $('#generatedStory').prop('checked', false).change(); // change triggers the callback
     }
-    if(currEngineData != null) showFinalEngineResult(); // repaint
+    if(currEngineData != null) showFinalEngineResult('@id'); // repaint
   });
 });
 

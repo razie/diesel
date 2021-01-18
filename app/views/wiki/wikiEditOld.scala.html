@@ -151,7 +151,7 @@ PROBLEM: many places use label as name... via Wikis.formatName
 
   </div>
 
-  <div id="weSettings" class="form-group col-sm-3 alert alert-info">
+  <div id="weSettings" class="form-group col-sm-3 alert alert-info" style="z-index:1000">
   @helper.select(
     myForm("markup"),
     razie.wiki.model.Wikis.markups.list,
@@ -829,6 +829,8 @@ resetView = function() {
 withJquery(function() {
   footR=$('#weFooter').offset().top;
 
+  // monitor output scroll and scroll the editor
+
   $(window).scroll(function() {
     footR=$('#weFooter').offset().top;
     var formB=$('#weForm').height();
@@ -867,13 +869,15 @@ withJquery(function() {
         var lineNum = Math.min(lines.length-1, Math.max(0, Math.ceil(perc * lines.length)));
 
         var Range = ace.require('ace/range').Range;
-        aceEditor.scrollToLine(lineNum, true, true, function () {});
-        //editor1.gotoLine(lineNum, 10, true);
-//          editor1.session.addMarker(new Range(lineNum-1, 0, lineNum-1, 100), "ace-primaryline", "fullLine");
+
+        // RAZ for now comment out scrolling
+        // aceEditor.scrollToLine(lineNum, true, true, function () {});
+
       }
     }
   });
 
+  // monitor editor scroll and scroll the output
   $("#content").scroll(function() {
     if(false && $("#content").is(':focus') && (currentLayout=="9" || currentLayout=="6")) {
       var wtop = $("#content").scrollTop();    // dist to top of screen

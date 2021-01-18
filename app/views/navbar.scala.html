@@ -194,7 +194,7 @@ require(['jquery'], function($){
                 <li><a href="/admin/difflist/@stok.realm/all/www.dieselapps.com">Diffs-all</a></li>
               }
               <li class="divider"></li>
-              <li> <a href="javascript:doEditThis();">Edit</a> </li>
+              <li> <a href="javascript:doEditThis();"><b>Edit</b></a> </li>
               <li> <a href="javascript:doResetEditor();">Reset editor</a> </li>
               <li> <a href="/wikie/show/Name">Create</a> </li>
               }
@@ -252,7 +252,10 @@ require(['jquery'], function($){
               font-size: small" title="localhost: current reactor">
               @stok.realm <span class="caret"></span>
             </a>
-            <ul class="dropdown-menu scrollable-menu" role="menu">
+
+            <!-- see bottom functions for height -->
+
+            <ul class="dropdown-menu scrollable-menu " role="menu" style="height: 80vh; max-height: 80vh">
               <li><a href="/wikie/switchRealm/wiki">wiki</a></li>
               <li><a href="/wikie/switchRealm/specs">specs</a></li>
               @myReactors().sorted.map { t =>
@@ -329,22 +332,17 @@ require(['jquery'], function($){
 
       @*$('#resultdiv_'+@id).css('max-height', $('#pre3box_@id').height()+'px');*@
 
-// resize scroables to window
+// resize scrolables to window
       var wh=$(window).height();           // visible height
 
-      if(wh > 100) {
-        // $(".scrollable-menu").height((wh - 100) + "px");
-        // $(".scrollable-menu").css('max-height', (wh - 100) + "px");
-        // $(".scrollable-menu").css('max-height', (wh - 100) + "px");
-      };
+      $(".scrollable-menu").height("90vh");
+      $(".scrollable-menu").css('max-height', "90vh");
 
       setTimeout(function(){
         var wh=$(window).height();           // visible height
 
-        if(wh > 100) {
-          $(".scrollable-menu").height((wh - 100) + "px");
-          $(".scrollable-menu").css('max-height', (wh - 100) + "px");
-        };
+          $(".scrollable-menu").height("90vh");
+          $(".scrollable-menu").css('max-height', "90vh");
       }, 500);
 
     });

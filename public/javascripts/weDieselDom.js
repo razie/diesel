@@ -2,12 +2,16 @@
  * Created by razvanc on 02/05/2014.
  */
 
+// assume views deal with one engine at a time
+var currEngineId = null;
+var currEngineData = null;
+
 /** am I withing brackets? go back and count ) and ( pairs) */
-function isInBrackets(line,pos){
-  var count=0;
-  for(var i=pos-1; i>= 0; i--) {
-    if(line.charAt(i) == ')') count = count-1;
-    if(line.charAt(i) == '(') count = count+1;
+function isInBrackets(line, pos) {
+  var count = 0;
+  for (var i = pos - 1; i >= 0; i--) {
+    if (line.charAt(i) == ')') count = count - 1;
+    if (line.charAt(i) == '(') count = count + 1;
   }
   return count > 0;
 }
@@ -652,6 +656,24 @@ var findUsages = function (wp, editor) {
           popupContent(JSON.stringify(x));
         }
       });
+}
+
+/** final response - engine complete - update everything */
+function showFinalEngineResult(id) {
+  var data = currEngineData;
+  var ponly = $('#payloadOnly').prop('checked');
+
+  if (ponly) {
+    $('#iframeOutStory_' + id).text((data.payload) + '\n');
+    $('#iframeOutSpec_' + id).text((data.payload) + '\n');
+  } else {
+    $('#iframeOutStory_' + id).html(encAmp(data.res) + '\n');
+    $('#iframeOutSpec_' + id).html(encAmp(data.res) + '\n');
+
+    dieselHideTrace($('#traceStory').prop('checked'));
+    dieselHideDebug($('#debugStory').prop('checked'));
+    dieselHideGenerated($('#generatedStory').prop('checked'));
+  }
 }
 
 
