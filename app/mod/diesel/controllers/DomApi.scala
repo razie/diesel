@@ -559,13 +559,19 @@ class DomApi extends DomApiBase with Logging {
       }
 
       // todo sort out this mess
-      val settings = DomEngineHelper.settingsFromRequestHeader(stok.req, postedContent).copy(realm=Some(reactor))
+      val settings = DomEngineHelper.settingsFromRequestHeader(stok.req, postedContent).copy(realm = Some(reactor))
       settings.mockMode = mock
+      // if the config tag includes "draft" then use drafts
+      // todo have a trust settings passed: this call is made by backend to itself - put a temp token or smth to
+      //  trust itself, so nobody can replay this call
+      settings.draftMode = settings.configTag.mkString.contains("draft") && settings.userId.exists(
+        u => settings.configTag.exists(_.contains(u)))
 
-      ctrace << s"RUN_REST_REQUEST verb:$verb mock:$mock path:$path realm:${reactor}\nheaders: ${stok.req.headers}" + body
+      ctrace << s"RUN_REST_REQUEST verb:$verb mock:$mock path:$path realm:${reactor}\nheaders: ${stok.req.headers}" +
+          body
 
       var description = s"DomApi.runRest:$verb:$path"
-      if(stok.req.rawQueryString.trim.length > 0) {
+      if (stok.req.rawQueryString.trim.length > 0) {
         description = description + s"?${stok.req.rawQueryString}"
       }
 

@@ -26,6 +26,9 @@ object DomEngineHelper {
     if (q.userId.isEmpty && stok.au.isDefined)
       q.userId = Some(stok.au.get._id.toString)
 
+    if (q.draftMode)
+      q.configTag = Some(q.configTag.mkString + ",draft")
+
     q.realm = Some(stok.realm)
     q
   }

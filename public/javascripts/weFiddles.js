@@ -158,7 +158,35 @@ function limitEval(code, fnOnStop, opt_timeoutInMS, output) {
     }
   };
 
-  myWorker.postMessage({ c: 'var id='+id+';\n'+code, i: id });
+  myWorker.postMessage({c: 'var id=' + id + ';\n' + code, i: id});
 }
 
+// spinners, refresh and errors
+
+function hideSpinner() {
+  $('#refresher').show();
+  $('#spinner').hide();
+};
+
+function showSpinner() {
+  $('#refresher').hide();
+  $('#spinner').show();
+};
+
+function setErrors(nfailed, nerrors, ntotal) {
+  $('#errors').text(nfailed + '/' + nerrors + '/' + ntotal);
+  $('#errors').removeClass();
+  if (nfailed == 0 || nfailed == "0") {
+    if (nerrors == 0 || nerrors == "0") {
+      $('#errors').prop("title", "all tests ok!");
+      $('#errors').addClass("label label-success");
+    } else {
+      $('#errors').prop("title", "no failures, but some exceptions");
+      $('#errors').addClass("label label-warning");
+    }
+  } else {
+    $('#errors').prop("title", "failed/errors/total");
+    $('#errors').addClass("label label-danger");
+  }
+}
 

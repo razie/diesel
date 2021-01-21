@@ -249,7 +249,9 @@ If you'd rather see the elements ($msg, $when etc) as a dialog, go to that line 
 
 <script>
 // this is used to prevent stale pages (back browser button or older tabs) from overwriting newer drafts
-var timeStamp = @id ;
+// this is actually server time stamp
+var clientStoryTimeStamp = @id ;
+var clientSpecTimeStamp = @id ;
 
 // used in imported scripts
 var realm = '@reactor';
@@ -358,16 +360,6 @@ $('#divOutStory_'+@id).css('max-height', $('#divInStory_@id').height()-10+'px');
 $('#iframeOutStory_'+@id).css('max-height', $('#divInStory_@id').height()-10+'px');
 $('#iframeOut5_'+@id).css('max-height', $('#pre5box_@id').height()-10+'px');
 
-function hideSpinner() {
-  $('#refresher').show();
-  $('#spinner').hide();
-};
-
-function showSpinner() {
-  $('#refresher').hide();
-  $('#spinner').show();
-};
-
 function refresher() {
   runpill2_@{id}('@{id}', false);
 };
@@ -410,7 +402,7 @@ if(storyWpath.length > 0) $("#curStory").text('@WID.fromPath(storyWpath).map(_.n
 var isRefreshing = 0;
 var isRefreshing2 = 0;
 
-
+/** run on spec changes */
 var runpill_@id = function(id) {
   isRefreshing += 1;
   showSpinner();
@@ -433,12 +425,13 @@ var runpill_@id = function(id) {
       specWpath : specWpath,
       storyWpath : storyWpath,
       simMode : simMode(),
-      timeStamp: timeStamp,
+      clientTimeStamp: clientSpecTimeStamp,
       spec : specEditor.getValue(),
       story : storyEditor.getValue(),
       capture : editor5.getValue()
     }),
     contentType: 'application/x-www-form-urlencoded',
+
     success: function(data) {
       isRefreshing -= 1;
       hideSpinner();
@@ -455,49 +448,26 @@ var runpill_@id = function(id) {
       console.log("  updateMarkers spec");
 
       console.log("New timestamp: " + data.info.timeStamp);
-      timeStamp = data.info.timeStamp;
+      clientSpecTimeStamp = data.info.timeStamp;
 
       // also trigger inst update
       runpill2_@{id}('@{id}', false);
     },
+
     error  : function(x) {
       isRefreshing -= 1;
       hideSpinner();
       console.log( "ERR "+JSON.stringify(x));
       if(JSON.stringify(x).indexOf("staleid") >= 0) {
-        console.log("Stale page");
-        errMsg("STALE DRAT - last changes not saved! SAVE topic or refresh and loose latest Changes!");
-        // location.reload();
+        damnStale();
       }
     }
   });
 }
 
-function setErrors (nfailed,nerrors,ntotal) {
-  $('#errors').text(nfailed + '/' + nerrors + '/' + ntotal);
-  $('#errors').removeClass();
-  if(nfailed == 0 || nfailed == "0") {
-    if(nerrors == 0 || nerrors == "0") {
-      $('#errors').prop("title", "all tests ok!");
-      $('#errors').addClass("label label-success");
-    } else {
-      $('#errors').prop("title", "no failures, but some exceptions");
-      $('#errors').addClass("label label-warning");
-    }
-  } else {
-    $('#errors').prop("title", "failed/errors/total");
-    $('#errors').addClass("label label-danger");
-  }
-}
-
-var encAmp = function(s) {
-  return s
-      .replace(/&lt;/g, '〈')
-      .replace(/&gt;/g, '〉');
-}
-
 var lastTime = new Date().getTime();
 
+/** run the fiddle */
 var runpill2_@id = function(id,compileOnly, next) {
   isRefreshing2 += 1;
   showSpinner();
@@ -530,17 +500,19 @@ var runpill2_@id = function(id,compileOnly, next) {
           runEngine : ! $('#wikiMode').prop('checked'),
           compileOnly : compileOnly,
           simMode : simMode(),
-          timeStamp: timeStamp,
+          clientTimeStamp: clientStoryTimeStamp,
           spec : specEditor.getValue(),
           story : storyEditor.getValue(),
           capture : editor5.getValue()
         }),
         contentType: 'application/x-www-form-urlencoded',
+
         success: function(data) {
           console.log("New timestamp: " + data.info.timeStamp);
-          timeStamp = data.info.timeStamp;
+          clientStoryTimeStamp = data.info.timeStamp;
           processEngineResult(id, data, compileOnly, lastTime, next);
         },
+
         error  : function(x) {
           isRefreshing2 -= 1;
           hideSpinner();
@@ -549,13 +521,13 @@ var runpill2_@id = function(id,compileOnly, next) {
 
           if(!compileOnly) curDomRequest = null;
           if(JSON.stringify(x).indexOf("staleid") >= 0) {
-            errMsg("Stale page - please refresh to get the latest saved draft!!!");
-            location.reload();
+            damnStale();
           }
         }
       });
 };
 
+/** just check the fiddle (save and compile) */
 var checkpill2_@id = function(id) {
   console.log("checkpill2 run isRefreshing2="+isRefreshing2);
 
@@ -570,15 +542,17 @@ var checkpill2_@id = function(id) {
       '/diesel/fiddle/checkfiddleStoryUpdated/'+id+'?@Html(mod.diesel.controllers.SFiddles.qtourl(args))', {
         type: 'POST',
         data: $.param({
-          timeStamp: timeStamp,
+          clientTimeStamp: clientStoryTimeStamp,
           engineId : currEngineId
         }),
         contentType: 'application/x-www-form-urlencoded',
+
         success: function(data) {
-          console.log("New timestamp: " + data.info.timeStamp);
-          timeStamp = data.info.timeStamp;
+          // console.log("New timestamp: " + data.info.timeStamp);
+          // clientTimeStamp = data.info.timeStamp;
           processEngineResult(id, data, false, lastTime);
         },
+
         error  : function(x) {
           hideSpinner();
 
@@ -586,12 +560,17 @@ var checkpill2_@id = function(id) {
 
           curDomRequest = null;
           if(JSON.stringify(x).indexOf("staleid") >= 0) {
-            alert("Stale page - please refresh to get the latest saved draft!!!");
-            location.reload();
+            damnStale();
           }
         }
       });
 };
+
+var damnStale = function() {
+  console.log("Stale page");
+  errMsg("Stale DRAFT - please refresh to get the latest saved draft!!!");
+  // location.reload();
+}
 
 var cancelFlow = function() {
   console.log("cancelFlow currEngineId="+currEngineId);
@@ -641,6 +620,22 @@ function processPartialEngineResult(id, data, compileOnly, lastTime, next) {
   $('#roundtrip').prop('title', "failed/tested/todo");
 
   if(typeof data.storyChanged != "undefined") storyChanged(data.storyChanged);
+
+
+  // ------------- this part from processFinal - to show in progress flows ---------
+  if($("#iframeOutStory_@id")) {
+    if($('#wikiMode').prop('checked')) {
+      $('#divOutStory_' + id).html(data.wiki);
+    } else if(!compileOnly) {
+      // console.log("TREE: "+data.res);
+
+      // jquery.html will expand the escaped html, we need to escape again with encAmp
+      // if i don't do this, html values will mess up the current page
+      showFinalEngineResult('@id'); // from curEngineData
+    }
+  }
+  // ------------- this part from processFinal - to show in progress flows ---------
+
 
   // we check all the time, to update progress, anyways...
   // if(! wsActive) {
@@ -713,8 +708,10 @@ function processFinalEngineResult(id, data, compileOnly, lastTime, next) {
         wsActive = true;
         var data = JSON.parse(event.data);
 
-        if(data.ping || data.ping =="true") {
-          console.log("WS ping: " + data.msg);
+        if(data.ping || data.pingMsg =="ping") {
+          console.log("WS ping: " + data.pingMsg);
+        } else if(data.pingMsg) {
+          console.log("WS ping: " + data.pingMsg);
         } else if(data.clientId == '@id') {
           console.log("WS result: " + JSON.stringify(data.info));
           processEngineResult('@id', data, data.info.compileOnly, lastTime);
@@ -960,6 +957,7 @@ setInterval(function(){
 
     // now calling twice: 1 to save and 2 to run
 
+    // first compile to give feedback quick and then start long run in background
     // todo this needs optimized somehow - likely start the second one and just get it
     //  in the second call, since the parsing was done
     runpill2_@{id}('@{id}', true, function() {

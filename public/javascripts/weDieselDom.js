@@ -670,10 +670,17 @@ function showFinalEngineResult(id) {
     $('#iframeOutStory_' + id).html(encAmp(data.res) + '\n');
     $('#iframeOutSpec_' + id).html(encAmp(data.res) + '\n');
 
-    dieselHideTrace($('#traceStory').prop('checked'));
-    dieselHideDebug($('#debugStory').prop('checked'));
-    dieselHideGenerated($('#generatedStory').prop('checked'));
+    dieselHideTrace(localStorage.getItem("domFiddleTraceStory") == "true");
+    dieselHideDebug(localStorage.getItem("domFiddleDebugStory") == "true");
+    dieselHideGenerated(localStorage.getItem("domFiddleGeneratedStory") == "true");
   }
 }
 
+
+/** encode & special html sequences */
+function encAmp(s) {
+  return s
+    .replace(/&lt;/g, '〈')
+    .replace(/&gt;/g, '〉');
+}
 
