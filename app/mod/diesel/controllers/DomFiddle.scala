@@ -218,7 +218,7 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
     val spec = stok.formParm("spec")              // current text in textbox
     val story = stok.formParm("story")            // current text in textbox
     val capture = stok.formParm("capture")
-    var timeStamp = stok.formParm("timeStamp")
+    var clientTimeStamp = stok.formParm("clientTimeStamp")
 
     val spw = WID.fromPath(specWpath).flatMap(_.page).map(_.content).getOrElse(SAMPLE_SPEC)
     val stw = WID.fromPath(storyWpath).flatMap(_.page).map(_.content).getOrElse(SAMPLE_STORY)
@@ -233,11 +233,13 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
     val autoRec = auto.rec // is there a draft ?
 
     // first check if it's newer - if the user clicks "back", a stale editor may overwrite a newer draft
-    if (autoRec.exists(_.updDtm.isAfter(new DateTime(timeStamp.toLong)))) {
+    if (autoRec.exists(_.updDtm.isAfter(new DateTime(clientTimeStamp.toLong)))) {
       // don't change "staleid" - used as search
-      Conflict(s"staleid - please refresh page... $timeStamp - ${autoRec.get.updDtm.toInstant.getMillis}")
+      val diff = clientTimeStamp.toLong - autoRec.get.updDtm.toInstant.getMillis
+      Conflict(
+        s"staleid - please refresh page... you:$clientTimeStamp - last:${autoRec.get.updDtm.toInstant.getMillis} " +
+            s"diff: $diff")
     } else {
-      timeStamp = now.toInstant.getMillis.toString
 
       //autosave which wids were you looking at last?
       DomWorker later AutosaveSet("DomFidPath", reactor, "", stok.au.get._id, Map(
@@ -247,6 +249,7 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
 
       //autosave draft - if none OR there are changes
       if (autoRec.nonEmpty || spec != spw) {
+        clientTimeStamp = now.toInstant.getMillis.toString
         DomWorker later auto
       }
 
@@ -271,7 +274,7 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
         "specChanged" -> (specWpath.length > 0 && spw.replaceAllLiterally("\r", "") != spec),
         "ast" -> getAstInfo(specPage),
         "info" -> Map( // just like fiddleUpdated
-          "timeStamp" -> timeStamp
+          "timeStamp" -> clientTimeStamp
         )
       )
     }
@@ -310,7 +313,7 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
     val runEngine = stok.formParm("runEngine").toBoolean
     val scompileOnly = stok.formParm("compileOnly")
     val compileOnly = scompileOnly != "" && scompileOnly.toBoolean
-    var timeStamp = stok.formParm("timeStamp")
+    var clientTimeStamp = stok.formParm("clientTimeStamp")
 
     val uid = stok.au.map(_._id).getOrElse(NOUSER)
 
@@ -325,26 +328,34 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
     val autoRec = auto.rec // is there a draft ?
 
     // first check if it's newer - if the user clicks "back", a stale editor may overwrite a newer draft
-    if (saveMode && autoRec.exists(_.updDtm.isAfter(new DateTime(timeStamp.toLong)))) {
+    if (saveMode && autoRec.exists(_.updDtm.isAfter(new DateTime(clientTimeStamp.toLong)))) {
       // don't change "staleid" - used as search
-      Future.successful(Conflict(s"staleid - please refresh page... $timeStamp - ${autoRec.get.updDtm.toInstant.getMillis}"))
+      Future.successful {
+        val diff = clientTimeStamp.toLong - autoRec.get.updDtm.toInstant.getMillis
+        Conflict(
+          s"staleid - please refresh page... you:$clientTimeStamp - last:${autoRec.get.updDtm.toInstant.getMillis} " +
+              s"diff: $diff")
+      }
+
     } else {
-      // when not saving, no change in timestamp
-      if(saveMode) timeStamp = now.toInstant.getMillis.toString
 
       if (saveMode && stok.au.exists(_.isActive)) {
+
         DomWorker later AutosaveSet("DomFidPath", reactor, "", stok.au.get._id, Map(
           "specWpath" -> specWpath,
           "storyWpath" -> storyWpath
-        ))
+        ), Some(now))
 
         if (autoRec.nonEmpty || story != stw) {
-          DomWorker later auto
+          DomWorker later auto // save it with Some(now)
+
+          // when not saving, no change in timestamp
+          clientTimeStamp = now.toInstant.getMillis.toString
         }
 
         DomWorker later AutosaveSet("DomFidCapture", reactor, "", stok.au.get._id, Map(
           "content" -> capture
-        ))
+        ), Some(now))
       }
 
       stimer snap "1_parse_req"
@@ -461,7 +472,7 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
           "info" -> Map(
             "clientId" -> id,
             "compileOnly" -> compileOnly,
-            "timeStamp" -> timeStamp,
+            "timeStamp" -> clientTimeStamp,
             "totalCount" -> (engine.totalTestCount),
             "failureCount" -> engine.failedTestCount,
             "errorCount" -> engine.errorCount,
@@ -531,7 +542,7 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
     }
   }
 
-  /** check engine id
+  /** check status of an engine
     *
     * @param id - unique session / page Id, used to identify WebSocket customers too
     * @return
@@ -540,7 +551,7 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
     val stimer = new CSTimer("checkfiddleStoryUpdated", id)
     stimer start "heh"
 
-    var timeStamp = stok.formParm("timeStamp")
+    var clientTimeStamp = stok.formParm("clientTimeStamp")
     val engineId = stok.formParm("engineId")
     val engine = DomCollector.withAsts { asts =>
       asts.find(_.id == engineId)
@@ -559,7 +570,7 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
         // flags in map for easy logging
         "info" -> Map(
           "clientId" -> id,
-          "timeStamp" -> timeStamp,
+          "timeStamp" -> clientTimeStamp,
           "totalCount" -> (engine.totalTestCount),
           "failureCount" -> engine.failedTestCount,
           "errorCount" -> engine.errorCount,
