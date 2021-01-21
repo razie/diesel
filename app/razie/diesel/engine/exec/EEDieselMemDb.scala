@@ -111,6 +111,15 @@ class EEDieselMemDbBase(name: String) extends EExecutor(name) {
     val session = getSession(sessionId)
     val tables = session.tables
 
+    def logList = {
+      tables.keySet.map { k =>
+        "Collection: " + k + "\n" +
+            tables(k).entries.keySet.map { id =>
+              "  " + id
+            }.mkString("  ", "\n", "")
+      }.mkString("\n")
+    }
+
     def log = {
       tables.keySet.map { k =>
         "Collection: " + k + "\n" +
@@ -192,6 +201,10 @@ class EEDieselMemDbBase(name: String) extends EExecutor(name) {
       }
 
       case "log" => {
+        EVal(P(Diesel.PAYLOAD, logList)) :: Nil
+      }
+
+      case "debug" => {
         EVal(P(Diesel.PAYLOAD, log)) :: Nil
       }
 
@@ -214,6 +227,7 @@ class EEDieselMemDbBase(name: String) extends EExecutor(name) {
         EMsg(DB, "query") ::
         EMsg(DB, "remove") ::
         EMsg(DB, "log") ::
+        EMsg(DB, "debug") ::
         EMsg(DB, "clear") :: Nil
 }
 
