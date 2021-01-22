@@ -117,15 +117,20 @@ class EEDomInventory extends EExecutor("diesel.inv") {
 
         val j = entity.get.value.get.asJson
         val jo = razie.js.tojson(j)
-        val k = ctx.get("key")
-            .orElse(
-              j.get("assetRef")
-                  .filter(_.isInstanceOf[collection.Map[_, _]])
-                  .map(_.asInstanceOf[collection.Map[String, Any]])
-                  .flatMap(_.get("key"))
-            ).orElse(
-          j.get("key")
-        ).mkString
+
+        // we use the assetref, then key attribute then at last ask for a key input - avoids context junk
+        val k =
+          j.get("assetRef")
+              .filter(_.isInstanceOf[collection.Map[_, _]])
+              .map(_.asInstanceOf[collection.Map[String, Any]])
+              .flatMap(_.get("key"))
+              .orElse(
+                j.get("key")
+              )
+              .orElse(
+                ctx.get("key")
+              )
+              .mkString
 
         val t = c.props.find(_.name == "table").map(_.calculatedValue(ECtx.empty)).getOrElse(c.name)
         //          val o = DomInventories.oFromJ("x", jo, c, t, Array[String]())
