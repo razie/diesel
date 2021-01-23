@@ -161,7 +161,10 @@ class EEDieselMemDbBase(name: String) extends EExecutor(name) {
             .flatMap(x =>
               List(
                 EVal(x),
-                EVal(x.copy(name = Diesel.PAYLOAD))
+                EVal(x.copy(name = Diesel.PAYLOAD)),
+                EVal(P.fromSmartTypedValue("tbl", tables.get(col).get.entries.mkString)),
+                EVal(P.fromSmartTypedValue("sessionId", sessionId)),
+                EVal(P.fromSmartTypedValue("session", session.toString))
               ))
       }
 

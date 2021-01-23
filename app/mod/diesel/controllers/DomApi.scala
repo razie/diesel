@@ -269,13 +269,14 @@ class DomApi extends DomApiBase with Logging {
         DieselMsg.irunDom + path
       )
 
-      engine.root.childrenCol.prepend(
+      engine.root.prependAllNoEvents(List(
         DomAst(
           EInfo(
             "HTTP Request details",
             printRequest(stok.req,
               engine.settings.postedContent.map(_.body).mkString)),
-          AstKinds.DEBUG))
+          AstKinds.DEBUG)
+      ))
 
       setHostname(engine.ctx.root)
 
@@ -587,10 +588,10 @@ class DomApi extends DomApiBase with Logging {
         List(new WikiEntry("Story", "temp", "temp", "md", "", uid, Seq("dslObject"), reactor))
       )
 
-      engine.root.childrenCol.prepend(
-        DomAst(
+      engine.root.prependAllNoEvents(
+        List(DomAst(
           EInfo("HTTP Request details2",
-            printRequest(request, body)), AstKinds.DEBUG))
+            printRequest(request, body)), AstKinds.DEBUG)))
 
       // add query parms
       val q = stok.req.queryString.map(t => (t._1, t._2.mkString))
@@ -1256,7 +1257,7 @@ class DomApi extends DomApiBase with Logging {
       } catch {
         case t: Throwable => {
           razie.Log.log("error parsing", t)
-          engine.root.childrenCol.appendAll({
+          engine.root.appendAllNoEvents({
             EError("Error parsing: " + template.specRef, t.toString) ::
                 new EError("Exception : ", t) :: Nil
           }.map(DomAst(_, AstKinds.ERROR))
@@ -1291,10 +1292,10 @@ class DomApi extends DomApiBase with Logging {
             } catch {
               case t: Throwable => {
                 razie.Log.log("NO TEMPLATE found - error trying to parse body as json", t)
-                engine.root.childrenCol.appendAll({
-                  EWarning("No template found for path: " +path ) ::
-                  EWarning("Error parsing: " + body, t.toString) ::
-                  new EWarning("Exception : ", t) :: Nil
+                engine.root.appendAllNoEvents({
+                  EWarning("No template found for path: " + path) ::
+                      EWarning("Error parsing: " + body, t.toString) ::
+                      new EWarning("Exception : ", t) :: Nil
                 }.map(DomAst(_, AstKinds.ERROR))
                 )
                 Map.empty
