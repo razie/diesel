@@ -68,7 +68,7 @@ object DomGuardian extends Logging {
   }
 
   /** start a check run. the first time, it will init the guardian and listeners */
-  def startCheck(realm: String, au: Option[User]): (Future[Report], DomEngine) = {
+  def startCheck(realm: String, au: Option[User], tq: String = ""): (Future[Report], DomEngine) = {
     if (!DomGuardian.init) {
 
       // first time, init the guardian
@@ -76,7 +76,7 @@ object DomGuardian extends Logging {
       if (enabled(realm) && onAuto(realm)) {
         // listen to topic changes and re-run
         WikiObservers mini {
-          case ev@WikiEvent( action, "WikiEntry", _, entity, oldEntity, _, _ ) => {
+          case ev@WikiEvent(action, "WikiEntry", _, entity, oldEntity, _, _) => {
             val wid = WID.fromPath(ev.id).get
             val oldWid = ev.oldId.flatMap(WID.fromPath)
 
@@ -113,7 +113,7 @@ object DomGuardian extends Logging {
     clog << s"DIESEL startCheck ${realm} for ${au.map(_.userName)}"
 
     // these are debounced in there...
-    DomGuardian.runReq(au, realm, "")
+    DomGuardian.runReq(au, realm, "", tq)
   }
 
   case class Report(req:Option[RunReq],
@@ -293,10 +293,12 @@ object DomGuardian extends Logging {
   }
 
   /** if no test is currently running, start one */
-  def runReq(au: Option[WikiUser], realm: String, env: String, auto:Boolean = false): (Future[Report], DomEngine) = {
-    if(DieselCron.isMasterNode(Website.forRealm(realm).get)) {
+  def runReq(au: Option[WikiUser], realm: String, env: String, tq: String, auto: Boolean = false): (Future[Report],
+      DomEngine) = {
+    if (DieselCron.isMasterNode(Website.forRealm(realm).get)) {
       DomGuardian.synchronized {
-        val rr = RunReq(au, au.map(_.userName).mkString, realm, env, auto)
+        val q = if (tq.isEmpty) None else Some(tq)
+        val rr = RunReq(au, au.map(_.userName).mkString, realm, env, auto, q)
         val k = rr.key
         debug(s"GuardianActor received a RunReq $k")
 

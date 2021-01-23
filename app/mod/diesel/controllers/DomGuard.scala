@@ -447,6 +447,7 @@ class DomGuard extends DomApiBase with Logging {
             s"""
                | Guardian report<a href="/wiki/Guardian" ><sup><span class="glyphicon
                | glyphicon-question-sign"></span></a></sup>:
+               | <a href="/diesel/runCheck?tq=story/streams">Re-run check tag</a>
                | <a href="/diesel/runCheck">Re-run check</a>  (${r.duration} msec) | ${
               quickBadge(r.failed, r.total, r.duration)
             }<br>
@@ -488,6 +489,7 @@ class DomGuard extends DomApiBase with Logging {
                 s"""
                    |No run available yet (<b>$started</b>) - check this later
                    |  <br><b><a href="/diesel/runCheck">Re-run check</a></b>
+                   |  <a href="/diesel/runCheck?tq=story/streams">Re-run check tag</a>
                    | $runs
                    |<br>
                    |Other in realm:<br>$otherInRealm""".
@@ -561,14 +563,16 @@ Guardian report<a href="/wiki/Guardian_Guide" ><sup><span class="glyphicon glyph
   }
 
   /** run another check current reactor */
-  def dieselRunCheck = Filter(activeUser).async { implicit stok =>
+  def dieselRunCheck(tq: String) = Filter(activeUser).async { implicit stok =>
     if (DomGuardian.enabled(stok.realm)) {
-      val x @ (f,e) = startCheck(stok.realm, stok.au)
+      val x@(f, e) = startCheck(stok.realm, stok.au, tq)
+      val id = if (e != null) e.id else ""
+
       Future.successful(
-        Redirect(s"""/diesel/viewAst/${e.id}"""))
+        Redirect(s"""/diesel/viewAst/$id"""))
     }
     else Future.successful(
-      Ok("GUARDIAN DISABLED in realm: "+stok.realm))
+      Ok("GUARDIAN DISABLED in realm: " + stok.realm))
   }
 
   /** run another check all reactors */

@@ -160,7 +160,7 @@ class EEGuardian extends EExecutor(DieselMsg.GUARDIAN.ENTITY) with Logging {
           realm
         else settings.realm.mkString
 
-        val x @ (f, e) = DomGuardian.runReq(settings.userId.flatMap(Users.findUserById), inrealm, env, true)
+        val x@(f, e) = DomGuardian.runReq(settings.userId.flatMap(Users.findUserById), inrealm, env, "", true)
         EVal(P("payload", s"""scheduled new run... <a href="/diesel/viewAst/${e.id}">view</a>""", WTypes.wt.HTML)) :: Nil
       }
 
