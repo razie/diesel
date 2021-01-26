@@ -90,7 +90,18 @@ class WikiAsyncObservers extends Actor {
     case a: Audit => {
 
       if (!localQuiet || !localhost) {
-        a.copy(node = nodeName).create
+
+        // list of codes to not put in db:
+        a.msg match {
+          case "DIESEL_FIDDLE_iRUNDOM" =>
+          case "ENTITY_CREATE" =>
+          case "ENTITY_UPDATE" =>
+          case "DEBUG" =>
+
+          // all else in db
+          case _ =>
+            a.copy(node = nodeName).create
+        }
       } else {
         clog << "localQuiet !! Audit"
       }
