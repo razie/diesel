@@ -447,8 +447,9 @@ class DomGuard extends DomApiBase with Logging {
             s"""
                | Guardian report<a href="/wiki/Guardian" ><sup><span class="glyphicon
                | glyphicon-question-sign"></span></a></sup>:
-               | <a href="/diesel/runCheck?tq=story/streams">Re-run check tag</a>
-               | <a href="/diesel/runCheck">Re-run check</a>  (${r.duration} msec) | ${
+               | <b><a href="/diesel/runCheck">Re-run check</a></b> (
+               | <a href="/diesel/runCheck?tq=story/sanity">Just sanity</a>)
+               |               |   (${r.duration} msec) | ${
               quickBadge(r.failed, r.total, r.duration)
             }<br>
                | <small>Guardian - enabled:${DomGuardian.enabled(stok.realm)} auto:${
@@ -488,8 +489,8 @@ class DomGuard extends DomApiBase with Logging {
             guardianMenu +
                 s"""
                    |No run available yet (<b>$started</b>) - check this later
-                   |  <br><b><a href="/diesel/runCheck">Re-run check</a></b>
-                   |  <a href="/diesel/runCheck?tq=story/streams">Re-run check tag</a>
+                   |  <br><b><a href="/diesel/runCheck">Re-run check</a></b> (
+                   |  <a href="/diesel/runCheck?tq=story/sanity">Just sanity</a>)
                    | $runs
                    |<br>
                    |Other in realm:<br>$otherInRealm""".
