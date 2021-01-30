@@ -402,6 +402,9 @@ if(storyWpath.length > 0) $("#curStory").text('@WID.fromPath(storyWpath).map(_.n
 var isRefreshing = 0;
 var isRefreshing2 = 0;
 
+var lastStartTime = new Date().getTime();
+var lastRequestTime = new Date().getTime();
+
 /** run on spec changes */
 var runpill_@id = function(id) {
   isRefreshing += 1;
@@ -411,7 +414,7 @@ var runpill_@id = function(id) {
   // set this before going to backend which could take a long time
   @*specChanged(!(specEditor.getValue() === $("#origSpec_@id").text()));*@
 
-  var lastTime = new Date().getTime();
+  lastStartTime = new Date().getTime();
 
   $.ajax(
     '/diesel/fiddle/fiddleSpecUpdated/'+id+'?@Html(mod.diesel.controllers.SFiddles.qtourl(args))', {
@@ -438,7 +441,7 @@ var runpill_@id = function(id) {
 
       $('#divOutSpec_'+id).html(data.res);
       domContentAssist = data.ca;
-      var du = new Date().getTime() - lastTime;
+      var du = new Date().getTime() - lastStartTime;
       $('#roundtrip').text(du+' ms');
       $('#roundtrip').prop('title', "real time roundtrip response time");
 
@@ -465,8 +468,6 @@ var runpill_@id = function(id) {
   });
 }
 
-var lastTime = new Date().getTime();
-
 /** run the fiddle */
 var runpill2_@id = function(id,compileOnly, next) {
   isRefreshing2 += 1;
@@ -483,7 +484,7 @@ var runpill2_@id = function(id,compileOnly, next) {
 
   if(!compileOnly) curDomRequest = "yes";
 
-  lastTime = new Date().getTime();
+  lastStartTime = new Date().getTime();
 
   $.ajax(
       '/diesel/fiddle/fiddleStoryUpdated/'+id+'?@Html(mod.diesel.controllers.SFiddles.qtourl(args))', {
@@ -510,7 +511,7 @@ var runpill2_@id = function(id,compileOnly, next) {
         success: function(data) {
           console.log("New timestamp: " + data.info.timeStamp);
           clientStoryTimeStamp = data.info.timeStamp;
-          processEngineResult(id, data, compileOnly, lastTime, next);
+          processEngineResult(id, data, compileOnly, lastStartTime, next);
         },
 
         error  : function(x) {
@@ -536,7 +537,7 @@ var checkpill2_@id = function(id) {
     return;
   }
 
-  lastTime = new Date().getTime();
+  lastRequestTime = new Date().getTime();
 
   $.ajax(
       '/diesel/fiddle/checkfiddleStoryUpdated/'+id+'?@Html(mod.diesel.controllers.SFiddles.qtourl(args))', {
@@ -550,7 +551,7 @@ var checkpill2_@id = function(id) {
         success: function(data) {
           // console.log("New timestamp: " + data.info.timeStamp);
           // clientTimeStamp = data.info.timeStamp;
-          processEngineResult(id, data, false, lastTime);
+          processEngineResult(id, data, false, lastRequestTime);
         },
 
         error  : function(x) {
@@ -714,7 +715,7 @@ function processFinalEngineResult(id, data, compileOnly, lastTime, next) {
           console.log("WS ping: " + data.pingMsg);
         } else if(data.clientId == '@id') {
           console.log("WS result: " + JSON.stringify(data.info));
-          processEngineResult('@id', data, data.info.compileOnly, lastTime);
+          processEngineResult('@id', data, data.info.compileOnly, lastStartTime);
         } else  {
           console.log("WS result NOT MINE: ");// + JSON.stringify(data));
         }
