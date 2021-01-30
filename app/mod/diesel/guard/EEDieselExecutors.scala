@@ -14,7 +14,7 @@ import mod.diesel.guard.EEDieselExecutors.getAllData
 import mod.notes.controllers.NotesLocker
 import model.WikiScripster
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
-import razie.db.RazMongo
+import razie.db.{ROne, RazMongo}
 import razie.diesel.Diesel
 import razie.diesel.dom.RDOM.P
 import razie.diesel.engine.{AstKinds, DomAst}
@@ -149,16 +149,29 @@ object EEDieselExecutors {
   def getAllData() = {
     val osm: OperatingSystemMXBean = ManagementFactory.getOperatingSystemMXBean();
 
+    val mstats = new HashMap[String, Any]
+    val mstatsDb = new HashMap[String, Any]
+
+    val stats = RazMongo.db.getStats()
+
+    if (stats.ok()) {
+      val s = stats.asScala.filter(t => t._1 != "db" && t._1 != "serverUsed")
+      s.foreach(t => mstats.put(t._1.toString, t._2.toString))
+      s.foreach(t => mstatsDb.put("db." + t._1.toString, t._2.toString))
+    }
+
     GlobalData.toMap() ++
         Map(
           "scriptsRun" -> WikiScripster.count,
           "DieselCron.size" -> DieselCron.withRealmSchedules(_.size),
           "DomGuardian.size" -> DomGuardian.lastRuns.size,
-          "DomCollector.size" -> DomCollector.withAsts(_.size)
-        ) ++ osusage
+          "DomCollector.size" -> DomCollector.withAsts(_.size),
+          "os" -> osusage(""),
+          "db" -> mstats
+        ) ++ osusage("os.") ++ mstatsDb
   }
 
-  def osusage = {
+  def osusage(prefix: String) = {
     val s = new HashMap[String, Any]
 
     val osm: OperatingSystemMXBean = ManagementFactory.getOperatingSystemMXBean();
@@ -176,10 +189,10 @@ object EEDieselExecutors {
           case e: Exception => -1
         } // try
         s.put(
-          "os." + method.getName(),
+          prefix + method.getName(),
           v
         )
-        if (vn != -1)
+        if (vn != -1 && prefix.nonEmpty)
           s.put(
             "os.nice." + method.getName(),
             nice(vn)
