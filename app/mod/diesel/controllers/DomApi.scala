@@ -198,14 +198,17 @@ class DomApi extends DomApiBase with Logging {
       )
     }.getOrElse {
 
-      Audit.logdb("DIESEL_FIDDLE_iRUNDOM", stok.au.map(_.userName).getOrElse("Anon"), s"EA : $path", " story: " + useThisStory)
+      Audit.logdb("DIESEL_FIDDLE_iRUNDOM", stok.au.map(_.userName).getOrElse("Anon"), s"EA : $path",
+        " story: " + useThisStory)
 
       var settings = DomEngineHelper.settingsFrom(stok)
       settings = settings.copy(realm = Some(reactor))
       val userId = settings.userId.map(new ObjectId(_)) orElse stok.au.map(_._id)
 
       val pages = if (settings.blenderMode) { // blend all specs and stories
-        val stories = if (settings.sketchMode) EnginePrep.catPages("Story", reactor). /*filter(_.name != stw.get.name).*/ toList else Nil
+        val stories = if (settings.sketchMode)
+          EnginePrep.catPages("Story", reactor). /*filter(_.name != stw.get.name).*/ toList else Nil
+
         val specs = EnginePrep.catPages("Spec", reactor)
         val d = (specs ::: stories).map { p => // if draft mode, find the auto-saved version if any
           if (settings.draftMode) {
@@ -522,7 +525,7 @@ class DomApi extends DomApiBase with Logging {
       var dieselRestMsg: Option[EMsg] = None
 
       // make the diesel.rest message
-      def mkDieselRest = {
+      def mkDieselRest(ctx: ECtx) = {
         val qparams = DomEngineHelper.parmsFromRequestHeader(request)
         val hparams = DomEngineHelper.headers(request)
         val qFlat = qparams.map(t => P.fromTypedValue(t._1, t._2, WTypes.wt.STRING)).toList
@@ -530,14 +533,18 @@ class DomApi extends DomApiBase with Logging {
         val hJson = P.fromTypedValue("dieselHeaders", hparams, WTypes.wt.JSON)
 
         // looking at the posted content now...
-        val posted =
-          if(
+        var posted =
+          if (
             ("POST".equals(verb) ||
-            "PUT".equals(verb) ||
-            "PATCH".equals(verb))
+                "PUT".equals(verb) ||
+                "PATCH".equals(verb))
                 && postedContent.isDefined) {
             postedContent.get.asDieselParams(new SimpleECtx())
           } else Nil
+
+        // payload goes to root
+        posted.filter(_.name == Diesel.PAYLOAD).map(ctx.put)
+        posted = posted.filter(_.name != Diesel.PAYLOAD)
 
         dieselRestMsg = Some(EMsg(
           DieselMsg.ENGINE.DIESEL_REST,
@@ -546,8 +553,8 @@ class DomApi extends DomApiBase with Logging {
             P.fromTypedValue("verb", verb),
             P.fromTypedValue("queryStringEncoded", stok.req.rawQueryString),
             P.fromTypedValue("queryString", URLDecoder.decode(stok.req.rawQueryString)
-          )
-        ) ::: qparams.map(t => P.fromTypedValue(t._1, t._2, WTypes.wt.STRING)).toList ::: posted
+            )
+          ) ::: qparams.map(t => P.fromTypedValue(t._1, t._2, WTypes.wt.STRING)).toList ::: posted
         ))
 
         dieselRestMsg
@@ -615,7 +622,7 @@ class DomApi extends DomApiBase with Logging {
               imsg.map(x => (None, x.entity, x.met, None))
             }.orElse {
               // we're going to make a diesel.rest message later
-              mkDieselRest.map(x => (None, x.entity, x.met, None))
+          mkDieselRest(engine.ctx).map(x => (None, x.entity, x.met, None))
             }.getOrElse {
           fea
         }
@@ -658,12 +665,17 @@ class DomApi extends DomApiBase with Logging {
       // then imsg (diesel.rest)
       // else diesel.rest
       // else e.a
-      val msg : Option[EMsg] =
-      (trequest.flatMap(_ => findIt) orElse msgSpec.flatMap(_ => findIt) orElse imsg orElse mkDieselRest orElse findIt )
-          .map (msg=>
+      val msg: Option[EMsg] =
+      (trequest.flatMap(_ => findIt) orElse
+          msgSpec.flatMap(_ => findIt) orElse
+          imsg orElse
+          mkDieselRest(engine.ctx) orElse
+          findIt)
+
+          .map(msg =>
             // add matched parms
             // todo why map matched parms and not keep type/value what abt numbers, escaped json etc?
-            if(matchedParms.isDefined) msg.copy(attrs = msg.attrs ::: matchedParms.get.toList.map(t=>P(t._1, t._2)))
+            if (matchedParms.isDefined) msg.copy(attrs = msg.attrs ::: matchedParms.get.toList.map(t => P(t._1, t._2)))
             else msg
           )
 
