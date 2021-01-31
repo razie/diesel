@@ -225,8 +225,10 @@ object Global extends WithFilters(LoggingFilter) {
       }
     }
 
+
     SendEmail.mkSession = (msession:BaseMailSession, test:Boolean,debug:Boolean)=> {
-        val props = new Properties();
+      val XW = "1mrTyLJfbe4VoG2jXu4vdg"
+      val props = new Properties();
 
         val session = if(test) {
 
@@ -248,7 +250,7 @@ object Global extends WithFilters(LoggingFilter) {
           import razie.wiki.Sec._
 
           val user = website.prop("mail.smtp.user").getOrElse(Config.SUPPORT)
-          val pwd = website.prop("mail.smtp.pwd").getOrElse("1mrTyLJfbe4VoG2jXu4vdg").dec
+          val pwd = website.prop("mail.smtp.pwd").getOrElse(XW).dec
 
           javax.mail.Session.getInstance(props, new SMTPAuthenticator(user, pwd))
         }

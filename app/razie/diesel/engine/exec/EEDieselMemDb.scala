@@ -161,10 +161,10 @@ class EEDieselMemDbBase(name: String) extends EExecutor(name) {
             .flatMap(x =>
               List(
                 EVal(x),
-                EVal(x.copy(name = Diesel.PAYLOAD)),
-                EVal(P.fromSmartTypedValue("tbl", tables.get(col).get.entries.mkString)),
-                EVal(P.fromSmartTypedValue("sessionId", sessionId)),
-                EVal(P.fromSmartTypedValue("session", session.toString))
+                EVal(x.copy(name = Diesel.PAYLOAD))
+//                EVal(P.fromSmartTypedValue("tbl", tables.get(col).get.entries.mkString)),
+//                EVal(P.fromSmartTypedValue("sessionId", sessionId)),
+//                EVal(P.fromSmartTypedValue("session", session.toString))
               ))
       }
 
@@ -180,7 +180,11 @@ class EEDieselMemDbBase(name: String) extends EExecutor(name) {
           // parse docs and filter by attr
           if (x.isOfType(WTypes.wt.JSON)) {
             val m = x.calculatedTypedValue.asJson
-            others.foldRight(true)((a, b) => b && m.contains(a.name) && m.get(a.name).exists(_ == a.calculatedValue))
+            // todo better comparison
+            others.foldRight(true)(
+              (a, b) => b && m.contains(a.name) && m.get(a.name).exists(
+                _.toString == a.calculatedValue
+              ))
           } else {
             true
           }
