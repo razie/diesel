@@ -772,14 +772,17 @@ class DomApi extends DomApiBase with Logging {
               // engine.ctx.get(Diesel.PAYLOAD).getOrElse("no msg recognized, no result, no response template")
 
               engine.ctx.getp(Diesel.PAYLOAD).map { p =>
-                if (p.value.isDefined) {
-                  ctype = WTypes.getContentType(p.value.get.cType)
+//                if (p.value.isDefined) {
+                if (p.hasCurrentValue) {
+//                  ctype = WTypes.getContentType(p.value.get.cType)
+                  ctype = WTypes.getContentType(p.currentValue.ttype)
 
-                  p.value.get.value match {
+                  val v = p.calculatedTypedValue(engine.ctx)
+                  v.value match {
                     case x: Array[Byte] =>
                       response = Some(Ok(x).as(ctype))
                     case _ =>
-                      response = Some(Ok(p.value.get.asString).as(ctype))
+                      response = Some(Ok(v.asString).as(ctype))
                   }
 
                   ""
@@ -795,10 +798,13 @@ class DomApi extends DomApiBase with Logging {
             response.map {res=>
               // found a response template and made the response - add template parms as headers
               val headers = t.parms
-                .filter(_._1.toLowerCase.trim != "content-type")
-                .filter(_._1.startsWith("http.header."))
-                .map(t=>(t._1.replaceFirst("http.header.", ""), t._2))
-                .toSeq
+                  .filter(_._1.toLowerCase.trim != "content-type")
+                  .filter(_._1.startsWith("http.header."))
+                  .map(t => (t._1.replaceFirst("http.header.", ""), t._2))
+                  .toSeq
+
+              // just use it to add the response info
+              mkStatus(Some(P.fromSmartTypedValue("x", res.body.toString)), engine).as(ctype)
 
               res.withHeaders(headers: _*)
             }.getOrElse {
