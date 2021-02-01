@@ -84,12 +84,13 @@ withJquery(function ($) {
     useLocalStorageCheckbox("generatedStory", "domFiddleGeneratedStory", function (a, b, expanded) {
       dieselHideGenerated(expanded);
     });
+
+    setInterval(function(){
+      if(refreshMode && !done)  window.location.reload();
+    }, 3000);
+
   });
 });
-
-setInterval(function(){
-  if(refreshMode && !done)  window.location.reload();
-}, 3000);
 
 </script>
 
