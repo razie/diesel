@@ -8,18 +8,20 @@
  * x
  */
 function useLocalStorageCheckbox (inputId, storageName, callback) {
-  if(localStorage.getItem(storageName) != null)
-    $('#'+inputId).prop('checked', localStorage.getItem(storageName) === 'true');
+  if (localStorage.getItem(storageName) != null)
+    $('#' + inputId).prop('checked', localStorage.getItem(storageName) === 'true');
+  else
+    localStorage.setItem(storageName, $('#' + inputId).prop('checked')); // initialize
 
   function updConfirm() {
-    localStorage.setItem(storageName, $('#'+inputId).prop('checked'));
+    localStorage.setItem(storageName, $('#' + inputId).prop('checked'));
 
-    if(typeof callback != 'undefined')
-      callback(inputId, storageName, $('#'+inputId).prop('checked'));
+    if (typeof callback != 'undefined')
+      callback(inputId, storageName, $('#' + inputId).prop('checked'));
   }
 
   // call to initialize
-  if(typeof callback != 'undefined')
+  if (typeof callback != 'undefined')
     callback(inputId, storageName, $('#'+inputId).prop('checked'));
 
   $('#'+inputId).change(updConfirm);
