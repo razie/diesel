@@ -1,0 +1,63 @@
+## PREPARE the rk docker image
+#
+# See do-base for rebuilding the base image
+#
+
+VER=0.9.2
+RK=~/w/racerkidz
+T=$RK/target/universal/racerkidz-${VER}-SNAPSHOT/lib
+
+rm -f RUNNING_PID
+
+p compile package dist
+
+rm -rf target/universal/racerkidz-${VER}-SNAPSHOT
+
+printf "\n\n####################unzipping...\n\n"
+unzip -d target/universal target/universal/racerkidz-${VER}-SNAPSHOT.zip >/dev/null
+
+printf "\n\n#################### building image now...\n\n"
+printf ".."
+
+echo "########################## LIBS"
+
+cd $RK/docker/rk-libs
+
+rm -rf dist
+cp -r $RK/target/universal/racerkidz-${VER}-SNAPSHOT .
+mv racerkidz-${VER}-SNAPSHOT dist
+rm dist/conf/application.conf
+mv dist/conf/application.docker.conf dist/conf/application.conf
+
+rm dist/conf/logback-test.xml
+rm dist/conf/logback.xml
+#rm dist/conf/reference.conf
+
+mkdir -p ../rk/dist/lib
+mv dist/lib/com.razie.* ../rk/dist/lib
+
+docker build -t raz-diesel-libs2 .
+docker tag raz-diesel-libs2 razie/raz-diesel-libs2:latest
+
+## cleanup
+rm -rf dist
+
+echo "########################## RK"
+
+cd $RK/docker/rk
+
+cp $RK/key.docker key
+
+docker build -t raz-diesel .
+
+## cleanup
+rm -rf dist
+
+# to run just the container and debug it:
+# # # docker run -p 127.0.0.1:9003:9000 -v/Users/raz/w/racerkidz/docker/db:/data/db -it --entrypoint=/bin/bash razie/raz-diesel
+# # #
+# # # then just run the container:
+# # # docker run -p 127.0.0.1:9003:9000 -v/Users/raz/w/racerkidz/docker/db:/data/db -it razie/raz-diesel
+# # #
+# # # and point the browser to localhost:9003
+#

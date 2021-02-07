@@ -6,7 +6,7 @@
   **/
 package mod.diesel.guard
 
-import java.io.FileInputStream
+import java.io.{File, FileInputStream}
 import java.lang.management.{ManagementFactory, OperatingSystemMXBean}
 import java.lang.reflect.Modifier
 import java.util.Properties
@@ -17,7 +17,7 @@ import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import razie.db.{ROne, RazMongo}
 import razie.diesel.Diesel
 import razie.diesel.dom.RDOM.P
-import razie.diesel.engine.{AstKinds, DomAst}
+import razie.diesel.engine.{AstKinds, DieselException, DomAst}
 import razie.diesel.engine.exec.EExecutor
 import razie.diesel.engine.nodes.{EError, EMsg, EVal, _}
 import razie.diesel.expr.ECtx
@@ -29,18 +29,20 @@ import razie.wiki.model.WikiConfigChanged
 import razie.wiki.{Config, Services}
 import razie.{cdebug, clog}
 import scala.collection.JavaConverters._
-import scala.collection.mutable.HashMap
+import scala.collection.mutable.{HashMap, ListBuffer}
 import scala.io.Source
 
 /** properties - from system or file
   */
 class EEDieselExecutors extends EExecutor("diesel.props") {
   val DT = DieselMsg.PROPS.ENTITY
+  val DIO = "diesel.io"
 
   override def isMock: Boolean = true
 
   override def test(ast: DomAst, m: EMsg, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) = {
-    m.entity == DieselMsg.PROPS.ENTITY ||
+    m.entity == DT ||
+        m.entity == DIO ||
         m.ea == DieselMsg.ENGINE.DIESEL_PING
   }
 
@@ -52,6 +54,7 @@ class EEDieselExecutors extends EExecutor("diesel.props") {
     in.ea match {
 
       case "diesel.props.configReload" => {
+
         // reset all settings
         clog << "diesel.props.configReload sending WikiConfigChanged..."
         Services ! new WikiConfigChanged("", Config)
@@ -62,7 +65,8 @@ class EEDieselExecutors extends EExecutor("diesel.props") {
       }
 
       case "diesel.props.realm" => {
-        val result = ctx.get("result").getOrElse("payload")
+
+        val result = ctx.get("result").getOrElse(Diesel.PAYLOAD)
 
         val m = Website.getRealmProps(ctx.root.settings.realm.mkString)
 
@@ -72,9 +76,10 @@ class EEDieselExecutors extends EExecutor("diesel.props") {
       }
 
       case "diesel.props.system" => {
-        val result = ctx.get("result").getOrElse("payload")
 
-        val m = if(Config.isLocalhost) {
+        val result = ctx.get("result").getOrElse(Diesel.PAYLOAD)
+
+        val m = if (Config.isLocalhost) {
           System.getProperties.asScala
         } else {
           throw new IllegalArgumentException("Error: No permission")
@@ -85,18 +90,50 @@ class EEDieselExecutors extends EExecutor("diesel.props") {
         )
       }
 
-      case "diesel.props.file" => {
-        val result = ctx.get("result").getOrElse("payload")
+      case DieselMsg.IO.TEXT_FILE => {
+
+        val result = ctx.get("result").getOrElse(Diesel.PAYLOAD)
         val name = ctx.getRequired("path")
 
-        val m = if(Config.isLocalhost) {
+        val m = if (Config.isLocalhost) {
+          Source.fromInputStream(new FileInputStream(name)).mkString
+        } else {
+          throw new DieselException("Error: No permission")
+        }
+
+        List(
+          EVal(P.fromTypedValue(result, m))
+        )
+      }
+
+      case DieselMsg.IO.LIST_FILES => {
+
+        val result = ctx.get("result").getOrElse(Diesel.PAYLOAD)
+        val name = ctx.getRequired("path")
+
+        val m = if (Config.isLocalhost) {
+          new ListBuffer[String]().appendAll(new File(name).list())
+        } else {
+          throw new DieselException("Error: No permission")
+        }
+
+        List(
+          EVal(P.fromTypedValue(result, m))
+        )
+      }
+
+      case "diesel.props.file" => {
+
+        val result = ctx.get("result").getOrElse(Diesel.PAYLOAD)
+        val name = ctx.getRequired("path")
+
+        val m = if (Config.isLocalhost) {
           val p = new Properties()
           p.load(new FileInputStream(name))
 
           p.asScala
         } else {
-          throw new IllegalArgumentException("Error: No permission")
-//          Map("error" -> "No permission")
+          throw new DieselException("Error: No permission")
         }
 
         List(
@@ -105,15 +142,15 @@ class EEDieselExecutors extends EExecutor("diesel.props") {
       }
 
       case "diesel.props.jsonFile" => {
-        val result = ctx.get("result").getOrElse("payload")
+
+        val result = ctx.get("result").getOrElse(Diesel.PAYLOAD)
         val name = ctx.getRequired("path")
 
         val m = if (Config.isLocalhost) {
           val s = Source.fromInputStream(new FileInputStream(name)).mkString
           razie.js.parse(s)
         } else {
-          throw new IllegalArgumentException("Error: No permission")
-//          Map("error" -> "No permission")
+          throw new DieselException("Error: No permission")
         }
 
         List(
@@ -122,6 +159,7 @@ class EEDieselExecutors extends EExecutor("diesel.props") {
       }
 
       case DieselMsg.ENGINE.DIESEL_PING => {
+
         List(
           EVal(P.fromSmartTypedValue(
             Diesel.PAYLOAD,
@@ -142,7 +180,8 @@ class EEDieselExecutors extends EExecutor("diesel.props") {
     EMsg(DT, "system") ::
         EMsg(DT, "configReload") ::
         EMsg(DT, "jsonFile") ::
-        EMsg(DT, "file") :: Nil
+        EMsg(DT, "file") ::
+        EMsg("diesel.io", "textFile") :: Nil
 }
 
 object EEDieselExecutors {
