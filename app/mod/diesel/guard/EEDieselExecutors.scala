@@ -112,7 +112,11 @@ class EEDieselExecutors extends EExecutor("diesel.props") {
         val name = ctx.getRequired("path")
 
         val m = if (Config.isLocalhost) {
-          new ListBuffer[String]().appendAll(new File(name).list())
+          val f = new File(name)
+          val l = f.list()
+          val res = new ListBuffer[String]()
+          res.appendAll(l)
+          res.toList
         } else {
           throw new DieselException("Error: No permission")
         }

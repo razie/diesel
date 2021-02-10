@@ -129,7 +129,9 @@ object DieselCron extends Logging {
           val d30 = Duration.create(30, TimeUnit.SECONDS)
           val myRealms = "wiki,specs,oss,herc-cc,devblinq" // todo better for me and paid realms
 
-          if (d < d5 && !myRealms.contains(realm)) {
+          if (Config.isLocalhost) {
+            // leave them as requested on localhost
+          } else if (d < d5 && !myRealms.contains(realm)) {
             d = d5
             sexpr = "5 minutes"
           } else if (d < d30) {
@@ -142,15 +144,23 @@ object DieselCron extends Logging {
         var sc = DomSchedule(schedId, sexpr, time, msg, realm, env, count)
 
         // start in a random time from now, but not too far in the future
-        val akkaRef = if(schedExpr.nonEmpty) {
+        // todo why?
+        val d10s = Duration.create(10, TimeUnit.SECONDS)
+        val startDur =
+          if (d > d10s)
+            Duration.create(/*30 + */ (Math.random() * 30).toInt, TimeUnit.SECONDS)
+          else
+            Duration.Zero
+
+        val akkaRef = if (schedExpr.nonEmpty) {
           sc.actualSched = d.toString
           Akka.system.scheduler.schedule(
-            Duration.create(/*30 + */ (Math.random() * 30).toInt, TimeUnit.SECONDS),
+            startDur,
             d,
             DieselCron.worker,
             sc
           )
-        } else if(time.nonEmpty) {
+        } else if (time.nonEmpty) {
           val sec = org.joda.time.Seconds.secondsBetween(DateTime.now, DateTime.parse(time))
           var seconds = sec.getSeconds
           if (seconds < 0) seconds = 5 // if in past but was accepted, do it now
