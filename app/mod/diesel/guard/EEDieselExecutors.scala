@@ -115,7 +115,7 @@ class EEDieselExecutors extends EExecutor("diesel.props") {
           val f = new File(name)
           val l = f.list()
           val res = new ListBuffer[String]()
-          res.appendAll(l)
+          if (l != null) res.appendAll(l) // jesus - one of those APIs...
           res.toList
         } else {
           throw new DieselException("Error: No permission")
