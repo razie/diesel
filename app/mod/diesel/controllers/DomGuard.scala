@@ -196,7 +196,10 @@ class DomGuard extends DomApiBase with Logging {
   // list the collected ASTS
   def dieselListAst = FAUR { implicit stok =>
     val un = stok.userName + {
-      if (stok.au.exists(_.isAdmin)) " admin - sees all realms " else {
+      if (stok.au.exists(_.isAdmin))
+        """ admin - sees all realms
+          | (<a href = "/diesel/cleanAst" > clean all </a>)""".stripMargin
+      else {
         if (stok.au.exists(_.isMod)) " mod - sees all users "
         else " - regular user "
       }
@@ -216,7 +219,9 @@ class DomGuard extends DomApiBase with Logging {
 
       val total = GlobalData.dieselEnginesTotal.get()
 
-      var table = list.zipWithIndex.map { z =>
+      var table = list.sortWith(
+        (a, b) => a.engine.createdDtm.isAfter(b.engine.createdDtm)
+      ).zipWithIndex.map { z =>
         Try {
           val a = z._1
           val i = z._2
@@ -293,7 +298,7 @@ class DomGuard extends DomApiBase with Logging {
   def dieselCleanAst = FAUR { implicit stok =>
     if (stok.au.exists(_.isAdmin)) {
       DomCollector.cleanAst
-      Ok("ok").as("text/html")
+      Redirect(s"""/diesel/listAst""")
     } else
       Unauthorized("no permission")
   }
