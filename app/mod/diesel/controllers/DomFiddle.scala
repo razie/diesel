@@ -562,9 +562,7 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
 
       val res = engine.root.toHtml
       // todo save engine ea on creation and use to extractfinalvalue
-      val payload = engine.ctx.getp(Diesel.PAYLOAD).filter(_.ttype != WTypes.wt.UNDEFINED)
-          .map(_.currentStringValue)
-          .getOrElse(engine.extractFinalValue("", true))
+      val resValue = engine.extractFinalValue("", true).map(_.currentStringValue)
 
       val m = Map(
         // flags in map for easy logging
@@ -581,7 +579,7 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
         ),
         "clientId" -> id,
         "res" -> res,
-        "payload" -> payload,
+        "payload" -> resValue,
         "failureCount" -> engine.failedTestCount
       )
 

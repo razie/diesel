@@ -309,7 +309,9 @@ class DomApi extends DomApiBase with Logging {
        )
 
       val xx = stok.qhParm("X-Api-Key").mkString
+
       def needsApiKey = xapikey.isDefined
+
       def isApiKeyGood = xapikey.isDefined && xapikey.exists { x =>
         x.length > 0 && x == xx
       }
@@ -317,12 +319,15 @@ class DomApi extends DomApiBase with Logging {
       val isPublic = msg.exists(isMsgPublic(_, reactor, website))
       val isTrusted = isMemberOrTrusted(msg, reactor, website)
 
-      clog << s"irunDom: Message: $msg isPublic=$isPublic isTrusted=$isTrusted needsApiKey=$needsApiKey isApiKeyGood=$isApiKeyGood"
+      engine.withInitialMsg(msg)
+
+      clog << s"irunDom: Message: $msg isPublic=$isPublic isTrusted=$isTrusted needsApiKey=$needsApiKey " +
+          s"isApiKeyGood=$isApiKeyGood"
 
       if (
         isPublic ||
-        isTrusted ||
-        needsApiKey && isApiKeyGood
+            isTrusted ||
+            needsApiKey && isApiKeyGood
       ) {
 
         setApiKeyUser(needsApiKey, isApiKeyGood, website, engine)
@@ -374,10 +379,7 @@ class DomApi extends DomApiBase with Logging {
           } else if (
             "value" == settings.resultMode || "" == settings.resultMode
           ) {
-            val payload = engine.ctx.getp(Diesel.PAYLOAD).filter(_.ttype != WTypes.wt.UNDEFINED)
-            val resp = payload.orElse(
-              engine.extractFinalValue(ea)
-            )
+            val resp = engine.extractOldValue(ea)
             val resValue = resp.map(_.currentStringValue).getOrElse("")
 
             val ctype =
