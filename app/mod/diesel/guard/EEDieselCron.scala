@@ -229,6 +229,7 @@ object DieselCron extends Logging {
           } else {
             // todo need to stop the akka schedule
             curr.ref.map(_.cancel())
+            realmSchedules.remove(id)
 
             Services ! DieselMsg(
               DieselMsg.CRON.ENTITY,
@@ -329,18 +330,23 @@ class EEDieselCron extends EExecutor("diesel.cron") {
         val scount = ctx.get("count").mkString
         val desc = ctx.get("description").mkString
         val tq = ctx.get("tquery").mkString
-        val collectCount = ctx.get("collectCount").map(_.toInt).filter(_ < 50).getOrElse(DFLT_COLLECT) // keep 10 default for cron jobs
+        val collectCount = ctx.get("collectCount").map(_.toInt).filter(_ < 50).getOrElse(
+          DFLT_COLLECT) // keep 10 default for cron jobs
         val count = if (scount.length == 0) -1l else scount.toLong
         val cronMsg = ctx.get("cronMsg")
 
         val schedule = ctx.get("schedule").mkString
         val time = ctx.get("time").mkString
 
-        if(schedule.isEmpty && time.isEmpty) {
+        val now = DateTime.now()
+
+        def dt = DateTime.parse(time)
+
+        if (schedule.isEmpty && time.isEmpty) {
           List(EVal(P(Diesel.PAYLOAD, "Either schedule or time needs to be provided", WTypes.wt.EXCEPTION)))
-        } else if(!acceptPast && time.nonEmpty && DateTime.parse(time).compareTo(DateTime.now()) <= 0) {
-          List(EVal(P(Diesel.PAYLOAD, "Time is in the past", WTypes.wt.EXCEPTION)))
-        } else if(!DieselCron.ISENABLED) {
+        } else if (!acceptPast && time.nonEmpty && DateTime.parse(time).compareTo(DateTime.now()) <= 0) {
+          List(EVal(P(Diesel.PAYLOAD, s"Time is in the past (${dt} vs ${now})", WTypes.wt.EXCEPTION)))
+        } else if (!DieselCron.ISENABLED) {
           List(EVal(P(Diesel.PAYLOAD, "DieselCron is DISABLED", WTypes.wt.EXCEPTION)))
         } else {
           val settings = new DomEngineSettings()
