@@ -39,7 +39,7 @@ class EEDieselApiGw extends EExecutor(DieselMsg.APIGW.ENTITY) {
     in.ea match {
 
       case "diesel.apigw.limit.static" => {
-        if (Config.isLocalhost) {
+        if (Config.isLocalhost) DieselRateLimiter.synchronized {
           DieselRateLimiter.LIMIT_API = ctx.getRequired("limit").toInt
 
           OK
@@ -51,7 +51,7 @@ class EEDieselApiGw extends EExecutor(DieselMsg.APIGW.ENTITY) {
       }
 
       case "diesel.apigw.limit.rate" => {
-        if (Config.isLocalhost) {
+        if (Config.isLocalhost) DieselRateLimiter.synchronized {
           DieselRateLimiter.RATELIMIT = ctx.getRequired("limit").toBoolean
 
           OK
@@ -67,14 +67,14 @@ class EEDieselApiGw extends EExecutor(DieselMsg.APIGW.ENTITY) {
         val regex = ctx.get("regex")
         val header = ctx.get("header")
 
-        val m = if (Config.isLocalhost) {
+        if (Config.isLocalhost) DieselRateLimiter.synchronized {
           val group = DieselRateLimiter.rateLimits.get(groupName)
           val newg = group
-              .map(g => g.copy(
-                regex = (if (in.ea.endsWith("path")) regex else None).toList ::: g.regex,
-                headers = header.map(x => (x, regex.get)).toList ::: g.headers
-              )
-              )
+              .map { g =>
+                g.regex = ((if (in.ea.endsWith("path")) regex else None).toList ::: g.regex).distinct
+                g.headers = (header.map(x => (x, regex.get)).toList ::: g.headers).distinct
+                g
+              }
               .getOrElse(
                 new RateLimitGroup(
                   groupName,

@@ -18,6 +18,7 @@ import play.api.mvc._
 import razie.audit.Audit
 import razie.db._
 import razie.diesel.DieselRateLimiter
+import razie.diesel.DieselRateLimiter.getGroup
 import razie.diesel.model.{DieselMsg, DieselTarget, ScheduledDieselMsg}
 import razie.hosting.{BannedIps, Website, WikiReactors}
 import razie.wiki.admin._
@@ -156,13 +157,15 @@ object Global extends WithFilters(LoggingFilter) {
         super.onRouteRequest(rh)
 
       } else
-        DieselRateLimiter.serveOrLimit(request, true)(rh => {
+        DieselRateLimiter.serveOrLimit(request, true)((rh, group) => {
+          group.foreach(_.decServing())
           super.onRouteRequest(request)
         })((group, count) => {
           // request limiting here will avoid overloading the internal execution queue as well
           Some(EssentialAction { rh =>
             Action { rh: play.api.mvc.RequestHeader =>
-              Audit.logdb("ERR_RATE_LIMIT", s"group: $group curr: $count request: $request headers: ${request.headers}")
+//              Audit.logdb("ERR_RATE_LIMIT", s"group: $group curr: $count request: $request headers: ${request
+//              .headers}")
               Results.TooManyRequest("Rate limiting - in progress: " + count)
             }.apply(rh)
           })
@@ -315,6 +318,16 @@ object LoggingFilter extends Filter {
         GlobalData.servingApiRequests.decrementAndGet()
         GlobalData.servedApiRequests.incrementAndGet()
       }
+
+      // keep stats per group
+      getGroup(rh).foreach { group =>
+        if (group.servingCount.get() > group.maxServedCount.get()) {
+          group.maxServedCount.set(group.servingCount.get())
+        }
+
+        group.decServing()
+        group.servedCount.incrementAndGet()
+      }
     }
 
     def servedPage {
@@ -343,12 +356,12 @@ object LoggingFilter extends Filter {
       var err: Option[Result] = None
 
       // first check rate limiting - if limited, populate err
-      err = DieselRateLimiter.serveOrLimit(rh)(rh => {
+      err = DieselRateLimiter.serveOrLimit(rh)((rh, group) => {
         None.asInstanceOf[Option[Result]]
       })((group, count) => {
         // more expensive stuff outside the sync block
         // rate limiting API requests
-        Audit.logdb("ERR_RATE_LIMIT2", s"group: $group count: $count request: $rh headers: + ${rh.headers}")
+//        Audit.logdb("ERR_RATE_LIMIT2", s"group: $group count: $count request: $rh headers: + ${rh.headers}")
 
         // log LF.STOP here as well so it matches STARTS even for errors
         if (shouldDebug && !isFromRobot(rh)) {

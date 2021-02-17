@@ -12,7 +12,7 @@ import com.mongodb.casbah.{MongoConnection, MongoDB}
 import controllers._
 import mod.cart.{EEModCartExecutor, EEModUserExecutor}
 import mod.diesel.controllers.{DieselMod, FiddleMod}
-import mod.diesel.guard.{EEDieselCron, EEDieselExecutors, EEGuardian}
+import mod.diesel.guard.{EEDieselApiGw, EEDieselCron, EEDieselExecutors, EEGuardian}
 import mod.snow.EEModSnowExecutor
 import mod.wiki.CaptchaMod
 import model.WikiUsersImpl
@@ -129,6 +129,7 @@ class Module extends AbstractModule {
     Executors.add (new EEDieselMongodDb)
     Executors.add(new EEDieselElasticDb)
     Executors.add(new EEDomInventory)
+    Executors.add(new EEDieselApiGw)
 
     if(Config.isimulateHost == Config.REFERENCE_SIMULATE_HOST)
       DieselSettings.find(None, None, "isimulateHost").map { s=>
