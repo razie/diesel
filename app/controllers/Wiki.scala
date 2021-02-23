@@ -98,16 +98,7 @@ class Wiki @Inject()(dieselControl: DieselControl) extends WikiBase {
 
   /** show a global tag, no parent */
   def showTag(tag: String, irealm: String) = Action.async { implicit request =>
-    // why i do this redir
-    // it's meant to work for other sites without reactors, that have no local tags
-    // todo is it still needed? I don't think I have sites without reactors anymore
-    if (
-      PlayTools.getHost.exists(_ != Services.config.hostport) &&
-          !Services.config.isLocalhost &&
-          getRealm(irealm) == Wikis.RK)
-      Future.successful(Redirect("http://" + Services.config.hostport + "/tag/" + tag))
-    else
-      search (getRealm(irealm), "", "", Enc.fromUrl(tag)).apply(request)
+    search(getRealm(irealm), "", "", Enc.fromUrl(tag)).apply(request)
   }
 
   /** content assist for [[ ]] topics - search all topics  provide either q or curTags
@@ -141,42 +132,47 @@ class Wiki @Inject()(dieselControl: DieselControl) extends WikiBase {
     // if the search start with a realm like ski:something then ignore the irealm
     // todo should check permission or something?
     val cidx = iq.indexOf(':')
-    val realm = if(cidx > 0) {
+    val realm = if (cidx > 0) {
 
       val r = q.substring(0, cidx)
-      q = if(cidx < iq.length-1) iq.substring(cidx+1, q.length) else ""
+      q = if (cidx < iq.length - 1) iq.substring(cidx + 1, q.length) else ""
 
       allRealms = "all" == r
 
       val res = if (!allRealms || !auth.exists(_.isAdmin)) getRealm(r) else r
-      if(res == Wikis.RK) getRealm(irealm) else res
-      } else {
+      if (res == Wikis.RK) getRealm(irealm) else res
+    } else {
       if ("all" != irealm || !auth.exists(_.isAdmin)) getRealm(irealm) else irealm
     }
 
-    val qi = if(q.length > 0 && q(0) == '-') q.substring(1).toLowerCase else q.toLowerCase
+    val qi = if (q.length > 0 && q(0) == '-') q.substring(1).toLowerCase else q.toLowerCase
     val qt = curTags.split("/").filter(_ != "tag").map(_.split(","))
 
     def isTagOnly = qi.length == 0 && qt.size > 0
 
-    val wl : List[WikiEntry] =
-      if(qi.length() > 3 || isTagOnly || auth.exists(_.isAdmin))
+    val wl: List[WikiEntry] =
+      if (
+        (qi.length() > 3 || isTagOnly) &&
+            (qt.size <= 6 || qt.size <= 3 && isFromRobot) ||
+            auth.exists(_.isAdmin)
+      )
         WikiSearch.getList(realm, q, scope, curTags, MAX_LIST)
       else
         Nil
 
-    if(!isFromRobot && qi.length > 0)
-      Audit.logdb("QUERY", q, s"Realm: $realm, Scope: $scope", "Results: " + wl.size, "User-Agent: "+request.headers.get("User-Agent").mkString)
+    if (!isFromRobot && qi.length > 0)
+      Audit.logdb("QUERY", q, s"Realm: $realm, Scope: $scope", "Results: " + wl.size,
+        "User-Agent: " + request.headers.get("User-Agent").mkString)
 
     if (wl.size == 1 && iq != "")
-      // if just one found and not a tag browsing
+    // if just one found and not a tag browsing
       Redirect(controllers.WikiUtil.w(wl.head.wid))
     else {
       // the list of tags, sorted by count of occurences
       val tags = wl
-        .flatMap(_.tags)
-        .filter(_ != Tags.ARCHIVE)
-        .filter(_ != "")
+          .flatMap(_.tags)
+          .filter(_ != Tags.ARCHIVE)
+          .filter(_ != "")
         .filter(x=> !qt.contains(x))
         .groupBy(identity)
         .map(t => (t._1, t._2.size))
