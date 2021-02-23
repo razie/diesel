@@ -95,8 +95,8 @@ class EEDieselMongodDb extends EExecutor("diesel.db.col") {
             .attrs
             .filter(_.name != "collection")
             .filter(_.name != "id")
-            .filter (_.ttype != WTypes.UNDEFINED)
-            .map(p=>("content." + p.name, p.calculatedValue))
+            .filter(_.ttype != WTypes.UNDEFINED)
+            .map(p => ("content." + p.name, p.calculatedValue))
             .toMap
 
         val res = RazMongo(TBL).find(Map(
@@ -104,20 +104,25 @@ class EEDieselMongodDb extends EExecutor("diesel.db.col") {
           "realm" -> realm
         ) ++ others)
 
-        val p = P.fromTypedValue(
-          "documents",
-          res.map{x =>
+        val resList =
+          res.map { x =>
 //            val s = x.getAs[String]("content").get
             val s = x.get("content").toString
-//            x.getAs[Map[String,Any]]("content").get
+            //            x.getAs[Map[String,Any]]("content").get
             val m = razie.js.parse(s)
             m
           }.toList
-        )
+
+        val p = P.fromTypedValue("documents", resList)
 
         List(
           EVal(p),
-          EVal(p.copy(name = Diesel.PAYLOAD))
+          EVal(P.fromSmartTypedValue(Diesel.PAYLOAD,
+            Map(
+              "total" -> resList.size,
+              "data" -> resList
+            )
+          ))
         )
       }
 

@@ -176,22 +176,37 @@ class EEDieselMemDbBase(name: String) extends EExecutor(name) {
             .filter(_.name != "id")
             .filter(x => !x.isUndefinedOrEmpty)
 
-        val res = tables.get(col).toList.flatMap(_.entries.values.toList.filter(x =>
-          // parse docs and filter by attr
-          if (x.isOfType(WTypes.wt.JSON)) {
-            val m = x.calculatedTypedValue.asJson
-            // todo better comparison
-            others.foldRight(true)(
-              (a, b) => b && m.contains(a.name) && m.get(a.name).exists(
-                _.toString == a.calculatedValue
-              ))
-          } else {
-            true
-          }
-        ))
+        val res = tables.get(col).toList.flatMap(_.entries.values.toList
+            .filter(x =>
+              // parse docs and filter by attr
+              if (x.isOfType(WTypes.wt.JSON)) {
+                val m = x.calculatedTypedValue.asJson
+                // todo better comparison
+                others.foldRight(true)(
+                  (a, b) => b && m.contains(a.name) && m.get(a.name).exists(
+                    _.toString == a.calculatedValue
+                  ))
+              } else {
+                true
+              }
+//            ).map(x =>
+//          // transform
+//          if (x.isOfType(WTypes.wt.JSON)) {
+//            val m = x.calculatedTypedValue.asJson
+//            m
+//          } else {
+//            x
+//          }
+            )
+        )
 
         List(
-          EVal(P.fromSmartTypedValue(Diesel.PAYLOAD, res))
+          EVal(P.fromSmartTypedValue(Diesel.PAYLOAD,
+            Map(
+              "total" -> res.size,
+              "data" -> res
+            )
+          ))
         )
       }
 

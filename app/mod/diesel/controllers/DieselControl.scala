@@ -254,7 +254,8 @@ class DieselControl extends RazController with Logging {
                         o: Option[O] = None) = RAction { implicit request =>
 
     val ref = SpecRef.make(request.realm, plugin, conn, cat, "")
-    val list = DomInventories.findByQuery(ref, Left(cat + "/" + parm + "/" + value))
+    val res = DomInventories.findByQuery(ref, Left(cat + "/" + parm + "/" + value), 0, 100, Array.empty[String])
+    val list = res.data
 
     if (list.size <= 1) {
       val o = list.headOption.flatMap(_.getValueO)
@@ -275,7 +276,8 @@ class DieselControl extends RazController with Logging {
               start: Long, limit: Long) = RAction { implicit request =>
 
     val ref = SpecRef.make(request.realm, plugin, conn, cat, "")
-    val list = DomInventories.listAll(ref, start, limit)
+    val res = DomInventories.listAll(ref, start, limit, Array.empty[String])
+    val list = res.data
 
     if (list.size <= 1) {
       val o = list.headOption.flatMap(_.getValueO)
@@ -326,7 +328,8 @@ class DieselControl extends RazController with Logging {
 
       val p = WikiDomain(realm).findPluginsForClass(rdom.classes.get(cat).get).head
       val ref = SpecRef.make(request.realm, p.name, p.conn, cat, "")
-      val list = DomInventories.listAll(ref, start = 0, limit = 100)
+      val res = DomInventories.listAll(ref, start = 0, limit = 100, Array.empty[String])
+      val list = res.data
 
       // todo find tags for assets
 //      val tags = wl.flatMap(_.tags).filter(_ != Tags.ARCHIVE).filter(_ != "").groupBy(identity).map(

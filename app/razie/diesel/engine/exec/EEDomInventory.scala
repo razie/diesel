@@ -169,48 +169,6 @@ class EEDomInventory extends EExecutor("diesel.inv") {
         List(res)
       }
 
-      case LISTALL => {
-        val conn = ctx.get("connection").getOrElse("")
-        val cls = ctx.getRequired("className")
-        val start = ctx.get("from").getOrElse("0").toLong
-        val limit = ctx.get("size").getOrElse("100").toLong
-
-        // if class not known, make it up
-        // todo or blow up?
-        val c = dom.rdom.classes.get(cls).getOrElse(new C(cls))
-        val t = c.props.find(_.name == "table").map(_.calculatedValue(ECtx.empty)).getOrElse(c.name)
-
-        val plugin = DomInventories.getPluginForClass(realm, c, conn)
-
-        val ref = FullSpecRef(
-          plugin.map(_.name).orElse(ctx.get("inventory")).mkString,
-          plugin.map(_.conn).getOrElse(conn),
-          cls,
-          "",
-          "",
-          ctx.root.engine.get.settings.realm.get
-        )
-
-        val res = plugin.map(_.listAll(dom.rdom, ref, start, limit)
-            .fold(
-              lda => {
-                List(EVal(
-                  P.fromSmartTypedValue(
-                    Diesel.PAYLOAD,
-                    lda.map(x => EVal(x.getValueP))
-                  )))
-              },
-              m => List(m.withPos(in.pos))
-            )).getOrElse(
-          List(
-            EWarning("No inventory found for class: " + ref.cls),
-            EVal(P.undefined(Diesel.PAYLOAD))
-          )
-        )
-
-        res
-      }
-
       case FIND => {
         val conn = ctx.get("connection").getOrElse("")
         val cls = ctx.getRequired("className")
@@ -283,17 +241,67 @@ class EEDomInventory extends EExecutor("diesel.inv") {
         List(res)
       }
 
-      case QUERY => {
+      case LISTALL => {
         val conn = ctx.get("connection").getOrElse("")
         val cls = ctx.getRequired("className")
         val start = ctx.get("from").getOrElse("0").toLong
         val limit = ctx.get("size").getOrElse("100").toLong
+        val sort = ctx.get("sort").getOrElse("")
+
+        // if class not known, make it up
+        // todo or blow up?
+        val c = dom.rdom.classes.get(cls).getOrElse(new C(cls))
+        val t = c.props.find(_.name == "table").map(_.calculatedValue(ECtx.empty)).getOrElse(c.name)
+
+        val plugin = DomInventories.getPluginForClass(realm, c, conn)
+
+        val ref = FullSpecRef(
+          plugin.map(_.name).orElse(ctx.get("inventory")).mkString,
+          plugin.map(_.conn).getOrElse(conn),
+          cls,
+          "",
+          "",
+          ctx.root.engine.get.settings.realm.get
+        )
+
+        val res = plugin.map(_.listAll(dom.rdom, ref, start, limit, sort.split(","))
+            .fold(
+              lda => {
+                List(
+                  EVal(P.fromSmartTypedValue(
+                    Diesel.PAYLOAD,
+                    // todo object with total etc
+                    Map(
+                      "total" -> lda.total,
+                      "data" -> lda.data.map(x => EVal(x.getValueP))
+                    )
+                  ))
+                )
+              },
+              m => List(m.withPos(in.pos))
+            )).getOrElse(
+          List(
+            EWarning("No inventory found for class: " + ref.cls),
+            EVal(P.undefined(Diesel.PAYLOAD))
+          )
+        )
+
+        res
+      }
+
+      case QUERY => {
+        val conn = ctx.get("connection").getOrElse("")
+        val cls = ctx.getRequired("className")
+        val start = ctx.get("from").getOrElse("0").toLong
+        val limit = ctx.get("size").getOrElse("1000").toLong
+        val sort = ctx.get("sort").getOrElse("")
 
         val c = dom.rdom.classes.get(cls).getOrElse(new C(cls))
         val t = c.props.find(_.name == "table").map(_.calculatedValue(ECtx.empty)).getOrElse(c.name)
         val plugin = DomInventories.getPluginForClass(realm, c, conn)
 
         val q = ctx.getp("query").getOrElse(P.fromSmartTypedValue(Diesel.PAYLOAD, "{}"))
+//        val sort = ctx.getp("sort").getOrElse(P.fromSmartTypedValue(Diesel.PAYLOAD, "{}"))
 
         val ref = FullSpecRef(
           plugin.map(_.name).orElse(ctx.get("inventory")).mkString,
@@ -306,13 +314,17 @@ class EEDomInventory extends EExecutor("diesel.inv") {
 
         val epath = Right(q.calculatedTypedValue.asJson)
 
-        val res = plugin.map(_.findByQuery(dom.rdom, ref, epath, start, limit)
+        val res = plugin.map(_.findByQuery(dom.rdom, ref, epath, start, limit, sort.split(","))
             .fold(
               lda => {
                 List(EVal(
                   P.fromSmartTypedValue(
                     Diesel.PAYLOAD,
-                    lda.map(x => EVal(x.getValueP))
+                    // todo object with total etc
+                    Map(
+                      "total" -> lda.total,
+                      "data" -> lda.data.map(x => EVal(x.getValueP))
+                    )
                   )))
               },
               m => List(m.withPos(in.pos))
