@@ -80,8 +80,10 @@ class EEWiki extends EExecutor("diesel.wiki") {
 
       if (entity.isDefined && entity.get.isInstanceOf[WikiEntry]) {
         val we = entity.get.asInstanceOf[WikiEntry]
+        val un = WikiUsers.impl.findUserById(we.by).map(_.userName).mkString
         Services ! DieselMsgString(
-          s"""$$msg diesel.wiki.updated (wpath="${we.wid.wpath}", realm="${we.realm}", event="${ev.action}")""",
+          s"""$$msg diesel.wiki.updated (wpath="${we.wid.wpath}", realm="${we.realm}", event="${ev.action}",
+             |userName="$un")""".stripMargin,
           DieselTarget.ENV(we.realm)
         )
       }
