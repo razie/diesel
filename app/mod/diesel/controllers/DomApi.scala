@@ -877,9 +877,12 @@ class DomApi extends DomApiBase with Logging {
       //          } else turl
       //          matchesRequest(tpath, stok.req.path)
     } else {
-        info(s"Unauthorized msg access [runrest] (diesel.visibility:${stok.website.dieselVisiblity}, ${stok.au.map(_.ename).mkString})")
+        val x = s"Unauthorized msg access [runrest] (diesel.visibility:${stok.website.dieselVisiblity}, ${
+          stok.au.map(_.ename).mkString
+        })"
+        info(x)
         info(s"msg: $msg - ${msg.get.isPublic} - ${msg.get.spec.toString} - reactor: $reactor")
-        Unauthorized(s"Unauthorized msg access [runrest] (diesel.visibility:${stok.website.dieselVisiblity}, ${stok.au.map(_.ename).mkString})")
+        Unauthorized(x)
       }
     }
   }
