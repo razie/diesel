@@ -35,11 +35,12 @@ case class DomSchedule(
   schedId: String,
   schedExpr: String,
   timeExpr: String,
-  msg: Either[DieselMsg, DieselMsgString],
+  cronMsg: Either[DieselMsg, DieselMsgString],
+  doneMsg: Either[DieselMsg, DieselMsgString],
   realm: String,
   env: String,
   count: Long = 0l,
-  singleton:Boolean = true,
+  singleton: Boolean = true,
   ref: Option[Cancellable] = None) {
   var currCount:Long = 0l
   var actualSched = "?"
@@ -55,7 +56,8 @@ case class DomSchedule(
     "actualSched" -> actualSched,
     "count" -> count,
     "currCount" -> currCount,
-    "msg" -> msg.fold(_.toJson, _.toString)
+    "cronMsg" -> cronMsg.fold(_.toJson, _.toString),
+    "doneMsg" -> doneMsg.fold(_.toJson, _.toString)
   )
 }
 
@@ -89,8 +91,9 @@ object DieselCron extends Logging {
                             time: String,
                             realm: String,
                             env: String,
-                            count:Long,
-                            msg: Either[DieselMsg, DieselMsgString]
+                            count: Long,
+                            cronMsg: Either[DieselMsg, DieselMsgString],
+                            doneMsg: Either[DieselMsg, DieselMsgString]
                            )
 
   class CronActor extends Actor {
@@ -98,21 +101,22 @@ object DieselCron extends Logging {
     def receive = {
 
       // schedule triggered - should we send the message?
-      case sc @ DomSchedule (id, expr, time, msg, r, e, c, singleton, ak) => /*DieselCron.synchronized*/ {
+      case sc@DomSchedule(id, expr, time, cronMsg, doneMsg, r, e, c, singleton, ak) => /*DieselCron.synchronized*/ {
         info(s"DomSchedule: $sc")
 
-        if(!realmActors.contains(r)) {
+        if (!realmActors.contains(r)) {
           info(s"Creating realmActor for: $r")
-          val ra = DieselAppContext.actorOf(Props(new CronRealmActor(r)), name = "CronRealmActor-"+r)
+          val ra = DieselAppContext.actorOf(Props(new CronRealmActor(r)), name = "CronRealmActor-" + r)
           realmActors.put(r, ra)
         }
 
         // dispatch it to realm actor
         debug(s"  Dispatching to realmActor for: $r")
-        realmActors.get(r).map (_ ! sc)
+        realmActors.get(r).map(_ ! sc)
       }
 
-      case CreateSchedule(schedId, schedExpr, time, realm, env, count, msg) => /*DieselCron.synchronized*/ {
+      case CreateSchedule(schedId, schedExpr, time, realm, env, count, cronMsg, doneMsg) =>
+        /*DieselCron.synchronized*/ {
         val removed = realmSchedules.remove(schedId)
 
         removed.toList.map {
@@ -122,7 +126,7 @@ object DieselCron extends Logging {
         var sexpr = schedExpr
         var d = Duration.Zero
 
-        if(schedExpr.nonEmpty) {
+        if (schedExpr.nonEmpty) {
           // free realms at least 5min
           d = Duration.apply(schedExpr).asInstanceOf[FiniteDuration]
           val d5 = Duration.create(5, TimeUnit.MINUTES)
@@ -141,7 +145,7 @@ object DieselCron extends Logging {
         }
 
         // initial object
-        var sc = DomSchedule(schedId, sexpr, time, msg, realm, env, count)
+        var sc = DomSchedule(schedId, sexpr, time, cronMsg, doneMsg, realm, env, count)
 
         // start in a random time from now, but not too far in the future
         // todo why?
@@ -203,19 +207,20 @@ object DieselCron extends Logging {
     def receive = {
 
       // schedule triggered - should we send the message?
-      case sc @ DomSchedule (id, expr, time, msg, r, e, c, singleton, ak) => /*DieselCron.synchronized*/ {
+      case sc@DomSchedule(id, expr, time, cronMsg, doneMsg, r, e, c, singleton, ak) => /*DieselCron.synchronized*/ {
         info(s"DomSchedule: $sc")
 
-        if(realmSchedules.contains(id)) { // wasn't cancelled or something
+        if (realmSchedules.contains(id)) { // wasn't cancelled or something
           val curr = realmSchedules(id)
           curr.currCount = curr.currCount + 1
 
-          if(curr.count < 0 || curr.currCount <= curr.count) { // fine... trigger it
-            if(!singleton || DieselCron.isMasterNode(Website.forRealm(r).get)) {
-              if(ISENABLED) {
-                val fs = msg.fold(
-                _.toMsgString.startMsg,
-                _.startMsg
+          if (curr.count < 0 || curr.currCount <= curr.count) { // fine... trigger it
+            if (!singleton || DieselCron.isMasterNode(Website.forRealm(r).get)) {
+              if (ISENABLED) {
+                val fs = cronMsg.fold(
+                  _.withArgs(Map("env" -> e)).toMsgString.startMsg,
+//                  _.toMsgString.startMsg,
+                  _.startMsg
                 )
 
                 // just wait... this makes it sync
@@ -231,12 +236,20 @@ object DieselCron extends Logging {
             curr.ref.map(_.cancel())
             realmSchedules.remove(id)
 
-            Services ! DieselMsg(
-              DieselMsg.CRON.ENTITY,
-              DieselMsg.CRON.STOP,
-              Map("name" -> id, "realm" -> r, "env" -> e, "count" -> curr.count),
-              DieselTarget.ENV(r, e)
+            val fs = doneMsg.fold(
+              _.withArgs(Map("count" -> curr.count)).toMsgString.startMsg,
+              _.startMsg
             )
+
+            // not waiting
+            // val result = Await.result(fs, Duration.create(5, TimeUnit.MINUTES))
+
+//            Services ! DieselMsg(
+//              DieselMsg.CRON.ENTITY,
+//              DieselMsg.CRON.STOP,
+//              Map("name" -> id, "realm" -> r, "env" -> e, "count" -> curr.count),
+//              DieselTarget.ENV(r, e)
+//            )
           }
 
           if(curr.isOnce) {
@@ -267,9 +280,17 @@ object DieselCron extends Logging {
     * @return
     */
   def createSchedule(schedId: String, schedExpr: String, time: String, realm: String, env: String, count: Long,
-                     msg: Either[DieselMsg, DieselMsgString]) = {
-    await[String](worker, CreateSchedule(schedId, schedExpr, time, realm, env, count, msg))
+                     cronMsg: Either[DieselMsg, DieselMsgString],
+                     doneMsg: Either[DieselMsg, DieselMsgString]) = {
+    await[String](worker, CreateSchedule(schedId, schedExpr, time, realm, env, count, cronMsg, doneMsg))
   }
+
+  def defaultDoneMsg(schedId: String, realm: String, env: String) = DieselMsg(
+    DieselMsg.CRON.ENTITY,
+    DieselMsg.CRON.STOP,
+    Map("name" -> schedId, "realm" -> realm, "env" -> env),
+    DieselTarget.ENV(realm, env)
+  )
 
   /** cheap hot/cold singleton - is it me that Apache deems main? assumes proxy in +H mode */
   def isMasterNode(w: Website) = {
@@ -334,6 +355,7 @@ class EEDieselCron extends EExecutor("diesel.cron") {
           DFLT_COLLECT) // keep 10 default for cron jobs
         val count = if (scount.length == 0) -1l else scount.toLong
         val cronMsg = ctx.get("cronMsg")
+        val doneMsg = ctx.get("doneMsg")
 
         val schedule = ctx.get("schedule").mkString
         val time = ctx.get("time").mkString
@@ -352,7 +374,7 @@ class EEDieselCron extends EExecutor("diesel.cron") {
           val settings = new DomEngineSettings()
           settings.collectCount = Some(collectCount)
 
-          val msg: Either[DieselMsg, DieselMsgString] = cronMsg.map { s =>
+          val m1: Either[DieselMsg, DieselMsgString] = cronMsg.map { s =>
             Right(DieselMsgString(
               // todo should escape unescaped double quotes?
               s,
@@ -370,8 +392,21 @@ class EEDieselCron extends EExecutor("diesel.cron") {
             ))
           }
 
+          val m2: Either[DieselMsg, DieselMsgString] = doneMsg.map { s =>
+            Right(DieselMsgString(
+              // todo should escape unescaped double quotes?
+              s,
+              DieselTarget.TQSPECS(realm, env, new TagQuery(tq)),
+              Map("name" -> name, "realm" -> realm, "env" -> env),
+              Some(settings)
+            ))
+          }.getOrElse {
+            // count will be added at the end
+            Left(DieselCron.defaultDoneMsg(name, realm, env))
+          }
+
           cdebug << "EEDiselCron: set 1"
-          val cid = DieselCron.createSchedule(name, schedule, time, realm, env, count, msg)
+          val cid = DieselCron.createSchedule(name, schedule, time, realm, env, count, m1, m2)
           cdebug << "EEDiselCron: set 2"
 
           List(

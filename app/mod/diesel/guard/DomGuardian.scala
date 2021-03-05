@@ -430,13 +430,15 @@ object DomGuardian extends Logging {
       error(msg)
       msg
     } else {
+      val name = s"guardian.auto-$realm-$env"
       DieselCron.createSchedule(s"guardian.auto-$realm-$env", schedExpr, "", realm, env, -1,
         Left(DieselMsg(
           DieselMsg.GUARDIAN.ENTITY,
           DieselMsg.GUARDIAN.POLL,
           Map("realm" -> realm, "env" -> env),
           DieselTarget.ENV(realm, env)
-        ))
+        )),
+        Left(DieselCron.defaultDoneMsg(name, realm, env))
       )
     }
   }
