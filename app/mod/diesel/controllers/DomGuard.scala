@@ -280,7 +280,7 @@ class DomGuard extends DomApiBase with Logging {
           """<p>----------------active engines------------------</p>""" + {
             DieselAppContext.synchronized {
               DieselAppContext.activeEngines.map(t =>
-                s"""<br><a href="/diesel/viewAst/${t._1}">...${t._1}</a>"""
+                s"""<br><a href="/diesel/viewAst/${t._1}">...${t._1} - ${t._2.description}</a>"""
               )
             }.mkString("")
           }
