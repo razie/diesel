@@ -294,6 +294,7 @@ class EEDomInventory extends EExecutor("diesel.inv") {
         val cls = ctx.getRequired("className")
         val start = ctx.get("from").getOrElse("0").toLong
         val limit = ctx.get("size").getOrElse("1000").toLong
+        val countOnly = ctx.get("countOnly").getOrElse("false").toBoolean
         val sort = ctx.get("sort").getOrElse("")
 
         val c = dom.rdom.classes.get(cls).getOrElse(new C(cls))
@@ -314,16 +315,18 @@ class EEDomInventory extends EExecutor("diesel.inv") {
 
         val epath = Right(q.calculatedTypedValue.asJson)
 
-        val res = plugin.map(_.findByQuery(dom.rdom, ref, epath, start, limit, sort.split(","))
+        val res = plugin.map(_.findByQuery(dom.rdom, ref, epath, start, limit, sort.split(","), countOnly)
             .fold(
               lda => {
+                val data = if (countOnly) Nil else lda.data.map(x => EVal(x.getValueP))
+
                 List(EVal(
                   P.fromSmartTypedValue(
                     Diesel.PAYLOAD,
                     // todo object with total etc
                     Map(
                       "total" -> lda.total,
-                      "data" -> lda.data.map(x => EVal(x.getValueP))
+                      "data" -> data
                     )
                   )))
               },

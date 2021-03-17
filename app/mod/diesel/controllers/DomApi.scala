@@ -919,6 +919,7 @@ class DomApi extends DomApiBase with Logging {
         val settings = new DomEngineSettings()
         settings.realm = Some(stok.realm)
 
+        // prep engine to load its domain
         val engine = EnginePrep.prepEngine(
           new ObjectId().toString,
           settings,
@@ -936,10 +937,13 @@ class DomApi extends DomApiBase with Logging {
         val stories = EnginePrep.loadStories(settings, stok.realm, stok.au.map(_._id), "")
         val allStories = listStoriesWithFiddles(stories, addFiddles = true)
 
-        val u1 = usagesStories(e, a, allStories)(engine.ctx)
+        val u1 = usagesStories(e, a, allStories)
 
         // 2. specs, put $when first
         val u2 = usagesSpecs(e, a)(engine.ctx).sortBy(x => if (x._1 == "$when") 0 else 1)
+
+        // remove engine from everywhere
+        engine.cleanResources()
 
         /** mesg to entry */
         def addm(t: String, msg: String, p: Option[EPos], line: String, parent: String = "") = {

@@ -183,8 +183,9 @@ class EEDieselMemDbBase(name: String) extends EExecutor(name) {
                 val m = x.calculatedTypedValue.asJson
                 // todo better comparison
                 others.foldRight(true)(
-                  (a, b) => b && m.contains(a.name) && m.get(a.name).exists(
-                    _.toString == a.calculatedValue
+                  (a, b) => b && m.contains(a.name) && m.get(a.name).exists(v =>
+                    v.toString == a.calculatedValue ||
+                        v.toString.matches(a.calculatedValue)
                   ))
               } else {
                 true
