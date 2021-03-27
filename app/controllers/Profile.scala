@@ -544,7 +544,8 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
             Msg2C (
               s"""Oops... you are not a member of this site/project. To join, open a support request.<br>
                  |<br>
-                 |<small>Translation: even though you do have an account here, you're not a member of this particular site!</small>
+                 |<small>Translation: even though you do have an account here, you're not a member of this particular
+                 | site! ($realm)</small>
                """.stripMargin, Some(Call("GET", loginUrl)))
               .withNewSession
               .withCookies(
