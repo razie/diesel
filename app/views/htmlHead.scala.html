@@ -501,9 +501,12 @@ img.rklogo {
 
 <script async>
 doEditThis = function() {
-  wikiEdit();
-  // var q = window.location.href.replace(/.*\?/, '');
-  // window.location.href = window.location.href.replace(/\?.*/, '') + "/edit";
+  if(typeof wikiEdit !== 'undefined') {
+    wikiEdit();
+  } else {
+    var q = window.location.href.replace(/.*\?/, '');
+    window.location.href = window.location.href.replace(/\?.*/, '') + "/edit";
+  }
 };
 
 doResetEditor = function() {
