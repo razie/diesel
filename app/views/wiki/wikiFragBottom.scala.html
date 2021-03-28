@@ -123,14 +123,24 @@ wiki fragment, used in another page
     <small>
       (
       @if(canEdit || stok.au.exists(_.isAdmin)) {
+
+<script>
+wikiEdit = function() {
+  window.location.href = "@routes.Wikie.wikieEdit(page.get.wid)";
+}
+wikiEditForm = function() {
+  window.location.href = "@routes.Forms.doeFormEdit(page.get.wid)";
+}
+</script>
+
         @if(wid.cat != "Form" || stok.au.exists(_.isAdmin)) {
           @if(wikiForm().isDefined) {
-            <a href="@routes.Forms.doeFormEdit(page.get.wid)">Edit</a>
+            <a href="javascript:wikiEditForm()">Edit</a>
             @if(stok.au.exists(_.isAdmin)) {
-              | <a href="@routes.Wikie.wikieEdit(page.get.wid)">Edit/c</a>
+              | <a href="javascript:wikiEdit()">Edit/c</a>
             }
           } else {
-            <a href="@routes.Wikie.wikieEdit(page.get.wid)">Edit</a>
+            <a href="javascript:wikiEdit()">Edit</a>
           }
         }
       }

@@ -501,8 +501,9 @@ img.rklogo {
 
 <script async>
 doEditThis = function() {
-  var q = window.location.href.replace(/.*\?/, '');
-  window.location.href = window.location.href.replace(/\?.*/, '') + "/edit";
+  wikiEdit();
+  // var q = window.location.href.replace(/.*\?/, '');
+  // window.location.href = window.location.href.replace(/\?.*/, '') + "/edit";
 };
 
 doResetEditor = function() {
