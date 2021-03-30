@@ -185,7 +185,9 @@ class Application @Inject()(wikiCtl: Wiki) extends RazController {
             _.find("Admin", path)
           } orElse Wikis.rk.find("Admin", path)
 
-          Future.successful(Ok(we.get.content).as("text/plain"))
+          we
+              .map(w => Future.successful(Ok(w.content).as("text/plain")))
+              .getOrElse(Future.successful(NotFound))
 
         } else {
 

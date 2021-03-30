@@ -339,7 +339,7 @@ class DieselControl extends RazController with Logging {
         views.html.wiki.wikiListAssets("list diesel entities", "", "", list.map { x =>
           val ref = x.ref.asInstanceOf[FullSpecRef]
           (ref, ref.key)
-        }, Nil, "./", "", realm)
+        }, Nil, "./", "", realm, res.errors)
       }
     }
   }

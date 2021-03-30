@@ -3,7 +3,7 @@ list of pages, with links etc - result of a query of some kind
 **************@
 @import razie.tconf.FullSpecRef
 @import views.html.wiki.wikiListTableAssets
-@(title:String, search:String, curTags:String, pages:List[(FullSpecRef, String)], tags:model.Tags.Tags, tagPrefix:String="./", tagSuffix:String="", realm:String, showRealm:Boolean=false)(implicit stok: controllers.StateOk)
+@(title:String, search:String, curTags:String, pages:List[(FullSpecRef, String)], tags:model.Tags.Tags, tagPrefix:String="./", tagSuffix:String="", realm:String, errors:List[Any] = Nil, showRealm:Boolean=false)(implicit stok: controllers.StateOk)
 @import razie.wiki.model._
 
 @stok.title("Results for: " + title + curTags)
@@ -51,7 +51,11 @@ list of pages, with links etc - result of a query of some kind
         }
           }
 
-        @notes.notesmsg(Seq(("msg" -> ("Found "+pages.size.toString+" topics"))))
+        @if(errors.size > 0) {
+          @notes.notesmsg(Seq(("err" -> ("Errors: " + errors.mkString))))
+        } else {
+          @notes.notesmsg(Seq(("msg" -> ("Found " + pages.size.toString + " topics"))))
+        }
 
         </h3>
 
