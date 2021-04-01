@@ -943,9 +943,16 @@ setInterval(function(){
   }
 
   // if changed and last updated a while ago, refresh
-  if((domChanged || captureChanged) && curMillis - lastChangeMillis > currDebounce) {
+  if(domSpecChanged) {
+    // spec was just changed, don't run again
+    console.log("Spec changed, not running again... ");
+    domChanged=false;
+    captureChanged=false;
+    domSpecChanged = false;
+  } else if((domChanged || captureChanged) && curMillis - lastChangeMillis > currDebounce) {
     console.log("UPDATING " + curMillis + " - " + lastChangeMillis + " = " + (curMillis - lastChangeMillis))
-    domChanged=false; captureChanged=false;
+    domChanged=false;
+    captureChanged=false;
     lastChangeMillis = curMillis;
     runpill_@{id}('@{id}');
     }

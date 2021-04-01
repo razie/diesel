@@ -341,13 +341,15 @@ var codeGui = function(editor) {
     '<hr><button class="btn btn-primary" onclick="saveLine()">Done</button>');
 }
 
-var SPEC="SPEC";
-var STORY="STORY";
-var lastMarkerSpec=null;
-var lastMarkerStory=null;
+var SPEC = "SPEC";
+var STORY = "STORY";
+var lastMarkerSpec = null;
+var lastMarkerStory = null;
+
+var domSpecChanged = false;
 
 /** navigation: select given line - this works IN the fiddle only */
-function weSelect(wpath,line,col) {
+function weSelect(wpath, line, col) {
   var Range = ace.require('ace/range').Range;
 
   if (wpath.includes("Spec:")) {
@@ -382,6 +384,7 @@ function weref(wpath, line, col) {
 }
 
 function loadSpec (wpath, rest) {
+  domSpecChanged = true;
   specWpath = wpath;
   var wid = WID(wpath);
   $("#curSpec").text(WID(wpath).name);
