@@ -244,6 +244,7 @@ class EEDomInventory extends EExecutor("diesel.inv") {
       case LISTALL => {
         val conn = ctx.get("connection").getOrElse("")
         val cls = ctx.getRequired("className")
+        val countOnly = ctx.get("countOnly").getOrElse("false").toBoolean
         val start = ctx.get("from").getOrElse("0").toLong
         val limit = ctx.get("size").getOrElse("100").toLong
         val sort = ctx.get("sort").getOrElse("")
@@ -264,7 +265,7 @@ class EEDomInventory extends EExecutor("diesel.inv") {
           ctx.root.engine.get.settings.realm.get
         )
 
-        val res = plugin.map(_.listAll(dom.rdom, ref, start, limit, sort.split(","))
+        val res = plugin.map(_.listAll(dom.rdom, ref, start, limit, sort.split(","), countOnly)
             .fold(
               lda => {
                 List(

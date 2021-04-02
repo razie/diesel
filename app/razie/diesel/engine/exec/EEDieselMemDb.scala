@@ -10,7 +10,7 @@ import razie.diesel.Diesel
 import razie.diesel.dom.RDOM._
 import razie.diesel.dom.WTypes
 import razie.diesel.engine.DomAst
-import razie.diesel.engine.nodes.{EError, EMsg, EVal, MatchCollector}
+import razie.diesel.engine.nodes.{EError, EInfo, EMsg, EVal, MatchCollector}
 import razie.diesel.expr.ECtx
 import razie.wiki.Config
 import razie.wiki.model.WikiEventBase
@@ -213,9 +213,12 @@ class EEDieselMemDbBase(name: String) extends EExecutor(name) {
 
       case "remove" => {
         val col = ctx.getRequired("collection")
-        tables.get(col).flatMap(_.entries.remove(ctx("id"))).map(
+        val res = tables.get(col).flatMap(_.entries.remove(ctx("id"))).map(
           x => EVal(x)
         ).toList
+
+        if (res.size > 0) res
+        else List(EInfo("No match..."))
       }
 
       case "logAll" => {
