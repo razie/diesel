@@ -456,7 +456,7 @@ class DomGuard extends DomApiBase with Logging {
                | Guardian report<a href="/wiki/Guardian" ><sup><span class="glyphicon
                | glyphicon-question-sign"></span></a></sup>:
                | <b><a href="/diesel/runCheck">Re-run check</a></b> (
-               | <a href="/diesel/runCheck?tq=story%2Fsanity">Just sanity</a>)
+               | <a href="/diesel/runCheck?tq=story%2Fsanity%2F-skip">Just sanity</a>)
                |               |   (${r.duration} msec) | ${
               quickBadge(r.failed, r.total, r.duration)
             }<br>
@@ -498,7 +498,7 @@ class DomGuard extends DomApiBase with Logging {
                 s"""
                    |No run available yet (<b>$started</b>) - check this later
                    |  <br><b><a href="/diesel/runCheck">Re-run check</a></b> (
-                   |  <a href="/diesel/runCheck?tq=story/sanity">Just sanity</a>)
+                   |  <a href="/diesel/runCheck?tq=story/sanity/-skip">Just sanity</a>)
                    | $runs
                    |<br>
                    |Other in realm:<br>$otherInRealm""".

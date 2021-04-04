@@ -127,7 +127,7 @@ class EEGuardian extends EExecutor(DieselMsg.GUARDIAN.ENTITY) with Logging {
         val settings = ctx.root.settings
         val env = ctx.getRequired("env")
         val stamp = ctx.getRequired("stamp")
-        val tq = ctx.get("tagQuery").getOrElse("story/sanity")
+        val tq = ctx.get("tagQuery").getOrElse("story/sanity/-skip")
         val inRealm = ctx.get("inRealm").getOrElse(settings.realm.get)
         var res : List[Any] = Nil
 

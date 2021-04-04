@@ -30,7 +30,7 @@ object DieselDebug {
     def autoQuery(realm: String) =
       Website.forRealm(realm)
           .flatMap(_.prop("guardian.settings.query"))
-          .getOrElse("story/sanity")
+          .getOrElse("story/sanity/-skip")
 
   }
 
