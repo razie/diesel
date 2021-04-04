@@ -3,6 +3,8 @@ package mod.diesel.guard
 import akka.actor.{Actor, Props}
 import api.dwix
 import controllers.RazRequest
+import mod.diesel.guard.DieselDebug.Guardian
+import mod.diesel.guard.DieselDebug.Guardian.{ISAUTO, ISENABLED, ISENABLED_LOCALHOST, ISSCHED}
 import model.{User, Users}
 import org.bson.types.ObjectId
 import org.joda.time.DateTime
@@ -25,7 +27,7 @@ object DomGuardian extends Logging {
 
   // todo optimize so we don't parse every time
   def autoRealms =
-    Config.weprop("diesel.guardian.auto.realms.regex", "wiki|specs")
+    Config.weprop("diesel.guardian.auto.realms.regex", "wiki|specs|devnetlinq")
 
   def enabledRealms = Config.prop("diesel.guardian.enabled.realms.regex", ".*")
 
@@ -37,18 +39,28 @@ object DomGuardian extends Logging {
   def excludedAutoRealms =
     Config.weprop("diesel.guardian.excluded.auto.realms.regex", "nobody")
 
-  def ISAUTO = DieselDebug.Guardian.ISAUTO
-
-  def ISENABLED_LOCALHOST = DieselDebug.Guardian.ISENABLED_LOCALHOST
-  def ISENABLED = DieselDebug.Guardian.ISENABLED
-
-  def enabled(realm: String) = (!Config.isLocalhost && DomGuardian.ISENABLED || DomGuardian.ISENABLED_LOCALHOST) && {
+  /** is it enabled for this realm
+    * if true,
+    */
+  def enabled(realm: String) = (!Config.isLocalhost && ISENABLED || ISENABLED_LOCALHOST) && {
     realm match {
       case "specs" | "wiki" => true // always these two
       case _ => realm.matches(enabledRealms) && !realm.matches(excludedRealms)
     }
   }
 
+  /** */
+  def onSched(realm: String) = ISAUTO && {
+    realm match {
+      case "specs" | "wiki" => true // always these two
+      case _ =>
+        ISSCHED && realm.matches(autoRealms) && !realm.matches(
+          excludedAutoRealms
+        )
+    }
+  }
+
+  /** */
   def onAuto(realm: String) = ISAUTO && {
     realm match {
       case "specs" | "wiki" => true // always these two
@@ -68,7 +80,7 @@ object DomGuardian extends Logging {
   }
 
   /** start a check run. the first time, it will init the guardian and listeners */
-  def startCheck(realm: String, au: Option[User], tq: String = ""): (Future[Report], DomEngine) = {
+  def startCheck(realm: String, au: Option[User], tq: String): (Future[Report], Option[DomEngine]) = {
     if (!DomGuardian.init) {
 
       // first time, init the guardian
@@ -89,7 +101,7 @@ object DomGuardian extends Logging {
 
                 // todo also cancel existing workflows
 
-                // todo optimize to rnu just the one story if only one changed and replace it in reports
+                // todo optimize to run just the one story if only one changed and replace it in reports
                 // that may require story dependencies etc
 
                 if (enabled(realm) && onAuto(realm))
@@ -97,7 +109,11 @@ object DomGuardian extends Logging {
                       .filter(_._2.realm == we.realm)
                       .headOption
                       .map { t =>
-                        startCheck(t._2.realm, Users.findUserByUsername(t._2.userName))
+                        startCheck(
+                          t._2.realm,
+                          Users.findUserByUsername(t._2.userName),
+                          Guardian.autoQuery(realm)
+                        )
                       }
               }
             }
@@ -148,13 +164,13 @@ object DomGuardian extends Logging {
     def key = realm + "." + env + "." + userName
 
     // actually run a reactor test
-    def run: (Future[Report], DomEngine) = DomGuardian.synchronized {
+    def run: (Future[Report], Option[DomEngine]) = DomGuardian.synchronized {
       val started = System.currentTimeMillis()
 
       log(s"RunReq.run() start $realm")
 
       val settings = mkSettings()
-      settings.tagQuery = tq.orElse(Website.forRealm(realm).flatMap(_.prop("guardian.settings.query")))
+      settings.tagQuery = tq
       settings.realm = Some(realm)
 
       if (Config.isLocalhost)
@@ -167,18 +183,20 @@ object DomGuardian extends Logging {
           .flatMap(_.bprop("guardian.settings.fiddles"))
           .getOrElse(false)
 
+      // override for this flow
+      settings.env = Some(env)
+
       val stories = EnginePrep.loadStories(settings, realm, au.map(_._id), "")
       val me = new WikiEntry("Story", "temp", "temp", "md",
         s"""
            |$$send diesel.guardian.starts(realm="$realm", env="$env")
-           |$$send ctx.set(diesel.env="$env")
            |$$send diesel.setEnv(env="$env", user="")
  """.stripMargin,
         new ObjectId(), Seq("dslObject"), realm)
 
       // a reactor without tests... skip it
       if (stories.size == 0) {
-        return (Future.successful(Report(Some(this), "?", null, "?", "?", 0, 0, 0)), null)
+        return (Future.successful(Report(Some(this), "?", null, "?", "?", 0, 0, 0)), None)
         // return a random report
 //        if (lastRun.values.head != null)
 //          return ("", Future.successful(lastRun.values.head))
@@ -231,7 +249,7 @@ object DomGuardian extends Logging {
 
       curRun = Some((engine.id, engine, fut))
 
-      (fut, engine)
+      (fut, Some(engine))
     }
   }
 
@@ -276,7 +294,8 @@ object DomGuardian extends Logging {
     None
 
   /** just run, no checks */
-  def runReqUnsafe(au: Option[WikiUser], realm: String, env: String, tq:Option[String]=None): (Future[Report], DomEngine) = {
+  def runReqUnsafe(au: Option[WikiUser], realm: String, env: String, tq: Option[String] = None): (Future[Report],
+      Option[DomEngine]) = {
     DomGuardian.synchronized {
       val rr = RunReq(au, au.map(_.userName).mkString, realm, env, false, tq)
       val k = rr.key
@@ -294,10 +313,11 @@ object DomGuardian extends Logging {
 
   /** if no test is currently running, start one */
   def runReq(au: Option[WikiUser], realm: String, env: String, tq: String, auto: Boolean = false): (Future[Report],
-      DomEngine) = {
+      Option[DomEngine]) = {
     if (DieselCron.isMasterNode(Website.forRealm(realm).get)) {
       DomGuardian.synchronized {
         val q = if (tq.isEmpty) None else Some(tq)
+        //        Some(tq.getOrElse(Guardian.autoQuery(realm)))
         val rr = RunReq(au, au.map(_.userName).mkString, realm, env, auto, q)
         val k = rr.key
         debug(s"GuardianActor received a RunReq $k")
@@ -341,7 +361,7 @@ object DomGuardian extends Logging {
     DieselAppContext.actorOf(Props[GuardianActor], name = "GuardianActor")
 
   private var debouncer =
-    new mutable.ListBuffer[(String, RunReq, Future[Report], DomEngine)]()
+    new mutable.ListBuffer[(String, RunReq, Future[Report], Option[DomEngine])]()
 
   /** actually does the work */
   class GuardianActor extends Actor {
@@ -405,10 +425,12 @@ object DomGuardian extends Logging {
 
       info(s"Guardian - starting a run $realm-$env - new $tstamp vs old $oldTstamp")
 
+      val tq = if (tquery.trim.isEmpty) Map.empty else Map("tagQuery" -> tquery.trim)
+
       Services ! DieselMsg(
         DieselMsg.GUARDIAN.ENTITY,
-        "run",
-        Map("realm" -> realm, "env" -> env),
+        DieselMsg.GUARDIAN.RUN,
+        Map("realm" -> realm, "env" -> env) ++ tq,
         DieselTarget.ENV(realm)
       )
 
@@ -431,7 +453,7 @@ object DomGuardian extends Logging {
       msg
     } else {
       val name = s"guardian.auto-$realm-$env"
-      DieselCron.createSchedule(s"guardian.auto-$realm-$env", schedExpr, "", realm, env, -1,
+      DieselCron.createSchedule(s"guardian.auto-$realm-$env", schedExpr, "", realm, env, "", -1,
         Left(DieselMsg(
           DieselMsg.GUARDIAN.ENTITY,
           DieselMsg.GUARDIAN.POLL,

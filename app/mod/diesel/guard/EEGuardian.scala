@@ -6,6 +6,8 @@
   **/
 package mod.diesel.guard
 
+import mod.diesel.guard.DieselDebug.Guardian
+import mod.diesel.guard.DieselDebug.Guardian.{ISAUTO, ISSCHED}
 import mod.diesel.guard.DomGuardian.GUARDIAN_POLL
 import model.Users
 import razie.Logging
@@ -40,14 +42,14 @@ class EEGuardian extends EExecutor(DieselMsg.GUARDIAN.ENTITY) with Logging {
             .filter { x =>
               val ok = Website.forRealm(ctx.root.settings.realm.get)
                   .exists(_.dieselTrust.split(",").contains(x))
-              if(!ok)
+              if (!ok)
                 res = EError(s"Can't trust realm $x") :: Nil
               ok
             }
             .getOrElse(ctx.root.settings.realm.get)
 
-        if(! DomGuardian.ISAUTO) {
-          res = EError(s"Guardian not on auto") :: Nil
+        if (!ISSCHED) {
+          res = EError(s"Guardian not on auto/sched") :: Nil
         } else {
           val result = DomGuardian.createPollSchedule(
             ctx.getRequired("schedule"),
@@ -125,7 +127,7 @@ class EEGuardian extends EExecutor(DieselMsg.GUARDIAN.ENTITY) with Logging {
         val settings = ctx.root.settings
         val env = ctx.getRequired("env")
         val stamp = ctx.getRequired("stamp")
-        val tq = ctx.get("tagQuery").mkString
+        val tq = ctx.get("tagQuery").getOrElse("story/sanity")
         val inRealm = ctx.get("inRealm").getOrElse(settings.realm.get)
         var res : List[Any] = Nil
 
@@ -141,7 +143,7 @@ class EEGuardian extends EExecutor(DieselMsg.GUARDIAN.ENTITY) with Logging {
             }
             .getOrElse(settings.realm.get)
 
-        val result = "NOPE"//DomGuardian.polled(inRealm, env, stamp, settings.userId.flatMap(Users.findUserById), tq)
+        val result = DomGuardian.polled(inRealm, env, stamp, settings.userId.flatMap(Users.findUserById), tq)
 
         res = res ::: EVal(P("payload", result)) :: Nil
         res
@@ -160,8 +162,15 @@ class EEGuardian extends EExecutor(DieselMsg.GUARDIAN.ENTITY) with Logging {
           realm
         else settings.realm.mkString
 
-        val x@(f, e) = DomGuardian.runReq(settings.userId.flatMap(Users.findUserById), inrealm, env, "", true)
-        EVal(P("payload", s"""scheduled new run... <a href="/diesel/viewAst/${e.id}">view</a>""", WTypes.wt.HTML)) :: Nil
+        val tq = ctx.get("tagQuery").getOrElse(Guardian.autoQuery(inrealm))
+
+        val x@(f, e) = DomGuardian.runReq(settings.userId.flatMap(Users.findUserById), inrealm, env, tq, true)
+        EVal(
+          P("payload",
+            s"""scheduled new run... <a href="/diesel/viewAst/${
+              e.map(_.id).getOrElse("n/a")
+            }">view</a> realm:$inrealm , tagQuery=$tq""",
+            WTypes.wt.HTML)) :: Nil
       }
 
       case "stats" => {

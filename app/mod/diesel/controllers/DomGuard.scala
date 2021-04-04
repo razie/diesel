@@ -3,6 +3,8 @@ package mod.diesel.controllers
 import controllers.RazRequest
 import java.net.InetAddress
 import java.util.concurrent.atomic.AtomicInteger
+import mod.diesel.guard.DieselDebug.Guardian
+import mod.diesel.guard.DieselDebug.Guardian.{ISENABLED, ISENABLED_LOCALHOST}
 import mod.diesel.guard.DomGuardian
 import mod.diesel.guard.DomGuardian.startCheck
 import mod.diesel.model._
@@ -356,7 +358,8 @@ class DomGuard extends DomApiBase with Logging {
         }
       }.getOrElse {
         // start a check in the background
-        if (DomGuardian.enabled(stok.realm) && DomGuardian.onAuto(stok.realm)) startCheck(stok.realm, stok.au)
+        if (DomGuardian.enabled(stok.realm) && DomGuardian.onAuto(stok.realm))
+          startCheck(stok.realm, stok.au, Guardian.autoQuery(stok.realm))
 
         // just return right away
         Future.successful {
@@ -453,7 +456,7 @@ class DomGuard extends DomApiBase with Logging {
                | Guardian report<a href="/wiki/Guardian" ><sup><span class="glyphicon
                | glyphicon-question-sign"></span></a></sup>:
                | <b><a href="/diesel/runCheck">Re-run check</a></b> (
-               | <a href="/diesel/runCheck?tq=story/sanity">Just sanity</a>)
+               | <a href="/diesel/runCheck?tq=story%2Fsanity">Just sanity</a>)
                |               |   (${r.duration} msec) | ${
               quickBadge(r.failed, r.total, r.duration)
             }<br>
@@ -472,8 +475,8 @@ class DomGuard extends DomApiBase with Logging {
       var started =
         Try {
           if (DomGuardian.enabled(stok.realm) && DomGuardian.onAuto(stok.realm)) {
-            val (f, e) = startCheck(stok.realm, stok.au)
-            s"""One just auto-started <a href="/diesel/viewAst/${e.id}">view</a> """
+            val (f, e) = startCheck(stok.realm, stok.au, Guardian.autoQuery(stok.realm))
+            s"""One just auto-started <a href="/diesel/viewAst/${e.map(_.id).getOrElse("n/a")}">view</a> """
           } else
             "Can't auto-start one"
         }.recover {
@@ -572,10 +575,13 @@ Guardian report<a href="/wiki/Guardian_Guide" ><sup><span class="glyphicon glyph
   def dieselRunCheck(tq: String) = Filter(activeUser).async { implicit stok =>
     if (DomGuardian.enabled(stok.realm)) {
       val x@(f, e) = startCheck(stok.realm, stok.au, tq)
-      val id = if (e != null) e.id else ""
 
       Future.successful(
-        Redirect(s"""/diesel/viewAst/$id"""))
+        e
+            .map(e => Redirect(s"""/diesel/viewAst/${e.id}"""))
+            .getOrElse(
+              NotFound(s"Test can't start = likely no stories matched tagQuery $tq"))
+      )
     }
     else Future.successful(
       Ok("GUARDIAN DISABLED in realm: " + stok.realm))
@@ -583,9 +589,9 @@ Guardian report<a href="/wiki/Guardian_Guide" ><sup><span class="glyphicon glyph
 
   /** run another check all reactors */
   def dieselRunCheckAll = Filter(adminUser).async { implicit stok =>
-    if (!Config.isLocalhost && DomGuardian.ISENABLED || DomGuardian.ISENABLED_LOCALHOST) Future.sequence(
+    if (!Config.isLocalhost && ISENABLED || ISENABLED_LOCALHOST) Future.sequence(
       WikiReactors.allReactors.keys.map { k =>
-        if (DomGuardian.enabled(k)) startCheck(k, stok.au)._1
+        if (DomGuardian.enabled(k)) startCheck(k, stok.au, "")._1
         else Future.successful(DomGuardian.EMPTY_REPORT)
       }
     ).map { x =>
