@@ -197,11 +197,6 @@ object DomGuardian extends Logging {
       // a reactor without tests... skip it
       if (stories.size == 0) {
         return (Future.successful(Report(Some(this), "?", null, "?", "?", 0, 0, 0)), None)
-        // return a random report
-//        if (lastRun.values.head != null)
-//          return ("", Future.successful(lastRun.values.head))
-//        else
-//          throw new IllegalArgumentException("No runs yet... try again later")
       }
 
       val last = new WikiEntry("Story", "temp", "temp", "md",
