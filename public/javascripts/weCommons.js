@@ -189,10 +189,12 @@ function weIsBrowser() {
 
 /** this works from anywhere, to open the fiddle on an element */
 function wefiddle(wpath,line,col) {
-  if(wpath.includes("Spec:")) {
-    window.location.href='/diesel/fiddle/playDom'+'?line='+line+'&col='+col+'&spec='+wpath
-  } else if(wpath.includes("Story:")) {
-    window.location.href='/diesel/fiddle/playDom'+'?line='+line+'&col='+col+'&story='+wpath
+  // prevent fiddle from running what's there...
+  localStorage.setItem("weFiddleNavigated", true);
+  if (wpath.includes("Spec:")) {
+    window.location.href = '/diesel/fiddle/playDom' + '?line=' + line + '&col=' + col + '&spec=' + wpath
+  } else if (wpath.includes("Story:")) {
+    window.location.href = '/diesel/fiddle/playDom' + '?line=' + line + '&col=' + col + '&story=' + wpath
   }
 }
 

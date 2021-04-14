@@ -936,6 +936,18 @@ setInterval(function(){
     return;
   }
 
+  // if the fiddle was open navigating from somewhere, don't run it...
+  if (localStorage.getItem("weFiddleNavigated") != null) {
+    localStorage.removeItem("weFiddleNavigated");
+
+    // reset flags to not run
+    domChanged=false;
+    captureChanged=false;
+    domSpecChanged = false;
+    lastChangeMillis = curMillis;
+    return;
+  }
+
   // if still typing, wait
   if(curMillis - lastChangeMillis < CUR_TYPING_MAX) {
     // console.log("still typing " + lastChangeMillis + " - " + curMillis);
