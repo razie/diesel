@@ -9,7 +9,7 @@ import razie.diesel.Diesel
 import razie.diesel.dom.RDOM.{C, P}
 import razie.diesel.dom.{DieselAsset, DieselRulesInventory, DomInvWikiPlugin, DomInventories, RDomain, WikiDomain}
 import razie.diesel.engine.DomAst
-import razie.diesel.engine.nodes.{EInfo, EMsg, EVal, EWarning, MatchCollector}
+import razie.diesel.engine.nodes.{EError, EInfo, EMsg, EVal, EWarning, MatchCollector}
 import razie.diesel.expr.{DieselExprException, ECtx}
 import razie.tconf.FullSpecRef
 import scala.collection.mutable
@@ -172,35 +172,43 @@ class EEDomInventory extends EExecutor("diesel.inv") {
       case FIND => {
         val conn = ctx.get("connection").getOrElse("")
         val cls = ctx.getRequired("className")
-        val k = ctx.getRequired("key")
+        val k = ctx.get("key")
 
         val c = dom.rdom.classes.get(cls).getOrElse(new C(cls))
         val t = c.props.find(_.name == "table").map(_.calculatedValue(ECtx.empty)).getOrElse(c.name)
         val plugin = DomInventories.getPluginForClass(realm, c, conn)
 
-        val ref = FullSpecRef(
-          plugin.map(_.name).orElse(ctx.get("inventory")).mkString,
-          plugin.map(_.conn).getOrElse(conn),
-          cls,
-          k,
-          ctx.get("section").getOrElse(""),
-          ctx.root.engine.get.settings.realm.get
-        )
+        val res = k.map { key =>
+          val ref = FullSpecRef(
+            plugin.map(_.name).orElse(ctx.get("inventory")).mkString,
+            plugin.map(_.conn).getOrElse(conn),
+            cls,
+            key,
+            ctx.get("section").getOrElse(""),
+            ctx.root.engine.get.settings.realm.get
+          )
 
-        val res = plugin.map(_.findByRef(dom.rdom, ref)
-            .fold(
-              oda => {
-                oda.map(x => EVal(x.getValueP)).getOrElse(
-                  EVal(P.undefined(Diesel.PAYLOAD))
-                )
-              },
-              m => m.withPos(in.pos)
-            )).getOrElse(
+          plugin.map(_.findByRef(dom.rdom, ref)
+              .fold(
+                oda => {
+                  oda.map(x => EVal(x.getValueP)).getOrElse(
+                    EVal(P.undefined(Diesel.PAYLOAD))
+                  )
+                },
+                m => m.withPos(in.pos)
+              )).getOrElse(
+            List(
+              EWarning("No inventory found for class: " + ref.cls),
+              EVal(P.undefined(Diesel.PAYLOAD))
+            )
+          )
+        }.getOrElse {
+          // flatmap like behavior
           List(
-            EWarning("No inventory found for class: " + ref.cls),
+            EWarning("key missing!"),
             EVal(P.undefined(Diesel.PAYLOAD))
           )
-        )
+        }
 
         List(res)
       }
@@ -208,35 +216,43 @@ class EEDomInventory extends EExecutor("diesel.inv") {
       case REMOVE => {
         val conn = ctx.get("connection").getOrElse("")
         val cls = ctx.getRequired("className")
-        val k = ctx.getRequired("key")
+        val k = ctx.get("key")
 
         val c = dom.rdom.classes.get(cls).getOrElse(new C(cls))
         val t = c.props.find(_.name == "table").map(_.calculatedValue(ECtx.empty)).getOrElse(c.name)
         val plugin = DomInventories.getPluginForClass(realm, c, conn)
 
-        val ref = FullSpecRef(
-          plugin.map(_.name).orElse(ctx.get("inventory")).mkString,
-          plugin.map(_.conn).getOrElse(conn),
-          cls,
-          k,
-          ctx.get("section").getOrElse(""),
-          ctx.root.engine.get.settings.realm.get
-        )
+        val res = k.map { key =>
+          val ref = FullSpecRef(
+            plugin.map(_.name).orElse(ctx.get("inventory")).mkString,
+            plugin.map(_.conn).getOrElse(conn),
+            cls,
+            key,
+            ctx.get("section").getOrElse(""),
+            ctx.root.engine.get.settings.realm.get
+          )
 
-        val res = plugin.map(_.remove(dom.rdom, ref)
-            .fold(
-              oda => {
-                oda.map(x => EVal(x.getValueP)).getOrElse(
-                  EVal(P.undefined(Diesel.PAYLOAD))
-                )
-              },
-              m => m.withPos(in.pos)
-            )).getOrElse(
+          plugin.map(_.remove(dom.rdom, ref)
+              .fold(
+                oda => {
+                  oda.map(x => EVal(x.getValueP)).getOrElse(
+                    EVal(P.undefined(Diesel.PAYLOAD))
+                  )
+                },
+                m => m.withPos(in.pos)
+              )).getOrElse(
+            List(
+              EWarning("No inventory found for class: " + ref.cls),
+              EVal(P.undefined(Diesel.PAYLOAD))
+            )
+          )
+        }.getOrElse {
+          // flatmap like behavior
           List(
-            EWarning("No inventory found for class: " + ref.cls),
+            EWarning("key missing!"),
             EVal(P.undefined(Diesel.PAYLOAD))
           )
-        )
+        }
 
         List(res)
       }
