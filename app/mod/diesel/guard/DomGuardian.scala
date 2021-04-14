@@ -213,7 +213,7 @@ object DomGuardian extends Logging {
         None,
         false,
         au,
-        s"Guardian:${realm}-${env}-${au.map(_.userName).getOrElse("auto")}-",
+        s"Guardian:${realm}-${env}-${au.map(_.userName).getOrElse("auto")}:" + tq.mkString,
         Some(me),
         stories,
         Some(last),

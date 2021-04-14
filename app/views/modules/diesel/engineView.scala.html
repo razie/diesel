@@ -26,7 +26,7 @@ DESC: @{e.description}<br>
   <br>
 
   @if(e.root.children.exists(x=> x.kind == "story")) {
-<b>Summary:</b> @e.failedTestCount / @e.successTestCount / @e.totalTestCount (fail/succ/total)
+<b>Summary:</b> @e.failedTestCount / @e.successTestCount / @e.totalTestCount / @e.todoTestCount (fail/succ/total/todo)
 <br>
 <pre>
 @Html(DomEngineView.storySummary(e.root))
