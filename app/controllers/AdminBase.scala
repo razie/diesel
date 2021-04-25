@@ -28,7 +28,9 @@ class AdminBase extends RazController {
     implicit val errCollector = new VErrors()
     (for (
       au <- activeUser;
-      can <- au.hasPerm(Perm.adminDb) || Config.isLocalhost && Config.trustLocalUsers orErr "no permission"
+      can <- au.hasPerm(Perm.adminDb) ||
+          Config.isLocalhost && au.hasPerm(Perm.Moderator) ||
+          Config.isLocalhost && Config.trustLocalUsers orErr "no permission"
     ) yield {
       f(au)(errCollector)(request)
     }) getOrElse {

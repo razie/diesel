@@ -290,9 +290,14 @@ class DomGuard extends DomApiBase with Logging {
         table = table + a
       }
 
-      val title = s"""Flow history realm: $r showing ${list.size} of $total and user $un"""
+      val title =
+        s"""Flow history realm: $r showing ${list.size} of $total and user $un""".stripMargin
+      val title2 =
+        s"""Stats: ${GlobalData.dieselEnginesActive} active,
+           |streams ${GlobalData.dieselStreamsActive} active of ${GlobalData.dieselStreamsTotal} total"""
+            .stripMargin
       ROK.k reactorLayout12FullPage {
-        views.html.modules.diesel.engineListAst(title, table)
+        views.html.modules.diesel.engineListAst(title, title2, table)
       }
     }
   }
