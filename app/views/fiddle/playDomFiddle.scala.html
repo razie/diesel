@@ -111,7 +111,7 @@ Command reference (see more about [[specs.Topic:Expressions_and_pattern_matching
       <span title="real time preview">RT/</span>
       <span onclick="configRTSim();" style="cursor:pointer" >Sim <span class="glyphicon glyphicon-chevron-down"></span></span></span>
 
-    <span id="refresher" onclick="javascript:refresher()" style="cursor:pointer" ><span style="font-weight:bold" class="glyphicon glyphicon-refresh"></span></span>
+    <span id="refresher" onclick="javascript:refresher()" style="cursor:pointer" title="Rerun the RT flow (no Sim)!"><span style="font-weight:bold" class="glyphicon glyphicon-play"></span></span>
       <span id="spinner" style="display: none"><img src="https://cdn.razie.com/Public/spinner.gif" height="20" width="20"></span>
       <small><small>(<span id="roundtrip" title="real time roundtrip response time">.. ms</span>)</small></small>
 
@@ -361,7 +361,7 @@ $('#iframeOutStory_'+@id).css('max-height', $('#divInStory_@id').height()-10+'px
 $('#iframeOut5_'+@id).css('max-height', $('#pre5box_@id').height()-10+'px');
 
 function refresher() {
-  runpill2_@{id}('@{id}', false);
+  runpill2_@{id}('@{id}', false, true);
 };
 
 function showHelp() {
@@ -469,10 +469,12 @@ var runpill_@id = function(id) {
 }
 
 /** run the fiddle */
-var runpill2_@id = function(id,compileOnly, next) {
+var runpill2_@id = function(id, compileOnly, forceRT, next) {
   isRefreshing2 += 1;
   showSpinner();
   console.log("run isRefreshing2="+isRefreshing2);
+
+  var noSim = !(forceRT || false);
 
   // set this before going to backend which could take a long time
   @*storyChanged(!(specEditor.getValue() === $("#origStory_@id").text()));*@
@@ -500,7 +502,7 @@ var runpill2_@id = function(id,compileOnly, next) {
           storyWpath : storyWpath,
           runEngine : ! $('#wikiMode').prop('checked'),
           compileOnly : compileOnly,
-          simMode : simMode(),
+          simMode : simMode() && noSim,
           clientTimeStamp: clientStoryTimeStamp,
           spec : specEditor.getValue(),
           story : storyEditor.getValue(),
@@ -980,7 +982,7 @@ setInterval(function(){
     // first compile to give feedback quick and then start long run in background
     // todo this needs optimized somehow - likely start the second one and just get it
     //  in the second call, since the parsing was done
-    runpill2_@{id}('@{id}', true, function() {
+    runpill2_@{id}('@{id}', true, false, function() {
       runpill2_@{id}('@{id}', false);
     });
   }
