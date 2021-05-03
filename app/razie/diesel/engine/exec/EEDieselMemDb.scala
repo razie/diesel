@@ -174,9 +174,13 @@ class EEDieselMemDbBase(name: String) extends EExecutor(name) {
             .attrs
             .filter(_.name != "collection")
             .filter(_.name != "id")
+            .filter(_.name != "from")
+            .filter(_.name != "size")
             .filter(x => !x.isUndefinedOrEmpty)
+        val from = ctx.get("from").map(_.toInt)
+        val size = ctx.get("size").map(_.toInt)
 
-        val res = tables.get(col).toList.flatMap(_.entries.values.toList
+        val ires = tables.get(col).toList.flatMap(_.entries.values.toList
             .filter(x =>
               // parse docs and filter by attr
               if (x.isOfType(WTypes.wt.JSON)) {
@@ -201,10 +205,14 @@ class EEDieselMemDbBase(name: String) extends EExecutor(name) {
             )
         )
 
+        var res = ires
+        from.filter(_ > 0).foreach { x => res = res.drop(x) }
+        size.filter(_ >= 0).filter(_ < res.size).foreach { x => res = res.take(x) }
+
         List(
           EVal(P.fromSmartTypedValue(Diesel.PAYLOAD,
             Map(
-              "total" -> res.size,
+              "total" -> ires.size,
               "data" -> res
             )
           ))
