@@ -503,7 +503,7 @@ class DomGuard extends DomApiBase with Logging {
                 s"""
                    |No run available yet (<b>$started</b>) - check this later
                    |  <br><b><a href="/diesel/runCheck?tq=story%2F-skip">Re-run check</a></b> (
-                   |  <a href="/diesel/runCheck?tq=story/sanity/-skip">Just sanity</a>)
+                   |  <a href="/diesel/runCheck?tq=story/sanity/-skip/-manual">Just sanity</a>)
                    | $runs
                    |<br>
                    |Other in realm:<br>$otherInRealm""".

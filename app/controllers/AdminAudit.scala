@@ -52,7 +52,7 @@ class AdminAudit extends AdminBase {
   }
 
   def clearauditAll(msg: String) = FA { implicit request =>
-    val MAX = 3000
+    val MAX = 10000
 
     //filter or all
     if (msg.length > 0)
