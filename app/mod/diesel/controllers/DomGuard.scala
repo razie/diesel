@@ -37,10 +37,15 @@ class DomGuard extends DomApiBase with Logging {
     if (!ObjectId.isValid(id)) {
       Redirect("/diesel/listAst")
     } else {
-      DomCollector.withAsts(_.find(_.id == id).map(_.engine).map { eng =>
-          eng.stopNow
-          Redirect(mod.diesel.controllers.routes.DomGuard.dieselEngineView(id).url)
-      }) getOrElse {
+      DomCollector.withAsts(
+        _.find(_.id == id)
+            .map(_.engine)
+            // todo why arent' some active engines not in collector?
+            .orElse(DieselAppContext.activeEngines.get(id))
+            .map { eng =>
+              eng.stopNow
+              Redirect(mod.diesel.controllers.routes.DomGuard.dieselEngineView(id).url)
+            }) getOrElse {
         ROK.k reactorLayout12 {
           views.html.modules.diesel.engineView(None)
         }
@@ -240,12 +245,13 @@ class DomGuard extends DomApiBase with Logging {
              |<td><a href="/diesel/viewAst/${a.id}">...${a.id.takeRight(4)}</a></td>
              |<td>${a.stream}</td>
              |<td>${a.realm}</td>
+             |<td><span title="${a.collectGroup}">${a.collectGroup.takeRight(8)}</span></td>
              |<td>${uname}</td>
              |<td>$st</td>
              |<td>${a.dtm.toString("HH:mm:ss.SS")}</td>
              |<td align="right">$duration</td>
              |<td><small>${a.engine.description}</small></td>
-             |<td><small>${a.engine.resultingValue.take(100)}</small></td>
+             |<td><small>${a.engine.resultingValue.take(200)}</small></td>
              |<td> </td>
              |""".stripMargin
         }.getOrElse("??")
@@ -258,6 +264,7 @@ class DomGuard extends DomApiBase with Logging {
            |<th>Id</th>
            |<th>Stream</th>
            |<th>Realm</th>
+           |<th>Group</th>
            |<th>User</th>
            |<th>Status</th>
            |<th>dtm</th>

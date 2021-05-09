@@ -16,12 +16,17 @@ import razie.wiki.Config
 import razie.wiki.model.WikiEventBase
 import scala.collection.concurrent.TrieMap
 import scala.collection.mutable
+import scala.collection.mutable.HashMap
 
 object EEDieselDb {
   // todo if paid, should be more
   final val MAX_TABLES = 10
   final val MAX_ENTRIES = 10
   final val EXPIRY_MSEC = 10 * 60 * 1000 // 10 min
+
+  def maxTables = if (Config.isLocalhost) 100 else MAX_TABLES
+
+  def maxEntries = if (Config.isLocalhost) 10000 else MAX_ENTRIES
 }
 
 /** clustered events */
@@ -72,7 +77,7 @@ class EEDieselMemDbBase(name: String) extends EExecutor(name) {
     for (elem <- oldies) sessions.remove(elem._1)
   }
 
-  def upsert(session: Session, col: String, id: String, doc: P, toclusterize: Boolean = true) = {
+  def upsert(session: Session, col: String, id: String, doc: P, toclusterize: Boolean = true): Unit = {
     val tables = session.tables
     if (tables.size > MAX_TABLES && !Config.isLocalhost)
       throw new IllegalStateException("Too many collections (10)")
@@ -88,6 +93,11 @@ class EEDieselMemDbBase(name: String) extends EExecutor(name) {
     if (toclusterize) {
       clusterize(EEDbEvent("upsert", DB, session.name, col, id, doc))
     }
+  }
+
+  def mupsert(session: Session, col: String, docs: List[Any], toclusterize: Boolean = true): Unit = {
+    val pp = docs.map(d => P.fromSmartTypedValue("", d.asInstanceOf[HashMap[String, Any]]))
+    pp.map(doc => upsert(session, col, doc.value.map(_.asJson.get("key")).mkString, doc))
   }
 
   def clusterize(event: EEDbEvent) = {}
@@ -136,7 +146,11 @@ class EEDieselMemDbBase(name: String) extends EExecutor(name) {
         require(col.length > 0)
         val id = if (ctx.get("id").exists(_.length > 0)) ctx.apply("id") else new ObjectId().toString
 
-        upsert(session, col, id, ctx.getRequiredp("document"))
+        val docs = ctx.getp("documents")
+        if (docs.isDefined)
+          mupsert(session, col, docs.get.value.get.asArray.toList)
+        else
+          upsert(session, col, id, ctx.getRequiredp("document"))
 
         EVal(P(Diesel.PAYLOAD, id)) :: Nil
       }
@@ -221,12 +235,21 @@ class EEDieselMemDbBase(name: String) extends EExecutor(name) {
 
       case "remove" => {
         val col = ctx.getRequired("collection")
-        val res = tables.get(col).flatMap(_.entries.remove(ctx("id"))).map(
+        val k = ctx.get("key").getOrElse(ctx.getRequired("id"))
+        val res = tables.get(col).flatMap(_.entries.remove(k)).map(
           x => EVal(x)
         ).toList
 
         if (res.size > 0) res
         else List(EInfo("No match..."))
+      }
+
+
+      case "drop" => {
+        val col = ctx.getRequired("collection")
+        tables.get(col).map(_.entries.clear())
+
+        List(EInfo("Ok, dropped..."))
       }
 
       case "logAll" => {
@@ -262,6 +285,7 @@ class EEDieselMemDbBase(name: String) extends EExecutor(name) {
         EMsg(DB, "remove") ::
         EMsg(DB, "log") ::
         EMsg(DB, "debug") ::
+        EMsg(DB, "drop") ::
         EMsg(DB, "clear") :: Nil
 }
 

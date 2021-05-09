@@ -8,7 +8,7 @@ package razie.diesel.engine.exec
 import razie.diesel.Diesel
 import razie.diesel.dom.RDOM.{C, P}
 import razie.diesel.dom.{DieselAsset, DieselRulesInventory, DomInvWikiPlugin, DomInventories, RDomain, WikiDomain}
-import razie.diesel.engine.DomAst
+import razie.diesel.engine.{AstKinds, DomAst}
 import razie.diesel.engine.nodes.{EError, EInfo, EMsg, EVal, EWarning, MatchCollector}
 import razie.diesel.expr.{DieselExprException, ECtx}
 import razie.tconf.FullSpecRef
@@ -20,6 +20,7 @@ class EEDomInventory extends EExecutor("diesel.inv") {
 
   final val TESTC = "diesel.inv.testConnection"
   final val UPSERT = "diesel.inv.upsert"
+  final val UPSERT_BULK = "diesel.inv.upsert.bulk"
   final val REG = "diesel.inv.register"
   final val CONNECT = "diesel.inv.connect"
   final val LISTALL = "diesel.inv.listAll"
@@ -105,8 +106,9 @@ class EEDomInventory extends EExecutor("diesel.inv") {
         List(res)
       }
 
-      case UPSERT => {
+      case UPSERT | UPSERT_BULK => {
         val entity = ctx.getp("entity").orElse(ctx.getp(Diesel.PAYLOAD))
+        val entities = ctx.getp("entities").orElse(ctx.getp(Diesel.PAYLOAD))
         val conn = ctx.get("connection").getOrElse("")
         val cls = ctx.get("className").getOrElse(entity.get.ttype.schema)
 
@@ -161,10 +163,6 @@ class EEDomInventory extends EExecutor("diesel.inv") {
           EVal(P.undefined(Diesel.PAYLOAD)
           )
         )
-
-//        }).getOrElse(
-//          P(Diesel.PAYLOAD, "??")
-//        )
 
         List(res)
       }
