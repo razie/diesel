@@ -16,7 +16,7 @@ import mod.snow.RacerKidz
 import model._
 import org.bson.types.ObjectId
 import org.joda.time.DateTime
-import play.api.mvc.Request
+import play.api.mvc.{EssentialAction, Request}
 import razie.audit.Audit
 import razie.cout
 import razie.db.RazSalatContext.ctx
@@ -251,9 +251,16 @@ class Wikie @Inject()(config: Configuration) extends WikieBase {
         (for (
           can <- canEdit(wid, Some(au), None, parentProps) orErr ("Can't edit");
           r3 <- ("any" != wid.cat) orErr ("can't create in category any");
-          w <- WikiDomain(realm).rdom.classes.get(wid.cat) orErr (s"cannot find the category ${wid.cat} realm $realm");
+          w <- WikiDomain(realm).rdom.classes.get(wid.cat)
+              .orElse(
+                // for Topic just default
+                if (wid.cat == "Topic") WikiDomain("wiki").rdom.classes.get(wid.cat)
+                else None
+              ) orErr (s"cannot find the category ${wid.cat} realm $realm");
           r1 <- au.hasPerm(Perm.uWiki) orCorr cNoPermission("uWiki");
-          lock <- EditLock.lock(UWID.empty, wid.wpath, 0, au) orErr s"Page also being created by ${EditLock.find(UWID.empty, wid.wpath).map(_.uname).mkString}"
+          lock <- EditLock.lock(UWID.empty, wid.wpath, 0, au) orErr s"Page also being created by ${
+            EditLock.find(UWID.empty, wid.wpath).map(_.uname).mkString
+          }"
         ) yield {
           Audit.missingPage("wiki " + wid);
 
@@ -472,21 +479,27 @@ class Wikie @Inject()(config: Configuration) extends WikieBase {
               Wikis.clearCache(we.wid)
               Emailer.withSession(request.realm) { implicit mailSession =>
                 au.quota.incUpdates
-                //                      au.shouldEmailParent("Everything").map(parent => Emailer.sendEmailChildUpdatedWiki(parent, au, WID(w.category, w.name)))
+                //                      au.shouldEmailParent("Everything").map(parent => Emailer
+                //                      .sendEmailChildUpdatedWiki(parent, au, WID(w.category, w.name)))
               }
             }
-            Services ! WikiAudit(WikiAudit.UPD_SET_CONTENT, w.wid.wpathFull, Some(au._id), None, Some(we), Some(w))
+        Services ! WikiAudit(WikiAudit.UPD_SET_CONTENT, w.wid.wpathFull, Some(au._id), None, Some(we), Some(w))
 
-            Ok("ok, section updated")
+        Ok("ok, section updated")
       })
   }
 
-
-  /** api to set content remotely - used by sync and such */
-  def setContent(iwid: WID) = FAUR("setContent", true) {
+  /** api to set content remotely - used by sync and such
+    *
+    * @param iwid
+    * @param id optional (backwards compat) if passed in, can support renamed WIDs
+    * @return
+    */
+  def setContent(iwid: WID, id: String) = FAUR("setContent", true) {
     implicit request =>
       def getRealm(remote: WikiEntry) = iwid.realm.getOrElse(remote.realm)
 
+      // todo implement using id to support renaming WIDs
 
       def fromJ(s: String) = {
         val dbo = com.mongodb.util.JSON.parse(s).asInstanceOf[DBObject];
@@ -507,17 +520,21 @@ class Wikie @Inject()(config: Configuration) extends WikieBase {
         // make sure wid has realm
         val wid = iwid.r(toRealm)
 
-        log(s"Wiki.setContent toRealm: $toRealm | remote: $remoteHostPort / ${remote.wid} | local: ${request.hostPort} / $wid")
+        log(
+          s"Wiki.setContent toRealm: $toRealm | remote: $remoteHostPort / ${remote.wid} | local: ${request.hostPort} " +
+              s"/ $wid")
+
+        val idToUse = if (ObjectId.isValid(id)) id else remote._id.toString
 
         Wikis(toRealm)
-          .ifind(wid)
-          .map(grater[WikiEntry].asObject(_)) // use ifind so no fallbacks
-          .orElse(
-            Wikis
-              .findById(remote._id.toString) // look by ID so this works with diffAll as well
-              .filter(x=> request.hostPort == remoteHostPort.mkString) // but only if same server
-              .filter(x=> remote.realm == toRealm) // and same realm (across realms can't share IDs)
-          )
+            .ifind(wid)
+            .map(grater[WikiEntry].asObject(_)) // use ifind so no fallbacks
+            .orElse(
+              Wikis
+                  .findById(idToUse) // look by ID so this works with diffAll as well
+                  .filter(x => request.hostPort == remoteHostPort.mkString) // but only if same server
+                  .filter(x => remote.realm == toRealm) // and same realm (across realms can't share IDs)
+            )
         match {
 
             // existing page
@@ -812,11 +829,17 @@ class Wikie @Inject()(config: Configuration) extends WikieBase {
             val parentProps = parent.map(_.props)
             (for (
               can <- canEdit(wid, auth, None, parentProps);
-              hasQuota <- (au.isAdmin || au.isMod ||au.quota.canUpdate) orCorr cNoQuotaUpdates;
+              hasQuota <- (au.isAdmin || au.isMod || au.quota.canUpdate) orCorr cNoQuotaUpdates;
               r3 <- ("any" != wid.cat) orErr ("can't create in category any");
-              w <- WikiDomain(wid.realm getOrElse getRealm()).rdom.classes.get(wid.cat) orErr (s"cannot find the category ${wid.cat} realm ${wid.getRealm}");
+              w <- WikiDomain(wid.realm getOrElse getRealm()).rdom.classes.get(wid.cat)
+                  .orElse(
+                    // for Topic just default
+                    if (wid.cat == "Topic") WikiDomain("wiki").rdom.classes.get(wid.cat)
+                    else None
+                  ) orErr (s"cannot find the category ${wid.cat} realm ${wid.getRealm}");
               r1 <- (au.hasPerm(Perm.uWiki)) orCorr cNoPermission("uWiki");
-              stillLocked <- EditLock.canSave(wid.uwid.getOrElse(UWID.empty), wid.wpath, stok.au.get) orErr "You lost the lock on this page, to ?"
+              stillLocked <- EditLock.canSave(wid.uwid.getOrElse(UWID.empty), wid.wpath,
+                stok.au.get) orErr "You lost the lock on this page, to ?"
             ) yield {
               //todo find the right realm from the url or something like Config.realm
               var we = WikiEntry(wid.cat, newName, newLabel, m, newContent, au._id, Seq(), parent.map(_.realm) orElse wid.realm getOrElse getRealm(), 1, wid.parent)

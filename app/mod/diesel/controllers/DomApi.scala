@@ -1164,24 +1164,30 @@ class DomApi extends DomApiBase with Logging {
   private def findEA (path:String, engine:DomEngine, useThisStory:Option[WID]=None) : (Option[DTemplate], String, String, Option[Map[String,String]]) = {
     var e = ""
     var a = ""
-    var m : Option[Map[String,String]] = None
+    var m: Option[Map[String, String]] = None
+
+    //some realms may not want this
+    // todo default should be to not want this...
+    val noTemplates = engine.settings.realm.flatMap(Website.forRealm(_)).flatMap(
+      _.prop("diesel.rest.templates")).exists(
+      _.equals("false"))
 
     val direction = "request"
-    val eapath  = if (path.startsWith("/")) path.substring(1) else path
+    val eapath = if (path.startsWith("/")) path.substring(1) else path
 
-    val trequest =
+    val trequest = if (noTemplates) None else
       engine
-        .ctx
-        // first try  with e.a
-        .findTemplate(eapath, direction)
-        .map {t=>
-          // found template by path name, so parse as entity/action
-          val EMsg.REGEX(ee, aa) = eapath
-          e = ee
-          a = aa
+          .ctx
+          // first try  with e.a
+          .findTemplate(eapath, direction)
+          .map { t =>
+            // found template by path name, so parse as entity/action
+            val EMsg.REGEX(ee, aa) = eapath
+            e = ee
+            a = aa
 
-          t
-        }
+            t
+          }
         .orElse {
           // try to find http templates by URL
           engine
