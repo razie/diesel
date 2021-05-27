@@ -298,10 +298,14 @@ class DomGuard extends DomApiBase with Logging {
       }
 
       val title =
-        s"""Flow history realm: $r showing ${list.size} of $total and user $un""".stripMargin
+        s"""Flow history realm: $r showing ${list.size} of $total since start and user $un""".stripMargin
       val title2 =
-        s"""Stats: ${GlobalData.dieselEnginesActive} active,
-           |streams ${GlobalData.dieselStreamsActive} active of ${GlobalData.dieselStreamsTotal} total"""
+        s"""Stats: Flows: ${GlobalData.dieselEnginesActive} active (${DieselAppContext.activeEngines.size} - ${
+          DieselAppContext.activeEngines.values.filter(_.status != DomState.DONE).size
+        }) /
+           | Streams: ${GlobalData.dieselStreamsActive} active of ${GlobalData.dieselStreamsTotal} since start /
+           | Actors: ${DieselAppContext.activeActors.size} active /
+           | Crons: ${GlobalData.dieselCronsActive} total ${GlobalData.dieselCronsTotal}"""
             .stripMargin
       ROK.k reactorLayout12FullPage {
         views.html.modules.diesel.engineListAst(title, title2, table)
@@ -467,8 +471,8 @@ class DomGuard extends DomApiBase with Logging {
             s"""
                | Guardian report<a href="/wiki/Guardian" ><sup><span class="glyphicon
                | glyphicon-question-sign"></span></a></sup>:
-               | <b><a href="/diesel/runCheck?tq=story%2F-skip">Re-run check</a></b> (
-               | <a href="/diesel/runCheck?tq=story%2Fsanity%2F-skip">Just sanity</a>)
+               | <b><a href="/diesel/runCheck?tq=story%2F-skip%2F-manual">Re-run check</a></b> (
+               | <a href="/diesel/runCheck?tq=story%2Fsanity%2F-skip%2F-manual">Just sanity</a>)
                |               |   (${r.duration} msec) | ${
               quickBadge(r.failed, r.total, r.duration)
             }<br>
@@ -509,7 +513,7 @@ class DomGuard extends DomApiBase with Logging {
             guardianMenu +
                 s"""
                    |No run available yet (<b>$started</b>) - check this later
-                   |  <br><b><a href="/diesel/runCheck?tq=story%2F-skip">Re-run check</a></b> (
+                   |  <br><b><a href="/diesel/runCheck?tq=story%2F-skip%2F-manual">Re-run check</a></b> (
                    |  <a href="/diesel/runCheck?tq=story/sanity/-skip/-manual">Just sanity</a>)
                    | $runs
                    |<br>

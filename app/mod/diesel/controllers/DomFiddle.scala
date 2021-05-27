@@ -83,24 +83,25 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
     }
 
     // need saved?
-    if(iStoryWpath != "?" && iStoryWpath != storyWpath) {
+    if (iStoryWpath != "?" && iStoryWpath != storyWpath) {
       DomWorker later AutosaveSet("DomFidPath", reactor, "", stok.au.get._id, Map(
-        "specWpath"  -> specWpath,
+        "specWpath" -> specWpath,
         "storyWpath" -> iStoryWpath
       ))
       storyWpath = iStoryWpath
     }
 
     val origSpec = WID.fromPath(specWpath).flatMap(_.page).map(_.content).getOrElse(SAMPLE_SPEC)
-    val origStory = WID.fromPath(storyWpath).flatMap(_.page).map(_.content).getOrElse(SAMPLE_STORY)
+    val origStoryWe = WID.fromPath(storyWpath).flatMap(_.page)
+    val origStory = origStoryWe.map(_.content).getOrElse(SAMPLE_STORY)
 
     //2 their contents
-    val spec = Autosave.OR("wikie",WID.fromPathWithRealm(specWpath, reactor).get, stok.au.get._id, Map(
-      "content"  -> origSpec
+    val spec = Autosave.OR("wikie", WID.fromPathWithRealm(specWpath, reactor).get, stok.au.get._id, Map(
+      "content" -> origSpec
     )).apply("content")
 
-    val story = Autosave.OR("wikie",WID.fromPathWithRealm(storyWpath, reactor).get,stok.au.get._id, Map(
-      "content"  -> origStory
+    val story = Autosave.OR("wikie", WID.fromPathWithRealm(storyWpath, reactor).get, stok.au.get._id, Map(
+      "content" -> origStory
     )).apply("content")
 
     val capture = Autosave.OR("DomFidCapture",WID("","").r(reactor), stok.au.get._id, Map(
@@ -116,6 +117,7 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
         stok.query,
         origSpec,
         spec,
+        origStoryWe,
         origStory,
         story,
         capture,

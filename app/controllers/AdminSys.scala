@@ -20,7 +20,7 @@ class AdminSys extends AdminBase {
     import play.api.libs.concurrent.Execution.Implicits.defaultContext
 
     razie.js.tojsons(
-      EEDieselExecutors.getAllData() ++
+      EEDieselExecutors.getAllPingData() ++
           Map(
             "wikis" -> RazMongo("WikiEntry").size,
             "NotesLocker.autosaved" -> NotesLocker.autosaved,

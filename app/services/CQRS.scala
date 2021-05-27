@@ -8,7 +8,7 @@ import play.libs.Akka
 import razie.audit.Audit
 import razie.clog
 import razie.diesel.engine.exec.EEDbEvent
-import razie.diesel.model.{DieselMsg, DieselMsgString, ScheduledDieselMsg}
+import razie.diesel.model.{DieselMsg, DieselMsgString, ScheduledDieselMsg, ScheduledDieselMsgString}
 import razie.hosting.WikiReactors
 import razie.wiki.admin.SendEmail
 import razie.wiki.model._
@@ -130,6 +130,16 @@ class WikiAsyncObservers extends Actor {
     }
 
     case m@ScheduledDieselMsg(s, msgforLater) => {
+      // todo auth/auth
+      clog << s"======== SCHEDULE DIESEL MSG: $s - $m"
+      context.system.scheduler.scheduleOnce(
+        Duration.apply(s).asInstanceOf[FiniteDuration],
+        this.self,
+        msgforLater
+      )
+    }
+
+    case m@ScheduledDieselMsgString(s, msgforLater) => {
       // todo auth/auth
       clog << s"======== SCHEDULE DIESEL MSG: $s - $m"
       context.system.scheduler.scheduleOnce(

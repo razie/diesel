@@ -10,16 +10,18 @@ import mod.diesel.model.WikiDslParser
 import razie.diesel.dom.{WikiDomain, WikiDomainImpl}
 import razie.wiki.model._
 import razie.wiki.parser._
+import scala.concurrent.{Future, Promise}
+import scala.util.Try
 
 /** use custom rk parser for wikis */
-class RkReactor (realm:String, fallBacks:List[Reactor], we:Option[WikiEntry]) extends ReactorImpl (realm, Nil, we) {
-  override val wiki : WikiInst = new RkWikiInst(realm, fallBacks.map(_.wiki))
-  override val domain : WikiDomain = wiki.domain //new WikiDomainImpl(realm, wiki)
+class RkReactor(realm: String, fallBacks: List[Reactor], we: Option[WikiEntry]) extends ReactorImpl(realm, Nil, we) {
+  override val wiki: WikiInst = new RkWikiInst(realm, fallBacks.map(_.wiki))
+  override val domain: WikiDomain = wiki.domain //new WikiDomainImpl(realm, wiki)
 }
 
 /** use custom rk parser for wikis */
-class RkWikiInst(realm:String, fallBacks:List[WikiInst])
-  extends WikiInstImpl (realm, fallBacks, {wi=>new WikiDomainImpl(realm, wi)}) {
+class RkWikiInst(realm: String, fallBacks: List[WikiInst])
+    extends WikiInstImpl(realm, fallBacks, { wi => new WikiDomainImpl(realm, wi) }) {
 
   class WikiParserCls(val realm:String) extends WikiParserT
   with WikiDslParser with WikiInlineScriptParser with WikiAdParser
