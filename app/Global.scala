@@ -126,8 +126,12 @@ object Global extends WithFilters(LoggingFilter) {
       }
     } orElse {
 
+      // not redirected, serve it
+
       if (request.path.contains(
         "removebadip")) { // && Services.auth.authUser(request).isDefined) { // in case i ban myself
+        // bad ip
+
         request.headers.get("X-Forwarded-For").flatMap(BannedIps.findIp).map(_.delete(tx.auto))
         Audit.logdb("BANNED_IP_REMOVED",
           List("request:" + request.toString, "headers:" + request.headers).mkString("<br>"))
@@ -138,6 +142,8 @@ object Global extends WithFilters(LoggingFilter) {
         })
 
       } else if (request.headers.get("X-Forwarded-For").exists(Config.badIps.contains(_))) {
+        // bad ip
+
         clog << "ERR_BADIP " + "request:" + request.toString + "headers:" + request.headers
         Audit.logdb("ERR_BADIP", "request:" + request.toString, "headers:" + request.headers)
         Some(EssentialAction { rh =>
@@ -147,6 +153,8 @@ object Global extends WithFilters(LoggingFilter) {
         })
 
       } else if (request.host.endsWith(SPROXY) || request.host.endsWith(SSPROXY)) {
+        // SS proxy stuff
+
         // change request
         val host =
           if (request.host.endsWith(SSPROXY)) request.host.replaceFirst("." + SSPROXY, "")
@@ -156,7 +164,8 @@ object Global extends WithFilters(LoggingFilter) {
         clog << ("SNAKKPROXY to " + request)
         super.onRouteRequest(rh)
 
-      } else
+      } else { // normal request
+
         DieselRateLimiter.serveOrLimit(request, true)((rh, group) => {
           group.foreach(_.decServing())
           super.onRouteRequest(request)
@@ -170,6 +179,7 @@ object Global extends WithFilters(LoggingFilter) {
             }.apply(rh)
           })
         })
+      }
     }
 
     if (shouldDebug) cdebug << ("ROUTE_REQ.STOP: " + request.toString)
@@ -192,7 +202,7 @@ object Global extends WithFilters(LoggingFilter) {
 
     Try {
       clog << "Awaiting for reactors to load..."
-      Await.result(GlobalData.reactorsLoadedF, Duration("1 minute"))
+      Await.result(GlobalData.reactorsLoadedF, Duration("20 seconds"))
     }
 
     // reset all settings
@@ -298,9 +308,7 @@ object LoggingFilter extends Filter {
     val apiRequest = DieselRateLimiter.isApiRequest(rh.uri)
     val isAsset = rh.uri.startsWith("/assets/") || rh.uri.startsWith("/favicon")
 
-    if (shouldDebug) {
-      cdebug << s"LF.START ${rh.method} ${rh.host} ${rh.uri}"
-    }
+    clog << s"LF.START ${rh.method} ${rh.host} ${rh.uri}"
 
     def served {
       if (GlobalData.serving.get() > GlobalData.maxServing.get()) {
@@ -337,7 +345,7 @@ object LoggingFilter extends Filter {
     def logTime(rh:RequestHeader)(what: String)(result: Result): Result = {
       val time = System.currentTimeMillis - start
 
-      if (shouldDebug && !isFromRobot(rh)) {
+      if (!isFromRobot(rh)) {
         clog << s"LF.STOP.$what ${rh.method} ${rh.host}${rh.uri} took ${time}ms and returned ${result.header.status}"
       }
 
@@ -364,7 +372,7 @@ object LoggingFilter extends Filter {
 //        Audit.logdb("ERR_RATE_LIMIT2", s"group: $group count: $count request: $rh headers: + ${rh.headers}")
 
         // log LF.STOP here as well so it matches STARTS even for errors
-        if (shouldDebug && !isFromRobot(rh)) {
+        if (!isFromRobot(rh)) {
           clog << s"LF.STOP.WITH-ERR ${rh.method} ${rh.host}${rh.uri}"
         }
 
