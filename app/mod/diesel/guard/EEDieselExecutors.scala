@@ -10,7 +10,7 @@ import java.io.{File, FileInputStream}
 import java.lang.management.{ManagementFactory, OperatingSystemMXBean}
 import java.lang.reflect.Modifier
 import java.util.Properties
-import mod.diesel.guard.EEDieselExecutors.getAllData
+import mod.diesel.guard.EEDieselExecutors.getAllPingData
 import mod.notes.controllers.NotesLocker
 import model.WikiScripster
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
@@ -18,7 +18,7 @@ import razie.db.{ROne, RazMongo}
 import razie.diesel.Diesel
 import razie.diesel.dom.RDOM.P
 import razie.diesel.engine.{AstKinds, DieselException, DomAst}
-import razie.diesel.engine.exec.EExecutor
+import razie.diesel.engine.exec.{EEDieselDb, EExecutor}
 import razie.diesel.engine.nodes.{EError, EMsg, EVal, _}
 import razie.diesel.expr.ECtx
 import razie.diesel.model.DieselMsg
@@ -126,6 +126,25 @@ class EEDieselExecutors extends EExecutor("diesel.props") {
         )
       }
 
+      case DieselMsg.IO.CAN_READ => {
+
+        val result = ctx.get("result").getOrElse(Diesel.PAYLOAD)
+        val name = ctx.getRequired("path")
+
+        val m = if (Config.isLocalhost) {
+          val f = new File(name)
+          val l = f.exists()
+          val r = f.canRead()
+          l && r
+        } else {
+          throw new DieselException("Error: No permission")
+        }
+
+        List(
+          EVal(P.fromTypedValue(result, m))
+        )
+      }
+
       case "diesel.props.file" => {
 
         val result = ctx.get("result").getOrElse(Diesel.PAYLOAD)
@@ -167,7 +186,7 @@ class EEDieselExecutors extends EExecutor("diesel.props") {
         List(
           EVal(P.fromSmartTypedValue(
             Diesel.PAYLOAD,
-            getAllData())
+            getAllPingData())
           )
         )
       }
@@ -189,7 +208,9 @@ class EEDieselExecutors extends EExecutor("diesel.props") {
 }
 
 object EEDieselExecutors {
-  def getAllData() = {
+
+  /** get all ping data */
+  def getAllPingData() = {
     val osm: OperatingSystemMXBean = ManagementFactory.getOperatingSystemMXBean();
 
     val mstats = new HashMap[String, Any]
@@ -206,12 +227,22 @@ object EEDieselExecutors {
     GlobalData.toMap() ++
         Map(
           "scriptsRun" -> WikiScripster.count,
-          "DieselCron.size" -> DieselCron.withRealmSchedules(_.size),
+          "Diesel" -> GlobalData.perfMap(),
+          "DieselCron" -> DieselCron.toj,
           "DomGuardian.size" -> DomGuardian.lastRuns.size,
           "DomCollector.size" -> DomCollector.withAsts(_.size),
           "os" -> osusage(""),
-          "db" -> mstats
+          "db" -> mstats,
+          "memDb" -> inmemdbstats("")
         ) ++ osusage("os.") ++ mstatsDb
+  }
+
+  def inmemdbstats(prefix: String) = {
+    Map(
+      "statsSessions" -> EEDieselDb.statsSessions,
+      "statsCollections" -> EEDieselDb.statsCollections,
+      "statsObjects" -> EEDieselDb.statsObjects
+    )
   }
 
   def osusage(prefix: String) = {

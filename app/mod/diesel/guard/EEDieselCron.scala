@@ -87,7 +87,7 @@ class EEDieselCron extends EExecutor("diesel.cron") {
           val settings = new DomEngineSettings()
           settings.collectCount = Some(collectCount)
 
-          val m1: Either[DieselMsg, DieselMsgString] = cronMsg.map { s =>
+          val tickM: Either[DieselMsg, DieselMsgString] = cronMsg.map { s =>
             Right(DieselMsgString(
               // todo should escape unescaped double quotes?
               s,
@@ -105,7 +105,7 @@ class EEDieselCron extends EExecutor("diesel.cron") {
             ))
           }
 
-          val m2: Either[DieselMsg, DieselMsgString] = doneMsg.map { s =>
+          val doneM: Either[DieselMsg, DieselMsgString] = doneMsg.map { s =>
             Right(DieselMsgString(
               // todo should escape unescaped double quotes?
               s,
@@ -120,7 +120,7 @@ class EEDieselCron extends EExecutor("diesel.cron") {
 
           cdebug << "EEDiselCron: set 1"
           val cid = DieselCron.createSchedule(name, schedule, time, realm, env, ctx.root.engine.map(_.id).mkString,
-            count, m1, m2)
+            count, tickM, doneM)
           cdebug << "EEDiselCron: set 2"
 
           List(
