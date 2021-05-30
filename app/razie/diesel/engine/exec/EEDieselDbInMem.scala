@@ -20,13 +20,19 @@ import scala.collection.mutable.HashMap
 
 object EEDieselDb {
   // todo if paid, should be more
-  final val MAX_TABLES = 10
-  final val MAX_ENTRIES = 10
+  private final val MAX_TABLES = 10
+  private final val MAX_ENTRIES = 10
   final val EXPIRY_MSEC = 10 * 60 * 1000 // 10 min
 
+  // todo make configurable
   def maxTables = if (Config.isLocalhost) 100 else MAX_TABLES
 
+  // todo make configurable
   def maxEntries = if (Config.isLocalhost) 10000 else MAX_ENTRIES
+
+  var statsSessions = 0
+  var statsObjects = 0
+  var statsCollections = 0
 }
 
 /** clustered events */
@@ -65,6 +71,12 @@ class EEDieselMemDbBase(name: String) extends EExecutor(name) {
     m.entity == DB
   }
 
+  def updStats() = {
+    EEDieselDb.statsSessions = sessions.size
+    EEDieselDb.statsCollections = sessions.values.map(_.tables.size).sum
+    EEDieselDb.statsObjects = sessions.values.map(_.tables.map(_._2.entries.size).sum).sum
+  }
+
   /** session can be per user or engine or even realm - something */
   def getSessionId(ctx: ECtx): String = {
     // user id or anon session (one workflow)
@@ -79,13 +91,13 @@ class EEDieselMemDbBase(name: String) extends EExecutor(name) {
 
   def upsert(session: Session, col: String, id: String, doc: P, toclusterize: Boolean = true): Unit = {
     val tables = session.tables
-    if (tables.size > MAX_TABLES && !Config.isLocalhost)
+    if (tables.size > maxTables)
       throw new IllegalStateException("Too many collections (10)")
 
     if (!tables.contains(col))
       tables.put(col, Col(col))
 
-    if (tables(col).entries.size > MAX_ENTRIES && !Config.isLocalhost)
+    if (tables(col).entries.size > maxEntries)
       throw new IllegalStateException("Too many entries in collection (15)")
 
     tables(col).entries.put(id, doc)
@@ -139,7 +151,7 @@ class EEDieselMemDbBase(name: String) extends EExecutor(name) {
       }.mkString("\n")
     }
 
-    in.met match {
+    val res = in.met match {
 
       case cmd@("upsert") => {
         val col = ctx.getRequired("collection")
@@ -151,6 +163,8 @@ class EEDieselMemDbBase(name: String) extends EExecutor(name) {
           mupsert(session, col, docs.get.value.get.asArray.toList)
         else
           upsert(session, col, id, ctx.getRequiredp("document"))
+
+        updStats()
 
         EVal(P(Diesel.PAYLOAD, id)) :: Nil
       }
@@ -194,40 +208,13 @@ class EEDieselMemDbBase(name: String) extends EExecutor(name) {
         val from = ctx.get("from").map(_.toInt)
         val size = ctx.get("size").map(_.toInt)
 
-        val ires = tables.get(col).toList.flatMap(_.entries.values.toList
-            .filter(x =>
-              // parse docs and filter by attr
-              if (x.isOfType(WTypes.wt.JSON)) {
-                val m = x.calculatedTypedValue.asJson
-                // todo better comparison
-                others.foldRight(true)(
-                  (a, b) => b && m.contains(a.name) && m.get(a.name).exists(v =>
-                    v.toString == a.calculatedValue ||
-                        v.toString.matches(a.calculatedValue)
-                  ))
-              } else {
-                true
-              }
-//            ).map(x =>
-//          // transform
-//          if (x.isOfType(WTypes.wt.JSON)) {
-//            val m = x.calculatedTypedValue.asJson
-//            m
-//          } else {
-//            x
-//          }
-            )
-        )
-
-        var res = ires
-        from.filter(_ > 0).foreach { x => res = res.drop(x) }
-        size.filter(_ >= 0).filter(_ < res.size).foreach { x => res = res.take(x) }
+        val t = query(tables, col, from, size, others)
 
         List(
           EVal(P.fromSmartTypedValue(Diesel.PAYLOAD,
             Map(
-              "total" -> ires.size,
-              "data" -> res
+              "total" -> t._1,
+              "data" -> t._2.map(_._2)
             )
           ))
         )
@@ -235,10 +222,28 @@ class EEDieselMemDbBase(name: String) extends EExecutor(name) {
 
       case "remove" => {
         val col = ctx.getRequired("collection")
-        val k = ctx.get("key").getOrElse(ctx.getRequired("id"))
-        val res = tables.get(col).flatMap(_.entries.remove(k)).map(
-          x => EVal(x)
-        ).toList
+        val k = ctx.get("key").orElse(ctx.get("id"))
+        val others = in
+            .attrs
+            .filter(_.name != "collection")
+            .filter(_.name != "id")
+            .filter(_.name != "key")
+            .filter(x => !x.isUndefinedOrEmpty)
+
+        val res = if (k.isDefined) {
+          tables.get(col).flatMap(_.entries.remove(k.get)).map(
+            x => EVal(x)
+          ).toList
+        } else {
+          val t = query(tables, col, None, None, others)
+          t._2.foreach { rec =>
+            tables.get(col).flatMap(_.entries.remove(rec._1))
+          }
+
+          List(EInfo(s"Removed ${t._1} entries..."))
+        }
+
+        updStats()
 
         if (res.size > 0) res
         else List(EInfo("No match..."))
@@ -248,6 +253,8 @@ class EEDieselMemDbBase(name: String) extends EExecutor(name) {
       case "drop" => {
         val col = ctx.getRequired("collection")
         tables.get(col).map(_.entries.clear())
+
+        updStats()
 
         List(EInfo("Ok, dropped..."))
       }
@@ -267,12 +274,81 @@ class EEDieselMemDbBase(name: String) extends EExecutor(name) {
 
       case "clear" => {
         tables.clear()
+        updStats()
         Nil
       }
       case s@_ => {
         new EError(s"$DB.$s - unknown activity ") :: Nil
       }
     }
+
+    res
+  }
+
+  /** actual query - returns map.entries, you take the value or key */
+  def query(tables: HashMap[String, Col], col: String, from: Option[Int], size: Option[Int], criteria: List[P])
+           (implicit ctx: ECtx) = {
+
+    var others = criteria.map(_.calculatedP) // make sure they calc once
+
+    // split into several match patterns and extract just name,value
+
+    val startsw = others.filter(x => x.calculatedValue.matches(".*\\*$"))
+        .map(x => (x.name, x.calculatedValue.dropRight(1)))
+    others = others.filter(a => !startsw.exists(_._1 == a.name))
+    val matches = others.filter(x => x.calculatedValue.contains("*")).map(
+      x => (x.name, x.calculatedValue.replaceAll("\\*", ".*")))
+    others = others.filter(a => !matches.exists(_._1 == a.name))
+    val equals = others.map(x => (x.name, x.calculatedValue))
+
+    val ires = tables.get(col).toList.flatMap(_.entries.toList
+        .filter(x =>
+          // parse docs and filter by attr
+          if (x._2.isOfType(WTypes.wt.JSON)) {
+            val m = x._2.calculatedTypedValue.asJson
+
+            // todo better comparison
+
+            var b = true
+
+            b = equals.foldRight(b)(
+              (a, b) => b && {
+//                m.contains(a.name) &&
+                m.get(a._1).exists(v =>
+                  v.toString == a._2
+                )
+              })
+
+            if (b && startsw.size > 0)
+              b = startsw.foldRight(b)(
+                (a, b) => b && {
+//                m.contains(a.name) &&
+                  m.get(a._1).exists { v =>
+                    v.toString.startsWith(a._2)
+                  }
+                })
+
+            if (b && matches.size > 0)
+              b = matches.foldRight(b)(
+                (a, b) => b && {
+//                m.contains(a.name) &&
+                  m.get(a._1).exists { v =>
+                    v.toString.matches(a._2)
+                  }
+                })
+
+            b
+          } else {
+            true
+          }
+        )
+    )
+
+    var res = ires
+    from.filter(_ > 0).foreach { x => res = res.drop(x) }
+    size.filter(_ >= 0).filter(_ < res.size).foreach { x => res = res.take(x) }
+
+    (ires.size, res)
   }
 
   override def toString = "$executor::" + DB + " "

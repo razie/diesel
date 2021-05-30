@@ -110,6 +110,7 @@ class EEDomInventory extends EExecutor("diesel.inv") {
         val entity = ctx.getp("entity").orElse(ctx.getp(Diesel.PAYLOAD))
         val entities = ctx.getp("entities").orElse(ctx.getp(Diesel.PAYLOAD))
         val conn = ctx.get("connection").getOrElse("")
+        val async = ctx.getp("async")
         val cls = ctx.get("className").getOrElse(entity.get.ttype.schema)
 
         // if class not known, make it up
@@ -150,6 +151,7 @@ class EEDomInventory extends EExecutor("diesel.inv") {
         if (plugin.isEmpty) throw new DieselExprException(s"Inventory not found for $cls")
 
         val res = plugin
+            // todo pass async to all interfaces as well
             .map(_.upsert(dom.rdom, ref, a)
                 .fold(
                   oda => {
@@ -157,7 +159,10 @@ class EEDomInventory extends EExecutor("diesel.inv") {
                       EVal(P.undefined(Diesel.PAYLOAD))
                     )
                   },
-                  m => m.withPos(in.pos)
+                  m => m
+                      .copy(attrs = async.toList ::: m.attrs)
+                      .copiedFrom(m)
+                      .withPos(in.pos)
                 )
             ).getOrElse(
           EVal(P.undefined(Diesel.PAYLOAD)

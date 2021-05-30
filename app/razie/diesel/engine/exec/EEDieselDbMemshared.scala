@@ -12,7 +12,7 @@ import razie.wiki.model.WikiObservers
 /**
   * same as memdb, but it is shared across all users, like a real micro-service would behave
   */
-class EEDieselSharedDb extends EEDieselMemDbBase("diesel.db.memshared") {
+class EEDieselDbMemshared extends EEDieselMemDbBase("diesel.db.memshared") {
   override val DB = "diesel.db.memshared"
 
   // todo this is dangerous - malicious users or mistakes can take out the cluster...
