@@ -83,7 +83,7 @@ class AdminAudit extends AdminBase {
       Ok(RazMongo(what).findAll().filter(j => {
         val d = new DateTime(j.get(auditCols(what)));
         d.getYear() == yi && d.getMonthOfYear() == mi
-      }).take(20000).toList.map { x =>
+      }).take(50000).toList.map { x =>
         RazMongo(what).remove(Map("_id" -> x.get("_id").asInstanceOf[ObjectId]))
         x
       }.mkString("\n"))
