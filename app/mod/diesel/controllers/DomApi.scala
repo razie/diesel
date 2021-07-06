@@ -975,8 +975,9 @@ class DomApi extends DomApiBase with Logging {
         )
       } catch {
         case e : Exception =>
+          razie.Log.info("findUsages exception", e)
           Future.successful(
-            InternalServerError ("Error: " + e.getMessage)
+            InternalServerError("Error: " + e.getMessage)
           )
       }
     } else {
