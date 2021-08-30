@@ -1091,7 +1091,7 @@ function revertOrig(what) {
       }),
       contentType: 'application/x-www-form-urlencoded',
       success: function(data) {
-        location.reload(true);
+        location.reload(true); // need to reload original
       },
       error  : function(x) {
         console.log( "ERR "+x.toString());
@@ -1116,7 +1116,12 @@ function saveOrig(what) {
       }),
       contentType: 'application/x-www-form-urlencoded',
       success: function(data) {
-        location.reload(true);
+        // not reloading - it makes me loose the location in the file
+        // location.reload(true);
+        // instead just reset the floppy:
+        if(what === "Spec") specChanged(false);
+        else storyChanged(false);
+        oneModalHide();
       },
       error  : function(x) {
         alert("ERR - can't save: " + x.statusText + " : " + x.responseText);
@@ -1148,7 +1153,7 @@ function saveNew(what) {
       }),
       contentType: 'application/x-www-form-urlencoded',
       success: function(data) {
-        location.reload();
+        location.reload(); // why reload if not using new name?
         //location = '/diesel/fiddle/playDom?what='+newName
       },
       error  : function(x) {
