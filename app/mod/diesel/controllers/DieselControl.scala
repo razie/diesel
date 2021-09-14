@@ -326,6 +326,7 @@ class DieselControl extends RazController with Logging {
       }
     } else {
 
+      assert(rdom.classes.get(cat).isDefined, s"cat $cat not defined")
       val p = WikiDomain(realm).findPluginsForClass(rdom.classes.get(cat).get).head
       val ref = SpecRef.make(request.realm, p.name, p.conn, cat, "")
       val res = DomInventories.listAll(ref, start = 0, limit = 100, Array.empty[String])
