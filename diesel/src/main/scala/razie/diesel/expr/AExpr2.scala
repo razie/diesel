@@ -228,6 +228,50 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
             }
           }
 
+          case _ if isDate(av) => {
+            val as = a(v).toString
+            val bs = b(v).toString
+            var dur: Option[scala.concurrent.duration.Duration] = None
+
+            if (!bs.matches("[0-9]+ *[nsmhdMy]")) {
+              try {
+                // try with duration expressions
+                dur = Some(scala.concurrent.duration.Duration(bs.toLowerCase))
+              } catch {
+                case e: Exception => throw new DieselExprException(
+                  "Right side not a duration like 5s or 5 seconds: " + bs)
+              }
+            }
+
+            val tsFmtr = DateTimeFormatter.ofPattern(WTypes.DATE_FORMAT)
+
+            val ad = LocalDateTime.from(tsFmtr.parse(as))
+
+            var res = ad
+
+            if (dur.isDefined) {
+              res = res.minusNanos(dur.get.toNanos)
+            } else {
+              val bi = bs.substring(0, bs.length - 1).trim.toLong
+              val bt = bs.last
+
+              bt match {
+                case 'n' => res = res.minusNanos(bi)
+                case 's' => res = res.minusSeconds(bi)
+                case 'm' => res = res.minusMinutes(bi)
+                case 'h' => res = res.minusHours(bi)
+                case 'd' => res = res.minusDays(bi)
+                case 'M' => res = res.minusMonths(bi)
+                case 'y' => res = res.minusYears(bi)
+                case _ =>
+                  throw new DieselExprException("Unknown duration type [nsmhdMy] : " + bt)
+              }
+            }
+
+            val ts = tsFmtr.format(res)
+            PValue(ts, WTypes.wt.DATE).withStringCache(ts)
+          }
+
           case _ => {
             throw new DieselExprException(
               "[ERR can't apply operator " + op + s" to types ${av.ttype} and ${bv.ttype}] (" + av + " , " + bv + ")"
@@ -319,6 +363,37 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
         }
 
         doAsWith(b, b.toString, b.toString.toLowerCase, false)
+      }
+
+      case "take" => {
+        val bv = b.applyTyped(v)
+        val bs = bv.calculatedValue
+
+        if (!isNum(bv)) {
+          throw new DieselExprException("Right side must be numeric: " + bv)
+        }
+
+        av.calculatedTypedValue.cType.name match {
+          case WTypes.ARRAY => {
+            val elementType = av.calculatedTypedValue.cType.wrappedType
+
+            val arr = av.calculatedTypedValue.asArray
+
+            val finalArr = arr.take(bv.value.get.asLong.toInt)
+            PValue(finalArr, WTypes.wt.ARRAY)
+          }
+
+          case WTypes.RANGE => {
+            val elementType = WTypes.wt.RANGE
+
+            val arr = av.calculatedTypedValue.asRange
+
+            val finalArr = arr.toSeq.take(bv.value.get.asLong.toInt)
+            PValue(finalArr, WTypes.wt.ARRAY)
+          }
+
+          case _ => throw new DieselExprException("Can't do take on: " + av)
+        }
       }
 
       case "map" => {

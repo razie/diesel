@@ -228,14 +228,13 @@ case class AExprFunc(val expr: String, parms: List[RDOM.P]) extends Expr {
         firstParm.map { p =>
           val pStart = p.calculatedP
 
-
           // parse second parm as aexprident
           secondParm
               .orElse {
                 throw new DieselExprException(s"No second argument for $expr")
               }
               .flatMap { p =>
-                val pv = if (p.dflt.isEmpty && p.expr.isEmpty) {
+                val pv = if (p.expr.isEmpty && !p.hasCurrentValue) {
                   P("", p.name)
                 } else {
                   // nope - it's just a normal parm=expr
@@ -259,6 +258,38 @@ case class AExprFunc(val expr: String, parms: List[RDOM.P]) extends Expr {
         // the flat part of flatmap
 
         firstParm.map { p =>
+          val av = p.calculatedP
+          p.calculatedTypedValue.cType.name match {
+            case WTypes.ARRAY => {
+              val elementType = av.calculatedTypedValue.cType.wrappedType
+
+              val arr = av.calculatedTypedValue.asArray.asInstanceOf[List[List[_]]]
+              val resArr = arr.flatMap { x =>
+                if (x.isInstanceOf[List[Any]])
+                  x.asInstanceOf[List[Any]]
+                else
+                  throw new DieselExprException("Can't flatten element: " + x)
+              }
+
+              val finalArr = resArr
+              P.fromTypedValue("", finalArr, WTypes.wt.ARRAY)
+            }
+
+            case _ => throw new DieselExprException("Can't do flatten on: " + av)
+          }
+        }
+      }.getOrElse(
+        throw new DieselExprException(s"No arguments for $expr")
+      )
+
+      case "fold" => {
+
+        // todo implement the fold. Need lambda as second parm.
+
+        // the fold a list
+        val start = firstParm.get.calculatedTypedValue
+
+        secondParm.map { p =>
           val av = p.calculatedP
           p.calculatedTypedValue.cType.name match {
             case WTypes.ARRAY => {
