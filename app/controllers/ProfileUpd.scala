@@ -26,7 +26,7 @@ class ProfileUpd @Inject() (config:Configuration) extends RazController with Log
       "favQuote" -> text.verifying("Invalid characters", vldSpec(_)),
       "apiKey" -> text,
       "weatherCode" -> text.verifying("Invalid characters", vldSpec(_))) verifying
-      ("Password mismatch - please type again", { t: (String, String, String, String) =>
+      ("Password not matched - please type again", { t: (String, String, String, String) =>
         val (css, favQuote, apiKey, weatherCode) = t
         true
       })

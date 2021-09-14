@@ -149,7 +149,7 @@ class Profile @Inject()(config: Configuration, adminDiff: AdminDiff) extends Wik
           if (reg.reemail.length > 0 && reg.email.length > 0 && reg.email != reg.reemail) false
           else true
         }) verifying
-        ("Password mismatch - please type again", { reg: Registration =>
+        ("Password not matched - please type again", { reg: Registration =>
           if (reg.password.length > 0 && reg.repassword.length > 0 && reg.password != reg.repassword) false
           else true
         }) verifying

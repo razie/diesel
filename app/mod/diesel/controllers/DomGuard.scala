@@ -250,8 +250,8 @@ class DomGuard extends DomApiBase with Logging {
              |<td>$st</td>
              |<td>${a.dtm.toString("HH:mm:ss.SS")}</td>
              |<td align="right">$duration</td>
-             |<td><small>${a.engine.description}</small></td>
-             |<td><small>${a.engine.resultingValue.take(200)}</small></td>
+             |<td><small><code>${a.engine.description}</code></small></td>
+             |<td><small><code>${a.engine.resultingValue.take(200)}</code></small></td>
              |<td> </td>
              |""".stripMargin
         }.getOrElse("??")

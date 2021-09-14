@@ -308,7 +308,9 @@ object LoggingFilter extends Filter {
     val apiRequest = DieselRateLimiter.isApiRequest(rh.uri)
     val isAsset = rh.uri.startsWith("/assets/") || rh.uri.startsWith("/favicon")
 
-    clog << s"LF.START ${rh.method} ${rh.host} ${rh.uri}"
+    if (!rh.uri.contains("/ping/shouldReload") && !rh.uri.startsWith("/diesel/status")) {
+      clog << s"LF.START ${rh.method} ${rh.host} ${rh.uri}"
+    }
 
     def served {
       if (GlobalData.serving.get() > GlobalData.maxServing.get()) {
@@ -345,7 +347,7 @@ object LoggingFilter extends Filter {
     def logTime(rh:RequestHeader)(what: String)(result: Result): Result = {
       val time = System.currentTimeMillis - start
 
-      if (!isFromRobot(rh)) {
+      if (!isFromRobot(rh) && !rh.uri.contains("razadmin/ping/shouldReload") && !rh.uri.startsWith("/diesel/status")) {
         clog << s"LF.STOP.$what ${rh.method} ${rh.host}${rh.uri} took ${time}ms and returned ${result.header.status}"
       }
 
