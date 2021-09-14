@@ -193,7 +193,9 @@ abstract class DomEngine(
   // remove parameters so it becomes more invariable, like just message name or smth
   def collectGroup = {
     val x = settings.collectGroup.getOrElse(description.replaceFirst("\\(.*", ""))
-    if (x.length < 10) x + "-collectGroup" else x
+    if (x.length < 10) x + "-collectGroup-" + x else x
+    // todo why the heck am i filling to 10? display?
+    // it needs to end in useful info: the display shows tail on listAst
   }
 
   def wid = WID("DieselEngine", id)
@@ -284,8 +286,15 @@ abstract class DomEngine(
     newRoot.appendAllNoEvents(nodes)
     val engine = DieselAppContext.mkEngine(dom, newRoot, settings, pages,
       "engine:spawn " + nodes.head.value.toString.take(200), correlationId)
+    engine.inheritFrom(this)
     engine.ctx.root._hostname = ctx.root._hostname
     engine
+  }
+
+  /** inherit some settings from parent engine (max expands etc) */
+  protected def inheritFrom(parent: DomEngine) = {
+    this.maxLevels = parent.maxLevels
+    this.maxExpands = parent.maxExpands
   }
 
   /** if have correlationID, notify parent... */
@@ -780,6 +789,7 @@ abstract class DomEngine(
   def execSync(ast: DomAst, level: Int, ctx: ECtx): Option[P] = {
     // stop propagation of local vals to parent engine
     var newCtx: ECtx = new ScopeECtx(Nil, Some(ctx), Some(ast))
+
     // include this messages' context
     newCtx =
         if (ast.value.isInstanceOf[EMsg]) new StaticECtx(ast.value.asInstanceOf[EMsg].attrs, Some(newCtx), Some(ast))
