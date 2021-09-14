@@ -13,6 +13,7 @@ import razie.audit.Audit
 import razie.diesel.dom.RDOM.P
 import razie.diesel.expr.ECtx
 import razie.tconf.DUsers
+import razie.wiki.WikiConfig
 import razie.{CSTimer, Logging, js}
 import scala.util.Try
 
@@ -183,7 +184,7 @@ object DieselScripster extends Logging {
         }
       }
 
-    } else if (lang == "scala") {
+    } else if (lang == "scala" && WikiConfig.getInstance.get.isLocalhost) {
       ???
 //      try {
 //        val res = WikiScripster.implScala.runScriptAny(script, lang, None, None, q, true)
@@ -192,19 +193,22 @@ object DieselScripster extends Logging {
 //      } catch {
 //        case t: Throwable => {
 //          log(s"while executing script\n$script", t)
-//                    throw t
+//          throw t
 //          (false, t.toString, t)
 //        }
-//    }
-
+//      }
     } else (false, script, script)
   }
 
   class MyCF extends ClassFilter {
+
     override def exposeToScripts(s: String): Boolean = {
       if (s.startsWith("api." /* WixUtils" */)) true
         // todo wrap this to protect access to cout/csys etc
       else if (s.startsWith("java.lang.System")) true
+      else if (
+        WikiConfig.getInstance.get.isLocalhost &&
+            WikiConfig.getInstance.get.prop("diesel.scripster.allowAllLocalhost", "false").equals("true")) true
       else {
         Audit.logdb("ERR_DENIED", "js class access denied ", s)
         false
