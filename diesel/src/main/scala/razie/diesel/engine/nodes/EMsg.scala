@@ -9,7 +9,7 @@ import razie.diesel.dom.RDOM._
 import razie.diesel.dom._
 import razie.diesel.engine.{AstKinds, DomAstInfo, EGenerated}
 import razie.diesel.engine.exec.Executors
-import razie.diesel.expr.{AExprIdent, ECtx, StaticECtx}
+import razie.diesel.expr.{AExprIdent, CExpr, ECtx, StaticECtx}
 import razie.diesel.model.DieselMsg
 import razie.tconf.EPos
 import razie.wiki.Enc
@@ -226,6 +226,7 @@ case class EMsg(
   def hrefBtnGlobal =
     s"""<a href="${url2("")}" class="btn btn-xs btn-primary" title="global link">
        |<span class="glyphicon glyphicon glyphicon-th-list"></span></a>""".stripMargin
+
   def hrefBtnLocal =
     s"""<a href="${url1("")}" class="btn btn-xs btn-info"    title="local link in this topic">
        |<span class="glyphicon glyphicon-list-alt"></span></a>""".stripMargin
@@ -234,26 +235,26 @@ case class EMsg(
   def toCAString = entity + "." + met + " " + attrs.map(_.name).mkString("(", ",", ")")
 
   override def toString =
-    s""" $entity.$met (${attrs.mkString(", ")})"""
+    s""" $entity.$met (${attrsToUrl(attrs, ", ", false)})"""
 
-  private def attrsToUrl (attrs: Attrs) = {
-    attrs.map{p=>
-      // todo only if the expr is constant?
-      var v = p.expr.map(_.expr).getOrElse(p.currentStringValue)
-      v = Enc.toUrl(v) // escape special chars
+  private def attrsToUrl(attrs: Attrs, ch: String = "&", encode: Boolean = true) = {
+    attrs.map { p =>
+      // only if the expr is constant
+      var v = p.expr.filter(_.isInstanceOf[CExpr[_]]).map(_.toDsl).getOrElse(p.currentStringValue)
+      if (encode) v = Enc.toUrl(v) // escape special chars
       s"""${p.name}=$v"""
-    }.mkString("&")
+    }.mkString(ch)
   }
 
   // local invocation url
-  private def url1 (section:String="", resultMode:String="value") = {
+  private def url1(section: String = "", resultMode: String = "value") = {
     var x = s"""/diesel/wreact/${pos.map(_.wpath).mkString}/react/$entity/$met?${attrsToUrl(attrs)}"""
     if (x.endsWith("&") || x.endsWith("?")) ""
     else if (x contains "?") x = x + "&"
     else x = x + "?"
-    if("value" != resultMode) x = x + "resultMode="+resultMode
+    if ("value" != resultMode) x = x + "resultMode=" + resultMode
 
-    if(section != "") {
+    if (section != "") {
       x = x + "&dfiddle=" + section
     }
     x

@@ -594,8 +594,8 @@ object RDOM {
     /** only if it was already calculated... */
     def hasCurrentValue = {
       value.isDefined ||
-          dflt.length > 0 ||
-          trulyConstantExpr.isDefined
+          trulyConstantExpr.isDefined ||
+          dflt.length > 0
     }
 
     /** only if it was already calculated... */

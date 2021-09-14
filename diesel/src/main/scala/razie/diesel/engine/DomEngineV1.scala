@@ -71,7 +71,7 @@ class DomEngineV1(
       return Nil
     }
 
-    if(this.curExpands > maxExpands) {
+    if (this.curExpands > maxExpands && !Config.isLocalhost) {
       // THIS IS OK: append direct to children
       a append DomAst(
         TestResult(
@@ -1405,10 +1405,12 @@ class DomEngineV1(
             }
 
             case "diesel.engine.maxLevels" | "maxLevels" => {
+              // todo validate trusted realm
               engine.maxLevels = v.toInt
             }
 
             case "diesel.engine.maxExpands" | "maxExpands" => {
+              // todo validate trusted realm
               engine.maxExpands = v.toInt
             }
           }

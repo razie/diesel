@@ -490,9 +490,13 @@ private def accessorIdent: Parser[RDOM.P] = "." ~> ident ^^ { case id => P("", i
   //==================================== C O N D I T I O N S
   //
 
+  private def opsBool: Parser[String] = "==" | "xNot" | "is" | "in" | "not in" | "notIn" |
+      "!=" | "not" <~ ws | "~=" | "matches" <~ ws | "<=" | ">=" | "<" | ">" |
+      "containsNot" <~ ws | "contains" <~ ws
+
   def cond: Parser[BoolExpr] = orexpr
 
-  def orexpr: Parser[BoolExpr] = bterm1 ~ rep(ows ~> ("or" <~ ws) ~ ows ~ bterm1 ) ^^ {
+  def orexpr: Parser[BoolExpr] = bterm1 ~ rep(ows ~> ("or" <~ ws) ~ ows ~ bterm1) ^^ {
     case a ~ l => foldAssocAexpr2(a, l, bcmp)
   }
 
@@ -505,10 +509,6 @@ private def accessorIdent: Parser[RDOM.P] = "." ~> ident ^^ { case id => P("", i
   def notbfactor2: Parser[BoolExpr] = ows ~> (("not" | "NOT") <~ ws) ~> ows ~> bfactor2 ^^ {BCMPNot}
 
   def bfactor2: Parser[BoolExpr] = bConst | ibex(opsBool) | bvalue | condBlock
-
-  private def opsBool: Parser[String] = "==" | "xNot" | "is" | "in" | "not in" | "notIn" |
-      "!=" | "not" <~ ws | "~=" | "matches" <~ ws | "<=" | ">=" | "<" | ">" |
-      "containsNot" <~ ws | "contains" <~ ws
 
   private def condBlock: Parser[BoolExpr] = ows ~> "(" ~> ows ~> cond <~ ows <~ ")" ^^ {BExprBlock}
 

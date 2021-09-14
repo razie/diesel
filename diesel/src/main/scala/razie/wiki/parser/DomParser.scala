@@ -698,7 +698,7 @@ trait DomParser extends ParserBase with ExprParser {
   }
 
   /**
-    * .expect object.func (a,b)
+    * .assert (a,b)
     */
   def passert: PS = keyw("[.$]assert".r <~ ws) ~ opt("not" <~ ws) ~ optAssertExprs <~ " *".r <~ optComment3 ^^ {
     case k ~ not ~ exprs => {
