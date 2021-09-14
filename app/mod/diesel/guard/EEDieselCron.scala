@@ -14,6 +14,8 @@ import java.net.InetAddress
 import java.util.concurrent.TimeUnit
 import org.joda.time.DateTime
 import org.joda.time.chrono.ISOChronology
+import org.quartz.CronExpression
+import org.quartz.CronScheduleBuilder.cronSchedule
 import play.libs.Akka
 import razie.diesel.Diesel
 import razie.diesel.dom.RDOM.P
@@ -66,7 +68,9 @@ class EEDieselCron extends EExecutor("diesel.cron") {
         val doneMsg = ctx.get("doneMsg")
 
         val schedule = ctx.get("schedule").mkString
+        val cronExpr = ctx.get("cronExpr").mkString
         val time = ctx.get("time").mkString
+        val endTime = ctx.get("endTime").mkString
 
         val now = new DateTime(ISOChronology.getInstanceUTC()) //DateTime.now()
 
@@ -77,8 +81,8 @@ class EEDieselCron extends EExecutor("diesel.cron") {
         val vdt = dt
         val vdiff = diff
 
-        if (schedule.isEmpty && time.trim.isEmpty) {
-          List(EVal(P(Diesel.PAYLOAD, "Either schedule or time needs to be provided", WTypes.wt.EXCEPTION)))
+        if (cronExpr.isEmpty && schedule.isEmpty && time.trim.isEmpty) {
+          List(EVal(P(Diesel.PAYLOAD, "Either schedule/cronExpr or time needs to be provided", WTypes.wt.EXCEPTION)))
         } else if (!acceptPast && time.trim.nonEmpty && diff <= 0) {
           List(EVal(P(Diesel.PAYLOAD, s"Time is in the past (${dt} vs ${now} is ${diff})", WTypes.wt.EXCEPTION)))
         } else if (!DieselCron.ISENABLED) {
@@ -119,7 +123,8 @@ class EEDieselCron extends EExecutor("diesel.cron") {
           }
 
           cdebug << "EEDiselCron: set 1"
-          val cid = DieselCron.createSchedule(name, schedule, time, realm, env, ctx.root.engine.map(_.id).mkString,
+          val cid = DieselCron.createSchedule(name, schedule, cronExpr, time, endTime, realm, env,
+            ctx.root.engine.map(_.id).mkString,
             count, tickM, doneM)
           cdebug << "EEDiselCron: set 2"
 
@@ -151,6 +156,33 @@ class EEDieselCron extends EExecutor("diesel.cron") {
             s"schedule cancelled: $res"
           ))
         )
+      }
+
+      case "diesel.cron.validate" => {
+
+        def err(t: Throwable) = {
+          EVal(P.fromSmartTypedValue("payload", t)) :: new EError("Uhoh", t) :: Nil
+        }
+
+        val a = ctx.get("schedule").map(schedule => {
+          (scala.util.Try {
+            val d = Duration.apply(schedule)
+            EVal(P.fromSmartTypedValue("payload", s"OK, schedule: $d")) :: Nil
+          } recover {
+            case throwable: Throwable => err(throwable)
+          }).get
+        }).getOrElse(Nil)
+
+        val b = ctx.get("cronExpr").map(cronExpr => {
+          (scala.util.Try {
+            val d = new CronExpression(cronExpr)
+            EVal(P.fromSmartTypedValue("payload", s"OK, schedule: $d")) :: Nil
+          } recover {
+            case throwable: Throwable => err(throwable)
+          }).get
+        }).getOrElse(Nil)
+
+        a ::: b
       }
 
       case s@_ => {

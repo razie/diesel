@@ -50,6 +50,8 @@ libraryDependencies in Global ++= Seq(
   "com.typesafe.akka"        %% "akka-slf4j"         % "2.4.2",
   "com.typesafe.akka"        %% "akka-camel"         % "2.4.2",
   "com.typesafe.akka"        %% "akka-testkit"       % "2.4.2" % Test,
+  "com.typesafe.akka"        %% "akka-testkit"       % "2.4.2" % Test,
+  "com.enragedginger"        %% "akka-quartz-scheduler" % "1.6.0-akka-2.4.x",
 
   "org.scalaz"               %% "scalaz-core"        % "7.2.1",
 
