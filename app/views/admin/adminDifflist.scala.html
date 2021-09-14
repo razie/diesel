@@ -1,14 +1,19 @@
 @***
-purge audit tables
+show diff with remote
 ***@
-@import razie.wiki.Config
 @(localRealm:String, toRealm:String, remote:String, lnew:List[controllers.WEAbstract], lremoved:List[controllers.WEAbstract], lchanged:List[(controllers.WEAbstract, controllers.WEAbstract, String)])(implicit stok: controllers.StateOk)
 @import razie.wiki.model.WID
-
+@import razie.wiki.Config
+@import razie.hosting.Website
 
 @wp(wid:WID)=@{
   if(_root_.razie.wiki.Services.config.isLocalhost && wid.getRealm == "rk") "rk." + wid.wpath
   else wid.wpath
+}
+
+@remotes()=@{
+  List("www.dieselapps.com", Config.hostport) :::
+  Website.getRealmProps(localRealm).get("diesel.remotes").map(_.currentStringValue).mkString.split(",").toList
 }
 
 @e(s:String)=@{s.replaceAllLiterally("'", "\\'")}
@@ -51,17 +56,18 @@ purge audit tables
           </span>
 
         <span id="remotes" style="display: none">
-          @Array("www.dieselapps.com", Config.hostport).map{t=>
+          @remotes().map{t=>
             <a href="/admin/difflist/@localRealm/@toRealm/@t">@t</a><br>
           }
         </span>
+
         <span id="localRealms" style="display: none">
-        @stok.au.toList.flatMap(x=> x.memberReactors).map{t=>
+        @stok.au.toList.flatMap(x=> x.memberReactors).sorted.map{t=>
           <a href="/admin/difflist/@t/@toRealm/@remote">@t</a><br>
         }
         </span>
         <span id="toRealms" style="display: none">
-            @stok.au.toList.flatMap(x=> x.memberReactorsSameOrg(localRealm)).map{t=>
+            @stok.au.toList.flatMap(x=> x.memberReactorsSameOrg(localRealm)).sorted.map{t=>
               <a href="/admin/difflist/@localRealm/@t/@remote">@t</a><br>
             }
         </span>
