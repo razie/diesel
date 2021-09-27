@@ -454,7 +454,14 @@ var runpill_@id = function(id) {
 
       specChanged(data.specChanged);
 
-      if(specEditor) updateMarkers(specEditor, data.ast);
+      if(specEditor) {
+        specHasErrors = updateMarkers(specEditor, data.ast);
+        if(specHasErrors) {
+          $("#specChanged").addClass("label label-danger");
+          $("#specChanged").prop('title', "has errors!");
+        }
+      }
+
       console.log("  updateMarkers spec");
 
       console.log("New timestamp: " + data.info.timeStamp);
@@ -623,7 +630,14 @@ function processEngineResult(id, data, compileOnly, lastTime, next) {
 
 /** partial response - engine not complete, but story compiled - update markers */
 function processPartialEngineResult(id, data, compileOnly, lastTime, next) {
-  if(storyEditor && typeof data.ast != "undefined") updateMarkers(storyEditor, data.ast);
+  if(storyEditor && typeof data.ast != "undefined") {
+    storyHasErrors = updateMarkers(storyEditor, data.ast);
+    if(storyHasErrors) {
+      $("#storyChanged").addClass("label label-danger");
+      $("#storyChanged").prop('title', "has errors");
+    }
+  }
+
   console.log("  updateMarkers story");
 
   $('#roundtrip').html('<span class="glyphicon glyphicon-remove" onclick="javascript:cancelFlow()" style="cursor:pointer; color:red" ></span>' + data.info.progress+'');
@@ -689,7 +703,14 @@ function processFinalEngineResult(id, data, compileOnly, lastTime, next) {
       currDebounce = 2000;
   }
 
-  if(storyEditor && typeof data.ast != "undefined") updateMarkers(storyEditor, data.ast);
+  if(storyEditor && typeof data.ast != "undefined") {
+    storyHasErrors = updateMarkers(storyEditor, data.ast);
+    if(storyHasErrors) {
+      $("#storyChanged").addClass("label label-danger");
+      $("#storyChanged").prop('title', "has errors");
+    }
+  }
+
   console.log("  updateMarkers story");
 
   if(!compileOnly) curDomRequest = null;

@@ -348,6 +348,9 @@ var lastMarkerStory = null;
 
 var domSpecChanged = false;
 
+var storyHasErrors = false;
+var specHasErrors = false;
+
 /** navigation: select given line - this works IN the fiddle only */
 function weSelect(wpath, line, col) {
   var Range = ace.require('ace/range').Range;
@@ -562,6 +565,7 @@ function weDomQuery2(plugin,conn,cls,parm) {
 // call this only if aceAttached
 function updateMarkers (aceEditor, astList) {
   var markers = [];
+  var hasErrors = false;
 
   var lines = aceEditor.getSession().doc.getAllLines();
 
@@ -575,6 +579,7 @@ function updateMarkers (aceEditor, astList) {
           type: "info" // also warning and information
         });
       } else {
+        hasErrors = true;
         markers.push({
           row: i,
           column: 0,
@@ -582,13 +587,34 @@ function updateMarkers (aceEditor, astList) {
           type: "error" // also warning and information
         });
       }
+    } else if (lines[i] && (/*lines[i].startsWith("-") || */ lines[i].startsWith("|") || lines[i].startsWith("=")) && !lines[i].startsWith("===")) {
+      if (astList.filter(function (e) {
+        return e.row - 1 <= i && e.endRow > i;
+      }).length > 0) {
+        markers.push({
+          row: i,
+          column: 0,
+          text: "line",
+          type: "info" // also warning and information
+        });
+      } else {
+        hasErrors = true;
+        markers.push({
+          row: i,
+          column: 0,
+          text: "= expression not recognized",
+          type: "error" // also warning and information
+        });
+      }
     }
   }
 
-  astList.map(function(a){
+  astList.map(function (a) {
   });
 
   aceEditor.getSession().setAnnotations(markers);
+
+  return hasErrors;
 }
 
 // used in showing engines
