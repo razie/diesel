@@ -15,7 +15,7 @@ import org.joda.time.DateTime
 import play.libs.Akka
 import razie.audit.Audit
 import razie.db._
-import razie.wiki.{Config, Services}
+import razie.wiki.{Config, Enc, Services}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import razie.clog
@@ -137,10 +137,10 @@ object SendEmail extends razie.Logging {
 
   /** prevent it from actually sending out, good for testing
     * this is set to false for normal testing - set to true for quick testing and stress/perf testing */
-  val NO_EMAILS = true
+  lazy val NO_EMAILS = Config.prop("diesel.noemails", "false").toBoolean
 
   /** prevent for sending out * programatically set to false during a test */
-  var NO_EMAILS_TESTNG = true
+  var NO_EMAILS_TESTNG = Config.prop("diesel.noemailstesting", "false").toBoolean
 
   // should be lazy because of akka's bootstrap
   lazy val emailSender = Akka.system.actorOf(Props[EmailSender], name = "EmailSender")
@@ -409,17 +409,33 @@ object SendEmail extends razie.Logging {
         // for testing, we're not sending emails
         if (Services.config.hostport.startsWith("test") && NO_EMAILS_TESTNG ||
 
-          Services.config.isLocalhost && (e.isNotification || NO_EMAILS || NO_EMAILS_TESTNG)) {
+            Services.config.isLocalhost && (e.isNotification || NO_EMAILS)) {
           // don't send emails when running test mode
-          Audit.logdb("EMAIL_SENT_NOT", Seq("to:" + e.to, "from:" + e.from, "subject:" + e.subject, "body:" + e.html).mkString("\n"))
+          Audit.logdb("EMAIL_SENT_NOT",
+            Seq("to:" + e.to, "from:" + e.from, "subject:" + e.subject, "body:" + e.html).mkString("\n"))
           e.copy(status = STATUS.SKIPPED, lastDtm = DateTime.now()).updateNoAudit
 
-        } else
+        } else {
+
+          val website = mailSession.realm.flatMap(Website.forRealm).getOrElse(Website.dflt)
+          val user = website.prop("mail.smtp.user").getOrElse(Config.SUPPORT)
+          val server = website.prop("mail.smtp.host")
+
+          val SEQ = Seq(
+            "to:" + e.to,
+            "from:" + e.from,
+            "server:" + server,
+            "acct:" + user,
+            "subject:" + e.subject,
+            "body=" + Enc.escapeHtml(e.html)
+          )
+
 
           try {
             val message: MimeMessage = mkMsg(e, mailSession)
 
-            clog << "EMAIL_SENDING: " + Seq("to:" + e.to, "from:" + e.from, "subject:" + e.subject).mkString("\n")
+            clog << "EMAIL_SENDING: " + Seq("to:" + e.to, "from:" + e.from, "subject:" + e.subject,
+              "body=" + e.html).mkString("\n")
 
             // todo one way to speed it up is to send one email to many people instead of individualized emails
             val t1 = System.currentTimeMillis()
@@ -427,22 +443,9 @@ object SendEmail extends razie.Logging {
             var t2 = System.currentTimeMillis()
             val dur = t2 - t1
 
-            val website = mailSession.realm.flatMap(Website.forRealm).getOrElse(Website.dflt)
-
-            val user = website.prop("mail.smtp.user").getOrElse(Config.SUPPORT)
-            val server = website.prop("mail.smtp.host")
-
-
             Audit.logdb(
               "EMAIL_SENT",
-              state + " " + dur + "msec" + Seq(
-                " to:" + e.to,
-                "from:" + e.from,
-                "server:" + server,
-                "acct:" + user,
-                "subject:" + e.subject,
-                "body:" + e.html
-              ).mkString("\n"))
+              state + " " + dur + "msec" + SEQ.mkString("\n"))
 
             e.deleteNoAudit
 
@@ -460,9 +463,11 @@ object SendEmail extends razie.Logging {
             case mex: Throwable => {
               e.copy(status = STATUS.OOPS, lastDtm = DateTime.now(), lastError = mex.toString).updateNoAudit
               Audit.logdb("ERR_EMAIL_SEND",
-                Seq("to:" + e.to, "from:" + e.from,
-                  "subject:" + e.subject, "html=" + e.html, //.take(100),
-                  "EXCEPTION = " + mex.toString()).mkString("\n"))
+                SEQ.mkString("\n")
+                    ++ Seq(
+                  "EXCEPTION = " + mex.toString()
+                ).mkString("\n"))
+
               if (mex.toString contains "quota exceeded") {
                 Audit.logdb("ERR_EMAIL_MAXED", mex.toString)
                 setState(STATE_MAXED)
@@ -475,6 +480,7 @@ object SendEmail extends razie.Logging {
           } finally {
             curCount -= 1
           }
+        }
       }
     }
 
