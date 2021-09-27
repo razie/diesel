@@ -8,6 +8,7 @@ package razie.diesel.expr
 import java.time.{Duration, LocalDateTime}
 import java.time.format.DateTimeFormatter
 import org.json.JSONObject
+import razie.diesel.Diesel
 import razie.diesel.dom.RDOM.{P, PValue}
 import razie.diesel.dom._
 import scala.collection.mutable
@@ -393,6 +394,61 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
           }
 
           case _ => throw new DieselExprException("Can't do take on: " + av)
+        }
+      }
+
+      case "fold" => {
+        // fold uses payload to accumulate and the lambda to accumulate
+        av.calculatedTypedValue.cType.name match {
+          case WTypes.ARRAY => {
+
+            val arr = av.calculatedTypedValue.asArray
+
+            arr.foreach { x =>
+              val res = if (b.isInstanceOf[LambdaFuncExpr]) {
+                val res = b.applyTyped(x)
+                res
+              } else if (b.isInstanceOf[BlockExpr] && b.asInstanceOf[BlockExpr].ex.isInstanceOf[LambdaFuncExpr]) {
+                // common case, no need to go through context, Block passes through to Lambda
+                val res = b.applyTyped(x)
+                res
+              } else {
+                // todo we populate an "x" or should it be "elem" ?
+                val sctx = new StaticECtx(List(P.fromTypedValue("x", x)), Some(ctx))
+                val res = b.applyTyped(x)(sctx)
+                res
+              }
+              ctx.put(res.copy(name = Diesel.PAYLOAD))
+            }
+
+            ctx.getRequiredp(Diesel.PAYLOAD).value.getOrElse(null)
+          }
+
+          case WTypes.RANGE => {
+
+            val arr = av.calculatedTypedValue.asRange
+
+            arr.foreach { x =>
+              val res = if (b.isInstanceOf[LambdaFuncExpr]) {
+                val res = b.applyTyped(x)
+                res
+              } else if (b.isInstanceOf[BlockExpr] && b.asInstanceOf[BlockExpr].ex.isInstanceOf[LambdaFuncExpr]) {
+                // common case, no need to go through context, Block passes through to Lambda
+                val res = b.applyTyped(x)
+                res
+              } else {
+                // todo we populate an "x" or should it be "elem" ?
+                val sctx = new StaticECtx(List(P.fromTypedValue("x", x)), Some(ctx))
+                val res = b.applyTyped(x)(sctx)
+                res
+              }
+              ctx.put(res.copy(name = Diesel.PAYLOAD))
+            }
+
+            ctx.getRequiredp(Diesel.PAYLOAD).value.getOrElse(null)
+          }
+
+          case _ => throw new DieselExprException("Can't do map on: " + av)
         }
       }
 
