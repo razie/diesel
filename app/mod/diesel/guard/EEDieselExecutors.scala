@@ -35,13 +35,13 @@ import scala.io.Source
 /** properties - from system or file
   */
 class EEDieselExecutors extends EExecutor("diesel.props") {
-  val DT = DieselMsg.PROPS.ENTITY
+  val DP = DieselMsg.PROPS.ENTITY
   val DIO = "diesel.io"
 
   override def isMock: Boolean = true
 
   override def test(ast: DomAst, m: EMsg, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) = {
-    m.entity == DT ||
+    m.entity == DP ||
         m.entity == DIO ||
         m.ea == DieselMsg.ENGINE.DIESEL_PING
   }
@@ -200,10 +200,10 @@ class EEDieselExecutors extends EExecutor("diesel.props") {
   override def toString = "$executor::diesel.props "
 
   override val messages: List[EMsg] =
-    EMsg(DT, "system") ::
-        EMsg(DT, "configReload") ::
-        EMsg(DT, "jsonFile") ::
-        EMsg(DT, "file") ::
+    EMsg(DP, "system") ::
+        EMsg(DP, "configReload") ::
+        EMsg(DP, "jsonFile") ::
+        EMsg(DP, "file") ::
         EMsg("diesel.io", "textFile") :: Nil
 }
 
@@ -213,8 +213,8 @@ object EEDieselExecutors {
   def getAllPingData() = {
     val osm: OperatingSystemMXBean = ManagementFactory.getOperatingSystemMXBean();
 
-    val mstats = new HashMap[String, Any]
-    val mstatsDb = new HashMap[String, Any]
+    val mstats = new HashMap[String, Any] // no prefix
+    val mstatsDb = new HashMap[String, Any] // db. prefix
 
     val stats = RazMongo.db.getStats()
 
@@ -233,6 +233,12 @@ object EEDieselExecutors {
           "DomCollector.size" -> DomCollector.withAsts(_.size),
           "os" -> osusage(""),
           "db" -> mstats,
+          "config" -> Map(
+            "dieselLocalUrl" -> Config.dieselLocalUrl,
+            "localQuiet" -> Config.localQuiet,
+            "node" -> Config.node,
+            "clusterMode" -> Config.clusterMode
+          ),
           "memDb" -> inmemdbstats("")
         ) ++ osusage("os.") ++ mstatsDb
   }

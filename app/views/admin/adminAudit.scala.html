@@ -16,7 +16,8 @@ purge audit tables
       <a href="@routes.AdminAudit.showAudit(v)">@v</a>
     }
     case "details" => {
-      @Html(db.get("details").toString.replaceAll("""\[\[([^:]+):([^]]+)\]\]""", """[[<a href="/diesel/asset/$1/$2">$1:$2</a>]]"""))
+      @** Html() CAN;T do html unless we sanitize it, because assholes keep sending alert() and stuff **@
+      <small>@db.get("details").toString.replaceAll("""\[\[([^:]+):([^]]+)\]\]""", """[[<a href="/diesel/asset/$1/$2">$1:$2</a>]]""")</small>
     }
     case _ => {
       @v
@@ -27,9 +28,10 @@ purge audit tables
   @stok.title("admin audit")
 
   <h2>Audit events <small>| @math.min(1000, razie.db.RazMongo("Audit").size) of @razie.db.RazMongo("Audit").size |
-    <a href="@routes.AdminAudit.clearauditSome(5)">clear 5</a> | <a href="@routes.AdminAudit.clearauditSome(10)">clear 10</a>
-    |
-    <a href="@routes.AdminAudit.clearauditSome(20)">clear 20</a> | <a href="#bottom">Bottom</a>
+    <a href="@routes.AdminAudit.clearauditSome(5)">clear 5</a> |
+    <a href="@routes.AdminAudit.clearauditSome(10)">clear 10</a> |
+    <a href="@routes.AdminAudit.clearauditSome(100)">clear 100</a> |
+    <a href="@routes.AdminAudit.clearauditSome(1000)">clear 1k</a> | <a href="#bottom">Bottom</a>
 
     @if(what.isDefined) {
       | <a href="@routes.AdminAudit.clearauditAll(what.mkString)">clear all @what</a>

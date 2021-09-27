@@ -99,7 +99,11 @@ class DomInvites @Inject() (config:Configuration) extends mod.diesel.controllers
         Msg(s"User ${user.ename} exists, added to realm...")
       } getOrElse {
         val link = "/diesel/invited"
-        val sec = SecLink(link, Some(Website.forRealm(request.realm).getOrElse(request.website).domain),
+
+        // overwrite host if local url is specified
+        val nhost = if (razie.wiki.WikiConfig.getInstance.get.isOverriden("local.url")) None else Some(
+          Website.forRealm(request.realm).getOrElse(request.website).domain)
+        val sec = SecLink(link, nhost,
           10, DateTime.now.plusDays(5))
             .withProp("email", email)
             .withProp("realm", request.realm)

@@ -10,7 +10,7 @@ import razie.Logging
 import razie.hosting.Website
 import razie.wiki.admin.{MailSession, SecLink}
 import razie.wiki.model.{Perm, WID}
-import razie.wiki.{Config, Enc, EncUrl, Services}
+import razie.wiki.{Config, Enc, EncUrl, Services, WikiConfig}
 
 // NOTE this is not actually a controller - leave it object, the one below is...
 object Tasks extends RazController with Logging {
@@ -38,12 +38,15 @@ Please do that soon: it will expire in a few hours, for security reasons.
     log("ENC_DT=" + dt.enc.dec)
     log("ENC_DT=" + EncUrl(dt))
 
+    // overwrite host if local url is specified
+    var nhost = if (WikiConfig.getInstance.get.isOverriden("local.url")) None else host
+
     val hc1 = """/user/task/verifyEmail2?expiry=%s&email=%s&id=%s""".format(EncUrl(dt), Enc.toUrl(c.email), c.id)
     log("ENC_LINK1=" + hc1)
-    val ds = SecLink(hc1, host)
+    val ds = SecLink(hc1, nhost)
     log("ENC_LINK2=" + ds.secUrl)
 
-    val h = host.getOrElse ("www.dieselapps.com")
+    val h = host.getOrElse("www.dieselapps.com")
     sendToVerif1(c.emailDec, from, c.ename, h, ds.secUrl)
   }
 
@@ -67,7 +70,6 @@ Please do that soon: it will expire in a few hours, for security reasons.
   }
 
   def sendToVerif1(email: String, from: String, ename: String, header:String, link: String)(implicit mailSession: MailSession) = {
-//    val html = Emailer.text("emailverif").format(ename, email, header, header, link);
     val html = expand("emailverif", List(
       "ename" -> ename,
       "email" -> email,
@@ -80,16 +82,13 @@ Please do that soon: it will expire in a few hours, for security reasons.
   }
 
   def sendToReset1(email: String, from: String, ename: String, h:String, link: String)(implicit mailSession: MailSession) = {
-//    val html = Emailer.text("emailreset").format(name, link);
     val html = expand("emailreset", List(
       "ename" -> ename,
       "url" -> link
     ))
 
-
     mailSession.send(email, from, "Please reset your password", html)
   }
-
 
 }
 
