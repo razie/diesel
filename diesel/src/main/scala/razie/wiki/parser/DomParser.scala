@@ -391,7 +391,12 @@ trait DomParser extends ParserBase with ExprParser {
             gens.collect {
               case m: EMap => m
             }.map(m => m.withPosition(m.pos.get.copy(wpath = wpath))))
-          r.pos = Some(EPos(wpath, k.pos.line, k.pos.column))
+          val last = gens.lastOption
+              .filter(_.isInstanceOf[HasPosition])
+              .map(_.asInstanceOf[HasPosition])
+              .flatMap(_.pos.map(_.line))
+              .getOrElse(-1)
+          r.pos = Some(EPos(wpath, k.pos.line, k.pos.column, last))
           val f = if (k.s contains "when") r else EMock(r)
           addToDom(f).ifold(current, ctx)
         }
