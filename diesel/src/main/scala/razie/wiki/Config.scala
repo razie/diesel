@@ -36,7 +36,7 @@ object Config extends WikiConfig {
     }
 
     case WikiConfigChanged(node, config) => {
-      trustLocalUsers = prop("diesel.staticRateLimiting", "true").toBoolean
+      trustLocalUsers = prop("diesel.trustLocalUsers", "true").toBoolean
     }
   }
 }

@@ -85,7 +85,7 @@ case class SecLink(
     if (host.isDefined)
       "http://" + host.get + SecLink.PREFIX + id
     else
-      "http://" + Services.config.hostport + SecLink.PREFIX + id
+      Services.config.dieselLocalUrl + SecLink.PREFIX + id
   }
 
   def delete = {

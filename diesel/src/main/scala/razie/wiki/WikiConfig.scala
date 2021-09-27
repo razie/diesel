@@ -36,10 +36,6 @@ object WikiConfig {
   final val RK = "rk"
   final val NOTES = "notes"
 
-  /** get from play config - needed as in some places I can't load sitecfg before props are needed */
-  def prop(name: String, dflt: String = "") =
-    if (playConfig.underlying.hasPath(name)) playConfig.underlying.getString(name) else dflt
-
   // parse a properties looking thing
   def parsep(content: String) =
     (content.split("\r*\n").map(_.trim)) filter (!_.startsWith("#")) map (_.split("=",
@@ -72,9 +68,27 @@ abstract class WikiConfig {
   /** get from play config - needed as in some places I can't load sitecfg before props are needed */
   def hasProp(name: String) = pconfig.hasPath(name)
 
-  /** get from play config - needed as in some places I can't load sitecfg before props are needed */
-  def prop(name: String, dflt: String = "") =
-    if (pconfig.hasPath(name)) pconfig.getString(name) else dflt
+  /** is a prop overriden in system environment? if so, you may want to change some defaults... */
+  def isOverriden(name: String) = {
+    val s = "DIESEL_" + name.replace(".", "_").toUpperCase
+    System.getenv().containsKey(s) || System.getProperties.containsKey(s)
+  }
+
+  /** get from play config - needed as in some places I can't load sitecfg before props are needed
+    *
+    * properties can be overwritten in the system properties
+    *
+    * @param name
+    * @param dflt
+    * @return
+    */
+  def prop(name: String, dflt: String = "") = {
+    val s = "DIESEL_" + name.replace(".", "_").toUpperCase
+    if (System.getenv().containsKey(s)) System.getenv(s)
+    else if (System.getProperties.containsKey(s)) System.getProperty(s)
+    else if (pconfig.hasPath(name)) pconfig.getString(name)
+    else dflt
+  }
 
   /** play config overwritten by sitecfg */
   def weprop(name: String, dflt: String = "") =
@@ -82,9 +96,10 @@ abstract class WikiConfig {
 
   final val home = prop("wiki.home")
 
-  final val hostport    = prop("wiki.hostport")
-  final val node        = prop("wiki.node", hostport)//java.net.InetAddress.getLocalHost.getCanonicalHostName)
-  final val safeMode    = prop("wiki.safemode")
+  final val hostport = prop("wiki.hostport")
+  final val dieselLocalUrl = prop("local.url", "http://" + hostport)
+  final val node = prop("wiki.node", hostport) //java.net.InetAddress.getLocalHost.getCanonicalHostName)
+  final val safeMode = prop("wiki.safemode")
   final val analytics = true; //props.getProperty("rk.analytics").toBoolean
   final val noads = prop("wiki.noads", isLocalhost.toString).toBoolean
   final val forcephone = prop("wiki.forcephone").toBoolean
