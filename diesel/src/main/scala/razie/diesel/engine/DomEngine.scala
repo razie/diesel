@@ -301,7 +301,7 @@ abstract class DomEngine(
   protected def notifyParent(a: DomAst, parentId: String, targetId: String, level: Int) = {
     // completed - notify parent
     val newD = DomAst(new EInfo(
-      "Completing - notifying parent: " + DieselAssets.mkLink(WID("DieselEngine", parentId)), ""),
+      "Completing - notifying parent: " + DieselAssets.mkAhref(WID("DieselEngine", parentId)), ""),
       AstKinds.GENERATED)
 
     DieselAppContext ! DEComplete(parentId, targetId, recurse = true, level,

@@ -19,7 +19,8 @@ import razie.diesel.engine.nodes.EWarning
 class StaticECtx(
   cur: List[P] = Nil,
   base: Option[ECtx] = None,
-  curNode: Option[DomAst] = None) extends SimpleECtx(cur, base, curNode) {
+  curNode: Option[DomAst] = None,
+  ignorePuts: Boolean = false) extends SimpleECtx(cur, base, curNode) {
 
   // check for overwriting values
   // todo if i'm in a message, this will always be the case - why am I alarming?
@@ -33,10 +34,7 @@ class StaticECtx(
   //todo should I throw up if no base?
   override def put(p: P): Unit = {
     if (p.name == Diesel.PAYLOAD) base.map(_.put(p))
-    else throw new DieselExprException("CAN'T OVERWRITE STATIC CTX VARS")
-//    check(p)
-//     propagate to base, so it lives
-//    base.map(_.put(p))
+    else if (!ignorePuts) throw new DieselExprException("CAN'T OVERWRITE STATIC CTX VARS")
   }
 
   override def putAll(p: List[P]): Unit = {
@@ -45,12 +43,14 @@ class StaticECtx(
 
   override def remove(name: String): Option[P] = {
     if (name == Diesel.PAYLOAD) base.flatMap(_.remove(name))
-    else throw new DieselExprException("CAN'T OVERWRITE STATIC CTX VARS [remove]")
+    else {
+      if (!ignorePuts) throw new DieselExprException("CAN'T OVERWRITE STATIC CTX VARS [remove]")
+      else None
+    }
   }
 
   override def clear = {
-    throw new DieselExprException("CAN'T OVERWRITE STATIC CTX VARS [clear]")
-//    base.map(_.clear)
+    if (!ignorePuts) throw new DieselExprException("CAN'T OVERWRITE STATIC CTX VARS [clear]")
   }
 
   override def toString = this.getClass.getSimpleName + ":" + cur.mkString //+ "\n base: " +base.toString

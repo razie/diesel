@@ -9,6 +9,7 @@ import org.bson.types.ObjectId
 import razie.audit.Audit
 import razie.js
 import razie.diesel.Diesel
+import razie.diesel.Diesel.PAYLOAD
 import razie.diesel.dom.RDOM.P
 import razie.diesel.dom.{RDomain, WTypes}
 import razie.diesel.engine.RDExt._
@@ -343,6 +344,18 @@ class DomEngineV1(
     val n: EMsg = calcMsg(a, in)(ctx)
     // replace it so we see the calculated values
     a.value = n
+
+    if (n.ea == "diesel.breakpoint") {
+      // put breakpoint here
+      clog << n.ea
+    }
+
+    // special warning for using payload
+    if (n.attrs.exists(_.name == PAYLOAD))
+      newNodes = newNodes ::: List(
+        DomAst(new EError(
+          "Should not use 'payload' as an argument, it's a reserved keyword and has unpredictable consequences! "),
+          AstKinds.ERROR))
 
     //todo used to set kind to generated but parent makes more sense.getOrElse(AstKinds.GENERATED)
     val parentKind = a.kind match {
