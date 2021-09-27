@@ -271,7 +271,9 @@ class AdminDiff extends AdminBase with Logging {
     } catch {
       case x: CommRtException if x.httpCode == 401 => {
         audit(s"ERROR getting remote diffs ${x.getMessage} ", x)
-        Ok(s"error HTTP 401 (Unauthorized) - did you change your password locally or remotely?\n\nError details: $x ")
+        Ok(
+          s"error HTTP 401 (Unauthorized) - did you change your password locally or remotely? Do you have the same " +
+              s"account locally and on remote?\n\nError details: $x ")
       }
       case x: CommRtException => {
         audit(s"ERROR getting remote diffs ${x.getMessage} ", x)
@@ -291,7 +293,7 @@ class AdminDiff extends AdminBase with Logging {
     val localWid = iwid.r(if (toRealm == "all") iwid.getRealm else localRealm)
     val remoteWid = iwid.r(if (toRealm == "all") iwid.getRealm else toRealm)
 
-    getWE(target, remoteWid)(request.au.get).fold({ t =>
+    getRemoteWE(target, remoteWid)(request.au.get).fold({ t =>
       val remote = t._1.content
       val patch =
         DiffUtils.diff(localWid.content.get.lines.toList, remote.lines.toList)
@@ -317,8 +319,16 @@ class AdminDiff extends AdminBase with Logging {
     })
   }
 
-  // to remote
-  def applyDiffTo(localRealm: String, toRealm: String, target: String, iwid: WID) = FAUR { implicit request =>
+  /**
+    * to remote
+    *
+    * @param localRealm
+    * @param toRealm
+    * @param targetHost
+    * @param iwid local wpath
+    * @return
+    */
+  def applyDiffTo(localRealm: String, toRealm: String, targetHost: String, iwid: WID) = FAUR { implicit request =>
     val localWid = iwid.r(if (toRealm == "all") iwid.getRealm else localRealm)
     val remoteWid = iwid.r(if (toRealm == "all") iwid.getRealm else toRealm)
 
@@ -327,12 +337,12 @@ class AdminDiff extends AdminBase with Logging {
         val page = localWid.page.get
 
         val b = body(
-          url(s"http://$target/wikie/setContent/${remoteWid.wpathFull}").
+          url(s"http://$targetHost/wikie/setContent/${remoteWid.wpathFull}?id=${page._id.toString}").
               form(Map("we" -> page.grated.toString)).
               basic("H-" + request.au.get.emailDec, "H-" + request.au.get.pwd.dec))
 
         // b contains ok - is important
-        Ok(b + " <a href=\"" + s"http://$target${
+        Ok(b + " <a href=\"" + s"http://$targetHost${
           remoteWid.urlRelative(request.realm)
         }" + "\">" + remoteWid.wpath + "</a>")
       } catch {
@@ -348,18 +358,17 @@ class AdminDiff extends AdminBase with Logging {
 
   // from remote to local
   // todo auth that user belongs to realm
-  def applyDiffFrom(localRealm: String, toRealm: String, target: String, iwid: WID) = FAUR { implicit request =>
+  def applyDiffFrom(localRealm: String, toRealm: String, targetHost: String, iwid: WID) = FAUR { implicit request =>
     val localWid = iwid.r(if (toRealm == "all") iwid.getRealm else localRealm)
     val remoteWid = iwid.r(if (toRealm == "all") iwid.getRealm else toRealm)
 
-    getWE(target, remoteWid)(request.au.get).fold({ t =>
+    getRemoteWE(targetHost, remoteWid)(request.au.get).fold({ t =>
       val protocol = if (request.hostUrlBase.startsWith("https")) "https" else "http"
       val b = body(
-//        url(request.hostUrlBase + s"/wikie/setContent/${localWid.wpathFull}")
         // local url may be different from outside mappings and routings - it's accessed from this same server backend
         // todo still have an issue of http vs https - should this be configured?
-        url(protocol + "://" + Config.hostport + s"/wikie/setContent/${localWid.wpathFull}")
-            .form(Map("we" -> t._2, "remote" -> target))
+        url(protocol + "://" + Config.hostport + s"/wikie/setContent/${localWid.wpathFull}?id=${t._1._id.toString}")
+            .form(Map("we" -> t._2, "remote" -> targetHost))
             .basic("H-" + request.au.get.emailDec, "H-" + request.au.get.pwd.dec)
       )
       Ok(b + localWid.ahrefRelative(request.realm))
@@ -368,8 +377,14 @@ class AdminDiff extends AdminBase with Logging {
     })
   }
 
-  /** fetch remote WE */
-  private def getWE(target: String, wid: WID)(implicit au: User): Either[(WikiEntry, String), String] = {
+  /** fetch remote WE (meta info)
+    *
+    * @param target
+    * @param wid
+    * @param au
+    * @return either ( (entry meta parsed, unparsed) OR error msg)
+    */
+  private def getRemoteWE(target: String, wid: WID)(implicit au: User): Either[(WikiEntry, String), String] = {
     try {
       val remote = s"http://$target/wikie/json/${wid.wpathFull}"
       val wes = body(
@@ -428,18 +443,39 @@ class AdminDiff extends AdminBase with Logging {
   // is this the first time in a new db ?
   def isDbEmpty: Boolean = RMany[User]().size <= 0
 
+  /** is current user active here - used with basic auth from remote, to verify before import */
+  def isu(key: String) = FAUR {
+    implicit request =>
+      Ok("yes") // getting here means he's auth
+  }
+
+  /** get the profile of the current user, encrypted */
+  def getu(key: String) = FAU {
+    implicit au =>
+      implicit errCollector =>
+        implicit request =>
+
+          val e = new CypherEncryptService(key, "")
+          val pu = PU(au.copy(email = e.enc(au.emailDec), pwd = e.enc(au.pwd.dec)), au.profile.get)
+
+          val j = grater[PU].asDBObject(pu).toString
+
+          Ok(j).as("application/json")
+  }
+
   /** is this a remote user - email and password match something on remote? */
   def isRemoteUser(email: String, pwd: String) = {
-    clog << "ADMIN_isRemoteUser"
 
-    val source = "www.dieselapps.com"
+    val source = "http://www.dieselapps.com"
 
     // key used to encrypt/decrypt transfer
     val key = System.currentTimeMillis().toString + "87654321"
 
     // first get the user and profile and create them locally
     Try {
-      val u = body(url(s"http://$source/dmin-isu/$key", method = "GET").basic("H-" + email, "H-" + pwd))
+      clog << s"ADMIN_isRemoteUser $source"
+      val u = body(url(s"$source/dmin-isu/$key", method = "GET").basic("H-" + email, "H-" + pwd))
+      clog << s"  Response: $u"
       u.contains("yes")
     }.getOrElse(false)
   }
@@ -651,7 +687,7 @@ class AdminDiff extends AdminBase with Logging {
 
     // get mixins
     clog << "============ get mixins"
-    val reactors = WID.fromPath(s"$realm.Reactor:$realm").map(wid => getWE(source, wid)(au).fold({ t =>
+    val reactors = WID.fromPath(s"$realm.Reactor:$realm").map(wid => getRemoteWE(source, wid)(au).fold({ t =>
       val m = new DslProps(Some(t._1), "website,properties")
           .prop("mixins")
           .getOrElse(realm)
@@ -693,7 +729,7 @@ class AdminDiff extends AdminBase with Logging {
 
         log("IMPORTING: " + wid.wpath)
 
-        getWE(source, wid)(au).fold({ t =>
+        getRemoteWE(source, wid)(au).fold({ t =>
           // success
           count = count + 1
           val realms = "rk,wiki,$reactors".split(",").distinct.mkString(",")
@@ -906,26 +942,6 @@ class AdminDiff extends AdminBase with Logging {
       case e: IOException =>
         e.printStackTrace()
     }
-  }
-
-  /** is current user active here - used with basic auth from remote, to verify before import */
-  def isu(key: String) = FAUR {
-    implicit request =>
-      Ok("yes") // getting here means he's auth
-  }
-
-  /** get the profile of the current user, encrypted */
-  def getu(key: String) = FAU {
-    implicit au =>
-      implicit errCollector =>
-        implicit request =>
-
-          val e = new CypherEncryptService(key, "")
-          val pu = PU(au.copy(email = e.enc(au.emailDec), pwd = e.enc(au.pwd.dec)), au.profile.get)
-
-          val j = grater[PU].asDBObject(pu).toString
-
-          Ok(j).as("application/json")
   }
 
 }
