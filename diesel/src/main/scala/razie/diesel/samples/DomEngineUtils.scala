@@ -220,5 +220,13 @@ object DomEngineUtils {
   def runMsgSync(realm: String, e: String, a: String, parms: Map[String, Any]): Option[P] = {
     runMsgSync(DieselMsg(e, a, parms, DieselTarget.ENV(realm)))
   }
+
+  /**
+    * run message sync
+    */
+  def runMsgAsync(realm: String, m: String): Future[Map[String, Any]] = {
+    DieselMsgString(m, DieselTarget.ENV(realm)).startMsg
+  }
+
 }
 
