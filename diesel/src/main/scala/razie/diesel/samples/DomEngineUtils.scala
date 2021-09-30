@@ -222,7 +222,10 @@ object DomEngineUtils {
   }
 
   /**
-    * run message sync
+    * run message async
+    *
+    * @param realm - the realm to run in
+    * @param m     - a text message invocation i.e. "$msg a.b(c=3)"
     */
   def runMsgAsync(realm: String, m: String): Future[Map[String, Any]] = {
     DieselMsgString(m, DieselTarget.ENV(realm)).startMsg
