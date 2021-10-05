@@ -19,6 +19,13 @@ import razie.diesel.utils.DomHtml.quickBadge
   */
 object DomEngineView {
 
+  /** story */
+  def stories(a: DomAst) = {
+    a.children.filter(_.kind == "story").map(ast =>
+      (ast, ast.value.asInstanceOf[StoryNode])
+    )
+  }
+
   /** story summary if this was a test story */
   def storySummary(a: DomAst) = {
     val zip = a.children.zipWithIndex
@@ -68,6 +75,12 @@ object DomEngineView {
 
   def failedTestList(nodes: List[DomAst]): List[DomAst] = (nodes.flatMap(_.collect {
     case d@DomAst(n: TestResult, _, _, _) if n.value.startsWith("fail") => d
+    case d@DomAst(n: EError, _, _, _) if !n.handled => d
+  })).toList
+
+  /** list all tests and errors for junit report */
+  def testList(nodes: List[DomAst]): List[DomAst] = (nodes.flatMap(_.collect {
+    case d@DomAst(n: TestResult, _, _, _) => d
     case d@DomAst(n: EError, _, _, _) if !n.handled => d
   })).toList
 
