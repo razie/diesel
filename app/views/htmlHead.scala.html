@@ -367,21 +367,30 @@ img.rklogo {
   max-height: 80%;/* 80%; */
   overflow-x: hidden;
 }
+.rk-footer-light {
+  background-color: #4E4D4D;
+}
+.rk-footer-dark {
+  background-color: #4E4D4D;
+}
 </style>
 
-@** optional realm-level stylesheet **@
+
+<!--
+ optional realm-level stylesheet
+-->
 
 @stok.map(_.realm).orElse(request.map(r=>Website.realm(r))).orElse(page.map(_.wid.getRealm)).flatMap(Website.forRealm).flatMap(_.stylesheet).flatMap(_.content).map{c=>
-    <!--  optional realm-level stylesheet  -->
   <style type="text/css">
   @c
   </style>
 }
 
-@** optional page-level stylesheet **@
+<!--
+ optional page-level stylesheet
+-->
 
 @page.flatMap(_.findSection("stylesheet")).map(_.content).map{c=>
-    <!--  optional page-level stylesheet  -->
   <style type="text/css">
   @c
   </style>

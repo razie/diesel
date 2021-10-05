@@ -8,9 +8,9 @@
 <footer id="weFooter">
 
 @if(stok.isLight) {
-  <div style="background-color:#4E4D4D">
+  <div class="rk-footer-light">
   } else {
-  <div style="background-color:#4E4D4D">
+  <div class="rk-footer-dark">
   }
 
 @Html(web().footer.flatMap(_.page).map(razie.wiki.model.Wikis.format(_, stok.au)).mkString)

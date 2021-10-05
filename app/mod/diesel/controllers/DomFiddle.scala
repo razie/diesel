@@ -38,6 +38,7 @@ object DomFiddles {
       case h: HasPosition if h.pos.isDefined => Map(
         "row" -> h.pos.get.line,
         "col" -> h.pos.get.col,
+        "endRow" -> h.pos.get.endLine,
         "text" -> "?"
       )
     }.toList

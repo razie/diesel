@@ -1,7 +1,8 @@
 @**
 create account
 **@
-@(myForm: Form[controllers.CrProfile])(implicit stok: controllers.StateOk)
+@import razie.wiki.model.WikiEntry
+@(myForm: Form[controllers.CrProfile], join3:Option[WikiEntry])(implicit stok: controllers.StateOk)
 @import razie.wiki.model.WID
 
 @stok.title("Create an account / Register")
@@ -13,11 +14,8 @@ create account
 
     <div class="row">
       <div class="col-sm-6">
-      @WID.fromPath("Admin:page-join3").flatMap(_.page).orElse(
-        WID.fromPath("Admin:page-join3-" + stok.realm).flatMap(_.page)
-      ).orElse(
-        WID.fromPath("Admin:page-join3-rk").flatMap(_.page)
-      ).map { page =>
+      @join3.map { page =>
+          <!-- using @page.wid.wpath -->
         @wiki.wikiFrag(page.wid, None, true, Some(page))
       }
       </div>
@@ -54,14 +52,18 @@ create account
 
             @util.razText(myForm, "address", "City, province/state, country")
 
-            @helper.textarea(
-              myForm("about"),
-              '_label -> "Tell us about yourself",
-              '_showConstraints -> false,
-              'placeholder -> stok.website.propDflt("user.join.about.placeholder",
-                "... anything you deem interesting, what are you looking to get out of this service?"),
-              'class -> "form-control col-sm-12",
-              'rows -> 5)
+            @if(stok.website.propDflt("user.join.about", "true").equals("true")) {
+              @helper.textarea(
+                myForm("about"),
+                '_label -> "Tell us about yourself",
+                '_showConstraints -> false,
+                'placeholder -> stok.website.propDflt("user.join.about.placeholder",
+                  "... anything you deem interesting, what are you looking to get out of this service?"),
+                'class -> "form-control col-sm-12",
+                'rows -> 5)
+            } else {
+              <input name="about" style="display: none;"/>
+            }
 
             @helper.checkbox(
               myForm("accept"),

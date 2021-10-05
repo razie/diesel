@@ -642,26 +642,41 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
     (for (
       e <- request.flash.get("email");
       p <- request.flash.get("pwd") orElse request.flash.get("gid")
-    ) yield
-      (ROK.r reactorLayout12  {implicit stok=>
+    ) yield {
+
+      (ROK.r reactorLayout12 { implicit stok =>
+        val join3 = getJoin3Page(stok)
+
         views.html.user.doeJoin3(
           crProfileForm.fill(
             CrProfile("", "", "", 13, "", "racer", false)
-          )
+          ),
+          join3
         )
       }).withSession(
-          "pwd" -> p,
-          "email" -> e,
-          "extra" -> request.flash.get("extra").mkString,
-          "gid" -> request.flash.get("gid").mkString
-        )
-    ) getOrElse
-      unauthorized(
-        """Session expired [join3] - please <a href="/doe/join">start again</a>."""
+        "pwd" -> p,
+        "email" -> e,
+        "extra" -> request.flash.get("extra").mkString,
+        "gid" -> request.flash.get("gid").mkString
+      )
+    }
+        ) getOrElse
+        unauthorized(
+          """Session expired [join3] - please <a href="/doe/join">start again</a>."""
         ).withNewSession
   }
 
   private def dfltCss = Services.config.sitecfg("dflt.css") getOrElse "light"
+
+  def getJoin3Page(stok: StateOk) = {
+    val join3 =
+      WID.fromPath("Admin:page-join3").map(_.r(stok.realm)).flatMap(_.page).orElse(
+        WID.fromPath("Admin:page-join3-" + stok.realm).map(_.r(stok.realm)).flatMap(_.page)).orElse(
+        WID.fromPath("Admin:page-join3-" + stok.realm).flatMap(_.page)).orElse(
+        WID.fromPath("Admin:page-join3-rk").flatMap(_.page))
+
+    join3
+  }
 
   /** join step 4 - after captcha: create profile and send emails */
   def doeCreateProfile(testcode: String) = RAction { implicit request =>
@@ -670,7 +685,7 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
       if (testcode != T.TESTCODE) request.session.get(s)
       else Some(d)
 
-    def uname (f:String,l:String,yob:Int) = Users.unameF(f.trim,l.trim)
+    def uname(f: String, l: String, yob: Int) = Users.unameF(f.trim, l.trim)
 
     auth // clean theme
 
@@ -679,7 +694,12 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
     resp.fold(
       formWithErrors => {
         warn("FORM ERR " + formWithErrors)
-        (ROK.r badRequest {implicit stok=> views.html.user.doeJoin3(formWithErrors)}).withSession(
+        (ROK.r badRequest { implicit stok =>
+
+          val join3 = getJoin3Page(stok)
+
+          views.html.user.doeJoin3(formWithErrors, join3)
+        }).withSession(
           "pwd" -> getFromSession("pwd", T.TESTCODE).mkString,
           "email" -> getFromSession("email", "@k.com").mkString,
           "extra" -> getFromSession("extra", "extra").mkString,

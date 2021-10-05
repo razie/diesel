@@ -328,6 +328,41 @@ class AdminDiff extends AdminBase with Logging {
     * @param iwid local wpath
     * @return
     */
+  def deleteRemote(localRealm: String, toRealm: String, targetHost: String, iwid: WID) = FAUR { implicit request =>
+    val localWid = iwid.r(if (toRealm == "all") iwid.getRealm else localRealm)
+    val remoteWid = iwid.r(if (toRealm == "all") iwid.getRealm else toRealm)
+
+    if (request.au.exists(_.realms.contains(toRealm)) || request.au.exists(_.isAdmin)) {
+      try {
+        val page = localWid.page.get
+
+        val b = body(
+          url(s"http://$targetHost/wikie/delete2/${remoteWid.wpathFull}")
+              .basic("H-" + request.au.get.emailDec, "H-" + request.au.get.pwd.dec))
+
+        // response contains ok - is important
+        val s = if (b.contains("DELETED")) "ok" else "Not"
+        Ok(s)
+      } catch {
+        case x: CommRtException => {
+          Ok("error " + x.httpCode + " " + x.details)
+        }
+        case x: Throwable => Ok("error " + x)
+      }
+    } else {
+      Unauthorized(s"You are not a member or project $toRealm...")
+    }
+  }
+
+  /**
+    * to remote
+    *
+    * @param localRealm
+    * @param toRealm
+    * @param targetHost
+    * @param iwid local wpath
+    * @return
+    */
   def applyDiffTo(localRealm: String, toRealm: String, targetHost: String, iwid: WID) = FAUR { implicit request =>
     val localWid = iwid.r(if (toRealm == "all") iwid.getRealm else localRealm)
     val remoteWid = iwid.r(if (toRealm == "all") iwid.getRealm else toRealm)

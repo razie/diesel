@@ -5,8 +5,8 @@ the footer of every page...
 
 @web()=@{request.flatMap(x=>razie.hosting.Website.apply(x)).getOrElse(stok.website)}
 
-<footer id="footerCopyright">
-  <small style="color:gray;">
+  <footer id="footerCopyright">
+  </small>
     @web().copyright.map{x=>
       @Html(x)
     }.getOrElse{

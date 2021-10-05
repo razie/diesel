@@ -5,6 +5,14 @@
 
 RK=~/w/racerkidz
 
+## package build info:
+dtm=`date`
+ver="$@"
+
+echo "diesel.build.base.dtm=\"$dtm\"" >$RK/conf/ver.conf
+echo "diesel.build.base.ver=\"$ver\"" >>$RK/conf/ver.conf
+echo "" >>$RK/conf/ver.conf
+
 ## BUILD
 . build-rk
 

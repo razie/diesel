@@ -27,7 +27,7 @@ rm -rf dist
 cp -r $RK/target/universal/racerkidz-${VER}-SNAPSHOT .
 mv racerkidz-${VER}-SNAPSHOT dist
 rm dist/conf/application.conf
-mv dist/conf/application.docker.conf dist/conf/application.conf
+cp dist/conf/application.docker.conf dist/conf/application.conf
 
 rm dist/conf/logback-test.xml
 rm dist/conf/logback.xml
