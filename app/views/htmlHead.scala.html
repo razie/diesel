@@ -380,7 +380,7 @@ img.rklogo {
  optional realm-level stylesheet
 -->
 
-@stok.map(_.realm).orElse(request.map(r=>Website.realm(r))).orElse(page.map(_.wid.getRealm)).flatMap(Website.forRealm).flatMap(_.stylesheet).flatMap(_.content).map{c=>
+@stok.map(_.realm).orElse(request.map(r=>Website.realm(r))).orElse(page.map(_.wid.getRealm)).flatMap(Website.forRealm).flatMap(x=>if(css.contains("dark")) x.stylesheetDark else x.stylesheetLight).flatMap(_.content).map{c=>
   <style type="text/css">
   @c
   </style>
@@ -391,6 +391,12 @@ img.rklogo {
 -->
 
 @page.flatMap(_.findSection("stylesheet")).map(_.content).map{c=>
+  <style type="text/css">
+  @c
+  </style>
+}
+
+@page.flatMap(_.findSection(if(css.contains("dark")) "stylesheet.dark" else "stylesheet.light")).map(_.content).map{c=>
   <style type="text/css">
   @c
   </style>

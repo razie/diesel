@@ -1,6 +1,6 @@
 package mod.diesel.controllers
 
-import controllers.RazRequest
+import controllers.{RazRequest, Res}
 import java.net.InetAddress
 import java.util.concurrent.atomic.AtomicInteger
 import mod.diesel.guard.DieselDebug.Guardian
@@ -176,10 +176,15 @@ class DomGuard extends DomApiBase with Logging {
       for (
         ast <- asts.find(_.id == id) orCorr ("ID not found" -> "We only store a limited amount of traces...")
       ) yield {
-        if (format == "html")
+        if (format == "html") {
           Ok(ast.engine.root.toHtml)
-        else
+        } else if ("junit" == format) {
+          Res.Ok(
+            views.html.modules.diesel.engineJUnitView(ast.engine)(stok)
+          ).as("application/xml")
+        } else {
           dieselEngineView(id).apply(stok.req).value.get.get
+        }
       }
     }.orElse(
       DieselAppContext.synchronized {
@@ -471,8 +476,8 @@ class DomGuard extends DomApiBase with Logging {
             s"""
                | Guardian report<a href="/wiki/Guardian" ><sup><span class="glyphicon
                | glyphicon-question-sign"></span></a></sup>:
-               | <b><a href="/diesel/runCheck?tq=story%2F-skip%2F-manual">Re-run check</a></b> (
-               | <a href="/diesel/runCheck?tq=story%2Fsanity%2F-skip%2F-manual">Just sanity</a>)
+               | <b><a href="/diesel/guard/runCheck?tq=story%2F-skip%2F-manual">Re-run check</a></b> (
+               | <a href="/diesel/guard/runCheck?tq=story%2Fsanity%2F-skip%2F-manual">Just sanity</a>)
                |               |   (${r.duration} msec) | ${
               quickBadge(r.failed, r.total, r.duration)
             }<br>
@@ -513,8 +518,8 @@ class DomGuard extends DomApiBase with Logging {
             guardianMenu +
                 s"""
                    |No run available yet (<b>$started</b>) - check this later
-                   |  <br><b><a href="/diesel/runCheck?tq=story%2F-skip%2F-manual">Re-run check</a></b> (
-                   |  <a href="/diesel/runCheck?tq=story/sanity/-skip/-manual">Just sanity</a>)
+                   |  <br><b><a href="/diesel/guard/runCheck?tq=story%2F-skip%2F-manual">Re-run check</a></b> (
+                   |  <a href="/diesel/guard/runCheck?tq=story/sanity/-skip/-manual">Just sanity</a>)
                    | $runs
                    |<br>
                    |Other in realm:<br>$otherInRealm""".
@@ -549,7 +554,7 @@ class DomGuard extends DomApiBase with Logging {
         new Html(
           guardianMenu +
               s"""
-<a href="/diesel/runCheckAll">Re-run all checks</a> (may have to wait a while)...
+<a href="/diesel/guard/runCheckAll">Re-run all checks</a> (may have to wait a while)...
 """.stripMargin +
 
               """<hr><h2>Abstract</h2>""" +
@@ -559,7 +564,8 @@ class DomGuard extends DomApiBase with Logging {
                 val r = t._2
                 s"""Realm: ${r.realm}""" +
                     s"""
-Guardian report<a href="/wiki/Guardian_Guide" ><sup><span class="glyphicon glyphicon-question-sign"></span></a></sup>: <a href="/diesel/runCheck">Re-run check</a>  (${r.duration} msec) ${
+Guardian report<a href="/wiki/Guardian_Guide" ><sup><span class="glyphicon
+glyphicon-question-sign"></span></a></sup>: <a href="/diesel/guard/runCheck">Re-run check</a>  (${r.duration} msec) ${
                   quickBadge(r.failed, r.total, r.duration)
                 }<br>
 """.stripMargin
@@ -573,10 +579,12 @@ Guardian report<a href="/wiki/Guardian_Guide" ><sup><span class="glyphicon glyph
                 val r = t._2
                 s"""<p>Realm: ${r.realm}</p>""" +
                     s"""
-Guardian report<a href="/wiki/Guardian_Guide" ><sup><span class="glyphicon glyphicon-question-sign"></span></a></sup>: <a href="/diesel/runCheck">Re-run check</a>  (${r.duration} msec) ${
+Guardian report<a href="/wiki/Guardian_Guide" ><sup><span class="glyphicon
+glyphicon-question-sign"></span></a></sup>: <a href="/diesel/guard/runCheck">Re-run check</a>  (${r.duration} msec) ${
                   quickBadge(r.failed, r.total, r.duration)
                 }<br>
-<small>${DomGuardian.stats} (<a href="/diesel/listAst">list all</a>)(<a href="/diesel/cleanAst">clean all</a>) </small><br><br>""".stripMargin +
+<small>${DomGuardian.stats} (<a href="/diesel/listAst">list all</a>)(<a href="/diesel/cleanAst">clean all</a>)
+</small><br><br>""".stripMargin +
                     views.html.modules.diesel.engineView(Some(r.engine))(stok).toString
               }.toList.mkString +
 
@@ -588,16 +596,30 @@ Guardian report<a href="/wiki/Guardian_Guide" ><sup><span class="glyphicon glyph
   }
 
   /** run another check current reactor */
-  def dieselRunCheck(tq: String) = Filter(activeUser).async { implicit stok =>
+  def dieselRunCheck(tq: String, format: String, wait: String, storyRealm: String) = Filter(activeUser).async
+  { implicit stok =>
     if (DomGuardian.enabled(stok.realm)) {
       val x@(f, e) = startCheck(stok.realm, stok.au, tq)
 
-      Future.successful(
-        e
-            .map(e => Redirect(s"""/diesel/viewAst/${e.id}"""))
-            .getOrElse(
-              NotFound(s"Test can't start = likely no stories matched tagQuery $tq"))
-      )
+      if (wait.isEmpty || !wait.toBoolean) {
+        Future.successful(
+          e
+              .map(e => Redirect(s"""/diesel/viewAst/${e.id}?format=$format"""))
+              .getOrElse(
+                NotFound(s"Test can't start = likely no stories matched tagQuery $tq"))
+        )
+      } else {
+        // wait and format
+        if ("junit" == format) {
+          f.flatMap(_.engine.finishF).map { eng =>
+            Res.Ok(
+              views.html.modules.diesel.engineJUnitView(f.value.get.get.engine)(stok)
+            ).as("application/xml")
+          }
+        } else {
+          f.map(report => Redirect(s"""/diesel/viewAst/${report.engine.id}?format=$format"""))
+        }
+      }
     }
     else Future.successful(
       Ok("GUARDIAN DISABLED in realm: " + stok.realm))
@@ -611,7 +633,7 @@ Guardian report<a href="/wiki/Guardian_Guide" ><sup><span class="glyphicon glyph
         else Future.successful(DomGuardian.EMPTY_REPORT)
       }
     ).map { x =>
-      Redirect(s"""/diesel/reportAll""")
+      Redirect(s"""/diesel/guard/reportAll""")
     }
     else Future.successful(Ok("GUARDIAN DISABLED"))
   }

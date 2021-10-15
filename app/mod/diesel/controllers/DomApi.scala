@@ -279,6 +279,7 @@ class DomApi extends DomApiBase with Logging {
             printRequest(stok.req,
               engine.settings.postedContent.map(_.body).mkString)),
           AstKinds.DEBUG)
+            .withStatus(DomState.SKIPPED)
       ))
 
       setHostname(engine.ctx.root)
