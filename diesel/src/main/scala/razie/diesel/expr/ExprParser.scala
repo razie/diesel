@@ -491,6 +491,8 @@ private def accessorIdent: Parser[RDOM.P] = "." ~> ident ^^ { case id => P("", i
   //==================================== C O N D I T I O N S
   //
 
+  // todo why need space after not? this no parse: => $if(not(false))
+
   private def opsBool: Parser[String] = "==" | "xNot" | "is" | "in" | "not in" | "notIn" |
       "!=" | "not" <~ ws | "~=" | "matches" <~ ws | "<=" | ">=" | "<" | ">" |
       "containsNot" <~ ws | "contains" <~ ws

@@ -5,7 +5,7 @@
  */
 package razie.diesel.expr
 
-import java.time.{Duration, LocalDateTime}
+import java.time.{Duration, LocalDateTime, ZoneOffset}
 import java.time.format.DateTimeFormatter
 import org.json.JSONObject
 import razie.diesel.Diesel
@@ -112,7 +112,15 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
             val bs = b(v).toString
             var dur: Option[scala.concurrent.duration.Duration] = None
 
-            if (!bs.matches("[0-9]+ *[nsmhdMy]")) {
+            if (isNum(bv)) {
+              try {
+                // msec
+                dur = Some(scala.concurrent.duration.Duration.fromNanos(bv.calculatedTypedValue.asLong * 1000.0))
+              } catch {
+                case e: Exception => throw new DieselExprException(
+                  "Right side not a duration like 5s or 5 seconds: " + bs)
+              }
+            } else if (!bs.matches("[0-9]+ *[nsmhdMy]")) {
               try {
                 // try with duration expressions
                 dur = Some(scala.concurrent.duration.Duration(bs.toLowerCase))
@@ -234,7 +242,15 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
             val bs = b(v).toString
             var dur: Option[scala.concurrent.duration.Duration] = None
 
-            if (!bs.matches("[0-9]+ *[nsmhdMy]")) {
+            if (isNum(bv)) {
+              try {
+                // msec
+                dur = Some(scala.concurrent.duration.Duration.fromNanos(bv.calculatedTypedValue.asLong * 1000.0))
+              } catch {
+                case e: Exception => throw new DieselExprException(
+                  "Right side not a duration like 5s or 5 seconds: " + bs)
+              }
+            } else if (!bs.matches("[0-9]+ *[nsmhdMy]")) {
               try {
                 // try with duration expressions
                 dur = Some(scala.concurrent.duration.Duration(bs.toLowerCase))
@@ -300,6 +316,10 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
 
       case "as" => {
 
+        import java.time.Instant
+        import java.time.LocalDateTime
+        import java.time.ZoneId
+
         def doAsWith(b: Expr, bu: String, bs: String, lastTime: Boolean): PValue[_] = {
           val ap = av.calculatedP
           val avv = av.calculatedTypedValue
@@ -320,6 +340,18 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
 
             case _ if bs == "json" || bs == "object" =>
               P.fromTypedValue("", as, WTypes.JSON).calculatedTypedValue
+
+            case _ if bs == "date" && isNum(av) => {
+              // date from millis
+              val i = Instant.ofEpochMilli(avv.asLong)
+              val d = LocalDateTime.ofEpochSecond(i.getEpochSecond, i.getNano, ZoneOffset.UTC);
+
+              val tsFmtr = DateTimeFormatter.ofPattern(WTypes.DATE_FORMAT)
+              val ts = tsFmtr.format(d)
+//              PValue(ts, WTypes.wt.DATE).withStringCache(ts)
+
+              P.fromTypedValue("", ts, WTypes.DATE).calculatedTypedValue
+            }
 
             case _ if bs == "date" =>
               P.fromTypedValue("", as, WTypes.DATE).calculatedTypedValue
@@ -359,7 +391,7 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
               doAsWith(bp.currentValue, bp.currentStringValue, b.toString.toLowerCase, true)
             }
 
-            case _ if lastTime => throw new DieselExprException("Can't typecast to: " + b.toString + " from: " + av)
+            case _ if lastTime => throw new DieselExprException("'as' can't typecast to: " + b.toString + " from: " + av)
           }
         }
 

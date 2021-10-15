@@ -7,7 +7,7 @@ package razie.diesel.expr
 
 import com.mongodb.casbah.Imports.ObjectId
 import java.net.URLEncoder
-import java.time.LocalDateTime
+import java.time.{LocalDateTime, ZoneOffset}
 import java.time.format.DateTimeFormatter
 import java.util.TimeZone
 import org.joda.time.DateTime
@@ -307,12 +307,21 @@ case class AExprFunc(val expr: String, parms: List[RDOM.P]) extends Expr {
               P.fromTypedValue("", finalArr, WTypes.wt.ARRAY)
             }
 
-              case _ => throw new DieselExprException("Can't do flatten on: " + av)
-            }
+            case _ => throw new DieselExprException("Can't do flatten on: " + av)
           }
-            }.getOrElse(
-          throw new DieselExprException(s"No arguments for $expr")
-        )
+        }
+      }.getOrElse(
+        throw new DieselExprException(s"No arguments for $expr")
+      )
+
+      case "toMillis" => {
+
+        val as = firstParm.get.calculatedValue
+        val tsFmtr = DateTimeFormatter.ofPattern(WTypes.DATE_FORMAT)
+        val ad = LocalDateTime.from(tsFmtr.parse(as))
+
+        P.fromTypedValue("", ad.toInstant(ZoneOffset.UTC).toEpochMilli, WTypes.wt.NUMBER)
+      }
 
       case _ => {
 

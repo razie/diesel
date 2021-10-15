@@ -356,7 +356,7 @@ case class BCMP2(a: Expr, op: String, b: Expr)
       BExprResult(resBool, oap, obp)
 
     } catch {
-      case t: Throwable => throw new DieselExprException("Can't typecast to: " + t.toString).initCause(t)
+      case t: Throwable if !t.isInstanceOf[DieselExprException] => throw new DieselExprException("BoolExpr exception: " + t.toString).initCause(t)
     }
   }
 
