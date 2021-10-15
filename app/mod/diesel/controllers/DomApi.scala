@@ -904,6 +904,37 @@ class DomApi extends DomApiBase with Logging {
   def dieselRestPATCH(path: String) = runRest("/" + path, "PATCH", mock=false)
   def dieselRestDELETE(path: String) = runRest("/" + path, "DELETE", mock=false)
 
+  // simple file uplaod form
+  def dieselIoTest(path: String) = Filter(noRobots).async { implicit stok =>
+    if (WikiConfig.getInstance.get.isLocalhost && stok.au.exists(_.isActive)) {
+      Future.successful(
+        Ok(
+          views.html.fiddle.dieselIoTest(path)
+        ))
+    } else {
+      Future.successful(
+        Unauthorized("not auth")
+      )
+    }
+  }
+
+  // test upload files
+  def dieselIoUpload(path: String) = Action(parse.multipartFormData) { request =>
+    if (WikiConfig.getInstance.get.isLocalhost) {
+      request.body.file("dieselFile").map { file =>
+        import java.io.File
+        val filename = file.filename
+        val contentType = file.contentType
+        file.ref.moveTo(new File(s"./$path"))
+        Ok(s"File uploaded to $path")
+      }.getOrElse {
+        InternalServerError("Error: 'dieselFile' is missing")
+      }
+    } else {
+      NotFound("not localhost")
+    }
+  }
+
   /** /diesel/findUsage/ea
     * API msg sent to reactor
     */

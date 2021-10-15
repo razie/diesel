@@ -7,6 +7,7 @@
 package api
 
 import controllers.{Club, XListWrapper}
+import jdk.nashorn.api.scripting.ScriptObjectMirror
 import mod.diesel.controllers.SFiddles
 import model._
 import razie.db.RazMongo
@@ -15,9 +16,11 @@ import razie.wiki.model._
 import razie.wiki.util.M._
 import razie.wiki.{Sec, Services}
 import scala.collection.immutable.ListMap
+import scala.collection.mutable.HashMap
 
 /** this is available to scripts inside the wikis */
 class wix (owe: Option[WikiPage], ou:Option[WikiUser], q:Map[String,String], r:String) {
+
   lazy val hostport:String = Services.config.hostport
 
   // hide actual app objects and give selective access via public objects below
@@ -94,6 +97,7 @@ class wix (owe: Option[WikiPage], ou:Option[WikiUser], q:Map[String,String], r:S
 
     def getExtLink (systemId:String, instanceId:String) =
       iuser.flatMap(_.profile).flatMap(_.getExtLink(irealm, systemId, instanceId)).map(_.extAccountId).mkString
+
   }
 
   /**
@@ -217,6 +221,35 @@ object wix {
   }
 
   def dieselEnvFor (realm:String, ou:Option[WikiUser]) = dwix.dieselEnvFor(realm, ou)
+
+  // JS calls for testing
+
+  // Java.type('api.wix').testStr("a")
+  def testStr (st:String) = {
+    st+"-"+System.currentTimeMillis()
+  }
+
+  // Java.type('api.wix').testArraySimple(["a", "jk"])
+  def testArraySimple (arr:Array[Any]) = {
+    arr.map(_.toString).toList
+  }
+
+  // Java.type('api.wix').testArray([{"a": "jk", "b": 3, "c": [1,2]}])
+  def testArray (arr:Array[ScriptObjectMirror]) = {
+    arr.map(_.getOwnKeys(true).mkString).toList
+    arr
+  }
+
+  // var x=Java.type('api.wix').testObj({"a": ["jk"]})
+  // var j = JSON.parse(x)
+  // j.arr[0]
+  def testObj (obj:ScriptObjectMirror) = {
+    val ret = new HashMap[String,Any]()
+    ret.put("obj", obj.toString)
+    ret.put("arr", List(1,2,3))
+    razie.js.tojsons(ret)
+  }
+
 }
 
 class WixUtils(w:wix) {

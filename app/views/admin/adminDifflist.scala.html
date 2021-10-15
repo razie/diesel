@@ -101,7 +101,7 @@ show diff with remote
             </small>
           }
         }
-      </td>
+        </td>
 
         <td>
           <small>
@@ -109,6 +109,7 @@ show diff with remote
             </small>
 
         </td>
+
         <td>
           <a
           href="javascript:popupUrl('@routes.AdminDiff.showDiff("yes", t._3, localRealm, toRealm, remote, WID(t._2.cat, t._2.name).r(t._2.realm))');"
@@ -118,7 +119,7 @@ show diff with remote
 
         <td>
           <small>
-        @t._2.realm <a href="@WID(t._2.cat, t._2.name).r(t._2.realm).urlRemote">@t._2.cat:@t._2.name</a>
+        @t._2.realm <a href="@WID(t._2.cat, t._2.name).r(t._2.realm).urlForTarget(remote)">@t._2.cat:@t._2.name</a>
             </small>
         </td>
 
@@ -137,7 +138,7 @@ show diff with remote
 
           @if(t._2.drafts > 0) {
             <small>
-              <a href="@{WID(t._2.cat, t._2.name).r(t._2.realm).urlRemote}/edit">
+              <a href="@{WID(t._2.cat, t._2.name).r(t._2.realm).urlForTarget(remote)}/edit">
                 <span style="color:red" class="glyphicon glyphicon-warning-sign" title="has drafts - click to save or cancel before merging..."></span>
               </a>
             </small>
@@ -176,7 +177,7 @@ show diff with remote
           @if(wea.cat != "Reactor") {
           <a
           xhref="#"
-          onclick="applyDif('@wea.id', '@routes.Wikie.wikieDelete1(WID(wea.cat, wea.name).r(wea.realm))')"
+          onclick="applyDifAsk('@wea.id', '@routes.Wikie.wikieDelete2(WID(wea.cat, wea.name).r(wea.realm))')"
           class="btn btn-xs btn-danger"
           >	&laquo; DELETE LOCAL</a>
           }
@@ -196,8 +197,8 @@ show diff with remote
       <td>
 @*//      @if(wea.cat != "Reactor") {*@
         <a
-        xhref="x"
-        class="btn btn-xs btn-default"
+        onclick="applyDifAsk('@wea.id', '@routes.AdminDiff.deleteRemote(localRealm, toRealm, remote, WID(wea.cat, wea.name).r(wea.realm))')"
+        class="btn btn-xs btn-danger"
         >USE LOCAL &raquo;</a>
 @*//      }*@
       </td>
@@ -205,7 +206,7 @@ show diff with remote
       <small>
         @wea.realm
 @*        <a href="http://@remote@WID(wea.cat, wea.name).r(wea.realm).urlRelative">@wea.cat:@wea.name v@wea.ver</a>*@
-        <a href="@WID(wea.cat, wea.name).r(wea.realm).urlRemote">@wea.cat:@wea.name v@wea.ver</a>
+        <a href="@WID(wea.cat, wea.name).r(wea.realm).urlForTarget(remote)">@wea.cat:@wea.name v@wea.ver</a>
       </small>
       </td>
       <td>
@@ -251,7 +252,7 @@ show diff with remote
       </td>
         <td>
         <small>
-          @t._2.realm <a href="@WID(t._2.cat, t._2.name).r(t._2.realm).urlRemote">@t._2.cat:@t._2.name</a>
+          @t._2.realm <a href="@WID(t._2.cat, t._2.name).r(t._2.realm).urlForTarget(remote)">@t._2.cat:@t._2.name</a>
           </small>
         </td>
         <td>
@@ -267,8 +268,25 @@ show diff with remote
 <script async>
 withJquery(function(){
 
-applyDif = function(id,url) {
-  $.ajax(
+  applyDif = function(id,url) {
+    $.ajax(
+        url, {
+          type: 'GET',
+          success: function(data) {
+            if(data.indexOf("ok") == 0) {
+              $('#row-'+id).fadeOut(250);
+            } else {
+              alert ("ERROR: "+JSON.stringify(data))
+            }
+          },
+          error  : function(x) {
+            alert( "ERR "+JSON.stringify(x.responseText));
+          }
+        });
+  }
+
+applyDifAsk = function(id,url) {
+  if(confirm("You're sure you want to delete " + url + " ?")) $.ajax(
     url, {
     type: 'GET',
     success: function(data) {
@@ -282,7 +300,6 @@ applyDif = function(id,url) {
       alert( "ERR "+JSON.stringify(x.responseText));
     }
   });
-
 }
 
   selectRemote = function() {

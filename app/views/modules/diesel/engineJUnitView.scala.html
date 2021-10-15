@@ -3,29 +3,35 @@
 @import razie.diesel.engine.RDExt.TestResult
 @import razie.diesel.engine.nodes.EError
 @(eng:razie.diesel.engine.DomEngine)(implicit stok: controllers.StateOk)<?xml version="1.0" encoding="UTF-8" ?>
+@noq(s:String)=@{s.replaceAllLiterally("\"", "'")}
 @tm(t:DomAst)=@{(t.tend - t.tstart)/1000.0}
-<testsuites name="@eng.description" errors="@DomEngineView.errorCount(eng.root)" failures="@DomEngineView.failedTestCount(eng.root)" time="@tm(eng.root)">
+<testsuites
+  name="@noq(eng.description)"
+  errors="@DomEngineView.errorCount(eng.root)"
+  failures="@DomEngineView.failedTestCount(eng.root)"
+  time="@tm(eng.root)">
   @DomEngineView.stories(eng.root).filter(! _._2.path.wpath.endsWith(":temp")).map { t =>
-    <testsuite failures="@t._2.getStats.failed" name="@t._2.path.wpath" package="" tests="@t._2.getStats.total" time="@tm(t._1)">
+    <testsuite failures="@t._2.getStats.failed" name="@noq(t._2.path.wpath)" package=""
+    tests="@t._2.getStats.total" time="@tm(t._1)">
       @DomEngineView.testList(List(t._1)).collect {
 
         case d@DomAst(n: EError, _, _, _) if !n.handled => {
           <testcase assertions="" classname="cls" name="" status="" time="@tm(d)">
-            <error message="@n.code - @n.msg" type="EError"/>
+            <error message="@noq(n.code) - @noq(n.msg)" type="EError"/>
             <system-err><![CDATA[
               @n.details
               ]]></system-err>
           </testcase>
         }
         case d@DomAst(n: TestResult, _, _, _) if n.value.startsWith("n/a") => {
-          <testcase classname="cls" name="@n.value - @n.more | @n.target.mkString" time="@tm(d)">
+          <testcase classname="cls" name="@noq(n.value) - @noq(n.more) | n.target.mkString)" time="@tm(d)">
           <skipped/>
           </testcase>
         }
 
         case d@DomAst(n: TestResult, _, _, _) if n.value.startsWith("fail") => {
-          <testcase assertions="" classname="cls" name="@n.target.mkString" status="" time="@tm(d)">
-            <failure message="@n.more" type="TestResult"/>
+          <testcase assertions="" classname="cls" name="@noq(n.target.mkString)" status="" time="@tm(d)">
+            <failure message="@noq(n.more)" type="TestResult"/>
             <system-err><![CDATA[
               @n.value
               @n.more
@@ -35,7 +41,7 @@
         }
 
         case d@DomAst(n: TestResult, _, _, _) => {
-        <testcase classname="cls" name="@n.value - @n.more | @n.target.mkString" time="@tm(d)"/>
+        <testcase classname="cls" name="@noq(n.value) - @noq(n.more) | @noq(n.target.mkString)" time="@tm(d)"/>
         }
 
       }

@@ -1,0 +1,11 @@
+@(path:String)
+
+@helper.form(action = mod.diesel.controllers.routes.DomApi.dieselIoUpload(path), 'enctype -> "multipart/form-data") {
+
+<input type="file" name="dieselFile">
+
+<p>
+  <input type="submit">
+</p>
+
+}
