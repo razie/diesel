@@ -9,7 +9,7 @@ package razie.diesel.model
 import razie.audit.Audit
 import razie.diesel.dom.RDOM.P.asString
 import razie.diesel.engine.{DomEngine, DomEngineSettings}
-import razie.diesel.engine.nodes.EMsg
+import razie.diesel.engine.nodes.{EMsg, EnginePrep}
 import razie.diesel.samples.DomEngineUtils
 import razie.diesel.samples.DomEngineUtils.extractResult
 import razie.tconf.{SpecRef, TSpecRef, TagQuery}
@@ -185,7 +185,7 @@ object DieselTarget {
             )
         )
 
-    irdom.map(_.wid.toSpecPath)
+    EnginePrep.mixinEntries(irdom).map(_.wid.toSpecPath)
   }
 
   /** the environment settings - most common target */

@@ -40,10 +40,10 @@ case class StoryNode(path: TSpecRef) extends CanHtml with InfoNode {
   // calculated stats
   var stats: Option[StoryTestStats] = None
 
-  /** get succ/fail */
+  /** get succ/fail. Stats become available once the story ends, see calculateStats */
   def getStats: StoryTestStats = stats.getOrElse(StoryTestStats(0, 0, 0, 0, 0))
 
-  /** calculate succ/fail */
+  /** calculate succ/fail - called at end of story by engine, populates the stats */
   def calculateStats(ast: DomAst): StoryTestStats = {
     if (stats.isEmpty) {
       val nodes = ast.children
@@ -75,11 +75,14 @@ object EnginePrep extends Logging {
             // todo how can we optimize for large reactors: if it starts with "story" use the Story category?
             val tq = new TagQuery(tagQuery)
 
+            // reactor is this by default, but the tag query may overwrite with "realm.xxx"
+            val r = tq.theRealm.getOrElse(reactor)
+
             // todo optimize
             val wl = (if (tq.ltags.contains("Story") || tq.ltags.contains("story"))
-              catPages("Story", reactor)
+              catPages("Story", r)
             else
-              Wikis(reactor).pages("*")
+              Wikis(r).pages("*")
                 )
 
             val x = wl.toList
@@ -112,6 +115,32 @@ object EnginePrep extends Logging {
     pages
   }
 
+  /** filter pages if coming from different realms - overwrite base entries
+    *
+    * @param in              list of entries from all mixins
+    * @param overwriteTopics if true will overwrite base realm topics with same name
+    * @return
+    */
+  def mixinEntries(l: List[WikiEntry], overwriteTopics: Boolean = true): List[WikiEntry] = {
+
+    // distinct in order - so I overwrite mixins
+    // todo doesn't work unless the mixins are not in order - the mixins should always
+    // be sorted
+
+    val b = ListBuffer[WikiEntry]()
+    val seen = mutable.HashSet[WikiEntry]()
+    for (x <- l) {
+      if (!seen.exists(
+        y => (overwriteTopics || !overwriteTopics && y.realm == x.realm) &&
+            y.category == x.category &&
+            y.name == x.name)) {
+        b append x
+      }
+      seen += x
+    }
+    b.toList
+  }
+
   /** all pages of category - inherit ALL specs from mixins
     *
     * @param cat             cat to look for
@@ -119,7 +148,7 @@ object EnginePrep extends Logging {
     * @param overwriteTopics if true will overwrite base realm topics with same name
     * @return
     */
-  def catPages(cat: String, realm: String, overwriteTopics: Boolean = false): List[WikiEntry] = {
+  def catPages(cat: String, realm: String, overwriteTopics: Boolean = true): List[WikiEntry] = {
     val w = Wikis(realm)
     if ("Spec" == cat) {
       val m = w.mixins.flattened
@@ -128,26 +157,13 @@ object EnginePrep extends Logging {
               m.flatMap(_.pages(cat).toList)
                   .filter(x => !(x.tags.contains("private")))
           )
-      // distinct in order - so I overwrite mixins
-      // todo doesn't work unless the mixins are not in order - the mixins should always
-      // be sorted
 
-      val b = ListBuffer[WikiEntry]()
-      val seen = mutable.HashSet[WikiEntry]()
-      for (x <- l) {
-        if (!seen.exists(
-          y => (!overwriteTopics || overwriteTopics && y.realm == x.realm) &&
-              y.category == x.category &&
-              y.name == x.name)) {
-          b append x
-        }
-        seen += x
-      }
-      b.toList
+      mixinEntries(l)
     } else {
       w.pages(cat).toList
     }
   }
+
 
   /**
     * prepare an engine, loading an entire reactor/realm

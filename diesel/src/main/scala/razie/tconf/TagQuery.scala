@@ -28,21 +28,26 @@ import razie.tconf.Visibility.PUBLIC
   * NOTE the one way to do the search today is WikiSearch.getList
   */
 class TagQuery(val tags: String) {
-  val ltags = tags.split("/").map(_.trim).filter(goodTag)
+  def theTags = tags.split("/").map(_.trim).filter(goodTag)
+
+  val ltags = theTags.filter(x => !x.startsWith("realm."))
   val atags = ltags.filter(_.indexOf(",") < 0).map(_.toLowerCase)
   val otags = ltags.filter(_.indexOf(",") >= 0).map(_.split(",").map(_.trim.toLowerCase).filter(goodTag))
   val newqt = ltags.map(_.split(",").map(_.toLowerCase).filter(goodTag))
 
+  val tRealm: Option[String] = theTags.find(_.startsWith("realm."))
+  val theRealm: Option[String] = tRealm.map(_.replace("realm.", ""))
+
   /** create a new tags addinng the t */
-  def and (t:String) = {
-    val s = if(tags.trim.length > 0) tags + "," + t else t
+  def and(t: String) = {
+    val s = if (tags.trim.length > 0) tags + "," + t else t
     new TagQuery(t)
   }
 
   // array of array - first is AND second is OR
   val qt = ltags.map(_.split(",").filter(goodTag))
 
-  def goodTag(x:String) = x.length > 0 && x != "tag"
+  def goodTag(x: String) = x.length > 0 && x != "tag"
 
   // can't mix public with something else and still get public...
   def public = ltags contains "public"
@@ -62,11 +67,13 @@ class TagQuery(val tags: String) {
     val utags = if(u.containsField("tags")) u.get("tags").toString.toLowerCase else ""
 
     def checkT(b:String) = {
-      utags.contains(b) ||
-        b == "*" ||
-        (b == "draft" && u.containsField("props") && u.getAs[DBObject]("props").exists(_.containsField("draft"))) ||
-        (b == "public" && u.containsField("props") && u.getAs[DBObject]("props").exists(_.getAsOrElse[String]("visibility", PUBLIC) == PUBLIC)) ||
-        u.get("category").toString.toLowerCase == b
+      (utags.contains(b) ||
+          b == "*" ||
+          (b == "draft" && u.containsField("props") && u.getAs[DBObject]("props").exists(_.containsField("draft"))) ||
+          (b == "public" && u.containsField("props") && u.getAs[DBObject]("props").exists(
+            _.getAsOrElse[String]("visibility", PUBLIC) == PUBLIC)) ||
+          u.get("category").toString.toLowerCase == b) &&
+          (tRealm.isEmpty || ("realm." + u.get("realm")) == tRealm.get)
     }
 
     qt.size <= 0 ||
@@ -82,10 +89,11 @@ class TagQuery(val tags: String) {
 
     def checkT(b: String) = {
       utags.contains(b) ||
-        b == "*" ||
-        (b == "draft" && u.isDraft) ||
-        (b == "public" && u.visibility == PUBLIC) ||
-        u.cat.toLowerCase == b
+          (b == "*" ||
+              (b == "draft" && u.isDraft) ||
+              (b == "public" && u.visibility == PUBLIC) ||
+              u.cat.toLowerCase == b) &&
+              (tRealm.isEmpty || ("realm." + u.specRef.realm) == tRealm.get)
     }
 
     qt.size <= 0 ||
