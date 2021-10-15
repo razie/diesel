@@ -8,9 +8,11 @@ package razie.wiki.admin
 
 import java.util.concurrent.atomic.AtomicLong
 import org.joda.time.DateTime
+import razie.db.RazMongo
 import razie.diesel.DieselRateLimiter
 import razie.diesel.engine.DieselAppContext
 import razie.diesel.utils.DomCollector
+import razie.hosting.WikiReactors
 import razie.wiki.Config
 import scala.concurrent.{Future, Promise}
 
@@ -54,27 +56,34 @@ object GlobalData {
 
   def toMap() = {
     Map(
-      "Global.maxConfThreads" -> Config.prop("akka.actor.default-dispatcher.thread-pool-executor.fixed-pool-size"),
+      "global" -> Map(
+        "maxConfThreads" -> Config.prop("akka.actor.default-dispatcher.thread-pool-executor.fixed-pool-size"),
+        "serving" -> GlobalData.serving.get(),
+        "served" -> GlobalData.served.get(),
+        "servingApiRequests" -> GlobalData.servingApiRequests.get(),
+        "servedApiRequests" -> GlobalData.servedApiRequests.get(),
+        "limitedApiRequests" -> GlobalData.limitedApiRequests.get(),
+        "maxServing" -> GlobalData.maxServing.get(),
+        "maxServingApiRequests" -> GlobalData.maxServingApiRequests.get(),
+        "dieselEnginesTotal" -> GlobalData.dieselEnginesTotal.get(),
+        "dieselEnginesActive" -> GlobalData.dieselEnginesActive.get(),
+        "servedPages" -> GlobalData.servedRequests.get(),
+        "startedDtm" -> GlobalData.startedDtm,
+        "clusterStatus" -> GlobalData.clusterStatus,
+        "sendEmailCurCount" -> SendEmail.curCount,
+        "sendEmailState" -> SendEmail.state
+    ),
+    "diesel" -> Map(
+      "allReactors" -> WikiReactors.allReactors.keys.mkString(","),
+      "loadedReactors" -> WikiReactors.reactors.keys.mkString(","),
+      "wikiCount" -> RazMongo("WikiEntry").size,
+      "wikiOptions" -> GlobalData.wikiOptions,
 
-      "Global.serving" -> GlobalData.serving.get(),
-      "Global.served" -> GlobalData.served.get(),
-      "Global.servingApiRequests" -> GlobalData.servingApiRequests.get(),
-      "Global.servedApiRequests" -> GlobalData.servedApiRequests.get(),
-      "Global.limitedApiRequests" -> GlobalData.limitedApiRequests.get(),
-      "Global.maxServing" -> GlobalData.maxServing.get(),
-      "Global.maxServingApiRequests" -> GlobalData.maxServingApiRequests.get(),
-      "Global.dieselEnginesTotal" -> GlobalData.dieselEnginesTotal.get(),
-      "Global.dieselEnginesActive" -> GlobalData.dieselEnginesActive.get(),
-      "Global.wikiOptions" -> GlobalData.wikiOptions,
-      "Global.servedPages" -> GlobalData.servedRequests.get(),
-      "Global.startedDtm" -> GlobalData.startedDtm,
-      "SendEmail.curCount" -> SendEmail.curCount,
-      "SendEmail.state" -> SendEmail.state,
-      "ClusterStatus" -> GlobalData.clusterStatus,
-      "Diesel.collectedAst" -> DomCollector.withAsts(_.size),
-      "Diesel.activeEngines" -> DieselAppContext.activeEngines.size,
-      "Diesel.activeActors" -> DieselAppContext.activeActors.size,
-      "Diesel.activeStreams" -> DieselAppContext.activeStreams.size
+      "collectedAst" -> DomCollector.withAsts(_.size),
+      "activeEngines" -> DieselAppContext.activeEngines.size,
+      "activeActors" -> DieselAppContext.activeActors.size,
+      "activeStreams" -> DieselAppContext.activeStreams.size
+      )
     ) ++ DieselRateLimiter.toj
   }
 
