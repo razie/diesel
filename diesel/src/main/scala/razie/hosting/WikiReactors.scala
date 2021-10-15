@@ -20,8 +20,6 @@ import razie.wiki.model._
 import razie.wiki.util.DslProps
 import razie.wiki.{Services, WikiConfig}
 import scala.collection.mutable.ListBuffer
-import scala.concurrent.{Future, Promise}
-import scala.util.Try
 
 /**
   * reactor management (multi-tenant) - we can host multiple wikis/websites, each is a "reactor"

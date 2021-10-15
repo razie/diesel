@@ -6,6 +6,8 @@
   **/
 package razie.wiki
 
+import com.typesafe.config.ConfigFactory
+import play.Configuration
 import razie.wiki.model.{WikiConfigChanged, WikiEntry, WikiEvent, WikiObservers}
 
 /**
@@ -15,6 +17,19 @@ import razie.wiki.model.{WikiConfigChanged, WikiEntry, WikiEvent, WikiObservers}
   */
 object Config extends WikiConfig {
   final val curYear = "2017" // just FYI basicaly, each club has its own year
+
+  val verMap = {
+    val ver = ConfigFactory.load("ver.conf")
+
+    def prop(n: String) = if (ver.hasPath(n)) ver.getString(n) else ""
+
+    Map(
+      "buildBaseDtm" -> prop("diesel.build.base.dtm"),
+      "buildBaseVer" -> prop("diesel.build.base.ver"),
+      "buildImplDtm" -> prop("diesel.build.impl.dtm"),
+      "buildImplVer" -> prop("diesel.build.impl.ver")
+    )
+  }
 
   override def simulateHost = isimulateHost
 

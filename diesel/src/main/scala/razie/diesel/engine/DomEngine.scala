@@ -58,6 +58,9 @@ abstract class DomEngine(
   val createdDtm: DateTime = DateTime.now
 ) extends Logging with DomEngineState with DomRoot with DomEngineExpander {
 
+  /** duration of engine, valid after done, otherwise negative or 0 */
+  def duration = root.tend - root.tstart
+
   /** info node replacing pruned nodes */
   class Pruned(keep: Int, var removed: Int) {
     override def toString = s"Keeping only $keep nodes, removed $removed..."
@@ -677,12 +680,18 @@ abstract class DomEngine(
           this.settings.toString
     ), AstKinds.DEBUG).withStatus(DomState.SKIPPED)
 
+    // are there any info nodes already done? We'll keep those at the top...
+    val infos = root.childrenCol.filter(a => DomState.isDone(a.status)).toList.map(_.resetParent(null))
+    val others = root.childrenCol.filter(a => !DomState.isDone(a.status))
+    root.childrenCol.clear()
+    root.childrenCol.prependAll(others)
+
     // create dependencies and add them to the list
     after.prereq = l.map(_.id).toList
     root.appendAllNoEvents(List(after))
     l.foreach(x => x.prereq = before.id :: x.prereq)
 
-    root.prependAllNoEvents(List(desc, vals, before, warns))
+    root.prependAllNoEvents(List(desc) ::: infos ::: List(warns, vals, before))
 
     warnings = Some(warns)
 

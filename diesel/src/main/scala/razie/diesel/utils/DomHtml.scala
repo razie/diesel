@@ -12,11 +12,11 @@ object DomHtml {
 
   def quickBadge(failed:Int, total:Int, duration:Long, all:String="") = {
     if (failed > 0)
-      s"""<a href="/diesel/report$all"><span class="badge" style="background-color: red" title="Guardian: tests failed ($duration msec)">$failed / $total </span></a>"""
+      s"""<a href="/diesel/guard/report$all"><span class="badge" style="background-color: red" title="Guardian: tests failed ($duration msec)">$failed / $total </span></a>"""
     else if(total > 0)
-      s"""<a href="/diesel/report$all"><span class="badge" style="background-color: green" title="Guardian: all tests passed ($duration msec)">$total </span></a>"""
+      s"""<a href="/diesel/guard/report$all"><span class="badge" style="background-color: green" title="Guardian: all tests passed ($duration msec)">$total </span></a>"""
     else
-      s"""<a href="/diesel/report$all"><span class="badge" style="background-color: orange" title="No tests run!"><small>... </small></span></a>"""
+      s"""<a href="/diesel/guard/report$all"><span class="badge" style="background-color: orange" title="No tests run!"><small>... </small></span></a>"""
   }
 
 }
