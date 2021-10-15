@@ -600,7 +600,9 @@ class DomApi extends DomApiBase with Logging {
       engine.root.prependAllNoEvents(
         List(DomAst(
           EInfo("HTTP Request details2",
-            printRequest(request, body)), AstKinds.DEBUG)))
+            printRequest(request, body)), AstKinds.DEBUG)
+            .withStatus(DomState.SKIPPED)
+        ))
 
       // add query parms
       val q = stok.req.queryString.map(t => (t._1, t._2.mkString))
@@ -855,8 +857,8 @@ class DomApi extends DomApiBase with Logging {
 
           // must allow for ctx.sleeps
           // todo why 50 sec
-          val dur = WikiConfig.prop("diesel.timeout", "50seconds")
-          val tcode = WikiConfig.prop("diesel.timeoutCode", "504")
+          val dur = WikiConfig.getInstance.get.prop("diesel.timeout", "50seconds")
+          val tcode = WikiConfig.getInstance.get.prop("diesel.timeoutCode", "504")
           try {
             Await.result(res, Duration(dur))
           } catch {
@@ -905,7 +907,7 @@ class DomApi extends DomApiBase with Logging {
     * API msg sent to reactor
     */
   def findUsages(em: String) = Filter(noRobots).async { implicit stok =>
-    if(stok.au.exists(_.isActive)) {
+    if (stok.au.exists(_.isActive)) {
       val ea = em.replaceAllLiterally("/", ".")
 
       if (!em.matches(EMsg.REGEX.pattern.pattern())) {

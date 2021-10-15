@@ -22,13 +22,10 @@ class AdminSys extends AdminBase {
     razie.js.tojsons(
       EEDieselExecutors.getAllPingData() ++
           Map(
-            "wikis" -> RazMongo("WikiEntry").size,
-            "NotesLocker.autosaved" -> NotesLocker.autosaved,
-            "SendEmail.curCount" -> SendEmail.curCount,
-            "SendEmail.state" -> SendEmail.state,
-            "Threads" -> defaultContext.toString,
-            "allReactors" -> WikiReactors.allReactors.keys.mkString(","),
-            "loadedReactors" -> WikiReactors.reactors.keys.mkString(",")
+            "extra" -> Map(
+              "notesLockerAutosaved" -> NotesLocker.autosaved,
+              "threads" -> defaultContext.toString
+            )
           ))
   }
 

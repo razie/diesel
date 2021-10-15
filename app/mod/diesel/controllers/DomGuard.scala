@@ -203,8 +203,8 @@ class DomGuard extends DomApiBase with Logging {
   // list the collected ASTS
   def dieselListAst = FAUR { implicit stok =>
     val un = stok.userName + {
-      if (stok.au.exists(_.isAdmin))
-        """ admin - sees all realms
+      if (stok.au.exists(_.isMod))
+        """ mod - sees all realms
           | (<a href = "/diesel/cleanAst" > clean all </a>)""".stripMargin
       else {
         if (stok.au.exists(_.isMod)) " mod - sees all users "
