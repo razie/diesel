@@ -16,7 +16,7 @@ import razie.diesel.model.DieselMsg
 import razie.hosting.{RkReactors, Website}
 import razie.tconf.{DSpec, DUsers}
 import razie.wiki.{Config, Services}
-import scala.collection.JavaConverters.propertiesAsScalaMapConverter
+import scala.collection.JavaConverters.{mapAsScalaMapConverter, propertiesAsScalaMapConverter}
 
 
 /** specific root context for an engine instance
@@ -170,6 +170,14 @@ class DieselParmSource (ctx:DomEngECtx) extends ParmSource {
         "system" -> (n => {
           val m = if (Config.isLocalhost) {
             System.getProperties.asScala
+          } else {
+            throw new IllegalArgumentException("Error: No permission")
+          }
+          Left(P.fromSmartTypedValue("diesel.props.system", m))
+        }),
+        "env" -> (n => {
+          val m = if (Config.isLocalhost) {
+            System.getenv().asScala
           } else {
             throw new IllegalArgumentException("Error: No permission")
           }

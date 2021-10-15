@@ -50,7 +50,8 @@ class Website (we:WikiPage, extra:Seq[(String,String)] = Seq()) extends DslProps
   def dieselTrust:String = this prop "diesel.trust" OR ""
   def dieselEnvList:String = this prop "diesel.envList" OR ""
 
-  def stylesheet: Option[WID] = this wprop "stylesheet"
+  def stylesheetLight: Option[WID] = this wprop "stylesheet.light"
+  def stylesheetDark: Option[WID] = this wprop "stylesheet.dark"
 
   def join: String = this prop "join" OR "/doe/join"
 
