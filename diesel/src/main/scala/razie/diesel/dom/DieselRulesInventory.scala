@@ -8,9 +8,10 @@ package razie.diesel.dom
 
 import razie.diesel.dom.RDOM.P.asString
 import razie.diesel.dom.RDOM.{P, _}
-import razie.diesel.engine.nodes.EMsg
+import razie.diesel.engine.nodes.{EMsg, EnginePrep}
 import razie.diesel.expr.ECtx
-import razie.tconf.{DSpecInventory, FullSpecRef}
+import razie.diesel.model.DieselTarget
+import razie.tconf.{DSpecInventory, FullSpecRef, TagQuery}
 import razie.{Snakk, js}
 import scala.collection.mutable
 
@@ -32,15 +33,16 @@ class DieselRulesInventory(
   override def mkInstance(irealm: String, ienv:String, wi: DSpecInventory, newName:String, dprops: Map[String, String] = Map.empty): List[DomInventory] = {
     // todo optimize - load only if a set of classes matches or something
     // if classes are annotated with db.name or something
-    val x = wi.querySpecs(irealm, "", "", "spec")
 
-    wi.querySpecs(irealm, "", "", "spec")
+    val specs = DieselTarget.tqSpecs(irealm, new TagQuery(""))
+    specs
         .find { spec =>
-            // don't have to actually parse, eh?
+          // don't have to actually parse, eh?
 //          val rest = spec.collector.getOrElse(RDomain.DOM_LIST, List[Any]()).asInstanceOf[List[Any]]
 //          val rules = rest.find(_.isInstanceOf[ERule]).map(_.asInstanceOf[ERule])
 //          rules.exists(_.e.ea == "diesel.inv.impl.findByRef")
-          spec.content.contains("diesel.inv.impl.findByRef")
+          val s = spec.content
+          s.exists(_.contains("diesel.inv.impl.findByRef"))
         }.map { wprops =>
       val ret = new DieselRulesInventory(newName, iprops)// ++ wprops.allProps)
       ret.realm = irealm

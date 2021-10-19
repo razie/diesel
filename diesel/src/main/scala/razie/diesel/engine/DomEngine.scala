@@ -182,8 +182,10 @@ abstract class DomEngine(
     }
   }
 
+  // todo use
   var initialMsg: Option[EMsg] = None
 
+  /** we'll eventually use this info  */
   def withInitialMsg(m: Option[EMsg]) = {
     this.initialMsg = m
     this

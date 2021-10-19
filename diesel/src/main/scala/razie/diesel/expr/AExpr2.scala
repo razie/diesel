@@ -609,12 +609,7 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
             val arr = av.calculatedTypedValue.asArray
 
             val resArr = arr.flatMap {x=>
-              val res = if(b.isInstanceOf[LambdaFuncExpr]) {
-                val resp = b.applyTyped(x).calculatedTypedValue
-                if(!resp.cType.equals(WTypes.wt.ARRAY)) throw new DieselExprException("Result of right side not Array!")
-                val res = resp.asArray
-                res
-              } else if(b.isInstanceOf[BlockExpr] && b.asInstanceOf[BlockExpr].ex.isInstanceOf[LambdaFuncExpr]) {
+              val res = if(b.isInstanceOf[LambdaFuncExpr] || b.isInstanceOf[BlockExpr] && b.asInstanceOf[BlockExpr].ex.isInstanceOf[LambdaFuncExpr]) {
                 // common case, no need to go through context, Block passes through to Lambda
                 val resp = b.applyTyped(x).calculatedTypedValue
                 if(!resp.cType.equals(WTypes.wt.ARRAY)) throw new DieselExprException("Result of right side not Array!")
@@ -649,7 +644,7 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
             val arr = av.asArray
 
             val resArr = arr.filter {x=>
-              val res = if(b.isInstanceOf[LambdaFuncExpr]) {
+              val res = if(b.isInstanceOf[LambdaFuncExpr] || b.isInstanceOf[BlockExpr] && b.asInstanceOf[BlockExpr].ex.isInstanceOf[LambdaFuncExpr]) {
                 val res = b.applyTyped(x)
                 res
               } else {

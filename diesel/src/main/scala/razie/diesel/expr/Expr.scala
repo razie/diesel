@@ -68,7 +68,10 @@ abstract class Expr extends WFunc with HasDsl with CanHtml {
   override def toHtml = tokenValue(toDsl)
 }
 
-/** a block i.e. ( expr ) */
+/** a block i.e. ( expr )
+  *
+  * todo this class can dissapear - it just complicates logic
+  */
 case class BlockExpr(ex: Expr) extends Expr {
   val expr = "( " + ex.toString + " )"
 

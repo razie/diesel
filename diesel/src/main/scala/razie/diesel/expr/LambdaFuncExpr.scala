@@ -9,7 +9,7 @@ import razie.diesel.dom.RDOM.P
 import razie.diesel.dom._
 
 /** a "function" call: built-in functions, msg functions (exec'd in same engine, sync) */
-case class LambdaFuncExpr(val argName:String, val ex: Expr, parms: List[RDOM.P]=Nil) extends Expr {
+case class LambdaFuncExpr(argName:String, ex: Expr, parms: List[RDOM.P]=Nil) extends Expr {
   override def getType: WType = ex.getType
 
   override def expr = argName + "=>" + ex.toDsl
