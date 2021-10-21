@@ -70,44 +70,51 @@ case class WID(
     }
   }
 
-  def isEmpty = cat=="?" && name=="?" || cat=="-" && name=="-"
+  def isEmpty = cat == "?" && name == "?" || cat == "-" && name == "-"
 
   /** should this entry be indexed in memory */
   def shouldIndex = !(Wikis.PERSISTED contains cat)
 
   /** find the full section, if one is referenced */
-  def findSection = section.flatMap{s=> page.flatMap(_.sections.find(_.name == s))}
+  def findSection = section.flatMap { s => page.flatMap(_.sections.find(_.name == s)) }
 
   /** get textual content, unprocessed, of this object, if found */
-  def content = section.map{ s=>
+  def content = section.map { s =>
     // allow that section contains signature
     val sar = s.split(":", 2)
 
-    page.flatMap( p=>
-      p.sections.find(t=> t.name == s && (sar.size < 2 || t.signature == sar.last)) orElse
-        p.templateSections.find(t=> t.name == s && (sar.size < 2 || t.signature == sar.last))).map(_.content) getOrElse
-          s"`[Section $s not found in $toString!]`"
+    page.flatMap(p =>
+      p.sections.find(t => t.name == s && (sar.size < 2 || t.signature == sar.last)) orElse
+          p.templateSections.find(t => t.name == s && (sar.size < 2 || t.signature == sar.last))).map(
+      _.content) getOrElse
+        s"`[Section $s not found in $toString!]`"
   } orElse {
     page.map(_.content)
   }
 
   /** withRealm - convienience builder. Note that you can't override a category prefix */
-  def r(r:String) =
-    if(CAT.unapply(cat).flatMap(_.realm).isDefined || r.length <= 0) this
+  def r(r: String) =
+    if (CAT.unapply(cat).flatMap(_.realm).isDefined || r.length <= 0) this
     else this.copy(realm = Some(r))
-  //  def r(r:String) = if(Wikis.DFLT == r || CAT.unapply(cat).flatMap(_.realm).isDefined) this else this.copy(realm = Some(r))
+  //  def r(r:String) = if(Wikis.DFLT == r || CAT.unapply(cat).flatMap(_.realm).isDefined) this else this.copy(realm
+  //  = Some(r))
 
   /** withRealm - dn't overwrite realm if set already */
-  def defaultRealmTo(r:String) =
+  def defaultRealmTo(r: String) =
     if (realm.isDefined) this
     else this.r(r)
+
+  /** withRealm - dn't overwrite realm if set already or if you pass in empty or None */
+  def defaultRealmTo(r: Option[String]) =
+    if (realm.isDefined || r.isEmpty || r.exists(_.length == 0)) this
+    else this.r(r.get)
 
   /** if wid has no realm, should get the realm or the default - note taht the CAT prefix rules */
   def getRealm = realm orElse CAT.unapply(cat).flatMap(_.realm) getOrElse Wikis.DFLT
 
   /** find the ID for this page, if any - respects the NOCATS */
-  def findId  =
-    if(ObjectId.isValid(name)) Some(new ObjectId(name))
+  def findId =
+    if (ObjectId.isValid(name)) Some(new ObjectId(name))
     else findCatId().map(_._2)
 
   /** find the category, if missing */
@@ -204,6 +211,20 @@ case class WID(
     }
   }
 
+  /** remote url when pointing at a specific server, not the default cloud */
+  def urlForTarget(target: String): String = {
+
+    if ("www.dieselapps.com".equals(target))
+      urlRemote // reuse this to use proper realm domains
+    else
+      "http://" + {
+        target
+      } + "/" + {
+        if (realm.isDefined) DieselAssets.mkLink(this, wpath)
+        else canonpath
+      }
+  }
+
   /** the canonical URL with the proper hostname for reactor */
   def urlForEdit: String = intUrl(DieselAssets.mkEditLink)
 
@@ -298,6 +319,7 @@ object WID {
             name,
             None,
             Option(s).filter(_.length > 1).map(_.substring(1)),
+            // if cat has realm, use it
             if (c != null && c.contains("."))
               Some(c.replaceFirst("\\..*", ""))
             else if (cat.length <= 0 && n != null && n.contains("."))
