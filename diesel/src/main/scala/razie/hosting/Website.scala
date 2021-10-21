@@ -45,6 +45,7 @@ class Website (we:WikiPage, extra:Seq[(String,String)] = Seq()) extends DslProps
   def tos:String = this prop "tos" OR "/wiki/Terms_of_Service"
   def privacy:String = this prop "privacy" OR "/wiki/Privacy_Policy"
 
+  /** some portals may use a different diesel reactor, if trusted by it */
   def dieselReactor:String = this prop "dieselReactor" OR reactor
   def dieselVisiblity:String = this prop "diesel.visibility" OR "public"
   def dieselTrust:String = this prop "diesel.trust" OR ""

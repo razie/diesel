@@ -192,6 +192,18 @@ object DomEngineUtils {
   }
 
   /**
+    * extract just the payload
+    */
+  def extractP(res: Map[String,Any]): Option[P] = {
+    res.get(Diesel.PAYLOAD)
+        .map(p =>
+          if (p.isInstanceOf[P]) p.asInstanceOf[P]
+          else P.fromSmartTypedValue(Diesel.PAYLOAD, p.toString)
+//          else P.fromSmartTypedValue(Diesel.PAYLOAD, new RuntimeException(p.toString))
+        )
+  }
+
+  /**
     * run message sync
     */
   def runMsgSync(msg: DieselMsg): Option[P] = {
@@ -199,12 +211,7 @@ object DomEngineUtils {
 
     // get timeout max from realm settings: paid gets more etc
     val res = Await.result(fut, Duration.create(30, "seconds"))
-    res.get(Diesel.PAYLOAD)
-        .map(p =>
-          if (p.isInstanceOf[P]) p.asInstanceOf[P]
-          else P.fromSmartTypedValue(Diesel.PAYLOAD, p.toString)
-//          else P.fromSmartTypedValue(Diesel.PAYLOAD, new RuntimeException(p.toString))
-        )
+    extractP(res)
   }
 
   /**

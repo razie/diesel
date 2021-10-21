@@ -15,6 +15,7 @@ import razie.diesel.samples.DomEngineUtils.extractResult
 import razie.tconf.{SpecRef, TSpecRef, TagQuery}
 import razie.wiki.model.{WID, WikiSearch, Wikis}
 import razie.{clog, cout}
+import scala.util.Try
 
 /** a message string - send these to Services to have them executed
   *
@@ -28,6 +29,8 @@ case class DieselMsgString(msg: String,
                            osettings: Option[DomEngineSettings] = None,
                            omsg: Option[DieselMsg] = None
                           ) {
+
+  /** convert to msg string */
   def mkMsgString: String = {
     if (ctxParms.nonEmpty) {
       // add the params to the context with an artificial ctx.set message
@@ -37,8 +40,22 @@ case class DieselMsgString(msg: String,
       msg
   }
 
+  /** clone with new context */
   def withContext(p: Map[String, String]) = this.copy(ctxParms = ctxParms ++ p)
+  def withSettings(p: Option[DomEngineSettings]) = this.copy(osettings = osettings)
 
+ /** try to parse and get the message invoked */
+  def getEMsg : Option[EMsg] = {
+    Try {
+      val pat = s"""[$$.][^ ]* *${EMsg.REGEX}.*""".r
+      val pat(e, a) = msg
+      Some(EMsg(e,a))
+    }.getOrElse(
+      None
+    )
+  }
+
+  /** make the engine to run this, using targets etc */
   def mkEngine = {
     val m = this
     // todo auth/auth
@@ -55,7 +72,8 @@ case class DieselMsgString(msg: String,
         .createEngine(ms, target.specs, target.stories, settings, Some(this))
   }
 
-  def postEngine(res: Map[String, Any]) = {
+  /** audit that this engine has run and details */
+  def auditEngine(res: Map[String, Any]) = {
     // don't audit these frequent ones
     if (
       this.msg.startsWith(DieselMsg.WIKI_UPDATED) ||
@@ -82,7 +100,7 @@ case class DieselMsgString(msg: String,
     import scala.concurrent.ExecutionContext.Implicits.global
     mkEngine.process.map { engine =>
       extractResult(msg, None, engine)
-    }.map(postEngine)
+    }.map(auditEngine)
   }
 }
 
@@ -241,12 +259,14 @@ object DieselTarget {
   def RK = new DieselTarget("rk")
 }
 
+/** target a specified set of specs */
 case class DieselTargetList(
   override val realm: String,
   override val env: String,
   override val specs: List[TSpecRef],
   override val stories: List[TSpecRef]) extends DieselTarget(realm)
 
+/** constants */
 object DieselMsg {
   final val CRON_TICK = "$msg diesel.cron.tick"
   final val GUARDIAN_POLL = "$msg diesel.guardian.poll"

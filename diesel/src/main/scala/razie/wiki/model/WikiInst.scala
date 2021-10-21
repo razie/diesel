@@ -14,8 +14,9 @@ import razie.db.RazMongo.RazMongoTable
 import razie.db.RazSalatContext._
 import razie.db.{RMany, RazMongo}
 import razie.diesel.dom.{RDomain, WikiDomain}
+import razie.diesel.model.DieselTarget
 import razie.hosting.WikiReactors
-import razie.tconf.{DSpec, DSpecInventory, TSpecRef}
+import razie.tconf.{DSpec, DSpecInventory, TSpecRef, TagQuery}
 import razie.wiki.parser.WikiParserT
 import razie.wiki.Services
 import razie.wiki.model.features.WeCache
@@ -28,27 +29,33 @@ import scala.collection.mutable.ListBuffer
   * */
 trait WikiInst extends DSpecInventory {
 
-  def findSpec (path:TSpecRef) : Option[DSpec] = find (WID.fromSpecPath(path))
-  def querySpecs(realm:String, q: String, scope:String, curTags:String="", max:Int=2000) : List[DSpec] =
-    WikiSearch.getList(realm, q, scope, curTags, max)
+  def findSpec(path: TSpecRef): Option[DSpec] = find(WID.fromSpecPath(path))
 
-  def realm:String
-  def fallBacks:List[WikiInst]
+  def querySpecs(realm: String, q: String, scope: String, curTags: String = "", max: Int = 2000): List[DSpec] = {
+    // todo need to use this instead - it's more complex, with mixins etc
+//    DieselTarget.tqSpecs(irealm, new TagQuery(""))
+    WikiSearch.getList(realm, q, scope, curTags, max)
+  }
+
+  def realm: String
+
+  def fallBacks: List[WikiInst]
 
   /** this is the actual parser to use - combine your own and set it here in Global */
-  def mkParser : WikiParserT
+  def mkParser: WikiParserT
 
-  def index  : WikiIndex
-  def domain  : WikiDomain
+  def index: WikiIndex
 
-  def mixins : Mixins[WikiInst]
+  def domain: WikiDomain
 
-  def REALM :(String,String)
+  def mixins: Mixins[WikiInst]
 
-  def cats : Map[String,WikiEntry]
+  def REALM: (String, String)
+
+  def cats: Map[String, WikiEntry]
 
   /** cache of tags - updated by the WikiIndex */
-  def tags : scala.collection.mutable.Map[String,razie.wiki.model.WikiEntry]
+  def tags: scala.collection.mutable.Map[String, razie.wiki.model.WikiEntry]
 
   def weTable(cat: String) : razie.db.RazMongo.RazMongoTable
   def weTables(cat: String) : String
