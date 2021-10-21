@@ -9,11 +9,22 @@ import org.bson.types.ObjectId
 import razie.Logging
 import razie.diesel.dom.DieselAssets
 import razie.diesel.dom.RDOM.P
-import razie.diesel.engine.nodes.EMsg
+import razie.diesel.engine.nodes.{EError, EMsg}
 import razie.diesel.expr.ScopeECtx
 import razie.diesel.model.DieselMsg
+import razie.wiki.Config
 import razie.wiki.model.WID
 import scala.collection.mutable.ListBuffer
+
+object DomStream {
+
+  /** get max size from properties */
+  def getMaxSize = {
+    val dflt = if (Config.isLocalhost) "10000" else "100"
+    Config.prop("diesel.stream.maxSize", dflt).toInt
+    // todo add realm setting and trusted realms ?
+  }
+}
 
 /** simple streaming for inter-flow comms
   *
@@ -38,7 +49,7 @@ abstract class DomStream(
   val batchSize: Int,
   val context: P = P.of("context", "{}"),
   val correlationId: Option[String] = None,
-  val maxSize: Int = 100,
+  val maxSize: Int = DomStream.getMaxSize,
   val id: String = new ObjectId().toString) extends Logging {
 
   assert(name.trim.length > 0, "streams need unique names")
@@ -80,6 +91,8 @@ abstract class DomStream(
     * if in single element mode - sent straight to consumers
     *
     * if in batch mode, they may be batched or not
+    *
+    * @param justConsume - no put, just trigger consumers
     */
   def put(l: List[Any], justConsume: Boolean = false) = {
     trace("DStream.put: " + l.mkString(","))
@@ -88,8 +101,13 @@ abstract class DomStream(
 
       var acceptable = Math.min(maxSize - list.size, l.size)
       if (l.size > acceptable) {
+        val err = DomAst(new EError(s"Stream overflow $name capacity: $maxSize"))
+        DieselAppContext ! DEAddChildren(owner.id, targetId.mkString, recurse = true, -1, List(err), None)
+
         // todo throw back to sender
-        assert(false, "stream overflow")
+        assert(false, s"Stream overflow $name capacity: $maxSize")
+
+        // todo implement backpressure...
       } else {
         trace(" - DStream appended: " + l.mkString(","))
         list.appendAll(l)
@@ -166,6 +184,31 @@ abstract class DomStream(
     }
   }
 
+  /** complete the stream */
+  private def complete(): Unit = {
+    val ast = DomAst(EMsg(
+      DieselMsg.STREAMS.STREAM_ONDONE,
+      List(
+        P.of("stream", name), P.of("context", context)
+      )
+    ))
+
+    setCtx(ast)
+
+    targetId.map { tid =>
+      DieselAppContext ! DEAddChildren(owner.id, tid, recurse = true, -1, List(ast),
+        Some((a, e) => a.withPrereq(getDepy)))
+      DieselAppContext ! DEComplete(owner.id, targetId.get, recurse = true, -1, Nil)
+    }
+  }
+
+  /** like done but stops consumption as well and drops what's in the stream right now... */
+  def abort(): Unit = {
+    isDone = true
+    complete()
+  }
+
+  /** stream item production is done - complete consumption of what's in buffer and close it */
   def done(justConsume: Boolean = false): Unit = {
     if (!justConsume) {
       isDone = true
@@ -173,20 +216,7 @@ abstract class DomStream(
         consume()
       }
     } else {
-      val ast = DomAst(EMsg(
-        DieselMsg.STREAMS.STREAM_ONDONE,
-        List(
-          P.of("stream", name), P.of("context", context)
-        )
-      ))
-
-      setCtx(ast)
-
-      targetId.map { tid =>
-        DieselAppContext ! DEAddChildren(owner.id, tid, recurse = true, -1, List(ast),
-          Some((a, e) => a.withPrereq(getDepy)))
-        DieselAppContext ! DEComplete(owner.id, targetId.get, recurse = true, -1, Nil)
-      }
+      complete()
     }
   }
 
@@ -231,7 +261,7 @@ abstract class DomStream(
   // owner starts consuming
   def consume(): Unit = {
     isConsumed = true
-    // if something already, consume it
+    // if something already, just trigger consumers
     if (list.size > 0) put(Nil, true)
     if (isDone && !isError) done(true)
     if (isDone && isError) error(Nil, true)
