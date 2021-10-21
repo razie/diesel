@@ -141,7 +141,7 @@ trait ExprParser extends RegexParsers {
 
   // a term in an expression
   def pterm: Parser[Expr] =
-    numConst | bConst | multilineStrConst | strConst | jnull |
+    numConst | boolConst | multilineStrConst | strConst | jnull |
         xpident |
         lambda | jsexpr2 | jsexpr1 |
         exregex | eblock | jarray | jobj |
@@ -322,18 +322,27 @@ private def accessorIdent: Parser[RDOM.P] = "." ~> ident ^^ { case id => P("", i
   // calling a function, this is not defining it, so no type annotations etc
   // named parameters need to be mentioned, unless it's just one
   // a.b.c(
-  def callFunc: Parser[Expr] = qident ~ attrs ^^ { case i ~ a => AExprFunc(i, a) }
+  def callFunc: Parser[Expr] = qident ~ pcallattrs ^^ { case i ~ a => AExprFunc(i, a) }
+
+  // todo have a pcallattrsSimple which allows an expression and use that in callFunc
 
   /**
     * simple ident = expr assignemtn when calling
     */
-  def pcallattrs: Parser[List[RDOM.P]] = " *\\(".r ~> ows ~> repsep(pcallattr, ows ~ "," ~ ows) <~ opt(",") ~ ows <~ ")"
+  def pcallattrs: Parser[List[RDOM.P]] = " *\\(".r ~> ows ~> repsep(pcallattrIdent, ows ~ "," ~ ows) <~ opt(",") ~ ows <~ ")"
 
-  def pcallattr: Parser[P] = " *".r ~> qident ~ opt(" *= *".r ~> expr) ^^ {
+  def pcallattrIdent: Parser[P] = " *".r ~> qident ~ opt(" *= *".r ~> expr) ^^ {
     case ident ~ ex => {
       P(ident, "", ex.map(_.getType).getOrElse(WTypes.wt.EMPTY), ex)
     }
   }
+
+  def pcallattrExpr: Parser[P] = " *".r ~> expr ^^ {
+    case ex => {
+      P("lambda", "", ex.getType, Some(ex))
+    }
+  }
+
 
   // param assignment (x = expr, ...)
   // allows comma after last
@@ -481,7 +490,7 @@ private def accessorIdent: Parser[RDOM.P] = "." ~> ident ^^ { case id => P("", i
     li => JArrExpr(li) //CExpr("[ " + li.mkString(",") + " ]")
   }
 
-  def jexpr: Parser[Expr] = jobj | jarray | bConst | jother ^^ (ex => ex) //ex.toString }
+  def jexpr: Parser[Expr] = jobj | jarray | boolConst | jother ^^ (ex => ex) //ex.toString }
 
   //  def jother: Parser[String] = "[^{}\\[\\],]+".r ^^ { case ex => ex }
   def jother: Parser[Expr] = expr ^^ (ex => ex)
@@ -511,7 +520,7 @@ private def accessorIdent: Parser[RDOM.P] = "." ~> ident ^^ { case id => P("", i
 
   def notbfactor2: Parser[BoolExpr] = ows ~> (("not" | "NOT") <~ ws) ~> ows ~> bfactor2 ^^ {BCMPNot}
 
-  def bfactor2: Parser[BoolExpr] = bConst | ibex(opsBool) | bvalue | condBlock
+  def bfactor2: Parser[BoolExpr] = boolConst | ibex(opsBool) | bvalue | condBlock
 
   private def condBlock: Parser[BoolExpr] = ows ~> "(" ~> ows ~> cond <~ ows <~ ")" ^^ {BExprBlock}
 
@@ -520,7 +529,7 @@ private def accessorIdent: Parser[RDOM.P] = "." ~> ident ^^ { case id => P("", i
   }
 
   /** true or false constants */
-  def bConst: Parser[BoolExpr] = ("true" | "false") ^^ {BCMPConst}
+  def boolConst: Parser[BoolExpr] = ("true" | "false") ^^ {BCMPConst}
 
 
   /** single value expressions, where != 0 is true and != null is true */
