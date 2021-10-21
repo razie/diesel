@@ -1130,29 +1130,34 @@ class Wikie @Inject()(config: Configuration) extends WikieBase {
             views.html.wiki.msg.wmDelete(w.uwid).body,
             Some(routes.Wikie.wikieDelete2(wid)))
       } getOrElse
-        noPerm(wid, "ADMIN_DELETE1")
+          noPerm(wid, "ADMIN_DELETE1")
   }
+
+  // todo make this a POST in routes, it's a GET
 
   /** delete step 2: do it */
   def wikieDelete2(wid: WID) = FAU {
-    implicit au => implicit errCollector => implicit request =>
+    implicit au =>
+      implicit errCollector =>
+        implicit request =>
 
-      var done = false
-      var count = 0
+          var done = false
+          var count = 0
 
-      def del(w:WikiEntry)(implicit txn: Txn) : Unit = {
-        val children = RMany[WikiLink]("to.id" -> w.uwid.id, "how" -> "Child").map(_.pageFrom).toList.flatMap(_.toList)
-        RMany[WikiLink]("to.id" -> w.uwid.id).toList.foreach(_.delete)
-        RMany[WikiLink]("from.id" -> w.uwid.id).toList.foreach(_.delete)
-        RMany[UserWiki]("uwid.id" -> w.uwid.id).toList.foreach(wl => {
-          wl.delete
-          done = true
-        })
-        Comments.findForWiki(w._id).toList.foreach(cs => {
-          cs.delete
-        })
-        WikiCount.findOne(w._id).foreach(_.delete)
-        // can only change label of links OR if the formatted name doesn't change
+          def del(w: WikiEntry)(implicit txn: Txn): Unit = {
+            val children = RMany[WikiLink]("to.id" -> w.uwid.id, "how" -> "Child").map(_.pageFrom).toList.flatMap(
+              _.toList)
+            RMany[WikiLink]("to.id" -> w.uwid.id).toList.foreach(_.delete)
+            RMany[WikiLink]("from.id" -> w.uwid.id).toList.foreach(_.delete)
+            RMany[UserWiki]("uwid.id" -> w.uwid.id).toList.foreach(wl => {
+              wl.delete
+              done = true
+            })
+            Comments.findForWiki(w._id).toList.foreach(cs => {
+              cs.delete
+            })
+            WikiCount.findOne(w._id).foreach(_.delete)
+            // can only change label of links OR if the formatted name doesn't change
         // delete at last, so if any links fail, the thing stays there
         w.delete(au.userName)
         clearDrafts(w.wid, au)
@@ -1205,9 +1210,9 @@ class Wikie @Inject()(config: Configuration) extends WikieBase {
 
             if (done) cleanAuth() // it probably belongs to the current user, cached...
           }
-          w.findParent.map(w=>
-            Msg(s"DELETED forever - no way back! Deleted $count topics", w.wid)
-          ) getOrElse Msg(s"DELETED forever - no way back! Deleted $count topics")
+          w.findParent.map(w =>
+            Msg(s"DELETED forever ok - no way back! Deleted $count topics", w.wid)
+          ) getOrElse Msg(s"DELETED forever ok - no way back! Deleted $count topics")
         }
       } getOrElse
         noPerm(wid, "ADMIN_DELETE2")
