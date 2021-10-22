@@ -662,10 +662,20 @@ object RDOM {
           (if (ttype.name.toLowerCase != "string") typeHtml(ttype) else "") +
           optional +
           smap(Enc.escapeHtml(if (shorten) htrimmedDflt else currentStringValue)) { s =>
-            "=" + tokenValue(if ("Number" == ttype) s else escapeHtml(quot(s)))
+            "=" + tokenValue(
+              // this kicks in if currentstringvalue exists
+              if (WTypes.NUMBER == ttype.name) s
+              else if (WTypes.JSON == ttype.name) s
+              else escapeHtml(quot(s))
+            )
           } +
           (if (shorten && currentStringValue.length > 20) "<b><small>...</small></b>" else "") +
-          (if (dflt == "") expr.map(x => smap(x.toHtml)("=" + _)).mkString else "")
+          (if (dflt == "") expr.map(x =>
+            smap(
+              // this used if currentStringValue doesn't exit
+              if(shorten) x.toHtml else x.toHtmlFull
+            )("=" + _)
+          ).mkString else "")
 
     private def typeHtml(s: WType) = {
       s.name.toLowerCase match {

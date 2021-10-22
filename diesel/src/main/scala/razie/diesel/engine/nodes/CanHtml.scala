@@ -118,7 +118,13 @@ trait CanHtml {
   def tokenValue(s: String) =
     "<code>" + token(s, "value", """ class="string" """) + "</code>"
 
+  def codeValue(s: String) =
+    "<code>" + s + "</code>"
+
   def toHtml: String
+
+  /** full big format html, i.e. nice json etc */
+  def toHtmlFull: String = toHtml
 
   /** to html using a kind: trace/debug etc */
   def toHtml(kind: String): String = toHtml

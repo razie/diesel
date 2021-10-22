@@ -554,7 +554,7 @@ trait DomParser extends ParserBase with ExprParser {
 
           collectDom(v, ctx.we)
         }
-        StrAstNode(v.toHtml)
+        StrAstNode(v.toHtmlFull) // expanded nice json
       }
     }
   }

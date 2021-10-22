@@ -76,6 +76,9 @@ case class JBlockExpr(ex: List[(String, Expr)], schema:Option[String]=None) exte
 
     EESnakk.prepStr2(s, Nil)
   }
+
+  // big nice html
+  override def toHtmlFull = codeValue(new JSONObject(expr).toString(2))
 }
 
 /** a json array */

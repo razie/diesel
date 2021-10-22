@@ -843,7 +843,7 @@ class DomEngineV1(
 
       } else if (ea == DieselMsg.ENGINE.DIESEL_CLEANSTORY) { //========================
 
-        if (description contains "Guardian") {
+        if ((description contains "Guardian") && !settings.slaSet.contains(DieselSLASettings.VERBOSE)) {
           // parent node must be story
           var p = a.parent
           if (a.parent.exists(_.value.isInstanceOf[ENext])) {
@@ -861,7 +861,7 @@ class DomEngineV1(
           // also reset the maxExpands, so it works per story?
           this.curExpands = 0
         } else {
-          val newD = DomAst(new EInfo(s"Skipped - not guardian", ""), AstKinds.GENERATED)
+          val newD = DomAst(new EInfo(s"Skipped - not guardian OR verbose", ""), AstKinds.GENERATED)
           evAppChildren(a, newD)
         }
 

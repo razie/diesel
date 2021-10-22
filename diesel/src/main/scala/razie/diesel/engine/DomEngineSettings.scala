@@ -164,6 +164,8 @@ object DieselSLASettings {
   final val PERSIST2 = "pers2" // persist good
   final val PERSIST3 = "pers3" // persist safe
 
+  final val VERBOSE = "verbose" // don't shrink stories
+
   final val DEFAULT = "keep1,nopers"
 }
 

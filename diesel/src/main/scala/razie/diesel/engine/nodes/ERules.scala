@@ -464,7 +464,10 @@ case class EMock(rule: ERule) extends CanHtml with HasPosition {
   def count = rule.i.map(_.count).sum // todo is slow
 }
 
-/** a typed variable */
+/** a typed variable
+  *
+  * @param p
+  */
 case class EVal(p: RDOM.P) extends CanHtml with HasPosition with HasKind {
   def this(name: String, value: String) = this(P(name, value))
 
@@ -504,6 +507,10 @@ case class EVal(p: RDOM.P) extends CanHtml with HasPosition with HasKind {
   override def toHtml =
     if(pos.isDefined) kspan("val") + p.toHtml
     else spanClick("val", "info", Enc.escapeHtml(p.currentStringValue)) + p.toHtml
+
+  override def toHtmlFull =
+    if(pos.isDefined) kspan("val") + p.toHtml(false)
+    else spanClick("val", "info", Enc.escapeHtml(p.currentStringValue)) + p.toHtml(false)
 
   override def toString = "val " + p.toString
 }
