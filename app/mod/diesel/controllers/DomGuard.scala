@@ -16,6 +16,7 @@ import razie.diesel.dom._
 import razie.diesel.engine.RDExt._
 import razie.diesel.engine._
 import razie.diesel.engine.nodes.EnginePrep
+import razie.diesel.samples.DomEngineUtils
 import razie.diesel.utils.DomHtml.quickBadge
 import razie.diesel.utils.{AutosaveSet, DomCollector, DomWorker, SpecCache}
 import razie.hosting.WikiReactors
@@ -599,7 +600,7 @@ glyphicon-question-sign"></span></a></sup>: <a href="/diesel/guard/runCheck">Re-
   def dieselRunCheck(tq: String, format: String, wait: String, storyRealm: String) = Filter(activeUser).async
   { implicit stok =>
     if (DomGuardian.enabled(stok.realm)) {
-      val x@(f, e) = startCheck(stok.realm, stok.au, tq)
+      val x@(f, e) = startCheck(stok.realm, stok.au, tq, Some(DomEngineHelper.settingsFrom(stok)))
 
       if (wait.isEmpty || !wait.toBoolean) {
         Future.successful(

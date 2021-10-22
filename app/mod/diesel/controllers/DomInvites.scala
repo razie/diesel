@@ -76,7 +76,7 @@ class DomInvites @Inject() (config:Configuration) extends mod.diesel.controllers
     val email = request.fqParm("email", "").trim
 
     // todo not just admin, but realm owner too
-    if (request.au.exists(_.isAdmin) && email != "-") {
+    if (request.au.exists(_.isMod) && email != "-") {
       ROK.k apply {
         genericForm(
           routes.DomInvites.createInvite2().url,

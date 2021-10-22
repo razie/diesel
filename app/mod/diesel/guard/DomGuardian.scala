@@ -80,7 +80,7 @@ object DomGuardian extends Logging {
   }
 
   /** start a check run. the first time, it will init the guardian and listeners */
-  def startCheck(realm: String, au: Option[User], tq: String): (Future[Report], Option[DomEngine]) = {
+  def startCheck(realm: String, au: Option[User], tq: String, osettings:Option[DomEngineSettings] = None): (Future[Report], Option[DomEngine]) = {
     if (!DomGuardian.init) {
 
       // first time, init the guardian
@@ -129,7 +129,7 @@ object DomGuardian extends Logging {
     clog << s"DIESEL startCheck ${realm} for ${au.map(_.userName)}"
 
     // these are debounced in there...
-    DomGuardian.runReq(au, realm, "", tq)
+    DomGuardian.runReq(au, realm, "", tq, false, osettings)
   }
 
   case class Report(req:Option[RunReq],
@@ -157,7 +157,9 @@ object DomGuardian extends Logging {
                     ienv: String,
                     auto:Boolean = false, // autos will send emails
                    tq:Option[String] = None,
-                    when: DateTime = DateTime.now()) {
+                    osettings:Option[DomEngineSettings]=None,
+                    when: DateTime = DateTime.now()
+                   ) {
 
     def env = if (ienv.nonEmpty) ienv else dwix.dieselEnvFor(realm, au)
 
@@ -169,7 +171,7 @@ object DomGuardian extends Logging {
 
       log(s"RunReq.run() start $realm")
 
-      val settings = mkSettings()
+      val settings = mkSettings(osettings)
       settings.tagQuery = tq
       settings.realm = Some(realm)
 
@@ -249,14 +251,19 @@ object DomGuardian extends Logging {
   }
 
   // used for each run
-  var mkSettings: () => DomEngineSettings = () => {
-    new DomEngineSettings(
-      mockMode = true,
-      blenderMode = true,
-      draftMode = false,
-      sketchMode = false,
-      execMode = "sync"
-    )
+  var mkSettings: Option[DomEngineSettings] => DomEngineSettings = {settings:Option[DomEngineSettings] =>
+    settings.map{s=>
+      s.draftMode = false
+      s
+    }.getOrElse {
+      new DomEngineSettings(
+        mockMode = true,
+        blenderMode = true,
+        draftMode = false,
+        sketchMode = false,
+        execMode = "sync"
+      )
+    }
   }
 
   @volatile
@@ -307,13 +314,13 @@ object DomGuardian extends Logging {
   }
 
   /** if no test is currently running, start one */
-  def runReq(au: Option[WikiUser], realm: String, env: String, tq: String, auto: Boolean = false): (Future[Report],
+  def runReq(au: Option[WikiUser], realm: String, env: String, tq: String, auto: Boolean = false, settings:Option[DomEngineSettings]): (Future[Report],
       Option[DomEngine]) = {
     if (DieselCron.isMasterNode(Website.forRealm(realm).get)) {
       DomGuardian.synchronized {
         val q = if (tq.isEmpty) None else Some(tq)
         //        Some(tq.getOrElse(Guardian.autoQuery(realm)))
-        val rr = RunReq(au, au.map(_.userName).mkString, realm, env, auto, q)
+        val rr = RunReq(au, au.map(_.userName).mkString, realm, env, auto, q, osettings=settings)
         val k = rr.key
         debug(s"GuardianActor received a RunReq $k")
 

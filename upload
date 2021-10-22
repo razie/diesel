@@ -21,7 +21,19 @@ printf ".."
 
 scp $T/com.razie.racerkidz-${VER}-SNAPSHOT-sans-externalized.jar $T/com.razie.racerkidz-${VER}-SNAPSHOT-assets.jar razvanc@cloud2a.razie.com:rk/up/
 
+## Update scripts
+
+scp ./s/scripts/update razvanc@cloud2a.razie.com:rk
+scp ./s/scripts/cron-hourly razvanc@cloud2a.razie.com:rk
+
+## Copy from 2 to 3
+
 if [ "$1" != "2" ]; then
+
+## Update scripts
+  scp ./s/scripts/update razvanc@cloud3a.razie.com:rk
+  scp ./s/scripts/cron-hourly razvanc@cloud2a.razie.com:rk
+
   printf "\n\n####################copy from cloud2a to cloud3a...\n\n"
 
   ssh razvanc@cloud2a.razie.com ". ~/.bashrc; scp ~/rk/up/com.razie.racerkidz-${VER}-SNAPSHOT-sans-externalized.jar ~/rk/up/com.razie.racerkidz-${VER}-SNAPSHOT-assets.jar razvanc@cloud3a.razie.com:rk/up/"

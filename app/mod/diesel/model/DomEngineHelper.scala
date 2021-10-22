@@ -85,7 +85,8 @@ object DomEngineHelper {
       },
       tagQuery = fqhParm(TAG_QUERY),
       simMode = fqhoParm(SIM_MODE, "false").toBoolean,
-      dieselHost = Some(hp)
+      dieselHost = Some(hp),
+      sla = if(fqhoParm(SLA, "").length > 0) Some(fqhoParm(SLA, "")) else None
     )
   }
 
