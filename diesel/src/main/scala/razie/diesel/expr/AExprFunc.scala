@@ -172,9 +172,11 @@ case class AExprFunc(val expr: String, parms: List[RDOM.P]) extends Expr {
           } else if (pv.contentType == WTypes.STRING) {
             val sz = pv.asString.length
             P.fromTypedValue("", sz, WTypes.wt.NUMBER)
+          } else if (pv.contentType == WTypes.UNKNOWN || pv.contentType == WTypes.UNDEFINED) {
+            P.fromTypedValue("", 0, WTypes.wt.NUMBER)
           } else {
             throw new DieselExprException(
-              "Not array: " + p.name + " is:" + pv.toString
+              "Not sizeable type: " + p.name + " is:" + pv.toString
             )
           }
         }
