@@ -113,10 +113,7 @@ class EEDieselMongodDb extends EExecutor("diesel.db.col") {
             m
           }.toList
 
-        val p = P.fromTypedValue("documents", resList)
-
         List(
-          EVal(p),
           EVal(P.fromSmartTypedValue(Diesel.PAYLOAD,
             Map(
               "total" -> resList.size,
@@ -157,7 +154,7 @@ class EEDieselMongodDb extends EExecutor("diesel.db.col") {
           }
         }.toList
 
-        p.toList.flatMap{p=>
+        p.flatMap{p=>
           List(
             EVal(p.copy(name = Diesel.PAYLOAD))
           )
@@ -184,7 +181,7 @@ class EEDieselMongodDb extends EExecutor("diesel.db.col") {
         )
 
         List(
-          EVal(p.copy(name="payload"))
+          EVal(p.copy(name=Diesel.PAYLOAD))
         )
       }
 

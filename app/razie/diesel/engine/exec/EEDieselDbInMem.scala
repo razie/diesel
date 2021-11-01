@@ -59,8 +59,11 @@ class EEDieselMemDbBase(name: String) extends EExecutor(name) {
   case class Col(name: String, entries: mutable.HashMap[String, P] = new mutable.HashMap[String, P]())
 
   /** a session, per user or per engine (when anonymous) */
-  case class Session(name: String, var time: Long = System.currentTimeMillis(), tables: mutable.HashMap[String, Col]
-  = new mutable.HashMap[String, Col]())
+  case class Session(
+    name: String,
+    var time: Long = System.currentTimeMillis(),
+    tables: mutable.HashMap[String, Col] = new mutable.HashMap[String, Col]()
+  )
 
   /** map of active contexts per transaction */
   val sessions = new TrieMap[String, Session]()
@@ -92,21 +95,23 @@ class EEDieselMemDbBase(name: String) extends EExecutor(name) {
   def upsert(session: Session, col: String, id: String, doc: P, toclusterize: Boolean = true): Unit = {
     val tables = session.tables
     if (tables.size > maxTables)
-      throw new IllegalStateException("Too many collections (10)")
+      throw new IllegalStateException(s"Too many collections ($maxTables)")
 
     if (!tables.contains(col))
       tables.put(col, Col(col))
 
-    if (tables(col).entries.size > maxEntries)
-      throw new IllegalStateException("Too many entries in collection (15)")
+    val t = tables(col)
+    if (t.entries.size > maxEntries)
+      throw new IllegalStateException(s"Too many entries in collection ($maxEntries)")
 
-    tables(col).entries.put(id, doc)
+    t.entries.put(id, doc)
 
     if (toclusterize) {
       clusterize(EEDbEvent("upsert", DB, session.name, col, id, doc))
     }
   }
 
+  /** multiple doc insert, with a list of map docs - the docs need a "key" */
   def mupsert(session: Session, col: String, docs: List[Any], toclusterize: Boolean = true): Unit = {
     val pp = docs.map(d => P.fromSmartTypedValue("", d.asInstanceOf[HashMap[String, Any]]))
     pp.map(doc => upsert(session, col, doc.value.map(_.asJson.get("key")).mkString, doc))
@@ -143,7 +148,8 @@ class EEDieselMemDbBase(name: String) extends EExecutor(name) {
     }
 
     def log = {
-      tables.keySet.map { k =>
+      s"SessionId: $sessionId \n" +
+          tables.keySet.map { k =>
         "Collection: " + k + "\n" +
             tables(k).entries.keySet.map { id =>
               "  " + id + " -> " + tables(k).entries(id).toString
