@@ -18,6 +18,7 @@ import razie.tconf.EPos
 import razie.wiki.Enc
 import scala.collection.mutable.HashMap
 import scala.concurrent.Future
+import scala.util.Try
 
 /**
  * simple, neutral domain model representation: class/object/function/value etc
@@ -194,7 +195,9 @@ object RDOM {
 
     def asFloat: Float = value.toString.toFloat
 
-    def asBoolean: Boolean = value.toString.toBoolean
+    def asBoolean: Boolean = Try {
+      value.toString.toBoolean
+    }.getOrElse(false)
 
     def asDate: LocalDateTime = {
       val tsFmtr = DateTimeFormatter.ofPattern(WTypes.DATE_FORMAT)
