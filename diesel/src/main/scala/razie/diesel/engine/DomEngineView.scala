@@ -73,16 +73,16 @@ object DomEngineView {
   // failed tests
   def failedTestCount(a: DomAst): Int = failedTestCount(List(a))
 
-  def failedTestList(nodes: List[DomAst]): List[DomAst] = (nodes.flatMap(_.collect {
+  def failedTestList(nodes: List[DomAst]): List[DomAst] = nodes.flatMap(_.collect {
     case d@DomAst(n: TestResult, _, _, _) if n.value.startsWith("fail") => d
     case d@DomAst(n: EError, _, _, _) if !n.handled => d
-  })).toList
+  })
 
   /** list all tests and errors for junit report */
-  def testList(nodes: List[DomAst]): List[DomAst] = (nodes.flatMap(_.collect {
+  def testList(nodes: List[DomAst]): List[DomAst] = nodes.flatMap(_.collect {
     case d@DomAst(n: TestResult, _, _, _) => d
     case d@DomAst(n: EError, _, _, _) if !n.handled => d
-  })).toList
+  })
 
   def failedTestListStr(nodes: List[DomAst]): List[String] =
     failedTestList(nodes).map(_.meTos(1, true))

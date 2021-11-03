@@ -42,7 +42,14 @@ trait DomRoot {
   def totalCount = DomEngineView.totalTestedCount(root)
 
   /** find a node */
-  def n(id: String): DomAst = root.find(id).getOrElse(throw new DieselException("Node not found in root: " + id))
+  def n(id: String): DomAst = root.find(id).getOrElse(
+    throw new DieselException(
+      s"Node not found in root, node $id " +
+        s"engine ${this.engine.ctx.asInstanceOf[DomEngECtx].engine.get.id}")
+  )
+
+  /** nicer find a node */
+  def findNode(id: String): Option[DomAst] = root.find(id)
 
   protected def collectValues[T](f: PartialFunction[Any, T]): List[T] =
     root.collect {

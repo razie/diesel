@@ -41,7 +41,7 @@ object DomStream {
   *
   * @param correlationId is parentEngineID.parentSuspendID - if dot is missing, this was a fire/forget
   */
-abstract class DomStream(
+abstract class DomStream (
   val owner: DomEngine,
   val name: String,
   val description: String,
@@ -61,11 +61,16 @@ abstract class DomStream(
   def href(format: String = "") = s"/diesel/engine/view/$id?format=$format"
 
   var synchronous = false
-  private var targetId: Option[String] = None // target parent for consume nodes
+
+  /** a stream consumer is a pair of engine/node */
+  case class DomStreamConsumer(engine: String, node:String)
+  private var targetId: Option[DomStreamConsumer] = None // target parent for consume nodes
+
+  // todo support multiple consumers
 
   /** specify target parent for the consume nodes */
-  def withTargetId(id: String) = {
-    this.targetId = Some(id)
+  def withTargetId(engine:String, node:String) = {
+    this.targetId = Some(DomStreamConsumer(engine, node))
     this
   }
 
@@ -153,7 +158,7 @@ abstract class DomStream(
 
         trace(s" - DStream size ${list.size} dropping: $pickedUp")
         list.remove(0, pickedUp)
-        DieselAppContext ! DEAddChildren(owner.id, tid, recurse = true, -1, asts.toList,
+        DieselAppContext ! DEAddChildren(tid.engine, tid.node, recurse = true, -1, asts.toList,
           Some((a, e) => a.withPrereq(getDepy)))
         trace(s" - DStream list size ${list.size} is: " + list.mkString)
 
@@ -172,7 +177,7 @@ abstract class DomStream(
 
           setCtx(ast)
 
-          DieselAppContext ! DEAddChildren(owner.id, tid, recurse = true, -1, List(ast),
+          DieselAppContext ! DEAddChildren(tid.engine, tid.node, recurse = true, -1, List(ast),
             Some((a, e) => a.withPrereq(getDepy)))
         }
 
@@ -196,9 +201,9 @@ abstract class DomStream(
     setCtx(ast)
 
     targetId.map { tid =>
-      DieselAppContext ! DEAddChildren(owner.id, tid, recurse = true, -1, List(ast),
+      DieselAppContext ! DEAddChildren(tid.engine, tid.node, recurse = true, -1, List(ast),
         Some((a, e) => a.withPrereq(getDepy)))
-      DieselAppContext ! DEComplete(owner.id, targetId.get, recurse = true, -1, Nil)
+      DieselAppContext ! DEComplete(tid.engine, tid.node, recurse = true, -1, Nil)
     }
   }
 
@@ -222,7 +227,7 @@ abstract class DomStream(
 
   /** get list of other generated nodes */
   def getDepy: List[String] = {
-    val target = targetId.map(owner.n)
+    val target = targetId.flatMap(tid=> DieselAppContext.activeEngines.get(tid.engine).flatMap(_.findNode(tid.node)))
     val res = target.toList.flatMap(
       _.children
           .filter(_.status != DomState.DONE)
@@ -251,9 +256,9 @@ abstract class DomStream(
       setCtx(ast)
 
       targetId.map { tid =>
-        DieselAppContext ! DEAddChildren(owner.id, targetId.get, recurse = true, -1, List(ast),
+        DieselAppContext ! DEAddChildren(tid.engine, tid.node, recurse = true, -1, List(ast),
           Some((a, e) => a.withPrereq(getDepy)))
-        DieselAppContext ! DEComplete(owner.id, targetId.get, recurse = true, -1, Nil)
+        DieselAppContext ! DEComplete(tid.engine, tid.node, recurse = true, -1, Nil)
       }
     }
   }
