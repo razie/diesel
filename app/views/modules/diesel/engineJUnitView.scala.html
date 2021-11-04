@@ -16,21 +16,22 @@
       @DomEngineView.testList(List(t._1)).collect {
 
         case d@DomAst(n: EError, _, _, _) if !n.handled => {
-          <testcase assertions="" classname="cls" name="" status="" time="@tm(d)">
+          <testcase assertions="" classname="@noq(t._2.path.wpath)" name="" status="" time="@tm(d)">
             <error message="@noq(n.code) - @noq(n.msg)" type="EError"/>
             <system-err><![CDATA[
               @n.details
               ]]></system-err>
           </testcase>
         }
+
         case d@DomAst(n: TestResult, _, _, _) if n.value.startsWith("n/a") => {
-          <testcase classname="cls" name="@noq(n.value) - @noq(n.more) | n.target.mkString)" time="@tm(d)">
+          <testcase classname="@noq(t._2.path.wpath)" name="@noq(n.value) - @noq(n.more) | n.target.mkString)" time="@tm(d)">
           <skipped/>
           </testcase>
         }
 
         case d@DomAst(n: TestResult, _, _, _) if n.value.startsWith("fail") => {
-          <testcase assertions="" classname="cls" name="@noq(n.target.mkString)" status="" time="@tm(d)">
+          <testcase assertions="" classname="@noq(t._2.path.wpath)" name="@noq(n.target.mkString)" status="" time="@tm(d)">
             <failure message="@noq(n.more)" type="TestResult"/>
             <system-err><![CDATA[
               @n.value
@@ -41,9 +42,8 @@
         }
 
         case d@DomAst(n: TestResult, _, _, _) => {
-        <testcase classname="cls" name="@noq(n.value) - @noq(n.more) | @noq(n.target.mkString)" time="@tm(d)"/>
+        <testcase classname="@noq(t._2.path.wpath)" name="@noq(n.value) - @noq(n.more) | @noq(n.target.mkString)" time="@tm(d)"/>
         }
-
       }
     </testsuite>
   }
