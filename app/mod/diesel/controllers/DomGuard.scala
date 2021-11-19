@@ -69,7 +69,7 @@ class DomGuard extends DomApiBase with Logging {
               "totalCount" -> (eng.totalTestCount),
               "failureCount" -> eng.failedTestCount,
               //      "errors" -> errors.toList,
-              DieselTrace.dieselTrace -> DieselTrace(eng.root, eng.settings.node, eng.id, "diesel", "runDom",
+              DieselJsonFactory.dieselTrace -> DieselTrace(eng.root, eng.settings.node, eng.id, "diesel", "runDom",
                 eng.settings.parentNodeId).toJson,
               "settings" -> eng.settings.toJson,
               "specs" -> eng.pages.map(_.specRef)
@@ -171,6 +171,7 @@ class DomGuard extends DomApiBase with Logging {
     }
   }
 
+  // todo this and /engine/view are the same...
   // view an AST from teh collection
   def dieselViewAst(id: String, format: String) = FAUR ("viewAst") { implicit stok =>
     DomCollector.withAsts { asts =>
@@ -311,7 +312,7 @@ class DomGuard extends DomApiBase with Logging {
         }) /
            | Streams: ${GlobalData.dieselStreamsActive} active of ${GlobalData.dieselStreamsTotal} since start /
            | Actors: ${DieselAppContext.activeActors.size} active /
-           | Crons: ${GlobalData.dieselCronsActive} total ${GlobalData.dieselCronsTotal}"""
+           | Crons: ${GlobalData.dieselCronsActive} active of ${GlobalData.dieselCronsTotal} since start"""
             .stripMargin
       ROK.k reactorLayout12FullPage {
         views.html.modules.diesel.engineListAst(title, title2, table)
@@ -334,7 +335,7 @@ class DomGuard extends DomApiBase with Logging {
     //    val root = DieselJsonFactory.fromj(m).asInstanceOf[DomAst].withDetails("(POSTed ast)")
     // is teh map from a debug session or just the AST
     val root = (
-        if (m contains "tree") DieselJsonFactory.fromj(m("tree").asInstanceOf[Map[String, Any]]).asInstanceOf[DomAst]
+        if (m contains DieselJsonFactory.TREE) DieselJsonFactory.fromj(m(DieselJsonFactory.TREE).asInstanceOf[Map[String, Any]]).asInstanceOf[DomAst]
         else DieselJsonFactory.fromj(m.toMap).asInstanceOf[DomAst]
         ).withDetails("(from capture)")
 

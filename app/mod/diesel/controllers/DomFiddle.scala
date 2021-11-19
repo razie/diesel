@@ -407,8 +407,8 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
         val m = js.parse(capture)
         // is teh map from a debug session or just the AST
         val d = (
-            if (m contains "tree") DieselJsonFactory.fromj(
-              m("tree").asInstanceOf[Map[String, Any]]).asInstanceOf[DomAst]
+              if (m contains DieselJsonFactory.TREE) DieselJsonFactory.fromj(
+              m(DieselJsonFactory.TREE).asInstanceOf[Map[String, Any]]).asInstanceOf[DomAst]
             else DieselJsonFactory.fromj(m.toMap).asInstanceOf[DomAst]
             ).withDetails("(from capture)")
         captureTree = d.toHtml

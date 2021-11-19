@@ -3,7 +3,7 @@ list all topics in category
 **************@
 @(what:String, p: Option[mod.book.Progress], tl: mod.book.TopicList, path: String, query:Map[String,String])(implicit stok: controllers.StateOk)
  @import razie.wiki.model._
- @import mod.book.{Progress, ProgressRecord}
+ @import mod.book.{Progress}
 
 @ADMIN()=@{stok.au.filter(_.isAdmin).map(x=> "('for admins is more)").getOrElse("")}
 @MAX(i:Int)=@{math.min(if(stok.au.exists(_.isAdmin)) 300 else 20, i)}

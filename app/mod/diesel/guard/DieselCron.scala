@@ -165,7 +165,8 @@ object DieselCron extends Logging {
       ak) => /*DieselCron.synchronized*/ {
 
         // schedule triggered - forward to realm actor, so it runs in seq per realm, not holding up others
-        info(s"DomSchedule: $sc")
+        info(s"DomSchedule triggered - forward to realm actor: ${sc.schedId}")
+        trace(s"DomSchedule triggered - forward to realm actor: $sc")
 
         if (!realmActors.contains(r)) {
           info(s"Creating realmActor for: $r")
@@ -184,7 +185,7 @@ object DieselCron extends Logging {
         // create schedule request
         val isLocalhost = Config.isLocalhost
 
-        log(s"CreateSchedule: $cs")
+        log(s"CronActor CreateSchedule request: $cs")
 
         /*DieselCron.synchronized*/
         try {
