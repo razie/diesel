@@ -46,8 +46,3 @@ case class DieselTrace (
     me
   }
 }
-
-
-object DieselTrace {
-  final val dieselTrace = "dieselTrace"
-}

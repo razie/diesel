@@ -35,7 +35,10 @@ object EErrorUtils {
         f.last.append(l)
       }
       case t@(l, i) => {
-        if (f.last.size < MAX_STACKTRACE_LINES_PER &&
+        if ((
+            f.last.size < MAX_STACKTRACE_LINES_PER ||
+                f.size == 1 && f.last.size < MAX_STACKTRACE_LINES
+            ) &&
             !(
                 t.isInstanceOf[DieselExprException]
                 ) &&

@@ -76,7 +76,9 @@ case class DomAst(
 
   /** use null to remove context */
   def replaceCtx(f: => ECtx) = {
-    this.imyCtx = Option(f)
+    val ret = f
+    this.imyCtx = Option(ret)
+    if(ret != null) this.imyCtx.get else null
   }
 
   def withCtx(f: => ECtx) = {

@@ -37,6 +37,10 @@ object RDExt extends Logging {
 
   /** parse from/to json utils */
   object DieselJsonFactory {
+
+    final val dieselTrace = "dieselTrace"
+    final val TREE = "tree"
+
     private def sm(x:String, m:collection.Map[String, Any]) : String =
       if(m.contains(x)) m(x).asInstanceOf[String] else ""
 

@@ -12,6 +12,7 @@ import razie.ctrace
 import razie.diesel.Diesel
 import razie.diesel.dom.RDOM.P
 import razie.diesel.dom._
+import razie.diesel.engine.RDExt.DieselJsonFactory
 import razie.diesel.engine._
 import razie.diesel.engine.nodes.{EMsg, EVal, EnginePrep}
 import razie.diesel.model.{DieselMsg, DieselMsgString, DieselTarget}
@@ -185,7 +186,7 @@ object DomEngineUtils {
       "errors" -> errors.toList,
       "root" -> engine.root,
       "engineId" -> engine.id,
-      DieselTrace.dieselTrace -> DieselTrace(engine.root, engine.settings.node, engine.id, "diesel", "runDom",
+      DieselJsonFactory.dieselTrace -> DieselTrace(engine.root, engine.settings.node, engine.id, "diesel", "runDom",
         engine.settings.parentNodeId).toJson
     )
     m

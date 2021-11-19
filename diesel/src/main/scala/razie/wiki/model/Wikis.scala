@@ -37,6 +37,9 @@ object WikiCache {
     Cache.getAs[WikiEntry](id).map{x=>
       clog << "WIKI_CACHED FULL - "+id
       x
+    }.orElse {
+      clog << "WIKI_CACHED MISS FULL - "+id
+      None
     }
   }
 
@@ -44,6 +47,9 @@ object WikiCache {
     Cache.getAs[DBObject](id).map{x=>
       clog << "WIKI_CACHED DB - "+id
       x
+    }.orElse {
+      clog << "WIKI_CACHED MISS DB - "+id
+      None
     }
   }
 
@@ -51,6 +57,9 @@ object WikiCache {
     Cache.getAs[String](id).map{x=>
       clog << "WIKI_CACHED FRM - "+id
       x
+    }.orElse {
+      clog << "WIKI_CACHED MISS FRM - "+id
+      None
     }
   }
 

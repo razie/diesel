@@ -60,7 +60,13 @@ trait DomInventory {
 
   def connect(dom: RDomain, env: String): Either[P, EMsg] = ???
 
-  /** create an element */
+  /** create an element
+    *
+    * @param dom
+    * @param ref
+    * @param asset
+    * @return
+    */
   def upsert(dom: RDomain, ref: FullSpecRef, asset: DieselAsset[_]): Either[Option[DieselAsset[_]], EMsg] = ???
 
   /** list all elements of class
