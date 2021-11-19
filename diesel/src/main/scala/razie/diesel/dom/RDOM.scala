@@ -7,8 +7,9 @@
 package razie.diesel.dom
 
 import java.lang
-import java.time.LocalDateTime
+import java.time.{LocalDateTime, ZoneId, ZoneOffset}
 import java.time.format.DateTimeFormatter
+import java.util.Date
 import org.json.{JSONArray, JSONObject}
 import razie.diesel.engine.nodes.{CanHtml, HasPosition}
 import razie.diesel.engine.{DomEngine, EContent}
@@ -302,6 +303,12 @@ object RDOM {
         case f: Float => P(name, "", WTypes.wt.NUMBER).withCachedValue(f, WTypes.wt.NUMBER, asString(f))
         case d: Double => P(name, "", WTypes.wt.NUMBER).withCachedValue(d, WTypes.wt.NUMBER, asString(d))
         case d: Throwable => P(name, "", WTypes.wt.EXCEPTION).withCachedValue(d, WTypes.wt.EXCEPTION, d.getMessage)
+
+        case d: Date => {
+          val tsFmtr = DateTimeFormatter.ofPattern(WTypes.DATE_FORMAT).withZone(ZoneId.from(ZoneOffset.UTC))
+          val ts = tsFmtr.format(d.toInstant)
+          P(name, "", WTypes.wt.DATE).withCachedValue(ts, WTypes.wt.DATE, ts)
+        }
 
         case s: ParmSource => P(name, "Source", WTypes.wt.SOURCE).withValue(s, WTypes.wt.SOURCE)
 
