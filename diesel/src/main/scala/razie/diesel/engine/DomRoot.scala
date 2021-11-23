@@ -43,6 +43,7 @@ trait DomRoot {
 
   /** find a node */
   def n(id: String): DomAst = root.find(id).getOrElse(
+    // todo put a breakpoint here - this happens although it should not!
     throw new DieselException(
       s"Node not found in root, node $id " +
         s"engine ${this.engine.ctx.asInstanceOf[DomEngECtx].engine.get.id}")

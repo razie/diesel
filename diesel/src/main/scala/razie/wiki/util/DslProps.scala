@@ -43,6 +43,7 @@ class DslProps (val we:Option[WikiPage], section:String, extra:Seq[(String,Strin
     WID.fromPath(x).map(_.defaultRealmTo(we.map(_.realm)))
   })
 
+  /** convert property to boolean - use with OR */
   def bprop(s: String) = (this prop s).map(_.toUpperCase).map { p =>
     p == "TRUE" || p == "YES" || p == "1" || p == "ON"
   }
