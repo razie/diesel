@@ -21,8 +21,9 @@ import razie.diesel.engine.exec.{EECtx, EESnakk, SnakkCall}
 import razie.diesel.engine.nodes.EnginePrep.{catPages, listStoriesWithFiddles}
 import razie.diesel.engine.nodes._
 import razie.diesel.expr.{ECtx, SimpleECtx, StaticECtx}
-import razie.diesel.model.DieselMsg
+import razie.diesel.model.{DieselMsg, DieselMsgString, DieselTarget}
 import razie.diesel.model.DieselMsg.HTTP
+import razie.diesel.samples.DomEngineUtils
 import razie.diesel.utils.{AutosaveSet, DomCollector, DomWorker, SpecCache}
 import razie.hosting.Website
 import razie.tconf.{DTemplate, EPos}
@@ -183,6 +184,188 @@ class DomApi extends DomApiBase with Logging {
     * @param useThisStory  if nonEmpty then will use this (find it first) plus blender
     * @param useThisStoryPage if nonEmpty then will use this plus blender
     */
+  private def irunDomStr(strMsg: DieselMsgString) (implicit stok:RazRequest) : Future[Result] = {
+
+    var path = strMsg.msg
+    if(path.length > 1000) path = path.take(1000) + "..."
+
+    // not always the same as the request...
+    val reactor = stok.website.dieselReactor
+    val website = Website.forRealm(reactor).getOrElse(stok.website)
+    val xapikey = website.prop("diesel.xapikey")
+
+      Audit.logdb("DIESEL_FIDDLE_iRUNSTR", stok.au.map(_.userName).getOrElse("Anon"), s"EA : ${path.take(500)}")
+
+      var settings = DomEngineHelper.settingsFrom(stok)
+      settings = settings.copy(realm = Some(reactor))
+
+      // todo review security. Should use current user but if this is a spawn, the original user is passed in.
+      // how to sign it? who can impersonate other users?
+      val userId = settings.userId.map(new ObjectId(_)) orElse stok.au.map(_._id)
+
+
+      val engine = strMsg.mkEngine
+
+
+      engine.root.prependAllNoEvents(List(
+        DomAst(
+          EInfo("STRMSG Request details", path),
+          AstKinds.DEBUG)
+            .withStatus(DomState.SKIPPED)
+      ))
+
+
+      setHostname(engine.ctx.root)
+
+      // incoming message
+      val msg: Option[EMsg] = strMsg.getEMsg
+
+    val ea = msg.map(_.ea).mkString
+    val e = msg.map(_.entity).mkString
+    val a = msg.map(_.met).mkString
+
+
+      val xx = stok.qhParm("X-Api-Key").mkString
+
+      def needsApiKey = xapikey.isDefined
+
+      def isApiKeyGood = xapikey.isDefined && xapikey.exists { x =>
+        x.length > 0 && x == xx
+      }
+
+      val isPublic = msg.exists(isMsgPublic(_, reactor, website))
+      val isTrusted = isMemberOrTrusted(msg, reactor, website)
+
+      engine.withInitialMsg(msg)
+
+      clog << s"irunDomSTRMSG: Message: $msg isPublic=$isPublic isTrusted=$isTrusted needsApiKey=$needsApiKey " +
+          s"isApiKeyGood=$isApiKeyGood"
+
+      if (isPublic || isTrusted || needsApiKey && isApiKeyGood) {
+
+        setApiKeyUser(needsApiKey, isApiKeyGood, website, engine)
+
+        val RETURN501 = true // per realm setting?
+
+        var body:String = ""
+
+        engine.process.map { engine =>
+          cdebug << s"Engine done 1 ... ${engine.id}"
+          val errors = new ListBuffer[String]()
+
+          // no rules matched for any of the first level messages
+          var ok = if (RETURN501 && (
+              engine.root.children
+                  .exists(y => y.children
+                  .exists(x =>
+                    x.value.isInstanceOf[EWarning] &&
+                        x.value.asInstanceOf[EWarning].code == DieselMsg.ENGINE.ERR_NORULESMATCH)
+              ))) {
+            // no rules applied - 501 - prevents us from returning settings values when nothing matched
+            body = s"No rules matched for path: (${path}) message: (${msg.get.ea})" + s" info: ${engine.settings.realm}"
+            info(body)
+
+            Status(NOT_IMPLEMENTED)(body)
+                .withHeaders("diesel-reason" -> body)
+
+          } else if (
+            "value" == settings.resultMode || "" == settings.resultMode
+          ) {
+            val resp = engine.extractOldValue(ea)
+            val resValue = resp.map(_.currentStringValue).getOrElse("")
+
+            val ctype =
+            // is there a desired type
+              engine.ctx.get(DieselMsg.HTTP.CTYPE).filter(_.length > 0)
+                  .getOrElse(
+                    resp.map(p => WTypes.getContentType(p.ttype)).getOrElse(WTypes.Mime.textPlain)
+                  )
+
+            body = stripQuotes(resValue)
+
+            // exception?
+            val code = resp
+                .filter(_.isOfType(WTypes.wt.EXCEPTION))
+                .map(_.calculatedTypedValue(engine.ctx).value)
+                .filter(_.isInstanceOf[DieselException])
+                .flatMap(_.asInstanceOf[DieselException].code)
+
+            // is there a desired status
+            code.orElse(
+              engine.ctx.get(DieselMsg.HTTP.STATUS).filter(_.length > 0).map(_.toInt)
+            ).map { st =>
+              Status(st)(body)
+            } getOrElse {
+              Ok(body)
+            }.as(ctype)
+
+          } else {
+            // multiple values as json
+            val valuesp = engine.extractValues(e,a)
+            val values = valuesp.map(p => (p.name, p.currentStringValue))
+
+            var m = Map(
+              "values" -> values.toMap,
+              "totalCount" -> engine.totalTestCount,
+              "failureCount" -> engine.failedTestCount,
+              "errors" -> errors.toList,
+              DieselJsonFactory.dieselTrace -> DieselTrace(engine.root, settings.node, engine.id, "diesel", "runDom",
+                settings.parentNodeId).toJson
+            )
+
+            if ("treeHtml" == settings.resultMode) m = m + ("tree" -> engine.root.toHtml)
+            if ("treeJson" == settings.resultMode) m = m + ("tree" -> engine.root.toJson)
+
+            if ("debug" == settings.resultMode) {
+              body = engine.root.toString
+              Ok(body).as(WTypes.Mime.appText)
+            } else if ("dieselTree" == settings.resultMode) {
+              val m = engine.root.toj
+              val y = DieselJsonFactory.fromj(m).asInstanceOf[DomAst]
+              val x = js.tojsons(y.toj)
+              body = x
+              Ok(body).as(WTypes.Mime.appJson)
+            } else
+              body = js.tojsons(m)
+            Ok(body).as(WTypes.Mime.appJson)
+          }
+
+          ok = ok.withHeaders(
+            DomEngineHelper.dieselFlowId -> engine.id,
+            DomEngineSettings.DIESEL_HOST -> engine.settings.dieselHost.mkString,
+            DomEngineSettings.DIESEL_NODE_ID -> engine.settings.node
+          )
+
+          engine.addResponseInfo(ok.header.status, body, ok.header.headers)
+
+          ok
+        }
+
+        // is message visible?
+      } else if (msg.isDefined && !isMsgVisible(msg.get, reactor, website)) {
+        val infomsg = s"Unauthorized msg access [irundom] (diesel.visibility:${stok.website.dieselVisiblity}, ${stok.au.map(_.ename).mkString})"
+        info(infomsg)
+
+        Future.successful(
+          Unauthorized(infomsg)
+        )
+      } else {
+        // good security keys for non-members (devs if logged in don't need security)
+        val infomsg = s"Unauthorized msg access (key) [irundom] for ${msg.map(m => m.entity + m.met)}"
+        info(infomsg)
+
+        Future.successful(
+          Unauthorized(infomsg)
+        )
+      }
+  }
+
+  /** execute message to given reactor
+    *
+    * @param path is the useful path (without prefix). Either an e.a or e/a or template match
+    * @param useThisStory  if nonEmpty then will use this (find it first) plus blender
+    * @param useThisStoryPage if nonEmpty then will use this plus blender
+    */
   private def irunDomInt(path: String, useThisStory: Option[WID], useThisStoryPage: Option[WikiEntry] = None, useThisSpecPage: List[WikiEntry] = Nil) (implicit stok:RazRequest) : Future[Result] = {
 
     // not always the same as the request...
@@ -203,6 +386,9 @@ class DomApi extends DomApiBase with Logging {
 
       var settings = DomEngineHelper.settingsFrom(stok)
       settings = settings.copy(realm = Some(reactor))
+
+      // todo review security. Should use current user but if this is a spawn, the original user is passed in.
+      // how to sign it? who can impersonate other users?
       val userId = settings.userId.map(new ObjectId(_)) orElse stok.au.map(_._id)
 
       val pages = if (settings.blenderMode) { // blend all specs and stories
@@ -272,12 +458,12 @@ class DomApi extends DomApiBase with Logging {
         DieselMsg.irunDom + path
       )
 
+      var str = engine.settings.postedContent.map(_.body).mkString
+      if(str.length > 1000) str = str.take(1000) + "..."
+
       engine.root.prependAllNoEvents(List(
         DomAst(
-          EInfo(
-            "HTTP Request details",
-            printRequest(stok.req,
-              engine.settings.postedContent.map(_.body).mkString)),
+          EInfo("HTTP Request details", printRequest(stok.req, str)),
           AstKinds.DEBUG)
             .withStatus(DomState.SKIPPED)
       ))
@@ -325,11 +511,7 @@ class DomApi extends DomApiBase with Logging {
       clog << s"irunDom: Message: $msg isPublic=$isPublic isTrusted=$isTrusted needsApiKey=$needsApiKey " +
           s"isApiKeyGood=$isApiKeyGood"
 
-      if (
-        isPublic ||
-            isTrusted ||
-            needsApiKey && isApiKeyGood
-      ) {
+      if (isPublic || isTrusted || needsApiKey && isApiKeyGood) {
 
         setApiKeyUser(needsApiKey, isApiKeyGood, website, engine)
 
@@ -418,7 +600,7 @@ class DomApi extends DomApiBase with Logging {
               "totalCount" -> engine.totalTestCount,
               "failureCount" -> engine.failedTestCount,
               "errors" -> errors.toList,
-              DieselTrace.dieselTrace -> DieselTrace(root, settings.node, engine.id, "diesel", "runDom",
+              DieselJsonFactory.dieselTrace -> DieselTrace(root, settings.node, engine.id, "diesel", "runDom",
                 settings.parentNodeId).toJson
             )
 
@@ -745,7 +927,7 @@ class DomApi extends DomApiBase with Logging {
             }
 
           // todo optimize
-          ctrace << engine.root.toString
+          //ctrace << engine.root.toString
 
           var response : Option[Result] = None
 
@@ -905,11 +1087,11 @@ class DomApi extends DomApiBase with Logging {
   def dieselRestDELETE(path: String) = runRest("/" + path, "DELETE", mock=false)
 
   // simple file uplaod form
-  def dieselIoTest(path: String) = Filter(noRobots).async { implicit stok =>
+  def dieselIoTest(path: String, andThen:String) = Filter(noRobots).async { implicit stok =>
     if (WikiConfig.getInstance.get.isLocalhost && stok.au.exists(_.isActive)) {
       Future.successful(
         Ok(
-          views.html.fiddle.dieselIoTest(path)
+          views.html.fiddle.dieselIoTest(path, andThen)
         ))
     } else {
       Future.successful(
@@ -919,19 +1101,50 @@ class DomApi extends DomApiBase with Logging {
   }
 
   // test upload files
-  def dieselIoUpload(path: String) = Action(parse.multipartFormData) { request =>
-    if (WikiConfig.getInstance.get.isLocalhost) {
+  def dieselIoUpload(path: String, andThen:String) = Action.async(parse.multipartFormData) { request =>
+    implicit val stok = razRequest(request)
+
+    if (WikiConfig.getInstance.get.isLocalhost &&
+        (stok.au.exists(_.isActive)) //||
+    ) {
       request.body.file("dieselFile").map { file =>
         import java.io.File
         val filename = file.filename
         val contentType = file.contentType
         file.ref.moveTo(new File(s"./$path"))
-        Ok(s"File uploaded to $path")
+
+        if(andThen.length > 0) {
+
+          val m = if(andThen startsWith "$") andThen else "$msg " + andThen
+          val strMsg = DieselMsgString(
+            m,
+            DieselTarget.ENV(stok.realm),
+            Map("status" -> "done.success")
+          )
+
+          irunDomStr(strMsg)
+//          fut.map {res =>
+//            DomEngineUtils.extractP(res).map{p=>
+//                val v = p.currentStringValue
+//            if(v.trim.startsWith("{")) {
+//              Ok(v).as("application/json")
+//            } else {
+//              Ok(v)
+//            }
+//            }.getOrElse {
+//              Ok("")
+//            }
+//          }
+        } else {
+          Future.successful(
+            Ok(s"""{"status": "done.success", "msg":"File uploaded to $path"} """).as("application/json")
+          )
+        }
       }.getOrElse {
-        InternalServerError("Error: 'dieselFile' is missing")
+        Future.successful(InternalServerError("Error: 'dieselFile' is missing"))
       }
     } else {
-      NotFound("not localhost")
+      Future.successful(Unauthorized("Not localhost or not authorized!"))
     }
   }
 
@@ -1203,14 +1416,12 @@ class DomApi extends DomApiBase with Logging {
 
     //some realms may not want this
     // todo default should be to not want this...
-    val noTemplates = engine.settings.realm.flatMap(Website.forRealm(_)).flatMap(
-      _.prop("diesel.rest.templates")).exists(
-      _.equals("false"))
+    val useTemplates = engine.settings.realm.flatMap(Website.forRealm(_)).exists(_.dieselRestTemplates)
 
     val direction = "request"
     val eapath = if (path.startsWith("/")) path.substring(1) else path
 
-    val trequest = if (noTemplates) None else
+    val trequest = if (!useTemplates) None else
       engine
           .ctx
           // first try  with e.a
