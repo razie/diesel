@@ -14,6 +14,7 @@ import razie.diesel.engine.DieselAppContext
 import razie.diesel.utils.DomCollector
 import razie.hosting.WikiReactors
 import razie.wiki.Config
+import razie.wiki.model.WikiCache
 import scala.concurrent.{Future, Promise}
 
 /** current ops data is updated here from all over - you can inspect this in a page
@@ -32,6 +33,9 @@ object GlobalData {
   val servingApiRequests = new AtomicLong(0) // how many threads are currently serving - if 0, there's none...
   val servedApiRequests = new AtomicLong(0)
   val limitedApiRequests = new AtomicLong(0) // how many were kicked off under load
+
+  val wikiCacheMisses = new AtomicLong(0) // wiki cache misses
+  val wikiCacheSets = new AtomicLong(0) // wiki cache misses
 
   val dieselEnginesTotal = new AtomicLong(0) // how many engines created since start
   val dieselEnginesActive = new AtomicLong(0) // how many engines active now
@@ -57,9 +61,12 @@ object GlobalData {
   def toMap() = {
     Map(
       "global" -> Map(
-        "maxConfThreads" -> Config.prop("akka.actor.default-dispatcher.thread-pool-executor.fixed-pool-size"),
+        "maxDefaultThreads" -> Config.prop("akka.actor.default-dispatcher.thread-pool-executor.fixed-pool-size"),
+        "maxDieselThreads" -> Config.prop("diesel-dispatcher.thread-pool-executor.fixed-pool-size"),
         "serving" -> GlobalData.serving.get(),
         "served" -> GlobalData.served.get(),
+        "wikiCacheMisses" -> GlobalData.wikiCacheMisses.get(),
+        "wikiCacheSets" -> GlobalData.wikiCacheSets.get(),
         "servingApiRequests" -> GlobalData.servingApiRequests.get(),
         "servedApiRequests" -> GlobalData.servedApiRequests.get(),
         "limitedApiRequests" -> GlobalData.limitedApiRequests.get(),

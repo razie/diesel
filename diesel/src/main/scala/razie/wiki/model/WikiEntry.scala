@@ -10,7 +10,7 @@ import com.mongodb.casbah.Imports._
 import com.novus.salat._
 import org.joda.time.DateTime
 import razie.audit.Audit
-import razie.{AA, Log, cdebug, ctrace}
+import razie.{AA, Log, cdebug, ctrace, clog}
 import razie.db.RazSalatContext._
 import razie.db._
 import razie.tconf.parser.StrAstNode
@@ -362,7 +362,7 @@ case class WikiEntry(
       s.ilinks)
     ipreprocessed = Some(res, au)
     val t2 = System.currentTimeMillis
-    ctrace << s"wikis.folded ${t2 - t1} millis for ${wid.name}"
+    clog << s"wikis.folded ${t2 - t1} millis for ${wid.name}"
     res
   }
 

@@ -34,7 +34,14 @@ trait DSpec {
     * any scripts or such will make this false
     * this is very pessimistic right now for safety issues: even a whiff of non-static content will turn this off
     */
-  var cacheable: Boolean = true
+  var _cacheable: Boolean = true
+
+  def cacheable_=(b:Boolean) = {
+    _cacheable = b
+    var f = 1+2
+  }
+
+  def cacheable = _cacheable
 
   /**
     * original text content, not pre-processed - this is generally useless

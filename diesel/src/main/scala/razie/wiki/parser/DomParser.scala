@@ -14,7 +14,7 @@ import razie.diesel.engine.nodes._
 import razie.diesel.engine.{DomEngine, nodes}
 import razie.diesel.expr._
 import razie.diesel.model.DieselMsg.ENGINE
-import razie.tconf.parser.{FoldingContext, LazyAstNode, StrAstNode}
+import razie.tconf.parser.{FoldingContext, LazyAstNode, LazyStaticAstNode, StaticFoldingContext, StrAstNode}
 import razie.tconf.{DSpec, DUser, EPos}
 import razie.wiki.Enc
 import scala.Option.option2Iterable
@@ -38,8 +38,13 @@ trait DomParser extends ParserBase with ExprParser {
     aCommentLine | panno | pobject | pclass | passoc | pdef |
         pwhen | pflow | pmatch | psend | pmsg | pval | pexpect | passert
 
-  def lazys(f: (StrAstNode, FoldingContext[DSpec, DUser]) => StrAstNode) =
+  // todo this disables the caching for all specs !!! superbad as they get compiled over and over
+  def lazyNoCacheable(f: (StrAstNode, FoldingContext[DSpec, DUser]) => StrAstNode) =
     LazyAstNode[DSpec, DUser](f)
+
+  // todo this disables the caching for all specs !!! superbad as they get compiled over and over
+  def lazystatic(f: (StrAstNode, StaticFoldingContext[DSpec]) => StrAstNode) =
+    LazyStaticAstNode[DSpec](f)
 
   // todo replace $ with . i.e. .class
 
@@ -62,7 +67,7 @@ trait DomParser extends ParserBase with ExprParser {
   def panno: PS =
     keyw("""[.$]anno(tate)? *""".r) ~ ows ~ optAttrs ^^ {
       case k ~ _ ~ attrs => {
-        lazys { (current, ctx) =>
+        lazystatic { (current, ctx) =>
           ctx.we.foreach { w =>
             // accumulate annotations
             val anno = ctx.we.get.collector.getOrElse(RDomain.DOM_ANNO_LIST, Nil).asInstanceOf[List[RDOM.P]]
@@ -79,7 +84,7 @@ trait DomParser extends ParserBase with ExprParser {
       }
     }
 
-  def mkPos(ctx: FoldingContext[DSpec, DUser], k: Keyw) = {
+  def mkPos(ctx: StaticFoldingContext[DSpec], k: Keyw) = {
     Some(EPos(ctx.we.map(_.specRef.wpath).mkString, k.pos.line, k.pos.column))
   }
 
@@ -93,7 +98,7 @@ trait DomParser extends ParserBase with ExprParser {
         opt(ws ~> "extends" ~> ws ~> repsep(qident, ",")) ~
         opt(ws ~> "<" ~> ows ~> repsep(ident, ",") <~ ">") ~ " *".r ~ optClassBody ^^ {
       case k ~ _ ~ name ~ tParm ~ attrs ~ ext ~ stereo ~ _ ~ funcs => {
-        lazys { (current, ctx) =>
+        lazystatic { (current, ctx) =>
 
             //consume all annotations up to here?
           val anno = ctx.we.get.collector.getOrElse(RDomain.DOM_ANNO_LIST, Nil).asInstanceOf[List[RDOM.P]]
@@ -215,7 +220,7 @@ trait DomParser extends ParserBase with ExprParser {
     * add a domain element to the topic
     */
   def addToDom(c: Any) = {
-    lazys { (current, ctx) =>
+    lazystatic { (current, ctx) =>
       collectDom(c, ctx.we)
       StrAstNode(
         c match {
@@ -257,10 +262,10 @@ trait DomParser extends ParserBase with ExprParser {
   def pmatch: PS =
     keyw("""[.$]match""".r) ~ ws ~ clsMatch ~ opt(pif) ^^ {
       case k ~ _ ~ Tuple3(ac, am, aa) ~ cond => {
-        lazys { (current, ctx) =>
+        lazystatic { (current, ctx) =>
           val x = EMatch(ac, am, aa, cond)
           //          f.pos = Some(EPos(ctx.we.map(_.wid.wpath).mkString, k.pos.line, k.pos.column))
-          addToDom(x).ifold(current, ctx)
+          addToDom(x).ifoldStatic(current, ctx)
         }
       }
     }
@@ -383,7 +388,7 @@ trait DomParser extends ParserBase with ExprParser {
         opt(pif) ~ optComment3 ~
         rep(aCommentLine | pgen | pgenStep /*| pgenErr*/) ^^ {
       case k ~ _ ~ oarch ~ Tuple3(ac, am, aa) ~ _ ~ cond ~ _ ~ gens => {
-        lazys { (current, ctx) =>
+        lazystatic { (current, ctx) =>
           val x = nodes.EMatch(ac, am, aa, cond)
           val wpath = ctx.we.map(_.specRef.wpath).mkString
           val arch = oarch.filter(_.length > 0).getOrElse(k.s) // archetype
@@ -398,7 +403,7 @@ trait DomParser extends ParserBase with ExprParser {
               .getOrElse(-1)
           r.pos = Some(EPos(wpath, k.pos.line, k.pos.column, last))
           val f = if (k.s contains "when") r else EMock(r)
-          addToDom(f).ifold(current, ctx)
+          addToDom(f).ifoldStatic(current, ctx)
         }
       }
     }
@@ -409,11 +414,11 @@ trait DomParser extends ParserBase with ExprParser {
   def pflow: PS =
     keyw("""[.$]flow""".r) ~ ws ~ clsMatch ~ ws ~ opt(pif) ~ " *=>".r ~ ows ~ flowexpr ^^ {
       case k ~ _ ~ Tuple3(ac, am, aa) ~ _ ~ cond ~ _ ~ _ ~ ex => {
-        lazys { (current, ctx) =>
+        lazystatic { (current, ctx) =>
           val x = nodes.EMatch(ac, am, aa, cond)
           val f = EFlow(x, ex)
           f.pos = Some(EPos(ctx.we.map(_.specRef.wpath).mkString, k.pos.line, k.pos.column))
-          addToDom(f).ifold(current, ctx)
+          addToDom(f).ifoldStatic(current, ctx)
         }
       }
     }
@@ -425,7 +430,7 @@ trait DomParser extends ParserBase with ExprParser {
     """[.$]assoc""".r ~> ws ~> opt(ident <~ ws) ~ assRole ~ " *-> *".r ~ assRole ~ optAttrs ^^ {
       case n ~ Tuple2(a, arole) ~ _ ~ Tuple2(z, zrole) ~ p => {
         val c = A(n.mkString, a, z, arole, zrole, p)
-        lazys { (current, ctx) =>
+        lazystatic { (current, ctx) =>
           collectDom(c, ctx.we)
           StrAstNode(
             """<span class="label label-default">""" +
@@ -441,7 +446,7 @@ trait DomParser extends ParserBase with ExprParser {
     keyw("""[.$]object """.r) ~> ident ~ " *".r ~ ident ~ optAttrs ^^ {
       case name ~ _ ~ cls ~ l => {
         val o = O(name, cls, l)
-        lazys { (current, ctx) =>
+        lazystatic { (current, ctx) =>
           collectDom(o, ctx.we)
           StrAstNode(
             """<div class="well">""" +
@@ -538,7 +543,7 @@ trait DomParser extends ParserBase with ExprParser {
     */
   def pval: PS = keyw("[.$]val".r) ~ ows ~ pattr ^^ {
     case k ~ _ ~ a => {
-      lazys { (current, ctx) =>
+      lazystatic { (current, ctx) =>
 
         val v = EVal(a).withPos(pos(k, ctx))
         collectDom(v, ctx.we)
@@ -570,7 +575,7 @@ trait DomParser extends ParserBase with ExprParser {
     case s => Keyw(s)
   }
 
-  def pos (k:Keyw, ctx:FoldingContext[DSpec,DUser]) = {
+  def pos (k:Keyw, ctx:StaticFoldingContext[DSpec]) = {
     Some(EPos(ctx.we.map(_.specRef.wpath).mkString, k.pos.line, k.pos.column))
   }
 
@@ -592,7 +597,7 @@ trait DomParser extends ParserBase with ExprParser {
       (clsMet | justAttrs) ~
       opt(" *: *".r ~> optAttrs) <~ " *".r <~ optComment3 ^^ {
     case k ~ stype ~ cp ~ ret => {
-      lazys { (current, ctx) =>
+      lazystatic { (current, ctx) =>
         val f = cp match {
           // class with message
           case Tuple3(zc, zm, za) =>
@@ -629,7 +634,7 @@ trait DomParser extends ParserBase with ExprParser {
     */
   def pmsg: PS = keyw("[.$]msg *".r) ~ optArch ~ qclsMet ~ optAttrs ~ opt(" *(:|=>) *".r ~> optAttrs) <~ optComment3^^ {
     case k ~ stype ~ qcm ~ attrs ~ ret => {
-      lazys { (current, ctx) =>
+      lazystatic { (current, ctx) =>
 
         val archn =
           if (stype.exists(_.length > 0)) stype.mkString.trim
@@ -678,7 +683,7 @@ trait DomParser extends ParserBase with ExprParser {
       opt(pif) ~ ows ~
       opt(qclsMet) ~ optMatchAttrs ~ " *".r ~ opt(pif) <~ " *".r <~ optComment3 ^^ {
     case k ~ not ~ pif ~ _ ~ qcm ~ attrs ~ _ ~ cond => {
-      lazys { (current, ctx) =>
+      lazystatic { (current, ctx) =>
         val pos = Some(EPos(ctx.we.map(_.specRef.wpath).mkString, k.pos.line, k.pos.column))
         val f = qcm.map(qcm =>
           ExpectM(not.isDefined, nodes.EMatch(qcm._1, qcm._2, attrs, cond.orElse(pif)))
@@ -707,7 +712,7 @@ trait DomParser extends ParserBase with ExprParser {
     */
   def passert: PS = keyw("[.$]assert".r <~ ws) ~ opt("not" <~ ws) ~ optAssertExprs <~ " *".r <~ optComment3 ^^ {
     case k ~ not ~ exprs => {
-      lazys { (current, ctx) =>
+      lazystatic { (current, ctx) =>
         val pos = Some(EPos(ctx.we.map(_.specRef.wpath).mkString, k.pos.line, k.pos.column))
         val f = ExpectAssert(not.isDefined, exprs).withPos(pos)
         collectDom(f, ctx.we)
@@ -729,7 +734,7 @@ trait DomParser extends ParserBase with ExprParser {
     */
   def pdef: PS = keyw("[.$]def *".r) ~ qident ~ optAttrs ~ optType ~ optScript ~ optBlock ^^ {
     case k ~ name ~ attrs ~ optType ~ script ~ block => {
-      lazys { (current, ctx) =>
+      lazyNoCacheable { (current, ctx) =>
         val f = F(name, attrs, optType, "def", script.fold(ctx).s, block)
         f.withPos(mkPos(ctx, k))
         collectDom(f, ctx.we)

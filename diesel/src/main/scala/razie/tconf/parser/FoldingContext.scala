@@ -8,18 +8,15 @@ package razie.tconf.parser
 
 import razie.tconf.{DSpec, DUser}
 
-/** folding context base class - contains the page being parsed and for which user
+/** user-agnostic folding context base class - contains the page being parsed
   *
   * we use these to defer execution of different elements during parsing. These contain the
   * context in which the current parse works.
-  * */
-abstract class FoldingContext[+T <: DSpec, +U <: DUser] {
+  */
+abstract class StaticFoldingContext[+T <: DSpec] {
 
   /** current spec being parsed */
   def we: Option[T]
-
-  /** user, if any, for which this is parsed */
-  def au: Option[U]
 
   /** why is this being parsed? template, view or pre-processed */
   def target: String
@@ -36,6 +33,16 @@ abstract class FoldingContext[+T <: DSpec, +U <: DUser] {
   /** is this cacheable as parsed or not? */
   def cacheable: Boolean = we.map(_.cacheable).getOrElse(false)
   def cacheable_=(v: Boolean) = we.foreach(_.cacheable = v)
+}
+
+/** folding context for user-aware ops
+  *
+  * we use these to defer execution of different elements during parsing. These contain the
+  * context in which the current parse works.
+  * */
+abstract class FoldingContext[+T <: DSpec, +U <: DUser] extends StaticFoldingContext [T] {
+  /** user, if any, for which this is parsed */
+  def au: Option[U]
 }
 
 /** folding context using a map for the properties available to evaluate expressions */

@@ -38,6 +38,9 @@ class TagQuery(val tags: String) {
   val tRealm: Option[String] = theTags.find(_.startsWith("realm."))
   val theRealm: Option[String] = tRealm.map(_.replace("realm.", ""))
 
+  def isEmpty = theTags.isEmpty
+  def nonEmpty = theTags.nonEmpty
+
   /** create a new tags addinng the t */
   def and(t: String) = {
     val s = if (tags.trim.length > 0) tags + "," + t else t

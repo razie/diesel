@@ -7,6 +7,7 @@
 package razie.wiki.model
 
 import com.novus.salat._
+import java.util.concurrent.atomic.{AtomicBoolean, AtomicReference}
 import model.CMDWID
 import org.bson.types.ObjectId
 import razie.base.data.TripleIdx
@@ -55,19 +56,40 @@ case class WID(
     f(parentWid)
   }
 
-  /** find the page for this, if any - respects the NOCATS */
-  lazy val page = {
-    val w = if (Services.config.cacheWikis) {
-      WikiCache.getEntry(this.wpathFull + ".page").map { x => x
-      }
-    } else None
+  private val _cachedPage : AtomicReference[Option[Option[WikiEntry]]] = new AtomicReference[Option[Option[WikiEntry]]](None)
 
-    w.orElse {
-      if (cat.isEmpty)
-        findId flatMap Wikis(getRealm).find // special for NOCATS
-      else
-        Wikis(getRealm).find(this)
+  def hasCachedPage = _cachedPage.get().nonEmpty
+
+  def resetCachedPage(newp:Option[WikiEntry]) = _cachedPage.set(Some(newp))
+
+  /** find the page for this, if any - respects the NOCATS */
+  def page : Option[WikiEntry] = {
+    if(hasCachedPage) _cachedPage.get().get
+    else {
+      val w = if (Services.config.cacheWikis) {
+        WikiCache.getEntry(this.wpathFullNoSection + ".page").map { x => x
+        }
+      } else None
+
+      w.orElse {
+        val ret = findPageNocache
+        _cachedPage.compareAndSet(None, Some(ret))
+        // the page may not be processed in the context of a user, so we can't cache it
+        ret
+      }
     }
+  }
+
+  /** find the page without using caches, if any - respects the NOCATS */
+  def findPageNocache : Option[WikiEntry] = {
+      val ret = {
+        if (cat.isEmpty)
+          findId flatMap Wikis(getRealm).find // special for NOCATS
+        else
+          Wikis(getRealm).find(this)
+      }
+
+      ret
   }
 
   def isEmpty = cat == "?" && name == "?" || cat == "-" && name == "-"
@@ -190,8 +212,12 @@ case class WID(
     if (cat != null && cat.length > 0 && !WID.NOCATS.contains(cat)) (cat + ":") else "") + name + (section.map("#" + _).getOrElse(""))
 
   /** full categories allways, with realm prefix if not RK */
-  def wpathFull: String = parentWid.map(_.wpath + "/").getOrElse("") + (
-    if (cat != null && cat.length > 0 ) (cats + ":") else "") + name + (section.map("#" + _).getOrElse(""))
+  def wpathFull: String = wpathFullNoSection +
+      (section.map("#" + _).getOrElse(""))
+
+  /** full path but without the section part */
+  def wpathFullNoSection: String = parentWid.map(_.wpath + "/").getOrElse("") + (
+    if (cat != null && cat.length > 0 ) (cats + ":") else "") + name
 
   def formatted = this.copy(name=Wikis.formatName(this))
 

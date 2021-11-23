@@ -19,58 +19,46 @@ import razie.diesel.dom.WikiDomain
 import razie.hosting.WikiReactors
 import razie.tconf.Visibility.PUBLIC
 import razie.tconf.parser.{BaseAstNode, LeafAstNode, SpecParserSettings, StrAstNode}
+import razie.wiki.admin.GlobalData
 import razie.wiki.model.features.{WForm, WikiForm}
 import razie.wiki.parser.WAST
 import razie.wiki.util.QueryParms
 import razie.wiki.{Enc, Services, WikiConfig}
-import razie.{Logging, clog, ctrace}
+import razie.{Logging, cdebug, clog, ctrace}
 import scala.collection.mutable.ListBuffer
-
-object WikiCache {
-
-  def set[T](id:String, w:T, i:Int) = {
-    clog << "WIKI_CACHE_SET - "+id
-    Cache.set(id, w, 300) // 10 miuntes
-  }
-
-  def getEntry(id:String) : Option[WikiEntry] = {
-    Cache.getAs[WikiEntry](id).map{x=>
-      clog << "WIKI_CACHED FULL - "+id
-      x
-    }.orElse {
-      clog << "WIKI_CACHED MISS FULL - "+id
-      None
-    }
-  }
-
-  def getDb(id:String) : Option[DBObject] = {
-    Cache.getAs[DBObject](id).map{x=>
-      clog << "WIKI_CACHED DB - "+id
-      x
-    }.orElse {
-      clog << "WIKI_CACHED MISS DB - "+id
-      None
-    }
-  }
-
-  def getString(id:String) : Option[String] = {
-    Cache.getAs[String](id).map{x=>
-      clog << "WIKI_CACHED FRM - "+id
-      x
-    }.orElse {
-      clog << "WIKI_CACHED MISS FRM - "+id
-      None
-    }
-  }
-
-  def remove(id:String) = {
-    clog << "WIKI_CACHE_CLEAR - "+id
-    Cache.remove(id)
-  }
-}
 
 /** wiki factory and utils */
 object Wikis extends Logging with Validation {
+
+  /** retrieve chached compiled page or get it fresh, fold and cache if not cached
+    *
+    * @param wid the page id
+    * @param au the user, if any - pages may have dynamic content in the context of a user
+    * @return
+    */
+  def cachedPage(wid: WID, au: Option[WikiUser]) = {
+    val w = {
+      if (Services.config.cacheWikis) {
+        val id = wid.wpathFullNoSection + ".page"
+
+        WikiCache.getEntry(id).map { x =>
+          x
+        }.orElse {
+          // complex logic to not log cache miss twice
+          val n = if(wid.hasCachedPage) wid.page else wid.findPageNocache
+          n.map(_.preprocess(au))
+          if (n.exists(w => w.cacheable && w.category != "-" && w.category != "")) {
+            WikiCache.set(n.get.wid.wpathFull + ".page", n.get, 300) // 10 miuntes
+          } else {
+            cdebug << "WIKI_CACHE_CANTC FULL - " + id
+          }
+          n
+        }
+      } else // no cache
+        wid.page
+    }
+    w
+  }
 
   /** create the data section */
   def mkFormData(spec: WikiEntry, defaults: Map[String, String] = Map.empty) = {

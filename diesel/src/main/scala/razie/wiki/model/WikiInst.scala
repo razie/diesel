@@ -233,7 +233,7 @@ class WikiInstImpl (val realm:String, val fallBacks:List[WikiInst], mkDomain : W
 
             // only store in cache if it's the exact realm we're looking for, not some mixin - otherwise it's misleading
             // during realm creation when new pages are created...
-            if(pageFound.getAs[String]("realm") == tempw.getRealm)
+            if(pageFound.getAs[String]("realm").exists(_ == tempw.getRealm))
               WikiCache.set(key, pageFound, 120) // 2 minutes
           }
           n

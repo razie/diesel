@@ -142,6 +142,40 @@ case class TriAstNode(prefix: String, mid: BaseAstNode, suffix: String)
     s"RSTATE ($prefix, $suffix)" + "<ul><li>" + mid.printHtml(level + 1) + "</ul>"
 }
 
+/** lazy STATIC AST node - value computed when they're folded.
+  *
+  * these are cacheable.
+  *
+  * within parsers, see use of ifoldStatic. the ifold is only used internally to fold
+  *
+  * todo have a separate set of contexts and nodes for static and non-static content
+  */
+case class LazyStaticAstNode[T <: DSpec](
+  f: (StrAstNode, StaticFoldingContext[T]) => StrAstNode
+) extends BaseAstNode {
+  var dirty = false
+
+  if (SpecParserSettings.debugAstNodes) cdebug << this.toString
+
+  // nobody should ask for these - fold the parse result into a SState always
+  override def s: String = ???
+  override def props: Map[String, String] = ???
+  override def ilinks: List[Any] = ???
+
+  def ifoldStatic(current: StrAstNode,
+                     ctx: StaticFoldingContext[_]): StrAstNode = {
+    if (dirty) ctx.cacheable = false
+    f(current, ctx.asInstanceOf[StaticFoldingContext[T]])
+  }
+
+  override def ifold(current: StrAstNode,
+                     ctx: FoldingContext[_, _]): StrAstNode =
+    ifoldStatic(current, ctx)
+
+  override def toString = s"LazySTATE ()"
+
+  def cacheOk = { this.dirty = false; this }
+}
 /** lazy AST node - value computed when they're folded.
   *
   * By default a lazy state will cause a non cacheable wiki
