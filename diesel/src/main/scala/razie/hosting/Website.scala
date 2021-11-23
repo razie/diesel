@@ -51,6 +51,8 @@ class Website (we:WikiPage, extra:Seq[(String,String)] = Seq()) extends DslProps
   def dieselTrust:String = this prop "diesel.trust" OR ""
   def dieselEnvList:String = this prop "diesel.envList" OR ""
 
+  lazy val dieselRestTemplates:Boolean = this bprop "diesel.rest.templates" OR false
+
   def stylesheetLight: Option[WID] = this wprop "stylesheet.light"
   def stylesheetDark: Option[WID] = this wprop "stylesheet.dark"
 

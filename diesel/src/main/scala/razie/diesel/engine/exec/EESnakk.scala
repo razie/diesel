@@ -17,6 +17,7 @@ import razie.diesel.engine._
 import razie.diesel.engine.nodes._
 import razie.diesel.expr.{ECtx, SimpleExprParser}
 import razie.diesel.snakk.FFDPayload
+import razie.hosting.Website
 import razie.tconf.{DTemplate, EPos}
 import razie.wiki.Enc
 import razie.wiki.model.WID
@@ -52,12 +53,20 @@ class EESnakk extends EExecutor("snakk") with Logging {
     // and also if the stypes are known and there are templates for them
     known(m.stype) ||
       spec(m).exists(m => known(m.stype) ||
-          // todo big performance issue - looking up templates for each message, called from expandEMsg
-        ctx.findTemplate(m.entity + "." + m.met).exists(x=>
+
+          {
+            // big performance issue - looking up templates for each message, called from expandEMsg
+
+            val useTemplates = ! ctx.root.engine.get.settings.realm
+                .flatMap(Website.forRealm(_)).exists(_.dieselRestTemplates)
+
+        useTemplates && ctx.findTemplate(m.entity + "." + m.met).exists(x=>
           (x.tags.contains("request") ||
           x.tags.contains("response")) &&
               ! x.tags.contains("in")  // if tagged with in, don't match for out
-        ))
+        )
+          }
+      )
   }
 
   /** execute for snakk.parse... */
@@ -107,9 +116,12 @@ class EESnakk extends EExecutor("snakk") with Logging {
     // flatten the options and add to filteredAttrs - that's convention with Comms
     filteredAttrs = snakkHttpOptions(in.attrs) ::: filteredAttrs
 
+    val useTemplates = ctx.root.engine.get.settings.realm
+        .flatMap(Website.forRealm(_)).exists(_.dieselRestTemplates)
+
     // templates?
-    val templateReq  = ctx.findTemplate(in.entity + "." + in.met, "request")
-    val templateResp = ctx.findTemplate(in.entity + "." + in.met, "response")
+    val templateReq  = if(!useTemplates) None else ctx.findTemplate(in.entity + "." + in.met, "request")
+    val templateResp = if(!useTemplates) None else ctx.findTemplate(in.entity + "." + in.met, "response")
 
     // reference to what was used to parse it - for debug navigation
     val pos = templateReq.map(_.pos).orElse{
@@ -264,10 +276,10 @@ class EESnakk extends EExecutor("snakk") with Logging {
       }
 
       // 3. look for stiching dieselTrace
-      if (reply.isJson && reply.body.contains(DieselTrace.dieselTrace)) {
+      if (reply.isJson && reply.body.contains(DieselJsonFactory.dieselTrace)) {
         val mres = js.parse(response)
-        if (mres.contains(DieselTrace.dieselTrace)) {
-          val trace = DieselJsonFactory.trace(mres(DieselTrace.dieselTrace).asInstanceOf[collection.Map[String, Any]])
+        if (mres.contains(DieselJsonFactory.dieselTrace)) {
+          val trace = DieselJsonFactory.trace(mres(DieselJsonFactory.dieselTrace).asInstanceOf[collection.Map[String, Any]])
           eres += trace
         }
       }
