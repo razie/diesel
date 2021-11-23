@@ -17,7 +17,7 @@ import razie.diesel.Diesel
 import razie.diesel.dom.RDOM.P
 import razie.diesel.dom._
 import razie.diesel.engine.exec.EEFunc
-import razie.diesel.engine.nodes.{EMsg, EVal}
+import razie.diesel.engine.nodes.{EMap, EMock, EMsg, ERule, EVal}
 import razie.diesel.engine.{AstKinds, DieselAppContext, DomAst}
 import razie.wiki.{Enc, EncUrl}
 
@@ -226,6 +226,18 @@ case class AExprFunc(val expr: String, parms: List[RDOM.P]) extends Expr {
         )
       }
 
+      case "split" => {
+          val av = firstParm.getOrElse {
+            throw new DieselExprException("Need three arguments.")
+          }.calculatedValue
+
+          val bv = secondParm.getOrElse {
+            throw new DieselExprException("Need three arguments.")
+          }.calculatedValue
+
+          P.fromTypedValue("", av.split(bv).toSeq, WTypes.wt.ARRAY)
+      }
+
       case "accessor" => {
         firstParm.map { p =>
           val pStart = p.calculatedP
@@ -352,7 +364,7 @@ case class AExprFunc(val expr: String, parms: List[RDOM.P]) extends Expr {
               ast,
               engine.settings,
               engine.pages,
-              "SYNC-"+engine.description
+              "SYNC-"+expr
             )
 
             val level =
