@@ -161,7 +161,7 @@ object DieselAppContext extends Logging {
                settings: DomEngineSettings,
                pages: List[DSpec],
                description: String,
-               correlationId: Option[String] = None) = synchronized {
+               correlationId: Option[String] = None) = {
 
     val eng = ctx.mkEngine(dom, root, settings, pages, description, correlationId)
     val p = Props(new DomEngineActor(eng))
@@ -170,15 +170,17 @@ object DieselAppContext extends Logging {
     DieselAppContext.activeEngines.put(eng.id, eng)
     DieselAppContext.activeActors.put(eng.id, a)
 
-    if (serviceStarted) {
-      a ! DEInit
+    synchronized {
+      if (serviceStarted) {
+        a ! DEInit
+      }
     }
 
     eng
   }
 
   /** the static version - delegates to factory */
-  def mkStream(stream: DomStream) = synchronized {
+  def mkStream(stream: DomStream) = {
     val p = Props(new DomStreamActor(stream))
     val a = actorOf(p, name = "stream-" + stream.id)
 
@@ -188,8 +190,10 @@ object DieselAppContext extends Logging {
     DieselAppContext.activeStreams.put(stream.id, stream)
     DieselAppContext.activeActors.put(stream.id, a)
 
-    if (serviceStarted) {
-      a ! DEInit
+    synchronized {
+      if (serviceStarted) {
+        a ! DEInit
+      }
     }
 
     stream

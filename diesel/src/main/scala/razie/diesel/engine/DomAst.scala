@@ -258,6 +258,7 @@ case class DomAst(
         case _ => ("", "")
       }
 
+      // do NOT change msec, it's used for durations in engineView
       if (html)
         s"""<span status="$status" seqNo="$seqNo" msec="$duration" id="$id" prereq="${prereq.mkString(",")}"
            |title="$kind, $duration ms" style="$style" class="$cls">${kind.take(3)}</span>""".stripMargin

@@ -49,7 +49,7 @@ case class DEComplete(engineId: String, targetId: String, recurse: Boolean, leve
   * @param recurse
   * @param level
   * @param results
-  * @param mapper   - optional mapper to transform teh nodes before adding, after locking the engine
+  * @param mapper   - optional mapper to transform teh nodes before adding, **after** locking the engine
   */
 case class DEAddChildren(engineId: String, targetId: String, recurse: Boolean, level: Int, results: List[DomAst],
                          mapper: Option[(DomAst, DomEngine) => DomAst] = None)
