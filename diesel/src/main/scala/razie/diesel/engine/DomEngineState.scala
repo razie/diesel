@@ -36,7 +36,16 @@ case class DEventNodeStatus(nodeId: String, status: String, dtm: DateTime = Date
 case class DADepy (prereq:DomAst, depy:DomAst)
 
 /** dependency event */
-case class DADepyEv (prereq:String, depy:String, dtm:DateTime=DateTime.now) extends DEvent
+case class DADepyEv (prereq:String, depy:String, dtm:DateTime=DateTime.now) extends DEvent {
+  var pAst: Option[DomAst] = None
+  var dAst: Option[DomAst] = None
+
+  def withAst(p:DomAst, d:DomAst) = {
+    pAst = Some(p)
+    dAst = Some(d)
+    this
+  }
+}
 
 
 /** the state changes of an engine, including all events, tree changes etc, go through here */
@@ -68,7 +77,12 @@ trait DomEngineState {
   /** dependencies */
   protected val depys = ListBuffer[DADepy]()
 
-  /** create / add some dependencies, so d waits for p */
+  /** create / add some dependencies, so d waits for p
+    *
+    * @param p prerequisites
+    * @param d dependents
+    * @return
+    */
   protected def crdep(p:List[DomAst], d:List[DomAst]) = {
     d.map{d=>
       // d will wait
@@ -115,8 +129,12 @@ trait DomEngineState {
       case DEventNodeStatus(parentId, status, _) =>
         n(parentId).status = status
 
-      case DADepyEv(pId, dId, _) =>
-        depys.append(DADepy(n(pId), n(dId)))
+      case dep @ DADepyEv(pId, dId, _) =>
+        depys.append(
+          DADepy(
+            dep.pAst getOrElse n(pId),
+            dep.dAst getOrElse n(dId)
+          ))
     }
   }
 
@@ -133,13 +151,11 @@ trait DomEngineState {
   }
 
   private[engine] def evChangeStatus(node: DomAst, status: String): Unit = {
-//    node.status = status
     addEvent(DEventNodeStatus(node.id, status))
   }
 
   private[engine] def evAddDepy (p:DomAst, d:DomAst) : Unit = {
-//    depys.append(DADepy(p,d))
-    addEvent(DADepyEv(p.id,d.id))
+    addEvent(DADepyEv(p.id,d.id).withAst(p, d))
   }
 
 }

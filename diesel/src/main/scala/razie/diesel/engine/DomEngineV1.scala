@@ -160,7 +160,7 @@ class DomEngineV1(
       case n1@ENext(m, ar, cond, _, _) if "-" == ar || "=>" == ar => {
         // message executed later
 
-        implicit val ctx = a.withCtx(mkPassthroughMsgContext(
+        implicit val ctx = a.replaceCtx(mkPassthroughMsgContext(
           n1.parent,
           n1.parent.map(_.attrs).getOrElse(Nil),
           a.getCtx.get, //RAZ2 this.ctx,
@@ -212,7 +212,7 @@ class DomEngineV1(
           // a message with this name found, call it sync
 
           // NOTE - need to use ctx to access values in context etc, i..e map (x => a.b(x))
-          val res = newe.execSync(newnode, level, ctx)
+          val res = newe.execSync(newnode, level, ctx, true)
 
           newnode.setKinds(AstKinds.TRACE)
           newnode.kind = AstKinds.SUBTRACE

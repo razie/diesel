@@ -342,13 +342,14 @@ case class AExprFunc(val expr: String, parms: List[RDOM.P]) extends Expr {
         // must be in form x...y.func
         val PAT = """([\w.]+)[./](\w+)""".r
         val PAT(ee, aa) = expr
-        val msg = EMsg(ee, aa, parms)
-        val ast = DomAst(msg, AstKinds.RECEIVED)
+        val parent = EMsg(ee, aa, List())
 
         // is there a spec for it in current domain?
         val spec = ctx.root.domain.flatMap {
           _.moreElements.collect {
             case s: EMsg if s.ea == expr => Some(s)
+            case s: ERule if s.e.ea == expr => Some(s.e.asMsg)
+            case s: EMock if s.rule.e.ea == expr => Some(s.rule.e.asMsg)
           }.headOption
         }
 
@@ -357,7 +358,11 @@ case class AExprFunc(val expr: String, parms: List[RDOM.P]) extends Expr {
           _.funcs.get (expr)
         }
 
+        val msg = EMsg(ee, aa, EMap.sourceAttrs(parent, parms, spec.map(_.get.attrs)))
+        val ast = DomAst(msg, AstKinds.RECEIVED)
+
         spec.flatMap { msgSpec =>
+
           ctx.root.engine.flatMap{engine=>
             val newe = DieselAppContext.mkEngine(
               engine.dom,
@@ -378,7 +383,7 @@ case class AExprFunc(val expr: String, parms: List[RDOM.P]) extends Expr {
             // a message with this name found, call it sync
 
             // NOTE - need to use ctx to access values in context etc, i..e map (x => a.b(x))
-            val res = newe.execSync(ast, level, ctx)
+            val res = newe.execSync(ast, level, ctx, true)
 
             ast.setKinds(AstKinds.TRACE)
             ast.kind = AstKinds.SUBTRACE

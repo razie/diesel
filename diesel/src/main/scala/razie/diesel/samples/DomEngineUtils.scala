@@ -14,10 +14,10 @@ import razie.diesel.dom.RDOM.P
 import razie.diesel.dom._
 import razie.diesel.engine.RDExt.DieselJsonFactory
 import razie.diesel.engine._
-import razie.diesel.engine.nodes.{EMsg, EVal, EnginePrep}
+import razie.diesel.engine.nodes.{EInfo, EMsg, EVal, EnginePrep}
 import razie.diesel.model.{DieselMsg, DieselMsgString, DieselTarget}
 import razie.tconf.DSpec
-import razie.wiki.model.{WID, WikiEntry}
+import razie.wiki.model.{WID, WikiEntry, Wikis}
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
@@ -92,6 +92,9 @@ object DomEngineUtils {
     */
   def createEngine(msg: String, specs: List[WID], stories: List[WID], settings: DomEngineSettings,
                    omsg: Option[DieselMsgString] = None): DomEngine = {
+
+    val t1 = System.currentTimeMillis()
+
     val realm = settings.realm getOrElse specs.headOption.map(_.getRealm).mkString
     val page = new WikiEntry("Spec", "fiddle", "fiddle", "md", "", NOUSER, Seq("dslObject"), realm)
 
@@ -112,10 +115,14 @@ object DomEngineUtils {
     val pages = (specs ::: stories)
         .filter(_.section.isEmpty)
         .distinct
-        .flatMap(_.page)
+        .flatMap(w => Wikis.cachedPage(w, None))
+
+    val t2 = System.currentTimeMillis()
 
     // to domain
     val dom = WikiDomain.domFrom(page, pages)
+
+    val t3 = System.currentTimeMillis()
 
     // make up a story
     val FILTER = Array("sketchMode", "mockMode", "blenderMode", "draftMode")
@@ -139,6 +146,8 @@ object DomEngineUtils {
     // replace first line if ctx.set, better desc
     val desc = if (msg.startsWith("$msg ctx.set")) msg.replaceFirst("""^\$msg ctx.set.*""", "") else msg
 
+    val t4 = System.currentTimeMillis()
+
     // start processing all elements
     val engine = DieselAppContext.mkEngine(
       dom plus idom,
@@ -146,6 +155,13 @@ object DomEngineUtils {
       settings,
       ipage :: pages map WikiDomain.spec,
       DieselMsg.runDom + desc)
+
+    engine.root.prependAllNoEvents(List(
+      DomAst(
+        EInfo(s"Prep time total=${t4-t1} ", s"total=${t4-t1} topics=${t2-t1} domFromTopics=${t3-t2} msgCompile=${t4-t3}"),
+        AstKinds.DEBUG)
+          .withStatus(DomState.SKIPPED)
+    ))
 
     EnginePrep.addStoriesToAst(engine, List(ipage))
 

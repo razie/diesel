@@ -85,8 +85,27 @@ abstract class DomEngine(
 
     if (p.childrenCol.size > k + 1 && p.childrenCol.exists(_.status == DomState.DONE)) {
 
+      // todo settle these
+
+      // keep just 20 summaries - todo configurable
+//      val dks:Option[Int] = Try {
+//        if(p.value.isInstanceOf[EMsg])
+//          p.value.asInstanceOf[EMsg].attrs.find(_.name == "dieselKeepSummaries").map(_.calculatedTypedValue.asLong.toInt)
+//        else None
+//      }.getOrElse(Some(10))
+      val KS : Int = 10//dks.getOrElse(10)
+
+      // how many nodes to keep
+//      val dko:Option[Int] = Try {
+//        if(p.value.isInstanceOf[EMsg])
+//          p.value.asInstanceOf[EMsg].attrs.find(_.name == "dieselKeepCount").map(_.calculatedTypedValue.asLong.toInt)
+//        else None
+//      }.getOrElse(Some(3))
+      val KO : Int = 3//dko.getOrElse(3)
+      // todo use this one
+
       var prunes = p.childrenCol.zipWithIndex.filter(
-        n => n._1.status == DomState.DONE && shouldPrune(n._1, Some(parent)))
+        n => n._1.status == DomState.DONE && shouldPrune(n._1, Some(parent), KO))
 
       while (prunes.size > k) {
         val toRemove = prunes.head
@@ -97,6 +116,7 @@ abstract class DomEngine(
 
         log("DomEng " + id + ("  " * level) + s" remove kid #${toRemove._2} from " + parent.value)
 
+        // the node under which we collect some pruned info
         val prunedNode = p.childrenCol.find(
           x => x.value.isInstanceOf[EInfoWrapper] && x.value.asInstanceOf[EInfoWrapper].a.isInstanceOf[Pruned])
 
@@ -119,6 +139,7 @@ abstract class DomEngine(
         // todo should record the move in the event history?
         // replace only if there's some details or
 
+        // no pruned node yet - create it
         if (removed.childrenCol.nonEmpty && prunedInfo.isEmpty) {
 
           // impersonate the replaced ID's?
@@ -132,12 +153,18 @@ abstract class DomEngine(
           // if a summary says "keep" then we keep it
           if (keep) replacement.append(removed.resetParent(null))
         } else {
+          // this is a pruned node, collect underneath
           prunedInfo.foreach(_.removed += 1)
           prunedNode.map(_.appendAll(summaries))
           // if a summary says "keep" then we keep it
           if (keep) prunedNode.map(_.append(removed.resetParent(null)))
-        }
 
+          // keep only KS summaries
+          prunedNode.map {n =>
+            if(n.childrenCol.size > KS)
+              n.childrenCol.remove(0, n.childrenCol.size - KS)
+          }
+        }
 
         // next?
         prunes = prunes.drop(1)
@@ -341,9 +368,11 @@ abstract class DomEngine(
   }
 
   /** finalize and release resources, actors etc */
-  def engineDone(collect: Boolean = true) = {
+  def engineDone(collect: Boolean = true, decrement:Boolean=true) = {
+    trace("DomEng " + id + " stopNow")
     clog << s"WF.STOP.$id"
-    GlobalData.dieselEnginesActive.decrementAndGet()
+
+    if(decrement) GlobalData.dieselEnginesActive.decrementAndGet()
 
     if (!finishP.isCompleted) finishP.success(this)
 
@@ -380,9 +409,7 @@ abstract class DomEngine(
   def stopNow = {
     if (!DomState.isDone(status)) {
       status = DomState.CANCEL
-      trace("DomEng " + id + " stopNow")
       engineDone()
-
       cleanResources()
     }
   }
@@ -654,10 +681,8 @@ abstract class DomEngine(
 
     if (root.status == DomState.DONE && status != DomState.DONE) {
       status = DomState.DONE
-      trace("DomEng " + id + " finish")
       engineDone()
-      DieselAppContext.activeActors.get(id).foreach(_ ! DEStop) // stop the actor and remove engine
-
+      cleanResources()
     }
 
     result
@@ -797,16 +822,29 @@ abstract class DomEngine(
     * @param ctx   root context to use
     * @return
     */
-  def execSync(ast: DomAst, level: Int, ctx: ECtx): Option[P] = {
+  def execSyncOLD(ast: DomAst, level: Int, ctx: ECtx, initial:Boolean=true): Option[P] = {
+
+    if(initial) {
+      this.synchronous = true
+    }
+
     // stop propagation of local vals to parent engine
-    var newCtx: ECtx = new ScopeECtx(Nil, Some(ctx), Some(ast))
+    var newCtx: ECtx =
+      if(initial) new ScopeECtx(if(ast.value.isInstanceOf[EMsg]) ast.value.asInstanceOf[EMsg].attrs else Nil, Some(ctx), Some(ast))
+      else ctx
 
-    // include this messages' context
-    newCtx =
-        if (ast.value.isInstanceOf[EMsg]) new StaticECtx(ast.value.asInstanceOf[EMsg].attrs, Some(newCtx), Some(ast))
-        else new StaticECtx(Nil, Some(newCtx), Some(ast))
+//    // include this messages' context
+//    newCtx = mkPassthroughMsgContext(
+//      if(ast.value.isInstanceOf[EMsg]) Some(ast.value.asInstanceOf[EMsg]) else None,
+//      Nil,
+//      newCtx,
+//      ast
+//    )
 
-    ast.replaceCtx(newCtx)
+//        if (ast.value.isInstanceOf[EMsg]) new StaticECtx(.attrs, Some(newCtx), Some(ast))
+//        else new StaticECtx(Nil, Some(newCtx), Some(ast))
+
+    if(initial) ast.replaceCtx(newCtx)
 
 //    GlobalData.dieselEnginesActive.incrementAndGet()
 
@@ -817,26 +855,39 @@ abstract class DomEngine(
 
     var msgs: List[_] = Nil
 
-    if (ast.getCtx.isEmpty) ast.withCtx(newCtx)
+//    if (ast.getCtx.isEmpty) ast.withCtx(newCtx)
 
-    if (ast.value.isInstanceOf[EMsg]) {
-      val (msgsx, skipped) = expandEMsg(ast, ast.value.asInstanceOf[EMsg], recurse = true, level, newCtx)
-      msgs = msgsx
-      evAppChildren(ast, msgsx)
-    } else {
+//    if (ast.value.isInstanceOf[EMsg]) {
+//      val (msgsx, skipped) = expandEMsg(ast, ast.value.asInstanceOf[EMsg], recurse = true, level, newCtx)
+//      msgs = msgsx
+//      evAppChildren(ast, msgsx)
+//    } else {
       msgs = expand(ast, recurse = true, level)
-    }
+//    }
 
-    var res = newCtx.getp(Diesel.PAYLOAD)
+    var res =  newCtx.getp(Diesel.PAYLOAD)
 
     // recurse manually
     msgs.collect {
 
       case a: DomAst if a.value.isInstanceOf[EMsg] =>
-        res = execSync(a, level + 1, newCtx)
+        res = execSync(a, level + 1, newCtx, false)
 
       case a: DomAst if a.value.isInstanceOf[ENextPas] =>
-        res = execSync(a, level + 1, newCtx)
+        res = execSync(a, level + 1, newCtx, false)
+//          a.value.isInstanceOf[ENext] ||
+//          a.value.isInstanceOf[EMsgPas] =>
+
+      case a: DomAst if a.value.isInstanceOf[ENext] => {
+        res = execSync(a, level + 1, newCtx, false)
+      }
+
+      // subrules use ENext which returns DEReq
+      // todo use a proper "sync" SLA so the engine does this natively, not here...
+      case a: DEReq => {
+        res = execSync(a.a, a.level, newCtx, false)
+      }
+
 //          a.value.isInstanceOf[ENext] ||
 //          a.value.isInstanceOf[EMsgPas] =>
 
@@ -846,8 +897,63 @@ abstract class DomEngine(
     ast.status = DomState.DONE // bypass evChangedStatus
     ast.end()
 
-//    engineDone(false)
-//    DieselAppContext.activeActors.get(id).foreach(_ ! DEStop) // stop the actor and remove engine
+    if(initial) {
+      status = DomState.DONE
+      engineDone(true, false)
+      cleanResources()
+    }
+
+    res
+  }
+
+  /** exec sync as a func call, used from AExprFunc
+    *
+    * @param ast   new root
+    * @param level starting level
+    * @param ctx   root context to use
+    * @return
+    */
+  def execSync(ast: DomAst, level: Int, ctx: ECtx, initial:Boolean=true): Option[P] = {
+
+    if(initial) {
+      this.synchronous = true
+    }
+
+    // stop propagation of local vals to parent engine
+    var newCtx: ECtx =
+      if(initial) new ScopeECtx(if(ast.value.isInstanceOf[EMsg]) ast.value.asInstanceOf[EMsg].attrs else Nil, Some(ctx), Some(ast))
+      else ctx
+
+//    // include this messages' context
+//    newCtx = mkPassthroughMsgContext(
+//      if(ast.value.isInstanceOf[EMsg]) Some(ast.value.asInstanceOf[EMsg]) else None,
+//      Nil,
+//      newCtx,
+//      ast
+//    )
+
+//        if (ast.value.isInstanceOf[EMsg]) new StaticECtx(.attrs, Some(newCtx), Some(ast))
+//        else new StaticECtx(Nil, Some(newCtx), Some(ast))
+
+    if(initial) ast.replaceCtx(newCtx)
+
+    // inherit all context from parent engine
+//    this.ctx.root.overwrite(newCtx)
+
+    // todo clone the root context passed - if anyone goes to the root will find the other engine...
+
+    later(List(DEReq(id, ast, recurse = true, level)))
+
+    val res = newCtx.getp(Diesel.PAYLOAD)
+
+    ast.status = DomState.DONE // bypass evChangedStatus
+    ast.end()
+
+    if(initial) {
+      status = DomState.DONE
+      engineDone(collect = true, decrement = false)
+      cleanResources()
+    }
 
     res
   }
@@ -868,6 +974,7 @@ abstract class DomEngine(
       case DEComplete(eid, aid, r, l, results) => {
         // completed child spawned that I'm waiting for
         require(eid == this.id) // todo logical error not a fault
+        val otarget = findNode(aid)
         val target = n(aid)
         val completer = DomAst(EEngComplete("DEComplete"), AstKinds.BUILTIN)
         val toAdd = results ::: completer :: Nil
@@ -890,7 +997,8 @@ abstract class DomEngine(
           // todo add a warn
           evAppChildren(
             target,
-            List(DomAst(EWarning("DEComplete on DONE"), AstKinds.DEBUG))
+            List(DomAst(EWarning("DEComplete on target node already DONE"), AstKinds.DEBUG)
+                .withStatus(DomState.SKIPPED))
           )
 
           Nil
