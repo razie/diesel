@@ -7,15 +7,12 @@
 package razie.diesel.model
 
 import razie.audit.Audit
-import razie.diesel.dom.RDOM.P.asString
-import razie.diesel.engine.{DomEngine, DomEngineSettings}
-import razie.diesel.engine.nodes.{EMsg, EnginePrep}
+import razie.diesel.engine.DomEngineSettings
+import razie.diesel.engine.nodes.EMsg
 import razie.diesel.samples.DomEngineUtils
 import razie.diesel.samples.DomEngineUtils.extractResult
-import razie.tconf.{SpecRef, TSpecRef, TagQuery}
-import razie.wiki.model.{WID, WikiSearch, Wikis}
-import razie.{clog, cout}
 import scala.util.Try
+import razie.{clog, cdebug, cout}
 
 /** a message string - send these to Services to have them executed
   *
@@ -25,7 +22,7 @@ import scala.util.Try
   */
 case class DieselMsgString(msg: String,
                            target: DieselTarget = DieselTarget.RK,
-                           ctxParms: Map[String, String] = Map.empty,
+                           ctxParms: Map[String, Any] = Map.empty,
                            osettings: Option[DomEngineSettings] = None,
                            omsg: Option[DieselMsg] = None
                           ) {
@@ -33,15 +30,16 @@ case class DieselMsgString(msg: String,
   /** convert to msg string */
   def mkMsgString: String = {
     if (ctxParms.nonEmpty) {
-      // add the params to the context with an artificial ctx.set message
-      val extra = ctxParms.map(t => s"""${t._1} = "${t._2}"""").mkString(", ")
+      // add the params to the context with an artificial ctx.set message so we don't parse the msg which could be a story
+//      val extra = ctxParms.map(t => s"""${t._1} = "${t._2}"""").mkString(", ")
+      val extra = DieselMsg.argsToMsgString(ctxParms)
       s"""$$msg ctx.set($extra)\n\n$msg"""
     } else
       msg
   }
 
   /** clone with new context */
-  def withContext(p: Map[String, String]) = this.copy(ctxParms = ctxParms ++ p)
+  def withContext(p: Map[String, Any]) = this.copy(ctxParms = ctxParms ++ p)
   def withSettings(p: Option[DomEngineSettings]) = this.copy(osettings = osettings)
 
  /** try to parse and get the message invoked */
@@ -66,8 +64,6 @@ case class DieselMsgString(msg: String,
     settings.env = if (target.env == DieselTarget.DEFAULT) None else Some(target.env)
 
     val ms = m.mkMsgString
-
-    import scala.concurrent.ExecutionContext.Implicits.global
     DomEngineUtils
         .createEngine(ms, target.specs, target.stories, settings, Some(this))
   }
@@ -109,22 +105,6 @@ case class ScheduledDieselMsg(schedule: String, msg: DieselMsg) {}
 
 case class ScheduledDieselMsgString(schedule: String, msg: DieselMsgString) {}
 
-/** a target for a message: either a specified list of config, or a realm
-  *
-  * @param realm   - the target realm
-  * @param env     - the target env inside the target realm
-  * @param specs   - list of specifications to get the rules from
-  * @param stories - optional list of stories to execute and validate
-  */
-class DieselTarget(
-  val realm: String,
-  val env: String = DieselTarget.DEFAULT) {
-
-  def specs: List[TSpecRef] = Nil
-
-  def stories: List[TSpecRef] = Nil
-}
-
 /** a message intended for a target. Send to CQRS for execution, via Services */
 case class DieselMsg(
   e: String,
@@ -144,26 +124,7 @@ case class DieselMsg(
   def ea = e + "." + a
 
   def toMsgString = DieselMsgString(
-    s"$$msg $e.$a (" +
-        (args
-            .map(
-              t =>
-                t._1 + "=" + (t._2 match {
-                  case s: String if s.startsWith("{") || s.startsWith("[") => {
-//                    val ss = s.replaceAll("\\\"", "\\\"")
-                    s""" $s """
-                  }
-                  case s: String => {
-                    // todo should escape them...
-//                    val ss = s.replaceAll("\\\"", "\\\"")
-                    s""" "$s" """
-                  }
-                  case s: Int => s"$s"
-                  case s@_ => s"${s.toString}"
-                })
-            )
-            .mkString(", ")) +
-        ")",
+    s"$$msg $e.$a (" + DieselMsg.argsToMsgString(args) + ")",
     target,
     Map.empty,
     osettings,
@@ -186,88 +147,31 @@ case class DieselMsg(
   override def toString = razie.js.tojsons(toJson)
 }
 
-object DieselTarget {
-  final val DEFAULT = "default"
-
-  /** find all specs starting from realm and tq, including mixins except private */
-  def tqSpecs(realm: String, tq: TagQuery) = {
-    // this and mixins
-    val w = Wikis(realm)
-    val tags = tq.and("spec").tags
-    val irdom = (
-        WikiSearch.getList(realm, "", "", tags) :::
-            w.mixins.flattened.flatMap(r =>
-              WikiSearch
-                  .getList(r.realm, "", "", tags)
-                  .filter(x => !(x.tags.contains("private")))
-            )
-        )
-
-    EnginePrep.mixinEntries(irdom).map(_.wid.toSpecPath)
-  }
-
-  /** the environment settings - most common target */
-  def ENV_SETTINGS(realm: String) =
-    SpecRef(realm, realm + ".Spec:EnvironmentSettings", "EnvironmentSettings")
-
-  /** specific list of specs to use */
-  def from(realm: String, env: String, specs: List[TSpecRef], stories: List[TSpecRef]) =
-    new DieselTargetList(realm, env, specs, stories)
-
-  /** all specs in a realm and mixins */
-  def ENV(realm: String, env: String = DEFAULT) =
-    new DieselTarget(realm, env) {
-      override def specs = {
-        ENV_SETTINGS(realm) :: tqSpecs(realm, new TagQuery(""))
-      }
-    }
-
-  /** the diesel section from the reactor topic */
-  def REALMDIESEL(realm: String, env: String = DEFAULT) =
-    DieselTarget.from(
-      realm,
-      env,
-      WID.fromPath(s"${realm}.Reactor:${realm}#diesel").map(_.toSpecPath).toList,
-      Nil)
-
-  /** list of topics by tq */
-  def TQSPECS(realm: String, env: String, tq: TagQuery) =
-    new DieselTarget(realm, env) {
-
-      override def specs = {
-        ENV_SETTINGS(realm) :: tqSpecs(realm, tq)
-      }
-    }
-
-  /** list of topics by tq */
-  def TQSPECSANDSTORIES(realm: String, env: String, tq: TagQuery) =
-    new DieselTarget(realm, env) {
-
-      override def specs = {
-        ENV_SETTINGS(realm) :: tqSpecs(realm, tq)
-      }
-
-      override def stories = {
-        // stories just in current realm
-        val irdom = WikiSearch.getList(realm, "", "", tq.and("story").tags)
-
-        ENV_SETTINGS(realm) :: irdom.map(_.wid.toSpecPath)
-      }
-    }
-
-  /** the environment settings - most common target */
-  def RK = new DieselTarget("rk")
-}
-
-/** target a specified set of specs */
-case class DieselTargetList(
-  override val realm: String,
-  override val env: String,
-  override val specs: List[TSpecRef],
-  override val stories: List[TSpecRef]) extends DieselTarget(realm)
-
 /** constants */
 object DieselMsg {
+
+  /** somewhat type aware nvp args to string */
+  def argsToMsgString (margs:Map[String, Any]) =
+    (margs
+        .map(
+          t =>
+            t._1 + "=" + (t._2 match {
+              case s: String if s.startsWith("{") || s.startsWith("[") => {
+//                    val ss = s.replaceAll("\\\"", "\\\"")
+                s""" $s """
+              }
+              case s: String => {
+                // todo should escape them...
+//                    val ss = s.replaceAll("\\\"", "\\\"")
+                s""" "$s" """
+              }
+              case s: Int => s"$s"
+              case s@_ => s"${s.toString}"
+            })
+        )
+        .mkString(", ")
+        )
+
   final val CRON_TICK = "$msg diesel.cron.tick"
   final val GUARDIAN_POLL = "$msg diesel.guardian.poll"
   final val GUARDIAN_RUN = "$msg diesel.guardian.run"
@@ -318,7 +222,8 @@ object DieselMsg {
     final val DIESEL_BEFORE = "diesel.before"
     final val DIESEL_AFTER = "diesel.after"
     final val DIESEL_LEVELS = "diesel.levels"
-    final val DIESEL_RETURN = "diesel.return"
+    final val DIESEL_RETURN = "diesel.return" // todo obsolete
+    final val DIESEL_FLOW_RETURN = "diesel.flow.return"
     final val DIESEL_SCOPE_RETURN = "diesel.scope.return"
     final val DIESEL_RULE_RETURN = "diesel.rule.return"
     final val DIESEL_THROW = "diesel.throw"
