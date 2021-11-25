@@ -44,10 +44,11 @@ class EEDomInventory extends EExecutor("diesel.inv") {
       case REG => {
         //just register inv factory assocs
         val inv = ctx.getRequired("inventory")
-        ctx.getRequired("classNames").split(",").foreach(
-          DomInventories.registerPlugin(realm, _, inv)
-        )
-        Nil
+        val s = ctx.getRequired("classNames").split(",").map { c =>
+          DomInventories.registerPlugin(realm, c, inv)
+          s"$realm - $inv - $c"
+        }
+        List(EVal(P.fromSmartTypedValue(Diesel.PAYLOAD, s.mkString(" | \n"))))
       }
 
       case CONNECT => {
@@ -108,7 +109,7 @@ class EEDomInventory extends EExecutor("diesel.inv") {
 
       case UPSERT | UPSERT_BULK => {
         val entity = ctx.getp("entity").orElse(ctx.getp(Diesel.PAYLOAD))
-        val entities = ctx.getp("entities").orElse(ctx.getp(Diesel.PAYLOAD))
+        val entities = ctx.getp("entities")
         val conn = ctx.get("connection").getOrElse("")
         val async = ctx.getp("async")
         val cls = ctx.get("className").getOrElse(entity.get.ttype.schema)
@@ -118,58 +119,77 @@ class EEDomInventory extends EExecutor("diesel.inv") {
         val cc = dom.rdom.classes.get(cls)
         val c = dom.rdom.classes.get(cls).getOrElse(new C(cls))
 
-        val j = entity.get.value.get.asJson
-        val jo = razie.js.tojson(j)
+        def oneEntity(entity:P) = {
+          val j = entity.value.get.asJson
+          val jo = razie.js.tojson(j)
 
-        // we use the assetref, then key attribute then at last ask for a key input - avoids context junk
-        val k =
-          j.get("assetRef")
-              .filter(_.isInstanceOf[collection.Map[_, _]])
-              .map(_.asInstanceOf[collection.Map[String, Any]])
-              .flatMap(_.get("key"))
-              .orElse(
-                j.get("key")
-              )
-              .orElse(
-                ctx.get("key")
-              )
-              .mkString
-
-        val t = c.props.find(_.name == "table").map(_.calculatedValue(ECtx.empty)).getOrElse(c.name)
-        //          val o = DomInventories.oFromJ("x", jo, c, t, Array[String]())
-        val plugin = DomInventories.getPluginForClass(realm, c, conn)
-        val ref = FullSpecRef(
-          plugin.map(_.name).orElse(ctx.get("inventory")).mkString,
-          plugin.map(_.conn).getOrElse(conn),
-          cls,
-          k,
-          ctx.get("section").getOrElse(""),
-          ctx.root.engine.get.settings.realm.get
-        )
-        val a = new DieselAsset[P](ref, entity.get)
-
-        if (plugin.isEmpty) throw new DieselExprException(s"Inventory not found for $cls")
-
-        val res = plugin
-            // todo pass async to all interfaces as well
-            .map(_.upsert(dom.rdom, ref, a)
-                .fold(
-                  oda => {
-                    oda.map(x => EVal(x.getValueP)).getOrElse(
-                      EVal(P.undefined(Diesel.PAYLOAD))
-                    )
-                  },
-                  m => m
-                      .copy(attrs = async.toList ::: m.attrs)
-                      .copiedFrom(m)
-                      .withPos(in.pos)
+          // we use the assetref, then key attribute then at last ask for a key input - avoids context junk
+          val k =
+            j.get("assetRef")
+                .filter(_.isInstanceOf[collection.Map[_, _]])
+                .map(_.asInstanceOf[collection.Map[String, Any]])
+                .flatMap(_.get("key"))
+                .orElse(
+                  j.get("key")
                 )
-            ).getOrElse(
-          EVal(P.undefined(Diesel.PAYLOAD)
-          )
-        )
+                .orElse(
+                  ctx.get("key")
+                )
+                .mkString
 
-        List(res)
+          val t = c.props.find(_.name == "table").map(_.calculatedValue(ECtx.empty)).getOrElse(c.name)
+          //          val o = DomInventories.oFromJ("x", jo, c, t, Array[String]())
+
+          val plugin = DomInventories.getPluginForClass(realm, c, conn)
+
+          val ref = FullSpecRef(
+            plugin.map(_.name).orElse(ctx.get("inventory")).mkString,
+            plugin.map(_.conn).getOrElse(conn),
+            cls,
+            k,
+            ctx.get("section").getOrElse(""),
+            ctx.root.engine.get.settings.realm.get
+          )
+
+          val a = new DieselAsset[P](ref, entity)
+
+          if (plugin.isEmpty) throw new DieselExprException(s"Inventory not found for $cls")
+
+          val res = plugin
+              // todo pass async to all interfaces as well
+              .map(_.upsert(dom.rdom, ref, a)
+                  .fold(
+                    oda => {
+                      oda.map(x => EVal(x.getValueP)).getOrElse(
+                        EVal(P.undefined(Diesel.PAYLOAD))
+                      )
+                    },
+                    m => m
+                        .copy(attrs = async.toList ::: m.attrs)
+                        .copiedFrom(m)
+                        .withPos(in.pos)
+                  )
+              ).getOrElse(
+            EVal(P.undefined(Diesel.PAYLOAD)
+            )
+          )
+
+          res
+        }
+
+//        val res = entities.map {e=>
+//          val arr = e.value.get.asArray
+//          arr.toList.map {entity=>
+              // todo optimize for batch deep in inventory
+//            oneEntity(entity.asInstanceOf[P])
+//          }
+//        }.getOrElse{
+//          List(oneEntity(entity.get))
+//        }
+
+        val res = List(oneEntity(entity.get))
+
+        res
       }
 
       case FIND => {

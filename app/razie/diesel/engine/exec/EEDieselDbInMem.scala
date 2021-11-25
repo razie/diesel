@@ -6,6 +6,7 @@
 package razie.diesel.engine.exec
 
 import com.mongodb.casbah.Imports._
+import java.util.concurrent.locks.ReentrantReadWriteLock
 import razie.diesel.Diesel
 import razie.diesel.dom.RDOM._
 import razie.diesel.dom.WTypes
@@ -55,14 +56,40 @@ class EEDieselMemDbBase(name: String) extends EExecutor(name) {
 
   import EEDieselDb._
 
+  private val lock  = new ReentrantReadWriteLock()
+  private val read  = lock.readLock()
+  private val write = lock.writeLock()
+
+  private def readLock[T] (f: => T):T = {
+    var res:Option[T] = None
+    try {
+      read.lock()
+      res = Some(f)
+    } finally {
+      read.unlock()
+    }
+    res.get
+  }
+
+  private def writeLock[T] (f: => T):T = {
+    var res:Option[T] = None
+    try {
+      write.lock()
+      res = Some(f)
+    } finally {
+      write.unlock()
+    }
+    res.get
+  }
+
   /** a collection */
-  case class Col(name: String, entries: mutable.HashMap[String, P] = new mutable.HashMap[String, P]())
+  case class Col(name: String, entries: TrieMap[String, P] = new TrieMap[String, P]())
 
   /** a session, per user or per engine (when anonymous) */
   case class Session(
     name: String,
     var time: Long = System.currentTimeMillis(),
-    tables: mutable.HashMap[String, Col] = new mutable.HashMap[String, Col]()
+    tables: TrieMap[String, Col] = new TrieMap[String, Col]()
   )
 
   /** map of active contexts per transaction */
@@ -132,7 +159,7 @@ class EEDieselMemDbBase(name: String) extends EExecutor(name) {
   }
 
   /** process messages */
-  override def apply(in: EMsg, destSpec: Option[EMsg])(implicit ctx: ECtx): List[Any] = synchronized {
+  override def apply(in: EMsg, destSpec: Option[EMsg])(implicit ctx: ECtx): List[Any] = {
     cleanup
     val sessionId = getSessionId(ctx)
     val session = getSession(sessionId)
@@ -159,7 +186,7 @@ class EEDieselMemDbBase(name: String) extends EExecutor(name) {
 
     val res = in.met match {
 
-      case cmd@("upsert") => {
+      case cmd@("upsert") => writeLock {
         val col = ctx.getRequired("collection")
         require(col.length > 0)
         val id = if (ctx.get("id").exists(_.length > 0)) ctx.apply("id") else new ObjectId().toString
@@ -175,7 +202,7 @@ class EEDieselMemDbBase(name: String) extends EExecutor(name) {
         EVal(P(Diesel.PAYLOAD, id)) :: Nil
       }
 
-      case "get" | "getsert" => {
+      case "get" | "getsert" => writeLock {
         val col = ctx.getRequired("collection")
         require(col.length > 0)
         val id = ctx.getRequired("id")
@@ -202,7 +229,7 @@ class EEDieselMemDbBase(name: String) extends EExecutor(name) {
               ))
       }
 
-      case "query" => {
+      case "query" => readLock {
         val col = ctx.getRequired("collection")
         val others = in
             .attrs
@@ -226,7 +253,7 @@ class EEDieselMemDbBase(name: String) extends EExecutor(name) {
         )
       }
 
-      case "remove" => {
+      case "remove" => writeLock {
         val col = ctx.getRequired("collection")
         val k = ctx.get("key").orElse(ctx.get("id"))
         val others = in
@@ -256,7 +283,7 @@ class EEDieselMemDbBase(name: String) extends EExecutor(name) {
       }
 
 
-      case "drop" => {
+      case "drop" => writeLock {
         val col = ctx.getRequired("collection")
         tables.get(col).map(_.entries.clear())
 
@@ -265,20 +292,20 @@ class EEDieselMemDbBase(name: String) extends EExecutor(name) {
         List(EInfo("Ok, dropped..."))
       }
 
-      case "logAll" => {
+      case "logAll" => readLock {
         val res = s"Sessions: ${sessions.size}\n" + log
         EVal(P(Diesel.PAYLOAD, res)) :: Nil
       }
 
-      case "log" => {
+      case "log" => readLock {
         EVal(P(Diesel.PAYLOAD, logList)) :: Nil
       }
 
-      case "debug" => {
+      case "debug" => readLock {
         EVal(P(Diesel.PAYLOAD, log)) :: Nil
       }
 
-      case "clear" => {
+      case "clear" => writeLock {
         tables.clear()
         updStats()
         Nil
@@ -292,7 +319,7 @@ class EEDieselMemDbBase(name: String) extends EExecutor(name) {
   }
 
   /** actual query - returns map.entries, you take the value or key */
-  def query(tables: HashMap[String, Col], col: String, from: Option[Int], size: Option[Int], criteria: List[P])
+  def query(tables: TrieMap[String, Col], col: String, from: Option[Int], size: Option[Int], criteria: List[P])
            (implicit ctx: ECtx) = {
 
     var others = criteria.map(_.calculatedP) // make sure they calc once
@@ -302,9 +329,11 @@ class EEDieselMemDbBase(name: String) extends EExecutor(name) {
     val startsw = others.filter(x => x.calculatedValue.matches(".*\\*$"))
         .map(x => (x.name, x.calculatedValue.dropRight(1)))
     others = others.filter(a => !startsw.exists(_._1 == a.name))
+
     val matches = others.filter(x => x.calculatedValue.contains("*")).map(
       x => (x.name, x.calculatedValue.replaceAll("\\*", ".*")))
     others = others.filter(a => !matches.exists(_._1 == a.name))
+
     val equals = others.map(x => (x.name, x.calculatedValue))
 
     val ires = tables.get(col).toList.flatMap(_.entries.toList

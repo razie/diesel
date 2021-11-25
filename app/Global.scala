@@ -9,7 +9,6 @@ import Global.isShouldDebug
 import admin._
 import com.mongodb.casbah.Imports._
 import controllers._
-import java.io.File
 import java.util.Properties
 import mod.book.Progress
 import model._
@@ -19,7 +18,6 @@ import razie.audit.Audit
 import razie.db._
 import razie.diesel.DieselRateLimiter
 import razie.diesel.DieselRateLimiter.getGroup
-import razie.diesel.model.{DieselMsg, DieselTarget, ScheduledDieselMsg}
 import razie.hosting.{BannedIps, Website, WikiReactors}
 import razie.wiki.admin._
 import razie.wiki.model._
@@ -195,7 +193,9 @@ object Global extends WithFilters(LoggingFilter) {
 
   override def onStart(app: Application) = {
     // automated restart / patch / update handling
-    Try {new File("../updating").delete()}.isSuccess
+    // no longer removing here, but in first successful diesel/ping
+    //Try {new File("../updating").delete()}.isSuccess
+
     super.onStart(app)
 
     Services ! new InitAlligator
