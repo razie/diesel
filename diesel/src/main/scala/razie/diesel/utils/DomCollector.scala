@@ -54,7 +54,17 @@ object DomCollector {
     f(asts)
   }
 
-  /** statically collect more asts */
+  /** find collected engine */
+  def findAst(id:String): Option[CollectedAst] = {
+    var engine : Option[CollectedAst] = None
+    DomCollector.withAsts(_.find(_.id == id).map { eng =>
+      engine = Some(eng)
+    })
+    engine
+  }
+
+
+    /** statically collect more asts */
   def collectAst(
     stream: String, realm: String, xid: String,
     userId: Option[String], eng: DomEngine, details: String = "") = synchronized {
