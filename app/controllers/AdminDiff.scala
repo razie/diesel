@@ -18,6 +18,7 @@ import razie.Snakk.{url, _}
 import razie.db.RazSalatContext.ctx
 import razie.db.{RCreate, RMany}
 import razie.hosting.WikiReactors
+import razie.tconf.hosting.Reactors
 import razie.wiki.Config
 import razie.wiki.Sec._
 import razie.wiki.admin.Autosave
@@ -123,15 +124,21 @@ class AdminDiff extends AdminBase with Logging {
     }
   }
 
-  /** get list of pages for realm - invoked by remote trying to sync */
+  /** get list of pages for realm - invoked by remote trying to sync
+    *
+    * @param reactor reactor list or "all" to get list for - the more the slower
+    * @param cat if required, only diff one cat, generally empty
+    * @return list of local abstracts
+    */
   private def localwlist(reactor: String, cat: String) = {
+    val rlist = reactor.split(",")
     val l =
       if (cat.length == 0)
         RMany[WikiEntry]()
-            .filter(we => reactor.isEmpty || reactor == "all" || we.realm == reactor)
+            .filter(we => reactor.isEmpty || reactor == "all" || rlist.contains(we.realm))
       else
         RMany[WikiEntry]()
-            .filter(we => we.category == cat && (reactor.isEmpty || reactor == "all" || we.realm == reactor))
+            .filter(we => we.category == cat && (reactor.isEmpty || reactor == "all" || rlist.contains(we.realm)))
     l.toList
   }
 
@@ -139,6 +146,7 @@ class AdminDiff extends AdminBase with Logging {
   // todo auth that user belongs to realm
   def wlist(reactor: String, hostname: String, me: String, cat: String) = FAUPRAPI(isApi = true) {
     implicit request =>
+
       if (hostname.isEmpty) {
         val l = localwlist(reactor, cat)
             .map(x => new WEAbstract(x)).toList
@@ -233,8 +241,18 @@ class AdminDiff extends AdminBase with Logging {
   // todo auth that user belongs to realm
   def difflist(localRealm: String, toRealm: String, remote: String) = FAUR { implicit request =>
     try {
+      // look only at all the local realms
+      val localRealms = WikiReactors
+          .reactors
+          .keySet
+          .toList
+
+      // send local realm list to remote so we don't download all the remote realms
+      // limit at 10 so it's not too long URL
+      val remoteRealms = if("all" == toRealm && localRealms.size < 10) localRealms.mkString(",") else toRealm
+
       // get remote list
-      val b = body(url(s"http://$remote/razadmin/wlist/$toRealm").basic("H-" + request.au.get.emailDec,
+      val b = body(url(s"http://$remote/razadmin/wlist/$remoteRealms").basic("H-" + request.au.get.emailDec,
         "H-" + request.au.get.pwd.dec))
 
       val gd = new JSONArray(b)
@@ -253,7 +271,7 @@ class AdminDiff extends AdminBase with Logging {
 
       // local list
       val lsrc = RMany[WikiEntry]()
-          .filter(we => toRealm.isEmpty || toRealm == "all" || we.realm == localRealm)
+          .filter(we => toRealm.isEmpty || (toRealm == "all" && localRealms.contains(we.realm)) || we.realm == localRealm)
           .map(x => new WEAbstract(x))
           .toList
 

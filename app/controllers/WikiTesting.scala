@@ -20,7 +20,7 @@ class WikiTesting extends WikiBase {
     val realm = getRealm(irealm)
     ((for (au <- auth;
            wid <- UWID(cat, new ObjectId(id)).wid;
-           w <- WikiUtil.cachedPage(wid, Some(au))//Wikis(realm).findById(cat, id)
+           w <- Wikis.cachedPage(wid, Some(au))//Wikis(realm).findById(cat, id)
            ) yield ROK.r noLayout { implicit stok =>
 //      new Html(
       // some info for testing threads and concurrent users etc

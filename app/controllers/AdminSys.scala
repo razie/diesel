@@ -20,7 +20,7 @@ class AdminSys extends AdminBase {
     import play.api.libs.concurrent.Execution.Implicits.defaultContext
 
     razie.js.tojsons(
-      EEDieselExecutors.getAllPingData() ++
+      EEDieselExecutors.dieselPing() ++
           Map(
             "extra" -> Map(
               "notesLockerAutosaved" -> NotesLocker.autosaved,

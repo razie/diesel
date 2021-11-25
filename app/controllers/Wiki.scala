@@ -487,7 +487,7 @@ class Wiki @Inject()(dieselControl: DieselControl) extends WikiBase {
       // TODO optimize to load just the WID - i'm redirecting anyways
       // todo trying first the index and then cache - did not think this through
       var wl = Wikis(wid.getRealm).index.getWids(name).flatMap(
-        x => cachedPage(x, au) orElse Wikis(wid.getRealm).find(x))
+        x => Wikis.cachedPage(x, au) orElse Wikis(wid.getRealm).find(x))
       if (wl.isEmpty)
 
         wl = Wikis(wid.getRealm)
@@ -524,7 +524,7 @@ class Wiki @Inject()(dieselControl: DieselControl) extends WikiBase {
       // normal request with cat and name OR empty cat but has parent
 
       // the idea is that as pages are displayed *with a user*, the cache fills up
-      val w = cachedPage(wid, au) orElse {
+      val w = Wikis.cachedPage(wid, au) orElse {
         // if isSuperCat then usually the WID won't match, but index can still find it
         Wikis(wid.getRealm).index.getWids(wid.name).headOption.flatMap(_.page)
       }
@@ -1041,26 +1041,6 @@ object WikiUtil {
         s"""<b><a href="/tag/$t">$label</a></b>"""
       }
     }
-  }
-
-  def cachedPage(wid: WID, au: Option[User]) = {
-    val w = {
-      if (Services.config.cacheWikis) {
-
-        WikiCache.getEntry(wid.wpathFull + ".page").map { x =>
-          x
-        }.orElse {
-          val n = wid.page
-          n.map(_.preprocess(au))
-          if (n.exists(w => w.cacheable && w.category != "-" && w.category != "")) {
-            WikiCache.set(n.get.wid.wpathFull + ".page", n.get, 300) // 10 miuntes
-          }
-          n
-        }
-      } else
-        wid.page
-    }
-    w
   }
 
   /** create links to parents or other wikis, based on staged WikiLinkStaged */
