@@ -22,7 +22,7 @@ wiki fragment, used in another page
 
   @w(c:String) = @{
     if(page.isDefined) page
-    else controllers.WikiUtil.cachedPage(wid, stok.au)//wid.page
+    else Wikis.cachedPage(wid, stok.au)//wid.page
   }
 
   @prepend(l:List[String], c:String) = @{ c :: l }

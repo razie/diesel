@@ -54,13 +54,15 @@ class DomGuard extends DomApiBase with Logging {
     }
   }
 
+  // todo this and /viewAst are the same...
   /** view an engine or AST collected */
   def dieselEngineView(id: String) = FAUR { implicit stok =>
     if (!ObjectId.isValid(id)) {
       Redirect("/diesel/listAst")
     } else {
-      DomCollector.withAsts(_.find(_.id == id).map(_.engine).map { eng =>
+      var engine = DomCollector.findAst(id).map(_.engine)
 
+      engine.map { eng =>
         stok.fqhoParm("format", "html").toLowerCase() match {
 
           case "json" => {
@@ -84,11 +86,15 @@ class DomGuard extends DomApiBase with Logging {
             }
           }
         }
-      }) getOrElse {
-        ROK.k reactorLayout12 {
-          views.html.modules.diesel.engineView(None)
-        }
-      }
+      } orElse {
+          DieselAppContext.activeEngines.get(id).map ( e =>
+            ROK.k reactorLayout12 {
+              views.html.modules.diesel.engineView(Some(e))
+            }
+          )
+      } getOrElse (
+        NotFound("Engine trace not found - We only store a limited amount of traces...")
+      )
     }
   }
 
@@ -174,10 +180,7 @@ class DomGuard extends DomApiBase with Logging {
   // todo this and /engine/view are the same...
   // view an AST from teh collection
   def dieselViewAst(id: String, format: String) = FAUR ("viewAst") { implicit stok =>
-    DomCollector.withAsts { asts =>
-      for (
-        ast <- asts.find(_.id == id) orCorr ("ID not found" -> "We only store a limited amount of traces...")
-      ) yield {
+    DomCollector.findAst(id).map { ast =>
         if (format == "html") {
           Ok(ast.engine.root.toHtml)
         } else if ("junit" == format) {
@@ -187,15 +190,12 @@ class DomGuard extends DomApiBase with Logging {
         } else {
           dieselEngineView(id).apply(stok.req).value.get.get
         }
-      }
     }.orElse(
-      DieselAppContext.synchronized {
         DieselAppContext.activeEngines.get(id).map(e =>
           ROK.k reactorLayout12 {
             views.html.modules.diesel.engineView(Some(e))
           }
         )
-      }
     ).orElse(
       Some(NotFound("Engine trace not found - We only store a limited amount of traces..."))
     )
@@ -221,15 +221,15 @@ class DomGuard extends DomApiBase with Logging {
 
     val r = if (stok.au.exists(_.isAdmin)) "all" else stok.realm
 
-    DomCollector.withAsts { asts =>
-      val list =
-        asts.filter(a => stok.au.exists(_.isAdmin) ||
-            a.realm == stok.realm &&
-                (a.userId.isEmpty ||
-                    a.userId.exists(_ == stok.au.map(_.id).mkString) ||
-                    stok.au.exists(_.isMod)
-                    )
-        )
+    val list = DomCollector.withAsts { asts =>
+      asts.filter(a => stok.au.exists(_.isAdmin) ||
+          a.realm == stok.realm &&
+              (a.userId.isEmpty ||
+                  a.userId.exists(_ == stok.au.map(_.id).mkString) ||
+                  stok.au.exists(_.isMod)
+                  )
+      )
+    }
 
       val total = GlobalData.dieselEnginesTotal.get()
 
@@ -288,17 +288,14 @@ class DomGuard extends DomApiBase with Logging {
            |</small>
            |""".stripMargin
       )
-      //      Ok(x).as("text/html")
 
       if (stok.au.exists(_.isAdmin)) {
         // add active engines to debug things that get stuck
         val a =
           """<p>----------------active engines------------------</p>""" + {
-            DieselAppContext.synchronized {
               DieselAppContext.activeEngines.map(t =>
                 s"""<br><a href="/diesel/viewAst/${t._1}">...${t._1} - ${t._2.description}</a>"""
-              )
-            }.mkString("")
+              ).mkString("")
           }
 
         table = table + a
@@ -314,11 +311,11 @@ class DomGuard extends DomApiBase with Logging {
            | Actors: ${DieselAppContext.activeActors.size} active /
            | Crons: ${GlobalData.dieselCronsActive} active of ${GlobalData.dieselCronsTotal} since start"""
             .stripMargin
+
       ROK.k reactorLayout12FullPage {
         views.html.modules.diesel.engineListAst(title, title2, table)
       }
-    }
-  }
+   }
 
   def dieselCleanAst = FAUR { implicit stok =>
     if (stok.au.exists(_.isAdmin)) {

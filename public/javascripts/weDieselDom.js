@@ -646,6 +646,14 @@ function dieselHideGenerated(expanded) {
   dieselHideKind(expanded, 'generated');
 }
 
+function dieselHideKindSpan(expanded, debug) {
+  if (expanded) {
+    $("span[kind='" + debug + "']").show();
+  } else {
+    $("span[kind='" + debug + "']").hide();
+  }
+}
+
 function dieselHideKind(expanded, debug) {
   if (expanded) {
     $("div[kind='" + debug + "']").show();

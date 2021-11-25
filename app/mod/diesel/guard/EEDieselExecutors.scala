@@ -13,8 +13,7 @@ import java.io.{File, FileInputStream}
 import java.lang.management.{ManagementFactory, OperatingSystemMXBean}
 import java.lang.reflect.Modifier
 import java.util.Properties
-import mod.diesel.guard.EEDieselExecutors.{getAllPingData, updatingDeleted}
-import mod.notes.controllers.NotesLocker
+import mod.diesel.guard.EEDieselExecutors.{dieselPing, updatingDeleted}
 import model.WikiScripster
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import razie.db.{ROne, RazMongo}
@@ -230,7 +229,7 @@ class EEDieselExecutors extends EExecutor("diesel.props") {
         List(
           EVal(P.fromSmartTypedValue(
             Diesel.PAYLOAD,
-            getAllPingData())
+            dieselPing())
           )
         )
       }
@@ -256,7 +255,7 @@ object EEDieselExecutors {
   var updatingDeleted = false
 
   /** get all ping data */
-  def getAllPingData() = {
+  def dieselPing() = {
     val osm: OperatingSystemMXBean = ManagementFactory.getOperatingSystemMXBean();
 
     val mstats = new HashMap[String, Any] // no prefix
