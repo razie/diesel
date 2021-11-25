@@ -50,6 +50,10 @@ class EEDieselCron extends EExecutor("diesel.cron") {
   override def apply(in: EMsg, destSpec: Option[EMsg])(implicit ctx: ECtx): List[Any] =  {
     val realm = ctx.root.settings.realm.mkString
 
+    def err(t: Throwable) = {
+      EVal(P.fromSmartTypedValue("payload", t)) :: new EError("Uhoh", t) :: Nil
+    }
+
     cdebug << "EEDiselCron: apply " + in
 
     in.ea match {
@@ -160,10 +164,6 @@ class EEDieselCron extends EExecutor("diesel.cron") {
 
       case "diesel.cron.validate" => {
 
-        def err(t: Throwable) = {
-          EVal(P.fromSmartTypedValue("payload", t)) :: new EError("Uhoh", t) :: Nil
-        }
-
         val a = ctx.get("schedule").map(schedule => {
           (scala.util.Try {
             val d = Duration.apply(schedule)
@@ -185,6 +185,22 @@ class EEDieselCron extends EExecutor("diesel.cron") {
         a ::: b
       }
 
+      case "diesel.cron.nextTime" => {
+
+        // getNext(schedule?, cronExpr?)
+
+        val b = ctx.get("cronExpr").map(cronExpr => {
+          (scala.util.Try {
+            val d = new CronExpression(cronExpr).getNextValidTimeAfter(new java.util.Date())
+            EVal(P.fromSmartTypedValue(Diesel.PAYLOAD, d)) :: Nil
+          } recover {
+            case throwable: Throwable => err(throwable)
+          }).get
+        }).getOrElse(Nil)
+
+        b
+      }
+
       case s@_ => {
         new EError(s"$s - unknown activity ") :: Nil
       }
@@ -195,7 +211,9 @@ class EEDieselCron extends EExecutor("diesel.cron") {
 
   override val messages: List[EMsg] =
     EMsg(DT, "set") ::
-    EMsg(DT, "cancel") ::
+        EMsg(DT, "cancel") ::
+        EMsg(DT, "validate") ::
+    EMsg(DT, "nextTime") ::
         EMsg(DT, "list") :: Nil
 }
 

@@ -19,7 +19,8 @@ import org.quartz.CronScheduleBuilder.cronSchedule
 import org.quartz.JobBuilder.newJob
 import org.quartz.SimpleScheduleBuilder.simpleSchedule
 import org.quartz.TriggerBuilder.newTrigger
-import org.quartz.{Job, JobExecutionContext, TriggerKey}
+import org.quartz.impl.matchers.GroupMatcher
+import org.quartz.{Job, JobExecutionContext, JobKey, TriggerKey}
 import play.libs.Akka
 import razie.diesel.Diesel
 import razie.diesel.dom.RDOM.P
@@ -59,7 +60,7 @@ case class DomSchedule(
   var currCount: Long = 0l
   var actualSched = "?"
 
-  def isOnce = timeExpr.nonEmpty && schedExpr.isEmpty && cronExpr.isEmpty
+  def isOnce = timeExpr.nonEmpty && schedExpr.isEmpty && cronExpr.trim.isEmpty
 
   def toJson = Map(
     "realm" -> realm,
@@ -76,7 +77,9 @@ case class DomSchedule(
   )
 }
 
+/** Diesel Quartz Job */
 class DieselQJob extends Job {
+
   override def execute(context: JobExecutionContext) = {
     val data = context.getJobDetail.getJobDataMap
     val key = data.getString("jobKey")
@@ -187,7 +190,6 @@ object DieselCron extends Logging {
 
         log(s"CronActor CreateSchedule request: $cs")
 
-        /*DieselCron.synchronized*/
         try {
           val removed = realmSchedules.remove(realm + "-" + schedId)
 
@@ -201,7 +203,7 @@ object DieselCron extends Logging {
           if (schedExpr.nonEmpty) {
             // free realms at least 5min
             d = Duration.apply(schedExpr).asInstanceOf[FiniteDuration]
-            val myRealms = "wiki,specs,oss,herc-cc,devblinq,devnetlinq,netlinqdemo" // todo better for me and paid
+            val myRealms = "wiki,specs,oss,herc-cc,devblinq,devnetlinq,netlinqdemo,blinq" // todo better for me and paid
             // realms
 
             if (isLocalhost) {
@@ -237,7 +239,7 @@ object DieselCron extends Logging {
           else
             d //Duration.Zero
 
-          val akkaRef = if (schedExpr.nonEmpty) {
+          val akkaRef = if (schedExpr.trim.nonEmpty) {
             // start plus schedule
             sc.actualSched = d.toString
             Some(
@@ -247,14 +249,12 @@ object DieselCron extends Logging {
                 DieselCron.worker,
                 sc
               ))
-          } else if (cronExpr.nonEmpty) {
+          } else if (cronExpr.trim.nonEmpty) {
             // start plus cron expr schedule
             clog << "===================================Quartz creating job " + sc
 
-            if (!qsched.isStarted) qsched.start()
+            if (!qsched.isStarted) qsched.start() // initialize quartz
 
-            import org.quartz.JobDetail
-            import org.quartz.SimpleTrigger
             val job1 = newJob(classOf[DieselQJob]).withIdentity(jobKey, "dieselq").build
             val trigger1 = newTrigger()
                 .withIdentity(jobKey, "dieselq")
@@ -263,10 +263,12 @@ object DieselCron extends Logging {
                 .build
 
             job1.getJobDataMap.put("jobKey", jobKey)
+//            qsched.deleteJob(job1.getKey)
+            qsched.unscheduleJob(new TriggerKey(jobKey, "dieselq"))
             qsched.scheduleJob(job1, trigger1)
 
             None
-          } else if (time.nonEmpty) {
+          } else if (time.trim.nonEmpty) {
             // just a given time - kick once!
             Some(
               Akka.system.scheduler.scheduleOnce(
@@ -296,18 +298,19 @@ object DieselCron extends Logging {
           }
         }
 
-      case Cancel(realm, id) => /*DieselCron.synchronized*/ {
+      case can@Cancel(realm, id) => /*DieselCron.synchronized*/ {
+
+        log(s"Cancel schedule request: $can")
+
         val key = realm + "-" + id
         if (realmSchedules.get(key).exists(_.realm == realm)) {
           val removed = realmSchedules.remove(key)
+          removed.flatMap(_.ref).foreach(_.cancel())
 
-          if (removed.isDefined && removed.get.cronExpr.length > 0) {
-            removed.flatMap(_.ref).foreach(_.cancel())
-          } else {
-            // cancel quartz job
-            clog << s"===================================Quartz cancel job $key"
-            qsched.unscheduleJob(new TriggerKey(key, "dieselq"))
-          }
+          // cancel quartz job, if any
+          clog << s"===================================Quartz cancel job $key"
+          qsched.unscheduleJob(new TriggerKey(key, "dieselq"))
+          qsched.deleteJob(new JobKey(key, "dieselq"))
 
           GlobalData.dieselCronsActive.set(realmSchedules.size)
           sender ! removed
@@ -321,88 +324,107 @@ object DieselCron extends Logging {
   /** this is one per realm - make sure ticks go in sequence and wait */
   class CronRealmActor(val realm: String) extends Actor {
 
+    def cancelJob(key:String, sc:DomSchedule) = {
+      info(s"($realm) removing DomSchedule: ${sc.schedId} count: ${sc.currCount}")
+      realmSchedules.remove(key)
+      sc.ref.map(_.cancel())
+      clog << s"===================================Quartz cancel job $key"
+      qsched.unscheduleJob(new TriggerKey(key, "dieselq"))
+      qsched.deleteJob(new JobKey(key, "dieselq"))
+    }
+
     def receive = {
 
       // schedule triggered - should we send the message?
-      case sc: DomSchedule => /*DieselCron.synchronized*/ {
-        info(s"CronRealmActor received DomSchedule: ${sc.schedId}")
+      case sc: DomSchedule => {
+
+        info(s"($realm) received DomSchedule: ${sc.schedId}")
+
         val key = sc.realm + "-" + sc.schedId
 
         if (realmSchedules.contains(key)) { // wasn't cancelled or something
           val curr = realmSchedules(key)
 
-          if (
-            (curr.count < 0 || curr.currCount < curr.count) &&
-                (sc.endTime.isEmpty || DateTime.parse(sc.endTime).isAfterNow)) { // fine... trigger it
+          val isCountOk = curr.count < 0 || curr.currCount < curr.count
+          val isEndTimeOk = sc.endTime.isEmpty || DateTime.parse(sc.endTime).isAfterNow
 
-            if (!curr.singleton || DieselCron.isMasterNode(Website.forRealm(sc.realm).get)) {
-              if (ISENABLED) {
-                info(s"CronRealmActor running DomSchedule: ${sc.schedId} count: ${curr.currCount}")
-                curr.currCount = curr.currCount + 1
+            if (isCountOk && isEndTimeOk) { // fine... trigger it
 
-                val fs = curr.cronMsg.fold(
-                  _.withArgs(
-                    Map(
-                      "env" -> curr.env,
-                      "cronCount" -> curr.currCount
-                    )).toMsgString.startMsg,
-                  _.withContext(
-                    Map(
-                      "cronCount" -> curr.currCount.toString
-                    )).startMsg
-                )
+              if (!curr.singleton || DieselCron.isMasterNode(Website.forRealm(sc.realm).get)) {
 
-                GlobalData.dieselCronsTotal.incrementAndGet()
+                if (ISENABLED) {
 
-                if (Config.isLocalhost && Website.getRealmProp(sc.realm, "diesel.cron.await").exists(
-                  _ == "false")) {
-                  info(s"DieselCron - Awaiting disabled for ${sc.realm}")
-                } else {
-                  val tout = Website.getRealmProp(sc.realm, "diesel.cron.tout").getOrElse("300 seconds")
-                  info(s"DieselCron - Awaiting tout ${tout}")
-                  // todo why am i waiting? to not allow each realm to run amock?
-                  // just wait... this makes it sync
-                  try {
-                    val result = Await.result(fs, Duration.create(tout))
-                  } catch {
-                    case t: Throwable =>// ignore it
+                  info(s"($realm) running DomSchedule: ${sc.schedId} count: ${curr.currCount}")
+                  curr.currCount = curr.currCount + 1
+
+                  val fs = curr.cronMsg.fold(
+
+                    _.withArgs(Map(
+                        "env" -> curr.env,
+                        "cronCount" -> curr.currCount
+                      )).toMsgString.startMsg,
+
+                    _.withContext(Map(
+                        "cronCount" -> curr.currCount
+                      )).startMsg
+                  )
+
+                  GlobalData.dieselCronsTotal.incrementAndGet()
+
+                  if (
+                    Config.isLocalhost &&
+                        Website.getRealmProp(sc.realm, "diesel.cron.await").exists(_ == "false")) {
+
+                    // set this to false to allow parallel timers - by default is not disabled, so we wait
+                    info(s"($realm) - Awaiting disabled for ${sc.schedId}")
+
+                  } else {
+
+                    val tout = Website.getRealmProp(sc.realm, "diesel.cron.tout").getOrElse("300 seconds")
+
+                    info(s"($realm) - Awaiting with tout ${tout}")
+
+                    // waiting... makes cron jobs sync per realm
+                    // waiting to not allow each realm to run amock and/or overload system- set the diesel.cron.await
+                    try {
+                      Await.result(fs, Duration.create(tout))
+                    } catch {
+                      case t: Throwable =>// ignore it
+                    }
                   }
+                } else {
+                  info(s"($realm) - not enabled, skipping job: " + sc)
                 }
               } else {
-                info("DieselCron - not enabled job: " + sc)
+                info(s"($realm) - not on master node for job: " + sc)
               }
             } else {
-              info("DieselCron - not on master node for job: " + sc)
+
+              cancelJob(key, curr)
+
+              info(s"($realm) done with DomSchedule: ${sc.schedId}")
+
+              val args = Map(
+                "cronCount" -> curr.currCount,
+                "cronDoneReason" -> s"by count: ${!isCountOk}, by endTime:${!isEndTimeOk}"
+              )
+
+              curr.doneMsg.fold(
+                m => m.withArgs(args).toMsgString.startMsg,
+
+                // don't start if doneMsg is ""
+                m => if (m.msg.contains(".")) m.withContext(args).startMsg
+              )
+              // not waiting
             }
-          } else {
-            info(s"CronRealmActor removing DomSchedule: ${sc.schedId} count: ${curr.currCount}")
-            realmSchedules.remove(key)
-            curr.ref.map(_.cancel())
-            clog << s"===================================Quartz cancel job $key"
-            qsched.unscheduleJob(new TriggerKey(key, "dieselq"))
-
-            info(s"CronRealmActor done with DomSchedule: ${sc.schedId}")
-            curr.doneMsg.fold(
-              m => m.withArgs(
-                Map(
-                  "cronCount" -> curr.currCount
-                )).toMsgString.startMsg,
-
-              // don't start if doneMsg is ""
-              m => if (m.msg.contains(".")) m.withContext(
-                Map(
-                  "cronCount" -> curr.currCount.toString
-                )).startMsg
-            )
-            // not waiting
-          }
 
           if (curr.isOnce) {
-            info(s"CronRealmActor removing DomSchedule: ${sc.schedId} count: ${curr.currCount}")
-            realmSchedules.remove(key)
-            clog << s"===================================Quartz cancel job $key"
-            qsched.unscheduleJob(new TriggerKey(key, "dieselq"))
+            cancelJob(key, curr)
           }
+        } else {
+          info(s"($realm) DomSchedule not found anymore: ${sc.schedId}")
+          qsched.getTriggerKeys(GroupMatcher.anyGroup())
+          cancelJob(key, sc)
         }
       }
     }
