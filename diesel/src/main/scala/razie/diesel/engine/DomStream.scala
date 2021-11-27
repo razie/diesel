@@ -178,7 +178,7 @@ abstract class DomStream (
           setCtx(ast)
 
           DieselAppContext ! DEAddChildren(tid.engine, tid.node, recurse = true, -1, List(ast),
-            Some((a, e) => a.withPrereq(getDepy)))
+            Some((a, e) => a.withPrereq(getDepyOnDATA)))
         }
 
         trace(" - DStream clear: ")
@@ -189,7 +189,7 @@ abstract class DomStream (
     }
   }
 
-  /** complete the stream */
+  /** complete the stream: send onDone and DEComplete the target consume node */
   private def complete(): Unit = {
     val ast = DomAst(EMsg(
       DieselMsg.STREAMS.STREAM_ONDONE,
@@ -215,14 +215,32 @@ abstract class DomStream (
 
   /** stream item production is done - complete consumption of what's in buffer and close it */
   def done(justConsume: Boolean = false): Unit = {
-    if (!justConsume) {
-      isDone = true
-      if (isConsumed) {
-        consume()
+    if(true || !isDone) {
+      if (!justConsume) {
+        isDone = true
+        if (isConsumed) {
+          consume()
+        }
+      } else {
+        complete()
       }
     } else {
-      complete()
+      // todo
     }
+  }
+
+  /** todo merge with the other - this is experimental */
+  def getDepyOnDATA: List[String] = {
+    val target = targetId.flatMap(tid=> DieselAppContext.activeEngines.get(tid.engine).flatMap(_.findNode(tid.node)))
+    var res = target.toList.flatMap(
+      _.children
+          .filter(_.status != DomState.DONE)
+          .filter(_.value.isInstanceOf[EMsg]))
+
+    // for onData just depend on the last one
+     res = res.lastOption.toList
+
+    res.map(_.id)
   }
 
   /** get list of other generated nodes */
@@ -283,7 +301,7 @@ abstract class DomStream (
     isDone = true
 
     // cleanup
-    DieselAppContext ! DESClean(name)
+    DieselAppContext ! DEStreamClean(name)
   }
 
   override def toString = s"DomStream($name, $id)"
@@ -298,5 +316,4 @@ class DomStreamV1(
   context: P = P.of("context", "{}"),
   correlationId: Option[String] = None) extends DomStream(owner, name, description, batch, batchSize, context,
   correlationId) {
-
 }
