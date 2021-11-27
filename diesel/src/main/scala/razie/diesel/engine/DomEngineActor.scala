@@ -74,7 +74,7 @@ case object DEStop extends DEMsg {override def engineId = ""}
 case object DESuspend extends DEMsg {override def engineId = ""}
 
 /** send the next message later */
-case class DELater(engineId: String, d: Int, next: DEMsg, durationExpr: Option[String] = None) extends DEMsg
+case class DELater(engineId: String, d: Int, next: DEMsg) extends DEMsg
 
 case class DEStartTimer(engineId: String, d: Int, results: List[DomAst]) extends DEMsg
 
@@ -122,7 +122,7 @@ class DomEngineRouter () extends Actor {
     case m: DEMsg => route(m.engineId, m)
 
     // all DES messages share routing
-    case m: DESMsg => {
+    case m: DEStreamMsg => {
       DieselAppContext.activeStreamsByName
           .get(m.streamName)
           .map(x => {route(x.id, m); ""})
@@ -243,19 +243,11 @@ class DomEngineActor(eng: DomEngine) extends Actor with Stash {
     }
 
     case DEStop => {
-      //remove refs for active engines
-      DieselAppContext.activeEngines.remove(eng.id)
-      DieselAppContext.activeActors.remove(eng.id)
-      context stop self
+      context stop self //it will remove refs for active engines in postStop
     }
 
     // used when engines schedule stuff
-    case timer@DELater(id, d, m, durationExpr) => {
-      // todo get this to work
-//      val dur: FiniteDuration = durationExpr
-//          .map(Duration.create)
-//          .getOrElse(Duration.create(d, TimeUnit.MILLISECONDS))
-
+    case timer@DELater(id, d, m) => {
       val dur = Duration.create(d, TimeUnit.MILLISECONDS)
 
       if (eng.id == id) {
@@ -289,123 +281,7 @@ class DomEngineActor(eng: DomEngine) extends Actor with Stash {
   }
 
   override def postStop() = {
-    // assert it's stopped
-    if (DieselAppContext.activeActors.contains(eng.id) ||
-        DieselAppContext.activeEngines.contains(eng.id)) {
-      Audit.logdb("DIESEL_ASSERT_FAILED", s"activeActor id: ${eng.id} still registered !!")
-      DieselAppContext.activeEngines.remove(eng.id)
-      DieselAppContext.activeActors.remove(eng.id)
-    }
+    DieselAppContext.activeEngines.remove(eng.id)
+    DieselAppContext.activeActors.remove(eng.id)
   }
 }
-
-
-/** each stream has its own actor
-  *
-  * it will serialize status udpates and execution
-  *
-  * an engine will parallelize as much as async is built-into their activities
-  */
-class DomStreamActor(stream: DomStream) extends Actor with Stash {
-
-  def checkInit: Boolean = {
-    if (!DieselAppContext.serviceStarted) {
-      // if not started, stash the message for now
-      stash()
-      false
-    } else
-      true
-  }
-
-  def receive = {
-
-    case DEInit => {
-      //save refs for active engines
-      // started, take all stashed messages
-      unstashAll()
-    }
-
-    case req@DESPut(name, l) if checkInit => {
-      if (stream.name == name) Try {
-        stream.put(l)
-      }
-      else DieselAppContext.router.map(_ ! req)
-    }
-
-    case req@DESConsume(name) => {
-      if (stream.name == name) {
-        Try {
-          stream.consume()
-        }
-      }
-      else DieselAppContext.router.map(_ ! req)
-    }
-
-    case req@DESDone(name) => {
-      if (stream.name == name) {
-        Try {
-          stream.done()
-        }
-      }
-      else DieselAppContext.router.map(_ ! req)
-    }
-
-    case req@DESClean(name) => {
-      if (stream.name == name) {
-        //remove refs for active engines
-        GlobalData.dieselStreamsActive.decrementAndGet()
-        DieselAppContext.activeStreams.remove(stream.id)
-        DieselAppContext.activeStreamsByName.remove(stream.name)
-        DieselAppContext.activeActors.remove(stream.id)
-        context stop self
-      }
-      else DieselAppContext.router.map(_ ! req)
-    }
-
-    case req@DESDone(name) => {
-      if (stream.name == name) {
-        Try {
-          stream.done()
-        }
-      }
-      else DieselAppContext.router.map(_ ! req)
-    }
-
-    case req@DESError(name, parms) => {
-      if (stream.name == name) {
-        Try {
-          stream.error(parms)
-        }
-      }
-      else DieselAppContext.router.map(_ ! req)
-    }
-  }
-
-  override def postStop() = {
-    // assert it's stopped
-    // DieselAppContext.activeActors.remove(eng.id)
-  }
-}
-
-/* *****************************
-streaming messages
- */
-
-/** base class for streams internal message */
-trait DESMsg {
-  def streamName: String
-}
-
-/** put in stream */
-case class DESPut(streamName: String, l: List[Any]) extends DESMsg
-
-/** consume from stream */
-case class DESConsume(streamName: String) extends DESMsg
-
-/** stream is done */
-case class DESDone(streamName: String) extends DESMsg
-
-case class DESClean(streamName: String) extends DESMsg
-
-case class DESError(streamName: String, l: List[P]) extends DESMsg
-
