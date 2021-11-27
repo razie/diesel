@@ -219,18 +219,19 @@ object WikiReactors extends Logging with Reactors {
 
             val envSettings = re.wiki.find("Spec", "EnvironmentSettings")
 
-            val startupFlow =
-              s"""
-                 |$$send diesel.realm.configure(realm="$realm")
-                 |
-                 |$$send diesel.realm.loaded(realm="$realm")
-                 |
-                 |$$send diesel.realm.ready(realm="$realm")
-                 |""".stripMargin
-
             // send realm.config and load messages if anyone used it
             if (envSettings.exists(_.content.contains(DieselMsg.REALM.REALM_CONFIGURE)) ||
                 envSettings.exists(_.content.contains(DieselMsg.REALM.REALM_LOADED))) {
+
+              val startupFlow =
+                s"""
+                   |$$send diesel.realm.configure(realm="$realm")
+                   |
+                   |$$send diesel.realm.loaded(realm="$realm")
+                   |
+                   |$$send diesel.realm.ready(realm="$realm")
+                   |""".stripMargin
+
               Services ! ScheduledDieselMsgString("1 second", DieselMsgString(
                 startupFlow,
                 DieselTarget.ENV(realm),

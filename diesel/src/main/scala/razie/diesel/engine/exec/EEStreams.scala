@@ -75,7 +75,7 @@ class EEStreams extends EExecutor(EEStreams.PREFIX) {
         val name = ctx.getRequired("stream")
         val parms = in.attrs.filter(_.name != "stream").map(_.calculatedP)
         val list = parms.map(_.calculatedTypedValue.value)
-        DieselAppContext ! DESPut(name, list)
+        DieselAppContext ! DEStreamPut(name, list)
         EInfo(s"stream.put - put ${list.size} elements") :: Nil
       }
 
@@ -83,7 +83,7 @@ class EEStreams extends EExecutor(EEStreams.PREFIX) {
         val name = ctx.getRequired("stream")
         val parms = in.attrs.filter(_.name != "stream").map(_.calculatedP)
         val list = parms.flatMap(_.calculatedTypedValue.asArray.toList)
-        DieselAppContext ! DESPut(name, list)
+        DieselAppContext ! DEStreamPut(name, list)
         EInfo(s"stream.put - put ${list.size} elements") :: Nil
       }
 
@@ -95,7 +95,7 @@ class EEStreams extends EExecutor(EEStreams.PREFIX) {
 
         val list = (start to end).toList
 
-        DieselAppContext ! DESPut(name, list)
+        DieselAppContext ! DEStreamPut(name, list)
         EInfo(s"stream.put - put ${list.size} elements") :: Nil
       }
 
@@ -103,7 +103,7 @@ class EEStreams extends EExecutor(EEStreams.PREFIX) {
         val name = ctx.getRequired("stream")
         val parms = in.attrs.filter(_.name != "stream").map(_.calculatedP)
 
-        DieselAppContext ! DESError(name, parms)
+        DieselAppContext ! DEStreamError(name, parms)
 
         EInfo(s"stream.done") :: Nil
       }
@@ -113,7 +113,7 @@ class EEStreams extends EExecutor(EEStreams.PREFIX) {
 
         val stream = DieselAppContext.findStream(name)
 
-        DieselAppContext ! DESDone(name)
+        DieselAppContext ! DEStreamDone(name)
 
         val found = stream.map(_.name).mkString
         val consumed = stream.map(_.getIsConsumed).mkString
@@ -130,7 +130,7 @@ class EEStreams extends EExecutor(EEStreams.PREFIX) {
             val stream = DieselAppContext.activeStreamsByName.get(name).get
             stream.withTargetId(ctx.root.engine.get.id, a.id)
 
-            DieselAppContext ! DESConsume(stream.name)
+            DieselAppContext ! DEStreamConsume(stream.name)
 
             timeout.foreach(d => {
               DieselAppContext ! DELater(e.id, d.toInt, DEComplete(e.id, a.id, recurse = true, l, Nil))
