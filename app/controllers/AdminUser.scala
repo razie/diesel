@@ -139,28 +139,35 @@ class AdminUser extends AdminBase {
       (for (
         u <- Users.findUserById(id)
       ) yield {
-          Audit.logdb("ADMIN_SU", u.userName)
-          ApplicationUtils.razSu = au.email
-          ApplicationUtils.razSuTime = System.currentTimeMillis()
-          Redirect("/").withSession(
-            Services.config.CONNECTED -> Enc.toSession(u.email),
-            "extra" -> au.email
-          )
-        }) getOrElse {
+        Audit.logdb("ADMIN_SU", u.userName)
+        ApplicationUtils.razSu = au.email
+        ApplicationUtils.razSuTime = System.currentTimeMillis()
+        Redirect("/").withSession(
+          Services.config.CONNECTED -> Enc.toSession(u.email),
+          "extra" -> au.email
+        )
+      }) getOrElse {
         error("ERR_ADMIN_CANT_UPDATE_USER su " + id + " " + errCollector.mkString)
         unauthorized("ERR_ADMIN_CANT_UPDATE_USER su " + id + " " + errCollector.mkString)
       }
-    }
+  }
 
   val OneForm = Form("val" -> nonEmptyText)
 
   case class AddPerm(perm: String)
 
+  def canPerm(action: String, perm: String, u: User, ur: User) = {
+    ("+-" contains action) && Perm.all.contains(perm) ||
+        ("-" contains action) && ur.perms.contains("+" + perm)// allow remove smth bad
+  }
+
   val permForm = Form {
     mapping(
       "perm" -> nonEmptyText.verifying(
         "starts with +/-", a => ("+-" contains a(0))).verifying(
-        "known perm", a => Perm.all.contains(a.substring(1))))(AddPerm.apply)(AddPerm.unapply)
+        "known perm", a => Perm.all.contains(a.substring(1)) || "Admin".equals(a.substring(1))
+      ))(AddPerm.apply)(
+      AddPerm.unapply)
 
   }
 
@@ -173,16 +180,15 @@ class AdminUser extends AdminBase {
         Msg(formWithErrors.toString + "Oops, can't add that perm!"), {
         case we@AddPerm(perm) =>
           (for (
-            goodS <- ("+-" contains perm(0)) && Perm.all.contains(perm.substring(1)) orErr ("bad perm");
             u <- Users.findUserById(id);
+            ur <- Some(u).map(_.forRealm(realm));
+            goodS <- (canPerm(perm(0).toString, perm.substring(1), u, ur)) orErr ("bad perm");
             pro <- u.profile
           ) yield {
               // remove/flip existing permission or add a new one?
             val sperm = perm.substring(1)
 
               u.update{
-                val ur = u.forRealm(realm)
-
                 if (perm(0) == '-' && (ur.perms.contains("+" + sperm))) {
                   u.removePerm(realm, "+" + sperm)
                 } else if (perm(0) == '+' && (ur.perms.contains("-" + sperm))) {

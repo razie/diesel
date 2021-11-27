@@ -1421,7 +1421,16 @@ class DomApi extends DomApiBase with Logging {
     val direction = "request"
     val eapath = if (path.startsWith("/")) path.substring(1) else path
 
-    val trequest = if (!useTemplates) None else
+    val trequest = if (!useTemplates) {
+      engine.root.prependAllNoEvents(List(
+        DomAst(
+          EInfo(s"NOTE - Templates disabled, realm ${engine.settings.realm.mkString}"),
+          AstKinds.TRACE)
+            .withStatus(DomState.SKIPPED)
+      ))
+
+      None
+    } else
       engine
           .ctx
           // first try  with e.a

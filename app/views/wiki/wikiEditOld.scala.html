@@ -180,7 +180,7 @@ PROBLEM: many places use label as name... via Wikis.formatName
     '_label -> "Notify followers",
     '_showConstraints -> false)
 
-  @if(stok.au.get.hasPerm(Perm.adminDb)) {
+  @if(stok.au.get.isMod) {
     <p>Reserved: @reserved(wid.page)
     @if(wid.page.isDefined) {
       <p><a href="@routes.Wikie.wikieDelete1(wid)">Delete it</a>
