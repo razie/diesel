@@ -72,8 +72,8 @@ class EEDieselMongodDb extends EExecutor("diesel.db.col") {
             "realm" -> realm
           ))
 
-          if (count > maxTables * maxEntries) {
-            throw new IllegalStateException("Too many entries or collections (10*10)")
+          if (count > maxEntries) {
+            throw new IllegalStateException(s"Too many entries ${maxEntries}")
           }
           RazMongo(TBL) += Map(
             "coll" -> coll,

@@ -22,14 +22,15 @@ import scala.collection.mutable.HashMap
 object EEDieselDb {
   // todo if paid, should be more
   private final val MAX_TABLES = 10
-  private final val MAX_ENTRIES = 10
+  private final val MAX_ENTRIES = 100
+  private final val DFLT_MAX_TOTAL_ENTRIES = 25000
   final val EXPIRY_MSEC = 10 * 60 * 1000 // 10 min
 
-  // todo make configurable
-  def maxTables = if (Config.isLocalhost) 100 else MAX_TABLES
+  /** max no tables per session/realm */
+  lazy val maxTables = if (Config.isLocalhost) Config.prop("diesel.db.maxtables", "100").toInt else MAX_TABLES
 
-  // todo make configurable
-  def maxEntries = if (Config.isLocalhost) 10000 else MAX_ENTRIES
+  /** max entries total (also enforced per table out of convenience, so we don't keep counting all) */
+  lazy val maxEntries = if (Config.isLocalhost) Config.prop("diesel.db.maxentries", DFLT_MAX_TOTAL_ENTRIES.toString).toInt else MAX_ENTRIES
 
   var statsSessions = 0
   var statsObjects = 0
@@ -129,7 +130,7 @@ class EEDieselMemDbBase(name: String) extends EExecutor(name) {
 
     val t = tables(col)
     if (t.entries.size > maxEntries)
-      throw new IllegalStateException(s"Too many entries in collection ($maxEntries)")
+      throw new IllegalStateException(s"Too many entries ($maxEntries)")
 
     t.entries.put(id, doc)
 
