@@ -127,13 +127,13 @@ class EEDieselCron extends EExecutor("diesel.cron") {
           }
 
           cdebug << "EEDiselCron: set 1"
-          val cid = DieselCron.createSchedule(name, schedule, cronExpr, time, endTime, realm, env,
+          val res = DieselCron.createSchedule(name, schedule, cronExpr, time, endTime, realm, env,
             ctx.root.engine.map(_.id).mkString,
             count, tickM, doneM)
           cdebug << "EEDiselCron: set 2"
 
           List(
-            EVal(P.fromTypedValue("cronId", cid))
+            EVal(P.fromTypedValue(Diesel.PAYLOAD, res))
           )
         }
       }

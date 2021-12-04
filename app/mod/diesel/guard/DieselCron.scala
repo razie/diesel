@@ -460,6 +460,7 @@ object DieselCron extends Logging {
       worker,
       CreateSchedule(schedId, schedExpr, cronExpr, time, endTime, realm, env, dieselParentId, count, cronMsg, doneMsg))
     if (s.startsWith("ERROR")) throw new DieselException(s)
+    s
   }
 
   def defaultDoneMsg(schedId: String, realm: String, env: String) = DieselMsg(
