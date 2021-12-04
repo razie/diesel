@@ -66,13 +66,13 @@ abstract class DomEngine(
     override def toString = s"Keeping only $keep nodes, removed $removed..."
   }
 
-  def shouldPrune(a: DomAst, parent: Option[DomAst]) =
+  def shouldPrune(a: DomAst, parent: Option[DomAst], KO:Int) =
     a.value.isInstanceOf[EMsg] &&
-        a.value.asInstanceOf[EMsg].ea.contains("diesel.stream.onData") || // todo why doesn't KeepSiblings work here??
+        a.value.asInstanceOf[EMsg].ea.contains(DieselMsg.STREAMS.STREAM_ONDATA) || // todo why doesn't KeepSiblings work here??
         parent.isDefined &&
             parent.get.value.isInstanceOf[EMsg] &&
             parent.get.value.asInstanceOf[EMsg].ea.contains("ctx.foreach") &&
-            parent.get.childrenCol.size > 20 &&
+            parent.get.childrenCol.size > KO &&
             !(a.value.isInstanceOf[EInfoWrapper] &&
                 a.value.asInstanceOf[EInfoWrapper].a.isInstanceOf[Pruned])//&&
 //            a.value.isInstanceOf[KeepOnlySomeSiblings] // todo why doesn't KeepSiblings work here??
@@ -345,10 +345,17 @@ abstract class DomEngine(
   }
 
   /** process a list of continuations */
-  protected def later(m: List[DEMsg]): List[Any] = {
+  protected def later(m: List[DEMsg], recurse:Boolean = false): List[Any] = {
     if (synchronous) {
       clog << "SYNCHRONOUS engine processing..."
-      m.map(processDEMsg)
+      val res = m.map(processDEMsg)
+      res
+      // todo in prog
+//      if(recurse) later(
+//        res.collect{
+//          case d:DEMsg => d
+//        })
+//      else res
     } else
       m.map(m => DieselAppContext ! m) // cause err if router not up
   }
@@ -447,7 +454,7 @@ abstract class DomEngine(
 
     if (parent.exists(_.value.isInstanceOf[KeepOnlySomeChildren]) ||
         a.value.isInstanceOf[KeepOnlySomeSiblings] ||
-        shouldPrune(a, parent)) { // todo why doesn't KeepSiblings work here??
+        shouldPrune(a, parent, 5)) { // todo why doesn't KeepSiblings work here??
       val p = parent.get
       val k =
         if (parent.exists(_.value.isInstanceOf[KeepOnlySomeChildren]))
