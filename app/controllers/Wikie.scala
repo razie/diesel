@@ -1294,9 +1294,9 @@ class Wikie @Inject()(config: Configuration) extends WikieBase {
     }
   }
 
-  /** someone likes a wiki */
+  /** someone votes a wiki */
   def like(wid: WID) = RAction { implicit request =>
-    log("Wiki.like " + wid)
+    log("Wiki.vote " + wid)
     (for (
       how <- request.fqhParm("how").map(_.toInt);
       reason <- request.fqhParm("reason");

@@ -2,6 +2,7 @@
 debug a wiki page
 **************@
 @import razie.wiki.model.Perm
+@import model.Users
 @(wid:razie.wiki.model.WID, iname:Option[String], page:Option[razie.wiki.model.WikiEntry])(implicit stok: controllers.StateOk)
 @import razie.wiki.model.{WikiEntry, WID, Wikis, WikiLink, WikiEntryOld}
 @import model.{User}
@@ -25,6 +26,7 @@ debug a wiki page
 
         <div class="well">
             <ul>Settings
+              <li>Id: @page.map(_._id.toString)</li>
               <li>version: @page.map(_.ver)</li>
                 <li>current realm: @stok.realm</li>
                 <li>page realm: @page.map(_.realm)</li>
@@ -224,10 +226,34 @@ debug a wiki page
         }
       </div>
 
-      <div class="well">
-        <ul>cache
-        @page.get.collector.map { p=>
-          <li>@p.toString</li>
+  <div class="well">
+    <ul>cache
+      @page.get.collector.map { p=>
+        <li>@p.toString</li>
+      }
+    </ul>
+  </div>
+
+  <div class="well">
+    <ul>Votes up
+      @page.get.likes.map { p=>
+        <li>@model.Users.nameOf(p)</li>
+      }
+    </ul>
+  </div>
+
+  <div class="well">
+    <ul>Votes down
+      @page.get.dislikes.map { p=>
+        <li>@model.Users.nameOf(p)</li>
+      }
+    </ul>
+  </div>
+
+  <div class="well">
+        <ul>Votes down / reasons
+        @page.get.dislikeReasons.map { p=>
+          <li>@p</li>
         }
        </ul>
       </div>
@@ -254,7 +280,7 @@ debug a wiki page
            <td> <a href="/wikie/ver/@p.entry.ver/@page.get.wid.wpath">@p.entry.ver</a> </td>
            <td> <a href="/wikie/content/ver/@p.entry.ver/@page.get.wid.wpath">@p.entry.ver</a> </td>
            <td> @p.entry.updDtm </td>
-           <td> @ROne[User]("_id" -> p.entry.by).map(_.ename).getOrElse(p.entry.by.toString) </td>
+           <td> @Users.findUserById(p.entry.by).map(_.ename).getOrElse(p.entry.by.toString) </td>
          </tr>
          }
        </table>

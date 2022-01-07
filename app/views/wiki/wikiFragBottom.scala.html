@@ -214,7 +214,7 @@ wikiEditForm = function() {
       function likeWikiFunc (how) {
         require(['jquery'], function($){
           var reason = how == 0 ? prompt ("Please give us some feedback to improve this topic...", "") : "";
-          if( !wikiVoted && (reason == 1 || reason.length > 1) ) {
+          if( !wikiVoted && (reason == 1 || reason.length > 5) ) {
             $.ajax(
                 "@routes.Wikie.like(wid)", {
                   type: 'POST',
@@ -234,8 +234,12 @@ wikiEditForm = function() {
             $(".voteLikeThanks").show(2000);
             $(".voteLikeThanks").hide(2000);
             wikiVoted=true;
-          } else {
+          } else if(wikiVoted) {
             $(".voteLikeThanks").text("Already voted!");
+            $(".voteLikeThanks").show(2000);
+            $(".voteLikeThanks").hide(2000);
+          } else {
+            $(".voteLikeThanks").text("Please provide feedback!");
             $(".voteLikeThanks").show(2000);
             $(".voteLikeThanks").hide(2000);
           }
