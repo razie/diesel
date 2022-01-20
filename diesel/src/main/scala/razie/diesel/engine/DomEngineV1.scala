@@ -212,7 +212,7 @@ class DomEngineV1(
           // a message with this name found, call it sync
 
           // NOTE - need to use ctx to access values in context etc, i..e map (x => a.b(x))
-          val res = newe.execSync(newnode, level, ctx, true)
+          val res = newe.processSync(newnode, level, ctx, true)
 
           newnode.setKinds(AstKinds.TRACE)
           newnode.kind = AstKinds.SUBTRACE

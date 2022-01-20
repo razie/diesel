@@ -11,13 +11,11 @@ import razie.Logging
 import razie.diesel.Diesel
 import razie.diesel.dom.RDOM.P
 import razie.diesel.dom.{DieselAssets, RDomain, WTypes}
+import razie.diesel.engine.RDExt.DieselJsonFactory
 import razie.diesel.engine.nodes._
 import razie.diesel.expr._
 import razie.diesel.model.DieselMsg
-import razie.diesel.model.DieselMsg.ENGINE.{
-  DIESEL_MSG_ACTION, DIESEL_MSG_ATTRS, DIESEL_MSG_EA, DIESEL_MSG_ENTITY,
-  DIESEL_SUMMARY
-}
+import razie.diesel.model.DieselMsg.ENGINE.{DIESEL_MSG_ACTION, DIESEL_MSG_ATTRS, DIESEL_MSG_EA, DIESEL_MSG_ENTITY, DIESEL_SUMMARY}
 import razie.diesel.utils.DomCollector
 import razie.tconf.DSpec
 import razie.wiki.admin.GlobalData
@@ -759,6 +757,7 @@ abstract class DomEngine(
     */
   def processTests = {
     Future {
+      DieselAppContext.startEngine(this)
       GlobalData.dieselEnginesActive.incrementAndGet()
       clog << s"WF.START.$id"
       trace("*******************************************************")
@@ -797,6 +796,8 @@ abstract class DomEngine(
     */
   def process: Future[DomEngine] = {
     if (root.status != DomState.STARTED) {
+
+      DieselAppContext.startEngine(this)
 
       GlobalData.dieselEnginesActive.incrementAndGet()
       clog << s"WF.START.$id"
@@ -878,21 +879,21 @@ abstract class DomEngine(
     msgs.collect {
 
       case a: DomAst if a.value.isInstanceOf[EMsg] =>
-        res = execSync(a, level + 1, newCtx, false)
+        res = processSync(a, level + 1, newCtx, false)
 
       case a: DomAst if a.value.isInstanceOf[ENextPas] =>
-        res = execSync(a, level + 1, newCtx, false)
+        res = processSync(a, level + 1, newCtx, false)
 //          a.value.isInstanceOf[ENext] ||
 //          a.value.isInstanceOf[EMsgPas] =>
 
       case a: DomAst if a.value.isInstanceOf[ENext] => {
-        res = execSync(a, level + 1, newCtx, false)
+        res = processSync(a, level + 1, newCtx, false)
       }
 
       // subrules use ENext which returns DEReq
       // todo use a proper "sync" SLA so the engine does this natively, not here...
       case a: DEReq => {
-        res = execSync(a.a, a.level, newCtx, false)
+        res = processSync(a.a, a.level, newCtx, false)
       }
 
 //          a.value.isInstanceOf[ENext] ||
@@ -918,11 +919,13 @@ abstract class DomEngine(
     * @param ast   new root
     * @param level starting level
     * @param ctx   root context to use
+    * @param initial true only the first time, not for recursions
     * @return
     */
-  def execSync(ast: DomAst, level: Int, ctx: ECtx, initial:Boolean=true): Option[P] = {
+  def processSync(ast: DomAst, level: Int, ctx: ECtx, initial:Boolean=true): Option[P] = {
 
     if(initial) {
+      DieselAppContext.startEngine(this)
       this.synchronous = true
     }
 
@@ -1135,6 +1138,25 @@ abstract class DomEngine(
 
   def addError(t: Throwable) {
     root.append(DomAst(new EError("Exception:", t), AstKinds.ERROR).withStatus(DomState.DONE))
+  }
+
+  def toj = {
+    Map(
+      //      "values" -> values.toMap,
+      "totalCount" -> (this.totalTestCount),
+      "failureCount" -> this.failedTestCount,
+      //      "errors" -> errors.toList,
+      DieselJsonFactory.dieselTrace -> DieselTrace(
+        this.root,
+        this.settings.node,
+        this.id,
+        "diesel",
+        "runDom",
+        this.settings.parentNodeId
+      ).toJson,
+      "settings" -> this.settings.toJson,
+      "specs" -> this.pages.map(_.specRef)
+    )
   }
 }
 
