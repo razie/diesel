@@ -231,18 +231,14 @@ wikiEditForm = function() {
                   }
                 });
             $(".voteLikeThanks").text("Thank you!");
-            $(".voteLikeThanks").show(2000);
-            $(".voteLikeThanks").hide(2000);
             wikiVoted=true;
           } else if(wikiVoted) {
             $(".voteLikeThanks").text("Already voted!");
-            $(".voteLikeThanks").show(2000);
-            $(".voteLikeThanks").hide(2000);
           } else {
             $(".voteLikeThanks").text("Please provide feedback!");
-            $(".voteLikeThanks").show(2000);
-            $(".voteLikeThanks").hide(2000);
           }
+          $(".voteLikeThanks").show(2000);
+          $(".voteLikeThanks").hide(2000);
         });
       };
 

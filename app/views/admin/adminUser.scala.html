@@ -7,9 +7,9 @@ screen to admin one user
 @pro(p:model.Profile) = {
 <br>userId: @p.userId
 <br>location: @p.loc
-<br>  tags: @p.tags
-<br>  aboutMe: @p.aboutMe
-<br>  relationships: @p.relationships.map { r =>
+<br>tags: @p.tags
+<br>aboutMe: @p.aboutMe
+<br>relationships: @p.relationships.map { r =>
       <a href="/razadmin/user/@r._1">@r._1</a> - @r._2 <br>
     }
 <br>  _id: @p._id
@@ -25,20 +25,14 @@ screen to admin one user
   <br>yob: @u.yob
   <br>email: @razie.wiki.Enc.unapply(u.email)
   <br>About: @u.prefs.get("about")
+  <br>_id: @u.id
   <br>
   <br>status: @u.status
-  <br>  perms: @u.perms | @u.forRealm(stok.realm).perms
-  <br>  roles: @u.roles.mkString(",") | @u.forRealm(stok.realm).roles.mkString(",")
-  <br>  realms: @u.realms.mkString(",")
-  <br>  prefs: @u.prefs | @u.forRealm(stok.realm).prefs
-  <br>  _id: @u.id
-  <br> ur: <br> @u.realmSet.map{t=>
-    <b>@t._1</b> -> @t._2 <br>
-  }
+  <br>perms: @u.perms | @u.forRealm(stok.realm).perms
+  <br>roles: @u.roles.mkString(",") | @u.forRealm(stok.realm).roles.mkString(",")
+  <br>realms: @u.realms.mkString(",")
+  <br>prefs: @u.prefs | @u.forRealm(stok.realm).prefs
 }
-
-<p>
-<b>toString: </b> @user.toString
 
 <p>
 <b>Profile: </b> @user.map(_.profile)
@@ -61,21 +55,33 @@ screen to admin one user
 <li>  WikiEntry    count = @razie.db.RazMongo("WikiEntry").count(Map("by" -> u._id))
 <li>  WikiEntryOld count = @razie.db.RazMongo("WikiEntryOld").count(Map("entry.by" -> u._id))
 <li>  Comment count = @razie.db.RazMongo("Comment").count(Map("userId" -> u._id))
-<li>  Notes    count = @razie.db.RazMongo("weNote").count(Map("by" -> u._id))
-<li>  Quota =  @user.flatMap(_.quota.updates)
+<li>  Notes   count = @razie.db.RazMongo("weNote").count(Map("by" -> u._id))
+<li>  Quota = @user.flatMap(_.quota.updates)
 }
 </ul>
-    <hr>
 
 <a href="/razadmin/user/@user.get.id/su">SU</a> |
 <a href="/razadmin/user/@user.get.id/delete1">DELETE</a> |
 @if(user.isDefined) {
-@if('a' == user.get.status) {
-<a href="/razadmin/user/@user.get.id/status/s">SUSPEND</a>
-} else {
-<a href="/razadmin/user/@user.get.id/status/a">ACTIVATE</a>
+  @if('a' == user.get.status) {
+    <a href="/razadmin/user/@user.get.id/status/s">SUSPEND</a>
+  } else {
+    <a href="/razadmin/user/@user.get.id/status/a">ACTIVATE</a>
+  }
 }
+
+<hr>
+
+<p>
+  <b>toString: </b> @user.toString
+
+  @user.map {u=>
+  <br> ur: <br> @u.realmSet.map{t=>
+    <b>@t._1</b> -> @t._2 <br>
+  }
 }
+
+<hr>
 
   <p>
     @if(!user.exists(_.realmSet.contains(stok.realm))) {

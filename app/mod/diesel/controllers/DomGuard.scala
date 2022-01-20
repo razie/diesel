@@ -66,19 +66,13 @@ class DomGuard extends DomApiBase with Logging {
         stok.fqhoParm("format", "html").toLowerCase() match {
 
           case "json" => {
-            var m = Map(
-              //      "values" -> values.toMap,
-              "totalCount" -> (eng.totalTestCount),
-              "failureCount" -> eng.failedTestCount,
-              //      "errors" -> errors.toList,
-              DieselJsonFactory.dieselTrace -> DieselTrace(eng.root, eng.settings.node, eng.id, "diesel", "runDom",
-                eng.settings.parentNodeId).toJson,
-              "settings" -> eng.settings.toJson,
-              "specs" -> eng.pages.map(_.specRef)
-            )
-
+            val m = eng.toj
             Ok(js.tojsons(m).toString).as("application/json")
           }
+
+//          case "html" => { // just the engine html, no wrappers
+//              Ok(eng.root.toHtmlInPage).as("text/html")
+//          }
 
           case _ => {
             ROK.k reactorLayout12 {

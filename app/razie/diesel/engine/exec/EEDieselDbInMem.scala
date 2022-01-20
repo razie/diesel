@@ -327,14 +327,17 @@ class EEDieselMemDbBase(name: String) extends EExecutor(name) {
 
     // split into several match patterns and extract just name,value
 
+    // if pattern equiv to startsWith
     val startsw = others.filter(x => x.calculatedValue.matches(".*\\*$"))
         .map(x => (x.name, x.calculatedValue.dropRight(1)))
     others = others.filter(a => !startsw.exists(_._1 == a.name))
 
+    // if pattern contains star make it regex all
     val matches = others.filter(x => x.calculatedValue.contains("*")).map(
       x => (x.name, x.calculatedValue.replaceAll("\\*", ".*")))
     others = others.filter(a => !matches.exists(_._1 == a.name))
 
+    // if no * then must be equalst for now
     val equals = others.map(x => (x.name, x.calculatedValue))
 
     val ires = tables.get(col).toList.flatMap(_.entries.toList

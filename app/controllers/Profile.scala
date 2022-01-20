@@ -161,26 +161,27 @@ class Profile @Inject()(config: Configuration, adminDiff: AdminDiff) extends Wik
         } else if (reg.password.length > 0 && reg.repassword.length <= 0)
           // TODO optimize - we lookup users twice on loing
           Users.findUserByEmailDec(reg.email).orElse(Users.findUserNoCase(reg.email)).map { u =>
-            //          println ("======="+u.email+"======="+u.pwd)
             if (reg.password.enc == u.pwd) true
             else {
               u.auditLoginFailed (Website.getRealm, countAttempts(reg.email))
               false
             }
           } getOrElse {
-          Audit.wrongLogin(reg.email, reg.password, countAttempts(reg.email))
+            Audit.wrongLogin(reg.email, reg.password, countAttempts(reg.email))
 
-          clog << "should I download remote user? isLocal: " << Config.isLocalhost
+            clog << "should I download remote user? isLocal: " << Config.isLocalhost
 
-          if (
-            Config.isLocalhost &&
+            val res = if (
+              Config.isLocalhost &&
                 adminDiff.isRemoteUser(reg.email, reg.password)) {
 
-            adminDiff.importRemoteUser(reg.email, reg.password)
-            AttemptCounter.success(reg.email)
-          }
+              adminDiff.importRemoteUser(reg.email, reg.password)
+              AttemptCounter.success(reg.email)
 
-          false
+              true
+            } else false
+
+            res
         }
         else {
           true
