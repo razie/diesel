@@ -6,16 +6,13 @@
 package razie.diesel.engine
 
 import razie.diesel.Diesel
-import razie.diesel.dom.RDOM.{P, PValue, ParmSource}
-import razie.diesel.dom.{RDOM, WTypes}
+import razie.diesel.dom.RDOM.{P, PValue}
+import razie.diesel.dom.{ParmSource, RDOM, WTypes}
 import razie.diesel.engine.nodes._
 import razie.diesel.expr.BExprFALSE.shorten
 import razie.diesel.expr._
-import razie.diesel.model.DieselMsg
-import razie.hosting.Website
 import razie.tconf.EPos
 import scala.collection.mutable.HashMap
-import scala.util.Try
 
 /** something that has a dom root tree - engines so far */
 trait DomRoot {

@@ -251,21 +251,6 @@ object RDOM {
     }
   }
 
-  /** a generic parm source - use it to dynamically source parms from a sub-object like "diesel.xxx" or else */
-  trait ParmSource {
-    def name: String
-
-    def remove(name: String): Option[P]
-
-    def getp(name: String): Option[P]
-
-    def put(p: P): Unit
-
-    def listAttrs: List[P]
-
-    def asP: P = P.fromSmartTypedValue(name, listAttrs.map(x => (x.name, x)).toMap)
-  }
-
   /** parm-related helpers
     * @deprecated
     */
@@ -787,7 +772,7 @@ object RDOM {
     * @param script
     * @param body
     */
-  case class F (name:String, parms:List[P], ttype:WType, archetype:String, script:String="",
+  case class F (name:String, lang:String, parms:List[P], ttype:WType, archetype:String, script:String="",
                 body:List[Executable]=List.empty) extends CM with CanHtml {
 
     override def toHtml = {

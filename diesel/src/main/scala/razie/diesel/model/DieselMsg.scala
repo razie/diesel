@@ -262,6 +262,7 @@ object DieselMsg {
     final val DIESEL_ENG_SET = "diesel.engine.set"
 
     final val DIESEL_ENG_SETTINGS = "diesel.engine.settings"
+    final val DIESEL_ENG = "diesel.engine"
     final val DIESEL_ENG_DESC = "diesel.engine.description"
 
     final val ERR_NORULESMATCH = "ERR_DIESEL_NORULESMATCH"

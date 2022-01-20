@@ -5,8 +5,8 @@
  */
 package razie.diesel.expr
 
-import razie.diesel.dom.RDOM.{P, ParmSource}
-import razie.diesel.dom.RDomain
+import razie.diesel.dom.RDOM.P
+import razie.diesel.dom.{ParmSource, RDomain}
 import razie.diesel.engine.{DomAst, DomEngECtx}
 import razie.tconf.{DSpec, DTemplate}
 import scala.collection.mutable.ListBuffer

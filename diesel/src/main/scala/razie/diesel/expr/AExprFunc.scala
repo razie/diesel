@@ -383,7 +383,7 @@ case class AExprFunc(val expr: String, parms: List[RDOM.P]) extends Expr {
             // a message with this name found, call it sync
 
             // NOTE - need to use ctx to access values in context etc, i..e map (x => a.b(x))
-            val res = newe.execSync(ast, level, ctx, true)
+            val res = newe.processSync(ast, level, ctx, true)
 
             ast.setKinds(AstKinds.TRACE)
             ast.kind = AstKinds.SUBTRACE

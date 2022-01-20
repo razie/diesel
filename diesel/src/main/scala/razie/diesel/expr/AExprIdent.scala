@@ -5,7 +5,7 @@
  */
 package razie.diesel.expr
 
-import razie.diesel.dom.RDOM.{P, ParmSource}
+import razie.diesel.dom.RDOM.{P}
 import razie.diesel.dom._
 
 /** resolving qualified identifier, including arrays, ranges, json docs etc

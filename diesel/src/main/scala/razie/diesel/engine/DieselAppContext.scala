@@ -164,6 +164,12 @@ object DieselAppContext extends Logging {
                correlationId: Option[String] = None) = {
 
     val eng = ctx.mkEngine(dom, root, settings, pages, description, correlationId)
+
+    eng
+  }
+
+  /** start the actor etc */
+  def startEngine(eng: DomEngine) = {
     val p = Props(new DomEngineActor(eng))
     val a = actorOf(p, name = "engine-" + eng.id)
 

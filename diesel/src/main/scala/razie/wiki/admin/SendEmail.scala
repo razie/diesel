@@ -202,7 +202,7 @@ object SendEmail extends razie.Logging {
   var state = STATE_OK
 
   def setState (news:String) = {
-    if(state != news) Audit.logdb("EMAIL_STATE", s"from $state to $news")
+    if(state != news) Audit.logdb("EMAIL_STATUS", s"from $state to $news")
     state = news
   }
 

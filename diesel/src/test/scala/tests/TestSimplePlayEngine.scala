@@ -26,7 +26,8 @@ class TestSimplePlayEngine extends PlaySpec /*with GuiceOneAppPerSuite */ {
 
   "simple specs" should {
     "execute a message" in {
-      val engine = DomEngineUtils.execAndWait(DomEngineUtils.mkEngine(new DomEngineSettings(), specs, List(storySend)))
+      val engine = DomEngineUtils.execAndWait(
+        DomEngineUtils.mkEngine(new DomEngineSettings(), specs, List(storySend)))
       println(engine.root.toString)
       println(engine.resultingValue)
       assert(engine.resultingValue contains "Jane")
