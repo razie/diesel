@@ -1,5 +1,6 @@
 package mod.book
 
+import com.google.inject.Singleton
 import razie.hosting.Website
 import model.{User, Users}
 import org.apache.commons.lang3.StringUtils
@@ -17,7 +18,6 @@ import razie.audit.Audit
 import razie.db._
 import razie.wiki.model._
 import razie.|>._
-
 import scala.collection.mutable.ListBuffer
 
 /** either Entry or Level */
@@ -103,7 +103,10 @@ case class Progress (
 }
 
 /** racer kid info utilities */
+//@Singleton
+// todo this is hard to make singleton beause of the init CodePills
 object Progress extends RazController with WikiMod {
+
   final val STATUS_SKIPPED = "s"
   final val STATUS_READ = "r"
   final val STATUS_PASSED = "p"
@@ -112,15 +115,71 @@ object Progress extends RazController with WikiMod {
   final val STATUS_PAUSED = "u" // pathway paused - another is current
   final val STATUS_IN_PROGRESS = "i" // also means current
 
+  final val PILL = "improve.skiing"
+
+  def topicList(w:UWID) : Option[TopicList] = {
+    WikiRefinery.get[TopicList] (w) {uwid=>
+      if(uwid.cat == "Pathway")
+        (true, Some(new TopicList(uwid)))
+      else
+        (false, None)
+    }
+  }
+
   def findById(id: ObjectId) = ROne[Progress]("_id" -> id)
   def findCurrentForUser(id: ObjectId) = ROne[Progress]("ownerId" -> id, "status" -> STATUS_IN_PROGRESS)
   def findForUser(id: ObjectId) = RMany[Progress]("ownerId" -> id)
   def findByUserAndTopic(userId:ObjectId, uwid:UWID) = ROne[Progress]("ownerId" -> userId, "ownerTopic" -> uwid.grated)
 
-  /** tricky - will prefer the one in progress */
+  // todo this init was setting up the PILLs from the ProgressCtl below...
+  def init = {}
+
+  /** format a section for display, with done/skip buttons and state */
+  def formatSec (we:WikiEntry, cur:WikiSection, what:String, path:String)(implicit stok:StateOk) : String = {
+    val (kind, name) = (cur.signature, cur.name)
+
+    val c =
+      s"""`{{section $name:$kind}}`${cur.content}
+         |<small>Read original <a href="${we.wid.urlRelative(stok.realm)}">topic</a></small> `{{/section}}`""".stripMargin
+
+    // this will callback the modPreFormat below
+    val f = Wikis.format(we.wid, we.markup, c, Some(we), stok.au)
+    val r = modPostHtmlNoBottom(we, f)
+    r
+  }
+
+  // need to temp subst this - the markdown formatter goes nuts if I put div tags pre-html
+  def modPostHtmlNoBottom (we:WikiEntry, html:String) : String =
+    html.replaceAll("\\{div.alert.info}", "<div class=\"alert alert-info\">").
+        replaceAll("\\{/div\\}", "</div>")
+
+
+    override def modPostHtml (we:WikiEntry, html:String) : String =
+      modPostHtmlNoBottom(we, html) +
+          modProp(modName, "bottom", Some(we))
+
+    // get the prev/next later...
+    override def modProp (prop:String, value:String, we:Option[WikiEntry]) : String = {
+      """<div id=""""+
+          value+
+          """">div.later</div> <script>require(['jquery'],function($){$("#"""+
+          value+
+          s"""").load("/pill/$PILL/next?wpath="""+
+          we.map(_.wid.wpath).mkString+
+          """");});</script> """
+    }
+
+    def modName:String = PILL
+    def modProps:Seq[String] = Seq(PILL)
+    def isInterested (we:WikiEntry) : Boolean =
+      we.tags.contains("improve-skiing")
+
+    val SECTIONS = Map("GETUP" -> "GET UP!", "ONSNOW" -> "ON SNOW!", "QUIZ" -> "QUIZ!")
+
+    /** tricky - will prefer the one in progress */
   def findForTopic(userId:ObjectId, uwid:UWID) = {
     val all = RMany[Progress]("ownerId" -> userId).filter(p=>
-      Progress.topicList(p.ownerTopic).exists(tl=>
+      topicList(p.ownerTopic).exists(tl=>
         tl.contains (uwid, p)
       )
     ).toList
@@ -150,23 +209,13 @@ object Progress extends RazController with WikiMod {
     p
   }
 
-  def topicList(w:UWID) : Option[TopicList] = {
-    WikiRefinery.get[TopicList] (w) {uwid=>
-       if(uwid.cat == "Pathway")
-         (true, Some(new TopicList(uwid)))
-      else
-         (false, None)
-    }
-  }
-
-  def init = {}
 
   def restart (pathway:String) = FAU("Can't start a custom progression without an account!") {implicit au=> implicit errCollector=> implicit request=>
     val path = pathway.split("/")
     val pwid = WID.fromPath(path(0)).get.r(Website.realm)
     (for(
       pway <- pwid.page orErr "pathway not found";
-      tl <- Progress.topicList(pway.uwid) orErr ("topic list not found: "+pwid.wpath);
+      tl <- topicList(pway.uwid) orErr ("topic list not found: "+pwid.wpath);
       prog <- findByUserAndTopic(au._id, tl.ownerTopic)
     ) yield {
         ViewService.impl.utilMsg(
@@ -186,7 +235,7 @@ object Progress extends RazController with WikiMod {
       val pwid = WID.fromPath(path(0)).get.r(Website.realm)
       (for(
         pway <- pwid.page orErr "pathway not found";
-        tl <- Progress.topicList(pway.uwid) orErr ("topic list not found: "+pwid.wpath)
+        tl <- topicList(pway.uwid) orErr ("topic list not found: "+pwid.wpath)
       ) yield     razie.db.tx("restart1", au.userName) { implicit txn =>
           findByUserAndTopic(au._id, tl.ownerTopic).map(_.delete)
           val p = startProgress(au._id, tl)
@@ -203,7 +252,7 @@ object Progress extends RazController with WikiMod {
       val pwid = WID.fromPath(path(0)).get.r(Website.realm)
       (for(
         pway <- pwid.page orErr "pathway not found";
-        tl <- Progress.topicList(pway.uwid) orErr "topic list not found"
+        tl <- topicList(pway.uwid) orErr "topic list not found"
       ) yield {
           val p = au.flatMap(u=> findByUserAndTopic(u._id, pway.uwid))
           ROK.k apply {implicit stok=>
@@ -301,7 +350,6 @@ object Progress extends RazController with WikiMod {
   val DFLT_PATHWAY = "Pathway:Effective"
 
   // ----------------- pills
-  final val PILL = "improve.skiing"
 
   def sayHi = Action {request=> Ok("hello")}
 
@@ -310,6 +358,7 @@ object Progress extends RazController with WikiMod {
       """<b><small>{{ No pathway
         |<span class="glyphicon glyphicon-info-sign" title="You need to login and start a progression to improve your skiing!"></span>
         |}}</small></b>""".stripMargin)
+
 
   CodePills.addString (s"$PILL/sayhi") {implicit request=>
     "ok"
@@ -326,8 +375,8 @@ object Progress extends RazController with WikiMod {
         (for (
           pwid <- q.get("wpath") flatMap WID.fromPath map (_.r(request.realm)) orErr "invalid wpath";
           uwid <- pwid.uwid;
-          p <- Progress.findCurrentForUser(au._id);// orElse findForTopic(au._id, uwid);
-          tl <- Progress.topicList(p.ownerTopic) orErr "topic list not found"
+          p <- findCurrentForUser(au._id);// orElse findForTopic(au._id, uwid);
+          tl <- topicList(p.ownerTopic) orErr "topic list not found"
         ) yield {
             val n = tl.next(uwid,p)
             Ok(prevNext(n._1, p, uwid, n._2, n._3))
@@ -358,7 +407,7 @@ object Progress extends RazController with WikiMod {
           uwid    <- widFrom.uwid;
           page    <- uwid.page orErr "page not found: "+uwid;
           p       <- findForTopic(au._id, uwid);
-          tl      <- Progress.topicList(p.ownerTopic) orErr "topic list not found"
+          tl      <- topicList(p.ownerTopic) orErr "topic list not found"
         ) yield {
             var st = q("status");
 
@@ -407,7 +456,7 @@ object Progress extends RazController with WikiMod {
         val pwid = WID.fromPath(path(0)).get.r(request.realm)
         (for(
           pway <- pwid.page orErr "pathway not found";
-          tl <- Progress.topicList(pway.uwid) orErr "topic list not found"
+          tl <- topicList(pway.uwid) orErr "topic list not found"
         ) yield {
             val p = ROne[Progress]("ownerId" -> au._id, "ownerTopic" -> pway.uwid.grated)
             ROK.k apply {implicit stok=>
@@ -436,7 +485,7 @@ object Progress extends RazController with WikiMod {
           uwid    <- wid.uwid;
           we <- wid.page;
           p       <- findForTopic(au._id, uwid);
-          tl      <- Progress.topicList(p.ownerTopic) orErr "topic list not found";
+          tl      <- topicList(p.ownerTopic) orErr "topic list not found";
           name     <- qget("section")
         ) yield {
             val disabled = if(p.isComplete(uwid, Some(wid.copy(section=Some(name))))) "disabled" else ""
@@ -458,7 +507,7 @@ object Progress extends RazController with WikiMod {
           uwid   <- wid.uwid;
           page   <- wid.page;
           p      <- findForTopic(au._id, uwid);
-          tl     <- Progress.topicList(p.ownerTopic) orErr "topic list not found";
+          tl     <- topicList(p.ownerTopic) orErr "topic list not found";
           name   <- qget("section")
         ) yield {
             val st = q("status");
@@ -525,27 +574,6 @@ object Progress extends RazController with WikiMod {
 
   // ------------ mods
 
-  def modName:String = PILL
-  def modProps:Seq[String] = Seq(PILL)
-  def isInterested (we:WikiEntry) : Boolean =
-    we.tags.contains("improve-skiing")
-
-  /** format a section for display, with done/skip buttons and state */
-  def formatSec (we:WikiEntry, cur:WikiSection, what:String, path:String)(implicit stok:StateOk) : String = {
-    val (kind, name) = (cur.signature, cur.name)
-
-    val c =
-      s"""`{{section $name:$kind}}`${cur.content}
-         |<small>Read original <a href="${we.wid.urlRelative(stok.realm)}">topic</a></small> `{{/section}}`""".stripMargin
-
-    // this will callback the modPreFormat below
-    val f = Wikis.format(we.wid, we.markup, c, Some(we), stok.au)
-    val r = modPostHtmlNoBottom(we, f)
-    r
-  }
-
-  val SECTIONS = Map("GETUP" -> "GET UP!", "ONSNOW" -> "ON SNOW!", "QUIZ" -> "QUIZ!")
-
   // replace the sections in content to add blue boxes and stuff
   override def modPreHtml (we:WikiEntry, content:Option[String]) : Option[String] = {
     content.orElse(Some(we.content)).map{c=>
@@ -578,26 +606,6 @@ object Progress extends RazController with WikiMod {
     }
   }
 
-  // need to temp subst this - the markdown formatter goes nuts if I put div tags pre-html
-  def modPostHtmlNoBottom (we:WikiEntry, html:String) : String =
-    html.replaceAll("\\{div.alert.info}", "<div class=\"alert alert-info\">").
-    replaceAll("\\{/div\\}", "</div>")
-
-  override def modPostHtml (we:WikiEntry, html:String) : String =
-    modPostHtmlNoBottom(we, html) +
-    modProp(modName, "bottom", Some(we))
-
-  // get the prev/next later...
-  override def modProp (prop:String, value:String, we:Option[WikiEntry]) : String = {
-    """<div id=""""+
-      value+
-      """">div.later</div> <script>require(['jquery'],function($){$("#"""+
-      value+
-      s"""").load("/pill/$PILL/next?wpath="""+
-      we.map(_.wid.wpath).mkString+
-      """");});</script> """
-  }
-
   WikiMods register this
 
   def apiHistory (forUser:String) = FAUR {implicit stok=>
@@ -616,7 +624,7 @@ object Progress extends RazController with WikiMod {
     var ret = "[]"
     user.map {u=>
       findCurrentForUser(u._id).map {p=>
-        val tl = Progress.topicList(p.ownerTopic)
+        val tl = topicList(p.ownerTopic)
         tl.flatMap(_.current(p)).map { cur =>
           cur.wid.flatMap(_.page).map {p=>
             ret = js.tojsons(List(Map(
