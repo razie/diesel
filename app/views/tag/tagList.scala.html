@@ -3,14 +3,16 @@ list of tags for browsing
 
 tagPrefix is applied to browse another tag
 **************@
-@(current:String, tags:model.Tags.Tags, max:Int=20, tagPrefix:String="./", tagSuffix:String="")
+@(current:String, tags:model.Tags.Tags, max:Int=20, tagPrefix:String="./", tagSuffix:String="")(implicit stok: controllers.StateOk)
 
 @tagpath(s:String) = @{ if(current=="" || Seq("none", "recent", "all", "archive").contains(current)) s else (current+"/"+s) }
 @browseTag(t:String)={@tagPrefix@tagpath(t)@tagSuffix}
 @browseAllTags()={"."}
 @curcat = @{ val x = current.replaceFirst("/.*", "").capitalize; if(x.isEmpty) "Topic" else x }
 
-<a href="@routes.Wikie.wikieCreate(curcat, current.replaceAllLiterally("/", ","))" class="btn btn-lg btn-info">New @curcat ...</a>
+@if(stok.au.exists(_.isActive)) {
+  <a href="@routes.Wikie.wikieCreate(curcat, current.replaceAllLiterally("/", ","))" class="btn btn-lg btn-info">New @curcat ...</a>
+}
 <p>
 </p>
 
