@@ -8,5 +8,8 @@ cd $RK/docker/base
 
 docker build --no-cache -t raz-base2 .
 
+docker tag raz-base2 razie/raz-base2:u322
+docker push razie/raz-base2:u322
+
 cd $RK
 

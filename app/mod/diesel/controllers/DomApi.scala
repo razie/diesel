@@ -395,7 +395,7 @@ class DomApi extends DomApiBase with Logging {
         val stories = if (settings.sketchMode)
           EnginePrep.catPages("Story", reactor). /*filter(_.name != stw.get.name).*/ toList else Nil
 
-        val specs = EnginePrep.catPages("Spec", reactor)
+        val specs = EnginePrep.catPagesFiltered("Spec", reactor)
         val d = (specs ::: stories).map { p => // if draft mode, find the auto-saved version if any
           if (settings.draftMode) {
             val c = Autosave.find("wikie", p.wid.defaultRealmTo(reactor), userId).flatMap(_.get("content")).mkString

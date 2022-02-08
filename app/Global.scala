@@ -1,5 +1,5 @@
 /**
-  * ____    __    ____  ____  ____,,___     ____  __  __  ____
+  *  ____    __    ____  ____  ____,,___     ____  __  __  ____
   * (  _ \  /__\  (_   )(_  _)( ___)/ __)   (  _ \(  )(  )(  _ \           Read
   * )   / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <     README.txt
   * (_)\_)(__)(__)(____)(____)(____)(___/   (__)  (______)(____/    LICENSE.txt
@@ -353,7 +353,18 @@ object LoggingFilter extends Filter {
 
       served
 
-      result.withHeaders("Request-Time" -> time.toString)
+      var res = result.withHeaders("Request-Time" -> time.toString)
+
+      // See @Config.HEADERS
+      Config.HEADERS.split(",").filter(_.length > 0).map {h =>
+        val v = Config.prop(s"wiki.header.$h.value")
+        val r = Config.prop(s"wiki.header.$h.regex")
+
+        if(r.length <= 0 || rh.path.matches(r))
+          res = res.withHeaders(h -> v)
+      }
+
+      res
     }
 
     def getType =

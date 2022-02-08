@@ -1,4 +1,16 @@
-This is your new Play 2.0 application
+Diesel play app
 =====================================
 
-This file will be packaged with your application, when using `play dist`.
+To build docker:
+- vi do-base
+ - and change tag
+docker pull openjdk:8 if you need to get new jdk, it won't update auto
+. do-base
+- vi docker/rk-libs/Dockerfile 
+- vi docker/rk/Dockerfile 
+ - and change tag
+- vi build-rk 
+ - and change tag
+. build-rk
+
+

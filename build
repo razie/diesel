@@ -1,6 +1,6 @@
 ## create, tag and publish the rk docker image
 #
-# See do-base for rebuilding the base image
+# See do-base for rebuilding the base image, prior to this
 #
 
 RK=~/w/racerkidz
@@ -30,22 +30,14 @@ do
   docker push razie/raz-diesel:${var}
 done
 
-#echo "publishing"
-#echo "docker tag raz-diesel razie/raz-diesel"
-#echo "docker login -u razie"
-#echo "docker push razie/raz-diesel"
-
 ################## publishing
 
 # https://docs.docker.com/docker-cloud/builds/push-images/
 
 # docker tag raz-diesel razie/raz-diesel
-#docker tag raz-diesel razie/raz-diesel:2.1.6-t2b
+# docker tag raz-diesel razie/raz-diesel:2.1.6-t2b
 
 # docker login -u razie
-
-#docker push razie/raz-diesel:2.1.6-t2b
-#docker push razie/raz-diesel:razlatest
 
 ## SEE build-rk for details to run locally
 

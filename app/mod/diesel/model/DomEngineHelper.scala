@@ -119,6 +119,7 @@ object DomEngineHelper {
       configTag = fqhParm(DIESEL_CONFIG_TAG),
       userId = fqhParm(DIESEL_USER_ID),
       cont,
+      tagQuery = fqhParm(TAG_QUERY),
       simMode = fqhoParm(SIM_MODE, "false").toBoolean,
       dieselHost = Some(request.host)
     )
