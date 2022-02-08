@@ -88,23 +88,27 @@ class TagQuery(val tags: String) {
   }
 
   def matches (u:DSpec) = {
-    val utags = u.tags.mkString
+    if(this.isEmpty) true
+    else {
 
-    def checkT(b: String) = {
-      utags.contains(b) ||
-          (b == "*" ||
-              (b == "draft" && u.isDraft) ||
-              (b == "public" && u.visibility == PUBLIC) ||
-              u.cat.toLowerCase == b) &&
-              (tRealm.isEmpty || ("realm." + u.specRef.realm) == tRealm.get)
+      val utags = u.tags.mkString
+
+      def checkT(b: String) = {
+        utags.contains(b) ||
+            (b == "*" ||
+                (b == "draft" && u.isDraft) ||
+                (b == "public" && u.visibility == PUBLIC) ||
+                u.cat.toLowerCase == b) &&
+                (tRealm.isEmpty || ("realm." + u.specRef.realm) == tRealm.get)
+      }
+
+      qt.size <= 0 ||
+          u.tags.size > 0 &&
+              qt.foldLeft(true)((a, b) => a && (
+                  if (b(0).startsWith("-")) !checkT(b(0).substring(1))
+                  else b.foldLeft(false)((a, b) => a || checkT(b))
+                  ))
     }
-
-    qt.size <= 0 ||
-      u.tags.size > 0 &&
-      qt.foldLeft(true)((a, b) => a && (
-        if (b(0).startsWith("-")) !checkT(b(0).substring(1))
-        else b.foldLeft(false)((a, b) => a || checkT(b))
-        ))
   }
 
   /** is any of the t list of tags included in this query?
@@ -119,3 +123,7 @@ class TagQuery(val tags: String) {
   }
 }
 
+object TagQuery {
+  /** empty tag query, generally optimizes searches and lookups, where tags are needed */
+  final val EMPTY = new TagQuery("")
+}

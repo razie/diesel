@@ -6,9 +6,11 @@
   */
 package razie.diesel.model
 
+import razie.diesel.engine.DomEngineSettings.DEFAULT_TQ_SPECS
 import razie.diesel.engine.nodes.EnginePrep
 import razie.tconf.{SpecRef, TSpecRef, TagQuery}
 import razie.wiki.model.{WID, WikiSearch, Wikis}
+import scala.::
 
 /** a target for a message: either a specified list of config, or a realm
   *
@@ -72,7 +74,7 @@ object DieselTarget {
   def ENV(realm: String, env: String = DEFAULT) =
     new DieselTarget(realm, env) {
       override def specs = {
-        ENV_SETTINGS(realm) :: tqSpecs(realm, new TagQuery(""))
+        ENV_SETTINGS(realm) :: tqSpecs(realm, TagQuery.EMPTY)
       }
     }
 

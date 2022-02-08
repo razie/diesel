@@ -10,13 +10,11 @@ import razie.Logging
 import razie.diesel.dom.RDOM.{O, P}
 import razie.diesel.dom.RDomain.DOM_LIST
 import razie.diesel.dom.{RDomain, WikiDomain}
-import razie.diesel.engine.DomEngineView.{
-  errorCount, failedTestCount, successTestCount, todoTestCount,
-  totalTestedCount
-}
+import razie.diesel.engine.DomEngineSettings.DEFAULT_TQ_SPECS
+import razie.diesel.engine.DomEngineView.{errorCount, failedTestCount, successTestCount, todoTestCount, totalTestedCount}
 import razie.diesel.engine._
 import razie.diesel.expr.ScopeECtx
-import razie.diesel.model.DieselMsg
+import razie.diesel.model.{DieselMsg, DieselTarget}
 import razie.diesel.utils.{DomUtils, SpecCache}
 import razie.tconf.{DSpec, TSpecRef, TagQuery}
 import razie.wiki.admin.Autosave
@@ -158,10 +156,24 @@ object EnginePrep extends Logging {
                   .filter(x => !(x.tags.contains("private")))
           )
 
-      mixinEntries(l)
+      mixinEntries(l).filter(x => !(x.tags.contains("exclude")))
     } else {
       w.pages(cat).toList
     }
+  }
+
+  /** all pages of category - inherit ALL specs from mixins
+    *
+    * filtered with default filters
+    *
+    * @param cat             cat to look for
+    * @param realm
+    * @param overwriteTopics if true will overwrite base realm topics with same name
+    * @return
+    */
+  def catPagesFiltered(cat: String, realm: String, overwriteTopics: Boolean = true): List[WikiEntry] = {
+    catPages(cat, realm, overwriteTopics)
+        .filter(x => DEFAULT_TQ_SPECS.matches(x))
   }
 
 
@@ -210,7 +222,8 @@ object EnginePrep extends Logging {
 
     val specs =
       if (settings.blenderMode) { // blend all specs and stories
-        val d = catPages("Spec", reactor).toList.map { p =>
+        val d = catPagesFiltered("Spec", reactor)
+            .map { p =>
           //         if draft mode, find the auto-saved version if any
           if (settings.draftMode) {
             val a = Autosave.find("wikie", p.wid.defaultRealmTo(reactor), uid)

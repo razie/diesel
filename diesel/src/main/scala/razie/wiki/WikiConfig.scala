@@ -63,6 +63,7 @@ abstract class WikiConfig {
 
   WikiConfig.inst = Some(this)
 
+  /** the underlying play config - needed as in some places I can't load sitecfg before props are needed */
   def pconfig = WikiConfig.playConfig.underlying
 
   /** get from play config - needed as in some places I can't load sitecfg before props are needed */
@@ -120,6 +121,15 @@ abstract class WikiConfig {
   final val clusterMode = prop("wiki.cluster", "no")
 
   final val CONNECTED = prop("wiki.connected", "connected")
+
+  /** global headers. Each header may have a value and a pathregex
+    * for instance:
+    * DIESEL_WIKI_HEADERS=X1,X2
+    * DIESEL_WIKI_HEADER_X1_VALUE=value1
+    * DIESEL_WIKI_HEADER_X2_VALUE=value2
+    * DIESEL_WIKI_HEADER_X2_REGEX=.*
+    */
+  final val HEADERS = prop("wiki.headers", "")
 
   /** when running on localhost, simulate this host */
   def simulateHost = prop("wiki.simulateHost")

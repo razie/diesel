@@ -34,7 +34,7 @@ class DieselRulesInventory(
     // todo optimize - load only if a set of classes matches or something
     // if classes are annotated with db.name or something
 
-    val specs = DieselTarget.tqSpecs(irealm, new TagQuery(""))
+    val specs = DieselTarget.tqSpecs(irealm, TagQuery.EMPTY)
     specs
         .find { spec =>
           // don't have to actually parse, eh?
