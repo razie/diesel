@@ -69,6 +69,9 @@ trait WikiPage {
   def linksTo : Iterator[WikiLink]
 }
 
+/** a like from a user */
+case class UserLike (uid:String, likes:Boolean, note:String)
+
 /** a simple wiki-style entry: language (markdown, mediawiki wikidot etc) and the actual source
   *
   * There is an "owner" property - owner is supposed to have special privileges
@@ -86,6 +89,8 @@ case class WikiEntry(
   ver: Int = 1,
   parent: Option[ObjectId] = None,
   props: Map[String, String] = Map.empty, // properties - can be supplemented in the content
+  // todo cleanup and migrate likes and dislikes into userFeedback...
+  userFeedback: List[UserLike] = List.empty,         // list of usernames that liked it
   likes: List[String] = List.empty,         // list of usernames that liked it
   dislikes: List[String] = List.empty,      // list of usernames that liked it
   dislikeReasons: List[String] = List.empty,// list of usernames that liked it
@@ -104,6 +109,9 @@ case class WikiEntry(
     new SpecRef(this.realm, this.wid.wpath, this.name) {
       override def ahref: Option[String] = Some(wid.ahref)
     }
+
+  def userLikes = userFeedback.filter(_.likes)
+  def userDislikes = userFeedback.filter(! _.likes)
 
   /**
     * find a template for that name (e-a) or implementing that URL
