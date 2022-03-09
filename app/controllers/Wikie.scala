@@ -1302,9 +1302,11 @@ class Wikie @Inject()(config: Configuration) extends WikieBase {
       reason <- request.fqhParm("reason");
       w <- Wikis.find(wid);
       newVer <- activeUser.map { au =>
+        val ulike = UserLike (au._id.toString, how == 1, reason.trim)
         val like = if (how == 1) Some(au) else None
         val dislike = if (how == 0) Some(au) else None
         (w.copy(
+          userFeedback = List(ulike) ::: w.userFeedback,
           likes = like.map(_._id.toString).toList ::: w.likes,
           dislikes = dislike.map(_._id.toString).toList ::: w.dislikes,
           dislikeReasons = (if (how == 1 || reason.trim.isEmpty) Nil else List(reason)) ::: w.dislikeReasons

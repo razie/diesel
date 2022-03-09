@@ -56,7 +56,7 @@ object NotesTags {
 }
 
 /** notes organized by books per realms */
-case class Book (realm:String, name:String, pinTags:TagQuery=new TagQuery("")) {
+case class Book (realm:String, name:String, pinTags:TagQuery=TagQuery.EMPTY) {
   val public = pinTags.public
 }
 

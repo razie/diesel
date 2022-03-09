@@ -42,7 +42,11 @@ wiki fragment, used in another page
     @******* likes *******@
     <div id="voteLike" class="label label-info" style="padding: 10px">
     <b>Was this useful? &nbsp;
-      @if(!stok.au.exists(_.isActive) || page.exists(p => !(p.likes contains stok.au.get._id.toString))) {
+      @if(!stok.au.exists(_.isActive) ||
+          page.exists(p => !(
+              (p.userLikes exists (_.uid == stok.au.get._id.toString)) ||
+              (p.likes contains stok.au.get._id.toString)))
+      ) {
         <a href="javascript:likeWikiFunc(1)" class="glyphicon glyphicon-thumbs-up btn " style="font-size: large" title="This topic is helpful"></a>
       } else {
         <span class="glyphicon glyphicon-thumbs-up" title="You already rated this topic"></span>
@@ -55,7 +59,11 @@ wiki fragment, used in another page
       }
 
         &nbsp;
-      @if(!stok.au.exists(_.isActive) || page.exists(p => !(p.dislikes contains stok.au.get._id.toString))) {
+      @if(!stok.au.exists(_.isActive) ||
+          page.exists(p => !(
+              (p.userLikes exists (_.uid == stok.au.get._id.toString)) ||
+              (p.dislikes contains stok.au.get._id.toString)))
+      ) {
         <a href="javascript:likeWikiFunc(0)" class="glyphicon glyphicon-thumbs-down btn " style="font-size: large" title="This topic is not helpful"></a>
       } else {
         <span class="glyphicon glyphicon-thumbs-down" title="You already rated this topic"></span>
@@ -211,10 +219,12 @@ wikiEditForm = function() {
   <script>
       // simple protection for multiple clickskA
       // DO NOT move this function - rrequires wid
+      /** how 0-not like, 1 - like */
       function likeWikiFunc (how) {
         require(['jquery'], function($){
-          var reason = how == 0 ? prompt ("Please give us some feedback to improve this topic...", "") : "";
-          if( !wikiVoted && (reason == 1 || reason.length > 5) ) {
+          var msg = how == 0 ?  "Please give us some feedback to improve this topic..." : "Any feedback to improve this topic further?";
+          var reason = /*how == 0 ? */ prompt (msg, "");// : "";
+          if( !wikiVoted && (how == 1 || reason.length > 5) ) {
             $.ajax(
                 "@routes.Wikie.like(wid)", {
                   type: 'POST',
