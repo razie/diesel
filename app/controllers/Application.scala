@@ -195,7 +195,8 @@ class Application @Inject()(wikiCtl: Wiki) extends RazController {
 
           Audit.missingPage("URL - NO ROUTE FOR: " + path)
 
-          RkReactors(request).map(Wikis.apply).flatMap { wiki =>
+          // ONLY if category not in path
+          RkReactors(request).map(Wikis.apply).filter(x=> !path.contains("/")).flatMap { wiki =>
 
             // found reactor - look for a simple name first
 
@@ -379,11 +380,12 @@ class Application @Inject()(wikiCtl: Wiki) extends RazController {
       case "wikiIdByName" =>
         ROne[WikiEntry]("name" -> data).map(_._id.toString).mkString
       case "uwIdByUserId" =>
-        ROne[User]("_id" -> data.aso).toList.flatMap(_.wikis).map(_._id.toString).mkString
+        Users.findUserById(data.aso).toList.flatMap(_.wikis).map(_._id.toString).mkString
       case "userIdByFirstName" =>
-        ROne[User]("firstName" -> data).map(_._id.toString).mkString
+        Users.findUserByFirstName(data).map(_._id.toString).mkString
+//        ROne[User]("firstName" -> data).map(_._id.toString).mkString
       case "setuserUsernameById" =>
-        ROne[User]("_id" -> data.aso).foreach(u => u.update(u.copy(userName = data)))
+        Users.findUserById(data.aso).foreach(u => u.update(u.copy(userName = data)))
         "ok"
       case "verifyUserById" =>
         val email = ROne[model.User]("_id" -> data.aso).map(_.email.toString).get

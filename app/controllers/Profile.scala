@@ -132,7 +132,7 @@ object AttemptCounter {
 }
 
 @Singleton
-class Profile @Inject()(config: Configuration, adminDiff: AdminDiff) extends WikieBase with Logging {
+class Profile @Inject()(config: Configuration, adminImport: AdminImport) extends WikieBase with Logging {
 
   import AttemptCounter._
 
@@ -173,9 +173,9 @@ class Profile @Inject()(config: Configuration, adminDiff: AdminDiff) extends Wik
 
             val res = if (
               Config.isLocalhost &&
-                adminDiff.isRemoteUser(reg.email, reg.password)) {
+                adminImport.isRemoteUser(reg.email, reg.password)) {
 
-              adminDiff.importRemoteUser(reg.email, reg.password)
+              adminImport.importRemoteUser(reg.email, reg.password)
               AttemptCounter.success(reg.email)
 
               true
@@ -332,8 +332,8 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
         cdebug << "should I download remote user? isLocal: " + Config.isLocalhost
         if(
           Config.isLocalhost &&
-          adminDiff.isRemoteUser(email, pass)) {
-          adminDiff.importRemoteUser(email, pass)
+          adminImport.isRemoteUser(email, pass)) {
+          adminImport.importRemoteUser(email, pass)
           AttemptCounter.success(email)
         }
       }

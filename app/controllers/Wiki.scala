@@ -10,6 +10,7 @@ import com.google.inject.{Inject, Singleton}
 import com.mongodb.DBObject
 import com.mongodb.casbah.Imports._
 import com.novus.salat._
+import controllers.WikiApiv1.Ok
 import mod.diesel.controllers.DieselControl
 import model._
 import org.bson.types.ObjectId
@@ -325,6 +326,13 @@ class Wiki @Inject()(dieselControl: DieselControl) extends WikiBase {
     cw.cmd match {
 
         // NOTE - these must be listed in WID.cmdfromPath
+
+      case "meta"     => wid.page.map(w=> {
+        // this is used when saving/migrating content, it's full meta json
+        val j = w.grated
+        j.put("content", "") // erase content, too big...
+        Ok(j.toString).as("application/json")
+      }).getOrElse(NotFound("WID not found:"+wid.wpath))
 
       case "content" => wid.page.map(w=> Ok(w.content).as("text/plain")).getOrElse(NotFound("WID not found:"+wid.wpath))
       case "included" => wid.page.map(w=> Ok(w.included).as("text/plain")).getOrElse(NotFound("WID not found:"+wid.wpath))
@@ -942,12 +950,17 @@ object WikiApiv1 extends WikiBase {
         if(canSee(wid, auth, Some(w)))
           form match {
             case "content"  => Ok(w.content)
+            case "json"     => Ok(w.grated.toString).as("application/json")
             case "fullpath" => Ok(wid.wpathFull)
+
             case "html"  =>
               ROK.r noLayout { implicit stok =>
                 views.html.wiki.wikiFrag(w.wid, None, true, Some(w))
               }
+
             case "json"  =>
+              // limited json of the page, only specific fields -
+              // /weapi/v1/entry/*wpath
               Ok(filterJson(w.grated).toString).as("application/json")
           }
         else
