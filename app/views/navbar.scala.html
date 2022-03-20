@@ -280,7 +280,12 @@ require(['jquery'], function($){
 
     **@
 
-    @if(! web().navrMenuRemove.contains("Search") || stok.au.exists(_.isMod) &&  stok.isLocalhost ) {
+    <!-- 1 @web().navrMenuRemove.contains("Search") || @stok.au.exists(_.isMod) && @stok.isLocalhost -->
+
+    @if(! web().navrMenuRemove.contains("Search") || stok.au.exists(_.isMod) && stok.isLocalhost ) {
+
+      <!-- 2 @stok.au.exists(_.isMod) || @stok.isLocalhost && @web().prop("diesel.envList") -->
+
       @if((stok.au.exists(_.isMod) || stok.isLocalhost) && web().prop("diesel.envList").isDefined) {
         <ul class="nav navbar-nav pull-right">
           <li class="dropdown">

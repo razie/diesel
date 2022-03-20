@@ -18,27 +18,35 @@ profile - other preferences
       '_label -> "Site appearance",
       '_error -> myForm.error("css"),
       '_showConstraints -> false)
-    @helper.inputText(
-      myForm("favQuote"),
-      '_label -> "Favorite quote",
-      '_error -> myForm.error("favQuote"),
-      '_showConstraints -> false,
-      '_showConstraints -> false)
 
-    @helper.inputText(
-      myForm("weatherCode"),
-      '_label -> "Weather code",
-      '_error -> myForm.error("weatherCode"),
-      '_showConstraints -> false,
-      '_showConstraints -> false)
+@*//    @helper.inputText(*@
+@*//      myForm("favQuote"),*@
+@*//      '_label -> "Favorite quote",*@
+@*//      '_error -> myForm.error("favQuote"),*@
+@*//      '_showConstraints -> false,*@
+@*//      '_showConstraints -> false,*@
+@*//      'style -> "display: none"*@
+@*//    )*@
+@*//*@
+@*//    @helper.inputText(*@
+@*//      myForm("weatherCode"),*@
+@*//      '_label -> "Weather code",*@
+@*//      '_error -> myForm.error("weatherCode"),*@
+@*//      '_showConstraints -> false,*@
+@*//      '_showConstraints -> false,*@
+@*//      'style -> "display: none"*@
+@*//    )*@
 
     @helper.inputText(
       myForm("apiKey"),
       'disabled -> true,
       '_label -> "API key",
       '_error -> myForm.error("apiKey"),
-      '_showConstraints -> false,
       '_showConstraints -> false)
+
+    <input name="apiKey" value="@myForm("apiKey").value.mkString" hidden></input>
+    <input name="favQuote" value="@myForm("favQuote").value.mkString" hidden></input>
+    <input name="weatherCode" value="@myForm("weatherCode").value.mkString" hidden></input>
 
     <button type="submit" class="btn btn-primary">Update preferences !</button>
 
@@ -52,12 +60,12 @@ profile - other preferences
   <div class="col-sm-4">
 
     <h2 align="center">Changing the preferences</h2>
-    <p>These preferences do all kinds of things - check it out!</p>
+    <p>General preferences!</p>
     <p><b>Site appearance</b>
       controls the basic appearance of the site - "dark" is new and cool while "light" is... well, if you're used to that.
-    <p><b>Favorite quote</b> is just that - your favorite quote
-    <p><b>Weather code</b>
-      is the weather code you want displayed in your main page - obtained from theweathernetwork.com - for instance Toronto is caon0696
+@*    <p><b>Favorite quote</b> is just that - your favorite quote*@
+@*    <p><b>Weather code</b>*@
+@*      is the weather code you want displayed in your main page - obtained from theweathernetwork.com - for instance Toronto is caon0696*@
   <p><b>API Key</b>
     will allow API access as yourself
 
