@@ -35,6 +35,7 @@ libraryDependencies in Global ++= Seq(
   "javax.mail"                % "mail"             % "1.4.5",
   "com.googlecode.java-diff-utils" % "diffutils"   % "1.2.1",
   "org.antlr"                 % "antlr4"           % "4.5.3",
+  "org.postgresql"            % "postgresql"       % "42.2.15",
 
   "org.mongodb"              %% "casbah"           % "2.8.2",
   "com.novus"                %% "salat-core"       % "1.9.9",

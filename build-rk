@@ -3,6 +3,7 @@
 # See do-base for rebuilding the base image
 #
 
+LIBS_TAG=u322postgress
 VER=0.9.2
 RK=~/w/racerkidz
 T=$RK/target/universal/racerkidz-${VER}-SNAPSHOT/lib
@@ -37,7 +38,7 @@ mkdir -p ../rk/dist/lib
 mv dist/lib/com.razie.* ../rk/dist/lib
 
 docker build -t raz-diesel-libs2 .
-docker tag raz-diesel-libs2 razie/raz-diesel-libs2:u322
+docker tag raz-diesel-libs2 razie/raz-diesel-libs2:${LIBS_TAG}
 
 ## cleanup
 rm -rf dist
