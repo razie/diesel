@@ -91,6 +91,26 @@ case class AExprFunc(val expr: String, parms: List[RDOM.P]) extends Expr {
         P.fromTypedValue("", av.matches(bv), WTypes.wt.BOOLEAN)
       }
 
+      case "cmp" => {
+        // cmp (op=">", a, b) : Boolean
+
+        val av = firstParm.getOrElse {
+          throw new DieselExprException("Need three arguments.")
+        }.calculatedValue
+
+        val bv = secondParm.getOrElse {
+          throw new DieselExprException("Need three arguments.")
+        }
+
+        val cv = thirdParm.getOrElse {
+          throw new DieselExprException("Need three arguments.")
+        }
+
+        val res = BCMP2(bv.valExpr, av.trim, cv.valExpr).apply("")
+
+        P.fromTypedValue("", res, WTypes.wt.BOOLEAN)
+      }
+
       case "replaceAll" => {
         val av = firstParm.getOrElse {
           throw new DieselExprException("Need three arguments.")

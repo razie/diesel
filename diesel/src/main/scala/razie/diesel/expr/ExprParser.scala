@@ -504,9 +504,13 @@ private def accessorIdent: Parser[RDOM.P] = "." ~> ident ^^ { case id => P("", i
 
   private def opsBool: Parser[String] = "==" | "xNot" | "is" | "in" | "not in" | "notIn" |
       "!=" | "not" <~ ws | "~=" | "matches" <~ ws | "<=" | ">=" | "<" | ">" |
-      "containsNot" <~ ws | "contains" <~ ws
+      "containsNot" <~ ws | "contains" <~ ws | dolcmp
 
   def cond: Parser[BoolExpr] = orexpr
+
+  def dolcmp: Parser[String] = """${""" ~ """[^}]+""".r ~ "}" ^^ {
+    case a ~ b ~ c => s"$a$b$c"
+  }
 
   def orexpr: Parser[BoolExpr] = bterm1 ~ rep(ows ~> ("or" <~ ws) ~ ows ~ bterm1) ^^ {
     case a ~ l => foldAssocAexpr2(a, l, bcmp)

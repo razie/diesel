@@ -120,12 +120,14 @@ case class BCMP2(a: Expr, op: String, b: Expr)
 
 
     try {
+      val ops = if(op.trim.startsWith("""${""")) CExpr(op.trim).apply(in) else op.trim
+
       val resBool = (a, b) match {
         case (CExpr(aa, WTypes.wt.NUMBER), CExpr(bb, WTypes.wt.NUMBER)) => {
           val as = aa.toString
           val bs = bb.toString
 
-          cmpNums(as, bs, op)
+          cmpNums(as, bs, ops)
         }
 
         case _ => {
@@ -169,7 +171,7 @@ case class BCMP2(a: Expr, op: String, b: Expr)
             }
           }
 
-          val cmpop = op match {
+          val cmpop = ops match {
             case "?=" | "==" | "!=" | "~=" | "~path" | "like" | "<=" | ">=" | "<" | ">" => true
             case _ => false
           }
@@ -177,7 +179,7 @@ case class BCMP2(a: Expr, op: String, b: Expr)
           // if one of them is number, don't care about the other... could be a string containing a num...
           if (cmpop && (isNum(ap) || isNum(bp))) {
             return BExprResult(
-              cmpNums(ap.calculatedValue, bp.calculatedValue, op),
+              cmpNums(ap.calculatedValue, bp.calculatedValue, ops),
               oap,
               obp
             )
@@ -185,13 +187,13 @@ case class BCMP2(a: Expr, op: String, b: Expr)
 
           if (cmpop && (isDate(ap) && isDate(bp))) {
             return BExprResult(
-              cmpDates(ap.calculatedTypedValue.asDate, bp.calculatedTypedValue.asDate, op),
+              cmpDates(ap.calculatedTypedValue.asDate, bp.calculatedTypedValue.asDate, ops),
               oap,
               obp
             )
           }
 
-          op match {
+          ops match {
             case "?=" => a(in).toString.length >= 0 // anything with a default
             case "!=" => a(in) != b(in)
             case "~=" | "matches" => a(in).toString matches b(in).toString
@@ -340,13 +342,13 @@ case class BCMP2(a: Expr, op: String, b: Expr)
 
             case "==" => a(in) == b(in)
 
-            case _ if op.trim == "" => {
+            case _ if ops.trim == "" => {
               // no op - look for boolean parms?
               ap.ttype == WTypes.wt.BOOLEAN && "true" == a(in).toString
             }
 
             case _ => {
-              clog << s"[ERR (a) Operator $op UNKNOWN!!!] as in $a $op $b";
+              clog << s"[ERR (a) Operator $ops UNKNOWN!!!] as in $a $op $b";
               false
             }
           }
