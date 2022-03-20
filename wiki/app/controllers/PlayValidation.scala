@@ -32,8 +32,13 @@ trait PlayValidation extends Logging {
       Invalid(ValidationError("specialChars not allowed, eh?")) else Valid
   }
 
+  // from https://howtodoinjava.com/java/regex/java-regex-validate-email-address/
+//  final val EMAIL_REGEX = "^[a-zA-Z0-9_!#$%&'*+/=?`{|}~^.-]+@[a-zA-Z0-9.-]+$"
+  final val EMAIL_REGEX = "^[a-zA-Z0-9_!#$%&'*+/=?`{|}~^-]+(?:\\.[a-zA-Z0-9_!#$%&'*+/=?`{|}~^-]+)*@[a-zA-Z0-9-]+(?:\\" +
+      ".[a-zA-Z0-9-]+)*$"
+
   def vEmail: Constraint[String] = Constraint[String]("constraint.emailFormat") { o =>
-    if (o.trim.length > 0 && !o.trim.matches("[^@]+@[^@]+\\.[^@]+") || o.contains(" ") || o.contains("\t"))
+    if (o.trim.length > 0 && !o.trim.matches(EMAIL_REGEX) || o.contains(" ") || o.contains("\t"))
       Invalid(ValidationError("invalid email format"))
     else if (o.contains(" ") || o.contains("\t"))
       Invalid(ValidationError("invalid spaces in email"))
@@ -41,7 +46,7 @@ trait PlayValidation extends Logging {
   }
 
   def vldSpec(s: String) = !(s.contains('<') || s.contains('>'))
-  def vldEmail(s: String) = s.matches("[^@]+@[^@]+\\.[^@]+") && !s.contains(" ") && !s.contains("\t")
+  def vldEmail(s: String) = s.matches(EMAIL_REGEX) && !s.contains(" ") && !s.contains("\t")
 }
 
 
