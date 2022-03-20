@@ -99,13 +99,13 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
           // json exprs are different, like cart + { item:...}
           case (aei:AExprIdent, JBlockExpr(jb, _))
             if aei.tryApplyTyped("").exists(_.ttype == WTypes.JSON) =>
-            jsonExpr(op, a(v).toString, b(v).toString)
+            jsonExpr(op, av.calculatedValue, bv.calculatedValue)
 
           // json exprs are different, like cart + { item:...}
           case (aei:AExprIdent, bei:AExprIdent)
             if aei.tryApplyTyped("").exists(_.ttype == WTypes.JSON) &&
                 bei.tryApplyTyped("").exists(_.ttype == WTypes.JSON) =>
-            jsonExpr(op, a(v).toString, b(v).toString)
+            jsonExpr(op, av.calculatedValue, bv.calculatedValue)
 
           case _ if isDate(av) => {
             val as = a(v).toString
@@ -189,7 +189,7 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
                 av.ttype == WTypes.JSON) {
               // json exprs are different, like cart + { item:...}
               try {
-                jsonExpr(op, a(v).toString, b(v).toString)
+                jsonExpr(op, av.calculatedValue, bv.calculatedValue)
               } catch {
                 case t: Throwable => throw new DieselExprException(
                   s"Parm ${av} or ${bv} can't be parse to JSON: " + t.toString).initCause(t)
