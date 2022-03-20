@@ -357,8 +357,9 @@ object LoggingFilter extends Filter {
 
       // See @Config.HEADERS
       Config.HEADERS.split(",").filter(_.length > 0).map {h =>
-        val v = Config.prop(s"wiki.header.$h.value")
-        val r = Config.prop(s"wiki.header.$h.regex")
+          val hsafe = h.replaceAll("[-_]", ".")
+        val v = Config.prop(s"wiki.header.$hsafe.value")
+        val r = Config.prop(s"wiki.header.$hsafe.regex")
 
         if(r.length <= 0 || rh.path.matches(r))
           res = res.withHeaders(h -> v)
