@@ -184,8 +184,8 @@ case class WikiEntry(
   // todo can't use this faster one because of some stupid issues in WikiDomain - to fix at some point
   def included2 : String = ast._2
 
-  def wid  = WID(category, name, parent, None, if(realm == Wikis.RK) None else Some(realm))
-  def uwid = UWID(category, _id, if(realm == Wikis.RK) None else Some(realm))
+  def wid  = WID(category, name, parent, None, /*if(realm == Wikis.RK) None else */ Some(realm))
+  def uwid = UWID(category, _id, /*if(realm == Wikis.RK) None else */ Some(realm))
 
   /** i should be conservative and default to rk. Note this doesn't check Config.urlcanon */
   def canonicalUrl =

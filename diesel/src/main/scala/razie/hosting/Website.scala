@@ -51,7 +51,7 @@ class Website (we:WikiPage, extra:Seq[(String,String)] = Seq()) extends DslProps
   def dieselTrust:String = this prop "diesel.trust" OR ""
   def dieselEnvList:String = this prop "diesel.envList" OR ""
 
-  lazy val dieselRestTemplates:Boolean = this bprop "diesel.rest.templates" OR false
+  def dieselRestTemplates:Boolean = this bprop "diesel.rest.templates" OR false
 
   def stylesheetLight: Option[WID] = this wprop "stylesheet.light"
   def stylesheetDark: Option[WID] = this wprop "stylesheet.dark"
@@ -82,9 +82,8 @@ class Website (we:WikiPage, extra:Seq[(String,String)] = Seq()) extends DslProps
 
   def membersCanCreateTopics = this bprop "users.membersCanCreateTopics" OR true
 
-  def rightTop: Option[WID] = this wprop "rightTop"
-
-  def rightBottom: Option[WID] = this wprop "rightBottom"
+  def rightTop(implicit stok: controllers.StateOk): Option[WID] = (stok.au.flatMap(x => this.wprop("rightTopUser"))) orElse (this wprop "rightTop")
+  def rightBottom(implicit stok: controllers.StateOk): Option[WID] = (stok.au.flatMap(x => this.wprop("rightBottomUser"))) orElse (this wprop "rightBottom")
 
   def about: Option[String] = this prop "bottom.More.About" flatMap { s =>
     if (s.startsWith("http") || (s startsWith "/")) Some(s)
