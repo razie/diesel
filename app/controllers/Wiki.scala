@@ -331,6 +331,7 @@ class Wiki @Inject()(dieselControl: DieselControl) extends WikiBase {
         // this is used when saving/migrating content, it's full meta json
         val j = w.grated
         j.put("content", "") // erase content, too big...
+        j.remove("updDtm") // changes every time...
         Ok(j.toString).as("application/json")
       }).getOrElse(NotFound("WID not found:"+wid.wpath))
 

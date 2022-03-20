@@ -206,7 +206,6 @@ class DomApi extends DomApiBase with Logging {
 
       val engine = strMsg.mkEngine
 
-
       engine.root.prependAllNoEvents(List(
         DomAst(
           EInfo("STRMSG Request details", path),
@@ -220,9 +219,9 @@ class DomApi extends DomApiBase with Logging {
       // incoming message
       val msg: Option[EMsg] = strMsg.getEMsg
 
-    val ea = msg.map(_.ea).mkString
-    val e = msg.map(_.entity).mkString
-    val a = msg.map(_.met).mkString
+      val ea = msg.map(_.ea).mkString
+      val e = msg.map(_.entity).mkString
+      val a = msg.map(_.met).mkString
 
 
       val xx = stok.qhParm("X-Api-Key").mkString
@@ -291,13 +290,15 @@ class DomApi extends DomApiBase with Logging {
                 .flatMap(_.asInstanceOf[DieselException].code)
 
             // is there a desired status
-            code.orElse(
+            val httpCode = code.orElse(
               engine.ctx.get(DieselMsg.HTTP.STATUS).filter(_.length > 0).map(_.toInt)
-            ).map { st =>
-              Status(st)(body)
-            } getOrElse {
-              Ok(body)
-            }.as(ctype)
+            ) getOrElse {
+              200
+            }
+
+            // should stream response?
+
+            Status(httpCode)(body).as(ctype)
 
           } else {
             // multiple values as json
@@ -1251,7 +1252,7 @@ class DomApi extends DomApiBase with Logging {
     }
   }
 
-  /** /diesel/fiddle/react/ea
+  /** /diesel/react/ea
     * API msg sent to reactor
     */
   def react(e: String, a: String) = Filter(noRobots).async { implicit stok =>

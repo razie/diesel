@@ -38,6 +38,7 @@ class EdUsername @Inject() (config:Configuration) extends RazController {
     Ok(views.html.user.doeProfileUname(chgusernameform.fill(request.au.get.userName, "")))
   }
 
+  /** update preferences form */
   def doeProfileUname2 = FAUR { implicit request =>
     chgusernameform.bindFromRequest.fold(
       formWithErrors =>

@@ -257,7 +257,7 @@ class ProfileUpd @Inject() (config:Configuration) extends RazController with Log
     {
       case (e, t, _) =>
         SecLink.findAndDelete(t).map { sl =>
-          Users.findUserByEmailDec(e.trim).map { au =>
+          Users.findUserByEmailDec(e.trim).orElse(Users.findUserNoCase(e.trim)).map { au =>
             Emailer.withSession(stok.realm) { implicit mailSession =>
               Audit.logdb("RESET_PWD_SENT", "request for " + e)
               Tasks.sendEmailReset(au)

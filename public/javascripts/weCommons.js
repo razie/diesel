@@ -1,5 +1,7 @@
 /**
  * Created by razvanc on 02/05/2014.
+ *
+ * Common JS functions
  */
 
 /** tie a floating checkbox to localStorage
@@ -183,6 +185,37 @@ function weIsBrowser() {
   if(getCookie(weBrowserStorage) == null) setCookie(weBrowserStorage, "false")
 
   return getCookie(weBrowserStorage) === "true";
+}
+
+//============== wiki functions
+
+function escapeHtml(unsafe) {
+  return unsafe
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function weShowSection(wpath) {
+  // popupUrl('/wikie/content/'+encodeURIComponent(wpath));
+  $.ajax(
+    '/wikie/content/'+encodeURIComponent(wpath), {
+      type: 'GET',
+      success: function (data) {
+        popupContent('<pre>'+escapeHtml(data)+'</pre>');
+      },
+      error: function (x) {
+        try {
+          alert('xOOPS - Some Error occurred - please send us this info\n' + JSON.stringify(x));
+        } catch (err) {
+          console.log("ERR x=" + JSON.stringify(x));
+          console.log("ERR err=" + JSON.stringify(err));
+          alert('yOOPS - Some Error occurred - please send us this info\n'+JSON.stringify(x));
+        }
+      }
+    });
 }
 
 //==================== fiddles
@@ -378,3 +411,11 @@ function findIdAtPos (line, col) {
   return id;
 }
 
+/** this is an assignment so that it can be overwritten */
+validateEmail = function(email) {
+  return String(email)
+    .toLowerCase()
+    .match(
+      /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/
+    );
+}
