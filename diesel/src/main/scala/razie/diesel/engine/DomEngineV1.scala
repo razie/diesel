@@ -119,7 +119,7 @@ class DomEngineV1(
 
         implicit val ctx = a.withCtx(mkPassthroughMsgContext(
           next.parent,
-          next.parent.map(_.attrs).getOrElse(Nil),
+          reconcileParentAttrs(next.parent.map(_.attrs).getOrElse(Nil), a.getCtx.get),
           a.getCtx.get, //RAZ2 this.ctx,
 //          this.ctx, // todo probably use a.getCtx.get not this.ctx
           a))
@@ -162,7 +162,8 @@ class DomEngineV1(
 
         implicit val ctx = a.replaceCtx(mkPassthroughMsgContext(
           n1.parent,
-          n1.parent.map(_.attrs).getOrElse(Nil),
+          // todo this is an issue - this is why overriden parameters with values don't work, because this copies over the parms from parent message
+          reconcileParentAttrs(n1.parent.map(_.attrs).getOrElse(Nil), a.getCtx.get),
           a.getCtx.get, //RAZ2 this.ctx,
           a))
 
@@ -188,7 +189,7 @@ class DomEngineV1(
 
         implicit val ctx = a.withCtx(mkPassthroughMsgContext(
           n1.parent,
-          n1.parent.map(_.attrs).getOrElse(Nil),
+          reconcileParentAttrs(n1.parent.map(_.attrs).getOrElse(Nil), a.getCtx.get),
           a.getCtx.get, //RAZ2 this.ctx,
           a))
 
@@ -375,6 +376,7 @@ class DomEngineV1(
 
       a.getMyOwnCtx.get
     } else {
+      // todo should I use reconcileParentAttrs ?
       ctx = mkPassthroughMsgContext(Some(in), n.attrs, parentCtx, a)
       a.withCtx(ctx)
       ctx
@@ -905,7 +907,7 @@ class DomEngineV1(
 
         true
 
-      } else if (ea == DieselMsg.ENGINE.DIESEL_RETURN) { //========================
+      } else if (ea == DieselMsg.ENGINE.DIESEL_RETURN || ea == DieselMsg.ENGINE.DIESEL_FLOW_RETURN) { //========================
 
         // set all attributes in the root context
         in.attrs.map(_.calculatedP).foreach { p =>
@@ -1454,7 +1456,7 @@ class DomEngineV1(
           else {
             r.foreach(Website.putRealmProps(_, p.name, p.calculatedP))
             r.flatMap(Website.forRealm).map(_.put(p.name, p.calculatedValue))
-            evAppChildren(a, DomAst(EInfo("updated..."), AstKinds.DEBUG))
+            evAppChildren(a, DomAst(EInfo("updated..."), AstKinds.TRACE))
           }
         }
         true
