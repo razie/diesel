@@ -108,6 +108,14 @@ class SimpleECtx(
   def existsNL(f: scala.Function1[P, scala.Boolean]): scala.Boolean =
     attrs.exists(f) || base.exists(_.existsNL(f))
 
+  /** check if parm has been overwritten*/
+  def isOverwritten(name:String): scala.Boolean =
+    attrs.exists(_.name == name)
+
+  /** check predicate on all values, only locals */
+  def existsL(f: scala.Function1[P, scala.Boolean]): scala.Boolean =
+    cur.exists(f)
+
   def remove(name: String): Option[P] = {
     attrs.find(a => a.name == name).map { p =>
       attrs = attrs.filter(_.name != name)

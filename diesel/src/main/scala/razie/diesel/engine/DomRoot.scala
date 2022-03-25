@@ -354,9 +354,18 @@ trait DomRoot {
           }
         } else {
           val newa = DomAst(EVal(p) withPos (pos), kind).withSpec(x)
-          newa :: Nil
 
           // no info needed from each val as now parm name pops up details
+
+
+          // warn about overwriting local vars in static contexts
+          // this was fixed, no need to warn...
+          val warn = Nil
+//            if(appendToCtx.isInstanceOf[RuleScopeECtx] && appendToCtx.existsL(_.name == p.name))
+//            DomAst(EError(s"Can't override local value in context: ${p.name} - use another name!") withPos (pos), AstKinds.ERROR).withSpec(x) :: Nil
+//          else Nil
+
+          newa :: warn
         }
       }
       )
@@ -365,7 +374,6 @@ trait DomRoot {
     // we do not propagate locally values that went up
     appendToCtx putAll calc.flatMap(_._2)
 
-    // warn about overwriting local vars in static contexts
   }
 
   private def handleError (p:P, v:PValue[_]) = {

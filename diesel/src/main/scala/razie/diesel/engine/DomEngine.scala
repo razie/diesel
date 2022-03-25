@@ -296,7 +296,14 @@ abstract class DomEngine(
       Some(a))
   }
 
-  /** a passthrough context for PAS assignments - which always go up */
+  /** a passthrough context for PAS assignments - which always go up
+    *
+    * @param in in message
+    * @param attrs attrs usually from parent
+    * @param parentCtx parent's context, base for this one
+    * @param a
+    * @return
+    */
   protected def mkPassthroughMsgContext(in: Option[EMsg], attrs: List[P], parentCtx: ECtx, a: DomAst) = {
     new PassthroughECtx(
       in.map(in => P.fromTypedValue(DIESEL_MSG_ENTITY, in.entity)).toList :::
@@ -308,6 +315,17 @@ abstract class DomEngine(
           attrs,
       Some(parentCtx),
       Some(a))
+  }
+
+  /** many places copy parent's attrs, but some may have been overwriten in the context, we need to reconcile */
+  protected def reconcileParentAttrs(attrs:List[P], parentCtx:ECtx) : List[P] = {
+    val res =
+      if(parentCtx.isInstanceOf[RuleScopeECtx])
+      attrs.filterNot(p=> parentCtx.isOverwritten(p.name))
+    else
+      attrs
+
+    res
   }
 
   /** spawn new engine */

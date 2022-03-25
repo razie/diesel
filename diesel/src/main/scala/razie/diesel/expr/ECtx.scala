@@ -56,6 +56,12 @@ trait ECtx extends ParmSource {
   /** check predicate on all values, except locals */
   def existsNL(f: scala.Function1[P, scala.Boolean]): scala.Boolean
 
+  /** check predicate on all values, only locals */
+  def existsL(f: scala.Function1[P, scala.Boolean]): scala.Boolean
+
+  /** check if parm has been overwritten*/
+  def isOverwritten(name:String): scala.Boolean
+
   def remove(name: String): Option[P]
 
   def apply(name: String): String = get(name).mkString
