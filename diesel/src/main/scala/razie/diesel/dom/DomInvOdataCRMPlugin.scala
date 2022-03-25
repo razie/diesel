@@ -225,7 +225,7 @@ class DomInvOdataCRMPlugin(
     }
   }
 
-  val filterAttrs =("owningteam,modifiedby,owninguser,owneridname,createdonbehalfby,utcconversiontimezonecode,"+
+  final val filterAttrs =("owningteam,modifiedby,owninguser,owneridname,createdonbehalfby,utcconversiontimezonecode,"+
     "importsequencenumber,createdbyyominame,owningbusinessunit,modifiedbyname,"+
     "owningteam,modifiedby,modifiedbyyominame,createdby,timezoneruleversionnumber,owneridtype,owneridyominame,"+
     "modifiedon,modifiedonbehalfbyyominame,createdbyname,createdon,createdonbehalfbyname,modifiedonbehalfbyname,"+

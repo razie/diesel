@@ -829,6 +829,10 @@ object RDOM {
 
   /** object = instance of class  - we're not really using this, but P, for values
     *
+    * use DomInventories.oFromJ and oFromJmap to join a json to the domain definintion, when constructing an O
+    *
+    * A simple P of type json does not reference the attributes types but this can - it's expanded one level, with types
+    *
     * @param name
     * @param base
     * @param parms
@@ -836,6 +840,7 @@ object RDOM {
   case class O (name:String, base:String, parms:List[P]) {
     def toJson = parms.map { p => p.name -> p.calculatedTypedValue(ECtx.empty).value }.toMap
 
+    /** create the html when looking at this object - list attributes etc */
     def fullHtml(inv: Option[DomInventory]) = {
       // todo optimize/cache
       val invname = inv.map(_.name).mkString
@@ -850,7 +855,7 @@ object RDOM {
                     if (p.isRef)
                       s""" <small><a href="/diesel/objBrowserById/${invname}/${conn}/${p.ttype.getClassName}/${
                         p.currentStringValue
-                      }">browse</a></small>"""
+                      }"> <b><span class="glyphicon glyphicon-share"></span></b>browse</a></small>"""
                     else
                       ""
                     )

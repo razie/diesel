@@ -98,7 +98,10 @@ trait DomParser extends ParserBase with ExprParser {
         opt(ws ~> "extends" ~> ws ~> repsep(qident, ",")) ~
         opt(ws ~> "<" ~> ows ~> repsep(ident, ",") <~ ">") ~ " *".r ~ optClassBody ^^ {
       case k ~ _ ~ name ~ tParm ~ attrs ~ ext ~ stereo ~ _ ~ funcs => {
-        lazystatic { (current, ctx) =>
+        lazyNoCacheable { (current, ctx) =>
+            // no cacheable so that the inventory dynamic actions can change as
+            // inventories register
+            // todo - mayvbe we can optimize that?
 
             //consume all annotations up to here?
           val anno = ctx.we.get.collector.getOrElse(RDomain.DOM_ANNO_LIST, Nil).asInstanceOf[List[RDOM.P]]

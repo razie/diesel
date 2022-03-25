@@ -176,6 +176,7 @@ case class LazyStaticAstNode[T <: DSpec](
 
   def cacheOk = { this.dirty = false; this }
 }
+
 /** lazy AST node - value computed when they're folded.
   *
   * By default a lazy state will cause a non cacheable wiki

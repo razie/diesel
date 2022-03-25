@@ -1,21 +1,16 @@
-/** ____    __    ____  ____  ____,,___     ____  __  __  ____
+/**  ____    __    ____  ____  ____,,___     ____  __  __  ____
   * (  _ \  /__\  (_   )(_  _)( ___)/ __)   (  _ \(  )(  )(  _ \           Read
   * )   / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <     README.txt
   * (_)\_)(__)(__)(____)(____)(____)(___/   (__)  (______)(____/    LICENSE.txt
   */
 package razie.diesel.dom
 
-import org.json.JSONObject
 import razie.diesel.Diesel
 import razie.diesel.dom.RDOM._
 import razie.diesel.engine.nodes.EMsg
 import razie.diesel.expr.ECtx
-import razie.diesel.model.{DieselMsg, DieselTarget}
-import razie.tconf.{DSpecInventory, FullSpecRef, SpecRef}
-import scala.collection.concurrent.TrieMap
+import razie.tconf.{DSpecInventory, FullSpecRef}
 import scala.collection.mutable
-import scala.concurrent.Await
-import scala.concurrent.duration.Duration
 
 // todo study with cmd pattern - should we do actors?
 class DIBase()
@@ -115,7 +110,13 @@ trait DomInventory {
     DomInventories.invRegistry.get(c.name).exists(_ == this.name)
   }
 
-  /** find an element by ref */
+  /** find an element by ref
+    *
+    * @param dom current domain
+    * @param ref ref to find
+    * @param collectRefs
+    * @return
+    */
   def findByRef(dom: RDomain, ref: FullSpecRef, collectRefs: Option[mutable.HashMap[String, String]] = None)
   : Either[Option[DieselAsset[_]], EMsg] = ???
 
@@ -145,7 +146,7 @@ trait DomInventory {
   /** html for the supported actions */
   def htmlActions(elem: DE): String
 
-  /** reset oauth tokens etc on error */
+  /** reset oauth tokens, connections etc on error */
   def resetOnError(error: Throwable) = {}
 
   /**

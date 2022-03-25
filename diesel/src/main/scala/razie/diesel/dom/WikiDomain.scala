@@ -142,7 +142,7 @@ object WikiDomain {
   /** if any special DOM wiki changes, rebuild the domain */
   WikiObservers mini {
     case WikiEvent(_, "WikiEntry", _, Some(x), _, _, _)
-      if domTagQuery.matches(x.asInstanceOf[WikiEntry])
+      if DOM_TAG_QUERY.matches(x.asInstanceOf[WikiEntry])
     => {
       val we = x.asInstanceOf[WikiEntry]
 
@@ -150,8 +150,10 @@ object WikiDomain {
     }
   }
 
-  /** use with WikiSearch.getList */
-  val domTagQuery = new TagQuery("DslDomain,dsldomain,Category,domain")
+  /** these tags denote domain pages - use with WikiSearch.getList */
+  final val DOM_TAGS      = "DslDomain,dsldomain,Category,domain"
+  final val DOM_TAGS_ARR  = DOM_TAGS.split(",")
+  final val DOM_TAG_QUERY = new TagQuery(DOM_TAGS)
 }
 
 

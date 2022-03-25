@@ -29,6 +29,8 @@ trait EAssignable {
   *
   * basic connectors - these maintain state and have a lifecycle, possibly actors etc
   *
+  * Registration and management: EEConnectors
+  *
   * @param name - the name of this executor
   */
 abstract class EEConnector(val name: String, val ttype: String) extends EApplicable with EAssignable {
@@ -42,7 +44,7 @@ abstract class EEConnector(val name: String, val ttype: String) extends EApplica
 
   def reconnect = {}
 
-  def stopNow = {}
+  def stopNow = stop
 
   def stop = {}
 
@@ -56,8 +58,11 @@ abstract class EEConnector(val name: String, val ttype: String) extends EApplica
   def getConnManagerProps: AttrAccess = ???
 }
 
-/** manage all connectors */
+/**
+  * manage all connectors
+  */
 object EEConnectors {
+
   private var _all: TrieMap[String, EEConnector] = TrieMap()
 
   /** in the map they are indexed by realm-name */
@@ -84,11 +89,13 @@ object EEConnectors {
   val STATUS_CLOSED = "closed"
 }
 
-/** per-realm statics
+/**
+  * per-realm statics
   *
   * todo right now I accept and grow with any realm - when doing realm-node assignments, clean that up
   */
 object RealmContexts {
+
   private var _all: TrieMap[String, ECtx] = TrieMap()
 
   /** in the map they are indexed by realm-name */
@@ -108,4 +115,3 @@ object RealmContexts {
     _all.getOrElseUpdate(realm, new SimpleECtx).remove(name)
   }
 }
-

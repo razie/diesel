@@ -9,7 +9,7 @@ import razie.diesel.dom.RDOM.{O, P}
 import razie.tconf.TSpecRef
 
 /**
-  * base asset class as a value object - it's not just the reference but the entire object
+  * wrapper asset class as a value object - it's not just the reference but the entire object
   *
   * the inventory is responsible to create an O representation
   *
@@ -33,7 +33,7 @@ case class DieselAsset[T] (
         None
     )
 
-  /** get the valoue object as an O */
+  /** get the value object as a P */
   def getValueP: P =
       if (value != null && value.isInstanceOf[P])
         value.asInstanceOf[P]

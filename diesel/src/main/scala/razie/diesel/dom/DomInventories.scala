@@ -8,18 +8,17 @@ package razie.diesel.dom
 import org.json.JSONObject
 import razie.diesel.Diesel
 import razie.diesel.dom.RDOM.{O, _}
-import razie.diesel.engine.DieselException
 import razie.diesel.engine.nodes.{EMsg, flattenJson}
 import razie.diesel.expr.{DieselExprException, ECtx}
 import razie.diesel.model.{DieselMsg, DieselTarget}
 import razie.diesel.samples.DomEngineUtils
-import razie.tconf.{DSpecInventory, FullSpecRef, SpecRef}
+import razie.tconf.{FullSpecRef, SpecRef}
 import scala.collection.concurrent.TrieMap
 import scala.collection.mutable
-import scala.concurrent.Await
-import scala.concurrent.duration.Duration
 
-/** some helpers */
+/**
+  * helpers for inventory and asset management
+  */
 object DomInventories extends razie.Logging {
 
   final val RESERVEDP = Array(
@@ -38,7 +37,10 @@ object DomInventories extends razie.Logging {
         new DomInvWikiPlugin(null, "", "", "") ::
         Nil
 
-  /** register (class, inventory) - we allow just one per */
+  /**
+    * register (class, inventory) - we allow just one per
+    * - the actual plugins and stuff is in the WikiDomainImpl, once the inventory is connected
+    */
   var invRegistry = new TrieMap[String, String]()
 
   /** register one plugin per class */
@@ -81,7 +83,15 @@ object DomInventories extends razie.Logging {
         )
 
     // todo add an info question mark popup to prompt them to read about inventoryies and assets etc
-    if (s.trim.isEmpty) "<small><i><span style=\"color:red\">no inventory registered</span></i></small>"
+    if (s.trim.isEmpty)
+      """
+        |<small><i><span style="color:red">no inventory registered</span></i>
+        |<a href="/Topic/Assets,_Entities_and_Inventories">
+        |<span
+        |  class="glyphicon glyphicon-info-sign"
+        |  title="Read more about inventories"></span>
+        |</a></small>
+        |""".stripMargin
     else s
   }
 
@@ -367,7 +377,12 @@ object DomInventories extends razie.Logging {
           DIQueryResult(0, Nil, p.toList)
         } else if (p.get.isOfType(WTypes.wt.JSON)) {
           val j = p.get.calculatedTypedValue(ECtx.empty).asJson
-          val c = WikiDomain(realm).rdom.classes.get(p.get.ttype.schema)
+
+          // if schema populated, if not get from ref
+          val cls = if(p.get.ttype.schema.trim.length > 0) p.get.ttype.schema
+          else ref.cls
+
+          val c = WikiDomain(realm).rdom.classes.get(cls)
 
           if (c.isDefined) {
             val k = jtok(j)

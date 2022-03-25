@@ -189,9 +189,11 @@ class DieselRulesInventory(
       val ref = new FullSpecRef(this.name, conn, epath, "", "", realm)
 
       action match {
+
         case "testConnection" => {
           DomInventories.resolve(false, ref, testConnection(dom, epath)).currentStringValue
         }
+
         case "listAll" => {
           DomInventories.resolve(true,
             dom.name,
@@ -201,6 +203,7 @@ class DieselRulesInventory(
             asString(da.getValueP)
           }.mkString("\n")
         }
+
         case _ => throw new NotImplementedError(s"doAction $action - $completeUri - $epath")
       }
     } catch {
