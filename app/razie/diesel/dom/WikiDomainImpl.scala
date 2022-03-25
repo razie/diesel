@@ -38,7 +38,7 @@ class WikiDomainImpl (val realm:String, val wi:WikiInst) extends WikiDomain {
       isLoading = true
 
       irdom =
-          WikiSearch.getList(realm, "", "", WikiDomain.domTagQuery.tags)
+          WikiSearch.getList(realm, "", "", WikiDomain.DOM_TAG_QUERY.tags)
               .flatMap(p => WikiDomain.domFrom(p).toList)
               .fold(createRDom)(_ plus _.revise)
 

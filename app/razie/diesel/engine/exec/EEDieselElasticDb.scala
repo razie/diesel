@@ -255,17 +255,13 @@ case class EElasticConnector (
 
 /** Elastic db connector
  */
-class EEDieselElasticDb extends EExecutor(DB) {
-
-  override def isMock: Boolean = true
+class EEDieselElasticDb extends EEDieselDbExecutor(DB) {
 
   override def test(ast:DomAst, m: EMsg, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) = {
     m.entity startsWith DB
   }
 
   override def apply(in: EMsg, destSpec: Option[EMsg])(implicit ctx: ECtx): List[Any] = synchronized {
-    def realm = ctx.root.settings.realm.mkString
-
     // factory method
     if(in.met == "new") {
         val name = ctx.getRequiredp("name").calculatedValue

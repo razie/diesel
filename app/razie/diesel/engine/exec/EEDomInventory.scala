@@ -5,33 +5,35 @@
  */
 package razie.diesel.engine.exec
 
+import org.bson.types.ObjectId
 import razie.diesel.Diesel
 import razie.diesel.dom.RDOM.{C, P}
-import razie.diesel.dom.{DieselAsset, DieselRulesInventory, DomInvWikiPlugin, DomInventories, RDomain, WikiDomain}
-import razie.diesel.engine.{AstKinds, DomAst}
-import razie.diesel.engine.nodes.{EError, EInfo, EMsg, EVal, EWarning, MatchCollector}
+import razie.diesel.dom.{DieselAsset, DieselRulesInventory, DomInventories, WikiDomain}
+import razie.diesel.engine.DomAst
+import razie.diesel.engine.nodes.{EError, EMsg, EVal, EWarning, MatchCollector}
 import razie.diesel.expr.{DieselExprException, ECtx}
 import razie.tconf.FullSpecRef
-import scala.collection.mutable
 
-/* executors for inventories */
+/**
+  * executor for inventories. This simply delegates to the implementations and resolves the outcomes
+  */
 class EEDomInventory extends EExecutor("diesel.inv") {
   final val DB = "diesel.inv"
 
-  final val TESTC = "diesel.inv.testConnection"
-  final val UPSERT = "diesel.inv.upsert"
+  final val REG         = "diesel.inv.register"
+  final val TESTC       = "diesel.inv.testConnection"
+  final val UPSERT      = "diesel.inv.upsert"
   final val UPSERT_BULK = "diesel.inv.upsert.bulk"
-  final val REG = "diesel.inv.register"
-  final val CONNECT = "diesel.inv.connect"
-  final val LISTALL = "diesel.inv.listAll"
-  final val FIND = "diesel.inv.find"
-  final val REMOVE = "diesel.inv.remove"
-  final val QUERY = "diesel.inv.query"
+  final val CONNECT     = "diesel.inv.connect"
+  final val LISTALL     = "diesel.inv.listAll"
+  final val FIND        = "diesel.inv.find"
+  final val REMOVE      = "diesel.inv.remove"
+  final val QUERY       = "diesel.inv.query"
 
   override def isMock: Boolean = true
 
   override def test(ast: DomAst, m: EMsg, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) = {
-    m.entity == DB
+    m.ea startsWith DB
   }
 
   override def apply(in: EMsg, destSpec: Option[EMsg])(implicit ctx: ECtx): List[Any] = {
@@ -107,7 +109,12 @@ class EEDomInventory extends EExecutor("diesel.inv") {
         List(res)
       }
 
-      case UPSERT | UPSERT_BULK => {
+      case UPSERT_BULK => {
+        List(EError("BULK not supported yet"))
+        // todo reason is that the array erases the type :( need to look into that
+      }
+
+      case UPSERT /* | UPSERT_BULK */ => {
         val entity = ctx.getp("entity").orElse(ctx.getp(Diesel.PAYLOAD))
         val entities = ctx.getp("entities")
         val conn = ctx.get("connection").getOrElse("")
@@ -135,7 +142,8 @@ class EEDomInventory extends EExecutor("diesel.inv") {
                 .orElse(
                   ctx.get("key")
                 )
-                .mkString
+                .map(_.toString)
+                .getOrElse(new ObjectId().toString)
 
           val t = c.props.find(_.name == "table").map(_.calculatedValue(ECtx.empty)).getOrElse(c.name)
           //          val o = DomInventories.oFromJ("x", jo, c, t, Array[String]())
@@ -177,10 +185,14 @@ class EEDomInventory extends EExecutor("diesel.inv") {
           res
         }
 
+        // todo we can do this when ARRAY keeps the type of each element... right now it looses it.
+        // because of an optimization of keeping the map, not a full P in the array
+        // do a sample and breakpoint to see
+
 //        val res = entities.map {e=>
 //          val arr = e.value.get.asArray
 //          arr.toList.map {entity=>
-              // todo optimize for batch deep in inventory
+////               todo optimize for batch deep in inventory
 //            oneEntity(entity.asInstanceOf[P])
 //          }
 //        }.getOrElse{
@@ -392,6 +404,7 @@ class EEDomInventory extends EExecutor("diesel.inv") {
         EMsg(DB, "connect") ::
         EMsg(DB, "testConnection") ::
         EMsg(DB, "upsert") ::
+        EMsg(DB, "upsert.bulk") ::
         EMsg(DB, "find") ::
         EMsg(DB, "query") ::
         EMsg(DB, "remove") ::

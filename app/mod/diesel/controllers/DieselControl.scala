@@ -252,9 +252,9 @@ class DieselControl extends RazController with Logging {
 
   def objBrowserByQuery(plugin: String, conn: String, cat: String, parm: String, value: String, ipath: String,
                         o: Option[O] = None) = RAction { implicit request =>
-
+    val v = if(value.startsWith("'")) value.substring(1, value.length-1)
     val ref = SpecRef.make(request.realm, plugin, conn, cat, "")
-    val res = DomInventories.findByQuery(ref, Left(cat + "/" + parm + "/" + value), 0, 100, Array.empty[String])
+    val res = DomInventories.findByQuery(ref, Left(cat + "/" + parm + "/" + v), 0, 100, Array.empty[String])
     val list = res.data
 
     if (list.size <= 1) {

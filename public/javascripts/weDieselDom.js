@@ -536,7 +536,7 @@ function weDomQuery(plugin,conn,cls,parm) {
   // todo this is not working
   $(document).keyup(function(e) {
     if (e.keyCode == 13) {
-      alert("haha");
+      //alert("haha");
       $("#oneModal").modal('hide');
       weDomQuery2(plugin,conn,cls,parm);
     }

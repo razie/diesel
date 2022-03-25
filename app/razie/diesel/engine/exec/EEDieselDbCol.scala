@@ -11,15 +11,18 @@ import razie.diesel.Diesel
 import razie.diesel.dom.RDOM._
 import razie.diesel.dom._
 import razie.diesel.engine.DomAst
+import razie.diesel.engine.exec.EEDieselMongodDb.MONGODB
 import razie.diesel.engine.nodes._
 import razie.diesel.expr.ECtx
 
+object EEDieselMongodDb {
+  final val MONGODB = "diesel.db.col"
+}
 
 /** actual share table. Collection model:
   * coll
   * */
-class EEDieselMongodDb extends EExecutor("diesel.db.col") {
-  final val MONGODB = "diesel.db.col"
+class EEDieselMongodDb extends EEDieselDbExecutor("diesel.db.col") {
   final val TBL = "DieselDb"
 
   import EEDieselDb._
@@ -31,24 +34,11 @@ class EEDieselMongodDb extends EExecutor("diesel.db.col") {
   }
 
   override def apply(in: EMsg, destSpec: Option[EMsg])(implicit ctx: ECtx): List[Any] = synchronized {
-    val col = ctx("collection")
-
-    def realm = ctx.root.settings.realm.mkString
-
-    def coll = ctx.getRequired("collection")
-
-    def key = {
-      // backward compliant for a while. Want to use id now not key
-      ctx.get("id").orElse(ctx.get("key")).getOrElse(ctx.getRequired("id")) // funky to report missing id not key
-    }
-
-    def userId = None//ctx.root.settings.userId
 
     in.met match {
 
       case "upsert" => {
-        val p = ctx.getRequiredp("document").calculatedTypedValue
-        val j = p.asJson
+        val j = ctx.getRequiredp("document").calculatedTypedValue.asJson
 
         val res = RazMongo(TBL).findOne(Map(
           "coll" -> coll,
@@ -91,13 +81,7 @@ class EEDieselMongodDb extends EExecutor("diesel.db.col") {
       }
 
       case "query" => {
-        val others = in
-            .attrs
-            .filter(_.name != "collection")
-            .filter(_.name != "id")
-            .filter(_.ttype != WTypes.UNDEFINED)
-            .map(p => ("content." + p.name, p.calculatedValue))
-            .toMap
+        val others = otherQueryParms(in)
 
         val res = RazMongo(TBL).find(Map(
           "coll" -> coll,

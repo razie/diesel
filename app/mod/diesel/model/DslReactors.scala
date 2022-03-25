@@ -36,7 +36,12 @@ abstract class DieselReactor(
 
   /** all the sections describing domain elements: sections of the main page or pages of category */
   lazy val sections: Seq[Diesel.Section] =
-    reactor.page.toSeq.flatMap(_.sections).filter(sec=>DSL_CAT.contains(sec.stype)).map(fromSection(_, reactor.page.get)) ++ (reactor.pages map fromPage)
+    reactor
+        .page
+        .toSeq
+        .flatMap(_.sections)
+        .filter(sec=>DSL_CAT.contains(sec.stype))
+        .map(fromSection(_, reactor.page.get)) ++ (reactor.pages map fromPage)
 
   def domains = sections.filter(_.cat == CAT_DOMAIN)
 

@@ -124,10 +124,13 @@ class Module extends AbstractModule {
     Executors.add(new EEDieselExecutors)
     Executors.add(new EEGuardian)
     Executors.add (new EEDieselDT)
+
     Executors.add(new EEDieselMemDb)
     Executors.add(new EEDieselDbMemshared)
     Executors.add(new EEDieselMongodDb)
     Executors.add(new EEDieselElasticDb)
+    Executors.add(new EEDieselPostgressDb)
+
     Executors.add(new EEDomInventory)
     Executors.add(new EEDieselApiGw)
 

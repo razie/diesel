@@ -223,7 +223,6 @@ class DomApi extends DomApiBase with Logging {
       val e = msg.map(_.entity).mkString
       val a = msg.map(_.met).mkString
 
-
       val xx = stok.qhParm("X-Api-Key").mkString
 
       def needsApiKey = xapikey.isDefined
@@ -1108,6 +1107,9 @@ class DomApi extends DomApiBase with Logging {
     if (WikiConfig.getInstance.get.isLocalhost &&
         (stok.au.exists(_.isActive)) //||
     ) {
+
+      // todo re-encode the path: if the path contains control chars, they'll create issues on disk
+
       request.body.file("dieselFile").map { file =>
         import java.io.File
         val filename = file.filename
