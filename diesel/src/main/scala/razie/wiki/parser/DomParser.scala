@@ -299,7 +299,7 @@ trait DomParser extends ParserBase with ExprParser {
     }
 
   /**
-    * => z.role (attrs)
+    * just throw error, used to debug parser
     */
   def pgenErr: Parser[EMap] =
     ows ~> opt("[|.]*".r) ~ keyw(pArrow) ~ ".*".r ^^ {
@@ -396,8 +396,10 @@ trait DomParser extends ParserBase with ExprParser {
             gens.collect {
               case m: EMap => m
             }.map(m => m.withPosition(m.pos.get.copy(wpath = wpath))))
-          val last = gens.lastOption
+          // get the row of the last good generation compiled
+          val last = gens
               .filter(_.isInstanceOf[HasPosition])
+              .lastOption
               .map(_.asInstanceOf[HasPosition])
               .flatMap(_.pos.map(_.line))
               .getOrElse(-1)
