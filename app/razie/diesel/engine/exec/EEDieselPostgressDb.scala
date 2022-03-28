@@ -314,6 +314,11 @@ class EEDieselPostgressDb extends EEDieselDbExecutor(DB) {
     m.entity startsWith DB
   }
 
+  /** get the referenced connection, without reconnecting */
+  def currConn (implicit ctx: ECtx) =
+    EEConnectors.get(realm, connectionName)
+        .map(_.asInstanceOf[EPostgressConnector])
+
   /** get the referenced connection */
   def getConn (implicit ctx: ECtx) =
     EEConnectors.get(realm, connectionName)
@@ -455,9 +460,9 @@ class EEDieselPostgressDb extends EEDieselDbExecutor(DB) {
     } catch {
       case t: Throwable => {
         // any exception, force close to reconnect the connection
-        val res = EInfo("Last SQL", getConn.lastSQL) ::
+        val res = EInfo("Last SQL", currConn.map(_.lastSQL).mkString) ::
             new EError("Exception", t) :: Nil
-        getConn.conn.close()
+        currConn.foreach(_.conn.close())
         res
       }
     }
