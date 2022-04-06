@@ -649,7 +649,7 @@ class Wikie @Inject()(config: Configuration) extends WikieBase {
   }
 
   /** save an edited wiki - either new or updated */
-  def save(wid: WID) = FAUR {
+  def wikieEdited(wid: WID) = FAUR {
     implicit stok=> //au => implicit errCollector => implicit request =>
 
       val au = stok.au.get

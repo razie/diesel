@@ -134,7 +134,8 @@ wiki fragment, used in another page
 
 <script>
 wikiEdit = function() {
-  window.location.href = "@routes.Wikie.wikieEdit(page.get.wid)";
+  var q = window.location.search;
+  window.location.href = "@routes.Wikie.wikieEdit(wid)" + q;
 }
 wikiEditForm = function() {
   window.location.href = "@routes.Forms.doeFormEdit(page.get.wid)";

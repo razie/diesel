@@ -90,7 +90,7 @@ edit a wiki page
     <h2 style="padding-top: 40px; margin-top: -40px;">Simple editor
     </h2>
 
-    @helper.form(action=routes.Wikie.save(wid.formatted), 'id -> "editForm", 'class -> "well") {
+    @helper.form(action=routes.Wikie.wikieEdited(wid.formatted), 'id -> "editForm", 'class -> "well") {
       <div class="row">
         @*******
         PROBLEM: many places use label as name... via Wikis.formatName

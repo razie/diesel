@@ -519,8 +519,8 @@ doEditThis = function() {
   if(typeof wikiEdit !== 'undefined') {
     wikiEdit();
   } else {
-    var q = window.location.href.replace(/.*\?/, '');
-    window.location.href = window.location.href.replace(/\?.*/, '') + "/edit";
+    var q = window.location.search;
+    window.location.href = window.location.href.replace(/\?.*/, '') + "/edit" + q;
   }
 };
 

@@ -93,7 +93,7 @@ edit a wiki page
       @util.notesmsgDiv("notesmsg")
     </h2>
 
-    @helper.form(action=routes.Wikie.save(wid.formatted), 'id -> "editForm", 'class -> "well") {
+    @helper.form(action=routes.Wikie.wikieEdited(wid.formatted), 'id -> "editForm", 'class -> "well") {
       <div class="row">
         @*******
         PROBLEM: many places use label as name... via Wikis.formatName

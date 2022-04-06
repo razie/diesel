@@ -78,7 +78,7 @@ var decscr = function (s) {
 @import play.api.Play.current
 @import play.api.i18n.Messages.Implicits._
 
-  @helper.form(action=routes.Wikie.save(wid.formatted), 'class->"well") {
+  @helper.form(action=routes.Wikie.wikieEdited(wid.formatted), 'class->"well") {
 <div class="row">
 @*******
 PROBLEM: many places use label as name... via Wikis.formatName

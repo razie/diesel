@@ -107,7 +107,7 @@ Implicit.flash().put("bibi", "haha")
             @util.notesmsgDiv("notesmsg")
           </h2>
 
-@helper.form(action=routes.Wikie.save(wid.formatted), 'id -> "editForm", 'class -> "well") {
+@helper.form(action=routes.Wikie.wikieEdited(wid.formatted), 'id -> "editForm", 'class -> "well") {
 <div class="row">
 @*******
 PROBLEM: many places use label as name... via Wikis.formatName
@@ -680,6 +680,7 @@ function saveDraft() {
 
 
 deleteDraft = function() {
+  var q = window.location.search;
   $.ajax(
     '/wikie/deleteDraft/@wid.wpath', {
     type: 'POST',
@@ -689,7 +690,7 @@ deleteDraft = function() {
     }),
     contentType: 'application/x-www-form-urlencoded',
     success: function(data) {
-      window.location = "@controllers.WikiUtil.wr(wid, stok.realm, false)";
+      window.location = "@controllers.WikiUtil.wr(wid, stok.realm, false)" + "?" + q;
     },
     error  : function(x) {
       console.log( "ERR "+x.toString());
