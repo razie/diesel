@@ -94,7 +94,7 @@ class DomInvites @Inject() (config:Configuration) extends mod.diesel.controllers
     val email = request.fqParm("email", "").trim
 
     if (request.au.exists(_.isMod) && email != "-") {
-      Users.findUserByEmailDec(email).map { user =>
+      Users.findUserByEmailDec(email.trim).orElse(Users.findUserNoCase(email.trim)).map { user =>
         user.update(Users.updRealm(user, request.realm))
         Msg(s"User ${user.ename} exists, added to realm...")
       } getOrElse {
