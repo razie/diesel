@@ -254,11 +254,12 @@ function weButton(b) {
  * invoke a message get the return value and tehn invoke next with the data
  * ea should be "pack.entity.action"
  * p should be the attributes in url form
+ * next for success and err for error
  */
-function weMsg(ea,p,next) {
+function weMsg(ea, p, next, err) {
   var n = typeof next == 'function' ? next : function(data){console.log(data);} ;
 
-  return iweMsg(ea.replace(/(.+)\.([^.]+)$/, "$1/$2"), p, 'value', n);
+  return iweMsg(ea.replace(/(.+)\.([^.]+)$/, "$1/$2"), p, 'value', n, err);
 }
 
 /** trigger message in background, popup result
@@ -272,7 +273,7 @@ function weMsgPopup(ea,p) {
 /** run message in background
  * ea should be "pack.entity/action"
  */
-function iweMsg(ea,p,what,succ) {
+function iweMsg(ea,p,what,succ,err) {
   var u = '/diesel/react/'+ea+'?resultMode='+what+'&'+p
 
   if(typeof dieselHost != "undefined")
@@ -290,8 +291,9 @@ function iweMsg(ea,p,what,succ) {
       },
       error: function (x) {
         // readyState=4  is failure to parse json reply
-        if(x.status == "200" && typeof succ == 'function') succ(x.responseText);
         console.log("ERR " + JSON.stringify(x));
+        if(x.status == "200" && typeof succ == 'function') succ(x.responseText);
+        else if(typeof err == 'function') err(x);
       }
     });
   return false;

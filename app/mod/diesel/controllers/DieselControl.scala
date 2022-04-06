@@ -240,7 +240,7 @@ class DieselControl extends RazController with Logging {
   }
 
   def objBrowserById(plugin: String, conn: String, cat: String, id: String, ipath: String, o: Option[O] = None) =
-    RAction {
+    RAction.withAuth {
       implicit request =>
         val dov = DomInventories.findByRef(SpecRef.make(request.realm, plugin, conn, cat, id))
 
@@ -251,7 +251,7 @@ class DieselControl extends RazController with Logging {
     }
 
   def objBrowserByQuery(plugin: String, conn: String, cat: String, parm: String, value: String, ipath: String,
-                        o: Option[O] = None) = RAction { implicit request =>
+                        o: Option[O] = None) = RAction.withAuth { implicit request =>
     val v = if(value.startsWith("'")) value.substring(1, value.length-1)
     val ref = SpecRef.make(request.realm, plugin, conn, cat, "")
     val res = DomInventories.findByQuery(ref, Left(cat + "/" + parm + "/" + v), 0, 100, Array.empty[String])
@@ -273,7 +273,7 @@ class DieselControl extends RazController with Logging {
 
   // todo deprecate - list2 works well now
   def listAll(plugin: String, conn: String, cat: String, ipath: String,
-              start: Long, limit: Long) = RAction { implicit request =>
+              start: Long, limit: Long) = RAction.withAuth.noRobots { implicit request =>
 
     val ref = SpecRef.make(request.realm, plugin, conn, cat, "")
     val res = DomInventories.listAll(ref, start, limit, Array.empty[String])
@@ -307,7 +307,7 @@ class DieselControl extends RazController with Logging {
   }
 
   /** list entities of cat from domain wpath */
-  def list2(cat:String, ipath:String) = RAction { implicit request =>
+  def list2(cat:String, ipath:String) = RAction.withAuth.noRobots { implicit request =>
 
     val realm = Website.realm
     val rdom = WikiDomain(realm).rdom
@@ -324,9 +324,17 @@ class DieselControl extends RazController with Logging {
       ROK.k reactorLayout12 {
         views.html.wiki.wikiList("list diesel entities", "", "", wl.map(x => (x.wid, x.label)), tags, "./", "", realm)
       }
+
+    } else if(rdom.classes.get(cat).isDefined) {
+
+      NotFound(s"cat $cat not defined")
+
+    } else if(WikiDomain(realm).findPluginsForClass(rdom.classes.get(cat).get).isEmpty) {
+
+      NotFound(s"Inventory/plugin for realm $realm cat $cat not found")
+
     } else {
 
-      assert(rdom.classes.get(cat).isDefined, s"cat $cat not defined")
       val p = WikiDomain(realm).findPluginsForClass(rdom.classes.get(cat).get).head
       val ref = SpecRef.make(request.realm, p.name, p.conn, cat, "")
       val res = DomInventories.listAll(ref, start = 0, limit = 100, Array.empty[String])
@@ -347,7 +355,7 @@ class DieselControl extends RazController with Logging {
 
   // todo delete this?
   /** list entities of cat from domain wpath */
-  def list(wpath:String, cat:String, ipath:String) = RAction { implicit request =>
+  def list(wpath:String, cat:String, ipath:String) = RAction.withAuth.noRobots { implicit request =>
 
     val rdom = getrdom(wpath).getOrElse(WikiDomain(request.realm).rdom)
     val wid = WID.fromPath(wpath).get

@@ -18,7 +18,7 @@ import scala.collection.mutable.{HashMap, ListBuffer}
 
 
 object EEDieselPostgressDb {
-  final val DB = "diesel.db.postgress"
+  final val DB = "diesel.db.postgres"
 }
 
 import razie.diesel.engine.exec.EEDieselPostgressDb.DB

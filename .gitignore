@@ -34,3 +34,5 @@ SSLPoke.class
 bootstrap-datepicker-1.6.1-dist.zip
 .bloop
 .metals
+build.conf
+ver.conf
