@@ -1323,7 +1323,7 @@ class DomApi extends DomApiBase with Logging {
   }
 
   /** did the flow have a preferrred http response status/headers? */
-  def mkStatus(response:Option[P], engine:DomEngine, msgAst:Option[DomAst] = None) = {
+  def mkStatus(response:Option[P], engine:DomEngine, msgAst:Option[DomAst] = None) (implicit stok:RazRequest) = {
     var body:String = ""
 
     var ok = {
@@ -1371,10 +1371,6 @@ class DomApi extends DomApiBase with Logging {
 
         } else {
           // generic inferred statuses
-//      if(p.isEmpty || p.get.ttype == WTypes.wt.UNDEFINED)
-          // payload is undefined - not found
-//        NotFound
-//      else
 
           body = response.map(_.currentStringValue).mkString
 
@@ -1382,7 +1378,13 @@ class DomApi extends DomApiBase with Logging {
           engine.ctx.get(DieselMsg.HTTP.STATUS).filter(_.length > 0).map {st=>
             Status(st.toInt)(body)
           } getOrElse {
-            Ok(body)
+
+            //payload is undefined - not found. COMMENTED OUT, never used yet... worried it may cause issues
+            // clients go down the onSuccess or onError
+            if((response.isEmpty || response.get.ttype == WTypes.wt.UNDEFINED) && stok.website.dieselUse404)
+              NotFound
+            else
+              Ok(body)
           }
         }
     }
