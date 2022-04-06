@@ -39,10 +39,12 @@ trait DomParser extends ParserBase with ExprParser {
         pwhen | pflow | pmatch | psend | pmsg | pval | pexpect | passert
 
   // todo this disables the caching for all specs !!! superbad as they get compiled over and over
+  /** non cacheable */
   def lazyNoCacheable(f: (StrAstNode, FoldingContext[DSpec, DUser]) => StrAstNode) =
     LazyAstNode[DSpec, DUser](f)
 
   // todo this disables the caching for all specs !!! superbad as they get compiled over and over
+  /** cacheable */
   def lazystatic(f: (StrAstNode, StaticFoldingContext[DSpec]) => StrAstNode) =
     LazyStaticAstNode[DSpec](f)
 
@@ -735,7 +737,7 @@ trait DomParser extends ParserBase with ExprParser {
   }
 
   /**
-    * .func name (a,b) : String
+    * .def name (a,b) : String lang {{ ... }}
     */
   def pdef: PS = keyw("[.$]def *".r) ~ qident ~ optAttrs ~ optType ~ optScript ~ optBlock ^^ {
     case k ~ name ~ attrs ~ optType ~ script ~ block => {

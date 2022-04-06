@@ -367,7 +367,7 @@ ${errCollector.mkString}
         })
       } else if(noRob && isFromRobot(req.oreq.get)) {
         Some(Future.successful{
-          Ok("eh, robots...")
+          Unauthorized("eh, robots...")
         })
       } else
       None

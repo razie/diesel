@@ -861,7 +861,6 @@ object RDOM {
                     )
           })) +
 //        mks(methods, "{<br><hr>", "<br>", "<br><hr>}", "&nbsp;&nbsp;") +
-//        mks(props, " PROPS(", ", ", ") ", "&nbsp;&nbsp;")
           ""
     }
 
