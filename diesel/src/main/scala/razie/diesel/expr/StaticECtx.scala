@@ -34,7 +34,7 @@ class StaticECtx(
   //todo should I throw up if no base?
   override def put(p: P): Unit = {
     if (p.name == Diesel.PAYLOAD) base.map(_.put(p))
-    else if (!ignorePuts) throw new DieselExprException("CAN'T OVERWRITE STATIC CTX VARS")
+    else if (!ignorePuts) throw new DieselExprException(s"CAN'T OVERWRITE STATIC CTX VARS ${p.name}")
   }
 
   override def putAll(p: List[P]): Unit = {
@@ -44,13 +44,15 @@ class StaticECtx(
   override def remove(name: String): Option[P] = {
     if (name == Diesel.PAYLOAD) base.flatMap(_.remove(name))
     else {
-      if (!ignorePuts) throw new DieselExprException("CAN'T OVERWRITE STATIC CTX VARS [remove]")
+      if (!ignorePuts)
+        throw new DieselExprException(s"CAN'T OVERWRITE STATIC CTX VARS [remove] $name")
       else None
     }
   }
 
   override def clear = {
-    if (!ignorePuts) throw new DieselExprException("CAN'T OVERWRITE STATIC CTX VARS [clear]")
+    if (!ignorePuts)
+      throw new DieselExprException("CAN'T OVERWRITE STATIC CTX VARS [clear]")
   }
 
   override def toString = this.getClass.getSimpleName + ":" + cur.mkString //+ "\n base: " +base.toString
