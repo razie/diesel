@@ -8,6 +8,7 @@ package razie.wiki.model
 
 import org.bson.types.ObjectId
 import razie.tconf.{DUser, DUsers}
+import razie.wiki.WikiConfig
 import razie.wiki.util.NoAuthService
 
 /** user permissions */
@@ -80,11 +81,12 @@ abstract class WikiUser extends DUser {
   def isSuspended: Boolean
 
   // users can be, in order of access: mods, devs or admins
-  def isMod = hasPerm(Perm.Moderator) || isAdmin
+  def isMod : Boolean = hasPerm(Perm.Moderator) || isAdmin
 
-  def isDev = isMod || hasPerm(Perm.codeMaster) || hasPerm(Perm.domFiddle)
+  def isDev : Boolean = isMod || hasPerm(Perm.codeMaster) || hasPerm(Perm.domFiddle)
 
-  def isAdmin = hasPerm(Perm.adminDb) || hasPerm(Perm.adminWiki)
+  // mods can be gods in local
+  def isAdmin : Boolean = hasPerm(Perm.adminDb) || hasPerm(Perm.adminWiki) || isMod && WikiConfig.getInstance.get.isLocalhost
 }
 
 /** sample dummy */
