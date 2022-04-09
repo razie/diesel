@@ -21,7 +21,34 @@ package object RazSalatContext {
   }
 }
 
-/** represents a mongo db instance
+/**
+  * abstract table / wrap all access to the DB object  - potentially use rk as a store
+  */
+trait RazTable {
+
+  type CursorType <: scala.Iterator[com.mongodb.casbah.Imports.DBObject]
+
+  def name      :String
+
+  def exists    :Boolean
+  def drop      :Unit
+
+  def size      :Long
+  def count     (pairs: Map[String, Any]):Long
+
+  def +=        (o: DBObject):Unit
+  def +=        (pairs: Map[String, Any]):Unit
+
+  def findAll   ():CursorType
+  def find      (pairs: Map[String, Any]):CursorType
+  def findOne   (pairs: Map[String, Any]) : Option[DBObject]
+  def remove    (pairs: Map[String, Any]):Unit
+  def update    (pairs: Map[String, Any], o: DBObject):Unit
+  def save      (o:DBObject):Unit
+}
+
+/**
+  * represents a mongo db instance
   *
   * we limit our usage to primitives that can be implemented by any rather stupid JSON document store.
   *
@@ -47,36 +74,16 @@ object RazMongo extends SI[MongoDB] ("MongoDB") {
   def apply(table: String) = new RazMongoTable(table)
 
   def findUpgrade (name:String) = apply("Ver").findOne(Map("name" -> name))
+
   def didUpgrade (name:String) = {
     apply("Ver") += Map("name" -> name, "dtm" -> DateTime.now)
   }
+
   def upgradeMaybe (name:String, prereq : Array[String])(body : => Unit) = {
     if(! findUpgrade(name).isDefined) {
       body
       didUpgrade(name)
     }
-  }
-
-  /** wrap all access to the DB object  - potentially use rk as a store */
-  trait RazTable {
-    type CursorType <: scala.Iterator[com.mongodb.casbah.Imports.DBObject]
-    def name:String
-
-    def exists :Boolean
-    def drop:Unit
-
-    def size :Long
-    def count(pairs: Map[String, Any]):Long
-
-    def +=(o: DBObject):Unit
-    def +=(pairs: Map[String, Any]):Unit
-
-    def findAll():CursorType
-    def find(pairs: Map[String, Any]):CursorType
-    def findOne(pairs: Map[String, Any]) : Option[DBObject]
-    def remove(pairs: Map[String, Any]):Unit
-    def update(pairs: Map[String, Any], o: DBObject):Unit
-    def save(o:DBObject):Unit
   }
 
   /** wrap all access to the DB object

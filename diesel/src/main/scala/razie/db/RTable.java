@@ -14,8 +14,6 @@ import java.lang.annotation.Target;
 
 /**
  * table name annotation for persisted classes - use this to annotate classes you will persist in RMongo
- *
- * @author razvanc99
  */
 @Documented
 @Retention(RetentionPolicy.RUNTIME)

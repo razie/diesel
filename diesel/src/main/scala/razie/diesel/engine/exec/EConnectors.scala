@@ -63,7 +63,7 @@ abstract class EEConnector(val name: String, val ttype: String) extends EApplica
   */
 object EEConnectors {
 
-  private var _all: TrieMap[String, EEConnector] = TrieMap()
+  private val _all: TrieMap[String, EEConnector] = TrieMap()
 
   /** in the map they are indexed by realm-name */
   def withAll[T](f: Map[String, EEConnector] => T): T = {
@@ -86,6 +86,7 @@ object EEConnectors {
 
   val STATUS_INIT = "init"
   val STATUS_OPEN = "open"
+  val STATUS_FAILED = "failed"
   val STATUS_CLOSED = "closed"
 }
 
@@ -96,7 +97,7 @@ object EEConnectors {
   */
 object RealmContexts {
 
-  private var _all: TrieMap[String, ECtx] = TrieMap()
+  private val _all: TrieMap[String, ECtx] = TrieMap()
 
   /** in the map they are indexed by realm-name */
   def withAll[T](f: Map[String, ECtx] => T): T = {

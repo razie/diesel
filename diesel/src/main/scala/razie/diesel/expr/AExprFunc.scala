@@ -156,6 +156,14 @@ case class AExprFunc(val expr: String, parms: List[RDOM.P]) extends Expr {
         P.fromTypedValue("", av.replaceFirst(bv, cv), WTypes.wt.STRING)
       }
 
+      case "enc" => {
+        val av = firstParm.getOrElse {
+          throw new DieselExprException("Need one arguments.")
+        }.calculatedValue
+
+        P.fromTypedValue("", Enc(av), WTypes.wt.STRING)
+      }
+
       case "trim" => {
         val av = firstParm.getOrElse {
           throw new DieselExprException("Need one arguments.")

@@ -187,6 +187,6 @@ class NextDParmSource(ctx: ECtx, pname: String, values: Map[String, String => Ei
 
   def put(p: P): Unit = ???
 
-  def listAttrs: List[P] = ???
+  def listAttrs: List[P] = values.keys.map(x=> P.undefined(x)).toList
 }
 
