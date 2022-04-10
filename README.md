@@ -74,6 +74,29 @@ These can be bundled and controlled in other rules.
 
 Streams add another level of parallelism.
 
+## REST APIs
+
+There is a simple binding to REST, using the `diesel.rest` message:
+
+```js
+
+You can call this at: https://specs.dieselapps.com/api/mock/myActualServer/create/John
+
+$when diesel.rest(path ~= "/myActualServer/create/(?<user>.+)")
+=> myMailServer.create (user)
+
+We can mock a few examples of this service:
+
+$mock myMailServer.create (user == "John") 
+=> (payload = {
+  status:"Success"
+  })
+```
+
+Note that instead of `$when` it uses a `$mock` and that matches the API call prefix (.../mock/...). Using /mock/ in the API enables the `$mock` rules and it's very effective in development.
+
+Also, when using `diesel.rest` a few advantages: you can use named groups in the regex, but you can also use classic `.../mypath/:element/:id` etc. Also, the query parameters are automatically populated in the context, etc. See more at [rest mocks](http://specs.dieselapps.com/wiki/Spec:restMock-spec).
+
 ## Expressions
 
 The expressions used in Diese are useful on their own: as an external DSL, the expressions are fairly complex (see more in [expr](/diesel/src/main/scala/razie/diesel/expr)), including lambdas, list operators and inlined Javascript expressions, such as:
