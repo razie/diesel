@@ -53,7 +53,7 @@ object Init extends Logging {
       UserGroup("Teacher", Set(Perm.uProfile.plus, Perm.uWiki.plus)))
     groups map (_.create)
 
-    val razie = User("razie", "Razvan", "Cojocaru", 1970, e("razie@razie.com"), e("asdf"), 'a', Set("admin"))
+    val razie = User("razie", "Razvan", "Cojocaru", 1970, e("razie@razie.com"),  Some(e("razie@razie.com")), e("asdf"), 'a', Set("admin"))
     val users = List(razie)
     users map (ug => ug.create(ug.mkProfile))
 

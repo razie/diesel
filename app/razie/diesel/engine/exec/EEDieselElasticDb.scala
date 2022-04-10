@@ -20,7 +20,7 @@ object EEDieselElasticDb {
 
 import razie.diesel.engine.exec.EEDieselElasticDb.DB
 
-// todo WIP
+/** Elastic connector for object persistance */
 case class EElasticConnector (
   realm:String,
   override val name:String,

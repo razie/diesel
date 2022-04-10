@@ -879,6 +879,7 @@ regAdmin=$regAdmin
                 "",
                 Config.curYear.toInt,
                 Enc(wid.name + "@nobody.com"),
+                Some(Enc(wid.name.toLowerCase + "@nobody.com")),
                 Enc("nopassword"),
                 's',
                 Set(UserType.Organization))

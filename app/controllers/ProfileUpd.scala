@@ -56,7 +56,7 @@ class ProfileUpd @Inject() (config:Configuration) extends RazController with Log
       "address" -> text
         .verifying("Invalid characters", vldSpec(_)))(
         (f, l, t, y, c, about, a) =>
-          User("kuku", f, l, y, "noemail", "nopwd", 'a', Set(t), Set(), (if (a != null && a.length > 0) Some(a) else None), Map("about"-> about))
+          User("kuku", f, l, y, "noemail", Some("normail"), "nopwd", 'a', Set(t), Set(), (if (a != null && a.length > 0) Some(a) else None), Map("about"-> about))
           .copy(organization = (if (c != null && c.length > 0) Some(c) else None))
     )(
           (u: User) => Some(u.firstName, u.lastName, u.roles.head, u.yob, u.getPrefs("about", ""),
@@ -192,7 +192,7 @@ class ProfileUpd @Inject() (config:Configuration) extends RazController with Log
       "repass" -> text,
       "token" -> text
     ) verifying
-      ("Password mismatch - please type again", { t: (String, String, String, String) =>
+      ("Password doesn't match - please type again", { t: (String, String, String, String) =>
         if (t._2.length > 0 && t._3.length > 0 && t._3 != t._2) false
         else true
       })

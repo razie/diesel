@@ -720,7 +720,8 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
               f.trim,
               l.trim,
               y,
-              Enc(e),
+              Enc(e.trim),
+              Some(Enc(e.trim.toLowerCase)),
               Enc(p),
               'a',
               Set(ut),
@@ -848,7 +849,10 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
       }
     } else {
       val u = User(
-        Users.uniqueUsername(uname(f, l, y)), f.trim, l.trim, y, Enc(e),
+        Users.uniqueUsername(uname(f, l, y)), f.trim, l.trim,
+        y,
+        Enc(e.trim),
+        Some(Enc(e.trim.toLowerCase)),
         Enc(p),
         'a',
         Set(Users.ROLE_MEMBER),
