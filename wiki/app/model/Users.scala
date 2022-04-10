@@ -42,7 +42,8 @@ case class UserQuota(
   updates: Option[Int] = Some(5), // number of wikis updated
   _id: ObjectId = new ObjectId()) {
 
-  //  def create = Mongo ("Profile") += grater[Profile].asDBObject(Audit.create(this))
+  //  def create = Mongo ("Profile") += Select remote host to compare againstgrater[Profile].asDBObject(Audit.create
+  //  (this))
   def update(q: UserQuota) =
     ROne[UserQuota]("userId" -> userId) map { p =>
       RUpdate.noAudit[UserQuota](Map("userId" -> userId), q)
@@ -122,7 +123,7 @@ case class UserWiki(
   def wlink = WikiLink(UWID("User", userId), uwid, "")
   def wname = wlink.wname
 
-  lazy val user = ROne[User](userId)
+  lazy val user = Users.findUserById(userId)
   def wid = uwid.wid.get
 }
 
@@ -140,6 +141,7 @@ case class UserEvent(
 }
 
 import play.api.cache._
+import razie.wiki.Services
 
 /** user factory and utils */
 object Users {
@@ -150,57 +152,24 @@ object Users {
 
   final val ROLE_MEMBER = "Member"
 
-  def fromJson(j: String) = Option(grater[User].asObject(JSON.parse(j).asInstanceOf[DBObject]))
-
-  /** find user by lowercase email - at loging
-    *
-    * @param uncEmail unencoded email
-    * @return user if found
-    */
-  def findUserNoCase(uncEmail: String) = {
-    // todo optimize somwhow
-    val tl = uncEmail.toLowerCase()
-    RazMongo("User") findAll() filter(_.containsField("email")) find (x=>x.as[String]("email") != null && x.as[String]("email").dec.toLowerCase == tl) map (grater[User].asObject(_))
+  var persist: UsersPersist = {
+    val cls =
+      if(Services.config.isLocalhost)
+        Services.config.prop("users.persistance", "model.UsersPersistMongo")
+      else
+        "model.UsersPersistMongo"
+    val r = Services.config.prop("default.realm", "specs")
+    val c = Class.forName(cls).newInstance().asInstanceOf[UsersPersist]
+    c.setDefaultRealm(r)
+    c
   }
 
-  /** find user by lowercase email - at loging */
-  def findUsersForRealm(realm: String) = {
-    // todo optimize somwhow
-    RazMongo("User") findAll() filter(x=>
-      realm == "*" ||
-        x.containsField("realms") &&
-          x.as[Seq[String]]("realms") != null &&
-          x.as[Seq[String]]("realms").contains(realm)
-      ) map (
-        grater[User].asObject(_)
-      ) filter (u=>
-        realm == "*" || (u.realms contains realm)
-      )
-  }
-
-  /** find by decrypted email */
-  def findUserByEmailDec(emailDec: String) = findUserByEmailEnc(Enc(emailDec))
-  /** find by encrypted email */
-  def findUserByEmailEnc(emailEnc: String) = ROne[User]("email" -> emailEnc)
-
-  /** find by encrypted email */
-  def findUserByApiKey(key: String) = ROne[User]("apiKey" -> key)
-
-  def findUserById(id: String) = ROne[User](new ObjectId(id))
-  def findUserById(id: ObjectId) = ROne[User](id)
-  def findUserByUsername(uname: String) = ROne[User]("userName" -> uname)
-
-  def unameF (f:String,l:String, yob:Int=0) =
-    (f + (if (l.length > 0) ("." + l) else ""))
-        .replaceAll("[^a-zA-Z0-9\\.]", ".")
-        .replaceAll("[\\.\\.]", ".")
-
-  def uniqueUsername (initial:String) = {
+  def uniqueUsername(initial: String) = {
     var cur = initial
     var n = 0
 
-    while(n < 20 && Users.findUserByUsername(cur).isDefined) {
-      n = n+1
+    while (n < 20 && Users.findUserByUsername(cur).isDefined) {
+      n = n + 1
       cur = initial + "." + n
     }
 
@@ -208,6 +177,46 @@ object Users {
     cur
   }
 
+  def fromJsonUser(j: String) = Option(grater[User].asObject(JSON.parse(j).asInstanceOf[DBObject]))
+
+  /** find user by lowercase email - at loging
+    *
+    * @param uncEmail unencoded email
+    * @return user if found
+    */
+  def findUserNoCase(uncEmail: String) = persist.findUserNoCase(uncEmail)
+
+  /** find user by lowercase email - at loging */
+  def findUsersForRealm(realm: String) = persist.findUsersForRealm(realm)
+
+  /** find by decrypted email - as entered by a user */
+  def findUserByEmailDec(emailDec: String) = findUserByEmailEnc(Enc(emailDec))
+
+  /** find by encrypted email */
+  def findUserByEmailEnc(emailEnc: String) = persist.findUserByEmailEnc(emailEnc)
+
+  /** find by encrypted email */
+  def findUserByApiKey(key: String) = persist.findUserByApiKey(key)
+
+  def findUserByFirstName(s: String) = persist.findUsersForRealm(s)
+
+  def findUserById(id: String) = persist.findUserById(new ObjectId(id))
+
+  def findUserById(id: ObjectId) = persist.findUserById(id)
+
+  def findUserByUsername(uname: String) = persist.findUserByUsername(uname)
+
+  def unameF(f: String, l: String, yob: Int = 0) =
+    (f + (if (l.length > 0) ("." + l) else ""))
+        .replaceAll("[^a-zA-Z0-9\\.]", ".")
+        .replaceAll("[\\.\\.]", ".")
+
+  def findProfileByUserId(userId: String): Option[Profile] = persist.findProfileByUserId(userId)
+
+  def createProfile(p:Profile) = persist.createProfile(p)
+  def updateProfile(p:Profile) = persist.updateProfile(p)
+  def updateUser(oldu:User, newu:User) = persist.updateUser(oldu, newu)
+  def createUser(newu:User) = persist.createUser(newu)
 
   import play.api.Play.current
 
@@ -215,11 +224,13 @@ object Users {
   /** display name of user with id, for comments etc */
   def nameOf(uid: ObjectId): String = {
     Cache.getAs[String](uid.toString + ".username").getOrElse {
-      val n = ROne.raw[User]("_id" -> uid).fold("???")(_.apply("userName").toString)
+      val n = persist.nameOf(uid)
       Cache.set(uid.toString + ".username", n, 600) // 10 miuntes
       n
     }
   }
+
+  def nameOf(uid: String):String = nameOf(new ObjectId(uid))
 
   /** find tasks for user */
   def findTasks(uid: ObjectId) = {
@@ -251,14 +262,6 @@ object Users {
     u
   }
 
-}
-
-/** user factory and utils */
-object WikiUsersImpl extends DUsers[User] {
-  def findUserById(id: String) = Users.findUserById (id)
-  def findUserById(id: ObjectId) = Users.findUserById (id)
-  def findUserByUsername(uname: String) = Users.findUserByUsername(uname)
-  def findUserByEmailDec(emailDec: String) = Users.findUserByEmailDec(emailDec)
 }
 
 /** represents a unique user id */

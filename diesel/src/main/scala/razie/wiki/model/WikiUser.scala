@@ -86,7 +86,7 @@ abstract class WikiUser extends DUser {
   def isDev : Boolean = isMod || hasPerm(Perm.codeMaster) || hasPerm(Perm.domFiddle)
 
   // mods can be gods in local
-  def isAdmin : Boolean = hasPerm(Perm.adminDb) || hasPerm(Perm.adminWiki) || isMod && WikiConfig.getInstance.get.isLocalhost
+  def isAdmin : Boolean = hasPerm(Perm.adminDb) || hasPerm(Perm.adminWiki) || hasPerm(Perm.Moderator) && WikiConfig.getInstance.get.isLocalhost
 }
 
 /** sample dummy */

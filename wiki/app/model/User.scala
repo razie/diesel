@@ -33,8 +33,8 @@ case class Location(city: String, state: String, country: String) {}
 trait TPersonInfo {
   def firstName: String
   def lastName: String
-  def email: String
-  def emailDec: String
+  def email: String         // email encoded
+  def emailDec: String      // email decoded
   def yob: Int
   def gender: String // M/F/?
   def roles: Set[String]
@@ -57,6 +57,7 @@ case class User(
   lastName: String,
   yob: Int,
   email: String,   // encrypted
+  emailLower:Option[String] = None, //encrypted
   pwd: String,     // encrypted
 
   // this is per realm
@@ -92,9 +93,10 @@ case class User(
 
   def tasks = Users.findTasks(_id)
 
+  // OTHER isXXX inherited from WikiUser
+
   override def isActive = status == 'a'
   override def isSuspended = status == 's'
-  //def isMod = isAdmin || hasPerm(Perm.Moderator)
   def isClub = roles contains UserType.Organization.toString
   def isUnder13 = DateTime.now.year.get - yob <= 12
 
@@ -165,7 +167,7 @@ case class User(
       yield t._1).flatMap(Users.findUserById(_)).toList) getOrElse List()
 
   /** load my profile */
-  lazy val profile = ROne[Profile]("userId" -> _id)
+  lazy val profile = Users.findProfileByUserId(_id.toString)
 
   /** the wikis I linked to */
   lazy val wikis = RMany[UserWiki]("userId" -> _id).toList
@@ -222,18 +224,18 @@ case class User(
   lazy val key = Map("email" -> email)
 
   def create(p: Profile) {
-    var res = RCreate(this.copy(crDtm = Some(DateTime.now())))
+    var res = Users.createUser(this.copy(crDtm = Some(DateTime.now())))
 
     p.createdDtm = DateTime.now()
     p.lastUpdatedDtm = DateTime.now()
-    res = RCreate(p)
+    res = Users.createProfile(p)
 
     UserEvent(_id, "CREATE").create
   }
 
   def update(newu: User) = {
     RazMongo("UserOld") += grater[User].asDBObject(Audit.create(this))
-    RazMongo("User").update(key, grater[User].asDBObject(Audit.update(newu.copy(updDtm = Some(DateTime.now())))))
+    Users.updateUser(this, newu)
     UserEvent(_id, "UPDATE").create
   }
 
@@ -241,11 +243,18 @@ case class User(
     grater[User].asDBObject(this).toString
   }
 
+  def toJsonSafe = {
+    val o = grater[User].asDBObject(this)
+//    o.put("mongoId", o.get("_id"))
+//    o.put("_id", this._id.toString)
+    o.toString
+  }
+
   def shouldEmailParent(what: String) = {
     if (isUnder13) {
       for (
         pc <- Users.findParentOf(this._id) if (pc.notifys == what);
-        parent <- ROne[User](pc.parentId)
+        parent <- Users.findUserById(pc.parentId)
       ) yield parent
     } else None
   }
@@ -365,13 +374,23 @@ case class Profile(
 
   _id: ObjectId = new ObjectId()) {
 
-  def update(p: Profile) =  RUpdate(Map("userId" -> userId), p)
+  def update(p: Profile) =  Users.updateProfile(p)
 
   def addRel(t: (String, String)) = this.copy(relationships = relationships ++ Map(t))
   def addTag(t: String) = this.copy(tags = tags + t)
   def setContact(c: Contact) = this.copy(contact = Some(c))
 
-  def toJson = grater[Profile].asDBObject(this).toString
+  def toJson = {
+    grater[Profile].asDBObject(this).toString
+  }
+
+  def toJsonSafe = {
+    val o = grater[Profile].asDBObject(this)
+//    o.put("mongoUserId", this._id.toString)
+//    o.put("mongoId", o.get("_id"))
+//    o.put("key", this._id.toString)
+    o.toString
+  }
 
   var createdDtm: DateTime = DateTime.now
   var lastUpdatedDtm: DateTime = DateTime.now
