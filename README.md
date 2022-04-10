@@ -76,12 +76,10 @@ Streams add another level of parallelism.
 
 ## REST APIs
 
-There is a simple binding to REST, using the `diesel.rest` message:
+There is a simple binding to REST, using the `diesel.rest` message (you can call this at: https://specs.dieselapps.com/api/mock/myActualServer/create/John
+):
 
 ```js
-
-You can call this at: https://specs.dieselapps.com/api/mock/myActualServer/create/John
-
 $when diesel.rest(path ~= "/myActualServer/create/(?<user>.+)")
 => myMailServer.create (user)
 
