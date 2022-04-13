@@ -1101,20 +1101,17 @@ class DomApi extends DomApiBase with Logging {
   }
 
   // test upload files
-  def dieselIoUpload(path: String, andThen:String) = Action.async(parse.multipartFormData) { request =>
+  def dieselIoUpload(fileName: String, andThen:String) = Action.async(parse.multipartFormData) { request =>
     implicit val stok = razRequest(request)
 
     if (WikiConfig.getInstance.get.isLocalhost &&
         (stok.au.exists(_.isActive)) //||
     ) {
-
-      // todo re-encode the path: if the path contains control chars, they'll create issues on disk
-
       request.body.file("dieselFile").map { file =>
         import java.io.File
         val filename = file.filename
         val contentType = file.contentType
-        file.ref.moveTo(new File(s"./$path"))
+        file.ref.moveTo(new File(s"./$fileName"))
 
         if(andThen.length > 0) {
 
@@ -1126,26 +1123,45 @@ class DomApi extends DomApiBase with Logging {
           )
 
           irunDomStr(strMsg)
-//          fut.map {res =>
-//            DomEngineUtils.extractP(res).map{p=>
-//                val v = p.currentStringValue
-//            if(v.trim.startsWith("{")) {
-//              Ok(v).as("application/json")
-//            } else {
-//              Ok(v)
-//            }
-//            }.getOrElse {
-//              Ok("")
-//            }
-//          }
         } else {
           Future.successful(
-            Ok(s"""{"status": "done.success", "msg":"File uploaded to $path"} """).as("application/json")
+            Ok(s"""{"status": "done.success", "msg":"File uploaded to $fileName"} """).as("application/json")
           )
         }
       }.getOrElse {
         Future.successful(InternalServerError("Error: 'dieselFile' is missing"))
       }
+    } else {
+      Future.successful(Unauthorized("Not localhost or not authorized!"))
+    }
+  }
+
+  // test upload files
+  def dieselIoDelete(fileName: String, andThen:String) = Action.async { request =>
+    implicit val stok = razRequest(request)
+
+    if (WikiConfig.getInstance.get.isLocalhost &&
+        (stok.au.exists(_.isActive)) //||
+    ) {
+        import java.io.File
+        val newpath = fileName.replaceAllLiterally("/", "_")
+        val file = new File(s"./$newpath")
+        val status = if(file.delete()) "done.success" else "done.fail"
+
+        if(andThen.length > 0) {
+          val m = if(andThen startsWith "$") andThen else "$msg " + andThen
+          val strMsg = DieselMsgString(
+            m,
+            DieselTarget.ENV(stok.realm),
+            Map("status" -> status)
+          )
+
+          irunDomStr(strMsg)
+        } else {
+          Future.successful(
+            Ok(s"""{"status": "$status", "msg":"Delete file path:$fileName"} """).as("application/json")
+          )
+        }
     } else {
       Future.successful(Unauthorized("Not localhost or not authorized!"))
     }
