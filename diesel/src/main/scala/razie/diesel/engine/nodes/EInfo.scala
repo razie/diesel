@@ -5,6 +5,7 @@
  */
 package razie.diesel.engine.nodes
 
+import razie.Log.log
 import razie.diesel.engine._
 import razie.diesel.expr.DieselExprException
 import razie.tconf.EPos
@@ -169,6 +170,9 @@ case class ETrace(msg: String, details: String = "") extends CanHtml with HasPos
 
 /** a simple info node with a message and details - details are displayed as a popup */
 case class EInfo(msg: String, details: String = "") extends CanHtml with HasPosition with InfoNode {
+
+  log(msg)
+
   var pos: Option[EPos] = None
 
   def withPos(p: Option[EPos]) = {
