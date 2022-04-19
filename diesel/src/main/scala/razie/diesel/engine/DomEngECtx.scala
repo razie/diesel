@@ -98,8 +98,7 @@ class DomEngECtx(val settings: DomEngineSettings, cur: List[P] = Nil, base: Opti
     val settings = ctx.root.engine.map(_.settings)
     val au = settings
         .flatMap(_.userId)
-        .map(new ObjectId(_))
-        .flatMap(DUsers.impl.findUserById)
+        .flatMap(Services.auth.cachedUserById)
 
     val ret = dwix.dieselEnvFor(settings.flatMap(_.realm).mkString, au)
     ret

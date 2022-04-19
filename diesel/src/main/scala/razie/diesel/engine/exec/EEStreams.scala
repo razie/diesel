@@ -11,25 +11,20 @@ import razie.diesel.dom.WTypes
 import razie.diesel.engine._
 import razie.diesel.engine.nodes._
 import razie.diesel.expr.ECtx
+import razie.diesel.model.DieselMsg
 import scala.concurrent.duration.DurationInt
-
-object EEStreams {
-  final val PREFIX = "diesel.stream"
-}
 
 /** executor for "ctx." messages - operations on the current context
   *
   * See
   * http://specs.dieselapps.com/Topic/Concurrency,_asynchronous_and_distributed
   */
-class EEStreams extends EExecutor(EEStreams.PREFIX) {
-
-  import razie.diesel.engine.exec.EEStreams.PREFIX
+class EEStreams extends EExecutor(DieselMsg.STREAMS.PREFIX) {
 
   override def isMock: Boolean = true
 
   override def test(ast: DomAst, m: EMsg, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) = {
-    m.entity == PREFIX && messages.exists(_.met == m.met)
+    m.entity == DieselMsg.STREAMS.PREFIX && messages.exists(_.met == m.met)
     // don't eat .onDone...
   }
 
@@ -151,11 +146,11 @@ class EEStreams extends EExecutor(EEStreams.PREFIX) {
   override def toString = "$executor::ctx "
 
   override val messages: List[EMsg] =
-    EMsg(PREFIX, "put") ::
-        EMsg(PREFIX, "new") ::
-        EMsg(PREFIX, "done") ::
-        EMsg(PREFIX, "consume") ::
-        EMsg(PREFIX, "putAll") ::
-        EMsg(PREFIX, "generate") ::
+    EMsg(DieselMsg.STREAMS.PREFIX, "put") ::
+        EMsg(DieselMsg.STREAMS.PREFIX, "new") ::
+        EMsg(DieselMsg.STREAMS.PREFIX, "done") ::
+        EMsg(DieselMsg.STREAMS.PREFIX, "consume") ::
+        EMsg(DieselMsg.STREAMS.PREFIX, "putAll") ::
+        EMsg(DieselMsg.STREAMS.PREFIX, "generate") ::
         Nil
 }
