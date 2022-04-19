@@ -325,10 +325,10 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
     cdebug << "g-recaptcha-response: " + g_recaptcha_response
 
     if(! tooManyAttempts(email)) {
-      if(!
-          Users.findUserByEmailDec(email).orElse(
-            Users.findUserNoCase(email)).isDefined
-      ) {
+      val u =
+        Users.findUserByEmailDec((email)) orElse
+          (Users.findUserNoCase(email))
+      if(!u.isDefined) {
         cdebug << "should I download remote user? isLocal: " + Config.isLocalhost
         if(
           Config.isLocalhost &&
@@ -337,7 +337,7 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
           AttemptCounter.success(email)
         }
       }
-      login(email, pass, "")
+      login(email, pass, "", "", u)
     } else {
       val loginUrl = request.website.prop("join").getOrElse(routes.Profile.doeJoin().url)
       Redirect(loginUrl)
@@ -461,7 +461,7 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
   }
 
   /** login or start registration */
-  def login(email: String, pass:String, extra: String, gid:String="") (implicit request:RazRequest) = {
+  def login(email: String, pass:String, extra: String, gid:String="", theUser:Option[User] = None) (implicit request:RazRequest) = {
     // TODO optimize - we lookup users twice on login
     val realm = getRealm()
     val website = request.website
@@ -471,7 +471,7 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
 
     debug("login.secLink="+secLink.mkString)
 
-      Users.findUserByEmailDec((email)) orElse (Users.findUserNoCase(email)) match {
+      theUser orElse Users.findUserByEmailDec((email)) orElse (Users.findUserNoCase(email)) match {
       case Some(u) =>
         if (
           (

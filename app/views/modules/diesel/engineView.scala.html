@@ -9,15 +9,149 @@ view an engine
 <script src="@routes.Assets.at("javascripts/weCommons.js")"></script>
 <script src="@routes.Assets.at("javascripts/weDieselDom.js")"></script>
 
+<script>
+    var done = true;
+
+    @if(eng.exists(e=>DomState.isDone(e.status))) {
+    done = true;
+    } else {
+    done = false;
+    }
+
+    var refreshMode = true;
+    function setRefreshMode () {
+      refreshMode = $('#refreshMode').prop('checked');
+      $('#refreshMode').prop('checked', !refreshMode);
+      $('#refreshMode').trigger("change");
+    };
+
+    withJquery(function ($) {
+      $(window).on('load', function () {
+        useLocalStorageCheckbox("refreshMode", "domFiddleRefreshMode", function (a, b, expanded) {
+          refreshMode = expanded;
+        });
+
+        useLocalStorageCheckbox("traceStory", "domFiddleTraceStory", function (a, b, expanded) {
+          dieselHideTrace(expanded);
+        });
+
+        useLocalStorageCheckbox("debugStory", "domFiddleDebugStory", function (a, b, expanded) {
+          dieselHideDebug(expanded);
+        });
+
+        // useLocalStorageCheckbox("generatedSpec", "domFiddleGeneratedSpec", function (a,b,expanded) {
+        //   hideGenerated(expanded);
+        // });
+
+        useLocalStorageCheckbox("generatedStory", "domFiddleGeneratedStory", function (a, b, expanded) {
+          dieselHideGenerated(expanded);
+        });
+
+        // show duration as separate element
+        $('#showDur').change(function () {
+          $("span[kind='dur']").remove();
+
+          if($('#showDur').prop('checked')) {
+            $('[msec]').each(function (index) {
+              var m = $(this).attr("msec");
+              var s = '';
+              if(m.length >= 3) s = 'color:red;font-weight:bold';
+              else if(m.length >= 2) s = 'font-weight:bold';
+              var t = '<span kind="dur" style="' + s + '">' + m + '-</span>';
+              $(t).insertBefore(this);
+            });
+          }
+        });
+
+        setInterval(function(){
+          if(refreshMode && !done)  window.location.reload();
+        }, 3000);
+
+      });
+
+      postThis = function (url, next) {
+        $.ajax(
+            url, {
+              type: 'POST',
+              data: $.param({}),
+              contentType: 'application/x-www-form-urlencoded',
+              success: function(data) {
+                console.log( "OK "+JSON.stringify(data));
+                if(typeof next == "function") next(data);
+              },
+              error  : function(x) {
+                console.log( "ERR "+JSON.stringify(x));
+              }
+            });
+      };
+
+      engineCancel = function () {
+        postThis("@mod.diesel.controllers.routes.DomGuard.dieselEngineCancel(eng.get.id)");
+        location.reload();
+      };
+      enginePause = function () {
+        postThis("@mod.diesel.controllers.routes.DomGuard.dieselEnginePause(eng.get.id)");
+        location.reload();
+      };
+
+      enginePlay = function () {
+        postThis("@mod.diesel.controllers.routes.DomGuard.dieselEnginePlay(eng.get.id)");
+        location.reload();
+      };
+      engineContinue = function () {
+        postThis("@mod.diesel.controllers.routes.DomGuard.dieselEngineContinue(eng.get.id)");
+        location.reload();
+      };
+      engineQueue = function () {
+        postThis("@mod.diesel.controllers.routes.DomGuard.dieselEngineQueue(eng.get.id)",
+            function(data) {alert(data)});
+      };
+
+    });
+
+</script>
+
+
 @eng.map{ e=>
   @if(!DomState.isDone(e.status)) {
     In progress... @e.progress
-    <a class="label label-danger" href="@mod.diesel.controllers.routes.DomGuard.dieselEngineCancel(e.id)">Cancel</a>
+    <span class="label label-danger"
+    >
+     <span
+     class="glyphicon glyphicon-remove"
+     onclick="engineCancel();"
+       title="Cancel the flow"
+     ></span>
 
+      <span
+    class="glyphicon glyphicon-pause"
+    onclick="enginePause();"
+    title="Pause the flow..." ></span>
+        &nbsp;
+    @if(e.paused) {
+      <span id="xx"
+      title="Step/pause..."
+      >
+        Paused (
+        <a onclick="engineQueue();">queue</a>
+        : @e.stashedMsg.size): &nbsp;
+        <span class="glyphicon glyphicon-play"
+        onclick="enginePlay();"
+        title="One step forward..." > </span>
+          &nbsp;
+        <span class="glyphicon glyphicon-forward"
+        onclick="engineContinue();"
+        title="Resume the engine..." > </span>
+      </span>
+        &nbsp;
+    }
+    </span>
+&nbsp;
     <span id="refreshBox" class="label label-default" title="Keep refreshing..." >
       <input type="checkbox" id="refreshMode" checked>
       <span onclick="setRefreshMode();" style="cursor:pointer" >Refresh </span>
     </span>
+
     <span id="spinner" style="display: none"><img src="https://cdn.razie.com/Public/spinner.gif" height="20" width="20"></span>
     <br>
   }
@@ -50,69 +184,6 @@ DESC: @{e.description}<br>
 }.getOrElse {
   Engine not found...
 }
-
-<script>
-var done = true;
-
-@if(eng.exists(e=>DomState.isDone(e.status))) {
-done = true;
-} else {
-done = false;
-}
-
-var refreshMode = true;
-function setRefreshMode () {
-  refreshMode = $('#refreshMode').prop('checked');
-  $('#refreshMode').prop('checked', !refreshMode);
-  $('#refreshMode').trigger("change");
-};
-
-withJquery(function ($) {
-  $(window).on('load', function () {
-    useLocalStorageCheckbox("refreshMode", "domFiddleRefreshMode", function (a, b, expanded) {
-      refreshMode = expanded;
-    });
-
-    useLocalStorageCheckbox("traceStory", "domFiddleTraceStory", function (a, b, expanded) {
-      dieselHideTrace(expanded);
-    });
-
-    useLocalStorageCheckbox("debugStory", "domFiddleDebugStory", function (a, b, expanded) {
-      dieselHideDebug(expanded);
-    });
-
-    // useLocalStorageCheckbox("generatedSpec", "domFiddleGeneratedSpec", function (a,b,expanded) {
-    //   hideGenerated(expanded);
-    // });
-
-    useLocalStorageCheckbox("generatedStory", "domFiddleGeneratedStory", function (a, b, expanded) {
-      dieselHideGenerated(expanded);
-    });
-
-    // show duration as separate element
-    $('#showDur').change(function () {
-      $("span[kind='dur']").remove();
-
-      if($('#showDur').prop('checked')) {
-        $('[msec]').each(function (index) {
-          var m = $(this).attr("msec");
-          var s = '';
-          if(m.length >= 3) s = 'color:red;font-weight:bold';
-          else if(m.length >= 2) s = 'font-weight:bold';
-          var t = '<span kind="dur" style="' + s + '">' + m + '-</span>';
-          $(t).insertBefore(this);
-        });
-      }
-    });
-
-    setInterval(function(){
-      if(refreshMode && !done)  window.location.reload();
-    }, 3000);
-
-  });
-});
-
-</script>
 
 @util.oneModal()
 

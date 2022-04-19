@@ -466,7 +466,7 @@ object Wikil extends WikieBase {
           }
         } else {
           model.UserWiki(au._id, uwid, how).create
-          Services ! WikiEvent("AUTH_CLEAN", "User", au._id.toString)
+          Services ! WikiEvent("AUTH_CLEAN", "User", au._id.toString, Some(au))
           "OK, added!"
         }
       }
@@ -522,7 +522,7 @@ object Wikil extends WikieBase {
     if (WikiDomain(wid.getRealm).isA("Club", wid.cat))
       Club.linkedUser(au, wid, how)
 
-    Services ! WikiEvent("AUTH_CLEAN", "User", au._id.toString)
+    Services ! WikiEvent("AUTH_CLEAN", "User", au._id.toString, Some(au))
   }
 
   case class FollowerLinkWiki(email1: String, email2: String, comment: String, g_recaptcha_response:String="")
