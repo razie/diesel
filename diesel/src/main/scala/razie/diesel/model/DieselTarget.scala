@@ -19,7 +19,7 @@ import scala.::
   * @param specs   - list of specifications to get the rules from
   * @param stories - optional list of stories to execute and validate
   */
-class DieselTarget(
+case class DieselTarget(
   val realm: String,
   val env: String = DieselTarget.DEFAULT) {
 
@@ -116,9 +116,10 @@ object DieselTarget {
 }
 
 /** target a specified set of specs */
-case class DieselTargetList(
+class DieselTargetList(
   override val realm: String,
   override val env: String,
   override val specs: List[TSpecRef],
-  override val stories: List[TSpecRef]) extends DieselTarget(realm)
-
+  override val stories: List[TSpecRef]) extends DieselTarget(realm) {
+  override def toString = s"DieselTargetList(realm=$realm, env=$env, specs=$specs, stories=${stories.mkString})"
+}

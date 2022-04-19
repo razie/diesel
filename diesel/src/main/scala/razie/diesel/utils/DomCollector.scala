@@ -120,7 +120,7 @@ object DomCollector {
 
   /** statically collect more asts */
   def cleanAst = synchronized {
-    asts = Nil
+    asts = asts.filter(x=> ! DomState.isDone(x.engine.status))
   }
 
 }

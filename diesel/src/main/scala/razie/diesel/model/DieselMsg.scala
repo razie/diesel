@@ -203,6 +203,7 @@ object DieselMsg {
   }
 
   object STREAMS {
+    final val PREFIX = "diesel.stream"
     final val CREATE = "new"
     final val STREAM_PUT = "diesel.stream.put"
     final val STREAM_ONDATA = "diesel.stream.onData"
@@ -247,6 +248,11 @@ object DieselMsg {
     final val DIESEL_STEP = "diesel.step"
     final val DIESEL_TODO = "diesel.todo"
     final val DIESEL_NOP = "diesel.nop"
+    final val DIESEL_ENG_DEBUG = "diesel.engine.debug"
+
+    final val DIESEL_ENG_PAUSE = "diesel.engine.pause"
+    final val DIESEL_ENG_CONTINUE = "diesel.engine.continue"
+    final val DIESEL_ENG_PLAY = "diesel.engine.play"
 
     final val STEP = "step"
     final val TODO = "todo"
