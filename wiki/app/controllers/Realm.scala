@@ -29,7 +29,7 @@ new ObjectId) {
     import razie.db.tx.txn
 
     ROne[DieselSettings]("uid" -> uid, "realm" -> realm, "name" -> name).map { s =>
-      // todo cluster propagate notification?
+      // todo cluster propagate notification? use WikiConfigChanged(node, config)
       RUpdate[DieselSettings](s.copy(value = this.value))
     }.getOrElse {
       RCreate[DieselSettings](this)

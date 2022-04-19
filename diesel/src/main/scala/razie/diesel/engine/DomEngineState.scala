@@ -56,6 +56,7 @@ trait DomEngineState {
   var curExpands = 0
 
   var status = DomState.INIT
+  var paused = false
 
   var seqNo = 0 // each node being processed in sequence, gets a stamp here, so you can debug what runs in parallel
   def seq() = {

@@ -1387,7 +1387,7 @@ class DomEngineV1(
         this.ctx = this.ctx.base.get
         true
 
-      } else if (ea == "diesel.engine.debug") {
+      } else if (ea == DieselMsg.ENGINE.DIESEL_ENG_DEBUG) {
 
         val s = this.settings.toJson
         val c = this.ctx.toString
@@ -1395,6 +1395,30 @@ class DomEngineV1(
         evAppChildren(a, DomAst(EInfo("settings", js.tojsons(s)), AstKinds.DEBUG))
         evAppChildren(a, DomAst(EInfo("ctx", c), AstKinds.DEBUG))
         evAppChildren(a, DomAst(EInfo("engine", e), AstKinds.DEBUG))
+        true
+
+      } else if (ea == DieselMsg.ENGINE.DIESEL_ENG_PAUSE) {
+
+        // set the engine to pause mode and start stashing message until continue
+
+        DieselAppContext ! DEPause(this.id)
+        evAppChildren(a, DomAst(EInfo("Paused..."), AstKinds.DEBUG))
+        true
+
+      } else if (ea == DieselMsg.ENGINE.DIESEL_ENG_CONTINUE) {
+
+        // push all stashed messages
+
+        DieselAppContext ! DEContinue(this.id)
+        evAppChildren(a, DomAst(EInfo("Continue..."), AstKinds.DEBUG))
+        true
+
+      } else if (ea == DieselMsg.ENGINE.DIESEL_ENG_PLAY) {
+
+        // set the engine to pause mode and start stashing message until continue
+
+        DieselAppContext ! DEPlay(this.id)
+        evAppChildren(a, DomAst(EInfo("Paused..."), AstKinds.DEBUG))
         true
 
       } else if (ea == DieselMsg.ENGINE.DIESEL_ENG_SET) { //========================

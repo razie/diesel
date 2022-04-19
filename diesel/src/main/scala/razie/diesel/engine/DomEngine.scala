@@ -141,7 +141,9 @@ abstract class DomEngine(
         if (removed.childrenCol.nonEmpty && prunedInfo.isEmpty) {
 
           // impersonate the replaced ID's?
-          val replacement = new DomAst(EInfoWrapper(new Pruned(k, 1)), AstKinds.DEBUG,
+          // todo this numbers are incorrect, should be k+1 ? test and see...
+          // todo probably the last one is not DONE when this comes and prune is not called after the last one, so +1
+          val replacement = new DomAst(EInfoWrapper(new Pruned(k+1, 1)), AstKinds.DEBUG,
             new ListBuffer[DomAst](),
             removed.id)
               .withStatus(DomState.DONE)
@@ -215,6 +217,9 @@ abstract class DomEngine(
     this.initialMsg = m
     this
   }
+
+  /** stash messages while the engine is paused in step by step mode */
+  var stashedMsg : ListBuffer[DEMsg] = null
 
   assert(settings.realm.isDefined, "need realm defined for engine settings")
 
@@ -372,8 +377,35 @@ abstract class DomEngine(
 //          case d:DEMsg => d
 //        })
 //      else res
-    } else
+//    } else if (paused) {
+//      this.stashedMsg.appendAll(m)
+//      Nil
+    } else {
       m.map(m => DieselAppContext ! m) // cause err if router not up
+    }
+  }
+
+  /** don't call directly - called from actor */
+  def pause = {
+    // push all stashed messages
+    this.paused = true
+    this.stashedMsg = new ListBuffer[DEMsg]()
+  }
+
+  /** don't call directly - called from actor */
+  def play = {
+    if(this.stashedMsg.size > 0) {
+      DieselAppContext ! DEPlayThis(this.id, this.stashedMsg.remove(0))
+    }
+  }
+
+  /** don't call directly - called from actor */
+  def continueFromPaused = {
+    // push all stashed messages
+    this.paused = false
+    val x = this.stashedMsg
+    this.stashedMsg = null
+    x.foreach(m => DieselAppContext ! m)
   }
 
   /** stop and discard this engine */
@@ -1002,7 +1034,6 @@ abstract class DomEngine(
       case DEComplete(eid, aid, r, l, results) => {
         // completed child spawned that I'm waiting for
         require(eid == this.id) // todo logical error not a fault
-        val otarget = findNode(aid)
         val target = n(aid)
         val completer = DomAst(EEngComplete("DEComplete"), AstKinds.BUILTIN)
         val toAdd = results ::: completer :: Nil

@@ -19,7 +19,7 @@ import scala.util.Try
 /** ====================== Actor infrastructure =============== */
 
 /** base class for engine internal message */
-trait DEMsg {
+sealed trait DEMsg {
   def engineId: String
 }
 
@@ -80,6 +80,12 @@ case class DEStartTimer(engineId: String, d: Int, results: List[DomAst]) extends
 
 case class DETimer(engineId: String, results: List[DomAst]) extends DEMsg
 
+/** continue and pause engine */
+case class DEPause(engineId: String) extends DEMsg
+case class DEPlay(engineId: String) extends DEMsg
+case class DEPlayThis(engineId: String, m:DEMsg) extends DEMsg
+case class DEContinue(engineId: String) extends DEMsg
+
 /** error handling
   *
   * todo should not be part of normal processing DEMsg
@@ -126,6 +132,7 @@ class DomEngineRouter () extends Actor {
       DieselAppContext.activeStreamsByName
           .get(m.streamName)
           .map(x => {route(x.id, m); ""})
+          // should end up in DomStreamActor
           .getOrElse(
             clog << "DomEngine Router DROP STREAM message " + m
             // todo recover failed workflows
@@ -163,7 +170,65 @@ class DomEngineActor(eng: DomEngine) extends Actor with Stash {
       true
   }
 
-  def receive = {
+  def withEng(m:DEMsg)(f:DEMsg => Unit) = {
+    if (eng.id == m.engineId) Try {
+      f.apply(m)
+    }
+    else DieselAppContext.router.map(_ ! m)
+  }
+
+  def receive = receiveNormal orElse receiveOthers
+
+  /** receive when normal / behaviour */
+  def receiveNormal: Receive = {
+
+    case pause@DEPause(eid) if checkInit => {
+      withEng(pause) {m =>
+        eng.pause
+        context.become(receivePaused orElse receiveOthers)
+      }
+    }
+
+    case req@DEReq(eid, _, _, _) if checkInit => {
+      withEng(req) {m =>
+        eng.processDEMsg(req)
+      }
+    }
+  }
+
+  /** receive when paused / behaviour */
+  def receivePaused: Receive = {
+
+    case play:DEPlay if checkInit => {
+      withEng(play) {m =>
+        eng.play
+      }
+    }
+
+    case play@DEPlayThis(eid, msg) if checkInit => {
+      withEng(play) {m =>
+        eng.processDEMsg(msg)
+      }
+    }
+
+    case cont@DEContinue(eid) if checkInit => {
+      withEng(cont) {m =>
+        eng.continueFromPaused
+        context.unbecome()
+      }
+    }
+
+    case req@DEReq(eid, _, _, _) if checkInit => {
+      withEng(req) {m =>
+        if (eng.id == eid) Try {
+        eng.stashedMsg.append(req)
+      }
+      }
+    }
+  }
+
+  /** receive normal messages */
+  def receiveOthers: Receive = {
 
     case DEInit => {
       //save refs for active engines
@@ -171,75 +236,20 @@ class DomEngineActor(eng: DomEngine) extends Actor with Stash {
       unstashAll()
     }
 
-    case req@DEReq(eid, a, r, l) if checkInit => {
-      if (eng.id == eid) Try {
-        eng.processDEMsg(req)
-      }
-      else DieselAppContext.router.map(_ ! req)
+    case rep:DERep if checkInit => {
+      proc(rep)
     }
 
-    case rep@DERep(eid, a, r, l, results) if checkInit => {
-      checkInit
-      if (eng.id == eid) {
-        try {
-          eng.processDEMsg(rep)
-        } catch {
-          case throwable: Throwable => {
-            eng.addError(throwable)
-            razie.clog << throwable
-          }
-        }
-      } else {
-        DieselAppContext.router.map(_ ! rep)
-      }
+    case rep:DEComplete if checkInit => {
+      proc(rep)
     }
 
-    case rep@DEComplete(eid, a, r, l, results) if checkInit => {
-      checkInit
-      if (eng.id == eid) {
-        try {
-          eng.processDEMsg(rep)
-        } catch {
-          case throwable: Throwable => {
-            eng.addError(throwable)
-            razie.clog << throwable
-          }
-        }
-      } else {
-        DieselAppContext.router.map(_ ! rep)
-      }
+    case rep:DEAddChildren if checkInit => {
+      proc(rep)
     }
 
-    case rep@DEAddChildren(eid, _, _, _, _, _) if checkInit => {
-      checkInit
-      if (eng.id == eid) {
-        try {
-          eng.processDEMsg(rep)
-        } catch {
-          case throwable: Throwable => {
-            eng.addError(throwable)
-            razie.clog << throwable
-          }
-        }
-      } else {
-        DieselAppContext.router.map(_ ! rep)
-      }
-    }
-
-    case rep@DEPruneChildren(eid, _, _, _) if checkInit => {
-      checkInit
-      if (eng.id == eid) {
-        try {
-          eng.processDEMsg(rep)
-        } catch {
-          case throwable: Throwable => {
-            eng.addError(throwable)
-            razie.clog << throwable
-          }
-        }
-      } else {
-        DieselAppContext.router.map(_ ! rep)
-      }
+    case rep:DEPruneChildren if checkInit => {
+      proc(rep)
     }
 
     case DEStop => {
@@ -272,11 +282,28 @@ class DomEngineActor(eng: DomEngine) extends Actor with Stash {
       else DieselAppContext.router.map(_ ! timer)
     }
 
-    case timer@DETimer(id, m) => {
+    case timer@DETimer(id, _) => {
       // used when engines schedule stuff
       if (eng.id == id) {
       }
       else DieselAppContext.router.map(_ ! timer)
+    }
+  }
+
+  /** process one regular message */
+  def proc(m:DEMsg) {
+    checkInit
+    if (eng.id == m.engineId) {
+      try {
+        eng.processDEMsg(m)
+      } catch {
+        case throwable: Throwable => {
+          eng.addError(throwable)
+          razie.clog << throwable
+        }
+      }
+    } else {
+      DieselAppContext.router.map(_ ! m)
     }
   }
 

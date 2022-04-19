@@ -56,7 +56,7 @@ class RazController extends RazControllerBase with Logging {
   /** clean the cache for current user - probably a profile change */
   def cleanAuth (u: Option[User] = None)(implicit request: RequestHeader) {
     val au = u.orElse(xauth(request))
-    Services ! WikiEvent("AUTH_CLEAN", "User", au.map(_._id).mkString)
+    Services ! WikiEvent("AUTH_CLEAN", "User", au.map(_._id).mkString, au)
     Services.auth.cleanAuth(au)(request)
   }
 

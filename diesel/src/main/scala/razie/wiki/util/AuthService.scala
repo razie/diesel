@@ -18,6 +18,9 @@ import razie.wiki.model.{Perm, WikiUser}
  *  when authenticated / logged in, a user will store something in the session cookie
  */
 trait AuthService[+U <: WikiUser] {
+
+  def cachedUserById(id:String) : Option[U] = None
+
   /** clean the cache for current user - probably a profile change, should reload profile */
   def cleanAuth(u: Option[WikiUser] = None)(implicit request: RequestHeader)
 
