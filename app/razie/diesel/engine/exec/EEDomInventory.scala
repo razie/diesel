@@ -21,16 +21,18 @@ class EEDomInventory extends EExecutor("diesel.inv") {
   final val DB = "diesel.inv"
 
   final val REG         = "diesel.inv.register"
+  final val CONNECT     = "diesel.inv.connect"
   final val TESTC       = "diesel.inv.testConnection"
+
   final val UPSERT      = "diesel.inv.upsert"
   final val UPSERT_BULK = "diesel.inv.upsert.bulk"
-  final val CONNECT     = "diesel.inv.connect"
   final val LISTALL     = "diesel.inv.listAll"
   final val FIND        = "diesel.inv.find"
   final val REMOVE      = "diesel.inv.remove"
   final val QUERY       = "diesel.inv.query"
 
   final val SEEREG      = "diesel.inv.inspect"
+  final val DEBUG       = "diesel.inv.debug"
 
   override def isMock: Boolean = true
 
@@ -48,7 +50,7 @@ class EEDomInventory extends EExecutor("diesel.inv") {
 
     in.ea match {
 
-      case SEEREG => {
+      case SEEREG | DEBUG => {
         List(
           EVal(P.fromSmartTypedValue(Diesel.PAYLOAD,
           Map(
@@ -219,7 +221,8 @@ class EEDomInventory extends EExecutor("diesel.inv") {
         res
       }
 
-      case FIND => {
+      case FIND => { // find by key, i.e. get
+
         val conn = ctx.get("connection").getOrElse("")
         val cls = ctx.getRequired("className")
         val k = ctx.get("key")
@@ -359,7 +362,10 @@ class EEDomInventory extends EExecutor("diesel.inv") {
         res
       }
 
-      case QUERY => {
+      case QUERY => { // query by criteria
+
+        // todo how to sort criteria - some order is important in SQL
+
         val conn = ctx.get("connection").getOrElse("")
         val cls = ctx.getRequired("className")
         val start = ctx.get("from").getOrElse("0").toLong

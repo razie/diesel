@@ -280,8 +280,11 @@ object Global extends WithFilters(LoggingFilter) {
     Services.initCqrs(new RkCqrs)
 
     WikiObservers mini {
-      case WikiEvent("AUTH_CLEAN", "User", id, _, _, _, _) => {
-        Services.auth.cleanAuth2(Users.findUserById(new ObjectId(id)).get)
+      case WikiEvent("AUTH_CLEAN", "User", id, au, _, _, _) => {
+        if(au.isDefined)
+          Services.auth.cleanAuth2(au.get.asInstanceOf[WikiUser])
+        else
+          Services.auth.cleanAuth2(Users.findUserById(new ObjectId(id)).get)
       }
     }
 
