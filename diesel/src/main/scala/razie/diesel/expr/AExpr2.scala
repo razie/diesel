@@ -107,7 +107,8 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
                 bei.tryApplyTyped("").exists(_.ttype == WTypes.JSON) =>
             jsonExpr(op, av.calculatedValue, bv.calculatedValue)
 
-          case _ if isDate(av) => {
+          case _ if isDate(av) => { // date + duration
+
             val as = a(v).toString
             val bs = b(v).toString
             var dur: Option[scala.concurrent.duration.Duration] = None
@@ -159,8 +160,8 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
             PValue(ts, WTypes.wt.DATE).withStringCache(ts)
           }
 
-          case _ if isNum(av) && isNum(bv) => {
-            // if a is num, b will be converted to num
+          case _ if isNum(av) && isNum(bv) => {// if a is num, b will be converted to num
+
             val as = a(v).toString
             if (as.contains(".")) {
               val ai = as.toFloat
@@ -174,20 +175,25 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
           }
 
           case _ => {
-            // concat lists
-            if (bv.ttype == WTypes.ARRAY &&
-                av.ttype == WTypes.ARRAY) {
+
+            if (bv.ttype == WTypes.ARRAY ||
+                av.ttype == WTypes.ARRAY) {   // if either is array, concat lists
+
               val al = if (av.ttype == WTypes.ARRAY) av.calculatedTypedValue.asArray else List(
                 av.calculatedTypedValue.value)
+
               val bl = if (bv.ttype == WTypes.ARRAY) bv.calculatedTypedValue.asArray else List(
                 bv.calculatedTypedValue.value)
+
               val res = new ListBuffer[Any]()
               res.appendAll(al)
               res.appendAll(bl)
               PValue(res, WTypes.wt.ARRAY)
+
             } else if (bv.ttype == WTypes.JSON &&
                 av.ttype == WTypes.JSON) {
               // json exprs are different, like cart + { item:...}
+
               try {
                 jsonExpr(op, av.calculatedValue, bv.calculatedValue)
               } catch {
