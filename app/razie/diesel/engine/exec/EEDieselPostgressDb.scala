@@ -11,7 +11,7 @@ import razie.clog
 import razie.diesel.Diesel
 import razie.diesel.dom.RDOM._
 import razie.diesel.dom._
-import razie.diesel.engine.DomAst
+import razie.diesel.engine.{AstKinds, DomAst}
 import razie.diesel.engine.nodes._
 import razie.diesel.expr.{DieselExprException, ECtx}
 import scala.collection.mutable.{HashMap, ListBuffer}
@@ -230,7 +230,8 @@ case class EPostgressConnector (
     entityType:String,
     offset:Option[Long],
     limit:Long,
-    query:Map[String,String]) = {
+    query:Map[String,String],
+    countOnly:Boolean = false) = {
 
     ensureEntityTableExists(table)
 
@@ -281,15 +282,17 @@ case class EPostgressConnector (
           count = rs1.getLong(1)
         }
 
-        pstmt.setString(1, realm)
-        pstmt.setString(2, env)
-        pstmt.setString(3, entityType)
+        if(!countOnly) {
+          pstmt.setString(1, realm)
+          pstmt.setString(2, env)
+          pstmt.setString(3, entityType)
 
-        lastSQL = SQL
-        val rs = pstmt.executeQuery()
+          lastSQL = SQL
+          val rs = pstmt.executeQuery()
 
-        while(rs.next()) {
-          res append razie.js.parse(rs.getString(1))
+          while (rs.next()) {
+            res append razie.js.parse(rs.getString(1))
+          }
         }
       } finally {
         if (pstmt1 != null) pstmt1.close()
@@ -297,7 +300,8 @@ case class EPostgressConnector (
       }
     }
 
-    (SQL1, SQL, count, res)
+    if(countOnly) (SQL1, "", count, res)
+    else (SQL1, "n/a", count, res)
   }
 
   override def apply(in: EMsg, destSpec: Option[EMsg])(implicit ctx: ECtx) = {
@@ -377,7 +381,7 @@ class EEDieselPostgressDb extends EEDieselDbExecutor(DB) {
         case "close" => {  // factory method (new(name,url)
           getConn.stop
 
-          List(EInfo("Connection stopped"))
+          List(ETrace("Connection stopped"))
         }
 
         case "upsert" => {
@@ -387,18 +391,19 @@ class EEDieselPostgressDb extends EEDieselDbExecutor(DB) {
 
           val (sql, l) = conn.upsertEntity(realm, env, coll, coll, newKey, p)
 
-          EInfo("SQL", sql) :: l
+          ETrace("SQL", sql) :: l
         }
 
         case "query" => {
 
+          val countOnly = ctx.get("countOnly").getOrElse("false").toBoolean
           val conn = getConn
 
           val (sql1, sql, count, resList) =
-            conn.find(realm, env, coll, coll, getQFrom, getQSize, otherQueryParms(in))
+            conn.find(realm, env, coll, coll, getQFrom, getQSize, otherQueryParms(in), countOnly)
 
-          EInfo("SQL1", sql1) ::
-          EInfo("SQL", sql) ::
+          ETrace("SQL1", sql1) ::
+          ETrace("SQL", sql) ::
               List(
                 EVal(P.fromSmartTypedValue(Diesel.PAYLOAD,
                   Map(
@@ -416,7 +421,7 @@ class EEDieselPostgressDb extends EEDieselDbExecutor(DB) {
           val (sql, res) = conn.findOne(realm, env, coll, coll, key)
 
           if ("get".equals(action) || res.exists(!_.isUndefined)) {
-            EInfo("SQL", sql) ::
+            ETrace("SQL", sql) ::
                 res.toList.map { p =>
                   EVal(p.copy(name = Diesel.PAYLOAD))
                 }
@@ -426,10 +431,10 @@ class EEDieselPostgressDb extends EEDieselDbExecutor(DB) {
             p.map { p =>
               val (sql2, l) = conn.upsertEntity(realm, env, coll, coll, key, p)
 
-              EInfo("SQL", sql) :: EInfo("SQL", sql2) :: l
+              ETrace("SQL", sql) :: ETrace("SQL", sql2) :: l
             }.getOrElse {
               // todo copy paste
-              EInfo("SQL", sql) ::
+              ETrace("SQL", sql) ::
                   res.toList.map { p =>
                     EVal(p.copy(name = Diesel.PAYLOAD))
                   }
@@ -443,7 +448,7 @@ class EEDieselPostgressDb extends EEDieselDbExecutor(DB) {
           val (sql1, doc) = conn.findOne(realm, env, coll, coll, key)
           val (sql2, l) = conn.deleteEntity(realm, env, coll, coll, key)
 
-          EInfo("SQL", sql2) :: l :::
+          ETrace("SQL", sql2) :: l :::
               (doc
                   .orElse {
                     Some(P("document", "", WTypes.wt.UNDEFINED))
@@ -460,7 +465,7 @@ class EEDieselPostgressDb extends EEDieselDbExecutor(DB) {
     } catch {
       case t: Throwable => {
         // any exception, force close to reconnect the connection
-        val res = EInfo("Last SQL", currConn.map(_.lastSQL).mkString) ::
+        val res = ETrace("Last SQL", currConn.map(_.lastSQL).mkString) ::
             new EError("Exception", t) :: Nil
         currConn.foreach(_.conn.close())
         res
