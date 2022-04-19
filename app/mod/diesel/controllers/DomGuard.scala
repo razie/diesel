@@ -33,25 +33,59 @@ import scala.util.Try
 /** controller for server side fiddles / services */
 class DomGuard extends DomApiBase with Logging {
 
-  /** canel a running engine */
-  def dieselEngineCancel(id: String) = FAUR { implicit stok =>
-    if (!ObjectId.isValid(id)) {
-      Redirect("/diesel/listAst")
-    } else {
+  /** fine the engine */
+  def findEngine (id: String) : Option[DomEngine] = {
       DomCollector.withAsts(
         _.find(_.id == id)
             .map(_.engine)
             // todo why arent' some active engines not in collector?
             .orElse(DieselAppContext.activeEngines.get(id))
-            .map { eng =>
-              eng.stopNow
-              Redirect(mod.diesel.controllers.routes.DomGuard.dieselEngineView(id).url)
-            }) getOrElse {
+      )
+  }
+
+  /** canel a running engine */
+  def dieselEngineCancel(id: String) = FAUR { implicit stok =>
+    if (!ObjectId.isValid(id)) {
+      Redirect("/diesel/listAst")
+    } else {
+      findEngine(id)
+          .map { eng =>
+            eng.stopNow
+            Redirect(mod.diesel.controllers.routes.DomGuard.dieselEngineView(id).url)
+          } getOrElse {
         ROK.k reactorLayout12 {
           views.html.modules.diesel.engineView(None)
         }
       }
     }
+  }
+
+  /** canel a running engine */
+  def dieselEngineQueue(id: String) = FAUR { implicit stok =>
+      findEngine(id)
+          .map { eng =>
+            Ok(eng.stashedMsg.mkString("\n"))
+          } getOrElse {
+        Ok("Not found");
+        }
+  }
+
+  /** canel a running engine */
+  def dieselEnginePause(id: String) = FAUR { implicit stok =>
+      DieselAppContext ! DEPause(id)
+      Ok("Ok, trying...")
+  }
+
+  /** canel a running engine */
+  def dieselEnginePlay(id: String) = FAUR { implicit stok =>
+      DieselAppContext ! DEPlay(id)
+      Ok("Ok, trying...")
+  }
+
+  /** canel a running engine */
+  def dieselEngineContinue(id: String) = FAUR { implicit stok =>
+    DieselAppContext ! DEContinue(id)
+    Ok("Ok, trying...")
   }
 
   // todo this and /viewAst are the same...
@@ -238,6 +272,7 @@ class DomGuard extends DomApiBase with Logging {
 
           val st =
             if (DomState.isDone(a.engine.status)) a.engine.status
+            else if(a.engine.paused) s"<b>paused!</b>"
             else s"<b>${a.engine.status}</b>"
 
           // todo this is mean
