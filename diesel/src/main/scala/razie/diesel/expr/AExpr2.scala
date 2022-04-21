@@ -341,6 +341,12 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
             case _ if bs == "number" =>
               P.fromTypedValue("", as, WTypes.NUMBER).calculatedTypedValue
 
+            case _ if bs == "float" =>
+              P.fromTypedValue("", as.toFloat, WTypes.NUMBER).calculatedTypedValue
+
+            case _ if bs == "int" || bs == "long" =>
+              P.fromTypedValue("", as.toFloat.toLong, WTypes.NUMBER).calculatedTypedValue
+
             case _ if bs == "string" =>
               P.fromTypedValue("", as, WTypes.STRING).calculatedTypedValue
 

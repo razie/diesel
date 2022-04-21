@@ -56,7 +56,27 @@ case class AExprFunc(val expr: String, parms: List[RDOM.P]) extends Expr {
 
     def thirdParm = aParm(parms.drop(2).headOption)
 
-    // is it built-in or generic?
+    def withArray (f:(Option[String],Seq[Any]) => P) = {
+      val x = firstParm.map { p =>
+        val av = p.calculatedP
+        p.calculatedTypedValue.cType.name match {
+          case WTypes.ARRAY => {
+            val elementType = av.calculatedTypedValue.cType.wrappedType
+            val arr = av.calculatedTypedValue.asArray
+            if(arr.size <= 0) throw new DieselExprException(s"Empty array... ")
+            val res= f.apply(elementType, arr)
+            res
+          }
+        }
+      }
+      if(x.isEmpty) {
+            throw new DieselExprException(s"No arguments for $expr")
+          }
+      x.get
+    }
+
+
+      // is it built-in or generic?
     expr match {
 
       case "uuid" => {
@@ -324,37 +344,63 @@ case class AExprFunc(val expr: String, parms: List[RDOM.P]) extends Expr {
         throw new DieselExprException(s"No arguments for $expr")
       )
 
-      case "fold" => {
-
-        // todo implement the fold. Need lambda as second parm.
-
-        // the fold a list
-        val start = firstParm.get.calculatedTypedValue
-
-        secondParm.map { p =>
-          val av = p.calculatedP
-          p.calculatedTypedValue.cType.name match {
-            case WTypes.ARRAY => {
-              val elementType = av.calculatedTypedValue.cType.wrappedType
-
-              val arr = av.calculatedTypedValue.asArray.asInstanceOf[List[List[_]]]
-              val resArr = arr.flatMap { x =>
-                if (x.isInstanceOf[List[Any]])
-                  x.asInstanceOf[List[Any]]
-                else
-                  throw new DieselExprException("Can't flatten element: " + x)
-              }
-
-              val finalArr = resArr
-              P.fromTypedValue("", finalArr, WTypes.wt.ARRAY)
+      case "math.max" => {
+        withArray{(ctype, arr) => {
+          var acc = arr.head
+          var af = acc.toString.toFloat
+          arr.fold(arr.head) { (a, b) =>
+            val bf = b.toString.toFloat
+            if(af < bf) {
+              acc = b
+              af = bf
             }
-
-            case _ => throw new DieselExprException("Can't do flatten on: " + av)
           }
-        }
-      }.getOrElse(
-        throw new DieselExprException(s"No arguments for $expr")
-      )
+          P.fromTypedValue("", acc, WTypes.wt.NUMBER)
+        }}
+      }
+
+      case "math.min" => {
+        withArray{(ctype, arr) => {
+          var acc = arr.head
+          var af = acc.toString.toFloat
+          arr.tail.fold(arr.head) { (a, b) =>
+            val bf = b.toString.toFloat
+            if(af > bf) {
+              acc = b
+              af = bf
+            }
+          }
+          P.fromTypedValue("", acc, WTypes.wt.NUMBER)
+        }}
+      }
+
+      case "math.average" => {
+        withArray{(ctype, arr) => {
+          var as = arr.head.toString
+          var af = as.toFloat
+          arr.tail.fold(arr.head) { (a, b) =>
+            val bs = b.toString
+            val bf = bs.toFloat
+            af = af + bf
+          }
+          P.fromTypedValue("", af / arr.size, WTypes.wt.NUMBER)
+        }}
+      }
+
+      case "math.sum" => {
+        withArray{(ctype, arr) => {
+          var as = arr.head.toString
+          var af = as.toFloat
+          var isf = as contains "."
+          arr.tail.fold(arr.head) { (a, b) =>
+            val bs = b.toString
+            val bf = bs.toFloat
+            af = af + bf
+            isf = isf || (bs contains ".")
+          }
+          P.fromTypedValue("", (if(isf) as else af.toLong), WTypes.wt.NUMBER)
+        }}
+      }
 
       case "toMillis" => {
 
