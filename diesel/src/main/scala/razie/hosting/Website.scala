@@ -50,6 +50,7 @@ class Website (we:WikiPage, extra:Seq[(String,String)] = Seq()) extends DslProps
   def dieselVisiblity:String = this prop "diesel.visibility" OR "public"
   def dieselTrust:String = this prop "diesel.trust" OR ""
   def dieselEnvList:String = this prop "diesel.envList" OR ""
+  def dieselUse404:Boolean = this bprop "diesel.use404" OR true
 
   def dieselRestTemplates:Boolean = this bprop "diesel.rest.templates" OR false
 
