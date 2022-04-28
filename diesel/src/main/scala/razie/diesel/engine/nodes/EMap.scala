@@ -5,6 +5,7 @@
  */
 package razie.diesel.engine.nodes
 
+import org.json.JSONObject
 import razie.diesel.dom.RDOM._
 import razie.diesel.dom._
 import razie.diesel.engine.AstKinds
@@ -124,7 +125,17 @@ case class EMapCls(cls: String, met: String, attrs: Attrs, arrow:String="=>", co
 
   //  override def toHtml = "<b>=&gt;</b> " + ea(cls, met) + " " + attrs.map(_.toHtml).mkString("(", ",", ")")
   override def toHtml = indent(indentLevel) + """<span class="glyphicon glyphicon-arrow-right"></span> """ + cond.map(
-    _.toHtml + " ").mkString + ea(cls, met, "", true, AstKinds.GENERATED) + " " + toHtmlAttrs(attrs)
+    _.toHtml + " ").mkString + niceMsg
+
+  // disel.step is different
+  def niceMsg =
+    if("step" == met && "diesel" == cls) { // diesel.rest
+      val v = attrs.head.currentStringValue
+      val m = if (v.trim.startsWith("\"")) v.replaceFirst("^\"", "").replaceFirst("\"$", "") else v
+      s"""<small><span class="label label-primary">step</span>&nbsp;${m}</small>"""
+    }//    if("step" == met && "diesel" == cls) s"""<span style="font-weight:bold">${m}</span>"""
+    else
+      ea(cls, met, "", true, AstKinds.GENERATED) + " " + toHtmlAttrs(attrs)
 
   override def toString = indent(indentLevel, " ") + "=> " + cond.map(_.toHtml+" ").mkString + cls + "." + met + " " + attrs.mkString("(", ",", ")")
   override def toCAString = cond.map(_.toString+" ").mkString + cls + "." + met + " " + attrs.mkString("(", ",", ")")

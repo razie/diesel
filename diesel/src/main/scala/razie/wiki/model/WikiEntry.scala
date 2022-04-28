@@ -260,7 +260,7 @@ case class WikiEntry(
         newVer.wid.urlRelative,
         s"""BY $uname - $category : $name ver ${newVer.ver}""")
 
-    if(!isDraft || !newVer.isDraft) WikiEntryOld(this, reason).create
+    if(!isDraft || !newVer.isDraft) WikiEntryOld(this, reason.orElse(Some("WikiEntry.update"))).create
 
     // force unix style - some patterns go weird with \r
     val safeVer = newVer.copy(content = newVer.content.replaceAll("\r", ""))

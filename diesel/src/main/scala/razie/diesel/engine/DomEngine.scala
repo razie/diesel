@@ -368,7 +368,7 @@ abstract class DomEngine(
   /** process a list of continuations */
   protected def later(m: List[DEMsg], recurse:Boolean = false): List[Any] = {
     if (synchronous) {
-      clog << "SYNCHRONOUS engine processing..."
+      clog << "SYNCHRONOUS engine processing: " + m.mkString
       val res = m.map(processDEMsg)
       res
       // todo in prog

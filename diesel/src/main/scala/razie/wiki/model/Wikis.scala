@@ -790,7 +790,7 @@ object Wikis extends Logging with Validation {
     val up = page.flatMap(_.ipreprocessed.flatMap(_._2)) orElse au
     //todo use au not up
     val q = razie.NoStaticS.get[QueryParms]
-    Services.runScript(s, lang, page, up, q.map(_.q.map(t => (t._1, t._2.mkString))).getOrElse(Map()))
+    Services.runScript(s, lang, page, up, q.map(_.q.map(t => (t._1, t._2.mkString))).getOrElse(Map()), Map.empty)
   }
 
   /** format content from a template, given some parms

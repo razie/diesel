@@ -28,7 +28,7 @@ case class AutosaveSet(what:String, realm:String, name:String, userId: ObjectId,
     Autosave.set(what, WID("", name).defaultRealmTo(realm), userId, c, editorMsec)
   }
 
-  /** retrieve the contents */
+  /** retrieve the contents from storage, regardless of this having something or not... */
   def rec = {
     val wid = WID("", name).defaultRealmTo(realm)
     Autosave.rec(what, wid.getRealm, wid.wpath, userId)

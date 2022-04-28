@@ -1466,6 +1466,7 @@ class DomEngineV1(
 
       } else if (ea == DieselMsg.REALM.REALM_SET) { //========================
 
+        // you can do either props={a:1}
         val props = in.attrs
             .filter(_.name == "props")
             .filter(_.isOfType(WTypes.wt.JSON))

@@ -782,7 +782,7 @@ trait DomParser extends ParserBase with ExprParser {
   def defline: Parser[RDOM.F] =
     keyw(" *\\$?def *".r) ~ ident ~ optAttrs ~ optType ~ " *".r ~ optBlock ^^ {
       case k ~ name ~ a ~ t ~ _ ~ b => {
-        val f = new F(name, a, t, "def", "", b)
+        val f = new F(name, "js", a, t, "def", "", b)
         // todo add spec
         val p = Some(EPos("", k.pos.line, k.pos.column))
         f.withPos(p)
@@ -802,7 +802,7 @@ trait DomParser extends ParserBase with ExprParser {
     */
   def msgline: Parser[RDOM.F] = " *\\$?msg *".r ~> qident ~ optAttrs ~ optType ~ " *".r ~ opt(pgen) ^^ {
     case name ~ a ~ t ~ _ ~ m => {
-      new F(name, a, t, "msg", "", m.toList.map(x => new ExecutableMsg(x)))
+      new F(name, "js", a, t, "msg", "", m.toList.map(x => new ExecutableMsg(x)))
     }
   }
 
