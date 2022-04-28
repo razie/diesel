@@ -274,13 +274,14 @@ debug a wiki page
       <div class="well">
       Versions:<p>
       <table class="table table-striped table-condensed">
-         <thead><th>ver</th><th>content</th><th> date </th><th> User </th></thead>
+         <thead><th>ver</th><th>content</th><th> date </th><th> User </th><th> Reason </th></thead>
         @versions().distinct.map{ p=>
          <tr>
            <td> <a href="/wikie/ver/@p.entry.ver/@page.get.wid.wpath">@p.entry.ver</a> </td>
            <td> <a href="/wikie/content/ver/@p.entry.ver/@page.get.wid.wpath">@p.entry.ver</a> </td>
-           <td> @p.entry.updDtm </td>
+           <td> @p.crDtm.mkString</td>
            <td> @Users.findUserById(p.entry.by).map(_.ename).getOrElse(p.entry.by.toString) </td>
+           <td> @p.reason.mkString</td>
          </tr>
          }
        </table>

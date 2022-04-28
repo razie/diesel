@@ -9,7 +9,9 @@ import model.{User, Users}
 import org.bson.types.ObjectId
 import org.joda.time.DateTime
 import razie.Logging
-import razie.diesel.engine.nodes.EnginePrep
+import razie.diesel.Diesel
+import razie.diesel.dom.RDOM.P
+import razie.diesel.engine.nodes.{EInfo, EVal, EnginePrep}
 import razie.diesel.engine.{DieselAppContext, DomEngine, DomEngineSettings}
 import razie.diesel.expr.SimpleECtx
 import razie.diesel.model.{DieselMsg, DieselTarget}
@@ -18,12 +20,17 @@ import razie.hosting.Website
 import razie.wiki.model._
 import razie.wiki.util.PlayTools
 import razie.wiki.{Config, Services}
+import scala.::
 import scala.collection.mutable
+import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 /** this is the default engine per reactor and user, continuously running all the stories */
 object DomGuardian extends Logging {
+
+  // (realm, label, tag query, "")
+  val tagList = new ListBuffer[(String, String, String, String)]()
 
   // todo optimize so we don't parse every time
   def autoRealms =
@@ -80,7 +87,7 @@ object DomGuardian extends Logging {
   }
 
   /** start a check run. the first time, it will init the guardian and listeners */
-  def startCheck(realm: String, au: Option[User], tq: String, osettings:Option[DomEngineSettings] = None): (Future[Report], Option[DomEngine]) = {
+  def startCheck(realm: String, au: Option[User], tq: String, osettings:Option[DomEngineSettings] = None): (Future[Report], Option[DomEngine], List[Any]) = {
     if (!DomGuardian.init) {
 
       // first time, init the guardian
@@ -301,7 +308,7 @@ object DomGuardian extends Logging {
     DomGuardian.synchronized {
       val rr = RunReq(au, au.map(_.userName).mkString, realm, env, false, tq)
       val k = rr.key
-      debug(s"GuardianActor received a RunReqUnsafe $k")
+      debug(s"Guardian created a RunReq $k")
 
       debug(
         s"GuardianActor.RunReq ${rr.realm}.${rr.userName} - append to debouncer"
@@ -314,54 +321,63 @@ object DomGuardian extends Logging {
   }
 
   /** if no test is currently running, start one */
-  def runReq(au: Option[WikiUser], realm: String, env: String, tq: String, auto: Boolean = false, settings:Option[DomEngineSettings]): (Future[Report],
-      Option[DomEngine]) = {
-    if (DieselCron.isMasterNode(Website.forRealm(realm).get)) {
-      DomGuardian.synchronized {
-        val q = if (tq.isEmpty) None else Some(tq)
-        //        Some(tq.getOrElse(Guardian.autoQuery(realm)))
-        val rr = RunReq(au, au.map(_.userName).mkString, realm, env, auto, q, osettings=settings)
-        val k = rr.key
-        debug(s"GuardianActor received a RunReq $k")
+  def runReq(
+    au: Option[WikiUser],
+    realm: String,
+    env: String,
+    tq: String,
+    auto: Boolean = false,
+    settings:Option[DomEngineSettings]) : (Future[Report], Option[DomEngine], List[Any]) = {
+    val res = new ListBuffer[Any]()
 
-        debug(
-          "GuardianActor - debouncer before: " + debouncer
-              .map(x => x._1 + ":done=" + x._3.isCompleted)
-              .mkString(" , ")
-        )
-
-        val ret = debouncer.find(_._1 == k).filter(!_._3.isCompleted).map { rr =>
-          debug(s"GuardianActor.RunReq ${rr._1} - reused in progress ")
-          (rr._3, rr._4) // one in progress, return its Future
-        } getOrElse {
-          debug(
-            s"GuardianActor.RunReq ${rr.realm}.${rr.userName} - append to debouncer"
-          )
-          // maybe clean
-          debouncer = debouncer.filter(_._1 != k)
-
-          // run it
-          val x @ (fut, engine) = rr.run
-
-          debouncer.append((k, rr, fut, engine))
-          x
-        }
-
-        debug(
-          "GuardianActor - debouncer after: " + debouncer
-              .map(x => x._1 + ":done=" + x._3.isCompleted)
-              .mkString(" , ")
-        )
-        ret
-      }
-    } else {
+    if (! DieselCron.isMasterNode(Website.forRealm(realm).get))
       throw new IllegalStateException("I'm not the active Guardian")
+
+    DomGuardian.synchronized {
+      val q = if (tq.isEmpty) None else Some(tq)
+      //        Some(tq.getOrElse(Guardian.autoQuery(realm)))
+
+      val rr = RunReq(au, au.map(_.userName).mkString, realm, env, auto, q, osettings = settings)
+      val k = rr.key
+      res append EInfo(s"Guardian created a RunReq $k")
+
+      res append EInfo("Guardian - debouncer before: " + debugDebouncer)
+
+      val ret = debouncer.find(_._1 == k).filter(! _._3.isCompleted).map { rr =>
+        res append EInfo(s"Guardian.RunReq ${rr._1} - reused in progress ")
+        (rr._3, rr._4) // one in progress, return its Future
+      } getOrElse {
+        res append EInfo(
+          s"Guardian.RunReq $k - append to debouncer"
+        )
+        // maybe clean
+        debouncer = debouncer.filter(_._1 != k)
+
+        // run it
+        val x@(fut, engine) = rr.run
+
+        res append EInfo(
+          s"Guardian started runreq $k - engine:${engine.map(_.id)}"
+        )
+
+        debouncer.append((k, rr, fut, engine))
+        x
+      }
+
+      res append EInfo("Guardian - debouncer after: " + debugDebouncer)
+      (ret._1, ret._2, res.toList)
     }
   }
+
+  /** debug debouncer */
+  def debugDebouncer = debouncer
+        .map(x => x._1 + ":done=" + x._3.isCompleted)
+        .mkString(" , ")
 
   lazy val worker =
     DieselAppContext.actorOf(Props[GuardianActor], name = "GuardianActor")
 
+  /** [(key, req, F, engine)] */
   private var debouncer =
     new mutable.ListBuffer[(String, RunReq, Future[Report], Option[DomEngine])]()
 
@@ -416,11 +432,9 @@ object DomGuardian extends Logging {
           .flatMap(t=> t.contents.get("status"))
           .getOrElse("")
 
-    info(s"Guardian - polled $realm-$env - new $tstamp vs old $oldTstamp oldStatus $oldStatus")
-
-    // if tstamp different or nothing found last time - meaning no run completed
-    if (oldTstamp != tstamp || oldStatus.isEmpty ) {
-      // save new stamp
+    val x = if (oldTstamp != tstamp || oldStatus.isEmpty && !tstamp.isEmpty ) {
+      // if tstamp different or nothing found last time - meaning no run completed
+      // save new stamp... unless new stamp is also empty
       DieselData.set(GUARDIAN_POLL, realm, realm + "-" + env, None, Map("value" -> tstamp))
       // we don't set a state - so if the first run bombs, there will be another etc
       // todo what about poison pills if the first run always bombs?
@@ -436,10 +450,16 @@ object DomGuardian extends Logging {
         DieselTarget.ENV(realm)
       )
 
-      s"Change detected - starting a run... ($tstamp)"
+      EInfo(s"Change detected - starting a run... ($tstamp)")
     } else {
-      s"No change ($tstamp)"
+      EInfo(s"No change ($tstamp)")
     }
+
+
+    EInfo(s"Guardian - polled $realm-$env - new $tstamp vs old $oldTstamp oldStatus $oldStatus") ::
+        x ::
+        EVal(P(Diesel.PAYLOAD, x.msg)) ::
+        Nil
   }
 
   /** create a guardian poller schedule */

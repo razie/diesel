@@ -1,0 +1,34 @@
+@**************
+debug a wiki page
+**************@
+@import razie.wiki.model.Perm
+@import model.Users
+@(wid:razie.wiki.model.WID, iname:Option[String], page:Option[razie.wiki.model.WikiEntry])(implicit stok: controllers.StateOk)
+@import razie.wiki.model.{WikiEntry, WID, Wikis, WikiLink, WikiEntryOld}
+@import model.{User}
+@import razie.db.{ROne, RMany, RUpdate}
+@import razie.hosting.Website
+@import razie.wiki.model.features.WikiCount
+
+@stok.title("WikiDebug: "+wid.cat +":"+ wid.name)
+
+      @versions()= @{
+        RMany[WikiEntryOld]("entry._id" -> page.get._id).toList //include this for topics that changed category
+      }
+
+      <div class="well">
+      Versions:<p>
+      <table class="table table-striped table-condensed">
+         <thead><th>ver</th><th>content</th><th> date </th><th> User </th><th> Reason </th></thead>
+        @versions().distinct.map{ p=>
+         <tr>
+           <td> <a href="/wikie/ver/@p.entry.ver/@page.get.wid.wpath">@p.entry.ver</a> </td>
+           <td> <a href="/wikie/content/ver/@p.entry.ver/@page.get.wid.wpath">@p.entry.ver</a> </td>
+           <td> @p.crDtm.mkString</td>
+           <td> @Users.findUserById(p.entry.by).map(_.ename).getOrElse(p.entry.by.toString) </td>
+           <td> @p.reason.mkString</td>
+         </tr>
+         }
+       </table>
+      </div>
+

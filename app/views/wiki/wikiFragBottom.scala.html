@@ -157,6 +157,7 @@ wikiEditForm = function() {
         | <a href="" onclick="weToggleBrowser();return false;">Browse</a>
         | <a href="@routes.Wikie.report(wid)">Report</a>
       }
+      | <a href="@routes.Wiki.wikieHistory(wid)">History</a>
       | <a href="@routes.Wiki.printWid(WID.cmdfromPath(wid.wpath).get, wid.getRealm)">Print</a>
       @if(stok.au.exists(_.isDev)) {
         | <a href="@routes.Wiki.wikieDebug(wid)"><em>debug</em></a>

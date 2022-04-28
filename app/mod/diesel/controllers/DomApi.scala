@@ -413,7 +413,8 @@ class DomApi extends DomApiBase with Logging {
         List(page)
       }
 
-      cdebug << "irunDom.specs: \n  " + pages.map(_.wid.wpathFull).mkString("\n  ")
+      // no need to log, in't traced in trace
+      //ctrace << "irunDom.specs: \n  " + pages.map(_.wid.wpathFull).mkString("\n  ")
 
       // to domain
       val dom =

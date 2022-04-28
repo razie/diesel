@@ -566,8 +566,8 @@ class Wikie @Inject()(config: Configuration) extends WikieBase {
               we = signScripts(we, au)
 
                 razie.db.tx("Wiki.setContent", request.userName) { implicit txn =>
-                  WikiEntryOld(w, Some("setContent")).create
-                  w.update(we, Some("setContent"))
+                  WikiEntryOld(w, Some("setContent API")).create
+                  w.update(we, Some("setContent API"))
                   clearDrafts(we.wid, au)
                   Emailer.withSession(request.realm) { implicit mailSession =>
                     au.quota.incUpdates
@@ -650,7 +650,7 @@ class Wikie @Inject()(config: Configuration) extends WikieBase {
 
   /** save an edited wiki - either new or updated */
   def wikieEdited(wid: WID) = FAUR {
-    implicit stok=> //au => implicit errCollector => implicit request =>
+    implicit stok=>
 
       val au = stok.au.get
 
@@ -806,7 +806,7 @@ class Wikie @Inject()(config: Configuration) extends WikieBase {
 
                 razie.db.tx("Wiki.Save", stok.userName) { implicit txn =>
                   // can only change label of links OR if the formatted name doesn't change
-                  w.update(we)
+                  w.update(we, Some("edited"))
                   // clean with this realm too - when mixins find a base realm topic, will be cached with current realm
                   Wikis.clearCache(we.wid, we.wid.r(stok.realm))
                   clearDrafts(we.wid, au)

@@ -524,7 +524,7 @@ class DomGuard extends DomApiBase with Logging {
       var started =
         Try {
           if (DomGuardian.enabled(stok.realm) && DomGuardian.onAuto(stok.realm)) {
-            val (f, e) = startCheck(stok.realm, stok.au, Guardian.autoQuery(stok.realm))
+            val (f, e, _) = startCheck(stok.realm, stok.au, Guardian.autoQuery(stok.realm))
             s"""One just auto-started <a href="/diesel/viewAst/${e.map(_.id).getOrElse("n/a")}">view</a> """
           } else
             "Can't auto-start one"
@@ -627,7 +627,7 @@ glyphicon-question-sign"></span></a></sup>: <a href="/diesel/guard/runCheck">Re-
   def dieselRunCheck(tq: String, format: String, wait: String, storyRealm: String) = Filter(activeUser).async
   { implicit stok =>
     if (DomGuardian.enabled(stok.realm)) {
-      val x@(f, e) = startCheck(stok.realm, stok.au, tq, Some(DomEngineHelper.settingsFrom(stok)))
+      val x@(f, e, _) = startCheck(stok.realm, stok.au, tq, Some(DomEngineHelper.settingsFrom(stok)))
 
       if (wait.isEmpty || !wait.toBoolean) {
         Future.successful(

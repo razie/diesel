@@ -11,6 +11,7 @@ import mod.diesel.guard.DieselDebug.Guardian.{ISAUTO, ISSCHED}
 import mod.diesel.guard.DomGuardian.GUARDIAN_POLL
 import model.Users
 import razie.Logging
+import razie.diesel.Diesel
 import razie.diesel.dom.RDOM.P
 import razie.diesel.dom._
 import razie.diesel.engine.DomAst
@@ -20,36 +21,44 @@ import razie.diesel.expr.ECtx
 import razie.diesel.model.DieselMsg
 import razie.diesel.utils.DieselData
 import razie.hosting.Website
+import scala.collection.mutable.ListBuffer
 
 /** guardian actions */
 class EEGuardian extends EExecutor(DieselMsg.GUARDIAN.ENTITY) with Logging {
 
   final val DG = DieselMsg.GUARDIAN.ENTITY
 
+  def collect(x:Any) (implicit res:ListBuffer[Any]) : List[Any] = {
+    res += x
+    res.toList
+  }
+
   override def test(ast: DomAst, m: EMsg, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) = {
     m.entity.startsWith(DG)
   }
 
   override def apply(in: EMsg, destSpec: Option[EMsg])(implicit ctx: ECtx): List[Any] = synchronized {
+    implicit val res = new ListBuffer[Any]()
+
     in.met match {
 
       case "schedule" => {
-        var res : List[Any] = Nil
 
-        // allow different realm only if trusted
+        // allow different realm only if trusted, simple cloud protection
         var realm = ctx
             .get("inRealm")
             .filter { x =>
+              val me = (ctx.root.settings.realm.get)
               val ok = Website.forRealm(ctx.root.settings.realm.get)
                   .exists(_.dieselTrust.split(",").contains(x))
               if (!ok)
-                res = EError(s"Can't trust realm $x") :: Nil
+                res += EError(s"Can't trust realm $x - I'm $me")
               ok
             }
             .getOrElse(ctx.root.settings.realm.get)
 
         if (!ISSCHED) {
-          res = EError(s"Guardian not on auto/sched") :: Nil
+          res += EError(s"Guardian not on auto/sched")
         } else {
           val result = DomGuardian.createPollSchedule(
             ctx.getRequired("schedule"),
@@ -58,35 +67,31 @@ class EEGuardian extends EExecutor(DieselMsg.GUARDIAN.ENTITY) with Logging {
             ctx.get("inLocal").mkString
           )
 
-          res = res ::: EVal(P.fromTypedValue("payload", result)) :: Nil
+          res += EVal(P.fromTypedValue("payload", result))
         }
-
-        res
       }
 
       case DieselMsg.GUARDIAN.STARTS => { // avoid error if not ruled
-        Nil
       }
 
       case "poll" => { // avoid error if not ruled
-        Nil
       }
 
       case "ends" => {
         // guardian ends a run - record and notify
         def url = Website.forRealm(ctx.root.settings.realm.mkString).map(_.url).mkString
 
-        ctx.root.engine.toList.flatMap { engine =>
+        ctx.root.engine.foreach { engine =>
           val realm = ctx("realm")
           val env = ctx("env")
           var newStatus = ""
 
-          var oldStatus = DieselData
+          val oldStatus = DieselData
               .find(GUARDIAN_POLL, realm, realm + "-" + env)
               .flatMap(t=> t.contents.get("status"))
               .getOrElse("Fail")
 
-          info(s"Guardian - ends $realm-$env - newStatus $newStatus vs oldStatus $oldStatus")
+          res += EInfo(s"Guardian - ends $realm-$env - newStatus $newStatus vs oldStatus $oldStatus")
 
           // lazy to capture the newStatus
           def m = EMsg(
@@ -102,23 +107,21 @@ class EEGuardian extends EExecutor(DieselMsg.GUARDIAN.ENTITY) with Logging {
               P("report", s"""See details: <a href=\"$url/diesel/viewAst/${engine.id}\">${engine.id}</a></td>""")
             ))
 
-          val res = if (engine.failedTestCount > 0) {
+          if (engine.failedTestCount > 0) {
             newStatus = "Fail"
-            EVal(P("guardianResult", s"Guardian - failed: ${engine.progress}")) ::
-                m :: Nil
+
+            res appendAll EVal(P("guardianResult", s"Guardian - failed: ${engine.progress}")) :: m :: Nil
           } else {
             newStatus = "Success"
             // only send notification if it failed last time
             // or send them every time it detects a change, even if successful, to have a record of it having run?
             val mList = if(true || oldStatus == "Fail") m :: Nil else Nil
-            EVal(P("guardianResult", s"Guardian - success: ${engine.progress}")) ::
-                mList
+
+            res appendAll EVal(P("guardianResult", s"Guardian - success: ${engine.progress}")) :: mList
           }
 
           // save new status
           DieselData.update(GUARDIAN_POLL, realm, realm + "-" + env, None, Map("status" -> newStatus))
-
-          res
         }
       }
 
@@ -129,24 +132,21 @@ class EEGuardian extends EExecutor(DieselMsg.GUARDIAN.ENTITY) with Logging {
         val stamp = ctx.getRequired("stamp")
         val tq = ctx.get("tagQuery").getOrElse("story/sanity/-skip/-manual")
         val inRealm = ctx.get("inRealm").getOrElse(settings.realm.get)
-        var res : List[Any] = Nil
 
-        // allow different realm only if trusted
+        // allow different realm only if trusted, simple cloud protection
         var r = ctx
             .get("inRealm")
             .filter { x =>
+              val me = (ctx.root.settings.realm.get)
               val ok = Website.forRealm(ctx.root.settings.realm.get)
                   .exists(_.dieselTrust.split(",").contains(x))
               if (!ok)
-                res = EError(s"Can't trust realm $x") :: Nil
+                res += EError(s"Can't trust realm $x - I'm $me")
               ok
             }
             .getOrElse(settings.realm.get)
 
-        val result = DomGuardian.polled(inRealm, env, stamp, settings.userId.flatMap(Users.findUserById), tq)
-
-        res = res ::: EVal(P("payload", result)) :: Nil
-        res
+        res appendAll DomGuardian.polled(inRealm, env, stamp, settings.userId.flatMap(Users.findUserById), tq)
       }
 
       case "run" => {
@@ -164,17 +164,46 @@ class EEGuardian extends EExecutor(DieselMsg.GUARDIAN.ENTITY) with Logging {
 
         val tq = ctx.get("tagQuery").getOrElse(Guardian.autoQuery(inrealm))
 
-        val x@(f, e) = DomGuardian.runReq(settings.userId.flatMap(Users.findUserById), inrealm, env, tq, true, None)
-        EVal(
-          P("payload",
-            s"""scheduled new run... <a href="/diesel/viewAst/${
-              e.map(_.id).getOrElse("n/a")
-            }">view</a> realm:$inrealm , tagQuery=$tq""",
-            WTypes.wt.HTML)) :: Nil
+        val x@(f, e, res1) = DomGuardian.runReq(settings.userId.flatMap(Users.findUserById), inrealm, env, tq, true, None)
+        val linkMsg =
+          e.map(eng=>
+            s"""scheduled new run... <a href="/diesel/viewAst/${eng.id}">view</a>"""
+          ).getOrElse(
+            "could not schedule an engine? "
+          )
+
+        res appendAll res1
+        res += EVal(
+          P(
+            Diesel.PAYLOAD,
+            linkMsg + " realm:$inrealm , env=$env, tagQuery=$tq",
+            WTypes.wt.HTML
+          ))
       }
 
       case "stats" => {
-        EVal(P("payload", DomGuardian.stats)) :: Nil
+        res += EVal(P("payload", DomGuardian.stats))
+      }
+
+      case "addTag" => {
+        val r = ctx.getRequired("realm")
+        val n = ctx.getRequired("name")
+
+        removeTags(r,n).append((
+            r,
+            n,
+            ctx.getRequired("tagQuery"),
+            ""
+        ))
+        res += EVal(P("payload", "Ok, added"))
+      }
+
+      case "removeTag" => {
+        val r = ctx.getRequired("realm")
+        val n = ctx.getRequired("name")
+
+        removeTags(r,n)
+        res += EVal(P("payload", "Ok, removed"))
       }
 
       case "clear" => {
@@ -183,13 +212,23 @@ class EEGuardian extends EExecutor(DieselMsg.GUARDIAN.ENTITY) with Logging {
 
       case DieselMsg.GUARDIAN.NOTIFY => {
         // default sink for notify, if user didn't confg something
-        Nil
       }
 
       case s@_ => {
-        new EError(s"$DG.$s - unknown activity ") :: Nil
+        res += new EError(s"$DG.$s - unknown activity ")
       }
     }
+
+   def removeTags(realm:String, name:String) = {
+     DomGuardian.tagList
+         .zipWithIndex
+         .find(p => p._1._1 == realm && p._1._2 == name)
+         .map(_._2)
+         .foreach(DomGuardian.tagList.remove)
+     DomGuardian.tagList
+   }
+
+    res.toList
   }
 
   override def toString = "$executor::diesel.guardian "

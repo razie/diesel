@@ -360,16 +360,19 @@ class Wiki @Inject()(dieselControl: DieselControl) extends WikiBase {
           }
         ).getOrElse(NotFound("WID not found:"+wid.wpath))
       }
+
       case "debug" | "usage" => {//Action.async { implicit request =>
         val realm = getRealm(irealm)
         val wid = cw.wid.get.r(realm)
         wikieDebug(wid, cw.cmd).apply(request).value.get.get
       }
+
       case "tag" => {
         // stupid path like /wiki//tag/x comes here...
         if(cw.wpath.isEmpty || cw.wpath.exists(_.isEmpty)) showTag(cw.rest, irealm).apply(request).value.get.get
         else search(getRealm(irealm), "", cw.wpath getOrElse "", cw.rest).apply(request).value.get.get
       }
+
       case _ => {
         val realm = getRealm(irealm)
         // must check if page is WITHIN site, otherwise redirect to main site
@@ -643,6 +646,21 @@ class Wiki @Inject()(dieselControl: DieselControl) extends WikiBase {
   def wikieReferences(iwid: WID) = wikieDebug (iwid, "references")
   def wikieUsage(iwid: WID) = wikieDebug (iwid, "usage")
 
+  def wikieHistory(iwid: WID) = FAU { implicit au => implicit errCollector => implicit request =>
+    implicit val errCollector = new VErrors()
+
+    val wid = iwid.formatted
+
+    razie.NoStaticS.put(QueryParms(request.queryString))
+
+    wid.page match {
+      case x @ Some(w) if !canSee(wid, auth, x).getOrElse(false) => noPerm(wid, "DEBUG")
+      case y @ Some(w) =>
+        ROK.s apply {implicit stok=> views.html.wiki.wikieHistory(w.wid, Some(iwid.name), y)}
+      case None => Msg (s"${wid.wpath} not found")
+    }
+  }
+
   def wikieDebug(iwid: WID, what:String="debug") = FAU { implicit au => implicit errCollector => implicit request =>
     implicit val errCollector = new VErrors()
 
@@ -778,7 +796,7 @@ class Wiki @Inject()(dieselControl: DieselControl) extends WikiBase {
         val sec = wid.name
         val script = w.scripts.find(sec == _.name).orElse(Wikis(wid.getRealm).category(widp.cat) flatMap (_.scripts.find(sec == _.name)))
         val res: String = script.filter(_.checkSignature(Some(au))).map(s => {
-          model.WikiScripster.impl.runScript(s.content, "js", Some(w), Some(au), request.queryString.map(t => (t._1, t._2.mkString)))
+          model.WikiScripster.impl.runScript(s.content, "js", Some(w), Some(au), request.queryString.map(t => (t._1, t._2.mkString)), Map.empty)
         }) getOrElse ""
         Audit.logdb("SCRIPT_RESULT", res)
         res
