@@ -34,6 +34,7 @@ class RkWikiInst(realm: String, fallBacks: List[WikiInst])
     withBlocks(darkHtml)
   }
 
+  override def toString = s"RkWikiInst($realm)"
   override def mkParser = new WikiParserCls(realm)
 
   /** make a js object accessible to the scripts */

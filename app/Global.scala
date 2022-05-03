@@ -154,12 +154,26 @@ object Global extends WithFilters(LoggingFilter) {
         // SS proxy stuff
 
         // change request
-        val host =
+        // request looks like a.b.com.9000.SSPROXY
+        var host =
           if (request.host.endsWith(SSPROXY)) request.host.replaceFirst("." + SSPROXY, "")
           else request.host.replaceFirst("." + SPROXY, "")
         val protocol = if (request.host.endsWith(SSPROXY)) "https" else "http"
-        val rh = request.copy(path = "/snakk/proxy/" + protocol + "/" + host + request.path)
-        clog << ("SNAKKPROXY to " + request)
+        var port = if (request.host.endsWith(SSPROXY)) "443" else "80"
+
+        // port
+        val last = host.replaceFirst("(.*)\\.([^.]+)", "$2")
+        if(last.matches("\\d+\\.?\\d+")) {
+          host = host.replaceFirst("(.*)\\.([^.]+)", "$1")
+          port = last
+        }
+
+        // env
+        val env = host.replaceFirst("(.*)\\.([^.]+)", "$2")
+        host = host.replaceFirst("(.*)\\.([^.]+)", "$1")
+
+        val rh = request.copy(path = s"/snakk/proxy/$env/$protocol/$host/$port/${request.path}")
+        clog << ("SNAKKPROXY route rq to " + rh.path)
         super.onRouteRequest(rh)
 
       } else { // normal request

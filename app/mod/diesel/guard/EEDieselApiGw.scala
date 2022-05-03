@@ -41,6 +41,7 @@ class EEDieselApiGw extends EExecutor(DieselMsg.APIGW.ENTITY) {
       case "diesel.apigw.limit.static" => {
         if (Config.isLocalhost) DieselRateLimiter.synchronized {
           DieselRateLimiter.LIMIT_API = ctx.getRequired("limit").toInt
+          // todo replace the globalGroup there
 
           OK
         } else {
@@ -109,12 +110,8 @@ class EEDieselApiGw extends EExecutor(DieselMsg.APIGW.ENTITY) {
       case "diesel.apigw.limit.stats" => {
         // todo should use permissions?
         List(
-          EVal(P.fromTypedValue(Diesel.PAYLOAD, DieselRateLimiter.rateStats.map(t => {
-            (t._1, {
-              t._2.toString
-            })
-          }))
-          ))
+          EVal(
+            P.fromSmartTypedValue(Diesel.PAYLOAD, DieselRateLimiter.toj)))
       }
 
       case s@_ => {

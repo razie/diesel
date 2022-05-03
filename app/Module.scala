@@ -12,7 +12,7 @@ import com.mongodb.casbah.{MongoConnection, MongoDB}
 import controllers._
 import mod.cart.{EEModCartExecutor, EEModUserExecutor}
 import mod.diesel.controllers.{DieselMod, FiddleMod}
-import mod.diesel.guard.{EEDieselApiGw, EEDieselCron, EEDieselExecutors, EEGuardian}
+import mod.diesel.guard.{EEDieselApiGw, EEDieselCron, EEDieselExecutors, EEGuardian, EESnakkProxy}
 import mod.snow.EEModSnowExecutor
 import mod.wiki.CaptchaMod
 import model.WikiUsersImpl
@@ -124,6 +124,7 @@ class Module extends AbstractModule {
     Executors.add(new EEDieselExecutors)
     Executors.add(new EEGuardian)
     Executors.add (new EEDieselDT)
+    Executors.add (new EESnakkProxy)
 
     Executors.add(new EEDieselMemDb)
     Executors.add(new EEDieselDbMemshared)

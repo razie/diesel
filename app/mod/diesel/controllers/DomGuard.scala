@@ -20,7 +20,7 @@ import razie.diesel.samples.DomEngineUtils
 import razie.diesel.utils.DomHtml.quickBadge
 import razie.diesel.utils.{AutosaveSet, DomCollector, DomWorker, SpecCache}
 import razie.hosting.WikiReactors
-import razie.wiki.Config
+import razie.wiki.{Config, Enc}
 import razie.wiki.admin.{Autosave, GlobalData}
 import razie.wiki.model._
 import razie.wiki.util.NoAuthService
@@ -286,8 +286,8 @@ class DomGuard extends DomApiBase with Logging {
              |<td>$st</td>
              |<td>${a.dtm.toString("HH:mm:ss.SS")}</td>
              |<td align="right">$duration</td>
-             |<td><small><code>${a.engine.description}</code></small></td>
-             |<td><small><code>${a.engine.resultingValue.take(200)}</code></small></td>
+             |<td><small><code>${Enc.escapeComplexHtml(a.engine.description)}</code></small></td>
+             |<td><small><code>${Enc.escapeComplexHtml(a.engine.resultingValue.take(200))}</code></small></td>
              |<td> </td>
              |""".stripMargin
         }.getOrElse("??")

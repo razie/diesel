@@ -91,33 +91,38 @@ class EEGuardian extends EExecutor(DieselMsg.GUARDIAN.ENTITY) with Logging {
               .flatMap(t=> t.contents.get("status"))
               .getOrElse("Fail")
 
-          res += EInfo(s"Guardian - ends $realm-$env - newStatus $newStatus vs oldStatus $oldStatus")
 
           // lazy to capture the newStatus
           def m = EMsg(
             DieselMsg.GUARDIAN.ENTITY,
             DieselMsg.GUARDIAN.NOTIFY,
             List(
-              P("realm", ctx("realm")),
-              P("env", ctx("env")),
+              P("realm",     ctx("realm")),
+              P("env",       ctx("env")),
               P("oldStatus", oldStatus),
               P("newStatus", newStatus),
-              P("errors", engine.failedTestCount.toString),
-              P("total", engine.totalTestCount.toString),
-              P("report", s"""See details: <a href=\"$url/diesel/viewAst/${engine.id}\">${engine.id}</a></td>""")
+              P("errors",    engine.failedTestCount.toString),
+              P("total",     engine.totalTestCount.toString),
+              P("report",    s"""See details: <a href=\"$url/diesel/viewAst/${engine.id}\">${engine.id}</a></td>""")
             ))
 
           if (engine.failedTestCount > 0) {
             newStatus = "Fail"
 
-            res appendAll EVal(P("guardianResult", s"Guardian - failed: ${engine.progress}")) :: m :: Nil
+            res += EInfo(s"Guardian - ends $realm-$env - newStatus $newStatus vs oldStatus $oldStatus")
+            res += EVal(P("guardianResult", s"Guardian - failed: ${engine.progress}"))
+            res += m
+
           } else {
+            // todo if some stories in the engine are still in prog, don't declare success - there may be bugs causing this
             newStatus = "Success"
+            res += EInfo(s"Guardian - ends $realm-$env - newStatus $newStatus vs oldStatus $oldStatus")
+            res += EVal(P("guardianResult", s"Guardian - success: ${engine.progress}"))
+
             // only send notification if it failed last time
             // or send them every time it detects a change, even if successful, to have a record of it having run?
-            val mList = if(true || oldStatus == "Fail") m :: Nil else Nil
-
-            res appendAll EVal(P("guardianResult", s"Guardian - success: ${engine.progress}")) :: mList
+            // these may run every time, like a ping, so maybe on success not good
+            if(oldStatus == "Fail") res += m
           }
 
           // save new status
@@ -217,6 +222,8 @@ class EEGuardian extends EExecutor(DieselMsg.GUARDIAN.ENTITY) with Logging {
       case s@_ => {
         res += new EError(s"$DG.$s - unknown activity ")
       }
+
+      // result lower below
     }
 
    def removeTags(realm:String, name:String) = {

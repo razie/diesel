@@ -478,7 +478,7 @@ img.rklogo {
 
   </script>
 
-  @if(Services.config.isLocalhost) {
+  @if(Services.config.isLocalhost && Services.config.isRazDevMode) {
 
     <!--
     in localhost, for development, refresh all the time...

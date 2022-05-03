@@ -194,7 +194,7 @@ class DomApi extends DomApiBase with Logging {
     val website = Website.forRealm(reactor).getOrElse(stok.website)
     val xapikey = website.prop("diesel.xapikey")
 
-      Audit.logdb("DIESEL_FIDDLE_iRUNSTR", stok.au.map(_.userName).getOrElse("Anon"), s"EA : ${path.take(500)}")
+      DieselMsg.logdb("DIESEL_FIDDLE_iRUNSTR", stok.au.map(_.userName).getOrElse("Anon"), s"EA : ${path.take(500)}")
 
       var settings = DomEngineHelper.settingsFrom(stok)
       settings = settings.copy(realm = Some(reactor))
@@ -381,7 +381,7 @@ class DomApi extends DomApiBase with Logging {
       )
     }.getOrElse {
 
-      Audit.logdb("DIESEL_FIDDLE_iRUNDOM", stok.au.map(_.userName).getOrElse("Anon"), s"EA : $path",
+      DieselMsg.logdb("DIESEL_FIDDLE_iRUNDOM", stok.au.map(_.userName).getOrElse("Anon"), s"EA : $path",
         " story: " + useThisStory)
 
       var settings = DomEngineHelper.settingsFrom(stok)
@@ -1765,7 +1765,7 @@ class DomApi extends DomApiBase with Logging {
         if (stok.query.contains("dfiddle")) we.wid.copy(section = stok.query.get("dfiddle"))
         else we.wid
 
-      Audit.logdb("DIESEL_FIDDLE_RUN", stok.au.map(_.userName).getOrElse("Anon"))
+      DieselMsg.logdb("DIESEL_FIDDLE_RUN", stok.au.map(_.userName).getOrElse("Anon"))
       irunDom(cwid.rest, Some(nw), Some(we.copy(content = anyOverwrites.newContent)))
     }).getOrElse {
       Future {
@@ -1795,7 +1795,7 @@ class DomApi extends DomApiBase with Logging {
     val origPage = cwid.wid.flatMap(_.page)
     val origFiddle = origPage.flatMap(_.section("dfiddle", dfiddle))
 
-    Audit.logdb("DIESEL_FIDDLE_RUN", stok.au.map(_.userName).getOrElse("anon"))
+    DieselMsg.logdb("DIESEL_FIDDLE_RUN", stok.au.map(_.userName).getOrElse("anon"))
 
     val settings = DomEngineHelper.settingsFrom(stok)
 
