@@ -31,8 +31,8 @@ scp ./s/scripts/cron-hourly razvanc@cloud2a.razie.com:rk
 if [ "$1" != "2" ]; then
 
 ## Update scripts
-  scp ./s/scripts/update razvanc@cloud3a.razie.com:rk
-  scp ./s/scripts/cron-hourly razvanc@cloud2a.razie.com:rk
+  scp ./s/scripts/update      razvanc@cloud3a.razie.com:rk
+  scp ./s/scripts/cron-hourly razvanc@cloud3a.razie.com:rk
 
   printf "\n\n####################copy from cloud2a to cloud3a...\n\n"
 

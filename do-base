@@ -2,7 +2,7 @@
 ## Create/update base container image with core, Java, vim, Mongo
 ## NO need to re-create often
 
-BASE_TAG=u322
+BASE_TAG=u332
 RK=~/w/racerkidz
 
 cd $RK/docker/base
