@@ -174,7 +174,6 @@ case class LazyStaticAstNode[T <: DSpec](
 
   override def toString = s"LazySTATE ()"
 
-  def cacheOk = { this.dirty = false; this }
 }
 
 /** lazy AST node - value computed when they're folded.
