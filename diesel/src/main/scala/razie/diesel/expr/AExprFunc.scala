@@ -99,6 +99,14 @@ case class AExprFunc(val expr: String, parms: List[RDOM.P]) extends Expr {
         P.fromTypedValue("", ts, WTypes.wt.DATE)
       }
 
+      case "hashcode" => {
+        val av = firstParm.getOrElse {
+          throw new DieselExprException("Need one argument.")
+        }.calculatedValue
+
+        P.fromTypedValue("", av.hashCode, WTypes.wt.NUMBER)
+      }
+
       case "matches" => {
         val av = firstParm.getOrElse {
           throw new DieselExprException("Need two arguments.")

@@ -172,6 +172,14 @@ object DieselMsg {
         .mkString(", ")
         )
 
+  def logdb(what: String, details: Any*) = {
+    import GlobalData._
+    val stats = s"EnginesActive=$dieselEnginesActive, StreamsActive=$dieselStreamsActive, servingApi=$servingApiRequests, servingThreads=$serving"
+    val newdetails = stats :: details.toList
+    Audit.logdb(what, newdetails: _*)
+  }
+
+
   final val CRON_TICK = "$msg diesel.cron.tick"
   final val GUARDIAN_POLL = "$msg diesel.guardian.poll"
   final val GUARDIAN_RUN = "$msg diesel.guardian.run"
@@ -289,6 +297,9 @@ object DieselMsg {
     final val NOTIFY = "notify"
     final val POLL = "poll"
     final val RUN = "run"
+
+    final val STARTS_STORY = "guardian-starts-story"
+    final val ENDS_STORY = "guardian-ends-story"
   }
 
   object CRON {

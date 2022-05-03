@@ -8,6 +8,8 @@ package razie.diesel
 
 import java.util.concurrent.atomic.AtomicLong
 import play.api.mvc.RequestHeader
+import razie.diesel.DieselRateLimiter.globalGroup
+import razie.wiki.Config
 import razie.wiki.admin.GlobalData
 import razie.wiki.model.{WikiConfigChanged, WikiObservers}
 import scala.collection.concurrent.TrieMap
@@ -28,25 +30,33 @@ case class RateLimitGroup(
   }
 }
 
-/** per group rate stats */
-case class RateLimitStats(name: String, max: Long, limited: Long)
-
 /** rate limiting stats and config */
 object DieselRateLimiter extends razie.Logging {
   // rate limit groups
   val rateLimits = new TrieMap[String, RateLimitGroup]()
-  val rateCurrent = new TrieMap[String, Int]()
-  val rateStats = new TrieMap[String, RateLimitStats]()
 
-  var RATELIMIT = true // rate limit API requests
-  var LIMIT_API = 80
-  var STATIC_PATH = "/elkpt"
+  // rate limit ALL requests
+  var LIMIT_ALL = Config.prop("diesel.staticRateLimitAll", "false").toBoolean
+  // rate limit API requests
+  var LIMIT_API = Config.prop("diesel.staticRateLimit", "80").toInt
+  // big switch on/off
+  var RATELIMIT = Config.prop("diesel.staticRateLimiting", "true").toBoolean
+
+  // create a global group
+  var globalGroup = if(LIMIT_ALL) Some(new RateLimitGroup(name="global", limit=LIMIT_API, regex=Nil, headers=Nil)) else None
+  globalGroup.foreach(rateLimits.put("global", _))
 
   WikiObservers mini {
     case WikiConfigChanged(node, config) => {
       val threads = config.prop("akka.actor.default-dispatcher.thread-pool-executor.fixed-pool-size", "25").toInt
+      LIMIT_ALL = config.prop("diesel.staticRateLimitAll", "false").toBoolean
       LIMIT_API = config.prop("diesel.staticRateLimit", "80").toInt
       RATELIMIT = config.prop("diesel.staticRateLimiting", "true").toBoolean
+
+      // todo erases stats as it replaces old object
+      globalGroup = if(LIMIT_ALL) Some(new RateLimitGroup(name="global", limit=LIMIT_API, regex=Nil, headers=Nil)) else None
+      globalGroup.foreach(rateLimits.put("global", _))
+
       log(s"Updated RATE LIMITS to: $LIMIT_API , $RATELIMIT , $threads")
     }
   }
@@ -56,14 +66,16 @@ object DieselRateLimiter extends razie.Logging {
     // how do we speed this up?
 //    path.contains("/elkpt/") ||
     path.startsWith("/diesel/rest/") ||
-        path.startsWith("/diesel/mock/")
+        path.startsWith("/diesel/mock/") ||
+        path.startsWith("/razadmin/") ||
+        path.startsWith("/diesel/status")
 //        path.startsWith("/diesel/react/") ||
 //        path.startsWith("/diesel/start/") ||
 //        path.startsWith("/diesel/fiddle/react/") ||
 //        path.startsWith("/diesel/wreact/")
   }
 
-  /** main call to serve or limit
+  /** sol(rq, serve, limited) main call to serve or limit
     *
     * @param rh          request
     * @param preliminary true if I should not incremeent served stats
@@ -96,10 +108,10 @@ object DieselRateLimiter extends razie.Logging {
       val count = group.servingCount.incrementAndGet()
 
       // note that this is called twice per request
-      // when preliminary, the servingCount is decremented elsewhere...
+      // when preliminary, the servingCount is decremented at call site...
 
       if (RATELIMIT && count > group.limit) {
-        GlobalData.limitedApiRequests.incrementAndGet()
+        GlobalData.limitedRequests.incrementAndGet()
         group.servingCount.decrementAndGet()
         group.limitedCount.incrementAndGet()
 
@@ -108,12 +120,13 @@ object DieselRateLimiter extends razie.Logging {
         serveIt(Some(group))
       }
     }.getOrElse {
+      // never gets here when global limiting is on
       serveIt(None)
     }
   }
 
   def getGroup(rh: RequestHeader): Option[RateLimitGroup] = {
-    rateLimits.find(t => t._2.regex.exists(rh.path.matches)).map(_._2)
+    rateLimits.find(t => t._2.regex.exists(rh.path.matches)).map(_._2).orElse(globalGroup)
 //    if (isApiRequest(rh.path)) Some("api")
 //    else None
   }
