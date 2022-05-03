@@ -48,7 +48,7 @@ object Wikis extends Logging with Validation {
           val n = if(wid.hasCachedPage) wid.page else wid.findPageNocache
           n.map(_.preprocess(au))
           if (n.exists(w => w.cacheable && w.category != "-" && w.category != "")) {
-            WikiCache.set(n.get.wid.wpathFull + ".page", n.get, 300) // 10 miuntes
+            WikiCache.set(n.get.wid.wpathFull + ".page", n.get) // 10 miuntes
           } else {
             cdebug << "WIKI_CACHE_CANTC FULL - " + id
           }
@@ -729,7 +729,7 @@ object Wikis extends Logging with Validation {
           }.getOrElse {
             val n = format1(wid, markup, icontent, we, user)
             if(we.exists(_.cacheable)) // format can change cacheable
-              WikiCache.set(we.get.wid.wpathFull+".formatted", n, 300) // 10 miuntes
+              WikiCache.set(we.get.wid.wpathFull+".formatted", n)
             n
           }
         } else

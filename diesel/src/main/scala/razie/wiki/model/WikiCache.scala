@@ -9,6 +9,7 @@ package razie.wiki.model
 import com.mongodb.DBObject
 import play.api.Play.current
 import play.api.cache._
+import razie.wiki.Config
 import razie.wiki.admin.GlobalData
 import razie.{Logging, cdebug, clog, ctrace}
 
@@ -20,15 +21,28 @@ import razie.{Logging, cdebug, clog, ctrace}
   */
 object WikiCache {
 
-  def set[T](id:String, w:T, i:Int) = {
+  private var CACHE_EXP:Option[Int] = None // 10 minutes?
+
+  // lame lazy
+  def cacheExp = CACHE_EXP.getOrElse {
+    CACHE_EXP = Some(Config.prop("wiki.cache.expiry", "500").toInt)
+    CACHE_EXP.get
+  }
+
+  def set[T](id:String, w:T, i:Int = cacheExp) = {
     clog << "WIKI_CACHE_SET   - "+id
-    Cache.set(id, w, 300) // 10 miuntes
+    Cache.set(id, w, i)
     GlobalData.wikiCacheSets.incrementAndGet()
   }
 
+  /** get by key which is val id = wid.wpathFullNoSection + ".page"
+    *
+    * don't use this - use Wiki.getCached instead, this doesn't populate the cache
+    */
   def getEntry(id:String) : Option[WikiEntry] = {
     Cache.getAs[WikiEntry](id).map{x=>
       cdebug << "WIKI_CACHE_FOUND FULL - "+id
+      GlobalData.wikiCacheHits.incrementAndGet()
       x
     }.orElse {
       clog << "WIKI_CACHE_MISS  FULL - "+id

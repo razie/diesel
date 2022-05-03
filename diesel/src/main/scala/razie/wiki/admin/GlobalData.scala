@@ -32,9 +32,10 @@ object GlobalData {
   val serving = new AtomicLong(0) // how many threads are currently serving - if 0, there's none...
   val servingApiRequests = new AtomicLong(0) // how many threads are currently serving - if 0, there's none...
   val servedApiRequests = new AtomicLong(0)
-  val limitedApiRequests = new AtomicLong(0) // how many were kicked off under load
+  val limitedRequests = new AtomicLong(0) // how many were kicked off under load
 
   val wikiCacheMisses = new AtomicLong(0) // wiki cache misses
+  val wikiCacheHits = new AtomicLong(0) // wiki cache hits
   val wikiCacheSets = new AtomicLong(0) // wiki cache misses
 
   val dieselEnginesTotal = new AtomicLong(0) // how many engines created since start
@@ -67,9 +68,10 @@ object GlobalData {
         "served" -> GlobalData.served.get(),
         "wikiCacheMisses" -> GlobalData.wikiCacheMisses.get(),
         "wikiCacheSets" -> GlobalData.wikiCacheSets.get(),
+        "wikiCacheHits" -> GlobalData.wikiCacheHits.get(),
         "servingApiRequests" -> GlobalData.servingApiRequests.get(),
         "servedApiRequests" -> GlobalData.servedApiRequests.get(),
-        "limitedApiRequests" -> GlobalData.limitedApiRequests.get(),
+        "limitedRequests" -> GlobalData.limitedRequests.get(),
         "maxServing" -> GlobalData.maxServing.get(),
         "maxServingApiRequests" -> GlobalData.maxServingApiRequests.get(),
         "dieselEnginesTotal" -> GlobalData.dieselEnginesTotal.get(),
@@ -99,7 +101,7 @@ object GlobalData {
       "maxConfThreads" -> Config.prop("akka.actor.default-dispatcher.thread-pool-executor.fixed-pool-size"),
       "serving" -> GlobalData.serving.get(),
       "servingApiRequests" -> GlobalData.servingApiRequests.get(),
-      "limitedApiRequests" -> GlobalData.limitedApiRequests.get(),
+      "limitedRequests" -> GlobalData.limitedRequests.get(),
       "maxServing" -> GlobalData.maxServing.get(),
       "maxServingApiRequests" -> GlobalData.maxServingApiRequests.get(),
       "dieselEnginesTotal" -> GlobalData.dieselEnginesTotal.get(),

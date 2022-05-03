@@ -161,6 +161,10 @@ class WikiIndex (val realm:String, val fallBacks : List[WikiIndex]) {
     parsed.remove(id)
   }
 
+//  def getByName(name: String) : Option[Any] = withIndex { idx =>
+//    fallBacks.foldLeft(idx.idx.get(name))((x,y) => x orElse y.getByName(name))
+//  }
+
   def containsName(name: String) : Boolean = withIndex { idx =>
     idx.idx.contains(name) || fallBacks.exists(_.containsName(name))
   }

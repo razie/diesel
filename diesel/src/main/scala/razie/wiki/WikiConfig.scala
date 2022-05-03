@@ -146,6 +146,7 @@ abstract class WikiConfig {
 
   // not every localhost is dev mode
   def isDevMode = prop("wiki.devMode", "false").toBoolean
+  def isRazDevMode = prop("diesel.razdevinst", "false").toBoolean
 
   //-------------- special admin/configuration pages
 

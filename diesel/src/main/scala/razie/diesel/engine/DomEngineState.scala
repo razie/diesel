@@ -33,7 +33,10 @@ case class DEventNodeStatus(nodeId: String, status: String, dtm: DateTime = Date
 }
 
 /** dependency between two nodes */
-case class DADepy (prereq:DomAst, depy:DomAst)
+case class DADepy (prereq:DomAst, depy:DomAst) {
+//  override def toString = s"DaDepy( ${prereq.id} <- ${depy.id} )"
+  override def toString = s"DaDepy( ${prereq.meTos(0,false)} <- ${depy.meTos(0,false)} )"
+}
 
 /** dependency event */
 case class DADepyEv (prereq:String, depy:String, dtm:DateTime=DateTime.now) extends DEvent {

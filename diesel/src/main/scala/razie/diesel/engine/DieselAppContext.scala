@@ -48,7 +48,6 @@ object DieselAppContext extends Logging {
       // todo this seems only used right now by the cron jobs - EEDieselCron
       // todo use for all diesel actors?
       val r = getActorSystem.dispatchers.lookup(DIESEL_DISPATCHER)
-//      log("XXXXX " + r)
       r
     }
 

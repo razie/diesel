@@ -88,8 +88,16 @@ object Enc {
     def apply() = { i }
   }
 
-  // escape html characters
+  /** escape html characters */
   def escapeHtml (s:String) = s.replaceAllLiterally("<", "&lt;").replaceAll(">", "&gt;").replaceAll("\"", "&quot;")
+
+  /** escape html unless it only contains links and spans */
+  def escapeComplexHtml (s:String) = {
+    if (s.contains("<script") || s.contains("<body") || s.contains("<style")) escapeHtml(s)
+    else s
+  }
+
+  /** unescape html characters */
   def unescapeHtml (s:String) = s.replaceAllLiterally("&lt;", "<").replaceAll("&gt;", ">").replaceAll("&quot;", "\"")
 }
 

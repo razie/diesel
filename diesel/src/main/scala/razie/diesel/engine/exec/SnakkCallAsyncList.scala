@@ -27,7 +27,7 @@ object SnakkCallAsyncList extends Logging {
 
   def put (sc:SnakkCall) : Future[SnakkResponse] = {
     val rec = Rec(new ObjectId().toString, sc)
-    log("ASCL put " + rec.id + " - " + sc.toJson)
+    log("SNAKKPROXY ASCL put " + rec.id + " - " + sc.toString)
     calls.synchronized {
       clean
       calls.append(rec)
@@ -36,13 +36,13 @@ object SnakkCallAsyncList extends Logging {
   }
 
   /** next req waiting for host */
-  def next(host:String) : Option[(String, SnakkCall)] = {
+  def next(env:String, host:String) : Option[(String, SnakkCall)] = {
     calls.synchronized {
       clean
-      val idx = calls.indexWhere(host == "*" || _.sc.url.startsWith(host))
+      val idx = calls.indexWhere(x=>(host == "*" || x.sc.url.startsWith(host)) && (env == "*" || x.sc.env == env))
       if(calls.size > 0 && idx >= 0) {
         val rec = calls.remove(idx)
-        log("ASCL next " + rec.id + " - " + rec.sc.toJson)
+        log("SNAKKPROXY ASCL next " + rec.id + " - " + rec.sc.toString)
         inProgress.synchronized {
           inProgress.put(rec.id, rec)
         }
@@ -52,17 +52,18 @@ object SnakkCallAsyncList extends Logging {
     }
   }
 
+  /** call complete, notify reciver */
   def complete (id:String, resp:SnakkResponse) : Boolean = {
-    log("Completing " + id + " with " + resp)
+    log("SNAKKPROXY Completing " + id + " with " + resp)
       inProgress.synchronized {
         val rec = inProgress.remove(id)
         rec.map {rec=>
-          info("  Completing - found" + id)
+          info("SNAKKPROXY  Completing - found" + id)
           rec.sc.pro.foreach(_.success(resp))
           clean
           true
       } getOrElse {
-          info("  Completing - NOT found" + id)
+          info("SNAKKPROXY  Completing - NOT found" + id)
           clean
           false
         }

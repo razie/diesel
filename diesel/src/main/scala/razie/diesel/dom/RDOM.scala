@@ -116,7 +116,7 @@ object RDOM {
       val a = this
 
       // todo should combine / oberwrite duplicates like methods or args with same name
-      C(name,
+      val c = C(name,
         combine(a.archetype, b.archetype),
         combine(a.stereotypes, b.stereotypes),
         a.base ++ b.base,
@@ -126,6 +126,8 @@ object RDOM {
         a.assocs ::: b.assocs,
         a.props ::: b.props
       )
+      c.pos = this.pos
+      c
     }
   }
 

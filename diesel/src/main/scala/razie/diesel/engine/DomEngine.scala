@@ -425,7 +425,7 @@ abstract class DomEngine(
   /** finalize and release resources, actors etc */
   def engineDone(collect: Boolean = true, decrement:Boolean=true) = {
     trace("DomEng " + id + " stopNow")
-    clog << s"WF.STOP.$id"
+    clog << s"WF.STOP.$id duration: $duration desc: ${description.take(100)}"
 
     if(decrement) GlobalData.dieselEnginesActive.decrementAndGet()
 
@@ -809,7 +809,8 @@ abstract class DomEngine(
     Future {
       DieselAppContext.startEngine(this)
       GlobalData.dieselEnginesActive.incrementAndGet()
-      clog << s"WF.START.$id"
+      clog << s"WF.START.$id desc: ${description.take(100)}"
+
       trace("*******************************************************")
       trace("DomEng.tests STARTING " + id + " - " + description)
       trace("*******************************************************")

@@ -267,11 +267,11 @@ case class DomAst(
 
     def theState = {
       if (!DomState.inProgress(this.status)) {
-        ""
+        if(html) "" else this.status
       } else {
         if (html)
           s""" <span class="glyphicon glyphicon-exclamation-sign" style="color:red" title="State: $status"></span>"""
-        else s" ($status"
+        else this.status
       }
     }
 

@@ -220,6 +220,7 @@ class WikiInstImpl (val realm:String, val fallBacks:List[WikiInst], mkDomain : W
       if (Services.config.cacheDb) {
         // set the realm, so no key clash across realms
         val tempw = if(wid.realm.isDefined) wid else wid.r(realm)
+
         // reset section to find the container
         val key = tempw.copy(section = None).wpathFull+".db"
 
@@ -234,7 +235,7 @@ class WikiInstImpl (val realm:String, val fallBacks:List[WikiInst], mkDomain : W
             // only store in cache if it's the exact realm we're looking for, not some mixin - otherwise it's misleading
             // during realm creation when new pages are created...
             if(pageFound.getAs[String]("realm").exists(_ == tempw.getRealm))
-              WikiCache.set(key, pageFound, 120) // 2 minutes
+              WikiCache.set(key, pageFound)
           }
           n
         }
