@@ -33,6 +33,8 @@ class EEMail extends EExecutor("diesel.mail") {
 
     in.met match {
 
+      // todo to have the ability to define multiple email endpoints per realm, like connectors would be
+
       case "new" => {
         val host = ctx.getRequired("host")
         val port = ctx.getRequired("port")
@@ -43,10 +45,13 @@ class EEMail extends EExecutor("diesel.mail") {
         EVal(P(name, "")) :: Nil
       }
 
+      // send new email
+
       case "send" => {
         val to = ctx.getRequired("to").split(",").toList
         val subject = ctx.getRequired("subject")
         val body = ctx.getRequired("body")
+
           Emailer.withSession(ctx.root.settings.realm.get) { mailSession =>
             to.filter(nzlen).map { addr =>
               mailSession.send(addr, mailSession.SUPPORT, subject, body)
