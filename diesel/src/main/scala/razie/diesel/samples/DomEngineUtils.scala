@@ -7,8 +7,9 @@
 package razie.diesel.samples
 
 import org.bson.types.ObjectId
+import razie.Log.log
 import razie.audit.Audit
-import razie.ctrace
+import razie.{clog, ctrace}
 import razie.diesel.Diesel
 import razie.diesel.dom.RDOM.P
 import razie.diesel.dom._
@@ -22,6 +23,7 @@ import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future}
+import scala.util.Try
 
 /** utils and examples of using the engine */
 object DomEngineUtils {
@@ -110,7 +112,7 @@ object DomEngineUtils {
       // clog?
     }
     else
-      Audit.logdb("DIESEL_FIDDLE_RUNDOM ", msg)
+      DieselMsg.logdb("DIESEL_FIDDLE_RUNDOM ", msg)
 
     val pages = (specs ::: stories)
         .filter(_.section.isEmpty)
@@ -223,26 +225,33 @@ object DomEngineUtils {
   /**
     * run message sync
     */
-  def runMsgSync(msg: DieselMsg): Option[P] = {
+  def runMsgSync(msg: DieselMsg, timeoutSec:Int): Option[P] = {
     val fut = msg.toMsgString.startMsg
 
     // get timeout max from realm settings: paid gets more etc
-    val res = Await.result(fut, Duration.create(30, "seconds"))
-    extractP(res)
+    try {
+      val res = Await.result(fut, Duration.create(timeoutSec, "seconds"))
+      extractP(res)
+    } catch {
+      case t:Throwable => {
+        log("Await failed ", t)
+        None
+      }
+    }
   }
 
   /**
     * run message sync
     */
-  def runMsgSync(realm: String, m: EMsg): Option[P] = {
-    runMsgSync(new DieselMsg(m, DieselTarget.ENV(realm)))
+  def runMsgSync(realm: String, m: EMsg, timeoutSec:Int): Option[P] = {
+    runMsgSync(new DieselMsg(m, DieselTarget.ENV(realm)), timeoutSec)
   }
 
   /**
     * run message sync
     */
-  def runMsgSync(realm: String, e: String, a: String, parms: Map[String, Any]): Option[P] = {
-    runMsgSync(DieselMsg(e, a, parms, DieselTarget.ENV(realm)))
+  def runMsgSync(realm: String, e: String, a: String, parms: Map[String, Any], timeoutSec:Int): Option[P] = {
+    runMsgSync(DieselMsg(e, a, parms, DieselTarget.ENV(realm)), timeoutSec)
   }
 
   /**

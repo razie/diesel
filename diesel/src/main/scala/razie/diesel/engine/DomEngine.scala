@@ -22,7 +22,7 @@ import razie.wiki.admin.GlobalData
 import razie.wiki.model.WID
 import scala.Option.option2Iterable
 import scala.collection.mutable.ListBuffer
-import scala.concurrent.ExecutionContext.Implicits.global
+//import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{Future, Promise}
 import scala.util.Try
 
@@ -430,6 +430,7 @@ abstract class DomEngine(
     if(decrement) GlobalData.dieselEnginesActive.decrementAndGet()
 
     if (!finishP.isCompleted) finishP.success(this)
+    debug(s"Engine $id released future")
 
     // remove ctx references
     try {
@@ -806,6 +807,7 @@ abstract class DomEngine(
     * this will prep the root node, then start execution
     */
   def processTests = {
+    import DieselAppContext.executionContext
     Future {
       DieselAppContext.startEngine(this)
       GlobalData.dieselEnginesActive.incrementAndGet()
@@ -837,6 +839,7 @@ abstract class DomEngine(
   }
 
   // waitingo for flow to complete
+  import DieselAppContext.executionContext
   val finishP = Promise[DomEngine]()
   val finishF = finishP.future
 

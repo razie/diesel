@@ -6,17 +6,16 @@ name := "diesel"
 publishMavenStyle := true
 
 lazy val commonSettings = Seq(
-  scalaVersion := "2.11.12",
-  organization := "com.razie",
-  version := "0.9.4-SNAPSHOT",
+  scalaVersion         := "2.11.12",
+  organization         := "com.razie",
+  version              := "0.9.4-SNAPSHOT",
+  organizationName     := "DieselApps",
+  organizationHomepage := Some(url("http://www.dieselapps.com")),
+  homepage             := Some(url("http://www.dieselapps.com")),
+
   // in sbt 1: publishConfiguration := publishConfiguration.value.withOverwrite(true),
-  organizationName := "DieselApps",
 
   publishMavenStyle := true,
-
-  organizationHomepage := Some(url("http://www.dieselapps.com")),
-
-  homepage := Some(url("http://www.dieselapps.com")),
 
   scmInfo := Some(ScmInfo(url("https://github.com/razie/diesel"),
                         "git@github.com:razie/diesel.git")),
@@ -56,8 +55,8 @@ libraryDependencies in Global ++= Seq(
   "com.typesafe.akka"        %% "akka-camel"         % "2.4.2",
   "com.typesafe.akka"        %% "akka-testkit"       % "2.4.2" % Test,
 
-  "junit"                   % "junit"              % "4.5"      % "test->default",
-  "org.scalatest"          %% "scalatest"          % "2.1.3"
+  "junit"                     % "junit"              % "4.5"      % "test->default",
+  "org.scalatest"            %% "scalatest"          % "2.1.3"
 
   //"com.razie"              %% "snakk_base"         % "0.9.3-SNAPSHOT",
   //"com.razie"              %% "snakk_core"         % "0.9.3-SNAPSHOT",

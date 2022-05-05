@@ -93,10 +93,14 @@ case class DieselMsgString(msg: String,
   }
 
   def startMsg = {
-    import scala.concurrent.ExecutionContext.Implicits.global
+//    import scala.concurrent.ExecutionContext.Implicits.global
+    import DieselAppContext.executionContext
     mkEngine.process.map { engine =>
-      extractResult(msg, None, engine)
-    }.map(auditEngine)
+        clog << ("engine completed...")
+      val res = extractResult(msg, None, engine)
+      auditEngine(res)
+      res
+    }
   }
 }
 
