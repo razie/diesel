@@ -269,7 +269,7 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
       val storyDom = WikiDomain.domFrom(storyPage).get.revise addRoot
 
       //fiddleSpec only parses it, never runs it - it's a spec, afterall
-      val res = Wikis.format(specPage.wid, specPage.markup, null, Some(specPage), stok.au)
+      val res = Wikis.format(specPage.wid, specPage.markup, spec, Some(specPage), stok.au)
       retj << Map(
         "res" -> res,
         // todo should respect blenderMode ?
@@ -323,12 +323,12 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
     val now = DateTime.now
 
     //  autosave draft - if none and there are changes
-    // this doesn't acytually save it now, but later
+    // this doesn't acytually save it now, but later, see below
     val auto = AutosaveSet("wikie", reactor, storyWpath, stok.au.get._id, Map(
       "content"  -> story
     ), Some(now)) // detect stale updates
 
-    val autoRec = auto.rec // is there a draft ?
+    val autoRec = auto.rec // was there a draft already ?
 
     // first check if it's newer - if the user clicks "back", a stale editor may overwrite a newer draft
     if (saveMode && autoRec.exists(_.updDtm.isAfter(new DateTime(clientTimeStamp.toLong)))) {
@@ -395,6 +395,7 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
       stimer snap "2_parse_specs"
 
       val ipage = new WikiEntry("Story", storyName, storyName, "md", story, uid, Seq("dslObject"), stok.realm)
+      ipage.cacheable = false
 
       val idom = WikiDomain.domFrom(ipage).get.revise addRoot
 
@@ -468,7 +469,7 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
 
         stimer snap "5_engine_expand"
 
-        val wiki = Wikis.format(ipage.wid, ipage.markup, null, Some(ipage), stok.au)
+        val wiki = Wikis.format(ipage.wid, ipage.markup, story, Some(ipage), stok.au)
 
         val m = Map(
           // flags in map for easy logging
