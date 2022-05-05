@@ -196,7 +196,8 @@ object DomGuardian extends Logging {
       settings.env = Some(env)
 
       val stories = EnginePrep.loadStories(settings, realm, au.map(_._id), "")
-      val me = new WikiEntry("Story", "temp", "temp", "md",
+
+      val starts = new WikiEntry("Story", DieselMsg.GUARDIAN.STARTS_STORY, DieselMsg.GUARDIAN.STARTS_STORY, "md",
         s"""
            |$$send diesel.guardian.starts(realm="$realm", env="$env")
            |$$send diesel.setEnv(env="$env", user="")
@@ -208,9 +209,10 @@ object DomGuardian extends Logging {
         return (Future.successful(Report(Some(this), "?", null, "?", "?", 0, 0, 0)), None)
       }
 
-      val last = new WikiEntry("Story", "temp", "temp", "md",
+      val ends = new WikiEntry("Story", DieselMsg.GUARDIAN.ENDS_STORY, DieselMsg.GUARDIAN.ENDS_STORY, "md",
         s"""
            |$$send diesel.guardian.ends(realm="$realm", env="$env")
+           |$$send ctx.echo(msg="Done... realm=$realm, env=$env")
  """.stripMargin,
         new ObjectId(), Seq("dslObject"), realm)
 
@@ -223,9 +225,9 @@ object DomGuardian extends Logging {
         false,
         au,
         s"Guardian:${realm}-${env}-${au.map(_.userName).getOrElse("auto")}:" + tq.mkString,
-        Some(me),
-        stories,
-        Some(last),
+        None,
+        starts :: (stories ::: (ends :: Nil)),
+        None,
         addFiddles
       )
 
@@ -419,7 +421,8 @@ object DomGuardian extends Logging {
   final val GUARDIAN_POLL = "GuardianPoll"
 
   /** if the poll is different, run tests */
-  def polled(realm: String, env: String, tstamp: String, au: Option[User], tquery:String) = {
+  def polled(realm: String, env: String, itstamp: String, au: Option[User], tquery:String) = {
+    val tstamp = itstamp.take(100)
     val old =
       DieselData
           .find(GUARDIAN_POLL, realm, realm + "-" + env)
@@ -470,7 +473,7 @@ object DomGuardian extends Logging {
 //          "sandbox" != env || // testing
           false
     ) {
-      val msg = s"isLocalhost? Cannot create guardian schedule for env=$env for realm $realm "
+      val msg = s"""isLocalhost? Cannot create guardian schedule for env=$env for realm $realm - for isLocalhost add inLocal="yes" """
       error(msg)
       msg
     } else {

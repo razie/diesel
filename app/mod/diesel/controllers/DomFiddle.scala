@@ -482,6 +482,7 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
             "engineId" -> engine.id,
             "progress" -> engine.progress,
             "engineStatus" -> st,
+            "enginePaused" -> engine.paused.toString,
             "engineDone" -> DomState.isDone(st)
           ),
           "clientId" -> id,
@@ -578,6 +579,7 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
           "engineId" -> engine.id,
           "progress" -> engine.progress,
           "engineStatus" -> st,
+          "enginePaused" -> engine.paused.toString,
           "engineDone" -> DomState.isDone(st)
         ),
         "clientId" -> id,
