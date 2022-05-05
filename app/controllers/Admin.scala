@@ -97,7 +97,13 @@ class Admin extends AdminBase {
         case "wikidx" => ROK.s admin { implicit stok => views.html.admin.adminWikiIndex() }
         case "db" => ROK.s admin { implicit stok => views.html.admin.adminDb() }
         case "index" => ROK.s admin { implicit stok => views.html.admin.adminIndex("") }
-        case "users" => ROK.s admin { implicit stok => views.html.admin.adminUsers() }
+
+//        case "users" => ROK.s admin { implicit stok => views.html.admin.adminUsers() }
+        case "users" => ROK.s admin { implicit stok =>
+          val realm = "*" // should these be only for current realm? But only admins can see this specific page...
+          views.html.admin.adminUsers(
+            Users.findUsersForRealm(realm).map(Users.asDBO)
+          )}
 
         case "init.db.please" => {
           if ("yeah" == System.getProperty("devmode") || !RazMongo("User").exists) {
