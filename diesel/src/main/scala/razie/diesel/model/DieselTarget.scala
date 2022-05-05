@@ -8,6 +8,7 @@ package razie.diesel.model
 
 import razie.diesel.engine.DomEngineSettings.DEFAULT_TQ_SPECS
 import razie.diesel.engine.nodes.EnginePrep
+import razie.diesel.engine.nodes.EnginePrep.mixinEntries
 import razie.tconf.{SpecRef, TSpecRef, TagQuery}
 import razie.wiki.model.{WID, WikiSearch, Wikis}
 import scala.::
@@ -21,7 +22,8 @@ import scala.::
   */
 case class DieselTarget(
   val realm: String,
-  val env: String = DieselTarget.DEFAULT) {
+  val env: String = DieselTarget.DEFAULT,
+  val tagQuery: TagQuery = TagQuery.EMPTY) {
 
   def specs: List[TSpecRef] = Nil
 
@@ -36,8 +38,8 @@ object DieselTarget {
     *
     * find all specs starting from realm and tq, including mixins except private
     *
-    * @param realm
-    * @param tq
+    * @param realm current realm
+    * @param tq tag query
     * @return
     */
   def tqSpecs(realm: String, tq: TagQuery) = {
@@ -71,10 +73,10 @@ object DieselTarget {
     new DieselTargetList(realm, env, specs, stories)
 
   /** all specs in a realm and mixins */
-  def ENV(realm: String, env: String = DEFAULT) =
-    new DieselTarget(realm, env) {
+  def ENV(realm: String, env: String = DEFAULT, tagQuery: TagQuery = TagQuery.EMPTY) =
+    new DieselTarget(realm, env, tagQuery) {
       override def specs = {
-        ENV_SETTINGS(realm) :: tqSpecs(realm, TagQuery.EMPTY)
+        ENV_SETTINGS(realm) :: tqSpecs(realm, tagQuery)
       }
     }
 
@@ -88,7 +90,7 @@ object DieselTarget {
 
   /** list of topics by tq */
   def TQSPECS(realm: String, env: String, tq: TagQuery) =
-    new DieselTarget(realm, env) {
+    new DieselTarget(realm, env, tq) {
 
       override def specs = {
         ENV_SETTINGS(realm) :: tqSpecs(realm, tq)
@@ -97,7 +99,7 @@ object DieselTarget {
 
   /** list of topics by tq */
   def TQSPECSANDSTORIES(realm: String, env: String, tq: TagQuery) =
-    new DieselTarget(realm, env) {
+    new DieselTarget(realm, env, tq) {
 
       override def specs = {
         ENV_SETTINGS(realm) :: tqSpecs(realm, tq)

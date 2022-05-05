@@ -23,7 +23,7 @@ import razie.diesel.dom.RDOM.P.asString
 import razie.diesel.engine.nodes.EMsg
 import razie.diesel.model.{DieselMsg, DieselTarget}
 import razie.diesel.samples.DomEngineUtils
-import razie.tconf.{DUsers, FullSpecRef}
+import razie.tconf.{DUsers, FullSpecRef, TagQuery}
 import razie.wiki.Sec._
 import razie.wiki.{Enc, Services}
 import razie.wiki.model._
@@ -32,13 +32,15 @@ import model.{Profile, User}
 /** user persistance */
 class UsersPersistDiesel extends model.UsersPersist {
 
+  private final val TQ = new TagQuery("diesel.common,diesel.users,database,inventory,elk")
+
   var dfltRealm = "specs"
-  var dfltTarget = DieselTarget.ENV(dfltRealm)
+  var dfltTarget = DieselTarget.ENV(dfltRealm, "local", TQ)
 
   /** for now these user persists are static - they need config from a realm */
   def setDefaultRealm(realm:String) = {
     dfltRealm = realm
-    dfltTarget = DieselTarget.ENV(dfltRealm)
+    dfltTarget = DieselTarget.ENV(dfltRealm, "local", TQ)
   }
 
   /** msg returns array of json take first as option */
@@ -63,7 +65,7 @@ class UsersPersistDiesel extends model.UsersPersist {
   /** msg returns array of json take first as option */
   def resolve(m: EMsg): P = {
     val res = DomEngineUtils
-        .runMsgSync(new DieselMsg(m, dfltTarget))
+        .runMsgSync(new DieselMsg(m, dfltTarget), 10)
         .getOrElse(P.undefined(Diesel.PAYLOAD))
     res
   }

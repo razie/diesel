@@ -101,8 +101,18 @@ object EnginePrep extends Logging {
         }
         maybeDrafts
       } else {
-        val spw = WID.fromPath(storyWpath).flatMap(_.page).map(_.content).getOrElse(DomUtils.SAMPLE_SPEC)
-        val specName = WID.fromPath(storyWpath).map(_.name).getOrElse("fiddle")
+        val spw = WID
+            .fromPath(storyWpath)
+            // todo not sure about this logic - clarify caching logic: if pages depends on users, they're not cached anyways...
+            .flatMap(w => if(userId.isDefined) w.page else Wikis.cachedPage(w, None))
+            .map(_.content)
+            .getOrElse(DomUtils.SAMPLE_SPEC)
+
+        val specName = WID
+            .fromPath(storyWpath)
+            .map(_.name)
+            .getOrElse("fiddle")
+
         val spec = Autosave.OR("wikie", WID.fromPathWithRealm(storyWpath, reactor).get, uid, Map(
           "content" -> spw
         )).apply("content")
@@ -208,7 +218,7 @@ object EnginePrep extends Logging {
     val stw =
       WID
         .fromPath(storyWpath)
-        .flatMap(_.page)
+        .flatMap(w => Wikis.cachedPage(w, au))
         .map(_.content)
         .getOrElse(DomUtils.SAMPLE_STORY)
 
@@ -280,8 +290,8 @@ object EnginePrep extends Logging {
     val engine = DieselAppContext.mkEngine(dom, root, settings, ipage :: specs map WikiDomain.spec, description)
 
     val stories = if (!useTheseStories.isEmpty) useTheseStories else List(ipage)
+
     startStory.map { we =>
-      logger.debug("PrepEngine globalStory:\n" + we.content)
       // main story adds to root, no scope wrappers - this is globals
       addStoryWithFiddlesToAst(engine, List(we), false, false, false)
     }
@@ -289,7 +299,6 @@ object EnginePrep extends Logging {
     addStoryWithFiddlesToAst(engine, stories, justTests, false, addFiddles)
 
     endStory.map { we =>
-      logger.debug("PrepEngine endStory:\n"+we.content)
       // main story adds to root, no scope wrappers - this is globals
       addStoryWithFiddlesToAst(engine, List(we), false, false, false)
     }
@@ -530,9 +539,17 @@ object EnginePrep extends Logging {
     }
 
     // sort by tag "orderXXX" and alphabetical?
-    val sortedStories = stories.sortBy(s =>
+    var sortedStories = stories.sortBy(s =>
       s.tags.find(_.startsWith("testOrder")).getOrElse("testOrderLast") + s.specRef.key
     )
+
+    // make sure guardian is first and last
+    sortedStories =
+      sortedStories.filter(_.specRef.wpath.contains(DieselMsg.GUARDIAN.STARTS_STORY)) :::
+          sortedStories.filter(! _.specRef.wpath.contains(DieselMsg.GUARDIAN.STARTS_STORY))
+    sortedStories =
+      sortedStories.filter(! _.specRef.wpath.contains(DieselMsg.GUARDIAN.ENDS_STORY)) :::
+      sortedStories.filter(_.specRef.wpath.contains(DieselMsg.GUARDIAN.ENDS_STORY))
 
     sortedStories.foreach(addStory)
   }

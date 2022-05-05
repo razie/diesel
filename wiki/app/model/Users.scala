@@ -177,6 +177,7 @@ object Users {
     cur
   }
 
+  def asDBO(u: User) = grater[User].asDBObject(u)
   def fromJsonUser(j: String) = Option(grater[User].asObject(JSON.parse(j).asInstanceOf[DBObject]))
 
   /** find user by lowercase email - at loging
@@ -186,7 +187,7 @@ object Users {
     */
   def findUserNoCase(uncEmail: String) = persist.findUserNoCase(uncEmail)
 
-  /** find user by lowercase email - at loging */
+  /** find user by lowercase email - at loging realm could be "*" if you're an admin... */
   def findUsersForRealm(realm: String) = persist.findUsersForRealm(realm)
 
   /** find by decrypted email - as entered by a user */
@@ -224,7 +225,9 @@ object Users {
   /** display name of user with id, for comments etc */
   def nameOf(uid: ObjectId): String = {
     Cache.getAs[String](uid.toString + ".username").getOrElse {
-      val n = persist.nameOf(uid)
+      val n = Services.auth.cachedUserById(uid.toString).map(_.userName).getOrElse {
+        persist.nameOf(uid)
+      }
       Cache.set(uid.toString + ".username", n, 600) // 10 miuntes
       n
     }

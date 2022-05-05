@@ -28,7 +28,7 @@ import razie.tconf.Visibility.PUBLIC
   * NOTE the one way to do the search today is WikiSearch.getList
   */
 class TagQuery(val tags: String) {
-  def theTags = tags.split("/").map(_.trim).filter(goodTag)
+  def theTags = tags.toLowerCase.replaceAllLiterally("|", ",").split("/").map(_.trim).filter(goodTag)
 
   val ltags = theTags.filter(x => !x.startsWith("realm."))
   val atags = ltags.filter(_.indexOf(",") < 0).map(_.toLowerCase)
@@ -42,9 +42,19 @@ class TagQuery(val tags: String) {
   def nonEmpty = theTags.nonEmpty
 
   /** create a new tags addinng the t */
-  def and(t: String) = {
-    val s = if (tags.trim.length > 0) tags + "," + t else t
-    new TagQuery(t)
+  def and(t: String): TagQuery = {
+    val s = if (tags.trim.length > 0) tags + "/" + t else t
+    new TagQuery(s)
+  }
+
+  /** create a new tags addinng the t */
+  def and(tq: TagQuery): TagQuery = this and tq.tags
+  def or (tq: TagQuery): TagQuery = this or  tq.tags
+
+  /** create a new tags addinng the t */
+  def or(t: String): TagQuery = {
+    val s = if (tags.trim.length > 0) tags + "|" + t else t
+    new TagQuery(s)
   }
 
   // array of array - first is AND second is OR
@@ -91,7 +101,7 @@ class TagQuery(val tags: String) {
     if(this.isEmpty) true
     else {
 
-      val utags = u.tags.mkString
+      val utags = u.tags.mkString.toLowerCase
 
       def checkT(b: String) = {
         utags.contains(b) ||
@@ -121,6 +131,8 @@ class TagQuery(val tags: String) {
         b.foldLeft(false)((a, c) => a || t.contains(c))
       )
   }
+
+  override def toString = s"TagQuery(${tags.toLowerCase})"
 }
 
 object TagQuery {
