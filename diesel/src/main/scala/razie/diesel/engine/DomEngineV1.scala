@@ -853,9 +853,11 @@ class DomEngineV1(
           }
 
           // guardian-starts-story and guardian-ends-story no need no cleaning, wanna see what they done
-          p.filter(x=> x.value.isInstanceOf[StoryNode] &&
-              !x.value.asInstanceOf[StoryNode].path.wpath.startsWith("guardian-") &&
-              !x.value.asInstanceOf[StoryNode].path.wpath.endsWith("-story")).foreach { p =>
+          p.filter(x=> x.value.isInstanceOf[StoryNode] && {
+            val wp = x.value.asInstanceOf[StoryNode].path.wpath
+            wp != ("guardian-starts-story") &&
+            wp != ("guardian-ends-story")
+          }).foreach { p =>
             val sn = p.value.asInstanceOf[StoryNode]
             if (sn.calculateStats(p).failed == 0) {
               // if story completed and nothing failed, remove it from test report

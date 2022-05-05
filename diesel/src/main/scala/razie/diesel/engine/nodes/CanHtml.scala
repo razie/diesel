@@ -130,12 +130,6 @@ trait CanHtml {
   def toHtml(kind: String): String = toHtml
 
   /** shorten string */
-  def shorten(s: String, len: Int = 100) = {
-    if (s.length > len) {
-      s.take(len) + "..."
-    } else {
-      s
-    }
-  }
+  def shorten(s: String, len: Int = 100) = Enc.shorten(s, len)
 }
 

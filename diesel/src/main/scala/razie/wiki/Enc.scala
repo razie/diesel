@@ -99,6 +99,15 @@ object Enc {
 
   /** unescape html characters */
   def unescapeHtml (s:String) = s.replaceAllLiterally("&lt;", "<").replaceAll("&gt;", ">").replaceAll("&quot;", "\"")
+
+  /** shorten string */
+  def shorten(s: String, len: Int = 100) = {
+    if (s.length > len) {
+      s.take(len) + "..."
+    } else {
+      s
+    }
+  }
 }
 
 object EncUrl {

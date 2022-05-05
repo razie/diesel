@@ -260,7 +260,7 @@ object DomInventories extends razie.Logging {
     // resolve EMrg's parameters in an empty context and run it and await?
     e.fold(
       p => p,
-      m => DomEngineUtils.runMsgSync(new DieselMsg(m, DieselTarget.ENV("n/a")))
+      m => DomEngineUtils.runMsgSync(new DieselMsg(m, DieselTarget.ENV("n/a")), 30)
           .getOrElse(P.undefined(Diesel.PAYLOAD))
     )
   }
@@ -360,7 +360,7 @@ object DomInventories extends razie.Logging {
     e.fold(
       p => p,
       m => {
-        var p = DomEngineUtils.runMsgSync(new DieselMsg(m, DieselTarget.ENV(realm)))
+        var p = DomEngineUtils.runMsgSync(new DieselMsg(m, DieselTarget.ENV(realm)), 30)
 
         // flattenData - some ops return an array in "data"
         if (flattenData && p.exists(_.isOfType(WTypes.wt.JSON))) {
