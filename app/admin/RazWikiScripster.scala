@@ -15,14 +15,14 @@ class RazWikiScripster extends WikiScripster.JSWikiScripster {
   override def mk = new RazWikiScripster
 
   /** run the given script in the context of the given page and user as well as the query map */
-  override def runScriptAny(s: String, lang:String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, String], devMode:Boolean=false) = synchronized {
+  override def runScriptTyped(s: String, lang:String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, String], typed: Map[String, Any], devMode:Boolean=false) = synchronized {
 //    def r = page.map(we=>if(we.category == "Reactor") we.name else we.realm).getOrElse(Wikis.RK)
 
-    super.runScriptAny(s, lang, page, user, query, devMode)
+    super.runScriptTyped(s, lang, page, user, query, typed, devMode)
   }
 
   /** run the given script in the context of the given page and user as well as the query map */
-  override def runScript(s: String, lang:String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, String], devMode:Boolean=false): String = synchronized {
-    runScriptAny(s, lang, page, user, query, devMode).toString
+  override def runScript(s: String, lang:String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, String], typed: Map[String, Any], devMode:Boolean=false): String = synchronized {
+    runScriptTyped(s, lang, page, user, query, typed, devMode).toString
   }
 }

@@ -14,6 +14,7 @@ import mod.book.Progress
 import model._
 import play.api.Application
 import play.api.mvc._
+import razie.Log.log
 import razie.audit.Audit
 import razie.db._
 import razie.diesel.DieselRateLimiter
@@ -23,7 +24,7 @@ import razie.wiki.admin._
 import razie.wiki.model._
 import razie.wiki.util.PlayTools
 import razie.wiki.{Config, Services}
-import razie.{cdebug, clog}
+import razie.{cdebug, clog, cout}
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.util.Try
@@ -47,27 +48,33 @@ object Global extends WithFilters(LoggingFilter) {
     Audit.logdb("ERR_onError", "request:" + request.toString, "headers:" + request.headers, "ex:" + ex.toString)
     val m = ("ERR_onError", "Current count: " + lastErrorCount + " Request:" + request.toString, "headers:" + request
         .headers, "ex:" + ex.toString).toString
-    if (System.currentTimeMillis - lastErrorTime >= ERR_DELTA1) {
-      if (errEmails <= ERR_EMAILS || System.currentTimeMillis - firstErrorTime >= ERR_DELTA2) {
-        SendEmail.withSession(Website.xrealm(request)) { implicit mailSession =>
-          Emailer.tellAdmin("ERR_onError",
-            Services.auth.authUser (Request(request, "")).map(_.userName).mkString, m)
+    try {
+      if (System.currentTimeMillis - lastErrorTime >= ERR_DELTA1) {
+        if (errEmails <= ERR_EMAILS || System.currentTimeMillis - firstErrorTime >= ERR_DELTA2) {
+          SendEmail.withSession(Website.xrealm(request)) { implicit mailSession =>
+            Emailer.tellAdmin("ERR_onError",
+              // this was causing issues with elk user persistency
+//            Services.auth.authUser (Request(request, "")).map(_.userName).mkString,
+              m)
 
-          synchronized {
-            if (errEmails == ERR_EMAILS || System.currentTimeMillis - firstErrorTime >= ERR_DELTA2) {
-              errEmails = 0
-              firstErrorTime = lastErrorTime
+            synchronized {
+              if (errEmails == ERR_EMAILS || System.currentTimeMillis - firstErrorTime >= ERR_DELTA2) {
+                errEmails = 0
+                firstErrorTime = lastErrorTime
+              }
+              errEmails = errEmails + 1
+              lastErrorTime = System.currentTimeMillis()
+              lastErrorCount = 0
             }
-            errEmails = errEmails + 1
-            lastErrorTime = System.currentTimeMillis()
-            lastErrorCount = 0
           }
+        } else {
+          lastErrorCount = 0
         }
       } else {
         lastErrorCount = 0
       }
-    } else {
-      lastErrorCount = 0
+    } catch {
+      case t:Throwable => log("While handling onError", t)
     }
 
     super.onError(request, ex)
@@ -178,13 +185,18 @@ object Global extends WithFilters(LoggingFilter) {
 
       } else { // normal request
 
-        DieselRateLimiter.serveOrLimit(request, true)((rh, group) => {
+        // just check if it would be rate limited (preliminary=true)
+        DieselRateLimiter.serveOrLimit(request, preliminary = true)((rh, group) => {
+          // if ok, serve it
           group.foreach(_.decServing())
           super.onRouteRequest(request)
         })((group, count) => {
+          // oops, rate limited
           // request limiting here will avoid overloading the internal execution queue as well
           Some(EssentialAction { rh =>
             Action { rh: play.api.mvc.RequestHeader =>
+              clog << ("ERR_RATE_LIMIT", s"group: $group curr: $count request: $request headers: ${request
+              .headers}")
 //              Audit.logdb("ERR_RATE_LIMIT", s"group: $group curr: $count request: $request headers: ${request
 //              .headers}")
               Results.TooManyRequest("Rate limiting - in progress: " + count)
@@ -287,8 +299,8 @@ object Global extends WithFilters(LoggingFilter) {
       }
 
     WikiScripster.impl = new RazWikiScripster
-    Services.runScriptImpl = (s: String, lang:String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, String], devMode:Boolean) => {
-      WikiScripster.impl.runScript(s, lang, page, user, query, devMode)
+    Services.runScriptImpl = (s: String, lang:String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, String], typed: Map[String, Any], devMode:Boolean) => {
+      WikiScripster.impl.runScript(s, lang, page, user, query, typed, devMode)
     }
 
     Services.initCqrs(new RkCqrs)
@@ -347,28 +359,25 @@ object LoggingFilter extends Filter {
       }
 
       // keep stats per group
-      getGroup(rh).foreach { group =>
+      getGroup(rh).map { group =>
         if (group.servingCount.get() > group.maxServedCount.get()) {
           group.maxServedCount.set(group.servingCount.get())
         }
 
         group.decServing()
         group.servedCount.incrementAndGet()
+        s"rate group: ${group.name} - ${group.servingCount.get()}"
       }
-    }
-
-    def servedPage {
-      GlobalData.servedRequests.incrementAndGet()
     }
 
     def logTime(rh:RequestHeader)(what: String)(result: Result): Result = {
       val time = System.currentTimeMillis - start
 
-      if (!isFromRobot(rh) && !rh.uri.contains("razadmin/ping/shouldReload") && !rh.uri.startsWith("/diesel/status")) {
-        clog << s"LF.STOP.$what ${rh.method} ${rh.host}${rh.uri} took ${time}ms and returned ${result.header.status}"
-      }
+      val rates = served
 
-      served
+      if (!isFromRobot(rh) && !rh.uri.contains("razadmin/ping/shouldReload") && !rh.uri.startsWith("/diesel/status")) {
+        clog << s"LF.STOP.$what ${rh.method} ${rh.host}${rh.uri} took ${time}ms and returned ${result.header.status} $rates"
+      }
 
       var res = result.withHeaders("Request-Time" -> time.toString)
 
@@ -404,13 +413,14 @@ object LoggingFilter extends Filter {
 
         // log LF.STOP here as well so it matches STARTS even for errors
         if (!isFromRobot(rh)) {
-          clog << s"LF.STOP.WITH-ERR ${rh.method} ${rh.host}${rh.uri}"
+          clog << s"LF.STOP.ERR.429 ${rh.method} ${rh.host}${rh.uri} rates: $group - $count"
         }
 
-        clog << s"LF.ERR.429 ${rh.method} ${rh.uri}"
+        val msg = (s"Rate limiting 2 - in progress group: $group count: $count")
+        clog << s"LF.ERR.429 $msg ${rh.method} ${rh.uri}"
 
         Some(
-          Results.TooManyRequest("Rate limiting 2 - in progress group: $group count: $count")
+          Results.TooManyRequest(msg)
         )
       })
 
