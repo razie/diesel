@@ -42,8 +42,8 @@ object EEFunc {
   /** generic call a domain function */
   def exec(in:EMsg, f: F)(implicit ctx: ECtx): P = {
       val res = try {
-        if (f.script != "") {
-          val c = ctx.domain.get.mkCompiler("js")
+        if (f.script != "" && f.lang == "js") {
+          val c = ctx.domain.get.mkCompiler(f.lang)
 
           // compile all other functions
           val x = c.compileAll(c.not { case fx: RDOM.F if fx.name == f.name => true })
@@ -59,6 +59,13 @@ object EEFunc {
 
           val r = newestFiddle(s, "js", in.attrs, ctx)
           scriptResToTypedP(r, offset)
+
+        } else if (f.script != "" && (f.lang == "sc" || f.lang == "scala")) {
+
+          val q = in.attrs.map(t => (t.name, t.currentStringValue)).toMap
+
+          val r = newestFiddle(f.script, f.lang, in.attrs, ctx)
+          scriptResToTypedP(r, 0)
         } else
           P("", "ABSTRACT FUNC", WTypes.wt.EXCEPTION)
       } catch {

@@ -25,8 +25,8 @@ object Services {
   @Inject() var wikiAuth: WikiAuthorization = new NoWikiAuthorization
 
   // this is only used for signed scripts - unsafe scripts are not ran here
-  var runScriptImpl : (String, String, Option[WikiEntry], Option[WikiUser], Map[String, String], Boolean) => String =
-    (script: String, lang:String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, String], devMode:Boolean) =>
+  var runScriptImpl : (String, String, Option[WikiEntry], Option[WikiUser], Map[String, String], Map[String, Any], Boolean) => String =
+    (script: String, lang:String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, String], typed: Map[String, Any], devMode:Boolean) =>
       "TODO customize scripster"
 
   var mkReactor : (String, List[Reactor], Option[WikiEntry]) => Reactor = { (realm, fallBack, we)=>
@@ -35,8 +35,8 @@ object Services {
   }
 
   /** run the given script in the context of the given page and user as well as the query map */
-  def runScript (s: String, lang:String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, String], devMode:Boolean=false): String =
-    runScriptImpl(s,lang, page,user,query,devMode)
+  def runScript (s: String, lang:String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, String], typed: Map[String, Any], devMode:Boolean=false): String =
+    runScriptImpl(s,lang, page,user,query, typed, devMode)
 
   def noInitSample = {
     /** connect to your database, with your connection properties, clustered or not etc */

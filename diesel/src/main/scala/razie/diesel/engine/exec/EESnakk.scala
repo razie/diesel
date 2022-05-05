@@ -7,6 +7,7 @@ package razie.diesel.engine.exec
 
 import com.razie.pub.comms.{CommRtException, Comms}
 import java.net.{URI, URL}
+import razie.Log.log
 import razie.Snakk._
 import razie.diesel.Diesel
 import razie.diesel.Diesel.PAYLOAD
@@ -207,13 +208,18 @@ class EESnakk extends EExecutor("snakk") with Logging {
           trace("Snakk RESPONSE: " + trimmed(response))
 
           val content = Try {
+
+            eres += EVal(P.undefined(SNAKK_ERROR))
+
             new EContent(
               response,
               sc.iContentType.getOrElse(""),
               sc.icode.getOrElse(-1),
               sc.iHeaders.getOrElse(Map.empty),
               sc.root)
+
           }.recover {
+
             case e:Throwable => {
               val c = new EContent(
                 response,
@@ -222,6 +228,8 @@ class EESnakk extends EExecutor("snakk") with Logging {
                 sc.iHeaders.getOrElse(Map.empty),
                 None)
               c.warnings = List(EWarning("Parsing", html(e.getLocalizedMessage)))
+              eres += EVal(P.fromSmartTypedValue(SNAKK_ERROR, e).withCachedValue(e, WTypes.wt.EXCEPTION, html(e.toString, 10000)))
+              eres += EVal(P("snakkErrorOld", html(e.toString, 10000)))
               c
             }
           }.get
@@ -234,6 +242,8 @@ class EESnakk extends EExecutor("snakk") with Logging {
 
       durationMillis = System.currentTimeMillis() - startMillis
       eres += EDuration(durationMillis)
+
+      log(s"SNAKK duration: $durationMillis ms for url: $newurl")
 
       // PROCESS the reply
 
@@ -311,7 +321,7 @@ class EESnakk extends EExecutor("snakk") with Logging {
         case v@EVal(p) if p.name == PAYLOAD => false
         case x@_ => true
       } :::
-          new EInfo(SNAKK_RESPONSE + reply.body.take(25), reply.body) ::
+          new EInfo(SNAKK_RESPONSE + Enc.escapeHtml(reply.body.take(25)), Enc.escapeHtml(trimmed(reply.body, 5000))) ::
           new EVal(reply.httpCodep).withKind(AstKinds.TRACE) ::
           new EVal(reply.headersp).withKind(AstKinds.TRACE) ::
           traceId :::
@@ -367,6 +377,8 @@ class EESnakk extends EExecutor("snakk") with Logging {
         durationMillis = System.currentTimeMillis() - startMillis
         eres += EDuration(durationMillis)
 
+        log(s"SNAKK duration: $durationMillis ms for $urlx")
+
         eres += ETrace("Response", html(content.toString))
 
         // 2. extract values
@@ -379,16 +391,18 @@ class EESnakk extends EExecutor("snakk") with Logging {
         eres.eres ::: strs.map(t => new P(t._1, t._2)).map { x =>
           EVal(x).withPos(pos)
         } :::
-            new EVal(SNAKK_RESPONSE + content.body.take(25), content.body).withKind(AstKinds.TRACE) ::
+            new EVal(SNAKK_RESPONSE + Enc.escapeHtml(content.body.take(25)), Enc.escapeHtml(trimmed(content.body, 5000)))
+                .withKind(AstKinds.TRACE) ::
             new EVal(content.httpCodep).withKind(AstKinds.TRACE) ::
             new EVal(content.headersp).withKind(AstKinds.TRACE) ::
+            EVal(P.undefined(SNAKK_ERROR)) ::
             // todo here's where i would add the response headers - make the snakk.response an object?
             new EVal(PAYLOAD, content.body) ::
             Nil
       } getOrElse
           // need to create a val - otherwise DomApi.rest returns the last Val
           EError("no url attribute for RESTification - and no request template found") ::
-              EVal(P("snakkError", "no url attribute for RESTification - and no request template found")) ::
+              EVal(P(SNAKK_ERROR, "no url attribute for RESTification - and no request template found")) ::
               Nil
     }
 
@@ -441,6 +455,7 @@ object EESnakk {
   final val SNAKK_HTTP_CODE = "snakkHttpCode"
   final val SNAKK_HTTP_HEADERS = "snakkHttpHeaders"
   final val SNAKK_HTTP_RESPONSE = "snakkHttpResponse"
+  final val SNAKK_ERROR = "snakkError"
 
   private def trimmed(s:String, len:Int = 2000) = (if(s != null && s.length > len) s"(>$len):\n" else "\n") + s.take(len)
   def html(s:String, len:Int = 2000) = Enc.escapeHtml(trimmed(s, len))
@@ -805,12 +820,12 @@ object EESnakk {
               // why not all java.net ex - no point remembering the stack traces
               )
       ) {
-        razie.Log.log(
+        log(
           "error snakking: " + t.getClass.getName + " : " + t.getMessage + " cause: " + t.getCause.getMessage)
         eres += new EError("Exception: " + ecause, " cause: " + t.getCause.getMessage) :: Nil
         t.getCause
       } else if( t.isInstanceOf[CommRtException] && t.asInstanceOf[CommRtException].httpCode > 0 ) {
-        razie.Log.log("error snakking: " + t.getClass.getName + " : " + t.getMessage);
+        log("error snakking: " + t.getClass.getName + " : " + t.getMessage);
         code = t.asInstanceOf[CommRtException].httpCode
         errContent = t.asInstanceOf[CommRtException].details
 
@@ -828,13 +843,14 @@ object EESnakk {
         }
         t
       } else {
-        razie.Log.log("error snakking", t)
+        log("error snakking", t)
         eres += new EError("Exception: ", t) :: Nil
         t
       }
 
     val durationMillis = System.currentTimeMillis() - startMillis
     eres += EDuration(durationMillis)
+    log(s"SNAKK duration: $durationMillis ms - error")
 
     eres += ETrace("Response: ", html(response)) :: Nil
 
@@ -852,7 +868,8 @@ object EESnakk {
 
     eres +=
         // need to create a val - otherwise DomApi.rest returns the last Val
-        EVal(P("snakkError", html(cause.toString, 10000))) ::
+        EVal(P.fromSmartTypedValue(SNAKK_ERROR, t).withCachedValue(t, WTypes.wt.EXCEPTION, html(cause.toString, 10000))) ::
+        EVal(P("snakkErrorOld", html(cause.toString, 10000))) ::
             Nil
   }
 

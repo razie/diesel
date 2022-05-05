@@ -259,12 +259,21 @@ trait WikiParserMini extends ParserBase with CsvParser with Tokens {
   def wikiProp: PS = "{{" ~> """[^}: ]+""".r ~ """[: ]""".r ~ """[^}]*""".r <~ "}}" ^^ {
     case name ~ _ ~ value => {
       // default to widgets
-      if(Wikis(realm).index.containsName("widget_" + name.toLowerCase()))
-        StrAstNode(
-          Wikis(realm).find(WID("Admin", "widget_" + name.toLowerCase())).map(_.content).map { c =>
-            //            (List(("WIDGET_ARGS", value)) ::: args).foldLeft(c)((c, a) => c.replaceAll(a._1, a._2))
-            (List(("WIDGET_ARGS", value)) ).foldLeft(c)((c, a) => c.replaceAll(a._1, a._2))
-          } getOrElse "")
+      // if it's in index, find it
+     val x =
+       Wikis(realm).index
+           .getWids("widget_" + name.toLowerCase())
+           .headOption
+           .map { wid =>
+               StrAstNode(
+                 Wikis.cachedPage(wid, None)
+                     .map(_.content)
+                     .map { c =>
+                 (List(("WIDGET_ARGS", value))).foldLeft(c)((c, a) => c.replaceAll(a._1, a._2))
+               } getOrElse "")
+      }
+
+      if(x.isDefined) x.get
       else if(WikiMods.index.contains(name.toLowerCase)) {
         LazyAstNode[WikiEntry,WikiUser] { (current, ctx) =>
           //todo the mod to be able to add some properties in the context of the current topic
@@ -284,12 +293,27 @@ trait WikiParserMini extends ParserBase with CsvParser with Tokens {
       // default to widgets
 
       // todo optimize common widgets like todo
+      // if it's in index, find it
+      val x =
+        Wikis(realm).index
+            .getWids("widget_" + name.toLowerCase())
+            .headOption
+            .map { wid =>
+              StrAstNode(
+                Wikis.cachedPage(wid, None)
+                    .map(_.content)
+                    .map { c =>
+                  (List(("WIDGET_ARGS", value))).foldLeft(c)((c, a) => c.replaceAll(a._1, a._2))
+                } getOrElse "")
+            }
 
-      if (Wikis(realm).index.containsName("widget_" + name.toLowerCase()))
-        StrAstNode(
-          Wikis(realm).find(WID("Admin", "widget_" + name.toLowerCase())).map(_.content).map { c =>
-            List(("WIDGET_ARGS", value)).foldLeft(c)((c, a) => c.replaceAll(a._1, a._2))
-          } getOrElse "")
+      if(x.isDefined) x.get
+
+//      if (Wikis(realm).index.containsName("widget_" + name.toLowerCase()))
+//        StrAstNode(
+//          Wikis(realm).find(WID("Admin", "widget_" + name.toLowerCase())).map(_.content).map { c =>
+//            List(("WIDGET_ARGS", value)).foldLeft(c)((c, a) => c.replaceAll(a._1, a._2))
+//          } getOrElse "")
       else {
         if (name startsWith ".")
           StrAstNode("", Map(name.substring(1) -> value)) // hidden
