@@ -329,6 +329,23 @@ object EEDieselExecutors {
           )
       } // if
     } // for
+
+    // from https://stackoverflow.com/questions/466878/can-you-get-basic-gc-stats-in-java
+    import java.lang.management.ManagementFactory
+    var totalGarbageCollections = 0L
+    var garbageCollectionTime = 0L
+
+    import scala.collection.JavaConversions._
+    for (gc <- ManagementFactory.getGarbageCollectorMXBeans) {
+      val count = gc.getCollectionCount
+      if (count >= 0) totalGarbageCollections += count
+      val time = gc.getCollectionTime
+      if (time >= 0) garbageCollectionTime += time
+    }
+
+    s.put("totalGarbageCollections", totalGarbageCollections)
+    s.put("garbageCollectionTime", garbageCollectionTime)
+
     s
   }
 

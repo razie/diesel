@@ -872,7 +872,8 @@ class DomApi extends DomApiBase with Logging {
         msg.get.spec = spec(msg.get.entity, msg.get.met)(engine.ctx)
       }
 
-      cdebug << s"Message found: $msg xapikey=$apiKey"
+
+      cdebug << s"Message found: ${Enc.shorten(msg.toString, 5000)} xapikey=$apiKey"
 
       val xx = stok.qhParm("X-Api-Key").mkString
       val needsApiKey = apiKey.isDefined

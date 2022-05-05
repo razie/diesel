@@ -40,4 +40,5 @@ done
 # docker login -u razie
 
 ## SEE build-rk for details to run locally
+date
 

@@ -190,6 +190,40 @@ case class EPostgressConnector (
     (SQL, res)
   }
 
+  def deleteQuery(realm:String, env:String, table:String, entityType:String, query:Map[String,String]) = {
+    ensureEntityTableExists(table)
+    val q = mapToQuery(query)
+
+    val SQL =
+      s"""
+         |DELETE FROM $table
+         |WHERE realm=? AND env=? AND entityType=? $q
+         |""".stripMargin
+
+    val res = try {
+      val pstmt = conn.prepareStatement(SQL)
+      try {
+        pstmt.setString(1, realm)
+        pstmt.setString(2, env)
+        pstmt.setString(3, entityType)
+
+        lastSQL = SQL
+        val affectedRows = pstmt.executeUpdate
+
+        if (affectedRows > 0) { // get the ID back
+          List(
+            EInfo(s"Deleted $affectedRows"),
+            EVal(P.fromTypedValue("deleteCount", affectedRows))
+          )
+        } else Nil
+      } finally {
+        if (pstmt != null) pstmt.close()
+      }
+    }
+
+    (SQL, res)
+  }
+
   def findOne(realm:String, env:String, table:String, entityType:String, entityId:String) = {
     ensureEntityTableExists(table)
 
@@ -223,6 +257,21 @@ case class EPostgressConnector (
     (SQL,res)
   }
 
+  /** build simpile map to sql query */
+  def mapToQuery(query:Map[String,String]) = {
+    // build sql query
+    // todo for numbers too
+    var q = query.map{t=>
+      val op = if(t._2.contains("*")) "LIKE" else "="
+      val v = if(t._2.contains("*")) t._2.replaceAllLiterally("*", "%") else t._2
+      val k = if(t._1.startsWith("content.")) t._1.replaceFirst("content\\.", "content->>'") + "'" else t._1
+      s" $k $op '$v' "
+    }.mkString(" AND ")
+
+    if(q.trim.length > 0) q = " AND " + q
+    q
+  }
+
   def find(
     realm:String,
     env:String,
@@ -235,16 +284,7 @@ case class EPostgressConnector (
 
     ensureEntityTableExists(table)
 
-    // build sql query
-    // todo for numbers too
-    var q = query.map{t=>
-      val op = if(t._2.contains("*")) "LIKE" else "="
-      val v = if(t._2.contains("*")) t._2.replaceAllLiterally("*", "%") else t._2
-      val k = if(t._1.startsWith("content.")) t._1.replaceFirst("content\\.", "content->>'") + "'" else t._1
-      s" $k $op '$v' "
-    }.mkString(" AND ")
-
-    if(q.trim.length > 0) q = " AND " + q
+    val q = mapToQuery(query)
 
     val off = offset.map (x=> s"OFFSET $x").getOrElse("")
     val lim = s"LIMIT ${limit}"
@@ -445,17 +485,23 @@ class EEDieselPostgressDb extends EEDieselDbExecutor(DB) {
         case "remove" => {
           val conn = getConn
 
-          val (sql1, doc) = conn.findOne(realm, env, coll, coll, key)
-          val (sql2, l) = conn.deleteEntity(realm, env, coll, coll, key)
+          if(in.attrs.exists(p=> p.name == "id" || p.name == "key")) {
+            val (sql1, doc) = conn.findOne(realm, env, coll, coll, key)
+            val (sql2, l) = conn.deleteEntity(realm, env, coll, coll, key)
 
-          ETrace("SQL", sql2) :: l :::
-              (doc
-                  .orElse {
-                    Some(P("document", "", WTypes.wt.UNDEFINED))
-                  }
-                  .toList.map { p =>
-                EVal(p.copy(name = Diesel.PAYLOAD))
-              })
+            ETrace("SQL", sql2) :: l :::
+                (doc
+                    .orElse {
+                      Some(P("document", "", WTypes.wt.UNDEFINED))
+                    }
+                    .toList.map { p =>
+                  EVal(p.copy(name = Diesel.PAYLOAD))
+                })
+          } else {
+            val (sql2, l) = conn.deleteQuery(realm, env, coll, coll, otherQueryParms(in))
+
+            ETrace("SQL", sql2) :: l
+          }
         }
 
         case s@_ => {

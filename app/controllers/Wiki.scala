@@ -340,7 +340,7 @@ class Wiki @Inject()(dieselControl: DieselControl) extends WikiBase {
       case "included" => wid.page.map(w=> Ok(w.included).as("text/plain")).getOrElse(NotFound("WID not found:"+wid.wpath))
       case "xp"  => xp(wid, cw.rest).apply(request).value.get.get
       case "xpl" => xpl(wid, cw.rest).apply(request).value.get.get
-      case "edit" => Redirect(routes.Wikie.wikieEdit(wid))
+      case "edit" => Redirect(routes.Wikie.wikieEdit(wid).url, request.queryString)
       case "rss.xml" => rss(wid, cw.rest).apply(request).value.get.get
       case "dualView"  => {
         wid.page.map(w=>

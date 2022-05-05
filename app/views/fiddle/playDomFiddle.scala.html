@@ -589,7 +589,13 @@ var damnStale = function() {
   // location.reload();
 }
 
-var cancelFlow = function() {
+engineCancel   = function () {cancelFlow("cancel");};
+enginePause    = function () {cancelFlow("pause");};
+enginePlay     = function () {cancelFlow("play");};
+engineContinue = function () {cancelFlow("continue");};
+engineQueue    = function () {cancelFlow("queue");};
+
+var cancelFlow = function(command) {
   console.log("cancelFlow currEngineId="+currEngineId);
 
   if(currEngineId == null) {
@@ -598,13 +604,13 @@ var cancelFlow = function() {
   }
 
   $.ajax(
-      '/diesel/engine/cancel/'+currEngineId, {
-        type: 'GET',
+      '/diesel/engine/'+currEngineId+'/' + command, {
+        type: 'POST',
         success: function(data) {
-          console.log("  OK cancelFlow currEngineId="+currEngineId);
+          console.log("  OK " +command+" currEngineId="+currEngineId);
         },
         error  : function(x) {
-          console.log("  ERR cancelFlow currEngineId="+currEngineId);
+          console.log("  ERR " +command+" currEngineId="+currEngineId);
           console.log("  ERR "+JSON.stringify(x));
         }
       });
@@ -616,6 +622,8 @@ function processEngineResult(id, data, compileOnly, lastTime, next) {
 
   currEngineId = data.info.engineId;
   currEngineData = data;
+
+  lastProcessTime = new Date().getTime();
 
   if(data.info.engineDone) {
     console.log("  RESULT engine.done - processing");
@@ -640,7 +648,23 @@ function processPartialEngineResult(id, data, compileOnly, lastTime, next) {
 
   console.log("  updateMarkers story");
 
-  $('#roundtrip').html('<span class="glyphicon glyphicon-remove" onclick="javascript:cancelFlow()" style="cursor:pointer; color:red" ></span>' + data.info.progress+'');
+  if(data.info.enginePaused == 'true')
+    $('#roundtrip').html('' +
+        '<span class="glyphicon glyphicon-play" onclick="javascript:enginePlay()" style="cursor:pointer; color:red" title="Play one step"></span>' +
+        '&nbsp;'+
+        '<span class="glyphicon glyphicon-forward"  onclick="javascript:engineContinue()" style="cursor:pointer; color:red" title="Continue flow"></span>' +
+        '' + data.info.progress+'');
+  else if(data.info.enginePaused == 'false')
+    $('#roundtrip').html('' +
+        '<span class="glyphicon glyphicon-remove" onclick="javascript:engineCancel()" style="cursor:pointer; color:red" title="Cancel flow"></span>' +
+        '&nbsp;'+
+        '<span class="glyphicon glyphicon-pause"  onclick="javascript:enginePause()" style="cursor:pointer; color:red" title="Pause flow"></span>' +
+        '' + data.info.progress+'');
+
+  else
+    $('#roundtrip').html('' +
+        '' + data.info.progress+'');
+
   $('#roundtrip').prop('title', "failed/tested/todo");
 
   if(typeof data.storyChanged != "undefined") storyChanged(data.storyChanged);
@@ -665,7 +689,7 @@ function processPartialEngineResult(id, data, compileOnly, lastTime, next) {
   // if(! wsActive) {
     setTimeout(function () {
       checkpill2_@{id}('@{id}');
-    }, 500);
+    }, CHECK_TIMER);
   // }
 };
 
