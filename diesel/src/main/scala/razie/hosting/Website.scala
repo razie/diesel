@@ -119,10 +119,11 @@ class Website (we:WikiPage, extra:Seq[(String,String)] = Seq()) extends DslProps
 
   def navBrand = this prop "navBrand"
 
-  def supportUrl:String = this prop "bottom.Support.Support" OR "/doe/support"
-  def adminEmail = this prop "admin.email" OR "razie@razie.com"
-  def supportEmail = this prop "support.email" OR "support@racerkidz.com"
-  def SUPPORT2 = this prop "support.email" OR "support@effectiveskiing.com"
+  def supportUrl:String   = this prop "bottom.Support.Support" OR "/doe/support"
+
+  // todo deprecate the ones without mail. prefix
+  def adminEmail:String   = this prop "mail.admin.email" OR (this prop "admin.email" OR "razie@razie.com")
+  def supportEmail:String = this prop "mail.support.email" OR (this prop "support.email" OR "support@racerkidz.com")
 }
 
 /** multihosting utilities */

@@ -7,12 +7,16 @@
 package razie.diesel.model
 
 import razie.audit.Audit
-import razie.diesel.engine.DomEngineSettings
+import razie.diesel.engine.{DieselAppContext, DomEngineSettings}
 import razie.diesel.engine.nodes.EMsg
 import razie.diesel.samples.DomEngineUtils
 import razie.diesel.samples.DomEngineUtils.extractResult
+import razie.tconf.TagQuery
+import razie.wiki.admin.GlobalData
+import razie.wiki.admin.GlobalData.{dieselEnginesActive, dieselStreamsActive, serving, servingApiRequests}
 import scala.util.Try
-import razie.{clog, cdebug, cout}
+import razie.{cdebug, clog, cout}
+import scala.::
 
 /** a message string - send these to Services to have them executed
   *
@@ -62,6 +66,7 @@ case class DieselMsgString(msg: String,
     settings.realm = Some(target.realm)
     // important to use None here, to let the engines use the envList setting otherwise
     settings.env = if (target.env == DieselTarget.DEFAULT) None else Some(target.env)
+    settings.tagQuery = if (target.tagQuery.tags.isEmpty) None else Some(target.tagQuery.tags)
 
     val ms = m.mkMsgString
     DomEngineUtils
