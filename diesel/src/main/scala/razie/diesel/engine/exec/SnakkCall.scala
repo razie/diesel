@@ -56,6 +56,14 @@ case class SnakkCall(protocol: String, method: String, url: String, headers: Map
     this
   }
 
+  /** env is used in proxy to sort by env - no functional use otherwise */
+  private var _env: String = ""
+  def env = _env
+  def withEnv(u: String) = {
+    _env = u
+    this
+  }
+
   def isurl = if (_isurl != null) _isurl else Snakk.url(url, headers, (if(method.length == 0) "GET" else method))
 
   def postContent = if (content != null && content.length > 0) Some(content) else None
