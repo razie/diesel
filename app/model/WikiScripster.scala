@@ -6,14 +6,16 @@
  */
 package model
 
+import model.WikiScripster.count
+import razie.base.scriptingx.{NoBindSbtScalaContext, SBTScalaScriptContext, ScalaScriptContext}
 import razie.wiki.model.WikiUser
 import razie.wiki.model.WikiEntry
 
-/** execute wiki scala scripts */
+/** execute wiki scripts - they're related to a wikipage */
 trait WikiScripster {
   /** run the given script in the context of the given page and user as well as the query map */
-  def runScript   (s:String, lang: String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, String], devMode:Boolean=false): String
-  def runScriptAny(s:String, lang: String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, String], devMode:Boolean=false): Any
+  def runScript   (s:String, lang: String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, String], typed: Map[String, Any], devMode:Boolean=false): String
+  def runScriptTyped(s:String, lang: String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, String], typed: Map[String, Any], devMode:Boolean=false): Any
 
   def mk: WikiScripster
 }
@@ -22,40 +24,50 @@ trait WikiScripster {
 object WikiScripster extends razie.Logging {
   var count = 0
   var impl: WikiScripster = new JSWikiScripster
-  var implScala: WikiScripster = new CWikiScripster
+  var implScalaWiki: WikiScripster = new CWikiScripster
+  var implScalaDiesel: WikiScripster = new DWikiScripster
 
   class JSWikiScripster extends WikiScripster {
 
     def mk = new JSWikiScripster
 
     /** run the given script in the context of the given page and user as well as the query map */
-    def runScriptAny (s:String, lang: String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, String], devMode:Boolean=false): Any = synchronized {
+    def runScriptTyped(s:String, lang: String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, String], typed: Map[String, Any], devMode:Boolean=false): Any = synchronized {
+      count += 1
       try {
-        val res = MiniScripster.newsfiddleMap(s, lang, page, user, query, None, false)
+        val t = if(typed.size > 0) Some(typed) else None
+        val res = MiniScripster.newsfiddleMap(s, lang, page, user, query, t, false)
         if(res._1) res._2 else "ERR: " + res._2
       } catch {
         case ex: Throwable => { // any exceptions, get a new parser
           razie.Log.log("ERR WikiScripster: ", ex)
-          if(true || devMode) throw ex
-          else "?"
+          throw new RuntimeException("ERR " + ex.getMessage).initCause(ex)
         }
       }
     }
 
     /** run the given script in the context of the given page and user as well as the query map */
-    def runScript(s:String, lang: String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, String], devMode:Boolean=false): String = synchronized {
-      runScriptAny(s, lang, page, user, query, devMode).toString
+    def runScript(s:String, lang: String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, String], typed: Map[String, Any], devMode:Boolean=false): String = synchronized {
+      runScriptTyped(s, lang, page, user, query, typed, devMode).toString
     }
   }
 
   class CWikiScripster extends WikiScripster with ScalaScripster {
+    override val mkCtx:() => ScalaScriptContext = () => new NoBindSbtScalaContext()
 
     def mk = new CWikiScripster
 
     /** run the given script in the context of the given page and user as well as the query map */
-    def runScript(s:String, lang: String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, String], devMode:Boolean=false): String = {
-      runScriptAny(s, lang, page, user, query, devMode).toString
+    def runScript(s:String, lang: String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, String], typed: Map[String, Any], devMode:Boolean=false): String = {
+      count += 1
+      runScriptTyped(s, lang, page, user, query, typed, devMode).toString
     }
+  }
+
+  class DWikiScripster extends CWikiScripster {
+    override val mkCtx:() => ScalaScriptContext = () => new SBTScalaScriptContext()
+
+    override def mk = new DWikiScripster
   }
 
 }
