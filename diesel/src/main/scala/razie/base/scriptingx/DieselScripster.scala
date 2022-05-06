@@ -8,6 +8,7 @@ package razie.base.scriptingx
 import api.dwix
 import javax.script.ScriptEngineManager
 import jdk.nashorn.api.scripting.{ClassFilter, NashornScriptEngineFactory, ScriptObjectMirror}
+import model.WikiScripster
 import org.bson.types.ObjectId
 import razie.audit.Audit
 import razie.diesel.dom.RDOM.P
@@ -184,19 +185,38 @@ object DieselScripster extends Logging {
         }
       }
 
-    } else if (lang == "scala" && WikiConfig.getInstance.get.isLocalhost) {
-      ???
-//      try {
-//        val res = WikiScripster.implScala.runScriptAny(script, lang, None, None, q, true)
-//        Audit.logdb("SFIDDLE_EXEC", "scala", script)
-//        (true, res.toString, res)
-//      } catch {
-//        case t: Throwable => {
-//          log(s"while executing script\n$script", t)
-//          throw t
-//          (false, t.toString, t)
-//        }
-//      }
+    } else if (lang == "scala") {
+        try {
+
+        if(
+        WikiConfig.getInstance.exists(_.isLocalhost) &&
+            WikiConfig.getInstance.exists(_.isRazDevMode)) {
+          // on dev machine - uses an sbt-friendly classloader compiler
+          val res = WikiScripster.implScalaDiesel.asInstanceOf[model.ScalaScripster].runScriptTypedWithBinding(script, lang, None, None, q,
+            typed.getOrElse(Map.empty),
+            true)
+          Audit.logdb("SFIDDLE_EXEC", "scala", script)
+          //        (true, res.toString)
+          (true, res.toString, res)
+        } else if(WikiConfig.getInstance.exists(_.isLocalhost)) {
+            // on localhost (not razie's cloud)
+            val res = WikiScripster.implScalaDiesel.asInstanceOf[model.ScalaScripster].runScriptTypedWithBinding(script, lang, None, None, q,
+              typed.getOrElse(Map.empty),
+//            val res = WikiScripster.implScalaDiesel.runScriptTyped(script, lang, None, None, q, typed.getOrElse(Map.empty),
+              true)
+            Audit.logdb("SFIDDLE_EXEC", "scala", script)
+            //        (true, res.toString)
+            (true, res.toString, res)
+          } else (false, "Can run scala in localhost only.", new RuntimeException("Can run scala in localhost only."))
+
+        } catch {
+          case t: Throwable => {
+            log(s"while executing script\n$script", t)
+            //          throw t
+            (false, t + "\n\n" + script, t)
+          }
+        }
+
     } else (false, script, script)
   }
 
