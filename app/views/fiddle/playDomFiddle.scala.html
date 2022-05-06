@@ -191,7 +191,7 @@ Command reference (see more about [[specs.Topic:Expressions_and_pattern_matching
 
       <div id="storyRow2" class="row" style="align-items:center;">
         <div class="col-sm-12 well" id="divOutStory_@id" style="overflow: scroll; margin-bottom:2px"> </div>
-        <pre class="col-sm-12" id="iframeOutStory_@id" style="padding:1px; Xtext-align: center">Start typing...</pre>
+        <pre class="col-sm-12" id="iframeOutStory_@id" style="padding:1px; Xtext-align: center; white-space: pre">Start typing...</pre>
       </div>
 
       @*spec row - buttons*@
@@ -411,6 +411,7 @@ var isRefreshing2 = 0;
 
 var lastStartTime = new Date().getTime();
 var lastRequestTime = new Date().getTime();
+var lastProcessTime = null;
 
 /** run on spec changes */
 var runpill_@id = function(id) {
@@ -544,6 +545,8 @@ var runpill2_@id = function(id, compileOnly, forceRT, next) {
       });
 };
 
+var CHECK_TIMER = 1000;
+
 /** just check the fiddle (save and compile) */
 var checkpill2_@id = function(id) {
   console.log("checkpill2 run isRefreshing2="+isRefreshing2);
@@ -552,6 +555,22 @@ var checkpill2_@id = function(id) {
     console.log ("Ignore request - was done: " + curDomRequest);
     return;
   }
+
+/*
+  // don't run one closer than two seconds frmo the previous rendering - slows down the page a lot with big flows
+  if(lastProcessTime != null && new Date().getTime() - lastProcessTime < 2000) {
+    console.log("skipping one...")
+    // we check all the time, to update progress, anyways...
+    // if(! wsActive) {
+    setTimeout(function () {
+      checkpill2_@{id}('@{id}');
+    }, CHECK_TIMER);
+    // }
+    return;
+  } else {
+    console.log("checking status...")
+  }
+*/
 
   lastRequestTime = new Date().getTime();
 
