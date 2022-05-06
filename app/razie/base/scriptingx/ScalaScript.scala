@@ -7,6 +7,7 @@
 package razie.base.scriptingx
 
 import razie.base.ActionContext
+import scala.collection.mutable.ListBuffer
 //import razie.base.scripting.RazieInterpreter
 import razie.base.scripting.ScriptContextImpl
 import razie.{CSTimer, cdebug}
@@ -25,7 +26,11 @@ class ScalaScriptContext(parent: ActionContext = null) extends ScriptContextImpl
 
   private[this] val soon = razie.Threads.promise {
     val ppp = this mkParser err
-    ppp.evalExpr[Any]("1+2") // prime the parser
+    try {
+      ppp.evalExpr[Any]("1+2") // prime the parser
+    } catch {
+      case t:Throwable => clog << t
+    }
     ppp
   }
 
@@ -90,33 +95,50 @@ class ScalaScriptContext(parent: ActionContext = null) extends ScriptContextImpl
    * NOTE that binding errors are ignored - there's just too many...watch your log for errors
    */
   def bind(ctx: ActionContext, p: nsc.Interpreter) {
-    p.bind("ctx", ctx.getClass.getCanonicalName, ctx)
-    if (ctx.isInstanceOf[ScriptContextImpl] && ctx.asInstanceOf[ScriptContextImpl].parent != null)
-      p.bind("parent", ctx.asInstanceOf[ScriptContextImpl].parent.getClass.getCanonicalName, ctx.asInstanceOf[ScriptContextImpl].parent)
+    debug("binding scala variables")
+    debug("binding " + "ctx")
+    bindOne(p, "ctx", ctx.getClass.getCanonicalName, ctx)
+    if (ctx.isInstanceOf[ScriptContextImpl] && ctx.asInstanceOf[ScriptContextImpl].parent != null) {
+      debug("binding " + "ctx")
+      bindOne(p, "parent", ctx.asInstanceOf[ScriptContextImpl].parent.getClass.getCanonicalName, ctx.asInstanceOf[ScriptContextImpl].parent)
+    }
 
+    debug("binding count: " + ctx.size())
     ctx.foreach { (name, value) =>
       if ("ctx" != name && "parent" != name) {
-        debug("binding " + name + ":" + value.getClass.getName) // obj.toString causes a mess...
+
+        var cls = value.getClass.getName
+
+        if(value.isInstanceOf[ListBuffer[_]] ||
+           value.isInstanceOf[List[_]] ||
+           value.isInstanceOf[Seq[_]]
+        )
+          cls = cls + "[Any]"
 
         // this here reveals a screwed up handling of $$ class names in scala
         //        razie.Debug ("binding " + name + ":"+value.getClass.getSimpleName) // obj.toString causes a mess...
         //      p.bind(name, value.getClass.getCanonicalName, value)
 
-        try {
-          p.bind(name, value.getClass.getName, value)
-        } catch {
-          case e: Exception => {
-            error("While binding variable: " + name + ":" + value.getClass.getName, e)
-          }
-        }
+
+          bindOne(p, name, cls, value)
       }
     }
   }
 
+  def bindOne(p: nsc.Interpreter, name: String, boundType: String, value: Any) = {
+    debug("binding " + name + ":" + boundType) // obj.toString causes a mess...
+    try {
+      p.bind(name, boundType, value)
+    } catch {
+      case e: Exception => {
+        error("While binding variable: " + name + ":" + boundType, e)
+      }
+    }
+  }
 }
 
 /**
- * will cache the environment, including the parser instance.
+  * will cache the environment, including the parser instance.
  * That way things defined in one script are visible to the next
  */
 class SBTScalaScriptContext(parent: ActionContext = null) extends ScalaScriptContext(parent) {
@@ -266,6 +288,7 @@ class ScalaScript(val script: String) extends RazScript with razie.Logging {
         Some(ctx.asInstanceOf[ScalaScriptContext])
       else None
 
+    // otherwise, make a new parser - inefficient
     val p = sctx.map(_.parser) getOrElse (sctx.get mkParser println)
 
     try {
@@ -310,6 +333,7 @@ class ScalaScript(val script: String) extends RazScript with razie.Logging {
 
     val c = new CSTimer("run-deb", "-")
     c.snap("1")
+    // otherwise, make a new parser - inefficient
     val p = sctx.map(_.parser) getOrElse (sctx.get mkParser println)
 
     try {

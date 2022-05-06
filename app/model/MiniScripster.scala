@@ -9,7 +9,7 @@ package model
 import javax.script.ScriptEngineManager
 import jdk.nashorn.api.scripting.{ClassFilter, NashornScriptEngineFactory}
 import razie.audit.Audit
-import razie.base.scriptingx.ScalaScript
+import razie.base.scriptingx.{NoBindSbtScalaContext, ScalaScript, ScalaScriptContext}
 import razie.wiki.model.{WikiEntry, WikiUser}
 import razie.{CSTimer, Logging, csys}
 import scala.util.Try
@@ -98,7 +98,7 @@ object MiniScripster extends Logging {
     } else if (lang == "scala") {
 
       try {
-        val res = WikiScripster.implScala.runScriptAny(script, lang, we, au, q, true)
+        val res = WikiScripster.implScalaWiki.runScriptTyped(script, lang, we, au, q, typed.getOrElse(Map.empty), true)
         Audit.logdb("SFIDDLE_EXEC", "scala", script)
         //        (true, res.toString)
         (true, res)
@@ -113,6 +113,7 @@ object MiniScripster extends Logging {
     } else (false, script)
   }
 
+  /** simple class filter */
   class MyCF extends ClassFilter {
     override def exposeToScripts(s: String): Boolean = {
       if (s.startsWith("api." /* WixUtils" */)) true;
@@ -123,6 +124,7 @@ object MiniScripster extends Logging {
     }
   }
 
+  /** quote strings vs numbers, if needed */
   def typeSafe(v: String): String = {
     if (v.trim.startsWith("\"") || v.trim.startsWith("'") || v.trim.startsWith("{") || v.trim.startsWith("[")) v
     else Try {
@@ -150,23 +152,24 @@ object MiniScripster extends Logging {
 
 /** specific for Scala scripts */
 trait ScalaScripster {
+  val mkCtx:() => ScalaScriptContext = () => new NoBindSbtScalaContext()
 
   // to reset the parser every 20 times
   var count = 0
 
   // todo this must be initialized later, but i'm not taking advantage of doing it on separate threads...
   // this is a var: it contains the parser instance and it's being reinintialized on errors and other conditions
-  var wikiCtx: Option[razie.base.scriptingx.NoBindSbtScalaContext] = None
+  var wikiCtx: Option[ScalaScriptContext] = None
 
   private def ctx = {
     if (!wikiCtx.isDefined) {
-      wikiCtx = Some(new razie.base.scriptingx.NoBindSbtScalaContext())
+      wikiCtx = Some(mkCtx.apply())
     }
     wikiCtx.get
   }
 
-  /** run the given script in the context of the given page and user as well as the query map */
-  def runScriptAny (s:String, lang: String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, String], devMode:Boolean=false): Any = synchronized {
+  /** run the given script in the context of the given page and user as well as the query map, no binding of values */
+  def runScriptTyped (s:String, lang: String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, String], typed: Map[String, Any], devMode:Boolean=false): Any = synchronized {
 
     Audit.logdb("WIKI_SCRIPSTER", "exec", lang+":"+s)
     try {
@@ -194,15 +197,19 @@ trait ScalaScripster {
     }
   }
 
-  /** run the given script in the context of the given page and user as well as the query map */
-  def runScriptAnyBinding (s:String, lang: String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, Any], devMode:Boolean=false): Any = synchronized {
+  /** same but bind vars */
+  def runScriptTypedWithBinding (s:String, lang: String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, String], typed: Map[String, Any], devMode:Boolean=false): Any = synchronized {
 
-    Audit.logdb("DIESEL_SCRIPSTER", "exec", lang+":"+s)
+    Audit.logdb("WIKI_SCRIPSTER", "exec", lang+":"+s)
     try {
       val c = new CSTimer("script", "?")
       c.start()
       ctx.clear // make sure there's nothing for hackers
+
+      typed.foreach{t => ctx.set(t._1, t._2)}
+
       val res = (ScalaScript(s).interactive(ctx) getOrElse "?")
+
       ctx.clear // make sure there's nothing for hackers
       c.stop()
 
@@ -222,7 +229,6 @@ trait ScalaScripster {
       }
     }
   }
-
 }
 
 
