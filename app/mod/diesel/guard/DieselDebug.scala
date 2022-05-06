@@ -10,16 +10,16 @@ object DieselDebug {
   private val AUTO = false
   private val SCHEDULED = true // allow scheduled pollers
 
-  private def DEVMODE = false//Config.isDevMode
+  private def DEVMODE = Config.isDevMode
 
   /** guardian settings */
   object Guardian {
 
     /** is in auto mode */
-    def ISAUTO = ALLENABLED && AUTO && Config.prop("diesel.guardian.auto", "true").toBoolean && !DEVMODE
+    def ISAUTO = ALLENABLED && AUTO && Config.prop("diesel.guardian.auto", "false").toBoolean && DEVMODE
 
     /** is in auto mode */
-    def ISSCHED = ALLENABLED && SCHEDULED && Config.prop("diesel.guardian.scheduled", "true").toBoolean && !DEVMODE
+    def ISSCHED = ALLENABLED && SCHEDULED && Config.prop("diesel.guardian.scheduled", "true").toBoolean //&& !DEVMODE
 
     /** sometimes you want it disabled in development in localhost */
     def ISENABLED_LOCALHOST = ALLENABLED && true
