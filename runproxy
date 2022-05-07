@@ -1,0 +1,7 @@
+
+_JAVA_OPTIONS="-J-Xms5g -J-Xmx5g -J-Xss2M -J-XX:MaxMetaspaceSize=1024M -J-XX:+CMSClassUnloadingEnabled"
+
+RK=/Users/raz/w/racerkidz
+
+sbt -jvm-debug 9999 -Ddiesel.testprop=tp -DDIESEL_DIESEL_RAZDEVINST=true -DdieselTestProp=dtp $_JAVA_OPTIONS $1 $2 $3
+

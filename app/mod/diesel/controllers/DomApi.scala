@@ -192,7 +192,6 @@ class DomApi extends DomApiBase with Logging {
     // not always the same as the request...
     val reactor = stok.website.dieselReactor
     val website = Website.forRealm(reactor).getOrElse(stok.website)
-    val xapikey = website.prop("diesel.xapikey")
 
       DieselMsg.logdb("DIESEL_FIDDLE_iRUNSTR", stok.au.map(_.userName).getOrElse("Anon"), s"EA : ${path.take(500)}")
 
@@ -203,7 +202,6 @@ class DomApi extends DomApiBase with Logging {
       // how to sign it? who can impersonate other users?
       val userId = settings.userId.map(new ObjectId(_)) orElse stok.au.map(_._id)
 
-
       val engine = strMsg.mkEngine
 
       engine.root.prependAllNoEvents(List(
@@ -212,7 +210,6 @@ class DomApi extends DomApiBase with Logging {
           AstKinds.DEBUG)
             .withStatus(DomState.SKIPPED)
       ))
-
 
       setHostname(engine.ctx.root)
 
@@ -223,25 +220,19 @@ class DomApi extends DomApiBase with Logging {
       val e = msg.map(_.entity).mkString
       val a = msg.map(_.met).mkString
 
-      val xx = stok.qhParm("X-Api-Key").mkString
-
-      def needsApiKey = xapikey.isDefined
-
-      def isApiKeyGood = xapikey.isDefined && xapikey.exists { x =>
-        x.length > 0 && x == xx
-      }
+      def isApiKeyGood = stok.validateXApiKey
 
       val isPublic = msg.exists(isMsgPublic(_, reactor, website))
       val isTrusted = isMemberOrTrusted(msg, reactor, website)
 
       engine.withInitialMsg(msg)
 
-      clog << s"irunDomSTRMSG: Message: $msg isPublic=$isPublic isTrusted=$isTrusted needsApiKey=$needsApiKey " +
+      clog << s"irunDomSTRMSG: Message: $msg isPublic=$isPublic isTrusted=$isTrusted " +
           s"isApiKeyGood=$isApiKeyGood"
 
-      if (isPublic || isTrusted || needsApiKey && isApiKeyGood) {
+      if (isPublic || isTrusted || isApiKeyGood) {
 
-        setApiKeyUser(needsApiKey, isApiKeyGood, website, engine)
+        setApiKeyUser(isApiKeyGood, website, engine)
 
         val RETURN501 = true // per realm setting?
 
@@ -371,7 +362,6 @@ class DomApi extends DomApiBase with Logging {
     // not always the same as the request...
     val reactor = stok.website.dieselReactor
     val website = Website.forRealm(reactor).getOrElse(stok.website)
-    val xapikey = website.prop("diesel.xapikey")
 
     // see if client wanted to force a response code
     stok.qhParm("dieselHttpResponse").filter(_ != "200").map {code =>
@@ -496,25 +486,19 @@ class DomApi extends DomApiBase with Logging {
          else msg
        )
 
-      val xx = stok.qhParm("X-Api-Key").mkString
-
-      def needsApiKey = xapikey.isDefined
-
-      def isApiKeyGood = xapikey.isDefined && xapikey.exists { x =>
-        x.length > 0 && x == xx
-      }
+      val isApiKeyGood = stok.validateXApiKey
 
       val isPublic = msg.exists(isMsgPublic(_, reactor, website))
       val isTrusted = isMemberOrTrusted(msg, reactor, website)
 
       engine.withInitialMsg(msg)
 
-      clog << s"irunDom: Message: $msg isPublic=$isPublic isTrusted=$isTrusted needsApiKey=$needsApiKey " +
+      clog << s"irunDom: Message: $msg isPublic=$isPublic isTrusted=$isTrusted " +
           s"isApiKeyGood=$isApiKeyGood"
 
-      if (isPublic || isTrusted || needsApiKey && isApiKeyGood) {
+      if (isPublic || isTrusted || isApiKeyGood) {
 
-        setApiKeyUser(needsApiKey, isApiKeyGood, website, engine)
+        setApiKeyUser(isApiKeyGood, website, engine)
 
         val msgAst = msg.map { msg =>
           EnginePrep.addMsgToAst(engine.root, msg)
@@ -669,7 +653,9 @@ class DomApi extends DomApiBase with Logging {
       "queryParams" -> qparams
     )
 
-    razie.js.tojsons(m) + "\n***************** body *****************\n" + rawBody
+    razie.js.tojsons(m) +
+        s"\n***************** body (${Enc.niceNumber(rawBody.length)} length) *****************\n" +
+        rawBody
   }
 
   /**
@@ -687,7 +673,6 @@ class DomApi extends DomApiBase with Logging {
     // not always the same as the request...
     val reactor = stok.website.dieselReactor
     val website = Website.forRealm(reactor).getOrElse(stok.website)
-    val apiKey = website.prop("diesel.xapikey")
 
     val postDetails1 = verb + " " + path
     val postDetails2 = stok.headers
@@ -872,24 +857,19 @@ class DomApi extends DomApiBase with Logging {
         msg.get.spec = spec(msg.get.entity, msg.get.met)(engine.ctx)
       }
 
+      val isApiKeyGood = stok.validateXApiKey
 
-      cdebug << s"Message found: ${Enc.shorten(msg.toString, 5000)} xapikey=$apiKey"
-
-      val xx = stok.qhParm("X-Api-Key").mkString
-      val needsApiKey = apiKey.isDefined
-      val isApiKeyGood = apiKey.isDefined && apiKey.exists { x =>
-        x.length > 0 && x == xx
-      }
+      cdebug << s"Message found: ${Enc.shorten(msg.toString, 5000)} isApiKeyGood=$isApiKeyGood"
 
       // add a debug point with the post info
       val desc = (DomAst(EInfo(postDetails1, postDetails2.toString), AstKinds.DEBUG).withStatus(DomState.SKIPPED))
 //      engine.root.append(desc)(engine)
 
       // is message visible?
-      if (msg.isDefined && isMsgVisible(msg.get, reactor, website) || isMemberOrTrusted(msg, reactor, website) || needsApiKey && isApiKeyGood) {
+      if (msg.isDefined && isMsgVisible(msg.get, reactor, website) || isMemberOrTrusted(msg, reactor, website) || isApiKeyGood) {
         msg.map {msg=>
 
-        setApiKeyUser(needsApiKey, isApiKeyGood, website, engine)
+        setApiKeyUser(isApiKeyGood, website, engine)
 
         val msgAst = EnginePrep.addMsgToAst(engine.root, msg)
         DomCollector.collectAst("runRest", stok.realm, engine.id, stok.au.map(_.id), engine, stok.uri)
@@ -1657,8 +1637,9 @@ class DomApi extends DomApiBase with Logging {
       )
   }
 
-  def setApiKeyUser (needsApiKey:Boolean, isApiKeyGood:Boolean, website:Website, engine:DomEngine)(implicit stok:RazRequest) = {
-    if(stok.au.isEmpty && engine.settings.userId.isEmpty && needsApiKey && isApiKeyGood) {
+  /** only call this if an api key was required and present */
+  def setApiKeyUser (isApiKeyGood:Boolean, website:Website, engine:DomEngine)(implicit stok:RazRequest) = {
+    if(stok.au.isEmpty && engine.settings.userId.isEmpty && isApiKeyGood) {
       // no user in request, but xapikey passed - set the default test user
       (new EECtx).setAuthUser(engine.ctx)
       engine.settings.userId = engine.ctx.get(DIESEL_USER_ID)

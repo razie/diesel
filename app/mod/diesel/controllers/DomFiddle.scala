@@ -62,7 +62,7 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
     Services.wikiAuth.canEdit(wid, u, w, props)(errCollector)
 
   /** display the play sfiddle screen */
-  def playDom(iSpecWpath:String, iStoryWpath:String, line:String, col:String) = FAUR { implicit stok =>
+  def playDom(iSpecWpath:String, iStoryWpath:String, line:String, col:String, refreshing:String) = FAUR { implicit stok =>
     val reactor = stok.realm
 
     //1. which wids were you looking at last?
@@ -130,8 +130,46 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
         id,
         wp,
         line,
-        col)
+        col,
+        refreshing)
     }
+  }
+
+  /** check contents and get the latest, when user navigates back */
+  def checkContents(id:String) : Action[AnyContent] = RAction.withAuth.noRobots { implicit stok =>
+      log(s"checkContents ${stok.realm}")
+      val specWpath = stok.formParm("specWpath")
+      val storyWpath = stok.formParm("storyWpath")
+
+      // todo need better auth - verify wid auth, user belongs to realm etc
+
+      val reactor = stok.formParm("reactor")
+      val spec = stok.formParm("spec")
+      val story = stok.formParm("story")
+      val stw = WID.fromPath(storyWpath).flatMap(_.page).map(_.content).getOrElse(SAMPLE_STORY)
+      var clientTimeStamp = stok.formParm("clientTimeStamp")
+
+      val origSpec = WID.fromPath(specWpath).flatMap(_.page).map(_.content).getOrElse(SAMPLE_SPEC)
+    val origStoryWe = WID.fromPath(storyWpath).flatMap(_.page)
+    val origStory = origStoryWe.map(_.content).getOrElse(SAMPLE_STORY)
+
+    //2 their contents
+    val newspec = Autosave.OR("wikie", WID.fromPathWithRealm(specWpath, reactor).get, stok.au.get._id, Map(
+      "content" -> origSpec
+    )).apply("content")
+
+    val newstory = Autosave.OR("wikie", WID.fromPathWithRealm(storyWpath, reactor).get, stok.au.get._id, Map(
+      "content" -> origStory
+    )).apply("content")
+
+//    val newcapture = Autosave.OR("DomFidCapture",WID("","").r(reactor), stok.au.get._id, Map(
+//      "content"  -> "Paste AST capture here"
+//    )).apply("content")
+
+    val newid = java.lang.System.currentTimeMillis().toString()
+
+    if(spec.trim != newspec.trim || story.trim != newstory.trim) Ok ("refresh")
+    else Ok("fine")
   }
 
   /**
@@ -552,8 +590,8 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
     * @param id - unique session / page Id, used to identify WebSocket customers too
     * @return
     */
-  def checkfiddleStoryUpdated(id: String) : Action[AnyContent] = RAction { implicit stok=>
-    val stimer = new CSTimer("checkfiddleStoryUpdated", id)
+  def checkEngineStatus(id: String) : Action[AnyContent] = RAction { implicit stok=>
+    val stimer = new CSTimer("checkEngineStatus", id)
     stimer start "heh"
 
     var clientTimeStamp = stok.formParm("clientTimeStamp")

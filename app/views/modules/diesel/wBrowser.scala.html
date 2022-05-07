@@ -7,6 +7,8 @@ the relationships of a page
 @import razie.wiki.model.WikiSearch
 @(realm:String, page:Option[WikiEntry], location:String)(implicit stok:controllers.StateOk)@import razie.wiki.model.WikiSearch
 
+@** if(stok.au.isDefined && **@
+
 @if(stok.au.isDefined &&
     stok.request.get.cookies.find(_.name == "weBrowser").map(_.value).mkString == "true" &&
     (stok.website.prop("wbrowser.location").exists(x=> x == location) || location == "browse")) {

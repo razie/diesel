@@ -19,7 +19,8 @@ a JS with HTML and CSS fiddle
     id:String = java.lang.System.currentTimeMillis().toString(),
     wpath:String,
     line:String,
-    col:String
+    col:String,
+  refreshing:String
     )(implicit stok:controllers.StateOk)
 
 <div style="margin-left: 20px; margin-right: 20px">
@@ -413,6 +414,60 @@ var lastStartTime = new Date().getTime();
 var lastRequestTime = new Date().getTime();
 var lastProcessTime = null;
 
+/** check contents on reload / back */
+var checkContents_@id = function(id) {
+  @*var sspec = $("#origSpec_@id").text(); //specEditor.getValue();*@
+  @*var sstory = $("#origStory_@id").text(); //storyEditor.getValue();*@
+  var sspec = specEditor.getValue();
+  var sstory = storyEditor.getValue();
+  console.log("checkContents...");
+
+  $.ajax(
+      '/diesel/fiddle/checkContents/@id', {
+        type: 'POST',
+        data: $.param({
+          sketchMode : $('#sketchMode').prop('checked'),
+          mockMode : $('#mockMode').prop('checked'),
+          blenderMode : $('#blenderMode').prop('checked'),
+          draftMode : $('#draftMode').prop('checked'),
+          reactor : '@reactor',
+          specWpath : specWpath,
+          storyWpath : storyWpath,
+          simMode : simMode(),
+          clientTimeStamp: clientSpecTimeStamp,
+          spec : sspec,
+          story : sstory,
+          capture : editor5.getValue()
+        }),
+        contentType: 'application/x-www-form-urlencoded',
+
+        success: function(data) {
+          if(data == "refresh") {
+            console.log("Contents OUTDATED - refreshing!");
+
+            var r = '@refreshing';
+
+            if( 'no' == r ) {
+              var q = window.location.search;
+
+              if(q.length > 0) q = q + "&refreshing=yes";
+              else q = "?refreshing=yes";
+              window.location.href = window.location.href.replace(/\?.*/, '') + q;
+              // window.location.reload()
+            } else {
+              alert("Contents likely changed - you should refresh page!");
+            }
+          } else {
+            console.log("Contents OK");
+          }
+        },
+
+        error  : function(x) {
+          console.log( "ERR "+JSON.stringify(x));
+        }
+      });
+}
+
 /** run on spec changes */
 var runpill_@id = function(id) {
   isRefreshing += 1;
@@ -575,7 +630,7 @@ var checkpill2_@id = function(id) {
   lastRequestTime = new Date().getTime();
 
   $.ajax(
-      '/diesel/fiddle/checkfiddleStoryUpdated/'+id+'?@Html(mod.diesel.controllers.SFiddles.qtourl(args))', {
+      '/diesel/fiddle/checkEngineStatus/'+id+'?@Html(mod.diesel.controllers.SFiddles.qtourl(args))', {
         type: 'POST',
         data: $.param({
           clientTimeStamp: clientStoryTimeStamp,
@@ -995,12 +1050,14 @@ var findInTree = function(wp, editor) {
 var findUsagesStory = function(editor) { findUsages(storyWpath, editor); }
 var findUsagesSpec = function(editor) { findUsages(specWpath, editor); }
 
-
 attachAce();
+
+checkContents_@{id}();
 
 var ignoreFirstTime = true;
 
-setInterval(function(){
+
+var refreshFunc = function() {
   var curMillis = Date.now();
 
   // some timing issues with the ACE setup?
@@ -1040,7 +1097,7 @@ setInterval(function(){
     captureChanged=false;
     lastChangeMillis = curMillis;
     runpill_@{id}('@{id}');
-    }
+  }
 
   // if changed and last updated a while ago, refresh
   if(instChanged && curMillis - lastChangeMillis > currDebounce) {
@@ -1057,7 +1114,10 @@ setInterval(function(){
       runpill2_@{id}('@{id}', false);
     });
   }
-},500);
+};
+
+
+setInterval(refreshFunc, 500);
 
 </script>
 

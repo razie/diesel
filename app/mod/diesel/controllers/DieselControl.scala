@@ -273,7 +273,7 @@ class DieselControl extends RazController with Logging {
 
   // todo deprecate - list2 works well now
   def listAll(plugin: String, conn: String, cat: String, ipath: String,
-              start: Long, limit: Long) = RAction.withAuth.noRobots { implicit request =>
+              start: Long, limit: Long) = RAction./*withAuth.*/noRobots { implicit request =>
 
     val ref = SpecRef.make(request.realm, plugin, conn, cat, "")
     val res = DomInventories.listAll(ref, start, limit, Array.empty[String])

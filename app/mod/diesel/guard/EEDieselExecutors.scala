@@ -28,7 +28,7 @@ import razie.diesel.utils.DomCollector
 import razie.hosting.{Website, WikiReactors}
 import razie.wiki.admin.{GlobalData, SendEmail}
 import razie.wiki.model.WikiConfigChanged
-import razie.wiki.{Config, Services}
+import razie.wiki.{Config, Enc, Services}
 import razie.{cdebug, clog}
 import scala.collection.JavaConverters._
 import scala.collection.mutable.{HashMap, ListBuffer}
@@ -325,7 +325,7 @@ object EEDieselExecutors {
         if (vn != -1 && prefix.nonEmpty)
           s.put(
             "os.nice." + method.getName(),
-            nice(vn)
+            Enc.niceNumber(vn)
           )
       } // if
     } // for
@@ -348,15 +348,4 @@ object EEDieselExecutors {
 
     s
   }
-
-  def nice(l: Long) =
-    if (l > 2L * (1024L * 1024L * 1024L))
-      l / (1024L * 1024L * 1024L) + "G"
-    else if (l > 2 * (1024L * 1024L))
-      l / (1024L * 1024L) + "M"
-    else if (l > 1024)
-      l / 1024 + "K"
-    else
-      l.toString
-
 }

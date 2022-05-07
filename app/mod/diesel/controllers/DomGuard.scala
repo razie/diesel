@@ -10,6 +10,7 @@ import mod.diesel.guard.DomGuardian.startCheck
 import mod.diesel.model._
 import model._
 import org.bson.types.ObjectId
+import org.joda.time.DateTime
 import play.twirl.api.Html
 import razie.audit.Audit
 import razie.diesel.dom._
@@ -275,18 +276,19 @@ class DomGuard extends DomApiBase with Logging {
             else if(a.engine.paused) s"<b>paused!</b>"
             else s"<b>${a.engine.status}</b>"
 
+          val dtm = a.dtm.toLocalDateTime
+
           // todo this is mean
           s"""
-             |<td>${i}</td>
              |<td><a href="/diesel/viewAst/${a.id}">...${a.id.takeRight(4)}</a></td>
              |<td>${a.stream}</td>
              |<td>${a.realm}</td>
              |<td><span title="${a.collectGroup}">${a.collectGroup.takeRight(8)}</span></td>
              |<td>${uname}</td>
              |<td>$st</td>
-             |<td>${a.dtm.toString("HH:mm:ss.SS")}</td>
+             |<td title="${dtm.toLocalDate.toString()}">${dtm.toString("HH:mm:ss.SS")}</td>
              |<td align="right">$duration</td>
-             |<td><small><code>${Enc.escapeComplexHtml(a.engine.description)}</code></small></td>
+             |<td><small><code>${Enc.escapeComplexHtml(a.engine.description.take(200))}</code></small></td>
              |<td><small><code>${Enc.escapeComplexHtml(a.engine.resultingValue.take(200))}</code></small></td>
              |<td> </td>
              |""".stripMargin
@@ -296,14 +298,13 @@ class DomGuard extends DomApiBase with Logging {
            |<small>
            |<table class="table table-condensed">
            |<tr>
-           |<th>No</th>
            |<th>Id</th>
            |<th>Stream</th>
            |<th>Realm</th>
            |<th>Group</th>
            |<th>User</th>
            |<th>Status</th>
-           |<th>dtm</th>
+           |<th>Dtm</th>
            |<th class="text-right">Msec</th>
            |<th>Desc</th>
            |<th>Result</th>

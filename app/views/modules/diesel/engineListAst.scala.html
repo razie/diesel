@@ -1,7 +1,7 @@
 @**
-view the list of engines
+view the list of engines - the html was prepared separately and come
 **@
-@(title:String, title2:String, x:String)(implicit stok: controllers.StateOk)
+@(title:String, title2:String, content:String)(implicit stok: controllers.StateOk)
 
 <script src="@routes.Assets.at("javascripts/weCommons.js")"></script>
 <script src="@routes.Assets.at("javascripts/weDieselDom.js")"></script>
@@ -19,8 +19,7 @@ view the list of engines
 
 <br><br>
 
-@Html(x)
-
+@Html(content)
 
 <script>
 var refreshMode = true;
