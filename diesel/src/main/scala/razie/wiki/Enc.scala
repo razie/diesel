@@ -108,6 +108,17 @@ object Enc {
       s
     }
   }
+
+  /** format nice k/m/g numbers, binary */
+  def niceNumber(l: Long) =
+    if (l > 2L * (1024L * 1024L * 1024L))
+      l / (1024L * 1024L * 1024L) + "G"
+    else if (l > 2 * (1024L * 1024L))
+      l / (1024L * 1024L) + "M"
+    else if (l > 1024)
+      l / 1024 + "K"
+    else
+      l.toString
 }
 
 object EncUrl {

@@ -24,6 +24,9 @@ case class EScope(msg: String, scope: Option[EMsg], details: String = "") extend
     this
   }
 
+  // todo use this
+  //  def isStrict = scope.exists(_.attrs.find(p => p.name == "strict").exists(_.value.map(_.asBoolean).getOrElse(false)))
+
   override def toHtml =
     kspan("info", "default") +
         (
