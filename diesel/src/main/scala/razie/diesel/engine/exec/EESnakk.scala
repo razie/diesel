@@ -90,10 +90,7 @@ class EESnakk extends EExecutor("snakk") with Logging {
     // add the resulting values
     strs.map { x =>
       if(x.isOfType(WTypes.wt.EXCEPTION)) {
-        if(x.value.isDefined)
-          EError(x.dflt).withPos(in.pos)
-        else
-          new EError(x.dflt, x.value.get.asInstanceOf[Throwable]).withPos(in.pos)
+        new EError("Exception: " + x.dflt, x.value.get.asThrowable).withPos(in.pos)
       } else {
         EVal(x).withPos(in.pos)
       }
@@ -198,7 +195,7 @@ class EESnakk extends EExecutor("snakk") with Logging {
 
 //          eres += EInfo("Snakking " + x.toString, Enc.escapeHtml(trimmed(sc.toCurl))).withPos(pos)
           eres += EInfo("Snakking " + x.toString).withPos(pos)
-          eres += new EVal(P.fromTypedValue("snakkCurl", trimmed(sc.toCurl))).withKind(AstKinds.TRACE)
+          eres += new EVal(P.fromTypedValue("snakkCurl", trimmed(sc.toCurl))).withKind(AstKinds.DEBUG)
 
           response = sc.body // make the call
 
@@ -275,10 +272,7 @@ class EESnakk extends EExecutor("snakk") with Logging {
       // add the resulting values
       eres += strs.map { x =>
         if(x.isOfType(WTypes.wt.EXCEPTION)) {
-          if(x.value.isDefined)
-            EError(x.dflt).withPos(pos)
-          else
-            new EError(x.dflt, x.value.get.asInstanceOf[Throwable]).withPos(pos)
+          new EError("Exception: " + x.currentStringValue, x.value.get.asThrowable).withPos(pos)
         } else {
 //          ctx.getScopeCtx.put(x)  // todo should we propagate securely the snakk parms?
           EVal(x).withPos(pos)
@@ -778,7 +772,7 @@ object EESnakk {
       results.toList.flatMap {res=>
         output.toList.map(name=>P.fromTypedValue(name, res, WTypes.JSON)) :::
           EVal(P.fromTypedValue(PAYLOAD, res, WTypes.JSON)) :: Nil
-      } ::: parsed.getErrors.map(EError(_))
+      } ::: parsed.getErrors.map(x=> EError("Parsing err: " + x))
     }
   }
 
@@ -800,7 +794,7 @@ object EESnakk {
     results.getResult.toList.flatMap {res=>
       output.toList.map(name=>P(name, res)) :::
         EVal(P(PAYLOAD, res)) :: Nil
-    } ::: results.getErrors.map(EError(_))
+    } ::: results.getErrors.map(x=> EError("FFD Err: " + x))
   }
 
   override def toString = "$executor::snakk "

@@ -20,6 +20,24 @@ class RazRequest (irealm:String, iau:Option[User], val ireq:Request[_], operatio
     ireq
   )
 
+  /** check if an api key is needed in this realm and one is passed in and it's matthing OR also true if none is needed */
+  // todo should be per user and user assigned to reactor I think... but we can also do per reactor, what the heck
+  // todo see the needsApiKey logic - if not assigned per realm, we'll need a diesel.needsApikey setting then...
+  def validateXApiKey = {
+    val reactor = stok.website.dieselReactor
+    val website = Website.forRealm(reactor).getOrElse(stok.website)
+    val xapikey = website.prop("diesel.xapikey")
+
+    def needsApiKey = xapikey.isDefined // just for historical reasons - this meant "needsApiKey"
+    val xx = this.qhParm("X-Api-Key").mkString
+
+    val isApiKeyGood = xapikey.isDefined && xapikey.exists { x =>
+      x.length > 0 && x == xx
+    }
+
+    isApiKeyGood
+  }
+
   def req = ireq.asInstanceOf[Request[AnyContent]]
   def oreq = Some(ireq)
   //  lazy val au =
