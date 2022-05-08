@@ -46,39 +46,48 @@ case class CExpr[T](ee: T, ttype: WType = WTypes.wt.EMPTY) extends Expr {
       // expand templates by default
       // important: only for STRING or unknown (default is string)
       // binary or other representations MUST NOT GO THROUGH expansion, duh!
-      if ((ttype.isEmpty || ttype.name == WTypes.STRING) && (es contains "${")) {
-        var s1 = ""
-        try {
-          val PAT = """(?<!\$)\$\{([^\}]*)\}""".r
-          val eeEscaped = es
-              .replaceAllLiterally("(", """\(""")
-              .replaceAllLiterally(")", """\)""")
-          s1 = PAT.replaceAllIn(es, {
-            m =>
-              (new SimpleExprParser).parseExpr(m.group(1)).map { e =>
-                val res = P("x", "", WTypes.wt.EMPTY, Some(e)).calculatedValue
 
-                // if the parm's value contains $ it would not be expanded - that's enough, eh?
-                // todo recursive expansions?
-                var e1 = res
-                    .replaceAllLiterally("\\", "\\\\") // escape escaped
-                    .replaceAll("\\$", "\\\\\\$")
-                // should not escape double quotes all the time !!
+      var nes = es // loop expanding it here...
+
+      if ((ttype.isEmpty || ttype.name == WTypes.STRING) && (nes contains "${")) {
+//        while (nes contains "${") {
+          var s1 = ""
+          try {
+            val PAT = """(?<!\$)\$\{([^\}]*)\}""".r
+            val eeEscaped = nes
+                .replaceAllLiterally("(", """\(""")
+                .replaceAllLiterally(")", """\)""")
+            s1 = PAT.replaceAllIn(nes, {
+              m =>
+                (new SimpleExprParser).parseExpr(m.group(1)).map { e =>
+                  val res = P("x", "", WTypes.wt.EMPTY, Some(e)).calculatedValue
+
+                  // if the parm's value contains $ it would not be expanded - that's enough, eh?
+                  // todo recursive expansions?
+                  var e1 = res
+                      .replaceAllLiterally("\\", "\\\\") // escape escaped
+                      .replaceAll("\\$", "\\\\\\$")
+                  // should not escape double quotes all the time !!
 //                e1 = e1
 //                    .replaceAll("^\"", "\\\\\"") // escape double quotes
 //                e1 = e1
 //                    .replaceAll("""([^\\])"""", "$1\\\\\"") // escape unescaped double quotes
 
-                e1
-              } getOrElse
-                  s"{ERROR: ${m.group(1)}"
-          })
-        } catch {
-          case e: Exception =>
-            throw new DieselExprException(s"REGEX err for $es - " + e.getMessage)
-                .initCause(e)
-        }
-        P("", "", ttype).withCachedValue(s1, ttype, s1)
+                  e1
+                } getOrElse
+                    s"{ERROR: ${m.group(1)}"
+            })
+          } catch {
+            case e: Exception =>
+              throw new DieselExprException(s"REGEX err for $es - " + e.getMessage)
+                  .initCause(e)
+          }
+
+          nes = s1
+//        }
+
+      P("", "", ttype).withCachedValue(nes, ttype, nes)
+
       } else
         P("", "", ttype).withCachedValue(ee, ttype, es)
     }
