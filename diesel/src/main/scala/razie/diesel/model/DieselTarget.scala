@@ -49,7 +49,17 @@ object DieselTarget {
     } else {
       val w = Wikis(realm)
       val tags = tq.and("spec").tags
-      val irdom = (
+      val specs = new TagQuery("spec")
+
+      //a) are they all specs?
+//      var wes1 = EnginePrep.catPages("Spec", realm, overwriteTopics = true)
+//      wes1 = wes1
+//          .filter(tq.matches)
+//      val a = wes1
+
+      //b) this works better atm.
+      // find current by tags and add all specs from mixins (those are not filtered by tag query, so you can inherit DB, inventory and generic stuff)
+      val irdom2 = (
           WikiSearch.getList(realm, "", "", tags) :::
               w.mixins.flattened.flatMap(r =>
                 WikiSearch
@@ -57,8 +67,11 @@ object DieselTarget {
                     .filter(x => !(x.tags.contains("private")))
               )
           )
+      val b = EnginePrep.mixinEntries(irdom2)
 
-      EnginePrep.mixinEntries(irdom)
+      // todo also this? .filter(x => !(x.tags.contains("exclude")))
+
+      b
     }
 
     wes.map(_.wid.toSpecPath)
