@@ -40,12 +40,11 @@ trait DomParser extends ParserBase with ExprParser {
 
   // todo this disables the caching for all specs !!! superbad as they get compiled over and over
   /** non cacheable */
-  def lazyNoCacheable(f: (StrAstNode, FoldingContext[DSpec, DUser]) => StrAstNode) =
+  def lazyNoCacheable (f: (StrAstNode, FoldingContext[DSpec, DUser]) => StrAstNode) =
     LazyAstNode[DSpec, DUser](f)
 
-  // todo this disables the caching for all specs !!! superbad as they get compiled over and over
   /** cacheable */
-  def lazystatic(f: (StrAstNode, StaticFoldingContext[DSpec]) => StrAstNode) =
+  def lazystatic      (f: (StrAstNode, StaticFoldingContext[DSpec]) => StrAstNode) =
     LazyStaticAstNode[DSpec](f)
 
   // todo replace $ with . i.e. .class
@@ -739,10 +738,16 @@ trait DomParser extends ParserBase with ExprParser {
   /**
     * .def name (a,b) : String lang {{ ... }}
     */
-  def pdef: PS = keyw("[.$]def *".r) ~ qident ~ optAttrs ~ optType ~ optScript ~ optBlock ^^ {
-    case k ~ name ~ attrs ~ optType ~ script ~ block => {
+  def pdef: PS = keyw("[.$]def *".r) ~ qident ~ optAttrs ~ optType ~
+      opt(ows ~> ("js" | "scala" | "sc")) ~
+      optScript ~  /* multiline body */
+      optBlock ^^ /* single line body */
+  {
+    case k ~ name ~ attrs ~ optType ~ optLang ~ script ~ block => {
       lazyNoCacheable { (current, ctx) =>
-        val f = F(name, attrs, optType, "def", script.fold(ctx).s, block)
+//      lazystatic { (current, ctx) =>
+        // todo why is this nocache? it' doesn't run the JS, just defines it...
+        val f = F(name, optLang.getOrElse("js"), attrs, optType, "def", script.fold(ctx).s, block)
         f.withPos(mkPos(ctx, k))
         collectDom(f, ctx.we)
         StrAstNode(f.toHtml)
