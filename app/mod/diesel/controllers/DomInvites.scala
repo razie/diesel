@@ -103,8 +103,7 @@ class DomInvites @Inject() (config:Configuration) extends mod.diesel.controllers
         // overwrite host if local url is specified
         val nhost = if (razie.wiki.WikiConfig.getInstance.get.isOverriden("local.url")) None else Some(
           Website.forRealm(request.realm).getOrElse(request.website).domain)
-        val sec = SecLink(link, nhost,
-          10, DateTime.now.plusDays(5))
+        val sec = SecLink(link, nhost, 10, DateTime.now.plusDays(5))
             .withProp("email", email)
             .withProp("realm", request.realm)
         Msg("Invite link: " + sec.secUrl, "   code: " + sec.id)

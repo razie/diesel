@@ -690,7 +690,8 @@ deleteDraft = function() {
     }),
     contentType: 'application/x-www-form-urlencoded',
     success: function(data) {
-      window.location = "@controllers.WikiUtil.wr(wid, stok.realm, false)" + "?" + q;
+      q = q.replaceAll("?", "&");
+      window.location = "@controllers.WikiUtil.wr(wid, stok.realm, false)" + q;
     },
     error  : function(x) {
       console.log( "ERR "+x.toString());

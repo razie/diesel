@@ -71,6 +71,7 @@ class wix (owe: Option[WikiPage], ou:Option[WikiUser], q:Map[String,String], r:S
   val user = new {
     def userName = iuser.get.userName
     def firstName = iuser.get.firstName
+    def lastName = iuser.get.lastName
     def email = iuser.get.emailDec
     def ename = iuser.get.ename
     def isDefined = iuser.isDefined
@@ -145,6 +146,7 @@ class wix (owe: Option[WikiPage], ou:Option[WikiUser], q:Map[String,String], r:S
       "user" -> (if(iuser.isDefined) Map(
         "userName" -> iuser.get.userName,
         "firstName" -> iuser.get.firstName,
+        "lastName" -> iuser.get.lastName,
         "ename" -> iuser.get.ename,
         "email" -> iuser.get.emailDec,
         "isDefined" -> iuser.isDefined,
