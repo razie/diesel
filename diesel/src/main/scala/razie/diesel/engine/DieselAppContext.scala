@@ -7,6 +7,8 @@ package razie.diesel.engine
 
 import akka.actor.{Actor, ActorRef, ActorSystem, Props}
 import akka.util.Timeout
+import java.util.concurrent.atomic.AtomicLong
+import java.util.function.LongUnaryOperator
 import razie.{Logging, clog}
 import razie.audit.Audit
 import razie.diesel.dom.RDomain
@@ -191,6 +193,7 @@ object DieselAppContext extends Logging {
 
     GlobalData.dieselStreamsTotal.incrementAndGet()
     GlobalData.dieselStreamsActive.incrementAndGet()
+
     DieselAppContext.activeStreamsByName.put(stream.name, stream)
     DieselAppContext.activeStreams.put(stream.id, stream)
     DieselAppContext.activeActors.put(stream.id, a)
