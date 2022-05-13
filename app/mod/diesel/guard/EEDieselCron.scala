@@ -75,6 +75,7 @@ class EEDieselCron extends EExecutor("diesel.cron") {
         val cronExpr = ctx.get("cronExpr").mkString
         val time = ctx.get("time").mkString
         val endTime = ctx.get("endTime").mkString
+        val isSync = ctx.get("inSequence").mkString == "true"
 
         val now = new DateTime(ISOChronology.getInstanceUTC()) //DateTime.now()
 
@@ -129,6 +130,7 @@ class EEDieselCron extends EExecutor("diesel.cron") {
           cdebug << "EEDiselCron: set 1"
           val res = DieselCron.createSchedule(name, schedule, cronExpr, time, endTime, realm, env,
             ctx.root.engine.map(_.id).mkString,
+            isSync,
             count, tickM, doneM)
           cdebug << "EEDiselCron: set 2"
 

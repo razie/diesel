@@ -6,40 +6,29 @@
   * */
 package mod.diesel.guard
 
-import akka.actor.{Actor, ActorRef, Cancellable, Props}
+import akka.actor.{Actor, ActorContext, ActorRef, Cancellable, Props}
 import akka.pattern.ask
 import akka.util.Timeout
 import com.razie.pub.comms.CommRtException
 import java.net.InetAddress
 import java.util.concurrent.TimeUnit
-import mod.diesel.guard.DieselCron.{clog, qsched}
+import mod.diesel.guard.DieselCron.clog
 import org.joda.time.DateTime
-import org.joda.time.chrono.ISOChronology
 import org.quartz.CronScheduleBuilder.cronSchedule
 import org.quartz.JobBuilder.newJob
-import org.quartz.SimpleScheduleBuilder.simpleSchedule
 import org.quartz.TriggerBuilder.newTrigger
 import org.quartz.impl.matchers.GroupMatcher
 import org.quartz.{Job, JobExecutionContext, JobKey, TriggerKey}
 import play.libs.Akka
-import razie.diesel.Diesel
-import razie.diesel.dom.RDOM.P
-import razie.diesel.dom._
-import razie.diesel.engine.exec.EExecutor
-import razie.diesel.engine.nodes.{EError, EMsg, EVal, _}
-import razie.diesel.engine.{DieselAppContext, DieselException, DomAst, DomEngineSettings}
-import razie.diesel.expr.ECtx
+import razie.diesel.engine.{DieselAppContext, DieselException}
 import razie.diesel.model.{DieselMsg, DieselMsgString, DieselTarget}
 import razie.hosting.Website
-import razie.hosting.Website.realm
-import razie.tconf.TagQuery
+import razie.wiki.Config
 import razie.wiki.admin.GlobalData
-import razie.wiki.{Config, Services}
-import razie.{Logging, Snakk, cdebug}
-import scala.collection.mutable.HashMap
-import scala.concurrent.Await
-import scala.concurrent.duration.{Duration, FiniteDuration, _}
+import razie.{Logging, Snakk}
 import scala.collection.concurrent.TrieMap
+import scala.concurrent.duration.{Duration, FiniteDuration, _}
+import scala.concurrent.{Await, Future}
 
 /** in-mem representation of an on-going schedule */
 case class DomSchedule(
@@ -53,12 +42,14 @@ case class DomSchedule(
   realm: String,
   env: String,
   dieselParentId: String,
+  inSequence:Boolean=false,
   count: Long = 0l,
-  singleton: Boolean = true,
-  ref: Option[Cancellable] = None
+  singleton: Boolean = true
 ) {
+  var ref: Option[Cancellable] = None
   var currCount: Long = 0l
   var actualSched = "?"
+  var scheduleActor:Option[ActorRef] = None // if the schedule is sync, it has its own actor
 
   def isOnce = timeExpr.nonEmpty && schedExpr.isEmpty && cronExpr.trim.isEmpty
 
@@ -125,15 +116,21 @@ object DieselCron extends Logging {
   protected val d30 = Duration.create(30, TimeUnit.SECONDS)
   protected val d10s = Duration.create(10, TimeUnit.SECONDS)
 
-  import org.quartz.SchedulerFactory
   import org.quartz.impl.StdSchedulerFactory
 
   val qsf = new StdSchedulerFactory
   val qsched = qsf.getScheduler
 
-  case class Cancel(realm: String, schedId: String)
+  /** message to cancel a request
+    *
+    * @param realm
+    * @param schedId
+    * @param alreadyRemoved some may need to remove it first and then ask kindly...
+    */
+  case class CancelMsg(realm: String, schedId: String, alreadyRemoved:Option[DomSchedule]=None)
 
-  case class CreateSchedule(schedId: String,
+  /** message to create a request */
+  case class CreateScheduleMsg(schedId: String,
                             schedExpr: String,
                             cronExpr: String,
                             time: String,
@@ -141,6 +138,7 @@ object DieselCron extends Logging {
                             realm: String,
                             env: String,
                             parent: String,
+                            inSequence:Boolean=false,
                             count: Long,
                             cronMsg: Either[DieselMsg, DieselMsgString],
                             doneMsg: Either[DieselMsg, DieselMsgString]
@@ -152,7 +150,7 @@ object DieselCron extends Logging {
     )
   }
 
-  /** the worker - main manager of all crons.
+  /** the worker - main manager of all crons, sync for management and dispatch for work.
     *
     * it creates and manages schedules
     *
@@ -164,25 +162,24 @@ object DieselCron extends Logging {
 
     def receive = {
 
-      case sc@DomSchedule(id, expr, cronExpr, time, endTime, cronMsg, doneMsg, r, e, p, c, singleton,
-      ak) => /*DieselCron.synchronized*/ {
+      case sc : DomSchedule => {
 
         // schedule triggered - forward to realm actor, so it runs in seq per realm, not holding up others
         info(s"DomSchedule triggered - forward to realm actor: ${sc.schedId}")
         trace(s"DomSchedule triggered - forward to realm actor: $sc")
 
-        if (!realmActors.contains(r)) {
-          info(s"Creating realmActor for: $r")
-          val ra = DieselAppContext.actorOf(Props(new CronRealmActor(r)), name = "CronRealmActor-" + r)
-          realmActors.put(r, ra)
+        if (!realmActors.contains(sc.realm)) {
+          info(s"Creating realmActor for: ${sc.realm}")
+          val ra = DieselAppContext.actorOf(Props(new CronRealmActor(sc.realm)), name = "CronRealmActor-" + sc.realm)
+          realmActors.put(sc.realm, ra)
         }
 
         // dispatch it to realm actor
-        debug(s"  Dispatching to realmActor for: $r")
-        realmActors.get(r).map(_ ! sc)
+        debug(s"  Dispatching to realmActor for: ${sc.realm}")
+        realmActors.get(sc.realm).map(_ ! sc)
       }
 
-      case cs@CreateSchedule(schedId, schedExpr, cronExpr, time, endTime, realm, env, parent, count, cronMsg,
+      case cs @ CreateScheduleMsg(schedId, schedExpr, cronExpr, time, endTime, realm, env, parent, inSequence, count, cronMsg,
       doneMsg) =>
 
         // create schedule request
@@ -191,10 +188,12 @@ object DieselCron extends Logging {
         log(s"CronActor CreateSchedule request: $cs")
 
         try {
+          // remove first, to overwrite
           val removed = realmSchedules.remove(realm + "-" + schedId)
 
-          removed.toList.map {
-            _.ref.foreach(_.cancel())
+          removed.toList.map {curr=>
+            curr.ref.foreach(_.cancel())
+            curr.scheduleActor.foreach(context stop _)
           }
 
           var sexpr = schedExpr
@@ -219,8 +218,7 @@ object DieselCron extends Logging {
 
           val jobKey = realm + "-" + schedId
 
-          // initial object
-          var sc = DomSchedule(schedId, sexpr, cronExpr, time, endTime, cronMsg, doneMsg, realm, env, parent, count)
+          val sc = DomSchedule(schedId, sexpr, cronExpr, time, endTime, cronMsg, doneMsg, realm, env, parent, inSequence, count)
 
           // start in a random time from now, but not too far in the future
           // todo why?
@@ -239,8 +237,22 @@ object DieselCron extends Logging {
           else
             d //Duration.Zero
 
+          // ticks should run in seq and not seq per realm - send to schedule actor
+          if (sc.inSequence) {
+            info(s"Creating scheduleActor for: ${sc.schedId}")
+            val ra = DieselAppContext.actorOf(
+              Props(new CronScheduleActor(realm, sc)),
+              name = "CronScheduleActor-" + sc.schedId)
+            sc.scheduleActor = Some(ra)
+          }
+
+         // put in map before creating schedule in case some tick asap
+          info(s"Create schedule: ${sc.schedId} count ${sc.currCount}")
+          realmSchedules.put(jobKey, sc)  // see copy above
+
           val akkaRef = if (schedExpr.trim.nonEmpty) {
-            // start plus schedule
+            // start plus schedule, using akka scheduler
+            clog << "============ Akka creating job " + sc
             sc.actualSched = d.toString
             Some(
               Akka.system.scheduler.schedule(
@@ -251,7 +263,7 @@ object DieselCron extends Logging {
               ))
           } else if (cronExpr.trim.nonEmpty) {
             // start plus cron expr schedule
-            clog << "===================================Quartz creating job " + sc
+            clog << "============ Quartz creating job " + sc
 
             if (!qsched.isStarted) qsched.start() // initialize quartz
 
@@ -281,13 +293,10 @@ object DieselCron extends Logging {
           }
 
           val as = sc.actualSched
-          sc = sc.copy(ref = akkaRef)
+          sc.ref = akkaRef
           sc.actualSched = as
 
 //        removed.foreach { r => sc.currCount = r.currCount } // copy old count
-
-          info(s"Create schedule: ${sc.schedId} count ${sc.currCount}")
-          realmSchedules.put(jobKey, sc)
 
           GlobalData.dieselCronsActive.set(realmSchedules.size)
           sender ! s"Schedule $schedId for $realm-$env at $schedExpr"
@@ -298,17 +307,19 @@ object DieselCron extends Logging {
           }
         }
 
-      case can@Cancel(realm, id) => /*DieselCron.synchronized*/ {
 
-        log(s"Cancel schedule request: $can")
+      case can @ CancelMsg(realm, id, alreadyRemoved) => {
+
+        info(s"... removing DomSchedule: ${sc.schedId} count: ${sc.currCount}")
 
         val key = realm + "-" + id
-        if (realmSchedules.get(key).exists(_.realm == realm)) {
-          val removed = realmSchedules.remove(key)
+        if (alreadyRemoved.isDefined || realmSchedules.get(key).exists(_.realm == realm)) {
+          val removed = alreadyRemoved.orElse(realmSchedules.remove(key))
+          removed.foreach(_.scheduleActor.foreach(context stop _))
           removed.flatMap(_.ref).foreach(_.cancel())
 
           // cancel quartz job, if any
-          clog << s"===================================Quartz cancel job $key"
+          clog << s"============= Quartz cancel job $key"
           qsched.unscheduleJob(new TriggerKey(key, "dieselq"))
           qsched.deleteJob(new JobKey(key, "dieselq"))
 
@@ -324,14 +335,7 @@ object DieselCron extends Logging {
   /** this is one per realm - make sure ticks go in sequence and wait */
   class CronRealmActor(val realm: String) extends Actor {
 
-    def cancelJob(key:String, sc:DomSchedule) = {
-      info(s"($realm) removing DomSchedule: ${sc.schedId} count: ${sc.currCount}")
-      realmSchedules.remove(key)
-      sc.ref.map(_.cancel())
-      clog << s"===================================Quartz cancel job $key"
-      qsched.unscheduleJob(new TriggerKey(key, "dieselq"))
-      qsched.deleteJob(new JobKey(key, "dieselq"))
-    }
+    def shouldAwait = shouldAwaitRealm(realm)
 
     def receive = {
 
@@ -345,64 +349,47 @@ object DieselCron extends Logging {
         if (realmSchedules.contains(key)) { // wasn't cancelled or something
           val curr = realmSchedules(key)
 
-          val isCountOk = curr.count < 0 || curr.currCount < curr.count
-          val isEndTimeOk = sc.endTime.isEmpty || DateTime.parse(sc.endTime).isAfterNow
+          if (false && curr.inSequence) {
+            // todo if shouldAwait, the sync schedules work in parallel - should not...
+            // however, can't add here to this condition above or sync won't be guaranteed
+            info(s"($realm) schedule is synq/seq - starting CronScheduleActor: ${sc.schedId}")
+
+            // ticks should run in seq and not seq per realm - send to schedule actor
+            if (curr.scheduleActor.isEmpty) {
+              info(s"Creating scheduleActor for: ${curr.schedId}")
+              val ra = DieselAppContext.actorOf(Props(new CronScheduleActor(realm, curr)),
+                name = "CronScheduleActor-" + curr.schedId)
+              curr.scheduleActor = Some(ra)
+            }
+
+            // dispatch it to schedule actor
+            debug(s"  Dispatching to scheduleActor for: ${curr.schedId}")
+            curr.scheduleActor.map(_ ! sc)
+
+          } else { // not sync - realm level
+
+            val isCountOk = curr.count < 0 || curr.currCount < curr.count
+            val isEndTimeOk = sc.endTime.isEmpty || DateTime.parse(sc.endTime).isAfterNow
 
             if (isCountOk && isEndTimeOk) { // fine... trigger it
 
               if (!curr.singleton || DieselCron.isMasterNode(Website.forRealm(sc.realm).get)) {
 
                 if (ISENABLED) {
-
-                  info(s"($realm) running DomSchedule: ${sc.schedId} count: ${curr.currCount}")
-                  curr.currCount = curr.currCount + 1
-
-                  val fs = curr.cronMsg.fold(
-
-                    _.withArgs(Map(
-                        "env" -> curr.env,
-                        "cronCount" -> curr.currCount
-                      )).toMsgString.startMsg,
-
-                    _.withContext(Map(
-                        "cronCount" -> curr.currCount
-                      )).startMsg
-                  )
-
-                  GlobalData.dieselCronsTotal.incrementAndGet()
-
-                  if (
-                    Config.isLocalhost &&
-                        Website.getRealmProp(sc.realm, "diesel.cron.await").exists(_ == "false")) {
-
-                    // set this to false to allow parallel timers - by default is not disabled, so we wait
-                    info(s"($realm) - Awaiting disabled for ${sc.schedId}")
-
-                  } else {
-
-                    val tout = Website.getRealmProp(sc.realm, "diesel.cron.tout").getOrElse("300 seconds")
-
-                    info(s"($realm) - Awaiting with tout ${tout}")
-
-                    // waiting... makes cron jobs sync per realm
-                    // waiting to not allow each realm to run amock and/or overload system- set the diesel.cron.await
-                    try {
-                      Await.result(fs, Duration.create(tout))
-                    } catch {
-                      case t: Throwable =>// ignore it
-                    }
-                  }
+                  info(s"($realm) running now: ${sc.schedId}")
+                  runSchedule(realm, sc, curr, shouldAwait)
                 } else {
                   info(s"($realm) - not enabled, skipping job: " + sc)
                 }
               } else {
                 info(s"($realm) - not on master node for job: " + sc)
               }
-            } else {
-
-              cancelJob(key, curr)
+            }
+            else { // not fine - done now. if sync, the schedule actor will do it
 
               info(s"($realm) done with DomSchedule: ${sc.schedId}")
+
+              worker ! CancelMsg(realm, curr.schedId, realmSchedules.remove(curr.schedId))
 
               val args = Map(
                 "cronCount" -> curr.currCount,
@@ -418,18 +405,132 @@ object DieselCron extends Logging {
               // not waiting
             }
 
-          if (curr.isOnce) {
-            cancelJob(key, curr)
+            if (curr.isOnce) {
+              worker ! CancelMsg(realm, curr.schedId)
+            }
           }
         } else {
           info(s"($realm) DomSchedule not found anymore: ${sc.schedId}")
           qsched.getTriggerKeys(GroupMatcher.anyGroup())
-          cancelJob(key, sc)
+          worker ! CancelMsg(realm, key)
         }
       }
     }
   }
 
+  private def kickoffCronMsg (curr: DomSchedule) = {
+    info(s"... running DomSchedule: ${curr.schedId} count: ${curr.currCount}")
+    curr.currCount = curr.currCount + 1
+
+    val fs = curr.cronMsg.fold(
+
+      _.withArgs(Map(
+        "env" -> curr.env,
+        "cronCount" -> curr.currCount
+      )).toMsgString.startMsg,
+
+      _.withContext(Map(
+        "cronCount" -> curr.currCount
+      )).startMsg
+    )
+
+    GlobalData.dieselCronsTotal.incrementAndGet()
+
+    fs
+  }
+
+  private def dfltTimeout(realm:String) = Website.getRealmProp(realm, "diesel.cron.tout").getOrElse("300 seconds")
+
+  private def runSchedule(realm:String, sc: DomSchedule, curr: DomSchedule, shouldAwait:Boolean) = {
+    val fs = kickoffCronMsg(curr)
+
+    if (!shouldAwait) {
+
+      info(s"($realm) - Awaiting disabled for ${sc.schedId}")
+
+    } else {
+
+      val tout = dfltTimeout(realm)
+
+      info(s"($realm) - Awaiting with tout ${tout}")
+
+      // waiting... makes cron jobs sync per realm
+      // waiting to not allow each realm to run amock and/or overload system- set the diesel.cron.await
+      try {
+        Await.result(fs, Duration.create(tout))
+      } catch {
+        case t: Throwable =>// ignore it
+      }
+    }
+  }
+
+  /** should NOT await realm crons if in local AND await was set to false explicitely */
+  def shouldAwaitRealm(realm:String) = {
+    // set this to false to allow parallel timers - by default is not disabled, so we wait
+    !(Config.isLocalhost &&
+        Website.getRealmProp(realm, "diesel.cron.await").exists(_ == "false"))
+  }
+
+  /** this is one per schedule, when schedule is marked not await - make sure ticks go in sequence and wait */
+  class CronScheduleActor(val realm: String, val curr:DomSchedule) extends Actor {
+
+    def receive = {
+
+      // schedule triggered - should we send the message?
+      case sc : DomSchedule => {
+
+        info(s"(${curr.schedId}) received DomSchedule: ${sc.schedId}")
+
+        val key = sc.realm + "-" + sc.schedId
+
+        if (realmSchedules.contains(key)) { // wasn't cancelled or something
+          val isCountOk = curr.count < 0 || curr.currCount < curr.count
+          val isEndTimeOk = sc.endTime.isEmpty || DateTime.parse(sc.endTime).isAfterNow
+
+            if (isCountOk && isEndTimeOk) { // fine... trigger it
+
+              if (!curr.singleton || DieselCron.isMasterNode(Website.forRealm(sc.realm).get)) {
+
+                if (ISENABLED) {
+                  info(s"(${curr.schedId}) running now: ${sc.schedId}")
+                  runSchedule(realm, sc, curr, true) // if we're here, inSequence needs to await
+                } else {
+                  info(s"($realm) - not enabled, skipping job: " + sc)
+                }
+              } else {
+                info(s"($realm) - not on master node for job: " + sc)
+              }
+
+            } else { // not fine - done now
+
+              info(s"(${curr.schedId}) done with DomSchedule: ${sc.schedId}")
+              val args = Map(
+                "cronCount" -> curr.currCount,
+                "cronDoneReason" -> s"by count: ${!isCountOk}, by endTime:${!isEndTimeOk}"
+              )
+
+              curr.doneMsg.fold(
+                m => m.withArgs(args).toMsgString.startMsg,
+
+                // don't start if doneMsg is ""
+                m => if (m.msg.contains(".")) m.withContext(args).startMsg else Future.successful(Map.empty)
+              )
+              // not waiting, because it was removed from list
+
+              // remove now so even if it kicks again it won'y do x
+              worker ! CancelMsg(realm, key, realmSchedules.remove(key))
+            }
+
+        } else {
+          info(s"($realm) DomSchedule not found anymore: ${sc.schedId}")
+          qsched.getTriggerKeys(GroupMatcher.anyGroup())
+          worker ! CancelMsg(realm, key)
+        }
+      }
+    }
+  }
+
+  /** simple await helper - not work with actors that await... */
   def await[S](a: ActorRef, message: Any): S = Await.result(
     (worker ? message),
     20 seconds
@@ -437,28 +538,23 @@ object DieselCron extends Logging {
 
   /** create a schedule for a realm - should be called once per realm */
   def cancelSchedule(realm: String, schedId: String) =
-    await[Option[DomSchedule]](worker, Cancel(realm, schedId))
+    await[Option[DomSchedule]](worker, CancelMsg(realm, schedId))
 
   /** create a schedule for a realm - should be called once per realm
     *
-    * @param schedId
-    * @param schedExpr
-    * @param time
-    * @param realm
-    * @param env
-    * @param count
-    * @param msg
+    * See http://specs.dieselapps.com/wiki/specs.Spec:Default_executors diesel.cron.set
+    *
     * @return
     */
   def createSchedule(schedId: String, schedExpr: String, cronExpr: String, time: String, endTime: String,
                      realm: String, env: String,
-                     dieselParentId: String, count: Long,
+                     dieselParentId: String, inSequence:Boolean, count: Long,
                      cronMsg: Either[DieselMsg, DieselMsgString],
                      doneMsg: Either[DieselMsg, DieselMsgString]) = {
     info("DieselCron creating")
     val s = await[String](
       worker,
-      CreateSchedule(schedId, schedExpr, cronExpr, time, endTime, realm, env, dieselParentId, count, cronMsg, doneMsg))
+      CreateScheduleMsg(schedId, schedExpr, cronExpr, time, endTime, realm, env, dieselParentId, inSequence, count, cronMsg, doneMsg))
     if (s.startsWith("ERROR")) throw new DieselException(s)
     s
   }
