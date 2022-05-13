@@ -7,6 +7,7 @@
 package razie.wiki.admin
 
 import java.util.concurrent.atomic.AtomicLong
+import java.util.function.LongUnaryOperator
 import org.joda.time.DateTime
 import razie.db.RazMongo
 import razie.diesel.DieselRateLimiter
@@ -16,6 +17,32 @@ import razie.hosting.WikiReactors
 import razie.wiki.Config
 import razie.wiki.model.WikiCache
 import scala.concurrent.{Future, Promise}
+
+/** simple stats encapsulated */
+class StatsAtomicLong (
+  val curr : AtomicLong = new AtomicLong(0),
+  val imax  : AtomicLong = new AtomicLong(0) ) {
+
+  def get() = curr.get()
+
+  def max() = imax.get()
+
+  def incrementAndGet() = {
+    val c = curr.incrementAndGet()
+
+    imax.getAndUpdate{
+      new LongUnaryOperator {
+        override def applyAsLong(prev: Long): Long = if(c > prev) c else prev
+      }
+    }
+  }
+
+  def decrementAndGet() = {
+    curr.decrementAndGet()
+  }
+
+  override def toString = curr.toString
+}
 
 /** current ops data is updated here from all over - you can inspect this in a page
   *
@@ -39,11 +66,11 @@ object GlobalData {
   val wikiCacheSets = new AtomicLong(0) // wiki cache misses
 
   val dieselEnginesTotal = new AtomicLong(0) // how many engines created since start
-  val dieselEnginesActive = new AtomicLong(0) // how many engines active now
+  val dieselEnginesActive = new StatsAtomicLong() // how many engines active now
   val dieselStreamsTotal = new AtomicLong(0) // how many streams created since start
-  val dieselStreamsActive = new AtomicLong(0) // how many streams active now
+  val dieselStreamsActive = new StatsAtomicLong() // how many streams active now
 
-  val dieselCronsActive = new AtomicLong(0) // how many crons active
+  val dieselCronsActive = new StatsAtomicLong() // how many crons active
   val dieselCronsTotal = new AtomicLong(0)   // how many crons triggered since start
 
   /** how many wiki options have been requested - simple stats */
@@ -91,8 +118,12 @@ object GlobalData {
       "collectedAst" -> DomCollector.withAsts(_.size),
       "activeEngines" -> DieselAppContext.activeEngines.size,
       "activeActors" -> DieselAppContext.activeActors.size,
-      "activeStreams" -> DieselAppContext.activeStreams.size
-      )
+      "activeStreams" -> DieselAppContext.activeStreams.size,
+      "activeCrons" -> GlobalData.dieselCronsActive.get(),
+      "maxActiveEngines" -> GlobalData.dieselEnginesActive.max(),
+      "maxActiveStreams" -> GlobalData.dieselStreamsActive.max(),
+      "maxActiveCrons" -> GlobalData.dieselCronsActive.max()
+    )
     ) ++ DieselRateLimiter.toj
   }
 
