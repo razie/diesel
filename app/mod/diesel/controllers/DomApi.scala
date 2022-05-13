@@ -1029,8 +1029,8 @@ class DomApi extends DomApiBase with Logging {
           } catch {
             case e: java.util.concurrent.TimeoutException => {
               engine.stopNow
-              new Status(Integer.parseInt(tcode))("Workflow took too long - not enough resources?")
-                  .withHeaders("diesel-reason" -> s"flow didn't response in 50 seconds")
+              new Status(Integer.parseInt(tcode))(s"Workflow took too long ($dur) - not enough resources?")
+                  .withHeaders("diesel-reason" -> s"flow didn't response in $dur")
             }
           }
       } getOrElse {

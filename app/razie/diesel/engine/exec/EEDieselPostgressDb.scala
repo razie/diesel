@@ -7,6 +7,7 @@ package razie.diesel.engine.exec
 
 import com.mongodb.casbah.Imports.ObjectId
 import java.sql.{DriverManager, Statement}
+import razie.Log.log
 import razie.clog
 import razie.diesel.Diesel
 import razie.diesel.dom.RDOM._
@@ -89,6 +90,8 @@ case class EPostgressConnector (
          |  UNIQUE (realm, env, entityType, entityId)
          |  )""".stripMargin
 
+    log(s"Postgress createEntityTable SQL $SQL")
+
     val ps = conn.prepareStatement(SQL)
 
     try {
@@ -110,6 +113,8 @@ case class EPostgressConnector (
          |ON CONFLICT (realm,env,entityType,entityId)
          |DO UPDATE SET content=EXCLUDED.content;
          |""".stripMargin
+
+    log(s"Postgress upsertEntity $entityType:$entityId SQL $SQL")
 
     val res = try {
       val pstmt = conn.prepareStatement(SQL, Statement.RETURN_GENERATED_KEYS)
@@ -165,6 +170,8 @@ case class EPostgressConnector (
          |WHERE realm=? AND env=? AND entityType=? AND entityId=?
          |""".stripMargin
 
+    log(s"Postgress deleteEntity $entityType:$entityId SQL $SQL")
+
     val res = try {
       val pstmt = conn.prepareStatement(SQL)
       try {
@@ -200,6 +207,8 @@ case class EPostgressConnector (
          |WHERE realm=? AND env=? AND entityType=? $q
          |""".stripMargin
 
+    log(s"Postgress deleteQuery $entityType:$query SQL $SQL")
+
     val res = try {
       val pstmt = conn.prepareStatement(SQL)
       try {
@@ -232,6 +241,8 @@ case class EPostgressConnector (
          |SELECT content FROM $table
          |WHERE realm=? AND env=? AND entityType=? AND entityId=?
          |""".stripMargin
+
+    log(s"Postgress findOne $entityType:$entityId SQL $SQL")
 
     var res = Some(P("document", "", WTypes.wt.UNDEFINED))
 
@@ -302,6 +313,8 @@ case class EPostgressConnector (
          |$lim
          |$off
          |""".stripMargin
+
+    log(s"Postgress find $entityType:$query SQL $SQL")
 
     var count = 0L
     val res = new ListBuffer[HashMap[String, Any]]
