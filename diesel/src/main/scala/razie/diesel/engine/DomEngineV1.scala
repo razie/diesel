@@ -838,7 +838,17 @@ class DomEngineV1(
     }
 
     val res = {
-      if (ea == DieselMsg.ENGINE.DIESEL_NOP) {
+      if (ea == DieselMsg.ENGINE.DIESEL_SUMMARY) {
+        razie.Log.log("diesel.summary : " + in.attrs.mkString)
+
+        true
+
+      } else if (ea == DieselMsg.ENGINE.DIESEL_STEP) {
+        razie.Log.log("diesel.step : " + ctx.get("desc").mkString)
+
+        true
+
+      } else if (ea == DieselMsg.ENGINE.DIESEL_NOP) {
         Audit.logdb("DIESEL_NOP", s"user ${settings.userId}")
 
         true

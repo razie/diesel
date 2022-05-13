@@ -87,9 +87,9 @@ case class DieselMsgString(msg: String,
       val id = res.get("engineId").mkString
       // this will also clog it - no need to clog it
       Audit.logdb(
-        "DIESEL_MSG",
-        this.toString,
+        "DIESEL_MSG.done:",
         s"[[DieselEngine:$id]]",
+        this.toString,
         "result-length: " + res.get("value").mkString.length,
         res.get("value").mkString.take(500)
       )

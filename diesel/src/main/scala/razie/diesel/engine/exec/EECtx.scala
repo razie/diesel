@@ -391,7 +391,7 @@ class EECtx extends EExecutor(EECtx.CTX) {
       }
 
       // take all args and create a json doc with them
-      case "csv" | "jsonToCsv" => {
+      case "csv" | "jsonToCsv" => { // ctx.csv
         val separator = ctx.getRequired("separator")
         val useHeaders = ctx.get("useHeaders").getOrElse("true").toBoolean
 
@@ -425,16 +425,19 @@ class EECtx extends EExecutor(EECtx.CTX) {
           names.map { n =>
             m
                 .get(n)
-                .filter(P.isSimpleType)
+                // some are arrays of 0 or 1...
+                .filter(x=> P.isSimpleType(x) || P.isArrayOfSimpleType(x))
                 .map(x => {
 
                   if (P.isSimpleNonStringType(x)) {
                     P.asString(x)
+                  } else if (P.isArrayOfSimpleType(x)) {
+                    val s = P.asSimpleString(x)
+                    s//.replaceFirst("\"", "")
                   } else {
                     "\"" + {
-                      val s = P.asString(x)
-                      s
-                          .replaceAll("\"", "\"\"")
+                      val s = P.asSimpleString(x)
+                      s.replaceAll("\"", "\"\"")
 //                      .replaceAll(separator, "\"" + separator + "\"")
                     } + "\""
                   }

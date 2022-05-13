@@ -5,7 +5,6 @@
  */
 package razie.diesel.engine.nodes
 
-import razie.Log.log
 import razie.diesel.engine._
 import razie.diesel.expr.DieselExprException
 import razie.tconf.EPos
@@ -67,6 +66,8 @@ case class EError(msg: String, details: String = "", code: String = "ERROR", t: 
       Some(t)
     ) // escape html - some exc contain html content
 
+  razie.Log.error(msg)
+
   var pos: Option[EPos] = None
   var handled: Boolean = false
 
@@ -103,6 +104,8 @@ case class EWarning(msg: String, details: String = "", code:String = "WARNING") 
       Enc.escapeHtml(msg + t.toString),
       Enc.escapeHtml(EErrorUtils.ttos(t))
     ) // escape html - some exc contain html content
+
+  razie.Log.warn(msg)
 
   var pos: Option[EPos] = None
 
@@ -146,6 +149,8 @@ case class ELink(msg: String, url: String = "") extends CanHtml with HasPosition
 case class ETrace(msg: String, details: String = "") extends CanHtml with HasPosition with InfoNode {
   var pos: Option[EPos] = None
 
+  razie.Log.debug(msg)
+
   def withPos(p: Option[EPos]) = {
     this.pos = p;
     this
@@ -171,7 +176,7 @@ case class ETrace(msg: String, details: String = "") extends CanHtml with HasPos
 /** a simple info node with a message and details - details are displayed as a popup */
 case class EInfo(msg: String, details: String = "") extends CanHtml with HasPosition with InfoNode {
 
-  log(msg)
+  razie.Log.log(msg)
 
   var pos: Option[EPos] = None
 

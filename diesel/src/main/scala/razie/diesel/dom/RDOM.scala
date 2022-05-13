@@ -371,6 +371,26 @@ object RDOM {
     }
 
     /** value recognized as simple type? */
+    def isArrayType(value: Any): Boolean = {
+      val res = (value match {
+        case s: collection.Seq[_] => true
+        case _ => false
+      })
+
+      res
+    }
+
+    /** value recognized as simple type? */
+    def isArrayOfSimpleType(value: Any): Boolean = {
+      val res = (value match {
+        case s: collection.Seq[_] => s.headOption.exists(isSimpleType)
+        case _ => false
+      })
+
+      res
+    }
+
+    /** value recognized as simple type? */
     def isSimpleType(value: Any): Boolean = {
       val res = isSimpleNonStringType(value) || (value match {
         case s: String => true
@@ -404,6 +424,7 @@ object RDOM {
     /** nicer type-aware toString */
     def asString(value: Any): String = {
       val res = value match {
+        case null => ""
         case s: HashMap[_, _] => if (s.isEmpty) "{}" else js.tojsons(s, 2).trim
         // this must be before Seq
         case r: Range => {
@@ -432,6 +453,18 @@ object RDOM {
         case s: Array[Byte] => new String(s)
         case s: ParmSource => s.asP.value.map(v => asString(v.value)).getOrElse("??")
         case x@_ => x.toString
+      }
+
+      res
+    }
+
+    /** nicer type-aware toString */
+    def asSimpleString(value: Any): String = {
+      val res = value match {
+        // for arrays with 0 or 1 value
+        case s: collection.Seq[_] if s.size == 0 => ""
+        case s: collection.Seq[_] if s.size == 1 => asString(s.head)
+        case _ => asString(value)
       }
 
       res

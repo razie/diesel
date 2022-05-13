@@ -209,7 +209,9 @@ case class EMsg(
 
   /** to html using a kind: trace/debug etc */
   override def toHtml(kind: String): String = {
-    if (DieselMsg.ENGINE.DIESEL_STEP == ea) {
+    if (DieselMsg.ENGINE.DIESEL_SUMMARY == ea) {
+      /*span(arch+"::")+*/ first(pos, kind) + eaHtml(kind) + " " + span(attrs.map(p => (p.name -> p.currentStringValue)).mkString(","), "primary")
+    } else if (DieselMsg.ENGINE.DIESEL_STEP == ea) {
       /*span(arch+"::")+*/ first(pos, kind) + eaHtml(kind) + " " + span(attrs.head.currentStringValue, "primary")
     } else if (DieselMsg.ENGINE.DIESEL_TODO == ea) {
       val m = attrs.head.currentStringValue
