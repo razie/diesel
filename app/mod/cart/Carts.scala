@@ -1,8 +1,10 @@
 package mod.cart
 
+import com.google.inject.{Inject, Singleton}
 import controllers._
 import model._
 import org.bson.types.ObjectId
+import play.api.Configuration
 import razie.Logging
 import razie.audit.Audit
 import razie.db.{REntity, Txn}
@@ -14,7 +16,9 @@ import scala.util.Try
 import views.html.modules.cart.doeCart
 
 /** controller for club management */
-object Carts extends RazController with Logging {
+@Singleton
+class Carts @Inject()(config:Configuration) extends RazController with Logging {
+//object Carts extends RazController with Logging {
 
   def cart() = FAUR { implicit request =>
     (for (
@@ -29,45 +33,6 @@ object Carts extends RazController with Logging {
     }) getOrElse {
       unauthorized("no active cart...", false)
     }
-  }
-
-  // process a refund of a paid item
-  def irefundItem(cart: Cart, itemId: String, user: User)(implicit txn:Txn) = {
-    var done = false
-    clog << s"CARTS - processing refund itemId=$itemId"
-
-    val item = cart.items.find(item => item._id.toString == itemId && item.state == Cart.STATE_PAID)
-    item.map { item =>
-      clog << "CARTS - item found - process refund"
-
-      val newCart = cart.copy(
-        items = cart.items.map(x =>
-          if (x._id == item._id) item.copy(state = Cart.STATE_REFUNDED) else x
-        )
-      )
-
-      item.price.oneTime.map { price =>
-        cart.findAcct.map { acct =>
-          val newAcct = acct.add(AcctTxn(
-            user.userName,
-            user._id,
-            acct._id,
-            price,
-            "refund",
-            "refund - " + item.desc,
-            Acct.STATE_REFUND
-          ))
-
-          newAcct.update
-          newCart.update
-          Services ! DieselMsgString(item.cancelAction)
-          done = true
-          clog << "CARTS - processed refund"
-        }
-      }
-    }
-
-    done
   }
 
   def rmitem(id: String) = FAUR { implicit request =>
@@ -278,6 +243,47 @@ object Carts extends RazController with Logging {
     }) getOrElse unauthorized("haha")
   }
 
+}
+
+object Carts extends RazController with Logging {
+  // process a refund of a paid item
+  def irefundItem(cart: Cart, itemId: String, user: User)(implicit txn:Txn) = {
+    var done = false
+    clog << s"CARTS - processing refund itemId=$itemId"
+
+    val item = cart.items.find(item => item._id.toString == itemId && item.state == Cart.STATE_PAID)
+    item.map { item =>
+      clog << "CARTS - item found - process refund"
+
+      val newCart = cart.copy(
+        items = cart.items.map(x =>
+          if (x._id == item._id) item.copy(state = Cart.STATE_REFUNDED) else x
+        )
+      )
+
+      item.price.oneTime.map { price =>
+        cart.findAcct.map { acct =>
+          val newAcct = acct.add(AcctTxn(
+            user.userName,
+            user._id,
+            acct._id,
+            price,
+            "refund",
+            "refund - " + item.desc,
+            Acct.STATE_REFUND
+          ))
+
+          newAcct.update
+          newCart.update
+          Services ! DieselMsgString(item.cancelAction)
+          done = true
+          clog << "CARTS - processed refund"
+        }
+      }
+    }
+
+    done
+  }
 }
 
 /** an actual payment, recorded here as well to have an audit trail for actual moneys.
