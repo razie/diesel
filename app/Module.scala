@@ -8,7 +8,7 @@
 import admin._
 import com.google.inject.AbstractModule
 import com.mongodb.casbah.Imports._
-import com.mongodb.casbah.{MongoConnection, MongoDB}
+import com.mongodb.casbah.{MongoConnection, MongoDB, TypeImports}
 import controllers._
 import mod.cart.{EEModCartExecutor, EEModUserExecutor}
 import mod.diesel.controllers.{DieselMod, FiddleMod}
@@ -162,7 +162,13 @@ class Module extends AbstractModule {
 
       def mongoDbVer = mongoUpgrades.keySet.max + 1
 
-      lazy val conn = MongoConnection(wiki.Config.mongohost)
+      val builder = new MongoClientOptions.Builder();
+      builder.connectionsPerHost(Config.prop("mongo.connectionsPerHost", "50").toInt);
+      builder.threadsAllowedToBlockForConnectionMultiplier(Config.prop("mongo.threadsAllowedToBlockForConnectionMultiplier", "10").toInt);
+      val options = builder.build();
+      val server = new TypeImports.ServerAddress(wiki.Config.mongohost)
+
+      lazy val conn = MongoConnection.apply(server, new MongoOptions(options))
 
       /** the actual database - done this way to run upgrades before other code uses it */
       com.mongodb.casbah.commons.conversions.scala.RegisterConversionHelpers()

@@ -26,14 +26,6 @@ extra html for wiki fragments, used in another page
     }
 }
 
-@if(page.exists(_.contentProps.contains("module.tma"))) {
-  @user.map {u=>
-    @views.html.tma.doeModTma(u, page.get)
-    }.getOrElse {
-    <p> @alert("blue"){<strong>TMA: </strong>you need to <strong>log in</strong> to get TMA benefits}
-    }
-}
-
 @if(page.exists(_.contentProps.contains("module.note"))) {
   @views.html.notes.doeModNote(NotesLocker.NEWNOTENB, we, user)
 }
