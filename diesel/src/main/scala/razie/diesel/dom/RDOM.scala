@@ -654,15 +654,15 @@ object RDOM {
         if(dflt.nonEmpty || expr.isEmpty) CExpr(dflt, ttype) else expr.get
       }
 
-    def strimmedDflt = {
+    def valueTrimmed80 = {
       val d = currentStringValue
       if(d.size > 80) d.take(60) + "{...}"
       else d
     }
 
-    def htrimmedDflt = {
+    def valueTrimmed20 = {
       val d = currentStringValue
-      if (d.size > 20) d.replaceAll("\n", "").take(20)
+      if (d.length > 30) d.replaceAll("\n", "").take(30)
       else d
     }
 
@@ -670,7 +670,7 @@ object RDOM {
       s"$name" +
           ttype +
           optional +
-          smap(strimmedDflt)(s => "=" + (if ("Number" == ttype) s else quot(s))) +
+          smap(valueTrimmed80)(s => "=" + (if ("Number" == ttype) s else quot(s))) +
           (if (dflt == "") expr.map(x => smap(x.toString)("=" + _)).mkString else "")
 
     // todo docs, position etc
@@ -687,11 +687,11 @@ object RDOM {
       else name
     }
 
-    def toHtml(shorten: Boolean = true) =
-      s"<b>${nameHtml(shorten)}</b>" +
+    def toHtml(short: Boolean = true, showExpr:Boolean=true) =
+      s"<b>${nameHtml(short)}</b>" +
           (if (ttype.name.toLowerCase != "string") typeHtml(ttype) else "") +
           optional +
-          smap(Enc.escapeHtml(if (shorten) htrimmedDflt else currentStringValue)) { s =>
+          smap(Enc.escapeHtml(if (short) valueTrimmed20 else currentStringValue)) { s =>
             "=" + tokenValue(
               // this kicks in if currentstringvalue exists
               if (WTypes.NUMBER == ttype.name) s
@@ -699,12 +699,12 @@ object RDOM {
               else escapeHtml(quot(s))
             )
           } +
-          (if (shorten && currentStringValue.length > 20) "<b><small>...</small></b>" else "") +
-          (if (dflt == "") expr.map(x =>
+          (if (short && currentStringValue.length > 20) "<b><small>...</small></b>" else "") +
+          (if (dflt == "" && showExpr) expr.map(x =>
             smap(
               // this used if currentStringValue doesn't exit
-              if(shorten) x.toHtml else x.toHtmlFull
-            )("=" + _)
+              if(short) token(shorten(x.toString, 10), x.toString) else x.toHtmlFull
+            )(ex=> "=" + ex)//s"""<span title="$ex">...</span>""")
           ).mkString else "")
 
     private def typeHtml(s: WType) = {

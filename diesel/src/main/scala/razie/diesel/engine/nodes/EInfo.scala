@@ -66,7 +66,7 @@ case class EError(msg: String, details: String = "", code: String = "ERROR", t: 
       Some(t)
     ) // escape html - some exc contain html content
 
-  razie.Log.error(msg)
+  razie.Log.error(Enc.unescapeHtml(msg))
 
   var pos: Option[EPos] = None
   var handled: Boolean = false
@@ -105,7 +105,7 @@ case class EWarning(msg: String, details: String = "", code:String = "WARNING") 
       Enc.escapeHtml(EErrorUtils.ttos(t))
     ) // escape html - some exc contain html content
 
-  razie.Log.warn(msg)
+  razie.Log.warn(Enc.unescapeHtml(msg))
 
   var pos: Option[EPos] = None
 
@@ -149,7 +149,7 @@ case class ELink(msg: String, url: String = "") extends CanHtml with HasPosition
 case class ETrace(msg: String, details: String = "") extends CanHtml with HasPosition with InfoNode {
   var pos: Option[EPos] = None
 
-  razie.Log.debug(msg)
+  razie.Log.debug(Enc.unescapeHtml(msg))
 
   def withPos(p: Option[EPos]) = {
     this.pos = p;
@@ -176,7 +176,7 @@ case class ETrace(msg: String, details: String = "") extends CanHtml with HasPos
 /** a simple info node with a message and details - details are displayed as a popup */
 case class EInfo(msg: String, details: String = "") extends CanHtml with HasPosition with InfoNode {
 
-  razie.Log.log(msg)
+  razie.Log.log(Enc.unescapeHtml(msg).take(3000))
 
   var pos: Option[EPos] = None
 

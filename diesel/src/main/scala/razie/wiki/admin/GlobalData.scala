@@ -27,6 +27,16 @@ class StatsAtomicLong (
 
   def max() = imax.get()
 
+  def set(c:Long) = {
+    curr.set(c)
+
+    imax.getAndUpdate{
+      new LongUnaryOperator {
+        override def applyAsLong(prev: Long): Long = if(c > prev) c else prev
+      }
+    }
+  }
+
   def incrementAndGet() = {
     val c = curr.incrementAndGet()
 

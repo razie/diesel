@@ -112,7 +112,7 @@ abstract class DomEngine(
         rem.append(removed)
         p.childrenCol.remove(toRemove._2)
 
-        log("DomEng " + id + ("  " * level) + s" remove kid #${toRemove._2} from " + parent.value)
+        log("DomEng " + id + ("  " * level) + s" remove kid #${toRemove._2} from " + parent.value.toString.take(2000))
 
         // the node under which we collect some pruned info
         val prunedNode = p.childrenCol.find(

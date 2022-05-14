@@ -71,7 +71,7 @@ class EEStreams extends EExecutor(DieselMsg.STREAMS.PREFIX) {
         val parms = in.attrs.filter(_.name != "stream").map(_.calculatedP)
         val list = parms.map(_.calculatedTypedValue.value)
         DieselAppContext ! DEStreamPut(name, list)
-        EInfo(s"stream.put - put ${list.size} elements") :: Nil
+        EInfo(s"stream.put $name - put ${list.size} elements") :: Nil
       }
 
       case "putAll" => {
@@ -79,7 +79,7 @@ class EEStreams extends EExecutor(DieselMsg.STREAMS.PREFIX) {
         val parms = in.attrs.filter(_.name != "stream").map(_.calculatedP)
         val list = parms.flatMap(_.calculatedTypedValue.asArray.toList)
         DieselAppContext ! DEStreamPut(name, list)
-        EInfo(s"stream.put - put ${list.size} elements") :: Nil
+        EInfo(s"stream.putAll $name - put ${list.size} elements") :: Nil
       }
 
       case "generate" => {
@@ -91,7 +91,7 @@ class EEStreams extends EExecutor(DieselMsg.STREAMS.PREFIX) {
         val list = (start to end).toList
 
         DieselAppContext ! DEStreamPut(name, list)
-        EInfo(s"stream.put - put ${list.size} elements") :: Nil
+        EInfo(s"stream.generate $name - put ${list.size} elements") :: Nil
       }
 
       case "error" => {
@@ -100,7 +100,7 @@ class EEStreams extends EExecutor(DieselMsg.STREAMS.PREFIX) {
 
         DieselAppContext ! DEStreamError(name, parms)
 
-        EInfo(s"stream.done") :: Nil
+        EInfo(s"stream.done $name") :: Nil
       }
 
       case "done" => {
@@ -113,7 +113,7 @@ class EEStreams extends EExecutor(DieselMsg.STREAMS.PREFIX) {
         val found = stream.map(_.name).mkString
         val consumed = stream.map(_.getIsConsumed).mkString
         val done = stream.map(_.streamIsDone).mkString
-        EInfo(s"stream.done: found:$found consumed:$consumed done:$done") :: Nil
+        EInfo(s"stream.done $name: found:$found consumed:$consumed done:$done") :: Nil
       }
 
       case "consume" => {

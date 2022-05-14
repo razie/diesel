@@ -195,13 +195,12 @@ case class EMsg(
   })
 
   /** message name as a nice link to spec as well */
-  private def eaHtml(kind: String) =
+  private def eaHtml(kind: String, labelClass:String="default") =
     kind match {
       case AstKinds.TRACE =>
         kspan(ea(entity, met, "", false, kind), "", specPos, spec.orElse(Some("no spec")).map(_.toString))
       case _ =>
-        kspan(ea(entity, met, "", false, kind), "default", specPos,
-          spec.orElse(Some("no spec")).map(_.toString))
+        kspan(ea(entity, met, "", false, kind), labelClass, specPos, spec.orElse(Some("no spec")).map(_.toString))
     }
 
   /** this html works well in a diesel fiddle, use toHtmlInPage elsewhere */
@@ -209,10 +208,12 @@ case class EMsg(
 
   /** to html using a kind: trace/debug etc */
   override def toHtml(kind: String): String = {
-    if (DieselMsg.ENGINE.DIESEL_SUMMARY == ea) {
-      /*span(arch+"::")+*/ first(pos, kind) + eaHtml(kind) + " " + span(attrs.map(p => (p.name -> p.currentStringValue)).mkString(","), "primary")
-    } else if (DieselMsg.ENGINE.DIESEL_STEP == ea) {
-      /*span(arch+"::")+*/ first(pos, kind) + eaHtml(kind) + " " + span(attrs.head.currentStringValue, "primary")
+    if (DieselMsg.ENGINE.DIESEL_STEP == ea) {
+      // step is just one comment
+      /*span(arch+"::")+*/ first(pos, kind) + eaHtml(kind, "info") + " " + span(attrs.head.currentStringValue, "primary")
+    } else if (DieselMsg.ENGINE.DIESEL_SUMMARY == ea) {
+      // summary may have list of long values
+      /*span(arch+"::")+*/ first(pos, kind) + eaHtml(kind, "info") + " " + span(attrs.head.currentStringValue, "default") + toHtmlAttrs(attrs.tail, short=true, showExpr = false)
     } else if (DieselMsg.ENGINE.DIESEL_TODO == ea) {
       val m = attrs.head.currentStringValue
 //      val color = if (m contains "!") "danger" else "warning"

@@ -157,8 +157,8 @@ package object nodes {
     result
   }
 
-  def toHtmlAttrs(attrs: Attrs) =
-    if (attrs.nonEmpty) s"""${attrs.map(_.toHtml).mkString("(", ", ", ")")}"""
+  def toHtmlAttrs(attrs: Attrs, short:Boolean = true, showExpr:Boolean=true) =
+    if (attrs.nonEmpty) s"""${attrs.map(_.toHtml(short=short, showExpr)).mkString("(", ", ", ")")}"""
     else ""
 
   def toHtmlMAttrs(attrs: MatchAttrs) = if (attrs.nonEmpty)
