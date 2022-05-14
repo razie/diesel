@@ -97,15 +97,15 @@ abstract class WikiConfig {
 
   final val home = prop("wiki.home")
 
-  final val hostport = prop("wiki.hostport")
+  final val hostport =       prop("wiki.hostport")
   final val dieselLocalUrl = prop("local.url", "http://" + hostport)
-  final val node = prop("wiki.node", hostport) //java.net.InetAddress.getLocalHost.getCanonicalHostName)
-  final val safeMode = prop("wiki.safemode")
-  final val analytics = true; //props.getProperty("rk.analytics").toBoolean
-  final val noads = prop("wiki.noads", isLocalhost.toString).toBoolean
-  final val forcephone = prop("wiki.forcephone").toBoolean
+  final val node =           prop("wiki.node", hostport) //java.net.InetAddress.getLocalHost.getCanonicalHostName)
+  final val safeMode =       prop("wiki.safemode")
+  final val analytics =      true; //props.getProperty("rk.analytics").toBoolean
+  final val noads =          prop("wiki.noads", isLocalhost.toString).toBoolean
+  final val forcephone =     prop("wiki.forcephone").toBoolean
 
-  final val mongodb = prop("wiki.mongodb")
+  final val mongodb =   prop("wiki.mongodb")
   final val mongohost = prop("wiki.mongohost")
   final val mongoport = prop("wiki.mongoport", "27017").toInt
   final val mongouser = prop("wiki.mongouser")

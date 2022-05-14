@@ -355,7 +355,9 @@ class DomEngineV1(
     if (n.attrs.exists(_.name == PAYLOAD))
       newNodes = newNodes ::: List(
         DomAst(new EError(
-          "Should not use 'payload' as an argument, it's a reserved keyword and has unpredictable consequences! "),
+          "Should not use 'payload' as an argument, it's a reserved keyword and has unpredictable " +
+              "consequences! at " + in.pos + " rule " + in.rulePos + " spec" + in.specPos +
+        "msg " + in),
           AstKinds.ERROR))
 
     //todo used to set kind to generated but parent makes more sense.getOrElse(AstKinds.GENERATED)
