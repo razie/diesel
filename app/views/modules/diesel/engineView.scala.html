@@ -48,7 +48,7 @@ view an engine
         });
 
         // show duration as separate element
-        $('#showDur').change(function () {
+        var showDurations = function () {
           $("span[kind='dur']").remove();
 
           if($('#showDur').prop('checked')) {
@@ -61,7 +61,12 @@ view an engine
               $(t).insertBefore(this);
             });
           }
-        });
+        };
+
+        // show duration as separate element
+        $('#showDur').change(showDurations);
+
+        showDurations();
 
         setInterval(function(){
           if(refreshMode && !done)  window.location.reload();
