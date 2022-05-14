@@ -12,6 +12,7 @@ import razie.diesel.dom.RDOM.P
 import razie.diesel.engine.nodes.{EError, EMsg}
 import razie.diesel.expr.ScopeECtx
 import razie.diesel.model.DieselMsg
+import razie.hosting.Website
 import razie.wiki.Config
 import razie.wiki.model.WID
 import scala.collection.mutable.ListBuffer
@@ -62,7 +63,7 @@ abstract class DomStream (
 
   var synchronous = false
 
-  /** a stream consumer is a pair of engine/node */
+  /** a stream consumer is a pair of engine/node where consumption occurs */
   case class DomStreamConsumer(engine: String, node:String)
   private var targetId: Option[DomStreamConsumer] = None // target parent for consume nodes
 
@@ -191,31 +192,44 @@ abstract class DomStream (
 
   /** complete the stream: send onDone and DEComplete the target consume node */
   private def complete(): Unit = {
-    val ast = DomAst(EMsg(
-      DieselMsg.STREAMS.STREAM_ONDONE,
-      List(
-        P.of("stream", name), P.of("context", context)
-      )
-    ))
+    if(!sentComplete) {
+      sentComplete = true
 
-    setCtx(ast)
+      val ast = DomAst(EMsg(
+        DieselMsg.STREAMS.STREAM_ONDONE,
+        List(
+          P.of("stream", name), P.of("context", context)
+        )
+      ))
 
-    targetId.map { tid =>
-      DieselAppContext ! DEAddChildren(tid.engine, tid.node, recurse = true, -1, List(ast),
-        Some((a, e) => a.withPrereq(getDepy)))
-      DieselAppContext ! DEComplete(tid.engine, tid.node, recurse = true, -1, Nil)
+      setCtx(ast)
+
+      targetId.map { tid =>
+        DieselAppContext ! DEAddChildren(tid.engine, tid.node, recurse = true, -1, List(ast),
+          Some((a, e) => a.withPrereq(getDepy)))
+        DieselAppContext ! DEComplete(tid.engine, tid.node, recurse = true, -1, Nil)
+      }
     }
   }
 
+  // todo don't remember why this is needed...
+  val FORCE_DUPLO = Website.getRealmProp(owner.settings.realm.mkString, "diesel.streams.forceDuplo", Some("true")).mkString.toBoolean
+
+  var sentComplete = false // to send just one
+
   /** like done but stops consumption as well and drops what's in the stream right now... */
   def abort(): Unit = {
-    isDone = true
-    complete()
+    if(FORCE_DUPLO || !isDone) {
+      isDone = true
+      complete()
+    } else {
+      ???
+    }
   }
 
   /** stream item production is done - complete consumption of what's in buffer and close it */
   def done(justConsume: Boolean = false): Unit = {
-    if(true || !isDone) {
+    if(FORCE_DUPLO || !isDone) {
       if (!justConsume) {
         isDone = true
         if (isConsumed) {
@@ -255,29 +269,33 @@ abstract class DomStream (
   }
 
   def error(l: List[P], justConsume: Boolean = false): Unit = {
-    if (!justConsume) {
-      isError = true
-      isDone = true
-      errors.appendAll(l)
-      if (isConsumed) {
-        consume()
+    if(true || !isDone) {
+      if (!justConsume) {
+        isError = true
+        isDone = true
+        errors.appendAll(l)
+        if (isConsumed) {
+          consume()
+        }
+      } else {
+
+        val ast = DomAst(EMsg(
+          DieselMsg.STREAMS.STREAM_ONERROR,
+          List(
+            P.of("stream", name), P.of("context", context)
+          ) ::: errors.toList
+        ))
+
+        setCtx(ast)
+
+        targetId.map { tid =>
+          DieselAppContext ! DEAddChildren(tid.engine, tid.node, recurse = true, -1, List(ast),
+            Some((a, e) => a.withPrereq(getDepy)))
+          DieselAppContext ! DEComplete(tid.engine, tid.node, recurse = true, -1, Nil)
+        }
       }
     } else {
-
-      val ast = DomAst(EMsg(
-        DieselMsg.STREAMS.STREAM_ONERROR,
-        List(
-          P.of("stream", name), P.of("context", context)
-        ) ::: errors.toList
-      ))
-
-      setCtx(ast)
-
-      targetId.map { tid =>
-        DieselAppContext ! DEAddChildren(tid.engine, tid.node, recurse = true, -1, List(ast),
-          Some((a, e) => a.withPrereq(getDepy)))
-        DieselAppContext ! DEComplete(tid.engine, tid.node, recurse = true, -1, Nil)
-      }
+      // todo
     }
   }
 

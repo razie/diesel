@@ -330,6 +330,10 @@ case class BCMP2(a: Expr, op: String, b: Expr)
               }
             }
 
+//            case "is" | "==" if bp.ttype == WTypes.wt.BOOLEAN || ap.ttype == WTypes.wt.BOOLEAN => {
+//              ap.calculatedTypedValue.asBoolean == bp.calculatedTypedValue.asBoolean
+//            }
+
             case "in" if bp.ttype == WTypes.wt.ARRAY => isin(ap, bp)
 
             case "notIn" if bp.ttype == WTypes.wt.ARRAY => !isin(ap, bp)
