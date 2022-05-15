@@ -121,11 +121,11 @@ class WikiAsyncObservers extends Actor {
         Emailer.sendEmailNeedQuota(s1, s2)
       }
 
-    case m@DieselMsgString(s, target, _, set, _) => {
+    case m:DieselMsgString => {
       m.startMsg
     }
 
-    case m@DieselMsg(e, a, p, target, osettings) => {
+    case m:DieselMsg => {
       m.toMsgString.startMsg
     }
 
