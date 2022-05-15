@@ -98,8 +98,8 @@ trait CanHtml {
     */
   def ea(e: String, a: String, title: String = "", wrap: Boolean = true, kind: String) = {
     val t = CanHtml.prepTitle(title)
-    val c1 = if (kind == AstKinds.TRACE) "darkgray" else "moccasin"
-    val c2 = if (kind == AstKinds.TRACE) "darkgray" else "lightblue"
+    val c1 = if (kind == AstKinds.TRACE || kind == AstKinds.VERBOSE) "darkgray" else "moccasin"
+    val c2 = if (kind == AstKinds.TRACE || kind == AstKinds.VERBOSE) "darkgray" else "lightblue"
 
     (if (wrap) s"""<span class="label label-default" $t>""" else "") +
         s"""<span style="font-weight:bold; color:$c1">$e</span>.<span

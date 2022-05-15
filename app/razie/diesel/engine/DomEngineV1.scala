@@ -362,7 +362,7 @@ class DomEngineV1(
 
     //todo used to set kind to generated but parent makes more sense.getOrElse(AstKinds.GENERATED)
     val parentKind = a.kind match {
-      case AstKinds.TRACE => a.kind
+      case AstKinds.TRACE | AstKinds.VERBOSE => a.kind
       case _ => AstKinds.GENERATED
     }
 
@@ -1332,7 +1332,7 @@ class DomEngineV1(
           case v: EVal => {
             // clone so nobody changes the calculated value of p
             val newv = v.copy(p = v.p.copy().copyFrom(v.p)).copyFrom(v)
-            evAppChildren(a, DomAst(newv, AstKinds.TRACE))
+            evAppChildren(a, DomAst(newv, AstKinds.VERBOSE))
             // do not calculate here - keep them more like exprs .calculatedP)
 
             // todo this causes all kinds of weird issues

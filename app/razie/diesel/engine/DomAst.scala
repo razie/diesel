@@ -254,7 +254,7 @@ case class DomAst(
       val (style, cls) = kind match {
         case AstKinds.RECEIVED => ("font-weight:bold", "label label-warning")
         case AstKinds.TEST => ("font-weight:bold", "label label-warning")
-        case AstKinds.TRACE => ("color:lightgray", "")
+        case AstKinds.TRACE | AstKinds.VERBOSE => ("color:lightgray", "")
         case _ => ("", "")
       }
 

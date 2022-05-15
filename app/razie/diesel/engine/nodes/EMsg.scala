@@ -197,7 +197,7 @@ case class EMsg(
   /** message name as a nice link to spec as well */
   private def eaHtml(kind: String, labelClass:String="default") =
     kind match {
-      case AstKinds.TRACE =>
+      case AstKinds.TRACE | AstKinds.VERBOSE =>
         kspan(ea(entity, met, "", false, kind), "", specPos, spec.orElse(Some("no spec")).map(_.toString))
       case _ =>
         kspan(ea(entity, met, "", false, kind), labelClass, specPos, spec.orElse(Some("no spec")).map(_.toString))
