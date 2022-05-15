@@ -213,7 +213,7 @@ case class EMsg(
       /*span(arch+"::")+*/ first(pos, kind) + eaHtml(kind, "info") + " " + span(attrs.head.currentStringValue, "primary")
     } else if (DieselMsg.ENGINE.DIESEL_SUMMARY == ea) {
       // summary may have list of long values
-      /*span(arch+"::")+*/ first(pos, kind) + eaHtml(kind, "info") + " " + span(attrs.head.currentStringValue, "default") + toHtmlAttrs(attrs.tail, short=true, showExpr = false)
+      /*span(arch+"::")+*/ first(pos, kind) + eaHtml(kind, "primary") + " " + span(attrs.head.currentStringValue, "default") + toHtmlAttrs(attrs.tail, short=true, showExpr = false)
     } else if (DieselMsg.ENGINE.DIESEL_TODO == ea) {
       val m = attrs.head.currentStringValue
 //      val color = if (m contains "!") "danger" else "warning"

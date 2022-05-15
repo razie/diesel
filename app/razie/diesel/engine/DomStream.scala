@@ -82,6 +82,9 @@ abstract class DomStream (
   private var isError = false
   private var isConsumed = false
 
+  var totalPut = 0L
+  var totalConsumed = 0L
+
   def getIsConsumed = isConsumed
 
   def streamIsDone = isDone
@@ -101,7 +104,10 @@ abstract class DomStream (
     * @param justConsume - no put, just trigger consumers
     */
   def put(l: List[Any], justConsume: Boolean = false) = {
-    trace("DStream.put: " + l.mkString(","))
+    trace(s"($name) DStream.put: " + l.mkString(","))
+
+    totalPut += l.size
+
     if (!justConsume) {
       assert(!isDone)
 

@@ -14,15 +14,11 @@ import scala.concurrent.Future
 /** common controller utilities */
 class RazController extends RazControllerBase with Logging {
 
-//  implicit def betterrazRequest[A] (implicit request:Request[A]) = new BetterRazRequest[A](request)
-
 // CANNOT have the below implicit - it will mess up all stoks implicitly
   def razRequest (implicit request:Request[_]) = request match {
     case rr : RazRequest => rr
     case r : Request[_] => new RazRequest(request)
   }
-
-//  implicit def xxx (implicit request:RazRequest) : RequestHeader = request.ireq
 
   // allow calling old methods from new code
   implicit def xxx (implicit request:RazRequest) : Request[_] = request.ireq

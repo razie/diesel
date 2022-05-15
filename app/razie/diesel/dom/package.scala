@@ -16,7 +16,8 @@ import razie.wiki.Enc
  * Domain definitions are collected in RDomain
  */
 package object dom {
-  // archtetypes
+
+  // archtetypes for domain entities
   val ARCH_SPEC = "Spec"
   val ARCH_ROLE = "Role"
   val ARCH_ENTITY = "Entity"
