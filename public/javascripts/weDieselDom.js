@@ -634,6 +634,10 @@ function ferrStory(id) {
   }
 }
 
+function dieselHideVerbose(expanded) {
+  dieselHideKind(expanded, 'verbose');
+}
+
 function dieselHideTrace(expanded) {
   dieselHideKind(expanded, 'trace');
 }
@@ -707,9 +711,12 @@ function showFinalEngineResult(id) {
     $('#iframeOutStory_' + id).html(encAmp(data.res) + '\n');
     $('#iframeOutSpec_' + id).html(encAmp(data.res) + '\n');
 
+    dieselHideVerbose(localStorage.getItem("domFiddleVerboseStory") == "true");
     dieselHideTrace(localStorage.getItem("domFiddleTraceStory") == "true");
     dieselHideDebug(localStorage.getItem("domFiddleDebugStory") == "true");
     dieselHideGenerated(localStorage.getItem("domFiddleGeneratedStory") == "true");
+
+    showDurations();
   }
 }
 

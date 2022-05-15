@@ -31,6 +31,10 @@ view an engine
           refreshMode = expanded;
         });
 
+        useLocalStorageCheckbox("verboseStory", "domFiddleVerboseStory", function (a, b, expanded) {
+          dieselHideVerbose(expanded);
+        });
+
         useLocalStorageCheckbox("traceStory", "domFiddleTraceStory", function (a, b, expanded) {
           dieselHideTrace(expanded);
         });

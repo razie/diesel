@@ -185,6 +185,8 @@ Command reference (see more about [[specs.Topic:Expressions_and_pattern_matching
         <input type="checkbox" id="generatedStory" title="Expand/collaps generated nodes" checked> <small>(generated)</small>
         <input type="checkbox" id="payloadOnly" title="Show payload"> <small>(payload)</small>
         <button id="ferrStory" title="Find first error" onclick="ferrStory('@id')" class="btn btn-default btn-xs"> <small><span class="glyphicon glyphicon-menu-down"></span> (first error)</small></button>
+        <input type="checkbox" id="showDur" title="Expand duration info" > <small>(durations)</small>
+        <input type="checkbox" id="verboseStory" title="Expand/collaps verbose nodes" > <small>(verbose)</small>
       </div>
     </div>
 
@@ -1392,6 +1394,13 @@ $(window).on('load', function() {
 
 
   // todo could optimize and not showFinal every time trace/debug but only if payload was on
+  useLocalStorageCheckbox("verboseStory", "domFiddleVerboseStory", function (a,b,expanded) {
+    if(expanded) $('#payloadOnly').prop('checked', false).change(); // change triggers the callback
+    if(currEngineData != null) showFinalEngineResult('@id'); // repaint
+    dieselHideVerbose(expanded);
+  });
+
+  // todo could optimize and not showFinal every time trace/debug but only if payload was on
   useLocalStorageCheckbox("traceStory", "domFiddleTraceStory", function (a,b,expanded) {
     if(expanded) $('#payloadOnly').prop('checked', false).change(); // change triggers the callback
     if(currEngineData != null) showFinalEngineResult('@id'); // repaint
@@ -1419,6 +1428,26 @@ $(window).on('load', function() {
     if(currEngineData != null) showFinalEngineResult('@id'); // repaint
   });
 });
+
+
+// show duration as separate element
+var showDurations = function () {
+  $("span[kind='dur']").remove();
+
+  if($('#showDur').prop('checked')) {
+    $('[msec]').each(function (index) {
+      var m = $(this).attr("msec");
+      var s = '';
+      if(m.length >= 3) s = 'color:red;font-weight:bold';
+      else if(m.length >= 2) s = 'font-weight:bold';
+      var t = '<span kind="dur" style="' + s + '">' + m + '-</span>';
+      $(t).insertBefore(this);
+    });
+  }
+};
+
+// show duration as separate element
+$('#showDur').change(showDurations);
 
 /** popup config TQ */
 function configTagQuery (title,desc,tq,cback) {
