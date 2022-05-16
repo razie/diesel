@@ -98,14 +98,17 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
         (a, b) match {
           // json exprs are different, like cart + { item:...}
           case (aei:AExprIdent, JBlockExpr(jb, _))
-            if aei.tryApplyTyped("").exists(_.ttype == WTypes.JSON) =>
-            jsonExpr(op, av.calculatedValue, bv.calculatedValue)
+//            if aei.tryApplyTyped("").exists(_.ttype == WTypes.JSON) =>
+            if av.ttype == WTypes.JSON =>
+            jsonExprMap(op, av.calculatedTypedValue, bv.calculatedTypedValue)
 
-          // json exprs are different, like cart + { item:...}
+          // json exprs are different, like cart + xx
           case (aei:AExprIdent, bei:AExprIdent)
-            if aei.tryApplyTyped("").exists(_.ttype == WTypes.JSON) &&
-                bei.tryApplyTyped("").exists(_.ttype == WTypes.JSON) =>
-            jsonExpr(op, av.calculatedValue, bv.calculatedValue)
+//            if aei.tryApplyTyped("").exists(_.ttype == WTypes.JSON) &&
+//                bei.tryApplyTyped("").exists(_.ttype == WTypes.JSON) =>
+            if av.ttype == WTypes.JSON &&
+                bv.ttype == WTypes.JSON =>
+            jsonExprMap(op, av.calculatedTypedValue, bv.calculatedTypedValue)
 
           case _ if isDate(av) => { // date + duration
 
@@ -195,7 +198,7 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
               // json exprs are different, like cart + { item:...}
 
               try {
-                jsonExpr(op, av.calculatedValue, bv.calculatedValue)
+                jsonExprMap(op, av.calculatedTypedValue, bv.calculatedTypedValue)
               } catch {
                 case t: Throwable => throw new DieselExprException(
                   s"Parm ${av} or ${bv} can't be parse to JSON: " + t.toString).initCause(t)
@@ -213,13 +216,13 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
           // json exprs are different, like cart + { item:...}
           case (aei: AExprIdent, JBlockExpr(jb, _))
             if aei.tryApplyTyped("").exists(_.ttype == WTypes.JSON) =>
-            jsonExpr(op, a(v).toString, b(v).toString)
+            jsonExprMap(op, av.calculatedTypedValue, bv.calculatedTypedValue)
 
           // json exprs are different, like cart + { item:...}
           case (aei: AExprIdent, bei: AExprIdent)
             if aei.tryApplyTyped("").exists(_.ttype == WTypes.JSON) &&
                 bei.tryApplyTyped("").exists(_.ttype == WTypes.JSON) =>
-            jsonExpr(op, a(v).toString, b(v).toString)
+            jsonExprMap(op, av.calculatedTypedValue, bv.calculatedTypedValue)
 
           case _ if isDate(av) && isDate(bv) => {
             // if a is num, b will be converted to num
@@ -787,6 +790,74 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
     }
 //    razie.js.tojsons(res.toMap)
     res.toString
+  }
+
+  def jsonExprMap(op: String, aa: PValue[_], bb: PValue[_]) = {
+    val ai = aa.asJson
+    val bi = bb.asJson
+
+    val res = new mutable.HashMap[String, Any]()
+
+    ai.foreach { t =>
+      res.put(t._1, t._2)
+    }
+
+    if ("+" == op.trim) {
+      bi.foreach { t =>
+        val k = t._1
+        val bv = t._2
+        if (res.contains(k)) {
+          val ax = res(k)
+          ax match {
+
+            case al: collection.Seq[_] => {
+              bv match {
+                // add lists
+                case bll: collection.Seq[_] => {
+                  val l = new ListBuffer[Any]
+                  l.appendAll(al)
+                  l.appendAll(bll)
+                  res.put(k, l)
+                }
+                case _ => {
+                  val l = new ListBuffer[Any]
+                  l.appendAll(al)
+                  l.append(bv)
+                  res.put(k, l)
+                }
+              }
+            }
+
+            case m: collection.Map[_, _] if bv.isInstanceOf[collection.Map[_, _]] => {
+              // merge maps
+              val mres = new mutable.HashMap[String, Any]()
+              m.foreach { t =>
+                mres.put(t._1.toString, t._2)
+              }
+              res.put(k, mres)
+            }
+
+            case y@_ => {
+              (y, bv) match {
+//              case (a:Int, b:Int) => res.put(k, a+b)
+                // todo this will concatenate strings instead of merging maps
+                case _ => res.put(k, bv)
+//              case _ => res.put(k, y.toString + bv.toString)
+                // todo this will concatenate strings instead of merging maps
+              }
+            }
+          }
+        } else res.put(k, bv)
+      }
+    } else if ("-" == op.trim) {
+      bi.foreach { t =>
+        val k = t._1
+        res.remove(k)
+      }
+    }
+
+//    val s = razie.js.tojsons(res.toMap)
+    PValue(res, WTypes.wt.JSON)//.withStringCache(s)
   }
 
   def jsonExpr(op: String, aa: String, bb: String) = {

@@ -108,7 +108,7 @@ case class DomAst(
 
   /** timestamp started */
   var tstart: Long = System.currentTimeMillis()
-  /** timestamp started */
+  /** timestamp ended */
   var tend: Long = System.currentTimeMillis()
   /** execution sequence number - an engine is a single sequence */
   var seqNo: Long = -1

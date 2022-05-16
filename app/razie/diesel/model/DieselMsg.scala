@@ -7,7 +7,7 @@
 package razie.diesel.model
 
 import razie.audit.Audit
-import razie.diesel.engine.{DieselAppContext, DomEngineSettings}
+import razie.diesel.engine.{CachedEngingPrep, DieselAppContext, DomEngineSettings}
 import razie.diesel.engine.nodes.EMsg
 import razie.diesel.samples.DomEngineUtils
 import razie.diesel.samples.DomEngineUtils.extractResult
@@ -28,7 +28,8 @@ case class DieselMsgString(msg: String,
                            target: DieselTarget = DieselTarget.RK,
                            ctxParms: Map[String, Any] = Map.empty,
                            osettings: Option[DomEngineSettings] = None,
-                           omsg: Option[DieselMsg] = None
+                           omsg: Option[DieselMsg] = None,
+                           ocache: Option[CachedEngingPrep] = None
                           ) {
 
   /** convert to msg string */
@@ -45,6 +46,7 @@ case class DieselMsgString(msg: String,
   /** clone with new context */
   def withContext(p: Map[String, Any]) = this.copy(ctxParms = ctxParms ++ p)
   def withSettings(p: Option[DomEngineSettings]) = this.copy(osettings = osettings)
+  def withCachedPrep(p: Option[CachedEngingPrep]) = this.copy(ocache = p)
 
  /** try to parse and get the message invoked */
   def getEMsg : Option[EMsg] = {
@@ -70,7 +72,7 @@ case class DieselMsgString(msg: String,
 
     val ms = m.mkMsgString
     DomEngineUtils
-        .createEngine(ms, target.specs, target.stories, settings, Some(this))
+        .createEngine(ms, target.specs, target.stories, settings, Some(this), ocache)
   }
 
   /** audit that this engine has run and details */
@@ -104,7 +106,7 @@ case class DieselMsgString(msg: String,
         clog << ("engine completed...")
       val res = extractResult(msg, None, engine)
       auditEngine(res)
-      res
+      (engine, res)
     }
   }
 }

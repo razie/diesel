@@ -7,7 +7,7 @@ package razie.diesel.dom
 
 import org.json.JSONObject
 import razie.diesel.Diesel
-import razie.diesel.dom.RDOM.{O, _}
+import razie.diesel.dom.RDOM._
 import razie.diesel.engine.nodes.{EMsg, flattenJson}
 import razie.diesel.expr.{DieselExprException, ECtx}
 import razie.diesel.model.{DieselMsg, DieselTarget}
