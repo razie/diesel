@@ -244,20 +244,24 @@ trait DomParser extends ParserBase with ExprParser {
 
   // ifc is the default if
   def pifc: Parser[EIf] =
-    """[.$]?ifc?""".r ~> ows ~> notoptCond ^^ {
-      case b: BoolExpr => EIfc(b)
+    keyw("""[.$]?ifc?""".r) ~ ows ~ notoptCond ^^ {
+      case arrow ~ _ ~ b => EIfc(b.asInstanceOf[BoolExpr])
+          .withPosition(EPos("", arrow.pos.line, arrow.pos.column))
     }
 
   // if-match
   def pifm: Parser[EIf] =
-    """[.$]?match""".r ~> ows ~> notoptMatchAttrs ^^ {
-      case a: List[PM] => EIfm(a)
+    keyw("""[.$]?match""".r) ~ ows ~ notoptMatchAttrs ^^ {
+      case arrow ~ _ ~ a => EIfm(a.asInstanceOf[List[PM]])
+          .withPosition(EPos("", arrow.pos.line, arrow.pos.column))
     }
 
   // if-else
   def pelse: Parser[EIf] =
-    """[.$]?else""".r ^^ {
-      case a => EElse()
+    keyw("""[.$]?else""".r) ^^ {
+      case arrow => EElse()
+        .withPosition(EPos("", arrow.pos.line, arrow.pos.column))
+
     }
 
   /**

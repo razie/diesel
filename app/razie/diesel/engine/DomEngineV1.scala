@@ -447,7 +447,7 @@ class DomEngineV1(
             // add debug
             newNodes = newNodes ::: DomAst(
               EInfo("rule skipped: " + x.e.toString, x.e.toString + "\n" + x.pos).withPos(x.pos),
-              AstKinds.TRACE) :: Nil
+              AstKinds.VERBOSE) :: Nil
             false
           })
 
@@ -463,7 +463,7 @@ class DomEngineV1(
                   // add debug
                   newNodes = newNodes ::: DomAst(
                     EInfo("rule skipped: " + x.e.toString, x.e.toString + "\n" + x.pos).withPos(x.pos),
-                    AstKinds.TRACE) :: Nil
+                    AstKinds.VERBOSE) :: Nil
                   false
                 })
 

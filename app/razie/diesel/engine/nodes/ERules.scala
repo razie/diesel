@@ -385,34 +385,41 @@ case class ERule(e: EMatch, arch:String, i: List[EMap]) extends CanHtml with EAp
 }
 
 // base for conditions
-trait EIf extends CanHtml {
+trait EIf extends CanHtml with HasPosition {
+  var pos: Option[EPos] = None
+  def withPosition (p:EPos) = {this.pos = Some(p); this}
+
   def test(ast: DomAst, e: Attrs, cole: Option[MatchCollector] = None)(implicit ctx: ECtx): Boolean
 }
 
 // a match condition
-case class EIfm(attrs: MatchAttrs) extends CanHtml with EIf {
+case class EIfm(attrs: MatchAttrs) extends CanHtml with EIf{
   override def test(ast: DomAst, e: Attrs, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) = {
     val res = testMatchAttrs(e, attrs, cole)
     ast.guard = if (res) DomState.GUARD_TRUE else DomState.GUARD_FALSE
     res
   }
 
-  override def toHtml = span("$ifm::") + attrs.mkString("<small>(", ", ", ")</small>")
+  override def toHtml = kspan("$ifm::", "default", pos) + attrs.mkString("<small>(", ", ", ")</small>")
 
   override def toString = "$ifm " + attrs.mkString
 }
 
 // a match condition
-case class EElse() extends CanHtml with EIf {
+case class EElse() extends CanHtml with EIf with HasPosition {
   override def test(ast: DomAst, e: Attrs, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) = {
     if (ast != null) {
       // must find last applicable IF in rule and then find out if it was applied and then NOT that
       var lastIF: Option[DomAst] = None
       var found = false
+
       // previous sibbling
-      ctx.root
-          .engine
-          .flatMap(_.findParent(ast))
+      ast.parent.orElse {
+        ctx.root.engine.flatMap(_.findParent(ast))
+        // todo NOTE this won't work when it's ran sync inside another engine, see processSync
+        // example: $else inside a subrule from a map with lambda message
+        // ast.parent MUST exist...
+        }
           .toList
           .flatMap(_.children)
           .foreach { e =>
@@ -431,14 +438,14 @@ case class EElse() extends CanHtml with EIf {
         lastIF.get.guard == DomState.GUARD_FALSE
       } else {
         // should I ignore silently?
-        throw new DieselExprException("$else found no preceeding $if")
+        throw new DieselExprException("$else found no preceeding $if at: " + this.pos)
       }
     } else {
       false
     }
   }
 
-  override def toHtml = span("$else::")
+  override def toHtml = kspan("$else::", "default", pos)
 
   override def toString = "$else "
 }
@@ -449,7 +456,7 @@ case class EIfc(cond: BoolExpr) extends CanHtml with EIf {
   // todo collect from bapply
     cond.bapply("").value
 
-  override def toHtml = span("$ifc::") + cond.toDsl
+  override def toHtml = kspan("$ifc::", "default", pos) + cond.toDsl
 
   override def toString = "$ifc " + cond.toDsl
 }
