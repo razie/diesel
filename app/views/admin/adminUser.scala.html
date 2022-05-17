@@ -1,7 +1,7 @@
 @**
 screen to admin one user
 **@
-@(user:Option[model.User])(implicit stok: controllers.StateOk)
+@(u:model.User)(implicit stok: controllers.StateOk)
 @import com.mongodb.casbah.Imports._
 
 @pro(p:model.Profile) = {
@@ -19,7 +19,6 @@ screen to admin one user
 
 <h2>User</h2>
 
-@user.map {u=>
   <br>userName:@u.userName
   <br>Name:@u.firstName @u.lastName
   <br>yob: @u.yob
@@ -32,96 +31,88 @@ screen to admin one user
   <br>roles: @u.roles.mkString(",") | @u.forRealm(stok.realm).roles.mkString(",")
   <br>realms: @u.realms.mkString(",")
   <br>prefs: @u.prefs | @u.forRealm(stok.realm).prefs
-}
 
 <p>
-<b>Profile: </b> @user.map(_.profile)
+<b>Profile: </b> @u.profile
 
 <p>
-@user.flatMap(_.profile).map(pro(_))
+@u.profile.map(pro(_))
 
-@user.map {u=>
   <hr>
   <ul>Mod notes
     @u.modNotes.map {n=>
     <li>@n </li>
     }
   </ul>
-}
 
     <hr>
 <ul>Counts
-@user.map {u=>
 <li>  WikiEntry    count = @razie.db.RazMongo("WikiEntry").count(Map("by" -> u._id))
 <li>  WikiEntryOld count = @razie.db.RazMongo("WikiEntryOld").count(Map("entry.by" -> u._id))
 <li>  Comment count = @razie.db.RazMongo("Comment").count(Map("userId" -> u._id))
 <li>  Notes   count = @razie.db.RazMongo("weNote").count(Map("by" -> u._id))
-<li>  Quota = @user.flatMap(_.quota.updates)
-}
+<li>  Quota = @u.quota.updates
 </ul>
 
-<a href="/razadmin/user/@user.get.id/su">SU</a> |
-<a href="/razadmin/user/@user.get.id/delete1">DELETE</a> |
-@if(user.isDefined) {
-  @if('a' == user.get.status) {
-    <a href="/razadmin/user/@user.get.id/status/s">SUSPEND</a>
+  <a href="/razadmin/user/@u.id/su">SU</a> |
+  <a href="/razadmin/user/@u.id/delete1">DELETE</a> |
+
+  @if('a' == u.status) {
+    <a href="/razadmin/user/@u.id/status/s">SUSPEND</a>
   } else {
-    <a href="/razadmin/user/@user.get.id/status/a">ACTIVATE</a>
+    <a href="/razadmin/user/@u.id/status/a">ACTIVATE</a>
   }
-}
 
 <hr>
 
 <p>
-  <b>toString: </b> @user.toString
+  <b>toString: </b> @u.toString
 
-  @user.map {u=>
   <br> ur: <br> @u.realmSet.map{t=>
     <b>@t._1</b> -> @t._2 <br>
   }
-}
 
 <hr>
 
   <p>
-    @if(!user.exists(_.realmSet.contains(stok.realm))) {
+    @if(!u.realmSet.contains(stok.realm)) {
       <div class="alert alert-danger">
         Current user is not of this realm !! You should manage him/her from the proper realm.
       <br>
-        Realms: @Html(user.map(_.realmSet.keys.map { t =>
+        Realms: @Html(u.realmSet.keys.map { t =>
           s"""<a href="/wikie/switchRealm/${t}">${t}</a>"""
-        }.mkString("|")).mkString)
+        }.mkString("|")))
       </div>
     }
 
   </p>
-      @helper.form(action=routes.AdminUser.userPerm(user.get.id), 'class->"well form-inline") {
+      @helper.form(action=routes.AdminUser.userPerm(u.id), 'class->"well form-inline") {
         <input type="text" class="input-xlarge" name="perm" placeholder="+Perm">
         <button type="submit" class="btn btn-default">+/-Perm</button>
   adminWiki uWiki uProfile eVerified apiCall domFiddle codeMaster | Member Basic Gold Platinum Moderator
   }
 
-@helper.form(action=routes.AdminUser.userQuota(user.get.id), 'class->"well form-inline") {
+@helper.form(action=routes.AdminUser.userQuota(u.id), 'class->"well form-inline") {
   <input type="text" class="input" name="quota" placeholder="+Quota">
   <button type="submit" class="btn btn-default">+/-Quota</button>
 }
 
-      @helper.form(action=routes.AdminUser.userModnotes(user.get.id), 'class->"well form-inline") {
+      @helper.form(action=routes.AdminUser.userModnotes(u.id), 'class->"well form-inline") {
         <input type="text" class="input col-xs-8" name="val" placeholder="+/-Note">
         <button type="submit" class="btn btn-default">+/-Note</button>
       }
 
-      @helper.form(action=routes.AdminUser.userUname(user.get.id), 'class->"well form-inline") {
+      @helper.form(action=routes.AdminUser.userUname(u.id), 'class->"well form-inline") {
         <input type="text" class="input" name="val" placeholder="username">
         <button type="submit" class="btn btn-default">Username</button>
       }
 
-@helper.form(action=routes.AdminUser.userRoles(user.get.id), 'class->"well form-inline") {
+@helper.form(action=routes.AdminUser.userRoles(u.id), 'class->"well form-inline") {
   <input type="text" class="input-xlarge" name="val" placeholder="Roles">
   <button type="submit" class="btn btn-default">Set roles</button>
 }
 
-      @helper.form(action=routes.AdminUser.userRealms(user.get.id), 'class->"well form-inline") {
+      @helper.form(action=routes.AdminUser.userRealms(u.id), 'class->"well form-inline") {
         <input type="text" class="input-xlarge" name="val" placeholder="Realms">
         <button type="submit" class="btn btn-default">Set Realms</button>
       }
@@ -129,17 +120,14 @@ screen to admin one user
   <hr>
 
   <ul>Events
-  @user.map {u=>
     @razie.db.RazMongo("UserEvent").find(Map("userId" -> new ObjectId(u.id))).map {ue=>
       <li> @ue.toString
     }
-  }
   </ul>
 
   <hr>
 
   <ul>Links
-  @user.map {u=>
     @u.wikis.map {uw=>
       <li> [
         @if(uw.role != "Owner") {
@@ -147,16 +135,13 @@ screen to admin one user
           }
         ] @uw._id - @uw.role - <a href="/wiki/@uw.wid.wpath">@uw.wid</a>
     }
-  }
   </ul>
 
     <h2>WikiAudit</h2>
     <ul>
-      @user.map {u=>
         @razie.db.RazMongo("WikiAudit").find(Map("userId" -> new ObjectId(u.id))).map {ue=>
           <li> @ue.get("crDtm") - <a href="/wiki/@ue.get("wpath")">@ue.get("wpath")</a>
         }
-      }
     </ul>
 
 

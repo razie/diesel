@@ -39,8 +39,12 @@ class Api @Inject() (val config:Configuration) extends AdminBase {
   }
 
   def user(id: String) = NFAU { implicit request =>
-    ROK.r admin {implicit stok=>
-      views.html.admin.adminUser(model.Users.findUserById(id))}
+    model.Users.findUserById(id).map {
+      u =>
+        ROK.r admin { implicit stok =>
+          views.html.admin.adminUser(u)
+        }
+    }.getOrElse(NotFound("User not found"))
   }
 }
 

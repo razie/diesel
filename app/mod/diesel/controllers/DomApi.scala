@@ -1022,7 +1022,7 @@ class DomApi extends DomApiBase with Logging {
 
           // must allow for ctx.sleeps
           // todo why 50 sec
-          val dur = WikiConfig.getInstance.get.prop("diesel.timeout", "50seconds")
+          val dur = WikiConfig.getInstance.get.prop("diesel.timeout", "50 seconds")
           val tcode = WikiConfig.getInstance.get.prop("diesel.timeoutCode", "504")
           try {
             Await.result(res, Duration(dur))

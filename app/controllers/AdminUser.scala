@@ -24,10 +24,13 @@ class AdminUser extends AdminBase {
 
   def user(id: String) =
     FADR { implicit stok =>
-      ROK.r admin { implicit stok =>
-        views.html.admin.adminUser(
-          model.Users.findUserById(id).map(_.forRealm(stok.realm)))
-      }
+        model.Users.findUserById(id).map(_.forRealm(stok.realm)).map {u=>
+          ROK.r admin { implicit stok =>
+            views.html.admin.adminUser(u)
+          }
+        }.getOrElse(
+          NotFound("User not found...")
+        )
     }
 
   def userDelete1(id: String) =
