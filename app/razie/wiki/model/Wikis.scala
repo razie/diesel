@@ -18,7 +18,7 @@ import razie.db.{RMany, RazMongo}
 import razie.diesel.dom.WikiDomain
 import razie.hosting.WikiReactors
 import razie.tconf.Visibility.PUBLIC
-import razie.tconf.parser.{BaseAstNode, LeafAstNode, SpecParserSettings, StrAstNode}
+import razie.tconf.parser.{BaseAstNode, JMapFoldingContext, LeafAstNode, SpecParserSettings, StrAstNode}
 import razie.wiki.admin.GlobalData
 import razie.wiki.model.features.{WForm, WikiForm}
 import razie.wiki.parser.WAST
@@ -436,7 +436,7 @@ object Wikis extends Logging with Validation {
     * @param we - optional page for context for formatting
     * @return
     */
-  private def format1(wid: WID, markup: String, icontent: String, we: Option[WikiEntry], user:Option[WikiUser]) = {
+  private def format1(wid: WID, markup: String, icontent: String, we: Option[WikiEntry], user:Option[WikiUser], folder:Option[JMapFoldingContext[_,_]] = None) = {
     val res = try {
       var content =
         (if(icontent == null || icontent.isEmpty) {
@@ -452,7 +452,7 @@ object Wikis extends Logging with Validation {
         }
         else
           preprocess(wid, markup, noBadWords(icontent), we)._1
-        ).fold(WAST.context(we, user)).s
+        ).fold(folder.getOrElse(WAST.context(we, user))).s
 
       // apply md templates first
       content = Wikis(wid.getRealm).applyTemplates(wid, content, "md")
@@ -712,7 +712,7 @@ object Wikis extends Logging with Validation {
    * @param we - optional page for context for formatting
    * @return
    */
-  def format(wid: WID, markup: String, icontent: String, we: Option[WikiEntry], user:Option[WikiUser]) : String = {
+  def format(wid: WID, markup: String, icontent: String, we: Option[WikiEntry], user:Option[WikiUser], folder:Option[JMapFoldingContext[_,_]] = None) : String = {
     if (JSON == wid.cat || JSON == markup || XML == wid.cat || XML == markup || TEXT == markup)
       formatJson(wid, markup, icontent, we)
     else {
@@ -727,13 +727,13 @@ object Wikis extends Logging with Validation {
           WikiCache.getString(we.get.wid.wpathFull+".formatted").map{x=>
             x
           }.getOrElse {
-            val n = format1(wid, markup, icontent, we, user)
+            val n = format1(wid, markup, icontent, we, user, folder)
             if(we.exists(_.cacheable)) // format can change cacheable
               WikiCache.set(we.get.wid.wpathFull+".formatted", n)
             n
           }
         } else
-          format1(wid, markup, icontent, we, user)
+          format1(wid, markup, icontent, we, user, folder)
       }
 
       // mark the external links

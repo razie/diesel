@@ -39,11 +39,11 @@ case class JBlockExpr(ex: List[(String, Expr)], schema:Option[String]=None) exte
     val orig = ex
         .map(t => (t._1, t._2.applyTyped(v)))
         .map(t => (t._1, t._2 match {
-          case p@P(n, d, WTypes.wt.NUMBER, _, _, Some(PValue(i: Int, _))) => i
-          case p@P(n, d, WTypes.wt.NUMBER, _, _, Some(PValue(i: Long, _))) => i
-          case p@P(n, d, WTypes.wt.NUMBER, _, _, Some(PValue(i: Double, _))) => i
+          case p@P(n, d, WTypes.wt.NUMBER, _, _, Some(PValue(i: Int, _)), _) => i
+          case p@P(n, d, WTypes.wt.NUMBER, _, _, Some(PValue(i: Long, _)), _) => i
+          case p@P(n, d, WTypes.wt.NUMBER, _, _, Some(PValue(i: Double, _)), _) => i
 
-          case p@P(n, d, WTypes.wt.BOOLEAN, _, _, Some(PValue(b: Boolean, _))) => b
+          case p@P(n, d, WTypes.wt.BOOLEAN, _, _, Some(PValue(b: Boolean, _)), _) => b
 
           case p: P => p.currentStringValue match {
             // parts of json stay as json

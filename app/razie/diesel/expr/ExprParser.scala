@@ -370,7 +370,7 @@ private def accessorIdent: Parser[RDOM.P] = "." ~> ident ^^ { case id => P("", i
 //      opt(" *<> *") ~
       ident ~
       optKinds ~
-      opt(" *\\* *".r)) ^^ {
+      opt(" *\\*".r)) ^^ {
     case Some(ref ~ tt ~ k ~ None) => {
       WType(tt, "", k).withRef(ref.contains("<>"))
     }
@@ -399,12 +399,13 @@ private def accessorIdent: Parser[RDOM.P] = "." ~> ident ^^ { case id => P("", i
     * * means it's a list
     */
   def pattr: Parser[RDOM.P] = " *".r ~>
+      opt(repsep("@" ~> ident, " *".r) <~ ws) ~  //optional stereotypes
       qident ~
       optType ~
-      opt(" *\\?(?!=) *".r) ~  // negative lookahead to not match optional with value
+      opt(" *\\?(?!=) *".r) ~  // negative lookahead to not match optional ? with default value ?=
       opt(ows ~> OPSM1 ~ ows ~ expr) <~
       optComment ^^ {
-    case name ~ ttype ~ oper ~ e => {
+    case stereo ~ name ~ ttype ~ oper ~ e => {
       var optional = oper.mkString.trim
 
       val (dflt, ex) = e match {
@@ -416,12 +417,14 @@ private def accessorIdent: Parser[RDOM.P] = "." ~> ident ^^ { case id => P("", i
         case None => ("", None)
       }
 
+      val stereotypes = stereo.map(_.mkString(",")).mkString
+
       ttype match {
         // k - kind is [String] etc
         case WTypes.wt.EMPTY => // infer type from expr
-          P(name, dflt, ex.map(_.getType).getOrElse(WTypes.wt.EMPTY), ex, optional)
+          P(name, dflt, ex.map(_.getType).getOrElse(WTypes.wt.EMPTY), ex, optional, None, stereotypes)
         case tt => // ref or no archetype
-          P(name, dflt, tt, ex, optional)
+          P(name, dflt, tt, ex, optional, None, stereotypes)
       }
     }
   }

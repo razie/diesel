@@ -115,7 +115,7 @@ object RDOM {
 
       val a = this
 
-      // todo should combine / oberwrite duplicates like methods or args with same name
+      // todo should combine / overwrite duplicates like methods or args with same name
       val c = C(name,
         combine(a.archetype, b.archetype),
         combine(a.stereotypes, b.stereotypes),
@@ -506,7 +506,8 @@ object RDOM {
     */
   case class P(name: String, dflt: String, ttype: WType = WTypes.wt.EMPTY, expr: Option[Expr] = None,
                optional: String = "",
-               var value: Option[PValue[_]] = None
+               var value: Option[PValue[_]] = None,
+               stereotypes:String = ""
               ) extends CM with CanHtml with razie.HasJsonStructure {
 
     def copyFrom(other: P): P = {
@@ -691,6 +692,7 @@ object RDOM {
       s"<b>${nameHtml(short)}</b>" +
           (if (ttype.name.toLowerCase != "string") typeHtml(ttype) else "") +
           optional +
+          smap(stereotypes)(s=> " &lt;" + s.split(",").map(x=>s"@$x").mkString(" ") + "&gt;") +
           smap(Enc.escapeHtml(if (short) valueTrimmed20 else currentStringValue)) { s =>
             "=" + tokenValue(
               // this kicks in if currentstringvalue exists
