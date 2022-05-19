@@ -48,7 +48,7 @@ trait ExprParser extends RegexParsers {
 
   private def opsAS: Parser[String] = "as"
 
-  private def opsMAP: Parser[String] = "map" <~ ws | "fold" <~ ws | "flatMap" <~ ws | "flatten" <~ ws | "filter" <~
+  private def opsMAP: Parser[String] = "map" <~ ws | "fold" <~ ws | "foreach" <~ ws | "flatMap" <~ ws | "flatten" <~ ws | "filter" <~
       ws | "exists" |
       "mkString" <~
           ws | ">>"
@@ -144,7 +144,7 @@ trait ExprParser extends RegexParsers {
     numConst | boolConst | multilineStrConst | strConst | jnull |
         xpident |
         lambda | jsexpr2 | jsexpr1 |
-        exregex | eblock | jarray | jobj |
+        exregex | eblock | jarray1 | jarray2 | jobj |
         scalaexpr2 | scalaexpr1 |
         callFunc | aidentaccess | aident | jsexpr4
 //    exregex | eblock | jarray | jobj
@@ -489,11 +489,16 @@ private def accessorIdent: Parser[RDOM.P] = "." ~> ident ^^ { case id => P("", i
   }
 
   // array [...] - elements are expressions
-  def jarray: Parser[Expr] = "[" ~ ows ~> repsep(ows ~> jexpr <~ ows, ",") <~ ows ~ "]" ^^ {
+//  def jarray1: Parser[Expr] = "[" ~ ows ~> jexpr ~ ".." ~ jexpr <~ ows ~ "]" ^^ {
+  def jarray1: Parser[Expr] = "[" ~ ows ~> jexpr ~ " *\\.\\. *".r ~ jexpr <~ ows ~ "]" ^^ {
+    case start ~ _ ~ end => JArrExprGen(start,end) //CExpr("[ " + li.mkString(",") + " ]")
+  }
+
+  def jarray2: Parser[Expr] = "[" ~ ows ~> repsep(ows ~> jexpr <~ ows, ",") <~ ows ~ "]" ^^ {
     li => JArrExpr(li) //CExpr("[ " + li.mkString(",") + " ]")
   }
 
-  def jexpr: Parser[Expr] = jobj | jarray | boolConst | jother ^^ (ex => ex) //ex.toString }
+  def jexpr: Parser[Expr] = jobj | jarray1 | jarray2 | boolConst | jother ^^ (ex => ex) //ex.toString }
 
   //  def jother: Parser[String] = "[^{}\\[\\],]+".r ^^ { case ex => ex }
   def jother: Parser[Expr] = expr ^^ (ex => ex)

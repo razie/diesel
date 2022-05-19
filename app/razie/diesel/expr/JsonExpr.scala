@@ -116,4 +116,35 @@ case class JArrExpr(ex: List[Expr]) extends Expr {
 
 }
 
+/** a json array */
+case class JArrExprGen(start:Expr, end:Expr) extends Expr {
+  val expr = "[" + start + " .. " + end + "]"
+
+  // todo make it lazy, not concrete
+
+  private def calculate(v: Any)(implicit ctx: ECtx) = {
+    val a = new org.json.JSONArray()
+
+     (
+      start.applyTyped(v).calculatedTypedValue.asLong.toInt to
+      end.applyTyped(v).calculatedTypedValue.asLong.toInt
+    ).foreach{i=>
+       a.put(i)
+     }
+
+    a
+  }
+
+  override def apply(v: Any)(implicit ctx: ECtx) = {
+    calculate(v).toString
+  }
+
+  override def applyTyped(v: Any)(implicit ctx: ECtx): P = {
+    val ja = calculate(v)
+    P.fromTypedValue("", ja)
+  }
+
+  override def getType: WType = WTypes.wt.ARRAY
+}
+
 
