@@ -111,11 +111,18 @@ object Wikis extends Logging with Validation {
   def find(wid: WID): Option[WikiEntry] =
     apply(wid.getRealm).find(wid)
 
-  // TODO find by ID is bad, no - how to make it work across wikis ?
-  /** @deprecated optimize with realm */
+  /** assumes id is unique across realms. looks funky but the first one should find the id
+    * @deprecated use the version with cat, it's faster
+    * @param id
+    * @return
+    */
   def findById(id: String) = find(new ObjectId(id))
 
-  /** @deprecated optimize with realm */
+  /** assumes id is unique across realms. looks funky but the first one should find the id
+    * @deprecated use the version with cat, it's faster
+    * @param id
+    * @return
+    */
   def find(id: ObjectId) =
     WikiReactors.reactors.foldLeft(None.asInstanceOf[Option[WikiEntry]])((a, b) => a orElse b._2.wiki.find(id))
 

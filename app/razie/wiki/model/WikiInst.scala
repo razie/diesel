@@ -84,9 +84,10 @@ trait WikiInst extends DSpecInventory {
   /** get label from category definiition */
   def labelFor(wid: WID, action: String) : Option[String]
 
-  // TODO find by ID is bad, no - how to make it work across wikis ?
+  /** @deprecated use the one with Cat whenever possible */
   def findById(id: String) : Option[WikiEntry]
 
+  /** @deprecated use the one with Cat whenever possible */
   def find(id: ObjectId) : Option[WikiEntry]
 
   def findById(cat:String, id: String):Option[WikiEntry]
@@ -245,9 +246,10 @@ class WikiInstImpl (val realm:String, val fallBacks:List[WikiInst], mkDomain : W
     }
   }
 
-  // TODO find by ID is bad, no - how to make it work across wikis ?
+  /** @deprecated use the one with Cat whenever possible */
   def findById(id: String) = find(new ObjectId(id))
-  // TODO optimize
+
+  /** @deprecated use the one with Cat whenever possible */
   def find(id: ObjectId) =
     (
       table.findOne(Map("_id" -> id)) orElse (

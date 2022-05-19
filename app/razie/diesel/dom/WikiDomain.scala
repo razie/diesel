@@ -125,7 +125,7 @@ object WikiDomain {
   def canCreateNew (realm:String, cat:String) = "User" != cat && "WikiLink" != cat
   //todo can i create WIkiLink if I am admin?
 
-  /** root categories we can create free instance from */
+  /** root categories we can create free instance from, used when navigating */
   def rootCats (realm:String) = {
     apply(realm)
         .rdom

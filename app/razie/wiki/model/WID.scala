@@ -60,7 +60,8 @@ case class WID(
 
   def hasCachedPage = _cachedPage.get().nonEmpty
 
-  def resetCachedPage(newp:Option[WikiEntry]) = _cachedPage.set(Some(newp))
+  def resetCachedPage(newp:Option[WikiEntry]) = {_cachedPage.set(Some(newp)); this}
+  def withCachedPage(newp:WikiEntry) = {_cachedPage.set(Some(Some(newp))); this}
 
   /** find the page for this, if any - respects the NOCATS */
   def page : Option[WikiEntry] = {
@@ -466,12 +467,14 @@ object WID {
   * also, having a wid means a page exists or existed
   */
 case class UWID(cat: String, id:ObjectId, realm:Option[String]=None) {
+
   /** find the name and build a wid - possibly expensive for non-indexed topics */
   def findWid = {
     WikiIndex.withIndex(getRealm) { idx =>
       idx.find((_,_,x)=>x == id).map(_._2)
     } orElse Wikis(getRealm).findById(cat, id).map(_.wid)
   }
+
   /** force finding or building a surrogate wid */
   lazy val wid = findWid orElse Some(WID(cat, id.toString).copy(realm=realm)) // used in too many places to refactor properly
   def nameOrId = wid.map(_.name).getOrElse(id.toString)

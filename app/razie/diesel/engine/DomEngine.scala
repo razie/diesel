@@ -10,7 +10,7 @@ import org.joda.time.DateTime
 import razie.Logging
 import razie.diesel.Diesel
 import razie.diesel.dom.RDOM.P
-import razie.diesel.dom.{DieselAssets, RDomain, WTypes}
+import razie.diesel.dom.{DieselAssets, RDomain, WTypes, WikiDomain}
 import razie.diesel.engine.RDExt.DieselJsonFactory
 import razie.diesel.engine.nodes._
 import razie.diesel.expr._
@@ -19,7 +19,7 @@ import razie.diesel.model.DieselMsg.ENGINE.{DIESEL_MSG_ACTION, DIESEL_MSG_ATTRS,
 import razie.diesel.utils.DomCollector
 import razie.tconf.DSpec
 import razie.wiki.admin.GlobalData
-import razie.wiki.model.WID
+import razie.wiki.model.{WID, WikiEntry}
 import scala.Option.option2Iterable
 import scala.collection.mutable.ListBuffer
 //import scala.concurrent.ExecutionContext.Implicits.global
@@ -430,7 +430,7 @@ abstract class DomEngine(
     if(decrement) GlobalData.dieselEnginesActive.decrementAndGet()
 
     if (!finishP.isCompleted) finishP.success(this)
-    debug(s"Engine $id released future")
+    debug(s"Engine released future DomEngine:$id $description")
 
     // remove ctx references
     try {
@@ -728,8 +728,7 @@ abstract class DomEngine(
       // only if they have a completed EEngComplete can complete a SUSPENDED
 
       if (node.status != DomState.DONE) {
-        // call only when transitioning to DONE
-        result = nodeDone(node) //node.status = DONE
+        result = nodeDone(node)
       }
     }
 
@@ -753,9 +752,9 @@ abstract class DomEngine(
     */
   protected def prepRoot(l: ListBuffer[DomAst]): ListBuffer[DomAst] = {
     // spec vals are expanded on exec of this VALS
-    val vals = DomAst(EMsg(DieselMsg.ENGINE.DIESEL_VALS), AstKinds.TRACE)
+    val vals = DomAst(EMsg(DieselMsg.ENGINE.DIESEL_VALS), AstKinds.VERBOSE)
     val warns = DomAst(EMsg(DieselMsg.ENGINE.DIESEL_WARNINGS), AstKinds.TRACE)
-    val before = DomAst(EMsg(DieselMsg.ENGINE.DIESEL_BEFORE), AstKinds.TRACE)
+    val before = DomAst(EMsg(DieselMsg.ENGINE.DIESEL_BEFORE), AstKinds.VERBOSE)
     val after = DomAst(EMsg(DieselMsg.ENGINE.DIESEL_AFTER), AstKinds.TRACE)
     val desc = DomAst(EInfo(
       description,
