@@ -88,7 +88,7 @@ show diff with remote
           -->
           <a
           xhref="#"
-          onclick="applyDif('@t._2.id', '@routes.AdminDiff.applyDiffTo(localRealm, toRealm, remote, WID(t._2.cat, t._2.name).r(t._2.realm))')"
+          onclick="applyDif('@t._2.id', '@routes.AdminDiff.applyDiffTo(localRealm, toRealm, remote, WID(t._2.cat, t._2.name).r(t._2.realm), t._1.id, t._2.id)')"
           class="btn btn-xs btn-@{if(t._3=="L") "success" else ( if(t._1.ver >= t._2.ver) "danger" else "warning" ) }"
           title="@{if(t._3!="L" && t._1.ver >= t._2.ver) "conflict !!!" else "warning??" }"
           >USE LOCAL &raquo;</a>
@@ -131,7 +131,7 @@ show diff with remote
         @if(t._1.cat != "ReactorMod") {
           <a
           xhref="#"
-          onclick="applyDif('@t._2.id', '@routes.AdminDiff.applyDiffFrom(localRealm, toRealm, remote, WID(t._2.cat, t._2.name).r(t._2.realm))')"
+          onclick="applyDif('@t._2.id', '@routes.AdminDiff.applyDiffFrom(localRealm, toRealm, remote, WID(t._2.cat, t._2.name).r(t._2.realm), t._1.id, t._2.id)')"
           class="btn btn-xs btn-@{if(t._3=="R") "success" else ( if(t._2.ver >= t._1.ver) "danger" else "warning" ) }"
           title="@{if(t._3!="R" && t._2.ver >= t._1.ver) "conflict !!!" else "warning??" }"
           >	&laquo; USE REMOTE</a>
@@ -162,7 +162,7 @@ show diff with remote
 @*//        @if(wea.cat != "Reactor") {*@
           <a
           xhref="x"
-          onclick="applyDif('@wea.id', '@routes.AdminDiff.applyDiffTo(localRealm, toRealm, remote, WID(wea.cat, wea.name).r(wea.realm))')"
+          onclick="applyDif('@wea.id', '@routes.AdminDiff.applyDiffTo(localRealm, toRealm, remote, WID(wea.cat, wea.name).r(wea.realm), wea.id, "")')"
           class="btn btn-xs btn-success"
           >USE LOCAL &raquo;</a>
 @*//        }*@
@@ -212,7 +212,7 @@ show diff with remote
       <td>
 @*//      @if(wea.cat != "Reactor") {*@
           <a
-          onclick="applyDif('@wea.id', '@routes.AdminDiff.applyDiffFrom(localRealm, toRealm, remote, WID(wea.cat, wea.name).r(wea.realm))')"
+          onclick="applyDif('@wea.id', '@routes.AdminDiff.applyDiffFrom(localRealm, toRealm, remote, WID(wea.cat, wea.name).r(wea.realm), "", wea.id)')"
           class="btn btn-xs btn-success"
           >	&laquo; USE REMOTE</a>
 @*//      }*@

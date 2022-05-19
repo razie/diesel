@@ -74,7 +74,7 @@ view an engine
 
         setInterval(function(){
           if(refreshMode && !done)  window.location.reload();
-        }, 3000);
+        }, 4000);
 
       });
 
@@ -184,6 +184,7 @@ DESC: @{e.description}<br>
     <input type="checkbox" id="generatedStory" title="Expand/collaps generated nodes" checked> <small>(generated)</small>
     <button id="ferrStory" title="Find first error" onclick="ferrStory()" class="btn btn-warning btn-xs"> <small><span class="glyphicon glyphicon-menu-down"></span> (first error)</small></button>
     <input type="checkbox" id="showDur" title="Expand duration info" > <small>(durations)</small>
+    <input type="checkbox" id="verboseStory" title="Expand/collaps verbose nodes" > <small>(verbose)</small>
   </div>
 
   <pre>

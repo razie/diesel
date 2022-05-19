@@ -22,7 +22,7 @@ import razie.tconf.hosting.Reactors
 import razie.wiki.Config
 import razie.wiki.Sec._
 import razie.wiki.admin.Autosave
-import razie.wiki.model.{WID, WikiEntry}
+import razie.wiki.model.{UWID, WID, WikiEntry, Wikis}
 import razie.wiki.util.DslProps
 import razie.{Logging, js}
 import scala.collection.JavaConversions._
@@ -146,7 +146,9 @@ class AdminDiff extends AdminBase with Logging {
       ) yield
         (x,
             y,
-            if (x.hash == y.hash && x.tags == y.tags) "-" else if (x.ver > y.ver || x.updDtm.isAfter(
+            if (x.hash == y.hash && x.tags == y.tags
+                && x.name == y.name && x.cat != y.cat
+                && x.realm == y.realm) "-" else if (x.ver > y.ver || x.updDtm.isAfter(
               y.updDtm)) "L" else "R"
         )
 
@@ -345,8 +347,8 @@ class AdminDiff extends AdminBase with Logging {
     * @param iwid local wpath
     * @return
     */
-  def applyDiffTo(localRealm: String, toRealm: String, targetHost: String, iwid: WID) = FAUR { implicit request =>
-    val localWid = iwid.r(if (toRealm == "all") iwid.getRealm else localRealm)
+  def applyDiffTo(localRealm: String, toRealm: String, targetHost: String, iwid:WID, leftId:String, rightId:String) = FAUR { implicit request =>
+    val localWid = Wikis.findById(leftId).map(x=> x.wid.withCachedPage(x)).get
     val remoteWid = iwid.r(if (toRealm == "all") iwid.getRealm else toRealm)
 
     if (request.au.exists(_.realms.contains(toRealm)) || request.au.exists(_.isAdmin)) {
@@ -354,7 +356,7 @@ class AdminDiff extends AdminBase with Logging {
         val page = localWid.page.get
 
         val b = body(
-          url(s"http://$targetHost/wikie/setContent/${remoteWid.wpathFull}?id=${page._id.toString}").
+          url(s"http://$targetHost/wikie/setContent/${remoteWid.wpathFull}?id=$rightId").
               form(Map("we" -> page.grated.toString)).
               basic("H-" + request.au.get.emailDec, "H-" + request.au.get.pwd.dec))
 
@@ -375,8 +377,8 @@ class AdminDiff extends AdminBase with Logging {
 
   // from remote to local
   // todo auth that user belongs to realm
-  def applyDiffFrom(localRealm: String, toRealm: String, targetHost: String, iwid: WID) = FAUR { implicit request =>
-    val localWid = iwid.r(if (toRealm == "all") iwid.getRealm else localRealm)
+  def applyDiffFrom(localRealm: String, toRealm: String, targetHost: String, iwid: WID, leftId:String, rightId:String) = FAUR { implicit request =>
+    val localWid = Wikis.findById(leftId).map(x=> x.wid.withCachedPage(x)).get
     val remoteWid = iwid.r(if (toRealm == "all") iwid.getRealm else toRealm)
 
     AdminDiff.getRemoteWE(targetHost, remoteWid)(request.au.get).fold({ t =>
@@ -384,7 +386,7 @@ class AdminDiff extends AdminBase with Logging {
       val b = body(
         // local url may be different from outside mappings and routings - it's accessed from this same server backend
         // todo still have an issue of http vs https - should this be configured?
-        url(protocol + "://" + Config.hostport + s"/wikie/setContent/${localWid.wpathFull}?id=${t._1._id.toString}")
+        url(protocol + "://" + Config.hostport + s"/wikie/setContent/${localWid.wpathFull}?id=$leftId")
             .form(Map("we" -> t._2, "remote" -> targetHost))
             .basic("H-" + request.au.get.emailDec, "H-" + request.au.get.pwd.dec)
       )

@@ -548,8 +548,11 @@ class Wikie @Inject()(config: Configuration) extends WikieBase {
                 else w.ver + 1 // remote overwrites local, just keep increasing local ver
               );
               nochange <- (w.content != remote.content || w.tags != remote.tags || w.props != remote.props || w
-                  .markup != remote.markup) orErr ("no change");
+                  .markup != remote.markup || w.name != remote.name || w.category != remote.category) orErr ("no change");
               newVer <- Some(w.copy(
+                category = remote.category,
+                name = remote.name,
+                label = remote.label,
                 content = remote.content,
                 tags = remote.tags,
                 props = remote.props,
@@ -565,6 +568,8 @@ class Wikie @Inject()(config: Configuration) extends WikieBase {
 
               we = signScripts(we, au)
 
+             log("UPDATING_WE: " + we.copy(content="...(removed for logging)").grated.toString)
+
                 razie.db.tx("Wiki.setContent", request.userName) { implicit txn =>
                   WikiEntryOld(w, Some("setContent API")).create
                   w.update(we, Some("setContent API"))
@@ -574,7 +579,12 @@ class Wikie @Inject()(config: Configuration) extends WikieBase {
                     //                      au.shouldEmailParent("Everything").map(parent => Emailer.sendEmailChildUpdatedWiki(parent, au, WID(w.category, w.name)))
                   }
                 }
-                Services ! WikiAudit(WikiAudit.UPD_SET_CONTENT, w.wid.wpathFull, Some(au._id), None, Some(we), Some(w))
+
+              after(Some(w), we, WikiAudit.UPD_SET_CONTENT, Some(au))
+              if(we.cat != w.cat)
+                after(Some(w), we, WikiAudit.UPD_CATEGORY, Some(au))
+              if(we.name != w.name)
+                after(Some(w), we, WikiAudit.UPD_RENAME, Some(au))
 
                 Ok("ok")
             })
