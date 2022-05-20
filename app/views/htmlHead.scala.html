@@ -521,6 +521,7 @@ doEditThis = function() {
   } else {
     var q = window.location.search;
 
+    if(window.location.pathname == "/")
       window.location.href = window.location.href.replace(/\?.*/, '') + "wikie/edithomepage" + q;
     else
       window.location.href = window.location.href.replace(/\?.*/, '') + "/edit" + q;
