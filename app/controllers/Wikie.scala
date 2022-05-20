@@ -135,6 +135,18 @@ class Wikie @Inject()(config: Configuration) extends WikieBase {
   def wikieEditOld(wid: WID, noshow: String = "", tags:String="") =
     wikieEdit(wid, "", noshow, true, tags)
 
+  def wikieEditHomePage = FAU {
+    implicit au => implicit errCollector => implicit request =>
+    val stok = ROK.s
+
+    stok.website.userHomePage.map{ w =>
+      val call = routes.Wikie.wikieEdit(w)
+      Redirect(call.absoluteURL, request.queryString)
+    }.getOrElse(
+      Redirect("/")
+    )
+  }
+
   def wikieEdit(wid: WID, icontent: String = "", noshow:String="", old:Boolean=true, tags:String="") = FAU {
     implicit au => implicit errCollector => implicit request =>
 

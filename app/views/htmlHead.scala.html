@@ -520,7 +520,10 @@ doEditThis = function() {
     wikiEdit();
   } else {
     var q = window.location.search;
-    window.location.href = window.location.href.replace(/\?.*/, '') + "/edit" + q;
+
+      window.location.href = window.location.href.replace(/\?.*/, '') + "wikie/edithomepage" + q;
+    else
+      window.location.href = window.location.href.replace(/\?.*/, '') + "/edit" + q;
   }
 };
 
