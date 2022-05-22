@@ -9,7 +9,7 @@ import com.mongodb.casbah.Imports.ObjectId
 import java.net.URLEncoder
 import java.time.{LocalDateTime, ZoneOffset}
 import java.time.format.DateTimeFormatter
-import java.util.TimeZone
+import java.util.{Date, TimeZone}
 import org.joda.time.DateTime
 import org.joda.time.chrono.ISOChronology
 import org.joda.time.format.ISODateTimeFormat
@@ -95,6 +95,14 @@ case class AExprFunc(val expr: String, parms: List[RDOM.P]) extends Expr {
 //        val tsFmtr = DateTimeFormatter.ofPattern(WTypes.DATE_FORMAT)
 //        val nw = LocalDateTime.now
 //        val ts2 = tsFmtr.format(nw)
+
+        P.fromTypedValue("", ts, WTypes.wt.DATE)
+      }
+
+      case "today" => {
+        // todo singleton
+        val now = new DateTime(ISOChronology.getInstanceUTC())
+        val ts = now.toString(WTypes.DATE_ONLY_FORMAT)
 
         P.fromTypedValue("", ts, WTypes.wt.DATE)
       }
