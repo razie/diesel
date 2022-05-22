@@ -208,8 +208,12 @@ case class BCMP2(a: Expr, op: String, b: Expr)
 
             case "contains" if ap.ttype == WTypes.wt.ARRAY => isin(bp, ap)
             case "containsNot" if ap.ttype == WTypes.wt.ARRAY => !isin(bp, ap)
+            case "contains" if ap.ttype == WTypes.wt.JSON => ap.calculatedTypedValue.asJson.contains(bp.calculatedValue)
+            case "containsNot" if ap.ttype == WTypes.wt.JSON => ! ap.calculatedTypedValue.asJson.contains(bp.calculatedValue)
             case "contains" => a(in).toString contains b(in).toString
             case "containsNot" => !(a(in).toString contains b(in).toString) // todo deprecate
+
+            //todo does this even work?
             case "not" if b.toString == "contains" => !(a(in).toString contains b(in).toString)
 
             // THESE CANNOT CHANGE...
