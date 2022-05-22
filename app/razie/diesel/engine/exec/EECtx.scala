@@ -43,7 +43,6 @@ class EECtx extends EExecutor(EECtx.CTX) {
 
   override def apply(in: EMsg, destSpec: Option[EMsg])(implicit ctx: ECtx): List[Any] = {
     // todo I don't think i need this - the context should be a static msg context with all those anyways
-    def parm(s: String): Option[P] = in.attrs.find(_.name == s).orElse(ctx.getp(s))
 
     in.met match {
 
@@ -113,7 +112,7 @@ class EECtx extends EExecutor(EECtx.CTX) {
           }
         }
 
-        val ea = parm("msg").get.currentStringValue
+        val ea = ctx.getRequired("msg")
         val EMsg.REGEX(e, m) = ea
 
         val x =
@@ -128,7 +127,7 @@ class EECtx extends EExecutor(EECtx.CTX) {
           case l: collection.Seq[Any] => {
             val nat = in.attrs.filter(e => !Array("list", "item", "msg").contains(e.name))
             val res = l.map { item: Any =>
-              val itemP = P.fromTypedValue(parm("item").get.currentStringValue, item)
+              val itemP = P.fromTypedValue(ctx.getRequired("item"), item)
               val args = itemP :: nat
               val out = AExprFunc(ea, args).applyTyped("")
               out.calculatedTypedValue.value
@@ -174,8 +173,8 @@ class EECtx extends EExecutor(EECtx.CTX) {
           }
         }
 
-        val EMsg.REGEX(e, m) = parm("msg").get.currentStringValue
-        val itemName = parm("item").get.currentStringValue
+        val EMsg.REGEX(e, m) = ctx.getRequired("msg")
+        val itemName = ctx.getRequired("item")
 
         val kidz = try {
           razie.js.parse(s"{ list : ${list.currentStringValue} }").apply("list") match {
@@ -209,7 +208,8 @@ class EECtx extends EExecutor(EECtx.CTX) {
           EInfo(p.toHtml, p.calculatedTypedValue.asNiceString)
         }
 
-        if (res.isEmpty) List(EInfo("No arguments with values found...")) else res
+        if (res.isEmpty) List(EInfo("No arguments with values found..."))
+        else res
       }
 
       case "setVal" => {

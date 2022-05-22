@@ -108,6 +108,18 @@ trait ECtx extends ParmSource {
   }
 
   def curNode: Option[DomAst]
+
+  /** collecting debug info support
+    *
+    * @param x
+    * @return
+    */
+  def collectLog (x:Any) = {
+    curNode.foreach(_.childrenCol.append(
+      DomAst.wrap(x)
+    ))
+    this
+  }
 }
 
 object ECtx {

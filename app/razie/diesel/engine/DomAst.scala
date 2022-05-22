@@ -6,7 +6,7 @@
 package razie.diesel.engine
 
 import org.bson.types.ObjectId
-import razie.diesel.engine.nodes.{CanHtml, EMsg}
+import razie.diesel.engine.nodes.{CanHtml, EDuration, EError, EInfo, EMsg, ETrace, EVal}
 import razie.diesel.expr.ECtx
 import scala.collection.mutable.ListBuffer
 
@@ -382,6 +382,32 @@ case class DomAst(
     this.kind = kkk
     this.children.map(_.setKinds(kkk))
     this
+  }
+}
+
+
+object DomAst {
+
+  /** wrap a given value in an AST, respecting some conventions
+    *
+    * @param x
+    * @param parentKind
+    * @return
+    */
+  def wrap (x:Any, parentKind:String = AstKinds.DEBUG) = {
+    if((x.isInstanceOf[DieselTrace]))
+      x.asInstanceOf[DieselTrace].toAst
+    else
+      DomAst(x,
+        (
+            if (x.isInstanceOf[EInfo]) AstKinds.DEBUG
+            else if (x.isInstanceOf[ETrace]) AstKinds.TRACE
+            else if (x.isInstanceOf[EDuration]) AstKinds.TRACE
+            else if (x.isInstanceOf[EVal]) x.asInstanceOf[EVal].kind.getOrElse(parentKind)
+            else if (x.isInstanceOf[EError]) AstKinds.ERROR
+            else parentKind
+            )
+      )
   }
 }
 

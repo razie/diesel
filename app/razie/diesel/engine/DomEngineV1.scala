@@ -549,22 +549,7 @@ class DomEngineV1(
             }
             case e@_ => e
           }.map{x =>
-            // and now wrap in AST
-            (
-                if((x.isInstanceOf[DieselTrace]))
-                  x.asInstanceOf[DieselTrace].toAst
-                else
-                  DomAst(x,
-                    (
-                        if (x.isInstanceOf[EInfo]) AstKinds.DEBUG
-                        else if (x.isInstanceOf[ETrace]) AstKinds.TRACE
-                        else if (x.isInstanceOf[EDuration]) AstKinds.TRACE
-                        else if (x.isInstanceOf[EVal]) x.asInstanceOf[EVal].kind.getOrElse(parentKind)
-                        else if (x.isInstanceOf[EError]) AstKinds.ERROR
-                        else parentKind
-                        )
-                  )
-                ).withSpec(r)
+            DomAst.wrap(x, parentKind) withSpec(r)
           }
         } catch {
           case e: Throwable =>

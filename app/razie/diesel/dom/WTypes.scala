@@ -91,6 +91,7 @@ object WTypes {
   final val CONTENT_TYPE = "Content-type" // same as null - it means it's missing, not that it has an empty value
 
   final val DATE_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'" // std iso format
+  final val DATE_ONLY_FORMAT = "yyyy-MM-dd"
 
   /** just a few mime types */
   object Mime {
