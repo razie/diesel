@@ -253,7 +253,10 @@ class EESnakk extends EExecutor("snakk") with Logging {
       // message specified return mappings, if any
       val retSpec = if (in.ret.nonEmpty) in.ret else spec(in).toList.flatMap(_.ret)
       // collect any parm specs
-      val specs = retSpec.map(p => (p.name, p.currentStringValue, p.expr.mkString, p.expr))
+      val specs = retSpec
+          .filter(_.name != "snakkError")
+          .filter(_.name != Diesel.PAYLOAD)
+          .map(p => (p.name, p.currentStringValue, p.expr.mkString, p.expr))
 
       val regex = templateSpecs.find(_._1 == "regex").map(_._2).orElse(specs.find(_._1 == "regex").map(_._3))
 
@@ -281,6 +284,7 @@ class EESnakk extends EExecutor("snakk") with Logging {
 
       // 3. look for stiching dieselTrace
       if (reply.isJson && reply.body.contains(DieselJsonFactory.dieselTrace)) {
+        // todo is this parsing the response twice?
         val mres = js.parse(response)
         if (mres.contains(DieselJsonFactory.dieselTrace)) {
           val trace = DieselJsonFactory.trace(mres(DieselJsonFactory.dieselTrace).asInstanceOf[collection.Map[String, Any]])
@@ -444,12 +448,14 @@ class EESnakk extends EExecutor("snakk") with Logging {
 /** snakk REST and formatting/parsing utilities */
 object EESnakk {
 
-  final val SNAKK_RESPONSE = "snakkResponse"
-  final val SNAKK_HTTP_OPTIONS = "snakkHttpOptions"
-  final val SNAKK_HTTP_CODE = "snakkHttpCode"
-  final val SNAKK_HTTP_HEADERS = "snakkHttpHeaders"
+  final val SNAKK_RESPONSE      = "snakkResponse"
+  final val SNAKK_HTTP_OPTIONS  = "snakkHttpOptions"
+  final val SNAKK_HTTP_CODE     = "snakkHttpCode"
+  final val SNAKK_HTTP_HEADERS  = "snakkHttpHeaders"
   final val SNAKK_HTTP_RESPONSE = "snakkHttpResponse"
-  final val SNAKK_ERROR = "snakkError"
+  final val SNAKK_ERROR         = "snakkError"
+
+  final val RESERVED_ATTRS = "url,verb,body,result,snakkHttpOptions,headers".split(",")
 
   private def trimmed(s:String, len:Int = 2000) = (if(s != null && s.length > len) s"(>$len):\n" else "\n") + s.take(len)
   def html(s:String, len:Int = 2000) = Enc.escapeHtml(trimmed(s, len))
@@ -547,8 +553,9 @@ object EESnakk {
 
     val encurl = xuri.toASCIIString();
 
-    val C = "url,verb,body,result,snakkHttpOptions".split(",")
-    var headers = attrs.filter(p => !(C contains p.name))
+    // todo deprecate, old style
+    var headers = attrs.filter(p => !(RESERVED_ATTRS contains p.name))
+
     val fbody = attrs.find(_.name == "body")
     var content = f("body")
     content = content
@@ -561,9 +568,14 @@ object EESnakk {
         headers = P("Content-Type", "application/xml") :: headers
     }
 
+    // add the snakkHttpOptions as headers - they'll be removed by the Comms library and understood there
     headers = snakkHttpOptions(attrs) ::: headers
 
-    val hattr = headers.map(p => (p.name, p.calculatedValue)).toSeq.toMap
+    // new style, grouped under headers
+    val oldHeaders = headers.map(p => (p.name, p.calculatedValue))
+    val newHeaders = attrs.find(_.name == "headers").toList.flatMap(p=>p.calculatedTypedValue.asJson.map(t=>(t._1, t._2.toString)))
+
+    val hattr = {oldHeaders ::: newHeaders}.toMap
 
     new SnakkCall(
       "http",

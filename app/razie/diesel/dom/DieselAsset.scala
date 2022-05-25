@@ -18,7 +18,7 @@ import razie.tconf.TSpecRef
   * @param valueO - if there is an pre-built O model
   * @tparam T
   */
-case class DieselAsset[T] (
+case class DieselAsset[T](
   ref: TSpecRef,
   value: T,
   valueO: Option[O] = None
@@ -35,10 +35,10 @@ case class DieselAsset[T] (
 
   /** get the value object as a P */
   def getValueP: P =
-      if (value != null && value.isInstanceOf[P])
-        value.asInstanceOf[P]
-      else
-        asP
+    if (value != null && value.isInstanceOf[P])
+      value.asInstanceOf[P]
+    else
+      asP
 
   def asP = {
     P.fromSmartTypedValue(ref.category, getValueO.get.toJson)

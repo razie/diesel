@@ -32,7 +32,8 @@ class DieselParmSource (ctx:DomEngECtx) extends ParmSource {
 
     case "user" => Some(P("diesel.user", ctx.dieselUser(ctx)))
     case "username" => Some(P("diesel.username", ctx.dieselUsername(ctx)))
-    case "isLocalhost" => Some(P.fromTypedValue("diesel.isLocalhost", razie.wiki.Services.config.isLocalhost))
+    case "isLocalhost" => Some(P.fromTypedValue("diesel.isLocalhost", Services.config.isLocalhost))
+    case "isLocaldevbox" => Some(P.fromTypedValue("diesel.isLocaldevbox", Services.config.isLocalhost && Services.config.isRazDevMode))
 
     // todo deprecated, remove - search in all realms
     case "realm.props" | "props.realm" => {

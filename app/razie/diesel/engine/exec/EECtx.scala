@@ -185,7 +185,7 @@ class EECtx extends EExecutor(EECtx.CTX) {
               l.map { item: Any =>
                 // for each item in list, create message
                 val itemP = P.fromTypedValue(itemName, item)
-                new EMsg(e, m, itemP :: nat) with KeepOnlySomeSiblings {keepCount = 5}
+                (new EMsg(e, m, itemP :: nat) with KeepOnlySomeSiblings {keepCount = 5}).withPos(in.pos)
               }.toList ::: info
             }
             case x@_ => {

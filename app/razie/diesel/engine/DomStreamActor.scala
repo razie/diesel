@@ -5,9 +5,12 @@
  */
 package razie.diesel.engine
 
-import akka.actor.{Actor, Stash}
+import akka.actor.{Actor, ActorRef, Cancellable, Stash}
+import play.libs.Akka
 import razie.diesel.dom.RDOM.P
 import razie.wiki.admin.GlobalData
+import scala.concurrent.ExecutionContext
+import scala.concurrent.duration.{Duration, FiniteDuration}
 import scala.util.Try
 
 /** each stream has its own actor
@@ -35,33 +38,23 @@ class DomStreamActor(stream: DomStream) extends Actor with Stash {
       unstashAll()
     }
 
-    case req@DEStreamPut(name, l) if checkInit => {
-      if (stream.name == name) Try {
+    case req@DEStreamPut(name, l) if checkInit =>
+      withMyStream(req) {
         stream.put(l)
-      }
-      else DieselAppContext.router.map(_ ! req)
     }
 
-    case req@DEStreamConsume(name) => {
-      if (stream.name == name) {
-        Try {
+    case req@DEStreamConsume(name) =>
+      withMyStream(req) {
           stream.consume()
         }
-      }
-      else DieselAppContext.router.map(_ ! req)
-    }
 
-    case req@DEStreamDone(name) => {
-      if (stream.name == name) {
-        Try {
+    case req@DEStreamDone(name) =>
+      withMyStream(req) {
           stream.done()
         }
-      }
-      else DieselAppContext.router.map(_ ! req)
-    }
 
-    case req@DEStreamClean(name) => {
-      if (stream.name == name) {
+    case req@DEStreamClean(name) =>
+      withMyStream(req) {
         //remove refs for active engines
         GlobalData.dieselStreamsActive.decrementAndGet()
         DieselAppContext.activeStreams.remove(stream.id)
@@ -69,29 +62,32 @@ class DomStreamActor(stream: DomStream) extends Actor with Stash {
         DieselAppContext.activeActors.remove(stream.id)
         context stop self
       }
-      else DieselAppContext.router.map(_ ! req)
-    }
 
-    case req@DEStreamDone(name) => {
-      if (stream.name == name) {
-        Try {
+    case req@DEStreamDone(name) =>
+      withMyStream(req) {
           stream.done()
         }
       }
       else DieselAppContext.router.map(_ ! req)
     }
 
-    case req@DEStreamError(name, parms) => {
-      if (stream.name == name) {
-        Try {
-          stream.error(parms)
-        }
+    case req@DEStreamWaitingOver(name) => {
+      withMyStream(req) {
+          stream.forceBatchNow()
       }
-      else DieselAppContext.router.map(_ ! req)
     }
   }
 
-  override def postStop() = {
+  def withMyStream (req:DEStreamMsg)(f: => Unit) = {
+    if (stream.name == req.streamName) {
+      Try {
+        f
+      }
+    }
+    else DieselAppContext.router.map(_ ! req)
+}
+
+override def postStop() = {
     // assert it's stopped
     // DieselAppContext.activeActors.remove(eng.id)
   }
@@ -118,4 +114,8 @@ case class DEStreamDone(streamName: String) extends DEStreamMsg
 case class DEStreamClean(streamName: String) extends DEStreamMsg
 
 case class DEStreamError(streamName: String, l: List[P]) extends DEStreamMsg
+
+/** start or restart wait timer */
+case class DEStreamWaitMaybe(streamName: String, timeoutMillis:Long) extends DEStreamMsg
+case class DEStreamWaitingOver(streamName: String) extends DEStreamMsg
 

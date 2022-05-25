@@ -16,7 +16,7 @@ import razie.diesel.engine._
 import razie.diesel.expr.ScopeECtx
 import razie.diesel.model.{DieselMsg, DieselTarget}
 import razie.diesel.utils.{DomUtils, SpecCache}
-import razie.tconf.{DSpec, TSpecRef, TagQuery}
+import razie.tconf.{DSpec, EPos, TSpecRef, TagQuery}
 import razie.wiki.admin.Autosave
 import razie.wiki.model._
 import scala.collection.mutable
@@ -360,6 +360,9 @@ object EnginePrep extends Logging {
     */
   def addStoriesToAst(engine: DomEngine, stories: List[DSpec], justTests: Boolean = false, justMocks: Boolean =
   false, addFiddles: Boolean = false) = {
+
+    engine.addedStories = engine.addedStories ::: stories
+
     var lastMsg: Option[EMsg] = None
     var lastMsgAst: Option[DomAst] = None
     var lastAst: List[DomAst] = Nil
@@ -457,8 +460,11 @@ object EnginePrep extends Logging {
           _._1.startsWith("$expect")).collect {
 
           case (line, row) if !findElemLine(row + 1) =>
-            DomAst(EError(s"Unparsed line #$row: " + line, story.specRef.wpath), AstKinds.ERROR).withStatus(
-              DomState.SKIPPED)
+            DomAst(
+              EError(s"Unparsed line #$row: " + line, story.specRef.wpath)
+                .withPos(Some(EPos(story.specRef.wpath, row+1, 0))),
+              AstKinds.ERROR)
+                .withStatus(DomState.SKIPPED)
         }.toList
       }
 

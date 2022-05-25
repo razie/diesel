@@ -6,8 +6,9 @@
   */
 package razie.diesel.dom
 
+import razie.diesel.{dom}
 import razie.diesel.dom.RDOM.P.asString
-import razie.diesel.dom.RDOM.{P, _}
+import razie.diesel.dom.RDOM._
 import razie.diesel.engine.nodes.{EMsg, EnginePrep}
 import razie.diesel.expr.ECtx
 import razie.diesel.model.DieselTarget
@@ -245,7 +246,7 @@ class DieselRulesInventory(
         .toList
         .flatMap(_.value.map(_.asArray))
         .map(x =>
-          DieselAsset(
+          dom.DieselAsset(
             ref.copy(key = "n/a"),
             P.toObject(x)
           )
