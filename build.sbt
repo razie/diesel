@@ -67,12 +67,11 @@ lazy val root = (project in file(".")).enablePlugins(PlayScala)
     unmanagedSourceDirectories in Compile += baseDirectory.value / "../snakked/base/src/main/scala",
     unmanagedSourceDirectories in Compile += baseDirectory.value / "../snakked/core/src/main/scala",
 
-    unmanagedSourceDirectories in Compile += baseDirectory.value / "../coolscala/diesel/src/main/scala",
-    unmanagedSourceDirectories in Compile += baseDirectory.value / "../coolscala/wiki/app",
+    unmanagedSourceDirectories in Compile += baseDirectory.value / "../diesel/app",
 
-    unmanagedSourceDirectories in Test += baseDirectory.value / "../coolscala/diesel/src/test/scala",
+    unmanagedSourceDirectories in Test += baseDirectory.value / "../diesel/test/scala",
 
-    sourceDirectories in (Compile, TwirlKeys.compileTemplates) += baseDirectory.value / "../coolscala/wiki/app"
+    sourceDirectories in (Compile, TwirlKeys.compileTemplates) += baseDirectory.value / "../diesel/app"
 
   )//.aggregate(wcommon, wiki)
 
