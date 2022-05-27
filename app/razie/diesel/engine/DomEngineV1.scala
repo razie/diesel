@@ -1454,6 +1454,16 @@ class DomEngineV1(
               // todo validate trusted realm
               engine.maxExpands = v.toInt
             }
+
+            case "diesel.engine.keepIterations" | "keepIterations" => {
+              // todo validate trusted realm
+              engine.keepIterations = v.toInt
+            }
+
+            case "diesel.engine.keepSummaries" | "keepSummaries" => {
+              // todo validate trusted realm
+              engine.keepSummaries = v.toInt
+            }
           }
         }
 

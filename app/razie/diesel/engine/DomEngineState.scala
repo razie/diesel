@@ -58,6 +58,9 @@ trait DomEngineState {
   var maxExpands = 10000
   var curExpands = 0
 
+  var keepSummaries = 10
+  var keepIterations = 3
+
   var status = DomState.INIT
   var paused = false
 

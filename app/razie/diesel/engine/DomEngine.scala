@@ -91,7 +91,8 @@ abstract class DomEngine(
 //          p.value.asInstanceOf[EMsg].attrs.find(_.name == "dieselKeepSummaries").map(_.calculatedTypedValue.asLong.toInt)
 //        else None
 //      }.getOrElse(Some(10))
-      val KS : Int = 10//dks.getOrElse(10)
+
+      val KS : Int = this.keepSummaries //dks.getOrElse(10)
 
       // how many nodes to keep
 //      val dko:Option[Int] = Try {
@@ -99,7 +100,8 @@ abstract class DomEngine(
 //          p.value.asInstanceOf[EMsg].attrs.find(_.name == "dieselKeepCount").map(_.calculatedTypedValue.asLong.toInt)
 //        else None
 //      }.getOrElse(Some(3))
-      val KO : Int = 3//dko.getOrElse(3)
+
+      val KO : Int = this.keepIterations //dko.getOrElse(3)
       // todo use this one
 
       var prunes = p.childrenCol.zipWithIndex.filter(
