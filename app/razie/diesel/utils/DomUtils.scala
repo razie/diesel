@@ -15,6 +15,8 @@ object DomUtils {
       |
       |Here's a trick: if you drop down the "Story" but then select one of the specs, it will
       |populate both the story and the spec, via the click-minimization process ;)
+      |
+      |See the [[Diesel Fiddle Guide]] for details on using this fiddle.
       |""".stripMargin
   val SAMPLE_SPEC =
     """
