@@ -135,22 +135,32 @@ class AdminDiff extends AdminBase with Logging {
         x <- lsrc;
         y <- ldest if y.id == x.id &&
             (
-                x.ver != y.ver ||
-                    x.updDtm.compareTo(y.updDtm) != 0 ||
                     x.hash != y.hash ||
                     x.name != y.name ||
                     x.realm != y.realm ||
+                        x.tags != y.tags ||
                     x.cat != y.cat
                 // todo compare properties as well
                 )
-      ) yield
+      ) yield {
+          var dk = ""
+          if(x.hash != y.hash) dk += "HASH."
+          if(x.name != y.name) dk += "NAME."
+        if(x.tags != y.tags) dk += "TAGS."
+        if(x.realm != y.realm) dk += "REALM."
+          if(x.cat != y.cat) dk += "CAT."
+
+        cdebug << s"DiffBiId $dk for ${x.cat}:${x.name}"
+
         (x,
             y,
             if (x.hash == y.hash && x.tags == y.tags
                 && x.name == y.name && x.cat != y.cat
                 && x.realm == y.realm) "-" else if (x.ver > y.ver || x.updDtm.isAfter(
-              y.updDtm)) "L" else "R"
+              y.updDtm)) "L" else "R",
+            dk
         )
+      }
 
       (lnew, lchanged, lremoved)
     } catch {
@@ -171,21 +181,31 @@ class AdminDiff extends AdminBase with Logging {
         x <- lsrc;
         y <- ldest if y.name == x.name && y.cat == x.cat &&
             (
-                x.ver != y.ver ||
-                    x.updDtm.compareTo(y.updDtm) != 0 ||
-                    x.hash != y.hash
+                    x.hash != y.hash ||
                 //              x.name != y.name ||
-                //              x.cat != y.cat ||
+                        x.tags != y.tags ||
+                              x.cat != y.cat
                 //              x.realm != y.realm
                 // todo compare properties as well
                 )
-      ) yield
+      ) yield {
+        var dk = ""
+        if(x.hash != y.hash) dk += "HASH."
+        if(x.name != y.name) dk += "NAME."
+        if(x.tags != y.tags) dk += "TAGS."
+        if(x.realm != y.realm) dk += "REALM."
+        if(x.cat != y.cat) dk += "CAT."
+
+        cdebug << s"DiffByName $dk for ${x.cat}:${x.name}"
+
         (x,
             y,
-            if (x.hash == y.hash && x.tags == y.tags) "-"
+            if (x.hash == y.hash && x.tags == y.tags && x.cat == y.cat) "-"
             else if (x.ver > y.ver || x.updDtm.isAfter(y.updDtm)) "L"
-            else "R"
+            else "R",
+            dk
         )
+      }
 
       (lnew, lchanged, lremoved)
     } catch {
@@ -243,10 +263,10 @@ class AdminDiff extends AdminBase with Logging {
 
       val (lnew, lchanged, lremoved) =
         if (toRealm == "all" || toRealm == localRealm)
-        // diff to remote
+          // diff to remote
           diffById(lsrc, ldest)
         else
-        // diff to another reactor
+          // diff to another reactor
           diffByName(lsrc, ldest)
 
       ROK.r admin { implicit stok =>

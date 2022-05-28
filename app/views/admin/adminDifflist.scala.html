@@ -1,7 +1,7 @@
 @***
 show diff with remote
 ***@
-@(localRealm:String, toRealm:String, remote:String, lnew:List[controllers.WEAbstract], lremoved:List[controllers.WEAbstract], lchanged:List[(controllers.WEAbstract, controllers.WEAbstract, String)])(implicit stok: controllers.StateOk)
+@(localRealm:String, toRealm:String, remote:String, lnew:List[controllers.WEAbstract], lremoved:List[controllers.WEAbstract], lchanged:List[(controllers.WEAbstract, controllers.WEAbstract, String, String)])(implicit stok: controllers.StateOk)
 @import razie.wiki.model.WID
 @import razie.wiki.Config
 @import razie.hosting.Website
@@ -124,7 +124,7 @@ show diff with remote
         </td>
 
         <td>
-          @t._3
+          <span title="@t._4" style="cursor:crosshair" >@t._3</span>
         </td>
 
         <td>
