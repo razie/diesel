@@ -66,8 +66,12 @@ object DomCollector {
 
     /** statically collect more asts */
   def collectAst(
-    stream: String, realm: String, xid: String,
-    userId: Option[String], eng: DomEngine, details: String = "") = synchronized {
+    stream: String,
+    realm: String,
+    xid: String,
+    userId: Option[String],
+    eng: DomEngine,
+    details: String = "") = synchronized {
 
     val collectGroup = eng.collectGroup
     val newOne = CollectedAst(stream, realm, xid, userId, eng, collectGroup, details)
