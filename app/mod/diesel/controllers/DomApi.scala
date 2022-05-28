@@ -36,6 +36,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future}
 import scala.util.Try
+import scalaz.\&/.That
 
 /**
   * the incoming message / request
@@ -670,386 +671,427 @@ class DomApi extends DomApiBase with Logging {
     parse.raw) { implicit request =>
     implicit val stok = razRequest
 
-    // not always the same as the request...
-    val reactor = stok.website.dieselReactor
-    val website = Website.forRealm(reactor).getOrElse(stok.website)
+    try {
 
-    val postDetails1 = verb + " " + path
-    val postDetails2 = stok.headers
+      // not always the same as the request...
+      val reactor = stok.website.dieselReactor
+      val website = Website.forRealm(reactor).getOrElse(stok.website)
 
-    // see if client wanted to force a response code
-    stok.qhParm("dieselHttpResponse").filter(_ != "200").map {code =>
-      new Status(code.toInt)
-        .apply("client requested code: "+code)
-        .withHeaders("diesel-reason" -> s"client requested dieselHttpResponse $code in realm ${stok.realm}")
-    }.getOrElse {
+      val postDetails1 = verb + " " + path
+      val postDetails2 = stok.headers
 
-      val requestContentType = stok.req.contentType
+      // see if client wanted to force a response code
+      stok.qhParm("dieselHttpResponse").filter(_ != "200").map { code =>
+        new Status(code.toInt)
+            .apply("client requested code: " + code)
+            .withHeaders("diesel-reason" -> s"client requested dieselHttpResponse $code in realm ${stok.realm}")
+      }.getOrElse {
 
-      val uid = stok.au.map(_._id).getOrElse(NOUSER)
+        val requestContentType = stok.req.contentType
 
-      val raw = request.body.asBytes()
-      val body = raw.map(a => new String(a)).getOrElse("")
-      val postedContent = Some(new EContent(body, stok.req.contentType.mkString, 200, Map.empty, None, raw))
+        val uid = stok.au.map(_._id).getOrElse(NOUSER)
 
-      // save to check results later
-      var dieselRestMsg: Option[EMsg] = None
+        val raw = request.body.asBytes()
+        val body = raw.map(a => new String(a)).getOrElse("")
+        val postedContent = Some(new EContent(body, stok.req.contentType.mkString, 200, Map.empty, None, raw))
 
-      // make the diesel.rest message
-      def mkDieselRest(ctx: ECtx) = {
-        val qparams = DomEngineHelper.parmsFromRequestHeader(request)
-        val hparams = DomEngineHelper.headers(request)
-        val qFlat = qparams.map(t => P.fromTypedValue(t._1, t._2, WTypes.wt.STRING)).toList
-        val qJson = P.fromTypedValue("dieselQuery", qparams, WTypes.wt.JSON)
-        val hJson = P.fromTypedValue("dieselHeaders", hparams, WTypes.wt.JSON)
+        // save to check results later
+        var dieselRestMsg: Option[EMsg] = None
 
-        // looking at the posted content now...
-        var posted =
-          if (
-            ("POST".equals(verb) ||
-                "PUT".equals(verb) ||
-                "PATCH".equals(verb))
-                && postedContent.isDefined) {
-            postedContent.get.asDieselParams(new SimpleECtx())
-          } else Nil
+        // make the diesel.rest message
+        def mkDieselRest(ctx: ECtx) = {
+          val qparams = DomEngineHelper.parmsFromRequestHeader(request)
+          val hparams = DomEngineHelper.headers(request)
+          val qFlat = qparams.map(t => P.fromTypedValue(t._1, t._2, WTypes.wt.STRING)).toList
+          val qJson = P.fromTypedValue("dieselQuery", qparams, WTypes.wt.JSON)
+          val hJson = P.fromTypedValue("dieselHeaders", hparams, WTypes.wt.JSON)
 
-        // payload goes to root
-        posted.filter(_.name == Diesel.PAYLOAD).map(ctx.put)
-        posted = posted.filter(_.name != Diesel.PAYLOAD)
+          // looking at the posted content now...
+          var posted =
+            if (
+              ("POST".equals(verb) ||
+                  "PUT".equals(verb) ||
+                  "PATCH".equals(verb))
+                  && postedContent.isDefined) {
+              postedContent.get.asDieselParams(new SimpleECtx())
+            } else Nil
 
-        dieselRestMsg = Some(EMsg(
-          DieselMsg.ENGINE.DIESEL_REST,
-          hJson :: qJson :: List(
-            P.fromTypedValue("path", path),
-            P.fromTypedValue("verb", verb),
-            P.fromTypedValue("queryStringEncoded", stok.req.rawQueryString),
-            P.fromTypedValue("queryString", URLDecoder.decode(stok.req.rawQueryString)
-            )
-          ) ::: qparams.map(t => P.fromTypedValue(t._1, t._2, WTypes.wt.STRING)).toList ::: posted
-        ))
+          // payload goes to root
+          posted.filter(_.name == Diesel.PAYLOAD).map(ctx.put)
+          posted = posted.filter(_.name != Diesel.PAYLOAD)
 
-        dieselRestMsg
-      }
+          dieselRestMsg = Some(EMsg(
+            DieselMsg.ENGINE.DIESEL_REST,
+            hJson :: qJson :: List(
+              P.fromTypedValue("path", path),
+              P.fromTypedValue("verb", verb),
+              P.fromTypedValue("queryStringEncoded", stok.req.rawQueryString),
+              P.fromTypedValue("queryString", URLDecoder.decode(stok.req.rawQueryString)
+              )
+            ) ::: qparams.map(t => P.fromTypedValue(t._1, t._2, WTypes.wt.STRING)).toList ::: posted
+          ))
 
-      // more testing options
-      stok.qhParm("dieselSleep").map { code =>
-        ctrace << s"MOCK DIESEL SLEEPING... $code ms"
-        Thread.sleep(code.toInt)
-      }
-
-      // todo sort out this mess
-      val settings = DomEngineHelper.settingsFromRequestHeader(stok.req, postedContent).copy(realm = Some(reactor))
-      settings.mockMode = mock
-      // if the config tag includes "draft" then use drafts
-      // todo have a trust settings passed: this call is made by backend to itself - put a temp token or smth to
-      //  trust itself, so nobody can replay this call
-      settings.draftMode = settings.configTag.mkString.contains("draft") && settings.userId.exists(
-        u => settings.configTag.exists(_.contains(u)))
-
-      ctrace << s"RUN_REST_REQUEST verb:$verb mock:$mock path:$path realm:${reactor}\nheaders: ${stok.req.headers}" +
-          body
-
-      var description = s"DomApi.runRest:$verb:$path"
-      if (stok.req.rawQueryString.trim.length > 0) {
-        description = description + s"?${stok.req.rawQueryString}"
-      }
-
-      var engine = EnginePrep.prepEngine(new ObjectId().toString,
-        settings,
-        reactor,
-        None,
-        false,
-        stok.au,
-        description,
-        None,
-        // empty story so nothing is added to root
-        List(new WikiEntry("Story", "temp", "temp", "md", "", uid, Seq("dslObject"), reactor))
-      )
-
-      engine.root.prependAllNoEvents(
-        List(DomAst(
-          EInfo("HTTP Request details2",
-            printRequest(request, body)), AstKinds.DEBUG)
-            .withStatus(DomState.SKIPPED)
-        ))
-
-      // add query parms
-      val q = stok.req.queryString.map(t => (t._1, t._2.mkString))
-      engine.ctx.putAll(q.map(t => P(t._1, t._2)).toList)
-
-      // add the request
-      new DomReq(stok.req).addTo(engine.ctx)
-
-      if (custom.isDefined)
-        engine = custom.get.apply(engine)
-
-      // find template matching the input message, to parse attrs
-      val t@(trequest, e:String, a:String, matchedParms) = {
-        val fea = findEA(path, engine)
-        fea._1
-            .map { x => fea }
-            .orElse {
-              // if a message exists, map to it
-              spec(fea._2, fea._3)(engine.ctx).map(x => fea)
-            }.orElse {
-              imsg.map(x => (None, x.entity, x.met, None))
-            }.orElse {
-              // we're going to make a diesel.rest message later
-          mkDieselRest(engine.ctx).map(x => (None, x.entity, x.met, None))
-            }.getOrElse {
-          fea
+          dieselRestMsg
         }
-      }
 
-      // message specified return mappings, if any
-      val msgSpec = spec(e, a)(engine.ctx).filter( m=>
-        // see msgSpec usage below - we need to not do for diesel.rest - if someone does `$msg diesel.rest` it will
-        // find a spec for it and mess up badly later...
-        ("diesel" != m.entity || "rest" != m.met)
-      )
+        // more testing options
+        stok.qhParm("dieselSleep").map { code =>
+          ctrace << s"MOCK DIESEL SLEEPING... $code ms"
+          Thread.sleep(code.toInt)
+        }
 
-      val inSpec = msgSpec.toList.flatMap(_.attrs)
-      val outSpec = msgSpec.toList.flatMap(_.ret)
+        // todo sort out this mess
+        val settings = DomEngineHelper.settingsFromRequestHeader(stok.req, postedContent).copy(realm = Some(reactor))
+        settings.mockMode = mock
+        // if the config tag includes "draft" then use drafts
+        // todo have a trust settings passed: this call is made by backend to itself - put a temp token or smth to
+        //  trust itself, so nobody can replay this call
+        settings.draftMode = settings.configTag.mkString.contains("draft") && settings.userId.exists(
+          u => settings.configTag.exists(_.contains(u)))
 
-      // collect any parm specs
-      val outSpecs = outSpec.map(p => (p.name, p.currentStringValue, p.expr.mkString))
+        ctrace << s"RUN_REST_REQUEST verb:$verb mock:$mock path:$path realm:${reactor}\nheaders: ${stok.req.headers}" +
+            body
 
-      // stuff like incoming content-type
-      val incomingMetas = stok.headers.toSimpleMap
+        var description = s"DomApi.runRest:$verb:$path"
+        if (stok.req.rawQueryString.trim.length > 0) {
+          description = description + s"?${stok.req.rawQueryString}"
+        }
 
-      // try to match incoming
-      def findIt = findMessage (
-        trequest,
-        engine,
-        path,
-        inSpec,
-        incomingMetas,
-        verb,
-        stok,
-        e,
-        a,
-        body,
-        postedContent,
-        requestContentType)
+        var engine = EnginePrep.prepEngine(new ObjectId().toString,
+          settings,
+          reactor,
+          None,
+          false,
+          stok.au,
+          description,
+          None,
+          // empty story so nothing is added to root
+          List(new WikiEntry("Story", "temp", "temp", "md", "", uid, Seq("dslObject"), reactor))
+        )
 
-      // incoming message
-      // first templates already matched,
-      // then if there was a spec, findIt
-      // then imsg (diesel.rest)
-      // else diesel.rest
-      // else e.a
-      val msg: Option[EMsg] =
-      (trequest.flatMap(_ => findIt) orElse
-          msgSpec.flatMap(_ => findIt) orElse
-          imsg orElse
-          mkDieselRest(engine.ctx) orElse
-          findIt)
+        engine.root.prependAllNoEvents(
+          List(DomAst(
+            EInfo("HTTP Request details2",
+              printRequest(request, body)), AstKinds.DEBUG)
+              .withStatus(DomState.SKIPPED)
+          ))
 
-          .map(msg =>
-            // add matched parms
-            // todo why map matched parms and not keep type/value what abt numbers, escaped json etc?
-            if (matchedParms.isDefined) msg.copy(attrs = msg.attrs ::: matchedParms.get.toList.map(t => P(t._1, t._2)))
-            else msg
-          )
+        // add query parms
+        val q = stok.req.queryString.map(t => (t._1, t._2.mkString))
+        engine.ctx.putAll(q.map(t => P(t._1, t._2)).toList)
 
-      if(msg.isDefined && !msg.exists(_.spec.isDefined)) {
-        // try to find a spec
-        msg.get.spec = spec(msg.get.entity, msg.get.met)(engine.ctx)
-      }
+        // add the request
+        new DomReq(stok.req).addTo(engine.ctx)
 
-      val isApiKeyGood = stok.validateXApiKey
+        if (custom.isDefined)
+          engine = custom.get.apply(engine)
 
-      cdebug << s"Message found: ${Enc.shorten(msg.toString, 5000)} isApiKeyGood=$isApiKeyGood"
+        // find template matching the input message, to parse attrs
+        val t@(trequest, e: String, a: String, matchedParms) = {
+          val fea = findEA(path, engine)
+          fea._1
+              .map { x => fea }
+              .orElse {
+                // if a message exists, map to it
+                spec(fea._2, fea._3)(engine.ctx).map(x => fea)
+              }.orElse {
+            imsg.map(x => (None, x.entity, x.met, None))
+          }.orElse {
+            // we're going to make a diesel.rest message later
+            mkDieselRest(engine.ctx).map(x => (None, x.entity, x.met, None))
+          }.getOrElse {
+            fea
+          }
+        }
 
-      // add a debug point with the post info
-      val desc = (DomAst(EInfo(postDetails1, postDetails2.toString), AstKinds.DEBUG).withStatus(DomState.SKIPPED))
+        // message specified return mappings, if any
+        val msgSpec = spec(e, a)(engine.ctx).filter(m =>
+          // see msgSpec usage below - we need to not do for diesel.rest - if someone does `$msg diesel.rest` it will
+          // find a spec for it and mess up badly later...
+          ("diesel" != m.entity || "rest" != m.met)
+        )
+
+        val inSpec = msgSpec.toList.flatMap(_.attrs)
+        val outSpec = msgSpec.toList.flatMap(_.ret)
+
+        // collect any parm specs
+        val outSpecs = outSpec.map(p => (p.name, p.currentStringValue, p.expr.mkString))
+
+        // stuff like incoming content-type
+        val incomingMetas = stok.headers.toSimpleMap
+
+        // try to match incoming
+        def findIt = findMessage(
+          trequest,
+          engine,
+          path,
+          inSpec,
+          incomingMetas,
+          verb,
+          stok,
+          e,
+          a,
+          body,
+          postedContent,
+          requestContentType)
+
+        // incoming message
+        // first templates already matched,
+        // then if there was a spec, findIt
+        // then imsg (diesel.rest)
+        // else diesel.rest
+        // else e.a
+        val msg: Option[EMsg] =
+        (trequest.flatMap(_ => findIt) orElse
+            msgSpec.flatMap(_ => findIt) orElse
+            imsg orElse
+            mkDieselRest(engine.ctx) orElse
+            findIt)
+
+            .map(msg =>
+              // add matched parms
+              // todo why map matched parms and not keep type/value what abt numbers, escaped json etc?
+              if (matchedParms.isDefined) msg.copy(
+                attrs = msg.attrs ::: matchedParms.get.toList.map(t => P(t._1, t._2)))
+              else msg
+            )
+
+        if (msg.isDefined && !msg.exists(_.spec.isDefined)) {
+          // try to find a spec
+          msg.get.spec = spec(msg.get.entity, msg.get.met)(engine.ctx)
+        }
+
+        val isApiKeyGood = stok.validateXApiKey
+
+        cdebug << s"Message found: ${Enc.shorten(msg.toString, 5000)} isApiKeyGood=$isApiKeyGood"
+
+        // add a debug point with the post info
+        val desc = (DomAst(EInfo(postDetails1, postDetails2.toString), AstKinds.DEBUG).withStatus(DomState.SKIPPED))
 //      engine.root.append(desc)(engine)
 
-      // is message visible?
-      if (msg.isDefined && isMsgVisible(msg.get, reactor, website) || isMemberOrTrusted(msg, reactor, website) || isApiKeyGood) {
-        msg.map {msg=>
+        // is message visible?
+        if (msg.isDefined && isMsgVisible(msg.get, reactor, website) || isMemberOrTrusted(msg, reactor,
+          website) || isApiKeyGood) {
+          msg.map { msg =>
 
-        setApiKeyUser(isApiKeyGood, website, engine)
+            setApiKeyUser(isApiKeyGood, website, engine)
 
-        val msgAst = EnginePrep.addMsgToAst(engine.root, msg)
+            val msgAst = EnginePrep.addMsgToAst(engine.root, msg)
+            DomCollector.collectAst("runRest", stok.realm, engine.id, stok.au.map(_.id), engine, stok.uri)
+
+            // process message
+            val res = engine.process.map { engine =>
+
+              cdebug << s"Engine done ... ${engine.id}"
+
+              //        val res = engine.extractValues(e, a)
+
+              // find output template and format output
+              // todo this is weird - need something more regular...
+              val templateResp =
+              engine.ctx.findTemplate(e + "." + a, "response").orElse {
+                // see if there is only one message child... and it has an output template - we'll use that one
+                val m = engine
+                    .root
+                    .children
+                    // without hardcoded engine messages - diesel.rest and ping is allowed
+                    .filterNot(x =>
+                      x.value.isInstanceOf[EMsg] &&
+                          x.value.asInstanceOf[EMsg].entity == DieselMsg.ENGINE.ENTITY &&
+                          x.value.asInstanceOf[EMsg].met != "rest" &&
+                          x.value.asInstanceOf[EMsg].met != "ping")
+                    .filter(x =>
+                      // skip debug infos and other stuff = we need the first message
+                      x.value.isInstanceOf[EMsg])
+                    .head
+                    .children
+                    .find(_.children.headOption.exists(_.value.isInstanceOf[EMsg]))
+
+                m.flatMap { m =>
+                  val msg = m.children.head.value.asInstanceOf[EMsg]
+                  engine.ctx.findTemplate(msg.entity + "." + msg.met, "response")
+                }
+              }
+
+              // todo optimize
+              //ctrace << engine.root.toString
+
+              var response: Option[Result] = None
+
+              var ctype =
+                templateResp.flatMap(_.parm("content-type")) // response ctype
+                    .orElse(trequest.flatMap(_.parm("content-type"))) // or request ctype
+                    .orElse {
+                      // is there a desired type
+                      engine.ctx.get(DieselMsg.HTTP.CTYPE).filter(_.length > 0)
+                    }
+                    .getOrElse("text/plain") // or plain
+
+              templateResp.map { t =>
+                // we have a response template
+
+                //          val s = EESnakk.formatTemplate(t.content, ECtx(res))
+                // engine.ctx accumulates results and we add the input
+
+                // templates strt with a \n normally
+                val content = t.content.replaceFirst("^\\r?\\n", "")
+
+                ctrace << s"Found templateResp... ${t.name}"
+
+                val s = if (content.length > 0) {
+                  // template has content - format it
+                  val allValues = new StaticECtx(msg.attrs, Some(engine.ctx))
+                  EESnakk.formatTemplate(content, allValues)
+                } else {
+                  // engine.ctx.get(Diesel.PAYLOAD).getOrElse("no msg recognized, no result, no response template")
+
+                  engine.ctx.getp(Diesel.PAYLOAD).map { p =>
+//                if (p.value.isDefined) {
+                    if (p.hasCurrentValue) {
+//                  ctype = WTypes.getContentType(p.value.get.cType)
+                      ctype = WTypes.getContentType(p.currentValue.ttype)
+
+                      val v = p.calculatedTypedValue(engine.ctx)
+                      v.value match {
+                        case x: Array[Byte] =>
+                          response = Some(Ok(x).as(ctype))
+                        case _ =>
+                          response = Some(Ok(v.asString).as(ctype))
+                      }
+
+                      ""
+                    } else
+                      engine.ctx.get(Diesel.PAYLOAD).getOrElse("no msg recognized, no result, no response template")
+                  }.getOrElse(
+                    "no msg recognized, no result, no response template"
+                  )
+                }
+
+                ctrace << s"RUN_REST_REPLY $verb $mock $path\n$s as $ctype"
+
+                response.map { res =>
+                  // found a response template and made the response - add template parms as headers
+                  val headers = t.parms
+                      .filter(_._1.toLowerCase.trim != "content-type")
+                      .filter(_._1.startsWith("http.header."))
+                      .map(t => (t._1.replaceFirst("http.header.", ""), t._2))
+                      .toSeq
+
+                  // just use it to add the response info
+                  mkStatus(Some(P.fromSmartTypedValue("x", res.body.toString)), engine).as(ctype)
+
+                  res.withHeaders(headers: _*)
+                }.getOrElse {
+                  // no response formatting found
+                  mkStatus(Some(P.fromSmartTypedValue("x", s)), engine).as(ctype)
+                }
+
+              }.getOrElse {
+                // no response template - send the payload
+
+                val res = s"No response template for ${e}.${a}\n" + engine.root.toString
+                ctrace << s"RUN_REST_REPLY $verb $mock $path\n" + res
+                val payload = engine.ctx.getp(Diesel.PAYLOAD).filter(_.ttype != WTypes.wt.UNDEFINED)
+                // todo set ctype based on payload if found
+
+                payload.map { p =>
+                  if (p.value.isDefined) {
+                    ctype =
+                    // is there a desired type
+                      engine.ctx.get(DieselMsg.HTTP.CTYPE).filter(_.length > 0)
+                          .getOrElse(
+                            // if not, infer from data
+                            WTypes.getContentType(p.value.get.cType)
+                          )
+
+                    p.value.get.value match {
+                      case x: Array[Byte] =>
+                        response = Some(Ok(x).as(ctype))
+                      case _ =>
+                        response = Some(Ok(p.value.get.asString).as(ctype))
+                    }
+                  }
+                }
+
+                val result = mkStatus(payload, engine, Some(msgAst)).as(ctype)
+
+                // don't show this for diesel.rest
+                dieselRestMsg
+                    .map(x => result)
+                    .getOrElse {
+                      result
+                          .withHeaders(
+                            "diesel-reason" -> s"response template not found for $path in realm ${stok.realm}")
+                    }
+              }
+            }
+
+            // must allow for ctx.sleeps
+            // todo why 50 sec
+            val dur = WikiConfig.getInstance.get.prop("diesel.timeout", "50 seconds")
+            val tcode = WikiConfig.getInstance.get.prop("diesel.timeoutCode", "504")
+            try {
+              Await.result(res, Duration(dur))
+            } catch {
+              case e: java.util.concurrent.TimeoutException => {
+                engine.stopNow
+                new Status(Integer.parseInt(tcode))(s"Workflow took too long ($dur) - not enough resources?")
+                    .withHeaders("diesel-reason" -> s"flow didn't response in $dur")
+              }
+            }
+          } getOrElse {
+            //      Future.successful(
+            NotFound(s"ERR Realm(${reactor}): Template or message not found for path: " + path)
+                .withHeaders("diesel-reason" -> s"template or message not found for $path in realm ${reactor}")
+            //      )
+          }
+          //          val tpath = if(turl startsWith "http://") {
+          //            turl.replaceFirst("https?://", "").replaceFirst(".*/", "/")
+          //          } else turl
+          //          matchesRequest(tpath, stok.req.path)
+        } else {
+          val x = s"Unauthorized msg access [runrest] (diesel.visibility:${stok.website.dieselVisiblity}, ${
+            stok.au.map(_.ename).mkString
+          })"
+          info(x)
+          info(s"msg: $msg - ${msg.get.isPublic} - ${msg.get.spec.toString} - reactor: $reactor")
+          Unauthorized(x)
+        }
+      }
+    } catch {
+      case t:Throwable => {
+        // leave a record behind
+//        val settings = new DomEngineSettings().copy(realm = Some(stok.realm))
+        val settings = DomEngineHelper.settingsFromRequestHeader(stok.req, None).copy(realm = Some(stok.realm))
+        val engine = EnginePrep.prepEngine(
+          new ObjectId().toString,
+          settings,
+          stok.realm,
+          None,
+          false,
+          stok.au,
+          "EXCEPTION:" + stok.method + ":" + stok.uri,
+          None,
+          Nil
+        )
+
+        engine.root.prependAllNoEvents(
+          List(
+            DomAst(
+              EInfo("HTTP Request details2",
+                printRequest(request, "xx")), AstKinds.DEBUG)
+                .withStatus(DomState.SKIPPED),
+            DomAst(
+            EVal(P.fromSmartTypedValue(Diesel.PAYLOAD, t.getClass.getName + ":" + t.getMessage)), AstKinds.GENERATED)
+              .withStatus(DomState.SKIPPED)
+          )
+        )
+
+        engine.status = DomState.CANCEL
+        engine.engineDone(false, false)
         DomCollector.collectAst("runRest", stok.realm, engine.id, stok.au.map(_.id), engine, stok.uri)
 
-        // process message
-        val res = engine.process.map { engine =>
-
-          cdebug << s"Engine done ... ${engine.id}"
-
-          //        val res = engine.extractValues(e, a)
-
-          // find output template and format output
-          // todo this is weird - need something more regular...
-          val templateResp =
-            engine.ctx.findTemplate(e + "." + a, "response").orElse {
-              // see if there is only one message child... and it has an output template - we'll use that one
-              val m = engine
-                .root
-                .children
-                // without hardcoded engine messages - diesel.rest and ping is allowed
-                  .filterNot(x =>
-                    x.value.isInstanceOf[EMsg] &&
-                        x.value.asInstanceOf[EMsg].entity == DieselMsg.ENGINE.ENTITY &&
-                        x.value.asInstanceOf[EMsg].met != "rest" &&
-                        x.value.asInstanceOf[EMsg].met != "ping")
-                .filter(x=>
-                    // skip debug infos and other stuff = we need the first message
-                    x.value.isInstanceOf[EMsg])
-                .head
-                .children
-                .find(_.children.headOption.exists(_.value.isInstanceOf[EMsg]) )
-
-              m.flatMap { m =>
-                val msg = m.children.head.value.asInstanceOf[EMsg]
-                engine.ctx.findTemplate(msg.entity + "." + msg.met, "response")
-              }
-            }
-
-          // todo optimize
-          //ctrace << engine.root.toString
-
-          var response : Option[Result] = None
-
-          var ctype =
-            templateResp.flatMap(_.parm("content-type")) // response ctype
-              .orElse(trequest.flatMap(_.parm("content-type"))) // or request ctype
-                .orElse {
-                  // is there a desired type
-                  engine.ctx.get(DieselMsg.HTTP.CTYPE).filter(_.length > 0)
-                }
-                .getOrElse("text/plain") // or plain
-
-          templateResp.map { t =>
-              // we have a response template
-
-            //          val s = EESnakk.formatTemplate(t.content, ECtx(res))
-            // engine.ctx accumulates results and we add the input
-
-            // templates strt with a \n normally
-            val content = t.content.replaceFirst("^\\r?\\n", "")
-
-            ctrace << s"Found templateResp... ${t.name}"
-
-            val s = if(content.length > 0) {
-              // template has content - format it
-              val allValues = new StaticECtx(msg.attrs, Some(engine.ctx))
-              EESnakk.formatTemplate(content, allValues)
-            } else {
-              // engine.ctx.get(Diesel.PAYLOAD).getOrElse("no msg recognized, no result, no response template")
-
-              engine.ctx.getp(Diesel.PAYLOAD).map { p =>
-//                if (p.value.isDefined) {
-                if (p.hasCurrentValue) {
-//                  ctype = WTypes.getContentType(p.value.get.cType)
-                  ctype = WTypes.getContentType(p.currentValue.ttype)
-
-                  val v = p.calculatedTypedValue(engine.ctx)
-                  v.value match {
-                    case x: Array[Byte] =>
-                      response = Some(Ok(x).as(ctype))
-                    case _ =>
-                      response = Some(Ok(v.asString).as(ctype))
-                  }
-
-                  ""
-                } else
-                  engine.ctx.get(Diesel.PAYLOAD).getOrElse("no msg recognized, no result, no response template")
-              }.getOrElse(
-                "no msg recognized, no result, no response template"
-              )
-            }
-
-            ctrace << s"RUN_REST_REPLY $verb $mock $path\n$s as $ctype"
-
-            response.map {res=>
-              // found a response template and made the response - add template parms as headers
-              val headers = t.parms
-                  .filter(_._1.toLowerCase.trim != "content-type")
-                  .filter(_._1.startsWith("http.header."))
-                  .map(t => (t._1.replaceFirst("http.header.", ""), t._2))
-                  .toSeq
-
-              // just use it to add the response info
-              mkStatus(Some(P.fromSmartTypedValue("x", res.body.toString)), engine).as(ctype)
-
-              res.withHeaders(headers: _*)
-            }.getOrElse {
-              // no response formatting found
-              mkStatus(Some(P.fromSmartTypedValue("x", s)), engine).as(ctype)
-            }
-
-          }.getOrElse {
-            // no response template - send the payload
-
-            val res = s"No response template for ${e}.${a}\n" + engine.root.toString
-            ctrace << s"RUN_REST_REPLY $verb $mock $path\n" + res
-            val payload = engine.ctx.getp(Diesel.PAYLOAD).filter(_.ttype != WTypes.wt.UNDEFINED)
-            // todo set ctype based on payload if found
-
-            payload.map { p =>
-              if (p.value.isDefined) {
-                ctype =
-                    // is there a desired type
-                    engine.ctx.get(DieselMsg.HTTP.CTYPE).filter(_.length > 0)
-                        .getOrElse(
-                          // if not, infer from data
-                          WTypes.getContentType(p.value.get.cType)
-                        )
-
-                p.value.get.value match {
-                  case x: Array[Byte] =>
-                    response = Some(Ok(x).as(ctype))
-                  case _ =>
-                    response = Some(Ok(p.value.get.asString).as(ctype))
-                }
-              }
-            }
-
-            val result = mkStatus(payload, engine, Some(msgAst)).as(ctype)
-
-            // don't show this for diesel.rest
-            dieselRestMsg
-                .map(x => result)
-                .getOrElse {
-                  result
-                      .withHeaders("diesel-reason" -> s"response template not found for $path in realm ${stok.realm}")
-                }
-          }
-        }
-
-          // must allow for ctx.sleeps
-          // todo why 50 sec
-          val dur = WikiConfig.getInstance.get.prop("diesel.timeout", "50 seconds")
-          val tcode = WikiConfig.getInstance.get.prop("diesel.timeoutCode", "504")
-          try {
-            Await.result(res, Duration(dur))
-          } catch {
-            case e: java.util.concurrent.TimeoutException => {
-              engine.stopNow
-              new Status(Integer.parseInt(tcode))(s"Workflow took too long ($dur) - not enough resources?")
-                  .withHeaders("diesel-reason" -> s"flow didn't response in $dur")
-            }
-          }
-      } getOrElse {
-        //      Future.successful(
-        NotFound(s"ERR Realm(${reactor}): Template or message not found for path: " + path)
-          .withHeaders("diesel-reason" -> s"template or message not found for $path in realm ${reactor}")
-        //      )
-      }
-      //          val tpath = if(turl startsWith "http://") {
-      //            turl.replaceFirst("https?://", "").replaceFirst(".*/", "/")
-      //          } else turl
-      //          matchesRequest(tpath, stok.req.path)
-    } else {
-        val x = s"Unauthorized msg access [runrest] (diesel.visibility:${stok.website.dieselVisiblity}, ${
-          stok.au.map(_.ename).mkString
-        })"
-        info(x)
-        info(s"msg: $msg - ${msg.get.isPublic} - ${msg.get.spec.toString} - reactor: $reactor")
-        Unauthorized(x)
+        InternalServerError(t.toString)
       }
     }
   }

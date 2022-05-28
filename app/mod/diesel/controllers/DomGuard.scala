@@ -292,7 +292,7 @@ class DomGuard extends DomApiBase with Logging {
              |<td><small><code>${Enc.escapeComplexHtml(a.engine.resultingValue.take(200))}</code></small></td>
              |<td> </td>
              |""".stripMargin
-        }.getOrElse("??")
+        }.getOrElse("-can't print engine-")
       }.mkString(
         s"""
            |<small>
