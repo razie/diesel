@@ -144,8 +144,9 @@ abstract class WikiConfig {
   // when running on localhost, some functionality is enabled as opposed to running in cloud hosting mode
   def isLocalhost = hostport startsWith "localhost:"
 
-  // not every localhost is dev mode
+  /** in dev mode, certain things are permitted... not every localhost is dev mode */
   def isDevMode = prop("wiki.devMode", "false").toBoolean
+  /** in dev mode, certain things are permitted... not every localhost is dev mode */
   def isRazDevMode = prop("diesel.razdevinst", "false").toBoolean
 
   //-------------- special admin/configuration pages

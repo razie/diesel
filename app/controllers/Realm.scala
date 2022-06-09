@@ -235,19 +235,24 @@ object Realm extends RazController with Logging {
   }
 
   /** switch to new reactor and sso */
-  def switchRealm(realm:String) = FAUR { implicit request =>
-    // if active and owns target, then sso -
-    if (Services.config.isLocalhost) {
-      Config.isimulateHost = s"$realm.dieselapps.com"
-      DieselSettings(None, None, "isimulateHost", Config.isimulateHost).set
-      Redirect("/", SEE_OTHER)
+  def switchRealm(realm:String) = RAction { implicit request =>
+    // on local razie dev
+    if(!(Config.isDevMode || Config.isRazDevMode) && !request.au.isDefined) {
+      Unauthorized(s"OOPS - unauthorized")
     } else {
-      // send user id and encripted
-      val conn = request.session.get(Services.config.CONNECTED).mkString
-      val token = Sec.encBase64(Sec.enc(conn))
-      val w = Website.forRealm(realm)
-      val url = w.map(_.url).getOrElse(s"http://$realm.dieselapps.com")
-      Redirect(s"$url/wikie/sso/$conn?token=" + token , SEE_OTHER)
+      // if active and owns target, then sso -
+      if (Services.config.isLocalhost) {
+        Config.isimulateHost = s"$realm.dieselapps.com"
+        DieselSettings(None, None, "isimulateHost", Config.isimulateHost).set
+        Redirect("/", SEE_OTHER)
+      } else {
+        // send user id and encripted
+        val conn = request.session.get(Services.config.CONNECTED).mkString
+        val token = Sec.encBase64(Sec.enc(conn))
+        val w = Website.forRealm(realm)
+        val url = w.map(_.url).getOrElse(s"http://$realm.dieselapps.com")
+        Redirect(s"$url/wikie/sso/$conn?token=" + token, SEE_OTHER)
+      }
     }
   }
 
