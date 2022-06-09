@@ -39,6 +39,7 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
     val av = a.applyTyped(v)
 
     val res: PValue[_] = op match {
+
       case "/" => {
         val bv = b.applyTyped(v)
         val bs = bv.calculatedValue
@@ -501,6 +502,7 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
 
       case "map" => {
         av.calculatedTypedValue.cType.name match {
+
           case WTypes.ARRAY => {
             val elementType = av.calculatedTypedValue.cType.wrappedType
 
@@ -590,6 +592,7 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
       case "mkString" => {
 
         av.calculatedTypedValue.cType.name match {
+
           case WTypes.ARRAY => {
             val elementType = av.calculatedTypedValue.cType.wrappedType
 
@@ -646,6 +649,30 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
           }
 
           case _ => throw new DieselExprException("Can't do flatMap on: " + av)
+        }
+      }
+
+      case "foreach" => {
+        av.calculatedTypedValue.cType.name match {
+          case WTypes.ARRAY => {
+            val arr = av.calculatedTypedValue.asArray
+
+            arr.foreach {x=>
+              if(b.isInstanceOf[LambdaFuncExpr] || b.isInstanceOf[BlockExpr] && b.asInstanceOf[BlockExpr].ex.isInstanceOf[LambdaFuncExpr]) {
+                // common case, no need to go through context, Block passes through to Lambda
+                val resp = b.applyTyped(x).calculatedTypedValue
+              } else {
+                // we populate an "x" or should it be "elem" ?
+                val sctx = new StaticECtx(List(P.fromTypedValue("x", x)), Some(ctx))
+                val resp = b.applyTyped(x)(sctx).calculatedTypedValue
+                if(!resp.cType.equals(WTypes.wt.ARRAY)) throw new DieselExprException("Result of right side not Array!")
+              }
+            }
+
+            PValue("", WTypes.wt.UNDEFINED)
+          }
+
+          case _ => throw new DieselExprException("Can't do foreach on: " + av)
         }
       }
 

@@ -35,6 +35,8 @@ object DieselRateLimiter extends razie.Logging {
   // rate limit groups
   val rateLimits = new TrieMap[String, RateLimitGroup]()
 
+  // NOTE the drawback to configuring the global limit is dropping requests without the benefit of waiting on socket
+
   // rate limit ALL requests
   var LIMIT_ALL = Config.prop("diesel.staticRateLimitAll", "false").toBoolean
   // rate limit API requests

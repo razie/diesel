@@ -242,8 +242,7 @@ case class EMsg(
 
   private def attrsToUrl(attrs: Attrs, ch: String = "&", encode: Boolean = true) = {
     attrs.map { p =>
-      // only if the expr is constant
-      var v = p.expr.filter(_.isInstanceOf[CExpr[_]]).map(_.toDsl).getOrElse(p.currentStringValue)
+      var v = p.currentStringValue
       if (encode) v = Enc.toUrl(v) // escape special chars
       s"""${p.name}=$v"""
     }.mkString(ch)
@@ -293,6 +292,8 @@ case class EMsg(
     var u = url1(section, resultMode)
     s"""<a target="_blank" href="${mapUrl(u)}">$entity.$met(${attrs.mkString(", ")})</a>"""
   }
+
+  /** extract a message signature from the match */
 
   /** make a href
     *
