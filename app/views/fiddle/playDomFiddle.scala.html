@@ -586,6 +586,7 @@ var runpill2_@id = function(id, compileOnly, forceRT, next) {
           console.log("New timestamp: " + data.info.timeStamp);
           clientStoryTimeStamp = data.info.timeStamp;
           processEngineResult(id, data, compileOnly, lastStartTime, next);
+          $("#navJsError").hide();
         },
 
         error  : function(x) {
@@ -593,6 +594,9 @@ var runpill2_@id = function(id, compileOnly, forceRT, next) {
           hideSpinner();
 
           console.log( "ERR "+JSON.stringify(x));
+
+          $("#navJsError").show();
+          $("#navJsError").attr("title", JSON.stringify(x));
 
           if(!compileOnly) curDomRequest = null;
           if(JSON.stringify(x).indexOf("staleid") >= 0) {
