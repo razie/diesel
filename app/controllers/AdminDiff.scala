@@ -398,8 +398,8 @@ class AdminDiff extends AdminBase with Logging {
   // from remote to local
   // todo auth that user belongs to realm
   def applyDiffFrom(localRealm: String, toRealm: String, targetHost: String, iwid: WID, leftId:String, rightId:String) = FAUR { implicit request =>
-    val localWid = Wikis.findById(leftId).map(x=> x.wid.withCachedPage(x)).get
     val remoteWid = iwid.r(if (toRealm == "all") iwid.getRealm else toRealm)
+    val localWid = if(leftId.trim.length > 0) Wikis.findById(leftId).map(x=> x.wid.withCachedPage(x)).get else remoteWid.r(localRealm)
 
     AdminDiff.getRemoteWE(targetHost, remoteWid)(request.au.get).fold({ t =>
       val protocol = if (request.hostUrlBase.startsWith("https")) "https" else "http"

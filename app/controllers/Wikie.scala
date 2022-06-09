@@ -1046,36 +1046,6 @@ class Wikie @Inject()(config: Configuration) extends WikieBase {
     })
   }
 
-  // create something with a category and template and spec
-  def addWithSpec(cat: String, iname:String, templateWpath:String, torspec:String, realm:String) = FAU {
-    implicit au => implicit errCollector => implicit request =>
-
-      val name = PlayTools.postData.getOrElse("name", iname).toLowerCase
-      val kind = PlayTools.postData.getOrElse("kind", "prod")
-
-      val E = " - go back and try another name..."
-      val e =
-        if(name.length < 3) s"Name ($name) too short"
-      else if (name.length > 20 && !au.isAdmin) s"Name ($name) too long"
-      else if (Config.reservedNames.contains(name)) s"Name ($name) is reserved"
-      else if (!name.matches("(?![-_])[A-Za-z0-9-_]{1,63}(?<![-_])")) s"Name ($name) cannot contain special characters"
-      else if (
-          ! "dev,qa".split(",").contains(kind) &&
-          ! au.hasMembershipLevel(Perm.Basic.s)
-        ) s"With a free account you can only create dev or qa projects..."
-      else ""
-
-      if(e.isEmpty) {
-        Profile.updateUser(au, au.addModNote(
-          realm,
-          s"${DateTime.now().toString} - user accepted terms and condtions for creating new project named:$name"
-        ))
-
-        Realm.createR2(cat, templateWpath, torspec:String, realm).apply(request).value.get.get
-      }
-      else Msg("Error: " + Corr(e, Some(E)).toString)
-  }
-
   // create reactor
   def createReactor = FAU {
     implicit au => implicit errCollector => implicit request =>
@@ -1109,6 +1079,35 @@ class Wikie @Inject()(config: Configuration) extends WikieBase {
         Msg(s"Can't find template [[$templateWpath]]")
   }
 
+  // create something with a category and template and spec
+  def addWithSpec(cat: String, iname:String, templateWpath:String, torspec:String, realm:String) = FAU {
+    implicit au => implicit errCollector => implicit request =>
+
+      val name = PlayTools.postData.getOrElse("name", iname).toLowerCase
+      val kind = PlayTools.postData.getOrElse("kind", "prod")
+
+      val E = " - go back and try another name..."
+      val e =
+        if(name.length < 3) s"Name ($name) too short"
+        else if (name.length > 20 && !au.isAdmin) s"Name ($name) too long"
+        else if (Config.reservedNames.contains(name)) s"Name ($name) is reserved"
+        else if (!name.matches("(?![-_])[A-Za-z0-9-_]{1,63}(?<![-_])")) s"Name ($name) cannot contain special characters"
+        else if (
+          ! "dev,qa".split(",").contains(kind) &&
+              ! au.hasMembershipLevel(Perm.Basic.s)
+        ) s"With a free account you can only create dev or qa projects..."
+        else ""
+
+      if(e.isEmpty) {
+        Profile.updateUser(au, au.addModNote(
+          realm,
+          s"${DateTime.now().toString} - user accepted terms and condtions for creating new project named:$name"
+        ))
+
+        Realm.createR2(cat, templateWpath, torspec:String, realm).apply(request).value.get.get
+      }
+      else Msg("Error: " + Corr(e, Some(E)).toString)
+  }
   /** add a child/related to another topic - this stages the link and begins creation of kid.
     *
     * At the end, the staged link is persisted */
