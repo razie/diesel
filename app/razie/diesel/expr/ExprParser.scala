@@ -58,7 +58,7 @@ trait ExprParser extends RegexParsers {
   private def opsAND: Parser[String] = "and"
 
   private def opsCMP: Parser[String] =
-    ">" | "<" | ">=" | "<=" | "==" | "!=" |
+    ">=" | "<=" | ">" | "<" | "==" | "!=" |
         "~=" | "~path" <~ ws |
         "?=" | "is" <~ ws | "xNot" <~ ws | "in" <~ ws | "not in" <~ ws | "notIn" <~ ws | "not" <~ ws |
         "contains" <~ ws | "containsNot" <~ ws
