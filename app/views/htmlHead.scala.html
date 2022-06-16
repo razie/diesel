@@ -481,7 +481,7 @@ img.rklogo {
   @if(Services.config.isLocalhost && Services.config.isRazDevMode) {
 
     <!--
-    in localhost, for development, refresh all the time...
+    in localhost, for development, refresh all the time... @{Services.config.isLocalhost} && @{Services.config.isRazDevMode}
     -->
 
     <script async>
