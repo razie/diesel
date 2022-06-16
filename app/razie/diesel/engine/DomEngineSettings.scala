@@ -7,7 +7,7 @@ package razie.diesel.engine
 
 import org.bson.types.ObjectId
 import razie.tconf.TagQuery
-import razie.wiki.Config
+import razie.wiki.{Config, Services}
 
 /** various settings for each wf engine, see http://specs.dieselapps.com/Topic/Flags_and_modes */
 case class DomEngineSettings
@@ -100,7 +100,7 @@ case class DomEngineSettings
 object DomEngineSettings {
 
  // default query spec, global
-  var DEFAULT_TQ_SPECS = new TagQuery(Config.prop("diesel.global.tqspec", "-exclude"))
+  var DEFAULT_TQ_SPECS = new TagQuery(Services.config.prop("diesel.global.tqspec", "-exclude"))
 
 
   final val SKETCH_MODE="sketchMode"

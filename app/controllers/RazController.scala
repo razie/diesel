@@ -353,7 +353,7 @@ ${errCollector.mkString}
   /** mock teh action filters */
   class RazAction[A] (val bodyParser: BodyParser[A], auth:Boolean = false, noRob:Boolean=false) {
     protected def isFromRobot(implicit request: RequestHeader) = {
-      (request.headers.get("User-Agent").exists(ua => Config.robotUserAgents.exists(ua.contains(_))))
+      (request.headers.get("User-Agent").exists(ua => Services.config.robotUserAgents.exists(ua.contains(_))))
     }
 
     def doAuth(req:RazRequest):Option[Future[Result]] = {
@@ -460,7 +460,7 @@ ${errCollector.mkString}
 
   // todo enhance this - collect robot suspicions and store them in a proposal table
   protected def isFromRobot(implicit request: RequestHeader) = {
-    (request.headers.get("User-Agent").exists(ua => Config.robotUserAgents.exists(ua.contains(_))))
+    (request.headers.get("User-Agent").exists(ua => Services.config.robotUserAgents.exists(ua.contains(_))))
   }
 
   val HOME = WID("Admin", "home")

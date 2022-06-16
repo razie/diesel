@@ -7,7 +7,7 @@
 package razie.hosting
 
 import play.api.mvc.Request
-import razie.wiki.Config
+import razie.wiki.{Config, Services}
 import razie.wiki.util.PlayTools
 
 /** multi-tenancy - identify the reactor from the current domain
@@ -15,7 +15,7 @@ import razie.wiki.util.PlayTools
   * todo inject and remove hardcodings
   */
 object RkReactors {
-  val hostedDomains = Config.prop("wiki.hostedDomains", "dieselapps.com").split(",").map("." + _)
+  val hostedDomains = Services.config.prop("wiki.hostedDomains", "dieselapps.com").split(",").map("." + _)
 
   /** find realm for the host REACTOR.dslapps.com - see if there is a known reactor for that */
   def forHost (h:String) : Option[String] = {

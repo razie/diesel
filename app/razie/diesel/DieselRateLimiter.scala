@@ -9,7 +9,7 @@ package razie.diesel
 import java.util.concurrent.atomic.AtomicLong
 import play.api.mvc.RequestHeader
 import razie.diesel.DieselRateLimiter.globalGroup
-import razie.wiki.Config
+import razie.wiki.{Config, Services}
 import razie.wiki.admin.GlobalData
 import razie.wiki.model.{WikiConfigChanged, WikiObservers}
 import scala.collection.concurrent.TrieMap
@@ -38,11 +38,11 @@ object DieselRateLimiter extends razie.Logging {
   // NOTE the drawback to configuring the global limit is dropping requests without the benefit of waiting on socket
 
   // rate limit ALL requests
-  var LIMIT_ALL = Config.prop("diesel.staticRateLimitAll", "false").toBoolean
+  var LIMIT_ALL = Services.config.prop("diesel.staticRateLimitAll", "false").toBoolean
   // rate limit API requests
-  var LIMIT_API = Config.prop("diesel.staticRateLimit", "80").toInt
+  var LIMIT_API = Services.config.prop("diesel.staticRateLimit", "80").toInt
   // big switch on/off
-  var RATELIMIT = Config.prop("diesel.staticRateLimiting", "true").toBoolean
+  var RATELIMIT = Services.config.prop("diesel.staticRateLimiting", "true").toBoolean
 
   // create a global group
   var globalGroup = if(LIMIT_ALL) Some(new RateLimitGroup(name="global", limit=LIMIT_API, regex=Nil, headers=Nil)) else None

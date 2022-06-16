@@ -136,6 +136,14 @@ abstract class WikiConfig {
   /** when running on localhost, simulate this host */
   def simulateHost = prop("wiki.simulateHost")
 
+  var isimulateHost = {
+    "www.dieselapps.com"    // for testing locally
+  }
+
+  val REFERENCE_SIMULATE_HOST = {
+    "www.dieselapps.com"    // Do not change this
+  }
+
   // todo is only used for auth on the support email when sending - to configure password per reactor
   /** support email */
   def SUPPORT = prop("wiki.supportEmail", "support@racerkidz.com")
@@ -247,6 +255,8 @@ abstract class WikiConfig {
   def reservedNames = ireservedNames
   protected var ireservedNames = List[String]()
 
+
+  final val curYear = "2017" // just FYI basicaly, each club has its own year
 
   import WikiConfig.parsep
 

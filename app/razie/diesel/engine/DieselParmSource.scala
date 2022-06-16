@@ -36,15 +36,15 @@ class DieselParmSource (ctx:DomEngECtx) extends ParmSource {
     case "isLocaldevbox" => Some(P.fromTypedValue("diesel.isLocaldevbox", Services.config.isLocalhost && Services.config.isRazDevMode))
 
     // todo deprecated, remove - search in all realms
-    case "realm.props" | "props.realm" => {
-      val p = Website.getRealmProps(ctx.root.settings.realm.mkString)
-      Some(P.fromTypedValue("diesel.realm.props", p))
-    }
+//    case "realm.props" | "props.realm" => {
+//      val p = Website.getRealmProps(ctx.root.settings.realm.mkString)
+//      Some(P.fromTypedValue("diesel.realm.props", p))
+//    }
 
     case "props" => {
       next("diesel.props", Map(
         "system" -> (n => {
-          val m = if (Config.isLocalhost) {
+          val m = if (Services.config.isLocalhost) {
             System.getProperties.asScala
           } else {
             throw new IllegalArgumentException("Error: No permission")
@@ -52,7 +52,7 @@ class DieselParmSource (ctx:DomEngECtx) extends ParmSource {
           Left(P.fromSmartTypedValue("diesel.props.system", m))
         }),
         "env" -> (n => {
-          val m = if (Config.isLocalhost) {
+          val m = if (Services.config.isLocalhost) {
             System.getenv().asScala
           } else {
             throw new IllegalArgumentException("Error: No permission")
@@ -77,7 +77,7 @@ class DieselParmSource (ctx:DomEngECtx) extends ParmSource {
     }
 
     case "server" => Some(P.fromSmartTypedValue("diesel.server", Map(
-      "node" -> Config.node,
+      "node" -> Services.config.node,
       "host" -> java.net.InetAddress.getLocalHost.getCanonicalHostName,
       "hostName" -> java.net.InetAddress.getLocalHost.getHostName,
       "ip" -> java.net.InetAddress.getLocalHost.getHostAddress

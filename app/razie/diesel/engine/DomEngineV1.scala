@@ -22,7 +22,7 @@ import razie.diesel.model.DieselMsg.ENGINE._
 import razie.hosting.{Website, WikiReactors}
 import razie.hosting.WikiReactors.reactors
 import razie.tconf.DSpec
-import razie.wiki.Config
+import razie.wiki.{Config, Services}
 import scala.Option.option2Iterable
 import scala.collection.mutable.{HashMap, ListBuffer}
 import scala.util.Try
@@ -72,7 +72,7 @@ class DomEngineV1(
       return Nil
     }
 
-    if (this.curExpands > maxExpands && !Config.isLocalhost) {
+    if (this.curExpands > maxExpands && !Services.config.isLocalhost) {
       // THIS IS OK: append direct to children
       a append DomAst(
         TestResult(
@@ -875,7 +875,7 @@ class DomEngineV1(
 
         Audit.logdb("DIESEL_EXIT", s"user ${settings.userId}")
 
-        if (Config.isLocalhost) {
+        if (Services.config.isLocalhost) {
           System.exit(-1)
         }
 
@@ -903,7 +903,7 @@ class DomEngineV1(
 
         Audit.logdb("DIESEL_CRASHAKKA", s"user ${settings.userId}")
 
-        if (Config.isLocalhost) {
+        if (Services.config.isLocalhost) {
           DieselAppContext.getActorSystem.terminate()
         }
 

@@ -9,7 +9,7 @@ package razie.wiki.model
 import com.mongodb.DBObject
 import play.api.Play.current
 import play.api.cache._
-import razie.wiki.Config
+import razie.wiki.{Config, Services}
 import razie.wiki.admin.GlobalData
 import razie.{Logging, cdebug, clog, ctrace}
 
@@ -25,7 +25,7 @@ object WikiCache {
 
   // lame lazy
   def cacheExp = CACHE_EXP.getOrElse {
-    CACHE_EXP = Some(Config.prop("wiki.cache.expiry", "500").toInt)
+    CACHE_EXP = Some(Services.config.prop("wiki.cache.expiry", "500").toInt)
     CACHE_EXP.get
   }
 

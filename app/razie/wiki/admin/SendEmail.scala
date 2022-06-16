@@ -137,10 +137,10 @@ object SendEmail extends razie.Logging {
 
   /** prevent it from actually sending out, good for testing
     * this is set to false for normal testing - set to true for quick testing and stress/perf testing */
-  lazy val NO_EMAILS = Config.prop("diesel.noemails", "false").toBoolean
+  lazy val NO_EMAILS = Services.config.prop("diesel.noemails", "false").toBoolean
 
   /** prevent for sending out * programatically set to false during a test */
-  var NO_EMAILS_TESTNG = Config.prop("diesel.noemailstesting", "false").toBoolean
+  var NO_EMAILS_TESTNG = Services.config.prop("diesel.noemailstesting", "false").toBoolean
 
   // should be lazy because of akka's bootstrap
   lazy val emailSender = Akka.system.actorOf(Props[EmailSender], name = "EmailSender")
@@ -418,7 +418,7 @@ object SendEmail extends razie.Logging {
         } else {
 
           val website = mailSession.realm.flatMap(Website.forRealm).getOrElse(Website.dflt)
-          val user = website.prop("mail.smtp.user").getOrElse(Config.SUPPORT)
+          val user = website.prop("mail.smtp.user").getOrElse(Services.config.SUPPORT)
           val server = website.prop("mail.smtp.host")
 
           val SEQ = Seq(

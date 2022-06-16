@@ -13,7 +13,7 @@ import razie.diesel.engine.nodes.{EError, EMsg}
 import razie.diesel.expr.ScopeECtx
 import razie.diesel.model.DieselMsg
 import razie.hosting.Website
-import razie.wiki.Config
+import razie.wiki.{Config, Services}
 import razie.wiki.model.WID
 import scala.collection.mutable.ListBuffer
 
@@ -21,8 +21,8 @@ object DomStream {
 
   /** get max size from properties */
   def getMaxSize = {
-    val dflt = if (Config.isLocalhost) "10000" else "100"
-    Config.prop("diesel.stream.maxSize", dflt).toInt
+    val dflt = if (Services.config.isLocalhost) "10000" else "100"
+    Services.config.prop("diesel.stream.maxSize", dflt).toInt
     // todo add realm setting and trusted realms ?
   }
 }

@@ -14,9 +14,10 @@ import razie.wiki.model.{WikiConfigChanged, WikiEntry, WikiEvent, WikiObservers}
   * configuration static
   *
   * todo config should be injected not static
+  *
+  * Use Services.config instead of Config
   */
 object Config extends WikiConfig {
-  final val curYear = "2017" // just FYI basicaly, each club has its own year
 
   val verMap = {
     val ver = ConfigFactory.load("ver.conf")
@@ -34,14 +35,6 @@ object Config extends WikiConfig {
   override def simulateHost = isimulateHost
 
   var trustLocalUsers = prop("diesel.trustLocalUsers", "true").toBoolean
-
-  var isimulateHost = {
-    "www.dieselapps.com"    // for testing locally
-  }
-
-  val REFERENCE_SIMULATE_HOST = {
-    "www.dieselapps.com"    // Do not change this
-  }
 
   WikiObservers mini {
     case WikiEvent(_, "WikiEntry", _, Some(x), _, _, _)

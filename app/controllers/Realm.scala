@@ -237,13 +237,13 @@ object Realm extends RazController with Logging {
   /** switch to new reactor and sso */
   def switchRealm(realm:String) = RAction { implicit request =>
     // on local razie dev
-    if(!(Config.isDevMode || Config.isRazDevMode) && !request.au.isDefined) {
+    if(!(Services.config.isDevMode || Services.config.isRazDevMode) && !request.au.isDefined) {
       Unauthorized(s"OOPS - unauthorized")
     } else {
       // if active and owns target, then sso -
       if (Services.config.isLocalhost) {
-        Config.isimulateHost = s"$realm.dieselapps.com"
-        DieselSettings(None, None, "isimulateHost", Config.isimulateHost).set
+        Services.config.isimulateHost = s"$realm.dieselapps.com"
+        DieselSettings(None, None, "isimulateHost", Services.config.isimulateHost).set
         Redirect("/", SEE_OTHER)
       } else {
         // send user id and encripted
@@ -260,7 +260,7 @@ object Realm extends RazController with Logging {
   def setRealm(realm:String) = FAUR { implicit request =>
       if(request.au.exists(_.isAdmin)) {
         // if active and owns target, then sso -
-          Config.isimulateHost = s"$realm.dieselapps.com"
+          Services.config.isimulateHost = s"$realm.dieselapps.com"
           Redirect("/", SEE_OTHER)
       } else
         Unauthorized("meh")

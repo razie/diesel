@@ -14,7 +14,7 @@ import razie.diesel.DieselRateLimiter
 import razie.diesel.engine.DieselAppContext
 import razie.diesel.utils.DomCollector
 import razie.hosting.WikiReactors
-import razie.wiki.Config
+import razie.wiki.{Config, Services}
 import razie.wiki.model.WikiCache
 import scala.concurrent.{Future, Promise}
 
@@ -99,8 +99,8 @@ object GlobalData {
   def toMap() = {
     Map(
       "global" -> Map(
-        "maxDefaultThreads" -> Config.prop("akka.actor.default-dispatcher.thread-pool-executor.fixed-pool-size"),
-        "maxDieselThreads" -> Config.prop("diesel-dispatcher.thread-pool-executor.fixed-pool-size"),
+        "maxDefaultThreads" -> Services.config.prop("akka.actor.default-dispatcher.thread-pool-executor.fixed-pool-size"),
+        "maxDieselThreads" -> Services.config.prop("diesel-dispatcher.thread-pool-executor.fixed-pool-size"),
         "serving" -> GlobalData.serving.get(),
         "served" -> GlobalData.served.get(),
         "wikiCacheMisses" -> GlobalData.wikiCacheMisses.get(),
@@ -139,7 +139,7 @@ object GlobalData {
 
   def perfMap() = {
     Map(
-      "maxConfThreads" -> Config.prop("akka.actor.default-dispatcher.thread-pool-executor.fixed-pool-size"),
+      "maxConfThreads" -> Services.config.prop("akka.actor.default-dispatcher.thread-pool-executor.fixed-pool-size"),
       "serving" -> GlobalData.serving.get(),
       "servingApiRequests" -> GlobalData.servingApiRequests.get(),
       "limitedRequests" -> GlobalData.limitedRequests.get(),
