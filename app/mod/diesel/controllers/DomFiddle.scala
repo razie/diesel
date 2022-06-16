@@ -21,6 +21,7 @@ import razie.diesel.utils.{AutosaveSet, DomCollector, DomWorker, SpecCache}
 import razie.wiki.Services
 import razie.wiki.admin.Autosave
 import razie.wiki.model._
+import razie.wiki.parser.WAST
 import razie.{CSTimer, Logging, js}
 import scala.collection.concurrent.TrieMap
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -74,7 +75,7 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
     var specWpath = wids("specWpath")
     var storyWpath = wids("storyWpath")
 
-    // need settings?
+    // need saved?
     if(iSpecWpath != "?" && iSpecWpath != specWpath) {
       DomWorker later AutosaveSet("DomFidPath",reactor,"", stok.au.get._id, Map(
         "specWpath"  -> iSpecWpath,
@@ -300,14 +301,17 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
 
       val specPage = new WikiEntry("Spec", specName, specName, "md", spec, stok.au.get._id, Seq("dslObject"),
         stok.realm)
+      specPage.cacheable = false // important so we format incoming text
       val specDom = WikiDomain.domFrom(specPage).get.revise addRoot
 
       val storyPage = new WikiEntry("Story", storyName, storyName, "md", story, stok.au.get._id, Seq("dslObject"),
         stok.realm)
+      storyPage.cacheable = false // important so we format incoming text
       val storyDom = WikiDomain.domFrom(storyPage).get.revise addRoot
 
-      //fiddleSpec only parses it, never runs it - it's a spec, afterall
-      val res = Wikis.format(specPage.wid, specPage.markup, spec, Some(specPage), stok.au)
+      // fiddleSpec only parses it, never runs it - it's a spec, afterall
+      val res = Wikis.format(specPage.wid, specPage.markup, null, Some(specPage), stok.au)
+
       retj << Map(
         "res" -> res,
         // todo should respect blenderMode ?
@@ -461,7 +465,7 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
 
       // start processing all elements
       val engine = DieselAppContext.mkEngine(
-        dom,
+        dom.plus(idom),
         root,
         settings,
         ipage :: pages map WikiDomain.spec,
@@ -507,7 +511,7 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
 
         stimer snap "5_engine_expand"
 
-        val wiki = Wikis.format(ipage.wid, ipage.markup, story, Some(ipage), stok.au)
+        val wiki = Wikis.format(ipage.wid, ipage.markup, null, Some(ipage), stok.au)
 
         val m = Map(
           // flags in map for easy logging
