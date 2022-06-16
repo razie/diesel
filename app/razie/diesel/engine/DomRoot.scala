@@ -147,6 +147,8 @@ trait DomRoot {
 
     implicit val ctx = appendToCtx
 
+    val startT = System.currentTimeMillis()
+
     /** setting one value */
     def setp(parentObject: Any, parentAccessor: String, accessor: P, v: P)(implicit ctx: ECtx): P = {
       // reset - need to recalc accessors every time
@@ -327,14 +329,15 @@ trait DomRoot {
 
         // create the assignment node
         val s = res.toString
-        a.map(_ append DomAst(
+
+        a.foreach(_ append DomAst(
           EInfo(
             pas.left.toStringCalc + " = " + shorten(s, 100),
             s
             // rightP.calculatedTypedValue.asString
           ).withPos(pos),
           AstKinds.TRACE
-        ))
+        ).withDuration(startT, System.currentTimeMillis()))
 
         (Nil, Nil)
       }
@@ -353,7 +356,7 @@ trait DomRoot {
             DomAst(EError(p.currentStringValue) withPos (pos), AstKinds.ERROR).withSpec(x) :: Nil
           }
         } else {
-          val newa = DomAst(EVal(p) withPos (pos), kind).withSpec(x)
+          val newa = DomAst(EVal(p) withPos (pos), kind).withSpec(x).withDuration(startT, System.currentTimeMillis())
 
           // no info needed from each val as now parm name pops up details
 

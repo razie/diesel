@@ -144,11 +144,18 @@ case class DomAst(
 
   def start(seq: Long) {
     tstart = System.currentTimeMillis()
+    tend = tstart
     seqNo = seq
   }
 
   def end() = {
     tend = System.currentTimeMillis()
+  }
+
+  def withDuration (start:Long, end:Long) = {
+    tstart = start
+    tend = end
+    this
   }
 
   //============ domain details

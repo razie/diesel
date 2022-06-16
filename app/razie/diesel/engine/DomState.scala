@@ -22,9 +22,15 @@ object DomState {
   final val GUARD_FALSE = "false" // had guard and was false
   final val GUARD_TRUE = "true" // had guard and was true
 
+  /** is the state an initial state */
+  def isInit(s: String) = s startsWith "init."
+
+  /** is the state in progress? */
   def inProgress(s: String) = s startsWith "exec."
 
+  /** is the state a final state */
   def isDone(s: String) = s startsWith "final."
 
+  /** is the state an inprogress but waiting state (dependent, suspended etc) */
   def inWaiting(s: String) = s startsWith "exec.waiting."
 }
