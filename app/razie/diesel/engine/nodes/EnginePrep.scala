@@ -43,16 +43,19 @@ case class StoryNode(path: TSpecRef) extends CanHtml with InfoNode {
 
   /** calculate succ/fail - called at end of story by engine, populates the stats */
   def calculateStats(ast: DomAst): StoryTestStats = {
-    if (stats.isEmpty) {
+    if (stats.isEmpty) stats = Some(calculateTempStats(ast))
+    stats.get
+  }
+
+  /** calculate succ/fail - called at end of story by engine, populates the stats */
+  def calculateTempStats(ast: DomAst): StoryTestStats = {
       val nodes = ast.children
       val failed = failedTestCount(nodes)
       val total = totalTestedCount(nodes)
       val success = successTestCount(nodes)
       val errors = errorCount(nodes)
       val todo = todoTestCount(nodes)
-      stats = Option(StoryTestStats(failed, total, success, errors, todo))
-    }
-    stats.get
+      StoryTestStats(failed, total, success, errors, todo)
   }
 
   override def toHtml = x + s"""Story ${path.ahref.mkString}"""

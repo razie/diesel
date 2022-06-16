@@ -29,15 +29,16 @@ object DomEngineView {
   /** story summary if this was a test story */
   def storySummary(a: DomAst) = {
     val zip = a.children.zipWithIndex
-    val stories = zip.filter(_._1.kind == "story")
+    val stories = zip.filter(_._1.kind == AstKinds.STORY)
 
     val resl = Range(0, stories.size).map { i =>
       val s = stories(i)
       val sn = s._1.value.asInstanceOf[StoryNode]
-      val StoryTestStats(failed, total, _, _, _) = sn.getStats
+
+      val StoryTestStats(failed, total, _, _, _) = if(s._1.status == DomState.STARTED) sn.calculateTempStats(s._1) else sn.getStats
 
       s"""<a href="#${s._1.value.asInstanceOf[StoryNode].path.wpath.replaceAll("^.*:", "")}">[details]</a>""" +
-          quickBadge(failed, total, -1, "") +
+          quickBadge(failed, total, -1, "", s._1.status) +
           (s._1.value match {
             // doing this to avoid getting the a name at the top and confuse the scrolling
             case sn: StoryNode => s""" Story ${sn.path.ahref.mkString}"""

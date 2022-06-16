@@ -102,6 +102,7 @@ case class DomAst(
 
   private var istatus: String = DomState.INIT
 
+  /** current status - see [[DomState]] for values */
   def status: String = istatus
 
   def status_=(s: String): Unit = istatus = s

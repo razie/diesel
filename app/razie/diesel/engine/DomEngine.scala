@@ -630,6 +630,7 @@ abstract class DomEngine(
       msgs = Try {
         expand(a, recurse, level + 1)
       }.recover {
+
         case t if t.isInstanceOf[javax.script.ScriptException] || t.isInstanceOf[DieselExprException] => {
           info("Exception wile decompose() " + t.getMessage)
           val err = DEError(this.id, t.toString)
@@ -640,6 +641,7 @@ abstract class DomEngine(
           evAppChildren(a, ast)
           err :: nodeDone(ast, level + 1)
         }
+
         case t: Throwable => {
           razie.Log.log("Exception wile decompose()", t)
           val err = DEError(this.id, t.toString)
