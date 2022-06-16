@@ -21,7 +21,7 @@ import razie.diesel.samples.DomEngineUtils
 import razie.diesel.utils.DomHtml.quickBadge
 import razie.diesel.utils.{AutosaveSet, DomCollector, DomWorker, SpecCache}
 import razie.hosting.WikiReactors
-import razie.wiki.{Config, Enc}
+import razie.wiki.{Config, Enc, Services}
 import razie.wiki.admin.{Autosave, GlobalData}
 import razie.wiki.model._
 import razie.wiki.util.NoAuthService
@@ -656,7 +656,7 @@ glyphicon-question-sign"></span></a></sup>: <a href="/diesel/guard/runCheck">Re-
 
   /** run another check all reactors */
   def dieselRunCheckAll = Filter(adminUser).async { implicit stok =>
-    if (!Config.isLocalhost && ISENABLED || ISENABLED_LOCALHOST) Future.sequence(
+    if (!Services.config.isLocalhost && ISENABLED || ISENABLED_LOCALHOST) Future.sequence(
       WikiReactors.allReactors.keys.map { k =>
         if (DomGuardian.enabled(k)) startCheck(k, stok.au, "")._1
         else Future.successful(DomGuardian.EMPTY_REPORT)

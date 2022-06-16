@@ -1090,7 +1090,7 @@ class Wikie @Inject()(config: Configuration) extends WikieBase {
       val e =
         if(name.length < 3) s"Name ($name) too short"
         else if (name.length > 20 && !au.isAdmin) s"Name ($name) too long"
-        else if (Config.reservedNames.contains(name)) s"Name ($name) is reserved"
+        else if (Services.config.reservedNames.contains(name)) s"Name ($name) is reserved"
         else if (!name.matches("(?![-_])[A-Za-z0-9-_]{1,63}(?<![-_])")) s"Name ($name) cannot contain special characters"
         else if (
           ! "dev,qa".split(",").contains(kind) &&

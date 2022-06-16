@@ -8,7 +8,7 @@ import play.api.data._
 import play.api.mvc.Request
 import razie.Logging
 import razie.db.{REntity, ROne, RTable}
-import razie.wiki.Config
+import razie.wiki.{Config, Services}
 import razie.wiki.model.WID
 
 
@@ -18,7 +18,7 @@ case class Element(id: ObjectId, kind:String, role: String)
 @RTable
 case class Season (
   clubName: ObjectId, // wikid
-  year: String = Config.curYear, // year or season like "2016-summer"
+  year: String = Services.config.curYear, // year or season like "2016-summer"
   label:String,
   elements : Seq[Element] = Nil,
   _id: ObjectId = new ObjectId) extends REntity[Season] {

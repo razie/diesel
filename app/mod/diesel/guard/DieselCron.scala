@@ -23,7 +23,7 @@ import play.libs.Akka
 import razie.diesel.engine.{CachedEngingPrep, DieselAppContext, DieselException, DomEngine}
 import razie.diesel.model.{DieselMsg, DieselMsgString, DieselTarget}
 import razie.hosting.Website
-import razie.wiki.Config
+import razie.wiki.{Config, Services}
 import razie.wiki.admin.GlobalData
 import razie.{Logging, Snakk}
 import scala.collection.concurrent.TrieMap
@@ -189,7 +189,7 @@ object DieselCron extends Logging {
       doneMsg) =>
 
         // create schedule request
-        val isLocalhost = Config.isLocalhost
+        val isLocalhost = Services.config.isLocalhost
 
         log(s"CronActor CreateSchedule request: $cs")
 
@@ -539,7 +539,7 @@ object DieselCron extends Logging {
   /** should NOT await realm crons if in local AND await was set to false explicitely */
   def shouldAwaitRealm (realm:String) = {
     // set this to false to allow parallel timers - by default is not disabled, so we wait
-    !(Config.isLocalhost &&
+    !(Services.config.isLocalhost &&
         Website.getRealmProp(realm, "diesel.cron.await").exists(_ == "false"))
   }
 
@@ -588,7 +588,7 @@ object DieselCron extends Logging {
     masterNodeStatus.getOrElse {
       val me = InetAddress.getLocalHost.getHostName
       val url =
-        (if (Config.isLocalhost) "http://" + Config.hostport
+        (if (Services.config.isLocalhost) "http://" + Services.config.hostport
         else
           w.url) + "/diesel/engine/whoami"
 

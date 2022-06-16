@@ -220,7 +220,7 @@ class ProfileUpd @Inject() (config:Configuration) extends RazController with Log
             Profile.updateUser(au, au.copy(pwd=Enc(n)))
             Emailer.withSession(request.realm) { implicit mailSession =>
               // todo use email template
-              mailSession.send(au.emailDec, Config.SUPPORT, "Password was changed", "Your password was changed!")
+              mailSession.send(au.emailDec, Services.config.SUPPORT, "Password was changed", "Your password was changed!")
             }
             Msg("Your password has successfully changed.")
           }) getOrElse {

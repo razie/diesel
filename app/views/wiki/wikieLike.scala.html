@@ -1,6 +1,8 @@
 @***************
 link(like) a wiki: select or create from categoyr
 **************@
+@import razie.wiki.Services
+@import razie.wiki.Services
 @(wid: razie.wiki.model.WID, page: Option[razie.wiki.model.WikiEntry])(implicit stok: controllers.StateOk)
 @import razie.wiki.Config
 @import razie.wiki.model.Wikis
@@ -13,7 +15,7 @@ link(like) a wiki: select or create from categoyr
       <strong>Clubs with registration open:</strong>
       @Html(
         Wikis.sformat(
-          Config.sitecfg("regClubs.list").toList.flatMap(_.split(",")).map(x => s"<b>[[Club:$x]]</b>").mkString(" | "),
+          razie.wiki.Services.config.sitecfg("regClubs.list").toList.flatMap(_.split(",")).map(x => s"<b>[[Club:$x]]</b>").mkString(" | "),
           "md", stok.realm, stok.au))
     </div>
   <div class="alert alert-warning">

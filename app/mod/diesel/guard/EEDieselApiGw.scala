@@ -14,7 +14,7 @@ import razie.diesel.engine.nodes.{EError, EMsg, EVal, _}
 import razie.diesel.expr.ECtx
 import razie.diesel.model.DieselMsg
 import razie.diesel.{Diesel, DieselRateLimiter, RateLimitGroup}
-import razie.wiki.Config
+import razie.wiki.{Config, Services}
 
 /** properties - from system or file
   */
@@ -39,7 +39,7 @@ class EEDieselApiGw extends EExecutor(DieselMsg.APIGW.ENTITY) {
     in.ea match {
 
       case "diesel.apigw.limit.static" => {
-        if (Config.isLocalhost) DieselRateLimiter.synchronized {
+        if (Services.config.isLocalhost) DieselRateLimiter.synchronized {
           DieselRateLimiter.LIMIT_API = ctx.getRequired("limit").toInt
           // todo replace the globalGroup there
 
@@ -52,7 +52,7 @@ class EEDieselApiGw extends EExecutor(DieselMsg.APIGW.ENTITY) {
       }
 
       case "diesel.apigw.limit.rate" => {
-        if (Config.isLocalhost) DieselRateLimiter.synchronized {
+        if (Services.config.isLocalhost) DieselRateLimiter.synchronized {
           DieselRateLimiter.RATELIMIT = ctx.getRequired("limit").toBoolean
 
           OK
@@ -68,7 +68,7 @@ class EEDieselApiGw extends EExecutor(DieselMsg.APIGW.ENTITY) {
         val regex = ctx.get("regex")
         val header = ctx.get("header")
 
-        if (Config.isLocalhost) DieselRateLimiter.synchronized {
+        if (Services.config.isLocalhost) DieselRateLimiter.synchronized {
           val group = DieselRateLimiter.rateLimits.get(groupName)
           val newg = group
               .map { g =>
@@ -94,7 +94,7 @@ class EEDieselApiGw extends EExecutor(DieselMsg.APIGW.ENTITY) {
 
       case "diesel.apigw.limit.groups" => {
         // todo should use permissions?
-        if (Config.isLocalhost) {
+        if (Services.config.isLocalhost) {
           List(
             EVal(P.fromTypedValue(Diesel.PAYLOAD, DieselRateLimiter.rateLimits.map(t => {
               (t._1, {

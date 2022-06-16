@@ -40,7 +40,7 @@ class Application @Inject()(wikiCtl: Wiki) extends RazController {
 
         // 1. url forward?
 
-        getHost.flatMap(Config.urlfwd(_)).map { host =>
+        getHost.flatMap(Services.config.urlfwd(_)).map { host =>
           log("URL - Redirecting main page from " + getHost + " TO " + host)
           Future.successful(Redirect(host))
 
@@ -89,7 +89,7 @@ class Application @Inject()(wikiCtl: Wiki) extends RazController {
 
           // print not found...
 
-          val hostedDomains = Config.prop("wiki.hostedDomains", "dieselapps.com").split(",").map("." + _)
+          val hostedDomains = Services.config.prop("wiki.hostedDomains", "dieselapps.com").split(",").map("." + _)
 
           // is this the first time in a new db ?
           if(RMany[User]().size <= 0) {
@@ -101,7 +101,7 @@ class Application @Inject()(wikiCtl: Wiki) extends RazController {
 
             val res =
 
-              if(!Config.isLocalhost && getHost.exists(h=> hostedDomains.exists(d=> h.endsWith(d)))) {
+              if(!Services.config.isLocalhost && getHost.exists(h=> hostedDomains.exists(d=> h.endsWith(d)))) {
                 // does it have a different domain?
                 val w = Website.forRealm(r)
 
@@ -156,8 +156,8 @@ class Application @Inject()(wikiCtl: Wiki) extends RazController {
 
     Future.successful(true).flatMap {b=>
       Website.getHost.orElse(Some(Services.config.hostport)).flatMap(x =>
-        Config.urlrewrite(x + "/" + path) orElse
-            Config.urlfwd(x + "/" + path)
+        Services.config.urlrewrite(x + "/" + path) orElse
+            Services.config.urlfwd(x + "/" + path)
 
       ).map { host =>
         log("  REDIRECTED TO - " + host)
@@ -166,7 +166,7 @@ class Application @Inject()(wikiCtl: Wiki) extends RazController {
 // next - is it banned?
 
       } getOrElse {
-        val c = Config.config(WikiConfig.BANURLS)
+        val c = Services.config.config(WikiConfig.BANURLS)
         val p = "/" + path
         if (c.exists(m=> m.exists(t=>p.matches(t._1)))) {
           val ip = request.headers.get("X-Forwarded-For")
@@ -281,7 +281,7 @@ class Application @Inject()(wikiCtl: Wiki) extends RazController {
       Audit.logdb("DOE_HARRY", css)
 
       (for (u <- Users.findUserById("4fdb5d410cf247dd26c2a784")) yield {
-          Redirect("/").withSession(Config.CONNECTED -> Enc.toSession(u.email), "css" -> css)
+          Redirect("/").withSession(Services.config.CONNECTED -> Enc.toSession(u.email), "css" -> css)
       }) getOrElse {
         Audit.logdb("ERR_HARRY", "account is missing???")
         Msg("Can't find Harry Potter - sorry!")
@@ -299,7 +299,7 @@ class Application @Inject()(wikiCtl: Wiki) extends RazController {
 
       (for (au <- auth)
         yield
-          Redirect("/").withSession(Config.CONNECTED -> Enc.toSession(au.email), "css" -> css)
+          Redirect("/").withSession(Services.config.CONNECTED -> Enc.toSession(au.email), "css" -> css)
       ) getOrElse
           Redirect("/").withSession("css" -> css)
     }
@@ -332,7 +332,7 @@ class Application @Inject()(wikiCtl: Wiki) extends RazController {
           val me = ApplicationUtils.razSu
           ApplicationUtils.razSu = "no"
           Audit.logdb("ADMIN_SU_RAZIE", "sure?")
-          Redirect("/").withSession(Config.CONNECTED -> Enc.toSession(me))
+          Redirect("/").withSession(Services.config.CONNECTED -> Enc.toSession(me))
         } else {
           Redirect("/").withNewSession
         }
@@ -353,7 +353,7 @@ class Application @Inject()(wikiCtl: Wiki) extends RazController {
   }
 
   def switch(domain: String) = FAU { implicit au => implicit errCollector => implicit request =>
-    Config.isimulateHost = domain
+    Services.config.isimulateHost = domain
     Redirect("/")
   }
 

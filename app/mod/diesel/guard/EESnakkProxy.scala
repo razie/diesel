@@ -15,7 +15,7 @@ import razie.diesel.expr.ECtx
 import razie.diesel.model.DieselMsg
 import razie.diesel.{Diesel, DieselRateLimiter, RateLimitGroup}
 import razie.snakked.SnakkProxyRemote
-import razie.wiki.Config
+import razie.wiki.{Config, Services}
 
 /** control the built-in snakk proxy */
 class EESnakkProxy extends EExecutor("diesel.proxy") {
@@ -47,7 +47,7 @@ $send diesel.proxy.start(
 */
 
       case "diesel.proxy.start" => {
-        if (Config.isLocalhost) this.synchronized {
+        if (Services.config.isLocalhost) this.synchronized {
 
           clientThread.foreach{
             try {
@@ -82,7 +82,7 @@ $send diesel.proxy.start(
       }
 
       case "diesel.proxy.stop" => {
-        if (Config.isLocalhost) this.synchronized {
+        if (Services.config.isLocalhost) this.synchronized {
 
           clientThread.foreach{
             try {
@@ -101,7 +101,7 @@ $send diesel.proxy.start(
       }
 
       case "diesel.proxy.restart" => {
-        if (Config.isLocalhost) this.synchronized {
+        if (Services.config.isLocalhost) this.synchronized {
 
           clientThread.foreach {
             try {

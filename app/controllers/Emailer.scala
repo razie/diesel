@@ -295,7 +295,7 @@ object Emailer extends RazController with Logging {
   }
 
   def tellAdmin(what: String, args: Any*)(implicit mailSession: MailSession) = {
-    tell(Config.adminEmail, what, args:_*)
+    tell(Services.config.adminEmail, what, args:_*)
   }
 
   def tellSiteAdmin(what: String, args: Any*)(implicit mailSession: MailSession) = {

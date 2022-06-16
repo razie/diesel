@@ -90,7 +90,7 @@ require(['jquery'], function($){
       }
     });
     @if(label.startsWith("badgeRefresh")) {
-    if(ok_@label) setTimeout(update_@label, Config.BADGE_REFRESH);
+    if(ok_@label) setTimeout(update_@label, Services.config.BADGE_REFRESH);
 
     updating_@label = false;
     }
@@ -188,7 +188,7 @@ require(['jquery'], function($){
             @if(! web().navrMenuRemove.contains("Diffs") && stok.au.exists(u=> u.isDev)) {
               <li class="divider"></li>
               <li><a href="/admin/drafts/@stok.realm">Drafts</a></li>
-                  @if(Config.isLocalhost) {
+                  @if(Services.config.isLocalhost) {
                     <li><a href="/admin/difflist/@stok.realm/@stok.realm/www.dieselapps.com">Diffs</a></li>
                   } else {
                     <li><a href="/admin/difflist/@stok.realm/@prodReactor(stok.realm)/www.dieselapps.com">Diffs</a></li>

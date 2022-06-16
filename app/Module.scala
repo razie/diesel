@@ -91,7 +91,7 @@ class Module extends AbstractModule {
     Services.isSiteTrusted = { (r, s) =>
       val y = Website.forRealm(r).toList.flatMap(_.trustedSites.toList)
 
-      Config.trustedSites.exists(x => s.startsWith(x)) ||
+      Services.config.trustedSites.exists(x => s.startsWith(x)) ||
           (
               r.length > 0 &&
                   Website.forRealm(r).exists(_.trustedSites.exists(x => s.startsWith(x)))
@@ -135,9 +135,9 @@ class Module extends AbstractModule {
     Executors.add(new EEDomInventory)
     Executors.add(new EEDieselApiGw)
 
-    if(Config.isimulateHost == Config.REFERENCE_SIMULATE_HOST)
+    if(Services.config.isimulateHost == Services.config.REFERENCE_SIMULATE_HOST)
       DieselSettings.find(None, None, "isimulateHost").map { s=>
-        Config.isimulateHost = s
+        Services.config.isimulateHost = s
     }
 
     WikiMods register new FiddleMod
@@ -163,10 +163,10 @@ class Module extends AbstractModule {
       def mongoDbVer = mongoUpgrades.keySet.max + 1
 
       val builder = new MongoClientOptions.Builder();
-      builder.connectionsPerHost(Config.prop("mongo.connectionsPerHost", "50").toInt);
-      builder.threadsAllowedToBlockForConnectionMultiplier(Config.prop("mongo.threadsAllowedToBlockForConnectionMultiplier", "10").toInt);
+      builder.connectionsPerHost(Services.config.prop("mongo.connectionsPerHost", "50").toInt);
+      builder.threadsAllowedToBlockForConnectionMultiplier(Services.config.prop("mongo.threadsAllowedToBlockForConnectionMultiplier", "10").toInt);
       val options = builder.build();
-      val server = new TypeImports.ServerAddress(wiki.Config.mongohost)
+      val server = new TypeImports.ServerAddress(wiki.Services.config.mongohost)
 
       lazy val conn = MongoConnection.apply(server, new MongoOptions(options))
 
@@ -175,8 +175,8 @@ class Module extends AbstractModule {
       com.mongodb.casbah.commons.conversions.scala.RegisterJodaTimeConversionHelpers()
 
       // authenticate
-      val db = conn(Config.mongodb)
-      if (!db.authenticate(Config.mongouser, Config.mongopass)) {
+      val db = conn(Services.config.mongodb)
+      if (!db.authenticate(Services.config.mongouser, Services.config.mongopass)) {
         clog << "ERR_MONGO_AUTHD"
         throw new Exception("Cannot authenticate. Login failed.")
       }

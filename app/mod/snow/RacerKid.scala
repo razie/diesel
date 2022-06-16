@@ -10,7 +10,7 @@ import razie.wiki.model._
 import model.{TPersonInfo, User, Users}
 import razie.audit.Audit
 import razie.diesel.dom.WikiDomain
-import razie.wiki.Config
+import razie.wiki.Services
 
 /** a history element
   *
@@ -209,7 +209,7 @@ case class RacerKidAssoc(
   role: String, // role of "to" in the association: Racer, Coach, Parent, Spouse
   owner: ObjectId, // who owns this assoc
   hours: Int = 0, // volunteer hours
-  year: String = Config.curYear, // relevant for club memberships only
+  year: String = Services.config.curYear, // relevant for club memberships only
   crDtm: DateTime = DateTime.now,
   _id: ObjectId = new ObjectId()) extends REntity[RacerKidAssoc] {
 

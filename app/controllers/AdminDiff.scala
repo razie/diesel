@@ -19,7 +19,7 @@ import razie.db.RazSalatContext.ctx
 import razie.db.{RCreate, RMany}
 import razie.hosting.WikiReactors
 import razie.tconf.hosting.Reactors
-import razie.wiki.Config
+import razie.wiki.{Config, Services}
 import razie.wiki.Sec._
 import razie.wiki.admin.Autosave
 import razie.wiki.model.{UWID, WID, WikiEntry, Wikis}
@@ -406,7 +406,7 @@ class AdminDiff extends AdminBase with Logging {
       val b = body(
         // local url may be different from outside mappings and routings - it's accessed from this same server backend
         // todo still have an issue of http vs https - should this be configured?
-        url(protocol + "://" + Config.hostport + s"/wikie/setContent/${localWid.wpathFull}?id=$leftId")
+        url(protocol + "://" + Services.config.hostport + s"/wikie/setContent/${localWid.wpathFull}?id=$leftId")
             .form(Map("we" -> t._2, "remote" -> targetHost))
             .basic("H-" + request.au.get.emailDec, "H-" + request.au.get.pwd.dec)
       )

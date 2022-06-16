@@ -138,7 +138,7 @@ object EEModUserExecutor extends EExecutor("diesel.mod.user") {
 
           def dfltCss = Services.config.sitecfg("dflt.css") getOrElse "light"
 
-          val trust = Config
+          val trust = Services.config
               .sitecfg("diesel.mod.user.trustRealms")
               .mkString
               .split(",")

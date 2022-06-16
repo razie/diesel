@@ -119,7 +119,7 @@ class Wiki @Inject()(dieselControl: DieselControl) extends WikiBase {
   }
 
   /** max size returned from searches */
-  def MAX_LIST = Config.prop("wiki.search.max", "1000").toInt
+  def MAX_LIST = Services.config.prop("wiki.search.max", "1000").toInt
 
   //TODO optimize - index or whatever
   /** search all topics - provide either q or curTags
@@ -377,9 +377,9 @@ class Wiki @Inject()(dieselControl: DieselControl) extends WikiBase {
         val realm = getRealm(irealm)
         // must check if page is WITHIN site, otherwise redirect to main site
           val fhost = Website.getHost
-          val redir = fhost flatMap Config.urlfwd
-          val rewrite = fhost.flatMap(h=> Config.urlrewrite(h + request.path))
-          val canon = fhost flatMap (fh=> Config.urlcanon(cw.wpath.get, None).map(_.startsWith("http://"+fh)))
+          val redir = fhost flatMap Services.config.urlfwd
+          val rewrite = fhost.flatMap(h=> Services.config.urlrewrite(h + request.path))
+          val canon = fhost flatMap (fh=> Services.config.urlcanon(cw.wpath.get, None).map(_.startsWith("http://"+fh)))
 
           // removed topics redirected
           if (rewrite.isDefined) {

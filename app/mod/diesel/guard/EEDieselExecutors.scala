@@ -62,7 +62,7 @@ class EEDieselExecutors extends EExecutor("diesel.props") {
 
         // reset all settings
         clog << "diesel.props.configReload sending WikiConfigChanged..."
-        Services ! new WikiConfigChanged("", Config)
+        Services ! new WikiConfigChanged("", Services.config)
 
         List(
           EVal(P.fromTypedValue(Diesel.PAYLOAD, "OK"))
@@ -74,13 +74,13 @@ class EEDieselExecutors extends EExecutor("diesel.props") {
         val realm = ctx.getRequired("realm")
 
         if (Services.config.isLocalhost) {
-          Config.isimulateHost = s"$realm.dieselapps.com"
-          DieselSettings(None, None, "isimulateHost", Config.isimulateHost).set
+          Services.config.isimulateHost = s"$realm.dieselapps.com"
+          DieselSettings(None, None, "isimulateHost", Services.config.isimulateHost).set
 
           val result = ctx.get("result").getOrElse(Diesel.PAYLOAD)
 
           List(
-            EVal(P.fromTypedValue(result, Config.isimulateHost))
+            EVal(P.fromTypedValue(result, Services.config.isimulateHost))
           )
         } else
           throw new DieselException("Can only set realm in localhost")
@@ -101,7 +101,7 @@ class EEDieselExecutors extends EExecutor("diesel.props") {
 
         val result = ctx.get("result").getOrElse(Diesel.PAYLOAD)
 
-        val m = if (Config.isLocalhost) {
+        val m = if (Services.config.isLocalhost) {
           System.getProperties.asScala
         } else {
           throw new IllegalArgumentException("Error: No permission")
@@ -116,7 +116,7 @@ class EEDieselExecutors extends EExecutor("diesel.props") {
 
         val result = ctx.get("result").getOrElse(Diesel.PAYLOAD)
 
-        val m = if (Config.isLocalhost) {
+        val m = if (Services.config.isLocalhost) {
           System.getenv().asScala
         } else {
           throw new IllegalArgumentException("Error: No permission")
@@ -132,7 +132,7 @@ class EEDieselExecutors extends EExecutor("diesel.props") {
         val result = ctx.get("result").getOrElse(Diesel.PAYLOAD)
         val name = ctx.getRequired("path")
 
-        val m = if (Config.isLocalhost) {
+        val m = if (Services.config.isLocalhost) {
           Source.fromInputStream(new FileInputStream(name)).mkString
         } else {
           throw new DieselException("Error: No permission")
@@ -148,7 +148,7 @@ class EEDieselExecutors extends EExecutor("diesel.props") {
         val result = ctx.get("result").getOrElse(Diesel.PAYLOAD)
         val name = ctx.getRequired("path")
 
-        val m = if (Config.isLocalhost) {
+        val m = if (Services.config.isLocalhost) {
           val f = new File(name)
           val l = f.list()
           val res = new ListBuffer[String]()
@@ -168,7 +168,7 @@ class EEDieselExecutors extends EExecutor("diesel.props") {
         val result = ctx.get("result").getOrElse(Diesel.PAYLOAD)
         val name = ctx.getRequired("path")
 
-        val m = if (Config.isLocalhost) {
+        val m = if (Services.config.isLocalhost) {
           val f = new File(name)
           val l = f.exists()
           val r = f.canRead()
@@ -187,7 +187,7 @@ class EEDieselExecutors extends EExecutor("diesel.props") {
         val result = ctx.get("result").getOrElse(Diesel.PAYLOAD)
         val name = ctx.getRequired("path")
 
-        val m = if (Config.isLocalhost) {
+        val m = if (Services.config.isLocalhost) {
           val p = new Properties()
           p.load(new FileInputStream(name))
 
@@ -206,7 +206,7 @@ class EEDieselExecutors extends EExecutor("diesel.props") {
         val result = ctx.get("result").getOrElse(Diesel.PAYLOAD)
         val name = ctx.getRequired("path")
 
-        val m = if (Config.isLocalhost) {
+        val m = if (Services.config.isLocalhost) {
           val s = Source.fromInputStream(new FileInputStream(name)).mkString
           razie.js.parse(s)
         } else {
@@ -281,13 +281,13 @@ object EEDieselExecutors {
           "db" -> mstats,
           "build" -> Config.verMap,
           "config" -> Map(
-            "dieselLocalUrl" -> Config.dieselLocalUrl,
-            "localQuiet" -> Config.localQuiet,
-            "node" -> Config.node,
-            "clusterMode" -> Config.clusterMode,
-            "cacheWikis" -> Config.cacheWikis,
-            "cacheFormat" -> Config.cacheFormat,
-            "cacheDb" -> Config.cacheDb
+            "dieselLocalUrl" -> Services.config.dieselLocalUrl,
+            "localQuiet" -> Services.config.localQuiet,
+            "node" -> Services.config.node,
+            "clusterMode" -> Services.config.clusterMode,
+            "cacheWikis" -> Services.config.cacheWikis,
+            "cacheFormat" -> Services.config.cacheFormat,
+            "cacheDb" -> Services.config.cacheDb
           ),
           "memDb" -> inmemdbstats("")
         )

@@ -8,13 +8,13 @@ package controllers
 import model.User
 import play.api.mvc.{Action, AnyContent, Request, Result}
 import play.twirl.api.Html
-import razie.wiki.Config
+import razie.wiki.{Config, Services}
 import razie.wiki.model.Perm
 
 /** admin utilities shared by admin controllers */
 class AdminBase extends RazController {
   protected def forAdmin[T](body: => play.api.mvc.Result)(implicit request: Request[_]) = {
-    if (auth.map(_.hasPerm(Perm.adminDb)) getOrElse false || Config.isLocalhost && Config.trustLocalUsers) body
+    if (auth.map(_.hasPerm(Perm.adminDb)) getOrElse false || Services.config.isLocalhost && Config.trustLocalUsers) body
     else noPerm(HOME)
   }
 
@@ -29,8 +29,8 @@ class AdminBase extends RazController {
     (for (
       au <- activeUser;
       can <- au.hasPerm(Perm.adminDb) ||
-          Config.isLocalhost && au.hasPerm(Perm.Moderator) ||
-          Config.isLocalhost && Config.trustLocalUsers orErr "no permission"
+          Services.config.isLocalhost && au.hasPerm(Perm.Moderator) ||
+          Services.config.isLocalhost && Config.trustLocalUsers orErr "no permission"
     ) yield {
       f(au)(errCollector)(request)
     }) getOrElse {
@@ -47,7 +47,7 @@ class AdminBase extends RazController {
     (for (
       au <- req.au;
       isA <- checkActive(au);
-      can <- au.hasPerm(Perm.adminDb) || Config.isLocalhost && Config.trustLocalUsers orErr "no permission"
+      can <- au.hasPerm(Perm.adminDb) || Services.config.isLocalhost && Config.trustLocalUsers orErr "no permission"
     ) yield {
         f(req)
     }) getOrElse unauthorized("CAN'T")

@@ -112,7 +112,7 @@ object Global extends WithFilters(LoggingFilter) {
 
     val host = PlayTools.getHost(request).orElse(Some(Services.config.hostport))
     val redirected = Try {
-      host.flatMap(x => Config.urlrewrite(x + request.path))
+      host.flatMap(x => Services.config.urlrewrite(x + request.path))
     } getOrElse
       None
 
@@ -146,7 +146,7 @@ object Global extends WithFilters(LoggingFilter) {
           }.apply(rh)
         })
 
-      } else if (request.headers.get("X-Forwarded-For").exists(Config.badIps.contains(_))) {
+      } else if (request.headers.get("X-Forwarded-For").exists(Services.config.badIps.contains(_))) {
         // bad ip
 
         clog << "ERR_BADIP " + "request:" + request.toString + "headers:" + request.headers
@@ -212,9 +212,8 @@ object Global extends WithFilters(LoggingFilter) {
   }
 
   def isBadIp (request:RequestHeader) : Boolean = {
-    request.headers.get("X-Forwarded-For").exists(Config.badIps.contains(_)) ||
+    request.headers.get("X-Forwarded-For").exists(Services.config.badIps.contains(_)) ||
       (request.toString startsWith "REMOTE HI_SRDK_DEV_")
-
   }
 
   override def onStart(app: Application) = {
@@ -234,7 +233,7 @@ object Global extends WithFilters(LoggingFilter) {
     // reset all settings
     DieselRateLimiter.RATELIMIT // just access it to initialize the object - we're sending it an update
     clog << "sending WikiConfigChanged..."
-    Services ! new WikiConfigChanged("", Config)
+    Services ! new WikiConfigChanged("", Services.config)
 
     // not needed - just example for starting stuff
     // WARNING - this may have caused some weird issues because it was ran during startup ?
@@ -288,7 +287,7 @@ object Global extends WithFilters(LoggingFilter) {
 
           import razie.wiki.Sec._
 
-          val user = website.prop("mail.smtp.user").getOrElse(Config.SUPPORT)
+          val user = website.prop("mail.smtp.user").getOrElse(Services.config.SUPPORT)
           val pwd = website.prop("mail.smtp.pwd").getOrElse(XW).dec
 
           javax.mail.Session.getInstance(props, new SMTPAuthenticator(user, pwd))
@@ -328,7 +327,7 @@ object LoggingFilter extends Filter {
   import ExecutionContext.Implicits.global
 
   private def isFromRobot(request: RequestHeader) = {
-    (request.headers.get("User-Agent").exists(ua => Config.robotUserAgents.exists(ua.contains(_))))
+    (request.headers.get("User-Agent").exists(ua => Services.config.robotUserAgents.exists(ua.contains(_))))
   }
 
   def apply(next: (RequestHeader) => scala.concurrent.Future[Result])(rh: RequestHeader) = {
@@ -382,10 +381,10 @@ object LoggingFilter extends Filter {
       var res = result.withHeaders("Request-Time" -> time.toString)
 
       // See @Config.HEADERS
-      Config.HEADERS.split(",").filter(_.length > 0).map {h =>
+      Services.config.HEADERS.split(",").filter(_.length > 0).map {h =>
           val hsafe = h.replaceAll("[-_]", ".")
-        val v = Config.prop(s"wiki.header.$hsafe.value")
-        val r = Config.prop(s"wiki.header.$hsafe.regex")
+        val v = Services.config.prop(s"wiki.header.$hsafe.value")
+        val r = Services.config.prop(s"wiki.header.$hsafe.regex")
 
         if(r.length <= 0 || rh.path.matches(r))
           res = res.withHeaders(h -> v)

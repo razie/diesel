@@ -1,7 +1,7 @@
 package mod.diesel.guard
 
 import razie.hosting.Website
-import razie.wiki.Config
+import razie.wiki.{Config, Services}
 
 /** concentrates flags that control critical services that may run amock */
 object DieselDebug {
@@ -10,22 +10,22 @@ object DieselDebug {
   private val AUTO = false
   private val SCHEDULED = true // allow scheduled pollers
 
-  private def DEVMODE = Config.isDevMode
+  private def DEVMODE = Services.config.isDevMode
 
   /** guardian settings */
   object Guardian {
 
     /** is in auto mode */
-    def ISAUTO = ALLENABLED && AUTO && Config.prop("diesel.guardian.auto", "false").toBoolean && DEVMODE
+    def ISAUTO = ALLENABLED && AUTO && Services.config.prop("diesel.guardian.auto", "false").toBoolean && DEVMODE
 
     /** is in auto mode */
-    def ISSCHED = ALLENABLED && SCHEDULED && Config.prop("diesel.guardian.scheduled", "true").toBoolean //&& !DEVMODE
+    def ISSCHED = ALLENABLED && SCHEDULED && Services.config.prop("diesel.guardian.scheduled", "true").toBoolean //&& !DEVMODE
 
     /** sometimes you want it disabled in development in localhost */
     def ISENABLED_LOCALHOST = ALLENABLED && true
 
     /** master enabled setting */
-    def ISENABLED = ALLENABLED && Config.prop("diesel.guardian.enabled", "true").toBoolean
+    def ISENABLED = ALLENABLED && Services.config.prop("diesel.guardian.enabled", "true").toBoolean
 
     def autoQuery(realm: String) =
       Website.forRealm(realm)
@@ -36,7 +36,7 @@ object DieselDebug {
 
   object Cron {
     /** master enabled setting */
-    def ISENABLED = ALLENABLED && Config.prop("diesel.cron.enabled", "true").toBoolean
+    def ISENABLED = ALLENABLED && Services.config.prop("diesel.cron.enabled", "true").toBoolean
   }
 
 }

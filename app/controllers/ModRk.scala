@@ -12,7 +12,7 @@ import razie.diesel.engine.DomAst
 import razie.diesel.engine.exec.EExecutor
 import razie.diesel.engine.nodes.{EMsg, EVal, MatchCollector}
 import razie.diesel.expr.ECtx
-import razie.wiki.Config
+import razie.wiki.{Config, Services}
 import razie.wiki.model.{UWID, WID}
 import razie.{Logging, audit, clog}
 import scala.Option.option2Iterable
@@ -22,7 +22,7 @@ import scala.collection.mutable.ListBuffer
 case class ModRkReg
 (
   wid: WID,
-  curYear: String = Config.curYear) {
+  curYear: String = Services.config.curYear) {
 
   lazy val kids =
     RMany[ModRkEntry]("wpath" -> wid.wpath).toList ++ // todo purge old recs
@@ -42,7 +42,7 @@ case class ModRkEntry
   note: Option[String] = None,
   state: Option[String] = None, // "cart" or "paid"
   attended: Option[String] = None, // any value means yes basically
-  curYear: String = Config.curYear, // just a notional value, UWID matters
+  curYear: String = Services.config.curYear, // just a notional value, UWID matters
   forms: Seq[RoleWid] = Seq.empty, // future possiblity to have reg forms per event
   _id: ObjectId = new ObjectId) extends REntity[ModRkEntry] {
 

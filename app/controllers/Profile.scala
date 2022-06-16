@@ -45,7 +45,7 @@ object Profile extends WikieBase {
     created.foreach { x => RacerKidz.myself(x._id) }
 
     created.foreach {x=>
-      Services ! UserCreatedEvent(x._id.toString, Config.node)
+      Services ! UserCreatedEvent(x._id.toString, Services.config.node)
     }
 
     // when testing, skip email verification - unless the site needs it
@@ -169,10 +169,10 @@ class Profile @Inject()(config: Configuration, adminImport: AdminImport) extends
           } getOrElse {
             Audit.wrongLogin(reg.email, reg.password, countAttempts(reg.email))
 
-            clog << "should I download remote user? isLocal: " << Config.isLocalhost
+            clog << "should I download remote user? isLocal: " << Services.config.isLocalhost
 
             val res = if (
-              Config.isLocalhost &&
+              Services.config.isLocalhost &&
                 adminImport.isRemoteUser(reg.email, reg.password)) {
 
               adminImport.importRemoteUser(reg.email, reg.password)
@@ -329,9 +329,9 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
         Users.findUserByEmailDec((email)) orElse
           (Users.findUserNoCase(email))
       if(!u.isDefined) {
-        cdebug << "should I download remote user? isLocal: " + Config.isLocalhost
+        cdebug << "should I download remote user? isLocal: " + Services.config.isLocalhost
         if(
-          Config.isLocalhost &&
+          Services.config.isLocalhost &&
           adminImport.isRemoteUser(email, pass)) {
           adminImport.importRemoteUser(email, pass)
           AttemptCounter.success(email)

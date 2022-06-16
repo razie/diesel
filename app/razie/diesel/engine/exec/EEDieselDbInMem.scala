@@ -13,7 +13,7 @@ import razie.diesel.dom.WTypes
 import razie.diesel.engine.DomAst
 import razie.diesel.engine.nodes.{EError, EInfo, EMsg, EVal, MatchCollector}
 import razie.diesel.expr.ECtx
-import razie.wiki.Config
+import razie.wiki.{Config, Services}
 import razie.wiki.model.WikiEventBase
 import scala.collection.concurrent.TrieMap
 import scala.collection.mutable
@@ -27,10 +27,10 @@ object EEDieselDb {
   final val EXPIRY_MSEC = 10 * 60 * 1000 // 10 min
 
   /** max no tables per session/realm */
-  lazy val maxTables = if (Config.isLocalhost) Config.prop("diesel.db.maxtables", "100").toInt else MAX_TABLES
+  lazy val maxTables = if (Services.config.isLocalhost) Services.config.prop("diesel.db.maxtables", "100").toInt else MAX_TABLES
 
   /** max entries total (also enforced per table out of convenience, so we don't keep counting all) */
-  lazy val maxEntries = if (Config.isLocalhost) Config.prop("diesel.db.maxentries", DFLT_MAX_TOTAL_ENTRIES.toString).toInt else MAX_ENTRIES
+  lazy val maxEntries = if (Services.config.isLocalhost) Services.config.prop("diesel.db.maxentries", DFLT_MAX_TOTAL_ENTRIES.toString).toInt else MAX_ENTRIES
 
   var statsSessions = 0
   var statsObjects = 0

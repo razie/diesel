@@ -10,7 +10,7 @@ import play.api.mvc._
 import razie.Snakk._
 import razie.hosting.Website
 import razie.tconf.parser.SpecParserSettings
-import razie.wiki.Config
+import razie.wiki.{Config, Services}
 import razie.wiki.model._
 import razie.wiki.util.Maps
 import razie.{Snakk, XpSolver}
@@ -38,7 +38,7 @@ object UserStuff {
   def findPublicProfile(realm: String, uid: String) =
     Wikis.find(WID("User", realm + "-" + uid)) orElse Wikis.find(WID("User", uid))
 
-  def Race = Config.sitecfg("racecat").getOrElse("Race")
+  def Race = Services.config.sitecfg("racecat").getOrElse("Race")
 
   def events(u: User): List[(ILink, String, DateTime, ILink, Snakk.Wrapper[WWrapper])] =
     events("*", u)

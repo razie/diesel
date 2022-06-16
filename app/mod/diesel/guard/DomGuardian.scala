@@ -34,22 +34,22 @@ object DomGuardian extends Logging {
 
   // todo optimize so we don't parse every time
   def autoRealms =
-    Config.weprop("diesel.guardian.auto.realms.regex", "wiki|specs|devnetlinq")
+    Services.config.weprop("diesel.guardian.auto.realms.regex", "wiki|specs|devnetlinq")
 
-  def enabledRealms = Config.prop("diesel.guardian.enabled.realms.regex", ".*")
+  def enabledRealms = Services.config.prop("diesel.guardian.enabled.realms.regex", ".*")
 
   /** excluding these */
   def excludedRealms =
-    Config.weprop("diesel.guardian.excluded.realms.regex", "nobody")
+    Services.config.weprop("diesel.guardian.excluded.realms.regex", "nobody")
 
   /** excluding these */
   def excludedAutoRealms =
-    Config.weprop("diesel.guardian.excluded.auto.realms.regex", "nobody")
+    Services.config.weprop("diesel.guardian.excluded.auto.realms.regex", "nobody")
 
   /** is it enabled for this realm
     * if true,
     */
-  def enabled(realm: String) = (!Config.isLocalhost && ISENABLED || ISENABLED_LOCALHOST) && {
+  def enabled(realm: String) = (!Services.config.isLocalhost && ISENABLED || ISENABLED_LOCALHOST) && {
     realm match {
       case "specs" | "wiki" => true // always these two
       case _ => realm.matches(enabledRealms) && !realm.matches(excludedRealms)
@@ -182,8 +182,8 @@ object DomGuardian extends Logging {
       settings.tagQuery = tq
       settings.realm = Some(realm)
 
-      if (Config.isLocalhost)
-        settings.dieselHost = Some("http://" + Config.hostport)
+      if (Services.config.isLocalhost)
+        settings.dieselHost = Some("http://" + Services.config.hostport)
       else
         settings.dieselHost = Website.forRealm(realm).map(_.url)
 
@@ -468,8 +468,8 @@ object DomGuardian extends Logging {
   /** create a guardian poller schedule */
   def createPollSchedule(schedExpr:String, realm: String, env: String, inLocal:String) = {
     if (
-      "local" == env && !Config.isLocalhost ||
-          "local" != env && Config.isLocalhost && "yes" != inLocal ||
+      "local" == env && !Services.config.isLocalhost ||
+          "local" != env && Services.config.isLocalhost && "yes" != inLocal ||
 //          "sandbox" != env || // testing
           false
     ) {

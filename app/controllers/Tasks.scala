@@ -20,7 +20,7 @@ object Tasks extends RazController with Logging {
     val MSG_EMAIL_VERIF = s"""
 Please check your email <font style="color:red">${c.emailDec}</font> for an activation email and follow the instructions to validate your email address.
 Please do that soon: it will expire in a few hours, for security reasons.
-<p>Please check your spam/junk folders as well in the next few minutes - make sure you mark ${Config.SUPPORT} as a safe sender!
+<p>Please check your spam/junk folders as well in the next few minutes - make sure you mark ${Services.config.SUPPORT} as a safe sender!
 <p>Especially if you have an @hotmail.com/.ca or @live.com/.ca or @outlook.com/.ca email address - their spam filter is very aggressive!
 """ + extra
 

@@ -9,7 +9,7 @@ import razie.db.{ROne, tx}
 import razie.diesel.dom.WikiDomain
 import razie.hosting.WikiReactors
 import razie.tconf.Visibility
-import razie.wiki.Config
+import razie.wiki.{Config, Services}
 import razie.wiki.model._
 import razie.wiki.model.features.WForm
 import scala.Option.option2Iterable
@@ -207,7 +207,7 @@ object Snow extends RazController with Logging {
 
       val settings =
         Some(s"""
-          |curYear=${Config.curYear}
+          |curYear=${Services.config.curYear}
           |regType=None
           |regAdmin=$email
           |
@@ -378,8 +378,8 @@ object Snow extends RazController with Logging {
 
       implicit val txn = tx.local("doeAddNote", request.userName)
 
-      def link(we:WikiEntry) = "http://" + WikiReactors(request.realm).websiteProps.prop("domain").getOrElse(Config.hostport) + we.wid.urlRelative(request.realm)
-      def linkH = "http://" + WikiReactors(request.realm).websiteProps.prop("domain").getOrElse(Config.hostport) + "/doe/history"
+      def link(we:WikiEntry) = "http://" + WikiReactors(request.realm).websiteProps.prop("domain").getOrElse(Services.config.hostport) + we.wid.urlRelative(request.realm)
+      def linkH = "http://" + WikiReactors(request.realm).websiteProps.prop("domain").getOrElse(Services.config.hostport) + "/doe/history"
 
       if (role == ROLES.EVALUATION || role == ROLES.FEEDBACK || role == ROLES.VIDEO) {
         // created by coach, completed by coach, notify user WHEN COMPLETE
@@ -671,8 +671,8 @@ object Snow extends RazController with Logging {
 
         h.createNoAudit(razie.db.tx.auto)
 
-        def linkH = "http://" + WikiReactors(request.realm).websiteProps.prop("domain").getOrElse(Config.hostport) + "/doe/history"
-        def linkP = "http://" + WikiReactors(request.realm).websiteProps.prop("domain").getOrElse(Config.hostport) + "/doe/kid/history/" + kid._id.toString + "?club="
+        def linkH = "http://" + WikiReactors(request.realm).websiteProps.prop("domain").getOrElse(Services.config.hostport) + "/doe/history"
+        def linkP = "http://" + WikiReactors(request.realm).websiteProps.prop("domain").getOrElse(Services.config.hostport) + "/doe/kid/history/" + kid._id.toString + "?club="
 
         if(sendEmail) {
           kid.personsToNotify.map { u =>

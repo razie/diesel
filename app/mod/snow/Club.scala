@@ -14,7 +14,7 @@ import razie.hosting.Website
 import razie.wiki.admin.SendEmail
 import razie.wiki.model._
 import razie.wiki.model.features.{WikiCount, _}
-import razie.wiki.{Config, Enc, WikiConfig}
+import razie.wiki.{Config, Enc, Services, WikiConfig}
 import razie.{Logging, cout}
 import scala.Array.canBuildFrom
 import scala.Option.option2Iterable
@@ -34,7 +34,7 @@ case class Club(userId: ObjectId, iwid: Option[WID] = None) {
 
   def regType = props.get("regType").getOrElse("")
 
-  def curYear = props.get("curYear").getOrElse(Config.curYear)
+  def curYear = props.get("curYear").getOrElse(Services.config.curYear)
 
   def regAdmin = props.get("regAdmin").getOrElse("")
 
@@ -192,7 +192,7 @@ object Club extends RazController with Logging {
   def mkSettings(u: User, regAdmin: String) =
     s"""
 regType=?
-curYear=${Config.curYear}
+curYear=${Services.config.curYear}
 regAdmin=$regAdmin
        """
 

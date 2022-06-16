@@ -218,7 +218,7 @@ class WikiPubSub extends Actor {
         maxCount -= 1
         Audit.logdb("DEBUG", "exec.event", "me: " + self.path + " from: " + sender.path, ev1.toString().take(250))
 
-        Config.reloadUrlMap // this will regenerate locally
+        Services.config.reloadUrlMap // this will regenerate locally
 
       } else if (maxCount > -23) {
         maxCount -= 1
