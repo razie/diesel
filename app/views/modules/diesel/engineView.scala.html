@@ -169,7 +169,7 @@ DESC: @{e.description}<br>
   <br>
 
   @if(e.root.children.exists(x=> x.kind == "story")) {
-<b>Summary:</b> @e.failedTestCount / @e.successTestCount / @e.totalTestCount / @e.todoTestCount (fail/succ/total/todo) (<a href="/diesel/viewAst/@eng.get.id?format=junit">junit</a>)
+<b>Summary:</b> @e.failedTestCount / @e.successTestCount / @e.totalTestCount / @e.todoTestCount (fail/succ/total/todo) (duration: @{e.duration/1000} s) (<a href="/diesel/viewAst/@eng.get.id?format=junit">junit</a>)
 <br>
 <pre>
 @Html(DomEngineView.storySummary(e.root))
