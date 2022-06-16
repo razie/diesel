@@ -1,6 +1,7 @@
 @***
 show diff with remote
 ***@
+@import razie.wiki.Services
 @(localRealm:String, toRealm:String, remote:String, lnew:List[controllers.WEAbstract], lremoved:List[controllers.WEAbstract], lchanged:List[(controllers.WEAbstract, controllers.WEAbstract, String, String)])(implicit stok: controllers.StateOk)
 @import razie.wiki.model.WID
 @import razie.wiki.Config
@@ -12,7 +13,7 @@ show diff with remote
 }
 
 @remotes()=@{
-  List("www.dieselapps.com", Config.hostport) :::
+  List("www.dieselapps.com", Services.config.hostport) :::
   Website.getRealmProps(localRealm).get("diesel.remotes").map(_.currentStringValue).mkString.split(",").toList
 }
 
