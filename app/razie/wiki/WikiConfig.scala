@@ -122,6 +122,8 @@ abstract class WikiConfig {
 
   final val CONNECTED = prop("wiki.connected", "connected")
 
+  final val BADGE_REFRESH = prop("html.badgeRefresh", "30000").toInt
+
   /** global headers. Each header may have a value and a pathregex
     * for instance:
     * DIESEL_WIKI_HEADERS=X1,X2
