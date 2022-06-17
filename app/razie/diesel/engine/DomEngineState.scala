@@ -29,19 +29,23 @@ case class DEventExpNode(nodeId: String, children: List[DomAst], dtm: DateTime =
 
 /** DDD - node status */
 case class DEventNodeStatus(nodeId: String, status: String, dtm: DateTime = DateTime.now) extends DEvent with CanHtml {
+  @transient var node:Option[DomAst] = None
+
+  /** optimize and cache the node, transient */
+  def withNode(a:DomAst) = {this.node = Some(a); this}
+
   override def toHtml = s"EvNodeStatus: $nodeId, $status}"
 }
 
 /** dependency between two nodes */
 case class DADepy (prereq:DomAst, depy:DomAst) {
-//  override def toString = s"DaDepy( ${prereq.id} <- ${depy.id} )"
   override def toString = s"DaDepy( ${prereq.meTos(0,false)} <- ${depy.meTos(0,false)} )"
 }
 
 /** dependency event */
 case class DADepyEv (prereq:String, depy:String, dtm:DateTime=DateTime.now) extends DEvent {
-  var pAst: Option[DomAst] = None
-  var dAst: Option[DomAst] = None
+  @transient var pAst: Option[DomAst] = None
+  @transient var dAst: Option[DomAst] = None
 
   def withAst(p:DomAst, d:DomAst) = {
     pAst = Some(p)
@@ -79,6 +83,7 @@ trait DomEngineState {
   // setup the context for this eval
   implicit def ctx: ECtx
 
+  /** very expensive !!! avoid using it - should only kick in after a restore or such */
   def n(id: String): DomAst
 
   /** dependencies */
@@ -133,8 +138,8 @@ trait DomEngineState {
         this.curExpands = curExpands + 1
       }
 
-      case DEventNodeStatus(parentId, status, _) =>
-        n(parentId).status = status
+      case dens @ DEventNodeStatus(parentId, status, _) =>
+        dens.node.getOrElse(n(parentId)).status = status
 
       case dep @ DADepyEv(pId, dId, _) =>
         depys.append(
@@ -158,7 +163,7 @@ trait DomEngineState {
   }
 
   private[engine] def evChangeStatus(node: DomAst, status: String): Unit = {
-    addEvent(DEventNodeStatus(node.id, status))
+    addEvent(DEventNodeStatus(node.id, status).withNode(node))
   }
 
   private[engine] def evAddDepy (p:DomAst, d:DomAst) : Unit = {
