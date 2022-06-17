@@ -346,7 +346,7 @@ private def accessorIdent: Parser[RDOM.P] = "." ~> ident ^^ { case id => P("", i
 
   // param assignment (x = expr, ...)
   // allows comma after last
-  def pasattrs: Parser[List[PAS]] = " *\\(".r ~> ows ~> repsep(pasattr, ows ~ "," ~ ows) <~ opt(",") ~ ows <~ ")"
+  def pasattrs: Parser[List[PAS]] = " *\\(".r ~> ows ~> repsep(pasattr, ows ~ "," ~ ows) <~ opt(",") ~ ows <~ ")" ~ " *".r
 
   /**
     * parm assignment, left side can be a[5].name, useful in a $val
