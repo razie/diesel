@@ -1430,7 +1430,7 @@ class DomApi extends DomApiBase with Logging {
     }
 
     // add headers
-    engine.ctx.listAttrs.filter(_.name startsWith HTTP.HEADER_PREFIX).map { p =>
+    engine.ctx.flattenAllAttrs.filter(_.name startsWith HTTP.HEADER_PREFIX).map { p =>
       ok = ok.withHeaders(p.name.replace(HTTP.HEADER_PREFIX, "") -> p.calculatedValue(engine.ctx))
     }
 

@@ -500,11 +500,20 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
       def sendResult (engine:DomEngine) = {
         val st = engine.status // copy so that if it completes wuile here, I'll still send again
 
-        val res = engine.root.toHtml
+        val res = Try {
+          engine.root.toHtml
+        }.recover {
+          case t => s"ERROR: Please report Exception trying to make root to html: ${Log.exceptionToString(t)}"
+        }
+
         // todo save engine ea on creation and use to extractfinalvalue
-        val payload = engine.ctx.getp(Diesel.PAYLOAD).filter(_.ttype != WTypes.wt.UNDEFINED)
-            .map(_.currentStringValue)
-            .getOrElse(engine.extractFinalValue("", true))
+        val payload = Try {
+          engine.ctx.getp(Diesel.PAYLOAD).filter(_.ttype != WTypes.wt.UNDEFINED)
+              .map(_.currentStringValue)
+              .getOrElse(engine.extractFinalValue("", true))
+        }.recover {
+          case t => s"ERROR: Please report Exception trying to extract final value: ${Log.exceptionToString(t)}"
+        }
 
         val stw = WID.fromPath(storyWpath).flatMap(_.page).map(_.content).getOrElse(
           "Sample story\n\n$msg home.guest_arrived(name=\"Jane\")\n\n$expect $msg lights.on\n")

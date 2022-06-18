@@ -556,6 +556,8 @@ var runpill2_@id = function(id, compileOnly, forceRT, next) {
     return;
   }
 
+  engineCancel(); // cancel previous engine - small cost if already done
+
   if(!compileOnly) curDomRequest = "yes";
 
   lastStartTime = new Date().getTime();
@@ -596,7 +598,7 @@ var runpill2_@id = function(id, compileOnly, forceRT, next) {
           console.log( "ERR "+JSON.stringify(x));
 
           $("#navJsError").show();
-          $("#navJsError").attr("title", JSON.stringify(x));
+          $("#navJsError").attr("title", "ERROR from server: \n\n" + JSON.stringify(x));
 
           if(!compileOnly) curDomRequest = null;
           if(JSON.stringify(x).indexOf("staleid") >= 0) {
