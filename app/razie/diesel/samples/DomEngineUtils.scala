@@ -81,6 +81,7 @@ object DomEngineUtils {
     }
   }
 
+
   /** execute message - this is the typical use of an engine
     * execute message to given reactor
     *
@@ -93,7 +94,7 @@ object DomEngineUtils {
     * this is only used from the CQRS, internally - notice no request
     */
   def createEngine(msg: String, specs: List[WID], stories: List[WID], settings: DomEngineSettings,
-                   omsg: Option[DieselMsgString] = None): DomEngine = {
+                   omsg: Option[DieselMsgString] = None, preppedCache:Option[CachedEngingPrep] = None): DomEngine = {
 
     val t1 = System.currentTimeMillis()
 
@@ -114,34 +115,45 @@ object DomEngineUtils {
     else
       DieselMsg.logdb("DIESEL_FIDDLE_RUNDOM ", msg)
 
-    val pages = (specs ::: stories)
-        .filter(_.section.isEmpty)
-        .distinct
-        .flatMap(w => Wikis.cachedPage(w, None))
+    var t2 = System.currentTimeMillis()
+    var t3 = System.currentTimeMillis()
 
-    val t2 = System.currentTimeMillis()
+    val prepped = preppedCache.getOrElse({
 
-    // to domain
-    val dom = WikiDomain.domFrom(page, pages)
+      val pages = (specs ::: stories)
+          .filter(_.section.isEmpty)
+          .distinct
+          .flatMap(w => Wikis.cachedPage(w, None))
 
-    val t3 = System.currentTimeMillis()
+      t2 = System.currentTimeMillis()
 
-    // make up a story
-    val FILTER = Array("sketchMode", "mockMode", "blenderMode", "draftMode")
-    var story = if (msg.trim.startsWith("$msg") || msg.trim.startsWith("$send")) msg else "$msg " + msg
-    ctrace << "STORY: " + story
+      // to domain
+      val dom = WikiDomain.domFrom(page, pages)
 
-    // todo this has no EPos - I'm loosing the epos on sections
-    // put together all sections
-    val story2 = (specs ::: stories).filter(_.section.isDefined).flatMap(_.content).mkString("\n")
-    story = story + "\n" + story2.lines.filterNot(x =>
-      x.trim.startsWith("$msg") || x.trim.startsWith("$send")
-    ).mkString("\n") + "\n"
+      t3 = System.currentTimeMillis()
 
-    val ipage = new WikiEntry("Story", "fiddle", "fiddle", "md", story, NOUSER, Seq("dslObject"), realm)
-    val idom = WikiDomain.domFrom(ipage).get.revise addRoot
+      // make up a story
+      val FILTER = Array("sketchMode", "mockMode", "blenderMode", "draftMode")
+      var story = if (msg.trim.startsWith("$msg") || msg.trim.startsWith("$send")) msg else "$msg " + msg
+      ctrace << "STORY: " + story
 
-    var res = ""
+      // todo this has no EPos - I'm loosing the epos on sections
+      // put together all sections
+      val story2 = (specs ::: stories).filter(_.section.isDefined).flatMap(_.content).mkString("\n")
+      story = story + "\n" + story2.lines.filterNot(x =>
+        x.trim.startsWith("$msg") || x.trim.startsWith("$send")
+      ).mkString("\n") + "\n"
+
+      val ipage = new WikiEntry("Story", "fiddle", "fiddle", "md", story, NOUSER, Seq("dslObject"), realm)
+      val idom = WikiDomain.domFrom(ipage).get.revise addRoot
+
+      var res = ""
+
+      CachedEngingPrep(
+        dom plus idom,
+        ipage :: pages map WikiDomain.spec,
+        List(ipage))
+    })
 
     val root = DomAst("root", "root")
 
@@ -152,11 +164,11 @@ object DomEngineUtils {
 
     // start processing all elements
     val engine = DieselAppContext.mkEngine(
-      dom plus idom,
+      prepped.dom,
       root,
       settings,
-      ipage :: pages map WikiDomain.spec,
-      DieselMsg.runDom + desc)
+      prepped.ipages,
+      DieselMsg.runDom + omsg.map(_.toString).getOrElse(desc).replaceAllLiterally("\n", ""))
 
     engine.root.prependAllNoEvents(List(
       DomAst(
@@ -165,7 +177,7 @@ object DomEngineUtils {
           .withStatus(DomState.SKIPPED)
     ))
 
-    EnginePrep.addStoriesToAst(engine, List(ipage))
+    EnginePrep.addStoriesToAst(engine, prepped.storiesToAdd)
 
     engine
   }
@@ -231,7 +243,7 @@ object DomEngineUtils {
     // get timeout max from realm settings: paid gets more etc
     try {
       val res = Await.result(fut, Duration.create(timeoutSec, "seconds"))
-      extractP(res)
+      extractP(res._2)
     } catch {
       case t:Throwable => {
         log("Await failed ", t)
@@ -261,7 +273,7 @@ object DomEngineUtils {
     * @param m     - a text message invocation i.e. "$msg a.b(c=3)"
     */
   def runMsgAsync(realm: String, m: String): Future[Map[String, Any]] = {
-    DieselMsgString(m, DieselTarget.ENV(realm)).startMsg
+    DieselMsgString(m, DieselTarget.ENV(realm)).startMsg.map(_._2)
   }
 
 }

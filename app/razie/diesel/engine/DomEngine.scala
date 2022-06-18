@@ -30,6 +30,12 @@ trait InfoNode // just a marker for useless info nodes
 
 trait EGenerated // just a marker for "action" generated nodes (EMsg, EMsgPas, ENext etc)
 
+case class CachedEngingPrep(
+  dom:RDomain,
+  ipages:List[DSpec],
+  storiesToAdd:List[DSpec]
+)
+
 /** the engine: one flow = one engine = one actor
   *
   * this class is a generic engine, managing the execution of the nodes, starting from the root
@@ -55,6 +61,13 @@ abstract class DomEngine(
   val id: String = new ObjectId().toString,
   val createdDtm: DateTime = DateTime.now
 ) extends Logging with DomEngineState with DomRoot with DomEngineExpander {
+
+  var addedStories:List[DSpec] = Nil
+
+  def getCachedPrep = CachedEngingPrep(
+    dom,
+    pages,
+    addedStories)
 
   /** duration of engine, valid after done, otherwise negative or 0 */
   def duration = root.tend - root.tstart
