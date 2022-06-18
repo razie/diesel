@@ -66,7 +66,7 @@ case class DomEngineSettings
     configTag.flatMap(x =>
       if (ObjectId.isValid(x)) Some(new ObjectId(x))
       else None
-    ).orElse(userId.map(new ObjectId(_)))
+    ).orElse(userId.filter(ObjectId.isValid).map(new ObjectId(_)))
   }
 
   def toJson : Map[String,String] = {

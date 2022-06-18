@@ -104,17 +104,16 @@ class DomEngECtx(val settings: DomEngineSettings, cur: List[P] = Nil, base: Opti
     ret
   }
 
+  /** user for engine - expensive! */
+  def dieselAU(ctx: ECtx) = {
+    val au = ctx.root.engine.map(_.settings).flatMap(_.userId)
+    au.flatMap(id => DUsers.impl.findUserById(new ObjectId(id)))
+  }
+
   // user id if any
   def dieselUser(ctx: ECtx) = {
     val au = ctx.root.engine.map(_.settings).flatMap(_.userId)
     au.mkString
-  }
-
-  // user id if any
-  def dieselUsername(ctx: ECtx) = {
-    val au = ctx.root.engine.map(_.settings).flatMap(_.userId)
-    val x = au.flatMap(id => DUsers.impl.findUserById(new ObjectId(id))).map(_.userName)
-    x.mkString
   }
 
   /** source from settings - only if there's some value... otherwise base won't cascade */

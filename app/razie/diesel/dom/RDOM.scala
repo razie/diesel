@@ -162,12 +162,14 @@ object RDOM {
     def asJavaObject: AnyRef = cType match {
 
       case WTypes.wt.JSON | WTypes.wt.OBJECT => asJson
-
-      case WTypes.wt.EXCEPTION => asThrowable
+      case WTypes.wt.ARRAY                   => asArray
+      case WTypes.wt.EXCEPTION               => asThrowable
+      case WTypes.wt.BOOLEAN                 => asBoolean.asInstanceOf[AnyRef]
+      case WTypes.wt.DATE                    => asDate
 
       case WTypes.wt.NUMBER =>
-        if (value.toString.contains(".")) new lang.Float(value.toString)
-        else new lang.Long(value.toString)
+        if (value.toString.contains(".")) asFloat.asInstanceOf[AnyRef]
+        else asLong.asInstanceOf[AnyRef]
 
       case _ => asString
     }

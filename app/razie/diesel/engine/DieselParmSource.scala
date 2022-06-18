@@ -30,16 +30,39 @@ class DieselParmSource (ctx:DomEngECtx) extends ParmSource {
           .orElse(ctx.settings.env.map(P("diesel.env", _)))
           .orElse(Some(P("diesel.env", ctx.dieselEnv(ctx))))
 
-    case "user" => Some(P("diesel.user", ctx.dieselUser(ctx)))
-    case "username" => Some(P("diesel.username", ctx.dieselUsername(ctx)))
+    case "user" => {
+
+      next("diesel.user", Map(
+
+        "id" -> (n => {
+          Left(P("diesel.user.id", ctx.dieselUser(ctx)))
+        }),
+
+        "userName" -> (n => {
+          // leave this lazy - it is expensive
+          Left(P("diesel.user.userName", ctx.dieselAU(ctx).map(_.userName).mkString))
+        }),
+
+        "eName" -> (n => {
+          // leave this lazy - it is expensive
+          Left(P("diesel.user.eName", ctx.dieselAU(ctx).map(_.ename).mkString))
+        })
+      ))
+    }
+
+    // todo deprecated - remove
+    case "userid" => Some(P("diesel.userid", ctx.dieselUser(ctx)))
+    case "username" => Some(P("diesel.username", ctx.dieselAU(ctx).map(_.userName).mkString))
+
     case "isLocalhost" => Some(P.fromTypedValue("diesel.isLocalhost", Services.config.isLocalhost))
     case "isLocaldevbox" => Some(P.fromTypedValue("diesel.isLocaldevbox", Services.config.isLocalhost && Services.config.isRazDevMode))
 
     // todo deprecated, remove - search in all realms
-//    case "realm.props" | "props.realm" => {
-//      val p = Website.getRealmProps(ctx.root.settings.realm.mkString)
-//      Some(P.fromTypedValue("diesel.realm.props", p))
-//    }
+    // this is used like diesel["realm.props"]
+    case "realm.props" | "props.realm" => {
+      val p = Website.getRealmProps(ctx.root.settings.realm.mkString)
+      Some(P.fromTypedValue("diesel.realm.props", p))
+    }
 
     case "props" => {
 
@@ -79,7 +102,11 @@ class DieselParmSource (ctx:DomEngECtx) extends ParmSource {
           else P.undefined("diesel.realm.local")
           (n => Left(p))
         },
-        "props" -> (n => Right(new DieselRealmParmSource(ctx)))
+
+        "props" -> (n => Right(new DieselRealmParmSource(ctx))),
+
+        "events" -> (n => Left(
+          P.fromSmartTypedValue("diesel.realm.events", Website.getRealmEvents(ctx.root.settings.realm.mkString))))
       ))
     }
 
