@@ -2,10 +2,10 @@
 creates the navigation bar
 ***@
 @import razie.wiki.model.Perm
-@import razie.wiki.Config
 @import mod.diesel.guard.DieselDebug.Guardian
 @import mod.diesel.guard.DomGuardian
 @import razie.wiki.Enc
+@import play.twirl.api.TemplateMagic.defining
 @(user:Option[razie.wiki.model.WikiUser], realm:String=razie.wiki.model.Wikis.RK, mobile:Boolean = false, barTitle: String="Bar Title", logo:Option[String]=None, url:Option[String]=Some("/"), club:String="")(implicit stok: controllers.StateOk)
 @import razie.wiki.Services
 @import razie.wiki.model.Wikis
@@ -90,7 +90,7 @@ require(['jquery'], function($){
       }
     });
     @if(label.startsWith("badgeRefresh")) {
-    if(ok_@label) setTimeout(update_@label, Services.config.BADGE_REFRESH);
+    if(ok_@label) setTimeout(update_@label, @Services.config.BADGE_REFRESH);
 
     updating_@label = false;
     }
@@ -259,8 +259,10 @@ require(['jquery'], function($){
             <ul class="dropdown-menu scrollable-menu " role="menu" style="height: 80vh; max-height: 80vh">
               <li><a href="/wikie/switchRealm/wiki">wiki</a></li>
               <li><a href="/wikie/switchRealm/specs">specs</a></li>
-              @myReactors().sorted.map { t =>
-                <li><a href="/wikie/switchRealm/@t">@t</a></li>
+              @defining(myReactors()) { list =>
+                @list.sorted.map { t =>
+                  <li><a href="/wikie/switchRealm/@t">@t</a></li>
+                }
               }
             </ul>
           </li>
@@ -268,11 +270,14 @@ require(['jquery'], function($){
       }
     }
 
-@myReactors()=@{
-  stok.au.toList
+@*    define the function *@
+
+@myReactors() =@{
+  var x = stok.au.toList
   .flatMap(x => x.memberReactors)
   .filter(x=> !Array("wiki","specs").contains(x))
   .filter(x=> razie.hosting.WikiReactors.allLowercase.contains(x))
+  x
   // last one is because in localhost mode, not all my reactors are here...
   // todo optimize this somehow?
 }
