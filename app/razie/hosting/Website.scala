@@ -14,7 +14,7 @@ import razie.wiki.{Services, WikiConfig}
 import razie.wiki.model._
 import razie.wiki.util.{DslProps, PlayTools}
 import scala.collection.concurrent.TrieMap
-import scala.collection.mutable.HashMap
+import scala.collection.mutable.{HashMap, ListBuffer}
 import scala.collection.parallel.mutable
 
 /**
@@ -130,12 +130,14 @@ class Website (we:WikiPage, extra:Seq[(String,String)] = Seq()) extends DslProps
 object Website {
   private case class CacheEntry (w:Website, millis:Long)
   private case class CacheEntry2 (m:collection.mutable.HashMap[String,P])
+  private case class CacheEntry3 (m:ListBuffer[Any])
 
   // cleaned on reload
   private val cache = new TrieMap[String, CacheEntry]()
 
   // static
   private val realmProps = new TrieMap[String, CacheEntry2]()
+  private val realmEvents = new TrieMap[String, CacheEntry3]()
 
   val EXP = 100000
 
@@ -174,6 +176,16 @@ object Website {
     cache.remove(host)
   }
 
+  /** static events per realm, as set when there are problems. Events should be JSON and have a name and a level property. Levels are: alarm/info
+    */
+  def putRealmEvents (realm:String, events:List[Any]):Unit = {
+    // important to sync here, conflicts are not harmless
+    realmEvents.synchronized {
+      val p = realmEvents.getOrElseUpdate(realm, new CacheEntry3(new ListBuffer[Any]()))
+      p.m.append(events)
+    }
+  }
+
   /** static properties per realm, as set during say diesel.realm.started
     * make sure P is calculated to a value or is undefined - no context from here on
     */
@@ -199,6 +211,14 @@ object Website {
   def getRealmProps (realm:String):Map[String,P] = {
     realmProps.synchronized {
       realmProps.get(realm).map(_.m.toMap).getOrElse(Map.empty)
+    }
+  }
+
+  /** static events per realm, as set when there are problems. Events should be JSON and have a name and a level property. Levels are: alarm/info
+    */
+  def getRealmEvents (realm:String):List[Any] = {
+    realmEvents.synchronized {
+      realmEvents.get(realm).map(_.m.toList).getOrElse(Nil)
     }
   }
 

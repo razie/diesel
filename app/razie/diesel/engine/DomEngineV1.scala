@@ -1493,7 +1493,33 @@ class DomEngineV1(
           else {
             r.foreach(Website.putRealmProps(_, p.name, p.calculatedP))
             r.flatMap(Website.forRealm).map(_.put(p.name, p.calculatedValue))
-            evAppChildren(a, DomAst(EInfo("updated..."), AstKinds.TRACE))
+            evAppChildren(a, DomAst(EInfo(s"updated ${p.name}..."), AstKinds.VERBOSE))
+          }
+        }
+        true
+
+      } else if (ea == DieselMsg.REALM.EVENTS_SET) { //========================
+
+        // you can do either props={a:1}
+        val event = in.attrs
+            .filter(_.name == "event")
+            .filter(_.isOfType(WTypes.wt.JSON))
+            .flatMap(_.calculatedTypedValue.asJson)
+
+        val events = event :: in.attrs
+            .filter(_.name == "events")
+            .filter(_.isOfType(WTypes.wt.ARRAY))
+            .flatMap(_.calculatedTypedValue.asArray)
+
+        // todo move this to an executor
+        // todo this may be a security risk
+        // todo limit no of events per realm
+        if(events.size > 0) {
+          val r = this.settings.realm
+          if (r.isEmpty) evAppChildren(a, DomAst(EError("realm not defined...???"), AstKinds.ERROR))
+          else {
+            r.foreach(Website.putRealmEvents(_, events))
+            evAppChildren(a, DomAst(EInfo(s"added ${events.size} events..."), AstKinds.VERBOSE))
           }
         }
         true
