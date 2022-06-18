@@ -9,6 +9,7 @@ package mod.diesel.model.exec
 import controllers.Wikil
 import razie.clog
 import razie.diesel.dom.RDOM.P
+import razie.diesel.dom.WTypes
 import razie.diesel.engine.DomAst
 import razie.diesel.engine.exec.EExecutor
 import razie.diesel.engine.nodes._
@@ -29,8 +30,36 @@ class EEWiki extends EExecutor("diesel.wiki") {
 
   override def apply(in: EMsg, destSpec: Option[EMsg])(implicit ctx: ECtx): List[Any] = {
     val res = in.met match {
+
       case "content" => {
         clog << "diesel.wiki.content wpath=" + ctx.get("wpath").mkString
+
+        val errors = new ListBuffer[Any]()
+        // todo auth
+        ctx
+            .get("wpath")
+            .flatMap(WID.fromPath(_, ctx.root.settings.realm.mkString))
+            .orElse{errors.append(EError("no wid")); None}
+            .map(_.r(ctx.root.settings.realm.mkString))
+            .map{wid=> errors.append(EInfo("final wid: "+wid)); wid}
+            .flatMap(Wikis.find)
+            .orElse{errors.append(EError("ERR - No wiki found for "+ctx.get("wpath"))); None}
+            .toList
+            .map{w=>
+              // typed value?
+              val p =
+                if(in.attrs.exists(_.name == "type"))
+                  P.fromTypedValue("", w.content, ctx.getRequired("type"))
+                else P("", w.content)
+
+              in.attrs.find(_.name == "result").map(_.calculatedValue).map { output=>
+                new EVal(p.copy(name = output))
+              } getOrElse new EVal(p.copy(name="payload"))
+            } ::: errors.toList
+      }
+
+      case "format" => {
+        clog << "diesel.wiki.format wpath=" + ctx.get("wpath").mkString
 
         val errors = new ListBuffer[Any]()
         // todo auth
@@ -44,17 +73,18 @@ class EEWiki extends EExecutor("diesel.wiki") {
           .orElse{errors.append(EError("ERR - No wiki found for "+ctx.get("wpath"))); None}
           .toList
           .map{w=>
-              // typed value?
-              val p =
-                if(in.attrs.exists(_.name == "type"))
-                  P.fromTypedValue("", w.content, ctx.getRequired("type"))
-                else P("", w.content)
+
+            // todo use current user? or pass it in to see how it looks for others? sounds nice
+            val res = Wikis.format(w.wid, w.markup, null, Some(w), None) //ctx.root.settings.user)
+
+            val p = P.fromTypedValue("", res, WTypes.HTML)
 
             in.attrs.find(_.name == "result").map(_.calculatedValue).map { output=>
               new EVal(p.copy(name = output))
             } getOrElse new EVal(p.copy(name="payload"))
           } ::: errors.toList
       }
+
       case "follow" => {
         //todo auth
         clog << "diesel.wiki.follow"
