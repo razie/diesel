@@ -99,14 +99,11 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
         (a, b) match {
           // json exprs are different, like cart + { item:...}
           case (aei:AExprIdent, JBlockExpr(jb, _))
-//            if aei.tryApplyTyped("").exists(_.ttype == WTypes.JSON) =>
             if av.ttype == WTypes.JSON =>
             jsonExprMap(op, av.calculatedTypedValue, bv.calculatedTypedValue)
 
           // json exprs are different, like cart + xx
           case (aei:AExprIdent, bei:AExprIdent)
-//            if aei.tryApplyTyped("").exists(_.ttype == WTypes.JSON) &&
-//                bei.tryApplyTyped("").exists(_.ttype == WTypes.JSON) =>
             if av.ttype == WTypes.JSON &&
                 bv.ttype == WTypes.JSON =>
             jsonExprMap(op, av.calculatedTypedValue, bv.calculatedTypedValue)
@@ -339,6 +336,10 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
 
             // known types
 
+            case _ if avv.cType.name == WTypes.SOURCE && (bs == "json" || bs == "object") => {
+              avv.value.asInstanceOf[ParmSource].asP
+            }.calculatedTypedValue
+
             case _ if bs == "boolean" || bs == "bool" =>
               P.fromTypedValue("", as, WTypes.BOOLEAN).calculatedTypedValue
 
@@ -390,7 +391,9 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
 
             case c if ctx.root.domain.exists(_.classes.contains(bu)) => {
               // domain class, base must be json
-              assert(ap.isOfType(WTypes.wt.JSON))
+              if(! ap.isOfType(WTypes.wt.JSON)) {
+                throw new DieselExprException("'as' can't typecast to: " + b.toString + " from: (" + ap + ") in expr: " + this.toDsl)
+              }
               avv.copy(cType = avv.cType.copy(schema = bu))
             }
 
@@ -407,7 +410,7 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
               doAsWith(bp.currentValue, bp.currentStringValue, b.toString.toLowerCase, true)
             }
 
-            case _ if lastTime => throw new DieselExprException("'as' can't typecast to: " + b.toString + " from: " + av)
+            case _ if lastTime => throw new DieselExprException("'as' can't typecast to: " + b.toString + " from: " + av + " in expr: " + this.toDsl)
           }
         }
 
@@ -772,7 +775,7 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
         }
       }
 
-      case _ => PValue("[ERR unknown operator " + op + "]", WTypes.wt.ERROR)
+      case _ => PValue(new DieselExprException(s"[ERR unknown operator $op] in expression $toDsl"), WTypes.wt.EXCEPTION)
     }
 
     P("", res.asString, res.cType).copy(value = Some(res))

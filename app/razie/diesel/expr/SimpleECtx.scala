@@ -67,8 +67,8 @@ class SimpleECtx(
     this
   }
 
-  def listAttrs: List[P] = {
-    val l = (attrs ++ cur ++ base.toList.flatMap(_.listAttrs)).distinct
+  def flattenAllAttrs: List[P] = {
+    val l = (attrs ++ cur ++ base.toList.flatMap(_.flattenAllAttrs)).distinct
     // distinct by name
     // copied distinct to do by name
     val b = new ListBuffer[P]()
@@ -81,6 +81,8 @@ class SimpleECtx(
     }
     b.toList
   }
+
+  def listAttrs: List[String] = flattenAllAttrs.map(_.name)
 
   def domain: Option[RDomain] = _domain orElse base.flatMap(_.domain)
 

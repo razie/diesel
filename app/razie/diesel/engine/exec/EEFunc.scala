@@ -76,7 +76,7 @@ object EEFunc {
 
   def execute (lang:String, script:String)(implicit ctx: ECtx): Any = {
     val res : Any = try {
-      val r = newestFiddle(script, lang, ctx.listAttrs, ctx)
+      val r = newestFiddle(script, lang, ctx.flattenAllAttrs, ctx)
       r._2
     } catch {
       case e: Throwable => e.getMessage
@@ -138,7 +138,7 @@ object EEFunc {
     val r = try {
 
       // run the script
-      val r = newestFiddle(script, lang, ctx.listAttrs, ctx)
+      val r = newestFiddle(script, lang, ctx.flattenAllAttrs, ctx)
       scriptResToTypedP(r, 0)
     } catch {
       case e: Throwable => P("", e.getMessage, WTypes.wt.EXCEPTION).withValue(e, WTypes.wt.EXCEPTION)

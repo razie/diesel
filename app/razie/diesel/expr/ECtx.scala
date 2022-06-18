@@ -76,7 +76,10 @@ trait ECtx extends ParmSource {
   def clear: Unit
 
   /** flatten and list all values in this and all parent contexts, using proper overriding */
-  def listAttrs: List[P]
+  def flattenAllAttrs: List[P]
+
+  /** flatten and list all values in this and all parent contexts, using proper overriding */
+  def listAttrs: List[String]
 
   def getRequired(name: String): String = getRequiredp(name).currentStringValue
 

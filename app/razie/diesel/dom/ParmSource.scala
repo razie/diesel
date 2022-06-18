@@ -26,9 +26,17 @@ trait ParmSource {
   /** set a value */
   def put(p: P): Unit
 
-  /** list values */
-  def listAttrs: List[P]
+  /** list names - getting the values may be expensive */
+  def listAttrs: List[String]
 
   /** itself as a P */
-  def asP: P = P.fromSmartTypedValue(name, listAttrs.map(x => (x.name, x)).toMap)
+  def asP: P = P.fromSmartTypedValue(
+    name,
+    listAttrs
+        .flatMap(x => this.getp(x).toList.filter(_.hasCurrentValue))
+        .map(p => (p.name, p.currentStringValue))
+//        .map(p => (p.name, p.value.map(_.asJavaObject).getOrElse("no value...")))
+        // todo stupid recursion blows the stack if I try proper recursion in maps etc
+        .toMap
+  )
 }

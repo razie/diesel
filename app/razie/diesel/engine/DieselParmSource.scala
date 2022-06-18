@@ -42,7 +42,9 @@ class DieselParmSource (ctx:DomEngECtx) extends ParmSource {
 //    }
 
     case "props" => {
+
       next("diesel.props", Map(
+
         "system" -> (n => {
           val m = if (Services.config.isLocalhost) {
             System.getProperties.asScala
@@ -51,6 +53,7 @@ class DieselParmSource (ctx:DomEngECtx) extends ParmSource {
           }
           Left(P.fromSmartTypedValue("diesel.props.system", m))
         }),
+
         "env" -> (n => {
           val m = if (Services.config.isLocalhost) {
             System.getenv().asScala
@@ -59,13 +62,17 @@ class DieselParmSource (ctx:DomEngECtx) extends ParmSource {
           }
           Left(P.fromSmartTypedValue("diesel.props.env", m))
         }),
+
         "realm" -> (n => Right(new DieselRealmParmSource(ctx)))
       ))
     }
 
     case "realm" => {
+
       next("diesel.realm", Map(
+
         "name" -> (n => Left(P.fromSmartTypedValue("diesel.realm.name", ctx.settings.realm.mkString))),
+
         "local" -> {
           val p = if (Services.config.isLocalhost)
             P.fromSmartTypedValue("diesel.realm.local", RkReactors.forHost(Services.config.simulateHost).mkString)
@@ -77,6 +84,7 @@ class DieselParmSource (ctx:DomEngECtx) extends ParmSource {
     }
 
     case "server" => Some(P.fromSmartTypedValue("diesel.server", Map(
+      "name" -> Services.config.node,
       "node" -> Services.config.node,
       "host" -> java.net.InetAddress.getLocalHost.getCanonicalHostName,
       "hostName" -> java.net.InetAddress.getLocalHost.getHostName,
@@ -115,7 +123,7 @@ class DieselParmSource (ctx:DomEngECtx) extends ParmSource {
     case _ => throw new DieselException("Can't overwrite values in this context!")
   }
 
-  def listAttrs: List[P] = Nil
+  def listAttrs: List[String] = List("env", "user", "isLocalhost", "isLocaldevbox", "props", "realm", "server", "engine")
 
 }
 
@@ -140,7 +148,7 @@ class DieselCtxParmSource(val name: String, ctx: ECtx, origCtx: ECtx) extends Pa
     ctx.put(p)
   }
 
-  def listAttrs: List[P] = ctx.listAttrs
+  def listAttrs: List[String] = ctx.listAttrs
 }
 
 /** source for parms static at realm level */
@@ -167,11 +175,7 @@ class DieselRealmParmSource(ctx: DomEngECtx) extends ParmSource {
     Website.forRealm(realm).map(_.put(p.name, p.calculatedValue(ctx)))
   }
 
-  def listAttrs: List[P] = {
-    val p = parms
-    p.values.toList
-  }
-
+  def listAttrs: List[String] = parms.keys.toList
 }
 
 /** todo hierarchical source for objects? */
@@ -188,6 +192,6 @@ class NextDParmSource(ctx: ECtx, pname: String, values: Map[String, String => Ei
 
   def put(p: P): Unit = ???
 
-  def listAttrs: List[P] = values.keys.map(x=> P.undefined(x)).toList
+  def listAttrs: List[String] = values.keys.toList
 }
 

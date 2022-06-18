@@ -315,8 +315,8 @@ object RDOM {
         // the "" dflt will force usage of value
 
         // first get the map
-        case s: collection.mutable.Map[_, _] => P(name, "", expOrElse(WTypes.wt.JSON)).withValue(s,
-          expOrElse(WTypes.wt.JSON))
+        case s: collection.mutable.Map[_, _] =>
+          P(name, "", expOrElse(WTypes.wt.JSON)).withValue(s, expOrElse(WTypes.wt.JSON))
 
         case s: collection.Map[_, _] => {
           // use mutable map so we can assign later
@@ -339,11 +339,16 @@ object RDOM {
               expectedType, s)
             case WType(WTypes.NUMBER, _, _, _, _) => P(name, "", expectedType).withCachedValue(s.toFloat, expectedType,
               s)
+
             case WType(WTypes.STRING, _, _, _, _) => P(name, "", expectedType).withCachedValue(s, expectedType, s)
-            case WType(WTypes.DATE, _, _, _, _) => P(name, "", expectedType).withCachedValue(s, expectedType, s)
+            case WType(WTypes.DATE, _, _, _, _)   => P(name, "", expectedType).withCachedValue(s, expectedType, s)
+            case WType(WTypes.HTML, _, _, _, _)   => P(name, "", expectedType).withCachedValue(s, expectedType, s)
+
             case WType(WTypes.EXCEPTION, _, _, _, _) => P(name, s, expectedType)
+
             case _ if expectedType.trim.length > 0 =>
               throw new DieselExprException(s"$expectedType is an unknown type")
+
             case _ => P(name, s, WTypes.wt.STRING).withCachedValue(s, WTypes.wt.STRING, s)
           }
         }
@@ -483,9 +488,6 @@ object RDOM {
       res
     }
 
-//    @deprecated
-//    def apply(name: String, dflt: String, ttype: String): P = P(name, dflt, WType(ttype)).withValue(dflt, WType
-//    (ttype))
   }
 
   //  implicit def toWtype2(s:String) : WType = WType(s)

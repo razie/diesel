@@ -666,7 +666,7 @@ class EECtx extends EExecutor(EECtx.CTX) {
       new EInfo(s"${p.name} = ${p.currentStringValue} expr=(${p.expr}) cv= ${p.calculatedValue}")
     } :::
         (new EInfo(s"Ctx.listAttrs: ${ctx.getClass.getName}") ::
-            ctx.listAttrs.map { p =>
+            ctx.flattenAllAttrs.map { p =>
               Try {
                 new EInfo(s"${p.name} = ${p.currentStringValue} expr=(${p.expr}) cv= ${p.calculatedValue}")
               }.recover {
