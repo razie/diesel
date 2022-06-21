@@ -40,6 +40,8 @@ class StateOk(val realm:String, val au: Option[model.User], val request: Option[
   lazy val query = request.map(_.queryString.map(t=>(t._1, t._2.mkString))).getOrElse(Map.empty)
 
   def formParms = form.map(_.collect { case (k, v) => (k, v.head) }).get
+
+  /** find current value for a form parm or EMPTY string */
   def formParm(name:String) = form.flatMap(_.get(name)).map(_.mkString).mkString
 
   def fParm(name:String) : Option[String] =

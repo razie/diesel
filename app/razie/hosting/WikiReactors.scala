@@ -113,7 +113,12 @@ object WikiReactors extends Logging with Reactors {
 
     // load reserved reactors: rk and wiki first
 
-    var toload = Services.config.preload.split(",")
+
+    val stoload =
+      if(Services.config.isRazDevMode) "rk,wiki,specs," + RkReactors.forHost(Services.config.simulateHost).mkString
+      else Services.config.preload
+
+    var toload = stoload.split(",")
 
     // list all reactors to be loaded and pre-fetch wikis
     //todo with large numbers of reactors, this will leak
@@ -152,9 +157,11 @@ object WikiReactors extends Logging with Reactors {
 
           toload.foreach(loadReactor(_, None))
 
-          // now load the rest
-          val rest = allReactors.filter(x => !reactors.contains(x._1)).map(_._1)
-          rest.foreach(loadReactor(_, None))
+          // now load the rest - speed up in razdevmod e
+          if( ! Services.config.isRazDevMode) {
+            val rest = allReactors.filter(x => !reactors.contains(x._1)).map(_._1)
+            rest.foreach(loadReactor(_, None))
+          }
         } catch {
           case t: Throwable =>
             error("while loading reactors", t)

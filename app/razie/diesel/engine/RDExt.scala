@@ -252,7 +252,7 @@ object RDExt extends Logging {
 //          case n: EMsg => collectP(n.attrs)
 //          case n: ERule => {
 //            collectPM(n.e.attrs)
-//            collectP(n.i.attrs)
+//     o       collectP(n.i.attrs)
 //          }
 //          case n: EMock => collectPM(n.rule.e.attrs)
 //          case n: ExpectM => collectPM(n.m.attrs)
@@ -260,27 +260,36 @@ object RDExt extends Logging {
   msgs
   }
 
-  /** simple json for content assist */
+  /** simple json for content assist
+    *
+    * @param d
+    * @return Map (msg, list of messages) + (attr, list of attributes)
+    */
   def toCAjmap(d: RDomain) = {
+
+    /** (kind, entity, method, CA-String */
     val visited = new ListBuffer[(String, String, String, String)]()
 
-    // todo collapse defs rather than select
+    def wasVisited(kind:String, e:String, m:String) = visited.exists(x=> x._1 == kind && x._2 == e && x._3 == m)
+
+      // todo collapse defs rather than select
     def collect(e:String, m:String, kind:String="msg") = {
-      if (!visited.exists(_ ==(kind, e, m))) {
+      // don't check m length - see collectP below
+      if (e.length > 0 && !wasVisited(kind, e, m)) {
         visited.append((kind, e, m, ""))
       }
     }
 
     // todo collapse defs rather than select
     def collectMsg(m:EMsg, kind:String="msg") = {
-      if (!visited.exists(_ ==(kind, m.entity, m.met))) {
+      if (m != null && m.entity != null && m.met != null && m.entity.length > 0 && !wasVisited(kind, m.entity, m.met)) {
         visited.append((kind, m.entity, m.met, m.toCAString))
       }
     }
 
     // todo collapse defs rather than select
     def collectRule(m:ERule, kind:String="msg") = {
-      if (!visited.exists(_ ==(kind, m.e.cls, m.e.met))) {
+      if (m.e.cls.length > 0 && !wasVisited(kind, m.e.cls, m.e.met)) {
         visited.append((kind, m.e.cls, m.e.met, m.e.toCAString))
       }
     }
@@ -296,6 +305,7 @@ object RDExt extends Logging {
     Executors.withAll(_.values.toList.flatMap(_.messages).map(m=> collectMsg(m)))
 
     Map(
+
       "msg" -> {
         d.moreElements.collect({
           case n: EMsg => collectMsg(n)
@@ -310,6 +320,7 @@ object RDExt extends Logging {
         })
         visited.filter(_._1 == "msg").toList.map(t => t._2 + "." + t._3)
       },
+
       "attr" -> {
         d.moreElements.collect({
           case n: EMsg => collectP(n.attrs)

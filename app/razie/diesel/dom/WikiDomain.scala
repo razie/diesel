@@ -5,7 +5,7 @@
   */
 package razie.diesel.dom
 
-import razie.diesel.dom.RDOM.{C, DE}
+import razie.diesel.dom.RDOM.{C, DE, T}
 import razie.hosting.WikiReactors
 import razie.tconf.TagQuery
 import razie.wiki.model._
@@ -109,6 +109,12 @@ object WikiDomain {
   /** todo does it really need to start with one */
   def domFrom (first:WikiEntry, pages:List[WikiEntry]) : RDomain = {
     RDomain.domFrom(first, pages)
+  }
+
+  /** crawl all domain pieces and build a domain */
+  def domFromFiltered (we:WikiEntry)(filter:PartialFunction[Any,Any]) : Option[RDomain] = {
+    we.preprocessed
+    RDomain.domFrom(we, Some(filter))
   }
 
   /** crawl all domain pieces and build a domain */
