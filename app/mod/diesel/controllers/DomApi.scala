@@ -1191,92 +1191,6 @@ class DomApi extends DomApiBase with Logging {
     }
   }
 
-  /** /diesel/findUsage/ea
-    * API msg sent to reactor
-    */
-  def findUsages(em: String) = Filter(noRobots).async { implicit stok =>
-    if (stok.au.exists(_.isActive)) {
-      val ea = em.replaceAllLiterally("/", ".")
-
-      if (!em.matches(EMsg.REGEX.pattern.pattern())) {
-        Future.successful(
-          InternalServerError("Not a message: " + em)
-        )
-      } else try {
-        val EMsg.REGEX(e, a) = em
-
-        val uid = stok.au.map(_._id).getOrElse(NOUSER)
-        val settings = new DomEngineSettings()
-        settings.realm = Some(stok.realm)
-
-        // prep engine to load its domain
-        val engine = EnginePrep.prepEngine(
-          new ObjectId().toString,
-          settings,
-          stok.realm,
-          None,
-          false,
-          stok.au,
-          s"DomApi.findUsage:$e:$a",
-          None,
-          // empty story so nothing is added to root
-          List(new WikiEntry("Story", "temp", "temp", "md", "", uid, Seq("dslObject"), stok.realm))
-        )
-
-        // 1. stories usage
-        val stories = EnginePrep.loadStories(settings, stok.realm, stok.au.map(_._id), "")
-        val allStories = listStoriesWithFiddles(stories, addFiddles = true)
-
-        val u1 = usagesStories(e, a, allStories)
-
-        // 2. specs, put $when first
-        val u2 = usagesSpecs(e, a)(engine.ctx).sortBy(x => if (x._1 == "$when") 0 else 1)
-
-        // remove engine from everywhere
-        engine.cleanResources()
-
-        /** mesg to entry */
-        def addm(t: String, msg: String, p: Option[EPos], line: String, parent: String = "") = {
-          Map(
-            "type" -> t,
-            "msg" -> msg,
-            "parent" -> parent,
-            "line" -> line,
-            "topic" -> p.map(_.wpath).flatMap(WID.fromPath).map(_.name)
-          ) ++
-              p.map { p =>
-                Map(
-                  "ref" -> p.toRef,
-                  "wpath" -> p.wpath,
-                  "fiddle" -> p.toFiddle
-                )
-              }.getOrElse(Map.empty)
-        }
-
-        val m = (u2 ::: u1).map(u => addm(u._1, u._2, u._3, u._4, u._5))
-
-        val html = views.html.fiddle.usageTable(m, Some(("Topic", "Kind", "Details")))
-
-        Future.successful(
-          Ok(html)
-//        retj << Map(
-//          "usages" -> m
-//        )
-        )
-      } catch {
-        case e : Exception =>
-          razie.Log.info("findUsages exception", e)
-          Future.successful(
-            InternalServerError("Error: " + e.getMessage)
-          )
-      }
-    } else {
-      Future.successful(
-        unauthorized ("Can't start a message without an active account...")
-      )
-    }
-  }
-
   /** /diesel/start/ea
     * API msg sent to reactor
     */
@@ -1805,6 +1719,10 @@ class DomApi extends DomApiBase with Logging {
     val session = sid.flatMap(s => DomSessions.sessions.get(s.value))
     val dfiddle = stok.query.get("dfiddle").mkString
 
+    var needsCAMap = stok.formParm("needsCAMap").toBoolean
+    var needsBaseCA = stok.formParm("needsBaseCA").toBoolean
+    val now = DateTime.now
+
     val anySpecOverwrites = session.flatMap { existingSession=>
       cwid.wid.flatMap(wid => existingSession.overrides.find(o=>
         o.wid == wid && o.sName == (dfiddle + ":spec"))
@@ -1841,7 +1759,7 @@ class DomApi extends DomApiBase with Logging {
     val pages = List(page)
 
     // todo is adding page twice...
-    val dom = pages.flatMap(p=>
+    val specDom = pages.flatMap(p=>
       if(anySpecOverwrites.isDefined)
         WikiDomain.domFrom(p).toList
       else
@@ -1855,12 +1773,14 @@ class DomApi extends DomApiBase with Logging {
     var res = ""
     var captureTree = ""
 
-    val idom = WikiDomain.domFrom(ipage).get.revise addRoot
+    val storyDom = WikiDomain.domFrom(ipage).get.revise addRoot
+
+    val fullDom = specDom plus storyDom
 
     val root = DomAst("root", AstKinds.ROOT).withDetails("(from story)")
 
     // start processing all elements
-    val engine = DieselAppContext.mkEngine(dom, root, settings, ipage :: pages map WikiDomain.spec, "anonRunFiddle")
+    val engine = DieselAppContext.mkEngine(fullDom, root, settings, ipage :: pages map WikiDomain.spec, "anonRunFiddle")
     setHostname(engine.ctx.root)
 
     EnginePrep.addStoriesToAst(engine, List(ipage))
@@ -1872,10 +1792,29 @@ class DomApi extends DomApiBase with Logging {
     fut.map { engine =>
       res += engine.root.toHtml
 
+      // the anon fiddle allows mod both spec and story, let's rebuild dom...
+      val storyCA = if(needsCAMap)  RDExt.toCAjmap(fullDom) else Map.empty // in blenderMode dom is full
+//      val baseCA  = if(needsBaseCA) RDExt.toCAjmap(specDom) else Map.empty // in blenderMode dom is full
+
       val m = Map(
+        "info" -> Map(
+          "clientId" -> now,
+          "compileOnly" -> false,
+          "timeStamp" -> now,
+          "totalCount" -> (engine.totalTestCount),
+          "failureCount" -> engine.failedTestCount,
+          "errorCount" -> engine.errorCount,
+          "engineId" -> engine.id,
+          "progress" -> engine.progress,
+          "engineStatus" -> engine.status,
+          "enginePaused" -> engine.paused.toString,
+          "engineDone" -> DomState.isDone(engine.status)
+        ),
+        "clientId" -> now,
         "res" -> res,
         "capture" -> captureTree,
-        "ca" -> RDExt.toCAjmap(dom plus idom), // in blenderMode dom is full
+        "storyCA" -> storyCA, // in blenderMode dom is full
+        "baseCA" -> Map("msg" -> Nil, "attr" -> Nil),
         "totalCount" -> (engine.totalTestCount),
         "failureCount" -> engine.failedTestCount,
         "ast" -> DomFiddles.getAstInfo(ipage)
