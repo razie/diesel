@@ -34,20 +34,26 @@ class EContent(
   def isJson = contentType != null && (contentType startsWith "application/json")
   //|| contentType == null && b.trim.startsWith("{")
 
+  var parseTime = 0L
+
   def asJsonPayload = {
     // sometimes you get empty
+    val start = System.currentTimeMillis()
     val b = if (body.length > 0) body else "{}"
-    if(b.trim.startsWith("{")) P.fromTypedValue(Diesel.PAYLOAD, b, WTypes.JSON)
+    val res = if(b.trim.startsWith("{")) P.fromTypedValue(Diesel.PAYLOAD, b, WTypes.JSON)
     else if(b.trim.startsWith("[")) P.fromTypedValue(Diesel.PAYLOAD, b, WTypes.ARRAY)
     else {
       val ex = new IllegalArgumentException("JSON object should start with { or [ but it starts with: " + body.take(5))
       P.fromTypedValue(Diesel.PAYLOAD, ex, WTypes.wt.EXCEPTION)
     }
+    parseTime = System.currentTimeMillis() - start
+    res
   }
 
   /** parse incoming POST for a diesel request. it will incliude a typed PAYLOAD with the entire body */
   def asDieselParams (implicit ctx: ECtx): List[P] = {
-    if(body.trim.startsWith("{")) {
+    val start = System.currentTimeMillis()
+    val res = if(body.trim.startsWith("{")) {
       // flatten the incoming json
       asJsonPayload :: flattenJson(asJsonPayload)(ctx)
     }
@@ -58,6 +64,8 @@ class EContent(
       // POST content as string
       List(P.fromTypedValue(Diesel.PAYLOAD, body, WTypes.wt.STRING))
     }
+    parseTime = System.currentTimeMillis() - start
+    res
   }
 
   import razie.Snakk._
@@ -78,9 +86,29 @@ class EContent(
   /** headers as a nice lowercase P */
   def httpCodep = P.fromTypedValue( EESnakk.SNAKK_HTTP_CODE, code)
 
-  lazy val hasValues = if (isXml || isJson) root \ "values" else Snakk.empty
+  def mkSnakkResponse = {
+    P.fromSmartTypedValue(
+      "snakk",
+      Map(
+        "response" -> Map (
+          "headers" -> headersp.value.get.asJson,
+          "code" -> code
+          // no body - it's always in payload
+        )
+      )
+    )
+  }
 
-  lazy val r = if (hasValues.size > 0) hasValues else root
+  // an object with "values" member is specific diesel response when the flow doesn't send over one specific value
+
+  lazy val hasValues = Try {
+    if (isXml || isJson) root \ "values" else Snakk.empty
+  }.getOrElse(Snakk.empty)
+
+  lazy val r = {
+    val h = hasValues
+    if (h.size > 0) h else root
+  }
 
   // todo not optimal
   def exists(f: scala.Function1[P, scala.Boolean]): scala.Boolean = {
@@ -125,7 +153,7 @@ class EContent(
   /** extract the values and expressions from a response
     *
     * @param templateSpecs a list of name/expression
-    * @param spec          a list of name/default/expression
+    * @param spec          a list of (name, default, expression)
     * @param regex         an optional regex with named groups
     */
   def extract(templateSpecs: Map[String, String], spec: Seq[(String, String, String, Option[Expr])], regex: Option[String], contentType: Option[String] = None) = {
@@ -250,6 +278,19 @@ object EContent {
       EESnakk.SNAKK_HTTP_HEADERS,
       headers.map{t=> (t._1.toLowerCase, t._2)}.toMap,
       WTypes.JSON)
+  }
+
+  def mkSnakkResponse (headers:Map[String,String], code:Int) = {
+    P.fromSmartTypedValue(
+      "snakk",
+      Map(
+        "response" -> Map (
+          "headers" -> headersp(headers).value.get.asJson,
+          "code" -> code
+          // no body - it's always in payload
+        )
+      )
+    )
   }
 
 }

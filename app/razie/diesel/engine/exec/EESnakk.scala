@@ -32,6 +32,7 @@ import scala.util.Try
 class EESnakk extends EExecutor("snakk") with Logging {
   import EESnakk._
 
+
   /** can I execute this task? */
   override def test(ast: DomAst, m: EMsg, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) = {
     def known(s: String) =
@@ -254,7 +255,7 @@ class EESnakk extends EExecutor("snakk") with Logging {
       val retSpec = if (in.ret.nonEmpty) in.ret else spec(in).toList.flatMap(_.ret)
       // collect any parm specs
       val specs = retSpec
-          .filter(_.name != "snakkError")
+          .filter(_.name != SNAKK_ERROR)
           .filter(_.name != Diesel.PAYLOAD)
           .map(p => (p.name, p.currentStringValue, p.expr.mkString, p.expr))
 
@@ -319,9 +320,11 @@ class EESnakk extends EExecutor("snakk") with Logging {
         case v@EVal(p) if p.name == PAYLOAD => false
         case x@_ => true
       } :::
-          new EInfo(SNAKK_RESPONSE + Enc.escapeHtml(reply.body.take(25)), Enc.escapeHtml(trimmed(reply.body, 5000))) ::
-          new EVal(reply.httpCodep).withKind(AstKinds.TRACE) ::
-          new EVal(reply.headersp).withKind(AstKinds.TRACE) ::
+          new EInfo(SNAKK_RESPONSE + ": " + Enc.escapeHtml(reply.body.take(25)), Enc.escapeHtml(trimmed(reply.body, 5000))) ::
+          new EVal(P(SNAKK_HTTP_RESPONSE, trimmed(reply.body, 5000))).withKind(AstKinds.TRACE) ::
+          new EVal(reply.httpCodep).withKind(AstKinds.VERBOSE) :: // todo deprecated - remove
+          new EVal(reply.headersp).withKind(AstKinds.VERBOSE) ::  // todo deprecated - remove
+          new EVal(reply.mkSnakkResponse).withKind(AstKinds.TRACE) ::
           traceId :::
           eres.eres.collect {
             case v@EVal(p) if p.name == PAYLOAD => v
@@ -389,12 +392,12 @@ class EESnakk extends EExecutor("snakk") with Logging {
         eres.eres ::: strs.map(t => new P(t._1, t._2)).map { x =>
           EVal(x).withPos(pos)
         } :::
-            new EVal(SNAKK_RESPONSE + Enc.escapeHtml(content.body.take(25)), Enc.escapeHtml(trimmed(content.body, 5000)))
-                .withKind(AstKinds.TRACE) ::
-            new EVal(content.httpCodep).withKind(AstKinds.TRACE) ::
-            new EVal(content.headersp).withKind(AstKinds.TRACE) ::
+            new ETrace(SNAKK_RESPONSE + Enc.escapeHtml(content.body.take(25)), Enc.escapeHtml(trimmed(content.body, 5000))) ::
+            new EVal(P(SNAKK_HTTP_RESPONSE, trimmed(content.body, 5000))).withKind(AstKinds.TRACE) ::
+            new EVal(content.httpCodep).withKind(AstKinds.VERBOSE) ::  // todo deprecated - remove
+            new EVal(content.headersp).withKind(AstKinds.VERBOSE) ::  // todo deprecated - remove
             EVal(P.undefined(SNAKK_ERROR)) ::
-            // todo here's where i would add the response headers - make the snakk.response an object?
+            new EVal(content.mkSnakkResponse).withKind(AstKinds.TRACE) ::
             new EVal(PAYLOAD, content.body) ::
             Nil
       } getOrElse
@@ -863,12 +866,15 @@ object EESnakk {
     if (code > 0) eres += EVal(P.fromTypedValue(EESnakk.SNAKK_HTTP_CODE, code)).withKind(AstKinds.TRACE) :: Nil
     if (errContent.length > 0) eres += EVal(P.fromTypedValue(EESnakk.SNAKK_HTTP_RESPONSE, errContent)) :: Nil
 
-    if(t.isInstanceOf[CommRtException]) {
+    val headers = if(t.isInstanceOf[CommRtException]) {
       val uc = t.asInstanceOf[CommRtException].uc
       val x = uc.getHeaderFields.keySet().toArray.toList
       val headers = x.filter(_ != null).map(x => (x.toString, uc.getHeaderField(x.toString))).toMap
-      eres += EVal(EContent.headersp(headers)).withKind(AstKinds.TRACE)
-    }
+      eres += EVal(EContent.headersp(headers)).withKind(AstKinds.TRACE) // todo deprecated - remove
+      headers
+    } else Map.empty[String,String]
+
+    eres += EVal(EContent.mkSnakkResponse(headers.asInstanceOf[Map[String,String]], code)).withKind(AstKinds.TRACE)
 
     eres += new EVal(P.undefined(PAYLOAD))
 
