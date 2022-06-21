@@ -217,13 +217,7 @@ function setErrors(nfailed, nerrors, ntotal) {
 /** show something on internal errors */
 function fiddle_showPageError(err) {
   $("#navJsError").show();
-  $("#navJsError").attr("title", "ERROR from server: \n\n" + JSON.stringify(x));
-}
-
-/** show something on internal errors */
-function fiddle_showPageError(err) {
-  $("#navJsError").show();
-  $("#navJsError").attr("title", "ERROR from server: \n\n" + JSON.stringify(x));
+  $("#navJsError").attr("title", "ERROR from server: \n\n" + JSON.stringify(err));
 }
 
 
@@ -324,7 +318,7 @@ var runFiddleStoryUpdated = function(input) {
 
         if(!compileOnly) curDomRequest = null;
 
-        if(JSON.stringify(x).indexOf("staleid") >= 0) {
+        if(JSON.stringify(response).indexOf("staleid") >= 0) {
           damnStale();
         }
 
@@ -403,7 +397,7 @@ function processPartialEngineResult(input, id, response, compileOnly, lastTime, 
   // we check all the time, to update progress, anyways...
   // if(! wsActive) {
   setTimeout(function () {
-    checkpill2('@{id}');
+    checkpill2(id);
   }, CHECK_TIMER);
   // }
 };
