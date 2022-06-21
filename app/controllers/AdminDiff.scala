@@ -292,12 +292,15 @@ class AdminDiff extends AdminBase with Logging {
 
   /** compute and show diff for a WID */
   // todo auth that user belongs to realm
-  def showDiff(onlyContent: String, side: String, localRealm: String, toRealm: String, target: String, iwid: WID) = FAUR
+  def showDiff(onlyContent: String, side: String, localRealm: String, toRealm: String, targetHost: String, iwid: WID, leftId:String, rightId:String) = FAUR
   { implicit request =>
-    val localWid = iwid.r(if (toRealm == "all") iwid.getRealm else localRealm)
-    val remoteWid = iwid.r(if (toRealm == "all") iwid.getRealm else toRealm)
+//    val localWid = iwid.r(if (toRealm == "all") iwid.getRealm else localRealm)
+//    val remoteWid = iwid.r(if (toRealm == "all") iwid.getRealm else toRealm)
 
-    AdminDiff.getRemoteWE(target, remoteWid)(request.au.get).fold({ t =>
+      val localWid = Wikis.findById(leftId).map(x=> x.wid.withCachedPage(x)).get
+      val remoteWid = iwid.r(if (toRealm == "all") iwid.getRealm else toRealm)
+
+      AdminDiff.getRemoteWE(targetHost, remoteWid)(request.au.get).fold({ t =>
       val remote = t._1.content
       val patch =
         DiffUtils.diff(localWid.content.get.lines.toList, remote.lines.toList)
@@ -306,7 +309,7 @@ class AdminDiff extends AdminBase with Logging {
 
       if ("yes" == onlyContent.toLowerCase) {
         // only content diff, using diffTable
-        val url = routes.AdminDiff.showDiff("no", side, localRealm, toRealm, target, iwid)
+        val url = routes.AdminDiff.showDiff("no", side, localRealm, toRealm, targetHost, iwid, leftId, rightId)
         Ok(
           s"""<a href="$url">See separate</a><br>""" + diffTable
         )
@@ -332,7 +335,7 @@ class AdminDiff extends AdminBase with Logging {
     * @param iwid local wpath
     * @return
     */
-  def deleteRemote(localRealm: String, toRealm: String, targetHost: String, iwid: WID) = FAUR { implicit request =>
+  def deleteRemote(localRealm: String, toRealm: String, targetHost: String, iwid: WID, leftId:String, rigthId:String) = FAUR { implicit request =>
     val localWid = iwid.r(if (toRealm == "all") iwid.getRealm else localRealm)
     val remoteWid = iwid.r(if (toRealm == "all") iwid.getRealm else toRealm)
 

@@ -113,7 +113,7 @@ show diff with remote
 
         <td>
           <a
-          href="javascript:popupUrl('@routes.AdminDiff.showDiff("yes", t._3, localRealm, toRealm, remote, WID(t._2.cat, t._2.name).r(t._2.realm))');"
+          href="javascript:popupUrl('@routes.AdminDiff.showDiff("yes", t._3, localRealm, toRealm, remote, WID(t._2.cat, t._2.name).r(t._2.realm), t._1.id, t._2.id)');"
           class="btn btn-xs btn-info"
           >&laquo; DIFF &raquo;</a>
         </td>
@@ -198,7 +198,7 @@ show diff with remote
       <td>
 @*//      @if(wea.cat != "Reactor") {*@
         <a
-        onclick="applyDifAsk('@wea.id', '@routes.AdminDiff.deleteRemote(localRealm, toRealm, remote, WID(wea.cat, wea.name).r(wea.realm))')"
+        onclick="applyDifAsk('@wea.id', '@routes.AdminDiff.deleteRemote(localRealm, toRealm, remote, WID(wea.cat, wea.name).r(wea.realm), "", wea.id)')"
         class="btn btn-xs btn-danger"
         >USE LOCAL &raquo;</a>
 @*//      }*@
@@ -247,7 +247,7 @@ show diff with remote
 
       <td>
         <a
-        href="javascript:popupUrl('@routes.AdminDiff.showDiff("yes", t._3, localRealm, toRealm, remote, WID(t._2.cat, t._2.name).r(t._2.realm))')"
+        href="javascript:popupUrl('@routes.AdminDiff.showDiff("yes", t._3, localRealm, toRealm, remote, WID(t._2.cat, t._2.name).r(t._2.realm), t._1.id, t._2.id)')"
         class="btn btn-xs btn-info"
         >&laquo; DIFF &raquo;</a>
       </td>
