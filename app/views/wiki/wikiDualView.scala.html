@@ -173,14 +173,6 @@ edit a wiki page
       var label1 =
           ' <a href="javascript:popupHelp(\'widgetHelp\');" title="Help with widget editor">widget <span class="glyphicon glyphicon-question-sign"></span></a> <span id="ehelp"></span>';
 
-      function hideSpinner() {
-        $('#spinner').hide();
-      };
-
-      function showSpinner() {
-        $('#spinner').show();
-      };
-
       withJquery(function($) {
 
 // setup jquery to not reload scripts all the time
@@ -374,9 +366,6 @@ edit a wiki page
     var aceEditor;    // set only when attached
     var aceTimer;
     var Range;
-
-    var domContentAssist=[];
-    var instContentAssist=[];
 
     var domChanged=true;
     var firstPreview=true;

@@ -76,8 +76,10 @@ var dieselRefresh = true; // set to false to stop all refreshes in a page
 // intercept JS errors
     window.onerror = function(msg, url, line, col, error) {
       // ignore the stupid
-      if(url.indexOf("worker-nvp1.js") > 0) return;
-      if(url.indexOf("worker-nvp2.js") > 0) return;
+      if(url.indexOf("-nvp1.js") > 0) return;
+      if(url.indexOf("-nvp2.js") > 0) return;
+      if(url.indexOf("_editor.js") > 0) return; // some ACE errors to ignore
+      if(msg.indexOf("ace/theme") > 0) return; // some ACE errors to ignore
 
       // Note that col & error are new to the HTML 5 spec and may not be
       // supported in every browser.  It worked for me in Chrome.

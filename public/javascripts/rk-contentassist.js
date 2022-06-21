@@ -58,7 +58,7 @@ function enumProps (o) {
 /**
  * get current options from domain o, for the terms already typed.
  *
- * the domain can be a string, a JSON array or an object (tree of DOM options)
+ * the domain o can be a string, a JSON array or an object (tree of DOM options)
  *
  * tidx - recursive index in terms, as I recursively search through the DOM
  */

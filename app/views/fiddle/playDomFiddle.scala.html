@@ -35,8 +35,8 @@ a JS with HTML and CSS fiddle
 </style>
 
 <script src="@routes.Assets.at("javascripts/rk-contentassist-sqbr.js")"></script>
-<script src="@routes.Assets.at("javascripts/weCommons.js")"></script>
 <script src="@routes.Assets.at("javascripts/weFiddles.js")"></script>
+<script src="@routes.Assets.at("javascripts/weCommons.js")"></script>
 
 <div id="helpText" style="display: none">
 @md {
@@ -253,12 +253,12 @@ If you'd rather see the elements ($msg, $when etc) as a dialog, go to that line 
 
 
 <script>
+var isStoryManual = @{origStoryWe.map(_.tags.contains("manual")).getOrElse(false).toString};
+
 // this is used to prevent stale pages (back browser button or older tabs) from overwriting newer drafts
 // this is actually server time stamp
 var clientStoryTimeStamp = @id ;
 var clientSpecTimeStamp = @id ;
-
-var isStoryManual = @{origStoryWe.map(_.tags.contains("manual")).getOrElse(false).toString};
 
 // used in imported scripts
 var realm = '@reactor';
@@ -266,9 +266,6 @@ var fiddleId = '@id';
 
 // current debounce before running the scripts - goes up if results come slowly
 var currDebounce = 2000;
-
-// the current request or null - if this is something, we won't run new ones
-var curDomRequest = null;
 
 useLocalStorageCheckbox("sketchMode", "domFiddleSketchMode");
 useLocalStorageCheckbox("mockMode", "domFiddleMockMode");
@@ -395,8 +392,6 @@ $('#wikiMode').change(function(){
   runpill2_@{id}('@{id}', false);
 });
 
-var domContentAssist=[];
-var instContentAssist=[];
 
 var specWpath='@specWpath';
 var storyWpath='@storyWpath';
@@ -408,15 +403,7 @@ var storyWpath='@storyWpath';
 if(specWpath.length > 0) $("#curSpec").text('@WID.fromPath(specWpath).map(_.name)');
 if(storyWpath.length > 0) $("#curStory").text('@WID.fromPath(storyWpath).map(_.name)');
 
-// am I waiting for a refresh now? this counts how many
-var isRefreshing = 0;
-var isRefreshing2 = 0;
-
-var lastStartTime = new Date().getTime();
-var lastRequestTime = new Date().getTime();
-var lastProcessTime = null;
-
-/** check contents on reload / back */
+/** check contents to be valid (no conflicts) on reload / back */
 var checkContents_@id = function(id) {
   @*var sspec = $("#origSpec_@id").text(); //specEditor.getValue();*@
   @*var sstory = $("#origStory_@id").text(); //storyEditor.getValue();*@
@@ -489,6 +476,7 @@ var runpill_@id = function(id) {
       mockMode : $('#mockMode').prop('checked'),
       blenderMode : $('#blenderMode').prop('checked'),
       draftMode : $('#draftMode').prop('checked'),
+      needsCAMap : needsContentAssist(true, true),
       reactor : '@reactor',
       specWpath : specWpath,
       storyWpath : storyWpath,
@@ -505,7 +493,7 @@ var runpill_@id = function(id) {
       hideSpinner();
 
       $('#divOutSpec_'+id).html(data.res);
-      domContentAssist = data.ca;
+      if(Object.keys(data.ca).length > 0) domContentAssist = data.ca;
       var du = new Date().getTime() - lastStartTime;
       $('#roundtrip').text(du+' ms');
       $('#roundtrip').prop('title', "real time roundtrip response time");
@@ -542,76 +530,37 @@ var runpill_@id = function(id) {
 
 /** run the fiddle */
 var runpill2_@id = function(id, compileOnly, forceRT, next) {
-  isRefreshing2 += 1;
-  showSpinner();
-  console.log("run isRefreshing2="+isRefreshing2);
-
-  var noSim = !(forceRT || false);
-
-  // set this before going to backend which could take a long time
-  @*storyChanged(!(specEditor.getValue() === $("#origStory_@id").text()));*@
-
-  if(curDomRequest != null && !compileOnly) {
-    console.log ("Ignore request - already in progress: " + curDomRequest);
-    return;
-  }
-
-  engineCancel(); // cancel previous engine - small cost if already done
-
-  if(!compileOnly) curDomRequest = "yes";
-
-  lastStartTime = new Date().getTime();
-
-  $.ajax(
-      '/diesel/fiddle/fiddleStoryUpdated/'+id+'?@Html(mod.diesel.controllers.SFiddles.qtourl(args))', {
-        type: 'POST',
-        data: $.param({
-          saveMode : compileOnly,
-          sketchMode : $('#sketchMode').prop('checked'),
-          mockMode : $('#mockMode').prop('checked'),
-          blenderMode : $('#blenderMode').prop('checked'),
-          draftMode : $('#draftMode').prop('checked'),
-          reactor : '@reactor',
-          specWpath : specWpath,
-          storyWpath : storyWpath,
-          runEngine : ! $('#wikiMode').prop('checked'),
-          compileOnly : compileOnly,
-          simMode : simMode() && noSim,
-          clientTimeStamp: clientStoryTimeStamp,
-          spec : specEditor.getValue(),
-          story : storyEditor.getValue(),
-          capture : editor5.getValue()
-        }),
-        contentType: 'application/x-www-form-urlencoded',
-
-        success: function(data) {
-          console.log("New timestamp: " + data.info.timeStamp);
-          clientStoryTimeStamp = data.info.timeStamp;
-          processEngineResult(id, data, compileOnly, lastStartTime, next);
-          $("#navJsError").hide();
-        },
-
-        error  : function(x) {
-          isRefreshing2 -= 1;
-          hideSpinner();
-
-          console.log( "ERR "+JSON.stringify(x));
-
-          $("#navJsError").show();
-          $("#navJsError").attr("title", "ERROR from server: \n\n" + JSON.stringify(x));
-
-          if(!compileOnly) curDomRequest = null;
-          if(JSON.stringify(x).indexOf("staleid") >= 0) {
-            damnStale();
-          }
-        }
-      });
+  runFiddleStoryUpdated({
+    url: '/diesel/fiddle/fiddleStoryUpdated/'+id+'?@Html(mod.diesel.controllers.SFiddles.qtourl(args))',
+    data: {
+      saveMode : compileOnly,
+      sketchMode : $('#sketchMode').prop('checked'),
+      mockMode : $('#mockMode').prop('checked'),
+      blenderMode : $('#blenderMode').prop('checked'),
+      draftMode : $('#draftMode').prop('checked'),
+      reactor : '@reactor',
+      specWpath : specWpath,
+      storyWpath : storyWpath,
+      runEngine : ! $('#wikiMode').prop('checked'),
+      compileOnly : compileOnly,
+      simMode : simMode() && noSim,
+      clientTimeStamp: clientStoryTimeStamp,
+      spec : specEditor.getValue(),
+      story : storyEditor.getValue(),
+      capture : editor5.getValue()
+    },
+    id: id,
+    compileOnly: compileOnly,
+    forceRT: forceRT,
+    next: null,
+    onError: null,
+    onSuccess:null
+  });
 };
 
-var CHECK_TIMER = 1000;
 
 /** just check the fiddle (save and compile) */
-var checkpill2_@id = function(id) {
+var checkpill2 = function(id) {
   console.log("checkpill2 run isRefreshing2="+isRefreshing2);
 
   if(currEngineId == null) {
@@ -646,186 +595,27 @@ var checkpill2_@id = function(id) {
         }),
         contentType: 'application/x-www-form-urlencoded',
 
-        success: function(data) {
+        success: function(response) {
           // console.log("New timestamp: " + data.info.timeStamp);
           // clientTimeStamp = data.info.timeStamp;
-          processEngineResult(id, data, false, lastRequestTime);
+          processEngineResult({
+            id: '@id',
+          }, id, response, false, lastRequestTime);
         },
 
-        error  : function(x) {
+        error  : function(response) {
           hideSpinner();
 
-          console.log( "ERR "+JSON.stringify(x));
+          console.log( "ERR "+JSON.stringify(response));
 
           curDomRequest = null;
-          if(JSON.stringify(x).indexOf("staleid") >= 0) {
+          if(JSON.stringify(response).indexOf("staleid") >= 0) {
             damnStale();
           }
         }
       });
 };
 
-var damnStale = function() {
-  console.log("Stale page");
-  errMsg("Stale DRAFT - please refresh to get the latest saved draft!!!");
-  // location.reload();
-}
-
-engineCancel   = function () {cancelFlow("cancel");};
-enginePause    = function () {cancelFlow("pause");};
-enginePlay     = function () {cancelFlow("play");};
-engineContinue = function () {cancelFlow("continue");};
-engineQueue    = function () {cancelFlow("queue");};
-
-var cancelFlow = function(command) {
-  console.log("cancelFlow currEngineId="+currEngineId);
-
-  if(currEngineId == null) {
-    console.log ("Ignore request - was done: " + curDomRequest);
-    return;
-  }
-
-  $.ajax(
-      '/diesel/engine/'+currEngineId+'/' + command, {
-        type: 'POST',
-        success: function(data) {
-          console.log("  OK " +command+" currEngineId="+currEngineId);
-        },
-        error  : function(x) {
-          console.log("  ERR " +command+" currEngineId="+currEngineId);
-          console.log("  ERR "+JSON.stringify(x));
-        }
-      });
-};
-
-function processEngineResult(id, data, compileOnly, lastTime, next) {
-  console.log("RES: engineId:"+data.info.engineId);
-  console.log("  RES data.info: " +JSON.stringify(data.info));
-
-  currEngineId = data.info.engineId;
-  currEngineData = data;
-
-  lastProcessTime = new Date().getTime();
-
-  if(data.info.engineDone) {
-    console.log("  RESULT engine.done - processing");
-    processFinalEngineResult(id, currEngineData, compileOnly, lastTime, next);
-    currEngineId = null;
-  } else {
-    // engine not done yet - wait for websocket response
-    console.log("  RESULT NOT engine.done - waiting");
-    processPartialEngineResult(id, data, compileOnly, lastTime, next);
-  }
-};
-
-/** partial response - engine not complete, but story compiled - update markers */
-function processPartialEngineResult(id, data, compileOnly, lastTime, next) {
-  if(storyEditor && typeof data.ast != "undefined") {
-    storyHasErrors = updateMarkers(storyEditor, data.ast);
-    if(storyHasErrors) {
-      $("#storyChanged").addClass("label label-danger");
-      $("#storyChanged").prop('title', "has errors");
-    }
-  }
-
-  console.log("  updateMarkers story");
-
-  if(data.info.enginePaused == 'true')
-    $('#roundtrip').html('' +
-        '<span class="glyphicon glyphicon-play" onclick="javascript:enginePlay()" style="cursor:pointer; color:red" title="Play one step"></span>' +
-        '&nbsp;'+
-        '<span class="glyphicon glyphicon-forward"  onclick="javascript:engineContinue()" style="cursor:pointer; color:red" title="Continue flow"></span>' +
-        '' + data.info.progress+'');
-  else if(data.info.enginePaused == 'false')
-    $('#roundtrip').html('' +
-        '<span class="glyphicon glyphicon-remove" onclick="javascript:engineCancel()" style="cursor:pointer; color:red" title="Cancel flow"></span>' +
-        '&nbsp;'+
-        '<span class="glyphicon glyphicon-pause"  onclick="javascript:enginePause()" style="cursor:pointer; color:red" title="Pause flow"></span>' +
-        '' + data.info.progress+'');
-
-  else
-    $('#roundtrip').html('' +
-        '' + data.info.progress+'');
-
-  $('#roundtrip').prop('title', "failed/tested/todo");
-
-  if(typeof data.storyChanged != "undefined") storyChanged(data.storyChanged);
-
-
-  // ------------- this part from processFinal - to show in progress flows ---------
-  if($("#iframeOutStory_@id")) {
-    if($('#wikiMode').prop('checked')) {
-      $('#divOutStory_' + id).html(data.wiki);
-    } else if(!compileOnly) {
-      // console.log("TREE: "+data.res);
-
-      // jquery.html will expand the escaped html, we need to escape again with encAmp
-      // if i don't do this, html values will mess up the current page
-      showFinalEngineResult('@id'); // from curEngineData
-    }
-  }
-  // ------------- this part from processFinal - to show in progress flows ---------
-
-
-  // we check all the time, to update progress, anyways...
-  // if(! wsActive) {
-    setTimeout(function () {
-      checkpill2_@{id}('@{id}');
-    }, CHECK_TIMER);
-  // }
-};
-
-/** final response - engine complete - update everything */
-function processFinalEngineResult(id, data, compileOnly, lastTime, next) {
-  isRefreshing2 -= 1;
-  hideSpinner();
-
-  if($('#wikiMode').prop('checked')) {
-    $('#divOutStory_' + id).html(data.wiki);
-  } else if(!compileOnly) {
-    // console.log("TREE: "+data.res);
-
-    // jquery.html will expand the escaped html, we need to escape again with encAmp
-    // if i don't do this, html values will mess up the current page
-    showFinalEngineResult('@id'); // from curEngineData
-  }
-
-  if(!compileOnly) {
-    $('#iframeOut5_' + id).html(data.capture);
-    instContentAssist = data.ca;
-    setErrors(data.failureCount, data.info.errorCount, data.info.totalCount);
-    var du = new Date().getTime() - lastTime;
-    $('#roundtrip').text(du + ' ms');
-    $('#roundtrip').prop('title', "real time roundtrip response time");
-
-    // automatic backoff
-    if(du > 9000)
-      currDebounce = 7000;
-    else if(du > 7000)
-      currDebounce = 5000;
-    else if(du > 2000)
-      currDebounce = 3000;
-    else
-      currDebounce = 2000;
-  }
-
-  if(storyEditor && typeof data.ast != "undefined") {
-    storyHasErrors = updateMarkers(storyEditor, data.ast);
-    if(storyHasErrors) {
-      $("#storyChanged").addClass("label label-danger");
-      $("#storyChanged").prop('title', "has errors");
-    }
-  }
-
-  console.log("  updateMarkers story");
-
-  if(!compileOnly) curDomRequest = null;
-  if(typeof data.storyChanged != "undefined") storyChanged(data.storyChanged);
-
-  if(typeof next === "function") {
-    next();
-  }
-};
 
 </script>
 
@@ -851,7 +641,9 @@ function processFinalEngineResult(id, data, compileOnly, lastTime, next) {
           console.log("WS ping: " + data.pingMsg);
         } else if(data.clientId == '@id') {
           console.log("WS result: " + JSON.stringify(data.info));
-          processEngineResult('@id', data, data.info.compileOnly, lastStartTime);
+          processEngineResult({
+            id: '@id',
+          }, '@id', data, data.info.compileOnly, lastStartTime);
         } else  {
           console.log("WS result NOT MINE: ");// + JSON.stringify(data));
         }
@@ -1136,7 +928,7 @@ setInterval(refreshFunc, 500);
  */
 
 specChanged("@specChanged");
-storyChanged("@storyChanged");
+fiddle_storyChanged("@storyChanged");
 
 function specChanged(spec) {
   $('#specChanged').removeClass();
@@ -1149,7 +941,7 @@ function specChanged(spec) {
   }
 }
 
-function storyChanged(story) {
+function fiddle_storyChanged(story) {
   $('#storyChanged').removeClass();
   if(story === "true" || story === true) {
     $("#storyChanged").addClass("label label-warning");
@@ -1252,7 +1044,7 @@ function saveOrig(what) {
         // location.reload(true);
         // instead just reset the floppy:
         if(what === "Spec") specChanged(false);
-        else storyChanged(false);
+        else fiddle_storyChanged(false);
         oneModalHide();
       },
       error  : function(x) {
@@ -1295,6 +1087,55 @@ function saveNew(what) {
     });
 }
 
+function fiddle_showCapture(id, data) {
+  $('#iframeOut5_' + id).html(data.capture);
+}
+
+function fiddle_setErrors(response) {
+  setErrors(response.failureCount, response.info.errorCount, response.info.totalCount);
+}
+
+function fiddle_updateStoryMarkers(response) {
+  if(storyEditor && typeof response.ast != "undefined") {
+    storyHasErrors = updateMarkers(storyEditor, response.ast);
+    if(storyHasErrors) {
+      $("#storyChanged").addClass("label label-danger");
+      $("#storyChanged").prop('title', "has errors");
+    }
+  }
+}
+
+function fiddle_showFinalEngineResult (id, compileOnly) {
+  var response = currEngineData;
+
+  if($("#iframeOutStory_" + id)) {
+    if ($('#wikiMode').prop('checked')) {
+      $('#divOutStory_' + id).html(response.wiki);
+    } else if (!compileOnly) {
+      // console.log("TREE: "+data.res);
+
+      // jquery.html will expand the escaped html, we need to escape again with encAmp
+      // if i don't do this, html values will mess up the current page
+
+      var ponly = $('#payloadOnly').prop('checked');
+
+      if (ponly) {
+        $('#iframeOutStory_' + id).text((response.payload) + '\n');
+        $('#iframeOutSpec_' + id).text((response.payload) + '\n');
+      } else {
+        $('#iframeOutStory_' + id).html(encAmp(response.res) + '\n');
+        $('#iframeOutSpec_' + id).html(encAmp(response.res) + '\n');
+
+        dieselHideVerbose(localStorage.getItem("domFiddleVerboseStory") == "true");
+        dieselHideTrace(localStorage.getItem("domFiddleTraceStory") == "true");
+        dieselHideDebug(localStorage.getItem("domFiddleDebugStory") == "true");
+        dieselHideGenerated(localStorage.getItem("domFiddleGeneratedStory") == "true");
+
+        showDurations();
+      }
+    }
+  }
+}
 
 /** reset the size of panels on screen based on switches and window size */
 var resetView = function () {
@@ -1398,41 +1239,8 @@ $(window).on('load', function() {
     $('#expandedSpec').trigger("change");
   });
 
+  setupLogLevels(fiddleId);
 
-  // todo could optimize and not showFinal every time trace/debug but only if payload was on
-  useLocalStorageCheckbox("verboseStory", "domFiddleVerboseStory", function (a,b,expanded) {
-    if(expanded) $('#payloadOnly').prop('checked', false).change(); // change triggers the callback
-    if(currEngineData != null) showFinalEngineResult('@id'); // repaint
-    dieselHideVerbose(expanded);
-  });
-
-  // todo could optimize and not showFinal every time trace/debug but only if payload was on
-  useLocalStorageCheckbox("traceStory", "domFiddleTraceStory", function (a,b,expanded) {
-    if(expanded) $('#payloadOnly').prop('checked', false).change(); // change triggers the callback
-    if(currEngineData != null) showFinalEngineResult('@id'); // repaint
-    dieselHideTrace(expanded);
-  });
-
-  useLocalStorageCheckbox("debugStory", "domFiddleDebugStory", function (a,b,expanded) {
-    if(expanded) $('#payloadOnly').prop('checked', false).change(); // change triggers the callback
-    if(currEngineData != null) showFinalEngineResult('@id'); // repaint
-    dieselHideDebug(expanded);
-  });
-
-  useLocalStorageCheckbox("generatedStory", "domFiddleGeneratedStory", function (a,b,expanded) {
-    if(expanded) $('#payloadOnly').prop('checked', false).change(); // change triggers the callback
-    if(currEngineData != null) showFinalEngineResult('@id'); // repaint
-    dieselHideGenerated(expanded);
-  });
-
-  useLocalStorageCheckbox("payloadOnly", "domFiddlePayloadOnly", function (a,b,expanded) {
-    if(expanded) {
-      $('#traceStory').prop('checked', false).change(); // change triggers the callback
-      $('#debugStory').prop('checked', false).change(); // change triggers the callback
-      $('#generatedStory').prop('checked', false).change(); // change triggers the callback
-    }
-    if(currEngineData != null) showFinalEngineResult('@id'); // repaint
-  });
 });
 
 

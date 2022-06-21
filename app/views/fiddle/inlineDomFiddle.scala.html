@@ -22,6 +22,7 @@ an inline JS with HTML and CSS fiddle
   s.replaceAll("'", "\\\\'").replaceAll("\r", "").replaceAll("\n", "\\\\n'\n+'")
 }
 
+<script src="@routes.Assets.at("javascripts/weFiddles.js")"></script>
 
 <script>
 function setCookie(cname, cvalue, msec) {
@@ -59,6 +60,12 @@ var ast_@id  = '';
 var links_@id  = '@Html(tos(links))';
 var content_@id = '@Html(tos(content))';
 
+var timeStamp = @{System.currentTimeMillis().toString} ;
+// this is used to prevent stale pages (back browser button or older tabs) from overwriting newer drafts
+// this is actually server time stamp
+var clientStoryTimeStamp = timeStamp;
+var clientSpecTimeStamp = timeStamp;
+
 function setAst_@{id} (noreload) {
   ast_@id  = 'Loading...';
 
@@ -90,99 +97,128 @@ function setAst_@{id} (noreload) {
 var debugThis;
 
 /** post the entire section contents to be ran against this page */
-var runpill2_@id = function(id, url, noreload) {
-  var lastTime = new Date().getTime();
-  $.ajax(
-@if(au.isDefined) {
-'/diesel/fiddle/fiddleStoryUpdated/' + id + '?@Html(mod.diesel.controllers.SFiddles.qtourl(args))'
-  } else {
-'/diesel/anon/fiddle/@wid.wpath' +  '?dfiddle=@{name}&@Html(mod.diesel.controllers.SFiddles.qtourl(args))'
-}
-        , {
-        type: 'POST',
-        data: $.param({
-          saveMode    : false,
-          sketchMode  : false,
-          mockMode    : true,
-          blenderMode : false,
-          draftMode   : false,
-          reactor     : '@reactor',
-          specWpath   : '',
-          storyWpath  : '@wid.wpath',
-          story       : story_@id+"\n",
-          spec        : spec_@id+"\n",
-          runEngine   : true
-        }),
-        contentType: 'application/x-www-form-urlencoded',
-        success: function(data) {
-          @*ast_@id = data.tree || ("ERR " + JSON.stringify(data));*@
-          debugThis=data;
-          ast_@id = data.res || ("ERR " + JSON.stringify(data));
+var runpill2_@id = function(id, url, inoreload) {
+  noreload = inoreload;
 
-          instContentAssist = data.ca;
-          domContentAssist = data.ca;
-
-          // todo make sure it's still this tab that's focused
-          if(noreload == undefined)
-            $('#code_'+id).html(ast_@id);
-          $('#preout_'+id).html(ast_@id);
-
-          // hide trace nodes
-          $("div[kind='trace']").hide();
-
-          //if(aceEditor_@{id}) updateMarkers(aceEditor_@{id} , data.ast);
-
-//      var du = new Date().getTime() - lastTime;
-//      $('#roundtrip').text(du+' ms');
-        },
-        error  : function(x) {
-          ast_@id = "ERR " + JSON.stringify(x);
-          if(noreload == undefined)
-            $('#code_'+id).text(ast_@id);
-          $('#preout_'+id).text(ast_@id);
-          console.log( "ERR "+JSON.stringify(x));
-        }
-      });
-}
-
-var OLDrunpill2_@id = function(id, url, noreload) {
-  var lastTime = new Date().getTime();
-  $.ajax(
-    url, {
-    type: 'POST',
-    data: $.param({
-      saveMode : false,
-      sketchMode : true,
-      mockMode : true,
+  runFiddleStoryUpdated({
+    @if(au.isDefined) {
+      url: '/diesel/fiddle/fiddleStoryUpdated/' + id + '?@Html(mod.diesel.controllers.SFiddles.qtourl(args))',
+    } else {
+      url: '/diesel/anon/fiddle/@wid.wpath' +  '?dfiddle=@{name}&@Html(mod.diesel.controllers.SFiddles.qtourl(args))',
+    }
+    data: {
+      saveMode    : false,
+      sketchMode  : false,
+      mockMode    : true,
       blenderMode : false,
-      draftMode : false,
-      reactor : '@reactor',
-      specWpath : '',
-      storyWpath : '@wid.wpath',
-      story : story_@id,
-      spec : ''
-    }),
-    contentType: 'application/x-www-form-urlencoded',
-    success: function(data) {
-        ast_@id = data.tree || ("ERR " + JSON.stringify(data));
+      draftMode   : false,
+      needsCAMap  : needsContentAssist(false, false),
+      needsBaseCA : isObjectEmpty(baseContentAssist),
+      reactor     : '@reactor',
+      specWpath   : '',
+      storyWpath  : '@wid.wpath',
+      story       : story_@id+"\n",
+      spec        : spec_@id+"\n",
+      runEngine   : true,
 
-      instContentAssist = data.ca;
-      domContentAssist = data.ca;
-      // todo make sure it's still this tab that's focused
-      if(noreload == undefined)
-        $('#code_'+id).html(ast_@id);
-      $('#preout_'+id).html(ast_@id);
-//      var du = new Date().getTime() - lastTime;
-//      $('#roundtrip').text(du+' ms');
+      compileOnly : false,
+      simMode : false,
+      clientTimeStamp: clientStoryTimeStamp
     },
-    error  : function(x) {
+    id: id,
+    compileOnly: false,
+    forceRT: true,
+    next: null,
+
+    onSuccess: function(data) {
+      debugThis=data;
+      var res =  data.res || ("ERR " + JSON.stringify(data));
+      ast_@id = res;
+    },
+
+    onError: function(x) {
       ast_@id = "ERR " + JSON.stringify(x);
       if(noreload == undefined)
         $('#code_'+id).text(ast_@id);
       $('#preout_'+id).text(ast_@id);
-      console.log( "ERR "+JSON.stringify(x));
     }
   });
+
+}
+
+function fiddle_showCapture(id, data) {
+  // nothing to do
+}
+function fiddle_setErrors(response) {
+}
+function fiddle_updateStoryMarkers(response) {
+  //if(aceEditor_@{id}) updateMarkers(aceEditor_@{id} , data.ast);
+}
+function fiddle_showFinalEngineResult (id, compileOnly) {
+  var data = currEngineData;
+  var res =  data.res || ("ERR " + JSON.stringify(data));
+
+  // todo make sure it's still this tab that's focused
+  if(noreload == undefined)
+    $('#code_'+id).html(res);
+  $('#preout_'+id).html(res);
+
+  // hide trace nodes
+  $("div[kind='trace']").hide();
+}
+
+function fiddle_storyChanged(story) {
+}
+
+var OLDrunpill2_@id = function(id, url, inoreload) {
+  noreload = inoreload;
+
+  runFiddleStoryUpdated({
+    @if(au.isDefined) {
+    url: '/diesel/fiddle/fiddleStoryUpdated/' + id + '?@Html(mod.diesel.controllers.SFiddles.qtourl(args))',
+    } else {
+    url: '/diesel/anon/fiddle/@wid.wpath' +  '?dfiddle=@{name}&@Html(mod.diesel.controllers.SFiddles.qtourl(args))',
+    }
+    data: {
+      saveMode    : false,
+      sketchMode : true,
+      mockMode    : true,
+      blenderMode : false,
+      draftMode   : false,
+      needsCAMap  : needsContentAssist(false, false),
+      needsBaseCA : isObjectEmpty(baseContentAssist),
+      reactor     : '@reactor',
+      specWpath   : '',
+      storyWpath  : '@wid.wpath',
+      story : story_@id,
+      spec        : '',
+      runEngine   : true,
+
+      compileOnly : false,
+      simMode : false,
+      clientTimeStamp: clientStoryTimeStamp
+    },
+    id: id,
+    compileOnly: false,
+    forceRT: true,
+    next: null,
+
+    onSuccess: function(data) {
+      ast_@id = data.tree || ("ERR " + JSON.stringify(data));
+
+      // todo make sure it's still this tab that's focused
+      if(noreload == undefined) $('#code_'+id).html(ast_@id);
+      $('#preout_'+id).html(ast_@id);
+    },
+
+    onError: function(x) {
+      ast_@id = "ERR " + JSON.stringify(x);
+      if(noreload == undefined)
+        $('#code_'+id).text(ast_@id);
+      $('#preout_'+id).text(ast_@id);
+    }
+  });
+
 }
 
 </script>
@@ -268,13 +304,10 @@ var sessionId = '';
 
 var scriptsLoaded = false;
 
-var domContentAssist=[];
-var instContentAssist=[];
-
 var editpill_@id = function(id) {
   upd_@{id}(id);
 
-  setAst_@{id} ("noreload");
+  @*setAst_@{id} ("noreload");*@
 
   // setup jquery to not reload scripts all the time
   $.ajaxSetup({
@@ -298,6 +331,7 @@ var editpill_@id = function(id) {
         jQuery.getScript("@routes.Assets.at("javascripts/rk-contentassist.js")", function(data, status, jqxhr) {
           jQuery.getScript("@routes.Assets.at("javascripts/weCommons.js")", function(data, status, jqxhr) {
             jQuery.getScript("@routes.Assets.at("javascripts/weDieselDom.js")", function(data, status, jqxhr) {
+            jQuery.getScript("@routes.Assets.at("javascripts/weFiddles.js")", function(data, status, jqxhr) {
               jQuery.getScript("@routes.Assets.at("ace-builds/src/ace.js")", function(data, status, jqxhr) {
                 jQuery.getScript("@routes.Assets.at("ace-builds/src/mode-nvp1.js")", function(data, status, jqxhr) {
                   jQuery.getScript("@routes.Assets.at("ace-builds/src/ext-language_tools.js")", function(data, status, jqxhr) {
@@ -316,6 +350,7 @@ var editpill_@id = function(id) {
                 });
               });
             });
+          });
           });
         });
       });

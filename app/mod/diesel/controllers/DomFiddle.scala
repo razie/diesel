@@ -5,29 +5,33 @@ import com.google.inject.Singleton
 import controllers.{IgnoreErrors, VErrors, WikiAuthorization}
 import java.util.concurrent.TimeUnit
 import mod.diesel.model.DomEngineHelper
+import org.bson.types.ObjectId
 import org.joda.time.DateTime
 import play.api.Play.current
 import play.api.mvc._
 import razie.diesel.Diesel
+import razie.diesel.dom.RDOM.{P, T}
 import razie.diesel.dom.RDomain.DOM_LIST
 import razie.diesel.dom.{WikiDomain, _}
 import razie.diesel.engine.AstKinds._
 import razie.diesel.engine.RDExt._
-import razie.diesel.engine.nodes.{EnginePrep, HasPosition}
+import razie.diesel.engine.nodes.EnginePrep.listStoriesWithFiddles
+import razie.diesel.engine.nodes.{EMsg, EVal, EnginePrep, HasPosition}
 import razie.diesel.engine.{DieselAppContext, RDExt, _}
 import razie.diesel.model.DieselMsg
 import razie.diesel.utils.DomUtils.{SAMPLE_SPEC, SAMPLE_STORY}
 import razie.diesel.utils.{AutosaveSet, DomCollector, DomWorker, SpecCache}
-import razie.wiki.Services
+import razie.tconf.EPos
+import razie.wiki.{Enc, Services}
 import razie.wiki.admin.Autosave
 import razie.wiki.model._
 import razie.wiki.parser.WAST
-import razie.{CSTimer, Logging, js}
+import razie.{CSTimer, Log, Logging, js}
 import scala.collection.concurrent.TrieMap
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.concurrent.duration.{Duration, _}
-import scala.util.Success
+import scala.util.{Success, Try}
 
 /** utilities for fiddling */
 object DomFiddles {
@@ -136,7 +140,7 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
     }
   }
 
-  /** check contents and get the latest, when user navigates back */
+  /** check contents to be valid (no conflicts) and get the latest, when user navigates back */
   def checkContents(id:String) : Action[AnyContent] = RAction.withAuth.noRobots { implicit stok =>
       log(s"checkContents ${stok.realm}")
       val specWpath = stok.formParm("specWpath")
@@ -258,6 +262,7 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
     val specWpath = stok.formParm("specWpath")
     val storyWpath = stok.formParm("storyWpath")
     val spec = stok.formParm("spec")              // current text in textbox
+    var needsCAMap = stok.formParm("needsCAMap").toBoolean
     val story = stok.formParm("story")            // current text in textbox
     val capture = stok.formParm("capture")
     var clientTimeStamp = stok.formParm("clientTimeStamp")
@@ -312,10 +317,12 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
       // fiddleSpec only parses it, never runs it - it's a spec, afterall
       val res = Wikis.format(specPage.wid, specPage.markup, null, Some(specPage), stok.au)
 
+      val ca = if(needsCAMap) RDExt.toCAjmap(specDom plus storyDom) else Map.empty // C.assist options
+
       retj << Map(
         "res" -> res,
         // todo should respect blenderMode ?
-        "ca" -> RDExt.toCAjmap(specDom plus storyDom), // C.assist options
+        "ca" -> ca,
         "specChanged" -> (specWpath.length > 0 && spw.replaceAllLiterally("\r", "") != spec),
         "ast" -> getAstInfo(specPage),
         "info" -> Map( // just like fiddleUpdated
@@ -359,6 +366,9 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
     val scompileOnly = stok.formParm("compileOnly")
     val compileOnly = scompileOnly != "" && scompileOnly.toBoolean
     var clientTimeStamp = stok.formParm("clientTimeStamp")
+
+    var needsCAMap = stok.formParm("needsCAMap").toBoolean
+    var needsBaseCA = stok.formParm("needsBaseCA").toBoolean
 
     val uid = stok.au.map(_._id).getOrElse(NOUSER)
 
@@ -410,7 +420,7 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
 
       // add the engine spec to be included in content assist
       val engSpec = WID.fromPath(WPATH_DEFAULT_EXECUTORS).flatMap(_.page).toList
-      val page = new WikiEntry("Spec", specName, specName, "md", spec, uid, Seq("dslObject"), stok.realm)
+      val specPage = new WikiEntry("Spec", specName, specName, "md", spec, uid, Seq("dslObject"), stok.realm)
 
       val pages =
         if (settings.blenderMode) {
@@ -425,10 +435,9 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
 
           d
         } else
-          engSpec ::: List(page)
+          engSpec ::: List(specPage)
 
-      // todo is adding page twice...
-      val dom = pages.flatMap(p =>
+      val specDom = pages.flatMap(p =>
         SpecCache.orcached(p, WikiDomain.domFrom(p)).toList
       ).foldLeft(
         RDomain.empty
@@ -436,12 +445,17 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
 
       stimer snap "2_parse_specs"
 
-      val ipage = new WikiEntry("Story", storyName, storyName, "md", story, uid, Seq("dslObject"), stok.realm)
-      ipage.cacheable = false
-
-      val idom = WikiDomain.domFrom(ipage).get.revise addRoot
+      val storyPage = new WikiEntry("Story", storyName, storyName, "md", story, uid, Seq("dslObject"), stok.realm)
+      storyPage.cacheable = false
 
       stimer snap "3_parse_story"
+
+      // filter out $val - if we add these from story they become constants
+      val storyDom = WikiDomain.domFromFiltered (storyPage) {
+        case e @ _ if ! e.isInstanceOf[EVal] => e
+      }.get.revise addRoot
+
+      stimer snap "3_a_parse_story_dom"
 
       var captureTree = ""
 
@@ -463,16 +477,18 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
 
       stimer snap "4_build_dom_root"
 
+      val allDom = specDom.plus(storyDom) // add the storyDom to have classes and domain stuffs defined in story
+
       // start processing all elements
       val engine = DieselAppContext.mkEngine(
-        dom.plus(idom),
+        allDom,
         root,
         settings,
-        ipage :: pages map WikiDomain.spec,
+        storyPage :: pages map WikiDomain.spec,
         DieselMsg.fiddleStoryUpdated)
       setHostname(engine.ctx.root)
 
-      EnginePrep.addStoriesToAst(engine, List(ipage), capture startsWith "{")
+      EnginePrep.addStoriesToAst(engine, List(storyPage), capture startsWith "{")
 
       DomCollector.collectAst("fiddle", stok.realm, engine.id, stok.au.map(_.id), engine, stok.uri)
 
@@ -520,7 +536,18 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
 
         stimer snap "5_engine_expand"
 
-        val wiki = Wikis.format(ipage.wid, ipage.markup, null, Some(ipage), stok.au)
+        val wiki = Wikis.format(storyPage.wid, storyPage.markup, null, Some(storyPage), stok.au)
+
+        stimer snap "5a_format_storyhtml"
+
+        val storyCA = if(needsCAMap)  RDExt.toCAjmap(storyDom) else Map.empty // in blenderMode dom is full
+        val baseCA  = if(needsBaseCA) RDExt.toCAjmap(specDom) else Map.empty // in blenderMode dom is full
+
+        stimer snap "5b_format_ca"
+
+        val astinfo = getAstInfo(storyPage)
+
+        stimer snap "5c_astinfo"
 
         val m = Map(
           // flags in map for easy logging
@@ -543,9 +570,10 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
           "capture" -> captureTree,
           "wiki" -> wiki,
           "storyChanged" -> (storyWpath.length > 0 && stw.replaceAllLiterally("\r", "") != story),
-          "ca" -> RDExt.toCAjmap(dom plus idom), // in blenderMode dom is full
+          "storyCA" -> storyCA, // in blenderMode dom is full
+          "baseCA" -> baseCA, // in blenderMode dom is full
           "failureCount" -> engine.failedTestCount,
-          "ast" -> getAstInfo(ipage)
+          "ast" -> astinfo
         )
 
         stimer snap "6_format_response"
@@ -816,6 +844,92 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
     ))
 
     Ok("ok")
+  }
+
+  /** /diesel/fiddle/usages/ea
+    * API msg sent to reactor
+    */
+  def findUsages(em: String) = Filter(noRobots).async { implicit stok =>
+    if (stok.au.exists(_.isActive)) {
+      val ea = em.replaceAllLiterally("/", ".")
+
+      if (!em.matches(EMsg.REGEX.pattern.pattern())) {
+        Future.successful(
+          InternalServerError("Not a message: " + em)
+        )
+      } else try {
+        val EMsg.REGEX(e, a) = em
+
+        val uid = stok.au.map(_._id).getOrElse(NOUSER)
+        val settings = new DomEngineSettings()
+        settings.realm = Some(stok.realm)
+
+        // prep engine to load its domain
+        val engine = EnginePrep.prepEngine(
+          new ObjectId().toString,
+          settings,
+          stok.realm,
+          None,
+          false,
+          stok.au,
+          s"DomApi.findUsage:$e:$a",
+          None,
+          // empty story so nothing is added to root
+          List(new WikiEntry("Story", "temp", "temp", "md", "", uid, Seq("dslObject"), stok.realm))
+        )
+
+        // 1. stories usage
+        val stories = EnginePrep.loadStories(settings, stok.realm, stok.au.map(_._id), "")
+        val allStories = listStoriesWithFiddles(stories, addFiddles = true)
+
+        val u1 = usagesStories(e, a, allStories)
+
+        // 2. specs, put $when first
+        val u2 = usagesSpecs(e, a)(engine.ctx).sortBy(x => if (x._1 == "$when") 0 else 1)
+
+        // remove engine from everywhere
+        engine.cleanResources()
+
+        /** mesg to entry */
+        def addm(t: String, msg: String, p: Option[EPos], line: String, parent: String = "") = {
+          Map(
+            "type" -> t,
+            "msg" -> msg,
+            "parent" -> parent,
+            "line" -> line,
+            "topic" -> p.map(_.wpath).flatMap(WID.fromPath).map(_.name)
+          ) ++
+              p.map { p =>
+                Map(
+                  "ref" -> p.toRef,
+                  "wpath" -> p.wpath,
+                  "fiddle" -> p.toFiddle
+                )
+              }.getOrElse(Map.empty)
+        }
+
+        val m = (u2 ::: u1).map(u => addm(u._1, u._2, u._3, u._4, u._5))
+
+        val html = views.html.fiddle.usageTable(m, Some(("Topic", "Kind", "Details")))
+
+        Future.successful(
+          Ok(html)
+//        retj << Map(
+//          "usages" -> m
+//        )
+        )
+      } catch {
+        case e : Exception =>
+          razie.Log.info("findUsages exception", e)
+          Future.successful(
+            InternalServerError("Error: " + e.getMessage)
+          )
+      }
+    } else {
+      Future.successful(
+        unauthorized ("Can't start a message without an active account...")
+      )
+    }
   }
 }
 

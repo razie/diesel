@@ -2,9 +2,20 @@
  * Created by razvanc on 02/05/2014.
  */
 
-// assume views deal with one engine at a time
-var currEngineId = null;
-var currEngineData = null;
+var baseContentAssist={}; // base domain of realm
+var domContentAssist={};  // base plus current spec
+var instContentAssist={}; // base plus current story
+
+/** object is empty */
+function isObjectEmpty(o) {
+  return Object.keys(o).length === 0;
+}
+
+/** do we need the CA recalculated - expensive */
+function needsContentAssist(spec, compileOnly) {
+  var isEmpty = isObjectEmpty(spec ? domContentAssist : instContentAssist);
+  return isEmpty || (!isSlow || compileOnly);
+}
 
 /** am I withing brackets? go back and count ) and ( pairs) */
 function isInBrackets(line, pos) {
@@ -348,9 +359,6 @@ var lastMarkerStory = null;
 
 var domSpecChanged = false;
 
-var storyHasErrors = false;
-var specHasErrors = false;
-
 /** navigation: select given line - this works IN the fiddle only */
 function weSelect(wpath, line, col) {
   var Range = ace.require('ace/range').Range;
@@ -684,7 +692,7 @@ var findUsages = function (wp, editor) {
 
   if (typeof ea != "undefined")
     $.ajax(
-      '/diesel/findUsages/' + ea, {
+      '/diesel/fiddle/findUsages/' + ea, {
         type: 'GET',
         data: $.param({
           reactor: '@reactor'
@@ -699,27 +707,6 @@ var findUsages = function (wp, editor) {
       });
 }
 
-/** final response - engine complete - update everything */
-function showFinalEngineResult(id) {
-  var data = currEngineData;
-  var ponly = $('#payloadOnly').prop('checked');
-
-  if (ponly) {
-    $('#iframeOutStory_' + id).text((data.payload) + '\n');
-    $('#iframeOutSpec_' + id).text((data.payload) + '\n');
-  } else {
-    $('#iframeOutStory_' + id).html(encAmp(data.res) + '\n');
-    $('#iframeOutSpec_' + id).html(encAmp(data.res) + '\n');
-
-    dieselHideVerbose(localStorage.getItem("domFiddleVerboseStory") == "true");
-    dieselHideTrace(localStorage.getItem("domFiddleTraceStory") == "true");
-    dieselHideDebug(localStorage.getItem("domFiddleDebugStory") == "true");
-    dieselHideGenerated(localStorage.getItem("domFiddleGeneratedStory") == "true");
-
-    showDurations();
-  }
-}
-
 
 /** encode & special html sequences */
 function encAmp(s) {
@@ -727,4 +714,3 @@ function encAmp(s) {
     .replace(/&lt;/g, '〈')
     .replace(/&gt;/g, '〉');
 }
-
