@@ -446,7 +446,7 @@ class DomEngineV1(
           .filter(x => x.e.testAttrCond(a, n) || {
             // add debug
             newNodes = newNodes ::: DomAst(
-              EInfo("rule skipped: " + x.e.toString, x.e.toString + "\n" + x.pos).withPos(x.pos),
+              ETrace("rule skipped: " + x.e.toString, x.e.toString + "\n" + x.pos).withPos(x.pos),
               AstKinds.VERBOSE) :: Nil
             false
           })
@@ -462,7 +462,7 @@ class DomEngineV1(
                 .filter(x => x.e.testAttrCond(a, n, None, true) || {
                   // add debug
                   newNodes = newNodes ::: DomAst(
-                    EInfo("rule skipped: " + x.e.toString, x.e.toString + "\n" + x.pos).withPos(x.pos),
+                    ETrace("rule skipped: " + x.e.toString, x.e.toString + "\n" + x.pos).withPos(x.pos),
                     AstKinds.VERBOSE) :: Nil
                   false
                 })

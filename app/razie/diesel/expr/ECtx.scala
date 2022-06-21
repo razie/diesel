@@ -73,6 +73,10 @@ trait ECtx extends ParmSource {
 
   def putAll(p: List[P]): Unit
 
+  /** in strict mode, instead of ignoring undefins and others, they'll result in exceptions */
+  def isStrict:Boolean = false
+  def nonStrict:Boolean = !isStrict
+
   def clear: Unit
 
   /** flatten and list all values in this and all parent contexts, using proper overriding */
