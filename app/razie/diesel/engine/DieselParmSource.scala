@@ -220,5 +220,14 @@ class NextDParmSource(ctx: ECtx, pname: String, values: Map[String, String => Ei
   def put(p: P): Unit = ???
 
   def listAttrs: List[String] = values.keys.toList
+
+  /** itself as a P */
+  override def asP: P = P.fromSmartTypedValue(
+    // override to avoid calculating stuff on display toHtml
+    name,
+    listAttrs
+        .map(p => (p, "..."))
+        .toMap
+  )
 }
 

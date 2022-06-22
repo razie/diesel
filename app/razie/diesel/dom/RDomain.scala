@@ -193,16 +193,23 @@ object RDomain {
   }
 
   /** crawl all domain pieces and build a domain */
-  def domFrom (we:DSpec) : Option[RDomain] = {
-    // it will always make a point of calling parsed before looking in the cache
-    if(we.parsed.contains("CANNOT PARSE"))
-      we.collector.put(
-        DOM_LIST,
-        List(
-          EVal(
-            P.of("error", "ERROR: " + we.parsed))))
+  def domFrom (we:DSpec, filter:Option[PartialFunction[Any,Any]] = None) : Option[RDomain] = {
+    val domList =
+      if(filter.isDefined) {
+        domFilter(we)(filter.get)
+      } else {
+        // copy paste but faster when no filter used...
 
-    val domList = we.collector.getOrElse(DOM_LIST, List[Any]()).asInstanceOf[List[Any]].reverse
+        // it will always make a point of calling parsed before looking in the cache
+        if(we.parsed.contains("CANNOT PARSE"))
+          we.collector.put(
+            DOM_LIST,
+            List(
+              EVal(
+                P.of("error", "ERROR: " + we.parsed))))
+
+        we.collector.getOrElse(DOM_LIST, List[Any]()).asInstanceOf[List[Any]].reverse
+      }
 
     // this causes the underlying fire to avoid fallen capter Y and focus on fighter 2
 

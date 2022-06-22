@@ -34,9 +34,10 @@ trait ParmSource {
     name,
     listAttrs
         .flatMap(x => this.getp(x).toList.filter(_.hasCurrentValue))
-        .map(p => (p.name, p.currentStringValue))
-//        .map(p => (p.name, p.value.map(_.asJavaObject).getOrElse("no value...")))
+//        .map(p => (p.name, p.currentStringValue))
+        .map(p => (p.name, p.value.map(_.asJavaObject).getOrElse("no value...")))
         // todo stupid recursion blows the stack if I try proper recursion in maps etc
+        // seems to work now - i commented out the string version...
         .toMap
   )
 }
