@@ -264,6 +264,8 @@ object DieselMsg {
     final val DIESEL_ASSERT = "diesel.assert"
     final val DIESEL_MAP = "diesel.map"
     final val DIESEL_REST = "diesel.rest"
+    final val STRICT = "diesel.engine.strict"
+    final val NON_STRICT = "diesel.engine.nonstrict"
     final val DIESEL_SYNC = "diesel.engine.sync"
     final val DIESEL_ASYNC = "diesel.engine.async"
     final val DIESEL_PONG = "diesel.engine.pong"

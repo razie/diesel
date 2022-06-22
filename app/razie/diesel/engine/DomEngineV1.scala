@@ -1342,6 +1342,16 @@ class DomEngineV1(
 
         true
 
+      } else if (ea == DieselMsg.ENGINE.STRICT) { //========================
+
+        ctx.root.strict = true
+        true
+
+      } else if (ea == DieselMsg.ENGINE.NON_STRICT) { //========================
+
+        ctx.root.strict = false
+        true
+
       } else if (ea == DieselMsg.ENGINE.DIESEL_SYNC) { //========================
 
         // turn the engine sync

@@ -164,10 +164,10 @@ object WTypes {
     * @param subtype     the subtype
     */
   def isSubtypeOf(typeToCheck: String, subtype: String): Boolean = {
-    typeToCheck.toLowerCase == subtype.toLowerCase || {
+    typeToCheck.trim.length > 0 && (typeToCheck.toLowerCase == subtype.toLowerCase || {
       typeToCheck.toLowerCase == EXCEPTION && subtype.toLowerCase == ERROR
       // todo check schemas if they're subtyped...
-    }
+    })
   }
 
   /** check known static subtype hierarchies
@@ -179,6 +179,7 @@ object WTypes {
   // todo deprecate when typecast not needed
 //  def apply(wt:WType):WType = wt
 
+  /** make a nice complex html type name, supports containers */
   def mkString (t:WType, classLink:String=>String):String = {
     val col = (if (t.name.isEmpty) "" else ":" + (if (t.isRef) "<>" else ""))
     var res = if (t.schema == WTypes.UNKNOWN) col + classLink(t.name)
