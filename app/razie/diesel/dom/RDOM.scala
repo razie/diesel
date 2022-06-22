@@ -716,6 +716,7 @@ object RDOM {
     private def typeHtml(s: WType) = {
       s.name.toLowerCase match {
         case "string" | "number" | "date" => s"<b>$s</b>"
+        case "array" if hasCurrentValue => WTypes.mkString(s, classLink) + value.map(v=> s"(${v.asArray.size})").mkString
         case _ => WTypes.mkString(s, classLink)
       }
     }
