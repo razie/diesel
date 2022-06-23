@@ -1,3 +1,0 @@
-
-ssh razvanc@cloud2.razie.com "export PATH=\$PATH:/usr/java/jdk1.6.0_18/bin; cd ~/rk/app/run; . ./restart"
-

@@ -1,7 +1,0 @@
-cd ../coolscala
-echo "-----------coolscala"
-git status
-echo "-----------rk"
-cd ../racerkidz
-git status
-

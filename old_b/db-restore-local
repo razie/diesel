@@ -1,8 +1,0 @@
-#
-# RESET the test.racerkidz.com database to the latest production dump
-#
-
-RKS=~/w/racerkidz/s
-
-mongorestore --host localhost -u r --password r --drop $RKS/db/dump
-

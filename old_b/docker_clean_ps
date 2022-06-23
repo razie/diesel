@@ -1,2 +1,0 @@
-# clean all stopped containers - do this before clean images
-docker rm $(docker ps --filter=status=exited --filter=status=created -q)
