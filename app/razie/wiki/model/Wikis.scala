@@ -583,11 +583,12 @@ object Wikis extends Logging with Validation {
     res
   }
 
+  final val LOCAL_IMG_PATH = "Users/raz/w/razie.github.io/"
 
-  def prepUrl (url:String) = {
+  def prepImgUrl (url:String) = {
     if(Services.config.isDevMode && Services.config.isLocalhost)
       url
-        .replace("http://cdn.razie.com/", "/admin/img/Users/raz/w/razie.github.io/")
+        .replace("http://cdn.razie.com/", "/admin/img/" + LOCAL_IMG_PATH)
         .replace("https://cdn.razie.com/", "/admin/img/")
 //        .replace("https://cdn.razie.com/", "http://localhost:9000/asset/../../")
 //        .replace("https://cdn.razie.com/", "file://Users/raz/w/razie.github.io/")

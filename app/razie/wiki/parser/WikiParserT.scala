@@ -470,7 +470,7 @@ trait WikiParserT extends WikiParserMini with CsvParser {
         case _ => ""
       }
 
-      val url = Wikis.prepUrl(name)
+      val url = Wikis.prepImgUrl(name)
       val args = iargs.filter(_._1 != "caption")
       val alt = iargs.toMap.get("caption").filter(_.contains("\"") == false).map(x=>"alt=\""+x+"\"").mkString
       val caption = getCaption(iargs)

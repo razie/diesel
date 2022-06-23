@@ -186,22 +186,35 @@ case class User(
 
   def myPages(realm: String, cat: String) = pages(realm, cat)
 
-  lazy val memberReactors = (ownedPages("rk", "Reactor").map(_.name).toList ::: realms.toList).distinct
+  // add owned pages for backwards issue with Razie's old reactors
+  lazy val memberReactors = (realms.toList ::: ownedPages("rk", "Reactor").map(_.name).toList).distinct
 
   def memberReactorsSameOrg(realm: String) = {
+    memberReactors
+  }
+
+  def memberReactorsWithOrg(realm: String) = {
     // todo complete this
-//        Website
-//        .forRealm(realm)
-//        .flatMap(_.prop("org"))
+        val org = Website
+        .forRealm(realm)
+        .flatMap(_.prop("org"))
 //        .toList
 //        .flatMap(org =>
-    (
-        ownedPages("rk", "Reactor").map(_.name).toList ::: realms.toList
-        ).distinct
+    memberReactors.map {r=>
+      val org = Website
+          .forRealm(r)
+          .flatMap(_.prop("org"))
+          .mkString
+      (org, r)
+    }
   }
 
   def ownedPages(realm: String, cat: String) =
-    Wikis(realm).weTable(cat).find(Map("props.owner" -> id, "category" -> cat)) map { o =>
+    Wikis(realm).weTable(cat).find(
+      Map(
+        "props.owner" -> id,
+        "category" -> cat)
+    ) map { o =>
       WID(cat, o.getAs[String]("name").get).r(o.getAs[String]("realm").get)
     }
 

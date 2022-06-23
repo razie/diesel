@@ -1,3 +1,4 @@
+@import razie.wiki.Services
 @()
 @import helper.twitterBootstrap._
 @import play.api.Play.current
@@ -8,7 +9,7 @@
 <script type="text/javascript">
   var onloadCallback = function() {
         grecaptcha.render('withrec', {
-          'sitekey' : '6Ldg3R8TAAAAABUziKbTSYZJIWUYSA7cwSz6uBBn'
+          'sitekey' : '@Services.config.prop("wiki.googlerecaptchakey")'
         });
       };
 </script>

@@ -1,0 +1,80 @@
+@***
+Admin user - list of users
+***@
+@import model.Users
+@import java.time.format.DateTimeFormatter
+@import org.joda.time.format.DateTimeFormat
+@(realm:String)(implicit stok: controllers.StateOk)
+@import com.mongodb.casbah.Imports._
+
+@fufu(db:com.mongodb.casbah.Imports.DBObject, k:String, v:String) = {
+@k match {
+  case "extId" => {
+    @Users.findUserById(db.get("_id").toString).flatMap(_.forRealm(stok.realm).profile).toList.flatMap(_.newExtLinks).map{l=>
+      <small>@l.extSystemId:@l.extInstanceId<br>@l.extAccountId</small>
+    }
+  }
+  case "date" => {
+    @Users.findUserById(db.get("_id").toString).flatMap(_.realmSet.get(stok.realm)).flatMap(_.crDtm).map(d=>DateTimeFormat.forPattern("yyyy-MM-dd").print(d))
+@*//    @Users.findUserById(db.get("_id").toString).flatMap(_.).map(_.formatted("YYYY-MM-DD"))*@
+  }
+  case "email" => {
+    @razie.wiki.Enc.unapply(v)
+  }
+  case "userName" => {
+    @if(stok.au.exists(_.isAdmin)) {
+      <a href="@routes.AdminUser.user(db.get("_id").toString)">@v</a>
+    } else {
+      @v
+    }
+  }
+  case "perms" => {
+    @Users.findUserById(db.get("_id").toString).map(_.forRealm(stok.realm)).map(_.perms)
+  }
+  case "verifyLink" => {
+    @if(stok.au.exists(_.isMod)) {
+      <a href="@routes.UserTasksCtl.forceVerified(db.get("_id").toString)">link</a>
+    } else {
+      @v
+    }
+  }
+  case "_id" => {
+    @if(stok.au.exists(_.isAdmin)) {
+      @admin.adminDbEntity("User", v)
+    } else {
+      @v
+    }
+  }
+  case _=> {
+    @v
+  }
+}
+}
+
+@filter(db:com.mongodb.casbah.Imports.DBObject) = @{
+//  db.get("realms").toString.split(",").contains(realm)
+  db.as[Seq[String]]("realms").contains(realm)
+}
+
+  @stok.title("admin users")
+
+    <h2>Users</h2>
+
+@util.utilTable(
+  "User",
+  Seq("userName" -> "UserName",
+    "_id" -> "Id",
+    "date" -> "Registered",
+    "email" -> "Email",
+    "firstName" -> "First Name",
+    "lastName" -> "Last Name",
+    "yob" -> "YOB",
+    "extId" -> "extId",
+    "realms" -> "Realms",
+  "perms" -> "Perms",
+  "verifyLink" -> "Activate"
+  ), None, None, Some(fufu),
+  Some(filter)
+)
+
+

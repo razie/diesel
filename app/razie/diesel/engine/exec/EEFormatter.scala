@@ -45,7 +45,7 @@ class EEFormatter extends EExecutor("formatter") {
     formattedTemplate.map {res=>
       var eres = new InfoAccumulator()
 
-      clog << ("PAYLOAD: \n" + res)
+      razie.ctrace << ("PAYLOAD: \n" + res)
       eres += EInfo("Payload", Enc.escapeHtml(res))
 
       // todo respect template mimetypes

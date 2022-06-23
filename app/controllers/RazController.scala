@@ -400,11 +400,15 @@ ${errCollector.mkString}
   def FAUR(f: RazRequest => Result) : Action[AnyContent] =
     FAUR("")(r=> Some(f(r)))
 
+  /** not truly member - also include base realms. Not good for auth everywhere, but import/diff should be allowed */
+  def deemedMemberOfRealm(u:User, realm:String) = u.realms.contains(realm) || "wiki" == realm || "specs" == realm || "rk" == realm
+
   /** for active user */
   def FAUR(msg:String, isApi:Boolean=false)(f: RazRequest => Option[Result]) : Action[AnyContent] = Action { implicit request =>
     val req = razRequest
     (for (
-      au <- activeUser(req.ireq, req.errCollector)
+      au <- activeUser(req.ireq, req.errCollector).filter(_.realms.contains(req.realm));
+      _ <- Some(au).filter(deemedMemberOfRealm(_, req.realm))
     ) yield {
         if(msg.nonEmpty) cdebug << "START_FAU "+msg
         val temp = f(req)
@@ -426,9 +430,11 @@ ${errCollector.mkString}
 
   /** for active user */
   def FAU(msg:String, isApi:Boolean=false)(f: User => VErrors => Request[AnyContent] => Option[Result]) : Action[AnyContent] = Action { implicit request =>
+    val req = razRequest
     implicit val errCollector = new VErrors()
     (for (
-      au <- activeUser
+      au <- activeUser;
+      _ <- Some(au).filter(_.realms.contains(req.realm))
     ) yield {
       if(msg.nonEmpty) cdebug << "START_FAU "+msg
       val temp = f(au)(errCollector)(request)
@@ -444,10 +450,11 @@ ${errCollector.mkString}
   }
 
   /** action builder that decomposes the request, extracting user and creating a simple error buffer */
-  def FAUPRAPI(isApi:Boolean=false)(f: RazRequest => Result) = Action { implicit request =>
+  def FAUPRAPI(isApi:Boolean=false, checkRealm:Boolean=true)(f: RazRequest => Result) = Action { implicit request =>
     implicit val stok = new RazRequest(request)
     (for (
-      au <- activeUser(stok.ireq, stok.errCollector)
+      au <- activeUser(stok.ireq, stok.errCollector);
+      _ <- Some(au).filter(!checkRealm || deemedMemberOfRealm(_, stok.realm))
     ) yield f(stok)
       ) getOrElse {
       val more = Website(request).flatMap(_.prop("msg.noPerm")).flatMap(WID.fromPath).flatMap(_.content).mkString
