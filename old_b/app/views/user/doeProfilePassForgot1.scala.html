@@ -1,0 +1,48 @@
+@***
+profile - reset password
+***@
+@(myForm: Form[_])(implicit stok: RazRequest)
+
+@import helper.twitterBootstrap._
+@import play.api.Play.current
+@import play.api.i18n.Messages.Implicits._
+
+@stok.title("Password reset")
+
+<p>Please enter your email address</p>
+
+  @helper.form(action = routes.ProfileUpd.doeForgotPass2(), 'class -> "well") {
+    @helper.inputText(
+      myForm("email"),
+      '_label -> "Email",
+      '_showConstraints -> false,
+      '_error -> myForm.error("email"))
+
+    <input type="hidden" name="token" value="@myForm("token").value"/>
+
+    @***** recaptcha ********@
+    @util.recaptcha()
+
+    <br><br>
+
+    <button type="submit" class="btn btn-primary">Continue </button>
+
+    @** not for Omni
+    @user.agree()
+    *@
+
+    @myForm.globalError.map { err =>
+      <p style="color : red ; font-weight : bold">@err.message</p>
+    }
+  }
+
+<script>
+    withJquery(function($) {
+      $("input").addClass("input-lg")
+    });
+</script>
+
+<p>If your email was registered, you will receive an email with a password reset link when you click "Continue". The link will expire in 30 minutes!</p>
+
+  @formFix()
+

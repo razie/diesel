@@ -1,0 +1,60 @@
+@*****************
+from user home page - create something
+*****************@
+@()(implicit stok: controllers.StateOk)
+@import razie.diesel.dom.WikiDomain
+
+@htmlHeadBar("Creating something...")
+
+@noParent(x:razie.wiki.model.WikiEntry)=@{
+  !WikiDomain("rk").needsParent(x.name)
+}
+
+<div class="container">
+  <div class="row">
+    <div class="col-sm-9">
+
+<h2>Create something</h2>
+
+<div class="well">
+<p>These are the things users can own:
+<p>
+      <form action="@routes.Wikie.edit2" method="GET" class="well form-inline">
+        <input type="text" name="name" id="name" class="input-xlarge"  placeholder="enter a name">
+        <select id="cat" name="cat" class="input-small">
+          @WikiDomain("rk").rdom.aEnds("User", "Owner").filter(
+            !WikiDomain("rk").rdom.needsParent(_)
+          ).filter(_ != "Form").sortWith(_ < _).map{x=>
+            <option value="@x" >@x</option>
+          }
+        </select>
+
+        <button type="submit" class="btn btn-primary">Create</button>
+      </form>
+      </div>
+
+<div class="well">
+<p>To create a public, generic purpose topic:
+<p>
+      <form action="@routes.Wikie.edit2" method="GET" class="well form-inline">
+        <input type="text" name="name" id="name" class="input-xlarge"  placeholder="enter a name">
+        <select id="cat" name="cat" class="input-small">
+            <option value="Topic" >Topic</option>
+        </select>
+
+        <button type="submit" class="btn btn-primary">Create</button>
+      </form>
+      </div>
+
+      <hr>
+      @htmlFooter()
+
+    </div> <!-- /col-sm-9 -->
+
+    <div class="col-sm-3">
+      @wiki.wikiFrag(razie.wiki.model.WID("Admin","Right"),None,true)
+    </div>
+  </div> <!-- row -->
+</div> <!-- /container -->
+
+@htmlBottom()

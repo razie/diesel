@@ -1,0 +1,252 @@
+@**************
+show/edit/capture a note
+
+msg types are msg, err
+**************@
+@(myForm:Form[_], isAuto:Boolean=false)(implicit stok:mod.notes.controllers.NotesOk)
+@import mod.notes.controllers.NotesLocker
+@import mod.notes.controllers.NotesTips
+@import mod.notes.controllers.routes
+
+@stok.title("invite?")
+
+<h3>Creative <small>| preview</small> @notes.notesmsg(stok.msg) </h3>
+
+@id = @{1}
+
+@nid = @{myForm("id").value}
+@ver = @{myForm("ver").value}
+
+@rows = @{
+   val line = myForm("content").value.getOrElse("")
+   if(line.length() - line.replace("\n", "").length() > 5) 10 else 5
+}
+
+
+<div class="well" style="padding-bottom:0px">
+
+@import helper.twitterBootstrap._
+@import play.api.Play.current
+@import play.api.i18n.Messages.Implicits._
+
+@helper.form(action=routes.NotesLocker.save(), 'class->"form-inline", 'style->"margin-bottom:0px") {
+
+  @helper.textarea(
+    myForm("content"),
+    '_label -> (Html(NotesTips.xhtml("admin,page,main", Some(stok.au)))),
+    '_showConstraints -> false,
+    'class -> "col-sm-12",
+    'rows->rows)
+
+   <div id="xflash" ><h2 id="flash1" style="text-align:center; width:100%; color:#49afcd;">preview</h2><p id="flash2" style="text-align:center; width:100%">preview mode only</p></div>
+
+   <div class="col-sm-12" style="margin-left:0px; padding-left: 0px; padding-right : 0px; padding-bottom: 10px;">
+       Tags <small>i.e. note,todo,forjohn,phone,email,contact,project1 </small>
+       <div style="float:right">
+           <a class="btn btn-xs" onclick="larger()" title="This is not twitter, eh?">+ Larger</a>
+       </div>
+   </div>
+
+  @helper.inputText(
+    myForm("tags"),
+      '_label -> "",
+//    '_label -> Html("""
+//       <div class="col-sm-12" style="margin-left:0px">
+//       Tags <small>i.e. note,todo,forjohn,phone,email,contact,project1 </small>
+//  <div style="float:right">
+//      <a class="btn btn-xs" onclick="larger()" title="This is not twitter, eh?">+ Larger</a>
+//  </div>
+//       </div>
+//       """),
+    'class -> "col-sm-12",
+    'autocomplete -> "off",
+    '_showConstraints -> false)
+
+  @myForm.globalError.map { err=>
+     <p style="color:red;font-weight:bold">@err.message</p>
+  }
+
+  <input id="id" type="hidden" name="id" value="@nid" />
+  <input id="ver" type="hidden" name="ver" value="@ver" />
+
+  <div class="actions col-sm-12" style="margin-left:0px; display:inline-block;">
+    <button id="submit" type="submit" class="btn btn-info">Save it</button>
+
+    @if(isAuto) {
+      <a id="discard" href="/notes/discard/@nid" class="btn btn-warning" title="This note was auto-saved...">Discard it</a>
+    }
+
+    <div style="float:right">
+      <a class="btn btn-default" onclick="archive()" title="Archive notes">Archive it</a>
+    </div>
+  </div>
+
+<div style="display:inline-block">
+  <p><small>You are typing markdown - see the <a href="/wiki/No_Folders/Notes_Quick_Guide">quick guide</a>.</small>
+</div>
+}
+</div>
+
+@if(stok.au.isHarry) {
+  </span>
+    <div class="alert alert-block alert-danger">
+      <strong>Need account</strong> - this is a demo account, please sign in with google or <a href="/login">create an account</a>.
+        @** the google button*@
+        <span id="signinButton">
+          <span
+          class="g-signin"
+          data-callback="signInCallback"
+          data-clientid="980280495626-7llkvk4o02anpu6qv1sseucc07f8f3gs.apps.googleusercontent.com"
+          data-cookiepolicy="single_host_origin"
+          data-scope="profile email">
+          </span>
+          <small>
+      <br>Thank you!
+      </small>
+    </div>
+}
+
+<script>
+$('#content')[0].focus();
+
+@if(!stok.au.isActive) {
+  $('#submit')[0].disabled=true;
+  $('#content')[0].disabled=true;
+  $('#tags')[0].disabled=true;
+//  $('#content')[0].title='You need an account to save notes, sorry!';
+//  $('#tags')[0].title='You need an account to save notes, sorry!';
+}
+
+var larger = function(s) {
+  var r = $('#content')[0].rows;
+  $('#content')[0].rows = r+5;
+  $('#content')[0].focus();
+}
+
+var archive = function(s) {
+  var r = $('#tags')[0].value;
+  r = r.length > 0 ? r+',' : r
+  $('#tags')[0].value = r+'archive';
+}
+
+var saveit = function() {
+  document.location = '/notes/saved?tags='+document.getElementById('tags').value+'&n='+razuri(editor1.getValue());
+}
+
+var punches = [
+["fast", "start typing right away, no folders to scroll through"],
+["simple", "purposefully simple to keep you on task, no hierarchies"],
+["focused", "no fancy shmancy to distract you"],
+["huggable", "the more you use it, the more you love it"],
+["smart", "the smarts are behind-the-scenes..."],
+["safe", "secure and safe..."],
+["customizable", "use the web on your terms..."],
+["power", "accomplish lots with little effort..."],
+["quirky", "with great power comes great quirkiness"]
+];
+
+var c = $('#content');
+var d = $('#xflash');
+var h = $('#flash1');
+var p = $('#flash2');
+
+var razOn = 0;
+var razIdx = 0;
+
+d.css({position:"absolute", display: "none"})
+
+//$('#iconsave' ).fadeOut();
+
+var razFlash = function (){
+  if(0 == razOn) {
+    var pos = c.position();
+    $(d[0]).parent().find("#xflash").css({top: pos.top+10, left: pos.left});
+    $(d[0]).parent().find("#xflash").css({height: c.height(), width: c.width()});
+//    d.css("display","block")
+    razOn=1;
+  h[0].innerHTML = punches[razIdx][0];
+  p[0].innerHTML = punches[razIdx][1];
+  razIdx = (razIdx+1)%punches.length;
+
+    d.fadeIn(1500);
+    razOn=2;
+  } else if(1 == razOn) {
+  h[0].innerHTML = punches[razIdx][0];
+  p[0].innerHTML = punches[razIdx][1];
+  razIdx = (razIdx+1)%punches.length;
+
+    d.fadeIn(1500);
+    razOn=2;
+  } else if(2 == razOn) {
+    razOn=3;
+  } else {
+    d.fadeOut(2000);
+    razOn=1;
+  }
+}
+
+setInterval(razFlash,4000);
+
+</script>
+
+<form action="/doe/profile/join/gtoken" id="gform" method="POST">
+  <input type="hidden" type="text" name="code" id="gcode">
+  <input type="hidden" type="text" name="email" id="gemail">
+  <input type="hidden" type="text" name="name" id="gname">
+  <input type="hidden" type="text" name="access_token" id="gaccess_token">
+  <input type="hidden" type="text" name="id" id="gid">
+</form>
+
+  <!-- Last part of BODY element in file index.html -->
+<script>
+var gauthResult="";
+
+function loadProfile(){
+   var request = gapi.client.plus.people.get( {'userId' : 'me'} );
+   request.execute(loadProfileCallback);
+ }
+
+function loadProfileCallback(obj) {
+profile = obj ;
+
+//Filter the emails object to find the user's primary account, which might
+//not always be the first in the array. The filter() method supports IE9+.
+email = obj[ 'emails' ].filter ( function ( v ) {
+return v.type === 'account' ; // Filter out the primary email
+} )[ 0 ].value ; // get the email from the filtered results, should always be defined.
+
+console.log ( gauthResult ) ;
+
+$ ( '#gcode' )[ 0 ].value = gauthResult[ 'code' ] ;
+$ ( '#gemail' )[ 0 ].value = email ;
+$ ( '#gname' )[ 0 ].value = profile.displayName ;
+$ ( '#gaccess_token' )[ 0 ].value = gauthResult.access_token ;
+$ ( '#gid' )[ 0 ].value = profile.id ;
+
+var $form = $ ( '#gform' ) ;
+
+$form[0].submit();
+}
+
+  function signInCallback(authResult) {
+    if (authResult['code']) {
+
+      // Hide the sign-in button now that the user is authorized, for example:
+      $('#signinButton').attr('style', 'display: none');
+
+    gauthResult = authResult;
+
+    gapi.client.load('plus','v1', loadProfile);  // Trigger request to get the email address.
+
+    } else if (gauthResult['error']) {
+    // There was an error.
+    // Possible error codes:
+    //   "access_denied" - User denied access to your app
+    //   "immediate_failed" - Could not automatially log in the user
+    console.log('There was an error: ' + gauthResult['error']);
+    }
+
+  }
+  </script>
+
+

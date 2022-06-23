@@ -1,0 +1,59 @@
+@**************
+demos for graphing/domain browsers
+**************@
+@()(implicit stok:controllers.StateOk)
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Hypertree - Weighted Graph Animation</title>
+  </head>
+
+  <body onload="init();">
+
+    @demo(url: String) = {
+      <br>
+      <a href="@url" >@url</a>
+      <br>
+    }
+
+    <h2>JSon </h2>
+    <hr>
+    @demo("http://localhost:9000/gapi/reactordomain/"+stok.realm)
+    @demo("http://localhost:9000/gapi/samples/domA?url=rk")
+    <h2>JSON extracts</h2>
+    <hr>
+    @demo("http://localhost:9000/gapi/fromCat/rk/Club?as=json")
+    @demo("http://localhost:9000/gapi/fromCat/rk/Club?as=jit")
+    @demo("http://localhost:9000/gapi/fromCat/rk/Club?as=d3")
+    @demo("http://localhost:9000/gapi/fromCat/rk/Club?as=spacetree")
+    <hr>
+    @demo("http://localhost:9000/gapi/fromRealm/rk?as=json")
+    @demo("http://localhost:9000/gapi/fromRealm/rk?as=jit")
+    @demo("http://localhost:9000/gapi/fromRealm/rk?as=d3")
+    @demo("http://localhost:9000/gapi/fromRealm/rk?as=spacetree")
+    <hr>
+
+    <h2>graph views</h2>
+    <hr>
+      @demo("http://localhost:9000/gapi/samples/g1?url=http://localhost:9000/gapi/fromCat/rk/Club?as=json")
+      @demo("http://localhost:9000/gapi/samples/g1?url=http://localhost:9000/gapi/fromRealm/rk?as=jit")
+      @demo("")
+      @demo("http://localhost:9000/gapi/samples/g2?url=http://localhost:9000/gapi/fromCat/rk/Club?as=json")
+      @demo("http://localhost:9000/gapi/samples/g2?url=http://localhost:9000/gapi/fromRealm/rk?as=jit")
+      @demo("")
+      @demo("http://localhost:9000/gapi/samples/g3?url=http://localhost:9000/gapi/fromCat/rk/Club?as=json")
+      @demo("http://localhost:9000/gapi/samples/g3?url=http://localhost:9000/gapi/fromRealm/rk?as=jit")
+      @demo("")
+      @demo("http://localhost:9000/gapi/samples/spacetree?url=http://localhost:9000/gapi/fromCat/rk/Club?as=spacetree")
+      @demo("http://localhost:9000/gapi/samples/spacetree?url=http://localhost:9000/gapi/stree/rk?as=spacetree")
+      @demo("")
+      @demo("")
+      @demo("")
+      @demo("")
+
+  </body>
+</html>
+
+

@@ -1,0 +1,92 @@
+@**************
+list all topics in category
+**************@
+@(skills: List[String], tags: Map[String, String], m1: Map[String, Int], m2: Map[String, Int])(implicit stok: controllers.StateOk)
+@import razie.wiki.model._
+@import mod.book._
+
+@PILL() = @{
+  mod.book.Progress.PILL
+}
+
+@stok.title("Guidance and progress")
+
+@mm1(s: String) = @{
+  m1.getOrElse(s, "?")
+}
+
+@mm2(s: String) = @{
+  m2.getOrElse(s, "?")
+}
+
+<h2>Progress and guidance</h2>
+
+<div class="alert alert-danger">
+  <small>The guidance module is not working yet. It is meant
+    to give you a clear view of where you are and where you're heading
+    and guide you not only through the many pathways here but across the
+    pathways, towards your goals.
+    <p>It should be fully working in time for the next season.</p>
+  </small>
+</div>
+
+@skills.map { skill =>
+
+  <div class="row">
+    <div class="col-sm-2" style="vertical-align: middle">
+      <a href="/tag/@tags(skill)">@skill</a>
+    </div>
+
+    <div class="col-sm-8">
+
+      <div class="progress" style="margin-bottom: 0px;" title="Reading progress">
+        <div class="progress-bar" role="progressbar" aria-valuenow="@mm1(skill)" aria-valuemin="0" aria-valuemax="100" style="min-width: 2em;
+          width: @mm1(skill)%;" >
+          @mm1(skill)%
+        </div>
+      </div>
+
+      <div class="progress" style="margin-bottom: 0px;" title="Reading progress">
+        <div class="progress-bar progress-bar-info" role="progressbar" aria-valuenow="@mm1(skill)" aria-valuemin="0" aria-valuemax="100"
+        style="min-width: 2em; width: @mm1(skill)%;">
+          @mm1(skill)%
+        </div>
+      </div>
+
+      <div class="progress" title="On snow progress">
+        <div class="progress-bar progress-bar-success progress-bar-striped" role="progressbar" aria-valuenow="@mm2(skill)" aria-valuemin="0" aria-valuemax="100"
+        style="min-width: 2em; width: @mm2(skill)%;">
+          @mm2(skill)%
+        </div>
+      </div>
+
+
+    </div>
+  </div>
+
+}
+
+<hr>
+
+  Progress for:
+<span class="label label-primary"><small>Reading</small></span>
+<span class="label label-info"><small>On snow</small></span>
+<p>
+</p>
+
+@md {
+Click on the skill to see where you are in that progression and continue working on it.
+
+## How to use
+
+The first progress for each skill tracks your reading level or knowledge
+  on that subject: how many topics have you read on that subject.
+
+It is important that you use the buttons "Next" and "Later/Skip" at the
+  bottom of the topics, so that the system knows what you're read and can guide you across the pathways.
+
+The second progress bar tracks the on-snow progression.
+
+The third progress bar tracks the assessments, so your current level, as it were.
+}
+

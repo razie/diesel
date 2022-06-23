@@ -1,0 +1,52 @@
+@***
+profile - password
+***@
+@(myForm: Form[_], au: model.User)(implicit request: controllers.RazRequest)
+
+@salutation() = @{
+  val names = Array("Hi", "Hello", "Hey", "Howdy")
+  val i = new scala.util.Random().nextInt(names.length)
+  names(i)
+}
+
+@import helper.twitterBootstrap._
+@import play.api.Play.current
+@import play.api.i18n.Messages.Implicits._
+
+@user.doePLayout(au, "Password reset", 3) {
+
+  <div class="col-sm-4">
+  @helper.form(action = routes.ProfileUpd.doeProfilePass2(), 'class -> "well") {
+    @helper.inputPassword(myForm("currpass"), '_label -> "Current Password",
+      '_showConstraints -> false)
+    @helper.inputPassword(
+      myForm("newpass"),
+      '_label -> "New Password",
+      '_showConstraints -> false,
+      '_error -> myForm.error("newpass"))
+    @helper.inputPassword(
+      myForm("repass"),
+      '_label -> "New Password, again",
+      '_showConstraints -> false,
+      '_error -> myForm.error("repass"))
+
+    <input type="hidden" name="token" value="@myForm("token").value"/>
+    <button type="submit" class="btn btn-primary">Change Password</button>
+
+    @user.agree()
+
+    @formErrors(myForm)
+  }
+  </div>
+
+  <div class="col-sm-4">
+    <h2>Password change</h2>
+    <p>
+    <p>
+      You can change the password here.
+    <p>
+      Just type your old password and the new desired password, twice!
+  </div>
+  @formFix()
+
+}

@@ -1,0 +1,105 @@
+@******
+cart and checkout
+******@
+@(acct:mod.cart.Acct, club:controllers.Club)(implicit stok: controllers.StateOk)
+@import mod.cart._
+
+<h2>Account: @acct.userName <span class="label label-default">@acct.balance</span>
+  @util.notesmsgDiv("teammsg")
+  <br>
+  <small>(@acct.user.map(_.fullName), @acct.user.map(_.emailDec)) </small>
+</h2>
+
+<h3>Transactions</h3>
+
+<table class="table table-striped">
+<tr>
+<th>Who</th>
+  <th>Amount</th>
+  <th>What</th>
+  <th>When</th>
+  <th>Description</th>
+</tr>
+
+  @acct.txns.map {t=>
+      <tr>
+        <td>@t.userName</td>
+        <td>@t.amount</td>
+        <td>@t.what</td>
+        <td>@t.crDtm.toLocalDate</td>
+        <td>@t.desc</td>
+      </tr>
+}
+</table>
+
+  @if(stok.au.exists(club.isClubAdmin)) {
+    Credits:<br>
+    <div class="well form form-horizontal">
+      <label for="amount">Amount</label><input type="number" name="amount" id="amount">
+      <label for="what">What</label>
+      <select id="what" name="what">
+        <option value="credit">Credit</option>
+        <option value="debit">Debit</option>
+        <option value="adjustment">Adjustment</option>
+        <option value="payment">Payment</option>
+      </select>
+      <br>
+      @*<input type="text" name="what" id="what">*@
+      <label for="desc">Description</label><input type="text" name="desc" id="desc">
+      <button class="btn btn-info" onclick="applyCredit();">Apply</button>
+    </div>
+  }
+
+@if(stok.au.exists(club.isClubAdmin)) {
+  Discounts:<br>
+  <div class="well form form-horizontal">
+  <label for="discount">Overall discount</label><input type="number" name="discount" id="discount" value="@acct.discount.mkString"><b>%</b>
+  <button class="btn btn-info" onclick="updateDiscount();">Apply</button>
+  </div>
+}
+
+  <script>
+    require(['jquery'], function($){
+
+      applyCredit = function() {
+        $.ajax({
+        type: "POST",
+        url: '@routes.Accts.applyCredit(acct._id.toString)',
+        data: $.param({
+          amount: $("#amount").val(),
+          currency: '@club.props.getOrElse("currency", "CAD")',
+          what: $("#what").val(),
+          desc: $("#desc").val(),
+          spec: ''
+        }),
+        success: function (data) {
+          console.log("success");
+          location.reload();
+        },
+        error: function (result) {
+          console.log("ERROR: Can't applycredit: " + result.responseText)
+          notesMsgShow("err", "Can't applycredit: " + result.statusText)
+        }
+        });
+      }
+
+      updateDiscount = function() {
+        $.ajax({
+          type: "POST",
+          url: '@routes.Accts.updateDiscount(acct._id.toString)',
+          data: $.param({
+            discount: $("#discount").val()
+          }),
+          success: function (data) {
+            console.log("success");
+            location.reload();
+          },
+          error: function (result) {
+            console.log("ERROR: Can't updateDiscount: " + result.responseText)
+            notesMsgShow("err", "Can't updateDiscount: " + result.statusText)
+          }
+        });
+      }
+    });
+  </script>
+

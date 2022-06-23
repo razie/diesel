@@ -1,0 +1,44 @@
+@**************
+show/edit/capture a note
+
+msg types are msg, err
+**************@
+@import razie.wiki.model.Perm
+@(we: razie.wiki.model.WikiEntry)(implicit stok: mod.notes.controllers.NotesOk)
+@import mod.notes.controllers.DomC
+@import mod.notes.controllers.routes
+@import razie.diesel.dom.WikiDomain
+
+@stok.title("DOM play")
+
+<h3> Domain <small>| playground</small> @notes.notesmsg(stok.msg) </h3>
+
+<div class="well well-small" style="border-radius : 9 px ; margin-bottom : 10 px ;">
+
+  <p><a href="@routes.DomC.domj(we._id.toString)">json</a></p>
+
+  @WikiDomain.domFrom(we).fold(Html("no DOMain...?")) { d =>
+    <ul>
+      classes: @d.classes.map { c =>
+      <li>@c._1 <small>@c._2.toString</small></li>
+    }
+    </ul>
+    <ul>
+      objects: @d.objects.map { c =>
+      <li>@c._1 <small>@c._2.toString</small></li>
+    }
+    </ul>
+  }
+
+  <p>@Html(razie.wiki.model.Wikis.format(we.wid, we.markup, we.content, Some(we), Some(stok.au)))</p>
+
+  <p>
+  @if(stok.au.hasPerm(Perm.adminDb)) {
+    | <a href="@we.wid.w/debug"><em>debug</em></a>
+  }
+  </p>
+
+  @wiki.wikiFragExtras(Some(stok.au), Some(we))(stok.stok)
+
+</div>
+

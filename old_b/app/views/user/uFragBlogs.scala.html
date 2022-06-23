@@ -1,0 +1,42 @@
+@*******
+included in mainUserC as the right hand side info box
+*********@
+@(user: model.User, quiet:Boolean, ui:controllers.UserStuff)
+@import org.joda.time.DateTime
+@import razie.RString._
+@import controllers.XListWrapper
+@import controllers.Wiki
+@import razie.wiki.model.Wikis
+
+@blogs=@{
+  user.pages(Wikis.DFLT, "Blog", "Forum")
+}
+
+  Followed:
+  @if(blogs.filter(_.role != "Owner").size>0) {
+    (follow more <a class="btn btn-default btn-xs" href="/wikie/like/Forum">Forums &raquo;</a>
+    <a class="btn btn-default btn-xs" href="/wikie/like/Blog">Blogs &raquo;</a>)</p>
+    <ul>
+    @for(w <- blogs.filter(_.role != "Owner")) {
+      <li><a href="@controllers.WikiUtil.w(w.wid)">@razie.wiki.model.Wikis.label(w.wid)</a></li>
+    }
+  </ul>
+  } else {
+    (follow one now <a class="btn btn-default btn-xs" href="/wikie/like/Forum">Forum &raquo;</a>
+    <a class="btn btn-default btn-xs" href="/wikie/like/Blog">Blog &raquo;</a>)</p>
+  }
+<p>
+  Owned:
+  @if(blogs.filter(_.role == "Owner").size>0) {
+    (create more <a class="btn btn-default btn-xs" href="/wikie/create/Forum">Forums &raquo;</a>
+    <a class="btn btn-default btn-xs" href="/wikie/create/Blog">Blogs &raquo;</a>)</p>
+    <ul>
+      @for(w <- blogs.filter(_.role == "Owner")) {
+        <li><a href="@controllers.WikiUtil.w(w.wid)">@razie.wiki.model.Wikis.label(w.wid)</a></li>
+      }
+    </ul>
+  } else {
+    (create a <a class="btn btn-default btn-xs" href="/wikie/create/Forum">Forum &raquo;</a>
+    <a class="btn btn-default btn-xs" href="/wikie/create/Blog">Blog &raquo;</a>)</p>
+  }
+

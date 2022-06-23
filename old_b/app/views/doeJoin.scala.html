@@ -1,0 +1,240 @@
+
+@(registerForm:Form[controllers.Registration], crNew:Boolean=false)(implicit stok:controllers.StateOk)
+
+@stok.requireJs(false)
+@htmlHeadBar("Login/register")
+
+<div class="container">
+  <div class="jumbotron">
+    <div class="row">
+      <div class="col-sm-8">
+        <h1>
+          Welcome!
+          @** the google button*@
+          @if(stok.realm == razie.hosting.WikiReactors.NOTES) {
+            <span align="right">
+              <span id="signinButton">
+                <span
+                class="g-signin"
+                data-callback="signInCallback"
+                data-clientid="980280495626-7llkvk4o02anpu6qv1sseucc07f8f3gs.apps.googleusercontent.com"
+                data-cookiepolicy="single_host_origin"
+                data-scope="profile email">
+                </span>
+              </span>
+            </span>
+          }
+        </h1>
+        <br>
+        @wiki.wikiFragInt(razie.wiki.model.Wikis.fallbackPage(s"${stok.realm}.Admin:page-join-${stok.realm}", s"${stok.realm}.Admin:page-join"), None)
+
+      </div>
+
+      <div class="col-sm-4">
+
+@import helper.twitterBootstrap._
+@import razie.wiki.admin.SecLink
+@import play.api.Play.current
+@import play.api.i18n.Messages.Implicits._
+
+      <div class="alert alert-danger" style="display:none" id="errBox">
+        <span id="errText"></span>
+      </div>
+
+@helper.form(action=routes.Profile.doeJoin2, 'class->"well alert alert-info") {
+  @helper.inputText(
+    registerForm("email"),
+    '_label -> "Email",
+    '_showConstraints -> false)
+  @helper.inputPassword(
+    registerForm("password"),
+    '_label -> "Password",
+    '_showConstraints -> false,
+    '_error->registerForm.error("password"))
+
+  <span id="createArea" style="display:none;">
+  @if(stok.website.openMembership || stok.request.exists(_.flash.get(SecLink.HEADER).exists(_.length > 5))) {
+    <span style="color: red;
+      font-size: smaller"> To <strong>create a new account</strong>, please confirm the chosen email and password: </span>
+
+    @helper.inputText(
+      registerForm("reemail"),
+      '_label -> "Verify email",
+      '_showConstraints -> false)
+
+    @helper.inputPassword(
+      registerForm("repassword"),
+      '_label -> "Verify password")
+
+    <button type="submit" class="btn btn-warning">Create new account</button>
+  }else{
+    <input name="reemail" style="display: none;"/>
+    <input name="repassword" style="display: none;"/>
+
+    <div class="alert alert-danger">
+      This website does not allow creating accounts... you can request or use an invitation below.</div>
+    <hr>
+    }
+  </span>
+
+  <button id="loginBtn" type="submit" class="btn btn-success">Login</button>
+  <a id="forgotBtn" href="@routes.ProfileUpd.doeForgotPass()" class="btn btn-info">Forgot password!</a>
+
+  <br>
+  <br>
+  <button id="createBtn1" type=button onclick="showCreate()" class="btn btn-warning xbtn-xs">Create new account</button>
+
+  <hr>
+
+  @registerForm.globalError.map { err=>
+     <p style="color:red;font-weight:bold">@err.message</p>
+  }
+
+  <p><small>By registering or logging in, you agree to the <a href="@controllers.WikiUtil.w("Admin", "Terms of Service", stok.realm)">Terms of Service</a></small><p>
+  }
+
+       </div>
+      @formFix()
+
+      </div>
+    </div>
+
+@if(! stok.website.openMembership && stok.website.selfInvites) {
+  <hr>
+  <br><br>
+
+  Do you have an invitation?
+  <div class="alert alert-success">
+
+  <form action="/diesel/invited" method="post" class="form col-md-6">
+Your email
+    <br>
+    <input name="email" type="email" class="input-lg" placeholder="Email">
+
+    <br>
+    <br>
+    Your invitation
+    <br>
+    <input name="invitation" type="text" class="input-lg" placeholder="Code">
+    <br><br>
+    <input type="submit" class="btn btn-primary btn-lg" value="Check it out">
+  </form>
+  </div>
+
+  <br>
+  <div class="alert alert-info">
+  Need an invitation?
+  <br><br>
+  <form action="/diesel/rqinvite?realm=specs" method="post" class="form col-md-6">
+Your email
+    <br>
+    <input name="email" type="email" class="input-lg" placeholder="Email">
+
+    <br>
+    <br>
+    Why?
+    <br>
+    <textarea name="why" class="xform-control input-lg" rows="5"  placeholder="Why are you interested in this preview?"></textarea>
+    <br><br>
+
+  @***** recaptcha ********@
+  @util.recaptcha()
+<br>
+    <input type="submit" class="btn btn-primary btn-lg" value="Request Invitation">
+  </form>
+  </div>
+}
+  <hr>
+
+  <form action="/doe/join/gtoken" id="gform" method="POST">
+    <input type="hidden" type="text" name="code" id="gcode">
+    <input type="hidden" type="text" name="email" id="gemail">
+    <input type="hidden" type="text" name="name" id="gname">
+    <input type="hidden" type="text" name="access_token" id="gaccess_token">
+    <input type="hidden" type="text" name="id" id="gid">
+  </form>
+
+    <!-- Last part of BODY element in file index.html -->
+<script>
+
+  var error = getCookie("error");
+  console.log("err=" + error);
+
+  if (error != null && error.length > 0) {
+    $("#errText").text(error.replace(/[+]/g, " "));
+    $("#errBox").show();
+  }
+
+  var gauthResult="";
+
+  function loadProfile(){
+     var request = gapi.client.plus.people.get( {'userId' : 'me'} );
+     request.execute(loadProfileCallback);
+   }
+
+  function loadProfileCallback(obj) {
+  profile = obj ;
+
+  // Filter the emails object to find the user's primary account, which might
+  // not always be the first in the array. The filter() method supports IE9+.
+  email = obj[ 'emails' ].filter ( function ( v ) {
+  return v.type === 'account' ; // Filter out the primary email
+  } )[ 0 ].value ; // get the email from the filtered results, should always be defined.
+
+  console.log ( gauthResult ) ;
+
+  $ ( '#gcode' )[ 0 ].value = gauthResult[ 'code' ] ;
+  $ ( '#gemail' )[ 0 ].value = email ;
+  $ ( '#gname' )[ 0 ].value = profile.displayName ;
+  $ ( '#gaccess_token' )[ 0 ].value = gauthResult.access_token ;
+  $ ( '#gid' )[ 0 ].value = profile.id ;
+
+  var $form = $ ( '#gform' ) ;
+
+  $form[0].submit();
+  }
+
+    function signInCallback(authResult) {
+      if (authResult['code']) {
+
+        // Hide the sign-in button now that the user is authorized, for example:
+        $('#signinButton').attr('style', 'display: none');
+
+      gauthResult = authResult;
+
+      gapi.client.load('plus','v1', loadProfile);  // Trigger request to get the email address.
+
+      } else if (gauthResult['error']) {
+      // There was an error.
+      // Possible error codes:
+      //   "access_denied" - User denied access to your app
+      //   "immediate_failed" - Could not automatially log in the user
+      console.log('There was an error: ' + gauthResult['error']);
+      }
+
+    }
+
+    function showCreate() {
+      if($("#createArea").is(":hidden")) {
+        $("#createArea").show();
+        $("#createBtn1").prop('disabled', true);
+        $("#createBtn1").hide();
+        $("#loginBtn").prop('disabled', true);
+        $("#loginBtn").hide();
+        // $("#forgotBtn").prop('disabled', true);
+        $("#forgotBtn").hide();
+      }
+    }
+
+    </script>
+
+  @if(crNew) {
+    <script>
+      showCreate();
+    </script>
+  }
+
+
+  @htmlFooter(false, stok.realm)
+</div> <!-- /container -->
+@htmlBottom()

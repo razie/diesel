@@ -1,0 +1,11 @@
+@()
+
+@import razie.wiki.model.features.FormStatus._
+
+Form statuses are:
+<ul>
+<li>@CREATED    - form is just created, editing has not started yet (possible user is editing like right now?)
+<li>@EDITING    - form is being edited by user (also after rejection by approver)
+<li>@SUBMITTED  - form has been submitted for review
+<li>@APPROVED   - form has been approved
+</ul>

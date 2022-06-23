@@ -1,0 +1,16 @@
+
+## Create/update base container image with core, Java, vim, Mongo
+## NO need to re-create often
+
+BASE_TAG=u332
+RK=~/w/racerkidz
+
+cd $RK/docker/base
+
+docker build --no-cache -t raz-base2 .
+
+docker tag raz-base2 razie/raz-base2:${BASE_TAG}
+docker push razie/raz-base2:${BASE_TAG}
+
+cd $RK
+

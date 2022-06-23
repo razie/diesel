@@ -1,0 +1,226 @@
+@**
+person information
+**@
+@(userId: String, rkid: String, role: String, associd: String, next: String, myForm: Form[_])(implicit stok:controllers.StateOk)
+@import mod.snow.RK
+@import org.bson.types.ObjectId
+@import mod.snow.RacerKidz
+@import controllers.RKU
+@import util.razText
+
+@import helper.twitterBootstrap._
+@import play.api.Play.current
+@import play.api.i18n.Messages.Implicits._
+
+@au=@{stok.au.get}
+
+@clubName=@{
+  if(
+    next.startsWith("Club:") ||
+    next.startsWith("clubkidz:") ||
+    next.startsWith("invite:")
+  ) cname
+  else stok.au.get.userName
+}
+@cname=@{next.substring(next.indexOf(':') + 1)}
+
+  @relationships = @{
+    if( next.startsWith("Club:") || next.startsWith("clubkidz:"))
+      RK.RELATIONSHIPS.map(x => (x, x))
+    else if(next.startsWith("invite:"))
+      razie.hosting.Website.userTypes(stok.request.get).toArray.map(
+        x=> (x.toString, razie.hosting.Website.userTypeDesc(x.toString)(stok.request.get))
+      )
+    else
+      RK.RELATIONSHIPS.map(x => (x, x))
+  }
+
+@rk = @{
+  if(rkid.length < 2) None
+  else RacerKidz.findById(new ObjectId(rkid))
+}
+
+@rka = @{
+  if(associd.length < 2) None
+  else mod.snow.RacerKidz.findAssocById(associd)
+}
+
+@mc = @{
+  for((a, k) <- RKU(stok.au.get).mergeCandidates(rka.get)) yield
+    Map("fname" -> k.info.firstName,
+      "lname" -> k.info.lastName,
+      "role" -> a.role,
+      "source" -> a.assoc,
+      "associd" -> a._id.toString,
+      "button" -> k._id.toString,
+      "merge" -> a._id.toString)
+}
+
+@mnglink(row: Map[String, String], k: String, v: String) = {
+@k match {
+  case "button" => {
+    <a href="@routes.Kidz.doeUserKid(stok.au.get._id.toString, v, "-", row("associd"), "clubkidz:"+clubName)" class="btn btn-xs">More...</a>
+  }
+  case "merge" => {
+    <a href="@routes.Club.doeMergeKid(row("associd"), associd)" class="btn btn-xs btn-info">MERGE</a>
+  }
+  case _ => {
+    @v
+  }
+}
+}
+
+
+@stok.title("Racer kid")
+
+  <div class="col-sm-6">
+
+    @if(role == "-") {
+      <h2>Edit a person</h2>
+    } else {
+      <h2>Add a person as @role</h2>
+    }
+
+    @helper.form(action = routes.Kidz.doeKidUpdate(userId, rkid, role, associd, next), 'class -> "well") {
+      @razText(myForm, "fname", "First Name")
+      @razText(myForm, "lname", "Last Name")
+      @razText(myForm, "email", "Email")
+
+      @if(!next.startsWith("invite")) {
+
+      @razText(myForm, "dob", "Date of Birth")
+
+      @helper.select(
+        myForm("gender"),
+        Seq("M" -> "Male", "F" -> "Female"),
+        '_label -> "Gender",
+        '_error -> myForm.error("gender"),
+        '_showConstraints -> false)
+      } else {
+        <input type="hidden" name="dob" value="@myForm("dob").value" />
+        <input type="hidden" name="gender" value="@myForm("gender").value" />
+      }
+
+      @** I cannot select a parent for myself... ? **@
+      @if(associd.length > 3) {
+        @helper.select(
+          myForm("assocRole"),
+          relationships.filter(_._1 != RK.ROLE_PARENT),
+          '_label -> "Relationship to me",
+          '_error -> myForm.error("assocRole"),
+          '_showConstraints -> false)
+      } else {
+        <input type="hidden" name="assocRole" value="@myForm("assocRole").value" />
+      }
+
+      @helper.select(
+        myForm("role"),
+        relationships.filter(_._1 != RK.ROLE_SPOUSE),
+        '_label -> "Role",
+        '_showConstraints -> false)
+
+      @if(!next.startsWith("invite")) {
+        @helper.select(
+          myForm("notifyParent"),
+          Seq("n" -> "No", "y" -> "Yes"),
+          '_label -> "Notify parent",
+          '_error -> myForm.error("notifyParent"),
+          '_showConstraints -> false)
+      } else {
+        <input type="hidden" name="notifyParent" value="@myForm("notifyParent").value" />
+      }
+
+      @if(next.startsWith("invite:")) {
+        @helper.textarea(
+          myForm("invite"),
+          '_label -> "Invitation",
+          '_error -> myForm.error("invite"),
+          '_showConstraints -> false)
+        <script>require(['jquery'], function($) {
+          $("textarea").attr("rows", "5");
+        });
+        </script>
+      } else {
+        <input type="hidden" name="invite" value="@myForm("invite").value" />
+      }
+      @***
+      @helper.select(
+      myForm("status"),
+      Seq("a"->"Active", "s"->"Suspended", "f" -> "Former"),
+      '_label -> "Status",
+      '_error->myForm.error("status"),
+      '_showConstraints -> false)
+      ***@
+      <input type="hidden" name="status" value="@myForm("status").value" />
+
+@formFix(Seq("dob"))
+
+      <p>
+      @if(controllers.Kidz.canEditKid(rkid, stok.au.get, next)) {
+        @if(rkid.length > 2) {
+          @if(rk.exists(_.rkiId.isDefined)) {
+            @*** no update for myself or RK for Users ***@
+            <button type="submit" class="btn btn-primary">Update Info</button>
+          } else {
+            @** info must come from their own account **@
+            @if(rk.exists(_.userId.isDefined)) {
+              <div class="alert alert-success">
+                <small>
+                  This user has an account - please notify the account holder if the info is inaccurate or incomplete.
+                </small>
+              </div>
+            } else {
+              @*Where the heck does this info come from then?*@
+            <p>Can't update this info right now...
+              click here if you need to overwrite it:
+            <a href="@routes.Kidz.doeKidOverride(userId, rkid, role, associd, next)" class="btn btn-danger">Override</a>
+            }
+          }
+        } else {
+          <button type="submit" class="btn btn-primary">Create</button>
+        }
+      }
+
+        @myForm.errors.map { err =>
+      <p style="color : red ; font-weight : bold">@err.message</p>
+    }
+
+      @myForm.globalError.map { err =>
+        <p style="color : red ; font-weight : bold">@err.message</p>
+      }
+
+      <div class="alert alert-warning">
+        <small>
+        <strong>Privacy!</strong> This information will be shared with the clubs you are a member of!
+        </small>
+      </div>
+      <p><small>By maintaining a profile, you agree to the <a href="@controllers.WikiUtil.w("Terms of Service")">
+        Terms of Service</a></small> <p>
+      }
+
+  </div>
+
+  <div class="col-sm-6">
+
+    <p>The persons associated to you.
+    <p>
+      This information about your racers is shared with the clubs you belong to, maintained by you and the club administrators.
+    <p><b>Email</b>
+      If provided, coaches messages and other notices are sent to this address. If the racer doesn't have one, leave empty and use the "notify parent" option.
+    <p>
+      Do not provide the email if you don't want the person to be contacted by other club members like coaches, team managers etc.
+    <p>Other notifications include posting videos of a race or training session where the kid participated etc.
+    <p><b>Role</b> The role this person plays (i.e. Parent for parents)
+    <p><b>Relationship</b> The relationship to me (i.e. Spouse or Kid)
+    <p><b>Notify parent</b> Do you want to be notified about all messages sent to the racer by coaches etc?
+
+
+  </div>
+
+  @if(associd.length > 3 && !RKU(au).mergeCandidates(rka.get).isEmpty) {
+    There are merge candidates:
+    @util.utilSimpleTable(mc,
+      Seq("fname" -> "F.Name", "lname" -> "L.Name", "role" -> "Role", "source" -> "Source", "button" -> "Details", "merge" -> "Merge"), Some(mnglink))
+  }
+
+

@@ -1,0 +1,67 @@
+@**
+engine configuration popup
+**@
+@(title:String, desc:String, tags:List[String], curTagQuery:String)(implicit stok: controllers.StateOk)
+
+<div>
+  <h4>@title
+    <a href="/wiki/Tag_Query" title="Click for details"><sup><span class="glyphicon glyphicon-question-sign"></span></sup></a>
+  </h4>
+
+  <small><small>@desc</small></small>
+
+  <div class="input-group">
+    <span class="input-group-addon" id="basic-addon1"><a href="javascript:sampleQuery();">Query</a>: </span>
+    <small><input class="col-sm-12 input-sm" type="text" id="tagQuery"></small>
+  </div>
+
+<table class="table table-condensed">
+  <tr><th>+</th><th>&</th><th>-</th><th>tag</th></tr>
+
+  @tags.map { tag =>
+      <tr>
+        <td>
+          <input type="checkbox" id="cbp@tag" tqcfg="yes" title="@tag">
+        </td>
+        <td>
+          <input type="checkbox" id="cba@tag"  tqcfg="yes" title="@tag">
+        </td>
+        <td>
+          <input type="checkbox" id="cbm@tag"  tqcfg="yes" title="@tag">
+        </td>
+        <td>
+          <a href="/wikie/search/tag/@tag?q=">@tag</a>
+        </td>
+      </tr>
+  }
+  </table>
+
+</div>
+
+@*<script src="@routes.Assets.at("javascripts/weDieselDom.js")"></script>*@
+
+<script>
+
+
+$(":checkbox[tqcfg='yes']").change(function(){
+  console.log(this);
+  cbToTagQuery(this);
+});
+
+$('#tagQuery').change(function(){
+  tagQueryTocb ($("#tagQuery").val());
+});
+
+$('#tagQuery').on('input', function() {
+  tagQueryTocb ($(this).val());
+});
+
+tagQueryTocb ('@curTagQuery');
+
+$("#tagQuery").val('@curTagQuery');
+
+function sampleQuery() {
+  window.location = '/wikie/search/tag/' + ($("#tagQuery").val()) + '?q=';
+}
+</script>
+

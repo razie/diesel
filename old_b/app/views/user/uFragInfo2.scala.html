@@ -1,0 +1,48 @@
+@*******
+included in mainUserC as the right hand side info box
+*********@
+@(user: model.User, item:Int, ui:controllers.UserStuff)(implicit stok:controllers.StateOk)
+@import org.joda.time.DateTime
+@import razie.RString._
+@import controllers.XListWrapper
+@import controllers.Wiki
+@import razie.wiki.model.Wikis
+
+@active(i:Int) = @{
+  if(i == item) "active" else ""
+}
+
+@locs() = @{
+  {controllers.UserStuff.events(user) flatMap { _._5 \ "Venue" \@ "loc"}}.filter(! _.isEmpty).map(_.replaceFirst("ll:",""))
+//  {controllers.UserStuff.xp(user, "Calendar") \ UserStuff.Race \ "Venue" \@ "loc"}.filter(! _.isEmpty).map(_.replaceFirst("ll:",""))
+}
+
+<div class="col-sm-6">
+    <div class="well">
+
+<ul class="nav nav-tabs">
+  <li class="@active(1)"><a href="/doe/index/1">Calendar</a></li>
+  <li class="@active(2)"><a href="/doe/index/2">Map</a></li>
+  <li class="@active(3)"><a href="/doe/index/3">Blogs/Forums</a></li>
+  <li class="@active(4)"><a href="/doe/index/4">Forms</a></li>
+</ul>
+
+
+@blogs=@{
+  user.pages(Wikis.DFLT, "Blog", "Forum")
+}
+
+@item match {
+  case 1 => {
+    @uFragTasks(user, "false", ui)
+    <p>
+    @uFragEvents(user, false, ui)
+  }
+
+case 3 => {
+  @uFragBlogs(user, false, ui)
+}
+
+}
+            </div>
+          </div>

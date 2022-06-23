@@ -1,0 +1,260 @@
+@******
+cart and checkout
+******@
+@(cart:mod.cart.Cart, acct:mod.cart.Acct, props:Map[String,String])(implicit stok: controllers.StateOk)
+@import mod.cart._
+@import org.joda.time.format.DateTimeFormat
+
+@stok.requireJs(false)
+
+  <h2>Cart
+@util.notesmsgDiv("teammsg")
+  </h2>
+
+@**  <small>
+  Created: @DateTimeFormat.shortDate().print(cart.crDtm)
+  at @DateTimeFormat.shortTime().print(cart.crDtm)
+  <br>
+    Updated: @DateTimeFormat.shortDate().print(cart.updDtm)
+    at @DateTimeFormat.shortTime().print(cart.updDtm)
+  </small>
+**@
+
+  <p> </p>
+<table>
+<tr>
+  <td>Cart total:</td><td> <b>@cart.total</b> </td>
+</tr>
+  <tr>
+    <td>Account balance:</td><td> <b>@acct.balance</b></td>
+  </tr>
+  @acct.discount.map{d=>
+  <tr>
+    <td>Account discount:</td><td> <b>@acct.discount.mkString</b>%</td>
+</tr>
+  }
+  <tr><td>Total payable:</td><td> <b>@acct.payable(cart.total)</b></td></tr>
+    @Some(cart.rectotal).filter(_.amount > 0).map {p=>
+      <tr><td>Recurring:</td><td> <b>@p</b> (Yearly)</td></tr>
+    }
+</table>
+
+  <p> </p>
+
+  <span style="float: right">
+    <a href="@routes.Carts.cartcancel(cart._id.toString)" class="btn btn-danger">Cancel cart</a>
+    @if(stok.au.exists(_.isAdmin)) {
+      | <a href="" onclick="simulatePaid()" class="btn btn-info">Admin-paid</a>
+    }
+  </span>
+
+
+@if(acct.payable(cart.total).amount <= 0 && cart.rectotal.amount <= 0) {
+  <button class="btn btn-success" onclick="noPayment()">Complete order<br><small>(no payment needed)</small></button>
+} else {
+<div id="paypal-button"></div>
+}
+
+
+<script src="https://www.paypalobjects.com/api/checkout.js"></script>
+
+<p></p>
+  <div class="alert alert-warning">
+    <p>
+    <b>Use the paypal button above!</b>
+    </p>
+    <p><b>Note</b> that sometimes the paypal payment is slower to process and <b>you must wait for the paypal
+      confirmation</b>, after submitting all info! Please do not close this page until the paypal confirmation!</b>
+    </p>
+    <p>You can cancel any recurring payments at any time, from paypal, your membership page,
+      or via a support request</p>
+  </div>
+<p></p>
+Items:
+
+  @cart.items.map { item =>
+  <hr>
+  <b>@item.price.toString</b> - @item.desc - <a href="@routes.Carts.rmitem(item._id.toString)">remove</a>
+  @if(stok.au.exists(_.isAdmin)) {
+    <span title='@item'>admin-details</span>
+  }
+}
+
+<script>
+
+    paypal.Button.render({
+
+      env: '@props("ppc.env")',
+
+      client: {
+        sandbox:    '@props("ppc.sandbox")',
+        production: '@props("ppc.live")'
+      },
+
+      payment: function() {
+
+        var env    = this.props.env;
+        var client = this.props.client;
+
+        return paypal.rest.payment.create(env, client, {
+          transactions: [
+            {
+              amount: {
+                total: '@acct.payable(cart.total).amount',
+                currency: '@cart.currency'
+              },
+              description : "Cart @cart._id.toString",
+              item_list : {
+                items : [
+                  @cart.items.map { item =>
+                  {
+                    name : '@item.desc',
+                    description : '@item.desc',
+                    quantity : '1',
+                    price : '@item.price.oneTime.map(_.amount.toString).getOrElse("")',
+                    currency : '@item.price.oneTime.map(_.currency.toString).getOrElse("CAD")'
+                  },
+                  }
+                  @if(acct.balance.amount != 0) {
+                  {
+                    name : 'CREDIT/DEBIT applied',
+                    description : 'Account balance before the checkout',
+                    quantity : '1',
+                    price : '@{(-acct.balance.amount).toString}',
+                    currency : '@acct.balance.currency'
+                  },
+                  }
+                  @acct.discount.map {discount=>
+                  {
+                    name : 'Discount applied',
+                    description : 'Discount: @discount %',
+                    quantity : '1',
+                    price : '@{(-acct.calcDiscount(cart.total).amount).toString}',
+                    currency : '@cart.currency'
+                  },
+                  }
+                  {
+                    name : 'Nothing',
+                    description : 'Just balancing things out',
+                    quantity : '1',
+                    price : '0',
+                    currency : '@cart.currency'
+                  }
+                  ]
+              }
+            }
+          ]
+        });
+      },
+
+      commit: true, // Optional: show a 'Pay Now' button in the checkout flow
+
+      onAuthorize: function(data, actions) {
+
+        // Optional: display a confirmation page here
+
+        var p = actions.payment.get();
+
+        return actions.payment.execute().then(function() {
+          // Show a success page to the buyer
+          console.log("THIS:::::::::::" +JSON.stringify(p));
+
+          razOnLoad(function(){
+          $.ajax({
+            type: "POST",
+            url:  '@routes.Carts.cartpaid(cart._id.toString)',
+            data: $.param({
+              id : p.value.id,
+              amount : p.value.transactions[0].amount.total,
+              currency : p.value.transactions[0].amount.currency,
+              what : 'PayPal', // don't change
+              spec : '',
+              userName: '@stok.au.get.userName',
+              userId: '@stok.au.get._id.toString'
+            }),
+            success: function(data) {
+              console.log("success cart paid");
+
+              alert("Success, paid "+p.value.transactions[0].amount.total+ " "+p.value.transactions[0].amount.currency);
+@if(cart.cartRedirect.isDefined) {
+              window.location.assign('@cart.cartRedirect.mkString');
+} else {
+              location.reload();
+}
+            },
+            error: function(result) {
+              console.log("ERROR: Can't cartpaid: "+result.responseText)
+              notesMsgShow("err", "Can't cartpaid: "+result.statusText)
+            }
+          });
+          });
+
+        });
+      }
+
+    }, '#paypal-button');
+
+
+@if(stok.au.exists(_.isAdmin)) {
+
+simulatePaid = function () {
+  razOnLoad(function(){
+      console.log("simulatePaid start...");
+      $.ajax({
+        type: "POST",
+        url: '@routes.Carts.cartpaid(cart._id.toString)',
+        data: $.param({
+          id: "PAY-0G0662193T022332ELBXJPRA",
+          amount: @acct.payable(cart.total).amount,
+          currency: '@cart.currency',
+          what: 'simulatePaid',
+          spec: ''
+        }),
+        success: function (data) {
+          console.log("success cart paid");
+@if(cart.cartRedirect.isDefined) {
+          window.location.assign('@cart.cartRedirect.mkString');
+} else {
+          location.reload();
+}
+        },
+        error: function (result) {
+          console.log("ERROR: Can't cartpaid: " + result.responseText)
+          notesMsgShow("err", "Can't cartpaid: " + result.statusText)
+        }
+      });
+
+      console.log("simulatePaid stop...");
+  });
+    }
+
+}
+
+noPayment = function () {
+  razOnLoad(function(){
+  console.log("noPayment start...");
+  $.ajax({
+    type: "POST",
+    url: '@routes.Carts.cartpaid(cart._id.toString)',
+    data: $.param({
+      id: "x",
+      amount: 0,
+      currency: '@cart.currency',
+      what : 'noPaymentNeeded',
+      spec: ''
+    }),
+    success: function (data) {
+      console.log("success cart paid");
+      location.reload();
+    },
+    error: function (result) {
+      console.log("ERROR: Can't cartpaid: " + result.responseText)
+      notesMsgShow("err", "Can't cartpaid: " + result.statusText)
+    }
+  });
+
+  console.log("noPayment stop...");
+});
+}
+</script>
+

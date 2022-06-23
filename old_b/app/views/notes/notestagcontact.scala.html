@@ -1,0 +1,67 @@
+@**************
+list of contacts
+
+msg types are msg, err
+**************@
+@(noteList:List[razie.wiki.model.WikiEntry], ncs:List[mod.notes.controllers.NotesContact])(implicit stok:mod.notes.controllers.NotesOk)
+@import model.Tags
+@import razie.wiki.model.WikiEntry
+@import razie.wiki.model.Wikis
+@import mod.notes.controllers.NotesLocker
+@import mod.notes.controllers.routes
+
+@stok.title("Contacts")
+
+<h3> Contacts <small>| manage</small> @notes.notesmsg(stok.msg) </h3>
+
+
+@ccc(we:WikiEntry)= @{
+    val x = Wikis.format(we.wid, we.markup, we.content, Some(we), Some(stok.au))
+    if(x contains "CANNOT PARSE") {
+      """<div style="color:red;font-weight:bold;" title="You misspelled some of the advanced features"><small>[[CANNOT PARSE]]</small></div><p></p>""" + we.content
+    } else x
+  }
+
+  <table class="table">
+    <thead>
+      <td>Name</td> <td>Email</td><td>Actions</td>
+    </thead>
+
+@name(we:WikiEntry) = @{
+  we.contentProps.get("name").filter(_ != we._id.toString).orElse(we.contentProps.get("email").map(_.replaceAll("@.*$", ""))).mkString
+}
+@email(we:WikiEntry) = @{
+  we.contentProps.get("email").mkString
+}
+
+@noteList.map {we=>
+        <tr>
+          <td>@name(we)</td>
+          <td>@email(we)</td>
+         <td>
+           <small>[<a href="@routes.NotesLocker.noteById(we._id.toString)">Edit</a>]</small>
+           @if(! ncs.exists(_.email.toLowerCase == email(we))) {
+             <small>[<a href="@routes.NotesLocker.invite(email(we), name(we))">Invite</a>]</small>
+           }
+         </td>
+        </tr>
+}
+  </table>
+
+  <p>Contacts accepted</p>
+
+<table class="table">
+  <thead>
+    <td>Name</td> <td>Email</td>
+  </thead>
+
+@ncs.map {nc=>
+  <tr>
+    <td>@nc.nick</td>
+    <td>@nc.email</td>
+  </tr>
+}
+  </table>
+
+<p></p>
+

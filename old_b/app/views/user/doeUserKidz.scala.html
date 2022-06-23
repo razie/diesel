@@ -1,0 +1,66 @@
+@******
+manage the list of kidz and/or their accounts
+******@
+@import mod.snow.RK
+@import mod.snow.RacerKidz
+@()(implicit stok:controllers.StateOk)
+@import RK._
+
+@import helper.twitterBootstrap._
+
+@rks = @{
+  (for(a <- RacerKidz.rka(stok.au.get);
+    k <- RacerKidz.findById(a.to)) yield (k, a)).map(t =>
+    Map("fname" -> t._1.info.firstName,
+      "lname" -> t._1.info.lastName,
+      "role" -> t._2.role,
+      "notes" -> t._1._id.toString,
+      "associd" -> t._2._id.toString,
+      "button" -> t._1._id.toString))
+}
+
+@mnglink(row: Map[String, String], k: String, v: String) = {
+@k match {
+  case "button" => {
+    <a href="@routes.Kidz.doeUserKid(stok.au.get._id.toString, v, "-", row("associd"), "kidz")" class="btn btn-xs">More...</a>
+  }
+  case "notes" => {
+    <a href="@routes.Kidz.doeKidHistory("", v)" class="btn btn-info btn-xs">More...</a>
+  }
+  case _ => {
+    @v
+  }
+}
+}
+
+@stok.title("RacerKidz for " + stok.au.get.userName)
+
+    <h2>Racerz, parentz, guardianz... @stok.au.get.firstName</h2>
+
+    <br>
+    <p>
+      Add everybody here: spouse, kidz etc. You should already be listed here. This list is used when registering to any clubs, assignment to teams etc.
+
+    <p>
+      Those kidz that have their own account on this site will be listed on the left, so you can manage their privacy settings as well.
+
+      @util.utilSimpleTable(rks, Seq(
+        "fname" -> "First Name",
+        "lname" -> "Last Name",
+        "role" -> "Relationship",
+        "button" -> "Details",
+        "notes" -> "History"
+      ),
+        Some(mnglink))
+
+      Add a: @mod.snow.RK.RELATIONSHIPS.map { r =>
+      <a href="@routes.Kidz.doeUserKid(stok.au.get._id.toString, "11", r, "-", "kidz")" class="btn btn-xs btn-info">@r</a>
+    }
+
+      <br><br>
+
+    <p>If there are duplicate records, one of them will have the option to merge into the other.
+
+  <div class="alert alert-danger"><strong>Privacy:</strong>
+    This list is shared with the clubs you are member of!</div>
+

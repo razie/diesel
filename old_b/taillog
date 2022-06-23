@@ -1,0 +1,3 @@
+
+ssh razvanc@cloud3a.razie.com "cd ~/rk/logs; tail -f log.log"
+

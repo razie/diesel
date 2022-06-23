@@ -1,0 +1,434 @@
+@**************
+
+**************@
+
+@(url:String, user:Option[model.User])
+@import model._
+
+@*** from
+http://philogb.github.io/jit/static/v20/Jit/Examples/Spacetree/example1.html
+***@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<title>Hypertree - Weighted Graph Animation</title>
+
+<!-- CSS Files http://philogb.github.io/jit/static/v20/Jit/Examples/css/base.css -->
+<style>
+html, body {
+margin:0;
+padding:0;
+font-family: "Lucida Grande", Verdana;
+font-size: 0.9em;
+text-align: center;
+background-color:#F2F2F2;
+}
+
+input, select {
+font-size:0.9em;
+}
+
+table {
+margin-top:-10px;
+margin-left:7px;
+}
+
+h4 {
+font-size:1.1em;
+text-decoration:none;
+font-weight:normal;
+color:#23A4FF;
+}
+
+a {
+color:#23A4FF;
+}
+
+#container {
+width: 1000px;
+height: 600px;
+margin:0 auto;
+position:relative;
+}
+
+#left-container,
+#right-container,
+#center-container {
+height:600px;
+position:absolute;
+top:0;
+}
+
+#left-container, #right-container {
+width:200px;
+color:#686c70;
+text-align: left;
+overflow: auto;
+background-color:#fff;
+background-repeat:no-repeat;
+border-bottom:1px solid #ddd;
+}
+
+#left-container {
+left:0;
+background-image:url('col2.png');
+background-position:center right;
+border-left:1px solid #ddd;
+
+}
+
+#right-container {
+right:0;
+background-image:url('col1.png');
+background-position:center left;
+border-right:1px solid #ddd;
+}
+
+#right-container h4{
+text-indent:8px;
+}
+
+#center-container {
+width:600px;
+left:200px;
+background-color:#1a1a1a;
+color:#ccc;
+}
+
+.text {
+margin: 7px;
+}
+
+#inner-details {
+font-size:0.8em;
+list-style:none;
+margin:7px;
+}
+
+#log {
+position:absolute;
+top:10px;
+font-size:1.0em;
+font-weight:bold;
+color:#23A4FF;
+}
+
+
+#infovis {
+position:relative;
+width:600px;
+height:600px;
+margin:auto;
+overflow:hidden;
+}
+
+/*TOOLTIPS*/
+.tip {
+color: #111;
+width: 139px;
+background-color: white;
+border:1px solid #ccc;
+-moz-box-shadow:#555 2px 2px 8px;
+-webkit-box-shadow:#555 2px 2px 8px;
+-o-box-shadow:#555 2px 2px 8px;
+box-shadow:#555 2px 2px 8px;
+opacity:0.9;
+filter:alpha(opacity=90);
+font-size:10px;
+font-family:Verdana, Geneva, Arial, Helvetica, sans-serif;
+padding:7px;
+}
+
+
+.jit-autoadjust-label {
+padding: 15px;
+}
+
+#update, #restore {
+text-align: center;
+width: 100px;
+margin:0px 35px 10px 35px;
+}
+
+.button {
+display: inline-block;
+outline: none;
+cursor: pointer;
+text-align: center;
+text-decoration: none;
+font: 14px / 100% Arial, Helvetica, sans-serif;
+padding: 0.5em 1em 0.55em;
+text-shadow: 0px 1px 1px rgba(0, 0, 0, 0.3);
+-webkit-border-radius: 0.5em;
+-moz-border-radius: 0.5em;
+border-radius: 0.5em;
+-webkit-box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.2);
+-moz-box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.2);
+box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.button:hover {
+text-decoration: none;
+}
+
+.button:active {
+position: relative;
+top: 1px;
+}
+
+/* white */
+.white {
+color: #606060;
+border: solid 1px #b7b7b7;
+background: #fff;
+background: -webkit-gradient(linear, left top, left bottom, from(#fff), to(#ededed));
+background: -moz-linear-gradient(top,  #fff,  #ededed);
+filter:  progid:DXImageTransform.Microsoft.gradient(startColorstr='#ffffff', endColorstr='#ededed');
+}
+
+.white:hover {
+background: #ededed;
+background: -webkit-gradient(linear, left top, left bottom, from(#fff), to(#dcdcdc));
+background: -moz-linear-gradient(top,  #fff,  #dcdcdc);
+filter:  progid:DXImageTransform.Microsoft.gradient(startColorstr='#ffffff', endColorstr='#dcdcdc');
+}
+
+.white:active {
+color: #999;
+background: -webkit-gradient(linear, left top, left bottom, from(#ededed), to(#fff));
+background: -moz-linear-gradient(top,  #ededed,  #fff);
+filter:  progid:DXImageTransform.Microsoft.gradient(startColorstr='#ededed', endColorstr='#ffffff');
+}
+
+</style>
+
+<!--[if IE]><script language="javascript" type="text/javascript" src="http://philogb.github.io/jit/static/v20/Jit/Extras/excanvas.js"></script><![endif]-->
+
+<script type='text/javascript' src='http://code.jquery.com/jquery-3.5.1.min.js'></script>
+
+<!-- JIT Library File -->
+<script language="javascript" type="text/javascript" src="http://philogb.github.io/jit/static/v20/Jit/jit-yc.js"></script>
+
+<!-- Example File -->
+<script language="javascript" type="text/javascript">
+var labelType, useGradients, nativeTextSupport, animate;
+
+(function() {
+  var ua = navigator.userAgent,
+      iStuff = ua.match(/iPhone/i) || ua.match(/iPad/i),
+      typeOfCanvas = typeof HTMLCanvasElement,
+      nativeCanvasSupport = (typeOfCanvas == 'object' || typeOfCanvas == 'function'),
+      textSupport = nativeCanvasSupport
+        && (typeof document.createElement('canvas').getContext('2d').fillText == 'function');
+  //I'm setting this based on the fact that ExCanvas provides text support for IE
+  //and that as of today iPhone/iPad current text support is lame
+  labelType = (!nativeCanvasSupport || (textSupport && !iStuff))? 'Native' : 'HTML';
+  nativeTextSupport = labelType == 'Native';
+  useGradients = nativeCanvasSupport;
+  animate = !(iStuff || !nativeCanvasSupport);
+})();
+
+var Log = {
+  elem: false,
+  write: function(text){
+    if (!this.elem)
+      this.elem = document.getElementById('log');
+    this.elem.innerHTML = text;
+    this.elem.style.left = (500 - this.elem.offsetWidth / 2) + 'px';
+  }
+};
+
+
+function init(){
+$.ajax({
+    type:     "GET",
+    url:      "@url",
+    success: function(data){
+        console.log(data);
+        $jit.id('json').innerHTML = JSON.stringify(data, null, "  ");
+        paint(data);
+    }
+});
+
+    }
+
+function paint(json) {
+    //end
+    //init Spacetree
+    //Create a new ST instance
+    var st = new $jit.ST({
+        //id of viz container element
+        injectInto: 'infovis',
+        //set duration for the animation
+        duration: 500,
+        //set animation transition type
+        transition: $jit.Trans.Quart.easeInOut,
+        //set distance between node and its children
+        levelDistance: 50,
+        //enable panning
+        Navigation: {
+          enable:true,
+          panning:true
+        },
+        //set node and edge styles
+        //set overridable=true for styling individual
+        //nodes or edges
+        Node: {
+            height: 20,
+            width: 60,
+            type: 'rectangle',
+            color: '#aaa',
+            overridable: true
+        },
+
+        Edge: {
+            type: 'bezier',
+            overridable: true
+        },
+
+        onBeforeCompute: function(node){
+            Log.write("loading " + node.name);
+        },
+
+        onAfterCompute: function(){
+            Log.write("done");
+        },
+
+        //This method is called on DOM label creation.
+        //Use this method to add event handlers and styles to
+        //your node.
+        onCreateLabel: function(label, node){
+            label.id = node.id;
+            label.innerHTML = node.name;
+            label.onclick = function(){
+
+            // RAZ - use set as root for now
+
+//            	if(normal.checked) {
+//            	  st.onClick(node.id);
+//            	} else {
+                st.setRoot(node.id, 'animate');
+//            	}
+            };
+            //set label styles
+            var style = label.style;
+            style.width = 60 + 'px';
+            style.height = 17 + 'px';
+            style.cursor = 'pointer';
+            style.color = '#333';
+            style.fontSize = '0.8em';
+            style.textAlign= 'center';
+            style.paddingTop = '3px';
+        },
+
+        //This method is called right before plotting
+        //a node. It's useful for changing an individual node
+        //style properties before plotting it.
+        //The data properties prefixed with a dollar
+        //sign will override the global node style properties.
+        onBeforePlotNode: function(node){
+            //add some color to the nodes in the path between the
+            //root node and the selected node.
+            if (node.selected) {
+                node.data.$color = "#ff7";
+            }
+            else {
+                delete node.data.$color;
+                //if the node belongs to the last plotted level
+                if(!node.anySubnode("exist")) {
+                    //count children number
+                    var count = 0;
+                    node.eachSubnode(function(n) { count++; });
+                    //assign a node color based on
+                    //how many children it has
+                    node.data.$color = ['#aaa', '#baa', '#caa', '#daa', '#eaa', '#faa'][count];
+                }
+            }
+        },
+
+        //This method is called right before plotting
+        //an edge. It's useful for changing an individual edge
+        //style properties before plotting it.
+        //Edge data proprties prefixed with a dollar sign will
+        //override the Edge global style properties.
+        onBeforePlotLine: function(adj){
+            if (adj.nodeFrom.selected && adj.nodeTo.selected) {
+                adj.data.$color = "#eed";
+                adj.data.$lineWidth = 3;
+            }
+            else {
+                delete adj.data.$color;
+                delete adj.data.$lineWidth;
+            }
+        }
+    });
+    //load json data
+    st.loadJSON(json);
+    //compute node positions and layout
+    st.compute();
+    //optional: make a translation of the tree
+    st.onClick(st.root);
+    //st.geom.translate(new $jit.Complex(-100, 0), "current");
+    //emulate a click on the root node.
+    //end
+    //Add event handlers to switch spacetree orientation.
+    var top = $jit.id('r-top'),
+        left = $jit.id('r-left'),
+        bottom = $jit.id('r-bottom'),
+        right = $jit.id('r-right'),
+        normal = $jit.id('s-normal');
+
+
+    function changeHandler() {
+        if(this.checked) {
+            top.disabled = bottom.disabled = right.disabled = left.disabled = true;
+            st.switchPosition(this.value, "animate", {
+                onComplete: function(){
+                    top.disabled = bottom.disabled = right.disabled = left.disabled = false;
+                }
+            });
+        }
+    };
+
+    top.onchange = left.onchange = bottom.onchange = right.onchange = changeHandler;
+    //end
+
+}
+</script>
+</head>
+
+<body onload="init();">
+<div id="container">
+
+<div id="left-container">
+
+
+
+        <div class="text">
+        </div>
+
+        <div id="id-list"></div>
+
+
+<div style="text-align:center;"><a href="example2.code.html">See the Example Code</a></div>
+</div>
+
+<div id="center-container">
+    <div id="infovis"></div>
+</div>
+
+<div id="right-container">
+
+<div id="inner-details"></div>
+
+</div>
+
+<div id="log"></div>
+
+</div>
+
+<textarea id="json" rows=50 cols=100></textarea>
+
+</body>
+</html>

@@ -1,0 +1,20 @@
+@***
+simple layout for profile and preference pages
+***@
+@(au: model.User, title: String, itemNo: Integer)(body: => play.twirl.api.Html)(implicit request:controllers.RazRequest)
+
+@htmlHead(title, Some(request))(Map.empty, Some(au))
+@navbar(Some(au))(new controllers.StateOk("", Some(au), request.oreq))
+
+<div class="container">
+  <div class="row">
+    @user.leftmenu(itemNo, au)
+
+    @body
+
+  </div> <!-- /row -->
+  <hr>
+  @htmlFooter(ads = request.showBottomAds(None))
+</div> <!-- /container -->
+
+@htmlBottom()

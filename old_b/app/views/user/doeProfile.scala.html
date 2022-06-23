@@ -1,0 +1,56 @@
+@(myForm: Form[model.User], au: model.User)(implicit request: controllers.RazRequest)
+
+@import helper.twitterBootstrap._
+@import play.api.Play.current
+@import play.api.i18n.Messages.Implicits._
+
+
+@doePLayout(au, "Profile", 1) {
+
+  <div class="col-sm-4">
+    @helper.form(action = routes.ProfileUpd.doeProfileUpdate(), 'class -> "well") {
+      @util.razText(myForm, "firstName", "First name")
+      @util.razText(myForm, "lastName", "Last name")
+
+      <small>
+      Current roles:  @au.roles.mkString(",")<br><br>
+      </small>
+
+      @util.razSelect(myForm, "userType", "Add a role",
+        razie.hosting.Website.userTypes(request.req).map(x=>(x.toString,razie.hosting.Website.userTypeDesc(x.toString)(request.req))))
+
+      @util.razSelect(myForm, "yob", "When you were born",
+        (Range(2005, 1912, -1) map (y => (y.toString, y.toString))),
+        'style -> "width: 100px")
+
+      @util.razText(myForm, "company", "Company/Organization")
+      @util.razText(myForm, "address", "City, Prov/State, Country")
+
+      @helper.textarea(
+        myForm("about"),
+        '_label -> "Tell us about yourself",
+        '_showConstraints -> false,
+        'placeholder -> request.website.propDflt("user.join.about.placeholder",
+          "... anything you deem interesting, what are you looking to get out of this service?"),
+        'class -> "form-control col-sm-12",
+        'rows->5)
+
+      <button type="submit" class="btn btn-primary">Update account!</button>
+
+      @myForm.globalError.map { err =>
+        <p style="color : red ; font-weight : bold">@err.message</p>
+      }
+    }
+  </div>
+
+  <div class="col-sm-4">
+
+    <h2>Basic profile</h2>
+    <p>
+@*    <p>The <b>city/state/country</b>*@
+@*      is used in several places, to center dynamic maps, weather etc - please enter it properly to get a proper experience.*@
+    <p>You have the option to add more detailed contact information under <b>Contact info</b>.
+
+  </div>
+  @formFix()
+}

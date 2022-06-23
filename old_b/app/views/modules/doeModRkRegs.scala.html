@@ -1,0 +1,162 @@
+@******
+module RK - list of regs per topic
+******@
+@import mod.snow.RacerKid
+@import mod.snow.RacerKidAssoc
+
+@(au:model.User,
+  page:razie.wiki.model.WikiEntry,
+  reg:controllers.ModRkReg,
+  regd:List[(controllers.ModRkEntry, RacerKid)],
+  myKids:List[(RacerKidAssoc, RacerKid, Option[String])])(implicit stok:controllers.StateOk)
+
+@import razie.diesel.dom.WikiDomain
+@import views.html.club.groupMessaging
+
+@isCart()=@{
+  page.attr("price").exists(_.trim.length > 0)
+}
+
+@isClosed()={
+
+}
+
+@kids()=@{
+  reg.kids.toList.map(_.rkId)
+}
+
+@findClub()=@{
+  page.wid.parentOf(WikiDomain(page.wid.getRealm).isA("Club", _)).flatMap(Club.apply)
+}
+
+@parms() = @{
+  val defaults = "Racer:success,Coach:warning".split(",")
+  val tags = page.contentProps.getOrElse("module.reg", page.props("module:reg")).split(",").tail
+  (if (tags.size>0) tags else defaults).map(_.split(":")).map(x=>(x(0), {if(x.size>1) x(1) else "info"})).toMap
+}
+
+@util.confirmModal()
+
+<div class="well">
+@import razie.db.RMongo.as
+@mnglink(row:Map[String,String],k:String,v:String)={
+  @k match {
+        case "id" => {
+      @if(reg.kids.exists(_.rkId.toString == v)) {
+            <span class="label label-default">Included</span>
+        as @reg.kids.filter(_.rkId.toString == v).map(_.role).mkString
+
+        @if(!reg.kids.filter(_.rkId.toString == v).flatMap(_.state).exists(_ == ModRk.STATE_PAID)) {
+          <a href="@routes.ModRk.doeModRkRemove(page.wid, v)" class="btn btn-xs btn-danger" title="remove from this event"> &nbsp;x&nbsp;
+        }
+        </a>
+      } else {
+        @if(au.isClub) {
+                @*** to do auth info ***@
+        }
+
+        @if(page.props.getOrElse("module:reg-open", "") == "yes") {
+          @parms.map { p=>
+           <a href="@routes.ModRk.doeModRkAdd(page.wid, v, p._1)" class="btn btn-xs btn-@p._2" title="register for this event">@p._1</a>
+          }
+        } else {
+          Registration closed.
+        }
+          }
+      }
+        case "rm" => {
+          @if(au.canAdmin(page) && reg.kids.exists(_.rkId.toString == v)) {
+              @if(reg.kids.filter(_.rkId.toString == v).flatMap(_.state).exists(_ == ModRk.STATE_PAID)) {
+                @util.confirm(
+                  "Credit",
+                  "Remove and give credit?",
+                  routes.ModRk.doeModRkRemove(page.wid, v).toString,
+                  "btn btn-danger btn-xs"
+                )
+              } else {
+                <a href="@routes.ModRk.doeModRkRemove(page.wid, v)" class="btn btn-xs btn-danger" title="remove from this event">
+                &nbsp;x&nbsp;
+                </a>
+              }
+          }
+        }
+        case "notes" => {
+          @if(au.canAdmin(page) && reg.kids.exists(_.rkId.toString == v)) {
+            <a href="@routes.Kidz.doeKidHistory(findClub().get.wid.wpath, v)" class="btn btn-info btn-xs">&nbsp;&nbsp;<span class="glyphicon glyphicon-th-list"/>&nbsp;&nbsp;</a>
+          }
+        }
+        case "status" => {
+          @if(v contains "In shopping cart") {
+            <span>@Html(v)</span>
+          } else {
+            <span class="label label-@{parms.get(v).getOrElse("default")}">@Html(v)</span>
+          }
+      }
+    case _ => {@v}
+  }
+}
+
+<h2>Registered
+  <small>
+@if(regd.size > 0) {
+  @reg.kids.toList.groupBy(_.role).map {mrk=>
+    | @mrk._2.size x @mrk._1
+  }
+</small>
+</h2>
+
+  @util.utilSimpleTable(regd.iterator.map(t=>
+     Map(
+       "fname"->t._2.info.firstName,
+       "lname"->t._2.info.lastName,
+       "status" -> t._1.current,
+       "group" -> getTeams(t._2),
+       "associd" -> t._1.rkId.toString,
+       "details" -> t._1.rkId.toString,
+       "notes" -> t._1.rkId.toString,
+       "rm" -> t._1.rkId.toString)),
+    Seq(
+      "fname" -> "F.Name",
+      "lname"->"L.Name",
+      "status" -> "Confirmed",
+      "group" -> "Group",
+      "notes" -> "History",
+      "rm" -> "Admin"),
+    Some(mnglink))
+} else {
+ <b>nobody...</b>
+  <hr>
+}
+
+@getTeams(rk:RacerKid)=@{
+  findClub().map { c =>
+    rk.teams(c, "").toList.map(_.uwid.page.map(_.name).getOrElse("")).mkString(",")
+  }.mkString
+}
+
+  @findClub().map { club =>
+    @if(club.isClubCoach(stok.au.get)) {
+      @groupMessaging(club, "", page.wid, kids())
+    }
+  }
+
+  <hr>
+
+<h2>Available for registration:</h2>
+
+@util.utilSimpleTable(
+  myKids.iterator.map(t=>
+    Map("fname"->t._2.info.firstName,
+        "lname"->t._2.info.lastName,
+        "role" -> t._3.getOrElse(t._1.role),
+        "associd"->t._1._id.toString,
+        "id" -> t._2._id.toString)) ,
+    Seq(
+        "fname" -> "F.Name",
+        "lname"->"L.Name",
+        "role" -> "Role",
+        "id" -> "Register as"), Some(mnglink))
+
+</div> @*** well ***@
+
+

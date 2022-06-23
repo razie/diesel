@@ -1,0 +1,44 @@
+@**
+engine configuration popup
+**@
+@()(implicit stok: controllers.StateOk)
+
+<span>
+
+<span>
+  <span onclick="setTags();" class="label label-primary" style="cursor:pointer">
+    <span id="curTags">Tags</span>
+    <span class="glyphicon glyphicon-chevron-down"> </span>
+  </span>
+</span>&nbsp;
+
+  | <input type="checkbox" id="mockMode" title="Use the mocks" onchange="engConfigChanged()" checked> Mocks
+  | <input type="checkbox" id="sketchMode" title="Not used yet" onchange="engConfigChanged()" > Sketch
+  | <input type="checkbox" id="blenderMode" title="Blend all specs together" onchange="engConfigChanged()" > Blender
+  | <input type="checkbox" id="draftMode" title="Use autosaved drafts not originals" checked onchange="engConfigChanged()" > Drafts
+  | <input type="checkbox" id="wikiMode" title="Show the wiki instead of the tree" onchange="engConfigChanged()" > Wiki
+
+</span>
+
+@*<script src="@routes.Assets.at("javascripts/weDieselDom.js")"></script>*@
+
+<script>
+require(['jquery', 'weDieselDom'], function($){
+$(':checkbox').change(function(){
+  updEngCB(this);
+});
+
+updEngineConfig=function() {
+  $("#mockMode").select();
+}
+
+engConfigChanged=function() {
+}
+
+  getEngineConfig();
+  updEngineConfig();
+
+  });
+
+</script>
+

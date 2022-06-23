@@ -1,0 +1,26 @@
+@**************
+the footer of every page...
+**************@
+@(ads:Boolean=false)(implicit stok: mod.notes.controllers.NotesOk)
+@import _root_.razie.wiki.Services
+
+<footer>
+  <p>&copy; <a>Razie</a>, 2012-2014
+  | <a href="/doe/support">Support</a>
+  | <a href="/wiki/Admin:Terms_of_Service-notes">Terms of Service</a>
+
+@***
+      | <small>(<a href="/mobile/1">Mobile</a>
+      | <a href="/mobile/0">Desktop</a>
+      )</small>
+***@
+
+@***
+      | <small>(<a href="javascript:cssref(dark)">Dark</a>
+      | <a href="javascript:cssref(light)">Light</a>
+      )</small>
+***@
+
+  </p>
+
+</footer>

@@ -1,0 +1,42 @@
+@***
+purge audit tables
+***@
+@import razie.wiki.admin.Autosave
+@(
+    lok:List[(String,String,String,String, String)],
+    lneq:List[(String,String,String,String, String)],
+    lnon:List[(String,String,String,String, String)],
+    duplos:scala.collection.mutable.HashMap [String, List[String]]
+)(implicit stok: controllers.StateOk)
+@import razie.wiki.model.WID
+
+@md {
+
+These are all the drafts you have in progress in the current project...
+
+## Total drafts in progress: @lok.size
+
+- @lok.mkString("\n- ")
+
+
+@if(stok.au.exists(_.isAdmin)) {
+
+### neq: @lneq.size contents are equal to original
+
+- @lneq.mkString("\n- ")
+
+### non: @lnon.size = original not existing
+
+- @lnon.mkString("\n- ")
+
+### duplos: @duplos.size + s" of ${d.size} "
+
+- @duplos.map(t=>(t._1, t._2.map(x=> s"[/wiki/$x] and [/razadmin/db/entity/WikiEntry/$x]"))).mkString("\n- ")
+
+[/admin/draftsCleanAll CLEAN ALL] - careful: no confirmation. Will delete all neq and non (except JSFiddles)
+
+}
+
+}
+
+

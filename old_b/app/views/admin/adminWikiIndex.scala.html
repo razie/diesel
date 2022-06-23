@@ -1,0 +1,15 @@
+@()(implicit stok: controllers.StateOk)
+
+@stok.title("admin wiki index")
+
+  <h2>Wikis.index:</h2>
+
+  <table>
+  @razie.wiki.model.WikiIndex.withIndex(razie.wiki.model.Wikis.RK) { index =>
+    @index.map { (a, b, c) =>
+      <tr><td>@a</td><td>@b.cat</td><td>@b.name</td><td>@b.parent</td><td>@c</td></tr>
+    }
+  }
+  </table>
+
+

@@ -1,0 +1,577 @@
+@(club: Option[controllers.Club], rk: mod.snow.RacerKid, settings: String, skip:Int)(implicit stok: controllers.StateOk)
+@import model.User
+@import mod.snow.RacerKidz
+@import mod.snow.RacerKid
+@import razie.wiki.model.{WID, WikiEntry}
+@import mod.snow.RkHistory
+@import mod.snow.Snow.ROLES
+@import razie.wiki.Services
+@import helper.twitterBootstrap._
+@import razie.tconf.Visibility
+
+@stok.requireJs(false)
+
+@PAGE()= @{30}
+
+@help()= @{
+}
+
+@*Coaches: @mod.snow.Snow.findCoaches(club.map(_.wid), rk._id.toString).map{x=>*@
+  @** @x._1, @model.Users.findUserById(x._2.userId.get).get.fullName)*@
+@*}*@
+
+@isGood(we: WikiEntry) = @{
+  we.category != "-"
+}
+
+@renderContent(wid: WID, we: WikiEntry, c:Option[String]=None) = {
+ @{
+   we.preprocess(stok.au)
+   ""
+ }
+
+  @if(we.fields.nonEmpty && c.isEmpty) {
+    @wiki.wikiFormSimple(wid, None, Some(we), Map.empty, false, false, true)
+  } else {
+    @wiki.wikiFrag(wid, c, true, Some(we), None, true, false, false, false)
+  }
+}
+
+@clubQWpath() = @{
+  club.map("club=" + _.wid.wpathFull).getOrElse("")
+}
+
+@findNameFrom(h:RkHistory, we:WikiEntry) = {
+  <a href="/doe/kid/history/@{RacerKidz.findByUserId(h.authorId.getOrElse(we.by))._id.toString}?@clubQWpath()">@model.Users.nameOf(h.authorId.getOrElse(we.by))</a>
+}
+
+@findNameTo(h:RkHistory) = {
+  <a href="/doe/kid/history/@{h.toRkId}?@clubQWpath()">@h.toRkId.flatMap(RacerKidz.findById).flatMap(_.userId).map(model.Users.nameOf)</a>
+}
+
+@uhLink(n:String) = @{
+  if(n.length > 0) s"""<a href="#">$n</a>"""
+  else "?"
+}
+
+  @paint(h: RkHistory, we:WikiEntry) = {
+
+    <!--
+      we: @Html(we.toString)
+
+    ------------
+
+    h : @Html(h.toJsonNice)
+    -->
+
+   @if(h.eKind != "Comment") {
+      <div class="panel panel-@pnelColor(h, we)" id="@h._id.toString" style="border-radius : 9 px ; margin-bottom : 10 px;">
+        <div class="panel-heading"
+        style="pading:5px 5px; padding-top: 3px; padding-right: 5px; padding-bottom: 3px; padding-left: 5px;">
+          <small>
+            <!-- @model.Users.nameOf(we.by) | -->
+            @findNameFrom(h,we) > @findNameTo(h) |
+            @we.crDtm.toString("YYYY-MM-dd hh:mm a").toLowerCase()
+            @if(isGood(we)) {
+              @if(canEdit(h,we)) {
+                [<a href="@mod.notes.controllers.routes.NotesLocker.noteById(we._id.toString)"><strong>Edit</strong>]</a>
+              }
+              [<a href="@mod.notes.controllers.routes.NotesLocker.viewNoteById(we._id.toString)"><strong>View</strong></a>]
+            }
+          </small>
+
+          <div style="float : right ;">
+            <small>Tags: <strong>
+            @we.tags.map { x =>
+              @x |
+              @**
+              @if(stok.tags find (_._1 == x) isEmpty ) {
+              @x |
+              } else {
+              <a href="@mod.notes.controllers.routes.NotesLocker.tag(stok.tagPath(x))">@x</a> |
+              }
+              **@
+            }
+            </strong></small>
+          </div>
+        </div>
+
+        <div class="panel-body alert-@pnelColor(h,we)" style="background-color: #fCf8eb; color:black">
+        @*<div class="panel-body alert-@pnelColor(h,we)" style="color:black">*@
+          @if(we.category != "Note" && h.eKind != "memo" && isGood(we)) {
+            @Html(we.wid.ahrefNice(stok.realm))<br>
+          }
+
+          @if(h.role.toLowerCase == "post" || h.role.toLowerCase == "message" || canEdit(h,we)) {
+            <button type="button" class="close" aria-label="Dismiss" onclick="dismissPost('@h._id.toString', '@h.eId.mkString')" title="Dismiss this alert" style="margin-left:10px">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          }
+
+          @if(stok.au.exists(_.isAdmin) || Services.config.isDevMode) {
+            <button type="button" class="close" aria-label="Info" title="@{h.toJsonNice}" style="margin-left:10px">
+              <span class="glyphicon glyphicon-question-sign"></span>
+            </button>
+          }
+
+          @if(h.role.toLowerCase == "post" || club.exists(c=>stok.au.exists(c.isClubAdmin(_)))) {
+            @** should admin see delete for all ? **@
+          }
+
+          @if(h.role.toLowerCase != "post" && stok.au.exists(x=> h.authorId.exists(_ != x._id)) ) {
+            <button type="button" class="close" aria-label="Dismiss" onclick="addReply('@h._id.toString', '@h.eId.mkString')" title="Reply to this message" style="margin-left:10px">
+              <span style="font-weight: bold" class="glyphicon glyphicon-share"></span>
+            </button>
+          }
+
+          @if(stok.au.exists(_.isMod) && stok.au.exists(x=> h.authorId.exists(_ != x._id)) ) {
+            <button type="button" class="close" aria-label="Dismiss" onclick="seeKidHistory('@h.authorId.mkString', '@{club.map(_.wid.wpath).mkString}')" title="See history" style="margin-left:10px">
+              <span style="font-weight: bold" class="glyphicon glyphicon-list"></span>
+            </button>
+          }
+
+          @if(h.role.toLowerCase == "post") {
+            <p>@renderContent(we.wid, we,
+                h.content.orElse(we.getFirstParagraph).map(para=>
+                para +
+                "<br><small>... <a href=\"" + we.wid.urlRelative +
+                "\">(more available)</a></small>"
+            ))</p>
+          } else {
+            <p>@renderContent(we.wid, we)</p>
+          }
+        </div>
+
+      </div>
+  } else {
+    @h
+  }
+  }
+
+@pnelColor(h:RkHistory, we:WikiEntry) = @{
+  // todo notes are always private
+  if(we.tags.contains("coach-only")) "success"
+  else if(h.role.toLowerCase == "message") "info"
+  else if(we.tags.contains("private") || we.visibility == Visibility.PRIVATE ) "success"
+  else if(h.role.toLowerCase == "post" || we.tags.contains("post") || we.tags.contains("item")) "warning"
+  else "info"
+}
+
+@canEdit(t:RkHistory, we:WikiEntry) = @{
+  // I see my own and my posts
+  // todo why am I second guessing canEdit for history?
+  if(we.ownerId.exists(_ == stok.au.get._id)) true
+  else if(we.tags.contains("private") /*|| we.visibility == Visibility.PRIVATE*/) we.ownerId.exists(_ == stok.au.get._id)
+  else if(t.role.toLowerCase=="post") false
+  else if(we.tags.contains("coaching") || we.visibility == Visibility.CLUB_COACH) club.exists(_.isClubCoach(stok.au.get))
+  else !Array("private", "insight").exists(we.tags.contains)
+}
+
+@stok.title("athlete history")
+
+<h3>@rk.info.fullName
+  <small>|
+    @if(rk.userId.isDefined) {account holder} else {parent acct: @rk.parentUsers.map(_.fullName).mkString(",")}
+    | <a href="#" onclick="help(); return false;" title="More help" style="color:red">Help!</a>
+    @if(stok.au.exists(_.isMod) && rk.userId.isDefined) {
+      @rk.userId.flatMap(model.Users.findUserById).map(_.forRealm(stok.realm)).map { u =>
+        | @u.roles
+       | @u.perms
+      }
+    }
+    @if(stok.au.exists(_.isAdmin) && rk.userId.isDefined) {
+      | <a href="/razadmin/user/@{rk.userId.mkString}">details</a>
+    }
+    @if(club.exists(c=>stok.au.exists(_.canAdmin(c.wid))) && rk.userId.isDefined) {
+      | <a href="@mod.cart.routes.Accts.create2(rk.userId.mkString, club.get.wid)">billing</a>
+    }
+  </small>
+  @util.notesmsgDiv("histmsg")
+</h3>
+
+  <p>
+  </p>
+
+@if(settings contains "grouped") {
+  <input type="checkbox" name="grouped" checked onchange="changeGrouped(this);"/> Grouped
+} else {
+  <input type="checkbox" name="grouped" onchange="changeGrouped(this);"/> Grouped
+}
+  | <a href="#" class="btn btn-xs btn-success" onclick="deletePosts(); return false;"      title="Delete all the post notifications">Clear posts</a>
+  | <b>Create:&nbsp;</b>
+
+@if(rk.userId.exists(a=> stok.au.exists(_._id == a))) {
+  <span onclick="startPersonal(); return false;" class="label label-primary" style="cursor:pointer"><span id="curNote">Personal notes</span> <span class="glyphicon glyphicon-chevron-down"></span>
+  </span>&nbsp;
+}
+  <span onclick="startMessaging(); return false;" class="label label-primary" style="cursor:pointer"><span id="curMessages">Messages</span> <span class="glyphicon glyphicon-chevron-down"></span>
+  </span>&nbsp;
+  <span onclick="startCoach(); return false;" class="label label-primary" style="cursor:pointer"><span id="curCoaching">Coaching</span> <span class="glyphicon glyphicon-chevron-down"></span>
+  </span>&nbsp;
+
+<p>
+</p>
+
+<div id="info" class="bg-primary"></div>
+<div id="extra"></div>
+
+@goodItems(rk:RacerKid, au:User) = @{
+  rk.history.items(PAGE, skip).map(h=>
+    (h,
+     h.eId.flatMap(razie.wiki.model.Wikis.findById(h.eKind, _))
+         .filter (! _.tags.contains("archive"))
+         .filter (filterForCoach(rk,h,au))
+    )
+  ).filter(x=>x._2.isDefined || x._1.eId.isEmpty)
+}
+
+@filterForCoach(rk:RacerKid,t:RkHistory,au:User)(we:WikiEntry) = @{
+  // no 1 - only coaches see insight
+  if(stok.au.exists(_.isAdmin)) true
+  else if(we.tags.contains("coach-only"))
+    club.exists(_.isClubCoach(stok.au.get))
+  // I see my own and my posts
+  else if(we.tags.contains("private") /*|| we.visibility == Visibility.PRIVATE*/)
+    we.ownerId.exists(_ == stok.au.get._id)
+  else if(t.role.toLowerCase=="post") // include parents?
+      rk.usersToNotify.exists(_ == au._id)
+  else if(we.visibility == Visibility.CLUB_COACH) (
+    club.exists(_.isClubCoach(stok.au.get)) ||
+    rk.usersToNotify.exists(_ == au._id))
+  else
+        !Array("private", "coach-only").exists(we.tags.contains)
+  }
+
+@items()=@{
+  goodItems(rk, stok.au.get)
+}
+
+@defining(items().take(PAGE)) { history =>
+  @util.notesmsgShow("histmsg", Seq(("msg" -> ("Found "+history.size.toString+" items"))))
+
+<div id="help" class="alert alert-success" style="display: none;">
+  <p>This is your <b>main feed</b>.
+    Items appear from the different notifications you subscribed to (like news, alerts or blog items).
+    <b>You can dismiss notifications with the X button on the right!</b></p>
+  <p><b>As a coach</b>
+    , you'll keep track of your own personal notes. You can see each athlete's profile by going to the respective team
+    - read <a href="/wiki/rk.Admin:Coaches_and_notifications">Coaches and notifications</a>
+  </p>
+  <p><b>As a member / parent / racer</b>
+    , you'll keep track of your own notes and messages with coaches
+    - read <a href="/wiki/rk.Admin:Members_and_notifications">Members and notifications</a>
+  </p>
+  <p>You can use <a href="#" class="btn btn-xs btn-success" onclick="deletePosts(); return false;" title="Delete all the post notifications">Clear posts</a> to
+  clear all the small notifications and leave only the important items.
+    <p>You can reply to most messages using the <span class="glyphicon glyphicon-comment"></span> icon to
+      the right of the message.
+    </p>
+</div>
+
+  @if(settings contains "grouped") {
+    <p></p>Groups: @history.groupBy(_._1.role).map { g =>
+      <a href="#@g._1">@g._1 <small>(s)</small></a> |
+    }
+
+    @history.groupBy(_._1.role).map { g =>
+      <a name="@g._1"></a>
+
+      <h2>@g._1 <small>(s)</small></h2>
+
+    @g._2.map(t=> paint(t._1, t._2.getOrElse(justContent(t._1))))
+      <hr>
+    }
+  } else {
+    @history.map(t=> paint(t._1, t._2.getOrElse(justContent(t._1))))
+  }
+
+  <!-- help -->
+
+  @if((history.size == 0 || rk.history.firstTime.isDefined) &&
+      rk.userId.exists(uid=> stok.au.exists(_._id == uid))) {
+    <script async>
+    // don't show when looking at someone else's history
+    withJquery(function($){
+      $("#help").show();
+    });
+    </script>
+  }
+}
+
+
+@if(stok.au.map(_._id).mkString == rk.userId.mkString) {
+@*  lookint at myself*@
+  <a
+    href="/doe/history?skip=@{skip+PAGE}"
+    class="btn btn-info"
+  >SEE MORE ITEMS...</a>
+} else {
+@*  looking at a kid*@
+  <a
+  href="/doe/kid/history/@{rk._id.toString}?skip=@{skip+PAGE}&@clubQWpath()"
+  class="btn btn-info"
+  >SEE MORE ITEMS...</a>
+}
+
+@justContent(h:RkHistory)=@{
+  // make up a wiki from a message
+  val w = WikiEntry("-", "-", "-", "md", h.content.getOrElse(h.ctx), h.authorId.getOrElse(stok.au.get._id), Seq(h.role.toLowerCase) ++ h.tags.toSeq.flatMap(_.split(",").toSeq)).copy(
+    crDtm = h.crDtm
+  )
+  w.cacheable = false
+  w
+}
+
+@tagSelect(what:String, s:String)=@{
+List(
+  s,
+  club.map(_.props.getOrElse(what, "")).mkString,
+  club.map(_.props.getOrElse("system.discipline", "")).mkString
+).filter(! _.isEmpty).mkString("/")
+}
+
+<script>
+var selecting="";
+
+function dismissPost(hid,eid) {
+  var url = "@controllers.routes.Kidz.doeDismissHistory("NID")".replace(/NID/g, hid);
+  $.ajax({
+    type: "POST",
+    url:  url,
+    success: function(data) {
+      $("#"+hid).fadeOut(600);
+    },
+    error: function(result) {
+      console.log("ERROR: Can't dismiss: "+result.responseText)
+      notesMsgShow("err", "Can't dismiss: "+result.statusText)
+    }
+});
+}
+
+function Extra (x) {
+  $("#extra").html('<span class="badge">Loading...</span><br><br>');
+  $("#extra").load(x);
+}
+
+function addInsight() {
+  $("#info").text("Private insight / notes visible to coaches only");
+  Extra("@mod.notes.controllers.routes.NotesLocker.embed("Note", "for coaches", "coaching,coach-only", ROLES.INSIGHT, "")");
+}
+
+function addMsg() {
+  $("#info").text("Message");
+  Extra("@mod.notes.controllers.routes.NotesLocker.embed(ROLES.MESSAGE, "message", "message", ROLES.MESSAGE, "", false, true, "Send it")");
+}
+
+function seeKidHistory(id1, club) {
+  window.location.href = "/doe/kid/history/" + id1 + '?club=' + club;
+}
+
+function addReply(id1,id2) {
+  $("#info").text("Reply message");
+  Extra("@mod.notes.controllers.routes.NotesLocker.embed(ROLES.MESSAGE, "reply", "message", ROLES.REPLY+"ID1", "", false, true, "Send it")".replace(/ID1/,id1));
+}
+
+function addFeedback() {
+  $("#info").text("Feedback is shared with the athlete");
+  Extra("@mod.notes.controllers.routes.NotesLocker.embed(ROLES.FEEDBACK, "feedback", "coaching,feedback", ROLES.FEEDBACK, "")");
+}
+
+function addVideo() {
+  $("#info").text("Video analysis is shared with the athlete");
+  Extra("@mod.notes.controllers.routes.NotesLocker.embed(ROLES.VIDEO, ROLES.VIDEO, "video,feedback", ROLES.VIDEO, "")");
+}
+
+function addMAReq() {
+  $("#info").text("Insert the youtube video link");
+  Extra("@mod.notes.controllers.routes.NotesLocker.embed(ROLES.MAREQ, "MA", "video,request", ROLES.MAREQ, "")");
+}
+
+function addAskCoach() {
+  $("#info").text("You will be notified of the reply");
+  Extra("@mod.notes.controllers.routes.NotesLocker.embed(ROLES.ASK, ROLES.ASK, "question,request", ROLES.ASK, "")");
+}
+
+function addGoal() {
+  selecting="goal";
+  $("#info").text("Select a goal...");
+  showSelectModal("@mod.notes.controllers.routes.NotesLocker.selectFrom(tagSelect("system.templates", "public/template/goal"))");
+}
+
+function addPlan() {
+  selecting="plan";
+  $("#info").text("Select a plan...");
+  showSelectModal("@mod.notes.controllers.routes.NotesLocker.selectFrom(tagSelect("system.templates", "public/template/plan"))");
+}
+
+function addEval() {
+  selecting="evaluation";
+  $("#info").text("Select an eval ...");
+  showSelectModal("@mod.notes.controllers.routes.NotesLocker.selectFrom(tagSelect("system.templates", "public/template/evaluation"))");
+}
+
+function addQuestionaire() {
+  selecting="question";
+  $("#info").text("Select a form ...");
+  showSelectModal("@mod.notes.controllers.routes.NotesLocker.selectFrom(tagSelect("system.templates", "public/template/question"))");
+}
+
+/** callback from Notes on note selected */
+function noteSelected(nid) {
+  $("#selectModal").modal('hide');
+
+  if(selecting == 'plan' || selecting=='goal' || selecting=='evaluation' || selecting=='question') {
+    var url ;
+
+    $("#info").text("Now customize for the athlete...");
+    if(selecting=='plan') {
+      url = '@mod.notes.controllers.routes.NotesLocker.embed(ROLES.PLAN, "organize", "plan,long-term", ROLES.PLAN, "NID")';
+    } else if(selecting=='goal') {
+      url = '@mod.notes.controllers.routes.NotesLocker.embed(ROLES.GOAL, "reach", "goal,long-term", ROLES.GOAL, "NID")';
+    } else if(selecting=='evaluation') {
+      url = '@mod.notes.controllers.routes.NotesLocker.embed(ROLES.EVALUATION, "feedback", "evaluation", ROLES.EVALUATION, "NID", true)';
+    } else if(selecting=='question') {
+      url = '@mod.notes.controllers.routes.NotesLocker.embed(ROLES.QUESTIONAIRE, "feedback", "question", ROLES.QUESTIONAIRE, "NID", true)';
+    }
+    $("#extra").load(url.replace(/NID/g, nid));
+    selecting="";
+  }
+}
+
+/** callback from Notes on note content submitted */
+function noteAdded (noteId, context, extra) {
+  $.post(
+    '/doe/4us/addNote/@{club.map(_.wid.wpath).mkString}'+'?noteid='+noteId+'&role='+context+'&rkid=@rk._id.toString',
+    extra,
+    function(response) {
+      console.log(response);
+
+      if(response.indexOf("msg") == 1) {
+      // todo deal with response codes
+      } else {
+      }
+
+      setTimeout(function() {
+        window.location.reload();
+      }, 100);
+  });
+}
+
+function deletePosts () {
+  $.post('/doe/4us/deletePosts',
+    '', function(response) {
+    console.log(response);
+
+    setTimeout(function() {
+      window.location.reload();
+    }, 100);
+  });
+}
+
+function changeGrouped (element) {
+  var settings = element.checked ? "grouped" : "";
+  window.location = '@routes.Kidz.doeKidHistory(club.map(_.name).mkString, rk._id.toString, "")&settings='+settings;
+}
+
+function help() {
+  $("#help").toggle();
+}
+
+function startPersonal() {
+   popupContent("Select category:<br><br>"+
+   'Add a personal note in one of the categories below:<p></p>' +
+   '<a href="#" onclick="addNote(\'equipment\'); return false;">Equipment</a><br>' +
+   '<a href="#" onclick="addNote(\'technical\'); return false;">Technical</a><br>' +
+   '<a href="#" onclick="addNote(\'tactical\'); return false;">Tactical</a><br>'
+   );
+}
+
+function startMessaging() {
+   popupContent("Select category:<br><br>"+
+  @if(rk.userId.exists(a=> stok.au.exists(_._id == a))) {
+    'You need to post messages to someone else\'s feed...'
+   } else {
+   '<a href="#" onclick="oneModalHide(); addMsg(); return false;">Message</a><br>'
+   }
+   );
+}
+
+function startCoach() {
+   popupContent("Select category:<br><br>"+
+@if(club.exists(c=> c.isClubCoach(stok.au.get) || c.isClubAdmin(stok.au.get)) || stok.au.exists(_.isAdmin)) {
+'<b>Coaches</b> can send:<br>' +
+   '<a href="#" onclick="oneModalHide(); addInsight(); return false;">Insight</a> - <small>private coach note, visible only to coaches</small><br>' +
+   '<a href="#" onclick="oneModalHide(); addEval(); return false;">Evaluation</a> - <small>an evaluation from the coach </small><br>' +
+   '<a href="#" onclick="oneModalHide(); addQuestionaire(); return false;">Questionaire</a> - <small>a questionaire to be completed</small><br>' +
+   '<a href="#" onclick="oneModalHide(); addFeedback(); return false;">Feedback</a> - <small>a coache\'s note</small><br>' +
+   '<a href="#" onclick="oneModalHide(); addVideo(); return false;">Video</a> - <small>a video/MA from coach</small><br>' +
+   '<hr>'+
+   '<a href="#" onclick="oneModalHide(); addGoal(); return false;" title="Select a goal">Goal</a> - Select a goal<br>' +
+//   '<a href="#" onclick="oneModalHide(); addPlan(); return false;" title="Select a plan">Plan</a> - Select a plan' +
+   ''+
+  }
+  @if(rk.userId.exists(a=> stok.au.exists(_._id == a))) {
+'<b>Members</b> can send:<br>' +
+   '<a href="#" onclick="oneModalHide(); addMAReq(); return false;"><b>MA Request</b></a> - <small>request feedback on a photo/video</small><br>' +
+   '<a href="#" onclick="oneModalHide(); addAskCoach(); return false;"><b>Ask a coach</b></a> - <small>ask the coach a question</small><br>' +
+  }
+   ''
+   );
+
+  @*| <a href="#" onclick="addGoal(); return false;"      title="Select a goal">Goal</a> |*@
+  @*| <a href="#" onclick="addPlan(); return false;"      title="Select a plan">Plan</a> |*@
+ @**
+ <a href="#" onclick="addMsg(); return false;"      title="Send a message">Message</a>
+    | <a href="#" onclick="addInsight();; return false;"    title="Private insight / notes visible to coaches only">Insight</a>
+    | <a href="#" onclick="addEval(); return false;"     title="An evaluation shared with the athlete">Evaluation</a>
+    | <a href="#" onclick="addQuestionaire(); return false;" title="Some feedback">Quest</a>
+    | <a href="#" onclick="addFeedback(); return false;" title="Some feedback">Feedback</a>
+    | <a href="#" onclick="addVideo(); return false;"       title="Video analysis">Video</a>
+**@
+}
+
+function addNote(tag) {
+  $("#oneModal").modal('hide');
+  $("#info").text("Note");
+  $("#extra").load("@mod.notes.controllers.routes.NotesLocker.embed("Note", "message", "TAGG", "Note", "")".replace(/TAGG/, tag));
+}
+
+function weNotifyFormSubmitted(wpath) {
+  window.location.reload();
+}
+</script>
+
+
+<div id="selectModal" class="modal fade">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-body" style="max-height: 420px; overflow-y: auto;">
+        <p>?</p>
+      </div>
+    </div><!-- /.modal-content -->
+  </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
+<script async>
+    // clear modal contents on close
+require(['jquery'], function($) {
+  $('#selectModal').on('hidden.bs.modal', function (e) {
+    $("#selectModal > div > div > div.modal-body").html('...');
+  })
+
+  $("#selectModal").css("max-height", "");
+  $("#selectModal").css("overflow-y", "");
+});
+
+function showSelectModal(url) {
+  require(['jquery'], function($) {
+    $("#selectModal > div > div > div.modal-body").load(url);
+    $("#selectModal").modal('show');
+  });
+}
+</script>
+
+
+@util.oneModal()
+
+

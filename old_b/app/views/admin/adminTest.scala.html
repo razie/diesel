@@ -1,0 +1,50 @@
+@**
+screen to admin one user
+**@
+@()(implicit stok: controllers.StateOk)
+
+@stok.title("admin testing")
+@stok.requireJs(false)
+
+<script src="@routes.Assets.at("javascripts/weTest.js")"></script>
+<script src="@routes.Assets.at("javascripts/weTestCases.js")"></script>
+
+Target host:
+<input type="text" class="input-lg" name="target" id="target" onchange="setTarget();" value="@stok.request.get.host"></input>
+
+<h2>Content test</h2>
+
+Tests the content of all pages - through parser looking for CANNOT PARSE errors
+
+
+<a class="btn btn-primary" onclick="runContentTest();">Run content test</a>
+<a class="btn btn-primary" onclick="pauseTest();">Pause</a>
+<a class="btn btn-primary" onclick="stopTest();">Stop</a>
+<p></p>
+  <a class="btn btn-primary" onclick="runStressTest();">Run STRESS test</a>
+<a class="btn btn-primary" onclick="runSuites();">Run Suites</a>
+
+<script>
+var su = suites();
+for(var key in su)  {
+  document.write(' | <a onclick="runSuites(\''+ key+'\');">'+key+'</a>');
+}
+</script>
+
+<div class="row">
+  <div class="col-md-9">
+<table>
+  <tr> <td>Count:</td> <td><div id="count">?</div></td> </tr>
+  <tr> <td>Current:</td> <td><div id="cur">?</div></td> </tr>
+  <tr> <td>Average:</td> <td><div id="average">?</div></td> </tr>
+  <tr> <td>Errors:</td> <td><div id="err"></div></td> </tr>
+</table>
+    Report:<br>
+    <div id="topics">
+    </div>
+  </div>
+  <div id="frag" style="max-lines: 20" class="col-md-3">
+  </div>
+</div>
+
+

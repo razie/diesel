@@ -1,0 +1,423 @@
+@**************
+show/edit/capture a note
+
+msg types are msg, err
+**************@
+@import razie.wiki.model.Perm
+@(myForm:Form[_], isAuto:Boolean=false, isReadOnly:Boolean=false)(implicit stok:mod.notes.controllers.NotesOk)
+@import routes.Assets
+@import mod.notes.controllers.NotesLocker
+@import mod.notes.controllers.NotesTips
+@import mod.notes.controllers.routes
+
+@stok.title("Create a note")
+
+<h3>Creative <small>| preview</small> @notes.notesmsg(stok.msg)
+  <div style="float:right">
+    <small>
+      @stok.request.cookies.get("pinTags").map(_.value).filter(_.nonEmpty).map { t =>
+        <b><span onclick="removePins();" class="badge" style="background-color: #08a4b5" title="Remove pinned tags: @t"><span class="glyphicon glyphicon-tags"></span>&nbsp;@{t.count(_ == '/')+1}</span></b>&nbsp;&nbsp;
+      }
+    <input type="checkbox" id="useName" onchange="changeName(this);" title="Notes by default don't have names..."/> Names
+    </small>
+  </div>
+</h3>
+
+<script>
+     withJquery(function() {
+       if (localStorage.getItem("rkNoteUseName") == "1")
+         $("#useName").prop("checked", true);
+     });
+
+function removePins() {
+  setPinTags("");
+  location.reload();
+}
+</script>
+
+
+@id = @{1}
+
+@next = @{myForm("next").value}
+@nid = @{myForm("id").value}
+@ver = @{myForm("ver").value}
+
+@rows = @{
+  val line = myForm("content").value.getOrElse("")
+  val k = line.length() - line.replace("\n", "").length()
+  if(k > 10) 15 else if(k > 5) 10 else 5
+}
+
+<div class="well" style="padding-bottom:0px">
+@import helper.twitterBootstrap._
+@import play.api.Play.current
+@import play.api.i18n.Messages.Implicits._
+
+@helper.form(action=routes.NotesLocker.save(), 'class->"form-inline", 'style->"margin-bottom:0px") {
+
+  <input type="text" id="name" name="name" value="@myForm("name").value.mkString" class="col-sm-12 " style="padding-left:5px; display:none" autocomplete="off" placeholder="Name">
+
+<script>
+    withJquery(function() {
+      if (document.getElementById("useName").checked) {
+        $("#name").show();
+      }
+    });
+</script>
+
+  @helper.textarea(
+    myForm("content"),
+    '_label -> (Html(NotesTips.xhtml("admin,page,main", Some(stok.au)))),
+    '_showConstraints -> false,
+    'class -> "col-sm-12",
+    'style -> "padding-left:5px",
+    'rows->rows)
+
+  @helper.inputText(
+    myForm("tags"),
+    '_label -> Html("""
+       <div class="col-sm-12" style="padding-left:0px; display:inline-block;">
+       Tags <small>i.e. note,todo,forjohn,phone,email,contact,project1</small>
+  <div style="float:right">
+      <a class="btn btn-xs btn-default" onclick="larger()" title="This is not twitter, eh?">+ Larger</a>
+  </div>
+       </div>
+       """),
+    'class -> "col-sm-12",
+    'style -> "padding-left:5px",
+    'autocomplete -> "off",
+    '_showConstraints -> false)
+
+  @myForm.globalError.map { err=>
+     <p style="color:red;font-weight:bold">@err.message</p>
+  }
+
+  <input id="id" type="hidden" name="id" value="@nid" />
+  <input id="ver" type="hidden" name="ver" value="@ver" />
+  <input type="hidden" id="next" name="next" value="@next"/>
+
+  <div class="actions col-sm-12" style="padding-left:0px; display:inline-block;">
+    <button id="submit" type="submit"  class="btn btn-sm btn-info">Save it</button>
+
+    <a id="discard" href="/notes/discard/@nid" class="btn btn-sm btn-warning" title="This note was auto-saved..." style="display: none">Discard it</a>
+
+    <div style="float:right">
+      <span id="iconsave" class="glyphicon glyphicon-briefcase"  title="Autosaving ok..."></span>
+      <a class="btn btn-sm btn-default" onclick="archive()" title="Archive notes">Archive it</a>
+    </div>
+  </div>
+
+<div style="display:inline-block">
+  <p><span id="ispublic" class="label label-danger" style="display: none">
+    <small>This note is now public! Anyone may see it!</small>
+  </span>
+  <small>You are typing markdown - see the <a href="/wiki/No_Folders/Notes_Quick_Guide">quick guide</a>.</small>
+</div>
+}
+
+@*** site todos - registration etc ***@
+    @if(stok.au.tasks.size > 0) {
+       <div class="alert alert-block">
+      <strong>Stuff to do</strong>
+      <ul>
+      @for(t <- stok.au.tasks) {
+        <li><a style="color:red;font-weight:bold" href="/user/task/@t.name">@t.desc</a></li>
+      }
+      </ul>
+      </div>
+    }
+
+</div>
+
+@if(stok.au.isHarry) {
+    <div class="alert alert-block alert-danger">
+        <strong>Need account</strong>
+        You need to <a href="/doe/join">create an account</a> to actually create and save notes.
+    </div>
+}
+
+@***
+<p><small>Assistant says:</small><br>
+
+<div style="display:inline-block; width:100%; height:130px; overflow-y:auto;">
+  <pre id="pre3b_@id" style="display:inline-block; width:92%; height:129px; margin-bottom:0"><code id="codeb_@id">
+  </code></pre>
+</div>
+***@
+
+<script>
+function changeName (element) {
+  if(element.checked) {
+    localStorage.setItem("rkNoteUseName", "1");
+    $("#name").fadeIn(1000);
+  } else {
+    localStorage.setItem("rkNoteUseName", "0");
+    $("#name").fadeOut(600);
+  }
+}
+</script>
+
+<script>
+// CA options for .
+var dotTags = [
+'shared to:who',
+'n name of this note',
+  @if(stok.au.isDev) {
+    'sfiddle path',
+  }
+//  'a to:who by:date description',
+'email john@@whodunnit.com',
+'name name of contact'
+];
+</script>
+
+<script>
+    withJquery(function() {
+      $('#content')[0].focus();
+
+      @if(!stok.au.isActive) {
+      $('#submit')[0].disabled = true;
+      $('#content')[0].disabled = true;
+      $('#tags')[0].disabled = true;
+      $('#content')[0].title = 'You need an account to save notes, sorry!';
+      $('#tags')[0].title = 'You need an account to save notes, sorry!';
+      }
+
+      @if(isReadOnly) {
+      $('#submit')[0].disabled = true ;
+      $('#submit')[0].title = "Read only!" ;
+      }
+
+      larger = function (s) {
+        var r = $('#content')[0].rows;
+        $('#content')[0].rows = r + 5;
+        $('#content')[0].focus();
+      }
+
+      archive = function (s) {
+        var r = $('#tags')[0].value;
+        r = r.length > 0 ? r + ',' : r
+        $('#tags')[0].value = r + 'archive';
+      }
+
+      isPublic = function () {
+        if ($('#tags')[0].value.indexOf("public") >= 0) {
+          $("#ispublic").show(500);
+        } else {
+          $("#ispublic").hide(500);
+        }
+      }
+
+      isPublic();
+
+      $('#tags').bind("propertychange change click keyup input paste", isPublic);
+
+      saveit = function () {
+        document.location = '/notes/saved?tags=' + document.getElementById('tags').value + '&n=' + razuri(editor1.getValue());
+      }
+    });
+</script>
+
+@**
+<script src="@routes.Assets.at("ace-builds/src/ace.js")" type="text/javascript" charset="utf-8"></script>
+
+<script>
+// div generated by the play forms thing
+  var tex = $('#content').val();
+  var textarea = $('#content_field').hide();
+
+  var editor1 = ace.edit("lock1");
+  editor1.setTheme("ace/theme/twilight");
+  editor1.getSession().setMode("ace/mode/markdown");
+
+  //jsh(editor.getValue());
+
+  editor1.getSession().setValue(tex);
+
+  var razChanged=true;
+
+  editor1.getSession().on('change', function(e) {
+    textarea.val(editor1.getSession().getValue());
+    razChanged=true;
+    //var j=editor.getValue();
+    //jsh(j);
+  });
+
+  editor1.focus();
+
+setInterval(function(){
+   if(razChanged) {
+     var j=editor1.getValue();
+     //jsh(j);
+     razChanged=false;
+     }
+},500);
+
+</script>
+**@
+
+<form id="autosave" action="@routes.NotesLocker.autosave()" method="post" >
+  <input type="hidden" id="aname" name="name" />
+  <input type="hidden" id="aid" name="id" />
+  <textarea style="display:none" id="acontent" name="content"></textarea>
+  <input type="hidden" id="atags" name="tags" />
+  <input type="hidden" id="aver" name="ver" />
+  <input type="hidden" id="anext" name="next" />
+</form>
+
+<script src="@Assets.at("bootstrap-2.2.3/js/bootstrap-typeahead.js")"></script>
+<script>
+//from http://stackoverflow.com/questions/12662824/twitter-bootstrap-typeahead-multiple-values
+
+var $tagsInput = $('#tags');
+
+var userTags = [@Html(stok.tags.map(_._1).mkString("\"", "\",\"", "\""))];
+
+function extractor(query) {
+  var result = /([^,]*)$/.exec(query);
+  if(result && result[1]) return result[1].replace(/.*,/,'').trim();
+  return '';
+}
+
+  $('#tags').typeahead({
+    source: userTags,
+    updater: function(item) {
+    return this.$element.val().replace(/([^,]*)\w*$/,item);
+  },
+    matcher: function (item) {
+      var tquery = extractor(this.query);
+      //if(!tquery) return false;
+      return ~item.toLowerCase().indexOf(tquery.toLowerCase())
+    },
+    highlighter: function (item) {
+    var query = extractor(this.query);
+    console.log('q '+query)
+    if(query.length>0)
+      return item.replace(new RegExp('(' + query + ')', 'ig'), function ($1, match) {
+        return '<strong>' + match + '</strong>'
+      })
+    else return item;//+'s';
+  }
+});
+</script>
+
+<script>
+var realm = "@stok.realm";
+</script>
+
+<script src="@Assets.at("javascripts/rk-contentassist-sqbr.js")"></script>
+<script src="@Assets.at("vendor/jquery.textcomplete.min.js")"></script>
+<script src="@Assets.at("javascripts/rk-contentassist.js")"></script>
+
+<script>
+var dotTags = [];
+
+$('#content').textcomplete([
+  CA_TC_braTags (optsToDomain(braDomain)),
+  CA_TC_sqbraTags,
+  CA_TC_dotTags (optsToDomain(braDomain.concat(dotTags))),
+  CA_TC_to
+ ]);
+
+
+  @if(isAuto) {
+    $ ( '#discard' ).fadeIn ( ) ;
+  }
+
+  $('#iconsave' ).fadeOut();
+
+  $('#aname')[0].value = $('#name')[0].value;
+  $('#atags')[0].value = $('#tags')[0].value;
+  $('#acontent')[0].value = $('#content')[0].value;
+
+// RAZ new crap with bootstrap 3
+  $('.textcomplete-wrapper').addClass('col-sm-12');
+  $('.textcomplete-wrapper').css({
+    "padding-left" : "0px",
+    "padding-right" : "0px"
+    });
+  $('#content_field').addClass('col-sm-12');
+  $('#content_field').css({
+    "padding-left" : "0px",
+    "padding-right" : "0px"
+    });
+
+  setInterval(function(){
+    var t = $('#tags')[0].value;
+    var i = $('#id')[0].value;
+    var v = $('#ver')[0].value;
+    var c = $('#content')[0].value;
+
+    if(t != $('#atags')[0].value || c != $('#acontent')[0].value) {
+      $('#atags')[0].value = t;
+      $('#aid')[0].value = i;
+      $('#aver')[0].value = v;
+      $('#anext')[0].value = "";
+      $('#acontent')[0].value = c;
+
+      var $form = $('#autosave');
+
+      $.post($form.attr('action'), $form.serialize(), function(response) {
+       console.log(response);
+        if(response.indexOf("msg") == 1) {
+          $('#iconsave').css("color","green")
+          $('#iconsave' ).fadeIn(1500);
+          $('#iconsave' ).fadeOut(1500);
+        } else {
+          $('#iconsave').css("color","red")
+          $('#iconsave')[0].title = "Can't autosave: "+response;
+          $('#iconsave' ).show();
+
+          if(response.indexOf("Old auto") > 0) {
+            $('#submit')[0].disabled=true;
+            $('#discard')[0].fadeIn();
+            $('#submit').removeClass('btn-info').addClass('btn-danger');
+            $('#submit')[0].title="This note was completed in a different window!";
+          }
+        }
+      }).fail(function(response){
+          $('#iconsave').css("color","red")
+          $('#iconsave')[0].title = "Can't autosave: "+response;
+          $('#iconsave' ).show();
+      });
+    }
+
+  },5000);
+</script>
+
+@** typeahead in the main box - not needed
+<script src="@routes.Assets.at("bootstrap-2.2.3/js/bootstrap-typeahead.js")"></script>
+<script>
+//from http://stackoverflow.com/questions/12662824/twitter-bootstrap-typeahead-multiple-values
+
+var $myTextarea = $('#content');
+
+function extractor(query) {
+var result = /^(\.\w*)$/m.exec(query);
+if(result && result[1]) return result[1].trim();
+return '';
+}
+
+$('#content').typeahead({
+source: dotTags,
+updater: function(item) {
+return this.$element.val().replace(/\.\w*$/,'.')+item.replace(/(\w)[: ].*/, '\$1') +' ';
+},
+matcher: function (item) {
+var tquery = extractor(this.query);
+if(!tquery) return false;
+tquery=tquery.substring(1)
+return item.toLowerCase().indexOf(tquery.toLowerCase()) == 0;
+},
+highlighter: function (item) {
+var query = extractor(this.query).replace(/[\-\[\]{}()*+?.,\\\^$|#\s]/g, '\\$&')
+if(query.lentgh>1)
+return item.replace(new RegExp('(^' + query.substr(1) + ')', 'ig'), function ($1, match) {
+return '<strong>' + match + '</strong>'
+})
+else return item;
+}
+});
+</script>
+**@
+

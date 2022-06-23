@@ -1,0 +1,22 @@
+
+VER=0.9.2
+T=target/universal/racerkidz-${VER}-SNAPSHOT/lib
+
+rm -f RUNNING_PID
+
+p compile package dist
+
+rm -rf target/universal/racerkidz-${VER}-SNAPSHOT
+
+printf "\n\n####################unzipping...\n\n"
+unzip -d target/universal target/universal/racerkidz-${VER}-SNAPSHOT.zip >/dev/null
+
+printf "\n\n####################copying remotely...\n\n"
+printf ".."
+
+scp $T/com.razie.racerkidz-${VER}-SNAPSHOT-sans-externalized.jar $T/com.razie.racerkidz-${VER}-SNAPSHOT-assets.jar razvanc@cloud3a.razie.com:rk/up/
+
+ssh razvanc@cloud3a.razie.com ". ~/.bashrc; cd ~/rk; . ./update"
+
+
+

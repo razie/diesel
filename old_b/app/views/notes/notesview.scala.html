@@ -1,0 +1,43 @@
+@**************
+show/edit/capture a note
+
+msg types are msg, err
+**************@
+@(we:razie.wiki.model.WikiEntry)(implicit stok:mod.notes.controllers.NotesOk)
+@import razie.wiki.model.WikiEntry
+@import mod.notes.controllers.{DomC, NotesLocker}
+@import mod.notes.controllers.routes
+
+@stok.title("View note")
+@notes.headingWithTags(stok)
+
+   <div class="well well-small" style="border-radius:9px; margin-bottom:10px;">
+   <small>
+     <a href="@routes.NotesLocker.noteById(we._id.toString)">@we.crDtm.toString("YYYY-MM-dd hh:mm a").toLowerCase()
+       <strong>[Edit]</strong></a>
+     [<a href="@routes.NotesLocker.viewNoteById(we._id.toString)"><strong>View</strong></a>]
+   </small>
+
+       <div style="float: right;">
+       <small>Tags: <strong>
+       @we.tags.map {x=>
+           @if(stok.tags find (_._1 == x) isEmpty ) {
+               @x |
+           } else {
+               <a href="@routes.NotesLocker.tag(stok.tagPath(x))">@x</a> |
+           }
+       }
+       </strong></small>
+       </div>
+
+@**  <p>@Html(razie.wiki.model.Wikis.format(we.wid, we.markup, we.content, Some(we)))</p>
+**@
+   @if(we.tags.contains("r.domain")) {
+     <p><a href="@routes.DomC.domPlay(we._id.toString)">domain playground</a></p>
+   }
+  <p>@notes.notesFormat(we, stok.au)</p>
+
+  @wiki.wikiFragExtras(Some(stok.au),Some(we))(stok.stok)
+
+   </div>
+

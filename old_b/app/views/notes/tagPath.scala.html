@@ -1,0 +1,13 @@
+@**************
+list of notes
+
+msg types are msg, err
+**************@
+@(s:String)(implicit stok:mod.notes.controllers.NotesOk)
+
+@tag=@{stok.curTag}
+
+@tagpath(s:String) = @{
+  if(tag=="" || stok.isSearch || Seq("none", "recent", "all").contains(tag)) s else (tag+"/"+s)
+}
+

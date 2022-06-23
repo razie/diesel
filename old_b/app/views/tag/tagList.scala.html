@@ -1,0 +1,70 @@
+@**************
+list of tags for browsing
+
+tagPrefix is applied to browse another tag
+**************@
+@(current:String, tags:model.Tags.Tags, max:Int=20, tagPrefix:String="./", tagSuffix:String="")(implicit stok: controllers.StateOk)
+
+@tagpath(s:String) = @{ if(current=="" || Seq("none", "recent", "all", "archive").contains(current)) s else (current+"/"+s) }
+@browseTag(t:String)={@tagPrefix@tagpath(t)@tagSuffix}
+@browseAllTags()={"."}
+@curcat = @{ val x = current.replaceFirst("/.*", "").capitalize; if(x.isEmpty) "Topic" else x }
+
+@if(stok.au.exists(_.isActive)) {
+  <a href="@routes.Wikie.wikieCreate(curcat, current.replaceAllLiterally("/", ","))" class="btn btn-lg btn-info">New @curcat ...</a>
+}
+<p>
+</p>
+
+  @if(!tags.isEmpty && max > 5) {
+    <input id="typeahead" xonkeypress="keyp(event)" autocomplete="off" type="text"
+    class="typeahead search-query" placeholder=" Search Tags" data-provide="typeahead" style="display:block; margin-bottom:10px">
+
+    Contemplate:
+  }
+  <ul>
+    @defining(current.split("[,/]")) {curtaglist=>
+    @tags.take(max).filter(x=> !curtaglist.contains(x._1)).map {x=>
+      <li><a href="@browseTag(x._1)">@x._1</a> <small>(@x._2)</small></li>
+    }
+    }
+    @if(tags.size > max) {
+@**      <li><a href="@browseAllTags()">... more</a></li>
+**@      <li>...</li>
+    }
+  </ul>
+
+<script async>
+function keyp(e){
+  var key=e.keyCode || e.which;
+  if (key==13){
+    document.location='@tagPrefix'+$('#typeahead')[0].value + '@tagSuffix';
+  }
+}
+var selected = function(){
+  document.location='@tagPrefix'+$('#typeahead')[0].value + '@tagSuffix';
+}
+
+var hardct = ['recent','all','none','archive', '']
+var t = function (tag) {
+return hardct.lastIndexOf('@current') >= 0 ? tag : '@current' + '/'+tag;
+}
+
+//var items = [@Html(tags.map(x=>"\""+x._1+"\":\"/notes/tag/"+tagpath(x._1)+"\"").mkString(","))];
+var userTags = [@Html(tags.map(x=>"\""+x._1+"\"").mkString(","))];
+
+require(['jquery', 'bootstrap-typeahead'], function($){
+$('.typeahead').typeahead({
+  source: userTags,
+  updater: function (item) {
+    window.location.href = '@tagPrefix'+t(item) + '@tagSuffix';
+  }
+});
+});
+</script>
+
+<style>
+body {
+  padding-top: 50px;
+}
+</style>

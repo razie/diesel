@@ -1,0 +1,44 @@
+## create, tag and publish the rk docker image
+#
+# See do-base for rebuilding the base image, prior to this
+#
+
+RK=~/w/racerkidz
+
+## package build info:
+dtm=`date`
+ver="$@"
+
+echo "diesel.build.base.dtm=\"$dtm\"" >$RK/conf/ver.conf
+echo "diesel.build.base.ver=\"$ver\"" >>$RK/conf/ver.conf
+echo "" >>$RK/conf/ver.conf
+
+## BUILD
+. build-rk
+
+## Tag and publish
+cd $RK
+
+# smoked is last REALLY good
+# latest is last good
+# razlatest is bleeding edge
+
+for var in "$@"
+do
+  echo "$var"
+  docker tag raz-diesel razie/raz-diesel:${var}
+  docker push razie/raz-diesel:${var}
+done
+
+################## publishing
+
+# https://docs.docker.com/docker-cloud/builds/push-images/
+
+# docker tag raz-diesel razie/raz-diesel
+# docker tag raz-diesel razie/raz-diesel:2.1.6-t2b
+
+# docker login -u razie
+
+## SEE build-rk for details to run locally
+date
+

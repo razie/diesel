@@ -1,0 +1,48 @@
+@***
+profile - reset password
+***@
+@(myForm: Form[_], id:String)(implicit stok: RazRequest)
+
+@import helper.twitterBootstrap._
+@import play.api.Play.current
+@import play.api.i18n.Messages.Implicits._
+
+@stok.title("Password reset")
+
+<h2> Reset password </h2>
+
+  @helper.form(action = routes.ProfileUpd.doeForgotPass4(id), 'class -> "well") {
+    @helper.inputPassword(
+      myForm("newpass"),
+      '_label -> "New Password",
+      '_showConstraints -> false,
+      '_error -> myForm.error("newpass"))
+    @helper.inputPassword(
+      myForm("repass"),
+      '_label -> "New Password, again",
+      '_showConstraints -> false,
+      '_error -> myForm.error("repass"))
+
+  <input type="hidden" name="currpass" value="" />
+  <input type="hidden" name="token" value="@myForm("token").value"/>
+
+    <button type="submit" class="btn btn-primary">Change Password</button>
+
+@** Quadlogic doesn't like this
+
+    @user.agree()
+**@
+
+    @myForm.globalError.map { err =>
+      <p style="color : red ; font-weight : bold">@err.message</p>
+    }
+  }
+
+<script>
+    withJquery(function($) {
+      $("input").addClass("input-lg")
+    });
+</script>
+
+  @formFix()
+

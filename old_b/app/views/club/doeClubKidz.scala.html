@@ -1,0 +1,216 @@
+@******
+manage the list of kidz and/or their accounts
+******@
+@(club:controllers.Club, role:String="", team:String, teams:List[razie.wiki.model.WikiLink],
+    rks:List[(mod.snow.RacerKid, mod.snow.RacerKidAssoc)])(implicit stok:controllers.StateOk)
+
+@import mod.snow.{RacerKid, RacerKidAssoc, RacerKidz}
+@import mod.snow.RK
+@import mod.snow.RK._
+@import razie.diesel.dom.WikiDomain
+@import razie.wiki.model.Wikis
+
+@stok.title("Members for " + club.name)
+@stok.requireJs(false)
+
+@roles()=@{
+  WikiDomain(club.wid.getRealm).roles(club.wid.cat, "Person")
+}
+
+@rksactive = @{rksactivei.filter(x=>team.isEmpty || x("team") == team || team == "Unassigned" && x("team").isEmpty)}
+@rksformer = @{rksformeri.filter(x=>team.isEmpty || x("team") == team || team == "Unassigned" && x("team").isEmpty)}
+
+@rksactivei = @{rksmap((k,a)=> k.info.status != STATUS_FORMER && a.role != ROLE_FAN)}
+@rksformeri = @{rksmap((k,a)=> k.info.status == STATUS_FORMER || a.role == ROLE_FAN)}
+
+@rksmap(f:(RacerKid, RacerKidAssoc) =>Boolean) = @{
+  for ((k,a) <- rks if(f(k, a))) yield
+    Map("rkaid"->a._id.toString,
+        "fname"->k.info.firstName,
+      "email"->k.info.emailDec,
+      "lname"->k.info.lastName,
+        "role" -> a.role,
+        "source" -> a.assoc,
+      "notes"->k._id.toString,
+        "associd" -> a._id.toString,
+        "team" -> RacerKidz.findWikiAssocById(k._id.toString, club.curYear, "Program").filter(x=>
+          teams.find(_.from.id == x.uwid.id)
+      ).toList.headOption.map(_.uwid.nameOrId).mkString,
+        "button"->k._id.toString)
+}
+
+@mnglink(row:Map[String,String],k:String,v:String)={
+  @k match {
+    case "button" => {
+      <a href="@routes.Kidz.doeUserKid(stok.au.get._id.toString, v, "-", row("associd"), "clubkidz:"+club.wid.wpath)" class="btn btn-default btn-xs">&nbsp;&nbsp;<span class="glyphicon glyphicon-list-alt"/>&nbsp;</a>
+    }
+    case "source" => {
+      @if(v == "Registered" && club.isClubAdmin(stok.au.get)) {
+        <a href="@routes.Club.doeRedirectRegKid(club.wid, row("associd"))">@v</a>
+      } else {
+        @v
+      }
+    }
+    case "role" => {
+      @if(club.isClubAdmin(stok.au.get)) {
+      <select rkaid="@row("rkaid")" onchange="setRole(this)" oldvalue="@v">
+        @roles().map { t =>
+          @if(v == t) {
+            <option selected="selected" value="@t">@t</option>
+          } else {
+            <option value="@t">@t</option>
+          }
+        }
+      </select>
+      } else {
+        @v
+      }
+    }
+    case "team" => {
+      @if(club.isClubAdmin(stok.au.get)) {
+      <select rkaid="@row("rkaid")" onchange="setTeam(this)" oldvalue="@v">
+        <option value=""></option>
+        @teams.map { t =>
+            @if(v == t.from.nameOrId) {
+              <option selected="selected" value="@t.from.id.toString">@t.from.nameOrId</option>
+            } else {
+              <option value="@t.from.id.toString">@t.from.nameOrId</option>
+            }
+        }
+      </select>
+      } else {
+        @v
+      }
+      }
+    case "notes" => {
+      @if(club.isClubAdmin(stok.au.get) || club.isMemberRole(stok.au.get._id, "Coach")) {
+        <a href="@routes.Kidz.doeKidHistory(club.wid.wpath, v)" class="btn btn-info btn-xs">&nbsp;&nbsp;<span class="glyphicon glyphicon-th-list"/>&nbsp;</a>
+      }
+    }
+    case _ => { @v }
+  }
+}
+
+@teamSummary=@{
+    rks.filter(t => t._1.info.status != STATUS_FORMER && t._2.role != ROLE_FAN).toList.map {t =>
+      RacerKidz.findWikiAssocById(t._1._id.toString, club.curYear, "Program").filter(x =>
+        teams.find(_.from.id == x.uwid.id)
+      ).toList.headOption.map(_.uwid.nameOrId).getOrElse("Unassigned")
+    }.groupBy(identity)
+}
+
+<h2>Members of @club.name</h2>
+
+<small>
+<p>Some records are created by the parents (see the "Source"). For those that did not register online, you can create records here, for team management etc. See at the bottom for correlations.
+</small>
+
+@if(role != "") {
+<span class="label label-default">Invite more <a href="/4us/invite/@club.wid.wpath?role=@role">@{role}s</a></span>
+}
+
+@mngLink(team:String, label:String)={
+  <a href="/4us/manage/@{club.wid.wpath}?role=@role&team=@team">@label</a>
+}
+
+<div>
+  <div style="display: inline-block">
+  <b>Summary:</b>
+    @rks.filter(t=> t._1.info.status != STATUS_FORMER && t._2.role != ROLE_FAN).toList.groupBy(_._2.role).map {x=>
+      <b>@x._2.size</b> <small>x</small> @mngLink("", x._1) |
+    }
+    <br>
+    @teamSummary.map {x=>
+      <b>@x._2.size</b><small>x</small>@mngLink(x._1, x._1)  |
+    }
+  </div>
+  <div  style="display: inline-block" class="pull-right">
+    <span id="saved" class="glyphicon glyphicon-floppy-save" style="color:green"></span>
+    <input type="checkbox" name="confirmChanges" id="confirmChanges" checked> Confirmation
+  </div>
+</div>
+
+@util.utilSimpleTable(rksactive.iterator,
+  Seq(
+    "fname" -> "F.Name",
+    "lname"->"L.Name",
+    "email" -> "Email",
+    "role" -> "Role",
+    "source" -> "Source",
+    "team"->"Program",
+    "button"->"Details",
+    "notes"->"History"
+  ), Some(mnglink))
+
+@if(stok.au.exists(club.isClubAdmin)) {
+@club.wid.cat
+  Add a: @roles().map{v=>
+  <a href="@routes.Kidz.doeUserKid(club.userId.toString, "11", v, "-", "clubkidz:"+club.wid.wpath)" class="btn btn-xs btn-info">@v</a>
+}
+}
+
+<hr>
+Source is
+<ul>
+<li>Myself - well, automatically created for you
+<li>Registered - was included in a registration, by parents
+<li>Parent - record was created here... we are the "parent"
+<li>Link - record was created when the user (having an account on this website) "liked" this club
+</ul>
+
+<hr>
+<strong>Former members</strong>
+
+@util.utilSimpleTable(rksformer.iterator,
+  Seq(
+    "fname" -> "F.Name",
+    "lname"->"L.Name",
+    "email" -> "Email",
+    "role" -> "Role",
+    "source" -> "Source",
+    "button"->"Details"
+  ), Some(mnglink))
+
+<script>
+
+  $("#saved").hide();
+
+saved=function() {
+  $("#saved").fadeIn(500, function() {
+    $("#saved").fadeOut(500);
+  });
+}
+
+useLocalStorageCheckbox ("confirmChanges", "confirmChanges");
+
+dontConfirm=function() {
+  return $('#confirmChanges').prop('checked') ? false : true;
+}
+
+setTeam=function(sel)  {
+  if (dontConfirm() || confirm("Change the team ?")) {
+    var tid=sel.value == "" ? "-" : sel.value;
+    $.post( "/doe/club/kidz/setTeam/"+sel.getAttribute("rkaid")+"/"+tid+"/@club.wid.wpath", function( data ) {
+      sel.setAttribute("oldvalue", sel.value);
+      saved();
+    }).fail(function(){
+      window.location.reload();
+    });
+  } else {
+    window.location.reload();
+//    sel.value = sel.getAttribute("oldvalue");
+  }
+}
+
+setRole=function(sel)  {
+  if (dontConfirm() || confirm("Change the role to "+sel.value+" ?")) {
+    $.post( "/doe/club/kidz/updRka/"+sel.getAttribute("rkaid")+"/role/" + sel.value, function( data ) {
+      sel.setAttribute("oldvalue", sel.value)
+    });
+  } else {
+    sel.value = sel.getAttribute("oldvalue");
+  }
+}
+</script>
+
+

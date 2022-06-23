@@ -1,0 +1,162 @@
+@**************
+an inline JS with HTML and CSS fiddle
+**************@
+@(name:String,
+   args:Map[String,String],
+   content:(String, String, String, String),
+   user:Option[model.User],
+   id:String = java.lang.System.currentTimeMillis().toString())
+
+@** to JS multiline string - make generated JS code look nice **@
+@tos(s:String) = @{
+  s.replaceAll("\r", "").replaceAll("\n", "\\\\n'\n+'")
+}
+
+@encjs(s:String) = @{
+  s.replaceAll("'","\\\\'")
+}
+
+@encscr(s:String) = @{
+  s.replaceAll("'","%27").replaceAll("script","scrRAZipt")
+  //.replace(/'/g,'%27')););
+}
+
+@h1 = @{
+  val x1 = (args.get("height").getOrElse("150")).toInt
+  (x1, x1-2)
+}
+
+<script>
+var resettabs = function(lid, id) {
+   document.getElementById('html_'+id).className='';
+   document.getElementById('css_'+id).className='';
+   document.getElementById('js_'+id).className='';
+   document.getElementById('run_'+id).className='';
+
+   document.getElementById(lid).className='active';
+}
+
+var setpill = function(lid,id,s) {
+   document.getElementById('code_'+id).innerText = s;
+   resettabs(lid, id);
+}
+
+var razuri = function(s) {
+   return encodeURI(s.replace(/;/g,'%3B').replace(/\+/g,'%2B').replace(/script/g,'scrRAZipt'));
+}
+
+var encscr = function(s) {
+   return s.replace(/'/g,'%27'); }
+
+var decscr = function (s) {
+  return s.replace(/%27/g,'\'');
+}
+
+var hh_@id ='@Html(tos(content._1))'
+var h_@id  ='@Html(tos(encjs(content._2)))'
+var c_@id  ='@Html(tos(content._3))'
+var j_@id  ='@Html(tos(encscr(content._4)))'
+</script>
+
+  <ul class="nav nav-tabs nav" style="margin-bottom:0;">
+    <li id="html_@id" class="active">
+    <a  href="javascript:setpill('html_@id', '@id', h_@id)"><small>HTML</small></a> </li>
+    <li id="css_@id" > <a href="javascript:setpill('css_@id', '@id', c_@id)"><small>CSS</small></a> </li>
+    <li id="js_@id" > <a href="javascript:setpill('js_@id', '@id', decscr(j_@id))"><small>JS</small></a> </li>
+    <li id="run_@id" > <a title="Works only on Chrome and Firefox" href="javascript:runpill_@{id}('@{id}')"><small>Run &raquo;</small></a> </li>
+    <li id="play_@id" > <a href="javascript:playpill_@{id}('@{id}')"><small>Play...</small></a> </li>
+  </ul>
+
+  <table style="width:100%">
+    <tr><td width="60%">
+    <div style="display:inline-block; width:100%; height:@{h1._1}px; /*overflow-y:auto;*/">
+      <pre id="pre_@id" style="display:inline-block; width:98%; height:@{h1._2}px; margin-bottom:0; border:0;"><code id="code_@id">@content._2</code></pre>
+    </div>
+    </td>
+      <td width="40%">
+        <iframe id="iframe_@id" name="iframe_@id" style="border:0; width:100%; height:@{h1._1}px; background-color:lightgray;"></iframe>
+      </td></tr>
+  </table>
+
+<div id="sform_@id">
+<form id="ssform_@id" name="ssform_@id" action="/doe/tma/pbuildhtml" method="post" target="iframe_@id">
+<textarea id="hh_@id" name="hh"></textarea>
+<textarea id="h_@id" name="h"></textarea>
+<textarea id="c_@id" name="c"></textarea>
+<textarea id="j_@id" name="j" ></textarea>
+</form>
+</div>
+
+<script>
+$('#sform_'+@id).hide();
+$('#iframe_'+@id).contents().find('html').html("<div style='text-align: center;'>Press Run to see results...</div>");
+
+@hh() = @{
+  val fromT = args.get("libs").toList.flatMap(_.split(";")) // todo deprecate this
+  val libs = (fromT ::: mod.diesel.model.Diesel.findRequires(content._4)).distinct
+
+  ("""<scrRAZipt src="/assets/vendor/diesel.js"></scrRAZipt>""".stripMargin ::
+    libs.map {
+      case ("raphael") =>
+        """<scrRAZipt src="/assets/vendor/raphael.js"></scrRAZipt><scrRAZipt src="/assets/vendor/axis.js"></scrRAZipt>""".stripMargin
+   }).mkString("")
+
+}
+
+var upd_@id = function(id) {
+  $('#hh_'+id)[0].value= '@Html(content._1+hh())';
+  $('#h_'+id)[0].value= h_@id;
+  $('#c_'+id)[0].value= c_@id;
+  $('#j_'+id)[0].value= j_@id;
+}
+
+var runpill_@id = function(id) {
+  upd_@{id}(id);
+  $('#ssform_'+id)[0].target = 'iframe_'+id;
+  $('#ssform_'+id)[0].action = "/doe/tma/buildhtml/"+id;
+  $('#ssform_'+id)[0].submit();
+}
+
+var playpill_@id = function(id) {
+  upd_@{id}(id);
+  $('#ssform_'+id)[0].target = '';
+  $('#ssform_'+id)[0].action = "/doe/tma/playjs/"+id;
+  $('#ssform_'+id)[0].submit();
+}
+</script>
+
+<script>
+//var runpill_@id = function(id) {
+  //document.getElementById('iframe_'+id).src =
+    //'/doe/tma/buildhtml?hh='+razuri(hh_@id)
+    //+'&h='+razuri(h_@id)
+    //+'&c='+razuri(c_@id)
+    //+'&j='+razuri(j_@id)
+    //+'&id='+id
+  //document.getElementById('iframe_'+id).margin = 0;
+//}
+
+//var playpill_@id = function(id) {
+  //document.location =
+    //'/doe/tma/playjs?hh='+razuri(hh_@id)
+    //+'&h='+razuri(h_@id)
+    //+'&c='+razuri(c_@id)
+    //+'&j='+razuri(j_@id)
+    //+'&id='+id
+//}
+
+@args.get("tab").map {x=>
+   @x match {
+     case "html" => {
+        setpill('html_@id', '@id', h_@id)
+        }
+     case "css"  => {
+        setpill('css_@id', '@id', c_@id)
+        }
+     case "js"   => {
+        setpill('js_@id', '@id', decscr(j_@id))
+        }
+   }
+}
+
+</script>

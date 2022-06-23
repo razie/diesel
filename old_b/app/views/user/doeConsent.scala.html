@@ -1,0 +1,19 @@
+@******
+Need consent
+******@
+@(next:String="/")(implicit stok: controllers.StateOk)
+
+@stok.title("Need consent")
+
+@razie.wiki.model.Wikis(stok.realm).find("Admin", "Consent").map{we =>
+  <h1>Consent Required!</h1>
+
+  @wiki.wikiFrag(we.wid,None,true,Some(we), None, true, true)
+
+  <p><a href="@routes.Profile.doeConsent2(we.wid.wpathFull + " ver "+we.ver, next)" class="btn btn-lg btn-success">Consent and continue!</a>
+  <hr>
+  <p>If you cannot consent to these terms of service, you can ask us to delete your account, from the [/doe/support support].</p>
+}.getOrElse {
+  No consent to worry about...
+}
+

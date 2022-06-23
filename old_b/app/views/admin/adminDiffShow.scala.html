@@ -1,0 +1,44 @@
+@***
+show diffs for a pair dest/src
+***@
+@(side:String, src:String, dest:String, diff:difflib.Patch, srcWe:razie.wiki.model.WikiEntry, destWe:razie.wiki.model.WikiEntry)(implicit stok: controllers.StateOk)
+@import razie.wiki.model.WID
+
+@wp(wid:WID)=@{
+  if(_root_.razie.wiki.Services.config.isLocalhost && wid.getRealm == "rk") "rk." + wid.wpath
+  else wid.wpath
+}
+
+@rowclsl=@{if(side=="L") "success" else "danger"}
+@rowclsr=@{if(side=="R") "success" else "danger"}
+
+@stok.title("admin showDiff")
+
+  <div class="col-md-12">
+    <h2>Diffs: @srcWe.getLabel</h2>
+<small>
+      <table class="table table-striped" style="table-layout: fixed;">
+          <thead>
+            <td class="col-sm-2">What (@side)</td>
+            <td><span class="label label-@rowclsl"><b>Local</b></span></td>
+            <td><span class="label label-@rowclsr"><b>Remote</b></span></td>
+          </thead>
+        <tr>
+          <td>Ver/updDtm</td>
+          <td>@srcWe.ver / @srcWe.updDtm</td>
+          <td>@destWe.ver / @destWe.updDtm</td>
+        </tr>
+
+@admin.diffTable(side,diff)
+
+@if(srcWe.tags.mkString(",") != destWe.tags.mkString(",")) {
+  <tr>
+    <td>tags</td>
+    <td>@srcWe.tags.mkString(",")</td>
+    <td>@destWe.tags.mkString(",")</td>
+  </tr>
+}
+      </table>
+</small>
+  </div>
+

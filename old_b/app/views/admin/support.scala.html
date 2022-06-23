@@ -1,0 +1,69 @@
+@(sForm:Form[_], page:String)(implicit stok: controllers.StateOk)
+@import razie.hosting.Website.realm
+@import helper.twitterBootstrap._
+@import play.api.Play.current
+@import play.api.i18n.Messages.Implicits._
+
+@stok.title("Support")
+
+
+<div class="row">
+  <h2>Contact / Support Request</h2>
+<div class="well col-md-8">
+@helper.form(action=routes.Support.supportu(page)) {
+
+@if(stok.au.isDefined) {
+  <input type="hidden" name="name" value="@stok.au.get.ename" />
+  <input type="hidden" name="email" value="@stok.au.get.emailDec" />
+} else {
+  @helper.inputText(
+    sForm("name"),
+    '_label -> "Your name",
+    '_showConstraints -> false)
+  @helper.inputText(
+    sForm("email"),
+    '_label -> "Your Email",
+    '_showConstraints -> false)
+}
+
+  @helper.inputText(
+    sForm("desc"),
+    '_label -> "Description",
+    '_showConstraints -> false)
+
+  @helper.textarea(
+    sForm("details"),
+    '_label -> "Details",
+    '_showConstraints -> false,
+    'rows->5)
+
+  <script async>
+      withJquery(function() {
+          $("textarea, input").addClass("form-control");
+      });
+  </script>
+
+@if(stok.au.isDefined) {
+  <input type="hidden" name="g-recaptcha-response" />
+} else {
+  @util.recaptcha()
+}
+
+  <br>
+  @sForm.globalError.map { err=>
+     <p style="color:red;font-weight:bold">@err.message</p>
+  }
+
+@if(stok.au.isEmpty) {
+  <div class="alert alert-danger"><b>Note</b> that you are not logged in, so you need to include your email address above, in order for us to reply to this request!</div>
+}
+
+  <div class="actions">
+    <button type="submit" class="btn btn-primary">Submit request</button>
+  </div>
+
+  <p><small>By using this form, you agree to the <a href="@controllers.WikiUtil.w("Terms of Service")">Terms of Service</a></small><p>
+  }
+</div>
+  </div>
+

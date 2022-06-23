@@ -1,0 +1,152 @@
+@**************
+an **inline** JS/SCALA client side fiddle
+**************@
+@(lang:String,
+  content:String,
+  q:Map[String,String],
+  au:Option[model.User],
+  id:String = java.lang.System.currentTimeMillis().toString())
+
+<div>
+
+  <div class="row" style="align-items:center;">
+    <div class="col-sm-9" style="">
+      <pre id="pre3_@id" style="">@content.trim.replaceAll("\n$", "")</pre>
+    </div>
+      <div class="col-sm-3" id="resultdiv_@id" style="">
+        <pre id="iframe_@id" name="iframe_@id" style="background:lightgray; padding:1px; text-align: center; color:black;">Click for result</pre>
+      </div>
+  </div>
+
+<div id="pre3bdiv_@id" style="display:inline-block; width:100%; height:80px; overflow-y:auto;">
+  <pre id="pre3b_@id" style="display:inline-block; width:92%; height:119px; margin-bottom:0; padding:0px; border:0;"><code id="codeb_@id">
+  </code></pre>
+</div>
+
+<script type="text/javascript" src="@routes.Assets.at("vendor/jshint.js")"></script>
+<script src="@routes.Assets.at("javascripts/weFiddles.js")"></script>
+
+  <div id="preamble" style="display: none">
+    function log(x) {
+    if(typeof output != "undefined") {
+    output = output+JSON.stringify(x)+"\n";
+    }
+    }
+  </div>
+
+<script>
+console.log("scr1 @id");
+
+$('#pre3bdiv_'+@id).hide();
+
+var seqNum_@id = 0;
+
+var runpill_@id = function(id) {
+  var preamble = $('#preamble').text();
+  var code = editor_@{id}.getValue();
+  var output = "";
+  var res = "";
+
+    seqNum_@id = seqNum_@id +1;
+    var closureSeq = seqNum_@id;
+
+  limitEval(preamble+"\n"+code, function(success, returnValue, outputStr) {
+    if(closureSeq != seqNum_@id) {
+      console.log("ignored old result: "+closureSeq+' current: '+seqNum_@id);
+      return;
+    }
+
+    if (success) {
+      res = returnValue;
+      paintErr(id, false);
+    }
+    else {
+      paintErr(id, true);
+      res = returnValue || 'TIMEOUT - infinite loop?';
+    }
+
+    if(typeof res != 'undefined' && res != null) res = res.toString();
+    else if(typeof res == 'undefined') res = "";
+    var finalres = res;
+    if(typeof outputStr != 'undefined' && outputStr != null && outputStr != "")
+      finalres = "<b>"+res + "</b>" + "\n--------------\n"+outputStr;
+    if(code.length > 0) $('#iframe_'+id).html(finalres);
+    else $('#iframe_'+id).text("Start typing...");
+  }, 3000);
+
+  paintErr(id,false);
+}
+
+function paintErr(id,isErr) {
+  $('#iframe_'+id).toggleClass("panel panel-success", !isErr);
+  $('#iframe_'+id).toggleClass("panel panel-danger", isErr);
+}
+
+// returns true if no errors
+var jsh = function(id,code) {
+  JSHINT(code, {expr: true, asi:true}); // enable expression mode and don't warn semicolons
+  var ret = JSHINT.data();
+
+  var er = 'Line\tReason\n';
+
+  if(JSHINT.data().errors) {
+    JSHINT.data().errors.forEach(function(e){
+      er = er+e.line + '\t\t'+e.reason+'\n';
+    })
+    document.getElementById('pre3b_'+id).innerText = er;
+    @*$('#pre3bdiv_'+@id).show();*@
+    paintErr(id,true);
+    return false;
+  } else {
+    @*$('#pre3bdiv_'+@id).hide();*@
+    document.getElementById('pre3b_'+id).innerText = "";
+    paintErr(id,false);
+    return true;
+  }
+}
+</script>
+
+<script src="@routes.Assets.at("ace-builds/src/ace.js")" type="text/javascript" charset="utf-8"></script>
+<script src="@routes.Assets.at("ace-builds/src/mode-javascript.js")" type="text/javascript" charset="utf-8"></script>
+<script src="@routes.Assets.at("ace-builds/src/ext-language_tools.js")" type="text/javascript" charset="utf-8"></script>
+<script>
+    console.log("scr2 @id");
+  ace.require("ace/ext/language_tools");
+  var editor_@{id} = ace.edit("pre3_@id");
+  editor_@{id}.setOptions({
+    maxLines: 10,
+    highlightActiveLine: false,
+    enableBasicAutocompletion: true,
+    enableSnippets: false,
+    enableLiveAutocomplete: true
+  });
+  @if(_root_.razie.wiki.Services.config.isLight(au)) {
+//  editor_@{id}.setTheme ( "ace/theme/crimson_editor" ) ;
+  editor_@{id}.setTheme ( "ace/theme/solarized_light" ) ;
+} else {
+  editor_@{id}.setTheme ( "ace/theme/twilight" ) ;
+}
+  editor_@{id}.getSession().setMode("ace/mode/javascript");
+
+  //jsh(editor.getValue());
+
+  var razChanged_@{id}='@id';
+
+  editor_@{id}.getSession().on("change", function(e) {
+    razChanged_@{id} = '@id';
+    //var j=editor.getValue();
+    //jsh(j);
+  });
+
+setInterval(function(){
+   if(razChanged_@{id} != '') {
+     var j=editor_@{id}.getValue();
+     if(jsh(razChanged_@{id}, j)) runpill_@{id}('@{id}');
+     razChanged_@{id}='';
+     }
+},500);
+
+</script>
+
+</div>
+

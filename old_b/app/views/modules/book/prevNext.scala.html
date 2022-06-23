@@ -1,0 +1,39 @@
+@**************
+list all topics in category
+**************@
+@(found:Boolean, p:mod.book.Progress, me:razie.wiki.model.UWID, prev: Option[razie.wiki.model.UWID], next: Option[razie.wiki.model.UWID])
+@import razie.wiki.model.{Wikis, WID}
+
+@PILL()=@{mod.book.Progress.PILL}
+
+<div class="alert alert-info">
+
+@if(found) {
+  @prev.flatMap(_.wid).map{w=>
+  @*<small> <a href="@w.urlRelative">@w.page.map(_.label)</a></small>*@
+    <small> @w.page.map(_.label)</small>
+    <a href="@w.urlRelative" class="btn btn-info btn-xs"><span style="color:orange">&laquo;</span> BACK </a>
+  }.getOrElse {
+    <a href="#" class="btn btn-info btn-xs disabled"><span style="color:orange">&laquo;</span> BACK </a>
+  }
+  |
+  @if(next.isDefined) {
+    @if(p.isDone(me)) {
+      <a href="/pill/@PILL/doNext?status=r&from=@me.wid.map(_.wpath)&to=@next.flatMap(_.wid).map(_.wpath)" class="btn btn-success btn-xs">NEXT <span style="color:orange">&raquo;</span></a>
+    } else {
+      <a href="/pill/@PILL/doNext?status=s&from=@me.wid.map(_.wpath)&to=@next.flatMap(_.wid).map(_.wpath)" class="btn btn-danger btn-xs">LATER <span style="color:orange">&raquo;</span></a>
+      <a href="/pill/@PILL/doNext?status=r&from=@me.wid.map(_.wpath)&to=@next.flatMap(_.wid).map(_.wpath)" class="btn btn-success btn-xs">DONE <span style="color:orange">&raquo;</span></a>
+    }
+    @next.flatMap(_.wid).map {w=>
+      @*<small> <a href="@w.urlRelative">@w.page.map(_.label)</a></small>*@
+      <small> @w.page.map(_.label)</small>
+    }
+  } else {
+    <a href="#" class="btn btn-default btn-xs disabled">NEXT <span style="color:orange">&raquo;</span></a>
+  }
+} else {
+  <b>{{Topic not part of a current Pathway}}</b>
+}
+
+</div>
+

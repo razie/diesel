@@ -1,0 +1,2 @@
+# clean all dangling images - first shoudl clean stopped containers
+docker rmi $(docker images -a --filter=dangling=true -q)

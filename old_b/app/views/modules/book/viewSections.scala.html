@@ -1,0 +1,115 @@
+@**************
+list all topics in category
+**************@
+@(what:String, p: Option[mod.book.Progress], tl: mod.book.TopicList, path: String, query:Map[String,String])(implicit stok: controllers.StateOk)
+ @import razie.wiki.model._
+ @import mod.book.{Progress}
+
+@ADMIN()=@{stok.au.filter(_.isAdmin).map(x=> "('for admins is more)").getOrElse("")}
+@MAX(i:Int)=@{math.min(if(stok.au.exists(_.isAdmin)) 300 else 20, i)}
+@PILL()=@{mod.book.Progress.PILL}
+
+  @hasQuery=@{
+    query.foldRight(true){(t,q)=>
+      !t._2.isEmpty && q
+    }
+  }
+
+  @isDaily(props:Map[String,String])=@{
+    query.foldRight(true){(t,q)=>
+      ((!t._2.isEmpty && props.get(t._1).exists(_.contains(t._2)))) && q
+    }
+  }
+
+@checkQuery(props:Map[String,String])=@{
+  query.foldRight(true){(t,q)=>
+    ((t._2.isEmpty && !props.contains(t._1)) || (!t._2.isEmpty && props.get(t._1).exists(_.contains(t._2)))) && q
+  }
+}
+
+@ISCURR(kind:String, value:String)=@{if(query.getOrElse(kind, "") == value) "btn-primary" else "btn-default"}
+
+@stok.title("View activities")
+
+@paintStatus(s:String) = {
+  @s match {
+    case Progress.STATUS_SKIPPED => { Skipped }
+    case Progress.STATUS_READ => { Read }
+    case Progress.STATUS_PASSED => { Passed }
+    case Progress.STATUS_COMPLETE => { Complete }
+    case Progress.STATUS_IN_PROGRESS => { In progress }
+    case _ => { Not started }
+    }
+}
+
+  <h2>Progress - activities</h2>
+
+  @if(stok.au.isDefined && !stok.au.exists(u => u.hasMembershipLevel(Perm.Basic.s))) {
+    <div class="alert alert-danger">
+      <b>Your on-snow companion!</b>
+      <p>
+      This is the list of drills and activities to do on snow, designed so you can check it on your mobile device.
+      </p>
+      <p>
+      It is only available with a paid <a href="/wiki/Admin:Memberships">membership</a>!
+        @if(stok.au.isDefined && stok.au.exists(u => u.hasMembershipLevel(Perm.Expired.s))) {
+          <br>Your membership has expired!. <br>
+          }
+      </p>
+        <p> Includes separate sections to start the season, daily drills for your current level and more. </p>
+        <p> Skip drills and come back to them in the future etc. </p>
+      <p> Link back to the videos behind the drills and the original pages and record progress etc - all from the lift! </p>
+    </div>
+  } else {
+  <div class="alert alert-success">
+    <b>Your on-snow companion!</b>
+    <p></p>
+    This is the list of drills and activities to do on snow, designed so you can check it on your mobile device.
+    <br>
+      <a class="btn @ISCURR("when", "") btn-xs" href="/pill/@PILL/sections?section=@what&all=no&pathway=@path&q.when=" title="Show the current drills">Current work list</a>
+      <a class="btn @ISCURR("when", "daily") btn-xs" href="/pill/@PILL/sections?section=@what&all=no&pathway=@path&q.when=daily" title="Show drills to start the day with">Start the day</a>
+      <a class="btn @ISCURR("when", "season") btn-xs" href="/pill/@PILL/sections?section=@what&all=no&pathway=@path&q.when=season" title="Show drills to start the season with">Start the season</a>
+  </div>
+
+  @defining(tl.sections(p, hasQuery, {(page, s) =>
+    ((s.signature startsWith what) &&
+        ({ stok.stuff = (s.name -> isDaily(s.args)).toString :: stok.stuff; true} ) &&
+        (!p.exists(_.isComplete(page.uwid, Some(s.wid))) || isDaily(s.args) ) &&
+        (checkQuery(s.args)))
+    })) {list=>
+
+    @if(p.isDefined) {
+      Showing <i>current</i> @MAX(list.size) @ADMIN of @list.size ...
+      @if(stok.au.exists(_.isAdmin)) {
+        <a class="btn btn-primary btn-xs" href="/pill/@PILL/sections?section=@what&all=no&pathway=@path">Show current</a>
+        <a class="btn btn-default btn-xs" href="/pill/@PILL/sections?section=@what&all=yes&pathway=@path">Show all</a>
+      }
+    } else {
+      Showing <i>all</i> @MAX(list.size) @ADMIN of @list.size ...
+      @** this would show all when no pathways are started - that was debug I think
+      <a class="btn btn-default btn-xs" href="/pill/@PILL/sections?section=@what&all=no&pathway=@path">Show current</a>
+      <a class="btn btn-primary btn-xs" href="/pill/@PILL/sections?section=@what&all=yes&pathway=@path">Show all</a>
+**@
+    }
+
+    <p></p>
+
+    @if(list.isEmpty) {
+      <div class="alert alert-danger">
+     No activities found - these will appear here as you read through the talks and sessions in your pathway!
+       <br> <br>
+        <a href="/improve/skiing/view" class="btn btn-primary">Start to learn!</a>
+      </div>
+    }
+
+    @list.take(MAX(list.size)).map {cur=>
+      <h2>@cur._2.name</h2>
+      <p></p>
+      @cur._2.wid.page.map { we =>
+        @Html(Progress.formatSec(we, cur._2, what, cur._1))
+      }
+      }
+    }
+  }
+
+

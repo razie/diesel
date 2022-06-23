@@ -1,0 +1,50 @@
+@***
+  print a nice table of text diffs
+***@
+@(usages:List[Map[String,Object]], heading:Option[(String,String,String)]=None)
+
+  @heading.map{t=>
+      @** having div and table here is correct *@
+    <table class="table table-striped table-condensed" style="table-layout: auto;">
+      <thead>
+        <td>@t._1</td>
+        <td>@t._2</td>
+        <td>@t._3</td>
+      </thead>
+  }
+
+@parent(u:Map[String,Object])={
+@if(u.get("parent").mkString.length > 0) {
+  <small>  from:<b>@u.get("parent")</b></small>
+} else {
+}
+}
+
+@usages.map{u =>
+<tr>
+<td>
+  <small>
+    <a href="/wiki/@u.get("wpath")">@u.get("topic")</a>
+  </small>
+</td>
+<td>
+  <span style="color:blue">
+  @u.get("type")<br><small></small>
+  </span>
+</td>
+<td style="word-wrap:break-word">
+<small>
+  <a href="javascript:@u.get("fiddle")">@u.get("msg")</a> @parent(u)
+  <br>
+  <small>
+  @u.get("line")
+</small>
+</small>
+</td>
+</tr>
+}
+
+@heading.map{t=>
+</table>
+}
+

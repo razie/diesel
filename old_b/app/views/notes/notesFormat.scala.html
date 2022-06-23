@@ -1,0 +1,35 @@
+@**************
+format a note
+**************@
+@(we:razie.wiki.model.WikiEntry, au:model.User,simple:Boolean=false)
+@import mod.notes.controllers.{NotesLocker, Notes}
+
+@ccc(we:razie.wiki.model.WikiEntry)= @{
+  // don't expand includes in the brief version used for selection lists
+  val c = if(!simple) we.content else we.content.replaceAllLiterally("[[include:","[[")
+  val x = NotesLocker.format(we.wid, we.markup, c, Some(we), Some(au))
+  if(x contains "CANNOT PARSE") {
+    val id = System.currentTimeMillis().toString
+    try {
+      val PAT = """.*PARSE\]\] \[([0-9]+)\.([0-9]+)\].*""".r
+      val PAT(line, col) = x
+      s"""<div style="color:red;font-weight:bold;" title="Problem with your content: $x">
+        <small>[[Check content below at Line:$line Position:$col]]</small></div><p></p>""".stripMargin + s"""
+          <textarea id="$id" readonly="true" style="width:90%; margin-right:40px" rows="5">${we.content}</textarea>
+       """.stripMargin
+    } catch {
+      case _ : Throwable => s"""<div style="color:red;font-weight:bold;" title="Problem with your content: $x">
+        <small>[[Check content]]</small></div><p></p>""".stripMargin + s"""
+          <textarea id="$id" readonly="true" style="width:90%; margin-right:40px" rows="5">${we.content}</textarea>
+       """.stripMargin
+    }
+  } else {
+    var y = x
+    y = razie.wiki.mods.WikiMods.modPostHtml(we, y)
+    y = razie.wiki.model.Wikis(we.wid.getRealm).applyTemplates(we.wid, y, "html")
+    y
+  }
+}
+
+@Html(ccc(we))
+

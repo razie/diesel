@@ -1,0 +1,104 @@
+@******
+message a group (either a team or modRk event)
+******@
+@import org.bson.types.ObjectId
+
+@(
+    club:controllers.Club,
+    role:String,
+    team:razie.wiki.model.WID,
+    kids:List[ObjectId]
+)(implicit stok:controllers.StateOk)
+
+@util.notesmsgDiv("teammsg")
+
+<div class="alert alert-info">
+    <button onclick="sendNote()" class="btn btn-primary">Message to all <span id="msgbtn" class="glyphicon glyphicon-chevron-down"></span></button>
+
+    <button id="sendnow" onclick="sendNow()" class="btn btn-success">Send</button>
+    <span id="sendemail"><input type="checkbox" id="sendemailcb" checked >Email</span>
+
+    <div id="msgdiv">
+      <br>
+      <label for="msgrole">Type of message</label>
+    <select id="msgrole">
+      <option value="post">Post - update/notification</option>
+      <option value="Note">Note - a coaching note</option>
+      <option value="Feedback">Feedback</option>
+      <option value="Video">Video</option>
+    </select>
+    <label for="msgall">Content</label>
+    <textarea id="msgall" rows="5" cols="80"></textarea>
+    <label for="msgtags">Tags</label>
+    <input type="text" id="msgtags" name="msgtags" value='' >
+      <span>
+        <small>
+          When done, click "Send".
+          If you do not want to send an email to all,
+          then uncheck the "Email" box and it will end up in their "history" only.
+        </small>
+        <span>
+    </div>
+</div>
+
+@formFix()
+
+<script>
+$("#msgdiv,#sendnow,#sendemail").hide();
+
+$("#msgrole").on('change', function() {
+  var v = this.value;
+  if(v == "Feedback") $("#msgtags").val("coaching,feedback");
+  else if(v == "Video") $("#msgtags").val("coaching,video,feedback");
+  else $("#msgtags").val("");
+})
+
+function msgShow() {
+    $("#msgbtn").removeClass("glyphicon-chevron-down");
+    $("#msgbtn").addClass("glyphicon-chevron-up");
+    $("#msgdiv,#sendnow,#sendemail").fadeIn(500);
+}
+
+function msgHide() {
+    $("#msgbtn").removeClass("glyphicon-chevron-up");
+    $("#msgbtn").addClass("glyphicon-chevron-down");
+    $("#msgdiv,#sendnow,#sendemail").fadeOut(500);
+}
+function sendNote() {
+  if($("#msgdiv").is(":visible")) {
+    msgHide();
+  } else {
+    msgShow()
+  }
+}
+
+function sendNow() {
+  var content = $("#msgall").val();
+  var tags = $("#msgtags").val();
+  var role = $("#msgrole").val();
+  var url = "@mod.snow.routes.Snow.doeSendMsgTeam("MID", role)".replace(/MID/g, '@team.wpath');
+  $.ajax({
+    type: "POST",
+    url:  url,
+    data: $.param({
+      content : content,
+      tags : tags,
+      role : role,
+      kids : '@kids.mkString(",")',
+      sendEmail : $('#sendemailcb').prop('checked')
+    }),
+    contentType: 'application/x-www-form-urlencoded',
+    success: function(data) {
+      console.log("OK: postmsgall: "+result.responseText);
+    },
+    error: function(result) {
+      console.log("ERROR: Can't postmsgall: "+result.responseText)
+      notesMsgShow("err", "Can't post: "+result.statusText)
+    }
+  });
+
+  msgHide();
+}
+</script>
+
+

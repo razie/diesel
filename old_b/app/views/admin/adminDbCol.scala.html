@@ -1,0 +1,34 @@
+@**
+DB Admin - admin a table/doc
+**@
+@(name:String, col:scala.Iterator[com.mongodb.casbah.Imports.DBObject])(implicit stok: controllers.StateOk)
+
+@stok.title("admin db: "+name)
+
+<h2>Records</h2>
+
+@col.take(3000).map { db =>
+<ul>
+  @db.keySet.map { k =>
+    @if(k == "_id") {
+      <li>@k : @admin.adminDbEntity(name,""+db.get(k))</li>
+    } else {
+      <li>@k : @admin.adminDbRelationship(name,k, ""+db.get(k))</li>
+    }
+  }
+
+  @if(!Array("User","Profile","WikiEntry","Ver","Audit", "WikiAudit").contains(name)) {
+    <a class="btn btn-xs btn-danger" href="@routes.AdminDb.delcoldb(name,db.get("_id").toString)">DEL - no confirmation!</a>
+  }
+</ul>
+}
+
+<hr>
+<h1>As Json</h1>
+
+  @**
+@col.map { db =>
+  <br>@db.toString
+}
+
+**@

@@ -1,0 +1,55 @@
+@*******
+included in mainUserC as the right hand side info box
+*********@
+@(user: model.User, quiet:Boolean, ui:controllers.UserStuff)(implicit stok:controllers.StateOk)
+@import org.joda.time.DateTime
+
+@defining(DateTime.now.minusDays(0).withTime(0,0,0,0)){midnight=>
+@defining(controllers.UserStuff.events(user).toList) {events=>
+  @defining(events.filter(_._3.isAfter(midnight))) {evA=>
+    @defining(events.filter(_._3.isBefore(midnight))) {evB=>
+
+      @if(evA.size>0) {
+        <b>Coming up:</b>
+        <ul>
+          @for(t <- evA.take(math.max(6, 8-evB.size))) {
+            <li>@Html(razie.wiki.model.Wikis.formatWikiLink(stok.realm, t._1.wid,t._1.wid.name,t._2,Some(t._1.label))._1)
+              @if(t._4.wid.name != null  && t._4.wid.name.length>0) {
+                <small>at @Html(t._4.format(16)._1)</small>
+              }
+            </li>
+          }
+          @if(evA.size>7) {
+            <li>...</li>
+          }
+        </ul>
+      } else {
+        @if(!quiet) {
+          <b>Nothing coming up...</b>
+        }
+      }
+
+        <p>
+
+    @if(evB.size>0) {
+      <b>Recent events:</b>
+      <ul>
+      @for(t <- evB.takeRight(scala.math.max(2, 8-evA.size)).reverse) {
+        <li>
+          <small>
+          @Html(razie.wiki.model.Wikis.formatWikiLink(stok.realm, t._1.wid,t._1.wid.name, t._2,Some(t._1.label))._1)
+          </small>
+        @if(t._4.wid.name != null && t._4.wid.name.length>0) {
+          <small>at @Html(t._4.format(16)._1)</small>
+        }
+        </li>
+      }
+      </ul>
+    } else {
+    }
+
+    }
+  }
+}
+}
+

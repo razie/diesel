@@ -1,0 +1,1327 @@
+@**************
+a JS with HTML and CSS fiddle
+**************@
+@import razie.wiki.model.WID
+@import razie.wiki.model.WikiEntry
+@(reactor:String,
+    args:Map[String,String],
+    origSpec:String,
+    spec:String,
+    origStoryWe:Option[WikiEntry],
+    origStory:String,
+    story:String,
+    capture:String,
+    specWpath:String,
+    storyWpath:String,
+    specChanged:Boolean,
+    storyChanged:Boolean,
+    errMsg:Option[String],
+    id:String = java.lang.System.currentTimeMillis().toString(),
+    wpath:String,
+    line:String,
+    col:String,
+  refreshing:String
+    )(implicit stok:controllers.StateOk)
+
+<div style="margin-left: 20px; margin-right: 20px">
+@stok.title("Diesel fiddle")
+@stok.requireJs(false)
+
+<style>
+.ace-primaryline {
+  background-color: yellow;
+  position:absolute;
+}
+</style>
+
+<script src="@routes.Assets.at("javascripts/rk-contentassist-sqbr.js")"></script>
+<script src="@routes.Assets.at("javascripts/weFiddles.js")"></script>
+<script src="@routes.Assets.at("javascripts/weCommons.js")"></script>
+
+<div id="helpText" style="display: none">
+@md {
+<small>
+Quick reference (Ctrl- on Win, Cmd- on Mac):
+
+Left editors:
+
+- Cmd-B = find usages of the current message
+- Cmd-K = find the current rule in the output trace
+- Cmd-G = graphical editor for the current line
+- green/yellow/red floppy indicates current draft save state
+- click yellow floppy to show diffs
+- click story/spec dropdown to see other or create new
+- refresh icon - click to re-run
+
+Right-side output trace:
+
+- click on nodes with a hand hover to navigate to spec
+</small>
+
+See [[Diesel Fiddle Guide]] for details, the [[DSL Reference]] for language or go through the entire [[Diesel Academy]].
+
+<font size="-1">
+Command reference (see more about [[specs.Topic:Expressions_and_pattern_matching | expressions]]):
+
+- `$send` entity.action (parm=expr, parm=expr)
+- `$expect` entity.action (parm == match, parm == match)
+- `$expect` (parm == match, parm == match)
+- `$mock` entity.action (parm == match, parm == match)
+- `$when` entity.action (parm == match, parm == match)
+- `$when` ... `$if` (bool expr) // condition is different from match
+- `=>` entity.action (parm = expr, parm = expr)
+- `=>` (parm = expr, parm = expr) // just set these parms in the current context
+
+</font>
+
+}
+</div>
+
+  <h3 id="heading">
+    Diesel fiddle<a href="javascript:showHelp();" title="Hover on elementsfor help. Click here for detailed help!"><sup><span class="glyphicon glyphicon-question-sign"></span></sup></a>
+    | <small>
+
+    <span onclick="setSpec('Story');" class="label label-primary" style="cursor:pointer" title="Change the current story"><span id="curStory">Story</span> <span class="glyphicon glyphicon-chevron-down">
+    </span></span><span id="storyChanged" class="label label-success" onclick="popupMenu1('Story');" style="cursor:pointer" title="No change to save">
+      <span class="glyphicon glyphicon-floppy-disk"> </span>
+  </span>&nbsp;
+
+    <span onclick="setSpec('Spec');" class="label label-primary" style="cursor:pointer" title="Change the current spec"><span id="curSpec">Spec</span> <span class="glyphicon glyphicon-chevron-down">
+    </span></span><span id="specChanged" class="label label-success" onclick="popupMenu1('Spec');" style="cursor:pointer" title="No change to save">
+      <span class="glyphicon glyphicon-floppy-disk"> </span>
+    </span>&nbsp;
+
+    <span id="mockBox" class="label label-default" title="Use mocks or rules in the selected specs" >
+        <input type="checkbox" id="mockMode" checked>
+          <span onclick="configMock();" style="cursor:pointer" >Mocks <span class="glyphicon glyphicon-chevron-down"></span></span></span>
+
+    <span id="sketchBox" class="label label-default" title="Run in sketch mode - use the tests as specs" >
+      <input type="checkbox" id="sketchMode" >
+      <span onclick="toggleBox('sketchMode');" style="cursor:pointer" >Sketch</span></span>
+    <span id="blenderBox" class="label label-default" style="cursor:pointer" title="Mix-in the specs in this reactor, not just the current one" >
+      <input type="checkbox" id="blenderMode" checked>
+      <span onclick="configBlender();">Blender <span class="glyphicon glyphicon-chevron-down"></span></span></span>
+    <span id="draftsBox" class="label label-default" title="Use autosaved drafts not originals" >
+      <input type="checkbox" id="draftMode" checked>
+      <span onclick="toggleBox('draftMode');" style="cursor:pointer" >Drafts</span></span>
+    <span id="wikiBox" class="label label-default" title="Show the wiki instead of the diesel trace" >
+      <input type="checkbox" id="wikiMode" >
+      <span onclick="toggleBox('wikiMode');" style="cursor:pointer" >Wiki</span></span>
+    <span onclick="startESP();" class="label label-primary" title="Spawn multi-screen mode" style="cursor:pointer">ESP <span class="glyphicon glyphicon-log-out"></span></span>
+
+    | <span id="realTimeBox" class="label label-default" >
+    <input type="checkbox" id="realTime" checked>
+      <span>RT/</span>
+      <span onclick="configRTSim();" style="cursor:pointer" >Sim <span class="glyphicon glyphicon-chevron-down"></span></span></span>
+
+    <span id="refresher" onclick="javascript:refresher()" style="cursor:pointer" title="Execute the full flow (no Sim)!"><span style="font-weight:bold" class="glyphicon glyphicon-play"></span></span>
+      <span id="spinner" style="display: none"><img src="https://cdn.razie.com/Public/spinner.gif" height="20" width="20"></span>
+      <small><small>(<span id="roundtrip" title="real time roundtrip response time">.. ms</span>)</small></small>
+
+    <span id="errors" class="label label-default">0/? failed</span>
+
+  </small>
+  </h3>
+
+  @*story - spec area *@
+
+  <div id="ssRow" class="row" style="align-items:center;">
+
+  <div id="ssCol1" class="col-sm-6" style="">
+
+      @*story - buttons*@
+
+    <div class="row" style="align-items:center;">
+      <div id="title3a_@id" class="col-sm-12" style="font-size: small">
+      Story <span class="" style="font-face:bold" onclick="openStory();"><span class="glyphicon glyphicon-new-window"></span></span>
+          &nbsp;<input type="checkbox" id="expandedStory" title="Expand/collapse story" checked>
+          &nbsp;&nbsp;Mock/Spec <span class="" style="font-face:bold"  onclick="openSpec();">
+        <span class="glyphicon glyphicon-new-window"></span></span>
+          &nbsp;<input type="checkbox" id="expandedSpec" title="Expand/collapse spec" checked>
+        StoryTree&nbsp;<input type="checkbox" id="expandedPreviewSpec" title="Expand/collapse spec preview" checked>
+        <span id="errMsg" class="label label-danger" style="display:none;"></span>
+    </div>
+    </div>
+
+      @*story - editors*@
+
+    <div id="storyRow1" class="row" style="align-items:center;">
+      <div id="divInStory_@id" class="col-sm-12" style="">
+        <pre id="preStory_@id" style="height:228px; ">@story</pre>
+      </div>
+    </div>
+
+      @*spec row - buttons*@
+
+    <div class="row" style="align-items:center;">
+      <div id="title1a_@id" class="col-sm-6" style="font-size: small">Mock/Spec <span class="" style="font-face:bold"  onclick="openSpec();"><span class="glyphicon glyphicon-new-window"></span></span>
+          &nbsp;<input type="checkbox" id="expandedSpec1" title="Expand/collapse spec" checked> <small>(show/hide)</small>
+    </div>
+      <div id="title1b_@id" class="col-sm-6" style="font-size: small">
+        @*<input type="checkbox" id="debugSpec" title="Expand/collaps debug nodes" checked> <small>(debug)</small>*@
+        @*<input type="checkbox" id="generatedSpec" title="Expand/collaps generated nodes" checked> <small>(generated)</small>*@
+        @*<button id="ferrSpec" title="Find first error" onclick="ferrSpec()" class="btn btn-default btn-xs"> <small>(first error)</small>*@
+      </div>
+    </div>
+
+      @*spec row - editors*@
+
+    <div id="specRow1" class="row" style="align-items:center;">
+      <div id="divInSpec_@id" class="col-sm-12" style="">
+        <pre id="preSpec_@id" style="height:228px; ">@spec</pre>
+      </div>
+      </div>
+
+  </div> @* col1 *@
+
+  <div id="ssCol2" class="col-sm-6" style="">
+
+    @*story - buttons*@
+
+    <div class="row" style="align-items:center;">
+      <div id="title3b_@id" class="col-sm-12" style="font-size: small">
+        <input type="checkbox" id="traceStory" title="Expand/collaps trace nodes" > <small>(trace)</small>
+        <input type="checkbox" id="debugStory" title="Expand/collaps debug nodes" checked> <small>(debug)</small>
+        <input type="checkbox" id="generatedStory" title="Expand/collaps generated nodes" checked> <small>(generated)</small>
+        <input type="checkbox" id="payloadOnly" title="Show payload"> <small>(payload)</small>
+        <button id="ferrStory" title="Find first error" onclick="ferrStory('@id')" class="btn btn-default btn-xs"> <small><span class="glyphicon glyphicon-menu-down"></span> (first error)</small></button>
+        <input type="checkbox" id="showDur" title="Expand duration info" > <small>(durations)</small>
+        <input type="checkbox" id="verboseStory" title="Expand/collaps verbose nodes" > <small>(verbose)</small>
+      </div>
+    </div>
+
+      @*story - editors*@
+
+      <div id="storyRow2" class="row" style="align-items:center;">
+        <div class="col-sm-12 well" id="divOutStory_@id" style="overflow: scroll; margin-bottom:2px"> </div>
+        <pre class="col-sm-12" id="iframeOutStory_@id" style="padding:1px; Xtext-align: center; white-space: pre">Start typing...</pre>
+      </div>
+
+      @*spec row - buttons*@
+
+@*      <div class="row" style="align-items:center;">
+        <div id="title1a_@id" class="col-sm-6" style="font-size: small">Mock/Spec <span class="" style="font-face:bold"  onclick="openSpec();"><span class="glyphicon glyphicon-new-window"></span></span>
+         &nbsp;<input type="checkbox" id="expandedSpec1" title="Expand/collapse spec" checked> <small>(show/hide)</small>
+        </div>
+        <div id="title1b_@id" class="col-sm-6" style="font-size: small">
+        </div>
+      </div>
+*@
+
+          @*spec row - editors*@
+
+      <div id="specRow2" class="row" style="align-items:center;">
+        <div class="col-sm-12 well" id="divOutSpec_@id" style="overflow: scroll; margin-bottom:2px"> </div>
+        <pre class="col-sm-12" id="iframeOutSpec_@id" style="padding:1px; Xtext-align: center; display: none">Start typing...</pre>
+      </div>
+
+  </div> @* col2 *@
+
+  </div> @* ssRow *@
+
+    @*capture row*@
+
+  <div class="row" style="align-items:center;">
+  <div id="title5a_@id" class="col-sm-6" style="font-size: small">Capture
+  </div>
+  <div id="title5b_@id" class="col-sm-6" style="font-size: small">
+  </div>
+</div>
+<div class="row" style="align-items:center;">
+  <div id="divIn5_@id" class="col-sm-6" style="">
+    <pre id="pre5_@id" style="height:228px; ">@capture</pre>
+  </div>
+  @*<div class="col-sm-6 well" id="pre6_@id" style="overflow: scroll; margin-bottom:2px">*@
+  @*</div>*@
+  <pre class="col-sm-6" id="iframeOut5_@id" style="padding:1px; Xtext-align: center">Start typing...</pre>
+
+  <pre id="origStory_@id" style="display:none">@story</pre>
+  <pre id="origSpec_@id" style="display:none">@spec</pre>
+</div>
+
+
+@md{
+### Help
+
+Change anything and see your changes **reflected** instantly.
+
+If you need help with the syntax, just click Ctrl+Space (Cmd+Space on Mac).
+
+If you'd rather see the elements ($msg, $when etc) as a dialog, go to that line and press Ctrl+G (Cmd+G on Mac).
+
+}
+
+
+<script>
+var isStoryManual = @{origStoryWe.map(_.tags.contains("manual")).getOrElse(false).toString};
+
+// this is used to prevent stale pages (back browser button or older tabs) from overwriting newer drafts
+// this is actually server time stamp
+var clientStoryTimeStamp = @id ;
+var clientSpecTimeStamp = @id ;
+
+// used in imported scripts
+var realm = '@reactor';
+var fiddleId = '@id';
+
+// current debounce before running the scripts - goes up if results come slowly
+var currDebounce = 2000;
+
+useLocalStorageCheckbox("sketchMode", "domFiddleSketchMode");
+useLocalStorageCheckbox("mockMode", "domFiddleMockMode");
+useLocalStorageCheckbox("blenderMode", "domFiddleBlenderMode");
+useLocalStorageCheckbox("draftMode", "domFiddleDraftsMode");
+useLocalStorageCheckbox("wikiMode", "domFiddleWikiMode");
+useLocalStorageCheckbox("realTime", "domFiddleRealTime");
+
+$('#sketchMode, #mockMode, #blenderMode, #draftMode, #realTime').change(function(){
+  runpill2_@{id}('@{id}', false);
+});
+
+function errMsg(text) {
+  $('#errMsg').html('<strong>'+text+'</strong>');
+  $('#errMsg').show();
+  $('#errMsg').fadeOut(5000);
+};
+
+function toggleBox (name) {
+  var is = $('#' + name).prop('checked');
+  $('#'+name).prop('checked', !is);
+  $('#'+name).trigger("change");
+}
+
+var simMode = function () { return !( $('#realTime').prop('checked')) || isStoryManual;}
+
+var updRT = function() {
+  $("#realTimeBox").removeClass();
+  if (simMode()) {
+    $("#realTimeBox").addClass("label label-danger");
+    $('#realTimeBox').prop('title', "Execute the full flow on every change!");
+  } else {
+    $("#realTimeBox").addClass("label label-warning");
+    $('#realTimeBox').prop('title', "(SIM) Just preview, not executing the flow auto");
+  }
+}
+
+var updBlender = function() {
+  updBox("#blenderBox", '#blenderMode', "default", "danger");
+}
+
+var updMock = function() {
+  updBox("#mockBox", '#mockMode', "warning", "default");
+}
+
+var updDrafts = function() {
+  updBox("#draftsBox", '#draftMode', "warning", "default");
+}
+
+var updWiki = function() {
+  updBox("#wikiBox", '#wikiMode', "danger", "default");
+}
+
+var updBox = function(box, mode,labelon, labeloff) {
+  $(box).removeClass();
+    if ($(mode).prop('checked'))
+      $(box).addClass("label label-"+labelon);
+    else
+      $(box).addClass("label label-"+labeloff);
+}
+
+$('#realTime').change(updRT);
+updRT();
+
+$('#blenderMode').change(updBlender);
+updBlender();
+
+$('#mockMode').change(updMock);
+updMock();
+
+$('#draftMode').change(updDrafts);
+updDrafts();
+
+$('#wikiMode').change(updWiki);
+updWiki();
+
+var isESP = false;
+
+/** expand story here and move spec to new window */
+function startESP() {
+  isESP = true;
+
+  $('#expandedStory').prop('checked', true);
+  $('#expandedSpec').prop('checked', false);
+  localStorage.setItem("domFiddleExpandedStory", true);
+  localStorage.setItem("domFiddleExpandedSpec", false);
+  resetView();
+
+  window.open('/diesel/fiddle/startESP/@reactor/@id');
+
+  setTimeout(function(){
+    // populate/update the ESP screen
+    runpill2_@{id}('@{id}', false);
+  }, 500);
+}
+
+$('#divOutSpec_'+@id).css('max-height', $('#divInSpec_@id').height()-10+'px');
+$('#divOutStory_'+@id).css('max-height', $('#divInStory_@id').height()-10+'px');
+$('#iframeOutStory_'+@id).css('max-height', $('#divInStory_@id').height()-10+'px');
+$('#iframeOut5_'+@id).css('max-height', $('#pre5box_@id').height()-10+'px');
+
+function refresher() {
+  runpill2_@{id}('@{id}', false, true);
+};
+
+function showHelp() {
+  popupContent($("#helpText").html());
+};
+
+function showHideIframe() {
+  if($('#wikiMode').prop('checked')) {
+    $('#divOutStory_@id').show();
+    $('#iframeOutStory_'+@id).hide();
+  } else {
+    $('#divOutStory_@id').hide();
+    $('#iframeOutStory_@id').show();
+  }
+};
+
+showHideIframe();
+
+$('#wikiMode').change(function(){
+  showHideIframe();
+  runpill2_@{id}('@{id}', false);
+});
+
+
+var specWpath='@specWpath';
+var storyWpath='@storyWpath';
+
+@if(specWpath.length > 0) {
+  @stok.title("Diesel fiddle - " + WID.fromPath(specWpath).map(_.name).mkString)
+}
+
+if(specWpath.length > 0) $("#curSpec").text('@WID.fromPath(specWpath).map(_.name)');
+if(storyWpath.length > 0) $("#curStory").text('@WID.fromPath(storyWpath).map(_.name)');
+
+/** check contents to be valid (no conflicts) on reload / back */
+var checkContents_@id = function(id) {
+  @*var sspec = $("#origSpec_@id").text(); //specEditor.getValue();*@
+  @*var sstory = $("#origStory_@id").text(); //storyEditor.getValue();*@
+  var sspec = specEditor.getValue();
+  var sstory = storyEditor.getValue();
+  console.log("checkContents...");
+
+  $.ajax(
+      '/diesel/fiddle/checkContents/@id', {
+        type: 'POST',
+        data: $.param({
+          sketchMode : $('#sketchMode').prop('checked'),
+          mockMode : $('#mockMode').prop('checked'),
+          blenderMode : $('#blenderMode').prop('checked'),
+          draftMode : $('#draftMode').prop('checked'),
+          reactor : '@reactor',
+          specWpath : specWpath,
+          storyWpath : storyWpath,
+          simMode : simMode(),
+          clientTimeStamp: clientSpecTimeStamp,
+          spec : sspec,
+          story : sstory,
+          capture : editor5.getValue()
+        }),
+        contentType: 'application/x-www-form-urlencoded',
+
+        success: function(data) {
+          if(data == "refresh") {
+            console.log("Contents OUTDATED - refreshing!");
+
+            var r = '@refreshing';
+
+            if( 'no' == r ) {
+              var q = window.location.search;
+
+              if(q.length > 0) q = q + "&refreshing=yes";
+              else q = "?refreshing=yes";
+              window.location.href = window.location.href.replace(/\?.*/, '') + q;
+              // window.location.reload()
+            } else {
+              alert("Contents likely changed - you should refresh page!");
+            }
+          } else {
+            console.log("Contents OK");
+          }
+        },
+
+        error  : function(x) {
+          console.log( "ERR "+JSON.stringify(x));
+        }
+      });
+}
+
+/** run on spec changes */
+var runpill_@id = function(id) {
+  isRefreshing += 1;
+  showSpinner();
+  console.log("run isRefreshing="+isRefreshing);
+
+  // set this before going to backend which could take a long time
+  @*specChanged(!(specEditor.getValue() === $("#origSpec_@id").text()));*@
+
+  lastStartTime = new Date().getTime();
+
+  $.ajax(
+    '/diesel/fiddle/fiddleSpecUpdated/'+id+'?@Html(mod.diesel.controllers.SFiddles.qtourl(args))', {
+    type: 'POST',
+    data: $.param({
+      sketchMode : $('#sketchMode').prop('checked'),
+      mockMode : $('#mockMode').prop('checked'),
+      blenderMode : $('#blenderMode').prop('checked'),
+      draftMode : $('#draftMode').prop('checked'),
+      needsCAMap : needsContentAssist(true, true),
+      reactor : '@reactor',
+      specWpath : specWpath,
+      storyWpath : storyWpath,
+      simMode : simMode(),
+      clientTimeStamp: clientSpecTimeStamp,
+      spec : specEditor.getValue(),
+      story : storyEditor.getValue(),
+      capture : editor5.getValue()
+    }),
+    contentType: 'application/x-www-form-urlencoded',
+
+    success: function(data) {
+      isRefreshing -= 1;
+      hideSpinner();
+
+      $('#divOutSpec_'+id).html(data.res);
+      if(Object.keys(data.ca).length > 0) domContentAssist = data.ca;
+      var du = new Date().getTime() - lastStartTime;
+      $('#roundtrip').text(du+' ms');
+      $('#roundtrip').prop('title', "real time roundtrip response time");
+
+      specChanged(data.specChanged);
+
+      if(specEditor) {
+        specHasErrors = updateMarkers(specEditor, data.ast);
+        if(specHasErrors) {
+          $("#specChanged").addClass("label label-danger");
+          $("#specChanged").prop('title', "has errors!");
+        }
+      }
+
+      console.log("  updateMarkers spec");
+
+      console.log("New timestamp: " + data.info.timeStamp);
+      clientSpecTimeStamp = data.info.timeStamp;
+
+      // also trigger inst update
+      runpill2_@{id}('@{id}', false);
+    },
+
+    error  : function(x) {
+      isRefreshing -= 1;
+      hideSpinner();
+      console.log( "ERR "+JSON.stringify(x));
+      if(JSON.stringify(x).indexOf("staleid") >= 0) {
+        damnStale();
+      }
+    }
+  });
+}
+
+/** run the fiddle */
+var runpill2_@id = function(id, compileOnly, forceRT, next) {
+  runFiddleStoryUpdated({
+    url: '/diesel/fiddle/fiddleStoryUpdated/'+id+'?@Html(mod.diesel.controllers.SFiddles.qtourl(args))',
+    data: {
+      saveMode : compileOnly,
+      sketchMode : $('#sketchMode').prop('checked'),
+      mockMode : $('#mockMode').prop('checked'),
+      blenderMode : $('#blenderMode').prop('checked'),
+      draftMode : $('#draftMode').prop('checked'),
+      reactor : '@reactor',
+      specWpath : specWpath,
+      storyWpath : storyWpath,
+      runEngine : ! $('#wikiMode').prop('checked'),
+      compileOnly : compileOnly,
+      simMode : simMode() && noSim,
+      clientTimeStamp: clientStoryTimeStamp,
+      spec : specEditor.getValue(),
+      story : storyEditor.getValue(),
+      capture : editor5.getValue()
+    },
+    id: id,
+    compileOnly: compileOnly,
+    forceRT: forceRT,
+    next: next,
+    onError: null,
+    onSuccess:null
+  });
+};
+
+
+/** just check the fiddle (save and compile) */
+var checkpill2 = function(id) {
+  console.log("checkpill2 run isRefreshing2="+isRefreshing2);
+
+  if(currEngineId == null) {
+    console.log ("Ignore request - was done: " + curDomRequest);
+    return;
+  }
+
+/*
+  // don't run one closer than two seconds frmo the previous rendering - slows down the page a lot with big flows
+  if(lastProcessTime != null && new Date().getTime() - lastProcessTime < 2000) {
+    console.log("skipping one...")
+    // we check all the time, to update progress, anyways...
+    // if(! wsActive) {
+    setTimeout(function () {
+      checkpill2_@{id}('@{id}');
+    }, CHECK_TIMER);
+    // }
+    return;
+  } else {
+    console.log("checking status...")
+  }
+*/
+
+  lastRequestTime = new Date().getTime();
+
+  $.ajax(
+      '/diesel/fiddle/checkEngineStatus/'+id+'?@Html(mod.diesel.controllers.SFiddles.qtourl(args))', {
+        type: 'POST',
+        data: $.param({
+          clientTimeStamp: clientStoryTimeStamp,
+          engineId : currEngineId
+        }),
+        contentType: 'application/x-www-form-urlencoded',
+
+        success: function(response) {
+          // console.log("New timestamp: " + data.info.timeStamp);
+          // clientTimeStamp = data.info.timeStamp;
+          processEngineResult({
+            id: '@id',
+          }, id, response, false, lastRequestTime);
+        },
+
+        error  : function(response) {
+          hideSpinner();
+
+          console.log( "ERR "+JSON.stringify(response));
+
+          curDomRequest = null;
+          if(JSON.stringify(response).indexOf("staleid") >= 0) {
+            damnStale();
+          }
+        }
+      });
+};
+
+
+</script>
+
+<!-- websockets for results -->
+<script>
+    var WS = window['MozWebSocket'] ? MozWebSocket : WebSocket;
+    @*var dateSocket = new WS('ws://localhost:9000/ws/diesel/fiddle/espOpen/@reactor/@id');*@
+    var dateSocket;
+    var wsActive=false;
+
+    // false for testing
+    if(true) try {
+      dateSocket = new WS('@mod.diesel.controllers.routes.DomFiddles.espOpen(reactor,id).webSocketURL()(stok.request.get)');
+      console.log("WS - done setup WS... ");
+
+      dateSocket.onmessage = function(event) {
+        wsActive = true;
+        var data = JSON.parse(event.data);
+
+        if(data.ping || data.pingMsg =="ping") {
+          console.log("WS ping: " + data.pingMsg);
+        } else if(data.pingMsg) {
+          console.log("WS ping: " + data.pingMsg);
+        } else if(data.clientId == '@id') {
+          console.log("WS result: " + JSON.stringify(data.info));
+          processEngineResult({
+            id: '@id',
+          }, '@id', data, data.info.compileOnly, lastStartTime);
+        } else  {
+          console.log("WS result NOT MINE: ");// + JSON.stringify(data));
+        }
+      }
+    } catch (error) {
+      wsActive = false;
+      console.log("WS - ERROR can't setup WS: " + JSON.stringify(error));
+    }
+
+</script>
+
+<script src="@routes.Assets.at("javascripts/weDieselDiffs.js")"></script>
+
+<script src="@routes.Assets.at("javascripts/rk-contentassist.js")"></script>
+<script src="@routes.Assets.at("javascripts/weDieselDom.js")"></script>
+
+<script src="@routes.Assets.at("ace-builds/src/ace.js")" type="text/javascript" charset="utf-8"></script>
+
+<script src="@routes.Assets.at("ace-builds/src/mode-nvp2.js")" type="text/javascript" charset="utf-8"></script>
+<script src="@routes.Assets.at("ace-builds/src/ext-language_tools.js")" type="text/javascript" charset="utf-8"></script>
+
+<script src="@routes.Assets.at("ace-builds/src/ext-linking.js")" type="text/javascript" charset="utf-8"></script>
+
+@*<script type="text/javascript" src="/sfiddle/tempAsset/@id/gLexer.js")"></script>*@
+@*<script type="text/javascript" src="/sfiddle/tempAsset/@id/gParser.js")"></script>*@
+
+<script>
+
+var domChanged=true;        // true triggers the first fiddle update
+var instChanged=false;      //
+var captureChanged=false;
+
+// how long to wait to consider he stopped typing
+var CUR_TYPING_MAX=1000;
+
+// last time runpill updated
+var lastUpdateMillis = Date.now() - 50000; // -5k to make it refresh the first time
+// last time content changed
+var lastChangeMillis = Date.now() - 50000;
+
+var storyEditor;
+var specEditor;
+var editor5;
+
+var ctrlDown = false;
+
+function attachAce() {
+  var langTools = ace.require("ace/ext/language_tools");
+
+  storyEditor = ace.edit("preStory_@id");
+  specEditor = ace.edit("preSpec_@id");
+
+  @if(stok.isLight) {
+  specEditor.setTheme ( "ace/theme/crimson_editor" ) ;
+  storyEditor.setTheme ( "ace/theme/crimson_editor" ) ;
+} else {
+  specEditor.setTheme ( "ace/theme/twilight" ) ;
+  storyEditor.setTheme ( "ace/theme/twilight" ) ;
+}
+  specEditor.getSession().setMode("ace/mode/nvp2");
+  storyEditor.getSession().setMode("ace/mode/nvp2");
+
+  editor5 = ace.edit("pre5_@id");
+  @if(stok.isLight) {
+  editor5.setTheme ( "ace/theme/crimson_editor" ) ;
+} else {
+  editor5.setTheme ( "ace/theme/twilight" ) ;
+}
+
+  storyEditor.setOptions({
+    tabSize: 2,
+    enableLinking: true,
+    enableBasicAutocompletion: true,
+    // enableLiveAutocomplete:  true,
+    enableLiveAutocompletion:  true
+  });
+
+  specEditor.setOptions({
+    tabSize: 2,
+    enableLinking: true,
+    enableBasicAutocompletion: true,
+    // enableLiveAutocomplete:  true,
+    enableLiveAutocompletion:  true
+  });
+
+  storyEditor.getSession().setOption('indentedSoftWrap', false);
+  storyEditor.getSession().setUseWrapMode(true);
+
+  specEditor.getSession().setOption('indentedSoftWrap', false);
+  specEditor.getSession().setUseWrapMode(true);
+
+  //todo can't have two editors with two completers...
+  //todo I could simulate it with an IF inside instCompletions
+  var domCompleter = {
+    getCompletions: domCompl(false)
+  };
+  var instCompleter = {
+    getCompletions: domCompl(true)
+  };
+
+  // delegate the keywords to the xtext generated completer
+  var keyWordCompleter = {
+    getCompletions: function(editor, session, pos, prefix, callback) {
+        var state = editor.session.getState(pos.row);
+        var completions = [];
+        completions = session.$mode.getCompletions(state, session, pos, prefix);
+        callback(null, completions);
+    }
+  };
+
+  //  langTools.addCompleter(instCompleter);
+  langTools.setCompleters([keyWordCompleter, instCompleter]);
+
+  specEditor.commands.addCommand({
+    name: "Gui",
+    description: "Popup GUI for this",
+    bindKey: {win: "Ctrl-G", mac: "Command-G"},
+    exec: codeGui
+  });
+
+  storyEditor.commands.addCommand({
+    name: "Gui",
+    description: "Popup GUI for this",
+    bindKey: {win: "Ctrl-G", mac: "Command-G"},
+    exec: codeGui
+  });
+
+  specEditor.commands.addCommand({
+    name: "Usage",
+    bindKey: {win: "Ctrl-K", mac: "Command-K"},
+    exec: findSpecInTree
+  });
+
+  storyEditor.commands.addCommand({
+    name: "Usage",
+    bindKey: {win: "Ctrl-K", mac: "Command-K"},
+    exec: findStoryInTree
+  });
+
+  specEditor.commands.addCommand({
+    name: "FindUsage",
+    bindKey: {win: "Ctrl-B", mac: "Command-B"},
+    exec: findUsagesSpec
+  });
+
+  storyEditor.commands.addCommand({
+    name: "FindUsage",
+    bindKey: {win: "Ctrl-B", mac: "Command-B"},
+    exec: findUsagesStory
+  });
+
+  // specEditor.on("click", function(e){
+  //   if(ctrlDown) {
+  //     findUsagesSpec(e.editor);
+  //   };
+  // });
+
+  storyEditor.on("linkClick", function(e){
+    findUsagesSpec(storyEditor);
+  });
+
+  specEditor.on("linkClick", function(e){
+    findUsagesSpec(specEditor);
+  });
+
+  specEditor.getSession().on('change', function(e) {
+    domChanged=true;
+    lastChangeMillis = Date.now();
+  });
+
+  storyEditor.getSession().on('change', function(e) {
+    instChanged=true;
+    lastChangeMillis = Date.now();
+  });
+
+  editor5.getSession().on('change', function(e) {
+    captureChanged=true;
+    lastChangeMillis = Date.now();
+  });
+
+  storyEditor.getSession().on("gutterclick", function(e){
+    console.log(e)
+  })
+}
+
+/** scroll from story to results */
+var findSpecInTree = function(editor) { findInTree(specWpath, editor); }
+
+/** scroll from story to results */
+var findStoryInTree = function(editor) { findInTree(storyWpath, editor); }
+
+/** scroll from story to results */
+var findInTree = function(wp, editor) {
+  var row = editor.selection.getCursor().row + 1;
+
+  console.log("Navigate to: "+wp + " : " + row);
+
+  var x = $("span[posw='"+wp+"'][posr="+row+"]")[0];//.scrollIntoView();
+  var parent = $('#iframeOutStory_'+@id)[0];
+  if(typeof x != "undefined")
+    parent.scrollTop = x.offsetTop;
+}
+
+var findUsagesStory = function(editor) { findUsages(storyWpath, editor); }
+var findUsagesSpec = function(editor) { findUsages(specWpath, editor); }
+
+attachAce();
+
+checkContents_@{id}();
+
+var ignoreFirstTime = true;
+
+
+var refreshFunc = function() {
+  var curMillis = Date.now();
+
+  // some timing issues with the ACE setup?
+  if(ignoreFirstTime) {
+    ignoreFirstTime = false;
+    return;
+  }
+
+  // if the fiddle was open navigating from somewhere, don't run it...
+  if (localStorage.getItem("weFiddleNavigated") != null) {
+    localStorage.removeItem("weFiddleNavigated");
+
+    // reset flags to not run
+    domChanged=false;
+    captureChanged=false;
+    domSpecChanged = false;
+    lastChangeMillis = curMillis;
+    return;
+  }
+
+  // if still typing, wait
+  if(curMillis - lastChangeMillis < CUR_TYPING_MAX) {
+    // console.log("still typing " + lastChangeMillis + " - " + curMillis);
+    return;
+  }
+
+  // if changed and last updated a while ago, refresh
+  if(domSpecChanged) {
+    // spec was just changed, don't run again
+    console.log("Spec changed, not running again... ");
+    domChanged=false;
+    captureChanged=false;
+    domSpecChanged = false;
+  } else if((domChanged || captureChanged) && curMillis - lastChangeMillis > currDebounce) {
+    console.log("UPDATING " + curMillis + " - " + lastChangeMillis + " = " + (curMillis - lastChangeMillis))
+    domChanged=false;
+    captureChanged=false;
+    lastChangeMillis = curMillis;
+    runpill_@{id}('@{id}');
+  }
+
+  // if changed and last updated a while ago, refresh
+  if(instChanged && curMillis - lastChangeMillis > currDebounce) {
+    console.log("UPDATING " + curMillis + " - " + lastChangeMillis + " = " + (curMillis - lastChangeMillis))
+    instChanged=false;
+    lastChangeMillis = curMillis;
+
+    // now calling twice: 1 to save and 2 to run
+
+    // first compile to give feedback quick and then start long run in background
+    // todo this needs optimized somehow - likely start the second one and just get it
+    //  in the second call, since the parsing was done
+    runpill2_@{id}('@{id}', true, false, function() {
+      runpill2_@{id}('@{id}', false);
+    });
+  }
+};
+
+
+setInterval(refreshFunc, 500);
+
+</script>
+
+
+<script> // weDieselDiffs
+/** Diffs in story/spec for Diesel
+ *
+ */
+
+specChanged("@specChanged");
+fiddle_storyChanged("@storyChanged");
+
+function specChanged(spec) {
+  $('#specChanged').removeClass();
+  if(spec === "true" || spec === true) {
+    $("#specChanged").addClass("label label-warning");
+    $("#specChanged").prop('title', "Current draft differs from original - save it");
+  } else {
+    $("#specChanged").addClass("label label-success");
+    $("#specChanged").prop('title', "No change to save");
+  }
+}
+
+function fiddle_storyChanged(story) {
+  $('#storyChanged').removeClass();
+  if(story === "true" || story === true) {
+    $("#storyChanged").addClass("label label-warning");
+    $("#storyChanged").prop('title', "Current draft differs from original - save it");
+  } else {
+    $("#storyChanged").addClass("label label-success");
+    $("#storyChanged").prop('title', "No change to save");
+  }
+}
+
+function setSpec(what) {
+  $.ajax(
+    '/diesel/fiddle/domListCat/@reactor/'+what, {
+      type: 'GET',
+      success: function(data) {
+        var title = "Select " + what;
+        if(what == "Story") title = title + " - <small>(or click on spec to set both)</small>"
+        popupContent(title + "<br><br>" + data);
+      },
+      error  : function(x) {
+        popupContent("ERR... can't set spec<p>"+x);
+      }
+    });
+}
+
+function popupMenu1(what) {
+  //todo get the diffs
+  $.ajax(
+    '/diesel/fiddle/diffDom/@id', {
+      type: 'POST',
+      data: $.param({
+        reactor : '@reactor',
+        specWpath : specWpath,
+        storyWpath : storyWpath,
+        spec : specEditor.getValue(),
+        story : storyEditor.getValue()
+      }),
+      contentType: 'application/x-www-form-urlencoded',
+      success: function(data) {
+        var cant = '@reactor' == "specs" ? "<small><b>You cannot save in <em>this</em> reactor!</b></small>" : "";
+        var tex = "Save/revert "+what+"<br>"+cant+"<br>"+
+          '<a href="#" onclick="revertOrig(\''+what+'\'); return false;">Revert</a> | ' +
+          '<a href="#" onclick="saveOrig(\''+what+'\'); return false;">Save</a> | ' +
+          '<a href="#" onclick="saveNew(\''+what+'\'); return false;">Save as</a> ' +
+          '<input name="news" id="news" type="text" placeholder="new topic name"></input>' +
+          '<hr>Local changes:' ;
+        if(what == "Spec") {
+          popupContent(tex + data.specDiff);
+        } else if(what == "Story") {
+          popupContent(tex + data.storyDiff);
+        }
+      },
+      error  : function(x) {
+        console.log( "ERR "+x.toString());
+      }
+    });
+}
+
+function revertOrig(what) {
+  console.log("revert.."+what);
+  //todo get the diffs
+  $.ajax(
+    '/diesel/fiddle/revert/@id/'+what, {
+      type: 'POST',
+      data: $.param({
+        reactor : '@reactor',
+        specWpath : specWpath,
+        storyWpath : storyWpath,
+        spec : specEditor.getValue(),
+        story : storyEditor.getValue()
+      }),
+      contentType: 'application/x-www-form-urlencoded',
+      success: function(data) {
+        location.reload(true); // need to reload original
+      },
+      error  : function(x) {
+        console.log( "ERR "+x.toString());
+      }
+    });
+
+}
+
+function saveOrig(what) {
+  console.log("save.."+what);
+  //todo get the diffs
+  $.ajax(
+    '/diesel/fiddle/save/@id/'+what, {
+      type: 'POST',
+      data: $.param({
+        newName : '',
+        reactor : '@reactor',
+        specWpath : specWpath,
+        storyWpath : storyWpath,
+        spec : specEditor.getValue(),
+        story : storyEditor.getValue()
+      }),
+      contentType: 'application/x-www-form-urlencoded',
+      success: function(data) {
+        // not reloading - it makes me loose the location in the file
+        // location.reload(true);
+        // instead just reset the floppy:
+        if(what === "Spec") specChanged(false);
+        else fiddle_storyChanged(false);
+        oneModalHide();
+      },
+      error  : function(x) {
+        alert("ERR - can't save: " + x.statusText + " : " + x.responseText);
+        console.log( "ERR "+JSON.stringify(x));
+      }
+    });
+}
+
+function saveNew(what) {
+  console.log("saveNEW.."+what);
+  var name = $("#news").val();
+
+  if(name.trim().length <= 0) {
+    alert("Need to give it a name first...");
+    return;
+  }
+
+  //todo get the diffs
+  $.ajax(
+    '/diesel/fiddle/save/@id/'+what, {
+      type: 'POST',
+      data: $.param({
+        newName : name,
+        reactor : '@reactor',
+        specWpath : specWpath,
+        storyWpath : storyWpath,
+        spec : specEditor.getValue(),
+        story : storyEditor.getValue()
+      }),
+      contentType: 'application/x-www-form-urlencoded',
+      success: function(data) {
+        location.reload(); // why reload if not using new name?
+        //location = '/diesel/fiddle/playDom?what='+newName
+      },
+      error  : function(x) {
+        alert("ERR - can't save: " + x.statusText + " : " + x.responseText);
+        console.log( "ERR "+JSON.stringify(x));
+      }
+    });
+}
+
+function fiddle_showCapture(id, data) {
+  $('#iframeOut5_' + id).html(data.capture);
+}
+
+function fiddle_setErrors(response) {
+  setErrors(response.failureCount, response.info.errorCount, response.info.totalCount);
+}
+
+function fiddle_updateStoryMarkers(response) {
+  if(storyEditor && typeof response.ast != "undefined") {
+    storyHasErrors = updateMarkers(storyEditor, response.ast);
+    if(storyHasErrors) {
+      $("#storyChanged").addClass("label label-danger");
+      $("#storyChanged").prop('title', "has errors");
+    }
+  }
+}
+
+function fiddle_showFinalEngineResult (id, compileOnly) {
+  var response = currEngineData;
+
+  if($("#iframeOutStory_" + id)) {
+    if ($('#wikiMode').prop('checked')) {
+      $('#divOutStory_' + id).html(response.wiki);
+    } else if (!compileOnly) {
+      // console.log("TREE: "+data.res);
+
+      // jquery.html will expand the escaped html, we need to escape again with encAmp
+      // if i don't do this, html values will mess up the current page
+
+      var ponly = $('#payloadOnly').prop('checked');
+
+      if (ponly) {
+        $('#iframeOutStory_' + id).text((response.payload) + '\n');
+        $('#iframeOutSpec_' + id).text((response.payload) + '\n');
+      } else {
+        $('#iframeOutStory_' + id).html(encAmp(response.res) + '\n');
+        $('#iframeOutSpec_' + id).html(encAmp(response.res) + '\n');
+
+        dieselHideVerbose(localStorage.getItem("domFiddleVerboseStory") == "true");
+        dieselHideTrace(localStorage.getItem("domFiddleTraceStory") == "true");
+        dieselHideDebug(localStorage.getItem("domFiddleDebugStory") == "true");
+        dieselHideGenerated(localStorage.getItem("domFiddleGeneratedStory") == "true");
+
+        showDurations();
+      }
+    }
+  }
+}
+
+/** reset the size of panels on screen based on switches and window size */
+var resetView = function () {
+  const viewSt = $('#expandedStory').prop('checked');
+  const viewSp = $('#expandedSpec').prop('checked');
+  const preview = $('#expandedPreviewSpec').prop('checked');
+
+  // figure out the heights, depending on current window height
+  var h = $(window).height() - $("#heading").height() - $("nav").height();
+  var h1 = (h-70) > 300 ? (h-70) : 300; // if too small, force it 300 anyways
+  var hHalf = (h1 / 2) + "px"; // 228 - when both stoore/spec open
+  var hFull = h1 + "px"; // 428 - when only spec open
+
+  // resize them regarldess of flags
+  const storyHeight = (preview || !viewSp) ? hFull : hHalf;
+  $("#divOutStory_@id").css("max-height", storyHeight);
+  $("#iframeOutStory_@id").css("max-height", storyHeight);
+  $("#divOutStory_@id").css("height", storyHeight);
+  $("#iframeOutStory_@id").css("height", storyHeight);
+
+  const specHeight = viewSt ? hHalf : hFull;
+  $("#divOutSpec_@id").css("max-height", specHeight);
+  $("#iframeOutSpec_@id").css("max-height", specHeight);
+  $("#divOutSpec_@id").css("height", specHeight);
+  $("#iframeOutSpec_@id").css("height", specHeight);
+
+  if(isESP) {
+
+    $("#storyRow1").show();
+    $("#storyRow2").show();
+    $("#divInStory_@id").css("height", hFull);
+    $("#preStory_@id").css("height", hFull);
+    $("#divOutStory_@id").hide();
+    $("#iframeOutStory_@id").hide();
+
+    $("#specRow1").hide();
+    $("#specRow2").hide();
+
+    $("#divInSpec_@id").prependTo("#storyRow2");
+    $("#preSpec_@id").prependTo("#storyRow2");
+    $("#divInSpec_@id").css("height", hFull);
+    $("#preSpec_@id").css("height", hFull);
+
+  } else {
+
+    if(viewSt) {
+      $("#storyRow1").show();
+      $("#storyRow2").show();
+
+      $("#divInStory_@id").css("height", viewSp ? hHalf : hFull);
+      $("#preStory_@id").css("height", viewSp ? hHalf : hFull);
+
+    } else {
+      $("#storyRow1").hide();
+      $("#storyRow2").hide();
+    }
+
+    if(viewSp) {
+      $("#specRow1").show();
+      if(!preview) $("#specRow2").show();
+      else $("#specRow2").hide();
+
+      // special case to show out story in spec only mode
+      if(preview) $("#storyRow2").show();
+
+      $("#divInSpec_@id").css("height", viewSt ? hHalf : hFull);
+      $("#preSpec_@id").css("height", viewSt ? hHalf : hFull);
+
+    } else {
+      $("#specRow1").hide();
+      $("#specRow2").hide();
+    }
+  }
+
+  attachAce();
+};
+
+// it's on load because otherwise the div has no contents
+$(window).on('load', function() {
+  // make sure for new users it will be open
+  if(localStorage.getItem("domFiddleExpandedStory") == null)
+    localStorage.setItem("domFiddleExpandedStory", true);
+  if(localStorage.getItem("domFiddleExpandedSpec") == null)
+    localStorage.setItem("domFiddleExpandedSpec", true);
+
+  useLocalStorageCheckbox("expandedStory", "domFiddleExpandedStory", function (a,b,expanded) {
+    resetView();
+  });
+
+  useLocalStorageCheckbox("expandedSpec", "domFiddleExpandedSpec", function (a,b,expanded) {
+    resetView();
+  });
+
+  useLocalStorageCheckbox("expandedPreviewSpec", "domFiddleExpandedPreviewSpec", function (a,b,expanded) {
+    resetView();
+  });
+
+  // second box tied to first
+  $('#expandedSpec1').change(function(){
+    $('#expandedSpec').prop('checked', $('#expandedSpec1').prop('checked'));
+    $('#expandedSpec').trigger("change");
+  });
+
+  setupLogLevels(fiddleId);
+
+});
+
+
+// show duration as separate element
+var showDurations = function () {
+  $("span[kind='dur']").remove();
+
+  if($('#showDur').prop('checked')) {
+    $('[msec]').each(function (index) {
+      var m = $(this).attr("msec");
+      var s = '';
+      if(m.length >= 3) s = 'color:red;font-weight:bold';
+      else if(m.length >= 2) s = 'font-weight:bold';
+      var t = '<span kind="dur" style="' + s + '">' + m + '-</span>';
+      $(t).insertBefore(this);
+    });
+  }
+};
+
+// show duration as separate element
+$('#showDur').change(showDurations);
+
+/** popup config TQ */
+function configTagQuery (title,desc,tq,cback) {
+  $.ajax(
+      '/diesel/engine/configTags', {
+        type: 'POST',
+        data: $.param({
+          title : title,
+          desc : desc,
+          tq : tq
+        }),
+        contentType: 'application/x-www-form-urlencoded',
+        success: function(data) {
+          popupContent(data);
+        },
+        error  : function(x) {
+          popupContent("ERR... <p>"+x);
+          cback(tq, x);
+        }
+      });
+}
+
+function configRTSim() {
+  configTagQuery("RT/Sim tag query", "The stories matching this tag query will be executed - others will be simulated",
+      "story/dsl|fibe|-p2", function (tq,err) {
+  });
+}
+
+function configMock() {
+  configTagQuery("Mock tag query", "The specs matching this tag query will be used in mock mode",
+      "sub|fibe/spec/-p2", function (tq,err) {
+  });
+}
+
+function configBlender() {
+  configTagQuery("Blender tag query", "Only the specs matching this tag query will be mixed in by the engine",
+      "spec/dsl|fibe|-p2", function (tq,err) {
+  });
+}
+
+function openStory() {
+  window.open("about:blank", "_blank").location = '/wiki/'+storyWpath;
+}
+
+function openSpec() {
+  window.open("about:blank", "_blank").location = '/wiki/'+specWpath;
+}
+
+</script>
+
+@if(line.length > 0 && col.length > 0) {
+  <script>
+    // when you got here by navigating something, select it and highlight it
+  setTimeout(function(){
+    weSelect('@wpath', @line, @col);
+  }, 500);
+  </script>
+}
+
+</div>
+
+@util.oneModal()
+

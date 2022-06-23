@@ -1,0 +1,93 @@
+@**************
+list of notes
+
+msg types are msg, err
+**************@
+@(noteList:List[razie.wiki.model.WikiEntry], forSelection:Boolean=false)(implicit stok:mod.notes.controllers.NotesOk)
+@import mod.notes.controllers.{NotesLocker, Notes}
+@import mod.notes.controllers.routes
+
+@stok.title(s"Tagged ${stok.curTag}")
+
+@notes.headingWithTags(stok, forSelection)
+
+@Some(stok.au).map {user=>
+
+@if(noteList.isEmpty) {
+  <p>
+    Nothing found for <b>@stok.curTag</b> !
+  </p>
+  <p>
+  Please submit a <b><a href="/doe/support?desc=Improve @stok.curTag">support request</a></b> if you can help improve this list.
+  </p>
+}
+
+ @noteList.map(Notes.dec(user)).map {we=>
+
+   <div class="noteslist well-small panel panel-info" style="border-radius:9px; margin-bottom:10px; "
+     nid="@we._id.toString"
+   >
+     @*<div class="panel-heading"*@
+       @*style="pading:5px 5px; padding-top: 3px; padding-right: 5px; padding-bottom: 3px; padding-left: 5px;">*@
+   <small>
+     <a href="@routes.NotesLocker.noteById(we._id.toString)">@we.crDtm.toString("YYYY-MM-dd hh:mm a").toLowerCase()
+       <strong>[Edit]</strong></a>
+     [<a href="@routes.NotesLocker.viewNoteById(we._id.toString)"><strong>View</strong></a>]
+   </small>
+
+       <div style="float: right;">
+       <small>Tags: <strong>
+       ...
+         @we.tags.map {x=>
+           @if(stok.tags find (_._1 == x) isEmpty ) {
+@**
+               @x |
+**@
+           } else {
+               | <a href="@routes.NotesLocker.tag(stok.tagPath(x))">@x</a>
+           }
+
+       }
+       </strong></small>
+       </div>
+       @*</div> *@@* heading *@
+
+     <div class="notesbody panel-body" style="">
+
+       @{
+         we.preprocess(Some(stok.au))
+         ""
+       }
+
+  @if(we.fields.nonEmpty && !forSelection) {
+    @wiki.wikiFormSimple(we.wid, None, Some(we), Map.empty, false, false, true)(stok.stok)
+  } else {
+    <p>@notes.notesFormat(we, stok.au, true)</p>
+  }
+
+</div>
+
+  @wiki.wikiFragExtras(Some(stok.au),Some(we))(stok.stok)
+
+   </div>
+}
+}
+
+<script>
+  $(document).ready(function(){
+    @if(forSelection) {
+      $(".noteslist, .notesbody").addClass("hoverDiv");
+      $(".noteslist").click(function(){
+        noteSelected($(this).attr('nid'))
+      });
+    }
+
+var currbgc = $(".hoverDiv").css("background-color");
+
+    $(".hoverDiv").hover(function(){
+        $(this).css("background", "#cccccc");
+    }, function(){
+        $(this).css("background", currbgc);
+    });
+});
+</script>

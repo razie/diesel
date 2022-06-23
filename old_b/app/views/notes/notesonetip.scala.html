@@ -1,0 +1,21 @@
+@**************
+show one tip
+**************@
+@(au:Option[model.User])
+@import mod.notes.controllers.NotesTips
+
+<small>
+<div class="alert alert-info">
+  <strong>Tip </strong>
+  @**
+  (<a href="/notes/alltips">see all</a>)
+  **@
+  @Html(tipone)
+</div>
+</small>
+
+@tipone = @{
+  val t = NotesTips.tips((math.random * NotesTips.tips.size).toInt)
+  val m = razie.wiki.model.Wikis.format(razie.wiki.model.WID.empty, "md", t, None, au)
+  m.replaceFirst("^\\s*<p>", "").replaceFirst("</p>\\s*$", "")
+}

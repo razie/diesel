@@ -1,0 +1,13 @@
+@()
+
+@import mod.snow.RegStatus._
+
+Registration statuses are:
+<table class="table table-condensed">
+<tr><td>n/a</td><td>created account as club member, but registration not started</td></tr>
+<tr><td>@PENDING</td><td>in progress - completing forms</td></tr>
+<tr><td>@ACCEPTED</td><td>forms accepted, pending payment</td></tr>
+<tr><td>@CURRENT</td><td>reg is current, approved and up to date for season</td></tr>
+<tr><td>@FAMILY</td><td>reg is filed by another member (parent or spouse)</td></tr>
+<tr><td>@EXPIRED</td><td>reg is expired - accompanied by a task to update it / create new one</td></tr>
+</table>

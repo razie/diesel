@@ -1,0 +1,72 @@
+@******
+manage the list of kidz and/or their accounts
+******@
+@import views.html.club.groupMessaging
+@(club:controllers.Club, role:String, team:razie.wiki.model.WID)(implicit stok:controllers.StateOk)
+@import mod.snow.RK
+@import mod.snow.{RacerKidAssoc, RacerKid}
+@import mod.snow.RK._
+@import razie.wiki.model.Wikis
+@import mod.snow.RacerKidz
+
+@stok.title("RacerKidz for " + club.name + " / " + team.name)
+
+@kids()=@{
+  club.activeTeamMembers(team).map(_._1._id)
+}
+
+
+@rks= @{
+  club.teamMembers(team, role)
+}
+
+@rksactive = @{rksmap((k,a)=> k.info.status != STATUS_FORMER && a.role != ROLE_FAN)}
+
+@rksmap(f:(RacerKid, RacerKidAssoc) =>Boolean) = @{
+  for ((k,a) <- rks if(f(k, a))) yield
+    Map("rkaid"->a._id.toString,
+        "fname"->k.info.firstName,
+      "lname"->k.info.lastName,
+      "date"->k.crDtm.toDate.toString,
+        "role" -> a.role,
+        "associd" -> a._id.toString,
+      "notes"->k._id.toString,
+        "details"->k._id.toString)
+}
+
+@mnglink(row:Map[String,String],k:String,v:String)={
+  @k match {
+    case "details" => {
+      <a href="@routes.Kidz.doeUserKid(stok.au.get._id.toString, v, "-", row("associd"), "clubkidz:"+club.wid.wpath)" class="btn btn-default btn-xs">&nbsp;&nbsp;<span class="glyphicon glyphicon-list-alt"/>&nbsp;&nbsp;</a>
+    }
+    case "notes" => {
+      <a href="@routes.Kidz.doeKidHistory(club.wid.wpath, v)" class="btn btn-info btn-xs">&nbsp;&nbsp;<span class="glyphicon glyphicon-th-list"/>&nbsp;&nbsp;</a>
+    }
+    case _ => { @v }
+  }
+}
+
+@defining(club.activeTeamMembers(team, role)) {list=>
+@if(list.isEmpty) {
+  <h2>No members...</h2>
+} else {
+  <h2>Members of @team.name
+    @util.notesmsgDiv("teammsg")
+  </h2>
+
+  <p><b>Summary:</b>
+    @rks.filter(t=> t._1.info.status != STATUS_FORMER && t._2.role != ROLE_FAN).toList.groupBy(_._2.role).map {x=>
+      @x._2.size <small>x</small> @x._1  ;
+    }
+
+  @util.utilSimpleTable(rksactive.iterator,
+    Seq("fname" -> "F.Name", "lname"->"L.Name", "date"-> "crDate", "role" -> "Role", "details"->"Details", "notes"->"History"), Some(mnglink))
+
+  }
+
+  @if(club.isClubCoach(stok.au.get)) {
+    @groupMessaging(club, role, team, kids())
+  }
+}
+
+

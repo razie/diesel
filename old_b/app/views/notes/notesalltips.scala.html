@@ -1,0 +1,24 @@
+@**************
+show/edit/capture a note
+
+msg types are msg, err
+**************@
+@()(implicit stok:mod.notes.controllers.NotesOk)
+@import mod.notes.controllers.NotesTips
+
+<h2>All tips </h2>
+
+<div class="well">
+
+@NotesTips.tips.map{tip=>
+  <small>
+  <div class="alert alert-info">
+    <strong>Tip</strong>
+    @Html(razie.wiki.model.Wikis.format(razie.wiki.model.WID.empty, "md", tip, None, Some(stok.au)).replaceFirst("^\\s*<p>", "").replaceFirst("</p>\\s*$", ""))
+  </div>
+  </small>
+}
+
+</div>
+
+

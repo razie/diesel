@@ -1,0 +1,325 @@
+@**************
+
+**************@
+
+@(url:String, user:Option[model.User])
+@import model._
+
+@*** from
+http://philogb.github.io/jit/static/v20/Jit/Examples/Hypertree/example2.html
+***@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<title>Hypertree - Weighted Graph Animation</title>
+
+<!-- CSS Files -->
+<style>
+html, body {
+    margin:0;
+    padding:0;
+    font-family: "Lucida Grande", Verdana;
+    font-size: 0.9em;
+    text-align: center;
+    background-color:#F2F2F2;
+}
+
+input, select {
+    font-size:0.9em;
+}
+
+table {
+    margin-top:-10px;
+    margin-left:7px;
+}
+
+h4 {
+    font-size:1.1em;
+    text-decoration:none;
+    font-weight:normal;
+    color:#23A4FF;
+}
+
+a {
+    color:#23A4FF;
+}
+
+#container {
+    width: 1000px;
+    height: 300px;
+    margin:0 auto;
+    position:relative;
+}
+
+#left-container,
+#right-container,
+#center-container {
+    height:300px;
+    position:absolute;
+    top:0;
+}
+
+#left-container, #right-container {
+    width:200px;
+    color:#686c70;
+    text-align: left;
+    overflow: auto;
+    background-color:#fff;
+    background-repeat:no-repeat;
+    border-bottom:1px solid #ddd;
+}
+
+#left-container {
+    left:0;
+    background-image:url('col2.png');
+    background-position:center right;
+    border-left:1px solid #ddd;
+
+}
+
+#right-container {
+    right:0;
+    background-image:url('col1.png');
+    background-position:center left;
+    border-right:1px solid #ddd;
+}
+
+#right-container h4{
+    text-indent:8px;
+}
+
+#center-container {
+    width:600px;
+    left:200px;
+    background-color:#1a1a1a;
+    color:#ccc;
+}
+
+.text {
+    margin: 7px;
+}
+
+#inner-details {
+    font-size:0.8em;
+    list-style:none;
+    margin:7px;
+}
+
+#log {
+    position:absolute;
+    top:10px;
+    font-size:1.0em;
+    font-weight:bold;
+    color:#23A4FF;
+}
+
+
+#infovis {
+    position:relative;
+    width:600px;
+    height:300px;
+    margin:auto;
+    overflow:hidden;
+}
+
+/*TOOLTIPS*/
+.tip {
+    color: #111;
+    width: 139px;
+    background-color: white;
+    border:1px solid #ccc;
+    -moz-box-shadow:#555 2px 2px 8px;
+    -webkit-box-shadow:#555 2px 2px 8px;
+    -o-box-shadow:#555 2px 2px 8px;
+    box-shadow:#555 2px 2px 8px;
+    opacity:0.9;
+    filter:alpha(opacity=90);
+    font-size:10px;
+    font-family:Verdana, Geneva, Arial, Helvetica, sans-serif;
+    padding:7px;
+}
+#infovis-canvaswidget {
+  margin:25px 0 0 25px;
+}
+</style>
+
+<!--[if IE]><script language="javascript" type="text/javascript" src="http://philogb.github.io/jit/static/v20/Jit/Extras/excanvas.js"></script><![endif]-->
+
+<script type='text/javascript' src='http://code.jquery.com/jquery-3.5.1.min.js'></script>
+
+<!-- JIT Library File -->
+<script language="javascript" type="text/javascript" src="http://philogb.github.io/jit/static/v20/Jit/jit-yc.js"></script>
+
+<!-- Example File -->
+<script language="javascript" type="text/javascript">
+var labelType, useGradients, nativeTextSupport, animate;
+
+(function() {
+  var ua = navigator.userAgent,
+      iStuff = ua.match(/iPhone/i) || ua.match(/iPad/i),
+      typeOfCanvas = typeof HTMLCanvasElement,
+      nativeCanvasSupport = (typeOfCanvas == 'object' || typeOfCanvas == 'function'),
+      textSupport = nativeCanvasSupport
+        && (typeof document.createElement('canvas').getContext('2d').fillText == 'function');
+  //I'm setting this based on the fact that ExCanvas provides text support for IE
+  //and that as of today iPhone/iPad current text support is lame
+  labelType = (!nativeCanvasSupport || (textSupport && !iStuff))? 'Native' : 'HTML';
+  nativeTextSupport = labelType == 'Native';
+  useGradients = nativeCanvasSupport;
+  animate = !(iStuff || !nativeCanvasSupport);
+})();
+
+var Log = {
+  elem: false,
+  write: function(text){
+    if (!this.elem)
+      this.elem = document.getElementById('log');
+    this.elem.innerHTML = text;
+    this.elem.style.left = (500 - this.elem.offsetWidth / 2) + 'px';
+  }
+};
+
+function init(){
+
+$.ajax({
+    type:     "GET",
+    url:      "@url",
+    success: function(data){
+        console.log(data);
+        $('json').innerHTML = JSON.stringify(data, null, "  ");
+        paint(data);
+    }
+});
+
+    }
+
+function paint(json){
+    //init data
+    //By defining properties with the dollar sign ($)
+    //in nodes and edges we can override the global configuration
+    //properties for nodes and edges.
+    //In this case we use "$type" and "$dim" properties to override
+    //the type of the node to be plotted and its dimension.
+
+
+    //end
+    //init Hypertree
+    var ht = new $jit.Hypertree({
+        //id of the visualization container
+        injectInto: 'infovis',
+        //By setting overridable=true,
+        //Node and Edge global properties can be
+        //overriden for each node/edge.
+        Node: {
+            overridable: true,
+            'transform': false,
+            color: "#f00"
+        },
+
+        Edge: {
+            overridable: true,
+            color: "#088"
+        },
+        //calculate nodes offset
+        offset: 0.2,
+        //Change the animation transition type
+        transition: $jit.Trans.Back.easeOut,
+        //animation duration (in milliseconds)
+        duration:1000,
+
+        //This method is called right before plotting an
+        //edge. This method is useful for adding individual
+        //styles to edges.
+        onBeforePlotLine: function(adj){
+            //Set random lineWidth for edges.
+            if (!adj.data.$lineWidth)
+                adj.data.$lineWidth = Math.random() * 7 + 1;
+        },
+
+        onBeforeCompute: function(node){
+            Log.write("centering");
+        },
+        //Attach event handlers on label creation.
+        onCreateLabel: function(domElement, node){
+            domElement.innerHTML = node.name;
+            domElement.style.cursor = "pointer";
+            domElement.onclick = function () {
+                ht.onClick(node.id, {
+                    hideLabels: false,
+                    onComplete: function() {
+                      ht.controller.onComplete();
+                    }
+                });
+            };
+        },
+        //This method is called when moving/placing a label.
+        //You can add some positioning offsets to the labels here.
+        onPlaceLabel: function(domElement, node){
+            var width = domElement.offsetWidth;
+            var intX = parseInt(domElement.style.left);
+            intX -= width / 2;
+            domElement.style.left = intX + 'px';
+        },
+
+        onComplete: function(){
+            Log.write("done");
+
+            //Make the relations list shown in the right column.
+            var node = ht.graph.getClosestNodeToOrigin("current");
+            var html = "<h4>" + node.name + "</h4><b>Connections:</b>";
+            html += "<ul>";
+            node.eachAdjacency(function(adj){
+                var child = adj.nodeTo;
+                html += "<li>" + child.name + "</li>";
+            });
+            html += "</ul>";
+            $jit.id('inner-details').innerHTML = html;
+
+            $jit.id('json').innerHTML = JSON.stringify(json, null, "  ");
+        }
+    });
+    //load JSON graph.
+    ht.loadJSON(json, 0);
+    //compute positions and plot
+    ht.refresh();
+    //end
+    ht.controller.onBeforeCompute(ht.graph.getNode(ht.root));
+    ht.controller.onComplete();
+}
+</script>
+</head>
+
+<body onload="init();">
+<div id="container">
+
+<div id="left-container">
+
+
+
+        <div class="text">
+        </div>
+
+        <div id="id-list"></div>
+
+
+</div>
+
+<div id="center-container">
+    <div id="infovis"></div>
+</div>
+
+<div id="right-container">
+
+<div id="inner-details"></div>
+
+</div>
+
+<div id="log"></div>
+
+</div>
+
+<textarea id="json" rows=50 cols=100></textarea>
+
+</body>
+</html>

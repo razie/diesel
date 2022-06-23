@@ -1,0 +1,40 @@
+@******
+cart and checkout
+******@
+@(club:controllers.Club, uws:List[model.UserWiki], regs:List[mod.snow.Reg])(implicit stok: controllers.StateOk)
+@import mod.cart._
+
+  <h1>Club billing <small> | (<a href="@routes.Accts.doeClubBillingReport(club.wid)">Report all</a>)</small>
+  </h1>
+
+  <p>Members</p>
+
+<table class="table table-striped">
+  <tr>
+    <th>Name</th>
+    <th>Email</th>
+    <th>Registered</th>
+    <th>Balance</th>
+    <th>Manage</th>
+  </tr>
+@uws.map { uw =>
+    <tr>
+      @*<td>@model.Users.nameOf(uw.userId)</td>*@
+      <td>@uw.user.map(_.fullName)</td>
+      <td><small>@uw.user.map(_.emailDec)</small></td>
+      <td>@regs.find(_.userId == uw.userId).map{x=>
+      y
+      }
+      </td>
+  @Acct.findCurrent(uw.userId, club.wid).map { acct=>
+      <td>@acct.balance</td>
+      <td><a href="@mod.cart.routes.Accts.acct(acct._id.toString)">Details</a></td>
+  }.getOrElse{
+    <td></td>
+    <td><a href="@mod.cart.routes.Accts.create2(uw.userId.toString, club.wid)">Create</a></td>
+  }
+    </tr>
+}
+
+</table>
+

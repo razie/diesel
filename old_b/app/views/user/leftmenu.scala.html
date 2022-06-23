@@ -1,0 +1,33 @@
+@*left hand menu for preferences*@
+@(item:Int, au:model.User)
+
+@active(i:Int) = @{
+  if(i == item) "active" else ""
+}
+
+<div class="well col-sm-4 col-md-3 col-lg-2">
+  <ul class="nav nav-list">
+    <li class="@active(0)"><a href="@routes.ProfileUpd.doeHelp"><i class="icon-question-sign"></i>Help</a></li>
+    <li class="@active(1)"><a href="@routes.ProfileUpd.doeProfile"><i class="icon-edit"></i>Basic profile</a></li>
+    <li class="@active(11)"><a href="@routes.ProfileUpd.doeContact("-")"><i class="icon-pencil"></i>Contact info</a></li>
+    <li class="@active(3)"><a href="@routes.ProfileUpd.doeProfilePass"><i class="icon-lock"></i>Password</a></li>
+@*    <li class="@active(4)"><a href="@routes.EdUsername.doeProfileUname"><i class="icon-off"></i>Username</a></li>*@
+    <li class="@active(5)"><a href="@routes.EdEmail.doeProfileEmail"><i class="icon-envelope"></i>Email</a></li>
+    <li class="@active(8)"><a href="@routes.ProfileUpd.doeProfilePreferences"><i class="icon-cog"></i>Preferences</a></li>
+
+@if(! au.isClub && au.hasRealm(razie.wiki.model.Wikis.RK)) {
+    <hr>
+    <li class="@active(6)"><a href="@routes.Kidz.doeUserKidz"><i class="icon-au"></i>Racerz</a></li>
+    <ul>
+      @for(c <- au.rel("child")) {
+       <li><a href="@routes.ProfileUpd.profile2(c.id)">@c.ename</a></li>
+      }
+    </ul>
+}
+
+@if(! au.isClub && au.hasRealm(razie.hosting.WikiReactors.NOTES)) {
+}
+
+  </ul>
+</div> <!-- /well -->
+

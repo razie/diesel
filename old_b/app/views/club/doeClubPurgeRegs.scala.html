@@ -1,0 +1,246 @@
+@******
+club admin manages list of users and registrations
+******@
+@(clubwid:razie.wiki.model.WID, club:model.User, details:String, members:List[(Option[model.User], model.UserWiki, Option[mod.snow.Reg])], regs:List[mod.snow.Reg], rks:List[controllers.ModRkEntry], rkas:List[mod.snow.RacerKidAssoc])(implicit stok:controllers.StateOk)
+@import _root_.razie.wiki.Services
+@import mod.snow.RacerKidAssoc
+@import mod.snow.RacerKidz
+@import razie.wiki.model.features.WikiCount
+@import razie.wiki.model.WikiLink
+@import model.UserWiki
+@import razie.db.ROne
+@import razie.db.RMany
+
+@stok.title("purge Registrations for club " + clubwid.name)
+@stok.requireJs(false)
+<h2>Purging</h2>
+
+club  @clubwid.wpath   @clubwid.uwid
+
+<br><button onclick="doPurge('Reg')" >purge now</button> Regs @regs.size
+
+<br><button onclick="doPurge('RegKid')" >purge now</button> RegKid @regs.map(_.kids.size).sum
+
+<br><button onclick="doPurge('Form')" >purge now</button> Forms @regs.map(_.deprecatedWids.size).sum
+
+<br><button onclick="doPurge('WikiCount')" >purge now</button>
+  WikiCount @regs.map(_.deprecatedWids.flatMap(_.uwid.toSeq).flatMap{uw=>
+  RMany[WikiCount]("pid" -> uw.id).toSeq
+}.size).sum
+
+<br><button onclick="doPurge('WikiLink')" >purge now</button>
+  WikiLink @regs.map(_.deprecatedWids.flatMap(_.uwid.toSeq).flatMap{uw=>
+  RMany[WikiLink]("from.id" -> uw.id).toSeq ++
+      RMany[WikiLink]("to.id" -> uw.id).toSeq
+}.size).sum
+
+<br><button onclick="doPurge('UserWiki')" >purge now</button>
+  UserWiki @regs.map(_.deprecatedWids.flatMap(_.uwid.toSeq).flatMap{uw=>
+  RMany[UserWiki]("uwid.id" -> uw.id).toSeq
+}.size).sum
+
+
+<br><button onclick="doPurge('ModRkEntry')" >purge now</button> ModRkEntry @rks.size
+<br><button onclick="doPurge('RacerKidAssoc')" >purge now</button> RacerKidAssoc @rkas.size
+
+@tabrkas=@{
+  rkas.map(x=> Map(
+    "from" -> x.from.toString,
+    "to" -> x.to.toString,
+    "assoc" -> x.assoc,
+    "role" -> x.role,
+    "owner" -> x.owner.toString,
+    "year" -> x.year
+  ))
+}
+
+@util.utilSimpleTable(tabrkas.iterator,
+  Seq("from"->"from",
+    "to"->"to",
+    "assoc"->"assoc",
+    "role"->"Role",
+    "owner"->"owner",
+    "year" -> "year"), None)
+
+<hr>
+
+@regs.map { reg =>
+  <br>
+"Reg" @reg._id
+
+  @reg.kids.map { k =>
+    <br>
+  "RegKid" @k._id
+  }
+
+  @reg.deprecatedWids.map { w =>
+    <br>
+  "Form" @w.wpath
+  }
+
+ @reg.deprecatedWids.map { w =>
+ @w.uwid.map { uw =>
+   @ROne[WikiCount]("pid" -> uw.id).map{wc=> <br>WikiCount @wc._id}
+   @RMany[WikiLink]("from.id" -> uw.id).map{wl=> <br>WikiLink from @wl._id}
+   @RMany[WikiLink]("to.id" -> uw.id).map{wl=> <br>WikiLink to @wl._id}
+   @RMany[UserWiki]("uwid.id" -> uw.id).map{wl=> <br>UserWiki @wl._id}
+ }
+ }
+
+    <script>
+      function doPurge(what) {
+  $.post("/doe/club/dopurgeregs/"+what+"/@{regs.head.year}/@{clubwid.wpath}", {}, function(data) {
+    window.location.reload();
+  })
+  alert("wait...");
+      }
+    </script>
+  <hr>
+}
+
+@tab=@{
+  members.filter(_._1.isDefined).map(t=>
+    Map("userName"->t._1.get.userName,
+      "firstName"->t._1.get.firstName,
+      "lastName"->t._1.get.lastName,
+      "role"->t._2.role,
+      "paid"->t._3.map(_.paid).getOrElse(""),
+      "vol" -> "",
+      "regStatus" -> t._3.map(_.regStatus).getOrElse("n/a"),
+      "uwId"->t._2._id.toString))
+}
+
+@allforms=@{
+  Some(members.flatMap(_._3).flatMap(_.deprecatedWids).flatMap(w=>razie.wiki.model.Wikis.find(w).map(we=>(w, we.formRole, we.formState))))
+}
+
+@tabMissing=@{
+  members.filter(_._1.isEmpty).map(t=>
+    Map("userId"->t._2.userId.toString, "role"->t._2.role))
+}
+
+@id(row:Map[String,String])=@{row.get("uwId").get}
+
+@import mod.snow.RegStatus._
+
+@mnglink(row:Map[String,String],k:String,v:String)={
+@k match {
+  case "regStatus" => {
+    @regStatusColored(v, Some(routes.Club.doeClubReg(clubwid, id(row)).toString))
+  }
+  case "rowClass" => {
+    @row.get("regStatus") match {
+      case Some(PENDING) => { class="error" }
+      case Some(ACCEPTED) | Some(CURRENT) | Some(FAMILY) => { class="success" }
+      case _ => { }
+    }
+  }
+  case _ => { @v }
+}
+  }
+
+  <h2>Registration management panel for @clubwid.name</h2>
+
+  <p>These are the members with accounts on the website. Click on the colorful statuses to manage that user/registration. (See the bottom for a legend).
+    <br><b>Summary: @members.filter(_._2.role != "Fan").size</b> total: @members.filter(_._2.role != "Fan").groupBy(_._3.map(_.regStatus)).map{x=><b>@x._2.size</b> @x._1.getOrElse("n/a") , }
+    @if(details == "1") {
+      @allforms.map{forms=>
+        <br><b>Forms: @forms.size</b> total: @forms.groupBy(_._3).map{x=><b>@x._2.size</b> @x._1.getOrElse("n/a") , }
+        <br><b>Forms: @forms.size</b> total: @forms.groupBy(_._2).map{x=><b>@x._2.size</b> @x._1.getOrElse("n/a") , }
+      }
+    } else {
+  <p><small><a href="@routes.Club.doeClubRegs(clubwid, "1")">More stats (slow)</a></small> |
+    <small><a href="@routes.Club.doeClubRegs(clubwid, "2")">Hours report (slow)</a></small>
+    }
+
+    @util.utilSimpleTable(tab.filter(_.apply("role") != "Fan").iterator,
+      Seq("userName" -> "",
+        "firstName"->"First",
+        "lastName"->"Last",
+        "role"->"Role",
+        "paid" -> "Paid",
+        "vol" -> "Hours",
+        "regStatus" -> "Registration",
+        "uwId"->""), Some(mnglink))
+
+  <p>Send invitation to join club on RacerKidz for new members - copy this link and email it <br>
+    <strong>http://@Services.config.hostport/wiki/Admin:Join_A_Club?club=@club.userName</strong>
+
+    <br>
+    <br>
+
+    @***
+    <div class="well">
+    <strong>Members not registered</strong> do not have accounts on the site and/or are not included in a registration.
+
+    @model.RacerKidz.checkMyself(club._id)
+
+    @rks=@{
+    model.RacerKidz.findAssocForUser(club._id).filter(_.assoc == ASSOC_PARENT).map(x=>(x,x.rk.get)).map(t=>
+    Map("fname"->t._2.info.firstName,
+    "lname"->t._2.info.lastName,
+    "role" -> t._2.info.role,
+    "button"->t._2._id.toString,
+    "associd"->t._1._id.toString,
+    "id" -> t._2._id.toString))
+    }
+
+    @kidlink(row:Map[String,String],k:String,v:String)={
+    @k match {
+    case "button" => {
+    <a href="@routes.Kidz.doeUserKid(club._id.toString, v, "-", row("associd"), "Club")" class="btn btn-xs">More...</a>
+    }
+    case _ => {@v}
+    }
+    }
+
+    @util.utilSimpleTable(rks,
+    Seq("fname" -> "First Name",
+    "lname"->"Last Name",
+    "role" -> "Role",
+    "button"->"Details"), Some(kidlink))
+
+    Add more from <a href="@routes.Club.doeClubKidz">here</a>
+
+    </div>
+
+    ***@
+
+<hr>
+@views.html.club.regStatusLegend()
+
+  <br>Reporting per form
+  <ul>
+  @controllers.Club.findForUser(club).map { c =>
+    @c.regForms.map { t =>
+      <li>
+        Report <a href="@routes.Club.doeClubRegsReportCsv(c.wid, t.role)" class="btn btn-xs">CSV</a> -
+        <a href="@routes.Club.doeClubRegsReportJson(c.wid, t.role)" class="btn btn-xs">Json</a> -
+        <a href="@routes.Club.doeClubRegsReportHtml(c.wid, t.role)" class="btn btn-xs">Html</a> - @t.role
+        @c.props.filter(_._1 startsWith ("Report."+t.role)).map {tt=>
+        | <a href="@routes.Club.doeClubRegsReportCsv(c.wid, t.role, tt._2)" class="btn btn-xs">@tt._1.replaceFirst("Report."+t.role+".", "")</a>
+      }
+    }
+  }
+  </ul>
+
+  <hr>
+  <h4>Former members and fans (should not register)</h4>
+
+@util.utilSimpleTable(tab.filter(_.apply("role") == "Fan").iterator,
+  Seq("userName" -> "",
+    "firstName"->"First",
+    "lastName"->"Last",
+    "role"->"Role",
+    "regStatus" -> "Registration",
+    "uwId"->""), Some(mnglink))
+
+  @*** TODO show members that don't like the club anymore - ex memebers with old regs ***@
+
+@if(tabMissing.size>0) {
+  <h4>Members with deleted accounts - please submit a support request, if any: </h3>
+
+    @util.utilSimpleTable(tabMissing.iterator, Seq("userId" -> "userId", "role"->"Role"), None)
+  }
+
+  <hr>

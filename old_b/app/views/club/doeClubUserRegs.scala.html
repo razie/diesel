@@ -1,0 +1,100 @@
+@***********
+user manages registrations
+***********@
+@()(implicit stok:controllers.StateOk)
+@import mod.snow.Regs
+@import mod.snow.RegStatus._
+@import controllers.Club
+
+@stok.title("Registrations for " + stok.au.get.userName)
+
+@au=@{stok.au.get}
+
+@missingRegs = @{
+  // clubs with open regs that I'm not reg'd for
+  val clubs = au.wikis.filter(_.wid.cat == "Club").flatMap(uw=>Club(uw.wid).toList)
+  clubs.filter(club=> club.isRegOpen && Regs.findClubUserYear(club.wid, au._id, club.curYear).isEmpty)
+}
+
+@regs = @{
+//  val clubs = au.wikis.filter(_.wid.cat == "Club").map(_.wid.name)
+//  clubs.flatMap(c => Regs.findClubUser(c, au._id)).sortWith(_.year >= _.year)
+  // don't start from clubs - user may have left some clubs
+  Regs.findByUserId(au._id).toList.sortWith(_.year >= _.year)
+}
+
+@tab = @{
+  regs.iterator.map(reg =>
+    Map(
+      "club" -> reg.club.getLabel(),
+      "year" -> reg.year,
+      "role" -> reg.role,
+      "regStatus" -> reg.regStatus,
+      "id" -> reg._id.toString,
+      "vol" -> "",
+      "balance" -> mod.cart.Acct.findCurrent(reg.userId, reg.club).map(_.balance.toString).getOrElse(""),
+      "details" -> ""
+    ))
+}
+
+    @mnglink(row: Map[String, String], k: String, v: String) = {
+    @k match {
+      case "regStatus" => {
+        @regStatusColored(v, Some(routes.Club.doeClubUserReg(row.get("id").get).toString))
+      }
+      case "vol" => {
+        @v
+      }
+      case "details" => {
+        <a href="@routes.Club.doeClubUserReg(row.get("id").get).toString" class="btn btn-primary btn-xs">&nbsp;&nbsp;<span class="glyphicon glyphicon-list-alt"></span>&nbsp;&nbsp;</a>
+      }
+      case _ => {
+        @v
+      }
+    }
+    }
+
+    <h2>Registration management panel</h2>
+    <br>
+    <p>@au.ename
+      , this is the list of clubs you have registrations for. Some registrations may be old, current or pending - see the bottom of the page for a legend.
+    <p>Click on the status of each, to manage the forms required to complete that registration.
+
+@defining(missingRegs){mr=>
+    @if(regs.isEmpty && mr.isEmpty) {
+      <div class="alert alert-info">
+        <strong>No registrations!</strong>
+        You have no registrations in progress - if you were looking for a specific club, then please follow this link to join it:
+        <b><a href="@routes.Wikie.wikieLike("Club")">Join a club</a></b>
+        <p>
+          Find your club there and if they have registrations open, you will see a red link to "start registration" right after joining the club.
+      </div>
+
+      <div class="alert alert-danger">
+        <strong>If you're looking to setup your club's registration!</strong>
+        If you are a club administrator looking to evaluate/setup the registration system or forms for your club, please <a href="/doe/support?desc=Setup+club+registration">
+        contact us</a> to set it up for you.
+        <p>No worries, it's still free :)
+      </div>
+    } else {
+      @mr.map { club =>
+        <p>No registrations for the current year - <b>@club.userName, @club.curYear</b></p>
+        <a href="@routes.Club.doeStartRegSimple(club.wid)" class="btn btn-success btn-lg">
+          Start registration for <b>@club.userName, @club.curYear</b></a>
+      }
+    }
+<p></p>
+
+      @util.utilSimpleTable(tab,
+        Seq("club" -> "Club",
+          "year" -> "Year",
+          "role" -> "Role",
+          "regStatus" -> "Status",
+          "vol" -> "Volunteer",
+          "balance" -> "Balance",
+          "details" -> "Forms"),
+        Some(mnglink))
+
+      <p></p>
+      @club.regStatusLegend()
+    }

@@ -1,0 +1,17 @@
+@***
+translating a few parms and service name as well
+***@
+@(implicit item:x.FulfillmentOrderItem)
+
+@eDefaultItem(
+  item,
+  item.entity,
+  identity,
+  suppParms = Map(
+        "firmware_version" -> "1.0",
+    "iccid" -> "@@IMSI@@01",
+    "imsi" -> "@@IMSI@@",
+    "technology_type" -> "HSPA",
+    "razieParm" -> (item.entity.parms("haha") + "-suffix")
+))
+

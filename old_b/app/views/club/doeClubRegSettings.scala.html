@@ -1,0 +1,46 @@
+@(club:razie.wiki.model.WID, myForm: Form[(String, Int, String, String)])(implicit stok:controllers.StateOk)
+
+@stok.title("Registration settings")
+
+<h2>Registration settings</h2>
+<p>
+<div class="alert alert-warning">
+<strong>Careful</strong> changing these... you may screw up the current registration year...
+</div>
+
+@import helper.twitterBootstrap._
+@import play.api.Play.current
+@import play.api.i18n.Messages.Implicits._
+
+@helper.form(action=routes.Club.doeClubUpdateRegSettings(club), 'class->"well") {
+  @helper.select(
+    myForm("regType"),
+     Seq("None"->"None", "Family"->"Family", "Individual"->"Individual", "FamilyWithKids"->"FamilyWithKids"),
+     '_label -> "What kind of registration process",
+    '_showConstraints -> false)
+  @helper.select(
+    myForm("curYear"),
+     Range(2021, 2012, -1) map (y=>(y.toString,y.toString)),
+    '_label -> "Year for current registration process",
+    'style -> "width: 100px",
+    '_showConstraints -> false)
+  @helper.inputText(
+    myForm("regAdmin"),
+    '_label -> "Registration moderator's email",
+    '_showConstraints -> false)
+  @helper.textarea(
+    myForm("dsl"),
+    '_label -> "Settings (role=WID)",
+    'class -> "form-control",
+    'rows -> 20,
+    '_showConstraints -> false)
+
+  @formFix()
+
+  <button type="submit" class="btn btn-primary">Update account!</button>
+
+  @myForm.globalError.map { err=>
+     <p style="color:red;font-weight:bold">@err.message</p>
+  }
+}
+

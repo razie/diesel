@@ -1,0 +1,15 @@
+#cp ../../w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/parser/* public/ace-builds/parser
+#cp ../../w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/ace/mode-nvp1.js public/ace-builds/src
+#cp ../../w2/com.razie.dsl1.web/src-js/com/razie/dsl1/web/ace/worker-nvp1.js public/ace-builds/src
+
+DIR=~/eclipse-workspace/razdslnvp2/WebContent
+cp $DIR/parser/*            public/ace-builds/parser
+cp $DIR/ace/mode-nvp2.js    public/ace-builds/src
+cp $DIR/ace/worker-nvp2.js  public/ace-builds/src
+
+# AFter this, replace these imports in worker-nvp2
+# // RAZ these were relative before - new ACE likes them absolute... dargh
+# importScripts(window.location.origin+"/assets/ace-builds/parser/antlr-all-min.js");
+# importScripts(window.location.origin+"/assets/ace-builds/parser/Nvp2Lexer.js");
+# importScripts(window.location.origin+"/assets/ace-builds/parser/Nvp2Parser.js");
+#

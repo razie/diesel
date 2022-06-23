@@ -1,0 +1,38 @@
+@**************
+list of contacts
+
+msg types are msg, err
+**************@
+@(ncs:List[mod.notes.controllers.Inbox])(implicit stok:mod.notes.controllers.NotesOk)
+@import mod.notes.controllers.{NotesLocker, Inbox}
+@import mod.notes.controllers.routes
+
+@stok.title("Inbox")
+
+<h3> Inbox <small>| preview</small> @notes.notesmsg(stok.msg) </h3>
+
+  <table class="table">
+    <thead>
+      <td>From</td> <td>What</td><td>Description</td><td>Actions</td>
+    </thead>
+
+@ncs.map {nc=>
+  <tr>
+    <td>@nc.from</td>
+    <td>
+    @nc.what
+    @if(nc.noteId.isDefined) {
+      [<a href="@routes.NotesLocker.noteById(nc.noteId.get.toString)">Edit</a>]
+      [<a href="@routes.NotesLocker.viewNoteById(nc.noteId.get.toString)">View</a>]
+    }
+    </td>
+    <td>@nc.content</td>
+    <td>
+        <small>[<a href="@routes.NotesLocker.tag("inbox")">Thanks</a>]</small>
+    </td>
+  </tr>
+}
+  </table>
+
+<p></p>
+

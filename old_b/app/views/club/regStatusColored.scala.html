@@ -1,0 +1,21 @@
+@(regStatus:String, link:Option[String]=None)
+
+@import mod.snow.RegStatus._
+
+@button(color:String) = {
+  @link.map {v=>
+      <a href="@v" class="btn btn-xs @color">@regStatus</a>
+    }.getOrElse {
+      <a class="btn btn-xs @color">@regStatus</a>
+  }
+}
+
+@regStatus match {
+   case PENDING => { @button("btn-warning") }
+   case CURRENT => { @button("btn-success") }
+   case FAMILY => { @button("btn-info") }
+   case EXPIRED => { @button("btn-warning") }
+   case ACCEPTED => { @button("btn-warning") }
+   case "n/a" => { @button("") }
+   case _ => { @button("") }
+}

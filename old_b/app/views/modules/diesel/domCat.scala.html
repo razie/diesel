@@ -1,0 +1,41 @@
+@**************
+browse a domain
+**************@
+@import razie.diesel.dom.RDOM
+@import play.twirl.api.TemplateMagic.defining
+@(realm:String, cat:String, middle:List[String], left:List[RDOM.A], right:List[RDOM.A], o:Option[RDOM.O]=None)(mkLink:(String,String,Option[RDOM.A])=>String)(implicit stok: controllers.StateOk)
+@import razie.diesel.dom.DomInventories
+@import razie.diesel.dom.WikiDomain
+
+@stok.title("Category browser: "+cat)
+
+<script src="@routes.Assets.at("javascripts/weDieselDom.js")"></script>
+
+@modules.diesel.browser("diesel", realm, realm, cat, middle, left, right)(mkLink)
+
+<div class="col-sm-12">
+@defining(WikiDomain(realm)) { wd =>
+  @wd.rdom.classes.get(cat).map { c =>
+    @defining(wd.findPluginsForClass(c)) { inv =>
+  <div align="right"><small>@Html(DomInventories.htmlActions(realm, c))</small></div>
+      <div class="well">
+      @Html(o.map(_.fullHtml(inv.headOption)).getOrElse(c.fullHtml(inv.headOption)))
+      </div>
+    @wiki.wikiAddMore(razie.wiki.model.WID("Category", cat).r(realm), None)
+    } @* defining *@
+  }.getOrElse{
+    <span style="color:red">(realm: @realm) Absolutely nothing found about <b>@cat</b> - it is most likely inferred!</span>
+    <br><br>
+    <a href="/wikie/edit/@{realm}.Category:@cat">Create Wiki Category for <b>@cat</b></a><br><br>
+    <div class="alert alert-warning">
+      For <a href="/Topic/Domain_Modelling">domain modelling</a>, make sure the topic containing the models is tagged "DslDomain", to have it loaded automatically!
+  </div>
+  }
+}
+
+</div>
+
+<small>object:@o.isDefined</small>
+
+@util.oneModal()
+

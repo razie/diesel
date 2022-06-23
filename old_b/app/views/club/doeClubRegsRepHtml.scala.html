@@ -1,0 +1,27 @@
+@******
+report for printing for club reg med forms
+******@
+@(club:model.User, forms:List[razie.wiki.model.WikiEntry])(implicit stok:controllers.StateOk)
+
+@fields(form:razie.wiki.model.WikiEntry, name:String)=@{ form.form.fields.get(name).map(_.value).mkString }
+
+<html>
+  <head>
+    <style>
+    .newPage {page-break-before:always;}
+    </style>
+  </head>
+
+ <body>
+  <p>
+    There are @forms.size forms:
+</p>
+
+@forms.map{ form =>
+  <h4 class="newPage">Empty</h4>
+    <h2 class="newPage">@form.formRole.mkString Form: @fields(form, "lastName"), @fields(form, "firstName")</h2>
+    @wiki.wikiFrag(form.wid, None, true, Some(form), None, true, false, false, true)
+}
+ </body>
+</html>
+

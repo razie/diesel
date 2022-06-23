@@ -1,0 +1,26 @@
+@**************
+show all the tags the user has
+
+msg types are msg, err
+**************@
+@()(implicit stok:mod.notes.controllers.NotesOk)
+@import mod.notes.controllers.routes
+
+@stok.title("All tags")
+
+<h3>Tags <small>| (@stok.tags.size)</small></h3>
+
+<div class="well">
+
+<p>
+Your tags:
+<ul>
+  <li><a href="@routes.NotesLocker.tag("all")">all</a></li>
+  <li><a href="@routes.NotesLocker.tag("none")">no tag</a></li>
+  @stok.tags.map {x=>
+    <li><a href="@routes.NotesLocker.tag(x._1)">@x._1 <small>(@x._2)</small></a></li>
+  }
+</ul>
+
+</div>
+

@@ -1,0 +1,24 @@
+#
+# GET the latest production dump here - not a new dump
+#
+
+DT=`date | sed 's/ //g'`
+RKS=~/w/racerkidz/s
+
+cd $RKS
+
+gzip dump.tar
+mv dump.tar.gz rk-backups/dump.OLD.$DT.tar.gz
+mv dump rk-backups/dump.OLD.$DT
+
+#ssh demo@cloud3.apefsjdolj.ro "cd ~/rk/app/run; . ./mkdump"
+
+rm dump.tar dump.tar.gz
+
+scp demo@cloud3.apefsjdolj.ro:rk/app/run/dump.tar.gz ./dump.tar.gz
+
+gunzip dump.tar.gz
+
+tar xvf dump.tar
+
+cd ..

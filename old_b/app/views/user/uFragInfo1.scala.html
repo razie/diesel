@@ -1,0 +1,25 @@
+@(salutation:String, user: model.User, item:Int)(implicit stok:controllers.StateOk)
+
+@*******
+included in mainUserC as the left hand side info box
+*********@
+
+<div class="col-sm-5">
+<h2>@salutation, @user.ename!</h2>
+
+@item match {
+  case 2|3|4 => { @wiki.wikiFragInt("Admin:page-doeindex"+item, Some(user)) }
+  case _     => {
+        @wiki.wikiFragInt("Admin:page-doeindex1", Some(user))
+
+        <iframe marginheight="0" marginwidth="0" name="wxButtonFrame" id="wxButtonFrame" height="168"
+    src="http://btn.weather.ca/weatherbuttons/template7.php?placeCode=@user.getPrefs("weatherCode","caon0696")&category0=Cities&containerWidth=180&btnNo=&backgroundColor=blue&multipleCity=0&citySearch=1&celsiusF=C"
+    align="top" frameborder="0" width="180" scrolling="no"></iframe>
+
+        }
+}
+
+  <hr>
+  <p><a class="btn btn-primary" href="/wiki/Admin:Help Main Page">Learn more &raquo;</a>
+  <a class="btn btn-inverse" href="@routes.UserStuffCtl.doeUserCreateSomething">Create something &raquo;</a></p>
+</div>

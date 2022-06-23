@@ -1,0 +1,330 @@
+@**
+simulate streams
+**@
+@()(implicit stok: controllers.StateOk)
+
+@stok.title("stream sim")
+
+<div class="row">
+  <div class="col-md-6">
+    Target host:
+    <input type="text" class="input-lg" name="target" id="target" value="@stok.request.get.host"></input>
+    <h2>Stream sim</h2>
+
+   Size: <input type="number" class="input-xs" style="width:100px" name="size" id="size" value="1"></input>
+    delay: <input type="number" class="input-xs" style="width:100px" name="delay" id="delay" value="500"></input>
+
+    <p></p>
+
+    <a class="btn btn-primary" onclick="startStreamSim();">Start</a>
+    <a class="btn btn-primary" onclick="pauseTest();">Pause</a>
+      <a class="btn btn-primary" onclick="stopTest();">Stop</a>
+
+      <a class="btn btn-primary" onclick="engineConfig();">Engine</a>
+    <a class="btn btn-primary" onclick="engineConfigTags();">Tags</a>
+
+<table>
+  <tr> <td>Count:</td> <td><div id="count">?</div></td> </tr>
+  <tr> <td>Current:</td> <td><div id="cur">?</div></td> </tr>
+  <tr> <td>Average:</td> <td><div id="average">?</div></td> </tr>
+  <tr> <td>Errors:</td> <td><div id="err"></div></td> </tr>
+</table>
+    Report:<br>
+      <div id="topics"> </div>
+  </div>
+  <div class="col-md-6">
+    Stream name:<br>
+    <input type="text" class="input-lg" name="stream" id="stream" value="aStream"></input>
+
+  <textarea class="input-sm col-sm-12" name="testStr" id="testStr" rows="20" value="...loading"></textarea>
+  </div>
+  @*<div id="frag" style="max-lines: 20" class="col-md-3">*@
+</div>
+
+<pre id="sample" style="display: none">
+{
+  "root":  {
+  "children":   [
+  {
+  "children":     [
+  {
+  "children":       [
+  {
+  "children":         [
+  {
+  "children":           [],
+  "id":"58ff7fe9e84ac881f5397a05",
+  "status":"final.init",
+  "details":" ",
+  "class":"DomAst",
+  "kind":"generated",
+  "value":           {
+  "class":"EVal",
+  "name":"lights",
+  "value":"bright"
+  }
+  }
+  ],
+  "id":"58ff7fe9e84ac881f5397a03",
+  "status":"final.done",
+  "details":" ",
+  "class":"DomAst",
+  "kind":"generated",
+  "value":         {
+  "ret":          [],
+  "pos":          {
+  "wpath":"specs.Spec:lights-spec",
+  "line":"11",
+  "col":"1"
+  },
+  "ref":"weref('specs.Spec:lights-spec', 11, 1)",
+  "met":"check",
+  "attrs":          [
+  {
+  "name":"name",
+  "value":"Jane"
+  }
+  ],
+  "stype":"",
+  "arch":"generated",
+  "entity":"lights",
+  "class":"EMsg"
+  }
+  }
+  ],
+  "id":"58ff7fe9e84ac881f5397a01",
+  "status":"final.done",
+  "details":" ",
+  "class":"DomAst",
+  "kind":"generated",
+  "value":       {
+  "ret":        [],
+  "pos":        {
+  "wpath":"specs.Spec:lights-spec",
+  "line":"7",
+  "col":"1"
+  },
+  "ref":"weref('specs.Spec:lights-spec', 7, 1)",
+  "met":"on",
+  "attrs":        [
+  {
+  "name":"name",
+  "value":"Jane"
+  }
+  ],
+  "stype":"",
+  "arch":"generated",
+  "entity":"lights",
+  "class":"EMsg"
+  }
+  },
+  {
+  "children":       [
+  {
+  "children":         [],
+  "id":"58ff7fe9e84ac881f5397a04",
+  "status":"final.init",
+  "details":" ",
+  "class":"DomAst",
+  "kind":"generated",
+  "value":         {
+  "class":"EVal",
+  "name":"greetings",
+  "value":"Greetings, Jane"
+  }
+  }
+  ],
+  "id":"58ff7fe9e84ac881f5397a02",
+  "status":"final.done",
+  "details":" ",
+  "class":"DomAst",
+  "kind":"generated",
+  "value":       {
+  "ret":        [],
+  "pos":        {
+  "wpath":"specs.Spec:lights-spec",
+  "line":"23",
+  "col":"1"
+  },
+  "ref":"weref('specs.Spec:lights-spec', 23, 1)",
+  "met":"welcome",
+  "attrs":        [
+  {
+  "name":"name",
+  "value":"Jane"
+  }
+  ],
+  "stype":"",
+  "arch":"generated",
+  "entity":"chimes",
+  "class":"EMsg"
+  }
+  }
+  ],
+  "id":"58ff7fe9e84ac881f53979ff",
+  "status":"final.done",
+  "details":" ",
+  "class":"DomAst",
+  "kind":"received",
+  "value":     {
+  "ret":      [],
+  "pos":      {
+  "wpath":"specs.Story:fiddle",
+  "line":"1",
+  "col":"1"
+  },
+  "ref":"weref('specs.Story:fiddle', 1, 1)",
+  "met":"guest_arrived",
+  "attrs":      [
+  {
+  "name":"name",
+  "value":"Jane"
+  }
+  ],
+  "stype":"",
+  "arch":"def",
+  "entity":"home",
+  "class":"EMsg"
+  }
+  }
+  ],
+  "id":"58ff7fe9e84ac881f53979fe",
+  "status":"final.done",
+  "details":" ",
+  "class":"DomAst",
+  "kind":"root",
+  "value":"root"
+  },
+  "engineId":"58ff7fe9e84ac881f5397a00",
+  "id":"58ff7fe9e84ac881f53979fe",
+  "ver":"v1",
+  "parentNodeId":"",
+  "details":"runDom",
+  "app":"diesel",
+  "class":"DieselTrace",
+  "node":"localhost:9000"
+  }
+</pre>
+
+@util.oneModal()
+
+<p> </p>
+<hr>
+
+@md {
+  Use `$TESTCYCLE` which will be expanded to the current index.
+}
+
+@*<script src="@routes.Assets.at("javascripts/weTest.js")"></script>*@
+@*<script src="@routes.Assets.at("javascripts/weDieselDom.js")"></script>*@
+
+<script>
+  require['jquery', 'weTest, weDieselDom'], function() {
+
+    streamUpdate = function() {
+      var id = $("#stream").val();
+      var content = $("#testStr").val();
+      $.ajax(
+          '/diesel/streamupd/' + id, {
+            type: 'POST',
+            data: $.param({
+              capture: content
+            }),
+            contentType: 'application/x-www-form-urlencoded',
+            success: function (data) {
+            },
+            error: function (x) {
+              console.log("ERR " + x.toString());
+            }
+          });
+    }
+
+    streamNext = function(streamName, curIndex, continuation) {
+      var content = $("#testStr").val();
+
+      content = content.replace('$TESTCYCLE', curIndex);
+
+      $.ajax(
+          '/diesel/postAst/' + streamName + "/" + curIndex, {
+            type: 'POST',
+            data: $.param({
+              capture: content
+            }),
+            contentType: 'application/x-www-form-urlencoded',
+            success: function (data) {
+              var url = "/diesel/viewAst/" + curIndex;
+              var onclick = "onclick=\"loadRes(\'" + url + "?format=html\'); return false;\" ";
+              var href = "href=\"" + url + "\" ";
+              if (data.failureCount > 0)
+                report("FAIL " + data.failureCount + " tests " + "<a " + href + onclick + ">" + curIndex + "</a>", true);
+              else
+                report("OK <a " + href + onclick + "\">" + curIndex + "</a>", false);
+            },
+            error: function (x) {
+              report("ERR " + streamName + "\t" + curIndex, true);
+              console.log("ERR " + x.toString());
+            }
+          });
+
+      continuation();
+    }
+
+    loadRes = function(url) {
+      $.ajax(
+          url, {
+            type: 'GET',
+            success: function (data) {
+              popupContent("<pre>" + data + "</pre>");
+            },
+            error: function (x) {
+              console.log("ERR " + x.toString());
+            }
+          });
+//  popupUrl(url);
+    }
+
+    startStreamSim = function() {
+      var size = $("#size").val();
+      var delay = $("#delay").val();
+      runStream($("#stream").val(), streamNext, delay, size);
+    }
+
+    engineConfig = function() {
+      $.ajax(
+          '/diesel/engine/config', {
+            type: 'GET',
+            success: function (data) {
+              popupContent(data);
+            },
+            error: function (x) {
+              popupContent("ERR... <p>" + x);
+            }
+          });
+    }
+
+
+
+    $('#testStr').val($("#sample").text());
+
+    $('#testStr').bind('input propertychange', function () {
+      streamUpdate();
+    });
+
+// load textarea
+    $.ajax(
+        '/diesel/streamCapture/' + $("#stream").val(), {
+          type: 'GET',
+          success: function (data) {
+            $("#testStr").val(data);
+          },
+          error: function (x) {
+            console.log("ERR " + x.toString());
+          }
+        });
+
+  });
+
+</script>
+
+@util.oneModal()
+

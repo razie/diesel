@@ -1,0 +1,117 @@
+@**
+DB Admin - admin a table in a table format
+**@
+@(name:String, col:scala.Iterator[com.mongodb.casbah.Imports.DBObject], fields:Array[String])(implicit stok: controllers.StateOk)
+@import mod.snow.RacerKidz
+@import com.mongodb.casbah.Imports.DBObject
+@import razie.wiki.model.UWID
+@import org.bson.types.ObjectId
+
+@stok.title("admin db as table: "+name)
+
+@** friendly render a field representing a userId **@
+@userId(v:String) = {
+@if(v == null || v.length <= 1) {
+  <span style="color:#ff0000">???</span>
+} else {
+  @model.Users.findUserById(v).map {u=>
+    <a href="/razadmin/user/@u._id.toString">@u.userName</a>
+  }
+}
+}
+
+@uwid(v:DBObject) = {
+  @UWID(v.get("cat").toString, new ObjectId(v.get("id").toString)).nameOrId
+}
+
+@wikicount(db:DBObject, k:String, v:String) = {
+  @k match {
+    case "wpath" => {
+      @razie.wiki.model.Wikis.findById(db.get("pid").toString).map {wp=>
+        <a href="/wiki/@wp.wid.wpath">@wp.wid.wpath</a>
+      }
+    }
+    case _=> {
+      @v
+    }
+  }
+}
+
+@rka(db:DBObject, k:String, v:String) = {
+@k match {
+  case "from" | "owner" => { @userId(v) }
+  case "_id"            => { @adminDbEntity("RacerKidAssoc", v) }
+  case "to" => {
+    @if(v == null || v.length <= 1) {<span style="color:#ff0000">???</span>} else {
+      @RacerKidz.findByIds(v).map {rk=>
+        <a href="/razadmin/rk/@rk._id.toString">@rk.info.fullName</a>
+      }
+    }
+  }
+  case _=> {
+    @v
+  }
+}
+}
+
+@uw(db:DBObject, k:String, v:String) = {
+@k match {
+  case "userId"  => { @userId(v) }
+  case "_id"     => { @adminDbEntity("UserWiki", v) }
+  case "uwid"    => { @uwid(db.get("uwid").asInstanceOf[DBObject]) }
+  case _=> {
+    @v
+  }
+}
+}
+
+@wkl(db:com.mongodb.casbah.Imports.DBObject, k:String, v:String) = {
+@k match {
+  case "_id"  => { @adminDbEntity("WikiLink", v) }
+  case _=> {
+    @v
+  }
+}
+}
+
+
+@rk(db:com.mongodb.casbah.Imports.DBObject, k:String, v:String) = {
+  @k match {
+    case "ownerId" | "userId" => { @userId(v) }
+    case "_id"                => { @adminDbEntity("RacerKid", v) }
+    case "rkiId"              => { @adminDbEntity("RacerKidInfo", v) }
+    case _=> {
+      @v
+    }
+  }
+}
+
+
+  <h2>Records</h2>
+
+  @name match {
+    case "WikiCount" => {
+      @util.utilTable("WikiCount", List("pid", "count", "wpath").map(c => c -> c), None, Some("count"), Some(wikicount))
+    }
+    case "RacerKid" => {
+      @util.utilTable("RacerKid", fields.map(c => c -> c), None, None, Some(rk))
+    }
+    case "RacerKidAssoc" => {
+      @util.utilTable("RacerKidAssoc", fields.map(c => c -> c), None, None, Some(rka))
+    }
+    case "WikiLink" => {
+      @util.utilTable("WikiLink", fields.map(c => c -> c), None, None, Some(wkl))
+    }
+    case "UserWiki" => {
+      @util.utilTable("UserWiki", fields.map(c => c -> c), None, None, Some(uw))
+    }
+    case _ => {
+      @util.utilTable(name, fields.map(c => c -> c), None, None, None)
+    }
+  }
+
+  @*************
+  @if(!Array("User","Profile","WikiEntry","Ver","Audit", "WikiAudit").contains(name)) {
+  <a class="btn btn-xs btn-danger" href="@routes.Admin.delcoldb(name,db.get("_id").toString)">DEL - no confirmation!</a>
+  *************@
+

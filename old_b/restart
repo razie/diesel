@@ -1,0 +1,12 @@
+
+ssh razvanc@cloud2a.razie.com ". ~/.bashrc; cd ~/rk; . ./restart"
+sleep 3
+curl http://cloud2a.razie.com:9000/wiki/Club:Glacier_Ski_Club
+sleep 5
+ssh razvanc@cloud3a.razie.com ". ~/.bashrc; cd ~/rk; . ./restart"
+sleep 3
+curl http://cloud3a.razie.com:9000/wiki/Club:Glacier_Ski_Club
+
+# prime it
+curl http://www.dieselapps.com/
+

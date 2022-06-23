@@ -1,0 +1,73 @@
+@******
+club admin manages user: membership, registration etc
+******@
+@(c: controllers.Club, wid:razie.wiki.model.WID)(implicit stok: controllers.StateOk)
+@import razie.diesel.dom.WikiDomain
+
+@wpath() = @{
+  c.wid.wpath
+}
+
+@club() = @{
+  c.name
+}
+
+@teams() = @{
+  razie.wiki.model.Wikis.linksTo("Program", c.uwid, "Child").toList
+}
+
+@showteams() = {
+  Programs: @teams().map { t => @Html(t.from.findWid.map(_.ahrefNice(stok.realm)).mkString) | }
+}
+
+@roles()=@{
+  WikiDomain(c.wid.getRealm).roles(c.wid.cat, "Person")
+}
+
+@panel() = {
+@if(stok.au.exists(c.isClubAdmin)) {
+{{alert yellow }}
+<b>Admin management panel</b>
+
+@*Invite: @roles.map { x => [/4us/invite/@wpath?role=@x @x] | }*@
+
+Manage: @roles.map { x => [/4us/manage/@wpath?role=@x @x] | }
+
+@if(wid.cat == "Club" || wid.cat.length <= 0) {
+  More: [/doe/club/regs/@c.wid.wpath Registrations] |
+  @if(stok.au.exists(c.isClubAdmin)) { [/doe/club/regsettings/@wpath Settings] | [/doe/club/billing/view/@wpath Billing] | } [/doe/club/vol/@wpath Volunteers] | [/doe/4us/badge/@wpath Get badge]
+} else {
+  @if(wid.cat == "Pro") {
+  More: @if(stok.au.exists(c.isClubAdmin)) { [/doe/club/regsettings/@wpath Settings] | [/doe/club/billing/view/@wpath Billing] | } [/doe/4us/badge/@wpath Get badge]
+  } else {
+  More: @if(stok.au.exists(c.isClubAdmin)) { [/doe/club/regs/@c.wid.wpath Registrations] | [/doe/club/regsettings/@wpath Settings] | [/doe/club/billing/view/@wpath Billing] | } [/doe/4us/badge/@wpath Get badge]
+  }
+  }
+  @showteams()
+  {{/alert}}
+}
+
+@if(stok.au.exists(c.isClubCoach) && !stok.au.exists(c.isClubAdmin)) {
+  {{alert yellow }}
+  <b>Coach management panel</b>
+
+  Invite: @roles.map { x => [/4us/invite/@wpath?role=@x @x] | }
+
+  Lists: @roles.map { x => [/4us/manage/@wpath?role=@x @x] | }
+
+  @showteams()
+  {{/alert}}
+}
+
+@if(stok.au.exists(c.isMember) && !stok.au.exists(c.isClubCoach) && !stok.au.exists(c.isClubAdmin)) {
+  {{alert yellow }}
+  @showteams()
+  {{/alert}}
+}
+}
+
+@Html(razie.wiki.model.Wikis.format(razie.wiki.model.WID.empty, "md", panel().body, None, stok.au))
+@**
+@panel()
+**@
+

@@ -1,0 +1,335 @@
+@***
+show diff with remote
+***@
+@import razie.wiki.Services
+@(localRealm:String, toRealm:String, remote:String, lnew:List[controllers.WEAbstract], lremoved:List[controllers.WEAbstract], lchanged:List[(controllers.WEAbstract, controllers.WEAbstract, String, String)])(implicit stok: controllers.StateOk)
+@import razie.wiki.model.WID
+@import razie.wiki.Config
+@import razie.hosting.Website
+
+@wp(wid:WID)=@{
+  if(_root_.razie.wiki.Services.config.isLocalhost && wid.getRealm == "rk") "rk." + wid.wpath
+  else wid.wpath
+}
+
+@remotes()=@{
+  List("www.dieselapps.com", Services.config.hostport) :::
+  Website.getRealmProps(localRealm).get("diesel.remotes").map(_.currentStringValue).mkString.split(",").toList
+}
+
+@e(s:String)=@{s.replaceAllLiterally("'", "\\'")}
+
+@stok.title("admin diff list")
+
+    <h2>
+      Diffs from <small>
+        <span >
+          <a href="#" style="font-weight:bold;" title="local site">
+          @stok.hostPort
+          </a>
+
+            | Reactor:
+
+          <span >
+            <a href="javascript:selectFromRealm();" style="color:red;font-weight:bold;" title="current reactor">
+              @localRealm
+            <span class="caret"></span>
+            </a>
+          </span>
+
+        </span>
+&nbsp; .vs. &nbsp;
+        <span >
+
+          <a href="javascript:selectRemote();" style="font-weight:bold;" title="remote site">
+            @remote
+          <span class="caret"></span>
+          </a>
+        </span>
+
+        | Reactor:
+
+          <span >
+            <a href="javascript:selectToRealm();" style="color:red;font-weight:bold;" title="remote reactor">
+              @toRealm
+                <span class="caret"></span>
+            </a>
+          </span>
+
+        <span id="remotes" style="display: none">
+          @remotes().map{t=>
+            <a href="/admin/difflist/@localRealm/@toRealm/@t">@t</a><br>
+          }
+        </span>
+
+        <span id="localRealms" style="display: none">
+        @stok.au.toList.flatMap(x=> x.memberReactors).sorted.map{t=>
+          <a href="/admin/difflist/@t/@toRealm/@remote">@t</a><br>
+        }
+        </span>
+        <span id="toRealms" style="display: none">
+            @stok.au.toList.flatMap(x=> x.memberReactorsSameOrg(localRealm)).sorted.map{t=>
+              <a href="/admin/difflist/@localRealm/@t/@remote">@t</a><br>
+            }
+        </span>
+      </small>
+    </h2>
+
+@* ********************  CONTENT DIFFS   *@
+
+  <h3>Content diffs| <small>The green side was changed more recently</small></h3>
+    <table class="table table-striped">
+    @lchanged.filter(_._3 != "-").sortBy(x=> x._2.realm+x._3).map { t =>
+      <tr id="row-@t._2.id">
+
+        <td>
+        @if(t._1.cat != "ReactorMod" || t._1.realm == t._2.realm) {
+          <!--
+            @t
+          -->
+          <a
+          xhref="#"
+          onclick="applyDif('@t._2.id', '@routes.AdminDiff.applyDiffTo(localRealm, toRealm, remote, WID(t._2.cat, t._2.name).r(t._2.realm), t._1.id, t._2.id)')"
+          class="btn btn-xs btn-@{if(t._3=="L") "success" else ( if(t._1.ver >= t._2.ver) "danger" else "warning" ) }"
+          title="@{if(t._3!="L" && t._1.ver >= t._2.ver) "conflict !!!" else "warning??" }"
+          >USE LOCAL &raquo;</a>
+
+          @if(t._1.drafts > 0) {
+            <small>
+              <a href="@{WID(t._1.cat, t._1.name).r(t._1.realm).urlRelative}/edit">
+                <span style="color:red" class="glyphicon glyphicon-warning-sign" title="has drafts - click to save or cancel before merging..."></span>
+              </a>
+            </small>
+          }
+        }
+        </td>
+
+        <td>
+          <small>
+            @t._1.realm <a href="@WID(t._1.cat, t._1.name).r(t._1.realm).urlRelative">@t._1.cat:@t._1.name</a> (<a href="/wikie/content/@wp(WID(t._1.cat, t._1.name).r(t._1.realm))">content</a>)
+            </small>
+
+        </td>
+
+        <td>
+          <a
+          href="javascript:popupUrl('@routes.AdminDiff.showDiff("yes", t._3, localRealm, toRealm, remote, WID(t._2.cat, t._2.name).r(t._2.realm), t._1.id, t._2.id)');"
+          class="btn btn-xs btn-info"
+          >&laquo; DIFF &raquo;</a>
+        </td>
+
+        <td>
+          <small>
+        @t._2.realm <a href="@WID(t._2.cat, t._2.name).r(t._2.realm).urlForTarget(remote)">@t._2.cat:@t._2.name</a>
+            </small>
+        </td>
+
+        <td>
+          <span title="@t._4" style="cursor:crosshair" >@t._3</span>
+        </td>
+
+        <td>
+        @if(t._1.cat != "ReactorMod") {
+          <a
+          xhref="#"
+          onclick="applyDif('@t._2.id', '@routes.AdminDiff.applyDiffFrom(localRealm, toRealm, remote, WID(t._2.cat, t._2.name).r(t._2.realm), t._1.id, t._2.id)')"
+          class="btn btn-xs btn-@{if(t._3=="R") "success" else ( if(t._2.ver >= t._1.ver) "danger" else "warning" ) }"
+          title="@{if(t._3!="R" && t._2.ver >= t._1.ver) "conflict !!!" else "warning??" }"
+          >	&laquo; USE REMOTE</a>
+
+          @if(t._2.drafts > 0) {
+            <small>
+              <a href="@{WID(t._2.cat, t._2.name).r(t._2.realm).urlForTarget(remote)}/edit">
+                <span style="color:red" class="glyphicon glyphicon-warning-sign" title="has drafts - click to save or cancel before merging..."></span>
+              </a>
+            </small>
+          }
+        }
+        </td>
+
+      </tr>
+    }
+    </table>
+
+    <hr>
+
+  @* ********************  NEW LOCAL   *@
+
+  <h3>New local <small> | or removed on remote: (won't copy over links)</small></h3>
+    <table class="table table-striped table-condensed">
+    @lnew.sortBy(_.realm).map { wea =>
+      <tr id="row-@wea.id">
+        <td>
+@*//        @if(wea.cat != "Reactor") {*@
+          <a
+          xhref="x"
+          onclick="applyDif('@wea.id', '@routes.AdminDiff.applyDiffTo(localRealm, toRealm, remote, WID(wea.cat, wea.name).r(wea.realm), wea.id, "")')"
+          class="btn btn-xs btn-success"
+          >USE LOCAL &raquo;</a>
+@*//        }*@
+         </td>
+        <td>
+        <small>
+        @wea.realm <a href="@controllers.WikiUtil.w(wea.cat, wea.name, wea.realm)">@wea.cat:w/@wea.name v@wea.ver </a>
+        ( <a href="/wikie/content/@wp(WID(wea.cat, wea.name).r(wea.realm))">content </a> )
+        </small>
+        </td>
+        <td>
+          @if(wea.cat != "Reactor") {
+          <a
+          xhref="#"
+          onclick="applyDifAsk('@wea.id', '@routes.Wikie.wikieDelete2(WID(wea.cat, wea.name).r(wea.realm))')"
+          class="btn btn-xs btn-danger"
+          >	&laquo; DELETE LOCAL</a>
+          }
+        </td>
+      </tr>
+    }
+    </table>
+
+    <hr>
+
+  @* ********************  REMOVED LOCAL *@
+
+  <h3>Removed local <small> | or new on remote (won't copy links!!):</small></h3>
+  <table class="table table-striped table-condensed">
+   @lremoved.sortBy(_.realm).map { wea =>
+    <tr id="row-@wea.id">
+      <td>
+@*//      @if(wea.cat != "Reactor") {*@
+        <a
+        onclick="applyDifAsk('@wea.id', '@routes.AdminDiff.deleteRemote(localRealm, toRealm, remote, WID(wea.cat, wea.name).r(wea.realm), "", wea.id)')"
+        class="btn btn-xs btn-danger"
+        >USE LOCAL &raquo;</a>
+@*//      }*@
+      </td>
+      <td>
+      <small>
+        @wea.realm
+@*        <a href="http://@remote@WID(wea.cat, wea.name).r(wea.realm).urlRelative">@wea.cat:@wea.name v@wea.ver</a>*@
+        <a href="@WID(wea.cat, wea.name).r(wea.realm).urlForTarget(remote)">@wea.cat:@wea.name v@wea.ver</a>
+      </small>
+      </td>
+      <td>
+@*//      @if(wea.cat != "Reactor") {*@
+          <a
+          onclick="applyDif('@wea.id', '@routes.AdminDiff.applyDiffFrom(localRealm, toRealm, remote, WID(wea.cat, wea.name).r(wea.realm), "", wea.id)')"
+          class="btn btn-xs btn-success"
+          >	&laquo; USE REMOTE</a>
+@*//      }*@
+      </td>
+    </tr>
+  }
+  </table>
+
+  <ul>
+  </ul>
+
+  <hr>
+
+@* ********************  MINOR DIFFS   *@
+
+<h3>Minor diffs <small> | (same content, different versions - possibly already sync'd):</small></h3>
+    <table class="table table-striped table-condensed">
+    @lchanged.filter(_._3 == "-").sortBy(x=> x._2.realm+x._3).map { t =>
+      <tr>
+        <td>
+          <a
+          href="#"
+          class="btn btn-xs btn-default"
+          >USE LOCAL</a>
+        </td>
+        <td>
+          <small>
+          @t._1.realm <a href="@WID(t._1.cat, t._1.name).r(t._1.realm).url">@t._1.cat:@t._1.name</a> (<a href="/wikie/content/@wp(WID(t._1.cat, t._1.name).r(t._1.realm))">content</a>)
+          </small>
+        </td>
+
+      <td>
+        <a
+        href="javascript:popupUrl('@routes.AdminDiff.showDiff("yes", t._3, localRealm, toRealm, remote, WID(t._2.cat, t._2.name).r(t._2.realm), t._1.id, t._2.id)')"
+        class="btn btn-xs btn-info"
+        >&laquo; DIFF &raquo;</a>
+      </td>
+        <td>
+        <small>
+          @t._2.realm <a href="@WID(t._2.cat, t._2.name).r(t._2.realm).urlForTarget(remote)">@t._2.cat:@t._2.name</a>
+          </small>
+        </td>
+        <td>
+          <a
+          href="#"
+          class="btn btn-xs btn-default"
+          >USE REMOTE</a>
+        </td>
+      </tr>
+    }
+    </table>
+
+<script async>
+withJquery(function(){
+
+  applyDif = function(id,url) {
+    $.ajax(
+        url, {
+          type: 'GET',
+          success: function(data) {
+            if(data.indexOf("ok") == 0) {
+              $('#row-'+id).fadeOut(250);
+            } else {
+              alert ("ERROR: "+JSON.stringify(data))
+            }
+          },
+          error  : function(x) {
+            alert( "ERR "+JSON.stringify(x.responseText));
+          }
+        });
+  }
+
+applyDifAsk = function(id,url) {
+  if(confirm("You're sure you want to delete " + url + " ?")) $.ajax(
+    url, {
+    type: 'GET',
+    success: function(data) {
+      if(data.indexOf("ok") == 0) {
+        $('#row-'+id).fadeOut(250);
+      } else {
+      alert ("ERROR: "+JSON.stringify(data))
+      }
+    },
+    error  : function(x) {
+      alert( "ERR "+JSON.stringify(x.responseText));
+    }
+  });
+}
+
+  selectRemote = function() {
+    popupContent("Select remote host to compare against" + "<br><br>" + $("#remotes").html());
+  }
+
+  selectFromRealm = function() {
+    popupContent("Select local realm to compare " + "<br><br>" + $("#localRealms").html());
+  }
+  selectToRealm = function() {
+    popupContent("Select remote realm to compare against" + "<br><br>" + $("#toRealms").html());
+  }
+
+  });
+</script>
+
+  @*overwriting this to allow the dialog to be large...*@
+
+  <style>
+    .modal-dialog{
+      position: relative;
+      display: table; /* This is important */
+      overflow-y: auto;
+      overflow-x: auto;
+      width: auto;
+      min-width: 300px;
+      max-height: 600px;
+    }
+  </style>
+
+@util.oneModal()
+

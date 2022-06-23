@@ -1,0 +1,48 @@
+@**************
+the relationships of a page
+**************@
+@import razie.diesel.dom.RDOM
+@(realm:String, left:List[RDOM.A], middle:List[RDOM.A], right:List[RDOM.A], tleft:String="", tmiddle:String="", tright:String="")(mkLink:String=>String)
+
+@height()=@{
+  if(left.size < 3 && middle.size < 3 && right.size < 3) "80px"
+  else if(left.size > 5 || middle.size > 5 || right.size > 5) "200px"
+  else "130px"
+}
+
+@label(s:String)=@{
+  razie.wiki.model.Wikis(realm).index.label(s).getOrElse(s)
+}
+
+<div class="row" id="wikiBrowser">
+  <div class="col-sm-4 alert alert-info" title="@tleft" style="height: @height(); overflow-y: auto; vertical-align: middle; text-align: right;">
+          @left.distinct.map { assoc =>
+            @if(assoc.zRole.length > 0) {
+              <small>(@assoc.zRole)</small>
+            }
+            <a href="@mkLink(assoc.z)">@label(assoc.z)</a><br>
+          }
+  </div>
+  <div class="col-sm-4 alert alert-info" title="@tmiddle" style="height: @height(); overflow-y: auto; vertical-align: middle; text-align: center;">
+  @middle.distinct.map { assoc =>
+    @if(assoc.zRole.length > 0) {
+      <small>(@assoc.zRole)</small>
+    }
+  <a href="@mkLink(assoc.z)">@label(assoc.z)</a><br>
+  }
+  </div>
+  <div class="col-sm-4 alert alert-info" title="@tright" style="height: @height(); overflow-y: auto; vertical-align: middle; text-align: left;">
+    <button type="button" class="close" onclick="weToggleBrowser();" aria-label="Close" title="Close browser">
+      <span class="glyphicon glyphicon-remove"></span>
+    </button>
+        @right.distinct.map { assoc =>
+          <a href="@mkLink(assoc.z)">@label(assoc.z)</a>
+          @if(assoc.zRole.length > 0) {
+            <small>(@assoc.zRole)</small>
+          }
+          <br>
+        }
+  </div>
+</div>
+
+

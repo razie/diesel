@@ -1,0 +1,35 @@
+@***
+the list of forms and statuses for the current registration.
+
+reused in several screens to show the list of forms
+***@
+@(wids:Seq[razie.wiki.model.WID], links:Boolean, current:Option[razie.wiki.model.WID]=None, buttons:Option[(razie.wiki.model.WID, Integer)=>Html]=None)
+
+<p>
+<table style="width:auto" class="table table-hover table-condensed">
+<caption>All the forms in this set:</caption>
+<tr><th>No</th><th>Form</th><th>Status</th>
+@if(buttons.isDefined) { <th>Actions</th> }
+</tr>
+
+@wids.zipWithIndex.map { t=>
+  <tr><td>
+  @if(current.exists(wid=>t._2 == wids.indexOf(wid))) {
+    <span class="badge" style="background-color: black">@{t._2+1}</span>
+  } else {
+    <span class="badge">@{t._2+1}</span>
+  }
+
+  @if(links) {
+    </td><td><a href="@controllers.WikiUtil.w(t._1)">@t._1.page.map(_.label).getOrElse(t._1.name)</a>
+  } else {
+        </td><td>@t._1.page.map(_.label).getOrElse(t._1.name)
+  }
+
+  </td><td>
+  @club.formStatusColored(t._1.page.flatMap(_.form.formState).getOrElse("n/a"), if(links) Some(controllers.WikiUtil.w(t._1)) else None)
+  </td>
+  @buttons.map {f=> <td align="right">@f(t._1, t._2)</td> }
+  </tr>
+  }
+</table>

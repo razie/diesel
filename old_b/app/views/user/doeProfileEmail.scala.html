@@ -1,0 +1,39 @@
+@***
+profile - change email
+***@
+@(myForm: Form[_], au: model.User)(implicit request: controllers.RazRequest)
+
+@import helper.twitterBootstrap._
+@import play.api.Play.current
+@import play.api.i18n.Messages.Implicits._
+
+@user.doePLayout(au, "Email", 5) {
+
+  <div class="col-sm-4">
+    @helper.form(action = routes.EdEmail.doeProfileEmail2, 'class -> "well") {
+      @helper.inputText(
+        myForm("curemail"),
+        '_label -> "Current email",
+        'readonly -> "yes",
+        '_showConstraints -> false)
+      @util.razText(myForm, "newemail", "New email")
+
+      <button type="submit" class="btn btn-primary">Change !</button>
+
+      @user.agree()
+
+      @formErrors(myForm)
+
+    }
+
+  </div>
+  <div class="col-sm-4">
+
+    <h2>Changing the email</h2>
+    <p>
+    <p>Take care when changing the email - this is your login as well.</p>
+
+  </div>
+  @formFix()
+
+}
