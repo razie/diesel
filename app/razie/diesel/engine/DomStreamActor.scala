@@ -41,17 +41,17 @@ class DomStreamActor(stream: DomStream) extends Actor with Stash {
     case req@DEStreamPut(name, l) if checkInit =>
       withMyStream(req) {
         stream.put(l)
-    }
+      }
 
     case req@DEStreamConsume(name) =>
       withMyStream(req) {
-          stream.consume()
-        }
+        stream.consume()
+      }
 
     case req@DEStreamDone(name) =>
       withMyStream(req) {
-          stream.done()
-        }
+        stream.done()
+      }
 
     case req@DEStreamClean(name) =>
       withMyStream(req) {
@@ -65,15 +65,42 @@ class DomStreamActor(stream: DomStream) extends Actor with Stash {
 
     case req@DEStreamDone(name) =>
       withMyStream(req) {
-          stream.done()
+        stream.done()
+      }
+
+    case req@DEStreamError(name, parms) =>
+      withMyStream(req) {
+        stream.error(parms)
+      }
+
+    case req@DEStreamWaitMaybe(name, millis) => {
+      withMyStream(req) {
+        if(stream.lastBatchWaitingAt == 0) {
+          // start timer
+          stream.lastBatchWaitingAt = System.currentTimeMillis()
+
+          import scala.concurrent.ExecutionContext.Implicits.global
+
+//            final def scheduleOnce(
+//              delay: FiniteDuration,
+//              receiver: ActorRef,
+//              message: Any)(implicit executor: ExecutionContext,
+//                            sender: ActorRef = Actor.noSender): Cancellable =
+//              scheduleOnce(delay, new Runnable {
+//                override def run = receiver ! message
+//              })
+
+          context.system.scheduler.scheduleOnce(
+            Duration.fromNanos(millis*1000),
+            self,
+            DEStreamWaitingOver(name))
         }
       }
-      else DieselAppContext.router.map(_ ! req)
     }
 
     case req@DEStreamWaitingOver(name) => {
       withMyStream(req) {
-          stream.forceBatchNow()
+        stream.forceBatchNow()
       }
     }
   }
@@ -85,9 +112,9 @@ class DomStreamActor(stream: DomStream) extends Actor with Stash {
       }
     }
     else DieselAppContext.router.map(_ ! req)
-}
+  }
 
-override def postStop() = {
+  override def postStop() = {
     // assert it's stopped
     // DieselAppContext.activeActors.remove(eng.id)
   }

@@ -38,11 +38,13 @@ class EEStreams extends EExecutor(DieselMsg.STREAMS.PREFIX) {
         val name = ctx.getRequired("stream")
         val batch = ctx.getp("batch").map(_.calculatedTypedValue.asBoolean).getOrElse(false)
         val batchSize = ctx.getp("batchSize").map(_.calculatedTypedValue.asLong.toInt).getOrElse(100)
+        val batchWait = ctx.getp("batchWaitMillis").map(_.calculatedTypedValue.asLong.toInt).getOrElse(0)
 
         val others = in.attrs
             .filter(_.name != "stream")
             .filter(_.name != "batch")
             .filter(_.name != "batchSize")
+            .filter(_.name != "batchWaitMillis")
             .map(_.calculatedP)
 
         val context = P.of("context", others.map(p => (p.name, p)).toMap)
@@ -58,10 +60,10 @@ class EEStreams extends EExecutor(DieselMsg.STREAMS.PREFIX) {
         }.toList
 
         val s = DieselAppContext.mkStream(
-          new DomStreamV1(ctx.root.engine.get, name, name, batch, batchSize, context))
+          new DomStreamV1(ctx.root.engine.get, name, name, batch, batchSize, batchWait, context))
         ctx.root.engine.get.evAppStream(s)
 
-        warn ::: EInfo("stream - creating " + name) ::
+        warn ::: EInfo(s"stream - creating $name") ::
             EVal(P.fromTypedValue(name, s, WTypes.wt.OBJECT)) ::
             Nil
       }

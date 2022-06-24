@@ -48,6 +48,7 @@ abstract class DomStream (
   val description: String,
   val batch: Boolean = false,
   val batchSize: Int,
+  val batchWaitMillis:Int,
   val context: P = P.of("context", "{}"),
   val correlationId: Option[String] = None,
   val maxSize: Int = DomStream.getMaxSize,
@@ -85,6 +86,9 @@ abstract class DomStream (
   var totalPut = 0L
   var totalConsumed = 0L
 
+  var lastBatchWaitingAt = 0L
+  var lastBatchConsumedAt = 0L
+
   def getIsConsumed = isConsumed
 
   def streamIsDone = isDone
@@ -101,9 +105,10 @@ abstract class DomStream (
     *
     * if in batch mode, they may be batched or not
     *
-    * @param justConsume - no put, just trigger consumers
+    * @param justConsume - no put, just trigger consumers, used when clearing the buffer
+    * @param forceBatch - no put, just consume and force the batch even if smaller (batch timer kicked in)
     */
-  def put(l: List[Any], justConsume: Boolean = false) = {
+  def put(l: List[Any], justConsume: Boolean = false, forceBatch:Boolean = false) = {
     trace(s"($name) DStream.put: " + l.mkString(","))
 
     totalPut += l.size
@@ -130,7 +135,14 @@ abstract class DomStream (
 
     if (isConsumed) targetId.map { tid =>
 
-      if (batch && batchSize > 0) {
+      if (batch && batchSize > 0 && list.size < batchSize && !forceBatch && batchWaitMillis > 0) { // batched but not enough items...
+        // set batch timer
+        DieselAppContext ! DEStreamWaitMaybe(name, batchWaitMillis) // start timer
+
+      } else if (batch && (batchSize > 0 || forceBatch)) { //consume all batches now!
+
+        lastBatchConsumedAt = System.currentTimeMillis()
+        lastBatchWaitingAt = 0
 
         var pickedUp = 0
         val asts = new ListBuffer[DomAst]()
@@ -196,6 +208,11 @@ abstract class DomStream (
     }
   }
 
+  /** force batch - the waiting is over */
+  def forceBatchNow(): Unit = {
+    put(Nil, justConsume = true, forceBatch = true)
+  }
+
   /** complete the stream: send onDone and DEComplete the target consume node */
   private def complete(): Unit = {
     if(!sentComplete) {
@@ -258,7 +275,7 @@ abstract class DomStream (
           .filter(_.value.isInstanceOf[EMsg]))
 
     // for onData just depend on the last one
-     res = res.lastOption.toList
+    res = res.lastOption.toList
 
     res.map(_.id)
   }
@@ -337,7 +354,8 @@ class DomStreamV1(
   description: String,
   batch: Boolean = false,
   batchSize: Int = -1,
+  batchWaitMillis:Int = 0,
   context: P = P.of("context", "{}"),
-  correlationId: Option[String] = None) extends DomStream(owner, name, description, batch, batchSize, context,
+  correlationId: Option[String] = None) extends DomStream(owner, name, description, batch, batchSize, batchWaitMillis, context,
   correlationId) {
 }
