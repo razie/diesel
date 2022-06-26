@@ -28,7 +28,7 @@ class Carts @Inject()(config:Configuration) extends RazController with Logging {
       acct <- Acct.createOrFind(cart.userId, cwid) orErr "Need registration up to date!"
     ) yield {
       ROK.r apply {
-        doeCart(cart, acct, club.props ++ Map("paypalid" -> Services.config.prop("wiki.paypalid")))
+        doeCart(cart, acct, club.props ++ Map("paypalId" -> Services.config.prop("wiki.paypalId")))
       }
     }) getOrElse {
       unauthorized("no active cart...", false)

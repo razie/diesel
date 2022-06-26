@@ -204,7 +204,7 @@ simulatePaid = function () {
         type: "POST",
         url: '@routes.Carts.cartpaid(cart._id.toString)',
         data: $.param({
-          id: '@props("paypalid")',
+          id: '@props("paypalId")',
           amount: @acct.payable(cart.total).amount,
           currency: '@cart.currency',
           what: 'simulatePaid',

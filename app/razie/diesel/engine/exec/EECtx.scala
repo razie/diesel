@@ -437,8 +437,8 @@ class EECtx extends EExecutor(EECtx.CTX) {
                   } else {
                     "\"" + {
                       val s = P.asSimpleString(x)
-                      s.replaceAll("\"", "\"\"")
-//                      .replaceAll(separator, "\"" + separator + "\"")
+                      s.replaceAll("\"", "\"\"")  // wtf
+                      .replaceAll(separator, " ") // sort of escape , in value field
                     } + "\""
                   }
 
