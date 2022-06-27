@@ -439,10 +439,11 @@ var checkContents_@id = function(id) {
             if( 'no' == r ) {
               var q = window.location.search;
 
-              if(q.length > 0) q = q + "&refreshing=yes";
-              else q = "?refreshing=yes";
+              if(q.indexOf("refreshing=") < 0) {
+                if (q.length > 0) q = q + "&refreshing=yes";
+                else q = "?refreshing=yes";
+              }
               window.location.href = window.location.href.replace(/\?.*/, '') + q;
-              // window.location.reload()
             } else {
               alert("Contents likely changed - you should refresh page!");
             }
