@@ -20,8 +20,7 @@ import razie.wiki.{Config, Enc, Services}
 import razie.{Logging, Snakk, cout}
 import scala.collection.mutable.HashMap
 
-
-/** this is NOT the controller */
+/** User Profile utilities - this is NOT the controller */
 object Profile extends WikieBase {
 
   val trusts = Array("Public", "Club", "Friends", "Private")
@@ -131,6 +130,7 @@ object AttemptCounter {
   }
 }
 
+/** user profile controller */
 @Singleton
 class Profile @Inject()(config: Configuration, adminImport: AdminImport) extends WikieBase with Logging {
 

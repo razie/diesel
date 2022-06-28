@@ -11,7 +11,7 @@ import com.novus.salat.grater
 import com.razie.pub.comms.CommRtException
 import difflib.DiffUtils
 import java.io.{BufferedWriter, File, FileWriter, IOException}
-import model.User
+import model.{User, WEAbstract}
 import org.json.JSONArray
 import play.api.mvc.{Action, AnyContent, Request}
 import razie.Snakk.{url, _}
@@ -31,7 +31,6 @@ import scala.collection.mutable.ListBuffer
 import scala.concurrent.Future
 import scala.io.Source
 import scala.util.Try
-import special.CypherEncryptService
 
 /** Diff and sync remote wiki copies */
 @Singleton

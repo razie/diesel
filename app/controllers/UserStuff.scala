@@ -16,6 +16,7 @@ import razie.wiki.util.Maps
 import razie.{Snakk, XpSolver}
 import scala.util.parsing.combinator.RegexParsers
 
+/** stuff related to users: events, locations etc */
 class UserStuff(val realm: String, val user: User) {
   lazy val events = UserStuff.events(realm, user)
   private lazy val alocs = events flatMap (_._5 \ "Venue" \@ "loc")
@@ -33,6 +34,7 @@ class UserStuff(val realm: String, val user: User) {
 
 }
 
+/** utilities for user's stuff */
 object UserStuff {
 
   def findPublicProfile(realm: String, uid: String) =

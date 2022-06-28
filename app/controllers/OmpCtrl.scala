@@ -3,6 +3,7 @@ package controllers
 import omp._
 import play.api.mvc.Action
 
+/** todo the OMP prototype - likely not useful anymore */
 class OmpCtrl extends RazController {
 
   // routes do/:page

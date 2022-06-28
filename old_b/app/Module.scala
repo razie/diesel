@@ -12,14 +12,15 @@ import com.mongodb.casbah.{MongoConnection, MongoDB, TypeImports}
 import controllers._
 import mod.cart.{EEModCartExecutor, EEModUserExecutor}
 import mod.diesel.controllers.{DieselMod, FiddleMod}
-import mod.diesel.guard.{EEDieselApiGw, EEDieselCron, EEDieselExecutors, EEGuardian, EESnakkProxy}
 import mod.snow.EEModSnowExecutor
 import mod.wiki.CaptchaMod
 import model.WikiUsersImpl
 import razie.audit.{Audit, AuditService, MdbAuditService}
 import razie.db.{RMongo, RazMongo, UpgradeDb}
+import razie.diesel.cron.EEDieselCron
 import razie.diesel.engine.DieselAppContext
 import razie.diesel.engine.exec._
+import razie.diesel.guard.EEGuardian
 import razie.hosting.{Website, WikiReactors}
 import razie.tconf.hosting.Reactors
 import razie.wiki.admin.SecLink
@@ -118,8 +119,8 @@ class Module extends AbstractModule {
     Executors.add (EEModUserExecutor)
     Executors.add (EEModCartExecutor)
     Executors.add (EEModSnowExecutor)
-    Executors.add (new mod.diesel.model.exec.EEWiki)
-    Executors.add (new mod.diesel.model.exec.EEMail)
+    Executors.add (new EEWiki)
+    Executors.add (new EEMail)
     Executors.add(new EEDieselCron)
     Executors.add(new EEDieselExecutors)
     Executors.add(new EEGuardian)

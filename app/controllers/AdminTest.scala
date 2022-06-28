@@ -9,7 +9,7 @@ import com.google.inject.Singleton
 import razie.hosting.Website
 import razie.wiki.admin.SendEmail
 
-/** Diff and sync remote wiki copies */
+/** some test ops */
 @Singleton
 class AdminTest extends AdminBase {
 

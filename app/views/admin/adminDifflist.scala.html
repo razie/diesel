@@ -2,7 +2,11 @@
 show diff with remote
 ***@
 @import razie.wiki.Services
-@(localRealm:String, toRealm:String, remote:String, lnew:List[controllers.WEAbstract], lremoved:List[controllers.WEAbstract], lchanged:List[(controllers.WEAbstract, controllers.WEAbstract, String, String)])(implicit stok: controllers.StateOk)
+@import model.WEAbstract
+@import model.WEAbstract
+@import model.WEAbstract
+@import model.WEAbstract
+@(localRealm:String, toRealm:String, remote:String, lnew:List[WEAbstract], lremoved:List[WEAbstract], lchanged:List[(WEAbstract, WEAbstract, String, String)])(implicit stok: controllers.StateOk)
 @import razie.wiki.model.WID
 @import razie.wiki.Config
 @import razie.hosting.Website

@@ -24,7 +24,7 @@ object ApplicationUtils {
   var razSuTime = 0L // if I su, this is the email of who I su'd as
 }
 
-/** main entry points */
+/** main entry points like root / etc */
 @Singleton
 class Application @Inject()(wikiCtl: Wiki) extends RazController {
 

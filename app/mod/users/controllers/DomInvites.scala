@@ -1,4 +1,4 @@
-package mod.diesel.controllers
+package mod.users.controllers
 
 import com.google.inject.{Inject, Singleton}
 import controllers._

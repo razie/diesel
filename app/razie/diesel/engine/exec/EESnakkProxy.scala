@@ -4,18 +4,16 @@
   * )   / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <    /README.txt
   * (_)\_)(__)(__)(____)(____)(____)(___/   (__)  (______)(____/   /LICENSE.txt
   * */
-package mod.diesel.guard
+package razie.diesel.engine.exec
 
 import razie.cdebug
+import razie.diesel.Diesel
 import razie.diesel.dom.RDOM.P
 import razie.diesel.engine.DomAst
-import razie.diesel.engine.exec.EExecutor
 import razie.diesel.engine.nodes._
 import razie.diesel.expr.ECtx
-import razie.diesel.model.DieselMsg
-import razie.diesel.{Diesel, DieselRateLimiter, RateLimitGroup}
 import razie.snakked.SnakkProxyRemote
-import razie.wiki.{Config, Services}
+import razie.wiki.Services
 
 /** control the built-in snakk proxy */
 class EESnakkProxy extends EExecutor("diesel.proxy") {

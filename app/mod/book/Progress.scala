@@ -35,7 +35,7 @@ case class ProgressRecord (
   )
 }
 
-/** a user that may or may not have an account - or user group
+/** progress tracks the user's progress through a sequence of topics
   *
   * records are being added to - newest first.
   */

@@ -6,7 +6,9 @@ import play.api.Configuration
 import razie.wiki.admin.SendEmail
 import razie.wiki.{Services}
 
-/** to use this put these in the application.conf
+/** recaptcha controller
+  *
+  * to use this put these in the application.conf
 
 recaptcha {
   privatekey = "..."

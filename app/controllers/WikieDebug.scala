@@ -18,7 +18,7 @@ import razie.wiki.Services
 import razie.wiki.model._
 import razie.wiki.model.features.WikiCount
 
-/** wiki edits controller */
+/** wiki debug controller - admin the wikis in detail */
 @Singleton
 class WikieDebug @Inject() (config:Configuration) extends WikieBase {
 

@@ -18,6 +18,7 @@ import razie.wiki.model.{Perm, Wikis}
 import razie.wiki.{Enc, Services}
 import scala.collection.mutable.ListBuffer
 
+/** user admin ops, give permissions etc */
 @Singleton
 class AdminUser extends AdminBase {
   val ADUSER = routes.AdminUser.user(_)
@@ -137,6 +138,7 @@ class AdminUser extends AdminBase {
       }
     }
 
+  /** switch user - special trick for gods ;) */
   def su(id: String) = FADR { implicit stok=>
     val au = stok.au.get
       (for (

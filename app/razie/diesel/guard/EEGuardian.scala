@@ -4,11 +4,10 @@
   *  )   / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <     README.txt
   * (_)\_)(__)(__)(____)(____)(____)(___/   (__)  (______)(____/    LICENSE.txt
   **/
-package mod.diesel.guard
+package razie.diesel.guard
 
-import mod.diesel.guard.DieselDebug.Guardian
-import mod.diesel.guard.DieselDebug.Guardian.{ISAUTO, ISSCHED}
-import mod.diesel.guard.DomGuardian.GUARDIAN_POLL
+import DieselDebug.Guardian
+import DieselDebug.Guardian.ISSCHED
 import model.Users
 import razie.Logging
 import razie.diesel.Diesel
@@ -18,6 +17,7 @@ import razie.diesel.engine.DomAst
 import razie.diesel.engine.exec.EExecutor
 import razie.diesel.engine.nodes._
 import razie.diesel.expr.ECtx
+import razie.diesel.guard.DomGuardian.GUARDIAN_POLL
 import razie.diesel.model.DieselMsg
 import razie.diesel.utils.DieselData
 import razie.hosting.Website

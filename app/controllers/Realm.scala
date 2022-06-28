@@ -7,7 +7,7 @@
 package controllers
 
 import com.typesafe.config.ConfigValue
-import model.{UserWiki, Users}
+import model.{DieselSettings, UserWiki, Users}
 import org.bson.types.ObjectId
 import play.api.mvc.Action
 import razie.Logging
@@ -20,31 +20,6 @@ import razie.wiki.model._
 import razie.wiki.model.features.WForm
 import razie.wiki.util.PlayTools
 import razie.wiki.{Config, Enc, Sec, Services}
-
-/** overall settings and state for this deployment */
-@RTable
-case class DieselSettings(uid: Option[String], realm: Option[String], name: String, value: String, _id: ObjectId =
-new ObjectId) {
-  def set() = {
-    import razie.db.tx.txn
-
-    ROne[DieselSettings]("uid" -> uid, "realm" -> realm, "name" -> name).map { s =>
-      // todo cluster propagate notification? use WikiConfigChanged(node, config)
-      RUpdate[DieselSettings](s.copy(value = this.value))
-    }.getOrElse {
-      RCreate[DieselSettings](this)
-    }
-  }
-}
-
-object DieselSettings {
-  def findOrElse (uid:Option[String], realm:Option[String], name:String, default:String) : String =
-    ROne[DieselSettings]("uid" -> uid, "realm" -> realm, "name"->name).map(_.value).getOrElse(default)
-
-  def find(uid:Option[String], realm:Option[String], name:String) : Option[String] =
-    ROne[DieselSettings]("uid" -> uid, "realm" -> realm, "name"->name).map(_.value)
-}
-
 
 /** realm/reactor controller */
 object Realm extends RazController with Logging {

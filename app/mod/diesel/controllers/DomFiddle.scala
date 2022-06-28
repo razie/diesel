@@ -1,8 +1,8 @@
 package mod.diesel.controllers
 
-import akka.actor.{Actor, Props, _}
+import akka.actor._
 import com.google.inject.Singleton
-import controllers.{IgnoreErrors, VErrors, WikiAuthorization}
+import controllers.{IgnoreErrors, VErrors}
 import java.util.concurrent.TimeUnit
 import mod.diesel.model.DomEngineHelper
 import org.bson.types.ObjectId
@@ -12,12 +12,12 @@ import play.api.mvc._
 import razie.diesel.Diesel
 import razie.diesel.dom.RDOM.{P, T}
 import razie.diesel.dom.RDomain.DOM_LIST
-import razie.diesel.dom.{WikiDomain, _}
+import razie.diesel.dom._
 import razie.diesel.engine.AstKinds._
 import razie.diesel.engine.RDExt._
 import razie.diesel.engine.nodes.EnginePrep.listStoriesWithFiddles
 import razie.diesel.engine.nodes.{EMsg, EVal, EnginePrep, HasPosition}
-import razie.diesel.engine.{DieselAppContext, RDExt, _}
+import razie.diesel.engine._
 import razie.diesel.model.DieselMsg
 import razie.diesel.utils.DomUtils.{SAMPLE_SPEC, SAMPLE_STORY}
 import razie.diesel.utils.{AutosaveSet, DomCollector, DomWorker, SpecCache}

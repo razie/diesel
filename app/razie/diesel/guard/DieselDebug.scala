@@ -1,7 +1,12 @@
-package mod.diesel.guard
+/** ____    __    ____  ____  ____,,___     ____  __  __  ____
+  * (  _ \  /__\  (_   )(_  _)( ___)/ __)   (  _ \(  )(  )(  _ \           Read
+  * )   / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <     README.txt
+  * (_)\_)(__)(__)(____)(____)(____)(___/   (__)  (______)(____/    LICENSE.txt
+  */
+package razie.diesel.guard
 
 import razie.hosting.Website
-import razie.wiki.{Config, Services}
+import razie.wiki.Services
 
 /** concentrates flags that control critical services that may run amock */
 object DieselDebug {
@@ -19,7 +24,8 @@ object DieselDebug {
     def ISAUTO = ALLENABLED && AUTO && Services.config.prop("diesel.guardian.auto", "false").toBoolean && DEVMODE
 
     /** is in auto mode */
-    def ISSCHED = ALLENABLED && SCHEDULED && Services.config.prop("diesel.guardian.scheduled", "true").toBoolean //&& !DEVMODE
+    def ISSCHED = ALLENABLED && SCHEDULED && Services.config.prop("diesel.guardian.scheduled",
+      "true").toBoolean //&& !DEVMODE
 
     /** sometimes you want it disabled in development in localhost */
     def ISENABLED_LOCALHOST = ALLENABLED && true
@@ -40,5 +46,3 @@ object DieselDebug {
   }
 
 }
-
-

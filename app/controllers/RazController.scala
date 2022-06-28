@@ -11,7 +11,7 @@ import razie.wiki.model._
 import razie.wiki.{Config, Services}
 import scala.concurrent.Future
 
-/** common controller utilities */
+/** base controller class - common controller utilities for access etc */
 class RazController extends RazControllerBase with Logging {
 
 // CANNOT have the below implicit - it will mess up all stoks implicitly

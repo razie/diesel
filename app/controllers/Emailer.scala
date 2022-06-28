@@ -18,7 +18,8 @@ import razie.wiki.admin.{MailSession, SecLink, SendEmail}
 import razie.wiki.model._
 import razie.wiki.{Config, Enc, EncUrl, Services}
 
-/** all emails sent by site
+/**
+  * Email sender and formatter for wiki emails
   *
   * Emails are formatted using a set of templates configured as a wiki topic "Admin:template-emails".
   *

@@ -44,9 +44,6 @@ case class CachedEngingPrep(
   * implement are:
   * - expand
   *
-  *
-  * The DomEngineExec is the actual implementation
-  *
   * @param correlationId is parentEngineID.parentSuspendID - if dot is missing, this was a fire/forget
   * @param initialMsg    - the initial message that kicked off this engine - used to extract final value
   *
@@ -252,7 +249,9 @@ abstract class DomEngine(
 
   def href = DieselAssets.mkAhref(WID("DieselEngine", this.id))
 
+  /** is this engine exec'd sync? as a lambda in another engine, for instance */
   var synchronous = false
+
   implicit val engine: DomEngineState = this
 
   // setup the context for this eval
@@ -365,7 +364,7 @@ abstract class DomEngine(
     this.maxExpands = parent.maxExpands
   }
 
-  /** if have correlationID, notify parent... */
+  /** if have correlationID, notify parent that I'm done ... */
   protected def notifyParent(a: DomAst, parentId: String, targetId: String, level: Int) = {
     // completed - notify parent
     val newD = DomAst(new EInfo(
@@ -696,12 +695,6 @@ abstract class DomEngine(
 
     evAppChildren(a, results)
 
-    // can't do this - too stupid. it's easy to have stories with 100 or more activities
-//    if (a.children.size >= maxLevels) {
-    // simple protection against infinite loops
-//      evAppChildren(a, DomAst(TestResult("fail: Max-Children!", "You have a loop rule out of control ( > 20 loops).
-//      .."), "error"))
-//    } else
     if (recurse) {
       msgs =
           msgs :::

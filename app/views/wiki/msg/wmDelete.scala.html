@@ -70,7 +70,7 @@ Links from others :
 
   <small>
     Autosave: @RMany[Autosave]("realm" -> uwid.wid.get.name).size <br>
-    DieselSettings: @RMany[DieselSettings]("realm" -> uwid.wid.get.name).size <br>
+    DieselSettings: @RMany[model.DieselSettings]("realm" -> uwid.wid.get.name).size <br>
     DieselData: @RMany[DieselData]("realm" -> uwid.wid.get.name).size <br>
     DieselDb:   @RazMongo("DieselDb").find(Map("realm" -> uwid.wid.get.name)).size <br>
 <br>

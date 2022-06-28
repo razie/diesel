@@ -9,7 +9,7 @@ package controllers
 import play.api.mvc.Action
 import razie.wiki.admin.SecLink
 
-/** executing secured one time links
+/** executing secured one time links (like confirm email, approve etc)
   *
   * @see razie.wiki.admin.DoSec
   */

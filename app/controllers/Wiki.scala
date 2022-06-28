@@ -33,7 +33,7 @@ import scala.Array.canBuildFrom
 import scala.concurrent.Future
 import scala.util.Try
 
-/** reused in other controllers */
+/** common wiki utils - reused in other controllers */
 class WikiBase extends RazController with Logging with WikiAuthorization {
   def isVisible(u: Option[WikiUser], props: Map[String, String], visibility: String = "visibility",
                 we: Option[WikiEntry] = None)(implicit errCollector: VErrors = IgnoreErrors): Boolean =
@@ -89,7 +89,7 @@ class WikiBase extends RazController with Logging with WikiAuthorization {
 
 }
 
-/** wiki controller */
+/** wiki controller - generally view/read ops. The edit ops are in Wikie */
 @Singleton
 class Wiki @Inject()(dieselControl: DieselControl) extends WikiBase {
 

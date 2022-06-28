@@ -38,6 +38,7 @@ object CommentUtils {
 
 }
 
+/** controller - wiki comments */
 @Singleton
 class WikiComments extends RazController with Logging {
   import CommentUtils._

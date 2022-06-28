@@ -6,17 +6,15 @@
  */
 package mod.diesel.model
 
+import model.{NoCyclesGraphLike, SGraphLike, SLink, SNode, VGraph}
 import razie.Logging
-import razie.gg
 import org.json.JSONArray
 import razie.wiki.model.{WID, WikiEntry, Wikis}
 import razie.js
-
 import scala.collection.mutable.ListBuffer
 import org.json.JSONObject
 import razie.diesel.dom.WikiDomain
 import razie.diesel.dom.RDomain
-
 import scala.collection.mutable.HashMap
 
 /** graph wiki controller */
@@ -28,14 +26,14 @@ object WG extends Logging {
   }
 
   case class WGraph(val realm:String, override val root: Int, override val nodes: Seq[WNode], override val links: Seq[(Int, Int, String)])
-    extends gg.VGraph[WNode, String](root, nodes, links) {
+    extends VGraph[WNode, String](root, nodes, links) {
 
-    lazy val tosg = new gg.SGraphLike[WNode, String](this)
+    lazy val tosg = new SGraphLike[WNode, String](this)
 
     def tojmap = {
       val s = new ListBuffer[Any]()
       tosg.dag.foreachNode(
-        (x: gg.SNode[WNode, String], v: Int) => {
+        (x: SNode[WNode, String], v: Int) => {
           s append x.value.props ++ Map(
             "id" -> x.value.name,
             "name" -> x.value.name,
@@ -65,9 +63,9 @@ object WG extends Logging {
 
     def tod3 = {
       // custom tree/root traversal
-      val g: gg.NoCyclesGraphLike[gg.SNode[WNode, String], gg.SLink[WNode, String]] = tosg.dag
+      val g: NoCyclesGraphLike[SNode[WNode, String], SLink[WNode, String]] = tosg.dag
 
-      def node(x: gg.SNode[WNode, String]): Map[String, Any] = {
+      def node(x: SNode[WNode, String]): Map[String, Any] = {
         g.collect(x, None)
         Map(
           "name" -> x.value.name,
@@ -85,9 +83,9 @@ object WG extends Logging {
 
     def tostree = {
       // custom tree/root traversal
-      val g: gg.NoCyclesGraphLike[gg.SNode[WNode, String], gg.SLink[WNode, String]] = tosg.dag
+      val g: NoCyclesGraphLike[SNode[WNode, String], SLink[WNode, String]] = tosg.dag
 
-      def node(x: gg.SNode[WNode, String]): Map[String, Any] = {
+      def node(x: SNode[WNode, String]): Map[String, Any] = {
         g.collect(x, None)
         Map(
           "id" -> x.value.name,

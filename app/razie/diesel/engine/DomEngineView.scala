@@ -9,13 +9,7 @@ import razie.diesel.engine.RDExt.TestResult
 import razie.diesel.engine.nodes.{EError, ExpectAssert, ExpectM, ExpectV, StoryNode, StoryTestStats}
 import razie.diesel.utils.DomHtml.quickBadge
 
-/** a tree node
-  *
-  * kind is spec/sampled/generated/test etc
-  *
-  * todo optimize tree structure, tree binding
-  *
-  * todo need ID conventions to suit distributed services
+/** utilities to show engine info
   */
 object DomEngineView {
 

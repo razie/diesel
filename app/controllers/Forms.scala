@@ -19,10 +19,12 @@ import razie.wiki.model.{WID, WikiEntry, Wikis, _}
 import razie.{Logging, cout}
 
 /**
- * wiki controller
+ * specific controller for editing wiki-based forms
+  *
+  * these forms have a forms spec inside a wiki and then instances are other wikis, which copy/reference the static
+  * form and add a hidden json doc wiht the form data
  *
- *  form fields are formatted in WForm
- *
+ * form fields are formatted in WForm
  */
 object Forms extends WikiBase with Logging {
 

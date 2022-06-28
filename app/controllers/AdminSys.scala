@@ -6,14 +6,14 @@
 package controllers
 
 import com.google.inject.Singleton
-import mod.diesel.guard.EEDieselExecutors
 import mod.notes.controllers.NotesLocker
 import play.api.mvc.Action
 import razie.db.RazMongo
+import razie.diesel.engine.exec.EEDieselExecutors
 import razie.hosting.WikiReactors
 import razie.wiki.admin.SendEmail
 
-/** admin the audit tables directly */
+/** some system level admin ops: monitoring, config, pings etc */
 @Singleton
 class AdminSys extends AdminBase {
 

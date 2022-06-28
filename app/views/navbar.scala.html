@@ -2,10 +2,11 @@
 creates the navigation bar
 ***@
 @import razie.wiki.model.Perm
-@import mod.diesel.guard.DieselDebug.Guardian
-@import mod.diesel.guard.DomGuardian
+@import razie.diesel.guard.DieselDebug.Guardian
+@import razie.diesel.guard.DomGuardian
 @import razie.wiki.Enc
 @import play.twirl.api.TemplateMagic.defining
+@import razie.diesel.guard.DomGuardian
 @(user:Option[razie.wiki.model.WikiUser], realm:String=razie.wiki.model.Wikis.RK, mobile:Boolean = false, barTitle: String="Bar Title", logo:Option[String]=None, url:Option[String]=Some("/"), club:String="")(implicit stok: controllers.StateOk)
 @import razie.wiki.Services
 @import razie.wiki.model.Wikis

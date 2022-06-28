@@ -14,6 +14,7 @@ import razie.wiki.model.Perm
 /** admin utilities shared by admin controllers */
 class AdminBase extends RazController {
 
+  /** for admins only */
   protected def forAdmin[T](body: => play.api.mvc.Result)(implicit request: Request[_]) = {
     if (auth.map(_.hasPerm(Perm.adminDb)) getOrElse false || Services.config.isLocalhost && Config.trustLocalUsers) body
     else noPerm(HOME)

@@ -13,6 +13,8 @@ import razie.audit.Audit
 
 /** simple code pills controller
   *
+  * a pill is a quick code lambda responding to a url
+  *
   * pills are called with /pill/name
   */
 //@Singleton
@@ -37,6 +39,7 @@ object CodePills extends RazController {
 
   type T = BasePill
 
+
   /** add a pill by name with the given body */
   def add(name: String)(body: RazRequest => Result): Unit = {
     map.put (name, new Pill1(name, body))
@@ -46,6 +49,7 @@ object CodePills extends RazController {
   def addString(name: String)(body: RazRequest => String): Unit = {
     map.put (name, new Pill2(name, body))
   }
+
 
   // routes pill/:name?attrs
   def run(pill: String) = RAction.async { implicit request =>
@@ -75,7 +79,9 @@ object CodePills extends RazController {
   init
 }
 
-/** async map
+/** async map backed by an actor AsyncMapActor...
+  *
+  * todo why not just use a simple TrieMap ?
   */
 class AsyncMap[T] {
 

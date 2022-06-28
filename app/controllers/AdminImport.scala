@@ -11,7 +11,7 @@ import com.novus.salat.grater
 import com.razie.pub.comms.CommRtException
 import difflib.DiffUtils
 import java.io.{BufferedWriter, File, FileWriter, IOException}
-import model.User
+import model.{DieselSettings, User, WEAbstract}
 import org.json.JSONArray
 import play.api.mvc.{Action, AnyContent, Request}
 import razie.Snakk.{url, _}
@@ -32,7 +32,6 @@ import scala.collection.mutable.ListBuffer
 import scala.concurrent.Future
 import scala.io.Source
 import scala.util.Try
-import special.CypherEncryptService
 
 /** export and import realms and topics */
 @Singleton
@@ -158,7 +157,7 @@ class AdminImport extends AdminBase with Logging {
 
           Audit.logdb("ADMIN", "get user remote:" + au.userName)
 
-          val e = new CypherEncryptService(key, "")
+          val e = new special.CypherEncryptService(key, "")
           val pu = PU(au.copy(email = e.enc(au.emailDec), pwd = e.enc(au.pwd.dec)), au.profile.get)
 
           val j = grater[PU].asDBObject(pu).toString
@@ -200,7 +199,7 @@ class AdminImport extends AdminBase with Logging {
     val dbo = com.mongodb.util.JSON.parse(u).asInstanceOf[DBObject];
     val pu = grater[PU].asObject(dbo)
     val iau = pu.u
-    val e = new CypherEncryptService("", key)
+    val e = new special.CypherEncryptService("", key)
     // re=encrypt passworkd with the local key
     val au = iau.copy(email = e.enc(e.dec(iau.email)), pwd = e.enc(e.dec(iau.pwd)))
 
@@ -232,7 +231,7 @@ class AdminImport extends AdminBase with Logging {
       val dbo = com.mongodb.util.JSON.parse(u).asInstanceOf[DBObject];
       val pu = grater[PU].asObject(dbo)
       val iau = pu.u
-      val e = new CypherEncryptService("", key)
+      val e = new special.CypherEncryptService("", key)
       // re=encrypt passworkd with the local key
       val au = iau.copy(email = e.enc(e.dec(iau.email)), pwd = e.enc(e.dec(iau.pwd)))
 

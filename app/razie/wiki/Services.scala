@@ -7,7 +7,6 @@
 package razie.wiki
 
 import com.google.inject.Inject
-import controllers.{NoWikiAuthorization, WikiAuthorization}
 import razie.db.RazMongo
 import razie.wiki.model._
 import razie.wiki.util.{AuthService, NoAuthService}

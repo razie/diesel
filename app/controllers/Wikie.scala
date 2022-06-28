@@ -35,78 +35,8 @@ import razie.wiki.{Config, Enc, Services}
 import com.google.inject._
 import controllers.WikiUtil.{EditWiki, ReportWiki, after, applyStagedLinks, before}
 import play.api.Configuration
+import mod.wiki.EditLock
 
-
-/** a simple edit lock
-  *
-  * // todo candidate for a different temporary store, other than Mongodb
-  *
-  * @param uwid  for existing pages, quick lookup
-  * @param wpath for new pages
-  */
-@RTable
-case class EditLock(uwid: UWID, wpath: String, ver: Int, uid: ObjectId, uname: String, dtm: DateTime = DateTime.now()
-                    , _id: ObjectId = new ObjectId()) extends REntity[EditLock] {
-
-  def isLockedFor(userId: ObjectId) = dtm.plusSeconds(300).isAfterNow && uid != userId
-
-  /** extend the lock for another period, on autosave etc */
-  def extend = {
-    this.copy(dtm = DateTime.now()).updateNoAudit(tx.auto)
-  }
-}
-
-object EditLock {
-  implicit def txn = tx.auto
-
-  /** lock a page by a user */
-  def lock (uwid:UWID, wpath:String, ver:Int, editor:User) : Boolean = {
-    if(isLocked(uwid, wpath, editor)) false
-    else {
-      unlock(uwid, wpath, editor)
-      EditLock(uwid, wpath, ver, editor._id, editor.userName).createNoAudit
-      true
-    }
-  }
-
-  /** unlock a page when saving etc */
-  def unlock (uwid:UWID, wpath:String, u:User) = {
-    if(isLocked(uwid, wpath, u)) throw new IllegalStateException("page is locked: "+wpath)
-
-    find(uwid, wpath).map(_.deleteNoAudit)
-    keepClean()
-  }
-
-  def canSave (uwid:UWID, wpath:String, u:User) = {
-    // locked by someone else
-    if(isLocked(uwid, wpath, u)) false
-    else {
-      true
-    }
-  }
-
-  def find (uwid:UWID, wpath:String) =
-    if(uwid == UWID.empty)
-      ROne[EditLock] ("wpath" -> wpath)
-    else
-      ROne[EditLock] ("uwid.id" -> uwid.id)
-
-  def isLocked (uwid:UWID, wpath:String, u:User) =
-    find(uwid, wpath)
-      .exists(_.isLockedFor(u._id))
-
-  def who (uwid:UWID, wpath:String) =
-    find(uwid, wpath)
-        .map(_.uname).mkString
-
-  /** sometimes they stay behind - we'll keep this clean and fast */
-  def keepClean() = {
-    // todo spawn async task
-    val threshold = DateTime.now().minusHours(2)
-    val x = RMany[EditLock]().filter(_.dtm.isBefore(threshold)).toList
-    x.map(_.deleteNoAudit)
-  }
-}
 
 /** wiki edits controller */
 @Singleton

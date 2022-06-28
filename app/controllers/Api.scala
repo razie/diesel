@@ -11,7 +11,7 @@ import model._
 import play.api.{Configuration, Play}
 import razie.hosting.Website
 
-/** simple API to make some utilities available remotely */
+/** simple API to make some utilities available remotely (wix, ownedPages etc) */
 @Singleton
 class Api @Inject() (val config:Configuration) extends AdminBase {
 

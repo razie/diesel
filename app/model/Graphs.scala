@@ -4,7 +4,7 @@
  *   )   / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <     README.txt
  *  (_)\_)(__)(__)(____)(____)(____)(___/   (__)  (______)(____/    LICENSE.txt
  */
-package razie.gg
+package model
 
 import scala.collection.mutable
 
@@ -192,7 +192,6 @@ class NoCyclesGraphLike[N <: GNode[N, L], L <: GLink[N]](target: GraphLike[N, L]
 
 /** depth-limited graph - use for debugging cyclical dependencies - will throw up if more than X levelx */
 class DepthGraphLike[N <: GNode[N, L], L <: GLink[N]](max: Int)(target: GraphLike[N, L]) extends GraphLike[N, L] {
-  import scala.collection.mutable
 
   def root: N = target.root
   def colored: N => Boolean = target.colored

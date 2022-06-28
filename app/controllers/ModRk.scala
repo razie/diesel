@@ -18,7 +18,9 @@ import razie.{Logging, audit, clog}
 import scala.Option.option2Iterable
 import scala.collection.mutable.ListBuffer
 
-/** per topic reg */
+/** in a way this module is deprecated - need to see if still used anywhere. Persons register for stuff - per topic reg */
+
+/**  per topic reg */
 case class ModRkReg
 (
   wid: WID,

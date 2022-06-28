@@ -9,7 +9,7 @@ import play.api.mvc._
 import razie.audit.Audit
 import razie.{Logging, cout}
 
-/** support features */
+/** support controller - contact support etc */
 @Singleton
 class Support @Inject() (config:Configuration) extends RazController with Logging {
 

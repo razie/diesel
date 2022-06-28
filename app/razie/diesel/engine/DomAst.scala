@@ -26,11 +26,9 @@ trait DomAstInfo {
 }
 
 
-/** a tree node
+/** a tree node in an engine/flow
   *
   * kind is spec/sampled/generated/test etc
-  *
-  * todo optimize tree structure, tree binding
   *
   * todo need ID conventions to suit distributed services
   */

@@ -4,32 +4,30 @@
   *  )   / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <    /README.txt
   * (_)\_)(__)(__)(____)(____)(____)(___/   (__)  (______)(____/   /LICENSE.txt
   **/
-package mod.diesel.guard
+package razie.diesel.engine.exec
 
-import com.typesafe.config.ConfigFactory
-import controllers.DieselSettings
-import controllers.Realm.{Redirect, SEE_OTHER}
+import model.DieselSettings
 import java.io.{File, FileInputStream}
 import java.lang.management.{ManagementFactory, OperatingSystemMXBean}
 import java.lang.reflect.Modifier
 import java.util.Properties
-import mod.diesel.guard.EEDieselExecutors.{dieselPing, updatingDeleted}
 import model.WikiScripster
-import play.api.libs.concurrent.Execution.Implicits.defaultContext
-import razie.db.{ROne, RazMongo}
+import razie.{cdebug, clog}
+import razie.db.RazMongo
 import razie.diesel.Diesel
+import razie.diesel.cron.DieselCron
 import razie.diesel.dom.RDOM.P
-import razie.diesel.engine.{AstKinds, DieselException, DomAst}
-import razie.diesel.engine.exec.{EEDieselDb, EExecutor}
-import razie.diesel.engine.nodes.{EError, EMsg, EVal, _}
+import razie.diesel.engine.exec.EEDieselExecutors.updatingDeleted
+import razie.diesel.engine.nodes._
+import razie.diesel.engine.{DieselException, DomAst}
 import razie.diesel.expr.ECtx
+import razie.diesel.guard.DomGuardian
 import razie.diesel.model.DieselMsg
 import razie.diesel.utils.DomCollector
-import razie.hosting.{Website, WikiReactors}
-import razie.wiki.admin.{GlobalData, SendEmail}
+import razie.hosting.Website
+import razie.wiki.admin.GlobalData
 import razie.wiki.model.WikiConfigChanged
 import razie.wiki.{Config, Enc, Services}
-import razie.{cdebug, clog}
 import scala.collection.JavaConverters._
 import scala.collection.mutable.{HashMap, ListBuffer}
 import scala.io.Source
@@ -229,7 +227,7 @@ class EEDieselExecutors extends EExecutor("diesel.props") {
         List(
           EVal(P.fromSmartTypedValue(
             Diesel.PAYLOAD,
-            dieselPing())
+            EEDieselExecutors.dieselPing())
           )
         )
       }

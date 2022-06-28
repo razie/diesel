@@ -3,14 +3,14 @@
   * )   / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <     README.txt
   * (_)\_)(__)(__)(____)(____)(____)(___/   (__)  (______)(____/    LICENSE.txt
   * */
-package controllers
+package model
 
 import org.joda.time.DateTime
+import razie.js
 import razie.wiki.admin.Autosave
-import razie.wiki.model.{WID, WikiEntry}
-import razie.{Logging, js}
+import razie.wiki.model.WikiEntry
 
-/** metadata about a we */
+/** metadata about a we (wiki entry) - serialized back and forth on diffs and compares */
 case class WEAbstract(id: String, cat: String, name: String, realm: String, ver: Int, updDtm: DateTime, hash: Int,
                       tags: String, drafts: Int) {
 

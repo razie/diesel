@@ -14,7 +14,7 @@ import razie.diesel.expr._
 import razie.tconf.EPos
 import scala.collection.mutable.HashMap
 
-/** something that has a dom root tree - engines so far */
+/** tree utilities */
 trait DomRoot {
 
   def root: DomAst

@@ -22,7 +22,7 @@ import scala.concurrent.duration.DurationInt
 /** engine factory */
 class DieselEngineFactory(node: String, app: String) {
 
-  /** make an engine instance for the given AST root */
+  /** make an engine instance for the given AST root  - default uses the V1 strategy */
   def mkEngine(dom: RDomain,
                root: DomAst,
                settings: DomEngineSettings,
@@ -112,6 +112,7 @@ object DieselAppContext extends Logging {
   /** when in a cluster, you need to set this on startup... */
   var localNode = "localhost"
 
+  /** init the base executors */
   private def initExecutors = {
     new EECtx ::
         new EESnakk ::

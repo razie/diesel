@@ -16,7 +16,7 @@ import razie.wiki.model.WID
 import razie.wiki.util.PlayTools
 import razie.wiki.{Enc, Services}
 
-/** graph wiki controller */
+/** graph wiki and domain controller, for browsing associations etc */
 object Gapi extends RazController with Logging {
 
   object retj {

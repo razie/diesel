@@ -8,7 +8,9 @@ import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.concurrent.duration._
 
 /**
- * This controller creates an `Action` that demonstrates how to write
+ * Sample
+  *
+  * This controller creates an `Action` that demonstrates how to write
  * simple asynchronous code in a controller. It uses a timer to
  * asynchronously delay sending a response for 1 second.
  *

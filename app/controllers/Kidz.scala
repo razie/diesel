@@ -17,7 +17,9 @@ import razie.wiki.model.{WikiLink, WID}
 
 import scala.util.Try
 
-/** manage kidz (persons) */
+/** manage kidz (persons) - sort of deprecated by embedded to deep to drop. A kid is an actual user or a
+  * virtual association to a user (like an actual kid without a user account
+  */
 object Kidz extends RazController {
 
   def doeUserKidz = FAUR { implicit stok=>

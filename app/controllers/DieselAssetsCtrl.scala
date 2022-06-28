@@ -6,7 +6,7 @@ import play.api.Configuration
 import razie.Logging
 import razie.wiki.model.WID
 
-/** support features */
+/** WIP assets */
 @Singleton
 class DieselAssetsCtrl @Inject()(config:Configuration) extends RazController with Logging {
 
