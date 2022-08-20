@@ -9,6 +9,7 @@ package razie.diesel.guard
 import DieselDebug.Guardian
 import DieselDebug.Guardian.ISSCHED
 import model.Users
+import org.joda.time.{DateTime, Duration}
 import razie.Logging
 import razie.diesel.Diesel
 import razie.diesel.dom.RDOM.P
@@ -79,18 +80,20 @@ class EEGuardian extends EExecutor(DieselMsg.GUARDIAN.ENTITY) with Logging {
 
       case "ends" => {
         // guardian ends a run - record and notify
-        def url = Website.forRealm(ctx.root.settings.realm.mkString).map(_.url).mkString
+        def localUrlRoot = Website.forRealm(ctx.root.settings.realm.mkString).map(_.url).mkString
 
         ctx.root.engine.foreach { engine =>
           val realm = ctx("realm")
           val env = ctx("env")
+          val tq = engine.settings.tagQuery
           var newStatus = ""
+
+          val dur = new Duration(engine.createdDtm, DateTime.now)
 
           val oldStatus = DieselData
               .find(GUARDIAN_POLL, realm, realm + "-" + env)
               .flatMap(t=> t.contents.get("status"))
               .getOrElse("Fail")
-
 
           // lazy to capture the newStatus
           def m = EMsg(
@@ -103,7 +106,18 @@ class EEGuardian extends EExecutor(DieselMsg.GUARDIAN.ENTITY) with Logging {
               P("newStatus", newStatus),
               P("errors",    engine.failedTestCount.toString),
               P("total",     engine.totalTestCount.toString),
-              P("report",    s"""See details: <a href=\"$url/diesel/viewAst/${engine.id}\">${engine.id}</a></td>""")
+              P("report",
+                s"""
+                   |From realm: $realm || Env: $env || TagQuery: $tq
+                   |<br>
+                   |NewStatus $newStatus vs OldStatus $oldStatus
+                   |<p>
+                   |Started: ${engine.createdDtm} || Duration: ${dur.toString}
+                   |<br>
+                   |Errors: ${engine.failedTestCount.toString} || Total: ${engine.totalTestCount.toString}
+                   |<p>
+                   |See details: <a href=\"$localUrlRoot/diesel/viewAst/${engine.id}\">${engine.id}</a></td>
+                   |""".stripMargin)
             ))
 
           if (engine.failedTestCount > 0) {
@@ -130,8 +144,8 @@ class EEGuardian extends EExecutor(DieselMsg.GUARDIAN.ENTITY) with Logging {
         }
       }
 
-      case "polled" => {
-        //it was polled and here's the new stamp - shall we start a new check?
+      case "polled" => { //it was polled and here's the new stamp - shall we start a new check?
+
         val settings = ctx.root.settings
         val env = ctx.getRequired("env")
         val stamp = ctx.getRequired("stamp")
@@ -154,7 +168,8 @@ class EEGuardian extends EExecutor(DieselMsg.GUARDIAN.ENTITY) with Logging {
         res appendAll DomGuardian.polled(inRealm, env, stamp, settings.userId.flatMap(Users.findUserById), tq)
       }
 
-      case "run" => {
+      case "run" => { // run new check
+
         val env = ctx.getRequired("env")
         val realm = ctx.getRequired("realm") // altho you can only run your for now
         val settings = ctx.root.settings
