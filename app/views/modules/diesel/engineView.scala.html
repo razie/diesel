@@ -73,8 +73,8 @@ view an engine
         showDurations();
 
         setInterval(function(){
-          if(refreshMode && !done)  window.location.reload();
-        }, 4000);
+          if(refreshMode && !done && $('#refreshMode').prop('checked'))  window.location.reload();
+        }, 5000);
 
       });
 

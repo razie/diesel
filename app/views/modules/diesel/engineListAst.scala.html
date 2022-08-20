@@ -38,8 +38,8 @@ withJquery(function ($) {
 });
 
 setInterval(function(){
-  if(refreshMode)  window.location.reload();
-}, 3000);
+  if(refreshMode && $('#refreshMode').prop('checked'))  window.location.reload();
+}, 7000);
 
 </script>
 
