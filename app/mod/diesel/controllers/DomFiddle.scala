@@ -524,12 +524,15 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
 
         // todo save engine ea on creation and use to extractfinalvalue
         val payload = Try {
-          engine.ctx.getp(Diesel.PAYLOAD).filter(_.ttype != WTypes.wt.UNDEFINED)
-              .map(_.currentStringValue)
-              .getOrElse(engine.extractFinalValue("", true))
+          val payload = engine.ctx.getp(Diesel.PAYLOAD).filter(_.ttype != WTypes.wt.UNDEFINED)
+          val res = payload
+                  .orElse(engine.extractFinalValue("", true))
+          res
+              .map(_.currentNiceStringValue)
+              .mkString
         }.recover {
           case t => s"ERROR: Please report Exception trying to extract final value: ${Log.exceptionToString(t)}"
-        }
+        }.getOrElse("?")
 
         val stw = WID.fromPath(storyWpath).flatMap(_.page).map(_.content).getOrElse(
           "Sample story\n\n$msg home.guest_arrived(name=\"Jane\")\n\n$expect $msg lights.on\n")
@@ -646,7 +649,7 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
 
       val res = engine.root.toHtml
       // todo save engine ea on creation and use to extractfinalvalue
-      val resValue = engine.extractFinalValue("", true).map(_.currentStringValue)
+      val resValue = engine.extractFinalValue("", true).map(_.currentNiceStringValue).mkString
 
       val m = Map(
         // flags in map for easy logging
@@ -664,7 +667,7 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
         ),
         "clientId" -> id,
         "res" -> res,
-        "payload" -> resValue,
+        "payload" -> resValue.mkString,
         "failureCount" -> engine.failedTestCount
       )
 

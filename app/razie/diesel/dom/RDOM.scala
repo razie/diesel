@@ -653,6 +653,16 @@ object RDOM {
             dflt
           }
 
+    /** only if it was already calculated... */
+    def currentNiceStringValue: String =
+      value.map(_.asNiceString)
+          .orElse(
+            trulyConstantExpr.map(_.expr)
+          )
+          .getOrElse {
+            dflt
+          }
+
     /** current calculated value if any or the expression */
     def valExpr =
       value.map(v=> CExpr(v.value, v.cType)).getOrElse {
