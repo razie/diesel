@@ -1142,7 +1142,7 @@ class Wikie @Inject()(config: Configuration) extends WikieBase {
             RDelete[DieselData]("realm" -> realm)
             RazMongo("DieselDb").remove(Map("realm" -> realm))
 
-            RMany[User]().filter(_.realms.contains(wid.name)).map {u=>
+            RMany[User]().filter(_.isInRealm(wid.name)).map {u=>
               u.update(u.copy(realms=u.realms.filter(_ != wid.name), realmSet = u.realmSet.filter(_._1 != wid.name)))
 
               // todo remove this realm from all users.x.

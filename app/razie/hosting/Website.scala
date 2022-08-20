@@ -208,6 +208,13 @@ object Website {
   }
 
   /** static properties per realm, as set during say diesel.realm.started */
+  def getRealmPropAsP (realm:String, prop:String) = {
+    realmProps.synchronized {
+      realmProps.get(realm).flatMap(_.m.get(prop))
+    }
+  }
+
+  /** static properties per realm, as set during say diesel.realm.started */
   def getRealmProps (realm:String):Map[String,P] = {
     realmProps.synchronized {
       realmProps.get(realm).map(_.m.toMap).getOrElse(Map.empty)

@@ -16,7 +16,11 @@ class AdminBase extends RazController {
 
   /** for admins only */
   protected def forAdmin[T](body: => play.api.mvc.Result)(implicit request: Request[_]) = {
-    if (auth.map(_.hasPerm(Perm.adminDb)) getOrElse false || Services.config.isLocalhost && Config.trustLocalUsers) body
+    val au = auth
+    if (
+      (au.map(_.hasPerm(Perm.adminDb)) getOrElse false) ||
+         au.isDefined && Services.config.isLocalhost && Config.trustLocalUsers // trust any local user as if they're admin?
+    ) body
     else noPerm(HOME)
   }
 

@@ -187,8 +187,6 @@ class AdminImport extends AdminBase with Logging {
 
     clog << "ADMIN_importRemoteUser"
 
-    log("IMPORT USER")
-
     val source = "www.dieselapps.com"
 
     // key used to encrypt/decrypt transfer
@@ -212,8 +210,6 @@ class AdminImport extends AdminBase with Logging {
   private def importDbUser(implicit stok: RazRequest) : User = {
 
     clog << "ADMIN_IMPORT_DB_IMPL"
-
-    log("IMPORT DB")
 
     val source = stok.fqhParm("source").get
     val email = stok.au.map(_.emailDec).orElse(stok.fqhParm("email")).get
@@ -252,8 +248,6 @@ class AdminImport extends AdminBase with Logging {
 
     clog << "ADMIN_IMPORT_DB_IMPL"
 
-    log("IMPORT DB")
-
     val realm = stok.fqhParm("realm").get
     val source = stok.fqhParm("source").get
     val email = stok.au.map(_.emailDec).orElse(stok.fqhParm("email")).get
@@ -291,7 +285,7 @@ class AdminImport extends AdminBase with Logging {
     * uses credentials passed in to authenticate on remote
     */
   def importDbApi = Action { implicit request =>
-    clog << "ADMIN_IMPORT_DB"
+    clog << "ADMIN_IMPORT_DB_API"
 
     if (!isDbEmpty) {
       Ok("ERR db not empty!").as("application/text")
@@ -306,7 +300,7 @@ class AdminImport extends AdminBase with Logging {
     * uses credentials passed in to authenticate on remote
     */
   def importDbSync = Action.async { implicit request =>
-    clog << "ADMIN_IMPORT_DB"
+    clog << "ADMIN_IMPORT_DB_SYNC"
 
     if (!isDbEmpty) {
       Future.successful {

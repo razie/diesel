@@ -490,10 +490,17 @@ function setupLogLevels(id) {
 
   useLocalStorageCheckbox("payloadOnly", "domFiddlePayloadOnly", function (a,b,expanded) {
     if(expanded) {
-      $('#traceStory').prop('checked', false).change(); // change triggers the callback
-      $('#debugStory').prop('checked', false).change(); // change triggers the callback
-      $('#generatedStory').prop('checked', false).change(); // change triggers the callback
+      // turn off the nodes
+      $('#traceStory').prop('checked', false).change();
+      $('#debugStory').prop('checked', false).change();
+      $('#generatedStory').prop('checked', false).change();
+    } else {
+      // turn on the nodes
+      $('#traceStory').prop('checked', true).change();
+      $('#debugStory').prop('checked', true).change();
+      $('#generatedStory').prop('checked', true).change();
     }
+
     if(currEngineData != null) showFinalEngineResult(id); // repaint
   });
 

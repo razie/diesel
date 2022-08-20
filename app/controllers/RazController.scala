@@ -407,7 +407,7 @@ ${errCollector.mkString}
   def FAUR(msg:String, isApi:Boolean=false)(f: RazRequest => Option[Result]) : Action[AnyContent] = Action { implicit request =>
     val req = razRequest
     (for (
-      au <- activeUser(req.ireq, req.errCollector).filter(_.realms.contains(req.realm));
+      au <- activeUser(req.ireq, req.errCollector).filter(_.isInRealm(req.realm));
       _ <- Some(au).filter(deemedMemberOfRealm(_, req.realm))
     ) yield {
         if(msg.nonEmpty) cdebug << "START_FAU "+msg
@@ -434,7 +434,7 @@ ${errCollector.mkString}
     implicit val errCollector = new VErrors()
     (for (
       au <- activeUser;
-      _ <- Some(au).filter(_.realms.contains(req.realm))
+      _ <- Some(au).filter(_.isInRealm(req.realm))
     ) yield {
       if(msg.nonEmpty) cdebug << "START_FAU "+msg
       val temp = f(au)(errCollector)(request)

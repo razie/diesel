@@ -11,6 +11,7 @@ import play.api.mvc.Action
 import razie.db.RazMongo
 import razie.diesel.engine.exec.EEDieselExecutors
 import razie.hosting.WikiReactors
+import razie.wiki.WikiConfig
 import razie.wiki.admin.SendEmail
 
 /** some system level admin ops: monitoring, config, pings etc */
@@ -50,9 +51,11 @@ class AdminSys extends AdminBase {
       case "shouldReload" => {
         Ok(reloadt.toString).as("application/text")
       }
+
       case "buildTimestamp" => {
         Ok(reloadt.toString).as("application/text")
       }
+
       case "timeout.please" => {
         if(!timingOut) {
           timingOut = true
@@ -63,13 +66,17 @@ class AdminSys extends AdminBase {
           Unauthorized("already timing out")
         }
       }
+
       case x: String if x.forall(_.isDigit) => {
         Status(x.toInt).apply("as asked")
       }
+
       case _ => Ok(osusage).as("application/json")
     }
   }
 
+
+  def config2(what: String) = config(what)
 
   // TODO turn off emails during remote test
   // todo only for admin?
@@ -77,15 +84,30 @@ class AdminSys extends AdminBase {
     forAdmin {
       what match {
         case "noemails" => Ok(SendEmail.NO_EMAILS.toString)
+
         case "noemailstesting" => {
           SendEmail.NO_EMAILS_TESTNG = true
           Ok(SendEmail.NO_EMAILS_TESTNG.toString)
         }
+
         case "okemailstesting" => {
           SendEmail.NO_EMAILS_TESTNG = false
           Ok(SendEmail.NO_EMAILS_TESTNG.toString)
         }
+
+        case "startup" => {
+          val resp = WikiConfig.playConfig.toString
+          Ok(resp).as("application/json")
+        }
+
       }
+    }
+  }
+
+  /** return current user's username */
+  def username() = Action { implicit request =>
+    forActiveUser {u=>
+       Ok(u.userName)
     }
   }
 }

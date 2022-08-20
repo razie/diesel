@@ -34,6 +34,7 @@ object Config extends WikiConfig {
 
   override def simulateHost = isimulateHost
 
+  /** do we trust all local users, for somet things as if they're admins? */
   var trustLocalUsers = prop("diesel.trustLocalUsers", "true").toBoolean
 
   WikiObservers mini {

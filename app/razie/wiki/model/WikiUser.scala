@@ -81,12 +81,15 @@ abstract class WikiUser extends DUser {
   def isSuspended: Boolean
 
   // users can be, in order of access: mods, devs or admins
-  def isMod : Boolean = hasPerm(Perm.Moderator) || isAdmin
+  def isMod : Boolean = isActive && (hasPerm(Perm.Moderator) || isAdmin)
 
-  def isDev : Boolean = isMod || hasPerm(Perm.codeMaster) || hasPerm(Perm.domFiddle)
+  def isDev : Boolean = isActive && (isMod || hasPerm(Perm.codeMaster) || hasPerm(Perm.domFiddle))
 
   // mods can be gods in local
-  def isAdmin : Boolean = hasPerm(Perm.adminDb) || hasPerm(Perm.adminWiki) || hasPerm(Perm.Moderator) && WikiConfig.getInstance.get.isLocalhost
+  def isAdmin : Boolean =
+    isActive && (
+        hasPerm(Perm.adminDb) || hasPerm(Perm.adminWiki) || hasPerm(Perm.Moderator) && WikiConfig.getInstance.get.isLocalhost
+        )
 }
 
 /** sample dummy */

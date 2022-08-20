@@ -89,6 +89,8 @@ case class User(
   def gender = "?"
   def notifyParent = false
 
+  def isInRealm(realm:String) : Boolean = isAdmin || realms.contains(realm)
+
   override def ename = if (firstName != null && firstName.size > 0) firstName else emailDec.replaceAll("@.*", "")
 
   def tasks = Users.findTasks(_id)
