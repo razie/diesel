@@ -113,7 +113,7 @@ class WikiAsyncObservers extends Actor {
       //todo why do i need this?
       clog << self.path
       clog << pubSub.path
-      WikiReactors.apply()
+      WikiReactors.init()
     }
 
     case EventNeedsQuota(s1, s2, _) =>

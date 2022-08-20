@@ -79,7 +79,13 @@ object WikiReactors extends Logging with Reactors {
 
   def contains (realm:String) : Boolean = reactors.contains(realm)
 
-  def apply (realm:String = Wikis.RK) : Reactor = {
+  // separate init call
+  def init() = {
+    // preload
+    if(reactors.isEmpty) loadReactors()
+  }
+
+  def apply (realm:String = Wikis.RK, justInitializing:Boolean = false) : Reactor = {
     // preload
     if(reactors.isEmpty) loadReactors()
     // anything not preloaded, load now
