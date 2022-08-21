@@ -5,8 +5,10 @@
  */
 package razie.diesel.engine
 
+import model.User
 import org.bson.types.ObjectId
 import razie.tconf.TagQuery
+import razie.wiki.model.WikiUser
 import razie.wiki.{Config, Services}
 
 /** various settings for each wf engine, see http://specs.dieselapps.com/Topic/Flags_and_modes */
@@ -26,7 +28,10 @@ case class DomEngineSettings
   var configTag : Option[String] = None,
 
   /** user id */
-  var userId : Option[String] = None,
+  var userId : Option[String] = None, // todo handle oauth users too, especially for recovery
+
+  /** user */
+  var user : Option[User] = None, // todo this is not serialized, to be recovered
 
   /** content that was posted with the request */
   var postedContent: Option[EContent] = None,

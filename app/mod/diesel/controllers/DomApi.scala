@@ -21,6 +21,7 @@ import razie.diesel.engine.exec.{EECtx, EESnakk, SnakkCall}
 import razie.diesel.engine.nodes.EnginePrep.{catPages, listStoriesWithFiddles}
 import razie.diesel.engine.nodes._
 import razie.diesel.expr.{ECtx, SimpleECtx, StaticECtx}
+import razie.diesel.model.DieselMsg.ENGINE.DIESEL_REST
 import razie.diesel.model.{DieselMsg, DieselMsgString, DieselTarget}
 import razie.diesel.model.DieselMsg.HTTP
 import razie.diesel.samples.DomEngineUtils
@@ -748,6 +749,8 @@ class DomApi extends DomApiBase with Logging {
         //  trust itself, so nobody can replay this call
         settings.draftMode = settings.configTag.mkString.contains("draft") && settings.userId.exists(
           u => settings.configTag.exists(_.contains(u)))
+
+        settings.user = stok.au
 
         ctrace << s"RUN_REST_REQUEST verb:$verb mock:$mock path:$path realm:${reactor}\nheaders: ${stok.req.headers}" +
             body
@@ -1584,13 +1587,42 @@ class DomApi extends DomApiBase with Logging {
     * @return
     */
   def isMemberOrTrusted (m:Option[EMsg], reactor:String, website:Website)(implicit stok:RazRequest) = {
-      stok.au.exists(u=>
+      stok.au.exists {u=>
         // is member of diesel realm
-        u.isAdmin || u.hasRealm(reactor) ||
+        var isMember = u.isAdmin || u.hasRealm(reactor) ||
         // is member from trusted realm, for protected messages
 //        m.exists(_.isProtected) &&
           u.hasRealm(stok.realm) && website.dieselTrust.contains(stok.realm)
-      )
+
+//        spec.map(_.arch).exists(_ contains PROTECTED) ||
+//            spec.map(_.stype).exists(_ contains PROTECTED)
+
+//        if(isMember && m.exists(_.spec.map(_.arch)))
+
+        // todo settle arch vs sType, what the heck. For messages nd rules
+
+        if(isMember &&
+            m.isDefined &&
+            DIESEL_REST != m.get.ea &&
+            m.get.spec.exists(s=> s.arch.nonEmpty || s.stype.nonEmpty)) {
+          val uroles = if(stok.au.isDefined) stok.au.get.roles else Set.empty[String]
+          val eroles = (m.get.spec.get.arch + "," + m.get.spec.get.stype).split(",").filter(_.startsWith("role."))
+
+          // if the user matches one of the roles, it's ok
+          var matched = eroles.isEmpty || eroles.exists(r => uroles.contains(r.substring(5)))
+
+          if(!matched && eroles.isEmpty) {
+            val oauth = Website.getRealmPropAsP(reactor, "oauth").map(_.getJsonStructure)
+            val defaultRole = oauth.get.get("defaultRole").map(_.toString).mkString
+
+            matched = defaultRole.isEmpty || uroles.contains(defaultRole)
+          }
+
+          if(! matched) throw new DieselException(s"AUTH FAILED for API (${m.get.ea})!", Some(401))
+        }
+
+        isMember
+      }
   }
 
   /** only call this if an api key was required and present */
@@ -1610,8 +1642,8 @@ class DomApi extends DomApiBase with Logging {
 
   /** can user execute message */
   def isMsgVisible (m:EMsg, reactor:String, website:Website)(implicit stok:RazRequest) = {
-    isMsgPublic(m, reactor, website) ||
-    isMemberOrTrusted(Some(m), reactor, website)
+      isMsgPublic(m, reactor, website) ||
+          isMemberOrTrusted(Some(m), reactor, website)
   }
 
   /** replace in oldContent the given section with iContent (escaped)

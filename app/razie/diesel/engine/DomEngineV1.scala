@@ -332,7 +332,7 @@ class DomEngineV1(
     msgs
   }
 
-  /** expand a single message */
+  /** expand a message - main entry point */
   protected override def expandEMsg(a: DomAst, in: EMsg, recurse: Boolean, level: Int, parentCtx: ECtx):
   (List[DomAst], List[DomAst])
   = {
@@ -391,6 +391,7 @@ class DomEngineV1(
     a.childrenCol.clear() // remove them so we don't have duplicates in tree - they will be processed later
 
     // 1. engine message?
+
     var (mocked, skipped, moreNodes) = expandEngineEMsg(a, n, newNodes)
 
     skippedNodes = skippedNodes ::: skipped
@@ -399,6 +400,7 @@ class DomEngineV1(
     var mocksApplied = HashMap[String, EMock]()
 
     // 2. if not, look for mocks
+
     if (settings.mockMode) {
       val exclusives = HashMap[String, ERule]()
       var matchingRules = (root.collect {
@@ -488,6 +490,26 @@ class DomEngineV1(
         } else {
           if (r.isExclusive) {
             exclusives.put(r.e.cls + "." + r.e.met, r) // we do exclusive per pattern
+          }
+
+          // for diesel.rest we check permissions...
+          // todo maybe for others too, in the middle? why not...
+          if(DIESEL_REST == n.ea && r.arch.nonEmpty) {
+            val uroles = if(this.settings.user.isDefined) this.settings.user.get.roles else Set.empty[String]
+            val eroles = r.arch.split(",").filter(_.startsWith("role."))
+
+            // if the user matches one of the roles, it's ok
+            var matched = eroles.isEmpty || eroles.exists(r => uroles.contains(r.substring(5)))
+
+            if(!matched && eroles.isEmpty) {
+              val oauth = Website.getRealmPropAsP(this.ctx.root.settings.realm.mkString, "oauth")
+                  .map(_.getJsonStructure)
+              val defaultRole = oauth.get.get("defaultRole").map(_.toString).mkString
+
+              matched = defaultRole.isEmpty || uroles.contains(defaultRole)
+            }
+
+            if(! matched) throw new DieselException("AUTH FAILED for API (diesel.rest)!", Some(401))
           }
 
           newNodes = newNodes ::: ruleDecomp(a, n, r, ctx)
