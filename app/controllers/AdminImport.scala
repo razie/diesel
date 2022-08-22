@@ -107,7 +107,9 @@ class AdminImport extends AdminBase with Logging {
       else
         RMany[WikiEntry]()
             .filter(we => we.category == cat && (reactor.isEmpty || reactor == "all" || rlist.contains(we.realm)))
-    l.toList
+    l
+        .toList
+        .sortWith((a,b) => a.crDtm.isBefore(b.crDtm)) // sort new at bottom
   }
 
   /** get list of pages for realm - invoked by remote trying to sync
