@@ -501,15 +501,36 @@ class DomEngineV1(
             // if the user matches one of the roles, it's ok
             var matched = eroles.isEmpty || eroles.exists(r => uroles.contains(r.substring(5)))
 
-            if(!matched && eroles.isEmpty) {
+            var reason = s"roles=${eroles.mkString} "
+
+            if(!matched) {
               val oauth = Website.getRealmPropAsP(this.ctx.root.settings.realm.mkString, "oauth")
                   .map(_.getJsonStructure)
-              val defaultRole = oauth.get.get("defaultRole").map(_.toString).mkString
+              val mr = oauth.get.get("masterRole").map(_.toString).mkString.trim
 
-              matched = defaultRole.isEmpty || uroles.contains(defaultRole)
+              if(mr.nonEmpty) matched = uroles.contains(mr)
+              reason = s"$reason mr=$mr "
+
+              if(!matched) {
+                val eclients = r.arch.split(",").filter(_.startsWith("client."))
+                val uclient = this.settings.user.flatMap(_.authClient).mkString
+
+                // rule contains client
+                if(uclient.nonEmpty) matched = eclients.contains(uclient)
+                reason = s"$reason clients=${eclients.mkString} "
+
+                if(!matched) {
+                  val mc = oauth.get.get("masterClient").map(_.toString).mkString.trim
+                  reason = s"$reason mc=$mc "
+
+                  // user comes from masterclient
+                  if(mc.nonEmpty) matched = uclient equals mc
+                }
+              }
             }
 
-            if(! matched) throw new DieselException("AUTH FAILED for API (diesel.rest)!", Some(401))
+            if(! matched)
+              throw new DieselException(s"AUTH FAILED for API diesel.rest ! ($reason)", Some(401))
           }
 
           newNodes = newNodes ::: ruleDecomp(a, n, r, ctx)

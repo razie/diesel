@@ -18,17 +18,17 @@ import scala.collection.JavaConverters.{mapAsScalaMapConverter, propertiesAsScal
   * @param ctx is the root context of this engine
   */
 class DieselParmSource (ctx:DomEngECtx) extends ParmSource {
-  def name = "diesel"
+  override def name = "diesel"
 
-  def remove(name: String): Option[P] = ???
+  override def remove(name: String): Option[P] = ???
 
-  def getp(name: String): Option[P] = name match {
+  override def getp(name: String): Option[P] = name match {
 
     case "env" =>
       // first overrides, then settings and lastly current envList setting
       None
           .orElse(ctx.settings.env.map(P("diesel.env", _)))
-          .orElse(Some(P("diesel.env", ctx.dieselEnv(ctx))))
+          .orElse(Option(P("diesel.env", ctx.dieselEnv(ctx))))
 
     case "user" => {
 
@@ -41,6 +41,26 @@ class DieselParmSource (ctx:DomEngECtx) extends ParmSource {
         "userName" -> (n => {
           // leave this lazy - it is expensive
           Left(P("diesel.user.userName", ctx.dieselAU(ctx).map(_.userName).mkString))
+        }),
+
+        "roles" -> (n => {
+          // leave this lazy - it is expensive
+          Left(P.fromSmartTypedValue("diesel.user.roles", ctx.dieselAU(ctx).toList.flatMap(_.roles.toList)))
+        }),
+
+        "authClient" -> (n => {
+          // leave this lazy - it is expensive
+          Left(P.fromSmartTypedValue("diesel.user.authClient", ctx.dieselAU(ctx).flatMap(_.authClient).mkString))
+        }),
+
+        "authRealm" -> (n => {
+          // leave this lazy - it is expensive
+          Left(P.fromSmartTypedValue("diesel.user.authRealm", ctx.dieselAU(ctx).flatMap(_.authRealm).mkString))
+        }),
+
+        "authMethod" -> (n => {
+          // leave this lazy - it is expensive
+          Left(P.fromSmartTypedValue("diesel.user.authMethod", ctx.dieselAU(ctx).flatMap(_.authMethod).mkString))
         }),
 
         "eName" -> (n => {
@@ -199,7 +219,7 @@ class DieselRealmParmSource(ctx: DomEngECtx) extends ParmSource {
 
   def put(p: P): Unit = {
     Website.putRealmProps(realm, p.name, p.calculatedP(ctx))
-    Website.forRealm(realm).map(_.put(p.name, p.calculatedValue(ctx)))
+    Website.forRealm(realm).foreach(_.put(p.name, p.calculatedValue(ctx)))
   }
 
   def listAttrs: List[String] = parms.keys.toList

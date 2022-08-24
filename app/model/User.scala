@@ -47,6 +47,12 @@ trait TPersonInfo {
   def role = roles.head
 
   def organization:Option[String]
+  def authClient:Option[String]
+  def authRealm:Option[String]
+  def authMethod:Option[String]
+
+ /** which authorization realm sourced this user */
+//  def authRealm:Option[String]
 }
 
 /** account - Minimal user info - loaded all the time for a user */
@@ -63,6 +69,7 @@ case class User(
   // this is per realm
   status: Char = Users.ACTIVE, // a-active, s-suspended, d-deleted
   roles: Set[String], // = Set("Racer"),
+//  authRealm : Option[String] = None, // None - diesel, oauth - configured external oauth service
 
   realms: Set[String]=Set(), // = RK modules (notes, rk, ski etc)
   addr: Option[String] = None, // address as typed in
@@ -72,6 +79,9 @@ case class User(
   clubSettings : Option[String] = None, // if it's a club - settings
 
   organization : Option[String] = None, // possibly name of org
+  authClient : Option[String] = None, // the client that authorized this user (oauth)
+  authRealm : Option[String] = None, // the realm that authorized this user (oauth)
+  authMethod : Option[String] = None, // how was it authorized 'password'/'X-Api-Key'/oauth etc
 
   perms: Set[String] = Set(),
 

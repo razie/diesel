@@ -1610,15 +1610,35 @@ class DomApi extends DomApiBase with Logging {
 
           // if the user matches one of the roles, it's ok
           var matched = eroles.isEmpty || eroles.exists(r => uroles.contains(r.substring(5)))
+          var reason = s"roles=${eroles.mkString} "
 
-          if(!matched && eroles.isEmpty) {
+          if(!matched) {
             val oauth = Website.getRealmPropAsP(reactor, "oauth").map(_.getJsonStructure)
-            val defaultRole = oauth.get.get("defaultRole").map(_.toString).mkString
+            val mr = oauth.get.get("masterRole").map(_.toString).mkString.trim
 
-            matched = defaultRole.isEmpty || uroles.contains(defaultRole)
+            if(mr.nonEmpty) matched = uroles.contains(mr)
+            reason = s"$reason mr=$mr "
+
+            if(!matched) {
+              val eclients = (m.get.spec.get.arch + "," + m.get.spec.get.stype).split(",").filter(_.startsWith("client."))
+              val uclient = stok.au.flatMap(_.authClient).mkString
+
+              // rule contains client
+              if(uclient.nonEmpty) matched = eclients.contains(uclient)
+              reason = s"$reason clients=${eclients.mkString} "
+
+              if(!matched) {
+                val mc = oauth.get.get("masterClient").map(_.toString).mkString.trim
+                reason = s"$reason mc=$mc "
+
+                // user comes from masterclient
+                if(mc.nonEmpty) matched = uclient equals mc
+              }
+            }
           }
 
-          if(! matched) throw new DieselException(s"AUTH FAILED for API (${m.get.ea})!", Some(401))
+          if(! matched)
+            throw new DieselException(s"AUTH FAILED for API ${m.get.ea}! ($reason)", Some(401))
         }
 
         isMember

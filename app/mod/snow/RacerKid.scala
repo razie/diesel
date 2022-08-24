@@ -99,11 +99,14 @@ case class RacerKidInfo(
   crDtm: DateTime = DateTime.now,
   _id: ObjectId = new ObjectId()) extends REntity[RacerKidInfo] with TPersonInfo {
 
-  def organization : Option[String] = None
+  override def organization : Option[String] = None
+  override def authClient : Option[String] = None
+  override def authRealm : Option[String] = None
+  override def authMethod : Option[String] = None
 
-  def emailDec : String = email.dec
+  override def emailDec : String = email.dec
 
-  def yob: Int = dob.getYear()
+  override def yob: Int = dob.getYear()
 }
 
 /**

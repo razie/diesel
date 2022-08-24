@@ -6,9 +6,10 @@
 package razie.diesel.engine
 
 import api.dwix
+import model.User
 import org.bson.types.ObjectId
 import razie.diesel.Diesel
-import razie.diesel.dom.RDOM.{P}
+import razie.diesel.dom.RDOM.P
 import razie.diesel.dom.RDomain
 import razie.diesel.engine.nodes.EVal
 import razie.diesel.expr.{ECtx, SimpleECtx}
@@ -106,8 +107,11 @@ class DomEngECtx(val settings: DomEngineSettings, cur: List[P] = Nil, base: Opti
 
   /** user for engine - expensive! */
   def dieselAU(ctx: ECtx) = {
-    val au = ctx.root.engine.map(_.settings).flatMap(_.userId)
-    au.flatMap(id => DUsers.impl.findUserById(new ObjectId(id)))
+    val eu = ctx.root.engine.map(_.settings).flatMap(_.user)
+    eu.orElse {
+      val au = ctx.root.engine.map(_.settings).flatMap(_.userId)
+      au.flatMap(id => DUsers.impl.findUserById(new ObjectId(id))).map(_.asInstanceOf[User])
+    }
   }
 
   // user id if any
