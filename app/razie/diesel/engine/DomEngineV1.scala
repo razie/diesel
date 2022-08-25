@@ -302,7 +302,13 @@ class DomEngineV1(
       case e: EError => {
 
         // todo complete this so it throws on any err right away
+
+        // todo used to do it like this, at the scope level:
         if (findParentWith(a, _.value.isInstanceOf[EScope]).exists(_.value.asInstanceOf[EScope].isStrict)) {
+
+//       todo should we use the same string? per engine
+//        if (ctx.root.isStrict) {
+
           val ex = e.t.map(P.of("exception", _)).toList
           val msg = if (e.t.isEmpty) List(P.of("msg", e.details)) else Nil
           a append DomAst(new EMsg("diesel", "throw", ex ::: msg), AstKinds.GENERATED)
@@ -1388,11 +1394,13 @@ class DomEngineV1(
       } else if (ea == DieselMsg.ENGINE.STRICT) { //========================
 
         ctx.root.strict = true
+        evAppChildren(a, DomAst(EInfo("strict is true"), AstKinds.TRACE))
         true
 
       } else if (ea == DieselMsg.ENGINE.NON_STRICT) { //========================
 
         ctx.root.strict = false
+        evAppChildren(a, DomAst(EInfo("strict is false"), AstKinds.TRACE))
         true
 
       } else if (ea == DieselMsg.ENGINE.DIESEL_SYNC) { //========================
