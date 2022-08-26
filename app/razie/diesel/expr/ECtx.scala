@@ -75,6 +75,7 @@ trait ECtx extends ParmSource {
 
   /** in strict mode, instead of ignoring undefins and others, they'll result in exceptions */
   var strict = false
+
   def isStrict:Boolean = if(root != null) root.strict else strict
   def nonStrict:Boolean = if(root != null) !root.strict else !strict
 

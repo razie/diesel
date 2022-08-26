@@ -444,6 +444,8 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
             PValue(finalArr, WTypes.wt.ARRAY)
           }
 
+          case WTypes.UNDEFINED if ctx.nonStrict => P.undefined(Diesel.PAYLOAD).value.orNull
+
           case _ => throw new DieselExprException("Can't do take on: " + av)
         }
       }
@@ -498,6 +500,8 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
 
             ctx.getRequiredp(Diesel.PAYLOAD).value.getOrElse(null)
           }
+
+          case WTypes.UNDEFINED if ctx.nonStrict => P.undefined(Diesel.PAYLOAD).value.orNull
 
           case _ => throw new DieselExprException("Can't do map on: " + av)
         }
@@ -588,6 +592,8 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
             PValue(finalArr, WTypes.wt.ARRAY)
           }
 
+          case WTypes.UNDEFINED if ctx.nonStrict => P.undefined(Diesel.PAYLOAD).value.getOrElse(null)
+
           case _ => throw new DieselExprException("Can't do map on: " + av)
         }
       }
@@ -651,6 +657,7 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
             PValue(finalArr, WTypes.wt.ARRAY)
           }
 
+          case WTypes.UNDEFINED if ctx.nonStrict => P.undefined(Diesel.PAYLOAD).value.orNull
           case _ => throw new DieselExprException("Can't do flatMap on: " + av)
         }
       }
@@ -675,6 +682,7 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
             PValue("", WTypes.wt.UNDEFINED)
           }
 
+          case WTypes.UNDEFINED if ctx.nonStrict => P.undefined(Diesel.PAYLOAD).value.orNull
           case _ => throw new DieselExprException("Can't do foreach on: " + av)
         }
       }
@@ -737,6 +745,7 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
             PValue(finalArr, WTypes.wt.JSON)
           }
 
+          case WTypes.UNDEFINED if ctx.nonStrict => P.undefined(Diesel.PAYLOAD).value.orNull
           case _ => PValue(new DieselExprException("Can't do filter on: " + av), WTypes.wt.EXCEPTION)
         }
       }
@@ -770,6 +779,7 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
             PValue(resArr, WTypes.wt.BOOLEAN)
           }
 
+          case WTypes.UNDEFINED if ctx.nonStrict => P.undefined(Diesel.PAYLOAD).value.getOrElse(null)
 //          case _ => throw new DieselExprException("Can't do exists on: " + av)
           case _ => PValue(new DieselExprException("Can't do exists on: " + av), WTypes.wt.EXCEPTION)
         }
@@ -778,7 +788,16 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
       case _ => PValue(new DieselExprException(s"[ERR unknown operator $op] in expression $toDsl"), WTypes.wt.EXCEPTION)
     }
 
-    P("", res.asString, res.cType).copy(value = Some(res))
+    // nothing matched... start yelling!!!
+
+    // null comes from undefined nonStrict, normally - so if strict, then blow...
+    if(res == null && ctx.nonStrict)
+      P.undefined("")
+    else if(res == null && ctx.isStrict)
+      throw new DieselExprException(s"[ERR null result $op] in expression $toDsl")
+    else
+      P("", res.asString, res.cType).copy(value = Option(res))
+
   }
 
   /** process a js operation like obja + objb */
