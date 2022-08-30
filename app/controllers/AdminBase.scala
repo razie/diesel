@@ -18,8 +18,8 @@ class AdminBase extends RazController {
   protected def forAdmin[T](body: => play.api.mvc.Result)(implicit request: Request[_]) = {
     val au = auth
     if (
-      (au.map(_.hasPerm(Perm.adminDb)) getOrElse false) ||
-         au.isDefined && Services.config.isLocalhost && Config.trustLocalUsers // trust any local user as if they're admin?
+      (au.map(_.isAdmin) getOrElse false) ||
+          au.isDefined && Services.config.isLocalhost && Config.trustLocalUsers // trust any local user as if they're admin?
     ) body
     else noPerm(HOME)
   }
@@ -53,8 +53,7 @@ class AdminBase extends RazController {
     implicit val errCollector = new VErrors()
     (for (
       au <- activeUser;
-      can <- au.hasPerm(Perm.adminDb) ||
-          Services.config.isLocalhost && au.hasPerm(Perm.Moderator) ||
+      can <- au.isAdmin ||
           Services.config.isLocalhost && Config.trustLocalUsers orErr "no permission"
     ) yield {
       f(au)(errCollector)(request)
@@ -72,7 +71,7 @@ class AdminBase extends RazController {
     (for (
       au <- req.au;
       isA <- checkActive(au);
-      can <- au.hasPerm(Perm.adminDb) || Services.config.isLocalhost && Config.trustLocalUsers orErr "no permission"
+      can <- au.isAdmin || Services.config.isLocalhost && Config.trustLocalUsers orErr "no permission"
     ) yield {
         f(req)
     }) getOrElse unauthorized("CAN'T")

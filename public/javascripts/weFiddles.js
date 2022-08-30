@@ -412,8 +412,8 @@ function processFinalEngineResult(input, id, response, compileOnly, lastTime, ne
   if(!compileOnly) {
     fiddle_showCapture(id, response);
 
-    if(Object.keys(response.baseCA).length > 0)  baseContentAssist = response.baseCA;
-    if(Object.keys(response.storyCA).length > 0) instContentAssist = concatCA(baseContentAssist, response.storyCA);
+    if(response.baseCA != null && Object.keys(response.baseCA).length > 0)  baseContentAssist = response.baseCA;
+    if(response.storyCA != null && Object.keys(response.storyCA).length > 0) instContentAssist = concatCA(baseContentAssist, response.storyCA);
 
     fiddle_setErrors(response);
 

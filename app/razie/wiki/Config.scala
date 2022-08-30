@@ -37,6 +37,9 @@ object Config extends WikiConfig {
   /** do we trust all local users, for somet things as if they're admins? */
   var trustLocalUsers = prop("diesel.trustLocalUsers", "true").toBoolean
 
+  /** do we trust local mods to be admin? default yes */
+  var trustLocalMods = prop("diesel.trustLocalMods", prop("diesel.trustLocalUsers", "true")).toBoolean
+
   WikiObservers mini {
     case WikiEvent(_, "WikiEntry", _, Some(x), _, _, _)
       if "Admin" == x.asInstanceOf[WikiEntry].category && WikiConfig.CFG_PAGES.contains(
