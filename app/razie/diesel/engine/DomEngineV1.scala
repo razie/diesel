@@ -568,7 +568,7 @@ class DomEngineV1(
         // todo inconsistency: I am running rules if no mocks fit, so I should also run
         //  any executor ??? or only the isMocks???
         (true /*!settings.mockMode || x.isMock*/) && x._2.test(a, n)
-      }.map { t =>
+      }.foreach { t =>
         val r = t._2
         mocked = true
 

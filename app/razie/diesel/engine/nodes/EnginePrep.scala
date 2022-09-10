@@ -206,6 +206,9 @@ object EnginePrep extends Logging {
                  useTheseStories: List[WikiEntry] = Nil,
                  endStory:Option[WikiEntry]=None,
                  addFiddles: Boolean = false) : DomEngine = {
+
+    var t1 = System.currentTimeMillis()
+
     val uid = au.map(_._id)
         .orElse(settings.configUserId)
         .getOrElse(new ObjectId())
@@ -271,6 +274,8 @@ object EnginePrep extends Logging {
       sectionsToPages(p, p.sections.filter(s => s.stype == "dfiddle" && (Array("spec") contains s.signature)))
     }
 
+    var t2 = System.currentTimeMillis()
+
     // finally build teh entire fom
 
     val dom = (specs ::: specFiddles).flatMap(p =>
@@ -279,6 +284,7 @@ object EnginePrep extends Logging {
       RDomain.empty
     )((a, b) => a.plus(b)).revise.addRoot
 
+    var t3 = System.currentTimeMillis()
 
     //    stimer snap "2_parse_specs"
 
@@ -288,6 +294,8 @@ object EnginePrep extends Logging {
     //    stimer snap "3_parse_story"
 
     val root = iroot.getOrElse(DomAst("root", "root"))
+
+    var t4 = System.currentTimeMillis()
 
     // start processing all elements
     val engine = DieselAppContext.mkEngine(dom, root, settings, ipage :: specs map WikiDomain.spec, description)
@@ -305,6 +313,15 @@ object EnginePrep extends Logging {
       // main story adds to root, no scope wrappers - this is globals
       addStoryWithFiddlesToAst(engine, List(we), false, false, false)
     }
+
+    var t5 = System.currentTimeMillis()
+
+    engine.root.prependAllNoEvents(List(
+      DomAst(
+        EInfo(s"Eng prep time total=${t5-t1} ", s"total=${t5-t1} topics=${t2-t1} domFromTopics=${t3-t2} msgCompile=${t4-t3} addStories=${t5-t4}"),
+        AstKinds.DEBUG)
+          .withStatus(DomState.SKIPPED)
+    ))
 
     engine
   }

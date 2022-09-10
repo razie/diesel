@@ -17,6 +17,7 @@ import razie.diesel.expr._
 import razie.diesel.model.DieselMsg
 import razie.diesel.model.DieselMsg.ENGINE.{DIESEL_MSG_ACTION, DIESEL_MSG_ATTRS, DIESEL_MSG_EA, DIESEL_MSG_ENTITY, DIESEL_SUMMARY}
 import razie.diesel.utils.DomCollector
+import razie.hosting.Website
 import razie.tconf.DSpec
 import razie.wiki.admin.GlobalData
 import razie.wiki.model.{WID, WikiEntry}
@@ -58,6 +59,9 @@ abstract class DomEngine(
   val id: String = new ObjectId().toString,
   val createdDtm: DateTime = DateTime.now
 ) extends Logging with DomEngineState with DomRoot with DomEngineExpander {
+
+  lazy val useTemplates = settings.realm
+      .flatMap(Website.forRealm(_)).exists(_.dieselRestTemplates)
 
   var addedStories:List[DSpec] = Nil
 

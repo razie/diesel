@@ -76,7 +76,8 @@ class DomEngECtx(val settings: DomEngineSettings, cur: List[P] = Nil, base: Opti
     overwritten.map(_.putAll(p)).getOrElse(super.putAll(p))
   }
 
-  override def root = overwritten.map(_.root).getOrElse(super.root)
+  // base may return null in some corner cases
+  override def root = overwritten.map(_.root).getOrElse(Option(super.root).getOrElse(this))
 
 
   override def exists(f: scala.Function1[P, scala.Boolean]): scala.Boolean =

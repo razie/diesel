@@ -219,7 +219,7 @@ class SimpleECtx(
     this
   }
 
-  override def root: DomEngECtx = base.map(_.root).getOrElse(this).asInstanceOf[DomEngECtx]
+  override def root: DomEngECtx = base.map(_.root).orNull
 
   override def toString = this.getClass.getSimpleName + ":cur==" +
       cur.mkString(",") + ":attrs==" + attrs.mkString(",") //+ base.map(_.toString).mkString

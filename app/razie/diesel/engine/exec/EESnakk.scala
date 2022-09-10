@@ -59,8 +59,7 @@ class EESnakk extends EExecutor("snakk") with Logging {
           {
             // big performance issue - looking up templates for each message, called from expandEMsg
 
-            val useTemplates = ! ctx.root.engine.get.settings.realm
-                .flatMap(Website.forRealm(_)).exists(_.dieselRestTemplates)
+            val useTemplates = Option(ctx.root).flatMap(_.engine).exists(_.useTemplates)
 
         useTemplates && ctx.findTemplate(m.entity + "." + m.met).exists(x=>
           (x.tags.contains("request") ||

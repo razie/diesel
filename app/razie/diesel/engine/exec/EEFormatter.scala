@@ -28,7 +28,7 @@ class EEFormatter extends EExecutor("formatter") {
   /** can I execute this task? */
   override def test(ast: DomAst, m: EMsg, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) = {
     // is there a "result" type template?
-    spec(m).exists(m => ctx.findTemplate(m.ea).exists(x =>
+    Option(ctx.root).flatMap(_.engine).exists(_.useTemplates) && spec(m).exists(m => ctx.findTemplate(m.ea).exists(x =>
       x.tags.contains(Diesel.PAYLOAD)
     ))
   }

@@ -361,6 +361,8 @@ class DomApi extends DomApiBase with Logging {
     */
   private def irunDomInt(path: String, useThisStory: Option[WID], useThisStoryPage: Option[WikiEntry] = None, useThisSpecPage: List[WikiEntry] = Nil) (implicit stok:RazRequest) : Future[Result] = {
 
+    var t1 = System.currentTimeMillis()
+
     // not always the same as the request...
     val reactor = stok.website.dieselReactor
     val website = Website.forRealm(reactor).getOrElse(stok.website)
@@ -405,6 +407,8 @@ class DomApi extends DomApiBase with Logging {
         List(page)
       }
 
+      var t2 = System.currentTimeMillis()
+
       // no need to log, in't traced in trace
       //ctrace << "irunDom.specs: \n  " + pages.map(_.wid.wpathFull).mkString("\n  ")
 
@@ -434,6 +438,8 @@ class DomApi extends DomApiBase with Logging {
         Seq("dslObject"), reactor)
       val idom = WikiDomain.domFrom(ipage).get.revise.addRoot
 
+      var t3 = System.currentTimeMillis()
+
       var res = ""
 
       val root = DomAst("root", "root")
@@ -450,6 +456,8 @@ class DomApi extends DomApiBase with Logging {
           useThisStoryPage).toList map WikiDomain.spec,
         DieselMsg.irunDom + path
       )
+
+      var t4 = System.currentTimeMillis()
 
       var str = engine.settings.postedContent.map(_.body).mkString
       if(str.length > 1000) str = str.take(1000) + "..."
@@ -495,6 +503,8 @@ class DomApi extends DomApiBase with Logging {
 
       engine.withInitialMsg(msg)
 
+      var t5 = System.currentTimeMillis()
+
       clog << s"irunDom: Message: $msg isPublic=$isPublic isTrusted=$isTrusted " +
           s"isApiKeyGood=$isApiKeyGood"
 
@@ -509,6 +519,13 @@ class DomApi extends DomApiBase with Logging {
         val RETURN501 = true // per realm setting?
 
         var body:String = ""
+
+        engine.root.prependAllNoEvents(List(
+          DomAst(
+            EInfo(s"irunInt prep time total=${t5-t1} ", s"total=${t5-t1} topics=${t2-t1} domFromTopics=${t3-t2} mkEngine=${t4-t3} msgFind=${t5-t4}"),
+            AstKinds.VERBOSE)
+              .withStatus(DomState.SKIPPED)
+        ))
 
         engine.process.map { engine =>
           cdebug << s"Engine done 1 ... ${engine.id}"
@@ -688,6 +705,8 @@ class DomApi extends DomApiBase with Logging {
             .withHeaders("diesel-reason" -> s"client requested dieselHttpResponse $code in realm ${stok.realm}")
       }.getOrElse {
 
+        var t1Start = System.currentTimeMillis()
+
         val requestContentType = stok.req.contentType
 
         val uid = stok.au.map(_._id).getOrElse(NOUSER)
@@ -755,10 +774,12 @@ class DomApi extends DomApiBase with Logging {
         ctrace << s"RUN_REST_REQUEST verb:$verb mock:$mock path:$path realm:${reactor}\nheaders: ${stok.req.headers}" +
             body
 
-        var description = s"DomApi.runRest:$verb:$path"
+        var description = s"runRest:$verb:$path"
         if (stok.req.rawQueryString.trim.length > 0) {
           description = description + s"?${stok.req.rawQueryString}"
         }
+
+        var t2StartPrepEngine = System.currentTimeMillis()
 
         var engine = EnginePrep.prepEngine(new ObjectId().toString,
           settings,
@@ -872,6 +893,8 @@ class DomApi extends DomApiBase with Logging {
         val desc = (DomAst(EInfo(postDetails1, postDetails2.toString), AstKinds.DEBUG).withStatus(DomState.SKIPPED))
 //      engine.root.append(desc)(engine)
 
+        var t3FoundMessage = System.currentTimeMillis()
+
         // is message visible?
         if (msg.isDefined && isMsgVisible(msg.get, reactor, website) || isMemberOrTrusted(msg, reactor,
           website) || isApiKeyGood) {
@@ -881,6 +904,15 @@ class DomApi extends DomApiBase with Logging {
 
             val msgAst = EnginePrep.addMsgToAst(engine.root, msg)
             DomCollector.collectAst("runRest", stok.realm, engine.id, stok.au.map(_.id), engine, stok.uri)
+
+            var t4StartProcess = System.currentTimeMillis()
+
+            engine.root.prependAllNoEvents(List(
+              DomAst(
+                EInfo(s"REST prep time total=${t4StartProcess-t1Start} ", s"total=${t4StartProcess-t1Start} parseREST=${t2StartPrepEngine-t1Start} findMsg=${t3FoundMessage-t2StartPrepEngine} prepEngine=${t4StartProcess-t3FoundMessage}"),
+                AstKinds.VERBOSE)
+                  .withStatus(DomState.SKIPPED)
+            ))
 
             // process message
             val res = engine.process.map { engine =>
@@ -892,7 +924,8 @@ class DomApi extends DomApiBase with Logging {
               // find output template and format output
               // todo this is weird - need something more regular...
               val templateResp =
-              engine.ctx.findTemplate(e + "." + a, "response").orElse {
+                  if(engine.useTemplates)
+                    engine.ctx.findTemplate(e + "." + a, "response").orElse {
                 // see if there is only one message child... and it has an output template - we'll use that one
                 val m = engine
                     .root
@@ -915,6 +948,7 @@ class DomApi extends DomApiBase with Logging {
                   engine.ctx.findTemplate(msg.entity + "." + msg.met, "response")
                 }
               }
+              else None
 
               // todo optimize
               //ctrace << engine.root.toString
@@ -1376,9 +1410,8 @@ class DomApi extends DomApiBase with Logging {
     var a = ""
     var m: Option[Map[String, String]] = None
 
-    //some realms may not want this
-    // todo default should be to not want this...
-    val useTemplates = engine.settings.realm.flatMap(Website.forRealm(_)).exists(_.dieselRestTemplates)
+    //some realms may not want this, it is quite heavy
+    val useTemplates = engine.useTemplates
 
     val direction = "request"
     val eapath = if (path.startsWith("/")) path.substring(1) else path

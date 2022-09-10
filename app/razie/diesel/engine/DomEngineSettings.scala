@@ -8,7 +8,6 @@ package razie.diesel.engine
 import model.User
 import org.bson.types.ObjectId
 import razie.tconf.TagQuery
-import razie.wiki.model.WikiUser
 import razie.wiki.{Config, Services}
 
 /** various settings for each wf engine, see http://specs.dieselapps.com/Topic/Flags_and_modes */
@@ -58,6 +57,7 @@ case class DomEngineSettings
   var sla: Option[String] = None,
 
   var simMode: Boolean = false
+
 ) {
   val node = DieselAppContext.localNode // todo shouldn't I remember the node? or is that the hostport?
 

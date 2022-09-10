@@ -27,7 +27,10 @@ import scala.collection.mutable.ListBuffer
  */
 trait ECtx extends ParmSource {
 
-  /** root domain - it normally is an instance of DomEngineCtx and you can get more details from it */
+  /** root domain - it normally is an instance of DomEngineCtx and you can get more details from it
+    *
+    * Warn: it may return null in some rare corner cases
+    */
   def root: DomEngECtx
   /** in a hierarchy, this is my fallback */
   def base: Option[ECtx]

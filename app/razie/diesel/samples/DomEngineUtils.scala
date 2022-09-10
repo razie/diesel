@@ -96,6 +96,7 @@ object DomEngineUtils {
   def createEngine(msg: String, specs: List[WID], stories: List[WID], settings: DomEngineSettings,
                    omsg: Option[DieselMsgString] = None, preppedCache:Option[CachedEngingPrep] = None): DomEngine = {
 
+    // starting
     val t1 = System.currentTimeMillis()
 
     val realm = settings.realm getOrElse specs.headOption.map(_.getRealm).mkString
@@ -172,8 +173,8 @@ object DomEngineUtils {
 
     engine.root.prependAllNoEvents(List(
       DomAst(
-        EInfo(s"Prep time total=${t4-t1} ", s"total=${t4-t1} topics=${t2-t1} domFromTopics=${t3-t2} msgCompile=${t4-t3}"),
-        AstKinds.DEBUG)
+        EInfo(s"Eng prep time total=${t4-t1} ", s"total=${t4-t1} topics=${t2-t1} domFromTopics=${t3-t2} msgCompile=${t4-t3}"),
+        AstKinds.VERBOSE)
           .withStatus(DomState.SKIPPED)
     ))
 
