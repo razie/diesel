@@ -522,7 +522,7 @@ class DomApi extends DomApiBase with Logging {
 
         engine.root.prependAllNoEvents(List(
           DomAst(
-            EInfo(s"irunInt prep time total=${t5-t1} ", s"total=${t5-t1} topics=${t2-t1} domFromTopics=${t3-t2} mkEngine=${t4-t3} msgFind=${t5-t4}"),
+            EInfo(s"Eng prep (irunInt) total=${t5-t1} ", s"total=${t5-t1} getTopics=${t2-t1} domFromTopics=${t3-t2} mkEngine=${t4-t3} msgFind=${t5-t4}"),
             AstKinds.VERBOSE)
               .withStatus(DomState.SKIPPED)
         ))
@@ -810,6 +810,8 @@ class DomApi extends DomApiBase with Logging {
         if (custom.isDefined)
           engine = custom.get.apply(engine)
 
+        var t2EndPrepEngine = System.currentTimeMillis()
+
         // find template matching the input message, to parse attrs
         val t@(trequest, e: String, a: String, matchedParms) = {
           val fea = findEA(path, engine)
@@ -909,7 +911,7 @@ class DomApi extends DomApiBase with Logging {
 
             engine.root.prependAllNoEvents(List(
               DomAst(
-                EInfo(s"REST prep time total=${t4StartProcess-t1Start} ", s"total=${t4StartProcess-t1Start} parseREST=${t2StartPrepEngine-t1Start} findMsg=${t3FoundMessage-t2StartPrepEngine} prepEngine=${t4StartProcess-t3FoundMessage}"),
+                EInfo(s"REST prep time total=${t4StartProcess-t1Start} ", s"total=${t4StartProcess-t1Start} parseREST=${t2StartPrepEngine-t1Start} engPrepTime=${t2EndPrepEngine - t2StartPrepEngine} findMsg=${t3FoundMessage-t2EndPrepEngine} prepEngine=${t4StartProcess-t3FoundMessage}"),
                 AstKinds.VERBOSE)
                   .withStatus(DomState.SKIPPED)
             ))

@@ -109,12 +109,14 @@ trait DomRoot {
     )
   }
 
+  /** set smart value in context */
   def setSmartValueInContext(
     a: DomAst,
     appendToCtx: ECtx,
     p: P
   ): Unit = setoSmartValueInContext(Some(a), appendToCtx, p)
 
+  /** set smart value in context, Optional AST */
   def setoSmartValueInContext(
     a: Option[DomAst],
     appendToCtx: ECtx,

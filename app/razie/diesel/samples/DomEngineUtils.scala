@@ -173,7 +173,7 @@ object DomEngineUtils {
 
     engine.root.prependAllNoEvents(List(
       DomAst(
-        EInfo(s"Eng prep time total=${t4-t1} ", s"total=${t4-t1} topics=${t2-t1} domFromTopics=${t3-t2} msgCompile=${t4-t3}"),
+        EInfo(s"Eng prep (crEng) total=${t4-t1} ", s"total=${t4-t1} getTopics=${t2-t1} domFromTopics=${t3-t2} msgCompile=${t4-t3}"),
         AstKinds.VERBOSE)
           .withStatus(DomState.SKIPPED)
     ))
