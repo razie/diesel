@@ -321,7 +321,10 @@ object EnginePrep extends Logging {
         EInfo(s"Eng prep (prepEng) total=${t5-t1} ", s"total=${t5-t1} getTopics=${t2-t1} domFromTopics=${t3-t2} msgCompile=${t4-t3} addStories=${t5-t4}"),
         AstKinds.DEBUG)
           .withStatus(DomState.SKIPPED)
+          .withDuration(t1, t5)
     ))
+
+    engine.prepTime = t5-t1
 
     engine
   }

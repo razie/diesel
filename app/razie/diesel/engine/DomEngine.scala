@@ -65,6 +65,8 @@ abstract class DomEngine(
 
   var addedStories:List[DSpec] = Nil
 
+  var prepTime:Long = 0L
+
   def getCachedPrep = CachedEngingPrep(
     dom,
     pages,
@@ -835,6 +837,9 @@ abstract class DomEngine(
       this.status = DomState.STARTED
       root.start(seq())
 
+      // adjust root time to include REST prep
+      root.tstart = root.tstart - prepTime
+
       // tricky - skipping all nodes from root,
       // but the test nodes before prepping the engine
       root
@@ -875,6 +880,9 @@ abstract class DomEngine(
       root.status = DomState.STARTED
       this.status = DomState.STARTED
       root.start(seq())
+
+      // adjust root time to include REST prep
+      root.tstart = root.tstart - prepTime
 
       // async start
       val msgs = findFront(root, prepRoot(root.childrenCol).toList).map { x =>

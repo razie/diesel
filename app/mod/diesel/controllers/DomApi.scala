@@ -523,9 +523,12 @@ class DomApi extends DomApiBase with Logging {
         engine.root.prependAllNoEvents(List(
           DomAst(
             EInfo(s"Eng prep (irunInt) total=${t5-t1} ", s"total=${t5-t1} getTopics=${t2-t1} domFromTopics=${t3-t2} mkEngine=${t4-t3} msgFind=${t5-t4}"),
-            AstKinds.VERBOSE)
+            AstKinds.TRACE)
               .withStatus(DomState.SKIPPED)
+              .withDuration(t1, t5)
         ))
+
+        engine.prepTime = t5-t1
 
         engine.process.map { engine =>
           cdebug << s"Engine done 1 ... ${engine.id}"
@@ -909,12 +912,25 @@ class DomApi extends DomApiBase with Logging {
 
             var t4StartProcess = System.currentTimeMillis()
 
-            engine.root.prependAllNoEvents(List(
+            // move the eng prep node under the REST prep node
+            val engprepi = engine.root.childrenCol.indexWhere { a =>
+              a.value.isInstanceOf[EInfo] && a.value.asInstanceOf[EInfo].msg.startsWith("Eng prep")
+            }
+
+            val engprep = if(engprepi >= 0) Option(engine.root.childrenCol.remove(engprepi)) else None
+
+            val restprep =
               DomAst(
                 EInfo(s"REST prep time total=${t4StartProcess-t1Start} ", s"total=${t4StartProcess-t1Start} parseREST=${t2StartPrepEngine-t1Start} engPrepTime=${t2EndPrepEngine - t2StartPrepEngine} findMsg=${t3FoundMessage-t2EndPrepEngine} prepEngine=${t4StartProcess-t3FoundMessage}"),
-                AstKinds.VERBOSE)
+                AstKinds.TRACE)
                   .withStatus(DomState.SKIPPED)
-            ))
+                  .withDuration(t1Start, t4StartProcess)
+            // note this will reflect better the durations. ALSO eng prep is included!!
+
+            engprep.foreach(x => restprep.childrenCol.append(x))
+
+            engine.root.prependAllNoEvents(List(restprep))
+            engine.prepTime = t4StartProcess - t1Start
 
             // process message
             val res = engine.process.map { engine =>
