@@ -748,10 +748,14 @@ trait DomParser extends ParserBase with ExprParser {
       optBlock ^^ /* single line body */
   {
     case k ~ name ~ attrs ~ optType ~ optLang ~ script ~ block => {
-      lazyNoCacheable { (current, ctx) =>
-//      lazystatic { (current, ctx) =>
+//      lazyNoCacheable { (current, ctx) =>
+      lazystatic { (current, ctx) =>
         // todo why is this nocache? it' doesn't run the JS, just defines it...
-        val f = F(name, optLang.getOrElse("js"), attrs, optType, "def", script.fold(ctx).s, block)
+          // NOTEs in case there's trouble:
+          // It works with NoCacheable but it's slower sometimes. IF NoCacheable, use this with fold.
+          // HOWEVER, the "script" is a StrAstNode which is static - no folding... so I'm not sure what the nocache did...
+//        val f = F(name, optLang.getOrElse("js"), attrs, optType, "def", script.fold(ctx).s, block)
+        val f = F(name, optLang.getOrElse("js"), attrs, optType, "def", script.s, block)
         f.withPos(mkPos(ctx, k))
         collectDom(f, ctx.we)
         StrAstNode(f.toHtml)
