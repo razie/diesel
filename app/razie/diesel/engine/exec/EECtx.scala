@@ -312,7 +312,8 @@ class EECtx extends EExecutor(EECtx.CTX) {
 //            }
         }
 
-        Nil //res
+        // todo If I return Nil here, there will be a regression issue with booleans in "specs"
+        res
       }
 
       case "setAll" => {

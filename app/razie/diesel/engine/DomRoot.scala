@@ -124,6 +124,13 @@ trait DomRoot {
   ) = {
 
     val aei = (new SimpleExprParser).parseIdent(p.name)
+
+    // todo complete this optimization - does it add big gain?
+    // todo did not have apetite for risk atm,
+//    val aei =
+//      if(p.name.contains(".") || p.name.contains("[")) (new SimpleExprParser).parseIdent(p.name)
+//      else Option(AExprIdent(p.name))
+
     if (aei.isEmpty) {
       throw new DieselExprException("Left side not qualified ID:" + p.name)
     }

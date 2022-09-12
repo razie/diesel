@@ -612,8 +612,11 @@ class DomEngineV1(
 
         /* make any generated activities dependent so they run in sequence
         * todo how to hangle decomp to parallel? */
-        if (findFlows(a).isEmpty && news.size > 1) news.drop(1).foldLeft(news.head)((a, b) => {
-          b.withPrereq(List(a.id))
+        if (n.ea != "ctx.set" && findFlows(a).isEmpty && news.size > 1) news.drop(1).foldLeft(news.head)((a, b) => {
+//          if(!DomState.isDone(b.status) && !DomState.isDone(a.status)) // optimization - only add depy if needed
+            b.withPrereq(List(a.id))
+//          else
+//            b
         })
 
         newNodes = newNodes ::: news
