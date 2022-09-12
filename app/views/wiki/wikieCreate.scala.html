@@ -1,13 +1,17 @@
 @**************
 when creating a new topic with category but no name
 **************@
-@(cat: String, tags:String)(implicit stok: controllers.StateOk)
+@(cat: String, tags:String, msg:String="")(implicit stok: controllers.StateOk)
 
   @stok.title("Creating a " + cat)
 
   <br>
   Creating a new <em>@cat</em> @if(tags.length > 0) {with tags: @tags} ...
   <p></p>
+
+  @if(msg.length > 0) {
+    <div class="label label-danger">@msg </div><p></p>
+  }
 
   @helper.form(action=routes.Wikie.addWithName(cat, tags), 'class -> "form-inline") {
   <div class="alert alert-success col-md-12">

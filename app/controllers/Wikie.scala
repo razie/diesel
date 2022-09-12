@@ -490,7 +490,8 @@ class Wikie @Inject()(config: Configuration) extends WikieBase {
                 else w.ver + 1 // remote overwrites local, just keep increasing local ver
               );
               nochange <- (w.content != remote.content || w.tags != remote.tags || w.props != remote.props || w
-                  .markup != remote.markup || w.name != remote.name || w.category != remote.category) orErr ("no change");
+                  .markup != remote.markup || w.name != remote.name || w.category != remote.category ||
+                  w.realm != remote.realm) orErr ("no change");
               newVer <- Some(w.copy(
                 category = remote.category,
                 name = remote.name,
@@ -956,22 +957,31 @@ class Wikie @Inject()(config: Configuration) extends WikieBase {
       },
     {
       case name: String => {
-        WikiDomain(realm).zEnds(cat, "Template").headOption.map { t =>
+
+        // todo nice
+        if(CAT.unapply(cat).map(_.cat).mkString == "Category" && name.contains(".")) {
           ROK.s apply { implicit stok =>
-            (views.html.wiki.wikieAddWithSpec(cat, name, "Template", t, realm))}
-        } orElse
-        WikiDomain(realm).zEnds(cat, "StaticTemplate").headOption.map { t =>
-          Redirect(routes.Wikie.addWithSpec2(cat, name, t, "Template", realm))
-        } orElse
-        Wikis(realm).category(cat).filter(_.sections.find(_.name == "form").isDefined).map{we=>
-            Redirect(routes.Wikie.addWithSpec2(cat, name, we.wid.wpath, "Template", realm))
-        } orElse
-        WikiDomain(realm).rdom.assocsWhereTheyHaveRole(cat, "Spec").headOption.map { t =>
-          ROK.s apply { implicit stok =>
-            (views.html.wiki.wikieAddWithSpec(cat, name, "Spec", t, realm))
+            views.html.wiki.wikieCreate(cat, tags, "Category name cannot contain '.' !")
           }
-        } getOrElse
-          Redirect(routes.Wikie.wikieEditNew(WID(cat, name).r(realm), "", tags))
+        } else {
+          WikiDomain(realm).zEnds(cat, "Template").headOption.map { t =>
+            ROK.s apply { implicit stok =>
+              (views.html.wiki.wikieAddWithSpec(cat, name, "Template", t, realm))
+            }
+          } orElse
+              WikiDomain(realm).zEnds(cat, "StaticTemplate").headOption.map { t =>
+                Redirect(routes.Wikie.addWithSpec2(cat, name, t, "Template", realm))
+              } orElse
+              Wikis(realm).category(cat).filter(_.sections.find(_.name == "form").isDefined).map { we =>
+                Redirect(routes.Wikie.addWithSpec2(cat, name, we.wid.wpath, "Template", realm))
+              } orElse
+              WikiDomain(realm).rdom.assocsWhereTheyHaveRole(cat, "Spec").headOption.map { t =>
+                ROK.s apply { implicit stok =>
+                  (views.html.wiki.wikieAddWithSpec(cat, name, "Spec", t, realm))
+                }
+              } getOrElse
+              Redirect(routes.Wikie.wikieEditNew(WID(cat, name).r(realm), "", tags))
+        }
       }
     })
   }

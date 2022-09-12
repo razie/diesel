@@ -56,6 +56,8 @@ class AdminImport extends AdminBase with Logging {
     try {
       val fname = wid.wpath.replaceAllLiterally(":", ".")
 
+      clog << "fname: " + fname
+
       val meta = io.Source.fromFile(s"$source/${fname}.meta.txt").mkString
       val contents = io.Source.fromFile(s"$source/${fname}.txt").mkString
 
@@ -65,7 +67,7 @@ class AdminImport extends AdminBase with Logging {
         val remote = grater[WikiEntry].asObject(dbo)
         Left((remote -> meta))
       } else {
-        Right("Couldnot read remote content from: " + source)
+        Right("Couldnot read local file content from: " + s"$source/${fname}.meta.txt")
       }
     } catch {
       case x: Throwable => {
@@ -349,7 +351,14 @@ class AdminImport extends AdminBase with Logging {
       val au = importDbUser(stok)
 
       val folder = stok.fqhParm("folder").get
-      val wlist = Source.fromFile(s"$folder/welist.txt").getLines
+//      val wlist = Source.fromFile(s"$folder/welist.txt").getLines
+
+      val wlist = new File(folder)
+          .listFiles()
+          .filter(f => f.isFile && f.getName.endsWith(".meta.txt"))
+          .map(_.getName.replaceAllLiterally(".meta.txt", ""))
+          .map(_.replaceFirst("(.*[.][^.]+)([.])(.*)", "$1:$3")) // we can't have categories with a dot...
+          .toList
 
       import scala.concurrent.ExecutionContext.Implicits.global
       val res = (
@@ -409,7 +418,14 @@ class AdminImport extends AdminBase with Logging {
 
       val stok = request
       val folder = stok.fqhParm("folder").get
-      val wlist = Source.fromFile(s"$folder/welist.txt").getLines
+
+//      val wlist = Source.fromFile(s"$folder/welist.txt").getLines
+      val wlist = new File(folder)
+          .listFiles()
+          .filter(f => f.isFile && f.getName.endsWith(".meta.txt"))
+          .map(_.getName.replaceAll(".meta.txt", ""))
+          .toList
+
       val tot = "%4d" format wlist.size
 
       import scala.concurrent.ExecutionContext.Implicits.global
@@ -513,7 +529,12 @@ class AdminImport extends AdminBase with Logging {
 
     // this list also includes the mixins, no need to get them elsewhere
 
-    val wlist = Source.fromFile(s"$folder/welist.txt").getLines
+    //val wlist = Source.fromFile(s"$folder/welist.txt").getLines
+    val wlist = new File(folder)
+        .listFiles()
+        .filter(f => f.isFile && f.getName.endsWith(".meta.txt"))
+        .map(_.getName.replaceAll(".meta.txt", ""))
+        .map(_.replaceFirst("(.*[.][^.]+)([.])(.*)", "$1:$3")) // we can't have categories with a dot...
 
     var ldest = wlist.toList
 
@@ -647,7 +668,7 @@ class AdminImport extends AdminBase with Logging {
     razie.db.tx("importdb", email) { implicit txn =>
       ldest.foreach { wid =>
 
-        log("IMPORTING: " + wid.wpath)
+        log("IMPORTING2: " + wid.wpath)
 
         AdminDiff.getRemoteWE(source, wid)(au).fold({ t =>
           // success
