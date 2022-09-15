@@ -149,7 +149,7 @@ class WikiComments extends RazController with Logging {
         _.findWikiEntry())) orErr "comments have been disabled for this topic";
       can <- canRemove(comm, auth) orErr ("Only admins can remove comments")
     ) yield {
-        comm.delete
+        comm.delete(au)
         redirect(pid, role)
     }) getOrElse
       unauthorized()
@@ -189,7 +189,7 @@ class WikiComments extends RazController with Logging {
               can <- canEdit(comm, auth) orErr ("can only edit your comments")
             ) yield {
               if (con.length > 0)
-                comm.update(con, None, au)
+                comm.update(con, Option(newlink), au)
               redirect(pid, role)
             }) getOrElse
               unauthorized()

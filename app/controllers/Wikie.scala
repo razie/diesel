@@ -1115,7 +1115,7 @@ class Wikie @Inject()(config: Configuration) extends WikieBase {
               done = true
             })
             Comments.findForWiki(w._id).toList.foreach(cs => {
-              cs.delete
+              cs.delete(au)
             })
             WikiCount.findOne(w._id).foreach(_.delete)
             // can only change label of links OR if the formatted name doesn't change

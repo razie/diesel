@@ -43,9 +43,9 @@ case class CommentStream(
   }
 
   /** delete this thread and all comments */
-  def delete = {
+  def delete(au:WikiUser) = {
     Audit.logdb(Comments.AUDIT_COMMENT_UPDATED, "\nDELETED:\n")
-    comments foreach (_.delete)
+    comments foreach (_.delete(au))
     RDelete.noAudit[CommentStream](this)
   }
 
@@ -77,7 +77,7 @@ case class Comment (
   def id = _id.toString
 
   def create (user:WikiUser) = {
-    Audit.logdb(Comments.AUDIT_COMMENT_CREATED, "BY " + user.userName + " " + userId + " parent:" + parentId, "\nCONTENT:\n" + this)
+    Audit.logdb(Comments.AUDIT_COMMENT_CREATED, s"BY ${user.userName} ${user.userName} parent: $parentId", "\nCONTENT:\n" + this)
     RCreate.noAudit[Comment](this)
   }
 
@@ -92,13 +92,15 @@ case class Comment (
   //todo keep track of older versions and who modifies them - comment-history
   def update(newContent: String, newLink:Option[String], user:WikiUser) = {
     val u = this.copy (content=newContent, link=newLink, updDtm=DateTime.now)
-    Audit.logdb(Comments.AUDIT_COMMENT_UPDATED, "BY " + user.userName + " " + userId + " parent:" + parentId, "\nCONTENT:\n" + u)
+    Audit.logdb(Comments.AUDIT_COMMENT_UPDATED, s"BY ${user.userName} ${ulink(userId)} parent: $parentId link: $newLink", "\nCONTENT:\n" + u)
     RUpdate.noAudit[Comment](Map("_id" -> _id), u)
     //todo moderation stream - send to a stream of content changes for bots / moderators
   }
 
-  def delete = {
-    Audit.logdb(Comments.AUDIT_COMMENT_UPDATED, "\nDELETED:\n")
+  def ulink(id:ObjectId) = s"https://specs.dieselapps.com/razadmin/user/$id"
+
+  def delete(user:WikiUser) = {
+    Audit.logdb(Comments.AUDIT_COMMENT_UPDATED, s"DELETED BY: ${user.userName}  ${ulink(userId)}\n")
     RDelete.noAudit[Comment](this)
     // todo if last, should also remove the comment stream? or maybe not
     //todo moderation stream - send to a stream of content changes for bots / moderators
