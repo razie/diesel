@@ -8,7 +8,8 @@ package razie.wiki.admin
 
 import java.util.concurrent.atomic.AtomicLong
 import java.util.function.LongUnaryOperator
-import org.joda.time.DateTime
+import org.joda.time.format.ISOPeriodFormat
+import org.joda.time.{DateTime, Duration}
 import razie.db.RazMongo
 import razie.diesel.DieselRateLimiter
 import razie.diesel.engine.DieselAppContext
@@ -114,6 +115,7 @@ object GlobalData {
         "dieselEnginesTotal" -> GlobalData.dieselEnginesTotal.get(),
         "dieselEnginesActive" -> GlobalData.dieselEnginesActive.get(),
         "servedPages" -> GlobalData.servedRequests.get(),
+        "runningFor" -> ISOPeriodFormat.alternateExtended.print(new Duration(GlobalData.startedDtm, DateTime.now).toPeriod),
         "startedDtm" -> GlobalData.startedDtm,
         "clusterStatus" -> GlobalData.clusterStatus,
         "sendEmailCurCount" -> SendEmail.curCount,
