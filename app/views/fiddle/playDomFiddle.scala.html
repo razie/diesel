@@ -531,6 +531,7 @@ var runpill_@id = function(id) {
 
 /** run the fiddle */
 var runpill2_@id = function(id, compileOnly, forceRT, next) {
+  var noSim = !(forceRT || false);
   runFiddleStoryUpdated({
     url: '/diesel/fiddle/fiddleStoryUpdated/'+id+'?@Html(mod.diesel.controllers.SFiddles.qtourl(args))',
     data: {

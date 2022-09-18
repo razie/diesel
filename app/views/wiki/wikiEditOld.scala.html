@@ -107,7 +107,13 @@ Implicit.flash().put("bibi", "haha")
             @util.notesmsgDiv("notesmsg")
           </h2>
 
-@helper.form(action=routes.Wikie.wikieEdited(wid.formatted), 'id -> "editForm", 'class -> "well") {
+@helper.form(
+//  action=routes.Wikie.wikieEdited(wid.formatted)
+//      .withQuery(stok.query.map(t=>s"${t._1}=${t._2}").mkString("?", "&", "")),
+  action=new Call("POST", s"/wikie/edited/${wid.wpathFull}" +
+      (stok.query.map(t=>s"${t._1}=${t._2}").mkString("?", "&", ""))),
+  'id -> "editForm",
+  'class -> "well") {
 <div class="row">
 @*******
 PROBLEM: many places use label as name... via Wikis.formatName

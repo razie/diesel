@@ -771,7 +771,10 @@ class Wikie @Inject()(config: Configuration) extends WikieBase {
                 }
                 Services ! WikiAudit(WikiAudit.UPD_EDIT, w.wid.wpathFull, Some(au._id), None, Some(we), Some(w))
 
-              Redirect(controllers.WikiUtil.wr(we.wid, getRealm(), true)).flashing("count" -> "0")
+              Redirect(
+                controllers.WikiUtil.wr(we.wid, getRealm(), true),
+                stok.queryString)
+                  .flashing("count" -> "0")
             }) getOrElse
                 Msg("Can't edit topic: " + errCollector.mkString, wid)
 //              Redirect(controllers.WikiUtil.wr(wid, getRealm(), false)) // no change
