@@ -146,7 +146,7 @@ abstract class WikiConfig {
 
   // todo is only used for auth on the support email when sending - to configure password per reactor
   /** support email */
-  def SUPPORT = prop("wiki.supportEmail", "support@racerkidz.com")
+  def SUPPORT = prop("wiki.supportEmail", "support@razie.com")
 
   /** admin email */
   final val adminEmail = prop("wiki.adminEmail", "razie@razie.com")
