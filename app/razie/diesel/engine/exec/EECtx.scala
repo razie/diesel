@@ -436,9 +436,11 @@ class EECtx extends EExecutor(EECtx.CTX) {
 
                   if (P.isSimpleNonStringType(x)) {
                     P.asString(x)
+                     .replaceAll(separator, " ") // sort of escape , in value field
                   } else if (P.isArrayOfSimpleType(x)) {
                     val s = P.asSimpleString(x)
-                    s//.replaceFirst("\"", "")
+                    s  //.replaceFirst("\"", "")
+                        .replaceAll(separator, " ") // sort of escape , in value field
                   } else {
                     "\"" + {
                       val s = P.asSimpleString(x)
