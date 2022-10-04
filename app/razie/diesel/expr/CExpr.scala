@@ -79,8 +79,9 @@ case class CExpr[T](ee: T, ttype: WType = WTypes.wt.EMPTY) extends Expr {
             })
           } catch {
             case e: Exception =>
-              throw new DieselExprException(s"REGEX err for $es - " + e.getMessage)
+              val t = new DieselExprException(s"REGEX err for $es - " + e.getMessage)
                   .initCause(e)
+              razie.Log.log(s"WHILE processing URL: $nes", t)
           }
 
           nes = s1

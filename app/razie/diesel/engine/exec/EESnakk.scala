@@ -708,7 +708,7 @@ object EESnakk {
         )
       })
     } catch {
-      case e : Exception => throw new IllegalArgumentException(s"REGEX err for $url ").initCause(e)
+      case e : Exception => throw new IllegalArgumentException(s"REGEX err2 for $url ").initCause(e)
     }
 
     u
