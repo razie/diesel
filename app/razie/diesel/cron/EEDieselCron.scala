@@ -19,6 +19,7 @@ import razie.diesel.engine.{DomAst, DomEngineSettings}
 import razie.diesel.expr.ECtx
 import razie.diesel.model.{DieselMsg, DieselMsgString, DieselTarget}
 import razie.tconf.TagQuery
+import scala.collection.concurrent.TrieMap
 import scala.concurrent.duration.Duration
 
 /** actual share table. Collection model:
@@ -129,12 +130,24 @@ class EEDieselCron extends EExecutor("diesel.cron") {
 
       case "diesel.cron.list" => {
         val name = ctx.get("name").mkString
+        val rrealm = ctx.get("name").mkString
+
+        // admin can see all
+        var rfilter = (x:(String,DomSchedule)) => x._2.realm == realm || ctx.root.settings.user.exists(_.isAdmin)
+
+        // if you want to see specifics
+        if(ctx.get("realm").isDefined && ctx.root.settings.user.exists(_.isAdmin))
+          rfilter = (x:(String,DomSchedule)) => x._2.realm == rrealm || "*" == rrealm
 
         cdebug << "EEDiselCron: list 1"
         val res = EVal(P.fromTypedValue(
           razie.diesel.Diesel.PAYLOAD,
           // need to filter by realm
-          DieselCron.withRealmSchedules(_.filter(_._2.realm == realm).filter(x=> "" == name || name == x._1).map(o=> o._2.toJson).toList)
+          DieselCron.withRealmSchedules(
+            _.filter(rfilter)
+                .filter(x=> "" == name || "*" == name || name == x._1)
+                .map(o=> o._2.toJson).toList
+          )
         )) :: Nil
         cdebug << "EEDiselCron: list 2"
         res
