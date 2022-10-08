@@ -510,6 +510,7 @@ class DomEngineV1(
             var reason = s"roles=${eroles.mkString} "
 
             if(!matched) {
+              // one more chance, look for masterRole/masterClient access to restricted rules
               val oauth = Website.getRealmPropAsP(this.ctx.root.settings.realm.mkString, "oauth")
                   .map(_.getJsonStructure)
               val mr = oauth.get.get("masterRole").map(_.toString).mkString.trim
@@ -533,6 +534,11 @@ class DomEngineV1(
                   if(mc.nonEmpty) matched = uclient equals mc
                 }
               }
+            }
+
+            if(!matched) {
+              // super admins can call APIs
+              matched = this.settings.user.exists(_.isAdmin)
             }
 
             if(! matched)
@@ -668,7 +674,8 @@ class DomEngineV1(
     }
 
       // nothing matched ?
-      if(!mocked && newNodes.isEmpty) {
+      // todo can't look at newNodes.isEmpty - some insert like TRACES etc - no decomp msg/vals
+      if(!mocked && !ruled /*newNodes.isEmpty*/) {
         // change the nodes' color to warning and add an ignorable warning
         import EMsg._
         // todo this is bad because I change the message - is there impact to persistence of events and DomAsts ?
@@ -681,23 +688,31 @@ class DomEngineV1(
           //}
         }
 
-        // not for internal diesel messages
-        val ms = n.entity + "." + n.met
-        if(!ms.startsWith("diesel.")) {
-          val cfg = this.pages.map(_.specRef.wpath).mkString("\n")
-          evAppChildren(a, DomAst(
-            EWarning(
-              "No rules, mocks or executors match for " + in.toString,
-              s"Review your engine configuration (blender=${settings.blenderMode}, mocks=${settings.blenderMode}, drafts=${settings.blenderMode}, tags), " +
-                  s"spelling of messages or rule clauses / pattern matches\n$cfg",
-              DieselMsg.ENGINE.ERR_NORULESMATCH),
-            AstKinds.DEBUG
-          ))
-        }
+        addNoRules(in, n, a)
       }
     }
 
     (newNodes, skippedNodes)
+  }
+
+  private def addNoRules(in:EMsg, n:EMsg,a:DomAst) = {
+    // not for internal diesel messages - such as before/after/save etc
+    val ms = n.entity + "." + n.met
+    if(!ms.startsWith("diesel.")) {
+      val cfg = this.pages.map(_.specRef.wpath).mkString("\n")
+      evAppChildren(a, DomAst(
+        EWarning(
+          "No rules, mocks or executors match for " + in.toString,
+          s"Review your engine configuration (blender=${settings.blenderMode}, mocks=${settings.blenderMode}, drafts=${settings.blenderMode}, tags), " +
+              s"spelling of messages or rule clauses / pattern matches\n$cfg",
+          DieselMsg.ENGINE.ERR_NORULESMATCH),
+        AstKinds.GENERATED
+      ))
+
+      // in strict mode, blow up...
+      if(ctx.root.strict) throw new DieselExprException("No rules, mocks or executors match for " + in.toString)
+
+    }
   }
 
   /** reused - execute a rule */
@@ -1396,8 +1411,9 @@ class DomEngineV1(
 
       } else if (ea == DieselMsg.ENGINE.STRICT) { //========================
 
-        ctx.root.strict = true
-        evAppChildren(a, DomAst(EInfo("strict is true"), AstKinds.TRACE))
+        val p = in.attrs.headOption.map(_.calculatedTypedValue.asBoolean).getOrElse(true)
+        ctx.root.strict = p
+        evAppChildren(a, DomAst(EInfo(s"strict is $p"), AstKinds.TRACE))
         true
 
       } else if (ea == DieselMsg.ENGINE.NON_STRICT) { //========================
