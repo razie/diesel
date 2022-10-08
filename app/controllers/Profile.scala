@@ -169,11 +169,12 @@ class Profile @Inject()(config: Configuration, adminImport: AdminImport) extends
           } getOrElse {
             Audit.wrongLogin(reg.email, reg.password, countAttempts(reg.email))
 
-            clog << "should I download remote user? isLocal: " << Services.config.isLocalhost
+            clog << s"should I download remote user? isLocalhost: ${Services.config.isLocalhost}"
 
             val res = if (
               Services.config.isLocalhost &&
                 adminImport.isRemoteUser(reg.email, reg.password)) {
+
 
               adminImport.importRemoteUser(reg.email, reg.password)
               AttemptCounter.success(reg.email)
@@ -329,7 +330,7 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
         Users.findUserByEmailDec((email)) orElse
           (Users.findUserNoCase(email))
       if(!u.isDefined) {
-        cdebug << "should I download remote user? isLocal: " + Services.config.isLocalhost
+        cdebug << "should I download remote user? isLocalhost: " + Services.config.isLocalhost
         if(
           Services.config.isLocalhost &&
           adminImport.isRemoteUser(email, pass)) {

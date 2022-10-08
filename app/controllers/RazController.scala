@@ -407,7 +407,7 @@ ${errCollector.mkString}
   def FAUR(msg:String, isApi:Boolean=false)(f: RazRequest => Option[Result]) : Action[AnyContent] = Action { implicit request =>
     val req = razRequest
     (for (
-      au <- activeUser(req.ireq, req.errCollector).filter(_.isInRealm(req.realm));
+      au <- req.au.filter(_.isInRealm(req.realm));
       _ <- Some(au).filter(deemedMemberOfRealm(_, req.realm))
     ) yield {
         if(msg.nonEmpty) cdebug << "START_FAU "+msg
@@ -429,12 +429,12 @@ ${errCollector.mkString}
     FAU(""){u:User => e:VErrors => r:Request[AnyContent] => Option(f(u)(e)(r))}
 
   /** for active user */
-  def FAU(msg:String, isApi:Boolean=false)(f: User => VErrors => Request[AnyContent] => Option[Result]) : Action[AnyContent] = Action { implicit request =>
+  def FAU(msg:String, isApi:Boolean=false, checkRealm:Boolean=true)(f: User => VErrors => Request[AnyContent] => Option[Result]) : Action[AnyContent] = Action { implicit request =>
     val req = razRequest
     implicit val errCollector = new VErrors()
     (for (
       au <- activeUser;
-      _ <- Some(au).filter(_.isInRealm(req.realm))
+      _ <- Some(au).filter(x=> !checkRealm || x.isInRealm(req.realm))
     ) yield {
       if(msg.nonEmpty) cdebug << "START_FAU "+msg
       val temp = f(au)(errCollector)(request)
@@ -454,7 +454,7 @@ ${errCollector.mkString}
     implicit val stok = new RazRequest(request)
     (for (
       au <- activeUser(stok.ireq, stok.errCollector);
-      _ <- Some(au).filter(!checkRealm || deemedMemberOfRealm(_, stok.realm))
+      _ <- Some(au).filter(!checkRealm || deemedMemberOfRealm(_, stok.realm)) // MUST USE DEEMED here - see AdminImport.isu
     ) yield f(stok)
       ) getOrElse {
       val more = Website(request).flatMap(_.prop("msg.noPerm")).flatMap(WID.fromPath).flatMap(_.content).mkString
