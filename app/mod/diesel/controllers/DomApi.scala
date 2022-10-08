@@ -38,7 +38,7 @@ import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future}
 import scala.util.Try
 import scalaz.\&/.That
-
+import RazRequestUtils.printRequest
 /**
   * the incoming message / request
   */
@@ -659,26 +659,6 @@ class DomApi extends DomApiBase with Logging {
     }
   }
 
-  /** request to string */
-  def printRequest(implicit request: Request[_], rawBody: String = "") = {
-    implicit val stok = razRequest
-
-    // make the diesel.rest message
-    val qparams = DomEngineHelper.parmsFromRequestHeader(request)
-    val hparams = DomEngineHelper.headers(request)
-
-    val m = Map(
-      "path" -> request.path,
-      "verb" -> request.method,
-      "queryString" -> URLDecoder.decode(request.rawQueryString),
-      "headers" -> hparams,
-      "queryParams" -> qparams
-    )
-
-    razie.js.tojsons(m) +
-        s"\n***************** body (${Enc.niceNumber(rawBody.length)} length) *****************\n" +
-        rawBody
-  }
 
   /**
     * deal with a REST request. use the in/out for message
@@ -1685,7 +1665,13 @@ class DomApi extends DomApiBase with Logging {
                 // user comes from masterclient
                 if(mc.nonEmpty) matched = uclient equals mc
               }
+
             }
+          }
+
+          if(!matched) {
+            // super admins can call APIs
+            matched = stok.au.exists(_.isAdmin)
           }
 
           if(! matched)
@@ -1975,6 +1961,29 @@ class DomApi extends DomApiBase with Logging {
         Ok("Msg not found")
       }
     )
+  }
+
+}
+
+object RazRequestUtils {
+  /** request to string */
+  def printRequest(implicit request: RequestHeader, rawBody: String = "") = {
+
+    // make the diesel.rest message
+    val qparams = DomEngineHelper.parmsFromRequestHeader(request)
+    val hparams = DomEngineHelper.headers(request)
+
+    val m = Map(
+      "path" -> request.path,
+      "verb" -> request.method,
+      "queryString" -> URLDecoder.decode(request.rawQueryString),
+      "headers" -> hparams,
+      "queryParams" -> qparams
+    )
+
+    razie.js.tojsons(m) +
+        s"\n***************** body (${Enc.niceNumber(rawBody.length)} length) *****************\n" +
+        rawBody
   }
 
 }
