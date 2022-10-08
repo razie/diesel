@@ -145,16 +145,19 @@ class AdminImport extends AdminBase with Logging {
   private def isDbEmpty: Boolean = RMany[User]().size <= 0
 
   /** is current user active here - used with basic auth from remote, to verify before import */
-  def isu(key: String) = FAUR {
+  def isu(key: String) = FAUPRAPI(isApi=true, checkRealm=true) {
+    // todo can't check realm as they all come to www.diesel now
     implicit request =>
-      Ok("yes") // getting here means he's auth
+      if(request.au.isDefined) Ok("yes") // getting here means he's auth
+      else Unauthorized(s"Not of this realm (${request.realm}) !")
   }
 
   /** get the profile of the current user, encrypted. special care taken to not reveal encrypted attributes
     *
     * this should be safe, as we're only returning the current user, meaning he/she was auth
     */
-  def getu(key: String) = FAU {
+  def getu(key: String) = FAU("getu", isApi=false, checkRealm=false) {
+        // todo can't check realm as they all come to www.diesel now
     implicit au =>
       implicit errCollector =>
         implicit request =>
@@ -166,7 +169,7 @@ class AdminImport extends AdminBase with Logging {
 
           val j = grater[PU].asDBObject(pu).toString
 
-          Ok(j).as("application/json")
+          Some(Ok(j).as("application/json"))
   }
 
   /** is this a remote user - email and password match something on remote? */
@@ -179,7 +182,7 @@ class AdminImport extends AdminBase with Logging {
 
     // first get the user and profile and create them locally
     Try {
-      clog << s"ADMIN_isRemoteUser $source"
+      clog << s"ADMIN_isRemoteUser $source $email"
       val u = body(url(s"$source/dmin-isu/$key", method = "GET").basic("H-" + email, "H-" + pwd))
       clog << s"  Response: $u"
       u.contains("yes")
