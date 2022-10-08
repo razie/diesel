@@ -18,7 +18,7 @@ import razie.db._
 import razie.wiki.{Config, Enc, Services}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
-import razie.clog
+import razie.{cdebug, clog}
 import razie.hosting.Website
 
 /** a prepared email to send - either send now, later, backup etc */
@@ -156,6 +156,7 @@ object SendEmail extends razie.Logging {
     val session = if(test) {
 
       props.put("mail.smtp.host", "localhost");
+      clog << "SMTP_PROPS for test: " << props.toString
       javax.mail.Session.getInstance(props,
         new SMTPAuthenticator("your@email.com", "big secret"))
 
@@ -165,6 +166,7 @@ object SendEmail extends razie.Logging {
       props.put("mail.smtp.starttls.enable", "true");
       props.put("mail.smtp.host", "smtp.gmail.com");
       props.put("mail.smtp.port", "587");
+      clog << "SMTP_PROPS for default: " << props.toString
       javax.mail.Session.getInstance(props,
         new SMTPAuthenticator("your@email.com", "big secret"))
     }
@@ -419,23 +421,22 @@ object SendEmail extends razie.Logging {
 
           val website = mailSession.realm.flatMap(Website.forRealm).getOrElse(Website.dflt)
           val user = website.prop("mail.smtp.user").getOrElse(Services.config.SUPPORT)
-          val server = website.prop("mail.smtp.host")
+          val server = mailSession.session.getProperty("mail.smtp.host")
 
           val SEQ = Seq(
             "to:" + e.to,
             "from:" + e.from,
+            "realm:" + mailSession.realm,
             "server:" + server,
             "acct:" + user,
             "subject:" + e.subject,
             "body=" + Enc.escapeHtml(e.html)
           )
 
-
           try {
             val message: MimeMessage = mkMsg(e, mailSession)
 
-            clog << "EMAIL_SENDING: " + Seq("to:" + e.to, "from:" + e.from, "subject:" + e.subject,
-              "body=" + e.html).mkString("\n")
+            clog << "EMAIL_SENDING: " + SEQ.mkString("\n")
 
             // todo one way to speed it up is to send one email to many people instead of individualized emails
             val t1 = System.currentTimeMillis()
