@@ -86,6 +86,7 @@ case class EPostgressConnector (
   }
 
   def rkey(realm:String, name:String) = name + "." + realm
+
   /** it's optimized with a cache, no worries calling it */
   private def ensureEntityTableExists (realm:String, name:String)(implicit ctx: ECtx) = {
     if(!eTypes.contains(rkey(realm,name))) {
@@ -327,7 +328,7 @@ case class EPostgressConnector (
     (SQL,res)
   }
 
-  /** build simpile map to sql query */
+  /** build simpile map query to sql query */
   def mapToQuery(realm:String,name:String,query:Map[String,String]) = {
     // build sql query
 

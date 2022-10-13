@@ -60,7 +60,8 @@ class EEDomInventory extends EExecutor("diesel.inv") {
         ))))
       }
 
-      case REG => {
+      case REG => { //$msg diesel.inv.register  (inventory, classNames)
+
         //just register inv factory assocs
         val inv = ctx.getRequired("inventory")
         val s = ctx.getRequired("classNames").split(",").map { c =>
@@ -178,7 +179,7 @@ class EEDomInventory extends EExecutor("diesel.inv") {
 
           val a = new DieselAsset[P](ref, entity)
 
-          if (plugin.isEmpty) throw new DieselExprException(s"Inventory not found for $cls")
+          if (plugin.isEmpty) throw new DieselExprException(s"Inventory not found for $cls (is it connected?)")
 
           val res = plugin
               // todo pass async to all interfaces as well

@@ -1285,9 +1285,9 @@ class Wikie @Inject()(config: Configuration) extends WikieBase {
       }
       after(Some(w), newVer, WikiAudit.UPD_LIKE, auth)
       if (how == 1)
-        Audit.logdb("VOTE.UP", "" + request.au.map(_.userName) + wid.wpath)
+        Audit.logdb("VOTE.UP", "" + request.au.map(_.userName).getOrElse("Anonymous") + " - " + wid.wpath)
       else {
-        Audit.logdb("VOTE.DOWN", "" + request.au.map(_.userName) + " WHY: [" + reason + "] " + wid.wpath)
+        Audit.logdb("VOTE.DOWN", "" + request.au.map(_.userName).getOrElse("Anonymous") + " WHY: [" + reason + "] " + wid.wpath)
       }
       Ok(s"{likeCount:${newVer.likeCount}, dislikeCount:${newVer.dislikeCount}").as("application/json")
     }) getOrElse {
