@@ -805,6 +805,17 @@ a.thumbnail:focus {
     color: #52575c;
 }
 
+.modal {
+    background-color: #1f1e1e;
+}
+
+.modal-content {
+    background-color: #1f1e1e;
+}
+
+/*.modal-backdrop {*/
+/*    background-color: blue;*/
+/*}*/
 
 /*.label,*/
 /*.badge {*/
