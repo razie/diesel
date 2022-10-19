@@ -17,21 +17,30 @@ object DomCollector {
   final val MAX_SIZE = 200 // how many to keep overall
   final val MAX_SIZE_LOWER = 50 // how many to keep, for lower priority traces
 
+  /** following a pattern momentarily overwrites the keep configuration */
+  var following = ""
+
   /** a single collected trace */
   case class CollectedAst(stream: String, realm: String, id: String, userId: Option[String], engine: DomEngine,
                           collectGroup: String, details: String, dtm: DateTime = DateTime.now) {
     def isLowerPriority = {
       val desc = engine.description // not collectGroup
-      desc.contains(DieselMsg.fiddleStoryUpdated) ||
-          desc.contains(DieselMsg.REALM.REALM_LOADED_MSG) ||
-          desc.endsWith(DieselMsg.ENGINE.DIESEL_PING) ||
-          desc.contains("$msg " + DieselMsg.GPOLL)
+      !desc.contains(following) &&
+          (
+              desc.contains(DieselMsg.fiddleStoryUpdated) ||
+                  desc.contains(DieselMsg.REALM.REALM_LOADED_MSG) ||
+                  desc.endsWith(DieselMsg.ENGINE.DIESEL_PING) ||
+                  desc.contains("$msg " + DieselMsg.GPOLL)
+              )
     }
 
     /** how many of these to keep in trace collector? */
     def getMaxCount = {
+      val desc = engine.collectGroup
+      Option(100)
+          .filter(x=> following.nonEmpty && engine.description.contains(following))
+          .getOrElse (
       engine.settings.collectCount.filter(_ != 0).getOrElse {
-        val desc = engine.collectGroup
         val res = if (
           desc.endsWith(DieselMsg.ENGINE.DIESEL_PING)
         ) 3 else if (
@@ -42,7 +51,7 @@ object DomCollector {
           // 0  means no self-imposed limit, default
         }
         res
-      }
+      })
     }
   }
 

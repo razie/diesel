@@ -1,7 +1,7 @@
 @**
 view the list of engines - the html was prepared separately and come
 **@
-@(title:String, title2:String, content:String)(implicit stok: controllers.StateOk)
+@(title:String, title2:String, content:String, following:String)(implicit stok: controllers.StateOk)
 
 <script src="@routes.Assets.at("javascripts/weCommons.js")"></script>
 <script src="@routes.Assets.at("javascripts/weDieselDom.js")"></script>
@@ -15,7 +15,23 @@ view the list of engines - the html was prepared separately and come
 <span id="spinner" style="display: none"><img src="https://cdn.razie.com/Public/spinner.gif" height="20" width="20"></span>
 
 <br>
-<small>@Html(title2)</small>
+<small>
+  <span >@Html(title2)</span>
+</small>
+
+<br >
+<form style="margin-top: 10px">
+  <small>
+  <span class="pull-left">Follow:<sup><span title="Flowing contains this will be given priority.\nThis filter is shared across all users!!" class="glyphicon glyphicon-question-sign"></span></sup>
+      &nbsp;</span>
+    <input type="text" id="follow" name="follow" value="" class="col-sm-12 col-md-6 col-lg-4" style="line-height: 50%; background-color: lightgray"/>
+</small>
+<small>
+<span class="pull-left">&nbsp;&nbsp;Filter:<sup><span title="Filter by pattern.\nThis filter is local to you!!" class="glyphicon glyphicon-question-sign"></span></sup>
+  &nbsp;</span>
+  <input type="text" id="filter" name="filter" value="" class="col-sm-12 col-md-6 col-lg-4" style="line-height: 50%; color:red; background-color: lightgray"/>
+</small>
+</form>
 
 <br><br>
 
@@ -29,16 +45,47 @@ function setRefreshMode () {
   $('#refreshMode').trigger("change");
 };
 
+var refreshPlease = function() {
+  var fo = $("#follow").val();
+  var fi = $("#filter").val();
+  window.location.search = "?follow=" + encodeURIComponent(fo) + "&filter=" + encodeURIComponent(fi);
+}
+
 withJquery(function ($) {
+
+  $("#follow").on('keyup', function (e) {
+    if (e.key === 'Enter' || e.keyCode === 13) {
+      refreshPlease();
+    }
+  });
+
   $(window).on('load', function () {
     useLocalStorageCheckbox("refreshMode", "domListAstRefreshMode", function (a, b, expanded) {
       refreshMode = expanded;
     });
+
+    var params = (new URL(document.location)).searchParams;
+    var fo = params.get("follow");
+    var fi = params.get("filter");
+    $("#filter").val(fi);
+
+    if("@following".length > 0 && (fo == null || typeof fo === 'undefined')) {
+      $("#follow").val("@following");
+      window.location.search = "?follow=" + encodeURIComponent(fo) + "&filter=" + encodeURIComponent(fi);
+    } else {
+      if(fo != null) $("#follow").val(fo);
+    }
+
+    if(fi != null && fi.length > 0) {
+      if(fi != null) $("#filter").val(fi);
+    }
   });
 });
 
 setInterval(function(){
-  if(refreshMode && $('#refreshMode').prop('checked'))  window.location.reload();
+  if(refreshMode && $('#refreshMode').prop('checked')) {
+    refreshPlease();
+  }
 }, 7000);
 
 </script>
