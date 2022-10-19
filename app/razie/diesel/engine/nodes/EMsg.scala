@@ -227,8 +227,11 @@ case class EMsg(
     }
   }
 
+  /** html anchor */
+  def anchor = s"""<a name="$ea"></a>"""
+
   /** as opposed to toHtml, this will produce an html that can be displayed in any page, not just the fiddle */
-  def toHtmlInPage = hrefBtnGlobal /*+hrefBtn1*/ + toHtml.replaceAllLiterally("weref", "wefiddle") + "<br>"
+  def toHtmlInPage = anchor + hrefBtnGlobal /*+hrefBtn1*/ + toHtml.replaceAllLiterally("weref", "wefiddle") + "<br>"
 
   def hrefBtnGlobal =
     s"""<a href="${url2("")}" class="btn btn-xs btn-primary" title="global link">
