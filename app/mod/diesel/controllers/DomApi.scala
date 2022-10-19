@@ -1063,15 +1063,23 @@ class DomApi extends DomApiBase with Logging {
 
             // must allow for ctx.sleeps
             // todo why 50 sec
-            val dur = WikiConfig.getInstance.get.prop("diesel.timeout", "50 seconds")
-            val tcode = WikiConfig.getInstance.get.prop("diesel.timeoutCode", "504")
+            val dur = WikiConfig.getInstance.get.prop("diesel.rest.timeout", "50 seconds")
+            val tcode = WikiConfig.getInstance.get.prop("diesel.rest.timeoutCode", "504")
             try {
               Await.result(res, Duration(dur))
             } catch {
               case e: java.util.concurrent.TimeoutException => {
                 engine.stopNow
-                new Status(Integer.parseInt(tcode))(s"Workflow took too long ($dur) - not enough resources?")
-                    .withHeaders("diesel-reason" -> s"flow didn't response in $dur")
+                engine.root.appendAllNoEvents(
+                  List(
+                    DomAst(
+                      EInfo("Engine timedout!", s"DomApi:Workflow took too long ($dur)"), AstKinds.DEBUG)
+                        .withStatus(DomState.SKIPPED)
+                  )
+                )
+                val st = new Status(Integer.parseInt(tcode))(s"Workflow took too long ($dur) - not enough resources?")
+                    .withHeaders("diesel-reason" -> s"Flow didn't complete in $dur")
+                st
               }
             }
           } getOrElse {
