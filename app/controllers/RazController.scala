@@ -407,8 +407,7 @@ ${errCollector.mkString}
   def FAUR(msg:String, isApi:Boolean=false)(f: RazRequest => Option[Result]) : Action[AnyContent] = Action { implicit request =>
     val req = razRequest
     (for (
-      au <- req.au.filter(_.isInRealm(req.realm));
-      _ <- Some(au).filter(deemedMemberOfRealm(_, req.realm))
+      au <- req.au.filter(x => x.isInRealm(req.realm) || deemedMemberOfRealm(x, req.realm))
     ) yield {
         if(msg.nonEmpty) cdebug << "START_FAU "+msg
         val temp = f(req)
