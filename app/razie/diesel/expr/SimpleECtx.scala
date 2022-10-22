@@ -196,7 +196,7 @@ class SimpleECtx(
   }
 
   /** propagates by default up - see the Scope context which will not */
-  override def put(p: P) {
+  override def put(p: P): Unit = {
     if (base.isDefined)
       base.get.put(p)
     //    else if(p.ttype == WTypes.UNDEFINED)
@@ -208,7 +208,7 @@ class SimpleECtx(
   }
 
   /** propagates by default up - see the Scope context which will not */
-  override def putAll(p: List[P]) {
+  override def putAll(p: List[P]): Unit = {
     p.map(put)
 //    if (base.isDefined) base.get.putAll(p)
 //    else attrs = p ::: attrs.filter(x => !p.exists(_.name == x.name))

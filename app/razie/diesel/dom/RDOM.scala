@@ -540,10 +540,10 @@ object RDOM {
           )
     }
 
-    def isUndefined = ttype == WTypes.UNDEFINED
+    def isUndefined = ttype.name == WTypes.UNDEFINED
 
     def isUndefinedOrEmpty =
-      ttype == WTypes.UNDEFINED || (
+      ttype.name == WTypes.UNDEFINED || (
           expr.isEmpty && value.isEmpty && dflt.isEmpty
           )
 
@@ -556,14 +556,14 @@ object RDOM {
       }
 
     /** mark this parm as dirty, clear caches etc */
-    def dirty() = {
+    def dirty(): Unit = {
 //      value.foreach(_.cacheString = None)
       if (this.value.isDefined) {
 //        this.value.get.cacheString = None
 
         val x = value.get.copy()
         x.cacheString = None
-        this.value = Some(x)
+        this.value = Option(x)
       }
     }
 
@@ -575,7 +575,7 @@ object RDOM {
         } else {
           val v = expr.get.applyTyped("")
           // need to make sure it's calculated - some EXprs like ExprIdent will not force a recalculation, just return a P
-          value = v.value //Some(v.calculatedTypedValue) //v.value // update computed value
+          value = Option(v.calculatedTypedValue) //v.value // update computed value
           value.getOrElse(PValue(v.currentStringValue, ttype))
         }
       )
