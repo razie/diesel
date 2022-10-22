@@ -27,12 +27,27 @@ a JS with HTML and CSS fiddle
 @stok.title("Diesel fiddle")
 @stok.requireJs(false)
 
-<style>
+@css() = @{ stok.css }
+
+@if(css.contains("light")) {
+
+  <style>
 .ace-primaryline {
   background-color: yellow;
   position:absolute;
 }
-</style>
+  </style>
+
+} else {              @*** dark theme ***@
+
+  <style>
+.ace-primaryline {
+  background-color: darkblue;
+  position:absolute;
+}
+  </style>
+}
+
 
 <script src="@routes.Assets.at("javascripts/rk-contentassist-sqbr.js")"></script>
 <script src="@routes.Assets.at("javascripts/weFiddles.js")"></script>
@@ -295,10 +310,10 @@ var simMode = function () { return !( $('#realTime').prop('checked')) || isStory
 var updRT = function() {
   $("#realTimeBox").removeClass();
   if (simMode()) {
-    $("#realTimeBox").addClass("label label-danger");
+    $("#realTimeBox").addClass("label label-warning");
     $('#realTimeBox').prop('title', "Execute the full flow on every change!");
   } else {
-    $("#realTimeBox").addClass("label label-warning");
+    $("#realTimeBox").addClass("label label-danger");
     $('#realTimeBox').prop('title', "(SIM) Just preview, not executing the flow auto");
   }
 }

@@ -117,25 +117,25 @@ function limitEval(code, fnOnStop, opt_timeoutInMS, output) {
   var id = Math.random() + 1;
 
   var script = 'onmessage=function(a){' +
-  'output="";'+
-  'preambleData=a.data;' +
-  'a=a.data;' +
-  'postMessage({i:a.i+1});' +
-  'var e;' +
-  'var x;' +
-  'try {' +
-  '  x = eval.call(this, a.c);' +
-  '} catch (ex) {' +
-  '  console.log(ex);' +
-  '  e = ex.toString();' +
-  '};' +
-  'postMessage({' +
-  '  r:x,' +
-  '  o:output,' +
-  '  e:e,' +
-  '  i:a.i' +
-  '})};' +
-  '';
+    'output="";'+
+    'preambleData=a.data;' +
+    'a=a.data;' +
+    'postMessage({i:a.i+1});' +
+    'var e;' +
+    'var x;' +
+    'try {' +
+    '  x = eval.call(this, a.c);' +
+    '} catch (ex) {' +
+    '  console.log(ex);' +
+    '  e = ex.toString();' +
+    '};' +
+    'postMessage({' +
+    '  r:x,' +
+    '  o:output,' +
+    '  e:e,' +
+    '  i:a.i' +
+    '})};' +
+    '';
   var blob = new Blob([script], { type:'text/javascript' } ),
     myWorker = new Worker(URL.createObjectURL(blob));
 
@@ -165,7 +165,7 @@ function limitEval(code, fnOnStop, opt_timeoutInMS, output) {
         } else {
           if(typeof data.o != "undefined" && data.o != "") {
             if(typeof output != "undefined") {
-             output = output+data.o+"\n";
+              output = output+data.o+"\n";
             }
           }
         }
@@ -284,8 +284,8 @@ var runFiddleStoryUpdated = function(input) {
   data.needsCAMap = needsContentAssist(false, compileOnly);
   data.needsBaseCA = isObjectEmpty(baseContentAssist);
 
-    $.ajax(
-      url = input.url, {
+  $.ajax(
+    url = input.url, {
       type: 'POST',
       data: $.param(data),
       contentType: 'application/x-www-form-urlencoded',
@@ -464,26 +464,26 @@ function showFinalEngineResult(id) {
 function setupLogLevels(id) {
   // todo could optimize and not showFinal every time trace/debug but only if payload was on
   useLocalStorageCheckbox("verboseStory", "domFiddleVerboseStory", function (a,b,expanded) {
-    if(expanded) $('#payloadOnly').prop('checked', false).change(); // change triggers the callback
+    if(expanded && $('#payloadOnly').prop('checked')) $('#payloadOnly').prop('checked', false).change(); // change triggers the callback
     if(currEngineData != null) showFinalEngineResult(id); // repaint
     dieselHideVerbose(expanded);
   });
 
   // todo could optimize and not showFinal every time trace/debug but only if payload was on
   useLocalStorageCheckbox("traceStory", "domFiddleTraceStory", function (a,b,expanded) {
-    if(expanded) $('#payloadOnly').prop('checked', false).change(); // change triggers the callback
+    if(expanded && $('#payloadOnly').prop('checked')) $('#payloadOnly').prop('checked', false).change(); // change triggers the callback
     if(currEngineData != null) showFinalEngineResult(id); // repaint
     dieselHideTrace(expanded);
   });
 
   useLocalStorageCheckbox("debugStory", "domFiddleDebugStory", function (a,b,expanded) {
-    if(expanded) $('#payloadOnly').prop('checked', false).change(); // change triggers the callback
+    if(expanded && $('#payloadOnly').prop('checked')) $('#payloadOnly').prop('checked', false).change(); // change triggers the callback
     if(currEngineData != null) showFinalEngineResult(id); // repaint
     dieselHideDebug(expanded);
   });
 
   useLocalStorageCheckbox("generatedStory", "domFiddleGeneratedStory", function (a,b,expanded) {
-    if(expanded) $('#payloadOnly').prop('checked', false).change(); // change triggers the callback
+    if(expanded && $('#payloadOnly').prop('checked')) $('#payloadOnly').prop('checked', false).change(); // change triggers the callback
     if(currEngineData != null) showFinalEngineResult(id); // repaint
     dieselHideGenerated(expanded);
   });
@@ -494,6 +494,7 @@ function setupLogLevels(id) {
       $('#traceStory').prop('checked', false).change();
       $('#debugStory').prop('checked', false).change();
       $('#generatedStory').prop('checked', false).change();
+      $('#verboseStory').prop('checked', false).change();
     } else {
       // turn on the nodes
       $('#traceStory').prop('checked', true).change();
