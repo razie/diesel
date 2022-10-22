@@ -378,7 +378,7 @@ class Wikie @Inject()(config: Configuration) extends WikieBase {
 
       val sType = request.formParm("sectionType")
       val sName = request.formParm("sectionName")
-      val icontent = request.formParm("content")
+      val icontent = request.formParm("content").replaceAllLiterally("\r\n", "\n")
       val au = request.au.get
 
       def mkC (oldContent:String, icontent:String) = {
@@ -445,7 +445,11 @@ class Wikie @Inject()(config: Configuration) extends WikieBase {
 
       def fromJ(s: String) = {
         val dbo = com.mongodb.util.JSON.parse(s).asInstanceOf[DBObject];
-        Some(grater[WikiEntry].asObject(dbo))
+        Option ({
+          // remove CRLF if someone posts from windows
+          val o = grater[WikiEntry].asObject(dbo)
+          o.cloneContent(o.content.replaceAllLiterally("\r\n", "\n"))
+        })
       }
 
       val data = PlayTools.postData(request.req)
