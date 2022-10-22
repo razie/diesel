@@ -12,7 +12,7 @@ show diff with remote
 @import razie.hosting.Website
 
 @wp(wid:WID)=@{
-  if(_root_.razie.wiki.Services.config.isLocalhost && wid.getRealm == "rk") "rk." + wid.wpath
+  if(_root_.razie.wiki.Services.config.isLocalhost && wid.getRealm == "rk" && !wid.wpath.startsWith("rk.")) "rk." + wid.wpath
   else wid.wpath
 }
 
@@ -110,7 +110,7 @@ show diff with remote
 
         <td>
           <small>
-            @t._1.realm <a href="@WID(t._1.cat, t._1.name).r(t._1.realm).urlRelative">@t._1.cat:@t._1.name</a> (<a href="/wikie/content/@wp(WID(t._1.cat, t._1.name).r(t._1.realm))">content</a>)
+            @t._1.realm <a href="@WID(t._1.cat, t._1.name).r(t._1.realm).urlRelative(localRealm)">@t._1.cat:@t._1.name</a> (<a href="/wikie/content/@wp(WID(t._1.cat, t._1.name).r(t._1.realm))">content</a>)
             </small>
 
         </td>
