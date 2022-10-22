@@ -1394,9 +1394,11 @@ class DomApi extends DomApiBase with Logging {
 
             //payload is undefined - not found. COMMENTED OUT, never used yet... worried it may cause issues
             // clients go down the onSuccess or onError
-            if((response.isEmpty || response.get.ttype == WTypes.wt.UNDEFINED) && stok.website.dieselUse404)
-              NotFound
-            else
+            if((response.isEmpty || response.get.ttype == WTypes.wt.UNDEFINED) && stok.website.dieselUse404) {
+              val msg = ("Flow ran but returned no payload!")
+              NotFound(msg)
+                .withHeaders("diesel-reason" -> msg)
+            } else
               Ok(body)
           }
         }
