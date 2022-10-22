@@ -200,7 +200,7 @@ class EEDieselMemDbBase(name: String) extends EExecutor(name) {
 
         updStats()
 
-        EVal(P(Diesel.PAYLOAD, id)) :: Nil
+        EVal(new P(Diesel.PAYLOAD, id)) :: Nil
       }
 
       case "get" | "getsert" => writeLock {
@@ -295,15 +295,15 @@ class EEDieselMemDbBase(name: String) extends EExecutor(name) {
 
       case "logAll" => readLock {
         val res = s"Sessions: ${sessions.size}\n" + log
-        EVal(P(Diesel.PAYLOAD, res)) :: Nil
+        EVal(new P(Diesel.PAYLOAD, res)) :: Nil
       }
 
       case "log" => readLock {
-        EVal(P(Diesel.PAYLOAD, logList)) :: Nil
+        EVal(new P(Diesel.PAYLOAD, logList)) :: Nil
       }
 
       case "debug" => readLock {
-        EVal(P(Diesel.PAYLOAD, log)) :: Nil
+        EVal(new P(Diesel.PAYLOAD, log)) :: Nil
       }
 
       case "clear" => writeLock {

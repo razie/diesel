@@ -135,11 +135,6 @@ object RDOM {
   type NVP = Map[String,String]
 
   object PValue {
-    // todo deprecate and remove
-    @deprecated
-    def apply[T](v: T, c: String): PValue[T] = PValue(v, WType(c))
-//    def apply[T] (v:T, c:WType) : PValue[T] = PValue(v, c)
-
     def emptyArray = PValue(Nil, WTypes.wt.ARRAY)
   }
 
@@ -261,7 +256,7 @@ object RDOM {
   object P {
     def of(name: String, v: Any): P = fromSmartTypedValue(name, v)
 
-    def undefined(name: String): P = P(name, "", WTypes.wt.UNDEFINED)
+    def undefined(name: String): P = new P(name, "", WTypes.wt.UNDEFINED)
 
     def fromSmartTypedValue(name: String, v: Any): P = v match {
       case s: String if s.trim.startsWith("{") => P.fromTypedValue(name, s, WTypes.JSON)
@@ -285,80 +280,80 @@ object RDOM {
 
       val res = v match {
         case i: P => i.copy(name = name)
-        case i: PValue[_] => P(name, asString(i.value), i.cType).withValue(i.value, i.cType)
-        case i: Boolean => P(name, "", WTypes.wt.BOOLEAN).withCachedValue(i, WTypes.wt.BOOLEAN, asString(i))
-        case i: Int => P(name, "", WTypes.wt.NUMBER).withCachedValue(i, WTypes.wt.NUMBER, asString(i))
-        case i: Long => P(name, "", WTypes.wt.NUMBER).withCachedValue(i, WTypes.wt.NUMBER, asString(i))
-        case f: Float => P(name, "", WTypes.wt.NUMBER).withCachedValue(f, WTypes.wt.NUMBER, asString(f))
-        case d: Double => P(name, "", WTypes.wt.NUMBER).withCachedValue(d, WTypes.wt.NUMBER, asString(d))
-        case d: Throwable => P(name, "", WTypes.wt.EXCEPTION).withCachedValue(d, WTypes.wt.EXCEPTION, d.getMessage)
+        case i: PValue[_] => new P(name, asString(i.value), i.cType).withValue(i.value, i.cType)
+        case i: Boolean => new P(name, "", WTypes.wt.BOOLEAN).withCachedValue(i, WTypes.wt.BOOLEAN, asString(i))
+        case i: Int => new P(name, "", WTypes.wt.NUMBER).withCachedValue(i, WTypes.wt.NUMBER, asString(i))
+        case i: Long => new P(name, "", WTypes.wt.NUMBER).withCachedValue(i, WTypes.wt.NUMBER, asString(i))
+        case f: Float => new P(name, "", WTypes.wt.NUMBER).withCachedValue(f, WTypes.wt.NUMBER, asString(f))
+        case d: Double => new P(name, "", WTypes.wt.NUMBER).withCachedValue(d, WTypes.wt.NUMBER, asString(d))
+        case d: Throwable => new P(name, "", WTypes.wt.EXCEPTION).withCachedValue(d, WTypes.wt.EXCEPTION, d.getMessage)
 
         case d: Date => {
           val tsFmtr = DateTimeFormatter.ofPattern(WTypes.DATE_FORMAT).withZone(ZoneId.from(ZoneOffset.UTC))
           val ts = tsFmtr.format(d.toInstant)
-          P(name, "", WTypes.wt.DATE).withCachedValue(ts, WTypes.wt.DATE, ts)
+          new P(name, "", WTypes.wt.DATE).withCachedValue(ts, WTypes.wt.DATE, ts)
         }
 
-        case s: ParmSource => P(name, "Source", WTypes.wt.SOURCE).withValue(s, WTypes.wt.SOURCE)
+        case s: ParmSource => new P(name, "Source", WTypes.wt.SOURCE).withValue(s, WTypes.wt.SOURCE)
 
         case i: java.lang.Integer =>
-          P(name, "", WTypes.wt.NUMBER).withCachedValue(i.longValue, WTypes.wt.NUMBER, asString(i))
+          new P(name, "", WTypes.wt.NUMBER).withCachedValue(i.longValue, WTypes.wt.NUMBER, asString(i))
         case i: java.lang.Boolean =>
-          P(name, "", WTypes.wt.BOOLEAN).withCachedValue(i.booleanValue, WTypes.wt.BOOLEAN, asString(i))
+          new P(name, "", WTypes.wt.BOOLEAN).withCachedValue(i.booleanValue, WTypes.wt.BOOLEAN, asString(i))
         case i: java.lang.Float =>
-          P(name, "", WTypes.wt.NUMBER).withCachedValue(i.floatValue, WTypes.wt.NUMBER, asString(i))
+          new P(name, "", WTypes.wt.NUMBER).withCachedValue(i.floatValue, WTypes.wt.NUMBER, asString(i))
         case i: java.lang.Double =>
-          P(name, "", WTypes.wt.NUMBER).withCachedValue(i.doubleValue, WTypes.wt.NUMBER, asString(i))
+          new P(name, "", WTypes.wt.NUMBER).withCachedValue(i.doubleValue, WTypes.wt.NUMBER, asString(i))
         case i: java.lang.Long =>
-          P(name, "", WTypes.wt.NUMBER).withCachedValue(i.longValue, WTypes.wt.NUMBER, asString(i))
+          new P(name, "", WTypes.wt.NUMBER).withCachedValue(i.longValue, WTypes.wt.NUMBER, asString(i))
 
         // must be before Seq
-        case r: Range => P(name, "", WTypes.wt.RANGE).withCachedValue(r, WTypes.wt.RANGE, asString(r))
+        case r: Range => new P(name, "", WTypes.wt.RANGE).withCachedValue(r, WTypes.wt.RANGE, asString(r))
         // the "" dflt will force usage of value
 
         // first get the map
         case s: collection.mutable.Map[_, _] =>
-          P(name, "", expOrElse(WTypes.wt.JSON)).withValue(s, expOrElse(WTypes.wt.JSON))
+          new P(name, "", expOrElse(WTypes.wt.JSON)).withValue(s, expOrElse(WTypes.wt.JSON))
 
         case s: collection.Map[_, _] => {
           // use mutable map so we can assign later
           val hm = mapToMutable(s)
-          P(name, "", expOrElse(WTypes.wt.JSON)).withValue(hm, expOrElse(WTypes.wt.JSON))
+          new P(name, "", expOrElse(WTypes.wt.JSON)).withValue(hm, expOrElse(WTypes.wt.JSON))
         }
-        case s: collection.Seq[_] => P(name, "", expOrElse(WTypes.wt.ARRAY)).withValue(s, expOrElse(WTypes.wt.ARRAY))
-        case s: JSONObject => P(name, "", expOrElse(WTypes.wt.JSON)).withValue(js.fromObject(s),
+        case s: collection.Seq[_] => new P(name, "", expOrElse(WTypes.wt.ARRAY)).withValue(s, expOrElse(WTypes.wt.ARRAY))
+        case s: JSONObject => new P(name, "", expOrElse(WTypes.wt.JSON)).withValue(js.fromObject(s),
           expOrElse(WTypes.wt.JSON))
-        case s: JSONArray => P(name, "", expOrElse(WTypes.wt.ARRAY)).withValue(js.fromArray(s),
+        case s: JSONArray => new P(name, "", expOrElse(WTypes.wt.ARRAY)).withValue(js.fromArray(s),
           expOrElse(WTypes.wt.ARRAY))
 
         case s: String => {
           expectedType match {
-            case WType(WTypes.JSON, _, _, _, _) => P(name, "", expectedType).withCachedValue(
+            case WType(WTypes.JSON, _, _, _, _) => new P(name, "", expectedType).withCachedValue(
               js.fromObject(new JSONObject(s)), expectedType, s)
-            case WType(WTypes.ARRAY, _, _, _, _) => P(name, "", expectedType).withCachedValue(
+            case WType(WTypes.ARRAY, _, _, _, _) => new P(name, "", expectedType).withCachedValue(
               js.fromArray(new JSONArray(s)), expectedType, s)
-            case WType(WTypes.BOOLEAN, _, _, _, _) => P(name, "", expectedType).withCachedValue(s.toBoolean,
+            case WType(WTypes.BOOLEAN, _, _, _, _) => new P(name, "", expectedType).withCachedValue(s.toBoolean,
               expectedType, s)
-            case WType(WTypes.NUMBER, _, _, _, _) => P(name, "", expectedType).withCachedValue(s.toFloat, expectedType,
+            case WType(WTypes.NUMBER, _, _, _, _) => new P(name, "", expectedType).withCachedValue(s.toFloat, expectedType,
               s)
 
-            case WType(WTypes.STRING, _, _, _, _) => P(name, "", expectedType).withCachedValue(s, expectedType, s)
-            case WType(WTypes.DATE, _, _, _, _)   => P(name, "", expectedType).withCachedValue(s, expectedType, s)
-            case WType(WTypes.HTML, _, _, _, _)   => P(name, "", expectedType).withCachedValue(s, expectedType, s)
+            case WType(WTypes.STRING, _, _, _, _) => new P(name, "", expectedType).withCachedValue(s, expectedType, s)
+            case WType(WTypes.DATE, _, _, _, _)   => new P(name, "", expectedType).withCachedValue(s, expectedType, s)
+            case WType(WTypes.HTML, _, _, _, _)   => new P(name, "", expectedType).withCachedValue(s, expectedType, s)
 
-            case WType(WTypes.EXCEPTION, _, _, _, _) => P(name, s, expectedType)
+            case WType(WTypes.EXCEPTION, _, _, _, _) => new P(name, s, expectedType)
 
             case _ if expectedType.trim.length > 0 =>
               throw new DieselExprException(s"$expectedType is an unknown type")
 
-            case _ => P(name, s, WTypes.wt.STRING).withCachedValue(s, WTypes.wt.STRING, s)
+            case _ => new P(name, s, WTypes.wt.STRING).withCachedValue(s, WTypes.wt.STRING, s)
           }
         }
 
         // java object - it's better to create this yourself
-        case x@_ if expectedType == WTypes.OBJECT => P(name, "", expectedType).withValue(v, expectedType)
+        case x@_ if expectedType == WTypes.OBJECT => new P(name, "", expectedType).withValue(v, expectedType)
 
-        case x@_ => P(name, x.toString, WTypes.wt.UNKNOWN)
+        case x@_ => new P(name, x.toString, WTypes.wt.UNKNOWN)
       }
 
       // assert expected type if given
@@ -572,15 +567,16 @@ object RDOM {
       }
     }
 
-    /** proper way to get the value */
+    /** calculate if needed and cache the value */
     def calculatedTypedValue(implicit ctx: ECtx): PValue[_] =
       value.getOrElse(
         if (expr.isEmpty) {
           PValue(currentStringValue, ttype) // someone already calculated a value, maybe a ttype as well...
         } else {
           val v = expr.get.applyTyped("")
-          value = v.value // update computed value
-          value.getOrElse(PValue(v.currentStringValue, ""))
+          // need to make sure it's calculated - some EXprs like ExprIdent will not force a recalculation, just return a P
+          value = v.value //Some(v.calculatedTypedValue) //v.value // update computed value
+          value.getOrElse(PValue(v.currentStringValue, ttype))
         }
       )
 
@@ -775,14 +771,14 @@ object RDOM {
           val b = pm.valExpr.apply("")
           val groups = EContent.extractRegexParms(b.toString, a.toString)
 
-          groups.foreach(t => ctx.put(P(t._1, t._2)))
+          groups.foreach(t => ctx.put(new P(t._1, t._2)))
         } else if (r && pm.op == "~path") {
           // extract parms - special path mapping
           val a = in.valExpr.apply("")
           val b = pm.valExpr.apply("")
           val (is, groups) = EContent.extractPathParms(a.toString, b.toString)
 
-          if(is) groups.foreach(t => ctx.put(P(t._1, t._2)))
+          if(is) groups.foreach(t => ctx.put(new P(t._1, t._2)))
         }
 
         if (!r) {

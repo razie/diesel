@@ -41,7 +41,7 @@ class EEMail extends EExecutor("diesel.mail") {
         val user = ctx.get("user")
         val pass = ctx.get("pass")
 
-        EVal(P(name, "")) :: Nil
+        EVal(new P(name, "")) :: Nil
       }
 
       // send new email

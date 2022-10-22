@@ -27,7 +27,7 @@ class EEFunc extends EExecutor("func") {
   override def apply(in: EMsg, destSpec: Option[EMsg])(implicit ctx: ECtx): List[Any] = {
     val res = ctx.domain.flatMap(_.funcs.get(in.entity + "." + in.met)).map { f =>
       EEFunc.exec(in, f).calculatedP
-    } getOrElse P("", s"no func ${in.met} in domain")
+    } getOrElse new P("", s"no func ${in.met} in domain")
 
     in.ret.headOption.orElse(spec(in).flatMap(_.ret.headOption)).orElse(
       Some(res.copy(name = "payload"))
@@ -67,9 +67,9 @@ object EEFunc {
           val r = newestFiddle(f.script, f.lang, in.attrs, ctx)
           scriptResToTypedP(r, 0)
         } else
-          P("", "ABSTRACT FUNC", WTypes.wt.EXCEPTION)
+          new P("", "ABSTRACT FUNC", WTypes.wt.EXCEPTION)
       } catch {
-        case e: Throwable => P("", e.getMessage, WTypes.wt.EXCEPTION).withValue(e, WTypes.wt.EXCEPTION)
+        case e: Throwable => new P("", e.getMessage, WTypes.wt.EXCEPTION).withValue(e, WTypes.wt.EXCEPTION)
       }
     res
   }
@@ -92,16 +92,16 @@ object EEFunc {
       // typed result
       r._3 match {
 
-        case i:Integer => P("", i.toString, WTypes.wt.NUMBER).withValue(i.toLong, WTypes.wt.NUMBER)
-        case i:Long => P("", i.toString, WTypes.wt.NUMBER).withValue(i, WTypes.wt.NUMBER)
+        case i:Integer => new P("", i.toString, WTypes.wt.NUMBER).withValue(i.toLong, WTypes.wt.NUMBER)
+        case i:Long => new P("", i.toString, WTypes.wt.NUMBER).withValue(i, WTypes.wt.NUMBER)
 
           // js numbers may be ints
        case i:Double if Math.round(i) == i => {
          val x = i.toLong
-         P("", x.toString, WTypes.wt.NUMBER).withValue(x, WTypes.wt.NUMBER)
+         new P("", x.toString, WTypes.wt.NUMBER).withValue(x, WTypes.wt.NUMBER)
        }
 
-       case i:Double => P("", i.toString, WTypes.wt.NUMBER).withValue(i, WTypes.wt.NUMBER)
+       case i:Double => new P("", i.toString, WTypes.wt.NUMBER).withValue(i, WTypes.wt.NUMBER)
 
         case o : ScriptObjectMirror => {
           val str = r._2.toString
@@ -122,12 +122,12 @@ object EEFunc {
           }
         }
 
-        case e: Throwable => P("", "+"+offset+r._2, WTypes.wt.EXCEPTION).withValue(e, WTypes.wt.EXCEPTION)
+        case e: Throwable => new P("", "+"+offset+r._2, WTypes.wt.EXCEPTION).withValue(e, WTypes.wt.EXCEPTION)
 
-        case _ => P("", r._2.toString, WTypes.wt.STRING)
+        case _ => new P("", r._2.toString, WTypes.wt.STRING)
       }
     } catch {
-      case e: Throwable => P("", e.getMessage, WTypes.wt.EXCEPTION).withValue(e, WTypes.wt.EXCEPTION)
+      case e: Throwable => new P("", e.getMessage, WTypes.wt.EXCEPTION).withValue(e, WTypes.wt.EXCEPTION)
     }
 
     x
@@ -141,7 +141,7 @@ object EEFunc {
       val r = newestFiddle(script, lang, ctx.flattenAllAttrs, ctx)
       scriptResToTypedP(r, 0)
     } catch {
-      case e: Throwable => P("", e.getMessage, WTypes.wt.EXCEPTION).withValue(e, WTypes.wt.EXCEPTION)
+      case e: Throwable => new P("", e.getMessage, WTypes.wt.EXCEPTION).withValue(e, WTypes.wt.EXCEPTION)
     }
 
     r

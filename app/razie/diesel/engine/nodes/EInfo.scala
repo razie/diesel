@@ -38,15 +38,17 @@ object EErrorUtils {
         if ((
             f.last.size < MAX_STACKTRACE_LINES_PER ||
                 f.size == 1 && f.last.size < MAX_STACKTRACE_LINES
-            ) &&
-            !(
-                t.isInstanceOf[DieselExprException]
-                ) &&
-            !(
-                t.isInstanceOf[Exception] &&
-                    t.asInstanceOf[Exception].getCause != null &&
-                    t.asInstanceOf[Exception].getCause.isInstanceOf[DieselExprException]
-                )
+            )
+        // this cannot be - we did toString above...
+        // &&
+//            !(
+//                t.isInstanceOf[DieselExprException]
+//                ) &&
+//            !(
+//                t.isInstanceOf[Exception] &&
+//                    t.asInstanceOf[Exception].getCause != null &&
+//                    t.asInstanceOf[Exception].getCause.isInstanceOf[DieselExprException]
+//                )
         ) f.last.append(l)
       }
     }
@@ -63,7 +65,7 @@ case class EError(msg: String, details: String = "", code: String = "ERROR", t: 
       Enc.escapeHtml(msg + ": " + t.getClass.getSimpleName + ": " + t.getMessage),
       Enc.escapeHtml(EErrorUtils.ttos(t)),
       "ERROR",
-      Some(t)
+      Option(t)
     ) // escape html - some exc contain html content
 
   razie.Log.error(Enc.unescapeHtml(msg))

@@ -29,7 +29,7 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
     def top(x: Expr): Option[P] = x match {
       case CExpr(aa, tt) => Some(P.fromTypedValue("", aa, tt))
       case aei: AExprIdent => aei.tryApplyTyped(v)
-      case _ => Some(P("", P.asString(a(v))))
+      case _ => Some(new P("", P.asString(a(v))))
     }
 
     def isNum(p: P): Boolean = p.calculatedTypedValue.cType.name == WTypes.NUMBER
@@ -401,9 +401,9 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
               // todo smarter, like "asdf" as Student etc - implicit constructors, typecasts etc
               if (av.value.isDefined)
               // todo should we only change theP type not the PVAlue type? like pdf which is a bitstream?
-                P("", av.calculatedValue, WType(t.ee)).withValue(avv.value, WType(t.ee)).calculatedTypedValue
+                new P("", av.calculatedValue, WType(t.ee)).withValue(avv.value, WType(t.ee)).calculatedTypedValue
               else
-                P("", as, WType(t.ee)).calculatedTypedValue
+                new P("", as, WType(t.ee)).calculatedTypedValue
 
             case _ if !lastTime => {
               val bp = b.applyTyped(v)
@@ -796,7 +796,7 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
     else if(res == null && ctx.isStrict)
       throw new DieselExprException(s"[ERR null result $op] in expression $toDsl")
     else
-      P("", res.asString, res.cType).copy(value = Option(res))
+      new P("", res.asString, res.cType).copy(value = Option(res))
 
   }
 

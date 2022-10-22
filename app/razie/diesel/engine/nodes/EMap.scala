@@ -120,7 +120,7 @@ case class EMapCls(cls: String, met: String, attrs: Attrs, arrow:String="=>", co
   }
 
   def asMsg = EMsg(cls, met, attrs.map{p=>
-    P (p.name, p.currentStringValue, p.ttype)
+    new P (p.name, p.currentStringValue, p.ttype)
   })
 
   //  override def toHtml = "<b>=&gt;</b> " + ea(cls, met) + " " + attrs.map(_.toHtml).mkString("(", ",", ")")

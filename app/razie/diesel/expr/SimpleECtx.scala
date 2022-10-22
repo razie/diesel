@@ -34,7 +34,7 @@ class SimpleECtx(
   protected var _specs: List[DSpec] = Nil
   private var userId: Option[String] = None
 
-  def name = "Ctx"
+  override def name = "Ctx"
 
   //payload is never static
 
@@ -49,7 +49,7 @@ class SimpleECtx(
 //    root.engine.map(
 //      _.warning(EWarning("It's non-intuitive to pass payload as argument! " + this.curNode.mkString.take(100))))
 
-  def credentials: Option[String] = userId orElse base.flatMap(_.credentials)
+  override def credentials: Option[String] = userId orElse base.flatMap(_.credentials)
   // once given, you cannot change credentials
 
   def withP(p: P) = {
@@ -58,7 +58,7 @@ class SimpleECtx(
   }
 
   def withHostname(s: String) = {
-    _hostname = Some(s)
+    _hostname = Option(s)
     this
   }
 
@@ -67,7 +67,7 @@ class SimpleECtx(
     this
   }
 
-  def flattenAllAttrs: List[P] = {
+  override def flattenAllAttrs: List[P] = {
     val l = (attrs ++ cur ++ base.toList.flatMap(_.flattenAllAttrs)).distinct
     // distinct by name
     // copied distinct to do by name
@@ -82,20 +82,20 @@ class SimpleECtx(
     b.toList
   }
 
-  def listAttrs: List[String] = flattenAllAttrs.map(_.name)
+  override def listAttrs: List[String] = flattenAllAttrs.map(_.name)
 
-  def domain: Option[RDomain] = _domain orElse base.flatMap(_.domain)
+  override def domain: Option[RDomain] = _domain orElse base.flatMap(_.domain)
 
-  def specs: List[DSpec] = _specs ::: base.toList.flatMap(_.specs)
+  override def specs: List[DSpec] = _specs ::: base.toList.flatMap(_.specs)
 
-  def hostname: Option[String] = _hostname orElse base.flatMap(_.hostname)
+  override def hostname: Option[String] = _hostname orElse base.flatMap(_.hostname)
 
-  def findTemplate(ea: String, direction: String = ""): Option[DTemplate] = {
+  override def findTemplate(ea: String, direction: String = ""): Option[DTemplate] = {
     specs.flatMap(_.findSection(ea, direction).toList).headOption
   }
 
   /** find template with predicate */
-  def findTemplate(p: DTemplate => Boolean): Option[DTemplate] = {
+  override def findTemplate(p: DTemplate => Boolean): Option[DTemplate] = {
     specs.foldLeft[Option[DTemplate]](None)((a, s) =>
       // todo low stop searching when found
       a.orElse(s.findSection(p))
@@ -103,22 +103,22 @@ class SimpleECtx(
   }
 
   /** check predicate on all values */
-  def exists(f: scala.Function1[P, scala.Boolean]): scala.Boolean =
+  override def exists(f: scala.Function1[P, scala.Boolean]): scala.Boolean =
     cur.exists(f) || attrs.exists(f) || base.exists(_.existsNL(f))
 
   /** check predicate on all values, except locals */
-  def existsNL(f: scala.Function1[P, scala.Boolean]): scala.Boolean =
+  override def existsNL(f: scala.Function1[P, scala.Boolean]): scala.Boolean =
     attrs.exists(f) || base.exists(_.existsNL(f))
 
   /** check if parm has been overwritten*/
-  def isOverwritten(name:String): scala.Boolean =
+  override def isOverwritten(name:String): scala.Boolean =
     attrs.exists(_.name == name)
 
   /** check predicate on all values, only locals */
-  def existsL(f: scala.Function1[P, scala.Boolean]): scala.Boolean =
+  override def existsL(f: scala.Function1[P, scala.Boolean]): scala.Boolean =
     cur.exists(f)
 
-  def remove(name: String): Option[P] = {
+  override def remove(name: String): Option[P] = {
     attrs.find(a => a.name == name).map { p =>
       attrs = attrs.filter(_.name != name)
       // not removing from base
@@ -150,29 +150,29 @@ class SimpleECtx(
 
   /** source some of the unique values to help rerun tests */
   protected def pu(s: String): Option[P] = s match {
-    case "DIESEL_UID" => Some(uid)
-    case "DIESEL_MILLIS" => Some(millis)
-    case "DIESEL_CURMILLIS" => Some(P.fromSmartTypedValue("DIESEL_CURMILLIS", System.currentTimeMillis()))
+    case "DIESEL_UID" => Option(uid)
+    case "DIESEL_MILLIS" => Option(millis)
+    case "DIESEL_CURMILLIS" => Option(P.fromSmartTypedValue("DIESEL_CURMILLIS", System.currentTimeMillis()))
 
-    case "diesel.db.newId" => Some(P("diesel.db.newId", new ObjectId().toString))
+    case "diesel.db.newId" => Option(P("diesel.db.newId", new ObjectId().toString))
 
-    case DieselMsg.ENGINE.DIESEL_ENG_DESC => Some(
+    case DieselMsg.ENGINE.DIESEL_ENG_DESC => Option(
       P(DieselMsg.ENGINE.DIESEL_ENG_DESC, root.engine.map(_.description).mkString))
 
     case "diesel" => {
-      Some(P.fromSmartTypedValue("diesel", new DieselParmSource(root)))
+      Option(P.fromSmartTypedValue("diesel", new DieselParmSource(root)))
     }
 
     case "dieselRealm" => {
-      Some(P.fromSmartTypedValue("dieselRealm", new DieselRealmParmSource(root)))
+      Option(P.fromSmartTypedValue("dieselRealm", new DieselRealmParmSource(root)))
     }
 
     case "dieselRoot" => {
-      Some(P.fromSmartTypedValue("dieselRoot", new DieselCtxParmSource("dieselRoot", root, this)))
+      Option(P.fromSmartTypedValue("dieselRoot", new DieselCtxParmSource("dieselRoot", root, this)))
     }
 
     case "ctx" | "dieselScope" => {
-      Some(P.fromSmartTypedValue("dieselScope", new DieselCtxParmSource("dieselScope", this.getScopeCtx, this)))
+      Option(P.fromSmartTypedValue("dieselScope", new DieselCtxParmSource("dieselScope", this.getScopeCtx, this)))
     }
 
     case _ => None
@@ -181,7 +181,7 @@ class SimpleECtx(
   /** just needed this for hacking purposes */
   protected def specpu(s: String): Option[P] = s match {
     case "ctx" | "dieselScope" => {
-      Some(P.fromSmartTypedValue("dieselScope", new DieselCtxParmSource("dieselScope", this.getScopeCtx, this)))
+      Option(P.fromSmartTypedValue("dieselScope", new DieselCtxParmSource("dieselScope", this.getScopeCtx, this)))
     }
 
     case _ => None
@@ -190,7 +190,8 @@ class SimpleECtx(
   /** see if we can source a value from the domain, i.e. static $val */
   protected def getpFromDomain(name: String): Option[P] = {
     domain.flatMap(_.moreElements.collectFirst {
-      case v: EVal if v.p.name == name => v.p
+      case v: EVal if v.p.name == name => v.p.copyFrom(v.p) // do NOT allow modifying of domain values.
+      // So the copy can get recalculated without impacting the original
     })
   }
 

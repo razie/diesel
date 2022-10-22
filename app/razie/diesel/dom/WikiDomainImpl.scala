@@ -102,7 +102,7 @@ class WikiDomainImpl (val realm:String, val wi:WikiInst) extends WikiDomain {
               t._2.length <= 0
           )
         ) yield {
-        P(t._1, t._2)
+        new P(t._1, t._2)
       }
       C(cat.name, "", WikiDomain.WIKI_CAT, base.toList, "", Nil, Nil, assocs.toList, props.toList)
     }

@@ -197,7 +197,7 @@ trait DomRoot {
         // the only source now is "diesel", so just set as long value
         // these are handled inside the ECtx
         case Some(pa: RDOM.P) if pa.isOfType(WTypes.wt.SOURCE) => {
-          setp(ctx.getScopeCtx, parentAccessor, P("", parentAccessor + "." + av.asString), v)
+          setp(ctx.getScopeCtx, parentAccessor, new P("", parentAccessor + "." + av.asString), v)
         }
 
         case Some(x) => {
@@ -215,14 +215,14 @@ trait DomRoot {
 
         // simple expression with unqualified left side p=e
 
-        val calcp = P(pas.left.start, "").copy(expr = Some(pas.right)).calculatedP
+        val calcp = new P(pas.left.start, "").copy(expr = Some(pas.right)).calculatedP
 
         if (pas.left.start == Diesel.PAYLOAD) {
 
           // RAZ2 OLD - remove this
           // setting in current context too
 
-          val calcp2 = P(pas.left.start, "").copy(expr = Some(pas.right)).calculatedP
+          val calcp2 = new P(pas.left.start, "").copy(expr = Some(pas.right)).calculatedP
           // payload must go to first scope, regardless of enclosing rule scopes
           ctx.allToScope.foreach(_.remove(Diesel.PAYLOAD))
 
@@ -332,7 +332,7 @@ trait DomRoot {
             if (parent.isDefined) {
               setp(parent, pas.left.start, pas.left.restAsP, rightP)
             } else {
-              setp(ctx.getScopeCtx, pas.left.start, P(pas.left.exprDot, ""), rightP)
+              setp(ctx.getScopeCtx, pas.left.start, new P(pas.left.exprDot, ""), rightP)
             }
           }
 

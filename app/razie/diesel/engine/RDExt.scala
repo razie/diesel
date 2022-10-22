@@ -49,7 +49,7 @@ object RDExt extends Logging {
       def l(x:String) = if(o.contains(x)) o(x).asInstanceOf[collection.Seq[_]] else Nil
 
       def parms (name:String) = l(name).collect {
-        case m:collection.Map[_, _] => P(
+        case m:collection.Map[_, _] => new P(
           sm("name",  m.asInstanceOf[collection.Map[String, Any]]),
           sm("value", m.asInstanceOf[collection.Map[String, Any]])
         )
@@ -65,7 +65,7 @@ object RDExt extends Logging {
           s("stype")
         ).withPos(if(o.contains("pos")) Some(new EPos(o("pos").asInstanceOf[collection.Map[String, Any]])) else None)
 
-        case "EVal" => EVal (P(
+        case "EVal" => EVal (new P(
           s("name"), s("value")
         )).withPos(if(o.contains("pos")) Some(new EPos(o("pos").asInstanceOf[collection.Map[String, Any]])) else None)
 

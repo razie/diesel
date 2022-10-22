@@ -75,11 +75,11 @@ class EEDieselCron extends EExecutor("diesel.cron") {
         val vdiff = diff
 
         if (cronExpr.isEmpty && schedule.isEmpty && time.trim.isEmpty) {
-          List(EVal(P(Diesel.PAYLOAD, "Either schedule/cronExpr or time needs to be provided", WTypes.wt.EXCEPTION)))
+          List(EVal(P.fromTypedValue(Diesel.PAYLOAD, "Either schedule/cronExpr or time needs to be provided", WTypes.wt.EXCEPTION)))
         } else if (!acceptPast && time.trim.nonEmpty && diff <= 0) {
-          List(EVal(P(Diesel.PAYLOAD, s"Time is in the past (${dt} vs ${now} is ${diff})", WTypes.wt.EXCEPTION)))
+          List(EVal(P.fromTypedValue(Diesel.PAYLOAD, s"Time is in the past (${dt} vs ${now} is ${diff})", WTypes.wt.EXCEPTION)))
         } else if (!DieselCron.ISENABLED) {
-          List(EVal(P(Diesel.PAYLOAD, "DieselCron is DISABLED", WTypes.wt.EXCEPTION)))
+          List(EVal(P.fromTypedValue(Diesel.PAYLOAD, "DieselCron is DISABLED", WTypes.wt.EXCEPTION)))
         } else {
           val settings = new DomEngineSettings()
           settings.collectCount = Some(collectCount)
@@ -157,7 +157,7 @@ class EEDieselCron extends EExecutor("diesel.cron") {
         val name = ctx.getRequired("name")
         val res = DieselCron.cancelSchedule(realm, name).map(_.schedId).mkString
         List(
-          EVal(P(
+          EVal(new P(
             "payload",
             s"schedule cancelled: $res"
           ))

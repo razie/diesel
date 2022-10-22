@@ -43,7 +43,7 @@ object Emailer extends RazController with Logging {
 
   /** make it simpler to call - we need to preserve order */
   def expand (name:String, attrs:List[(String,String)])(implicit mailSession: MailSession) : String =
-    expanda(name, attrs.map(t=> P(t._1, t._2)))
+    expanda(name, attrs.map(t=> new P(t._1, t._2)))
 
   /** find and expand email template with name */
   def expanda (name:String, attrs:Attrs)(implicit mailSession: MailSession): String  = {

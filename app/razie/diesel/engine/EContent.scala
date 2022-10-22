@@ -116,7 +116,7 @@ class EContent(
       case j: JsonOWrapper => {
         import scala.collection.JavaConversions._
         j.j.keys.map(_.toString).map { n =>
-          P(n, r \ "*" \@@ n)
+          new P(n, r \ "*" \@@ n)
         }
       }
     }

@@ -29,7 +29,7 @@ package object nodes {
   def sketchAttrs(defs:MatchAttrs, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) : Attrs = {
     defs.map{p=>
       val v = if(p.dflt.length > 0) p.dflt else p.expr.map(_.apply("")).mkString
-      P(p.name, v, p.ttype)
+      new P(p.name, v, p.ttype)
     }
   }
 
@@ -88,7 +88,7 @@ package object nodes {
           if (!res) {
             // if not there, make it up!
             res = true
-            calculated.append(P(pm.name, pm.dflt, pm.ttype, pm.expr).calculatedP)
+            calculated.append(new P(pm.name, pm.dflt, pm.ttype, pm.expr).calculatedP)
           }
         } else if (pm.isMatch && (pm.dflt.size > 0 || pm.expr.isDefined)) {
           // testing for name and value
@@ -119,7 +119,7 @@ package object nodes {
                   val b = pm.valExpr.apply("")
                   val groups = EContent.extractRegexParms(b.toString, a.toString)
 
-                  groups.foreach(t => ctx.put(P(t._1, t._2)))
+                  groups.foreach(t => ctx.put(new P(t._1, t._2)))
                 }
               }
             }

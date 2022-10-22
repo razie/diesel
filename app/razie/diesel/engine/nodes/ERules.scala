@@ -246,7 +246,7 @@ case class EMatch(cls: String, met: String, attrs: MatchAttrs, cond: Option[EIf]
       case Some(CExpr(e, _)) => e.toString
       case _ => ""
     }
-    P(p.name, df, p.ttype)
+    new P(p.name, df, p.ttype)
   })
 
   override def toHtml = ea(cls, met, "", true, AstKinds.GENERATED) + " " + toHtmlMAttrs(attrs) + cond.map(
@@ -476,7 +476,7 @@ case class EMock(rule: ERule) extends CanHtml with HasPosition {
   * @param p
   */
 case class EVal(p: RDOM.P) extends CanHtml with HasPosition with HasKind {
-  def this(name: String, value: String) = this(P(name, value))
+  def this(name: String, value: String) = this(new P(name, value))
 
   var pos: Option[EPos] = None
 

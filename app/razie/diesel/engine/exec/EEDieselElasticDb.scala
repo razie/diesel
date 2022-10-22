@@ -279,7 +279,7 @@ class EEDieselElasticDb extends EEDieselDbExecutor(DB) {
       }
 
       List(
-        EVal(P(name, "", WTypes.wt.OBJECT.withSchema(DB)).withValue(x, WTypes.wt.OBJECT.withSchema(DB)))
+        EVal(new P(name, "", WTypes.wt.OBJECT.withSchema(DB)).withValue(x, WTypes.wt.OBJECT.withSchema(DB)))
       )
     } else {
       // route Msg: find instance and delegate

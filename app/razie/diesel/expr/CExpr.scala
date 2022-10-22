@@ -15,7 +15,7 @@ case class CExprNull() extends Expr {
 
   override def apply(v: Any)(implicit ctx: ECtx) = applyTyped(v).calculatedValue
 
-  override def applyTyped(v: Any)(implicit ctx: ECtx): P = P("", "", WTypes.wt.UNDEFINED)
+  override def applyTyped(v: Any)(implicit ctx: ECtx): P = new P("", "", WTypes.wt.UNDEFINED)
 
   override def toDsl = expr
   override def toHtml = expr
@@ -37,11 +37,11 @@ case class CExpr[T](ee: T, ttype: WType = WTypes.wt.EMPTY) extends Expr {
 
     if (ttype == WTypes.NUMBER) {
       if (es.contains("."))
-        P("", "", ttype).withCachedValue(es.toDouble, WTypes.wt.NUMBER, es)
+        new P("", "", ttype).withCachedValue(es.toDouble, WTypes.wt.NUMBER, es)
       else
-        P("", "", ttype).withCachedValue(es.toLong, WTypes.wt.NUMBER, es)
+        new P("", "", ttype).withCachedValue(es.toLong, WTypes.wt.NUMBER, es)
     } else if (ttype == WTypes.BOOLEAN) {
-      P("", "", ttype).withCachedValue(es.toBoolean, WTypes.wt.BOOLEAN, es)
+      new P("", "", ttype).withCachedValue(es.toBoolean, WTypes.wt.BOOLEAN, es)
     } else {
       // expand templates by default
       // important: only for STRING or unknown (default is string)
@@ -60,7 +60,7 @@ case class CExpr[T](ee: T, ttype: WType = WTypes.wt.EMPTY) extends Expr {
             s1 = PAT.replaceAllIn(nes, {
               m =>
                 (new SimpleExprParser).parseExpr(m.group(1)).map { e =>
-                  val res = P("x", "", WTypes.wt.EMPTY, Some(e)).calculatedValue
+                  val res = new P("x", "", WTypes.wt.EMPTY, Some(e)).calculatedValue
 
                   // if the parm's value contains $ it would not be expanded - that's enough, eh?
                   // todo recursive expansions?
@@ -87,10 +87,10 @@ case class CExpr[T](ee: T, ttype: WType = WTypes.wt.EMPTY) extends Expr {
           nes = s1
 //        }
 
-      P("", "", ttype).withCachedValue(nes, ttype, nes)
+      new P("", "", ttype).withCachedValue(nes, ttype, nes)
 
       } else
-        P("", "", ttype).withCachedValue(ee, ttype, es)
+        new P("", "", ttype).withCachedValue(ee, ttype, es)
     }
   }
 

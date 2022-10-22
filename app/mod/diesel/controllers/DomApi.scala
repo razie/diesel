@@ -492,7 +492,7 @@ class DomApi extends DomApiBase with Logging {
        .map (msg=>
          // add matched parms
            // todo why map matched parms and not keep type/value what abt numbers, escaped json etc?
-         if(matchedParms.isDefined) msg.copy(attrs = msg.attrs ::: matchedParms.get.toList.map(t=>P(t._1, t._2)))
+         if(matchedParms.isDefined) msg.copy(attrs = msg.attrs ::: matchedParms.get.toList.map(t=>new P(t._1, t._2)))
          else msg
        )
 
@@ -785,7 +785,7 @@ class DomApi extends DomApiBase with Logging {
 
         // add query parms
         val q = stok.req.queryString.map(t => (t._1, t._2.mkString))
-        engine.ctx.putAll(q.map(t => P(t._1, t._2)).toList)
+        engine.ctx.putAll(q.map(t => new P(t._1, t._2)).toList)
 
         // add the request
         new DomReq(stok.req).addTo(engine.ctx)
@@ -861,7 +861,7 @@ class DomApi extends DomApiBase with Logging {
               // add matched parms
               // todo why map matched parms and not keep type/value what abt numbers, escaped json etc?
               if (matchedParms.isDefined) msg.copy(
-                attrs = msg.attrs ::: matchedParms.get.toList.map(t => P(t._1, t._2)))
+                attrs = msg.attrs ::: matchedParms.get.toList.map(t => new P(t._1, t._2)))
               else msg
             )
 
@@ -1063,8 +1063,24 @@ class DomApi extends DomApiBase with Logging {
 
             // must allow for ctx.sleeps
             // todo why 50 sec
-            val dur = WikiConfig.getInstance.get.prop("diesel.rest.timeout", "50 seconds")
+            var dur = WikiConfig.getInstance.get.prop("diesel.rest.timeout", "50 seconds")
             val tcode = WikiConfig.getInstance.get.prop("diesel.rest.timeoutCode", "504")
+
+            // any overrides?
+            Website.getRealmProps(reactor).get("diesel.rest.timeout.exclusions")
+                .flatMap(_.value).toList.flatMap(_.asArray).foreach {o =>
+              val x = o.asInstanceOf[collection.mutable.HashMap[String,String]]
+              if (engine.description.matches(x("pattern"))) {
+                dur = x("timeout")
+                engine.root.appendAllNoEvents(
+                  List(
+                    DomAst(
+                      EInfo(s"diesel.rest.timeout reset to: ${dur}", s"timeout override to: ($dur)"), AstKinds.VERBOSE)
+                        .withStatus(DomState.SKIPPED)
+                  ))
+              }
+            }
+
             try {
               Await.result(res, Duration(dur))
             } catch {
@@ -1541,8 +1557,8 @@ class DomApi extends DomApiBase with Logging {
 
         // add parms to context, so they're available to all inside
         // todo how to handle typed numbers and json parms?
-        parms.map(p => engine.ctx.put(P(p._1, p._2)))
-        Some(new EMsg(e, a, parms.map(p => P(p._1, p._2)).toList))
+        parms.map(p => engine.ctx.put(new P(p._1, p._2)))
+        Some(new EMsg(e, a, parms.map(p => new P(p._1, p._2)).toList))
       } catch {
         case t: Throwable => {
           razie.Log.log("error parsing", t)
@@ -1554,13 +1570,14 @@ class DomApi extends DomApiBase with Logging {
           None
         }
       }
+
     } orElse {
 
       // no template found - match a message?
       val headers = DomEngineHelper.parmsFromRequestHeader(stok.req, content)
 
       // extract parms from request
-      if(verb == "GET" || verb == "POST") {
+      if(verb == "GET" || verb == "POST" || verb == "PUT") {
         // query parms for GET
         val pQuery = stok.query.filter(x => !DomEngineSettings.FILTER.contains(x._1))
 
@@ -1702,8 +1719,9 @@ class DomApi extends DomApiBase with Logging {
   /** can user execute message */
   def isMsgPublic (m:EMsg, reactor:String, website:Website)(implicit stok:RazRequest) = {
     m.isPublic ||
-    website.dieselVisiblity == "public"
-  }
+    website.dieselVisiblity == "public" ||
+    DIESEL_REST == m.ea  // if diesel.rest we deem public so it can fail in the engine expansion if rule matched
+    }
 
   /** can user execute message */
   def isMsgVisible (m:EMsg, reactor:String, website:Website)(implicit stok:RazRequest) = {

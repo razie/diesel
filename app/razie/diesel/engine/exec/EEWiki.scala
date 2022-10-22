@@ -49,7 +49,7 @@ class EEWiki extends EExecutor("diesel.wiki") {
               val p =
                 if(in.attrs.exists(_.name == "type"))
                   P.fromTypedValue("", w.content, ctx.getRequired("type"))
-                else P("", w.content)
+                else new P("", w.content)
 
               in.attrs.find(_.name == "result").map(_.calculatedValue).map { output=>
                 new EVal(p.copy(name = output))

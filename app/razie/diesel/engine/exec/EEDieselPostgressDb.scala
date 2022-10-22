@@ -141,7 +141,7 @@ case class EPostgressConnector (
   def upsertEntity(realm:String, env:String, table:String, entityType:String, entityId:String, entity:P)(implicit ctx: ECtx) = {
     ensureEntityTableExists(realm, table)
 
-    try {
+    {
       val json = entity.currentStringValue
       val o = entity.calculatedTypedValue.asJson
 
@@ -226,7 +226,7 @@ case class EPostgressConnector (
 
     log(s"Postgress deleteEntity $entityType:$entityId SQL $SQL")
 
-    val res = try {
+    val res = {
       val pstmt = conn.prepareStatement(SQL)
       try {
         pstmt.setString(1, realm)
@@ -265,7 +265,7 @@ case class EPostgressConnector (
 
     log(s"Postgress deleteQuery $entityType:$query SQL $SQL")
 
-    val res = try {
+    val res = {
       val pstmt = conn.prepareStatement(SQL)
       try {
         pstmt.setString(1, realm)
@@ -302,9 +302,9 @@ case class EPostgressConnector (
 
     log(s"Postgress findOne $entityType:$entityId SQL $SQL")
 
-    var res = Some(P("document", "", WTypes.wt.UNDEFINED))
+    var res = Some(new P("document", "", WTypes.wt.UNDEFINED))
 
-    try {
+    {
       val pstmt = conn.prepareStatement(SQL)
       val x = try {
         pstmt.setString(1, realm)
@@ -391,7 +391,7 @@ case class EPostgressConnector (
     var count = 0L
     val res = new ListBuffer[HashMap[String, Any]]
 
-    try {
+    {
       val pstmt1 = conn.prepareStatement(SQL1)
       val pstmt = conn.prepareStatement(SQL)
 
@@ -491,7 +491,7 @@ class EEDieselPostgressDb extends EEDieselDbExecutor(DB) {
           }
 
           List(
-            EVal(P(name, "", WTypes.wt.OBJECT.withSchema(DB)).withValue(x, WTypes.wt.OBJECT.withSchema(DB)))
+            EVal(new P(name, "", WTypes.wt.OBJECT.withSchema(DB)).withValue(x, WTypes.wt.OBJECT.withSchema(DB)))
           )
 //    } else {
 //      // route Msg: find instance and delegate
@@ -579,7 +579,7 @@ class EEDieselPostgressDb extends EEDieselDbExecutor(DB) {
             ETrace("SQL", sql2) :: l :::
                 (doc
                     .orElse {
-                      Some(P("document", "", WTypes.wt.UNDEFINED))
+                      Some(new P("document", "", WTypes.wt.UNDEFINED))
                     }
                     .toList.map { p =>
                   EVal(p.copy(name = Diesel.PAYLOAD))

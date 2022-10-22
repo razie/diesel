@@ -259,7 +259,7 @@ object RDomain {
         DOM_LIST,
         List(
           EVal(
-            P("error", "ERROR: "+we.parsed))))
+            new P("error", "ERROR: "+we.parsed))))
 
     we.collector.getOrElse(DOM_LIST, List[Any]()).asInstanceOf[List[Any]].reverse.collect {
       case x if(p.isDefinedAt(x)) => p(x)

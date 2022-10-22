@@ -19,7 +19,7 @@ case class AExprIdent(val start: String, rest:List[P] = Nil) extends Expr {
       else ""
       )
 
-  def restAsP(implicit ctx: ECtx) = P("", rest.map(_.calculatedValue).mkString("."))
+  def restAsP(implicit ctx: ECtx) = new P("", rest.map(_.calculatedValue).mkString("."))
 
   def exprDot(implicit ctx: ECtx) =
     start + (if (rest.size > 0) "." else "") + rest.map(_.calculatedValue).mkString(".")
@@ -41,7 +41,7 @@ case class AExprIdent(val start: String, rest:List[P] = Nil) extends Expr {
   // don't blow up - used when has defaults
   def tryApplyTypedFrom(p: Option[P])(implicit ctx: ECtx): Option[P] =
     p.flatMap { startP =>
-      (P("", start) :: rest).foldLeft(Option(startP))((a, b) => access(a, b, false))
+      (new P("", start) :: rest).foldLeft(Option(startP))((a, b) => access(a, b, false))
     }
   // todo why do i make up a parm?
 
@@ -53,7 +53,7 @@ case class AExprIdent(val start: String, rest:List[P] = Nil) extends Expr {
             rest.foldLeft(Option(startP))((a, b) => access(a, b, true))
           }
         )
-        .getOrElse(P(start, "", WTypes.wt.UNDEFINED))
+        .getOrElse(new P(start, "", WTypes.wt.UNDEFINED))
   }
   // todo why do i make up a parm?
 

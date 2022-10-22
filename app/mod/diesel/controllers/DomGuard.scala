@@ -248,16 +248,23 @@ class DomGuard extends DomApiBase with Logging {
       }
     }
 
+    val filters = stok.query.get("filter").mkString
+    val follow = stok.query.get("follow")
+    if(follow.isDefined) DomCollector.following = follow.mkString.split(",")
+
     val r = if (stok.au.exists(_.isAdmin)) "all" else stok.realm
 
     val list = DomCollector.withAsts { asts =>
-      asts.filter(a => stok.au.exists(_.isAdmin) ||
+      asts
+          .filter(a =>
+        stok.au.exists(_.isAdmin) ||
           a.realm == stok.realm &&
               (a.userId.isEmpty ||
                   a.userId.exists(_ == stok.au.map(_.id).mkString) ||
                   stok.au.exists(_.isMod)
                   )
       )
+          .filter(a=> filters.isEmpty || a.engine.description.contains(filters))
     }
 
       val total = GlobalData.dieselEnginesTotal.get()
@@ -321,15 +328,20 @@ class DomGuard extends DomApiBase with Logging {
 
       if (stok.au.exists(_.isAdmin)) {
         // add active engines to debug things that get stuck
-        val a =
-          """<p>----------------active engines------------------</p>""" + {
-              DieselAppContext.activeEngines.map(t =>
+        val actives = DieselAppContext.activeEngines
+          val a =
+          """<h3> Active Engines </h3>""" + {
+            if (actives.isEmpty) "-none-" else {
+              actives.map(t =>
                 s"""<br><a href="/diesel/viewAst/${t._1}">...${t._1} - ${t._2.description}</a>"""
               ).mkString("")
+            }
           }
 
         table = table + a
       }
+
+    val w="/wiki/"
 
       val title =
         s"""Flow history realm: $r showing ${list.size} of $total since start and user $un""".stripMargin
@@ -343,7 +355,7 @@ class DomGuard extends DomApiBase with Logging {
             .stripMargin
 
       ROK.k reactorLayout12FullPage {
-        views.html.modules.diesel.engineListAst(title, title2, table)
+        views.html.modules.diesel.engineListAst(title, title2, table, DomCollector.following.mkString)
       }
    }
 
@@ -352,7 +364,7 @@ class DomGuard extends DomApiBase with Logging {
       DomCollector.cleanAst
       Redirect(s"""/diesel/listAst""")
     } else
-      Unauthorized("no permission")
+      Unauthorized("no permission, hacker eh?")
   }
 
   def dieselPostAst(stream: String, id: String, parentId: String) = FAUPRaAPI(true) { implicit stok =>

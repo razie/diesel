@@ -35,7 +35,7 @@ class DieselJs(val ctx: ECtx) {
   }
 
   def set(name: String, value: String): String = {
-    ctx.put(P(name, value))
+    ctx.put(new P(name, value))
     value
   }
 

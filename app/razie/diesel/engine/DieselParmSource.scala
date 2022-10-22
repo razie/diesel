@@ -27,20 +27,20 @@ class DieselParmSource (ctx:DomEngECtx) extends ParmSource {
     case "env" =>
       // first overrides, then settings and lastly current envList setting
       None
-          .orElse(ctx.settings.env.map(P("diesel.env", _)))
-          .orElse(Option(P("diesel.env", ctx.dieselEnv(ctx))))
+          .orElse(ctx.settings.env.map(new P("diesel.env", _)))
+          .orElse(Option(new P("diesel.env", ctx.dieselEnv(ctx))))
 
     case "user" => {
 
       next("diesel.user", Map(
 
         "id" -> (n => {
-          Left(P("diesel.user.id", ctx.dieselUser(ctx)))
+          Left(new P("diesel.user.id", ctx.dieselUser(ctx)))
         }),
 
         "userName" -> (n => {
           // leave this lazy - it is expensive
-          Left(P("diesel.user.userName", ctx.dieselAU(ctx).map(_.userName).mkString))
+          Left(new P("diesel.user.userName", ctx.dieselAU(ctx).map(_.userName).mkString))
         }),
 
         "roles" -> (n => {
@@ -65,14 +65,14 @@ class DieselParmSource (ctx:DomEngECtx) extends ParmSource {
 
         "eName" -> (n => {
           // leave this lazy - it is expensive
-          Left(P("diesel.user.eName", ctx.dieselAU(ctx).map(_.ename).mkString))
+          Left(new P("diesel.user.eName", ctx.dieselAU(ctx).map(_.ename).mkString))
         })
       ))
     }
 
     // todo deprecated - remove
-    case "userid" => Some(P("diesel.userid", ctx.dieselUser(ctx)))
-    case "username" => Some(P("diesel.username", ctx.dieselAU(ctx).map(_.userName).mkString))
+    case "userid" => Some(new P("diesel.userid", ctx.dieselUser(ctx)))
+    case "username" => Some(new P("diesel.username", ctx.dieselAU(ctx).map(_.userName).mkString))
 
     case "isLocalhost" => Some(P.fromTypedValue("diesel.isLocalhost", Services.config.isLocalhost))
     case "isLocaldevbox" => Some(P.fromTypedValue("diesel.isLocaldevbox", Services.config.isLocalhost && Services.config.isRazDevMode))
@@ -141,16 +141,16 @@ class DieselParmSource (ctx:DomEngECtx) extends ParmSource {
     case "engine" => {
       next(DieselMsg.ENGINE.DIESEL_ENG, Map(
         "description" -> (n => Left(
-          P(DieselMsg.ENGINE.DIESEL_ENG_DESC, ctx.engine.map(_.description).mkString)
+          new P(DieselMsg.ENGINE.DIESEL_ENG_DESC, ctx.engine.map(_.description).mkString)
         )),
         "id" -> (n => Left(
-          P(DieselMsg.ENGINE.DIESEL_ENG + ".id", ctx.engine.map(_.id).mkString)
+          new P(DieselMsg.ENGINE.DIESEL_ENG + ".id", ctx.engine.map(_.id).mkString)
         )),
         "json" -> (n => Left(
           P.fromSmartTypedValue(DieselMsg.ENGINE.DIESEL_ENG + ".json", ctx.engine.get.toj)
         )),
         "html" -> (n => Left(
-          P(DieselMsg.ENGINE.DIESEL_ENG + ".html", ctx.engine.get.root.toHtmlInPage)
+          new P(DieselMsg.ENGINE.DIESEL_ENG + ".html", ctx.engine.get.root.toHtmlInPage)
         )),
         "settings" -> (n => Left(
           P.fromSmartTypedValue(DieselMsg.ENGINE.DIESEL_ENG + ".settings", ctx.engine.get.settings.toJson)

@@ -71,7 +71,7 @@ object EEConnectors {
   }
 
   def add(realm: String, e: EEConnector) = {
-    RealmContexts.put(realm, P(e.name, "", WTypes.wt.OBJECT).withValue(e, WTypes.wt.OBJECT))
+    RealmContexts.put(realm, new P(e.name, "", WTypes.wt.OBJECT).withValue(e, WTypes.wt.OBJECT))
     _all.put(s"$realm-${e.name}", e)
   }
 
