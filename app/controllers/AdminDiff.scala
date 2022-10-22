@@ -45,7 +45,7 @@ class AdminDiff extends AdminBase with Logging {
   /** get list of pages - invoked by remote trying to sync */
   def adminDrafts(reactor: String) = FAUR { implicit stok =>
 
-    if(! stok.au.exists(_.realms.contains(stok.realm))) {
+    if(! stok.au.exists(u=> u.realms.contains(stok.realm) || u.isAdmin)) {
       Unauthorized("You don't belong to this realm")
     }
     else {
@@ -102,7 +102,7 @@ class AdminDiff extends AdminBase with Logging {
   // todo auth that user belongs to realm
   def adminDraftsCleanAll = FAUR { implicit stok =>
 
-    if (!stok.au.exists(_.isAdmin)) Unauthorized("ONly for admins...")
+    if (!stok.au.exists(_.isAdmin)) Unauthorized("Only admins can do that...")
     else {
 
       var l = Autosave.activeDrafts(stok.au.get._id).toList
