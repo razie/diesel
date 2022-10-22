@@ -93,17 +93,16 @@ class EEDieselApiGw extends EExecutor(DieselMsg.APIGW.ENTITY) {
 
       case "diesel.apigw.limit.groups" => {
         // todo should use permissions?
-        if (Services.config.isLocalhost) {
-          List(
+        if (! Services.config.isLocalhost)
+          throw new IllegalArgumentException("Error: No permission")
+
+        List(
             EVal(P.fromTypedValue(Diesel.PAYLOAD, DieselRateLimiter.rateLimits.map(t => {
               (t._1, {
                 t._2.toString
               })
             }))
             ))
-        } else {
-          throw new IllegalArgumentException("Error: No permission")
-        }
       }
 
       case "diesel.apigw.limit.stats" => {

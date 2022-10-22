@@ -56,7 +56,7 @@ class EECtx extends EExecutor(EECtx.CTX) {
           // extract parms
           val groups = EContent.extractRegexParms(re.get.calculatedValue, payload.calculatedValue)
 
-          groups.map(t => EVal(P(t._1, t._2)))
+          groups.map(t => EVal(new P(t._1, t._2)))
         }
       }
 
@@ -108,7 +108,7 @@ class EECtx extends EExecutor(EECtx.CTX) {
           } else if(l.isOfType(WTypes.wt.STRING)) {
             ctx.getRequiredp(l.currentStringValue)
           } else {
-            P("", "", WTypes.wt.UNDEFINED) //throw new IllegalArgumentException(s"Can't source input list: $ctxList")
+            new P("", "", WTypes.wt.UNDEFINED) //throw new IllegalArgumentException(s"Can't source input list: $ctxList")
           }
         }
 
@@ -169,7 +169,7 @@ class EECtx extends EExecutor(EECtx.CTX) {
             ctx.getRequiredp(l.currentStringValue)
           } else {
             info = EWarning(s"Can't source input list - what type is it? ${l}") :: info
-            P("", "", WTypes.wt.UNDEFINED) //throw new IllegalArgumentException(s"Can't source input list: $ctxList")
+            new P("", "", WTypes.wt.UNDEFINED) //throw new IllegalArgumentException(s"Can't source input list: $ctxList")
           }
         }
 
@@ -547,8 +547,8 @@ class EECtx extends EExecutor(EECtx.CTX) {
       case "base64decode" => {
         val res = in.attrs.filter(_.name != Diesel.RESULT).map { a =>
           val res = Base64.dec(a.calculatedValue)
-          new EVal(RDOM.P(a.name, "", WTypes.wt.BYTES, None, "",
-            Some(PValue[Array[Byte]](res, "application/octet-stream"))))
+          new EVal(new RDOM.P(a.name, "", WTypes.wt.BYTES, None, "",
+            Some(PValue[Array[Byte]](res, WType("application/octet-stream")))))
         }
 
         val res2 = res ::: res.headOption.map(x => x.copy(p = x.p.copy(name = Diesel.PAYLOAD))).toList
@@ -660,7 +660,7 @@ class EECtx extends EExecutor(EECtx.CTX) {
           )
 
       // put straight in context - bypass trace nodes visible to users...
-      ctx.put(P(DIESEL_USER_ID, uid))
+      ctx.put(new P(DIESEL_USER_ID, uid))
 
       new EInfo("User is now auth ") :: Nil
     } else

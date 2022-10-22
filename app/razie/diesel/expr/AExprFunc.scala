@@ -115,18 +115,6 @@ case class AExprFunc(val expr: String, parms: List[RDOM.P]) extends Expr {
         P.fromTypedValue("", av.hashCode, WTypes.wt.NUMBER)
       }
 
-      case "matches" => {
-        val av = firstParm.getOrElse {
-          throw new DieselExprException("Need two arguments.")
-        }.calculatedValue
-
-        val bv = secondParm.getOrElse {
-          throw new DieselExprException("Need two arguments.")
-        }.calculatedValue
-
-        P.fromTypedValue("", av.matches(bv), WTypes.wt.BOOLEAN)
-      }
-
       case "cmp" => {
         // cmp (op=">", a, b) : Boolean
 
@@ -147,6 +135,31 @@ case class AExprFunc(val expr: String, parms: List[RDOM.P]) extends Expr {
         P.fromTypedValue("", res, WTypes.wt.BOOLEAN)
       }
 
+      case "sprintf" => {
+        val av = firstParm.getOrElse {
+          throw new DieselExprException("Need three arguments.")
+        }.calculatedValue
+
+        val bv = secondParm.getOrElse {
+          throw new DieselExprException("Need three arguments.")
+        }.calculatedTypedValue.asJavaObject
+
+        val res = String.format(av, bv)
+        P.fromSmartTypedValue("", res)
+      }
+
+      case "matches" => {
+        val av = firstParm.getOrElse {
+          throw new DieselExprException("Need two arguments.")
+        }.calculatedValue
+
+        val bv = secondParm.getOrElse {
+          throw new DieselExprException("Need two arguments.")
+        }.calculatedValue
+
+        P.fromTypedValue("", av.matches(bv), WTypes.wt.BOOLEAN)
+      }
+
       case "replaceAll" => {
         val av = firstParm.getOrElse {
           throw new DieselExprException("Need three arguments.")
@@ -161,19 +174,6 @@ case class AExprFunc(val expr: String, parms: List[RDOM.P]) extends Expr {
         }.calculatedValue
 
         P.fromTypedValue("", av.replaceAll(bv, cv), WTypes.wt.STRING)
-      }
-
-      case "sprintf" => {
-        val av = firstParm.getOrElse {
-          throw new DieselExprException("Need three arguments.")
-        }.calculatedValue
-
-        val bv = secondParm.getOrElse {
-          throw new DieselExprException("Need three arguments.")
-        }.calculatedTypedValue.asJavaObject
-
-        val res = String.format(av, bv)
-        P.fromSmartTypedValue("", res)
       }
 
       case "replaceFirst" => {
@@ -273,7 +273,7 @@ case class AExprFunc(val expr: String, parms: List[RDOM.P]) extends Expr {
       case "typeOf" => {
         firstParm.map { p =>
           val pv = p.calculatedTypedValue
-          P("", pv.contentType, WTypes.wt.STRING).withValue(pv.contentType, WTypes.wt.STRING)
+          new P("", pv.contentType, WTypes.wt.STRING).withValue(pv.contentType, WTypes.wt.STRING)
         }.getOrElse(
           // todo could be unknown?
           throw new DieselExprException(s"No arguments for $expr")
@@ -284,7 +284,7 @@ case class AExprFunc(val expr: String, parms: List[RDOM.P]) extends Expr {
         firstParm.map { p =>
           val p1 = p.calculatedValue
           val pv = URLEncoder.encode(p1, "UTF8")
-          P("", pv, WTypes.wt.STRING).withValue(pv, WTypes.wt.STRING)
+          new P("", pv, WTypes.wt.STRING).withValue(pv, WTypes.wt.STRING)
         }.getOrElse(
           throw new DieselExprException(s"No arguments for $expr")
         )
@@ -313,7 +313,7 @@ case class AExprFunc(val expr: String, parms: List[RDOM.P]) extends Expr {
               }
               .flatMap { p =>
                 val pv = if (p.expr.isEmpty && !p.hasCurrentValue) {
-                  P("", p.name)
+                  new P("", p.name)
                 } else {
                   // nope - it's just a normal parm=expr
                   p.calculatedP // need to do this to not affect the original with cached value

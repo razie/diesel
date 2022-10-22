@@ -67,7 +67,7 @@ class DomEngineV1(
       evAppChildren(a,
         DomAst(
           EMsg("diesel", "throw",
-            List(P("error", "maxLevels! recursive rule..."))
+            List(new P("error", "maxLevels! recursive rule..."))
           )))
       return Nil
     }
@@ -489,6 +489,8 @@ class DomEngineV1(
         //filter out exclusives - if other rules with the same name applied, the exclusive will kick out the others
         val exKey = r.e.cls + "." + r.e.met
 
+        var allowed = true
+
         if(exclusives.contains(exKey)) { // there's an exclusive for this - ignore it
           newNodes = newNodes :::
               DomAst(EInfo("rule excluded", exKey).withPos(r.pos), AstKinds.TRACE) ::
@@ -498,54 +500,78 @@ class DomEngineV1(
             exclusives.put(r.e.cls + "." + r.e.met, r) // we do exclusive per pattern
           }
 
-          // for diesel.rest we check permissions...
+          // for diesel.rest we check permissions when the rule is about to be expanded
           // todo maybe for others too, in the middle? why not...
-          if(DIESEL_REST == n.ea && r.arch.nonEmpty) {
-            val uroles = if(this.settings.user.isDefined) this.settings.user.get.roles else Set.empty[String]
-            val eroles = r.arch.split(",").filter(_.startsWith("role."))
 
-            // if the user matches one of the roles, it's ok
-            var matched = eroles.isEmpty || eroles.exists(r => uroles.contains(r.substring(5)))
+          if(DIESEL_REST == n.ea) {
+            var reason = ""
 
-            var reason = s"roles=${eroles.mkString} "
+            val vis = settings.realm.flatMap(Website.forRealm).map(_.dieselVisiblity).getOrElse("public")
 
-            if(!matched) {
-              // one more chance, look for masterRole/masterClient access to restricted rules
-              val oauth = Website.getRealmPropAsP(this.ctx.root.settings.realm.mkString, "oauth")
-                  .map(_.getJsonStructure)
-              val mr = oauth.get.get("masterRole").map(_.toString).mkString.trim
+            if (vis == "public") {
+              // just allow it
+            } else if (r.arch.nonEmpty) { // otherwise is there something to override non public?
+              val uroles = if (this.settings.user.isDefined) this.settings.user.get.roles else Set.empty[String]
+              val arch = r.arch.split(",")
+              val eroles = arch.filter(_.startsWith("role."))
+              val isPublic = arch.contains("public")
 
-              if(mr.nonEmpty) matched = uroles.contains(mr)
-              reason = s"$reason mr=$mr "
+              // if the user matches one of the roles, it's ok
+              allowed =
+                isPublic || settings.user.isDefined &&
+                  (eroles.isEmpty || eroles.exists(r => uroles.contains(r.substring(5))))
 
-              if(!matched) {
-                val eclients = r.arch.split(",").filter(_.startsWith("client."))
-                val uclient = this.settings.user.flatMap(_.authClient).mkString
+              reason = s"roles=${eroles.mkString} "
 
-                // rule contains client
-                if(uclient.nonEmpty) matched = eclients.contains(uclient)
-                reason = s"$reason clients=${eclients.mkString} "
+              if (!allowed) {
+                // one more chance, look for masterRole/masterClient access to restricted rules
+                val oauth = Website.getRealmPropAsP(this.ctx.root.settings.realm.mkString, "oauth")
+                    .map(_.getJsonStructure)
+                val mr = oauth.flatMap(_.get("masterRole")).map(_.toString).mkString.trim
 
-                if(!matched) {
-                  val mc = oauth.get.get("masterClient").map(_.toString).mkString.trim
-                  reason = s"$reason mc=$mc "
+                if (mr.nonEmpty) allowed = uroles.contains(mr)
+                reason = s"$reason mr=$mr "
 
-                  // user comes from masterclient
-                  if(mc.nonEmpty) matched = uclient equals mc
+                if (!allowed) {
+                  val eclients = r.arch.split(",").filter(_.startsWith("client."))
+                  val uclient = this.settings.user.flatMap(_.authClient).mkString
+
+                  // rule contains client
+                  if (uclient.nonEmpty) allowed = eclients.contains(uclient)
+                  reason = s"$reason clients=${eclients.mkString} "
+
+                  if (!allowed) {
+                    val mc = oauth.flatMap(_.get("masterClient")).map(_.toString).mkString.trim
+                    reason = s"$reason mc=$mc "
+
+                    // user comes from masterclient
+                    if (mc.nonEmpty) allowed = uclient equals mc
+                  }
                 }
               }
             }
 
-            if(!matched) {
+            if(!allowed) {
               // super admins can call APIs
-              matched = this.settings.user.exists(_.isAdmin)
+              allowed = this.settings.user.exists(_.isAdmin)
             }
 
-            if(! matched)
-              throw new DieselException(s"AUTH FAILED for API diesel.rest ! ($reason)", Some(401))
+            if(! allowed) {
+              val msg = s"AUTH FAILED for API diesel.rest ! ($reason)"
+//              throw new DieselException(s"AUTH FAILED for API diesel.rest ! ($reason)", Some(401))
+              newNodes = newNodes :::
+                  DomAst(
+                    EError(msg, "Returning AUTH ERROR"), AstKinds.GENERATED) ::
+                  DomAst(
+                    EMsg("diesel.flow", "return", List(
+                      P.fromSmartTypedValue("diesel.http.response.status", 401),
+                      P.fromSmartTypedValue("payload", msg)
+                    )).withPos(r.pos), AstKinds.GENERATED) ::
+                  Nil
+            }
           }
 
-          newNodes = newNodes ::: ruleDecomp(a, n, r, ctx)
+        if(allowed)  newNodes = newNodes ::: ruleDecomp(a, n, r, ctx)
         }
       }
     }
@@ -609,7 +635,7 @@ class DomEngineV1(
         } catch {
           case e: Throwable =>
             razie.Log.alarmThis(s"Exception from Executor ${r.name} for Msg: ${n.toString} : ", e)
-            val p = EVal(P(Diesel.PAYLOAD, e.getMessage, WTypes.wt.EXCEPTION).withValue(e, WTypes.wt.EXCEPTION))
+            val p = EVal(new P(Diesel.PAYLOAD, e.getMessage, WTypes.wt.EXCEPTION).withValue(e, WTypes.wt.EXCEPTION))
 
             setSmartValueInContext(a, ctx, p.p)
             var res = List(DomAst(new EError("Exception:", e), AstKinds.ERROR), DomAst(p, AstKinds.ERROR))
@@ -842,8 +868,8 @@ class DomEngineV1(
       val x = EMsg(
         "ctx.export",
         List(
-          P("toExport", r.name, WTypes.wt.STRING),
-          P(r.name, "", WTypes.wt.EMPTY, Some(AExprIdent(r.name)))
+          new P("toExport", r.name, WTypes.wt.STRING),
+          new P(r.name, "", WTypes.wt.EMPTY, Some(AExprIdent(r.name)))
         )
       ).withArch(AstKinds.TRACE).withPos(in.pos)
       result = result ::: List(
@@ -1188,7 +1214,7 @@ class DomEngineV1(
         // todo then set payload to exception
         val ex = new DieselException(msg, code)
 
-        val p = EVal(P(Diesel.PAYLOAD, msg, WTypes.wt.EXCEPTION).withValue(ex, WTypes.wt.EXCEPTION))
+        val p = EVal(new P(Diesel.PAYLOAD, msg, WTypes.wt.EXCEPTION).withValue(ex, WTypes.wt.EXCEPTION))
         setSmartValueInContext(a, a.getCtx.get.getScopeCtx, p.p) // set straight to scope
 
         val newD = DomAst(new EError("Exception:", ex), AstKinds.ERROR)
@@ -1628,7 +1654,7 @@ class DomEngineV1(
             ctx.getRequiredp(l.currentStringValue)
           } else {
             info = EWarning(s"Can't source input list - what type is it? ${l}") :: info
-            P("", "", WTypes.wt.UNDEFINED) //throw new IllegalArgumentException(s"Can't source input list: $ctxList")
+            new P("", "", WTypes.wt.UNDEFINED) //throw new IllegalArgumentException(s"Can't source input list: $ctxList")
           }
         }
 
