@@ -238,7 +238,7 @@ class Wiki @Inject()(dieselControl: DieselControl) extends WikiBase {
       content <- wid.content orErr s"no content for $wid";
       can <- canSee(wid, request.au, Some(w)) orCorr cNoPermission
     ) yield {
-        Ok(content)
+        Ok(content.replaceAllLiterally("\r\n", "\n"))
       }) getOrElse {
       noPerm(cw.wid.get, "SHOW.CONTENT")
     }
@@ -258,7 +258,7 @@ class Wiki @Inject()(dieselControl: DieselControl) extends WikiBase {
         "entry.ver" -> ver) orErr "not found";
       can <- canSee(wid, request.au, wid.page.orElse(Some(w.entry))) orCorr cNoPermission
     ) yield {
-      Ok(w.entry.content)
+      Ok(w.entry.content.replaceAllLiterally("\r\n", "\n"))
     }) getOrElse {
       noPerm(cw.wid.get, "SHOW.VER.CONTENT")
     }
@@ -279,7 +279,7 @@ class Wiki @Inject()(dieselControl: DieselControl) extends WikiBase {
         )
       } orCorr cNoPermission
     ) yield {
-        Ok(w.grated.toString).as("application/json")
+        Ok(w.cloneContent(w.content.replaceAllLiterally("\r\n", "\n")).grated.toString).as("application/json")
       }) getOrElse {
       noPerm(cw.wid.get, "SHOW.CONTENT")
     }
@@ -336,7 +336,7 @@ class Wiki @Inject()(dieselControl: DieselControl) extends WikiBase {
         Ok(j.toString).as("application/json")
       }).getOrElse(NotFound("WID not found:"+wid.wpath))
 
-      case "content" => wid.page.map(w=> Ok(w.content).as("text/plain")).getOrElse(NotFound("WID not found:"+wid.wpath))
+      case "content" => wid.page.map(w=> Ok(w.content.replaceAllLiterally("\r\n", "\n")).as("text/plain")).getOrElse(NotFound("WID not found:"+wid.wpath))
       case "included" => wid.page.map(w=> Ok(w.included).as("text/plain")).getOrElse(NotFound("WID not found:"+wid.wpath))
       case "xp"  => xp(wid, cw.rest).apply(request).value.get.get
       case "xpl" => xpl(wid, cw.rest).apply(request).value.get.get

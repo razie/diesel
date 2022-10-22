@@ -59,7 +59,9 @@ class AdminImport extends AdminBase with Logging {
       clog << "fname: " + fname
 
       val meta = io.Source.fromFile(s"$source/${fname}.meta.txt").mkString
+      // remove CRLF if someone posts from windows
       val contents = io.Source.fromFile(s"$source/${fname}.txt").mkString
+          .replaceAllLiterally("\r\n", "\n")
 
       if (!meta.isEmpty) {
         val dbo = com.mongodb.util.JSON.parse(meta).asInstanceOf[DBObject];
@@ -678,7 +680,7 @@ class AdminImport extends AdminBase with Logging {
           count = count + 1
           val realms = "rk,wiki,$reactors".split(",").distinct.mkString(",")
           lastImport = Some(s"Importing $count of $total ($realms)")
-          RCreate.noAudit(t._1)
+          RCreate.noAudit(t._1.cloneContent(t._1.content.replaceAllLiterally("\r\n", "\n")))
           //            t._1.create
         }, { err =>
           // failure
