@@ -228,7 +228,7 @@ class AdminDiff extends AdminBase with Logging {
     * @return
     */
   // todo auth that user belongs to realm
-  def difflist(localRealm: String, toRealm: String, remote: String) = FAUR { implicit request =>
+  def difflist(localRealm: String, toRealm: String, remote: String, remoteLabel:String) = FAUR { implicit request =>
     try {
       // look only at all the local realms
       val localRealms = WikiReactors
@@ -240,8 +240,9 @@ class AdminDiff extends AdminBase with Logging {
       // limit at 10 so it's not too long URL
       val remoteRealms = if("all" == toRealm && localRealms.size < 10) localRealms.mkString(",") else toRealm
 
+      val host = if(remote.startsWith("http")) remote else "http://" + remote
       // get remote list
-      val b = body(url(s"http://$remote/razadmin/wlist/$remoteRealms").basic("H-" + request.au.get.emailDec,
+      val b = body(url(s"$host/razadmin/wlist/$remoteRealms").basic("H-" + request.au.get.emailDec,
         "H-" + request.au.get.pwd.dec))
 
       val gd = new JSONArray(b)
@@ -272,8 +273,9 @@ class AdminDiff extends AdminBase with Logging {
           // diff to another reactor
           diffByName(lsrc, ldest)
 
+      val xremote = if(remote.startsWith("http")) remote else "http://" + remote
       ROK.r admin { implicit stok =>
-        views.html.admin.adminDifflist(localRealm, toRealm, remote, lnew, lremoved, lchanged.sortBy(_._3))
+        views.html.admin.adminDifflist(localRealm, toRealm, xremote, remoteLabel, lnew, lremoved, lchanged.sortBy(_._3))
       }
     } catch {
       case x: CommRtException if x.httpCode == 401 => {
@@ -346,8 +348,9 @@ class AdminDiff extends AdminBase with Logging {
       try {
         val page = localWid.page.get
 
+        val host = if(targetHost.startsWith("http")) targetHost else "http://" + targetHost
         val b = body(
-          url(s"http://$targetHost/wikie/delete2/${remoteWid.wpathFull}")
+          url(s"$host/wikie/delete2/${remoteWid.wpathFull}")
               .basic("H-" + request.au.get.emailDec, "H-" + request.au.get.pwd.dec))
 
         // response contains ok - is important
@@ -381,8 +384,9 @@ class AdminDiff extends AdminBase with Logging {
       try {
         val page = localWid.page.get
 
+        val host = if(targetHost.startsWith("http")) targetHost else "http://" + targetHost
         val b = body(
-          url(s"http://$targetHost/wikie/setContent/${remoteWid.wpathFull}?id=$rightId").
+          url(s"$host/wikie/setContent/${remoteWid.wpathFull}?id=$rightId").
               form(Map("we" -> page.grated.toString)).
               basic("H-" + request.au.get.emailDec, "H-" + request.au.get.pwd.dec))
 
@@ -444,7 +448,8 @@ object AdminDiff {
     */
   def getRemoteWE(target: String, wid: WID)(implicit au: User): Either[(WikiEntry, String), String] = {
     try {
-      val remote = s"http://$target/wikie/json/${wid.wpathFull}"
+      val host = if(target.startsWith("http")) target else "http://" + target
+      val remote = s"$host/wikie/json/${wid.wpathFull}"
       val wes = body(
         url(remote).basic("H-" + au.emailDec, "H-" + au.pwd.dec))
 

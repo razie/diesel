@@ -184,12 +184,12 @@ require(['jquery'], function($){
               <li class="divider"></li>
               <li><a href="/admin/drafts/@stok.realm">Drafts</a></li>
                   @if(Services.config.isLocalhost) {
-                    <li><a href="/admin/difflist/@stok.realm/@stok.realm/www.dieselapps.com">Diffs</a></li>
+                    <li><a href="/admin/difflist/@stok.realm/@stok.realm?remoteLabel=dieselapps.com&remote=www.dieselapps.com">Diffs</a></li>
                   } else {
-                    <li><a href="/admin/difflist/@stok.realm/@prodReactor(stok.realm)/www.dieselapps.com">Diffs</a></li>
+                    <li><a href="/admin/difflist/@stok.realm/@prodReactor(stok.realm)?remoteLabel=dieselapps.com&remote=www.dieselapps.com">Diffs</a></li>
                   }
               @if(! web().navrMenuRemove.contains("Diffs") && stok.au.exists(u=> u.isAdmin)) {
-                <li><a href="/admin/difflist/@stok.realm/all/www.dieselapps.com">Diffs-all</a></li>
+                <li><a href="/admin/difflist/@stok.realm/all?remoteLabel=dieselapps.com&remote=www.dieselapps.com">Diffs-all</a></li>
               }
               <li class="divider"></li>
               <li> <a href="javascript:doEditThis();"><b>Edit</b></a> </li>

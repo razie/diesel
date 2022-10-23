@@ -6,7 +6,7 @@ show diff with remote
 @import model.WEAbstract
 @import model.WEAbstract
 @import model.WEAbstract
-@(localRealm:String, toRealm:String, remote:String, lnew:List[WEAbstract], lremoved:List[WEAbstract], lchanged:List[(WEAbstract, WEAbstract, String, String)])(implicit stok: controllers.StateOk)
+@(localRealm:String, toRealm:String, remote:String, remoteLabel:String, lnew:List[WEAbstract], lremoved:List[WEAbstract], lchanged:List[(WEAbstract, WEAbstract, String, String)])(implicit stok: controllers.StateOk)
 @import razie.wiki.model.WID
 @import razie.wiki.Config
 @import razie.hosting.Website
@@ -17,8 +17,9 @@ show diff with remote
 }
 
 @remotes()=@{
-  List("www.dieselapps.com", Services.config.hostport) :::
-  Website.getRealmProps(localRealm).get("diesel.remotes").map(_.currentStringValue).mkString.split(",").toList
+  List(("dieselapps.com" -> "www.dieselapps.com"), ("localhost" -> Services.config.hostport)) :::
+//  Website.getRealmProps(localRealm).get("diesel.remotes").map(_.currentStringValue).mkString.split(",").toList
+  Website.getRealmProps(localRealm).get("diesel.remotes").flatMap(_.value).toList.flatMap(_.asJson.toList)
 }
 
 @e(s:String)=@{s.replaceAllLiterally("'", "\\'")}
@@ -46,14 +47,14 @@ show diff with remote
         <span >
 
           <a href="javascript:selectRemote();" style="font-weight:bold;" title="remote site">
-            @remote
+            @remoteLabel
           <span class="caret"></span>
           </a>
         </span>
 
         | Reactor:
 
-          <span >
+        <span >
             <a href="javascript:selectToRealm();" style="color:red;font-weight:bold;" title="remote reactor">
               @toRealm
                 <span class="caret"></span>
@@ -62,18 +63,18 @@ show diff with remote
 
         <span id="remotes" style="display: none">
           @remotes().map{t=>
-            <a href="/admin/difflist/@localRealm/@toRealm/@t">@t</a><br>
+            <a href="/admin/difflist/@localRealm/@toRealm?remoteLabel=@t._1&remote=@t._2">@t._1</a><br>
           }
         </span>
 
         <span id="localRealms" style="display: none">
         @stok.au.toList.flatMap(x=> x.memberReactors).sorted.map{t=>
-          <a href="/admin/difflist/@t/@toRealm/@remote">@t</a><br>
+          <a href="/admin/difflist/@t/@toRealm?remoteLabel=@remoteLabel&remote=@remote">@t</a><br>
         }
         </span>
         <span id="toRealms" style="display: none">
             @stok.au.toList.flatMap(x=> x.memberReactorsSameOrg(localRealm)).sorted.map{t=>
-              <a href="/admin/difflist/@localRealm/@t/@remote">@t</a><br>
+              <a href="/admin/difflist/@localRealm/@t?remoteLabel=@remoteLabel&remote=@remote">@t</a><br>
             }
         </span>
       </small>
