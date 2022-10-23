@@ -725,13 +725,16 @@ class DomApi extends DomApiBase with Logging {
 
           dieselRestMsg = Some(EMsg(
             DieselMsg.ENGINE.DIESEL_REST,
-            hJson :: qJson :: List(
+            List(
+              P.fromTypedValue("fromApigw", true),
               P.fromTypedValue("path", path),
               P.fromTypedValue("verb", verb),
               P.fromTypedValue("queryStringEncoded", stok.req.rawQueryString),
-              P.fromTypedValue("queryString", URLDecoder.decode(stok.req.rawQueryString)
+              P.fromTypedValue("queryString", URLDecoder.decode(stok.req.rawQueryString)),
+              hJson,
+              qJson
               )
-            ) ::: qparams.map(t => P.fromTypedValue(t._1, t._2, WTypes.wt.STRING)).toList ::: posted
+            ::: qparams.map(t => P.fromTypedValue(t._1, t._2, WTypes.wt.STRING)).toList ::: posted
           ))
 
           dieselRestMsg

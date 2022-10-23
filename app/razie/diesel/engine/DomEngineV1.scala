@@ -503,7 +503,11 @@ class DomEngineV1(
           // for diesel.rest we check permissions when the rule is about to be expanded
           // todo maybe for others too, in the middle? why not...
 
-          if(DIESEL_REST == n.ea) {
+          // also check that it comes from apigw so we don't enforce this on internally created ones in stories etc
+          if(DIESEL_REST == n.ea &&
+              n.attrs.exists(p =>
+                p.name == "fromApigw" && p.value.exists(_.asBoolean == true)
+              )) {
             var reason = ""
 
             val vis = settings.realm.flatMap(Website.forRealm).map(_.dieselVisiblity).getOrElse("public")
