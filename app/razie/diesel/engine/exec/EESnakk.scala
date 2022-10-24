@@ -168,8 +168,8 @@ class EESnakk extends EExecutor("snakk") with Logging {
 
           val x = url(
             prepUrl(stripQuotes(newurl),
-              P("subject", in.entity) ::
-                  P("verb", in.met) ::
+              new P("subject", in.entity) ::
+                  new P("verb", in.met) ::
                   filteredAttrs,
               Some(ctx)),
             (
@@ -226,7 +226,7 @@ class EESnakk extends EExecutor("snakk") with Logging {
                 None)
               c.warnings = List(EWarning("Parsing", html(e.getLocalizedMessage)))
               eres += EVal(P.fromSmartTypedValue(SNAKK_ERROR, e).withCachedValue(e, WTypes.wt.EXCEPTION, html(e.toString, 10000)))
-              eres += EVal(P("snakkErrorOld", html(e.toString, 10000)))
+              eres += EVal(new P("snakkErrorOld", html(e.toString, 10000)))
               c
             }
           }.get
@@ -320,7 +320,7 @@ class EESnakk extends EExecutor("snakk") with Logging {
         case x@_ => true
       } :::
           new EInfo(SNAKK_RESPONSE + ": " + Enc.escapeHtml(reply.body.take(25)), Enc.escapeHtml(trimmed(reply.body, 5000))) ::
-          new EVal(P(SNAKK_HTTP_RESPONSE, trimmed(reply.body, 5000))).withKind(AstKinds.TRACE) ::
+          new EVal(new P(SNAKK_HTTP_RESPONSE, trimmed(reply.body, 5000))).withKind(AstKinds.TRACE) ::
           new EVal(reply.httpCodep).withKind(AstKinds.VERBOSE) :: // todo deprecated - remove
           new EVal(reply.headersp).withKind(AstKinds.VERBOSE) ::  // todo deprecated - remove
           new EVal(reply.mkSnakkResponse).withKind(AstKinds.TRACE) ::
@@ -354,8 +354,8 @@ class EESnakk extends EExecutor("snakk") with Logging {
         //          case class SnakkCall (method:String, url:String, headers:Map[String,String], content:String) {
         val ux = url(
           prepUrl(stripQuotes(newurl),
-            P("subject", in.entity) ::
-                P("verb", in.met) ::
+            new P("subject", in.entity) ::
+                new P("verb", in.met) ::
                 filteredAttrs,
             Some(ctx))
         )
@@ -392,7 +392,7 @@ class EESnakk extends EExecutor("snakk") with Logging {
           EVal(x).withPos(pos)
         } :::
             new ETrace(SNAKK_RESPONSE + Enc.escapeHtml(content.body.take(25)), Enc.escapeHtml(trimmed(content.body, 5000))) ::
-            new EVal(P(SNAKK_HTTP_RESPONSE, trimmed(content.body, 5000))).withKind(AstKinds.TRACE) ::
+            new EVal(new P(SNAKK_HTTP_RESPONSE, trimmed(content.body, 5000))).withKind(AstKinds.TRACE) ::
             new EVal(content.httpCodep).withKind(AstKinds.VERBOSE) ::  // todo deprecated - remove
             new EVal(content.headersp).withKind(AstKinds.VERBOSE) ::  // todo deprecated - remove
             EVal(P.undefined(SNAKK_ERROR)) ::
@@ -402,7 +402,7 @@ class EESnakk extends EExecutor("snakk") with Logging {
       } getOrElse
           // need to create a val - otherwise DomApi.rest returns the last Val
           EError("no url attribute for RESTification - and no request template found") ::
-              EVal(P(SNAKK_ERROR, "no url attribute for RESTification - and no request template found")) ::
+              EVal(new P(SNAKK_ERROR, "no url attribute for RESTification - and no request template found")) ::
               Nil
     }
 
@@ -565,9 +565,9 @@ object EESnakk {
     // figure out content type ?
     if (!attrs.exists(_.name.toLowerCase == "content-type")) {
       if (fbody.exists(_.ttype == WTypes.JSON))
-        headers = P("Content-Type", "application/json") :: headers
+        headers = new P("Content-Type", "application/json") :: headers
       else if (fbody.exists(_.ttype == WTypes.XML))
-        headers = P("Content-Type", "application/xml") :: headers
+        headers = new P("Content-Type", "application/xml") :: headers
     }
 
     // add the snakkHttpOptions as headers - they'll be removed by the Comms library and understood there
@@ -600,7 +600,7 @@ object EESnakk {
   def snakkHttpOptions (attrs:Attrs)(implicit ctx: ECtx) = {
     httpOptions(attrs).map {t=>
       val s = t._2.toString
-      P("snakkHttpOptions." + t._1, s)
+      new P("snakkHttpOptions." + t._1, s)
     }.toList
   }
 
@@ -680,7 +680,7 @@ object EESnakk {
     if(content contains "${") {
       val s1 = BRACKET_EXPR_PAT.replaceAllIn(content, { m =>
         (new SimpleExprParser).parseExpr(m.group(1)).map {e=>
-          P ("x", "", WTypes.wt.EMPTY, Some(e)).calculatedValue
+          new P ("x", "", WTypes.wt.EMPTY, Some(e)).calculatedValue
         } getOrElse
           s"{ERROR: ${m.group(1)}"
       })
@@ -806,8 +806,8 @@ object EESnakk {
     val results = new FFDPayload("", schema.mkString).build(ctx)
 
     results.getResult.toList.flatMap {res=>
-      output.toList.map(name=>P(name, res)) :::
-        EVal(P(PAYLOAD, res)) :: Nil
+      output.toList.map(name=>new P(name, res)) :::
+        EVal(new P(PAYLOAD, res)) :: Nil
     } ::: results.getErrors.map(x=> EError("FFD Err: " + x))
   }
 
@@ -870,17 +870,34 @@ object EESnakk {
       val x = uc.getHeaderFields.keySet().toArray.toList
       val headers = x.filter(_ != null).map(x => (x.toString, uc.getHeaderField(x.toString))).toMap
       eres += EVal(EContent.headersp(headers)).withKind(AstKinds.TRACE) // todo deprecated - remove
-      headers
+      headers.asInstanceOf[Map[String,String]]
     } else Map.empty[String,String]
 
+    val traceId = headers.get("dieselFlowId").map { t =>
+      var wid = WID("DieselEngine", t)
+      val host = headers.get("dieselHost")
+      if (host.isDefined) {
+        wid = wid.withSourceUrl(host.mkString)
+      }
+
+      val url = DieselAssets.mkEmbedLink(wid)
+      val href = DieselAssets.mkAhref(wid)
+
+      ELink(
+        s"dieselFlow spawned $href",
+        url)
+    }.toList
+
     eres += EVal(EContent.mkSnakkResponse(headers.asInstanceOf[Map[String,String]], code)).withKind(AstKinds.TRACE)
+
+    eres += traceId
 
     eres += new EVal(P.undefined(PAYLOAD))
 
     eres +=
         // need to create a val - otherwise DomApi.rest returns the last Val
         EVal(P.fromSmartTypedValue(SNAKK_ERROR, t).withCachedValue(t, WTypes.wt.EXCEPTION, html(cause.toString, 10000))) ::
-        EVal(P("snakkErrorOld", html(cause.toString, 10000))) ::
+        EVal(new P("snakkErrorOld", html(cause.toString, 10000))) ::
             Nil
   }
 
