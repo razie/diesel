@@ -107,7 +107,7 @@ trait DomInventory {
     * specific annotation like `odata.name` etc
     */
   def isDefinedFor(realm: String, c: C): Boolean = {
-    DomInventories.invRegistry.get(c.name).exists(_ == this.name)
+    DomInventories.invRegistry.get(realm+"."+c.name).exists(_ == this.name)
   }
 
   /** find an element by ref

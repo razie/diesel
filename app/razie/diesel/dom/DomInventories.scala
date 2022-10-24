@@ -38,15 +38,14 @@ object DomInventories extends razie.Logging {
         Nil
 
   /**
-    * register (class, inventory) - we allow just one per
+    * register (realm.class, inventory) - we allow just one per
     * - the actual plugins and stuff is in the WikiDomainImpl, once the inventory is connected
     */
   var invRegistry = new TrieMap[String, String]()
 
   /** register one plugin per class */
   def registerPlugin(realm: String, clsName: String, inv: String) = {
-    // todo use realm
-    invRegistry.put(clsName, inv)
+    invRegistry.put(realm+"."+clsName, inv)
   }
 
   // you must provide factory and the domain when loading the realm will instantiate all plugins and connections
@@ -55,21 +54,24 @@ object DomInventories extends razie.Logging {
   def getPlugin(realm: String, inv: String, conn: String): Option[DomInventory] = {
     val dom = WikiDomain(realm)
     val list = dom.findPlugins(inv)
-    val p = (if (conn.length > 0) list.filter(_.conn == conn) else list).headOption
+    val p = (if (conn.nonEmpty) list.filter(_.conn == conn) else list).headOption
     trace(s"  Found inv $p")
     p
   }
 
-  /** find the right plugin by name and conn */
+  /** find the right plugin by realm and class */
   def getPluginForClass(realm: String, cls: DE, conn: String): Option[DomInventory] = {
     val dom = WikiDomain(realm)
     var list = dom.findPluginsForClass(cls)
     if (list.isEmpty) {
-      invRegistry.get(cls.asInstanceOf[C].name).foreach(inv =>
-        list = dom.findPlugins(inv, conn)
-      )
+      invRegistry
+          .get(realm+"."+cls.asInstanceOf[C].name)
+          .orElse(invRegistry.get(realm+".*"))
+          .foreach(inv =>
+            list = dom.findPlugins(inv, conn)
+          )
     }
-    val p = (if (conn.length > 0) list.filter(_.conn == conn) else list).headOption
+    val p = (if (conn.nonEmpty) list.filter(_.conn == conn) else list).headOption
     trace(s"  Found inv $p")
     p
   }
