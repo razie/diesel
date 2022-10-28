@@ -575,65 +575,6 @@ var runpill2_@id = function(id, compileOnly, forceRT, next) {
   });
 };
 
-
-/** just check the fiddle (save and compile) */
-var checkpill2 = function(id) {
-  console.log("checkpill2 run isRefreshing2="+isRefreshing2);
-
-  if(currEngineId == null) {
-    console.log ("Ignore request - was done: " + curDomRequest);
-    return;
-  }
-
-/*
-  // don't run one closer than two seconds frmo the previous rendering - slows down the page a lot with big flows
-  if(lastProcessTime != null && new Date().getTime() - lastProcessTime < 2000) {
-    console.log("skipping one...")
-    // we check all the time, to update progress, anyways...
-    // if(! wsActive) {
-    setTimeout(function () {
-      checkpill2_@{id}('@{id}');
-    }, CHECK_TIMER);
-    // }
-    return;
-  } else {
-    console.log("checking status...")
-  }
-*/
-
-  lastRequestTime = new Date().getTime();
-
-  $.ajax(
-      '/diesel/fiddle/checkEngineStatus/'+id+'?@Html(mod.diesel.controllers.SFiddles.qtourl(args))', {
-        type: 'POST',
-        data: $.param({
-          clientTimeStamp: clientStoryTimeStamp,
-          engineId : currEngineId
-        }),
-        contentType: 'application/x-www-form-urlencoded',
-
-        success: function(response) {
-          // console.log("New timestamp: " + data.info.timeStamp);
-          // clientTimeStamp = data.info.timeStamp;
-          processEngineResult({
-            id: '@id',
-          }, id, response, false, lastRequestTime);
-        },
-
-        error  : function(response) {
-          hideSpinner();
-
-          console.log( "ERR "+JSON.stringify(response));
-
-          curDomRequest = null;
-          if(JSON.stringify(response).indexOf("staleid") >= 0) {
-            damnStale();
-          }
-        }
-      });
-};
-
-
 </script>
 
 <!-- websockets for results -->

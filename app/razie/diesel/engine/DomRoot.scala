@@ -96,7 +96,7 @@ trait DomRoot {
 
     val aei = (new SimpleExprParser).parseIdent(v.p.name)
     if (aei.isEmpty) {
-      throw new DieselExprException("Left side not qualified ID:" + v.p.name)
+      throw new DieselExprException("Left side not qualified identifier:" + v.p.name)
     }
 
     appendValsPas(
@@ -132,7 +132,7 @@ trait DomRoot {
 //      else Option(AExprIdent(p.name))
 
     if (aei.isEmpty) {
-      throw new DieselExprException("Left side not qualified ID:" + p.name)
+      throw new DieselExprException("Left side not qualified identifier:" + p.name)
     }
 
     appendValsPas(
@@ -411,7 +411,7 @@ trait DomRoot {
     attrs.foreach { p =>
       val aei = (new SimpleExprParser).parseIdent(p.name)
       if (aei.isEmpty) {
-        throw new DieselExprException("Left side not qualified ID:" + p.name)
+        throw new DieselExprException("Left side not qualified identifier:" + p.name)
       }
 
       appendValsPas(

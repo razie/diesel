@@ -50,6 +50,8 @@ case class AExprFunc(val expr: String, parms: List[RDOM.P]) extends Expr {
     }
 
     // calc first parm value
+    def optParm = aParm(parms.headOption)
+
     def firstParm = aParm(parms.headOption)
 
     def secondParm = aParm(parms.drop(1).headOption)

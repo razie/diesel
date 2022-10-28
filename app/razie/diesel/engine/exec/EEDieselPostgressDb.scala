@@ -461,7 +461,7 @@ class EEDieselPostgressDb extends EEDieselDbExecutor(DB) {
           possiblyClosedConn
         }
         .getOrElse {
-          throw new IllegalArgumentException(s"Data connection name $connectionName not found!")
+          throw new IllegalArgumentException(s"PosgreSQL connection name $connectionName not found! (realm=$realm, ")
         }
 
   override def apply(in: EMsg, destSpec: Option[EMsg])(implicit ctx: ECtx): List[Any] = synchronized {

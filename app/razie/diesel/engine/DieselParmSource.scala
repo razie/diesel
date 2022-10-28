@@ -237,7 +237,7 @@ class NextDParmSource(ctx: ECtx, pname: String, values: Map[String, String => Ei
 
   def remove(name: String): Option[P] = ???
 
-  def put(p: P): Unit = ???
+  def put(p: P): Unit = throw new DieselException(s"Cannot set values here: ${p.name} in source ${pname} !")
 
   def listAttrs: List[String] = values.keys.toList
 

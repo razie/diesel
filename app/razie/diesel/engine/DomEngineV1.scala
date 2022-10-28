@@ -525,7 +525,7 @@ class DomEngineV1(
                 isPublic || settings.user.isDefined &&
                   (eroles.isEmpty || eroles.exists(r => uroles.contains(r.substring(5))))
 
-              reason = s"roles=${eroles.mkString} "
+              reason = s"perm.roles=${eroles.mkString} user.roles= ${uroles.mkString} "
 
               if (!allowed) {
                 // one more chance, look for masterRole/masterClient access to restricted rules
@@ -534,7 +534,7 @@ class DomEngineV1(
                 val mr = oauth.flatMap(_.get("masterRole")).map(_.toString).mkString.trim
 
                 if (mr.nonEmpty) allowed = uroles.contains(mr)
-                reason = s"$reason mr=$mr "
+                reason = s"$reason oauth.mr=$mr "
 
                 if (!allowed) {
                   val eclients = r.arch.split(",").filter(_.startsWith("client."))
@@ -542,11 +542,11 @@ class DomEngineV1(
 
                   // rule contains client
                   if (uclient.nonEmpty) allowed = eclients.contains(uclient)
-                  reason = s"$reason clients=${eclients.mkString} "
+                  reason = s"$reason perm.clients=${eclients.mkString} user.client=${uclient} "
 
                   if (!allowed) {
                     val mc = oauth.flatMap(_.get("masterClient")).map(_.toString).mkString.trim
-                    reason = s"$reason mc=$mc "
+                    reason = s"$reason oauth.mc=$mc "
 
                     // user comes from masterclient
                     if (mc.nonEmpty) allowed = uclient equals mc

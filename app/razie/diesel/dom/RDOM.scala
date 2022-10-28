@@ -760,6 +760,18 @@ object RDOM {
 
       // match simple names - look at testA for complex evaluators
       in.name == pm.name && pm.ident.rest.isEmpty && {
+
+      val r = if (pm.op == "~path") { // separate to only call extractPathParms once
+        // extract parms - special path mapping
+        val a = in.valExpr.apply("")
+        val b = pm.valExpr.apply("")
+        val (is, groups) = EContent.extractPathParms(a.toString, b.toString)
+
+        // todo use setsmartValueInContext - this should also set payload properly
+        if(is) groups.foreach(t => ctx.put(new P(t._1, t._2)))
+        is
+      } else {
+        // some other operator match
         val r = new BCMP2(in.valExpr, pm.op, pm.valExpr).bapply("").value
 
         // no need to look for ?= - it's handled  above
@@ -772,14 +784,9 @@ object RDOM {
           val groups = EContent.extractRegexParms(b.toString, a.toString)
 
           groups.foreach(t => ctx.put(new P(t._1, t._2)))
-        } else if (r && pm.op == "~path") {
-          // extract parms - special path mapping
-          val a = in.valExpr.apply("")
-          val b = pm.valExpr.apply("")
-          val (is, groups) = EContent.extractPathParms(a.toString, b.toString)
-
-          if(is) groups.foreach(t => ctx.put(new P(t._1, t._2)))
         }
+        r
+      }
 
         if (!r) {
           // todo name found but no value match - mark the name
