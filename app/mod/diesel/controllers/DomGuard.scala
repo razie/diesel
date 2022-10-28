@@ -122,7 +122,7 @@ class DomGuard extends DomApiBase with Logging {
             }
           )
       } getOrElse (
-        NotFound("Engine trace not found - We only store a limited amount of traces...")
+        NotFound("""Engine trace not found - We only store a limited amount of traces... <a href="/diesel/listAst">see all</a>""")
       )
     }
   }
@@ -226,7 +226,7 @@ class DomGuard extends DomApiBase with Logging {
           }
         )
     ).orElse(
-      Some(NotFound("Engine trace not found - We only store a limited amount of traces..."))
+      Some(NotFound("""Engine trace not found - We only store a limited amount of traces... <a href="/diesel/listAst">see all</a>"""))
     )
   }
 
@@ -285,6 +285,10 @@ class DomGuard extends DomApiBase with Logging {
 
           val dtm = a.dtm.toLocalDateTime
 
+          val resCodeStyle = a.engine.returnedRestCode.map { i =>
+            if (i / 100 == 2) """ style="color:green" """ else """ style="color:red" """
+          }.mkString
+
           // todo this is mean
           s"""
              |<td><a href="/diesel/viewAst/${a.id}">...${a.id.takeRight(4)}</a></td>
@@ -296,7 +300,8 @@ class DomGuard extends DomApiBase with Logging {
              |<td title="${dtm.toLocalDate.toString()}">${dtm.toString("HH:mm:ss.SS")}</td>
              |<td align="right">$duration</td>
              |<td><small><code>${Enc.escapeComplexHtml(a.engine.description.take(200))}</code></small></td>
-             |<td><small><code>${Enc.escapeComplexHtml(a.engine.resultingValue.take(200))}</code></small></td>
+             |<td><small><code $resCodeStyle>${Enc.escapeComplexHtml(a.engine.returnedRestCode.mkString)}</code></small></td>
+             |<td><small><code>${Enc.escapeComplexHtml(a.engine.returnedRestPayload.take(200))}</code></small></td>
              |<td> </td>
              |""".stripMargin
         }.getOrElse("-can't print engine-")
@@ -314,6 +319,7 @@ class DomGuard extends DomApiBase with Logging {
            |<th>Dtm</th>
            |<th class="text-right">Msec</th>
            |<th>Desc</th>
+           |<th>Code</th>
            |<th>Result</th>
            |<th></th>
            |</tr>
@@ -346,7 +352,7 @@ class DomGuard extends DomApiBase with Logging {
       val title =
         s"""Flow history realm: $r showing ${list.size} of $total since start and user $un""".stripMargin
       val title2 =
-        s"""Stats: Flows: ${GlobalData.dieselEnginesActive} active (${DieselAppContext.activeEngines.size} - ${
+        s"""Stats: <a href="$w/DieselEngine">Flows</a>: ${GlobalData.dieselEnginesActive} active (${DieselAppContext.activeEngines.size} - ${
           DieselAppContext.activeEngines.values.filter(_.status != DomState.DONE).size
         }) /
            | Streams: ${GlobalData.dieselStreamsActive} active of ${GlobalData.dieselStreamsTotal} since start /

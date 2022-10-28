@@ -667,9 +667,7 @@ class DomApi extends DomApiBase with Logging {
     *
     * mock is important - no template matching for mock
     */
-  def runRest(path: String, verb: String, mock: Boolean, imsg: Option[EMsg] = None, custom: Option[DomEngine =>
-      DomEngine] = None): Action[RawBuffer] = Action(
-    parse.raw) { implicit request =>
+  def runRest(path: String, verb: String, mock: Boolean): Action[RawBuffer] = Action(parse.raw) { implicit request =>
     implicit val stok = razRequest
 
     try {
@@ -792,9 +790,6 @@ class DomApi extends DomApiBase with Logging {
 
         // add the request
         new DomReq(stok.req).addTo(engine.ctx)
-
-        if (custom.isDefined)
-          engine = custom.get.apply(engine)
 
         var t2EndPrepEngine = System.currentTimeMillis()
 
@@ -1045,6 +1040,9 @@ class DomApi extends DomApiBase with Logging {
                     p.value.get.value match {
                       case x: Array[Byte] =>
                         response = Some(Ok(x).as(ctype))
+//                      case s: DomStream =>
+//                        val hts = new HttpEntity.Streamed()
+//                        response = Some(Ok.sendEntity(hts))
                       case _ =>
                         response = Some(Ok(p.value.get.asString).as(ctype))
                     }
@@ -1096,27 +1094,26 @@ class DomApi extends DomApiBase with Logging {
                         .withStatus(DomState.SKIPPED)
                   )
                 )
-                val st = new Status(Integer.parseInt(tcode))(s"Workflow took too long ($dur) - not enough resources?")
+                val msg = (s"Workflow took too long ($dur) - not enough resources?")
+                val st = new Status(Integer.parseInt(tcode))(msg)
                     .withHeaders("diesel-reason" -> s"Flow didn't complete in $dur")
+                engine.withReturned(msg, tcode.toInt)
                 st
               }
             }
           } getOrElse {
-            //      Future.successful(
-            NotFound(s"ERR Realm(${reactor}): Template or message not found for path: " + path)
+            val msg = (s"ERR Realm(${reactor}): Template or message not found for path: " + path)
+            engine.withReturned(msg, 404)
+            NotFound(msg)
                 .withHeaders("diesel-reason" -> s"template or message not found for $path in realm ${reactor}")
-            //      )
           }
-          //          val tpath = if(turl startsWith "http://") {
-          //            turl.replaceFirst("https?://", "").replaceFirst(".*/", "/")
-          //          } else turl
-          //          matchesRequest(tpath, stok.req.path)
         } else {
           val x = s"Unauthorized msg access [runrest] (diesel.visibility:${stok.website.dieselVisiblity}, ${
             stok.au.map(_.ename).mkString
           })"
           info(x)
           info(s"msg: $msg - ${msg.get.isPublic} - ${msg.get.spec.toString} - reactor: $reactor")
+          engine.withReturned(x, 401)
           Unauthorized(x)
         }
       }
@@ -1153,7 +1150,9 @@ class DomApi extends DomApiBase with Logging {
         engine.engineDone(false, false)
         DomCollector.collectAst("runRest", stok.realm, engine.id, stok.au.map(_.id), engine, stok.uri)
 
-        InternalServerError(t.toString)
+        val sres = t.toString
+        engine.withReturned(sres, 500)
+        InternalServerError(sres)
       }
     }
   }

@@ -241,7 +241,7 @@ case class WID(
   /** remote url when pointing at a specific server, not the default cloud */
   def urlForTarget(target: String): String = {
 
-    if ("www.dieselapps.com".equals(target))
+    if (target.endsWith("www.dieselapps.com")) // accomodate http://
       urlRemote // reuse this to use proper realm domains
     else
       "http://" + {
