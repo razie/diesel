@@ -801,8 +801,6 @@ class DomApi extends DomApiBase with Logging {
               .orElse {
                 // if a message exists, map to it
                 spec(fea._2, fea._3)(engine.ctx).map(x => fea)
-              }.orElse {
-            imsg.map(x => (None, x.entity, x.met, None))
           }.orElse {
             // we're going to make a diesel.rest message later
             mkDieselRest(engine.ctx).map(x => (None, x.entity, x.met, None))
@@ -845,13 +843,11 @@ class DomApi extends DomApiBase with Logging {
         // incoming message
         // first templates already matched,
         // then if there was a spec, findIt
-        // then imsg (diesel.rest)
         // else diesel.rest
         // else e.a
         val msg: Option[EMsg] =
         (trequest.flatMap(_ => findIt) orElse
             msgSpec.flatMap(_ => findIt) orElse
-            imsg orElse
             mkDieselRest(engine.ctx) orElse
             findIt)
 
