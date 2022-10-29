@@ -982,7 +982,7 @@ abstract class DomEngine(
 
     if(initial) {
       status = DomState.DONE
-      engineDone(true, false)
+      engineDone(collect = true, decrement = false)
       cleanResources()
     }
 
@@ -999,15 +999,17 @@ abstract class DomEngine(
     */
   def processSync(ast: DomAst, level: Int, ctx: ECtx, initial:Boolean=true): Option[P] = {
 
-    if(initial) {
-      DieselAppContext.startEngine(this)
-      this.synchronous = true
-    }
+    try {
+      if (initial) {
+        DieselAppContext.startEngine(this)
+        this.synchronous = true
+      }
 
-    // stop propagation of local vals to parent engine
-    var newCtx: ECtx =
-      if(initial) new ScopeECtx(if(ast.value.isInstanceOf[EMsg]) ast.value.asInstanceOf[EMsg].attrs else Nil, Some(ctx), Some(ast))
-      else ctx
+      // stop propagation of local vals to parent engine
+      var newCtx: ECtx =
+        if (initial) new ScopeECtx(if (ast.value.isInstanceOf[EMsg]) ast.value.asInstanceOf[EMsg].attrs else Nil,
+          Option(ctx), Option(ast))
+        else ctx
 
 //    // include this messages' context
 //    newCtx = mkPassthroughMsgContext(
@@ -1020,27 +1022,38 @@ abstract class DomEngine(
 //        if (ast.value.isInstanceOf[EMsg]) new StaticECtx(.attrs, Some(newCtx), Some(ast))
 //        else new StaticECtx(Nil, Some(newCtx), Some(ast))
 
-    if(initial) ast.replaceCtx(newCtx)
+      if (initial) ast.replaceCtx(newCtx)
 
-    // inherit all context from parent engine
+      // inherit all context from parent engine
 //    this.ctx.root.overwrite(newCtx)
 
-    // todo clone the root context passed - if anyone goes to the root will find the other engine...
+      // todo clone the root context passed - if anyone goes to the root will find the other engine...
 
-    later(List(DEReq(id, ast, recurse = true, level)))
+      later(List(DEReq(id, ast, recurse = true, level)))
 
-    val res = newCtx.getp(Diesel.PAYLOAD)
+      val res = newCtx.getp(Diesel.PAYLOAD)
 
-    ast.status = DomState.DONE // bypass evChangedStatus
-    ast.end()
+      ast.status = DomState.DONE // bypass evChangedStatus
+      ast.end()
 
-    if(initial) {
-      status = DomState.DONE
-      engineDone(collect = true, decrement = false)
-      cleanResources()
+      if (initial) {
+        status = DomState.DONE
+        engineDone(collect = true, decrement = false)
+        cleanResources()
+      }
+
+      res
+    } catch {
+      case t : Throwable => {
+        if (initial) {
+          status = DomState.DONE
+          engineDone(collect = true, decrement = false)
+          cleanResources()
+        }
+
+        throw t // should we wrap it?
+      }
     }
-
-    res
   }
 
   /** main processing of next - called from actor in async and in thread when sync/decompose */
@@ -1138,6 +1151,7 @@ abstract class DomEngine(
     val ast = new DomAst(
       EInfo(s"Response: ${code} BODY: ${body.take(500)}", s"BODY:\n${body}\n\nHEADERS:\n$h"), AstKinds.TRACE)
     this.root.appendAllNoEvents(List(ast))
+    withReturned(body, code)
   }
 
   /** collect the last generated value OR empty string */
@@ -1145,6 +1159,20 @@ abstract class DomEngine(
     case d@DomAst(EVal(p), /*AstKinds.GENERATED*/ _, _,
     _) /*if oattrs.isEmpty || oattrs.find(_.name == p.name).isDefined */ => (p.name, p.currentStringValue)
   }.lastOption.map(_._2).getOrElse("")
+
+  /** for more precision, store the actually returned values */
+  var ireturnedRestPayload : Option[String] = None
+  var returnedRestCode    : Option[Int] = None
+
+  def withReturned (payload:String, code:Int) = {
+    this.returnedRestCode = Option(code)
+    this.ireturnedRestPayload = Option(payload.take(2000))
+    this
+  }
+
+  def returnedRestPayload  = {
+    ireturnedRestPayload.getOrElse(this.resultingValue)
+  }
 
   /** extract the resulting value from this engine
     * extract one value - try:

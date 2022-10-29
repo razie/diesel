@@ -6,11 +6,12 @@
 package razie.diesel.engine.exec
 
 import akka.util.Timeout
+import razie.diesel.Diesel
 import razie.diesel.dom.RDOM.P
-import razie.diesel.dom.WTypes
+import razie.diesel.dom.{RDOM, WTypes}
 import razie.diesel.engine._
 import razie.diesel.engine.nodes._
-import razie.diesel.expr.ECtx
+import razie.diesel.expr.{DieselExprException, ECtx, SimpleExprParser}
 import razie.diesel.model.DieselMsg
 import scala.concurrent.duration.DurationInt
 
@@ -64,7 +65,9 @@ class EEStreams extends EExecutor(DieselMsg.STREAMS.PREFIX) {
         ctx.root.engine.get.evAppStream(s)
 
         warn ::: EInfo(s"stream - creating $name") ::
-            EVal(P.fromTypedValue(name, s, WTypes.wt.OBJECT)) ::
+        // this results in some exceptions for assignment when name is not ident
+//            EVal(P.fromTypedValue(name, s, WTypes.wt.OBJECT.withSchema("DieselStream"))) ::
+            EVal(P.fromTypedValue("dieselStream", s, WTypes.wt.OBJECT.withSchema("DieselStream"))) ::
             Nil
       }
 
@@ -139,6 +142,21 @@ class EEStreams extends EExecutor(DieselMsg.STREAMS.PREFIX) {
         }
       }
 
+      case "mkString" => {
+        val name = ctx.getRequired("stream")
+        val timeout = ctx.get("timeout")
+        val separator = ctx.get("separator").getOrElse(",")
+
+        if (DieselAppContext.activeStreamsByName.contains(name)) {
+          val s = DieselAppContext.activeStreamsByName(name)
+          val warn = if(! s.streamIsDone) List(EWarning("Stream is not done...")) :: Nil else Nil
+          val res = s.getValues.fold("")((a,b) => a.toString + separator + b.toString)
+          EVal(RDOM.P.fromSmartTypedValue(Diesel.PAYLOAD, res)) :: warn
+        } else {
+          EError(s"stream.consume - stream not found: " + name) :: Nil
+        }
+      }
+
       case s@_ => {
         new EError(s"ctx.$s - unknown activity ") :: Nil
       }
@@ -154,5 +172,6 @@ class EEStreams extends EExecutor(DieselMsg.STREAMS.PREFIX) {
         EMsg(DieselMsg.STREAMS.PREFIX, "consume") ::
         EMsg(DieselMsg.STREAMS.PREFIX, "putAll") ::
         EMsg(DieselMsg.STREAMS.PREFIX, "generate") ::
+        EMsg(DieselMsg.STREAMS.PREFIX, "mkString") ::
         Nil
 }
