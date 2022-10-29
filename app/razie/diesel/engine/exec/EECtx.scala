@@ -398,7 +398,9 @@ class EECtx extends EExecutor(EECtx.CTX) {
       // take all args and create a json doc with them
       case "csv" | "jsonToCsv" => { // ctx.csv
         val separator = ctx.getRequired("separator")
+        val csvStream = ctx.getp("csvStream").map(_.calculatedTypedValue.asString).flatMap(DieselAppContext.activeStreamsByName.get)
         val useHeaders = ctx.get("useHeaders").getOrElse("true").toBoolean
+        val csvHeaders = ctx.getp("csvHeaders").map(_.calculatedTypedValue.asArray.toList)
 
         // l can be a constant with another parm name OR the actual array
         val list = {
@@ -419,11 +421,15 @@ class EECtx extends EExecutor(EECtx.CTX) {
           val m = PValue(obj).asJson
 //          val m = p.calculatedTypedValue.asJson
           // collect new names
-          inames.appendAll(m.keys.filter(x => !inames.contains(x)))
+          if(csvHeaders.isEmpty) inames.appendAll(m.keys.filter(x => !inames.contains(x)))
           m
         }.toList
 
-        val names = inames.toList
+        val names = if(csvHeaders.isEmpty) {
+          inames.toList
+        } else {
+          csvHeaders.get.asInstanceOf[List[String]]
+        }
 
         // collect new names
         var rows = objects.map { m =>
@@ -457,12 +463,12 @@ class EECtx extends EExecutor(EECtx.CTX) {
 
         rows = (if (useHeaders) List(names.mkString(separator)) else Nil) ++ rows
 
-        new EVal(
-          RDOM.P.fromTypedValue(Diesel.PAYLOAD, rows, WTypes.wt.ARRAY)
-        ) ::
-            new EVal(
-              RDOM.P.fromTypedValue("csvHeaders", names, WTypes.wt.ARRAY)
-            ) :: Nil
+        if(csvStream.isDefined) csvStream.get.put(rows)
+
+        val payload = if(csvStream.isDefined) Nil else List(new EVal(RDOM.P.fromSmartTypedValue(Diesel.PAYLOAD, rows)))
+        val headers = if(csvHeaders.isDefined) Nil else List(new EVal(RDOM.P.fromSmartTypedValue("csvHeaders", names)))
+
+        payload :: headers
       }
 
       // incoming csv parsed into json, based on header field.
