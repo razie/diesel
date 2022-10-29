@@ -5,6 +5,8 @@
  */
 package razie.diesel.engine
 
+//import akka.stream.scaladsl.Source
+//import akka.util.ByteString
 import org.bson.types.ObjectId
 import razie.Logging
 import razie.diesel.dom.DieselAssets
@@ -21,7 +23,7 @@ object DomStream {
 
   /** get max size from properties */
   def getMaxSize = {
-    val dflt = if (Services.config.isLocalhost) "10000" else "100"
+    val dflt = if (Services.config.isLocalhost) "11000" else "100"
     Services.config.prop("diesel.stream.maxSize", dflt).toInt
     // todo add realm setting and trusted realms ?
   }
@@ -65,19 +67,143 @@ abstract class DomStream (
   var synchronous = false
 
   /** a stream consumer is a pair of engine/node where consumption occurs */
-  case class DomStreamConsumer(engine: String, node:String)
-  private var targetId: Option[DomStreamConsumer] = None // target parent for consume nodes
+  trait DomStreamConsumer {
+    def consumeDataBatch(batches:List[List[Any]]): Unit
+    def consumeData(dataAsList:List[Any]): Unit
+    def error(): Unit
+    def complete(): Unit
+  }
+
+  /** an engine is client - so consumption becomes messages created in context of that engine */
+  case class EngDomStreamConsumer(engine: String, node:String) extends DomStreamConsumer {
+    override def consumeDataBatch(batches: List[List[Any]]): Unit = {
+      val asts = new ListBuffer[DomAst]()
+      val batchAccumulator = new ListBuffer[List[Any]]()
+
+      batches.foreach { batch =>
+
+            val m = new EMsg(
+              DieselMsg.STREAMS.STREAM_ONDATASLICE,
+              P.of("stream", name) ::
+                  P.of("data", batch) ::
+                  P.of("context", context) ::
+                  Nil
+            ) with KeepOnlySomeSiblings
+
+            val ast = DomAst(m)
+                .withPrereq(
+                  // todo add a "parallel" setting on consume?
+                  asts.map(_.id).toList
+                )
+
+            setCtx(ast)
+
+            asts.append(ast)
+          }
+
+      // todo each node should have its own scope or run in sequence...
+
+      DieselAppContext ! DEAddChildren(
+        engine, node, recurse = true, -1, asts.toList,
+        Option((a, e) => a.withPrereq(getDepy)))
+    }
+
+    override def consumeData(dataAsList: List[Any]): Unit = {
+      dataAsList.toList.foreach { data =>
+
+        val ast = DomAst(new EMsg(
+          DieselMsg.STREAMS.STREAM_ONDATA,
+          P.of("stream", name) ::
+              P.of("data", data) ::
+              P.of("context", context) ::
+              Nil
+        ) with KeepOnlySomeSiblings)
+
+        setCtx(ast)
+
+        DieselAppContext ! DEAddChildren(
+          engine,
+          node,
+          recurse = true, -1,
+          List(ast),
+          Option((a, e) => a.withPrereq(getDepyOnDATA)))
+      }
+
+    }
+
+    override def error(): Unit = {
+      val ast = DomAst(EMsg(
+        DieselMsg.STREAMS.STREAM_ONERROR,
+        List(
+          P.of("stream", name), P.of("context", context)
+        ) ::: errors.toList
+      ))
+
+      setCtx(ast)
+
+          DieselAppContext ! DEAddChildren(engine, node, recurse = true, -1, List(ast),
+            Option((a, e) => a.withPrereq(getDepy)))
+          DieselAppContext ! DEComplete(engine, node, recurse = true, -1, Nil)
+
+    }
+
+    override def complete(): Unit = {
+      val ast = DomAst(EMsg(
+        DieselMsg.STREAMS.STREAM_ONDONE,
+        List(
+          P.of("stream", name), P.of("context", context)
+        )
+      ))
+
+      setCtx(ast)
+
+        DieselAppContext ! DEAddChildren(engine, node, recurse = true, -1, List(ast),
+          Option((a, e) => a.withPrereq(getDepy)))
+        DieselAppContext ! DEComplete(engine, node, recurse = true, -1, Nil)
+
+    }
+
+    /** todo merge with the other - this is experimental */
+    private def getDepyOnDATA: List[String] = {
+      val target = DieselAppContext.activeEngines.get(engine).flatMap(_.findNode(node))
+      var res = target.toList.flatMap(
+        _.children
+            .filter(_.status != DomState.DONE)
+            .filter(_.value.isInstanceOf[EMsg]))
+
+      // for onData just depend on the last one
+      res = res.lastOption.toList
+
+      res.map(_.id)
+    }
+
+    /** get values of other generated nodes */
+    def getDepy: List[String] = {
+      val target = sink.flatMap(tid=> DieselAppContext.activeEngines.get(tid.engine).flatMap(_.findNode(tid.node)))
+      val res = target.toList.flatMap(
+        _.children
+            .filter(_.status != DomState.DONE)
+            .filter(_.value.isInstanceOf[EMsg])
+            .map(_.id))
+      res
+    }
+
+  }
+
+//  case class SourceDomStreamConsumer(source: Source[ByteString, +], node:String) extends DomStreamConsumer
+
+  private var sink: Option[EngDomStreamConsumer] = None // target parent for consume nodes
 
   // todo support multiple consumers
 
   /** specify target parent for the consume nodes */
-  def withTargetId(engine:String, node:String) = {
-    this.targetId = Some(DomStreamConsumer(engine, node))
+  def withEngineSink(engine:String, node:String) = {
+    this.sink = Option(EngDomStreamConsumer(engine, node))
     this
   }
 
   // the actual elements
-  private val list: ListBuffer[Any] = new ListBuffer[Any]()
+  private val values: ListBuffer[Any] = new ListBuffer[Any]()
   private val errors: ListBuffer[P] = new ListBuffer[P]()
   private var isDone = false
   private var isError = false
@@ -88,6 +214,8 @@ abstract class DomStream (
 
   var lastBatchWaitingAt = 0L
   var lastBatchConsumedAt = 0L
+
+  def getValues = values.toList
 
   def getIsConsumed = isConsumed
 
@@ -116,26 +244,27 @@ abstract class DomStream (
     if (!justConsume) {
       assert(!isDone)
 
-      var acceptable = Math.min(maxSize - list.size, l.size)
-      if (l.size > acceptable) {
+      var acceptable = Math.min(maxSize - values.size, l.size)
+      if (l.size > acceptable + 1) {
         val err = DomAst(new EError(s"Stream overflow $name capacity: $maxSize"))
-        DieselAppContext ! DEAddChildren(owner.id, targetId.mkString, recurse = true, -1, List(err), None)
+        DieselAppContext ! DEAddChildren(owner.id, sink.mkString, recurse = true, -1, List(err), None)
+        // todo also put it in the consumer flow?
 
         // todo throw back to sender
-        assert(false, s"Stream overflow $name capacity: $maxSize")
+        assert(assertion = false, s"Stream overflow $name capacity: $maxSize")
 
         // todo implement backpressure...
       } else {
         trace(" - DStream appended: " + l.mkString(","))
-        list.appendAll(l)
+        values.appendAll(l)
       }
     }
 
     // todo I send right away - should batch up with a timeout
 
-    if (isConsumed) targetId.map { tid =>
+    if (isConsumed) sink.map { tid =>
 
-      if (batch && batchSize > 0 && list.size < batchSize && !forceBatch && batchWaitMillis > 0) { // batched but not enough items...
+      if (batch && batchSize > 0 && values.size < batchSize && !forceBatch && batchWaitMillis > 0) { // batched but not enough items...
         // set batch timer
         DieselAppContext ! DEStreamWaitMaybe(name, batchWaitMillis) // start timer
 
@@ -145,63 +274,35 @@ abstract class DomStream (
         lastBatchWaitingAt = 0
 
         var pickedUp = 0
-        val asts = new ListBuffer[DomAst]()
+        val batchAccumulator = new ListBuffer[List[Any]]()
 
-        list.toList
+        values.toList
             .grouped(batchSize)
             .toList
             .foreach { batch =>
               trace(" - DStream sending.slice: " + batch.mkString(","))
               pickedUp += batch.size
 
-              val m = new EMsg(
-                DieselMsg.STREAMS.STREAM_ONDATASLICE,
-                P.of("stream", name) ::
-                    P.of("data", batch) ::
-                    P.of("context", context) ::
-                    Nil
-              ) with KeepOnlySomeSiblings
-
-              val ast = DomAst(m)
-                  .withPrereq(
-                    // todo add a "parallel" setting on consume?
-                    asts.map(_.id).toList
-                  )
-
-              setCtx(ast)
-
-              asts.append(ast)
+              batchAccumulator.append(batch)
             }
 
         // todo each node should have its own scope or run in sequence...
 
-        trace(s" - DStream size ${list.size} dropping: $pickedUp")
-        list.remove(0, pickedUp)
-        DieselAppContext ! DEAddChildren(tid.engine, tid.node, recurse = true, -1, asts.toList,
-          Some((a, e) => a.withPrereq(getDepy)))
-        trace(s" - DStream list size ${list.size} is: " + list.mkString)
+        trace(s" - DStream size ${values.size} dropping: $pickedUp")
+        values.remove(0, pickedUp)
+
+        sink.foreach(_.consumeDataBatch(batchAccumulator.toList))
+
+        trace(s" - DStream values size ${values.size} is: " + values.mkString)
 
       } else {
 
         // no batch
 
-        list.toList.map { data =>
-          val ast = DomAst(new EMsg(
-            DieselMsg.STREAMS.STREAM_ONDATA,
-            P.of("stream", name) ::
-                P.of("data", data) ::
-                P.of("context", context) ::
-                Nil
-          ) with KeepOnlySomeSiblings)
-
-          setCtx(ast)
-
-          DieselAppContext ! DEAddChildren(tid.engine, tid.node, recurse = true, -1, List(ast),
-            Some((a, e) => a.withPrereq(getDepyOnDATA)))
-        }
+        sink.foreach(_.consumeData(values.toList))
 
         trace(" - DStream clear: ")
-        list.clear()
+        values.clear()
       }
     } else {
       // no consumers - accumulate to a point
@@ -218,20 +319,7 @@ abstract class DomStream (
     if(!sentComplete) {
       sentComplete = true
 
-      val ast = DomAst(EMsg(
-        DieselMsg.STREAMS.STREAM_ONDONE,
-        List(
-          P.of("stream", name), P.of("context", context)
-        )
-      ))
-
-      setCtx(ast)
-
-      targetId.map { tid =>
-        DieselAppContext ! DEAddChildren(tid.engine, tid.node, recurse = true, -1, List(ast),
-          Some((a, e) => a.withPrereq(getDepy)))
-        DieselAppContext ! DEComplete(tid.engine, tid.node, recurse = true, -1, Nil)
-      }
+      sink.foreach(_.complete())
     }
   }
 
@@ -266,31 +354,6 @@ abstract class DomStream (
     }
   }
 
-  /** todo merge with the other - this is experimental */
-  def getDepyOnDATA: List[String] = {
-    val target = targetId.flatMap(tid=> DieselAppContext.activeEngines.get(tid.engine).flatMap(_.findNode(tid.node)))
-    var res = target.toList.flatMap(
-      _.children
-          .filter(_.status != DomState.DONE)
-          .filter(_.value.isInstanceOf[EMsg]))
-
-    // for onData just depend on the last one
-    res = res.lastOption.toList
-
-    res.map(_.id)
-  }
-
-  /** get list of other generated nodes */
-  def getDepy: List[String] = {
-    val target = targetId.flatMap(tid=> DieselAppContext.activeEngines.get(tid.engine).flatMap(_.findNode(tid.node)))
-    val res = target.toList.flatMap(
-      _.children
-          .filter(_.status != DomState.DONE)
-          .filter(_.value.isInstanceOf[EMsg])
-          .map(_.id))
-    res
-  }
-
   def error(l: List[P], justConsume: Boolean = false): Unit = {
     if(true || !isDone) {
       if (!justConsume) {
@@ -301,21 +364,7 @@ abstract class DomStream (
           consume()
         }
       } else {
-
-        val ast = DomAst(EMsg(
-          DieselMsg.STREAMS.STREAM_ONERROR,
-          List(
-            P.of("stream", name), P.of("context", context)
-          ) ::: errors.toList
-        ))
-
-        setCtx(ast)
-
-        targetId.map { tid =>
-          DieselAppContext ! DEAddChildren(tid.engine, tid.node, recurse = true, -1, List(ast),
-            Some((a, e) => a.withPrereq(getDepy)))
-          DieselAppContext ! DEComplete(tid.engine, tid.node, recurse = true, -1, Nil)
-        }
+        sink.foreach(_.error())
       }
     } else {
       // todo
@@ -326,9 +375,9 @@ abstract class DomStream (
   def consume(): Unit = {
     isConsumed = true
     // if something already, just trigger consumers
-    if (list.size > 0) put(Nil, true)
+    if (values.size > 0) put(Nil, justConsume = true)
     if (isDone && !isError) done(true)
-    if (isDone && isError) error(Nil, true)
+    if (isDone && isError) error(Nil, justConsume = true)
 
     // not done - will wait for done
 //    targetId.map { tid =>
