@@ -259,8 +259,8 @@ object RDOM {
     def undefined(name: String): P = new P(name, "", WTypes.wt.UNDEFINED)
 
     def fromSmartTypedValue(name: String, v: Any): P = v match {
-      case s: String if s.trim.startsWith("{") => P.fromTypedValue(name, s, WTypes.JSON)
-      case s: String if s.trim.startsWith("[") => P.fromTypedValue(name, s, WTypes.ARRAY)
+      case s: String if s.trim.startsWith("{") => P.fromTypedValue(name, s, WTypes.wt.JSON)
+      case s: String if s.trim.startsWith("[") => P.fromTypedValue(name, s, WTypes.wt.ARRAY)
       case _ => P.fromTypedValue(name, v)
     }
 
@@ -328,20 +328,20 @@ object RDOM {
 
         case s: String => {
           expectedType match {
-            case WType(WTypes.JSON, _, _, _, _) => new P(name, "", expectedType).withCachedValue(
+            case WType(WTypes.JSON, _, _, _) => new P(name, "", expectedType).withCachedValue(
               js.fromObject(new JSONObject(s)), expectedType, s)
-            case WType(WTypes.ARRAY, _, _, _, _) => new P(name, "", expectedType).withCachedValue(
+            case WType(WTypes.ARRAY, _, _, _) => new P(name, "", expectedType).withCachedValue(
               js.fromArray(new JSONArray(s)), expectedType, s)
-            case WType(WTypes.BOOLEAN, _, _, _, _) => new P(name, "", expectedType).withCachedValue(s.toBoolean,
+            case WType(WTypes.BOOLEAN, _, _, _) => new P(name, "", expectedType).withCachedValue(s.toBoolean,
               expectedType, s)
-            case WType(WTypes.NUMBER, _, _, _, _) => new P(name, "", expectedType).withCachedValue(s.toFloat, expectedType,
+            case WType(WTypes.NUMBER, _, _, _) => new P(name, "", expectedType).withCachedValue(s.toFloat, expectedType,
               s)
 
-            case WType(WTypes.STRING, _, _, _, _) => new P(name, "", expectedType).withCachedValue(s, expectedType, s)
-            case WType(WTypes.DATE, _, _, _, _)   => new P(name, "", expectedType).withCachedValue(s, expectedType, s)
-            case WType(WTypes.HTML, _, _, _, _)   => new P(name, "", expectedType).withCachedValue(s, expectedType, s)
+            case WType(WTypes.STRING, _, _, _) => new P(name, "", expectedType).withCachedValue(s, expectedType, s)
+            case WType(WTypes.DATE, _, _, _)   => new P(name, "", expectedType).withCachedValue(s, expectedType, s)
+            case WType(WTypes.HTML, _, _, _)   => new P(name, "", expectedType).withCachedValue(s, expectedType, s)
 
-            case WType(WTypes.EXCEPTION, _, _, _, _) => new P(name, s, expectedType)
+            case WType(WTypes.EXCEPTION, _, _, _) => new P(name, s, expectedType)
 
             case _ if expectedType.trim.length > 0 =>
               throw new DieselExprException(s"$expectedType is an unknown type")
