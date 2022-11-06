@@ -341,22 +341,22 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
             }.calculatedTypedValue
 
             case _ if bs == "boolean" || bs == "bool" =>
-              P.fromTypedValue("", as, WTypes.BOOLEAN).calculatedTypedValue
+              P.fromTypedValue("", as, WTypes.wt.BOOLEAN).calculatedTypedValue
 
             case _ if bs == "number" =>
-              P.fromTypedValue("", as, WTypes.NUMBER).calculatedTypedValue
+              P.fromTypedValue("", as, WTypes.wt.NUMBER).calculatedTypedValue
 
             case _ if bs == "float" =>
-              P.fromTypedValue("", as.toFloat, WTypes.NUMBER).calculatedTypedValue
+              P.fromTypedValue("", as.toFloat, WTypes.wt.NUMBER).calculatedTypedValue
 
             case _ if bs == "int" || bs == "long" =>
-              P.fromTypedValue("", as.toFloat.toLong, WTypes.NUMBER).calculatedTypedValue
+              P.fromTypedValue("", as.toFloat.toLong, WTypes.wt.NUMBER).calculatedTypedValue
 
             case _ if bs == "string" =>
-              P.fromTypedValue("", as, WTypes.STRING).calculatedTypedValue
+              P.fromTypedValue("", as, WTypes.wt.STRING).calculatedTypedValue
 
             case _ if bs == "json" || bs == "object" =>
-              P.fromTypedValue("", as, WTypes.JSON).calculatedTypedValue
+              P.fromTypedValue("", as, WTypes.wt.JSON).calculatedTypedValue
 
             case _ if bs == "date" && isNum(av) => {
               // date from millis
@@ -367,11 +367,11 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
               val ts = tsFmtr.format(d)
 //              PValue(ts, WTypes.wt.DATE).withStringCache(ts)
 
-              P.fromTypedValue("", ts, WTypes.DATE).calculatedTypedValue
+              P.fromTypedValue("", ts, WTypes.wt.DATE).calculatedTypedValue
             }
 
             case _ if bs == "date" =>
-              P.fromTypedValue("", as, WTypes.DATE).calculatedTypedValue
+              P.fromTypedValue("", as, WTypes.wt.DATE).calculatedTypedValue
 
             case _ if bs == "array" => {
               if (avv.cType.name == WTypes.JSON || avv.cType.name == WTypes.OBJECT) {
@@ -382,10 +382,10 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
                   val xj = P.fromSmartTypedValue("x", Map("key" -> x._1, "value" -> x._2))
                   xj
                 }
-                P.fromTypedValue("", resArr.toList, WTypes.ARRAY).calculatedTypedValue
+                P.fromTypedValue("", resArr.toList, WTypes.wt.ARRAY).calculatedTypedValue
               } else {
                 // maybe string to array
-                P.fromTypedValue("", as, WTypes.ARRAY).calculatedTypedValue
+                P.fromTypedValue("", as, WTypes.wt.ARRAY).calculatedTypedValue
               }
             }
 
@@ -471,6 +471,7 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
                 val res = b.applyTyped(x)(sctx)
                 res
               }
+              // update accumulator
               ctx.put(res.copy(name = Diesel.PAYLOAD))
             }
 
