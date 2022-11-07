@@ -40,21 +40,23 @@ trait WikiDomain {
   final val INVENTORY = "inventory"
 
   /** based on annotations etc */
-  def findPluginsForClass(c: DE): List[DomInventory] = {
+  def findInventoriesForClass(c: DE): List[DomInventory] = {
     if (c.isInstanceOf[C]) {
       allPlugins
-          .find(_.isDefinedFor(realm, c.asInstanceOf[C]))
+          .find(_.isRegisteredFor(realm, c.asInstanceOf[C]))
           .orElse(
             // get annotation "inventory"
             c.asInstanceOf[C].props
                 .find(_.name == INVENTORY)
                 .flatMap(inv =>
+                    // needs to have been registered
                   allPlugins.find(_.name == inv.currentStringValue)
                 )
           ).orElse(
+        // try wiki cats
         allPlugins
             .find(_.isInstanceOf[DomInvWikiPlugin])
-            .filter(_.isDefinedFor(realm, c.asInstanceOf[C]))
+            .filter(_.isRegisteredFor(realm, c.asInstanceOf[C]))
       )
           .toList
     } else Nil
@@ -104,7 +106,7 @@ trait WikiDomain {
 object WikiDomain {
   final val WIKI_CAT = "wikiCategory"
 
-  def apply(realm: String) = WikiReactors(realm).domain
+  def apply(realm: String): WikiDomain = WikiReactors(realm).domain
 
   /** todo does it really need to start with one */
   def domFrom (first:WikiEntry, pages:List[WikiEntry]) : RDomain = {
@@ -155,6 +157,8 @@ object WikiDomain {
       WikiDomain.apply(we.realm).resetDom
     }
   }
+
+  def isPrimaryType (name:String) = WTypes.PRIMARY_TYPES.contains(name)
 
   /** these tags denote domain pages - use with WikiSearch.getList */
   final val DOM_TAGS      = "DslDomain,dsldomain,Category,domain"

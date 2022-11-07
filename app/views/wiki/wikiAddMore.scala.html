@@ -86,7 +86,7 @@ fragment: add more stuff to the current topic, including children, sub-topics et
 
     @** no Template - use default **@
     @if(WikiDomain(getRealm).zEnds(wid.name, "Template").isEmpty) {
-      @helper.form(action=routes.Wikie.addWithName(wid.name), 'class->"form-inline") {
+      @helper.form(action=routes.Wikie.wikieAddWithName(wid.name), 'class->"form-inline") {
         <div class="alert alert-success col-md-12">
           <label>Create a new <a href="/wiki/Category:@wid.name">@Wikis(wid.getRealm).label(WID("Category",wid.name))</a> </label>
         &nbsp;&nbsp;<input type="text" style="width:50%" class="form-control" name="name" placeholder="Name">

@@ -888,7 +888,7 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
         val u1 = usagesStories(e, a, allStories)
 
         // 2. specs, put $when first
-        val u2 = usagesSpecs(e, a)(engine.ctx).sortBy(x => if (x._1 == "$when") 0 else 1)
+        val u2 = usagesSpecs(e, a)(engine.ctx).sortBy(x => if (x._1 == "$msg") 0 else if(x._1 == "$when") 1 else 2)
 
         // remove engine from everywhere
         engine.cleanResources()

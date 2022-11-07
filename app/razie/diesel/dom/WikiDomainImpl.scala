@@ -19,12 +19,13 @@ class WikiDomainImpl (val realm:String, val wi:WikiInst) extends WikiDomain {
   // all plugins registered for this domain/realm - in this list:
   //
   lazy val _allPlugins = new ListBuffer[DomInventory]().++=:(
+    DieselRulesInventory.PREDEF_INVENTORIES :::
     DomInventories.pluginFactories.flatMap(x => x.mkInstance(realm, "", wi, x.name))
   )
 
-  def allPlugins = _allPlugins.toList
+  override def allPlugins = _allPlugins.toList
 
-  def addPlugin(inv: DomInventory): List[DomInventory] = {
+  override def addPlugin(inv: DomInventory): List[DomInventory] = {
     _allPlugins += inv
     allPlugins
   }
@@ -33,7 +34,7 @@ class WikiDomainImpl (val realm:String, val wi:WikiInst) extends WikiDomain {
 
   @volatile var isLoading: Boolean = false
 
-  def rdom: RDomain = synchronized {
+  override def rdom: RDomain = synchronized {
     if (irdom == null) {
       isLoading = true
 
@@ -41,23 +42,24 @@ class WikiDomainImpl (val realm:String, val wi:WikiInst) extends WikiDomain {
           WikiSearch.getList(realm, "", "", WikiDomain.DOM_TAG_QUERY.tags)
               .flatMap(p => WikiDomain.domFrom(p).toList)
               .fold(createRDom)(_ plus _.revise)
+              //.addRoot  // can't add here, it will show up all the time in browsers etc
 
       isLoading = false
     }
     irdom
   }
 
-  def resetDom = synchronized {
+  override def resetDom: Unit = synchronized {
     irdom = null
   }
 
-  import RDOM._
+  import razie.diesel.dom.RDOM._
 
-  def isWikiCategory(cat: String): Boolean =
-    rdom.classes.values.exists(c=> c.name == cat && c.stereotypes.contains(WikiDomain.WIKI_CAT))
+  override def isWikiCategory(cat: String): Boolean =
+    rdom.classes.get(cat).exists(_.stereotypes.contains(WikiDomain.WIKI_CAT))
 
   /** parse categories into domain model */
-  def createRDom : RDomain = {
+  override def createRDom : RDomain = {
     val diamonds = for (cat <- wi.categories if cat.contentProps.exists(t=>t._1.startsWith("diamond:"))) yield {
       val x = cat.contentProps.find(t=>t._1.startsWith("diamond"))
     }
@@ -107,9 +109,13 @@ class WikiDomainImpl (val realm:String, val wi:WikiInst) extends WikiDomain {
       C(cat.name, "", WikiDomain.WIKI_CAT, base.toList, "", Nil, Nil, assocs.toList, props.toList)
     }
 
-    var x = new RDomain(realm, classes.map(c=>(c.name, c)).toMap, classes.flatMap(_.assocs).toList, List.empty, Map.empty)
+    val x = new RDomain(
+      realm,
+      classes.map(c => (c.name, c)).toMap,
+      classes.flatMap(_.assocs).toList,
+      List.empty,
+      Map.empty)
     x
   }
 }
-
 

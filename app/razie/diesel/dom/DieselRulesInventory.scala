@@ -30,24 +30,22 @@ class DieselRulesInventory(
   var specInv: Option[DSpecInventory] = None
   var iprops : Map[String,String] = Map.empty
 
-  /** if the ReactorMod is present and a connection, create it - just one conn */
+  /** create an instance -  */
   override def mkInstance(irealm: String, ienv:String, wi: DSpecInventory, newName:String, dprops: Map[String, String] = Map.empty): List[DomInventory] = {
     // todo optimize - load only if a set of classes matches or something
     // if classes are annotated with db.name or something
+    // but they could also be registered in EnvSettings - before the dom is loaded ??
 
     val specs = DieselTarget.tqSpecs(irealm, TagQuery.EMPTY)
     specs
         .find { spec =>
-          // don't have to actually parse, eh?
-//          val rest = spec.collector.getOrElse(RDomain.DOM_LIST, List[Any]()).asInstanceOf[List[Any]]
-//          val rules = rest.find(_.isInstanceOf[ERule]).map(_.asInstanceOf[ERule])
-//          rules.exists(_.e.ea == "diesel.inv.impl.findByRef")
+          // don't have to actually parse, eh just look for str?
           val s = spec.content
           s.exists(_.contains("diesel.inv.impl.findByRef"))
         }.map { wprops =>
       val ret = new DieselRulesInventory(newName, iprops)// ++ wprops.allProps)
       ret.realm = irealm
-      ret.specInv = Some(wi)
+      ret.specInv = Option(wi)
       ret.iprops = dprops
       ret.env = ienv
       ret
@@ -159,16 +157,22 @@ class DieselRulesInventory(
   var completeUri: String = ""
 
   /** html for the supported actions */
-  def htmlActions(elem: DE): String = {
+  override def htmlActions(elem: DE): String = {
     elem match {
       case c: C => {
         val oname = classOname(c)
 
-        def mkListAll2 = s"""<a href="/diesel/list2/${c.name}">listAll</a>"""
+        def mkListAll2 = s"""<a href="/diesel/dom/list/${c.name}">listAll</a>"""
+
+        def mkNew =
+          if (WikiDomain.canCreateNew(realm, c.name))
+            s""" <a href="/doe/diesel/dom/startCreate/${c.name}">new</a>"""
+          else
+            ""
 
 //        def mkListAll = s"""<a href="/diesel/dom/$name/$conn/${c.name}/listAll"><small>list(deprecated)</small></a>"""
 
-        s"$mkListAll2 "
+        s"$mkListAll2 | $mkNew"
       }
 
       case _ => "n/a"
@@ -184,7 +188,7 @@ class DieselRulesInventory(
     * @param epath       id of the entity
     * @return
     */
-  def doAction(dom: RDomain, conn: String, action: String, completeUri: String, epath: String): String = {
+  override def doAction(dom: RDomain, conn: String, action: String, completeUri: String, epath: String): String = {
     try {
       this.completeUri = completeUri
       val ref = new FullSpecRef(this.name, conn, epath, "", "", realm)
@@ -221,16 +225,14 @@ class DieselRulesInventory(
     val jj = Snakk.jsonParsed(Snakk.body(Snakk.url(url)))
     val m = js.fromObject(jj)
 
-    m("value")
-        .asInstanceOf[List[Map[String, Any]]]
+    m("value").asInstanceOf[List[Map[String, Any]]]
   }
 
   private def getValueFromBody(b: String): List[Map[String, Any]] = {
     val jj = Snakk.jsonParsed(b)
     val m = js.fromObject(jj)
 
-    m("value")
-        .asInstanceOf[List[Map[String, Any]]]
+    m("value").asInstanceOf[List[Map[String, Any]]]
   }
 
   private def mprops: Map[String, Any] = List(
@@ -322,3 +324,23 @@ class DieselRulesInventory(
 
 }
 
+/**
+  * static inventories - these are available in all realms
+  */
+object DieselRulesInventory {
+  val PREDEF_NAMES = Array (
+    "diesel.db.inmem",
+    "diesel.db.memshared",
+    "diesel.db.col",
+    "diesel.db.postgres",
+    "diesel.db.elk"
+  )
+
+  /** these are pre-defined and serve all apps */
+  lazy val PREDEF_INVENTORIES = PREDEF_NAMES.map { name =>
+    val ret = new DieselRulesInventory(name)
+    ret
+  }.toList
+}
+
+//DomInventories.pluginFactories.flatMap(x => x.mkInstance(realm, "", wi, x.name))

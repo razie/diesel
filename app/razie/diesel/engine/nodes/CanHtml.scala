@@ -115,6 +115,9 @@ trait CanHtml {
     s"""<span $t $extra>$s</span>"""
   }
 
+  def tokenExprValue(s: String) =
+    "<code>" + token(s, "value", """ class="expr" """) + "</code>"
+
   def tokenValue(s: String) =
     "<code>" + token(s, "value", """ class="string" """) + "</code>"
 

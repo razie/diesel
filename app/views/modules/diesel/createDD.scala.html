@@ -1,23 +1,26 @@
 @**************
-browse a domain
+Create a domain object / cat
 **************@
 @import razie.diesel.dom.{RDOM, RDomain}
-@(realm:String, cat:String, left:List[RDOM.A], right:List[RDOM.A], rdom:RDomain, errors:Map[String,String])(mkLink:(String,String,Option[RDOM.A])=>String)(implicit stok: controllers.StateOk)
+@import play.twirl.api.TemplateMagic.defining
+@import razie.diesel.dom.WikiDomain
+@(plugin:String, conn:String, realm:String, cat:String, left:List[RDOM.A], right:List[RDOM.A], domain:WikiDomain, currValues:List[(String,RDOM.P)], errors:Map[String,String])(mkLink:(String,String,Option[RDOM.A])=>String)(implicit stok: controllers.StateOk)
 @import mod.diesel.model.Diesel
 
 @stok.title("Category browser: "+cat)
+
+<script src="@routes.Assets.at("javascripts/weDieselDom.js")"></script>
 
 @modules.diesel.browser("diesel", realm, realm, cat, Nil, left, right)(mkLink)
 
 
 <div class="col-sm-12">
-  @rdom.classes.get(cat).map{c=>
-    <h2>Creating a new <i>@cat</i></h2>
+  @domain.rdom.classes.get(cat).map{c=>
 
-    @*<form action="/doe/diesel/createSubmit/@cat/@wpath" method="POST">*@
+      <h2>Creating a new <i>@cat</i></h2>
 
-    @defining(Diesel.mkFormDef(realm, c, "temp", stok.au.get)) { page =>
-      <form action="/doe/form/submit2/@page.wid.wpath" method="POST">
+    @defining(Diesel.mkFormDef(realm, c, "temp", stok.au.get, currValues)) { page =>
+      <form action="/diesel/dom/doUpsert/@cat?plugin=@plugin&conn=@conn&wid=@page.wid.wpath" method="POST" id="myForm" name="myForm">
 
         <textarea name="category" hidden>@page.category</textarea>
         <textarea name="content" hidden>@page.content</textarea>
@@ -27,6 +30,7 @@ browse a domain
         @wiki.wikiFormInt(page.wid, None, Some(page), errors, true, false)
 
         @if(page.form.canEdit){
+          <a href="javascript:weDomRecalculateFormData()" class="btn btn-info">Recalculate</a>
           <input type="submit" name="save_button" value="Save for later" class="btn btn-info">
           <input type="submit" name="submit_button" value="Submit" class="btn btn-success">
           <strong>Please <font style="color:red">save or submit</font> before leaving this page!</strong>
@@ -42,6 +46,63 @@ browse a domain
 <p></p>
 
       </form>
+      <script>
+require(['jquery', 'weCommons'], function($) {
+
+  function getFormData($form){
+    var unindexed_array = $form.serializeArray();
+    var indexed_array = {};
+
+    $.map(unindexed_array, function(n, i){
+      // RAZ - this content field is huge, I think I add it
+      if(n['name]'] != 'content') indexed_array[n['name']] = n['value'];
+    });
+
+    return indexed_array;
+  }
+
+  sendForm = function () {
+    var data = getFormData($("form#myForm"));
+    $.ajax({
+      url: '/diesel/dom/doUpsert/@cat?plugin=@plugin&conn=@conn&wid=@page.wid.wpath',
+      type: 'post',
+      data: JSON.stringify(data),
+      contentType: 'application/json',
+      success: function (data) {
+        window.location.href = '/diesel/dom/list/@cat';
+      },
+      error: function (data) {
+        alert(typeof data == "object" ? JSON.parse(data):data);
+      }
+    });
+  }
+
+  weDomRecalculateFormData = function () {
+    var data = getFormData($("form#myForm"));
+    $.ajax({
+      url: '/diesel/dom/recalcForm/@cat',
+      type: 'post',
+      data: JSON.stringify(data),
+      contentType: 'application/json',
+      success: function (data) {
+        var o = typeof data == "object" ? data : JSON.parse(data);
+        console.log(o);
+        Object.keys(o).forEach(x=> $("input[name=" + x + "]").val(o[x]));
+      },
+      error: function (data) {
+        alert(data);
+      }
+    });
+  }
+
+  $("form#myForm").submit(function(e){
+    e.preventDefault();
+    var form = this;
+    sendForm();
+  });
+
+});
+      </script>
     }
 
   }.getOrElse{
@@ -51,3 +112,4 @@ browse a domain
 
 </div>
 
+@util.oneModal()

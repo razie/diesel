@@ -11,7 +11,7 @@ import com.mongodb.DBObject
 import com.mongodb.casbah.Imports._
 import com.novus.salat._
 import controllers.WikiApiv1.Ok
-import mod.diesel.controllers.DieselControl
+import mod.diesel.controllers.DomainController
 import model._
 import org.bson.types.ObjectId
 import org.joda.time.DateTime
@@ -25,7 +25,7 @@ import razie.db.RazSalatContext._
 import razie.hosting.{Website, WikiReactors}
 import razie.tconf.Visibility.PUBLIC
 import razie.wiki.model.features.WikiCount
-import razie.wiki.model.{WikiAudit, WikiSearch, _}
+import razie.wiki.model._
 import razie.wiki.util.{PlayTools, QueryParms, Staged}
 import razie.wiki.{Config, Enc, Services}
 import razie.{Logging, js}
@@ -91,7 +91,7 @@ class WikiBase extends RazController with Logging with WikiAuthorization {
 
 /** wiki controller - generally view/read ops. The edit ops are in Wikie */
 @Singleton
-class Wiki @Inject()(dieselControl: DieselControl) extends WikiBase {
+class Wiki @Inject()(domainController: DomainController) extends WikiBase {
 
   import WikiUtil._
 
@@ -492,7 +492,7 @@ class Wiki @Inject()(dieselControl: DieselControl) extends WikiBase {
     else if ("Admin" == cat && "Private_Messages" == name) Redirect("/doe/msg/PM")
 //    else if ("Reactor" == cat && iwid.name != Wikis.RK && !iwid.realm.exists(_ != Wikis.RK)) Redirect("/w/"+wid.name+"/wiki/"+wid.wpath)
     else if ("Category" == cat && !Wikis(iwid.getRealm).categories.exists(_.name == name))
-      dieselControl.catBrowser("diesel", iwid.getRealm, iwid.getRealm, name, "").apply(
+      domainController.catBrowser("diesel", iwid.getRealm, iwid.getRealm, name, "").apply(
         request.ireq.asInstanceOf[Request[AnyContent]]).value.get.get
     else if ("any" == cat || (cat.isEmpty && wid.parent.isEmpty)) {
       // search for any name only if cat is missing OR there is no parent

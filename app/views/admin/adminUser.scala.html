@@ -66,7 +66,9 @@ screen to admin one user
 <hr>
 
 <p>
-  <b>toString: </b> @u.toString
+  <b>toString: </b><small>
+<pre>@razie.js.tojsons(razie.js.parse(u.toJson))</pre>
+  </small>
 
   <br> ur: <br> @u.realmSet.map{t=>
     <b>@t._1</b> -> @t._2 <br>

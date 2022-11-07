@@ -6,19 +6,21 @@ insert a div (at top of screen) for flashing error messages or stats etc
 <small>
 &nbsp; &nbsp; &nbsp; &nbsp;
 
-  <div id="messages" style="float:right;margin-top:10px;">
-    <div id="@name" style="display:inline;" class="alert alert-info">
+  <div id="messages" style="float:right; margin-top:10px;" class="">
+    <div id="@name" style="display:none;" class="alert alert-info">
     </div>
   </div>
 </small>
 
 <script async>
+// before jquery loads
 var notesMsgShow = function(){};
 
   require(['jquery'], function($){
     $('#@name').hide();
 
     notesMsgShow = function(kind,text) {
+
       $('#@name').removeClass('alert-info');
       $('#@name').removeClass('alert-danger');
       $('#@name').removeClass('alert-success');
@@ -32,7 +34,10 @@ var notesMsgShow = function(){};
       }
 
       $('#@name').html('<strong>'+text+'</strong>');
+
+      @*$('#@name').css('display', 'inline');*@
       $('#@name').show();
+
       $('#@name').fadeOut(5000);
     }
   });

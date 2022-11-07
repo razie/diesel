@@ -53,7 +53,14 @@ creates the navigation bar
 }
   </div>
 
-    <!-- Collect the nav links, forms, and other content for toggling -->
+  <div style="position: absolute; z-index: 10001; margin-top: 10px" class="col-sm-12 col-lg-8 col-md-10">
+  @if(stok.msg.nonEmpty) {
+    @util.notesmsgDiv("notesmsg")
+    @util.notesmsgShow("notesmsg", stok.msg)
+  }
+  </div>
+
+  <!-- Collect the nav links, forms, and other content for toggling -->
   <div class="navbar-collapse collapse" id="navbar">
     <ul class="nav navbar-nav navbar-left">
 

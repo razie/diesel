@@ -34,17 +34,12 @@ class DomEngECtx(val settings: DomEngineSettings, cur: List[P] = Nil, base: Opti
 
   /** NOT for moving from engine to engine */
   def withEngine(e: DomEngine) = {
-    this.engine = Some(e);
+    this.engine = Option(e);
     this
   }
 
   def withSpecs(s: List[DSpec]) = {
     _specs = s ::: _specs
-    this
-  }
-
-  def withDomain(r: RDomain) = {
-    _domain = Some(r)
     this
   }
 
@@ -68,12 +63,12 @@ class DomEngECtx(val settings: DomEngineSettings, cur: List[P] = Nil, base: Opti
           .orElse(super.getp(name))
     else None
 
-  override def put(p: P) {
-    overwritten.map(_.put(p)).getOrElse(super.put(p))
+  override def put(p: P): Unit = {
+    overwritten.fold(super.put(p))(_.put(p))
   }
 
-  override def putAll(p: List[P]) {
-    overwritten.map(_.putAll(p)).getOrElse(super.putAll(p))
+  override def putAll(p: List[P]): Unit = {
+    overwritten.fold(super.putAll(p))(_.putAll(p))
   }
 
   // base may return null in some corner cases
@@ -128,7 +123,7 @@ class DomEngECtx(val settings: DomEngineSettings, cur: List[P] = Nil, base: Opti
   /** used for instance when persisting a context - will overwrite the default */
   def overwrite(ctx: ECtx): Unit =
     if (this != ctx)
-      overwritten = Some(ctx)
+      overwritten = Option(ctx)
 
   /** reset this engine's values */
   override def clear: Unit = {

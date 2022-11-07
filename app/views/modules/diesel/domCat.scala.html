@@ -16,7 +16,7 @@ browse a domain
 <div class="col-sm-12">
 @defining(WikiDomain(realm)) { wd =>
   @wd.rdom.classes.get(cat).map { c =>
-    @defining(wd.findPluginsForClass(c)) { inv =>
+    @defining(wd.findInventoriesForClass(c)) { inv =>
   <div align="right"><small>@Html(DomInventories.htmlActions(realm, c))</small></div>
       <div class="well">
       @Html(o.map(_.fullHtml(inv.headOption)).getOrElse(c.fullHtml(inv.headOption)))
@@ -24,12 +24,19 @@ browse a domain
     @wiki.wikiAddMore(razie.wiki.model.WID("Category", cat).r(realm), None)
     } @* defining *@
   }.getOrElse{
+    @if(WikiDomain.isPrimaryType(cat)) {
+    Class <b>@cat</b> is a primary type.
+      <br>
+      <br>
+    <br>
+    } else {
     <span style="color:red">(realm: @realm) Absolutely nothing found about <b>@cat</b> - it is most likely inferred!</span>
     <br><br>
     <a href="/wikie/edit/@{realm}.Category:@cat">Create Wiki Category for <b>@cat</b></a><br><br>
     <div class="alert alert-warning">
       For <a href="/Topic/Domain_Modelling">domain modelling</a>, make sure the topic containing the models is tagged "DslDomain", to have it loaded automatically!
-  </div>
+    </div>
+    }
   }
 }
 

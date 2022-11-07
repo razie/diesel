@@ -6,7 +6,8 @@ import play.api.mvc.Request
 import model.MiniScripster
 import razie.audit.Audit
 import razie.audit.Audit.getInstance
-import razie.diesel.dom.RDOM.C
+import razie.diesel.dom.RDOM.{C, P}
+import razie.diesel.dom.{WTypes, WikiDomain}
 import razie.wiki.admin.GlobalData
 import razie.wiki.model.{UWID, WikiEntry, WikiSection, Wikis}
 
@@ -208,32 +209,61 @@ object Diesel {
   }
 
   /** make form definition to capture a new instance of a DSL category */
-  def mkFormDef (realm:String, c:C, name:String, au:User) = {
+  def mkFormDef (realm:String, c:C, name:String, au:User, currValues:List[(String,P)]) = {
     val TYPES = Array("", "string")
 
-    val content = "<table class=\"table\">\n" +
-      (if(!c.parms.exists(_.name == "name"))// && !c.parms.exists(_.name == "id"))
+    val wdom = WikiDomain(realm)
+
+    val formSpec = "<table class=\"table\">\n" +
+      (if(!c.parms.exists(_.name == "name") && wdom.isWikiCategory(c.name)) {// && !c.parms.exists(_.name == "id"))
          s"""<tr>\n  <td> Name </td>\n  <td> {{f:name:}} </td>\n  <td></td></tr>\n"""
-       else ""
+      } else ""
       ) +
       c.parms.map{p=>
-      "<tr>\n  <td>"+(
-        if(TYPES contains p.ttype)
-          s"""${p.name} </td>\n  <td> {{f:${p.name}:}}"""
-        else if(p.ttype == "Image")
+      "<tr>\n  <td>" + (
+        if(WTypes.STRING.equalsIgnoreCase(p.ttype.name) ||
+            WTypes.REGEX.equalsIgnoreCase(p.ttype.name) ||
+            WTypes.UNKNOWN.equalsIgnoreCase(p.ttype.name) ||
+            p.ttype.name == "")
+            s"""${p.name} </td>\n  <td> {{f:${p.name}:}}"""
+        else if(WTypes.NUMBER.equalsIgnoreCase(p.ttype.name) ||
+            WTypes.INT.equalsIgnoreCase(p.ttype.name) ||
+            WTypes.FLOAT.equalsIgnoreCase(p.ttype.name)
+        )
+          s"""${p.name} </td>\n  <td> {{f:${p.name}:type=number}}"""
+        else if(WTypes.DATE.equalsIgnoreCase(p.ttype.name))
+          s"""${p.name} </td>\n  <td> {{f:${p.name}:type=date}}"""
+        else if(p.ttype.name == "Image")
           s"""${p.name} </td>\n  <td> {{f:${p.name}:}} Image URL"""
-        else
-          ""
-//          s"""${p.name} COMPLICATED</td>\n  <td>""" + p.ttype
+        else {
+          val className = WTypes.schemaOf(p.ttype)
+          val cls = wdom.rdom.classes.get(className)
+          val inv = cls.toList.flatMap(wdom.findInventoriesForClass)
+          val invname = inv.map(_.name).mkString
+          val conn = inv.map(_.conn).mkString
+          val x = s"""${p.name} </td>\n  <td> {{f:${p.name}:}} <a href="javascript:weDomSelectEntity('""" +
+              invname +
+              "','" +
+              conn +
+              s"""','$className', 'name', '${p.name}')" class="btn btn-info">${className}</a>"""
+          x
+        }
       )+"</td>\n  <td></td></tr>\n"
     }.mkString +
-    "</table>\n\n" +
-    s"""
+    "</table>\n\n"
+
+    val vals = currValues.map(t => (t._1, t._2.currentValue.ee)).toMap + ("formState" -> "created")
+    val s = razie.js.tojsons(vals)
+
+    val formData =  s"""
 {{.section:formData}}
-{"formState":"created" }
+$s
 {{/section}}
 """
-    new WikiEntry(c.name, name, c.name+" - "+name, "md", content, au._id, Seq("dslObject", c.name.toLowerCase), realm)
+
+    val content = formSpec + formData
+
+    new WikiEntry(c.name, name, c.name+" - "+name, "md", content, au._id, Seq("dslObject", c.name.toLowerCase), realm).nonCacheable
   }
 
 }

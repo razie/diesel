@@ -24,13 +24,13 @@ case class WikiForm(we: WikiEntry) {
 
   we.preprocessed // make sure it is parsed
 
-  if (!we.fields.isEmpty) {
+  if (we.fields.nonEmpty) {
     // form design
     we.section("section", "formData").foreach { s =>
       // parse form data
       val data = razie.Snakk.jsonParsed(s.content)
       razie.MOLD(data.keys).map(_.toString).map { name =>
-        val x = data.getString(name)
+        val x = data.get(name).toString
         we.fields.get(name) match {
           case Some(f) => we.fields.put(f.name, f.withValue(x))
           case None => we.fields.put(name, new FieldDef(name, x, Map.empty))
@@ -41,8 +41,8 @@ case class WikiForm(we: WikiEntry) {
 
   def formState = we.fields.get(FormStatus.FORM_STATE).map(_.value)
   def canEdit = formState.exists(Array(FormStatus.EDITING, FormStatus.CREATED) contains _)
-  def canBeApproved = formState.exists(_ == FormStatus.SUBMITTED)
-  def canBeRejected = formState.exists(_ == FormStatus.APPROVED)
+  def canBeApproved = formState.contains(FormStatus.SUBMITTED)
+  def canBeRejected = formState.contains(FormStatus.APPROVED)
   def formData = we.section("section", "formData")
   def formDataJson = we.section("section", "formData").map(s => razie.Snakk.jsonParsed(s.content))
   def fields = we.fields

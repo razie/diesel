@@ -186,9 +186,8 @@ require.config({
     bootstrap : '../bootstrap-3.3.4/js/bootstrap.min',
     datatables : '../vendor/jquery.dataTables1.10.7.min',
     ace : '../ace-builds/src',
-    // "bootstrap-typeahead" : "../bootstrap-3.3.4/js/typeahead"
-    // "bootstrap-typeahead" : "../bootstrap-2.2.3/js/bootstrap-typeahead"
-    "bootstrap-typeahead" : "../bootstrap-3.3.4/js/bootstrap3-typeahead"
+    "bootstrap-typeahead" : "../bootstrap-3.3.4/js/bootstrap3-typeahead",
+    "bootstrap-datepicker" : "../datepicker/js/bootstrap-datepicker"
   }
 });
 
@@ -297,7 +296,8 @@ pre {
 }
 code .keyword              { font-weight: bold; color: #993300 }
 code .string, code .regexp { color: #669933 }
-code .msg                { color: #CC6600 }
+code .expr           { color: darkgray }
+code .msg                  { color: #CC6600 }
 code .class                { color: #CC6600 }
 code .special              { color: #dd7522 }
 code .number               { color: #669933 }
@@ -321,6 +321,7 @@ pre {
 }
 code .keyword              { font-weight: bold; color: #FFCC00 }
 code .string, code .regexp { color: #669933 }
+code .expr           { color: darkgray }
 code .class                { color: #C39A5E }
 code .special              { color: #dd7522 }
 code .number               { color: #eddd3d }

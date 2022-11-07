@@ -1,8 +1,9 @@
 @**************
-just the actual list, nothing else
+included in wikiListAssets - just the actual list, nothing else
 **************@
 @import razie.tconf.FullSpecRef
-@(search:String, realm:String, curTags:String, pages:List[(FullSpecRef, String)], showRealm:Boolean = false)(implicit stok: controllers.StateOk)
+@import razie.diesel.dom.DIQueryResult
+@(search:String, realm:String, curTags:String, pages:DIQueryResult, fieldsToShow:Array[String], showRealm:Boolean = false)(implicit stok: controllers.StateOk)
 @import razie.wiki.model._
 
 @highlight(s:String)={
@@ -22,20 +23,34 @@ just the actual list, nothing else
         <td><small><small>Realm</small></small></td>
       }
       <td>Name</td>
-      <td>Category</td>
+      @fieldsToShow.filter(x=> !x.equals("name") && !x.startsWith("-")).map { f =>
+        <td>
+          @f.capitalize
+        </td>
+      }
+      @if(!fieldsToShow.contains("-category")) {
+        <td>Category</td>
+      }
     </tr>
   </thead>
-  @pages.map{p=>
+  @pages.data.map{p=>
     <tr>
       @if(showRealm) {
-        <td><small><small>@p._1.realm</small></small></td>
+        <td><small><small>@p.ref.realm</small></small></td>
       }
+    <td>
+      <a href="@razie.diesel.dom.DieselAssets.mkLinkAsset(p.ref.asInstanceOf[FullSpecRef], "")">@label(p.ref.key, p.ref)</a>
+    </td>
+    @fieldsToShow.filter(x=> !x.equals("name") && !x.startsWith("-")).map { f =>
       <td>
-        <a href="@razie.diesel.dom.DieselAssets.mkLinkAsset(p._1, "")">@label(p._2, p._1)</a>
+        @p.valueO.get.parms.find(_.name == f).map(_.currentStringValue).mkString
       </td>
-      <td>
-        <small>&nbsp;  @p._1.category</small>
-      </td>
+    }
+      @if(!fieldsToShow.contains("-category")) {
+        <td>
+          <small>&nbsp;  @p.ref.category</small>
+        </td>
+      }
       @*<td>*@
         @*<small><span title="wordcount"> @p.wordCount </span> </small>*@
       @*</td>*@

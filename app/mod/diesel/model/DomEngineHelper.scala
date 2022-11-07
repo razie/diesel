@@ -71,23 +71,23 @@ object DomEngineHelper {
       postedContent = {
         if (request.body.isInstanceOf[AnyContentAsRaw]) {
           val raw = request.body.asRaw.flatMap(_.asBytes())
-          Some(new EContent(
-            raw.map(a => new String(a)).getOrElse(""),
+          Option(new EContent(
+            raw.fold("")(a => new String(a)),
             request.contentType.mkString,
             200,
             request.headers.toSimpleMap,
             None,
             raw))
         } else if (request.contentType.exists(c => c == "application/json")) {
-          Some(new EContent(
+          Option(new EContent(
             request.body.asJson.mkString,
             request.contentType.mkString))
         } else None
       },
       tagQuery = fqhParm(TAG_QUERY),
       simMode = fqhoParm(SIM_MODE, "false").toBoolean,
-      dieselHost = Some(hp),
-      sla = if(fqhoParm(SLA, "").length > 0) Some(fqhoParm(SLA, "")) else None
+      dieselHost = Option(hp),
+      sla = if(fqhoParm(SLA, "").length > 0) Option(fqhoParm(SLA, "")) else None
     )
   }
 

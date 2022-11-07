@@ -28,11 +28,12 @@ package object dom {
     if(s != null && s.length > 0) f(s) else ""
   }
 
+  // like a mkString
   def mks[T](l:List[T], pre:String, sep:String, post:String="", indent:String="", tos:Option[T => String]=None) = {
     if (l.size > 0)
       pre +
         l
-          .map{y:T => tos.getOrElse{x:T=> x.toString}.apply(y)}
+          .map{ (y: T) => tos.getOrElse { (x: T) => x.toString}.apply(y)}
           .map(indent + _)
           .mkString(sep) +
         post
@@ -40,9 +41,10 @@ package object dom {
       ""
   }
 
-  def mksAttrs (parms : List[P], tos:Option[P => String]=Some({p:P => p.toHtml})) : String = {
+  def mksAttrs (parms : List[P], tos:Option[P => String] = Option({ (p: P) => p.toHtml})) : String = {
     if (parms.size > 2)
-      mks(parms, " (", ",", ") ", "<br>&nbsp;&nbsp;", tos)
+//      mks(parms, " (", ",", ") ", "<br>&nbsp;&nbsp;", tos)
+      mks(parms, " (<table><tr><td>", ",</td></tr>", "</tr></table>) ", "<tr><td>", tos)
     else
       mks(parms, " (", ", ", ") ", "&nbsp;&nbsp;", tos)
   }
