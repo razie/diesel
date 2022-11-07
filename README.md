@@ -34,45 +34,11 @@ $expect (payload == 120)
 
 See more details and technical notes at [diesel](/diesel).
 
-## Asynchronicity and parallel flows
+### Execution traces
 
-Each step in a flow is asynchronous, but the flow will chain them, giving the appearane of synchronous execution, by default. Several mechanisms are available for full control, here is one example of controlling execution with a flow pattern:
+The "execution trace", a tree-like model is stored for all flows and can be retrieved to see what is going on, or debug what happened for a past request. This will represent, at all times, the current state of execution (some nodes may be async operations that we're waiting for etc).
 
-```js
-$when flow.start => flow.step1
-$when flow.start => flow.step2
-$when flow.start => flow.step3
-$when flow.start => flow.step4
-
-$flow flow.start => (flow.step1 + (flow.step2 | flow.step3) + flow.step4)
-```
-
-Quite intuitively, when the rule `flow.start` is identified *and* it has the respective steps generated, this `$flow` pattern will rearrange the steps to occur in the given sequence (intuitively, steps 2 and 3 are executed in parallel, between steps 2 and 4.
-
-Note the separation of the decomposition of rules and the flow pattern. If the `$flow` was not given, the steps would run in sequence, but somewhat random. The only way to *ensure* they would run in sequence, would be to write it like this:
-
-```js
-$when flow.start 
-=> flow.step1
-=> flow.step2
-=> flow.step3
-=> flow.step4
-```
-
-... that or add a `$flow` rule to sequence them. The idea of separating `$flow` is that parallelization is usually an optimization activity, which does not or rather should not really impact the logical behaviour of the flow.
-
-Other expressions are available, such as:
-
-```js
-$when starting.something
-=> sequential.step
-==> fire.and.forget     // an async sub-flow
-<=> separate.async.flow // spawn an asynchronous sub-flow but wait for it's result
-```
-
-These can be bundled and controlled in other rules.
-
-Streams add another level of parallelism.
+![alt diesel tree](http://cdn.razie.com/Public/diesel/lights-chimes-dark.png)
 
 ## REST APIs
 
@@ -80,6 +46,8 @@ There is a simple binding to REST, using the `diesel.rest` message (you can call
 ):
 
 ```js
+Binding a rule to a URL, using regex to parse the URL:
+
 $when diesel.rest(path ~= "/myActualServer/create/(?<user>.+)")
 => myMailServer.create (user)
 
@@ -89,15 +57,29 @@ $mock myMailServer.create (user == "John")
 => (payload = {
   status:"Success"
   })
+
+Or using a more familiar path approach:
+
+$when diesel.rest(path ~path "/myActualServer2/create/:user")
+=> myMailServer.create (user)
 ```
 
 Note that instead of `$when` it uses a `$mock` and that matches the API call prefix (.../mock/...). Using /mock/ in the API enables the `$mock` rules and it's very effective in development.
 
-Also, when using `diesel.rest` a few advantages: you can use named groups in the regex, but you can also use classic `.../mypath/:element/:id` etc. Also, the query parameters are automatically populated in the context, etc. See more at [rest mocks](http://specs.dieselapps.com/wiki/Spec:restMock-spec).
+Also, when using `diesel.rest` to bind REST APIs a few advantages: the query parameters are automatically populated in the context, etc. See more at [rest mocks](http://specs.dieselapps.com/wiki/Spec:restMock-spec).
+
+### API Gateway
+
+There are built-in API Gateway features, see details at [API Gateway](http://specs.dieselapps.com/Topic/API_Gateway), such as:
+- mocking
+- security
+- visibility
+- rate limiting
+- statistics
 
 ## Expressions
 
-The expressions used in Diese are useful on their own: as an external DSL, the expressions are fairly complex (see more in [expr](/diesel/src/main/scala/razie/diesel/expr)), including lambdas, list operators and inlined Javascript expressions, such as:
+The expressions used in Diesel are useful on their own: as an external DSL, the expressions are fairly complex (see more in [expr](/diesel/src/main/scala/razie/diesel/expr)), including lambdas, list operators and inlined Javascript expressions, such as:
 
 ```js
 // array/lists with lambdas etc
@@ -109,12 +91,6 @@ js:{var d = new Date(); d.setSeconds(d.getSeconds() + 10); d.toISOString();}
 
 See [expr](/diesel/src/main/scala/razie/diesel/expr) for details and info on using them on their own.
 
-
-### Execution traces
-
-The "execution trace", a tree-like model is stored and can be retrieved to see what is going on, or what happened for a past request. This will represent, at all times, the current state of execution (some nodes may be async operations that we're waiting for etc).
-
-![alt diesel tree](http://cdn.razie.com/Public/diesel/lights-chimes-wrong.png)
 
 # Diesel Apps
 
@@ -218,3 +194,43 @@ println(engine.resultingValue)   // resulting value, if any
 // test it
 assert(engine.resultingValue contains "Greetings, Jane")
 ```
+
+## Asynchronicity and parallel flows
+
+Each step in a flow is asynchronous, but the flow will chain them, giving the appearane of synchronous execution, by default. Several mechanisms are available for full control, here is one example of controlling execution with a flow pattern:
+
+```js
+$when flow.start => flow.step1
+$when flow.start => flow.step2
+$when flow.start => flow.step3
+$when flow.start => flow.step4
+
+$flow flow.start => (flow.step1 + (flow.step2 | flow.step3) + flow.step4)
+```
+
+Quite intuitively, when the rule `flow.start` is identified *and* it has the respective steps generated, this `$flow` pattern will rearrange the steps to occur in the given sequence (intuitively, steps 2 and 3 are executed in parallel, between steps 2 and 4.
+
+Note the separation of the decomposition of rules and the flow pattern. If the `$flow` was not given, the steps would run in sequence, but somewhat random. The only way to *ensure* they would run in sequence, would be to write it like this:
+
+```js
+$when flow.start 
+=> flow.step1
+=> flow.step2
+=> flow.step3
+=> flow.step4
+```
+
+... that or add a `$flow` rule to sequence them. The idea of separating `$flow` is that parallelization is usually an optimization activity, which does not or rather should not really impact the logical behaviour of the flow.
+
+Other expressions are available, such as:
+
+```js
+$when starting.something
+=> sequential.step
+==> fire.and.forget     // an async sub-flow
+<=> separate.async.flow // spawn an asynchronous sub-flow but wait for it's result
+```
+
+These can be bundled and controlled in other rules.
+
+Streams add another level of parallelism.
