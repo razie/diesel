@@ -186,8 +186,13 @@ trait ExprParser extends RegexParsers {
     case i ~ l => i :: l
   }
 
-  def xpath: Parser[String] = ident ~ rep("[/@]+".r ~ ident) ^^ {
-    case i ~ l => (i :: l.map { x => x._1 + x._2 }).mkString("")
+  def xpath: Parser[String] = ident ~ rep("/".r ~ xpathElem) ^^ {
+    case i ~ l => (i :: l.map { x => x._1 + x._2}).mkString("")
+  }
+
+  // /{attr}@gigi:$name/
+  def xpathElem: Parser[String] = """(\{.*\})*([@])*([\w]+\:)*([\$|\w\. -]+|\**)(\[.*\])*""".r ^^ {
+    case e => e.toString
   }
 
   def jpath: Parser[String] = ident ~ rep("[/@.]+".r ~ ident) ^^ {
@@ -256,7 +261,7 @@ trait ExprParser extends RegexParsers {
   def xpident: Parser[Expr] = xpp //| jpp
 
   // XP identifier (either json or xml)
-  def xpp: Parser[Expr] = ("xp:" ~ xpath) ^^ { case x ~ i => new XPathIdent(i) }
+  def xpp: Parser[Expr] = (("xp:" | "xpl:" | "xpe:" | "xpa:" | "xpla:") ~ xpath) ^^ { case prefix ~ i => new XPathIdent(prefix.replaceAllLiterally(":","" ), i) }
 
   // XP identifier (either json or xml)
 //  def jpp: Parser[Expr] = ("jp:" ~ jpath) ^^ { case x ~ i => new XPathIdent(i) }
@@ -368,7 +373,7 @@ private def accessorIdent: Parser[RDOM.P] = "." ~> ident ^^ { case id => P("", i
   def optType: Parser[WType] = opt((" *: *<> *".r | " *: *".r) ~
       // todo make it work better with the opt below - it stopped working at some point
 //      opt(" *<> *") ~
-      ident ~
+      qident ~
       optKinds ~
       opt(" *\\*".r)) ^^ {
     case Some(ref ~ tt ~ k ~ None) => {
@@ -381,7 +386,7 @@ private def accessorIdent: Parser[RDOM.P] = "." ~> ident ^^ { case id => P("", i
   }
 
   // A [ KIND, KIND ]
-  def optKinds: Parser[Option[String]] = opt(ows ~> "[" ~> ows ~> repsep(ident, ",") <~ "]") ^^ {
+  def optKinds: Parser[Option[String]] = opt(ows ~> "[" ~> ows ~> repsep(qident, ",") <~ "]") ^^ {
     case Some(tParm) => Some(tParm.mkString)
     case None => None
   }
@@ -399,7 +404,7 @@ private def accessorIdent: Parser[RDOM.P] = "." ~> ident ^^ { case id => P("", i
     * * means it's a list
     */
   def pattr: Parser[RDOM.P] = " *".r ~>
-      opt(repsep("@" ~> ident, " *".r) <~ ws) ~  //optional stereotypes
+      opt(repsep("@" ~> qident, " *".r) <~ ws) ~  //optional stereotypes
       qident ~
       optType ~
       opt(" *\\?(?!=) *".r) ~  // negative lookahead to not match optional ? with default value ?=
@@ -488,12 +493,12 @@ private def accessorIdent: Parser[RDOM.P] = "." ~> ident ^^ { case id => P("", i
     case name ~ _ ~ ex => (unquote(name), ex)
   }
 
-  // array [...] - elements are expressions
-//  def jarray1: Parser[Expr] = "[" ~ ows ~> jexpr ~ ".." ~ jexpr <~ ows ~ "]" ^^ {
+  // array generator with numbers (like a materialized range) [ 1 .. 2 ]
   def jarray1: Parser[Expr] = "[" ~ ows ~> jexpr ~ " *\\.\\. *".r ~ jexpr <~ ows ~ "]" ^^ {
     case start ~ _ ~ end => JArrExprGen(start,end) //CExpr("[ " + li.mkString(",") + " ]")
   }
 
+  // array [a,b,c] - elements are expressions
   def jarray2: Parser[Expr] = "[" ~ ows ~> repsep(ows ~> jexpr <~ ows, ",") <~ ows ~ "]" ^^ {
     li => JArrExpr(li) //CExpr("[ " + li.mkString(",") + " ]")
   }

@@ -109,15 +109,15 @@ object EEFunc {
 //          P("", r._2.toString, WTypes.JSON).withCachedValue(o, WTypes.Mime.appJson, r._2.toString)
 
           if(str.trim.startsWith("{"))
-            P.fromTypedValue("", str, WTypes.JSON)
+            P.fromTypedValue("", str, WTypes.wt.JSON)
           else if(str.trim.startsWith("["))
             // todo can optimize from List[ScriptObjectMirror], I guess
-            P.fromTypedValue("", str, WTypes.ARRAY)
+            P.fromTypedValue("", str, WTypes.wt.ARRAY)
           else {
             razie.Log.warn("scriptResToTypedP warn - unknown type: " + r._3 + " STRING FORM: " + str)
             throw new DieselExprException("scriptResToTypedP warn - unknown type: " + r._3 + " STRING FORM: " + str)
             // todo this was all commented out - not sure why I force to JSON... does this ever happen?
-            P.fromTypedValue("", str, WTypes.JSON)
+            P.fromTypedValue("", str, WTypes.wt.JSON)
 //            P("", r._2.toString, WTypes.UNKNOWN)
           }
         }

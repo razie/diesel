@@ -13,6 +13,14 @@ import org.json.{JSONArray, JSONObject}
   */
 object WTypes {
 
+  def isObject(ttype: WType) = {
+    JSON == ttype.name || OBJECT == ttype.name
+  }
+
+  def schemaOf(ttype: WType) : String = {
+    if(JSON == ttype.name || OBJECT == ttype.name) ttype.schema else ttype.name
+  }
+
   /** constants for complex types */
   object wt {
     final val NUMBER=WType("Number")
@@ -69,6 +77,7 @@ object WTypes {
 
   final val XML = "XML"
   final val JSON = "JSON"     // see asJson
+  final val json = "json"     // use the uppercase everywhere - this is for formats
   final val OBJECT = "Object" // java object - serialize via json. todo: need a serialization framework
 
   final val SOURCE = "Source" // a source of values
@@ -82,6 +91,7 @@ object WTypes {
 
   final val UNKNOWN = ""
 
+  final val DOMAIN = "Domain"   // an entire domain
   final val MSG = "Msg"   // a message (to call)
   final val FUNC = "Func" // a function (to call)
   final val CLASS = "Class"   // a class in the domain
@@ -120,6 +130,12 @@ object WTypes {
     }
     t
   }
+
+  val PRIMARY_TYPES = Array(
+    NUMBER , STRING , DATE , REGEX , INT , FLOAT , BOOLEAN , RANGE
+//  case XML => Mime.appXml
+//  case HTML => Mime.textHtml
+  )
 
   /** get corresponding mime content-type */
   def getContentType (ttype:WType):String = {
@@ -183,8 +199,9 @@ object WTypes {
   def mkString (t:WType, classLink:String=>String):String = {
     val col = (if (t.name.isEmpty) "" else ":" + (if (t.isRef) "<>" else ""))
     var res = if (t.schema == WTypes.UNKNOWN) col + classLink(t.name)
-    else if (t.name == WTypes.OBJECT || t.name == WTypes.JSON) col + classLink(t.schema) + "(" + t.name + ")"
-    else col + classLink(t.name) + (if (t.schema == WTypes.UNKNOWN) "" else "(" + t.schema + ")")
+    else if (t.name == WTypes.OBJECT || t.name == WTypes.JSON) col + t.name
+    else if (WTypes.ARRAY == t.name) col + t.name
+    else col + classLink(t.name)
 
     res = res + t.wrappedType.map("[" + classLink(_) + "]").mkString
     res = res + t.mime.map("[" + _ + "]").mkString
@@ -200,11 +217,13 @@ object WTypes {
   * For objects, the name is JSON or Object and the schema is the class name
   *
   * @param name        is the WType
-  * @param schema      is either a DOMType or some indication of a schema in context
+  * @param schema      is either a DOMType or some indication of a schema in context, wrapped type for arrays etc
   * @param wrappedType is T in A[T]
   * @param mime        is an optional precise mime to be represented in
   */
-case class WType (name:String, schema:String = WTypes.UNKNOWN, wrappedType:Option[String]=None, mime:Option[String]=None, isRef:Boolean=false) {
+case class WType (name:String, schema:String = WTypes.UNKNOWN, mime:Option[String]=None, isRef:Boolean=false) {
+
+  def wrappedType: Option[String] = if (hasSchema) Option(schema) else None
 
   override def equals(obj: Any) = {
     obj match {
@@ -214,8 +233,9 @@ case class WType (name:String, schema:String = WTypes.UNKNOWN, wrappedType:Optio
   }
 
   /** get class name: schema or name */
-  def getClassName = if (name == WTypes.JSON || name == WTypes.OBJECT) schema else name
+  def getClassName = if (name == WTypes.JSON || name == WTypes.OBJECT || WTypes.ARRAY == name) schema else name
 
+  /** careful - you may want to call p.withSchema instead, which sets both P and PV schemas */
   def withSchema(s: String) = copy(schema = s)
 
   def hasSchema = schema != "" && schema != WTypes.UNKNOWN
@@ -227,6 +247,8 @@ case class WType (name:String, schema:String = WTypes.UNKNOWN, wrappedType:Optio
   override def toString = WTypes.mkString(this, identity)
 
   def isEmpty = name.isEmpty
+
+  def isNumber = WTypes.NUMBER == name || WTypes.FLOAT == name || WTypes.INT == name
 
   def nonEmpty = name.nonEmpty
 }

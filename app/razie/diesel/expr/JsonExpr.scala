@@ -9,13 +9,14 @@ import org.json.JSONObject
 import razie.diesel.dom.RDOM.{P, PValue}
 import razie.diesel.dom._
 import razie.diesel.engine.exec.EESnakk
+import scala.collection.mutable.HashMap
 
 /** a json document block:
   * - you may or may not use quotes for names
   * -
   */
 case class JBlockExpr(ex: List[(String, Expr)], schema:Option[String]=None) extends Expr {
-  val expr = "{" + ex.map(t=>t._1 + ":" + t._2.toString).mkString(",") + "}"
+  override val expr = "{" + ex.map(t=>t._1 + ":" + t._2.toString).mkString(",") + "}"
 
   override def apply(v: Any)(implicit ctx: ECtx) = applyTyped(v).currentStringValue
 
@@ -24,20 +25,21 @@ case class JBlockExpr(ex: List[(String, Expr)], schema:Option[String]=None) exte
     //  dest: [], aux: []})
 //    val orig = template(expr)
 
-    def escapeJson(raw: String) = {
-      var escaped = raw;
-      escaped = escaped.replace("\\", "\\\\");
-      escaped = escaped.replace("\"", "\\\"");
-      escaped = escaped.replace("\b", "\\b");
-      escaped = escaped.replace("\f", "\\f");
-      escaped = escaped.replace("\n", "\\n");
-      escaped = escaped.replace("\r", "\\r");
-      escaped = escaped.replace("\t", "\\t");
-      escaped;
-    }
-
-    val orig = ex
+    val origMap = ex
+        .map(t => (DomInventories.exname(t._1), t._2)) // expand interpolated string
         .map(t => (t._1, t._2.applyTyped(v)))
+
+
+   // if there's a class definition and it has defaults, add them:
+   // todo could speed up by caching if has defaults in the class spec, from parsing
+   val c = schema
+       .flatMap(cls=> ctx.domain.flatMap(_.classes.get(cls)))
+
+    val newMap = DomInventories.defaultClassAttributes(origMap, c)
+
+    // todo why am i building the string and then parse it when I have the list of P already ????
+
+    val orig = (origMap ::: newMap)
         .map(t => (t._1, t._2 match {
           case p@P(n, d, WTypes.wt.NUMBER, _, _, Some(PValue(i: Int, _)), _) => i
           case p@P(n, d, WTypes.wt.NUMBER, _, _, Some(PValue(i: Long, _)), _) => i
@@ -55,21 +57,27 @@ case class JBlockExpr(ex: List[(String, Expr)], schema:Option[String]=None) exte
           }
 
         }))
-    .map(t => (exname(t._1), t._2)) // expand interpolated string
-    .map(t => s""" "${t._1}" : ${t._2} """)
-    .mkString(",")
+        .map(t => s""" "${t._1}" : ${t._2} """)
+        .mkString(",")
 
     // parse and clean it up so it blows up right here if invalid
     val j = new JSONObject(s"{$orig}")
     P.fromTypedValue("", j, getType)
   }
 
-  private def exname(s: String)(implicit ctx: ECtx) = {
-    if (s contains "${") CExpr(s).apply("")
-    else s
+  private def escapeJson(raw: String) = {
+    var escaped = raw;
+    escaped = escaped.replace("\\", "\\\\");
+    escaped = escaped.replace("\"", "\\\"");
+    escaped = escaped.replace("\b", "\\b");
+    escaped = escaped.replace("\f", "\\f");
+    escaped = escaped.replace("\n", "\\n");
+    escaped = escaped.replace("\r", "\\r");
+    escaped = escaped.replace("\t", "\\t");
+    escaped;
   }
 
-  override val getType: WType = schema.map(WTypes.wt.JSON.withSchema).getOrElse(WTypes.wt.JSON)
+  override val getType: WType = schema.fold(WTypes.wt.JSON)(WTypes.wt.JSON.withSchema)
 
   // replace ${e} with value
   def template(s: String)(implicit ctx: ECtx) = {
@@ -81,29 +89,31 @@ case class JBlockExpr(ex: List[(String, Expr)], schema:Option[String]=None) exte
   override def toHtmlFull = codeValue(new JSONObject(expr).toString(2))
 }
 
-/** a json array */
+/** a static json array [a,b,c] */
 case class JArrExpr(ex: List[Expr]) extends Expr {
-  val expr = "[" + ex.mkString(",") + "]"
+  override val expr = "[" + ex.mkString(",") + "]"
 
   private def calculate(v: Any)(implicit ctx: ECtx) = {
     //    val orig = template(expr)
-    val orig = ex.map{e=>
+    val origp = ex.map { e=>
       val p = e.applyTyped(v)
-      p.calculatedTypedValue.asEscapedJSString
-    }.mkString(",")
+      p.calculatedTypedValue
+    }
+
+    val orig = origp.map(_.asEscapedJSString).mkString(",")
 
     // parse and clean it up so it blows up right here if invalid
-    new org.json.JSONArray(s"[$orig]")
+    (origp, new org.json.JSONArray(s"[$orig]"))
   }
 
   override def apply(v: Any)(implicit ctx: ECtx) = {
-    calculate(v).toString
+    calculate(v)._2.toString
   }
 
   override def applyTyped(v: Any)(implicit ctx: ECtx): P = {
-    val orig = ex.map(_.apply(v)).mkString(",")
-    val ja = calculate(v)
-    P.fromTypedValue("", ja)
+    val (le, ja) = calculate(v)
+    val t = P.inferArrayTypeFromPV(le)
+    P.fromTypedValue("", ja, t)
   }
 
   override def getType: WType = WTypes.wt.ARRAY
@@ -116,9 +126,9 @@ case class JArrExpr(ex: List[Expr]) extends Expr {
 
 }
 
-/** a json array */
+/** a generator for a json array */
 case class JArrExprGen(start:Expr, end:Expr) extends Expr {
-  val expr = "[" + start + " .. " + end + "]"
+  override val expr = "[" + start + " .. " + end + "]"
 
   // todo make it lazy, not concrete
 
