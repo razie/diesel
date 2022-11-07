@@ -96,7 +96,7 @@ case class CExpr[T](ee: T, ttype: WType = WTypes.wt.EMPTY) extends Expr {
 
   override def toDsl = if (ttype == "String") ("\"" + expr + "\"") else expr
   override def getType: WType = ttype
-  override def toHtml = tokenValue(escapeHtml(toDsl))
+  override def toHtml = tokenExprValue(escapeHtml(toDsl))
 }
 
 

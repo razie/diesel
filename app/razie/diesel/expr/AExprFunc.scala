@@ -36,7 +36,7 @@ case class AExprFunc(val expr: String, parms: List[RDOM.P]) extends Expr {
       op
           .flatMap { p =>
             // maybe the first parm is the accessor expression (lambda parm like)
-            val pv = if (p.dflt.isEmpty && p.expr.isEmpty) {
+            val pv = if (p.expr.isEmpty && !p.hasCurrentValue) {
               if (p.name.contains(".") || p.name.contains("["))
                 (new SimpleExprParser).parseIdent(p.name).flatMap(_.tryApplyTyped(v))
               else
@@ -292,6 +292,19 @@ case class AExprFunc(val expr: String, parms: List[RDOM.P]) extends Expr {
         )
       }
 
+      case "base64encode" => {
+        firstParm.map { p =>
+          val p1 = p.calculatedValue
+          import org.apache.commons.codec.binary.Base64
+
+          val res = new Base64(false).encode(p1.getBytes)
+          val pv = new String(res).replaceAll("\n", "").replaceAll("\r", "")
+          new P("", pv, WTypes.wt.STRING).withValue(pv, WTypes.wt.STRING)
+        }.getOrElse(
+          throw new DieselExprException(s"No arguments for $expr")
+        )
+      }
+
       case "split" => {
           val av = firstParm.getOrElse {
             throw new DieselExprException("Need three arguments.")
@@ -500,7 +513,7 @@ case class AExprFunc(val expr: String, parms: List[RDOM.P]) extends Expr {
   }
 
   override def toDsl = expr + "(" + parms.mkString(",") + ")"
-  override def toHtml = tokenValue(toDsl)
+  override def toHtml = tokenExprValue(toDsl)
 }
 
 

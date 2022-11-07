@@ -23,7 +23,7 @@ case class LambdaFuncExpr(argName:String, ex: Expr, parms: List[RDOM.P]=Nil) ext
   }
 
   override def toDsl = expr + "(" + parms.mkString(",") + ")"
-  override def toHtml = tokenValue(toDsl)
+  override def toHtml = tokenExprValue(toDsl)
 }
 
 

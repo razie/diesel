@@ -533,8 +533,10 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
               res
             }
 
-            val finalArr = resArr.map(_.calculatedTypedValue.value)
-            PValue(finalArr, WTypes.wt.ARRAY)
+            val le = resArr.map(_.calculatedTypedValue)
+            val finalArr = le.map(_.value)
+
+            PValue(finalArr, P.inferArrayTypeFromPV(le))
           }
 
           case WTypes.RANGE => {
@@ -559,8 +561,10 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
               res
             }
 
-            val finalArr = resArr.map(_.calculatedTypedValue.value)
-            PValue(finalArr, WTypes.wt.ARRAY)
+            val le = resArr.map(_.calculatedTypedValue)
+            val finalArr = le.map(_.value)
+
+            PValue(finalArr, P.inferArrayTypeFromPV(le))
           }
 
           case WTypes.JSON => {
@@ -589,8 +593,10 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
               res
             }
 
-            val finalArr = resArr.map(_.calculatedTypedValue.value)
-            PValue(finalArr, WTypes.wt.ARRAY)
+            val le = resArr.map(_.calculatedTypedValue)
+            val finalArr = le.map(_.value)
+
+            PValue(finalArr, P.inferArrayTypeFromPV(le))
           }
 
           case WTypes.UNDEFINED if ctx.nonStrict => P.undefined(Diesel.PAYLOAD).value.getOrElse(null)
@@ -636,26 +642,31 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
 
             val arr = av.calculatedTypedValue.asArray
 
-            val resArr = arr.flatMap {x=>
+            // the map part - so we can collect type values, not loose them during flatten
+            val pvArr = arr.map {x=>
               val res = if(b.isInstanceOf[LambdaFuncExpr] || b.isInstanceOf[BlockExpr] && b.asInstanceOf[BlockExpr].ex.isInstanceOf[LambdaFuncExpr]) {
                 // common case, no need to go through context, Block passes through to Lambda
-                val resp = b.applyTyped(x).calculatedTypedValue
-                if(!resp.cType.equals(WTypes.wt.ARRAY)) throw new DieselExprException("Result of right side not Array!")
-                val res = resp.asArray
-                res
+                val respv = b.applyTyped(x).calculatedTypedValue
+                respv
               } else {
                 // we populate an "x" or should it be "elem" ?
                 val sctx = new StaticECtx(List(P.fromTypedValue("x", x)), Some(ctx))
-                val resp = b.applyTyped(x)(sctx).calculatedTypedValue
-                if(!resp.cType.equals(WTypes.wt.ARRAY)) throw new DieselExprException("Result of right side not Array!")
-                val res = resp.asArray
-                res
+                val respv = b.applyTyped(x)(sctx).calculatedTypedValue
+                respv
               }
               res
             }
 
+            // the flatten part, collect types
+            val resArr = pvArr.flatten {respv=>
+                if(!respv.cType.equals(WTypes.wt.ARRAY)) throw new DieselExprException("Result of right side not Array!")
+                respv.asArray
+            }
+
+            val le = pvArr
             val finalArr = resArr
-            PValue(finalArr, WTypes.wt.ARRAY)
+
+            PValue(finalArr, P.inferArrayTypeFromPV(le))
           }
 
           case WTypes.UNDEFINED if ctx.nonStrict => P.undefined(Diesel.PAYLOAD).value.orNull
@@ -693,8 +704,6 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
 
         av.cType.name match {
           case WTypes.ARRAY => {
-            val elementType = av.cType.wrappedType
-
             val arr = av.asArray
 
             val resArr = arr.filter {x=>
@@ -715,7 +724,7 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
             }
 
             val finalArr = resArr
-            PValue(finalArr, WTypes.wt.ARRAY)
+            PValue(finalArr, WTypes.wt.ARRAY.withSchema(av.cType.schema))
           }
 
           case WTypes.JSON => {
@@ -840,6 +849,10 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
     }
 //    razie.js.tojsons(res.toMap)
     res.toString
+//todo
+//     // preserve type of first object if second is same or untyped
+//    val t = if (!bb.cType.hasSchema || bb.cType.schema == aa.cType.schema) aa.cType else WTypes.wt.JSON
+
   }
 
   def jsonExprMap(op: String, aa: PValue[_], bb: PValue[_]) = {
@@ -907,7 +920,9 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
     }
 
 //    val s = razie.js.tojsons(res.toMap)
-    PValue(res, WTypes.wt.JSON)//.withStringCache(s)
+    // preserve type of first object if second is same or untyped
+    val t = if (!bb.cType.hasSchema || bb.cType.schema == aa.cType.schema) aa.cType else WTypes.wt.JSON
+    PValue(res, t)//.withStringCache(s)
   }
 
   def jsonExpr(op: String, aa: String, bb: String) = {

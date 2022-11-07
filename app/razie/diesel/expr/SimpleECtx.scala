@@ -67,6 +67,11 @@ class SimpleECtx(
     this
   }
 
+  def withDomain(r: RDomain) = {
+    _domain = Option(r)
+    this
+  }
+
   override def flattenAllAttrs: List[P] = {
     val l = (attrs ++ cur ++ base.toList.flatMap(_.flattenAllAttrs)).distinct
     // distinct by name

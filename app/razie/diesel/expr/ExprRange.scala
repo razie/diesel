@@ -29,7 +29,7 @@ case class ExprRange(val start: Expr, val end: Option[Expr]) extends Expr {
   }
 
   override def toDsl = start + ".." + end
-  override def toHtml = tokenValue(toDsl)
+  override def toHtml = tokenExprValue(toDsl)
 }
 
 

@@ -81,6 +81,7 @@ case class AExprIdent(val start: String, rest:List[P] = Nil) extends Expr {
 
         pv.contentType match {
 
+          // index of array
           case WTypes.ARRAY => {
             val list = pv.asArray
             val index =
@@ -91,7 +92,8 @@ case class AExprIdent(val start: String, rest:List[P] = Nil) extends Expr {
 
             if(index >= 0 && index < list.size) {
               val res = list.apply(index.toInt)
-              Some(P.fromTypedValue(newpname, res))
+              // preserve the array type
+              Some(P.fromTypedValue(newpname, res).withSchema(pv.cType.schema))
             } else {
               None
             }
@@ -207,7 +209,8 @@ case class AExprIdent(val start: String, rest:List[P] = Nil) extends Expr {
 
             val res = list.slice(ai, zi + 1)
 
-            Some(P.fromTypedValue(newpname, res))
+            // preserve the array type
+            Some(P.fromTypedValue(newpname, res).withSchema(pv.cType.schema))
           }
 
           case WTypes.STRING => {

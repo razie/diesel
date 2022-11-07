@@ -65,7 +65,7 @@ abstract class Expr extends WFunc with HasDsl with CanHtml {
 
   override def toString = toDsl
   override def toDsl = expr
-  override def toHtml = tokenValue(toDsl)
+  override def toHtml = tokenExprValue(toDsl)
 }
 
 /** a block i.e. ( expr )
