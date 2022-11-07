@@ -23,7 +23,13 @@ case class DITestConnection(dom: RDomain, env: String, ctx: ECtx) extends DIBase
 case class DIQueryResult(total: Long, data: List[DieselAsset[_]] = Nil, errors: List[Any] = Nil)
 
 /**
-  * a domain plugin - can adapt a domain to an external implementation
+  * a domain plugin - can adapt a domain to an external implementation (importDomain)
+  *
+  * an inventory - can manage entities (crud)
+  *
+  * a factory - can make more of itself (mkInstance)
+  *
+  * you can manage connection pools separate from this, an instance of this has one connection associated to it
   *
   * name is the type of connector and conn is the actual connection for this instance
   *
@@ -93,6 +99,7 @@ trait DomInventory {
     * @param env    which environment
     * @param wi     - spec inventory, use it to lookup configuration topics, diesel plugin topics etc
     * @param iprops initial properties, when created via diesel message
+    * @return the list of instances or empty if connection information not found in local realm, for instance
     */
   def mkInstance(realm: String,
                  env: String,
@@ -106,7 +113,7 @@ trait DomInventory {
     * You can either use the `diesel.inv.register` message or annotate your known classes withe a
     * specific annotation like `odata.name` etc
     */
-  def isDefinedFor(realm: String, c: C): Boolean = {
+  def isRegisteredFor(realm: String, c: C): Boolean = {
     DomInventories.invRegistry.get(realm+"."+c.name).exists(_ == this.name)
   }
 
@@ -167,7 +174,7 @@ class DefaultRDomainPlugin(val specInv: DSpecInventory, val realm: String, overr
   override def name = "wiki"
   var env = ienv
 
-  override def isDefinedFor(realm: String, c: C): Boolean = {
+  override def isRegisteredFor(realm: String, c: C): Boolean = {
     c.stereotypes.contains(razie.diesel.dom.WikiDomain.WIKI_CAT)
   }
 
@@ -193,14 +200,14 @@ class DefaultRDomainPlugin(val specInv: DSpecInventory, val realm: String, overr
   def htmlActions(elem: DE): String = {
     elem match {
       case c: C => {
-        def mkList = s"""<a href="/diesel/list2/${c.name}">list</a>"""
+        def mkList = s"""<a href="/diesel/dom/list/${c.name}">list</a>"""
 
         // todo delegate decision to tconf domain - when domain is refactored into tconf
         def mkNew =
           if ("User" != name && "WikiLink" != name)
           //todo move to RDomain
           // if (ctx.we.exists(w => WikiDomain.canCreateNew(w.specPath.realm.mkString, name)))
-            s""" <a href="/doe/diesel/create/${c.name}">new</a>"""
+            s""" <a href="/doe/diesel/dom/startCreate/${c.name}">new</a>"""
           else
             ""
 

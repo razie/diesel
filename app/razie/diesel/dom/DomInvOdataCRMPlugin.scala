@@ -40,8 +40,8 @@ class DomInvOdataCRMPlugin(
   /**
     * can this support the class? You can look at it's annotations etc
     */
-  override def isDefinedFor(realm: String, c: C): Boolean = {
-    c.props.find(_.name == ODATA_NAME).isDefined || super.isDefinedFor(realm, c)
+  override def isRegisteredFor(realm: String, c: C): Boolean = {
+    c.props.find(_.name == ODATA_NAME).isDefined || super.isRegisteredFor(realm, c)
   }
 
   /** if the ReactorMod is present and a connection, create it - just one conn */
@@ -134,9 +134,9 @@ class DomInvOdataCRMPlugin(
       case c: C => {
         val oname = classOname(c)
 
-        def mkMetA = s"""<a href="/diesel/plugin/$name/$conn/attrs/${c.name}">attrs</a>"""
-        def mkMet = s"""<a href="$URL/EntityDefinitions(LogicalName='$oname')">def</a>"""
-        def mkSample = s"""<a href="$URL/${oname}s?$$top=1">sample</a>"""
+        def mkMetA    = s"""<a href="/diesel/plugin/$name/$conn/attrs/${c.name}">attrs</a>"""
+        def mkMet     = s"""<a href="$URL/EntityDefinitions(LogicalName='$oname')">def</a>"""
+        def mkSample  = s"""<a href="$URL/${oname}s?$$top=1">sample</a>"""
         def mkListAll = s"""<a href="/diesel/plugin/$name/$conn/listAll/${c.name}">listAll</a>"""
 
         s"$mkMet | $mkMetA | $mkSample | $mkListAll"
@@ -447,7 +447,7 @@ class DomInvOdataCRMPlugin(
           val oname = classOname(c)
 
           c.parms.find(_.name == kn).map { cp =>
-            cp.copy(dflt = value)// todo add PValue
+            cp.copy(value = P.fromTypedValue("", value).value)
           } getOrElse {
             // key refs
             if (kn.startsWith("_") && kn.endsWith(("_value"))) {
@@ -455,7 +455,7 @@ class DomInvOdataCRMPlugin(
               val PAT(n) = kn
 
               c.parms.find(_.name == n).map { cpk =>
-                cpk.copy(dflt = value) // todo add PValue
+                cpk.copy(value = P.fromTypedValue("", value).value)
               } getOrElse {
                 P.of(kn, value)
               }

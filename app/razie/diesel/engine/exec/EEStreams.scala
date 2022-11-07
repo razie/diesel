@@ -126,9 +126,9 @@ class EEStreams extends EExecutor(DieselMsg.STREAMS.PREFIX) {
         val timeout = ctx.get("timeout")
 
         if (DieselAppContext.activeStreamsByName.get(name).isDefined) {
-          new EEngSuspend("stream.consume", "", Some((e, a, l) => {
+          new EEngSuspend("stream.consume", "", Option((e, a, l) => {
             val stream = DieselAppContext.activeStreamsByName.get(name).get
-            stream.withTargetId(ctx.root.engine.get.id, a.id)
+            stream.withEngineSink(ctx.root.engine.get.id, a.id)
 
             DieselAppContext ! DEStreamConsume(stream.name)
 

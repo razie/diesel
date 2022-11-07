@@ -13,7 +13,7 @@ when creating a new topic with category but no name
     <div class="label label-danger">@msg </div><p></p>
   }
 
-  @helper.form(action=routes.Wikie.addWithName(cat, tags), 'class -> "form-inline") {
+  @helper.form(action=routes.Wikie.wikieAddWithName(cat, tags), 'class -> "form-inline") {
   <div class="alert alert-success col-md-12">
     Label: <input type="text" style="width:50%" class="form-control" name="name" placeholder="Name" autofocus>
 

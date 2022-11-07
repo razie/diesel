@@ -945,27 +945,41 @@ class Wikie @Inject()(config: Configuration) extends WikieBase {
       wcat<- Wikis(cat.realm getOrElse getRealm()).category(cat.cat) orElse Wikis(cat.realm getOrElse getRealm()).category("Topic") orErr s"category ${cat.cat} not found"
     ) yield {
       val realm = getRealm(cat.realm.mkString)
-      ROK.k apply { implicit stok =>
-        assert(stok.realm == (cat.realm getOrElse stok.realm))
-        // use whatever cat I found...
-        views.html.wiki.wikieCreate(wcat.name, tags:String)
+      if(WikiDomain(realm).isWikiCategory(cat.cat)) {
+        ROK.k apply { implicit stok =>
+          assert(stok.realm == (cat.realm getOrElse stok.realm))
+          // use whatever cat I found...
+          views.html.wiki.wikieCreate(wcat.name, tags: String)
+        }
+      } else {
+        // diesel asset, not wiki
+        Redirect ("/doe/diesel/dom/startCreate/"+cat.cat)
       }
     }
   }
 
   /** POSTed from category, has name -> create topic in edit mode */
-  def addWithName(cat: String, tags:String) = FAU {
+  def wikieAddWithName(cat: String, tags:String) = FAU {
     implicit au => implicit errCollector => implicit request =>
     val realm = CAT.unapply(cat).flatMap(_.realm).getOrElse(getRealm())
+    val cls = CAT.unapply(cat).map(_.cat).mkString
+    val dom = WikiDomain(realm)
 
-    addForm.bindFromRequest.fold( formWithErrors =>
+        addForm.bindFromRequest.fold( formWithErrors =>
+          if(!dom.isWikiCategory(cls)) {
+            Redirect(s"/doe/diesel/dom/startCreate/$cls")
+          } else {
       ROK.s apply { implicit stok =>
-        views.html.wiki.wikieCreate(cat, tags)
+            views.html.wiki.wikieCreate(cat, tags)
+          }
       },
     {
       case name: String => {
 
         // todo nice
+        if(!dom.isWikiCategory(cls)) {
+          Redirect(s"/doe/diesel/dom/startCreate/$cls")
+        } else
         if(CAT.unapply(cat).map(_.cat).mkString == "Category" && name.contains(".")) {
           ROK.s apply { implicit stok =>
             views.html.wiki.wikieCreate(cat, tags, "Category name cannot contain '.' !")
@@ -1018,7 +1032,7 @@ class Wikie @Inject()(config: Configuration) extends WikieBase {
         // if it's cat, then use itself, either from temp classes, make from DOM
         val formPage =
           if(WikiDomain(realm).isWikiCategory(cat)) wid.page
-          else Some(Diesel.mkFormDef(realm, WikiDomain(realm).rdom.classes.get(cat).get, "temp", au))
+          else Some(Diesel.mkFormDef(realm, WikiDomain(realm).rdom.classes.get(cat).get, "temp", au, Nil))
         ROK.s apply { implicit stok =>
           views.html.wiki.wikieAddWithSpec2(cat, name, wid, formPage, torspec, Map.empty)
         }

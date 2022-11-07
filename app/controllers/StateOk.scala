@@ -2,6 +2,7 @@ package controllers
 
 import play.api.mvc._
 import play.twirl.api.Html
+import razie.diesel.engine.EContent
 import razie.hosting.Website
 import razie.wiki.model._
 import scala.collection.mutable
@@ -20,12 +21,21 @@ class StateOk(val realm:String, val au: Option[model.User], val request: Option[
   var canonicalLink : Option[String] = None
 
   var _requireJs : Boolean = true
-  def requireJs(x : Boolean) = { _requireJs = x;}
+  def requireJs(x : Boolean): Unit = { _requireJs = x;}
   def requireJs = _requireJs
+
+  def withError (x:Any) = {
+    msg = msg ++ Seq("err" -> x.toString)
+    this
+  }
+  def withErrors (x:List[Any]) = {
+    msg = msg ++ x.map(x => ("err" -> x.toString)).toSeq
+    this
+  }
 
   lazy val errCollector = new VErrors()
 
-  def showBottomAd(yes: Boolean) = {}
+  def showBottomAd(yes: Boolean): Unit = {}
 
   def isLocalhost = request.exists(_.host.startsWith("localhost:"))
 
@@ -79,7 +89,7 @@ class StateOk(val realm:String, val au: Option[model.User], val request: Option[
   }
 
   /** set the title of this page */
-  def css(s:String) = {this._css = Some(s); ""}
+  def css(s:String) = {this._css = Option(s); ""}
   def maybeCss(s:Option[String]) = {this._css = s; ""}
   def css = {
     val ret = _css.getOrElse {
@@ -157,7 +167,27 @@ class StateOk(val realm:String, val au: Option[model.User], val request: Option[
     if(wid.realm.isDefined) wid else wid.r(realm)
 
   /** username, if any */
-  def userName = au.map(_.userName).getOrElse("")
+  def userName = au.fold("")(_.userName)
+
+  def postedContent: Option[EContent] = {
+    request.flatMap { request =>
+      if (request.body.isInstanceOf[AnyContentAsRaw]) {
+        val raw = request.body.asInstanceOf[AnyContentAsRaw].asRaw.flatMap(_.asBytes())
+        Option(new EContent(
+          raw.fold("")(a => new String(a)),
+          request.contentType.mkString,
+          200,
+          request.headers.toSimpleMap,
+          None,
+          raw))
+      } else if (request.contentType.contains("application/json")) {
+        Option(new EContent(
+          request.asInstanceOf[Request[AnyContent]].body.asJson.mkString,
+          request.contentType.mkString))
+      } else None
+    }
+  }
+
 }
 
 

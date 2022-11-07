@@ -34,6 +34,7 @@ object WG extends Logging {
       val s = new ListBuffer[Any]()
       tosg.dag.foreachNode(
         (x: SNode[WNode, String], v: Int) => {
+          razie.cout << x
           s append x.value.props ++ Map(
             "id" -> x.value.name,
             "name" -> x.value.name,
@@ -133,7 +134,10 @@ object WG extends Logging {
 
   // entire domain - makes up a "Domain" node and links to all topics
   def fromRealm(realm:String) = {
-    val links = WikiDomain(realm).rdom.assocs.map { t=>
+    val wdom = WikiDomain(realm)
+    val rdom = wdom.rdom.revise.addRoot
+
+    val links = rdom.assocs.map { t=>
       (t.a, t.z, t.zRole)
     }
 
@@ -142,7 +146,7 @@ object WG extends Logging {
 
     // collect the links zEnd when they point to non-existing classes, just add them dynamically
     val nodes = WNode(None, "Domain", Map("realm"->realm)) :: (
-      WikiDomain(realm).rdom.classes.values.toList.map(_.name) ::: links.map(_._2)).distinct.map {
+      wdom.rdom.classes.values.toList.map(_.name) ::: links.map(_._2)).distinct.map {
       t => WNode(Wikis(realm).category(t), t)
     }
 

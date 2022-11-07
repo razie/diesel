@@ -557,10 +557,9 @@ function weDomQuery2(plugin,conn,cls,parm) {
   console.log("searching: " + cls + parm + s);
 
   // todo why is the value in quotes?
-  window.location.href = '/diesel/objBrowserByQuery/'+plugin+'/'+conn+'/'+cls+'/'+parm+'/\'' + s + '\'';
+  window.location.href = '/diesel/dom/query/'+cls+'/'+parm+'/\'' + s + '\'?plugin='+plugin+'&conn='+conn;
 
-  // GET   :realm/:dom/:cat/:parm/:value   mod.diesel.controllers.DieselControl.objBrowserByQuery(realm:String, cat:String, dom:String, parm:String, value:String, path:String?="/")
-  // GET   /diesel/objBrowserById/:realm/:dom/:cat/:id   mod.diesel.controllers.DieselControl.objBrowserById(realm:String, cat:String, dom:String, id:String, path:String?="/")
+  // GET   :realm/:dom/:cat/:parm/:value   mod.diesel.controllers.DomainController.objBrowserByQuery(realm:String, cat:String, dom:String, parm:String, value:String, path:String?="/")
 
 
   // $.ajax( '/diesel/plugin/d365odata/findByQuery/'+cls+'/'+parm+'/\'' + s + '\'', {

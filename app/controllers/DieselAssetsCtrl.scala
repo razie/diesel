@@ -11,7 +11,7 @@ import razie.wiki.model.WID
 class DieselAssetsCtrl @Inject()(config:Configuration) extends RazController with Logging {
 
   // display the form
-  def doeById(kind: String, id: String) = RAction { implicit request =>
+  def doeById(kind: String, id: String, format:String = "") = RAction { implicit request =>
     Redirect(WID(kind,id).urlRelative)
   }
 

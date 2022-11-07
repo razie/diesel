@@ -110,6 +110,8 @@ case class WikiEntry(
       override def ahref: Option[String] = Some(wid.ahref)
     }
 
+  def nonCacheable = { this._cacheable = false; this}
+
   def userLikes = userFeedback.filter(_.likes)
   def userDislikes = userFeedback.filter(! _.likes)
 

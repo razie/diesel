@@ -37,7 +37,7 @@ class RDomain(
     x
   }
 
-  /** clean the model - generate new assocs from members etc */
+  /** COPY and clean the model - generate new assocs from members etc */
   def revise = {
     val newAssocs = classes.values.toList.flatMap{c=>
       c.parms.filter(p=> nz(p.ttype) &&
@@ -57,45 +57,23 @@ class RDomain(
     classes.values.toList.map(c=>A("", "Domain", c.name, "root", "fake")))
 
   /** simple json like representation of domain for browsing */
-  def tojmap = {
+  def tojmap : Map[String, Any] = {
     Map("name" -> name,
       "classes" -> classes.values.toList.map { c =>
-        Map(
-          "name" -> c.name,
-          "parms" -> c.parms.map { p =>
-            Map(
-              "name" -> p.name,
-              "t" -> p.ttype
-            )
-          },
-          "assocs" -> c.assocs.map { a => Map(
-              "aname" -> a.a,
-              "zname" -> a.z,
-              "aRole" -> a.aRole,
-              "zRole" -> a.zRole,
-              "assocClass" -> a.ac.map(_.name).mkString
-            )
-          },
-        "props" -> c.props.map { p =>
-          Map(
-            "name" -> p.name,
-            "dflt" -> p.dflt
-          )
-        }
-        )
+        tojmap(c)
       },
       "assocs" -> assocs.map {a=> Map(
-          "aname" -> a.a,
-          "zname" -> a.z,
-          "aRole" -> a.aRole,
-          "zRole" -> a.zRole,
-          "assocClass" -> a.ac.map(_.name).mkString
-        )
+        "aname" -> a.a,
+        "zname" -> a.z,
+        "aRole" -> a.aRole,
+        "zRole" -> a.zRole,
+        "assocClass" -> a.ac.map(_.name).mkString
+      )
       },
       "diamonds" -> diamonds.map {d=> Map(
-          "roles" -> d.roles.map { t => Map("className" -> t._1, "role" -> t._2) },
-          "assocClass" -> d.ac.map(_.name).mkString
-        )
+        "roles" -> d.roles.map { t => Map("className" -> t._1, "role" -> t._2) },
+        "assocClass" -> d.ac.map(_.name).mkString
+      )
       },
       "objects" -> objects.values.toList.map { c =>
         Map(
@@ -120,6 +98,34 @@ class RDomain(
         )
       }
     )
+  }
+
+  /** simple json like representation of domain for browsing */
+  def tojmap(c:C) : Map[String, Any] = {
+        Map(
+          "name" -> c.name,
+          "parms" -> c.parms.map { p =>
+            Map(
+              "name" -> p.name,
+              "t" -> p.ttype,
+              "e" -> p.expr.map(_.toDsl).mkString
+            )
+          },
+          "assocs" -> c.assocs.map { a => Map(
+              "aname" -> a.a,
+              "zname" -> a.z,
+              "aRole" -> a.aRole,
+              "zRole" -> a.zRole,
+              "assocClass" -> a.ac.map(_.name).mkString
+            )
+          },
+        "props" -> c.props.map { p =>
+          Map(
+            "name" -> p.name,
+            "dflt" -> p.dflt
+          )
+        }
+      )
   }
 
   /** aEnds that I link TO as role */

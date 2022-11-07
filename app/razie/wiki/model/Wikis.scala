@@ -735,9 +735,12 @@ object Wikis extends Logging with Validation {
           WikiCache.getString(we.get.wid.wpathFull+".formatted").map{x=>
             x
           }.getOrElse {
-            val n = format1(wid, markup, icontent, we, user, folder)
-            if(we.exists(_.cacheable)) // format can change cacheable
+            var n = format1(wid, markup, icontent, we, user, folder)
+            if(we.exists(_.cacheable)) {// format can change cacheable
+              // todo should add but only when html content... don't mess up other formats
+//              n = if(n.trim) "<!-- CACHED FORMATTED !! -->\n" + n else n
               WikiCache.set(we.get.wid.wpathFull+".formatted", n)
+            }
             n
           }
         } else

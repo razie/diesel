@@ -26,7 +26,7 @@ object DieselAssets {
 
   /** make a link to see the asset */
   def mkLinkAsset(w: FullSpecRef, path: String = "") = {
-    val x = s"""/diesel/objBrowserById/${w.inventory}/${w.conn}/${w.category}/${w.key}"""
+    val x = s"""/diesel/dom/browse/${w.category}/${w.key}?plugin=${w.inventory}&conn=${w.conn}"""
     x
   }
 

@@ -11,14 +11,18 @@ import razie.diesel.engine.nodes.EMsg
 import razie.tconf.{DSpecInventory, FullSpecRef, SpecRef}
 
 /** default inventory for wiki defined classes */
-class DomInvWikiPlugin(val specInv: DSpecInventory, val realm: String, override val conn: String = "default",
-                       ienv: String) extends
-    DomInventory {
+class DomInvWikiPlugin(
+
+  val specInv: DSpecInventory,
+  override val realm: String,
+  override val conn: String = "default",
+  ienv: String) extends DomInventory {
+
   override def name = "wiki"
 
   var env = ienv
 
-  override def isDefinedFor(realm: String, c: C): Boolean = {
+  override def isRegisteredFor(realm: String, c: C): Boolean = {
     c.stereotypes.contains(razie.diesel.dom.WikiDomain.WIKI_CAT)
   }
 
@@ -42,17 +46,17 @@ class DomInvWikiPlugin(val specInv: DSpecInventory, val realm: String, override 
     Left(P.of(Diesel.PAYLOAD, "DomInvWikiPlugin connect ok"))
 
   /** html for the supported actions */
-  def htmlActions(elem: DE): String = {
+  override def htmlActions(elem: DE): String = {
     elem match {
       case c: C => {
-        def mkList = s"""<a href="/diesel/list2/${c.name}">list</a>"""
+        def mkList = s"""<a href="/diesel/dom/list/${c.name}">list</a>"""
 
         // todo delegate decision to tconf domain - when domain is refactored into tconf
         def mkNew =
           if ("User" != name && "WikiLink" != name)
           //todo move to RDomain
           // if (ctx.we.exists(w => WikiDomain.canCreateNew(w.specPath.realm.mkString, name)))
-            s""" <a href="/doe/diesel/create/${c.name}">new</a>"""
+            s""" <a href="/doe/diesel/dom/startCreate/${c.name}">new</a>"""
           else
             ""
 
@@ -64,7 +68,7 @@ class DomInvWikiPlugin(val specInv: DSpecInventory, val realm: String, override 
   }
 
 
-  def doAction(r: RDomain, conn: String, action: String, uri: String, epath: String) = {
+  override def doAction(r: RDomain, conn: String, action: String, uri: String, epath: String) = {
     throw new IllegalArgumentException(s"DomInventory not defined for $uri and $epath")
   }
 }

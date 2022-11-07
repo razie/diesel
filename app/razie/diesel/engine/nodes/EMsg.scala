@@ -190,7 +190,7 @@ case class EMsg(
     else "primary"
 
   /** extract a match from this message signature */
-  def asMatch = EMatch(entity, met, attrs.filter(p => p.dflt != "" || p.expr.isDefined).map { p =>
+  def asMatch = EMatch(entity, met, attrs.filter(p => p.hasCurrentValue || p.expr.isDefined).map { p =>
     PM(AExprIdent(p.name), p.ttype, "==", p.dflt, p.expr)
   })
 

@@ -65,7 +65,7 @@ class EEDomInventory extends EExecutor("diesel.inv") {
         //just register inv factory assocs
         val inv = ctx.getRequired("inventory")
         val s = ctx.getRequired("classNames").split(",").map { c =>
-          DomInventories.registerPlugin(realm, c, inv)
+          DomInventories.registerPluginForClass(realm, c, inv)
           s"$realm - $inv - $c"
         }
         List(EVal(P.fromSmartTypedValue(Diesel.PAYLOAD, s.mkString(" | \n"))))
@@ -155,7 +155,7 @@ class EEDomInventory extends EExecutor("diesel.inv") {
                 .map(_.asInstanceOf[collection.Map[String, Any]])
                 .flatMap(_.get("key"))
                 .orElse(
-                  j.get("key")
+                  j.get(c.key)
                 )
                 .orElse(
                   ctx.get("key")

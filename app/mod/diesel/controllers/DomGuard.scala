@@ -355,9 +355,9 @@ class DomGuard extends DomApiBase with Logging {
         s"""Stats: <a href="$w/DieselEngine">Flows</a>: ${GlobalData.dieselEnginesActive} active (${DieselAppContext.activeEngines.size} - ${
           DieselAppContext.activeEngines.values.filter(_.status != DomState.DONE).size
         }) /
-           | Streams: ${GlobalData.dieselStreamsActive} active of ${GlobalData.dieselStreamsTotal} since start /
-           | Actors: ${DieselAppContext.activeActors.size} active /
-           | Crons: ${GlobalData.dieselCronsActive} active of ${GlobalData.dieselCronsTotal} since start"""
+           | <a href="$w/DieselStream">Streams</a>: ${GlobalData.dieselStreamsActive} active of ${GlobalData.dieselStreamsTotal} since start /
+           |  <a href="$w/DieselActor">Actors</a>: ${DieselAppContext.activeActors.size} active /
+           |   <a href="$w/DieselCron">Crons</a>: ${GlobalData.dieselCronsActive} active of ${GlobalData.dieselCronsTotal} since start"""
             .stripMargin
 
       ROK.k reactorLayout12FullPage {

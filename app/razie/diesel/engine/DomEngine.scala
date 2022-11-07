@@ -263,8 +263,8 @@ abstract class DomEngine(
   // setup the context for this eval
   implicit var ctx: ECtx = new DomEngECtx(settings)
       .withEngine(this)
-      .withDomain(dom)
       .withSpecs(pages)
+      .withDomain(dom)
       .withCredentials(settings.userId)
       .withHostname(settings.node)
 

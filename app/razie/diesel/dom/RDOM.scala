@@ -78,6 +78,8 @@ object RDOM {
     assocs: List[A] = Nil,
     props: List[P] = Nil) extends DE {
 
+    val key : String = parms.find(_.stereotypes.contains("key")).fold("key")(_.name)
+
     def this(name: String) = this(name, "", "", Nil, "")
 
     override def toString = fullHtml(None)
@@ -92,7 +94,14 @@ object RDOM {
           smap(stereotypes)(" &lt;" + _ + "&gt;") +
           (if (base.exists(_.size > 0)) "extends " else "") + base.map(classLink).mkString +
           mksAttrs(parms, Some({ p: P =>
-            "<small>" + qspan(invname, conn, p.name) + "</small> " + p.toHtml
+            "<small>" + qspan(invname, conn, p.name) + "</small> " +
+                p.toHtml(
+                  short    = false,
+                  showExpr = true,
+                  showVal  = false,
+                  exprSep1 = "</td><td>",
+                  exprSep2 = ""
+                )
           })) +
           mks(methods, "{<br><hr>", "<br>", "<br><hr>}", "&nbsp;&nbsp;") +
           mks(props, " ANNO(", ", ", ") ", "&nbsp;&nbsp;")
@@ -271,7 +280,7 @@ object RDOM {
     def fromTypedValue(name:String, v:Any, expectedType:WType=WTypes.wt.UNKNOWN):P = {
 
       // like an orElse - important to preserve higher types info from expected
-      def expOrElse(wt:WType) = if (expectedType == WTypes.wt.UNKNOWN) wt else {
+      def expOrElse (wt:WType) = if (expectedType == WTypes.wt.UNKNOWN) wt else {
         if(expectedType.name != wt.name)
           throw new DieselExprException(s"Expected types don't match: $expectedType vs $wt")
 
@@ -485,6 +494,17 @@ object RDOM {
       res
     }
 
+    /** try to see a commonality of the element's type and if so, set it on the array */
+    def inferArrayTypeFromPV (le:Iterable[PValue[_]]) = {
+      val schema = le.foldLeft(le.headOption.map(_.cType.schema).mkString)((a, b) => if (a == b.cType.schema) a else "")
+      WTypes.wt.ARRAY.withSchema(schema)
+    }
+
+    /** try to see a commonality of the element's type and if so, set it on the array */
+    def inferArrayTypeFromP (le:Iterable[P]) = {
+      val schema = le.foldLeft(le.headOption.map(_.ttype.schema).mkString)((a, b) => if (a == b.ttype.schema) a else "")
+      if(schema != "") WTypes.wt.ARRAY.withSchema(schema) else WTypes.wt.ARRAY
+    }
   }
 
   //  implicit def toWtype2(s:String) : WType = WType(s)
@@ -516,6 +536,13 @@ object RDOM {
 
     def withValue[T](va: T, ctype: WType = WTypes.wt.UNKNOWN) = {
       this.copy(ttype = ctype, value = Some(PValue[T](va, ctype)))
+    }
+
+    def withSchema (s:String) = {
+      val p = this.copy(ttype = ttype.withSchema(s))
+      //copy value but overwrite schema - sometimes we switch between P and PV freely and loose schemas
+      p.value = this.value.map(v=> v.copy(cType = v.cType.withSchema(s)))
+      p
     }
 
     def withStringValue(va: String) = {
@@ -625,8 +652,8 @@ object RDOM {
     /** only if it was already calculated... */
     def hasCurrentValue = {
       value.isDefined ||
-          trulyConstantExpr.isDefined ||
-          dflt.length > 0
+          dflt.length > 0 ||
+          trulyConstantExpr.isDefined
     }
 
     /** only if it was already calculated... */
@@ -685,7 +712,7 @@ object RDOM {
           (if (dflt == "") expr.map(x => smap(x.toString)("=" + _)).mkString else "")
 
     // todo docs, position etc
-    override def toHtml = toHtml(true)
+    override def toHtml = toHtml(short = true)
 
     def nameHtml(shorten: Boolean) = {
       val d = currentStringValue
@@ -698,25 +725,37 @@ object RDOM {
       else name
     }
 
-    def toHtml(short: Boolean = true, showExpr:Boolean=true) =
+    def toHtml(short: Boolean = true,
+               showExpr:Boolean=true,
+               showVal:Boolean=true,
+               valSep1:String="",
+               valSep2:String="",
+               exprSep1:String="",
+               exprSep2:String=""
+              ) =
+
       s"<b>${nameHtml(short)}</b>" +
           (if (ttype.name.toLowerCase != "string") typeHtml(ttype) else "") +
           optional +
           smap(stereotypes)(s=> " &lt;" + s.split(",").map(x=>s"@$x").mkString(" ") + "&gt;") +
-          smap(Enc.escapeHtml(if (short) valueTrimmed20 else currentStringValue)) { s =>
-            "=" + tokenValue(
+          (if(showVal) smap(Enc.escapeHtml(if (short) valueTrimmed20 else currentStringValue)) { s =>
+            valSep1 + "=" + tokenValue(
               // this kicks in if currentstringvalue exists
               if (WTypes.NUMBER == ttype.name) s
               else if (WTypes.JSON == ttype.name) s
               else escapeHtml(quot(s))
             )
-          } +
+          } + valSep2
+          else "") +
           (if (short && currentStringValue.length > 20) "<b><small>...</small></b>" else "") +
           (if (dflt == "" && showExpr) expr.map(x =>
             smap(
               // this used if currentStringValue doesn't exit
-              if(short) token(shorten(x.toString, 10), x.toString) else x.toHtmlFull
-            )(ex=> "=" + ex)//s"""<span title="$ex">...</span>""")
+              if(short)
+                token(shorten(x.toString, 10), x.toString, "style=\"color:darkgray\"")
+              else
+                s"""<span style="color:darkgray">${x.toHtmlFull}</span>"""
+            )(ex=> exprSep1 + "=" + ex + exprSep2)//s"""<span title="$ex">...</span>""")
           ).mkString else "")
 
     private def typeHtml(s: WType) = {
@@ -807,14 +846,14 @@ object RDOM {
       s"$ident" +
         ttype +
         optional +
-        smap(dflt) (s=> op + (if("Number" == ttype) s else quot(s))) +
+        smap(dflt) (s=> op + (if(ttype.isNumber) s else quot(s))) +
         (if(dflt=="") expr.map(x=>smap(x.toString) (" " + op +" "+ _)).mkString else "")
 
     override def toHtml =
       s"<b>$ident</b>" +
-      classLink(ttype) +
+      classLink(ttype.getClassName) +
       optional +
-      smap(dflt) (s=> op + tokenValue(if("Number" == ttype) s else quot(s))) +
+      smap(dflt) (s=> op + tokenValue(if(ttype.isNumber) s else quot(s))) +
         (if(dflt=="") expr.map(x=>smap(x.toHtml) (" <b>"+op +"</b> "+ _)).mkString else "")
   }
 
@@ -900,21 +939,28 @@ object RDOM {
       // todo optimize/cache
       val invname = inv.map(_.name).mkString
       val conn = inv.map(_.conn).getOrElse("default")
-      span("object::") + " " + name + " : " + classLink(base) +
+      span("object::") + " " + (name) + " : " + classLink(base) +
 //        smap(archetype) (" &lt;" + _ + "&gt;") +
 //        smap(stereotypes) (" &lt;" + _ + "&gt;") +
 //        (if(base.exists(_.size>0)) "extends " else "") + base.map("<b>" + _ + "</b>").mkString +
-          mksAttrs(parms, Some({ p: P =>
-            p.toHtml(false) +
+          mksAttrs(parms, Option{ (p: P) =>
+            p.toHtml(
+              short    = false,
+              showExpr = true,
+              valSep1  = "</td><td>",
+              valSep2  = "",
+              exprSep1 = "</td><td>",
+              exprSep2 = ""
+            ) +
                 (
                     if (p.isRef)
-                      s""" <small><a href="/diesel/objBrowserById/${invname}/${conn}/${p.ttype.getClassName}/${
+                      s""" <small><a href="/diesel/dom/browse/${p.ttype.getClassName}/${
                         p.currentStringValue
-                      }"> <b><span class="glyphicon glyphicon-share"></span></b>browse</a></small>"""
+                      }?plugin=$invname&conn=$conn"> <b><span class="glyphicon glyphicon-share"></span></b>see</a></small>"""
                     else
                       ""
                     )
-          })) +
+          }) +
 //        mks(methods, "{<br><hr>", "<br>", "<br><hr>}", "&nbsp;&nbsp;") +
           ""
     }

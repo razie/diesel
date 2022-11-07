@@ -14,8 +14,10 @@ import model.{MiniScripster, Tags}
 import play.api.mvc.{Action, AnyContent, Request}
 import razie.Logging
 import razie.audit.Audit
+import razie.diesel.dom.DomInventories.{jtok, oFromJMap, oToA}
 import razie.diesel.dom.RDOM.{A, O}
 import razie.diesel.dom._
+import razie.diesel.expr.StaticECtx
 import razie.hosting.Website
 import razie.tconf.{FullSpecRef, SpecRef}
 import razie.wiki.admin.Autosave
@@ -24,7 +26,7 @@ import scala.concurrent.Future
 
 /** diesel controller */
 @Singleton
-class DieselControl extends RazController with Logging {
+class OldControl extends RazController with Logging {
   implicit def obtob(o: Option[Boolean]): Boolean = o.exists(_ == true)
 
   // todo eliminate stupidity
@@ -167,7 +169,7 @@ class DieselControl extends RazController with Logging {
       val c = rdom.classes.get(cat)
       val base = c.toList.flatMap(_.base)
 
-      def mkLink(s: String, dir: String, assoc: Option[RDOM.A]) = routes.DieselControl.dslDomBrowser(wpath, s,
+      def mkLink(s: String, dir: String, assoc: Option[RDOM.A]) = routes.DomainController.dslDomBrowser(wpath, s,
         path + "/" + s).toString()
 
       ROK.r apply { implicit stok =>
@@ -187,12 +189,12 @@ class DieselControl extends RazController with Logging {
     * @param o
     * @return
     */
-  def catBrowser(plugin: String, conn: String, realm: String, cat: String, ipath: String, o: Option[O] = None) = Action
+  def catBrowser(plugin: String, conn: String, realm: String, cat: String, ipath: String, o: Option[O] = None, errors:List[Any] = Nil) = Action
   { implicit request =>
     val rdom = WikiDomain(realm).rdom
     val c = rdom.classes.get(cat)
     val left = rdom.assocs.filter(_.z == cat)
-    val right = rdom.assocs.filter(_.a == cat)
+    val right = rdom.assocs.filter(x=> x.a == cat && !WTypes.PRIMARY_TYPES.contains(x.z))
     val base = c.toList.flatMap(_.base)
     val path = if (ipath == "/") ipath + cat else ipath
 
@@ -222,13 +224,12 @@ class DieselControl extends RazController with Logging {
           realm
         )
         // we're navigating backwards a many to one association
-//        s"/diesel/objBrowserByQuery/$plugin/$conn/$s/_${as}_value/${o.get.name}"
-        s"/diesel/objBrowserByQuery/$plugin/$conn/$s/${as}/${o.get.name}"
+        s"/diesel/dom/query/$s/${as}/'${o.get.name}'?plugin=$plugin&conn=$conn"
       } getOrElse
-          routes.DieselControl.catBrowser(plugin, conn, realm, s, newPath).toString()
+          routes.DomainController.catBrowser(plugin, conn, realm, s, newPath).toString()
     }
 
-    ROK.r apply { implicit stok =>
+    ROK.r.withErrors(errors) apply  { implicit stok =>
       if (c.exists(_.stereotypes contains "wikiCategory"))
       // real wiki Category
         views.html.modules.diesel.catBrowser(plugin, conn, realm, Wikis(realm).category(cat), cat, base, left, right)(
@@ -239,35 +240,14 @@ class DieselControl extends RazController with Logging {
     }
   }
 
-  def objBrowserById(plugin: String, conn: String, cat: String, id: String, ipath: String, o: Option[O] = None) =
-    RAction.withAuth {
-      implicit request =>
-        val dov = DomInventories.findByRef(SpecRef.make(request.realm, plugin, conn, cat, id))
+  private def getrdom(wpath:String) = {
 
-        val o = dov.flatMap(_.getValueO)
-
-        catBrowser(plugin, conn, request.realm, cat, ipath, o).apply(
-          request.ireq.asInstanceOf[Request[AnyContent]]).value.get.get
-    }
-
-  def objBrowserByQuery(plugin: String, conn: String, cat: String, parm: String, value: String, ipath: String,
-                        o: Option[O] = None) = RAction.withAuth { implicit request =>
-    val v = if(value.startsWith("'")) value.substring(1, value.length-1)
-    val ref = SpecRef.make(request.realm, plugin, conn, cat, "")
-    val res = DomInventories.findByQuery(ref, Left(cat + "/" + parm + "/" + v), 0, 100, Array.empty[String])
-    val list = res.data
-
-    if (list.size <= 1) {
-      val o = list.headOption.flatMap(_.getValueO)
-      catBrowser(plugin, conn, request.realm, cat, ipath, o).apply(
-        request.ireq.asInstanceOf[Request[AnyContent]]).value.get.get
+    val wid = WID.fromPath(wpath).get
+    if(wid.cat == "Realm" || wid.cat == "Reactor") {
+      Some(WikiDomain(wid.name).rdom)
     } else {
-      ROK.k reactorLayout12 {
-        views.html.wiki.wikiListAssets("list diesel entities", "", "", list.map { x =>
-          val ref = x.ref.asInstanceOf[FullSpecRef]
-          (ref, ref.key)
-        }, Nil, "./", "", request.realm)
-      }
+      val page = wid.page
+      page.flatMap(WikiDomain.domFrom).map(_.revise addRoot)
     }
   }
 
@@ -288,71 +268,12 @@ class DieselControl extends RazController with Logging {
           .flatMap(_.getValueO.toList)
           .map { dov =>
             val o = dov //.getValueO //value.asInstanceOf[O]
-            val u = routes.DieselControl.objBrowserById(plugin, conn, cat, o.name, ipath).url
+            val u = routes.DomainController.domBrowseId(cat, o.name, ipath, plugin, conn).url
             s"""<a href="$u">${o.name}</a> ${o.getDisplayName}"""
           }
       Ok(s.mkString("<br>")).as("text/html")
     }
   }
-
-  private def getrdom(wpath:String) = {
-
-    val wid = WID.fromPath(wpath).get
-    if(wid.cat == "Realm" || wid.cat == "Reactor") {
-      Some(WikiDomain(wid.name).rdom)
-    } else {
-      val page = wid.page
-      page.flatMap(WikiDomain.domFrom).map(_.revise addRoot)
-    }
-  }
-
-  /** list entities of cat from domain wpath */
-  def list2(cat:String, ipath:String) = RAction.withAuth.noRobots { implicit request =>
-
-    val realm = Website.realm
-    val rdom = WikiDomain(realm).rdom
-//    val left = rdom.assocs.filter(_.z == cat).map(_.a)
-//    val right = rdom.assocs.filter(_.a == cat).map(_.z)
-//    val path = if (ipath == "/") ipath + cat else ipath
-
-    if (WikiDomain(realm).isWikiCategory(cat)) {
-
-      val wl = Wikis(realm).pages(cat).toList
-      val tags = wl.flatMap(_.tags).filter(_ != Tags.ARCHIVE).filter(_ != "").groupBy(identity).map(
-        t => (t._1, t._2.size)).toSeq.sortBy(_._2).reverse
-
-      ROK.k reactorLayout12 {
-        views.html.wiki.wikiList("list diesel entities", "", "", wl.map(x => (x.wid, x.label)), tags, "./", "", realm)
-      }
-
-    } else if(rdom.classes.get(cat).isDefined) {
-
-      NotFound(s"cat $cat not defined")
-
-    } else if(WikiDomain(realm).findPluginsForClass(rdom.classes.get(cat).get).isEmpty) {
-
-      NotFound(s"Inventory/plugin for realm $realm cat $cat not found")
-
-    } else {
-
-      val p = WikiDomain(realm).findPluginsForClass(rdom.classes.get(cat).get).head
-      val ref = SpecRef.make(request.realm, p.name, p.conn, cat, "")
-      val res = DomInventories.listAll(ref, start = 0, limit = 100, Array.empty[String])
-      val list = res.data
-
-      // todo find tags for assets
-//      val tags = wl.flatMap(_.tags).filter(_ != Tags.ARCHIVE).filter(_ != "").groupBy(identity).map(
-//        t => (t._1, t._2.size)).toSeq.sortBy(_._2).reverse
-
-      ROK.k reactorLayout12 {
-        views.html.wiki.wikiListAssets("list diesel entities", "", "", list.map { x =>
-          val ref = x.ref.asInstanceOf[FullSpecRef]
-          (ref, ref.key)
-        }, Nil, "./", "", realm, res.errors)
-      }
-    }
-  }
-
   // todo delete this?
   /** list entities of cat from domain wpath */
   def list(wpath:String, cat:String, ipath:String) = RAction.withAuth.noRobots { implicit request =>
@@ -368,23 +289,6 @@ class DieselControl extends RazController with Logging {
     ROK.k reactorLayout12 {
       views.html.wiki.wikiList("list diesel entities", "", "", wl.map(x => (x.wid, x.label)), tags, "./", "",
         wid.getRealm)
-    }
-  }
-
-  /** create a new instance of cat */
-  def create(cat:String, ipath:String) = FAU { implicit au => implicit errCollector => implicit request =>
-    val realm = Website.realm
-    val rdom = WikiDomain(realm).rdom
-    val left = rdom.assocs.filter(_.z == cat)
-    val right = rdom.assocs.filter(_.a == cat)
-    val path = if (ipath == "/") ipath + cat else ipath
-
-    def mkLink(s: String, dir: String, assoc: Option[RDOM.A]) = {
-      routes.DieselControl.catBrowser("diesel", realm, realm, s, path + "/" + s).toString()
-    }
-
-    ROK.r apply { implicit stok =>
-      views.html.modules.diesel.createDD(realm, cat, left, right, rdom, Map.empty)(mkLink)
     }
   }
 
