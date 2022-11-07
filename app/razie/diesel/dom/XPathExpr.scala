@@ -23,7 +23,7 @@ case class XPathIdent(val prefix:String, override val expr: String) extends Expr
   override def apply(v: Any)(implicit ctx: ECtx) = ctx.apply(expr)
 
   override def applyTyped(v: Any)(implicit ctx: ECtx): P = {
-    def xpl(path: String, p: Option[P] = None) = {
+    def xpl(path: String, p: Option[P] = None):P = {
       (for (
         worig <- xpRoot(p)
       ) yield {
@@ -68,7 +68,43 @@ case class XPathIdent(val prefix:String, override val expr: String) extends Expr
 
     val startName = g.head.name
     val startp = ctx.getp(startName)
-    xpl(expr, startp)
+    startp.map {p=>
+        // we found a root object to start from
+      xpl(expr, startp)
+    } getOrElse {
+      // the root must be a class?
+      val cat = startName
+      val rdom = ctx.root.domain.get
+      val realm = (ctx.root.settings.realm.mkString)
+      val dom = WikiDomain(ctx.root.settings.realm.mkString)
+      val c = rdom.classes.get(cat)
+
+      val roots = if(c.isDefined && !dom.isWikiCategory(cat)) {
+        val ref = SpecRef.make(realm, "", "", cat, "")
+        val q = Option(g.head.cond).map(_.asMap).getOrElse(Map.empty)
+        val res = DomInventories.findByQuery(ref, Right(q), 0, 100, Array.empty[String])
+        val le = res.data.map(_.asP)//.map(x=> new DASWrapper(x))
+
+        if(g.exceptFirst.size > 0) {
+          val p = prefix match {
+            case "xp" | "xpl" | "xpla" => {
+              val res = le.map(p => xpl(expr, Option(p)))
+              // type to copy or not?
+              if (res.size > 0) P.fromTypedValue("", res.flatten(_.value.get.asArray), res.head.ttype)
+              else P.fromTypedValue("", res)
+            }
+            case "xpe" | "xpa" => xpl(expr, le.headOption)
+          }
+          p
+        } else {
+          // it was just a class name - found all, better be xple:
+          P.fromTypedValue("", le).withSchema(cat)
+        }
+      } else {
+        P.undefined("") // start from wiki
+      }
+      roots
+    }
   }
 
   private def xpRoot(p: Option[P]) = {
@@ -106,7 +142,7 @@ class DASWrapper(val p:P) {
 }
 
 /**
-  *  solver for wiki xp
+  *  todo reconcile and replace with WikiPath / WikiWrapper
   */
 object DASXpSolver extends XpSolver[DASWrapper] {
 
@@ -158,7 +194,7 @@ object DOMXpSolver extends XpSolver[DASWrapper] {
 
   override def children(root: T, xe:Option[XpElement]): (T, U) = (root, {
     case (tag, assoc) if root.isInstanceOf[DASWrapper] =>
-      children2(root, tag, assoc).toList.teeIf(debug,"C").toList
+      children2(root, tag, assoc, xe).toList.teeIf(debug,"C").toList
   })
 
   override def getNext(o: (T, U), tag: String, assoc: String, xe:Option[XpElement]): List[(T, U)] = {
@@ -172,7 +208,7 @@ object DOMXpSolver extends XpSolver[DASWrapper] {
         .tee("E").toList
   }
 
-  private def children2(node: T, tag: String, assoc:String): Seq[DASWrapper] = {
+  private def children2(node: T, tag: String, assoc:String, xe:Option[XpElement]): Seq[DASWrapper] = {
     if(debug) println("---CHILDREN2 ("+node+") ("+tag+")")
 
     val cat = node.p.ttype.getClassName
@@ -180,20 +216,24 @@ object DOMXpSolver extends XpSolver[DASWrapper] {
     val dom = WikiDomain(realm)
     val c = dom.rdom.classes.get(cat)
 
-    // we're looking down to a ref
+    // todo resolve conditions here with query
+    val cond = xe.flatMap(x=> Option(x.cond))
+
+    // we're looking down to a ref? Are there assocs to target?
     val list = if(c.get.parms.exists(_.ttype.getClassName == tag)) {
       // use the first assoc if not specified
       val ass = Option(assoc).mkString
       // follow all associations of type if none specified
-      val assocName = if (ass.trim == "") c.get.parms.filter(_.ttype.getClassName == tag).map(_.name) else List(assoc)
-      assocName.flatMap {a=>
+      val assocNames = if (ass.trim == "") c.get.parms.filter(_.ttype.getClassName == tag).map(_.name) else List(assoc)
+      assocNames.flatMap {a=>
         val v = getAttr(node, a)
 
         val ref = SpecRef.make(realm, "", "", tag, v)
-        //    val res = DomInventories.findByQuery(ref, Left(tag + "/" + a + "/" + v), 0, 100, Array.empty[String])
-//val list = res.data.map(_.asP).map(x=> new T(x))
-val res = DomInventories.findByRef(ref)
+        val res = DomInventories.findByRef(ref)
         val list = res.map(_.asP).map(x => new T(x))
+
+        //    val res = DomInventories.findByQuery(ref, Left(tag + "/" + a + "/" + v), 0, 100, Array.empty[String])
+        //val list = res.data.map(_.asP).map(x=> new T(x))
 
         list.toList
       }
@@ -209,8 +249,8 @@ val res = DomInventories.findByRef(ref)
 
       val ref = SpecRef.make(realm, "", "", tag, v)
       //    val res = DomInventories.findByQuery(ref, Left(tag + "/" + a + "/" + v), 0, 100, Array.empty[String])
-//val list = res.data.map(_.asP).map(x=> new T(x))
-val res = DomInventories.findByRef(ref)
+      //val list = res.data.map(_.asP).map(x=> new T(x))
+      val res = DomInventories.findByRef(ref)
       val list = res.map(_.asP).map(x => new T(x))
 
       list.toList
