@@ -186,7 +186,7 @@ trait ExprParser extends RegexParsers {
     case i ~ l => i :: l
   }
 
-  def xpath: Parser[String] = ident ~ rep("/".r ~ xpathElem) ^^ {
+  def xpath: Parser[String] = (ident | "*" | "**") ~ rep("/".r ~ xpathElem) ^^ {
     case i ~ l => (i :: l.map { x => x._1 + x._2}).mkString("")
   }
 
