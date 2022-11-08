@@ -409,7 +409,7 @@ class DomEngineV1(
 
     if (settings.mockMode) {
       val exclusives = HashMap[String, ERule]()
-      
+
       var mocksFromStory = root.collect {
         // mocks from story AST
         case d@DomAst(m: EMock, _, _, _) if m.rule.e.test(a, n) && a.children.isEmpty => m
