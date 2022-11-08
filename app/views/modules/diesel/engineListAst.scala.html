@@ -46,8 +46,8 @@ function setRefreshMode () {
 };
 
 var refreshPlease = function() {
-  var fo = $("#follow").val();
-  var fi = $("#filter").val();
+  var fo = $("#follow").val() || "";
+  var fi = $("#filter").val() || "";
   window.location.search = "?follow=" + encodeURIComponent(fo) + "&filter=" + encodeURIComponent(fi);
 }
 
@@ -72,18 +72,19 @@ withJquery(function ($) {
 
     var params = (new URL(document.location)).searchParams;
     var fo = params.get("follow");
-    var fi = params.get("filter");
-    $("#filter").val(fi);
+    var fi = params.get("filter") || "";
 
     if("@following".length > 0 && (fo == null || typeof fo === 'undefined')) {
+      // came from server only, copy to url and refresh
       $("#follow").val("@following");
       window.location.search = "?follow=" + encodeURIComponent(fo) + "&filter=" + encodeURIComponent(fi);
     } else {
+      //
       if(fo != null) $("#follow").val(fo);
     }
 
     if(fi != null && fi.length > 0) {
-      if(fi != null) $("#filter").val(fi);
+      $("#filter").val(fi);
     }
   });
 });
