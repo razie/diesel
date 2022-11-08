@@ -129,15 +129,15 @@ class DomInvOdataCRMPlugin(
   var completeUri: String = ""
 
   /** html for the supported actions */
-  def htmlActions(elem: DE): String = {
+  override def htmlActions(elem: DE, ref:Option[FullSpecRef]) : String = {
     elem match {
       case c: C => {
         val oname = classOname(c)
 
-        def mkMetA    = s"""<a href="/diesel/plugin/$name/$conn/attrs/${c.name}">attrs</a>"""
+        def mkMetA    = s"""<a href="/doe/diesel/dom/action/attrs/${c.name}?plugin=$name&conn=$conn">attrs</a>"""
         def mkMet     = s"""<a href="$URL/EntityDefinitions(LogicalName='$oname')">def</a>"""
         def mkSample  = s"""<a href="$URL/${oname}s?$$top=1">sample</a>"""
-        def mkListAll = s"""<a href="/diesel/plugin/$name/$conn/listAll/${c.name}">listAll</a>"""
+        def mkListAll = s"""<a href="/doe/diesel/dom/action/listAll/${c.name}?plugin=$name&conn=$conn">listAll</a>"""
 
         s"$mkMet | $mkMetA | $mkSample | $mkListAll"
       }
@@ -341,9 +341,9 @@ class DomInvOdataCRMPlugin(
         .map{t=>
           val d = classNames(t)
           s"""$t - $d |
-             | <a href="/diesel/plugin/$name/$conn/metaClass/$t">met</a> |
-             | <a href="/diesel/plugin/$name/$conn/attrs/$d">attrs</a> |
-             | <a href="/diesel/plugin/$name/$conn/makeClass/$t">make</a>
+             | <a href="/doe/diesel/dom/action/metaClass/$t?plugin=$name&conn=$conn">met</a> |
+             | <a href="/doe/diesel/dom/action/attrs/$d?plugin=$name&conn=$conn">attrs</a> |
+             | <a href="/doe/diesel/dom/action/makeClass/$t?plugin=$name&conn=$conn">make</a>
            """.stripMargin
 
         }

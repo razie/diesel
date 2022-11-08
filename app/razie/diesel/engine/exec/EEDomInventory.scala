@@ -137,7 +137,7 @@ class EEDomInventory extends EExecutor("diesel.inv") {
         val entities = ctx.getp("entities")
         val conn = ctx.get("connection").getOrElse("")
         val async = ctx.getp("async")
-        val cls = ctx.get("className").getOrElse(entity.get.ttype.schema)
+        val cls = ctx.get("className").getOrElse(entity.get.ttype.getClassName)
 
         // if class not known, make it up
         // todo or blow up?
@@ -272,6 +272,8 @@ class EEDomInventory extends EExecutor("diesel.inv") {
       case REMOVE => {
         val conn = ctx.get("connection").getOrElse("")
         val cls = ctx.getRequired("className")
+        // todo remove by entity, extract class and key from it
+//        val entity = ctx.getRequired("className")
         val k = ctx.get("key")
 
         val c = dom.rdom.classes.get(cls).getOrElse(new C(cls))

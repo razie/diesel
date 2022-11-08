@@ -17,7 +17,7 @@ browse a domain
 @defining(WikiDomain(realm)) { wd =>
   @wd.rdom.classes.get(cat).map { c =>
     @defining(wd.findInventoriesForClass(c)) { inv =>
-  <div align="right"><small>@Html(DomInventories.htmlActions(realm, c))</small></div>
+  <div align="right"><small>@Html(DomInventories.htmlActions(realm, c, o.flatMap(_.ref)))</small></div>
       <div class="well">
       @Html(o.map(_.fullHtml(inv.headOption)).getOrElse(c.fullHtml(inv.headOption)))
       </div>

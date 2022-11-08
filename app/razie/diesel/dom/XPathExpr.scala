@@ -98,7 +98,10 @@ case class XPathIdent(val prefix:String, override val expr: String) extends Expr
           p
         } else {
           // it was just a class name - found all, better be xple:
-          P.fromTypedValue("", le).withSchema(cat)
+          prefix match {
+            case "xp" | "xpl" => P.fromTypedValue("", le).withSchema(cat)
+            case "xpe"        => le.headOption.map(x=> P.fromSmartTypedValue("", x)).getOrElse(P.undefined(""))
+          }
         }
       } else {
         P.undefined("") // start from wiki

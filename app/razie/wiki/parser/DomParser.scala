@@ -137,7 +137,7 @@ trait DomParser extends ParserBase with ExprParser {
             c = collected.foldLeft(c){(a,b) => a.plus(b)}
             collectDom(c, ctx.we)
 
-            actions = DomInventories.htmlActions(w.specRef.realm, c)
+            actions = DomInventories.htmlActions(w.specRef.realm, c, None) // actions for class only, not entity
           }
 
           StrAstNode(

@@ -5,6 +5,8 @@
   **/
 package razie.tconf
 
+import razie.diesel.dom.DomInventories
+
 /** uniquely identifies a piece of specification, an object or an asset
   *
   * for identifying sections inside a larger document, the wpath will include like a section pointer (...#section)
@@ -164,6 +166,26 @@ object SpecRef {
       ref.ver,
       ref.draft
     )
+  }
+
+  val sCLS_FIELD_VALUE = """([^/]+)/([^/]+)/(.+)"""
+  val CLS_FIELD_VALUE = sCLS_FIELD_VALUE.r
+  val sEPATH_ID = """([^/]+)/([^/]+)"""
+  val EPATH_ID = sEPATH_ID.r
+
+  /** parse an epath. Epath is either cls only or cls/key or cls/attr/value */
+  def parseEpath (epath:String) : (String, String, String) = {
+
+    if(epath.matches(sCLS_FIELD_VALUE)) {
+      val CLS_FIELD_VALUE (cls, field, id) = epath
+      (cls, field, id)
+    } else if(epath.matches(sEPATH_ID)) {
+      val EPATH_ID (cls, id) = epath
+      (cls, "key", id)
+    } else {
+      val cat = epath.replaceFirst("/.*", "")
+      (cat, "", "")
+    }
   }
 }
 

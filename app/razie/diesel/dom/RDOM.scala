@@ -15,7 +15,7 @@ import razie.diesel.engine.nodes.{CanHtml, HasPosition}
 import razie.diesel.engine.{DomEngine, EContent}
 import razie.diesel.expr._
 import razie.js
-import razie.tconf.EPos
+import razie.tconf.{EPos, FullSpecRef, TSpecRef}
 import razie.wiki.Enc
 import scala.collection.mutable.HashMap
 import scala.concurrent.Future
@@ -538,6 +538,15 @@ object RDOM {
       this.copy(ttype = ctype, value = Some(PValue[T](va, ctype)))
     }
 
+    def withSchema (s:Option[String]) = {
+      if(s.isDefined) {
+        val p = this.copy(ttype = ttype.withSchema(s.get))
+        //copy value but overwrite schema - sometimes we switch between P and PV freely and loose schemas
+        p.value = this.value.map(v => v.copy(cType = v.cType.withSchema(s.get)))
+        p
+      } else this
+    }
+
     def withSchema (s:String) = {
       val p = this.copy(ttype = ttype.withSchema(s))
       //copy value but overwrite schema - sometimes we switch between P and PV freely and loose schemas
@@ -933,6 +942,12 @@ object RDOM {
     */
   case class O (name:String, base:String, parms:List[P]) {
     def toJson = parms.map { p => p.name -> p.calculatedTypedValue(ECtx.empty).value }.toMap
+
+    /** this ref would encode plugin/conn info as well */
+    var ref:Option[FullSpecRef] = None
+
+    def withRef (r:FullSpecRef) = { this.ref = Option(r); this}
+    def getRef = this.ref
 
     /** create the html when looking at this object - list attributes etc */
     def fullHtml(inv: Option[DomInventory]) = {

@@ -150,8 +150,13 @@ trait DomInventory {
   def remove(dom: RDomain, ref: FullSpecRef)
   : Either[Option[DieselAsset[_]], EMsg] = ???
 
-  /** html for the supported actions */
-  def htmlActions(elem: DE): String
+  /** html for the supported actions
+    *
+    * @param elem the domain element we're looking at (should be C)
+    * @param ref optionally if we're talking about a specific entity
+    * @return
+    */
+  def htmlActions(elem: DE, ref:Option[FullSpecRef]): String
 
   /** reset oauth tokens, connections etc on error */
   def resetOnError(error: Throwable) = {}
@@ -197,7 +202,7 @@ class DefaultRDomainPlugin(val specInv: DSpecInventory, val realm: String, overr
     Left(P.of(Diesel.PAYLOAD, "ok"))
 
   /** html for the supported actions */
-  def htmlActions(elem: DE): String = {
+  override def htmlActions(elem: DE, ref:Option[FullSpecRef]): String = {
     elem match {
       case c: C => {
         def mkList = s"""<a href="/diesel/dom/list/${c.name}">list</a>"""
