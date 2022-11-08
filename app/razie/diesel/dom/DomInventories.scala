@@ -35,6 +35,7 @@ object DomInventories extends razie.Logging {
   var pluginFactories: List[DomInventory] =
     new DomInvOdataCRMPlugin ::
         new DieselRulesInventory() ::
+        new DieselInternalInventory() ::
         new DomInvWikiPlugin(null, "", "", "") ::
         Nil
 
@@ -86,11 +87,11 @@ object DomInventories extends razie.Logging {
   }
 
   /** aggregate applicable actions on element in realm's plugins */
-  def htmlActions(realm: String, c: DE) = {
+  def htmlActions(realm: String, c: DE, ref:Option[FullSpecRef]) = {
     val s = WikiDomain(realm)
         .findInventoriesForClass(c)
         .foldLeft("")(
-          (a, b) => a + (if (a != "") " <b>|</b> " else "") + b.htmlActions(c)
+          (a, b) => a + (if (a != "") " <b>|</b> " else "") + b.htmlActions(c, ref)
         )
 
     // todo add an info question mark popup to prompt them to read about inventoryies and assets etc
@@ -264,7 +265,7 @@ object DomInventories extends razie.Logging {
     O(name, c.name, parms)
   }
 
-  val CLS_FIELD_VALUE = """([^/]+)/(.+)/(.+)""".r
+  val CLS_FIELD_VALUE = SpecRef.CLS_FIELD_VALUE
 
   /** for synchornous people */
   def resolve(flattenData: Boolean, ref: FullSpecRef, e: Either[P, EMsg]): P = {

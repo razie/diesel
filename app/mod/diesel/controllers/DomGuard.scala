@@ -347,7 +347,9 @@ class DomGuard extends DomApiBase with Logging {
         table = table + a
       }
 
-    val w="/wiki/"
+    val w="/diesel/dom/browse"
+
+//    http://localhost:9000/diesel/dom/list/DieselCron
 
       val title =
         s"""Flow history realm: $r showing ${list.size} of $total since start and user $un""".stripMargin

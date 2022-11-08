@@ -6,7 +6,7 @@
 package razie.diesel.dom
 
 import razie.diesel.dom.RDOM.{O, P}
-import razie.tconf.TSpecRef
+import razie.tconf.{FullSpecRef, TSpecRef}
 
 /**
   * wrapper asset class as a value object - it's not just the reference but the entire object
@@ -24,11 +24,14 @@ case class DieselAsset[T](
   valueO: Option[O] = None
 ) {
 
+  // make sure it has a ref
+  valueO.filter(_.ref.isEmpty && ref.isInstanceOf[FullSpecRef]).foreach(_.withRef(ref.asInstanceOf[FullSpecRef]))
+
   /** get the valoue object as an O */
   def getValueO: Option[O] =
     valueO.orElse(
       if (value != null && value.isInstanceOf[O])
-        Some(value.asInstanceOf[O])
+        Option(value.asInstanceOf[O])
       else
         None
     )

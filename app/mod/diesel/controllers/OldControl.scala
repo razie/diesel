@@ -198,6 +198,18 @@ class OldControl extends RazController with Logging {
     val base = c.toList.flatMap(_.base)
     val path = if (ipath == "/") ipath + cat else ipath
 
+    val ref = new FullSpecRef(
+      plugin,
+      conn,
+      cat,
+      o.get.name,
+      "",
+      realm
+    )
+
+    // give it a ref
+    o.filter(_.ref.isEmpty).foreach(_.withRef(ref))
+
     /** context aware linking for the cat browser at the top
       *
       * @param s class to find
@@ -215,14 +227,6 @@ class OldControl extends RazController with Logging {
         o.isDefined && dir == "from").flatMap(_.parms.find(p => p.isRef && p.ttype == o.get.base)).map { sc =>
         // find ref parm from s to o
         val as = assoc.map(_.zRole).getOrElse(sc.name)
-        val ref = new FullSpecRef(
-          plugin,
-          conn,
-          cat,
-          o.get.name,
-          "",
-          realm
-        )
         // we're navigating backwards a many to one association
         s"/diesel/dom/query/$s/${as}/'${o.get.name}'?plugin=$plugin&conn=$conn"
       } getOrElse

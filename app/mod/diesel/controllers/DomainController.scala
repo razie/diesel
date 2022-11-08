@@ -242,14 +242,21 @@ class DomainController extends RazController with Logging {
 
   def domBrowse  (cat:String, path:String="/", plugin:String="", conn:String="", format:String="") = RAction.withAuth {
     implicit stok =>
-      val (realm, dom, rdom, c, oc, iconn, iplugin) = unpack (cat, plugin, conn)
+        try {
+          val (realm, dom, rdom, c, oc, iconn, iplugin) = unpack(cat, plugin, conn)
 
-      if("json" == format) {
-          retj << rdom.tojmap(c)
-      } else {
-        catBrowser(plugin, conn, realm, cat, path, None).apply(
-          stok.ireq.asInstanceOf[Request[AnyContent]]).value.get.get
-      }
+          if ("json" == format) {
+            retj << rdom.tojmap(c)
+          } else {
+            catBrowser(plugin, conn, realm, cat, path, None).apply(
+              stok.ireq.asInstanceOf[Request[AnyContent]]).value.get.get
+          }
+        } catch {
+          case t:Throwable =>
+            // it'll say "nothing known about"
+            catBrowser("", "", stok.realm, cat, path, None).apply(
+              stok.ireq.asInstanceOf[Request[AnyContent]]).value.get.get
+        }
   }
 
   def domBrowseId  (cat:String, id:String, path:String="/", plugin:String="", conn:String="", format:String="", fieldsToShow:String="") = RAction.withAuth {
@@ -391,18 +398,24 @@ class DomainController extends RazController with Logging {
   }
 
   /** generic domain plugin actions */
-  def pluginAction(plugin: String, conn: String, action: String, epath: String) = Filter(activeUser).async
+  def domAction (plugin: String, conn: String, action: String, epath: String) = doeAction(plugin, conn, action, epath)
+
+  def doeAction (plugin: String, conn: String, action: String, epath: String) = Filter(activeUser).async
   { implicit stok =>
     Future.successful {
+      // epath of the form cat/id/attr etc
+      val cat = epath.replaceFirst("/.*", "")
+      val (realm, dom, rdom, c, oc, iconn, iplugin) = unpack (cat, plugin, conn)
+
       val url = "http" + (if (stok.secure) "s" else "") + "://" + stok.hostPort
       val wd = WikiDomain(stok.realm)
-      val p = wd.findPlugins(plugin, conn)
-      val c = p.map(_.doAction(wd.rdom, conn, action, url, epath)).mkString
+      val p = wd.findPlugins(iplugin, iconn)
+      val r = p.map(_.doAction(wd.rdom, iconn, action, url, epath)).mkString
 
-      val res = if (c.startsWith("<"))
-        Ok(c).as("text/html")
+      val res = if (r.startsWith("<"))
+        Ok(r).as("text/html")
       else
-        Ok(c)
+        Ok(r)
 
       if (p.isEmpty) res.withHeaders("dieselError" -> "Plugin not found")
       else res

@@ -23,7 +23,7 @@ included in wikiListAssets - just the actual list, nothing else
         <td><small><small>Realm</small></small></td>
       }
       <td>Name</td>
-      @fieldsToShow.filter(x=> !x.equals("name") && !x.startsWith("-")).map { f =>
+      @fieldsToShow.filter(x=> !x.toLowerCase.equals("name") && !x.startsWith("-")).map { f =>
         <td>
           @f.capitalize
         </td>

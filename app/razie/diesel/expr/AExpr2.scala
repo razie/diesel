@@ -518,15 +518,16 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
 
             val resArr = arr.map { x =>
               val res = if (b.isInstanceOf[LambdaFuncExpr]) {
-                val res = b.applyTyped(x)
+                val res = b.applyTyped(P.fromTypedValue("x", x).withSchema(elementType)) // todo optimize - making two P's
                 res
               } else if (b.isInstanceOf[BlockExpr] && b.asInstanceOf[BlockExpr].ex.isInstanceOf[LambdaFuncExpr]) {
                 // common case, no need to go through context, Block passes through to Lambda
-                val res = b.applyTyped(x)
+                val res = b.applyTyped(P.fromTypedValue("x", x).withSchema(elementType)) // todo optimize - making two P's
+//                val res = b.applyTyped(x)
                 res
               } else {
                 // todo we populate an "x" or should it be "elem" ?
-                val sctx = new StaticECtx(List(P.fromTypedValue("x", x)), Some(ctx))
+                val sctx = new StaticECtx(List(P.fromTypedValue("x", x).withSchema(elementType)), Some(ctx))
                 val res = b.applyTyped(x)(sctx)
                 res
               }

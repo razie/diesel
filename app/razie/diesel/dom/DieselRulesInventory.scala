@@ -157,7 +157,7 @@ class DieselRulesInventory(
   var completeUri: String = ""
 
   /** html for the supported actions */
-  override def htmlActions(elem: DE): String = {
+  override def htmlActions(elem: DE, ref:Option[FullSpecRef]): String = {
     elem match {
       case c: C => {
         val oname = classOname(c)

@@ -55,6 +55,7 @@ case class DomSchedule(
   def isOnce = timeExpr.nonEmpty && schedExpr.isEmpty && cronExpr.trim.isEmpty
 
   def toJson = Map(
+    "name" -> schedId,
     "realm" -> realm,
     "env" -> env,
     "schedId" -> schedId,
@@ -105,9 +106,10 @@ object DieselCron extends Logging {
 
   implicit val timeout = Timeout(10 seconds)
 
-  // all schedules, key is realm+id
+  // all schedules, key is realm-id
   private val realmSchedules = new TrieMap[String, DomSchedule]
 
+  /** all schedules, key is realm+id **/
   def withRealmSchedules[T](f: TrieMap[String, DomSchedule] => T): T = {
     f(realmSchedules)
   }

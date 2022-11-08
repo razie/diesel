@@ -275,7 +275,7 @@ case class AExprFunc(val expr: String, parms: List[RDOM.P]) extends Expr {
       case "typeOf" => {
         firstParm.map { p =>
           val pv = p.calculatedTypedValue
-          new P("", pv.contentType, WTypes.wt.STRING).withValue(pv.contentType, WTypes.wt.STRING)
+          new P("", pv.cType.getClassName, WTypes.wt.STRING).withValue(pv.contentType, WTypes.wt.STRING)
         }.getOrElse(
           // todo could be unknown?
           throw new DieselExprException(s"No arguments for $expr")
