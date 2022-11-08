@@ -396,7 +396,7 @@ class DomEngineV1(
     newNodes.foreach(_.resetParent(null))
     a.childrenCol.clear() // remove them so we don't have duplicates in tree - they will be processed later
 
-    // 1. engine message?
+    // =============== 1. engine message?
 
     var (mocked, skipped, moreNodes) = expandEngineEMsg(a, n, newNodes)
 
@@ -405,18 +405,26 @@ class DomEngineV1(
 
     var mocksApplied = HashMap[String, EMock]()
 
-    // 2. if not, look for mocks
+    // =============== 2. if not, look for mocks
 
     if (settings.mockMode) {
       val exclusives = HashMap[String, ERule]()
-      var matchingRules = (root.collect {
+      
+      var mocksFromStory = root.collect {
         // mocks from story AST
         case d@DomAst(m: EMock, _, _, _) if m.rule.e.test(a, n) && a.children.isEmpty => m
-      } ::: dom.moreElements.toList).collect {
+      }
+
+      var matchingRules = (mocksFromStory ::: dom.moreElements.toList).collect {
         // todo perf optimize moreelements.toList above
         // plus mocks from spec dom
         case m: EMock if m.rule.e.test(a, n) && a.children.isEmpty => m
       }
+
+      // make sure they are distinct, using hashcode so same element can't be twice
+      // todo some story mocks end up in domain too, why ??
+      // see bulk-cpe-story, those mocks
+      matchingRules = matchingRules.distinct
 
       // todo do fallbacks for mocks, like in the rules?
 
@@ -443,7 +451,7 @@ class DomEngineV1(
       }
     }
 
-    // 2. rules
+    // =============== 2. rules
     var ruled = false
     // no engine messages fit, so let's find rules
     // todo - WHY? only some systems may be mocked ???
