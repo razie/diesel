@@ -464,6 +464,11 @@ class DomApi extends DomApiBase with Logging {
 
       engine.root.prependAllNoEvents(List(
         DomAst(
+          ETrace("AUTH details",
+            s"User: ${stok.au.map(_.userName)}, roles: ${settings.user.map(_.roles)}, clients: ${settings.user.map(_.authClient)}, realm:${settings.user.map(_.authRealm)}, method: ${settings.user.map(_.authMethod)}"),
+          AstKinds.DEBUG)
+            .withStatus(DomState.SKIPPED),
+        DomAst(
           EInfo("HTTP Request details", printRequest(stok.req, str)),
           AstKinds.DEBUG)
             .withStatus(DomState.SKIPPED)
@@ -779,6 +784,11 @@ class DomApi extends DomApiBase with Logging {
 
         engine.root.prependAllNoEvents(
           List(DomAst(
+            ETrace("AUTH details",
+              s"User: ${stok.au.map(_.userName)}, roles: ${settings.user.map(_.roles)}, clients: ${settings.user.map(_.authClient)}, realm:${settings.user.map(_.authRealm)}, method: ${settings.user.map(_.authMethod)}"),
+            AstKinds.DEBUG)
+              .withStatus(DomState.SKIPPED),
+            DomAst(
             EInfo("HTTP Request details2",
               printRequest(request, body)), AstKinds.DEBUG)
               .withStatus(DomState.SKIPPED)
@@ -1132,6 +1142,11 @@ class DomApi extends DomApiBase with Logging {
 
         engine.root.prependAllNoEvents(
           List(
+            DomAst(
+              ETrace("AUTH details",
+                s"User: ${stok.au.map(_.userName)}, roles: ${settings.user.map(_.roles)}, clients: ${settings.user.map(_.authClient)}, realm:${settings.user.map(_.authRealm)}, method: ${settings.user.map(_.authMethod)}"),
+              AstKinds.DEBUG)
+                .withStatus(DomState.SKIPPED),
             DomAst(
               EInfo("HTTP Request details2",
                 printRequest(request, "xx")), AstKinds.DEBUG)
