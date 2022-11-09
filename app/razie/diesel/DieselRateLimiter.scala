@@ -114,7 +114,7 @@ object DieselRateLimiter extends razie.Logging {
 
       if (RATELIMIT && count > group.limit) {
         GlobalData.limitedRequests.incrementAndGet()
-        group.servingCount.decrementAndGet()
+        group.decServing()
         group.limitedCount.incrementAndGet()
 
         limited.apply(group.name, count)
@@ -131,14 +131,6 @@ object DieselRateLimiter extends razie.Logging {
     rateLimits.find(t => t._2.regex.exists(rh.path.matches)).map(_._2).orElse(globalGroup)
 //    if (isApiRequest(rh.path)) Some("api")
 //    else None
-  }
-
-  def start(rh: RequestHeader, group: String) = {
-    rateLimits.find(t => t._2.regex.exists(rh.path.matches)).map(_._1)
-  }
-
-  def served(rh: RequestHeader, group: String) = {
-    rateLimits.find(t => t._2.regex.exists(rh.path.matches)).map(_._1)
   }
 
   def toj = {
