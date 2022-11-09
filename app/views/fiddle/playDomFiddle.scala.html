@@ -227,7 +227,7 @@ Command reference (see more about [[specs.Topic:Expressions_and_pattern_matching
 
       <div id="specRow2" class="row" style="align-items:center;">
         <div class="col-sm-12 well" id="divOutSpec_@id" style="overflow: scroll; margin-bottom:2px"> </div>
-        <pre class="col-sm-12" id="iframeOutSpec_@id" style="padding:1px; Xtext-align: center; display: none">Start typing...</pre>
+@*        <pre class="col-sm-12" id="iframeOutSpec_@id" style="padding:1px; Xtext-align: center; display: none">XXStart typing...</pre>*@
       </div>
 
   </div> @* col2 *@
@@ -1063,7 +1063,7 @@ function fiddle_updateStoryMarkers(response) {
   }
 }
 
-function fiddle_showFinalEngineResult (id, compileOnly) {
+function fiddle_showFinalEngineResult (id, compileOnly, isPartial) {
   var response = currEngineData;
 
   if($("#iframeOutStory_" + id)) {
@@ -1079,10 +1079,10 @@ function fiddle_showFinalEngineResult (id, compileOnly) {
 
       if (ponly) {
         $('#iframeOutStory_' + id).text((response.payload) + '\n');
-        $('#iframeOutSpec_' + id).text((response.payload) + '\n');
+        // $('#iframeOutSpec_' + id).text((response.payload) + '\n');
       } else {
         $('#iframeOutStory_' + id).html(encAmp(response.res) + '\n');
-        $('#iframeOutSpec_' + id).html(encAmp(response.res) + '\n');
+        // $('#iframeOutSpec_' + id).html(encAmp(response.res) + '\n');
 
         dieselHideVerbose(localStorage.getItem("domFiddleVerboseStory") == "true");
         dieselHideTrace(localStorage.getItem("domFiddleTraceStory") == "true");
@@ -1116,9 +1116,9 @@ var resetView = function () {
 
   const specHeight = viewSt ? hHalf : hFull;
   $("#divOutSpec_@id").css("max-height", specHeight);
-  $("#iframeOutSpec_@id").css("max-height", specHeight);
+  @*$("#iframeOutSpec_@id").css("max-height", specHeight);*@
   $("#divOutSpec_@id").css("height", specHeight);
-  $("#iframeOutSpec_@id").css("height", specHeight);
+  @*$("#iframeOutSpec_@id").css("height", specHeight);*@
 
   if(isESP) {
 

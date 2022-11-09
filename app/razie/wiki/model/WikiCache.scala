@@ -41,7 +41,7 @@ object WikiCache {
     */
   def getEntry(id:String) : Option[WikiEntry] = {
     Cache.getAs[WikiEntry](id).map{x=>
-      cdebug << "WIKI_CACHE_FOUND FULL - "+id
+      ctrace << "WIKI_CACHE_FOUND FULL - "+id
       GlobalData.wikiCacheHits.incrementAndGet()
       x
     }.orElse {
@@ -53,7 +53,7 @@ object WikiCache {
 
   def getDb(id:String) : Option[DBObject] = {
     Cache.getAs[DBObject](id).map{x=>
-      cdebug << "WIKI_CACHE_FOUND DB   - "+id
+      ctrace << "WIKI_CACHE_FOUND DB   - "+id
       x
     }.orElse {
       clog << "WIKI_CACHE_MISS  DB   - "+id
@@ -63,7 +63,7 @@ object WikiCache {
 
   def getString(id:String) : Option[String] = {
     Cache.getAs[String](id).map{x=>
-      cdebug << "WIKI_CACHE_FOUND FRM  - "+id
+      ctrace << "WIKI_CACHE_FOUND FRM  - "+id
       x
     }.orElse {
       clog << "WIKI_CACHE_MISS  FRM  - "+id
