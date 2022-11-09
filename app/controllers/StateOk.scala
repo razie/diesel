@@ -19,6 +19,7 @@ class StateOk(val realm:String, val au: Option[model.User], val request: Option[
   var stuff : List[String] = List() // keep temp status for this request
   val bottomAd: Boolean = false
   var canonicalLink : Option[String] = None
+  var _showSocial = true
 
   var _requireJs : Boolean = true
   def requireJs(x : Boolean): Unit = { _requireJs = x;}
@@ -36,6 +37,7 @@ class StateOk(val realm:String, val au: Option[model.User], val request: Option[
   lazy val errCollector = new VErrors()
 
   def showBottomAd(yes: Boolean): Unit = {}
+  def showSocial(yes: Boolean): Unit = this._showSocial = yes
 
   def isLocalhost = request.exists(_.host.startsWith("localhost:"))
 
