@@ -175,19 +175,24 @@ class DomainController extends RazController with Logging {
   // ===================== CRUD =================
 
   /** helper to unpact arguments passed in */
-  private def unpack (cat:String, plugin:String="", conn:String="") (implicit stok:RazRequest) = {
+  private def unpack (cat:String, plugin:String="", conn:String="", checkCat:Boolean = true) (implicit stok:RazRequest) = {
     val dom = WikiDomain(stok.realm)
     val rdom = dom.rdom
     val oc = rdom.classes.get(cat)
 
-    if(oc.isEmpty) throw new DieselException(s"Category $cat not found!", Option(401))
+    if(oc.isEmpty) {
+      if(checkCat)
+        throw new DieselException(s"Category $cat not found!", Option(401))
+      else
+        (stok.realm, dom, rdom, null, oc, plugin, conn)
+    } else {
+      val c = rdom.classes(cat)
+      val iconn = if(conn == "") "default" else conn
+      // todo validate
+      val iplugin = if(plugin == "") DomInventories.getPluginForClass(stok.realm, c, iconn).map(_.name).mkString else plugin
 
-    val c = rdom.classes(cat)
-    val iconn = if(conn == "") "default" else conn
-    // todo validate
-    val iplugin = if(plugin == "") DomInventories.getPluginForClass(stok.realm, c, iconn).map(_.name).mkString else plugin
-
-    (stok.realm, dom, rdom, c, oc, iconn, iplugin)
+      (stok.realm, dom, rdom, c, oc, iconn, iplugin)
+    }
   }
 
 
@@ -245,10 +250,10 @@ class DomainController extends RazController with Logging {
         try {
           val (realm, dom, rdom, c, oc, iconn, iplugin) = unpack(cat, plugin, conn)
 
-          if ("json" == format) {
+          if ("json" == format && oc.isDefined) {
             retj << rdom.tojmap(c)
           } else {
-            catBrowser(plugin, conn, realm, cat, path, None).apply(
+            catBrowser(iplugin, iconn, realm, cat, path, None).apply(
               stok.ireq.asInstanceOf[Request[AnyContent]]).value.get.get
           }
         } catch {
@@ -261,9 +266,9 @@ class DomainController extends RazController with Logging {
 
   def domBrowseId  (cat:String, id:String, path:String="/", plugin:String="", conn:String="", format:String="", fieldsToShow:String="") = RAction.withAuth {
       implicit stok =>
-        val (realm, dom, rdom, c, oc, iconn, iplugin) = unpack (cat, plugin, conn)
+        val (realm, dom, rdom, c, oc, iconn, iplugin) = unpack (cat, plugin, conn, checkCat=false)
 
-        val dov = DomInventories.findByRef(SpecRef.make(realm, plugin, conn, cat, id))
+        val dov = DomInventories.findByRef(SpecRef.make(realm, iplugin, iconn, cat, id))
 
         val o = dov.flatMap(_.getValueO)
 
@@ -275,62 +280,69 @@ class DomainController extends RazController with Logging {
           }
         } else {
           if(o.isEmpty) stok.withError(s"Not found: $id")
-          catBrowser(plugin, conn, realm, cat, path, o).apply(
+          catBrowser(iplugin, iconn, realm, cat, path, o).apply(
             stok.ireq.asInstanceOf[Request[AnyContent]]).value.get.get
         }
     }
 
-  def domQuery  (cat:String, parm:String, value:String, path:String="/", plugin:String="", conn:String="", fullPage:Boolean=true, format:String="") = RAction.withAuth { implicit request =>
+  def domQuery  (cat:String, parm:String, value:String, path:String="/", plugin:String="", conn:String="", fullPage:Boolean=true, format:String="") = RAction.withAuth { implicit stok =>
     val v = if(value.startsWith("'")) value.substring(1, value.length-1)
 
-    val (realm, dom, rdom, c, oc, iconn, iplugin) = unpack (cat, plugin, conn)
+    try {
+      val (realm, dom, rdom, c, oc, iconn, iplugin) = unpack(cat, plugin, conn)
 
-    val ref = SpecRef.make(request.realm, plugin, conn, cat, "")
-    val res = DomInventories.findByQuery(ref, Left(cat + "/" + parm + "/" + v), 0, 100, Array.empty[String])
-    val list = res.data
+      val ref = SpecRef.make(stok.realm, iplugin, iconn, cat, "")
+      val res = DomInventories.findByQuery(ref, Left(cat + "/" + parm + "/" + v), 0, 100, Array.empty[String])
+      val list = res.data
 
-    val fieldsToShow = c.props.find(_.name == "pres.fieldsToShow").map(_.currentStringValue).getOrElse("").split(",")
+      val fieldsToShow = c.props.find(_.name == "pres.fieldsToShow").map(_.currentStringValue).getOrElse("").split(",")
 
-    if("json" == format) {
-      retj << Map (
-        "count" -> list.size,
-        "data" -> list.map {x=>
-          x.asP.value.get.asJson
-        }
-      )
-    } else {
-      if (list.size <= 1 && fullPage) {
-        // not fullpage means embedded search results - show list
-        val o = list.headOption.flatMap(_.getValueO)
-        catBrowser(plugin, conn, request.realm, cat, path, o, List("Nothing found !")).apply(
-          request.ireq.asInstanceOf[Request[AnyContent]]).value.get.get
-      } else {
-        if (fullPage) {
-          ROK.k reactorLayout12 {
-            views.html.wiki.wikiListAssets(
-              cat, "", cat, res, Nil, "./", "", request.realm, fieldsToShow
-            )
+      if ("json" == format) {
+        retj << Map(
+          "count" -> list.size,
+          "data" -> list.map { x =>
+            x.asP.value.get.asJson
           }
+        )
+      } else {
+        if (list.size <= 1 && fullPage) {
+          // not fullpage means embedded search results - show list
+          val o = list.headOption.flatMap(_.getValueO)
+          catBrowser(iplugin, iconn, stok.realm, cat, path, o, List("Nothing found !")).apply(
+            stok.ireq.asInstanceOf[Request[AnyContent]]).value.get.get
         } else {
-          ROK.k noLayout {
-            views.html.wiki.wikiListTableAssets(
-              "list diesel entities",
-              request.realm,
-              "",
-              res,
-              fieldsToShow
-            )
+          if (fullPage) {
+            ROK.k reactorLayout12 {
+              views.html.wiki.wikiListAssets(
+                cat, "", cat, res, Nil, "./", "", stok.realm, fieldsToShow
+              )
+            }
+          } else {
+            ROK.k noLayout {
+              views.html.wiki.wikiListTableAssets(
+                "list diesel entities",
+                stok.realm,
+                "",
+                res,
+                fieldsToShow
+              )
+            }
           }
         }
       }
-    }
+    } catch {
+    case t:Throwable =>
+      // it'll say "nothing known about"
+      catBrowser("", "", stok.realm, cat, path, None).apply(
+        stok.ireq.asInstanceOf[Request[AnyContent]]).value.get.get
   }
+}
 
   private def getrdom(wpath:String) = {
 
     val wid = WID.fromPath(wpath).get
     if(wid.cat == "Realm" || wid.cat == "Reactor") {
-      Some(WikiDomain(wid.name).rdom)
+      Option(WikiDomain(wid.name).rdom)
     } else {
       val page = wid.page
       page.flatMap(WikiDomain.domFrom).map(_.revise addRoot)
@@ -339,43 +351,52 @@ class DomainController extends RazController with Logging {
 
   /** list entities of cat from domain wpath */
   def domList   (cat:String, path:String="/", plugin:String="", conn:String="") = RAction.withAuth.noRobots { implicit stok =>
-    val (realm, dom, rdom, c, oc, iconn, iplugin) = unpack (cat, plugin, conn)
+      try {
+        val (realm, dom, rdom, c, oc, iconn, iplugin) = unpack(cat, plugin, conn)
 
 //    val left = rdom.assocs.filter(_.z == cat).map(_.a)
 //    val right = rdom.assocs.filter(_.a == cat).map(_.z)
 //    val path = if (ipath == "/") ipath + cat else ipath
 
-    if (dom.isWikiCategory(cat)) {
+        if (dom.isWikiCategory(cat)) {
 
-      val wl = Wikis(realm).pages(cat).toList
-      val tags = wl.flatMap(_.tags).filter(_ != Tags.ARCHIVE).filter(_ != "").groupBy(identity).map(
-        t => (t._1, t._2.size)).toSeq.sortBy(_._2).reverse
+          val wl = Wikis(realm).pages(cat).toList
+          val tags = wl.flatMap(_.tags).filter(_ != Tags.ARCHIVE).filter(_ != "").groupBy(identity).map(
+            t => (t._1, t._2.size)).toSeq.sortBy(_._2).reverse
 
-      ROK.k reactorLayout12 {
-        views.html.wiki.wikiList("list diesel entities", "", "", wl.map(x => (x.wid, x.label)), tags, "./", "", realm)
-      }
+          ROK.k reactorLayout12 {
+            views.html.wiki.wikiList("list diesel entities", "", "", wl.map(x => (x.wid, x.label)), tags, "./", "",
+              realm)
+          }
 
-    } else if(dom.findInventoriesForClass(c).isEmpty) {
+        } else if (dom.findInventoriesForClass(c).isEmpty) {
 
-      NotFound(s"Inventory/plugin for realm $realm cat $cat not found")
+          NotFound(s"Inventory/plugin for realm $realm cat $cat not found")
 
-    } else {
+        } else {
 
-      val p = dom.findInventoriesForClass(c).head
-      val ref = SpecRef.make(stok.realm, p.name, p.conn, cat, "")
-      val res = DomInventories.listAll(ref, start = 0, limit = 100, Array.empty[String])
+          val p = dom.findInventoriesForClass(c).head
+          val ref = SpecRef.make(stok.realm, p.name, p.conn, cat, "")
+          val res = DomInventories.listAll(ref, start = 0, limit = 100, Array.empty[String])
 
-      val fieldsToShow = c.props.find(_.name == "pres.fieldsToShow").map(_.currentStringValue).getOrElse("").split(",")
+          val fieldsToShow = c.props.find(_.name == "pres.fieldsToShow").map(_.currentStringValue).getOrElse("").split(
+            ",")
 
-      // todo find tags for assets
+          // todo find tags for assets
 //      val tags = wl.flatMap(_.tags).filter(_ != Tags.ARCHIVE).filter(_ != "").groupBy(identity).map(
 //        t => (t._1, t._2.size)).toSeq.sortBy(_._2).reverse
 
-      ROK.k.withErrors(res.errors) reactorLayout12 {
-        views.html.wiki.wikiListAssets(cat, "", cat, res,
-        Nil, "./", "", realm, fieldsToShow )
+          ROK.k.withErrors(res.errors) reactorLayout12 {
+            views.html.wiki.wikiListAssets(cat, "", cat, res,
+              Nil, "./", "", realm, fieldsToShow)
+          }
+        }
+      } catch {
+        case t:Throwable =>
+          // it'll say "nothing known about"
+          catBrowser("", "", stok.realm, cat, path, None).apply(
+            stok.ireq.asInstanceOf[Request[AnyContent]]).value.get.get
       }
-    }
   }
 
   /** recalculate the computed fields of an object, considering the other values */
