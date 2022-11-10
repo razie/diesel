@@ -246,7 +246,8 @@ abstract class DomEngine(
   // remove parameters so it becomes more invariable, like just message name or smth
   def collectGroup = {
     val x = settings.collectGroup.getOrElse(description.replaceFirst("\\(.*", ""))
-    if (x.length < 10) x + "-collectGroup-" + x else x
+    x
+//    if (x.length < 10) x + "-collectGroup-" + x else x
     // todo why the heck am i filling to 10? display?
     // it needs to end in useful info: the display shows tail on listAst
   }

@@ -250,7 +250,7 @@ class DomGuard extends DomApiBase with Logging {
 
     val filters = stok.query.get("filter").mkString
     val follow = stok.query.get("follow")
-    if(follow.isDefined) DomCollector.following = follow.mkString.split(",")
+    if(follow.isDefined) DomCollector.following = follow.mkString.split(",").filter(_.trim.length > 1)
 
     val r = if (stok.au.exists(_.isAdmin)) "all" else stok.realm
 

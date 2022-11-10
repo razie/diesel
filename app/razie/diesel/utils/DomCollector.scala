@@ -30,6 +30,7 @@ object DomCollector {
               desc.contains(DieselMsg.fiddleStoryUpdated) ||
                   desc.contains(DieselMsg.REALM.REALM_LOADED_MSG) ||
                   desc.endsWith(DieselMsg.ENGINE.DIESEL_PING) ||
+                  desc.endsWith("diesel/ping") ||
                   desc.contains("$msg " + DieselMsg.GPOLL)
               )
     }
@@ -42,7 +43,8 @@ object DomCollector {
           .getOrElse (
       engine.settings.collectCount.filter(_ != 0).getOrElse {
         val res = if (
-          desc.endsWith(DieselMsg.ENGINE.DIESEL_PING)
+          desc.endsWith("diesel/ping") ||
+              desc.endsWith(DieselMsg.ENGINE.DIESEL_PING)
         ) 3 else if (
           desc.contains(DieselMsg.fiddleStoryUpdated) ||
               desc.contains(DieselMsg.GPOLL)
@@ -67,7 +69,7 @@ object DomCollector {
   def findAst(id:String): Option[CollectedAst] = {
     var engine : Option[CollectedAst] = None
     DomCollector.withAsts(_.find(_.id == id).map { eng =>
-      engine = Some(eng)
+      engine = Option(eng)
     })
     engine
   }
@@ -80,7 +82,7 @@ object DomCollector {
     xid: String,
     userId: Option[String],
     eng: DomEngine,
-    details: String = "") = synchronized {
+    details: String = ""): Unit = synchronized {
 
     val collectGroup = eng.collectGroup
     val newOne = CollectedAst(stream, realm, xid, userId, eng, collectGroup, details)
