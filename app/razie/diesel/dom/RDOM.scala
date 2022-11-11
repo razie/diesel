@@ -11,6 +11,7 @@ import java.time.{LocalDateTime, ZoneId, ZoneOffset}
 import java.time.format.DateTimeFormatter
 import java.util.Date
 import org.json.{JSONArray, JSONObject}
+import razie.diesel.dom.RDOM.P.isArrayType
 import razie.diesel.engine.nodes.{CanHtml, HasPosition}
 import razie.diesel.engine.{DomEngine, EContent}
 import razie.diesel.expr._
@@ -770,7 +771,10 @@ object RDOM {
     private def typeHtml(s: WType) = {
       s.name.toLowerCase match {
         case "string" | "number" | "date" => s"<b>$s</b>"
-        case "array" if hasCurrentValue => WTypes.mkString(s, classLink) + value.map(v=> s"(${v.asArray.size})").mkString
+        case "array" if hasCurrentValue =>
+          WTypes.mkString(s, classLink) + value.map(v=>
+            if(isArrayType(v.cType)) s"(${v.asArray.size})" else "(?)"
+          ).mkString
         case _ => WTypes.mkString(s, classLink)
       }
     }
