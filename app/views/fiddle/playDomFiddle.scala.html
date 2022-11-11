@@ -122,7 +122,7 @@ Command reference (see more about [[specs.Topic:Expressions_and_pattern_matching
     <span id="wikiBox" class="label label-default" title="Show the wiki instead of the diesel trace" >
       <input type="checkbox" id="wikiMode" >
       <span onclick="toggleBox('wikiMode');" style="cursor:pointer" >Wiki</span></span>
-    <span onclick="startESP();" class="label label-primary" title="Spawn multi-screen mode" style="cursor:pointer">ESP <span class="glyphicon glyphicon-log-out"></span></span>
+    <span onclick="startESP();" class="label label-primary" title="Spawn multi-screen mode" style="cursor:pointer" id="startESP">ESP <span class="glyphicon glyphicon-log-out"></span></span>
 
     | <span id="realTimeBox" class="label label-default" >
     <input type="checkbox" id="realTime" checked>
@@ -371,7 +371,10 @@ function startESP() {
 
   window.open('/diesel/fiddle/startESP/@reactor/@id');
 
-  setTimeout(function(){
+  $("#startESP").removeClass();
+  $("#startESP").addClass("label label-danger");
+
+    setTimeout(function(){
     // populate/update the ESP screen
     runpill2_@{id}('@{id}', false);
   }, 500);
