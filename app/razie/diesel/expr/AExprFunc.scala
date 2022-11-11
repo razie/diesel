@@ -17,7 +17,7 @@ import razie.diesel.Diesel
 import razie.diesel.dom.RDOM.P
 import razie.diesel.dom._
 import razie.diesel.engine.exec.EEFunc
-import razie.diesel.engine.nodes.{EMap, EMock, EMsg, ERule, EVal}
+import razie.diesel.engine.nodes.{EInfo, EMap, EMock, EMsg, ERule, EVal, HasPosition}
 import razie.diesel.engine.{AstKinds, DieselAppContext, DomAst}
 import razie.wiki.{Enc, EncUrl}
 
@@ -293,12 +293,13 @@ case class AExprFunc(val expr: String, parms: List[RDOM.P]) extends Expr {
       }
 
       case "split" => {
+        val help = ": split(string, regex) argument order matters! "
           val av = firstParm.getOrElse {
-            throw new DieselExprException("Need three arguments.")
+            throw new DieselExprException(s"Need two arguments $help")
           }.calculatedValue
 
           val bv = secondParm.getOrElse {
-            throw new DieselExprException("Need three arguments.")
+            throw new DieselExprException(s"Need two arguments $help")
           }.calculatedValue
 
           P.fromTypedValue("", av.split(bv).toSeq, WTypes.wt.ARRAY)
@@ -463,6 +464,17 @@ case class AExprFunc(val expr: String, parms: List[RDOM.P]) extends Expr {
               engine.pages,
               "SYNC-"+expr
             )
+
+            // leave a marker
+            if (ctx.isInstanceOf[SimpleECtx])
+              ctx.asInstanceOf[SimpleECtx].curNode.foreach { n =>
+                ctx.root.engine.foreach(_.evAppChildren(n, DomAst(EInfo(
+                  s"""SYNC-engine ${newe.href} : ${msg.toString}""").withPos(
+                  if(n.value.isInstanceOf[HasPosition])
+                    n.value.asInstanceOf[HasPosition].pos
+                  else None
+                ))))
+              }
 
             val level =
               if (ctx.isInstanceOf[SimpleECtx])
