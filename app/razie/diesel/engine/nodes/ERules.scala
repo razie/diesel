@@ -474,10 +474,13 @@ case class EMock(rule: ERule) extends CanHtml with HasPosition {
 /** a typed variable
   *
   * @param p
+  * @param isFinal value vs vars
+  *                todo use isFinal
   */
 case class EVal(p: RDOM.P) extends CanHtml with HasPosition with HasKind {
   def this(name: String, value: String) = this(new P(name, value))
 
+  var isFinal:Boolean=false
   var pos: Option[EPos] = None
 
   def withPos(p: Option[EPos]) = {
