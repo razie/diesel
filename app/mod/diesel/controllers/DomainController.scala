@@ -295,7 +295,7 @@ class DomainController extends RazController with Logging {
       val res = DomInventories.findByQuery(ref, Left(cat + "/" + parm + "/" + v), 0, 100, Array.empty[String])
       val list = res.data
 
-      val fieldsToShow = c.props.find(_.name == "pres.fieldsToShow").map(_.currentStringValue).getOrElse("").split(",")
+      val fieldsToShow = c.props.find(_.name == "ui.fieldsToShow").map(_.currentStringValue).getOrElse("").split(",")
 
       if ("json" == format) {
         retj << Map(
@@ -379,7 +379,7 @@ class DomainController extends RazController with Logging {
           val ref = SpecRef.make(stok.realm, p.name, p.conn, cat, "")
           val res = DomInventories.listAll(ref, start = 0, limit = 100, Array.empty[String])
 
-          val fieldsToShow = c.props.find(_.name == "pres.fieldsToShow").map(_.currentStringValue).getOrElse("").split(
+          val fieldsToShow = c.props.find(_.name == "ui.fieldsToShow").map(_.currentStringValue).getOrElse("").split(
             ",")
 
           // todo find tags for assets
