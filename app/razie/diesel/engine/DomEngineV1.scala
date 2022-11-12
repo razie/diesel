@@ -1065,7 +1065,7 @@ class DomEngineV1(
             ast
         }
 
-        val newD = DomAst(new EInfo(s"Skipped ${skipped.size} nodes", ""), AstKinds.GENERATED)
+        val newD = DomAst(new EInfo(s"Skipped ${skipped.size} nodes due to 'diesel.flow.return' ", ""), AstKinds.GENERATED)
         evAppChildren(a, newD)
 
         true

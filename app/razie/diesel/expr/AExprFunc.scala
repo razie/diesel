@@ -19,6 +19,7 @@ import razie.diesel.dom._
 import razie.diesel.engine.exec.EEFunc
 import razie.diesel.engine.nodes.{EInfo, EMap, EMock, EMsg, ERule, EVal, HasPosition}
 import razie.diesel.engine.{AstKinds, DieselAppContext, DomAst}
+import razie.tconf.EPos
 import razie.wiki.{Enc, EncUrl}
 
 /** a "function-like" call:
@@ -451,6 +452,14 @@ case class AExprFunc(val expr: String, parms: List[RDOM.P]) extends Expr {
           _.funcs.get (expr)
         }
 
+        // todo this is pos of parent - be more precise, get pos of expr
+        val pos: Option[EPos] =
+          ctx.asInstanceOf[SimpleECtx].curNode.flatMap { n =>
+            if (n.value.isInstanceOf[HasPosition])
+              n.value.asInstanceOf[HasPosition].pos
+            else None
+          } orElse (None)
+
         val msg = EMsg(ee, aa, EMap.sourceAttrs(parent, parms, spec.map(_.get.attrs)))
         val ast = DomAst(msg, AstKinds.RECEIVED)
 
@@ -469,11 +478,8 @@ case class AExprFunc(val expr: String, parms: List[RDOM.P]) extends Expr {
             if (ctx.isInstanceOf[SimpleECtx])
               ctx.asInstanceOf[SimpleECtx].curNode.foreach { n =>
                 ctx.root.engine.foreach(_.evAppChildren(n, DomAst(EInfo(
-                  s"""SYNC-engine ${newe.href} : ${msg.toString}""").withPos(
-                  if(n.value.isInstanceOf[HasPosition])
-                    n.value.asInstanceOf[HasPosition].pos
-                  else None
-                ))))
+                  s"""SYNC-engine ${newe.href} : ${msg.toString}""").withPos(pos)
+                )))
               }
 
             val level =

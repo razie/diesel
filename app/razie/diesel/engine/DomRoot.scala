@@ -222,7 +222,6 @@ trait DomRoot {
           // RAZ2 OLD - remove this
           // setting in current context too
 
-          val calcp2 = new P(pas.left.start, "").copy(expr = Some(pas.right)).calculatedP
           // payload must go to first scope, regardless of enclosing rule scopes
           ctx.allToScope.foreach(_.remove(Diesel.PAYLOAD))
 
