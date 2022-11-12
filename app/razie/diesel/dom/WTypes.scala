@@ -132,9 +132,8 @@ object WTypes {
   }
 
   val PRIMARY_TYPES = Array(
-    NUMBER , STRING , DATE , REGEX , INT , FLOAT , BOOLEAN , RANGE
-//  case XML => Mime.appXml
-//  case HTML => Mime.textHtml
+    NUMBER , STRING , DATE , REGEX , INT , FLOAT , BOOLEAN , RANGE, ARRAY, HTML, SOURCE, BYTES, EXCEPTION,
+    ERROR, MSG, FUNC, CLASS
   )
 
   /** get corresponding mime content-type */
