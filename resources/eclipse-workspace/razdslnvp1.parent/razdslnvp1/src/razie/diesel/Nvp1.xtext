@@ -1,0 +1,223 @@
+grammar razie.diesel.Nvp1 /*with org.eclipse.xtext.common.Terminals*/ hidden (WS,COMMENT)
+import "http://www.eclipse.org/emf/2002/Ecore" as ecore
+
+generate nvp1 "http://www.diesel.razie/Nvp1"
+
+DomainModel:
+    elements+=AbstractElement*;
+
+
+AbstractElement:
+    Expect | Msg | Match | When | Receive | Flow | Option | Val | Mock | Topic | Braq | TEXT;
+
+
+//-------------------- raz
+
+Receive:
+    '$send' ('<' stype=MsgStereo '>')? name=QualifiedName attrs=AttrSpecs? NEWLINE
+;
+
+
+Msg:
+    '$msg' ('<' stype=MsgStereo '>')? name=QualifiedName attrs=AttrSpecs? NEWLINE
+;
+
+
+When:
+	'$when' a=ID aa=Attrs? cond=Condition? ARROW z=ID za=AttrSpecs?  NEWLINE
+	( FARROW z=ID za=AttrSpecs? NEWLINE )*
+;
+
+
+Match:
+	'$match' a=ID aa=Attrs? cond=Condition?  NEWLINE
+;
+
+
+Mock:
+	'$mock' a=ID aa=Attrs? cond=Condition? ARROW za=AttrSpecs? NEWLINE
+	( FARROW za=AttrSpecs? NEWLINE )* 
+;
+
+
+Flow:
+	'$flow' a=ID aa=Attrs? cond=Condition? ARROW expr=FlowExprA  NEWLINE
+;
+
+
+Expect:
+    ExpectM | ExpectV
+;
+
+
+Condition:
+    '$if' attrs=AttrChecks
+;
+
+
+ExpectM:
+    '$expect' (name=QualifiedName attrs=AttrChecks?) (cond=Condition)?NEWLINE
+;
+
+
+ExpectV:
+    '$expect' p=AttrChecks (cond=Condition)?NEWLINE
+;
+
+
+
+
+Val:
+    '$val' p=AttrSpec NEWLINE
+;
+
+
+
+
+Option:
+    '$opt' attr=AttrSpec NEWLINE
+;
+
+
+
+
+AttrChecks:
+   '(' (attrs+=AttrCheck (',' attrs+=AttrCheck)*)? ')'
+;
+
+
+
+
+AttrCheck:
+  name=QualifiedName (':' ttype=DataType)? (check=CheckExpr)?
+;
+
+
+
+
+CheckExpr:
+  (op=('=' | '!=' | '<' | '<=' | '>' | '>=' | '~=') eexpr=EXPR) 
+  | ('is'  'number')
+  | ('is'  'defined')
+  | ('is'  'empty')
+  | ('not' 'defined')
+  | ('not' 'empty')
+  | ('is'  eexpr=EXPR)
+  | ('contains' eexpr=EXPR)
+;
+
+
+
+AttrSpecs:
+   '(' (attrs+=AttrSpec (',' attrs+=AttrSpec)*)? ')'
+;
+
+
+
+
+AttrSpec:
+  name=QualifiedName (':' ttype=DataType)? ('=' eexpr=EXPR)?;
+
+
+
+
+Attr:
+  name=ID (':' ttype=DataType)? ('=' eexpr=EXPR)?;
+
+
+
+
+EXPR:
+  parm=QualifiedName | svalue=STRING | ivalue=INT;
+
+
+
+//  parm=[Attr|QualifiedName] | svalue=STRING | ivalue=INT;
+  
+Attrs:
+    '(' (attrs+=Attr (',' attrs+=Attr)*)? ')'
+;
+
+
+
+
+Topic:
+    '[[' name=QualifiedName (':' t=QualifiedName)? ']]'
+;
+
+
+
+
+Braq:
+    '}'
+;
+
+
+
+
+FlowExprA:
+  a=FlowExprP ( '+' b+=FlowExprP)*
+;
+
+
+FlowExprP:
+  a=FlowExprT ('|' b+=FlowExprT)*
+;
+
+
+FlowExprT:
+  m=ID | '(' FlowExprA ')'
+;
+
+
+
+//TypeRef:
+//    referenced=[Type|QualifiedName] multi?='*'?;
+
+QualifiedNameWithWildCard:
+    QualifiedName '.*'?;
+
+
+QualifiedName:
+    ID ('.' ID)*;
+
+
+DataType:
+	string='String' | int='Int' | date='Date' | number='Number' | array='Array' | json = 'JSON' | ttype=QualifiedName ;
+
+
+MsgStereo:
+	gET='GET' | pOST='POST' | camel='Camel' | jS='JS' | java='Java';
+
+
+
+terminal ID : ('a'..'z' | 'A'..'Z' | '_') ('a'..'z' | 'A'..'Z' | '_' | '0'..'9')* ;
+
+terminal STRING : 
+	('"' 
+		('\\' 
+			('b'|'t'|'n'|'f'|'r'|'u'|'"'|'\''|'\\') 
+			| -> (('\\'|'"'))
+		)* '"' 
+	| '\'' 
+		('\\' 
+			('b'|'t'|'n'|'f'|'r'|'u'|'"'|'\''|'\\')
+			| -> (('\\'|'\''))
+		)* '\''
+	);
+
+terminal COMMENT : '/*' .* '*/' | '//' -> ('\r' | '\n')*  ;
+
+terminal WS:  ' '|'\r'|'\t'|'\u000C'|'\n' ;
+
+//NUMBER: INT ('.' INT)?;
+
+terminal INT: ('0'..'9')+;
+
+terminal NEWLINE : ('\r' | '\n')+  ;
+
+terminal ARROW : '=>' | '==>' ;
+
+terminal FARROW : '=>' | '==>' | '-' | '->';
+
+terminal TEXT : .+ ;
