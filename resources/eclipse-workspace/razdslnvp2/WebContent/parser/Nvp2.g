@@ -20,8 +20,9 @@ rule_Nvp2:
     elements+=rule_AbstractElement* EOF!;
 
 rule_AbstractElement:
-    rule_Expect | rule_Msg | rule_Match | rule_When | rule_Receive | 
-    rule_Flow | rule_Option | rule_Val | rule_Mock | rule_Topic | 
+    rule_Expect | rule_Msg | rule_Match | rule_When | rule_When2 | rule_Gen |
+    rule_Receive | 
+    rule_Flow | rule_Option | rule_Val | rule_Var | rule_Mock | rule_Topic | 
     rule_Anno |  rule_Object | rule_Class | rule_Assoc | rule_Def |
     rule_Assert |
     rule_Braq | TEXT;
@@ -30,16 +31,54 @@ rule_AbstractElement:
 //-------------------- Rules
 
 rule_Receive:
-    '$send' ('<' stype=rule_MsgStereo '>')? name=rule_QualifiedName attrs=rule_AttrSpecs? NEWLINE
+    '$send' ('<' stype=rule_MsgStereo '>')? name=rule_MsgName attrs=rule_AttrSpecs? NEWLINE
 ;
 
 rule_Msg:
-    '$msg' ('<' stype=rule_MsgStereo '>')? name=rule_QualifiedName attrs=rule_AttrSpecs? NEWLINE
+    '$msg' ('<' stype=rule_MsgStereo '>')? name=rule_MsgName attrs=rule_AttrSpecs? NEWLINE
+;
+
+rule_Gen:
+	rule_GenMsg | rule_GenPas | rule_If2 | rule_Else2 | rule_If | rule_Else
+;
+	
+rule_GenMsg:
+    ARROW ('<' stype=rule_MsgStereo '>')? name=rule_MsgName attrs=rule_AttrSpecs? NEWLINE
+;
+
+rule_GenPas:
+    attrs=rule_AttrSpecs NEWLINE
+;
+
+rule_If:
+    '$if' cond=rule_AttrChecks name=rule_MsgName attrs=rule_AttrSpecs? NEWLINE
+;
+
+rule_Else:
+    '$else' name=rule_MsgName attrs=rule_AttrSpecs? NEWLINE
+;
+
+rule_If2:
+    '$if' '{' NEWLINE
+	rule_Gen*
+    '}'
+;
+
+rule_Else2:
+    '$else' '{' NEWLINE
+	rule_Gen*
+    '}'
 ;
 
 rule_When:
-	'$when' a=ID aa=rule_Attrs? cond=rule_Condition? ARROW z=ID za=rule_AttrSpecs?  NEWLINE
-	( ARROW z=ID za=rule_AttrSpecs? NEWLINE )*
+	'$when' a=rule_MsgName aa=rule_Attrs? cond=rule_Condition? (ARROW z=rule_MsgName za=rule_AttrSpecs)?  NEWLINE
+	rule_Gen*
+;
+
+rule_When2:
+	'$when' a=rule_MsgName aa=rule_Attrs? cond=rule_Condition? '{' NEWLINE
+	rule_Gen*
+	'}'
 ;
 
 rule_Match:
@@ -60,7 +99,8 @@ rule_Expect:
 ;
 
 rule_Condition:
-    '$if' attrs=rule_AttrChecks
+    '$if' attrs=rule_AttrChecks |
+    '$else' attrs=rule_AttrChecks
 ;
 
 rule_ExpectM:
@@ -73,6 +113,10 @@ rule_ExpectV:
 
 rule_Val:
     '$val' p=rule_AttrSpec NEWLINE
+;
+
+rule_Var:
+    '$var' p=rule_AttrSpec NEWLINE
 ;
 
 rule_Option:
@@ -115,15 +159,10 @@ rule_Assert:
     '$assert' name=rule_QualifiedName attrs=rule_AttrChecks? NEWLINE
 ;
 
-rule_XXWhen:
-	'$xwhen' a=ID aa=rule_Attrs? cond=rule_Condition? ARROW z=ID za=rule_AttrSpecs?  NEWLINE
-	( ARROW z=ID za=rule_AttrSpecs? NEWLINE )*
-;
-
 //============== misc
 
 rule_AttrChecks:
-   '(' (attrs+=rule_AttrCheck (',' attrs+=rule_AttrCheck)*)? ')'
+   '(' ( attrs += rule_AttrCheck (',' attrs += rule_AttrCheck )* )? ')'
 ;
 
 rule_AttrCheck:
@@ -144,7 +183,7 @@ rule_AttrSpecs:
 ;
 
 rule_AttrSpec:
-  name=rule_QualifiedName (':' ttype=rule_DataType)? ('=' eexpr=rule_EXPR)?;
+  name = ('@' ttype=rule_AttrAnno)* rule_QualifiedName (':' ttype=rule_DataType)? ('=' eexpr=rule_EXPR)?;
 
 rule_Attr:
   name=ID (':' ttype=rule_DataType)? ('=' eexpr=rule_EXPR)?;
@@ -188,11 +227,18 @@ rule_QualifiedNameWithWildCard:
 rule_QualifiedName:
     ID ('.' ID)*;
 
+rule_AttrAnno:
+	key='key' | excache='excache';
+
 rule_DataType:
 	string='String' | int='Int' | date='Date' | number='Number';
 
 rule_CommaList:
     rule_QualifiedName (',' rule_QualifiedName)*;
+
+rule_MsgName:
+    rule_QualifiedName
+;
 
 rule_MsgStereo:
     rule_MsgStereoElem (',' rule_MsgStereoElem)*;
@@ -201,11 +247,15 @@ rule_MsgStereoElem:
 	gET='GET' | pOST='POST' | camel='Camel' | jS='JS' | java='Java'|
 	pUblic='public' | pRivate='private' | rule_QualifiedName ;
 
-ID : ('a'..'z' | 'A'..'Z' | '_') ('a'..'z' | 'A'..'Z' | '_' | '0'..'9')* ;
+SIMPLE_ARROW: ( '=>' | '==>' | '<=>' ) ;
 
-STRING : ('"' ('\\' ('b'|'t'|'n'|'f'|'r'|'u'|'"'|'\''|'\\')|~(('\\'|'"')))* '"'|'\'' ('\\' ('b'|'t'|'n'|'f'|'r'|'u'|'"'|'\''|'\\')|~(('\\'|'\'')))* '\'');
+ARROW: ( '|'* SIMPLE_ARROW) ;
 
-COMMENT : ('/*' .* '*/' | '//' ~('\r' | '\n')*)   { $channel = HIDDEN; } ;
+ID: ('a'..'z' | 'A'..'Z' | '_') ('a'..'z' | 'A'..'Z' | '_' | '0'..'9')* ;
+
+STRING: ('"' ('\\' ('b'|'t'|'n'|'f'|'r'|'u'|'"'|'\''|'\\')|~(('\\'|'"')))* '"'|'\'' ('\\' ('b'|'t'|'n'|'f'|'r'|'u'|'"'|'\''|'\\')|~(('\\'|'\'')))* '\'');
+
+COMMENT: ('/*' .* '*/' | '//' ~('\r' | '\n')*)   { $channel = HIDDEN; } ;
 
 WS:  (' '|'\r'|'\t'|'\u000C'|'\n') {$channel=HIDDEN;} ;
 
