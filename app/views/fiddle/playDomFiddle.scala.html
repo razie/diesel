@@ -29,6 +29,8 @@ a JS with HTML and CSS fiddle
 
 @css() = @{ stok.css }
 
+@bkg() = @{if(stok.css.contains("light")) "white" else "black"; }
+
 @if(css.contains("light")) {
 
   <style>
@@ -162,7 +164,7 @@ Command reference (see more about [[specs.Topic:Expressions_and_pattern_matching
 
     <div id="storyRow1" class="row" style="align-items:center;">
       <div id="divInStory_@id" class="col-sm-12" style="">
-        <pre id="preStory_@id" style="height:228px; ">@story</pre>
+        <pre id="preStory_@id" style="height:228px; background-color: @bkg">@story</pre>
       </div>
     </div>
 
@@ -183,7 +185,7 @@ Command reference (see more about [[specs.Topic:Expressions_and_pattern_matching
 
     <div id="specRow1" class="row" style="align-items:center;">
       <div id="divInSpec_@id" class="col-sm-12" style="">
-        <pre id="preSpec_@id" style="height:228px; ">@spec</pre>
+        <pre id="preSpec_@id" style="height:228px; background-color: @bkg">@spec</pre>
       </div>
       </div>
 
@@ -244,7 +246,7 @@ Command reference (see more about [[specs.Topic:Expressions_and_pattern_matching
 </div>
 <div class="row" style="align-items:center;">
   <div id="divIn5_@id" class="col-sm-6" style="">
-    <pre id="pre5_@id" style="height:228px; ">@capture</pre>
+    <pre id="pre5_@id" style="height:228px; ; background-color: @bkg">@capture</pre>
   </div>
   @*<div class="col-sm-6 well" id="pre6_@id" style="overflow: scroll; margin-bottom:2px">*@
   @*</div>*@
@@ -666,6 +668,8 @@ function attachAce() {
 }
   specEditor.getSession().setMode("ace/mode/nvp2");
   storyEditor.getSession().setMode("ace/mode/nvp2");
+
+  @*$("#preStory_@id").show():*@
 
   editor5 = ace.edit("pre5_@id");
   @if(stok.isLight) {

@@ -520,7 +520,7 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
           engine.root.toHtml
         }.recover {
           case t => s"ERROR: Please report Exception trying to make root to html: ${Log.exceptionToString(t)}"
-        }
+        }.getOrElse("?")
 
         // todo save engine ea on creation and use to extractfinalvalue
         val payload = Try {
