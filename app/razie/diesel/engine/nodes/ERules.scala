@@ -228,7 +228,7 @@ case class EMatch(cls: String, met: String, attrs: MatchAttrs, cond: Option[EIf]
   /** test that the attrs and cond match */
   def testAttrCond(ast: DomAst, e: EMsg, cole: Option[MatchCollector] = None, fallback: Boolean = false)(implicit
                                                                                                          ctx: ECtx) = {
-    cole.map(_.plus(e.met))
+    cole.foreach(_.plus(e.met))
     val testedok = testMatchAttrs(e.attrs, attrs, cole)
     val condok = if (testedok) true else cond.fold(true)(_.test(ast: DomAst, e.attrs, cole)) // respect bool shortcut
     fallback || {
