@@ -1096,7 +1096,7 @@ class DomApi extends DomApiBase with Logging {
                 engine.root.appendAllNoEvents(
                   List(
                     DomAst(
-                      EInfo("Engine timedout!", s"DomApi:Workflow took too long ($dur)"), AstKinds.DEBUG)
+                      EInfo(s"Engine timedout at ${dur} !", s"DomApi:Workflow took too long ($dur)"), AstKinds.DEBUG)
                         .withStatus(DomState.SKIPPED)
                   )
                 )

@@ -6,7 +6,7 @@
 package razie.diesel.engine
 
 import org.bson.types.ObjectId
-import razie.diesel.engine.nodes.{CanHtml, EDuration, EError, EInfo, EMsg, ETrace, EVal}
+import razie.diesel.engine.nodes.{CanHtml, EDuration, EError, EInfo, EMsg, ETrace, EVal, HasPosition}
 import razie.diesel.expr.ECtx
 import scala.collection.mutable.ListBuffer
 
@@ -227,7 +227,7 @@ case class DomAst(
   def collect[T](f: PartialFunction[DomAst, T]): List[T] = {
     val res = new ListBuffer[T]()
 
-    def inspect(d: DomAst, level: Int) {
+    def inspect(d: DomAst, level: Int): Unit = {
       if (f.isDefinedAt(d)) res append f(d)
       d.children.foreach(inspect(_, level + 1))
     }
@@ -240,7 +240,7 @@ case class DomAst(
   def collect2[T](f: PartialFunction[(DomAst, Int), T]): List[T] = {
     val res = new ListBuffer[T]()
 
-    def inspect(d: DomAst, level: Int) {
+    def inspect(d: DomAst, level: Int): Unit = {
       if (f.isDefinedAt((d, level))) res append f((d, level))
       d.children.foreach(inspect(_, level + 1))
     }
@@ -250,6 +250,9 @@ case class DomAst(
   }
 
   //================= view
+
+  /** brief one line desc for logging */
+  def description = meTos(level=0, html=false)
 
   /** non-recursive tostring */
   def meTos(level: Int, html: Boolean): String = {
@@ -370,17 +373,23 @@ case class DomAst(
       )
   }
 
+  /** GUI needs position info for surfing */
+  def pos = value match {
+    case d@DomAst(m:HasPosition, _, _, _) => m.pos
+    case _ => None
+  }
+
   /** find in subtree, by id */
   def find(id:String) : Option[DomAst] =
     if(this.id == id)
-      Some(this)
+      Option(this)
     else
       children.foldLeft(None: Option[DomAst])((a, b) => a orElse b.find(id))
 
   /** find in subtree, by predicate */
   def find(pred: DomAst => Boolean): Option[DomAst] =
     if (pred(this))
-      Some(this)
+      Option(this)
     else
       children.foldLeft(None: Option[DomAst])((a, b) => a orElse b.find(pred))
 

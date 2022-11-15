@@ -637,7 +637,7 @@ abstract class DomEngine(
     * @param recurse recurse or not
     * @param level   - current level, root is 0
     */
-  protected def req(a: DomAst, recurse: Boolean = true, level: Int) {
+  protected def req(a: DomAst, recurse: Boolean = true, level: Int): Unit = {
     var msgs: List[DEMsg] = Nil
 
     if(!DomState.isDone(a.status)) { // may have been skipped by others
@@ -650,7 +650,7 @@ abstract class DomEngine(
       }.recover {
 
         case t if t.isInstanceOf[javax.script.ScriptException] || t.isInstanceOf[DieselExprException] => {
-          info("Exception wile decompose() " + t.getMessage)
+          info(s"Exception wile decompose() pos [${a.pos}] node: ${a.description}" + t.getMessage)
           val err = DEError(this.id, t.toString)
           val ast = DomAst(
             new EError("Exception: " + t.getMessage, t)
@@ -661,7 +661,7 @@ abstract class DomEngine(
         }
 
         case t: Throwable => {
-          razie.Log.log("Exception wile decompose()", t)
+          razie.Log.log(s"Exception wile decompose() pos [${a.pos}] node: ${a.description}", t)
           val err = DEError(this.id, t.toString)
           val ast = DomAst(new EError("Exception " + t.getMessage, t)).withStatus(DomState.DONE)
 
