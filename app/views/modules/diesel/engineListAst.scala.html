@@ -1,7 +1,7 @@
 @**
 view the list of engines - the html was prepared separately and come
 **@
-@(title:String, title2:String, content:String, following:String)(implicit stok: controllers.StateOk)
+@(title:String, title2:String, content:String, following:String, filters:String)(implicit stok: controllers.StateOk)
 
 <script src="@routes.Assets.at("javascripts/weCommons.js")"></script>
 <script src="@routes.Assets.at("javascripts/weDieselDom.js")"></script>
@@ -24,12 +24,12 @@ view the list of engines - the html was prepared separately and come
   <small>
   <span class="pull-left">Follow:<sup><span title="Flowing contains this term (comma separated) will be given priority.\nThis filter is shared across all users!!" class="glyphicon glyphicon-question-sign"></span></sup>
       &nbsp;</span>
-    <input type="text" id="follow" name="follow" value="" class="col-sm-12 col-md-6 col-lg-4" style="line-height: 50%; background-color: lightgray"/>
+    <input type="text" id="follow" name="follow" value="@following" class="col-sm-12 col-md-6 col-lg-4" style="line-height: 50%; background-color: lightgray"/>
 </small>
 <small>
 <span class="pull-left">&nbsp;&nbsp;Filter:<sup><span title="Filter by pattern.\nThis filter is local to you!!" class="glyphicon glyphicon-question-sign"></span></sup>
   &nbsp;</span>
-  <input type="text" id="filter" name="filter" value="" class="col-sm-12 col-md-6 col-lg-4" style="line-height: 50%; color:red; background-color: lightgray"/>
+  <input type="text" id="filter" name="filter" value="@filters" class="col-sm-12 col-md-6 col-lg-4" style="line-height: 50%; color:red; background-color: lightgray"/>
 </small>
 </form>
 
@@ -69,23 +69,6 @@ withJquery(function ($) {
     useLocalStorageCheckbox("refreshMode", "domListAstRefreshMode", function (a, b, expanded) {
       refreshMode = expanded;
     });
-
-    var params = (new URL(document.location)).searchParams;
-    var fo = params.get("follow");
-    var fi = params.get("filter") || "";
-
-    if("@following".length > 0 && (fo == null || typeof fo === 'undefined')) {
-      // came from server only, copy to url and refresh
-      $("#follow").val("@following");
-      window.location.search = "?follow=" + encodeURIComponent(fo) + "&filter=" + encodeURIComponent(fi);
-    } else {
-      //
-      if(fo != null) $("#follow").val(fo);
-    }
-
-    if(fi != null && fi.length > 0) {
-      $("#filter").val(fi);
-    }
   });
 });
 

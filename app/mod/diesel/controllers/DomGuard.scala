@@ -249,8 +249,8 @@ class DomGuard extends DomApiBase with Logging {
     }
 
     val filters = stok.query.get("filter").mkString
-    val follow = stok.query.get("follow")
-    if(follow.isDefined) DomCollector.following = follow.mkString.split(",").filter(_.trim.length > 1)
+    val follow = stok.query.get("follow").mkString
+    if(follow.trim.nonEmpty) DomCollector.following = follow.split(",").map(_.trim).filter(_.length > 1)
 
     val r = if (stok.au.exists(_.isAdmin)) "all" else stok.realm
 
@@ -353,7 +353,7 @@ class DomGuard extends DomApiBase with Logging {
         s"""Flow history realm: $r showing ${list.size} of $total since start and user $un""".stripMargin
       val title2 =
         s"""Stats: <a href="$w/DieselEngine">Flows</a>: ${GlobalData.dieselEnginesActive} active (${DieselAppContext.activeEngines.size} - ${
-          DieselAppContext.activeEngines.values.filter(_.status != DomState.DONE).size
+          DieselAppContext.activeEngines.values.count(_.status != DomState.DONE)
         }) /
            | Streams: ${GlobalData.dieselStreamsActive} active of ${GlobalData.dieselStreamsTotal} since start /
            | Actors: ${DieselAppContext.activeActors.size} active /
@@ -361,7 +361,8 @@ class DomGuard extends DomApiBase with Logging {
             .stripMargin
 
       ROK.k reactorLayout12FullPage {
-        views.html.modules.diesel.engineListAst(title, title2, table, DomCollector.following.mkString)
+        // send the real following so it doesn't get removed because someone clicked on view list
+        views.html.modules.diesel.engineListAst(title, title2, table, DomCollector.following.mkString, filters)
       }
    }
 
@@ -400,7 +401,7 @@ class DomGuard extends DomApiBase with Logging {
       xid,
       settings,
       reactor,
-      Some(root), true, stok.au, "DomApi.postAst")
+      Option(root), justTests = true, stok.au, "DomApi.postAst")
     DomCollector.collectAst(stream, reactor, xid, stok.au.map(_.id), engine)
 
     // decompose test nodes and wait
