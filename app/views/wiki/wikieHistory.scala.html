@@ -24,7 +24,7 @@ debug a wiki page
          <tr>
            <td> <a href="/wikie/ver/@p.entry.ver/@page.get.wid.wpath">@p.entry.ver</a> </td>
            <td> <a href="/wikie/content/ver/@p.entry.ver/@page.get.wid.wpath">@p.entry.ver</a> </td>
-           <td> @p.crDtm.mkString</td>
+           <td> @p.crDtm.map(_.toLocalDateTime).mkString</td>
            <td> @Users.findUserById(p.entry.by).map(_.ename).getOrElse(p.entry.by.toString) </td>
            <td> @p.reason.mkString</td>
          </tr>

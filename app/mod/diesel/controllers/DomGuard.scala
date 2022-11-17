@@ -238,19 +238,19 @@ class DomGuard extends DomApiBase with Logging {
 
   // list the collected ASTS
   def dieselListAst = FAUR { implicit stok =>
+    val filters = stok.query.get("filter").mkString
+    val follow = stok.query.get("follow").mkString
+    if(follow.trim.nonEmpty) DomCollector.following = follow.split(",").map(_.trim).filter(_.length > 1)
+
     val un = stok.userName + {
       if (stok.au.exists(_.isMod))
-        """ mod - sees all realms
-          | (<a href = "/diesel/cleanAst" > clean all </a>)""".stripMargin
+        s""" mod - sees all realms
+          | (<a href = "/diesel/cleanAst?follow=$follow&filter=$filters" > clean all </a>)""".stripMargin
       else {
         if (stok.au.exists(_.isMod)) " mod - sees all users "
         else " - regular user "
       }
     }
-
-    val filters = stok.query.get("filter").mkString
-    val follow = stok.query.get("follow").mkString
-    if(follow.trim.nonEmpty) DomCollector.following = follow.split(",").map(_.trim).filter(_.length > 1)
 
     val r = if (stok.au.exists(_.isAdmin)) "all" else stok.realm
 
@@ -367,9 +367,12 @@ class DomGuard extends DomApiBase with Logging {
    }
 
   def dieselCleanAst = FAUR { implicit stok =>
+    val filters = stok.query.get("filter").mkString
+    val follow = stok.query.get("follow").mkString
+
     if (stok.au.exists(_.isAdmin)) {
       DomCollector.cleanAst
-      Redirect(s"""/diesel/listAst""")
+      Redirect(s"""/diesel/listAst?follow=$follow&filter=$filters""")
     } else
       Unauthorized("no permission, hacker eh?")
   }
