@@ -111,18 +111,19 @@ class DomGuard extends DomApiBase with Logging {
 
           case _ => {
             ROK.k reactorLayout12 {
-              views.html.modules.diesel.engineView(Some(eng))
+              views.html.modules.diesel.engineView(Option(eng))
             }
           }
         }
       } orElse {
           DieselAppContext.activeEngines.get(id).map ( e =>
             ROK.k reactorLayout12 {
-              views.html.modules.diesel.engineView(Some(e))
+              views.html.modules.diesel.engineView(Option(e))
             }
           )
       } getOrElse (
-        NotFound("""Engine trace not found - We only store a limited amount of traces... <a href="/diesel/listAst">see all</a>""")
+          dieselListAst("Trace not found - we only store a limited amount of traces").apply(stok.req).value.get.get
+//        NotFound("""Engine trace not found - We only store a limited amount of traces... <a href="/diesel/listAst">see all</a>""").as("text/html")
       )
     }
   }
@@ -226,7 +227,9 @@ class DomGuard extends DomApiBase with Logging {
           }
         )
     ).orElse(
-      Some(NotFound("""Engine trace not found - We only store a limited amount of traces... <a href="/diesel/listAst">see all</a>"""))
+      Option(dieselListAst("Trace not found - we only store a limited amount of traces").apply(stok.req).value.get.get)
+//          Option(NotFound(
+//        """Engine trace not found - We only store a limited amount of traces... <a href="/diesel/listAst">see all</a>"""))
     )
   }
 
@@ -236,8 +239,12 @@ class DomGuard extends DomApiBase with Logging {
     }.getOrElse("???")
   }
 
-  // list the collected ASTS
-  def dieselListAst = FAUR { implicit stok =>
+  /** list the collected ASTS
+    *
+    * @param errMessages when reusing, pass something
+    * @return
+    */
+  def dieselListAst (errMessage:String = "") = FAUR { implicit stok =>
     val un = stok.userName + {
       if (stok.au.exists(_.isMod))
         """ mod - sees all realms
@@ -247,6 +254,8 @@ class DomGuard extends DomApiBase with Logging {
         else " - regular user "
       }
     }
+
+    if(errMessage != "") stok.withErrors(List(errMessage))
 
     val filters = stok.query.get("filter").mkString
     val follow = stok.query.get("follow")

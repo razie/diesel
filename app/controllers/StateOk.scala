@@ -29,8 +29,14 @@ class StateOk(val realm:String, val au: Option[model.User], val request: Option[
     msg = msg ++ Seq("err" -> x.toString)
     this
   }
+
   def withErrors (x:List[Any]) = {
     msg = msg ++ x.map(x => ("err" -> x.toString)).toSeq
+    this
+  }
+
+  def withMessages (x:List[Any]) = {
+    msg = msg ++ x.map(x => ("msg" -> x.toString)).toSeq
     this
   }
 
