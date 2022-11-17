@@ -994,7 +994,7 @@ abstract class DomEngine(
     * @param ast   new root
     * @param level starting level
     * @param ctx   root context to use
-    * @param initial true only the first time, not for recursions
+    * @param initial true only the first time, not for recursions. this method runs a flow recursively
     * @return
     */
   def processSync(ast: DomAst, level: Int, ctx: ECtx, initial:Boolean=true): Option[P] = {
@@ -1005,27 +1005,18 @@ abstract class DomEngine(
         this.synchronous = true
       }
 
-      // stop propagation of local vals to parent engine
+      // just populate the parent attributes, flattened and clone that so there is no interference
+      this.ctx.putAll(ctx.flattenAllAttrs)
+
+      // note we can't just use the ctx as is because it belongs to another engine
+      
+      // use parent engine's variables but stop propagation of local vals to parent engine
       var newCtx: ECtx =
         if (initial) new ScopeECtx(if (ast.value.isInstanceOf[EMsg]) ast.value.asInstanceOf[EMsg].attrs else Nil,
-          Option(ctx), Option(ast))
-        else ctx
-
-//    // include this messages' context
-//    newCtx = mkPassthroughMsgContext(
-//      if(ast.value.isInstanceOf[EMsg]) Some(ast.value.asInstanceOf[EMsg]) else None,
-//      Nil,
-//      newCtx,
-//      ast
-//    )
-
-//        if (ast.value.isInstanceOf[EMsg]) new StaticECtx(.attrs, Some(newCtx), Some(ast))
-//        else new StaticECtx(Nil, Some(newCtx), Some(ast))
+          Option(this.ctx), Option(ast))
+        else this.ctx
 
       if (initial) ast.replaceCtx(newCtx)
-
-      // inherit all context from parent engine
-//    this.ctx.root.overwrite(newCtx)
 
       // todo clone the root context passed - if anyone goes to the root will find the other engine...
 
