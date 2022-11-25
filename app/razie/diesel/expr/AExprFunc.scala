@@ -18,7 +18,7 @@ import razie.diesel.dom.RDOM.P
 import razie.diesel.dom._
 import razie.diesel.engine.exec.EEFunc
 import razie.diesel.engine.nodes.{EMap, EMock, EMsg, ERule, EVal}
-import razie.diesel.engine.{AstKinds, DieselAppContext, DomAst}
+import razie.diesel.engine.{AstKinds, DieselAppContext, DomAst, EContent}
 import razie.wiki.{Enc, EncUrl}
 
 /** a "function-like" call:
@@ -158,6 +158,9 @@ case class AExprFunc(val expr: String, parms: List[RDOM.P]) extends Expr {
         val bv = secondParm.getOrElse {
           throw new DieselExprException("Need two arguments.")
         }.calculatedValue
+
+        val groups = EContent.extractRegexParms(bv, av)
+        groups.foreach(t => ctx.put(new P(t._1, t._2)))
 
         P.fromTypedValue("", av.matches(bv), WTypes.wt.BOOLEAN)
       }
