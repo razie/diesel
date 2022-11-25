@@ -204,6 +204,14 @@ Command reference (see more about [[specs.Topic:Expressions_and_pattern_matching
         <button id="ferrStory" title="Find first error" onclick="ferrStory('@id')" class="btn btn-default btn-xs"> <small><span class="glyphicon glyphicon-menu-down"></span> (first error)</small></button>
         <input type="checkbox" id="showDur" title="Expand duration info" > <small>(durations)</small>
         <input type="checkbox" id="verboseStory" title="Expand/collaps verbose nodes" > <small>(verbose)</small>
+
+
+        <input type="file" style="display: none" id="fileToLoad">
+
+        <span class="pull-right">&nbsp;<a href="javascript:loadFile()"><span class="glyphicon glyphicon-folder-open"
+        title="Load saved HTML trace"></span></a></span>
+        <span class="pull-right">&nbsp;<a href="javascript:saveTraceFromFiddle()"><span class="glyphicon glyphicon-save"
+        title="Save HTML trace to file"></span></a></span>
       </div>
     </div>
 
@@ -290,6 +298,19 @@ useLocalStorageCheckbox("blenderMode", "domFiddleBlenderMode");
 useLocalStorageCheckbox("draftMode", "domFiddleDraftsMode");
 useLocalStorageCheckbox("wikiMode", "domFiddleWikiMode");
 useLocalStorageCheckbox("realTime", "domFiddleRealTime");
+
+$("#fileToLoad").on("input", function() {
+  let f2 = document.querySelector("#fileToLoad").files[0];
+  readTextFile(f2, function(text) {
+    // $('#code_'+fiddleId).html(text);
+    // $('#preout_'+fiddleId).html(text);
+    $('#iframeOutStory_' + fiddleId).html(encAmp(text) + '\n');
+    dieselHideVerbose(localStorage.getItem("domFiddleVerboseStory") == "true");
+    dieselHideTrace(localStorage.getItem("domFiddleTraceStory") == "true");
+    dieselHideDebug(localStorage.getItem("domFiddleDebugStory") == "true");
+    dieselHideGenerated(localStorage.getItem("domFiddleGeneratedStory") == "true");
+  });
+});
 
 $('#sketchMode, #mockMode, #blenderMode, #draftMode, #realTime').change(function(){
   runpill2_@{id}('@{id}', false);
@@ -1273,6 +1294,37 @@ function openStory() {
 
 function openSpec() {
   window.open("about:blank", "_blank").location = '/wiki/'+specWpath;
+}
+
+
+function loadFile() {
+  $("#fileToLoad").trigger('click');
+}
+
+function readTextFile(file, onText)
+{
+    let reader = new FileReader();
+    reader.addEventListener('load', function(e) {
+      let text = e.target.result;
+      onText(text);
+    });
+    reader.readAsText(file);
+}
+
+function saveTraceFromFiddle() {
+  if(currEngineData == null) {
+    alert("No processing trace to save... ");
+    return;
+  }
+
+  var j = '/diesel/viewAst/' + currEngineData.info.engineId + '?format=json';
+  var h = '/diesel/viewAst/' + currEngineData.info.engineId + '?format=html';
+
+  popupContent(
+      'Right click and save as: <p>' +
+      '<a href="' + j + '">Json</a> - to save |' +
+      '<a href="' + h + '">Html</a> - to send |'
+  );
 }
 
 </script>

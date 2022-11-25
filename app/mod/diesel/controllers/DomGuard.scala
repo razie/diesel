@@ -52,7 +52,7 @@ class DomGuard extends DomApiBase with Logging {
       findEngine(id)
           .map { eng =>
             eng.stopNow
-            Redirect(mod.diesel.controllers.routes.DomGuard.dieselEngineView(id).url)
+            Redirect(mod.diesel.controllers.routes.DomGuard.dieselViewAst(id).url)
           } getOrElse {
         ROK.k reactorLayout12 {
           views.html.modules.diesel.engineView(None)
@@ -89,43 +89,39 @@ class DomGuard extends DomApiBase with Logging {
     Ok("Ok, trying...")
   }
 
-  // todo this and /viewAst are the same...
-  /** view an engine or AST collected */
-  def dieselEngineView(id: String) = FAUR { implicit stok =>
+  // todo this and /engine/view are the same...
+  // view an AST from teh collection
+  def dieselViewAst(id: String, format: String) = FAUR ("viewAst") { implicit stok =>
     if (!ObjectId.isValid(id)) {
-      Redirect("/diesel/listAst")
-    } else {
-      var engine = DomCollector.findAst(id).map(_.engine)
-
-      engine.map { eng =>
-        stok.fqhoParm("format", "html").toLowerCase() match {
-
-          case "json" => {
-            val m = eng.toj
-            Ok(js.tojsons(m).toString).as("application/json")
-          }
-
-//          case "html" => { // just the engine html, no wrappers
-//              Ok(eng.root.toHtmlInPage).as("text/html")
-//          }
-
-          case _ => {
-            ROK.k reactorLayout12 {
-              views.html.modules.diesel.engineView(Option(eng))
-            }
-          }
+      Option(Redirect("/diesel/listAst"))
+    } else DomCollector.findAst(id).map { ast =>
+      format match {
+        case "json" => {
+          val m = ast.engine.toj
+          Ok(js.tojsons(m).toString).as("application/json")
         }
-      } orElse {
-          DieselAppContext.activeEngines.get(id).map ( e =>
-            ROK.k reactorLayout12 {
-              views.html.modules.diesel.engineView(Option(e))
-            }
-          )
-      } getOrElse (
-          dieselListAst("Trace not found - we only store a limited amount of traces").apply(stok.req).value.get.get
-//        NotFound("""Engine trace not found - We only store a limited amount of traces... <a href="/diesel/listAst">see all</a>""").as("text/html")
+        // just the engine html, no wrappers
+        case "html"=> Ok(ast.engine.root.toHtmlInPage).as("text/html")
+        case "junit" =>
+          Res.Ok(
+            views.html.modules.diesel.engineJUnitView(ast.engine)(stok)
+          ).as("application/xml")
+        case _ =>
+          ROK.k reactorLayout12 {
+            views.html.modules.diesel.engineView(Option(ast.engine))
+          }
+      }
+    }.orElse(
+      DieselAppContext.activeEngines.get(id).map(e =>
+        ROK.k reactorLayout12 {
+          views.html.modules.diesel.engineView(Some(e))
+        }
       )
-    }
+    ).orElse(
+      Option(dieselListAst("Trace not found - we only store a limited amount of traces").apply(stok.req).value.get.get)
+//          Option(NotFound(
+//        """Engine trace not found - We only store a limited amount of traces... <a href="/diesel/listAst">see all</a>"""))
+    )
   }
 
   /** roll up and navigate the definitions */
@@ -207,32 +203,6 @@ class DomGuard extends DomApiBase with Logging {
     }
   }
 
-  // todo this and /engine/view are the same...
-  // view an AST from teh collection
-  def dieselViewAst(id: String, format: String) = FAUR ("viewAst") { implicit stok =>
-    DomCollector.findAst(id).map { ast =>
-        if (format == "html") {
-          Ok(ast.engine.root.toHtml)
-        } else if ("junit" == format) {
-          Res.Ok(
-            views.html.modules.diesel.engineJUnitView(ast.engine)(stok)
-          ).as("application/xml")
-        } else {
-          dieselEngineView(id).apply(stok.req).value.get.get
-        }
-    }.orElse(
-        DieselAppContext.activeEngines.get(id).map(e =>
-          ROK.k reactorLayout12 {
-            views.html.modules.diesel.engineView(Some(e))
-          }
-        )
-    ).orElse(
-      Option(dieselListAst("Trace not found - we only store a limited amount of traces").apply(stok.req).value.get.get)
-//          Option(NotFound(
-//        """Engine trace not found - We only store a limited amount of traces... <a href="/diesel/listAst">see all</a>"""))
-    )
-  }
-
   private def findUname(u: String): String = {
     Try {
       Users.nameOf(new ObjectId(u))
@@ -255,6 +225,9 @@ class DomGuard extends DomApiBase with Logging {
       }
     }
 
+    // in cloud we show more details - locally some never change
+    val showDetails = ! Config.isLocalhost
+
     if(errMessage != "") stok.withErrors(List(errMessage))
 
     val filters = stok.query.get("filter").mkString
@@ -276,12 +249,38 @@ class DomGuard extends DomApiBase with Logging {
           .filter(a=> filters.isEmpty || a.engine.description.contains(filters))
     }
 
-      val total = GlobalData.dieselEnginesTotal.get()
+    val total = GlobalData.dieselEnginesTotal.get()
 
-      var table = list.sortWith(
-        (a, b) => a.engine.createdDtm.isAfter(b.engine.createdDtm)
-      ).zipWithIndex.map { z =>
-        Try {
+    val HEADING = (s"""
+                     |<small>
+                     |<table class="table table-condensed">
+                     |<tr>
+                     |<th>Id</th>""" +
+        (if(showDetails) s"""
+                     |<th>Realm</th>
+                     |<th title="Collect group">Group</th>
+                     |<th>User</th>""" else """""") +
+            s"""
+                     |<th>Status</th>
+                     |<th>Dtm</th>
+                     |<th class="text-right">Msec</th>
+                     |<th>Desc</th>
+                     |<th>Code</th>
+                     |<th>Result</th>
+                     |<th></th>
+                     |</tr>
+                     |""").stripMargin
+
+    val ENDING = s"""
+                    |</tr>
+                    |</table>
+                    |</small>
+                    |""".stripMargin
+
+    var table = list.sortWith(
+      (a, b) => a.engine.createdDtm.isAfter(b.engine.createdDtm)
+    ).zipWithIndex.map { z =>
+      Try {
           val a = z._1
           val i = z._2
           val uname = a.userId.map(u => findUname(u)).getOrElse("[auto]")
@@ -299,12 +298,13 @@ class DomGuard extends DomApiBase with Logging {
           }.mkString
 
           // todo this is mean
-          s"""
-             |<td><a href="/diesel/viewAst/${a.id}">...${a.id.takeRight(4)}</a></td>
-             |<td>${a.stream}</td>
+        (s"""
+             |<td><a href="/diesel/viewAst/${a.id}">...${a.id.takeRight(4)}</a></td>""" +
+            (if(showDetails) s"""
              |<td>${a.realm}</td>
              |<td><span title="${a.collectGroup}">${a.collectGroup.takeRight(8)}</span></td>
-             |<td>${uname}</td>
+             |<td>${uname}</td>""" else """""") +
+            s"""
              |<td>$st</td>
              |<td title="${dtm.toLocalDate.toString()}">${dtm.toString("HH:mm:ss.SS")}</td>
              |<td align="right">$duration</td>
@@ -312,33 +312,12 @@ class DomGuard extends DomApiBase with Logging {
              |<td><small><code $resCodeStyle>${Enc.escapeComplexHtml(a.engine.returnedRestCode.mkString)}</code></small></td>
              |<td><small><code>${Enc.escapeComplexHtml(a.engine.returnedRestPayload.take(200))}</code></small></td>
              |<td> </td>
-             |""".stripMargin
+             |""").stripMargin
         }.getOrElse("-can't print engine-")
       }.mkString(
-        s"""
-           |<small>
-           |<table class="table table-condensed">
-           |<tr>
-           |<th>Id</th>
-           |<th>Stream</th>
-           |<th>Realm</th>
-           |<th>Group</th>
-           |<th>User</th>
-           |<th>Status</th>
-           |<th>Dtm</th>
-           |<th class="text-right">Msec</th>
-           |<th>Desc</th>
-           |<th>Code</th>
-           |<th>Result</th>
-           |<th></th>
-           |</tr>
-           |""".stripMargin,
+           HEADING,
         "</tr><tr>",
-        s"""
-           |</tr>
-           |</table>
-           |</small>
-           |""".stripMargin
+        ENDING
       )
 
       if (stok.au.exists(_.isAdmin)) {

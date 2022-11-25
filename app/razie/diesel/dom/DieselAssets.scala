@@ -55,11 +55,10 @@ object DieselAssets {
   def mkAhref(w: WID, path: String = "") = {
     w.cat match {
       case "DieselEngine" => {
-        // todo what's diff /diesel/engine/view vs /diesel/viewAst
         var h = w.sourceUrl.mkString
         if (h.startsWith("localhost")) h = ""
         else if (h.length > 0 && !h.startsWith("http://")) h = "http://" + h
-        s"""<a href="$h/diesel/engine/view/${w.name}">${w.name}</a>"""
+        s"""<a href="$h/diesel/viewAst/${w.name}">${w.name}</a>"""
       }
       case _ => s"""wiki/$path"""
     }

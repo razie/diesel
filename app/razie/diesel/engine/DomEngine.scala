@@ -272,7 +272,7 @@ abstract class DomEngine(
   root.withCtx(ctx)
 
   /** myself */
-  def href(format: String = "") = s"/diesel/engine/view/$id?format=$format"
+  def href(format: String = "") = s"/diesel/viewAst/$id?format=$format"
 
   val rules = dom.moreElements.collect {
     case e: ERule => e

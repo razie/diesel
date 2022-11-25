@@ -176,8 +176,6 @@ DESC: @{e.description}<br>
 </pre>
   }
 
-  <a href="@e.href("json")">Json</a>
-
   <div id="title3b" class="col-sm-6" style="font-size: small">
     <input type="checkbox" id="traceStory" title="Expand/collaps trace nodes" > <small>(trace)</small>
     <input type="checkbox" id="debugStory" title="Expand/collaps debug nodes" checked> <small>(debug)</small>
@@ -185,6 +183,10 @@ DESC: @{e.description}<br>
     <button id="ferrStory" title="Find first error" onclick="ferrStory()" class="btn btn-warning btn-xs"> <small><span class="glyphicon glyphicon-menu-down"></span> (first error)</small></button>
     <input type="checkbox" id="showDur" title="Expand duration info" > <small>(durations)</small>
     <input type="checkbox" id="verboseStory" title="Expand/collaps verbose nodes" > <small>(verbose)</small>
+
+    @eng.map(_.id).map { id =>
+      <span class="pull-right"><a href="javascript:saveTrace('@id')"><span class="glyphicon glyphicon-save"></span></a></span>
+    }
   </div>
 
   <pre>
@@ -197,4 +199,16 @@ DESC: @{e.description}<br>
 
 @util.oneModal()
 
+<script>
+function saveTrace(id) {
+  var j = '/diesel/viewAst/' + id + '?format=json';
+  var h = '/diesel/viewAst/' + id + '?format=html';
 
+  popupContent(
+  'Right click and save as: <p>' +
+  '<a href="' + j + '">Json</a> - to save |' +
+  '<a href="' + h + '">Html</a> - to send |'
+  );
+
+}
+</script>
