@@ -63,7 +63,7 @@ trait ExprParser extends RegexParsers {
         "?=" | "is" <~ ws | "xNot" <~ ws | "in" <~ ws | "not in" <~ ws | "notIn" <~ ws | "not" <~ ws |
         "contains" <~ ws | "containsNot" <~ ws
 
-  private def opsPLUS: Parser[String] = "+" | "-" | "||" | "|"
+  private def opsPLUS: Parser[String] = "+=" | "+" | "-" | "||" | "|"
 
   private def opsMULT: Parser[String] = "*" | "/(?!/)".r // negative lookahead to not match comment - it acts funny
   // with multiple lines of comment

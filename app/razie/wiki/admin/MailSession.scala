@@ -67,7 +67,7 @@ class MailSession extends BaseMailSession {
   def sendSupport(subj:String, name:String, e: String, desc: String, details: String, page:String)(implicit mailSession: MailSession) {
     val html = text("supportrequested").format(name, e, desc, details, page)
 
-    mailSession.notif(SUPPORT, SUPPORT, subj+": " + desc, html)
+    mailSession.send(SUPPORT, SUPPORT, subj+": " + desc, html)
   }
 
 }
