@@ -675,6 +675,49 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
         }
       }
 
+      case "indexBy" => {
+        // index array of objects into an object by a field
+
+        av.calculatedTypedValue.cType.name match {
+          case WTypes.ARRAY => {
+            val elementType = av.calculatedTypedValue.cType.wrappedType
+
+            val arr = av.calculatedTypedValue.asArray
+
+            val map = new HashMap[String, Any]
+
+            if(b.isInstanceOf[LambdaFuncExpr] || b.isInstanceOf[BlockExpr] && b.asInstanceOf[BlockExpr].ex.isInstanceOf[LambdaFuncExpr]) {
+              arr.foreach { x =>
+                // common case, no need to go through context, Block passes through to Lambda
+                val respv = b.applyTyped(x).calculatedTypedValue.asString
+                map.put(respv, x)
+              }
+            } else {
+              // by field name
+              val sctx = new StaticECtx(Nil, Some(ctx))
+              val field = b.applyTyped("")(sctx).calculatedTypedValue.asString
+
+              arr.foreach {x=>
+                if(x.isInstanceOf[HashMap[_,_]]) {
+                  val k = x.asInstanceOf[HashMap[String,_]].get(field)
+                  k.map {kv=>
+                    map.put(kv.toString, x)
+                  }
+                } else {
+                  throw new DieselExprException("indexBy only works on array of objects! Found: " + x)
+                }
+              }
+            }
+
+
+            PValue(map, WTypes.wt.JSON)
+          }
+
+          case WTypes.UNDEFINED if ctx.nonStrict => P.undefined(Diesel.PAYLOAD).value.orNull
+          case _ => throw new DieselExprException("Can't do flatMap on: " + av)
+        }
+      }
+
       case "foreach" => {
         av.calculatedTypedValue.cType.name match {
           case WTypes.ARRAY => {
