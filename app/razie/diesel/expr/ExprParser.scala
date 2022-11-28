@@ -48,7 +48,10 @@ trait ExprParser extends RegexParsers {
 
   private def opsAS: Parser[String] = "as"
 
-  private def opsMAP: Parser[String] = "map" <~ ws | "fold" <~ ws | "foreach" <~ ws | "flatMap" <~ ws | "flatten" <~ ws | "filter" <~
+  private def opsMAP: Parser[String] =
+    "map" <~ ws | "fold" <~ ws | "foreach" <~ ws |
+        "flatMap" <~ ws | "indexBy" <~ ws |
+    "flatten" <~ ws | "filter" <~
       ws | "exists" |
       "mkString" <~
           ws | ">>"
