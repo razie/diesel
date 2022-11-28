@@ -20,6 +20,7 @@ import razie.diesel.engine.exec.EEFunc
 import razie.diesel.engine.nodes.{EMap, EMock, EMsg, ERule, EVal}
 import razie.diesel.engine.{AstKinds, DieselAppContext, DomAst, EContent}
 import razie.wiki.{Enc, EncUrl}
+import scala.collection.mutable.HashMap
 
 /** a "function-like" call:
   * - built-in functions,

@@ -176,7 +176,7 @@ DESC: @{e.description}<br>
 </pre>
   }
 
-  <div id="title3b" class="col-sm-6" style="font-size: small">
+  <div id="title3b" class="" style="font-size: small">
     <input type="checkbox" id="traceStory" title="Expand/collaps trace nodes" > <small>(trace)</small>
     <input type="checkbox" id="debugStory" title="Expand/collaps debug nodes" checked> <small>(debug)</small>
     <input type="checkbox" id="generatedStory" title="Expand/collaps generated nodes" checked> <small>(generated)</small>
@@ -187,6 +187,7 @@ DESC: @{e.description}<br>
     @eng.map(_.id).map { id =>
       <span class="pull-right"><a href="javascript:saveTrace('@id')"><span class="glyphicon glyphicon-save"></span></a></span>
     }
+
   </div>
 
   <pre>

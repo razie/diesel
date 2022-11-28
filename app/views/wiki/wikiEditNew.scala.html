@@ -199,8 +199,7 @@ if(localStorage.getItem("weDsl") != 'undefined')
       @*********************** content assist ************************@
 
 <!-- for tags -->
-@*<script async src="@routes.Assets.at("bootstrap-2.2.3/js/bootstrap-typeahead.js")"></script>*@
-<script async>require(['bootstrap-typeahead'], function(){});</script>
+<script async src="@routes.Assets.at("bootstrap-3.3.4/js/bootstrap3-typeahead.js")"></script>
 
 @if(true) {
   @*these apply for ACE*@
@@ -214,6 +213,8 @@ if(localStorage.getItem("weDsl") != 'undefined')
 
 <script>
 //from http://stackoverflow.com/questions/12662824/twitter-bootstrap-typeahead-multiple-values
+razOnLoad(function() {
+  require(['jquery', 'bootstrap-typeahead'], function($){
 
   var $tagsInput = $('#tags');
 
@@ -260,6 +261,8 @@ if(localStorage.getItem("weDsl") != 'undefined')
         })
       else return item;//+'s';
     }
+  });
+  });
 });
 </script>
 
@@ -418,7 +421,7 @@ function attachAce() {
   aceEditor = editor;
   }
 
-$(window).on('load', (function() {
+$(window).on('load', function() {
 //  $("ace_editor").css("height", "400px");
 });
 </script>

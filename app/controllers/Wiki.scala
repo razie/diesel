@@ -61,7 +61,7 @@ class WikiBase extends RazController with Logging with WikiAuthorization {
     */
   def getRealm(irealm: String = UNKNOWN)(implicit request: Request[_]) = {
     // todo I think this function is obsoleted - reactors add themselves in Websites...?
-    if (UNKNOWN == irealm) {
+    if (UNKNOWN == irealm || "" == irealm.trim) {
       PlayTools.getHost.flatMap(x => Website.forHost(x)).map(_.reactor).getOrElse(WikiReactors.RK)
     } else irealm
   }

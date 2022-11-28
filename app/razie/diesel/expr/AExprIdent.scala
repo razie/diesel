@@ -135,6 +135,10 @@ case class AExprIdent(val start: String, rest:List[P] = Nil) extends Expr {
 
         //================================ index is string
 
+      } else if (av.contentType == WTypes.STRING && av.contentType.isEmpty || av.contentType == WTypes.UNDEFINED) {
+        // if (blowUp) throw new DieselExprException(s"$expr does not have field $accessor")
+        // else
+        None // field not found - undefined
       } else if (av.contentType == WTypes.STRING || av.contentType.isEmpty || av.contentType == WTypes.UNKNOWN) {
         pv.contentType match {
 
