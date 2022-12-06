@@ -10,6 +10,7 @@ import razie.diesel.cron.DieselCron
 import razie.diesel.dom
 import razie.diesel.dom.RDOM.P.asString
 import razie.diesel.dom.RDOM._
+import razie.diesel.engine.{DieselAppContext, DomStream}
 import razie.diesel.engine.nodes.EMsg
 import razie.diesel.expr.{DieselExprException, ECtx}
 import razie.diesel.model.DieselTarget
@@ -69,6 +70,19 @@ class DieselInternalInventory(
       case "DieselCron" => fromList (
 
         DieselCron.withRealmSchedules(all=> all/*.filter(_._1.startsWith(prefix))*/.map(t=>
+          new DieselAsset(
+            ref.copy(key=t._1),
+            t,
+            Option(
+              new O("", ref.cls, t._2.toJson.map(x=>P.fromSmartTypedValue(x._1, x._2)).toList)
+            )
+          )
+        ).toList
+        ))
+
+      case "DieselStream" => fromList (
+
+        DieselAppContext.activeStreamsByName.map { t =>
             new DieselAsset(
               ref.copy(key=t._1),
               t,
@@ -76,8 +90,8 @@ class DieselInternalInventory(
                 new O("", ref.cls, t._2.toJson.map(x=>P.fromSmartTypedValue(x._1, x._2)).toList)
               )
             )
-            ).toList
-      ))
+          }.toList
+        )
 
       case _ => Left(DIQueryResult(0, Nil))
     }
@@ -85,9 +99,27 @@ class DieselInternalInventory(
 
   def cancelCron (ref:FullSpecRef) = {
     // remove the realm from key
-    val k = if(ref.key.contains("-")) ref.key.replaceFirst("[^-]*-", "") else ref.key
+    val k = keyFromRef(ref)
 
-      DieselCron.cancelSchedule(ref.realm, k).map { t =>
+    DieselCron.cancelSchedule(ref.realm, k).map { t =>
+      new DieselAsset(
+        ref,
+        t,
+        Option(
+          new O("", ref.cls, t.toJson.map(x => P.fromSmartTypedValue(x._1, x._2)).toList)
+        )
+      )
+    }
+  }
+
+  def cancelStream (ref:FullSpecRef) = {
+    // remove the realm from key
+    val k = keyFromRef(ref)
+
+    DieselAppContext.activeStreamsByName.get(k).map { t =>
+
+      t.abort()
+
       new DieselAsset(
         ref,
         t,
@@ -131,6 +163,22 @@ class DieselInternalInventory(
         def mkMore = c.name match {
           case "DieselCron" if ref.isDefined =>
             s"""| <a href="/doe/diesel/dom/action/cancel/${c.name}/${ref.get.key}">cancel</a>"""
+          case "DieselStream" if ref.isDefined => {
+            val stream =
+              ref.flatMap( k=>
+                DieselAppContext.activeStreamsByName.get(keyFromRef(k))
+                ).map {stream=>
+                (if (!stream.streamIsDone)
+                  s"""| <a href="/doe/diesel/dom/action/cancel/${c.name}/${ref.get.key}">cancel</a>"""
+                else ""   ) +
+                    (if (!stream.streamIsDone) // todo implement and use paused flag
+                      s"""| <a href="/doe/diesel/dom/action/pause/${c.name}/${ref.get.key}">pause</a>"""
+                  else ""     ) +
+                    (if (!stream.streamIsDone)
+                      s"""| <a href="/doe/diesel/dom/action/resume/${c.name}/${ref.get.key}">resume</a>"""
+                   else ""    )
+              }.mkString
+          }
           case _ => ""
         }
 
@@ -140,6 +188,9 @@ class DieselInternalInventory(
       case _ => "n/a"
     }
   }
+
+ // asset keys contain the realm and stuff, gotta extract just the key
+  def keyFromRef (ref:FullSpecRef) = if(ref.key.contains("-")) ref.key.replaceFirst("[^-]*-", "") else ref.key
 
   /**
     * do an action on some domain entity (explore, browse etc)
@@ -172,6 +223,8 @@ class DieselInternalInventory(
         }
 
         case "cancel" if cat == "DieselCron" => cancelCron(ref).mkString
+
+        case "cancel" if cat == "DieselStream" => cancelStream(ref).mkString
 
         case _ => throw new NotImplementedError(s"doAction $action - $completeUri - $epath")
       }
@@ -228,6 +281,19 @@ class DieselInternalInventory(
         ).toList
         ))
 
+      case "DieselStream" => fromList (
+
+        DieselAppContext.activeStreamsByName.filter(_._1.startsWith(prefix)).map(t=>
+          new DieselAsset(
+            ref.copy(key=t._1),
+            t,
+            Option(
+              new O("", ref.cls, t._2.toJson.map(x=>P.fromSmartTypedValue(x._1, x._2)).toList)
+            )
+          )
+        ).toList
+        )
+
       case _ => Left(DIQueryResult(0, Nil))
     }
   }
@@ -252,6 +318,20 @@ class DieselInternalInventory(
           )
         )
         ))
+
+      case "DieselStream" => Left (
+
+        DieselAppContext.activeStreamsByName.find(_._1.startsWith(ref.key)).map(t=>
+          new DieselAsset(
+            ref.copy(key=t._1),
+            t,
+            Option(
+              new O("", ref.cls, t._2.toJson.map(x=>P.fromSmartTypedValue(x._1, x._2)).toList)
+            )
+          )
+        )
+      )
+
 
       case _ => Left(None)
     }

@@ -14,6 +14,7 @@ import razie.diesel.engine.nodes._
 import razie.diesel.expr.{DieselExprException, ECtx, SimpleExprParser}
 import razie.diesel.model.DieselMsg
 import scala.concurrent.duration.DurationInt
+import scala.util.Try
 
 /** executor for "ctx." messages - operations on the current context
   *
@@ -42,22 +43,24 @@ class EEStreams extends EExecutor(DieselMsg.STREAMS.PREFIX) {
         val batchWait = ctx.getp("batchWaitMillis").map(_.calculatedTypedValue.asLong.toInt).getOrElse(0)
 
         val others = in.attrs
-            .filter(_.name != "stream")
-            .filter(_.name != "batch")
-            .filter(_.name != "batchSize")
-            .filter(_.name != "batchWaitMillis")
+           // no need to remove these...
+//            .filter(_.name != "stream")
+//            .filter(_.name != "batch")
+//            .filter(_.name != "batchSize")
+//            .filter(_.name != "batchWaitMillis")
             .map(_.calculatedP)
 
         val context = P.of("context", others.map(p => (p.name, p)).toMap)
 
         // todo factory for V1
         val warn = DieselAppContext.findStream(name).map { s =>
-          // todo clean and remove the old one, sync
-//          import akka.pattern.ask
-//          implicit val timeout = Timeout(5 seconds)
-//          DieselAppContext.activeActors.values.map(_ ? DEStop)
-//          DieselAppContext ? DESDone(name)
-          EWarning(s"Stream $name was open!! Closing, but some generator or consumer may still use it!")
+          val cnt = s.getValues.size
+
+          // clean and remove the old one, sync
+          DieselAppContext.stopStream(name)
+
+          if (cnt > 0) EError(s"Stream $name was open and with $cnt elements inside!! Closing, but some generator or consumer may still use it!")
+          else EWarning(s"Stream $name was open (altough empty) ! Closing, but some generator or consumer may still use it!")
         }.toList
 
         val s = DieselAppContext.mkStream(
@@ -82,9 +85,19 @@ class EEStreams extends EExecutor(DieselMsg.STREAMS.PREFIX) {
       case "putAll" => {
         val name = ctx.getRequired("stream")
         val parms = in.attrs.filter(_.name != "stream").map(_.calculatedP)
-        val list = parms.flatMap(_.calculatedTypedValue.asArray.toList)
+        var errors:List[_] = Nil
+        val list =
+          parms.flatMap{x=>
+              Try {
+                x.calculatedTypedValue.asArray.toList
+              }.getOrElse {
+                if (ctx.isStrict) throw new DieselExprException("Parameters are not all Array(s): " + x)
+                else errors = EWarning("Parameter not Array: " + x) :: errors
+                Nil
+              }
+          }
         DieselAppContext ! DEStreamPut(name, list)
-        EInfo(s"stream.putAll $name - put ${list.size} elements") :: Nil
+        EInfo(s"stream.putAll $name - put ${list.size} elements") :: errors
       }
 
       case "generate" => {
@@ -112,13 +125,17 @@ class EEStreams extends EExecutor(DieselMsg.STREAMS.PREFIX) {
         val name = ctx.getRequired("stream")
 
         val stream = DieselAppContext.findStream(name)
-
-        DieselAppContext ! DEStreamDone(name)
-
         val found = stream.map(_.name).mkString
+
+        if(stream.isDefined)
+         DieselAppContext ! DEStreamDone(name)
+
         val consumed = stream.map(_.getIsConsumed).mkString
         val done = stream.map(_.streamIsDone).mkString
-        EInfo(s"stream.done $name: found:$found consumed:$consumed done:$done") :: Nil
+        val msg = s"stream.done $name: found:$found consumed:$consumed done:$done"
+
+        if(stream.isDefined) EInfo(s"stream.done $name: found:$found consumed:$consumed done:$done") :: Nil
+        else EError(s"stream.done - stream not found: ${name}", s"stream.done $name: found:$found consumed:$consumed done:$done") :: Nil
       }
 
       case "consume" => {

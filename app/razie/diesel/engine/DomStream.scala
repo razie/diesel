@@ -62,21 +62,22 @@ abstract class DomStream (
 
   def href = DieselAssets.mkAhref(WID("DieselStream", this.name))
 
-  def href(format: String = "") = s"/diesel/engine/view/$id?format=$format"
+  def href(format: String = "") = s"/diesel/viewAst/$id?format=$format"
 
   var synchronous = false
 
   /** a stream consumer is a pair of engine/node where consumption occurs */
   trait DomStreamConsumer {
-    def consumeDataBatch(batches:List[List[Any]]): Unit
-    def consumeData(dataAsList:List[Any]): Unit
-    def error(): Unit
-    def complete(): Unit
+    def consumeDataBatch (batches:List[List[Any]]): Unit
+    def consumeData      (dataAsList:List[Any]): Unit
+    def error            (): Unit
+    def complete         (): Unit
   }
 
   /** an engine is client - so consumption becomes messages created in context of that engine */
   case class EngDomStreamConsumer(engine: String, node:String) extends DomStreamConsumer {
-    override def consumeDataBatch(batches: List[List[Any]]): Unit = {
+
+    override def consumeDataBatch (batches: List[List[Any]]): Unit = {
       val asts = new ListBuffer[DomAst]()
       val batchAccumulator = new ListBuffer[List[Any]]()
 
@@ -215,6 +216,20 @@ abstract class DomStream (
   var lastBatchWaitingAt = 0L
   var lastBatchConsumedAt = 0L
 
+  def toJson = Map(
+    "name" -> name,
+    "owner" -> owner,
+    "batch" -> batch,
+    "batchSize" -> batchSize,
+    "maxSize" -> maxSize,
+    "isDone" -> isDone,
+    "totalPut" -> totalPut,
+    "totalConsumed" -> totalConsumed,
+    "curSize" -> values.size,
+    "curErrors" -> errors.size
+
+  )
+
   def getValues = values.toList
 
   def getIsConsumed = isConsumed
@@ -290,6 +305,7 @@ abstract class DomStream (
 
         trace(s" - DStream size ${values.size} dropping: $pickedUp")
         values.remove(0, pickedUp)
+        totalConsumed += pickedUp
 
         sink.foreach(_.consumeDataBatch(batchAccumulator.toList))
 
@@ -300,6 +316,7 @@ abstract class DomStream (
         // no batch
 
         sink.foreach(_.consumeData(values.toList))
+        totalConsumed += values.size
 
         trace(" - DStream clear: ")
         values.clear()
@@ -390,6 +407,7 @@ abstract class DomStream (
     // make sure it's done - don't accept anymore
     isDone = true
 
+    // no need to protect against double clean - the actor will stop itself first time...
     // cleanup
     DieselAppContext ! DEStreamClean(name)
   }
