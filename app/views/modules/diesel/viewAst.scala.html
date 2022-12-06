@@ -10,20 +10,26 @@ view an engine
 <script src="@routes.Assets.at("javascripts/weDieselDom.js")"></script>
 
 <script>
-    var done = true;
+  var done = true;
 
-    @if(eng.exists(e=>DomState.isDone(e.status))) {
+  @if(eng.isDefined) {
+    curEngineViewId = '@eng.get.id';
+  } else {
+    curEngineViewId = null;
+  }
+
+  @if(eng.exists(e=>DomState.isDone(e.status))) {
     done = true;
-    } else {
+  } else {
     done = false;
-    }
+  }
 
-    var refreshMode = true;
-    function setRefreshMode () {
+  var refreshMode = true;
+  function setRefreshMode () {
       refreshMode = $('#refreshMode').prop('checked');
       $('#refreshMode').prop('checked', !refreshMode);
       $('#refreshMode').trigger("change");
-    };
+  };
 
     withJquery(function ($) {
       $(window).on('load', function () {
@@ -199,17 +205,3 @@ DESC: @{e.description}<br>
 }
 
 @util.oneModal()
-
-<script>
-function saveTrace(id) {
-  var j = '/diesel/viewAst/' + id + '?format=json';
-  var h = '/diesel/viewAst/' + id + '?format=html';
-
-  popupContent(
-  'Right click and save as: <p>' +
-  '<a href="' + j + '">Json</a> - to save |' +
-  '<a href="' + h + '">Html</a> - to send |'
-  );
-
-}
-</script>

@@ -98,10 +98,14 @@ trait CanHtml {
     */
   def ea(e: String, a: String, title: String = "", wrap: Boolean = true, kind: String) = {
     val t = CanHtml.prepTitle(title)
-    val c1 = if (kind == AstKinds.TRACE || kind == AstKinds.VERBOSE) "darkgray" else "moccasin"
-    val c2 = if (kind == AstKinds.TRACE || kind == AstKinds.VERBOSE) "darkgray" else "lightblue"
+    var c1 = if (kind == AstKinds.TRACE || kind == AstKinds.VERBOSE) "darkgray" else "moccasin"
+    var c2 = if (kind == AstKinds.TRACE || kind == AstKinds.VERBOSE) "darkgray" else "lightblue"
+    var labelCls = "default"
 
-    (if (wrap) s"""<span class="label label-default" $t>""" else "") +
+    // underline ctx.foreach
+    if("ctx" == e && "foreach" == a) c2 = "red"
+
+    (if (wrap) s"""<span class="label label-$labelCls" $t>""" else "") +
         s"""<span style="font-weight:bold; color:$c1">$e</span>.<span
            |      class="" style="font-weight:bold; color:$c2">$a</span>""".stripMargin +
         (if (wrap) """ </span>""" else "")

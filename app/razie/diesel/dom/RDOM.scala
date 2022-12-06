@@ -752,7 +752,10 @@ object RDOM {
             valSep1 + "=" + tokenValue(
               // this kicks in if currentstringvalue exists
               if (WTypes.NUMBER == ttype.name) s
-              else if (WTypes.JSON == ttype.name) s
+              else if (WTypes.ARRAY == ttype.name && short) "[..]"
+              else if (WTypes.ARRAY == ttype.name && !short) s
+              else if (WTypes.JSON == ttype.name && short) "{..}"
+              else if (WTypes.JSON == ttype.name && !short) s
               else escapeHtml(quot(s))
             )
           } + valSep2

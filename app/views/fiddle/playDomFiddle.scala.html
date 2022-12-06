@@ -309,6 +309,7 @@ $("#fileToLoad").on("input", function() {
     dieselHideTrace(localStorage.getItem("domFiddleTraceStory") == "true");
     dieselHideDebug(localStorage.getItem("domFiddleDebugStory") == "true");
     dieselHideGenerated(localStorage.getItem("domFiddleGeneratedStory") == "true");
+    showDurations();
   });
 });
 
@@ -334,10 +335,10 @@ var updRT = function() {
   $("#realTimeBox").removeClass();
   if (simMode()) {
     $("#realTimeBox").addClass("label label-warning");
-    $('#realTimeBox').prop('title', "Execute the full flow on every change!");
+    $('#realTimeBox').prop('title', "(SIM) Just preview, not executing the flow auto");
   } else {
     $("#realTimeBox").addClass("label label-danger");
-    $('#realTimeBox').prop('title', "(SIM) Just preview, not executing the flow auto");
+    $('#realTimeBox').prop('title', "Execute the full flow on every change!");
   }
 }
 
@@ -625,9 +626,9 @@ var runpill2_@id = function(id, compileOnly, forceRT, next) {
           console.log("WS ping: " + data.pingMsg);
         } else if(data.clientId == '@id') {
           console.log("WS result: " + JSON.stringify(data.info));
-          processEngineResult({
-            id: '@id',
-          }, '@id', data, data.info.compileOnly, lastStartTime);
+          processEngineResult(
+            lastInput,
+            '@id', data, data.info.compileOnly, lastStartTime);
         } else  {
           console.log("WS result NOT MINE: ");// + JSON.stringify(data));
         }
@@ -636,6 +637,12 @@ var runpill2_@id = function(id, compileOnly, forceRT, next) {
       wsActive = false;
       console.log("WS - ERROR can't setup WS: " + JSON.stringify(error));
     }
+
+  @stok.qhParm("showId").map {id=>
+    currEngineId = '@id';
+    showingNavigatedEngine = true;
+    checkpill2(currEngineId);
+  }
 
 </script>
 
@@ -897,7 +904,7 @@ var refreshFunc = function() {
     // todo this needs optimized somehow - likely start the second one and just get it
     //  in the second call, since the parsing was done
     runpill2_@{id}('@{id}', true, false, function() {
-      runpill2_@{id}('@{id}', false);
+      if(!simMode()) runpill2_@{id}('@{id}', false);
     });
   }
 };
@@ -1230,25 +1237,6 @@ $(window).on('load', function() {
 });
 
 
-// show duration as separate element
-var showDurations = function () {
-  $("span[kind='dur']").remove();
-
-  if($('#showDur').prop('checked')) {
-    $('[msec]').each(function (index) {
-      var m = $(this).attr("msec");
-      var s = '';
-      if(m.length >= 3) s = 'color:red;font-weight:bold';
-      else if(m.length >= 2) s = 'font-weight:bold';
-      var t = '<span kind="dur" style="' + s + '">' + m + '-</span>';
-      $(t).insertBefore(this);
-    });
-  }
-};
-
-// show duration as separate element
-$('#showDur').change(showDurations);
-
 /** popup config TQ */
 function configTagQuery (title,desc,tq,cback) {
   $.ajax(
@@ -1317,14 +1305,7 @@ function saveTraceFromFiddle() {
     return;
   }
 
-  var j = '/diesel/viewAst/' + currEngineData.info.engineId + '?format=json';
-  var h = '/diesel/viewAst/' + currEngineData.info.engineId + '?format=html';
-
-  popupContent(
-      'Right click and save as: <p>' +
-      '<a href="' + j + '">Json</a> - to save |' +
-      '<a href="' + h + '">Html</a> - to send |'
-  );
+  saveTrace(currEngineData.info.engineId);
 }
 
 </script>

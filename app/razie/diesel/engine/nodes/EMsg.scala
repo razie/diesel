@@ -206,9 +206,12 @@ case class EMsg(
   /** this html works well in a diesel fiddle, use toHtmlInPage elsewhere */
   override def toHtml = toHtml(AstKinds.GENERATED)
 
-  /** to html using a kind: trace/debug etc */
+  /** to html in fiddle, using a kind: trace/debug etc */
   override def toHtml(kind: String): String = {
     def m = attrs.headOption.map(_.currentStringValue).mkString
+
+    val labelClass = if("ctx.foreach" == ea) "warning" else "default"
+
     if (DieselMsg.ENGINE.DIESEL_STEP == ea) {
       // step is just one comment
       /*span(arch+"::")+*/ first(pos, kind) + eaHtml(kind, "info") + " " + span(m, "primary")
@@ -223,7 +226,7 @@ case class EMsg(
 //      val color = if (m contains "!") "danger" else "warning"
       /*span(arch+"::")+*/ first(pos, kind) + eaHtml(kind) + " " + span(m, "warning")
     } else {
-      /*span(arch+"::")+*/ first(pos, kind) + eaHtml(kind) + " " + toHtmlAttrs(attrs)
+      /*span(arch+"::")+*/ first(pos, kind) + eaHtml(kind, labelClass) + " " + toHtmlAttrs(attrs, short=true, showExpr=false)
     }
   }
 

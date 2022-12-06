@@ -55,7 +55,7 @@ class DomGuard extends DomApiBase with Logging {
             Redirect(mod.diesel.controllers.routes.DomGuard.dieselViewAst(id).url)
           } getOrElse {
         ROK.k reactorLayout12 {
-          views.html.modules.diesel.engineView(None)
+          views.html.modules.diesel.viewAst(None)
         }
       }
     }
@@ -108,13 +108,13 @@ class DomGuard extends DomApiBase with Logging {
           ).as("application/xml")
         case _ =>
           ROK.k reactorLayout12 {
-            views.html.modules.diesel.engineView(Option(ast.engine))
+            views.html.modules.diesel.viewAst(Option(ast.engine))
           }
       }
     }.orElse(
       DieselAppContext.activeEngines.get(id).map(e =>
         ROK.k reactorLayout12 {
-          views.html.modules.diesel.engineView(Some(e))
+          views.html.modules.diesel.viewAst(Some(e))
         }
       )
     ).orElse(
@@ -289,7 +289,11 @@ class DomGuard extends DomApiBase with Logging {
           val st =
             if (DomState.isDone(a.engine.status)) a.engine.status
             else if(a.engine.paused) s"<b>paused!</b>"
-            else s"<b>${a.engine.status}</b>"
+            else
+              s"""<b>${a.engine.status}</b>&nbsp
+                 |<small>
+                 |<span class="glyphicon glyphicon-remove" onclick="javascript:cancelEnginePlease('${a.id}','cancel');" style="cursor:pointer; color:red" title="Cancel flow"></span>
+                 |</small>""".stripMargin
 
           val dtm = a.dtm.toLocalDateTime
 
@@ -327,7 +331,10 @@ class DomGuard extends DomApiBase with Logging {
           """<h3> Active Engines </h3>""" + {
             if (actives.isEmpty) "-none-" else {
               actives.map(t =>
-                s"""<br><a href="/diesel/viewAst/${t._1}">...${t._1} - ${t._2.description}</a>"""
+                s"""<br>&nbsp;
+                   |<small><span class="glyphicon glyphicon-remove" onclick="javascript:cancelEnginePlease('${t._1}', 'cancel');" style="cursor:pointer; color:red" title="Cancel flow"></span>
+                   |</small>""".stripMargin +
+                s""" | <a href="/diesel/viewAst/${t._1}">...${t._1}</a> - ${t._2.description}"""
               ).mkString("")
             }
           }
@@ -525,7 +532,7 @@ class DomGuard extends DomApiBase with Logging {
                | href="/diesel/cleanAst">clean all</a>) </small><br>
                | $runs<br><br>
                | """.stripMargin +
-                views.html.modules.diesel.engineView(Some(r.engine))(stok).toString
+                views.html.modules.diesel.viewAst(Some(r.engine))(stok).toString
           )
         }
       }
@@ -622,7 +629,7 @@ glyphicon-question-sign"></span></a></sup>: <a href="/diesel/guard/runCheck">Re-
                 }<br>
 <small>${DomGuardian.stats} (<a href="/diesel/listAst">list all</a>)(<a href="/diesel/cleanAst">clean all</a>)
 </small><br><br>""".stripMargin +
-                    views.html.modules.diesel.engineView(Some(r.engine))(stok).toString
+                    views.html.modules.diesel.viewAst(Some(r.engine))(stok).toString
               }.toList.mkString +
 
               """<hr><h2>Current engines report</h2>""" +
