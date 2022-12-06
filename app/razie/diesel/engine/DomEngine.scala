@@ -161,7 +161,7 @@ abstract class DomEngine(
           // impersonate the replaced ID's?
           // todo this numbers are incorrect, should be k+1 ? test and see...
           // todo probably the last one is not DONE when this comes and prune is not called after the last one, so +1
-          val replacement = new DomAst(EInfoWrapper(new Pruned(k+1, 1)), AstKinds.DEBUG,
+          val replacement = new DomAst(EInfoWrapper(new Pruned(k, 1)), AstKinds.DEBUG,
             new ListBuffer[DomAst](),
             removed.id)
               .withStatus(DomState.DONE)
@@ -1002,6 +1002,7 @@ abstract class DomEngine(
     try {
       if (initial) {
         DieselAppContext.startEngine(this)
+        GlobalData.dieselEnginesActive.incrementAndGet()
         this.synchronous = true
       }
 

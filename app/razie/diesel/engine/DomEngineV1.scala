@@ -67,7 +67,7 @@ class DomEngineV1(
       evAppChildren(a,
         DomAst(
           EMsg("diesel", "throw",
-            List(new P("error", "maxLevels! recursive rule..."))
+            List(new P("error", s"Recursive rule (maxLevels=$maxLevels)"))
           )))
       return Nil
     }
@@ -741,7 +741,7 @@ class DomEngineV1(
       val cfg = this.pages.map(_.specRef.wpath).mkString("\n")
       evAppChildren(a, DomAst(
         EWarning(
-          "No rules, mocks or executors match for " + in.toString,
+          "No rules, mocks or executors match for " + in.toString.take(1000),
           s"Review your engine configuration (blender=${settings.blenderMode}, mocks=${settings.blenderMode}, drafts=${settings.blenderMode}, tags), " +
               s"spelling of messages or rule clauses / pattern matches\n$cfg",
           DieselMsg.ENGINE.ERR_NORULESMATCH),
@@ -749,7 +749,7 @@ class DomEngineV1(
       ))
 
       // in strict mode, blow up...
-      if(ctx.root.strict) throw new DieselExprException("No rules, mocks or executors match for " + in.toString)
+      if(ctx.root.strict) throw new DieselExprException("No rules, mocks or executors match for " + in.toString.take(1000))
 
     }
   }
@@ -1387,6 +1387,14 @@ class DomEngineV1(
                 AstKinds.GENERATED))
           }
         newD.foreach(addChild(a, _))
+        true
+
+      } else if (ea == DieselMsg.ENGINE.DIESEL_MSG) { //========================
+
+        val EMsg.REGEX(e, m) = ctx.getRequired("msg")
+        val nat = in.attrs.filter(e => e.name != "msg")
+
+        addChild(a, DomAst(EMsg(e, m, nat).withPos(in.pos), AstKinds.GENERATED))
         true
 
       } else if (ea == DieselMsg.ENGINE.DIESEL_LATER) { //========================

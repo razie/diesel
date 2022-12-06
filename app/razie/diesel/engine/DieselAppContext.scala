@@ -55,7 +55,7 @@ object DieselAppContext extends Logging {
 
   /** active engines -ussed for routing so weak concurrent control ok */
   val activeEngines = new TrieMap[String, DomEngine]()
-  val activeStreams = new TrieMap[String, DomStream]()
+  val activeStreams = new TrieMap[String, DomStream]() // by id
   val activeStreamsByName = new TrieMap[String, DomStream]()
   val activeActors = new TrieMap[String, ActorRef]()
 
@@ -104,7 +104,7 @@ object DieselAppContext extends Logging {
         actorSystem =
           actorSystemFactory
               .map(_.apply())
-              .orElse(Some(ActorSystem.apply()))
+              .orElse(Option(ActorSystem.apply()))
         actorSystem.get
       }
     }
@@ -128,12 +128,10 @@ object DieselAppContext extends Logging {
     log("DieselAppContext.init")
 
     if (engineFactory.isEmpty) {
-      engineFactory = Some(
-        new DieselEngineFactory(
-          if (node.length > 0) node else localNode,
-          if (app.length > 0) app else "default"
-        )
-      )
+      engineFactory = Option(new DieselEngineFactory(
+        if (node.length > 0) node else localNode,
+        if (app.length > 0) app else "default"
+      ))
     }
 
 //    log("XXXXXXX " + actorSystem.get.dispatcher)
@@ -233,7 +231,7 @@ object DieselAppContext extends Logging {
 
   /** send a message via the router */
   def !(message: Any)(implicit sender: ActorRef = Actor.noSender): Unit = {
-    router.map(_ ! message)
+    router.foreach(_ ! message)
     if (router.isEmpty) {
       throw new IllegalStateException("DieselAppContext.router not initialized?")
     }
@@ -244,29 +242,21 @@ object DieselAppContext extends Logging {
     import akka.pattern.ask
     implicit val timeout = Timeout(5 seconds)
 
-//    activeStreamsByName
-//        .get(name)
-//        .map(x => {
-//          activeActors.get(x.id).map(_ ? DESClean)
-//            route(x.id, m); ""
-//        })
-//        .getOrElse(
-//          clog << "DomEngine Router DROP STREAM message " + m
-//        )
-//  }
-
-
-//    router.map(_ ? message)
-//    if (router.isEmpty) {
-//      throw new IllegalStateException("DieselAppContext.router not initialized?")
-//    }
+    activeStreamsByName
+        .get(name)
+        .map(x => {
+          activeActors.get(x.id).map(_ ? DEStreamClean(name))
+        })
+        .getOrElse(
+          clog << "DomEngine Router DROP STREAM: " + name
+        )
   }
 
-  def stop = {}
+  def stop(): Unit = {}
 
   def ctx = engineFactory.getOrElse(init())
 
   def report =
-    s"Engines: ${activeEngines.size} - running: ${activeEngines.values.filter(_.status != DomState.DONE).size}"
+    s"Engines: ${activeEngines.size} - running: ${activeEngines.values.count(_.status != DomState.DONE)}"
 }
 

@@ -260,6 +260,7 @@ object DieselMsg {
     final val DIESEL_SUMMARY = "diesel.summary"
     final val DIESEL_DEBUG = "diesel.debug"
     final val DIESEL_LATER = "diesel.later"
+    final val DIESEL_MSG = "diesel.msg"
     final val DIESEL_WHILE = "diesel.while"
     final val DIESEL_ASSERT = "diesel.assert"
     final val DIESEL_MAP = "diesel.map"

@@ -676,7 +676,7 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
       }
 
       case "indexBy" => {
-        // index array of objects into an object by a field
+        // index array of objects into an object by a field name (or lambda)
 
         av.calculatedTypedValue.cType.name match {
           case WTypes.ARRAY => {
@@ -850,7 +850,8 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
     else if(res == null && ctx.isStrict)
       throw new DieselExprException(s"[ERR null result $op] in expression $toDsl")
     else
-      new P("", res.asString, res.cType).copy(value = Option(res))
+//      new P("", res.asString, res.cType).copy(value = Option(res))
+      new P("", "", res.cType).copy(value = Option(res))
 
   }
 

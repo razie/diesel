@@ -323,7 +323,8 @@ case class BCMP2(a: Expr, op: String, b: Expr)
 //              av.contentType == WTypes.CLASS
             }
 
-            case "is" | "==" if bp.ttype == WTypes.wt.ARRAY || ap.ttype == WTypes.wt.ARRAY => {
+            // yeah only if both are known to be arrays - otherwise can't compare as arrays anyways, eh?
+            case "is" | "==" if bp.ttype == WTypes.wt.ARRAY && ap.ttype == WTypes.wt.ARRAY => {
               val al = arrayOf(ap)
               val bl = arrayOf(bp)
 
