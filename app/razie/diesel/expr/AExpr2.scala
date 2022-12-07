@@ -94,7 +94,7 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
         }
       }
 
-      case "+" => {
+      case "+" | "+=" => {
         val bv = b.applyTyped(v)
         (a, b) match {
           // json exprs are different, like cart + { item:...}
@@ -887,13 +887,19 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
     val ai = aa.asJson
     val bi = bb.asJson
 
-    val res = new mutable.HashMap[String, Any]()
+    // don't copy for +=
+    val res =
+      if ("+=" == op.trim) {
+        ai.asInstanceOf[HashMap[String, Any]]
+      } else {
+        val res = new mutable.HashMap[String, Any]()
+        ai.foreach { t =>
+          res.put(t._1, t._2)
+        }
+        res
+      }
 
-    ai.foreach { t =>
-      res.put(t._1, t._2)
-    }
-
-    if ("+" == op.trim) {
+    if ("+" == op.trim || "+=" == op.trim) {
       bi.foreach { t =>
         val k = t._1
         val bv = t._2
