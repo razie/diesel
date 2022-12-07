@@ -679,8 +679,9 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
                 val respv = b.applyTyped(x).calculatedTypedValue.asString
                 map.put(respv, x)
               }
+            } else {
               // by field name
-              val sctx = new StaticECtx(Nil, Option(ctx))
+              val sctx = new StaticECtx(Nil, Some(ctx))
               val field = b.applyTyped("")(sctx).calculatedTypedValue.asString
 
               arr.foreach {x=>
