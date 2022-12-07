@@ -66,7 +66,7 @@ case class AExprFunc(val expr: String, parms: List[RDOM.P]) extends Expr {
           case WTypes.ARRAY => {
             val elementType = av.calculatedTypedValue.cType.wrappedType
             val arr = av.calculatedTypedValue.asArray
-            if(arr.size <= 0) throw new DieselExprException(s"Empty array... ")
+            if(arr.size <= 0) throw new DieselExprException(s"Empty array... for ${expr} ")
             val res= f.apply(elementType, arr)
             res
           }
