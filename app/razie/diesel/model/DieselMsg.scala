@@ -279,6 +279,8 @@ object DieselMsg {
     final val DIESEL_ENG_CONTINUE = "diesel.engine.continue"
     final val DIESEL_ENG_PLAY = "diesel.engine.play"
 
+    final val DIESEL_PROGRESS = "diesel.engine.progress"
+
     final val STEP = "step"
     final val TODO = "todo"
     final val BEFORE = "before"

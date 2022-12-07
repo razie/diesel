@@ -55,6 +55,22 @@ case class DADepyEv (prereq:String, depy:String, dtm:DateTime=DateTime.now) exte
 }
 
 
+class DomEngineProgress {
+  var progressCurrent = 0
+  var progressTotal = 0
+  var progressStatus = ""
+
+  def set (cur:Int, total:Int, curStatus:String = ""): Unit = {
+    progressCurrent = cur
+    progressTotal = total
+    progressStatus = curStatus
+  }
+
+  def getPercent = if(progressTotal > 0) (progressCurrent / progressTotal) * 100 else 0
+
+  def isDefined = progressTotal > 0
+}
+
 /** the state changes of an engine, including all events, tree changes etc, go through here */
 trait DomEngineState {
 
@@ -67,6 +83,8 @@ trait DomEngineState {
 
   var status = DomState.INIT
   var paused = false
+
+  val progress = new DomEngineProgress
 
   var seqNo = 0 // each node being processed in sequence, gets a stamp here, so you can debug what runs in parallel
   def seq() = {

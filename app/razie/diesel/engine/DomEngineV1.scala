@@ -1397,6 +1397,15 @@ class DomEngineV1(
         addChild(a, DomAst(EMsg(e, m, nat).withPos(in.pos), AstKinds.GENERATED))
         true
 
+      } else if (ea == DieselMsg.ENGINE.DIESEL_PROGRESS) { //========================
+
+        val pc = ctx.getRequired("current")
+        val pt = ctx.getRequired("total")
+        val ps = ctx.get("status").getOrElse("")
+
+        this.progress.set(pc, pt, ps)
+        true
+
       } else if (ea == DieselMsg.ENGINE.DIESEL_LATER) { //========================
 
 //      // send new message async later at the root level

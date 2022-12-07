@@ -776,7 +776,9 @@ object RDOM {
         case "string" | "number" | "date" => s"<b>$s</b>"
         case "array" if hasCurrentValue =>
           WTypes.mkString(s, classLink) + value.map(v=>
-            if(isArrayType(v.value)) s"(${v.asArray.size})" else "(?)"
+            if(isArrayType(v.value)) s"(${v.asArray.size})"
+            else if(v.value.asInstanceOf[collection.Map[String, Any]]) s"(${v.asJson.size})"
+            else "(?)"
           ).mkString
         case _ => WTypes.mkString(s, classLink)
       }
