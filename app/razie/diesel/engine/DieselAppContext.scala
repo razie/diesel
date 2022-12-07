@@ -244,22 +244,14 @@ object DieselAppContext extends Logging {
     import akka.pattern.ask
     implicit val timeout = Timeout(5 seconds)
 
-//    activeStreamsByName
-//        .get(name)
-//        .map(x => {
-//          activeActors.get(x.id).map(_ ? DESClean)
-//            route(x.id, m); ""
-//        })
-//        .getOrElse(
-//          clog << "DomEngine Router DROP STREAM message " + m
-//        )
-//  }
-
-
-//    router.map(_ ? message)
-//    if (router.isEmpty) {
-//      throw new IllegalStateException("DieselAppContext.router not initialized?")
-//    }
+    activeStreamsByName
+        .get(name)
+        .map(x => {
+          activeActors.get(x.id).map(_ ? DEStreamClean(name))
+        })
+        .getOrElse(
+          clog << "DomEngine Router DROP STREAM: " + name
+        )
   }
 
   def stop = {}

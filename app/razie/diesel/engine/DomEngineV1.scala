@@ -1388,6 +1388,14 @@ class DomEngineV1(
         newD.foreach(addChild(a, _))
         true
 
+      } else if (ea == DieselMsg.ENGINE.DIESEL_MSG) { //========================
+
+        val EMsg.REGEX(e, m) = ctx.getRequired("msg")
+        val nat = in.attrs.filter(e => e.name != "msg")
+
+        addChild(a, DomAst(EMsg(e, m, nat).withPos(in.pos), AstKinds.GENERATED))
+        true
+
       } else if (ea == DieselMsg.ENGINE.DIESEL_LATER) { //========================
 
 //      // send new message async later at the root level

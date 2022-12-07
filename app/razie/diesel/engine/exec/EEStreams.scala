@@ -42,22 +42,24 @@ class EEStreams extends EExecutor(DieselMsg.STREAMS.PREFIX) {
         val batchWait = ctx.getp("batchWaitMillis").map(_.calculatedTypedValue.asLong.toInt).getOrElse(0)
 
         val others = in.attrs
-            .filter(_.name != "stream")
-            .filter(_.name != "batch")
-            .filter(_.name != "batchSize")
-            .filter(_.name != "batchWaitMillis")
+            // no need to remove these...
+//            .filter(_.name != "stream")
+//            .filter(_.name != "batch")
+//            .filter(_.name != "batchSize")
+//            .filter(_.name != "batchWaitMillis")
             .map(_.calculatedP)
 
         val context = P.of("context", others.map(p => (p.name, p)).toMap)
 
         // todo factory for V1
         val warn = DieselAppContext.findStream(name).map { s =>
-          // todo clean and remove the old one, sync
-//          import akka.pattern.ask
-//          implicit val timeout = Timeout(5 seconds)
-//          DieselAppContext.activeActors.values.map(_ ? DEStop)
-//          DieselAppContext ? DESDone(name)
-          EWarning(s"Stream $name was open!! Closing, but some generator or consumer may still use it!")
+          val cnt = s.getValues.size
+
+          // clean and remove the old one, sync
+          DieselAppContext.stopStream(name)
+
+          if (cnt > 0) EError(s"Stream $name was open and with $cnt elements inside!! Closing, but some generator or consumer may still use it!")
+          else EWarning(s"Stream $name was open (altough empty) ! Closing, but some generator or consumer may still use it!")
         }.toList
 
         val s = DieselAppContext.mkStream(

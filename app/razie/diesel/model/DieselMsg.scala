@@ -273,6 +273,7 @@ object DieselMsg {
     final val DIESEL_TODO = "diesel.todo"
     final val DIESEL_NOP = "diesel.nop"
     final val DIESEL_ENG_DEBUG = "diesel.engine.debug"
+    final val DIESEL_MSG = "diesel.msg"
 
     final val DIESEL_ENG_PAUSE = "diesel.engine.pause"
     final val DIESEL_ENG_CONTINUE = "diesel.engine.continue"

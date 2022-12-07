@@ -12,7 +12,7 @@ import razie.diesel.Diesel
 import razie.diesel.dom.RDOM.{P, PValue}
 import razie.diesel.dom._
 import scala.collection.mutable
-import scala.collection.mutable.ListBuffer
+import scala.collection.mutable.{HashMap, ListBuffer}
 import scala.util.Try
 import scala.util.parsing.json.JSONArray
 
@@ -655,6 +655,48 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
 
             val finalArr = resArr
             PValue(finalArr, WTypes.wt.ARRAY)
+          }
+
+          case WTypes.UNDEFINED if ctx.nonStrict => P.undefined(Diesel.PAYLOAD).value.orNull
+          case _ => throw new DieselExprException("Can't do flatMap on: " + av)
+        }
+      }
+
+      case "indexBy" => {
+        // index array of objects into an object by a field name (or lambda)
+
+        av.calculatedTypedValue.cType.name match {
+          case WTypes.ARRAY => {
+            val elementType = av.calculatedTypedValue.cType.wrappedType
+
+            val arr = av.calculatedTypedValue.asArray
+
+            val map = new HashMap[String, Any]
+
+            if(b.isInstanceOf[LambdaFuncExpr] || b.isInstanceOf[BlockExpr] && b.asInstanceOf[BlockExpr].ex.isInstanceOf[LambdaFuncExpr]) {
+              arr.foreach { x =>
+                // common case, no need to go through context, Block passes through to Lambda
+                val respv = b.applyTyped(x).calculatedTypedValue.asString
+                map.put(respv, x)
+              }
+              // by field name
+              val sctx = new StaticECtx(Nil, Option(ctx))
+              val field = b.applyTyped("")(sctx).calculatedTypedValue.asString
+
+              arr.foreach {x=>
+                if(x.isInstanceOf[HashMap[_,_]]) {
+                  val k = x.asInstanceOf[HashMap[String,_]].get(field)
+                  k.map {kv=>
+                    map.put(kv.toString, x)
+                  }
+                } else {
+                  throw new DieselExprException("indexBy only works on array of objects! Found: " + x)
+                }
+              }
+            }
+
+
+            PValue(map, WTypes.wt.JSON)
           }
 
           case WTypes.UNDEFINED if ctx.nonStrict => P.undefined(Diesel.PAYLOAD).value.orNull
