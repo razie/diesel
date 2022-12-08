@@ -515,12 +515,12 @@ case class EVal(p: RDOM.P) extends CanHtml with HasPosition with HasKind {
     }
 
   override def toHtml =
-    if(pos.isDefined) kspan("val") + p.toHtml
-    else spanClick("val", "info", Enc.escapeHtml(p.currentStringValue)) + p.toHtml
+    if(pos.isDefined) kspan("val", "primary") + p.toHtml
+    else spanClick("val", "default", Enc.escapeHtml(p.currentStringValue)) + p.toHtml(short = true)
 
   override def toHtmlFull =
-    if(pos.isDefined) kspan("val") + p.toHtml(false)
-    else spanClick("val", "info", Enc.escapeHtml(p.currentStringValue)) + p.toHtml(false)
+    if(pos.isDefined) kspan("val", "primary") + p.toHtml(false)
+    else spanClick("val", "default", Enc.escapeHtml(p.currentStringValue)) + p.toHtml(short = false)
 
   override def toString = "val " + p.toString
 }

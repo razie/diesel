@@ -214,7 +214,7 @@ case class EMsg(
 
     if (DieselMsg.ENGINE.DIESEL_STEP == ea) {
       // step is just one comment
-      /*span(arch+"::")+*/ first(pos, kind) + eaHtml(kind, "info") + " " + span(m, "primary")
+      /*span(arch+"::")+*/ first(pos, kind) + eaHtml(kind, "primary") + " " + span(m, "primary")
     } else if (DieselMsg.ENGINE.DIESEL_SUMMARY == ea) {
       // summary may have list of long values
       /*span(arch+"::")+*/

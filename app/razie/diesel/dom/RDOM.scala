@@ -760,7 +760,7 @@ object RDOM {
             )
           } + valSep2
           else "") +
-          (if (short && currentStringValue.length > 20) "<b><small>...</small></b>" else "") +
+          (if (short && WTypes.ARRAY != ttype.name && WTypes.JSON != ttype.name && currentStringValue.length > 20) "<b><small>...</small></b>" else "") +
           (if (dflt == "" && showExpr) expr.map(x =>
             smap(
               // this used if currentStringValue doesn't exit
@@ -777,7 +777,7 @@ object RDOM {
         case "array" if hasCurrentValue =>
           WTypes.mkString(s, classLink) + value.map(v=>
             if(isArrayType(v.value)) s"(${v.asArray.size})"
-            else if(v.value.asInstanceOf[collection.Map[String, Any]]) s"(${v.asJson.size})"
+            else if(v.value.isInstanceOf[collection.Map[String, Any]]) s"(${v.asJson.size})"
             else "(?)"
           ).mkString
         case _ => WTypes.mkString(s, classLink)

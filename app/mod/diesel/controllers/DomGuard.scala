@@ -288,9 +288,9 @@ class DomGuard extends DomApiBase with Logging {
 
           val st =
             if (DomState.isDone(a.engine.status)) a.engine.status
-            else if(a.engine.paused) s"<b>paused!</b>"
+            else if(a.engine.paused) """<span style="color:orange">paused!</span>&nbsp"""
             else
-              s"""<b>${a.engine.status}</b>&nbsp
+              s"""<span style="color:orange">${a.engine.status}</span>&nbsp
                  |<small>
                  |<span class="glyphicon glyphicon-remove" onclick="javascript:cancelEnginePlease('${a.id}','cancel');" style="cursor:pointer; color:red" title="Cancel flow"></span>
                  |</small>""".stripMargin
@@ -298,7 +298,7 @@ class DomGuard extends DomApiBase with Logging {
           val dtm = a.dtm.toLocalDateTime
 
           val resCodeStyle = a.engine.returnedRestCode.map { i =>
-            if (i / 100 == 2) """ style="color:green" """ else """ style="color:red" """
+            if (i / 100 == 2) """ style="color:green" """ else if (i / 100 == 4) """ style="color:orange" """ else """ style="color:red" """
           }.mkString
 
           // todo this is mean

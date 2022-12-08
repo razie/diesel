@@ -192,12 +192,13 @@ case class EInfo(msg: String, details: String = "") extends CanHtml with HasPosi
     if (details.length > 0) {
       spanClick(
         "info::",
-        "info",
+        "default",
         details,
-        spos + msg.replace("\n", "")
+        spos + msg.replace("\n", ""),
+        color = "darkgray"
       )
     } else {
-      span("info::", "info", details) + spos + " " + msg
+      span("info::", "default", details) + spos + " " + s"""<span style="color:darkgray">$msg</span>"""
     }
   }
 

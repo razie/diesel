@@ -81,14 +81,14 @@ trait CanHtml {
     * @param extra optional other attrs - shown on popup
     * @return
     */
-  def spanClick(s: String, k: String = "default", title: String = "", extra: String = "") = {
+  def spanClick(s: String, k: String = "default", title: String = "", extra: String = "", color:String = "white") = {
     val id = java.util.UUID.randomUUID().toString
     span(
       s,
       k,
       title,
       s"""style="cursor:help" id="$id" onclick="dieselNodeLog($$('#$id').prop('title'));""""
-    ) + " " + extra
+    ) + " " + s"""<span style="color:$color">$extra</span>"""
   }
 
   /**

@@ -741,7 +741,7 @@ class DomEngineV1(
       val cfg = this.pages.map(_.specRef.wpath).mkString("\n")
       evAppChildren(a, DomAst(
         EWarning(
-          "No rules, mocks or executors match for " + in.toString.take(1000),
+          "No rules, mocks or executors match for the above " + in.ea,
           s"Review your engine configuration (blender=${settings.blenderMode}, mocks=${settings.blenderMode}, drafts=${settings.blenderMode}, tags), " +
               s"spelling of messages or rule clauses / pattern matches\n$cfg",
           DieselMsg.ENGINE.ERR_NORULESMATCH),
@@ -749,8 +749,7 @@ class DomEngineV1(
       ))
 
       // in strict mode, blow up...
-      if(ctx.root.strict) throw new DieselExprException("No rules, mocks or executors match for " + in.toString.take(1000))
-
+      if(ctx.root.strict) throw new DieselExprException("No rules, mocks or executors match for the above " + in.ea)
     }
   }
 
@@ -1403,7 +1402,7 @@ class DomEngineV1(
         val pt = ctx.getRequired("total")
         val ps = ctx.get("status").getOrElse("")
 
-        this.progress.set(pc, pt, ps)
+        this.engineProgress.set(pc.toInt, pt.toInt, ps)
         true
 
       } else if (ea == DieselMsg.ENGINE.DIESEL_LATER) { //========================
