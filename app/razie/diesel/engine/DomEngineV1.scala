@@ -741,7 +741,7 @@ class DomEngineV1(
       val cfg = this.pages.map(_.specRef.wpath).mkString("\n")
       evAppChildren(a, DomAst(
         EWarning(
-          "No rules, mocks or executors match for the above " + in.ea,
+          s"No rules, mocks or executors match for the above ${in.ea} with this signature - verify your arguments!",
           s"Review your engine configuration (blender=${settings.blenderMode}, mocks=${settings.blenderMode}, drafts=${settings.blenderMode}, tags), " +
               s"spelling of messages or rule clauses / pattern matches\n$cfg",
           DieselMsg.ENGINE.ERR_NORULESMATCH),
@@ -749,7 +749,7 @@ class DomEngineV1(
       ))
 
       // in strict mode, blow up...
-      if(ctx.root.strict) throw new DieselExprException("No rules, mocks or executors match for the above " + in.ea)
+      if(ctx.root.strict) throw new DieselExprException(s"No rules, mocks or executors match for the above ${in.ea} with this signature - verify your arguments!")
     }
   }
 
