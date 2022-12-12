@@ -39,7 +39,7 @@ class AdminSys extends AdminBase {
 
   val reloadt = System.currentTimeMillis(); // reset when classloader reloads
 
-  def ping2(what: String) = ping(what)
+  def adminStatus (what: String) = ping(what)
 
   /** stupid protection against */
   var timingOut = false

@@ -49,11 +49,11 @@ class DomGuard extends DomApiBase with Logging {
     if (!ObjectId.isValid(id)) {
       Redirect("/diesel/listAst")
     } else {
-      findEngine(id)
-          .map { eng =>
-            eng.stopNow
-            Redirect(mod.diesel.controllers.routes.DomGuard.dieselViewAst(id).url)
-          } getOrElse {
+      val eng = findEngine(id)
+      DieselAppContext ! DECancel(id, s"User [${stok.au.map(_.userName)}] requested via API", "?", "")
+      eng.map { eng =>
+        Redirect(mod.diesel.controllers.routes.DomGuard.dieselViewAst(id).url)
+      } getOrElse {
         ROK.k reactorLayout12 {
           views.html.modules.diesel.viewAst(None)
         }
@@ -215,10 +215,13 @@ class DomGuard extends DomApiBase with Logging {
     * @return
     */
   def dieselListAst (errMessage:String = "") = FAUR { implicit stok =>
+    val filters = stok.query.get("filter").mkString
+    val follow = stok.query.get("follow")
+
     val un = stok.userName + {
       if (stok.au.exists(_.isMod))
-        """ mod - sees all realms
-          | (<a href = "/diesel/cleanAst" > clean all </a>)""".stripMargin
+        s""" mod - sees all realms
+          | (<a href = "/diesel/cleanAst?filters=${filters.mkString}&follow=$follow" > clean all </a>)""".stripMargin
       else {
         if (stok.au.exists(_.isMod)) " mod - sees all users "
         else " - regular user "
@@ -230,8 +233,6 @@ class DomGuard extends DomApiBase with Logging {
 
     if(errMessage != "") stok.withErrors(List(errMessage))
 
-    val filters = stok.query.get("filter").mkString
-    val follow = stok.query.get("follow")
     if(follow.isDefined) DomCollector.following = follow.mkString.split(",")
 
     val r = if (stok.au.exists(_.isAdmin)) "all" else stok.realm
@@ -333,8 +334,11 @@ class DomGuard extends DomApiBase with Logging {
               actives.map(t =>
                 s"""<br>&nbsp;
                    |<small><span class="glyphicon glyphicon-remove" onclick="javascript:cancelEnginePlease('${t._1}', 'cancel');" style="cursor:pointer; color:red" title="Cancel flow"></span>
-                   |</small>""".stripMargin +
-                s""" | <a href="/diesel/viewAst/${t._1}">...${t._1}</a> - ${t._2.description}"""
+                   |""".stripMargin +
+                s""" |  <a href="/diesel/viewAst/${t._1}">${t._1}</a>
+                   | | ${t._2.engine.createdDtm.toString("HH:mm:ss.SS")}
+                   | | ${t._2.description}
+                   | </small>""".stripMargin
               ).mkString("")
             }
           }
@@ -364,8 +368,10 @@ class DomGuard extends DomApiBase with Logging {
 
   def dieselCleanAst = FAUR { implicit stok =>
     if (stok.au.exists(_.isAdmin)) {
+      val filters = stok.query.get("filter").mkString
+      val follow = stok.query.get("follow").mkString
       DomCollector.cleanAst
-      Redirect(s"""/diesel/listAst""")
+      Redirect(s"""/diesel/listAst?follow=$follow&filters=$filters""")
     } else
       Unauthorized("no permission, hacker eh?")
   }

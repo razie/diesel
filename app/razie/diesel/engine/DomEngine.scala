@@ -432,7 +432,7 @@ abstract class DomEngine(
   def discard = {
     if (status != DomState.INIT) {
       // did something, need to stop it instead
-      stopNow
+      stopNow()
     } else {
       clog << s"WF.DISCARD.$id"
       status = DomState.CANCEL
@@ -482,7 +482,7 @@ abstract class DomEngine(
   }
 
   /** stop me now */
-  def stopNow = {
+  def stopNow() = {
     if (!DomState.isDone(status)) {
       status = DomState.CANCEL
       engineDone()
@@ -1051,6 +1051,12 @@ abstract class DomEngine(
   /** main processing of next - called from actor in async and in thread when sync/decompose */
   private[engine] def processDEMsg(m: DEMsg) = {
     m match {
+      case DECancel(eid, reason, senderId, senderDesc) => {
+        require(eid == this.id) // todo logical error not a fault
+        evAppChildren(root, DomAst(EWarning(s"Received cancel reason = [$reason]from engine=$senderId [$senderDesc]"), AstKinds.DEBUG))
+        stopNow()
+      }
+
       case DEReq(eid, a, r, l) => {
         require(eid == this.id) // todo logical error not a fault
         this.req(a, r, l)

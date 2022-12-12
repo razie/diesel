@@ -93,6 +93,8 @@ trait DomEngineState {
     t
   }
 
+  def createdDtm: DateTime
+
   var ownedStreams: ListBuffer[DomStream] = new ListBuffer[DomStream]
 
   // we need settings
@@ -197,6 +199,8 @@ object NoEngineState extends DomEngineState {
   implicit def ctx : ECtx = null
 
   def n(id:String):DomAst = ???
+
+  override def createdDtm : DateTime = DateTime.now()
 
   override def addEvent(e:DEvent*) : Unit = {}
 

@@ -5,12 +5,14 @@
  */
 package razie.diesel.engine.nodes
 
+import razie.diesel.Diesel
 import razie.diesel.dom.RDOM._
 import razie.diesel.dom._
 import razie.diesel.engine.{AstKinds, DomAstInfo, EGenerated}
 import razie.diesel.engine.exec.Executors
 import razie.diesel.expr.{AExprIdent, CExpr, ECtx, StaticECtx}
 import razie.diesel.model.DieselMsg
+import razie.diesel.model.DieselMsg.ENGINE.{DIESEL_FLOW_RETURN, DIESEL_RETURN, DIESEL_RULE_RETURN, DIESEL_SCOPE_RETURN}
 import razie.tconf.EPos
 import razie.wiki.Enc
 import scala.Option.option2Iterable
@@ -210,7 +212,12 @@ case class EMsg(
   override def toHtml(kind: String): String = {
     def m = attrs.headOption.map(_.currentStringValue).mkString
 
-    val labelClass = if("ctx.foreach" == ea) "warning" else "default"
+    val labelClass = ea match {
+      case "ctx.foreach" |
+          DIESEL_RETURN |
+           DIESEL_RULE_RETURN | DIESEL_SCOPE_RETURN | DIESEL_FLOW_RETURN => "warning"
+      case _ => "default"
+    }
 
     if (DieselMsg.ENGINE.DIESEL_STEP == ea) {
       // step is just one comment

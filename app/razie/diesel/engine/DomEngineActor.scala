@@ -27,7 +27,7 @@ sealed trait DEMsg {
   *
   * The engine will decompose the given node a and send to self a DERep
   */
-case class DEReq(engineId: String, a: DomAst, recurse: Boolean, level: Int) extends DEMsg
+case class DEReq (override val engineId: String, a: DomAst, recurse: Boolean, level: Int) extends DEMsg
 
 /** a message - reply to decompose, basically asynchronous completion of a message
   *
@@ -35,10 +35,10 @@ case class DEReq(engineId: String, a: DomAst, recurse: Boolean, level: Int) exte
   *
   * send this from async executors
   */
-case class DERep(engineId: String, a: DomAst, recurse: Boolean, level: Int, results: List[DomAst]) extends DEMsg
+case class DERep (override val engineId: String, a: DomAst, recurse: Boolean, level: Int, results: List[DomAst]) extends DEMsg
 
 /** complete a node that was waiting for async response */
-case class DEComplete(engineId: String, targetId: String, recurse: Boolean, level: Int, results: List[DomAst])
+case class DEComplete (override val engineId: String, targetId: String, recurse: Boolean, level: Int, results: List[DomAst])
     extends DEMsg
 
 /**
@@ -51,7 +51,7 @@ case class DEComplete(engineId: String, targetId: String, recurse: Boolean, leve
   * @param results
   * @param mapper   - optional mapper to transform teh nodes before adding, **after** locking the engine
   */
-case class DEAddChildren(engineId: String, targetId: String, recurse: Boolean, level: Int, results: List[DomAst],
+case class DEAddChildren (override val engineId: String, targetId: String, recurse: Boolean, level: Int, results: List[DomAst],
                          mapper: Option[(DomAst, DomEngine) => DomAst] = None)
     extends DEMsg
 
@@ -62,35 +62,39 @@ case class DEAddChildren(engineId: String, targetId: String, recurse: Boolean, l
   * @param parentId
   * @param leave
   */
-case class DEPruneChildren(engineId: String, parentId: String, keep: Int, level: Int) extends DEMsg
+case class DEPruneChildren (override val engineId: String, parentId: String, keep: Int, level: Int) extends DEMsg
 
 
 /** initialize and stop the engine */
 case object DEInit extends DEMsg {override def engineId = ""}
 
+/** stop the actor - engine sends this when done */
 case object DEStop extends DEMsg {override def engineId = ""}
+
+/** please cancel an engine */
+case class DECancel (override val engineId:String, reason:String, senderId:String, senderDesc:String) extends DEMsg
 
 /** suspend the engine for async messages - to continue you have to fire off a DERep yourself, later */
 case object DESuspend extends DEMsg {override def engineId = ""}
 
 /** send the next message later */
-case class DELater(engineId: String, d: Int, next: DEMsg) extends DEMsg
+case class DELater (override val engineId: String, d: Int, next: DEMsg) extends DEMsg
 
-case class DEStartTimer(engineId: String, d: Int, results: List[DomAst]) extends DEMsg
+case class DEStartTimer (override val engineId: String, d: Int, results: List[DomAst]) extends DEMsg
 
-case class DETimer(engineId: String, results: List[DomAst]) extends DEMsg
+case class DETimer (override val engineId: String, results: List[DomAst]) extends DEMsg
 
 /** continue and pause engine */
-case class DEPause(engineId: String) extends DEMsg
-case class DEPlay(engineId: String) extends DEMsg
-case class DEPlayThis(engineId: String, m:DEMsg) extends DEMsg
-case class DEContinue(engineId: String) extends DEMsg
+case class DEPause    (override val engineId: String) extends DEMsg
+case class DEPlay     (override val engineId: String) extends DEMsg
+case class DEPlayThis (override val engineId: String, m:DEMsg) extends DEMsg
+case class DEContinue (override val engineId: String) extends DEMsg
 
 /** error handling
   *
   * todo should not be part of normal processing DEMsg
   */
-case class DEError(engineId: String, msg: String) extends DEMsg
+case class DEError (override val engineId: String, msg: String) extends DEMsg
 
 /**
   * engine router - routes updates to proper engine actor
@@ -99,7 +103,7 @@ case class DEError(engineId: String, msg: String) extends DEMsg
   */
 class DomEngineRouter () extends Actor {
 
-  def receive = {
+  override def receive = {
     case DEInit => {
       // todo is this fair?
       // in case other services don't start me - i will start myself
@@ -141,7 +145,7 @@ class DomEngineRouter () extends Actor {
     }
   }
 
-  def route(id: String, msg: Any) = {
+  def route(id: String, msg: Any): Unit = {
     DieselAppContext.activeActors.get(id).map(_ ! msg).getOrElse(
       // todo if the engine is still around, collected, alert these in the there - add warn nodes
       // otherwise we need to alert somehow... anyways, something's off?
@@ -177,7 +181,7 @@ class DomEngineActor(eng: DomEngine) extends Actor with Stash {
     else DieselAppContext.router.map(_ ! m)
   }
 
-  def receive = receiveNormal orElse receiveOthers
+  override def receive = receiveNormal orElse receiveOthers
 
   /** receive when normal / behaviour */
   def receiveNormal: Receive = {
@@ -234,6 +238,10 @@ class DomEngineActor(eng: DomEngine) extends Actor with Stash {
       //save refs for active engines
       // started, take all stashed messages
       unstashAll()
+    }
+
+    case rep:DECancel if checkInit => {
+      proc(rep)
     }
 
     case rep:DERep if checkInit => {
@@ -303,7 +311,7 @@ class DomEngineActor(eng: DomEngine) extends Actor with Stash {
         }
       }
     } else {
-      DieselAppContext.router.map(_ ! m)
+      DieselAppContext.router.foreach(_ ! m)
     }
   }
 

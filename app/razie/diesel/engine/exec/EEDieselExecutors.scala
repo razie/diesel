@@ -268,7 +268,7 @@ object EEDieselExecutors {
 
     GlobalData.toMap() ++
         Map(
-          "config" -> Map(
+          "moreStats" -> Map(
             "scriptsRun" -> WikiScripster.count,
             "Diesel" -> GlobalData.perfMap(),
             "DieselCron" -> DieselCron.toj,
@@ -282,6 +282,9 @@ object EEDieselExecutors {
             "dieselLocalUrl" -> Services.config.dieselLocalUrl,
             "localQuiet" -> Services.config.localQuiet,
             "node" -> Services.config.node,
+            "isLocalhost" -> Services.config.isLocalhost,
+            "trustLocalMods" -> Config.trustLocalMods,
+            "trustLocalUsers" -> Config.trustLocalUsers,
             "clusterMode" -> Services.config.clusterMode,
             "cacheWikis" -> Services.config.cacheWikis,
             "cacheFormat" -> Services.config.cacheFormat,

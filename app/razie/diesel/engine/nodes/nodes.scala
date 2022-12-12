@@ -110,7 +110,7 @@ package object nodes {
 
               if (!res) { // failed to find any valid exprs, just evaluate the left side to get some info
 //                if (positive) cole.map(_.missedValue(AExprIdent(pm.name).applyTyped("")))
-                if (positive && bres.a.isDefined) cole.map(_.missedValue(bres.a.get))
+                if (positive && bres.a.isDefined) cole.foreach(_.missedValue(bres.a.get))
               } else {
                 // for regex matches, use each capture group and set as parm in context
                 if (pm.op == "~=") {
@@ -124,7 +124,7 @@ package object nodes {
               }
             }
 
-            if (res && positive) cole.map(_.plus(pm.name + pm.op + pm.dflt))
+            if (res && positive) cole.foreach(_.plus(pm.name + pm.op + pm.dflt))
             else cole.map(_.minus(pm.name, in.find(_.name == pm.name).mkString, pm))
           }
         } else if(pm.isMatch) {
@@ -133,7 +133,7 @@ package object nodes {
             // I don't include the context - this leads to side-effects, just use an IF after the match...
             res = in.exists(_.name == pm.name) || pm.isOptional // || ctx.exists(_.name == b._1.name)
 
-            if (res && positive) cole.map(_.plus(pm.name))
+            if (res && positive) cole.foreach(_.plus(pm.name))
             else cole.map(_.minus(pm.name, pm.name, pm))
           }
         } else {
@@ -141,7 +141,7 @@ package object nodes {
           res = bres.value
 
           // todo nice to extract a parm that didn't match from the pm.BExpr and report it
-          if (res && positive) cole.map(_.plus(""))
+          if (res && positive) cole.foreach(_.plus(""))
           else cole.map(_.minus(bres.a.map(_.name).mkString, bres.a.map(_.calculatedValue).mkString, pm))
         }
         res

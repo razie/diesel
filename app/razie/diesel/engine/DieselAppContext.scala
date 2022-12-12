@@ -59,7 +59,7 @@ object DieselAppContext extends Logging {
   val activeStreamsByName = new TrieMap[String, DomStream]()
   val activeActors = new TrieMap[String, ActorRef]()
 
-  /** router - routes messages to individual engines */
+  /** router - routes messages to individual engines see DomEngineRouter */
   var router: Option[ActorRef] = None
 
   /** the actor system used */
@@ -139,7 +139,7 @@ object DieselAppContext extends Logging {
 
     val p = Props(new DomEngineRouter())
     val a = actorOf(p)
-    router = Some(a)
+    router = Option(a)
     a ! DEInit
 
     engineFactory.get

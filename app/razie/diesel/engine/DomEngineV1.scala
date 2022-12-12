@@ -93,7 +93,7 @@ class DomEngineV1(
       case stop: EEngStop => {
         // stop engine
         evAppChildren(a, DomAst(EInfo(s"""Stopping engine $href""")))//.withPos((m.get.pos)))
-        stopNow
+        stopNow()
       }
 
       case stop: EEngSuspend => {
@@ -1556,6 +1556,20 @@ class DomEngineV1(
 
         DieselAppContext ! DEPlay(this.id)
         evAppChildren(a, DomAst(EInfo("Paused..."), AstKinds.DEBUG))
+        true
+
+      } else if (ea == DieselMsg.ENGINE.DIESEL_ENG_CANCEL) {
+
+        // cancel another engine
+        val p = in.attrs.find(_.name == "id").map(_.calculatedTypedValue.asString)
+        val r = in.attrs.find(_.name == "reason").map(_.calculatedTypedValue.asString).mkString
+
+        p.map {id=>
+          DieselAppContext ! DECancel(id, r, this.id, this.description.take(1000))
+          evAppChildren(a, DomAst(EInfo(s"Sent cancel to id=$id"), AstKinds.DEBUG))
+        }.getOrElse {
+          evAppChildren(a, DomAst(EError("engineId argument missing!"), AstKinds.ERROR))
+        }
         true
 
       } else if (ea == DieselMsg.ENGINE.DIESEL_ENG_SET) { //========================

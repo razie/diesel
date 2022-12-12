@@ -278,6 +278,7 @@ object DieselMsg {
     final val DIESEL_ENG_PAUSE = "diesel.engine.pause"
     final val DIESEL_ENG_CONTINUE = "diesel.engine.continue"
     final val DIESEL_ENG_PLAY = "diesel.engine.play"
+    final val DIESEL_ENG_CANCEL = "diesel.engine.cancel"
 
     final val DIESEL_PROGRESS = "diesel.engine.progress"
 

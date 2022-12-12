@@ -862,7 +862,7 @@ class DomApi extends DomApiBase with Logging {
             findIt)
 
             .map(msg =>
-              // add matched parms
+              // add matched parms - they come from any template matching
               // todo why map matched parms and not keep type/value what abt numbers, escaped json etc?
               if (matchedParms.isDefined) msg.copy(
                 attrs = msg.attrs ::: matchedParms.get.toList.map(t => new P(t._1, t._2)))
@@ -1092,7 +1092,7 @@ class DomApi extends DomApiBase with Logging {
               Await.result(res, Duration(dur))
             } catch {
               case e: java.util.concurrent.TimeoutException => {
-                engine.stopNow
+                engine.stopNow()
                 engine.root.appendAllNoEvents(
                   List(
                     DomAst(
