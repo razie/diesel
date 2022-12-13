@@ -219,9 +219,9 @@ class DomGuard extends DomApiBase with Logging {
     val follow = stok.query.get("follow")
 
     val un = stok.userName + {
-      if (stok.au.exists(_.isMod))
+      if (stok.au.exists(_.isAdmin))
         s""" mod - sees all realms
-          | (<a href = "/diesel/cleanAst?filters=${filters.mkString}&follow=$follow" > clean all </a>)""".stripMargin
+          | (<a href = "/diesel/cleanAst?filters=${filters}&follow=${follow.mkString}" > clean all </a>)""".stripMargin
       else {
         if (stok.au.exists(_.isMod)) " mod - sees all users "
         else " - regular user "

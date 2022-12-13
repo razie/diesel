@@ -88,13 +88,14 @@ withJquery(function ($) {
       $("#filter").val(fi);
     }
   });
+
+    setInterval(function(){
+    if(refreshMode && $('#refreshMode').prop('checked')) {
+      refreshPlease();
+    }
+  }, 7000);
 });
 
-setInterval(function(){
-  if(refreshMode && $('#refreshMode').prop('checked')) {
-    refreshPlease();
-  }
-}, 7000);
 
 </script>
 

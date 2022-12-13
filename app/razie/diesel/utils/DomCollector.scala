@@ -38,7 +38,7 @@ object DomCollector {
     def getMaxCount = {
       val desc = engine.collectGroup
       Option(100)
-          .filter(x=> following.exists(engine.description.contains))
+          .filter(x=> following.exists(x=> x.length > 3 && engine.description.contains(x)))
           .getOrElse (
       engine.settings.collectCount.filter(_ != 0).getOrElse {
         val res = if (
