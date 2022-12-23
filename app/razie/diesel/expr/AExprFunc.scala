@@ -20,7 +20,7 @@ import razie.diesel.engine.exec.EEFunc
 import razie.diesel.engine.nodes.{EMap, EMock, EMsg, ERule, EVal}
 import razie.diesel.engine.{AstKinds, DieselAppContext, DomAst, EContent}
 import razie.wiki.{Enc, EncUrl}
-import scala.collection.mutable.HashMap
+import scala.collection.mutable.{HashMap, ListBuffer}
 
 /** a "function-like" call:
   * - built-in functions,
@@ -360,10 +360,13 @@ case class AExprFunc(val expr: String, parms: List[RDOM.P]) extends Expr {
             case WTypes.ARRAY => {
               val elementType = av.calculatedTypedValue.cType.wrappedType
 
-              val arr = av.calculatedTypedValue.asArray.asInstanceOf[List[List[_]]]
+              val arr = av.calculatedTypedValue.asArray
+
               val resArr = arr.flatMap { x =>
-                if (x.isInstanceOf[List[Any]])
-                  x.asInstanceOf[List[Any]]
+                if (x.isInstanceOf[Seq[Any]])
+                  x.asInstanceOf[Seq[Any]]
+                else if (x.isInstanceOf[ListBuffer[Any]])
+                  x.asInstanceOf[ListBuffer[Any]].toSeq
                 else
                   throw new DieselExprException("Can't flatten element: " + x)
               }

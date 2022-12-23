@@ -213,7 +213,7 @@ object EMap {
 
         val tt =
           v.map{pv=>
-            if(pv.ttype.nonEmpty) pv.ttype
+            if (pv.ttype.nonEmpty) pv.ttype
             else {
               if (p.ttype.isEmpty) WType(p.expr.map(_.getType).mkString)
               else p.ttype
@@ -222,7 +222,7 @@ object EMap {
             WTypes.wt.UNDEFINED
           }
 
-        List(p.copy(dflt = "", ttype = tt, value = v.flatMap(_.value)))
+        List(p.copy(dflt = v.map(_.dflt).mkString, ttype = tt, value = v.flatMap(_.value)))
       }
     } else if (destSpec.exists(_.nonEmpty)) destSpec.get.map { p =>
       // when defaulting to spec, order changes
@@ -242,12 +242,12 @@ object EMap {
       }
     }
 
-    out1.filter(_.ttype != WTypes.UNDEFINED) // undefined behave like they didn't come...
+    out1.filter(! _.ttype.isUndefined) // undefined behave like they didn't come...
   }
 
   def sourcePasAttrs(in: List[PAS], deferEvaluation:Boolean=false)(implicit ctx: ECtx) = {
     // current context, msg overrides
-    val myCtx = new StaticECtx(Nil, Some(ctx))
+    val myCtx = new StaticECtx(Nil, Option(ctx))
 
     // solve an expression
     def expr(p: P) = {

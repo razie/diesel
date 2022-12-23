@@ -158,7 +158,7 @@ object WTypes {
     * @param typeToCheck the type we're checking
     * @param subtype     the subtype
     */
-  def isSubtypeOf(typeToCheck: WType, subtype: WType): Boolean = {
+  def isSubtypeOf (typeToCheck: WType, subtype: WType): Boolean = {
     typeToCheck.name.toLowerCase == subtype.name.toLowerCase || {
       typeToCheck.name.toLowerCase == EXCEPTION && subtype.name.toLowerCase == ERROR
     } || {
@@ -178,7 +178,7 @@ object WTypes {
     * @param typeToCheck the type we're checking
     * @param subtype     the subtype
     */
-  def isSubtypeOf(typeToCheck: String, subtype: String): Boolean = {
+  def isSubtypeOf (typeToCheck: String, subtype: String): Boolean = {
     typeToCheck.trim.length > 0 && (typeToCheck.toLowerCase == subtype.toLowerCase || {
       typeToCheck.toLowerCase == EXCEPTION && subtype.toLowerCase == ERROR
       // todo check schemas if they're subtyped...
@@ -246,6 +246,8 @@ case class WType (name:String, schema:String = WTypes.UNKNOWN, mime:Option[Strin
   override def toString = WTypes.mkString(this, identity)
 
   def isEmpty = name.isEmpty
+
+  def isUndefined = WTypes.UNDEFINED.equals(name)
 
   def isNumber = WTypes.NUMBER == name || WTypes.FLOAT == name || WTypes.INT == name
 
