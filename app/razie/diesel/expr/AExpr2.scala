@@ -11,6 +11,7 @@ import org.json.JSONObject
 import razie.diesel.Diesel
 import razie.diesel.dom.RDOM.{P, PValue}
 import razie.diesel.dom._
+import razie.diesel.engine.{DieselAppContext, DomStream}
 import scala.collection.mutable
 import scala.collection.mutable.{HashMap, ListBuffer}
 import scala.util.Try
@@ -223,7 +224,6 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
             jsonExprMap(op, av.calculatedTypedValue, bv.calculatedTypedValue)
 
           case _ if isDate(av) && isDate(bv) => {
-            // if a is num, b will be converted to num
             val ad = av.calculatedTypedValue.asDate
             val bd = bv.calculatedTypedValue.asDate
             val d = Duration.between(bd, ad).toMillis / 1000;
@@ -506,6 +506,10 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
 
           case _ => throw new DieselExprException("Can't do map on: " + av)
         }
+      }
+
+      case ">>>" | ">>" | "<<" | "<<<" => {
+        streamOp (op, v)
       }
 
       case "map" => {
@@ -1050,6 +1054,39 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
 
     val s = razie.js.tojsons(res.toMap)
     PValue(res, WTypes.wt.JSON).withStringCache(s)
+  }
+
+  def streamOp (op: String, v: Any)(implicit ctx: ECtx) = {
+    val av = a.applyTyped(v).calculatedTypedValue
+    val bv = b.applyTyped(v).calculatedTypedValue
+
+    op match {
+      case ">>" | ">>>" => {
+        // stream op / map
+
+        val bs = if (bv.cType.getClassName == "DieselStream") Option(bv.value.asInstanceOf[DomStream])
+        else DieselAppContext.activeStreamsByName.get(bv.asString)
+
+      }
+
+      case ">>" | ">>>" => {
+        // stream op / map
+
+        val bs = if (bv.cType.getClassName == "DieselStream") Option(bv.value.asInstanceOf[DomStream])
+        else DieselAppContext.activeStreamsByName.get(bv.asString)
+
+      }
+
+      case "<<" | "<<<" => {
+        // setup a generator
+
+        val as = if (av.cType.getClassName == "DieselStream") Option(av.value.asInstanceOf[DomStream])
+        else DieselAppContext.activeStreamsByName.get(av.asString)
+
+      }
+    }
+
+    PValue("", WTypes.wt.JSON)
   }
 
   override def getType = a.getType

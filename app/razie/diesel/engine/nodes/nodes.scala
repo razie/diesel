@@ -119,7 +119,8 @@ package object nodes {
                   val b = pm.valExpr.apply("")
                   val groups = EContent.extractRegexParms(b.toString, a.toString)
 
-                  groups.foreach(t => ctx.put(new P(t._1, t._2)))
+                  // as valid types i guess just strings and numbers?
+                  groups.foreach(t => ctx.put(P.fromTypedValue(t._1, t._2)))
                 }
               }
             }

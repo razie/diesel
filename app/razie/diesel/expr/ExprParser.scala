@@ -53,7 +53,7 @@ trait ExprParser extends RegexParsers {
       "flatMap" <~ ws | "indexBy" <~ ws |
       "flatten" <~ ws | "filter" <~ ws |
       "exists" | "mkString" <~ ws |
-      ">>"
+      ">>>" | ">>" | "<<<" | "<<"
 
   private def opsOR: Parser[String] = "or" | "xor"
 
@@ -164,8 +164,7 @@ trait ExprParser extends RegexParsers {
         s
   }
 
-  /** allow JSON ids with double quotes, single quotes or no quotes */
-//  def jsonIdent: Parser[String] = """[a-zA-Z_][\w]*""".r | """'[\w@. -]+'""".r | """"[\w@. -]+"""".r ^^ {
+  /** allow JSON ids (in inline-json docs left side) with double quotes, single quotes or no quotes */
   def jsonIdent: Parser[String] = """[a-zA-Z_][\w]*""".r | """'[^']+'""".r | """"[^"]+"""".r ^^ {
     case s => unquote(s)
   }
@@ -487,7 +486,7 @@ private def accessorIdent: Parser[RDOM.P] = "." ~> ident ^^ { case id => P("", i
   def jobj: Parser[Expr] = opt("new" ~ whiteSpace ~ qident) ~ ows ~
       "{" ~ ows ~ repsep(jnvp <~ ows, ",\\s*".r) <~ ows ~ "}" ^^ {
     case None ~ _ ~ _ ~ _ ~ li => JBlockExpr(li)
-    case Some(a ~ _ ~ b) ~ _ ~ _ ~ _ ~ li => JBlockExpr(li, Some(b))
+    case Some(a ~ _ ~ b) ~ _ ~ _ ~ _ ~ li => JBlockExpr(li, Option(b))
   }
 
   // one json block nvp pair
