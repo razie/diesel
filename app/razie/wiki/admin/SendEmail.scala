@@ -411,10 +411,10 @@ object SendEmail extends razie.Logging {
         // for testing, we're not sending emails
         if (Services.config.hostport.startsWith("test") && NO_EMAILS_TESTNG ||
 
-            Services.config.isLocalhost && (e.isNotification || NO_EMAILS)) {
+            Services.config.isRazDevMode && (e.isNotification || NO_EMAILS)) {
           // don't send emails when running test mode
           Audit.logdb("EMAIL_SENT_NOT",
-            Seq("to:" + e.to, "from:" + e.from, "subject:" + e.subject, "body:" + e.html).mkString("\n"))
+            Seq(s"hostport:${Services.config.hostport} | devMode:${Services.config.isRazDevMode}", "to:" + e.to, "from:" + e.from, "subject:" + e.subject, "body:" + e.html).mkString("\n"))
           e.copy(status = STATUS.SKIPPED, lastDtm = DateTime.now()).updateNoAudit
 
         } else {
