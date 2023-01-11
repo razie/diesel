@@ -176,10 +176,9 @@ class DomEngineV1(
 
           msgs = rep(a, recurse, level, List(newnode))
         } else {
-          a.parent.foreach { p =>
-            evAppChildren(p,
-              DomAst(EInfo("$if was false: " + n1.cond.mkString).withPos(n1.msg.pos), AstKinds.TRACE))
-          }
+//          a.parent.foreach { p =>
+            evAppChildren(a,
+              DomAst(EInfo("$if/else was false: " + n1.cond.mkString).withPos(n1.msg.pos), AstKinds.TRACE))
         }
         // message will be evaluate() later
       }
@@ -223,10 +222,9 @@ class DomEngineV1(
 
           appendVals(a, m.pos, Some(m), res.toList, ctx, AstKinds.kindOf(m.arch))
         } else {
-          a.parent.foreach { p =>
-            evAppChildren(p,
-              DomAst(EInfo("$if was false: " + n1.cond.mkString).withPos(n1.msg.pos), AstKinds.TRACE))
-          }
+//          a.parent.foreach { p =>
+            evAppChildren(a,
+              DomAst(EInfo("$if/else was false: " + n1.cond.mkString).withPos(n1.msg.pos), AstKinds.TRACE))
         }
         // message will be evaluate() later
       }
@@ -241,10 +239,9 @@ class DomEngineV1(
           // run in parent's context - no need for a local
           appendValsPas(Some(a), m.pos, Some(m), m.attrs, a.getCtx.get)
         } else {
-          a.parent.foreach { p =>
-            evAppChildren(p,
-              DomAst(EInfo("$if was false: " + n1.cond.mkString).withPos(n1.msg.pos), AstKinds.TRACE))
-          }
+//          a.parent.foreach { p =>
+            evAppChildren(a,
+              DomAst(EInfo("$if/else was false: " + n1.cond.mkString).withPos(n1.msg.pos), AstKinds.TRACE))
         }
       }
 
