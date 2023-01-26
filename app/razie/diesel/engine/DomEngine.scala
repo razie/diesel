@@ -472,7 +472,7 @@ abstract class DomEngine(
       if (!stream.streamIsDone) {
         root.append(
           new DomAst(
-            EWarning(s"Stream ${stream.name} was open!! Closing, but some generator or consumer may still use it!"),
+            EWarning(s"Stream ${stream.name} was open!! Closing, but some generator or consumer may still use it! [engineDone]"),
             AstKinds.ERROR
           )
         )
@@ -774,6 +774,7 @@ abstract class DomEngine(
     val after = DomAst(EMsg(DieselMsg.ENGINE.DIESEL_AFTER), AstKinds.TRACE)
     val desc = DomAst(EInfo(
       description,
+      "cr: " + this.createdDtm.toString + "\n"+
       this.pages.map(_.specRef.wpath).mkString("\n") + "\n" +
           this.settings.toString
     ), AstKinds.DEBUG).withStatus(DomState.SKIPPED)

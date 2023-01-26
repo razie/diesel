@@ -763,13 +763,15 @@ class DomEngineV1(
       case _ => AstKinds.GENERATED
     }
 
-    def findParent(level: Int): DomAst = {
-      if (level >= 0) parents.get(level).getOrElse(findParent(level - 1))
-      else throw new DieselExprException("can't find parent in ruleDecomp")
-    }
-
     // used to build trees from flat list with levels
     def addChild(x: Any, level: Int) = {
+
+      // here 'cause i don't want it used elsewhere...
+      def findParent(level: Int): DomAst = {
+        if (level >= 0) parents.get(level).getOrElse(findParent(level - 1))
+        else throw new DieselExprException("can't find parent in ruleDecomp - check your indentation levels!")
+      }
+
       val ast = DomAst(x, AstKinds.NEXT).withSpec(r)
       parents.put(level, ast)
 
@@ -978,7 +980,12 @@ class DomEngineV1(
         Audit.logdb("DIESEL_EXIT", s"user ${settings.userId}")
 
         if (Services.config.isLocalhost) {
-          System.exit(-1)
+          evAppChildren(a, DomAst(new EInfo(s"Exiting in 5 sec...", ""), AstKinds.GENERATED))
+
+          razie.Threads.fork {
+            Thread.sleep(5000)
+            System.exit(-1)
+          }
         }
 
         true

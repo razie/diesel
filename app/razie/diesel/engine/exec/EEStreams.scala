@@ -59,8 +59,8 @@ class EEStreams extends EExecutor(DieselMsg.STREAMS.PREFIX) {
           // clean and remove the old one, sync
           DieselAppContext.stopStream(name)
 
-          if (cnt > 0) EError(s"Stream $name was open and with $cnt elements inside!! Closing, but some generator or consumer may still use it!")
-          else EWarning(s"Stream $name was open (altough empty) ! Closing, but some generator or consumer may still use it!")
+          if (cnt > 0) EError(s"Stream $name was open and with $cnt elements inside!! Closing, but some generator or consumer may still use it! [new with same name]")
+          else EWarning(s"Stream $name was open (altough empty) ! Closing, but some generator or consumer may still use it! [new with same name]")
         }.toList
 
         val s = DieselAppContext.mkStream(

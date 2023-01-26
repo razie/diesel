@@ -71,22 +71,22 @@ class DomGuard extends DomApiBase with Logging {
         }
   }
 
-  /** canel a running engine */
+  /** pause a running engine */
   def dieselEnginePause(id: String) = FAUR { implicit stok =>
       DieselAppContext ! DEPause(id)
-      Ok("Ok, trying...")
+      Ok("Ok, sent pause command...")
   }
 
-  /** canel a running engine */
+  /** play one more message */
   def dieselEnginePlay(id: String) = FAUR { implicit stok =>
       DieselAppContext ! DEPlay(id)
-      Ok("Ok, trying...")
+      Ok("Ok, sent play command...")
   }
 
-  /** canel a running engine */
+  /** continue a paused engine to the end */
   def dieselEngineContinue(id: String) = FAUR { implicit stok =>
     DieselAppContext ! DEContinue(id)
-    Ok("Ok, trying...")
+    Ok("Ok, continue command...")
   }
 
   // todo this and /engine/view are the same...
@@ -218,10 +218,12 @@ class DomGuard extends DomApiBase with Logging {
     val filters = stok.query.get("filter").mkString
     val follow = stok.query.get("follow")
 
+    clog << s"dieselListAst with filter=$filters and follow=${follow.mkString}"
+
     val un = stok.userName + {
       if (stok.au.exists(_.isAdmin))
         s""" mod - sees all realms
-          | (<a href = "/diesel/cleanAst?filters=${filters}&follow=${follow.mkString}" > clean all </a>)""".stripMargin
+          | (<a href = "/diesel/cleanAst?filter=${filters}&follow=${follow.mkString}" > clean all </a>)""".stripMargin
       else {
         if (stok.au.exists(_.isMod)) " mod - sees all users "
         else " - regular user "
@@ -251,6 +253,11 @@ class DomGuard extends DomApiBase with Logging {
     }
 
     val total = GlobalData.dieselEnginesTotal.get()
+
+    def pause(engine:DomEngineState) = if(engine.paused)
+      s"""<span class="glyphicon glyphicon-play" onclick="javascript:cancelEnginePlease('${engine.id}', 'continue');" style="cursor:pointer; color:red" title="Pause flow"></span>"""
+    else
+      s"""<span class="glyphicon glyphicon-pause" onclick="javascript:cancelEnginePlease('${engine.id}', 'pause');" style="cursor:pointer; color:red" title="Pause flow"></span>"""
 
     val HEADING = (s"""
                      |<small>
@@ -293,7 +300,9 @@ class DomGuard extends DomApiBase with Logging {
             else
               s"""<span style="color:orange">${a.engine.status}</span>&nbsp
                  |<small>
-                 |<span class="glyphicon glyphicon-remove" onclick="javascript:cancelEnginePlease('${a.id}','cancel');" style="cursor:pointer; color:red" title="Cancel flow"></span>
+                 |<span class="glyphicon glyphicon-remove" onclick="javascript:cancelEnginePlease('${a.id}','cancel')
+                 |;" style="cursor:pointer; color:red" title="Cancel flow"></span>&nbsp
+                 |${pause(a.engine)}
                  |</small>""".stripMargin
 
           val dtm = a.dtm.toLocalDateTime
@@ -331,15 +340,16 @@ class DomGuard extends DomApiBase with Logging {
           val a =
           """<h3> Active Engines </h3>""" + {
             if (actives.isEmpty) "-none-" else {
-              actives.map(t =>
+              actives.map {t =>
                 s"""<br>&nbsp;
                    |<small><span class="glyphicon glyphicon-remove" onclick="javascript:cancelEnginePlease('${t._1}', 'cancel');" style="cursor:pointer; color:red" title="Cancel flow"></span>
+                   |${pause(t._2.engine)}
                    |""".stripMargin +
                 s""" |  <a href="/diesel/viewAst/${t._1}">${t._1}</a>
                    | | ${t._2.engine.createdDtm.toString("HH:mm:ss.SS")}
                    | | ${t._2.description}
                    | </small>""".stripMargin
-              ).mkString("")
+              }.mkString("")
             }
           }
 
@@ -371,7 +381,7 @@ class DomGuard extends DomApiBase with Logging {
       val filters = stok.query.get("filter").mkString
       val follow = stok.query.get("follow").mkString
       DomCollector.cleanAst
-      Redirect(s"""/diesel/listAst?follow=$follow&filters=$filters""")
+      Redirect(s"""/diesel/listAst?follow=$follow&filter=$filters""")
     } else
       Unauthorized("no permission, hacker eh?")
   }

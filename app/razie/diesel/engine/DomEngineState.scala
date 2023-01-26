@@ -93,6 +93,8 @@ trait DomEngineState {
     t
   }
 
+  def id:String
+
   def createdDtm: DateTime
 
   var ownedStreams: ListBuffer[DomStream] = new ListBuffer[DomStream]
@@ -200,6 +202,7 @@ object NoEngineState extends DomEngineState {
 
   def n(id:String):DomAst = ???
 
+  override def id : String = "n/a"
   override def createdDtm : DateTime = DateTime.now()
 
   override def addEvent(e:DEvent*) : Unit = {}

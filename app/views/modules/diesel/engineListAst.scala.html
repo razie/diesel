@@ -49,10 +49,14 @@ function setRefreshMode () {
 var refreshPlease = function() {
   var fo = $("#follow").val() || "";
   var fi = $("#filter").val() || "";
-  window.location.search = "?follow=" + encodeURIComponent(fo) + "&filter=" + encodeURIComponent(fi);
+  var u = "?follow=" + encodeURIComponent(fo) + "&filter=" + encodeURIComponent(fi);
+  console.log("FOUND QPARMS: " + fo + " / " + fi + " so url is: " + u);
+  window.location.search = u;
 }
 
 withJquery(function ($) {
+
+  console.log("withJquery ");
 
   $("#follow").on('keyup', function (e) {
     if (e.key === 'Enter' || e.keyCode === 13) {
@@ -66,7 +70,8 @@ withJquery(function ($) {
     }
   });
 
-  $(window).on('load', function () {
+  $(document).ready(function(){
+    console.log("onload ");
     useLocalStorageCheckbox("refreshMode", "domListAstRefreshMode", function (a, b, expanded) {
       refreshMode = expanded;
     });
@@ -74,6 +79,7 @@ withJquery(function ($) {
     var params = (new URL(document.location)).searchParams;
     var fo = params.get("follow");
     var fi = params.get("filter") || "";
+    console.log("ONLOAD FOUND QPARMS: " + fo + " / " + fi);
 
     if("@following".length > 0 && (fo == null || typeof fo === 'undefined')) {
       // came from server only, copy to url and refresh
