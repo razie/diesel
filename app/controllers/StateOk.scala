@@ -97,8 +97,6 @@ class StateOk(val realm:String, val au: Option[model.User], val request: Option[
   }
 
   /** set the title of this page */
-  def css(s:String) = {this._css = Option(s); ""}
-  def maybeCss(s:Option[String]) = {this._css = s; ""}
   def css = {
     val ret = _css.getOrElse {
       // session settings override everything

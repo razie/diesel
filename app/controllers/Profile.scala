@@ -668,7 +668,7 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
         ).withNewSession
   }
 
-  private def dfltCss = Services.config.sitecfg("dflt.css") getOrElse "light"
+  private def dfltCss (website:Website) = website.css orElse Services.config.sitecfg("dflt.css") getOrElse "light"
 
   def getJoin3Page(stok: StateOk) = {
     val join3 =
@@ -728,7 +728,7 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
               Set(ut),
               Set(Website.realm),
               (if (addr != null && addr.length > 0) Some(addr) else None),
-              Map("css" -> dfltCss, "favQuote" -> "Do one thing every day that scares you - Eleanor Roosevelt", "weatherCode" -> "caon0696"),
+              Map("css" -> dfltCss(request.website), "favQuote" -> "Do one thing every day that scares you - Eleanor Roosevelt", "weatherCode" -> "caon0696"),
               request.flash.get("gid") orElse request.session.get("gid")
             ).copy(organization = Some(org))
             )
@@ -860,7 +860,7 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
         Set(stok.realm),
         None,
         Map(
-          "css" -> dfltCss,
+          "css" -> dfltCss(stok.website),
           "favQuote" -> "Do one thing every day that scares you - Eleanor Roosevelt",
           "weatherCode" -> "caon0696"
         )

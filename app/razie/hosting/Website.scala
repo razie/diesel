@@ -124,6 +124,8 @@ class Website (we:WikiPage, extra:Seq[(String,String)] = Seq()) extends DslProps
   // todo deprecate the ones without mail. prefix
   def adminEmail:String   = this prop "mail.admin.email" OR (this prop "admin.email" OR "razie@razie.com")
   def supportEmail:String = this prop "mail.support.email" OR (this prop "support.email" OR "support@razie.com")
+  def supportText:String = this prop "mail.support.text" OR (this prop "support.text" OR "Send any pertinent information to our support team and someone will get back to you!")
+  def supportThankyou:String = this prop "mail.support.thankyou" OR (this prop "support.thankyou" OR "Someone from our support team will get back to you!")
 }
 
 /** multihosting utilities */

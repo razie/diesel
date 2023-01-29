@@ -143,6 +143,9 @@ class DieselParmSource (ctx:DomEngECtx) extends ParmSource {
         "description" -> (n => Left(
           new P(DieselMsg.ENGINE.DIESEL_ENG_DESC, ctx.engine.map(_.description).mkString)
         )),
+        "status" -> (n => Left(
+          new P(DieselMsg.ENGINE.DIESEL_ENG + ".status", ctx.engine.map(_.status).mkString)
+        )),
         "id" -> (n => Left(
           new P(DieselMsg.ENGINE.DIESEL_ENG + ".id", ctx.engine.map(_.id).mkString)
         )),
