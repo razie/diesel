@@ -239,18 +239,34 @@ class DomGuard extends DomApiBase with Logging {
 
     val r = if (stok.au.exists(_.isAdmin)) "all" else stok.realm
 
-    val list = DomCollector.withAsts { asts =>
-      asts
-          .filter(a =>
-        stok.au.exists(_.isAdmin) ||
-          a.realm == stok.realm &&
-              (a.userId.isEmpty ||
-                  a.userId.exists(_ == stok.au.map(_.id).mkString) ||
+    def canSee (a:DomEngine) =
+      stok.au.exists(_.isAdmin) ||
+          a.settings.realm.mkString == stok.realm &&
+              (a.settings.userId.isEmpty ||
+                  a.settings.userId.contains(stok.au.map(_.id).mkString) ||
                   stok.au.exists(_.isMod)
                   )
+
+    def msgFor (a:DomEngine) =
+      Enc.escapeComplexHtml(
+        if(a.status startsWith "final.") a.returnedRestPayload.take(200)
+        else {
+          // this is the wrong progress... needs abstractised
+          a.returnedRestPayload.take(200)
+//          if(a.progress == "") a.returnedRestPayload.take(200)
+//          else a.progress.take(200)
+        }
       )
-          .filter(a=> filters.isEmpty || a.engine.description.contains(filters))
+
+    val list1 = DomCollector.withAsts { asts =>
+      asts.map(_.engine)
+          .filter(canSee).filter(a=> filters.isEmpty || a.description.contains(filters))
     }
+    val list2 = DieselAppContext.activeEngines.values
+        .filter(canSee).filter(a=> filters.isEmpty || a.description.contains(filters))
+        .toList
+
+    val list = list1 ++ list2
 
     val total = GlobalData.dieselEnginesTotal.get()
 
@@ -286,28 +302,29 @@ class DomGuard extends DomApiBase with Logging {
                     |""".stripMargin
 
     var table = list.sortWith(
-      (a, b) => a.engine.createdDtm.isAfter(b.engine.createdDtm)
+      (a, b) => a.createdDtm.isAfter(b.createdDtm)
     ).zipWithIndex.map { z =>
       Try {
           val a = z._1
           val i = z._2
-          val uname = a.userId.map(u => findUname(u)).getOrElse("[auto]")
-          val duration = a.engine.root.tend - a.engine.root.tstart
+          val uname = a.settings.userId.map(u => findUname(u)).getOrElse("[auto]")
+          val duration = a.root.tend - a.root.tstart
 
           val st =
-            if (DomState.isDone(a.engine.status)) a.engine.status
-            else if(a.engine.paused) """<span style="color:orange">paused!</span>&nbsp"""
+            if (DomState.isDone(a.status)) a.status
+            else if(a.paused) """<span style="color:orange">paused!</span>&nbsp"""
             else
-              s"""<span style="color:orange">${a.engine.status}</span>&nbsp
+              s"""
                  |<small>
                  |<span class="glyphicon glyphicon-remove" onclick="javascript:cancelEnginePlease('${a.id}','cancel')
                  |;" style="cursor:pointer; color:red" title="Cancel flow"></span>&nbsp
-                 |${pause(a.engine)}
-                 |</small>""".stripMargin
+                 |${pause(a)}
+                 |</small>&nbsp;
+                 |<span style="color:orange">${a.engine.status}</span>""".stripMargin
 
-          val dtm = a.dtm.toLocalDateTime
+          val dtm = a.createdDtm.toLocalDateTime
 
-          val resCodeStyle = a.engine.returnedRestCode.map { i =>
+          val resCodeStyle = a.returnedRestCode.map { i =>
             if (i / 100 == 2) """ style="color:green" """ else if (i / 100 == 4) """ style="color:orange" """ else """ style="color:red" """
           }.mkString
 
@@ -315,16 +332,16 @@ class DomGuard extends DomApiBase with Logging {
         (s"""
              |<td><a href="/diesel/viewAst/${a.id}">...${a.id.takeRight(4)}</a></td>""" +
             (if(showDetails) s"""
-             |<td>${a.realm}</td>
+             |<td>${a.settings.realm.mkString}</td>
              |<td><span title="${a.collectGroup}">${a.collectGroup.takeRight(8)}</span></td>
              |<td>${uname}</td>""" else """""") +
             s"""
              |<td>$st</td>
              |<td title="${dtm.toLocalDate.toString()}">${dtm.toString("HH:mm:ss.SS")}</td>
              |<td align="right">$duration</td>
-             |<td><small><code>${Enc.escapeComplexHtml(a.engine.description.take(200))}</code></small></td>
-             |<td><small><code $resCodeStyle>${Enc.escapeComplexHtml(a.engine.returnedRestCode.mkString)}</code></small></td>
-             |<td><small><code>${Enc.escapeComplexHtml(a.engine.returnedRestPayload.take(200))}</code></small></td>
+             |<td><small><code>${Enc.escapeComplexHtml(a.description.take(200))}</code></small></td>
+             |<td><small><code $resCodeStyle>${Enc.escapeComplexHtml(a.returnedRestCode.mkString)}</code></small></td>
+             |<td><small><code>${msgFor(a)}</code></small></td>
              |<td> </td>
              |""").stripMargin
         }.getOrElse("-can't print engine-")
@@ -338,7 +355,7 @@ class DomGuard extends DomApiBase with Logging {
         // add active engines to debug things that get stuck
         val actives = DieselAppContext.activeEngines
           val a =
-          """<h3> Active Engines </h3>""" + {
+          """<h3> Active Engines | <small>also in list above</small></h3>""" + {
             if (actives.isEmpty) "-none-" else {
               actives.map {t =>
                 s"""<br>&nbsp;
@@ -386,6 +403,7 @@ class DomGuard extends DomApiBase with Logging {
       Unauthorized("no permission, hacker eh?")
   }
 
+  // todo engine id below should use xid loaded
   def dieselPostAst(stream: String, id: String, parentId: String) = FAUPRaAPI(true) { implicit stok =>
     val reactor = stok.website.dieselReactor
     val capture = stok.formParm("capture")
@@ -409,12 +427,13 @@ class DomGuard extends DomApiBase with Logging {
       execMode = "sync"
     )
 
+    // todo the engine id should be overwritten with this xid here
     val engine = EnginePrep.prepEngine(
       xid,
       settings,
       reactor,
       Some(root), true, stok.au, "DomApi.postAst")
-    DomCollector.collectAst(stream, reactor, xid, stok.au.map(_.id), engine)
+    DomCollector.collectAst(stream, reactor, engine)
 
     // decompose test nodes and wait
     engine.processTests.map { engine =>

@@ -892,7 +892,7 @@ class DomApi extends DomApiBase with Logging {
             setApiKeyUser(isApiKeyGood, website, engine)
 
             val msgAst = EnginePrep.addMsgToAst(engine.root, msg)
-            DomCollector.collectAst("runRest", stok.realm, engine.id, stok.au.map(_.id), engine, stok.uri)
+            DomCollector.collectAst("runRest", stok.realm, engine, stok.uri)
 
             var t4StartProcess = System.currentTimeMillis()
 
@@ -1159,7 +1159,7 @@ class DomApi extends DomApiBase with Logging {
 
         engine.status = DomState.CANCEL
         engine.engineDone(false, false)
-        DomCollector.collectAst("runRest", stok.realm, engine.id, stok.au.map(_.id), engine, stok.uri)
+        DomCollector.collectAst("runRest", stok.realm, engine, stok.uri)
 
         val sres = t.toString
         engine.withReturned(sres, 500)

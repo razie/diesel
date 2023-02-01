@@ -85,10 +85,10 @@ object DomCollector {
   def collectAst(
     stream: String,
     realm: String,
-    xid: String,
-    userId: Option[String],
     eng: DomEngine,
     details: String = ""): Unit = synchronized {
+    val userId = eng.settings.userId
+    val xid = eng.id
 
     val collectGroup = eng.collectGroup
     val newOne = CollectedAst(stream, realm, xid, userId, eng, collectGroup, details)

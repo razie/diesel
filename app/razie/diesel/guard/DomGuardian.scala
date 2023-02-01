@@ -238,8 +238,7 @@ object DomGuardian extends Logging {
         addFiddles
       )
 
-      DomCollector
-          .collectAst("guardian", realm, engine.id, au.map(_.id), engine)
+      DomCollector.collectAst("guardian", realm, engine)
 
       import scala.concurrent.ExecutionContext.Implicits.global
 

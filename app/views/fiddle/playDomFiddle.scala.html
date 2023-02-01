@@ -52,8 +52,8 @@ a JS with HTML and CSS fiddle
 
 
 <script src="@routes.Assets.at("javascripts/rk-contentassist-sqbr.js")"></script>
-<script src="@routes.Assets.at("javascripts/weFiddles.js")"></script>
 <script src="@routes.Assets.at("javascripts/weCommons.js")"></script>
+<script src="@routes.Assets.at("javascripts/weFiddles.js")"></script>
 
 <div id="helpText" style="display: none">
 @md {
@@ -314,7 +314,7 @@ $("#fileToLoad").on("input", function() {
 });
 
 $('#sketchMode, #mockMode, #blenderMode, #draftMode, #realTime').change(function(){
-  runpill2_@{id}('@{id}', false);
+  runpill2('@{id}', false);
 });
 
 function errMsg(text) {
@@ -329,7 +329,6 @@ function toggleBox (name) {
   $('#'+name).trigger("change");
 }
 
-var simMode = function () { return !( $('#realTime').prop('checked')) || isStoryManual;}
 
 var updRT = function() {
   $("#realTimeBox").removeClass();
@@ -400,7 +399,7 @@ function startESP() {
 
     setTimeout(function(){
     // populate/update the ESP screen
-    runpill2_@{id}('@{id}', false);
+    runpill2('@{id}', false);
   }, 500);
 }
 
@@ -410,7 +409,7 @@ $('#iframeOutStory_'+@id).css('max-height', $('#divInStory_@id').height()-10+'px
 $('#iframeOut5_'+@id).css('max-height', $('#pre5box_@id').height()-10+'px');
 
 function refresher() {
-  runpill2_@{id}('@{id}', false, true);
+  runpill2('@{id}', false, true);
 };
 
 function showHelp() {
@@ -431,7 +430,7 @@ showHideIframe();
 
 $('#wikiMode').change(function(){
   showHideIframe();
-  runpill2_@{id}('@{id}', false);
+  runpill2('@{id}', false);
 });
 
 
@@ -501,7 +500,7 @@ var checkContents_@id = function(id) {
 }
 
 /** run on spec changes */
-var runpill_@id = function(id) {
+var runpill = function(id) {
   isRefreshing += 1;
   showSpinner();
   console.log("run isRefreshing="+isRefreshing);
@@ -557,7 +556,8 @@ var runpill_@id = function(id) {
       clientSpecTimeStamp = data.info.timeStamp;
 
       // also trigger inst update
-      runpill2_@{id}('@{id}', false);
+      var compileOnly = typeof showingNavigatedEngine === 'undefined' ? false : showingNavigatedEngine;
+      runpill2('@{id}', compileOnly);
     },
 
     error  : function(x) {
@@ -572,7 +572,7 @@ var runpill_@id = function(id) {
 }
 
 /** run the fiddle */
-var runpill2_@id = function(id, compileOnly, forceRT, next) {
+var runpill2 = function(id, compileOnly, forceRT, next) {
   var noSim = !(forceRT || false);
   runFiddleStoryUpdated({
     url: '/diesel/fiddle/fiddleStoryUpdated/'+id+'?@Html(mod.diesel.controllers.SFiddles.qtourl(args))',
@@ -604,48 +604,6 @@ var runpill2_@id = function(id, compileOnly, forceRT, next) {
 
 </script>
 
-<!-- websockets for results -->
-<script>
-    var WS = window['MozWebSocket'] ? MozWebSocket : WebSocket;
-    @*var dateSocket = new WS('ws://localhost:9000/ws/diesel/fiddle/espOpen/@reactor/@id');*@
-    var dateSocket;
-    var wsActive=false;
-
-    // false for testing
-    if(true) try {
-      dateSocket = new WS('@mod.diesel.controllers.routes.DomFiddles.espOpen(reactor,id).webSocketURL()(stok.request.get)');
-      console.log("WS - done setup WS... ");
-
-      dateSocket.onmessage = function(event) {
-        wsActive = true;
-        var data = JSON.parse(event.data);
-
-        if(data.ping || data.pingMsg =="ping") {
-          console.log("WS ping: " + data.pingMsg);
-        } else if(data.pingMsg) {
-          console.log("WS ping: " + data.pingMsg);
-        } else if(data.clientId == '@id') {
-          console.log("WS result: " + JSON.stringify(data.info));
-          processEngineResult(
-            lastInput,
-            '@id', data, data.info.compileOnly, lastStartTime);
-        } else  {
-          console.log("WS result NOT MINE: ");// + JSON.stringify(data));
-        }
-      }
-    } catch (error) {
-      wsActive = false;
-      console.log("WS - ERROR can't setup WS: " + JSON.stringify(error));
-    }
-
-  @stok.qhParm("showId").map {id=>
-    currEngineId = '@id';
-    showingNavigatedEngine = true;
-    checkpill2(currEngineId);
-  }
-
-</script>
-
 <script src="@routes.Assets.at("javascripts/weDieselDiffs.js")"></script>
 
 <script src="@routes.Assets.at("javascripts/rk-contentassist.js")"></script>
@@ -662,6 +620,57 @@ var runpill2_@id = function(id, compileOnly, forceRT, next) {
 @*<script type="text/javascript" src="/sfiddle/tempAsset/@id/gParser.js")"></script>*@
 
 <script>
+
+function fiddle_showCapture(id, data) {
+  $('#iframeOut5_' + id).html(data.capture);
+}
+
+function fiddle_setErrors(response) {
+  setErrors(response.failureCount, response.info.errorCount, response.info.totalCount);
+}
+
+function fiddle_updateStoryMarkers(response) {
+  if(storyEditor && response != null && typeof response.ast != "undefined") {
+    storyHasErrors = updateMarkers(storyEditor, response.ast);
+    if(storyHasErrors) {
+      $("#storyChanged").addClass("label label-danger");
+      $("#storyChanged").prop('title', "has errors");
+    }
+  }
+}
+
+function fiddle_showFinalEngineResult (engineId, compileOnly, isPartial) {
+  var response = currEngineData;
+  var id = "@id";
+
+  if($("#iframeOutStory_" + id)) {
+    if ($('#wikiMode').prop('checked')) {
+      $('#divOutStory_' + id).html(response.wiki);
+    } else if (!compileOnly) {
+      // console.log("TREE: "+data.res);
+
+      // jquery.html will expand the escaped html, we need to escape again with encAmp
+      // if i don't do this, html values will mess up the current page
+
+      var ponly = $('#payloadOnly').prop('checked');
+
+      if (ponly) {
+        $('#iframeOutStory_' + id).text((response.payload) + '\n');
+        // $('#iframeOutSpec_' + id).text((response.payload) + '\n');
+      } else {
+        $('#iframeOutStory_' + id).html(encAmp(response.res) + '\n');
+        // $('#iframeOutSpec_' + id).html(encAmp(response.res) + '\n');
+
+        dieselHideVerbose(localStorage.getItem("domFiddleVerboseStory") == "true");
+        dieselHideTrace(localStorage.getItem("domFiddleTraceStory") == "true");
+        dieselHideDebug(localStorage.getItem("domFiddleDebugStory") == "true");
+        dieselHideGenerated(localStorage.getItem("domFiddleGeneratedStory") == "true");
+
+        showDurations();
+      }
+    }
+  }
+}
 
 var domChanged=true;        // true triggers the first fiddle update
 var instChanged=false;      //
@@ -889,7 +898,7 @@ var refreshFunc = function() {
     domChanged=false;
     captureChanged=false;
     lastChangeMillis = curMillis;
-    runpill_@{id}('@{id}');
+    runpill('@{id}');
   }
 
   // if changed and last updated a while ago, refresh
@@ -903,8 +912,8 @@ var refreshFunc = function() {
     // first compile to give feedback quick and then start long run in background
     // todo this needs optimized somehow - likely start the second one and just get it
     //  in the second call, since the parsing was done
-    runpill2_@{id}('@{id}', true, false, function() {
-      if(!simMode()) runpill2_@{id}('@{id}', false);
+    runpill2('@{id}', true, false, function() {
+      if(!simMode()) runpill2('@{id}', false);
     });
   }
 };
@@ -914,6 +923,47 @@ setInterval(refreshFunc, 500);
 
 </script>
 
+<!-- websockets for results -->
+<script>
+    var WS = window['MozWebSocket'] ? MozWebSocket : WebSocket;
+    @*var dateSocket = new WS('ws://localhost:9000/ws/diesel/fiddle/espOpen/@reactor/@id');*@
+    var dateSocket;
+    var wsActive=false;
+
+    // false for testing
+    if(true) try {
+      dateSocket = new WS('@mod.diesel.controllers.routes.DomFiddles.espOpen(reactor,id).webSocketURL()(stok.request.get)');
+      console.log("WS - done setup WS... ");
+
+      dateSocket.onmessage = function(event) {
+        wsActive = true;
+        var data = JSON.parse(event.data);
+
+        if(data.ping || data.pingMsg =="ping") {
+          console.log("WS ping: " + data.pingMsg);
+        } else if(data.pingMsg) {
+          console.log("WS ping: " + data.pingMsg);
+        } else if(data.clientId == '@id') {
+          console.log("WS result: " + JSON.stringify(data.info));
+          processEngineResult(
+              lastInput,
+              '@id', data, data.info.compileOnly, lastStartTime);
+        } else  {
+          console.log("WS result NOT MINE: ");// + JSON.stringify(data));
+        }
+      }
+    } catch (error) {
+      wsActive = false;
+      console.log("WS - ERROR can't setup WS: " + JSON.stringify(error));
+    }
+
+    @stok.qhParm("showId").map {id=>
+    currEngineId = '@id';
+    showingNavigatedEngine = true;
+    checkpill2(currEngineId);
+    }
+
+</script>
 
 <script> // weDieselDiffs
 /** Diffs in story/spec for Diesel
@@ -1080,56 +1130,6 @@ function saveNew(what) {
     });
 }
 
-function fiddle_showCapture(id, data) {
-  $('#iframeOut5_' + id).html(data.capture);
-}
-
-function fiddle_setErrors(response) {
-  setErrors(response.failureCount, response.info.errorCount, response.info.totalCount);
-}
-
-function fiddle_updateStoryMarkers(response) {
-  if(storyEditor && typeof response.ast != "undefined") {
-    storyHasErrors = updateMarkers(storyEditor, response.ast);
-    if(storyHasErrors) {
-      $("#storyChanged").addClass("label label-danger");
-      $("#storyChanged").prop('title', "has errors");
-    }
-  }
-}
-
-function fiddle_showFinalEngineResult (id, compileOnly, isPartial) {
-  var response = currEngineData;
-
-  if($("#iframeOutStory_" + id)) {
-    if ($('#wikiMode').prop('checked')) {
-      $('#divOutStory_' + id).html(response.wiki);
-    } else if (!compileOnly) {
-      // console.log("TREE: "+data.res);
-
-      // jquery.html will expand the escaped html, we need to escape again with encAmp
-      // if i don't do this, html values will mess up the current page
-
-      var ponly = $('#payloadOnly').prop('checked');
-
-      if (ponly) {
-        $('#iframeOutStory_' + id).text((response.payload) + '\n');
-        // $('#iframeOutSpec_' + id).text((response.payload) + '\n');
-      } else {
-        $('#iframeOutStory_' + id).html(encAmp(response.res) + '\n');
-        // $('#iframeOutSpec_' + id).html(encAmp(response.res) + '\n');
-
-        dieselHideVerbose(localStorage.getItem("domFiddleVerboseStory") == "true");
-        dieselHideTrace(localStorage.getItem("domFiddleTraceStory") == "true");
-        dieselHideDebug(localStorage.getItem("domFiddleDebugStory") == "true");
-        dieselHideGenerated(localStorage.getItem("domFiddleGeneratedStory") == "true");
-
-        showDurations();
-      }
-    }
-  }
-}
-
 /** reset the size of panels on screen based on switches and window size */
 var resetView = function () {
   const viewSt = $('#expandedStory').prop('checked');
@@ -1206,37 +1206,6 @@ var resetView = function () {
   attachAce();
 };
 
-// it's on load because otherwise the div has no contents
-$(window).on('load', function() {
-  // make sure for new users it will be open
-  if(localStorage.getItem("domFiddleExpandedStory") == null)
-    localStorage.setItem("domFiddleExpandedStory", true);
-  if(localStorage.getItem("domFiddleExpandedSpec") == null)
-    localStorage.setItem("domFiddleExpandedSpec", true);
-
-  useLocalStorageCheckbox("expandedStory", "domFiddleExpandedStory", function (a,b,expanded) {
-    resetView();
-  });
-
-  useLocalStorageCheckbox("expandedSpec", "domFiddleExpandedSpec", function (a,b,expanded) {
-    resetView();
-  });
-
-  useLocalStorageCheckbox("expandedPreviewSpec", "domFiddleExpandedPreviewSpec", function (a,b,expanded) {
-    resetView();
-  });
-
-  // second box tied to first
-  $('#expandedSpec1').change(function(){
-    $('#expandedSpec').prop('checked', $('#expandedSpec1').prop('checked'));
-    $('#expandedSpec').trigger("change");
-  });
-
-  setupLogLevels(fiddleId);
-
-});
-
-
 /** popup config TQ */
 function configTagQuery (title,desc,tq,cback) {
   $.ajax(
@@ -1307,6 +1276,37 @@ function saveTraceFromFiddle() {
 
   saveTrace(currEngineData.info.engineId);
 }
+
+// it's on load because otherwise the div has no contents
+// $(document).ready (function()
+razOnLoad (function() {
+  // make sure for new users it will be open
+  if(localStorage.getItem("domFiddleExpandedStory") == null)
+    localStorage.setItem("domFiddleExpandedStory", true);
+  if(localStorage.getItem("domFiddleExpandedSpec") == null)
+    localStorage.setItem("domFiddleExpandedSpec", true);
+
+  useLocalStorageCheckbox("expandedStory", "domFiddleExpandedStory", function (a,b,expanded) {
+    resetView();
+  });
+
+  useLocalStorageCheckbox("expandedSpec", "domFiddleExpandedSpec", function (a,b,expanded) {
+    resetView();
+  });
+
+  useLocalStorageCheckbox("expandedPreviewSpec", "domFiddleExpandedPreviewSpec", function (a,b,expanded) {
+    resetView();
+  });
+
+  // second box tied to first
+  $('#expandedSpec1').change(function(){
+    $('#expandedSpec').prop('checked', $('#expandedSpec1').prop('checked'));
+    $('#expandedSpec').trigger("change");
+  });
+
+  setupLogLevels(fiddleId);
+
+});
 
 </script>
 

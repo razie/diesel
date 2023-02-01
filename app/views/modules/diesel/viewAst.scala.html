@@ -8,12 +8,14 @@ view an engine
 
 <script src="@routes.Assets.at("javascripts/weCommons.js")"></script>
 <script src="@routes.Assets.at("javascripts/weDieselDom.js")"></script>
+<script src="@routes.Assets.at("javascripts/weFiddles.js")"></script>
 
 <script>
   var done = true;
 
   @if(eng.isDefined) {
     curEngineViewId = '@eng.get.id';
+    currEngineId = '@eng.get.id';
   } else {
     curEngineViewId = null;
   }
@@ -100,24 +102,11 @@ view an engine
             });
       };
 
-      engineCancel = function () {
-        postThis("@mod.diesel.controllers.routes.DomGuard.dieselEngineCancel(eng.get.id)");
-        location.reload();
-      };
-      enginePause = function () {
-        postThis("@mod.diesel.controllers.routes.DomGuard.dieselEnginePause(eng.get.id)");
+      afterEngineCommand = function (id, command) {
         location.reload();
       };
 
-      enginePlay = function () {
-        postThis("@mod.diesel.controllers.routes.DomGuard.dieselEnginePlay(eng.get.id)");
-        location.reload();
-      };
-      engineContinue = function () {
-        postThis("@mod.diesel.controllers.routes.DomGuard.dieselEngineContinue(eng.get.id)");
-        location.reload();
-      };
-      engineQueue = function () {
+      thisEngineQueue = function () {
         postThis("@mod.diesel.controllers.routes.DomGuard.dieselEngineQueue(eng.get.id)",
             function(data) {alert(data)});
       };
@@ -133,31 +122,37 @@ view an engine
     <span class="label label-danger"
     >
      <span
+       id="cancel"
      class="glyphicon glyphicon-remove"
      onclick="engineCancel();"
        title="Cancel the flow"
      ></span>
 
-      <span
-    class="glyphicon glyphicon-pause"
-    onclick="enginePause();"
-    title="Pause the flow..." ></span>
-        &nbsp;
     @if(e.paused) {
+        &nbsp;
       <span id="xx"
       title="Step/pause..."
       >
         Paused (
-        <a onclick="engineQueue();">queue</a>
+        <a onclick="thisEngineQueue();">queue</a>
         : @e.stashedMsg.size): &nbsp;
         <span class="glyphicon glyphicon-play"
+        id="play"
         onclick="enginePlay();"
         title="One step forward..." > </span>
           &nbsp;
         <span class="glyphicon glyphicon-forward"
-        onclick="engineContinue();"
+        id="continue"
+        onclick="thisEngineContinue();"
         title="Resume the engine..." > </span>
       </span>
+        &nbsp;
+    } else {
+      <span
+        id="pause"
+      class="glyphicon glyphicon-pause"
+      onclick="enginePause();"
+      title="Pause the flow..." ></span>
         &nbsp;
     }
     </span>

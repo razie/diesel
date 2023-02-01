@@ -463,7 +463,7 @@ abstract class DomEngine(
     }
 
     if (collect) {
-      DomCollector.collectAst("engine", settings.realm.mkString, id, settings.userId, this)
+      DomCollector.collectAst("engine", settings.realm.mkString, this)
     }
 
     // stop owned streams

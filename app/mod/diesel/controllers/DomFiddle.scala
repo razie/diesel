@@ -490,7 +490,7 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
 
       EnginePrep.addStoriesToAst(engine, List(storyPage), capture startsWith "{")
 
-      DomCollector.collectAst("fiddle", stok.realm, engine.id, stok.au.map(_.id), engine, stok.uri)
+      DomCollector.collectAst("fiddle", stok.realm, engine, stok.uri)
 
       // let ESP clients know we start...
       espClients.get(id).foreach(_ ! "start")
@@ -641,7 +641,9 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
     var clientTimeStamp = stok.formParm("clientTimeStamp")
     val engineId = stok.formParm("engineId")
     val engine = DomCollector.withAsts { asts =>
-      asts.find(_.id == engineId)
+      asts.find(_.id == engineId).map(_.engine)
+    }.orElse {
+      DieselAppContext.activeEngines.get(id)
     }
 
     def sendResult(engine: DomEngine) = {
@@ -675,7 +677,7 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
     }
 
     engine.map {e=>
-      retj << sendResult(e.engine)
+      retj << sendResult(e)
     }.getOrElse {
       NotFound(s"Engine id $engineId not found")
     }
