@@ -200,7 +200,7 @@ object RDOM {
     }.getOrElse(false)
 
     def asDate: LocalDateTime = {
-      val tsFmtr = DateTimeFormatter.ofPattern(WTypes.DATE_FORMAT)
+      val tsFmtr = WTypes.ISO_DATE_PARSER
       LocalDateTime.from(tsFmtr.parse(value.toString))
     }
 

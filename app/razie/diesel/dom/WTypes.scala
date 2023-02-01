@@ -5,6 +5,7 @@
   */
 package razie.diesel.dom
 
+import java.time.format.{DateTimeFormatter, DateTimeFormatterBuilder}
 import org.json.{JSONArray, JSONObject}
 
 /** expression and data types
@@ -92,6 +93,14 @@ object WTypes {
 
   final val DATE_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'" // std iso format
   final val DATE_ONLY_FORMAT = "yyyy-MM-dd"
+
+  final val ISO_DATE_PARSER = new DateTimeFormatterBuilder()
+      .parseCaseInsensitive()
+      .append(DateTimeFormatter.ISO_LOCAL_DATE)
+      .appendLiteral('T')
+      .append(DateTimeFormatter.ISO_LOCAL_TIME)
+      .appendLiteral('Z')
+      .toFormatter()
 
   /** just a few mime types */
   object Mime {

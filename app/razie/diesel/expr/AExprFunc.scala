@@ -423,7 +423,7 @@ case class AExprFunc(val expr: String, parms: List[RDOM.P]) extends Expr {
       case "toMillis" => {
 
         val as = firstParm.get.calculatedValue
-        val tsFmtr = DateTimeFormatter.ofPattern(WTypes.DATE_FORMAT)
+        val tsFmtr = WTypes.ISO_DATE_PARSER
         val ad = LocalDateTime.from(tsFmtr.parse(as))
 
         P.fromTypedValue("", ad.toInstant(ZoneOffset.UTC).toEpochMilli, WTypes.wt.NUMBER)
