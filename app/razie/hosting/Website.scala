@@ -32,6 +32,7 @@ class Website (we:WikiPage, extra:Seq[(String,String)] = Seq()) extends DslProps
   def url:String = this prop "url" OR ("http://" + domain)
 
   def domain:String = this prop "domain" OR (s"$name.dieselapps.com")
+  def org:String = this prop "org" OR ""
 
   def homePage:Seq[(String, String)] = (this prop "home").map("home" -> _).toSeq ++  propFilter(s"home.")
   def userHomePage:Option[WID] = this wprop "userHome"

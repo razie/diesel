@@ -267,8 +267,7 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
               }
             }
 
-            val tsFmtr = DateTimeFormatter.ofPattern(WTypes.DATE_FORMAT)
-
+            val tsFmtr = WTypes.ISO_DATE_PARSER
             val ad = LocalDateTime.from(tsFmtr.parse(as))
 
             var res = ad
@@ -664,7 +663,8 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
 
             // the flatten part, collect types
             val resArr = pvArr.flatten {respv=>
-              if(!respv.cType.equals(WTypes.wt.ARRAY)) throw new DieselExprException("Result of right side not Array!")
+                // todo this should be ignored / a warning ??
+              if(!respv.cType.equals(WTypes.wt.ARRAY)) throw new DieselExprException(s"Result of right side not Array for flatMap! It is type: ${respv.cType} value: ${respv.asString.take(500)}...")
               respv.asArray
             }
 
@@ -735,7 +735,6 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
                 // we populate an "x" or should it be "elem" ?
                 val sctx = new StaticECtx(List(P.fromTypedValue("x", x)), Some(ctx))
                 val resp = b.applyTyped(x)(sctx).calculatedTypedValue
-                if(!resp.cType.equals(WTypes.wt.ARRAY)) throw new DieselExprException("Result of right side not Array!")
               }
             }
 
@@ -807,6 +806,50 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
           case _ => PValue(new DieselExprException("Can't do filter on: " + av), WTypes.wt.EXCEPTION)
         }
       }
+
+      /**
+      case "filterBy" => {
+
+        av.calculatedTypedValue.cType.name match {
+          case WTypes.ARRAY => {
+            val elementType = av.calculatedTypedValue.cType.wrappedType
+
+            val arr = av.calculatedTypedValue.asArray
+
+            val resArr =
+              if(b.isInstanceOf[LambdaFuncExpr] || b.isInstanceOf[BlockExpr] && b.asInstanceOf[BlockExpr].ex.isInstanceOf[LambdaFuncExpr]) arr.filter {x=>
+                val res = b.applyTyped(x)
+                Try {
+                  res.calculatedTypedValue.asBoolean
+                }.getOrElse {
+                  throw new DieselExprException("Not a boolean expression: " + res.calculatedTypedValue)
+                }
+              }
+              else {
+                // by field name
+                val sctx = new StaticECtx(Nil, Some(ctx))
+                val field = b.applyTyped("")(sctx).calculatedTypedValue.asString
+
+                arr.filter { x =>
+                  if (x.isInstanceOf[HashMap[_, _]]) {
+                    val k = x.asInstanceOf[HashMap[String, _]].get(field)
+                    k.map { kv =>
+                      map.put(kv.toString, x)
+                    }
+                  } else {
+                    throw new DieselExprException("indexBy only works on array of objects! Found: " + x)
+                  }
+                }
+
+                val finalArr = resArr
+                PValue(finalArr, WTypes.wt.ARRAY.withSchema(av.cType.schema))
+              }
+
+          case WTypes.UNDEFINED if ctx.nonStrict => P.undefined(Diesel.PAYLOAD).value.orNull
+          case _ => throw new DieselExprException("Can't do flatMap on: " + av)
+        }
+      }
+**/
 
       case "exists" => {
         val av = a.applyTyped(v).calculatedTypedValue

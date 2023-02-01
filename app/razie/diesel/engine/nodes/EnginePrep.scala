@@ -234,8 +234,6 @@ object EnginePrep extends Logging {
       "content" -> stw
     )).apply("content")
 
-    val id = java.lang.System.currentTimeMillis().toString()
-
     val specs =
       if (settings.blenderMode) { // blend all specs and stories
         val d = catPagesFiltered("Spec", reactor)

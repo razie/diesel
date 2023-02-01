@@ -130,6 +130,18 @@ class DieselParmSource (ctx:DomEngECtx) extends ParmSource {
       ))
     }
 
+    case "cluster" =>  next("diesel.cluster", Map(
+      "nodes" -> (n => Left(
+        P.fromSmartTypedValue("diesel.cluster.nodes", Nil)
+      )),
+      "masterNode" -> (n => Left(
+        P.fromSmartTypedValue("diesel.cluster.masterNode", Map(
+          "name" -> Services.config.node,
+          "node" -> Services.config.node
+        ))
+      ))
+    ))
+
     case "server" => Some(P.fromSmartTypedValue("diesel.server", Map(
       "name" -> Services.config.node,
       "node" -> Services.config.node,

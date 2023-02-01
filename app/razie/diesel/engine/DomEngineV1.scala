@@ -148,7 +148,7 @@ class DomEngineV1(
         eng.process // start it up in the background
 
         evAppChildren(a, DomAst(EInfo(
-          s"""Spawn $arrow engine ${eng.href}""")))//.withPos((m.get.pos)))
+          s"""Spawn $arrow engine ${eng.href} (${eng.description})""")))//.withPos((m.get.pos)))
 
         if ("<=>" == arrow) {
           // nothing special here, I'm already about to Suspend (see above) and child will send a pong when done
@@ -274,8 +274,9 @@ class DomEngineV1(
 
       case n: EVal if !AstKinds.isGenerated(a.kind) => {
 
-        implicit val ctx = a.getCtx.get
-        // $val defined in scope in story, nit spec.
+        // need a syntetic context so that there is later a context of curNode (for stiching traces etc)
+        implicit val ctx = new StaticECtx (Nil, a.getCtx, Some(a))
+        // $val defined in scope in story, not in spec.
         val p = n.p.calculatedP // only calculate if not already calculated =likely in a different context=
 
         appendVals(a, n.pos, None, List(p), a.getCtx.get, AstKinds.TRACE)

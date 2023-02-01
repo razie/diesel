@@ -442,8 +442,10 @@ case class AExprFunc(val expr: String, parms: List[RDOM.P]) extends Expr {
 
       case "toMillis" => {
 
+        // todo when eliminating "dflt" from P we could just:
+//        val ad = firstParm.get.calculatedTypedValue.asDate
         val as = firstParm.get.calculatedValue
-        val tsFmtr = DateTimeFormatter.ofPattern(WTypes.DATE_FORMAT)
+        val tsFmtr = WTypes.ISO_DATE_PARSER
         val ad = LocalDateTime.from(tsFmtr.parse(as))
 
         P.fromTypedValue("", ad.toInstant(ZoneOffset.UTC).toEpochMilli, WTypes.wt.NUMBER)
@@ -473,12 +475,15 @@ case class AExprFunc(val expr: String, parms: List[RDOM.P]) extends Expr {
         val msg = EMsg(ee, aa, EMap.sourceAttrs(parent, parms, spec.map(_.get.attrs)))
         val ast = DomAst(msg, AstKinds.RECEIVED)
 
+        val root = DomAst("SYNC-"+expr, AstKinds.ROOT).withDetails("(inline func)")
+        root.appendAllNoEvents(List(ast))
+
         spec.flatMap { msgSpec =>
 
           ctx.root.engine.flatMap{engine=>
             val newe = DieselAppContext.mkEngine(
               engine.dom,
-              ast,
+              root,
               engine.settings,
               engine.pages,
               "SYNC-"+expr
@@ -497,13 +502,15 @@ case class AExprFunc(val expr: String, parms: List[RDOM.P]) extends Expr {
             // NOTE - need to use ctx to access values in context etc, i..e map (x => a.b(x))
             val res = newe.processSync(ast, level, ctx, true)
 
-            ast.setKinds(AstKinds.TRACE)
-            ast.kind = AstKinds.SUBTRACE
+            root.setKinds(AstKinds.TRACE)
+            root.kind = AstKinds.SUBTRACE
+
+            // todo maybe ensure all the nodes in subtrace are done so the big engine doesn't reprocess something??
 
             // save the trace in the main tree
-            if (ctx.isInstanceOf[StaticECtx])
-              ctx.asInstanceOf[StaticECtx].curNode.foreach(_.appendAllNoEvents(
-                List(ast)
+            if (ctx.isInstanceOf[SimpleECtx])
+              ctx.asInstanceOf[SimpleECtx].curNode.foreach(_.appendAllNoEvents(
+                List(root)
               ))
 
             res

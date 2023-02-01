@@ -18,7 +18,7 @@
 } else {
   @helper.inputText(
     sForm("name"),
-    '_label -> "Your name",
+    '_label -> "Your Name",
     '_showConstraints -> false)
   @helper.inputText(
     sForm("email"),
@@ -28,12 +28,12 @@
 
   @helper.inputText(
     sForm("desc"),
-    '_label -> "Description",
+    '_label -> "Subject",
     '_showConstraints -> false)
 
   @helper.textarea(
     sForm("details"),
-    '_label -> "Details",
+    '_label -> "Message",
     '_showConstraints -> false,
     'rows->5)
 
@@ -57,16 +57,18 @@
 @stok.website.supportText
 <br><br>
 
-@if(stok.au.isEmpty) {
-  <div class="alert alert-danger"><b>Note</b> that you are not logged in, so you need to include your email address above, in order for us to reply to this request!</div>
-}
+<div class="alert alert-info">Please provide the details of your request to our Customer Care team. Please do not include any personal banking or credit card information.</div>
 
   <div class="actions">
     <button type="submit" class="btn btn-primary">Submit request</button>
   </div>
 
+@if(stok.website.org != "omni") {
   <p><small>By using this form, you agree to the <a href="@controllers.WikiUtil.w("Terms of Service")">Terms of Service</a></small><p>
-  }
+}
+
+  } <!-- helper.form -->
+
 </div>
   </div>
 

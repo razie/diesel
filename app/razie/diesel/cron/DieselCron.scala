@@ -29,6 +29,7 @@ import razie.wiki.admin.GlobalData
 import scala.collection.concurrent.TrieMap
 import scala.concurrent.duration.{Duration, FiniteDuration, _}
 import scala.concurrent.{Await, Future}
+import services.DieselCluster
 
 /** in-mem representation of an on-going schedule, see [[msg:diesel.cron.set]] */
 case class DomSchedule(
@@ -581,39 +582,5 @@ object DieselCron extends Logging {
     DieselTarget.ENV(realm, env)
   )
 
-  // todo optimize this - we need to avoid calling REST every time...
-  var masterNodeStatus: Option[Boolean] = None
-
-  /** cheap hot/cold singleton - is it me that Apache deems main? assumes proxy in +H mode */
-  def isMasterNode(w: Website) = {
-    // todo use akka singleton or something
-    masterNodeStatus.getOrElse {
-      val me = InetAddress.getLocalHost.getHostName
-      val url =
-        (if (Services.config.isLocalhost) "http://" + Services.config.hostport
-        else
-          w.url) + "/diesel/engine/whoami"
-
-      var active = ""
-
-      try {
-        active = Snakk.body(Snakk.url(url))
-      } catch {
-        case ex: CommRtException if ex.httpCode == 302 => {
-          // redirect
-          log("================ REDIRECTING... " + ex.httpCode + ex.location302)
-          active = Snakk.body(Snakk.url(ex.location302))
-        }
-        case ex: CommRtException => {
-          log("================ SOME ERROR..." + ex.httpCode + ex.location302)
-          throw ex
-        }
-      }
-
-      val res = me equals active
-      debug(s"isMasterNode: $res $me =? $active url = ${w.url}")
-      masterNodeStatus = Some(me equals active)
-      masterNodeStatus.get
-    }
-  }
+  def isMasterNode(w: Website) = DieselCluster.isSingletonNode(w)
 }

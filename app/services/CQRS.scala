@@ -22,7 +22,7 @@ import scala.concurrent.duration.{Duration, FiniteDuration}
 class RkCqrs extends EventProcessor {
   lazy val auditor = Akka.system.actorOf(Props[WikiAsyncObservers], name = "WikiAsyncObservers")
 
-  def !(a: Any) {
+  override def ! (a: Any): Unit = {
     auditor ! a
   }
 }
@@ -50,7 +50,7 @@ class WikiAsyncObservers extends Actor {
 
   def localhost = Services.config.isLocalhost
 
-  def receive = {
+  override def receive = {
     case WikiConfigChanged(_, c) => {
       val ev = new WikiConfigChanged(nodeName.mkString, c)
       WikiObservers.after(ev)
