@@ -188,7 +188,7 @@ Started at: @{e.createdDtm}
     <input type="checkbox" id="verboseStory" title="Expand/collaps verbose nodes" > <small>(verbose)</small>
 
     @eng.map(_.id).map { id =>
-      <span class="pull-right"><a href="javascript:saveTrace('@id')"><span class="glyphicon glyphicon-save"></span></a></span>
+      <span class="pull-right"><a id="saveTrace" href="javascript:saveTrace('@id')"><span class="glyphicon glyphicon-save"></span></a></span>
     }
 
   </div>
