@@ -213,6 +213,7 @@ object RDOM {
       // old code no bueno
 //      val tsFmtr = DateTimeFormatter.ofPattern(WTypes.DATE_FORMAT)
 //      LocalDateTime.from(tsFmtr.parse(value.toString))
+
       // this is needed to accomodate many decimals in SSS
       val tsFmtr = WTypes.ISO_DATE_PARSER
       LocalDateTime.from(tsFmtr.parse(value.toString))

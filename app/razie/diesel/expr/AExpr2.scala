@@ -133,10 +133,8 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
               }
             }
 
-            val tsFmtr = DateTimeFormatter.ofPattern(WTypes.DATE_FORMAT)
-
+            val tsFmtr = WTypes.ISO_DATE_PARSER
             val ad = LocalDateTime.from(tsFmtr.parse(as))
-
             var res = ad
 
             if (dur.isDefined) {
