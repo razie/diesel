@@ -119,8 +119,6 @@ class DomGuard extends DomApiBase with Logging {
       )
     ).orElse(
       Option(dieselListAst("Trace not found - we only store a limited amount of traces").apply(stok.req).value.get.get)
-//          Option(NotFound(
-//        """Engine trace not found - We only store a limited amount of traces... <a href="/diesel/listAst">see all</a>"""))
     )
   }
 
@@ -215,8 +213,8 @@ class DomGuard extends DomApiBase with Logging {
     * @return
     */
   def dieselListAst (errMessage:String = "") = FAUR { implicit stok =>
-    val filters = stok.query.get("filter").mkString
-    val follow = stok.query.get("follow").mkString
+    val follow = stok.query.get("follow").filter (x=> x != "null" && x != null).mkString
+    val filters = stok.query.get("filter").filter (x=> x != "null" && x != null).mkString
 
     clog << s"dieselListAst with filter=$filters and follow=${follow.mkString}"
 
@@ -330,7 +328,7 @@ class DomGuard extends DomApiBase with Logging {
 
           // todo this is mean
         (s"""
-             |<td><a href="/diesel/viewAst/${a.id}">...${a.id.takeRight(4)}</a></td>""" +
+             |<td><a href="/diesel/viewAst/${a.id}?follow=$follow&filter=$filters">...${a.id.takeRight(4)}</a></td>""" +
             (if(showDetails) s"""
              |<td>${a.settings.realm.mkString}</td>
              |<td><span title="${a.collectGroup}">${a.collectGroup.takeRight(8)}</span></td>
@@ -362,7 +360,7 @@ class DomGuard extends DomApiBase with Logging {
                    |<small><span class="glyphicon glyphicon-remove" onclick="javascript:cancelEnginePlease('${t._1}', 'cancel');" style="cursor:pointer; color:red" title="Cancel flow"></span>
                    |${pause(t._2.engine)}
                    |""".stripMargin +
-                s""" |  <a href="/diesel/viewAst/${t._1}">${t._1}</a>
+                s""" |  <a href="/diesel/viewAst/${t._1}?follow=$follow&filter=$filters">${t._1}</a>
                    | | ${t._2.engine.createdDtm.toString("HH:mm:ss.SS")}
                    | | ${t._2.description}
                    | </small>""".stripMargin
@@ -389,7 +387,13 @@ class DomGuard extends DomApiBase with Logging {
             .stripMargin
 
       ROK.k reactorLayout12FullPage {
-        views.html.modules.diesel.engineListAst(title, title2, table, DomCollector.following.mkString)
+        views.html.modules.diesel.engineListAst(
+          title,
+          title2,
+          table,
+          DomCollector.following.mkString,
+          if(errMessage == "") None else Option(s"""/diesel/listAst?follow=$follow&filter=$filters""")
+        )
       }
    }
 

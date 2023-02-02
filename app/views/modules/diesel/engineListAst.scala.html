@@ -1,7 +1,7 @@
 @**
 view the list of engines - the html was prepared separately and come
 **@
-@(title:String, title2:String, content:String, following:String)(implicit stok: controllers.StateOk)
+@(title:String, title2:String, content:String, following:String, redirectTo:Option[String])(implicit stok: controllers.StateOk)
 
 <script src="@routes.Assets.at("javascripts/weCommons.js")"></script>
 <script src="@routes.Assets.at("javascripts/weFiddles.js")"></script>
@@ -72,6 +72,12 @@ withJquery(function ($) {
 
   $(document).ready(function(){
     console.log("onload ");
+    @if(redirectTo.isDefined) {
+    setTimeout(function(){
+      // don't refresh - just rewrite the url...
+      window.history.replaceState({}, "Flow not found - flow list", "@Html(redirectTo.mkString)");
+    }, 750);
+    } else {
     useLocalStorageCheckbox("refreshMode", "domListAstRefreshMode", function (a, b, expanded) {
       refreshMode = expanded;
     });
@@ -92,6 +98,7 @@ withJquery(function ($) {
 
     if(fi != null && fi.length > 0) {
       $("#filter").val(fi);
+    }
     }
   });
 
