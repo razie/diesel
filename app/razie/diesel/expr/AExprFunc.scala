@@ -17,8 +17,9 @@ import razie.diesel.Diesel
 import razie.diesel.dom.RDOM.P
 import razie.diesel.dom._
 import razie.diesel.engine.exec.EEFunc
-import razie.diesel.engine.nodes.{EMap, EMock, EMsg, ERule, EVal}
+import razie.diesel.engine.nodes.{EInfo, EMap, EMock, EMsg, ERule, EVal, HasPosition}
 import razie.diesel.engine.{AstKinds, DieselAppContext, DomAst, EContent}
+import razie.tconf.EPos
 import razie.wiki.{Enc, EncUrl}
 import scala.collection.mutable.{HashMap, ListBuffer}
 
@@ -310,13 +311,14 @@ case class AExprFunc(val expr: String, parms: List[RDOM.P]) extends Expr {
       }
 
       case "split" => {
-          val av = firstParm.getOrElse {
-            throw new DieselExprException("Need three arguments.")
-          }.calculatedValue
+        val help = ": split(string, regex) argument order matters! "
+        val av = firstParm.getOrElse {
+          throw new DieselExprException(s"Need two arguments $help")
+        }.calculatedValue
 
-          val bv = secondParm.getOrElse {
-            throw new DieselExprException("Need three arguments.")
-          }.calculatedValue
+        val bv = secondParm.getOrElse {
+          throw new DieselExprException(s"Need two arguments $help")
+        }.calculatedValue
 
           P.fromTypedValue("", av.split(bv).toSeq, WTypes.wt.ARRAY)
       }
@@ -460,11 +462,11 @@ case class AExprFunc(val expr: String, parms: List[RDOM.P]) extends Expr {
 
         // is there a spec for it in current domain?
         val spec = ctx.root.domain.flatMap {
-          _.moreElements.collect {
+          _.moreElements.collectFirst {
             case s: EMsg if s.ea == expr => Some(s)
             case s: ERule if s.e.ea == expr => Some(s.e.asMsg)
             case s: EMock if s.rule.e.ea == expr => Some(s.rule.e.asMsg)
-          }.headOption
+          }
         }
 
         // or is it defined as a func in domain?
@@ -472,9 +474,19 @@ case class AExprFunc(val expr: String, parms: List[RDOM.P]) extends Expr {
           _.funcs.get (expr)
         }
 
+        // todo this is pos of parent - be more precise, get pos of expr
+        val pos: Option[EPos] =
+          ctx.asInstanceOf[SimpleECtx].curNode.flatMap { n =>
+            if (n.value.isInstanceOf[HasPosition])
+              n.value.asInstanceOf[HasPosition].pos
+            else None
+          } orElse (None)
+
+
         val msg = EMsg(ee, aa, EMap.sourceAttrs(parent, parms, spec.map(_.get.attrs)))
         val ast = DomAst(msg, AstKinds.RECEIVED)
 
+        // root extra node with more debug info about what this is
         val root = DomAst("SYNC-"+expr, AstKinds.ROOT).withDetails("(inline func)")
         root.appendAllNoEvents(List(ast))
 
@@ -489,6 +501,14 @@ case class AExprFunc(val expr: String, parms: List[RDOM.P]) extends Expr {
               "SYNC-"+expr
             )
 
+            // leave a marker
+            if (ctx.isInstanceOf[SimpleECtx])
+              ctx.asInstanceOf[SimpleECtx].curNode.foreach { n =>
+                ctx.root.engine.foreach(_.evAppChildren(n, DomAst(EInfo(
+                  s"""SYNC-engine ${newe.href} : ${msg.toString}""").withPos(pos)
+                )))
+              }
+
             val level =
               if (ctx.isInstanceOf[SimpleECtx])
                 ctx.asInstanceOf[SimpleECtx].curNode.flatMap(n =>
@@ -500,7 +520,7 @@ case class AExprFunc(val expr: String, parms: List[RDOM.P]) extends Expr {
             // a message with this name found, call it sync
 
             // NOTE - need to use ctx to access values in context etc, i..e map (x => a.b(x))
-            val res = newe.processSync(ast, level, ctx, true)
+            val res = newe.processSync(ast, level, ctx, initial = true)
 
             root.setKinds(AstKinds.TRACE)
             root.kind = AstKinds.SUBTRACE
