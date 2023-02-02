@@ -737,7 +737,7 @@ class DomApi extends DomApiBase with Logging {
               hJson,
               qJson
               )
-            ::: qparams.map(t => P.fromTypedValue(t._1, t._2, WTypes.wt.STRING)).toList ::: posted
+            ::: qFlat ::: posted
           ))
 
           dieselRestMsg

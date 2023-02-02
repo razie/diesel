@@ -216,7 +216,7 @@ class DomGuard extends DomApiBase with Logging {
     */
   def dieselListAst (errMessage:String = "") = FAUR { implicit stok =>
     val filters = stok.query.get("filter").mkString
-    val follow = stok.query.get("follow")
+    val follow = stok.query.get("follow").mkString
 
     clog << s"dieselListAst with filter=$filters and follow=${follow.mkString}"
 
@@ -235,7 +235,7 @@ class DomGuard extends DomApiBase with Logging {
 
     if(errMessage != "") stok.withErrors(List(errMessage))
 
-    if(follow.isDefined) DomCollector.following = follow.mkString.split(",")
+    if(follow.trim.nonEmpty) DomCollector.following = follow.split(",").filter(_.trim.length > 1)
 
     val r = if (stok.au.exists(_.isAdmin)) "all" else stok.realm
 
@@ -381,7 +381,7 @@ class DomGuard extends DomApiBase with Logging {
         s"""Flow history realm: $r showing ${list.size} of $total since start and user $un""".stripMargin
       val title2 =
         s"""Stats: <a href="$w/DieselEngine">Flows</a>: ${GlobalData.dieselEnginesActive} active (${DieselAppContext.activeEngines.size} - ${
-          DieselAppContext.activeEngines.values.filter(_.status != DomState.DONE).size
+          DieselAppContext.activeEngines.values.count(_.status != DomState.DONE)
         }) /
            | <a href="$w/DieselStream">Streams</a>: ${GlobalData.dieselStreamsActive} active of ${GlobalData.dieselStreamsTotal} since start /
            |  <a href="$w/DieselActor">Actors</a>: ${DieselAppContext.activeActors.size} active /

@@ -162,7 +162,14 @@ class DomEngineV1(
 
         implicit val ctx = a.replaceCtx(mkPassthroughMsgContext(
           n1.parent,
+          // todo BIG issue, i..e (queryParms = won't work with this in a diesel.rest)
+          // todo
+          // todo
           // todo this is an issue - this is why overriden parameters with values don't work, because this copies over the parms from parent message
+          // todo
+          // todo
+          // todo
+          // todo
           reconcileParentAttrs(n1.parent.map(_.attrs).getOrElse(Nil), a.getCtx.get),
           a.getCtx.get, //RAZ2 this.ctx,
           a))
@@ -1062,8 +1069,14 @@ class DomEngineV1(
             ast
         }
 
-        val newD = DomAst(new EInfo(s"Skipped ${skipped.size} nodes", ""), AstKinds.GENERATED)
+        val newD = DomAst(new EInfo(s"Skipped ${skipped.size} nodes due to 'diesel.flow.return' ", ""), AstKinds.GENERATED)
         evAppChildren(a, newD)
+
+        if (ea == DieselMsg.ENGINE.DIESEL_RETURN) {
+          evAppChildren(a,
+            DomAst(new EError(s"diesel.return is deprecated!! Use `diesel.flow.return` ", ""), AstKinds.GENERATED)
+          )
+        }
 
         true
 
