@@ -59,7 +59,7 @@ class EEDieselCron extends EExecutor("diesel.cron") {
         val cronMsg = ctx.get("cronMsg")
         val doneMsg = ctx.get("doneMsg")
 
-        val schedule = ctx.get("schedule").mkString
+        val schedule = ctx.get("schedule").orElse(ctx.get("scheduleExpr")).mkString
         val cronExpr = ctx.get("cronExpr").mkString
         val time = ctx.get("time").mkString
         val endTime = ctx.get("endTime").mkString
