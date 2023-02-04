@@ -32,6 +32,7 @@ import scala.collection.JavaConverters._
 import scala.collection.mutable.{HashMap, ListBuffer}
 import scala.io.Source
 import scala.util.Try
+import services.DieselCluster
 
 /** properties - from system or file
   */
@@ -285,11 +286,11 @@ object EEDieselExecutors {
             "isLocalhost" -> Services.config.isLocalhost,
             "trustLocalMods" -> Config.trustLocalMods,
             "trustLocalUsers" -> Config.trustLocalUsers,
-            "clusterMode" -> Services.config.clusterMode,
             "cacheWikis" -> Services.config.cacheWikis,
             "cacheFormat" -> Services.config.cacheFormat,
             "cacheDb" -> Services.config.cacheDb
           ),
+          "cluster" -> DieselCluster.clusterProps,
           "memDb" -> inmemdbstats("")
         )
   }

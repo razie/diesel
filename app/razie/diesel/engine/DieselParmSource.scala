@@ -5,13 +5,14 @@
  */
 package razie.diesel.engine
 
-import razie.diesel.dom.RDOM.{P}
-import razie.diesel.dom.{ParmSource}
-import razie.diesel.expr.{ECtx}
+import razie.diesel.dom.RDOM.P
+import razie.diesel.dom.ParmSource
+import razie.diesel.expr.ECtx
 import razie.diesel.model.DieselMsg
 import razie.hosting.{RkReactors, Website}
 import razie.wiki.{Config, Services}
 import scala.collection.JavaConverters.{mapAsScalaMapConverter, propertiesAsScalaMapConverter}
+import services.DieselCluster
 
 /** source for parms starting with "diesel"
   *
@@ -132,7 +133,7 @@ class DieselParmSource (ctx:DomEngECtx) extends ParmSource {
 
     case "cluster" =>  next("diesel.cluster", Map(
       "nodes" -> (n => Left(
-        P.fromSmartTypedValue("diesel.cluster.nodes", Nil)
+        P.fromSmartTypedValue("diesel.cluster.nodes", DieselCluster.clusterNodesJson)
       )),
       "masterNode" -> (n => Left(
         P.fromSmartTypedValue("diesel.cluster.masterNode", Map(
@@ -146,6 +147,7 @@ class DieselParmSource (ctx:DomEngECtx) extends ParmSource {
       "name" -> Services.config.node,
       "node" -> Services.config.node,
       "host" -> java.net.InetAddress.getLocalHost.getCanonicalHostName,
+      "hostport" -> Services.config.hostport,
       "hostName" -> java.net.InetAddress.getLocalHost.getHostName,
       "ip" -> java.net.InetAddress.getLocalHost.getHostAddress
     )))

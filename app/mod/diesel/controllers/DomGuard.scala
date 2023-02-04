@@ -34,8 +34,8 @@ import scala.util.Try
 /** controller for server side fiddles / services */
 class DomGuard extends DomApiBase with Logging {
 
-  /** fine the engine */
-  def findEngine (id: String) : Option[DomEngine] = {
+  /** find the engine - either collected in mem or active */
+  private def findEngine (id: String) : Option[DomEngine] = {
       DomCollector.withAsts(
         _.find(_.id == id)
             .map(_.engine)
@@ -61,7 +61,7 @@ class DomGuard extends DomApiBase with Logging {
     }
   }
 
-  /** canel a running engine */
+  /** see the running queue of a paused engine */
   def dieselEngineQueue(id: String) = FAUR { implicit stok =>
       findEngine(id)
           .map { eng =>
@@ -77,7 +77,7 @@ class DomGuard extends DomApiBase with Logging {
       Ok("Ok, sent pause command...")
   }
 
-  /** play one more message */
+  /** play one more message of a paused engine */
   def dieselEnginePlay(id: String) = FAUR { implicit stok =>
       DieselAppContext ! DEPlay(id)
       Ok("Ok, sent play command...")
@@ -273,6 +273,8 @@ class DomGuard extends DomApiBase with Logging {
     else
       s"""<span class="glyphicon glyphicon-pause" onclick="javascript:cancelEnginePlease('${engine.id}', 'pause');" style="cursor:pointer; color:red" title="Pause flow"></span>"""
 
+    val tdNode = if(Config.clusterModeBool) s"<td>Node</td>" else ""
+
     val HEADING = (s"""
                      |<small>
                      |<table class="table table-condensed">
@@ -283,6 +285,7 @@ class DomGuard extends DomApiBase with Logging {
                      |<th title="Collect group">Group</th>
                      |<th>User</th>""" else """""") +
             s"""
+                     |$tdNode
                      |<th>Status</th>
                      |<th>Dtm</th>
                      |<th class="text-right">Msec</th>
@@ -326,6 +329,8 @@ class DomGuard extends DomApiBase with Logging {
             if (i / 100 == 2) """ style="color:green" """ else if (i / 100 == 4) """ style="color:orange" """ else """ style="color:red" """
           }.mkString
 
+        val valNode = if(Config.clusterModeBool) s"<td>${a.settings.node}</td>" else ""
+
           // todo this is mean
         (s"""
              |<td><a href="/diesel/viewAst/${a.id}?follow=$follow&filter=$filters">...${a.id.takeRight(4)}</a></td>""" +
@@ -334,6 +339,7 @@ class DomGuard extends DomApiBase with Logging {
              |<td><span title="${a.collectGroup}">${a.collectGroup.takeRight(8)}</span></td>
              |<td>${uname}</td>""" else """""") +
             s"""
+             |$valNode
              |<td>$st</td>
              |<td title="${dtm.toLocalDate.toString()}">${dtm.toString("HH:mm:ss.SS")}</td>
              |<td align="right">$duration</td>

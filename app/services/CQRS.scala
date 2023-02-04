@@ -156,7 +156,7 @@ class WikiAsyncObservers extends Actor {
 
   def clusterize(ev: WikiEventBase) = {
     if (
-      Services.config.clusterMode == "yes" &&
+      Services.config.clusterModeBool &&
           (
               ev.isInstanceOf[WikiEvent[_]] && {
                 val ee = ev.asInstanceOf[WikiEvent[_]]

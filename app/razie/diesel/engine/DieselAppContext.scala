@@ -14,6 +14,7 @@ import razie.audit.Audit
 import razie.diesel.dom.RDomain
 import razie.diesel.engine.exec._
 import razie.tconf.DSpec
+import razie.wiki.Config
 import razie.wiki.admin.GlobalData
 import scala.collection.concurrent.TrieMap
 import scala.concurrent.ExecutionContext
@@ -218,7 +219,7 @@ object DieselAppContext extends Logging {
       serviceStarted = true
 
       initExecutors
-      init() // make sure it was init
+      init(Config.node) // make sure it was init
 
       activeActors.values.foreach(_ ! DEInit)
 
@@ -254,7 +255,7 @@ object DieselAppContext extends Logging {
 
   def stop(): Unit = {}
 
-  def ctx = engineFactory.getOrElse(init())
+  def ctx = engineFactory.getOrElse(init(Config.node))
 
   def report =
     s"Engines: ${activeEngines.size} - running: ${activeEngines.values.count(_.status != DomState.DONE)}"

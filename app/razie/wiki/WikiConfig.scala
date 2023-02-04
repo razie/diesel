@@ -98,12 +98,24 @@ abstract class WikiConfig {
   final val home = prop("wiki.home")
 
   final val hostport =       prop("wiki.hostport")
-  final val dieselLocalUrl = prop("local.url", "http://" + hostport)
-  final val node =           prop("wiki.node", hostport) //java.net.InetAddress.getLocalHost.getCanonicalHostName)
   final val safeMode =       prop("wiki.safemode")
   final val analytics =      true; //props.getProperty("rk.analytics").toBoolean
   final val noads =          prop("wiki.noads", isLocalhost.toString).toBoolean
   final val forcephone =     prop("wiki.forcephone").toBoolean
+
+
+  /** cluster naming style is not host with many ports but many names with same port */
+  final val clusterStyle= prop("wiki.clusterStyle", "none")
+  final val clusterStyleKube = "kube".equalsIgnoreCase(clusterStyle)
+  final val clusterModeBool = !"none".equalsIgnoreCase(clusterStyle)
+
+  final val clusterNodeDns = java.net.InetAddress.getLocalHost.getCanonicalHostName
+  final val clusterNodeSimple = java.net.InetAddress.getLocalHost.getHostName.replaceFirst("\\..*", "")
+  final val clusterNodeIp = java.net.InetAddress.getLocalHost.getHostAddress
+  final val dieselLocalUrl = prop("local.url", "http://" + hostport)
+
+  // this is the most used node name
+  final val node = if (clusterStyleKube) clusterNodeSimple else prop("wiki.node", hostport)
 
   final val mongodb =   prop("wiki.mongodb")
   final val mongohost = prop("wiki.mongohost")
@@ -117,8 +129,6 @@ abstract class WikiConfig {
 
   /** when running in localhost, keep quiet with the audit, so DB doesn't grow */
   final val localQuiet = prop("wiki.localquiet", "false").toBoolean
-
-  final val clusterMode = prop("wiki.cluster", "no")
 
   final val CONNECTED = prop("wiki.connected", "connected")
 
