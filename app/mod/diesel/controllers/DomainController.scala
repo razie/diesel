@@ -33,13 +33,6 @@ import scala.concurrent.Future
 class DomainController extends RazController with Logging {
   implicit def obtob(o: Option[Boolean]): Boolean = o.exists(_ == true)
 
-  import razie.js
-
-  object retj {
-    def <<(x: List[Any]) = Ok(js.tojsons(x, 0).toString).as(WTypes.Mime.appJson)
-    def <<(x: Map[String, Any]) = Ok(js.tojsons(x).toString).as(WTypes.Mime.appJson)
-  }
-
 
   // ============================ DOMAIN browsing ================
 

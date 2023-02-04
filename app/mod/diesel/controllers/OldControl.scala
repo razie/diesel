@@ -143,13 +143,6 @@ class OldControl extends RazController with Logging {
 
   //************* DIESEL
 
-  import razie.js
-
-  object retj {
-    def <<(x: List[Any]) = Ok(js.tojsons(x, 0).toString).as("application/json")
-    def <<(x: Map[String, Any]) = Ok(js.tojsons(x).toString).as("application/json")
-  }
-
   def domain = Action { implicit request =>
     retj << WG.fromRealm(Website.realm).tojmap
   }

@@ -74,13 +74,6 @@ class SFiddleBase extends RazController {
       s.replaceAll("scrRAZipt", "script").replaceAll("%3B", ";").replaceAll("%2B", "+").replaceAll("%27", "'")
     }
   }
-
-  import razie.js
-
-  object retj {
-    def <<(x: List[Any]) = Ok(js.tojsons(x, 0).toString).as("application/json")
-    def <<(x: Map[String, Any]) = Ok(js.tojson(x).toString).as("application/json")
-  }
 }
 
 /** this is not the controller... */
