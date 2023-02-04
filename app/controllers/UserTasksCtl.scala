@@ -1,10 +1,10 @@
 package controllers
 
-import com.google.inject.Singleton
+import com.google.inject.{Inject, Singleton}
 import controllers.Emailer.expand
-import controllers.Realm.{FAUR, ROK, auth}
 import model._
 import org.joda.time.DateTime
+import play.api.Configuration
 import play.api.mvc.{Action, DiscardingCookie, Request}
 import razie.Logging
 import razie.hosting.Website
@@ -93,7 +93,7 @@ Please do that soon: it will expire in a few hours, for security reasons.
 }
 
 @Singleton
-class UserTasksCtl extends RazController with Logging {
+class UserTasksCtl @Inject()(realmCtl:Realm) extends RazController with Logging {
   import play.api.data.Forms._
   import play.api.data._
   import razie.wiki.Sec._
@@ -284,7 +284,7 @@ Email verified. Your account is now active!
         }
         case UserTasks.START_REGISTRATION => {
           val ut = au.tasks.find(_.name == UserTasks.START_REGISTRATION)
-          Redirect(routes.Club.doeStartRegSimple(WID.fromPath(ut.map(_.args("club")).mkString).get))
+          Redirect(routes.ClubCtl.doeStartRegSimple(WID.fromPath(ut.map(_.args("club")).mkString).get))
         }
         case _ => {
           Msg("?")

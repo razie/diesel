@@ -37,7 +37,7 @@ club admin manages list of users and registrations
 @mnglink(row:Map[String,String],k:String,v:String)={
   @k match {
         case "regStatus" => {
-                @regStatusColored(v, Some(routes.Club.doeClubReg(clubName, id(row)).toString))
+                @regStatusColored(v, Some(routes.ClubCtl.doeClubReg(clubName, id(row)).toString))
                 }
         case "rowClass" => {
                 @row.get("regStatus") match {
@@ -61,8 +61,8 @@ club admin manages list of users and registrations
     <br><b>Forms: @forms.size</b> total: @forms.groupBy(_._2).map{x=><b>@x._2.size</b> @x._1.getOrElse("n/a") , }
   }
 } else {
-    <p><small><a href="@routes.Club.doeClubRegs(clubName,"1")">More stats</a></small> |
-  <small><a href="@routes.Club.doeClubRegs(clubName,"2")">Hours report (slow)</a></small>
+    <p><small><a href="@routes.ClubCtl.doeClubRegs(clubName,"1")">More stats</a></small> |
+  <small><a href="@routes.ClubCtl.doeClubRegs(clubName,"2")">Hours report (slow)</a></small>
 }
 
 @util.utilSimpleTable(tab.filter(_.apply("role") != "Fan").iterator,
@@ -91,11 +91,11 @@ club admin manages list of users and registrations
     @club.regForms.map { t =>
     <li>
       Report
-        <a href="@routes.Club.doeClubRegsReportCsv(clubName, t.role)" class="btn btn-xs">CSV</a> -
-        <a href="@routes.Club.doeClubRegsReportJson(clubName, t.role)" class="btn btn-xs">Json</a> -
-        <a href="@routes.Club.doeClubRegsReportHtml(clubName, t.role)" class="btn btn-xs">Html</a> - @t.role
+        <a href="@routes.ClubCtl.doeClubRegsReportCsv(clubName, t.role)" class="btn btn-xs">CSV</a> -
+        <a href="@routes.ClubCtl.doeClubRegsReportJson(clubName, t.role)" class="btn btn-xs">Json</a> -
+        <a href="@routes.ClubCtl.doeClubRegsReportHtml(clubName, t.role)" class="btn btn-xs">Html</a> - @t.role
       @club.props.filter(_._1 startsWith ("Report."+t.role)).map {tt=>
-      | <a href="@routes.Club.doeClubRegsReportCsv(clubName, t.role, tt._2)" class="btn btn-xs">@tt._1.replaceFirst("Report."+t.role+".", "")</a>
+      | <a href="@routes.ClubCtl.doeClubRegsReportCsv(clubName, t.role, tt._2)" class="btn btn-xs">@tt._1.replaceFirst("Report."+t.role+".", "")</a>
       }
     }
   </ul>
@@ -124,7 +124,7 @@ club admin manages list of users and registrations
 <h2>Purging</h2>
 
 @mod.snow.Regs.findClub(clubName).toList.groupBy(_.year).toSeq.sortBy(_._1).map{t=>
-  <br><a href="@routes.Club.doePurgeRegs(clubName, t._1)">@t._1</a> -
+  <br><a href="@routes.ClubCtl.doePurgeRegs(clubName, t._1)">@t._1</a> -
   Registrations: @t._2.size
   People(RacerKids): @t._2.map(_.kids.size).sum
   Forms: @t._2.map(_.roleWids.size).sum

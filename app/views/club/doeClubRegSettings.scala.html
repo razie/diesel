@@ -12,7 +12,7 @@
 @import play.api.Play.current
 @import play.api.i18n.Messages.Implicits._
 
-@helper.form(action=routes.Club.doeClubUpdateRegSettings(club), 'class->"well") {
+@helper.form(action=routes.ClubCtl.doeClubUpdateRegSettings(club), 'class->"well") {
   @helper.select(
     myForm("regType"),
      Seq("None"->"None", "Family"->"Family", "Individual"->"Individual", "FamilyWithKids"->"FamilyWithKids"),

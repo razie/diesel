@@ -10,9 +10,15 @@ import razie.hosting.Website
 import razie.wiki.model._
 import razie.wiki.{Config, Services}
 import scala.concurrent.Future
+import razie.js
 
 /** base controller class - common controller utilities for access etc */
 class RazController extends RazControllerBase with Logging {
+
+  object retj {
+    def <<(x: List[Any]) = Ok(js.tojson(x).toString).as("application/json")
+    def <<(x: Map[String, Any]) = Ok(js.tojson(x).toString).as("application/json")
+  }
 
 // CANNOT have the below implicit - it will mess up all stoks implicitly
   def razRequest (implicit request:Request[_]) = request match {

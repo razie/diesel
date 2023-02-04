@@ -42,11 +42,11 @@ manage the list of kidz and/or their accounts
 @mnglink(row:Map[String,String],k:String,v:String)={
   @k match {
     case "button" => {
-      <a href="@routes.Kidz.doeUserKid(stok.au.get._id.toString, v, "-", row("associd"), "clubkidz:"+club.wid.wpath)" class="btn btn-default btn-xs">&nbsp;&nbsp;<span class="glyphicon glyphicon-list-alt"/>&nbsp;</a>
+      <a href="@routes.KidzCtl.doeUserKid(stok.au.get._id.toString, v, "-", row("associd"), "clubkidz:"+club.wid.wpath)" class="btn btn-default btn-xs">&nbsp;&nbsp;<span class="glyphicon glyphicon-list-alt"/>&nbsp;</a>
     }
     case "source" => {
       @if(v == "Registered" && club.isClubAdmin(stok.au.get)) {
-        <a href="@routes.Club.doeRedirectRegKid(club.wid, row("associd"))">@v</a>
+        <a href="@routes.ClubCtl.doeRedirectRegKid(club.wid, row("associd"))">@v</a>
       } else {
         @v
       }
@@ -84,7 +84,7 @@ manage the list of kidz and/or their accounts
       }
     case "notes" => {
       @if(club.isClubAdmin(stok.au.get) || club.isMemberRole(stok.au.get._id, "Coach")) {
-        <a href="@routes.Kidz.doeKidHistory(club.wid.wpath, v)" class="btn btn-info btn-xs">&nbsp;&nbsp;<span class="glyphicon glyphicon-th-list"/>&nbsp;</a>
+        <a href="@routes.KidzCtl.doeKidHistory(club.wid.wpath, v)" class="btn btn-info btn-xs">&nbsp;&nbsp;<span class="glyphicon glyphicon-th-list"/>&nbsp;</a>
       }
     }
     case _ => { @v }
@@ -145,7 +145,7 @@ manage the list of kidz and/or their accounts
 @if(stok.au.exists(club.isClubAdmin)) {
 @club.wid.cat
   Add a: @roles().map{v=>
-  <a href="@routes.Kidz.doeUserKid(club.userId.toString, "11", v, "-", "clubkidz:"+club.wid.wpath)" class="btn btn-xs btn-info">@v</a>
+  <a href="@routes.KidzCtl.doeUserKid(club.userId.toString, "11", v, "-", "clubkidz:"+club.wid.wpath)" class="btn btn-xs btn-info">@v</a>
 }
 }
 

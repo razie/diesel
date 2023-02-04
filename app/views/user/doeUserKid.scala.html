@@ -59,10 +59,10 @@ person information
 @mnglink(row: Map[String, String], k: String, v: String) = {
 @k match {
   case "button" => {
-    <a href="@routes.Kidz.doeUserKid(stok.au.get._id.toString, v, "-", row("associd"), "clubkidz:"+clubName)" class="btn btn-xs">More...</a>
+    <a href="@routes.KidzCtl.doeUserKid(stok.au.get._id.toString, v, "-", row("associd"), "clubkidz:"+clubName)" class="btn btn-xs">More...</a>
   }
   case "merge" => {
-    <a href="@routes.Club.doeMergeKid(row("associd"), associd)" class="btn btn-xs btn-info">MERGE</a>
+    <a href="@routes.ClubCtl.doeMergeKid(row("associd"), associd)" class="btn btn-xs btn-info">MERGE</a>
   }
   case _ => {
     @v
@@ -81,7 +81,7 @@ person information
       <h2>Add a person as @role</h2>
     }
 
-    @helper.form(action = routes.Kidz.doeKidUpdate(userId, rkid, role, associd, next), 'class -> "well") {
+    @helper.form(action = routes.KidzCtl.doeKidUpdate(userId, rkid, role, associd, next), 'class -> "well") {
       @razText(myForm, "fname", "First Name")
       @razText(myForm, "lname", "Last Name")
       @razText(myForm, "email", "Email")
@@ -173,7 +173,7 @@ person information
               @*Where the heck does this info come from then?*@
             <p>Can't update this info right now...
               click here if you need to overwrite it:
-            <a href="@routes.Kidz.doeKidOverride(userId, rkid, role, associd, next)" class="btn btn-danger">Override</a>
+            <a href="@routes.KidzCtl.doeKidOverride(userId, rkid, role, associd, next)" class="btn btn-danger">Override</a>
             }
           }
         } else {

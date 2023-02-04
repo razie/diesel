@@ -22,10 +22,10 @@ manage the list of kidz and/or their accounts
 @mnglink(row: Map[String, String], k: String, v: String) = {
 @k match {
   case "button" => {
-    <a href="@routes.Kidz.doeUserKid(stok.au.get._id.toString, v, "-", row("associd"), "kidz")" class="btn btn-xs">More...</a>
+    <a href="@routes.KidzCtl.doeUserKid(stok.au.get._id.toString, v, "-", row("associd"), "kidz")" class="btn btn-xs">More...</a>
   }
   case "notes" => {
-    <a href="@routes.Kidz.doeKidHistory("", v)" class="btn btn-info btn-xs">More...</a>
+    <a href="@routes.KidzCtl.doeKidHistory("", v)" class="btn btn-info btn-xs">More...</a>
   }
   case _ => {
     @v
@@ -54,7 +54,7 @@ manage the list of kidz and/or their accounts
         Some(mnglink))
 
       Add a: @mod.snow.RK.RELATIONSHIPS.map { r =>
-      <a href="@routes.Kidz.doeUserKid(stok.au.get._id.toString, "11", r, "-", "kidz")" class="btn btn-xs btn-info">@r</a>
+      <a href="@routes.KidzCtl.doeUserKid(stok.au.get._id.toString, "11", r, "-", "kidz")" class="btn btn-xs btn-info">@r</a>
     }
 
       <br><br>

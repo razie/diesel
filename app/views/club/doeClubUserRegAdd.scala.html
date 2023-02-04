@@ -26,13 +26,13 @@
 
 @if(reg.clubName == "Demo_Ski_Club") {
     @roles().filter(_ != RK.ROLE_FAN).map{r=>
-      <a href="@routes.Club.doeClubUwAddFormKid(reg._id.toString,kid._id.toString, next, r)" class="btn btn-lg btn-info" @disabled(r) >@r</a>
+      <a href="@routes.ClubCtl.doeClubUwAddFormKid(reg._id.toString,kid._id.toString, next, r)" class="btn btn-lg btn-info" @disabled(r) >@r</a>
     }
     <br><small>(for demo you can register as a Racer only)</small>
   } else {
 
 @roles().filter(_ != RK.ROLE_FAN).map{r=>
-  <a href="@routes.Club.doeClubUwAddFormKid(reg._id.toString,kid._id.toString, next, r)" class="btn btn-lg btn-info">@r</a>
+  <a href="@routes.ClubCtl.doeClubUwAddFormKid(reg._id.toString,kid._id.toString, next, r)" class="btn btn-lg btn-info">@r</a>
 }
   }
 

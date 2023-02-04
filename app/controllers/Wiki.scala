@@ -10,7 +10,6 @@ import com.google.inject.{Inject, Singleton}
 import com.mongodb.DBObject
 import com.mongodb.casbah.Imports._
 import com.novus.salat._
-import controllers.WikiApiv1.Ok
 import mod.diesel.controllers.DomainController
 import model._
 import org.bson.types.ObjectId
@@ -896,7 +895,9 @@ class Wiki @Inject()(domainController: DomainController) extends WikiBase {
 }
 
 /** wiki controller */
-object WikiApiv1 extends WikiBase {
+import com.google.inject.Singleton
+@Singleton
+class WikiApiv1 extends WikiBase {
   implicit def obtob(o: Option[Boolean]): Boolean = o.exists(_ == true)
 
   /** prepare the wid to be fully defined with realm and whatnot */

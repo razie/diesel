@@ -17,11 +17,11 @@
     <p>&nbsp;<p>
 
   @if(au.isClub) {
-    <a href="@routes.Kidz.doeUserKidz" class="btn btn-lg btn-info">Members/Racerz</a>
+    <a href="@routes.KidzCtl.doeUserKidz" class="btn btn-lg btn-info">Members/Racerz</a>
   } else {
     @if(!au.isClub && au.hasRealm(razie.wiki.model.Wikis.RK)) {
-      <a href="@routes.Kidz.doeUserKidz" class="btn btn-lg btn-info">People/Racerz</a>
-      <a href="@routes.Club.doeClubUserRegs" class="btn btn-lg btn-info">Registrations</a>
+      <a href="@routes.KidzCtl.doeUserKidz" class="btn btn-lg btn-info">People/Racerz</a>
+      <a href="@routes.ClubCtl.doeClubUserRegs" class="btn btn-lg btn-info">Registrations</a>
     }
 
     @if(!au.consent.isDefined) {

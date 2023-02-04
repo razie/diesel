@@ -13,8 +13,6 @@ import com.novus.salat._
 import controllers.WikiUtil._
 import difflib.{DiffUtils, Patch}
 import mod.diesel.model.Diesel
-import mod.notes.controllers.DomC.retj
-import mod.snow.RacerKidz
 import model._
 import org.bson.types.ObjectId
 import org.joda.time.DateTime

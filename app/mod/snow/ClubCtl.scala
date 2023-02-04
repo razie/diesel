@@ -1,5 +1,6 @@
 package controllers
 
+import com.google.inject.Inject
 import mod.cart._
 import mod.snow.{RK, _}
 import model._
@@ -246,7 +247,8 @@ regAdmin=$regAdmin
   def membersData(club: Club, what: String, cols: String): (List[String], List[List[String]]) = {
     val members = club.userLinks.map(_.userId)
     val regs = Regs.findClubYear(club.wid, club.curYear)
-    val forms = regs.flatMap(_.deprecatedWids).flatMap(_.page).filter(_.formRole.exists(_ == what)).map(_.form.fields).toList
+    val forms = regs.flatMap(_.deprecatedWids).flatMap(_.page).filter(_.formRole.exists(_ == what)).map(
+      _.form.fields).toList
 
     // each set of fields has all attr - pick the first
     val headers = forms.find(_ => true).toList.flatMap(_.keys)
@@ -261,6 +263,65 @@ regAdmin=$regAdmin
     (fields, res)
   }
 
+  // new user linked to club - give it access to forums
+  def linkedUser(u: User, cname: WID, how: String)(implicit txn: Txn) = {
+    Club(cname) foreach { club =>
+      club.newFollows.foreach { rw =>
+        val role = if (how == "Fan") "Fan" else rw.role
+        rw.wid.uwid.foreach { uwid =>
+          if (u.isLinkedTo(uwid).isEmpty)
+            model.UserWiki(u._id, uwid, role).create
+        }
+      }
+      club.newTasks.foreach { t => //(name, args)
+        val args = t._2.toMap
+        clog << "Creating user Task " + t
+
+        //if not already
+        val x = u.tasks.exists(ut =>
+          ut.name == t._1 &&
+              ut.args.toList.foldLeft(true)((a, b) =>
+                a && args.get(b._1).exists(_ == b._2)
+              )
+        )
+
+        if (!x)
+          UserTask(u._id, t._1, args).create
+      }
+    }
+  }
+
+  // backwards - remove it all
+  def userLeft(u: User, cname: String)(implicit txn: Txn) = {
+    Club(cname) foreach { club =>
+      club.newFollows.foreach { rw =>
+        rw.wid.uwid.foreach { uwid =>
+          // remove all forums and calendars
+          u.isLinkedTo(uwid).filter(_.uwid.cat != "Blog").map { uw =>
+            uw.delete
+          }
+        }
+      }
+      club.newTasks.foreach { t => //(name, args)
+        val args = t._2.toMap
+        //todo if not already
+        val x = u.tasks.filter(ut =>
+          ut.name == t._1 &&
+              ut.args.toList.foldLeft(true)((a, b) =>
+                a && args.get(b._1).exists(_ == b._2)
+              )
+        )
+        x.map(_.delete)
+      }
+    }
+  }
+}
+
+/** controller for club management */
+import com.google.inject.Singleton
+@Singleton
+class ClubCtl @Inject() (formsCtl:Forms) extends RazController with Logging {
+  import Club._
   import play.api.data.Forms._
   import play.api.data._
   import play.api.libs.concurrent.Execution.Implicits.defaultContext
@@ -481,10 +542,10 @@ regAdmin=$regAdmin
     ) yield {
       SendEmail.withSession(request.realm) { implicit mailSession =>
         // notify user
-        val link = club.reg(u) map { reg => routes.Club.doeClubUserReg(reg._id.toString).toString } getOrElse "http://www.dieselapps.com"
+        val link = club.reg(u) map { reg => routes.ClubCtl.doeClubUserReg(reg._id.toString).toString } getOrElse "http://www.dieselapps.com"
         Emailer.sendEmailClubRegHelp(u, clubName.name, link, msg.mkString)
       }
-      Redirect(routes.Club.doeClubReg(clubName, uwid))
+      Redirect(routes.ClubCtl.doeClubReg(clubName, uwid))
     }) getOrElse Msg("OOPS" + errCollector.mkString)
   }
 
@@ -510,7 +571,7 @@ regAdmin=$regAdmin
             club.rka.filter(a => a.to == k.rkId && a.assoc == RK.ASSOC_REGD).foreach(_.delete)
           }
 
-          Redirect(routes.Club.doeClubReg(clubName, uwid))
+          Redirect(routes.ClubCtl.doeClubReg(clubName, uwid))
         } else {
           if (ooldreg.isEmpty && how == RegStatus.FAMILY) {
             val r = Reg(u._id, clubName.name, club.wid, club.curYear, uw.role, Seq(), Seq(), how)
@@ -526,11 +587,11 @@ regAdmin=$regAdmin
             if (ooldreg.exists(how != _.regStatus) && how == RegStatus.PENDING) {
               SendEmail.withSession(request.realm) { implicit mailSession =>
                 // notify user
-                Emailer.sendEmailClubRegStart(u, clubName.name, routes.Club.doeClubUserReg(reg._id.toString).toString)
+                Emailer.sendEmailClubRegStart(u, clubName.name, routes.ClubCtl.doeClubUserReg(reg._id.toString).toString)
               }
             }
           }
-          Redirect(routes.Club.doeClubReg(clubName, uwid))
+          Redirect(routes.ClubCtl.doeClubReg(clubName, uwid))
         }
       }
     }) getOrElse Msg("OOPS" + errCollector.mkString)
@@ -549,7 +610,7 @@ regAdmin=$regAdmin
     ) yield {
       implicit val txn = razie.db.tx.local("doeClubUwAddForm", au.userName  )
       addForm(u, c, reg, regAdmin, role)
-      Redirect(routes.Club.doeClubReg(clubName, uwid.toString))
+      Redirect(routes.ClubCtl.doeClubReg(clubName, uwid.toString))
     }) getOrElse Msg("OOPS" + errCollector.mkString)
   }
 
@@ -577,7 +638,7 @@ regAdmin=$regAdmin
 
     // have to create form ?
     if (!Wikis.find(newfwid).isDefined) {
-      controllers.Forms.crForm(u, form.wid, newfwid, label, regAdmin, Some(role))
+      formsCtl.crForm(u, form.wid, newfwid, label, regAdmin, Some(role))
     }
   }
 
@@ -609,9 +670,9 @@ regAdmin=$regAdmin
         razie.db.tx("doeClubUwAddFormKid", au.userName) { implicit txn =>
 
           val nextPage = if (reg.userId != au._id) // if not member, then admin
-            routes.Club.doeClubReg(reg.club, next)
+            routes.ClubCtl.doeClubReg(reg.club, next)
           else
-            routes.Club.doeClubUserReg(regId)
+            routes.ClubCtl.doeClubUserReg(regId)
           val before = ROne[RegKid]("regId" -> reg._id, "rkId" -> rk._id)
           var r = reg
 
@@ -633,7 +694,7 @@ regAdmin=$regAdmin
 
               // have to create form ?
               if (!Wikis.find(newfwid).isDefined) {
-                controllers.Forms.crFormKid(u, form.wid, newfwid, label, regAdmin, Some(form.role), rk)
+                formsCtl.crFormKid(u, form.wid, newfwid, label, regAdmin, Some(form.role), rk)
               }
               RoleWid(form.role, newfwid)
             }).toList
@@ -670,15 +731,15 @@ regAdmin=$regAdmin
           s"""This will remove ${rk.info.firstName} from your family and this registration.
     <p>Note that any forms filled for $sex1 role will be <em>removed</em>! You can then re-add $sex2 back, with the same or different role.
     <p>If you don't want to remove $sex2, just go back... otherwise click Continue below.""",
-          Some(routes.Club.doeClubUwRmFormKid1(regId, rkId, uwid, role).url))
+          Some(routes.ClubCtl.doeClubUwRmFormKid1(regId, rkId, uwid, role).url))
       }) getOrElse Msg("OOPS" + errCollector.mkString)
   }
 
   def doeClubUwRmFormKid1(regId: String, rkId: String, uwid: String, role: String) = FAU { implicit au =>
     implicit errCollector => implicit request =>
       val next = Regs.findId(regId).filter(_.userId != au._id).map { reg =>
-        routes.Club.doeClubReg(reg.club, uwid)
-      } getOrElse routes.Club.doeClubUserReg(regId)
+        routes.ClubCtl.doeClubReg(reg.club, uwid)
+      } getOrElse routes.ClubCtl.doeClubUserReg(regId)
       (for (
         rk <- RacerKidz.findById(new ObjectId(rkId));
         reg <- Regs.findId(regId) orCorr ("no registration found... ?" -> "did you start the registration?");
@@ -735,7 +796,7 @@ regAdmin=$regAdmin
         Msg2(
           s"""This will remove Form: ${formWid.name} from this registration.
     <p>If you don't want to remove Form: ${formWid.name}, just go back... otherwise click Continue below.""",
-          Some(routes.Club.doeClubUwRmFormSeq1(regId, rkId, uwid, seq).url))
+          Some(routes.ClubCtl.doeClubUwRmFormSeq1(regId, rkId, uwid, seq).url))
       }) getOrElse Msg("OOPS" + errCollector.mkString)
   }
 
@@ -743,8 +804,8 @@ regAdmin=$regAdmin
   def doeClubUwRmFormSeq1(regId: String, rkId: String, uwid: String, seq: Integer) = FAU { implicit au =>
     implicit errCollector => implicit request =>
       val next = Regs.findId(regId).filter(_.userId != au._id).map { reg =>
-        routes.Club.doeClubReg(reg.club, uwid)
-      } getOrElse routes.Club.doeClubUserReg(regId)
+        routes.ClubCtl.doeClubReg(reg.club, uwid)
+      } getOrElse routes.ClubCtl.doeClubUserReg(regId)
       (for (
         reg <- Regs.findId(regId) orCorr ("no registration found... ?" -> "did you start the registration?");
         club <- Users.findUserByUsername(reg.clubName) orErr ("Club not found");
@@ -1078,62 +1139,9 @@ regAdmin=$regAdmin
         dies.moveTo(liverka) // also moves hours and wikiassocs
       }
 
-      if (au.isClub) Redirect("/") //routes.Club.doeClubKidz("",""))
-      else Redirect(routes.Kidz.doeUserKidz)
+      if (au.isClub) Redirect("/") //routes.ClubCtl.doeClubKidz("",""))
+      else Redirect(routes.KidzCtl.doeUserKidz)
     }) getOrElse Msg("CAN'T SEE PROFILE " + errCollector.mkString)
-  }
-
-  // new user linked to club - give it access to forums
-  def linkedUser(u: User, cname: WID, how: String)(implicit txn: Txn) = {
-    Club(cname) foreach { club =>
-      club.newFollows.foreach { rw =>
-        val role = if (how == "Fan") "Fan" else rw.role
-        rw.wid.uwid.foreach { uwid =>
-          if (u.isLinkedTo(uwid).isEmpty)
-            model.UserWiki(u._id, uwid, role).create
-        }
-      }
-      club.newTasks.foreach { t => //(name, args)
-        val args = t._2.toMap
-        clog << "Creating user Task " + t
-
-        //if not already
-        val x = u.tasks.exists(ut =>
-          ut.name == t._1 &&
-            ut.args.toList.foldLeft(true)((a, b) =>
-              a && args.get(b._1).exists(_ == b._2)
-            )
-        )
-
-        if (!x)
-          UserTask(u._id, t._1, args).create
-      }
-    }
-  }
-
-  // backwards - remove it all
-  def userLeft(u: User, cname: String)(implicit txn: Txn) = {
-    Club(cname) foreach { club =>
-      club.newFollows.foreach { rw =>
-        rw.wid.uwid.foreach { uwid =>
-          // remove all forums and calendars
-          u.isLinkedTo(uwid).filter(_.uwid.cat != "Blog").map { uw =>
-            uw.delete
-          }
-        }
-      }
-      club.newTasks.foreach { t => //(name, args)
-        val args = t._2.toMap
-        //todo if not already
-        val x = u.tasks.filter(ut =>
-          ut.name == t._1 &&
-            ut.args.toList.foldLeft(true)((a, b) =>
-              a && args.get(b._1).exists(_ == b._2)
-            )
-        )
-        x.map(_.delete)
-      }
-    }
   }
 
   /** called by user not the club - copy previous registratrion forms and then continue */
@@ -1190,7 +1198,7 @@ regAdmin=$regAdmin
             var label = removeYear(s"${newForm.wid.name.replaceAll("_", " ")}")
             if (!label.contains(reg.year))
               label = label.trim + s" for $kidName season ${reg.year}"
-            val newW = controllers.Forms.copyForm(user, oldW, newfwid.name, label, newForm, c.filterRegFields)
+            val newW = formsCtl.copyForm(user, oldW, newfwid.name, label, newForm, c.filterRegFields)
           }
 
           RoleWid(role, newfwid)
@@ -1219,13 +1227,13 @@ regAdmin=$regAdmin
 
         //      3. start - notify user
         SendEmail.withSession(Website.realm(request)) { implicit mailSession =>
-          //        Emailer.sendEmailClubRegStart(au, au.userName, routes.Club.doeClubUserReg(reg._id.toString).toString)
+          //        Emailer.sendEmailClubRegStart(au, au.userName, routes.ClubCtl.doeClubUserReg(reg._id.toString).toString)
           //        Emailer.tellAdmin("Started registration", "user: " + au.userName, "club: " + clubName, "how: "+how)
           ////        TODO tell regAdmin so they know...
           //
           //        UserTask(au._id, UserTasks.START_REGISTRATION).delete
           //      }
-          Redirect(routes.Club.doeClubUserReg(reg._id.toString))
+          Redirect(routes.ClubCtl.doeClubUserReg(reg._id.toString))
         }
       }
     }) getOrElse {
@@ -1248,7 +1256,7 @@ regAdmin=$regAdmin
     ) yield {
       Regs.findClubUserYear(clubWid, stok.au.get._id, c.curYear).map { reg =>
         UserTask(stok.au.get._id, UserTasks.START_REGISTRATION).delete(tx.auto)
-        Msg2("Registration already in progress for club " + clubWid, Some(routes.Club.doeClubUserReg(reg._id.toString).url))
+        Msg2("Registration already in progress for club " + clubWid, Some(routes.ClubCtl.doeClubUserReg(reg._id.toString).url))
       }.getOrElse {
         if(Regs.findClubUser(c.wid, stok.au.get._id).size > 0 ||
            c.props.get("reg.newMembers").exists(_ == "yes"))
@@ -1258,7 +1266,7 @@ regAdmin=$regAdmin
       }
     }) getOrElse {
       if (activeUser.isDefined && !activeUser.get.consent.isDefined)
-        ROK.k apply views.html.user.doeConsent(routes.Club.doeStartRegSimple(clubWid).url)
+        ROK.k apply views.html.user.doeConsent(routes.ClubCtl.doeStartRegSimple(clubWid).url)
       else
         Msg("CAN'T START REGISTRATION " + errCollector.mkString)
     }
@@ -1283,7 +1291,7 @@ regAdmin=$regAdmin
           UserTask(au._id, UserTasks.START_REGISTRATION).delete
           Redirect("/")
         } else Regs.findClubUserYear(clubWid, au._id, c.curYear).map { reg =>
-          Msg2("Registration already in progress for club " + clubWid, Some(routes.Club.doeClubUserReg(reg._id.toString).url))
+          Msg2("Registration already in progress for club " + clubWid, Some(routes.ClubCtl.doeClubUserReg(reg._id.toString).url))
         } getOrElse {
           // 1. expire
           var reg = Reg(au._id, clubWid.name, c.wid, c.curYear, RK.ROLE_MEMBER, Seq(), Seq(), RegStatus.PENDING)
@@ -1299,11 +1307,11 @@ regAdmin=$regAdmin
 
           // 3. start - notify user
           SendEmail.withSession(Website.realm(request)) { implicit mailSession =>
-            Emailer.sendEmailClubRegStart(au, au.userName, routes.Club.doeClubUserReg(reg._id.toString).toString)
+            Emailer.sendEmailClubRegStart(au, au.userName, routes.ClubCtl.doeClubUserReg(reg._id.toString).toString)
             Emailer.tellAdmin("Started registration", "user: " + au.userName, "club: " + clubWid, "how: " + how)
             // TODO tell regAdmin so they know...
             UserTask(au._id, UserTasks.START_REGISTRATION).delete
-            Redirect(routes.Club.doeClubUserReg(reg._id.toString))
+            Redirect(routes.ClubCtl.doeClubUserReg(reg._id.toString))
           }
         }
       }
@@ -1330,7 +1338,7 @@ regAdmin=$regAdmin
         if (!u.tasks.exists(_.name == UserTasks.START_REGISTRATION))
           UserTask(u._id, UserTasks.START_REGISTRATION, Map("club" -> cwid.wpath)).create
       }
-      Redirect(routes.Club.doeClubReg(cwid, uwid))
+      Redirect(routes.ClubCtl.doeClubReg(cwid, uwid))
     }) getOrElse {
       Msg("CAN'T " + errCollector.mkString)
     }

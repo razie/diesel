@@ -61,11 +61,11 @@ case class ModRkEntry
 }
 
 /** controller for club management */
-object ModRk extends RazController with Logging {
+import com.google.inject.{Inject, Singleton}
+@Singleton
+class ModRk extends RazController with Logging {
 
-  final val STATE_INCART = "incart"
-  final val STATE_PAID = "paid"
-  final val STATE_REFUNDED = "refunded"
+import ModRk._
 
   import razie.db.RMongo.as
 
@@ -256,3 +256,9 @@ object EEModRkExec extends EExecutor("modrk") {
   override def toString = "$executor::modrk "
 }
 
+object ModRk extends RazController with Logging {
+
+  final val STATE_INCART = "incart"
+  final val STATE_PAID = "paid"
+  final val STATE_REFUNDED = "refunded"
+}

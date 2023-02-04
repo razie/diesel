@@ -23,7 +23,7 @@ club admin manages user: membership, regsitration etc
 @uname() = @{uw.user.map(u=>s"${u.userName} (${u.lastName}, ${u.firstName})").getOrElse("")}
 
 @formActions(w:razie.wiki.model.WID, seq:Integer) = {
-  <a href="@routes.Club.doeClubUwRmFormSeq(reg.map(_._id).mkString,"x",uw._id.toString, seq)" class="btn btn-xs btn-danger" title="remove from registration"> x </a>
+  <a href="@routes.ClubCtl.doeClubUwRmFormSeq(reg.map(_._id).mkString,"x",uw._id.toString, seq)" class="btn btn-xs btn-danger" title="remove from registration"> x </a>
 }
 
 @stok.title("Member " + uname())
@@ -39,7 +39,7 @@ club admin manages user: membership, regsitration etc
 <table><tr><td>
   <strong>Membership</strong>
 
-@helper.form(action=routes.Club.doeClubMemberUpdate(club.wid, uw._id.toString), 'class->"well") {
+@helper.form(action=routes.ClubCtl.doeClubMemberUpdate(club.wid, uw._id.toString), 'class->"well") {
   @helper.select(
     myForm("role"),
      how(),
@@ -87,33 +87,33 @@ club admin manages user: membership, regsitration etc
   will also send an email to the member.
   <p>
   @prevReg.map{reg=>
-    <a href="@routes.Club.doeClubUwRegstatusupd(club.wid, uw._id.toString, EXPIRED)" class="btn btn-danger" title="START new registration from scratch!">
+    <a href="@routes.ClubCtl.doeClubUwRegstatusupd(club.wid, uw._id.toString, EXPIRED)" class="btn btn-danger" title="START new registration from scratch!">
     1 - Expired (NEW)</a>
-    <a href="@routes.Club.doeStartRegCopy(club.wid, reg._id.toString)" class="btn btn-warning" title="COPY previous year's registration!">
+    <a href="@routes.ClubCtl.doeStartRegCopy(club.wid, reg._id.toString)" class="btn btn-warning" title="COPY previous year's registration!">
     1 - Expired (COPY)</a>
   }.getOrElse{
-    <a href="@routes.Club.doeClubUwRegstatusupd(club.wid, uw._id.toString, EXPIRED)" class="btn btn-warning" title="START new registration from scratch!">
+    <a href="@routes.ClubCtl.doeClubUwRegstatusupd(club.wid, uw._id.toString, EXPIRED)" class="btn btn-warning" title="START new registration from scratch!">
     1 - Expired (NEW)</a>
   }
-  <a href="@routes.Club.doeClubUwRegstatusupd(club.wid, uw._id.toString, PENDING)" class="btn btn-warning" title="send email for member to start the forms">
+  <a href="@routes.ClubCtl.doeClubUwRegstatusupd(club.wid, uw._id.toString, PENDING)" class="btn btn-warning" title="send email for member to start the forms">
     2 - Start</a>
   <p>
   These buttons are used to change the status of the registration - see the legend of statuses at the bottom of this page.
   <p>
-  <a href="@routes.Club.doeClubUwRegstatusupd(club.wid, uw._id.toString, FAMILY)"  class="btn btn-info">Reg - Family</a>
-  <a href="@routes.Club.doeClubUwRegstatusupd(club.wid, uw._id.toString, ACCEPTED)" class="btn btn-success">Reg - Accepted</a>
-  <a href="@routes.Club.doeClubUwRegstatusupd(club.wid, uw._id.toString, CURRENT)" class="btn btn-success">Reg - Current</a>
+  <a href="@routes.ClubCtl.doeClubUwRegstatusupd(club.wid, uw._id.toString, FAMILY)"  class="btn btn-info">Reg - Family</a>
+  <a href="@routes.ClubCtl.doeClubUwRegstatusupd(club.wid, uw._id.toString, ACCEPTED)" class="btn btn-success">Reg - Accepted</a>
+  <a href="@routes.ClubCtl.doeClubUwRegstatusupd(club.wid, uw._id.toString, CURRENT)" class="btn btn-success">Reg - Current</a>
   <p><p><br>Careful:
   @util.confirm(
         "Delete Registration",
         "This will delete this registration, all its kids and all related forms, completed or not",
-        routes.Club.doeClubUwRegstatusupd(club.wid, uw._id.toString, "delete").toString,
+        routes.ClubCtl.doeClubUwRegstatusupd(club.wid, uw._id.toString, "delete").toString,
         "btn btn-danger"
         )
   @if(uw.user.exists(_.tasks.exists(_.name == model.UserTasks.START_REGISTRATION))) {
-    <a href="@routes.Club.doeCreateRegTask(uw._id.toString, club.wid)" class="btn btn-success disabled" title="Create a task for the user to start registration!">Create Reg Task</a>
+    <a href="@routes.ClubCtl.doeCreateRegTask(uw._id.toString, club.wid)" class="btn btn-success disabled" title="Create a task for the user to start registration!">Create Reg Task</a>
   } else {
-    <a href="@routes.Club.doeCreateRegTask(uw._id.toString, club.wid)" class="btn btn-success" title="Create a task for the user to start registration!">Create Reg Task</a>
+    <a href="@routes.ClubCtl.doeCreateRegTask(uw._id.toString, club.wid)" class="btn btn-success" title="Create a task for the user to start registration!">Create Reg Task</a>
   }
 
 
@@ -137,21 +137,21 @@ club admin manages user: membership, regsitration etc
 @mnglink(row:Map[String,String],k:String,v:String)={
   @k match {
         case "button" => {
-      <a href="@routes.Kidz.doeUserKid(uw.userId.toString, v, "-", row("associd"), "Club:"+club.name)" class="btn btn-xs">...</a>
+      <a href="@routes.KidzCtl.doeUserKid(uw.userId.toString, v, "-", row("associd"), "Club:"+club.name)" class="btn btn-xs">...</a>
       }
         case "id" => {
       @if(reg.exists(_.kids.exists(_.rkId.toString == v))) {
             <span class="label">Included</span>
         as @reg.toList.flatMap(_.kids).filter(_.rkId.toString == v).map(_.role).mkString
-        <a href="@routes.Club.doeClubUwRmFormKid(reg.map(_._id).mkString,v,uw._id.toString, "x")" class="btn btn-xs btn-danger" title="remove from registration"> x </a>
+        <a href="@routes.ClubCtl.doeClubUwRmFormKid(reg.map(_._id).mkString,v,uw._id.toString, "x")" class="btn btn-xs btn-danger" title="remove from registration"> x </a>
       } else {
       @reg.map{r=>
-          <a href="@routes.Club.doeClubUserRegAdd(r._id.toString,v,uw.user.get._id.toString, uw._id.toString)" class="btn btn-xs" title="also adds neccessary forms">Register</a>
+          <a href="@routes.ClubCtl.doeClubUserRegAdd(r._id.toString,v,uw.user.get._id.toString, uw._id.toString)" class="btn btn-xs" title="also adds neccessary forms">Register</a>
 @***
         @if(row("role") == ROLE_RACER) {
-        <a href="@routes.Club.doeClubUwAddFormKid(r._id.toString,v,uw._id.toString, "Racer")" class="btn btn-xs">x</a>
+        <a href="@routes.ClubCtl.doeClubUwAddFormKid(r._id.toString,v,uw._id.toString, "Racer")" class="btn btn-xs">x</a>
           } else {
-          <a href="@routes.Club.doeClubUserRegAdd(r._id.toString,v,uw.user.get._id.toString, uw._id.toString)" class="btn btn-xs">Register</a>
+          <a href="@routes.ClubCtl.doeClubUserRegAdd(r._id.toString,v,uw.user.get._id.toString, uw._id.toString)" class="btn btn-xs">Register</a>
           }
 ***@
         }.getOrElse{
@@ -166,7 +166,7 @@ club admin manages user: membership, regsitration etc
 @util.utilSimpleTable(rks, Seq("fname" -> "F.Name", "lname"->"L.Name", "role" -> "Relationship", "button"->"Details", "id" -> "Registration"), Some(mnglink))
 
 Add a: @mod.snow.RK.RELATIONSHIPS.map{r=>
-  <a href="@routes.Kidz.doeUserKid(uw.userId.toString, "11", r, "-", "Club:"+club.wid.wpath)" class="btn btn-xs btn-info">@r</a>
+  <a href="@routes.KidzCtl.doeUserKid(uw.userId.toString, "11", r, "-", "Club:"+club.wid.wpath)" class="btn btn-xs btn-info">@r</a>
 }
 
 </div> @*** reg ***@
@@ -182,7 +182,7 @@ Add a: @mod.snow.RK.RELATIONSHIPS.map{r=>
 <table><tr><td width="30%">
   <br>Additional forms:<br>
     @club.regForms.map { t =>
-    <p>&nbsp;&nbsp;&nbsp;<a href="@routes.Club.doeClubUwAddForm(club.wid, uw._id.toString, t.role)" class="btn btn-default btn-lg">Add @t.role</a>
+    <p>&nbsp;&nbsp;&nbsp;<a href="@routes.ClubCtl.doeClubUwAddForm(club.wid, uw._id.toString, t.role)" class="btn btn-default btn-lg">Add @t.role</a>
     }
   </ul>
 </td><td>
@@ -195,7 +195,7 @@ For all other forms, you should use the "family members not registered table" be
 <hr>
 
 <div class="well">
-@helper.form(action=routes.Club.doeClubRegMsg(club.wid, uw._id.toString), 'class->"form-inline") {
+@helper.form(action=routes.ClubCtl.doeClubRegMsg(club.wid, uw._id.toString), 'class->"form-inline") {
   <label>Help message</label>
   <br><textarea rows="5" class="col-sm-4" name="msg" placeholder="Message"></textarea>
   <button type="submit" class="btn btn-xs btn-primary">Send now!</button>

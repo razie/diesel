@@ -410,7 +410,7 @@ Please check your email and follow the instructions.
           au.profile.map(_.setContact(c))
 
           cleanAuth()
-          if(regid.length > 1) Redirect(routes.Club.doeClubUserReg(regid))
+          if(regid.length > 1) Redirect(routes.ClubCtl.doeClubUserReg(regid))
           else Redirect(routes.ProfileUpd.doeContact("-"))
         }
       })

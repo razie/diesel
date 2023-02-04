@@ -29,7 +29,7 @@ included in mainUserC as the right hand side info box
       <li><a style="color:red;font-weight:bold" href="/user/task/@t.name">@t.desc</a></li>
     }
       @for(t <- regs) {
-        <li><a style="color:red;font-weight:bold" href="@routes.Club.doeClubUserReg(t._id.toString)">Pending registration forms for @t.clubName</a></li>
+        <li><a style="color:red;font-weight:bold" href="@routes.ClubCtl.doeClubUserReg(t._id.toString)">Pending registration forms for @t.clubName</a></li>
       }
 
       @vols

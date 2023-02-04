@@ -83,13 +83,13 @@ debug a wiki page
           <li>@model.Users.findUserById(uw.userId).map(_.userName).getOrElse(uw.userId) , @uw.role</li>
         }
        </ul>
-        <p>Remove all followers: <a class="btn btn-default" href="@routes.Club.doeDelAllFollowers(page.get.wid)">REMOVE ALL</a>
+        <p>Remove all followers: <a class="btn btn-default" href="@routes.ClubCtl.doeDelAllFollowers(page.get.wid)">REMOVE ALL</a>
         </p>
       </div>
 
       <div class="well">
         Add all club members as followers (by club WID) :
-        @helper.form(action=routes.Club.doeAddClubFollowers(page.get.wid), 'class->"well form-inline") {
+        @helper.form(action=routes.ClubCtl.doeAddClubFollowers(page.get.wid), 'class->"well form-inline") {
           <input type="text" class="input-large" name="newvalue" value="">
           <button type="submit" class="btn btn-default">ADD followers</button>
         }
@@ -97,7 +97,7 @@ debug a wiki page
 
       <div class="well">
         Remove all club members as followers (by club WID) :
-      @helper.form(action=routes.Club.doeDelClubFollowers(page.get.wid), 'class->"well form-inline") {
+      @helper.form(action=routes.ClubCtl.doeDelClubFollowers(page.get.wid), 'class->"well form-inline") {
         <input type="text" class="input-large" name="newvalue" value="">
         <button type="submit" class="btn btn-default">REMOVE followers</button>
       }

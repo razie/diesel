@@ -54,9 +54,9 @@ Amount paid: <b>@reg.amountPaid</b>
       Your club requires online payments to consider this registration completed and reserve your racer's spot for the season. Please make sure you have a paypal account and continue below
         <br>
 <br>
-     <a href="@routes.Club.doeClubRegStartPay(reg._id.toString, "total")" class="btn btn-lg btn-info">Pay TOTAL amount</a>
+     <a href="@routes.ClubCtl.doeClubRegStartPay(reg._id.toString, "total")" class="btn btn-lg btn-info">Pay TOTAL amount</a>
         @if(reg.fee.amount != reg.feeDue.amount) {
-          <a href="@routes.Club.doeClubRegStartPay(reg._id.toString, "due")" class="btn btn-lg btn-info">
+          <a href="@routes.ClubCtl.doeClubRegStartPay(reg._id.toString, "due")" class="btn btn-lg btn-info">
             Pay only DUE NOW amount</a>
         }
       </div>
@@ -76,7 +76,7 @@ Amount paid: <b>@reg.amountPaid</b>
 <p>Racers, parents, guardians, volunteers etc.
   <p>Add a:
 @mod.snow.RK.RELATIONSHIPS.map{r=>
-  <a href="@routes.Kidz.doeUserKid(stok.au.get._id.toString, "11", r, "-", "Reg:"+reg._id.toString)" class="btn btn-xs btn-info">@r</a>
+  <a href="@routes.KidzCtl.doeUserKid(stok.au.get._id.toString, "11", r, "-", "Reg:"+reg._id.toString)" class="btn btn-xs btn-info">@r</a>
 }
 
 @rkidz=@{
@@ -91,7 +91,7 @@ Amount paid: <b>@reg.amountPaid</b>
 @addlink(row:Map[String,String],k:String,v:String)={
   @k match {
         case "button" => {
-      <a href="@routes.Kidz.doeUserKid(au._id.toString, v,
+      <a href="@routes.KidzCtl.doeUserKid(au._id.toString, v,
         "-",
         rks.find(_._2._id.toString == v).map(_._1._id.toString).getOrElse("-"),
         "Reg:"+reg._id.toString)" class="btn btn-xs btn-default">&nbsp;&nbsp;<span class="glyphicon glyphicon-list-alt"/>&nbsp;</a>
@@ -100,9 +100,9 @@ Amount paid: <b>@reg.amountPaid</b>
       @if(reg.kids.exists(_.rkId.toString == v)) {
             <span class="label label-success">Included</span>
         as @reg.kids.filter(_.rkId.toString == v).map(_.role).mkString
-        <a href="@routes.Club.doeClubUwRmFormKid(reg._id.toString,v,au._id.toString, "x")" class="btn btn-default btn-xs btn-danger" title="remove from registration"> x </a>
+        <a href="@routes.ClubCtl.doeClubUwRmFormKid(reg._id.toString,v,au._id.toString, "x")" class="btn btn-default btn-xs btn-danger" title="remove from registration"> x </a>
       } else {
-        <a href="@routes.Club.doeClubUserRegAdd(reg._id.toString,v,au._id.toString, "x")" class="btn btn-primary btn-xs" title="also adds neccessary forms">Include now!</a>
+        <a href="@routes.ClubCtl.doeClubUserRegAdd(reg._id.toString,v,au._id.toString, "x")" class="btn btn-primary btn-xs" title="also adds neccessary forms">Include now!</a>
           }
         }
     case _ => {@v}
@@ -163,8 +163,8 @@ Amount paid: <b>@reg.amountPaid</b>
           Please make sure you submitted all forms and have a paypal account, then continue below.
           <br>
           <br>
-        <a href="@routes.Club.doeClubRegStartPay(reg._id.toString, "total")" class="btn btn-lg btn-info">Pay TOTAL amount</a>
-        <a href="@routes.Club.doeClubRegStartPay(reg._id.toString, "due")" class="btn btn-lg btn-info">Pay only DUE amount</a>
+        <a href="@routes.ClubCtl.doeClubRegStartPay(reg._id.toString, "total")" class="btn btn-lg btn-info">Pay TOTAL amount</a>
+        <a href="@routes.ClubCtl.doeClubRegStartPay(reg._id.toString, "due")" class="btn btn-lg btn-info">Pay only DUE amount</a>
       } else {
         @if(controllers.Club(reg.clubName).exists(_.props.get("payments.online").exists(_ == "after"))) {
       <p>After all the forms have been aproved, you will receive separate payment instructions.

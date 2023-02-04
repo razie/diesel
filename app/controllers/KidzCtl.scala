@@ -17,20 +17,36 @@ import razie.wiki.model.{WikiLink, WID}
 
 import scala.util.Try
 
+object Kidz {
+  def findAllClubs(au:User, rk:RacerKid) = {
+    val clubs = au.clubs.flatMap(_.uwid.wid.toList).flatMap(wid=>Club(wid).toList)
+    clubs ::: rk.clubs.filter(c=> !clubs.exists(_.name == c.name))
+  }
+
+  def canEditKid(rkid:String, au:User, next:String) = {
+    if(au.isClub) true
+    else if(rkid.length <= 2) true
+    else if(next.startsWith("kidz") || next.startsWith("Reg:")) {
+      rkid.length <=3 || RacerKidz.rka(au).toList.find(_.to.toString == rkid).isDefined
+    } else if(next.startsWith("clubkidz:") || next.startsWith("Club:") || next.startsWith("invite:")) {
+      val cname = next.substring(next.indexOf(':') + 1)
+      Club(cname).exists(c => c.isClubAdmin(au))
+    } else false
+  }
+}
+
 /** manage kidz (persons) - sort of deprecated by embedded to deep to drop. A kid is an actual user or a
   * virtual association to a user (like an actual kid without a user account
   */
-object Kidz extends RazController {
+import com.google.inject.Singleton
+@Singleton
+class KidzCtl extends RazController {
+  import Kidz._
 
   def doeUserKidz = FAUR { implicit stok=>
     ROK.k apply {
       views.html.user.doeUserKidz()
     }
-  }
-
-  def findAllClubs(au:User, rk:RacerKid) = {
-    val clubs = au.clubs.flatMap(_.uwid.wid.toList).flatMap(wid=>Club(wid).toList)
-    clubs ::: rk.clubs.filter(c=> !clubs.exists(_.name == c.name))
   }
 
   def form(au: User) = Form {
@@ -72,24 +88,6 @@ object Kidz extends RazController {
       //either myself, my kids or club admin/coach
       RacerKidz.rka(au).toList.find(_.to.toString == rkid).isDefined ||
       Club(cname).exists(c=> c.isClubCoach(au) || c.isClubAdmin(au))
-    } else false
-
-//    else if (next startsWith "ClubMem:")
-//      Redirect(routes.Club.doeClubRegs(clubName))
-//    else if (next startsWith "invite:")
-//      Redirect(routes.Kidz.doeKidHistory(clubName, goodRkid, ""))
-  }
-
-  def canEditKid(rkid:String, au:User, next:String) = {
-    if(au.isClub) true
-    else if(rkid.length <= 2) true
-    else if(next.startsWith("kidz") || next.startsWith("Reg:")) {
-//    else if(next.startsWith("kidz") || ObjectId.isValid(next)) {
-      //user managing his kids
-      rkid.length <=3 || RacerKidz.rka(au).toList.find(_.to.toString == rkid).isDefined
-    } else if(next.startsWith("clubkidz:") || next.startsWith("Club:") || next.startsWith("invite:")) {
-      val cname = next.substring(next.indexOf(':') + 1)
-      Club(cname).exists(c => c.isClubAdmin(au))
     } else false
   }
 
@@ -152,17 +150,17 @@ object Kidz extends RazController {
 
           // where to next
           def res = if (next startsWith "Club:")
-            Redirect(routes.Club.doeClubReg(clubwid, Club(clubName).get.userLinks.filter(_.userId.toString == userId).next._id.toString))
+            Redirect(routes.ClubCtl.doeClubReg(clubwid, Club(clubName).get.userLinks.filter(_.userId.toString == userId).next._id.toString))
           else if (next startsWith "ClubMem:")
-            Redirect(routes.Club.doeClubRegs(clubwid))
+            Redirect(routes.ClubCtl.doeClubRegs(clubwid))
           else if (next startsWith "clubkidz:")
-            Redirect(routes.Club.doeClubKidz(WID.fromPath(clubName).get))
+            Redirect(routes.ClubCtl.doeClubKidz(WID.fromPath(clubName).get))
           else if (next startsWith "invite:")
-            Redirect(routes.Kidz.doeKidHistory(clubName, goodRkid, ""))
+            Redirect(routes.KidzCtl.doeKidHistory(clubName, goodRkid, ""))
           else if (next == "kidz")
-            Redirect(routes.Kidz.doeUserKidz)
+            Redirect(routes.KidzCtl.doeUserKidz)
           else if(next startsWith("Reg:"))
-            Redirect(routes.Club.doeClubUserReg(clubName))
+            Redirect(routes.ClubCtl.doeClubUserReg(clubName))
           else
             Redirect("/")
 
@@ -239,15 +237,15 @@ object Kidz extends RazController {
         def clubwid = WID.fromPath(clubName).get
 
         def res = if (next startsWith "Club:")
-          Redirect(routes.Club.doeClubReg(clubwid, Club(au).userLinks.filter(_.userId.toString == userId).next._id.toString))
+          Redirect(routes.ClubCtl.doeClubReg(clubwid, Club(au).userLinks.filter(_.userId.toString == userId).next._id.toString))
         else if (next startsWith "ClubMem:")
-          Redirect(routes.Club.doeClubRegs(clubwid))
+          Redirect(routes.ClubCtl.doeClubRegs(clubwid))
         else if (next startsWith "clubkidz:")
-          Redirect(routes.Club.doeClubKidz(WID.fromPath(clubName).get))
+          Redirect(routes.ClubCtl.doeClubKidz(WID.fromPath(clubName).get))
         else if (next == "kidz")
-          Redirect(routes.Kidz.doeUserKidz)
+          Redirect(routes.KidzCtl.doeUserKidz)
         else if(next startsWith("Reg:"))
-          Redirect(routes.Club.doeClubUserReg(clubName))
+          Redirect(routes.ClubCtl.doeClubUserReg(clubName))
         else
           Redirect("/")
 
@@ -266,7 +264,7 @@ object Kidz extends RazController {
         rki.create
         rk.copy(rkiId = Some(rki._id)).update
 
-        Redirect(routes.Kidz.doeUserKid(userId, rkId, role, associd, next))
+        Redirect(routes.KidzCtl.doeUserKid(userId, rkId, role, associd, next))
       }) getOrElse {
       error("ERR_CANT_CREATE_KID ")
       unauthorized("Oops - cannot create this entry... ")

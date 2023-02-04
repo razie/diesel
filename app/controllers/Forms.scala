@@ -26,7 +26,9 @@ import razie.{Logging, cout}
  *
  * form fields are formatted in WForm
  */
-object Forms extends WikiBase with Logging {
+import com.google.inject.Singleton
+@Singleton
+class Forms extends WikiBase with Logging {
 
   /** create a new form instance for a user */
   def crForm(u: User, formSpec: WID, formData: WID, label: String, reviewer: User, formRole: Option[String], defaults: Map[String, String] = Map.empty)(implicit txn: Txn) = {
@@ -276,7 +278,7 @@ $fdata
                       w.owner.foreach { owner =>
                         Regs.findWid(wid).foreach { r =>
                           Emailer.sendEmailFormRejected(au, owner.asInstanceOf[User], r.clubName,
-                            routes.Club.doeClubUserReg(r._id.toString).toString,
+                            routes.ClubCtl.doeClubUserReg(r._id.toString).toString,
                             data2.get("formRejected").getOrElse("Something's wrong...?"))
 
                           // if it was ok and one rejected, then reset status of the entire reg to pending

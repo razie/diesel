@@ -17,7 +17,7 @@
 
 @if(! au.isClub && au.hasRealm(razie.wiki.model.Wikis.RK)) {
     <hr>
-    <li class="@active(6)"><a href="@routes.Kidz.doeUserKidz"><i class="icon-au"></i>Racerz</a></li>
+    <li class="@active(6)"><a href="@routes.KidzCtl.doeUserKidz"><i class="icon-au"></i>Racerz</a></li>
     <ul>
       @for(c <- au.rel("child")) {
        <li><a href="@routes.ProfileUpd.profile2(c.id)">@c.ename</a></li>

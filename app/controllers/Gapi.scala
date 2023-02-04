@@ -6,6 +6,7 @@
  */
 package controllers
 
+import com.google.inject.Singleton
 import mod.diesel.model.WG
 import mod.diesel.model.WG.WGraph
 import play.api.mvc.Action
@@ -17,12 +18,8 @@ import razie.wiki.util.PlayTools
 import razie.wiki.{Enc, Services}
 
 /** graph wiki and domain controller, for browsing associations etc */
-object Gapi extends RazController with Logging {
-
-  object retj {
-    def <<(x: List[Any]) = Ok(js.tojsons(x, 0).toString).as("application/json")
-    def <<(x: Map[String, Any]) = Ok(js.tojsons(x).toString).as("application/json")
-  }
+@Singleton
+class Gapi extends RazController with Logging {
 
     def AS (as:String, wg:WGraph) = as match {
       case "d3" => retj << wg.tod3

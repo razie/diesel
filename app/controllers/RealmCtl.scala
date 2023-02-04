@@ -22,7 +22,9 @@ import razie.wiki.util.PlayTools
 import razie.wiki.{Config, Enc, Sec, Services}
 
 /** realm/reactor controller */
-object Realm extends RazController with Logging {
+import com.google.inject.Singleton
+@Singleton
+class Realm extends RazController with Logging {
 
   implicit def obtob(o: Option[Boolean]): Boolean = o.exists(_ == true)
 

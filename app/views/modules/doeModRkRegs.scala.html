@@ -82,7 +82,7 @@ module RK - list of regs per topic
         }
         case "notes" => {
           @if(au.canAdmin(page) && reg.kids.exists(_.rkId.toString == v)) {
-            <a href="@routes.Kidz.doeKidHistory(findClub().get.wid.wpath, v)" class="btn btn-info btn-xs">&nbsp;&nbsp;<span class="glyphicon glyphicon-th-list"/>&nbsp;&nbsp;</a>
+            <a href="@routes.KidzCtl.doeKidHistory(findClub().get.wid.wpath, v)" class="btn btn-info btn-xs">&nbsp;&nbsp;<span class="glyphicon glyphicon-th-list"/>&nbsp;&nbsp;</a>
           }
         }
         case "status" => {

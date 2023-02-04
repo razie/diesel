@@ -334,7 +334,7 @@ List(
 var selecting="";
 
 function dismissPost(hid,eid) {
-  var url = "@controllers.routes.Kidz.doeDismissHistory("NID")".replace(/NID/g, hid);
+  var url = "@controllers.routes.KidzCtl.doeDismissHistory("NID")".replace(/NID/g, hid);
   $.ajax({
     type: "POST",
     url:  url,
@@ -470,7 +470,7 @@ function deletePosts () {
 
 function changeGrouped (element) {
   var settings = element.checked ? "grouped" : "";
-  window.location = '@routes.Kidz.doeKidHistory(club.map(_.name).mkString, rk._id.toString, "")&settings='+settings;
+  window.location = '@routes.KidzCtl.doeKidHistory(club.map(_.name).mkString, rk._id.toString, "")&settings='+settings;
 }
 
 function help() {

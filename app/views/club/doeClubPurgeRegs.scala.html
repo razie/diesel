@@ -126,7 +126,7 @@ club  @clubwid.wpath   @clubwid.uwid
 @mnglink(row:Map[String,String],k:String,v:String)={
 @k match {
   case "regStatus" => {
-    @regStatusColored(v, Some(routes.Club.doeClubReg(clubwid, id(row)).toString))
+    @regStatusColored(v, Some(routes.ClubCtl.doeClubReg(clubwid, id(row)).toString))
   }
   case "rowClass" => {
     @row.get("regStatus") match {
@@ -149,8 +149,8 @@ club  @clubwid.wpath   @clubwid.uwid
         <br><b>Forms: @forms.size</b> total: @forms.groupBy(_._2).map{x=><b>@x._2.size</b> @x._1.getOrElse("n/a") , }
       }
     } else {
-  <p><small><a href="@routes.Club.doeClubRegs(clubwid, "1")">More stats (slow)</a></small> |
-    <small><a href="@routes.Club.doeClubRegs(clubwid, "2")">Hours report (slow)</a></small>
+  <p><small><a href="@routes.ClubCtl.doeClubRegs(clubwid, "1")">More stats (slow)</a></small> |
+    <small><a href="@routes.ClubCtl.doeClubRegs(clubwid, "2")">Hours report (slow)</a></small>
     }
 
     @util.utilSimpleTable(tab.filter(_.apply("role") != "Fan").iterator,
@@ -188,7 +188,7 @@ club  @clubwid.wpath   @clubwid.uwid
     @kidlink(row:Map[String,String],k:String,v:String)={
     @k match {
     case "button" => {
-    <a href="@routes.Kidz.doeUserKid(club._id.toString, v, "-", row("associd"), "Club")" class="btn btn-xs">More...</a>
+    <a href="@routes.KidzCtl.doeUserKid(club._id.toString, v, "-", row("associd"), "Club")" class="btn btn-xs">More...</a>
     }
     case _ => {@v}
     }
@@ -200,7 +200,7 @@ club  @clubwid.wpath   @clubwid.uwid
     "role" -> "Role",
     "button"->"Details"), Some(kidlink))
 
-    Add more from <a href="@routes.Club.doeClubKidz">here</a>
+    Add more from <a href="@routes.ClubCtl.doeClubKidz">here</a>
 
     </div>
 
@@ -214,11 +214,11 @@ club  @clubwid.wpath   @clubwid.uwid
   @controllers.Club.findForUser(club).map { c =>
     @c.regForms.map { t =>
       <li>
-        Report <a href="@routes.Club.doeClubRegsReportCsv(c.wid, t.role)" class="btn btn-xs">CSV</a> -
-        <a href="@routes.Club.doeClubRegsReportJson(c.wid, t.role)" class="btn btn-xs">Json</a> -
-        <a href="@routes.Club.doeClubRegsReportHtml(c.wid, t.role)" class="btn btn-xs">Html</a> - @t.role
+        Report <a href="@routes.ClubCtl.doeClubRegsReportCsv(c.wid, t.role)" class="btn btn-xs">CSV</a> -
+        <a href="@routes.ClubCtl.doeClubRegsReportJson(c.wid, t.role)" class="btn btn-xs">Json</a> -
+        <a href="@routes.ClubCtl.doeClubRegsReportHtml(c.wid, t.role)" class="btn btn-xs">Html</a> - @t.role
         @c.props.filter(_._1 startsWith ("Report."+t.role)).map {tt=>
-        | <a href="@routes.Club.doeClubRegsReportCsv(c.wid, t.role, tt._2)" class="btn btn-xs">@tt._1.replaceFirst("Report."+t.role+".", "")</a>
+        | <a href="@routes.ClubCtl.doeClubRegsReportCsv(c.wid, t.role, tt._2)" class="btn btn-xs">@tt._1.replaceFirst("Report."+t.role+".", "")</a>
       }
     }
   }

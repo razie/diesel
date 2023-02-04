@@ -11,7 +11,6 @@ import com.mongodb.casbah.Imports._
 import com.novus.salat._
 import difflib.{DiffUtils, Patch}
 import mod.diesel.model.Diesel
-import mod.notes.controllers.DomC.retj
 import mod.snow.RacerKidz
 import model._
 import org.bson.types.ObjectId
@@ -40,7 +39,7 @@ import mod.wiki.EditLock
 
 /** wiki edits controller */
 @Singleton
-class Wikie @Inject()(config: Configuration) extends WikieBase {
+class Wikie @Inject()(config: Configuration, realmCtl:Realm) extends WikieBase {
 
   /** when no pages found in 'any', i captured 'cat' in a form */
   def edit2 = FAU { implicit au =>
@@ -1065,7 +1064,7 @@ class Wikie @Inject()(config: Configuration) extends WikieBase {
           s"${DateTime.now().toString} - user accepted terms and condtions for creating new project named:$name"
         ))
 
-        Realm.createR2(cat, templateWpath, torspec:String, realm).apply(request).value.get.get
+        realmCtl.createR2(cat, templateWpath, torspec:String, realm).apply(request).value.get.get
       }
       else Msg("Error: " + Corr(e, Some(E)).toString)
   }

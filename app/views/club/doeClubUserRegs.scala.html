@@ -40,13 +40,13 @@ user manages registrations
     @mnglink(row: Map[String, String], k: String, v: String) = {
     @k match {
       case "regStatus" => {
-        @regStatusColored(v, Some(routes.Club.doeClubUserReg(row.get("id").get).toString))
+        @regStatusColored(v, Some(routes.ClubCtl.doeClubUserReg(row.get("id").get).toString))
       }
       case "vol" => {
         @v
       }
       case "details" => {
-        <a href="@routes.Club.doeClubUserReg(row.get("id").get).toString" class="btn btn-primary btn-xs">&nbsp;&nbsp;<span class="glyphicon glyphicon-list-alt"></span>&nbsp;&nbsp;</a>
+        <a href="@routes.ClubCtl.doeClubUserReg(row.get("id").get).toString" class="btn btn-primary btn-xs">&nbsp;&nbsp;<span class="glyphicon glyphicon-list-alt"></span>&nbsp;&nbsp;</a>
       }
       case _ => {
         @v
@@ -79,7 +79,7 @@ user manages registrations
     } else {
       @mr.map { club =>
         <p>No registrations for the current year - <b>@club.userName, @club.curYear</b></p>
-        <a href="@routes.Club.doeStartRegSimple(club.wid)" class="btn btn-success btn-lg">
+        <a href="@routes.ClubCtl.doeStartRegSimple(club.wid)" class="btn btn-success btn-lg">
           Start registration for <b>@club.userName, @club.curYear</b></a>
       }
     }

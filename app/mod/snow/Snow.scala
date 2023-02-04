@@ -1,5 +1,6 @@
 package mod.snow
 
+import com.google.inject.{Inject, Singleton}
 import controllers._
 import model._
 import org.bson.types.ObjectId
@@ -16,16 +17,35 @@ import scala.Option.option2Iterable
 
 case class RoleWid(role: String, wid: WID)
 
+object Snow {
+  object ROLES {
+    final val EVALUATION = "Evaluation"
+    final val QUESTIONAIRE = "Questionnaire"
+    final val MAREQ = "MA-Request"
+    final val ASK = "Question"
+    final val FEEDBACK = "Feedback"
+    final val MESSAGE = "Message"
+    final val REPLY = "Reply"
+    final val INSIGHT = "Insight"
+    final val PLAN = "Plan"
+    final val GOAL = "Goal"
+    final val NOTE = "Note"
+    final val VIDEO = "Video"
+  }
+}
+
 /** controller for club management */
-object Snow extends RazController with Logging {
+@Singleton
+class Snow @Inject() (formsCtl:Forms) extends RazController with Logging {
+  import Snow.ROLES
 
   def invite(wid: WID, role: String) = FAUR { implicit request =>
     val club = Club(wid).get
-    Redirect(controllers.routes.Kidz.doeUserKid(club.userId.toString, "11", role, "-", "invite:" + club.wid.wpath))
+    Redirect(controllers.routes.KidzCtl.doeUserKid(club.userId.toString, "11", role, "-", "invite:" + club.wid.wpath))
   }
 
   def manage(club:WID, role:String, team:String) = FAUR { implicit request =>
-    Redirect(controllers.routes.Club.doeClubKidz(club, role, team))
+    Redirect(controllers.routes.ClubCtl.doeClubKidz(club, role, team))
   }
 
   // list of clubs and teams with links
@@ -83,7 +103,7 @@ object Snow extends RazController with Logging {
 
   // pro activate account
   def activate(cat:String) = FAUR { implicit stok =>
-    Forms.sForm(WID("FormDesign", "ActivatePro"), routes.Snow.activate1(cat).url)
+    formsCtl.sForm(WID("FormDesign", "ActivatePro"), routes.Snow.activate1(cat).url)
   }
 
   // edit form submitted
@@ -91,8 +111,7 @@ object Snow extends RazController with Logging {
     val w = WID("FormDesign", "ActivatePro").r(stok.realm).page.get
     val wf = new WForm(w)
     val (newData, errors) = wf.validate(stok.formParms)
-//    val x = wf.mkContent(Forms.json(Map() ++ newData, !errors.isEmpty))
-    val x = WForm.formData(Forms.json(Map() ++ newData, false))
+    val x = WForm.formData(formsCtl.json(Map() ++ newData, false))
 
     val wid = WID(cat, stok.au.get.userName).r(stok.realm)
     val name = wid.name
@@ -272,7 +291,7 @@ object Snow extends RazController with Logging {
 
   // pro activate account
   def invitePro(cat:String) = FAUR { implicit stok =>
-    Forms.sForm(
+    formsCtl.sForm(
       """
         |..label Invite a PRO
         |..xform.class form-horizontal
@@ -304,21 +323,6 @@ object Snow extends RazController with Logging {
       }
 
       Msg("Thank you - invite sent")
-  }
-
-  object ROLES {
-    final val EVALUATION = "Evaluation"
-    final val QUESTIONAIRE = "Questionnaire"
-    final val MAREQ = "MA-Request"
-    final val ASK = "Question"
-    final val FEEDBACK = "Feedback"
-    final val MESSAGE = "Message"
-    final val REPLY = "Reply"
-    final val INSIGHT = "Insight"
-    final val PLAN = "Plan"
-    final val GOAL = "Goal"
-    final val NOTE = "Note"
-    final val VIDEO = "Video"
   }
 
   /** either coach or me or parent */

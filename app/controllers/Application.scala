@@ -26,7 +26,7 @@ object ApplicationUtils {
 
 /** main entry points like root / etc */
 @Singleton
-class Application @Inject()(wikiCtl: Wiki) extends RazController {
+class Application @Inject()(wikiCtl: Wiki, realmCtl:Realm) extends RazController {
 
   val rand = new Random()
 
@@ -388,7 +388,7 @@ class Application @Inject()(wikiCtl: Wiki) extends RazController {
         "ok"
       case "verifyUserById" =>
         val email = ROne[model.User]("_id" -> data.aso).map(_.email.toString).get
-        (new controllers.UserTasksCtl()).verifiedEmail(DateTime.now().plusHours(1).toString().enc, email, data, auth)
+        (new controllers.UserTasksCtl(realmCtl)).verifiedEmail(DateTime.now().plusHours(1).toString().enc, email, data, auth)
         "ok"
       case "auth" =>
         auth.toString

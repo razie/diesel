@@ -106,12 +106,51 @@ object Notes {
   }
 }
 
+object NotesLocker {
+  def book(implicit request: Request[_]) =
+// if you want to keep separate notes in this reactor, set the prop below to something
+    Book(Website.apply(request).filter(_.prop("separateNotes").isDefined).map(_.reactor).getOrElse("notes"),
+      "main",
+      new TagQuery(request.cookies.get("pinTags").map(_.value).mkString)
+    )
+
+  // format a note into html - customized to manage sfiddles
+  def format(wid: WID, markup: String, icontent: String, iwe: Option[WikiEntry] = None, au:Option[model.User]) = {
+    iwe.filter(x=>
+      au.exists(_.isDev) && icontent.lines.find(_ startsWith ".sfiddle").isDefined
+    ).fold(
+      (
+          if(icontent.lines.find(_ startsWith ".sfiddle").isDefined)
+            "[[No permission for sfiddles]]"
+          else "") +
+          Wikis.format(wid, markup, icontent, iwe, au)
+    ) {we=>
+      val script = we.content.lines.filterNot(_ startsWith ".").mkString("\n")
+      try {
+        if(we.tags contains "js") {
+          views.html.fiddle.inlineServerFiddle("js", script, None).body
+        } else if(we.tags contains "scala") {
+          views.html.fiddle.inlineServerFiddle("scala", script, None).body
+        } else {
+          "unknown language"
+        }
+      } catch  {
+        case t : Throwable =>
+          (s"""<font style="color:red">[[BAD FIDDLE - check syntax: ${t.toString}]]</font>""")
+      }
+    }
+  }
+}
+
 /** controller for notes management */
-object NotesLocker extends RazController with Logging {
+import com.google.inject.Singleton
+@Singleton
+class NotesLocker extends RazController with Logging {
   import Notes.CAT
   import NotesTags._
   import play.api.data.Forms._
   import play.api.data._
+import NotesLocker._
 
   var autosaved = 0L;
   lazy val HARRY = Users.findUserById("4fdb5d410cf247dd26c2a784")
@@ -198,13 +237,6 @@ object NotesLocker extends RazController with Logging {
       ROne[AutosavedNote]("uid"->au._id, "nid"->new ObjectId(id)) map (_.delete(tx.local("notes.create", au.userName)))
       Redirect(routes.NotesLocker.index())
   }
-
-  def book(implicit request:Request[_]) =
-  // if you want to keep separate notes in this reactor, set the prop below to something
-    Book(Website.apply(request).filter(_.prop("separateNotes").isDefined).map(_.reactor).getOrElse("notes"),
-      "main",
-      new TagQuery(request.cookies.get("pinTags").map(_.value).mkString)
-    )
 
   /** for active user */
   def saveFAU(f: User => VErrors => Request[AnyContent] => Result) = Action { implicit request =>
@@ -532,22 +564,6 @@ object NotesLocker extends RazController with Logging {
       NotFound("Note with id not found")
   }
 
-  def domPlay(nid: String) = FAU { implicit au =>
-    implicit errCollector => implicit request =>
-      import razie.|>._
-      val next = request.headers.get("Referer").mkString |> {x => if(x.contains(Services.config.hostport) || x.contains("/notes")) x else ""}
-      Notes.notesById(new ObjectId(nid)).map { n =>
-        if (n.by == au._id || Notes.isShared(n, au._id)) {
-          NOK ("", autags, "msg" -> s"[view]") apply {implicit stok=>
-            views.html.notes.domPlay(Notes.dec(au)(n))
-          }
-        } else
-          OkNewNote(Seq("err" -> "[Not your note...]"))
-      } getOrElse {
-        OkNewNote(Seq("err" -> "[Note not found]"))
-      }
-  }
-
   /** return back to the main screen, with the message */
   private def OkNewNote(msg:Seq[(String,String)]=Seq())(implicit request:Request[AnyContent], au:User) = {
     NOK ("", autags, msg, false) apply { implicit stok =>
@@ -598,6 +614,8 @@ object NotesLocker extends RazController with Logging {
       OkNewNote(Seq("err" -> "[Note not found]"))
     //      }
   }
+
+  implicit val notesCtl: NotesLocker = this
 
   def alltips = FAU { implicit au =>
     implicit errCollector => implicit request =>
@@ -773,33 +791,6 @@ object NotesLocker extends RazController with Logging {
       }
   }
 
-  // format a note into html - customized to manage sfiddles
-  def format(wid: WID, markup: String, icontent: String, iwe: Option[WikiEntry] = None, au:Option[model.User]) = {
-    iwe.filter(x=>
-      au.exists(_.isDev) && icontent.lines.find(_ startsWith ".sfiddle").isDefined
-    ).fold(
-        (
-          if(icontent.lines.find(_ startsWith ".sfiddle").isDefined)
-            "[[No permission for sfiddles]]"
-          else "") +
-        Wikis.format(wid, markup, icontent, iwe, au)
-      ) {we=>
-      val script = we.content.lines.filterNot(_ startsWith ".").mkString("\n")
-      try {
-        if(we.tags contains "js") {
-          views.html.fiddle.inlineServerFiddle("js", script, None).body
-        } else if(we.tags contains "scala") {
-          views.html.fiddle.inlineServerFiddle("scala", script, None).body
-        } else {
-          "unknown language"
-        }
-      } catch  {
-        case t : Throwable =>
-          (s"""<font style="color:red">[[BAD FIDDLE - check syntax: ${t.toString}]]</font>""")
-      }
-    }
-  }
-
   // TODO optimize
   def search(q: String) = FUH { implicit au =>
     implicit errCollector => implicit request =>
@@ -853,6 +844,53 @@ object NotesLocker extends RazController with Logging {
       Ok("["+(c1 ::: c2 ::: c3).map(s=>s""" "$s" """).mkString(",")+"]").as("text/json")
   }
 
+  def domj(nid: String) = FAU { implicit au =>
+    implicit errCollector => implicit request =>
+      Notes.notesById(new ObjectId(nid)).map { n =>
+        if (n.by == au._id || Notes.isShared(n, au._id))
+          retj << WikiDomain.domFrom(n).get.tojmap
+        else
+          NotFound("[Not your note...]")
+      } getOrElse {
+        NotFound("[Note not found...]")
+      }
+  }
+
+  def domcat(cat: String) = Action { implicit request =>
+    retj << WG.fromCat(cat, "rk").tojmap
+  }
+
+  // had this version elsewhere - seems more fancy
+
+//  def domPlay(nid: String) = FAU { implicit au =>
+//    implicit errCollector => implicit request =>
+//      import razie.|>._
+//      val next = request.headers.get("Referer").mkString |> {x => if(x.contains(Services.config.hostport) || x.contains("/notes")) x else ""}
+//      Notes.notesById(new ObjectId(nid)).map { n =>
+//        if (n.by == au._id || Notes.isShared(n, au._id)) {
+//          NOK ("", autags, "msg" -> s"[view]") apply {implicit stok=>
+//            views.html.notes.domPlay(Notes.dec(au)(n))
+//          }
+//        } else
+//          OkNewNote(Seq("err" -> "[Not your note...]"))
+//      } getOrElse {
+//        OkNewNote(Seq("err" -> "[Note not found]"))
+//      }
+//  }
+
+  def domPlay(nid: String) = FAU { implicit au =>
+    implicit errCollector => implicit request =>
+      Notes.notesById(new ObjectId(nid)).map { n =>
+        if (n.by == au._id || Notes.isShared(n, au._id)) {
+          NOK ("", autags, "msg" -> s"[view]") apply {implicit stok=>
+            views.html.notes.domPlay(Notes.dec(au)(n))
+          }
+        } else
+          NotFound("[Not your note...]")
+      } getOrElse {
+        NotFound("[Note not found...]")
+      }
+  }
 }
 
 object NotesTips {
@@ -887,48 +925,9 @@ object NotesTips {
   }
 }
 
-/** dom graph controller */
-object DomC extends RazController with Logging {
-
-  object retj {
-    def <<(x: List[Any]) = Ok(js.tojson(x).toString).as("application/json")
-    def <<(x: Map[String, Any]) = Ok(js.tojson(x).toString).as("application/json")
-  }
-
-  def domj(nid: String) = NotesLocker.FAU { implicit au =>
-    implicit errCollector => implicit request =>
-      Notes.notesById(new ObjectId(nid)).map { n =>
-        if (n.by == au._id || Notes.isShared(n, au._id))
-          retj << WikiDomain.domFrom(n).get.tojmap
-        else
-          NotFound("[Not your note...]")
-      } getOrElse {
-        NotFound("[Note not found...]")
-      }
-  }
-
-  def domcat(cat: String) = Action { implicit request =>
-    retj << WG.fromCat(cat, "rk").tojmap
-  }
-
-  def domPlay(nid: String) = NotesLocker.FAU { implicit au =>
-    implicit errCollector => implicit request =>
-      Notes.notesById(new ObjectId(nid)).map { n =>
-        if (n.by == au._id || Notes.isShared(n, au._id)) {
-          NotesLocker.NOK ("", NotesLocker.autags, "msg" -> s"[view]") apply {implicit stok=>
-            views.html.notes.domPlay(Notes.dec(au)(n))
-          }
-        } else
-          NotFound("[Not your note...]")
-      } getOrElse {
-        NotFound("[Note not found...]")
-      }
-  }
-
-}
 
 /** captures the current state of what to display - passed to all views */
-case class NotesOk(curTag: String, tags: model.Tags.Tags, msg: Seq[(String, String)], isSearch:Boolean, au: model.User, request: Request[_]) {
+case class NotesOk(curTag: String, tags: model.Tags.Tags, msg: Seq[(String, String)], isSearch:Boolean, au: model.User, request: Request[_]) (implicit notesCtl:NotesLocker) {
   var _title : String = "No Folders" // this is set by the body as it builds itself and used by the header, heh
 
   val realm = Website.realm(request)
@@ -954,7 +953,7 @@ case class NotesOk(curTag: String, tags: model.Tags.Tags, msg: Seq[(String, Stri
   def title(s:String) = {this._title = s; ""}
 
   def apply(content: NotesOk => Html) = {
-    NotesLocker.Ok (views.html.notes.notesLayout(content(this), curTag, tags, msg)(this))
+    notesCtl.Ok (views.html.notes.notesLayout(content(this), curTag, tags, msg)(this))
   }
 
   def badRequest (content: NotesOk => Html) = {
@@ -962,7 +961,7 @@ case class NotesOk(curTag: String, tags: model.Tags.Tags, msg: Seq[(String, Stri
   }
 
   def noLayout(content: NotesOk => Html) = {
-    NotesLocker.Ok (content(this))
+    notesCtl.Ok (content(this))
   }
 
   /** format a tag path */

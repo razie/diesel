@@ -5,7 +5,7 @@
   * */
 package controllers
 
-import com.google.inject.Singleton
+import com.google.inject.{Inject, Singleton}
 import mod.notes.controllers.NotesLocker
 import play.api.mvc.Action
 import razie.db.RazMongo
@@ -16,7 +16,7 @@ import razie.wiki.admin.SendEmail
 
 /** some system level admin ops: monitoring, config, pings etc */
 @Singleton
-class AdminSys extends AdminBase {
+class AdminSysCtl @Inject() (notesCtl:NotesLocker) extends AdminBase {
 
   def osusage = {
     import play.api.libs.concurrent.Execution.Implicits.defaultContext
@@ -25,7 +25,7 @@ class AdminSys extends AdminBase {
       EEDieselExecutors.dieselPing() ++
           Map(
             "extra" -> Map(
-              "notesLockerAutosaved" -> NotesLocker.autosaved,
+              "notesLockerAutosaved" -> notesCtl.autosaved,
               "threads" -> defaultContext.toString
             )
           ))

@@ -37,10 +37,10 @@ manage the list of kidz and/or their accounts
 @mnglink(row:Map[String,String],k:String,v:String)={
   @k match {
     case "details" => {
-      <a href="@routes.Kidz.doeUserKid(stok.au.get._id.toString, v, "-", row("associd"), "clubkidz:"+club.wid.wpath)" class="btn btn-default btn-xs">&nbsp;&nbsp;<span class="glyphicon glyphicon-list-alt"/>&nbsp;&nbsp;</a>
+      <a href="@routes.KidzCtl.doeUserKid(stok.au.get._id.toString, v, "-", row("associd"), "clubkidz:"+club.wid.wpath)" class="btn btn-default btn-xs">&nbsp;&nbsp;<span class="glyphicon glyphicon-list-alt"/>&nbsp;&nbsp;</a>
     }
     case "notes" => {
-      <a href="@routes.Kidz.doeKidHistory(club.wid.wpath, v)" class="btn btn-info btn-xs">&nbsp;&nbsp;<span class="glyphicon glyphicon-th-list"/>&nbsp;&nbsp;</a>
+      <a href="@routes.KidzCtl.doeKidHistory(club.wid.wpath, v)" class="btn btn-info btn-xs">&nbsp;&nbsp;<span class="glyphicon glyphicon-th-list"/>&nbsp;&nbsp;</a>
     }
     case _ => { @v }
   }

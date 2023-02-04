@@ -25,7 +25,7 @@ manage the volunteer hours by club admin
   Indicate the desired administrator email (should be the email used for this account) and what is your relationship to this club, how can we verify that your email is associated to the club...
 </p>
 
-@helper.form(action = routes.Club.doeClubActivateHosting1(wid), 'class -> "well") {
+@helper.form(action = routes.ClubCtl.doeClubActivateHosting1(wid), 'class -> "well") {
   @razText(myForm, "regAdmin", "Admin email")
 
   @helper.textarea(

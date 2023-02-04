@@ -25,7 +25,7 @@ manage the list of kidz and/or their accounts
   <div class="well">
   @prevReg.map { reg =>
   <p>We found a previous year's registration for you (@reg.year) - you should copy all those forms to this year and just update them: </p>
-  <p><a href="@routes.Club.doeStartRegCopy(clubwid, reg._id.toString)" class="btn btn-lg btn-success">Copy previous year's registration!</a>
+  <p><a href="@routes.ClubCtl.doeStartRegCopy(clubwid, reg._id.toString)" class="btn btn-lg btn-success">Copy previous year's registration!</a>
   </div>
 
   <hr>
@@ -57,7 +57,7 @@ manage the list of kidz and/or their accounts
 
     <p>If you are registering a family with <b>kids</b>
       , use this option. Even if you're a parent coach, you should use this option.
-    <p><a href="@routes.Club.doeStartReg(clubwid, "Family")" class="btn btn-lg btn-success">
+    <p><a href="@routes.ClubCtl.doeStartReg(clubwid, "Family")" class="btn btn-lg btn-success">
       Start Family Registration!</a>
 
   <hr>
@@ -65,7 +65,7 @@ manage the list of kidz and/or their accounts
     <h2>Option 2: Registering staff</h2>
 
     <p>If you are NOT registering any kids, you are an individual such as a coach, official etc - start below:
-    <p><a href="@routes.Club.doeStartReg(clubwid, "individual")" class="btn btn-lg btn-warning">
+    <p><a href="@routes.ClubCtl.doeStartReg(clubwid, "individual")" class="btn btn-lg btn-warning">
       Start Individual Registration!</a>
 
   <hr>
@@ -73,7 +73,7 @@ manage the list of kidz and/or their accounts
     <h2>Option 3: no registration needed</h2>
 
     <p>If you don't need a registration (your parents will do it etc), just click below to remove this task:
-    <p><a href="@routes.Club.doeStartReg(clubwid, "None")" class="btn btn-lg btn-info">
+    <p><a href="@routes.ClubCtl.doeStartReg(clubwid, "None")" class="btn btn-lg btn-info">
       No registration for me!</a>
   </div>
 }

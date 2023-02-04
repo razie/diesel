@@ -26,9 +26,12 @@ extra html for wiki fragments, used in another page
     }
 }
 
+  @** commented out when refactoring play 2.5
+
 @if(page.exists(_.contentProps.contains("module.note"))) {
   @views.html.notes.doeModNote(NotesLocker.NEWNOTENB, we, user)
 }
+*@
 
 @*** the styles required are also included in header ***@
 @if(
