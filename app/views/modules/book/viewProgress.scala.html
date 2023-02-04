@@ -97,7 +97,7 @@ list all topics in category
               <ul class="dropdown-menu" aria-labelledby="dropdownMenu1">
 
             @others.map {pp=>
-              <li><a href="@routes.Progress.switchTo(pp.pathway)" class="xbtn xbtn-default xbtn-xs" >
+              <li><a href="@routes.ProgressCtl.switchTo(pp.pathway)" class="xbtn xbtn-default xbtn-xs" >
                 <span class="glyphicon glyphicon-play"></span> @WID.fromPath(pp.pathway).map(_.name).mkString (<b>@pp.percentage</b>)
               </a>
               </li>

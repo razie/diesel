@@ -1,15 +1,16 @@
 package controllers
 
 import akka.actor.{Actor, ActorRef, Props}
-import play.api.mvc.{Result}
-import razie.diesel.engine.DieselAppContext.getActorSystem
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.collection.mutable
-import scala.concurrent.{Await, Future}
-import scala.concurrent.duration._
-import akka.util.Timeout
 import akka.pattern.ask
+import akka.util.Timeout
+import com.google.inject._
+import play.api.mvc.Result
 import razie.audit.Audit
+import razie.diesel.engine.DieselAppContext.getActorSystem
+import scala.collection.mutable
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration._
+import scala.concurrent.{Await, Future}
 
 /** simple code pills controller
   *
@@ -17,8 +18,8 @@ import razie.audit.Audit
   *
   * pills are called with /pill/name
   */
-//@Singleton
-object CodePills extends RazController {
+@Singleton
+class CodePillsCtl extends RazController {
 
   sealed abstract class BasePill(val name: String) {
     def run (request:RazRequest) : Result
@@ -49,7 +50,6 @@ object CodePills extends RazController {
   def addString(name: String)(body: RazRequest => String): Unit = {
     map.put (name, new Pill2(name, body))
   }
-
 
   // routes pill/:name?attrs
   def run(pill: String) = RAction.async { implicit request =>

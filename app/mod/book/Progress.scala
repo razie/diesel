@@ -19,6 +19,7 @@ import razie.db._
 import razie.wiki.model._
 import razie.|>._
 import scala.collection.mutable.ListBuffer
+import com.google.inject._
 
 /** either Entry or Level */
 case class ProgressRecord (
@@ -102,10 +103,7 @@ case class Progress (
   }
 }
 
-/** racer kid info utilities */
-//@Singleton
-// todo this is hard to make singleton beause of the init CodePills
-object Progress extends RazController with WikiMod {
+object Progress {
 
   final val STATUS_SKIPPED = "s"
   final val STATUS_READ = "r"
@@ -131,9 +129,6 @@ object Progress extends RazController with WikiMod {
   def findForUser(id: ObjectId) = RMany[Progress]("ownerId" -> id)
   def findByUserAndTopic(userId:ObjectId, uwid:UWID) = ROne[Progress]("ownerId" -> userId, "ownerTopic" -> uwid.grated)
 
-  // todo this init was setting up the PILLs from the ProgressCtl below...
-  def init = {}
-
   /** format a section for display, with done/skip buttons and state */
   def formatSec (we:WikiEntry, cur:WikiSection, what:String, path:String)(implicit stok:StateOk) : String = {
     val (kind, name) = (cur.signature, cur.name)
@@ -152,7 +147,13 @@ object Progress extends RazController with WikiMod {
   def modPostHtmlNoBottom (we:WikiEntry, html:String) : String =
     html.replaceAll("\\{div.alert.info}", "<div class=\"alert alert-info\">").
         replaceAll("\\{/div\\}", "</div>")
+}
 
+/** racer kid info utilities */
+@Singleton
+class ProgressCtl @Inject() (codePillsCtl:CodePillsCtl) extends RazController with WikiMod {
+
+  import Progress._
 
     override def modPostHtml (we:WikiEntry, html:String) : String =
       modPostHtmlNoBottom(we, html) +
@@ -226,7 +227,7 @@ object Progress extends RazController with WikiMod {
           Some("/improve/skiing/view"), Some(au),
           Some("Reset" -> s"/improve/skiing/restart1?pathway=$pathway"))
       }) orElse
-    Some(Redirect(routes.Progress.restart1(pathway)))
+    Some(Redirect(routes.ProgressCtl.restart1(pathway)))
   }
 
   def restart1 (pathway:String) = FAU ("you need a free account to track your progress.") {implicit au=>
@@ -239,7 +240,7 @@ object Progress extends RazController with WikiMod {
       ) yield     razie.db.tx("restart1", au.userName) { implicit txn =>
           findByUserAndTopic(au._id, tl.ownerTopic).map(_.delete)
           val p = startProgress(au._id, tl)
-          Redirect(routes.Progress.view(pathway))
+          Redirect(routes.ProgressCtl.view(pathway))
         })
   }
 
@@ -344,7 +345,7 @@ object Progress extends RazController with WikiMod {
       }
       p.copy(status=STATUS_IN_PROGRESS).updateNoAudit
     }
-    Redirect(routes.Progress.view(pathway))
+    Redirect(routes.ProgressCtl.view(pathway))
   }
 
   val DFLT_PATHWAY = "Pathway:Effective"
@@ -360,12 +361,12 @@ object Progress extends RazController with WikiMod {
         |}}</small></b>""".stripMargin)
 
 
-  CodePills.addString (s"$PILL/sayhi") {implicit request=>
+  codePillsCtl.addString (s"$PILL/sayhi") {implicit request=>
     "ok"
   }
 
   // later load of the doNext links - needed later to reuse request
-  CodePills.add(s"$PILL/next") {implicit request=>
+  codePillsCtl.add(s"$PILL/next") {implicit request=>
     implicit val errCollector = new VErrors()
     val q = request.ireq.queryString.map(t=>(t._1, t._2.mkString))
 
@@ -394,7 +395,7 @@ object Progress extends RazController with WikiMod {
   }
 
   /** mark as read and collect drills or complete if no drills */
-  CodePills.add(s"$PILL/doNext") {implicit request=>
+  codePillsCtl.add(s"$PILL/doNext") {implicit request=>
     implicit val errCollector = new VErrors()
     implicit val q = request.ireq.queryString.map(t=>(t._1, t._2.mkString))
 
@@ -442,7 +443,7 @@ object Progress extends RazController with WikiMod {
   }
 
   /** find all the sections in progress for user */
-  CodePills.add(s"$PILL/sections") {implicit request=>
+  codePillsCtl.add(s"$PILL/sections") {implicit request=>
     implicit val q = request.ireq.queryString.map(t=>(t._1, t._2.mkString))
     val all = q.getOrElse("all", "no")
     val query = q.filter(_._1 startsWith "q.").map(t=>(t._1.substring(2), t._2))
@@ -474,7 +475,7 @@ object Progress extends RazController with WikiMod {
     q.get(name) orErr s"missing $name"
 
   /** make up html sequence for done/skip buttons for drills */
-  CodePills.add(s"$PILL/section/buttons") {implicit request=>
+  codePillsCtl.add(s"$PILL/section/buttons") {implicit request=>
     implicit val q = request.ireq.queryString.map(t=>(t._1, t._2.mkString))
 
     (for (
@@ -496,7 +497,7 @@ object Progress extends RazController with WikiMod {
 //      unauthorized("You need a free account to track your progress.")
   }
 
-  CodePills.add(s"$PILL/section/done") {implicit request=>
+  codePillsCtl.add(s"$PILL/section/done") {implicit request=>
     implicit val q = request.ireq.queryString.map(t=>(t._1, t._2.mkString))
 
     (for (
@@ -537,7 +538,7 @@ object Progress extends RazController with WikiMod {
       unauthorized("You need a free account to track your progress.")(request.ireq)
   }
 
-  CodePills.add(s"$PILL/misc/hasMain") {implicit stok=>
+  codePillsCtl.add(s"$PILL/misc/hasMain") {implicit stok=>
     val res = stok.au.flatMap { u =>
       findForUser(u._id) filter
         (x => (x.status == STATUS_IN_PROGRESS || x.status == STATUS_PAUSED)) flatMap
@@ -559,12 +560,12 @@ object Progress extends RazController with WikiMod {
         """.stripMargin).withHeaders("Access-Control-Allow-Origin" -> "*")
   }
 
-  CodePills.add("api/wix/realm/count") {implicit stok=>
+  codePillsCtl.add("api/wix/realm/count") {implicit stok=>
     Ok(api.wix(None, stok.au, Map.empty, stok.realm).realm.count.toString).withHeaders("Access-Control-Allow-Origin" -> "*")
     // allow is for cross-site scripting
   }
 
-  CodePills.add("api/wix/realm/tagcount") {implicit stok=>
+  codePillsCtl.add("api/wix/realm/tagcount") {implicit stok=>
     stok.fqhParm("tag").map { tag=>
       Ok(api.wix(None, stok.au, Map.empty, stok.realm).realm.count.toString).withHeaders("Access-Control-Allow-Origin" -> "*")
     } getOrElse
