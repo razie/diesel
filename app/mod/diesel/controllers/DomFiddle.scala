@@ -9,6 +9,7 @@ import org.bson.types.ObjectId
 import org.joda.time.DateTime
 import play.api.Play.current
 import play.api.mvc._
+import play.mvc.LegacyWebSocket
 import razie.diesel.Diesel
 import razie.diesel.dom.RDOM.{P, T}
 import razie.diesel.dom.RDomain.DOM_LIST
@@ -211,9 +212,15 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
    * @return
    */
 
-  def espOpen(reactor:String, id:String) = WebSocket.acceptWithActor[String, String] { request => out =>
-    Props(new MyWebSocketActor(out, id, false))
+  def espOpen(reactor:String, id:String) = FAUPR { implicit stok =>
+    NotImplemented("THIS IS BROKEN SINCE UPGRADEING FROM 2.4 play! FIX IT!!!")
   }
+
+  //see https://www.playframework.com/documentation/2.8.x/StreamsMigration25
+
+//  def espOpen(reactor:String, id:String) = WebSocket.acceptWithActor[String, String] { request => out =>
+//    Props(new MyWebSocketActor(out, id, false))
+//  }
 
   /** 3. websocket handler - one per socket
     *

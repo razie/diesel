@@ -72,12 +72,12 @@ object DomEngineHelper {
         if (request.body.isInstanceOf[AnyContentAsRaw]) {
           val raw = request.body.asRaw.flatMap(_.asBytes())
           Option(new EContent(
-            raw.fold("")(a => new String(a)),
+            raw.fold("")(a => new String(a.asByteBuffer.array())),
             request.contentType.mkString,
             200,
             request.headers.toSimpleMap,
             None,
-            raw))
+            raw.map(_.asByteBuffer.array())))
         } else if (request.contentType.exists(c => c == "application/json")) {
           Option(new EContent(
             request.body.asJson.mkString,

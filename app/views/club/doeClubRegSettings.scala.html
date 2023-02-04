@@ -20,7 +20,7 @@
     '_showConstraints -> false)
   @helper.select(
     myForm("curYear"),
-     Range(2021, 2012, -1) map (y=>(y.toString,y.toString)),
+     collection.immutable.Range(2021, 2012, -1) map (y=>(y.toString,y.toString)),
     '_label -> "Year for current registration process",
     'style -> "width: 100px",
     '_showConstraints -> false)

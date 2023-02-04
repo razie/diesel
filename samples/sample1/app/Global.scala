@@ -17,6 +17,7 @@ import razie.wiki.parser.WikiParserT
 
 /** customize some global handling errors */
 object Global extends WithFilters {
+
   override def beforeStart(app: Application) {
     Services.config = new WikiConfig {
       override def getTheme (user:Option[WikiUser], request:Option[Request[_]]) = "light"

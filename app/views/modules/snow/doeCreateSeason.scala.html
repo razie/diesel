@@ -12,7 +12,7 @@
 @helper.form(action=mod.snow.routes.SeasonCtl.doeUpdateSeason(clubName), 'class->"well") {
   @helper.select(
     myForm("year"),
-    Range(2021, 2012, -1) map (y=>(y.toString,y.toString)),
+    collection.immutable.Range(2021, 2012, -1) map (y=>(y.toString,y.toString)),
     '_label -> "Year for current registration process",
     '_showConstraints -> false)
   @helper.select(

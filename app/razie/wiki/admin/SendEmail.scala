@@ -9,7 +9,8 @@ import java.util._
 import java.util.concurrent.TimeUnit
 import javax.mail._
 import javax.mail.internet._
-import akka.actor.{Actor, Props}
+import akka.actor.{Actor, ActorSystem, Props}
+import com.google.inject.Inject
 import org.bson.types.ObjectId
 import org.joda.time.DateTime
 import play.libs.Akka
@@ -145,9 +146,9 @@ object SendEmail extends razie.Logging {
   // should be lazy because of akka's bootstrap
   lazy val emailSender = Akka.system.actorOf(Props[EmailSender], name = "EmailSender")
 
-  def init = {
-    emailSender.path
-  } // initialize lazy
+//  def init = {
+//    emailSender.path
+//  } // initialize lazy
 
   // set this from Global/Main, with your actual user/pass/email server combo
   var mkSession : (BaseMailSession, Boolean, Boolean) => javax.mail.Session = {(msession:BaseMailSession, test:Boolean,debug:Boolean)=>

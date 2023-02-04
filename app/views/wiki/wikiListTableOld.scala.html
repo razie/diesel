@@ -31,7 +31,7 @@ just the actual list, nothing else
             }
 
             @if(pages.size < 27) {
-              @Range(1,27-pages.size).map{i=> <p>&nbsp;</p>}
+              @collection.immutable.Range(1,27-pages.size).map{i=> <p>&nbsp;</p>}
             }
           }
          </ul>
@@ -42,5 +42,5 @@ just the actual list, nothing else
 
         @** leave room for ad **@
         @if(pages.size < 13) {
-          @Range(1,13-pages.size).map{i=> <p>&nbsp;</p>}
+          @collection.immutable.Range(1,13-pages.size).map{i=> <p>&nbsp;</p>}
         }

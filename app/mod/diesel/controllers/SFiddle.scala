@@ -1,5 +1,7 @@
 package mod.diesel.controllers
 
+import akka.actor.ActorSystem
+import akka.stream.ActorMaterializer
 import com.google.inject.Singleton
 import controllers._
 import mod.notes.controllers.{Notes, NotesLocker, NotesTags}
@@ -7,6 +9,7 @@ import model.{MiniScripster, _}
 import org.antlr.v4.tool.{ANTLRMessage, ANTLRToolListener}
 import org.bson.types.ObjectId
 import play.api.mvc._
+import play.libs.Akka
 import razie.audit.Audit
 import razie.diesel.snakk.FFDPayload
 import razie.hosting.Website
@@ -130,6 +133,11 @@ class SFiddles extends SFiddleBase with Logging {
         val (_, res) = isfiddle(j, lang)(request, au)
         // special stuff for calling actions
         // todo is this a security hole?
+
+        // RAZ since play 2.5 upgrade
+        implicit val system: ActorSystem = Akka.system
+        implicit val materializer: ActorMaterializer = ActorMaterializer()
+
         if (res.isInstanceOf[Action[_]])
           res.asInstanceOf[Action[_]](request).run
         else

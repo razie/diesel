@@ -37,7 +37,7 @@ object Services {
   def runScript (s: String, lang:String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, String], typed: Map[String, Any], devMode:Boolean=false): String =
     runScriptImpl(s,lang, page,user,query, typed, devMode)
 
-  def noInitSample = {
+  def noInitSample() = {
     /** connect to your database, with your connection properties, clustered or not etc */
     import com.mongodb.casbah.MongoConnection
     RazMongo.setInstance {

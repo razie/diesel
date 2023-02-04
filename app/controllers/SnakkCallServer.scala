@@ -8,6 +8,7 @@ package controllers
 
 import akka.actor.ActorSystem
 import akka.pattern.after
+import akka.util.ByteString
 import javax.inject.{Inject, Singleton}
 import play.api.mvc.Action
 import razie.diesel.engine.exec.{SnakkCall, SnakkCallAsyncList}
@@ -42,7 +43,7 @@ class SnakkCallServer @Inject() (actorSystem: ActorSystem)(implicit exec: Execut
 
     try {
       val raw = request.body.asBytes()
-      val body = raw.map(a => new String(a, "UTF-8")).getOrElse("")
+      val body = raw.map {a => new String(a.asByteBuffer.array(), "UTF-8")}.getOrElse("")
 
       log("SNAKKPROXY RECEIVED: " + body.replaceAllLiterally("\n", ""))
 

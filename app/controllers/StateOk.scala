@@ -180,12 +180,12 @@ class StateOk(val realm:String, val au: Option[model.User], val request: Option[
       if (request.body.isInstanceOf[AnyContentAsRaw]) {
         val raw = request.body.asInstanceOf[AnyContentAsRaw].asRaw.flatMap(_.asBytes())
         Option(new EContent(
-          raw.fold("")(a => new String(a)),
+          raw.fold("")(a => new String(a.asByteBuffer.array())),
           request.contentType.mkString,
           200,
           request.headers.toSimpleMap,
           None,
-          raw))
+          raw.map(_.asByteBuffer.array())))
       } else if (request.contentType.contains("application/json")) {
         Option(new EContent(
           request.asInstanceOf[Request[AnyContent]].body.asJson.mkString,

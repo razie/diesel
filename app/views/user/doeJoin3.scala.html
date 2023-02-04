@@ -44,7 +44,7 @@ create account
 
           @if(stok.website.propDflt("user.join.yob", "true").equals("true")) {
             @util.razSelect(myForm, "yob", stok.website.propDflt("user.join.yob.label", "When were you born"),
-              Seq("" -> "") ++ (Range(2005, 1912, -1) map (y => (y.toString, y.toString))),
+              Seq("" -> "") ++ (collection.immutable.Range(2005, 1912, -1) map (y => (y.toString, y.toString))),
               'style -> "width: 100px")
           } else {
     <input name="yob" style="display:none" value="1900">

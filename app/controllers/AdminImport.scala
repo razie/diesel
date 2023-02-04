@@ -58,9 +58,9 @@ class AdminImport extends AdminBase with Logging {
 
       clog << "fname: " + fname
 
-      val meta = io.Source.fromFile(s"$source/${fname}.meta.txt").mkString
+      val meta = scala.io.Source.fromFile(s"$source/${fname}.meta.txt").mkString
       // remove CRLF if someone posts from windows
-      val contents = io.Source.fromFile(s"$source/${fname}.txt").mkString
+      val contents = scala.io.Source.fromFile(s"$source/${fname}.txt").mkString
           .replaceAllLiterally("\r\n", "\n")
 
       if (!meta.isEmpty) {

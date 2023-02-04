@@ -698,8 +698,8 @@ class DomApi extends DomApiBase with Logging {
         val uid = stok.au.map(_._id).getOrElse(NOUSER)
 
         val raw = request.body.asBytes()
-        val body = raw.map(a => new String(a)).getOrElse("")
-        val postedContent = Some(new EContent(body, stok.req.contentType.mkString, 200, Map.empty, None, raw))
+        val body = raw.map(a => new String(a.asByteBuffer.array())).getOrElse("")
+        val postedContent = Some(new EContent(body, stok.req.contentType.mkString, 200, Map.empty, None, raw.map(_.asByteBuffer.array())))
 
         // save to check results later
         var dieselRestMsg: Option[EMsg] = None
