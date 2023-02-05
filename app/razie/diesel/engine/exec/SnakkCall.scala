@@ -5,7 +5,7 @@
  */
 package razie.diesel.engine.exec
 
-import com.novus.salat._
+import salat._
 import com.razie.pub.comms.Comms
 import java.io.PrintWriter
 import java.net.Socket

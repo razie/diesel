@@ -8,8 +8,8 @@ package razie.db
 
 import org.bson.types.ObjectId
 import com.mongodb.casbah.Imports._
-import com.novus.salat._
-import com.novus.salat.annotations._
+import salat._
+import salat.annotations._
 import org.joda.time.DateTime
 import razie.audit.Auditor
 import razie.db.RazSalatContext._

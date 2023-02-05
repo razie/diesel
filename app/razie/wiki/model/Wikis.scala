@@ -8,7 +8,7 @@ package razie.wiki.model
 
 import com.mongodb.DBObject
 import com.mongodb.casbah.Imports._
-import com.novus.salat._
+import salat._
 import controllers.{VErrors, Validation}
 import play.api.Play.current
 import play.api.cache._

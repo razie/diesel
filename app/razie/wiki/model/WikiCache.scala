@@ -7,11 +7,10 @@
 package razie.wiki.model
 
 import com.mongodb.DBObject
-import play.api.Play.current
-import play.api.cache._
-import razie.wiki.{Config, Services}
+import razie.wiki.Services
 import razie.wiki.admin.GlobalData
-import razie.{Logging, cdebug, clog, ctrace}
+import scala.concurrent.duration.DurationInt
+import razie.{cdebug, clog, ctrace}
 
 /** wrapper and utils for caching wikis
   *
@@ -31,7 +30,7 @@ object WikiCache {
 
   def set[T](id:String, w:T, i:Int = cacheExp) = {
     clog << "WIKI_CACHE_SET   - "+id
-    Cache.set(id, w, i)
+    Services.cache.set(id, w, i.seconds)
     GlobalData.wikiCacheSets.incrementAndGet()
   }
 
@@ -40,7 +39,7 @@ object WikiCache {
     * don't use this - use Wiki.getCached instead, this doesn't populate the cache
     */
   def getEntry(id:String) : Option[WikiEntry] = {
-    Cache.getAs[WikiEntry](id).map{x=>
+    Services.cache.get[WikiEntry](id).map{x=>
       ctrace << "WIKI_CACHE_FOUND FULL - "+id
       GlobalData.wikiCacheHits.incrementAndGet()
       x
@@ -52,7 +51,7 @@ object WikiCache {
   }
 
   def getDb(id:String) : Option[DBObject] = {
-    Cache.getAs[DBObject](id).map{x=>
+    Services.cache.get[DBObject](id).map{x=>
       ctrace << "WIKI_CACHE_FOUND DB   - "+id
       x
     }.orElse {
@@ -62,7 +61,7 @@ object WikiCache {
   }
 
   def getString(id:String) : Option[String] = {
-    Cache.getAs[String](id).map{x=>
+    Services.cache.get[String](id).map{x=>
       ctrace << "WIKI_CACHE_FOUND FRM  - "+id
       x
     }.orElse {
@@ -73,6 +72,6 @@ object WikiCache {
 
   def remove(id:String) = {
     clog << "WIKI_CACHE_CLEAR - "+id
-    Cache.remove(id)
+    Services.cache.remove(id)
   }
 }

@@ -8,7 +8,7 @@ package controllers
 
 import com.mongodb.DBObject
 import com.mongodb.casbah.Imports._
-import com.novus.salat._
+import salat._
 import difflib.{DiffUtils, Patch}
 import mod.diesel.model.Diesel
 import mod.snow.RacerKidz

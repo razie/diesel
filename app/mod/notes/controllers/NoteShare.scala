@@ -1,7 +1,7 @@
 package mod.notes.controllers
 
 import com.mongodb.casbah.Imports.wrapDBObj
-import com.novus.salat.grater
+import salat.grater
 import mod.notes.controllers
 import model.{User, Users}
 import org.bson.types.ObjectId

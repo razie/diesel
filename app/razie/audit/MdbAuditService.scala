@@ -6,7 +6,7 @@
 package razie.audit
 
 import com.mongodb.casbah.Imports._
-import com.novus.salat.grater
+import salat.grater
 import org.bson.types.ObjectId
 import org.joda.time.DateTime
 import razie.Logging

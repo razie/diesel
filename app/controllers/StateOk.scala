@@ -1,5 +1,8 @@
 package controllers
 
+import javax.inject.Inject
+import play.api.http.HttpConfiguration
+import play.api.i18n.{DefaultLangs, DefaultMessagesApi, Lang, Langs, Messages, MessagesProvider}
 import play.api.mvc._
 import play.twirl.api.Html
 import razie.diesel.engine.EContent
@@ -10,8 +13,14 @@ import scala.collection.mutable
 // todo refactor
 object Res extends Results
 
+object StateOk {
+  final val lang = Lang("en")
+  final val candidates = Seq(Lang("en"))
+  final val dma = new DefaultMessagesApi ()
+}
+
 /** captures the current state of what to display - passed to all views */
-class StateOk(val realm:String, val au: Option[model.User], val request: Option[Request[_]]) {
+class StateOk (val realm:String, val au: Option[model.User], val request: Option[Request[_]]) extends MessagesProvider {
   var msg: Seq[(String, String)] = Seq.empty
   var _title : String = "" // this is set by the body as it builds itself and used by the header, heh
   val _metas = new mutable.HashMap[String,String]() // moremetas
@@ -20,6 +29,10 @@ class StateOk(val realm:String, val au: Option[model.User], val request: Option[
   val bottomAd: Boolean = false
   var canonicalLink : Option[String] = None
   var _showSocial = true
+
+
+  // messages provider play 2.6
+  override def messages: Messages = StateOk.dma.preferred(StateOk.candidates)
 
   var _requireJs : Boolean = true
   def requireJs(x : Boolean): Unit = { _requireJs = x;}
@@ -193,7 +206,6 @@ class StateOk(val realm:String, val au: Option[model.User], val request: Option[
       } else None
     }
   }
-
 }
 
 

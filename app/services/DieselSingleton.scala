@@ -27,17 +27,17 @@ import scala.concurrent.duration.{Duration, FiniteDuration}
 object DieselSingleton extends Logging with EventProcessor {
   object DSEnd
 
-  lazy val singletonManagerActor = Akka.system.actorOf(
+  lazy val singletonManagerActor = Services.system.actorOf(
     ClusterSingletonManager.props(
       singletonProps = Props[DieselSingletonActor],
       terminationMessage = DSEnd,
-      settings = ClusterSingletonManagerSettings(Akka.system)),
+      settings = ClusterSingletonManagerSettings(Services.system)),
     name = "consumer")
 
-  lazy val singletonProxyActor = Akka.system.actorOf(
+  lazy val singletonProxyActor = Services.system.actorOf(
     ClusterSingletonProxy.props(
       singletonManagerPath = "/user/consumer",
-      settings = ClusterSingletonProxySettings(Akka.system)),
+      settings = ClusterSingletonProxySettings(Services.system)),
     name = "consumerProxy")
 
   /** send a message to the singleton actor - it better know what to do with it */

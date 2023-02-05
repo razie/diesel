@@ -9,7 +9,7 @@ package controllers
 import com.google.inject.{Inject, Singleton}
 import com.mongodb.DBObject
 import com.mongodb.casbah.Imports._
-import com.novus.salat._
+import salat._
 import mod.diesel.controllers.DomainController
 import model._
 import org.bson.types.ObjectId

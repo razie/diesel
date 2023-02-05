@@ -5,7 +5,7 @@ for now it's just one per page...
 
 msg types are msg, err
 **************@
-@(myForm:Form[_], page:razie.wiki.model.WikiEntry, au:Option[model.User])
+@(myForm:Form[_], page:razie.wiki.model.WikiEntry, au:Option[model.User])(implicit request: RequestHeader, messagesProvider: MessagesProvider)
 @import mod.notes.controllers.NotesLocker
 @import mod.notes.controllers.routes
 

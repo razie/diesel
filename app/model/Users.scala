@@ -9,7 +9,6 @@ package model
 import com.mongodb.DBObject
 import com.mongodb.casbah.Imports._
 import com.mongodb.util.JSON
-import com.novus.salat._
 import org.bson.types.ObjectId
 import org.joda.time.DateTime
 import razie.audit.Audit
@@ -20,6 +19,8 @@ import razie.tconf.DUsers
 import razie.wiki.Sec._
 import razie.wiki.{Enc, Services}
 import razie.wiki.model._
+import scala.concurrent.duration.DurationInt
+import salat._
 
 /** permissions for a user group */
 @RTable
@@ -224,11 +225,11 @@ object Users {
   //todo optimize this - cache some users?
   /** display name of user with id, for comments etc */
   def nameOf(uid: ObjectId): String = {
-    Cache.getAs[String](uid.toString + ".username").getOrElse {
+    Services.cache.get[String](uid.toString + ".username").getOrElse {
       val n = Services.auth.cachedUserById(uid.toString).map(_.userName).getOrElse {
         persist.nameOf(uid)
       }
-      Cache.set(uid.toString + ".username", n, 600) // 10 miuntes
+      Services.cache.set(uid.toString + ".username", n, 600.seconds) // 10 miuntes
       n
     }
   }

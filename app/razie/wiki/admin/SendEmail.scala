@@ -144,7 +144,7 @@ object SendEmail extends razie.Logging {
   var NO_EMAILS_TESTNG = Services.config.prop("diesel.noemailstesting", "false").toBoolean
 
   // should be lazy because of akka's bootstrap
-  lazy val emailSender = Akka.system.actorOf(Props[EmailSender], name = "EmailSender")
+  lazy val emailSender = Services.system.actorOf(Props[EmailSender], name = "EmailSender")
 
 //  def init = {
 //    emailSender.path
@@ -349,7 +349,7 @@ object SendEmail extends razie.Logging {
     def maybeBackoff: Unit = {
       if (state == STATE_BACKOFF) {
         Audit.logdb("EMAIL_STATUS", s"$state MAIL.backing off")
-        Akka.system.scheduler.scheduleOnce(
+        Services.system.scheduler.scheduleOnce(
           Duration.create(1, TimeUnit.MINUTES),
           this.self,
           CMD_TICK)
@@ -454,7 +454,7 @@ object SendEmail extends razie.Logging {
             if (dur > 30000) {
               Audit.logdb("EMAIL_STATUS", "sending slowing down, closing connection")
               setState(STATE_BACKEDOFF)
-              Akka.system.scheduler.scheduleOnce(
+              Services.system.scheduler.scheduleOnce(
                 Duration.create(50, TimeUnit.SECONDS),
                 this.self,
                 CMD_TICK)

@@ -36,7 +36,11 @@ class ScalaScriptContext(parent: ActionContext = null) extends ScriptContextImpl
 
   lazy val parser = soon.get() // blocking call on Future
 
-  lazy val comp = new nsc.interpreter.JLineCompletion(parser)
+
+  // todo RAZ lost completion between 2.11 and 2.12 - jline disapeared
+
+  //  lazy val comp = new nsc.interpreter.JLineCompletion(parser).completer()
+  lazy val comp = nsc.interpreter.NoCompletion
 
   def this(parent: ActionContext, args: Any*) = {
     this(parent)
@@ -51,7 +55,9 @@ class ScalaScriptContext(parent: ActionContext = null) extends ScriptContextImpl
     val newscr1 = scr.replaceFirst("^[ \t]+", "")
     val newscr2 = newscr1.trim
     val newpos = pos - (scr.length - newscr1.length)
-    val output = comp.completer().complete(newscr2, newpos)
+
+    val output = comp.complete(newscr2, newpos)
+
     import scala.collection.JavaConversions._
     l.addAll(output.candidates)
     l

@@ -7,7 +7,7 @@
 package razie.hosting
 
 import com.mongodb.casbah.Imports._
-import com.novus.salat._
+import salat._
 import razie.Logging
 import razie.audit.Audit
 import razie.db.RazMongo

@@ -135,7 +135,7 @@ class SFiddles extends SFiddleBase with Logging {
         // todo is this a security hole?
 
         // RAZ since play 2.5 upgrade
-        implicit val system: ActorSystem = Akka.system
+        implicit val system: ActorSystem = Services.system
         implicit val materializer: ActorMaterializer = ActorMaterializer()
 
         if (res.isInstanceOf[Action[_]])

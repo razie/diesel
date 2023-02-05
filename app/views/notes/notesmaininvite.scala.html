@@ -3,7 +3,7 @@ show/edit/capture a note
 
 msg types are msg, err
 **************@
-@(myForm:Form[_], isAuto:Boolean=false)(implicit stok:mod.notes.controllers.NotesOk)
+@(myForm:Form[_], isAuto:Boolean=false)(implicit stok:mod.notes.controllers.NotesOk, messagesProvider: MessagesProvider)
 @import mod.notes.controllers.NotesLocker
 @import mod.notes.controllers.NotesTips
 @import mod.notes.controllers.routes

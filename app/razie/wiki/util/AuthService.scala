@@ -22,12 +22,12 @@ trait AuthService[+U <: WikiUser] {
   def cachedUserById(id:String) : Option[U] = None
 
   /** clean the cache for current user - probably a profile change, should reload profile */
-  def cleanAuth(u: Option[WikiUser] = None)(implicit request: RequestHeader)
+  def cleanAuth(u: Option[WikiUser] = None)(implicit request: RequestHeader): Unit
 
   /** clean the cache for given user - probably a profile change, should reload profile.
     * needed this for cluster auth. State is evil!
     */
-  def cleanAuth2(u: WikiUser)
+  def cleanAuth2(u: WikiUser): Unit
 
   /** authentication - find the user currently logged in */
   def authUser(implicit request: RequestHeader): Option[U]
@@ -43,16 +43,16 @@ trait AuthService[+U <: WikiUser] {
 }
 
 /** sample user implementation */
-case class MyUser(userName: String, email: String, _id: ObjectId = new ObjectId()) extends WikiUser {
-  def ename = userName
-  def myPages(realm: String, cat: String): List[Any] = List.empty
-  def css = Some("dark") // dark/light preferences
-  def hasMembershipLevel(s:String) = false
-  def membershipLevel =Perm.Member
-  def isActive = true
-  def isSuspended = false
+case class MyUser(override val userName: String, override val email: String, override val _id: ObjectId = new ObjectId()) extends WikiUser {
+  override def ename = userName
+  override def myPages(realm: String, cat: String): List[Any] = List.empty
+  override def css = Some("dark") // dark/light preferences
+  override def hasMembershipLevel(s:String) = false
+  override def membershipLevel =Perm.Member
+  override def isActive = true
+  override def isSuspended = false
 
-  def hasPerm(p: Perm) : Boolean = false
+  override def hasPerm(p: Perm) : Boolean = false
 }
 
 /** sample stub authentication */
@@ -60,23 +60,23 @@ object NoAuthService extends AuthService[MyUser] with Logging {
   final val harry = MyUser("Harry", "harry@hogwarts.mag")
 
   /** clean the cache for current user - probably a profile change */
-  def cleanAuth(u: Option[WikiUser] = None)(implicit request: RequestHeader) = {
+  override def cleanAuth(u: Option[WikiUser] = None)(implicit request: RequestHeader) = {
   }
 
   /** clean the cache for given user - probably a profile change, should reload profile.
     * needed this for cluster auth. State is evil!
     */
-  def cleanAuth2(u: WikiUser) = {}
+  override def cleanAuth2(u: WikiUser) = {}
 
   /** authentication - find the user currently logged in */
-  def authUser(implicit request: RequestHeader): Option[MyUser] = {
+  override def authUser(implicit request: RequestHeader): Option[MyUser] = {
     Some(harry)
   }
 
-  def checkActive(au: WikiUser)(implicit errCollector: VErrors = IgnoreErrors) = Some(true)
+  override def checkActive(au: WikiUser)(implicit errCollector: VErrors = IgnoreErrors) = Some(true)
 
   /** sign this content */
-  def sign(content: String): String = "EVERYTHING_GOES" // you MUST IMPLEMENT THIS, heh
+  override def sign(content: String): String = "EVERYTHING_GOES" // you MUST IMPLEMENT THIS, heh
 }
 
 

@@ -6,7 +6,7 @@
  */
 package razie.wiki.model
 
-import com.novus.salat._
+import salat._
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicReference}
 import model.CMDWID
 import org.bson.types.ObjectId

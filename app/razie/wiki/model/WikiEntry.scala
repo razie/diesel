@@ -7,7 +7,7 @@
 package razie.wiki.model
 
 import com.mongodb.casbah.Imports._
-import com.novus.salat._
+import salat._
 import org.joda.time.DateTime
 import razie.audit.Audit
 import razie.{AA, Log, cdebug, ctrace, clog}

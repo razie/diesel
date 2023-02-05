@@ -1,7 +1,9 @@
 package controllers
 
+import com.google.inject.Inject
 import model._
 import play.api.data.validation.{Constraint, Invalid, Valid, ValidationError}
+import play.api.i18n.{Messages, MessagesApi}
 import play.api.mvc._
 import razie.Logging
 import razie.audit.Audit
@@ -13,7 +15,11 @@ import scala.concurrent.Future
 import razie.js
 
 /** base controller class - common controller utilities for access etc */
-class RazController extends RazControllerBase with Logging {
+class RazController extends RazControllerBase with play.api.i18n.I18nSupport with razie.Logging {
+
+  @Inject() override val messagesApi: MessagesApi = null
+  implicit def messagesProvider = this
+
 
   object retj {
     def <<(x: List[Any]) = Ok(js.tojson(x).toString).as("application/json")
@@ -39,11 +45,11 @@ class RazController extends RazControllerBase with Logging {
 
   implicit def errCollector (implicit request : RazRequest) = request.errCollector
 
-  object BetterFAUR extends ActionBuilder[BetterRazRequest] with ActionTransformer[Request, BetterRazRequest] {
-    def transform[A](request: Request[A]) = Future.successful {
-      new BetterRazRequest(request)
-    }
-  }
+//  object BetterFAUR extends ActionBuilder[BetterRazRequest] with ActionTransformer[Request, BetterRazRequest] {
+//    def transform[A](request: Request[A]) = Future.successful {
+//      new BetterRazRequest(request)
+//    }
+//  }
 
   //================ override logging, to audit as well
 

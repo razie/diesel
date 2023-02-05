@@ -6,22 +6,65 @@
  */
 package razie.wiki
 
-import com.google.inject.Inject
+import akka.actor.ActorSystem
+import com.google.inject.{Guice, Inject, Singleton}
+import play.api.cache.SyncCacheApi
+import play.libs.Akka
 import razie.db.RazMongo
 import razie.wiki.model._
 import razie.wiki.util.{AuthService, NoAuthService}
 
-/** central point of customization - aka service registry
+/** central point of customization - aka service registry / avoid the DI cascading mojo-jojo approach
   *
-  * todo use some proper injection pattern - this is not MT-safe
-  *
-  * right now this is setup in Global and different Module(s), upon startup
+  * right now this is setup in Module, upon startup
   */
 object Services {
 
-  @Inject() var auth: AuthService[WikiUser] = NoAuthService
-  @Inject() var config: WikiConfig = new SampleConfig
-  @Inject() var wikiAuth: WikiAuthorization = new NoWikiAuthorization
+  // the one instance, with injected components
+  var instance : Services = null
+
+  def auth: AuthService[WikiUser] = instance.auth
+  def config: WikiConfig = instance.config
+  def wikiAuth: WikiAuthorization = instance.wikiAuth
+  def system: ActorSystem = instance.system
+
+  def cache = instance.cache
+
+  // this is only used for signed scripts - unsafe scripts are not ran here
+  def runScriptImpl = instance.runScriptImpl
+
+  def mkReactor = instance.mkReactor
+
+  /** run the given script in the context of the given page and user as well as the query map */
+  def runScript (s: String, lang:String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, String], typed: Map[String, Any], devMode:Boolean=false): String =
+    instance.runScript(s, lang, page, user, query, typed)
+
+  def noInitSample(): Unit = instance.noInitSample()
+
+  /** is this website trusted? if not links will have a "exit" warning */
+  def isSiteTrusted : (String,String) => Boolean = instance.isSiteTrusted
+
+  /** initialize the event processor */
+  def initCqrs (al:EventProcessor): Unit = instance.initCqrs(al)
+
+  /** CQRS dispatcher */
+  def ! (a: Any): Unit = instance ! a
+}
+
+
+/**
+  * this is created in Module and with injected services
+  */
+@Singleton
+class Services @Inject() (
+  var auth: AuthService[WikiUser] = NoAuthService,
+  var config: WikiConfig = new SampleConfig,
+  var wikiAuth: WikiAuthorization = new NoWikiAuthorization,
+  var system: ActorSystem = null,
+  var cache: play.api.cache.SyncCacheApi = null
+  ) {
+
+  Services.instance = this
 
   // this is only used for signed scripts - unsafe scripts are not ran here
   var runScriptImpl : (String, String, Option[WikiEntry], Option[WikiUser], Map[String, String], Map[String, Any], Boolean) => String =
@@ -37,7 +80,7 @@ object Services {
   def runScript (s: String, lang:String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, String], typed: Map[String, Any], devMode:Boolean=false): String =
     runScriptImpl(s,lang, page,user,query, typed, devMode)
 
-  def noInitSample() = {
+  def noInitSample(): Unit = {
     /** connect to your database, with your connection properties, clustered or not etc */
     import com.mongodb.casbah.MongoConnection
     RazMongo.setInstance {
@@ -50,10 +93,9 @@ object Services {
 
 
   /** initialize the event processor */
-  def initCqrs (al:EventProcessor) = BasicServices.initCqrs(al)
+  def initCqrs (al:EventProcessor): Unit = BasicServices.initCqrs(al)
 
   /** CQRS dispatcher */
-  def ! (a: Any) = BasicServices ! a
+  def ! (a: Any): Unit = BasicServices ! a
 }
-
 

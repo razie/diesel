@@ -12,8 +12,8 @@ import play.api.mvc.Result
 object Omp {
 
   import com.mongodb.casbah.Imports._
-  import com.novus.salat.annotations._
-  import com.novus.salat._
+  import salat.annotations._
+  import salat._
 //  import razie.db.RazSalatContext._
   import com.mongodb.util.JSON
 

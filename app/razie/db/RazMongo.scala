@@ -8,7 +8,7 @@ package razie.db
 
 import com.mongodb.DBObject
 import com.mongodb.casbah.{MongoDB, MongoCollection}
-import com.novus.salat.{Context, NeverTypeHint}
+import salat.{Context, NeverTypeHint}
 import org.joda.time.DateTime
 import scala.util.Try
 import com.mongodb.casbah.Imports._
@@ -163,7 +163,9 @@ object RazMongo extends SI[MongoDB] ("MongoDB") {
     val res = Try {
         f
       } recover {
-        case e : com.mongodb.MongoException.Network => {
+            // RAZ since 2.12
+        //case e : com.mongodb.MongoException.Network => {
+        case e : com.mongodb.MongoSocketException => {
           Thread.sleep(500)
           iretry (i-1) (f) (Some(e))
         }

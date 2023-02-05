@@ -6,7 +6,7 @@
  */
 package razie.wiki.model
 
-import com.novus.salat.annotations._
+import salat.annotations._
 import org.bson.types.ObjectId
 import org.joda.time.DateTime
 import razie.db._

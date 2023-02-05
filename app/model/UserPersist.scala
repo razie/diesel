@@ -9,7 +9,7 @@ package model
 import com.mongodb.DBObject
 import com.mongodb.casbah.Imports._
 import com.mongodb.util.JSON
-import com.novus.salat._
+import salat._
 import org.bson.types.ObjectId
 import org.joda.time.DateTime
 import razie.audit.Audit

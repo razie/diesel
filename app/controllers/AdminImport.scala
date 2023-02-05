@@ -7,7 +7,7 @@ package controllers
 
 import com.google.inject.Singleton
 import com.mongodb.casbah.Imports.{DBObject, _}
-import com.novus.salat.grater
+import salat.grater
 import com.razie.pub.comms.CommRtException
 import difflib.DiffUtils
 import java.io.{BufferedWriter, File, FileWriter, IOException}

@@ -256,7 +256,7 @@ object DieselCron extends Logging {
             clog << "============ Akka creating job " + sc
             sc.actualSched = d.toString
             Some(
-              Akka.system.scheduler.schedule(
+              Services.system.scheduler.schedule(
                 startDur,
                 d,
                 DieselCron.worker,
@@ -283,7 +283,7 @@ object DieselCron extends Logging {
           } else if (time.trim.nonEmpty) {
             // just a given time - kick once!
             Some(
-              Akka.system.scheduler.scheduleOnce(
+              Services.system.scheduler.scheduleOnce(
                 startDur,
                 DieselCron.worker,
                 sc

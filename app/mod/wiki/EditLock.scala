@@ -9,7 +9,7 @@ package mod.wiki
 import com.google.inject._
 import com.mongodb.DBObject
 import com.mongodb.casbah.Imports._
-import com.novus.salat._
+import salat._
 import controllers.WikiUtil._
 import difflib.{DiffUtils, Patch}
 import mod.diesel.model.Diesel

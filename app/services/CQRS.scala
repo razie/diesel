@@ -20,7 +20,7 @@ import scala.concurrent.duration.{Duration, FiniteDuration}
 /** main event dispatcher implementation */
 @Singleton
 class RkCqrs extends EventProcessor {
-  lazy val auditor = Akka.system.actorOf(Props[WikiAsyncObservers], name = "WikiAsyncObservers")
+  lazy val auditor = Services.system.actorOf(Props[WikiAsyncObservers], name = "WikiAsyncObservers")
 
   override def ! (a: Any): Unit = {
     auditor ! a
@@ -28,7 +28,7 @@ class RkCqrs extends EventProcessor {
 }
 
 object StaticsEh {
-  lazy val pubSub = Akka.system.actorOf(Props[WikiPubSub], name = "WikiPubSub")
+  lazy val pubSub = Services.system.actorOf(Props[WikiPubSub], name = "WikiPubSub")
 }
 
 class InitAlligator

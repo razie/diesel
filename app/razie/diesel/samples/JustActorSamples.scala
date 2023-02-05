@@ -7,6 +7,7 @@ package razie.diesel.samples
 
 import akka.actor.{Actor, Props}
 import play.libs.Akka
+import razie.wiki.Services
 
 object JustActorSamples {
 
@@ -25,8 +26,8 @@ object JustActorSamples {
   }
 
   class MyActor(orderId:String, notification:String) extends Actor {
-    val db    = Akka.system.actorOf(Props(new SomeDbActor()))
-    val email = Akka.system.actorOf(Props(new SomeEmailActor()))
+    val db    = Services.system.actorOf(Props(new SomeDbActor()))
+    val email = Services.system.actorOf(Props(new SomeEmailActor()))
 
     def receive = {
       case MsgNotify => db ! MsgFindOrder(orderId)
@@ -36,7 +37,7 @@ object JustActorSamples {
   }
 
   def notify(orderId: String, notification: String) = {
-    val a = Akka.system.actorOf(Props(new MyActor(orderId, notification)))
+    val a = Services.system.actorOf(Props(new MyActor(orderId, notification)))
     a ! new MsgNotify
   }
 

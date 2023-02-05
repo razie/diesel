@@ -8,7 +8,7 @@ package razie.wiki.model
 
 import com.mongodb.DBObject
 import com.mongodb.casbah.Imports._
-import com.novus.salat._
+import salat._
 import razie.clog
 import razie.db.RazMongo.RazMongoTable
 import razie.db.RazSalatContext._

@@ -134,6 +134,7 @@ class Application @Inject()(wikiCtl: Wiki, realmCtl:Realm) extends RazController
 
       } getOrElse {
 
+        // found no pages to serve -
         // is this the first tiem in a new db ?
 
         if (RMany[User]().size <= 0) {

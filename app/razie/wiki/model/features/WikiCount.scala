@@ -11,6 +11,8 @@ import play.api.Play.current
 import play.api.cache._
 import razie.db._
 import razie.db.tx.txn
+import razie.wiki.Services
+import scala.concurrent.duration.DurationInt
 
 /** keep track of view counts, per wiki page id
   *
@@ -32,10 +34,10 @@ case class WikiCount (
     WikiCount.findOne (pid) map {p=>
       val newone = p.copy(count=p.count+1)
       RUpdate noAudit (Map("pid" -> pid), newone)
-      Cache.set("count."+pid.toString, newone, 300) // 10 minutes
+      Services.cache.set("count."+pid.toString, newone, 300.seconds) // 10 minutes
     } orElse {
       RCreate noAudit this
-      Cache.set("count."+pid.toString, this, 300) // 10 minutes
+      Services.cache.set("count."+pid.toString, this, 300.seconds) // 10 minutes
       None
     }
   }
@@ -45,7 +47,7 @@ case class WikiCount (
     WikiCount.findOne (pid) foreach {p=>
       val newone = p.copy(count=newCount)
       RUpdate (Map("pid" -> pid), newone)
-      Cache.set("count."+pid.toString, newone, 300) // 10 minutes
+      Services.cache.set("count."+pid.toString, newone, 300.seconds) // 10 minutes
     }
   }
 }
@@ -54,11 +56,11 @@ case class WikiCount (
 object WikiCount {
 
   def findOne(pid: ObjectId) = {
-    Cache.getAs[WikiCount]("count."+pid.toString).map { x =>
+    Services.cache.get[WikiCount]("count."+pid.toString).map { x =>
       Some(x)
     }.getOrElse {
       val x = ROne[WikiCount] ("pid" -> pid)
-      x.map(x=>Cache.set("count."+x.pid.toString, x, 300)) // 10 minutes
+      x.map(x=>Services.cache.set("count."+x.pid.toString, x, 300.seconds)) // 10 minutes
       x
     }
   }

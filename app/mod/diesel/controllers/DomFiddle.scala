@@ -9,7 +9,6 @@ import org.bson.types.ObjectId
 import org.joda.time.DateTime
 import play.api.Play.current
 import play.api.mvc._
-import play.mvc.LegacyWebSocket
 import razie.diesel.Diesel
 import razie.diesel.dom.RDOM.{P, T}
 import razie.diesel.dom.RDomain.DOM_LIST

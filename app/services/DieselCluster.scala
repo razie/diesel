@@ -22,9 +22,10 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.{Duration, FiniteDuration}
 
 object DieselCluster extends razie.Logging {
+  def system = Services.system
 
-  lazy val akkaCluster = Cluster(Akka.system)
-  lazy val clusterListener = Akka.system.actorOf(Props[SimpleClusterListener], name = "SimpleClusterListener")
+  lazy val akkaCluster = Cluster(system)
+  lazy val clusterListener = system.actorOf(Props[SimpleClusterListener], name = "SimpleClusterListener")
 
   /** full name of cluster node */
   final val clusterNodeDns = java.net.InetAddress.getLocalHost.getCanonicalHostName
@@ -41,8 +42,8 @@ object DieselCluster extends razie.Logging {
     "clusterNodeSimple" -> clusterNodeSimple,
     "clusterNodeIp" -> clusterNodeIp,
     "clusterNodes" -> clusterNodes.map(_.toj),
-    "akkaSystemName" -> Akka.system().name,
-    "akkaSystem" -> Akka.system().toString,
+    "akkaSystemName" -> system.name,
+    "akkaSystem" -> system.toString,
     "x" -> akkaCluster.settings.toString
     )
 

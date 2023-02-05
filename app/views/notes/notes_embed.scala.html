@@ -4,7 +4,7 @@ show/edit/capture a note
 context is passed back to the callback
 **************@
 @import razie.wiki.model.Perm
-@(myForm:Form[_], title:String, miniTitle:String, context:String, isAuto:Boolean=false, isReadOnly:Boolean=false, asap:Boolean=false, justCapture:Boolean=false, submit:String="")(implicit stok:mod.notes.controllers.NotesOk)
+@(myForm:Form[_], title:String, miniTitle:String, context:String, isAuto:Boolean=false, isReadOnly:Boolean=false, asap:Boolean=false, justCapture:Boolean=false, submit:String="")(implicit stok:mod.notes.controllers.NotesOk, messagesProvider: MessagesProvider)
 @import routes.Assets
 @import mod.notes.controllers.NotesLocker
 @import mod.notes.controllers.NotesTips

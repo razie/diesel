@@ -10,8 +10,8 @@ import razie.wiki.Sec._
 import com.mongodb.casbah.Imports._
 import org.bson.types.ObjectId
 import org.joda.time.DateTime
-import com.novus.salat._
-import com.novus.salat.annotations._
+import salat._
+import salat.annotations._
 import razie.db.RazSalatContext._
 import razie.Log
 import razie.wiki.model._

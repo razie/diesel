@@ -12,6 +12,7 @@ import akka.util.ByteString
 import javax.inject.{Inject, Singleton}
 import play.api.mvc.Action
 import razie.diesel.engine.exec.{SnakkCall, SnakkCallAsyncList}
+import razie.wiki.Services
 import razie.{Logging, Snakk}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent._
@@ -24,9 +25,9 @@ import scala.concurrent.duration._
   * curl -X GET -H "$ELASTIC_AUTH" -H 'Content-Type: application/json' -H "kbn-xsrf: true" 'http://elastic.107.9200.snakkproxy.dieselapps.com/diagresult/_search'
 */
 @Singleton
-class SnakkCallServer @Inject() (actorSystem: ActorSystem)(implicit exec: ExecutionContext) extends RazController with Logging {
+class SnakkCallServer extends RazController with Logging {
 
-  lazy val TOUT = 20 second
+  lazy val TOUT = 20.second
 
   /** proxy checking if there are any requests */
   def check(env:String, host: String) = RAction { implicit request =>
@@ -65,14 +66,15 @@ class SnakkCallServer @Inject() (actorSystem: ActorSystem)(implicit exec: Execut
     log("SNAKKPROXY Proxying - " + sc.toJson.replaceAllLiterally("\n", " "))
 
     val f = sc.future
-    lazy val timeout = after(duration = TOUT, using = actorSystem.scheduler)(Future.successful(RequestTimeout("Request timeout !!")))
+    implicit val ec: ExecutionContext = Services.system.getDispatcher
+    lazy val timeout = after(duration = TOUT, using = Services.system.scheduler)(Future.successful(RequestTimeout("Request timeout !!")))(ec)
 
     val result = f.map {response=>
       log("SNAKKPROXY returning - " + response)
       new Status(response.resCode )(response.content).withHeaders(response.headers.toSeq:_*)
-    }
+    }(ec)
 
-    Future.firstCompletedOf(Seq(result, timeout))
+    Future.firstCompletedOf(Seq(result, timeout))(ec)
   }
 
 }

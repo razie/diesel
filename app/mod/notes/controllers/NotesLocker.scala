@@ -2,7 +2,7 @@ package mod.notes.controllers
 
 import _root_.controllers._
 import com.mongodb.casbah.Imports.wrapDBObj
-import com.novus.salat.grater
+import salat.grater
 import controllers.WikiUtil.{after, before}
 import mod.diesel.model.WG
 import model._

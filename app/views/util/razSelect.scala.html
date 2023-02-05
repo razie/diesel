@@ -1,4 +1,4 @@
-@(myForm:Form[_], field:String, label:String, options: Seq[(String,String)], args : scala.Tuple2[scala.Symbol, scala.Any]*)
+@(myForm:Form[_], field:String, label:String, options: Seq[(String,String)], args : scala.Tuple2[scala.Symbol, scala.Any]*)(implicit messagesProvider: MessagesProvider)
 
 @import helper.twitterBootstrap._
 @import play.api.Play.current

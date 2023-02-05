@@ -2,8 +2,8 @@ package mod.snow
 
 import com.mongodb.casbah.Imports._
 import org.joda.time.DateTime
-import com.novus.salat._
-import com.novus.salat.annotations._
+import salat._
+import salat.annotations._
 import razie.{clog}
 import razie.audit.Audit
 import razie.db.RazSalatContext._

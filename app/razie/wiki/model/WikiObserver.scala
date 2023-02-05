@@ -6,7 +6,7 @@
  */
 package razie.wiki.model
 
-import com.novus.salat.annotations.Ignore
+import salat.annotations.Ignore
 import controllers.{IgnoreErrors, VErrors}
 import razie.wiki.WikiConfig
 import scala.collection.mutable.ListBuffer

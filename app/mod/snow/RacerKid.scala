@@ -1,7 +1,7 @@
 package mod.snow
 
 import com.mongodb.casbah.Imports._
-import com.novus.salat._
+import salat._
 import controllers.Club
 import org.joda.time.DateTime
 import razie.db._

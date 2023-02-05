@@ -9,7 +9,7 @@ package razie.wiki.util
 import com.mongodb.DBObject
 import com.mongodb.casbah.Imports.{DBObject, _}
 import com.mongodb.util.JSON
-import com.novus.salat._
+import salat._
 import controllers.PU
 import org.bson.types.ObjectId
 import org.joda.time.DateTime
