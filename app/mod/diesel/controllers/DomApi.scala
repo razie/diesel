@@ -698,8 +698,16 @@ class DomApi extends DomApiBase with Logging {
         val uid = stok.au.map(_._id).getOrElse(NOUSER)
 
         val raw = request.body.asBytes()
-        val body = raw.map(a => new String(a.asByteBuffer.array())).getOrElse("")
-        val postedContent = Some(new EContent(body, stok.req.contentType.mkString, 200, Map.empty, None, raw.map(_.asByteBuffer.array())))
+        // RAZ play 2.6 val body = raw.map(a => new String(a.asByteBuffer.array())).getOrElse("")
+        val body = raw.map(a => new String(a.toArray)).getOrElse("")
+        val postedContent = Some(new EContent(
+          body,
+          stok.req.contentType.mkString,
+          200,
+          Map.empty,
+          None,
+//          raw.map(_.asByteBuffer.array())))
+          raw.map(_.toArray)))
 
         // save to check results later
         var dieselRestMsg: Option[EMsg] = None
@@ -795,7 +803,7 @@ class DomApi extends DomApiBase with Logging {
           ))
 
         // add query parms
-        val q = stok.req.queryString.map(t => (t._1, t._2.mkString))
+        val q = stok.req.queryString.filter(_._1.length > 0).map(t => (t._1, t._2.mkString))
         engine.ctx.putAll(q.map(t => new P(t._1, t._2)).toList)
 
         // add the request

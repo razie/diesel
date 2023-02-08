@@ -106,7 +106,7 @@ class SFiddles extends SFiddleBase with Logging {
 
       //todo can optimize to look for path at the same time
       val notes = (Notes.notesForTag(NotesLocker.book, au._id, SFIDDLE).toList ::: Notes.sharedNotesByTag(au._id, SFIDDLE).toList).filter(_.content contains s".sfiddle $path")
-      val q = request.queryString.map(t => (t._1, t._2.mkString))
+      val q = request.queryString.filter(_._1.length > 0).map(t => (t._1, t._2.mkString))
 
       notes.headOption.filter(x => au.isDev).fold(
         Ok(s"no sfiddle for $path")
@@ -150,7 +150,7 @@ class SFiddles extends SFiddleBase with Logging {
 
   /** run a fiddle */
   private def isfiddle(script: String, lang: String, we: Option[WikiEntry] = None)(implicit request: Request[_], au: User) = {
-    val q = request.queryString.map(t => (t._1, t._2.mkString))
+    val q = request.queryString.filter(_._1.length > 0).map(t => (t._1, t._2.mkString))
     MiniScripster.isfiddleMap(script, lang, we, Some(au), q)
   }
 
@@ -159,7 +159,7 @@ class SFiddles extends SFiddleBase with Logging {
     implicit errCollector => implicit request =>
       val lang = request.body.asFormUrlEncoded.get.apply("l").mkString
       val j = razscr.dec(request.body.asFormUrlEncoded.get.apply("j").mkString)
-      val q = request.queryString.map(t => (t._1, t._2.mkString))
+      val q = request.queryString.filter(_._1.length > 0).map(t => (t._1, t._2.mkString))
 
       Some(1).filter(x => au.isDev).fold(
         Ok(s"no sfiddle for ")
@@ -172,7 +172,7 @@ class SFiddles extends SFiddleBase with Logging {
 
   /** display the play sfiddle screen */
   def play3(lang: String) = FAUPR { implicit request =>
-    val q = request.queryString.map(t => (t._1, t._2.mkString))
+    val q = request.queryString.filter(_._1.length > 0).map(t => (t._1, t._2.mkString))
 
     val f = Fiddle("SFiddle", lang, request.realm, "", request.au)
     ROK.k reactorLayout12 {
@@ -366,7 +366,7 @@ class SFiddles extends SFiddleBase with Logging {
   /** display the play sfiddle screen */
   def playDsl(lang: String) = FAU { implicit au =>
     implicit errCollector => implicit request =>
-      val q = request.queryString.map(t => (t._1, t._2.mkString))
+      val q = request.queryString.filter(_._1.length > 0).map(t => (t._1, t._2.mkString))
 
       Some(1).filter(x => au.isDev).fold(
         Ok(s"no sfiddle for ")
@@ -436,7 +436,7 @@ class SFiddles extends SFiddleBase with Logging {
 
   /** display the play sfiddle screen */
   def buildDsl(id: String) = FAU { implicit au => implicit errCollector => implicit request =>
-    val q = request.queryString.map(t => (t._1, t._2.mkString))
+    val q = request.queryString.filter(_._1.length > 0).map(t => (t._1, t._2.mkString))
 
     //todo this
     //    Some(1).filter(x=>(au hasPerm Perm.codeMaster) || (au hasPerm Perm.adminDb)).fold(

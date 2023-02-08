@@ -59,7 +59,7 @@ class OldControl extends RazController with Logging {
   /** interact with a reactor */
   def react(imod: String, event:String) = FAU { implicit au => implicit errCollector => implicit request=>
     val mod = if(imod == "") Website.realm else imod
-    val q = request.queryString.map(t=>(t._1, t._2.mkString))
+    val q = request.queryString.filter(_._1.length > 0).map(t=>(t._1, t._2.mkString))
     Audit("x", "DSL_EVENT", s"$mod/$event with ${q.mkString}")
     val res = iload(mod, Website.realm) map (_.react(event, q))
     Ok(res.mkString)
@@ -67,7 +67,7 @@ class OldControl extends RazController with Logging {
 
   /** TOPIC - call a topic level function */
   def fcall(wpath: String, fname:String) = RAction { implicit stok=>
-    val q = stok.req.queryString.map(t=>(t._1, t._2.mkString))
+    val q = stok.req.queryString.filter(_._1.length > 0).map(t=>(t._1, t._2.mkString))
     Audit("x", "DSL_FCALL", s"$wpath with ${q.mkString}")
     (for(
       wid <- WID.fromPath(wpath) orErr "bad wid";
@@ -100,7 +100,7 @@ class OldControl extends RazController with Logging {
 
   /** TOPIC - call a topic level function */
   def jplay(wpath: String, fname:String) = FAU { implicit au => implicit errCollector => implicit request=>
-    val q = request.queryString.map(t=>(t._1, t._2.mkString))
+    val q = request.queryString.filter(_._1.length > 0).map(t=>(t._1, t._2.mkString))
     Audit("x", "DSL_FPLAY", s"$wpath with ${q.mkString}")
     (for(
       wid <- WID.fromPath(wpath) orErr "bad wid";
@@ -123,7 +123,7 @@ class OldControl extends RazController with Logging {
 
   /** TOPIC - call a topic level function */
   def splay(wpath: String, fname:String) = FAUR { implicit request=>
-    val q = request.queryString.map(t=>(t._1, t._2.mkString))
+    val q = request.queryString.filter(_._1.length > 0).map(t=>(t._1, t._2.mkString))
     Audit("x", "DSL_FPLAY", s"$wpath with ${q.mkString}")
     (for(
       wid <- WID.fromPath(wpath) orErr "bad wid";

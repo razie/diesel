@@ -25,6 +25,7 @@ trait DomRoot {
 
   def failedTestCount = DomEngineView.failedTestCount(root)
 
+  // exceptions and errors other than failed tests
   def errorCount = DomEngineView.errorCount(root)
 
   def successTestCount = DomEngineView.successTestCount(root)
