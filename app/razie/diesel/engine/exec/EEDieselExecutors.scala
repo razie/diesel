@@ -233,8 +233,12 @@ class EEDieselExecutors extends EExecutor("diesel.props") {
         )
       }
 
+      case s if s.startsWith("diesel.realm") => {
+        Nil // lifecycle messages should not be flagged as unknown
+      }
+
       case s@_ => {
-        new EError(s"$s - unknown activity ") :: Nil
+        new EError(s"$s - unknown activity") :: Nil
       }
     }
   }
