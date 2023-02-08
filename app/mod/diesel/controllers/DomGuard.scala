@@ -269,9 +269,9 @@ class DomGuard extends DomApiBase with Logging {
     val total = GlobalData.dieselEnginesTotal.get()
 
     def pause(engine:DomEngineState) = if(engine.paused)
-      s"""<span class="glyphicon glyphicon-play" onclick="javascript:cancelEnginePlease('${engine.id}', 'continue');" style="cursor:pointer; color:red" title="Pause flow"></span>"""
+      s"""<span id="continue-${engine.id}" class="glyphicon glyphicon-play" onclick="javascript:cancelEnginePlease('${engine.id}', 'continue');" style="cursor:pointer; color:red" title="Pause flow"></span>"""
     else
-      s"""<span class="glyphicon glyphicon-pause" onclick="javascript:cancelEnginePlease('${engine.id}', 'pause');" style="cursor:pointer; color:red" title="Pause flow"></span>"""
+      s"""<span id="pause-${engine.id}" class="glyphicon glyphicon-pause" onclick="javascript:cancelEnginePlease('${engine.id}', 'pause');" style="cursor:pointer; color:red" title="Pause flow"></span>"""
 
     val tdNode = if(Config.clusterModeBool) s"<td>Node</td>" else ""
 
@@ -317,7 +317,7 @@ class DomGuard extends DomApiBase with Logging {
             else
               s"""
                  |<small>
-                 |<span class="glyphicon glyphicon-remove" onclick="javascript:cancelEnginePlease('${a.id}','cancel')
+                 |<span id="cancel-${a.id}" class="glyphicon glyphicon-remove" onclick="javascript:cancelEnginePlease('${a.id}','cancel')
                  |;" style="cursor:pointer; color:red" title="Cancel flow"></span>&nbsp
                  |${pause(a)}
                  |</small>&nbsp;
@@ -325,9 +325,11 @@ class DomGuard extends DomApiBase with Logging {
 
           val dtm = a.createdDtm.toLocalDateTime
 
-          val resCodeStyle = a.returnedRestCode.map { i =>
-            if (i / 100 == 2) """ style="color:green" """ else if (i / 100 == 4) """ style="color:orange" """ else """ style="color:red" """
-          }.mkString
+        val resCodeStyle = a.returnedRestCode.map { i =>
+          if (i / 100 == 2) """ style="color:green" """ else if (i / 100 == 4) """ style="color:orange" """ else """ style="color:red" """
+        }.mkString
+
+        val fail = if(a.errorCount <= 0) "" else """<span class="glyphicon glyphicon-warning-sign" style="cursor:pointer; color:red" title="Has Errors"></span>&nbsp;"""
 
         val valNode = if(Config.clusterModeBool) s"<td>${a.settings.node}</td>" else ""
 
@@ -340,11 +342,11 @@ class DomGuard extends DomApiBase with Logging {
              |<td>${uname}</td>""" else """""") +
             s"""
              |$valNode
-             |<td>$st</td>
-             |<td title="${dtm.toLocalDate.toString()}">${dtm.toString("HH:mm:ss.SS")}</td>
+             |<td><small><span>$st<span></small></td>
+             |<td title="${dtm.toLocalDate.toString()}"><small>${dtm.toString("HH:mm:ss.SS")}</small></td>
              |<td align="right">$duration</td>
              |<td><small><code>${Enc.escapeComplexHtml(a.description.take(200))}</code></small></td>
-             |<td><small><code $resCodeStyle>${Enc.escapeComplexHtml(a.returnedRestCode.mkString)}</code></small></td>
+             |<td><small>$fail<code $resCodeStyle>${Enc.escapeComplexHtml(a.returnedRestCode.mkString)}</code></small></td>
              |<td><small><code>${msgFor(a)}</code></small></td>
              |<td> </td>
              |""").stripMargin
@@ -363,7 +365,7 @@ class DomGuard extends DomApiBase with Logging {
             if (actives.isEmpty) "-none-" else {
               actives.map {t =>
                 s"""<br>&nbsp;
-                   |<small><span class="glyphicon glyphicon-remove" onclick="javascript:cancelEnginePlease('${t._1}', 'cancel');" style="cursor:pointer; color:red" title="Cancel flow"></span>
+                   |<small><span id="cancel-${t._1}" class="glyphicon glyphicon-remove" onclick="javascript:cancelEnginePlease('${t._1}', 'cancel');" style="cursor:pointer; color:red" title="Cancel flow"></span>
                    |${pause(t._2.engine)}
                    |""".stripMargin +
                 s""" |  <a href="/diesel/viewAst/${t._1}?follow=$follow&filter=$filters">${t._1}</a>

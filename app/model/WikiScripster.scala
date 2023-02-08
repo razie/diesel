@@ -29,10 +29,10 @@ object WikiScripster extends razie.Logging {
 
   class JSWikiScripster extends WikiScripster {
 
-    def mk = new JSWikiScripster
+    override def mk = new JSWikiScripster
 
     /** run the given script in the context of the given page and user as well as the query map */
-    def runScriptTyped(s:String, lang: String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, String], typed: Map[String, Any], devMode:Boolean=false): Any = synchronized {
+    override def runScriptTyped(s:String, lang: String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, String], typed: Map[String, Any], devMode:Boolean=false): Any = synchronized {
       count += 1
       try {
         val t = if(typed.size > 0) Some(typed) else None
@@ -47,7 +47,7 @@ object WikiScripster extends razie.Logging {
     }
 
     /** run the given script in the context of the given page and user as well as the query map */
-    def runScript(s:String, lang: String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, String], typed: Map[String, Any], devMode:Boolean=false): String = synchronized {
+    override def runScript(s:String, lang: String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, String], typed: Map[String, Any], devMode:Boolean=false): String = synchronized {
       runScriptTyped(s, lang, page, user, query, typed, devMode).toString
     }
   }
@@ -55,10 +55,10 @@ object WikiScripster extends razie.Logging {
   class CWikiScripster extends WikiScripster with ScalaScripster {
     override val mkCtx:() => ScalaScriptContext = () => new NoBindSbtScalaContext()
 
-    def mk = new CWikiScripster
+    override def mk = new CWikiScripster
 
     /** run the given script in the context of the given page and user as well as the query map */
-    def runScript(s:String, lang: String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, String], typed: Map[String, Any], devMode:Boolean=false): String = {
+    override def runScript(s:String, lang: String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, String], typed: Map[String, Any], devMode:Boolean=false): String = {
       count += 1
       runScriptTyped(s, lang, page, user, query, typed, devMode).toString
     }
