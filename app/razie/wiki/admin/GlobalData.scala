@@ -89,8 +89,6 @@ object GlobalData {
 
   val startedDtm = DateTime.now
 
-  var clusterStatus: String = "-"
-
   var reactorsLoaded = false
   val reactorsLoadedP: Promise[Boolean] = Promise[Boolean]()
 
@@ -117,7 +115,6 @@ object GlobalData {
         "servedPages" -> GlobalData.servedRequests.get(),
         "runningFor" -> ISOPeriodFormat.alternateExtended.print(new Duration(GlobalData.startedDtm, DateTime.now).toPeriod),
         "startedDtm" -> GlobalData.startedDtm,
-        "clusterStatus" -> GlobalData.clusterStatus,
         "sendEmailCurCount" -> SendEmail.curCount,
         "sendEmailState" -> SendEmail.state
     ),

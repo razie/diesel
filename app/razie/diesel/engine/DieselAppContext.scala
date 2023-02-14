@@ -45,7 +45,7 @@ object DieselAppContext extends Logging {
 
   @volatile private var engineFactory: Option[DieselEngineFactory] = None
 
-  implicit def executionContext =
+  implicit def executionContext: ExecutionContext =
     if (simpleMode) ExecutionContext.Implicits.global
     else {
       // todo this seems only used right now by the cron jobs - EEDieselCron

@@ -13,6 +13,7 @@ import play.libs.Akka
 import razie.db.RazMongo
 import razie.wiki.model._
 import razie.wiki.util.{AuthService, NoAuthService}
+import services.DieselCluster
 
 /** central point of customization - aka service registry / avoid the DI cascading mojo-jojo approach
   *
@@ -27,6 +28,7 @@ object Services {
   def config: WikiConfig = instance.config
   def wikiAuth: WikiAuthorization = instance.wikiAuth
   def system: ActorSystem = instance.system
+  def cluster:DieselCluster = instance.dieselCluster
 
   def cache = instance.cache
 
@@ -66,6 +68,8 @@ class Services @Inject() (
 
   Services.instance = this
 
+  var dieselCluster : DieselCluster = null
+
   // this is only used for signed scripts - unsafe scripts are not ran here
   var runScriptImpl : (String, String, Option[WikiEntry], Option[WikiUser], Map[String, String], Map[String, Any], Boolean) => String =
     (script: String, lang:String, page: Option[WikiEntry], user: Option[WikiUser], query: Map[String, String], typed: Map[String, Any], devMode:Boolean) =>
@@ -98,4 +102,3 @@ class Services @Inject() (
   /** CQRS dispatcher */
   def ! (a: Any): Unit = BasicServices ! a
 }
-

@@ -276,7 +276,6 @@ object EEDieselExecutors {
           "moreStats" -> Map(
             "scriptsRun" -> WikiScripster.count,
             "Diesel" -> GlobalData.perfMap(),
-            "DieselCron" -> DieselCron.toj,
             "DomGuardian.size" -> DomGuardian.lastRuns.size,
             "DomCollector.size" -> DomCollector.withAsts(_.size)
           ),
@@ -294,7 +293,8 @@ object EEDieselExecutors {
             "cacheFormat" -> Services.config.cacheFormat,
             "cacheDb" -> Services.config.cacheDb
           ),
-          "cluster" -> DieselCluster.clusterProps,
+          "cron" -> DieselCron.cronStats,
+          "cluster" -> Services.cluster.clusterStats,
           "memDb" -> inmemdbstats("")
         )
   }

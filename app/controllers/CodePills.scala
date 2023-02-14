@@ -1,6 +1,6 @@
 package controllers
 
-import akka.actor.{Actor, ActorRef, Props}
+import akka.actor.{Actor, ActorRef, ActorSystem, Props}
 import akka.pattern.ask
 import akka.util.Timeout
 import com.google.inject._
@@ -19,7 +19,7 @@ import scala.concurrent.{Await, Future}
   * pills are called with /pill/name
   */
 @Singleton
-class CodePillsCtl extends RazController {
+class CodePillsCtl @Inject() (system:ActorSystem) extends RazController {
 
   sealed abstract class BasePill(val name: String) {
     def run (request:RazRequest) : Result
@@ -27,16 +27,16 @@ class CodePillsCtl extends RazController {
 
   /** simple pill wrapper */
   private class Pill1(override val name: String, body: RazRequest => Result) extends BasePill(name) {
-    def run (stok:RazRequest) : Result = body(stok)
+    override def run(stok:RazRequest) : Result = body(stok)
   }
 
   /** text pill wrapper */
   private class Pill2(override val name: String, body: RazRequest => String) extends BasePill(name) {
-    def run (stok:RazRequest) : Result = Ok(body(stok)).as("application/text")
+    override def run(stok:RazRequest) : Result = Ok(body(stok)).as("application/text")
   }
 
-  val map = new AsyncMap[BasePill]
-  implicit val timeout = Timeout(5 seconds)
+  val map = new AsyncMap[BasePill](system)
+  implicit val timeout: Timeout = Timeout(5.seconds)
 
   type T = BasePill
 
@@ -70,27 +70,27 @@ class CodePillsCtl extends RazController {
   }
 
   // initialize the thing
-  def init = {
+  def init(): Unit = {
     add ("list") {request=>
       Ok("codePills: \n" + Await.result(map.list, timeout.duration));
     }
   }
 
-  init
+  init()
 }
 
 /** async map backed by an actor AsyncMapActor...
   *
   * todo why not just use a simple TrieMap ?
   */
-class AsyncMap[T] {
+class AsyncMap[T] (system:ActorSystem) {
 
   private val p = Props(new AsyncMapActor[T]())
-  private var map : Option[ActorRef] = Some(getActorSystem.actorOf(p, "codePillsMap"))
+  private var map : Option[ActorRef] = Some(system.actorOf(p, "codePillsMap"))
 
-  implicit val timeout = Timeout(5 seconds)
+  implicit val timeout: Timeout = Timeout(5.seconds)
 
-  def put (k:String, v:T) = {
+  def put (k:String, v:T): Unit = {
     map.get ! (k -> v)
   }
 
@@ -113,20 +113,20 @@ class AsyncMap[T] {
 class AsyncMapActor[T] extends Actor {
   private val myMap = new mutable.HashMap[String, T]()
 
-  private def put (k:String, v:T) = {
+  private def put (k:String, v:T): Unit = {
     self ! (k -> v)
   }
 
   private def get (k:String): Future[Option[T]] = {
-    (self ? k)(Timeout(5 seconds)).asInstanceOf[Future[Option[T]]]
+    (self ? k)(Timeout(5.seconds)).asInstanceOf[Future[Option[T]]]
   }
 
   private def list : Future[String] = {
-    (self ? "codePillsActor::list")(Timeout(5 seconds)).asInstanceOf[Future[String]]
+    (self ? "codePillsActor::list")(Timeout(5.seconds)).asInstanceOf[Future[String]]
   }
 
 
-  def receive = {
+  override def receive = {
     case p:(String, T) => {
       myMap += (p._1 -> p._2)
     }

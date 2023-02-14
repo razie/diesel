@@ -340,7 +340,7 @@ object DomGuardian extends Logging {
     settings: Option[DomEngineSettings]): (Future[Report], Option[DomEngine], List[Any]) = {
     val res = new ListBuffer[Any]()
 
-    if (!DieselCron.isMasterNode(Website.forRealm(realm).get))
+    if (!DieselCron.isMasterNode(Website.forRealm(realm)))
       throw new IllegalStateException("I'm not the active Guardian")
 
     DomGuardian.synchronized {
