@@ -86,7 +86,7 @@ object DieselTarget {
     new DieselTargetList(realm, env, specs, stories)
 
   /** all specs in a realm and mixins */
-  def ENV(realm: String, env: String = DEFAULT, tagQuery: TagQuery = TagQuery.EMPTY) =
+  def ENV (realm: String, env: String = DEFAULT, tagQuery: TagQuery = TagQuery.EMPTY) =
     new DieselTarget(realm, env, tagQuery) {
       override def specs = {
         ENV_SETTINGS(realm) :: tqSpecs(realm, tagQuery)

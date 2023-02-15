@@ -206,7 +206,7 @@ object RDOM {
     def asFloat: Float = value.toString.toFloat
 
     def asBoolean: Boolean = Try {
-      value.toString.toBoolean
+      P.asBoolean(value.toString)
     }.getOrElse(false)
 
     def asDate: LocalDateTime = {
@@ -485,6 +485,13 @@ object RDOM {
       }
 
       res
+    }
+
+    def asBoolean (s:String) = {
+      s != null && (s.trim.toLowerCase match {
+        case "true" | "yes" => true
+        case _ => false
+      })
     }
 
     /** nicer type-aware toString */

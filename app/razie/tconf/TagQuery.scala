@@ -27,7 +27,7 @@ import razie.tconf.Visibility.PUBLIC
   *
   * NOTE the one way to do the search today is WikiSearch.getList
   */
-class TagQuery(val tags: String) {
+class TagQuery (val tags: String) extends Serializable {
   def theTags = tags.toLowerCase.replaceAllLiterally("|", ",").split("/").map(_.trim).filter(goodTag)
 
   val ltags = theTags.filter(x => !x.startsWith("realm."))

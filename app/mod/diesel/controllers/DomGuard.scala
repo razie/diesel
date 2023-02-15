@@ -30,6 +30,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 import scala.util.Try
+import services.DieselCluster
 
 /** controller for server side fiddles / services */
 class DomGuard extends DomApiBase with Logging {
@@ -379,25 +380,38 @@ class DomGuard extends DomApiBase with Logging {
         table = table + a
       }
 
-    val w="/diesel/dom/browse"
+     val wb="/diesel/dom/browse"
+    val wl="/diesel/dom/list"
 
 //    http://localhost:9000/diesel/dom/list/DieselCron
 
-      val title =
-        s"""Flow history realm: $r showing ${list.size} of $total since start and user $un""".stripMargin
-      val title2 =
-        s"""Stats: <a href="$w/DieselEngine">Flows</a>: ${GlobalData.dieselEnginesActive} active (${DieselAppContext.activeEngines.size} - ${
-          DieselAppContext.activeEngines.values.count(_.status != DomState.DONE)
-        }) /
-           | <a href="$w/DieselStream">Streams</a>: ${GlobalData.dieselStreamsActive} active of ${GlobalData.dieselStreamsTotal} since start /
-           |  <a href="$w/DieselActor">Actors</a>: ${DieselAppContext.activeActors.size} active /
-           |   <a href="$w/DieselCron">Crons</a>: ${GlobalData.dieselCronsActive} active of ${GlobalData.dieselCronsTotal} since start"""
-            .stripMargin
+    val title =
+      s"""<small>Flow history realm: $r showing ${list.size} of $total since start and user $un</small>""".stripMargin
+    val dieselStatus =
+      s"""Stats: <a href="/diesel/listAst">Flows</a>: ${GlobalData.dieselEnginesActive} active (${DieselAppContext.activeEngines.size} - ${
+        DieselAppContext.activeEngines.values.count(_.status != DomState.DONE)
+      }) /
+         | <a href="$wl/DieselStream">Streams</a>: ${GlobalData.dieselStreamsActive} active of ${GlobalData.dieselStreamsTotal} since start /
+         |  Actors: ${DieselAppContext.activeActors.size} active /
+         |   <a href="$wl/DieselCron">Crons</a>: ${GlobalData.dieselCronsActive} active of ${GlobalData.dieselCronsTotal} since start"""
+          .stripMargin
+
+    val clusterStatus = if(Services.config.clusterModeBool) {
+      val sngl =
+        if (Services.cluster.singleton.currentSingletonNode != "?")
+          s"""<a href="$wl/DieselNode/${Services.cluster.singleton.currentSingletonNode}">${Services.cluster.singleton.currentSingletonNode}</a>"""
+
+        else s"""<span style="color:red">${Services.cluster.singleton.currentSingletonNode}</span>"""
+
+      s"""<br>Cluster: <a href="$wb/DieselNode">Nodes</a>: ${Services.cluster.totalNodesUp}/${Services.cluster.totalNodes} /
+         | Singleton: $sngl"""
+          .stripMargin
+    } else ""
 
       ROK.k reactorLayout12FullPage {
         views.html.modules.diesel.engineListAst(
           title,
-          title2,
+          dieselStatus + clusterStatus,
           table,
           DomCollector.following.mkString,
           if(errMessage == "") None else Option(s"""/diesel/listAst?follow=$follow&filter=$filters""")

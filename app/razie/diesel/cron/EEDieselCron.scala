@@ -11,7 +11,8 @@ import org.joda.time.chrono.ISOChronology
 import org.quartz.CronExpression
 import razie.cdebug
 import razie.diesel.Diesel
-import razie.diesel.dom.RDOM.P
+import razie.diesel.cron.DieselCron.{MODE_SINGLETON, MODE_VALUES}
+import razie.diesel.dom.RDOM.{P, PValue}
 import razie.diesel.dom._
 import razie.diesel.engine.exec.EExecutor
 import razie.diesel.engine.nodes._
@@ -21,6 +22,7 @@ import razie.diesel.model.{DieselMsg, DieselMsgString, DieselTarget}
 import razie.tconf.TagQuery
 import scala.collection.concurrent.TrieMap
 import scala.concurrent.duration.Duration
+import services.DieselCluster
 
 /** actual share table. Collection model:
   * coll
@@ -59,13 +61,22 @@ class EEDieselCron extends EExecutor("diesel.cron") {
         val cronMsg = ctx.get("cronMsg")
         val doneMsg = ctx.get("doneMsg")
 
-        val schedule = ctx.get("schedule").orElse(ctx.get("scheduleExpr")).mkString
+        val schedExpr = ctx.get("schedule").orElse(ctx.get("scheduleExpr")).mkString
         val cronExpr = ctx.get("cronExpr").mkString
         val time = ctx.get("time").mkString
+        val tags = ctx.get("tags").mkString
         val endTime = ctx.get("endTime").mkString
-        val isSync = ctx.get("inSequence").mkString == "true"
+        val inSequence = ctx.get("inSequence").mkString == "true"
 
-        val now = new DateTime(ISOChronology.getInstanceUTC()) //DateTime.now()
+        var clusterMode = ctx.get("clusterMode").getOrElse(DieselCron.MODE_ALL)
+
+       // old style
+        val singleton = P.asBoolean(ctx.get("singleton").mkString)
+        if(singleton && ctx.get("clusterMode").isEmpty) clusterMode = MODE_SINGLETON
+
+        val node = ctx.get("node").getOrElse(DieselCluster.clusterNodeSimple)
+
+        val now = new DateTime(ISOChronology.getInstanceUTC) //DateTime.now()
 
         def dt = if (time.trim.isEmpty) now else DateTime.parse(time)
 
@@ -74,8 +85,14 @@ class EEDieselCron extends EExecutor("diesel.cron") {
         val vdt = dt
         val vdiff = diff
 
-        if (cronExpr.isEmpty && schedule.isEmpty && time.trim.isEmpty) {
-          List(EVal(P.fromTypedValue(Diesel.PAYLOAD, "Either schedule/cronExpr or time needs to be provided", WTypes.wt.EXCEPTION)))
+        if (cronExpr.isEmpty && time.trim.isEmpty) {
+          List(EVal(P.fromTypedValue(Diesel.PAYLOAD, "You can't provide both cron and time!", WTypes.wt.EXCEPTION)))
+        } else if (cronExpr.isEmpty && schedExpr.isEmpty) {
+          List(EVal(P.fromTypedValue(Diesel.PAYLOAD, "You can't provide both cron and schedule!", WTypes.wt.EXCEPTION)))
+        } else if (!acceptPast && time.trim.nonEmpty && diff <= 0) {
+          List(EVal(P.fromTypedValue(Diesel.PAYLOAD, s"Time is in the past (${dt} vs ${now} is ${diff})", WTypes.wt.EXCEPTION)))
+        } else if (!MODE_VALUES.contains(clusterMode)) {
+          List(EVal(P.fromTypedValue(Diesel.PAYLOAD, "ClusterMode must be one of " + MODE_VALUES.mkString, WTypes.wt.EXCEPTION)))
         } else if (!acceptPast && time.trim.nonEmpty && diff <= 0) {
           List(EVal(P.fromTypedValue(Diesel.PAYLOAD, s"Time is in the past (${dt} vs ${now} is ${diff})", WTypes.wt.EXCEPTION)))
         } else if (!DieselCron.ISENABLED) {
@@ -116,10 +133,16 @@ class EEDieselCron extends EExecutor("diesel.cron") {
           }
 
           cdebug << "EEDiselCron: set 1"
-          val res = DieselCron.createSchedule(name, schedule, cronExpr, time, endTime, realm, env,
-            ctx.root.engine.map(_.id).mkString,
-            isSync,
-            count, tickM, doneM)
+          val res = DieselCron.createSchedule(
+            CronCreateMsg (
+              name, schedExpr, cronExpr, time, endTime, realm, env,
+              ctx.root.engine.map(_.id).mkString,
+              inSequence, count,
+              tickM,
+              doneM,
+              tags,
+              node = node, clusterMode = clusterMode)
+          )
           cdebug << "EEDiselCron: set 2"
 
           List(

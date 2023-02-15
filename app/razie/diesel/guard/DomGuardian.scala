@@ -15,7 +15,7 @@ import org.bson.types.ObjectId
 import org.joda.time.DateTime
 import razie.Logging
 import razie.diesel.Diesel
-import razie.diesel.cron.DieselCron
+import razie.diesel.cron.{CronCreateMsg, DieselCron}
 import razie.diesel.dom.RDOM.P
 import razie.diesel.engine.nodes.{EInfo, EVal, EnginePrep}
 import razie.diesel.engine.{DieselAppContext, DomEngine, DomEngineSettings}
@@ -474,7 +474,7 @@ object DomGuardian extends Logging {
   }
 
   /** create a guardian poller schedule */
-  def createPollSchedule(schedExpr: String, realm: String, env: String, inLocal: String) = {
+  def createPollSchedule (schedExpr: String, realm: String, env: String, inLocal: String) = {
     if (
       "local" == env && !Services.config.isLocalhost ||
           "local" != env && Services.config.isLocalhost && "yes" != inLocal ||
@@ -488,15 +488,18 @@ object DomGuardian extends Logging {
       msg
     } else {
       val name = s"guardian.auto-$realm-$env"
-      DieselCron.createSchedule(s"guardian.auto-$realm-$env", schedExpr, "", "", "", realm, env, "", false, -1,
+      DieselCron.createSchedule(
+        CronCreateMsg (
+        s"guardian.auto-$realm-$env", schedExpr, "", "", "", realm, env, "", false, -1,
         Left(DieselMsg(
           DieselMsg.GUARDIAN.ENTITY,
           DieselMsg.GUARDIAN.POLL,
           Map("realm" -> realm, "env" -> env),
           DieselTarget.ENV(realm, env)
         )),
-        Left(DieselCron.defaultDoneMsg(name, realm, env))
-      )
+        Left(DieselCron.defaultDoneMsg(name, realm, env)),
+        tags = "guardian"
+        ))
     }
   }
 

@@ -27,14 +27,7 @@ class RkCqrs extends EventProcessor {
   }
 }
 
-object StaticsEh {
-  lazy val pubSub = Services.system.actorOf(Props[WikiPubSub], name = "WikiPubSub")
-}
-
 class InitAlligator
-
-/** a request to broadcast another event */
-case class BCast(ev: WikiEventBase)
 
 /** async wiki observers
   *
@@ -43,18 +36,18 @@ case class BCast(ev: WikiEventBase)
 class WikiAsyncObservers extends Actor {
 
   // todo someone initializes this twice...
-  lazy val pubSub = StaticsEh.pubSub
 
-  def nodeName = Some(Services.config.node) //Play.current.actorSystem.name)
+  def nodeName = Some(Services.config.node)
   def localQuiet = Services.config.localQuiet
 
   def localhost = Services.config.isLocalhost
 
   override def receive = {
-    case WikiConfigChanged(_, c) => {
+
+    case WikiConfigChanged (_, c) => {
       val ev = new WikiConfigChanged(nodeName.mkString, c)
       WikiObservers.after(ev)
-      pubSub ! BCast(ev)
+      DieselPubSub ! BCast (ev)
     }
 
     case wa: WikiAudit => {
@@ -112,7 +105,7 @@ class WikiAsyncObservers extends Actor {
     case init: InitAlligator => {
       //todo why do i need this?
       clog << self.path
-      clog << pubSub.path
+      clog << DieselPubSub.pubSub.path
       WikiReactors.init()
     }
 
@@ -166,67 +159,6 @@ class WikiAsyncObservers extends Actor {
                   !ev.isInstanceOf[WikiEvent[_]]
               )// some other events
     )
-      pubSub ! BCast(ev)
-  }
-}
-
-/** pub/sub events to/from cluster members
-  *
-  * this is needed to update local caches on remote changes
-  *
-  * not to use for critical work, duh - use ehcache/kafka for that
-  */
-class WikiPubSub extends Actor {
-  var maxCount = 520 // supid protection against
-  val TOPIC = "WikiEvents"
-
-  import akka.cluster.pubsub.DistributedPubSub
-  import akka.cluster.pubsub.DistributedPubSubMediator.{Publish, Subscribe}
-
-  val mediator = DistributedPubSub(context.system).mediator
-
-  mediator ! Subscribe(TOPIC, self)
-
-  def receive = {
-    // to broadcast
-    case pub@BCast(ev) => {
-      clog << "CLUSTER_BRUTE_BCAST " + ev.toString
-//      Audit.logdb("DEBUG", "event.bcast", "me: " + self.path + " from: " + sender.path, ev.toString().take(150))
-      mediator ! Publish(TOPIC, ev)
-    }
-
-    // actual work - message came from another node
-    case ev1: WikiEventBase if (sender.compareTo(self) != 0) => {
-      clog << s"CLUSTER_BRUTE_RECEIVED ${ev1.toString} from $self"
-      if (maxCount > 0) {
-        maxCount -= 1
-        Audit.logdb("DEBUG", "exec.event", "me: " + self.path + " from: " + sender.path, ev1.toString().take(250))
-
-        WikiObservers.after(ev1)
-
-      } else if (maxCount > -23) {
-        maxCount -= 1
-        Audit.logdb("WARNING", "maxCount messed up - event skipped", "me: " + self.path + " from: " + sender.path,
-          ev1.toString().take(250))
-      }
-    }
-
-    // actual work - message came from another node
-    case ev1: WikiConfigChanged if (sender.compareTo(self) != 0) => {
-      clog << s"CLUSTER_BRUTE_RECEIVED ${ev1.toString} from $self"
-      if (maxCount > 0) {
-        maxCount -= 1
-        Audit.logdb("DEBUG", "exec.event", "me: " + self.path + " from: " + sender.path, ev1.toString().take(250))
-
-        Services.config.reloadUrlMap // this will regenerate locally
-
-      } else if (maxCount > -23) {
-        maxCount -= 1
-        Audit.logdb("WARNING", "maxCount messed up - event skipped", "me: " + self.path + " from: " + sender.path,
-          ev1.toString().take(250))
-      }
-    }
-
-    case x@_ => Audit.logdb("DEBUG", "ERR_CLUSTER_BRUTE", x.getClass.getName)
+      DieselPubSub ! BCast(ev)
   }
 }

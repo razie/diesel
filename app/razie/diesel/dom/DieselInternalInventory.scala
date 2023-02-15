@@ -15,8 +15,10 @@ import razie.diesel.engine.nodes.EMsg
 import razie.diesel.expr.{DieselExprException, ECtx}
 import razie.diesel.model.DieselTarget
 import razie.tconf.{DSpecInventory, FullSpecRef, SpecRef, TagQuery}
+import razie.wiki.Services
 import razie.{Snakk, js}
 import scala.collection.mutable
+import services.DieselCluster
 
 /** based on diesel rules domain plugin */
 class DieselInternalInventory(
@@ -83,11 +85,24 @@ class DieselInternalInventory(
       case "DieselStream" => fromList (
 
         DieselAppContext.activeStreamsByName.map { t =>
+          new DieselAsset(
+            ref.copy(key=t._1),
+            t,
+            Option(
+              new O("", ref.cls, t._2.toJson.map(x=>P.fromSmartTypedValue(x._1, x._2)).toList)
+            )
+          )
+        }.toList
+      )
+
+      case "DieselNode" => fromList (
+
+        Services.cluster.clusterNodes.map { t =>
             new DieselAsset(
-              ref.copy(key=t._1),
+              ref.copy(key=t.node),
               t,
               Option(
-                new O("", ref.cls, t._2.toJson.map(x=>P.fromSmartTypedValue(x._1, x._2)).toList)
+                new O("", ref.cls, t.toj.map(x=>P.fromSmartTypedValue(x._1, x._2)).toList)
               )
             )
           }.toList
@@ -152,7 +167,7 @@ class DieselInternalInventory(
   override def htmlActions(elem: DE, ref:Option[FullSpecRef]): String = {
     elem match {
       case c: C => {
-        def mkListAll = s"""<a href="/diesel/dom/list/${c.name}">listAll</a>"""
+        def mkListAll = s"""<a href="/diesel/dom/cat/${c.name}">listAll</a>"""
 
         def mkNew =
           if (WikiDomain.canCreateNew(realm, c.name))
@@ -292,6 +307,19 @@ class DieselInternalInventory(
             )
           )
         ).toList
+      )
+
+      case "DieselNode" => fromList (
+
+        Services.cluster.clusterNodes.filter(_.node.startsWith(prefix)).map(t=>
+          new DieselAsset(
+            ref.copy(key=t.node),
+            t,
+            Option(
+              new O("", ref.cls, t.toj.map(x=>P.fromSmartTypedValue(x._1, x._2)).toList)
+            )
+          )
+        ).toList
         )
 
       case _ => Left(DIQueryResult(0, Nil))
@@ -327,6 +355,20 @@ class DieselInternalInventory(
             t,
             Option(
               new O("", ref.cls, t._2.toJson.map(x=>P.fromSmartTypedValue(x._1, x._2)).toList)
+            )
+          )
+        )
+      )
+
+
+      case "DieselNode" => Left (
+
+        Services.cluster.clusterNodes.find(_.node.startsWith(ref.key)).map(t=>
+          new DieselAsset(
+            ref.copy(key=t.node),
+            t,
+            Option(
+              new O("", ref.cls, t.toj.map(x=>P.fromSmartTypedValue(x._1, x._2)).toList)
             )
           )
         )

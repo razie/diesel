@@ -50,8 +50,8 @@ case class DomEngineSettings
   var env: Option[String] = None,
 
   /** collector settings - how many of this kind to collect */
-  @transient var collectCount: Option[Int] = None,
-  @transient var collectGroup: Option[String] = None,
+  var collectCount: Option[Int] = None,
+  var collectGroup: Option[String] = None,
 
   /** SLA settings - how to store and manage this instance. Default None means no persistance */
   var sla: Option[String] = None,
@@ -59,6 +59,10 @@ case class DomEngineSettings
   var simMode: Boolean = false
 
 ) {
+  // serialized transients come as null
+  if(collectCount == null) collectCount = None
+  if(collectGroup == null) collectGroup = None
+
   val node = DieselAppContext.localNode // todo shouldn't I remember the node? or is that the hostport?
 
   // todo keep in sync with sla
@@ -83,8 +87,8 @@ case class DomEngineSettings
       DRAFT_MODE -> draftMode.toString,
       EXEC_MODE -> execMode,
       RESULT_MODE -> resultMode,
-      "collectGroup" -> collectGroup.mkString,
-      "collectCount" -> collectCount.mkString
+      "collectGroup" -> (if(collectGroup != null) collectGroup.mkString else ""),
+      "collectCount" -> (if(collectCount != null) collectCount.mkString else "")
     ) ++ parentNodeId.map(x => Map(DIESEL_NODE_ID -> x)
     ).getOrElse(Map.empty) ++ configTag.map(x => Map(DIESEL_CONFIG_TAG -> x)
     ).getOrElse(Map.empty) ++ userId.map(x => Map(DIESEL_USER_ID -> x)

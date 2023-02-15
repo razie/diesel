@@ -142,7 +142,7 @@ class DomainController extends RazController with Logging {
   def apiDomCatDel   (cat:String, path:String="/", plugin:String="", conn:String="") = domCatGet(cat, path, plugin, conn)
 
   def domCatGet   (cat:String, path:String="/", plugin:String="", conn:String="", format:String="") =
-    domBrowse   (cat, path, plugin, conn, format="json")
+    domList   (cat, path, plugin, conn, format)
   def domCatQuery (cat:String, q:String="", path:String="/", plugin:String="", conn:String="") =
     domQuery  (cat, parm=q.split(":")(0), value=q.split(":")(1), path, plugin, conn, fullPage=false, format="json")
   def domCatGetId (cat:String, id:String, path:String="/", plugin:String="", conn:String="") =
@@ -162,7 +162,6 @@ class DomainController extends RazController with Logging {
 
   def domApiMetaCat  (cat:String, path:String="/", format:String="") =
     domMetaCat     (cat, path, format=WTypes.json)
-  def domMetaCat     (cat:String, path:String="/", format:String="") = FAUR { implicit stok => ??? }
 
 
   // ===================== CRUD =================
@@ -238,6 +237,25 @@ class DomainController extends RazController with Logging {
       }
   }
 
+  def domMetaCat (cat:String, path:String="/", plugin:String="", conn:String="", format:String="") = RAction.withAuth {
+    implicit stok =>
+      try {
+        val (realm, dom, rdom, c, oc, iconn, iplugin) = unpack(cat, plugin, conn)
+
+        if ("json" == format && oc.isDefined) {
+          retj << rdom.tojmap(c)
+        } else {
+          catBrowser (iplugin, iconn, realm, cat, path, None).apply(
+            stok.ireq.asInstanceOf[Request[AnyContent]]).value.get.get
+        }
+      } catch {
+        case t:Throwable =>
+          // it'll say "nothing known about"
+          catBrowser ("", "", stok.realm, cat, path, None).apply(
+            stok.ireq.asInstanceOf[Request[AnyContent]]).value.get.get
+      }
+  }
+
   def domBrowse  (cat:String, path:String="/", plugin:String="", conn:String="", format:String="") = RAction.withAuth {
     implicit stok =>
         try {
@@ -246,13 +264,13 @@ class DomainController extends RazController with Logging {
           if ("json" == format && oc.isDefined) {
             retj << rdom.tojmap(c)
           } else {
-            catBrowser(iplugin, iconn, realm, cat, path, None).apply(
+            catBrowser (iplugin, iconn, realm, cat, path, None).apply(
               stok.ireq.asInstanceOf[Request[AnyContent]]).value.get.get
           }
         } catch {
           case t:Throwable =>
             // it'll say "nothing known about"
-            catBrowser("", "", stok.realm, cat, path, None).apply(
+            catBrowser ("", "", stok.realm, cat, path, None).apply(
               stok.ireq.asInstanceOf[Request[AnyContent]]).value.get.get
         }
   }
@@ -343,7 +361,7 @@ class DomainController extends RazController with Logging {
   }
 
   /** list entities of cat from domain wpath */
-  def domList   (cat:String, path:String="/", plugin:String="", conn:String="") = RAction.withAuth.noRobots { implicit stok =>
+  def domList   (cat:String, path:String="/", plugin:String="", conn:String="", format:String="") = RAction.withAuth.noRobots { implicit stok =>
       try {
         val (realm, dom, rdom, c, oc, iconn, iplugin) = unpack(cat, plugin, conn)
 
