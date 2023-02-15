@@ -1,2 +1,0 @@
-// contents are in playDomFiddle
-
