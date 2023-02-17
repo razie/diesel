@@ -6,6 +6,7 @@ import com.razie.pub.comms.CommRtException
 import java.net.InetAddress
 import razie.{Logging, Snakk, clog}
 import razie.hosting.{Website, WikiReactors}
+import razie.wiki.model.DCNode
 import razie.wiki.{Config, EventProcessor, Services}
 import scala.collection.mutable.ListBuffer
 import services.DieselCluster.masterNodeStatus
@@ -27,6 +28,9 @@ object DieselCluster {
   def clusterNodeSimple = Services.cluster.clusterNodeSimple
   def clusterNodeIp = Services.cluster.clusterNodeIp
   def clusterModeBool = Services.cluster.clusterModeBool
+
+  // todo more efficient
+  def me = DCNode(Services.cluster.clusterNodeSimple)
 
   def clusterNodesJson = Services.cluster.clusterNodesJson
 
@@ -167,6 +171,20 @@ class DieselCluster extends razie.Logging {
     DieselPubSub.clusterReady() // todo register for message instead
     DieselSingleton.clusterReady() // todo register for message instead
   }
+
+  var curLbIdx = 0
+  def routeToNode (routing:String) : Option[DCNode] = (routing match {
+    case "local" => Some(DieselCluster.clusterNodeSimple)
+    case "singleton" => Some(DieselSingleton.currentSingletonNode)
+    case "other" => clusterNodes.find(_.node != clusterNodeSimple).map(_.node)
+//    case "lb" => Option(clusterNodes((math.random()*clusterNodes.size).toInt).node) // todo smarter lb
+    case "lb" => {
+      if(clusterNodes.size > 0) {
+        curLbIdx = (curLbIdx + 1) % clusterNodes.size
+        Option(clusterNodes(curLbIdx).node)
+      } else None
+    } // todo smarter lb
+  }).map(DCNode)
 
 }
 

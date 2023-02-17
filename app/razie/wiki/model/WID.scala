@@ -17,6 +17,10 @@ import razie.hosting.WikiReactors
 import razie.tconf.TSpecRef
 import razie.wiki.Services
 
+/** a cluster node id, type-safe marker */
+case class DCNode (name:String) {
+  override def toString = name
+}
 
 /**
   * a wiki id, a pair of cat and name - can reference a wiki entry or a section of an entry
@@ -25,10 +29,17 @@ import razie.wiki.Services
   *
   * format is parent/realm.cat:name#section
   *
+  * with node hint: format is parent/(world,node)realm.cat:name#section
+  *
   * assumption is that when we link between wikis, we'll have wiki/parent/cat:name#section -
   *
   * NOTE: equals does not look at parent !!!
   *
+  * @param cat category
+  * @param name the id
+  * @param parent optional parent ref
+  * @param section optional section inside this ref
+  * @param realm optional realm
   * @param sourceUrl not persisted/read, just temporary
   */
 case class WID(
@@ -37,7 +48,7 @@ case class WID(
   parent: Option[ObjectId] = None,
   section: Option[String] = None,
   realm: Option[String] = None,
-  @transient sourceUrl: Option[String] = None) {
+  @transient sourceUrl: Option[String] = None) { // todo what is sourceUrl for?
 
   override def toString = "[[" + wpath + "]]"
 
@@ -326,6 +337,48 @@ object WID {
   //cat:name#section OR cat:name::section - # doesn't go through path
   private val REGEX =
     """([^/:\]]*[:])?([^#|\]]+)(#[^|\]]+)?""".r
+
+  //(node)realm.cat:name#section
+  private val REGEX_WITHNODE =
+    """(\([^/:\()]]+\))?([^/:\]]*[:])?([^#|\]]+)(#[^|\]]+)?""".r
+
+  /** parse a wid
+    *
+    * @param a the list of wids from a path, parent to child */
+  def widFromSegWithNode(str:String, curRealm: String = ""):Option[(Option[DCNode],Option[String],String,String,Option[String])] = {
+      str match {
+        case REGEX_WITHNODE(node, c, n, s) => {
+
+          val nod = if(node == null) None else Option(node) // todo could include world
+
+          val cat =
+            if (c == null) ""
+            else c.replaceFirst("[^.]+\\.", "").replaceFirst(":", "")
+
+          val name =
+            if (n == null) ""
+            else if (cat.length <= 0) n.replaceFirst("[^.]+\\.", "")
+            else n
+
+          val realm = if (c != null && c.contains("."))
+            Some(c.replaceFirst("\\..*", ""))
+          else if (cat.length <= 0 && n != null && n.contains("."))
+          // only if cat is not specified
+            Some(n.replaceFirst("\\..*", ""))
+          else None
+
+          Some((
+            nod.map(DCNode),
+            realm,
+            cat,
+            name,
+            Option(s).filter(_.length > 1).map(_.substring(1))
+          ))
+
+        }
+        case _ => None
+    }
+  }
 
   /** parse a wid
     *

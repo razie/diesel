@@ -96,12 +96,6 @@ object DomEngineUtils {
   def createEngine(msg: String, specs: List[WID], stories: List[WID], settings: DomEngineSettings,
                    omsg: Option[DieselMsgString] = None, preppedCache:Option[CachedEngingPrep] = None): DomEngine = {
 
-    // starting
-    val t1 = System.currentTimeMillis()
-
-    val realm = settings.realm getOrElse specs.headOption.map(_.getRealm).mkString
-    val page = new WikiEntry("Spec", "fiddle", "fiddle", "md", "", NOUSER, Seq("dslObject"), realm)
-
     // don't audit diesel messages - too many
     if (
       msg.startsWith(DieselMsg.REALM.REALM_LOADED_MSG) ||
@@ -115,6 +109,38 @@ object DomEngineUtils {
     }
     else
       DieselMsg.logdb("DIESEL_FIDDLE_RUNDOM ", msg)
+
+    var story = if (msg.trim.startsWith("$msg") || msg.trim.startsWith("$send")) msg else "$msg " + msg
+    ctrace << "STORY: " + story
+
+    val desc = if (msg.startsWith("$msg ctx.set")) msg.replaceFirst("""^\$msg ctx.set.*""", "") else msg
+
+    createEngine(None, Option(story), specs, stories, settings, omsg, preppedCache, Option(desc))
+  }
+
+    /** execute message - this is the typical use of an engine
+    * execute message to given reactor
+    *
+      * provide either an inode or a istory
+      *
+    * @param msg      "entity.action(p=value,etc)
+    * @param specs    the specs to use for rules
+    * @param stories  any other stories to add (tests, engine settings etc)
+    * @param settings engine settings
+    * @return
+    *
+    * this is only used from the CQRS, internally - notice no request
+    */
+  def createEngine(inode: Option[DomAst], istory:Option[String], specs: List[WID], stories: List[WID], settings: DomEngineSettings,
+                   omsg: Option[DieselMsgString], preppedCache:Option[CachedEngingPrep],
+                   desc:Option[String]): DomEngine = {
+
+    // starting
+    val t1 = System.currentTimeMillis()
+
+    val realm = settings.realm getOrElse specs.headOption.map(_.getRealm).mkString
+    val page = new WikiEntry("Spec", "fiddle", "fiddle", "md", "", NOUSER, Seq("dslObject"), realm)
+
 
     var t2 = System.currentTimeMillis()
     var t3 = System.currentTimeMillis()
@@ -135,8 +161,8 @@ object DomEngineUtils {
 
       // make up a story
       val FILTER = Array("sketchMode", "mockMode", "blenderMode", "draftMode")
-      var story = if (msg.trim.startsWith("$msg") || msg.trim.startsWith("$send")) msg else "$msg " + msg
-      ctrace << "STORY: " + story
+
+      var story = istory.mkString
 
       // todo this has no EPos - I'm loosing the epos on sections
       // put together all sections
@@ -146,7 +172,7 @@ object DomEngineUtils {
       ).mkString("\n") + "\n"
 
       val ipage = new WikiEntry("Story", "fiddle", "fiddle", "md", story, NOUSER, Seq("dslObject"), realm)
-      val idom = WikiDomain.domFrom(ipage).get.revise addRoot
+      val idom = WikiDomain.domFrom(ipage).get.revise.addRoot
 
       var res = ""
 
@@ -156,12 +182,13 @@ object DomEngineUtils {
         List(ipage))
     })
 
-    val root = DomAst("root", "root")
+    val root = DomAst("root", AstKinds.ROOT)
 
     // replace first line if ctx.set, better desc
-    val desc = if (msg.startsWith("$msg ctx.set")) msg.replaceFirst("""^\$msg ctx.set.*""", "") else msg
 
     val t4 = System.currentTimeMillis()
+
+    val description = DieselMsg.runDom + omsg.map(_.toString).orElse(desc).orElse(inode.map(_.value.toString)).getOrElse("??").replaceAllLiterally("\n", "")
 
     // start processing all elements
     val engine = DieselAppContext.mkEngine(
@@ -169,7 +196,7 @@ object DomEngineUtils {
       root,
       settings,
       prepped.ipages,
-      DieselMsg.runDom + omsg.map(_.toString).getOrElse(desc).replaceAllLiterally("\n", ""))
+      description)
 
     engine.root.prependAllNoEvents(List(
       DomAst(
@@ -181,6 +208,7 @@ object DomEngineUtils {
 
     engine.prepTime = t4-t1
     EnginePrep.addStoriesToAst(engine, prepped.storiesToAdd)
+    root.appendAllNoEvents(inode.map(DomAst(_)).toList)
 
     engine
   }
@@ -192,10 +220,10 @@ object DomEngineUtils {
 
     // find the spec and check its result
     // then find the resulting value.. if not, then json
-    val oattrs = engine.dom.moreElements.collect {
+    val oattrs = engine.dom.moreElements.collectFirst {
       //      case n:EMsg if n.entity == e && n.met == a => n
       case n: EMsg if msg.startsWith(n.entity + "." + n.met) => n
-    }.headOption.toList.flatMap(_.ret)
+    }.toList.flatMap(_.ret)
 
     if (oattrs.isEmpty) {
       errors append s"Can't find the spec for $msg"
@@ -203,8 +231,8 @@ object DomEngineUtils {
 
     // collect values
     val values = engine.root.collect {
-      case d@DomAst(EVal(p), /*AstKinds.GENERATED*/ _, _, _) if oattrs.isEmpty || oattrs.find(
-        _.name == p.name).isDefined => (p.name, p.currentStringValue)
+      case d@DomAst(EVal(p), /*AstKinds.GENERATED*/ _, _, _) if oattrs.isEmpty || oattrs.exists(_.name == p.name) =>
+        (p.name, p.currentStringValue)
     }
 
     val resValue = engine.extractFinalValue(omsg.flatMap(_.omsg).map(_.ea).mkString).map(_.currentStringValue).mkString

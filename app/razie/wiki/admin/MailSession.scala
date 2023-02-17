@@ -33,7 +33,7 @@ class MailSession extends BaseMailSession {
       .map(_.content).getOrElse("")
 
   /** email body section template */
-  def text(name: String) =
+  def text (name: String) =
     Wikis(this.realm.mkString)
       .find("Admin", "template-emails")
       .orElse(Wikis.rk.find("Admin", "template-emails"))
@@ -48,7 +48,7 @@ class MailSession extends BaseMailSession {
   /**
     * send an email - just added to the session
     */
-  def send(to: String, from: String, subject: String, html: String, bcc: Seq[String] = Seq.empty) {
+  def send (to: String, from: String, subject: String, html: String, bcc: Seq[String] = Seq.empty): Unit = {
     val e = new EmailMsg(to, from, subject, html, false, bcc)
     this.emails = e :: this.emails
     e.createNoAudit
@@ -57,15 +57,15 @@ class MailSession extends BaseMailSession {
   /**
     * send an email - just added to the session. note that there is no special handling of notifications for now
     */
-  def notif(to: String, from: String, subject: String, html: String, bcc: Seq[String] = Seq.empty) {
+  def notif (to: String, from: String, subject: String, html: String, bcc: Seq[String] = Seq.empty): Unit = {
     val e = new EmailMsg(to, from, subject, html, true, bcc)
     this.emails = e :: this.emails
     e.createNoAudit
   }
 
 
-  def sendSupport(subj:String, name:String, e: String, desc: String, details: String, page:String)(implicit mailSession: MailSession) {
-    val html = text("supportrequested").format(name, e, desc, details, page)
+  def sendSupport (subj:String, realm:String, name:String, e: String, desc: String, details: String, page:String)(implicit mailSession: MailSession): Unit = {
+    val html = text("supportrequested").format(name, e, desc, details, page) + s"\n\nFrom realm: $realm"
 
     mailSession.send(SUPPORT, SUPPORT, subj+": " + desc, html)
   }

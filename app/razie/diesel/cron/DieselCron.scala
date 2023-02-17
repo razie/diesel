@@ -350,9 +350,6 @@ object DieselCron extends Logging {
     DieselTarget.ENV(realm, env)
   )
 
-  // todo remove w - needed only for the stupid apache proxy mode
-  def isMasterNode(w: Option[Website]) = Services.cluster.isSingletonNode(w)
-
   def init() : Unit = {
     worker
   }

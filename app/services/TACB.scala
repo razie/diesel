@@ -9,6 +9,10 @@ import razie.Logging
   */
 object TACB {
 
+  def withFunc (sync: PartialFunction[Any,Unit], msgCls:Class[_]) = Callback(Option(sync), None, msgCls)
+
+  def withActor (async:ActorRef, msgCls:Class[_]) = Callback(None, Option(async), msgCls)
+
   /** a single callback registered for a notification base class */
   case class Callback (sync: Option[PartialFunction[Any,Unit]], async:Option[ActorRef], msgCls:Class[_]) extends Logging {
 

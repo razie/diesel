@@ -8,7 +8,7 @@ import razie.{Logging, Snakk, clog}
 import razie.wiki.model._
 import razie.wiki.{Config, EventProcessor, Services}
 import scala.collection.mutable.ListBuffer
-import services.DieselSingleton.{DSEnd, DSStartedOn, DSWhois}
+import services.DieselSingleton.{DSEnd, DSStartedOn, DSWhois, DSAskWhois, singletonProxyActor}
 
 /** using classic akka singleton
   *
@@ -34,6 +34,7 @@ object DieselSingleton extends Logging with EventProcessor with TACB.Notifier {
   object DSEnd extends DSMsg
   case class DSStartedOn (node:String) extends DSMsg
   case class DSWhois     (node:String) extends DSMsg
+  case class DSAskWhois  (node:String) extends DSMsg
 
   lazy val singletonManagerActor = Services.system.actorOf(
     ClusterSingletonManager.props(
@@ -58,21 +59,30 @@ object DieselSingleton extends Logging with EventProcessor with TACB.Notifier {
     singletonManagerActor
     singletonProxyActor
     singletonProxyActor ! "Other node just came up..."
-
-    DieselCluster.pubSub.subscribe (TACB.Callback(sync = Option({
-      case DSStartedOn (node) => currentSingletonNode = node
-    }), async=None, msgCls = classOf[DSMsg]))
   }
 
   // init after cluster is ready
   def clusterReady():Unit = {
+
+    Services.cluster.pubSub.subscribe (TACB.withFunc({
+      case DSStartedOn (node) => currentSingletonNode = node
+    }, msgCls = classOf[DSMsg]))
+
     singletonProxyActor ! DSWhois(DieselCluster.clusterNodeSimple) // ask who is it
+
+    // todo weird - the singleton messages buffered before the singleton is connected are not sent??
+    razie.Threads.fork {
+      while (currentSingletonNode == "?") {
+        Thread.sleep(1000)
+        singletonProxyActor ! DSWhois(DieselCluster.clusterNodeSimple) // ask who is it
+      }
+    }
     // todo should ask in loop in case the real singleton is not up...
   }
 }
 
 /** the singleton processor - this actor is managed and only processes messages on the singleton */
-class DieselSingletonActor extends Actor {
+class DieselSingletonActor extends Actor with razie.Logging {
 
   def nodeName = Services.config.node
   def localQuiet = Services.config.localQuiet
@@ -97,11 +107,20 @@ class DieselSingletonActor extends Actor {
 
   override def receive = {
 
-    case DSEnd => DieselCluster.masterNodeStatus = Some(false)
+    case m@DSEnd => {
+      info (s"Received $m")
+      DieselCluster.masterNodeStatus = Some(false)
+    }
 
-    case DSWhois(asker) => DieselPubSub ! DSStartedOn (DieselCluster.clusterNodeSimple) // I'm processing it so it must be me
+    case m@DSWhois(asker) => {
+      info (s"Received $m")
+      DieselPubSub ! DSStartedOn (DieselCluster.clusterNodeSimple)
+    } // I'm processing it so it must be me
 
-    case x@_ => DieselSingleton.eat(x) // received other messages
+    case m@_ => {
+      info (s"Received $m")
+      DieselSingleton.eat(m)
+    } // received other messages
   }
 }
 

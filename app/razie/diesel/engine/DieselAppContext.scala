@@ -29,7 +29,7 @@ class DieselEngineFactory(node: String, app: String) {
                settings: DomEngineSettings,
                pages: List[DSpec],
                description: String,
-               correlationId: Option[String] = None) =
+               correlationId: Option[DomAssetRef] = None) =
     new DomEngineV1(dom, root, settings, pages, description, correlationId)
 }
 
@@ -162,7 +162,7 @@ object DieselAppContext extends Logging {
                settings: DomEngineSettings,
                pages: List[DSpec],
                description: String,
-               correlationId: Option[String] = None) = {
+               correlationId: Option[DomAssetRef] = None) = {
 
     val eng = ctx.mkEngine(dom, root, settings, pages, description, correlationId)
 

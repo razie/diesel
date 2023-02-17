@@ -88,7 +88,7 @@ class CronActor extends Actor with Logging {
 
   override def preStart(): Unit = {
     // subscribe for cron cluster messages
-    DieselCluster.pubSub.subscribe(TACB.Callback(sync = None, async = Option(self), msgCls = classOf[CronRemoteMsg]))
+    DieselCluster.pubSub.subscribe(TACB.withActor(self, msgCls = classOf[CronRemoteMsg]))
   }
 
   override def receive = {
@@ -335,7 +335,7 @@ class CronRealmActor(val realm: String) extends Actor with Logging {
 
         if (isCountOk && isEndTimeOk) { // fine... trigger it
 
-          if (!curr.singleton || DieselCron.isMasterNode(Website.forRealm(sc.realm))) {
+          if (!curr.singleton || Services.cluster.isSingletonNode(Website.forRealm(sc.realm))) {
 
             if (ISENABLED) {
               runAndMaybeWait2(realm, sc, curr, shouldAwait)

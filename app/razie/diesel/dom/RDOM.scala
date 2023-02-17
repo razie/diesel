@@ -358,6 +358,8 @@ object RDOM {
 
             case WType(WTypes.EXCEPTION, _, _, _) => new P(name, s, expectedType)
 
+            case WType(WTypes.REF, _, _, _) => new P(name, s, expectedType)
+
             case _ if expectedType.trim.length > 0 =>
               throw new DieselExprException(s"$expectedType is an unknown type")
 

@@ -19,10 +19,12 @@ import razie.diesel.model.DieselMsg.ENGINE.{DIESEL_MSG_ACTION, DIESEL_MSG_ATTRS,
 import razie.diesel.utils.DomCollector
 import razie.hosting.Website
 import razie.tconf.DSpec
+import razie.wiki.Services
 import razie.wiki.admin.GlobalData
-import razie.wiki.model.{WID, WikiEntry}
+import razie.wiki.model.{DCNode, WID, WikiEntry}
 import scala.Option.option2Iterable
 import scala.collection.mutable.ListBuffer
+import services.{DieselCluster, DieselPubSub}
 //import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{Future, Promise}
 import scala.util.Try
@@ -30,6 +32,59 @@ import scala.util.Try
 trait InfoNode // just a marker for useless info nodes
 
 trait EGenerated // just a marker for "action" generated nodes (EMsg, EMsgPas, ENext etc)
+
+object DomRefs {
+  final val CAT_DIESEL_ENGINE = "DieselEngine"
+  final val CAT_DIESEL_NODE = "DieselNode"
+
+  def isLocal(node: Option[DCNode]): Boolean = node.isEmpty || isLocal(node.get)
+
+  def isLocal(node: DCNode): Boolean = node.name == DieselCluster.clusterNodeSimple || node.name.trim.isEmpty
+
+  def setNode (node:String) = {
+    if (node == DieselCluster.clusterNodeSimple || node.trim.isEmpty) None else Option(node)
+  }
+
+  def parseDomAssetRef (str:String) = {
+    WID.widFromSegWithNode(str) match {
+      case Some((n,r,c,i,s)) => Option(DomAssetRef (c, i, r, s, n))
+      case None => None
+    }
+  }
+}
+
+/** this is a reference inside another engine, a correlation point
+  *
+  * with node hint: format is parent/(world,node)realm.cat:name#section
+  *
+  * @param id         engine id
+  * @param section  for engines, node inside the engine (suspended there or just referenced)
+  * @param node     node that manages the other engine hopefully, None means local (default)
+  */
+case class DomAssetRef (
+  cat:String,
+  id:String,
+  realm:Option[String] = None,
+  section:Option[String] = None,
+  node:Option[DCNode] = None
+) {
+  val isLocal:Boolean = DomRefs.isLocal(node) // optimize this comparison
+
+  def mkString:String = node.map(x=> s"($x)$cat:").mkString + id + section.map(x=>"#"+x).mkString
+  def mkEngRef:String = node.map(x=> s"($x)$cat:").mkString + id
+
+  /** fully qualified ref to send to other node */
+  def fullNodeRef = if (node.isEmpty) this.copy (node=Option(DCNode(DieselCluster.clusterNodeSimple))) else this
+
+  def onNode (node:DCNode) = {
+    val other = if (DomRefs.isLocal(node)) None else Option(node)
+    this.copy (node=other)
+  }
+
+  def href =
+    if(isLocal) DieselAssets.mkAhref(WID(cat, this.id))
+    else DieselAssets.mkAhref(WID(cat, this.id), mkEngRef)
+}
 
 case class CachedEngingPrep(
   dom:RDomain,
@@ -55,7 +110,7 @@ abstract class DomEngine(
   val settings: DomEngineSettings,
   val pages: List[DSpec],
   val description: String,
-  val correlationId: Option[String] = None,
+  val correlationId: Option[DomAssetRef] = None,
   val id: String = new ObjectId().toString,
   val createdDtm: DateTime = DateTime.now
 ) extends Logging with DomEngineState with DomRoot with DomEngineExpander {
@@ -252,9 +307,10 @@ abstract class DomEngine(
     // it needs to end in useful info: the display shows tail on listAst
   }
 
-  def wid = WID("DieselEngine", id)
+  def wid = WID(DomRefs.CAT_DIESEL_ENGINE, id)
+  def ref = DomAssetRef(DomRefs.CAT_DIESEL_ENGINE, id)
 
-  def href = DieselAssets.mkAhref(WID("DieselEngine", this.id))
+  def href = DieselAssets.mkAhref(WID(DomRefs.CAT_DIESEL_ENGINE, this.id))
 
   /** is this engine exec'd sync? as a lambda in another engine, for instance */
   var synchronous = false
@@ -354,15 +410,51 @@ abstract class DomEngine(
     res
   }
 
-  /** spawn new engine */
-  protected def spawn(nodes: List[DomAst], correlationId: Option[String]) = {
-    val newRoot = DomAst("root", AstKinds.ROOT).withDetails("(spawned)")
-    newRoot.appendAllNoEvents(nodes)
-    val engine = DieselAppContext.mkEngine(dom, newRoot, settings, pages,
-      "engine:spawn " + nodes.head.value.toString.take(200), correlationId)
-    engine.inheritFrom(this)
-    engine.ctx.root._hostname = ctx.root._hostname
-    engine
+  /** spawn new engine
+    *
+    * @param nodes
+    * @param correlationId
+    * @return (engineRef, description)
+    */
+  protected def spawn (msg: EMsg, correlationId: Option[DomAssetRef]) = {
+    val spec = findSpec(msg.entity, msg.met)
+
+    val node = spec.filter(x=> x.stype.contains("route.")).flatMap { spec =>
+      val routing = spec.stype.split(",").find(_.startsWith("route.")).mkString.replaceFirst("route.", "")
+      Services.cluster.routeToNode(routing)
+    }
+
+    if(! DomRefs.isLocal(node)) {
+      // needs routed
+
+      val desc = "engine:spawn " + msg.toString.take(200)
+      val newid = (new ObjectId()).toString
+      DieselPubSub ! DERemoteRunEngine (DieselCluster.me, msg, correlationId, settings, newid, desc)
+
+      val ref = DomAssetRef(DomRefs.CAT_DIESEL_ENGINE, newid, None, None, node)
+
+//      val engine = DieselAppContext.mkEngine(dom, newRoot, settings, pages,
+//        "engine:spawn " + nodes.head.value.toString.take(200), correlationId)
+//      engine.inheritFrom(this)
+//      engine.ctx.root._hostname = ctx.root._hostname
+//
+//      engine.process // start it up in the background
+
+      (ref, "engine:spawn " + msg.toString.take(200))
+    } else {
+      val newRoot = DomAst("root", AstKinds.ROOT).withDetails("(spawned)")
+      newRoot.appendAllNoEvents(List(DomAst(msg)))
+
+      val engine = DieselAppContext.mkEngine(dom, newRoot, settings, pages,
+        "engine:spawn " + msg.toString.take(200), correlationId)
+      engine.inheritFrom(this)
+      engine.ctx.root._hostname = ctx.root._hostname
+
+      engine.process // start it up in the background
+
+      (engine.ref, engine.description)
+    }
+
   }
 
   /** inherit some settings from parent engine (max expands etc) */
@@ -372,22 +464,26 @@ abstract class DomEngine(
   }
 
   /** if have correlationID, notify parent that I'm done ... */
-  protected def notifyParent(a: DomAst, parentId: String, targetId: String, level: Int) = {
+  protected def notifyParent (localInfoParent: DomAst, target:DomAssetRef, level: Int) = {
     // completed - notify parent
     val newD = DomAst(new EInfo(
-      "Completing - notifying parent: " + DieselAssets.mkAhref(WID("DieselEngine", parentId)), ""),
+      "Completing - notifying parent: " + DieselAssets.mkAhref(WID("DieselEngine", target.id)), ""),
       AstKinds.GENERATED)
 
-    DieselAppContext ! DEComplete(parentId, targetId, recurse = true, level,
+    DieselAppContext ! DEComplete (
+      target.id,
+      target.section.get,
+      recurse = true,
+      level,
       ctx.getp(Diesel.PAYLOAD).map(p => DomAst(EVal(p))).toList
     )
 
-    evAppChildren(a, newD)
+    evAppChildren(localInfoParent, newD)
     true
   }
 
   /** process a list of continuations */
-  protected def later(m: List[DEMsg], recurse:Boolean = false): List[Any] = {
+  protected def later (m: List[DEMsg], recurse:Boolean = false): List[Any] = {
     if (synchronous) {
       clog << "SYNCHRONOUS engine processing: " + m.mkString
       val res = m.map(processDEMsg)
@@ -797,14 +893,14 @@ abstract class DomEngine(
 
     //child engines notify parent if needed - payload is passed as well, see V1 for pong
     correlationId
-        .filter(_ contains ".")
+        .filter(_.section.isDefined)
         .foreach(cid => {
-          val ids = cid.split("\\.")
           val notifyParent = DomAst(EMsg(
             DieselMsg.ENGINE.DIESEL_PONG,
             List(
-              P.of("parentId", ids(0)),
-              P.of("targetId", ids(1)),
+              P.of("parentNode", cid.node),
+              P.of("parentId", cid.id),
+              P.of("targetId", cid.section),
               P.of("level", -1)
             )
           ))
@@ -1127,15 +1223,20 @@ abstract class DomEngine(
     }
   }
 
+  /** find spec in domain */
+  def findSpec (e:String, a:String) = {
+    dom.moreElements.collectFirst {
+      case n: EMsg if n.entity == e && n.met == a => n
+    }
+  }
+
   /** extract the resulting values from this engine */
   def extractValues (e:String, a:String) = {
     require(DomState.isDone(this.status)) // no sync
 
     // find the spec and check its result
     // then find the resulting value.. if not, then json
-    val oattrs = dom.moreElements.collectFirst {
-      case n: EMsg if n.entity == e && n.met == a => n
-    }.toList.flatMap(_.ret)
+    val oattrs = findSpec(e,a).toList.flatMap(_.ret)
 
     // collect values
     val valuesp = root.collect {
@@ -1225,9 +1326,7 @@ abstract class DomEngine(
 
     // find the spec and check its result
     // then find the resulting value.. if not, then json
-    val oattrs = dom.moreElements.collectFirst {
-      case n: EMsg if n.entity == e && n.met == a => n
-    }.toList.flatMap(_.ret)
+    val oattrs = findSpec(e,a).toList.flatMap(_.ret)
 
     // collect values
     val values = root.collect {

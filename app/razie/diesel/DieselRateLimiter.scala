@@ -49,7 +49,7 @@ object DieselRateLimiter extends razie.Logging {
   globalGroup.foreach(rateLimits.put("global", _))
 
   WikiObservers mini {
-    case WikiConfigChanged(node, config) => {
+    case WikiConfigChanged (node, config) if config != null => {
       val threads = config.prop("akka.actor.default-dispatcher.thread-pool-executor.fixed-pool-size", "25").toInt
       LIMIT_ALL = config.prop("diesel.staticRateLimitAll", "false").toBoolean
       LIMIT_API = config.prop("diesel.staticRateLimit", "80").toInt

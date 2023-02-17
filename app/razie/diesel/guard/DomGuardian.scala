@@ -29,6 +29,7 @@ import razie.wiki.util.PlayTools
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.Future
+import services.DieselCluster
 
 
 /** this is the default engine per reactor and user, continuously running all the stories */
@@ -340,7 +341,7 @@ object DomGuardian extends Logging {
     settings: Option[DomEngineSettings]): (Future[Report], Option[DomEngine], List[Any]) = {
     val res = new ListBuffer[Any]()
 
-    if (!DieselCron.isMasterNode(Website.forRealm(realm)))
+    if (!Services.cluster.isSingletonNode (Website.forRealm(realm)))
       throw new IllegalStateException("I'm not the active Guardian")
 
     DomGuardian.synchronized {

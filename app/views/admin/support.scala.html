@@ -10,7 +10,7 @@
 <div class="row">
   <h2>Contact / Support Request</h2>
 <div class="well col-md-8">
-@helper.form(action=routes.Support.supportu(page)) {
+@helper.form(action=routes.Support.doeSupport2(page)) {
 
 @if(stok.au.isDefined) {
   <input type="hidden" name="name" value="@stok.au.get.ename" />

@@ -34,6 +34,8 @@ object WTypes {
     final val FLOAT=WType("Float")
     final val BOOLEAN=WType("Boolean")
 
+    final val REF=WType("Ref") // a generic ref
+
     final val RANGE=WType("Range")
 
     final val HTML=WType("HTML")     // why not... html templates?
@@ -72,6 +74,8 @@ object WTypes {
   final val INT = "Int"
   final val FLOAT = "Float"
   final val BOOLEAN = "Boolean"
+
+  final val REF = "Ref"
 
   final val RANGE = "Range"
 

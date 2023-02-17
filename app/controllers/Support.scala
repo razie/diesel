@@ -24,7 +24,7 @@ class Support @Inject() (config:Configuration) extends RazController with Loggin
   }
 
   // display the form
-  def doeSupport(page: String, desc: String, details: String) = RAction { implicit request =>
+  def doeSupport (page: String, desc: String, details: String) = RAction { implicit request =>
     import razie.wiki.Sec._
     ROK.k apply {implicit stok=> views.html.admin.support(supportForm1.fill((
       auth.map(_.emailDec).getOrElse(""),
@@ -34,7 +34,7 @@ class Support @Inject() (config:Configuration) extends RazController with Loggin
   }
 
   // user submitted form
-  def supportu(page: String) = RAction { implicit request =>
+  def doeSupport2 (page: String) = RAction { implicit request =>
     supportForm1.bindFromRequest.fold(
       formWithErrors => ROK.k badRequest {implicit stok=> views.html.admin.support(formWithErrors, page)},
       {
@@ -42,7 +42,7 @@ class Support @Inject() (config:Configuration) extends RazController with Loggin
           cdebug << t
           if (auth.exists(_.isActive) || new Recaptcha(config).verify2(g_response, clientIp)) {
             Emailer.withSession(request.realm) { implicit mailSession =>
-              mailSession.sendSupport(s"Support request realm ${request.realm}", n, e, (auth.map("Username: " + _.userName + " ").mkString) + desc, details, page)
+              mailSession.sendSupport(request.website.supportSubject, request.realm, n, e, (auth.map("Username: " + _.userName + " ").mkString) + desc, details, page)
             }
             Msg(request.website.supportThankyou, HOME)
           } else {
@@ -53,7 +53,7 @@ class Support @Inject() (config:Configuration) extends RazController with Loggin
       })
   }
 
-  def suggest(page: String, desc: String, details: String) = RAction { implicit stok =>
+  def doeSupportSuggest (page: String, desc: String, details: String) = RAction { implicit stok =>
     import razie.wiki.Sec._
     ROK.k noLayout { implicit stok =>
       views.html.wiki.suggest(supportForm1.fill((
@@ -64,7 +64,7 @@ class Support @Inject() (config:Configuration) extends RazController with Loggin
     }
   }
 
-  def suggested(page: String) = Action { implicit request =>
+  def doeSupportSuggested (page: String) = Action { implicit request =>
     supportForm1.bindFromRequest.fold(
       formWithErrors => BadRequest(views.html.wiki.suggest(formWithErrors, page)(ROK.r)),
       {
@@ -72,7 +72,7 @@ class Support @Inject() (config:Configuration) extends RazController with Loggin
           cout << t
             if (auth.exists(_.isActive) || new Recaptcha(config).verify2(g_response, clientIp)) {
             Emailer.withSession(Website.getRealm(request)) { implicit mailSession =>
-              mailSession.sendSupport("Suggestion", n, e, (auth.map("Username: " + _.userName + " ").mkString) + desc, details, page)
+              mailSession.sendSupport("Suggestion", request.domain, n, e, (auth.map("Username: " + _.userName + " ").mkString) + desc, details, page)
             }
             Msg("Ok - question/suggestion sent. We will try to answer it asap.", HOME)
           } else

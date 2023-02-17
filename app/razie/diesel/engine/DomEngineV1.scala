@@ -26,6 +26,7 @@ import razie.wiki.{Config, Services}
 import scala.Option.option2Iterable
 import scala.collection.mutable.{HashMap, ListBuffer}
 import scala.util.Try
+import services.DieselCluster
 
 /** the actual engine implementation
   *
@@ -37,7 +38,7 @@ class DomEngineV1(
   settings: DomEngineSettings,
   pages: List[DSpec],
   description: String,
-  correlationId: Option[String] = None,
+  correlationId: Option[DomAssetRef] = None,
   id: String = new ObjectId().toString)
     extends DomEngine(
       dom, root, settings, pages, description, correlationId, id
@@ -127,8 +128,7 @@ class DomEngineV1(
         // start new engine/process - evaluate this message as the root of new engine
         // todo should find settings for target service  ?
         val msg = next.evaluateMsgCall
-        val spawnedNodes = ListBuffer(DomAst(msg))
-        var correlationId = this.id
+        var correlationId = DomAssetRef(DomRefs.CAT_DIESEL_ENGINE, this.id)
 
         // for this pattern, add a suspend and set correlationId
         if ("<=>" == arrow) {
@@ -137,18 +137,17 @@ class DomEngineV1(
             })))
 
           // make sure the other engine knows it has to notify me
-          correlationId = correlationId + "." + suspend.id
+          correlationId = DomAssetRef(DomRefs.CAT_DIESEL_ENGINE, this.id, Some(suspend.id))
+          //old: correlationId = correlationId.id + "." + suspend.id
 
           msgs = rep(a, recurse, level, List(suspend))
         }
 
         // create new engine
-        val eng = spawn(spawnedNodes.toList, Some(correlationId))
+        val ref = spawn (msg, Some(correlationId))
 
-        eng.process // start it up in the background
-
-        evAppChildren(a, DomAst(EInfo(
-          s"""Spawn $arrow engine ${eng.href} (${eng.description})""")))//.withPos((m.get.pos)))
+        evAppChildren (a, DomAst(EInfo(s"""Spawn $arrow engine ${ref._1.href} (${ref._2})""")))
+        evAppChildren (a, DomAst(EVal(P.fromTypedValue("dieselRef", ref._1.mkEngRef, WTypes.REF))))
 
         if ("<=>" == arrow) {
           // nothing special here, I'm already about to Suspend (see above) and child will send a pong when done
@@ -1442,12 +1441,13 @@ class DomEngineV1(
         // expand vals
         val nctx = mkMsgContext(Some(in), calcMsg(a, in)(ctx).attrs, ctx, a)
 
+        val parentNode = razie.wiki.model.DCNode (nctx.getRequired("parentNode"))
         val parentId = nctx.getRequired("parentId")
         val targetId = nctx.getRequired("targetId")
         val level = nctx.getRequired("level").toInt
 
         // this passes payload too
-        notifyParent(a, parentId, targetId, level)
+        notifyParent (a, DomAssetRef(DomRefs.CAT_DIESEL_ENGINE, parentId, Option(targetId)).onNode(parentNode), level)
         true
 
       } else if (ea == DieselMsg.ENGINE.DIESEL_VALS) {

@@ -85,7 +85,7 @@ object DieselTarget {
   def from(realm: String, env: String, specs: List[TSpecRef], stories: List[TSpecRef]) =
     new DieselTargetList(realm, env, specs, stories)
 
-  /** all specs in a realm and mixins */
+  /** all specs in a realm and mixins with an ENVIRONMENT */
   def ENV (realm: String, env: String = DEFAULT, tagQuery: TagQuery = TagQuery.EMPTY) =
     new DieselTarget(realm, env, tagQuery) {
       override def specs = {

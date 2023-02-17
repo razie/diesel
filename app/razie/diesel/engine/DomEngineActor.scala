@@ -10,10 +10,16 @@ import java.util.concurrent.TimeUnit
 import razie.audit.Audit
 import razie.clog
 import razie.diesel.dom.RDOM.P
+import razie.diesel.engine.nodes.{EInfo, EMsg}
+import razie.diesel.model.DieselTarget
+import razie.diesel.samples.DomEngineUtils
 import razie.wiki.admin.GlobalData
+import razie.wiki.model.DCNode
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 import scala.util.Try
+import services.{DieselPubSub, TACB}
+import services.TACB.Callback
 
 
 /** ====================== Actor infrastructure =============== */
@@ -90,6 +96,13 @@ case class DEPlay     (override val engineId: String) extends DEMsg
 case class DEPlayThis (override val engineId: String, m:DEMsg) extends DEMsg
 case class DEContinue (override val engineId: String) extends DEMsg
 
+
+/** remoting basys */
+trait DERemoteMsg
+case class DEPlayRemoteMsg (ref:DomAssetRef, msg:DEMsg) extends DERemoteMsg
+case class DERemoteRunEngine (from:DCNode, msg: EMsg, correlationId: Option[DomAssetRef], settings: DomEngineSettings, id:String, desc:String) extends DERemoteMsg
+
+
 /** error handling
   *
   * todo should not be part of normal processing DEMsg
@@ -99,12 +112,14 @@ case class DEError (override val engineId: String, msg: String) extends DEMsg
 /**
   * engine router - routes updates to proper engine actor
   *
-  * todo can i drop refMap and address actors directly?
+  * todo can i drop activeActors and address actors directly?
   */
-class DomEngineRouter () extends Actor {
+class DomEngineRouter () extends Actor with razie.Logging {
 
   override def receive = {
     case DEInit => {
+      DieselPubSub.subscribe(TACB.withActor(self, classOf[DERemoteMsg]))
+
       // todo is this fair?
       // in case other services don't start me - i will start myself
       DieselAppContext.getActorSystem.scheduler.scheduleOnce(
@@ -130,6 +145,32 @@ class DomEngineRouter () extends Actor {
 
     // all DE messages share routing
     case m: DEMsg => route(m.engineId, m)
+
+    // remote message got here
+    case m: DEPlayRemoteMsg => {
+      debug ("DERemoteMsg received: " + m)
+      route (m.msg.engineId, m.msg)
+    }
+
+    case m@DERemoteRunEngine (from, msg, correlationId, settings, id, desc) => {
+      debug ("DERemoteRunEngine received: " + m)
+
+      val target = DieselTarget.ENV(settings.realm.mkString)
+      val engine = DomEngineUtils
+          .createEngine (Option(DomAst(msg)), None, target.specs, target.stories, settings, None, None, None)
+
+      engine.root.prependAllNoEvents(List(
+        DomAst(
+          EInfo(s"From remote node: " + DomAssetRef(DomRefs.CAT_DIESEL_NODE, from.toString).href),
+          AstKinds.DEBUG)
+            .withStatus(DomState.SKIPPED)
+      ))
+
+//      engine.inheritFrom(this)
+//      engine.ctx.root._hostname = ctx.root._hostname
+
+      engine.process // start it up in the background
+    }
 
     // all DES messages share routing
     case m: DEStreamMsg => {

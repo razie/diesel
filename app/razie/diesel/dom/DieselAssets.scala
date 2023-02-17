@@ -57,8 +57,12 @@ object DieselAssets {
       case "DieselEngine" => {
         var h = w.sourceUrl.mkString
         if (h.startsWith("localhost")) h = ""
-        else if (h.length > 0 && !h.startsWith("http://")) h = "http://" + h
-        s"""<a href="$h/diesel/viewAst/${w.name}">${w.name}</a>"""
+        else if (h.nonEmpty && !h.startsWith("http://")) h = "http://" + h
+
+        if(path.isEmpty) // means it's a remote engine
+          s"""<a href="$h/diesel/viewAst/${w.name}">${w.name}</a>"""
+        else
+          s"""<a href="$h/diesel/viewAst/${path}">${path}</a>"""
       }
       case _ => s"""wiki/$path"""
     }

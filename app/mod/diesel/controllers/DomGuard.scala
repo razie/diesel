@@ -93,13 +93,25 @@ class DomGuard extends DomApiBase with Logging {
   // todo this and /engine/view are the same...
   // view an AST from teh collection
   def dieselViewAst(id: String, format: String) = FAUR ("viewAst") { implicit stok =>
-    if (!ObjectId.isValid(id)) {
-      Option(Redirect("/diesel/listAst"))
-    } else DomCollector.findAst(id).map { ast =>
+
+    if (!ObjectId.isValid(id)) { // maybe remote ref
+
+      val ref = DomRefs.parseDomAssetRef(id)
+
+      if(ref.isDefined) {
+        // todo show remote engines
+        val m = Map("remote_engine" -> id)
+        Option(Ok(js.tojsons(m)).as("application/json"))
+      } else {
+        Option(Redirect("/diesel/listAst"))
+      }
+
+    } else DomCollector.findAst(id).map { ast => // simple local id
+
       format match {
         case "json" => {
           val m = ast.engine.toj
-          Ok(js.tojsons(m).toString).as("application/json")
+          Ok(js.tojsons(m)).as("application/json")
         }
         // just the engine html, no wrappers
         case "html"=> Ok(ast.engine.root.toHtmlInPage).as("text/html")

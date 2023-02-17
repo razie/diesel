@@ -66,6 +66,7 @@ case class DieselMsgString(msg: String,
     cout << "======== DIESEL MSG: " + m
     val settings = osettings.getOrElse(new DomEngineSettings())
     settings.realm = Some(target.realm)
+
     // important to use None here, to let the engines use the envList setting otherwise
     settings.env = if (target.env == DieselTarget.DEFAULT) None else Some(target.env)
     settings.tagQuery = if (target.tagQuery.tags.isEmpty) None else Some(target.tagQuery.tags)
