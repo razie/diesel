@@ -116,9 +116,8 @@ object DieselCron extends Logging {
   final val MODE_LOCAL = "local"
   final val MODE_ALL = "all"
   final val MODE_SINGLETON = "singleton"
-  final val MODE_LB = "lb"
-  final val MODE_VALUES = Array(MODE_ALL, MODE_LOCAL, MODE_SINGLETON, MODE_LB)
-//}
+  final val MODE_VALUES = Array(MODE_ALL, MODE_LOCAL, MODE_SINGLETON)
+  // todo mode "lb" is not existing - use "singleton" with a <route.lb> message
 
   /** generic scheduler, using akka schedules
   *

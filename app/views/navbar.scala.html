@@ -18,6 +18,10 @@ creates the navigation bar
   stok.css
 }
 
+@clusterColor() = @{
+  if(stok.request.map(_.cookies).flatMap(_.get("dieselProxyNode")).isEmpty) "lightgray" else "dodgerblue"
+}
+
 @prodReactor(s:String)=@{
   Array("dev", "qa", "sandbox").find(s.startsWith).map(x=> s.replaceFirst(x, "")).getOrElse(s)
 }
@@ -366,7 +370,7 @@ require(['jquery'], function($){
     @if(Services.config.clusterModeBool && stok.au.exists(_.isMod)) {
         <ul class="nav navbar-nav pull-right">
           <li class="dropdown">
-            <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false" style="color: dodgerblue;
+            <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false" style="color: @clusterColor();
               font-weight: bold;
               font-size: small" title="change environment">
               @(Services.cluster.getCurProxyNode(stok.request.map(_.cookies)))<span class="caret"></span>

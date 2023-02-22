@@ -246,7 +246,9 @@ class Realm extends RazController with Logging {
       } else {
         info(s"switchNode to $node / which is local")
         Services.cluster.curProxyNode = None
-        Redirect("/diesel/listAst", SEE_OTHER).discardingCookies(DiscardingCookie("dieselProxyNode"))
+        // do not discard cookie - it may be served by some other node later...
+        Redirect("/diesel/listAst", SEE_OTHER).withCookies(Cookie("dieselProxyNode", node))
+//        Redirect("/diesel/listAst", SEE_OTHER).discardingCookies(DiscardingCookie("dieselProxyNode"))
       }
     }
   }
