@@ -13,7 +13,7 @@ import razie.db._
 @RTable
 case class DieselSettings(uid: Option[String], realm: Option[String], name: String, value: String, _id: ObjectId =
 new ObjectId) {
-  def set() = {
+  def set(): Unit = {
     import razie.db.tx.txn
 
     ROne[DieselSettings]("uid" -> uid, "realm" -> realm, "name" -> name).map { s =>

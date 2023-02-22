@@ -4,6 +4,7 @@ import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import akka.cluster.{Cluster, Member, MemberStatus}
 import com.razie.pub.comms.CommRtException
 import java.net.InetAddress
+import play.api.mvc.Cookies
 import razie.{Logging, Snakk, clog}
 import razie.hosting.{Website, WikiReactors}
 import razie.wiki.model.DCNode
@@ -50,6 +51,10 @@ object DieselCluster {
 
 class DieselCluster extends razie.Logging {
   def system = Services.system
+
+  var curProxyNode:Option[String] = None
+
+  def getCurProxyNode(cookies:Option[Cookies]) = cookies.flatMap(_.get("dieselProxyNode")).map(_.value).getOrElse(clusterNodeSimple)
 
   var _isClusterReady = false
   def isClusterReady = totalNodes > 0
@@ -122,7 +127,7 @@ class DieselCluster extends razie.Logging {
   def clusterNodesJson = clusterNodes map (_.toj)
 
   /** is this the master / singleton node in a cluster? */
-  def isSingletonNode (w: Option[Website] = None) = Config.clusterStyle match {
+  def isSingletonNode (w: Option[Website] = None) : Boolean = Config.clusterStyle match {
     case "kube" => clusterNodeSimple == "diesel-0"
     case "port" if (w.isDefined) => isSingletonNodeApache(w.get)
     case "akka" => masterNodeStatus.getOrElse(false) // updated by akka singleton service
@@ -132,7 +137,7 @@ class DieselCluster extends razie.Logging {
 
 
   /** cheap hot/cold singleton - is it me that Apache deems main? assumes proxy in +H mode */
-  def isSingletonNodeApache (w: Website) = {
+  def isSingletonNodeApache (w: Website) : Boolean = {
     // todo use akka singleton or something
     masterNodeStatus.getOrElse {
       val me = InetAddress.getLocalHost.getHostName
@@ -190,6 +195,9 @@ class DieselCluster extends razie.Logging {
 
 /** cluster member node */
 case class DCMember (hostPort:String, node:String, dnsName:String, ip:String, roles:Set[String], system:String, status:MemberStatus) {
+
+  def port = if(Services.config.clusterStyleKube || hostPort.endsWith("9002")) 9000 else 9001
+  def url = dnsName + ":" + port
 
   def this(x:Member) = this(
     system = x.uniqueAddress.address.system,

@@ -11,6 +11,7 @@ import java.io.PrintWriter
 import java.net.Socket
 import java.util.regex.Pattern
 import org.json.JSONObject
+import play.api.mvc.{Cookies, Session}
 import razie.db.RazSalatContext._
 import razie.diesel.dom.RDOM._
 import razie.diesel.engine.nodes.{EInfo, EWarning}
@@ -28,7 +29,14 @@ import scala.xml.Node
   * @param protocol http, telnet
   * @param method GET, POST, open etc
   */
-case class SnakkCall(protocol: String, method: String, url: String, headers: Map[String, String], content: String, template:Option[DTemplate] = None) {
+case class SnakkCall (
+  protocol: String,
+  method: String,
+  url: String,
+  headers: Map[String, String],
+  content: String,
+  template:Option[DTemplate] = None) {
+
   def toJson = grater[SnakkCall].toPrettyJSON(this)
 
   def toSnakkRequest (id:String="") = SnakkRequest(protocol, method, url, headers, content, id)
@@ -61,6 +69,20 @@ case class SnakkCall(protocol: String, method: String, url: String, headers: Map
   def env = _env
   def withEnv(u: String) = {
     _env = u
+    this
+  }
+
+  private var _cookies: Cookies = null
+  def cookies = _cookies
+  def withCookies(u: Cookies) = {
+    _cookies = u
+    this
+  }
+
+  private var _session: Session = null
+  def session = _session
+  def withSession(u: Session) = {
+    _session = u
     this
   }
 

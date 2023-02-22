@@ -116,7 +116,8 @@ object DieselCron extends Logging {
   final val MODE_LOCAL = "local"
   final val MODE_ALL = "all"
   final val MODE_SINGLETON = "singleton"
-  final val MODE_VALUES = Array(MODE_ALL, MODE_LOCAL, MODE_SINGLETON)
+  final val MODE_LB = "lb"
+  final val MODE_VALUES = Array(MODE_ALL, MODE_LOCAL, MODE_SINGLETON, MODE_LB)
 //}
 
   /** generic scheduler, using akka schedules

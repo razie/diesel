@@ -341,7 +341,7 @@ object DomGuardian extends Logging {
     settings: Option[DomEngineSettings]): (Future[Report], Option[DomEngine], List[Any]) = {
     val res = new ListBuffer[Any]()
 
-    if (!Services.cluster.isSingletonNode (Website.forRealm(realm)))
+    if (! Services.cluster.isSingletonNode (Website.forRealm(realm)))
       throw new IllegalStateException("I'm not the active Guardian")
 
     DomGuardian.synchronized {

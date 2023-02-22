@@ -9,7 +9,7 @@ package controllers
 import com.typesafe.config.ConfigValue
 import model.{DieselSettings, UserWiki, Users}
 import org.bson.types.ObjectId
-import play.api.mvc.Action
+import play.api.mvc.{Action, Cookie, DiscardingCookie}
 import razie.Logging
 import razie.audit.Audit
 import razie.db._
@@ -229,6 +229,24 @@ class Realm extends RazController with Logging {
         val w = Website.forRealm(realm)
         val url = w.map(_.url).getOrElse(s"http://$realm.dieselapps.com")
         Redirect(s"$url/wikie/sso/$conn?token=" + token, SEE_OTHER)
+      }
+    }
+  }
+
+  /** proxy to other node */
+  def switchNode(node:String) = RAction { implicit request =>
+    // on local razie dev
+    if(!(Services.config.isDevMode || Services.config.isRazDevMode) && !request.au.isDefined) {
+      Unauthorized(s"OOPS - unauthorized").withCookies(Cookie("dieselProxyNode", node))
+    } else {
+      if(node != "local" && node != Services.cluster.clusterNodeSimple) {
+        info(s"switchNode to $node")
+        Services.cluster.curProxyNode = Option(node)
+        Redirect("/diesel/listAst", SEE_OTHER).withCookies(Cookie("dieselProxyNode", node))
+      } else {
+        info(s"switchNode to $node / which is local")
+        Services.cluster.curProxyNode = None
+        Redirect("/diesel/listAst", SEE_OTHER).discardingCookies(DiscardingCookie("dieselProxyNode"))
       }
     }
   }

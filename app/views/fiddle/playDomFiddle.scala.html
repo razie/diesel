@@ -530,7 +530,7 @@ var runpill = function(id) {
       hideSpinner();
 
       $('#divOutSpec_'+id).html(data.res);
-      if(Object.keys(data.ca).length > 0) domContentAssist = data.ca;
+      if(data.ca != null && Object.keys(data.ca).length > 0) domContentAssist = data.ca;
       var du = new Date().getTime() - lastStartTime;
       $('#roundtrip').text(du+' ms');
       $('#roundtrip').prop('title', "real time roundtrip response time");

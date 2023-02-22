@@ -408,14 +408,20 @@ class DomGuard extends DomApiBase with Logging {
          |   <a href="$wl/DieselCron">Crons</a>: ${GlobalData.dieselCronsActive} active of ${GlobalData.dieselCronsTotal} since start"""
           .stripMargin
 
+    val cluster = Services.cluster
     val clusterStatus = if(Services.config.clusterModeBool) {
+      val me = s"""<a href="$wb/DieselNode/${cluster.clusterNodeSimple}">${cluster.clusterNodeSimple}</a>"""
       val sngl =
-        if (Services.cluster.singleton.currentSingletonNode != "?")
-          s"""<a href="$wl/DieselNode/${Services.cluster.singleton.currentSingletonNode}">${Services.cluster.singleton.currentSingletonNode}</a>"""
+        if (cluster.singleton.currentSingletonNode != "?")
+          s"""<a href="$wb/DieselNode/${cluster.singleton.currentSingletonNode}">${cluster.singleton.currentSingletonNode}</a>"""
 
-        else s"""<span style="color:red">${Services.cluster.singleton.currentSingletonNode}</span>"""
+        else s"""<span style="color:red">${cluster.singleton.currentSingletonNode}</span>"""
 
-      s"""<br>Cluster: <a href="$wb/DieselNode">Nodes</a>: ${Services.cluster.totalNodesUp}/${Services.cluster.totalNodes} /
+      val clusterColor = if(cluster.totalNodesUp >= 1) "darkgreen" else "red"
+
+      s"""<br>Cluster: I am $me |
+         |<a href="$wl/DieselNode">Nodes</a>:
+         |<span style="color:$clusterColor">${cluster.totalNodesUp}/${cluster.totalNodes}</span> |
          | Singleton: $sngl"""
           .stripMargin
     } else ""

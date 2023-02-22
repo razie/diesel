@@ -25,7 +25,7 @@ import scala.concurrent.duration._
   * curl -X GET -H "$ELASTIC_AUTH" -H 'Content-Type: application/json' -H "kbn-xsrf: true" 'http://elastic.107.9200.snakkproxy.dieselapps.com/diagresult/_search'
 */
 @Singleton
-class SnakkCallServer extends RazController with Logging {
+class SnakkProxyControl extends RazController with Logging {
 
   lazy val TOUT = 20.second
 
@@ -58,10 +58,13 @@ class SnakkCallServer extends RazController with Logging {
   }
 
   /** client creating a request to proxy something */
-  def proxy(env:String, p: String, host:String, port:String, path:String) = RAction.async { implicit request =>
+  def proxy (env:String, p: String, host:String, port:String, path:String) = RAction.async { implicit request =>
     val sport = if(p == "https" && port == "443" || p == "http" && port == "80") "" else s":$port"
     val spath = if(path.startsWith("/")) path else "/"+path
-    val sc = SnakkCall(p, "GET", s"$host$sport$spath", request.headers.toSimpleMap, "").withEnv(env)
+    val sc = SnakkCall(p, request.method, s"$host$sport$spath", request.headers.toSimpleMap, "")
+        .withEnv(env)
+        .withCookies(request.ireq.cookies)
+        .withSession(request.ireq.session)
 
     log("SNAKKPROXY Proxying - " + sc.toJson.replaceAllLiterally("\n", " "))
 
@@ -76,6 +79,7 @@ class SnakkCallServer extends RazController with Logging {
 
     Future.firstCompletedOf(Seq(result, timeout))(ec)
   }
+
 
 }
 
