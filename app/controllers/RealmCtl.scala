@@ -236,19 +236,17 @@ class Realm extends RazController with Logging {
   /** proxy to other node */
   def switchNode(node:String) = RAction { implicit request =>
     // on local razie dev
+      info(s"switchNode to $node")
     if(!(Services.config.isDevMode || Services.config.isRazDevMode) && !request.au.isDefined) {
       Unauthorized(s"OOPS - unauthorized").withCookies(Cookie("dieselProxyNode", node))
     } else {
       if(node != "local" && node != Services.cluster.clusterNodeSimple) {
         info(s"switchNode to $node")
-        Services.cluster.curProxyNode = Option(node)
         Redirect("/diesel/listAst", SEE_OTHER).withCookies(Cookie("dieselProxyNode", node))
       } else {
         info(s"switchNode to $node / which is local")
-        Services.cluster.curProxyNode = None
         // do not discard cookie - it may be served by some other node later...
         Redirect("/diesel/listAst", SEE_OTHER).withCookies(Cookie("dieselProxyNode", node))
-//        Redirect("/diesel/listAst", SEE_OTHER).discardingCookies(DiscardingCookie("dieselProxyNode"))
       }
     }
   }

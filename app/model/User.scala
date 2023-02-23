@@ -251,9 +251,12 @@ case class User(
   def create(p: Profile) {
     var res = Users.createUser(this.copy(crDtm = Some(DateTime.now())))
 
+    razie.Log.info(s"Created user, res=$res")
+
     p.createdDtm = DateTime.now()
     p.lastUpdatedDtm = DateTime.now()
     res = Users.createProfile(p)
+    razie.Log.info(s"Created user profile, res=$res")
 
     UserEvent(_id, "CREATE").create
   }

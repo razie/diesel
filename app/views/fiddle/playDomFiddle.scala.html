@@ -547,8 +547,10 @@ var runpill = function(id) {
 
       console.log("  updateMarkers spec");
 
-      console.log("New timestamp: " + data.info.timeStamp);
-      clientSpecTimeStamp = data.info.timeStamp;
+      if(data.info != null) {
+        console.log("New timestamp: " + data.info.timeStamp);
+        clientSpecTimeStamp = data.info.timeStamp;
+      }
 
       // also trigger inst update
       var compileOnly = typeof showingNavigatedEngine === 'undefined' ? false : showingNavigatedEngine;

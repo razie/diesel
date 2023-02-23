@@ -52,8 +52,6 @@ object DieselCluster {
 class DieselCluster extends razie.Logging {
   def system = Services.system
 
-  var curProxyNode:Option[String] = None
-
   def getCurProxyNode(cookies:Option[Cookies]) = cookies.flatMap(_.get("dieselProxyNode")).map(_.value).getOrElse(clusterNodeSimple)
 
   var _isClusterReady = false
