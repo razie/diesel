@@ -11,12 +11,9 @@ import com.mongodb.casbah.Imports._
 import com.mongodb.util.JSON
 import org.bson.types.ObjectId
 import org.joda.time.DateTime
-import razie.audit.Audit
 import razie.db.RazSalatContext._
 import razie.db._
 import razie.db.tx.txn
-import razie.tconf.DUsers
-import razie.wiki.Sec._
 import razie.wiki.{Enc, Services}
 import razie.wiki.model._
 import scala.concurrent.duration.DurationInt
@@ -76,7 +73,7 @@ case class UserQuota(
 }
 
 /** cqrs decouplig */
-case class EventNeedsQuota(s1:String, s2:String, node:String="") extends WikiEventBase
+case class EventNeedsQuota(s1:String, s2:String, override val node:String="") extends WikiEventBase
 
 /**
  * a parent/child relationship with additional permissions.
@@ -91,12 +88,12 @@ case class ParentChild(
   notifys: String = "Everything",
   _id: ObjectId = new ObjectId()) extends REntity[ParentChild] {
 
-  def update(p: ParentChild) = {
+  def update(p: ParentChild): Unit = {
     RUpdate(
       Map("parentId" -> parentId, "childId" -> childId),
       p)
   }
-  def delete = RDelete[ParentChild]("parentId" -> parentId, "childId" -> childId)
+  def delete: Unit = RDelete[ParentChild]("parentId" -> parentId, "childId" -> childId)
 }
 
 object UW {
@@ -117,7 +114,7 @@ case class UserWiki(
     notif:String = UW.EMAIL_EACH,
     _id: ObjectId = new ObjectId()) extends REntity[UserWiki] {
 
-  def updateRole(newRole: String) = {
+  def updateRole(newRole: String): Unit = {
       this.copy(role=newRole).update
   }
 
@@ -138,7 +135,7 @@ case class UserEvent(
   what: String,
   when: DateTime = DateTime.now()) {
 
-  def create = RCreate(this)
+  def create: Unit = RCreate(this)
 }
 
 import play.api.cache._
@@ -215,10 +212,10 @@ object Users {
 
   def findProfileByUserId(userId: String): Option[Profile] = persist.findProfileByUserId(userId)
 
-  def createProfile(p:Profile) = persist.createProfile(p)
-  def updateProfile(p:Profile) = persist.updateProfile(p)
-  def updateUser(oldu:User, newu:User) = persist.updateUser(oldu, newu)
-  def createUser(newu:User) = persist.createUser(newu)
+  def createProfile(p:Profile): Unit = persist.createProfile(p)
+  def updateProfile(p:Profile): Unit = persist.updateProfile(p)
+  def updateUser(oldu:User, newu:User): Unit = persist.updateUser(oldu, newu)
+  def createUser(newu:User): Unit = persist.createUser(newu)
 
   import play.api.Play.current
 
@@ -250,7 +247,7 @@ object Users {
 
   def findUserLinksTo(u: UWID) = RMany[UserWiki]("uwid.cat" -> u.cat, "uwid.id" -> u.id)
 
-  def create(r: Task) = RCreate(r)
+  def create(r: Task): Unit = RCreate(r)
 
   def findFollowerByEmail(email: String) = ROne[Follower]("email" -> email)
   def findFollowerLinksTo(u: UWID) = RMany[FollowerWiki]("uwid.cat" -> u.cat, "uwid.id" -> u.id)

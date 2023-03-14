@@ -7,27 +7,20 @@
 package razie.wiki.util
 
 import com.mongodb.DBObject
-import com.mongodb.casbah.Imports.{DBObject, _}
-import com.mongodb.util.JSON
-import salat._
-import controllers.PU
+import com.mongodb.casbah.Imports._
+import model.{Profile, User}
 import org.bson.types.ObjectId
-import org.joda.time.DateTime
-import razie.audit.Audit
 import razie.db.RazSalatContext._
 import razie.db._
-import razie.db.tx.txn
 import razie.diesel.Diesel
-import razie.diesel.dom.RDOM.{P, PValue}
 import razie.diesel.dom.RDOM.P.asString
+import razie.diesel.dom.RDOM.{P, PValue}
 import razie.diesel.engine.nodes.EMsg
 import razie.diesel.model.{DieselMsg, DieselTarget}
 import razie.diesel.samples.DomEngineUtils
-import razie.tconf.{DUsers, FullSpecRef, TagQuery}
-import razie.wiki.Sec._
-import razie.wiki.{Enc, Services}
-import razie.wiki.model._
-import model.{Profile, User}
+import razie.tconf.TagQuery
+import razie.wiki.Enc
+import salat._
 
 /** user persistance */
 class UsersPersistDiesel extends model.UsersPersist {
@@ -38,7 +31,7 @@ class UsersPersistDiesel extends model.UsersPersist {
   var dfltTarget = DieselTarget.ENV(dfltRealm, "local", TQ)
 
   /** for now these user persists are static - they need config from a realm */
-  def setDefaultRealm(realm:String) = {
+  override def setDefaultRealm(realm:String): Unit = {
     dfltRealm = realm
     dfltTarget = DieselTarget.ENV(dfltRealm, "local", TQ)
   }
@@ -118,7 +111,7 @@ class UsersPersistDiesel extends model.UsersPersist {
     * @param uncEmail unencoded email
     * @return user if found
     */
-  def findUserNoCase(uncEmail: String): Option[User] = {
+  override def findUserNoCase(uncEmail: String): Option[User] = {
     resolveDataOpt(msg(
       "findUserNoCase",
       List(
@@ -132,7 +125,7 @@ class UsersPersistDiesel extends model.UsersPersist {
   }
 
   /** find user by lowercase email - at loging */
-  def findUsersForRealm(realm: String): scala.Iterator[User] = {
+  override def findUsersForRealm(realm: String): scala.Iterator[User] = {
     resolveDataList(msg(
       "findUsersForRealm",
       List(
@@ -152,7 +145,7 @@ class UsersPersistDiesel extends model.UsersPersist {
   }
 
   /** find by encrypted email */
-  def findUserByEmailEnc(emailEnc: String): Option[User] =
+  override def findUserByEmailEnc(emailEnc: String): Option[User] =
     resolveDataOpt(msg(
       "findUserByEmailEnc",
       List(
@@ -160,14 +153,14 @@ class UsersPersistDiesel extends model.UsersPersist {
       ))).map(toUserM)
 
   /** find by encrypted email */
-  def findUserByApiKey(key: String): Option[User] =
+  override def findUserByApiKey(key: String): Option[User] =
     resolveDataOpt(msg(
       "findUserByApiKey",
       List(
         P.of("apiKey", key)
       ))).map(toUserM)
 
-  def findUserById(id: ObjectId): Option[User] =
+  override def findUserById(id: ObjectId): Option[User] =
     resolveDataOpt(msg(
       "findUserById",
       List(
@@ -175,7 +168,7 @@ class UsersPersistDiesel extends model.UsersPersist {
       ))).map(toUserM)
 
 
-  def findUserByUsername(uname: String): Option[User] =
+  override def findUserByUsername(uname: String): Option[User] =
     resolveDataOpt(msg(
       "findUserByUsername",
       List(
@@ -184,7 +177,7 @@ class UsersPersistDiesel extends model.UsersPersist {
 
 
   /** display name of user with id, for comments etc */
-  def nameOf(uid: ObjectId): String = {
+  override def nameOf(uid: ObjectId): String = {
     resolveStr(msg(
       "nameOf",
       List(
@@ -194,7 +187,7 @@ class UsersPersistDiesel extends model.UsersPersist {
 //    val n = ROne.raw[User]("_id" -> uid).fold("???")(_.apply("userName").toString)
   }
 
-  def findProfileByUserId(userId: String): Option[Profile] = {
+  override def findProfileByUserId(userId: String): Option[Profile] = {
     resolveDataOpt(msg(
       "findProfileByUserId",
       List(
@@ -202,7 +195,7 @@ class UsersPersistDiesel extends model.UsersPersist {
       ))).map(toProfileM)
   }
 
-  def createProfile(p:Profile) = {
+  override def createProfile(p:Profile): Unit = {
     resolveStr(msg(
       "createProfile",
       List(
@@ -210,7 +203,7 @@ class UsersPersistDiesel extends model.UsersPersist {
       )))
   }
 
-  def updateProfile(p:Profile) = {
+  override def updateProfile(p:Profile): Unit = {
     resolveStr(msg(
       "updateProfile",
       List(
@@ -218,7 +211,7 @@ class UsersPersistDiesel extends model.UsersPersist {
       )))
   }
 
-  def updateUser(oldu:User, newu:User) = {
+  override def updateUser(oldu:User, newu:User): Unit = {
     resolveStr(msg(
       "updateUser",
       List(
@@ -227,7 +220,7 @@ class UsersPersistDiesel extends model.UsersPersist {
       )))
   }//RazMongo("User").update(key, grater[User].asDBObject(Audit.update(newu.copy(updDtm = Some(DateTime.now())))))
 
-  def createUser(newu:User) = {
+  override def createUser(newu:User): Unit = {
     val n = newu.copy(emailLower = Some(Enc(newu.emailDec.toLowerCase)))
     resolveStr(msg(
       "createUser",

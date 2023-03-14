@@ -10,7 +10,7 @@ import com.google.inject.Singleton
 import com.mongodb.casbah.Imports._
 import controllers.{RazController, RazRequest, VErrors}
 import mod.diesel.model._
-import model.{MiniScripster, Tags}
+import model.{Tags}
 import play.api.mvc.{Action, AnyContent, Request}
 import razie.Logging
 import razie.audit.Audit

@@ -21,7 +21,7 @@ trait WikiEventBase {
 }
 
 /** an event that the configuration changed */
-case class WikiConfigChanged(node: String = "", @transient config: WikiConfig) extends WikiEventBase
+case class WikiConfigChanged(override val node: String = "", @transient config: WikiConfig) extends WikiEventBase
 
 /** a generic event refering to an entity
   *
@@ -40,7 +40,7 @@ case class WikiEvent[A] (
   @Ignore entity    :Option[A]=None,
   @Ignore oldEntity :Option[A]=None,
   oldId             :Option[String]=None,
-  node              :String = ""
+  override val node :String = ""
   ) extends WikiEventBase
 
 /** some constants */
@@ -69,7 +69,7 @@ object WikiObservers {
   // todo mt-safe this is not thread safe
   val notifieds = new ListBuffer[WikiObserver]()
 
-  private def add(n: WikiObserver) = notifieds append n
+  private def add(n: WikiObserver): Unit = notifieds append n
 
   /** add an event handler
     *
@@ -81,7 +81,7 @@ object WikiObservers {
     *
     * Your handler needs to be prepared to handle the events on separte threads.
     */
-  def mini(upd: PartialFunction[WikiEventBase, Unit]) = {
+  def mini(upd: PartialFunction[WikiEventBase, Unit]): Unit = {
     add(new WikiObserver {
       override def after(event: WikiEventBase)(implicit errCollector: VErrors = IgnoreErrors): Unit = {
         if (upd.isDefinedAt(event)) upd(event)

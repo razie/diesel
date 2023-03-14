@@ -192,11 +192,11 @@ case class User(
 
   /** pages of category that I linked to */
   def pages(realm: String, cat: String*) = wikis.filter { w =>
-    (cat == "*" || cat.contains(w.uwid.cat)) &&
+    (cat.contains("*") || cat.contains(w.uwid.cat)) &&
         (realm == "*" || realm == w.uwid.getRealm || WikiReactors(realm).supers.contains(w.uwid.getRealm))
   }
 
-  def myPages(realm: String, cat: String) = pages(realm, cat)
+  override def myPages(realm: String, cat: String) = pages(realm, cat)
 
   // add owned pages for backwards issue with Razie's old reactors
   lazy val memberReactors = (realms.toList ::: ownedPages("rk", "Reactor").map(_.name).toList).distinct
@@ -230,25 +230,25 @@ case class User(
       WID(cat, o.getAs[String]("name").get).r(o.getAs[String]("realm").get)
     }
 
-  def auditCreated(realm: String) {
+  def auditCreated(realm: String): Unit = {
     Log.audit("USER_CREATED " + email + " realm: " + realm)
   }
 
-  def auditLogout(realm: String) {
+  def auditLogout(realm: String): Unit = {
     Log.audit("USER_LOGOUT " + email + " realm: " + realm)
   }
 
-  def auditLogin(realm: String) {
+  def auditLogin(realm: String): Unit = {
     Log.audit("USER_LOGIN " + email + " realm: " + realm)
   }
 
-  def auditLoginFailed(realm: String, count: Int = -1) {
+  def auditLoginFailed(realm: String, count: Int = -1): Unit = {
     Log.audit(s"USER_LOGIN_FAILED $email - realm: $realm - count: $count")
   }
 
   lazy val key = Map("email" -> email)
 
-  def create(p: Profile) {
+  def create(p: Profile): Unit = {
     var res = Users.createUser(this.copy(crDtm = Some(DateTime.now())))
 
     razie.Log.info(s"Created user, res=$res")
@@ -261,7 +261,7 @@ case class User(
     UserEvent(_id, "CREATE").create
   }
 
-  def update(newu: User) = {
+  def update(newu: User): Unit = {
     RazMongo("UserOld") += grater[User].asDBObject(Audit.create(this))
     Users.updateUser(this, newu)
     UserEvent(_id, "UPDATE").create
@@ -402,7 +402,7 @@ case class Profile(
 
   _id: ObjectId = new ObjectId()) {
 
-  def update(p: Profile) =  Users.updateProfile(p)
+  def update(p: Profile): Unit =  Users.updateProfile(p)
 
   def addRel(t: (String, String)) = this.copy(relationships = relationships ++ Map(t))
   def addTag(t: String) = this.copy(tags = tags + t)
