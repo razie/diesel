@@ -1,14 +1,10 @@
 package mod.diesel.model
 
-import mod.diesel.controllers.SFiddles
 import model._
 import play.api.mvc.Request
 import model.MiniScripster
-import razie.audit.Audit
-import razie.audit.Audit.getInstance
 import razie.diesel.dom.RDOM.{C, P}
 import razie.diesel.dom.{WTypes, WikiDomain}
-import razie.wiki.admin.GlobalData
 import razie.wiki.model.{UWID, WikiEntry, WikiSection, Wikis}
 
 /** a reactor wiki model, from the wiki */

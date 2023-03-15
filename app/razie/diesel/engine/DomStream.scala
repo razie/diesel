@@ -7,11 +7,12 @@ package razie.diesel.engine
 
 //import akka.stream.scaladsl.Source
 //import akka.util.ByteString
+import akka.actor.ActorRef
 import org.bson.types.ObjectId
 import razie.Logging
 import razie.diesel.dom.DieselAssets
 import razie.diesel.dom.RDOM.P
-import razie.diesel.engine.nodes.{EError, EMsg}
+import razie.diesel.engine.nodes.{EError, EInfo, EMsg, EWarning}
 import razie.diesel.expr.ScopeECtx
 import razie.diesel.model.DieselMsg
 import razie.hosting.Website
@@ -51,6 +52,7 @@ abstract class DomStream (
   val batch: Boolean = false,
   val batchSize: Int,
   val batchWaitMillis:Int,
+  val timeoutMillis:Int,
   val context: P = P.of("context", "{}"),
   val correlationId: Option[String] = None,
   val maxSize: Int = DomStream.getMaxSize,
@@ -72,6 +74,14 @@ abstract class DomStream (
     def consumeData      (dataAsList:List[Any]): Unit
     def error            (): Unit
     def complete         (): Unit
+    def addInfo          (msg:String, details:String): Unit
+  }
+
+  /** lifecycle method called from actor */
+  def actorStarted (actor:ActorRef): Unit = {
+    if (timeoutMillis > 0) {
+      actor ! DEStreamTimeoutReset(name)
+    }
   }
 
   /** an engine is client - so consumption becomes messages created in context of that engine */
@@ -142,10 +152,17 @@ abstract class DomStream (
 
       setCtx(ast)
 
-          DieselAppContext ! DEAddChildren(engine, node, recurse = true, -1, List(ast),
+      DieselAppContext ! DEAddChildren(engine, node, recurse = true, -1, List(ast),
             Option((a, e) => a.withPrereq(getDepy)))
-          DieselAppContext ! DEComplete(engine, node, recurse = true, -1, Nil)
+      DieselAppContext ! DEComplete(engine, node, recurse = true, -1, Nil)
+    }
 
+    override def addInfo(msg:String, details:String): Unit = {
+      val ast = DomAst(EWarning(msg, details))
+      setCtx(ast)
+
+      DieselAppContext ! DEAddChildren(engine, node, recurse = true, -1, List(ast),
+        Option((a, e) => a.withPrereq(getDepy)))
     }
 
     override def complete(): Unit = {
@@ -158,10 +175,9 @@ abstract class DomStream (
 
       setCtx(ast)
 
-        DieselAppContext ! DEAddChildren(engine, node, recurse = true, -1, List(ast),
+      DieselAppContext ! DEAddChildren(engine, node, recurse = true, -1, List(ast),
           Option((a, e) => a.withPrereq(getDepy)))
-        DieselAppContext ! DEComplete(engine, node, recurse = true, -1, Nil)
-
+      DieselAppContext ! DEComplete(engine, node, recurse = true, -1, Nil)
     }
 
     /** todo merge with the other - this is experimental */
@@ -213,6 +229,7 @@ abstract class DomStream (
   var totalPut = 0L
   var totalConsumed = 0L
 
+  var emptySince = System.currentTimeMillis()
   var lastBatchWaitingAt = 0L
   var lastBatchConsumedAt = 0L
 
@@ -251,8 +268,10 @@ abstract class DomStream (
     * @param justConsume - no put, just trigger consumers, used when clearing the buffer
     * @param forceBatch - no put, just consume and force the batch even if smaller (batch timer kicked in)
     */
-  def put(l: List[Any], justConsume: Boolean = false, forceBatch:Boolean = false) = {
+  def put(l: List[Any], justConsume: Boolean = false, forceBatch:Boolean = false): Unit = {
     trace(s"($name) DStream.put: " + l.mkString(","))
+
+    val hadValues = values.nonEmpty || l.nonEmpty // let's see if we had some values either pending or coming in
 
     totalPut += l.size
 
@@ -277,7 +296,7 @@ abstract class DomStream (
 
     // todo I send right away - should batch up with a timeout
 
-    if (isConsumed) sink.map { tid =>
+    if (isConsumed) sink.foreach { tid =>
 
       if (batch && batchSize > 0 && values.size < batchSize && !forceBatch && batchWaitMillis > 0) { // batched but not enough items...
         // set batch timer
@@ -324,11 +343,23 @@ abstract class DomStream (
     } else {
       // no consumers - accumulate to a point
     }
+
+   // consumption actually occurs here in put() so this is where we check
+    // had values and has no more means it's now empty
+    if (hadValues && values.isEmpty && timeoutMillis > 0) {
+      emptySince = System.currentTimeMillis()
+      DieselAppContext ! DEStreamTimeoutReset(name)
+    }
   }
 
   /** force batch - the waiting is over */
   def forceBatchNow(): Unit = {
     put(Nil, justConsume = true, forceBatch = true)
+  }
+
+  /** complete the stream: send onDone and DEComplete the target consume node */
+  def timeoutCheckSaysClose(): Boolean = {
+    timeoutMillis > 0 && (System.currentTimeMillis() - timeoutMillis) > emptySince && values.isEmpty
   }
 
   /** complete the stream: send onDone and DEComplete the target consume node */
@@ -341,13 +372,21 @@ abstract class DomStream (
   }
 
   // todo don't remember why this is needed...
-  val FORCE_DUPLO = Website.getRealmProp(owner.settings.realm.mkString, "diesel.streams.forceDuplo", Some("true")).mkString.toBoolean
+  val FORCE_CLOSE_AGAIN = Website.getRealmProp(owner.settings.realm.mkString, "diesel.streams.forceDuplo", Some("true")).mkString.toBoolean
 
   var sentComplete = false // to send just one
 
+  def addInfo (msg:String, details:String): Unit = {
+    sink.foreach(_.addInfo(msg, details))
+  }
+
   /** like done but stops consumption as well and drops what's in the stream right now... */
-  def abort(): Unit = {
-    if(FORCE_DUPLO || !isDone) {
+  def abort (msg:String): Unit = {
+    info("ABORTING stream: " + msg)
+    if(!isDone) {
+      addInfo("STREAM ABORTED: " + msg, "")
+    }
+    if (FORCE_CLOSE_AGAIN || !isDone) {
       isDone = true
       complete()
     } else {
@@ -356,8 +395,8 @@ abstract class DomStream (
   }
 
   /** stream item production is done - complete consumption of what's in buffer and close it */
-  def done(justConsume: Boolean = false): Unit = {
-    if(FORCE_DUPLO || !isDone) {
+  def done (justConsume: Boolean = false): Unit = {
+    if (FORCE_CLOSE_AGAIN || !isDone) {
       if (!justConsume) {
         isDone = true
         if (isConsumed) {
@@ -422,7 +461,8 @@ class DomStreamV1(
   batch: Boolean = false,
   batchSize: Int = -1,
   batchWaitMillis:Int = 0,
+  timeoutMillis:Int = 0,
   context: P = P.of("context", "{}"),
-  correlationId: Option[String] = None) extends DomStream(owner, name, description, batch, batchSize, batchWaitMillis, context,
+  correlationId: Option[String] = None) extends DomStream(owner, name, description, batch, batchSize, batchWaitMillis, timeoutMillis, context,
   correlationId) {
 }

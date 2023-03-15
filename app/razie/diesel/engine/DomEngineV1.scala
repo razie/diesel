@@ -1659,8 +1659,9 @@ class DomEngineV1(
           if (r.isEmpty) evAppChildren(a, DomAst(EError("realm not defined...???"), AstKinds.ERROR))
           else {
             r.foreach(Website.putRealmProps(_, p.name, p.calculatedP))
-            r.flatMap(Website.forRealm).map(_.put(p.name, p.calculatedValue))
-            evAppChildren(a, DomAst(EInfo(s"updated ${p.name}..."), AstKinds.VERBOSE))
+            val temp = p.calculatedValue
+            r.flatMap(Website.forRealm).map(_.put(p.name, temp))
+            evAppChildren(a, DomAst(EInfo(s"updated ${p.name} to ${temp.toString.take(200)}"), AstKinds.VERBOSE))
           }
         }
         true

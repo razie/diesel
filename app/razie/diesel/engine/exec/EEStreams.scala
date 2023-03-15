@@ -41,6 +41,7 @@ class EEStreams extends EExecutor(DieselMsg.STREAMS.PREFIX) {
         val batch = ctx.getp("batch").map(_.calculatedTypedValue.asBoolean).getOrElse(false)
         val batchSize = ctx.getp("batchSize").map(_.calculatedTypedValue.asLong.toInt).getOrElse(100)
         val batchWait = ctx.getp("batchWaitMillis").map(_.calculatedTypedValue.asLong.toInt).getOrElse(0)
+        val timeout = ctx.getp("timeoutMillis").map(_.calculatedTypedValue.asLong.toInt).getOrElse(-1)
 
         val others = in.attrs
            // no need to remove these...
@@ -64,7 +65,7 @@ class EEStreams extends EExecutor(DieselMsg.STREAMS.PREFIX) {
         }.toList
 
         val s = DieselAppContext.mkStream(
-          new DomStreamV1(ctx.root.engine.get, name, name, batch, batchSize, batchWait, context))
+          new DomStreamV1(ctx.root.engine.get, name, name, batch, batchSize, batchWait, timeout, context))
         ctx.root.engine.get.evAppStream(s)
 
         warn ::: EInfo(s"stream - creating $name") ::
@@ -140,7 +141,7 @@ class EEStreams extends EExecutor(DieselMsg.STREAMS.PREFIX) {
 
       case "consume" => {
         val name = ctx.getRequired("stream")
-        val timeout = ctx.get("timeout")
+        val timeout = ctx.get("timeout").orElse(ctx.get("timeoutMillis"))
 
         if (DieselAppContext.activeStreamsByName.get(name).isDefined) {
           new EEngSuspend("stream.consume", "", Option((e, a, l) => {

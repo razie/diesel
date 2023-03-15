@@ -5,21 +5,20 @@
  */
 package razie.diesel.engine
 
-import akka.actor.{Actor, ActorRef, Cancellable, Stash}
-import play.libs.Akka
+import akka.actor.{Actor, Stash, Timers}
+import java.util.concurrent.TimeUnit
 import razie.diesel.dom.RDOM.P
 import razie.wiki.admin.GlobalData
-import scala.concurrent.ExecutionContext
-import scala.concurrent.duration.{Duration, FiniteDuration}
+import scala.concurrent.duration.Duration
 import scala.util.Try
 
 /** each stream has its own actor
   *
   * it will serialize status udpates and execution
   *
-  * an engine will parallelize as much as async is built-into their activities
+  * an engine will parallelize as much as async is built-into their activities, not at the stream level
   */
-class DomStreamActor(stream: DomStream) extends Actor with Stash {
+class DomStreamActor(stream: DomStream) extends Actor with Stash with Timers {
 
   def checkInit: Boolean = {
     if (!DieselAppContext.serviceStarted) {
@@ -30,12 +29,13 @@ class DomStreamActor(stream: DomStream) extends Actor with Stash {
       true
   }
 
-  def receive = {
+  override def receive = {
 
     case DEInit => {
       //save refs for active engines
       // started, take all stashed messages
       unstashAll()
+      stream.actorStarted(self)
     }
 
     case req@DEStreamPut(name, l) if checkInit =>
@@ -79,21 +79,17 @@ class DomStreamActor(stream: DomStream) extends Actor with Stash {
           // start timer
           stream.lastBatchWaitingAt = System.currentTimeMillis()
 
-          import scala.concurrent.ExecutionContext.Implicits.global
+          timers.startSingleTimer(
+            "DEStreamWaitingOver",      // Name for the timer
+            DEStreamWaitingOver(stream.name),
+            Duration.fromNanos(millis*1000)
+          )
 
-//            final def scheduleOnce(
-//              delay: FiniteDuration,
-//              receiver: ActorRef,
-//              message: Any)(implicit executor: ExecutionContext,
-//                            sender: ActorRef = Actor.noSender): Cancellable =
-//              scheduleOnce(delay, new Runnable {
-//                override def run = receiver ! message
-//              })
-
-          context.system.scheduler.scheduleOnce(
-            Duration.fromNanos(millis*1000),
-            self,
-            DEStreamWaitingOver(name))
+//          import scala.concurrent.ExecutionContext.Implicits.global
+//          context.system.scheduler.scheduleOnce(
+//            Duration.fromNanos(millis*1000),
+//            self,
+//            DEStreamWaitingOver(name))
         }
       }
     }
@@ -101,6 +97,29 @@ class DomStreamActor(stream: DomStream) extends Actor with Stash {
     case req@DEStreamWaitingOver(name) => {
       withMyStream(req) {
         stream.forceBatchNow()
+      }
+    }
+
+    case req@DEStreamTimeoutReset(name) => {
+      withMyStream(req) {
+        if(stream.timeoutMillis > 0) {
+          timers.startSingleTimer(
+            "TimeoutCheck",      // Name for the timer
+            DEStreamTimeoutCheck(stream.name),
+            Duration.create(stream.timeoutMillis, TimeUnit.MILLISECONDS)
+          )
+        } else {
+          // todo log error
+          razie.Log.error("StreamTimeoutReset but no timeoutMillis set !")
+        }
+      }
+    }
+
+    case req@DEStreamTimeoutCheck(name) => {
+      withMyStream(req) {
+        if(stream.timeoutCheckSaysClose()) {
+          stream.abort("TIMEOUT - it's been empty for " + (System.currentTimeMillis() - stream.emptySince) + " ms")
+        }
       }
     }
   }
@@ -114,7 +133,7 @@ class DomStreamActor(stream: DomStream) extends Actor with Stash {
     else DieselAppContext.router.map(_ ! req)
   }
 
-  override def postStop() = {
+  override def postStop(): Unit = {
     // assert it's stopped
     // DieselAppContext.activeActors.remove(eng.id)
   }
@@ -130,19 +149,22 @@ trait DEStreamMsg {
 }
 
 /** put in stream */
-case class DEStreamPut(streamName: String, l: List[Any]) extends DEStreamMsg
+case class DEStreamPut(override val streamName: String, l: List[Any]) extends DEStreamMsg
 
 /** consume from stream */
-case class DEStreamConsume(streamName: String) extends DEStreamMsg
+case class DEStreamConsume(override val streamName: String) extends DEStreamMsg
 
 /** stream is done */
-case class DEStreamDone(streamName: String) extends DEStreamMsg
+case class DEStreamDone(override val streamName: String) extends DEStreamMsg
 
-case class DEStreamClean(streamName: String) extends DEStreamMsg
+case class DEStreamClean(override val streamName: String) extends DEStreamMsg
 
-case class DEStreamError(streamName: String, l: List[P]) extends DEStreamMsg
+case class DEStreamError(override val streamName: String, l: List[P]) extends DEStreamMsg
 
 /** start or restart wait timer */
-case class DEStreamWaitMaybe(streamName: String, timeoutMillis:Long) extends DEStreamMsg
-case class DEStreamWaitingOver(streamName: String) extends DEStreamMsg
+case class DEStreamWaitMaybe(override val streamName: String, timeoutMillis:Long) extends DEStreamMsg
+case class DEStreamWaitingOver(override val streamName: String) extends DEStreamMsg
+
+case class DEStreamTimeoutReset (override val streamName: String) extends DEStreamMsg
+case class DEStreamTimeoutCheck (override val streamName: String) extends DEStreamMsg
 

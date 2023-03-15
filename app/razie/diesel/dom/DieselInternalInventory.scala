@@ -133,7 +133,7 @@ class DieselInternalInventory(
 
     DieselAppContext.activeStreamsByName.get(k).map { t =>
 
-      t.abort()
+      t.abort("CANCELLED - from inventory")
 
       new DieselAsset(
         ref,
