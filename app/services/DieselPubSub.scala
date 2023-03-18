@@ -21,7 +21,7 @@ import scala.concurrent.duration.{Duration, FiniteDuration}
   * send the pubSub a BCast(msg) to have the msg distributed in cluster
   */
 object DieselPubSub extends razie.Logging with EventProcessor with TACB.Notifier {
-  lazy val pubSub = Services.system.actorOf(Props[WikiPubSub], name = "WikiPubSub")
+  lazy val pubSub = Services.system.actorOf(Props[WikiPubSubActor], name = "WikiPubSub")
 
   /** send a message to the singleton actor - it better know what to do with it */
   override def ! (a: Any): Unit = {
@@ -44,7 +44,7 @@ case class BCast (ev: Any, topic:Option[String] = None)
   *
   * not to use for critical work, duh - use ehcache/kafka for that
   */
-class WikiPubSub extends Actor {
+class WikiPubSubActor extends Actor {
   var maxCount = 520 // supid protection against
   val TOPIC = "WikiEvents"
 
@@ -60,7 +60,7 @@ class WikiPubSub extends Actor {
     // local nod wants to broadcast
     case pub@BCast (ev, topic) => {
       clog << "PUBSUB_BCAST " + ev.toString
-//      Audit.logdb("DEBUG", "event.bcast", "me: " + self.path + " from: " + sender.path, ev.toString().take(150))
+      //Audit.logdb("DEBUG", "event.bcast", "me: " + self.path + " from: " + sender.path, ev.toString().take(150))
       mediator ! Publish (TOPIC, ev)
     }
 

@@ -78,17 +78,17 @@ case class UserLike (uid:String, likes:Boolean, note:String)
   */
 @RTable
 case class WikiEntry(
-  category: String,
-  name: String,
-  label: String,
-  markup: String,
-  content: String,
-  by: ObjectId,
-  tags: Seq[String] = Seq(),
-  realm: String = Wikis.RK,
-  ver: Int = 1,
-  parent: Option[ObjectId] = None,
-  props: Map[String, String] = Map.empty, // properties - can be supplemented in the content
+  override val category: String,
+  override val name: String,
+  override val label: String,
+  override val markup: String,
+  override val content: String,
+  override val by: ObjectId,
+  override val tags: Seq[String] = Seq(),
+  override val realm: String = Wikis.RK,
+  override val ver: Int = 1,
+  override val parent: Option[ObjectId] = None,
+  override val props: Map[String, String] = Map.empty, // properties - can be supplemented in the content
   // todo cleanup and migrate likes and dislikes into userFeedback...
   userFeedback: List[UserLike] = List.empty,         // list of usernames that liked it
   likes: List[String] = List.empty,         // list of usernames that liked it
@@ -96,11 +96,11 @@ case class WikiEntry(
   dislikeReasons: List[String] = List.empty,// list of usernames that liked it
   likeCount: Int = 0,                       // list of usernames that liked it
   dislikeCount: Int = 0,                    // list of usernames that liked it
-  crDtm: DateTime = DateTime.now,
-  updDtm: DateTime = DateTime.now,
-  _id: ObjectId = new ObjectId()) extends WikiPage with DSpec {
+  override val crDtm: DateTime = DateTime.now,
+  override val updDtm: DateTime = DateTime.now,
+  override val _id: ObjectId = new ObjectId()) extends WikiPage with DSpec {
 
-  import WikiEntry._
+  import razie.wiki.model.WikiEntry._
 
   // from DSpec
   override def cat = category
@@ -122,18 +122,10 @@ case class WikiEntry(
     */
   override def findSection(name: String, tags:String=""): Option[DTemplate] =
     this
-        .sections
-        .filter(t=>
-          t.name == name && (tags=="" || t.signature.startsWith(tags))
-        )
-        .headOption
+        .sections.find(t => t.name == name && (tags == "" || t.signature.startsWith(tags)))
         .map {t=> new WikiDTemplate (t) } orElse
-        templateSections
-      .filter(t=>
-        t.name == name && (tags=="" || t.signature.startsWith(tags))
-      )
-      .headOption
-      .map {t=> new WikiDTemplate (t) }
+        templateSections.find(t => t.name == name && (tags == "" || t.signature.startsWith(tags)))
+        .map {t=> new WikiDTemplate (t) }
 
   /** find template with predicate */
   override def findSection(p : DTemplate => Boolean) : Option[DTemplate] = {
@@ -175,7 +167,7 @@ case class WikiEntry(
 
   /** todo should use this version instead of content - this resolves includes */
   // todo optimize - why isn't this a lazy?
-  def included : String = {
+  override def included : String = {
     val x = Wikis.preprocessIncludes(wid, markup, content, Some(this))
     x
   }
@@ -186,8 +178,8 @@ case class WikiEntry(
   // todo can't use this faster one because of some stupid issues in WikiDomain - to fix at some point
   def included2 : String = ast._2
 
-  def wid  = WID(category, name, parent, None, /*if(realm == Wikis.RK) None else */ Some(realm))
-  def uwid = UWID(category, _id, /*if(realm == Wikis.RK) None else */ Some(realm))
+  override def wid  = WID(category, name, parent, None, /*if(realm == Wikis.RK) None else */ Some(realm))
+  override def uwid = UWID(category, _id, /*if(realm == Wikis.RK) None else */ Some(realm))
 
   /** i should be conservative and default to rk. Note this doesn't check Config.urlcanon */
   def canonicalUrl =
@@ -208,24 +200,24 @@ case class WikiEntry(
 
   def findParent = parent flatMap (p => Wikis(realm).find(p))
 
-  def isReserved = props.get(PROP_RESERVED).exists(_ == "yes")
+  override def isReserved = props.get(PROP_RESERVED).exists(_ == "yes")
   override def isDraft = props.contains("draft")
 
-  def isPrivate = "User" == category || (props.exists(e => PROP_OWNER == e._1))
-  def isOwner(id: String) = ("User" == category && name == id) || (props.exists(e => PROP_OWNER == e._1 && id == e._2))
-  def owner = props.get(PROP_OWNER).flatMap(s => WikiUsers.impl.findUserById(new ObjectId(s)))
-  def ownerId = props.get(PROP_OWNER).map(s=> new ObjectId(s))
+  override def isPrivate = "User" == category || (props.exists(e => PROP_OWNER == e._1))
+  override def isOwner(id: String) = ("User" == category && name == id) || (props.exists(e => PROP_OWNER == e._1 && id == e._2))
+  override def owner = props.get(PROP_OWNER).flatMap(s => WikiUsers.impl.findUserById(new ObjectId(s)))
+  override def ownerId = props.get(PROP_OWNER).map(s=> new ObjectId(s))
 
   // todo trying to avoid parsing it just to get the label
-  def getLabel = if(content contains "label") contentProps.getOrElse("label", label) else label
-  def getDescription = contentProps.getOrElse("meta.description", getFirstParagraph.mkString)
-  def getFirstParagraph = content.lines.find(s => !s.trim.isEmpty && !".{".contains(s.trim.charAt(0)))
-  def wordCount = content.count(_ == ' ')
+  override def getLabel = if(content contains "label") contentProps.getOrElse("label", label) else label
+  override def getDescription = contentProps.getOrElse("meta.description", getFirstParagraph.mkString)
+  override def getFirstParagraph = content.lines.find(s => !s.trim.isEmpty && !".{".contains(s.trim.charAt(0)))
+  override def wordCount = content.count(_ == ' ')
 
-  override def visibility = props.get(PROP_VISIBILITY).getOrElse(Visibility.PUBLIC)
-  def wvis = props.get(PROP_WVIS).getOrElse(visibility)
+  override def visibility = props.getOrElse(PROP_VISIBILITY, Visibility.PUBLIC)
+  override def wvis = props.getOrElse(PROP_WVIS, visibility)
 
-  def create = {
+  def create(): Unit = {
     // TODO optimize exists
     if (Wikis.find(wid).exists(_.realm == this.realm)) {
       Log.error("ERR_WIKI page exists " + wid)
@@ -276,7 +268,7 @@ case class WikiEntry(
   }
 
   /** backup old version and update entry, update index */
-  def delete(sby: String) (implicit txn:Txn) = {
+  def delete(sby: String) (implicit txn:Txn): Unit = {
     Audit.logdb(AUDIT_WIKI_DELETED, "BY " + sby + " " + category + ":" + name, "\nCONTENT:\n" + this)
     WikiEntryOld(this, Some ("deleted")).create
     WikiTrash("WikiEntry", this.grated, sby, txn.id).create
@@ -284,7 +276,7 @@ case class WikiEntry(
     RDelete.apply (Wikis(realm).weTables(wid.cat), key)
   }
 
-  def auditFlagged(f: String) { Log.audit(Audit.logdb(f, category + ":" + name)) }
+  def auditFlagged(f: String): Unit = { Log.audit(Audit.logdb(f, category + ":" + name)) }
 
   /** reparsing the content - wiki sections are delimited by {{section:name}} */
 
@@ -340,7 +332,7 @@ case class WikiEntry(
   }
 
   /** find a section */
-  def section (stype: String, name: String) = {
+  override def section(stype: String, name: String) = {
     if(name contains ":") sections.find(x => x.stype == stype && x.name == name)
     else sections.find(x => x.stype == stype && x.name == name)
   }
@@ -384,10 +376,10 @@ case class WikiEntry(
     grater[WikiEntry].asDBObject(this).toString
 
   /** tags collected during parsing of the content, with some static tags like url,label etc */
-  def contentProps = preprocessed.props
+  override def contentProps = preprocessed.props
 
   /** all properties contained in this spec, in various forms */
-  def allProps : Map[String,String] = {
+  override def allProps : Map[String,String] = {
     contentProps ++ props ++ (
       if(fields.size > 0) {
         this.form // parse form and populate fields
@@ -398,7 +390,7 @@ case class WikiEntry(
   }
 
   /** attributes are props perhaps overriden in content */
-  def attr(name:String) : Option[String] =
+  override def attr(name:String) : Option[String] =
   // optimized to not parse if it's not in content
     if(ipreprocessed.isDefined) contentProps.get(name).orElse(props.get(name))
     else if(content contains name) contentProps.get(name).orElse(props.get(name))
@@ -430,10 +422,10 @@ case class WikiEntry(
   /** other parsing artifacts to be used by knowledgeable modules.
     * Parsers can put stuff in here. */
   //todo move the fields and form stuff here
-  val collector = new scala.collection.mutable.HashMap[String, Any]()
+  override val collector = new scala.collection.mutable.HashMap[String, Any]()
 
-  def linksFrom = RMany[WikiLink] ("from.id" -> this.uwid.id)
-  def linksTo = RMany[WikiLink] ("to.id" -> this.uwid.id)
+  override def linksFrom = RMany[WikiLink] ("from.id" -> this.uwid.id)
+  override def linksTo = RMany[WikiLink] ("to.id" -> this.uwid.id)
 
   def viewCount = ROne[WikiCount] ("pid" -> this.uwid.id).map(_.count)
 }

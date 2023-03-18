@@ -501,7 +501,9 @@ private def accessorIdent: Parser[RDOM.P] = "." ~> ident ^^ { case id => P("", i
 
   // array [a,b,c] - elements are expressions
   def jarray2: Parser[Expr] = "[" ~ ows ~> repsep(ows ~> jexpr <~ ows, ",") <~ ows ~ "]" ^^ {
-    li => JArrExpr(li) //CExpr("[ " + li.mkString(",") + " ]")
+    li =>
+      if(li.exists(x => ! x.isInstanceOf[CExpr[_]])) JArrExpr(li)
+      else JArrCExpr(li)
   }
 
   def jexpr: Parser[Expr] = jobj | jarray1 | jarray2 | boolConst | jother ^^ (ex => ex) //ex.toString }

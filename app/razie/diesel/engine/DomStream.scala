@@ -17,8 +17,9 @@ import razie.diesel.expr.ScopeECtx
 import razie.diesel.model.DieselMsg
 import razie.hosting.Website
 import razie.wiki.{Config, Services}
-import razie.wiki.model.WID
+import razie.wiki.model.{CATS, WID}
 import scala.collection.mutable.ListBuffer
+import services.DieselCluster
 
 object DomStream {
 
@@ -55,14 +56,17 @@ abstract class DomStream (
   val timeoutMillis:Int,
   val context: P = P.of("context", "{}"),
   val correlationId: Option[String] = None,
+  val consumeParallel: Boolean = false,
   val maxSize: Int = DomStream.getMaxSize,
   val id: String = new ObjectId().toString) extends Logging {
 
   assert(name.trim.length > 0, "streams need unique names")
 
-  def wid = WID("DieselStream", name)
+  def wid = WID(CATS.DIESEL_STREAM, name)
 
-  def href = DieselAssets.mkAhref(WID("DieselStream", this.name))
+  def ref = DomAssetRef(CATS.DIESEL_STREAM, name, None, None, Option(DieselCluster.me))
+
+  def href = DieselAssets.mkAhref(WID(CATS.DIESEL_STREAM, this.name))
 
   def href(format: String = "") = s"/diesel/viewAst/$id?format=$format"
 
@@ -109,6 +113,9 @@ abstract class DomStream (
 
             setCtx(ast)
 
+        // todo make them dependent - OR should we do parallel consumption?
+        asts.lastOption.map(x=> ast.withPrereq(List(x.id)))
+
             asts.append(ast)
           }
 
@@ -120,6 +127,7 @@ abstract class DomStream (
     }
 
     override def consumeData(dataAsList: List[Any]): Unit = {
+      val asts = new ListBuffer[DomAst]()
       dataAsList.toList.foreach { data =>
 
         val ast = DomAst(new EMsg(
@@ -131,7 +139,12 @@ abstract class DomStream (
         ) with KeepOnlySomeSiblings)
 
         setCtx(ast)
+        // todo make them dependent - OR should we do parallel consumption?
+        asts.lastOption.map(x=> ast.withPrereq(List(x.id)))
+        asts.append(ast)
+      }
 
+      asts.foreach { ast =>
         DieselAppContext ! DEAddChildren(
           engine,
           node,
@@ -139,7 +152,6 @@ abstract class DomStream (
           List(ast),
           Option((a, e) => a.withPrereq(getDepyOnDATA)))
       }
-
     }
 
     override def error(): Unit = {
@@ -463,6 +475,8 @@ class DomStreamV1(
   batchWaitMillis:Int = 0,
   timeoutMillis:Int = 0,
   context: P = P.of("context", "{}"),
-  correlationId: Option[String] = None) extends DomStream(owner, name, description, batch, batchSize, batchWaitMillis, timeoutMillis, context,
-  correlationId) {
+  consumeParallel: Boolean = false,
+  correlationId: Option[String] = None) extends DomStream(
+    owner, name, description, batch, batchSize, batchWaitMillis, timeoutMillis, context,
+    correlationId, consumeParallel) {
 }

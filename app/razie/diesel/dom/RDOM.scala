@@ -661,9 +661,11 @@ object RDOM {
         }
       )
 
-    // CEpr not all safe, due to string interpolation
-    private def trulyConstantExpr: Option[CExpr[_]] = {
+    /** filter and return if this expression is a constant expression
+      */
+    private def trulyConstantExpr: Option[ConstantExpr] = {
       expr
+          // CExpr without string interpolation
           .filter(_.isInstanceOf[CExpr[_]])
           .filter { e =>
             val ce = e.asInstanceOf[CExpr[_]]
@@ -671,6 +673,11 @@ object RDOM {
                 !ce.ee.toString.contains("${")
           }
           .map(_.asInstanceOf[CExpr[_]])
+          .orElse(
+            expr
+                .filter(_.isInstanceOf[ConstantExpr])
+                .map(_.asInstanceOf[ConstantExpr])
+          )
     }
 
     /** only if it was already calculated... */
@@ -680,8 +687,8 @@ object RDOM {
           trulyConstantExpr.isDefined
     }
 
-    /** only if it was already calculated... */
-    def currentValue: CExpr[_] =
+    /** only if it was already calculated... returns CExpr or equivalent */
+    def currentValue: ConstantExpr =
       value.map(v => CExpr(v.value, v.cType))
           .orElse(
             trulyConstantExpr
@@ -689,6 +696,9 @@ object RDOM {
           .getOrElse {
             CExpr(dflt, ttype)
           }
+
+    /** only if it was already calculated... returns CExpr or equivalent */
+    def currentValueAsCExpr: CExpr[_] = currentValue.asInstanceOf[CExpr[_]] // too tired, look it up
 
     /** only if it was already calculated... */
     def currentStringValue: String =
@@ -738,9 +748,12 @@ object RDOM {
     // todo docs, position etc
     override def toHtml = toHtml(short = true)
 
-    def nameHtml(shorten: Boolean) = {
+    def nameHtml(short: Boolean) = {
       val d = currentStringValue
-      if (d.length > 20) spanClick(
+      if (d.length > 20 ||
+          WTypes.ARRAY == ttype.name && short ||
+          WTypes.JSON == ttype.name && short
+      ) spanClick(
         name,
         "",
         currentStringValue,

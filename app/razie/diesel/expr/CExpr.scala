@@ -21,14 +21,18 @@ case class CExprNull() extends Expr {
   override def toHtml = expr
 }
 
+/** just a marker for constant expressions */
+abstract class ConstantExpr extends Expr {
+  def ttype : WType
+}
 
 /**
   * constant expression - similar to PValue
   *
   * note strings are interpolated with ${} - escape for that is $${}
   */
-case class CExpr[T](ee: T, ttype: WType = WTypes.wt.EMPTY) extends Expr {
-  val expr = ee.toString
+case class CExpr[T](ee: T, override val ttype: WType = WTypes.wt.EMPTY) extends ConstantExpr {
+  override val expr = ee.toString
 
   override def apply(v: Any)(implicit ctx: ECtx) = applyTyped(v).currentStringValue
 

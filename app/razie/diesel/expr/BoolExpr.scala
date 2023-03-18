@@ -446,7 +446,7 @@ case class BCMPSingle(a: Expr) extends BoolExpr(a.toDsl) {
 
           case WTypes.NUMBER =>
             throw new DieselExprException(
-              "Found :number expected :boolean"
+              "Found Number expected Boolean"
             )
 
           case WTypes.BOOLEAN => "true" == in.currentStringValue
@@ -459,9 +459,9 @@ case class BCMPSingle(a: Expr) extends BoolExpr(a.toDsl) {
 
           case s @ _ => {
             val t = if (s.length > 0) s else ":unknown"
-            clog << (s"Found $t expected :boolean")
+            clog << (s"Found $t expected Boolean")
             throw new DieselExprException(
-              s"Found $t expected :boolean details: ($a)"
+              s"Found $t expected Boolean details: ($a)"
             )
           }
         }
@@ -477,7 +477,7 @@ case class BCMPSingle(a: Expr) extends BoolExpr(a.toDsl) {
 
 /** just a constant expr */
 object BExprFALSE extends BoolExpr("FALSE") {
-  def bapply(e: Any)(implicit ctx: ECtx): BExprResult = BExprResult(false)
+  override def bapply(e: Any)(implicit ctx: ECtx): BExprResult = BExprResult(false)
 
   override def toDsl = "FALSE"
 }

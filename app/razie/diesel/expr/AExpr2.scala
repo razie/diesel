@@ -19,11 +19,11 @@ import scala.util.parsing.json.JSONArray
 
 /** type-aware arithmetic expressions of the form "a OP b" - on various types, including json, strings, arrays etc */
 case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
-  val expr = "("+a.toDsl + " " + op + " " + b.toDsl+")"
+  override val expr = "("+a.toDsl + " " + op + " " + b.toDsl+")"
 
-  override def apply(v: Any)(implicit ctx: ECtx) = applyTyped(v).currentValue.ee
+  override def apply(v: Any)(implicit ctx: ECtx) = applyTyped(v).currentValueAsCExpr.ee
 
-  /** apply this function to an input value and a context */
+  /**  apply this function to an input value and a context */
   override def applyTyped(v: Any)(implicit ctx: ECtx): P = { //Try {
 
     // resolve an expression to P with value and type
@@ -36,6 +36,8 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
     def isNum(p: P): Boolean = p.calculatedTypedValue.cType.name == WTypes.NUMBER
 
     def isDate(p: P): Boolean = p.calculatedTypedValue.cType.name == WTypes.DATE
+
+    def isBool(p: P): Boolean = p.calculatedTypedValue.cType.name == WTypes.BOOLEAN
 
     val av = a.applyTyped(v)
 
@@ -299,6 +301,18 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
             )
           }
         }
+      }
+
+      case "or" if isBool(av) => {
+        val bv = b.applyTyped(v)
+        if(isBool(bv)) PValue(av.calculatedTypedValue.asBoolean || bv.calculatedTypedValue.asBoolean)
+        else PValue(new DieselExprException("Need both bools for or - b is " + bv), WTypes.wt.EXCEPTION)
+      }
+
+      case "and" if isBool(av) => {
+        val bv = b.applyTyped(v)
+        if(isBool(bv)) PValue(av.calculatedTypedValue.asBoolean && bv.calculatedTypedValue.asBoolean)
+        else PValue(new DieselExprException("Need both bools for and - b is " + bv), WTypes.wt.EXCEPTION)
       }
 
       // like in JS, if first not exist, use second

@@ -119,6 +119,7 @@ class DomEngineRouter () extends Actor with razie.Logging {
   override def receive = {
     case DEInit => {
       DieselPubSub.subscribe(TACB.withActor(self, classOf[DERemoteMsg]))
+      DieselPubSub.subscribe(TACB.withActor(self, classOf[DEStreamRemoteMsg]))
 
       // todo is this fair?
       // in case other services don't start me - i will start myself
@@ -152,6 +153,7 @@ class DomEngineRouter () extends Actor with razie.Logging {
       route (m.msg.engineId, m.msg)
     }
 
+    // remote execution request from other node
     case m@DERemoteRunEngine (from, msg, correlationId, settings, id, desc) => {
       debug ("DERemoteRunEngine received: " + m)
 
@@ -172,14 +174,38 @@ class DomEngineRouter () extends Actor with razie.Logging {
       engine.process // start it up in the background
     }
 
-    // all DES messages share routing
+    // message meant for remote stream, wrap and forward
+    case m : DEStreamMsgWithRef if (m.streamRef.exists(_.isRemote)) => {
+
+      log(s"DomEngineRouterActor: received ${m.getClass.getSimpleName}")
+      DieselPubSub ! DEStreamRemoteMsg(m) // delegate via pubsub
+    }
+
+    // remote message meant for local stream
+    case m @ DEStreamRemoteMsg (msg) => {
+
+      log(s"DomEngineRouterActor: received ${m.getClass.getSimpleName}")
+      if(msg.streamRef.exists(x=>DomRefs.isLocal(x.node))) {
+        log(s"...forwarding to self $msg")
+        self ! msg
+      } else {
+        log("... not for me. ignore it!")
+      }
+    }
+
     case m: DEStreamMsg => {
+
+      log(s"DomEngineRouterActor: received ${m.getClass.getSimpleName}")
+
       DieselAppContext.activeStreamsByName
           .get(m.streamName)
-          .map(x => {route(x.id, m); ""})
+          .map(x => {
+            route(x.id, m);
+            ""
+          })
           // should end up in DomStreamActor
           .getOrElse(
-            clog << "DomEngine Router DROP STREAM message " + m
+            error("DomEngine Router DROP STREAM message " + m)
             // todo recover failed workflows
             // todo distributed routing
           )
@@ -187,6 +213,7 @@ class DomEngineRouter () extends Actor with razie.Logging {
   }
 
   def route(id: String, msg: Any): Unit = {
+    log(s"DomEngineRouterActor: routing ${msg.getClass.getSimpleName} to $id")
     DieselAppContext.activeActors.get(id).map(_ ! msg).getOrElse(
       // todo if the engine is still around, collected, alert these in the there - add warn nodes
       // otherwise we need to alert somehow... anyways, something's off?

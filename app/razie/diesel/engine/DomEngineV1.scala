@@ -147,7 +147,9 @@ class DomEngineV1(
         val ref = spawn (msg, Some(correlationId))
 
         evAppChildren (a, DomAst(EInfo(s"""Spawn $arrow engine ${ref._1.href} (${ref._2})""")))
-        evAppChildren (a, DomAst(EVal(P.fromTypedValue("dieselRef", ref._1.mkEngRef, WTypes.REF))))
+        val ev = EVal(P.fromTypedValue("dieselRef", ref._1.mkEngRef, WTypes.REF))
+        evAppChildren (a, DomAst(ref))
+        setSmartValueInContext(a, ctx, ev)
 
         if ("<=>" == arrow) {
           // nothing special here, I'm already about to Suspend (see above) and child will send a pong when done
@@ -1447,7 +1449,7 @@ class DomEngineV1(
         val level = nctx.getRequired("level").toInt
 
         // this passes payload too
-        notifyParent (a, DomAssetRef(DomRefs.CAT_DIESEL_ENGINE, parentId, Option(targetId)).onNode(parentNode), level)
+        notifyParent (a, DomAssetRef(DomRefs.CAT_DIESEL_ENGINE, parentId, Option(targetId)).withNode(parentNode), level)
         true
 
       } else if (ea == DieselMsg.ENGINE.DIESEL_VALS) {

@@ -208,7 +208,7 @@ object DomEngineUtils {
 
     engine.prepTime = t4-t1
     EnginePrep.addStoriesToAst(engine, prepped.storiesToAdd)
-    root.appendAllNoEvents(inode.map(DomAst(_)).toList)
+    root.appendAllNoEvents(inode.toList)
 
     engine
   }

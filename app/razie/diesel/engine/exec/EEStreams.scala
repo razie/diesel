@@ -13,6 +13,7 @@ import razie.diesel.engine._
 import razie.diesel.engine.nodes._
 import razie.diesel.expr.{DieselExprException, ECtx, SimpleExprParser}
 import razie.diesel.model.DieselMsg
+import razie.wiki.model.DCNode
 import scala.concurrent.duration.DurationInt
 import scala.util.Try
 
@@ -42,6 +43,7 @@ class EEStreams extends EExecutor(DieselMsg.STREAMS.PREFIX) {
         val batchSize = ctx.getp("batchSize").map(_.calculatedTypedValue.asLong.toInt).getOrElse(100)
         val batchWait = ctx.getp("batchWaitMillis").map(_.calculatedTypedValue.asLong.toInt).getOrElse(0)
         val timeout = ctx.getp("timeoutMillis").map(_.calculatedTypedValue.asLong.toInt).getOrElse(-1)
+        val par = ctx.getp("consumeParallel").map(_.calculatedTypedValue.asBoolean).getOrElse(false)
 
         val others = in.attrs
            // no need to remove these...
@@ -65,27 +67,51 @@ class EEStreams extends EExecutor(DieselMsg.STREAMS.PREFIX) {
         }.toList
 
         val s = DieselAppContext.mkStream(
-          new DomStreamV1(ctx.root.engine.get, name, name, batch, batchSize, batchWait, timeout, context))
+          new DomStreamV1(
+            ctx.root.engine.get,
+            name,
+            name,
+            batch,
+            batchSize,
+            batchWait,
+            timeout,
+            context,
+            consumeParallel=par))
         ctx.root.engine.get.evAppStream(s)
 
         warn ::: EInfo(s"stream - creating $name") ::
         // this results in some exceptions for assignment when name is not ident
 //            EVal(P.fromTypedValue(name, s, WTypes.wt.OBJECT.withSchema("DieselStream"))) ::
             EVal(P.fromTypedValue("dieselStream", s, WTypes.wt.OBJECT.withSchema("DieselStream"))) ::
+            EVal(P.fromTypedValue("dieselStreamRef", s.ref.toj, WTypes.wt.JSON.withSchema("DieselStream"))) ::
             Nil
       }
 
       case "put" => {
-        val name = ctx.getRequired("stream")
-        val parms = in.attrs.filter(_.name != "stream").map(_.calculatedP)
-        val list = parms.map(_.calculatedTypedValue.value)
-        DieselAppContext ! DEStreamPut(name, list)
-        EInfo(s"stream.put $name - put ${list.size} elements") :: Nil
+        val r = ctx.getp("streamRef").map(ref(_)).getOrElse(ref(ctx.getRequired("stream")))
+
+        val parms = in.attrs.filter(x=> x.name != "stream" && x.name != "streamRef").map(_.calculatedP)
+        var errors:List[_] = Nil
+        val list =
+          parms.map{x=>
+            Try {
+              x.calculatedTypedValue.value
+            }.getOrElse {
+              if (ctx.isStrict) throw new DieselExprException("Parameters are not all Array(s): " + x)
+              else errors = EWarning("Parameter not Array: " + x) :: errors
+              Nil
+            }
+          }
+
+        DieselAppContext ! DEStreamPut(r, list)
+        val rem = if(r.isRemote) "remote" else "local"
+        EInfo(s"stream.put DEStreamPut $rem $r - put ${list.size} elements") :: errors
       }
 
       case "putAll" => {
-        val name = ctx.getRequired("stream")
-        val parms = in.attrs.filter(_.name != "stream").map(_.calculatedP)
+        val r = ctx.getp("streamRef").map(ref(_)).getOrElse(ref(ctx.getRequired("stream")))
+        val parms = in.attrs.filter(x=> x.name != "stream" && x.name != "streamRef").map(_.calculatedP)
+
         var errors:List[_] = Nil
         val list =
           parms.flatMap{x=>
@@ -97,55 +123,67 @@ class EEStreams extends EExecutor(DieselMsg.STREAMS.PREFIX) {
                 Nil
               }
           }
-        DieselAppContext ! DEStreamPut(name, list)
-        EInfo(s"stream.putAll $name - put ${list.size} elements") :: errors
+        DieselAppContext ! DEStreamPut(r, list)
+        val rem = if(r.isRemote) "remote" else "local"
+        EInfo(s"stream.put DEStreamPut $rem $r - put ${list.size} elements") :: errors
       }
 
       case "generate" => {
-        val name = ctx.getRequired("stream")
+        val r = ctx.getp("streamRef").map(ref(_)).getOrElse(ref(ctx.getRequired("stream")))
+
         val start = ctx.getRequired("start").toInt
         val end = ctx.getRequired("end").toInt
         val map = ctx.get("mapper")
 
         val list = (start to end).toList
 
-        DieselAppContext ! DEStreamPut(name, list)
+        DieselAppContext ! DEStreamPut(r, list)
         EInfo(s"stream.generate $name - put ${list.size} elements") :: Nil
       }
 
       case "error" => {
-        val name = ctx.getRequired("stream")
-        val parms = in.attrs.filter(_.name != "stream").map(_.calculatedP)
+        val r = ctx.getp("streamRef").map(ref(_)).getOrElse(ref(ctx.getRequired("stream")))
+        val name = r.id
+        val parms = in.attrs.filter(x=> x.name != "stream" && x.name != "streamRef").map(_.calculatedP)
 
-        DieselAppContext ! DEStreamError(name, parms)
+        DieselAppContext ! DEStreamError(r, parms)
 
         EInfo(s"stream.done $name") :: Nil
       }
 
       case "done" => {
-        val name = ctx.getRequired("stream")
+        val r = ctx.getp("streamRef").map(ref(_)).getOrElse(ref(ctx.getRequired("stream")))
+        val name = r.id
 
-        val stream = DieselAppContext.findStream(name)
+        val stream = DieselAppContext.findStream(r.id)
         val found = stream.map(_.name).mkString
 
-        if(stream.isDefined)
-         DieselAppContext ! DEStreamDone(name)
+        if(stream.isDefined || r.isRemote)
+         DieselAppContext ! DEStreamDone(r)
 
-        val consumed = stream.map(_.getIsConsumed).mkString
-        val done = stream.map(_.streamIsDone).mkString
-        val msg = s"stream.done $name: found:$found consumed:$consumed done:$done"
+        if(r.isLocal) {
+          val consumed = stream.map(_.getIsConsumed).mkString
+          val done = stream.map(_.streamIsDone).mkString
+          val sz = stream.map(_.getValues.size).mkString
+          val msg = s"stream.done $r: found:$found consumed:$consumed done:$done values:$sz"
 
-        if(stream.isDefined) EInfo(s"stream.done $name: found:$found consumed:$consumed done:$done") :: Nil
-        else EError(s"stream.done - stream not found: ${name}", s"stream.done $name: found:$found consumed:$consumed done:$done") :: Nil
+          if (stream.isDefined) EInfo(msg) :: Nil
+          else EError(s"stream.done - stream not found: ${name}", msg) :: Nil
+        } else {
+          EInfo(s"stream.done sent to remote node $r") :: Nil
+        }
       }
 
       case "consume" => {
-        val name = ctx.getRequired("stream")
+        val r = ctx.getp("streamRef").map(ref(_)).getOrElse(ref(ctx.getRequired("stream")))
+        val name = r.id
+        assert(r.isLocal)
+
         val timeout = ctx.get("timeout").orElse(ctx.get("timeoutMillis"))
 
-        if (DieselAppContext.activeStreamsByName.get(name).isDefined) {
+        if (DieselAppContext.activeStreamsByName.contains(name)) {
           new EEngSuspend("stream.consume", "", Option((e, a, l) => {
-            val stream = DieselAppContext.activeStreamsByName.get(name).get
+            val stream = DieselAppContext.activeStreamsByName(name)
             stream.withEngineSink(ctx.root.engine.get.id, a.id)
 
             DieselAppContext ! DEStreamConsume(stream.name)
@@ -161,7 +199,10 @@ class EEStreams extends EExecutor(DieselMsg.STREAMS.PREFIX) {
       }
 
       case "mkString" => {
-        val name = ctx.getRequired("stream")
+        val r = ctx.getp("streamRef").map(ref(_)).getOrElse(ref(ctx.getRequired("stream")))
+        val name = r.id
+        assert(r.isLocal)
+
         val timeout = ctx.get("timeout")
         val separator = ctx.get("separator").getOrElse(",")
 
@@ -179,6 +220,19 @@ class EEStreams extends EExecutor(DieselMsg.STREAMS.PREFIX) {
         new EError(s"ctx.$s - unknown activity ") :: Nil
       }
     }
+  }
+
+  def ref (name:String) = DomAssetRef("DieselStream", name)
+
+  def ref (p:P)(implicit ctx:ECtx) = {
+    val m = p.calculatedTypedValue.asJson
+    DomAssetRef(
+      m("cat").toString,
+      m("id").toString,
+      m.get("realm").map(_.toString),
+      m.get("section").map(_.toString),
+      m.get("node").map(x => DCNode(x.toString))
+    )
   }
 
   override def toString = "$executor::ctx "

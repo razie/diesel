@@ -90,7 +90,8 @@ case class JBlockExpr(ex: List[(String, Expr)], schema:Option[String]=None) exte
 }
 
 /** a static json array [a,b,c] */
-case class JArrExpr(ex: List[Expr]) extends Expr {
+case class JArrCExpr(ex: List[Expr]) extends ConstantExpr {
+  override def ttype = WTypes.wt.ARRAY
   override val expr = "[" + ex.mkString(",") + "]"
 
   private def calculate(v: Any)(implicit ctx: ECtx) = {
@@ -123,7 +124,43 @@ case class JArrExpr(ex: List[Expr]) extends Expr {
 
     EESnakk.prepStr2(s, Nil)
   }
+}
 
+/** a static json array [a,b,c] */
+case class JArrExpr(ex: List[Expr]) extends Expr {
+  override val expr = "[" + ex.mkString(",") + "]"
+
+  private def calculate(v: Any)(implicit ctx: ECtx) = {
+    //    val orig = template(expr)
+    val origp = ex.map { e=>
+      val p = e.applyTyped(v)
+      p.calculatedTypedValue
+    }
+
+    val orig = origp.map(_.asEscapedJSString).mkString(",")
+
+    // parse and clean it up so it blows up right here if invalid
+    (origp, new org.json.JSONArray(s"[$orig]"))
+  }
+
+
+  override def apply(v: Any)(implicit ctx: ECtx) = {
+    calculate(v)._2.toString
+  }
+
+  override def applyTyped(v: Any)(implicit ctx: ECtx): P = {
+    val (le, ja) = calculate(v)
+    val t = P.inferArrayTypeFromPV(le)
+    P.fromTypedValue("", ja, t)
+  }
+
+  override def getType: WType = WTypes.wt.ARRAY
+
+  // replace ${e} with value
+  def template(s: String)(implicit ctx: ECtx) = {
+
+    EESnakk.prepStr2(s, Nil)
+  }
 }
 
 /** a generator for a json array */

@@ -232,6 +232,7 @@ object DieselAppContext extends Logging {
 
   /** send a message via the router */
   def !(message: Any)(implicit sender: ActorRef = Actor.noSender): Unit = {
+    /** See [[DomEngineRouter]] */
     router.foreach(_ ! message)
     if (router.isEmpty) {
       throw new IllegalStateException("DieselAppContext.router not initialized?")
@@ -241,7 +242,7 @@ object DieselAppContext extends Logging {
   /** send a message via the router */
   def stopStream(name: String): Unit = {
     import akka.pattern.ask
-    implicit val timeout = Timeout(5 seconds)
+    implicit val timeout: Timeout = Timeout(5 seconds)
 
     activeStreamsByName
         .get(name)

@@ -39,7 +39,11 @@ object DomRefs {
 
   def isLocal(node: Option[DCNode]): Boolean = node.isEmpty || isLocal(node.get)
 
-  def isLocal(node: DCNode): Boolean = node.name == DieselCluster.clusterNodeSimple || node.name.trim.isEmpty
+  def isLocal(node: DCNode): Boolean = {
+    node.name.compareTo(DieselCluster.clusterNodeSimple) == 0 || node.name.trim.isEmpty
+  }
+
+  def isRemote(node: Option[DCNode]): Boolean = !isLocal(node)
 
   def setNode (node:String) = {
     if (node == DieselCluster.clusterNodeSimple || node.trim.isEmpty) None else Option(node)
@@ -68,7 +72,8 @@ case class DomAssetRef (
   section:Option[String] = None,
   node:Option[DCNode] = None
 ) {
-  val isLocal:Boolean = DomRefs.isLocal(node) // optimize this comparison
+  @transient val isLocal:Boolean = DomRefs.isLocal(node) // optimize this comparison
+  @transient val isRemote:Boolean = !DomRefs.isLocal(node) // optimize this comparison
 
   def mkString:String = node.map(x=> s"($x)$cat:").mkString + id + section.map(x=>"#"+x).mkString
   def mkEngRef:String = node.map(x=> s"($x)$cat:").mkString + id
@@ -76,7 +81,7 @@ case class DomAssetRef (
   /** fully qualified ref to send to other node */
   def fullNodeRef = if (node.isEmpty) this.copy (node=Option(DCNode(DieselCluster.clusterNodeSimple))) else this
 
-  def onNode (node:DCNode) = {
+  def withNode (node:DCNode) = {
     val other = if (DomRefs.isLocal(node)) None else Option(node)
     this.copy (node=other)
   }
@@ -84,6 +89,14 @@ case class DomAssetRef (
   def href =
     if(isLocal) DieselAssets.mkAhref(WID(cat, this.id))
     else DieselAssets.mkAhref(WID(cat, this.id), mkEngRef)
+
+  def toj = Map (
+    "cat" -> cat,
+    "id" -> id,
+  ) ++ realm.map (x=> Map("realm" -> x)).getOrElse(Map.empty
+  ) ++ section.map (x=> Map("section" -> x)).getOrElse(Map.empty
+  ) ++ node.map (x=> Map("node" -> x.name)).getOrElse(Map.empty
+  )
 }
 
 case class CachedEngingPrep(
@@ -424,21 +437,16 @@ abstract class DomEngine(
       Services.cluster.routeToNode(routing)
     }
 
-    if(! DomRefs.isLocal(node)) {
+    if(DomRefs.isRemote(node)) {
       // needs routed
 
       val desc = "engine:spawn " + msg.toString.take(200)
+      info(desc)
+
       val newid = (new ObjectId()).toString
       DieselPubSub ! DERemoteRunEngine (DieselCluster.me, msg, correlationId, settings, newid, desc)
 
       val ref = DomAssetRef(DomRefs.CAT_DIESEL_ENGINE, newid, None, None, node)
-
-//      val engine = DieselAppContext.mkEngine(dom, newRoot, settings, pages,
-//        "engine:spawn " + nodes.head.value.toString.take(200), correlationId)
-//      engine.inheritFrom(this)
-//      engine.ctx.root._hostname = ctx.root._hostname
-//
-//      engine.process // start it up in the background
 
       (ref, "engine:spawn " + msg.toString.take(200))
     } else {
@@ -458,7 +466,7 @@ abstract class DomEngine(
   }
 
   /** inherit some settings from parent engine (max expands etc) */
-  protected def inheritFrom(parent: DomEngine) = {
+  protected def inheritFrom(parent: DomEngine): Unit = {
     this.maxLevels = parent.maxLevels
     this.maxExpands = parent.maxExpands
   }

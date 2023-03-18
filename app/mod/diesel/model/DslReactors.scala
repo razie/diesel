@@ -248,7 +248,7 @@ object Diesel {
     }.mkString +
     "</table>\n\n"
 
-    val vals = currValues.map(t => (t._1, t._2.currentValue.ee)).toMap + ("formState" -> "created")
+    val vals = currValues.map(t => (t._1, t._2.currentValueAsCExpr.ee)).toMap + ("formState" -> "created")
     val s = razie.js.tojsons(vals)
 
     val formData =  s"""

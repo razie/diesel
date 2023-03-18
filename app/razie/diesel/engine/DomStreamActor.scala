@@ -38,22 +38,22 @@ class DomStreamActor(stream: DomStream) extends Actor with Stash with Timers {
       stream.actorStarted(self)
     }
 
-    case req@DEStreamPut(name, l) if checkInit =>
+    case req@DEStreamPut(_, l) if checkInit =>
       withMyStream(req) {
         stream.put(l)
       }
 
-    case req@DEStreamConsume(name) =>
+    case req:DEStreamConsume =>
       withMyStream(req) {
         stream.consume()
       }
 
-    case req@DEStreamDone(name) =>
+    case req:DEStreamDone =>
       withMyStream(req) {
         stream.done()
       }
 
-    case req@DEStreamClean(name) =>
+    case req:DEStreamClean =>
       withMyStream(req) {
         //remove refs for active engines
         GlobalData.dieselStreamsActive.decrementAndGet()
@@ -68,7 +68,7 @@ class DomStreamActor(stream: DomStream) extends Actor with Stash with Timers {
         stream.done()
       }
 
-    case req@DEStreamError(name, parms) =>
+    case req@DEStreamError(ref, parms) =>
       withMyStream(req) {
         stream.error(parms)
       }
@@ -146,20 +146,27 @@ streaming messages
 /** base class for streams internal message */
 trait DEStreamMsg {
   def streamName: String
+  def streamRef: Option[DomAssetRef] = None
 }
 
 /** put in stream */
-case class DEStreamPut(override val streamName: String, l: List[Any]) extends DEStreamMsg
+class DEStreamMsgWithRef (val ref: DomAssetRef) extends DEStreamMsg with Serializable {
+  override def streamName = ref.id
+  override def streamRef = Option(ref)
+}
+
+/** put in stream */
+case class DEStreamPut (override val ref: DomAssetRef, l: List[Any]) extends DEStreamMsgWithRef(ref)
 
 /** consume from stream */
 case class DEStreamConsume(override val streamName: String) extends DEStreamMsg
 
 /** stream is done */
-case class DEStreamDone(override val streamName: String) extends DEStreamMsg
+case class DEStreamDone(override val ref: DomAssetRef) extends DEStreamMsgWithRef(ref)
 
 case class DEStreamClean(override val streamName: String) extends DEStreamMsg
 
-case class DEStreamError(override val streamName: String, l: List[P]) extends DEStreamMsg
+case class DEStreamError(override val ref: DomAssetRef, l: List[P]) extends DEStreamMsgWithRef(ref)
 
 /** start or restart wait timer */
 case class DEStreamWaitMaybe(override val streamName: String, timeoutMillis:Long) extends DEStreamMsg
@@ -168,3 +175,4 @@ case class DEStreamWaitingOver(override val streamName: String) extends DEStream
 case class DEStreamTimeoutReset (override val streamName: String) extends DEStreamMsg
 case class DEStreamTimeoutCheck (override val streamName: String) extends DEStreamMsg
 
+case class DEStreamRemoteMsg (msg: DEStreamMsgWithRef)
