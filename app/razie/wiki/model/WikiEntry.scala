@@ -364,7 +364,7 @@ case class WikiEntry(
       s.ilinks)
     ipreprocessed = Some(res, au)
     val t2 = System.currentTimeMillis
-    clog << s"wikis.folded ${t2 - t1} millis for ${wid.name}"
+    ctrace << s"wikis.folded ${t2 - t1} millis for ${wid.name}"
     res
   }
 

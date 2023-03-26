@@ -5,6 +5,7 @@ import com.google.inject.Singleton
 import controllers.Emailer
 import model.EventNeedsQuota
 import play.libs.Akka
+import razie.SM.cdebug
 import razie.audit.Audit
 import razie.clog
 import razie.diesel.engine.exec.EEDbEvent
@@ -59,14 +60,14 @@ class WikiPubSubActor extends Actor {
 
     // local nod wants to broadcast
     case pub@BCast (ev, topic) => {
-      clog << "PUBSUB_BCAST " + ev.toString
+      cdebug << "PUBSUB_BCAST " + ev.toString
       //Audit.logdb("DEBUG", "event.bcast", "me: " + self.path + " from: " + sender.path, ev.toString().take(150))
       mediator ! Publish (TOPIC, ev)
     }
 
     // actual work - message came from another node
     case ev1: WikiEventBase if (sender.compareTo(self) != 0) => {
-      clog << s"PUBSUB_RECEIVED ${ev1.toString} from $self"
+      cdebug << s"PUBSUB_RECEIVED ${ev1.toString} from $self"
       if (maxCount > 0) {
         maxCount -= 1
         Audit.logdb("DEBUG", "exec.event", "me: " + self.path + " from: " + sender.path, ev1.toString().take(250))
@@ -82,7 +83,7 @@ class WikiPubSubActor extends Actor {
 
     // actual work - message came from another node
     case ev1: WikiConfigChanged if (sender.compareTo(self) != 0) => {
-      clog << s"PUBSUB_RECEIVED ${ev1.toString} from $self"
+      cdebug << s"PUBSUB_RECEIVED ${ev1.toString} from $self"
       if (maxCount > 0) {
         maxCount -= 1
         Audit.logdb("DEBUG", "exec.event", "me: " + self.path + " from: " + sender.path, ev1.toString().take(250))
@@ -98,13 +99,13 @@ class WikiPubSubActor extends Actor {
 
     // actual work - message came from another node
     case ev1: Any if (sender.compareTo(self) != 0) => {
-      clog << s"PUBSUB_RECEIVED ${ev1.toString} from $sender"
+      cdebug << s"PUBSUB_RECEIVED ${ev1.toString} from $sender"
 //      Audit.logdb("DEBUG", "exec.event", "me: " + self.path + " from: " + sender.path, ev1.toString().take(250))
       DieselPubSub.eat (ev1)
     }
 
     case ev1:Any if (sender.compareTo(self) == 0) =>
-      clog << s"PUBSUB_RECEIVED_SELF (will ignore) ${ev1.toString} from $sender"
+      cdebug << s"PUBSUB_RECEIVED_SELF (will ignore) ${ev1.toString} from $sender"
 
     case x@_ => Audit.logdb("DEBUG", "ERR_PUBSUB", x.getClass.getName)
   }

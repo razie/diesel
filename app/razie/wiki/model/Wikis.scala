@@ -50,7 +50,7 @@ object Wikis extends Logging with Validation {
           if (n.exists(w => w.cacheable && w.category != "-" && w.category != "")) {
             WikiCache.set(n.get.wid.wpathFull + ".page", n.get) // 10 miuntes
           } else {
-            cdebug << "WIKI_CACHE_CANTC FULL - " + id
+            ctrace << "WIKI_CACHE_CANTC FULL - " + id
           }
           n
         }

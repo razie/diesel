@@ -6,6 +6,7 @@
   **/
 package razie.wiki.parser
 
+import razie.clog
 import razie.diesel.Diesel
 import razie.diesel.dom.RDOM._
 import razie.diesel.dom._
@@ -28,8 +29,8 @@ trait DomParser extends ParserBase with ExprParser {
   // resolve an override resulting when I simplified ExprParser
   override type P = Parser[String]
 
+  // whitespaces in java are \t\n\x0B\f\r
   override def ws = whiteSpace
-
   override def ows = opt(whiteSpace)
 
   import RDOM._
@@ -196,11 +197,10 @@ trait DomParser extends ParserBase with ExprParser {
   def jsregex: P = """/[^/]*/""".r
 
   /** pattern match for ent.met */
-  def clsMatch: Parser[(String, String, List[RDOM.PM])] =
-    clsMatch1 | clsMatch2
+  def clsMatch: Parser[(String, String, List[RDOM.PM])] = clsMatchRegex | clsMatchEntMet
 
   /** simple js regex */
-  def clsMatch1: Parser[(String, String, List[RDOM.PM])] =
+  def clsMatchRegex: Parser[(String, String, List[RDOM.PM])] =
     jsregex ~ optMatchAttrs ^^ {
       case m1 ~ a => {
         (m1, "", a)
@@ -208,7 +208,7 @@ trait DomParser extends ParserBase with ExprParser {
     }
 
   /** pattern match for ent.met */
-  def clsMatch2: Parser[(String, String, List[RDOM.PM])] =
+  def clsMatchEntMet: Parser[(String, String, List[RDOM.PM])] =
     (ident | "*" ) ~
         " *. *".r ~
         (ident | "*" ) ~
@@ -239,31 +239,33 @@ trait DomParser extends ParserBase with ExprParser {
     }
   }
 
-  def pif2(level:Int): Parser[List[Object]] = pif2tree(level) | pelse2tree(level)
+  def pif2 (level:Int): Parser[List[Object]] = pif2tree (level) | pelse2tree (level)
 
   /** new block-like if */
-  def pif2tree(level:Int) : Parser[List[Object]] =
+  def pif2tree (level:Int) : Parser[List[Object]] =
     ows ~> keyw("""[.$]?if""".r) ~ ows ~ notoptCond ~ ows ~
         "{" ~ optComment3 ~
-        rep(aCommentLine | pgen2(level+1) | pgenStep2(level+1) /*| pgenErr*/) <~
+        rep (aCommentLine | pif2 (level+1) | pgen2 (level+1) | pgenStep2 (level+1) /*| pgenErr*/) <~
         ows ~ "}" ^^ {
-  case arrow ~ _ ~ cond ~ _ ~ _ ~ _ ~ gens => {
-        val eif = EIfc(cond).withPosition(EPos("", arrow.pos.line, arrow.pos.column))
-        EMapCls("do", "this", Nil, "=>", Option(eif), level)
-            .withPosition(EPos("", arrow.pos.line, arrow.pos.column)) ::
-        gens
-      }
+
+          case arrow ~ _ ~ cond ~ _ ~ _ ~ _ ~ gens => {
+            val eif = EIfc(cond).withPosition(EPos("", arrow.pos.line, arrow.pos.column))
+            clog << "ASDFASDFASDFASFDASDF " + level + cond + gens.mkString
+            EMapCls("do", "this (level="+level+")", Nil, "=>", Option(eif), level)
+                .withPosition(EPos("", arrow.pos.line, arrow.pos.column)) ::
+                gens
+          }
     }
 
     /** new block-like if */
-  def pelse2tree(level:Int) : Parser[List[Object]] =
+  def pelse2tree (level:Int) : Parser[List[Object]] =
     ows ~> keyw("""[.$]?else""".r) ~
         ows ~ "{" ~ optComment3 ~
-        rep(aCommentLine | pgen2(level+1) | pgenStep2(level+1) /*| pgenErr*/) <~
+        rep(aCommentLine | pif2 (level+1) | pgen2(level+1) | pgenStep2(level+1) /*| pgenErr*/) <~
         ows ~ "}" ^^ {
       case arrow ~ _ ~ _ ~ _ ~ gens => {
         val eif = EElse().withPosition(EPos("", arrow.pos.line, arrow.pos.column))
-        EMapCls("do", "that", Nil, "=>", Option(eif), level)
+        EMapCls("do", "that (level="+level+")", Nil, "=>", Option(eif), level)
             .withPosition(EPos("", arrow.pos.line, arrow.pos.column)) ::
         gens
       }
@@ -423,7 +425,7 @@ trait DomParser extends ParserBase with ExprParser {
     *
     * .mock a.role (attrs) => z.role (attrs)
     */
-  def linemock(wpath: String) =
+  def linemock (wpath: String) =
     keyw("""[.$]mock""".r) ~ ws ~ optArch ~ clsMatch ~ ws ~ opt(pif) ~ rep(pgen | pgenStep) ^^ {
       case k ~ _ ~ oarch ~ Tuple3(ac, am, aa) ~ _ ~ cond ~ gen => {
         val x = nodes.EMatch(ac, am, aa, cond)
@@ -441,39 +443,44 @@ trait DomParser extends ParserBase with ExprParser {
     * - mock is for mocks
     * - others like model or impl are specific
     */
-  def pwhen2: PS = pwhen2Tree(level=0)
+  def pwhen2: PS = pwhen2Tree (level=0)
 
   /**
+    * new style syntax when
+    *
     * .when <tags> a.role (attrs) => z.role (attrs)
     * tags are optional and could be rule, mock, model, impl etc
     * - rule is the default for execution
     * - mock is for mocks
     * - others like model or impl are specific
     */
-  def pwhen2Tree(level:Int): PS =
+  def pwhen2Tree (level:Int): PS =
     keyw("""[.$]when|[.$]mock""".r) ~ ws ~
         optArch ~
         clsMatch ~ ws ~
-        opt(pif) ~ "{" ~ optComment3 ~
-        rep(aCommentLine | pif2(level) | pgen2(level) | pgenStep2(level) /*| pgenErr*/) <~
+        opt(pif) ~ ows ~ "{" ~ optComment3 ~
+        rep (aCommentLine | pif2 (level) | pgen2(level) | pgenStep2 (level) /*| pgenErr*/) <~
         ows ~ "}" ^^ {
-      case k ~ _ ~ oarch ~ Tuple3(ac, am, aa) ~ _ ~ cond ~ _ ~ _ ~ gens => {
+      case k ~ _ ~ oarch ~ Tuple3(ac, am, aa) ~ _ ~ cond ~ _ ~ _ ~ _ ~ gens => {
         lazystatic { (current, ctx) =>
           val x = nodes.EMatch(ac, am, aa, cond)
           val wpath = ctx.we.map(_.specRef.wpath).mkString
           val arch = oarch.filter(_.length > 0).getOrElse(k.s.replaceAllLiterally("2", "")) // archetype
+
+          def collect (gens:List[_]) : List[List[Any]] = gens.collect {
+            case m: EMap => List(m)
+            case l: List[_] => collect(l).flatten
+          }
+
+          val flatGens = collect(gens).flatten.asInstanceOf[List[EMap]]
+
           val r = ERule(x, arch,
-            gens.collect {
-              case m: EMap => List(m)
-              case l: List[_] => l.collect {
-                case m: EMap => m
-              }
-            }.asInstanceOf[List[List[EMap]]].flatten.map { (m:EMap) =>
+            flatGens.map { (m:EMap) =>
               m.withPosition(m.pos.get.copy(wpath = wpath))
             })
 
           // get the row of the last good generation compiled
-          val last = gens
+          val last = flatGens
               .filter(_.isInstanceOf[HasPosition])
               .lastOption
               .map(_.asInstanceOf[HasPosition])
@@ -489,7 +496,7 @@ trait DomParser extends ParserBase with ExprParser {
   /**
     *  z.role (attrs)
     */
-  def pgen2(level:Int) : Parser[EMap] =
+  def pgen2 (level:Int) : Parser[EMap] =
     ows ~> opt(keyw(pArrow)) ~ ows ~
         opt(pif) ~ ows ~
         keywo(clsMet | justAttrs) <~ opt(";") <~ optComment3 ^^ {
@@ -511,7 +518,8 @@ trait DomParser extends ParserBase with ExprParser {
       }
     }
 
-  /**
+  /** old syntax style rule
+    *
     * .when <tags> a.role (attrs) => z.role (attrs)
     * tags are optional and could be rule, mock, model, impl etc
     * - rule is the default for execution
@@ -612,7 +620,7 @@ trait DomParser extends ParserBase with ExprParser {
   }
 
   /**
-    * condition / expression
+    * condition expression not optional
     */
   private def notoptCond: Parser[BoolExpr] = " *\\(".r ~> ows ~> cond <~ ows <~ ")" ^^ {
     case x => x

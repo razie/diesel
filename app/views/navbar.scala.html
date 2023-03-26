@@ -7,6 +7,7 @@ creates the navigation bar
 @import razie.wiki.Enc
 @import play.twirl.api.TemplateMagic.defining
 @import razie.diesel.guard.DomGuardian
+@import services.DieselCluster
 @(user:Option[razie.wiki.model.WikiUser], realm:String=razie.wiki.model.Wikis.RK, mobile:Boolean = false, barTitle: String="Bar Title", logo:Option[String]=None, url:Option[String]=Some("/"), club:String="")(implicit stok: controllers.StateOk)
 @import razie.wiki.Services
 @import razie.wiki.model.Wikis
@@ -19,7 +20,15 @@ creates the navigation bar
 }
 
 @clusterColor() = @{
-  if(stok.request.map(_.cookies).flatMap(_.get("dieselProxyNode")).isEmpty) "lightgray" else "dodgerblue"
+    if(! Services.cluster.isClusterReady) "darkred" else{
+      if(stok.request.map(_.cookies).flatMap(_.get("dieselProxyNode")).isEmpty) "lightgray" else "dodgerblue"
+    }
+}
+
+@clusterTitle() = @{
+  if(! Services.cluster.isClusterReady) "Cluster not ready" else{
+    if(stok.request.map(_.cookies).flatMap(_.get("dieselProxyNode")).isEmpty) "Proxying to other node" else "Cluster ok"
+  }
 }
 
 @prodReactor(s:String)=@{
@@ -331,7 +340,7 @@ require(['jquery'], function($){
           <li class="dropdown">
             <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false" style="xcolor: orange;
               font-weight: bold;
-              font-size: small" title="change environment">
+              font-size: small" title="Operational area">
               Guardian <span class="caret"></span>
             </a>
             <ul class="dropdown-menu" role="menu">
@@ -372,7 +381,7 @@ require(['jquery'], function($){
           <li class="dropdown">
             <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false" style="color: @clusterColor();
               font-weight: bold;
-              font-size: small" title="change environment">
+              font-size: small" title="@clusterTitle()">
               @(Services.cluster.getCurProxyNode(stok.request.map(_.cookies)))<span class="caret"></span>
             </a>
             <ul class="dropdown-menu" role="menu">

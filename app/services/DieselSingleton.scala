@@ -108,17 +108,17 @@ class DieselSingletonActor extends Actor with razie.Logging {
   override def receive = {
 
     case m@DSEnd => {
-      info (s"Received $m")
+      debug (s"Received $m")
       DieselCluster.masterNodeStatus = Some(false)
     }
 
     case m@DSWhois(asker) => {
-      info (s"Received $m")
+      debug (s"Received $m")
       DieselPubSub ! DSStartedOn (DieselCluster.clusterNodeSimple)
     } // I'm processing it so it must be me
 
     case m@_ => {
-      info (s"Received $m")
+      debug (s"Received $m")
       DieselSingleton.eat(m)
     } // received other messages
   }

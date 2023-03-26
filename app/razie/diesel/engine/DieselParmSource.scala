@@ -6,12 +6,13 @@
 package razie.diesel.engine
 
 import razie.diesel.dom.RDOM.P
-import razie.diesel.dom.ParmSource
+import razie.diesel.dom.RDOM.P.undefined
+import razie.diesel.dom.{ParmSource, RDOM}
 import razie.diesel.expr.ECtx
 import razie.diesel.model.DieselMsg
 import razie.hosting.{RkReactors, Website}
 import razie.wiki.{Config, Services}
-import scala.collection.JavaConverters.{mapAsScalaMapConverter, propertiesAsScalaMapConverter}
+import scala.collection.JavaConverters.{asScalaSetConverter, mapAsScalaMapConverter, propertiesAsScalaMapConverter}
 import services.DieselCluster
 
 /** source for parms starting with "diesel"
@@ -31,17 +32,26 @@ class DieselParmSource (ctx:DomEngECtx) extends ParmSource {
           .orElse(ctx.settings.env.map(new P("diesel.env", _)))
           .orElse(Option(new P("diesel.env", ctx.dieselEnv(ctx))))
 
+    // todo deprecated - remove
+    case "userid" => Some(new P("diesel.userid", ctx.dieselUser(ctx)))
+    case "username" => Some(new P("diesel.username", ctx.dieselAU(ctx).map(_.userName).mkString))
+
     case "user" => {
 
-      next("diesel.user", Map(
-
+      if(ctx.dieselAU(ctx).isEmpty) Option(P.undefined("diesel.user"))
+      else next("diesel.user", Map(
         "id" -> (n => {
           Left(new P("diesel.user.id", ctx.dieselUser(ctx)))
         }),
 
-        "userName" -> (n => {
+        "username" -> (n => {
           // leave this lazy - it is expensive
-          Left(new P("diesel.user.userName", ctx.dieselAU(ctx).map(_.userName).mkString))
+          Left(new P("diesel.user.username", ctx.dieselAU(ctx).map(_.userName).mkString))
+        }),
+
+        "name" -> (n => {
+          // leave this lazy - it is expensive
+          Left(new P("diesel.user.name", ctx.dieselAU(ctx).map(_.userName).mkString))
         }),
 
         "roles" -> (n => {
@@ -71,10 +81,6 @@ class DieselParmSource (ctx:DomEngECtx) extends ParmSource {
       ))
     }
 
-    // todo deprecated - remove
-    case "userid" => Some(new P("diesel.userid", ctx.dieselUser(ctx)))
-    case "username" => Some(new P("diesel.username", ctx.dieselAU(ctx).map(_.userName).mkString))
-
     case "isLocalhost" => Some(P.fromTypedValue("diesel.isLocalhost", Services.config.isLocalhost))
     case "isLocaldevbox" => Some(P.fromTypedValue("diesel.isLocaldevbox", Services.config.isLocalhost && Services.config.isRazDevMode))
 
@@ -88,6 +94,14 @@ class DieselParmSource (ctx:DomEngECtx) extends ParmSource {
     case "props" => {
 
       next("diesel.props", Map(
+
+        "config" -> (n => {
+//          val m = if(Services.config.pconfig.hasPath(n)) Services.config.pconfig.getString(n) else P.undefined(n)
+          val m = Services.config.pconfig.entrySet().asScala
+              .filter(! _.getKey.startsWith("wiki.mongo"))
+              .map( t =>(t.getKey -> t.getValue.unwrapped().toString)).toMap
+          Left(P.fromSmartTypedValue("diesel.props.config", m))
+        }),
 
         "system" -> (n => {
           val m = if (Services.config.isLocalhost) {
@@ -142,10 +156,12 @@ class DieselParmSource (ctx:DomEngECtx) extends ParmSource {
         P.fromSmartTypedValue("diesel.cluster.nodes", DieselCluster.clusterNodesJson)
       )),
       "masterNode" -> (n => Left(
-        P.fromSmartTypedValue("diesel.cluster.masterNode", Map(
-          "name" -> Services.config.node,
-          "node" -> Services.config.node
-        ))
+        P.fromSmartTypedValue("diesel.cluster.masterNode", Services.config.node
+//          Map(
+//          "name" -> Services.config.node,
+//          "node" -> Services.config.node
+//        )
+      )
       ))
     ))
 

@@ -177,25 +177,25 @@ class DomEngineRouter () extends Actor with razie.Logging {
     // message meant for remote stream, wrap and forward
     case m : DEStreamMsgWithRef if (m.streamRef.exists(_.isRemote)) => {
 
-      log(s"DomEngineRouterActor: received ${m.getClass.getSimpleName}")
+      debug(s"DomEngineRouterActor: received ${m.getClass.getSimpleName}")
       DieselPubSub ! DEStreamRemoteMsg(m) // delegate via pubsub
     }
 
     // remote message meant for local stream
     case m @ DEStreamRemoteMsg (msg) => {
 
-      log(s"DomEngineRouterActor: received ${m.getClass.getSimpleName}")
+      debug (s"DomEngineRouterActor: received ${m.getClass.getSimpleName}")
       if(msg.streamRef.exists(x=>DomRefs.isLocal(x.node))) {
-        log(s"...forwarding to self $msg")
+        debug (s"...forwarding to self $msg")
         self ! msg
       } else {
-        log("... not for me. ignore it!")
+        debug ("... not for me. ignore it!")
       }
     }
 
     case m: DEStreamMsg => {
 
-      log(s"DomEngineRouterActor: received ${m.getClass.getSimpleName}")
+      debug(s"DomEngineRouterActor: received ${m.getClass.getSimpleName}")
 
       DieselAppContext.activeStreamsByName
           .get(m.streamName)
@@ -213,7 +213,7 @@ class DomEngineRouter () extends Actor with razie.Logging {
   }
 
   def route(id: String, msg: Any): Unit = {
-    log(s"DomEngineRouterActor: routing ${msg.getClass.getSimpleName} to $id")
+    trace(s"DomEngineRouterActor: routing ${msg.getClass.getSimpleName} to $id")
     DieselAppContext.activeActors.get(id).map(_ ! msg).getOrElse(
       // todo if the engine is still around, collected, alert these in the there - add warn nodes
       // otherwise we need to alert somehow... anyways, something's off?

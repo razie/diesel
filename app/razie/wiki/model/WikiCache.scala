@@ -29,7 +29,7 @@ object WikiCache {
   }
 
   def set[T](id:String, w:T, i:Int = cacheExp) = {
-    clog << "WIKI_CACHE_SET   - "+id
+    ctrace << "WIKI_CACHE_SET   - "+id
     Services.cache.set(id, w, i.seconds)
     GlobalData.wikiCacheSets.incrementAndGet()
   }
@@ -44,7 +44,7 @@ object WikiCache {
       GlobalData.wikiCacheHits.incrementAndGet()
       x
     }.orElse {
-      clog << "WIKI_CACHE_MISS  FULL - "+id
+      ctrace << "WIKI_CACHE_MISS  FULL - "+id
       GlobalData.wikiCacheMisses.incrementAndGet()
       None
     }
@@ -55,7 +55,7 @@ object WikiCache {
       ctrace << "WIKI_CACHE_FOUND DB   - "+id
       x
     }.orElse {
-      clog << "WIKI_CACHE_MISS  DB   - "+id
+      ctrace << "WIKI_CACHE_MISS  DB   - "+id
       None
     }
   }
@@ -65,13 +65,13 @@ object WikiCache {
       ctrace << "WIKI_CACHE_FOUND FRM  - "+id
       x
     }.orElse {
-      clog << "WIKI_CACHE_MISS  FRM  - "+id
+      ctrace << "WIKI_CACHE_MISS  FRM  - "+id
       None
     }
   }
 
   def remove(id:String) = {
-    clog << "WIKI_CACHE_CLEAR - "+id
+    ctrace << "WIKI_CACHE_CLEAR - "+id
     Services.cache.remove(id)
   }
 }
