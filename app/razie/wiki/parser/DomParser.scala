@@ -239,18 +239,31 @@ trait DomParser extends ParserBase with ExprParser {
     }
   }
 
+  /** new block-like */
+  def pblock2tree (level:Int) : Parser[List[Object]] =
+    ows ~>
+        keyw("{") ~ optComment3 ~
+        rep (aCommentLine | pif2 (level+1) | pgen2 (level+1) | pgenStep2 (level+1) /*| pgenErr*/) <~
+        ows ~ "}" ^^ {
+
+      case arrow ~ _ ~ gens => {
+        EMapCls("do", "this (level="+level+")", Nil, "=>", None, level)
+            .withPosition(EPos("", arrow.pos.line, arrow.pos.column)) ::
+            gens
+      }
+    }
+
   def pif2 (level:Int): Parser[List[Object]] = pif2tree (level) | pelse2tree (level)
 
   /** new block-like if */
   def pif2tree (level:Int) : Parser[List[Object]] =
     ows ~> keyw("""[.$]?if""".r) ~ ows ~ notoptCond ~ ows ~
         "{" ~ optComment3 ~
-        rep (aCommentLine | pif2 (level+1) | pgen2 (level+1) | pgenStep2 (level+1) /*| pgenErr*/) <~
+        rep (aCommentLine | pif2 (level+1) | pblock2tree(level + 1) | pgen2 (level+1) | pgenStep2 (level+1) /*| pgenErr*/) <~
         ows ~ "}" ^^ {
 
           case arrow ~ _ ~ cond ~ _ ~ _ ~ _ ~ gens => {
             val eif = EIfc(cond).withPosition(EPos("", arrow.pos.line, arrow.pos.column))
-            clog << "ASDFASDFASDFASFDASDF " + level + cond + gens.mkString
             EMapCls("do", "this (level="+level+")", Nil, "=>", Option(eif), level)
                 .withPosition(EPos("", arrow.pos.line, arrow.pos.column)) ::
                 gens
@@ -261,7 +274,7 @@ trait DomParser extends ParserBase with ExprParser {
   def pelse2tree (level:Int) : Parser[List[Object]] =
     ows ~> keyw("""[.$]?else""".r) ~
         ows ~ "{" ~ optComment3 ~
-        rep(aCommentLine | pif2 (level+1) | pgen2(level+1) | pgenStep2(level+1) /*| pgenErr*/) <~
+        rep(aCommentLine | pif2 (level+1) | pblock2tree(level + 1) | pgen2(level+1) | pgenStep2(level+1) /*| pgenErr*/) <~
         ows ~ "}" ^^ {
       case arrow ~ _ ~ _ ~ _ ~ gens => {
         val eif = EElse().withPosition(EPos("", arrow.pos.line, arrow.pos.column))
@@ -459,7 +472,7 @@ trait DomParser extends ParserBase with ExprParser {
         optArch ~
         clsMatch ~ ws ~
         opt(pif) ~ ows ~ "{" ~ optComment3 ~
-        rep (aCommentLine | pif2 (level) | pgen2(level) | pgenStep2 (level) /*| pgenErr*/) <~
+        rep (aCommentLine | pif2 (level) | pblock2tree(level + 1) | pgen2(level) | pgenStep2 (level) /*| pgenErr*/) <~
         ows ~ "}" ^^ {
       case k ~ _ ~ oarch ~ Tuple3(ac, am, aa) ~ _ ~ cond ~ _ ~ _ ~ _ ~ gens => {
         lazystatic { (current, ctx) =>
