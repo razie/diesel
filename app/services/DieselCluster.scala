@@ -5,6 +5,7 @@ import akka.cluster.{Cluster, Member, MemberStatus}
 import com.razie.pub.comms.CommRtException
 import java.net.InetAddress
 import play.api.mvc.Cookies
+import razie.diesel.model.{DieselMsgString, DieselTarget}
 import razie.{Logging, Snakk, clog}
 import razie.hosting.{Website, WikiReactors}
 import razie.wiki.model.DCNode
@@ -231,6 +232,9 @@ class SimpleClusterListener extends Actor with razie.Logging {
       classOf[MemberEvent], classOf[UnreachableMember])
   }
 
+  def ton (m:Member) = new DCMember(m).node
+  def realm : String = ""
+
   override def postStop(): Unit = DieselCluster.akkaCluster.unsubscribe(self)
 
   override def receive = {
@@ -240,16 +244,33 @@ class SimpleClusterListener extends Actor with razie.Logging {
       DieselCluster.addClusterHistory(msg)
       if (!Services.cluster._isClusterReady) {
         Services.cluster.clusterIsReadyNow()
+        Services ! DieselMsgString(
+          s"""$$msg diesel.cluster.notif.ready""".stripMargin,
+          DieselTarget.ENV(realm)
+        )
       }
+
+      Services ! DieselMsgString(
+        s"""$$msg diesel.cluster.notif.node.up(node="${ton(member)}")""".stripMargin,
+        DieselTarget.ENV(realm)
+      )
     }
 
     case UnreachableMember(member) =>
       val msg = ("Member detected as unreachable: " + member)
       DieselCluster.addClusterHistory(msg)
+      Services ! DieselMsgString(
+        s"""$$msg diesel.cluster.notif.node.unreacheable(node="${ton(member)}")""".stripMargin,
+        DieselTarget.ENV(realm)
+      )
 
     case MemberRemoved(member, previousStatus) =>
       val msg = (s"Member is Removed: ${member.address} after ${previousStatus}")
       DieselCluster.addClusterHistory(msg)
+      Services ! DieselMsgString(
+        s"""$$msg diesel.cluster.notif.node.removed(node="${ton(member)}")""".stripMargin,
+        DieselTarget.ENV(realm)
+      )
 
     case state: CurrentClusterState => {
       val msg = (s"CurrentClusterState: $state")
@@ -258,6 +279,10 @@ class SimpleClusterListener extends Actor with razie.Logging {
       DieselCluster.oldclusterNodes = state.members.toList map { x => new DCMember(x) }
       if (!Services.cluster._isClusterReady && state.members.size > 0) {
         Services.cluster.clusterIsReadyNow()
+        Services ! DieselMsgString(
+          s"""$$msg diesel.cluster.notif.ready""".stripMargin,
+          DieselTarget.ENV(realm)
+        )
       }
     }
 
