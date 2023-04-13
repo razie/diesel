@@ -264,6 +264,8 @@ case class WType (name:String, schema:String = WTypes.UNKNOWN, mime:Option[Strin
   def isUndefined = WTypes.UNDEFINED.equals(name)
 
   def isNumber = WTypes.NUMBER == name || WTypes.FLOAT == name || WTypes.INT == name
+  def isArray = WTypes.ARRAY == name
+  def isJson = WTypes.JSON == name || WTypes.OBJECT == name
 
   def nonEmpty = name.nonEmpty
 }

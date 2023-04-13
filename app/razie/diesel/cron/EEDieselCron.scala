@@ -61,14 +61,15 @@ class EEDieselCron extends EExecutor("diesel.cron") {
         val cronMsg = ctx.get("cronMsg")
         val doneMsg = ctx.get("doneMsg")
 
-        val schedExpr = ctx.get("schedule").orElse(ctx.get("scheduleExpr")).mkString
-        val cronExpr = ctx.get("cronExpr").mkString
-        val time = ctx.get("time").mkString
-        val tags = ctx.get("tags").mkString
-        val endTime = ctx.get("endTime").mkString
-        val inSequence = ctx.get("inSequence").mkString == "true"
+        val schedExpr = ctx.get("schedule").orElse(ctx.get("scheduleExpr")).mkString.trim
+        val cronExpr = ctx.get("cronExpr").mkString.trim
+        val time = ctx.get("time").mkString.trim
+        val tags = ctx.get("tags").mkString.trim
+        val endTime = ctx.get("endTime").mkString.trim
+        val inSequence = ctx.get("inSequence").mkString.trim == "true"
 
-        var clusterMode = ctx.get("clusterMode").getOrElse(DieselCron.MODE_ALL)
+        var clusterMode = ctx.get("clusterMode").getOrElse(DieselCron.MODE_ALL).trim
+        if (clusterMode.isEmpty) clusterMode = DieselCron.MODE_ALL
 
        // old style
         val singleton = P.asBoolean(ctx.get("singleton").mkString)
@@ -85,15 +86,18 @@ class EEDieselCron extends EExecutor("diesel.cron") {
         val vdt = dt
         val vdiff = diff
 
-        if (cronExpr.isEmpty && time.trim.isEmpty) {
-          List(EVal(P.fromTypedValue(Diesel.PAYLOAD, "You can't provide both cron and time!", WTypes.wt.EXCEPTION)))
-        } else if (cronExpr.isEmpty && schedExpr.isEmpty) {
-          List(EVal(P.fromTypedValue(Diesel.PAYLOAD, "You can't provide both cron and schedule!", WTypes.wt.EXCEPTION)))
-        } else if (!acceptPast && time.trim.nonEmpty && diff <= 0) {
+        if (cronExpr.isEmpty && schedExpr.isEmpty && time.isEmpty) {
+          List(EVal(P.fromTypedValue(Diesel.PAYLOAD, "Either schedExpr/cronExpr or time needs to be provided",
+            WTypes.wt.EXCEPTION)))
+        } else if (cronExpr.nonEmpty && time.nonEmpty) {
+          List(EVal(P.fromTypedValue(Diesel.PAYLOAD, "Can't use both cronExpr and time!", WTypes.wt.EXCEPTION)))
+        } else if (cronExpr.nonEmpty && schedExpr.nonEmpty) {
+          List(EVal(P.fromTypedValue(Diesel.PAYLOAD, "Can't use both cronExpr and schedExpr!", WTypes.wt.EXCEPTION)))
+        } else if (!acceptPast && time.nonEmpty && diff <= 0) {
           List(EVal(P.fromTypedValue(Diesel.PAYLOAD, s"Time is in the past (${dt} vs ${now} is ${diff})", WTypes.wt.EXCEPTION)))
-        } else if (!MODE_VALUES.contains(clusterMode)) {
-          List(EVal(P.fromTypedValue(Diesel.PAYLOAD, "ClusterMode must be one of " + MODE_VALUES.mkString, WTypes.wt.EXCEPTION)))
-        } else if (!acceptPast && time.trim.nonEmpty && diff <= 0) {
+        } else if (!MODE_VALUES.contains(clusterMode) && clusterMode.nonEmpty) {
+          List(EVal(P.fromTypedValue(Diesel.PAYLOAD, "ClusterMode must be one of " + MODE_VALUES.mkString(","), WTypes.wt.EXCEPTION)))
+        } else if (!acceptPast && time.nonEmpty && diff <= 0) {
           List(EVal(P.fromTypedValue(Diesel.PAYLOAD, s"Time is in the past (${dt} vs ${now} is ${diff})", WTypes.wt.EXCEPTION)))
         } else if (!DieselCron.ISENABLED) {
           List(EVal(P.fromTypedValue(Diesel.PAYLOAD, "DieselCron is DISABLED", WTypes.wt.EXCEPTION)))

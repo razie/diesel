@@ -277,7 +277,7 @@ class DomGuard extends DomApiBase with Logging {
         .filter(canSee).filter(a=> filters.isEmpty || a.description.contains(filters))
         .toList
 
-    val list = list1 ++ list2
+    val list = (list1 ++ list2).distinct
 
     val total = GlobalData.dieselEnginesTotal.get()
 

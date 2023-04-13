@@ -67,6 +67,7 @@ trait DomRoot {
     p.filter(predicate).orElse(p.flatMap(findParentWith(_, predicate)))
   }
 
+  /** a scope is a parent that is one of: RECEIVED / EScope / root */
   def findScope(node: DomAst): DomAst =
     findParent(node).collectFirst {
       case a if a.id == root.id => a // found root

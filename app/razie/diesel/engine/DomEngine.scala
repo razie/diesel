@@ -906,9 +906,9 @@ abstract class DomEngine(
           val notifyParent = DomAst(EMsg(
             DieselMsg.ENGINE.DIESEL_PONG,
             List(
-              P.of("parentNode", cid.node),
+              P.of("parentNode", cid.node.mkString),
               P.of("parentId", cid.id),
-              P.of("targetId", cid.section),
+              P.of("targetId", cid.section.mkString),
               P.of("level", -1)
             )
           ))

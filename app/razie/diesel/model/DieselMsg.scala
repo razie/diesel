@@ -333,7 +333,8 @@ object DieselMsg {
   }
 
   object APIGW {
-    final val ENTITY = "diesel.apigw.limit"
+    final val LIMIT = "diesel.apigw.limit"
+    final val ENTITY = "diesel.apigw"
   }
 
   object PROPS {

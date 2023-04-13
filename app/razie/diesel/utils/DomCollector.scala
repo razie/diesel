@@ -6,13 +6,17 @@
   */
 package razie.diesel.utils
 
+import java.util.regex.Pattern
 import org.joda.time.DateTime
 import razie.diesel.engine.{DieselSLASettings, DomEngine, DomState}
 import razie.diesel.model.DieselMsg
+import scala.collection.mutable.{HashMap, ListBuffer}
 
 // todo make instance in Reactor instead of a static
 /** collects the last engine traces */
 object DomCollector {
+
+  case class ConfigEntry (descriptionMatch:Pattern, count:Int, group:String)
 
   final val MAX_SIZE = 200 // how many to keep overall
   final val MAX_SIZE_LOWER = 50 // how many to keep, for lower priority traces
@@ -20,9 +24,15 @@ object DomCollector {
   /** following a pattern momentarily overwrites the keep configuration */
   var following : Array[String] = new Array[String](0)
 
+  /** following a pattern momentarily overwrites the keep configuration */
+  var configPerRealm = new HashMap[String, ListBuffer[ConfigEntry]] ()
+
   /** a single collected trace */
   case class CollectedAst(stream: String, realm: String, id: String, userId: Option[String], engine: DomEngine,
-                          collectGroup: String, details: String, dtm: DateTime = DateTime.now) {
+                          details: String, dtm: DateTime = DateTime.now) {
+
+    val (collectCount, collectGroup) = calculate
+
     def isLowerPriority = {
       val desc = engine.description // not collectGroup
       !following.exists(desc.contains) &&
@@ -36,24 +46,41 @@ object DomCollector {
     }
 
     /** how many of these to keep in trace collector? */
-    def getMaxCount = {
+    private def calculate = {
+      var group = engine.collectGroup
+
       val desc = engine.collectGroup
-      Option(100)
+          .filter(x=> following.exists(x=> x.length > 3 && engine.description.contains(x)))
+
+      val count = Option(100)
           .filter(x=> following.exists(x=> x.length > 3 && engine.description.contains(x)))
           .getOrElse (
-      engine.settings.collectCount.filter(_ != 0).getOrElse {
-        val res = if (
-          desc.endsWith("diesel/ping") || desc.endsWith(DieselMsg.ENGINE.DIESEL_PING)
-        ) 3 else if (
-          desc.contains(DieselMsg.fiddleStoryUpdated) ||
-              desc.contains(DieselMsg.GPOLL)
-        ) 6 else {
-          if (engine.settings.slaSet.contains(DieselSLASettings.NOKEEP)) -1 else 5
-          // 0  means no self-imposed limit, default
-        }
-        res
-      })
+            engine.settings.collectCount.filter(_ != 0).getOrElse {
+              val res = if (
+                desc.endsWith ("diesel/pingx") || desc.endsWith (DieselMsg.ENGINE.DIESEL_PING)
+              ) 3 else if (
+                desc.contains (DieselMsg.fiddleStoryUpdated) || desc.contains (DieselMsg.GPOLL)
+              ) 6 else {
+                if (engine.settings.slaSet.contains (DieselSLASettings.NOKEEP)) -1 else {
+                  configPerRealm.get(engine.settings.realm.mkString)
+                      .flatMap (_.find (_.descriptionMatch.matcher(engine.description).matches()))
+                      .map {ce =>
+                        group = ce.group
+                        ce.count
+                      }.getOrElse {
+                    5
+                  }
+                }
+                // 0  means no self-imposed limit, default
+              }
+              res
+            })
+
+      (count, group)
     }
+
+    /** how many of these to keep in trace collector? */
+    def getMaxCount = collectCount
   }
 
   /* statically collecting the last MAX_SIZE results sets **/
@@ -91,8 +118,8 @@ object DomCollector {
     val userId = eng.settings.userId
     val xid = eng.id
 
-    val collectGroup = eng.collectGroup
-    val newOne = CollectedAst(stream, realm, xid, userId, eng, collectGroup, details)
+    val newOne = CollectedAst(stream, realm, xid, userId, eng, details)
+    val collectGroup = newOne.collectGroup
     val count = newOne.getMaxCount
 
     if (count > 0) { // collect it

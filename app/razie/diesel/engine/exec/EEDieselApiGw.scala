@@ -6,14 +6,17 @@
   * */
 package razie.diesel.engine.exec
 
+import java.util.regex.Pattern
 import razie.cdebug
 import razie.diesel.dom.RDOM.P
 import razie.diesel.engine.DomAst
 import razie.diesel.engine.nodes._
 import razie.diesel.expr.ECtx
 import razie.diesel.model.DieselMsg
+import razie.diesel.utils.DomCollector
 import razie.diesel.{Diesel, DieselRateLimiter, RateLimitGroup}
 import razie.wiki.Services
+import scala.collection.mutable.{HashMap, ListBuffer}
 
 /** properties - from system or file
   */
@@ -23,7 +26,7 @@ class EEDieselApiGw extends EExecutor(DieselMsg.APIGW.ENTITY) {
   override def isMock: Boolean = true
 
   override def test(ast: DomAst, m: EMsg, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) = {
-    m.entity == DieselMsg.APIGW.ENTITY
+    m.entity startsWith DieselMsg.APIGW.ENTITY
   }
 
   private def OK = List(
@@ -112,6 +115,19 @@ class EEDieselApiGw extends EExecutor(DieselMsg.APIGW.ENTITY) {
             P.fromSmartTypedValue(Diesel.PAYLOAD, DieselRateLimiter.toj)))
       }
 
+      case "diesel.apigw.collect.config" => {
+        val p = in.attrs.head.calculatedTypedValue.asJson.get("patterns")
+        val config = p.map(_.asInstanceOf[ListBuffer[HashMap[String,Any]]]).get
+        val x = config.map (m => DomCollector.ConfigEntry(
+          Pattern.compile(m("description").toString),
+          m("collectCount").toString.toInt,
+          m("collectGroup").toString
+        ))
+        DomCollector.configPerRealm.put (ctx.root.settings.realm.mkString, x)
+
+        OK
+      }
+
       case s@_ => {
         new EError(s"$s - unknown activity ") :: Nil
       }
@@ -125,6 +141,7 @@ class EEDieselApiGw extends EExecutor(DieselMsg.APIGW.ENTITY) {
         EMsg(DT, "limit.rate") ::
         EMsg(DT, "limit.path") ::
         EMsg(DT, "limit.header") ::
+        EMsg(DT, "collect.config") ::
         EMsg(DT, "stats") ::
         EMsg(DT, "groups") :: Nil
 }
