@@ -180,6 +180,9 @@ class DomApi extends DomApiBase with Logging {
     x.get
   }
 
+  def dieselReason(s:String) =
+      ("diesel-reason" -> s.replaceAll("\n", ""))
+
   /** execute message to given reactor
     *
     * @param path is the useful path (without prefix). Either an e.a or e/a or template match
@@ -257,7 +260,7 @@ class DomApi extends DomApiBase with Logging {
             info(body)
 
             Status(NOT_IMPLEMENTED)(body)
-                .withHeaders("diesel-reason" -> body)
+                .withHeaders(dieselReason(body))
 
           } else if (
             "value" == settings.resultMode || "" == settings.resultMode
@@ -551,7 +554,7 @@ class DomApi extends DomApiBase with Logging {
             info(body)
 
             Status(NOT_IMPLEMENTED)(body)
-                .withHeaders("diesel-reason" -> body)
+                .withHeaders(dieselReason(body))
 
           } else if (RETURN501 && (msgAst.isEmpty ||
               // it was a diesel.rest but nothing matched underneath
@@ -569,7 +572,7 @@ class DomApi extends DomApiBase with Logging {
               info(body)
 
               Status(NOT_IMPLEMENTED)(body)
-                  .withHeaders("diesel-reason" -> body)
+                  .withHeaders(dieselReason(body))
 
           } else if (
             "value" == settings.resultMode || "" == settings.resultMode
@@ -1096,25 +1099,45 @@ class DomApi extends DomApiBase with Logging {
               }
             }
 
-            try {
-              Await.result(res, Duration(dur))
-            } catch {
-              case e: java.util.concurrent.TimeoutException => {
-                engine.stopNow()
-                engine.root.appendAllNoEvents(
-                  List(
-                    DomAst(
-                      EInfo(s"Engine timedout at ${dur} !", s"DomApi:Workflow took too long ($dur)"), AstKinds.DEBUG)
-                        .withStatus(DomState.SKIPPED)
-                  )
-                )
-                val msg = (s"Workflow took too long ($dur) - not enough resources?")
-                val st = new Status(Integer.parseInt(tcode))(msg)
-                    .withHeaders("diesel-reason" -> s"Flow didn't complete in $dur")
-                engine.withReturned(msg, tcode.toInt)
-                st
+            // wait on future with duration - loop while engine is paused
+            var engRes  : Option[Result] = None
+            var countWaits = 0
+              while (engRes.isEmpty) {
+                countWaits += 1
+              try {
+                engRes = Option(Await.result(res, Duration(dur)))
+              } catch {
+                case e: java.util.concurrent.TimeoutException => {
+                  if(engine.paused && countWaits < 20) {
+                    engine.root.appendAllNoEvents(
+                      List(
+                        DomAst(
+                          EInfo(s"Engine timedout at ${dur} BUT it's paused - still waiting!", s"DomApi:Workflow took too long ($dur)"),
+                          AstKinds.DEBUG)
+                            .withStatus(DomState.SKIPPED)
+                      )
+                    )
+                    // nothing, loop again
+                  } else {
+                    engine.stopNow()
+                    engine.root.appendAllNoEvents(
+                      List(
+                        DomAst(
+                          EInfo(s"Engine timedout at ${dur} !", s"DomApi:Workflow took too long ($dur)"),
+                          AstKinds.DEBUG)
+                            .withStatus(DomState.SKIPPED)
+                      )
+                    )
+                    val msg = (s"Workflow took too long ($dur) - not enough resources?")
+                    val st = new Status(Integer.parseInt(tcode))(msg)
+                        .withHeaders("diesel-reason" -> s"Flow didn't complete in $dur")
+                    engine.withReturned(msg, tcode.toInt)
+                    engRes = Option(st)
+                  }
+                }
               }
             }
+            engRes.get
           } getOrElse {
             val msg = (s"ERR Realm(${reactor}): Template or message not found for path: " + path)
             engine.withReturned(msg, 404)
@@ -1382,7 +1405,7 @@ class DomApi extends DomApiBase with Logging {
           info(body)
 
           Status(NOT_IMPLEMENTED)(body)
-              .withHeaders("diesel-reason" -> body)
+              .withHeaders(dieselReason(body))
 
         } else if (RETURN501 && (
             // it was a diesel.rest but nothing matched underneath
@@ -1401,7 +1424,7 @@ class DomApi extends DomApiBase with Logging {
           info(body)
 
           Status(NOT_IMPLEMENTED)(body)
-              .withHeaders("diesel-reason" -> body)
+              .withHeaders(dieselReason(body))
 
         } else {
           // generic inferred statuses
@@ -1418,7 +1441,7 @@ class DomApi extends DomApiBase with Logging {
             if((response.isEmpty || response.get.ttype == WTypes.wt.UNDEFINED) && stok.website.dieselUse404) {
               val msg = ("Flow ran but returned no payload!")
               NotFound(msg)
-                .withHeaders("diesel-reason" -> msg)
+                  .withHeaders(dieselReason(msg))
             } else
               Ok(body)
           }
