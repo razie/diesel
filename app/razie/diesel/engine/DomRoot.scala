@@ -374,7 +374,7 @@ trait DomRoot {
           // warn about overwriting local vars in static contexts
           // this was fixed, no need to warn...
           val warn = Nil
-//            if(appendToCtx.isInstanceOf[RuleScopeECtx] && appendToCtx.existsL(_.name == p.name))
+//            if(appendToCtx.isInstanceOf[RuleScopeECtx] && appendToCtx.asInstanceOf[RuleScopeECtx].cur.exists(_.name == p.name))
 //            DomAst(EError(s"Can't override local value in context: ${p.name} - use another name!") withPos (pos), AstKinds.ERROR).withSpec(x) :: Nil
 //          else Nil
 

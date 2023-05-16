@@ -8,10 +8,12 @@ package razie.diesel.expr
 import java.time.{Duration, LocalDateTime, ZoneOffset}
 import java.time.format.DateTimeFormatter
 import org.json.JSONObject
-import razie.diesel.Diesel
+import razie.diesel.dom.RDOM.P.{asString, isSimpleType}
+import razie.diesel.{Diesel, dom}
 import razie.diesel.dom.RDOM.{P, PValue}
 import razie.diesel.dom._
-import razie.diesel.engine.{DieselAppContext, DomStream}
+import razie.diesel.engine.{DieselAppContext, DomAssetRef, DomRefs, DomStream}
+import razie.wiki.model.CATS
 import scala.collection.mutable
 import scala.collection.mutable.{HashMap, ListBuffer}
 import scala.util.Try
@@ -178,13 +180,13 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
 
           case _ => {
 
-            if (bv.ttype == WTypes.ARRAY ||
-                av.ttype == WTypes.ARRAY) {   // if either is array, concat lists
+            if (bv.ttype.name == WTypes.ARRAY ||
+                av.ttype.name == WTypes.ARRAY) {   // if either is array, concat lists
 
-              val al = if (av.ttype == WTypes.ARRAY) av.calculatedTypedValue.asArray else List(
+              val al = if (av.ttype.name == WTypes.ARRAY) av.calculatedTypedValue.asArray else List(
                 av.calculatedTypedValue.value)
 
-              val bl = if (bv.ttype == WTypes.ARRAY) bv.calculatedTypedValue.asArray else List(
+              val bl = if (bv.ttype.name == WTypes.ARRAY) bv.calculatedTypedValue.asArray else List(
                 bv.calculatedTypedValue.value)
 
               val res = new ListBuffer[Any]()
@@ -192,8 +194,8 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
               res.appendAll(bl)
               PValue(res, WTypes.wt.ARRAY)
 
-            } else if (bv.ttype == WTypes.JSON &&
-                av.ttype == WTypes.JSON) {
+            } else if (bv.ttype.name == WTypes.JSON &&
+                av.ttype.name == WTypes.JSON) {
               // json exprs are different, like cart + { item:...}
 
               try {
@@ -214,13 +216,13 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
         (a, b) match {
           // json exprs are different, like cart + { item:...}
           case (aei: AExprIdent, JBlockExpr(jb, _))
-            if aei.tryApplyTyped("").exists(_.ttype == WTypes.JSON) =>
+            if aei.tryApplyTyped("").exists(_.ttype.name == WTypes.JSON) =>
             jsonExprMap(op, av.calculatedTypedValue, bv.calculatedTypedValue)
 
           // json exprs are different, like cart + { item:...}
           case (aei: AExprIdent, bei: AExprIdent)
-            if aei.tryApplyTyped("").exists(_.ttype == WTypes.JSON) &&
-                bei.tryApplyTyped("").exists(_.ttype == WTypes.JSON) =>
+            if aei.tryApplyTyped("").exists(_.ttype.name == WTypes.JSON) &&
+                bei.tryApplyTyped("").exists(_.ttype.name == WTypes.JSON) =>
             jsonExprMap(op, av.calculatedTypedValue, bv.calculatedTypedValue)
 
           case _ if isDate(av) && isDate(bv) => {

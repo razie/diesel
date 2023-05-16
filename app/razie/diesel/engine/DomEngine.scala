@@ -412,17 +412,6 @@ abstract class DomEngine(
       Some(a))
   }
 
-  /** many places copy parent's attrs, but some may have been overwriten in the context, we need to reconcile */
-  protected def reconcileParentAttrs(attrs:List[P], parentCtx:ECtx) : List[P] = {
-    val res =
-      if(parentCtx.isInstanceOf[RuleScopeECtx])
-      attrs.filterNot(p=> parentCtx.isOverwritten(p.name))
-    else
-      attrs
-
-    res
-  }
-
   /** spawn new engine
     *
     * @param nodes

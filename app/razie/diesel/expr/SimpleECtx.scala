@@ -214,7 +214,7 @@ class SimpleECtx(
 
   /** propagates by default up - see the Scope context which will not */
   override def putAll(p: List[P]): Unit = {
-    p.map(put)
+    p.foreach(put)
 //    if (base.isDefined) base.get.putAll(p)
 //    else attrs = p ::: attrs.filter(x => !p.exists(_.name == x.name))
   }

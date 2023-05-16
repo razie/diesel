@@ -7,7 +7,7 @@ package razie.diesel.engine
 
 import razie.diesel.dom.RDOM.P
 import razie.diesel.dom.{RDOM, WTypes}
-import razie.diesel.expr.{BCMP2, ECtx}
+import razie.diesel.expr.{BCMP2, ECtx, RuleScopeECtx}
 import razie.wiki.Enc
 import scala.collection.mutable.ListBuffer
 
@@ -23,6 +23,17 @@ package object nodes {
       str.matches(re.substring(1,re.length-1))
     } else
       false
+  }
+
+  /** many places copy parent's attrs, but some may have been overwriten in the context, we need to reconcile */
+  def reconcileParentAttrs (attrs:List[P], parentCtx:ECtx) : List[P] = {
+    val res =
+      if (parentCtx.isInstanceOf[RuleScopeECtx])
+        attrs.filterNot(p=> parentCtx.isOverwritten(p.name))
+      else
+        attrs
+
+    res
   }
 
   /** check to match the arguments */
