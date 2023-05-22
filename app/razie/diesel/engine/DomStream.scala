@@ -74,10 +74,14 @@ abstract class DomStream (
 
   /** a stream consumer is a pair of engine/node where consumption occurs */
   trait DomStreamConsumer {
-    def consumeDataBatch (batches:List[List[Any]]): Unit
-    def consumeData      (dataAsList:List[Any]): Unit
-    def error            (): Unit
-    def complete         (): Unit
+    /** invoked by stream to consume a batch available */
+    def onDataBatch (batches:List[List[Any]]): Unit
+    /** invoked by stream to consume a data unit available */
+    def onData      (dataAsList:List[Any]): Unit
+    /** invoked by stream to inform of an error */
+    def onError            (): Unit
+    /** invoked by stream to inform of closing the stream */
+    def onComplete         (): Unit
     def addInfo          (msg:String, details:String): Unit
   }
 
@@ -91,7 +95,7 @@ abstract class DomStream (
   /** an engine is client - so consumption becomes messages created in context of that engine */
   case class EngDomStreamConsumer(engine: String, node:String) extends DomStreamConsumer {
 
-    override def consumeDataBatch (batches: List[List[Any]]): Unit = {
+    override def onDataBatch (batches: List[List[Any]]): Unit = {
       val asts = new ListBuffer[DomAst]()
       val batchAccumulator = new ListBuffer[List[Any]]()
 
@@ -126,7 +130,7 @@ abstract class DomStream (
         Option((a, e) => a.withPrereq(getDepy)))
     }
 
-    override def consumeData(dataAsList: List[Any]): Unit = {
+    override def onData(dataAsList: List[Any]): Unit = {
       val asts = new ListBuffer[DomAst]()
       dataAsList.toList.foreach { data =>
 
@@ -154,7 +158,7 @@ abstract class DomStream (
       }
     }
 
-    override def error(): Unit = {
+    override def onError(): Unit = {
       val ast = DomAst(EMsg(
         DieselMsg.STREAMS.STREAM_ONERROR,
         List(
@@ -177,7 +181,7 @@ abstract class DomStream (
         Option((a, e) => a.withPrereq(getDepy)))
     }
 
-    override def complete(): Unit = {
+    override def onComplete(): Unit = {
       val ast = DomAst(EMsg(
         DieselMsg.STREAMS.STREAM_ONDONE,
         List(
@@ -338,7 +342,7 @@ abstract class DomStream (
         values.remove(0, pickedUp)
         totalConsumed += pickedUp
 
-        sink.foreach(_.consumeDataBatch(batchAccumulator.toList))
+        sink.foreach(_.onDataBatch(batchAccumulator.toList))
 
         trace(s" - DStream values size ${values.size} is: " + values.mkString)
 
@@ -346,7 +350,7 @@ abstract class DomStream (
 
         // no batch
 
-        sink.foreach(_.consumeData(values.toList))
+        sink.foreach(_.onData(values.toList))
         totalConsumed += values.size
 
         trace(" - DStream clear: ")
@@ -379,7 +383,7 @@ abstract class DomStream (
     if(!sentComplete) {
       sentComplete = true
 
-      sink.foreach(_.complete())
+      sink.foreach(_.onComplete())
     }
   }
 
@@ -432,7 +436,7 @@ abstract class DomStream (
           consume()
         }
       } else {
-        sink.foreach(_.error())
+        sink.foreach(_.onError())
       }
     } else {
       // todo
