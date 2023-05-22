@@ -1041,8 +1041,10 @@ class DomApi extends DomApiBase with Logging {
 
                 val res = s"No response template for ${e}.${a}\n" + engine.root.toString
                 ctrace << s"RUN_REST_REPLY $verb $mock $path\n" + res
-                val payload = engine.ctx.getp(Diesel.PAYLOAD).filter(_.ttype != WTypes.wt.UNDEFINED)
-                // todo set ctype based on payload if found
+
+                // todo maybe calculate in local context not global? What if it's an expression with local identifiers? How do I know which local context was used when it was assigned? Should all payload assignments be values?
+                // one solution: assignments to payload are pre-calculated
+                val payload = engine.ctx.getp(Diesel.PAYLOAD).filter(_.ttype != WTypes.wt.UNDEFINED).map(_.calculatedP(engine.ctx))
 
                 payload.map { p =>
                   if (p.value.isDefined) {
