@@ -152,9 +152,20 @@ object EMap {
     * @param ctx
     * @return
     */
-  def sourceAttrs(parent: EMsg, spec: Attrs, destSpec: Option[Attrs], deferEvaluation:Boolean=false)(implicit ctx: ECtx) = {
+  def sourceAttrs (parent: EMsg, spec: Attrs, destSpec: Option[Attrs], deferEvaluation:Boolean=false)(implicit ctx: ECtx) = {
     // current context, msg overrides
-    val myCtx = new StaticECtx(parent.attrs, Some(ctx))
+
+    // if we simply do val myCtx = new StaticECtx(parent.attrs, ... the parent.attrs will override any previous overrides
+    // so we have to avoid situations where that happens
+    // try to avoid overriding overwritten parameters - overriding is done in RuleScopeECtx level
+    val ruleCtx = {
+      if(ctx.isInstanceOf[PassthroughECtx] && ctx.base.isDefined) ctx.base.get
+      else if (ctx.isInstanceOf[RuleScopeECtx]) ctx
+      else ctx
+    }
+    val parentAttrs = reconcileParentAttrs(parent.attrs, ruleCtx)
+
+    val myCtx = new StaticECtx(parentAttrs, Some(ctx))
 
     // solve an expression
     def expr(p: P) = {
