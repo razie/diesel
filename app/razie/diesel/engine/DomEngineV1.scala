@@ -22,6 +22,7 @@ import razie.diesel.model.DieselMsg.ENGINE._
 import razie.hosting.{Website, WikiReactors}
 import razie.hosting.WikiReactors.reactors
 import razie.tconf.DSpec
+import razie.wiki.model.DCNode
 import razie.wiki.{Config, Services}
 import scala.Option.option2Iterable
 import scala.collection.mutable.{HashMap, ListBuffer}
@@ -137,14 +138,14 @@ class DomEngineV1(
             })))
 
           // make sure the other engine knows it has to notify me
-          correlationId = DomAssetRef(DomRefs.CAT_DIESEL_ENGINE, this.id, Some(suspend.id))
+          correlationId = DomAssetRef(DomRefs.CAT_DIESEL_ENGINE, this.id, None, Some(suspend.id))
           //old: correlationId = correlationId.id + "." + suspend.id
 
           msgs = rep(a, recurse, level, List(suspend))
         }
 
         // create new engine
-        val ref = spawn (msg, Some(correlationId))
+        val ref = spawn (msg, Option(correlationId))
 
         evAppChildren (a, DomAst(EInfo(s"""Spawn $arrow engine ${ref._1.href} (${ref._2})""")))
         val ev = EVal(P.fromTypedValue("dieselRef", ref._1.mkEngRef, WTypes.REF))
@@ -161,17 +162,11 @@ class DomEngineV1(
       case n1@ENext(m, ar, cond, _, _) if "-" == ar || "=>" == ar => {
         // message executed later
 
-        implicit val ctx = a.replaceCtx(mkPassthroughMsgContext(
+        implicit val ctx = a.replaceCtx (mkPassthroughMsgContext(
           n1.parent,
-          // todo BIG issue, i..e (queryParms = won't work with this in a diesel.rest)
-          // todo
-          // todo
-          // todo this is an issue - this is why overriden parameters with values don't work, because this copies over the parms from parent message
-          // todo
-          // todo
-          // todo
-          // todo
-          reconcileParentAttrs(n1.parent.map(_.attrs).getOrElse(Nil), a.getCtx.get),
+          // this was a BIG issue, i..e (queryParms = won't work with this in a diesel.rest)
+          // this was an issue - this is why overriden parameters with values don't work, because this copies over the parms from parent message
+          reconcileParentAttrs (n1.parent.map(_.attrs).getOrElse(Nil), a.getCtx.get),
           a.getCtx.get, //RAZ2 this.ctx,
           a))
 
@@ -544,8 +539,9 @@ class DomEngineV1(
 
               if (!allowed) {
                 // one more chance, look for masterRole/masterClient access to restricted rules
-                val oauth = Website.getRealmPropAsP(this.ctx.root.settings.realm.mkString, "oauth")
-                    .map(_.getJsonStructure)
+                val oauth = Website
+                    .getRealmPropAsP (this.ctx.root.settings.realm.mkString, "oauth")
+                    .map (_.getJsonStructure)
                 val mr = oauth.flatMap(_.get("masterRole")).map(_.toString).mkString.trim
 
                 if (mr.nonEmpty) allowed = uroles.contains(mr)
@@ -560,11 +556,11 @@ class DomEngineV1(
                   reason = s"$reason perm.clients=${eclients.mkString} user.client=${uclient} "
 
                   if (!allowed) {
-                    val mc = oauth.flatMap(_.get("masterClient")).map(_.toString).mkString.trim
+                    val mc = oauth.flatMap(_.get("masterClient")).map(_.toString).mkString.trim.split(",")
                     reason = s"$reason oauth.mc=$mc "
 
                     // user comes from masterclient
-                    if (mc.nonEmpty) allowed = uclient equals mc
+                    if (mc.nonEmpty) allowed = mc contains uclient
                   }
                 }
               }
@@ -949,8 +945,6 @@ class DomEngineV1(
         true
 
       } else if (ea == DieselMsg.ENGINE.DIESEL_NOP) {
-        Audit.logdb("DIESEL_NOP", s"user ${settings.userId}")
-
         true
 
       } else if (ea == DieselMsg.ENGINE.DIESEL_CLEANSTORY) { //========================
@@ -1449,7 +1443,7 @@ class DomEngineV1(
         val level = nctx.getRequired("level").toInt
 
         // this passes payload too
-        notifyParent (a, DomAssetRef(DomRefs.CAT_DIESEL_ENGINE, parentId, Option(targetId)).withNode(parentNode), level)
+        notifyParent (a, DomAssetRef(DomRefs.CAT_DIESEL_ENGINE, parentId, None, Option(targetId)).withNode(parentNode), level)
         true
 
       } else if (ea == DieselMsg.ENGINE.DIESEL_VALS) {
