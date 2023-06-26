@@ -94,6 +94,13 @@ case class User(
 
   _id: ObjectId = new ObjectId()) extends WikiUser with TPersonInfo {
 
+  var token : Option[Map[String,Any]] = None
+
+  def withToken (t:Map[String,Any]) = {
+    this.token = Option(t)
+    this
+  }
+
   def emailDec = email.dec
 
   def gender = "?"

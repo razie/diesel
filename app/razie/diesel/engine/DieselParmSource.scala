@@ -17,6 +17,8 @@ import services.DieselCluster
 
 /** source for parms starting with "diesel"
   *
+  * keep this up to date: [[http://specs.dieselapps.com/Topic/Diesel_data_model]]
+  *
   * @param ctx is the root context of this engine
   */
 class DieselParmSource (ctx:DomEngECtx) extends ParmSource {
@@ -77,6 +79,15 @@ class DieselParmSource (ctx:DomEngECtx) extends ParmSource {
         "eName" -> (n => {
           // leave this lazy - it is expensive
           Left(new P("diesel.user.eName", ctx.dieselAU(ctx).map(_.ename).mkString))
+        }),
+
+        "token" -> (n => {
+          // leave this lazy - it is expensive
+          ctx.dieselAU(ctx).flatMap(_.token).map {tok=>
+            Left(P.fromSmartTypedValue("diesel.user.token", tok))
+          }.getOrElse {
+            Left(P.undefined("diesel.user.token"))
+          }
         })
       ))
     }
