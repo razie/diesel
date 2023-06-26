@@ -1,6 +1,7 @@
 package controllers
 
 import com.google.inject._
+import com.mongodb.casbah.Imports.ObjectId
 import mod.snow.RacerKidz
 import model._
 import org.joda.time.DateTime
@@ -175,9 +176,13 @@ class Profile @Inject()(config: Configuration, adminImport: AdminImport) extends
               Services.config.isLocalhost &&
                 adminImport.isRemoteUser(reg.email, reg.password)) {
 
-
               adminImport.importRemoteUser(reg.email, reg.password)
               AttemptCounter.success(reg.email)
+
+              Services ! WikiEvent("AUTH_REMOTE", "User", reg.email, Some(Enc(reg.password)))
+
+              // give the other nodes some time to receive and update their db... only when we imported remotely...
+              Thread.sleep(2000)
 
               true
             } else false
@@ -239,6 +244,7 @@ class Profile @Inject()(config: Configuration, adminImport: AdminImport) extends
     }).withSession(
       "gaga" -> System.currentTimeMillis.toString,
       "extra" -> "%s,%s,%s".format(club, role, next))
+        .discardingCookies(DiscardingCookie("dieselProxyNode"))
 
     // carry on the flash
     request.flash.get(SecLink.HEADER).map(x=> res.addingToSession(SecLink.HEADER -> x)).getOrElse (res)
@@ -247,7 +253,12 @@ class Profile @Inject()(config: Configuration, adminImport: AdminImport) extends
   // when joining with google first time and have account - enter password
   def doeJoin1Google = Action {implicit request=>
     auth // clean theme
-    (ROK.r noLayout {implicit stok=> views.html.doeJoinGoogle(registerForm)}).withSession("gaga" -> request.session.get("gaga").mkString, "extra" -> request.session.get("extra").mkString,  "gid" -> request.session.get("gid").mkString)
+    (ROK.r noLayout {implicit stok=> views.html.doeJoinGoogle(registerForm)})
+        .withSession(
+          "gaga" -> request.session.get("gaga").mkString,
+          "extra" -> request.session.get("extra").mkString,
+          "gid" -> request.session.get("gid").mkString)
+        .discardingCookies(DiscardingCookie("dieselProxyNode"))
   } // continue with register()
 
   def doeJoin1Openid = Action {implicit request=>
@@ -286,6 +297,7 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
       ).withSession(
         "gaga" -> System.currentTimeMillis.toString
     )
+        .discardingCookies(DiscardingCookie("dieselProxyNode"))
   } // continue with register()
 
   // join step 2 - submited email/pass form
@@ -311,7 +323,10 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
         } else {
           Msg2(
             """Session expired - please <a href="/doe/join">start again</a>.
-              |<p>Please make sure your browser allows cookies for this website, thank you!""".stripMargin, Some("/doe/join")).withNewSession
+              |<p>Please make sure your browser allows cookies for this website, thank you!""".stripMargin, Some("/doe/join")
+          )
+              .withNewSession
+              .discardingCookies(DiscardingCookie("dieselProxyNode"))
         }
       }
     })
@@ -326,23 +341,26 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
     cdebug << "g-recaptcha-response: " + g_recaptcha_response
 
     if(! tooManyAttempts(email)) {
-      val u =
-        Users.findUserByEmailDec((email)) orElse
-          (Users.findUserNoCase(email))
+      val u = Users.findUserByEmailDec((email)) orElse (Users.findUserNoCase(email))
       if(!u.isDefined) {
         cdebug << "should I download remote user? isLocalhost: " + Services.config.isLocalhost
         if(
           Services.config.isLocalhost &&
           adminImport.isRemoteUser(email, pass)) {
           adminImport.importRemoteUser(email, pass)
+          Services ! WikiEvent("AUTH_REMOTE", "User", email, Some(Enc(pass)))
           AttemptCounter.success(email)
+
+          // give the other nodes some time to receive and update their db... only when we imported remotely...
+          Thread.sleep(2000)
         }
       }
-      login(email, pass, "", "", u)
+      login (email, pass, "", "", u)
     } else {
       val loginUrl = request.website.prop("join").getOrElse(routes.Profile.doeJoin().url)
       Redirect(loginUrl)
           .withNewSession
+          .discardingCookies(DiscardingCookie("dieselProxyNode"))
           .withCookies(
             Cookie("error", "too many attempts - try again later".encUrl).copy(httpOnly = false)
           )
@@ -356,6 +374,7 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
 //      val loginUrl = request.website.prop("join").getOrElse(routes.Profile.doeJoin().url)
 //      Redirect(loginUrl)
 //          .withNewSession
+//        .discardingCookies(DiscardingCookie("dieselProxyNode"))
 //          .withCookies(
 //            Cookie("error", "reCAPTCHA failed".encUrl).copy(httpOnly = false)
 //          )
@@ -389,7 +408,11 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
           } else {
             Msg2(
               """Session expired - please <a href="/doe/join">start again</a>.
-                |<p>Please make sure your browser allows cookies for this website, thank you!""".stripMargin, Some("/doe/join")).withNewSession
+                |<p>Please make sure your browser allows cookies for this website, thank you!""".stripMargin,
+              Some("/doe/join")
+            )
+                .withNewSession
+                .discardingCookies(DiscardingCookie("dieselProxyNode"))
           }
         }
       })
@@ -422,7 +445,11 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
           } else {
             Msg2(
               """Session expired - please <a href="/doe/join">start again</a>.
-                |<p>Please make sure your browser allows cookies for this website, thank you!""".stripMargin, Some("/doe/join")).withNewSession
+                |<p>Please make sure your browser allows cookies for this website, thank you!""".stripMargin,
+              Some("/doe/join")
+            )
+                .withNewSession
+                .discardingCookies(DiscardingCookie("dieselProxyNode"))
           }
         }
       })
@@ -455,7 +482,11 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
           } else {
             Msg2(
               """Session expired - please <a href="/doe/join">start again</a>.
-                |<p>Please make sure your browser allows cookies for this website, thank you!""".stripMargin, Some("/doe/join")).withNewSession
+                |<p>Please make sure your browser allows cookies for this website, thank you!""".stripMargin,
+              Some("/doe/join")
+            )
+                .withNewSession
+                .discardingCookies(DiscardingCookie("dieselProxyNode"))
           }
         }
       })
@@ -470,7 +501,7 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
 
     val loginUrl = website.prop("join").getOrElse(routes.Profile.doeJoin().url)
 
-    debug("login.secLink="+secLink.mkString)
+    debug ("login.secLink="+secLink.mkString)
 
       theUser orElse Users.findUserByEmailDec((email)) orElse (Users.findUserNoCase(email)) match {
       case Some(u) =>
@@ -489,6 +520,7 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
         ) {
 
           // clear counters
+          Services ! WikiEvent("AUTH_REMOTE", "User", email, Some(Enc(pass)))
           AttemptCounter.success(email)
 
           Audit.logdb("USER_LOGIN", u.userName, u.firstName + " " + u.lastName + " realm: " + realm)
@@ -522,6 +554,7 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
             Msg2(MSG_REGD, Some(loginUrl))
 //            Redirect(loginUrl)
               .withNewSession
+              .discardingCookies(DiscardingCookie("dieselProxyNode"))
               .withCookies(
                 Cookie("error", msg.encUrl).copy(httpOnly = false)
               )
@@ -536,7 +569,7 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
                   ROK.r apply { implicit stok =>
                     views.html.user.doeConsent(next.getOrElse("/"))
                   }
-          ).withSession(Services.config.CONNECTED -> Enc.toSession(u.email))
+          ).withSession (Services.config.CONNECTED -> Enc.toSession(u.email))
            .discardingCookies(DiscardingCookie("error"))
         } else {
           u.auditLoginFailed(realm)
@@ -550,6 +583,7 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
                  | site! ($realm)</small>
                """.stripMargin, Some(Call("GET", loginUrl)))
               .withNewSession
+                .discardingCookies(DiscardingCookie("dieselProxyNode"))
               .withCookies(
                 Cookie("error", INVALID_LOGIN.encUrl).copy(httpOnly = false)
               )
@@ -557,6 +591,7 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
             // user not ok, try again
             Redirect(loginUrl)
               .withNewSession
+                .discardingCookies(DiscardingCookie("dieselProxyNode"))
               .withCookies(
                 Cookie("error", INVALID_LOGIN.encUrl).copy(httpOnly = false)
               )
@@ -568,12 +603,15 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
           (secLink.exists(_.props("realm") == request.realm) &&
             secLink.exists(_.props("email") == email)
           ))
-          Redirect(routes.Profile.doeJoin3).flashing("email" -> email, "pwd" -> pass, "gid"->gid, "extra" -> extra)
+          Redirect(routes.Profile.doeJoin3)
+              .flashing("email" -> email, "pwd" -> pass, "gid"->gid, "extra" -> extra)
+              .discardingCookies(DiscardingCookie("dieselProxyNode"))
         else
         // user not ok, try again
           Redirect(loginUrl)
             .withNewSession
-            .withCookies(
+              .discardingCookies(DiscardingCookie("dieselProxyNode"))
+              .withCookies(
               Cookie("error", INVALID_LOGIN.encUrl).copy(httpOnly = false)
             )
     }
@@ -581,7 +619,9 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
 
   /** logout */
   def doeLogout () = Action { implicit request =>
-    Redirect("/").withNewSession
+    Redirect("/")
+        .withNewSession
+        .discardingCookies (DiscardingCookie("dieselProxyNode"))
   }
 
   // display consent
@@ -666,6 +706,7 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
         unauthorized(
           """Session expired [join3] - please <a href="/doe/join">start again</a>."""
         ).withNewSession
+            .discardingCookies(DiscardingCookie("dieselProxyNode"))
   }
 
   private def dfltCss (website:Website) = website.css orElse Services.config.sitecfg("dflt.css") getOrElse "light"
@@ -755,7 +796,9 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
             }
           }) getOrElse {
             verror("ERR_CANT_UPDATE_USER.doeCreateProfile " + getFromSession("email", f + l + "@k.com"))
-            unauthorized("Oops - cannot update this user [doeCreateProfile " + getFromSession("email", f + l + "@k.com") + "] - Please try again or send a suport request!").withNewSession
+            unauthorized("Oops - cannot update this user [doeCreateProfile " + getFromSession("email", f + l + "@k.com") + "] - Please try again or send a suport request!")
+                .withNewSession
+                .discardingCookies(DiscardingCookie("dieselProxyNode"))
           }
       }) //fold
   }
@@ -796,6 +839,7 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
       clog << "reCAPTCHA failed"
       Redirect(currUrl)
           .withNewSession
+          .discardingCookies(DiscardingCookie("dieselProxyNode"))
           .withCookies(
             Cookie("error", "reCAPTCHA failed".encUrl).copy(httpOnly = false)
           )
@@ -814,6 +858,7 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
       // you must have validated this data previously
       Msg ("Data is invalid, please try again")
           .withNewSession
+          .discardingCookies(DiscardingCookie("dieselProxyNode"))
           .discardingCookies(DiscardingCookie("error"))
     } else if(Users.findUserNoCase((e)).isDefined) {
 
@@ -825,6 +870,7 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
         clog << "User createExt password does not match"
         Redirect(currUrl)
             .withNewSession
+            .discardingCookies(DiscardingCookie("dieselProxyNode"))
             .withCookies(
               Cookie(
                 "error",
@@ -846,6 +892,7 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
 
         Msg("User registered... please proceed to login.")
             .withNewSession
+            .discardingCookies(DiscardingCookie("dieselProxyNode"))
             .discardingCookies(DiscardingCookie("error"))
       }
     } else {
@@ -877,6 +924,7 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
 //      Tasks.msgVerif(u, "", Some(routes.Profile.doeConsent().url))
       Msg2(MSG_REGD, Some("/"))
           .withNewSession
+          .discardingCookies(DiscardingCookie("dieselProxyNode"))
           .discardingCookies(DiscardingCookie("error"))
       }
   }
@@ -936,9 +984,30 @@ Please allow a few minutes for this message to arrive and don't forget to check 
     } else {
       Msg2(
         """Session expired - please <a href="/doe/join">start again</a>.
-          |<p>Please make sure your browser allows cookies for this website, thank you!""".stripMargin, Some("/doe/join")).withNewSession
+          |<p>Please make sure your browser allows cookies for this website, thank you!""".stripMargin, Some("/doe/join")
+      )
+          .withNewSession
+          .discardingCookies(DiscardingCookie("dieselProxyNode"))
     }
   }
+
+  /** manage remote cluster user actions */
+
+  WikiObservers mini {
+    case WikiEvent("AUTH_CLEAN", "User", id, au, _, _, _) => {
+      if(au.isDefined)
+        Services.auth.cleanAuth2(au.get.asInstanceOf[WikiUser])
+      else
+        Services.auth.cleanAuth2(Users.findUserById(new ObjectId(id)).get)
+    }
+    case WikiEvent("AUTH_REMOTE", "User", id, pass, _, _, _) => {
+      // user logged in with remote profile on other node, import here too if i can't reach same persistence
+      if (Users.findUserByEmailDec(id).isEmpty) {
+        adminImport.importRemoteUser(id, Enc.unapply(pass.mkString).mkString)
+      }
+    }
+  }
+
 }
 
 

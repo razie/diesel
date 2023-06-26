@@ -21,6 +21,8 @@ the head of every page...
   X-FORWARDED-HOST: @stok.flatMap(_.request).orElse(request).map(r=>r.headers.get("X-FORWARDED-HOST"))
   stok.realm: @stok.map(_.realm)
   stok.website: @stok.map(_.website.reactor)
+  connected: @stok.flatMap(_.request).orElse(request).map(r=>r.session.get(Services.config.CONNECTED))
+  au: @stok.flatMap(_.au).map(_.userName)
   NODE: @Services.cluster.clusterNodeSimple
 -->
     <meta charset="utf-8">

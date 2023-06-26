@@ -6,6 +6,7 @@
  */
 package controllers
 
+import com.mongodb.casbah.Imports.ObjectId
 import com.typesafe.config.ConfigValue
 import model.{DieselSettings, UserWiki, Users}
 import org.bson.types.ObjectId
@@ -221,6 +222,9 @@ class Realm extends RazController with Logging {
       if (Services.config.isLocalhost) {
         Services.config.isimulateHost = s"$realm.dieselapps.com"
         DieselSettings(None, None, "isimulateHost", Services.config.isimulateHost).set
+
+        Services ! WikiEvent("SWITCH_REALM", "Realm", realm, None)
+
         Redirect("/", SEE_OTHER)
       } else {
         // send user id and encripted
@@ -229,6 +233,16 @@ class Realm extends RazController with Logging {
         val w = Website.forRealm(realm)
         val url = w.map(_.url).getOrElse(s"http://$realm.dieselapps.com")
         Redirect(s"$url/wikie/sso/$conn?token=" + token, SEE_OTHER)
+      }
+    }
+  }
+
+  // cluster mode switch local realm notif
+  WikiObservers mini {
+    case WikiEvent("SWITCH_REALM", "Realm", realm, _, _, _, _) => {
+      if (Services.config.isLocalhost) {
+        Services.config.isimulateHost = s"$realm.dieselapps.com"
+        DieselSettings(None, None, "isimulateHost", Services.config.isimulateHost).set
       }
     }
   }

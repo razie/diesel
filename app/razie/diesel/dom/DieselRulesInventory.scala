@@ -22,6 +22,8 @@ class DieselRulesInventory(
   var props: Map[String, String] = Map.empty
 ) extends DomInventory {
 
+  override def toString = s"DieselRulesInventory: $name"
+
   var env: String = ""
 
   override def conn = props.getOrElse("conn.name", "default")

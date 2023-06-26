@@ -60,9 +60,10 @@ case class UserQuota(
     update(q)
 
     if (q.updates.exists(_ < 20))
-      Services ! EventNeedsQuota(
-        Users.findUserById(userId).map(u=> s"$u.userName - $u.firstName $u.lastName").toString,
-        userId.toString)
+      Services ! EventNeedsQuota (
+        Users.findUserById (userId).map (u=> s"$u.userName - $u.firstName $u.lastName").toString,
+        userId.toString
+      )
   }
 
   // admin op
