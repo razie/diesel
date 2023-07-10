@@ -1,9 +1,18 @@
+/**
+ *    ____    __    ____  ____  ____,,___     ____  __  __  ____
+ *   (  _ \  /__\  (_   )(_  _)( ___)/ __)   (  _ \(  )(  )(  _ \           Read
+ *   )   / /(__)\  / /_  _)(_  )__) \__ \    )___/ )(__)(  ) _ <     README.txt
+ *  (_)\_)(__)(__)(____)(____)(____)(___/   (__)  (______)(____/    LICENSE.txt
+ */
+
 package services
 
 import akka.actor.{Actor, Props}
-import com.google.inject.Singleton
-import controllers.Emailer
-import model.EventNeedsQuota
+import com.google.inject.{Inject, Singleton}
+import com.mongodb.casbah.Imports.ObjectId
+import controllers.{AdminImport, Emailer}
+import model.{EventNeedsQuota, Users}
+import play.api.Configuration
 import play.libs.Akka
 import razie.audit.Audit
 import razie.clog
@@ -154,11 +163,12 @@ class WikiAsyncObservers extends Actor {
               ev.isInstanceOf[WikiEvent[_]] && {
                 val ee = ev.asInstanceOf[WikiEvent[_]]
                 WikiAudit.isUpd(ee.action) ||
-                    ee.action == "AUTH_CLEAN"
+                    ee.action.startsWith("AUTH_")
               } ||
                   !ev.isInstanceOf[WikiEvent[_]]
               )// some other events
     )
       DieselPubSub ! BCast(ev)
   }
+
 }

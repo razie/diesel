@@ -187,7 +187,7 @@ object DieselAppContext extends Logging {
   }
 
   /** the static version - delegates to factory */
-  def mkStream(stream: DomStream) = {
+  def mkStream (stream: DomStream) = {
     val p = Props(new DomStreamActor(stream))
     val a = actorOf(p, name = "stream-" + stream.id)
 
@@ -201,6 +201,7 @@ object DieselAppContext extends Logging {
     synchronized {
       if (serviceStarted) {
         a ! DEInit
+        // when streamActor does init it will init other stream elements
       }
     }
 
@@ -240,7 +241,7 @@ object DieselAppContext extends Logging {
   }
 
   /** send a message via the router */
-  def stopStream(name: String): Unit = {
+  def stopStream (name: String): Unit = {
     import akka.pattern.ask
     implicit val timeout: Timeout = Timeout(5 seconds)
 

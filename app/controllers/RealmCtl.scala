@@ -254,7 +254,10 @@ class Realm extends RazController with Logging {
     if(!(Services.config.isDevMode || Services.config.isRazDevMode) && !request.au.isDefined) {
       Unauthorized(s"OOPS - unauthorized").withCookies(Cookie("dieselProxyNode", node))
     } else {
-      if(node != "local" && node != Services.cluster.clusterNodeSimple) {
+      if(node == "lb") {
+        info(s"switchNode to $node - reset cookie")
+        Redirect("/diesel/listAst", SEE_OTHER).discardingCookies(DiscardingCookie("dieselProxyNode"))
+      } else if(node != "local" && node != Services.cluster.clusterNodeSimple) {
         info(s"switchNode to $node")
         Redirect("/diesel/listAst", SEE_OTHER).withCookies(Cookie("dieselProxyNode", node))
       } else {

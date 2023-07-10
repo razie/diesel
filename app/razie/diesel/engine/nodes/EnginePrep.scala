@@ -269,7 +269,7 @@ object EnginePrep extends Logging {
        */
 
 //      p ::
-      sectionsToPages(p, p.sections.filter(s => s.stype == "dfiddle" && (Array("spec") contains s.signature)))
+      sectionsToPages (p, p.sections.filter(s => s.stype == "dfiddle" && (Array("spec") contains s.signature)))
     }
 
     var t2 = System.currentTimeMillis()

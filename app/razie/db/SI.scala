@@ -22,6 +22,12 @@ abstract class SI[T >: Null <: AnyRef] (what:String, initial:T = null) {
       throw new IllegalStateException(what+" instance already initialized... ")
     idb = prepInstance(adb)
   }
+
+  /** reset the instance to use, even if it was init */
+  def resetInstance (adb:T) = {
+    idb = prepInstance(adb)
+  }
+
   def getInstance = {
     if(idb == null)
       throw new IllegalStateException(what+" NOT initialized...")

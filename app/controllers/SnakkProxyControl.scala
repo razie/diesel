@@ -6,15 +6,16 @@
   **/
 package controllers
 
-import akka.actor.ActorSystem
 import akka.pattern.after
 import akka.util.ByteString
-import javax.inject.{Inject, Singleton}
-import play.api.mvc.Action
+import javax.inject.Singleton
+import play.api.http.{HttpEntity, Writeable}
+import play.api.mvc
+import play.api.mvc.{Action, RawBuffer}
 import razie.diesel.engine.exec.{SnakkCall, SnakkCallAsyncList}
+import razie.snakked.SnakkProxyRemote
 import razie.wiki.Services
-import razie.{Logging, Snakk}
-import scala.concurrent.ExecutionContext.Implicits.global
+import razie.{Logging, Snakk, SnakkRequest}
 import scala.concurrent._
 import scala.concurrent.duration._
 
@@ -30,7 +31,7 @@ class SnakkProxyControl extends RazController with Logging {
   lazy val TOUT = 20.second
 
   /** proxy checking if there are any requests */
-  def check(env:String, host: String) = RAction { implicit request =>
+  def check (env:String, host: String) = RAction { implicit request =>
     SnakkCallAsyncList.calls.synchronized {
       SnakkCallAsyncList.next(env, host).map { t =>
         Ok(razie.js.tojsons(t._2.toSnakkRequest(t._1).toJson))
@@ -78,6 +79,43 @@ class SnakkProxyControl extends RazController with Logging {
     }(ec)
 
     Future.firstCompletedOf(Seq(result, timeout))(ec)
+  }
+
+  def proxyToNode (newUrl:String, path:String) : Action[RawBuffer] = Action(parse.raw) { implicit request =>
+    val q = if (request.rawQueryString.trim.length > 0) {
+      if (request.rawQueryString startsWith "?") request.rawQueryString else "?" + request.rawQueryString
+    } else ""
+
+    val raw = request.body.asBytes()
+
+    // RAZ play 2.6 val body = raw.map(a => new String(a.asByteBuffer.array())).getOrElse("")
+    val body = raw.map(a => new String(a.toArray)).getOrElse("")
+
+    val sc = SnakkRequest("http", request.method, s"$newUrl${request.path}${q}", request.headers.toSimpleMap, body)
+        .withCookies(request.cookies)
+
+    razie.Log.info("--------PROXY------- SnakkRequest" + sc.toString())
+
+    val response = SnakkProxyRemote.doProxy(sc, encode64 = false)
+
+    razie.Log.info("--------PROXY------- SnakkResponse" + response.toString())
+
+    implicit val identityWriteable: Writeable[HttpEntity.Strict] = new Writeable[HttpEntity.Strict](
+      transform = _.data, contentType = Some(response.ctype)) {
+      override def toEntity(a: HttpEntity.Strict): HttpEntity = HttpEntity.Strict(transform(a),
+        contentType.filter(_.nonEmpty))
+    }
+
+    val xx = new mvc.Results.Status(response.resCode)(
+      HttpEntity.Strict(
+        ByteString.fromArray(response.decodeContent),
+        Some(response.ctype).filter(_.nonEmpty)//.orElse(Some("text/plain"))
+      )
+    )(identityWriteable)
+        .withHeaders(response.headers.toSeq: _*)
+
+
+    xx //res
   }
 
 
