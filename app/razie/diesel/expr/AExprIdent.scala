@@ -183,6 +183,9 @@ case class AExprIdent(val start: String, rest:List[P] = Nil) extends Expr {
           case WTypes.STRING | WTypes.UNKNOWN if av.asString == "lines" =>
             Some(P.fromTypedValue(newpname, pv.asString.lines.toList, WType(WTypes.ARRAY, WTypes.UNKNOWN, Some(WTypes.STRING))))
 
+            // don't blow up accessing undefined in non-strict contexts
+          case WTypes.UNDEFINED if ! ctx.isStrict => None
+
           case _ => throwIt
         }
 
