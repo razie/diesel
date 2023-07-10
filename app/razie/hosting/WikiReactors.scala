@@ -142,7 +142,7 @@ object WikiReactors extends Logging with Reactors {
     clog <<
         s"""
           |=======================================================
-          |          Preloading reactors: ${toload.mkString}
+          |          Preloading reactors: ${toload.mkString(",")}
           |=======================================================
           |""".stripMargin
 

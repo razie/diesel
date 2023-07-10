@@ -83,7 +83,7 @@ abstract class WikiConfig {
     * @param dflt
     * @return
     */
-  def prop(name: String, dflt: String = "") = {
+  def prop (name: String, dflt: String = "") = {
     val s = "DIESEL_" + name.replace(".", "_").toUpperCase
     if (System.getenv().containsKey(s)) System.getenv(s)
     else if (System.getProperties.containsKey(s)) System.getProperty(s)
