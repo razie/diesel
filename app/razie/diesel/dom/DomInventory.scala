@@ -19,7 +19,12 @@ case class DIConnect(dom: RDomain, env: String, ctx: ECtx) extends DIBase
 
 case class DITestConnection(dom: RDomain, env: String, ctx: ECtx) extends DIBase
 
-/** results of query and list type commands */
+/** results of query and list type commands
+  *
+  * @param total is the total of the results
+  * @param data is a subset of total results - as requested with from/size at query
+  * @param errors
+  */
 case class DIQueryResult(total: Long, data: List[DieselAsset[_]] = Nil, errors: List[Any] = Nil)
 
 /**

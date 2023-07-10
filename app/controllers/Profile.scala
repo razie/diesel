@@ -310,7 +310,7 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
         "extra" -> request.session.get("extra").mkString
     ),
     {
-      case reg @ Registration(e, p, _, _) => {
+      case reg @ Registration(e, p, _, _) if (e.trim.length > 3) => { // todo better email message
         val g = try {
           (request.session.get("gaga").map(identity).getOrElse("1")).toLong
         } catch {
@@ -391,7 +391,7 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
           "extra" -> request.session.get("extra").mkString, "gid" -> request.session.get("gid").mkString)
       },
       {
-        case reg @ Registration(e, p, _, _) => {
+        case reg @ Registration(e, p, _, _) if (e.trim.length > 3) => { // todo better email message
           val g = try {
             (request.session.get("gaga").map(identity).getOrElse("1")).toLong
           } catch {
@@ -493,7 +493,7 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
   }
 
   /** login or start registration */
-  def login(email: String, pass:String, extra: String, gid:String="", theUser:Option[User] = None) (implicit request:RazRequest) = {
+  def login (email: String, pass:String, extra: String, gid:String="", theUser:Option[User] = None) (implicit request:RazRequest) = {
     // TODO optimize - we lookup users twice on login
     val realm = getRealm()
     val website = request.website

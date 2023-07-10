@@ -742,7 +742,7 @@ class DomEngineV1(
     if(!ms.startsWith("diesel.")) {
       val cfg = this.pages.map(_.specRef.wpath).mkString("\n")
       evAppChildren(a, DomAst(
-        EWarning(
+        EWarning (
           s"No rules, mocks or executors match for the above ${in.ea} with this signature - verify your arguments!",
           s"Review your engine configuration (blender=${settings.blenderMode}, mocks=${settings.blenderMode}, drafts=${settings.blenderMode}, tags), " +
               s"spelling of messages or rule clauses / pattern matches\n$cfg",
@@ -1168,8 +1168,15 @@ class DomEngineV1(
           }
         }
 
+        // now try to skip to a catch if any
+
         var caught = false
         val aLevel = findLevel(a)
+
+        def isCatch(ast:DomAst, value:Any) =
+          value.isInstanceOf[EMsg] &&
+              value.asInstanceOf[EMsg].ea == DieselMsg.ENGINE.DIESEL_CATCH &&
+              !DomState.isDone(ast.status)
 
         // stop other children
         // todo find cur scope, not parent
@@ -1177,11 +1184,8 @@ class DomEngineV1(
           case ast@_ => Some(ast)
         }.flatten.toList.flatMap(_.children).foreach { ast =>
           if (
-            false && !caught &&
-                (
-                    ast.value.isInstanceOf[EMsg] &&
-                        ast.value.asInstanceOf[EMsg].ea == DieselMsg.ENGINE.DIESEL_CATCH
-                    )
+//            false &&
+                !caught && isCatch(ast, ast.value)
           //&&
 //            findLevel(ast) <= aLevel // only if it's higher level or sibbling
           // todo should i also check I don't know what, to make sure it was meant to catch me?
@@ -1194,6 +1198,8 @@ class DomEngineV1(
             val old = ast.value.asInstanceOf[EMsg]
 
             // todo add info to the catch that it caught this
+            // todo filter old attrs to not have values for those two?
+            // also if there are more throws, does it collect exceptions or do we stop at first throw?
             ast.value = old.copy(
               attrs = old.attrs ++ List(
                 P.fromSmartTypedValue("caught", true),
@@ -1202,11 +1208,11 @@ class DomEngineV1(
             ).copiedFrom(old)
             // todo record this change in state for engine recovery
           } else if (
-            false &&
+//            false &&
                 !caught &&
                 (
                     ast.value.isInstanceOf[ENext] &&
-                        ast.value.asInstanceOf[ENext].msg.ea == DieselMsg.ENGINE.DIESEL_CATCH
+                        isCatch(ast, ast.value.asInstanceOf[ENext].msg)
                     )
           //&&
 //            findLevel(ast) <= aLevel // only if it's higher level or sibbling
@@ -1221,6 +1227,8 @@ class DomEngineV1(
             val olde = ast.value.asInstanceOf[ENext]
 
             // todo add info to the catch that it caught this
+            // todo filter old attrs to not have values for those two?
+            // also if there are more throws, does it collect exceptions or do we stop at first throw?
             val newm = oldm.copy(
               attrs = oldm.attrs ++ List(
                 P.fromSmartTypedValue("caught", true),
@@ -1230,8 +1238,8 @@ class DomEngineV1(
 
             ast.value = olde.copy(msg = newm).copiedFrom(olde)
 
-            // todo record this change in state for engine recovery
           } else if (!DomState.isDone(ast.status) && !caught) {
+            // skip all other sibblings...
             skipNode(ast, DomState.SKIPPED)
           }
         }
@@ -1435,6 +1443,7 @@ class DomEngineV1(
       } else if (ea == DieselMsg.ENGINE.DIESEL_PONG) { //========================
 
         // expand vals
+        // todo why need this new context?
         val nctx = mkMsgContext(Some(in), calcMsg(a, in)(ctx).attrs, ctx, a)
 
         val parentNode = razie.wiki.model.DCNode (nctx.getRequired("parentNode"))
@@ -1478,9 +1487,46 @@ class DomEngineV1(
 
         true
 
+      } else if (ea == DieselMsg.DIESEL_REQUIRE) { //========================
+
+        // find parent generating rule
+        val parent: Option[EMsg] = a.parent.filter(_.value.isInstanceOf[ENext]).map(_.value.asInstanceOf[ENext].msg)
+
+        // find who wasn't sent in, i.e. has no value in context
+        val undefined = parent.toList.flatMap(_.attrs).filter(x => !in.attrs.exists(_.name == x.name))
+
+        if(undefined.size > 0)
+          throw new DieselExprException("Missing values for: " + undefined.map(_.name).mkString(","))
+        else
+          evAppChildren(a, DomAst(EInfo("All required values are present: " + in.attrs.map(_.name).mkString(",")), AstKinds.GENERATED))
+
+        true
+
+      } else if (ea == DieselMsg.DOM.META) { //========================
+
+        // todo move to a EEDieselDom
+
+        val cn = ctx.getRequired("className")
+
+        val c = this.dom.classes.get(cn)
+
+        c.map {cls=>
+          val v = EVal(P.fromSmartTypedValue(Diesel.PAYLOAD, cls.toj))
+          evAppChildren(a, DomAst(v, AstKinds.TRACE))
+          setSmartValueInContext(a, this.ctx, v.p)
+        }.getOrElse {
+          evAppChildren(a, DomAst(EWarning(s"Class not found in domain: $cn", cn)))
+
+          val v = EVal(P.undefined(Diesel.PAYLOAD))
+          evAppChildren(a, DomAst(v, AstKinds.TRACE))
+          setSmartValueInContext(a, this.ctx, v.p)
+        }
+
+        true
+
       } else if (ea == DieselMsg.ENGINE.STRICT) { //========================
 
-        val p = in.attrs.headOption.map(_.calculatedTypedValue.asBoolean).getOrElse(true)
+        val p = in.attrs.headOption.filter(_.name == "strict").map(_.calculatedTypedValue.asBoolean).getOrElse(true)
         ctx.root.strict = p
         evAppChildren(a, DomAst(EInfo(s"strict is $p"), AstKinds.TRACE))
         true

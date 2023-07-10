@@ -7,6 +7,7 @@ package razie.diesel.dom
 
 import java.net.URI
 import razie.tconf.{FullSpecRef, TSpecRef}
+import razie.wiki.Config
 import razie.wiki.model.WID
 import scala.collection.mutable
 
@@ -56,7 +57,7 @@ object DieselAssets {
     w.cat match {
       case "DieselEngine" => {
         var h = w.sourceUrl.mkString
-        if (h.startsWith("localhost")) h = ""
+        if (h.startsWith(Config.hostport)) h = ""
         else if (h.nonEmpty && !h.startsWith("http://")) h = "http://" + h
 
         if(path.isEmpty) // means it's a remote engine

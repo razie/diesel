@@ -174,17 +174,17 @@ trait DomEngineState {
 
   // todo it's faster here where i have the node handles than looking it up by id above...
 
-  def evAppStream(stream: DomStream): Unit =
+  def evAppStream (stream: DomStream): Unit =
     addEvent(DEventAddStream(stream))
 
-  def evAppChildren(parent: DomAst, children: DomAst): Unit =
+  def evAppChildren (parent: DomAst, children: DomAst): Unit =
     evAppChildren(parent, List(children))
 
-  def evAppChildren(parent: DomAst, children: List[DomAst]): Unit = {
+  def evAppChildren (parent: DomAst, children: List[DomAst]): Unit = {
     addEvent(DEventExpNode(parent.id, children))
   }
 
-  private[engine] def evChangeStatus(node: DomAst, status: String): Unit = {
+  private[engine] def evChangeStatus (node: DomAst, status: String): Unit = {
     addEvent(DEventNodeStatus(node.id, status).withNode(node))
   }
 
