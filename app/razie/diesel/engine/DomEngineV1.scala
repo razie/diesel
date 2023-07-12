@@ -319,6 +319,9 @@ class DomEngineV1(
       case e: InfoNode =>  // ignore
       case e: EVal =>  // ignore - (a = b) are executed as EMsgPas / NextMsgPas - see appendValsPas
 
+      case s: ERule => // ignore - can't execute rules or mocks
+      case s: EMock => // ignore - can't execute rules or mocks
+
       // todo should execute
       case s: EApplicable => {
 
