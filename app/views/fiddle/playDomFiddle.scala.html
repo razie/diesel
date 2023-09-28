@@ -548,7 +548,7 @@ var runpill = function(id) {
       console.log("  updateMarkers spec");
 
       if(data.info != null) {
-        console.log("New timestamp: " + data.info.timeStamp);
+        console.log("New response has timestamp: " + data.info.timeStamp);
         clientSpecTimeStamp = data.info.timeStamp;
       }
 
@@ -857,10 +857,13 @@ var ignoreFirstTime = true;
 
 
 var refreshFunc = function() {
+  console.log("refreshF ... CUR_TYPING_MAX = " + CUR_TYPING_MAX + " CHECK_TIMER = " + CHECK_TIMER + " currDebounce = " + currDebounce);
+
   var curMillis = Date.now();
 
   // some timing issues with the ACE setup?
   if(ignoreFirstTime) {
+    console.log("refreshF: ignoring first time...");
     ignoreFirstTime = false;
     return;
   }
@@ -869,6 +872,7 @@ var refreshFunc = function() {
   if (localStorage.getItem("weFiddleNavigated") != null) {
     localStorage.removeItem("weFiddleNavigated");
 
+    console.log("refreshF: the fiddle was open navigating from somewhere, don't run it...");
     // reset flags to not run
     domChanged=false;
     captureChanged=false;
@@ -879,19 +883,19 @@ var refreshFunc = function() {
 
   // if still typing, wait
   if(curMillis - lastChangeMillis < CUR_TYPING_MAX) {
-    // console.log("still typing " + lastChangeMillis + " - " + curMillis);
+    console.log("refreshF: still typing " + curMillis + " - " + lastChangeMillis + " = ms " + (curMillis - lastChangeMillis));
     return;
   }
 
   // if changed and last updated a while ago, refresh
   if(domSpecChanged) {
     // spec was just changed, don't run again
-    console.log("Spec changed, not running again... ");
+    console.log("refreshF: Spec changed, not running again... ");
     domChanged=false;
     captureChanged=false;
     domSpecChanged = false;
   } else if((domChanged || captureChanged) && curMillis - lastChangeMillis > currDebounce) {
-    console.log("UPDATING " + curMillis + " - " + lastChangeMillis + " = " + (curMillis - lastChangeMillis))
+    console.log("refreshF: UPDATING " + curMillis + " - " + lastChangeMillis + " = ms " + (curMillis - lastChangeMillis))
     domChanged=false;
     captureChanged=false;
     lastChangeMillis = curMillis;
@@ -900,7 +904,7 @@ var refreshFunc = function() {
 
   // if changed and last updated a while ago, refresh
   if(instChanged && curMillis - lastChangeMillis > currDebounce) {
-    console.log("UPDATING " + curMillis + " - " + lastChangeMillis + " = " + (curMillis - lastChangeMillis))
+    console.log("refreshF: UPDATING " + curMillis + " - " + lastChangeMillis + " = ms " + (curMillis - lastChangeMillis))
     instChanged=false;
     lastChangeMillis = curMillis;
 

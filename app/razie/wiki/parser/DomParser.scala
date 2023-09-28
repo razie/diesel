@@ -842,7 +842,7 @@ trait DomParser extends ParserBase with ExprParser {
   /**
     * .expect object.func (a,b)
     */
-  def pexpect: PS = keyw("[.$]expect".r <~ ws) ~
+  def pexpect: PS = keyw("[.$]expect".r <~ ows) ~
       opt("not" <~ ws) ~
       opt(pif) ~ ows ~
       opt(qclsMet) ~ optMatchAttrs ~ " *".r ~ opt(pif) <~ " *".r <~ optComment3 ^^ {

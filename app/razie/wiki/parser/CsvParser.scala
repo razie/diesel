@@ -9,7 +9,7 @@ package razie.wiki.parser
 /** delimited and table parser */
 trait CsvParser extends ParserCommons {
 
-  def csv(implicit xdelim: String): Parser[List[List[String]]] = csvLines
+  def csv (implicit xdelim: String): Parser[List[List[String]]] = csvLines
 
   def csvCRLF2: PS2 = CRLF2 ^^ { case x => Nil }
 

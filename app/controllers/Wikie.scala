@@ -1302,7 +1302,7 @@ class Wikie @Inject()(config: Configuration, realmCtl:Realm) extends WikieBase {
       }
       after(Some(w), newVer, WikiAudit.UPD_LIKE, auth)
       if (how == 1)
-        Audit.logdb("VOTE.UP", "" + request.au.map(_.userName).getOrElse("Anonymous") + " - " + wid.wpath)
+        Audit.logdb("VOTE.UP", "" + request.au.map(_.userName).getOrElse("Anonymous") + " WHY: [" + reason + "] " + " - " + wid.wpath)
       else {
         Audit.logdb("VOTE.DOWN", "" + request.au.map(_.userName).getOrElse("Anonymous") + " WHY: [" + reason + "] " + wid.wpath)
       }

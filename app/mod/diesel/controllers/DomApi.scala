@@ -667,6 +667,7 @@ class DomApi extends DomApiBase with Logging {
     }
   }
 
+//  final val emptyStory = new WikiEntry("Story", "temp", "temp", "md", "", uid, Seq("dslObject"), reactor)
 
   /**
     * deal with a REST request. use the in/out for message

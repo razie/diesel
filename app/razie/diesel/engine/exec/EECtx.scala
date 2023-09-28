@@ -474,7 +474,7 @@ class EECtx extends EExecutor(EECtx.CTX) {
       // incoming csv parsed into json, based on header field.
       // if no header, fields will be "col0"..."colN"
       case "csvToJson" => {
-        val separator = ctx.getRequired("separator")
+        val separator = ctx.get("separator").getOrElse(",")
         val hasHeaders = ctx.get("hasHeaders").getOrElse("true").toBoolean
         val payload = ctx.getRequired(Diesel.PAYLOAD)
         var headers = new Array[String](0)
@@ -483,21 +483,23 @@ class EECtx extends EExecutor(EECtx.CTX) {
 
         // 1. parse into lines
         val parser = new CsvParser() {
+
           def doit(s: String, delim: String) = {
-            parseAll(csv(separator), payload) match {
-              case Success(value, _) => value.filter(_.nonEmpty)
-              case NoSuccess(msg, _) => {
-                result.append(EError(msg, msg))
+
+            parseAll (csv (delim), s) match {
+              case Success   (value, _) => value.filter(_.nonEmpty)
+              case NoSuccess (msg, _) => {
+                result.append (EError(msg, msg))
                 Nil
               }
               //todo ? throw new DieselExprException("Parsing error: " + msg)
             }
           }
 
-          def consts(s: String) = {
-            parseAll(csvnumConst, s) match {
-              case Success(value, _) => value
-              case NoSuccess(msg, _) => {
+          def consts (s: String) = {
+            parseAll (csvnumConst, s) match {
+              case Success   (value, _) => value
+              case NoSuccess (msg, _) => {
                 s // not matched, keep it
               }
               //todo ? throw new DieselExprException("Parsing error: " + msg)
@@ -505,7 +507,8 @@ class EECtx extends EExecutor(EECtx.CTX) {
           }
         }
 
-        var lines: List[List[String]] = parser.doit(payload, separator)
+        // todo ehh not parse all in mem maybe?
+        var lines: List[List[String]] = parser.doit (payload, separator)
 
         if (hasHeaders) {
           headers = lines.head.toArray
@@ -534,7 +537,11 @@ class EECtx extends EExecutor(EECtx.CTX) {
           m
         })
 
-        result.append(
+        if (hasHeaders) result.append (
+          new EVal(RDOM.P.fromSmartTypedValue("csvHeaders", headers.toList))
+        )
+
+        result.append (
           new EVal(RDOM.P.fromTypedValue(Diesel.PAYLOAD, res.toList, WTypes.wt.ARRAY))
         )
 

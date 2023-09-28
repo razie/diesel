@@ -744,6 +744,7 @@ abstract class DomEngine(
       }.recover {
 
         case t if t.isInstanceOf[javax.script.ScriptException] || t.isInstanceOf[DieselExprException] => {
+          razie.Log.log(s"Exception wile decompose() pos [${a.pos}] node: ${a.description}", t)
           info(s"Exception wile decompose() pos [${a.pos}] node: ${a.description}" + t.getMessage)
           val err = DEError(this.id, t.toString)
           val ast = DomAst(
@@ -1280,7 +1281,7 @@ abstract class DomEngine(
     *
     * @param ea = initial message ea if known, empty otherwise
     * */
-  def extractFinalValue(ea: String, evenIfExecuting: Boolean = false): Option[P] = {
+  def extractFinalValue(ea: String, evenIfExecuting: Boolean = false): Option[P] = Try {
     if (!evenIfExecuting) require(DomState.isDone(this.status)) // no sync
 
     // find the spec and check its result
@@ -1305,18 +1306,18 @@ abstract class DomEngine(
         .orElse(valuesp.find(_.name == Diesel.PAYLOAD))
 
     resp.map(_.calculatedP)
-  }
+  }.getOrElse(None)
 
   // todo still used in some places...
   // todo not right to look first at PAYLOAD - if you use any message creating payload this fucks it
   // but what if you don't and you populate it yourself?
-  def extractOldValue(ea: String, evenIfExecuting: Boolean = false) = {
+  def extractOldValue(ea: String, evenIfExecuting: Boolean = false) = Try {
     val payload = this.ctx.getp(Diesel.PAYLOAD).filter(_.ttype != WTypes.wt.UNDEFINED)
     val resp = payload.orElse(
       this.extractFinalValue(ea)
     )
     resp
-  }
+  }.getOrElse(None)
 
   def finalContext(e: String, a: String) = {
     require(DomState.isDone(this.status)) // no sync

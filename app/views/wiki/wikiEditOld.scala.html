@@ -917,7 +917,7 @@ withJquery(function() {
 
   switchDsl();
 
-  useLocalStorageCheckbox("treeMode", "domFiddleWikiMode");
+  useLocalStorageCheckbox("treeMode", "domFiddleTreeMode");
 
   $('#treeMode').change(function(){
     showHideIframe();
@@ -982,6 +982,14 @@ function runpill2 (id, compileOnly) {
         $('#iframeOutStory_').html(data.res.replace(/weref/g, 'wefiddle')+'\n');
       else
         $('#divOut3_'+id).html(data.wiki);
+
+      // curEngineViewId used to upload current flow when clicking to navigate
+      if(data.info != null && data.info.engineId != null) {
+        curEngineViewId = data.info.engineId;
+        currEngineId = data.info.engineId;
+      } else {
+        curEngineViewId = null;
+      }
 
       console.log("fiddle ts old "+timeStamp + " new "+data.info.timeStamp + " diff: " + (timeStamp - data.info.timeStamp));
       if(timeStamp < data.info.timeStamp) timeStamp = data.info.timeStamp;

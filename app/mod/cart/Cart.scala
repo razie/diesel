@@ -1,5 +1,6 @@
 package mod.cart
 
+import model.Users
 import org.bson.types.ObjectId
 import org.joda.time.DateTime
 import razie.audit.Audit
@@ -27,13 +28,13 @@ case class Cart (
 
   def isOpen = state startsWith "open."
 
-  def add (item:CartItem)(implicit txn:Txn) = {
-    Audit.logdb("CART", "ADD_ITEM", s"cartid=${_id.toString}", item)
+  def add (item:CartItem)(implicit txn:Txn): Unit = {
+    Audit.logdb("CART", "ADD_ITEM", Users.findUserById(userId).map(u=> s"${u.ename} email=${u.emailDec}").mkString, s"cartid=${_id.toString}", item)
     val c = copy(items = items ++ Seq(item), updDtm = DateTime.now)
     c.update
   }
 
-  def rm (itemQuery:String)(implicit txn:Txn) = {
+  def rm (itemQuery:String)(implicit txn:Txn): Unit = {
     val c = copy(items = items.filter(_.entQuery != itemQuery), updDtm = DateTime.now)
     c.update
   }
@@ -151,7 +152,7 @@ object Cart {
   def list (userId:ObjectId) =
     RMany[Cart] ("userId" -> userId)
 
-  def cartCanceled (id:ObjectId) {
+  def cartCanceled (id:ObjectId): Unit = {
   }
 }
 
