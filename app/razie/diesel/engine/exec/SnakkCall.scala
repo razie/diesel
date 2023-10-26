@@ -17,7 +17,7 @@ import razie.diesel.dom.RDOM._
 import razie.diesel.engine.nodes.{EInfo, EWarning}
 import razie.diesel.engine.{EContent, InfoAccumulator}
 import razie.tconf.DTemplate
-import razie.{Snakk, SnakkRequest, SnakkResponse, SnakkUrl}
+import razie.{Snakk, SnakkRequest, SnakkResponse, SnakkUrl, XpWrapper}
 import scala.Option.option2Iterable
 import scala.collection.mutable
 import scala.concurrent.{Future, Promise}
@@ -26,8 +26,12 @@ import scala.xml.Node
 
 /** a single snakk call to make - goes beyond Snakk.body
   *
-  * @param protocol http, telnet
-  * @param method GET, POST, open etc
+  * @param protocol - http, telnet
+  * @param method   - GET, POST, open etc
+  * @param url      - url to call
+  * @param headers  - headers to send
+  * @param content  - body to send with a POST or GET etc
+  * @param template - if a template is to be used
   */
 case class SnakkCall (
   protocol: String,
@@ -138,7 +142,7 @@ case class SnakkCall (
   }
 
   /** xp root for either xml or json body */
-  def root: Option[Snakk.Wrapper[_]] = {
+  def root: Option[XpWrapper[_]] = {
     val b = body
     iContentType match {
       case Some(s) if s.trim.startsWith("application/xml") => Some(Snakk.xml(b))

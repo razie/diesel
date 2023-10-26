@@ -10,7 +10,8 @@ import razie.diesel.dom.RDOM._
 import razie.diesel.dom.{RDomain, _}
 import razie.diesel.engine.exec.Executors
 import razie.diesel.engine.nodes._
-import razie.diesel.expr.ECtx
+import razie.diesel.expr.{CExpr, ECtx}
+import razie.diesel.model.DieselMsg
 import razie.tconf.{DSpec, EPos}
 import razie.wiki.Enc
 import scala.collection.mutable
@@ -183,16 +184,41 @@ object RDExt extends Logging {
         }
 
   // to collect msg def
-  case class PCol(p:P, pos:Option[EPos])
+  case class PCol(p:P, pos:Option[EPos], where:String="")
   case class PMCol(pm:PM, pos:Option[EPos])
   case class MsgCol(m:EMsg,
                in  : ListBuffer[PCol] = new ListBuffer[PCol],
                out : ListBuffer[PCol] = new ListBuffer[PCol],
-               cons: ListBuffer[PMCol] = new ListBuffer[PMCol]
+               cons: ListBuffer[PMCol] = new ListBuffer[PMCol],
+               path:String,
+               verb:String = "GET"
                ) {
+    val bodyParms : ListBuffer[PCol] = new ListBuffer[PCol]
+
     def e = m.entity
     def a = m.met
     def toHtml = EMsg(e, a).withPos(m.pos).toHtmlInPage // no parms
+  }
+
+  // todo collapse defs rather than select
+  def msgToCol (msgs:ListBuffer[MsgCol], n:EMsg, out:List[P] = Nil): Unit = {
+    if (!msgs.exists(x=> x.e == n.entity && x.a == n.met)) {
+      msgs.append(new MsgCol(
+        n,
+        new ListBuffer[PCol]() ++= n.attrs.map(p=>PCol(p, n.pos)),
+        new ListBuffer[PCol]() ++= (n.ret ::: out).map(p=>PCol(p, n.pos)),
+        new ListBuffer[PMCol],
+        n.urlPath()
+      ))
+    } else msgs.find(x=> x.e == n.entity && x.a == n.met).foreach {m=>
+      n.attrs.foreach {p=>
+        if(m.in.exists(_.p.name == p.name)) {
+          // todo collect types etc
+        } else {
+          m.in append PCol(p, n.pos)
+        }
+      }
+    }
   }
 
   /** create a summary of all relevant entities in teh domain: messages and attributes */
@@ -200,64 +226,177 @@ object RDExt extends Logging {
     val msgs  = new ListBuffer[MsgCol]
     val attrs = new ListBuffer[PCol]
 
-    // todo collapse defs rather than select
-    def collectMsg(n:EMsg, out:List[P] = Nil) = {
-      if (!msgs.exists(x=> x.e == n.entity && x.a == n.met)) {
-        msgs.append(new MsgCol(
-          n,
-          new ListBuffer[PCol]() ++= n.attrs.map(p=>PCol(p, n.pos)),
-          new ListBuffer[PCol]() ++= (n.ret ::: out).map(p=>PCol(p, n.pos))
-        ))
-      } else msgs.find(x=> x.e == n.entity && x.a == n.met).foreach {m=>
-        n.attrs.foreach {p=>
-          if(m.in.exists(_.p.name == p.name)) {
-            // todo collect types etc
-          } else {
-            m.in append PCol(p, n.pos)
-          }
+    d.moreElements.collect({
+      case n: EMsg => {
+        if (!msgs.exists(x=> x.e == n.entity && x.a == n.met))
+          msgToCol(msgs, n)
+      }
+      case n: ERule => {
+        msgToCol(msgs, n.e.asMsg.withPos(n.pos))
+        n.i.foreach {
+          case e: EMapCls => msgToCol(msgs, e.asMsg.withPos(n.pos))
+          case e: EMapPas => ;
         }
       }
+      case n: EMock => {
+        msgToCol(msgs, n.rule.e.asMsg.withPos(n.pos), n.rule.i.collect{
+          case e:EMapCls => e
+        }.flatMap(_.attrs))
+      }
+      case n: ExpectM => msgToCol(msgs, n.m.asMsg.withPos(n.pos))
+    })
+
+    msgs
+  }
+
+  // a parameter
+  def swagP (name:String, in:String, required:Boolean, ttype:String, format:String) = {
+    Map (
+      "name" -> name,
+      "in" -> in,
+      "required" -> required,
+      "type" -> ttype,
+      "format" -> format
+    )
+  }
+
+  // a message
+  def swagM (mc:MsgCol) : Map[String,Any] = {
+    val m = mc.m
+    Map (
+      "summary" -> (mc.verb + " " + m.ea),
+      "operationId" -> m.ea,
+      "responses" -> Map (
+        "200" -> Map (
+          "description" -> "",
+          "schema" -> Map (
+            "$ref" -> ""
+          )
+        )
+      ),
+      "parameters" -> mc.in.map(_.p).map (x => swagP(x.name, "path", x.isRequired, x.ttype.name, format = x.ttype.name)),
+      "tags" -> List("generic")
+    )
+  }
+
+  /** create a summary of all relevant entities in teh domain: messages and attributes */
+  def summarizeSwagger(d: RDomain, rest:Boolean, title:String) = {
+    val msgs  = summarize(d).toList
+
+    val paths = msgs.take(200).map (x =>
+      (
+          x.m.urlPath() -> Map (
+            x.verb.toLowerCase -> swagM(x)
+          )
+          )
+    ).toMap
+
+    Map(
+      "swagger" -> "2.0",
+      "info" -> Map (
+        "title" -> title,
+        "version" -> "version not set"
+      ),
+      "schemes" ->  List ("http", "https"),
+      "consumes" -> List ("application/json"),
+      "produces" -> List ("application/json"),
+      "paths" -> paths
+    )
+
+  }
+
+  // todo collapse defs rather than select
+  def restToCol (msgs:ListBuffer[MsgCol], rule:ERule, n:EMsg, out:List[P] = Nil): Unit = {
+    // todo can't protect against duplicates, can I?
+    val path = rule.e.attrs.find(_.name == "path").flatMap(_.expr).filter(x => x.isInstanceOf[CExpr[String]]).map(
+      _.asInstanceOf[CExpr[String]].expr)
+    val verb = rule.e.attrs.find(_.name == "verb").flatMap(_.expr).filter(x => x.isInstanceOf[CExpr[String]]).map(
+      _.asInstanceOf[CExpr[String]].expr).getOrElse("GET")
+
+    path.foreach { p =>
+
+      val in = new ListBuffer[PCol]() // ++= n.attrs.map(p=>PCol(p, n.pos))
+      val a = p.replaceFirst("\\?.*", "").split("/")
+
+      val swaggerPath = a.collect {
+        case s: String if s.startsWith(":") || s.startsWith("*") => {
+          val x = s.substring(1)
+          in.append(new PCol(new P(x, "", WTypes.wt.STRING), rule.pos))
+          "{" + x + "}"
+        }
+        case r@_ => r
+      }.mkString("/")
+
+      msgs.append(new MsgCol(
+        n,
+        in,
+        new ListBuffer[PCol](),
+        new ListBuffer[PMCol],
+        swaggerPath,
+        verb
+      ))
+    }
+  }
+
+  /** create a summary of all relevant entities in teh domain: messages and attributes */
+  def summarizeRest(d: RDomain) = {
+    val msgs  = new ListBuffer[MsgCol]
+    val attrs = new ListBuffer[PCol]
+
+    d.moreElements.collect({
+      case n: ERule if n.e.ea == DieselMsg.ENGINE.DIESEL_REST => {
+        restToCol(msgs, n, n.e.asMsg.withPos(n.pos))
+//        n.i.foreach {
+//          case e: EMapCls => msgToCol(msgs, e.asMsg.withPos(n.pos))
+//          case e: EMapPas => ;
+//        }
+      }
+//      case n: EMock if n.rule.e.ea == DieselMsg.ENGINE.DIESEL_REST => {
+//        msgToCol(msgs, n.rule.e.asMsg.withPos(n.pos), n.rule.i.collect{
+//          case e:EMapCls => e
+//        }.flatMap(_.attrs))
+//      }
+//      case n: ExpectM => msgToCol(msgs, n.m.asMsg.withPos(n.pos))
+    })
+
+    msgs
+  }
+
+  /** create a summary of all relevant entities in teh domain: messages and attributes */
+  def summarizeSwaggerRest(d: RDomain, rest:Boolean, title:String) = {
+    val msgs  = summarizeRest(d).toList
+
+    val paths = msgs.take(200).map (x =>
+        (
+          x.m.urlPath() -> Map (
+            "get" -> swagM(x)
+          )
+        )
+    ).toMap
+
+      // a rest call
+    def r (name:String, in:String, required:Boolean, ttype:String, format:String) = {
+      Map (
+        "name" -> name,
+        "in" -> in,
+        "required" -> required,
+        "type" -> ttype.toLowerCase,
+        "format" -> format
+      )
     }
 
-//    def collectP(l:List[P]) = {
-//      l.map(p=>collect(p.name, "", "attr"))
-//    }
-//    def collectPM(l:List[PM]) = {
-//      l.map(p=>collect(p.name, "", "attr"))
-//    }
+    Map(
+      "swagger" -> "2.0",
+      "info" -> Map (
+        "title" -> title,
+        "version" -> "version not set"
+      ),
+      "schemes" ->  List ("http", "https"),
+      "consumes" -> List ("application/json"),
+      "produces" -> List ("application/json"),
+      "paths" -> paths
+    )
 
-        d.moreElements.collect({
-          case n: EMsg => {
-            if (!msgs.exists(x=> x.e == n.entity && x.a == n.met))
-              collectMsg(n)
-          }
-          case n: ERule => {
-            collectMsg(n.e.asMsg.withPos(n.pos))
-            n.i.foreach {x=>
-                x match {
-                  case e:EMapCls => collectMsg(e.asMsg.withPos(n.pos))
-                  case e:EMapPas => ;
-                }
-            }
-          }
-          case n: EMock => {
-            collectMsg(n.rule.e.asMsg.withPos(n.pos), n.rule.i.collect{
-              case e:EMapCls => e
-            }.flatMap(_.attrs))
-          }
-          case n: ExpectM => collectMsg(n.m.asMsg.withPos(n.pos))
-        })
-
-//        d.moreElements.collect({
-//          case n: EMsg => collectP(n.attrs)
-//          case n: ERule => {
-//            collectPM(n.e.attrs)
-//     o       collectP(n.i.attrs)
-//          }
-//          case n: EMock => collectPM(n.rule.e.attrs)
-//          case n: ExpectM => collectPM(n.m.attrs)
-//        })
-  msgs
   }
 
   /** simple json for content assist

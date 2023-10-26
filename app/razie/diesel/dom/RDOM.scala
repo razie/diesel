@@ -68,7 +68,7 @@ object RDOM {
     * @param assocs    assocs to other classes
     * @param props     annotations and other properties
     */
-  case class C(
+  case class C (
     name: String,
     archetype: String,
     stereotypes: String,
@@ -139,6 +139,19 @@ object RDOM {
       c.pos = this.pos
       c
     }
+
+    def toj = Map (
+      "name" -> name,
+      "base" -> base,
+      "typeParam" -> typeParam,
+      "archetype" -> archetype,
+      "stereotypes" -> stereotypes,
+      "parms" -> parms.map(_.name),
+      "methods" -> methods.map(_.name),
+      "assocs" -> assocs.map(_.name),
+      "props" -> props.map(_.name),
+      "key" -> key
+    )
   }
 
   /** name value pair */
@@ -166,7 +179,8 @@ object RDOM {
     /** convert as proper java object */
     def asJavaObject: AnyRef = cType match {
 
-      case WTypes.wt.JSON | WTypes.wt.OBJECT => asJson
+      case WTypes.wt.OBJECT                  => value.asInstanceOf[AnyRef]
+      case WTypes.wt.JSON                    => asJson
       case WTypes.wt.ARRAY                   => asArray
       case WTypes.wt.EXCEPTION               => asThrowable
       case WTypes.wt.BOOLEAN                 => asBoolean.asInstanceOf[AnyRef]
@@ -359,6 +373,8 @@ object RDOM {
             case WType(WTypes.EXCEPTION, _, _, _) => new P(name, s, expectedType)
 
             case WType(WTypes.REF, _, _, _) => new P(name, s, expectedType)
+
+            case WType(WTypes.MSG, _, _, _) => new P(name, s, expectedType)
 
             case _ if expectedType.trim.length > 0 =>
               throw new DieselExprException(s"$expectedType is an unknown type")
@@ -579,6 +595,8 @@ object RDOM {
     def withCachedValue[T](va: T, ctype: WType, cached: String) = {
       this.copy(ttype = ctype, value = Some(PValue[T](va, ctype).withStringCache(cached)))
     }
+
+    def isRequired = optional.compareTo("?") != 0
 
     def isRef = ttype.isRef
 

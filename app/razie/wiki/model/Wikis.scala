@@ -596,7 +596,7 @@ object Wikis extends Logging with Validation {
   }
 
   def irunXp(what: String, w: WikiEntry, path: String) = {
-    var root = new razie.Snakk.Wrapper(new WikiWrapper(w.wid), WikiXpSolver)
+    var root = new razie.XpWrapper(new WikiWrapper(w.wid), WikiXpSolver)
     var xpath = path // TODO why am I doing this?
 
     val ROOT_ALL = """root\(\*\)/(.*)""".r
@@ -604,11 +604,11 @@ object Wikis extends Logging with Validation {
 
     path match {
       case ROOT_ALL(rest) => {
-        root = new razie.Snakk.Wrapper(new WikiWrapper(WID("Admin", "*").r(w.realm)), WikiXpSolver)
+        root = new razie.XpWrapper(new WikiWrapper(WID("Admin", "*").r(w.realm)), WikiXpSolver)
         xpath = rest //path.replace("root(*)/", "")
       }
       case ROOT(cat, name, rest) => {
-        root = new razie.Snakk.Wrapper(new WikiWrapper(WID(cat, name).r(w.realm)), WikiXpSolver)
+        root = new razie.XpWrapper(new WikiWrapper(WID(cat, name).r(w.realm)), WikiXpSolver)
         xpath = rest
       }
     }

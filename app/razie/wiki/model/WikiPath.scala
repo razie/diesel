@@ -153,8 +153,8 @@ object TestWikiPath /*extends App*/ {
   // val node = new WikiWrapper("Club", "Offroad_Ontario")
   val node = new WikiWrapper(WID("Calendar", "OO_XC_2012"))
   val noder = new WikiWrapper(WID("Race", "OO_XC_Mansfield,_by_HORRA_,_date_May_27,_2012"))
-  val root = new razie.Snakk.Wrapper(node, WikiXpSolver)
-  val rootr = new razie.Snakk.Wrapper(noder, WikiXpSolver)
+  val root = new razie.XpWrapper(node, WikiXpSolver)
+  val rootr = new razie.XpWrapper(noder, WikiXpSolver)
 
   razie.Log.debug("debug")
   razie.Log.logger.debug("debug")

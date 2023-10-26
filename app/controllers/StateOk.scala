@@ -38,6 +38,11 @@ class StateOk (val realm:String, val au: Option[model.User], val request: Option
   def requireJs(x : Boolean): Unit = { _requireJs = x;}
   def requireJs = _requireJs
 
+  def withCss (x:String) = {
+    _css = Option(x)
+    this
+  }
+
   def withError (x:Any) = {
     msg = msg ++ Seq("err" -> x.toString)
     this

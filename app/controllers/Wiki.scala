@@ -708,7 +708,7 @@ class Wiki @Inject()(domainController: DomainController) extends WikiBase {
       w <- worig.alias.flatMap(x => Wikis(wid.getRealm).find(x)).orElse(Some(worig)) orErr "no page" // TODO cascading aliases?
     ) yield {
       val node = new WikiWrapper(wid)
-      val root = new razie.Snakk.Wrapper(node, WikiXpSolver)
+      val root = new razie.XpWrapper(node, WikiXpSolver)
 
       Audit.logdb("XP", wid.wpath + "/xp/" + path)
 
@@ -744,7 +744,7 @@ class Wiki @Inject()(domainController: DomainController) extends WikiBase {
       worig <- xpRoot(wid, page);
       w <- worig.alias.flatMap(x => Wikis(wid.getRealm).find(x)).orElse(Some(worig)) orErr "no page" // TODO cascading aliases?
     ) yield {
-        val root = new razie.Snakk.Wrapper(new WikiWrapper(w.wid), WikiXpSolver)
+        val root = new razie.XpWrapper(new WikiWrapper(w.wid), WikiXpSolver)
 
         Audit.logdb("XP-L", wid.wpath + "/xpl/" + path)
 

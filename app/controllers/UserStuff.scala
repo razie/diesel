@@ -13,7 +13,7 @@ import razie.tconf.parser.SpecParserSettings
 import razie.wiki.{Config, Services}
 import razie.wiki.model._
 import razie.wiki.util.Maps
-import razie.{Snakk, XpSolver}
+import razie.{ListWrapper, Snakk, XpSolver, XpWrapper}
 import scala.util.parsing.combinator.RegexParsers
 
 /** stuff related to users: events, locations etc */
@@ -42,22 +42,22 @@ object UserStuff {
 
   def Race = Services.config.sitecfg("racecat").getOrElse("Race")
 
-  def events(u: User): List[(ILink, String, DateTime, ILink, Snakk.Wrapper[WWrapper])] =
+  def events(u: User): List[(ILink, String, DateTime, ILink, XpWrapper[WWrapper])] =
     events("*", u)
 
   /** user / Calendar / Race / Venue
     *
     * @return (what,when)
     */
-  def events(realm: String, u: User): List[(ILink, String, DateTime, ILink, Snakk.Wrapper[WWrapper])] = {
+  def events(realm: String, u: User): List[(ILink, String, DateTime, ILink, XpWrapper[WWrapper])] = {
     val dates = u.pages(realm, "Calendar").flatMap { uw =>
       val node = new WikiWrapper(uw.uwid.wid.get)
-      val root = new razie.Snakk.Wrapper(node, WikiXpSolver)
+      val root = new razie.XpWrapper(node, WikiXpSolver)
 
       // TODO optimize this - lots of lookups...
       val races = (root \ "*" \ Race) ++ (root \ "*" \ "Event") ++ (root \ "*" \ "Training")
       val dates = races.map { race =>
-        val wr = new Snakk.Wrapper(race, races.ctx)
+        val wr = new XpWrapper(race, races.ctx)
         (race.mkLink,
             wr \@ "date",
             new ILink(WID("Venue", wr \@ "venue")),
@@ -156,7 +156,7 @@ object DateParserTA extends App {
 }
 
 /** OO wrapper for self-solving XP elements HEY this is like an open monad :) */
-class XListWrapper[T](nodes: List[T], ctx: XpSolver[T]) extends ListWrapper[T](nodes, ctx) {
+class XListWrapper[T](nodes: List[T], ctx: XpSolver[T]) extends razie.ListWrapper[T](nodes, ctx) {
   /** factory method - overwrite with yours*/
   override def wrapList(nodes: List[T], ctx: XpSolver[T]) = new XListWrapper(nodes, ctx)
   override def wrapNode(node: T, ctx: XpSolver[T]) = new XWrapper(node, ctx)
@@ -168,7 +168,7 @@ class XListWrapper[T](nodes: List[T], ctx: XpSolver[T]) extends ListWrapper[T](n
 }
 
 /** OO wrapper for self-solving XP elements */
-class XWrapper[T](node: T, ctx: XpSolver[T]) extends Wrapper(node, ctx) {
+class XWrapper[T](node: T, ctx: XpSolver[T]) extends razie.XpWrapper(node, ctx) {
   /** factory method - overwrite with yours*/
   override def wrapList(nodes: List[T], ctx: XpSolver[T]) = new XListWrapper(nodes, ctx)
   override def wrapNode(node: T, ctx: XpSolver[T]) = new XWrapper(node, ctx)

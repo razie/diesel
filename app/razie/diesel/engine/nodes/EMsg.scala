@@ -280,6 +280,17 @@ case class EMsg(
   }
 
   // reactor invocation url
+  def urlPath (section:String="", resultMode:String="value") = {
+    var x = if (DieselMsg.ENGINE.DIESEL_REST == ea) {
+      s"""/diesel/rest""" + attrs.find(_.name == "path").map(_.currentStringValue).mkString
+    } else {
+      s"""/diesel/react/$entity/$met?${attrsToUrl(attrs)}"""
+    }
+
+    x
+  }
+
+  // reactor invocation url
   private def url2 (section:String="", resultMode:String="value") = {
     var x = if (DieselMsg.ENGINE.DIESEL_REST == ea) {
       s"""/diesel/rest""" + attrs.find(_.name == "path").map(_.currentStringValue).mkString

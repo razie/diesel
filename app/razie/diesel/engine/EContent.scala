@@ -6,7 +6,7 @@
 package razie.diesel.engine
 
 import java.util.regex.Pattern
-import razie.Snakk
+import razie.{Snakk, XpWrapper}
 import razie.diesel.Diesel
 import razie.diesel.dom.RDOM._
 import razie.diesel.dom._
@@ -24,7 +24,7 @@ class EContent(
                  val contentType: String,
                  val code : Int = 200,
                  val headers: Map[String, String] = Map.empty,
-                 val iroot: Option[Snakk.Wrapper[_]] = None,
+                 val iroot: Option[XpWrapper[_]] = None,
                  val raw: Option[Array[Byte]] = None) {
 
   var warnings:List[Any] = Nil
@@ -71,7 +71,7 @@ class EContent(
   import razie.Snakk._
 
   /** xp root for either xml or json body */
-  lazy val root: Snakk.Wrapper[_] = iroot getOrElse {
+  lazy val root: XpWrapper[_] = iroot getOrElse {
     contentType match {
       case _ if isXml => Snakk.xml(body)
       case _ if isJson => if (body.trim.startsWith("{")) Snakk.json(body) else Snakk.json("{}") // avoid exceptions parsing
@@ -235,6 +235,32 @@ object EContent {
     } else Nil
 
     groups3
+  }
+
+  /** apply the path expr to body and extract any named groups
+    * @return list of tuple (name, type)
+    */
+  def extractPathParmNames (path:String): List[(String, String)] = {
+    // clean path of any queryp.
+    val a = path.replaceFirst("\\?.*", "").split("/")
+
+    var parms = new ListBuffer[(String,String)]()
+
+    var i = 0
+    val len = a.length
+    while (i < len) {
+      val ai = a(i)
+      if (ai.startsWith(":")) {
+        // match one value to segment .../:id/...
+        parms.append((ai.substring(1), ":"))
+      } else if (i == a.length-1 && ai.startsWith("*")) {
+        // match rest of path .../*path
+        parms.append((ai.substring(1), "*"))
+      }
+      i += 1
+    }
+
+    parms.toList
   }
 
   /** apply the path expr to body and extract any named groups */
