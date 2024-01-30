@@ -19,6 +19,8 @@ import scala.::
   * @param env     - the target env inside the target realm
   * @param specs   - list of specifications to get the rules from
   * @param stories - optional list of stories to execute and validate
+  *
+  *                DO NOT CREATE THIS CLASS, use the methods in the object
   */
 case class DieselTarget(
   val realm: String,

@@ -703,7 +703,7 @@ import NotesLocker._
     *
     * @param asap will cause it to create the note on the spot, no editing required
     */
-  def embed(title:String, miniTitle:String, tags:String, context:String, baseId:String, asap:Boolean=false, justCapture:Boolean=false, submit:String="") = FAU { implicit au=> implicit errCollector=> implicit request=>
+  def embed (title:String, miniTitle:String, tags:String, context:String, baseId:String, asap:Boolean=false, justCapture:Boolean=false, submit:String="") = FAU { implicit au=> implicit errCollector=> implicit request=>
     val initial = if(ObjectId.isValid(baseId)) Notes.notesById(new ObjectId(baseId)) else None;
     var content = initial.map(_.content).getOrElse("")
 
@@ -721,7 +721,7 @@ import NotesLocker._
   }
 
   /** present a selection browser starting with the given tags */
-  def selectFrom(tag: String) = FUH { implicit au =>
+  def selectFrom (tag: String) = FUH { implicit au =>
     implicit errCollector => implicit request =>
       val tagq = new TagQuery(tag)
 
@@ -750,7 +750,7 @@ import NotesLocker._
       }
   }
 
-  def invite(e: String, n:String) = FAU { implicit au =>
+  def invite (e: String, n:String) = FAU { implicit au =>
     implicit errCollector => implicit request =>
       NOK ("", Seq.empty, "msg" -> s"[view]") apply {implicit stok=>
         views.html.notes.notesinvitenow(e, n)
@@ -758,7 +758,7 @@ import NotesLocker._
   }
 
   /** friend accepts connection */
-  def accept(e: String) = FAU { implicit au =>
+  def accept (e: String) = FAU { implicit au =>
     implicit errCollector => implicit request =>
 
       val other = Users.findUserById(e)
@@ -792,7 +792,7 @@ import NotesLocker._
   }
 
   // TODO optimize
-  def search(q: String) = FUH { implicit au =>
+  def search (q: String) = FUH { implicit au =>
     implicit errCollector => implicit request =>
       // TODO limit the number of searches - is this performance critical?
       val qi = q.toLowerCase
@@ -844,7 +844,7 @@ import NotesLocker._
       Ok("["+(c1 ::: c2 ::: c3).map(s=>s""" "$s" """).mkString(",")+"]").as("text/json")
   }
 
-  def domj(nid: String) = FAU { implicit au =>
+  def domj (nid: String) = FAU { implicit au =>
     implicit errCollector => implicit request =>
       Notes.notesById(new ObjectId(nid)).map { n =>
         if (n.by == au._id || Notes.isShared(n, au._id))

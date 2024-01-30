@@ -400,7 +400,7 @@ Please check your email and follow the instructions.
           request.au.get.profile.flatMap(_.contact).getOrElse(Contact(Map.empty))), request.au.get))
   }
 
-  def doeContactUpdate(regid:String) = FAUR { implicit request =>
+  def doeContactUpdate(regid:String, xx:String, yy:String) = FAUR { implicit request =>
     edContactForm.bindFromRequest.fold(
       formWithErrors => BadRequest(views.html.user.doeContact(regid, formWithErrors, auth.get)),
       {

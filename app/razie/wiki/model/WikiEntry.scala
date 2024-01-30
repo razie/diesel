@@ -21,7 +21,7 @@ import razie.wiki.parser.WAST
 import scala.collection.mutable
 
 /**
-  * simple trait for a wiki
+  * simple trait for a wiki, to abstract the implementation which is in WikiEntry
   */
 trait WikiPage {
   def category: String
@@ -359,8 +359,13 @@ case class WikiEntry(
     val s = ast._1.fold(WAST.context(Some(this), au)) // fold the AST
     // add hardcoded attribute - these can be overriden by tags in content
     val res = StrAstNode(s.s,
-      Map("category" -> category, "name" -> name, "label" -> label, "url" -> (wid.urlRelative),
-        "id" -> _id.toString, "tags" -> tags.mkString(",")) ++ s.props,
+      Map(
+        "category" -> category,
+        "name" -> name,
+        "label" -> label,
+        "url" -> (wid.urlRelative),
+        "id" -> _id.toString,
+        "tags" -> tags.mkString(",")) ++ s.props,
       s.ilinks)
     ipreprocessed = Some(res, au)
     val t2 = System.currentTimeMillis

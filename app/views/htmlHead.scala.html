@@ -18,9 +18,11 @@ the head of every page...
   <head>
 <!--
   WID: @page.map(_.wid.wpathFull)
+  UWID: @page.map(_.uwid)
   X-FORWARDED-HOST: @stok.flatMap(_.request).orElse(request).map(r=>r.headers.get("X-FORWARDED-HOST"))
   stok.realm: @stok.map(_.realm)
   stok.website: @stok.map(_.website.reactor)
+  stok.canonicalLink: @stok.map(_.canonicalLink)
   connected: @stok.flatMap(_.request).orElse(request).map(r=>r.session.get(Services.config.CONNECTED))
   au: @stok.flatMap(_.au).map(_.userName)
   NODE: @Services.cluster.clusterNodeSimple

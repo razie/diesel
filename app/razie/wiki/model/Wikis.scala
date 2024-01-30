@@ -358,13 +358,18 @@ object Wikis extends Logging with Validation {
   }
 
   // TODO better escaping of all url chars in wiki name
-  /** pre-process this wiki: do  AST, includes etc */
+  /**
+    * pre-process this wiki: do  AST, includes etc
+    *
+    * @return (ast root, processed string content)
+    */
   def preprocess(wid: WID, markup: String, content: String, page: Option[WikiEntry]) : (BaseAstNode, String) = {
     implicit val errCollector = new VErrors()
     
     def includes (c:String) = {
       var c2 = c
 
+      // expand relative links to sibblines and child topics
       if (c2 contains "[[./")
         c2 = c.replaceAll("""\[\[\./""", """[[%s/""".format(wid.realm.map(_ + ".").mkString + wid.cat + ":" + wid.name)) // child topics
       if (c2 contains "[[../")

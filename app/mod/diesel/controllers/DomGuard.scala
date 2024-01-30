@@ -147,7 +147,7 @@ class DomGuard extends DomApiBase with Logging {
           RDomain.empty
         )((a, b) => a.plus(b)).revise.addRoot
 
-        RDExt.summarize(dom).toList
+        DomDocs.summarize(dom).toList
       } else {
         val engine = EnginePrep.prepEngine(
           new ObjectId().toString,
@@ -158,7 +158,7 @@ class DomGuard extends DomApiBase with Logging {
           stok.au,
           "DomApi.navigate")
 
-        RDExt.summarize(engine.dom).toList
+        DomDocs.summarize(engine.dom).toList
       }
 
     ROK.k reactorLayout12 {

@@ -24,7 +24,7 @@ import razie.hosting.Website
 
 /** a prepared email to send - either send now, later, backup etc */
 @RTable
-case class EmailMsg(
+case class EmailMsg (
   to: String,
   from: String,
   subject: String,
@@ -99,7 +99,7 @@ class BaseMailSession(implicit mailSession: Option[Session] = None) {
   /** the actual email send
     *
     * exceptions are caught outside of this - see call site */
-  def send (msg:MimeMessage) = {
+  def send (msg:MimeMessage): Unit = {
     try {
       if(transport.isEmpty)
         // todo I assume it has at least one recipient
@@ -134,7 +134,7 @@ class BaseMailSession(implicit mailSession: Option[Session] = None) {
   * todo move into a connectors subsystem
   */
 object SendEmail extends razie.Logging {
-  import EmailMsg.STATUS
+  import razie.wiki.admin.EmailMsg.STATUS
 
   /** prevent it from actually sending out, good for testing
     * this is set to false for normal testing - set to true for quick testing and stress/perf testing */
@@ -158,6 +158,7 @@ object SendEmail extends razie.Logging {
 
       props.put("mail.smtp.host", "localhost");
       clog << "SMTP_PROPS for test: " << props.toString
+
       javax.mail.Session.getInstance(props,
         new SMTPAuthenticator("your@email.com", "big secret"))
 
@@ -168,6 +169,7 @@ object SendEmail extends razie.Logging {
       props.put("mail.smtp.host", "smtp.gmail.com");
       props.put("mail.smtp.port", "587");
       clog << "SMTP_PROPS for default: " << props.toString
+
       javax.mail.Session.getInstance(props,
         new SMTPAuthenticator("your@email.com", "big secret"))
     }
@@ -204,7 +206,7 @@ object SendEmail extends razie.Logging {
   var curCount = 0;            // current sending queue size
   var state = STATE_OK
 
-  def setState (news:String) = {
+  def setState (news:String): Unit = {
     if(state != news) Audit.logdb("EMAIL_STATUS", s"from $state to $news")
     state = news
   }
@@ -221,7 +223,7 @@ object SendEmail extends razie.Logging {
   private class EmailSender extends Actor {
     var lastBackoff = System.currentTimeMillis() - 600000
 
-    def receive = {
+    override def receive = {
       case e: EmailMsg => {
         Audit.logdb("ERR_EMAIL_PROC", "SOMEBODY SENT AN EMAIL DIRECTLY... find and kill " + e.toString)
       }

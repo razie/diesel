@@ -6,7 +6,7 @@ import mod.diesel.model.DomEngineHelper
 import org.bson.types.ObjectId
 import razie.Logging
 import razie.diesel.dom.{RDomain, WikiDomain}
-import razie.diesel.engine.RDExt
+import razie.diesel.engine.{DomDocs, RDExt}
 import razie.diesel.engine.nodes.EnginePrep
 import razie.diesel.utils.SpecCache
 import razie.wiki.model._
@@ -22,7 +22,7 @@ class DomSwagger extends RazController with Logging {
       val pages = Wikis(stok.realm).pages("Spec").toList
 
       val dom = pages.flatMap(p =>
-        SpecCache.orcached(p, WikiDomain.domFrom(p)).toList
+        SpecCache.orcached(p, WikiDomain.domFrom(p).map(_.withSpecs(List(p)))).toList
       ).foldLeft(
         RDomain.empty
       )((a, b) => a.plus(b)).revise.addRoot
@@ -34,7 +34,7 @@ class DomSwagger extends RazController with Logging {
         DomEngineHelper.settingsFrom(stok),
         stok.realm,
         None,
-        false,
+        justTests = false,
         stok.au,
         "DomApi.navigate")
 
@@ -43,25 +43,25 @@ class DomSwagger extends RazController with Logging {
   }
 
   /** display the play sfiddle screen */
-  def swaggerMsgJson(scope:String = "local") = FAUR { implicit stok =>
+  def swaggerMsgJson(scope:String = "local", filterSpec:String="") = FAUR { implicit stok =>
     val dom = collectDom(stok, scope)
 
-    val msgs = RDExt.summarizeSwagger(dom, rest = false, title=s"All messages ($scope)")
+    val msgs = DomDocs.summarizeSwagger(dom, rest = false, title=s"All messages ($scope)", nameFilter=filterSpec)
 
     retj << msgs
   }
 
   /** display the play sfiddle screen */
-  def swaggerRestJson(scope:String = "local") = FAUR { implicit stok =>
+  def swaggerRestJson(scope:String = "local", filterSpec:String="") = FAUR { implicit stok =>
     val dom = collectDom(stok, scope)
 
-    val msgs = RDExt.summarizeSwaggerRest(dom, rest = false, title=s"Rest messages ($scope)")
+    val msgs = DomDocs.summarizeSwaggerRest(dom, rest = false, title=s"Rest messages ($scope)", nameFilter=filterSpec)
 
     retj << msgs
   }
 
   /** display the play sfiddle screen */
-  def swaggerJson() = FAUR { implicit stok =>
+  def swaggerJson(name:String="") = FAUR { implicit stok =>
     val reactor = stok.realm
 
     val id = java.lang.System.currentTimeMillis().toString()
@@ -74,9 +74,10 @@ class DomSwagger extends RazController with Logging {
   /**
    * show ui
    */
-  def swaggerUi(what:String = "msg") = FAUR { implicit stok =>
+  def swaggerUi(what:String = "msg", filterSpec:String="") = FAUR { implicit stok =>
 
-    val url = s"/diesel/swagger/${what}.json"
+      val q = if(filterSpec.trim.isEmpty) "" else s"?filterSpec=${filterSpec}"
+    val url = s"/diesel/swagger/${what}.json" + q
 
     ROK.k noLayout {
       views.html.modules.diesel.swaggerUi(url)

@@ -341,28 +341,31 @@ require(['jquery'], function($){
             <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false" style="xcolor: orange;
               font-weight: bold;
               font-size: small" title="Operational area">
-              Guardian <span class="caret"></span>
+              Admin <span class="caret"></span>
             </a>
             <ul class="dropdown-menu" role="menu">
               <li><a href="/diesel/listAst">List flows</a></li>
               <li><a href="/admin/status">Status</a></li>
 
-              <li><a href="#">Test submenu<span class="caret"></span></a>
-              <ul class="dropdown-menu sub-menu">
-                <li><a href="#">Action</a></li>
-                <li><a href="#">Something else here</a></li>
-                <li class="divider"></li>
-                <li><a>Nav header</a></li>
-                <li><a href="#">One more separated link</a></li>
-              </ul></li>
+              <li><a href="#">Guardian<span class="caret"></span></a>
+                <ul class="dropdown-menu sub-menu">
+                  <li><a href="/diesel/guard/report">Test Report</a></li>
+                  <li><a href="/diesel/guard/runCheck?tq=story%2Fsanity%2F-skip%2F-manual">Run test (Sanity)</a></li>
+                  <li><a href="/diesel/guard/runCheck?tq=story%2F-skip%2F-manual">Run test (All)</a></li>
+                  <li class="divider"></li>
+                  @DomGuardian.tagList.filter(_._1 == realm).map{x=>
+                    <li><a href="/diesel/guard/runCheck?tq=@Enc.toUrl(x._3)">Run test (@x._2)</a></li>
+                  }
+                </ul></li>
 
+              <li><a href="/diesel/swagger/ui/rest">Swagger</a>
+@*              <li><a href="#">Swagger<span class="caret"></span></a>*@
+@*              <ul class="dropdown-menu sub-menu">*@
+@*                <li><a href="/diesel/swagger/ui/rest">REST</a></li>*@
+@*                <li><a href="/diesel/swagger/ui/msg">Msg</a></li>*@
+@*              </ul>*@
+              </li>
 
-              <li><a href="/diesel/guard/report">Test Report</a></li>
-              <li><a href="/diesel/guard/runCheck?tq=story%2Fsanity%2F-skip%2F-manual">Run test (Sanity)</a></li>
-              <li><a href="/diesel/guard/runCheck?tq=story%2F-skip%2F-manual">Run test (All)</a></li>
-              @DomGuardian.tagList.filter(_._1 == realm).map{x=>
-                <li><a href="/diesel/guard/runCheck?tq=@Enc.toUrl(x._3)">Run test (@x._2)</a></li>
-              }
             </ul>
           </li>
         </ul>
@@ -387,6 +390,9 @@ require(['jquery'], function($){
             <ul class="dropdown-menu" role="menu">
               @Services.cluster.clusterNodes.map{t=>
                 <li><a href="/wikie/switchNode/@t.node">@t.node</a></li>
+              }
+              @if(stok.request.map(_.cookies).flatMap(_.get("dieselProxyNode")).nonEmpty) {
+                <li><a href="/wikie/switchNode/lb">[lb]</a></li>
               }
             </ul>
           </li>
