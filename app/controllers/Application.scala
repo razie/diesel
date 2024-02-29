@@ -194,10 +194,12 @@ class Application @Inject()(wikiCtl: Wiki, realmCtl:Realm) extends RazController
 
 // next - find reactor it belongs to
 
-          Audit.missingPage("URL - NO ROUTE FOR: " + path)
+          val reactor = RkReactors(request)
 
-          // ONLY if category not in path
-          RkReactors(request).map(Wikis.apply).filter(x=> !path.contains("/")).flatMap { wiki =>
+          Audit.missingPage("URL - NO ROUTE FOR: " + path + " reactor: " + reactor)
+
+          // if category not in path, then try with the defaulted categories
+          reactor.map(Wikis.apply).filter(x=> !path.contains("/")).flatMap { wiki =>
 
             // found reactor - look for a simple name first
 

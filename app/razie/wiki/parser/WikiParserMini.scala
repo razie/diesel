@@ -161,7 +161,7 @@ trait WikiParserMini extends ParserBase with CsvParser with Tokens {
         val yt2 = """http[s]?://www.youtube.com/watch?.*v=([^?&]+).*""".r
         val vm3 = """http[s]?://vimeo.com/([^?&]+)""".r
         val vp4 = """http[s]?://videopress.com/v/([^?&]+)""".r
-        def xt(id: String, time:Option[String] = None) = s"""<iframe width="560" height="315" src="http://www.youtube.com/embed/$id${time.map(x=>"?start="+x).mkString}" frameborder="0" allowfullscreen></iframe>"""//.format(id)
+        def xt(id: String, time:Option[String] = None) = s"""<iframe width="560" height="315" src="https://www.youtube.com/embed/$id${time.map(x=>"?start="+x).mkString}" frameborder="0" allowfullscreen></iframe>"""//.format(id)
         def vm(id: String) = """<iframe src="//player.vimeo.com/video/%s" width="500" height="281" frameborder="0" webkitallowfullscreen mozallowfullscreen allowfullscreen></iframe>""".format(id)
         def vp(id: String) = s"""<iframe width="560" height="315" src="https://videopress.com/embed/$id" frameborder="0" allowfullscreen></iframe>
           <script async src="https://videopress.com/videopress-iframe.js"></script>"""

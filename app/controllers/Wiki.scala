@@ -318,6 +318,11 @@ class Wiki @Inject()(domainController: DomainController) extends WikiBase {
     })
   }
 
+  /** use the same protocol that the current request came in with */
+  def RazRoutingHttps (url:String) (implicit request:Request[AnyContent]) = {
+    if(request.uri.startsWith("https:") && url.startsWith("http:")) url.replaceFirst("http:", "https:")
+    else url
+  }
 
   /** show a page */
   def showWid(cw: CMDWID, count: Int, irealm:String) = Action {implicit request=>
@@ -384,7 +389,7 @@ class Wiki @Inject()(domainController: DomainController) extends WikiBase {
           if (rewrite.isDefined) {
             log("  REWRITE: REDIRECTED FROM - " + fhost+request.path)
             log("    TO " + rewrite.get)
-            Redirect(rewrite.get)
+            Redirect(RazRoutingHttps(rewrite.get))
           } else if (fhost.exists(_ != Services.config.hostport) &&
             // if not me, no redirection and not the redirected path, THEN redirect
             redir.isDefined &&
@@ -393,7 +398,7 @@ class Wiki @Inject()(domainController: DomainController) extends WikiBase {
             log("  REDIRECTED FROM - " + fhost)
             log("    TO http://" + Services.config.hostport + "/wiki/" + cw.wpath.get)
   //          Redirect("http://" + Config.hostport + "/wiki/" + cw.wpath.get)
-            Redirect(wid.url)
+            Redirect(RazRoutingHttps(wid.url))
           } else fhost.flatMap(x=>Website.forHost(x)).map { web=>
             show(wid, count).apply(request).value.get.get //todo what the heck is this?
           } getOrElse {
