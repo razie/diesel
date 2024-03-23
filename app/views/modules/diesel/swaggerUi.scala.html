@@ -2,6 +2,7 @@
 browse a swagger definition
 **************@
 @(url : String)(implicit stok: controllers.StateOk)
+@import razie.diesel.engine.DomDocs
 
 <html lang="en">
   <head>
@@ -12,13 +13,18 @@ browse a swagger definition
     content="SwaggerUI"
     />
     <title>SwaggerUI</title>
-    <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@@4.5.0/swagger-ui.css" />
+@*    <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@@4.5.0/swagger-ui.css" />*@
+    <link rel="stylesheet" href="@routes.Assets.at("swagger.3.18.3/swagger-ui.css")" />
   </head>
+
   <body>
 
-<h2>Swag away</h2>
+API Sections: <a href="/diesel/swagger/ui/rest">All</a>
+@DomDocs.swaggerSpecs(stok.realm).map{x=>
+| <a href="/diesel/swagger/ui/rest?filterSpec=@x.key">@x.key</a>
+    }
 
-<p></p>
+  <p></p>
 
 
 <div id="swagger-ui"></div>
@@ -28,33 +34,43 @@ browse a swagger definition
 
  console.log ("URL: @url");
 
-    require.config({
-      baseUrl : '@routes.Assets.at("javascripts")',
-      shim : {
-        "bootstrap" : { "deps" :['jquery'] },
-        "bootstrap-typeahead" : { "deps" :['jquery', 'bootstrap'] }
-      },
-      paths: {
-        jquery: 'jquery-3.5.1.min',
-        bootstrap : '../bootstrap-3.3.4/js/bootstrap.min',
-        datatables : '../vendor/jquery.dataTables1.10.7.min',
-        ace : '../ace-builds/src',
-        "bootstrap-typeahead" : "../bootstrap-3.3.4/js/bootstrap3-typeahead",
-        "bootstrap-datepicker" : "../datepicker/js/bootstrap-datepicker"
-      }
-    });
+    //require.config({
+      //baseUrl : '@routes.Assets.at("javascripts")',
+      //shim : {
+        //"bootstrap" : { "deps" :['jquery'] },
+        //"bootstrap-typeahead" : { "deps" :['jquery', 'bootstrap'] }
+      //},
+      //paths: {
+        //jquery: 'jquery-3.5.1.min',
+        //bootstrap : '../bootstrap-3.3.4/js/bootstrap.min',
+        //datatables : '../vendor/jquery.dataTables1.10.7.min',
+        //ace : '../ace-builds/src',
+        //"bootstrap-typeahead" : "../bootstrap-3.3.4/js/bootstrap3-typeahead",
+        //"bootstrap-datepicker" : "../datepicker/js/bootstrap-datepicker"
+      //}
+    //});
 </script>
 
 <script>
     requirejs.config({
       paths: {
-        'swagger-ui-bundle': 'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/3.18.3/swagger-ui-bundle',
-        'swagger-ui-standalone-preset': '//cdnjs.cloudflare.com/ajax/libs/swagger-ui/3.18.3/swagger-ui-standalone-preset'
+        // 'swagger-ui-bundle': 'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/3.18.3/swagger-ui-bundle',
+        // 'swagger-ui-standalone-preset': '//cdnjs.cloudflare.com/ajax/libs/swagger-ui/3.18.3/swagger-ui-standalone-preset'
+
+        'swagger-ui-bundle': '/assets/swagger.3.18.3/swagger-ui-bundle',
+        'swagger-ui-standalone-preset': '/assets/swagger.3.18.3/swagger-ui-standalone-preset'
       }
     });
 
     require(['swagger-ui-bundle', 'swagger-ui-standalone-preset'], function (SwaggerUIBundle,SwaggerUIStandalonePreset) {
-      window.onload = function () {
+      console.log("require starts...");
+
+      var swaggerStarted = false;
+
+      var startSwagger = function() {
+        if(swaggerStarted) return;
+
+        console.log("starting swagger...");
         const ui = SwaggerUIBundle({
           url: "@url",
           dom_id: '#swagger-ui',
@@ -69,7 +85,9 @@ browse a swagger definition
           layout: "StandaloneLayout"
         })
         window.ui = ui
-      }
+      };
+
+      startSwagger();
     });
 </script>
 

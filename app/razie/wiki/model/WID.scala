@@ -92,6 +92,8 @@ case class WID(
     }
   }
 
+  def find = page
+
   /** find the page without using caches, if any - respects the NOCATS */
   def findPageNocache : Option[WikiEntry] = {
       val ret = {

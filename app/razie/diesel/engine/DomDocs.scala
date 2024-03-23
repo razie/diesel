@@ -376,9 +376,17 @@ object DomDocs extends Logging {
           )
         ),
 
-        "parameters" -> this.in.map(_.p).map(x =>
+        "parameters" -> (this.in.toList.map(_.p).map(x =>
           swagP (ctx, this, x.name, "path", x.isRequired, x.ttype.name, format = x.ttype.name)
-        ),
+        ) ::: (
+          this.annos.filter {x =>
+            val n = x.name.replaceFirst("docs.param.", "")
+          ! this.in.exists(y => y.p.name == n)
+          }.map { x =>
+          val n = x.name.replaceFirst("docs.param.", "")
+          swagP (ctx, this, n, "query", x.isRequired, "String", format = "String")
+          }
+        )),
 
         "tags" -> List("generic")
       )
@@ -424,11 +432,12 @@ object DomDocs extends Logging {
       def vb(n:String, dflt:Boolean) = a.get(n).map(_.asInstanceOf[Boolean]).getOrElse(dflt)
       Map(
         "name" -> name,
-        "in" -> in,
+        "in" -> vs("in", in),
         "required" -> vb("required", required),
         "type" -> vs("type", ttype),
         "format" -> vs("format", format),
-        "description" -> vs("description", "")
+        "description" -> vs("description", ""),
+        "schema" -> vs("schema", "")
       )
     } else {
       val a = aa.map(_.asString).mkString

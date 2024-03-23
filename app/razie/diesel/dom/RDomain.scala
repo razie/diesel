@@ -24,6 +24,15 @@ class RDomain(
   val objects: Map[String, O] = Map.empty,
   val funcs: Map[String, F] = Map.empty) {
 
+  /** not always populated - used in DomDocs to scope */
+  var specs : ListBuffer[DSpec] = new ListBuffer[DSpec]()
+
+  def withSpecs (s:TraversableOnce[DSpec]) = {
+    this.specs.clear()
+    this.specs.appendAll(s)
+    this
+  }
+
   /** use this for other elements */
   val moreElements = new ListBuffer[Any]()
 
@@ -31,9 +40,11 @@ class RDomain(
 
   /** compose domains parsed in different places */
   def plus(other: RDomain, newName:String=name) = {
-    var x=new RDomain(newName, classes ++ other.classes, assocs ++ other.assocs, diamonds ++ other.diamonds, objects ++ other.objects, funcs ++ other.funcs)
+    val x = new RDomain(newName, classes ++ other.classes, assocs ++ other.assocs, diamonds ++ other.diamonds, objects ++ other.objects, funcs ++ other.funcs)
+        .withSpecs(specs)
     x.moreElements.appendAll(moreElements)
     x.moreElements.appendAll(other.moreElements)
+    x.specs.appendAll(other.specs)
     x
   }
 
@@ -42,13 +53,14 @@ class RDomain(
     val newAssocs = classes.values.toList.flatMap{c=>
       c.parms.filter(p=> nz(p.ttype) &&
         !RDomain.isDataType(p.ttype) &&
-        !assocs.exists(a=>a.a == c.name && a.z==p.ttype && a.zRole==p.name)).map{p=>
+        !assocs.exists(a=>a.a == c.name && a.z == p.ttype && a.zRole==p.name)).map{p=>
         A("", c.name, p.ttype.name, (if (!p.ttype.isRef) "Parent" else ""), p.name)
       }
     }
 
     val x=new RDomain(name, classes, assocs ++ newAssocs, diamonds, objects, funcs)
     x.moreElements.appendAll(moreElements)
+    x.specs.appendAll(specs)
     x
   }
 
@@ -237,7 +249,7 @@ object RDomain {
           }.toMap,
           domList.collect {
             case f:F => (f.name, f)
-          }.toMap)
+          }.toMap).withSpecs(List(we))
         // now collect everything else in more
         x.moreElements.appendAll(
           domList.filter {e=>

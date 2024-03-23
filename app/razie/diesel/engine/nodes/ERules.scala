@@ -362,7 +362,7 @@ case class ENext(msg: EMsg, arrow: String, cond: Option[EIf] = None, deferred: B
   * @param arch archetype or tags
   * @param i the mappings to execute
   */
-case class ERule(e: EMatch, arch:String, i: List[EMap]) extends CanHtml with EApplicable with HasPosition {
+case class ERule(e: EMatch, arch:String, i: List[EMap], annotations:List[P] = Nil) extends CanHtml with EApplicable with HasPosition {
   var pos: Option[EPos] = None
   val isFallback = arch contains "fallback"
   val isExclusive = arch contains "exclusive"

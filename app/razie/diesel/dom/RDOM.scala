@@ -52,7 +52,7 @@ object RDOM {
     }
   }
 
-  class Anno extends DE
+  class Anno (val p:List[P]) extends DE
 
   private def classLink(s: String): String = s"""<b><a href="/wikie/show/Category:$s">$s</a></b>"""
 
