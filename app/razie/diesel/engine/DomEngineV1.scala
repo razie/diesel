@@ -33,7 +33,7 @@ import services.DieselCluster
   *
   * we expand and execute the known nodes
   */
-class DomEngineV1(
+class DomEngineV1 (
   dom: RDomain,
   root: DomAst,
   settings: DomEngineSettings,
@@ -41,7 +41,7 @@ class DomEngineV1(
   description: String,
   correlationId: Option[DomAssetRef] = None,
   id: String = new ObjectId().toString)
-    extends DomEngine(
+    extends DomEngine (
       dom, root, settings, pages, description, correlationId, id
     ) {
 
@@ -462,6 +462,7 @@ class DomEngineV1(
     // todo - WHY? only some systems may be mocked ???
     if ((true || !mocked) && !settings.simMode) {
       var matchingRules = rules
+          .toList
           .filter(x => !x.isFallback) // without fallbacks first
           .filter(_.e.testEA(n))
           .filter(x => x.e.testAttrCond(a, n) || {
@@ -478,6 +479,7 @@ class DomEngineV1(
       if (matchingRules.isEmpty)
         matchingRules =
             rules
+                .toList
                 .filter(_.isFallback)
                 .filter(_.e.testEA(n, None, true))
                 .filter(x => x.e.testAttrCond(a, n, None, true) || {
@@ -488,8 +490,17 @@ class DomEngineV1(
                   false
                 })
 
-      matchingRules
+      // separate the befores and afters
+      val befores = matchingRules.filter(r=> r.arch.indexOf("before") >= 0)
+      val afters  = matchingRules.filter(r=> r.arch.indexOf("after") >= 0)
+      val others  =
+        matchingRules.filter (r=> r.arch.indexOf("before") < 0 &&  r.arch.indexOf("after") < 0)
           .sortBy(0 - _.arch.indexOf("exclusive")) // put excl first, so they execute and kick out others
+
+     // recombine in order
+      matchingRules = befores ::: others ::: afters
+
+      matchingRules
           .filter {r=>
             // only apply the rules when mocks did not apply for the same key
               // todo use the mock tag query on the origin of the rules
@@ -575,7 +586,7 @@ class DomEngineV1(
             }
 
             if(! allowed) {
-              val msg = s"AUTH FAILED for API diesel.rest ! ($reason)"
+              val msg = s"AUTH FAILED for msg diesel.rest ! ($reason)"
 //              throw new DieselException(s"AUTH FAILED for API diesel.rest ! ($reason)", Some(401))
               newNodes = newNodes :::
                   DomAst(
@@ -743,10 +754,11 @@ class DomEngineV1(
     // not for internal diesel messages - such as before/after/save etc
     val ms = n.entity + "." + n.met
     if(!ms.startsWith("diesel.")) {
+      val m = s"No rules, mocks or executors match for the above ${in.ea} with this signature - verify your arguments!"
       val cfg = this.pages.map(_.specRef.wpath).mkString("\n")
       evAppChildren(a, DomAst(
         EWarning (
-          s"No rules, mocks or executors match for the above ${in.ea} with this signature - verify your arguments!",
+          m,
           s"Review your engine configuration (blender=${settings.blenderMode}, mocks=${settings.blenderMode}, drafts=${settings.blenderMode}, tags), " +
               s"spelling of messages or rule clauses / pattern matches\n$cfg",
           DieselMsg.ENGINE.ERR_NORULESMATCH),
@@ -754,7 +766,7 @@ class DomEngineV1(
       ))
 
       // in strict mode, blow up...
-      if(ctx.root.strict) throw new DieselExprException(s"No rules, mocks or executors match for the above ${in.ea} with this signature - verify your arguments!")
+      if(ctx.root.strict) throw new DieselExprException(m)
     }
   }
 
@@ -938,12 +950,12 @@ class DomEngineV1(
 
     val res = {
       if (ea == DieselMsg.ENGINE.DIESEL_SUMMARY) {
-        razie.Log.log("diesel.summary : " + in.attrs.mkString)
+        log("diesel.summary : " + in.attrs.mkString)
 
         true
 
       } else if (ea == DieselMsg.ENGINE.DIESEL_STEP) {
-        razie.Log.log("diesel.step : " + ctx.get("desc").mkString)
+        log("diesel.step : " + ctx.get("desc").mkString)
 
         true
 
@@ -2081,7 +2093,7 @@ class DomEngineV1(
     }.recover {
       case t:Throwable => {
 
-        razie.Log.log(s"while decompose ExpectV: $e", t)
+        log(s"while decompose ExpectV: $e", t)
 
         // oops - add test failure
         a append DomAst(

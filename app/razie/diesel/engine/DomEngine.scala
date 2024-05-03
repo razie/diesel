@@ -117,7 +117,7 @@ case class CachedEngingPrep(
   * @param initialMsg    - the initial message that kicked off this engine - used to extract final value
   *
   */
-abstract class DomEngine(
+abstract class DomEngine (
   val dom: RDomain,
   val root: DomAst,
   val settings: DomEngineSettings,
