@@ -34,6 +34,19 @@ a JS with HTML and CSS fiddle
 @if(css.contains("light")) {
 
   <style>
+      .ace-sendline {
+        background-color: lightsalmon;
+        position:absolute;
+      }
+.ace-ruleline {
+  background-color: #c6e7e7;
+  position:absolute;
+}
+.ace-headerline {
+  background-color: lightgoldenrodyellow;
+  font-weight: bold;
+  position:absolute;
+}
 .ace-primaryline {
   background-color: yellow;
   position:absolute;
@@ -43,6 +56,19 @@ a JS with HTML and CSS fiddle
 } else {              @*** dark theme ***@
 
   <style>
+      .ace-sendline {
+        background-color: #a95a5a;
+        position:absolute;
+      }
+.ace-ruleline {
+  background-color: #2d65a6;
+  position:absolute;
+}
+.ace-headerline {
+  background-color: #727171;
+  font-weight: bold;
+  position:absolute;
+}
 .ace-primaryline {
   background-color: darkblue;
   position:absolute;
@@ -496,6 +522,10 @@ var checkContents_@id = function(id) {
 
 /** run on spec changes */
 var runpill = function(id) {
+  // remove heading and rule markers
+  clearLineMarkers(specEditor);
+  clearLineMarkers(storyEditor);
+
   isRefreshing += 1;
   showSpinner();
   console.log("run isRefreshing="+isRefreshing);
@@ -809,11 +839,13 @@ function attachAce() {
   });
 
   specEditor.getSession().on('change', function(e) {
+    clearLineMarkers(specEditor);
     domChanged=true;
     lastChangeMillis = Date.now();
   });
 
   storyEditor.getSession().on('change', function(e) {
+    clearLineMarkers(specEditor);
     instChanged=true;
     lastChangeMillis = Date.now();
   });
@@ -840,10 +872,14 @@ var findInTree = function(wp, editor) {
 
   console.log("Navigate to: "+wp + " : " + row);
 
-  var x = $("span[posw='"+wp+"'][posr="+row+"]")[0];//.scrollIntoView();
+  var qx = $("span[posw='"+wp+"'][posr="+row+"]");
+  var x = qx[0];//.scrollIntoView();
   var parent = $('#iframeOutStory_'+@id)[0];
-  if(typeof x != "undefined")
+  if(typeof x != "undefined") {
     parent.scrollTop = x.offsetTop;
+    qx.hide();
+    qx.fadeIn(750);
+  }
 }
 
 var findUsagesStory = function(editor) { findUsages(storyWpath, editor); }
