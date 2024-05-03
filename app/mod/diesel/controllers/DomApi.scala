@@ -1297,32 +1297,26 @@ class DomApi extends DomApiBase with Logging {
     }
   }
 
-  /** /diesel/start/ea
-    * API msg sent to reactor
-    */
-  def start(e: String, a: String) = Filter(noRobots).async { implicit stok =>
-    if(stok.au.exists(_.isActive)) {
-      // insert a dot only if needed
-      val ea = (
-          if (e.length > 0 && a.length > 0) e + "." + a else e + a
-          ).replaceAllLiterally("/", ".")
-      irunDom(ea, None)
-    } else {
-      Future.successful(
-        unauthorized ("Can't start a message without an active account...")
-      )
-    }
-  }
+  private def eaFromPath (e:String, a:String) = (
+      if (e.length > 0 && a.length > 0) e + "." + a else e + a
+      ).replaceAllLiterally("/", ".")
 
   /** /diesel/react/ea
-    * API msg sent to reactor
+    * SYNC - by default waits for response
     */
   def react(e: String, a: String) = Filter(noRobots).async { implicit stok =>
     // insert a dot only if needed
-    val ea = (
-        if(e.length > 0 && a.length > 0) e + "." + a else e+a
-        ).replaceAllLiterally("/", ".")
-    irunDom(ea, None)
+    val ea = eaFromPath(e, a)
+    clog << s"diesel/react for $ea (from $e $a)"
+
+   // diesel. not permitted without some form of auth
+    if (!stok.au.exists(_.isActive) && ea.startsWith("diesel.") && ea != "diesel.ping") {
+      Future.successful(
+        unauthorized ("Can't start this message without an active account...")
+      )
+    } else {
+      irunDom(ea, None)
+    }
   }
 
   /** /diesel/proxy/path   proxy real service GET */
