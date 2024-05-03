@@ -491,7 +491,7 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
         root,
         settings,
         storyPage :: pages map WikiDomain.spec,
-        DieselMsg.fiddleStoryUpdated)
+        DieselMsg.fiddleStoryUpdated + s"(${storyPage.name})")
       setHostname(engine.ctx.root)
 
       EnginePrep.addStoriesToAst(engine, List(storyPage), capture startsWith "{")

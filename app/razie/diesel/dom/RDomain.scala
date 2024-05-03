@@ -52,10 +52,10 @@ class RDomain(
   def revise = {
     val newAssocs = classes.values.toList.flatMap{c=>
       c.parms.filter(p=> nz(p.ttype) &&
-        !RDomain.isDataType(p.ttype) &&
-        !assocs.exists(a=>a.a == c.name && a.z == p.ttype && a.zRole==p.name)).map{p=>
-        A("", c.name, p.ttype.name, (if (!p.ttype.isRef) "Parent" else ""), p.name)
-      }
+        !RDomain.isDataType(p.ttype.getClassName) &&
+        !assocs.exists(a=> a.a == c.name && a.z == p.ttype.getClassName && a.zRole==p.name)).map{p=>
+          A("", c.name, p.ttype.getClassName, (if (!p.ttype.isRef) "Parent" else ""), p.name)
+        }
     }
 
     val x=new RDomain(name, classes, assocs ++ newAssocs, diamonds, objects, funcs)

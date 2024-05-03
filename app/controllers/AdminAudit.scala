@@ -60,7 +60,6 @@ class AdminAudit extends AdminBase {
       sortIfCan(RazMongo("Audit").find(Map("msg" -> msg))).take(MAX).map(_.get("_id").toString).toList.foreach(ClearAudits.clearAudit(_, auth.get.id))
     else
       sortIfCan(RazMongo("Audit").findAll()).take(MAX).map(_.get("_id").toString).toList.foreach(ClearAudits.clearAudit(_, auth.get.id))
-//    Redirect(routes.AdminAudit.showAudit("").withFragment("bottom"))
     Redirect(routes.AdminAudit.showAudit("").url + "#bottom")
   }
 

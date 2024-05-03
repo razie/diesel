@@ -10,7 +10,7 @@ package services
 import akka.actor.{Actor, Props}
 import com.google.inject.{Inject, Singleton}
 import com.mongodb.casbah.Imports.ObjectId
-import controllers.{AdminImport, Emailer}
+import controllers.{AdminImport, Emailer, UserCreatedEvent}
 import model.{EventNeedsQuota, Users}
 import play.api.Configuration
 import play.libs.Akka
@@ -151,8 +151,10 @@ class WikiAsyncObservers extends Actor {
       )
     }
 
+    case UserCreatedEvent => {} // nothing, just avoid generating errors for this below
+
     case x@_ => {
-      Audit.logdb("ERR_ALLIGATOR", x.getClass.getName)
+      Audit.logdb("ERR_ALLIGATOR", "CQRS Received uhhh... this: " + x.getClass.getName)
     }
   }
 

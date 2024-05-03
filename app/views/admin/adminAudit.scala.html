@@ -28,9 +28,7 @@ purge audit tables
   @stok.title("admin audit")
 
   <h2>Audit events <small>| @math.min(1000, razie.db.RazMongo("Audit").size) of @razie.db.RazMongo("Audit").size |
-    <a href="@routes.AdminAudit.clearauditSome(5)">clear 5</a> |
     <a href="@routes.AdminAudit.clearauditSome(10)">clear 10</a> |
-    <a href="@routes.AdminAudit.clearauditSome(100)">clear 100</a> |
     <a href="@routes.AdminAudit.clearauditSome(1000)">clear 1k</a> | <a href="#bottom">Bottom</a>
 
     @if(what.isDefined) {

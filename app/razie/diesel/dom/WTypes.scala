@@ -47,6 +47,7 @@ object WTypes {
     final val SOURCE = WType("Source") // a source of values
 
     final val ARRAY = WType("Array")   // pv.asArray
+    final val PRODUCER = WType("Producer") // paginated producer, see DieselProducer. Can be used instead of array with streams etc
 
     final val BYTES = WType("Bytes")
 
@@ -146,8 +147,8 @@ object WTypes {
   }
 
   val PRIMARY_TYPES = Array(
-    NUMBER , STRING , DATE , REGEX , INT , FLOAT , BOOLEAN , RANGE, ARRAY, HTML, SOURCE, BYTES, EXCEPTION,
-    ERROR, MSG, FUNC, CLASS
+    NUMBER , STRING , DATE , REGEX , INT , FLOAT , BOOLEAN , REF , RANGE, ARRAY, HTML, XML, JSON,
+    SOURCE, BYTES, EXCEPTION, DOMAIN, ERROR, MSG, FUNC, CLASS
   )
 
   /** get corresponding mime content-type */
@@ -223,21 +224,21 @@ object WTypes {
 
 }
 
-/** an actual type, with a schema and a contained type
-  *
-  * with this marker now we can add more types...
+/** an actual type, possibly an object with a schema OR a container with a contained schema or a simple type
   *
   * For objects, the name is JSON or Object and the schema is the class name
   *
   * @param name        is the WType
   * @param schema      is either a DOMType or some indication of a schema in context, wrapped type for arrays etc
-  * @param wrappedType is T in A[T]
   * @param mime        is an optional precise mime to be represented in
+  * @param isRef       if this is a reference versus containment
   */
 case class WType (name:String, schema:String = WTypes.UNKNOWN, mime:Option[String]=None, isRef:Boolean=false) {
 
+  /** get the wrapped type, if any type is wrapped (schema) */
   def wrappedType: Option[String] = if (hasSchema) Option(schema) else None
 
+  /** the comparison takes into account the schema too */
   override def equals(obj: Any) = {
     obj match {
       case wt: WType => this.name == wt.name && this.schema == wt.schema
@@ -245,7 +246,7 @@ case class WType (name:String, schema:String = WTypes.UNKNOWN, mime:Option[Strin
     }
   }
 
-  /** get class name: schema or name */
+  /** get class name: schema if this is array or complex object or name otherwise - BEST replacement for ttype.name */
   def getClassName = if (name == WTypes.JSON || name == WTypes.OBJECT || WTypes.ARRAY == name) schema else name
 
   /** careful - you may want to call p.withSchema instead, which sets both P and PV schemas */

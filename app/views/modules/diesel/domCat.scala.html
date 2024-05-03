@@ -25,14 +25,15 @@ browse a domain
     } @* defining *@
   }.getOrElse{
     @if(WikiDomain.isPrimaryType(cat)) {
-    Class <b>@cat</b> is a primary type.
-      <br>
+    Class <b>@cat</b> is a primary type (built-in).
       <br>
     <br>
     } else {
-    <span style="color:red">(realm: @realm) Absolutely nothing found about <b>@cat</b> - it is most likely inferred!</span>
-    <br><br>
-    <a href="/wikie/edit/@{realm}.Category:@cat">Create Wiki Category for <b>@cat</b></a><br><br>
+    <span style="color:red">(realm: @realm) Absolutely nothing known about <b>@cat</b> - it is most likely inferred! </span>
+      <p>
+        You can either create a
+          <a href="/wikie/edit/@{realm}.Category:@cat">Wiki Category for <b>@cat</b></a> OR declare it in a DSL domain modelling topic.
+      </p>
     <div class="alert alert-warning">
       For <a href="/Topic/Domain_Modelling">domain modelling</a>, make sure the topic containing the models is tagged "DslDomain", to have it loaded automatically!
     </div>

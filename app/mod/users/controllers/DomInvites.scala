@@ -77,6 +77,7 @@ class DomInvites @Inject() (config:Configuration) extends mod.diesel.controllers
 
     // todo not just admin, but realm owner too
     if (request.au.exists(_.isMod) && email != "-") {
+      clog << "You're mod, so inviting " + email
       ROK.k apply {
         genericForm(
           routes.DomInvites.createInvite2().url,
@@ -94,7 +95,10 @@ class DomInvites @Inject() (config:Configuration) extends mod.diesel.controllers
     val email = request.fqParm("email", "").trim
 
     if (request.au.exists(_.isMod) && email != "-") {
+      clog << "Inviting " + email
+
       Users.findUserByEmailDec(email.trim).orElse(Users.findUserNoCase(email.trim)).map { user =>
+        clog << "  User found - adding realm, for: " + email
         user.update(Users.updRealm(user, request.realm))
         Msg(s"User ${user.ename} exists, added to realm...")
       } getOrElse {
