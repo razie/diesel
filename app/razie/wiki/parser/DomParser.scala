@@ -37,16 +37,19 @@ trait DomParser extends ParserBase with ExprParser {
 
   def domainBlocks =
     aCommentLine | panno | pobject | pclass | passoc | pdef |
-        pwhen2 | pwhen | pflow | pmatch | psend | pmsg | pval | pexpect | passert
+        pwhenTree | pwhen | pflow | pmatch | psend | pmsg | pval | pexpect | passert
 
   // todo this disables the caching for all specs !!! superbad as they get compiled over and over
   /** non cacheable */
-  def lazyNoCacheable (f: (StrAstNode, FoldingContext[DSpec, DUser]) => StrAstNode) =
-    LazyAstNode[DSpec, DUser](f)
+  def lazyNoCacheable(k:Keyw) (f: (StrAstNode, FoldingContext[DSpec, DUser]) => StrAstNode) =
+    LazyAstNode[DSpec, DUser](f).withPos(k).withKeyw(k.s)
 
   /** cacheable */
   def lazystatic      (f: (StrAstNode, StaticFoldingContext[DSpec]) => StrAstNode) =
     LazyStaticAstNode[DSpec](f)
+
+  def lazystatic (k:Keyw) (f: (StrAstNode, StaticFoldingContext[DSpec]) => StrAstNode) =
+    LazyStaticAstNode[DSpec](f).withPos(k).withKeyw(k.s)
 
   // todo replace $ with . i.e. .class
 
@@ -69,7 +72,7 @@ trait DomParser extends ParserBase with ExprParser {
   def panno: PS =
     keyw("""[.$]anno(tate)? *""".r) ~ ows ~ optAttrs ^^ {
       case k ~ _ ~ attrs => {
-        lazystatic { (current, ctx) =>
+        lazystatic(k) { (current, ctx) =>
           ctx.we.foreach { w =>
             // accumulate annotations
             val anno = ctx.we.get.collector.getOrElse(RDomain.DOM_ANNO_LIST, Nil).asInstanceOf[List[RDOM.P]]
@@ -77,7 +80,7 @@ trait DomParser extends ParserBase with ExprParser {
           }
 
           // collect just to indicate parsing on the left in ACE
-          collectDom((new Anno).withPos(pos(k, ctx)), ctx.we)
+          collectDom((new Anno(attrs)).withPos(pos(k, ctx)), ctx.we)
 
           StrAstNode(
             s"""${span("anno")} ${mksAttrs(attrs)}
@@ -100,7 +103,7 @@ trait DomParser extends ParserBase with ExprParser {
         opt(ws ~> "extends" ~> ws ~> repsep(qident, ",")) ~
         opt(ws ~> "<" ~> ows ~> repsep(ident, ",") <~ ">") ~ " *".r ~ optClassBody ^^ {
       case k ~ _ ~ name ~ tParm ~ attrs ~ ext ~ stereo ~ _ ~ funcs => {
-        lazyNoCacheable { (current, ctx) =>
+        lazyNoCacheable(k) { (current, ctx) =>
             // no cacheable so that the inventory dynamic actions can change as
             // inventories register
             // todo - mayvbe we can optimize that?
@@ -207,7 +210,7 @@ trait DomParser extends ParserBase with ExprParser {
       }
     }
 
-  /** pattern match for ent.met */
+  /** pattern match for ent.met (args) */
   def clsMatchEntMet: Parser[(String, String, List[RDOM.PM])] =
     (ident | "*" ) ~
         " *. *".r ~
@@ -315,7 +318,7 @@ trait DomParser extends ParserBase with ExprParser {
   def pmatch: PS =
     keyw("""[.$]match""".r) ~ ws ~ clsMatch ~ opt(pif) ^^ {
       case k ~ _ ~ Tuple3(ac, am, aa) ~ cond => {
-        lazystatic { (current, ctx) =>
+        lazystatic(k) { (current, ctx) =>
           val x = EMatch(ac, am, aa, cond)
           //          f.pos = Some(EPos(ctx.we.map(_.wid.wpath).mkString, k.pos.line, k.pos.column))
           addToDom(x).ifoldStatic(current, ctx)
@@ -456,7 +459,7 @@ trait DomParser extends ParserBase with ExprParser {
     * - mock is for mocks
     * - others like model or impl are specific
     */
-  def pwhen2: PS = pwhen2Tree (level=0)
+  def pwhenTree: PS = pwhen2Tree (level=0)
 
   /**
     * new style syntax when
@@ -475,7 +478,7 @@ trait DomParser extends ParserBase with ExprParser {
         rep (aCommentLine | pif2 (level) | pblock2tree(level + 1) | pgen2(level) | pgenStep2 (level) /*| pgenErr*/) <~
         ows ~ "}" ^^ {
       case k ~ _ ~ oarch ~ Tuple3(ac, am, aa) ~ _ ~ cond ~ _ ~ _ ~ _ ~ gens => {
-        lazystatic { (current, ctx) =>
+        lazystatic(k) { (current, ctx) =>
           val x = nodes.EMatch(ac, am, aa, cond)
           val wpath = ctx.we.map(_.specRef.wpath).mkString
           val arch = oarch.filter(_.length > 0).getOrElse(k.s.replaceAllLiterally("2", "")) // archetype
@@ -518,12 +521,22 @@ trait DomParser extends ParserBase with ExprParser {
         cp.o match {
           // class with message
           case Tuple3(zc, zm, za) =>
-            EMapCls(zc.toString, zm.toString, za.asInstanceOf[List[RDOM.P]], arrow.s, cond, level)
+            EMapCls(
+              zc.toString,
+              zm.toString,
+              za.asInstanceOf[List[RDOM.P]],
+              arrow.s,
+              cond,
+              level)
                 .withPosition(EPos("", arrow.pos.line, arrow.pos.column))
 
           // just parm assignments
           case pas: List[_] =>
-            EMapPas(pas.asInstanceOf[List[PAS]], arrow.s, cond, level)
+            EMapPas(
+              pas.asInstanceOf[List[PAS]],
+              arrow.s,
+              cond,
+              level)
                 .withPosition(EPos("", arrow.pos.line, arrow.pos.column))
         }
 
@@ -546,14 +559,22 @@ trait DomParser extends ParserBase with ExprParser {
         opt(pif) ~ optComment3 ~
         rep(aCommentLine | pgen | pgenStep /*| pgenErr*/) ^^ {
       case k ~ _ ~ oarch ~ Tuple3(ac, am, aa) ~ _ ~ cond ~ _ ~ gens => {
-        lazystatic { (current, ctx) =>
+        lazystatic(k) { (current, ctx) =>
           val x = nodes.EMatch(ac, am, aa, cond)
           val wpath = ctx.we.map(_.specRef.wpath).mkString
           val arch = oarch.filter(_.length > 0).getOrElse(k.s) // archetype
+
+          //consume all annotations up to here?
+          val anno = ctx.we.get.collector.getOrElse(RDomain.DOM_ANNO_LIST, Nil).asInstanceOf[List[RDOM.P]]
+          ctx.we.get.collector.remove(RDomain.DOM_ANNO_LIST)
+
           val r = ERule(x, arch,
             gens.collect {
               case m: EMap => m
-            }.map(m => m.withPosition(m.pos.get.copy(wpath = wpath))))
+            }.map(m => m.withPosition(m.pos.get.copy(wpath = wpath))),
+            anno
+          )
+
           // get the row of the last good generation compiled
           val last = gens
               .filter(_.isInstanceOf[HasPosition])
@@ -574,7 +595,7 @@ trait DomParser extends ParserBase with ExprParser {
   def pflow: PS =
     keyw("""[.$]flow""".r) ~ ws ~ clsMatch ~ ws ~ opt(pif) ~ " *=>".r ~ ows ~ flowexpr ^^ {
       case k ~ _ ~ Tuple3(ac, am, aa) ~ _ ~ cond ~ _ ~ _ ~ ex => {
-        lazystatic { (current, ctx) =>
+        lazystatic(k) { (current, ctx) =>
           val x = nodes.EMatch(ac, am, aa, cond)
           val f = EFlow(x, ex)
           f.pos = Some(EPos(ctx.we.map(_.specRef.wpath).mkString, k.pos.line, k.pos.column))
@@ -587,10 +608,10 @@ trait DomParser extends ParserBase with ExprParser {
     * .assoc name a:role -> z:role
     */
   def passoc: PS =
-    """[.$]assoc""".r ~> ws ~> opt(ident <~ ws) ~ assRole ~ " *-> *".r ~ assRole ~ optAttrs ^^ {
-      case n ~ Tuple2(a, arole) ~ _ ~ Tuple2(z, zrole) ~ p => {
+    keyw("""[.$]assoc""".r) ~ ws ~ opt(ident <~ ws) ~ assRole ~ " *-> *".r ~ assRole ~ optAttrs ^^ {
+      case k ~ _ ~ n ~ Tuple2(a, arole) ~ _ ~ Tuple2(z, zrole) ~ p => {
         val c = A(n.mkString, a, z, arole, zrole, p)
-        lazystatic { (current, ctx) =>
+        lazystatic(k) { (current, ctx) =>
           collectDom(c, ctx.we)
           StrAstNode(
             """<span class="label label-default">""" +
@@ -603,10 +624,10 @@ trait DomParser extends ParserBase with ExprParser {
   // what is the second ident - the class? examples?
   // $object ha.haha.ha sdfsdfsdf (asdfasdfasdf)
   def pobject: PS =
-    keyw("""[.$]object """.r) ~> ident ~ " *".r ~ ident ~ optAttrs ^^ {
-      case name ~ _ ~ cls ~ l => {
+    keyw("""[.$]object """.r) ~ ident ~ " *".r ~ ident ~ optAttrs ^^ {
+      case k ~ name ~ _ ~ cls ~ l => {
         val o = O(name, cls, l)
-        lazystatic { (current, ctx) =>
+        lazystatic(k) { (current, ctx) =>
           collectDom(o, ctx.we)
           StrAstNode(
             """<div class="well">""" +
@@ -703,7 +724,7 @@ trait DomParser extends ParserBase with ExprParser {
     */
   def pval: PS = keyw("[.$]va[lr]".r) ~ ows ~ pattr ^^ {
     case k ~ _ ~ a => {
-      lazystatic { (current, ctx) =>
+      lazystatic(k) { (current, ctx) =>
 
         val v = EVal(a).withPos(pos(k, ctx))
         v.isFinal = (k.s.endsWith("l"))
@@ -726,6 +747,7 @@ trait DomParser extends ParserBase with ExprParser {
   }
 
 
+  /** positionals to get positions during parsing */
   case class Keyw(s: String) extends Positional
 
   private def keyw(r: Parser[String]) = positioned(r.map(s => Keyw(s)))
@@ -736,6 +758,7 @@ trait DomParser extends ParserBase with ExprParser {
     case s => Keyw(s)
   }
 
+  // more generic positional
   case class Keywo(o: Any) extends Positional
   private def keywo(r: Parser[_]) = positioned(r.map(s => Keywo(s)))
 
@@ -761,7 +784,7 @@ trait DomParser extends ParserBase with ExprParser {
       (clsMet | justAttrs) ~
       opt(" *: *".r ~> optAttrs) <~ " *".r <~ optComment3 ^^ {
     case k ~ stype ~ cp ~ ret => {
-      lazystatic { (current, ctx) =>
+      lazystatic(k) { (current, ctx) =>
         val f = cp match {
           // class with message
           case Tuple3(zc, zm, za) =>
@@ -798,7 +821,7 @@ trait DomParser extends ParserBase with ExprParser {
     */
   def pmsg: PS = keyw("[.$]msg *".r) ~ optArch ~ qclsMet ~ optAttrs ~ opt(" *(:|=>) *".r ~> optAttrs) <~ optComment3^^ {
     case k ~ stype ~ qcm ~ attrs ~ ret => {
-      lazystatic { (current, ctx) =>
+      lazystatic(k) { (current, ctx) =>
 
         val archn =
           if (stype.exists(_.length > 0)) stype.mkString.trim
@@ -847,7 +870,7 @@ trait DomParser extends ParserBase with ExprParser {
       opt(pif) ~ ows ~
       opt(qclsMet) ~ optMatchAttrs ~ " *".r ~ opt(pif) <~ " *".r <~ optComment3 ^^ {
     case k ~ not ~ pif ~ _ ~ qcm ~ attrs ~ _ ~ cond => {
-      lazystatic { (current, ctx) =>
+      lazystatic(k) { (current, ctx) =>
         val pos = Some(EPos(ctx.we.map(_.specRef.wpath).mkString, k.pos.line, k.pos.column))
         val f = qcm.map(qcm =>
           ExpectM(not.isDefined, nodes.EMatch(qcm._1, qcm._2, attrs, cond.orElse(pif)))
@@ -876,7 +899,7 @@ trait DomParser extends ParserBase with ExprParser {
     */
   def passert: PS = keyw("[.$]assert".r <~ ws) ~ opt("not" <~ ws) ~ optAssertExprs <~ " *".r <~ optComment3 ^^ {
     case k ~ not ~ exprs => {
-      lazystatic { (current, ctx) =>
+      lazystatic(k) { (current, ctx) =>
         val pos = Some(EPos(ctx.we.map(_.specRef.wpath).mkString, k.pos.line, k.pos.column))
         val f = ExpectAssert(not.isDefined, exprs).withPos(pos)
         collectDom(f, ctx.we)
@@ -903,7 +926,7 @@ trait DomParser extends ParserBase with ExprParser {
   {
     case k ~ name ~ attrs ~ optType ~ optLang ~ script ~ block => {
 //      lazyNoCacheable { (current, ctx) =>
-      lazystatic { (current, ctx) =>
+      lazystatic(k) { (current, ctx) =>
         // todo why is this nocache? it' doesn't run the JS, just defines it...
           // NOTEs in case there's trouble:
           // It works with NoCacheable but it's slower sometimes. IF NoCacheable, use this with fold.
@@ -934,7 +957,7 @@ trait DomParser extends ParserBase with ExprParser {
   def optClassBody: Parser[List[RDOM.F]] = {
     // todo if I remove this first CRLF2 is goes to sh*t
     opt(" *\\{ *".r ~ CRLF2 ~>
-        repsep(defline | msgline | emptyline , CRLF2)
+        repsep(classDefLine | classMsgLine | emptyline , CRLF2)
         <~ opt(CRLF2) ~ " *\\} *".r) ^^ {
       case Some(a) => a.collect {
         case x: RDOM.F => x
@@ -946,10 +969,11 @@ trait DomParser extends ParserBase with ExprParser {
   /**
     * def name (a,b) : String
     */
-  def defline: Parser[RDOM.F] =
-    keyw(" *\\$?def *".r) ~ ident ~ optAttrs ~ optType ~ " *".r ~ optBlock ^^ {
-      case k ~ name ~ a ~ t ~ _ ~ b => {
-        val f = new F(name, "js", a, t, "def", "", b)
+  def classDefLine: Parser[RDOM.F] =
+    keyw(" *\\$?def *".r) ~ optArch ~ ident ~ optAttrs ~ optType ~ " *".r ~ optBlock ^^ {
+      case k ~ oarch ~ name ~ a ~ t ~ _ ~ b => {
+        val ar = oarch.map(_.trim).filter(_.length > 0).map(x => x + ",def").getOrElse("def")
+        val f = new F(name, "js", a, t, ar, "", b)
         // todo add spec
         val p = Some(EPos("", k.pos.line, k.pos.column))
         f.withPos(p)
@@ -965,11 +989,12 @@ trait DomParser extends ParserBase with ExprParser {
   }
 
   /**
-    * msg name.b (a,b) : String
+    * msg <archetypes> name.b (a,b) : String
     */
-  def msgline: Parser[RDOM.F] = " *\\$?msg *".r ~> qident ~ optAttrs ~ optType ~ " *".r ~ opt(pgen) ^^ {
-    case name ~ a ~ t ~ _ ~ m => {
-      new F(name, "js", a, t, "msg", "", m.toList.map(x => new ExecutableMsg(x)))
+  def classMsgLine: Parser[RDOM.F] = " *\\$?(msg|when) *".r ~> optArch ~ qident ~ optAttrs ~ optType ~ " *".r ~ opt(pgen) ^^ {
+    case oarch ~ name ~ a ~ t ~ _ ~ m => {
+      val ar = oarch.map(_.trim).filter(_.length > 0).map(x => x + ",msg").getOrElse("msg")
+      new F(name, "js", a, t, ar, "", m.toList.map(x => new ExecutableMsg(x)))
     }
   }
 
