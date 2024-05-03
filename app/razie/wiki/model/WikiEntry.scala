@@ -162,6 +162,9 @@ case class WikiEntry(
     } else None
   }
 
+  /** test if it's one of the given categories (or tagged as such) */
+  def isOneOf(cats:Array[String]) = cats.exists(c=> (wid.category == c) || (this.tags contains c.toLowerCase))
+
   // what other pages I depend on, collected while parsing
   var depys: List[UWID] = Nil
 
