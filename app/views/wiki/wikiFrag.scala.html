@@ -31,7 +31,7 @@ wiki fragment, used in another page
 
   @label()=@{ page.flatMap(_.contentProps.get("label")).orElse(page.map(_.label)).getOrElse(Wikis(wid.getRealm).label(wid)) }
 
-@visColor()=@{page.map(_.visibility) match {
+  @visColor()=@{page.map(_.visibility) match {
   case Some(Visibility.PUBLIC) => "success"
   case Some(Visibility.MEMBER) => "info"
   case Some(Visibility.BASIC) => "info"
@@ -183,6 +183,25 @@ function selectTextareaLine(tarea,lineNum) {
                   <a class="btn btn-info" title="Subscribe to updates via email" href="@routes.Wikil.linkFollower1(wid.parentWid.get)"><i class="icon-envelope icon-white"></i> Subscribe</a>
                 }
               }
+
+              @if(stok.au.nonEmpty && page.exists(_.isOneOf(Array("Spec", "Story")))) {
+                  &nbsp;<small>
+                  <a class="" title="Edit this" href="javascript:doEditThis()"><i class="glyphicon glyphicon-edit"></i></a>
+                </small>
+              }
+
+              @if(stok.au.nonEmpty && page.exists(_.isOneOf(Array("Spec")))) {
+                  &nbsp;<small>
+                  <a class="" title="Open in fiddle" href="/diesel/fiddle/playDom?spec=@{wid.wpath}"><i class="glyphicon glyphicon-th-large"></i></a>
+                </small>
+              }
+
+              @if(stok.au.nonEmpty && page.exists(_.isOneOf(Array("Story")))) {
+                  &nbsp;<small>
+                  <a class="" title="Open in fiddle" href="/diesel/fiddle/playDom?story=@{wid.wpath}"><i class="glyphicon glyphicon-th-large"></i></a>
+                </small>
+              }
+
 
               @** page info **@
               @** @if(stok.au.exists(_.isMod)) { **@

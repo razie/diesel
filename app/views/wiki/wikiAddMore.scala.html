@@ -54,10 +54,13 @@ fragment: add more stuff to the current topic, including children, sub-topics et
       }
     </div>
   } else {
+    @if(Wikis(getRealm).category(wid.name).isDefined) {
+      @* if a wiki cat, list entries here *@
       <div class="well">
       No @wid.name
           (s)
       </div>
+    }
   }
 
   @if(!WikiDomain(getRealm).needsParent(wid.name)) {
