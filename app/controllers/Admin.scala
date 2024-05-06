@@ -6,11 +6,14 @@
 package controllers
 
 import java.nio.file.{Files, Paths}
+import javax.crypto.Cipher
+import javax.crypto.spec.SecretKeySpec
 import model.Users
 import org.joda.time.format.DateTimeFormat
 import play.api.mvc.Action
 import razie.audit.Audit
 import razie.db.RazMongo
+import razie.wiki.Sec.EncryptedS
 import razie.wiki.Services
 import razie.wiki.admin.SendEmail
 import razie.wiki.model.Wikis
@@ -26,9 +29,14 @@ class Admin extends AdminBase {
   /** realm users csv report */
   def realmUsers = FAU { implicit au => implicit errCollector => implicit request =>
       val stok = razRequest
+
+    Audit.logdb("ADMIN_EXPORT_REALMUSERS", s"realm:${stok.realm}", s"user:${au.userName}")
+
+    val passKey = request.getQueryString("passkey")
+
         if(au.isMod) {
           if(request.getQueryString("format").contains("csv")) {
-            val (headers, data) = usersData(stok.realm)
+            val (headers, data) = usersData(stok.realm, passKey)
               Ok(
                 headers.mkString(",") +
                     "\n" +
@@ -47,13 +55,28 @@ class Admin extends AdminBase {
         }
   }
 
-  private def usersData(realm: String): (List[String], List[List[String]]) = {
+  private def encPwd (pwd:String, key:String) =  {
+    //  val e = new special.CypherEncryptService(passKey.get, "")
+//  e.enc(u.pwd.dec)
+
+    val secretKey = new SecretKeySpec(key.getBytes, "AES")
+    val cipher = Cipher.getInstance("AES/ECB/PKCS5Padding")
+    cipher.init(Cipher.ENCRYPT_MODE, secretKey)
+    val encryptedBytes = cipher.doFinal(pwd.getBytes)
+    java.util.Base64.getEncoder.encodeToString(encryptedBytes)
+  }
+
+
+  /** if passKey is defined, it will include passwords */
+  private def usersData(realm: String, passKey: Option[String]): (List[String], List[List[String]]) = {
     val users = Users.findUsersForRealm(realm)
-    val cols = "userName,_id,date,email,firstName,lastName,yob,extId,perms".split(",").toList
+    val cols = "userName,_id,date,email,firstName,lastName,yob,extId,perms".split(",").toList ::: (
+      if(passKey.isDefined) List("pw") else Nil
+    )
 
     // actual rows L[L[String]]
     val res = users.map(_.forRealm(realm)).map { u =>
-      List(
+      List (
         u.userName,
         u._id.toString,
         u.realmSet.get(realm).flatMap(_.crDtm).map(d => DateTimeFormat.forPattern("yyyy-MM-dd").print(d)).mkString,
@@ -63,7 +86,11 @@ class Admin extends AdminBase {
         u.yob.toString,
         u.profile.flatMap(_.newExtLinks.find(_.realm == realm)).map {_.extAccountId}.mkString,
         u.perms.mkString(" ") // not ,
-      )
+      ) ::: (
+         if(passKey.isDefined) List({
+           encPwd(u.pwd.dec, passKey.get)
+         }) else Nil
+          )
     }.toList
 
     (cols, res)
