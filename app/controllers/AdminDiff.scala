@@ -229,7 +229,11 @@ class AdminDiff extends AdminBase with Logging {
     */
   // todo auth that user belongs to realm
   def difflist(localRealm: String, toRealm: String, remote: String, remoteLabel:String) = FAUR { implicit request =>
-    try {
+
+    // get last saved remote from cookies
+    if(remote.length == 0) ROK.r admin { implicit stok =>
+      views.html.admin.adminDifflist(localRealm, toRealm, remote, remoteLabel, Nil, Nil, Nil)
+    } else try {
       // look only at all the local realms
       val localRealms = WikiReactors
           .reactors
@@ -272,6 +276,8 @@ class AdminDiff extends AdminBase with Logging {
         else
           // diff to another reactor
           diffByName(lsrc, ldest)
+
+//      ?remoteLabel=dieselapps.com&remote=www.dieselapps.com
 
       val xremote = if(remote.startsWith("http")) remote else "http://" + remote
       ROK.r admin { implicit stok =>

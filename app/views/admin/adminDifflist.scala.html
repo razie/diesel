@@ -24,6 +24,25 @@ show diff with remote
 
 @e(s:String)=@{s.replaceAllLiterally("'", "\\'")}
 
+<script>
+  var remote = "@remote";
+
+ if (remote == "") {
+   var q = "?remoteLabel=dieselapps.com&remote=www.dieselapps.com";
+   var ls = localStorage.getItem("diffremote");
+
+   if(ls != null) q = ls;
+
+   var url = '/admin/difflist/@localRealm/@toRealm' + q;
+
+   window.location.href = url;
+ } else {
+   var q = "?remoteLabel=@remoteLabel&remote=@remote";
+   localStorage.setItem("diffremote", q); // initialize
+ }
+</script>
+
+
 @stok.title("admin diff list")
 
     <h2>

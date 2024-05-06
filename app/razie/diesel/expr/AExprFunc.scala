@@ -543,7 +543,6 @@ case class AExprFunc(val expr: String, parms: List[RDOM.P]) extends Expr {
         }
       }
     }
-
   }
 
   override def toDsl = expr + "(" + parms.mkString(",") + ")"

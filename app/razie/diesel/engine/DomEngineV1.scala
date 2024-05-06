@@ -743,13 +743,14 @@ class DomEngineV1 (
           //}
         }
 
-        addNoRules(in, n, a)
+        addNoRules(in, n, a) // nothing matched
       }
     }
 
     (newNodes, skippedNodes)
   }
 
+  /** add the "no rules matched warning" */
   private def addNoRules(in:EMsg, n:EMsg,a:DomAst) = {
     // not for internal diesel messages - such as before/after/save etc
     val ms = n.entity + "." + n.met
@@ -1526,6 +1527,7 @@ class DomEngineV1 (
         val c = this.dom.classes.get(cn)
 
         c.map {cls=>
+          // todo caching of the json format per class?
           val v = EVal(P.fromSmartTypedValue(Diesel.PAYLOAD, cls.toj))
           evAppChildren(a, DomAst(v, AstKinds.TRACE))
           setSmartValueInContext(a, this.ctx, v.p)

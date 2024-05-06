@@ -56,9 +56,19 @@ object EErrorUtils {
   }
 }
 
+/** some info node with pos */
+abstract class EInfoPos () extends CanHtml with HasPosition with InfoNode {
+  var pos: Option[EPos] = None
+
+  def withPos(p: Option[EPos]) = {
+    this.pos = p;
+    this
+  }
+}
+
 /** some error, with a message and details */
 case class EError(msg: String, details: String = "", code: String = "ERROR", t: Option[Throwable] = None)
-    extends CanHtml with HasPosition with InfoNode {
+    extends EInfoPos {
 
   def this(msg: String, t: Throwable) =
     this(
@@ -70,13 +80,7 @@ case class EError(msg: String, details: String = "", code: String = "ERROR", t: 
 
   razie.Log.error(Enc.unescapeHtml(msg))
 
-  var pos: Option[EPos] = None
   var handled: Boolean = false
-
-  def withPos(p: Option[EPos]) = {
-    this.pos = p;
-    this
-  }
 
   def withCode(code: String) = {
     this.copy(code = code)
@@ -100,7 +104,7 @@ case class EError(msg: String, details: String = "", code: String = "ERROR", t: 
 }
 
 /** some error, with a message and details */
-case class EWarning(msg: String, details: String = "", code:String = "WARNING") extends CanHtml with HasPosition with InfoNode {
+case class EWarning(msg: String, details: String = "", code:String = "WARNING") extends EInfoPos {
   def this(msg:String, t:Throwable) =
     this(
       Enc.escapeHtml(msg + t.toString),
@@ -108,13 +112,6 @@ case class EWarning(msg: String, details: String = "", code:String = "WARNING") 
     ) // escape html - some exc contain html content
 
   razie.Log.warn(Enc.unescapeHtml(msg))
-
-  var pos: Option[EPos] = None
-
-  def withPos(p: Option[EPos]) = {
-    this.pos = p;
-    this
-  }
 
   def withCode(code: String) = {
     this.copy(code = code)
@@ -132,14 +129,7 @@ case class EWarning(msg: String, details: String = "", code:String = "WARNING") 
 }
 
 /** a simple info node with a message and details - link opens */
-case class ELink(msg: String, url: String = "") extends CanHtml with HasPosition with InfoNode {
-  var pos: Option[EPos] = None
-
-  def withPos(p: Option[EPos]) = {
-    this.pos = p;
-    this
-  }
-
+case class ELink(msg: String, url: String = "") extends EInfoPos {
   override def toHtml =
     s"""<span onclick="welink('$url')" style="cursor:pointer" class="label
        |label-info" title="click to open">link</span>&nbsp; $msg""".stripMargin
@@ -148,15 +138,8 @@ case class ELink(msg: String, url: String = "") extends CanHtml with HasPosition
 }
 
 /** a simple info node with a message and details - details are displayed as a popup */
-case class ETrace(msg: String, details: String = "") extends CanHtml with HasPosition with InfoNode {
-  var pos: Option[EPos] = None
-
+case class ETrace(msg: String, details: String = "") extends EInfoPos {
   razie.Log.debug(Enc.unescapeHtml(msg))
-
-  def withPos(p: Option[EPos]) = {
-    this.pos = p;
-    this
-  }
 
   override def toHtml = {
     val spos = if (pos.isDefined) kspan("pos") else ""
@@ -176,16 +159,9 @@ case class ETrace(msg: String, details: String = "") extends CanHtml with HasPos
 }
 
 /** a simple info node with a message and details - details are displayed as a popup */
-case class EInfo(msg: String, details: String = "") extends CanHtml with HasPosition with InfoNode {
+case class EInfo(msg: String, details: String = "") extends EInfoPos {
 
   razie.Log.log(Enc.unescapeHtml(msg).take(3000))
-
-  var pos: Option[EPos] = None
-
-  def withPos(p: Option[EPos]) = {
-    this.pos = p;
-    this
-  }
 
   override def toHtml = {
     val spos = if (pos.isDefined) kspan("pos") else ""

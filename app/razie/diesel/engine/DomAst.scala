@@ -63,7 +63,7 @@ case class DomAst(
   }
 
   def withParent(f: => DomAst) = {
-    if (!this.parent.isDefined) {
+    if (this.parent.isEmpty) {
       this.parent = Some(f)
     }
     else {
@@ -80,7 +80,7 @@ case class DomAst(
   }
 
   def withCtx(f: => ECtx) = {
-    if (!this.imyCtx.isDefined) {
+    if (this.imyCtx.isEmpty) {
       this.imyCtx = Some(f)
       this.imyCtx.get
     }
@@ -90,7 +90,7 @@ case class DomAst(
   }
 
   def orWithCtx(f: => Option[ECtx]) = {
-    if (!this.imyCtx.isDefined) {
+    if (this.imyCtx.isEmpty) {
       this.imyCtx = f
     }
     this.imyCtx
@@ -137,17 +137,17 @@ case class DomAst(
   }
 
   /** will force updates to go through a DES */
-  def append(other: DomAst)(implicit engine: DomEngineState) {
+  def append(other: DomAst)(implicit engine: DomEngineState): Unit = {
     engine.evAppChildren(this, other)
   }
 
-  def start(seq: Long) {
+  def start(seq: Long): Unit = {
     tstart = System.currentTimeMillis()
     tend = tstart
     seqNo = seq
   }
 
-  def end() = {
+  def end(): Unit = {
     tend = System.currentTimeMillis()
   }
 
@@ -196,12 +196,12 @@ case class DomAst(
   }
 
   /** reduce footprint/memory size */
-  def removeDetails() = {
+  def removeDetails(): Unit = {
     moreDetails = " "
   }
 
   /** prune story - call this on Story nodes */
-  def removeTestDetails() = {
+  def removeTestDetails(): Unit = {
     childrenCol.foreach(_.childrenCol.clear())
   }
 
@@ -230,6 +230,21 @@ case class DomAst(
     def inspect(d: DomAst, level: Int): Unit = {
       if (f.isDefinedAt(d)) res append f(d)
       d.children.foreach(inspect(_, level + 1))
+    }
+
+    inspect(this, 0)
+    res.toList
+  }
+
+  /** when you need to avoid certain paths like subtraces */
+  def collectWithFilter[T](f: PartialFunction[DomAst, T]) (filter:PartialFunction[DomAst, Boolean]): List[T] = {
+    val res = new ListBuffer[T]()
+
+    def inspect(d: DomAst, level: Int): Unit = {
+      if(filter.isDefinedAt(d) && filter(d)) {
+        if (f.isDefinedAt(d)) res append f(d)
+        d.children.foreach(inspect(_, level + 1))
+      }
     }
 
     inspect(this, 0)
@@ -353,7 +368,7 @@ case class DomAst(
     )
   }
 
-  def tojchildren (kids : List[DomAst]) : List[Any] =
+  private def tojchildren(kids : List[DomAst]) : List[Any] =
       kids.filter(k=> !AstKinds.shouldIgnore(k.kind)).flatMap{k=>
         if(shouldSkip(k)) {
           tojchildren(k.children.toList)

@@ -376,15 +376,17 @@ object DomDocs extends Logging {
           )
         ),
 
+        // path parameters
         "parameters" -> (this.in.toList.map(_.p).map(x =>
           swagP (ctx, this, x.name, "path", x.isRequired, x.ttype.name, format = x.ttype.name)
         ) ::: (
+          // query parameters - from annotations, which are not path parameters
           this.annos.filter {x =>
             val n = x.name.replaceFirst("docs.param.", "")
           ! this.in.exists(y => y.p.name == n)
           }.map { x =>
           val n = x.name.replaceFirst("docs.param.", "")
-          swagP (ctx, this, n, "query", x.isRequired, "String", format = "String")
+          swagP (ctx, this, n, "query", required = false, "String", format = "String")
           }
         )),
 
