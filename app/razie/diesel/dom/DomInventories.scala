@@ -374,28 +374,38 @@ object DomInventories extends razie.Logging {
   }
 
   /** for synchornous people */
-  def resolve(flattenData: Boolean, realm: String, ref: FullSpecRef, e: Either[DIQueryResult, EMsg]): DIQueryResult = {
+  def resolve (flattenData: Boolean, realm: String, ref: FullSpecRef, e: Either[DIQueryResult, EMsg]): DIQueryResult = {
     // resolve EMrg's parameters in an empty context and run it and await?
     e.fold(
       p => p,
       m => {
-        var p = DomEngineUtils.runMsgSync(new DieselMsg(m, DieselTarget.ENV(realm)), 30)
+        val origp = DomEngineUtils.runMsgSync(new DieselMsg(m, DieselTarget.ENV(realm)), 30)
+        var p = origp
 
         // todo add more info to queryResult:
         // count, totalCount, from/size etc for pagination
 
-        // flattenData - some ops return an array in "data"
-        if (flattenData && p.exists(_.isOfType(WTypes.wt.JSON))) {
+        val err = p.exists(_.isOfType(WTypes.wt.JSON)) &&
+          p.get
+              .calculatedTypedValue(ECtx.empty)
+              .asJson
+              .get("status")
+              .mkString
+              .contains("fail")
+
+        // flattenData - some ops return an array in "data" with "total"
+        // todo use the "total" returned as well - below it's overriden by the paginated size of (data)
+        if (p.exists(_.isOfType(WTypes.wt.JSON))) {
           val j = p.get.calculatedTypedValue(ECtx.empty).asJson
           val data = j.get("data")
-          if (data.isDefined) {
+          if (j.contains("total") && data.isDefined) {
             val l = data.get
             p = Option(P.fromSmartTypedValue(Diesel.PAYLOAD, l))
           }
         }
 
-        if (p.isEmpty || !p.get.isOfType(WTypes.wt.JSON) && !p.get.isOfType(WTypes.wt.ARRAY)) {
-          log("sub-flow return nothing or not a list - so no asset found!")
+        if (err || p.isEmpty || !p.get.isOfType(WTypes.wt.JSON) && !p.get.isOfType(WTypes.wt.ARRAY)) {
+          log("sub-flow return nothing, error or not a list - so no asset found!")
           DIQueryResult(0, Nil, p.toList)
         } else if (p.get.isOfType(WTypes.wt.JSON)) {
           val j = p.get.calculatedTypedValue(ECtx.empty).asJson

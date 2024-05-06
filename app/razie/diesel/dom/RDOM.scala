@@ -11,7 +11,7 @@ import java.time.{LocalDateTime, ZoneId, ZoneOffset}
 import java.time.format.DateTimeFormatter
 import java.util.Date
 import org.json.{JSONArray, JSONObject}
-import razie.diesel.dom.RDOM.P.isArrayType
+import razie.diesel.dom.RDOM.P.{isArrayType, isSimpleType}
 import razie.diesel.engine.nodes.{CanHtml, HasPosition}
 import razie.diesel.engine.{DomEngine, EContent}
 import razie.diesel.expr._
@@ -94,8 +94,8 @@ object RDOM {
           smap(archetype)(" &lt;" + _ + "&gt;") +
           smap(stereotypes)(" &lt;" + _ + "&gt;") +
           (if (base.exists(_.size > 0)) "extends " else "") + base.map(classLink).mkString +
-          mksAttrs(parms, Some({ p: P =>
-            "<small>" + qspan(invname, conn, p.name) + "</small> " +
+          mksAttrs(parms, Some({ (p: P) =>
+            (if(true) "<small>" + qspan(invname, conn, p.name) + "</small> " else "") +
                 p.toHtml(
                   short    = false,
                   showExpr = true,
@@ -816,6 +816,7 @@ object RDOM {
             )(ex=> exprSep1 + "=" + ex + exprSep2)//s"""<span title="$ex">...</span>""")
           ).mkString else "")
 
+    // type to html?
     private def typeHtml(s: WType) = {
       s.name.toLowerCase match {
         case "string" | "number" | "date" => s"<b>$s</b>"
@@ -1043,15 +1044,15 @@ object RDOM {
     }
   }
 
-  /** Diamond */
-  class D  (val roles:List[(String, String)], val ac:Option[AC]=None) extends DE //diamond association
+  /** Diamond (class, role, arity) */
+  class D  (val roles:List[(String, String, String)], val ac:Option[AC]=None) extends DE //diamond association
 
-  /** Associations
+  /** Like UML Association, from a to z
     *
     * name is not required
     */
   case class A  (name:String, a:String, z:String, aRole:String, zRole:String, parms:List[P]=Nil, override val ac:Option[AC]=None) //association
-    extends D (List(a->aRole, z->zRole), ac) {
+    extends D (List((a, aRole, ""), (z, zRole, "")), ac) {
     override def toString = s"assoc $name $a:$aRole -> $z:$zRole " +
       mks(parms, " (", ", ", ") ")
   }

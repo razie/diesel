@@ -16,7 +16,10 @@ import razie.tconf.{DSpecInventory, FullSpecRef, TagQuery}
 import razie.{Snakk, js}
 import scala.collection.mutable
 
-/** based on diesel rules domain plugin */
+/** based on diesel rules domain plugin
+  * this assumes you implemented the inventory rules matching you className,
+  * like diesel.inv.impl.listAll
+  */
 class DieselRulesInventory(
   override val name: String = "diesel",
   var props: Map[String, String] = Map.empty
@@ -146,10 +149,10 @@ class DieselRulesInventory(
     )
   }
 
-  def classOname(c: C): String =
+  private def classOname(c: C): String =
     c.props.find(_.name == TABLE).map(_.calculatedValue(ECtx.empty)).getOrElse(c.name)
 
-  def classOname(cls: String): String = {
+  private def classOname(cls: String): String = {
     val dom = WikiDomain(realm)
     val c = dom.rdom.classes.get(cls).getOrElse(new C(cls))
     c.props.find(_.name == TABLE).map(_.calculatedValue(ECtx.empty)).getOrElse(c.name)
