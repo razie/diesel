@@ -101,7 +101,8 @@ trait DomParser extends ParserBase with ExprParser {
         qident ~ opt(ows ~> "[" ~> ows ~> repsep(qident, ",") <~ "]") ~
         optAttrs ~
         opt(ws ~> "extends" ~> ws ~> repsep(qident, ",")) ~
-        opt(ws ~> "<" ~> ows ~> repsep(ident, ",") <~ ">") ~ " *".r ~ optClassBody ^^ {
+        opt(ws ~> "<" ~> ows ~> repsep(ident, ",") <~ ">") ~ " *".r ~
+        optClassBody ^^ {
       case k ~ _ ~ name ~ tParm ~ attrs ~ ext ~ stereo ~ _ ~ funcs => {
         lazyNoCacheable(k) { (current, ctx) =>
             // no cacheable so that the inventory dynamic actions can change as

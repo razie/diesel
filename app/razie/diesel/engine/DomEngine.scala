@@ -1292,10 +1292,14 @@ abstract class DomEngine (
 
     // collect all values
     // todo this must be smarter - ignore diese.before values, don't look inside scopes etc?
-    val valuesp = root.collect {
+    // ignore subtrees so to not confuse intermediary payloads
+    val valuesp = root.collectWithFilter ({
       case d@DomAst(EVal(p), /*AstKinds.GENERATED*/ _, _, _)
         if oattrs.isEmpty || oattrs.find(_.name == p.name).isDefined => p
-    }
+    }) ({
+      case d@DomAst(_, AstKinds.SUBTRACE, _, _) => false
+      case _ => true
+    })
 
     // extract one value - try:
     // 1. defined response oattrs
