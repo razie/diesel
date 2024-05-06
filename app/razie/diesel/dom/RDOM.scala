@@ -95,7 +95,7 @@ object RDOM {
           smap(stereotypes)(" &lt;" + _ + "&gt;") +
           (if (base.exists(_.size > 0)) "extends " else "") + base.map(classLink).mkString +
           mksAttrs(parms, Some({ (p: P) =>
-            (if(true) "<small>" + qspan(invname, conn, p.name) + "</small> " else "") +
+            (if(isSimpleType(p)) "<small>" + qspan(invname, conn, p.name) + "</small> " else "") +
                 p.toHtml(
                   short    = false,
                   showExpr = true,
@@ -800,7 +800,9 @@ object RDOM {
               else if (WTypes.ARRAY == ttype.name && short) "[..]"
               else if (WTypes.ARRAY == ttype.name && !short) s
               else if (WTypes.JSON == ttype.name && short) "{..}"
-              else if (WTypes.JSON == ttype.name && !short) s
+              else if (WTypes.JSON == ttype.name && !short) {
+                "<pre>" + shorten(js.tojsons(value.get.asJson), 2000) + "</pre>" //.replaceAll("\n", "<br>")
+              }
               else escapeHtml(quot(s))
             )
           } + valSep2

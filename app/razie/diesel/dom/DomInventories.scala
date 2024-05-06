@@ -198,13 +198,18 @@ object DomInventories extends razie.Logging {
     // augment each parm with ttype from class def
     val parms = (a1 ::: a2 ::: b)
         .map { k =>
-          val value = j.get(k).mkString
+          val jvalue = j.get(k)
           val kn = k.toString
           val oname = invClsName
 
           classDef.parms.find(_.name == kn).map { cp =>
-            cp.copy(value = P.fromTypedValue("", value).value)
+              if(cp.isOfType(WTypes.wt.JSON) && jvalue.isDefined) {
+                cp.copy(value = P.fromTypedValue("", jvalue.get, cp.ttype).value)
+              } else {
+                cp.copy(value = P.fromTypedValue("", jvalue.mkString).value)
+              }
           } getOrElse {
+            val value = jvalue.mkString
             // todo this is odata remnants...
             if (kn.startsWith("_") && kn.endsWith(("_value"))) {
               val PAT = """_(.+)_value""".r
