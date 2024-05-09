@@ -85,11 +85,17 @@ object RDOM {
 
     override def toString = fullHtml(None)
 
+    /** color - based on archetype ?*/
+    private def clsLabelColor: String =
+//      if (stype contains WARNING) "warning"
+//      else if(isResolved) "default"
+      "primary"
+
     def fullHtml(inv: Option[DomInventory]) = {
       // todo optimize/cache
       val invname = inv.map(_.name).mkString
       val conn = inv.map(_.conn).mkString
-      span("class::") + classLink(name) +
+      kspan("class", clsLabelColor, pos) + classLink(name) +
           smap(typeParam)(" [" + _ + "]") +
           smap(archetype)(" &lt;" + _ + "&gt;") +
           smap(stereotypes)(" &lt;" + _ + "&gt;") +
@@ -140,6 +146,7 @@ object RDOM {
       c
     }
 
+    // todo cache this toj
     def toj = Map (
       "name" -> name,
       "base" -> base,
@@ -934,6 +941,8 @@ object RDOM {
     */
   case class F (name:String, lang:String, parms:List[P], ttype:WType, archetype:String, script:String="",
                 body:List[Executable]=List.empty) extends CM with CanHtml {
+
+    def ea = name // like EMsg
 
     override def toHtml = {
       def mkParms = parms.map { p => p.name + "=" + Enc.toUrl(p.currentStringValue) }.mkString("&")

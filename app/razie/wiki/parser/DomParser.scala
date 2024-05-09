@@ -80,10 +80,11 @@ trait DomParser extends ParserBase with ExprParser {
           }
 
           // collect just to indicate parsing on the left in ACE
-          collectDom((new Anno(attrs)).withPos(pos(k, ctx)), ctx.we)
+          val a = (new Anno(attrs)).withPos(pos(k, ctx))
+          collectDom(a, ctx.we)
 
           StrAstNode(
-            s"""${span("anno")} ${mksAttrs(attrs)}
+            s"""${a.kspan("anno", "default", pos(k, ctx))} ${mksAttrs(attrs)}
                """.stripMargin)
         }
       }

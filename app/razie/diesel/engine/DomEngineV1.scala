@@ -227,7 +227,7 @@ class DomEngineV1 (
         } else {
 //          a.parent.foreach { p =>
             evAppChildren(a,
-              DomAst(EInfo("$if/else was false: " + n1.cond.mkString).withPos(n1.msg.pos), AstKinds.TRACE))
+              DomAst(EInfo("$if/else was false:: " + n1.cond.mkString).withPos(n1.msg.pos), AstKinds.TRACE))
         }
         // message will be evaluate() later
       }
@@ -244,7 +244,7 @@ class DomEngineV1 (
         } else {
 //          a.parent.foreach { p =>
             evAppChildren(a,
-              DomAst(EInfo("$if/else was false: " + n1.cond.mkString).withPos(n1.msg.pos), AstKinds.TRACE))
+              DomAst(EInfo("$if/else was false::: " + n1.cond.mkString).withPos(n1.msg.pos), AstKinds.TRACE))
         }
       }
 
@@ -754,7 +754,15 @@ class DomEngineV1 (
   private def addNoRules(in:EMsg, n:EMsg,a:DomAst) = {
     // not for internal diesel messages - such as before/after/save etc
     val ms = n.entity + "." + n.met
-    if(!ms.startsWith("diesel.")) {
+    if(ms.equals("do.this") || ms.equals("do.that")) {
+      val m = s"${in.ea} is reserved for if/else"
+      val cfg = this.pages.map(_.specRef.wpath).mkString("\n")
+      evAppChildren(a, DomAst(ETrace (m), AstKinds.DEBUG))
+
+      // in strict mode, blow up...
+      if(ctx.root.strict) throw new DieselExprException(m)
+    }
+    else if(!ms.startsWith("diesel.")) {
       val m = s"No rules, mocks or executors match for the above ${in.ea} with this signature - verify your arguments!"
       val cfg = this.pages.map(_.specRef.wpath).mkString("\n")
       evAppChildren(a, DomAst(
