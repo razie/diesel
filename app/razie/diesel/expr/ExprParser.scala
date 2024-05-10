@@ -52,8 +52,10 @@ trait ExprParser extends RegexParsers {
       "fold" <~ ws | "foreach" <~ ws |
       "flatMap" <~ ws | "indexBy" <~ ws |
       "flatten" <~ ws | "filter" <~ ws |
-      "exists" | "mkString" <~ ws |
-      ">>>" | ">>" | "<<<" | "<<"
+      "exists" <~ ws | "mkString" <~ ws |
+      "|c" <~ ws | "|>" <~ ws | "|" <~ ws |
+  // streams:
+      ">>>" <~ ws | ">>" <~ ws | "<<<" <~ ws | "<<" <~ ws
 
   private def opsOR: Parser[String] = "or" | "xor"
 
@@ -80,10 +82,11 @@ trait ExprParser extends RegexParsers {
   def expr2: Parser[Expr] = exprOR | pterm
 
   private def faexpr2: (Expr, String, Expr) => Expr = { (a, b, c) =>
-    if (b == ">>") AExprFunc(
-      c.asInstanceOf[AExprIdent].start,
-      List(P("", "", WTypes.wt.UNKNOWN, Some(a.asInstanceOf[AExprIdent]))))
-    else AExpr2(a, b, c)
+//    if (b == ">>") AExprFunc(
+//      c.asInstanceOf[AExprIdent].start,
+//      List(P("", "", WTypes.wt.UNKNOWN, Some(a.asInstanceOf[AExprIdent]))))
+//    else
+      AExpr2(a, b, c)
   }
 
   // "1" as number
@@ -381,7 +384,7 @@ private def accessorIdent: Parser[RDOM.P] = "." ~> ident ^^ { case id => P("", i
       WType(tt, "", k).withRef(ref.contains("<>"))
     }
     case Some(ref ~ tt ~ _ ~ Some(_)) => {
-      WType(WTypes.ARRAY, "", Some(tt)).withRef(ref.contains("<>"))
+      WType(WTypes.ARRAY, tt, None).withRef(ref.contains("<>"))
     }
     case None => WTypes.wt.EMPTY
   }
@@ -399,7 +402,7 @@ private def accessorIdent: Parser[RDOM.P] = "." ~> ident ^^ { case id => P("", i
   /**
     * parm definition / assignment
     *
-    * name:<>type[kind]*~=default
+    * @stereotypes name:<>type[kind]*~=default
     *
     * <> means it's a ref, not ownership
     * * means it's a list

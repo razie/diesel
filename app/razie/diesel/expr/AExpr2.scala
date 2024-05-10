@@ -12,7 +12,7 @@ import razie.diesel.dom.RDOM.P.{asString, isSimpleType}
 import razie.diesel.{Diesel, dom}
 import razie.diesel.dom.RDOM.{P, PValue}
 import razie.diesel.dom._
-import razie.diesel.engine.{DieselAppContext, DomAssetRef, DomRefs, DomStream}
+import razie.diesel.engine.{DieselAppContext, DomAssetRef, DomRefs, DomStream, DomStreamArrayProducer, DomStreamEngProducer, DomStreamStreamProducer, DomStreamV2}
 import razie.wiki.model.CATS
 import scala.collection.mutable
 import scala.collection.mutable.{HashMap, ListBuffer}
@@ -459,7 +459,7 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
 
           case WTypes.UNDEFINED if ctx.nonStrict => P.undefined(Diesel.PAYLOAD).value.orNull
 
-          case _ => throw new DieselExprException("Can't do take on: " + av)
+          case _ => throw new DieselExprException("Can't do take() on: " + av)
         }
       }
 
@@ -526,101 +526,7 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
       }
 
       case "map" => {
-        av.calculatedTypedValue.cType.name match {
-
-          case WTypes.ARRAY => {
-            val elementType = av.calculatedTypedValue.cType.wrappedType
-
-            val arr = av.calculatedTypedValue.asArray
-
-            val resArr = arr.map { x =>
-              val res = if (b.isInstanceOf[LambdaFuncExpr]) {
-                val res = b.applyTyped(P.fromTypedValue("x", x).withSchema(elementType)) // todo optimize - making two P's
-                res
-              } else if (b.isInstanceOf[BlockExpr] && b.asInstanceOf[BlockExpr].ex.isInstanceOf[LambdaFuncExpr]) {
-                // common case, no need to go through context, Block passes through to Lambda
-                val res = b.applyTyped(P.fromTypedValue("x", x).withSchema(elementType)) // todo optimize - making two P's
-//                val res = b.applyTyped(x)
-                res
-              } else {
-                // todo we populate an "x" or should it be "elem" ?
-                val sctx = new StaticECtx(List(P.fromTypedValue("x", x).withSchema(elementType)), Some(ctx))
-                val res = b.applyTyped(x)(sctx)
-                res
-              }
-              res
-            }
-
-            val le = resArr.map(_.calculatedTypedValue)
-            val finalArr = le.map(_.value)
-
-            PValue(finalArr, P.inferArrayTypeFromPV(le))
-          }
-
-          case WTypes.RANGE => {
-            val elementType = WTypes.wt.RANGE
-
-            val arr = av.calculatedTypedValue.asRange
-
-            val resArr = arr.map { x =>
-              val res = if (b.isInstanceOf[LambdaFuncExpr]) {
-                val res = b.applyTyped(x)
-                res
-              } else if (b.isInstanceOf[BlockExpr] && b.asInstanceOf[BlockExpr].ex.isInstanceOf[LambdaFuncExpr]) {
-                // common case, no need to go through context, Block passes through to Lambda
-                val res = b.applyTyped(x)
-                res
-              } else {
-                // todo we populate an "x" or should it be "elem" ?
-                val sctx = new StaticECtx(List(P.fromTypedValue("x", x)), Some(ctx))
-                val res = b.applyTyped(x)(sctx)
-                res
-              }
-              res
-            }
-
-            val le = resArr.map(_.calculatedTypedValue)
-            val finalArr = le.map(_.value)
-
-            PValue(finalArr, P.inferArrayTypeFromPV(le))
-          }
-
-          case WTypes.JSON => {
-            val elementType = av.calculatedTypedValue.cType.getClassName
-
-            val arr = av.calculatedTypedValue.asJson
-
-            val resArr = arr.map { x =>
-              val xj = P.fromSmartTypedValue("x", Map("key" -> x._1, "value" -> x._2))
-
-              val res = if (b.isInstanceOf[LambdaFuncExpr]) {
-                // arr map x => f
-                val res = b.applyTyped(xj)
-                res
-              } else if (b.isInstanceOf[BlockExpr] && b.asInstanceOf[BlockExpr].ex.isInstanceOf[LambdaFuncExpr]) {
-                // arr map (x => f)
-                // common case, no need to go through context, Block passes through to Lambda
-                val res = b.applyTyped(xj)
-                res
-              } else {
-                // we populate an "x" or should it be "elem" ?
-                val sctx = new StaticECtx(List(P.fromTypedValue("x", x)), Some(ctx))
-                val res = b.applyTyped(xj)(sctx)
-                res
-              }
-              res
-            }
-
-            val le = resArr.map(_.calculatedTypedValue)
-            val finalArr = le.map(_.value)
-
-            PValue(finalArr, P.inferArrayTypeFromPV(le))
-          }
-
-          case WTypes.UNDEFINED if ctx.nonStrict => P.undefined(Diesel.PAYLOAD).value.getOrElse(null)
-
-          case _ => throw new DieselExprException("Can't do map on: " + av)
-        }
+        AExpr2Utils.map (a, av, b, v, expr)
       }
 
       case "mkString" => {
@@ -736,6 +642,7 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
         }
       }
 
+      // same as map but it doesn't affect payload
       case "foreach" => {
         av.calculatedTypedValue.cType.name match {
           case WTypes.ARRAY => {
@@ -1111,39 +1018,6 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
 
     val s = razie.js.tojsons(res.toMap)
     PValue(res, WTypes.wt.JSON).withStringCache(s)
-  }
-
-  def streamOp (op: String, v: Any)(implicit ctx: ECtx) = {
-    val av = a.applyTyped(v).calculatedTypedValue
-    val bv = b.applyTyped(v).calculatedTypedValue
-
-    op match {
-      case ">>" | ">>>" => {
-        // stream op / map
-
-        val bs = if (bv.cType.getClassName == "DieselStream") Option(bv.value.asInstanceOf[DomStream])
-        else DieselAppContext.activeStreamsByName.get(bv.asString)
-
-      }
-
-      case ">>" | ">>>" => {
-        // stream op / map
-
-        val bs = if (bv.cType.getClassName == "DieselStream") Option(bv.value.asInstanceOf[DomStream])
-        else DieselAppContext.activeStreamsByName.get(bv.asString)
-
-      }
-
-      case "<<" | "<<<" => {
-        // setup a generator
-
-        val as = if (av.cType.getClassName == "DieselStream") Option(av.value.asInstanceOf[DomStream])
-        else DieselAppContext.activeStreamsByName.get(av.asString)
-
-      }
-    }
-
-    PValue("", WTypes.wt.JSON)
   }
 
   override def getType = a.getType

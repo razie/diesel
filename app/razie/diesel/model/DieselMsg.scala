@@ -352,6 +352,12 @@ object DieselMsg {
     final val CAN_READ = "diesel.io.canRead"
   }
 
+  object DOM {
+    final val ENTITY = "diesel.dom"
+
+    final val META = "diesel.dom.meta"
+  }
+
 
   final val fiddleStoryUpdated = "fiddleStoryUpdated"
   final val fiddleSpecUpdated = "fiddleSpecUpdated"

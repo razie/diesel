@@ -539,7 +539,7 @@ case class AExprFunc(val expr: String, parms: List[RDOM.P]) extends Expr {
             // todo add more ast info?
           EEFunc.exec(msg, f)
         } getOrElse {
-          throw new DieselExprException("Function/Message not found OR no payload resulted: " + expr)
+          throw new DieselExprException("Function/Message not found (you need a $msg declaration to call this) OR no payload resulted: " + expr)
         }
       }
     }

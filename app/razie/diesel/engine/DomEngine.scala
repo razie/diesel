@@ -331,7 +331,7 @@ abstract class DomEngine (
   implicit val engine: DomEngineState = this
 
   // setup the context for this eval
-  implicit var ctx: ECtx = new DomEngECtx(settings)
+  var ctx: ECtx = new DomEngECtx(settings)
       .withEngine(this)
       .withSpecs(pages)
       .withDomain(dom)
@@ -1309,7 +1309,7 @@ abstract class DomEngine (
         .orElse(valuesp.lastOption)
         .orElse(valuesp.find(_.name == Diesel.PAYLOAD))
 
-    resp.map(_.calculatedP)
+    resp.map(_.calculatedP(ctx))
   }.getOrElse(None)
 
   // todo still used in some places...

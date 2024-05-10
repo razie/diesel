@@ -1544,7 +1544,7 @@ class DomEngineV1 (
 
           val v = EVal(P.undefined(Diesel.PAYLOAD))
           evAppChildren(a, DomAst(v, AstKinds.TRACE))
-          setSmartValueInContext(a, this.ctx, v.p)
+          setSmartValueInContext(a, ctx, v.p)
         }
 
         true
@@ -1966,8 +1966,10 @@ class DomEngineV1 (
 
     val subtrees = e.target.map(List(_)).getOrElse(if (e.when.isDefined) {
       // find generated messages that should be tested
+      // todo should also work if following expressions, not just messags - not a big deal but usability
       root.collect {
-        case d@DomAst(n: EMsg, k, _, _) if e.when.exists(_.test(a, n)) => d
+        case d@DomAst(n: EMsg, k, _, _) if e.when.exists(_.test(a, n)(a.getCtx.map(_.getScopeCtx).getOrElse(this.ctx))) => d
+          // todo should we test cond in root context OR in local story scope
       }
     } else List(root))
 
@@ -2128,7 +2130,7 @@ class DomEngineV1 (
     val subtrees = e.target.map(List(_)).getOrElse(if (e.when.isDefined) {
       // find generated messages that should be tested
       root.collect {
-        case d@DomAst(n: EMsg, k, _, _) if e.when.exists(_.test(a, n)) => d
+        case d@DomAst(n: EMsg, k, _, _) if e.when.exists(_.test(a, n)(a.getCtx.map(_.getScopeCtx).getOrElse(this.ctx))) => d
       }
     } else List(root))
 
